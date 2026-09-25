@@ -260,6 +260,79 @@ test('mounted Builder keeps Review open on failed canonical checkpoint, resumes 
   } finally { await view.close(); }
 });
 
+test('queryless new-trip Discovery restores the saved Australia direction and shortlist after a full reload',
+  { skip: process.env.MORROVIA_BUILDER_BROWSER_TESTS !== '1', timeout: 60_000 }, async () => {
+  const { renderBuilder } = await import('./helpers/builder-render.ts');
+  const view = await renderBuilder();
+  const page = view.page;
+  const dialog = page.getByRole('dialog');
+  try {
+    await page.getByRole('textbox', { name: 'TELL US ABOUT YOUR TRIP' }).fill('Australia');
+    await page.getByRole('button', { name: 'Plan my trip' }).click();
+    await page.getByRole('button', { name: 'Continue shaping your route' }).click();
+    await dialog.getByRole('heading', { name: 'Choose a direction' }).waitFor();
+    await dialog.getByRole('button', { name: 'Explore direction: East coast' }).click();
+    await dialog.getByRole('heading', { name: 'Explore places' }).waitFor();
+    await dialog.getByRole('button', { name: 'Add to shortlist: Sydney' }).click();
+    await page.waitForFunction(() => Object.keys(localStorage)
+      .filter(key => key.startsWith('easyt:trip-recovery:v2:'))
+      .some(key => {
+        const trip = JSON.parse(localStorage.getItem(key)!).trip;
+        const drafts = Object.values(trip?.brief?.structuredBrief?.discoveryDraftByMentionId ?? {}) as Array<{ directionId?: string; shortlistIds?: string[] }>;
+        return trip?.brief?.mustDo === 'Australia' && drafts.some(draft => draft.directionId === 'australia-east-coast'
+          && draft.shortlistIds?.includes('sydney'));
+      }));
+    await page.getByText('Changes saved on this device', { exact: true }).waitFor();
+    assert.equal(new URL(page.url()).search, '');
+    const originalTripId = await page.evaluate(() => Object.keys(localStorage)
+      .filter(key => key.startsWith('easyt:current-trip:v2:'))
+      .map(key => JSON.parse(localStorage.getItem(key)!))
+      .find(record => record.ownerId === null)?.tripId);
+    assert.ok(originalTripId);
+
+    await page.reload();
+    await dialog.getByRole('heading', { name: 'Explore places' }).waitFor();
+    assert.equal(await dialog.getByText('Australia', { exact: true }).count() > 0, true);
+    assert.equal(await dialog.getByRole('button', { name: 'Remove from shortlist: Sydney' }).count(), 1);
+    assert.equal(await page.evaluate(() => Object.keys(localStorage)
+      .filter(key => key.startsWith('easyt:current-trip:v2:'))
+      .map(key => JSON.parse(localStorage.getItem(key)!))
+      .find(record => record.ownerId === null)?.tripId), originalTripId);
+    await dialog.getByRole('button', { name: 'Remove from shortlist: Sydney' }).click();
+    await page.waitForFunction(() => Object.keys(localStorage)
+      .filter(key => key.startsWith('easyt:trip-recovery:v2:'))
+      .some(key => {
+        const trip = JSON.parse(localStorage.getItem(key)!).trip;
+        const drafts = Object.values(trip?.brief?.structuredBrief?.discoveryDraftByMentionId ?? {}) as Array<{ shortlistIds?: string[]; removedIds?: string[] }>;
+        return drafts.some(draft => draft.shortlistIds?.length === 0 && draft.removedIds?.includes('sydney'));
+      }));
+    await page.reload();
+    await dialog.getByRole('heading', { name: 'Explore places' }).waitFor();
+    assert.equal(await dialog.getByRole('button', { name: 'Add to shortlist: Sydney' }).count(), 1);
+    assert.equal(await page.locator('[data-builder-root="true"]').getAttribute('aria-busy'), null);
+    assert.deepEqual(view.errors, []);
+  } finally { await view.close(); }
+});
+
+test('queryless new-trip never acknowledges a device save when its recovery pointer is blocked',
+  { skip: process.env.MORROVIA_BUILDER_BROWSER_TESTS !== '1', timeout: 30_000 }, async () => {
+  const { renderBuilder } = await import('./helpers/builder-render.ts');
+  const view = await renderBuilder();
+  try {
+    await view.page.evaluate(() => {
+      const original = Storage.prototype.setItem;
+      Storage.prototype.setItem = function(key: string, value: string) {
+        if (key.startsWith('easyt:current-trip:v2:')) throw new DOMException('Pointer write blocked', 'QuotaExceededError');
+        return original.call(this, key, value);
+      };
+    });
+    await view.page.getByRole('textbox', { name: 'TELL US ABOUT YOUR TRIP' }).fill('Australia');
+    await view.page.getByText('Browser storage is blocked. Keep this tab open before leaving.').waitFor({ timeout: 5000 });
+    assert.equal(await view.page.getByText('Changes saved on this device', { exact: true }).count(), 0);
+    assert.deepEqual(view.errors, []);
+  } finally { await view.close(); }
+});
+
 
 test('Builder attraction inference retains every explicitly selected country base before the durable checkpoint', () => {
   const input = fixture('Australia', ['sydney', 'melbourne']);

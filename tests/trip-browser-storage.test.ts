@@ -17,6 +17,7 @@ import {
   forgetRememberedOwnerInStorage,
   loadActiveTripFromStorage,
   loadCachedTripFromStorage,
+  loadCurrentDraftRecoveryFromStorage,
   loadCurrentTripIdFromStorage,
   loadCurrentTripRecoveryFromStorage,
   loadLocalTripFromStorage,
@@ -1251,6 +1252,26 @@ test("New trip synchronously preserves the latest edit, cancels when storage is 
   assert.equal(discardTripRecoveryInStorage(storage, recoveryToDiscard, true), true);
   assert.equal(loadTripRecoveryFromStorage(storage, dirty.id, "owner-a"), null);
   assert.equal(loadCachedTripFromStorage(storage, dirty.id, "owner-a")?.id, dirty.id);
+});
+
+test("queryless Builder recovery follows only the current draft pointer in the active owner scope", () => {
+  const storage = new MemoryBrowserStorage();
+  const previous = browserTrip({ id: "trip-previous-draft" });
+  assert.equal(saveTripRecoveryToStorage(storage, previous, { writeId: "previous" }).stored, true);
+  const current = browserTrip({ id: "trip-current-draft", brief: { ...previous.brief, mustDo: "Australia" } });
+  assert.equal(saveTripRecoveryToStorage(storage, current, { writeId: "current" }).stored, true);
+  assert.equal(loadCurrentDraftRecoveryFromStorage(storage, "owner-a")?.trip.id, current.id);
+  assert.equal(loadCurrentDraftRecoveryFromStorage(storage, "owner-b"), null);
+  assert.equal(loadCurrentDraftRecoveryFromStorage(storage, null), null);
+  assert.equal(clearCurrentTripInStorage(storage, "owner-a"), true);
+  assert.equal(loadCurrentDraftRecoveryFromStorage(storage, "owner-a"), null,
+    "explicit New Trip must not resurrect an older recovery");
+
+  const planned = browserTrip({ id: "trip-planned", status: "planned" });
+  assert.equal(saveTripRecoveryToStorage(storage, planned, { writeId: "planned" }).stored, true);
+  assert.equal(loadCurrentDraftRecoveryFromStorage(storage, "owner-a"), null);
+  storage.seed(currentTripStorageKey("owner-a"), JSON.stringify({ version: 2, ownerId: "owner-a", tripId: "trip-missing" }));
+  assert.equal(loadCurrentDraftRecoveryFromStorage(storage, "owner-a"), null);
 });
 
 test("New trip refuses to clear an orphan current pointer when no Builder listener has made it recoverable", () => {

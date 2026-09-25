@@ -998,6 +998,13 @@ export function loadCurrentTripRecoveryFromStorage(
   return null;
 }
 
+/** A queryless new Builder visit may resume only the draft this owner left current. */
+export function loadCurrentDraftRecoveryFromStorage(storage: EasyTBrowserStorage, ownerId: string | null) {
+  const currentId = loadCurrentTripIdFromStorage(storage, ownerId);
+  const recovery = currentId ? loadTripRecoveryFromStorage(storage, currentId, ownerId) : null;
+  return recovery?.trip.status === "draft" ? recovery : null;
+}
+
 export function loadLocalTripFromStorage(
   storage: EasyTBrowserStorage,
   tripId: string,
@@ -1133,6 +1140,11 @@ export function loadLocalTrip(
 export function loadCurrentTripRecovery(ownerId: string | null) {
   const storage = browserStorage();
   return storage ? loadCurrentTripRecoveryFromStorage(storage, ownerId) : null;
+}
+
+export function loadCurrentDraftRecovery(ownerId: string | null) {
+  const storage = browserStorage();
+  return storage ? loadCurrentDraftRecoveryFromStorage(storage, ownerId) : null;
 }
 
 /** List every newest trip-scoped recovery for this exact owner. */

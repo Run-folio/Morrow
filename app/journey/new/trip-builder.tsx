@@ -16,7 +16,7 @@ import {
 import { useSearchParams } from "next/navigation";
 import dynamic from "next/dynamic";
 import { useCallback, useEffect, useLayoutEffect, useId, useMemo, useRef, useState, type DragEvent as ReactDragEvent } from "react";
-import { acknowledgeTripBuildSave, cacheCanonicalTrip, canUseHydratedTripScope, claimGuestTripRecoveryForOwner, EASYT_BEFORE_NEW_TRIP_EVENT, EASYT_LAST_OWNER_CHANGE_EVENT, EASYT_LAST_OWNER_KEY, EasyTTripAuthError, EasyTTripPromotionConflictError, EasyTTripSaveConflictError, forgetRememberedOwner, loadActiveTrip, loadRememberedOwner, loadRequestedTrip, loadTripRecovery, markTripRecoveryState, ownerIdForBrowserRecovery, rememberLastOwner, saveTripRecovery, saveTripRecoveryToEasyT, shouldAllowNewTripNavigation, tripDocumentsCanonicalEquivalent, type TripRecoveryHandle } from "@/lib/easyt/storage";
+import { acknowledgeTripBuildSave, cacheCanonicalTrip, canUseHydratedTripScope, claimGuestTripRecoveryForOwner, EASYT_BEFORE_NEW_TRIP_EVENT, EASYT_LAST_OWNER_CHANGE_EVENT, EASYT_LAST_OWNER_KEY, EasyTTripAuthError, EasyTTripPromotionConflictError, EasyTTripSaveConflictError, forgetRememberedOwner, loadActiveTrip, loadCurrentDraftRecovery, loadRememberedOwner, loadRequestedTrip, loadTripRecovery, markTripRecoveryState, ownerIdForBrowserRecovery, rememberLastOwner, saveTripRecovery, saveTripRecoveryToEasyT, shouldAllowNewTripNavigation, tripDocumentsCanonicalEquivalent, type TripRecoveryHandle } from "@/lib/easyt/storage";
 import { tripBuildDocumentsCanonicalEquivalent } from "@/lib/easyt/trip-promotion";
 import { EasyTTripPersistenceError, isTripPersistenceAuthenticationError, tripRecoveryStateForPersistenceError } from "@/lib/easyt/trip-persistence-error";
 import { tripEditorSyncAction, tripSyncRecoveryPath, tripSyncSignInPath } from "@/lib/easyt/trip-continuity";
@@ -482,6 +482,7 @@ function TripBuilderDocument() {
   const [createdAt, setCreatedAt] = useState(() => new Date().toISOString());
   const [tripUpdatedAt, setTripUpdatedAt] = useState<string | null>(null);
   const [hydrated, setHydrated] = useState(false);
+  const [resumedQuerylessDraft, setResumedQuerylessDraft] = useState(false);
   const [tripUnavailable, setTripUnavailable] = useState(false);
   const [saveState, setSaveState] = useState<"device-saving" | "local" | "cloud-saving" | "cloud" | "error">("device-saving");
   const [cloudSaveError, setCloudSaveError] = useState("");
@@ -682,6 +683,7 @@ function TripBuilderDocument() {
     recoveryHandleRef.current = null;
     hydratedCanonicalTripRef.current = null;
     setHydrated(false);
+    setResumedQuerylessDraft(false);
     setTripUnavailable(false);
     let active = true;
     const applySaved = (saved: ReturnType<typeof loadActiveTrip>) => {
@@ -780,6 +782,17 @@ function TripBuilderDocument() {
           setTripUnavailable(true);
         }
       } else {
+        if (!params.has("homeDraft") && !params.has("inspire")) {
+          const currentDraft = loadCurrentDraftRecovery(activeOwnerId);
+          if (currentDraft && active) {
+            recoveryHandleRef.current = currentDraft;
+            applySaved(currentDraft.trip);
+            setResumedQuerylessDraft(true);
+            hydratedOwnerScopeRef.current = activeOwnerId;
+            setHydrated(true);
+            return;
+          }
+        }
         if (activeOwnerId) {
           if (previousOwnerScope === null) {
             const claimed = claimGuestTripRecoveryForOwner(tripId, activeOwnerId);
@@ -1311,7 +1324,7 @@ function TripBuilderDocument() {
     if (!shouldAutoOpenBuilderClarification({
       hydrated,
       placesStep: true,
-      arrivedFromHomepage: arrivedFromHomepage || hasRequestedPlaceIntent,
+      arrivedFromHomepage: arrivedFromHomepage || hasRequestedPlaceIntent || resumedQuerylessDraft,
       resolving: resolvingLocations,
       itemCount: pendingClarificationIds.length,
       alreadyOpened: clarificationAutoOpened,
@@ -1327,7 +1340,7 @@ function TripBuilderDocument() {
     requestedPlaceIntentRef.current = null;
     setClarificationAutoOpened(true);
     setClarificationOpen(true);
-  }, [arrivedFromHomepage, clarificationAutoOpened, clarificationDismissed, cloudConflictTrip, cloudSaveError, deviceRecoveryBlocked, deviceStorageBlocked, hydrated, pendingClarificationIds, pendingStopRemoval, productTourOpen, resolvingLocations]);
+  }, [arrivedFromHomepage, clarificationAutoOpened, clarificationDismissed, cloudConflictTrip, cloudSaveError, deviceRecoveryBlocked, deviceStorageBlocked, hydrated, pendingClarificationIds, pendingStopRemoval, productTourOpen, resolvingLocations, resumedQuerylessDraft]);
 
   useEffect(() => {
     if (clarificationOpen || !restoreClarificationResumeFocusRef.current) return;
@@ -3157,6 +3170,11 @@ function TripBuilderDocument() {
         currentUrl.searchParams.set("recover", "1");
         window.history.replaceState(window.history.state, "", currentUrl);
       }
+    }
+    const currentUrl = new URL(window.location.href);
+    if (recovery.stored && trip.status === "draft" && !currentUrl.searchParams.has("trip")) {
+      const currentDraft = loadCurrentDraftRecovery(ownerId);
+      return { ...recovery, stored: currentDraft?.tripId === trip.id && currentDraft.writeId === recovery.handle.writeId };
     }
     return recovery;
   }, [activeBrowserOwnerId]);
