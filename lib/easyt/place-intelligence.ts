@@ -1050,7 +1050,12 @@ export function inferAttractionVisitSelections(
   const retained = selections.filter((selection) => selection.kind !== "visit"
     || !selection.routeStopId
     || targetIds.has(selection.routeStopId));
-  const byMention = new Map(retained.map((selection) => [selection.mentionId, selection]));
+  // Countries and other planning areas can own several explicit bases. Visit
+  // inference must not collapse those selections before Builder checkpoints.
+  const multiPlaceMentionIds = new Set(mentions.filter(placeMentionSupportsMultipleSelections).map(mention => mention.mentionId));
+  const multiPlaceSelections = retained.filter(selection => multiPlaceMentionIds.has(selection.mentionId));
+  const byMention = new Map(retained.filter(selection => !multiPlaceMentionIds.has(selection.mentionId))
+    .map((selection) => [selection.mentionId, selection]));
   for (const mention of mentions) {
     if (mention.status !== "resolved" || mention.routability !== "anchor_or_poi" || mention.placeType !== "landmark") continue;
     const existing = byMention.get(mention.mentionId);
@@ -1092,7 +1097,7 @@ export function inferAttractionVisitSelections(
       confidence: best.confidence,
     });
   }
-  return [...byMention.values()];
+  return [...multiPlaceSelections, ...byMention.values()];
 }
 
 export function validPlaceCoordinates(value: unknown): value is [number, number] {

@@ -1,111 +1,95 @@
-import assert from "node:assert/strict";
-import test from "node:test";
-import { captureJourneyBrief } from "../lib/easyt/journey-capture.ts";
-import { createHomeTripDraft, handoffRouteStops } from "../lib/easyt/home-trip-handoff.ts";
-import { builderBrowserTestsEnabled, renderBuilder } from "./helpers/builder-render.ts";
+import assert from 'node:assert/strict';
+import test from 'node:test';
+import { captureJourneyBrief } from '../lib/easyt/journey-capture.ts';
+import { createHomeTripDraft, handoffRouteStops } from '../lib/easyt/home-trip-handoff.ts';
+import { builderBrowserTestsEnabled, renderBuilder } from './helpers/builder-render.ts';
 
-test("Tajikistan discovery keeps deselection through reload and commits canonical choices only on Continue", { skip: !builderBrowserTestsEnabled, timeout: 45_000 }, async () => {
-  const capture = captureJourneyBrief("Starting from Madrid, 10 days in Tajikistan");
-  const draft = createHomeTripDraft({
-    capture, handoffId: "tajikistan-discovery", datesExplicit: true,
-    startDate: "2026-10-06", endDate: "2026-10-16", travellers: 2, travellersExplicit: true, interests: ["nature"],
-    origin: { name: "Madrid", country: "Spain", canonicalPlaceId: "madrid", coordinates: [-3.7038, 40.4168] },
-  });
+const homeDraft = (destination: string) => {
+  const capture = captureJourneyBrief(`Starting from Madrid, 10 days in ${destination}`);
+  const draft = createHomeTripDraft({ capture, handoffId: `discovery-${destination}`, datesExplicit: true,
+    startDate: '2026-10-06', endDate: '2026-10-16', travellers: 2, travellersExplicit: true, interests: ['nature'],
+    origin: { name: 'Madrid', country: 'Spain', canonicalPlaceId: 'madrid', coordinates: [-3.7038, 40.4168] } });
   draft.destinations = handoffRouteStops(capture.mentions, capture.journeyEnd);
-  const view = await renderBuilder({ query: "?homeDraft=1", draft });
+  return draft;
+};
+
+test('Tajikistan uses adaptive sparse Discovery, search blocks unreviewed stays, and explicit empty choices survive reload', { skip: !builderBrowserTestsEnabled, timeout: 45_000 }, async () => {
+  const view = await renderBuilder({ query: '?homeDraft=1', draft: homeDraft('Tajikistan') });
+  await view.page.setViewportSize({ width: 390, height: 844 });
   try {
-    const dialog = view.page.getByRole("dialog");
-    await dialog.getByRole("heading", { name: "Where should you go in Tajikistan?" }).waitFor();
-    assert.equal(await dialog.getByRole("combobox", { name: /Search within Tajikistan/ }).count(), 0);
-    const selected = dialog.locator('button[aria-pressed="true"]').first();
-    const removedName = (await selected.getAttribute("aria-label"))!.split(":")[0];
-    await selected.click();
-    await view.page.waitForFunction(() => Object.values(localStorage).some((raw) => {
-      try { return Boolean(JSON.parse(raw).trip?.brief?.structuredBrief?.countryDiscoveryChoices); } catch { return false; }
-    }));
+    const dialog = view.page.getByRole('dialog');
+    await dialog.getByRole('heading', { name: 'Explore places', exact: true }).waitFor();
+    for (const name of ['Dushanbe', 'Khujand', 'Panjakent']) assert.equal(await dialog.getByRole('heading', { name, exact: true }).count(), 1);
+    await dialog.getByRole('button', { name: /^Add to shortlist:/ }).first().click();
+    await dialog.getByRole('button', { name: /^Remove from shortlist:/ }).first().click();
+    const search = dialog.getByRole('combobox', { name: 'Search for somewhere specific: Tajikistan' });
+    await search.fill('Dushanbe');
+    await dialog.getByRole('option', { name: /Dushanbe/ }).first().click();
+    await dialog.getByRole('alert').filter({ hasText: /cannot confirm Dushanbe/ }).waitFor();
+    await dialog.getByRole('button', { name: 'Continue', exact: true }).click();
+    await dialog.getByRole('heading', { name: 'Review choices', exact: true }).waitFor();
+    assert.equal(await dialog.getByRole('button', { name: 'Confirm existing places', exact: true }).isDisabled(), true);
+    await dialog.getByRole('button', { name: 'Back', exact: true }).click();
+    await dialog.getByRole('button', { name: 'Finish later', exact: true }).click();
     await view.page.reload();
-    await view.page.getByRole("button", { name: "Continue shaping your route" }).click();
-    await dialog.getByRole("heading", { name: "Where should you go in Tajikistan?" }).waitFor();
-    assert.equal(await dialog.getByRole("button", { name: `${removedName}: not selected, add` }).getAttribute("aria-pressed"), "false");
-    // A rapid double activation must not commit the same draft twice.
-    await view.page.evaluate(() => {
-      const button = [...document.querySelectorAll<HTMLButtonElement>('button')]
-        .find((item) => item.textContent?.startsWith("Continue with"));
-      button?.click(); button?.click();
-    });
-    await view.page.waitForFunction(() => Object.values(localStorage).some((raw) => {
-      try { return JSON.parse(raw).trip?.stops?.some((stop: { countryCode?: string }) => stop.countryCode === "TJ"); } catch { return false; }
+    await view.page.getByRole('button', { name: 'Continue shaping your route' }).click();
+    await dialog.getByRole('heading', { name: 'Explore places', exact: true }).waitFor();
+    const saved = await view.page.evaluate(() => Object.values(localStorage).flatMap(raw => {
+      try { const trip = JSON.parse(raw).trip; return trip?.brief?.structuredBrief?.discoveryDraftByMentionId ? [trip] : []; } catch { return []; }
     }));
-    await view.page.reload();
-    const committedIds = await view.page.evaluate(() => Object.values(localStorage)
-      .map((raw) => { try { return JSON.parse(raw).trip; } catch { return null; } })
-      .find((trip) => trip?.stops?.some((stop: { countryCode?: string }) => stop.countryCode === "TJ"))
-      .stops.filter((stop: { countryCode?: string }) => stop.countryCode === "TJ")
-      .map((stop: { canonicalPlaceId: string }) => stop.canonicalPlaceId) as string[]);
-    assert.equal(new Set(committedIds).size, committedIds.length);
-    const firstStop = await view.page.evaluate(() => Object.values(localStorage)
-      .map((raw) => { try { return JSON.parse(raw).trip; } catch { return null; } })
-      .find((trip) => trip?.stops?.some((stop: { countryCode?: string }) => stop.countryCode === "TJ"))
-      .stops.find((stop: { countryCode?: string }) => stop.countryCode === "TJ") as { id: string; name: string; canonicalPlaceId: string });
-    await view.page.getByRole("button", { name: `Remove ${firstStop.name}` }).first().click();
-    await view.page.getByRole("dialog", { name: `Remove ${firstStop.name} and its plan?` })
-      .getByRole("button", { name: `Remove ${firstStop.name}` }).click();
-    await view.page.waitForFunction(({ removedId, removedName }: { removedId: string; removedName: string }) => Object.values(localStorage).some((raw) => {
-      try { const trip = JSON.parse(raw).trip; return trip?.stops && !trip.stops.some((stop: { id: string }) => stop.id === removedId)
-        && !trip.brief.structuredBrief?.placeSelections?.some((selection: { routeStopId?: string }) => selection.routeStopId === removedId)
-        && !trip.brief.structuredBrief?.destinations?.some((destination: { id?: string }) => destination.id === removedId)
-        && !trip.brief.structuredBrief?.mustVisit?.some((destination: { name: string }) => destination.name === removedName)
-        && trip.brief.structuredBrief?.placeMentions?.some((mention: { canonicalName: string }) => mention.canonicalName === "Tajikistan"); } catch { return false; }
-    }), { removedId: firstStop.id, removedName: firstStop.name }, { timeout: 5000 });
+    assert.ok(saved.length > 0);
+    for (const trip of saved) {
+      const draft = trip.brief.structuredBrief.discoveryDraftByMentionId['place-tajikistan-0'];
+      assert.deepEqual(draft.shortlistIds, []); assert.equal(draft.step, 'places');
+      assert.equal(trip.stops.filter((stop: { country: string }) => stop.country === 'Tajikistan').length, 0);
+    }
     assert.deepEqual(view.errors, []);
   } finally { await view.close(); }
 });
 
-test("Africa and Serengeti keep the park as an anchor with a reviewed nearby overnight locality", { skip: !builderBrowserTestsEnabled, timeout: 45_000 }, async () => {
-  const capture = captureJourneyBrief("Starting from Madrid, 14 days in Africa and Serengeti");
-  const draft = createHomeTripDraft({
-    capture, handoffId: "serengeti-discovery", datesExplicit: true,
-    startDate: "2026-10-06", endDate: "2026-10-20", travellers: 2, travellersExplicit: true, interests: ["nature"],
-    origin: { name: "Madrid", country: "Spain", canonicalPlaceId: "madrid", coordinates: [-3.7038, 40.4168] },
-  });
-  draft.destinations = handoffRouteStops(capture.mentions, capture.journeyEnd);
-  const view = await renderBuilder({ query: "?homeDraft=1", draft });
+test('Africa retains its continent intent and sparse reviewed place without a default country or overnight stop', { skip: !builderBrowserTestsEnabled, timeout: 45_000 }, async () => {
+  const view = await renderBuilder({ query: '?homeDraft=1', draft: homeDraft('Africa') });
+  await view.page.setViewportSize({ width: 390, height: 844 });
   try {
-    const dialog = view.page.getByRole("dialog");
-    await dialog.getByRole("heading", { name: /Where should you go in Africa/ }).waitFor();
-    assert.equal(await dialog.getByText("Arusha").count() > 0, true);
-    await dialog.getByRole("button", { name: /Continue with [1-9] places/ }).click();
-    await dialog.getByRole("heading", { name: "Serengeti National Park" }).waitFor();
-    const base = dialog.getByRole("button", { name: /Seronera.*Already in route; use as base/ });
-    assert.equal(await base.count(), 1);
-    assert.equal(await dialog.getByText(/could not confidently identify a nearby base/).count(), 0);
-    await base.click();
-    assert.equal(await view.page.getByRole("button", { name: "Remove Seronera" })
-      .evaluateAll((buttons: Element[]) => buttons.filter((button: Element) => !button.closest('[role="dialog"]')).length), 1,
-      "resolving the park uses the existing canonical Seronera stop");
+    const dialog = view.page.getByRole('dialog');
+    await dialog.getByRole('heading', { name: 'Explore places', exact: true }).waitFor();
+    assert.equal(await dialog.getByRole('heading', { name: 'Arusha', exact: true }).count(), 1);
+    assert.equal(await dialog.getByRole('button', { name: /^Explore direction:/ }).count(), 0);
+    await dialog.getByRole('button', { name: /^Add to shortlist:/ }).first().click();
+    await dialog.getByRole('button', { name: /^Remove from shortlist:/ }).first().click();
+    await dialog.getByRole('combobox', { name: 'Search for somewhere specific: Africa' }).fill('Arusha');
+    await dialog.getByRole('option', { name: /Arusha/ }).first().click();
+    await dialog.getByRole('alert').filter({ hasText: /cannot confirm Arusha/ }).waitFor();
+    await dialog.getByRole('button', { name: 'Finish later', exact: true }).click();
+    await view.page.waitForFunction(() => !document.querySelector('[role="dialog"]'));
+    const trips = await view.page.evaluate(() => Object.values(localStorage).flatMap(raw => {
+      try { const trip = JSON.parse(raw).trip; return trip ? [trip] : []; } catch { return []; }
+    }));
+    assert.ok(trips.length > 0);
+    for (const trip of trips) {
+      assert.equal(trip.stops.length, 0);
+      assert.ok(trip.brief.structuredBrief.placeMentions.some((mention: { canonicalName: string }) => mention.canonicalName === 'Africa'));
+      assert.equal(trip.brief.structuredBrief.placeSelections?.length ?? 0, 0);
+    }
     assert.deepEqual(view.errors, []);
   } finally { await view.close(); }
 });
 
-test("Spanish country discovery renders localized rationale and controls without changing canonical place facts", { skip: !builderBrowserTestsEnabled, timeout: 45_000 }, async () => {
-  const capture = captureJourneyBrief("Starting from Madrid, 10 days in Tajikistan");
-  const draft = createHomeTripDraft({
-    capture, handoffId: "tajikistan-discovery-es", datesExplicit: true,
-    startDate: "2026-10-06", endDate: "2026-10-16", travellers: 2, travellersExplicit: true, interests: ["nature"],
-    origin: { name: "Madrid", country: "Spain", canonicalPlaceId: "madrid", coordinates: [-3.7038, 40.4168] },
-  });
-  draft.destinations = handoffRouteStops(capture.mentions, capture.journeyEnd);
-  const view = await renderBuilder({ query: "?homeDraft=1", draft, language: "es" });
+test('Spanish sparse Discovery localizes controls and evidence without changing canonical place names', { skip: !builderBrowserTestsEnabled, timeout: 45_000 }, async () => {
+  const view = await renderBuilder({ query: '?homeDraft=1', draft: homeDraft('Tajikistan'), language: 'es' });
+  await view.page.setViewportSize({ width: 390, height: 844 });
   try {
-    const dialog = view.page.getByRole("dialog");
-    await dialog.getByRole("heading", { name: "¿A dónde ir en Tajikistan?" }).waitFor();
+    const dialog = view.page.getByRole('dialog');
+    await dialog.getByRole('heading', { name: 'Explora lugares', exact: true }).waitFor();
     const text = await dialog.innerText();
-    assert.match(text, /Coincide con tu interés por la naturaleza\./);
-    assert.match(text, /Buscar un lugar concreto/);
-    assert.doesNotMatch(text, /Matches your|In the same country|known minimum stay|A supported place within|Typically|Allow at least|route guidance|See more places|Search for somewhere specific/);
-    assert.equal(await dialog.getByText("Tajikistan", { exact: true }).count() > 0, true,
-      "the canonical externally owned country name remains unchanged");
-    assert.equal(await dialog.getByRole("button", { name: /Continuar con [1-9] lugares?/ }).count(), 1);
+    assert.match(text, /Museos y parques urbanos/); assert.equal(await dialog.getByRole('combobox', { name: 'Buscar un lugar concreto: Tajikistan' }).count(), 1);
+    assert.doesNotMatch(text, /No licensed photo|Explore only|Choose places|Search for somewhere/);
+    assert.equal(await dialog.getByText('Tajikistan', { exact: true }).count() > 0, true);
+    assert.equal(await dialog.getByRole('heading', { name: 'Dushanbe', exact: true }).count(), 1);
+    await dialog.getByRole('button', { name: 'Continuar', exact: true }).click();
+    assert.equal(await dialog.getByRole('button', { name: 'Confirmar lugares existentes', exact: true }).isDisabled(), true);
+    await dialog.getByRole('button', { name: 'Atrás', exact: true }).click();
+    await dialog.getByRole('heading', { name: 'Explora lugares', exact: true }).waitFor();
     assert.deepEqual(view.errors, []);
   } finally { await view.close(); }
 });
