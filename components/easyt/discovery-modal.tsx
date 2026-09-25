@@ -9,7 +9,7 @@ import type { DiscoveryProjection } from "@/lib/easyt/discovery-projection";
 import type { DiscoveryReview } from "@/lib/easyt/discovery-review";
 import { discoveryReviewState } from "@/lib/easyt/discovery-review-state";
 import type { CanonicalPlaceSuggestion, ResolvedPlaceMention } from "@/lib/easyt/place-intelligence";
-import { discoveryConfirmLabel, easytCopy, type EasyTLanguage } from "@/lib/easyt/i18n";
+import { discoveryAddPlacesLabel, discoveryAddToTripLabel, easytCopy, type EasyTLanguage } from "@/lib/easyt/i18n";
 import { CanonicalPlaceAutocomplete } from "./canonical-place-autocomplete";
 import { BuilderClarificationShell } from "./builder-clarification-shell";
 import { DiscoverySteps } from "./discovery-steps";
@@ -43,23 +43,23 @@ export function DiscoveryModal({ open, entry, mention, projection, draft, onActi
 }) {
   const [highlightedPlaceId, setHighlightedPlaceId] = useState<string | null>(null);
   const shownRef = useRef<string | null>(null);
-  const reviewReachedRef = useRef<string | null>(null);
   const timingRef = useRef<string | null>(null);
   const modalRef = useRef<HTMLDivElement>(null);
   useEffect(() => setHighlightedPlaceId(null), [mention.mentionId, open]);
   const copy = easytCopy[language].builder.visualDiscovery;
-  const steps: DiscoveryStep[] = entry.kind === "landmark" || entry.kind === "natural-area"
-    ? ["bases", "review"] : projection.directions.length ? ["directions", "places", "review"] : ["places", "review"];
-  const step = steps.includes(draft.step) ? draft.step : steps[0];
+  const specialResolution = entry.kind === "landmark" || entry.kind === "natural-area";
+  const steps: DiscoveryStep[] = specialResolution
+    ? ["bases"] : projection.directions.length ? ["directions", "places"] : ["places"];
+  const fallbackStep = projection.directions.length && draft.directionId ? "places" : steps[0];
+  const step = steps.includes(draft.step) ? draft.step : fallbackStep;
   const effectiveDraft = useMemo(() => ({ ...draft, step }), [draft, step]);
   const stepIndex = steps.indexOf(step);
   const previousStep = steps[stepIndex - 1];
-  const nextStep = steps[stepIndex + 1];
   const name = mention.canonicalName || mention.sourceText;
   const review = discoveryReviewState(mention.mentionId, draft, projection, existingPlaceIds);
   const entryKind = entry.kind === "skip" || entry.kind === "legacy-recovery" ? "clarification" : entry.kind;
   useEffect(() => {
-    if (!open) { shownRef.current = null; reviewReachedRef.current = null; timingRef.current = null; return; }
+    if (!open) { shownRef.current = null; timingRef.current = null; return; }
     if (shownRef.current !== mention.mentionId) {
       shownRef.current = mention.mentionId;
       trackEvent("discovery_shown", { entry_kind: entryKind, candidate_count: projection.places.length });
@@ -79,11 +79,6 @@ export function DiscoveryModal({ open, entry, mention, projection, draft, onActi
     });
     return () => cancelAnimationFrame(frame);
   }, [open, loading, mention.mentionId, projection.places.length, step]);
-  useEffect(() => {
-    if (!open || step !== "review" || reviewReachedRef.current === mention.mentionId) return;
-    reviewReachedRef.current = mention.mentionId;
-    trackEvent("discovery_review_reached", { entry_kind: entryKind, shortlist_count: draft.shortlistIds.length });
-  }, [open, step, mention.mentionId, entryKind, draft.shortlistIds.length]);
   const searchElement = search ? <CanonicalPlaceAutocomplete language={language} label={`${easytCopy[language].builder.countryDiscovery.searchSpecific}: ${name}`}
     value={search.value} placeholder={copy.searchPlaceholder}
     contextCountries={mention.parentCountries}
@@ -92,7 +87,7 @@ export function DiscoveryModal({ open, entry, mention, projection, draft, onActi
 
   return <BuilderClarificationShell open={open} itemKey={`${mention.mentionId}:${step}`} title={copy.steps[step]}
     description={name}
-    progress={`${stepIndex + 1} / ${steps.length}`} closeLabel={copy.accessibility.close}
+    progress={steps.length > 1 ? `${stepIndex + 1} / ${steps.length}` : undefined} closeLabel={copy.accessibility.close}
     onDismiss={() => onClose("closed")} discovery loading={loading}
     footer={<>
       <div>
@@ -104,10 +99,11 @@ export function DiscoveryModal({ open, entry, mention, projection, draft, onActi
           }}>{copy.actions.reset}</EasyTButton> : null}
         <EasyTButton variant="quiet" disabled={loading} onClick={() => onClose("finish_later")}>{copy.actions.finishLater}</EasyTButton>
       </div>
-      {nextStep ? <EasyTButton disabled={loading} onClick={() => onAction({ type: "set-step", step: nextStep })}>{copy.actions.continue}</EasyTButton>
-        : <EasyTButton icon={Check} disabled={loading || !(canonicalReview?.canConfirm ?? review.canConfirm)} onClick={onConfirm}>{canonicalReview
-          ? discoveryConfirmLabel(language, canonicalReview.primaryAction.baseCount, canonicalReview.primaryAction.visitCount)
-          : copy.actions.confirm}</EasyTButton>}
+      {step === "directions" ? null : <EasyTButton icon={Check} disabled={loading || !(canonicalReview?.canConfirm ?? review.canConfirm)} onClick={onConfirm}>
+        {specialResolution ? discoveryAddToTripLabel(language) : discoveryAddPlacesLabel(language, canonicalReview
+          ? canonicalReview.primaryAction.baseCount + canonicalReview.primaryAction.visitCount
+          : review.choices.filter(choice => choice.confirmable && !choice.existing).length)}
+      </EasyTButton>}
     </>}>
     <div ref={modalRef} className={styles.modalContent} data-discovery-mention-id={mention.mentionId}>
     {loading ? <section className={styles.loading} role="status" aria-label={copy.status.loading} aria-busy="true">
@@ -124,8 +120,11 @@ export function DiscoveryModal({ open, entry, mention, projection, draft, onActi
       </div>
     </section>
       : <DiscoverySteps entry={entry} mention={mention} projection={projection} draft={effectiveDraft} language={language}
-        canonicalReview={canonicalReview} existingPlaceIds={existingPlaceIds} onAction={onAction} search={searchElement}
+        existingPlaceIds={existingPlaceIds} onAction={onAction} search={searchElement}
         highlightedPlaceId={highlightedPlaceId} onHighlight={setHighlightedPlaceId} />}
+    {!loading && step !== "directions" && (canonicalReview ? !canonicalReview.canConfirm : !review.canConfirm)
+      && (draft.shortlistIds.length > 0 || Object.keys(draft.baseByIntentId).length > 0 || Object.keys(draft.visitBaseByIntentId).length > 0)
+      ? <MorroviaStatusBanner tone="warning" title={copy.reviewStatus.resolveTitle} detail={copy.reviewStatus.resolveDetail} /> : null}
     {search?.error ? <p role="alert">{search.error}</p> : null}
     {saveError ? <MorroviaStatusBanner tone="warning" title={copy.status.saveBlocked} detail={saveError} /> : null}
     </div>

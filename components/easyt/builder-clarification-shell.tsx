@@ -70,7 +70,7 @@ export function BuilderClarificationShell({ open, itemKey, progress, title, desc
         <h2 ref={titleRef} id={titleId} tabIndex={-1}>{title}</h2>
         <span id={descriptionId}>{description}</span>
       </header>
-      <div className={styles.body}>{children}</div>
+      <div className={styles.body} data-discovery-scroll-owner={discovery ? "true" : undefined}>{children}</div>
       {footer ? <footer className={styles.footer}>{footer}</footer> : null}
       {afterFooter}
     </section>

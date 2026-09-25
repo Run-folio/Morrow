@@ -62,8 +62,17 @@ test('provider-selected Japan reaches production Discovery evidence through the 
   const view = await renderBuilder({ query: '?homeDraft=1', draft });
   try {
     const dialog = view.page.getByRole('dialog');
+    await view.page.setViewportSize({ width: 1024, height: 768 });
+    await dialog.getByRole('heading', { name: 'Explore places', exact: true }).waitFor();
     await dialog.getByRole('heading', { name: 'Tokyo', exact: true }).waitFor();
     assert.ok(await dialog.locator('[data-discovery-card="true"]').count() > 0);
+    const text = await dialog.innerText();
+    assert.doesNotMatch(text, /Review choices|Chosen base|Stay here|Split stay|Route and timing checks|No licensed photo yet/);
+    assert.equal(await dialog.locator('[data-photo="unavailable"]').count(), 0);
+    const kanazawa = dialog.getByRole('heading', { name: 'Kanazawa', exact: true }).locator('..').locator('..');
+    assert.equal(await kanazawa.getByRole('button').count(), 1, 'normal place cards expose one visible mutation action');
+    const footer = dialog.locator('footer');
+    assert.equal(await footer.isVisible(), true);
     assert.deepEqual(view.errors, []);
   } finally { await view.close(); }
 });
@@ -82,7 +91,7 @@ test('provider-selected Namibia reaches its reviewed Discovery set', { skip: !bu
   } finally { await view.close(); }
 });
 
-test('provider-selected Africa retains reviewed cross-country Discovery evidence', { skip: !builderBrowserTestsEnabled, timeout: 45_000 }, async () => {
+test('provider-selected Africa starts with truthful reviewed route-family directions', { skip: !builderBrowserTestsEnabled, timeout: 45_000 }, async () => {
   const draft = providerHomepageDraft({
     name: 'Africa', country: '', canonicalPlaceId: 'open-world:nominatim:continent:africa',
     placeType: 'continent', routability: 'planning_area', coordinates: [20, 2],
@@ -90,8 +99,85 @@ test('provider-selected Africa retains reviewed cross-country Discovery evidence
   const view = await renderBuilder({ query: '?homeDraft=1', draft });
   try {
     const dialog = view.page.getByRole('dialog');
+    await dialog.getByRole('heading', { name: 'Choose a direction', exact: true }).waitFor();
+    await dialog.getByRole('heading', { name: 'Namibia Self-Drive', exact: true }).waitFor();
+    await dialog.getByRole('heading', { name: 'Morocco, medinas to mountains', exact: true }).waitFor();
+    assert.equal(await dialog.getByRole('button', { name: /^Explore direction:/ }).count(), 2);
+    const licensedPhotos = dialog.locator('[data-photo="licensed"]');
+    assert.equal(await licensedPhotos.count(), 2, 'each reviewed route direction keeps its licensed route imagery');
+    assert.ok(await licensedPhotos.first().locator('details a[href]').count() > 0, 'licensed imagery keeps its attribution links');
+    await dialog.getByRole('button', { name: 'Explore direction: Namibia Self-Drive', exact: true }).click();
     await dialog.getByRole('heading', { name: 'Explore places', exact: true }).waitFor();
-    assert.ok(await dialog.locator('[data-discovery-card="true"]').count() > 1);
+    await dialog.getByRole('heading', { name: 'Windhoek', exact: true }).waitFor();
+    assert.equal(await dialog.getByRole('heading', { name: 'Marrakech', exact: true }).count(), 0);
+    const trips = await view.page.evaluate(() => Object.values(localStorage).flatMap(raw => {
+      try { const trip = JSON.parse(raw).trip; return trip ? [trip] : []; } catch { return []; }
+    }));
+    assert.ok(trips.every((trip: { stops: unknown[] }) => trip.stops.length === 0), 'choosing a direction does not mutate the trip');
+    assert.deepEqual(view.errors, []);
+  } finally { await view.close(); }
+});
+
+test('Japan card focus drives the map, Add stays isolated, and direct commit opens Builder without Review', { skip: !builderBrowserTestsEnabled, timeout: 60_000 }, async () => {
+  const view = await renderBuilder({ query: '?homeDraft=1', draft: homeDraft('Japan') });
+  await view.page.setViewportSize({ width: 1440, height: 900 });
+  try {
+    const dialog = view.page.getByRole('dialog');
+    await dialog.getByRole('heading', { name: 'Explore places', exact: true }).waitFor();
+    const card = dialog.getByRole('heading', { name: 'Kanazawa', exact: true }).locator('..').locator('..');
+    await card.click({ position: { x: 12, y: 12 } });
+    assert.equal(await card.getAttribute('data-highlighted'), 'true');
+    const kyoto = dialog.getByRole('heading', { name: 'Kyoto', exact: true }).locator('..').locator('..');
+    const kyotoAdd = kyoto.getByRole('button', { name: 'Add to shortlist: Kyoto' });
+    await kyotoAdd.focus();
+    await view.page.keyboard.press('Enter');
+    assert.equal(await card.getAttribute('data-highlighted'), 'true', 'a primary action does not steal the card/map focus');
+    assert.notEqual(await kyoto.getAttribute('data-highlighted'), 'true');
+    await kyoto.getByRole('button', { name: 'Remove from shortlist: Kyoto' }).evaluate((button: HTMLButtonElement) => button.click());
+    const add = card.getByRole('button', { name: 'Add to shortlist: Kanazawa' });
+    await add.evaluate((button: HTMLButtonElement) => button.click());
+    assert.equal(await dialog.getByRole('button', { name: 'Add 1 place', exact: true }).isEnabled(), true);
+    await dialog.getByRole('button', { name: 'Add 1 place', exact: true }).evaluate((button: HTMLButtonElement) => button.click());
+    await view.page.waitForFunction(() => !document.querySelector('[role="dialog"]'));
+    assert.equal(await view.page.getByRole('heading', { name: 'Review choices', exact: true }).count(), 0);
+    const trips = await view.page.evaluate(() => Object.values(localStorage).flatMap(raw => {
+      try { const trip = JSON.parse(raw).trip; return trip ? [trip] : []; } catch { return []; }
+    }));
+    assert.ok(trips.some((trip: { stops: Array<{ canonicalPlaceId?: string }> }) => trip.stops.some(stop => stop.canonicalPlaceId === 'kanazawa')));
+    assert.deepEqual(view.errors, []);
+  } finally { await view.close(); }
+});
+
+for (const [intent, base] of [['Taj Mahal', 'Agra'], ['Lake Atitlán', 'Panajachel']] as const) test(`${intent} resolves through one supported base action and commits without a visible Review step`,
+  { skip: !builderBrowserTestsEnabled, timeout: 60_000 }, async () => {
+  const view = await renderBuilder({ query: '?homeDraft=1', draft: homeDraft(intent) });
+  try {
+    const dialog = view.page.getByRole('dialog');
+    await dialog.getByRole('heading', { name: 'Choose a base', exact: true }).waitFor();
+    assert.equal(await dialog.locator('[data-discovery-card="true"]').count(), 1);
+    assert.equal(await dialog.getByRole('button', { name: `Visit from base: ${base}`, exact: true }).count(), 1);
+    await dialog.getByRole('button', { name: `Visit from base: ${base}`, exact: true }).click();
+    await dialog.getByRole('button', { name: 'Add to trip', exact: true }).evaluate((button: HTMLButtonElement) => button.click());
+    await view.page.waitForFunction(() => !document.querySelector('[role="dialog"]'));
+    assert.equal(await view.page.getByRole('heading', { name: 'Review choices', exact: true }).count(), 0);
+    const trips = await view.page.evaluate(() => Object.values(localStorage).flatMap(raw => {
+      try { const trip = JSON.parse(raw).trip; return trip ? [trip] : []; } catch { return []; }
+    }));
+    assert.ok(trips.some((trip: { stops: Array<{ name: string }> }) => trip.stops.some(stop => stop.name === base)));
+    assert.ok(trips.every((trip: { stops: Array<{ name: string }> }) => !trip.stops.some(stop => stop.name === intent)));
+    assert.deepEqual(view.errors, []);
+  } finally { await view.close(); }
+});
+
+test('390 mobile Discovery keeps the primary action in the modal footer', { skip: !builderBrowserTestsEnabled, timeout: 45_000 }, async () => {
+  const view = await renderBuilder({ query: '?homeDraft=1', draft: homeDraft('Japan') });
+  await view.page.setViewportSize({ width: 390, height: 844 });
+  try {
+    const dialog = view.page.getByRole('dialog');
+    await dialog.getByRole('heading', { name: 'Explore places', exact: true }).waitFor();
+    assert.equal(await dialog.locator('[data-discovery-scroll-owner="true"]').count(), 1);
+    assert.equal(await dialog.locator('footer').count(), 1);
+    assert.equal(await dialog.getByRole('button', { name: 'Add places', exact: true }).isDisabled(), true);
     assert.deepEqual(view.errors, []);
   } finally { await view.close(); }
 });
@@ -144,16 +230,11 @@ test('Tajikistan uses adaptive sparse Discovery, search blocks unreviewed stays,
     const dialog = view.page.getByRole('dialog');
     await dialog.getByRole('heading', { name: 'Explore places', exact: true }).waitFor();
     for (const name of ['Dushanbe', 'Khujand', 'Panjakent']) assert.equal(await dialog.getByRole('heading', { name, exact: true }).count(), 1);
-    await dialog.getByRole('button', { name: /^Add to shortlist:/ }).first().click();
-    await dialog.getByRole('button', { name: /^Remove from shortlist:/ }).first().click();
+    assert.equal(await dialog.getByRole('button', { name: /^Add to shortlist:/ }).count(), 0);
     const search = dialog.getByRole('combobox', { name: 'Search for somewhere specific: Tajikistan' });
     await search.fill('Dushanbe');
     await dialog.getByRole('option', { name: /Dushanbe/ }).first().click();
     await dialog.getByRole('alert').filter({ hasText: /cannot confirm Dushanbe/ }).waitFor();
-    await dialog.getByRole('button', { name: 'Continue', exact: true }).click();
-    await dialog.getByRole('heading', { name: 'Review choices', exact: true }).waitFor();
-    assert.equal(await dialog.getByRole('button', { name: 'Confirm existing places', exact: true }).isDisabled(), true);
-    await dialog.getByRole('button', { name: 'Back', exact: true }).click();
     await dialog.getByRole('button', { name: 'Finish later', exact: true }).click();
     await view.page.reload();
     await view.page.getByRole('button', { name: 'Continue shaping your route' }).click();
@@ -176,11 +257,10 @@ test('Africa aggregates reviewed places while retaining continent intent without
   await view.page.setViewportSize({ width: 390, height: 844 });
   try {
     const dialog = view.page.getByRole('dialog');
+    await dialog.getByRole('heading', { name: 'Choose a direction', exact: true }).waitFor();
+    await dialog.getByRole('button', { name: 'Explore direction: Namibia Self-Drive', exact: true }).click();
     await dialog.getByRole('heading', { name: 'Explore places', exact: true }).waitFor();
     assert.ok(await dialog.locator('[data-discovery-card="true"]').count() > 1);
-    assert.equal(await dialog.getByRole('button', { name: /^Explore direction:/ }).count(), 0);
-    await dialog.getByRole('button', { name: /^Add to shortlist:/ }).first().click();
-    await dialog.getByRole('button', { name: /^Remove from shortlist:/ }).first().click();
     await dialog.getByRole('combobox', { name: 'Search for somewhere specific: Africa' }).fill('Arusha');
     await dialog.getByRole('option', { name: /Arusha/ }).first().click();
     await dialog.getByRole('alert').filter({ hasText: /cannot confirm Arusha/ }).waitFor();
@@ -194,6 +274,7 @@ test('Africa aggregates reviewed places while retaining continent intent without
       assert.equal(trip.stops.length, 0);
       assert.ok(trip.brief.structuredBrief.placeMentions.some((mention: { canonicalName: string }) => mention.canonicalName === 'Africa'));
       assert.equal(trip.brief.structuredBrief.placeSelections?.length ?? 0, 0);
+      assert.equal(trip.brief.structuredBrief.discoveryDraftByMentionId['place-continent-africa-0'].directionId, 'route-family:namibia-self-drive');
     }
     assert.deepEqual(view.errors, []);
   } finally { await view.close(); }
@@ -210,10 +291,7 @@ test('Spanish sparse Discovery localizes controls and evidence without changing 
     assert.doesNotMatch(text, /No licensed photo|Explore only|Choose places|Search for somewhere/);
     assert.equal(await dialog.getByText('Tajikistan', { exact: true }).count() > 0, true);
     assert.equal(await dialog.getByRole('heading', { name: 'Dushanbe', exact: true }).count(), 1);
-    await dialog.getByRole('button', { name: 'Continuar', exact: true }).click();
-    assert.equal(await dialog.getByRole('button', { name: 'Confirmar lugares existentes', exact: true }).isDisabled(), true);
-    await dialog.getByRole('button', { name: 'Atrás', exact: true }).click();
-    await dialog.getByRole('heading', { name: 'Explora lugares', exact: true }).waitFor();
+    assert.equal(await dialog.getByRole('button', { name: 'Añadir lugares', exact: true }).isDisabled(), true);
     assert.deepEqual(view.errors, []);
   } finally { await view.close(); }
 });

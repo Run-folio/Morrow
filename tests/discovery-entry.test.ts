@@ -6,7 +6,7 @@ import { discoveryEntryForBrief } from "../lib/easyt/discovery-entry.ts";
 for (const [prompt, kind, step] of [
   ["Australia", "country", "directions"],
   ["Tajikistan", "country", "places"],
-  ["Africa", "continent", "places"],
+  ["Africa", "continent", "directions"],
   ["Taj Mahal", "landmark", "bases"],
   ["Lake Atitlán", "natural-area", "bases"],
   ["Kruger National Park", "natural-area", "bases"],

@@ -17,10 +17,12 @@ test("one shared dialog owns Escape, scroll lock, focus return and a single scro
 
 test("mobile Discovery has one scroll body and safe-area clearance below the last card", () => {
   const css = read("components/easyt/builder-clarification-dialog.module.css");
+  assert.match(css, /\.dialog\s*\{[^}]*max-height:\s*calc\(100dvh - 40px\)/);
   assert.match(css, /\.discoveryDialog\s*\{[^}]*height:\s*100dvh/);
   assert.match(css, /\.discoveryDialog \.body\s*\{[^}]*overflow-y:\s*auto/);
   assert.doesNotMatch(css, /\.discoveryDialog\s*\{[^}]*overflow-y:\s*auto/);
   assert.match(css, /\.discoveryDialog \.footer\s*\{[^}]*env\(safe-area-inset-bottom\)/);
+  assert.match(css, /\.footer > div\s*\{[^}]*flex-wrap:\s*wrap/);
   assert.match(css, /prefers-reduced-motion: reduce/);
 });
 
@@ -39,7 +41,7 @@ test("Back changes only the draft step and does not route browser history", () =
   assert.doesNotMatch(modal, /history\.(pushState|replaceState|popstate)/);
 });
 
-test("partial confirmation leaves the parent open and explains unresolved choices in review", () => {
+test("partial confirmation leaves Discovery open and explains unresolved choices at the commit boundary", () => {
   const builder = read("app/journey/new/trip-builder.tsx");
   const modal = read("components/easyt/discovery-modal.tsx");
   assert.match(builder, /commitDiscoveryReview\(/);
@@ -133,13 +135,13 @@ test("Builder confirmation uses the same fail-closed review gate and base as Dis
   assert.match(builder, /!review\?\.canConfirm/);
 });
 
-test("Discovery exposes explicit base, split, reset and reviewed search actions without early route mutation", () => {
+test("Discovery exposes one card mutation, reset and reviewed search without early route mutation", () => {
   const steps = read("components/easyt/discovery-steps.tsx");
   const modal = read("components/easyt/discovery-modal.tsx");
   const builder = read("app/journey/new/trip-builder.tsx");
-  assert.match(steps, /copy\.actions\.stayHere/);
-  assert.match(steps, /copy\.actions\.visitFromBase/);
-  assert.match(steps, /copy\.actions\.splitStay/);
+  assert.match(steps, /copy\.actions\.shortlist/);
+  assert.match(steps, /copy\.actions\.remove/);
+  assert.doesNotMatch(steps, /copy\.actions\.stayHere|copy\.actions\.splitStay|copy\.actions\.explore/);
   assert.match(modal, /type: "reset"/);
   assert.match(modal, /draft\.removedIds\.length/);
   assert.match(builder, /selectCanonicalSearchResult\(/);
@@ -149,6 +151,6 @@ test("Discovery exposes explicit base, split, reset and reviewed search actions 
   assert.match(modal, /contextCountries=\{mention\.parentCountries\}/);
   assert.match(modal, /includeNonRoutable/);
   assert.doesNotMatch(modal, /parentConstraint=\{entry\.kind/);
-  assert.match(builder, /onClose=\{\(action\) => \{[\s\S]*?persistDeviceRecovery\(activeTripDocument\)/);
+  assert.match(builder, /onClose=\{\(action\) => \{[\s\S]*?flushSync[\s\S]*?discoveryDraftByMentionId[\s\S]*?persistDeviceRecovery\(discoveryOwnersRef\.current\.trip\)/);
   assert.match(modal, /saveError \? <MorroviaStatusBanner/);
 });

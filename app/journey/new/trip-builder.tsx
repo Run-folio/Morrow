@@ -3576,7 +3576,7 @@ function TripBuilderDocument() {
     catch { return null; } })() : null, [discoveryProjectionIdentity]);
   const discoveryEventKind = discoveryEntry.kind === "skip" || discoveryEntry.kind === "legacy-recovery"
     ? "clarification" : discoveryEntry.kind;
-  const canonicalDiscoveryReview = activeClarificationMention && discoveryDraft && discoveryProjection && discoveryDraft.step === "review"
+  const canonicalDiscoveryReview = activeClarificationMention && discoveryDraft && discoveryProjection
     ? buildDiscoveryReview({ mention: activeClarificationMention, draft: discoveryDraft, projection: discoveryProjection,
       trip: activeTripDocument, currentValidation: finalPlanValidation,
       constraints: { ...structuredRouteConstraints, fixedCommitments: projectedFixedCommitments } }) : undefined;
@@ -4317,7 +4317,7 @@ function TripBuilderDocument() {
         }}
         onConfirm={() => {
           const review = canonicalDiscoveryReview;
-          if (discoveryCommitRef.current || !review?.canConfirm || discoveryDraft.step !== "review") return;
+          if (discoveryCommitRef.current || !review?.canConfirm) return;
           discoveryCommitRef.current = true;
           setDiscoveryCommitting(true);
           const mention = activeClarificationMention;
@@ -4338,12 +4338,14 @@ function TripBuilderDocument() {
                 currentTrip: () => discoveryOwnersRef.current.trip,
                 addBase: async choice => {
                   const suggestion = choice.suggestion;
-                  if (!suggestion.coordinates) return false;
+                  const reviewedPlace = discoveryProjection.places.find(place => place.id === choice.id);
+                  const coordinates = suggestion.coordinates ?? reviewedPlace?.coordinates;
+                  if (!coordinates) return false;
                   let added: ReturnType<typeof addGuidedPlanningPlace> | undefined;
-                  // Reviewed canonical coordinates keep Add stop on its synchronous
-                  // mutation branch. React flushes the canonical projection before save.
+                  // Projection coordinates have already passed canonical geography and
+                  // reviewed-evidence validation. Builder remains the sole mutation owner.
                   flushSync(() => { added = discoveryOwnersRef.current.addGuidedPlanningPlace(mention, {
-                    ...suggestion, coordinates: suggestion.coordinates!, regionCanonicalPlaceId: mention.canonicalPlaceId ?? "",
+                    ...suggestion, coordinates: [...coordinates] as [number, number], regionCanonicalPlaceId: mention.canonicalPlaceId ?? "",
                     reason: "Traveller confirmed this reviewed place.", anchorMatched: false,
                   }); });
                   return Boolean(await added);
@@ -4397,7 +4399,13 @@ function TripBuilderDocument() {
             if (dismissal) trackEvent("discovery_dismissed", dismissal);
             return;
           }
-          const recovery = persistDeviceRecovery(activeTripDocument);
+          // Persist an explicit empty draft as well as changed choices. Sparse
+          // browse-only flows may have no mutation action before Finish later.
+          flushSync(() => setCapturedStructuredBrief((current) => ({ ...current, discoveryDraftByMentionId: {
+            ...current.discoveryDraftByMentionId,
+            [activeClarificationMention.mentionId]: discoveryDraft,
+          } })));
+          const recovery = discoveryOwnersRef.current.persistDeviceRecovery(discoveryOwnersRef.current.trip);
           setDeviceRecoveryBlocked(recovery.blockedByExistingRecovery);
           setDeviceStorageBlocked(!recovery.stored && !recovery.blockedByExistingRecovery);
           setSaveState(recovery.stored ? "local" : "error");

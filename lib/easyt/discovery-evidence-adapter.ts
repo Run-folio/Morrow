@@ -82,6 +82,7 @@ function canonicalCandidate(input: {
   catalog: PlaceCatalogEntry;
   country: string;
   coordinates?: readonly [number, number];
+  groupIds?: readonly string[];
   tags: readonly string[];
   relevance: { en: string; es: string; source: KnowledgeSource };
   staySource?: KnowledgeSource | null;
@@ -99,7 +100,7 @@ function canonicalCandidate(input: {
     name: catalog.canonicalName,
     country: catalog.parentCountries[0]!,
     group: catalog.parentCountries[0]!,
-    groupIds: [],
+    groupIds: [...(input.groupIds ?? [])],
     tags: [...new Set(tags)],
     placeType: catalog.placeType,
     coordinates,
@@ -124,6 +125,7 @@ function routeCandidates() {
       catalog,
       country: stop.country,
       coordinates: stop.coordinates,
+      groupIds: [`route-family:${route.key}`],
       tags: route.interests,
       relevance: {
         en: stop.reason,
@@ -172,6 +174,7 @@ function mergeCandidate(existing: AdaptedDiscoveryPlace, next: AdaptedDiscoveryP
   const accessEvidence = uniqueSources([...existing.accessEvidence, ...next.accessEvidence]);
   return {
     ...existing,
+    groupIds: [...new Set([...existing.groupIds, ...next.groupIds])],
     tags: [...new Set([...existing.tags, ...next.tags])],
     relevance: { ...existing.relevance, sources: uniqueSources([...existing.relevance.sources, ...next.relevance.sources]) },
     stayEvidence,

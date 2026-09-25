@@ -6,8 +6,6 @@ import { expect, fn, userEvent, waitFor, within } from "storybook/test";
 import { DiscoveryModal } from "./discovery-modal";
 import { createDiscoveryDraft, reduceDiscoveryDraft, type DiscoveryDraft, type DiscoveryDraftAction } from "@/lib/easyt/discovery-draft";
 import { projectDiscovery, type DiscoveryProjection } from "@/lib/easyt/discovery-projection";
-import type { DiscoveryPlace } from "@/lib/easyt/discovery-content";
-import type { DiscoveryDirection } from "@/lib/easyt/discovery-directions";
 import type { DiscoveryEntry } from "@/lib/easyt/discovery-entry";
 import { resolvePlaceMentions, type ResolvedPlaceMention } from "@/lib/easyt/place-intelligence";
 
@@ -15,10 +13,14 @@ const mention = (name: string) => resolvePlaceMentions(name).mentions[0]!;
 const initial = createDiscoveryDraft();
 const projection = (name: string, draft = initial) => projectDiscovery({ mention: mention(name), draft, context: { interests: [], existingPlaceIds: [] } });
 const australia = projection("Australia");
+const africa = projection("Africa");
+const japan = projection("Japan");
 const tajikistan = projection("Tajikistan");
 const philippines = projection("Philippines");
 const taj = projection("Taj Mahal");
 const australiaMention = mention("Australia");
+const africaMention = mention("Africa");
+const japanMention = mention("Japan");
 
 type Scene = { entry: DiscoveryEntry; mention: ResolvedPlaceMention; projection: DiscoveryProjection; draft: DiscoveryDraft;
   canonicalTrip?: EasyTTrip; language?: "en" | "es"; existingPlaceIds?: string[]; note?: string; loading?: boolean; saveError?: string; timingDecoy?: boolean;
@@ -61,8 +63,9 @@ export const AustraliaMapCardPreview: Story = { args: { ...AustraliaPlaces.args,
   play: async ({ canvasElement, args }) => {
     const canvas = within(canvasElement);
     const place = australia.places[0]!;
-    await userEvent.click(canvas.getByRole("button", { name: `Show on map: ${place.name}` }));
-    await expect(canvas.getByRole("heading", { name: place.name }).closest("article")).toHaveAttribute("data-highlighted", "true");
+    const card = canvas.getByRole("heading", { name: place.name }).closest("article")!;
+    await userEvent.click(card);
+    await expect(card).toHaveAttribute("data-highlighted", "true");
     await expect(args.actionSpy).not.toHaveBeenCalled();
     await expect(args.confirmSpy).not.toHaveBeenCalled();
   } };
@@ -81,24 +84,6 @@ export const AustraliaPinRevealsExactCard: Story = { args: { ...AustraliaPlaces.
     await expect(args.confirmSpy).not.toHaveBeenCalled();
   } };
 export const AustraliaShortlist: Story = { args: { entry: countryEntry, mention: australiaMention, projection: australia, draft: selectedDraft } };
-export const AustraliaReview: Story = { args: { entry: countryEntry, mention: australiaMention, projection: australia, draft: { ...selectedDraft, step: "review" } } };
-const supportedBase = australia.places.find(place => place.actionability === "overnight-base")!;
-const exploratoryVisit = australia.places.find(place => place.actionability === "visit")!;
-const outsideDirection = australia.directions.find(direction => !direction.placeIds.includes(supportedBase.id))!;
-export const AustraliaReviewMixed: Story = { args: { entry: countryEntry, mention: australiaMention, projection: australia,
-  draft: { ...initial, step: "review", directionId: outsideDirection.id, shortlistIds: [supportedBase.id, exploratoryVisit.id],
-    baseByIntentId: { [australiaMention.mentionId]: supportedBase.id } }, existingPlaceIds: [supportedBase.id] } };
-export const AustraliaReviewResolveInteraction: Story = { args: { ...AustraliaReviewMixed.args },
-  play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement);
-    await expect(canvas.getByRole("button", { name: "Confirm places" })).toBeDisabled();
-    await expect(canvas.getByText("Some places aren’t ready to add yet.")).toBeVisible();
-    await expect(canvas.getAllByText("Outside your selected direction")[0]).toBeVisible();
-    const remove = canvas.getAllByRole("button", { name: /Remove from shortlist:/ })[1]!;
-    await expect(remove).toHaveTextContent(/^Remove$/);
-    await userEvent.click(remove);
-    await expect(canvas.getByRole("button", { name: "Confirm places" })).toBeEnabled();
-  } };
 export const DirectionToContainedPlacesInteraction: Story = { args: { ...AustraliaDirections.args, actionSpy: fn(), confirmSpy: fn() },
   play: async ({ canvasElement, args }) => {
     const canvas = within(canvasElement);
@@ -135,13 +120,12 @@ export const AustraliaBrowseOnly: Story = { args: { entry: countryEntry, mention
 export const AustraliaExistingStop: Story = { args: { ...AustraliaPlaces.args, existingPlaceIds: [australia.places[0]!.id] } };
 export const AustraliaNoPhoto: Story = { args: { ...AustraliaPlaces.args } };
 export const AustraliaLoading: Story = { args: { ...AustraliaPlaces.args, loading: true } };
-export const AustraliaSaveError: Story = { args: { ...AustraliaReview.args, saveError: "We couldn't save this choice. Your original idea is still available." } };
+export const AustraliaSaveError: Story = { args: { ...AustraliaShortlist.args, saveError: "We couldn't save this choice. Your original idea is still available." } };
 export const AustraliaLoadingInteraction: Story = { args: { ...AustraliaLoading.args, actionSpy: fn(), confirmSpy: fn(), closeSpy: fn() },
   play: async ({ canvasElement, args }) => {
     const canvas = within(canvasElement);
-    await expect(canvas.getByRole("button", { name: "Back" })).toBeDisabled();
     await expect(canvas.getByRole("button", { name: "Finish later" })).toBeDisabled();
-    await expect(canvas.getByRole("button", { name: "Continue" })).toBeDisabled();
+    await expect(canvas.getByRole("button", { name: "Add places" })).toBeDisabled();
     await expect(canvas.getByRole("button", { name: "Close Discovery" })).toBeDisabled();
     await userEvent.keyboard("{Escape}");
     await userEvent.pointer({ keys: "[MouseLeft]", target: canvasElement.querySelector<HTMLElement>('[role="presentation"]')! });
@@ -153,36 +137,18 @@ export const AustraliaSpanish: Story = { args: { ...AustraliaPlaces.args, langua
 export const TajikistanSmallerCountry: Story = { args: { entry: { kind: "country", step: "places" }, mention: mention("Tajikistan"), projection: tajikistan, draft: placesDraft,
   note: "Production: three reviewed Tajikistan places, with no licensed images or verified overnight bases." } };
 
-// Layout fixture only: production Africa currently has one reviewed place and no supported direction pair.
-// Fictional labels assert no travel facts and never enter the production content catalogue.
-const fixtureSource = { id: "visual-fixture", label: "Layout fixture only", kind: "curated" as const,
-  url: "https://example.com", reviewedAt: "2026-09-24", supports: "UI layout fixture; no visitor claim." };
-const africaFixturePlaces: DiscoveryPlace[] = Array.from({ length: 6 }, (_, index) => ({
-  ...australia.places[index]!, id: `fixture-africa-${index + 1}`, name: `Fixture location ${index + 1}`,
-  country: "Africa layout fixture", group: index < 3 ? "fixture-a" : "fixture-b",
-  groupIds: [index < 3 ? "fixture-a" : "fixture-b"], actionability: "browse-only" as const,
-  imageKey: null, relevance: { en: "Layout fixture only; visitor evidence is not available.", es: "Solo maqueta; no hay datos revisados para visitantes.", sources: [fixtureSource] },
-  stayEvidence: [], accessEvidence: [],
-}));
-const africaFixtureDirections: DiscoveryDirection[] = [
-  { id: "fixture-a", titleKey: "fixture.direction.a", placeIds: africaFixturePlaces.slice(0, 3).map(place => place.id), imageKey: null },
-  { id: "fixture-b", titleKey: "fixture.direction.b", placeIds: africaFixturePlaces.slice(3).map(place => place.id), imageKey: null },
-];
-const africaMention = { ...mention("Africa"), canonicalName: "Africa · layout fixture", sourceText: "Africa — layout fixture" };
-const africaFixture = projectDiscovery({ mention: africaMention, draft: initial, context: { interests: [], existingPlaceIds: [] }, evidence: { places: africaFixturePlaces, directions: africaFixtureDirections } });
-export const AfricaDirectionsFixture: Story = { args: { entry: { kind: "continent", step: "directions" }, mention: africaMention, projection: africaFixture, draft: initial,
-  note: "LAYOUT FIXTURE: two direction groups and six placeholder locations. Production Africa has one reviewed place; these are not recommendations." } };
+export const AfricaDirections: Story = { args: { entry: { kind: "continent", step: "directions" }, mention: africaMention, projection: africa, draft: initial,
+  note: "Production directions derived from reviewed route families; choosing one only filters the places shown next." } };
+export const AfricaPlacesAfterDirection: Story = { args: { entry: { kind: "continent", step: "directions" }, mention: africaMention, projection: africa,
+  draft: { ...placesDraft, directionId: africa.directions[0]!.id }, note: "Production places for the selected reviewed route family." } };
+export const JapanPlaces: Story = { args: { entry: { kind: "country", step: "places" }, mention: japanMention, projection: japan, draft: placesDraft } };
+export const JapanThreeSelected: Story = { args: { ...JapanPlaces.args,
+  draft: { ...placesDraft, shortlistIds: ["kanazawa", "kyoto", "osaka"] } } };
+export const JapanNoPhotoCompactCards: Story = { args: { ...JapanPlaces.args,
+  note: "No licensed image is assigned; media regions are omitted so these remain compact text cards." } };
 
-const tajFixtureBase: DiscoveryPlace = { ...australia.places[0]!, id: "fixture-taj-base", name: "Fixture base — not reviewed",
-  country: "India layout fixture", group: "fixture", groupIds: [], imageKey: null, actionability: "overnight-base",
-  relevance: { en: "Layout fixture only; base evidence is not available.", es: "Solo maqueta; no hay evidencia verificada de la base.", sources: [fixtureSource] },
-  stayEvidence: [fixtureSource], accessEvidence: [] };
-const tajFixtureProjection = { ...taj, places: [tajFixtureBase], visiblePlaceIds: [tajFixtureBase.id], counts: { source: 1, eligible: 1, ranked: 1, displayed: 1 } };
-export const TajLandmarkBaseFixture: Story = { args: { entry: { kind: "landmark", step: "bases" }, mention: { ...mention("Taj Mahal"), canonicalName: "Taj Mahal · base layout fixture", sourceText: "Taj Mahal — base layout fixture" },
-  projection: tajFixtureProjection, draft: { ...initial, step: "bases" },
-  note: "LAYOUT FIXTURE: the base is a placeholder, not an evidenced Taj Mahal access or overnight recommendation." } };
 export const TajLandmarkProductionSparse: Story = { args: { entry: { kind: "landmark", step: "bases" }, mention: mention("Taj Mahal"), projection: taj,
-  draft: { ...initial, step: "bases" }, note: "Production: no reviewed Taj base in Discovery. Search or Finish later preserves the landmark intent." } };
+  draft: { ...initial, step: "bases" }, note: "Production: the reviewed Agra relationship resolves the landmark without turning Taj Mahal into an overnight stop." } };
 export const ScopedTimingIgnoresOutsideCard: Story = { args: { ...TajLandmarkProductionSparse.args, timingDecoy: true },
   play: async () => {
     await new Promise<void>(resolve => requestAnimationFrame(() => resolve()));
@@ -199,7 +165,8 @@ export const Mobile390MapOptional: Story = { args: { ...AustraliaPlaces.args, ac
   play: async ({ canvasElement, args }) => {
     const canvas = within(canvasElement);
     const place = australia.places[0]!;
-    await userEvent.click(canvas.getByRole("button", { name: `Show on map: ${place.name}` }));
+    await userEvent.click(canvas.getByRole("heading", { name: place.name }).closest("article")!);
+    await userEvent.click(canvas.getByRole("button", { name: "Map" }));
     await expect(canvas.getByRole("button", { name: "Cards" })).toBeVisible();
     await userEvent.click(canvas.getByRole("button", { name: "Cards" }));
     await expect(canvas.getByRole("heading", { name: place.name }).closest("article")).toHaveFocus();
@@ -234,6 +201,11 @@ export const Mobile390PinRevealsExactCard: Story = { ...AustraliaPinRevealsExact
     await expect(args.confirmSpy).not.toHaveBeenCalled();
   } };
 export const Mobile390AustraliaShortlist: Story = { ...AustraliaShortlist, parameters: { viewport: { defaultViewport: "morrovia390" } } };
+export const Mobile390AfricaDirections: Story = { ...AfricaDirections, parameters: { viewport: { defaultViewport: "morrovia390" } } };
+export const Mobile390AfricaPlaces: Story = { ...AfricaPlacesAfterDirection, args: { ...AfricaPlacesAfterDirection.args, language: "es" },
+  parameters: { viewport: { defaultViewport: "morrovia390" } } };
+export const Mobile390JapanPlaces: Story = { ...JapanPlaces, parameters: { viewport: { defaultViewport: "morrovia390" } } };
+export const Mobile390JapanSelected: Story = { ...JapanThreeSelected, parameters: { viewport: { defaultViewport: "morrovia390" } } };
 export const Mobile390Sparse: Story = { ...SparsePhilippines, parameters: { viewport: { defaultViewport: "morrovia390" } } };
 export const Mobile320AustraliaPlaces: Story = { ...AustraliaPlaces, parameters: { viewport: { defaultViewport: "morrovia320" } } };
 export const Mobile430AustraliaPlaces: Story = { ...AustraliaPlaces, parameters: { viewport: { defaultViewport: "morrovia430" } } };
@@ -242,11 +214,6 @@ export const Desktop1024AustraliaPlaces: Story = { ...AustraliaPlaces, parameter
 export const Desktop1440AustraliaPlaces: Story = { ...AustraliaPlaces, parameters: { viewport: { defaultViewport: "morrovia1440" } } };
 export const Desktop1680AustraliaPlaces: Story = { ...AustraliaPlaces, parameters: { viewport: { defaultViewport: "morrovia1680" } } };
 
-const reviewTrip = tripFromBuilder({ id: "discovery-review-story", origin: "London", stops: [
-  { id: "existing-sydney", name: "Sydney", country: "Australia", canonicalPlaceId: "sydney", coordinates: [151.2093, -33.8688] },
-], startDate: "2026-10-01", endDate: "2026-10-15", picks: {}, mustDo: "Australia", pace: "slow", hotels: "few", budget: "mid", draft: [],
-nightAllocations: { "existing-sydney": 5 }, manualNightStopIds: ["existing-sydney"] });
-export const CanonicalReviewWithWarnings: Story = { args: { ...AustraliaReview.args, canonicalTrip: reviewTrip,
-  existingPlaceIds: ["sydney"], draft: { ...initial, step: "review", shortlistIds: ["sydney", "melbourne", "uluru-kata-tjuta"] } } };
-export const CanonicalReviewSpanish390: Story = { args: { ...CanonicalReviewWithWarnings.args, language: "es" },
-  globals: { viewport: { value: "morrovia390", isRotated: false } } };
+const commitTrip = tripFromBuilder({ id: "discovery-commit-story", origin: "London", stops: [],
+  startDate: "2026-10-01", endDate: "2026-10-15", picks: {}, mustDo: "Japan", pace: "slow", hotels: "few", budget: "mid", draft: [] });
+export const CanonicalCommitBoundary: Story = { args: { ...JapanThreeSelected.args, canonicalTrip: commitTrip } };

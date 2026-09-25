@@ -47,10 +47,10 @@ test('uncatalogued park wording preserves natural-area semantics without inventi
   assert.deepEqual(projection.places, []);
 });
 
-test('Australia: entry → evidenced broad projection → exact map IDs → explicit review → durable Builder ports', async () => {
+test('Australia: entry → evidenced broad projection → exact map IDs → direct validated commit → durable Builder ports', async () => {
   const { entry, mention, projection } = entryAndProjection('Australia');
   assert.equal(entry.kind, 'country'); assert.equal(entry.step, 'directions');
-  assert.ok(projection.counts.source >= 20);
+  assert.equal(projection.counts.source, 24);
   assert.equal(projection.counts.eligible, projection.counts.source);
   assert.equal(projection.counts.ranked, projection.places.length);
   assert.equal(projection.counts.displayed, 6);
@@ -127,6 +127,36 @@ test('migration preserves absent/empty/chosen/unsupported drafts and resume step
 
 test('precise Tokyo → Kyoto → Hiroshima → Osaka route skips Discovery', () => {
   assert.equal(discoveryEntryForBrief(extractStructuredTripBrief('Tokyo → Kyoto → Hiroshima → Osaka'), ['tokyo', 'kyoto', 'hiroshima', 'osaka']).kind, 'skip');
+});
+
+test('Africa derives direction-first browsing from distinct reviewed route families without changing the draft or trip', () => {
+  const { entry, mention, draft, projection } = entryAndProjection('Africa');
+  assert.equal(entry.kind, 'continent');
+  assert.equal(entry.step, 'directions');
+  assert.deepEqual(projection.directions.map(direction => direction.title), [
+    'Namibia Self-Drive',
+    'Morocco, medinas to mountains',
+  ]);
+  assert.deepEqual(projection.directions.map(direction => direction.placeIds), [
+    ['swakopmund', 'windhoek', 'damaraland', 'etosha', 'sossusvlei', 'waterberg-namibia'],
+    ['chefchaouen', 'fes', 'marrakech'],
+  ]);
+  const input = fixture('Africa', []);
+  const tripBefore = structuredClone(input.trip);
+  const selected = reduceDiscoveryDraft(draft, { type: 'change-direction', directionId: projection.directions[0]!.id });
+  assert.equal(selected.directionId, projection.directions[0]!.id);
+  assert.deepEqual(selected.shortlistIds, []);
+  assert.deepEqual(input.trip, tripBefore);
+});
+
+test('ordinary country Discovery starts at place selection and keeps canonical review as an internal commit boundary', () => {
+  const { entry, mention, projection } = entryAndProjection('Japan');
+  assert.equal(entry.kind, 'country');
+  assert.equal(entry.step, 'places');
+  const draft = { ...createDiscoveryDraft(), step: 'places' as const, shortlistIds: ['kanazawa', 'kyoto', 'osaka'] };
+  const review = buildDiscoveryReview({ ...fixture('Japan', []), mention, draft, projection });
+  assert.equal(review.canConfirm, true);
+  assert.deepEqual(review.bases.map(base => base.id), ['kanazawa', 'kyoto', 'osaka']);
 });
 
 // Synthetic contract rows are not production evidence or travel recommendations.
@@ -211,27 +241,29 @@ test('partial checkpoint failure → reload → retry → double confirm preserv
   assert.equal(discoveryConfirmLabel('es', 2, 1), 'Añadir 2 bases y 1 visita');
 });
 
-test('mounted Builder keeps Review open on failed canonical checkpoint, resumes durable work and guards double confirmation',
+test('mounted Builder keeps Discovery open on failed canonical checkpoint, resumes durable work and guards double confirmation',
   { skip: process.env.MORROVIA_BUILDER_BROWSER_TESTS !== '1', timeout: 60_000 }, async () => {
   const { renderBuilder } = await import('./helpers/builder-render.ts');
   const input = fixture('Australia', ['sydney', 'melbourne', 'airlie-beach']);
+  input.draft.step = 'places';
+  input.draft.directionId = 'australia-east-coast';
   input.trip.brief.structuredBrief!.discoveryDraftByMentionId = { [input.mention.mentionId]: input.draft };
   const view = await renderBuilder({ query: `?trip=${input.trip.id}&recover=1`, initialTrip: input.trip });
   await view.page.setViewportSize({ width: 390, height: 844 });
   try {
     await view.page.getByRole('button', { name: 'Continue shaping your route' }).click();
     const dialog = view.page.getByRole('dialog');
-    await dialog.getByRole('heading', { name: 'Review choices', exact: true }).waitFor();
+    await dialog.getByRole('heading', { name: 'Explore places', exact: true }).waitFor();
     await view.page.keyboard.press('Escape');
     const reopen = view.page.getByRole('button', { name: 'Continue shaping your route' });
     await reopen.waitFor();
     assert.equal(await reopen.evaluate((element: HTMLElement) => element === document.activeElement), true, 'Escape returns focus to the opening control');
     await reopen.click();
-    await dialog.getByRole('heading', { name: 'Review choices', exact: true }).waitFor();
+    await dialog.getByRole('heading', { name: 'Explore places', exact: true }).waitFor();
     const before = await view.page.evaluate(() => Object.values(localStorage).flatMap(raw => {
       try { return JSON.parse(raw).trip ? [JSON.parse(raw).trip] : []; } catch { return []; }
     }));
-    assert.ok(before.every((trip: { stops: unknown[] }) => trip.stops.length === 2), 'Review has not added a stop');
+    assert.ok(before.every((trip: { stops: unknown[] }) => trip.stops.length === 2), 'selecting places has not added a stop');
     await view.page.evaluate(() => {
       const original = Storage.prototype.setItem;
       Storage.prototype.setItem = function(key: string, raw: string) {
@@ -243,9 +275,9 @@ test('mounted Builder keeps Review open on failed canonical checkpoint, resumes 
         return original.call(this, key, raw);
       };
     });
-    await dialog.getByRole('button', { name: 'Add 2 bases', exact: true }).click();
+    await dialog.getByRole('button', { name: 'Add 2 places', exact: true }).click();
     await dialog.getByText(/Some choices still need confirmation/).waitFor();
-    assert.equal(await dialog.isVisible(), true, 'failed checkpoint must not dismiss Review');
+    assert.equal(await dialog.isVisible(), true, 'failed checkpoint must not dismiss Discovery');
     const partial = await view.page.evaluate(() => Object.values(localStorage).flatMap(raw => {
       try { const trip = JSON.parse(raw).trip; return trip ? [trip] : []; } catch { return []; }
     }));
@@ -253,8 +285,8 @@ test('mounted Builder keeps Review open on failed canonical checkpoint, resumes 
     assert.ok(partial.every((trip: { stops: Array<{ canonicalPlaceId: string }> }) => !trip.stops.some(stop => stop.canonicalPlaceId === 'airlie-beach')));
     await view.page.reload();
     await view.page.getByRole('button', { name: 'Continue shaping your route' }).click();
-    await dialog.getByRole('button', { name: 'Add 1 base', exact: true }).waitFor();
-    await dialog.getByRole('button', { name: 'Add 1 base', exact: true }).evaluate((button: HTMLButtonElement) => { button.click(); button.click(); });
+    await dialog.getByRole('button', { name: 'Add 1 place', exact: true }).waitFor();
+    await dialog.getByRole('button', { name: 'Add 1 place', exact: true }).evaluate((button: HTMLButtonElement) => { button.click(); button.click(); });
     await view.page.waitForFunction(() => !document.querySelector('[role="dialog"]'));
     const completed = await view.page.evaluate(() => Object.values(localStorage).flatMap(raw => {
       try { const trip = JSON.parse(raw).trip; return trip?.brief?.structuredBrief?.completedPlanningAreaMentionIds?.includes('place-australia-0') ? [trip] : []; } catch { return []; }

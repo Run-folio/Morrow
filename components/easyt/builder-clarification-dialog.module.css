@@ -14,7 +14,7 @@
 .dialog {
   display: flex;
   width: min(680px, 100%);
-  max-height: calc(100svh - 40px);
+  max-height: calc(100dvh - 40px);
   min-height: 0;
   flex-direction: column;
   overflow: hidden;
@@ -132,7 +132,7 @@
   .discoveryCardBody p { min-height: 0; }
   .footer { align-items: stretch; flex-direction: column-reverse; padding: 12px 18px calc(12px + env(safe-area-inset-bottom)); }
   .footer > button { width: 100%; }
-  .footer > div { justify-content: space-between; }
+  .footer > div { flex-wrap: wrap; justify-content: flex-start; row-gap: 2px; }
   .footer > div button { min-height: 44px; }
   .remove { min-height: 44px; margin-inline: 18px; }
   .resume { align-items: stretch; flex-direction: column; padding: 15px 16px; }

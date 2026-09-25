@@ -31,12 +31,12 @@ export const easytCopy = {
       actions: { shortlist: "Add", remove: "Remove", explore: "Explore", showMore: "Show more", showMap: "Map", showCards: "Cards", showOnMap: "Show on map", chooseBase: "Choose base", changeBase: "Change base", stayHere: "Stay here", visitFromBase: "Visit from base", splitStay: "Split stay", reset: "Reset choices", back: "Back", continue: "Continue", confirm: "Confirm places", finishLater: "Finish later", search: "Search for a place" },
       steps: { directions: "Choose a direction", places: "Explore places", bases: "Choose a base", review: "Review choices" },
       roles: { "overnight-base": "Overnight base", visit: "Visit from a base", "browse-only": "Explore only", existing: "Already in your trip", chosen: "Chosen base", selected: "On your shortlist" },
-      reviewStatus: { ready: "Ready to add", exploreOnly: "Not ready to add", unavailable: "No longer reviewed", outsideDirection: "Outside your selected direction", resolveTitle: "Some choices need review.", resolveDetail: "Change an unavailable direction, remove unsupported places, or finish later." },
+      reviewStatus: { ready: "Ready to add", exploreOnly: "Not ready to add", unavailable: "No longer reviewed", outsideDirection: "Outside your selected direction", resolveTitle: "Some choices can’t be added yet.", resolveDetail: "Remove unavailable places or Finish later." },
       types: { continent: "Continent", country: "Country", region: "Region", city: "City", town: "Town", landmark: "Landmark", natural_area: "Natural area", island: "Island", transport_gateway: "Transport gateway", other: "Place" },
       status: { noFitClaim: "Route fit checked later", evidence: "Reviewed source", searchError: "Search is unavailable. Your idea is saved.", saveBlocked: "Changes are not saved yet", loading: "Finding places…", openingMap: "Opening map", openingMapDetail: "The place cards remain available.", mapUnavailable: "Map unavailable", mapUnavailableDetail: "Keep exploring the places in the cards." },
       accessibility: { close: "Close Discovery", direction: "Explore direction", shortlist: "Shortlist places", addToShortlist: "Add to shortlist", removeFromShortlist: "Remove from shortlist", search: "Search within", source: "Read reviewed source", noPhoto: "No licensed photo available" },
       directions: { australiaEastCoast: "East coast", australiaSouth: "Southern cities and coast", australiaTasmania: "Tasmania and nature", australiaWest: "Western Australia", australiaNorthInterior: "North and interior", fixtureA: "Direction A (fixture)", fixtureB: "Direction B (fixture)", supported: "Explore" },
-      directionIntro: "Pick an area to start.", placesIntro: "Choose places to shortlist.", baseIntro: "Choose a base for this visit.", shortlist: "Shortlist", reviewIntro: "Confirm the places you want to add.", sparse: "Limited coverage here", sparseDetail: "Explore what’s available or search for a place.", empty: "We don't have reviewed places here yet.", emptyDetail: "Search for a place or finish later.", emptyBase: "We don't have a reviewed base here yet.", emptyBaseDetail: "Search for one or finish later.", noPhoto: "No licensed photo yet", sources: "Sources", notBase: "Base not verified", directionCount: "places", noDecision: "Nothing to review yet", noDecisionDetail: "Go back to choose a place.", searchPlaceholder: "Search for a place", searchWithin: "Search within", source: "Source",
+      directionIntro: "Pick a route direction to explore.", placesIntro: "Choose places to add.", baseIntro: "Choose a supported base for this visit.", shortlist: "Shortlist", reviewIntro: "Confirm the places you want to add.", sparse: "Limited coverage here", sparseDetail: "Explore what’s available or search for a place.", empty: "We don't have reviewed places here yet.", emptyDetail: "Search for a place or finish later.", emptyBase: "We don't have a reviewed base here yet.", emptyBaseDetail: "Search for one or finish later.", noPhoto: "No licensed photo yet", sources: "Sources", notBase: "Base not verified", directionCount: "places", noDecision: "Nothing to review yet", noDecisionDetail: "Go back to choose a place.", searchPlaceholder: "Search for a place", searchWithin: "Search within", source: "Source",
     } },
   },
   es: {
@@ -55,12 +55,12 @@ export const easytCopy = {
       actions: { shortlist: "Añadir", remove: "Quitar", explore: "Explorar", showMore: "Ver más", showMap: "Mapa", showCards: "Tarjetas", showOnMap: "Ver en el mapa", chooseBase: "Elegir base", changeBase: "Cambiar base", stayHere: "Alojarse aquí", visitFromBase: "Visitar desde la base", splitStay: "Dividir la estancia", reset: "Restablecer elecciones", back: "Atrás", continue: "Continuar", confirm: "Confirmar lugares", finishLater: "Terminar más tarde", search: "Buscar un lugar" },
       steps: { directions: "Elige una dirección", places: "Explora lugares", bases: "Elige una base", review: "Revisa tus elecciones" },
       roles: { "overnight-base": "Base para pernoctar", visit: "Visita desde una base", "browse-only": "Solo para explorar", existing: "Ya está en tu viaje", chosen: "Base elegida", selected: "En tu selección" },
-      reviewStatus: { ready: "Listo para añadir", exploreOnly: "Aún no se puede añadir", unavailable: "Ya no figura entre los lugares revisados", outsideDirection: "Fuera de la dirección elegida", resolveTitle: "Algunas elecciones necesitan revisión.", resolveDetail: "Cambia una dirección no disponible, quita los lugares sin respaldo o termina más tarde." },
+      reviewStatus: { ready: "Listo para añadir", exploreOnly: "Aún no se puede añadir", unavailable: "Ya no figura entre los lugares revisados", outsideDirection: "Fuera de la dirección elegida", resolveTitle: "Algunas elecciones aún no se pueden añadir.", resolveDetail: "Quita los lugares no disponibles o termina más tarde." },
       types: { continent: "Continente", country: "País", region: "Región", city: "Ciudad", town: "Localidad", landmark: "Lugar de interés", natural_area: "Área natural", island: "Isla", transport_gateway: "Centro de transporte", other: "Lugar" },
       status: { noFitClaim: "El encaje en la ruta se comprobará después", evidence: "Fuente revisada", searchError: "La búsqueda no está disponible. Tu idea sigue guardada.", saveBlocked: "Los cambios aún no se han guardado", loading: "Buscando lugares…", openingMap: "Abriendo mapa", openingMapDetail: "Las tarjetas de lugares siguen disponibles.", mapUnavailable: "Mapa no disponible", mapUnavailableDetail: "Puedes seguir explorando los lugares en las tarjetas." },
       accessibility: { close: "Cerrar Discovery", direction: "Explorar dirección", shortlist: "Lugares seleccionados", addToShortlist: "Añadir a la selección", removeFromShortlist: "Quitar de la selección", search: "Buscar dentro de", source: "Leer fuente revisada", noPhoto: "No hay foto con licencia disponible" },
       directions: { australiaEastCoast: "Costa este", australiaSouth: "Ciudades y costa del sur", australiaTasmania: "Tasmania y naturaleza", australiaWest: "Australia Occidental", australiaNorthInterior: "Norte e interior", fixtureA: "Dirección A (maqueta)", fixtureB: "Dirección B (maqueta)", supported: "Explorar" },
-      directionIntro: "Elige una zona para empezar.", placesIntro: "Elige lugares para tu selección.", baseIntro: "Elige una base para esta visita.", shortlist: "Selección", reviewIntro: "Confirma los lugares que quieres añadir.", sparse: "Cobertura limitada aquí", sparseDetail: "Explora lo disponible o busca un lugar.", empty: "Aún no tenemos lugares revisados aquí.", emptyDetail: "Busca un lugar o termina más tarde.", emptyBase: "Aún no tenemos una base revisada aquí.", emptyBaseDetail: "Busca una o termina más tarde.", noPhoto: "Aún no hay foto con licencia", sources: "Fuentes", notBase: "Base sin verificar", directionCount: "lugares", noDecision: "Aún no hay nada que revisar", noDecisionDetail: "Vuelve para elegir un lugar.", searchPlaceholder: "Buscar un lugar", searchWithin: "Buscar dentro de", source: "Fuente",
+      directionIntro: "Elige una dirección de ruta para explorar.", placesIntro: "Elige lugares para añadir.", baseIntro: "Elige una base compatible para esta visita.", shortlist: "Selección", reviewIntro: "Confirma los lugares que quieres añadir.", sparse: "Cobertura limitada aquí", sparseDetail: "Explora lo disponible o busca un lugar.", empty: "Aún no tenemos lugares revisados aquí.", emptyDetail: "Busca un lugar o termina más tarde.", emptyBase: "Aún no tenemos una base revisada aquí.", emptyBaseDetail: "Busca una o termina más tarde.", noPhoto: "Aún no hay foto con licencia", sources: "Fuentes", notBase: "Base sin verificar", directionCount: "lugares", noDecision: "Aún no hay nada que revisar", noDecisionDetail: "Vuelve para elegir un lugar.", searchPlaceholder: "Buscar un lugar", searchWithin: "Buscar dentro de", source: "Fuente",
     } },
   },
 } as const;
@@ -102,10 +102,22 @@ const discoveryDirectionKeys = {
   "fixture.direction.b": "fixtureB",
 } as const;
 
-export function discoveryDirectionTitle(language: EasyTLanguage, titleKey: string): string {
+export function discoveryDirectionTitle(language: EasyTLanguage, titleKey: string, reviewedTitle?: string): string {
+  if (reviewedTitle) return reviewedTitle;
   const key = discoveryDirectionKeys[titleKey as keyof typeof discoveryDirectionKeys];
   return key ? easytCopy[language].builder.visualDiscovery.directions[key]
     : easytCopy[language].builder.visualDiscovery.directions.supported;
+}
+
+export function discoveryAddPlacesLabel(language: EasyTLanguage, count: number): string {
+  if (count === 0) return language === "es" ? "Añadir lugares" : "Add places";
+  return language === "es"
+    ? `Añadir ${count} ${count === 1 ? "lugar" : "lugares"}`
+    : `Add ${count} ${count === 1 ? "place" : "places"}`;
+}
+
+export function discoveryAddToTripLabel(language: EasyTLanguage): string {
+  return language === "es" ? "Añadir al viaje" : "Add to trip";
 }
 
 type CountryDiscoveryPresentationCandidate = {

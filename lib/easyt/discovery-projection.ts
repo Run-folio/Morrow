@@ -80,7 +80,7 @@ export function projectDiscovery(input: {
   });
   const places = rankPlaces(eligible, context, mention.canonicalPlaceId);
   const eligibleById = new Map(places.map(place => [place.id, place]));
-  const candidateDirections = evidence?.directions ?? discoveryDirectionsForPlaces(places);
+  const candidateDirections = evidence?.directions ?? discoveryDirectionsForPlaces(places, mention);
   const directions = candidateDirections.flatMap(direction => {
     const placeIds = [...new Set(direction.placeIds)].filter(id => eligibleById.get(id)?.groupIds.includes(direction.id));
     return placeIds.length >= 3 ? [{ ...direction, placeIds }] : [];
