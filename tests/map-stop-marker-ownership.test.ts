@@ -3,6 +3,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { homedir } from "node:os";
 import test from "node:test";
+import { mapStopIdAtPoint } from "../lib/easyt/map-spatial-context.ts";
 
 const markerStyles = readFileSync(
   new URL("../components/easyt/morrovia-map-presentation.module.css", import.meta.url),
@@ -29,6 +30,7 @@ async function renderOverlap(browser: BrowserLike, mobile: boolean) {
     isMobile: mobile,
   });
   const page = await context.newPage();
+  await page.exposeFunction("resolveStopMarker", mapStopIdAtPoint);
   await page.setContent(`
     <style>
       :root {
@@ -40,30 +42,38 @@ async function renderOverlap(browser: BrowserLike, mobile: boolean) {
       }
       ${markerStyles}
       .surface { position: relative; width: 320px; height: 240px; }
-      .overlap { left: 120px; top: 70px; }
+      .overlap { position: absolute; left: 120px; top: 70px; }
+      .competing-stop { left: 136px; top: 75px; }
       .other-stop { position: absolute; left: 250px; top: 20px; }
       .route-line { position: absolute; left: 20px; top: 190px; width: 80px; height: 12px; }
     </style>
     <div class="surface">
       <button class="route-line" aria-label="Inspect route leg London to Tokyo"></button>
       <button class="planner-map__leg is-active overlap" aria-label="Inspect transfer 5: Hirayu to Matsumoto, Road"></button>
-      <button class="planner-map__stop overlap" aria-label="Show Kanazawa, overnight stop 2">2</button>
-      <button class="planner-map__stop other-stop" aria-label="Show Tokyo, overnight stop 1">1</button>
+      <button class="planner-map__stop overlap" data-stop-id="kanazawa" aria-label="Show Kanazawa, overnight stop 2">2</button>
+      <button class="planner-map__stop overlap competing-stop" data-stop-id="matsumoto" aria-label="Show Matsumoto, overnight stop 5">5</button>
+      <button class="planner-map__stop other-stop" data-stop-id="tokyo" aria-label="Show Tokyo, overnight stop 1">1</button>
     </div>
     <script>
       window.selections = [];
       function bind(marker, kind, id) {
-        const activate = event => {
+        const activate = async event => {
           event.stopPropagation();
           if (event.type === "pointerup" || (event.type === "click" && event.detail === 0)) {
-            window.selections.push({ kind, id, event: event.type });
+            const markers = Array.from(document.querySelectorAll('.planner-map__stop')).map(candidate => {
+              const bounds = candidate.getBoundingClientRect();
+              return { id: candidate.dataset.stopId, left: bounds.left, top: bounds.top, width: bounds.width, height: bounds.height };
+            });
+            const selectedId = kind === 'stop' && event.type === 'pointerup'
+              ? await window.resolveStopMarker(markers, { x: event.clientX, y: event.clientY }, id)
+              : id;
+            window.selections.push({ kind, id: selectedId, event: event.type });
           }
         };
         marker.addEventListener("pointerup", activate);
         marker.addEventListener("click", activate);
       }
-      bind(document.querySelector('.planner-map__stop'), 'stop', 'kanazawa');
-      bind(document.querySelector('.other-stop'), 'stop', 'tokyo');
+      document.querySelectorAll('.planner-map__stop').forEach(marker => bind(marker, 'stop', marker.dataset.stopId));
       bind(document.querySelector('.planner-map__leg'), 'leg', 'hirayu-matsumoto');
       bind(document.querySelector('.route-line'), 'route', 'london-tokyo');
     </script>
@@ -86,11 +96,12 @@ test("an overlapping Kanazawa stop owns pointer and touch selection above an act
         const point = { x: box.x + box.width / 2, y: box.y + box.height / 2 };
         assert.equal(
           await view.page.evaluate(({ x, y }: { x: number; y: number }) => document.elementFromPoint(x, y)?.getAttribute("aria-label"), point),
-          "Show Kanazawa, overnight stop 2",
+          "Show Matsumoto, overnight stop 5",
         );
 
         if (mobile) await view.page.touchscreen.tap(point.x, point.y);
         else await view.page.mouse.click(point.x, point.y);
+        await view.page.waitForTimeout(20);
         assert.deepEqual(
           await view.page.evaluate(() => window.selections),
           [{ kind: "stop", id: "kanazawa", event: "pointerup" }],

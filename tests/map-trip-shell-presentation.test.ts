@@ -311,7 +311,7 @@ test("map overlays expose keyboard-equivalent controls and predictable Escape cl
   assert.match(mapSource, /element\.addEventListener\("click", activateLeg\)/);
   assert.doesNotMatch(mapSource, /element\.addEventListener\("focus", \(\) => onLegSelectRef\.current\?\.\(leg\)\)/);
   assert.match(mapSource, /element\.addEventListener\("mouseenter",/);
-  assert.match(mapSource, /bindMapMarkerActivation\(element, \(\) => \{[\s\S]*onSelectRef\.current\(stop\.id\); \}\)/);
+  assert.match(mapSource, /bindMapMarkerActivation\(element, \(event\) => \{[\s\S]*mapStopIdAtPoint\([\s\S]*onSelectRef\.current\(stopId\);/);
   assert.match(mapSource, /element\.addEventListener\("focus", \(\) => previewStop\(stop\.id\)\)/);
   assert.match(mapSource, /data\.routeLegId|dataset\.routeLegId/);
   assert.match(mapWorkspaceSource, /event\.key !== "Escape"/);

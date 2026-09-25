@@ -55,6 +55,41 @@ export type MapRouteLeg = {
 
 type MapPoint = { x: number; y: number };
 
+export type MapStopMarkerHit = {
+  id: string;
+  left: number;
+  top: number;
+  width: number;
+  height: number;
+};
+
+/** Resolve dense stop-marker overlaps by the closest visible marker centre.
+ * The returned identity is always the canonical stop id carried by a marker. */
+export function mapStopIdAtPoint(
+  markers: readonly MapStopMarkerHit[],
+  point: MapPoint,
+  fallbackId: string,
+) {
+  const candidates = markers.filter((marker) => point.x >= marker.left
+    && point.x <= marker.left + marker.width
+    && point.y >= marker.top
+    && point.y <= marker.top + marker.height);
+  const fallback = candidates.find((marker) => marker.id === fallbackId);
+  let selected = fallback ?? candidates[0];
+  let selectedDistance = selected
+    ? (point.x - (selected.left + selected.width / 2)) ** 2 + (point.y - (selected.top + selected.height / 2)) ** 2
+    : Number.POSITIVE_INFINITY;
+  for (const marker of candidates) {
+    const distance = (point.x - (marker.left + marker.width / 2)) ** 2
+      + (point.y - (marker.top + marker.height / 2)) ** 2;
+    if (distance < selectedDistance) {
+      selected = marker;
+      selectedDistance = distance;
+    }
+  }
+  return selected?.id ?? fallbackId;
+}
+
 /** MapLibre may consume the mouse click after handling a pointer gesture on a
  * marker. Activate on pointer-up for mouse/touch, and reserve click detail zero
  * for keyboard or programmatic button activation so one gesture fires once. */

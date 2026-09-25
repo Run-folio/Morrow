@@ -17,7 +17,7 @@ import type { MapResultPlace } from "@/lib/easyt/map-result-selection";
 import { applyMapCameraRequest, focusMapCamera, fitMapCamera, interruptMapCamera, type MapCamera } from "@/lib/easyt/map-camera";
 import { resolveMapCameraRequest, resolveMapInsets, resolveMapSurfacePolicy, type MorroviaMapInsets, type MorroviaMapSurface } from "@/lib/easyt/map-surface-policy";
 import { createMorroviaBasemapLifecycle, hasMorroviaActiveStyle, type MorroviaBasemapLifecycle, type MorroviaBasemapMap, type MorroviaBasemapStatus } from "@/lib/easyt/map-basemap-lifecycle";
-import { bindMapMarkerActivation, canonicalMapTransportMode, formatMapDuration, mapRouteBearing, mapRouteFitCoordinates, mapRouteLegActivationEvent, mapRouteLegIdAtPoint, mapRouteMarkerCoordinates, mapTransportModeLabel, type MapRouteLeg } from "@/lib/easyt/map-spatial-context";
+import { bindMapMarkerActivation, canonicalMapTransportMode, formatMapDuration, mapRouteBearing, mapRouteFitCoordinates, mapRouteLegActivationEvent, mapRouteLegIdAtPoint, mapRouteMarkerCoordinates, mapStopIdAtPoint, mapTransportModeLabel, type MapRouteLeg } from "@/lib/easyt/map-spatial-context";
 import { tripLegClassificationLabel } from "@/lib/easyt/trip-legs";
 
 export type JourneyMapDestinationCard = {
@@ -743,7 +743,20 @@ export function JourneyPlannerMap({
           markerElement.classList.toggle("is-preview-suppressed", Boolean(id) && markerElement.dataset.mapStopId !== id);
         });
         if (domainSelection && stopSelectionEnabled) {
-          bindMapMarkerActivation(element, () => { interruptMapCamera(map as unknown as MapCamera); currentCameraRequestRef.current = null; onSelectRef.current(stop.id); });
+          bindMapMarkerActivation(element, (event) => {
+            interruptMapCamera(map as unknown as MapCamera);
+            currentCameraRequestRef.current = null;
+            const pointer = event.type === "pointerup" ? event as PointerEvent : null;
+            const stopId = pointer ? mapStopIdAtPoint(
+              Array.from(map.getContainer().querySelectorAll<HTMLElement>(".planner-map__stop:not(.is-preview)")).map((marker) => {
+                const bounds = marker.getBoundingClientRect();
+                return { id: marker.dataset.mapStopId ?? "", left: bounds.left, top: bounds.top, width: bounds.width, height: bounds.height };
+              }).filter((marker) => marker.id),
+              { x: pointer.clientX, y: pointer.clientY },
+              stop.id,
+            ) : stop.id;
+            onSelectRef.current(stopId);
+          });
           element.addEventListener("mouseenter", () => previewStop(stop.id));
           element.addEventListener("mouseleave", () => previewStop(undefined));
           element.addEventListener("focus", () => previewStop(stop.id));

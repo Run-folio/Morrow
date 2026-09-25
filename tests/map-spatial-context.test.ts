@@ -11,8 +11,22 @@ import {
   mapRouteLegsFromTrip,
   mapRouteLegActivationEvent,
   mapRouteMarkerCoordinates,
+  mapStopIdAtPoint,
 } from "../lib/easyt/map-spatial-context.ts";
 import type { EasyTTrip } from "../lib/easyt/trip.ts";
+
+test("dense stop-marker hits resolve the closest canonical stop identity", () => {
+  const markers = [
+    { id: "kanazawa", left: 2105, top: 608, width: 44, height: 44 },
+    { id: "takayama", left: 2112, top: 615, width: 44, height: 44 },
+    { id: "hirayu", left: 2116, top: 614, width: 44, height: 44 },
+    { id: "matsumoto", left: 2121, top: 613, width: 44, height: 44 },
+  ];
+
+  assert.equal(mapStopIdAtPoint(markers, { x: 2127, y: 630 }, "matsumoto"), "kanazawa");
+  assert.equal(mapStopIdAtPoint(markers, { x: 2143, y: 635 }, "kanazawa"), "matsumoto");
+  assert.equal(mapStopIdAtPoint(markers, { x: 0, y: 0 }, "kanazawa"), "kanazawa");
+});
 
 const trip = {
   stops: [
