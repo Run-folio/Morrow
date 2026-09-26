@@ -5,7 +5,7 @@ import { DEFAULT_ROUTE_SCORING_CONFIG, scoreRouteCandidates } from "../lib/easyt
 import type { CountryContinuityConstraintProof } from "../lib/easyt/route-country-continuity.ts";
 import { knownKnowledgeFact } from "../lib/easyt/destination-knowledge.ts";
 import { TRANSFER_IMPACT_RULE_SOURCE, estimateTransferImpact, type TransferImpact } from "../lib/easyt/transfer-impact.ts";
-import type { EstimatedLeg, PlannerStop } from "../lib/easyt/planner.ts";
+import { estimateLegForConstraints, type EstimatedLeg, type PlannerStop } from "../lib/easyt/planner.ts";
 
 const origin = { name: "Origin", coordinates: [0, 0] as [number, number] };
 const stop = (id: string, longitude: number, intent?: PlannerStop["intent"]): PlannerStop => ({
@@ -89,6 +89,29 @@ test("backtracking penalties scale with objective detour severity", () => {
   assert.equal(entered?.state, "scored");
   assert.ok((penalty?.points ?? 0) > 10);
   assert.ok((penalty?.points ?? 0) <= 30);
+});
+
+test("whole-route scoring penalizes a substantial geographic reversal even below the old ratio threshold", () => {
+  const london = { name: "London", coordinates: [-0.1276, 51.5072] as [number, number] };
+  const stops: PlannerStop[] = [
+    { id: "airlie-beach", name: "Airlie Beach", country: "Australia", coordinates: [148.718, -20.2678] },
+    { id: "sydney", name: "Sydney", country: "Australia", coordinates: [151.2093, -33.8688] },
+    { id: "port-douglas", name: "Port Douglas", country: "Australia", coordinates: [145.467, -16.484] },
+  ];
+  const estimate = (from: { name: string; coordinates?: [number, number] } | PlannerStop, to: PlannerStop) => estimateLegForConstraints(from, to);
+  const generation = generateRouteCandidates({ origin: london, stops, estimateLeg: estimate });
+  const result = scoreRouteCandidates({
+    origin: london,
+    candidates: generation.candidates,
+    estimateLeg: estimate,
+    availableDays: 10,
+    preferences: { pace: "relaxed", preferredModes: ["flight", "train"] },
+  });
+  const obviousReversal = result.rankedCandidates.find((item) => item.stopIds.join("|") === "port-douglas|sydney|airlie-beach");
+
+  assert.equal(obviousReversal?.state, "scored");
+  assert.ok(obviousReversal?.penalties.some((penalty) => penalty.code === "unnecessary-backtracking"));
+  assert.notDeepEqual(result.winner?.stopIds, ["port-douglas", "sydney", "airlie-beach"]);
 });
 
 test("relaxed pacing avoids one excessive leg while fast pacing can accept it", () => {

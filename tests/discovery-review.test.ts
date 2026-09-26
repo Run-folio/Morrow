@@ -99,7 +99,7 @@ test('ordinary geography shortlist order is membership; the existing route score
   assert.deepEqual(input.draft.shortlistIds, ['airlie-beach', 'sydney', 'port-douglas']);
   assert.deepEqual(review.bases.map(base => base.id), ['airlie-beach', 'sydney', 'port-douglas']);
   assert.deepEqual(review.orderedStopIds?.map(id => id.replace(/^discovery:/, '')),
-    ['port-douglas', 'sydney', 'airlie-beach']);
+    ['port-douglas', 'airlie-beach', 'sydney']);
   assert.equal(review.routeOrderSource, 'route-scorer');
 });
 

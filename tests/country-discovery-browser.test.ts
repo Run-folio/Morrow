@@ -352,15 +352,23 @@ for (const [country, clickOrder] of [
       rows.map(row => row.querySelector('[role="cell"] strong')?.textContent?.trim() ?? ''));
     assert.deepEqual([...finalOrder].sort(), [...clickOrder].sort(), 'all chosen places remain committed once');
     assert.notDeepEqual(finalOrder, [...clickOrder], 'ordinary geography click order is membership, not route chronology');
+    assert.notDeepEqual(finalOrder, ['Port Douglas', 'Sydney', 'Airlie Beach'], 'the canonical scorer must reject the known large reversal');
     assert.equal(await route.getByRole('button', { name: 'Add stop', exact: true }).isVisible()
       || await view.page.getByRole('combobox', { name: 'Add a destination', exact: true }).isVisible(), true,
     'the normal Builder add flow remains available');
     assert.equal(new Set(finalOrder).size, 3, 'the route has no duplicate places');
+    const totalAllocatedNights = () => route.getByRole('button', { name: /^Add one night to / }).evaluateAll((buttons: HTMLButtonElement[]) =>
+      buttons.reduce((total, button) => total + Number(button.getAttribute('aria-label')?.match(/; (\d+) nights currently/)?.[1] ?? 0), 0));
+    const originalNightTotal = await totalAllocatedNights();
     const reorderHandle = route.getByRole('button', { name: new RegExp(`^Reorder ${finalOrder[1]}, stop`) });
     await reorderHandle.dragTo(route.locator('[data-builder-stop-index="0"]'));
     await view.page.waitForFunction((expected: string) =>
       document.querySelector('[data-builder-route-workspace] [data-builder-stop-index] [role="cell"] strong')?.textContent?.trim() === expected,
     finalOrder[1]);
+    assert.equal(await route.locator('[data-builder-stop-index]').count(), 3);
+    assert.equal(new Set(await route.locator('[data-builder-stop-index]').evaluateAll((rows: HTMLElement[]) =>
+      rows.map(row => row.querySelector('[role="cell"] strong')?.textContent?.trim() ?? ''))).size, 3);
+    assert.equal(await totalAllocatedNights(), originalNightTotal, 'reordering preserves the trip night budget');
     assert.deepEqual(view.errors, []);
   } finally { await view.close(); }
 });

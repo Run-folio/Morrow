@@ -152,7 +152,7 @@ export type RouteScoringConfig = {
  * current route boundary has no dependable fare data.
  */
 export const DEFAULT_ROUTE_SCORING_CONFIG: RouteScoringConfig = {
-  version: "route-scoring-v4-country-continuity",
+  version: "route-scoring-v5-geographic-coherence",
   weights: {
     "travel-efficiency": 0.45,
     pacing: 0.15,
@@ -174,7 +174,7 @@ export const DEFAULT_ROUTE_SCORING_CONFIG: RouteScoringConfig = {
     meaningfulPreferenceMinutes: 150,
     meaningfulPreferenceDistanceKm: 120,
     backtrackingMinimumKm: 100,
-    backtrackingRatio: 0.15,
+    backtrackingRatio: 0.05,
     shortFlightDistanceKm: 900,
     stayTransferMinimumMinutes: 360,
     stayTransferMinutesPerDay: 300,
