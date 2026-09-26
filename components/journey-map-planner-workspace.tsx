@@ -2708,6 +2708,7 @@ export function JourneyMapPlannerWorkspace({
           {selectedRecommendationDetail && selectedLocalPlace ? <div className={styles.mapPlaceDetail}>
             <ItineraryItemDetail
               embedded
+              omitEmptyMedia
               detail={selectedRecommendationDetail}
               mapHref={selectedLocalPlace.mapsUrl}
               onClose={dismissSelectedMapResult}

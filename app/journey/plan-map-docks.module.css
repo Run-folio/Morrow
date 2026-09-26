@@ -117,6 +117,9 @@
     backdrop-filter:blur(16px);
     transition:height .18s ease;
   }
+  .plan :global([class*="mapContextualSurface"][data-mobile-sheet-view="context"]) {
+    height:min(var(--mobile-map-sheet-height),52svh);
+  }
   .plan :global([class*="mobileMapSheetControls"]) {
     min-height:72px;
     flex:0 0 auto;

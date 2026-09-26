@@ -37,6 +37,7 @@ type Props = {
   manageLabel?: string;
   primaryActions?: ReactNode;
   embedded?: boolean;
+  omitEmptyMedia?: boolean;
 };
 
 const partLabels: Record<ItineraryDayPart, string> = {
@@ -58,6 +59,7 @@ export default function RecommendationDetail({
   manageLabel = "Manage",
   primaryActions,
   embedded = false,
+  omitEmptyMedia = false,
 }: Props) {
   const headingId = useId();
   const shellRef = useRef<HTMLElement>(null);
@@ -113,7 +115,7 @@ export default function RecommendationDetail({
     >
       {!embedded ? <><div className={styles.handle} aria-hidden="true" /><EasyTButton ref={closeRef} className={styles.close} icon={X} iconOnly variant="secondary" aria-label={`Close details for ${detail.title}`} onClick={onClose}>Close</EasyTButton></> : null}
 
-      {detail.image && failedImageSrc !== detail.image ? <div className={styles.hero}><ResilientImage src={detail.image} alt={detail.imageAlt ?? ""} fallback={detail.kind === "accommodation" ? null : <span><KindIcon aria-hidden="true" /></span>} onError={() => setFailedImageSrc(detail.image ?? null)} /></div> : detail.kind !== "accommodation" ? <div className={`${styles.hero} ${styles.heroFallback}`}><KindIcon aria-hidden="true" /><span>{detail.kind === "restaurant" ? "No sourced image available" : detail.location ?? "Recommendation"}</span></div> : null}
+      {detail.image && failedImageSrc !== detail.image ? <div className={styles.hero}><ResilientImage src={detail.image} alt={detail.imageAlt ?? ""} fallback={detail.kind === "accommodation" || omitEmptyMedia ? null : <span><KindIcon aria-hidden="true" /></span>} onError={() => setFailedImageSrc(detail.image ?? null)} /></div> : detail.kind !== "accommodation" && !omitEmptyMedia ? <div className={`${styles.hero} ${styles.heroFallback}`}><KindIcon aria-hidden="true" /><span>{detail.kind === "restaurant" ? "No sourced image available" : detail.location ?? "Recommendation"}</span></div> : null}
 
       <div className={styles.content}>
         <header className={styles.header}>

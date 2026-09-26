@@ -631,6 +631,16 @@
     padding-left: 84px;
     margin-left: 0;
   }
+
+  .activityWarning {
+    display: grid;
+    width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+    grid-template-columns: 14px minmax(0, 1fr);
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
 }
 
 @media (hover: none), (pointer: coarse) {
