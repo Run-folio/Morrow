@@ -4,6 +4,7 @@ import test from "node:test";
 import {
   itineraryDayLegs,
   itineraryDayMapContext,
+  itineraryDayMiniMapContext,
   itineraryDayMapSelection,
   itinerarySelectionForMapPin,
   itinerarySuggestionCandidates,
@@ -95,6 +96,20 @@ test("selected-day map context uses stable route, plan-item, and pin identities"
   assert.equal(selectedPin.selectedPlannerPinId, "hotel-rome");
   assert.deepEqual(selectedPin.focusCoordinates, [12.493, 41.9]);
   assert.equal(itinerarySelectionForMapPin(selectedPin.pins[1]!, active), "map-pin:hotel-rome");
+});
+
+test("crowded day mini-map frames local markers without distant transfer chrome", () => {
+  const trip = tripFixture();
+  const active = trip.planItems[0]!;
+  const full = itineraryDayMapContext(trip, active, null);
+  const mini = itineraryDayMiniMapContext(full, active);
+  assert.deepEqual(mini.stops.map((stop) => stop.id), ["rome"]);
+  assert.deepEqual(mini.legs, []);
+  assert.deepEqual(mini.pins.map((pin) => pin.id), ["plan-item-day-1", "hotel-rome"]);
+  assert.ok(mini.fitCoordinates?.length, "local map bounds include the current day's geography");
+  assert.equal(mini.focusCoordinates, null);
+  assert.equal(full.legs.length, 2, "full-map context remains intact");
+  assert.equal(itinerarySelectionForMapPin(mini.pins[1]!, active), "map-pin:hotel-rome");
 });
 
 test("map linkage never selects a pin by a matching timeline title", () => {

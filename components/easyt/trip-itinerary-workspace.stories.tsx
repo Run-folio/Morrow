@@ -2,6 +2,7 @@ import type { Meta, StoryObj } from "@storybook/nextjs-vite";
 import EasyTNavigation from "@/app/journey/easyt-navigation";
 import type { ItineraryDiscoveryPlace } from "@/lib/easyt/itinerary-day-context";
 import { defaultTripIntent, tripFromBuilder, type EasyTTrip, type ItineraryIdea, type PlanItem } from "@/lib/easyt/trip";
+import { buildCredibleItinerary } from "@/lib/easyt/planner";
 import type { TripInterest } from "@/lib/easyt/trip-interest";
 import { affiliatePartners, getActivityBookingAction } from "@/lib/easyt/booking-readiness";
 import { tourTripFixture } from "./storybook/tour-trip.fixture";
@@ -885,6 +886,54 @@ export const IncompleteItinerary: Story = { args: { trip: { ...trip, planItems: 
 
 export const Mobile320: Story = { globals: { viewport: { value: "morrovia320", isRotated: false } } };
 export const Mobile390: Story = { globals: { viewport: { value: "morrovia390", isRotated: false } } };
+const botanicalStop = { id: "akureyri", name: "Akureyri", country: "Iceland", coordinates: [-18.0907, 65.6885] as [number, number] };
+const botanicalTrip = tripFromBuilder({
+  id: "storybook-botanical-garden-itinerary",
+  origin: "London",
+  stops: [botanicalStop],
+  startDate: "2026-10-01",
+  endDate: "2026-10-02",
+  picks: { akureyri: ["Akureyri Botanical Garden"] },
+  mustDo: "Nature",
+  pace: "slow",
+  hotels: "few",
+  budget: "mid",
+  draft: buildCredibleItinerary({
+    origin: "London", stops: [botanicalStop], startDate: "2026-10-01",
+    allocations: { akureyri: 2 }, picks: { akureyri: ["Akureyri Botanical Garden"] },
+    places: { akureyri: [{ title: "Akureyri Botanical Garden", area: "Akureyri", type: "Nature", cost: 0, tags: ["Nature"], description: "Akureyri Botanical Garden offers a quiet walk among northern plants and mountain views, with time to pause before exploring the town.", coordinates: [-18.101, 65.677] }] },
+  }),
+});
+export const GeneratedBotanicalGardenMobile390: Story = { args: { trip: botanicalTrip, selectedDayNumber: 2 }, globals: { viewport: { value: "morrovia390", isRotated: false } } };
+export const CrowdedDayMiniMapMobile390: Story = {
+  args: {
+    trip: {
+      ...trip,
+      brief: { ...trip.brief, mapPins: [
+        ...(trip.brief.mapPins ?? []),
+        { id: "day-2-market", title: "San Pedro Market", category: "activity", dayNumber: 2, longitude: -71.982, latitude: -13.521 },
+        { id: "day-2-museum", title: "Inka Museum", category: "activity", dayNumber: 2, longitude: -71.966, latitude: -13.511 },
+        { id: "day-2-viewpoint", title: "Mirador", category: "activity", dayNumber: 2, longitude: -71.951, latitude: -13.529 },
+      ] },
+    },
+    selectedDayNumber: 2,
+  },
+  globals: { viewport: { value: "morrovia390", isRotated: false } },
+};
+export const SpreadDayMiniMapMobile390: Story = {
+  args: {
+    trip: {
+      ...trip,
+      brief: { ...trip.brief, mapPins: [
+        ...(trip.brief.mapPins ?? []),
+        { id: "day-2-center", title: "Cusco centre", category: "activity", dayNumber: 2, longitude: -71.982, latitude: -13.521 },
+        { id: "day-2-outlying", title: "Sacred Valley visit", category: "activity", dayNumber: 2, longitude: -72.374, latitude: -13.312 },
+      ] },
+    },
+    selectedDayNumber: 2,
+  },
+  globals: { viewport: { value: "morrovia390", isRotated: false } },
+};
 export const Mobile430: Story = { globals: { viewport: { value: "morrovia430", isRotated: false } } };
 export const Tablet768: Story = { globals: { viewport: { value: "morrovia768", isRotated: false } } };
 export const Desktop1024: Story = { globals: { viewport: { value: "morrovia1024", isRotated: false } } };

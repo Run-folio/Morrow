@@ -1,4 +1,5 @@
 import type { EasyTTrip, TripLeg } from "./trip";
+import { normalizeLegacyGeneratedDayContext } from "./itinerary-generated-context.ts";
 import { reconcileLegacyTransportLeg } from "./transport-leg-compatibility.ts";
 
 const singleStopReferenceKeys = new Set([
@@ -207,7 +208,7 @@ export function canonicalTripForOwner(
     ]),
   );
 
-  return { ...remapTripStopReferences({ ...trip, ownerId }, stopIds), updatedAt };
+  return { ...remapTripStopReferences(normalizeLegacyGeneratedDayContext({ ...trip, ownerId }), stopIds), updatedAt };
 }
 
 function stableJsonValue(value: unknown): unknown {

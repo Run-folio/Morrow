@@ -84,9 +84,9 @@
 .travellerActions > span[role="alert"] { color: var(--morrovia-danger); }
 
 @media (max-width: 760px) {
-  .taskRow { grid-template-columns: auto minmax(0, 1fr); min-height: 76px; }
+  .taskRow { grid-template-columns: auto minmax(0, 1fr); gap: 4px 8px; min-height: 0; padding: 8px 10px; }
   .taskAction,
-  .insuranceAction { grid-column: 2; justify-self: start; width: auto; max-width: 100%; min-height: 44px; }
+  .insuranceAction { grid-column: 2; justify-self: start; justify-content: flex-start; width: auto; max-width: 100%; min-height: 32px; padding-inline: 0; }
   .affiliateDisclosure { padding-left: 0; }
   .travellerFields { grid-template-columns: minmax(0, 1fr); }
   .travellerActions { align-items: stretch; flex-direction: column; }

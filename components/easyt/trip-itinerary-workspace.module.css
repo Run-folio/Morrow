@@ -1956,7 +1956,7 @@
   .contextSection > summary { min-height: 44px; }
   .contextRail { padding-bottom: var(--morrovia-mobile-dock-offset, calc(82px + env(safe-area-inset-bottom))); }
   .mapPreview { height: 210px; }
-  .mapPreview :global(.planner-map__pin) { width: 36px; height: 36px; }
+  .mapPreview :global(.planner-map__leg) { display: none; }
   .discoveryMedia > a,
   .bookingCard > a { min-width: 44px; min-height: 44px; }
   .savedIdeas button,

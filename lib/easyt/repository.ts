@@ -15,6 +15,7 @@ import {
   nextTripUpdatedAt,
 } from "./trip-continuity";
 import { EasyTTrip, isEasyTTrip } from "./trip";
+import { normalizeLegacyGeneratedDayContext } from "./itinerary-generated-context.ts";
 import { normalizedLegEndpoints } from "./trip-persistence";
 import { resolveTripTransferJourneys } from "./multimodal-transfer-resolution.server";
 import { reconcileLegacyTransportTrip } from "./transport-leg-compatibility";
@@ -318,7 +319,7 @@ export async function listTripsForOwner(ownerId: string): Promise<EasyTTrip[]> {
     where owner_id = ${ownerId} and deleted_at is null
     order by updated_at desc
   `) as TripDocumentRow[];
-  return rows.map((row) => row.document).filter(isEasyTTrip).map(reconcileLegacyTransportTrip);
+  return rows.map((row) => row.document).filter(isEasyTTrip).map((trip) => normalizeLegacyGeneratedDayContext(reconcileLegacyTransportTrip(trip)));
 }
 
 export async function getTripForOwner(
@@ -332,7 +333,7 @@ export async function getTripForOwner(
     where id = ${tripId} and owner_id = ${ownerId} and deleted_at is null
     limit 1
   `) as TripDocumentRow[];
-  return rows[0] && isEasyTTrip(rows[0].document) ? resolveTripTransferJourneys(rows[0].document) : null;
+  return rows[0] && isEasyTTrip(rows[0].document) ? normalizeLegacyGeneratedDayContext(await resolveTripTransferJourneys(rows[0].document)) : null;
 }
 
 export async function saveTripForOwner(
@@ -346,7 +347,8 @@ export async function saveTripForOwner(
   // namespace them before persistence and update every relation atomically.
   // The incoming updatedAt remains the compare-and-swap token; only the
   // repository issues the next token after the update has won.
-  const routedTrip = await resolveTripTransferJourneys(trip);
+  const normalizedTrip = normalizeLegacyGeneratedDayContext(trip);
+  const routedTrip = await resolveTripTransferJourneys(normalizedTrip);
   const document = canonicalTripForOwner(ownerId, routedTrip, nextTripUpdatedAt(trip.updatedAt));
   const documentJson = JSON.stringify(document);
   const transactionResults = await sql.transaction((tx) => [

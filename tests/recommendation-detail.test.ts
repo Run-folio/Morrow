@@ -144,6 +144,13 @@ test("detail headings use a deterministic compact tier for long provider titles"
   assert.doesNotMatch(component, /ResizeObserver|getBoundingClientRect/);
 });
 
+test("Stay detail omits missing media instead of reserving a placeholder hero", () => {
+  const component = readFileSync(new URL("../components/easyt/itinerary-item-detail.tsx", import.meta.url), "utf8");
+  assert.match(component, /detail\.kind !== "accommodation"/);
+  assert.doesNotMatch(component, /"No sourced property image available"/);
+  assert.match(component, /onError=\{\(\) => setFailedImageSrc\(detail\.image \?\? null\)/);
+});
+
 test("all entry surfaces use one presentation and one canonical mutation path", () => {
   const explore = readFileSync(new URL("../components/easyt/trip-explore-workspace.tsx", import.meta.url), "utf8");
   const itinerary = readFileSync(new URL("../components/easyt/trip-itinerary-workspace.tsx", import.meta.url), "utf8");

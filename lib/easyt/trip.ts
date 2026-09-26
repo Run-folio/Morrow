@@ -218,6 +218,8 @@ export type PlanItem = {
   title: string;
   reason: string;
   notes: string[];
+  /** Generated day prose, distinct from the editable activity rows in `notes`. */
+  contextNotes?: string[];
   /** Optional broad scheduling intent aligned by index with `notes`. */
   noteDayParts?: Array<ItineraryDayPart | null>;
   startsAt: string | null;
@@ -476,6 +478,7 @@ export type BuilderDay = {
   title: string;
   reason: string;
   items: string[];
+  contextNotes?: string[];
   type?: "arrival" | "activity" | "open";
   placeTitle?: string;
   coordinates?: [number, number];
@@ -598,6 +601,7 @@ export function tripFromBuilder(input: BuilderTripInput): EasyTTrip {
       title: day.title,
       reason: day.reason,
       notes: day.items,
+      ...(day.contextNotes?.length ? { contextNotes: day.contextNotes } : {}),
       startsAt: null,
       endsAt: null,
       bookingUrl: null,

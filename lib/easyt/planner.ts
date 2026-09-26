@@ -171,6 +171,8 @@ export type PlannedDay = {
   title: string;
   reason: string;
   items: string[];
+  /** Generated description and guidance, never activity identities. */
+  contextNotes?: string[];
   type: "arrival" | "activity" | "open";
   placeTitle?: string;
   coordinates?: [number, number];
@@ -823,7 +825,8 @@ function fallbackDay(stop: PlannerStop, index: number): Omit<PlannedDay, "number
     { title: `Explore ${stop.name}`, reason: `A deliberately light day in ${stop.name}, leaving space to follow what looks good once you are there.`, items: ["Choose one walkable neighbourhood", "Add one real place once you have local context", "Leave the evening for a nearby meal"] },
     { title: `A slower ${stop.name} day`, reason: "A buffer day protects the trip from becoming a chain of transfers and bookings.", items: ["Start later", "Stay close to your base", "Keep one meal unplanned"] },
   ];
-  return { ...variants[index % variants.length], destination: stop.name, type: "open" };
+  const variant = variants[index % variants.length];
+  return { ...variant, items: [], contextNotes: variant.items, destination: stop.name, type: "open" };
 }
 
 export function buildCredibleItinerary(input: {
@@ -859,7 +862,8 @@ export function buildCredibleItinerary(input: {
           type: "arrival",
           title: stopIndex === 0 ? `Arrive in ${stop.name}` : `Travel to ${stop.name}`,
           reason: "A protected arrival day gives the route room for the transfer, check-in and a first feel for the place.",
-          items: [arrivalLeg.label, arrivalImpactMinutes ? `Morrovia planning estimate: about ${Math.floor(arrivalImpactMinutes / 60)}h ${arrivalImpactMinutes % 60}m door to door; check current schedules.` : arrivalLeg.note, "Check in, walk one nearby area and keep dinner easy"],
+          items: [arrivalLeg.label, arrivalImpactMinutes ? `Morrovia planning estimate: about ${Math.floor(arrivalImpactMinutes / 60)}h ${arrivalImpactMinutes % 60}m door to door; check current schedules.` : arrivalLeg.note],
+          contextNotes: ["Check in, walk one nearby area and keep dinner easy"],
           coordinates: stop.coordinates,
           travel: arrivalLeg,
         });
@@ -875,9 +879,9 @@ export function buildCredibleItinerary(input: {
             reason: group.length > 1
               ? `These two selected places are planned as one focused day, rather than a scattered checklist across ${stop.name}.`
               : `Built around ${primary.title}; the rest of the day stays close to ${primary.area}.`,
-            items: [
-              ...names,
-              ...group.map((place) => place.description),
+            items: names,
+            contextNotes: [
+              ...group.map((place) => place.description).filter(Boolean),
               primary.type.toLowerCase().includes("heritage") || primary.type.toLowerCase().includes("museum") ? "Check opening hours and timed-entry requirements before booking." : "Leave the final part of the day open for a local meal or a nearby walk.",
             ],
             placeTitle: primary.title,
@@ -890,7 +894,8 @@ export function buildCredibleItinerary(input: {
             type: "activity",
             title: `Explore ${stop.name}`,
             reason: `A flexible day built around a real nearby option, without committing you to another long transfer.`,
-            items: [place.title, place.description, "Keep the rest of the day in the same area."],
+            items: [place.title],
+            contextNotes: [place.description, "Keep the rest of the day in the same area."].filter(Boolean),
             placeTitle: place.title,
             coordinates: place.coordinates ?? stop.coordinates,
           });

@@ -55,8 +55,9 @@
     width: min(100% - 32px, 540px);
     grid-template-columns: 1fr;
     justify-items: center;
-    gap: 14px;
-    padding-top: 30px;
+    gap: 10px;
+    padding-top: 20px;
+    padding-bottom: 30px;
     text-align: center;
   }
 

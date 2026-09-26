@@ -62,6 +62,7 @@ import { tripSyncRecoveryPath } from "@/lib/easyt/trip-continuity";
 import {
   itineraryDayLegs,
   itineraryDayMapContext,
+  itineraryDayMiniMapContext,
   itineraryDayMapSelection,
   itinerarySuggestionCandidates,
   type ItineraryDiscoveryPlace,
@@ -533,6 +534,7 @@ export default function TripItineraryWorkspace({
   const [plannerDrag, setPlannerDrag] = useState<PlannerDragItem | null>(null);
   const plannerDragRef = useRef<PlannerDragItem | null>(null);
   const [nativePlannerDrag, setNativePlannerDrag] = useState(false);
+  const [compactDayMap, setCompactDayMap] = useState(false);
   const [openSavedPickerId, setOpenSavedPickerId] = useState<string | null>(null);
   const [plannerError, setPlannerError] = useState("");
   const [notice, setNotice] = useState<string | null>(null);
@@ -578,6 +580,14 @@ export default function TripItineraryWorkspace({
   useEffect(() => {
     const query = window.matchMedia("(hover: hover) and (pointer: fine)");
     const update = () => setNativePlannerDrag(query.matches);
+    update();
+    query.addEventListener("change", update);
+    return () => query.removeEventListener("change", update);
+  }, []);
+
+  useEffect(() => {
+    const query = window.matchMedia("(max-width: 760px)");
+    const update = () => setCompactDayMap(query.matches);
     update();
     query.addEventListener("change", update);
     return () => query.removeEventListener("change", update);
@@ -686,6 +696,11 @@ export default function TripItineraryWorkspace({
     () => active && dayMapContext ? itineraryDayMapSelection(dayMapContext, active, mapSelectionItemId) : null,
     [active, dayMapContext, mapSelectionItemId],
   );
+  const miniMapContext = useMemo(
+    () => active && mapContext ? itineraryDayMiniMapContext(mapContext, active) : null,
+    [active, mapContext],
+  );
+  const embeddedMapContext = compactDayMap ? miniMapContext : mapContext;
   const interactiveMapPinIds = useMemo(() => {
     if (!active || !dayComposition) return [];
     const activities = [...itineraryDayParts.flatMap((part) => dayComposition.planned[part]), ...dayComposition.unslotted];
@@ -1570,23 +1585,24 @@ export default function TripItineraryWorkspace({
           } : undefined}
         /> : null}
         {workspaceView === "days" ? <div className={styles.contextRailBody} hidden={Boolean(selectedDetail || selectedTransportAgenda || selectedBooking)}>
-        {mapContext.stops.length || mapContext.pins.length ? <details className={styles.contextSection} open>
+        {embeddedMapContext && (embeddedMapContext.stops.length || embeddedMapContext.pins.length) ? <details className={styles.contextSection} open>
           <summary><span>{copy.dayMap}</span><MapPin aria-hidden="true" /></summary>
           <div className={styles.mapPreview}>
             {!selectedDetail ? <JourneyPlannerMap
-              stops={mapContext.stops}
-              legs={mapContext.legs}
-              selectedId={mapContext.selectedStopId}
-              selectedLegId={mapContext.selectedLegId}
-              plannerPins={mapContext.pins}
-              selectedPlannerPinId={mapContext.selectedPlannerPinId}
+              stops={embeddedMapContext.stops}
+              legs={embeddedMapContext.legs}
+              selectedId={embeddedMapContext.selectedStopId}
+              selectedLegId={embeddedMapContext.selectedLegId}
+              plannerPins={embeddedMapContext.pins}
+              selectedPlannerPinId={embeddedMapContext.selectedPlannerPinId}
               interactivePlannerPinIds={interactiveMapPinIds}
               stopSelectionEnabled={false}
-              focusCoordinates={mapContext.focusCoordinates}
+              focusCoordinates={embeddedMapContext.focusCoordinates}
+              cameraFitCoordinates={compactDayMap && !embeddedMapContext.selectedPlannerPinId ? embeddedMapContext.fitCoordinates : undefined}
               focusZoom={12}
               draftPinCoordinates={null}
               pinPlacementMode={false}
-              overviewMode={mapContext.stops.length > 1}
+              overviewMode={embeddedMapContext.stops.length > 1}
               surface={{ variant: "embedded", interaction: "selection-only" }}
               previewLabel={`${copy.mapPreview}: ${stop?.name ?? active.title}`}
               cameraSafeEdge={24}

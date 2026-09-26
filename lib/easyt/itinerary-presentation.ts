@@ -1,6 +1,9 @@
 import type { EasyTTrip, PlanItem, TripLeg } from "./trip.ts";
 import { originPlaceFromBrief, sameJourneyPlace } from "./journey-endpoints.ts";
 import { routeEndpointForLeg } from "./trip-legs.ts";
+import { legacyGeneratedDayContext } from "./itinerary-generated-context.ts";
+
+export { legacyGeneratedDayContext } from "./itinerary-generated-context.ts";
 
 function normalized(value: string) {
   return value.trim().replace(/\s+/g, " ").toLocaleLowerCase();
@@ -75,18 +78,20 @@ function generatedSamePlaceMovementRows(
 
 /** Keeps the canonical note index available to direct itinerary mutations. */
 export function itineraryNotesWithSourceIndexesForDisplay(
-  day: Pick<PlanItem, "id" | "notes">,
+  day: Pick<PlanItem, "id" | "notes"> & Partial<Pick<PlanItem, "type" | "title" | "reason" | "contextNotes">>,
   leg: TripLeg | null,
   trip: Pick<EasyTTrip, "stops"> & Partial<Pick<EasyTTrip, "brief" | "planItems">>,
 ) {
+  const legacyContext = legacyGeneratedDayContext(day).sourceIndexes;
   if (!leg) {
     const suppressed = generatedSamePlaceMovementRows(day, leg, trip);
-    return day.notes.map((note, sourceIndex) => ({ note, sourceIndex })).filter(({ sourceIndex }) => !suppressed.has(sourceIndex));
+    return day.notes.map((note, sourceIndex) => ({ note, sourceIndex })).filter(({ sourceIndex }) => !suppressed.has(sourceIndex) && !legacyContext.has(sourceIndex));
   }
   const from = leg.fromEndpoint?.name ?? trip.stops.find((stop) => stop.id === leg.fromStopId)?.name;
   const to = leg.toEndpoint?.name ?? trip.stops.find((stop) => stop.id === leg.toStopId)?.name;
   const route = from && to ? normalized(`${from} → ${to}`) : null;
-  return day.notes.map((note, sourceIndex) => ({ note, sourceIndex })).filter(({ note }) => {
+  return day.notes.map((note, sourceIndex) => ({ note, sourceIndex })).filter(({ note, sourceIndex }) => {
+    if (legacyContext.has(sourceIndex)) return false;
     const value = normalized(note);
     if (route && value === route) return false;
     if (value.startsWith("estimated door-to-door:") || value.startsWith("morrovia planning estimate:")) return false;

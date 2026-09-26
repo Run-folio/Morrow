@@ -51,7 +51,9 @@ test("Itinerary uses Map's recovery, queue, CAS, and canonical cache pipeline", 
 
 test("Itinerary map pins keep canonical item selection without capture workarounds", () => {
   assert.match(workspace, /surface=\{\{ variant: "embedded", interaction: "selection-only" \}\}/);
-  assert.match(workspace, /selectedPlannerPinId=\{mapContext\.selectedPlannerPinId\}/);
+  assert.match(workspace, /itineraryDayMiniMapContext\(mapContext, active\)/);
+  assert.match(workspace, /compactDayMap \? miniMapContext : mapContext/);
+  assert.match(workspace, /selectedPlannerPinId=\{embeddedMapContext\.selectedPlannerPinId\}/);
   assert.match(workspace, /interactivePlannerPinIds=\{interactiveMapPinIds\}/);
   assert.match(workspace, /if \(activity\) setSelectedItemId\(activity\.id\)/);
   assert.doesNotMatch(workspace, /selectPreviewPin|onPointerDownCapture|onMouseDownCapture|onClickCapture/);

@@ -49,6 +49,8 @@ type JourneyPlannerMapProps = {
   selectedMapResult?: MapResultPlace | null;
   focusOffset?: [number, number];
   focusZoom?: number;
+  /** Optional local bounds for an embedded map; the full route owns its usual camera. */
+  cameraFitCoordinates?: readonly [number, number][];
   focusCoordinates: [number, number] | null;
   draftPinCoordinates: [number, number] | null;
   pinPlacementMode: boolean;
@@ -103,6 +105,17 @@ function setRouteLinePaint(
 
 const overviewMaxZoom = 5.2;
 const emptyComparisonLegs: readonly MapRouteLeg[] = [];
+const embeddedPinClearance = 14;
+
+function fitInsetsForPins(map: maplibregl.Map, safe: number, occlusions?: Partial<MorroviaMapInsets>) {
+  const insets = resolvedCameraInsets(map, safe, occlusions);
+  return {
+    top: insets.top + embeddedPinClearance,
+    right: insets.right + embeddedPinClearance,
+    bottom: insets.bottom + embeddedPinClearance,
+    left: insets.left + embeddedPinClearance,
+  };
+}
 
 
 export function JourneyPlannerMap({
@@ -125,6 +138,7 @@ export function JourneyPlannerMap({
   selectedMapResult = null,
   focusOffset,
   focusZoom,
+  cameraFitCoordinates,
   focusCoordinates,
   draftPinCoordinates,
   pinPlacementMode,
@@ -216,6 +230,7 @@ export function JourneyPlannerMap({
   }, [legs, stops]);
   const comparisonRouteKey = comparisonLegs.map((leg) => `${leg.id}:${leg.fromCoordinates.join(",")}:${leg.toCoordinates.join(",")}`).join("|");
   const overviewRouteKey = stops.map((stop) => `${stop.id}:${stop.coordinates?.join(",") ?? "unmapped"}`).join("|");
+  const cameraFitKey = cameraFitCoordinates?.map((point) => point.join(",")).join("|") ?? "";
   const previewResultKey = mapResults.map((result) => `${result.selectionId}:${result.coordinates.join(",")}`).join("|");
   const cameraOcclusionKey = `${cameraSafeEdge}:${cameraOcclusions?.top ?? 0}:${cameraOcclusions?.right ?? 0}:${cameraOcclusions?.bottom ?? 0}:${cameraOcclusions?.left ?? 0}`;
   const selectedStop = stops.find((stop) => stop.id === selectedId && stop.coordinates);
@@ -230,6 +245,8 @@ export function JourneyPlannerMap({
     ? null
     : selectedLegTarget
       ? `leg:${selectedLegTarget.id}:${selectedLegTarget.coordinates.map((coordinate) => coordinate.join(",")).join(";")}`
+      : cameraFitCoordinates && cameraFitCoordinates.length > 1
+      ? `fit:${cameraFitKey}`
       : overviewMode
       ? `overview:${overviewRouteKey}`
       : selectedResult
@@ -580,6 +597,15 @@ export function JourneyPlannerMap({
             ),
             true,
           );
+        } else if (cameraFitCoordinates && cameraFitCoordinates.length > 1) {
+          const bounds = cameraFitCoordinates.slice(1).reduce(
+            (result, coordinates) => result.extend(coordinates),
+            new maplibregl.LngLatBounds(cameraFitCoordinates[0], cameraFitCoordinates[0]),
+          );
+          fitMapCamera(map as unknown as MapCamera, bounds, {
+            padding: fitInsetsForPins(map, cameraSafeEdge, cameraOcclusions),
+            maxZoom: focusZoom ?? 14,
+          }, true);
         } else if (overviewMode && !focusCoordinates && overviewCoordinates.length > 1) {
           const bounds = overviewCoordinates.slice(1).reduce(
             (result, coordinates) => result.extend(coordinates),
@@ -622,7 +648,7 @@ export function JourneyPlannerMap({
         map.off("mouseleave", "trip-route-hit", leaveRoute);
       }
     };
-  }, [basemapStyleRevision, cameraFrameKey, cameraOcclusionKey, cameraOcclusions, cameraRequestKey, cameraSafeEdge, comparisonLegs, comparisonRouteKey, domainSelection, focusOffset, focusZoom, overviewMode, pinPlacementMode, presentationOnly, routeFocusKey, routeSelectionKey, selectedId, selectedLegTarget, spatialLegs, stops]);
+  }, [basemapStyleRevision, cameraFitCoordinates, cameraFrameKey, cameraOcclusionKey, cameraOcclusions, cameraRequestKey, cameraSafeEdge, comparisonLegs, comparisonRouteKey, domainSelection, focusOffset, focusZoom, overviewMode, pinPlacementMode, presentationOnly, routeFocusKey, routeSelectionKey, selectedId, selectedLegTarget, spatialLegs, stops]);
 
   useEffect(() => {
     const map = mapRef.current;
@@ -906,6 +932,17 @@ export function JourneyPlannerMap({
       );
       return;
     }
+    if (cameraFitCoordinates && cameraFitCoordinates.length > 1) {
+      const bounds = cameraFitCoordinates.slice(1).reduce(
+        (result, coordinates) => result.extend(coordinates),
+        new maplibregl.LngLatBounds(cameraFitCoordinates[0], cameraFitCoordinates[0]),
+      );
+      fitMapCamera(map as unknown as MapCamera, bounds, {
+        padding: fitInsetsForPins(map, cameraSafeEdge, cameraOcclusions),
+        maxZoom: focusZoom ?? 14,
+      });
+      return;
+    }
     if (overviewMode) {
       const mappedStops = stops.filter((stop): stop is JourneyStop & { coordinates: [number, number] } => Boolean(stop.coordinates));
       if (mappedStops.length < 2) return;
@@ -927,7 +964,7 @@ export function JourneyPlannerMap({
       ? Math.max(map.getZoom(), 14)
       : focusZoom ?? Math.max(map.getZoom(), 11);
     focusMapCamera(map as unknown as MapCamera, { center: target, zoom, offset });
-  }, [cameraFrameKey, cameraOcclusionKey, cameraOcclusions, cameraRequestKey, cameraSafeEdge, focusCoordinates, focusOffset, focusZoom, overviewMode, selectedLegTarget, selectedResult, selectedStop, stops]);
+  }, [cameraFitCoordinates, cameraFrameKey, cameraOcclusionKey, cameraOcclusions, cameraRequestKey, cameraSafeEdge, focusCoordinates, focusOffset, focusZoom, overviewMode, selectedLegTarget, selectedResult, selectedStop, stops]);
 
   useEffect(() => {
     const map = mapRef.current;

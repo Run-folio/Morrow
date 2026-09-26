@@ -10,11 +10,12 @@ import {
   scheduleItineraryIdea,
 } from "../lib/easyt/itinerary-ideas.ts";
 import { assignItineraryActivityDayPart } from "../lib/easyt/itinerary-mutations.ts";
+import { buildCredibleItinerary } from "../lib/easyt/planner.ts";
 import { reconcileAuthoredDayState } from "../lib/easyt/trip-authored-day-state.ts";
 import { canonicalTripForOwner, duplicateTripDocument } from "../lib/easyt/trip-promotion.ts";
 import { replanTripAfterDayOrder } from "../lib/easyt/trip-replan.ts";
-import { loadLocalTripFromStorage, saveTripRecoveryToStorage, type EasyTBrowserStorage } from "../lib/easyt/storage.ts";
-import { defaultTripIntent, type EasyTTrip, type PlanItem } from "../lib/easyt/trip.ts";
+import { cacheCanonicalTripToStorage, loadCachedTripFromStorage, loadLocalTripFromStorage, saveTripRecoveryToStorage, type EasyTBrowserStorage } from "../lib/easyt/storage.ts";
+import { defaultTripIntent, tripFromBuilder, type EasyTTrip, type PlanItem } from "../lib/easyt/trip.ts";
 
 class MemoryStorage implements EasyTBrowserStorage {
   private readonly values = new Map<string, string>();
@@ -32,6 +33,63 @@ class FailingStorage implements EasyTBrowserStorage {
   removeItem() {}
   key() { return null; }
 }
+
+test("generated Botanical Garden description remains day context through persistence, not an activity", () => {
+  const description = "Akureyri Botanical Garden offers a quiet walk among northern plants and mountain views, with time to pause before exploring the town.";
+  const stop = { id: "akureyri", name: "Akureyri", country: "Iceland", coordinates: [-18.0907, 65.6885] as [number, number] };
+  const draft = buildCredibleItinerary({
+    origin: "London", stops: [stop], startDate: "2026-10-01",
+    allocations: { akureyri: 2 }, picks: { akureyri: ["Akureyri Botanical Garden"] },
+    places: { akureyri: [{ title: "Akureyri Botanical Garden", area: "Akureyri", type: "Nature", cost: 0, tags: ["Nature"], description, coordinates: [-18.101, 65.677] }] },
+  });
+  const trip = tripFromBuilder({ id: "botanical-garden-trip", origin: "London", stops: [stop], startDate: "2026-10-01", endDate: "2026-10-02", picks: { akureyri: ["Akureyri Botanical Garden"] }, mustDo: "", pace: "slow", hotels: "few", budget: "mid", draft });
+  const day = trip.planItems[1]!;
+  assert.deepEqual(day.notes, ["Akureyri Botanical Garden"]);
+  assert.ok(day.contextNotes?.includes(description));
+  const composition = composeItineraryDay(trip, day.id)!;
+  assert.deepEqual([...Object.values(composition.planned).flat(), ...composition.unslotted].map((activity) => [activity.title, activity.source]), [["Akureyri Botanical Garden", "generated-activity"]]);
+  assert.ok(composition.context.notes.includes(description));
+
+  const storage = new MemoryStorage();
+  assert.equal(saveTripRecoveryToStorage(storage, trip, { ownerId: null, writeId: "botanical-garden-write" }).stored, true);
+  const reloaded = loadLocalTripFromStorage(storage, trip.id, null)!;
+  const reloadedDay = reloaded.planItems.find((item) => item.dayNumber === 2)!;
+  assert.deepEqual(reloadedDay.notes, ["Akureyri Botanical Garden"]);
+  assert.ok(reloadedDay.contextNotes?.includes(description));
+  assert.deepEqual([...Object.values(composeItineraryDay(reloaded, reloadedDay.id)!.planned).flat(), ...composeItineraryDay(reloaded, reloadedDay.id)!.unslotted].map((activity) => activity.title), ["Akureyri Botanical Garden"]);
+});
+
+test("older generated Botanical Garden prose remains context after reload without hiding authored notes", () => {
+  const description = "Akureyri Botanical Garden offers a quiet walk among northern plants and mountain views, with time to pause before exploring the town.";
+  const stop = { id: "akureyri", name: "Akureyri", country: "Iceland", coordinates: [-18.0907, 65.6885] as [number, number] };
+  const draft = buildCredibleItinerary({
+    origin: "London", stops: [stop], startDate: "2026-10-01",
+    allocations: { akureyri: 2 }, picks: { akureyri: ["Akureyri Botanical Garden"] },
+    places: { akureyri: [{ title: "Akureyri Botanical Garden", area: "Akureyri", type: "Nature", cost: 0, tags: ["Nature"], description, coordinates: [-18.101, 65.677] }] },
+  });
+  const source = tripFromBuilder({ id: "legacy-botanical-trip", origin: "London", stops: [stop], startDate: "2026-10-01", endDate: "2026-10-02", picks: { akureyri: ["Akureyri Botanical Garden"] }, mustDo: "", pace: "slow", hotels: "few", budget: "mid", draft });
+  const legacy = { ...source, planItems: source.planItems.map((item) => item.dayNumber === 2 ? {
+    ...item, contextNotes: undefined,
+    notes: ["Akureyri Botanical Garden", description, "Leave the final part of the day open for a local meal or a nearby walk.", "Coffee in town"],
+  } : item) };
+  const storage = new MemoryStorage();
+  assert.equal(saveTripRecoveryToStorage(storage, legacy, { ownerId: null, writeId: "legacy-botanical-write" }).stored, true);
+  const reloaded = loadLocalTripFromStorage(storage, legacy.id, null)!;
+  const reloadedDay = reloaded.planItems[1]!;
+  assert.deepEqual(reloadedDay.notes, ["Akureyri Botanical Garden", "Coffee in town"]);
+  assert.ok(reloadedDay.contextNotes?.includes(description));
+  const composition = composeItineraryDay(reloaded, reloadedDay.id)!;
+  const activities = [...Object.values(composition.planned).flat(), ...composition.unslotted];
+  assert.deepEqual(activities.map((activity) => activity.title), ["Akureyri Botanical Garden", "Coffee in town"]);
+  assert.ok(composition.context.notes.includes(description));
+  assert.equal(activities.some((activity) => activity.title === description), false);
+
+  const cacheStorage = new MemoryStorage();
+  assert.equal(cacheCanonicalTripToStorage(cacheStorage, legacy), true);
+  const cachedDay = loadCachedTripFromStorage(cacheStorage, legacy.id, null)!.planItems[1]!;
+  assert.deepEqual(cachedDay.notes, ["Akureyri Botanical Garden", "Coffee in town"]);
+  assert.ok(cachedDay.contextNotes?.includes(description));
+});
 
 function day(id: string, stopId: string, dayNumber: number, date: string, notes: string[] = []): PlanItem {
   return {

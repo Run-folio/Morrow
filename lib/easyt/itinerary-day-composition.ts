@@ -1,6 +1,7 @@
 import { stayBookingForStop } from "./accommodation.ts";
 import { itineraryActivityProtection } from "./itinerary-mutations.ts";
 import { itineraryNotesWithSourceIndexesForDisplay } from "./itinerary-presentation.ts";
+import { legacyGeneratedDayContext } from "./itinerary-generated-context.ts";
 import { mappedPlacePinId } from "./map-place-itinerary.ts";
 import {
   incomingLegForPlanItem,
@@ -25,7 +26,7 @@ export type ComposedItineraryActivity = {
   title: string;
   category: "restaurant" | "activity" | "other";
   booking: TripBooking | null;
-  source: "itinerary-idea" | "authored-activity" | "day-note";
+  source: "itinerary-idea" | "authored-activity" | "generated-activity" | "day-note";
   /** Null is a deliberate "planned, time not set" state. */
   dayPart: ItineraryDayPart | null;
   noteIndex: number | null;
@@ -72,6 +73,7 @@ export type ItineraryDayComposition = {
     destination: string;
     stopId: string;
     travelDay: boolean;
+    notes: string[];
   };
   transfers: ComposedItineraryTransfer[];
   planned: Record<ItineraryDayPart, ComposedItineraryActivity[]>;
@@ -189,11 +191,13 @@ export function composeItineraryDay(trip: EasyTTrip, dayId: string): ItineraryDa
     return result;
   }, new Map());
   const rows = itineraryNotesWithSourceIndexesForDisplay(day, incoming, trip);
+  const legacyContext = legacyGeneratedDayContext(day);
   type ActivityDraft = Omit<ComposedItineraryActivity, "dayPart"> & { explicitPart: ItineraryDayPart | null };
   const drafts: ActivityDraft[] = rows.map(({ note, sourceIndex }) => {
     const ideaQueue = ideasByTitle.get(normalized(note));
     const idea = ideaQueue?.shift();
     const protection = itineraryActivityProtection(trip, { dayNumber: day.dayNumber, noteIndex: sourceIndex, title: note });
+    const generatedActivity = day.type === "activity" && Boolean(day.contextNotes?.length || legacyContext.notes.length);
     const booking = (trip.brief.bookings ?? []).find((candidate) => normalized(candidate.title) === normalized(note)) ?? null;
     const explicitPart = idea?.dayPart ?? day.noteDayParts?.[sourceIndex] ?? null;
     return {
@@ -201,9 +205,9 @@ export function composeItineraryDay(trip: EasyTTrip, dayId: string): ItineraryDa
       // A provider/canonical place name wins; otherwise preserve the authored row.
       // Description/body copy is never promoted into the title slot.
       title: idea?.title ?? note,
-      category: idea?.category ?? (day.type === "food" ? "restaurant" as const : "other" as const),
+      category: idea?.category ?? (day.type === "food" ? "restaurant" as const : generatedActivity ? "activity" as const : "other" as const),
       booking,
-      source: idea ? "itinerary-idea" as const : protection.editable ? "authored-activity" as const : "day-note" as const,
+      source: idea ? "itinerary-idea" as const : protection.editable ? "authored-activity" as const : generatedActivity ? "generated-activity" as const : "day-note" as const,
       explicitPart,
       noteIndex: sourceIndex,
       dayPartEditable: !booking && (Boolean(idea) || protection.editable),
@@ -275,6 +279,7 @@ export function composeItineraryDay(trip: EasyTTrip, dayId: string): ItineraryDa
       destination: stop?.name ?? day.title,
       stopId: day.stopId,
       travelDay: transfers.length > 0,
+      notes: [...(day.contextNotes ?? []), ...legacyContext.notes],
     },
     transfers,
     planned,

@@ -29,6 +29,7 @@ export type ItineraryDayMapContext = {
   selectedLegId: string | null;
   selectedPlannerPinId: string | null;
   focusCoordinates: [number, number] | null;
+  fitCoordinates?: [number, number][];
 };
 
 const normalized = (value: string) => value.trim().replace(/\s+/g, " ").toLocaleLowerCase();
@@ -210,6 +211,25 @@ export function itineraryDayMapContext(
     selectedPlannerPinId: null,
     focusCoordinates: stops.length <= 1 && validCoordinates(baseCoordinates) ? baseCoordinates : null,
   }, day, selectedItemId);
+}
+
+/** Keep the embedded day map local when activity pins would compete with transfer geography. */
+export function itineraryDayMiniMapContext(context: ItineraryDayMapContext, day: PlanItem): ItineraryDayMapContext {
+  if (day.type !== "activity" && context.pins.length <= 1) return context;
+  const currentStop = context.stops.find((stop) => stop.id === day.stopId);
+  if (!currentStop) return context;
+  const coordinates = [currentStop.coordinates, ...context.pins.map((pin) => [pin.longitude, pin.latitude] as [number, number])]
+    .filter(validCoordinates);
+  const distinctCoordinates = [...new Map(coordinates.map((point) => [point.join(","), point])).values()];
+  return {
+    ...context,
+    stops: [currentStop],
+    legs: [],
+    selectedStopId: currentStop.id,
+    selectedLegId: null,
+    focusCoordinates: context.selectedPlannerPinId ? context.focusCoordinates : null,
+    fitCoordinates: distinctCoordinates.length > 1 ? distinctCoordinates : undefined,
+  };
 }
 
 /**

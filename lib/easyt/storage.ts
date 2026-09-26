@@ -1,4 +1,5 @@
 import { isEasyTTrip, tripIntentForTrip, type EasyTTrip } from "./trip.ts";
+import { normalizeLegacyGeneratedDayContext } from "./itinerary-generated-context.ts";
 import {
   canonicalTripRevisionCanReplace,
   EasyTTripSaveConflictError,
@@ -403,6 +404,7 @@ function listTripRecoveryVersionsFromStorage(
     .filter((value): value is TripRecoveryRecord => isTripRecoveryRecord(value)
       && value.ownerId === ownerId
       && value.tripId === tripId)
+    .map((record) => ({ ...record, trip: normalizeLegacyGeneratedDayContext(record.trip) }))
     .sort((left, right) => {
       const savedDifference = (Date.parse(right.savedAt) || 0) - (Date.parse(left.savedAt) || 0);
       return savedDifference || right.writeId.localeCompare(left.writeId);
@@ -446,7 +448,7 @@ export function loadCachedTripFromStorage(
   ownerId: string | null,
 ) {
   const parsed = parseStored(safeGet(storage, tripCacheStorageKey(ownerId, tripId)));
-  return isTripCacheRecord(parsed) && parsed.ownerId === ownerId && parsed.tripId === tripId ? parsed.trip : null;
+  return isTripCacheRecord(parsed) && parsed.ownerId === ownerId && parsed.tripId === tripId ? normalizeLegacyGeneratedDayContext(parsed.trip) : null;
 }
 
 export function listTripRecoveriesFromStorage(storage: EasyTBrowserStorage, ownerId: string | null) {
@@ -455,6 +457,7 @@ export function listTripRecoveriesFromStorage(storage: EasyTBrowserStorage, owne
     .filter((key) => key.startsWith(prefix))
     .map((key) => parseStored(safeGet(storage, key)))
     .filter((value): value is TripRecoveryRecord => isTripRecoveryRecord(value) && value.ownerId === ownerId)
+    .map((record) => ({ ...record, trip: normalizeLegacyGeneratedDayContext(record.trip) }))
     .sort((left, right) => (Date.parse(right.savedAt) || 0) - (Date.parse(left.savedAt) || 0));
   const newestByTrip = new Map<string, TripRecoveryRecord>();
   for (const record of records) {
@@ -469,6 +472,7 @@ function listCachedTripsFromStorage(storage: EasyTBrowserStorage, ownerId: strin
     .filter((key) => key.startsWith(prefix))
     .map((key) => parseStored(safeGet(storage, key)))
     .filter((value): value is TripCacheRecord => isTripCacheRecord(value) && value.ownerId === ownerId)
+    .map((record) => ({ ...record, trip: normalizeLegacyGeneratedDayContext(record.trip) }))
     .sort((left, right) => (Date.parse(right.cachedAt) || 0) - (Date.parse(left.cachedAt) || 0));
 }
 
@@ -772,7 +776,7 @@ export function saveTripRecoveryToStorage(
 ): TripRecoveryWriteResult {
   const ownerId = options.ownerId === undefined ? trip.ownerId : options.ownerId;
   migrateLegacyTripFromStorage(storage, ownerId);
-  return writeTripRecoveryToStorage(storage, trip, options);
+  return writeTripRecoveryToStorage(storage, normalizeLegacyGeneratedDayContext(trip), options);
 }
 
 function writeCanonicalTripCacheToStorage(
@@ -780,6 +784,7 @@ function writeCanonicalTripCacheToStorage(
   trip: EasyTTrip,
   now = new Date().toISOString(),
 ) {
+  trip = normalizeLegacyGeneratedDayContext(trip);
   const ownerId = trip.ownerId;
   migrateLegacyTripFromStorage(storage, ownerId);
   const current = loadCachedTripFromStorage(storage, trip.id, ownerId);
@@ -1504,7 +1509,7 @@ async function loadTripFromEasyTResult(tripId: string): Promise<TripCloudLoadRes
   // A verified API response is safe to keep for an offline reopen. This clean
   // cache write never touches a pending recovery for the same owner and trip.
   cacheCanonicalTrip(payload.trip);
-  return { kind: "found", trip: payload.trip };
+  return { kind: "found", trip: normalizeLegacyGeneratedDayContext(payload.trip) };
 }
 
 export async function loadTripFromEasyT(tripId: string): Promise<EasyTTrip | null> {

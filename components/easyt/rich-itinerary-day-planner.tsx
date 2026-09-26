@@ -481,10 +481,10 @@ export default function RichItineraryDayPlanner({
         </section>
       ) : null}
 
-      {contextNotes.length ? <details className={styles.contextNotes}>
-        <summary>{language === "es" ? "Contexto y notas del día" : "Day context and notes"} ({contextNotes.length})</summary>
+      {contextNotes.length || composition.context.notes.length ? <details className={styles.contextNotes}>
+        <summary>{language === "es" ? "Contexto y notas del día" : "Day context and notes"} ({contextNotes.length + composition.context.notes.length})</summary>
         <p>{language === "es" ? "Contexto conservado, no actividades programadas." : "Retained day context, not separately scheduled activities."}</p>
-        <ul>{contextNotes.map((note) => <li key={note.id}>{note.title}</li>)}</ul>
+        <ul>{composition.context.notes.map((note, index) => <li key={`${composition.day.id}-context-${index}`}>{note}</li>)}{contextNotes.map((note) => <li key={note.id}>{note.title}</li>)}</ul>
       </details> : null}
 
       {showTonight ? <section className={`${styles.tonight} ${selectedTonight ? styles.tonightSelected : ""}`} aria-labelledby={`${titleId}-tonight`}>
