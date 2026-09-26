@@ -81,6 +81,13 @@ test("mobile hides pointer drag without removing the explicit scheduling and reo
   assert.match(component, /onMoveActivity\(activity, "later"\)/);
 });
 
+test("mobile empty dayparts compress without hiding their add actions", () => {
+  assert.match(component, /data-empty=\{activities\.length === 0\}/);
+  assert.match(component, /aria-label=\{`\$\{copy\.addActivity\}.*dayPartLabels/);
+  assert.match(styles, /@media \(max-width: 680px\)[\s\S]*\.periodGrid:has\(\.period\[data-empty="true"\]\)[\s\S]*grid-template-columns: repeat\(2, minmax\(0, 1fr\)\)/);
+  assert.match(styles, /\.period\[data-empty="true"\][\s\S]*grid-column: span 2/);
+});
+
 test("compact empty periods, contextual add controls, first-class travel, and tonight context stay distinct", () => {
   assert.doesNotMatch(component, /No activity is set for this part of the day|copy\.freeDetail/);
   assert.match(component, /Add something/);

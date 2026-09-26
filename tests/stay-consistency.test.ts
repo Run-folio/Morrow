@@ -57,6 +57,16 @@ test("property detail and Choose stay are distinct semantic buttons using canoni
   assert.match(stayStyles, /\.cardActions[\s\S]*z-index: 2;/);
 });
 
+test("Stay cards omit the media region when no useful property image exists", () => {
+  assert.match(stay, /const imageSource = place\.image \?\? photos\[place\.id\]\?\.src/);
+  assert.match(stay, /const hasImage = Boolean\(imageSource && unavailablePhotoSources\[place\.id\] !== imageSource\)/);
+  assert.match(stay, /\{hasImage \? <div className=\{styles\.cardMedia\}/);
+  assert.match(stay, /onError=\{\(\) => setUnavailablePhotoSources/);
+  assert.match(stay, /className=\{`\$\{styles\.card\}[\s\S]*styles\.cardNoMedia/);
+  assert.match(stayStyles, /\.cardNoMedia/);
+  assert.match(stories, /BookingOnlyNoImageProperty/);
+});
+
 test("Stay map is a projection of the current finder shortlist with one selection owner", () => {
   assert.match(stay, /finder\.candidates\.map\(\(place\) => mapResultForLocalPlace/);
   assert.match(stay, /mapResults=\{mapResults\}/);
@@ -154,7 +164,7 @@ test("Google photo retrieval is server-side, no-store, bounded, and outside firs
 });
 
 test("image fallbacks and provider boundaries never borrow unrelated hotel media", () => {
-  assert.match(stay, /No sourced property image/);
+  assert.doesNotMatch(stay, /No sourced property image/);
   assert.match(photoClient, /place\.provider === "google-places"/);
   assert.match(photoClient, /query\.set\("placeId", place\.providerProductId\)/);
   assert.match(photoClient, /query\.set\("name", place\.name\)/);

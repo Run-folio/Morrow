@@ -92,6 +92,7 @@
 .card:hover { border-color: color-mix(in srgb, var(--morrovia-action) 44%, var(--morrovia-line)); }
 .card:focus-within { box-shadow: var(--morrovia-focus-shadow); }
 .cardSelected { border-color: var(--morrovia-signal); outline: 2px solid color-mix(in srgb, var(--morrovia-signal) 14%, transparent); outline-offset: -3px; }
+.cardNoMedia > .chosenBadge { position: relative; top: auto; right: auto; align-self: flex-start; margin: 12px 12px 0; }
 
 .cardMedia {
   position: relative;
@@ -244,8 +245,10 @@
   .layout { grid-template-columns: minmax(0, 1fr) minmax(280px, 320px); }
   .grid, .loading > div:last-child { grid-template-columns: minmax(0, 1fr); }
   .card { display: grid; grid-template-columns: minmax(170px, 34%) minmax(0, 1fr); }
+  .cardNoMedia { grid-template-columns: minmax(0, 1fr); }
   .cardMedia { height: 100%; min-height: 230px; }
   .cardActions { grid-column: 2; }
+  .cardNoMedia .cardActions { grid-column: 1; }
   .cardOpen { inset: 0 0 0 0; }
   .cardActions ~ .cardOpen { inset-block-end: 0; }
   .cardActions { align-self: end; }

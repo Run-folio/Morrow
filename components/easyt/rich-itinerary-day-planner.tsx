@@ -352,6 +352,7 @@ export default function RichItineraryDayPlanner({
               data-day-part={part}
               data-drop-zone={dragActive ? "ready" : undefined}
               aria-labelledby={headingId}
+              data-empty={activities.length === 0}
               key={part}
               onDragEnter={(event) => { event.preventDefault(); if (dragActive) setDropTarget(`${part}:${activities.length}`); }}
               onDragOver={(event) => { if (onActivityDrop) event.preventDefault(); }}

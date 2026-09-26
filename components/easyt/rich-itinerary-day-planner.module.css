@@ -595,6 +595,29 @@
 }
 
 @media (max-width: 680px) {
+  .periodGrid:has(.period[data-empty="true"]) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .period[data-empty="false"] {
+    grid-column: span 2;
+  }
+
+  .period[data-empty="true"] .periodHeading {
+    padding: 8px 8px 0;
+    border-bottom: 0;
+  }
+
+  .period[data-empty="true"] .addHere {
+    padding: 0 4px 4px;
+  }
+
+  .period[data-empty="true"] .addHere > button,
+  .period[data-empty="true"] .addHere > a {
+    min-height: 44px;
+  }
+
   .freePeriod {
     min-height: 0;
   }

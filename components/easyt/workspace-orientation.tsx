@@ -2,6 +2,7 @@
 
 import { ArrowLeft, ArrowRight, Check, MoreHorizontal, X } from "lucide-react";
 import { usePathname } from "next/navigation";
+import { createPortal } from "react-dom";
 import {
   createContext,
   useCallback,
@@ -425,11 +426,25 @@ export function useWorkspaceOrientationBlocker(blocked: boolean) {
 export function WorkspaceOrientationLauncher({ onRenameTrip }: { onRenameTrip?: () => void } = {}) {
   const context = useContext(WorkspaceOrientationContext);
   const [open, setOpen] = useState(false);
+  const [menuPosition, setMenuPosition] = useState<CSSProperties>({});
   const buttonRef = useRef<HTMLButtonElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!open) return;
+    const positionMenu = () => {
+      const anchor = buttonRef.current?.getBoundingClientRect();
+      if (!anchor) return;
+      const width = Math.min(180, window.innerWidth - 16);
+      const left = Math.max(8, Math.min(window.innerWidth - width - 8, anchor.right - width));
+      const menuHeight = menuRef.current?.offsetHeight ?? 88;
+      const roomBelow = window.innerHeight - anchor.bottom;
+      const top = roomBelow >= menuHeight + 12
+        ? anchor.bottom + 6
+        : Math.max(8, anchor.top - menuHeight - 6);
+      setMenuPosition({ position: "fixed", top, left, width });
+    };
+    positionMenu();
     const close = (event: Event) => {
       if (menuRef.current?.contains(event.target as Node) || buttonRef.current?.contains(event.target as Node)) return;
       setOpen(false);
@@ -442,14 +457,21 @@ export function WorkspaceOrientationLauncher({ onRenameTrip }: { onRenameTrip?: 
     };
     document.addEventListener("pointerdown", close);
     document.addEventListener("keydown", key);
-    return () => { document.removeEventListener("pointerdown", close); document.removeEventListener("keydown", key); };
+    window.addEventListener("resize", positionMenu);
+    window.addEventListener("scroll", positionMenu, true);
+    return () => {
+      document.removeEventListener("pointerdown", close);
+      document.removeEventListener("keydown", key);
+      window.removeEventListener("resize", positionMenu);
+      window.removeEventListener("scroll", positionMenu, true);
+    };
   }, [open]);
 
   return <div className={styles.launcher} data-workspace-orientation-ui="true">
     <EasyTButton ref={buttonRef} icon={MoreHorizontal} size="small" variant="quiet" aria-haspopup="menu" aria-expanded={open} aria-controls="workspace-more-menu" onClick={() => setOpen((value) => !value)}>More</EasyTButton>
-    {open ? <div ref={menuRef} id="workspace-more-menu" role="menu" className={styles.menu}>
+    {open && typeof document !== "undefined" ? createPortal(<div ref={menuRef} id="workspace-more-menu" role="menu" className={styles.menu} style={menuPosition}>
       {onRenameTrip ? <EasyTButton role="menuitem" size="small" variant="quiet" onClick={() => { buttonRef.current?.focus(); setOpen(false); onRenameTrip(); }}>Rename trip</EasyTButton> : null}
       <EasyTButton role="menuitem" size="small" variant="quiet" disabled={!context?.canReplay} onClick={() => { setOpen(false); context?.replay(buttonRef.current); }}>Show me around</EasyTButton>
-    </div> : null}
+    </div>, document.body) : null}
   </div>;
 }

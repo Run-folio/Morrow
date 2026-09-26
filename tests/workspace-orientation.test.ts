@@ -59,6 +59,11 @@ test("5 dismissing an automatic guide remains seen across refresh or remount", (
 });
 
 test("6 manual replay remains available", () => assert.match(component, /Show me around/));
+test("6b More menu escapes the trip shell clipping boundary on narrow viewports", () => {
+  assert.match(component, /createPortal\([\s\S]*menuRef/);
+  assert.match(component, /getBoundingClientRect\(\)/);
+  assert.match(css, /\.menu \{[^}]*position: fixed/);
+});
 test("7 replay neither clears nor rewrites persisted state", () => {
   assert.match(component, /const replay = useCallback/);
   assert.doesNotMatch(component, /source === "replay"[\s\S]{0,120}(?:clearWorkspaceOrientation|writeWorkspaceOrientation)/);

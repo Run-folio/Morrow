@@ -1,6 +1,6 @@
 "use client";
 
-import { BedDouble, Check, Map as MapIcon, MapPin, Star } from "lucide-react";
+import { Check, Map as MapIcon, MapPin, Star } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { JourneyLocalFinder, type JourneyLocalFinderInitialState, type JourneyLocalFinderRenderState, type JourneyLocalPlace } from "@/components/journey-local-finder";
@@ -61,6 +61,7 @@ function StayFinderSurface({
 }) {
   const mutation = useTripShellMutation();
   const photos = useJourneyLocalPlacePhotos(finder.candidates);
+  const [unavailablePhotoSources, setUnavailablePhotoSources] = useState<Record<string, string>>({});
   const booking = stayBookingForStop(workingTrip, context.stop);
   const partnerAction = getCurrentPartnerAction("accommodation");
   const mapDayNumber = workingTrip.planItems.find((day) => day.stopId === context.stop.id)?.dayNumber ?? null;
@@ -152,11 +153,13 @@ function StayFinderSurface({
           const price = formattedPrice(place);
           const hasBookingFacts = hasBookingLiveInformation(place);
           const chooseKey = `stay-select-${context.stop.id}-${place.id}`;
-          return <article key={place.id} className={`${styles.card} ${isSelected ? styles.cardSelected : ""}`} aria-current={isSelected ? "true" : undefined}>
-            <div className={`${styles.cardMedia} ${place.image || photos[place.id] ? "" : styles.cardMediaFallback}`}>
-              <JourneyLocalPlacePhotoMedia place={place} photo={photos[place.id]} fallback={<><BedDouble aria-hidden="true" /><span>No sourced property image</span></>} />
+          const imageSource = place.image ?? photos[place.id]?.src;
+          const hasImage = Boolean(imageSource && unavailablePhotoSources[place.id] !== imageSource);
+          return <article key={place.id} className={`${styles.card} ${isSelected ? styles.cardSelected : ""} ${hasImage ? "" : styles.cardNoMedia}`} aria-current={isSelected ? "true" : undefined}>
+            {hasImage ? <div className={styles.cardMedia}>
+              <JourneyLocalPlacePhotoMedia place={place} photo={photos[place.id]} fallback={null} onError={() => setUnavailablePhotoSources((current) => ({ ...current, [place.id]: imageSource ?? "" }))} />
               {isChosen ? <span className={styles.chosenBadge}><Check aria-hidden="true" />Chosen</span> : null}
-            </div>
+            </div> : isChosen ? <span className={styles.chosenBadge}><Check aria-hidden="true" />Chosen</span> : null}
             <div className={styles.cardBody}>
               <div className={styles.cardCopy}>
                 <h4>{place.name}</h4>
