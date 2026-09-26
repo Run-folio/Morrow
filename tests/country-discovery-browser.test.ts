@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import { captureJourneyBrief } from '../lib/easyt/journey-capture.ts';
 import { createHomeTripDraft, handoffRouteStops, homepageSubmissionFingerprint, projectHomepageInput } from '../lib/easyt/home-trip-handoff.ts';
+import { tripFromBuilder } from '../lib/easyt/trip.ts';
 import type { CanonicalPlaceSuggestion, PlaceType } from '../lib/easyt/place-intelligence.ts';
 import { emptyHomepageInput } from './fixtures/homepage-dual-entry.ts';
 import { builderBrowserTestsEnabled, renderBuilder } from './helpers/builder-render.ts';
@@ -192,6 +193,134 @@ test('Japan Discovery handoff returns to the editable Builder surface', { skip: 
     assert.ok(committed, 'all three canonical choices must be saved exactly once before Discovery closes');
     assert.deepEqual(view.errors, []);
   } finally { await view.close(); }
+});
+
+test('Discovery handoff retains normal Builder controls and persists exercised edits', { skip: !builderBrowserTestsEnabled, timeout: 90_000 }, async () => {
+  const normalTrip = tripFromBuilder({
+    id: 'trip-builder-capability-baseline', origin: 'Madrid', originCountry: 'Spain', originCanonicalPlaceId: 'madrid', originCoordinates: [-3.7038, 40.4168],
+    journeyEnd: { mode: 'same_as_start' },
+    stops: [
+      { id: 'kanazawa', name: 'Kanazawa', country: 'Japan', canonicalPlaceId: 'kanazawa', coordinates: [136.6562, 36.5613] },
+      { id: 'kyoto', name: 'Kyoto', country: 'Japan', canonicalPlaceId: 'kyoto', coordinates: [135.7681, 35.0116] },
+      { id: 'osaka', name: 'Osaka', country: 'Japan', canonicalPlaceId: 'osaka', coordinates: [135.5023, 34.6937] },
+    ],
+    startDate: '2026-10-06', endDate: '2026-10-16', picks: {}, mustDo: 'Japan', pace: 'slow', hotels: 'few', budget: 'mid',
+    nightAllocations: { kanazawa: 3, kyoto: 5, osaka: 2 }, draft: [], status: 'planned',
+  });
+  const normal = await renderBuilder({ query: `?trip=${normalTrip.id}&recover=1`, initialTrip: normalTrip });
+  const discovery = await renderBuilder({ query: '?homeDraft=1', draft: homeDraft('Japan') });
+  await normal.page.setViewportSize({ width: 1440, height: 900 });
+  await discovery.page.setViewportSize({ width: 1440, height: 900 });
+  try {
+    const dialog = discovery.page.getByRole('dialog');
+    await dialog.getByRole('heading', { name: 'Explore places', exact: true }).waitFor();
+    for (const name of ['Kanazawa', 'Kyoto', 'Osaka']) {
+      await dialog.getByRole('button', { name: `Add to shortlist: ${name}` }).evaluate((button: HTMLButtonElement) => button.click());
+    }
+    await dialog.getByRole('button', { name: 'Add 3 places', exact: true }).evaluate((button: HTMLButtonElement) => button.click());
+    await discovery.page.waitForFunction(() => !document.querySelector('[role="dialog"]'));
+    await discovery.page.waitForTimeout(900);
+
+    const snapshot = async (page: typeof normal.page) => {
+      const route = page.locator('[data-builder-route-workspace]');
+      await route.waitFor();
+      await page.getByRole('combobox', { name: 'Starting from', exact: true }).waitFor({ state: 'visible' });
+      const base = {
+        addStop: await page.getByRole('button', { name: 'Add stop', exact: true }).isVisible(),
+        startingFrom: await page.getByRole('combobox', { name: 'Starting from', exact: true }).isVisible(),
+        journeyEnd: await page.getByRole('combobox', { name: 'Ending at', exact: true }).isVisible()
+          && await page.getByRole('button', { name: 'Same as start', exact: true }).isVisible(),
+        removeStop: await page.getByRole('button', { name: 'Remove Kanazawa', exact: true }).isVisible(),
+        dragReorder: await route.getByRole('button', { name: /^Reorder Kanazawa/ }).isVisible(),
+        nights: await route.getByRole('button', { name: /^Add one night to Kanazawa/ }).isVisible(),
+        rowOverflow: await route.getByRole('button', { name: 'Actions for Kanazawa', exact: true }).isVisible(),
+        mapSelection: await route.getByRole('button', { name: /Map stop/ }).first().isVisible(),
+        routeWorkspace: await route.isVisible(),
+        routeCheck: await page.getByText('ROUTE CHECK', { exact: true }).isVisible().catch(() => false),
+        earlierLater: false,
+        stopNames: await route.locator('[data-builder-stop-index]').allTextContents(),
+      };
+      const middleMenu = route.locator('summary[aria-label="Actions for Kyoto"]');
+      await middleMenu.click();
+      base.earlierLater = await route.getByRole('button', { name: 'Earlier', exact: true }).isVisible()
+        && await route.getByRole('button', { name: 'Later', exact: true }).isVisible();
+      await middleMenu.click();
+      return base;
+    };
+
+    const normalCapabilities = await snapshot(normal.page);
+    const normalRoute = normal.page.locator('[data-builder-route-workspace]');
+    await normalRoute.getByRole('button', { name: /^Add one night to Kanazawa/ }).click();
+    await normalRoute.getByRole('button', { name: /Add one night to Kanazawa; 4 nights currently/ }).waitFor();
+    await normal.page.waitForTimeout(900);
+    const normalPersisted = await normal.page.evaluate((tripId: string) => Object.values(localStorage).flatMap(raw => {
+      try { const record = JSON.parse(raw); return record.trip?.id === tripId ? [record] : []; } catch { return []; }
+    }).sort((left: { savedAt?: string }, right: { savedAt?: string }) => Date.parse(right.savedAt ?? '') - Date.parse(left.savedAt ?? ''))[0]?.trip,
+    normalTrip.id);
+    assert.equal(normalPersisted?.stops.find((stop: { canonicalPlaceId?: string }) => stop.canonicalPlaceId === 'kanazawa')?.nights, 4,
+      `normal Builder night edit persistence: ${JSON.stringify(normalPersisted?.stops.map((stop: { canonicalPlaceId?: string; nights?: number }) => [stop.canonicalPlaceId, stop.nights]))}`);
+    const discoveryCapabilities = await snapshot(discovery.page);
+    assert.deepEqual(discoveryCapabilities, normalCapabilities, 'Discovery and normal Builder must expose the same visible editing capabilities for equivalent stops');
+
+    const page = discovery.page;
+    const route = page.locator('[data-builder-route-workspace]');
+    const routeOrder = async () => route.locator('[data-builder-stop-index]').evaluateAll((rows: HTMLElement[]) =>
+      rows.map(row => row.querySelector('[role="cell"] strong')?.textContent?.trim() ?? ''));
+    await page.getByRole('button', { name: 'Add stop', exact: true }).click();
+    await page.getByRole('combobox', { name: 'Add a destination', exact: true }).waitFor({ state: 'visible' });
+    await page.getByRole('button', { name: 'Done adding stops', exact: true }).click();
+
+    const kyotoMenu = route.locator('summary[aria-label="Actions for Kyoto"]');
+    await kyotoMenu.click();
+    await route.getByRole('button', { name: 'Later', exact: true }).click();
+    assert.deepEqual(await routeOrder(), ['Kanazawa', 'Osaka', 'Kyoto']);
+    const earlier = route.getByRole('button', { name: 'Earlier', exact: true });
+    if (!await earlier.isVisible().catch(() => false)) await route.locator('summary[aria-label="Actions for Kyoto"]').click();
+    await earlier.click();
+    assert.deepEqual(await routeOrder(), ['Kanazawa', 'Kyoto', 'Osaka']);
+
+    const firstNight = route.getByRole('button', { name: /^Add one night to Kanazawa/ });
+    await firstNight.click();
+    await route.getByRole('button', { name: /Add one night to Kanazawa; 4 nights currently/ }).waitFor();
+
+    await route.getByRole('button', { name: 'Map stop Kyoto', exact: true }).click();
+    assert.equal(await route.locator('[data-builder-stop-index="1"]').getAttribute('aria-selected'), 'true', 'map leg selection selects its route stop');
+
+    assert.deepEqual(await routeOrder(), ['Kanazawa', 'Kyoto', 'Osaka']);
+    const dragGrip = route.getByRole('button', { name: 'Reorder Kyoto, stop 2' });
+    await dragGrip.dragTo(route.locator('[data-builder-stop-index="0"]'));
+    await page.waitForFunction(() => [...document.querySelectorAll('[data-builder-route-workspace] [data-builder-stop-index]')]
+      .map(row => row.querySelector('[role="cell"] strong')?.textContent?.trim()).join('|') === 'Kyoto|Kanazawa|Osaka');
+    assert.deepEqual(await routeOrder(), ['Kyoto', 'Kanazawa', 'Osaka']);
+    await page.waitForTimeout(900);
+
+    const savedTrip = await page.evaluate(() => Object.values(localStorage).flatMap(raw => {
+      try { const record = JSON.parse(raw); return record.trip ? [record] : []; } catch { return []; }
+    }).filter((record: { trip: { id?: string; stops?: Array<{ canonicalPlaceId?: string }> } }) =>
+      record.trip.id !== 'trip-builder-capability-baseline'
+        && record.trip.stops?.filter(stop => ['kanazawa', 'kyoto', 'osaka'].includes(stop.canonicalPlaceId ?? '')).length === 3)
+      .sort((left: { savedAt?: string }, right: { savedAt?: string }) => Date.parse(right.savedAt ?? '') - Date.parse(left.savedAt ?? ''))[0]?.trip);
+    assert.ok(savedTrip, 'the discovery-created canonical trip is saved before reload');
+    assert.equal(savedTrip.stops.find((stop: { canonicalPlaceId?: string }) => stop.canonicalPlaceId === 'kanazawa')?.nights, 4,
+      `persisted Discovery night allocation: ${JSON.stringify(savedTrip.stops.map((stop: { canonicalPlaceId?: string; nights?: number }) => [stop.canonicalPlaceId, stop.nights]))}`);
+    assert.deepEqual(savedTrip.stops.map((stop: { canonicalPlaceId?: string }) => stop.canonicalPlaceId), ['kyoto', 'kanazawa', 'osaka']);
+    await page.goto(`${new URL(page.url()).origin}/journey/new?trip=${savedTrip.id}&recover=1`);
+    await page.waitForFunction(() => Boolean(document.querySelector('[data-builder-route-workspace]')));
+    const reloadedRoute = page.locator('[data-builder-route-workspace]');
+    await page.getByRole('button', { name: /Add one night to Kanazawa; 4 nights currently/ }).waitFor({ timeout: 5_000 });
+    assert.deepEqual(await reloadedRoute.locator('[data-builder-stop-index]').evaluateAll((rows: HTMLElement[]) =>
+      rows.map(row => row.querySelector('[role="cell"] strong')?.textContent?.trim() ?? '')), ['Kyoto', 'Kanazawa', 'Osaka']);
+    await page.getByRole('button', { name: 'Remove Kanazawa', exact: true }).click();
+    await page.getByRole('dialog').getByRole('button', { name: 'Remove Kanazawa', exact: true }).click();
+    await page.waitForFunction(() => document.querySelectorAll('[data-builder-route-workspace] [data-builder-stop-index]').length === 2);
+    assert.deepEqual(await reloadedRoute.locator('[data-builder-stop-index]').evaluateAll((rows: HTMLElement[]) =>
+      rows.map(row => row.querySelector('[role="cell"] strong')?.textContent?.trim() ?? '')), ['Kyoto', 'Osaka']);
+    assert.deepEqual(discovery.errors, []);
+    assert.deepEqual(normal.errors, []);
+  } finally {
+    await normal.close();
+    await discovery.close();
+  }
 });
 
 for (const [intent, base] of [['Taj Mahal', 'Agra'], ['Lake Atitlán', 'Panajachel']] as const) test(`${intent} resolves through one supported base action and commits without a visible Review step`,
