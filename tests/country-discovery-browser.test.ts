@@ -8,11 +8,14 @@ import type { CanonicalPlaceSuggestion, PlaceType } from '../lib/easyt/place-int
 import { emptyHomepageInput } from './fixtures/homepage-dual-entry.ts';
 import { builderBrowserTestsEnabled, renderBuilder } from './helpers/builder-render.ts';
 
-const homeDraft = (destination: string) => {
-  const capture = captureJourneyBrief(`Starting from Madrid, 10 days in ${destination}`);
+const homeDraft = (destination: string, originName = 'Madrid') => {
+  const origin = originName === 'London'
+    ? { name: 'London', country: 'United Kingdom', canonicalPlaceId: 'london', coordinates: [-0.1276, 51.5072] as [number, number] }
+    : { name: 'Madrid', country: 'Spain', canonicalPlaceId: 'madrid', coordinates: [-3.7038, 40.4168] as [number, number] };
+  const capture = captureJourneyBrief(`Starting from ${origin.name}, 10 days in ${destination}`);
   const draft = createHomeTripDraft({ capture, handoffId: `discovery-${destination}`, datesExplicit: true,
     startDate: '2026-10-06', endDate: '2026-10-16', travellers: 2, travellersExplicit: true, interests: ['nature'],
-    origin: { name: 'Madrid', country: 'Spain', canonicalPlaceId: 'madrid', coordinates: [-3.7038, 40.4168] } });
+    origin });
   draft.destinations = handoffRouteStops(capture.mentions, capture.journeyEnd);
   return draft;
 };
@@ -321,6 +324,45 @@ test('Discovery handoff retains normal Builder controls and persists exercised e
     await normal.close();
     await discovery.close();
   }
+});
+
+for (const [country, clickOrder] of [
+  ['Australia', ['Airlie Beach', 'Sydney', 'Port Douglas']],
+  ['Japan', ['Osaka', 'Kanazawa', 'Kyoto']],
+] as const) test(`${country} Discovery commits place membership through the normal route-order owner`, { skip: !builderBrowserTestsEnabled, timeout: 90_000 }, async () => {
+  const view = await renderBuilder({ query: '?homeDraft=1', draft: homeDraft(country, 'London') });
+  const dialog = view.page.getByRole('dialog');
+  try {
+    await dialog.getByRole('heading', { name: country === 'Australia' ? 'Choose a direction' : 'Explore places' }).waitFor();
+    if (country === 'Australia') {
+      await dialog.getByRole('button', { name: 'Explore direction: East coast' }).click();
+      await dialog.getByRole('heading', { name: 'Explore places' }).waitFor();
+    }
+    for (const name of clickOrder) {
+      await dialog.getByRole('button', { name: `Add to shortlist: ${name}`, exact: true }).evaluate((button: HTMLButtonElement) => button.click());
+    }
+    await dialog.getByRole('button', { name: `Add ${clickOrder.length} places`, exact: true }).evaluate((button: HTMLButtonElement) => button.click());
+    await view.page.waitForFunction(() => !document.querySelector('[role="dialog"]'));
+    await view.page.waitForFunction(() => {
+      const rows = [...document.querySelectorAll('[data-builder-route-workspace] [data-builder-stop-index]')];
+      return rows.length === 3 && rows.every(row => row.querySelector('[role="cell"] strong')?.textContent?.trim());
+    });
+    const route = view.page.locator('[data-builder-route-workspace]');
+    const finalOrder = await route.locator('[data-builder-stop-index]').evaluateAll((rows: HTMLElement[]) =>
+      rows.map(row => row.querySelector('[role="cell"] strong')?.textContent?.trim() ?? ''));
+    assert.deepEqual([...finalOrder].sort(), [...clickOrder].sort(), 'all chosen places remain committed once');
+    assert.notDeepEqual(finalOrder, [...clickOrder], 'ordinary geography click order is membership, not route chronology');
+    assert.equal(await route.getByRole('button', { name: 'Add stop', exact: true }).isVisible()
+      || await view.page.getByRole('combobox', { name: 'Add a destination', exact: true }).isVisible(), true,
+    'the normal Builder add flow remains available');
+    assert.equal(new Set(finalOrder).size, 3, 'the route has no duplicate places');
+    const reorderHandle = route.getByRole('button', { name: new RegExp(`^Reorder ${finalOrder[1]}, stop`) });
+    await reorderHandle.dragTo(route.locator('[data-builder-stop-index="0"]'));
+    await view.page.waitForFunction((expected: string) =>
+      document.querySelector('[data-builder-route-workspace] [data-builder-stop-index] [role="cell"] strong')?.textContent?.trim() === expected,
+    finalOrder[1]);
+    assert.deepEqual(view.errors, []);
+  } finally { await view.close(); }
 });
 
 for (const [intent, base] of [['Taj Mahal', 'Agra'], ['Lake Atitlán', 'Panajachel']] as const) test(`${intent} resolves through one supported base action and commits without a visible Review step`,

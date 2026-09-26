@@ -8,6 +8,8 @@ export type DiscoveryCommitPorts = {
   /** Existing Builder Add owner: create/reuse the stop AND ensure its mention selection. */
   addBase(choice: DiscoveryReadyChoice): Promise<boolean>;
   linkVisit(visit: DiscoveryVisit, stopId: string): Promise<boolean>;
+  /** Apply the reviewed canonical chronology after every selected place is durable. */
+  applyRouteOrder?(stopIds: readonly string[]): Promise<boolean>;
   /** Must durably persist the latest rendered canonical document, including selections. */
   persist(): Promise<boolean>;
   /** Persist completion before closing the mention. */
@@ -43,6 +45,9 @@ export async function commitDiscoveryReview(review: DiscoveryReview, ports: Disc
       if (!isConfirmed() && !await ports.linkVisit(visit, stop.id)) return result(false);
       if (!isConfirmed() || !await ports.persist()) return result(false);
       committedIds.push(visit.intentId);
+    }
+    if (review.orderedStopIds?.length && ports.applyRouteOrder) {
+      if (!await ports.applyRouteOrder(review.orderedStopIds) || !await ports.persist()) return result(false);
     }
     return result(await ports.completeMention());
   } catch { return result(false); }

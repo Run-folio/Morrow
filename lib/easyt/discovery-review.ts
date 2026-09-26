@@ -5,10 +5,11 @@ import type { DiscoveryProjection } from './discovery-projection.ts';
 import { rankAttractionVisitTargets, placeMentionSupportsMultipleSelections, confirmedAttractionVisitSelection, isConfirmedAttractionVisitSelection, type AttractionVisitCandidate, type ResolvedPlaceMention } from './place-intelligence.ts';
 import { analyzeRouteCountryContinuity } from './route-country-continuity.ts';
 import { generateRouteCandidates } from './route-candidates.ts';
-import { estimateLegForConstraints, type PlannerStop, type RoutePlanningConstraints } from './planner.ts';
+import { assessRouteIntelligence, estimateLegForConstraints, type PlannerStop, type RoutePlanningConstraints } from './planner.ts';
 import { allocateTripNights, tripNightsBetween } from './night-allocation.ts';
 import { validateFinalPlan, type PlanValidationReport } from './plan-validator.ts';
 import { tripFromBuilder, type EasyTTrip } from './trip.ts';
+import { routeFamilyByKey } from './route-catalog.ts';
 
 export type DiscoveryVisit = { intentId: string; baseId: string; name: string; proposal: AttractionVisitCandidate };
 export type DiscoveryReview = ReturnType<typeof buildDiscoveryReview>;
@@ -63,7 +64,12 @@ export function buildDiscoveryReview(input: { mention: ResolvedPlaceMention; dra
   const previewStops: PlannerStop[] = [...trip.stops.map(stop => ({ id: stop.id, name: stop.name, country: stop.country,
     canonicalPlaceId: stop.canonicalPlaceId, coordinates: stop.longitude !== null && stop.latitude !== null ? [stop.longitude, stop.latitude] as [number, number] : undefined })),
     ...bases.filter(base => newBaseIds.includes(base.id)).map(base => ({ id: `discovery:${base.id}`, name: base.name,
-      country: base.suggestion.country, canonicalPlaceId: base.id, coordinates: base.suggestion.coordinates }))];
+      country: base.suggestion.country, canonicalPlaceId: base.id,
+      coordinates: base.suggestion.coordinates
+        ? [...base.suggestion.coordinates] as [number, number]
+        : projection.places.find(place => place.id === base.id)?.coordinates
+          ? [...projection.places.find(place => place.id === base.id)!.coordinates] as [number, number]
+          : undefined }))];
   const constraints = input.constraints ?? { fixedCommitments: trip.brief.intent?.hardConstraints.fixedCommitments,
     requiredStopIds: trip.brief.intent?.hardConstraints.mustSeeStopIds, avoidDriving: trip.brief.intent?.hardConstraints.avoidDriving };
   const origin = { name: trip.brief.origin, coordinates: trip.brief.originCoordinates };
@@ -102,11 +108,46 @@ export function buildDiscoveryReview(input: { mention: ResolvedPlaceMention; dra
       fixedNights: fixedNightsFor(stop.id) };
   }), totalNights, constraints, startDate: trip.startDate, endDate: trip.endDate, scheduleLocks: trip.brief.scheduleLocks },
   structuredBrief: trip.brief.structuredBrief, nightAllocation });
+  const routeAssessment = assessRouteIntelligence({
+    origin,
+    stops: previewStops,
+    constraints,
+    availableDays: totalNights,
+    picks: trip.brief.selectedPlaces,
+    allocations: nightAllocation.allocations ?? undefined,
+    scoringPreferences: {
+      pace: trip.brief.intent?.preferences.pace,
+      preferredModes: trip.brief.intent?.preferences.transportModes?.map(mode => mode === 'drive' ? 'road' as const : mode),
+      interests: trip.brief.intent?.preferences.interests,
+    },
+  });
+  const selectedRouteFamily = direction?.id.startsWith('route-family:')
+    ? routeFamilyByKey[direction.id.slice('route-family:'.length)]
+    : undefined;
+  const familyOrder = selectedRouteFamily ? [...new Set(selectedRouteFamily.stops.flatMap(familyStop => {
+    const stop = previewStops.find(candidate => candidate.name === familyStop.name && candidate.country === familyStop.country);
+    return stop ? [stop.id] : [];
+  }))] : undefined;
+  const familyChronologyIsViable = Boolean(familyOrder?.length && candidates.candidates.some(candidate => {
+    let previousIndex = -1;
+    return familyOrder!.every(id => {
+      const index = candidate.stops.findIndex(stop => stop.id === id);
+      if (index <= previousIndex) return false;
+      previousIndex = index;
+      return true;
+    });
+  }));
+  const routeOrderSource = familyChronologyIsViable ? familyOrder : routeAssessment.route.scoring?.winner?.stopIds;
+  const orderedStopIds = routeOrderSource
+    ? [...new Set([...routeOrderSource, ...previewStops.map(stop => stop.id)])]
+    : undefined;
   const warnings = [...candidates.constraintIssues, ...nightAllocation.conflicts, ...nightAllocation.notices,
     ...currentValidation.issues, ...validation.issues];
   return { mentionId: mention.mentionId, originalIntent: mention.sourceText || mention.canonicalName, directionId: draft.directionId,
     direction, bases, newBaseIds, reusedStopIds, visits, newVisitIds, blockedIds: [...blockedIds], existingStops: trip.stops,
-    warnings, candidates, continuity, nightAllocation, currentValidation, validation, fit: 'needs-checking' as const,
+    warnings, candidates, continuity, nightAllocation, currentValidation, validation, orderedStopIds,
+    routeOrderSource: familyChronologyIsViable ? 'reviewed-route-family' as const : routeAssessment.route.scoring?.winner ? 'route-scorer' as const : 'entered-order' as const,
+    fit: 'needs-checking' as const,
     canConfirm: blockedIds.size === 0 && (bases.length > 0 || visits.length > 0),
     primaryAction: { kind: 'confirm-selected-places' as const, baseCount: newBaseIds.length, visitCount: newVisitIds.length } };
 }

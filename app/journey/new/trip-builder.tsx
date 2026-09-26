@@ -3582,9 +3582,16 @@ function TripBuilderDocument() {
       constraints: { ...structuredRouteConstraints, fixedCommitments: projectedFixedCommitments } }) : undefined;
   // flushSync checkpoints must read the document and handlers from the committed render,
   // never the closure that started a multi-choice confirmation.
-  const discoveryOwnersRef = useRef({ trip: activeTripDocument, addGuidedPlanningPlace, confirmAttractionVisit, persistDeviceRecovery });
+  const applyDiscoveryRouteOrder = (orderedStopIds: readonly string[]) => {
+    const currentIds = discoveryOwnersRef.current.trip.stops.map(stop => stop.id);
+    if (orderedStopIds.length === currentIds.length && orderedStopIds.every((id, index) => id === currentIds[index])) return true;
+    const applied = commitStopOrder(orderedStopIds, "route-check");
+    if (applied) setDecisionSelections(current => ({ ...current, routeOrder: "recommended" }));
+    return applied;
+  };
+  const discoveryOwnersRef = useRef({ trip: activeTripDocument, addGuidedPlanningPlace, confirmAttractionVisit, persistDeviceRecovery, applyRouteOrder: applyDiscoveryRouteOrder });
   useLayoutEffect(() => {
-    discoveryOwnersRef.current = { trip: activeTripDocument, addGuidedPlanningPlace, confirmAttractionVisit, persistDeviceRecovery };
+    discoveryOwnersRef.current = { trip: activeTripDocument, addGuidedPlanningPlace, confirmAttractionVisit, persistDeviceRecovery, applyRouteOrder: applyDiscoveryRouteOrder };
   });
   const renderedDiscoveryEntry: DiscoveryEntry = !discoveryProjection && discoveryEntry.kind !== "skip" && discoveryEntry.kind !== "legacy-recovery"
     ? { kind: "legacy-recovery", step: "places", mentionId: activeClarificationMention?.mentionId, reason: "technical-failure" }
@@ -4368,6 +4375,14 @@ function TripBuilderDocument() {
                   flushSync(() => discoveryOwnersRef.current.confirmAttractionVisit(mention, visit.proposal, stopId));
                   return Boolean(discoveryOwnersRef.current.trip.brief.structuredBrief?.placeSelections?.some(selection =>
                     selection.mentionId === visit.intentId && selection.kind === "visit" && selection.routeStopId === stopId));
+                },
+                applyRouteOrder: async orderedIds => {
+                  const current = discoveryOwnersRef.current.trip;
+                  const stopIds = orderedIds.map(id => id.startsWith("discovery:")
+                    ? current.stops.find(stop => stop.canonicalPlaceId === id.slice("discovery:".length))?.id
+                    : id).filter((id): id is string => Boolean(id));
+                  if (stopIds.length !== current.stops.length || new Set(stopIds).size !== current.stops.length) return false;
+                  return discoveryOwnersRef.current.applyRouteOrder(stopIds);
                 },
                 persist: checkpoint,
                 completeMention: () => completeDiscoveryMention({

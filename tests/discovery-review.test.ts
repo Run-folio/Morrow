@@ -3,6 +3,7 @@ import test from 'node:test';
 import { buildDiscoveryReview } from '../lib/easyt/discovery-review.ts';
 import { createDiscoveryDraft, readDiscoveryDraft, type DiscoveryDraft } from '../lib/easyt/discovery-draft.ts';
 import { extractStructuredTripBrief } from '../lib/easyt/structured-trip-brief.ts';
+import { tripFromBuilder } from '../lib/easyt/trip.ts';
 import { fixture } from './helpers/discovery-fixture.ts';
 test('read-only review retains intent, direction, existing manual nights, browse-only uncertainty and actual route warnings', () => {
   const input = fixture('Australia', ['sydney', 'melbourne', 'uluru-kata-tjuta']);
@@ -86,4 +87,43 @@ test('Review retains authoritative fixed arrival conflicts and protection when n
   assert.ok(review.validation.issues.some(issue => issue.code === 'fixed-date-conflict'));
   assert.ok(review.warnings.some(issue => issue.code === 'fixed-date-conflict'));
   assert.equal(JSON.stringify(input.trip), before);
+});
+
+test('ordinary geography shortlist order is membership; the existing route scorer owns Australia chronology', () => {
+  const input = fixture('Australia', ['airlie-beach', 'sydney', 'port-douglas']);
+  input.trip = tripFromBuilder({ id: 'australia-order-review', origin: 'London', originCoordinates: [-0.1276, 51.5072],
+    stops: [], startDate: '2026-10-01', endDate: '2026-10-15', picks: {}, mustDo: 'Australia', pace: 'slow',
+    hotels: 'few', budget: 'mid', draft: [], structuredBrief: extractStructuredTripBrief('Australia') });
+  input.draft.directionId = 'australia-east-coast';
+  const review = buildDiscoveryReview(input);
+  assert.deepEqual(input.draft.shortlistIds, ['airlie-beach', 'sydney', 'port-douglas']);
+  assert.deepEqual(review.bases.map(base => base.id), ['airlie-beach', 'sydney', 'port-douglas']);
+  assert.deepEqual(review.orderedStopIds?.map(id => id.replace(/^discovery:/, '')),
+    ['port-douglas', 'sydney', 'airlie-beach']);
+  assert.equal(review.routeOrderSource, 'route-scorer');
+});
+
+test('ordinary Japan shortlist uses the existing route scorer instead of Osaka click chronology', () => {
+  const input = fixture('Japan', ['osaka', 'kanazawa', 'kyoto']);
+  input.trip = tripFromBuilder({ id: 'japan-order-review', origin: 'London', originCoordinates: [-0.1276, 51.5072],
+    stops: [], startDate: '2026-10-01', endDate: '2026-10-15', picks: {}, mustDo: 'Japan', pace: 'slow',
+    hotels: 'few', budget: 'mid', draft: [], structuredBrief: extractStructuredTripBrief('Japan') });
+  const review = buildDiscoveryReview(input);
+  assert.deepEqual(input.draft.shortlistIds, ['osaka', 'kanazawa', 'kyoto']);
+  assert.deepEqual(review.bases.map(base => base.id), ['osaka', 'kanazawa', 'kyoto']);
+  assert.deepEqual(review.orderedStopIds?.map(id => id.replace(/^discovery:/, '')), ['osaka', 'kyoto', 'kanazawa']);
+  assert.equal(review.routeOrderSource, 'route-scorer');
+});
+
+test('an explicitly selected reviewed route family retains its editorial route chronology', () => {
+  const input = fixture('Africa', ['swakopmund', 'windhoek']);
+  input.trip = tripFromBuilder({ id: 'namibia-family-order-review', origin: 'London', originCoordinates: [-0.1276, 51.5072],
+    stops: [], startDate: '2026-10-01', endDate: '2026-10-15', picks: {}, mustDo: 'Africa', pace: 'slow',
+    hotels: 'few', budget: 'mid', draft: [], structuredBrief: extractStructuredTripBrief('Africa') });
+  input.draft.directionId = 'route-family:namibia-self-drive';
+  const review = buildDiscoveryReview(input);
+  assert.deepEqual(review.bases.map(base => base.id), ['swakopmund', 'windhoek']);
+  assert.deepEqual(review.orderedStopIds?.map(id => id.replace(/^discovery:/, '')), ['windhoek', 'swakopmund']);
+  assert.equal(review.routeOrderSource, 'reviewed-route-family');
+  assert.equal(review.direction?.title, 'Namibia Self-Drive');
 });
