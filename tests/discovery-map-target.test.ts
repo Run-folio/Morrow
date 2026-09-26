@@ -70,6 +70,8 @@ test("Builder route map remains available through a lazy workspace import", () =
   assert.match(workspace, /import\("@\/components\/journey-planner-map"\)\.then/);
   assert.match(workspace, /setMapLifecycle\("unavailable"\)/);
   assert.match(workspace, /<JourneyPlannerMap[\s\S]*onLifecycleChange=\{setMapLifecycle\}/);
+  assert.match(workspace, /surface=\{\{ variant: "embedded", interaction: "selection-only" \}\}/,
+    "Builder route markers must select their matching route row without enabling map pan and zoom");
   assert.doesNotMatch(workspace, /^import \{ JourneyPlannerMap \} from/m);
 });
 

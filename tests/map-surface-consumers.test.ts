@@ -15,7 +15,7 @@ test("every production JourneyPlannerMap owner declares its interaction job", ()
   const transport = source("../components/easyt/trip-transport-workspace.tsx");
   const planNext = source("../app/journey/plan-next/map-plan-next.tsx");
 
-  assert.match(builder, /surface=\{\{ variant: "preview" \}\}/);
+  assert.match(builder, /surface=\{\{ variant: "embedded", interaction: "selection-only" \}\}/);
   assert.match(overview, /surface=\{\{ variant: "preview" \}\}/);
   assert.match(dashboard, /surface=\{\{ variant: "preview" \}\}/);
   assert.match(demo, /surface=\{\{ variant: "preview" \}\}/);

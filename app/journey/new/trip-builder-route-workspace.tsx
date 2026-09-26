@@ -213,8 +213,7 @@ export function TripBuilderRouteWorkspace({
             draftPinCoordinates={null}
             pinPlacementMode={false}
             overviewMode
-            surface={{ variant: "preview" }}
-            previewLabel="Builder route map"
+            surface={{ variant: "embedded", interaction: "selection-only" }}
             cameraSafeEdge={54}
             onMapPinDrop={() => undefined}
             onPlannerPinSelect={() => undefined}

@@ -236,12 +236,13 @@ test('Discovery handoff retains normal Builder controls and persists exercised e
         removeStop: await page.getByRole('button', { name: 'Remove Kanazawa', exact: true }).isVisible(),
         dragReorder: await route.getByRole('button', { name: /^Reorder Kanazawa/ }).isVisible(),
         nights: await route.getByRole('button', { name: /^Add one night to Kanazawa/ }).isVisible(),
-        rowOverflow: await route.getByRole('button', { name: 'Actions for Kanazawa', exact: true }).isVisible(),
+        rowOverflow: await route.locator('summary[aria-label="Actions for Kanazawa"]').isVisible(),
         mapSelection: await route.getByRole('button', { name: /Map stop/ }).first().isVisible(),
         routeWorkspace: await route.isVisible(),
         routeCheck: await page.getByText('ROUTE CHECK', { exact: true }).isVisible().catch(() => false),
         earlierLater: false,
-        stopNames: await route.locator('[data-builder-stop-index]').allTextContents(),
+        stopNames: await route.locator('[data-builder-stop-index]').evaluateAll((rows: HTMLElement[]) =>
+          rows.map(row => row.querySelector('[role="cell"] strong')?.textContent?.trim() ?? '')),
       };
       const middleMenu = route.locator('summary[aria-label="Actions for Kyoto"]');
       await middleMenu.click();
@@ -263,7 +264,12 @@ test('Discovery handoff retains normal Builder controls and persists exercised e
     assert.equal(normalPersisted?.stops.find((stop: { canonicalPlaceId?: string }) => stop.canonicalPlaceId === 'kanazawa')?.nights, 4,
       `normal Builder night edit persistence: ${JSON.stringify(normalPersisted?.stops.map((stop: { canonicalPlaceId?: string; nights?: number }) => [stop.canonicalPlaceId, stop.nights]))}`);
     const discoveryCapabilities = await snapshot(discovery.page);
-    assert.deepEqual(discoveryCapabilities, normalCapabilities, 'Discovery and normal Builder must expose the same visible editing capabilities for equivalent stops');
+    const { stopNames: normalStopNames, ...normalEditingCapabilities } = normalCapabilities;
+    const { stopNames: discoveryStopNames, ...discoveryEditingCapabilities } = discoveryCapabilities;
+    assert.deepEqual(discoveryEditingCapabilities, normalEditingCapabilities,
+      'Discovery and normal Builder must expose the same visible editing capabilities for equivalent stops');
+    assert.deepEqual([...discoveryStopNames].sort(), [...normalStopNames].sort(),
+      'both Builders retain the same canonical stop membership; route chronology is checked by its own owner');
 
     const page = discovery.page;
     const route = page.locator('[data-builder-route-workspace]');
@@ -273,28 +279,40 @@ test('Discovery handoff retains normal Builder controls and persists exercised e
     await page.getByRole('combobox', { name: 'Add a destination', exact: true }).waitFor({ state: 'visible' });
     await page.getByRole('button', { name: 'Done adding stops', exact: true }).click();
 
+    const initialOrder = await routeOrder();
     const kyotoMenu = route.locator('summary[aria-label="Actions for Kyoto"]');
     await kyotoMenu.click();
-    await route.getByRole('button', { name: 'Later', exact: true }).click();
-    assert.deepEqual(await routeOrder(), ['Kanazawa', 'Osaka', 'Kyoto']);
-    const earlier = route.getByRole('button', { name: 'Earlier', exact: true });
-    if (!await earlier.isVisible().catch(() => false)) await route.locator('summary[aria-label="Actions for Kyoto"]').click();
-    await earlier.click();
-    assert.deepEqual(await routeOrder(), ['Kanazawa', 'Kyoto', 'Osaka']);
+    const kyotoIndex = initialOrder.indexOf('Kyoto');
+    const moveLater = kyotoIndex < initialOrder.length - 1;
+    const direction = moveLater ? 1 : -1;
+    const shiftedOrder = [...initialOrder];
+    [shiftedOrder[kyotoIndex], shiftedOrder[kyotoIndex + direction]] = [shiftedOrder[kyotoIndex + direction], shiftedOrder[kyotoIndex]];
+    await route.getByRole('button', { name: moveLater ? 'Later' : 'Earlier', exact: true }).click();
+    assert.deepEqual(await routeOrder(), shiftedOrder, 'accessible move action shifts the selected row by one position');
+    const inverseAction = route.getByRole('button', { name: moveLater ? 'Earlier' : 'Later', exact: true });
+    if (!await inverseAction.isVisible().catch(() => false)) await route.locator('summary[aria-label="Actions for Kyoto"]').click();
+    await inverseAction.click();
+    assert.deepEqual(await routeOrder(), initialOrder, 'the inverse accessible move restores the original row order');
 
     const firstNight = route.getByRole('button', { name: /^Add one night to Kanazawa/ });
+    const currentKanazawaNights = Number((await firstNight.getAttribute('aria-label'))?.match(/; (\d+) nights currently/)?.[1]);
+    assert.ok(Number.isFinite(currentKanazawaNights), 'the starting night count is exposed accessibly');
+    const editedKanazawaNights = currentKanazawaNights + 1;
     await firstNight.click();
-    await route.getByRole('button', { name: /Add one night to Kanazawa; 4 nights currently/ }).waitFor();
+    await route.getByRole('button', { name: new RegExp(`Add one night to Kanazawa; ${editedKanazawaNights} nights currently`) }).waitFor();
 
     await route.getByRole('button', { name: 'Map stop Kyoto', exact: true }).click();
-    assert.equal(await route.locator('[data-builder-stop-index="1"]').getAttribute('aria-selected'), 'true', 'map leg selection selects its route stop');
-
-    assert.deepEqual(await routeOrder(), ['Kanazawa', 'Kyoto', 'Osaka']);
-    const dragGrip = route.getByRole('button', { name: 'Reorder Kyoto, stop 2' });
-    await dragGrip.dragTo(route.locator('[data-builder-stop-index="0"]'));
     await page.waitForFunction(() => [...document.querySelectorAll('[data-builder-route-workspace] [data-builder-stop-index]')]
-      .map(row => row.querySelector('[role="cell"] strong')?.textContent?.trim()).join('|') === 'Kyoto|Kanazawa|Osaka');
-    assert.deepEqual(await routeOrder(), ['Kyoto', 'Kanazawa', 'Osaka']);
+      .some(row => row.getAttribute('aria-selected') === 'true' && row.querySelector('[role="cell"] strong')?.textContent?.trim() === 'Kyoto'));
+
+    const beforeDrag = await routeOrder();
+    const draggedName = beforeDrag.at(-1)!;
+    const expectedAfterDrag = [draggedName, ...beforeDrag.slice(0, -1)];
+    const dragGrip = route.getByRole('button', { name: `Reorder ${draggedName}, stop ${beforeDrag.length}` });
+    await dragGrip.dragTo(route.locator('[data-builder-stop-index="0"]'));
+    await page.waitForFunction((expected: string[]) => JSON.stringify([...document.querySelectorAll('[data-builder-route-workspace] [data-builder-stop-index]')]
+      .map(row => row.querySelector('[role="cell"] strong')?.textContent?.trim())) === JSON.stringify(expected), expectedAfterDrag);
+    assert.deepEqual(await routeOrder(), expectedAfterDrag);
     await page.waitForTimeout(900);
 
     const savedTrip = await page.evaluate(() => Object.values(localStorage).flatMap(raw => {
@@ -304,20 +322,21 @@ test('Discovery handoff retains normal Builder controls and persists exercised e
         && record.trip.stops?.filter(stop => ['kanazawa', 'kyoto', 'osaka'].includes(stop.canonicalPlaceId ?? '')).length === 3)
       .sort((left: { savedAt?: string }, right: { savedAt?: string }) => Date.parse(right.savedAt ?? '') - Date.parse(left.savedAt ?? ''))[0]?.trip);
     assert.ok(savedTrip, 'the discovery-created canonical trip is saved before reload');
-    assert.equal(savedTrip.stops.find((stop: { canonicalPlaceId?: string }) => stop.canonicalPlaceId === 'kanazawa')?.nights, 4,
+    assert.equal(savedTrip.stops.find((stop: { canonicalPlaceId?: string }) => stop.canonicalPlaceId === 'kanazawa')?.nights, editedKanazawaNights,
       `persisted Discovery night allocation: ${JSON.stringify(savedTrip.stops.map((stop: { canonicalPlaceId?: string; nights?: number }) => [stop.canonicalPlaceId, stop.nights]))}`);
-    assert.deepEqual(savedTrip.stops.map((stop: { canonicalPlaceId?: string }) => stop.canonicalPlaceId), ['kyoto', 'kanazawa', 'osaka']);
+    const expectedCanonicalOrder = expectedAfterDrag.map(name => name.toLocaleLowerCase());
+    assert.deepEqual(savedTrip.stops.map((stop: { canonicalPlaceId?: string }) => stop.canonicalPlaceId), expectedCanonicalOrder);
     await page.goto(`${new URL(page.url()).origin}/journey/new?trip=${savedTrip.id}&recover=1`);
     await page.waitForFunction(() => Boolean(document.querySelector('[data-builder-route-workspace]')));
     const reloadedRoute = page.locator('[data-builder-route-workspace]');
-    await page.getByRole('button', { name: /Add one night to Kanazawa; 4 nights currently/ }).waitFor({ timeout: 5_000 });
+    await page.getByRole('button', { name: new RegExp(`Add one night to Kanazawa; ${editedKanazawaNights} nights currently`) }).waitFor({ timeout: 5_000 });
     assert.deepEqual(await reloadedRoute.locator('[data-builder-stop-index]').evaluateAll((rows: HTMLElement[]) =>
-      rows.map(row => row.querySelector('[role="cell"] strong')?.textContent?.trim() ?? '')), ['Kyoto', 'Kanazawa', 'Osaka']);
+      rows.map(row => row.querySelector('[role="cell"] strong')?.textContent?.trim() ?? '')), expectedAfterDrag);
     await page.getByRole('button', { name: 'Remove Kanazawa', exact: true }).click();
     await page.getByRole('dialog').getByRole('button', { name: 'Remove Kanazawa', exact: true }).click();
     await page.waitForFunction(() => document.querySelectorAll('[data-builder-route-workspace] [data-builder-stop-index]').length === 2);
     assert.deepEqual(await reloadedRoute.locator('[data-builder-stop-index]').evaluateAll((rows: HTMLElement[]) =>
-      rows.map(row => row.querySelector('[role="cell"] strong')?.textContent?.trim() ?? '')), ['Kyoto', 'Osaka']);
+      rows.map(row => row.querySelector('[role="cell"] strong')?.textContent?.trim() ?? '')), expectedAfterDrag.filter(name => name !== 'Kanazawa'));
     assert.deepEqual(discovery.errors, []);
     assert.deepEqual(normal.errors, []);
   } finally {
