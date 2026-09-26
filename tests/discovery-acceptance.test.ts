@@ -23,8 +23,8 @@ const entryAndProjection = (name: string) => {
   return { brief, entry, mention, draft, projection: projectDiscovery({ mention, draft, context }) };
 };
 
-test('Japan, Namibia and Australia Add actions match canonical direct-stop confirmation eligibility', () => {
-  for (const name of ['Japan', 'Namibia', 'Australia']) {
+test('Japan, Namibia, Italy and Australia Add actions match canonical direct-stop confirmation eligibility', () => {
+  for (const name of ['Japan', 'Namibia', 'Italy', 'Australia']) {
     const { projection } = entryAndProjection(name);
     for (const place of projection.places) {
       const actions = availableActions(place);
@@ -34,6 +34,17 @@ test('Japan, Namibia and Australia Add actions match canonical direct-stop confi
       if (exposesNormalAdd) assert.ok(actions.includes('stay-here'), `${name}: ${place.name} exposes Add without stay eligibility`);
       else assert.ok(!actions.includes('stay-here'), `${name}: ${place.name} browse/visit action must not masquerade as an overnight Add`);
     }
+  }
+  const australia = entryAndProjection('Australia').projection;
+  for (const id of ['byron-bay', 'cairns']) {
+    const place = australia.places.find(candidate => candidate.id === id);
+    assert.equal(place?.actionability, 'overnight-base', `${id} uses explicit reviewed East Coast route stop evidence`);
+    assert.ok(!('reason' in discoveryConfirmationChoiceForId(id, australia)), `${id} should pass the same final Add gate`);
+  }
+  for (const id of ['brisbane', 'noosa', 'gold-coast']) {
+    const place = australia.places.find(candidate => candidate.id === id)!;
+    assert.notEqual(place.actionability, 'overnight-base', `${id} must not be promoted without explicit stay evidence`);
+    assert.ok('reason' in discoveryConfirmationChoiceForId(id, australia), `${id} must not be directly committable`);
   }
 });
 

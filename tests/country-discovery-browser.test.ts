@@ -337,6 +337,13 @@ for (const [country, clickOrder] of [
     if (country === 'Australia') {
       await dialog.getByRole('button', { name: 'Explore direction: East coast' }).click();
       await dialog.getByRole('heading', { name: 'Explore places' }).waitFor();
+      for (const name of ['Byron Bay', 'Cairns']) {
+        await dialog.getByRole('button', { name: `Add to shortlist: ${name}`, exact: true }).waitFor();
+      }
+      const browseOnly = dialog.locator('[data-discovery-card="true"]').filter({ hasText: 'Gold Coast' });
+      assert.equal(await browseOnly.getAttribute('data-actionability'), 'browse-only');
+      assert.equal(await browseOnly.getByRole('button', { name: 'Add to shortlist: Gold Coast', exact: true }).count(), 0,
+        'a visible place without stay evidence does not expose Add');
     }
     for (const name of clickOrder) {
       await dialog.getByRole('button', { name: `Add to shortlist: ${name}`, exact: true }).evaluate((button: HTMLButtonElement) => button.click());

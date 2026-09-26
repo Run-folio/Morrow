@@ -150,6 +150,27 @@ test("curated Australia remains authoritative over derived evidence", () => {
   assert.equal(places.find(place => place.id === "kakadu")?.actionability, "visit");
 });
 
+test("curated Australia retains reviewed route-family stay evidence without promoting unsupported settlements", () => {
+  const places = new Map(discoveryPlacesForMention(resolvedMention("Australia")).map(place => [place.id, place]));
+  for (const [id, nights] of [["byron-bay", 3], ["cairns", 4]] as const) {
+    const place = places.get(id);
+    assert.ok(place, id);
+    assert.equal(place.actionability, "overnight-base", `${id} is explicitly a reviewed route-family base`);
+    assert.ok(place.stayEvidence.some(source => source.id === "route-catalog:australia-east-coast:tourism-australia-east-coast-itinerary"
+      && source.supports.includes(`${nights}-night minimum`)), `${id} should carry its explicit route-family stay evidence`);
+  }
+  for (const id of ["brisbane", "noosa"] as const) {
+    const place = places.get(id);
+    assert.ok(place, id);
+    assert.equal(place.actionability, "browse-only", `${id} lacks explicit reviewed stay evidence`);
+    assert.deepEqual(place.stayEvidence, [], `${id} must not infer a stay from settlement type`);
+  }
+  assert.equal(places.get("sydney")?.actionability, "overnight-base");
+  assert.equal(places.get("airlie-beach")?.actionability, "overnight-base");
+  assert.equal(places.get("port-douglas")?.actionability, "overnight-base");
+  assert.equal(places.get("kakadu")?.actionability, "visit", "an explicit route family must not promote a natural area to overnight-base");
+});
+
 test("existing anchor relationships surface canonical bases while uncatalogued Kruger stays unresolved", () => {
   const taj = discoveryPlacesForMention(resolvedMention("Taj Mahal"));
   const atitlan = discoveryPlacesForMention(resolvedMention("Lake Atitlán"));

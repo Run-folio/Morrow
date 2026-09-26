@@ -167,12 +167,18 @@ export function discoveryPlaceForId(id: string): DiscoveryPlace | null {
       || !photo.licenseUrl.startsWith("https://")
       || !photo.variants.some(variant => routeImageCredit(variant.src))) return null;
   }
-  const overnight = ["city", "town", "transport_gateway"].includes(catalog.placeType) && row.stayEvidence.length > 0;
+  // Curated rows own their visitor content, but they must not hide separately
+  // reviewed stay evidence from the global adapter (for example, an explicit
+  // route-family base). The adapter has already validated canonical identity,
+  // geography, provenance and settlement type before its evidence is merged.
+  const adaptedStayEvidence = adaptedDiscoveryPlaces().find(place => place.id === id)?.stayEvidence ?? [];
+  const stayEvidence = [...new Map([...row.stayEvidence, ...adaptedStayEvidence].map(source => [source.id, source])).values()];
+  const overnight = ["city", "town", "transport_gateway"].includes(catalog.placeType) && stayEvidence.length > 0;
   return {
     id, name: catalog.canonicalName, country: catalog.parentCountries[0]!, group: row.group,
     groupIds: catalog.parentCountries[0] === "Australia" ? (australiaEditorialGroups[row.group] ?? []) : [],
     tags: row.tags, placeType: catalog.placeType, coordinates: catalog.coordinates,
-    relevance: row.relevance, stayEvidence: row.stayEvidence, accessEvidence: row.accessEvidence,
+    relevance: row.relevance, stayEvidence, accessEvidence: row.accessEvidence,
     actionability: overnight ? "overnight-base" : row.accessEvidence.length ? "visit" : "browse-only",
     imageKey: row.imageKey,
   };
