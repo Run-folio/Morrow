@@ -359,10 +359,26 @@ for (const [country, clickOrder] of [
       for (const name of ['Byron Bay', 'Cairns']) {
         await dialog.getByRole('button', { name: `Add to shortlist: ${name}`, exact: true }).waitFor();
       }
+      await dialog.getByRole('button', { name: 'All', exact: true }).click();
+      for (const name of ['Brisbane', 'Noosa']) {
+        let card = dialog.locator('[data-discovery-card="true"]').filter({ hasText: name });
+        while (!(await card.count())) {
+          const more = dialog.getByRole('button', { name: /Show more/ });
+          assert.ok(await more.count(), `${name} remains in the full evidenced Australia collection`);
+          await more.click();
+          card = dialog.locator('[data-discovery-card="true"]').filter({ hasText: name });
+        }
+        assert.equal(await card.getAttribute('data-actionability'), 'browse-only', `${name} has visitor relevance but no reviewed stay evidence`);
+        assert.equal(await card.getByRole('button', { name: `Add to shortlist: ${name}`, exact: true }).count(), 0,
+          `${name} does not expose Add without reviewed stay evidence`);
+      }
+      const etosha = dialog.locator('[data-discovery-card="true"]').filter({ hasText: 'Etosha National Park' });
+      assert.equal(await etosha.count(), 0, 'natural-area example is not part of the East Coast direction');
       const browseOnly = dialog.locator('[data-discovery-card="true"]').filter({ hasText: 'Gold Coast' });
       assert.equal(await browseOnly.getAttribute('data-actionability'), 'browse-only');
       assert.equal(await browseOnly.getByRole('button', { name: 'Add to shortlist: Gold Coast', exact: true }).count(), 0,
         'a visible place without stay evidence does not expose Add');
+      await dialog.getByRole('button', { name: 'East coast', exact: true }).click();
     }
     for (const name of clickOrder) {
       await dialog.getByRole('button', { name: `Add to shortlist: ${name}`, exact: true }).evaluate((button: HTMLButtonElement) => button.click());
@@ -395,6 +411,113 @@ for (const [country, clickOrder] of [
     assert.equal(new Set(await route.locator('[data-builder-stop-index]').evaluateAll((rows: HTMLElement[]) =>
       rows.map(row => row.querySelector('[role="cell"] strong')?.textContent?.trim() ?? ''))).size, 3);
     assert.equal(await totalAllocatedNights(), originalNightTotal, 'reordering preserves the trip night budget');
+    assert.deepEqual(view.errors, []);
+  } finally { await view.close(); }
+});
+
+test('Australia direction filters switch inside Explore while preserving a cross-region shortlist', { skip: !builderBrowserTestsEnabled, timeout: 60_000 }, async () => {
+  const view = await renderBuilder({ query: '?homeDraft=1', draft: homeDraft('Australia', 'London') });
+  try {
+    const dialog = view.page.getByRole('dialog');
+    await dialog.getByRole('button', { name: 'Explore direction: East coast', exact: true }).click();
+    await dialog.getByRole('heading', { name: 'Explore places', exact: true }).waitFor();
+    const routeRows = view.page.locator('[data-builder-route-workspace] [data-builder-stop-index]');
+    const originalRoute = await routeRows.evaluateAll((rows: HTMLElement[]) => rows.map(row => row.textContent));
+
+    async function addPlace(name: string) {
+      const add = dialog.getByRole('button', { name: `Add to shortlist: ${name}`, exact: true });
+      while (!(await add.count())) {
+        const more = dialog.getByRole('button', { name: /Show more/ });
+        assert.ok(await more.count(), `${name} remains in the evidenced collection`);
+        await more.click();
+      }
+      await add.click();
+    }
+
+    await addPlace('Sydney');
+    await dialog.getByRole('button', { name: 'Tasmania and nature', exact: true }).click();
+    const shortlist = dialog.getByRole('complementary', { name: 'Shortlist places' });
+    assert.match(await shortlist.innerText(), /Sydney/);
+    const hobartCard = dialog.locator('[data-discovery-card="true"]').filter({ hasText: 'Hobart' });
+    const hobartAdd = dialog.getByRole('button', { name: 'Add to shortlist: Hobart', exact: true });
+    if (await hobartAdd.count()) {
+      await hobartAdd.click();
+      assert.match(await shortlist.innerText(), /Sydney[\s\S]*Hobart/);
+    } else {
+      assert.equal(await hobartCard.getAttribute('data-actionability'), 'browse-only', 'Hobart stays browse-only without reviewed stay evidence');
+    }
+    await dialog.getByRole('button', { name: 'All', exact: true }).click();
+    assert.match(await shortlist.innerText(), /Sydney/);
+    const showSydney = dialog.getByRole('button', { name: /Show more/ });
+    while (!(await dialog.getByRole('button', { name: 'Remove from shortlist: Sydney', exact: true }).count()) && await showSydney.count()) {
+      await showSydney.click();
+    }
+    assert.equal(await dialog.getByRole('button', { name: 'Remove from shortlist: Sydney', exact: true }).count(), 1);
+    if (await hobartAdd.count()) {
+      while (!(await dialog.getByRole('button', { name: 'Remove from shortlist: Hobart', exact: true }).count()) && await showSydney.count()) {
+        await showSydney.click();
+      }
+    }
+    assert.equal(await dialog.getByRole('button', { name: 'Remove from shortlist: Hobart', exact: true }).count(), await hobartAdd.count() ? 1 : 0);
+    assert.deepEqual(await routeRows.evaluateAll((rows: HTMLElement[]) => rows.map(row => row.textContent)), originalRoute,
+      'direction filters and shortlist edits do not mutate canonical route stops before confirmation');
+    assert.deepEqual(view.errors, []);
+  } finally { await view.close(); }
+});
+
+test('Africa direction filters switch reviewed route families inside Explore without changing trip route', { skip: !builderBrowserTestsEnabled, timeout: 60_000 }, async () => {
+  const view = await renderBuilder({ query: '?homeDraft=1', draft: homeDraft('Africa', 'London') });
+  try {
+    const dialog = view.page.getByRole('dialog');
+    await dialog.getByRole('button', { name: 'Explore direction: Namibia Self-Drive', exact: true }).click();
+    await dialog.getByRole('heading', { name: 'Explore places', exact: true }).waitFor();
+    await dialog.getByRole('button', { name: 'Namibia Self-Drive', exact: true }).waitFor();
+    const shortlist = dialog.getByRole('complementary', { name: 'Shortlist places' });
+    const etosha = dialog.locator('[data-discovery-card="true"]').filter({ hasText: 'Etosha National Park' });
+    assert.equal(await etosha.getAttribute('data-actionability'), 'browse-only');
+    assert.equal(await etosha.getByRole('button', { name: 'Add to shortlist: Etosha National Park', exact: true }).count(), 0,
+      'natural areas remain explore-only without reviewed overnight-base evidence');
+    await dialog.getByRole('button', { name: 'Add to shortlist: Windhoek', exact: true }).click();
+    await dialog.getByRole('button', { name: 'Morocco, medinas to mountains', exact: true }).click();
+    assert.match(await shortlist.innerText(), /Windhoek/, 'shortlist persists while the route-family filter changes');
+    await dialog.getByRole('button', { name: 'All', exact: true }).click();
+    assert.equal(await dialog.getByRole('button', { name: 'Morocco, medinas to mountains', exact: true }).getAttribute('aria-pressed'), 'false');
+    assert.equal(await view.page.locator('[data-builder-route-workspace] [data-builder-stop-index]').count(), 0,
+      'browsing reviewed route families does not create route stops');
+    assert.deepEqual(view.errors, []);
+  } finally { await view.close(); }
+});
+
+test('Hokkaido remains an unresolved canonical region when no reviewed contained places exist', { skip: !builderBrowserTestsEnabled, timeout: 45_000 }, async () => {
+  const view = await renderBuilder({ query: '?homeDraft=1', draft: homeDraft('Hokkaido', 'London') });
+  try {
+    const dialog = view.page.getByRole('dialog');
+    await dialog.getByRole('heading', { name: 'Explore places', exact: true }).waitFor();
+    assert.equal(await dialog.locator('[data-discovery-card="true"]').count(), 0,
+      'Hokkaido has canonical identity but no reviewed visitor-place evidence to show');
+    await dialog.getByText("We don't have reviewed places here yet.", { exact: true }).waitFor();
+    assert.equal(await dialog.getByRole('combobox', { name: 'Search for somewhere specific: Hokkaido' }).count(), 1);
+    const before = await view.page.locator('[data-builder-route-workspace] [data-builder-stop-index]').count();
+    await dialog.getByRole('button', { name: 'Finish later', exact: true }).click();
+    await dialog.waitFor({ state: 'detached' });
+    const trips = await view.page.evaluate(() => Object.values(localStorage).flatMap(raw => {
+      try { const trip = JSON.parse(raw).trip; return trip ? [trip] : []; } catch { return []; }
+    }));
+    assert.ok(trips.some((trip: { brief: { structuredBrief?: { placeMentions?: Array<{ canonicalPlaceId?: string }> } } }) =>
+      trip.brief.structuredBrief?.placeMentions?.some(mention => mention.canonicalPlaceId === 'hokkaido')));
+    assert.equal(await view.page.locator('[data-builder-route-workspace] [data-builder-stop-index]').count(), before,
+      'finishing later preserves the region intent without fabricating a stop');
+    assert.deepEqual(view.errors, []);
+  } finally { await view.close(); }
+});
+
+test('Sapporo remains a direct actionable city path outside Hokkaido region Discovery', { skip: !builderBrowserTestsEnabled, timeout: 45_000 }, async () => {
+  const view = await renderBuilder({ query: '?homeDraft=1', draft: homeDraft('Sapporo', 'London') });
+  try {
+    assert.equal(await view.page.getByRole('dialog').count(), 0, 'an actionable city does not open Discovery');
+    const route = view.page.locator('[data-builder-route-workspace]');
+    await route.locator('[data-builder-stop-index] [role="cell"] strong').filter({ hasText: 'Sapporo' }).waitFor();
+    assert.equal(await route.locator('[data-builder-stop-index]').count(), 1);
     assert.deepEqual(view.errors, []);
   } finally { await view.close(); }
 });

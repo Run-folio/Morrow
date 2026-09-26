@@ -3,7 +3,7 @@ import test from 'node:test';
 import { discoveryEntryForBrief } from '../lib/easyt/discovery-entry.ts';
 import { createDiscoveryDraft, readDiscoveryDraft, reduceDiscoveryDraft, selectCanonicalSearchResult } from '../lib/easyt/discovery-draft.ts';
 import { projectDiscovery, type DiscoveryProjectionContext } from '../lib/easyt/discovery-projection.ts';
-import { discoveryPlaceForId, type DiscoveryPlace } from '../lib/easyt/discovery-content.ts';
+import { discoveryPlaceForId, discoveryPlaceWithinMention, discoveryPlacesForMention, type DiscoveryPlace } from '../lib/easyt/discovery-content.ts';
 import { discoveryMapTarget } from '../lib/easyt/discovery-map-target.ts';
 import { buildDiscoveryReview } from '../lib/easyt/discovery-review.ts';
 import { commitDiscoveryReview, type DiscoveryCommitPorts } from '../lib/easyt/discovery-commit.ts';
@@ -11,7 +11,7 @@ import { extractStructuredTripBrief } from '../lib/easyt/structured-trip-brief.t
 import { canonicalPlaceSuggestionsForQuery, confirmedAttractionVisitSelection, inferAttractionVisitSelections } from '../lib/easyt/place-intelligence.ts';
 import { discoveryConfirmLabel, discoveryPendingDecisionLabel } from '../lib/easyt/i18n.ts';
 import { availableActions } from '../lib/easyt/i18n.ts';
-import { discoveryConfirmationChoiceForId } from '../lib/easyt/discovery-confirmation.ts';
+import { discoveryConfirmationChoiceForId, discoveryDirectStopSuggestion } from '../lib/easyt/discovery-confirmation.ts';
 import { fixture, applyDiscoveryAddSideEffects } from './helpers/discovery-fixture.ts';
 
 const context = { interests: [] as string[], existingPlaceIds: [] as string[] };
@@ -46,6 +46,75 @@ test('Japan, Namibia, Italy and Australia Add actions match canonical direct-sto
     assert.notEqual(place.actionability, 'overnight-base', `${id} must not be promoted without explicit stay evidence`);
     assert.ok('reason' in discoveryConfirmationChoiceForId(id, australia), `${id} must not be directly committable`);
   }
+});
+
+test('Australian Add eligibility follows reviewed overnight evidence for each audited settlement', () => {
+  const australia = entryAndProjection('Australia').projection;
+  const expected = [
+    { id: 'brisbane', actionability: 'browse-only', staySource: null },
+    { id: 'cairns', actionability: 'overnight-base', staySource: 'route-catalog:australia-east-coast' },
+    { id: 'byron-bay', actionability: 'overnight-base', staySource: 'route-catalog:australia-east-coast' },
+    { id: 'noosa', actionability: 'browse-only', staySource: null },
+  ] as const;
+  for (const item of expected) {
+    const place = australia.places.find(candidate => candidate.id === item.id)!;
+    assert.equal(place.actionability, item.actionability, item.id);
+    assert.equal(place.stayEvidence.length > 0, item.staySource !== null, `${item.id} stay evidence presence`);
+    if (item.staySource) assert.ok(place.stayEvidence.some(source => source.id.startsWith(item.staySource)), item.id);
+    const canShowAdd = Boolean(discoveryDirectStopSuggestion(place));
+    assert.equal(canShowAdd, !('reason' in discoveryConfirmationChoiceForId(item.id, australia)), `${item.id} Add/commit gate`);
+    assert.equal(availableActions(place).includes('stay-here'), canShowAdd, `${item.id} card action agrees with final gate`);
+  }
+  for (const place of australia.places.filter(candidate => availableActions(candidate).includes('stay-here'))) {
+    assert.ok(discoveryDirectStopSuggestion(place), `${place.id} exposes Add only when canonical direct-stop commit is supported`);
+    assert.equal('reason' in discoveryConfirmationChoiceForId(place.id, australia), false, `${place.id} passes final confirmation eligibility`);
+  }
+
+  const natural = entryAndProjection('Namibia').projection.places.find(place => place.id === 'etosha');
+  assert.equal(natural?.placeType, 'natural_area');
+  assert.equal(natural?.actionability, 'browse-only');
+  assert.equal(availableActions(natural!).includes('stay-here'), false);
+  assert.ok('reason' in discoveryConfirmationChoiceForId('etosha', entryAndProjection('Namibia').projection));
+});
+
+test('Hokkaido stays a canonical region with unresolved intent when it has no reviewed contained places', async () => {
+  const brief = extractStructuredTripBrief('Hokkaido');
+  const mention = brief.placeMentions?.[0];
+  assert.ok(mention);
+  assert.equal(mention.canonicalPlaceId, 'hokkaido');
+  assert.equal(mention.placeType, 'region');
+  assert.equal(mention.routability, 'needs_base_selection');
+  const entry = discoveryEntryForBrief(brief, []);
+  assert.equal(entry.kind, 'region');
+  assert.equal(entry.step, 'places');
+  assert.equal(discoveryPlaceWithinMention('sapporo', mention), true, 'Sapporo identity is canonically contained by Hokkaido');
+
+  const projection = projectDiscovery({ mention, draft: createDiscoveryDraft(), context });
+  assert.deepEqual(projection.places, [], 'canonical identity alone is not reviewed visitor evidence');
+  assert.equal(buildDiscoveryReview({ ...fixture('Hokkaido', []), mention, draft: createDiscoveryDraft(), projection }).canConfirm, false);
+  let commits = 0;
+  const result = await (await import('../lib/easyt/discovery-confirmation.ts')).commitDiscoverySelections(
+    ['hokkaido'], projection, async () => { commits += 1; return true; });
+  assert.equal(commits, 0);
+  assert.equal(result.allConfirmed, false);
+  assert.equal(result.unresolved[0]?.id, 'hokkaido');
+
+  const sapporoBrief = extractStructuredTripBrief('Sapporo');
+  const sapporo = sapporoBrief.placeMentions?.[0];
+  assert.ok(sapporo);
+  assert.equal(sapporo.canonicalPlaceId, 'sapporo');
+  assert.equal(sapporo.placeType, 'city');
+  assert.equal(sapporo.routability, 'direct_destination');
+  assert.equal(discoveryEntryForBrief(sapporoBrief, ['sapporo']).kind, 'skip');
+});
+
+test('a second existing region surfaces only canonical contained reviewed children', () => {
+  const { mention, projection } = entryAndProjection('Greek Islands');
+  assert.equal(mention.canonicalPlaceId, 'greek-islands');
+  assert.deepEqual(projection.places.map(place => place.id), ['naxos']);
+  assert.equal(discoveryPlaceWithinMention('naxos', mention), true);
+  assert.equal(availableActions(projection.places[0]!).includes('stay-here'), false);
+  assert.deepEqual(discoveryPlacesForMention(mention).map(place => place.id), ['naxos']);
 });
 
 // Catches shell routing by collection size and unsupported travel defaults.

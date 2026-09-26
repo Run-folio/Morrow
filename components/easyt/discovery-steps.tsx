@@ -79,7 +79,7 @@ const PlaceCard = memo(function PlaceCard({ place, draft, mention, entry, langua
           onClick={(event) => { event.stopPropagation(); onAction({ type: isSpecialResolution ? "choose-visit-base" : "choose-base", intentId: mention.mentionId, baseId: place.id }); }}>
           {baseSelected ? copy.roles.chosen : isSpecialResolution ? discoveryStayInLabel(language, place.name) : baseId ? copy.actions.changeBase : copy.actions.chooseBase}
         </EasyTButton> : <span className={styles.notBase}>{copy.notBase}</span>
-        : place.actionability === "overnight-base" ? <EasyTButton variant={selected ? "secondary" : "primary"} size="small" icon={selected ? Check : Plus}
+        : actions.includes("stay-here") || selected ? <EasyTButton variant={selected ? "secondary" : "primary"} size="small" icon={selected ? Check : Plus}
           aria-label={`${selected ? copy.accessibility.removeFromShortlist : copy.accessibility.addToShortlist}: ${place.name}`}
           aria-pressed={selected} onClick={(event) => { event.stopPropagation(); onAction({ type: selected ? "remove-shortlist" : "add-shortlist", placeId: place.id }); }}>
           {selected ? copy.actions.remove : copy.actions.shortlist}
@@ -192,6 +192,18 @@ export function DiscoverySteps({ entry, mention, projection, draft, language, ex
 
   return <div className={styles.step} data-discovery-step={draft.step}>
     <p className={styles.stepHelper}>{draft.step === "bases" ? copy.baseIntro : copy.placesIntro}</p>
+    {draft.step === "places" && projection.directions.length ? <div className={styles.directionFilters} role="group" aria-label={copy.directions.filterLabel}>
+      <EasyTButton variant={draft.directionId === null ? "primary" : "secondary"} size="small" data-discovery-direction-filter="all"
+        aria-pressed={draft.directionId === null} onClick={() => onAction({ type: "change-direction", directionId: null })}>
+        {copy.directions.all}
+      </EasyTButton>
+      {projection.directions.map(direction => {
+        const title = discoveryDirectionTitle(language, direction.titleKey, direction.title);
+        return <EasyTButton key={direction.id} variant={draft.directionId === direction.id ? "primary" : "secondary"} size="small"
+          data-discovery-direction-filter={direction.id} aria-pressed={draft.directionId === direction.id}
+          onClick={() => onAction({ type: "change-direction", directionId: direction.id })}>{title}</EasyTButton>;
+      })}
+    </div> : null}
     {!mapUnavailable && allPlaces.length ? <EasyTButton ref={mapToggleRef} variant="secondary" size="small" className={styles.mobileMapButton}
       aria-expanded={mobileMapOpen} aria-controls={mapRegionId} onClick={() => {
         if (mobileMapOpen) {
