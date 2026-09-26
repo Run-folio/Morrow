@@ -10,6 +10,7 @@ import { useHomepageLanguage } from "./use-homepage-language";
 import styles from "./immersive.module.css";
 import RouteChapters from "./route-chapters";
 import type { ImmersiveRoute } from "@/lib/easyt/immersive-homepage-routes";
+import type { DiscoveryRoute } from "@/lib/easyt/discovery-catalogue";
 import ProductDemo from "./product-demo";
 import AffiliateChapter from "./affiliate-chapter";
 import { trackEvent } from "@/lib/analytics";
@@ -21,7 +22,7 @@ import HomepageHowItWorks from "./homepage-how-it-works";
 
 const FallbackImage = Image;
 
-export default function ImmersiveHome({ routes, initialIndex }: { routes: ImmersiveRoute[]; initialIndex: number }) {
+export default function ImmersiveHome({ routes, previewRoutes, initialIndex }: { routes: ImmersiveRoute[]; previewRoutes: DiscoveryRoute[]; initialIndex: number }) {
   const [index, setIndex] = useState(initialIndex);
   const route = routes[index] ?? routes[0];
   const heroPhoto = route ? (() => { const heroPhoto = route.heroPhoto; return heroPhoto; })() : undefined;
@@ -65,7 +66,7 @@ export default function ImmersiveHome({ routes, initialIndex }: { routes: Immers
       </div>
       <div className={styles.heroBottom}><a href="#routes">{es ? "De una idea a un viaje" : "From an idea to a journey"} <ArrowDown aria-hidden="true" /></a></div>
     </section>
-    <HomepageRouteInspiration routes={routes} />
+    <HomepageRouteInspiration routes={routes} previewRoutes={previewRoutes} />
     <HomepageHowItWorks />
     <RouteChapters quiet={systemQuiet} routes={routes} index={index} onChange={setIndex}>{(route, change) => <><ProductDemo route={route} routes={routes} change={change} /><AffiliateChapter routeKey={route.key} /></>}</RouteChapters>
     <ClosingChapter />

@@ -78,11 +78,11 @@ test("every published route has local photography with documented source, rights
     assert.ok(route.image!.alt); assert.ok(route.image!.variants.every(v=>v.width > 0));
   }
 });
-test("preview delegates Start, restores browsing focus/scroll, and has finite failure and keyboard exit", () => {
+test("preview delegates Use this route, offers the full detail route, restores browsing focus/scroll, and has finite failure and keyboard exit", () => {
   const preview = source("app/journey/discover/route-preview.tsx");
   assert.match(preview,/<RoutePlanLink draft={draft} placement="discovery"/);
   assert.doesNotMatch(preview,/routePlannerPayload|trackEvent\(/);
-  for (const contract of ["showModal()", "onCancel=", "preventScroll: true", "top: scrollY", "AbortSignal.timeout", "route.stops.map", "href={route.href}"]) assert.ok(preview.includes(contract),contract);
+  for (const contract of ["showModal()", "onCancel=", "preventScroll: true", "top: scrollY", "AbortSignal.timeout", "route.stops.map", "href={route.href}", "View full route", "Use this route"]) assert.ok(preview.includes(contract),contract);
 });
 test("preview stop selector owns a contained, stable selected state", () => {
   const preview = source("app/journey/discover/route-preview.tsx");

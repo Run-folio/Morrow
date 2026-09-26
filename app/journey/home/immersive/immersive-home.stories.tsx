@@ -1,15 +1,17 @@
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
 import { useEffect } from "react";
 import { immersiveHomepageRoutes } from "@/lib/easyt/immersive-homepage-routes";
+import { discoveryCatalogue } from "@/lib/easyt/discovery-catalogue";
 import ImmersiveHome from "./immersive-home";
 
 const routes = immersiveHomepageRoutes();
+const previewRoutes = discoveryCatalogue();
 const previewRouteIndex = Math.max(0, routes.findIndex((route) => route.key === "namibia-self-drive"));
 
 const meta = {
   title: "Morrovia/05 Product Patterns/Homepage dual entry",
   component: ImmersiveHome,
-  args: { routes, initialIndex: previewRouteIndex },
+  args: { routes, previewRoutes, initialIndex: previewRouteIndex },
   parameters: { layout: "fullscreen", nextjs: { appDirectory: true, navigation: { pathname: "/" } } },
 } satisfies Meta<typeof ImmersiveHome>;
 
@@ -17,7 +19,7 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 function ConnectedComposition() {
-  return <ImmersiveHome routes={routes} initialIndex={previewRouteIndex} />;
+  return <ImmersiveHome routes={routes} previewRoutes={previewRoutes} initialIndex={previewRouteIndex} />;
 }
 
 function LanguageComposition({ language }: { language: "en" | "es" }) {

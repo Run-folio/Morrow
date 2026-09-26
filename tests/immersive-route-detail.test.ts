@@ -154,7 +154,7 @@ test("actions reuse canonical handoff and analytics while mobile and motion keep
   assert.equal((action.match(/trackEvent\("route_started"/g) ?? []).length, 1);
   assert.match(action, /\/journey\/new\?inspire=/);
   assert.doesNotMatch(view, /trackEvent|useEffect|localStorage|routePlannerPayload/);
-  assert.equal((view.match(/>Plan this route<\/RoutePlanLink>/g) ?? []).length, 2);
+  assert.equal((view.match(/>Use this route<\/RoutePlanLink>/g) ?? []).length, 2);
   assert.doesNotMatch(view, /href="#route-map"|Shape the nights in Builder/);
   assert.match(view, /route_detail_experiences/);
   assert.doesNotMatch(view, /RouteRelatedRoutes/);
