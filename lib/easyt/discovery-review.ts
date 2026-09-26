@@ -27,7 +27,7 @@ export function buildDiscoveryReview(input: { mention: ResolvedPlaceMention; dra
   const addBase = (id: string) => {
     const place = projection.places.find(item => item.id === id);
     const choice = discoveryConfirmationChoiceForId(id, projection);
-    if (!place || !place.stayEvidence.length || !['city', 'town', 'transport_gateway'].includes(place.placeType) || 'reason' in choice) {
+    if (!place || 'reason' in choice) {
       blockedIds.add(id); return false;
     }
     if (trip.stops.filter(stop => stop.canonicalPlaceId === id).length > 1) { blockedIds.add(id); return false; }

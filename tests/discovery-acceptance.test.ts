@@ -10,6 +10,8 @@ import { commitDiscoveryReview, type DiscoveryCommitPorts } from '../lib/easyt/d
 import { extractStructuredTripBrief } from '../lib/easyt/structured-trip-brief.ts';
 import { canonicalPlaceSuggestionsForQuery, confirmedAttractionVisitSelection, inferAttractionVisitSelections } from '../lib/easyt/place-intelligence.ts';
 import { discoveryConfirmLabel, discoveryPendingDecisionLabel } from '../lib/easyt/i18n.ts';
+import { availableActions } from '../lib/easyt/i18n.ts';
+import { discoveryConfirmationChoiceForId } from '../lib/easyt/discovery-confirmation.ts';
 import { fixture, applyDiscoveryAddSideEffects } from './helpers/discovery-fixture.ts';
 
 const context = { interests: [] as string[], existingPlaceIds: [] as string[] };
@@ -20,6 +22,20 @@ const entryAndProjection = (name: string) => {
   const draft = readDiscoveryDraft(brief, mention.mentionId).draft;
   return { brief, entry, mention, draft, projection: projectDiscovery({ mention, draft, context }) };
 };
+
+test('Japan, Namibia and Australia Add actions match canonical direct-stop confirmation eligibility', () => {
+  for (const name of ['Japan', 'Namibia', 'Australia']) {
+    const { projection } = entryAndProjection(name);
+    for (const place of projection.places) {
+      const actions = availableActions(place);
+      const exposesNormalAdd = place.actionability === 'overnight-base';
+      const confirmation = discoveryConfirmationChoiceForId(place.id, projection);
+      assert.equal(exposesNormalAdd, !('reason' in confirmation), `${name}: ${place.name} card and commit eligibility must agree`);
+      if (exposesNormalAdd) assert.ok(actions.includes('stay-here'), `${name}: ${place.name} exposes Add without stay eligibility`);
+      else assert.ok(!actions.includes('stay-here'), `${name}: ${place.name} browse/visit action must not masquerade as an overnight Add`);
+    }
+  }
+});
 
 // Catches shell routing by collection size and unsupported travel defaults.
 for (const [name, kind, count, recommendationCount] of [

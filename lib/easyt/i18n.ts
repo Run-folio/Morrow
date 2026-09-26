@@ -1,6 +1,7 @@
 import type { CountryDiscoveryRecommendationReason, CountryDiscoveryStayGuidance } from "./country-discovery.ts";
 import { normalizeTripInterests, tripInterestLabels } from "./trip-interest.ts";
 import type { DiscoveryPlace } from "./discovery-content.ts";
+import { discoveryDirectStopSuggestion } from "./discovery-confirmation.ts";
 
 export type EasyTLanguage = "en" | "es";
 
@@ -75,11 +76,11 @@ export function discoveryPendingDecisionLabel(language: EasyTLanguage, placeType
 
 /** Action affordances follow reviewed role evidence, never a display geography. */
 export function availableActions(place: DiscoveryPlace): DiscoveryPlaceAction[] {
-  return place.actionability === "overnight-base"
+  return discoveryDirectStopSuggestion(place)
     ? ["explore", "shortlist", "stay-here", "choose-base"]
     : place.actionability === "visit"
       ? ["explore", "shortlist", "visit-from-base"]
-      : ["explore", "shortlist"];
+      : ["explore"];
 }
 
 export function renderDiscoveryReason(language: EasyTLanguage, place: DiscoveryPlace): string {

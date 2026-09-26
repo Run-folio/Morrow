@@ -4348,7 +4348,21 @@ function TripBuilderDocument() {
                     ...suggestion, coordinates: [...coordinates] as [number, number], regionCanonicalPlaceId: mention.canonicalPlaceId ?? "",
                     reason: "Traveller confirmed this reviewed place.", anchorMatched: false,
                   }); });
-                  return Boolean(await added);
+                  if (!await added) return false;
+                  const ownerHasChoice = () => {
+                    const current = discoveryOwnersRef.current.trip;
+                    return current.stops.some(stop => stop.canonicalPlaceId === choice.id)
+                      && Boolean(current.brief.structuredBrief?.placeSelections?.some(selection => selection.mentionId === mention.mentionId
+                        && selection.selectedCanonicalPlaceId === choice.id
+                        && current.stops.some(stop => stop.id === selection.routeStopId && stop.canonicalPlaceId === choice.id)));
+                  };
+                  // React may commit the state updates after the async Add handler
+                  // resolves. Wait for the layout-effect-owned canonical document
+                  // before the confirmation owner validates and checkpoints it.
+                  for (let frame = 0; frame < 8 && !ownerHasChoice(); frame++) {
+                    await new Promise<void>(resolve => window.requestAnimationFrame(() => resolve()));
+                  }
+                  return ownerHasChoice();
                 },
                 linkVisit: async (visit, stopId) => {
                   flushSync(() => discoveryOwnersRef.current.confirmAttractionVisit(mention, visit.proposal, stopId));

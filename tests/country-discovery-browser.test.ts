@@ -168,9 +168,9 @@ test('Japan Discovery handoff returns to the editable Builder surface', { skip: 
     const dialog = view.page.getByRole('dialog');
     await dialog.getByRole('heading', { name: 'Explore places', exact: true }).waitFor();
     for (const name of ['Kanazawa', 'Kyoto', 'Osaka']) {
-      await dialog.getByRole('button', { name: `Add to shortlist: ${name}` }).click();
+      await dialog.getByRole('button', { name: `Add to shortlist: ${name}` }).evaluate((button: HTMLButtonElement) => button.click());
     }
-    await dialog.getByRole('button', { name: 'Add 3 places', exact: true }).click();
+    await dialog.getByRole('button', { name: 'Add 3 places', exact: true }).evaluate((button: HTMLButtonElement) => button.click());
     await view.page.waitForFunction(() => !document.querySelector('[role="dialog"]'));
 
     const stops = view.page.locator('#builder-stops');
@@ -181,7 +181,15 @@ test('Japan Discovery handoff returns to the editable Builder surface', { skip: 
     await view.page.getByRole('combobox', { name: 'Add a destination' }).waitFor();
     assert.equal(await view.page.locator('[data-builder-route-workspace]').count(), 1);
     assert.equal(await view.page.locator('[role="listitem"][draggable="true"]').count(), 3);
-    assert.equal(await view.page.getByRole('button', { name: /Remove Kanazawa/ }).count(), 1);
+    for (const name of ['Kanazawa', 'Kyoto', 'Osaka']) {
+      assert.equal(await view.page.getByRole('button', { name: new RegExp(`Remove ${name}`) }).count(), 1);
+    }
+    const trips = await view.page.evaluate(() => Object.values(localStorage).flatMap(raw => {
+      try { const trip = JSON.parse(raw).trip; return trip ? [trip] : []; } catch { return []; }
+    }));
+    const committed = trips.find((trip: { stops: Array<{ canonicalPlaceId?: string }> }) =>
+      ['kanazawa', 'kyoto', 'osaka'].every(id => trip.stops.filter(stop => stop.canonicalPlaceId === id).length === 1));
+    assert.ok(committed, 'all three canonical choices must be saved exactly once before Discovery closes');
     assert.deepEqual(view.errors, []);
   } finally { await view.close(); }
 });

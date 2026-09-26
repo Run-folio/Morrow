@@ -7,6 +7,7 @@ import { projectDiscovery } from "../lib/easyt/discovery-projection.ts";
 import { discoveryReviewState } from "../lib/easyt/discovery-review-state.ts";
 import { canonicalPlaceSuggestionsForQuery } from "../lib/easyt/place-intelligence.ts";
 import { extractStructuredTripBrief } from "../lib/easyt/structured-trip-brief.ts";
+import { availableActions } from "../lib/easyt/i18n.ts";
 
 const mention = extractStructuredTripBrief("Australia").placeMentions![0]!;
 const places = discoveryPlacesForMention(mention);
@@ -24,6 +25,7 @@ test("search rejects provider-only, wrong-country and browse-only route choices"
   assert.deepEqual(selectCanonicalSearchResult(empty, { canonicalPlaceId: "provider-only", country: "Australia" }, places), empty);
   assert.deepEqual(selectCanonicalSearchResult(empty, { canonicalPlaceId: "melbourne", country: "Japan" }, places), empty);
   const browse = places.find(place => place.actionability === "browse-only" && place.placeType === "city")!;
+  assert.deepEqual(availableActions(browse), ["explore"], "browse-only candidates must not advertise Add/shortlist actions");
   assert.deepEqual(selectCanonicalSearchResult(empty, { canonicalPlaceId: browse.id, country: browse.country }, places, { type: "choose-base", intentId: mention.mentionId }), empty);
   assert.deepEqual(selectCanonicalSearchResult(empty, { canonicalPlaceId: browse.id, country: browse.country }, places), empty);
 });
