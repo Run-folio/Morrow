@@ -220,9 +220,16 @@ test("transport markers use the canonical mode and never invent an unknown mode"
   assert.match(icons, /unknown: CircleHelp/);
   assert.match(mapSource, /const MarkerIcon = mapTransportIcon\(leg\.mode\)/);
   assert.match(mapSource, /element\.dataset\.routeLegId = leg\.id/);
-  assert.match(mapSource, /leg\.distanceKm !== null/);
-  assert.match(mapSource, /formatMapDuration\(leg\.doorToDoorMinutes\)/);
-  assert.match(mapSource, /leg\.provenanceLabel/);
+  assert.ok(mapSource.includes('element.setAttribute("aria-label", `Inspect transfer ${index + 1}: ${leg.fromName} to ${leg.toName}, ${leg.modeLabel}`)'));
+});
+
+test("trip map markers stay compact while retaining accessible mode and exact selection", () => {
+  assert.match(mapSource, /className="planner-map__leg-icon"/);
+  assert.ok(mapSource.includes('element.setAttribute("aria-label", `Inspect transfer ${index + 1}: ${leg.fromName} to ${leg.toName}, ${leg.modeLabel}`)'));
+  assert.match(mapSource, /onLegSelectRef\.current\?\.\(leg\)/);
+  assert.doesNotMatch(mapSource, /planner-map__leg-card/);
+  assert.doesNotMatch(mapStylesSource, /planner-map__leg-card/);
+  assert.match(mapPresentationStylesSource, /planner-map__leg-icon svg\)\{width:24px;height:24px/);
 });
 
 test("shared presentation owns transport marker backgrounds and interaction states", () => {

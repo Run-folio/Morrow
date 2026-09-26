@@ -17,8 +17,7 @@ import type { MapResultPlace } from "@/lib/easyt/map-result-selection";
 import { applyMapCameraRequest, focusMapCamera, fitMapCamera, interruptMapCamera, type MapCamera } from "@/lib/easyt/map-camera";
 import { resolveMapCameraRequest, resolveMapInsets, resolveMapSurfacePolicy, type MorroviaMapInsets, type MorroviaMapSurface } from "@/lib/easyt/map-surface-policy";
 import { createMorroviaBasemapLifecycle, hasMorroviaActiveStyle, type MorroviaBasemapLifecycle, type MorroviaBasemapMap, type MorroviaBasemapStatus } from "@/lib/easyt/map-basemap-lifecycle";
-import { bindMapMarkerActivation, canonicalMapTransportMode, formatMapDuration, mapRouteBearing, mapRouteFitCoordinates, mapRouteLegActivationEvent, mapRouteLegIdAtPoint, mapRouteMarkerCoordinates, mapStopIdAtPoint, mapTransportModeLabel, type MapRouteLeg } from "@/lib/easyt/map-spatial-context";
-import { tripLegClassificationLabel } from "@/lib/easyt/trip-legs";
+import { bindMapMarkerActivation, canonicalMapTransportMode, mapRouteBearing, mapRouteFitCoordinates, mapRouteLegActivationEvent, mapRouteLegIdAtPoint, mapRouteMarkerCoordinates, mapStopIdAtPoint, mapTransportModeLabel, type MapRouteLeg } from "@/lib/easyt/map-spatial-context";
 
 export type JourneyMapDestinationCard = {
   stopId: string;
@@ -645,19 +644,13 @@ export function JourneyPlannerMap({
       legMarkersRef.current = spatialLegs.map((leg, index) => {
         const element = document.createElement("button");
         element.type = "button";
-        element.className = `planner-map__leg is-${leg.mode} ${index % 2 ? "is-card-below" : ""} ${leg.id === selectedLegId ? "is-active" : ""} ${contextCardsHidden ? "is-context-hidden" : ""}`;
+        element.className = `planner-map__leg is-${leg.mode} ${leg.id === selectedLegId ? "is-active" : ""}`;
         element.dataset.routeLegId = leg.id;
         element.setAttribute("aria-label", `Inspect transfer ${index + 1}: ${leg.fromName} to ${leg.toName}, ${leg.modeLabel}`);
         const MarkerIcon = mapTransportIcon(leg.mode);
         const rotation = mapTransportIconRotation(leg.mode, mapRouteBearing(leg));
         element.innerHTML = renderToStaticMarkup(<>
           <span className="planner-map__leg-icon" aria-hidden="true" style={rotation === null ? undefined : { transform: `rotate(${rotation}deg)` }}><MarkerIcon /></span>
-          <span className="planner-map__leg-card" aria-hidden="true">
-            <span className="planner-map__leg-meta"><strong>{leg.modeLabel.toLocaleUpperCase()}</strong><em>{formatMapDuration(leg.headlineMinutes ?? leg.doorToDoorMinutes)}</em></span>
-            <b>{leg.fromName} → {leg.toName}</b>
-            <span>{leg.distanceKm !== null ? `${Math.round(leg.distanceKm).toLocaleString()} km` : "Distance to confirm"} · Door-to-door {formatMapDuration(leg.doorToDoorMinutes)}</span>
-            <small>{tripLegClassificationLabel(leg.classification)} · {leg.provenanceLabel}</small>
-          </span>
         </>);
         const activateLeg = (event: MouseEvent | PointerEvent) => {
           event.stopPropagation();
@@ -678,15 +671,14 @@ export function JourneyPlannerMap({
       legMarkersRef.current.forEach((marker) => marker.remove());
       legMarkersRef.current = [];
     };
-  }, [contextCardsHidden, domainSelection, spatialLegs]);
+  }, [domainSelection, spatialLegs]);
 
   useEffect(() => {
     legMarkersRef.current.forEach((marker) => {
       const element = marker.getElement();
       element.classList.toggle("is-active", element.dataset.routeLegId === selectedLegId);
-      element.classList.toggle("is-context-hidden", contextCardsHidden);
     });
-  }, [contextCardsHidden, selectedLegId]);
+  }, [selectedLegId]);
 
   useEffect(() => {
     const map = mapRef.current;

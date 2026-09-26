@@ -31,6 +31,7 @@ export default function RouteMapSummary({ title, stops, countries, nights, durat
   const [navigatorWidth, setNavigatorWidth] = useState(0);
   const root = useRef<HTMLDivElement>(null);
   const navigatorRef = useRef<HTMLElement>(null);
+  const previousSelectionRef = useRef(selected);
   useEffect(() => {
     const navigator = navigatorRef.current;
     if (!navigator || typeof ResizeObserver === "undefined") return;
@@ -45,6 +46,8 @@ export default function RouteMapSummary({ title, stops, countries, nights, durat
     return () => observer.disconnect();
   }, []);
   useEffect(() => {
+    if (previousSelectionRef.current === selected) return;
+    previousSelectionRef.current = selected;
     navigatorRef.current?.querySelector<HTMLElement>('[aria-current="location"]')?.scrollIntoView({ block: "nearest", inline: "nearest" });
   }, [selected]);
   useEffect(() => {

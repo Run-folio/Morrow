@@ -93,3 +93,11 @@ test("dashboard offers the map as contextual preview rather than a workspace tab
   assert.doesNotMatch(dashboard, /<Link href=\{`\/journey\/\$\{encodeURIComponent\(featuredTrip\.id\)\}\/map`\}[^>]*>Map<\/Link>/);
   assert.match(dashboard, /className=\{styles\.currentMap\} href=\{mapWorkspaceHref\(featuredTrip\.id, null, "plan", null, null, null, "\/journey\/dashboard"\)\}/);
 });
+
+test("the route map keeps ordinary entry at the top and scrolls only for selection or deep links", () => {
+  const routeMap = read("app/journey/routes/[slug]/route-map-summary.tsx");
+  assert.match(routeMap, /previousSelectionRef = useRef\(selected\)/);
+  assert.match(routeMap, /if \(previousSelectionRef\.current === selected\) return;[\s\S]*previousSelectionRef\.current = selected;[\s\S]*scrollIntoView/);
+  assert.match(routeMap, /followAnchor\(\);[\s\S]*addEventListener\("hashchange", followAnchor\)/);
+  assert.match(routeMap, /scrollIntoView\(\{ block: "nearest", inline: "nearest" \}\)/);
+});
