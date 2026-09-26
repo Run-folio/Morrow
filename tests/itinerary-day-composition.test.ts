@@ -14,7 +14,7 @@ import { buildCredibleItinerary } from "../lib/easyt/planner.ts";
 import { reconcileAuthoredDayState } from "../lib/easyt/trip-authored-day-state.ts";
 import { canonicalTripForOwner, duplicateTripDocument } from "../lib/easyt/trip-promotion.ts";
 import { replanTripAfterDayOrder } from "../lib/easyt/trip-replan.ts";
-import { cacheCanonicalTripToStorage, loadCachedTripFromStorage, loadLocalTripFromStorage, saveTripRecoveryToStorage, type EasyTBrowserStorage } from "../lib/easyt/storage.ts";
+import { cacheCanonicalTripToStorage, loadCachedTripFromStorage, loadLocalTripFromStorage, saveTripRecoveryToStorage, tripRecoveryStorageKey, type EasyTBrowserStorage } from "../lib/easyt/storage.ts";
 import { defaultTripIntent, tripFromBuilder, type EasyTTrip, type PlanItem } from "../lib/easyt/trip.ts";
 
 class MemoryStorage implements EasyTBrowserStorage {
@@ -73,14 +73,33 @@ test("older generated Botanical Garden prose remains context after reload withou
     notes: ["Akureyri Botanical Garden", description, "Leave the final part of the day open for a local meal or a nearby walk.", "Coffee in town"],
   } : item) };
   const storage = new MemoryStorage();
-  assert.equal(saveTripRecoveryToStorage(storage, legacy, { ownerId: null, writeId: "legacy-botanical-write" }).stored, true);
+  const legacyWrite = saveTripRecoveryToStorage(storage, legacy, { ownerId: null, writeId: "legacy-botanical-write" });
+  assert.equal(legacyWrite.stored, true);
+  const legacyKey = tripRecoveryStorageKey(null, legacy.id, "legacy-botanical-write");
+  const legacyRecord = JSON.parse(storage.getItem(legacyKey)!);
+  legacyRecord.trip = legacy;
+  storage.setItem(legacyKey, JSON.stringify(legacyRecord));
   const reloaded = loadLocalTripFromStorage(storage, legacy.id, null)!;
   const reloadedDay = reloaded.planItems[1]!;
-  assert.deepEqual(reloadedDay.notes, ["Akureyri Botanical Garden", "Coffee in town"]);
+  assert.deepEqual(reloadedDay.notes, ["Akureyri Botanical Garden", "Coffee in town"], "legacy recovery reads remove generated prose but preserve authored activities");
   assert.ok(reloadedDay.contextNotes?.includes(description));
-  const composition = composeItineraryDay(reloaded, reloadedDay.id)!;
+  const edited = {
+    ...reloaded,
+    planItems: reloaded.planItems.map((item) => item.dayNumber === 2 ? { ...item, notes: [...item.notes, "Traveller dinner note"] } : item),
+  };
+  assert.equal(saveTripRecoveryToStorage(storage, edited, {
+    ownerId: null, writeId: "normalized-botanical-write", replace: legacyWrite.handle,
+  }).stored, true);
+  const persistedRecovery = JSON.parse(storage.getItem(tripRecoveryStorageKey(null, legacy.id, "normalized-botanical-write"))!);
+  const persistedDay = persistedRecovery.trip.planItems.find((item: PlanItem) => item.dayNumber === 2)!;
+  assert.deepEqual(persistedDay.notes, ["Akureyri Botanical Garden", "Coffee in town", "Traveller dinner note"], "canonical persisted rows exclude generated prose while preserving authored notes");
+  assert.ok(persistedDay.contextNotes?.includes(description), "generated prose persists as day context");
+  const savedAndReloaded = loadLocalTripFromStorage(storage, legacy.id, null)!;
+  const savedAndReloadedDay = savedAndReloaded.planItems[1]!;
+  assert.deepEqual(savedAndReloadedDay.notes, ["Akureyri Botanical Garden", "Coffee in town", "Traveller dinner note"]);
+  const composition = composeItineraryDay(savedAndReloaded, savedAndReloadedDay.id)!;
   const activities = [...Object.values(composition.planned).flat(), ...composition.unslotted];
-  assert.deepEqual(activities.map((activity) => activity.title), ["Akureyri Botanical Garden", "Coffee in town"]);
+  assert.deepEqual(activities.map((activity) => activity.title), ["Akureyri Botanical Garden", "Coffee in town", "Traveller dinner note"]);
   assert.ok(composition.context.notes.includes(description));
   assert.equal(activities.some((activity) => activity.title === description), false);
 
