@@ -915,15 +915,10 @@ export function JourneyMapPlannerWorkspace({
       ? "Map pin"
       : mobileMapSheetView === "planner"
         ? "Shape the day"
-        : selectedLocalPlace
-          ? "Selected place"
-          : selectedPlannerPin
-            ? "Saved map pin"
-            : selectedRouteLeg
-              ? "Selected transfer"
-              : mapMode === "overview"
-                ? "Whole route"
-                : "Selected destination";
+        : selectedLocalPlace?.name
+          ?? selectedPlannerPin?.title
+          ?? (selectedRouteLeg ? `${selectedRouteLeg.fromName} → ${selectedRouteLeg.toName}` : null)
+          ?? (mapMode === "overview" ? "Whole route" : selectedTripStop?.name ?? selected.city);
   useEffect(() => {
     if (!isShellPresentation) return;
     if (pinPlacementMode || pinCoordinates || selectedLocalPlaceId || selectedPlannerPin || selectedRouteLegId) {
@@ -2690,7 +2685,7 @@ export function JourneyMapPlannerWorkspace({
         data-mobile-drawer-state={mobileMapDrawerOpen ? "open" : "collapsed"}
       >
         <header className={styles.mobileMapSheetControls}>
-          <EasyTButton type="button" variant="quiet" className={mapDocks.mobileMapDrawerToggle} aria-label={mobileMapDrawerOpen ? "Collapse map results" : "Open map results"} aria-expanded={mobileMapDrawerOpen} aria-controls="map-contextual-sheet-content" onPointerDown={onDrawerPointerDown} onPointerUp={onDrawerPointerUp} onPointerCancel={() => { drawerGestureRef.current = null; suppressDrawerClickRef.current = false; }} onClick={(event) => { if (suppressDrawerClickRef.current) { suppressDrawerClickRef.current = false; if (event.detail !== 0) return; } setMobileMapDrawerOpen((open) => !open); }}>
+          <EasyTButton type="button" variant="quiet" className={mapDocks.mobileMapDrawerToggle} aria-label={`${mobileMapDrawerOpen ? "Collapse" : "Expand"} ${mobileMapSheetTitle} details`} aria-expanded={mobileMapDrawerOpen} aria-controls="map-contextual-sheet-content" onPointerDown={onDrawerPointerDown} onPointerUp={onDrawerPointerUp} onPointerCancel={() => { drawerGestureRef.current = null; suppressDrawerClickRef.current = false; }} onClick={(event) => { if (suppressDrawerClickRef.current) { suppressDrawerClickRef.current = false; if (event.detail !== 0) return; } setMobileMapDrawerOpen((open) => !open); }}>
             <span className={mapDocks.mobileMapDrawerGrip} aria-hidden="true" />
             <span className={mapDocks.mobileMapDrawerTitle}>{mobileMapSheetTitle}</span>
             {mobileMapDrawerOpen ? <ChevronDown aria-hidden="true" /> : <ChevronUp aria-hidden="true" />}
@@ -2698,7 +2693,7 @@ export function JourneyMapPlannerWorkspace({
         </header>
         <div id="map-contextual-sheet-content" ref={drawerBodyRef} className={styles.mobileMapSheetBody}>
       <aside className={`${styles.itineraryPanel} ${hasCanonicalPlanner ? `${styles.itineraryWithFinder} ${styles.canonicalPlannerStatus}` : ""} ${hasCanonicalPlanner && tripStatusExpanded ? styles.tripStatusExpanded : ""} ${tripHealthDetail ? styles.healthDetailOpen : ""} ${pinPlacementMode || Boolean(pinCoordinates) ? styles.mapContextHidden : ""} ${defaultMapContext ? styles.mapDefaultContext : ""} ${isShellPresentation && !showShellContext ? styles.mapContextEmpty : ""} ${isShellPresentation && selectedRouteLeg ? styles.mapTransferContext : ""} ${isShellPresentation && (selectedLocalPlace || selectedPlannerPin) ? styles.mapPlaceContext : ""} ${isShellPresentation && mapMode === "detail" && !selectedLocalPlace && !selectedPlannerPin && !selectedRouteLeg ? styles.mapDestinationContext : ""}`} aria-label="Selected map context" aria-live="polite">
-        {isShellPresentation && customTrip ? showShellContext ? <section className={styles.mapContextPanel} aria-labelledby="map-context-title">
+        {isShellPresentation && customTrip ? showShellContext ? <section className={`${styles.mapContextPanel} ${selectedLocalPlace || selectedPlannerPin || selectedRouteLeg ? styles.mapContextEntity : ""}`} aria-labelledby="map-context-title">
           <p className={styles.mapContextEyebrow}>{selectedLocalPlace || selectedPlannerPin ? "Selected place" : selectedRouteLeg ? "Selected transfer" : mapMode === "overview" ? "Whole route" : mapDetailScope === "day" ? "Selected day" : "Selected stop"}</p>
           <div className={styles.mapContextHeading}>
             <h2 id="map-context-title" className={selectedRecommendationDetail ? "sr-only" : undefined}>{selectedLocalPlace?.name ?? selectedPlannerPin?.title ?? (selectedRouteLeg ? `${selectedRouteLeg.fromName} → ${selectedRouteLeg.toName}` : mapMode === "overview" ? `${customTrip.stops.length} ${customTrip.stops.length === 1 ? "stop" : "stops"}, one connected trip` : selectedTripStop?.name ?? selected.city)}</h2>
@@ -2709,6 +2704,7 @@ export function JourneyMapPlannerWorkspace({
             <ItineraryItemDetail
               embedded
               omitEmptyMedia
+              compactMapHeader
               detail={selectedRecommendationDetail}
               mapHref={selectedLocalPlace.mapsUrl}
               onClose={dismissSelectedMapResult}

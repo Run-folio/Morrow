@@ -108,13 +108,6 @@ export function JourneyPlannerStrip({
         <span>{summary}</span>
       </div> : null}
 
-      <JourneyRouteStopTrack
-        stops={stops}
-        onSelectStop={onSelectStop}
-        presentation={presentation === "integrated" ? "integrated" : "default"}
-        trailing={<Link className={styles.addStop} href={addStopHref}><Plus aria-hidden="true" />Add stop</Link>}
-      />
-
       <div className={styles.actions}>
         {onWholeRoute ? <button data-map-route-reset type="button" className={`${styles.fullTrip} ${styles.wholeRoute}`} onClick={onWholeRoute} aria-pressed={wholeRouteActive} title="Fit map to whole route"><Route aria-hidden="true" />Whole route</button> : null}
         {onFullTrip ? <button data-map-expand-control type="button" className={styles.fullTrip} onClick={onFullTrip} aria-pressed={fullTripExpanded} title={fullTripLabel}>{fullTripExpanded ? <Minimize2 aria-hidden="true" /> : <Maximize2 aria-hidden="true" />}{fullTripLabel}</button> : fullTripHref ? <Link className={styles.fullTrip} href={fullTripHref}>{fullTripLabel}</Link> : null}
@@ -123,6 +116,13 @@ export function JourneyPlannerStrip({
           <div>{overflow}</div>
         </details>
       </div>
+
+      <JourneyRouteStopTrack
+        stops={stops}
+        onSelectStop={onSelectStop}
+        presentation={presentation === "integrated" ? "integrated" : "default"}
+        trailing={<Link className={styles.addStop} href={addStopHref}><Plus aria-hidden="true" />Add stop</Link>}
+      />
     </header>
   );
 }

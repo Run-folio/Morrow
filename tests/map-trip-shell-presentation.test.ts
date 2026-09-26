@@ -281,8 +281,11 @@ test("whole-route mode prioritises route context and keeps mobile Map actions re
   assert.match(mapWorkspaceSource, /const wholeRouteMapContext = mapMode === "overview"/);
   assert.match(mapWorkspaceSource, /setMobileShapeDayOpen\(false\);[\s\S]*setMapMode\("overview"\)/);
   assert.match(mapWorkspaceSource, /showDayPlanner \? <button type="button" className=\{styles\.mapDayControl\}/);
-  assert.match(plannerStripStylesSource, /\.integrated\{grid-template-columns:minmax\(0,1fr\);grid-template-rows:auto auto/);
-  assert.match(plannerStripStylesSource, /\.integrated \.actions\{grid-row:2;width:100%;justify-content:flex-end/);
+  assert.match(plannerStripStylesSource, /\.integrated\{grid-template-columns:auto minmax\(0,1fr\);grid-template-rows:auto/);
+  assert.match(plannerStripStylesSource, /\.integrated \.actions\{grid-column:1;grid-row:1;width:auto;justify-content:flex-start/);
+  assert.match(plannerStripStylesSource, /\.integrated \.stopTrackIntegrated\{grid-column:2;grid-row:1;width:100%/);
+  assert.match(plannerStripStylesSource, /\.integrated \.actions\{grid-column:1;grid-row:1;width:100%;justify-content:flex-start/);
+  assert.match(plannerStripStylesSource, /\.integrated \.stopTrackIntegrated\{grid-column:1\}/);
   assert.match(plannerStripStylesSource, /\.integrated \.wholeRoute\{width:auto;min-width:0;padding:0 10px;font-size:9px\}/);
   assert.match(mapStylesSource, /\.shellPlanner \.mapDestinationContext \.mapDestinationDescription\{display:none\}/);
 });
@@ -349,7 +352,8 @@ test("mobile Map has one contextual two-state drawer owner", () => {
   assert.equal((mapWorkspaceSource.match(/id="map-contextual-sheet"/g) ?? []).length, 1);
   assert.match(mapWorkspaceSource, /data-mobile-sheet-view=\{mobileMapSheetView\}/);
   assert.match(mapWorkspaceSource, /data-mobile-drawer-state=\{mobileMapDrawerOpen \? "open" : "collapsed"\}/);
-  assert.match(mapWorkspaceSource, /aria-label=\{mobileMapDrawerOpen \? "Collapse map results" : "Open map results"\}/);
+  assert.match(mapWorkspaceSource, /aria-label=\{`\$\{mobileMapDrawerOpen \? "Collapse" : "Expand"\} \$\{mobileMapSheetTitle\} details`\}/);
+  assert.match(mapWorkspaceSource, /: selectedLocalPlace\?\.name[\s\S]*selectedPlannerPin\?\.title[\s\S]*selectedRouteLeg\.fromName/);
   assert.doesNotMatch(mapWorkspaceSource, /MobileMapSheetSize|mobileMapSheetSize|mobileMapSheetCollapsed/);
   for (const view of ["planner", "context", "status", "pin"]) {
     assert.match(mapDockStylesSource, new RegExp(`data-mobile-sheet-view="${view}"`));
@@ -359,12 +363,23 @@ test("mobile Map has one contextual two-state drawer owner", () => {
     "provider attribution is lifted above the active contextual sheet");
 });
 
-test("mobile result detail replaces the list and has a visible route back", () => {
+test("mobile result detail replaces the list and keeps selection replacement and recovery paths", () => {
   assert.match(mapWorkspaceSource, /const dismissSelectedMapResult = useCallback\(\(\) => \{[\s\S]*clearSelectedLocalPlace\(\);[\s\S]*setMobileShapeDayOpen\(true\);[\s\S]*setMobileMapDrawerOpen\(true\);/);
   assert.match(mapWorkspaceSource, /if \(selectedMapResult\) \{[\s\S]*dismissSelectedMapResult\(\);/);
   assert.match(mapWorkspaceSource, /aria-label="Close selected place details"[\s\S]*onClose=\{dismissSelectedMapResult\}/);
+  assert.match(mapStylesSource, /\.shellPlanner \.mapContextEntity \.mapContextHeading>button\{display:none!important\}/);
+  assert.match(mapStylesSource, /\.shellPlanner \.mapContextEntity \.mapContextEyebrow\{display:none\}/);
   assert.match(mapDockStylesSource, /data-mobile-sheet-view="planner"[\s\S]*\[class\*="finderDock"\]/);
   assert.match(mapDockStylesSource, /data-mobile-sheet-view="context"[\s\S]*\[class\*="canonicalPlannerStatus"\]/);
+});
+
+test("integrated mobile Map presents global actions before the horizontally scrollable stop rail", () => {
+  assert.ok(plannerStripSource.indexOf("<div className={styles.actions}>") < plannerStripSource.indexOf("<JourneyRouteStopTrack"));
+  assert.match(plannerStripStylesSource, /\.integrated \.actions\{grid-column:2;grid-row:1\}/);
+  assert.match(plannerStripStylesSource, /\.integrated \.stopTrackIntegrated\{grid-column:1;grid-row:1\}/);
+  assert.match(plannerStripStylesSource, /\.integrated \.actions\{grid-column:1;grid-row:1;width:100%;justify-content:flex-start/);
+  assert.match(plannerStripStylesSource, /\.integrated \.stopTrackIntegrated\{grid-column:2;grid-row:1;width:100%/);
+  assert.match(plannerStripStylesSource, /\.integrated \.stopTrack\{grid-row:2;width:100%;padding-top:4px\}/);
 });
 
 test("short and landscape Map viewports retain recoverable canvas and safe-area controls", () => {

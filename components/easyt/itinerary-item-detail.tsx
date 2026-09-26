@@ -38,6 +38,7 @@ type Props = {
   primaryActions?: ReactNode;
   embedded?: boolean;
   omitEmptyMedia?: boolean;
+  compactMapHeader?: boolean;
 };
 
 const partLabels: Record<ItineraryDayPart, string> = {
@@ -60,6 +61,7 @@ export default function RecommendationDetail({
   primaryActions,
   embedded = false,
   omitEmptyMedia = false,
+  compactMapHeader = false,
 }: Props) {
   const headingId = useId();
   const shellRef = useRef<HTMLElement>(null);
@@ -105,7 +107,7 @@ export default function RecommendationDetail({
     {!embedded ? <EasyTButton className={styles.scrim} iconOnly variant="quiet" aria-label="Close recommendation details" onClick={onClose}>Close recommendation details</EasyTButton> : null}
     <section
       ref={shellRef}
-      className={`${styles.shell} ${embedded ? styles.embedded : ""}`}
+      className={`${styles.shell} ${embedded ? styles.embedded : ""} ${compactMapHeader ? styles.compactMapHeader : ""}`}
       role={embedded ? undefined : "dialog"}
       aria-modal={!embedded && mobileSheet || undefined}
       aria-labelledby={headingId}
