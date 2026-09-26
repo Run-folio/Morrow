@@ -139,7 +139,7 @@ test("explicit end identity and confirmed legacy transport survive compatibility
 test("repository hydration uses the pure compatibility boundary without a read-time write", () => {
   const repository = readFileSync(new URL("../lib/easyt/repository.ts", import.meta.url), "utf8");
   const compatibility = readFileSync(new URL("../lib/easyt/transport-leg-compatibility.ts", import.meta.url), "utf8");
-  assert.match(repository, /filter\(isEasyTTrip\)\.map\(reconcileLegacyTransportTrip\)/);
+  assert.match(repository, /rows\.map\(\(row\) => row\.document\)\.filter\(isEasyTTrip\)\.map\(\(trip\) => normalizeLegacyGeneratedDayContext\(reconcileLegacyTransportTrip\(trip\)\)\)/);
   assert.match(repository, /resolveTripTransferJourneys\(rows\[0\]\.document\)/);
   assert.doesNotMatch(compatibility, /getEasyTDatabase|insert\s+into|update\s+easyt_trips|fetch\(/i);
 });

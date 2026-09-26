@@ -382,6 +382,10 @@ test('mounted Builder keeps Discovery open on failed canonical checkpoint, resum
     await view.page.reload();
     await view.page.getByRole('button', { name: 'Continue shaping your route' }).click();
     await dialog.getByRole('button', { name: 'Add 1 place', exact: true }).waitFor();
+    const fixedLondonPosition = await view.page.evaluate(() => Object.values(localStorage).flatMap(raw => {
+      try { const trip = JSON.parse(raw).trip; return trip ? [trip] : []; } catch { return []; }
+    }).map((trip: { stops: Array<{ canonicalPlaceId: string }> }) => trip.stops.findIndex(stop => stop.canonicalPlaceId === 'london')).find(index => index >= 0));
+    assert.notEqual(fixedLondonPosition, undefined, 'the recovered trip retains its fixed London anchor');
     await dialog.getByRole('button', { name: 'Add 1 place', exact: true }).evaluate((button: HTMLButtonElement) => { button.click(); button.click(); });
     await view.page.waitForFunction(() => !document.querySelector('[role="dialog"]'));
     const completed = await view.page.evaluate(() => Object.values(localStorage).flatMap(raw => {
@@ -394,6 +398,8 @@ test('mounted Builder keeps Discovery open on failed canonical checkpoint, resum
       assert.equal(trip.stops.find((stop: { canonicalPlaceId: string }) => stop.canonicalPlaceId === 'sydney').nights, 5);
       assert.equal(trip.brief.structuredBrief.discoveryDraftByMentionId['place-australia-0'].reviewState, 'confirmed');
       const londonId = trip.stops.find((stop: { canonicalPlaceId: string }) => stop.canonicalPlaceId === 'london').id;
+      assert.equal(trip.stops.findIndex((stop: { id: string }) => stop.id === londonId), fixedLondonPosition,
+        'a gated Discovery route-order recommendation must preserve the fixed anchor chronology');
       assert.ok(trip.brief.scheduleLocks.stopIds.includes(londonId));
       assert.equal(trip.brief.scheduleLocks.arrivalDates[londonId], '2026-10-06');
     }

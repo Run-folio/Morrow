@@ -100,7 +100,7 @@ test("the contextual rail renders canonical map, booking, recommendation, and no
   assert.match(itinerary, /onLegSelect=\{\(leg\) => setSelectedItemId\(`leg-\$\{leg\.id\}`\)\}/);
   assert.match(itinerary, /interactivePlannerPinIds=\{interactiveMapPinIds\}/);
   assert.match(itinerary, /if \(activity\) setSelectedItemId\(activity\.id\)/);
-  assert.match(itinerary, /selectedPlannerPinId=\{mapContext\.selectedPlannerPinId\}/);
+  assert.match(itinerary, /selectedPlannerPinId=\{embeddedMapContext\.selectedPlannerPinId\}/);
   assert.match(itinerary, /bookingsForDay\(workingTrip, active, stop\)/);
   assert.match(itinerary, /itineraryDayLegs\(workingTrip, active\)/);
   assert.match(itinerary, /workingTrip\.recommendations\.filter/);

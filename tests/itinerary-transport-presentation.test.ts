@@ -76,7 +76,8 @@ test("Transport synchronizes one occurrence-safe selected journey with the canon
   assert.match(transport, /mapRouteLegsFromTrip\(effectiveTrip\)/);
   assert.match(transport, /<JourneyPlannerMap/);
   assert.match(transport, /selectedLegId=\{selectedLegId\}/);
-  assert.match(transport, /onLegSelect=\{\(leg\) => setSelectedLegId\(leg\.id\)\}/);
+  assert.match(transport, /onLegSelect=\{\(leg\) => selectJourney\(leg\.id\)\}/);
+  assert.match(transport, /const selectJourney = \(id: string\) => \{\s*setSelectedLegId\(id\)/);
   assert.match(transport, /data-selected=\{selected \? "true" : undefined\}/);
   assert.match(transportStyles, /grid-template-columns:\s*minmax\(0,\s*1\.08fr\)\s+minmax\(320px,\s*\.92fr\)/);
   assert.doesNotMatch(transport, /cameraOcclusions=\{transportCameraOcclusions\}/);

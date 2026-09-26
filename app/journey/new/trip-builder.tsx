@@ -3585,6 +3585,10 @@ function TripBuilderDocument() {
   const applyDiscoveryRouteOrder = (orderedStopIds: readonly string[]) => {
     const currentIds = discoveryOwnersRef.current.trip.stops.map(stop => stop.id);
     if (orderedStopIds.length === currentIds.length && orderedStopIds.every((id, index) => id === currentIds[index])) return true;
+    // Discovery ordering is a recommendation, so honor the same constraints
+    // that gate Route Check. A fixed schedule keeps its existing chronology;
+    // it must not block committing the selected places.
+    if (scheduleLocks.stopIds.length || Object.keys(scheduleLocks.arrivalDates).length || structuredRouteConstraints.fixedCommitments?.length) return true;
     const applied = commitStopOrder(orderedStopIds, "route-check");
     if (applied) setDecisionSelections(current => ({ ...current, routeOrder: "recommended" }));
     return applied;
@@ -4373,8 +4377,16 @@ function TripBuilderDocument() {
                 },
                 linkVisit: async (visit, stopId) => {
                   flushSync(() => discoveryOwnersRef.current.confirmAttractionVisit(mention, visit.proposal, stopId));
-                  return Boolean(discoveryOwnersRef.current.trip.brief.structuredBrief?.placeSelections?.some(selection =>
-                    selection.mentionId === visit.intentId && selection.kind === "visit" && selection.routeStopId === stopId));
+                  const ownerHasVisit = () => discoveryOwnersRef.current.trip.brief.structuredBrief?.placeSelections?.some(selection =>
+                    selection.mentionId === visit.intentId && selection.kind === "visit" && selection.routeStopId === stopId
+                    && selection.provenance.id === `builder-attraction-visit:${visit.intentId}:${stopId}`) ?? false;
+                  // In the full app, the canonical trip document is projected
+                  // from the committed render. Let its layout-effect ref catch
+                  // up before the commit owner validates the visit checkpoint.
+                  for (let frame = 0; frame < 8 && !ownerHasVisit(); frame++) {
+                    await new Promise<void>(resolve => window.requestAnimationFrame(() => resolve()));
+                  }
+                  return ownerHasVisit();
                 },
                 applyRouteOrder: async orderedIds => {
                   const current = discoveryOwnersRef.current.trip;
