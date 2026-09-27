@@ -10,6 +10,18 @@ const workspace = readFileSync(new URL("../components/easyt/trip-itinerary-works
 const workspaceStories = readFileSync(new URL("../components/easyt/trip-itinerary-workspace.stories.tsx", import.meta.url), "utf8");
 const composition = readFileSync(new URL("../lib/easyt/itinerary-day-composition.ts", import.meta.url), "utf8");
 
+test("empty day has one invitation while four dayparts remain in an accessible disclosure", () => {
+  assert.match(component, /const hasVisibleActivities =/);
+  assert.match(component, /!hasVisibleActivities/);
+  assert.match(component, /className=\{styles\.emptyInvitation\}/);
+  assert.match(component, /onAddOpen\?\.\(null\)/);
+  assert.match(component, /onSeeSuggestions\?\.\(\)/);
+  assert.match(component, /<details[^>]*className=\{styles\.emptyDayparts\}/);
+  assert.match(component, /itineraryDayParts\.map/);
+  assert.match(workspace, /onSeeSuggestions=\{\(\) =>/);
+  assert.match(workspace, /document\.getElementById\(`\$\{tabIdPrefix\}-ideas`\)/);
+});
+
 test("the production itinerary owner consumes canonical composition and persists period changes through its mutation path", () => {
   assert.match(workspace, /composeItineraryDay\(workingTrip, active\.id\)/);
   assert.match(workspace, /assignItineraryIdeaDayPart\(current, activity\.id, dayPart\)/);

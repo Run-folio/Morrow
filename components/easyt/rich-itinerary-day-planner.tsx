@@ -32,6 +32,7 @@ import styles from "./rich-itinerary-day-planner.module.css";
 type RichItineraryDayPlannerProps = {
   composition: ItineraryDayComposition;
   addComposerDayPart?: ItineraryDayPart | null;
+  addComposerOpen?: boolean;
   addDraft?: string;
   addError?: string;
   ideasHref?: string;
@@ -39,7 +40,8 @@ type RichItineraryDayPlannerProps = {
   pendingActivityId?: string | null;
   onAddCancel?: () => void;
   onAddDraftChange?: (value: string) => void;
-  onAddOpen?: (dayPart: ItineraryDayPart) => void;
+  onAddOpen?: (dayPart: ItineraryDayPart | null) => void;
+  onSeeSuggestions?: () => void;
   onAddSubmit?: () => void;
   onDayPartChange?: (activity: ComposedItineraryActivity, dayPart: ItineraryDayPart | null) => void;
   onMoveActivity?: (activity: ComposedItineraryActivity, direction: "earlier" | "later") => void;
@@ -259,6 +261,7 @@ function ActivityRow({
 export default function RichItineraryDayPlanner({
   composition,
   addComposerDayPart = null,
+  addComposerOpen = false,
   addDraft = "",
   addError = "",
   ideasHref,
@@ -267,6 +270,7 @@ export default function RichItineraryDayPlanner({
   onAddCancel,
   onAddDraftChange,
   onAddOpen,
+  onSeeSuggestions,
   onAddSubmit,
   onDayPartChange,
   onMoveActivity,
@@ -290,6 +294,8 @@ export default function RichItineraryDayPlanner({
   const tonight = composition.tonight;
   const contextNotes = [...itineraryDayParts.flatMap((part) => composition.planned[part]), ...composition.unslotted].filter((activity) => activity.source === "day-note");
   const unslotted = composition.unslotted.filter((activity) => activity.source !== "day-note");
+  const hasVisibleActivities = unslotted.length > 0 || itineraryDayParts.some((part) => composition.planned[part].some((activity) => activity.source !== "day-note"));
+  const compactEmpty = !hasVisibleActivities && !dragActive;
   const controlPrefix = useId().replaceAll(":", "");
   const focusAfterMoveRef = useRef<string | null>(null);
   const [dropTarget, setDropTarget] = useState<string | null>(null);
@@ -342,6 +348,20 @@ export default function RichItineraryDayPlanner({
         </section>
       ) : null}
 
+      {!hasVisibleActivities ? <section className={styles.emptyInvitation} aria-label={language === "es" ? "Planifica este día" : "Plan this day"}>
+        <div><CalendarDays aria-hidden="true" /><h3>{language === "es" ? `Planifica tu día en ${composition.context.destination}` : `Plan your day in ${composition.context.destination}`}</h3>
+          <p>{language === "es" ? "Añade actividades o explora sugerencias cuando quieras." : "Add activities or explore suggestions when you are ready."}</p></div>
+        {addComposerOpen && addComposerDayPart === null ? <form className={styles.emptyComposer} onSubmit={(event) => { event.preventDefault(); onAddSubmit?.(); }}>
+          <EasyTField autoFocus label={copy.activityName} error={addError || undefined} value={addDraft} onChange={(event) => onAddDraftChange?.(event.target.value)} />
+          <div><EasyTButton type="submit" icon={CirclePlus} size="small" disabled={!addDraft.trim()}>{copy.save}</EasyTButton><EasyTButton size="small" variant="quiet" onClick={onAddCancel}>{copy.cancel}</EasyTButton></div>
+        </form> : <div className={styles.emptyActions}>
+          {onAddOpen ? <EasyTButton icon={CirclePlus} size="small" onClick={() => onAddOpen?.(null)}>{copy.addActivity}</EasyTButton> : null}
+          {onSeeSuggestions ? <EasyTButton size="small" variant="secondary" onClick={() => onSeeSuggestions?.()}>{language === "es" ? "Ver sugerencias" : "See suggestions"}</EasyTButton> : ideasHref ? <EasyTLinkButton href={ideasHref} size="small" variant="secondary">{language === "es" ? "Ver sugerencias" : "See suggestions"}</EasyTLinkButton> : null}
+        </div>}
+      </section> : null}
+
+      <details className={styles.emptyDayparts} data-compact={compactEmpty} key={compactEmpty ? "empty" : "full"} open={compactEmpty ? undefined : true}>
+        <summary>{language === "es" ? "Planificar por momento del día" : "Plan by part of day"}</summary>
       <div className={styles.periodGrid}>
         {itineraryDayParts.map((part) => {
           const activities = composition.planned[part].filter((activity) => activity.source !== "day-note");
@@ -444,6 +464,7 @@ export default function RichItineraryDayPlanner({
           );
         })}
       </div>
+      </details>
 
       {unslotted.length ? (
         <section className={styles.unslotted} aria-labelledby={`${titleId}-unslotted`}>

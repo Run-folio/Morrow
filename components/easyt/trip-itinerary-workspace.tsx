@@ -1401,11 +1401,19 @@ export default function TripItineraryWorkspace({
           <RichItineraryDayPlanner
             composition={dayComposition}
             addComposerDayPart={addFlow?.dayNumber === active.dayNumber && addFlow.kind === "activity" ? addFlow.dayPart ?? null : null}
+            addComposerOpen={addFlow?.dayNumber === active.dayNumber && addFlow.kind === "activity"}
             addDraft={addDraft}
             addError={addError}
             ideasHref={mapIdeasHref}
             language={language}
-            onAddOpen={(dayPart) => openAddFlow(active.notes.length, "activity", dayPart)}
+            onAddOpen={(dayPart) => openAddFlow(active.notes.length, "activity", dayPart ?? undefined)}
+            onSeeSuggestions={() => {
+              const suggestions = document.getElementById(`${tabIdPrefix}-ideas`);
+              if (!(suggestions instanceof HTMLDetailsElement)) return;
+              suggestions.open = true;
+              suggestions.querySelector("summary")?.focus();
+              suggestions.scrollIntoView({ block: "nearest" });
+            }}
             onAddDraftChange={(value) => { setAddDraft(value); setAddError(""); }}
             onAddCancel={() => { setAddFlow(null); setAddDraft(""); setAddError(""); }}
             onAddSubmit={submitAddFlow}

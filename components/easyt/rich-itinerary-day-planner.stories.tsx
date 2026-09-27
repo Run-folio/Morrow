@@ -58,6 +58,7 @@ const baseTrip: EasyTTrip = {
 function StoryFrame({ trip, dayId }: { trip: EasyTTrip; dayId: string }) {
   const [workingTrip, setWorkingTrip] = useState(trip);
   const [addPart, setAddPart] = useState<ItineraryDayPart | null>(null);
+  const [addOpen, setAddOpen] = useState(false);
   const [draft, setDraft] = useState("");
   const [error, setError] = useState("");
   const [draggedActivity, setDraggedActivity] = useState<ComposedItineraryActivity | null>(null);
@@ -90,11 +91,12 @@ function StoryFrame({ trip, dayId }: { trip: EasyTTrip; dayId: string }) {
       }, target).trip);
   };
   const add = () => {
-    if (!addPart) return;
+    if (!addOpen) return;
     const result = insertItineraryActivity(workingTrip, composition.day.dayNumber, composition.day.notes.length, draft, addPart);
     if (!result.changed) { setError(result.reason ?? "Could not add this activity."); return; }
     setWorkingTrip(result.trip);
     setAddPart(null);
+    setAddOpen(false);
     setDraft("");
     setError("");
   };
@@ -104,12 +106,13 @@ function StoryFrame({ trip, dayId }: { trip: EasyTTrip; dayId: string }) {
         <RichItineraryDayPlanner
           composition={composition}
           addComposerDayPart={addPart}
+          addComposerOpen={addOpen}
           addDraft={draft}
           addError={error}
           ideasHref={`/journey/${workingTrip.id}/itinerary#ideas`}
-          onAddOpen={(part) => { setAddPart(part); setDraft(""); setError(""); }}
+          onAddOpen={(part) => { setAddPart(part); setAddOpen(true); setDraft(""); setError(""); }}
           onAddDraftChange={(value) => { setDraft(value); setError(""); }}
-          onAddCancel={() => { setAddPart(null); setDraft(""); setError(""); }}
+          onAddCancel={() => { setAddPart(null); setAddOpen(false); setDraft(""); setError(""); }}
           onAddSubmit={add}
           onDayPartChange={assign}
           onMoveActivity={move}
@@ -295,6 +298,14 @@ export const DraggingActivityOverMorning: Story = {
 };
 
 export const EmptyDaypart: Story = SparseDay;
+
+export const EmptyDayInvitation: Story = { render: () => <StoryFrame trip={emptyTrip} dayId="kyoto-2" /> };
+export const LogisticsOnlyInvitation: Story = {
+  render: () => <StoryFrame trip={{
+    ...emptyTrip,
+    planItems: emptyTrip.planItems.map((day) => day.id === "kyoto-1" ? { ...day, notes: [], noteDayParts: [] } : day),
+  }} dayId="kyoto-1" />,
+};
 
 export const MixedGeneratedAndAuthored: Story = FullFourSectionDay;
 

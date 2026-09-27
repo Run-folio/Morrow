@@ -6,6 +6,16 @@
   font-family: var(--morrovia-ui);
 }
 
+.emptyInvitation { display: grid; justify-items: center; gap: 14px; padding: 28px 18px; border: 1px solid var(--morrovia-line); border-radius: var(--morrovia-radius); background: var(--morrovia-paper); text-align: center; }
+.emptyInvitation > div:first-child { display: grid; justify-items: center; gap: 7px; }
+.emptyInvitation svg { width: 28px; height: 28px; color: var(--morrovia-action); }
+.emptyInvitation h3 { margin: 0; color: var(--morrovia-ink); font: var(--morrovia-type-control); }
+.emptyInvitation p { max-width: 38ch; margin: 0; color: var(--morrovia-ink-soft); font: var(--morrovia-type-supporting-body); }
+.emptyActions, .emptyComposer > div:last-child { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; }
+.emptyComposer { width: min(100%, 420px); display: grid; gap: 10px; }
+.emptyDayparts > summary { min-height: 44px; padding: 10px 12px; color: var(--morrovia-ink-soft); cursor: pointer; font: var(--morrovia-type-control); }
+.emptyDayparts[data-compact="false"] > summary { display: none; }
+
 /* Compact editorial rows retain the existing multi-item and insertion owners. */
 .planner .freePeriod { min-height: 0; padding: 0; }
 .planner .travel { padding: 12px; }
