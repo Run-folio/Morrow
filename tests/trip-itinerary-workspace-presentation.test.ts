@@ -64,7 +64,7 @@ test("day header keeps only canonical day context and navigation", () => {
   const headerEnd = itinerary.indexOf("</header>", headerStart);
   const header = itinerary.slice(headerStart, headerEnd);
   assert.ok(headerStart > -1 && headerEnd > headerStart);
-  assert.match(header, /DAY \{pad\(active\.dayNumber\)\}/);
+  assert.match(header, /\{copy\.day\} \{pad\(active\.dayNumber\)\}/);
   assert.match(header, /displayDayDate\(active\.date, language\)/);
   assert.match(header, /stop\?\.name \?\? active\.title/);
   assert.match(header, /className=\{styles\.dayRole\}>\{active\.title\}/);
@@ -164,7 +164,7 @@ test("day navigation is owned by the toolbar and precedes planner content", () =
   const navigationIndex = itinerary.indexOf("className={styles.dateNavigation}");
   const plannerIndex = itinerary.indexOf("<RichItineraryDayPlanner", headerIndex);
   assert.ok(navigationIndex < headerIndex && headerIndex < plannerIndex);
-  assert.match(itinerary, /label="Jump to date \/ destination"/);
+  assert.match(itinerary, /label=\{copy\.jumpToDateDestination\}/);
   assert.match(itinerary, /disabled=\{workspaceView === "calendar" \? currentWeekIndex <= 0 : index === 0\}/);
   assert.doesNotMatch(itinerary, /function DayNavigation/);
 });
