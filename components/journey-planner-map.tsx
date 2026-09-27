@@ -783,9 +783,8 @@ export function JourneyPlannerMap({
         return new maplibregl.Marker({ element, anchor: "center" }).setLngLat(stop.coordinates!).addTo(map);
       });
     };
-    if (hasMorroviaActiveStyle(map as unknown as MorroviaBasemapMap)) drawMarkers();
-    else map.once("load", drawMarkers);
-    return () => { map.off("load", drawMarkers); };
+    // MapLibre markers live in the DOM overlay and must not wait for a provider style to load.
+    drawMarkers();
   }, [destinationCards, domainSelection, presentationOnly, stopSelectionEnabled, stops]);
 
   useEffect(() => {
@@ -823,11 +822,8 @@ export function JourneyPlannerMap({
         return new maplibregl.Marker({ element, anchor: "bottom" }).setLngLat([pin.longitude, pin.latitude]).addTo(map);
       });
     };
-    if (surface.variant === "embedded") drawPins();
-    else if (hasMorroviaActiveStyle(map as unknown as MorroviaBasemapMap)) drawPins();
-    else map.once("load", drawPins);
-    return () => { map.off("load", drawPins); };
-  }, [domainSelection, interactivePlannerPinIds, plannerPins, surface.variant]);
+    drawPins();
+  }, [domainSelection, interactivePlannerPinIds, plannerPins]);
 
   useEffect(() => {
     pinMarkersRef.current.forEach((marker) => {
@@ -886,9 +882,7 @@ export function JourneyPlannerMap({
       element.innerHTML = "<span>+</span>";
       draftPinRef.current = new maplibregl.Marker({ element, anchor: "bottom" }).setLngLat(draftPinCoordinates).addTo(map);
     };
-    if (hasMorroviaActiveStyle(map as unknown as MorroviaBasemapMap)) drawDraftPin();
-    else map.once("load", drawDraftPin);
-    return () => { map.off("load", drawDraftPin); };
+    drawDraftPin();
   }, [draftPinCoordinates]);
 
   useEffect(() => {

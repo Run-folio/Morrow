@@ -242,9 +242,16 @@ test("provider errors recover to local geography and an explicit retry restores 
   map.emit("style.load");
   assert.equal(lifecycle.getSnapshot().status, "detailed");
   assert.equal(styleReadyCount, 2, "overlay owners are notified after detailed style recovery");
+  assert.equal(lifecycle.handleError({ sourceId: MORROVIA_DETAILED_BASEMAP_SOURCE_ID, error: new Error("tile failed again") }), true);
+  map.styleAvailable = true;
+  map.styleLoaded = true;
+  map.emit("style.load");
+  assert.equal(styleReadyCount, 3, "a second fallback has one overlay rehydration event");
+  assert.equal(map.listeners.get("style.load")?.size, 1, "retry cycles retain one style listener");
   assert.ok(states.includes("fallback"));
-  assert.equal(states.at(-1), "detailed");
+  assert.equal(states.at(-1), "fallback");
   lifecycle.dispose();
+  assert.equal(map.listeners.get("style.load")?.size, 0);
 });
 
 test("a detailed style error before style.load installs the bundled fallback", () => {
