@@ -11,7 +11,8 @@ test("homepage route cards open the existing published route preview owner", () 
   assert.match(homepage, /discoveryCatalogue\(/);
   assert.match(immersive, /previewRoutes/);
   assert.match(inspiration, /RoutePreview/);
-  assert.doesNotMatch(inspiration, /<Link href=\{route\.href\}/);
+  assert.match(inspiration, /<EasyTLinkButton href=\{route\.href\}/);
+  assert.match(inspiration, /event\.preventDefault\(\);\s*setSelected\(preview\)/);
   assert.match(inspiration, /<RoutePreview route=\{selected\}/);
 });
 

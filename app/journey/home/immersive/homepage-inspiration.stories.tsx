@@ -41,11 +41,13 @@ export const InteractionBoundary: Story = {
   play: async ({ canvasElement }) => {
     const root = canvasElement.querySelector<HTMLElement>("[data-selected-story-key]");
     const before = root?.dataset.selectedStoryKey;
-    const cards = Array.from(canvasElement.querySelectorAll<HTMLButtonElement>(`.${styles.inspirationCard} > button`));
+    const cards = Array.from(canvasElement.querySelectorAll<HTMLAnchorElement>(`.${styles.inspirationCard} > a`));
     if (cards.length !== routes.length) throw new Error("Every eligible route must render one card link");
     cards.forEach((card, index) => {
       const route = routes[index];
       if (!route || card.getAttribute("aria-label")?.includes(route.title) !== true) throw new Error("Card must expose a preview trigger for its canonical route");
+      if (card.getAttribute("href") !== route.href) throw new Error("Card must retain its canonical Route Detail destination before hydration");
+      if (card.querySelector("a, button")) throw new Error("Route card cannot contain nested interactive controls");
       const days = route.dayRange.min === route.dayRange.max ? String(route.dayRange.min) : `${route.dayRange.min}–${route.dayRange.max}`;
       if (!card.textContent?.includes(route.title)) throw new Error("Card must render the canonical route title");
       if (!card.textContent?.includes(`${days} days`)) throw new Error("Card must render the canonical day range");
@@ -54,7 +56,9 @@ export const InteractionBoundary: Story = {
       card.dispatchEvent(new PointerEvent("pointerover", { bubbles: true }));
       if (root?.dataset.selectedStoryKey !== before) throw new Error("Card focus or hover changed the selected Route Story");
     });
-    cards[0]?.click();
+    const ordinaryClick = new MouseEvent("click", { bubbles: true, cancelable: true, button: 0 });
+    cards[0]?.dispatchEvent(ordinaryClick);
+    if (!ordinaryClick.defaultPrevented) throw new Error("Hydrated card click must intercept native navigation for the shared preview");
     await new Promise((resolve) => window.setTimeout(resolve, 80));
     const preview = canvasElement.querySelector<HTMLDialogElement>("dialog:modal");
     if (!preview || !preview.querySelector("#atlas-title")) throw new Error("Homepage inspiration card must open the shared route preview");

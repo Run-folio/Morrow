@@ -4,7 +4,7 @@ import test from "node:test";
 
 const read = (path: string) => readFileSync(new URL(`../${path}`, import.meta.url), "utf8");
 
-test("homepage inspiration cards browse canonical Route Detail pages without changing homepage route state", () => {
+test("homepage inspiration cards retain canonical Route Detail links for pre-hydration navigation", () => {
   const source = read("app/journey/home/immersive/homepage-route-inspiration.tsx");
 
   assert.match(source, /href=\{route\.href\}/);
@@ -30,7 +30,7 @@ test("homepage inspiration reuses reviewed route photos with resilient fallback 
   assert.match(source, /placement="top-right"/);
   assert.doesNotMatch(source, /homepageRouteStopCards/);
   const card = source.match(/function HomepageRouteCard[\s\S]*?\n}/)?.[0] ?? "";
-  assert.ok(card.indexOf("</Link>") < card.indexOf("<MorroviaPhotoCredit"), "photo credit must be a sibling after the card link");
+  assert.ok(card.includes("</EasyTLinkButton>") && card.indexOf("</EasyTLinkButton>") < card.indexOf("<MorroviaPhotoCredit"), "photo credit must be a sibling after the card link");
 });
 
 test("homepage how it works uses the approved three steps and opens the existing product tour", () => {
@@ -68,7 +68,7 @@ test("the rendered interaction play verifies canonical card content and ordinary
   assert.match(stories, /route\.dayRange\.min === route\.dayRange\.max/);
   assert.match(stories, /route\.stops\.length/);
   assert.match(stories, /new MouseEvent\("click", \{ bubbles: true, cancelable: true, button: 0 \}\)/);
-  assert.match(stories, /ordinaryClickWasUnprevented/);
-  assert.match(stories, /event\.defaultPrevented/);
+  assert.match(stories, /ordinaryClick\.defaultPrevented/);
+  assert.match(stories, /Hydrated card click must intercept native navigation/);
   assert.match(stories, /Card click changed the selected Route Story/);
 });

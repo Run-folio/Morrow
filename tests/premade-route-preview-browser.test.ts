@@ -11,7 +11,49 @@ const playwrightPath = process.env.MORROVIA_PLAYWRIGHT_MODULE ?? (existsSync(bun
 const browserTestsEnabled = process.env.MORROVIA_ROUTE_PREVIEW_BROWSER_TESTS === "1";
 const baseUrl = process.env.MORROVIA_BASE_URL ?? "http://127.0.0.1:3000";
 
-test("homepage and Routes previews keep origin scroll, detail starts at top, and actions hand off directly", { skip: !browserTestsEnabled, timeout: 60_000 }, async () => {
+async function waitForHomepageHydration(page: any) {
+  const describe = page.getByRole("tab", { name: "Describe my trip" });
+  await describe.waitFor();
+  for (let attempt = 0; attempt < 20; attempt += 1) {
+    await describe.click();
+    if (await describe.getAttribute("aria-selected") === "true") return;
+    await page.waitForTimeout(250);
+  }
+  assert.fail("The homepage trip-capture tab never became interactive");
+}
+
+test("premade homepage cards navigate to canonical Route Detail while hydration bundles are unavailable", { skip: !browserTestsEnabled, timeout: 45_000 }, async () => {
+  const { chromium } = require(playwrightPath);
+  const browser = await chromium.launch({ channel: process.env.MORROVIA_BROWSER_CHANNEL ?? "chrome", headless: true });
+  try {
+    for (const viewport of [{ width: 1440, height: 900 }, { width: 390, height: 844 }]) {
+      const context = await browser.newContext({ viewport });
+      try {
+        const page = await context.newPage();
+        await page.route("**/_next/static/chunks/**", (route: { abort: () => Promise<void> }) => route.abort());
+        await page.goto(baseUrl, { waitUntil: "domcontentloaded" });
+        const card = page.getByRole("link", { name: /Preview route: Japan/ }).first();
+        await card.waitFor();
+        assert.equal(await card.getAttribute("href"), "/journey/routes/japan-south-korea");
+        if (viewport.width === 1440) {
+          await card.focus();
+          await page.keyboard.press("Enter");
+        } else {
+          await card.click();
+        }
+        await page.waitForURL(`${baseUrl}/journey/routes/japan-south-korea`);
+        assert.equal(await page.getByRole("dialog").count(), 0);
+        assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth + 1), false);
+      } finally {
+        await context.close();
+      }
+    }
+  } finally {
+    await browser.close();
+  }
+});
+
+test("homepage and Routes previews keep native link behavior, origin scroll, and direct Builder handoff", { skip: !browserTestsEnabled, timeout: 120_000 }, async () => {
   const { chromium } = require(playwrightPath);
   const browser = await chromium.launch({ channel: process.env.MORROVIA_BROWSER_CHANNEL ?? "chrome", headless: true });
   try {
@@ -23,19 +65,37 @@ test("homepage and Routes previews keep origin scroll, detail starts at top, and
       return route.fulfill({ status: 200, json: { draft: detail.planDraft } });
     });
     await page.goto(baseUrl, { waitUntil: "domcontentloaded" });
-    const homepageCard = page.getByRole("button", { name: /Preview route: Japan/ }).first();
+    await waitForHomepageHydration(page);
+    const homepageCard = page.getByRole("link", { name: /Preview route: Japan/ }).first();
     await homepageCard.scrollIntoViewIfNeeded();
-    await page.waitForTimeout(100);
+    assert.equal(await homepageCard.getAttribute("href"), "/journey/routes/japan-south-korea");
     const originScroll = await page.evaluate(() => window.scrollY);
     await homepageCard.click();
     const modal = page.getByRole("dialog", { name: "japan" });
     await modal.waitFor();
+    assert.equal(page.url(), `${baseUrl}/`, "ordinary click opens the preview without navigation");
     assert.match(await modal.locator("h2").innerText(), /Japan/);
     assert.equal(await modal.evaluate((element: Element) => (element as HTMLDialogElement).matches(":modal")), true, "the shared preview uses the browser modal layer");
     await page.screenshot({ path: "/tmp/morrovia-batch-10d-home-preview-desktop.png" });
     await modal.getByRole("button", { name: "Close route preview" }).click();
     await modal.waitFor({ state: "detached" });
     assert.ok(Math.abs((await page.evaluate(() => window.scrollY)) - originScroll) <= 2, "modal close restores homepage scroll");
+
+    const [commandTab] = await Promise.all([
+      page.context().waitForEvent("page"),
+      homepageCard.click({ modifiers: [process.platform === "darwin" ? "Meta" : "Control"] }),
+    ]);
+    await commandTab.waitForURL(/\/journey\/routes\/japan-south-korea$/);
+    await commandTab.close();
+    const [middleTab] = await Promise.all([
+      page.context().waitForEvent("page"),
+      homepageCard.click({ button: "middle" }),
+    ]);
+    await middleTab.waitForURL(/\/journey\/routes\/japan-south-korea$/);
+    await middleTab.close();
+    await homepageCard.click({ modifiers: ["Control"] });
+    assert.equal(page.url(), `${baseUrl}/`, "modified clicks leave the homepage in place");
+    assert.equal(await page.getByRole("dialog").count(), 0, "modified clicks do not open the preview");
 
     await homepageCard.click();
     const useModal = page.getByRole("dialog").getByRole("link", { name: "Use this route" });
@@ -90,14 +150,25 @@ test("homepage and Routes previews keep origin scroll, detail starts at top, and
       return route.fulfill({ status: 200, json: { draft: detail.planDraft } });
     });
     await mobile.goto(baseUrl, { waitUntil: "domcontentloaded" });
-    const mobileCard = mobile.getByRole("button", { name: /Preview route: Japan/ }).first();
+    await waitForHomepageHydration(mobile);
+    const mobileCard = mobile.getByRole("link", { name: /Preview route: Japan/ }).first();
     await mobileCard.scrollIntoViewIfNeeded();
     await mobileCard.click();
     const mobileModal = mobile.getByRole("dialog");
     await mobileModal.waitFor();
+    assert.equal(mobile.url(), `${baseUrl}/`);
     await mobile.screenshot({ path: "/tmp/morrovia-batch-10d-home-preview-mobile.png" });
     await mobileModal.getByRole("button", { name: "Close route preview" }).click();
     await mobileModal.waitFor({ state: "detached" });
+    await mobileCard.click();
+    await mobile.getByRole("dialog").getByRole("link", { name: "Use this route" }).click();
+    await mobile.waitForURL(/\/journey\/new\?inspire=japan-south-korea/);
+    await mobile.goBack();
+    await mobile.waitForURL(`${baseUrl}/`);
+    await mobileCard.click();
+    await mobile.getByRole("dialog").getByRole("link", { name: "View full route" }).click();
+    await mobile.waitForURL(/\/journey\/routes\/japan-south-korea$/);
+    assert.ok(await mobile.evaluate(() => window.scrollY) <= 2, "mobile Route Detail opens at top");
     await mobile.goto(`${baseUrl}/journey/discover`, { waitUntil: "domcontentloaded" });
     await mobile.waitForFunction(() => document.body.innerText.includes("Routes are temporarily unavailable") || Boolean(document.querySelector('button[aria-label^="Preview "]')));
     const mobileListingCards = mobile.getByRole("button", { name: /Preview/ });
