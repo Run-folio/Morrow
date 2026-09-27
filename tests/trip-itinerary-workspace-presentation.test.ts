@@ -75,6 +75,16 @@ test("day header keeps only canonical day context and navigation", () => {
   assert.doesNotMatch(styles, /\.headerNoteComposer|\.dayCount|\.dayActionRegion/);
 });
 
+test("selected day photo and consolidated route sources retain exact image ownership", () => {
+  assert.match(itinerary, /presentationImages\.dayById\[active\.id\]/);
+  assert.match(itinerary, /className=\{styles\.dayHeaderPhoto\}/);
+  assert.match(itinerary, /<MorroviaPhotoCredit[\s\S]*sourceHref=\{dayHero\.sourceUrl\}/);
+  assert.match(itinerary, /presentationImages\.stopById\[stop\.id\]/);
+  assert.match(itinerary, /Photo sources for route/);
+  assert.match(styles, /\.dayHeaderPhoto\s*\{[^}]*object-fit: cover;/);
+  assert.doesNotMatch(itinerary, /weather|mostly sunny|booking confirmed/i);
+});
+
 test("Explore remains the canonical discovery handoff without a second header action", () => {
   assert.match(itinerary, /id=\{`\$\{tabIdPrefix\}-ideas`\}/);
   assert.match(itinerary, /key=\{`\$\{workingTrip\.id\}-\$\{active\.id\}`\}/);

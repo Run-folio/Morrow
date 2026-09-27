@@ -1004,3 +1004,21 @@ export const RepeatedDestinationSecondOccurrence: Story = {
     if (destinations[2]!.getAttribute("aria-current") !== "step" || !canvasElement.querySelector('[role="tab"][aria-selected="true"]')?.textContent?.includes("06")) throw new Error("Day by day lost the selected occurrence");
   },
 };
+
+export const SelectedDayPhotoAndRouteSources: Story = {
+  args: { trip: repeatedTokyoTrip, selectedDayNumber: 2 },
+  globals: { viewport: { value: "morrovia1440", isRotated: false } },
+};
+
+export const SelectedDayWithoutPhotography: Story = {
+  args: {
+    trip: {
+      ...repeatedTokyoTrip,
+      id: "storybook-itinerary-no-photography",
+      stops: repeatedTokyoTrip.stops.map((stop, index) => ({ ...stop, name: `Uncovered stop ${index + 1}`, country: "Example Country", canonicalPlaceId: undefined })),
+      planItems: repeatedTokyoTrip.planItems.map((item) => ({ ...item, image: null, sourceUrl: null })),
+    },
+    selectedDayNumber: 2,
+  },
+  globals: { viewport: { value: "morrovia390", isRotated: false } },
+};

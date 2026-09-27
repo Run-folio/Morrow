@@ -20,6 +20,11 @@
   border-bottom: 1px solid var(--morrovia-line);
 }
 
+.routePhotoSources { padding: 0 18px 8px; color: var(--morrovia-ink-soft); font: var(--morrovia-type-fine-print); }
+.routePhotoSources summary { width: fit-content; min-height: 28px; margin-left: auto; cursor: pointer; }
+.routePhotoSources ul { display: flex; flex-wrap: wrap; gap: 4px 16px; margin: 4px 0 0; padding: 0; list-style: none; }
+.routePhotoSources a { color: var(--morrovia-action); }
+
 .subviewBar {
   grid-column: 1 / -1;
   min-width: 0;
@@ -445,11 +450,19 @@
 }
 
 .dayHeader {
+  position: relative;
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
   gap: 24px;
+  overflow: visible;
 }
+
+.dayHeader[data-photo="true"] { min-height: 138px; align-items: center; margin: -12px -12px 14px; padding: 14px 18px; border-radius: var(--morrovia-control-radius); }
+.dayHeader[data-photo="true"]::after { position: absolute; z-index: 1; inset: 0; content: ""; border-radius: inherit; background: linear-gradient(90deg, var(--morrovia-paper) 34%, color-mix(in srgb, var(--morrovia-paper) 78%, transparent) 58%, transparent 100%); pointer-events: none; }
+.dayHeaderPhoto { position: absolute; inset: 0 0 0 auto; width: 72%; height: 100%; border-radius: inherit; object-fit: cover; object-position: center; }
+.dayHeader[data-photo="true"] > div { position: relative; z-index: 2; max-width: 75%; }
+.dayHeroCredit { --photo-credit-inline: 6px; --photo-credit-block: 6px; }
 
 .dayHeader > div {
   min-width: 0;

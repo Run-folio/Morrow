@@ -85,6 +85,7 @@ import {
 } from "@/lib/easyt/itinerary-activity-placement";
 import { JourneyPlannerMap } from "@/components/journey-planner-map";
 import { JourneyRouteStopTrack } from "@/components/journey-planner-strip";
+import MorroviaPhotoCredit from "@/components/easyt/morrovia-photo-credit";
 import { EasyTButton, EasyTField, EasyTLinkButton, EasyTSelect, EasyTSegmentedControl } from "@/components/easyt/easyt-controls";
 import { MorroviaBriefNotice, MorroviaConfirmationDialog, MorroviaFormDialog, MorroviaRecoveryFeedback } from "@/components/easyt/morrovia-feedback";
 import { MorroviaSectionStatus } from "@/components/easyt/morrovia-loading-states";
@@ -744,6 +745,7 @@ export default function TripItineraryWorkspace({
   }
 
   const stop = stopForDay(workingTrip, active);
+  const dayHero = presentationImages.dayById[active.id] ?? null;
   const image = imageFromPlanItem(active, stop, index) ?? remoteImages[active.id] ?? null;
   const incomingLeg = incomingLegForPlanItem(workingTrip, active);
   const scheduledIdeaTitles = new Set((workingTrip.brief.itineraryIdeas ?? [])
@@ -1272,6 +1274,13 @@ export default function TripItineraryWorkspace({
             if (dayIndex >= 0) setSelectedIndex(dayIndex);
           }}
         />
+        {workingTrip.stops.some((stop) => presentationImages.stopById[stop.id]?.sourceUrl) ? <details className={styles.routePhotoSources}>
+          <summary>Photo sources for route</summary>
+          <ul>{[...workingTrip.stops].sort((a, b) => a.order - b.order).map((stop) => {
+            const photo = presentationImages.stopById[stop.id];
+            return photo?.sourceUrl ? <li key={stop.id}><span>{stop.name}:</span> <a href={photo.sourceUrl} target="_blank" rel="noreferrer">{photo.sourceLabel ?? photo.alt}</a>{photo.licenseUrl ? <> · <a href={photo.licenseUrl} target="_blank" rel="noreferrer">Licence</a></> : null}</li> : null;
+          })}</ul>
+        </details> : null}
       </div>
       {workspaceView === "calendar" ? <ItineraryCalendar
         weeks={calendarWeeks.filter((week) => week.days.some((day) => day?.id === active.id))}
@@ -1337,12 +1346,14 @@ export default function TripItineraryWorkspace({
         aria-labelledby={workspaceView === "days" ? `${tabIdPrefix}-tab-${index}` : undefined}
         aria-label={workspaceView === "calendar" ? `${copy.day} ${active.dayNumber}: ${stop?.name ?? active.title}` : undefined}
       >
-        <header className={styles.dayHeader}>
+        <header className={styles.dayHeader} data-photo={Boolean(dayHero)}>
+          {dayHero ? <img className={styles.dayHeaderPhoto} src={dayHero.src} alt={dayHero.alt} /> : null}
           <div>
             <p><span>DAY {pad(active.dayNumber)}</span><i aria-hidden="true">·</i><time dateTime={active.date}>{displayDayDate(active.date, language)}</time></p>
             <h2>{stop?.name ?? active.title}</h2>
             <span className={styles.dayRole}>{active.title}</span>
           </div>
+          {dayHero?.sourceLabel ? <MorroviaPhotoCredit className={styles.dayHeroCredit} language={language} credit={dayHero.sourceLabel} photoLabel={dayHero.alt} sourceHref={dayHero.sourceUrl} licenseHref={dayHero.licenseUrl} fullCreditHref={dayHero.fullCreditUrl} /> : null}
         </header>
 
         {mutation.saveState === "error" ? <div className={styles.recoveryFeedback}><MorroviaRecoveryFeedback
