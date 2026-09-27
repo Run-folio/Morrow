@@ -13,7 +13,7 @@ import {
 } from "../lib/easyt/itinerary-mutations.ts";
 import { createTripMutationPersistenceQueue } from "../lib/easyt/trip-mutation-persistence.ts";
 import { composeItineraryDay } from "../lib/easyt/itinerary-day-composition.ts";
-import { addItineraryActivityWithUndo, moveItineraryActivityAcrossDays, undoItineraryItemAction } from "../lib/easyt/itinerary-activity-placement.ts";
+import { addItineraryActivityWithUndo, moveItineraryActivityAcrossDays, removeItineraryActivityWithUndo, undoItineraryItemAction } from "../lib/easyt/itinerary-activity-placement.ts";
 import {
   loadLocalTripFromStorage,
   saveTripRecoveryToEasyT,
@@ -168,6 +168,26 @@ test("authored activity move and undo survive reload without inventing a clock t
   assert.equal(undone.trip.planItems[0]?.notes.includes("Lunch in Monti"), true);
   assert.equal(undone.trip.planItems[0]?.noteDayParts?.at(-1), "midday");
   assert.equal(undone.trip.planItems[2]?.notes.includes("Lunch in Monti"), false);
+});
+
+test("removal undo restores only the authored activity, position and daypart after reload", () => {
+  const storage = new MemoryStorage();
+  const base = itineraryTrip();
+  const assigned = assignItineraryActivityDayPart(base, { dayNumber: 1, noteIndex: 1, title: "Evening passeggiata" }, "evening");
+  const renamed = renameItineraryActivity(assigned.trip, { dayNumber: 1, noteIndex: 1, title: "Evening passeggiata" }, "Gallery visit");
+  const removed = removeItineraryActivityWithUndo(renamed.trip, { dayNumber: 1, noteIndex: 1, title: "Gallery visit" });
+  assert.equal(removed.changed, true);
+  assert.deepEqual(removed.trip.planItems[0]?.notes, ["Colosseum"]);
+  assert.equal(saveTripRecoveryToStorage(storage, removed.trip, { ownerId: "owner-a", writeId: "removed-activity" }).stored, true);
+  const reloaded = loadLocalTripFromStorage(storage, base.id, "owner-a")!;
+  const restored = undoItineraryItemAction(reloaded, removed.undo!);
+  assert.equal(restored.changed, true);
+  assert.deepEqual(restored.trip.planItems[0]?.notes, ["Colosseum", "Gallery visit"]);
+  assert.deepEqual(restored.trip.planItems[0]?.noteDayParts, [null, "evening"]);
+  assert.deepEqual(restored.trip.brief.customActivities?.[1], ["Gallery visit"]);
+  assert.deepEqual(restored.trip.planItems[1], base.planItems[1], "unrelated days stay unchanged");
+  const stale = insertItineraryActivity(reloaded, 1, 1, "Gallery visit");
+  assert.equal(undoItineraryItemAction(stale.trip, removed.undo!).changed, false, "a duplicate replacement blocks stale undo");
 });
 
 test("booking, mapped-place, generated, duplicate, and stale-location rows remain protected", () => {

@@ -44,7 +44,6 @@ import {
   itineraryActivityProtection,
   moveItineraryActivity,
   moveItineraryIdeaActivity,
-  removeItineraryActivity,
   renameItineraryActivity,
   type ItineraryActivityLocation,
 } from "@/lib/easyt/itinerary-mutations";
@@ -78,6 +77,7 @@ import {
   moveItineraryActivityAcrossDays,
   placeItineraryActivity,
   preferredItineraryDayPart,
+  removeItineraryActivityWithUndo,
   scheduleItineraryIdeaAtPositionWithUndo,
   scheduleItineraryIdeaWithUndo,
   undoItineraryItemAction,
@@ -1112,9 +1112,11 @@ export default function TripItineraryWorkspace({
   const confirmRemoveActivity = () => {
     if (!removeTarget) return;
     let mutationReason = "";
+    let receipt: ItineraryItemUndoReceipt | null = null;
     const accepted = mutation.mutateTrip((current) => {
-      const result = removeItineraryActivity(current, removeTarget);
+      const result = removeItineraryActivityWithUndo(current, removeTarget);
       mutationReason = result.reason ?? "";
+      receipt = result.undo ?? null;
       return result.trip;
     }, `itinerary-day-${removeTarget.dayNumber}`);
     if (!accepted) {
@@ -1124,6 +1126,7 @@ export default function TripItineraryWorkspace({
     closeSelectedDetail();
     setRemoveTarget(null);
     setRemoveError("");
+    setUndoReceipt(receipt);
     setNotice(copy.activityRemoved);
   };
 

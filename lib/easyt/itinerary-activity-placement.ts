@@ -7,6 +7,7 @@ import {
   moveItineraryActivityToDay,
   moveItineraryIdeaActivity,
   removeItineraryActivity,
+  type ItineraryActivityLocation,
   type ItineraryMutationResult,
 } from "./itinerary-mutations.ts";
 import type { EasyTTrip, ItineraryDayPart, ItineraryIdea } from "./trip.ts";
@@ -36,7 +37,15 @@ type ItineraryIdeaReceipt = {
   restore: ItineraryIdea | null;
 };
 
-export type ItineraryItemUndoReceipt = AuthoredActivityReceipt | ItineraryIdeaReceipt;
+type RemovedAuthoredActivityReceipt = {
+  kind: "removed-authored-activity";
+  dayId: string;
+  title: string;
+  noteIndex: number;
+  dayPart: ItineraryDayPart | null;
+};
+
+export type ItineraryItemUndoReceipt = AuthoredActivityReceipt | RemovedAuthoredActivityReceipt | ItineraryIdeaReceipt;
 
 export type ItineraryActionResult = ItineraryMutationResult & {
   undo?: ItineraryItemUndoReceipt;
@@ -77,6 +86,24 @@ export function addItineraryActivityWithUndo(
       restoreDayId: null,
       restoreNoteIndex: null,
       restoreDayPart: null,
+    },
+  };
+}
+
+/** Remove one authored row and retain only its own position and daypart for Undo. */
+export function removeItineraryActivityWithUndo(trip: EasyTTrip, location: ItineraryActivityLocation): ItineraryActionResult {
+  const day = trip.planItems.find((candidate) => candidate.dayNumber === location.dayNumber);
+  const title = day?.notes[location.noteIndex];
+  const result = removeItineraryActivity(trip, location);
+  if (!result.changed || !day || !title) return result;
+  return {
+    ...result,
+    undo: {
+      kind: "removed-authored-activity",
+      dayId: day.id,
+      title,
+      noteIndex: location.noteIndex,
+      dayPart: day.noteDayParts?.[location.noteIndex] ?? null,
     },
   };
 }
@@ -199,6 +226,14 @@ export function undoItineraryItemAction(trip: EasyTTrip, receipt: ItineraryItemU
       ? scheduleItineraryIdea(saved, receipt.restore, receipt.restore.dayId, receipt.restore.dayPart ?? null)
       : saved;
     return restored === trip ? unchanged(trip, "This activity could not be undone safely.") : { trip: restored, changed: true };
+  }
+
+  if (receipt.kind === "removed-authored-activity") {
+    const day = trip.planItems.find((candidate) => candidate.id === receipt.dayId);
+    if (!day || receipt.noteIndex > day.notes.length || day.notes.some((note) => normalized(note) === normalized(receipt.title))) {
+      return unchanged(trip, "This activity changed after the action, so it was not undone.");
+    }
+    return insertItineraryActivity(trip, day.dayNumber, receipt.noteIndex, receipt.title, receipt.dayPart);
   }
 
   const expectedDay = trip.planItems.find((candidate) => candidate.id === receipt.expectedDayId);
