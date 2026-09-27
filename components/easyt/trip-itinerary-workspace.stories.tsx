@@ -1036,3 +1036,74 @@ export const SelectedDayWithoutPhotography: Story = {
   },
   globals: { viewport: { value: "morrovia390", isRotated: false } },
 };
+
+const mexicoAcceptanceTrip = tripFromBuilder({
+  id: "storybook-itinerary-349-mexico",
+  origin: "Guatemala City",
+  originCountry: "Guatemala",
+  originCoordinates: [-90.5069, 14.6349],
+  journeyEnd: { mode: "same_as_start" },
+  stops: [
+    { id: "mexico-city", name: "Mexico City", country: "Mexico", countryCode: "MX", coordinates: [-99.1332, 19.4326] },
+    { id: "oaxaca", name: "Oaxaca", country: "Mexico", countryCode: "MX", coordinates: [-96.7266, 17.0732] },
+  ],
+  startDate: "2026-09-26",
+  endDate: "2026-09-29",
+  picks: {}, mustDo: "", pace: "slow", hotels: "few", budget: "mid",
+  nightAllocations: { "mexico-city": 2, oaxaca: 2 },
+  draft: [
+    { number: "1", date: "2026-09-26", destination: "Mexico City", stopId: "mexico-city", title: "Arrive in Mexico City", reason: "Arrival day", items: [] },
+    { number: "2", date: "2026-09-27", destination: "Mexico City", stopId: "mexico-city", title: "Explore Mexico City", reason: "Open day", items: [] },
+    { number: "3", date: "2026-09-28", destination: "Oaxaca", stopId: "oaxaca", title: "Travel to Oaxaca", reason: "Move between stops", items: [] },
+    { number: "4", date: "2026-09-29", destination: "Oaxaca", stopId: "oaxaca", title: "Explore Oaxaca", reason: "Open day", items: [] },
+  ],
+});
+
+const mexicoPlannedTrip: EasyTTrip = {
+  ...mexicoAcceptanceTrip,
+  id: "storybook-itinerary-349-mexico-planned",
+  brief: { ...mexicoAcceptanceTrip.brief, bookings: [{ id: "mexico-stay", type: "stay", title: "Saved Mexico City stay", date: "2026-09-26", confirmation: null, url: null }], customActivities: { 2: ["Zócalo and Metropolitan Cathedral", "Frida Kahlo Museum"] } },
+  planItems: mexicoAcceptanceTrip.planItems.map((item) => item.dayNumber === 2 ? { ...item, notes: ["Zócalo and Metropolitan Cathedral", "Frida Kahlo Museum"], noteDayParts: ["morning", "afternoon"] } : item),
+};
+
+const mexicoLogisticsOnlyTrip: EasyTTrip = {
+  ...mexicoAcceptanceTrip,
+  id: "storybook-itinerary-349-mexico-logistics-only",
+  brief: {
+    ...mexicoAcceptanceTrip.brief,
+    bookings: [{ id: "mexico-logistics-stay", type: "stay", title: "Saved Mexico City stay", date: "2026-09-26", confirmation: null, url: null }],
+  },
+};
+
+export const AcceptanceEmptyMexicoNoStay: Story = { args: { trip: mexicoAcceptanceTrip, selectedDayNumber: 2, initialSuggestions: { 2: [] }, initialActivityInventory: { 2: [] }, activityAction: null } };
+export const AcceptancePlannedMexicoStayPhoto: Story = { args: { trip: mexicoPlannedTrip, selectedDayNumber: 2, initialSuggestions: { 2: [] }, initialActivityInventory: { 2: [] }, activityAction: null } };
+export const AcceptanceMixedTiming: Story = {
+  ...RichDayPlannerIntegrated,
+  args: {
+    ...RichDayPlannerIntegrated.args,
+    trip: {
+      ...RichDayPlannerIntegrated.args!.trip!,
+      id: "storybook-itinerary-349-mixed-timing",
+      brief: {
+        ...RichDayPlannerIntegrated.args!.trip!.brief,
+        itineraryIdeas: RichDayPlannerIntegrated.args!.trip!.brief.itineraryIdeas?.map((idea, index) => ({
+          ...idea,
+          startsAt: index === 0 ? "09:00" : undefined,
+        })),
+      },
+    },
+  },
+};
+export const AcceptanceTransferStayTransition: Story = RoadResolvedTravelDay;
+export const AcceptanceNoSuggestions: Story = { args: { ...AcceptanceEmptyMexicoNoStay.args, initialSuggestions: { 2: [] }, initialActivityInventory: { 2: [] }, activityAction: null } };
+export const AcceptanceNoPhotography: Story = SelectedDayWithoutPhotography;
+export const AcceptanceLongDestinations: Story = LongContentContainment;
+export const AcceptanceRepeatedTokyo: Story = RepeatedDestinationSecondOccurrence;
+export const AcceptanceDenseDay: Story = DenseDay;
+export const AcceptanceLogisticsOnly: Story = { args: { trip: mexicoLogisticsOnlyTrip, selectedDayNumber: 1, initialSuggestions: { 1: [] }, initialActivityInventory: { 1: [] }, activityAction: null } };
+export const AcceptanceMobile390: Story = { ...AcceptancePlannedMexicoStayPhoto, globals: { viewport: { value: "morrovia390", isRotated: false } } };
+export const AcceptanceMobile430: Story = { ...AcceptancePlannedMexicoStayPhoto, globals: { viewport: { value: "morrovia430", isRotated: false } } };
+export const AcceptanceTablet768: Story = { ...AcceptancePlannedMexicoStayPhoto, globals: { viewport: { value: "morrovia768", isRotated: false } } };
+export const AcceptanceDesktop1024: Story = { ...AcceptancePlannedMexicoStayPhoto, globals: { viewport: { value: "morrovia1024", isRotated: false } } };
+export const AcceptanceDesktop1440: Story = { ...AcceptancePlannedMexicoStayPhoto, globals: { viewport: { value: "morrovia1440", isRotated: false } } };
+export const AcceptanceSpanish: Story = { args: { ...AcceptancePlannedMexicoStayPhoto.args, language: "es" } };

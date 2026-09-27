@@ -197,6 +197,13 @@ function itineraryCopy(language: "en" | "es") {
     calendarIntro: "Una vista continua de los días, traslados, planes y estancias de este viaje.",
     weekOf: "Semana del",
     day: "Día",
+    dayCount: "días",
+    today: "Hoy",
+    jumpToDateDestination: "Ir a fecha o destino",
+    previousWeek: "Semana anterior",
+    nextWeek: "Semana siguiente",
+    routePhotoSources: "Fuentes de fotos de la ruta",
+    licence: "Licencia",
     arrival: "Llegada",
     departure: "Salida",
     fullDay: "Día completo",
@@ -304,6 +311,13 @@ function itineraryCopy(language: "en" | "es") {
     calendarIntro: "A continuous view of this trip’s days, transfers, plans and stays.",
     weekOf: "Week of",
     day: "Day",
+    dayCount: "days",
+    today: "Today",
+    jumpToDateDestination: "Jump to date / destination",
+    previousWeek: "Previous week",
+    nextWeek: "Next week",
+    routePhotoSources: "Photo sources for route",
+    licence: "Licence",
     arrival: "Arrival",
     departure: "Departure",
     fullDay: "Full day",
@@ -1254,14 +1268,14 @@ export default function TripItineraryWorkspace({
   return (
     <section className={`${styles.workspace} ${workspaceView === "calendar" ? styles.calendarWorkspace : ""} ${hasContextRail ? "" : styles.workspaceWithoutContext}`} aria-label="Trip itinerary">
       <header ref={itineraryDaysOrientationTarget} className={styles.workspaceToolbar}>
-        <div><h2>{workspaceView === "calendar" ? copy.calendar : copy.dayByDay}</h2><p>{displayDate(days[0]!.date, language, true)} – {displayDate(days[days.length - 1]!.date, language)} · {days.length} days</p></div>
+        <div><h2>{workspaceView === "calendar" ? copy.calendar : copy.dayByDay}</h2><p>{displayDate(days[0]!.date, language, true)} – {displayDate(days[days.length - 1]!.date, language)} · {days.length} {copy.dayCount}</p></div>
         <div className={styles.dateNavigation}>
-          {todayIndex >= 0 ? <EasyTButton size="small" variant="quiet" onClick={() => setSelectedIndex(todayIndex)}>Today</EasyTButton> : null}
-          <EasyTButton icon={ChevronLeft} iconOnly size="small" variant="secondary" disabled={workspaceView === "calendar" ? currentWeekIndex <= 0 : index === 0} onClick={() => navigatePeriod(-1)}>{workspaceView === "calendar" ? "Previous week" : copy.previousDay}</EasyTButton>
-          <EasyTSelect label="Jump to date / destination" value={active.id} onChange={(event) => setSelectedIndex(days.findIndex((day) => day.id === event.target.value))}>
-            {days.map((day) => <option key={day.id} value={day.id}>{displayDayDate(day.date, language)} · Day {day.dayNumber} · {stopForDay(workingTrip, day)?.name ?? day.title}</option>)}
+          {todayIndex >= 0 ? <EasyTButton size="small" variant="quiet" onClick={() => setSelectedIndex(todayIndex)}>{copy.today}</EasyTButton> : null}
+          <EasyTButton icon={ChevronLeft} iconOnly size="small" variant="secondary" disabled={workspaceView === "calendar" ? currentWeekIndex <= 0 : index === 0} onClick={() => navigatePeriod(-1)}>{workspaceView === "calendar" ? copy.previousWeek : copy.previousDay}</EasyTButton>
+          <EasyTSelect label={copy.jumpToDateDestination} value={active.id} onChange={(event) => setSelectedIndex(days.findIndex((day) => day.id === event.target.value))}>
+            {days.map((day) => <option key={day.id} value={day.id}>{displayDayDate(day.date, language)} · {copy.day} {day.dayNumber} · {stopForDay(workingTrip, day)?.name ?? day.title}</option>)}
           </EasyTSelect>
-          <EasyTButton icon={ChevronRight} iconOnly size="small" variant="secondary" disabled={workspaceView === "calendar" ? currentWeekIndex === calendarWeeks.length - 1 : index === days.length - 1} onClick={() => navigatePeriod(1)}>{workspaceView === "calendar" ? "Next week" : copy.nextDay}</EasyTButton>
+          <EasyTButton icon={ChevronRight} iconOnly size="small" variant="secondary" disabled={workspaceView === "calendar" ? currentWeekIndex === calendarWeeks.length - 1 : index === days.length - 1} onClick={() => navigatePeriod(1)}>{workspaceView === "calendar" ? copy.nextWeek : copy.nextDay}</EasyTButton>
         </div>
         <ItinerarySubviewSwitch value={workspaceView} onChange={setWorkspaceView} copy={copy} />
       </header>
@@ -1278,10 +1292,10 @@ export default function TripItineraryWorkspace({
           }}
         />
         {workingTrip.stops.some((stop) => presentationImages.stopById[stop.id]?.sourceUrl) ? <details className={styles.routePhotoSources}>
-          <summary>Photo sources for route</summary>
+          <summary>{copy.routePhotoSources}</summary>
           <ul>{[...workingTrip.stops].sort((a, b) => a.order - b.order).map((stop) => {
             const photo = presentationImages.stopById[stop.id];
-            return photo?.sourceUrl ? <li key={stop.id}><span>{stop.name}:</span> <a href={photo.sourceUrl} target="_blank" rel="noreferrer">{photo.sourceLabel ?? photo.alt}</a>{photo.licenseUrl ? <> · <a href={photo.licenseUrl} target="_blank" rel="noreferrer">Licence</a></> : null}</li> : null;
+            return photo?.sourceUrl ? <li key={stop.id}><span>{stop.name}:</span> <a href={photo.sourceUrl} target="_blank" rel="noreferrer">{photo.sourceLabel ?? photo.alt}</a>{photo.licenseUrl ? <> · <a href={photo.licenseUrl} target="_blank" rel="noreferrer">{copy.licence}</a></> : null}</li> : null;
           })}</ul>
         </details> : null}
       </div>
@@ -1352,7 +1366,7 @@ export default function TripItineraryWorkspace({
         <header className={styles.dayHeader} data-photo={Boolean(dayHero)}>
           {dayHero ? <img className={styles.dayHeaderPhoto} src={dayHero.src} alt={dayHero.alt} /> : null}
           <div>
-            <p><span>DAY {pad(active.dayNumber)}</span><i aria-hidden="true">·</i><time dateTime={active.date}>{displayDayDate(active.date, language)}</time></p>
+            <p><span>{copy.day} {pad(active.dayNumber)}</span><i aria-hidden="true">·</i><time dateTime={active.date}>{displayDayDate(active.date, language)}</time></p>
             <h2>{stop?.name ?? active.title}</h2>
             <span className={styles.dayRole}>{active.title}</span>
           </div>

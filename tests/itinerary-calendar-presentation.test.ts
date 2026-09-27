@@ -75,9 +75,43 @@ test("continuous and representative Calendar stories cover all required widths",
   assert.match(styles, /--morrovia-mobile-dock-offset/);
 });
 
+test("mixed timing workspace acceptance includes a saved exact time and an untimed item", () => {
+  const mixedTiming = stories.slice(stories.indexOf("export const AcceptanceMixedTiming"), stories.indexOf("export const AcceptanceTransferStayTransition"));
+  assert.match(mixedTiming, /startsAt: index === 0 \? "09:00" : undefined/);
+});
+
+test("Spanish acceptance renders the production workspace with Spanish copy", () => {
+  assert.match(stories, /export const AcceptanceSpanish: Story = \{[\s\S]*?language: "es"/);
+  assert.match(itinerary, /routePhotoSources: "Fuentes de fotos de la ruta"/);
+  assert.match(itinerary, /<summary>\{copy\.routePhotoSources\}<\/summary>/);
+  assert.match(itinerary, /\{copy\.day\} \{pad\(active\.dayNumber\)\}/);
+  assert.match(itinerary, /label=\{copy\.jumpToDateDestination\}/);
+});
+
 test("restored rail and occurrence navigation have explicit responsive Storybook states", () => {
   for (const story of ["RestoredDayRailMobile320", "RestoredDayRailMobile390", "RestoredDayRailMobile430", "RestoredDayRailTablet768", "RestoredDayRailDesktop1024", "RestoredDayRailDesktop1440", "RepeatedDestinationSecondOccurrence"]) {
     assert.match(stories, new RegExp(`export const ${story}`));
   }
   assert.match(stories, /second Tokyo occurrence must remain active/);
+});
+
+test("production-backed acceptance stories cover the ten day-view states and five widths", () => {
+  assert.match(stories, /component: TripItineraryWorkspace/);
+  for (const story of [
+    "AcceptanceEmptyMexicoNoStay", "AcceptancePlannedMexicoStayPhoto", "AcceptanceMixedTiming",
+    "AcceptanceTransferStayTransition", "AcceptanceNoSuggestions", "AcceptanceNoPhotography",
+    "AcceptanceLongDestinations", "AcceptanceRepeatedTokyo", "AcceptanceDenseDay",
+    "AcceptanceLogisticsOnly",
+    "AcceptanceMobile390", "AcceptanceMobile430", "AcceptanceTablet768",
+    "AcceptanceDesktop1024", "AcceptanceDesktop1440",
+  ]) assert.match(stories, new RegExp(`export const ${story}`));
+  assert.match(styles, /@media \(max-width: 640px\)[\s\S]*\.destinationTrack \{ display: none; \}/);
+  assert.match(styles, /@media \(max-width: 900px\)[\s\S]*\.dayList \{[\s\S]*overflow-x: auto/);
+  assert.match(styles, /@media \(max-width: 1200px\)[\s\S]*\.contextRail \{[\s\S]*grid-row: auto/);
+});
+
+test("logistics-only acceptance includes a canonical saved stay and no invented activity", () => {
+  const fixture = stories.slice(stories.indexOf("const mexicoLogisticsOnlyTrip"), stories.indexOf("export const AcceptanceEmptyMexicoNoStay"));
+  assert.match(fixture, /bookings: \[\{ id: "mexico-logistics-stay", type: "stay"/);
+  assert.match(stories, /export const AcceptanceLogisticsOnly: Story = \{ args: \{ trip: mexicoLogisticsOnlyTrip, selectedDayNumber: 1/);
 });
