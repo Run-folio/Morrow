@@ -12,6 +12,8 @@ import {
   selectedItineraryDayNumber,
 } from "../lib/easyt/itinerary-mutations.ts";
 import { createTripMutationPersistenceQueue } from "../lib/easyt/trip-mutation-persistence.ts";
+import { composeItineraryDay } from "../lib/easyt/itinerary-day-composition.ts";
+import { addItineraryActivityWithUndo, moveItineraryActivityAcrossDays, undoItineraryItemAction } from "../lib/easyt/itinerary-activity-placement.ts";
 import {
   loadLocalTripFromStorage,
   saveTripRecoveryToEasyT,
@@ -144,6 +146,28 @@ test("explicit dayparts stay aligned through add, reorder, remove, and recovery 
 
   const removed = removeItineraryActivity(reloaded, { dayNumber: 1, noteIndex: 2, title: "Lunch in Monti" });
   assert.deepEqual(removed.trip.planItems[0]?.noteDayParts, [null, "evening"]);
+});
+
+test("authored activity move and undo survive reload without inventing a clock time", () => {
+  const storage = new MemoryStorage();
+  const base = itineraryTrip({ planItems: [day(1, ["Colosseum", "Evening passeggiata"]), day(2, ["Acropolis"]), { ...day(3, []), stopId: "rome" }] });
+  const added = addItineraryActivityWithUndo(base, 1, 2, "Lunch in Monti", "midday");
+  assert.equal(added.changed, true);
+  const activity = composeItineraryDay(added.trip, "day-1")!.planned.midday.find((item) => item.title === "Lunch in Monti")!;
+  const moved = moveItineraryActivityAcrossDays(added.trip, "day-1", activity.id, "day-3", "evening");
+  assert.equal(moved.changed, true);
+  assert.deepEqual(moved.trip.planItems.map((item) => item.id), ["day-1", "day-2", "day-3"]);
+  assert.equal(moved.trip.planItems[2]?.notes[0], "Lunch in Monti");
+  assert.equal(moved.trip.planItems[2]?.noteDayParts?.[0], "evening");
+  assert.equal(moved.trip.planItems[2]?.startsAt, null);
+  assert.equal(saveTripRecoveryToStorage(storage, moved.trip, { ownerId: "owner-a", writeId: "moved-activity" }).stored, true);
+  const reloaded = loadLocalTripFromStorage(storage, base.id, "owner-a")!;
+  assert.equal(composeItineraryDay(reloaded, "day-3")?.planned.evening.some((item) => item.title === "Lunch in Monti"), true);
+  const undone = undoItineraryItemAction(reloaded, moved.undo!);
+  assert.equal(undone.changed, true);
+  assert.equal(undone.trip.planItems[0]?.notes.includes("Lunch in Monti"), true);
+  assert.equal(undone.trip.planItems[0]?.noteDayParts?.at(-1), "midday");
+  assert.equal(undone.trip.planItems[2]?.notes.includes("Lunch in Monti"), false);
 });
 
 test("booking, mapped-place, generated, duplicate, and stale-location rows remain protected", () => {

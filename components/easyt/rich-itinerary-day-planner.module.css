@@ -15,6 +15,9 @@
 .emptyComposer { width: min(100%, 420px); display: grid; gap: 10px; }
 .emptyDayparts > summary { min-height: 44px; padding: 10px 12px; color: var(--morrovia-ink-soft); cursor: pointer; font: var(--morrovia-type-control); }
 .emptyDayparts[data-compact="false"] > summary { display: none; }
+.secondaryPeriods { border-top: 1px solid var(--morrovia-line); }
+.secondaryPeriods > summary { min-height: 44px; padding: 12px; color: var(--morrovia-ink-soft); cursor: pointer; font: var(--morrovia-type-control); }
+.secondaryPeriods[open] > .periodGrid { padding-top: 8px; }
 
 /* Compact editorial rows retain the existing multi-item and insertion owners. */
 .planner .freePeriod { min-height: 0; padding: 0; }

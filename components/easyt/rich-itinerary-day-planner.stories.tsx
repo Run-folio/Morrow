@@ -346,6 +346,8 @@ export const OnePlannedItem: Story = {
   }} dayId="kyoto-2" />,
 };
 export const ThreePlannedItems: Story = { render: () => <StoryFrame trip={threePlannedTrip} dayId="kyoto-2" /> };
+export const PopulatedPlanPrimary: Story = ThreePlannedItems;
+export const UnslottedPlanPrimary: Story = AutomaticLegacyPlacement;
 export const VeryLongProviderTitle: Story = ThreePlannedItems;
 export const OccupiedAllPeriods: Story = FullFourSectionDay;
 export const DesktopShortHeightViewport: Story = {

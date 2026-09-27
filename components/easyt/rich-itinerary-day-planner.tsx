@@ -296,6 +296,8 @@ export default function RichItineraryDayPlanner({
   const unslotted = composition.unslotted.filter((activity) => activity.source !== "day-note");
   const hasVisibleActivities = unslotted.length > 0 || itineraryDayParts.some((part) => composition.planned[part].some((activity) => activity.source !== "day-note"));
   const compactEmpty = !hasVisibleActivities && !dragActive;
+  const occupiedParts = itineraryDayParts.filter((part) => composition.planned[part].some((activity) => activity.source !== "day-note"));
+  const emptyParts = itineraryDayParts.filter((part) => !occupiedParts.includes(part));
   const controlPrefix = useId().replaceAll(":", "");
   const focusAfterMoveRef = useRef<string | null>(null);
   const [dropTarget, setDropTarget] = useState<string | null>(null);
@@ -310,6 +312,106 @@ export default function RichItineraryDayPlanner({
       focusAfterMoveRef.current = null;
     }
   }, [composition, controlPrefix]);
+  const renderPeriod = (part: ItineraryDayPart) => {
+    const activities = composition.planned[part].filter((activity) => activity.source !== "day-note");
+    const headingId = `${titleId}-${part}`;
+    return (
+      <section
+        className={`${styles.period} ${dragActive ? styles.periodDropReady : ""} ${dropTarget?.startsWith(`${part}:`) ? styles.periodDropActive : ""}`}
+        data-day-part={part}
+        data-drop-zone={dragActive ? "ready" : undefined}
+        aria-labelledby={headingId}
+        data-empty={activities.length === 0}
+        key={part}
+        onDragEnter={(event) => { event.preventDefault(); if (dragActive) setDropTarget(`${part}:${activities.length}`); }}
+        onDragOver={(event) => { if (onActivityDrop) event.preventDefault(); }}
+        onDrop={(event) => {
+          if (!onActivityDrop) return;
+          event.preventDefault();
+          onActivityDrop?.(part, activities.length);
+          setDropTarget(null);
+        }}
+      >
+        <div className={styles.periodHeading}>
+          <h3 id={headingId}>{dayPartLabels[language][part]}</h3>
+          {activities.length ? <span>{activities.length}</span> : null}
+        </div>
+        {activities.length ? (
+          <div className={styles.activityList}>
+            {activities.map((activity, activityIndex) => <div className={styles.activityDropGroup} key={activity.id}>
+              <div
+                className={`${styles.dropMarker} ${dropTarget === `${part}:${activityIndex}` ? styles.dropMarkerActive : ""}`}
+                data-drop-index={activityIndex}
+                aria-hidden="true"
+                onDragEnter={(event) => { event.preventDefault(); event.stopPropagation(); if (dragActive) setDropTarget(`${part}:${activityIndex}`); }}
+                onDragOver={(event) => { event.stopPropagation(); if (onActivityDrop) event.preventDefault(); }}
+                onDrop={(event) => { event.preventDefault(); event.stopPropagation(); onActivityDrop?.(part, activityIndex); setDropTarget(null); }}
+              >{dragActive ? "Drop here" : null}</div>
+              <ActivityRow
+                activity={activity}
+                language={language}
+                pending={pendingActivityId === activity.id}
+                controlId={`${controlPrefix}-${activity.id}`}
+                canMoveEarlier={activity.noteIndex !== null && (activities[activityIndex - 1]?.noteIndex ?? null) !== null}
+                canMoveLater={activity.noteIndex !== null && (activities[activityIndex + 1]?.noteIndex ?? null) !== null}
+                onBeforeDayPartChange={(activityId) => { focusAfterMoveRef.current = activityId; }}
+                onDayPartChange={onDayPartChange}
+                onMoveActivity={onMoveActivity}
+                onMoveToDay={onMoveToDay}
+                draggable={activity.dayPartEditable && Boolean(onActivityDragStart)}
+                dragging={draggedActivityId === activity.id}
+                onDragStart={(event) => onActivityDragStart?.(activity, event)}
+                onDragEnd={() => { setDropTarget(null); onActivityDragEnd?.(); }}
+                selected={selectedActivityId === activity.id}
+                onSelect={(trigger) => onActivitySelect?.(activity, trigger)}
+                warnings={warningsFor(activity.id)}
+              />
+            </div>)}
+            <div
+              className={`${styles.dropMarker} ${dropTarget === `${part}:${activities.length}` ? styles.dropMarkerActive : ""}`}
+              data-drop-index={activities.length}
+              aria-hidden="true"
+              onDragEnter={(event) => { event.preventDefault(); event.stopPropagation(); if (dragActive) setDropTarget(`${part}:${activities.length}`); }}
+              onDragOver={(event) => { event.stopPropagation(); if (onActivityDrop) event.preventDefault(); }}
+              onDrop={(event) => { event.preventDefault(); event.stopPropagation(); onActivityDrop?.(part, activities.length); setDropTarget(null); }}
+            >{dragActive ? "Drop here" : null}</div>
+          </div>
+        ) : (
+          <div
+            className={`${styles.freePeriod} ${dropTarget === `${part}:0` ? styles.freePeriodDropActive : ""}`}
+            data-drop-index="0"
+            onDragEnter={(event) => { event.preventDefault(); event.stopPropagation(); if (dragActive) setDropTarget(`${part}:0`); }}
+            onDragOver={(event) => { event.stopPropagation(); if (onActivityDrop) event.preventDefault(); }}
+            onDrop={(event) => { event.preventDefault(); event.stopPropagation(); onActivityDrop?.(part, 0); setDropTarget(null); }}
+          >
+          </div>
+        )}
+        <div className={styles.addHere}>
+          {addComposerDayPart === part ? <form onSubmit={(event) => { event.preventDefault(); onAddSubmit?.(); }}>
+            <EasyTField
+              autoFocus
+              label={`${copy.activityName} ${dayPartLabels[language][part]}`}
+              error={addError || undefined}
+              value={addDraft}
+              onChange={(event) => onAddDraftChange?.(event.target.value)}
+            />
+            <div>
+              <EasyTButton type="submit" icon={CirclePlus} size="small" disabled={!addDraft.trim()}>{copy.save}</EasyTButton>
+              <EasyTButton size="small" variant="quiet" onClick={onAddCancel}>{copy.cancel}</EasyTButton>
+            </div>
+          </form> : onAddOpen ? (
+            <EasyTButton
+              aria-label={`${copy.addActivity} ${language === "es" ? "a" : "to"} ${dayPartLabels[language][part]}`}
+              icon={CirclePlus}
+              size="small"
+              variant="quiet"
+              onClick={() => onAddOpen(part)}
+            >{copy.addHere}</EasyTButton>
+          ) : ideasHref ? <EasyTLinkButton href={ideasHref} icon={CirclePlus} size="small" variant="quiet">{copy.addHere}</EasyTLinkButton> : null}
+        </div>
+      </section>
+    );
+  };
   return (
     <section className={styles.planner} aria-labelledby={showHeader ? titleId : undefined} aria-label={showHeader ? undefined : `Day ${composition.day.dayNumber} planner`}>
       {showHeader ? <header className={styles.header}>
@@ -360,111 +462,11 @@ export default function RichItineraryDayPlanner({
         </div>}
       </section> : null}
 
-      <details className={styles.emptyDayparts} data-compact={compactEmpty} key={compactEmpty ? "empty" : "full"} open={compactEmpty ? undefined : true}>
+      {!hasVisibleActivities ? <details className={styles.emptyDayparts} key={compactEmpty ? "empty" : "drag"} open={dragActive || undefined}>
         <summary>{language === "es" ? "Planificar por momento del día" : "Plan by part of day"}</summary>
-      <div className={styles.periodGrid}>
-        {itineraryDayParts.map((part) => {
-          const activities = composition.planned[part].filter((activity) => activity.source !== "day-note");
-          const headingId = `${titleId}-${part}`;
-          return (
-            <section
-              className={`${styles.period} ${dragActive ? styles.periodDropReady : ""} ${dropTarget?.startsWith(`${part}:`) ? styles.periodDropActive : ""}`}
-              data-day-part={part}
-              data-drop-zone={dragActive ? "ready" : undefined}
-              aria-labelledby={headingId}
-              data-empty={activities.length === 0}
-              key={part}
-              onDragEnter={(event) => { event.preventDefault(); if (dragActive) setDropTarget(`${part}:${activities.length}`); }}
-              onDragOver={(event) => { if (onActivityDrop) event.preventDefault(); }}
-              onDrop={(event) => {
-                if (!onActivityDrop) return;
-                event.preventDefault();
-                onActivityDrop?.(part, activities.length);
-                setDropTarget(null);
-              }}
-            >
-              <div className={styles.periodHeading}>
-                <h3 id={headingId}>{dayPartLabels[language][part]}</h3>
-                {activities.length ? <span>{activities.length}</span> : null}
-              </div>
-              {activities.length ? (
-                <div className={styles.activityList}>
-                  {activities.map((activity, activityIndex) => <div className={styles.activityDropGroup} key={activity.id}>
-                    <div
-                      className={`${styles.dropMarker} ${dropTarget === `${part}:${activityIndex}` ? styles.dropMarkerActive : ""}`}
-                      data-drop-index={activityIndex}
-                      aria-hidden="true"
-                      onDragEnter={(event) => { event.preventDefault(); event.stopPropagation(); if (dragActive) setDropTarget(`${part}:${activityIndex}`); }}
-                      onDragOver={(event) => { event.stopPropagation(); if (onActivityDrop) event.preventDefault(); }}
-                      onDrop={(event) => { event.preventDefault(); event.stopPropagation(); onActivityDrop?.(part, activityIndex); setDropTarget(null); }}
-                    >{dragActive ? "Drop here" : null}</div>
-                    <ActivityRow
-                      activity={activity}
-                      language={language}
-                      pending={pendingActivityId === activity.id}
-                      controlId={`${controlPrefix}-${activity.id}`}
-                      canMoveEarlier={activity.noteIndex !== null && (activities[activityIndex - 1]?.noteIndex ?? null) !== null}
-                      canMoveLater={activity.noteIndex !== null && (activities[activityIndex + 1]?.noteIndex ?? null) !== null}
-                      onBeforeDayPartChange={(activityId) => { focusAfterMoveRef.current = activityId; }}
-                      onDayPartChange={onDayPartChange}
-                      onMoveActivity={onMoveActivity}
-                      onMoveToDay={onMoveToDay}
-                      draggable={activity.dayPartEditable && Boolean(onActivityDragStart)}
-                      dragging={draggedActivityId === activity.id}
-                      onDragStart={(event) => onActivityDragStart?.(activity, event)}
-                      onDragEnd={() => { setDropTarget(null); onActivityDragEnd?.(); }}
-                      selected={selectedActivityId === activity.id}
-                      onSelect={(trigger) => onActivitySelect?.(activity, trigger)}
-                      warnings={warningsFor(activity.id)}
-                    />
-                  </div>)}
-                  <div
-                    className={`${styles.dropMarker} ${dropTarget === `${part}:${activities.length}` ? styles.dropMarkerActive : ""}`}
-                    data-drop-index={activities.length}
-                    aria-hidden="true"
-                    onDragEnter={(event) => { event.preventDefault(); event.stopPropagation(); if (dragActive) setDropTarget(`${part}:${activities.length}`); }}
-                    onDragOver={(event) => { event.stopPropagation(); if (onActivityDrop) event.preventDefault(); }}
-                    onDrop={(event) => { event.preventDefault(); event.stopPropagation(); onActivityDrop?.(part, activities.length); setDropTarget(null); }}
-                  >{dragActive ? "Drop here" : null}</div>
-                </div>
-              ) : (
-                <div
-                  className={`${styles.freePeriod} ${dropTarget === `${part}:0` ? styles.freePeriodDropActive : ""}`}
-                  data-drop-index="0"
-                  onDragEnter={(event) => { event.preventDefault(); event.stopPropagation(); if (dragActive) setDropTarget(`${part}:0`); }}
-                  onDragOver={(event) => { event.stopPropagation(); if (onActivityDrop) event.preventDefault(); }}
-                  onDrop={(event) => { event.preventDefault(); event.stopPropagation(); onActivityDrop?.(part, 0); setDropTarget(null); }}
-                >
-                </div>
-              )}
-              <div className={styles.addHere}>
-                {addComposerDayPart === part ? <form onSubmit={(event) => { event.preventDefault(); onAddSubmit?.(); }}>
-                  <EasyTField
-                    autoFocus
-                    label={`${copy.activityName} ${dayPartLabels[language][part]}`}
-                    error={addError || undefined}
-                    value={addDraft}
-                    onChange={(event) => onAddDraftChange?.(event.target.value)}
-                  />
-                  <div>
-                    <EasyTButton type="submit" icon={CirclePlus} size="small" disabled={!addDraft.trim()}>{copy.save}</EasyTButton>
-                    <EasyTButton size="small" variant="quiet" onClick={onAddCancel}>{copy.cancel}</EasyTButton>
-                  </div>
-                </form> : onAddOpen ? (
-                  <EasyTButton
-                    aria-label={`${copy.addActivity} ${language === "es" ? "a" : "to"} ${dayPartLabels[language][part]}`}
-                    icon={CirclePlus}
-                    size="small"
-                    variant="quiet"
-                    onClick={() => onAddOpen(part)}
-                  >{copy.addHere}</EasyTButton>
-                ) : ideasHref ? <EasyTLinkButton href={ideasHref} icon={CirclePlus} size="small" variant="quiet">{copy.addHere}</EasyTLinkButton> : null}
-              </div>
-            </section>
-          );
-        })}
-      </div>
-      </details>
+        <div className={styles.periodGrid}>{itineraryDayParts.map(renderPeriod)}</div>
+      </details> : null}
+      {occupiedParts.length ? <div className={styles.periodGrid}>{occupiedParts.map(renderPeriod)}</div> : null}
 
       {unslotted.length ? (
         <section className={styles.unslotted} aria-labelledby={`${titleId}-unslotted`}>
@@ -501,6 +503,11 @@ export default function RichItineraryDayPlanner({
           </div>
         </section>
       ) : null}
+
+      {hasVisibleActivities && emptyParts.length ? <details className={styles.secondaryPeriods} open={dragActive || (addComposerOpen && addComposerDayPart !== null) || undefined}>
+        <summary>{language === "es" ? "Añadir a otro momento del día" : "Add in another part of day"}</summary>
+        <div className={styles.periodGrid}>{emptyParts.map(renderPeriod)}</div>
+      </details> : null}
 
       {contextNotes.length || composition.context.notes.length ? <details className={styles.contextNotes}>
         <summary>{language === "es" ? "Contexto y notas del día" : "Day context and notes"} ({contextNotes.length + composition.context.notes.length})</summary>

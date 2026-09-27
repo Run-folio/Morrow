@@ -22,6 +22,17 @@ test("empty day has one invitation while four dayparts remain in an accessible d
   assert.match(workspace, /document\.getElementById\(`\$\{tabIdPrefix\}-ideas`\)/);
 });
 
+test("populated day shows occupied periods and saved unslotted rows before secondary empty insertion targets", () => {
+  assert.match(component, /const occupiedParts = itineraryDayParts\.filter/);
+  assert.match(component, /const emptyParts = itineraryDayParts\.filter/);
+  assert.match(component, /occupiedParts\.map\(renderPeriod\)/);
+  assert.match(component, /unslotted\.length \? \(/);
+  assert.match(component, /className=\{styles\.secondaryPeriods\}/);
+  assert.match(component, /emptyParts\.map\(renderPeriod\)/);
+  assert.ok(component.indexOf("unslotted.length ? (") < component.indexOf("className={styles.secondaryPeriods}"));
+  assert.match(styles, /\.secondaryPeriods > summary \{[^}]*min-height: 44px/);
+});
+
 test("the production itinerary owner consumes canonical composition and persists period changes through its mutation path", () => {
   assert.match(workspace, /composeItineraryDay\(workingTrip, active\.id\)/);
   assert.match(workspace, /assignItineraryIdeaDayPart\(current, activity\.id, dayPart\)/);
