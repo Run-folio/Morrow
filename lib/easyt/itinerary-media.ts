@@ -33,6 +33,14 @@ export function mediaImagesFor(destination: string): JourneyImage[] {
   return media ? [media.hero, ...(media.gallery ?? [])] : [];
 }
 
+/** Exact catalog or declared alias only; presentation cannot borrow a partial-name match. */
+export function mediaImagesForExactDestination(destination: string): JourneyImage[] {
+  const normalized = destination.trim().toLowerCase();
+  const key = MEDIA_KEYS[normalized] ?? normalized.replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+  const media = journeyMedia[key];
+  return media ? [media.hero, ...(media.gallery ?? [])] : [];
+}
+
 const normalizeMediaText = (value: string) =>
   value.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
 
