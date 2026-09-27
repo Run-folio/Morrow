@@ -945,3 +945,32 @@ export const MapPlanSingleDayStop: Story = {
   args: { storyTrip: cancunReturnTripFixture, storyState: { mapMode: "detail", shapeDayTab: "plan" } },
   parameters: { nextjs: { appDirectory: true, navigation: { pathname: "/journey/storybook-cancun-return/map", query: { stop: "antigua", mode: "plan", day: "3" } } } },
 };
+
+const enrichedPlaces = [
+  { providerPlaceId: "ChIJdelhiFixture1", name: "Old Delhi landmark (fixture)", coordinates: [77.241, 28.656] as [number, number], category: "Historic place", address: "Old Delhi", mapsUrl: "https://www.google.com/maps/search/?api=1&query_place_id=ChIJdelhiFixture1", rating: 4.5, ratingCount: 2300, openNow: true, hours: ["Monday: Closed", "Tuesday: 9:30 AM–5:00 PM"] },
+  { providerPlaceId: "ChIJdelhiFixture2", name: "Delhi garden (fixture)", coordinates: [77.219, 28.593] as [number, number], category: "Garden", address: "New Delhi", mapsUrl: "https://www.google.com/maps/search/?api=1&query_place_id=ChIJdelhiFixture2" },
+];
+
+export const GooglePlacesEnrichmentFixture: Story = {
+  ...GoldenTriangle,
+  args: { storyTrip: goldenTriangleTrip, storyState: { mapMode: "detail", shapeDayTab: "plan", enrichmentOpen: true, enrichmentPlaces: enrichedPlaces } },
+};
+
+export const GooglePlacesEnrichmentDetailFixture: Story = {
+  ...GooglePlacesEnrichmentFixture,
+  play: async ({ canvasElement }) => {
+    Array.from(canvasElement.querySelectorAll<HTMLButtonElement>('[aria-label^="Google Maps places"] button'))
+      .find((button) => button.textContent?.includes("Old Delhi landmark"))?.click();
+  },
+};
+
+export const GooglePlacesEnrichmentMobile390: Story = {
+  ...GooglePlacesEnrichmentFixture,
+  args: { storyTrip: goldenTriangleTrip, storyState: { mapMode: "detail", shapeDayTab: "plan", mobileShapeDayOpen: true, enrichmentOpen: true, enrichmentPlaces: enrichedPlaces } },
+  globals: { viewport: { value: "morrovia390", isRotated: false } },
+};
+
+export const GooglePlacesEnrichmentUnavailable: Story = {
+  ...GooglePlacesEnrichmentFixture,
+  args: { storyTrip: goldenTriangleTrip, storyState: { mapMode: "detail", enrichmentOpen: true, enrichmentPlaces: [], enrichmentUnavailable: true } },
+};

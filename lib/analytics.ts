@@ -56,6 +56,10 @@ export type LaunchAnalyticsEventMap = {
   trip_overview_viewed: { trip_id?: string; workspace_view: "overview"; route_mode: RouteMode; stop_count?: number };
   trip_itinerary_viewed: { trip_id?: string; workspace_view: "itinerary"; route_mode: RouteMode; stop_count?: number };
   trip_map_viewed: { trip_id?: string; workspace_view: "map"; route_mode: RouteMode; stop_count?: number };
+  map_place_enrichment_opened: { category: "see" };
+  map_place_enrichment_category: { category: "see" | "eat" | "stay" | "practical" };
+  map_place_enrichment_result: { category: "see" | "eat" | "stay" | "practical" };
+  map_place_enrichment_handoff: { category: "see" | "eat" | "stay" | "practical" };
   trip_stay_viewed: { trip_id?: string; workspace_view: "stay"; route_mode: RouteMode; stop_count?: number };
   trip_transport_viewed: { trip_id?: string; workspace_view: "transport"; route_mode: RouteMode; stop_count?: number };
   explore_opened: { trip_id: string; workspace_view: "explore"; stop_count: number };

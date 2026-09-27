@@ -18,6 +18,7 @@ import EasyTTripCopilot from "@/components/easyt/easyt-trip-copilot";
 import { MorroviaRecoveryFeedback, MorroviaSaveStatus } from "@/components/easyt/morrovia-feedback";
 import { MorroviaSectionStatus } from "@/components/easyt/morrovia-loading-states";
 import { EasyTButton } from "@/components/easyt/easyt-controls";
+import MapPlaceEnrichment from "@/components/easyt/map-place-enrichment";
 import ItineraryItemDetail from "@/components/easyt/itinerary-item-detail";
 import TripTransportChoiceControl from "@/components/easyt/trip-transport-choice-control";
 import { affiliateDisclosure, MorroviaAffiliateLink } from "@/components/easyt/affiliate-link";
@@ -56,6 +57,7 @@ import { formatIsoDate, parseIsoDate } from "@/lib/easyt/trip-lifecycle";
 import { deriveTripDateFacts, formatTripNights, incomingLegForPlanItem, orderedTripPlanItems, stableStopDateRange } from "@/lib/easyt/trip-facts";
 import { conciseMapDescription, formatMapDuration, mapRouteLegsFromTrip, type MapCopilotScope } from "@/lib/easyt/map-spatial-context";
 import type { MorroviaMapInsets, MorroviaMapSurface } from "@/lib/easyt/map-surface-policy";
+import type { EnrichedPlace } from "@/lib/easyt/place-enrichment";
 import { originEndpointForTrip, routeEndpointForLeg, tripLegClassificationLabel, tripOriginEndpointId } from "@/lib/easyt/trip-legs";
 import { clearTripLegTransportChoice, effectiveTripLeg, selectTripLegTransportChoice, tripWithEffectiveTransportChoices } from "@/lib/easyt/transport-mode-choice";
 import EasyTNavigation from "@/app/journey/easyt-navigation";
@@ -345,6 +347,9 @@ export type JourneyMapPlannerWorkspaceProps = {
     mobileDrawerOpen?: boolean;
     mobileShapeDayOpen?: boolean;
     tripStatusExpanded?: boolean;
+    enrichmentOpen?: boolean;
+    enrichmentPlaces?: EnrichedPlace[];
+    enrichmentUnavailable?: boolean;
   };
 };
 
@@ -436,6 +441,8 @@ export function JourneyMapPlannerWorkspace({
   const [copilotOpen, setCopilotOpen] = useState(false);
   const [mobileShapeDayOpen, setMobileShapeDayOpen] = useState(() => storyState?.mobileShapeDayOpen ?? (!isShellPresentation || Boolean(initialMapTarget && initialMapTarget.mode !== "plan")));
   const [localMapPlaces, setLocalMapPlaces] = useState<JourneyLocalPlace[]>(storyState?.localPlaces ?? []);
+  const [enrichmentOpen, setEnrichmentOpen] = useState(Boolean(storyState?.enrichmentOpen));
+  const [enrichmentAvailable, setEnrichmentAvailable] = useState(Boolean(storyState?.enrichmentPlaces));
   const [seeMapPlaces, setSeeMapPlaces] = useState<JourneyItineraryDiscoveryResult[]>([]);
   const [selectedMapResult, setSelectedMapResult] = useState<MapResultPlace | null>(null);
   const lastVisibleMapResultIdRef = useRef<string | null>(null);
@@ -486,6 +493,14 @@ export function JourneyMapPlannerWorkspace({
   activeBrowserOwnerIdRef.current = activeBrowserOwnerId;
   const appliedDeepLinkRef = useRef<string | null>(null);
   const appliedMapResultTargetRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (storyState?.enrichmentPlaces || !expandedReturnHref || !authenticatedOwnerId) return;
+    const controller = new AbortController();
+    void fetch("/api/journey-place-enrichment?mode=availability", { cache: "no-store", signal: controller.signal })
+      .then((response) => { if (!controller.signal.aborted) setEnrichmentAvailable(response.ok); })
+      .catch(() => { if (!controller.signal.aborted) setEnrichmentAvailable(false); });
+    return () => controller.abort();
+  }, [authenticatedOwnerId, expandedReturnHref, storyState?.enrichmentPlaces]);
   useEffect(() => {
     if (!canonicalMutation) return;
     setCustomTrip((current) => JSON.stringify(current) === JSON.stringify(canonicalMutation.trip)
@@ -2856,9 +2871,11 @@ export function JourneyMapPlannerWorkspace({
 
       {showFinderDock ? <aside id="shape-day-workspace" className={`${styles.finderDock} ${mobileShapeDayOpen ? styles.mobileShapeDayOpen : styles.mobileShapeDayClosed} ${shapeDayTab === "stay" ? styles.finderDockStay : shapeDayTab === "eat" ? styles.finderDockEat : shapeDayTab === "see" ? styles.finderDockSee : ""}`} aria-label={planCopy.findPlaces}>
         <header className={styles.shapeDayHeader}><small>{language === "es" ? `EN ${selected.city.toLocaleUpperCase()}` : `AT ${selected.city.toLocaleUpperCase()}`}</small><span><strong>Shape the day</strong>{selectedTripStop?.nights ? <em>{selectedTripStop.nights} {selectedTripStop.nights === 1 ? "night" : "nights"}</em> : null}</span><button type="button" className={styles.mobileShapeDayClose} onClick={() => { setMobileShapeDayOpen(false); setMobileMapDrawerOpen(false); }} aria-label="Close Shape the day"><X aria-hidden="true" /></button><div className={styles.finderTabs} role="tablist" aria-label="Shape the day">
-          {shapeDayTabs.map((tab) => <button key={tab} type="button" role="tab" aria-selected={shapeDayTab === tab} aria-pressed={shapeDayTab === tab} tabIndex={shapeDayTab === tab ? 0 : -1} className={shapeDayTab === tab ? styles.finderTabActive : ""} onClick={() => selectShapeDayTab(tab)} onKeyDown={(event) => onShapeDayTabKeyDown(event, tab)}>{tab === "plan" ? "Plan" : tab === "stay" ? "Stay" : tab === "eat" ? "Eat" : "See"}</button>)}
+          {shapeDayTabs.map((tab) => <button key={tab} type="button" role="tab" aria-selected={!enrichmentOpen && shapeDayTab === tab} aria-pressed={!enrichmentOpen && shapeDayTab === tab} tabIndex={!enrichmentOpen && shapeDayTab === tab ? 0 : -1} className={!enrichmentOpen && shapeDayTab === tab ? styles.finderTabActive : ""} onClick={() => { setEnrichmentOpen(false); selectShapeDayTab(tab); }} onKeyDown={(event) => onShapeDayTabKeyDown(event, tab)}>{tab === "plan" ? "Plan" : tab === "stay" ? "Stay" : tab === "eat" ? "Eat" : "See"}</button>)}
         </div>{customTrip && tripIssueCount > 0 ? <details className={styles.mobileTripStatus} open={tripStatusExpanded} onToggle={(event) => setTripStatusExpanded(event.currentTarget.open)}><summary><span>{language === "es" ? "Estado del viaje" : "Trip status"}</span><b>{tripIssueCount} {language === "es" ? "problemas" : tripIssueCount === 1 ? "issue" : "issues"}</b></summary></details> : null}</header>
-        {shapeDayTab === "plan" ? <PlanWorkspace
+        {enrichmentAvailable && selectedTripStop && selectedBaseCoordinates ? <EasyTButton className={styles.enrichmentToggle} size="small" variant={enrichmentOpen ? "secondary" : "quiet"} aria-pressed={enrichmentOpen} onClick={() => { if (!enrichmentOpen) trackEvent("map_place_enrichment_opened", { category: "see" }); setEnrichmentOpen(!enrichmentOpen); }}>{enrichmentOpen ? "Back to day planning" : "Explore with Google Maps"}</EasyTButton> : null}
+        {enrichmentOpen && selectedTripStop && selectedBaseCoordinates ? <div className={styles.enrichmentPanel}><MapPlaceEnrichment key={selectedTripStop.id} stopId={selectedTripStop.id} destination={selectedTripStop.name} coordinates={selectedBaseCoordinates} fixturePlaces={storyState?.enrichmentPlaces} fixtureUnavailable={storyState?.enrichmentUnavailable} /></div> : null}
+        {!enrichmentOpen && shapeDayTab === "plan" ? <PlanWorkspace
           context={{
             selectedDay,
             selectedStop: selected,
@@ -2881,7 +2898,7 @@ export function JourneyMapPlannerWorkspace({
           editHref={customTrip && selectedPlanItem ? itineraryWorkspaceHref(customTrip.id, selectedPlanItem.dayNumber) : editTripHref}
           copy={planCopy}
         /> : null}
-        {shapeDayTab === "see" && customTrip ? <div ref={mapResultActionsOrientationTarget} className={styles.shapeDaySee}><JourneyItineraryRefinement key={selectedPlanItem?.stopId} compact trip={customTrip} stop={customTrip.stops.find((stop) => stop.id === selectedPlanItem?.stopId)} day={selectedPlanItem ?? undefined} selectedPlaceId={selectedMapResult?.kind === "see" ? selectedMapResult.sourceId : null} onPlaceSelect={selectSeePlace} onPlacesChange={setSeeMapPlaces} onSelectionChange={handleAttractionSelection} onExploreMap={() => setMapMode("detail")} activityAction={activityAction}
+        {!enrichmentOpen && shapeDayTab === "see" && customTrip ? <div ref={mapResultActionsOrientationTarget} className={styles.shapeDaySee}><JourneyItineraryRefinement key={selectedPlanItem?.stopId} compact trip={customTrip} stop={customTrip.stops.find((stop) => stop.id === selectedPlanItem?.stopId)} day={selectedPlanItem ?? undefined} selectedPlaceId={selectedMapResult?.kind === "see" ? selectedMapResult.sourceId : null} onPlaceSelect={selectSeePlace} onPlacesChange={setSeeMapPlaces} onSelectionChange={handleAttractionSelection} onExploreMap={() => setMapMode("detail")} activityAction={activityAction}
           onSaveInventoryIdea={(idea: ItineraryIdea) => updatePlannerTrip((trip) => saveItineraryIdea(trip, idea), "Saved for later")}
           onScheduleInventoryIdea={(idea: ItineraryIdea) => {
             if (!selectedPlanItem) return false;
@@ -2895,7 +2912,7 @@ export function JourneyMapPlannerWorkspace({
             return changed;
           }}
         /></div> : null}
-        {(shapeDayTab === "stay" || shapeDayTab === "eat") && selectedBaseCoordinates ? <JourneyLocalFinder key={`${selectedDay.id}-${localFinderKind}`} tripId={customTrip?.id} stopId={selectedTripStop?.id} canonicalPlaceId={selectedTripStop?.canonicalPlaceId} kind={localFinderKind} city={localFinderKind === "stay" ? selectedTripStop?.name ?? selected.city : selected.city} country={localFinderKind === "stay" ? selectedTripStop?.country ?? selected.country : selected.country} locale={language} dayId={selectedDay.id} dayNumber={selectedPlanItem?.dayNumber} coordinates={localFinderKind === "stay" ? selectedBaseCoordinates : selected.coordinates ?? selectedBaseCoordinates} interests={selectedTripInterests} staySearch={selectedStayDates ? { ...selectedStayDates, adults: Math.max(1, customTrip?.travellers ?? 1), rooms: 1, currency: customTrip?.currency } : undefined} selectedPlaceId={selectedMapResult?.kind === (localFinderKind === "stay" ? "stay" : "eat") && (!selectedMapResult.stopId || selectedMapResult.stopId === selectedTripStop?.id) ? selectedMapResult.sourceId : null} savedPlaceIds={localFinderKind === "restaurant" ? scheduledRestaurantIds : undefined} initialState={storyState?.localFinderInitialState} onPlaceSelect={selectLocalPlace} onViewOnMap={focusLocalPlace} onPlacesChange={setLocalMapPlaces} onRestaurantSelect={handleRestaurantSelect} onSavePlace={saveLocalVenue} onRemovePlace={removeLocalVenue} /> : null}
+        {!enrichmentOpen && (shapeDayTab === "stay" || shapeDayTab === "eat") && selectedBaseCoordinates ? <JourneyLocalFinder key={`${selectedDay.id}-${localFinderKind}`} tripId={customTrip?.id} stopId={selectedTripStop?.id} canonicalPlaceId={selectedTripStop?.canonicalPlaceId} kind={localFinderKind} city={localFinderKind === "stay" ? selectedTripStop?.name ?? selected.city : selected.city} country={localFinderKind === "stay" ? selectedTripStop?.country ?? selected.country : selected.country} locale={language} dayId={selectedDay.id} dayNumber={selectedPlanItem?.dayNumber} coordinates={localFinderKind === "stay" ? selectedBaseCoordinates : selected.coordinates ?? selectedBaseCoordinates} interests={selectedTripInterests} staySearch={selectedStayDates ? { ...selectedStayDates, adults: Math.max(1, customTrip?.travellers ?? 1), rooms: 1, currency: customTrip?.currency } : undefined} selectedPlaceId={selectedMapResult?.kind === (localFinderKind === "stay" ? "stay" : "eat") && (!selectedMapResult.stopId || selectedMapResult.stopId === selectedTripStop?.id) ? selectedMapResult.sourceId : null} savedPlaceIds={localFinderKind === "restaurant" ? scheduledRestaurantIds : undefined} initialState={storyState?.localFinderInitialState} onPlaceSelect={selectLocalPlace} onViewOnMap={focusLocalPlace} onPlacesChange={setLocalMapPlaces} onRestaurantSelect={handleRestaurantSelect} onSavePlace={saveLocalVenue} onRemovePlace={removeLocalVenue} /> : null}
       </aside> : null}
         </div>
       </div>
