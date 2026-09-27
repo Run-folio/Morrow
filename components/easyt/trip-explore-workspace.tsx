@@ -451,7 +451,7 @@ export default function TripExploreWorkspace({
           const photoPlace = restaurantPhotoPlaceById.get(result.identity);
           const photo = restaurantPhotos[result.identity];
           const restaurantMedia = result.image ?? photo?.src;
-          const compactNoImage = result.kind === "restaurant" && (!restaurantMedia || failedRestaurantImages.has(result.identity));
+          const compactNoImage = !restaurantMedia || (result.kind === "restaurant" && failedRestaurantImages.has(result.identity));
           const markRestaurantImageFailed = () => setFailedRestaurantImages((current) => {
             if (current.has(result.identity)) return current;
             const next = new Set(current);
@@ -539,6 +539,7 @@ export default function TripExploreWorkspace({
             state,
             context: { surface: "explore", activeDayId: state.state === "planned" ? state.day.id : target?.day.id, activeDayPart: state.state === "planned" ? state.idea.dayPart : target?.dayPart },
           })}
+          omitEmptyMedia
           mapHref={mapHref}
           pending={mutation.isPending(`explore-save-${selectedResult.identity}`) || mutation.isPending(`explore-schedule-${selectedResult.identity}`)}
           onClose={closeDetail}
