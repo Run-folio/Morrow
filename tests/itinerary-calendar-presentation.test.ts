@@ -115,3 +115,9 @@ test("logistics-only acceptance includes a canonical saved stay and no invented 
   assert.match(fixture, /bookings: \[\{ id: "mexico-logistics-stay", type: "stay"/);
   assert.match(stories, /export const AcceptanceLogisticsOnly: Story = \{ args: \{ trip: mexicoLogisticsOnlyTrip, selectedDayNumber: 1/);
 });
+
+test("no-photography acceptance does not show unrelated suggestion fixtures", () => {
+  const noPhoto = stories.slice(stories.indexOf("export const SelectedDayWithoutPhotography"), stories.indexOf("const mexicoAcceptanceTrip"));
+  assert.match(noPhoto, /initialSuggestions: \{ 1: \[\], 2: \[\], 3: \[\], 4: \[\], 5: \[\], 6: \[\] \}/);
+  assert.match(noPhoto, /initialActivityInventory: \{ 1: \[\], 2: \[\], 3: \[\], 4: \[\], 5: \[\], 6: \[\] \}/);
+});

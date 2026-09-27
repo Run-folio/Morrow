@@ -1033,6 +1033,9 @@ export const SelectedDayWithoutPhotography: Story = {
       planItems: repeatedTokyoTrip.planItems.map((item) => ({ ...item, image: null, sourceUrl: null })),
     },
     selectedDayNumber: 2,
+    initialSuggestions: { 1: [], 2: [], 3: [], 4: [], 5: [], 6: [] },
+    initialActivityInventory: { 1: [], 2: [], 3: [], 4: [], 5: [], 6: [] },
+    activityAction: null,
   },
   globals: { viewport: { value: "morrovia390", isRotated: false } },
 };
