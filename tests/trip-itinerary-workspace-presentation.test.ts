@@ -148,6 +148,17 @@ test("Itinerary suggestions reuse discovery, the canonical idea bridge, Map's ma
   assert.doesNotMatch(itinerary, /setTrip\(|useState\(trip\)/);
 });
 
+test("day suggestions lead retained cross-destination intentions with a three-result preview", () => {
+  const suggestionIndex = itinerary.indexOf("<details ref={itinerarySuggestionsOrientationTarget}");
+  const explicitIndex = itinerary.indexOf("<TripExplicitPlans", suggestionIndex);
+  const savedIndex = itinerary.indexOf("<SavedIdeasSection", suggestionIndex);
+  assert.ok(suggestionIndex > -1 && suggestionIndex < explicitIndex && explicitIndex < savedIndex);
+  assert.match(itinerary, /<ItineraryDaySuggestions[\s\S]*previewLimit=\{3\}/);
+  assert.match(itinerary, /const displayedResults = previewLimit === undefined \? results : results\.slice\(0, previewLimit\)/);
+  assert.match(itinerary, /displayedResults\.map\(\(result\) =>/);
+  assert.match(itinerary, /key=\{`\$\{workingTrip\.id\}-\$\{active\.id\}`\}/);
+});
+
 test("day navigation is owned by the toolbar and precedes planner content", () => {
   const headerIndex = itinerary.indexOf("className={styles.dayHeader}");
   const navigationIndex = itinerary.indexOf("className={styles.dateNavigation}");

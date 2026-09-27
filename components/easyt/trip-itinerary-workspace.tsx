@@ -1651,6 +1651,54 @@ export default function TripItineraryWorkspace({
           </div>
         </details> : null}
 
+        <details ref={itinerarySuggestionsOrientationTarget} id={`${tabIdPrefix}-ideas`} className={`${styles.contextSection} ${styles.ideasSection}`} open>
+          <summary><span>{copy.suggestions}</span><Lightbulb aria-hidden="true" /></summary>
+          {recommendations.length ? <div className={styles.contextList}>{recommendations.map((recommendation) => <article className={styles.suggestionCard} key={recommendation.id}><Lightbulb aria-hidden="true" /><div><strong>{recommendation.message}</strong><p>{recommendation.evidence}</p></div></article>)}</div> : null}
+          <ItineraryDaySuggestions
+            key={`${workingTrip.id}-${active.id}`}
+            trip={workingTrip}
+            day={active}
+            stop={stop}
+            copy={copy}
+            language={language}
+            initialPlaces={initialSuggestions?.[active.dayNumber]}
+            initialActivityInventory={initialActivityInventory?.[active.dayNumber]}
+            experienceAction={stop ? experienceAction : null}
+            previewLimit={3}
+            isPending={(placeId) => mutation.isPending(`itinerary-suggestion-${active.stopId}-${placeId}`)}
+            onSave={(idea) => {
+              const accepted = mutation.mutateTrip((current) => saveItineraryIdea(current, idea), `itinerary-suggestion-${idea.stopId}-${idea.placeId}`);
+              if (accepted) setNotice("Idea saved");
+              return accepted;
+            }}
+            onSchedule={scheduleIdea}
+            onRemove={(idea) => removeSuggestion(idea.placeId, idea.id)}
+            onOpenDetail={(result, origin) => {
+              selectedItemOriginRef.current = origin;
+              setSelectedItemId(null);
+              setSelectedRecommendation(result);
+            }}
+            selectedResultId={selectedRecommendation?.identity ?? null}
+            onSelectedDetailRefresh={(result) => setSelectedRecommendation((current) => current?.identity === result.identity ? result : current)}
+            draggingIdeaId={plannerDrag?.kind === "suggestion" ? plannerDrag.idea.id : null}
+            onDragStart={nativePlannerDrag ? (idea, event) => {
+              event.dataTransfer.effectAllowed = "copyMove";
+              event.dataTransfer.setData("text/plain", idea.id);
+              beginPlannerDrag({ kind: "suggestion", idea });
+            } : undefined}
+            onDragEnd={nativePlannerDrag ? clearPlannerDrag : undefined}
+            onInteractionReset={clearPlannerDrag}
+          />
+          <EasyTLinkButton
+            className={styles.contextAction}
+            href={exploreWorkspaceHref(workingTrip.id, active.stopId, active.dayNumber)}
+            icon={Sparkles}
+            size="small"
+            variant="quiet"
+            fullWidth
+          >See more ideas in Explore</EasyTLinkButton>
+        </details>
+
         <TripExplicitPlans
           trip={workingTrip}
           variant="itinerary"
@@ -1701,53 +1749,6 @@ export default function TripItineraryWorkspace({
             onDragEnd={nativePlannerDrag ? clearPlannerDrag : undefined}
           />
         </div> : null}
-        <details ref={itinerarySuggestionsOrientationTarget} id={`${tabIdPrefix}-ideas`} className={`${styles.contextSection} ${styles.ideasSection}`}>
-          <summary><span>{copy.suggestions}</span><Lightbulb aria-hidden="true" /></summary>
-          {recommendations.length ? <div className={styles.contextList}>{recommendations.map((recommendation) => <article className={styles.suggestionCard} key={recommendation.id}><Lightbulb aria-hidden="true" /><div><strong>{recommendation.message}</strong><p>{recommendation.evidence}</p></div></article>)}</div> : null}
-          <ItineraryDaySuggestions
-            key={`${workingTrip.id}-${active.id}`}
-            trip={workingTrip}
-            day={active}
-            stop={stop}
-            copy={copy}
-            language={language}
-            initialPlaces={initialSuggestions?.[active.dayNumber]}
-            initialActivityInventory={initialActivityInventory?.[active.dayNumber]}
-            experienceAction={stop ? experienceAction : null}
-            isPending={(placeId) => mutation.isPending(`itinerary-suggestion-${active.stopId}-${placeId}`)}
-            onSave={(idea) => {
-              const accepted = mutation.mutateTrip((current) => saveItineraryIdea(current, idea), `itinerary-suggestion-${idea.stopId}-${idea.placeId}`);
-              if (accepted) setNotice("Idea saved");
-              return accepted;
-            }}
-            onSchedule={scheduleIdea}
-            onRemove={(idea) => removeSuggestion(idea.placeId, idea.id)}
-            onOpenDetail={(result, origin) => {
-              selectedItemOriginRef.current = origin;
-              setSelectedItemId(null);
-              setSelectedRecommendation(result);
-            }}
-            selectedResultId={selectedRecommendation?.identity ?? null}
-            onSelectedDetailRefresh={(result) => setSelectedRecommendation((current) => current?.identity === result.identity ? result : current)}
-            draggingIdeaId={plannerDrag?.kind === "suggestion" ? plannerDrag.idea.id : null}
-            onDragStart={nativePlannerDrag ? (idea, event) => {
-              event.dataTransfer.effectAllowed = "copyMove";
-              event.dataTransfer.setData("text/plain", idea.id);
-              beginPlannerDrag({ kind: "suggestion", idea });
-            } : undefined}
-            onDragEnd={nativePlannerDrag ? clearPlannerDrag : undefined}
-            onInteractionReset={clearPlannerDrag}
-          />
-          <EasyTLinkButton
-            className={styles.contextAction}
-            href={exploreWorkspaceHref(workingTrip.id, active.stopId, active.dayNumber)}
-            icon={Sparkles}
-            size="small"
-            variant="quiet"
-            fullWidth
-          >See more ideas in Explore</EasyTLinkButton>
-        </details>
-
         <details className={styles.contextSection} open>
           <summary><span>{copy.notes}</span><span className={styles.sectionCount}>{dayNotes.length}</span></summary>
           <div className={styles.contextList}>{dayNotes.map((note, noteIndex) => <article className={styles.noteCard} key={`${active.id}-saved-note-${noteIndex}`}><BookOpenText aria-hidden="true" /><p>{note}</p></article>)}</div>
@@ -2064,7 +2065,7 @@ function OmioTransportAction({ action, trip, leg }: { action: ResolvedAffiliateA
   </div>;
 }
 
-function ItineraryDaySuggestions({ trip, day, stop, copy, language, initialPlaces, initialActivityInventory, experienceAction, isPending, onSave, onSchedule, onRemove, onOpenDetail, selectedResultId, onSelectedDetailRefresh, draggingIdeaId, onDragStart, onDragEnd, onInteractionReset }: {
+function ItineraryDaySuggestions({ trip, day, stop, copy, language, initialPlaces, initialActivityInventory, experienceAction, previewLimit, isPending, onSave, onSchedule, onRemove, onOpenDetail, selectedResultId, onSelectedDetailRefresh, draggingIdeaId, onDragStart, onDragEnd, onInteractionReset }: {
   trip: EasyTTrip;
   day: PlanItem;
   stop: TripStop | null;
@@ -2073,6 +2074,7 @@ function ItineraryDaySuggestions({ trip, day, stop, copy, language, initialPlace
   initialPlaces?: ItineraryDiscoveryPlace[];
   initialActivityInventory?: ActivityInventoryItem[];
   experienceAction?: ResolvedAffiliateAction | null;
+  previewLimit?: number;
   isPending: (placeId: string) => boolean;
   onSave: (idea: ItineraryIdea) => boolean;
   onSchedule: (idea: ItineraryIdea, dayId: string, dayPart?: ItineraryDayPart | null) => boolean;
@@ -2199,6 +2201,7 @@ function ItineraryDaySuggestions({ trip, day, stop, copy, language, initialPlace
     const commercial = inventory.map((item) => exploreResultForActivity(stop, item, trip));
     return rankItineraryRecommendations(trip, day, dedupeExploreResults([...organic, ...commercial])).slice(0, 8);
   }, [day, interests, inventory, places, stop, trip]);
+  const displayedResults = previewLimit === undefined ? results : results.slice(0, previewLimit);
   useEffect(() => {
     if (!selectedResultId) return;
     const current = results.find((result) => result.identity === selectedResultId);
@@ -2218,7 +2221,7 @@ function ItineraryDaySuggestions({ trip, day, stop, copy, language, initialPlace
   if (!results.length) return <><p className={styles.suggestionEmpty}>{copy.noNewSuggestions}</p>{experienceFallback}</>;
   return <><section className={styles.discoveryGroup} aria-label={`Useful ideas for Day ${day.dayNumber}`}>
     <h4>Shortlist for {stop?.name}</h4>
-    <div className={styles.discoveryList}>{results.map((result) => {
+    <div className={styles.discoveryList}>{displayedResults.map((result) => {
       const idea = result.idea;
       const pending = isPending(idea.placeId);
       const state = stop ? ideaStateForPlace(trip, stop.id, idea.placeId) : { state: "available" as const, idea: null, day: null };

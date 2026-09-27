@@ -606,6 +606,20 @@ export const MixedOrganicAndCommercialShortlist: Story = {
   },
 };
 
+export const ContextualThreeSuggestionPreview: Story = {
+  args: {
+    trip: tripWithInterests(["culture"]),
+    initialSuggestions: { 1: interestSuggestionPool },
+    initialActivityInventory: { 1: [] },
+  },
+  play: async ({ canvasElement }) => {
+    await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+    const suggestions = canvasElement.querySelectorAll("[data-itinerary-suggestion-id]");
+    if (suggestions.length !== 3) throw new Error(`Expected three contextual suggestions, found ${suggestions.length}`);
+    if (!canvasElement.textContent?.includes("See more ideas in Explore")) throw new Error("The full Explore handoff must remain available");
+  },
+};
+
 export const CommercialProviderUnavailable: Story = { ...MixedOrganicAndCommercialShortlist, args: { ...MixedOrganicAndCommercialShortlist.args, initialActivityInventory: { 1: [] } } };
 export const OrganicProviderUnavailable: Story = { args: { initialSuggestions: { 1: [] }, initialActivityInventory: { 1: storyCommercialInventory } } };
 export const FullDayExperienceOnOpenDay: Story = MixedOrganicAndCommercialShortlist;
