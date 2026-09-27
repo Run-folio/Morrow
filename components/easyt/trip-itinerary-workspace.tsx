@@ -55,7 +55,9 @@ import { affiliateProviderLabel, getCurrentPartnerAction, omioBookingActionForLe
 import { removeStayBooking, stayBookingForStop } from "@/lib/easyt/accommodation";
 import { routeEndpointForLeg } from "@/lib/easyt/trip-legs";
 import { transferJourneyModeLabel, transferJourneySegmentSummary } from "@/lib/easyt/transfer-journey";
-import { exploreWorkspaceHref, itineraryDestinationTrack, itineraryWorkspaceHref, mapWorkspaceHref, stayWorkspaceHref, transportWorkspaceHref } from "@/lib/easyt/trip-workspace-links";
+import { exploreWorkspaceHref, firstItineraryDayForStop, itineraryWorkspaceHref, mapWorkspaceHref, parseItineraryWorkspaceTarget, stayWorkspaceHref, transportWorkspaceHref } from "@/lib/easyt/trip-workspace-links";
+import { itineraryPresentationImages } from "@/lib/easyt/itinerary-presentation-images";
+import { itineraryRouteTrackStops } from "@/lib/easyt/itinerary-route-track";
 import { mapResultHandoffForExploreResult, mapResultSelectionId, mapResultSelectionIdForIdea } from "@/lib/easyt/map-result-selection";
 import { recommendationDetailForExploreResult } from "@/lib/easyt/recommendation-detail";
 import { tripSyncRecoveryPath } from "@/lib/easyt/trip-continuity";
@@ -82,6 +84,7 @@ import {
   type ItineraryItemUndoReceipt,
 } from "@/lib/easyt/itinerary-activity-placement";
 import { JourneyPlannerMap } from "@/components/journey-planner-map";
+import { JourneyRouteStopTrack } from "@/components/journey-planner-strip";
 import { EasyTButton, EasyTField, EasyTLinkButton, EasyTSelect, EasyTSegmentedControl } from "@/components/easyt/easyt-controls";
 import { MorroviaBriefNotice, MorroviaConfirmationDialog, MorroviaFormDialog, MorroviaRecoveryFeedback } from "@/components/easyt/morrovia-feedback";
 import { MorroviaSectionStatus } from "@/components/easyt/morrovia-loading-states";
@@ -506,7 +509,8 @@ export default function TripItineraryWorkspace({
     const day = days[dayIndex];
     if (!day || presentation !== "shell") return;
     const url = new URL(window.location.href);
-    url.searchParams.set("itineraryDay", day.id);
+    url.searchParams.set("day", String(day.dayNumber));
+    url.searchParams.delete("itineraryDay");
     url.searchParams.set("itineraryView", view);
     window.history.pushState(window.history.state, "", url);
   };
@@ -552,12 +556,14 @@ export default function TripItineraryWorkspace({
   const copy = useMemo(() => itineraryCopy(language), [language]);
   const calendarWeeks = useMemo(() => itineraryCalendarWeeks(workingTrip), [workingTrip]);
   const activeDayId = days[Math.min(selectedIndex, Math.max(0, days.length - 1))]?.id ?? null;
-  const destinations = useMemo(() => itineraryDestinationTrack(workingTrip, activeDayId), [workingTrip, activeDayId]);
+  const presentationImages = useMemo(() => itineraryPresentationImages(workingTrip), [workingTrip]);
+  const destinations = useMemo(() => itineraryRouteTrackStops(workingTrip, activeDayId, presentationImages.stopById, language), [workingTrip, activeDayId, presentationImages, language]);
   useEffect(() => {
     if (presentation !== "shell") return;
     const restoreOrientation = () => {
       const params = new URL(window.location.href).searchParams;
-      const requested = days.findIndex((day) => day.id === params.get("itineraryDay"));
+      const target = parseItineraryWorkspaceTarget(workingTrip, params);
+      const requested = days.findIndex((day) => day.dayNumber === target.dayNumber);
       updateSelectedIndex(requested >= 0 ? requested : Math.max(0, days.findIndex((day) => day.dayNumber === selectedDayNumber)));
       updateWorkspaceView(params.get("itineraryView") === "calendar" ? "calendar" : "days");
     };
@@ -1254,21 +1260,19 @@ export default function TripItineraryWorkspace({
         </div>
         <ItinerarySubviewSwitch value={workspaceView} onChange={setWorkspaceView} copy={copy} />
       </header>
-      <nav className={styles.destinationTrack} aria-label={language === "es" ? "Destinos de la ruta" : "Route destinations"}>
-        <ol>{destinations.map((destination, destinationIndex) => <li key={destination.stop.id}>
-          <EasyTButton
-            className={styles.destinationJump}
-            variant="quiet"
-            aria-current={destination.active ? "step" : undefined}
-            aria-label={`${language === "es" ? "Parada" : "Stop"} ${destinationIndex + 1}: ${destination.stop.name}${destination.firstDayNumber === null ? "" : `, ${copy.day} ${destination.firstDayNumber}`}`}
-            disabled={destination.firstDayNumber === null}
-            onClick={() => {
-              const dayIndex = days.findIndex((day) => day.dayNumber === destination.firstDayNumber);
-              if (dayIndex >= 0) setSelectedIndex(dayIndex);
-            }}
-          ><b>{destinationIndex + 1}</b><span>{destination.stop.name}</span></EasyTButton>
-        </li>)}</ol>
-      </nav>
+      <div className={styles.destinationTrack}>
+        <JourneyRouteStopTrack
+          stops={destinations}
+          presentation="integrated"
+          surface="standalone"
+          ariaLabel={language === "es" ? "Destinos de la ruta" : "Route destinations"}
+          onSelectStop={(stopId) => {
+            const firstDayNumber = firstItineraryDayForStop(workingTrip, stopId);
+            const dayIndex = days.findIndex((day) => day.dayNumber === firstDayNumber);
+            if (dayIndex >= 0) setSelectedIndex(dayIndex);
+          }}
+        />
+      </div>
       {workspaceView === "calendar" ? <ItineraryCalendar
         weeks={calendarWeeks.filter((week) => week.days.some((day) => day?.id === active.id))}
         selectedDayId={active.id}

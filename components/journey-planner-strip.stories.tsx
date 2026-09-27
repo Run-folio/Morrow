@@ -23,6 +23,7 @@ type Story = StoryObj<typeof meta>;
 
 export const ExploreVariant: Story = {};
 export const StayVariant: Story = { args: { stops: stayStops, ariaLabel: "Choose an overnight trip stop" } };
+export const ItineraryVariant: Story = { args: { stops: [...stayStops, { id: "undated", name: "Osaka", dayLabel: "Dates to confirm", active: false, kind: "stop", disabled: true }], ariaLabel: "Route destinations" } };
 export const MapVariant: Story = {
   render: () => <JourneyPlannerStrip summary="8 days · 3 stops · 2 travellers" stops={stops} addStopHref="#" fullTripLabel="Fullscreen map" wholeRouteActive onWholeRoute={() => undefined} onFullTrip={() => undefined} onSelectStop={() => undefined} presentation="integrated" overflow={<EasyTButton type="button">Pause</EasyTButton>} />,
 };

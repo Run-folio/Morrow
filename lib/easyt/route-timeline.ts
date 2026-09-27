@@ -8,6 +8,7 @@ export type RouteTimelineStop = {
   image?: string;
   active: boolean;
   kind: "origin" | "stop";
+  disabled?: boolean;
 };
 
 type RouteTimelineTrip = Pick<EasyTTrip, "id" | "brief" | "stops" | "planItems">;

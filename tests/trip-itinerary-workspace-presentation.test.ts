@@ -33,14 +33,20 @@ test("the itinerary restores the day rail beside the agenda without a second sel
 });
 
 test("destination context is a separate route-level control that drives the canonical selected day", () => {
-  assert.match(itinerary, /itineraryDestinationTrack\(workingTrip, activeDayId\)/);
-  assert.match(itinerary, /className=\{styles\.destinationTrack\} aria-label=\{language === "es" \? "Destinos de la ruta" : "Route destinations"\}/);
-  assert.match(itinerary, /aria-current=\{destination\.active \? "step" : undefined\}/);
-  assert.match(itinerary, /destination\.firstDayNumber/);
+  assert.match(itinerary, /itineraryRouteTrackStops\(workingTrip, activeDayId,/);
+  assert.match(itinerary, /<JourneyRouteStopTrack/);
+  assert.match(itinerary, /presentation="integrated"/);
+  assert.match(itinerary, /firstItineraryDayForStop\(workingTrip, stopId\)/);
   assert.match(itinerary, /setSelectedIndex\(dayIndex\)/);
   assert.equal((itinerary.match(/role="tablist"/g) ?? []).length, 1, "destinations must not become competing day tabs");
   assert.doesNotMatch(itinerary, /useState<[^>]*selectedDestination|setSelectedDestination|localStorage\.setItem\([^)]*destination/);
   assert.match(styles, /\.destinationTrack \{[\s\S]*grid-column: 1 \/ -1/);
+});
+
+test("in-page orientation uses the established numeric day query", () => {
+  assert.match(itinerary, /url\.searchParams\.set\("day", String\(day\.dayNumber\)\)/);
+  assert.match(itinerary, /parseItineraryWorkspaceTarget\(workingTrip, params\)/);
+  assert.doesNotMatch(itinerary, /searchParams\.set\("itineraryDay"/);
 });
 
 test("the selected day timeline uses canonical content and the shared Map persistence architecture", () => {

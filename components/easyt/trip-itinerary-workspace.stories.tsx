@@ -985,6 +985,7 @@ export const RepeatedDestinationSecondOccurrence: Story = {
     if (destinations.length !== 3) throw new Error("Expected three canonical stop occurrences");
     destinations[2]!.click();
     await settle();
+    if (new URL(window.location.href).searchParams.get("day") !== "5") throw new Error("The second Tokyo occurrence must write its canonical day deep link");
     if (destinations[2]!.getAttribute("aria-current") !== "step" || !canvasElement.querySelector('[role="tab"][aria-selected="true"]')?.textContent?.includes("05")) {
       throw new Error("The second Tokyo occurrence must remain active at its first canonical day");
     }
@@ -992,10 +993,12 @@ export const RepeatedDestinationSecondOccurrence: Story = {
     if (!nextDay) throw new Error("Missing later day for the second Tokyo occurrence");
     nextDay.click();
     await settle();
+    if (new URL(window.location.href).searchParams.get("day") !== "6") throw new Error("The later Tokyo day must use the existing day query");
     if (destinations[2]!.getAttribute("aria-current") !== "step") throw new Error("The second Tokyo occurrence must remain active on later days");
     [...canvasElement.querySelectorAll<HTMLButtonElement>("button")].find((button) => button.textContent?.trim() === "Calendar")?.click();
     await settle();
     if (destinations[2]!.getAttribute("aria-current") !== "step" || !canvasElement.querySelector('[data-selected="true"]')) throw new Error("Calendar lost the selected occurrence");
+    if (new URL(window.location.href).searchParams.get("day") !== "6") throw new Error("Calendar changed the selected day deep link");
     [...canvasElement.querySelectorAll<HTMLButtonElement>("button")].find((button) => button.textContent?.trim() === "Day by day")?.click();
     await settle();
     if (destinations[2]!.getAttribute("aria-current") !== "step" || !canvasElement.querySelector('[role="tab"][aria-selected="true"]')?.textContent?.includes("06")) throw new Error("Day by day lost the selected occurrence");

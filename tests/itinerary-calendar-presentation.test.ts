@@ -34,7 +34,8 @@ test("Calendar selection resolves canonical IDs in place, with an explicit full-
   assert.match(itinerary, /aria-pressed=\{selectedDayId === day\.id\}/);
   assert.match(itinerary, /calendarItemRequestRef\.current = itemId/);
   assert.match(itinerary, /Open full day/);
-  assert.match(itinerary, /searchParams\.set\("itineraryDay", day\.id\)/);
+  assert.match(itinerary, /searchParams\.set\("day", String\(day\.dayNumber\)\)/);
+  assert.match(itinerary, /parseItineraryWorkspaceTarget\(workingTrip, params\)/);
   assert.match(itinerary, /window\.addEventListener\("popstate", restoreOrientation\)/);
   assert.match(itinerary, /items\.slice\(0, 4\)/);
 });

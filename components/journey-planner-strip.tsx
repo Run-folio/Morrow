@@ -49,6 +49,7 @@ export function JourneyRouteStopTrack({
           className={`${styles.stop} ${stop.active ? styles.stopActive : ""}`}
           aria-current={stop.active ? (stop.kind === "origin" ? "page" : "step") : undefined}
           aria-pressed={stop.active}
+          disabled={stop.disabled}
           onClick={() => onSelectStop(stop.id)}
         >
           <ResilientImage
