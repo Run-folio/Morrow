@@ -3,7 +3,6 @@ import type { Meta, StoryObj } from "@storybook/nextjs-vite";
 import type { EasyTTrip } from "@/lib/easyt/trip";
 import { saveTripRecoveryToStorage, tripRecoveryStorageKey } from "@/lib/easyt/storage";
 import { setStorybookAuthOwner } from "../../../.storybook/auth-client.mock";
-import { dashboardTripPhotosForCards } from "@/lib/easyt/dashboard-trip-image";
 import DashboardClient, { TripCard } from "./dashboard-client";
 import styles from "./dashboard.module.css";
 
@@ -165,9 +164,14 @@ const sharedOriginTrips = [
   storyTrip({ id: "tokyo-single-2", title: "Tokyo remembered", status: "archived", startDate: "2025-07-01", endDate: "2025-07-06", stops: [{ name: "Tokyo", country: "Japan", latitude: 35.6762, longitude: 139.6503, nights: 5 }] }),
   storyTrip({ id: "no-photo-1", title: "A place to discover", status: "planned", startDate: "2027-08-01", endDate: "2027-08-06", stops: [{ name: "Unreviewed place", country: "Nowhere", latitude: 0, longitude: 0, nights: 5 }] }),
   ideaIberia,
+  storyTrip({ id: "london-shared-4", title: "London to Kanazawa", status: "planned", startDate: "2027-09-01", endDate: "2027-09-12", stops: [{ name: "London", country: "United Kingdom", latitude: 51.5072, longitude: -0.1276, nights: 3 }, { name: "Kanazawa", country: "Japan", latitude: 36.5613, longitude: 136.6562, nights: 8 }] }),
 ];
-const sharedOriginPhotos = dashboardTripPhotosForCards(sharedOriginTrips);
-const renderSharedOrigins = () => <div className={styles.sectionGrid}>{sharedOriginTrips.map((trip) => <TripCard key={trip.id} trip={trip} photo={sharedOriginPhotos.get(trip.id)} language="en" copy={cardCopy} recoveryIssues={{}} working={false} workingAction={null} onAction={() => undefined} onGift={() => undefined} onRemove={() => undefined} />)}</div>;
+const featuredCurrentTrip = storyTrip({ id: "storybook-featured-current", title: "A few weeks across Japan", status: "planned", startDate: "2026-09-25", endDate: "2026-10-10", stops: [
+  { name: "Tokyo", country: "Japan", latitude: 35.6762, longitude: 139.6503, nights: 4 },
+  { name: "Kyoto", country: "Japan", latitude: 35.0116, longitude: 135.7681, nights: 5 },
+  { name: "Takayama", country: "Japan", latitude: 36.1461, longitude: 137.2522, nights: 6 },
+] });
+const renderSharedOrigins = () => <DashboardClient trips={[featuredCurrentTrip, ...sharedOriginTrips]} stamps={populatedStamps} ownerId="storybook-first-traveller" />;
 
 function RecoveryDashboardStory({ trips }: { trips: EasyTTrip[] }) {
   const [ready, setReady] = useState(false);

@@ -5256,7 +5256,7 @@
       },
       {
         "value": "12px",
-        "count": 484,
+        "count": 483,
         "examples": [
           "app/journey/about/about.module.css",
           "app/journey/account.module.css",
@@ -5286,7 +5286,7 @@
       },
       {
         "value": "18px",
-        "count": 311,
+        "count": 310,
         "examples": [
           "app/journey/about/about.module.css",
           "app/journey/account.module.css",
@@ -5346,7 +5346,7 @@
       },
       {
         "value": "24px",
-        "count": 230,
+        "count": 229,
         "examples": [
           "app/journey/about/about.module.css",
           "app/journey/account.module.css",
@@ -5456,7 +5456,7 @@
       },
       {
         "value": "26px",
-        "count": 61,
+        "count": 60,
         "examples": [
           "app/journey/about/about.module.css",
           "app/journey/account.module.css",
@@ -7567,12 +7567,12 @@
     "breakpoints": [
       {
         "value": "max-width: 700px",
-        "count": 37,
+        "count": 38,
         "examples": [
           "app/journey/account.module.css",
+          "app/journey/dashboard/dashboard.module.css",
           "app/journey/discover/discover.module.css",
-          "app/journey/discover/editorial-carousel.module.css",
-          "app/journey/discover/routes-overview-hero.module.css"
+          "app/journey/discover/editorial-carousel.module.css"
         ]
       },
       {

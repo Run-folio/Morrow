@@ -87,6 +87,22 @@ test("trip cards keep maps off photography and place photo credit within the med
   assert.match(dashboard, /className=\{styles\.cardMediaFrame\}/);
 });
 
+test("normal trip cards keep a two-column desktop and one-column mobile footprint across lifecycles", () => {
+  const css = readFileSync(new URL("../app/journey/dashboard/dashboard.module.css", import.meta.url), "utf8");
+  assert.match(css, /\.sectionGrid\s*\{[\s\S]*?grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\)/);
+  assert.doesNotMatch(css, /\.pastSection \.sectionGrid\s*\{[\s\S]*?grid-template-columns:\s*repeat\(3,/);
+  assert.doesNotMatch(css, /\.ideaCard\s*\{[\s\S]*?grid-column:\s*1\s*\/\s*-1/);
+  assert.doesNotMatch(css, /\.ideaCard \.cardMedia\s*\{[\s\S]*?height:/);
+  assert.doesNotMatch(css, /\.pastCard \.cardMedia\s*\{[\s\S]*?height:/);
+  assert.match(css, /@media \(max-width: 700px\)\s*\{[\s\S]*?\.sectionGrid\s*\{[\s\S]*?grid-template-columns:\s*1fr/);
+});
+
+test("idea route sketches do not mount a live map in ordinary cards", () => {
+  const dashboard = readFileSync(new URL("../app/journey/dashboard/dashboard-client.tsx", import.meta.url), "utf8");
+  const card = dashboard.split("export function TripCard(")[1] ?? "";
+  assert.doesNotMatch(card, /TripRoutePreview/);
+});
+
 test("visible cards diversify valid destination photos and keep the selected photo credit", () => {
   const tokyoA = { ...trip("tokyo-a"), stops: [stop("Tokyo", "Japan", 0), stop("Kyoto", "Japan", 1)] };
   const tokyoB = { ...trip("tokyo-b"), stops: [stop("Tokyo", "Japan", 0), stop("Takayama", "Japan", 1)] };
