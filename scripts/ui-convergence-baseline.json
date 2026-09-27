@@ -112,7 +112,7 @@
     "raw-radius": {
       "app/journey/account.module.css": 45,
       "app/journey/admin/feedback/feedback.module.css": 9,
-      "app/journey/dashboard/dashboard.module.css": 3,
+      "app/journey/dashboard/dashboard.module.css": 2,
       "app/journey/easyt-navigation.module.css": 10,
       "app/journey/home/home-explorer.module.css": 7,
       "app/journey/home/home-polish.module.css": 6,

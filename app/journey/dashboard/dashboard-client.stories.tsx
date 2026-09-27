@@ -3,6 +3,7 @@ import type { Meta, StoryObj } from "@storybook/nextjs-vite";
 import type { EasyTTrip } from "@/lib/easyt/trip";
 import { saveTripRecoveryToStorage, tripRecoveryStorageKey } from "@/lib/easyt/storage";
 import { setStorybookAuthOwner } from "../../../.storybook/auth-client.mock";
+import { dashboardTripPhotosForCards } from "@/lib/easyt/dashboard-trip-image";
 import DashboardClient, { TripCard } from "./dashboard-client";
 import styles from "./dashboard.module.css";
 
@@ -154,6 +155,20 @@ const cardCopy = { routeWaiting: "Route to confirm", edit: "Edit trip", restore:
 
 const renderCardGrid = () => <div className={styles.sectionGrid}>{[upcomingAntigua, upcomingBalkans].map((trip) => <TripCard key={trip.id} kind="upcoming" trip={trip} language="en" copy={cardCopy} recoveryIssues={{}} working={false} workingAction={null} onAction={() => undefined} onGift={() => undefined} onRemove={() => undefined} />)}</div>;
 
+const sharedOriginTrips = [
+  storyTrip({ id: "tokyo-shared-1", title: "Tokyo to Kyoto", status: "planned", startDate: "2027-03-01", endDate: "2027-03-12", stops: [{ name: "Tokyo", country: "Japan", latitude: 35.6762, longitude: 139.6503, nights: 5 }, { name: "Kyoto", country: "Japan", latitude: 35.0116, longitude: 135.7681, nights: 6 }] }),
+  storyTrip({ id: "tokyo-shared-2", title: "Tokyo to Takayama", status: "planned", startDate: "2027-04-01", endDate: "2027-04-12", stops: [{ name: "Tokyo", country: "Japan", latitude: 35.6762, longitude: 139.6503, nights: 5 }, { name: "Takayama", country: "Japan", latitude: 36.1461, longitude: 137.2522, nights: 6 }] }),
+  storyTrip({ id: "london-shared-1", title: "London to Paris", status: "planned", startDate: "2027-05-01", endDate: "2027-05-12", stops: [{ name: "London", country: "United Kingdom", latitude: 51.5072, longitude: -0.1276, nights: 5 }, { name: "Paris", country: "France", latitude: 48.8566, longitude: 2.3522, nights: 6 }] }),
+  storyTrip({ id: "london-shared-2", title: "London to Lisbon", status: "archived", startDate: "2025-05-01", endDate: "2025-05-12", stops: [{ name: "London", country: "United Kingdom", latitude: 51.5072, longitude: -0.1276, nights: 5 }, { name: "Lisbon", country: "Portugal", latitude: 38.7223, longitude: -9.1393, nights: 6 }] }),
+  storyTrip({ id: "london-shared-3", title: "London and Japan", status: "planned", startDate: "2027-06-01", endDate: "2027-06-12", stops: [{ name: "London", country: "United Kingdom", latitude: 51.5072, longitude: -0.1276, nights: 2 }, { name: "Tokyo", country: "Japan", latitude: 35.6762, longitude: 139.6503, nights: 4 }, { name: "Takayama", country: "Japan", latitude: 36.1461, longitude: 137.2522, nights: 5 }] }),
+  storyTrip({ id: "tokyo-single-1", title: "Just Tokyo", status: "planned", startDate: "2027-07-01", endDate: "2027-07-06", stops: [{ name: "Tokyo", country: "Japan", latitude: 35.6762, longitude: 139.6503, nights: 5 }] }),
+  storyTrip({ id: "tokyo-single-2", title: "Tokyo remembered", status: "archived", startDate: "2025-07-01", endDate: "2025-07-06", stops: [{ name: "Tokyo", country: "Japan", latitude: 35.6762, longitude: 139.6503, nights: 5 }] }),
+  storyTrip({ id: "no-photo-1", title: "A place to discover", status: "planned", startDate: "2027-08-01", endDate: "2027-08-06", stops: [{ name: "Unreviewed place", country: "Nowhere", latitude: 0, longitude: 0, nights: 5 }] }),
+  ideaIberia,
+];
+const sharedOriginPhotos = dashboardTripPhotosForCards(sharedOriginTrips);
+const renderSharedOrigins = () => <div className={styles.sectionGrid}>{sharedOriginTrips.map((trip) => <TripCard key={trip.id} trip={trip} photo={sharedOriginPhotos.get(trip.id)} language="en" copy={cardCopy} recoveryIssues={{}} working={false} workingAction={null} onAction={() => undefined} onGift={() => undefined} onRemove={() => undefined} />)}</div>;
+
 function RecoveryDashboardStory({ trips }: { trips: EasyTTrip[] }) {
   const [ready, setReady] = useState(false);
   const affected = trips[0]!;
@@ -214,6 +229,9 @@ export const Mobile430: Story = { args: { trips: allTrips, stamps: populatedStam
 export const LongCurrentJourneyMobile390: Story = { args: { trips: [longCurrentJourney], stamps: populatedStamps }, globals: { viewport: { value: "morrovia390", isRotated: false } } };
 export const InvalidHeroMediaMobile390: Story = { args: { trips: [{ ...longCurrentJourney, id: "storybook-invalid-media", stops: longCurrentJourney.stops.map((stop) => ({ ...stop, name: "Unreviewed place" })) }], stamps: populatedStamps }, globals: { viewport: { value: "morrovia390", isRotated: false } } };
 export const UpcomingCardsDesktop: Story = { render: renderCardGrid };
+export const SharedOriginsAndLifecycleDesktop: Story = { render: renderSharedOrigins };
+export const SharedOriginsAndLifecycleMobile390: Story = { render: renderSharedOrigins, globals: { viewport: { value: "morrovia390", isRotated: false } } };
+export const SharedOriginsAndLifecycleMobile430: Story = { render: renderSharedOrigins, globals: { viewport: { value: "morrovia430", isRotated: false } } };
 export const UpcomingCardsTablet768: Story = { render: renderCardGrid, globals: { viewport: { value: "morrovia768", isRotated: false } } };
 export const UpcomingCardsMobile390: Story = { render: renderCardGrid, globals: { viewport: { value: "morrovia390", isRotated: false } } };
 export const ClickableCardKeyboardFocus: Story = { render: renderCardGrid, play: async ({ canvasElement }) => { canvasElement.querySelector<HTMLAnchorElement>("article a")?.focus(); } };

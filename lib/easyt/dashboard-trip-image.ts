@@ -52,6 +52,46 @@ export function dashboardTripPhoto(trip: EasyTTrip): DashboardTripPhoto | null {
   return storedTripPhoto(trip) ?? canonicalDashboardTripPhotos(trip)[0] ?? null;
 }
 
+/** Presentation-only choices for the cards currently rendered, in display order. */
+export function dashboardTripPhotosForCards(trips: readonly EasyTTrip[], reservedSources: readonly string[] = []): Map<string, DashboardTripPhoto> {
+  const selected = new Map<string, DashboardTripPhoto>();
+  const used = new Set(reservedSources);
+  const candidates = trips.filter((trip) => trip.status !== "draft").map((trip) => {
+    const assigned = storedTripPhoto(trip);
+    const photos = assigned ? [assigned] : canonicalDashboardTripPhotos(trip);
+    return { trip, photos: photos.filter((photo, index) => photos.findIndex((candidate) => candidate.src === photo.src) === index) };
+  });
+
+  // Fixed choices claim their image first, so a flexible earlier card can move
+  // to another valid destination instead of duplicating a later fixed card.
+  for (const { trip, photos } of candidates.filter(({ photos }) => photos.length === 1)) {
+    selected.set(trip.id, photos[0]!);
+    used.add(photos[0]!.src);
+  }
+  const flexible = candidates.filter(({ photos }) => photos.length > 1);
+  const ownerBySource = new Map<string, string>();
+  const choices = new Map(flexible.map(({ trip, photos }) => [trip.id, photos]));
+  const assign = (tripId: string, visited: Set<string>): boolean => {
+    for (const photo of choices.get(tripId) ?? []) {
+      if (visited.has(photo.src) || used.has(photo.src)) continue;
+      visited.add(photo.src);
+      const owner = ownerBySource.get(photo.src);
+      if (owner && !assign(owner, visited)) continue;
+      const previous = selected.get(tripId)?.src;
+      if (previous && previous !== photo.src) ownerBySource.delete(previous);
+      ownerBySource.set(photo.src, tripId);
+      selected.set(tripId, photo);
+      return true;
+    }
+    return false;
+  };
+  for (const { trip } of flexible) assign(trip.id, new Set());
+  for (const { trip, photos } of flexible) {
+    if (!selected.has(trip.id)) selected.set(trip.id, photos[0]!);
+  }
+  return selected;
+}
+
 export function featuredDashboardTripPhoto(trip: EasyTTrip): DashboardTripPhoto | null {
   const stored = storedTripPhoto(trip);
   const canonical = canonicalDashboardTripPhotos(trip);

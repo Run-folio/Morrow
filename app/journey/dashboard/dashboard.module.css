@@ -225,8 +225,7 @@
 .currentMap > div:first-child,
 .cardMedia > div:first-child { min-height: 0; }
 .currentMap :global(.planner-map),
-.cardMedia > :global(.planner-map),
-.cardMapInset :global(.planner-map) {
+.cardMedia > :global(.planner-map) {
   position: absolute;
   inset: 0;
   width: 100%;
@@ -235,8 +234,7 @@
   background: var(--morrovia-lilac);
 }
 .currentMap :global(.planner-map__stop.is-preview),
-.cardMedia > :global(.planner-map__stop.is-preview),
-.cardMapInset :global(.planner-map__stop.is-preview) {
+.cardMedia > :global(.planner-map__stop.is-preview) {
   width: 26px;
   height: 26px;
   border-width: 2px;
@@ -333,6 +331,7 @@
 
 .tripCard { position: relative; min-width: 0; overflow: visible; color: var(--morrovia-ink); }
 .tripCard.working { opacity: .58; pointer-events: none; }
+.cardMediaFrame { position: relative; }
 .cardMedia {
   position: relative;
   display: block;
@@ -349,19 +348,6 @@
   height: 100%;
   object-fit: cover;
   transition: transform .35s ease;
-}
-.cardMapInset {
-  position: absolute;
-  z-index: 3;
-  right: 14px;
-  bottom: 14px;
-  width: min(31%, 170px);
-  aspect-ratio: 1.55;
-  overflow: hidden;
-  border: 6px solid var(--morrovia-paper);
-  border-radius: 11px;
-  background: var(--morrovia-lilac);
-  box-shadow: var(--morrovia-map-marker-shadow);
 }
 .tripCard:hover .cardMedia > img { transform: scale(1.018); }
 .pastCard .cardMedia > img { filter: saturate(.72) contrast(.94); }
