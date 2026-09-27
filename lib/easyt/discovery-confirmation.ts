@@ -1,5 +1,5 @@
 import { findCatalogPlaceById } from "./place-catalog.ts";
-import { canonicalPlaceSuggestionFor, type CanonicalPlaceSuggestion } from "./place-intelligence.ts";
+import { canonicalPlaceSuggestionFor, isOvernightBaseEligible, type CanonicalPlaceSuggestion } from "./place-intelligence.ts";
 import type { DiscoveryPlace } from "./discovery-content.ts";
 import type { DiscoveryProjection } from "./discovery-projection.ts";
 
@@ -9,6 +9,13 @@ export type DiscoveryUnresolvedChoice = {
   reason: "browse-only" | "missing-canonical-identity" | "not-a-route-base" | "commit-failed";
 };
 export type DiscoveryReadyChoice = { id: string; name: string; suggestion: CanonicalPlaceSuggestion };
+
+/** An explicit identity choice can resolve an unknown place without claiming
+ * that it is a reviewed Discovery recommendation. */
+export function discoveryClarificationSearchCanAdd(suggestion: CanonicalPlaceSuggestion) {
+  return Boolean(suggestion.coordinates && suggestion.country
+    && isOvernightBaseEligible({ placeType: suggestion.placeType, routability: suggestion.routability ?? "direct_destination" }));
+}
 
 /** The shared safety gate for a visible direct-stop action and its commit. */
 export function discoveryDirectStopSuggestion(place: DiscoveryPlace): CanonicalPlaceSuggestion | null {

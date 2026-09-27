@@ -38,6 +38,7 @@ test("the shared gate returns smaller and sparse countries without Australia's c
   const tajikistan = discoveryPlacesForMention({ canonicalPlaceId: "tajikistan", canonicalName: "Tajikistan", placeType: "country", parentCountries: ["Tajikistan"] });
   const jordan = discoveryPlacesForMention({ canonicalPlaceId: "jordan", canonicalName: "Jordan", placeType: "country", parentCountries: ["Jordan"] });
   assert.ok(tajikistan.length > jordan.length && tajikistan.length < 20);
+  assert.deepEqual(tajikistan.filter((place) => place.actionability === "overnight-base").map((place) => place.id), ["dushanbe", "khujand", "panjakent"]);
   assert.ok(jordan.length > 0 && jordan.length < 20);
   for (const place of [...tajikistan, ...jordan]) {
     assert.ok(findCatalogPlaceById(place.id)?.coordinates);

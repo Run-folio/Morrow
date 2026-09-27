@@ -2571,6 +2571,16 @@ function providerContextFromMentions(
     : mentions.filter((mention) => mention.canonicalPlaceId && mention.status === "resolved" && mention.role !== "excluded");
   return {
     ...context,
+    // A country the traveller named is explicit identity evidence. Carry it
+    // into provider disambiguation so a same-name settlement elsewhere cannot
+    // replace a natural feature in that country as an overnight stop.
+    explicitCountryNames: unique([
+      ...(context.explicitCountryNames ?? []),
+      ...mentions.filter((mention) => mention.status === "resolved"
+        && mention.placeType === "country"
+        && mention.role !== "excluded")
+        .flatMap((mention) => mention.parentCountries),
+    ], normalizePlacePhrase),
     countryNames: unique([
       ...(context.countryNames ?? []),
       ...contextualMentions.flatMap((mention) => mention.parentCountries),

@@ -89,6 +89,36 @@ test('provider-selected Japan reaches production Discovery evidence through the 
   } finally { await view.close(); }
 });
 
+test('an ambiguous typed place can be explicitly resolved in Discovery without reviewed route content', { skip: !builderBrowserTestsEnabled, timeout: 60_000 }, async () => {
+  const draft = homeDraft('Springfield');
+  const view = await renderBuilder({ query: '?homeDraft=1', draft, geocodeCandidates: {
+    Springfield: [
+      { name: 'Springfield', country: 'United States', region: 'Illinois', canonicalPlaceId: 'open-world:springfield-il',
+        providerId: 'springfield-il', coordinates: [-89.65, 39.78], kind: 'city' },
+      { name: 'Springfield', country: 'United States', region: 'Massachusetts', canonicalPlaceId: 'open-world:springfield-ma',
+        providerId: 'springfield-ma', coordinates: [-72.59, 42.1], kind: 'city' },
+    ],
+  } });
+  try {
+    const dialog = view.page.getByRole('dialog');
+    await dialog.getByRole('heading', { name: 'Explore places', exact: true }).waitFor();
+    await dialog.getByRole('combobox', { name: /Search for somewhere specific/ }).fill('Springfield');
+    await dialog.getByRole('option', { name: /Springfield.*Illinois/ }).click();
+    await view.page.waitForFunction(() => !document.querySelector('[role="dialog"]'));
+    await view.page.getByRole('button', { name: 'Remove Springfield' }).waitFor();
+    await view.page.waitForFunction(() => Object.values(localStorage).some(raw => {
+      try { return JSON.parse(raw).trip?.stops?.some((stop: { canonicalPlaceId?: string }) => stop.canonicalPlaceId === 'open-world:springfield-il'); }
+      catch { return false; }
+    }));
+    const saved = await view.page.evaluate(() => Object.values(localStorage).flatMap(raw => {
+      try { const trip = JSON.parse(raw).trip; return trip ? [trip] : []; } catch { return []; }
+    }));
+    assert.ok(saved.some((trip: { stops: Array<{ canonicalPlaceId?: string }> }) =>
+      trip.stops.filter(stop => stop.canonicalPlaceId === 'open-world:springfield-il').length === 1), JSON.stringify(saved));
+    assert.deepEqual(view.errors, []);
+  } finally { await view.close(); }
+});
+
 test('provider-selected Namibia reaches its reviewed Discovery set', { skip: !builderBrowserTestsEnabled, timeout: 45_000 }, async () => {
   const draft = providerHomepageDraft({
     name: 'Namibia', country: 'Namibia', canonicalPlaceId: 'open-world:nominatim:relation:195266',
@@ -604,30 +634,26 @@ test('provider-selected actionable Tokyo still skips Discovery', { skip: !builde
   } finally { await view.close(); }
 });
 
-test('Tajikistan uses adaptive sparse Discovery, search blocks unreviewed stays, and explicit empty choices survive reload', { skip: !builderBrowserTestsEnabled, timeout: 45_000 }, async () => {
+test('Tajikistan offers reviewed stay bases and commits selected canonical places once at 390px', { skip: !builderBrowserTestsEnabled, timeout: 45_000 }, async () => {
   const view = await renderBuilder({ query: '?homeDraft=1', draft: homeDraft('Tajikistan') });
   await view.page.setViewportSize({ width: 390, height: 844 });
   try {
     const dialog = view.page.getByRole('dialog');
     await dialog.getByRole('heading', { name: 'Explore places', exact: true }).waitFor();
     for (const name of ['Dushanbe', 'Khujand', 'Panjakent']) assert.equal(await dialog.getByRole('heading', { name, exact: true }).count(), 1);
-    assert.equal(await dialog.getByRole('button', { name: /^Add to shortlist:/ }).count(), 0);
-    const search = dialog.getByRole('combobox', { name: 'Search for somewhere specific: Tajikistan' });
-    await search.fill('Dushanbe');
-    await dialog.getByRole('option', { name: /Dushanbe/ }).first().click();
-    await dialog.getByRole('alert').filter({ hasText: /cannot confirm Dushanbe/ }).waitFor();
-    await dialog.getByRole('button', { name: 'Finish later', exact: true }).click();
+    await dialog.getByRole('button', { name: 'Add to shortlist: Dushanbe', exact: true }).click();
+    await dialog.getByRole('button', { name: 'Add to shortlist: Khujand', exact: true }).click();
+    await dialog.getByRole('button', { name: 'Add 2 places', exact: true }).click();
     await view.page.reload();
-    await view.page.getByRole('button', { name: 'Continue shaping your route' }).click();
-    await dialog.getByRole('heading', { name: 'Explore places', exact: true }).waitFor();
     const saved = await view.page.evaluate(() => Object.values(localStorage).flatMap(raw => {
       try { const trip = JSON.parse(raw).trip; return trip?.brief?.structuredBrief?.discoveryDraftByMentionId ? [trip] : []; } catch { return []; }
     }));
     assert.ok(saved.length > 0);
     for (const trip of saved) {
       const draft = trip.brief.structuredBrief.discoveryDraftByMentionId['place-tajikistan-0'];
-      assert.deepEqual(draft.shortlistIds, []); assert.equal(draft.step, 'places');
-      assert.equal(trip.stops.filter((stop: { country: string }) => stop.country === 'Tajikistan').length, 0);
+      assert.deepEqual(draft.shortlistIds, ['dushanbe', 'khujand']);
+      assert.deepEqual(trip.stops.filter((stop: { country: string }) => stop.country === 'Tajikistan')
+        .map((stop: { canonicalPlaceId: string }) => stop.canonicalPlaceId).sort(), ['dushanbe', 'khujand']);
     }
     assert.deepEqual(view.errors, []);
   } finally { await view.close(); }

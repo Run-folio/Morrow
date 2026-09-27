@@ -11,7 +11,17 @@ import { extractStructuredTripBrief } from '../lib/easyt/structured-trip-brief.t
 import { canonicalPlaceSuggestionsForQuery, confirmedAttractionVisitSelection, inferAttractionVisitSelections } from '../lib/easyt/place-intelligence.ts';
 import { discoveryConfirmLabel, discoveryPendingDecisionLabel } from '../lib/easyt/i18n.ts';
 import { availableActions } from '../lib/easyt/i18n.ts';
-import { discoveryConfirmationChoiceForId, discoveryDirectStopSuggestion } from '../lib/easyt/discovery-confirmation.ts';
+import { discoveryClarificationSearchCanAdd, discoveryConfirmationChoiceForId, discoveryDirectStopSuggestion } from '../lib/easyt/discovery-confirmation.ts';
+
+test('an explicit ambiguity choice may add an overnight city without reviewed recommendation evidence', () => {
+  const springfield = { canonicalPlaceId: 'open-world:springfield-il', name: 'Springfield', label: 'Springfield, Illinois, United States',
+    country: 'United States', placeType: 'city' as const, routability: 'direct_destination' as const,
+    coordinates: [-89.65, 39.78] as [number, number], provenance: [{ id: 'provider:springfield-il', label: 'Place provider', kind: 'provider' as const,
+      supports: 'The traveller selected this Springfield identity.' }] };
+  assert.equal(discoveryClarificationSearchCanAdd(springfield), true);
+  assert.equal(discoveryClarificationSearchCanAdd({ ...springfield, placeType: 'landmark' }), false);
+  assert.equal(discoveryClarificationSearchCanAdd({ ...springfield, coordinates: undefined }), false);
+});
 import { fixture, applyDiscoveryAddSideEffects } from './helpers/discovery-fixture.ts';
 
 const context = { interests: [] as string[], existingPlaceIds: [] as string[] };
@@ -119,7 +129,7 @@ test('a second existing region surfaces only canonical contained reviewed childr
 
 // Catches shell routing by collection size and unsupported travel defaults.
 for (const [name, kind, count, recommendationCount] of [
-  ['Tajikistan', 'country', 3, 0], ['Africa', 'continent', 15, 0],
+  ['Tajikistan', 'country', 3, 1], ['Africa', 'continent', 15, 0],
   ['Taj Mahal', 'landmark', 1, 1], ['Kruger National Park', 'natural-area', 0, 0],
   ['Lake Atitlán', 'natural-area', 1, 1], ['Philippines', 'country', 4, 1], ['Eritrea', 'country', 0, 0],
 ] as const) test(`${name}: adaptive entry retains original intent at evidenced depth`, () => {

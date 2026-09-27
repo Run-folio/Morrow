@@ -12,6 +12,7 @@ import { homepageInputStorageKey, travelProfileStorageKey } from "@/lib/easyt/pr
 import { createLatestJourneyCaptureRequestGate, journeyCaptureFailureMessage, requestJourneyCapture } from "@/lib/easyt/journey-capture-client";
 import {
   commitHomepageHandoff,
+  homepageSnapshotForDescribePrompt,
   homepageSubmissionFingerprint,
   projectHomepageInput,
   readHomepageInput,
@@ -219,7 +220,12 @@ export default function HomeTripStarter() {
 
   return <MorroviaTripCapture
     formId="start-building" progressiveDetails disabled={sessionPending} language={language} value={snapshot.prompt}
-    onValueChange={(prompt) => updateSnapshot((current) => ({ ...current, prompt }))}
+    onValueChange={(prompt) => {
+      const next = homepageSnapshotForDescribePrompt(snapshotRef.current, prompt);
+      if (next.origin.state !== "selected") setStartInput("");
+      if (next.journeyEnd.state !== "selected") setJourneyEndInput("");
+      updateSnapshot(() => next);
+    }}
     onPromptStarted={markPromptStarted}
     homepageEntry={{
       mode: snapshot.mode,

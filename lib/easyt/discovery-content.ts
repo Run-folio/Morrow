@@ -65,9 +65,14 @@ function curatedSource(id: string, url: string): KnowledgeSource | null {
   return record.experienceTags.sources.find(source => source.url === url && reviewedSource(source)) ?? null;
 }
 
-function visitorRow(id: string, group: string, tags: readonly string[], en: string, es: string, source: KnowledgeSource | null): DiscoveryEvidenceRow[] {
-  return source ? [{ id, group, tags, relevance: { en, es, sources: [source] }, stayEvidence: [], accessEvidence: [], imageKey: null }] : [];
+function visitorRow(id: string, group: string, tags: readonly string[], en: string, es: string, source: KnowledgeSource | null, stayEvidence: readonly KnowledgeSource[] = []): DiscoveryEvidenceRow[] {
+  return source ? [{ id, group, tags, relevance: { en, es, sources: [source] }, stayEvidence, accessEvidence: [], imageKey: null }] : [];
 }
+
+const tajikistanHotelEvidence = (id: string, supports: string): KnowledgeSource => ({
+  id: `tajikistan-tourism:hotels:${id}`, label: "Travel to Tajikistan", kind: "official",
+  url: "https://traveltajikistan.tj/en/hotels/", reviewedAt: "2026-09-27", supports,
+});
 
 const existingReviewedRows: DiscoveryEvidenceRow[] = [
   ...visitorRow("arusha", "Tanzania", ["safari"],
@@ -87,19 +92,22 @@ const existingReviewedRows: DiscoveryEvidenceRow[] = [
     "Museos y parques urbanos.",
     { id: "tajikistan-tourism:dushanbe-tour", label: "Travel to Tajikistan", kind: "official",
       url: "https://traveltajikistan.tj/en/dushanbe-city-tour/", reviewedAt: "2026-09-24",
-      supports: "The Dushanbe city tour lists the National Museum and Kurushi Kabir Park; it does not substantiate food as a visitor reason." }),
+      supports: "The Dushanbe city tour lists the National Museum and Kurushi Kabir Park; it does not substantiate food as a visitor reason." },
+    [tajikistanHotelEvidence("dushanbe", "The official hotels page lists multiple accommodation options in Dushanbe, including Serena and Hyatt Regency.")]),
   ...visitorRow("khujand", "Tajikistan", ["heritage"],
     "Fortress and cultural park.",
     "Fortaleza y parque cultural.",
     { id: "tajikistan-tourism:khujand-fortress", label: "Travel to Tajikistan", kind: "official",
       url: "https://traveltajikistan.tj/en/historical-cultural-and-archeological-complex-of-khujand-fortress-in-khujand/", reviewedAt: "2026-09-24",
-      supports: "The Khujand visitor page describes the fortress complex and Kamoli Khujandi cultural park." }),
+      supports: "The Khujand visitor page describes the fortress complex and Kamoli Khujandi cultural park." },
+    [tajikistanHotelEvidence("khujand", "The official hotels page lists Khujand Grand, Khujand Deluxe and Sugdiyon as accommodation in Khujand.")]),
   ...visitorRow("panjakent", "Tajikistan", ["heritage"],
     "Historical sites and nearby Sarazm settlement.",
     "Sitios históricos y el cercano asentamiento de Sarazm.",
     { id: "tajikistan-tourism:ancient-sarazm", label: "Travel to Tajikistan", kind: "official",
       url: "https://traveltajikistan.tj/en/ancient-sarazm/", reviewedAt: "2026-09-24",
-      supports: "The page links Penjikent/Panjakent with its historical sites and ancient Sarazm; it does not substantiate hiking." }),
+      supports: "The page links Penjikent/Panjakent with its historical sites and ancient Sarazm; it does not substantiate hiking." },
+    [tajikistanHotelEvidence("panjakent", "The official hotels page lists Panjakent Plaza as accommodation in Panjakent.")]),
 ];
 
 const otherReviewedRows: DiscoveryEvidenceRow[] = [{

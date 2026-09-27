@@ -38,6 +38,26 @@ export type HomepageInputSnapshot = {
   journeyEnd: HomepageChoice<JourneyEndSelection>;
 };
 
+export function homepageSnapshotForDescribePrompt(snapshot: HomepageInputSnapshot, prompt: string): HomepageInputSnapshot {
+  if (snapshot.mode !== "describe" || prompt === snapshot.prompt
+    || (snapshot.origin.state !== "selected" && snapshot.journeyEnd.state !== "selected")) return { ...snapshot, prompt };
+  const mentions = captureJourneyBrief(prompt).mentions;
+  const start = mentions.find((mention) => mention.role === "origin" || mention.role === "fixed_start");
+  const end = mentions.find((mention) => mention.role === "fixed_end");
+  const differs = (selected: string, mention: ResolvedPlaceMention) =>
+    normalizePlacePhrase(selected) !== normalizePlacePhrase(mention.canonicalName)
+    && normalizePlacePhrase(selected) !== normalizePlacePhrase(mention.sourceText);
+  return {
+    ...snapshot,
+    prompt,
+    origin: start && snapshot.origin.state === "selected" && differs(snapshot.origin.value.name, start)
+      ? { state: "untouched" } : snapshot.origin,
+    journeyEnd: end && snapshot.journeyEnd.state === "selected"
+      && (snapshot.journeyEnd.value.mode !== "explicit" || differs(snapshot.journeyEnd.value.place.name, end))
+      ? { state: "untouched" } : snapshot.journeyEnd,
+  };
+}
+
 export type HomepageInputIssue = {
   field: "destinations" | "prompt" | "dates" | "travellers";
   code: "required" | "unresolved" | "invalid";

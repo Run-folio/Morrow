@@ -219,6 +219,25 @@ test("captured bare-rock taxonomy keeps Uluru as an Australian anchor instead of
   assert.equal(result.mentions[0]?.directlyRoutable, false);
 });
 
+test("an Australia route brief does not turn Uluru into an Indian overnight stop", async () => {
+  const result = await resolveExplicitPlaceMentionsWithProvider(
+    [
+      { sourceText: "Australia", role: "preferred", travelIntent: "planning-area" },
+      { sourceText: "Sydney", role: "fixed_start", travelIntent: "route-stop" },
+      { sourceText: "Cairns", role: "fixed_end", travelIntent: "route-stop" },
+      { sourceText: "Melbourne", role: "preferred", travelIntent: "route-stop" },
+      { sourceText: "Adelaide", role: "preferred", travelIntent: "route-stop" },
+      { sourceText: "Uluru", role: "preferred", travelIntent: "route-stop" },
+      { sourceText: "Darwin", role: "preferred", travelIntent: "route-stop" },
+    ],
+    createNominatimPlaceProvider(fetchFixture),
+  );
+  const mention = result.mentions.find((item) => item.sourceText === "Uluru");
+  assert.equal(mention?.parentCountries.includes("India"), false);
+  assert.equal(mention?.directlyRoutable, false);
+  assert.equal(mention?.requiresBaseSelection, true);
+});
+
 test("a single explicit country triggers bounded contextual retrieval and honors an exact provider alias", async () => {
   const candidates = await searchNominatimTravelCandidates("San Pedro", { travelIntent: "route-stop", countryNames: ["Belize"] }, fetchFixture);
   assert.equal(candidates[0]?.canonicalName, "San Pedro Town");

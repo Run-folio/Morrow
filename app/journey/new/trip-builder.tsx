@@ -58,6 +58,7 @@ import { discoveryEntryForBrief, type DiscoveryEntry } from "@/lib/easyt/discove
 import { readDiscoveryDraft, reduceDiscoveryDraft, selectCanonicalSearchResult } from "@/lib/easyt/discovery-draft";
 import { buildDiscoveryReview } from "@/lib/easyt/discovery-review";
 import { commitDiscoveryReview, completeDiscoveryMention } from "@/lib/easyt/discovery-commit";
+import { discoveryClarificationSearchCanAdd } from "@/lib/easyt/discovery-confirmation";
 import { flushSync } from "react-dom";
 import { projectDiscovery } from "@/lib/easyt/discovery-projection";
 import { discoveryProjectionKey } from "@/lib/easyt/discovery-projection-key";
@@ -4473,6 +4474,19 @@ function TripBuilderDocument() {
             setBaseSearchErrors((current) => ({ ...current, [activeClarificationMention.mentionId]: "" }));
           },
           onSelect: (suggestion) => {
+            if (discoveryEntry.kind === "clarification") {
+              if (!discoveryClarificationSearchCanAdd(suggestion)) {
+                setBaseSearchErrors((current) => ({ ...current, [activeClarificationMention.mentionId]: language === "es"
+                  ? `Elige una ciudad o población verificada donde alojarte para ${suggestion.name}.`
+                  : `Choose a verified city or town to stay in for ${suggestion.name}.` }));
+                return;
+              }
+              // This is the traveller choosing an identity, not a reviewed
+              // Discovery recommendation. Builder Add verifies and owns it.
+              void addStop(suggestion.name, suggestion.country, activeClarificationMention.mentionId, undefined, suggestion)
+                .then((added) => { if (added) advanceClarificationSession(); });
+              return;
+            }
             const reviewedPlace = discoveryProjection.places.find((place) => place.id === suggestion.canonicalPlaceId
               && place.country === suggestion.country);
             const choosingBase = discoveryEntry.kind === "landmark" || discoveryEntry.kind === "natural-area";

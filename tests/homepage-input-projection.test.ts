@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { captureJourneyBrief } from "../lib/easyt/journey-capture.ts";
-import { projectHomepageInput, type HomepageDestinationEntry } from "../lib/easyt/home-trip-handoff.ts";
+import { homepageSnapshotForDescribePrompt, projectHomepageInput, type HomepageDestinationEntry } from "../lib/easyt/home-trip-handoff.ts";
 import { findCatalogPlaceById } from "../lib/easyt/place-catalog.ts";
 import type { CanonicalPlaceSuggestion } from "../lib/easyt/place-intelligence.ts";
 import { defaultTravelProfile } from "../lib/easyt/travel-profile.ts";
@@ -63,6 +63,48 @@ test("describe projection ignores inactive entries and requires a prompt", () =>
   assert.equal(invalid.ok, false);
   if (invalid.ok) return;
   assert.deepEqual(invalid.issues, [{ field: "prompt", code: "required" }]);
+});
+
+test("editing a described trip replaces stale endpoint choices when the prompt names new endpoints", () => {
+  const snapshot = emptyHomepageInput();
+  snapshot.mode = "describe";
+  snapshot.origin = { state: "selected", value: { name: "Greater London" } };
+  snapshot.journeyEnd = { state: "selected", value: { mode: "explicit", place: { name: "Seoul" } } };
+  const prompt = "Three weeks in Australia, starting in Sydney and ending in Cairns.";
+  const edited = homepageSnapshotForDescribePrompt(snapshot, prompt);
+  assert.equal(edited.origin.state, "untouched");
+  assert.equal(edited.journeyEnd.state, "untouched");
+  const result = projectHomepageInput({ snapshot: edited, capture: captureJourneyBrief(prompt), profile: null, handoffId: "new-endpoints" });
+  assert.equal(result.ok, true);
+  if (!result.ok) return;
+  assert.notEqual(result.draft.origin, "Greater London");
+  assert.equal(result.draft.locationMentions?.find((mention) => mention.role === "fixed_start")?.canonicalName, "Sydney");
+  assert.equal(result.draft.journeyEnd?.mode, "explicit");
+  if (result.draft.journeyEnd?.mode === "explicit") assert.equal(result.draft.journeyEnd.place.name, "Cairns");
+});
+
+test("fresh fixed endpoints win over saved choices for the complex acceptance prompts", () => {
+  const scenarios = [
+    { prompt: "Three weeks exploring Japan and China: Tokyo, Kyoto and Osaka by train, then fly to Shanghai, take the train to Hangzhou and finish in Beijing.", end: "Beijing" },
+    { prompt: "Three weeks in South Africa and Namibia: start in Cape Town, see the Garden Route, then travel north to Sossusvlei, Swakopmund, Etosha and finish in Windhoek.", start: "Cape Town", end: "Windhoek" },
+    { prompt: "About 2 weeks in Japan, first time, Tokyo and Kyoto definitely, somewhere quieter in between, flying into Tokyo and out of Osaka.", end: "Osaka" },
+  ];
+  for (const { prompt, start, end } of scenarios) {
+    const snapshot = emptyHomepageInput();
+    snapshot.mode = "describe";
+    snapshot.origin = { state: "selected", value: { name: "Greater London" } };
+    snapshot.journeyEnd = { state: "selected", value: { mode: "explicit", place: { name: "Seoul" } } };
+    const edited = homepageSnapshotForDescribePrompt(snapshot, prompt);
+    const result = projectHomepageInput({ snapshot: edited, capture: captureJourneyBrief(prompt), profile: null, handoffId: "fresh-endpoint" });
+    assert.equal(result.ok, true);
+    if (!result.ok) continue;
+    if (start) {
+      assert.notEqual(result.draft.origin, "Greater London");
+      assert.equal(result.draft.locationMentions?.find(mention => mention.role === "fixed_start")?.canonicalName, start);
+    }
+    assert.equal(result.draft.journeyEnd?.mode, "explicit");
+    if (result.draft.journeyEnd?.mode === "explicit") assert.equal(result.draft.journeyEnd.place.name, end);
+  }
 });
 
 test("stops projection retains planning areas and anchors without inventing route stops", () => {

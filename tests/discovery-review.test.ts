@@ -115,6 +115,20 @@ test('ordinary Japan shortlist uses the existing route scorer instead of Osaka c
   assert.equal(review.routeOrderSource, 'route-scorer');
 });
 
+test('Discovery does not silently reverse confirmed stops while adding a suggested base', () => {
+  const input = fixture('Japan', ['kanazawa']);
+  input.trip = tripFromBuilder({ id: 'japan-existing-order', origin: 'London', originCoordinates: [-0.1276, 51.5072],
+    stops: [
+      { id: 'tokyo-stop', name: 'Tokyo', country: 'Japan', canonicalPlaceId: 'tokyo', coordinates: [139.6917, 35.6895] },
+      { id: 'kyoto-stop', name: 'Kyoto', country: 'Japan', canonicalPlaceId: 'kyoto', coordinates: [135.7681, 35.0116] },
+    ], startDate: '2026-10-01', endDate: '2026-10-15', picks: {}, mustDo: 'Tokyo then Kyoto', pace: 'slow',
+    hotels: 'few', budget: 'mid', draft: [], structuredBrief: extractStructuredTripBrief('Tokyo then Kyoto in Japan') });
+  const review = buildDiscoveryReview(input);
+  assert.equal(review.canConfirm, true);
+  const order = review.orderedStopIds ?? input.trip.stops.map(stop => stop.id);
+  assert.ok(order.indexOf('tokyo-stop') < order.indexOf('kyoto-stop'));
+});
+
 test('an explicitly selected reviewed route family retains its editorial route chronology', () => {
   const input = fixture('Africa', ['swakopmund', 'windhoek']);
   input.trip = tripFromBuilder({ id: 'namibia-family-order-review', origin: 'London', originCoordinates: [-0.1276, 51.5072],

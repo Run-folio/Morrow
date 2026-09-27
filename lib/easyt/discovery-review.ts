@@ -137,7 +137,13 @@ export function buildDiscoveryReview(input: { mention: ResolvedPlaceMention; dra
       return true;
     });
   }));
-  const routeOrderSource = familyChronologyIsViable ? familyOrder : routeAssessment.route.scoring?.winner?.stopIds;
+  const suggestedOrder = familyChronologyIsViable ? familyOrder : routeAssessment.route.scoring?.winner?.stopIds;
+  // An added base may be placed by the scorer, but confirming it must not
+  // silently reverse stops the traveller already accepted in Builder.
+  const existingOrder = trip.stops.map(stop => stop.id);
+  const suggestedExistingOrder = suggestedOrder?.filter(id => existingOrder.includes(id));
+  const preservesExistingOrder = !suggestedExistingOrder || suggestedExistingOrder.every((id, index) => id === existingOrder[index]);
+  const routeOrderSource = preservesExistingOrder ? suggestedOrder : undefined;
   const orderedStopIds = routeOrderSource
     ? [...new Set([...routeOrderSource, ...previewStops.map(stop => stop.id)])]
     : undefined;
@@ -146,7 +152,7 @@ export function buildDiscoveryReview(input: { mention: ResolvedPlaceMention; dra
   return { mentionId: mention.mentionId, originalIntent: mention.sourceText || mention.canonicalName, directionId: draft.directionId,
     direction, bases, newBaseIds, reusedStopIds, visits, newVisitIds, blockedIds: [...blockedIds], existingStops: trip.stops,
     warnings, candidates, continuity, nightAllocation, currentValidation, validation, orderedStopIds,
-    routeOrderSource: familyChronologyIsViable ? 'reviewed-route-family' as const : routeAssessment.route.scoring?.winner ? 'route-scorer' as const : 'entered-order' as const,
+    routeOrderSource: routeOrderSource ? familyChronologyIsViable ? 'reviewed-route-family' as const : 'route-scorer' as const : 'entered-order' as const,
     fit: 'needs-checking' as const,
     canConfirm: blockedIds.size === 0 && (bases.length > 0 || visits.length > 0),
     primaryAction: { kind: 'confirm-selected-places' as const, baseCount: newBaseIds.length, visitCount: newVisitIds.length } };
