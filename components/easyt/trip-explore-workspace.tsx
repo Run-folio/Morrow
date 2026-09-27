@@ -5,9 +5,7 @@ import {
   CalendarPlus,
   Check,
   Clock3,
-  Compass,
   MapPin,
-  Mountain,
   Sparkles,
   Star,
   Ticket,
@@ -18,7 +16,7 @@ import { trackEvent } from "@/lib/analytics";
 import { JourneyRouteStopTrack } from "@/components/journey-planner-strip";
 import type { ActivityInventoryItem } from "@/lib/easyt/activity-inventory";
 import {
-  exploreCategories,
+  explorePrimaryCategories,
   exploreCategoryLabels,
   exploreDiscoveryRequestKey,
   exploreDestinationOptions,
@@ -32,12 +30,14 @@ import {
   resolveExploreDestinationId,
   exploreScheduleTarget,
   exploreSourcePlan,
+  normalizeExploreCategory,
   filterExploreResults,
   projectExploreResults,
   streamExploreDiscoveryLane,
   type ExploreDiscoveryLaneSnapshot,
   type ExploreDiscoveryLaneStatus,
   type ExploreCategory,
+  type ExplorePrimaryCategory,
   type ExploreLocalPlace,
   type ExploreResult,
 } from "@/lib/easyt/explore";
@@ -79,13 +79,11 @@ type DiscoveryPayload = { places?: ItineraryDiscoveryPlace[]; unavailable?: bool
 type LocalPayload = { places?: ExploreLocalPlace[]; unavailable?: boolean };
 type ActivityPayload = { activities?: ActivityInventoryItem[] };
 
-const categoryIcons: Record<ExploreCategory, typeof Sparkles> = {
+const categoryIcons: Record<ExplorePrimaryCategory, typeof Sparkles> = {
   "for-you": Sparkles,
   "must-see": Star,
   food: Utensils,
   tours: Ticket,
-  "day-trips": Compass,
-  outdoors: Mountain,
 };
 
 function titleCase(value: string) {
@@ -212,8 +210,9 @@ export default function TripExploreWorkspace({
   if (exploreDiscoveryRequestKey(discoveryTripRef.current) !== discoveryRequestKey) discoveryTripRef.current = workingTrip;
   const destinations = useMemo(() => exploreDestinationOptions(discoveryTripRef.current), [discoveryRequestKey]);
   const [destinationId, setDestinationId] = useState<string | null>(() => resolveExploreDestinationId(destinations, initialDestinationId));
-  const [category, setCategory] = useState<ExploreCategory>(initialCategory);
-  const initialPlan = exploreSourcePlan(initialCategory, trip);
+  const normalizedInitialCategory = normalizeExploreCategory(initialCategory);
+  const [category, setCategory] = useState<ExplorePrimaryCategory>(normalizedInitialCategory);
+  const initialPlan = exploreSourcePlan(normalizedInitialCategory, trip);
   const initialOrganicResults = (initialResults ?? []).filter((result) => result.idea.source !== "live-provider-inventory");
   const initialCommercialResults = (initialResults ?? []).filter((result) => result.idea.source === "live-provider-inventory");
   const [organicResults, setOrganicResults] = useState<ExploreResult[]>(initialOrganicResults);
@@ -407,7 +406,7 @@ export default function TripExploreWorkspace({
 
     <div className={styles.main}>
       <div className={styles.categories} role="group" aria-label="Explore categories">
-        {exploreCategories.map((item) => {
+        {explorePrimaryCategories.map((item) => {
           const Icon = categoryIcons[item];
           const selected = category === item;
           return <EasyTButton

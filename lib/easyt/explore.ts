@@ -11,15 +11,22 @@ import { discoveryVisitorRelevance } from "./discovery-quality.ts";
 import { activityDurationLabel as faithfulActivityDurationLabel } from "./itinerary-schedule-awareness.ts";
 import { canonicalPlaceDuplicate, normalizeCanonicalPlaceText } from "./canonical-place-identity.ts";
 import {
-  discoveryCategories,
   discoveryCategoryLabels,
   discoveryCategoryMatches,
   type DiscoveryCategory,
 } from "./discovery-taxonomy.ts";
 
-export const exploreCategories = discoveryCategories;
+export const explorePrimaryCategories = ["for-you", "must-see", "food", "tours"] as const;
+export type ExplorePrimaryCategory = typeof explorePrimaryCategories[number];
 export const exploreCategoryLabels = discoveryCategoryLabels;
 export type ExploreCategory = DiscoveryCategory;
+
+/** Keep persisted or fixture-era category values out of the visible Explore state. */
+export function normalizeExploreCategory(requested: string | null | undefined): ExplorePrimaryCategory {
+  if (requested === "day-trips") return "tours";
+  if (requested === "must-see" || requested === "food" || requested === "tours") return requested;
+  return "for-you";
+}
 
 export type ExploreDestination = {
   id: string;
@@ -520,9 +527,8 @@ export function filterExploreResults(
   const scoped = dedupeExploreResults(results).filter((result) => exploreResultEligible(trip, result)
     && (destinationId === "all" || result.stopId === destinationId)
     && !(category === "for-you" && result.kind === "restaurant")
-    // Nearby settlements remain useful in the dedicated Day trips view, but
-    // a bare city/town record is not a visitor attraction for the first-page
-    // For you shortlist.
+    // A bare nearby city/town record is not a visitor attraction for the
+    // first-page For you shortlist. Map retains its explicit Day trips filter.
     && !(category === "for-you"
       && result.tags.some((tag) => normal(tag) === "day-trips" || normal(tag) === "day trip")
       && result.idea.source !== "live-provider-inventory"));

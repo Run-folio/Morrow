@@ -6,6 +6,8 @@ import {
   exploreDiscoveryRequestKey,
   exploreDestinationOptions,
   exploreDiscoveryCategory,
+  explorePrimaryCategories,
+  exploreSourcePlan,
   exploreOpportunityForTrip,
   exploreResultEligible,
   exploreResultForActivity,
@@ -15,6 +17,7 @@ import {
   exploreResultState,
   exploreScheduleTarget,
   filterExploreResults,
+  normalizeExploreCategory,
   projectExploreResults,
   resolveExploreDestinationId,
   trustedExploreImage,
@@ -72,6 +75,19 @@ const place = {
   coordinates: [23.743, 37.981] as [number, number],
   qualityScore: 10,
 };
+
+test("Explore exposes four useful primary categories and normalizes legacy selection", () => {
+  assert.deepEqual(explorePrimaryCategories, ["for-you", "must-see", "food", "tours"]);
+  assert.equal(normalizeExploreCategory("day-trips"), "tours");
+  assert.equal(normalizeExploreCategory("outdoors"), "for-you");
+  assert.equal(normalizeExploreCategory("must-see"), "must-see");
+  assert.equal(normalizeExploreCategory("unknown"), "for-you");
+  for (const requested of ["day-trips", "outdoors"] as const) {
+    const sources = exploreSourcePlan(normalizeExploreCategory(requested), trip());
+    assert.equal(sources.dayTrips, false);
+    assert.equal(sources.outdoors, false);
+  }
+});
 
 test("Explore destinations come only from the current trip and retain canonical stop identity", () => {
   const options = exploreDestinationOptions(trip());
@@ -384,6 +400,48 @@ test("For you keeps organic results and mixes commercial inventory without repla
   assert.equal(mixed.filter((result) => !result.providerProductId).length, 3);
   assert.equal(mixed.filter((result) => result.providerProductId).length, 2);
   assert.equal(mixed.slice(0, 3).some((result) => result.providerProductId), true);
+});
+
+test("For you interest affinity reorders comparable visitor places without requiring interests", () => {
+  const base = trip();
+  const stop = base.stops[0]!;
+  const culture = exploreResultForPlace(stop, { ...place, id: "culture-choice", title: "Ancient Stoa", type: "Historic site", tags: ["Culture"], description: "A visitor place in Athens.", qualityScore: 12 });
+  const nature = exploreResultForPlace(stop, { ...place, id: "nature-choice", title: "Cypress Park", type: "Park", tags: ["Nature"], description: "A visitor place in Athens.", qualityScore: 12 });
+  const withoutInterests = structuredClone(base);
+  withoutInterests.brief.intent!.preferences.interests = [];
+  const natureInterests = structuredClone(base);
+  natureInterests.brief.intent!.preferences.interests = ["nature"];
+  assert.deepEqual(filterExploreResults(withoutInterests, [culture, nature], "athens", "for-you").map((result) => result.title), ["Ancient Stoa", "Cypress Park"]);
+  assert.deepEqual(filterExploreResults(natureInterests, [culture, nature], "athens", "for-you").map((result) => result.title), ["Cypress Park", "Ancient Stoa"]);
+});
+
+test("nature keeps a route into For you and quality-gated Must-see", () => {
+  const base = trip();
+  const stop = base.stops[0]!;
+  const strong = exploreResultForPlace(stop, { ...place, id: "strong-garden", title: "National Garden", type: "Garden", tags: ["Nature"], qualityScore: 12 });
+  const weak = exploreResultForPlace(stop, { ...place, id: "weak-park", title: "Small Park", type: "Park", tags: ["Nature"], qualityScore: 8 });
+  assert.equal(filterExploreResults(base, [weak, strong], "athens", "for-you").some((result) => result.sourceId === strong.sourceId), true);
+  assert.deepEqual(filterExploreResults(base, [weak, strong], "athens", "must-see").map((result) => result.sourceId), [strong.sourceId]);
+});
+
+test("Tours includes provider tours, entry tickets and day-trip experiences with sourced metadata", () => {
+  const base = trip();
+  const stop = base.stops[0]!;
+  const provider = (id: string, title: string, tags: string[]) => exploreResultForActivity(stop, {
+    provider: "viator", source: "viator", providerProductId: id, title,
+    destination: { canonicalPlaceId: stop.canonicalPlaceId!, label: stop.name }, tags,
+    rating: 4.7, reviewCount: 210, price: { amount: 55, currency: "GBP" },
+    productUrl: `https://www.viator.com/tours/${id}`,
+    provenance: { kind: "live_provider_search", provider: "viator", checkedAt: "2026-09-12T00:00:00.000Z" },
+  }, base);
+  const results = [
+    provider("guided-walk", "Athens guided walk", ["guided tour"]),
+    provider("entry", "Acropolis entry ticket", ["entry ticket"]),
+    provider("regional-day", "Cape Sounion guided day trip", ["day trip"]),
+  ];
+  const tours = filterExploreResults(base, results, "athens", "tours");
+  assert.deepEqual(new Set(tours.map((result) => result.sourceId)), new Set(results.map((result) => result.sourceId)));
+  assert.equal(tours.every((result) => result.price === "From £55" && result.rating === 4.7 && result.providerUrl?.startsWith("https://www.viator.com/")), true);
 });
 
 test("For you excludes newly discovered restaurants while retaining deterministic attraction diversity", () => {
