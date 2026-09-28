@@ -32,6 +32,59 @@ evidence, not design-system authority.
 - AI-assisted states must preserve traveller intent and explain loading,
   recovery and consequential change honestly.
 
+## Skim-first content and hierarchy
+
+**If the interface already communicates it, do not explain it again.**
+Use the **minimum explanation required for confident use**. Morrovia assumes
+travellers skim before they read; hierarchy, grouping, controls, imagery,
+state and spacing should carry the interface before supporting prose does.
+
+Every visible supporting line must earn its place by doing at least one of
+the following:
+
+1. Change what the traveller needs to do.
+2. Supply information needed for a decision.
+3. Communicate meaningful uncertainty or status that would otherwise be misunderstood.
+4. Warn about a meaningful consequence or risk.
+5. Resolve ambiguity that hierarchy or control design cannot resolve.
+
+If it does none of these, prefer, in order: **remove**, **merge with an existing
+label**, **compress**, **express through hierarchy or state**, then **move to
+progressive disclosure**. Do not merely shorten every sentence while retaining
+the same number of competing labels and containers.
+
+Avoid decorative eyebrow/heading duplication, section labels that repeat a
+heading, helper prose explaining obvious controls, persistent routine success
+or reassurance, prose restating visible metadata, repeated orientation,
+over-instructed empty states, generic defensive disclaimers and internal system
+terminology. An eyebrow is useful when it adds orientation; uppercase styling
+alone is neither a reason to keep it nor a reason to remove it.
+
+For example, prefer “Timing to confirm” to “We haven’t been able to confirm the
+exact timing for this journey yet” when both communicate the same uncertainty.
+Prefer a clear “Save trip” action to a sentence explaining an already apparent
+save affordance, while retaining any device-only risk the traveller needs to
+understand. “Starting from” distinguishes an input; “Your journey” immediately
+above an obvious journey form may add no information.
+
+**Minimal does not mean hiding important information.** Preserve serious
+save/sync/recovery warnings, destructive confirmation, important travel
+uncertainty, confirmed-versus-estimated distinctions, booking state,
+privacy/security consent, legal/provider disclosure, attribution, accessible
+names, actionable errors and meaningful device-only/local-only risk. Routine
+states should be quiet; important or risky states may remain prominent.
+
+Apply this especially strongly on mobile, where persistent lines delay the
+task. Never gain space by shrinking touch targets, hiding important state,
+reducing readability, removing accessible names or clipping content. Rebalance
+spacing after removing copy rather than leaving its old blank container.
+
+Review the composed production surface at mobile and desktop widths. Use
+matched trip/data/status/viewport/scroll comparisons to measure useful changes
+(reading layers, routine status lines and the position of task content), not a
+universal density score. Copy retained for a decision or risk is a successful
+application of this principle, even when it occupies more space.
+
 ## Foundations and tokens
 
 The canonical foundation is `app/journey/journey-design.css`. Storybook imports
