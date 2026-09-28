@@ -79,7 +79,7 @@ test("dual-entry hero is compact on desktop and may grow with open planner panel
   assert.doesNotMatch(immersiveStyles.match(/\.heroDualEntry\s*\{[^}]*\}/)?.[0] ?? "", /overflow:\s*(?:hidden|clip)/);
   assert.match(immersiveStyles, /\.heroDecorative\s*\{[^}]*overflow:\s*clip/);
   assert.match(immersiveStyles, /\.heroDualEntry[\s\S]*\.heroBodyDualEntry[\s\S]*width:min\(1400px,calc\(100% - 80px\)\)/);
-  assert.match(immersiveSource, /Plan multi-stop trips with suggested routes, places to stay and things to do\. Then make the plan your own\./);
+  assert.match(immersiveSource, /Plan a trip with several stops, then shape the route, stays and activities around you\./);
   assert.match(immersiveStories, /FullComposition/);
 });
 

@@ -55,7 +55,7 @@ export const BroadAreaStep1Of4: Story = {};
 
 const tajikistanMention = resolvePlaceMentions("Tajikistan").mentions[0]!;
 const tajikistanDiscovery = buildCountryDiscovery(tajikistanMention, { totalNights: 8, interests: ["nature"] });
-function CountryDiscoveryFixture(args: ComponentProps<typeof BuilderClarificationDialog>) {
+function CountryDiscoveryFixture(args: ComponentProps<typeof BuilderClarificationDialog> & { noNights?: boolean }) {
   const [selectedIds, setSelectedIds] = useState(tajikistanDiscovery.selectedIds);
   const language = args.language ?? "en";
   return <BuilderClarificationDialog {...args}
@@ -69,7 +69,7 @@ function CountryDiscoveryFixture(args: ComponentProps<typeof BuilderClarificatio
         };
       }),
       selectedIds,
-      availableNights: tajikistanDiscovery.availableNights,
+      availableNights: args.noNights ? undefined : tajikistanDiscovery.availableNights,
       onToggle: (id, selected) => setSelectedIds((current) => selected ? [...new Set([...current, id])] : current.filter((item) => item !== id)),
     }} />;
 }
@@ -78,7 +78,7 @@ export const CountryDiscovery: Story = {
   args: {
     itemKey: "tajikistan-discovery",
     title: "Where should you go in Tajikistan?",
-    description: "Morrovia suggests a few places to start. You can change them before continuing.",
+    description: "",
     suggestions: [],
     search: { ...bulgariaSearch, label: "Search within Tajikistan", placeholder: "Search within Tajikistan", contextCountries: ["Tajikistan"], parentConstraint: { canonicalName: "Tajikistan", placeType: "country", parentCountries: ["Tajikistan"] } },
     doneLabel: "Continue",
@@ -93,6 +93,10 @@ export const CountryDiscovery430: Story = { ...CountryDiscovery, parameters: { v
 export const CountryDiscovery768: Story = { ...CountryDiscovery, parameters: { viewport: { defaultViewport: "morrovia768" } } };
 export const CountryDiscovery1024: Story = { ...CountryDiscovery, parameters: { viewport: { defaultViewport: "morrovia1024" } } };
 export const CountryDiscovery1440: Story = { ...CountryDiscovery, parameters: { viewport: { defaultViewport: "morrovia1440" } } };
+export const CountryDiscoveryNoNights: Story = {
+  ...CountryDiscovery,
+  render: (args) => <CountryDiscoveryFixture {...args} noNights />,
+};
 
 export const CountryDiscoverySpanish: Story = {
   args: {
@@ -100,13 +104,17 @@ export const CountryDiscoverySpanish: Story = {
     language: "es",
     progress: "1 de 1",
     title: "¿A dónde ir en Tajikistan?",
-    description: "Morrovia propone unos pocos lugares para empezar. Puedes cambiarlos antes de continuar.",
+    description: "",
     search: { ...bulgariaSearch, label: "Buscar dentro de Tajikistan", placeholder: "Buscar dentro de Tajikistan", contextCountries: ["Tajikistan"], parentConstraint: { canonicalName: "Tajikistan", placeType: "country", parentCountries: ["Tajikistan"] } },
     doneLabel: "Continuar",
     finishLaterLabel: "Terminar más tarde",
     removeLabel: "Quitar Tajikistan del viaje",
   },
   render: (args) => <CountryDiscoveryFixture {...args} />,
+};
+export const CountryDiscoveryNoNightsSpanish: Story = {
+  ...CountryDiscoverySpanish,
+  render: (args) => <CountryDiscoveryFixture {...args} noNights />,
 };
 
 export const CountryDiscoverySpanishSparse: Story = {

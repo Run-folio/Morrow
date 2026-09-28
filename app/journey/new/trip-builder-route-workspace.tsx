@@ -12,6 +12,7 @@ import type { EasyTTrip } from "@/lib/easyt/trip";
 import { effectiveTripLeg, tripWithEffectiveTransportChoices } from "@/lib/easyt/transport-mode-choice";
 import styles from "./trip-builder.module.css";
 import { useBuilderStopReorder } from "./use-builder-stop-reorder";
+import { builderNightAllocationLabel, type BuilderNightStatus } from "./builder-night-allocation-label";
 
 export type BuilderOrderSource = "drag" | "move-menu" | "route-check";
 
@@ -22,7 +23,7 @@ export type TripBuilderRouteWorkspaceProps = {
   lockedStopIds: readonly string[];
   fixedOrder: boolean;
   routeCheckProposalStopIds: readonly string[] | null;
-  nightStatus: { total: number; allocated: number; complete: boolean; language: "en" | "es" };
+  nightStatus: BuilderNightStatus;
   onSelectStop: (stopId: string) => void;
   onPreviewOrder: (stopIds: readonly string[] | null) => void;
   onCommitOrder: (stopIds: readonly string[], source: BuilderOrderSource) => boolean;
@@ -109,9 +110,7 @@ export function TripBuilderRouteWorkspace({
           <span>
             {nightStatus.total} {nightStatus.language === "es" ? (nightStatus.total === 1 ? "noche" : "noches") : (nightStatus.total === 1 ? "night" : "nights")}
             {" · "}
-            {nightStatus.complete
-              ? (nightStatus.language === "es" ? "Todas asignadas" : "All allocated")
-              : (nightStatus.language === "es" ? `${nightStatus.allocated} de ${nightStatus.total} asignadas` : `${nightStatus.allocated} of ${nightStatus.total} allocated`)}
+            {builderNightAllocationLabel(nightStatus)}
           </span>
         </h2>
       </div>

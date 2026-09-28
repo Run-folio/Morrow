@@ -410,8 +410,8 @@ test("night allocation is compact Route metadata instead of a separate band", ()
     "Route metadata should retain an accessible status announcement");
   assert.match(workspace, /nightStatus\.complete \? <CheckCircle2[\s\S]*: <AlertTriangle/,
     "unresolved night allocation must not use the resolved success icon");
-  assert.match(workspace, /nightStatus\.complete[\s\S]*nightStatus\.allocated[\s\S]*nightStatus\.total/,
-    "Route metadata must distinguish complete and unresolved allocation using canonical counts");
+  assert.match(workspace, /builderNightAllocationLabel\(nightStatus\)/,
+    "Route metadata must use the tested canonical count and allocation-state wording");
 });
 
 test("Builder hierarchy has production Storybook coverage at every required width", () => {

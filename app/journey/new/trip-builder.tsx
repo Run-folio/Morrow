@@ -3725,7 +3725,7 @@ function TripBuilderDocument() {
     : clarificationIsLandmark
       ? `${placeTypeLabel(activeClarificationMention!.placeType)} · ${language === "es" ? "Tu intención de visita se mantiene separada de las bases de la ruta." : "Your visit intent stays separate from route bases."}`
       : clarificationDiscovery
-        ? language === "es" ? "Morrovia propone unos pocos lugares para empezar. Puedes cambiarlos antes de continuar." : "Morrovia suggests a few places to start. You can change them before continuing."
+        ? ""
         : language === "es" ? `Añade uno o más lugares en ${clarificationParentName} alrededor de los que quieres que Morrovia planifique.` : `Add one or more places you would like Morrovia to plan around in ${clarificationParentName}.`;
   const clarificationQuestion = clarificationIsLandmark && activeClarificationMention
     ? activeClarificationMention.placeType === "landmark"

@@ -62,13 +62,13 @@ export function BuilderClarificationShell({ open, itemKey, progress, title, desc
   if (!open) return null;
   return <div className={`${styles.overlay}${discovery ? ` ${styles.discoveryOverlay}` : ""}`} role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget && !loading) onDismiss(); }}>
     <section ref={dialogRef} className={`${styles.dialog}${discovery ? ` ${styles.discoveryDialog}` : ""}`}
-      role="dialog" aria-modal="true" aria-labelledby={titleId} aria-describedby={descriptionId}
+      role="dialog" aria-modal="true" aria-labelledby={titleId} aria-describedby={description ? descriptionId : undefined}
       data-builder-clarification-ui="true" onMouseDown={(event) => event.stopPropagation()}>
       <header className={styles.header}>
         {progress ? <p aria-live="polite">{progress}</p> : null}
         <EasyTButton icon={X} iconOnly variant="quiet" size="small" disabled={loading} onClick={onDismiss}>{closeLabel}</EasyTButton>
         <h2 ref={titleRef} id={titleId} tabIndex={-1}>{title}</h2>
-        <span id={descriptionId}>{description}</span>
+        {description ? <span id={descriptionId}>{description}</span> : null}
       </header>
       <div className={styles.body} data-discovery-scroll-owner={discovery ? "true" : undefined}>{children}</div>
       {footer ? <footer className={styles.footer}>{footer}</footer> : null}
