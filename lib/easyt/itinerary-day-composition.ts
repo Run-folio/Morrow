@@ -5,7 +5,6 @@ import { legacyGeneratedDayContext } from "./itinerary-generated-context.ts";
 import { mappedPlacePinId } from "./map-place-itinerary.ts";
 import {
   incomingLegForPlanItem,
-  legForTransition,
   orderedTripPlanItems,
 } from "./trip-facts.ts";
 import { routeEndpointForLeg } from "./trip-legs.ts";
@@ -102,14 +101,6 @@ export function fallbackItineraryDayPart(index: number, count: number): Itinerar
   return itineraryDayParts[partIndex] ?? "morning";
 }
 
-function outgoingLegForDay(trip: EasyTTrip, day: PlanItem) {
-  const ordered = orderedTripPlanItems(trip);
-  const index = ordered.findIndex((candidate) => candidate.id === day.id);
-  const next = index >= 0 ? ordered[index + 1] : undefined;
-  if (!next || next.stopId === day.stopId) return null;
-  return legForTransition(trip, day.stopId, next.stopId);
-}
-
 function finalDepartureLegForDay(trip: EasyTTrip, day: PlanItem) {
   const laterAtStop = orderedTripPlanItems(trip).some((candidate) => (
     candidate.stopId === day.stopId && candidate.dayNumber > day.dayNumber
@@ -142,11 +133,9 @@ function transferForComposition(
 
 function transfersForDay(trip: EasyTTrip, day: PlanItem) {
   const incoming = incomingLegForPlanItem(trip, day);
-  const outgoing = outgoingLegForDay(trip, day);
   const finalDeparture = finalDepartureLegForDay(trip, day);
   return [...new Map([
     ...(incoming ? [[incoming.id, transferForComposition(trip, incoming, "arriving")] as const] : []),
-    ...(outgoing ? [[outgoing.id, transferForComposition(trip, outgoing, "departing")] as const] : []),
     ...(finalDeparture ? [[finalDeparture.id, transferForComposition(trip, finalDeparture, "departing")] as const] : []),
   ]).values()];
 }

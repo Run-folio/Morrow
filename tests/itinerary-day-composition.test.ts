@@ -163,6 +163,16 @@ function tripFixture(): EasyTTrip {
   };
 }
 
+test("an inter-stop transfer belongs to its destination day, never the preceding sightseeing day", () => {
+  const trip = tripFixture();
+  assert.equal(composeItineraryDay(trip, "tokyo-2")?.transfers.some((transfer) => transfer.id === "tokyo-kyoto"), false);
+  assert.equal(composeItineraryDay(trip, "kyoto-3")?.transfers.filter((transfer) => transfer.id === "tokyo-kyoto").length, 1);
+  const sameDate = { ...trip, planItems: trip.planItems.map((item) => item.id === "tokyo-2" ? { ...item, date: "2026-10-03" } : item) };
+  assert.equal(composeItineraryDay(sameDate, "tokyo-2")?.transfers.some((transfer) => transfer.id === "tokyo-kyoto"), false);
+  assert.equal(composeItineraryDay(sameDate, "kyoto-3")?.transfers.filter((transfer) => transfer.id === "tokyo-kyoto").length, 1);
+  assert.equal(composeItineraryDay(trip, "kyoto-4")?.transfers.some((transfer) => transfer.id === "depart-kyoto"), true);
+});
+
 function place(id: string, title: string) {
   return { id, title, area: "Kyoto", type: "Culture", tags: ["Culture"], description: title, coordinates: [135.77, 35.01] as [number, number] };
 }

@@ -2089,9 +2089,34 @@
 }
 
 @media (max-width: 540px) {
-  .workspaceToolbar { padding: 14px 12px; }
-  .dateNavigation { align-items: end; gap: 4px; }
+  .workspaceToolbar {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas: "title switch" "date date";
+    align-items: center;
+    gap: 6px 8px;
+    padding: 8px 12px;
+  }
+  .workspaceToolbar > div:first-child { grid-area: title; min-width: 0; }
+  .workspaceToolbar h2 { font-size: 22px; }
+  .workspaceToolbar p { display: none; }
+  .workspaceToolbar .subviewBar { grid-area: switch; order: 0; width: auto; }
+  .workspaceToolbar .subviewBar > div { width: auto; }
+  .dateNavigation { grid-area: date; align-items: center; gap: 4px; }
   .dateNavigation > label { min-width: 0; }
+  .compactJumpLabel { position: absolute; width: 1px; height: 1px; padding: 0; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; }
+  .railHeader { display: none; }
+  .dayList { padding: 6px 12px; }
+  .dayPanel { padding: 12px 12px calc(24px + env(safe-area-inset-bottom)); }
+  .dayHeader[data-photo="true"] { min-height: 100px; margin: -4px -4px 8px; padding: 10px 12px; }
+  .dayHeader h2 { margin: 5px 0 0; font-size: clamp(27px, 8vw, 34px); }
+  .stayContext { margin-top: 8px; padding: 8px 10px; }
   .stayContext { grid-template-columns: 20px minmax(0, 1fr); }
   .stayContext > a { grid-column: 2; justify-self: start; }
+}
+
+@media (max-width: 360px) {
+  .workspaceToolbar { grid-template-areas: "switch switch" "title title" "date date"; }
+  .workspaceToolbar .subviewBar { justify-self: stretch; }
+  .workspaceToolbar .subviewBar > div { width: 100%; }
 }

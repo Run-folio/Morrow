@@ -7,6 +7,18 @@ const projection = readFileSync(new URL("../lib/easyt/itinerary-calendar.ts", im
 const styles = readFileSync(new URL("../components/easyt/trip-itinerary-workspace.module.css", import.meta.url), "utf8");
 const stories = readFileSync(new URL("../components/easyt/trip-itinerary-workspace.stories.tsx", import.meta.url), "utf8");
 
+test("mobile day orientation stays compact and scrolls its own rail", () => {
+  assert.match(itinerary, /labelClassName=\{styles\.compactJumpLabel\}/);
+  assert.match(itinerary, /ref=\{dayListRef\}/);
+  assert.match(itinerary, /dayListRef\.current\?\.scrollTo|rail\.scrollTo/);
+  assert.doesNotMatch(itinerary, /tab-\$\{selectedIndex\}`\)\?\.scrollIntoView/);
+  const mobile = styles.slice(styles.lastIndexOf("@media (max-width: 540px)"));
+  assert.match(mobile, /\.workspaceToolbar\s*\{[^}]*display:\s*grid/);
+  assert.match(mobile, /\.workspaceToolbar p\s*\{\s*display:\s*none/);
+  assert.match(mobile, /\.railHeader\s*\{\s*display:\s*none/);
+  assert.match(mobile, /\.dayHeader\[data-photo="true"\]\s*\{[^}]*min-height:\s*\d+px/);
+});
+
 test("Calendar stays a pure projection while delegating planning interactions to its canonical parent", () => {
   assert.match(projection, /\[\.\.\.trip\.planItems\]/);
   assert.match(projection, /composeItineraryDay\(trip, day\.id\)/);

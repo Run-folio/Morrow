@@ -568,6 +568,7 @@ export default function TripItineraryWorkspace({
   const calendarItemRequestRef = useRef<string | null>(null);
   const selectedDayRequestRef = useRef({ tripId: workingTrip.id, dayNumber: selectedDayNumber });
   const tabIdPrefix = useId().replaceAll(":", "");
+  const dayListRef = useRef<HTMLDivElement>(null);
   const copy = useMemo(() => itineraryCopy(language), [language]);
   const calendarWeeks = useMemo(() => itineraryCalendarWeeks(workingTrip), [workingTrip]);
   const activeDayId = days[Math.min(selectedIndex, Math.max(0, days.length - 1))]?.id ?? null;
@@ -651,7 +652,13 @@ export default function TripItineraryWorkspace({
   useEffect(() => {
     if (!activeDayId) return;
     const frame = window.requestAnimationFrame(() => {
-      document.getElementById(`${tabIdPrefix}-tab-${selectedIndex}`)?.scrollIntoView({ block: "nearest", inline: "nearest" });
+      const rail = dayListRef.current;
+      const selected = document.getElementById(`${tabIdPrefix}-tab-${selectedIndex}`);
+      if (!rail || !selected) return;
+      const railBox = rail.getBoundingClientRect();
+      const selectedBox = selected.getBoundingClientRect();
+      if (selectedBox.left < railBox.left) rail.scrollTo({ left: rail.scrollLeft + selectedBox.left - railBox.left, behavior: "smooth" });
+      else if (selectedBox.right > railBox.right) rail.scrollTo({ left: rail.scrollLeft + selectedBox.right - railBox.right, behavior: "smooth" });
     });
     return () => window.cancelAnimationFrame(frame);
   }, [activeDayId, selectedIndex, tabIdPrefix]);
@@ -1272,7 +1279,7 @@ export default function TripItineraryWorkspace({
         <div className={styles.dateNavigation}>
           {todayIndex >= 0 ? <EasyTButton size="small" variant="quiet" onClick={() => setSelectedIndex(todayIndex)}>{copy.today}</EasyTButton> : null}
           <EasyTButton icon={ChevronLeft} iconOnly size="small" variant="secondary" disabled={workspaceView === "calendar" ? currentWeekIndex <= 0 : index === 0} onClick={() => navigatePeriod(-1)}>{workspaceView === "calendar" ? copy.previousWeek : copy.previousDay}</EasyTButton>
-          <EasyTSelect label={copy.jumpToDateDestination} value={active.id} onChange={(event) => setSelectedIndex(days.findIndex((day) => day.id === event.target.value))}>
+          <EasyTSelect label={copy.jumpToDateDestination} labelClassName={styles.compactJumpLabel} value={active.id} onChange={(event) => setSelectedIndex(days.findIndex((day) => day.id === event.target.value))}>
             {days.map((day) => <option key={day.id} value={day.id}>{displayDayDate(day.date, language)} · {copy.day} {day.dayNumber} · {stopForDay(workingTrip, day)?.name ?? day.title}</option>)}
           </EasyTSelect>
           <EasyTButton icon={ChevronRight} iconOnly size="small" variant="secondary" disabled={workspaceView === "calendar" ? currentWeekIndex === calendarWeeks.length - 1 : index === days.length - 1} onClick={() => navigatePeriod(1)}>{workspaceView === "calendar" ? copy.nextWeek : copy.nextDay}</EasyTButton>
@@ -1322,7 +1329,7 @@ export default function TripItineraryWorkspace({
       }} /> : null}
       {workspaceView === "days" ? <nav className={styles.rail} aria-label={copy.dayByDay}>
         <div className={styles.railHeader}><h2>{copy.dayByDay}</h2><span>{days.length} {copy.days}</span></div>
-        <div className={styles.dayList} role="tablist" aria-label={copy.dayByDay}>
+        <div ref={dayListRef} className={styles.dayList} role="tablist" aria-label={copy.dayByDay}>
           {days.map((day, dayIndex) => {
             const dayStop = stopForDay(workingTrip, day);
             const DayIcon = iconForPlanItem(day.type);
@@ -1368,7 +1375,8 @@ export default function TripItineraryWorkspace({
           <div>
             <p><span>{copy.day} {pad(active.dayNumber)}</span><i aria-hidden="true">·</i><time dateTime={active.date}>{displayDayDate(active.date, language)}</time></p>
             <h2>{stop?.name ?? active.title}</h2>
-            <span className={styles.dayRole}>{active.title}</span>
+            {normalized(active.title) !== normalized(stop?.name ?? "") && normalized(active.title) !== normalized(`Explore ${stop?.name ?? ""}`)
+              ? <span className={styles.dayRole}>{active.title}</span> : null}
           </div>
           {dayHero?.sourceLabel ? <MorroviaPhotoCredit className={styles.dayHeroCredit} language={language} credit={dayHero.sourceLabel} photoLabel={dayHero.alt} sourceHref={dayHero.sourceUrl} licenseHref={dayHero.licenseUrl} fullCreditHref={dayHero.fullCreditUrl} /> : null}
         </header>
