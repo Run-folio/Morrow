@@ -1,6 +1,8 @@
 import type { ReactNode } from "react";
 import type { EasyTTrip } from "@/lib/easyt/trip";
 import { deriveTripDateFacts } from "@/lib/easyt/trip-facts";
+import { routeImageCredit } from "@/lib/easyt/route-images";
+import { overviewStopImage, type OverviewPlaceImage } from "@/lib/easyt/trip-overview-imagery";
 import { TripShellCanonicalMutationProvider, TripShellChrome, TripShellIdentityAndActions, TripShellImage, TripShellNavigation, TripShellTripProvider } from "./trip-shell-client";
 import { WorkspaceOrientationProvider } from "./workspace-orientation";
 import styles from "./trip-shell.module.css";
@@ -15,7 +17,17 @@ export function tripShellDuration(startDate: string, endDate: string) {
 
 export default function TripShell({ trip, children, cacheTrip = true, orientationAutoStart = true, workspaceGuideVersionSeen = 0 }: { trip: EasyTTrip; children: ReactNode; cacheTrip?: boolean; orientationAutoStart?: boolean; workspaceGuideVersionSeen?: number }) {
   const routeLabel = [trip.brief.origin, ...trip.stops.map((stop) => stop.name)].filter(Boolean).join(" → ") || "Route to confirm";
-  const image = trip.planItems.find((item) => Boolean(item.image))?.image ?? null;
+  const imagedDay = trip.planItems.find((item) => Boolean(item.image));
+  const image = imagedDay?.image ?? null;
+  const reviewed = image ? routeImageCredit(image) : null;
+  const shellPhoto: OverviewPlaceImage | null = reviewed ?? (image && imagedDay?.sourceUrl ? {
+    src: image,
+    alt: imagedDay.title,
+    sourceUrl: imagedDay.sourceUrl,
+    sourceLabel: "Photo source",
+  } : null);
+  const sharedPhoto = shellPhoto ?? trip.stops.map((stop) => overviewStopImage(trip, stop))
+    .find((photo) => photo?.sourceUrl && routeImageCredit(photo.src)) ?? null;
 
   return (
     <div className={styles.workspace}>
@@ -26,6 +38,7 @@ export default function TripShell({ trip, children, cacheTrip = true, orientatio
             <TripShellImage
               key={image ?? "trip-image-fallback"}
               src={image}
+              mobilePhoto={sharedPhoto}
               alt={`View from ${routeLabel}`}
               routeLabel={routeLabel}
               stopCount={trip.stops.length}
@@ -35,6 +48,13 @@ export default function TripShell({ trip, children, cacheTrip = true, orientatio
           </header>
 
           <TripShellNavigation tripId={trip.id} />
+          {sharedPhoto?.sourceUrl ? <details className={styles.mobilePhotoSources}>
+            <summary>Trip photo source</summary>
+            <div><a href={sharedPhoto.sourceUrl} target="_blank" rel="noreferrer">{sharedPhoto.sourceLabel ?? sharedPhoto.alt}</a>
+              {sharedPhoto.licenseUrl ? <a href={sharedPhoto.licenseUrl} target="_blank" rel="noreferrer">Licence</a> : null}
+              {sharedPhoto.fullCreditUrl ? <a href={sharedPhoto.fullCreditUrl}>Full credits</a> : null}
+            </div>
+          </details> : null}
           </section></TripShellChrome>
 
           <TripShellTripProvider trip={trip} cacheTrip={cacheTrip}>

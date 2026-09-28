@@ -48,6 +48,9 @@
   border-radius: 13px;
   background: var(--morrovia-tint);
 }
+.desktopTripImage { display: contents; }
+.mobileTripImage { display: none; }
+.mobilePhotoSources { display: none; }
 
 .tripImage img {
   position: absolute;
@@ -334,83 +337,97 @@
 @media (max-width: 760px) {
   .resolverNotice { width: calc(100% - 24px); margin-top: 12px; }
   .workspace {
-    width: calc(100% - 24px);
-    padding-top: 12px;
+    width: 100%;
+    padding-top: 0;
+  }
+  .shell {
+    border-right: 0;
+    border-left: 0;
+    border-radius: 0;
+    box-shadow: none;
   }
 
   .tripHeader {
-    grid-template-columns: 92px minmax(0, 1fr);
+    grid-template-columns: 48px minmax(0, 1fr);
     align-items: start;
     min-height: 0;
-    padding: 18px;
+    gap: 0 12px;
+    padding: 10px 16px 8px;
   }
 
   .tripImage {
-    height: 92px;
+    width: 48px;
+    height: 48px;
+    grid-row: 1 / 3;
+    border-radius: 9px;
   }
+  .desktopTripImage { display: none; }
+  .mobileTripImage { display: contents; }
+  .mobilePhotoSources { display: block; padding: 0 16px 4px; color: var(--morrovia-ink-soft); font: var(--morrovia-type-fine-print); }
+  .mobilePhotoSources summary { width: fit-content; cursor: pointer; }
+  .mobilePhotoSources > div { display: flex; flex-wrap: wrap; gap: 4px 12px; padding: 4px 0; }
+  .mobilePhotoSources a { color: var(--morrovia-action); }
 
   .tripImageFallback small {
     display: none;
   }
 
   .tripIdentity h1 {
-    font-size: clamp(24px, 5vw, 31px);
+    font-size: clamp(22px, 5vw, 28px);
   }
 
-  .routeSummary {
-    white-space: normal;
-  }
+  .eyebrow, .routeSummary { display: none; }
 
   .metadata {
-    grid-column: 1 / -1;
-    gap: 8px 14px;
+    gap: 4px 8px;
+    margin-top: 3px;
   }
+  .metadata div:nth-child(n + 3) { display: none; }
+  .metadata dt { display: none; }
 
   .metadata dd {
     font-size: 10px;
   }
 
-  .editAction {
-    grid-column: 1 / -1;
-    justify-self: start;
-  }
+  .editAction { min-height: 44px; padding-inline: 12px; }
 
-  .headerActions { grid-column: 1 / -1; justify-self: start; }
+  .headerActions { grid-column: 2; justify-self: start; margin-top: 4px; }
 
   .subnav {
-    min-height: 60px;
+    min-height: 50px;
     padding-inline: 5px;
     gap: 0;
   }
 
   .subnav a {
-    min-height: 59px;
+    min-height: 44px;
     padding-inline: 4px;
     gap: 7px;
     font-size: 12px;
   }
 
   .content {
-    padding-top: 12px;
+    padding: 12px 8px 0;
   }
 }
 
 @media (max-width: 430px) {
 
   .workspace {
-    width: calc(100% - 16px);
+    width: 100%;
     padding-bottom: var(--morrovia-mobile-dock-offset);
   }
 
   .tripHeader {
-    grid-template-columns: 68px minmax(0, 1fr);
-    gap: 12px;
-    padding: 14px;
+    grid-template-columns: 44px minmax(0, 1fr);
+    gap: 0 10px;
+    padding: 10px 12px 8px;
   }
 
   .tripImage {
-    height: 68px;
-    border-radius: 10px;
+    width: 44px;
+    height: 44px;
+    border-radius: 8px;
   }
 
   .tripImageFallback span {
@@ -419,39 +436,18 @@
     font-size: 12px;
   }
 
-  .eyebrow {
-    margin-bottom: 5px;
-    font-size: 9px;
-  }
-
   .tripIdentity h1 {
-    font-size: clamp(21px, 6.6vw, 27px);
+    font-size: clamp(21px, 6.6vw, 26px);
     line-height: 1.04;
   }
 
-  .routeSummary {
-    grid-column: 1 / -1;
-    margin-top: 6px;
-    font-size: 11px;
-  }
+  .metadata { margin-top: 3px; }
 
-  .metadata {
-    margin-top: 0;
-  }
-
-  .metadata div:first-child {
-    flex-basis: 100%;
-  }
-
-  .editAction {
-    flex: 1;
-  }
-
-  .headerActions { width: 100%; }
+  .headerActions { width: auto; }
 
   .subnav a {
     min-width: 0;
-    min-height: 60px;
+    min-height: 48px;
     flex-direction: column;
     gap: 4px;
     font-size: 10px;

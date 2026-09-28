@@ -215,6 +215,29 @@ export const Mobile320: Story = {
   globals: { viewport: { value: "morrovia320", isRotated: false } },
 };
 
+export const CompactMobile390: Story = {
+  ...Overview,
+  globals: { viewport: { value: "morrovia390", isRotated: false } },
+};
+
+export const CompactMobileNoPhoto: Story = {
+  ...Overview,
+  args: {
+    ...Overview.args,
+    trip: {
+      ...trip,
+      planItems: [],
+      stops: [{ ...trip.stops[0]!, id: "unknown", name: "Unknown stop", country: "", canonicalPlaceId: undefined }],
+    },
+  },
+  globals: { viewport: { value: "morrovia390", isRotated: false } },
+};
+
+export const CompactMobileLongTitle: Story = {
+  ...LongCustomTitle,
+  globals: { viewport: { value: "morrovia390", isRotated: false } },
+};
+
 export const Mobile390LongGeneratedTitle: Story = {
   ...GeneratedLongMultiCountry,
   globals: { viewport: { value: "morrovia390", isRotated: false } },

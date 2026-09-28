@@ -32,6 +32,7 @@ import { renameTripIdentity, tripCustomTitle, tripDisplayTitle } from "@/lib/eas
 import { deriveTripDateFacts } from "@/lib/easyt/trip-facts";
 import { personalRouteHref } from "@/lib/easyt/personal-route";
 import { overnightAccommodationStops } from "@/lib/easyt/accommodation";
+import type { OverviewPlaceImage } from "@/lib/easyt/trip-overview-imagery";
 import { useTripMutationPersistence, type TripMutationPersistence } from "./use-trip-mutation-persistence";
 import styles from "./trip-shell.module.css";
 
@@ -381,18 +382,21 @@ export function TripOverviewEntryBoundary() {
 
 export function TripShellImage({
   src,
+  mobilePhoto,
   alt,
   routeLabel,
   stopCount,
 }: {
   src: string | null;
+  mobilePhoto?: OverviewPlaceImage | null;
   alt: string;
   routeLabel: string;
   stopCount: number;
 }) {
   return (
     <div className={styles.tripImage}>
-      <ResilientImage src={src} alt={alt} fallback={<div className={styles.tripImageFallback} role="img" aria-label={`${routeLabel} trip image unavailable`}><span>{stopCount || 1}</span><small>{routeLabel}</small></div>} />
+      <span className={styles.desktopTripImage}><ResilientImage src={src} alt={alt} fallback={<div className={styles.tripImageFallback} role="img" aria-label={`${routeLabel} trip image unavailable`}><span>{stopCount || 1}</span><small>{routeLabel}</small></div>} /></span>
+      <span className={styles.mobileTripImage}><ResilientImage src={mobilePhoto?.src} alt={mobilePhoto?.alt ?? alt} fallback={<div className={styles.tripImageFallback} role="img" aria-label={`${routeLabel} trip image unavailable`}><span>{stopCount || 1}</span><small>{routeLabel}</small></div>} /></span>
     </div>
   );
 }
