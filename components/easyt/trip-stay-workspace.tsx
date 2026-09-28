@@ -89,6 +89,7 @@ function StayFinderSurface({
     const changed = mutation.mutateTrip(
       (current) => selectMappedStayForStop(current, context.stop.id, place),
       `stay-select-${context.stop.id}-${place.id}`,
+      "stay-select",
     );
     if (changed) setNotice(`${place.name} chosen for ${context.stop.name}.`);
   };

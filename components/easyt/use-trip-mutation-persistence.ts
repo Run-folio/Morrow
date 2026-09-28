@@ -19,6 +19,7 @@ import { cloneItineraryMutationDocument } from "@/lib/easyt/itinerary-mutations"
 import { createTripMutationPersistenceQueue, newestTripMutationCanonical } from "@/lib/easyt/trip-mutation-persistence";
 import { canonicalTripRevisionCanReplace } from "@/lib/easyt/trip-continuity";
 import type { EasyTTrip } from "@/lib/easyt/trip";
+import type { MeaningfulFeedbackAction } from "@/lib/easyt/feedback-survey";
 
 export type TripMutationSaveState = "idle" | "device" | "saving" | "saved" | "error";
 export type TripMutationFailure = "auth" | "conflict" | "recovery" | "network" | null;
@@ -38,6 +39,7 @@ export function useTripMutationPersistence(initialTrip: EasyTTrip, enabled: bool
   const [error, setError] = useState("");
   const [historicalRecovery, setHistoricalRecovery] = useState(false);
   const [pendingKeys, setPendingKeys] = useState<Record<string, number>>({});
+  const [lastAcknowledgedMutation, setLastAcknowledgedMutation] = useState<{ ownerId: string; tripId: string; pendingKey: string; writeId: string; feedbackAction: MeaningfulFeedbackAction } | null>(null);
   const tripRef = useRef(initialTrip);
   const recoveryHandleRef = useRef<TripRecoveryHandle | null>(null);
   const queueRef = useRef<ReturnType<typeof createTripMutationPersistenceQueue> | null>(null);
@@ -69,6 +71,7 @@ export function useTripMutationPersistence(initialTrip: EasyTTrip, enabled: bool
     tripRef.current = canonical;
     setTripState(canonical);
     setSaveState("idle");
+    setLastAcknowledgedMutation(null);
     setFailure(null);
     setConflictTrip(null);
     setError("");
@@ -139,6 +142,7 @@ export function useTripMutationPersistence(initialTrip: EasyTTrip, enabled: bool
   const mutateTrip = useCallback((
     update: (current: EasyTTrip) => EasyTTrip,
     pendingKey: string,
+    feedbackAction?: MeaningfulFeedbackAction,
   ) => {
     if (!enabled) return false;
     if (conflictRef.current) {
@@ -200,6 +204,9 @@ export function useTripMutationPersistence(initialTrip: EasyTTrip, enabled: bool
     void pendingSave
       .then((saved) => {
         if (!cacheSavedTrip(saved, recovery.handle)) return;
+        if (feedbackAction && saved.ownerId === sessionOwnerId && saved.id === next.id) {
+          setLastAcknowledgedMutation({ ownerId: sessionOwnerId, tripId: saved.id, pendingKey, writeId: recovery.handle.writeId, feedbackAction });
+        }
         ownerScopeRef.current = saved.ownerId;
         tripRef.current = saved;
         setTripState(saved);
@@ -374,6 +381,7 @@ export function useTripMutationPersistence(initialTrip: EasyTTrip, enabled: bool
     hasPendingSaves,
     historicalRecovery,
     isPending: (key: string) => Boolean(pendingKeys[key]),
+    lastAcknowledgedMutation,
     mutateTrip,
     openConflictCloudCopy,
     saveState,

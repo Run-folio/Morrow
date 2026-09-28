@@ -93,6 +93,7 @@ import ResilientImage from "@/components/easyt/resilient-image";
 import { useTripMutationPersistence } from "@/components/easyt/use-trip-mutation-persistence";
 import { useOptionalTripShellMutation } from "@/components/easyt/trip-shell-client";
 import RichItineraryDayPlanner from "@/components/easyt/rich-itinerary-day-planner";
+import { ContextualFeedbackSlot } from "./contextual-feedback-controller";
 import ItineraryItemDetail, { type ItineraryItemDetailModel } from "@/components/easyt/itinerary-item-detail";
 import ItineraryActivityIdentity from "@/components/easyt/itinerary-activity-identity";
 import { affiliateDisclosure, MorroviaAffiliateDisclosure, MorroviaAffiliateLink } from "@/components/easyt/affiliate-link";
@@ -954,7 +955,7 @@ export default function TripItineraryWorkspace({
       const result = addItineraryDayNote(current, addFlow.dayNumber, addDraft);
       mutationReason = result.reason ?? "";
       return result.trip;
-    }, `itinerary-day-${addFlow.dayNumber}`);
+    }, `itinerary-day-${addFlow.dayNumber}`, addFlow.kind === "activity" ? "activity-add" : undefined);
     if (!accepted) {
       setAddError(mutationReason || "This change could not be stored safely.");
       return;
@@ -1000,7 +1001,7 @@ export default function TripItineraryWorkspace({
       const result = scheduleItineraryIdeaWithUndo(current, idea, dayId, scheduledPart);
       receipt = result.undo ?? null;
       return result.trip;
-    }, `itinerary-suggestion-${idea.stopId}-${idea.placeId}`);
+    }, `itinerary-suggestion-${idea.stopId}-${idea.placeId}`, "idea-schedule");
     if (!accepted) return false;
     setUndoReceipt(receipt);
     const target = workingTrip.planItems.find((day) => day.id === dayId);
@@ -1208,7 +1209,7 @@ export default function TripItineraryWorkspace({
       mutationReason = result.reason ?? "";
       receipt = result.undo ?? null;
       return result.trip;
-    }, `itinerary-activity-move-${activity.id}`);
+    }, `itinerary-activity-move-${activity.id}`, "activity-move");
     if (!accepted) {
       setMoveError(mutationReason || copy.moveFailed);
       setPlannerError(mutationReason || copy.moveFailed);
@@ -1558,6 +1559,7 @@ export default function TripItineraryWorkspace({
           {!displayNotes.length && !incomingLeg ? <div className={styles.timelineEmpty}><CirclePlus aria-hidden="true" /><p>{copy.noDetails}</p><EasyTButton icon={CirclePlus} size="small" variant="secondary" onClick={() => openAddFlow(active.notes.length)}>{copy.addActivity}</EasyTButton></div> : null}
         </div>
         </details> : null}
+        {presentation === "shell" && workspaceView === "days" ? <ContextualFeedbackSlot workspace="itinerary" entryKey={`itinerary:${active.id}:days`} hasContent={Boolean(dayComposition && (itineraryDayParts.some((part) => dayComposition.planned[part].length > 0) || dayComposition.unslotted.length > 0))} blocked={Boolean(addFlow || editingActivity || removeTarget || moveFlow || plannerDrag || draggedActivity || openMenuId || openSavedPickerId || selectedItemId || selectedRecommendation || plannerError || mutation.saveState === "saving" || mutation.saveState === "error")} /> : null}
       </div>
 
       {hasContextRail ? <aside className={`${styles.contextRail} ${selectedDetail || selectedTransportAgenda || selectedBooking ? styles.contextRailDetail : ""}`} aria-label={selectedDetail || selectedTransportAgenda || selectedBooking ? "Selected itinerary item details" : "Selected day planning context"}>

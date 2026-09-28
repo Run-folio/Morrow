@@ -4,6 +4,7 @@ import { deriveTripDateFacts } from "@/lib/easyt/trip-facts";
 import { routeImageCredit } from "@/lib/easyt/route-images";
 import { overviewStopImage, type OverviewPlaceImage } from "@/lib/easyt/trip-overview-imagery";
 import { TripShellCanonicalMutationProvider, TripShellChrome, TripShellIdentityAndActions, TripShellImage, TripShellNavigation, TripShellTripProvider } from "./trip-shell-client";
+import { ContextualFeedbackProvider } from "./contextual-feedback-controller";
 import { WorkspaceOrientationProvider } from "./workspace-orientation";
 import styles from "./trip-shell.module.css";
 
@@ -33,6 +34,7 @@ export default function TripShell({ trip, children, deviceOnlyNotice, cacheTrip 
     <div className={styles.workspace}>
       <WorkspaceOrientationProvider ownerId={trip.ownerId} accountVersionSeen={workspaceGuideVersionSeen} autoStart={orientationAutoStart}>
         <TripShellCanonicalMutationProvider trip={trip}>
+          <ContextualFeedbackProvider>
           <TripShellChrome tripId={trip.id}><section className={styles.shell} aria-labelledby="trip-shell-title">
           <header className={styles.tripHeader}>
             <TripShellImage
@@ -54,6 +56,7 @@ export default function TripShell({ trip, children, deviceOnlyNotice, cacheTrip 
           <TripShellTripProvider trip={trip} cacheTrip={cacheTrip}>
             <div className={styles.content}>{children}</div>
           </TripShellTripProvider>
+          </ContextualFeedbackProvider>
         </TripShellCanonicalMutationProvider>
       </WorkspaceOrientationProvider>
     </div>

@@ -1,0 +1,37 @@
+import assert from "node:assert/strict";
+import test from "node:test";
+import { readFileSync } from "node:fs";
+import { feedbackSlotOnEntry, type FeedbackSlotState } from "../lib/easyt/feedback-entry-policy.ts";
+
+const idle: FeedbackSlotState = { entryKey: null, visible: false };
+test("eligibility acquired during a workspace entry waits for the next entry", () => {
+  const first = feedbackSlotOnEntry(idle, "itinerary:day-1", false, false);
+  assert.equal(first.visible, false);
+  assert.equal(feedbackSlotOnEntry(first, "itinerary:day-1", true, false).visible, false);
+  assert.equal(feedbackSlotOnEntry(first, "itinerary:day-2", true, false).visible, true);
+});
+test("blocked entry defers and an already rendered invitation stays in place", () => {
+  const blocked = feedbackSlotOnEntry(idle, "overview", true, true);
+  assert.equal(blocked.visible, false);
+  assert.equal(feedbackSlotOnEntry(blocked, "overview", true, false).visible, false);
+  const shown = feedbackSlotOnEntry(blocked, "itinerary:day-1", true, false);
+  assert.equal(shown.visible, true);
+  assert.equal(feedbackSlotOnEntry(shown, "itinerary:day-1", false, true).visible, true);
+});
+test("shared shell owns one controller and workspaces use the same slot", () => {
+  const shell = readFileSync(new URL("../components/easyt/trip-shell.tsx", import.meta.url), "utf8");
+  const itinerary = readFileSync(new URL("../components/easyt/trip-itinerary-workspace.tsx", import.meta.url), "utf8");
+  const overview = readFileSync(new URL("../components/easyt/trip-overview-workspace.tsx", import.meta.url), "utf8");
+  assert.match(shell, /ContextualFeedbackProvider/);
+  assert.match(itinerary, /<ContextualFeedbackSlot workspace="itinerary"/);
+  assert.match(overview, /<ContextualFeedbackSlot workspace="overview"/);
+});
+test("only four reviewed call sites opt in and acknowledgement follows the exact cache", () => {
+  const persistence = readFileSync(new URL("../components/easyt/use-trip-mutation-persistence.ts", import.meta.url), "utf8");
+  const itinerary = readFileSync(new URL("../components/easyt/trip-itinerary-workspace.tsx", import.meta.url), "utf8");
+  const stay = readFileSync(new URL("../components/easyt/trip-stay-workspace.tsx", import.meta.url), "utf8");
+  assert.match(persistence, /if \(!cacheSavedTrip\(saved, recovery\.handle\)\) return;[\s\S]*setLastAcknowledgedMutation/);
+  for (const action of ["activity-add", "idea-schedule", "activity-move"]) assert.match(itinerary, new RegExp(`"${action}"`));
+  assert.match(stay, /"stay-select"/);
+  assert.doesNotMatch(readFileSync(new URL("../components/easyt/trip-overview-workspace.tsx", import.meta.url), "utf8"), /"activity-add"|"idea-schedule"|"activity-move"|"stay-select"/);
+});
