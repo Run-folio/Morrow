@@ -32,6 +32,34 @@ evidence, not design-system authority.
 - AI-assisted states must preserve traveller intent and explain loading,
   recovery and consequential change honestly.
 
+## Interaction principles
+
+Apply these to planning and discovery surfaces through their existing owners;
+they guide real interactions rather than impose an item-count limit.
+
+- **Easy to select.** Custom mobile buttons keep Morrovia's 44 × 44 CSS-pixel
+  target and enough separation to avoid neighbouring actions. Keep Add to day,
+  Back, close and category controls reachable. A sheet must leave the selected
+  place and essential map controls usable. Avoid overlapping custom marker hit
+  areas, provide a keyboard-accessible results/trip-item list, and preserve
+  native place interaction when the map provider supplies it.
+- **Context without memory work.** Show the selected destination, place and
+  intended day clearly. Group decision-critical facts into useful sections and
+  disclose secondary detail. Back to places restores the previous destination,
+  category and results position. Do not treat memory research as a maximum of
+  four visible choices.
+- **Familiar, consistent interactions.** Preserve ordinary map pan, zoom and
+  place inspection. Selecting a place opens one detail owner: a desktop panel
+  or one mobile sheet. Add or Save is a separate deliberate action. Reuse
+  Morrovia controls, focus and dismissal patterns; dragging is never the only
+  way to complete a task.
+- **Clear choices.** Keep one top-level category navigation and one visually
+  primary planning action for the selected place, with useful secondary actions
+  labelled and available. Do not add a second provider finder or category
+  strip, or hide frequent actions to meet an arbitrary option count. Preserve
+  warnings, attribution and the distinction between device save, account save,
+  planned and booked.
+
 ## Foundations and tokens
 
 The canonical foundation is `app/journey/journey-design.css`. Storybook imports

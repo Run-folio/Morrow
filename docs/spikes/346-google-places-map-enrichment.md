@@ -1,5 +1,13 @@
 # #346 Google Places Map enrichment — local vertical slice
 
+> **Historical spike, superseded for #346 implementation.** This report records the
+> completed sidebar-only experiment at `9a97a31fe039fedfe223b639b1c6e4283b4a6eea`.
+> The approved product direction now requires an actual Google canvas, native POI
+> inspection and a permitted planning loop in the expanded Trip Map. See
+> [`2026-09-28-google-maps-connected-place-discovery-design.md`](../superpowers/specs/2026-09-28-google-maps-connected-place-discovery-design.md)
+> for the reviewable replacement technical design. The old decision below is
+> retained as experiment history, not the implementation contract.
+
 Starting point: `f6dd263550d3eccdd9bbf388423d0fa2e6882668`. This is post-MVP work in a separate local branch. It does not alter the MapLibre route canvas or the canonical trip document.
 
 ## Decision and boundary
