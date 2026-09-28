@@ -7,6 +7,7 @@ import { resumableNewTripSnapshot } from "../app/journey/new/new-trip-entry-stat
 import { emptyHomepageInput, selectedStopsHomepageInput } from "./fixtures/homepage-dual-entry.ts";
 
 const source = () => readFileSync(new URL("../app/journey/new/new-trip-starter.tsx", import.meta.url), "utf8");
+const builderSource = () => readFileSync(new URL("../app/journey/new/trip-builder.tsx", import.meta.url), "utf8");
 
 test("New trip restores both inactive mode inputs and canonical repeated occurrences", () => {
   const snapshot = {
@@ -38,4 +39,12 @@ test("New trip persists edited intake without carrying a completed receipt", () 
   assert.match(implementation, /onSubmit\(submitted/);
   assert.doesNotMatch(implementation, /receipt:\s*stored\.receipt/);
   assert.equal(emptyHomepageInput("owner-a").mode, "stops");
+});
+
+test("fresh-only Builder composition has one New trip heading and no duplicate first-place editor", () => {
+  const builder = builderSource();
+  assert.match(builder, /entryKind === "fresh"[\s\S]*<NewTripStarter/);
+  assert.match(builder, /language === "es" \? "Nuevo viaje" : "New trip"/);
+  assert.match(builder, /entryKind !== "fresh"[\s\S]*styles\.firstPlaceEntry/);
+  assert.match(builder, /href="\/journey\/new\/import"/);
 });

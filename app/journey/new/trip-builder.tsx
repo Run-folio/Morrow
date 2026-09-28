@@ -37,7 +37,7 @@ import { defaultTravelProfile, travelProfileFromUnknown, tripInterestsWithProfil
 import { firstTripWorkspaceHref, mapWorkspaceHref, tripWorkspaceHref } from "@/lib/easyt/trip-workspace-links";
 import { createLatestJourneyCaptureRequestGate, journeyCaptureFailureMessage, requestJourneyCapture } from "@/lib/easyt/journey-capture-client";
 import { HOME_TRIP_DRAFT_KEY, homepageHandoffMatchesTrip, homepageHandoffReceiptForOwner, homepageReceiptForProjection, projectHomepageInput, readHomepageInput, homeTripDraftInterestsWereExplicit, homeTripDraftTimingFlexibility, initialHandoffRouteStops, mergeHandoffLocationChoice, preferredHandoffLocationChoice, removeHomeTripDraftIfDurable, resolveHandoffBatch, routableHandoffMentions, tripInterestsFromHomeDraft, type HandoffLocationChoice, type HomeTripDraft, type HomepageInputSnapshot } from "@/lib/easyt/home-trip-handoff";
-import { resolveNewTripEntryState } from "./new-trip-entry-state";
+import { resolveNewTripEntryState, type NewTripEntryState } from "./new-trip-entry-state";
 import { NewTripStarter } from "./new-trip-starter";
 import type { JourneyCaptureResult } from "@/lib/easyt/journey-capture";
 import { builderRouteInputIsReady, canBuildTrip, placeIssueNeedsAttention } from "@/lib/easyt/can-build-trip";
@@ -486,6 +486,7 @@ function TripBuilderDocument() {
   const [createdAt, setCreatedAt] = useState(() => new Date().toISOString());
   const [tripUpdatedAt, setTripUpdatedAt] = useState<string | null>(null);
   const [hydrated, setHydrated] = useState(false);
+  const [entryKind, setEntryKind] = useState<NewTripEntryState["kind"]>("loading");
   const [resumedQuerylessDraft, setResumedQuerylessDraft] = useState(false);
   const [tripUnavailable, setTripUnavailable] = useState(false);
   const [saveState, setSaveState] = useState<"device-saving" | "local" | "cloud-saving" | "cloud" | "error">("device-saving");
@@ -826,6 +827,7 @@ function TripBuilderDocument() {
     recoveryHandleRef.current = null;
     hydratedCanonicalTripRef.current = null;
     setHydrated(false);
+    setEntryKind("loading");
     setResumedQuerylessDraft(false);
     setTripUnavailable(false);
     let active = true;
@@ -894,11 +896,15 @@ function TripBuilderDocument() {
         legacyFocusRef.current = legacyStep === "0" ? "summary" : "timing";
       }
       const tripIdFromUrl = params.get("trip");
+      let hydratedEntryKind: NewTripEntryState["kind"] = tripIdFromUrl ? "explicit-trip"
+        : params.get("homeDraft") === "1" ? "home-handoff"
+        : params.has("inspire") ? "route-handoff" : "fresh";
       const showItinerary = params.get("view") === "itinerary";
       if (!tripIdFromUrl && typeof previousOwnerScope === "string" && previousOwnerScope !== activeOwnerId) {
         if (active) {
           hydratedOwnerScopeRef.current = activeOwnerId;
           setTripUnavailable(true);
+          setEntryKind("unavailable");
           setHydrated(true);
         }
         return;
@@ -931,6 +937,7 @@ function TripBuilderDocument() {
             recoveryHandleRef.current = currentDraft;
             applySaved(currentDraft.trip);
             setResumedQuerylessDraft(true);
+            setEntryKind("current-draft");
             hydratedOwnerScopeRef.current = activeOwnerId;
             setHydrated(true);
             return;
@@ -980,6 +987,7 @@ function TripBuilderDocument() {
           if (entry.kind === "unavailable") {
             homeDraft = null;
             setTripUnavailable(true);
+            hydratedEntryKind = "unavailable";
           } else if (!homeDraft && storedHomepageInput?.receipt) {
             const reservedId = storedHomepageInput.receipt.tripId;
             const existingRecovery = loadTripRecovery(reservedId, activeOwnerId);
@@ -997,7 +1005,8 @@ function TripBuilderDocument() {
               applySaved(existingTrip);
               resumedHomepageTrip = true;
               setArrivedFromHomepage(true);
-            } else setTripUnavailable(true);
+              hydratedEntryKind = "explicit-trip";
+            } else { setTripUnavailable(true); hydratedEntryKind = "unavailable"; }
           }
         }
         if (homeDraft?.homepage) {
@@ -1025,6 +1034,7 @@ function TripBuilderDocument() {
                 removeHomeTripDraftIfDurable(window.localStorage, homeDraft, existingHomepageTrip, true, false);
               }
               resumedHomepageTrip = true;
+              hydratedEntryKind = "explicit-trip";
             }
           }
         }
@@ -1065,6 +1075,7 @@ function TripBuilderDocument() {
       }
       if (active) {
         hydratedOwnerScopeRef.current = activeOwnerId;
+        setEntryKind(hydratedEntryKind);
         setHydrated(true);
       }
     };
@@ -3905,12 +3916,30 @@ function TripBuilderDocument() {
                   ? (language === "es" ? "Dale forma a la ruta." : "Shape the route.")
                   : hasPromptContext || pendingClarificationIds.length || inlineStopBaseMention
                     ? (language === "es" ? "Demos forma a tu ruta." : "Let’s shape your route.")
+                    : entryKind === "fresh"
+                      ? (language === "es" ? "Nuevo viaje" : "New trip")
                     : (language === "es" ? "Empieza tu viaje." : "Start your trip.")}</h1>
                 {(hasRouteSkeleton || hasPromptContext) && <span className={styles.saveState}><MorroviaSaveStatus state={visibleSaveState} label={visibleSaveLabel} /></span>}
               </header>
               {!hasRouteSkeleton && !hasPromptContext && !pendingClarificationIds.length && !inlineStopBaseMention && hydrated && <div className={styles.initialCapture}>
-                <NewTripStarter key={activeBrowserOwnerId ?? "guest"} ownerId={activeBrowserOwnerId} language={language} travelProfile={hasSavedTravelProfile ? travelProfile : null} onSubmit={submitNewTripIntake} />
-                <section className={styles.firstPlaceEntry} aria-label={language === "es" ? "Añade tu primer lugar" : "Add your first place"}>
+                {entryKind === "fresh" ? <NewTripStarter key={activeBrowserOwnerId ?? "guest"} ownerId={activeBrowserOwnerId} language={language} travelProfile={hasSavedTravelProfile ? travelProfile : null} onSubmit={submitNewTripIntake} /> : <MorroviaTripCapture
+                  disabled={stopChecking}
+                  language={language}
+                  value={tripBrief}
+                  onValueChange={(value) => { setTripBrief(value); setTripBriefCaptureError(""); }}
+                  startDate={startDate}
+                  endDate={endDate}
+                  onDatesChange={(range) => updateTravelRange(range.start, range.end)}
+                  travellers={effectiveIntent.travellers}
+                  onTravellersChange={updateTravellers}
+                  interests={effectiveIntent.preferences.interests}
+                  onInterestsChange={(nextInterests) => updateIntentPreferences({ interests: nextInterests })}
+                  travelProfile={hasSavedTravelProfile ? travelProfile : null}
+                  onSubmit={submitInitialTripBrief}
+                  loading={applyingTripBrief}
+                  error={tripBriefCaptureError}
+                />}
+                {entryKind !== "fresh" && <section className={styles.firstPlaceEntry} aria-label={language === "es" ? "Añade tu primer lugar" : "Add your first place"}>
                   <h2>{language === "es" ? "Añade tu primer lugar" : "Add your first place"}</h2>
                   <CanonicalPlaceAutocomplete
                     requireCoordinates
@@ -3927,7 +3956,7 @@ function TripBuilderDocument() {
                   />
                   {stopChecking ? <p role="status">{ui.checking}</p> : null}
                   {stopError ? <p id={stopErrorId} role="alert" className={styles.hintError}>{stopError}</p> : null}
-                </section>
+                </section>}
                 <div className={styles.importTripEntry}><EasyTLinkButton href="/journey/new/import" variant="secondary" size="small" icon={FileSpreadsheet}>Import existing trip</EasyTLinkButton></div>
               </div>}
               {hasSavedTravelProfile && !arrivedFromHomepage && <section className={styles.travelStyle} aria-label={language === "es" ? "Tu estilo de viaje" : "Your travel style"}>
