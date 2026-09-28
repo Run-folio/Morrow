@@ -1298,13 +1298,6 @@ export default function TripItineraryWorkspace({
             if (dayIndex >= 0) setSelectedIndex(dayIndex);
           }}
         />
-        {workingTrip.stops.some((stop) => presentationImages.stopById[stop.id]?.sourceUrl) ? <details className={styles.routePhotoSources}>
-          <summary>{copy.routePhotoSources}</summary>
-          <ul>{[...workingTrip.stops].sort((a, b) => a.order - b.order).map((stop) => {
-            const photo = presentationImages.stopById[stop.id];
-            return photo?.sourceUrl ? <li key={stop.id}><span>{stop.name}:</span> <a href={photo.sourceUrl} target="_blank" rel="noreferrer">{photo.sourceLabel ?? photo.alt}</a>{photo.licenseUrl ? <> · <a href={photo.licenseUrl} target="_blank" rel="noreferrer">{copy.licence}</a></> : null}</li> : null;
-          })}</ul>
-        </details> : null}
       </div>
       {workspaceView === "calendar" ? <ItineraryCalendar
         weeks={calendarWeeks.filter((week) => week.days.some((day) => day?.id === active.id))}
@@ -1783,6 +1776,13 @@ export default function TripItineraryWorkspace({
             <EasyTButton type="submit" icon={CirclePlus} size="small" variant="secondary" loading={dayPending}>{copy.addNote}</EasyTButton>
           </form>
         </details>
+        {workingTrip.stops.some((stop) => presentationImages.stopById[stop.id]?.sourceUrl) ? <details className={`${styles.contextSection} ${styles.routePhotoSources}`}>
+          <summary><span>{copy.routePhotoSources}</span></summary>
+          <ul>{[...workingTrip.stops].sort((a, b) => a.order - b.order).map((stop) => {
+            const photo = presentationImages.stopById[stop.id];
+            return photo?.sourceUrl ? <li key={stop.id}><span>{stop.name}:</span> <a href={photo.sourceUrl} target="_blank" rel="noreferrer">{photo.sourceLabel ?? photo.alt}</a>{photo.licenseUrl ? <> · <a href={photo.licenseUrl} target="_blank" rel="noreferrer">{copy.licence}</a></> : null}{photo.fullCreditUrl && photo.fullCreditUrl !== photo.sourceUrl ? <> · <a href={photo.fullCreditUrl} target="_blank" rel="noreferrer">Full credits</a></> : null}</li> : null;
+          })}</ul>
+        </details> : null}
         </div> : null}
       </aside> : null}
 

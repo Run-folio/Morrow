@@ -44,18 +44,11 @@ export default function TripShell({ trip, children, deviceOnlyNotice, cacheTrip 
               stopCount={trip.stops.length}
             />
 
-            <TripShellIdentityAndActions />
+            <TripShellIdentityAndActions mobilePhoto={sharedPhoto} />
           </header>
 
           {deviceOnlyNotice ? <div className={styles.deviceOnlyNotice}>{deviceOnlyNotice}</div> : null}
           <TripShellNavigation tripId={trip.id} />
-          {sharedPhoto?.sourceUrl ? <details className={styles.mobilePhotoSources}>
-            <summary>Trip photo source</summary>
-            <div><a href={sharedPhoto.sourceUrl} target="_blank" rel="noreferrer">{sharedPhoto.sourceLabel ?? sharedPhoto.alt}</a>
-              {sharedPhoto.licenseUrl ? <a href={sharedPhoto.licenseUrl} target="_blank" rel="noreferrer">Licence</a> : null}
-              {sharedPhoto.fullCreditUrl ? <a href={sharedPhoto.fullCreditUrl}>Full credits</a> : null}
-            </div>
-          </details> : null}
           </section></TripShellChrome>
 
           <TripShellTripProvider trip={trip} cacheTrip={cacheTrip}>

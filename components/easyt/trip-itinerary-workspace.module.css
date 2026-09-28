@@ -20,9 +20,10 @@
   border-bottom: 1px solid var(--morrovia-line);
 }
 
-.routePhotoSources { padding: 0 18px 8px; color: var(--morrovia-ink-soft); font: var(--morrovia-type-fine-print); }
-.routePhotoSources summary { width: fit-content; min-height: 28px; margin-left: auto; cursor: pointer; }
-.routePhotoSources ul { display: flex; flex-wrap: wrap; gap: 4px 16px; margin: 4px 0 0; padding: 0; list-style: none; }
+.routePhotoSources { color: var(--morrovia-ink-soft); font: var(--morrovia-type-fine-print); }
+.routePhotoSources summary { min-height: 44px; cursor: pointer; }
+.routePhotoSources ul { display: grid; gap: 8px; margin: 4px 0 0; padding: 0; list-style: none; }
+.routePhotoSources li { overflow-wrap: anywhere; }
 .routePhotoSources a { color: var(--morrovia-action); }
 
 .subviewBar {
@@ -1947,6 +1948,7 @@
 
 @media (max-width: 640px) {
   .destinationTrack { display: none; }
+  .routePhotoSources { display: none; }
 }
 
 @media (hover: none), (pointer: coarse) {

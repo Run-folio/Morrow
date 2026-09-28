@@ -54,7 +54,7 @@ export function useOptionalTripShellMutation() {
   return useContext(TripShellMutationContext);
 }
 
-export function TripShellIdentityAndActions() {
+export function TripShellIdentityAndActions({ mobilePhoto }: { mobilePhoto: OverviewPlaceImage | null }) {
   const mutation = useTripShellMutation();
   const trip = mutation.trip;
   const routeLabel = [trip.brief.origin, ...trip.stops.map((stop) => stop.name)].filter(Boolean).join(" → ") || "Route to confirm";
@@ -94,6 +94,13 @@ export function TripShellIdentityAndActions() {
         <div><dt><MapPin aria-hidden="true" /><span className={styles.srOnly}>Overnight places</span></dt><dd>{overnightPlaceCount} {overnightPlaceCount === 1 ? "overnight place" : "overnight places"}</dd></div>
         <div><dt><Route aria-hidden="true" /><span className={styles.srOnly}>Transfers</span></dt><dd>{mutation.trip.legs.length} {mutation.trip.legs.length === 1 ? "transfer" : "transfers"}</dd></div>
       </dl>
+      {mobilePhoto?.sourceUrl ? <details className={styles.mobilePhotoSources}>
+        <summary>Trip photo source</summary>
+        <div><a href={mobilePhoto.sourceUrl} target="_blank" rel="noreferrer">{mobilePhoto.sourceLabel ?? mobilePhoto.alt}</a>
+          {mobilePhoto.licenseUrl ? <a href={mobilePhoto.licenseUrl} target="_blank" rel="noreferrer">Licence</a> : null}
+          {mobilePhoto.fullCreditUrl ? <a href={mobilePhoto.fullCreditUrl}>Full credits</a> : null}
+        </div>
+      </details> : null}
     </div>
     <div className={styles.headerActions}>
       {trip.ownerId && mutation.saveState !== "idle" ? <MorroviaSaveStatus state={mutation.saveState} /> : null}

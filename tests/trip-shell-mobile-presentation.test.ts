@@ -8,7 +8,7 @@ const css = readFileSync("components/easyt/trip-shell.module.css", "utf8");
 const resolver = readFileSync("components/easyt/trip-shell-resolver.tsx", "utf8");
 
 test("shared shell keeps one action and navigation owner with valid mobile imagery", () => {
-  assert.match(shell, /<TripShellIdentityAndActions\s*\/>/);
+  assert.match(shell, /<TripShellIdentityAndActions mobilePhoto=\{sharedPhoto\}\s*\/>/);
   assert.match(shell, /<TripShellNavigation tripId=\{trip\.id\}/);
   assert.doesNotMatch(shell, /itineraryPresentationImages/);
   assert.match(shell, /routeImageCredit|overviewStopImage/);

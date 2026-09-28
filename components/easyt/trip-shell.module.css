@@ -368,8 +368,8 @@
   }
   .desktopTripImage { display: none; }
   .mobileTripImage { display: contents; }
-  .mobilePhotoSources { display: block; padding: 0 16px 4px; color: var(--morrovia-ink-soft); font: var(--morrovia-type-fine-print); }
-  .mobilePhotoSources summary { width: fit-content; cursor: pointer; }
+  .mobilePhotoSources { display: block; color: var(--morrovia-ink-soft); font: var(--morrovia-type-fine-print); }
+  .mobilePhotoSources summary { display: flex; align-items: center; width: fit-content; min-height: 44px; cursor: pointer; }
   .mobilePhotoSources > div { display: flex; flex-wrap: wrap; gap: 4px 12px; padding: 4px 0; }
   .mobilePhotoSources a { color: var(--morrovia-action); }
 
