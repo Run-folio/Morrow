@@ -131,7 +131,7 @@ export default function TripShellResolver({
   if (resolution.status === "missing") notFound();
 
   return <div className={styles.resolverStack}>
-    {syncComplete ? <MorroviaStatusBanner className={styles.resolverNotice} tone="success" title="Trip saved to your account" detail="You can continue this same trip on another device." /> : null}
+    {syncComplete ? <MorroviaStatusBanner className={styles.resolverNotice} tone="success" title="Saved to your account" /> : null}
     {syncIssue ? <MorroviaStatusBanner
       className={styles.resolverNotice}
       tone={syncIssue === "failed" ? "warning" : syncIssue === "conflict" ? "warning" : "danger"}

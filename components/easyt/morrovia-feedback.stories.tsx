@@ -138,7 +138,7 @@ function StatusBannerContext() {
     <p className={styles.intro}>Persistent state stays in the page flow. Tone communicates urgency; the copy continues to explain what is safe.</p>
     <div style={{ display: "grid", gap: 12 }}>
       <MorroviaStatusBanner title="Saved on this device" detail="Keep this trip and continue planning on another device." actions={<EasyTButton size="small">Save this trip</EasyTButton>} />
-      <MorroviaStatusBanner tone="success" title="Trip saved to your account" detail="You can continue this same trip on another device." />
+      <MorroviaStatusBanner tone="success" title="Saved to your account" />
       <MorroviaStatusBanner tone="warning" title="Device edits kept safe" detail="You’re viewing the cloud copy. Unsynced edits remain separate until you choose what to do." actions={<><EasyTButton size="small" variant="secondary">Open device copy</EasyTButton><EasyTButton size="small" variant="danger">Discard device copy</EasyTButton></>} />
       <MorroviaStatusBanner tone="danger" title="Your session ended" detail="This trip remains visible and unchanged. Sign in before editing or syncing it." actions={<EasyTButton size="small">Sign in again</EasyTButton>} />
     </div>
@@ -185,7 +185,7 @@ function RenameTripContext() {
     <h2 id="rename-fixture-title">{title}</h2>
     <p className={styles.intro}>Tokyo → Kyoto → Shanghai remains a separate, unchanged route.</p>
     <EasyTButton variant="quiet" onClick={() => setOpen(true)}>Rename trip</EasyTButton>
-    <MorroviaFormDialog open={open} title="Rename this trip" detail="Give the trip a personal name, or leave it blank to use Morrovia’s geographic title. Your route and dates will not change." submitLabel="Save name" onCancel={() => setOpen(false)} onSubmit={() => { setTitle(draft.trim() || "Japan & China"); setOpen(false); }}>
+    <MorroviaFormDialog open={open} title="Rename this trip" detail="Leave blank to use the destination-based name." submitLabel="Save name" onCancel={() => setOpen(false)} onSubmit={() => { setTitle(draft.trim() || "Japan & China"); setOpen(false); }}>
       <EasyTField data-dialog-autofocus="true" label="Trip name" value={draft} onChange={(event) => setDraft(event.target.value)} hint={`${Array.from(draft.trim()).length}/80 characters · optional`} autoComplete="off" />
     </MorroviaFormDialog>
   </section></PrototypeChrome>;
