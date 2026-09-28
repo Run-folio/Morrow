@@ -44,6 +44,15 @@ test("populated day offers one primary Add activity and keeps exact daypart inse
   assert.match(component, /dragActive \? emptyParts\.map\(renderPeriod\) : emptyParts\.filter\(\(part\) => part === addComposerDayPart\)\.map\(renderPeriod\)/);
 });
 
+test("mobile populated plan removes surplus section gap without shrinking activity controls", () => {
+  assert.match(styles, /@media \(max-width: 520px\)[\s\S]*\.planner \{\s*gap: 8px;/);
+  assert.match(styles, /\.activitySelect \{[\s\S]*min-height: 68px/);
+});
+
+test("travel card copy can wrap inside the shared quiet button at mobile widths", () => {
+  assert.match(styles, /\.planner \.transferSelect \{[^}]*min-width: 0;[^}]*white-space: normal;/);
+});
+
 test("the production itinerary owner consumes canonical composition and persists period changes through its mutation path", () => {
   assert.match(workspace, /composeItineraryDay\(workingTrip, active\.id\)/);
   assert.match(workspace, /assignItineraryIdeaDayPart\(current, activity\.id, dayPart\)/);

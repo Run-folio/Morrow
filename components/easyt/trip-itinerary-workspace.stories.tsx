@@ -1078,10 +1078,13 @@ const mexicoLogisticsOnlyTrip: EasyTTrip = {
   },
 };
 
-export const AcceptanceEmptyMexicoNoStay: Story = { args: { trip: mexicoAcceptanceTrip, selectedDayNumber: 2, initialSuggestions: { 2: [] }, initialActivityInventory: { 2: [] }, activityAction: null } };
-export const AcceptancePlannedMexicoStayPhoto: Story = { args: { trip: mexicoPlannedTrip, selectedDayNumber: 2, initialSuggestions: { 2: [] }, initialActivityInventory: { 2: [] }, activityAction: null } };
+const itineraryStoryRoute = (tripId: string) => ({ nextjs: { appDirectory: true, navigation: { pathname: `/journey/${tripId}/itinerary` } } });
+
+export const AcceptanceEmptyMexicoNoStay: Story = { args: { trip: mexicoAcceptanceTrip, selectedDayNumber: 2, initialSuggestions: { 2: [] }, initialActivityInventory: { 2: [] }, activityAction: null }, parameters: itineraryStoryRoute(mexicoAcceptanceTrip.id) };
+export const AcceptancePlannedMexicoStayPhoto: Story = { args: { trip: mexicoPlannedTrip, selectedDayNumber: 2, initialSuggestions: { 2: [] }, initialActivityInventory: { 2: [] }, activityAction: null }, parameters: itineraryStoryRoute(mexicoPlannedTrip.id) };
 export const AcceptanceMixedTiming: Story = {
   ...RichDayPlannerIntegrated,
+  parameters: itineraryStoryRoute("storybook-itinerary-349-mixed-timing"),
   args: {
     ...RichDayPlannerIntegrated.args,
     trip: {
@@ -1097,16 +1100,16 @@ export const AcceptanceMixedTiming: Story = {
     },
   },
 };
-export const AcceptanceTransferStayTransition: Story = RoadResolvedTravelDay;
-export const AcceptanceNoSuggestions: Story = { args: { ...AcceptanceEmptyMexicoNoStay.args, initialSuggestions: { 2: [] }, initialActivityInventory: { 2: [] }, activityAction: null } };
-export const AcceptanceNoPhotography: Story = SelectedDayWithoutPhotography;
-export const AcceptanceLongDestinations: Story = LongContentContainment;
-export const AcceptanceRepeatedTokyo: Story = RepeatedDestinationSecondOccurrence;
-export const AcceptanceDenseDay: Story = DenseDay;
-export const AcceptanceLogisticsOnly: Story = { args: { trip: mexicoLogisticsOnlyTrip, selectedDayNumber: 1, initialSuggestions: { 1: [] }, initialActivityInventory: { 1: [] }, activityAction: null } };
+export const AcceptanceTransferStayTransition: Story = { ...RoadResolvedTravelDay, parameters: itineraryStoryRoute(roadResolvedTrip.id) };
+export const AcceptanceNoSuggestions: Story = { ...AcceptanceEmptyMexicoNoStay, args: { ...AcceptanceEmptyMexicoNoStay.args, initialSuggestions: { 2: [] }, initialActivityInventory: { 2: [] }, activityAction: null } };
+export const AcceptanceNoPhotography: Story = { ...SelectedDayWithoutPhotography, parameters: itineraryStoryRoute("storybook-itinerary-no-photography") };
+export const AcceptanceLongDestinations: Story = { ...LongContentContainment, parameters: itineraryStoryRoute(longContentTrip.id) };
+export const AcceptanceRepeatedTokyo: Story = { ...RepeatedDestinationSecondOccurrence, parameters: itineraryStoryRoute(repeatedTokyoTrip.id) };
+export const AcceptanceDenseDay: Story = { ...DenseDay, parameters: itineraryStoryRoute(edgeCaseTrip.id) };
+export const AcceptanceLogisticsOnly: Story = { args: { trip: mexicoLogisticsOnlyTrip, selectedDayNumber: 1, initialSuggestions: { 1: [] }, initialActivityInventory: { 1: [] }, activityAction: null }, parameters: itineraryStoryRoute(mexicoLogisticsOnlyTrip.id) };
 export const AcceptanceMobile390: Story = { ...AcceptancePlannedMexicoStayPhoto, globals: { viewport: { value: "morrovia390", isRotated: false } } };
 export const AcceptanceMobile430: Story = { ...AcceptancePlannedMexicoStayPhoto, globals: { viewport: { value: "morrovia430", isRotated: false } } };
 export const AcceptanceTablet768: Story = { ...AcceptancePlannedMexicoStayPhoto, globals: { viewport: { value: "morrovia768", isRotated: false } } };
 export const AcceptanceDesktop1024: Story = { ...AcceptancePlannedMexicoStayPhoto, globals: { viewport: { value: "morrovia1024", isRotated: false } } };
 export const AcceptanceDesktop1440: Story = { ...AcceptancePlannedMexicoStayPhoto, globals: { viewport: { value: "morrovia1440", isRotated: false } } };
-export const AcceptanceSpanish: Story = { args: { ...AcceptancePlannedMexicoStayPhoto.args, language: "es" } };
+export const AcceptanceSpanish: Story = { ...AcceptancePlannedMexicoStayPhoto, args: { ...AcceptancePlannedMexicoStayPhoto.args, language: "es" } };

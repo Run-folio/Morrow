@@ -21,6 +21,11 @@ test("Transport is first-class while Itinerary exposes Day by day and Calendar",
   assert.doesNotMatch(itinerary, /value: "transport", label: copy\.transport/);
 });
 
+test("selected-day logistics does not repeat the next destination's transfer", () => {
+  assert.match(itinerary, /const logisticsLegs = itineraryDayLegs\(workingTrip, active\)\.filter\(\(leg\) => dayComposition\?\.transfers\.some\(\(transfer\) => transfer\.id === leg\.id\)\)/);
+  assert.match(itinerary, /logisticsLegs\.map\(\(leg\) => <LogisticsLeg/);
+});
+
 test("Transport derives its agenda and mutates only the shared canonical leg choice", () => {
   assert.match(projection, /trip\.legs\.flatMap/);
   assert.match(projection, /routeEndpointForLeg\(trip, leg, "from"\)/);

@@ -19,6 +19,16 @@ test("mobile day orientation stays compact and scrolls its own rail", () => {
   assert.match(mobile, /\.dayHeader\[data-photo="true"\]\s*\{[^}]*min-height:\s*\d+px/);
 });
 
+test("matched populated acceptance route uses the trip's real Itinerary path", () => {
+  assert.match(stories, /export const AcceptancePlannedMexicoStayPhoto:[\s\S]*parameters: itineraryStoryRoute\(mexicoPlannedTrip\.id\)/);
+  assert.match(stories, /export const AcceptanceMobile390:[\s\S]*\.\.\.AcceptancePlannedMexicoStayPhoto/);
+});
+
+test("320px saved-stay copy wraps inside its existing card and does not widen the page", () => {
+  assert.match(styles, /\.stayContextSelect \{[^}]*min-width: 0;[^}]*white-space: normal;/);
+  assert.match(styles, /\.stayContextSelect > span,[\s\S]*\.stayContextCopy \{[^}]*min-width: 0;[^}]*white-space: normal;/);
+});
+
 test("Calendar stays a pure projection while delegating planning interactions to its canonical parent", () => {
   assert.match(projection, /\[\.\.\.trip\.planItems\]/);
   assert.match(projection, /composeItineraryDay\(trip, day\.id\)/);
@@ -95,7 +105,7 @@ test("mixed timing workspace acceptance includes a saved exact time and an untim
 test("Spanish acceptance renders the production workspace with Spanish copy", () => {
   assert.match(stories, /export const AcceptanceSpanish: Story = \{[\s\S]*?language: "es"/);
   assert.match(itinerary, /routePhotoSources: "Fuentes de fotos de la ruta"/);
-  assert.match(itinerary, /<summary>\{copy\.routePhotoSources\}<\/summary>/);
+  assert.match(itinerary, /<summary><span>\{copy\.routePhotoSources\}<\/span><\/summary>/);
   assert.match(itinerary, /\{copy\.day\} \{pad\(active\.dayNumber\)\}/);
   assert.match(itinerary, /label=\{copy\.jumpToDateDestination\}/);
 });

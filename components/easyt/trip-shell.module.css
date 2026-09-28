@@ -433,7 +433,7 @@
   .tripImage {
     width: 44px;
     height: 44px;
-    border-radius: 8px;
+    border-radius: calc(var(--morrovia-control-radius) - 2px);
   }
 
   .tripImageFallback span {

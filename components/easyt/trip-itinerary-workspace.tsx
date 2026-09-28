@@ -806,7 +806,7 @@ export default function TripItineraryWorkspace({
   const dayNotes = workingTrip.brief.dayNotes?.[active.dayNumber] ?? [];
   const customActivities = workingTrip.brief.customActivities?.[active.dayNumber] ?? [];
   const recommendations = workingTrip.recommendations.filter((recommendation) => recommendation.status === "open" && recommendation.affectedDays.includes(active.dayNumber));
-  const logisticsLegs = itineraryDayLegs(workingTrip, active);
+  const logisticsLegs = itineraryDayLegs(workingTrip, active).filter((leg) => dayComposition?.transfers.some((transfer) => transfer.id === leg.id));
   const transportAgenda = itineraryTransportAgenda(workingTrip);
   const selectedTransportAgenda = selectedItemId?.startsWith("leg-")
     ? transportAgenda.find((item) => item.leg.id === selectedItemId.slice(4)) ?? null

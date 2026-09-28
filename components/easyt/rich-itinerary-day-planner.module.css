@@ -184,8 +184,9 @@
   outline-offset: 2px;
 }
 
-.transferSelect {
+.planner .transferSelect {
   width: 100%;
+  min-width: 0;
   padding: 0;
   display: block;
   color: inherit;
@@ -670,7 +671,7 @@
 
 @media (max-width: 520px) {
   .planner {
-    gap: 14px;
+    gap: 8px;
   }
 
   .header {
