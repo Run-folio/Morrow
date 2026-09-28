@@ -1,70 +1,153 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { MessageCircleHeart, X } from "lucide-react";
-
-import styles from "@/app/journey/account.module.css";
+import { EasyTButton, EasyTTextArea } from "./easyt-controls";
+import { beginFeedbackAttempt, completeFeedbackAttempt, failFeedbackAttempt, reconcileFeedbackAttempt, type FeedbackResponseFlow } from "@/lib/easyt/feedback-response-flow";
+import styles from "./contextual-feedback.module.css";
 
 const faces = ["😞", "🙁", "😐", "🙂", "😍"];
-const storageKey = "easyt-dashboard-feedback-dismissed";
+const initialFlow: FeedbackResponseFlow = { phase: "open", rating: null, comment: "", attempt: null };
+const draftKey = (ownerId: string) => `morrovia:contextual-feedback:draft:${encodeURIComponent(ownerId)}`;
+type Props = { ownerId: string; onDismiss(): void; onSubmitted(): void };
 
-export function EasyTFeedback() {
-  const [dismissed, setDismissed] = useState(false);
-  const [rating, setRating] = useState<number | null>(null);
-  const [comment, setComment] = useState("");
-  const [state, setState] = useState<"idle" | "sending" | "sent" | "error">("idle");
+export function EasyTFeedback({ ownerId, onDismiss, onSubmitted }: Props) {
+  const [open, setOpen] = useState(false);
+  const [flow, setFlow] = useState<FeedbackResponseFlow>(initialFlow);
+  const [message, setMessage] = useState("");
   const [language, setLanguage] = useState<"en" | "es">("en");
+  const [dismissed, setDismissed] = useState(false);
+  const questionRef = useRef<HTMLHeadingElement>(null);
+  const live = useRef(true);
+  const sending = useRef(false);
+  const flowRef = useRef(flow);
+  const formId = useId();
+  flowRef.current = flow;
 
   useEffect(() => {
-    setDismissed(localStorage.getItem(storageKey) === "1");
+    live.current = true;
     setLanguage(localStorage.getItem("easyt-language") === "es" ? "es" : "en");
     const updateLanguage = (event: Event) => setLanguage((event as CustomEvent<"en" | "es">).detail);
     window.addEventListener("easyt-language-change", updateLanguage);
-    return () => window.removeEventListener("easyt-language-change", updateLanguage);
-  }, []);
-
-  const copy = language === "es"
-    ? { close: "Cerrar", aria: "Compartir comentarios", thanks: "Gracias.", sent: "Tus comentarios ayudan a mejorar Morrovia.", title: "¿Cómo se siente Morrovia?", subtitle: "Valoración rápida, nota opcional.", rate: "Valora Morrovia del 1 al 5", placeholder: "¿Qué podríamos mejorar? (opcional)", send: "Enviar comentarios", sending: "Enviando…", error: "Guardado en este dispositivo; inténtalo de nuevo más tarde." }
-    : { close: "Dismiss feedback", aria: "Share feedback", thanks: "Thank you.", sent: "Your feedback helps shape Morrovia.", title: "How’s Morrovia feeling?", subtitle: "Quick rating, optional note.", rate: "Rate Morrovia from 1 to 5", placeholder: "Anything we could improve? (optional)", send: "Send feedback", sending: "Sending…", error: "Saved privately on this device. Try again later." };
-
-  const close = () => {
-    localStorage.setItem(storageKey, "1");
-    setDismissed(true);
-  };
-
-  const send = async () => {
-    if (!rating) return;
-    setState("sending");
     try {
-      const response = await fetch("/api/easyt/feedback", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ rating, comment }),
-      });
-      if (!response.ok) throw new Error();
-      setState("sent");
-      window.setTimeout(close, 1600);
+      const raw = localStorage.getItem(draftKey(ownerId));
+      if (raw) {
+        const saved: unknown = JSON.parse(raw);
+        if (saved && typeof saved === "object") {
+          const candidate = saved as Partial<FeedbackResponseFlow>;
+          if (candidate.phase === "uncertain" && candidate.attempt && typeof candidate.attempt.attemptId === "string") {
+            setFlow({ phase: "uncertain", rating: candidate.attempt.rating, comment: candidate.attempt.comment, attempt: candidate.attempt });
+            setOpen(true);
+          } else if (candidate.rating && candidate.rating >= 1 && candidate.rating <= 5) {
+            setFlow({ ...initialFlow, rating: candidate.rating, comment: typeof candidate.comment === "string" ? candidate.comment : "" });
+          }
+        }
+      }
+    } catch { /* An unreadable local draft is ignored. */ }
+    return () => { live.current = false; window.removeEventListener("easyt-language-change", updateLanguage); };
+  }, [ownerId]);
+
+  useEffect(() => {
+    if (flow.phase === "sent" || flow.phase === "already-submitted") localStorage.removeItem(draftKey(ownerId));
+    else if (flow.phase === "sending" || flow.phase === "uncertain" || flow.rating || flow.comment)
+      localStorage.setItem(draftKey(ownerId), JSON.stringify(flow.phase === "sending" ? { ...flow, phase: "uncertain" } : flow));
+  }, [flow, ownerId]);
+
+  const copy = language === "es" ? {
+    invite: "Compartir comentarios", close: "Cerrar comentarios", question: "¿Cómo se siente Morrovia?", rate: "Valora Morrovia del 1 al 5",
+    note: "¿Qué podríamos mejorar?", send: "Enviar comentarios", retry: "Intentar de nuevo", sending: "Enviando…",
+    uncertainty: "No pudimos confirmar el envío. Inténtalo de nuevo sin cambiar tu respuesta.", error: "No se pudo enviar. Puedes intentarlo de nuevo.",
+    thanks: "Gracias por tus comentarios.", already: "Esta encuesta ya recibió una respuesta de tu cuenta.", checking: "Comprobando la respuesta anterior…",
+  } : {
+    invite: "Share feedback", close: "Dismiss feedback", question: "How’s Morrovia feeling?", rate: "Rate Morrovia from 1 to 5",
+    note: "Anything we could improve?", send: "Send feedback", retry: "Try again", sending: "Sending…",
+    uncertainty: "We couldn’t confirm the response. Try again with the same answer.", error: "Feedback could not be sent. You can try again.",
+    thanks: "Thank you for your feedback.", already: "This survey already has a response from your account.", checking: "Checking the earlier response…",
+  };
+  const dismiss = () => { setDismissed(true); onDismiss(); };
+  const edit = (change: (current: FeedbackResponseFlow) => FeedbackResponseFlow) => {
+    if (flowRef.current.phase === "uncertain" || flowRef.current.phase === "sending") return;
+    setFlow(change);
+    setMessage("");
+  };
+  const reconcile = async (changeAnswer: boolean): Promise<"submitted" | "clear" | "unknown"> => {
+    sending.current = true;
+    setMessage(copy.checking);
+    try {
+      const response = await fetch("/api/easyt/feedback/survey", { cache: "no-store" });
+      if (!response.ok) throw new Error("Unable to reconcile");
+      const status: { submitted?: boolean } = await response.json();
+      if (!live.current) return "unknown";
+      if (status.submitted) { setFlow(reconcileFeedbackAttempt(flowRef.current, true)); onSubmitted(); return "submitted"; }
+      if (changeAnswer) setFlow(reconcileFeedbackAttempt(flowRef.current, false));
+      setMessage("");
+      return "clear";
     } catch {
-      localStorage.setItem("easyt-dashboard-feedback-draft", JSON.stringify({ rating, comment }));
-      setState("error");
+      if (live.current) setMessage(copy.uncertainty);
+      return "unknown";
+    } finally { sending.current = false; }
+  };
+  const send = async () => {
+    if (sending.current || !flowRef.current.rating) return;
+    let next = flowRef.current;
+    if (next.phase === "uncertain") {
+      if (await reconcile(false) !== "clear") return;
     }
+    next = beginFeedbackAttempt(next, next.attempt?.attemptId ?? crypto.randomUUID());
+    if (next.phase !== "sending" || !next.attempt) return;
+    sending.current = true;
+    setFlow(next);
+    setMessage("");
+    try {
+      const response = await fetch("/api/easyt/feedback/survey", {
+        method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(next.attempt),
+      });
+      if (!live.current) return;
+      if (response.status === 409 || response.status === 400) {
+        setFlow(failFeedbackAttempt(next, false)); setMessage(copy.error); return;
+      }
+      if (!response.ok) throw new Error("Unconfirmed submission");
+      const body: { result?: "created" | "replayed" | "already-submitted" | "payload-conflict" } = await response.json();
+      if (!live.current) return;
+      if (body.result === "created" || body.result === "replayed" || body.result === "already-submitted") {
+        setFlow(completeFeedbackAttempt(next, body.result)); onSubmitted();
+      } else { setFlow(failFeedbackAttempt(next, true)); setMessage(copy.uncertainty); }
+    } catch {
+      if (live.current) { setFlow(failFeedbackAttempt(next, true)); setMessage(copy.uncertainty); }
+    } finally { sending.current = false; }
   };
 
   if (dismissed) return null;
-  return <aside className={styles.feedback} aria-label={copy.aria}>
-    <button className={styles.feedbackClose} type="button" onClick={close} aria-label={copy.close}><X size={15} /></button>
-    {state === "sent" ? <><strong>{copy.thanks}</strong><p>{copy.sent}</p></> : <>
-      <span className={styles.feedbackIcon}><MessageCircleHeart size={17} /></span>
-      <strong>{copy.title}</strong>
-      <p>{copy.subtitle}</p>
-      <div className={styles.feedbackFaces} role="radiogroup" aria-label={copy.rate}>
-        {faces.map((face, index) => <button key={face} type="button" className={rating === index + 1 ? styles.feedbackFaceActive : ""} onClick={() => { setRating(index + 1); setState("idle"); }} aria-label={`${index + 1} out of 5`} aria-pressed={rating === index + 1}>{face}</button>)}
+  return <aside className={styles.feedback} aria-label={copy.invite}>
+    <EasyTButton className={styles.close} variant="quiet" icon={X} iconOnly onClick={dismiss}>{copy.close}</EasyTButton>
+    {flow.phase === "sent" || flow.phase === "already-submitted" ? <p role="status">{flow.phase === "sent" ? copy.thanks : copy.already}</p> : !open ? (
+      <EasyTButton variant="secondary" icon={MessageCircleHeart} onClick={() => { setOpen(true); requestAnimationFrame(() => questionRef.current?.focus()); }}>{copy.invite}</EasyTButton>
+    ) : <div className={styles.form}>
+      <h3 ref={questionRef} tabIndex={-1} id={`${formId}-question`}>{copy.question}</h3>
+      <div className={styles.faces} role="radiogroup" aria-labelledby={`${formId}-question`}>
+        {faces.map((face, index) => <button key={index} type="button" role="radio" aria-checked={flow.rating === index + 1}
+          tabIndex={flow.rating === index + 1 || (!flow.rating && index === 0) ? 0 : -1}
+          aria-label={`${index + 1} out of 5`} className={flow.rating === index + 1 ? styles.selectedFace : styles.face}
+          disabled={flow.phase === "sending" || flow.phase === "uncertain"}
+          onKeyDown={(event) => {
+            if (!["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown"].includes(event.key)) return;
+            event.preventDefault();
+            const next = (index + (event.key === "ArrowRight" || event.key === "ArrowDown" ? 1 : 4)) % faces.length;
+            edit((current) => ({ ...current, rating: next + 1, phase: "open" }));
+            (event.currentTarget.parentElement?.children[next] as HTMLElement | undefined)?.focus();
+          }}
+          onClick={() => edit((current) => ({ ...current, rating: index + 1, phase: "open" }))}>{face}</button>)}
       </div>
-      {rating ? <>
-        <textarea value={comment} onChange={(event) => setComment(event.target.value)} placeholder={copy.placeholder} maxLength={1000} />
-        <button type="button" className={styles.feedbackSend} onClick={send} disabled={state === "sending"}>{state === "sending" ? copy.sending : copy.send}</button>
-      </> : null}
-      {state === "error" ? <small>{copy.error}</small> : null}
-    </>}
+      <EasyTTextArea label={copy.note} optional value={flow.comment} maxLength={1000} rows={3}
+        disabled={flow.phase === "sending" || flow.phase === "uncertain"}
+        onChange={(event) => edit((current) => ({ ...current, comment: event.target.value, phase: "open" }))} />
+      <EasyTButton onClick={() => void send()} disabled={!flow.rating || sending.current} loading={flow.phase === "sending"}>
+        {flow.phase === "uncertain" || flow.phase === "failed" ? copy.retry : flow.phase === "sending" ? copy.sending : copy.send}
+      </EasyTButton>
+      {flow.phase === "uncertain" ? <EasyTButton variant="quiet" onClick={() => { if (!sending.current) void reconcile(true); }}>
+        {language === "es" ? "Cambiar respuesta" : "Edit answer"}
+      </EasyTButton> : null}
+      {message ? <p role="status">{message}</p> : null}
+    </div>}
   </aside>;
 }

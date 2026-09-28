@@ -35,3 +35,24 @@ test("only four reviewed call sites opt in and acknowledgement follows the exact
   assert.match(stay, /"stay-select"/);
   assert.doesNotMatch(readFileSync(new URL("../components/easyt/trip-overview-workspace.tsx", import.meta.url), "utf8"), /"activity-add"|"idea-schedule"|"activity-move"|"stay-select"/);
 });
+test("feedback is contextual, deliberate and absent from fixed Dashboard placement", () => {
+  const component = readFileSync(new URL("../components/easyt/easyt-feedback.tsx", import.meta.url), "utf8");
+  const dashboard = readFileSync(new URL("../app/journey/dashboard/dashboard-client.tsx", import.meta.url), "utf8");
+  const controller = readFileSync(new URL("../components/easyt/contextual-feedback-controller.tsx", import.meta.url), "utf8");
+  assert.doesNotMatch(dashboard, /<EasyTFeedback\s*\/>/);
+  assert.match(controller, /<EasyTFeedback/);
+  assert.match(component, /Send feedback/);
+  assert.match(component, /Share feedback/);
+  assert.match(component, /Try again/);
+  assert.match(component, /requestAnimationFrame\(\(\) => questionRef\.current\?\.focus\(\)\)/);
+  assert.match(component, /role="radiogroup"/);
+  assert.match(component, /aria-checked=\{flow\.rating === index \+ 1\}/);
+  assert.match(component, /maxLength=\{1000\}/);
+  assert.match(component, /sending\.current/);
+  assert.match(component, /reconcile\(true\)/);
+  assert.doesNotMatch(component, /easyt-dashboard-feedback-dismissed|easyt-dashboard-feedback-draft/);
+  const css = readFileSync(new URL("../components/easyt/contextual-feedback.module.css", import.meta.url), "utf8");
+  assert.match(css, /min-width: 44px/);
+  assert.match(css, /min-height: 44px/);
+  assert.doesNotMatch(css, /position: fixed/);
+});

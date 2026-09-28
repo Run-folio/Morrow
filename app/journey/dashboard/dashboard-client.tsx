@@ -19,7 +19,6 @@ import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { authClient } from "@/lib/auth-client";
 import type { EasyTTrip, TripStatus } from "@/lib/easyt/trip";
-import { EasyTFeedback } from "@/components/easyt/easyt-feedback";
 import { EasyTButton, EasyTField, EasyTLinkButton, EasyTSelect, EasyTSegmentedControl, EasyTTextArea } from "@/components/easyt/easyt-controls";
 import { MorroviaBriefNotice, MorroviaConfirmationDialog, MorroviaStatusBanner } from "@/components/easyt/morrovia-feedback";
 import ResilientImage from "@/components/easyt/resilient-image";
@@ -597,7 +596,6 @@ export default function DashboardClient({ trips, stamps, ownerId }: { trips: Eas
         onCancel={() => { if (!working) { setPendingDelete(null); setDeleteError(""); } }}
         onConfirm={() => { if (pendingDelete) void remove(pendingDelete); }}
       />
-      <EasyTFeedback />
     </>
   );
 }

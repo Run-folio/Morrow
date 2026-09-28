@@ -1,0 +1,31 @@
+.feedback {
+  position: relative;
+  box-sizing: border-box;
+  width: 100%;
+  margin-top: 16px;
+  padding: 16px;
+  border: 1px solid var(--morrovia-line);
+  border-radius: var(--morrovia-control-radius);
+  background: var(--morrovia-paper);
+  color: var(--morrovia-ink);
+  font-family: var(--morrovia-ui);
+}
+.close { position: absolute; top: 8px; right: 8px; min-width: 44px; min-height: 44px; }
+.form { display: grid; gap: 12px; padding-right: 20px; }
+.form h3 { margin: 0; font: var(--morrovia-type-body); font-weight: 700; }
+.form h3:focus { outline: none; }
+.faces { display: flex; flex-wrap: wrap; gap: 8px; }
+.face, .selectedFace {
+  display: grid;
+  min-width: 44px;
+  min-height: 44px;
+  place-items: center;
+  border: 1px solid var(--morrovia-line);
+  border-radius: var(--morrovia-control-radius);
+  background: var(--morrovia-paper);
+  cursor: pointer;
+  font-size: 22px;
+}
+.selectedFace { border-color: var(--morrovia-action); background: var(--morrovia-lilac); }
+.face:focus-visible, .selectedFace:focus-visible { outline: none; box-shadow: var(--morrovia-focus-shadow); }
+.feedback p { margin: 0; font: var(--morrovia-type-supporting-body); color: var(--morrovia-ink-soft); }
