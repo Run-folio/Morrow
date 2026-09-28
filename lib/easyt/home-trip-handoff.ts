@@ -339,6 +339,22 @@ export function homepageCompletedReceiptIsUnchanged(stored: StoredHomepageInput)
     || receipt.semanticInputFingerprint === homepageSemanticInputFingerprint(stored.snapshot)));
 }
 
+/** Construct the existing receipt for either producer of a Builder projection. */
+export function homepageReceiptForProjection(
+  snapshot: HomepageInputSnapshot,
+  draft: HomeTripDraft,
+  tripId: string,
+): HomepageHandoffReceipt {
+  if (!draft.handoffId || draft.homepage?.ownerId !== snapshot.ownerId || !tripId.trim()) {
+    throw new Error("Homepage projection has no matching owner or reserved identity");
+  }
+  return {
+    version: 1, ownerId: snapshot.ownerId, handoffId: draft.handoffId,
+    inputFingerprint: homepageSubmissionFingerprint(draft),
+    semanticInputFingerprint: homepageSemanticInputFingerprint(snapshot), tripId,
+  };
+}
+
 /** Fingerprint only projected planning meaning. UI state, revisions and handoff
  * bookkeeping cannot create another canonical trip. */
 export function homepageSubmissionFingerprint(draft: HomeTripDraft) {

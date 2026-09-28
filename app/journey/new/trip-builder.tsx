@@ -36,8 +36,10 @@ import { routePlannerPayload } from "@/lib/easyt/public-route-handoff";
 import { defaultTravelProfile, travelProfileFromUnknown, tripInterestsWithProfileDefaults, type TravelProfile } from "@/lib/easyt/travel-profile";
 import { firstTripWorkspaceHref, mapWorkspaceHref, tripWorkspaceHref } from "@/lib/easyt/trip-workspace-links";
 import { createLatestJourneyCaptureRequestGate, journeyCaptureFailureMessage, requestJourneyCapture } from "@/lib/easyt/journey-capture-client";
-import { HOME_TRIP_DRAFT_KEY, homepageHandoffMatchesTrip, homepageHandoffReceiptForOwner, readHomepageInput, homeTripDraftInterestsWereExplicit, homeTripDraftTimingFlexibility, initialHandoffRouteStops, mergeHandoffLocationChoice, preferredHandoffLocationChoice, removeHomeTripDraftIfDurable, resolveHandoffBatch, routableHandoffMentions, tripInterestsFromHomeDraft, type HandoffLocationChoice, type HomeTripDraft } from "@/lib/easyt/home-trip-handoff";
+import { HOME_TRIP_DRAFT_KEY, homepageHandoffMatchesTrip, homepageHandoffReceiptForOwner, homepageReceiptForProjection, projectHomepageInput, readHomepageInput, homeTripDraftInterestsWereExplicit, homeTripDraftTimingFlexibility, initialHandoffRouteStops, mergeHandoffLocationChoice, preferredHandoffLocationChoice, removeHomeTripDraftIfDurable, resolveHandoffBatch, routableHandoffMentions, tripInterestsFromHomeDraft, type HandoffLocationChoice, type HomeTripDraft, type HomepageInputSnapshot } from "@/lib/easyt/home-trip-handoff";
 import { resolveNewTripEntryState } from "./new-trip-entry-state";
+import { NewTripStarter } from "./new-trip-starter";
+import type { JourneyCaptureResult } from "@/lib/easyt/journey-capture";
 import { builderRouteInputIsReady, canBuildTrip, placeIssueNeedsAttention } from "@/lib/easyt/can-build-trip";
 import { validateFinalPlan } from "@/lib/easyt/plan-validator";
 import { transferImpactFromMetadata } from "@/lib/easyt/transfer-impact";
@@ -677,6 +679,145 @@ function TripBuilderDocument() {
     setRememberedOwnerId(null);
   }, [browserOffline, expiredSessionOwnerId, session, sessionError, sessionPending]);
 
+  const applyNewTripIntake = (draft: HomeTripDraft, isCurrent: () => boolean, fromHomepage = false) => {
+    if (fromHomepage) {
+      homeDraftRef.current = draft;
+      setArrivedFromHomepage(true);
+    }
+    setHasPromptContext(true);
+    setSourceRouteKey(draft.sourceRouteKey);
+    setCuratedRoute(draft.curatedRoute);
+    if (draft.decisionSelections) setDecisionSelections(draft.decisionSelections);
+    if (draft.origin) replaceJourneyOrigin({
+      name: draft.origin,
+      coordinates: draft.originCoordinates,
+      canonicalPlaceId: draft.originCanonicalPlaceId,
+      country: draft.originCountry,
+      providerId: draft.originProviderId,
+    });
+    const capturedJourneyEnd = normalizeJourneyEnd(draft.journeyEnd
+      ?? journeyEndFromCapturedIntent(draft.brief ?? "", draft.locationMentions ?? draft.structuredBrief?.placeMentions ?? []));
+    setJourneyEnd(capturedJourneyEnd);
+    setJourneyEndInput(capturedJourneyEnd.mode === "explicit" ? capturedJourneyEnd.place.name : "");
+    // `destination` is retained for drafts created before prompt-first
+    // routing. New homepage drafts carry the complete verified route.
+    const draftStops = draft.destinations?.length ? draft.destinations : draft.destination ? [draft.destination] : [];
+    if (draft.routeHints) setRouteHints(draft.routeHints);
+    if (draft.nightAllocations) setDayAllocations(draft.nightAllocations);
+    if (draft.startDate) setStartDate(draft.startDate);
+    if (draft.endDate) setEndDate(draft.endDate);
+    if (!draft.datesExplicit && draft.durationDays) {
+      const durationEnd = new Date(`${today}T00:00:00`);
+      durationEnd.setDate(durationEnd.getDate() + Math.max(1, draft.durationDays) - 1);
+      setEndDate(iso(durationEnd));
+    }
+    if (draft.datesExplicit) setDatesManuallyEdited(true);
+    if (draft.travellersExplicit) setTravellersManuallyEdited(true);
+    if (homeTripDraftInterestsWereExplicit(draft)) setInterestsManuallyEdited(true);
+    if (draft.budget) setBudget(draft.budget);
+    setBudgetPreference(draft.budgetPreference);
+    const regions = draft.regions?.filter(Boolean) ?? [];
+    setTripBrief(draft.brief ?? (regions.length ? regions.join(", ") : ""));
+    const homeStructuredBrief = draft.structuredBrief ?? extractStructuredTripBrief(draft.brief ?? "");
+    const structuredTransportModes = homeStructuredBrief.transportPreferences
+      .map((preference) => preference.value)
+      .filter((mode): mode is TripTransportMode => mode === "flight" || mode === "train" || mode === "drive");
+    const structuredInterests = normalizeTripInterests(homeStructuredBrief.interests.map((interest) => interest.value));
+    const handoffInterests = tripInterestsFromHomeDraft(draft, structuredInterests);
+    const structuredAvoidDriving = homeStructuredBrief.hardConstraints.some((constraint) => constraint.type === "no-driving");
+    setTripIntent((current) => ({
+      ...current,
+      timing: {
+        ...current.timing,
+        flexibility: homeTripDraftTimingFlexibility(draft!, current.timing.flexibility),
+        durationDays: draft?.durationDays ?? current.timing.durationDays,
+      },
+      travellers: Math.max(1, Math.min(12, Math.round(
+        (draft?.travellersExplicit ? draft.travellers : homeStructuredBrief.travellers?.value ?? draft?.travellers)
+          ?? current.travellers,
+      ))),
+      preferences: {
+        ...current.preferences,
+        transportModes: structuredTransportModes.length ? structuredTransportModes : current.preferences.transportModes,
+        pace: homeStructuredBrief.pace?.value ?? current.preferences.pace,
+        interests: handoffInterests.length || homeTripDraftInterestsWereExplicit(draft)
+          ? handoffInterests
+          : current.preferences.interests,
+      },
+      hardConstraints: { ...current.hardConstraints, avoidDriving: structuredAvoidDriving || current.hardConstraints.avoidDriving },
+      journeyEnd: capturedJourneyEnd,
+    }));
+    setCapturedStructuredBrief(homeStructuredBrief);
+    setPlanningSuggestions(draft.planningSuggestions ?? []);
+    setPlaceSelections(homeStructuredBrief.placeSelections ?? []);
+    setCompletedPlanningAreaMentionIds(completedPlanningAreasForBrief(homeStructuredBrief));
+    setRemovedPlaceMentionIds(homeStructuredBrief.removedPlaceMentionIds ?? []);
+    const locationMentions = homeStructuredBrief.placeMentions ?? draft.locationMentions ?? [];
+    const homepageOccurrenceByMentionId = new Map(
+      Object.entries(draft.homepage?.occurrenceMentionIds ?? {})
+        .map(([occurrenceId, mentionId]) => [mentionId, occurrenceId]),
+    );
+    const initialStops = initialHandoffRouteStops(locationMentions, draftStops, capturedJourneyEnd);
+    if (initialStops.length) setStops(initialStops);
+    if (locationMentions.length) {
+      setIntakeMentions(locationMentions);
+      const routableMentions = routableHandoffMentions(locationMentions);
+      // Canonical handoffs are already valid route input. Provider
+      // lookups may enrich them, but their timing must not suppress the
+      // itinerary or create a browser-dependent false validation block.
+      setResolvingLocations(Boolean(routableMentions.length) && !builderRouteInputIsReady(initialStops));
+      // Let the builder render immediately. These requests enrich the
+      // route after arrival instead of holding the homepage transition.
+      void (async () => {
+        const outcomes = await resolveHandoffBatch(routableMentions, async (mention, signal) => {
+            const country = mention.parentCountries.length === 1 ? mention.parentCountries[0] : undefined;
+            const response = await fetch(`/api/journey-geocode?place=${encodeURIComponent(mention.canonicalName)}&candidates=1${country ? `&country=${encodeURIComponent(country)}` : ""}`, { signal });
+            const payload = await response.json() as { candidates?: LocationChoice[] };
+            return { mention, choices: payload.candidates ?? [] };
+        });
+        const selections = outcomes.map((outcome) => outcome.value ?? { mention: outcome.item, choices: [] });
+        if (!isCurrent()) return;
+        const uncertain = selections.filter(({ choices }) => new Set(choices.map((choice) => choice.country.toLocaleLowerCase())).size > 1);
+        const uncertainKeys = new Set(uncertain.map(({ mention }) => mention.mentionId));
+        const automatic = selections.filter(({ mention }) => !uncertainKeys.has(mention.mentionId));
+        for (const { mention, choices } of automatic) {
+          const chosen = preferredHandoffLocationChoice(mention, choices);
+          if (!chosen) continue;
+          if (isOriginMention(mention)) {
+            if (draft?.origin) continue;
+            // Provider enrichment supplies coordinates and locality, but
+            // must not rename the canonical intent captured from the prompt.
+            replaceJourneyOrigin({
+              name: mention.canonicalName,
+              coordinates: chosen.coordinates,
+              canonicalPlaceId: mention.canonicalPlaceId ?? chosen.canonicalPlaceId ?? (chosen.providerId ? `open-world:${chosen.providerId}` : undefined),
+              country: chosen.country,
+              providerId: chosen.providerId,
+            });
+          }
+          else {
+            const homepageOccurrenceId = homepageOccurrenceByMentionId.get(mention.mentionId);
+            setStops((current) => mergeHandoffLocationChoice(current, mention, chosen, homepageOccurrenceId));
+          }
+        }
+        setLocationChoices(uncertain);
+        setResolvingLocations(false);
+      })();
+    }
+  };
+
+  const submitNewTripIntake = async (snapshot: HomepageInputSnapshot, capture?: JourneyCaptureResult) => {
+    if (!hydrated || !canUseHydratedTripScope(hydratedOwnerScopeRef.current, activeBrowserOwnerId)
+      || snapshot.ownerId !== activeBrowserOwnerId || hasRouteSkeleton || hasPromptContext
+      || (snapshot.mode === "describe" && !capture)) throw new Error("New trip intake is no longer current");
+    const handoffId = `new-intake-${crypto.randomUUID()}`;
+    const projected = projectHomepageInput({ snapshot, capture, profile: hasSavedTravelProfile ? travelProfile : null, handoffId });
+    if (!projected.ok) throw new Error("New trip intake needs review");
+    const receipt = homepageReceiptForProjection(snapshot, projected.draft, tripId);
+    window.localStorage.setItem(homepageInputStorageKey(snapshot.ownerId), JSON.stringify({ snapshot, receipt }));
+    applyNewTripIntake(projected.draft, () => canUseHydratedTripScope(hydratedOwnerScopeRef.current, snapshot.ownerId));
+  };
+
   useEffect(() => {
     if (sessionPending || !browserContextReady) return;
     if (canUseHydratedTripScope(hydratedOwnerScopeRef.current, activeBrowserOwnerId)) return;
@@ -888,128 +1029,7 @@ function TripBuilderDocument() {
           }
         }
         if (!resumedHomepageTrip && (homeDraft?.brief || homeDraft?.origin || homeDraft?.destination || homeDraft?.destinations?.length || homeDraft?.locationMentions?.length)) {
-          homeDraftRef.current = homeDraft;
-          setHasPromptContext(true);
-          setArrivedFromHomepage(true);
-          setSourceRouteKey(homeDraft.sourceRouteKey);
-          setCuratedRoute(homeDraft.curatedRoute);
-          if (homeDraft.decisionSelections) setDecisionSelections(homeDraft.decisionSelections);
-          if (homeDraft.origin) replaceJourneyOrigin({
-            name: homeDraft.origin,
-            coordinates: homeDraft.originCoordinates,
-            canonicalPlaceId: homeDraft.originCanonicalPlaceId,
-            country: homeDraft.originCountry,
-            providerId: homeDraft.originProviderId,
-          });
-          const capturedJourneyEnd = normalizeJourneyEnd(homeDraft.journeyEnd
-            ?? journeyEndFromCapturedIntent(homeDraft.brief ?? "", homeDraft.locationMentions ?? homeDraft.structuredBrief?.placeMentions ?? []));
-          setJourneyEnd(capturedJourneyEnd);
-          setJourneyEndInput(capturedJourneyEnd.mode === "explicit" ? capturedJourneyEnd.place.name : "");
-          // `destination` is retained for drafts created before prompt-first
-          // routing. New homepage drafts carry the complete verified route.
-          const draftStops = homeDraft.destinations?.length ? homeDraft.destinations : homeDraft.destination ? [homeDraft.destination] : [];
-          if (homeDraft.routeHints) setRouteHints(homeDraft.routeHints);
-          if (homeDraft.nightAllocations) setDayAllocations(homeDraft.nightAllocations);
-          if (homeDraft.startDate) setStartDate(homeDraft.startDate);
-          if (homeDraft.endDate) setEndDate(homeDraft.endDate);
-          if (!homeDraft.datesExplicit && homeDraft.durationDays) {
-            const durationEnd = new Date(`${today}T00:00:00`);
-            durationEnd.setDate(durationEnd.getDate() + Math.max(1, homeDraft.durationDays) - 1);
-            setEndDate(iso(durationEnd));
-          }
-          if (homeDraft.datesExplicit) setDatesManuallyEdited(true);
-          if (homeDraft.travellersExplicit) setTravellersManuallyEdited(true);
-          if (homeTripDraftInterestsWereExplicit(homeDraft)) setInterestsManuallyEdited(true);
-          if (homeDraft.budget) setBudget(homeDraft.budget);
-          setBudgetPreference(homeDraft.budgetPreference);
-          const regions = homeDraft.regions?.filter(Boolean) ?? [];
-          setTripBrief(homeDraft.brief ?? (regions.length ? regions.join(", ") : ""));
-          const homeStructuredBrief = homeDraft.structuredBrief ?? extractStructuredTripBrief(homeDraft.brief ?? "");
-          const structuredTransportModes = homeStructuredBrief.transportPreferences
-            .map((preference) => preference.value)
-            .filter((mode): mode is TripTransportMode => mode === "flight" || mode === "train" || mode === "drive");
-          const structuredInterests = normalizeTripInterests(homeStructuredBrief.interests.map((interest) => interest.value));
-          const handoffInterests = tripInterestsFromHomeDraft(homeDraft, structuredInterests);
-          const structuredAvoidDriving = homeStructuredBrief.hardConstraints.some((constraint) => constraint.type === "no-driving");
-          setTripIntent((current) => ({
-            ...current,
-            timing: {
-              ...current.timing,
-              flexibility: homeTripDraftTimingFlexibility(homeDraft!, current.timing.flexibility),
-              durationDays: homeDraft?.durationDays ?? current.timing.durationDays,
-            },
-            travellers: Math.max(1, Math.min(12, Math.round(
-              (homeDraft?.travellersExplicit ? homeDraft.travellers : homeStructuredBrief.travellers?.value ?? homeDraft?.travellers)
-                ?? current.travellers,
-            ))),
-            preferences: {
-              ...current.preferences,
-              transportModes: structuredTransportModes.length ? structuredTransportModes : current.preferences.transportModes,
-              pace: homeStructuredBrief.pace?.value ?? current.preferences.pace,
-              interests: handoffInterests.length || homeTripDraftInterestsWereExplicit(homeDraft)
-                ? handoffInterests
-                : current.preferences.interests,
-            },
-            hardConstraints: { ...current.hardConstraints, avoidDriving: structuredAvoidDriving || current.hardConstraints.avoidDriving },
-            journeyEnd: capturedJourneyEnd,
-          }));
-          setCapturedStructuredBrief(homeStructuredBrief);
-          setPlanningSuggestions(homeDraft.planningSuggestions ?? []);
-          setPlaceSelections(homeStructuredBrief.placeSelections ?? []);
-          setCompletedPlanningAreaMentionIds(completedPlanningAreasForBrief(homeStructuredBrief));
-          setRemovedPlaceMentionIds(homeStructuredBrief.removedPlaceMentionIds ?? []);
-          const locationMentions = homeStructuredBrief.placeMentions ?? homeDraft.locationMentions ?? [];
-          const homepageOccurrenceByMentionId = new Map(
-            Object.entries(homeDraft.homepage?.occurrenceMentionIds ?? {})
-              .map(([occurrenceId, mentionId]) => [mentionId, occurrenceId]),
-          );
-          const initialStops = initialHandoffRouteStops(locationMentions, draftStops, capturedJourneyEnd);
-          if (initialStops.length) setStops(initialStops);
-          if (locationMentions.length) {
-            setIntakeMentions(locationMentions);
-            const routableMentions = routableHandoffMentions(locationMentions);
-            // Canonical handoffs are already valid route input. Provider
-            // lookups may enrich them, but their timing must not suppress the
-            // itinerary or create a browser-dependent false validation block.
-            setResolvingLocations(Boolean(routableMentions.length) && !builderRouteInputIsReady(initialStops));
-            // Let the builder render immediately. These requests enrich the
-            // route after arrival instead of holding the homepage transition.
-            void (async () => {
-              const outcomes = await resolveHandoffBatch(routableMentions, async (mention, signal) => {
-                  const country = mention.parentCountries.length === 1 ? mention.parentCountries[0] : undefined;
-                  const response = await fetch(`/api/journey-geocode?place=${encodeURIComponent(mention.canonicalName)}&candidates=1${country ? `&country=${encodeURIComponent(country)}` : ""}`, { signal });
-                  const payload = await response.json() as { candidates?: LocationChoice[] };
-                  return { mention, choices: payload.candidates ?? [] };
-              });
-              const selections = outcomes.map((outcome) => outcome.value ?? { mention: outcome.item, choices: [] });
-              if (!active) return;
-              const uncertain = selections.filter(({ choices }) => new Set(choices.map((choice) => choice.country.toLocaleLowerCase())).size > 1);
-              const uncertainKeys = new Set(uncertain.map(({ mention }) => mention.mentionId));
-              const automatic = selections.filter(({ mention }) => !uncertainKeys.has(mention.mentionId));
-              for (const { mention, choices } of automatic) {
-                const chosen = preferredHandoffLocationChoice(mention, choices);
-                if (!chosen) continue;
-                if (isOriginMention(mention)) {
-                  if (homeDraft?.origin) continue;
-                  // Provider enrichment supplies coordinates and locality, but
-                  // must not rename the canonical intent captured from the prompt.
-                  replaceJourneyOrigin({
-                    name: mention.canonicalName,
-                    coordinates: chosen.coordinates,
-                    canonicalPlaceId: mention.canonicalPlaceId ?? chosen.canonicalPlaceId ?? (chosen.providerId ? `open-world:${chosen.providerId}` : undefined),
-                    country: chosen.country,
-                    providerId: chosen.providerId,
-                  });
-                }
-                else {
-                  const homepageOccurrenceId = homepageOccurrenceByMentionId.get(mention.mentionId);
-                  setStops((current) => mergeHandoffLocationChoice(current, mention, chosen, homepageOccurrenceId));
-                }
-              }
-              setLocationChoices(uncertain);
-              setResolvingLocations(false);
-            })();
-          }
+          applyNewTripIntake(homeDraft, () => active, true);
         } else {
           const seed = inspirationByKey[params.get("inspire") ?? ""];
           if (seed) {
@@ -3889,23 +3909,7 @@ function TripBuilderDocument() {
                 {(hasRouteSkeleton || hasPromptContext) && <span className={styles.saveState}><MorroviaSaveStatus state={visibleSaveState} label={visibleSaveLabel} /></span>}
               </header>
               {!hasRouteSkeleton && !hasPromptContext && !pendingClarificationIds.length && !inlineStopBaseMention && hydrated && <div className={styles.initialCapture}>
-                <MorroviaTripCapture
-                disabled={stopChecking}
-                language={language}
-                value={tripBrief}
-                onValueChange={(value) => { setTripBrief(value); setTripBriefCaptureError(""); }}
-                startDate={startDate}
-                endDate={endDate}
-                onDatesChange={(range) => updateTravelRange(range.start, range.end)}
-                travellers={effectiveIntent.travellers}
-                onTravellersChange={updateTravellers}
-                interests={effectiveIntent.preferences.interests}
-                onInterestsChange={(nextInterests) => updateIntentPreferences({ interests: nextInterests })}
-                travelProfile={hasSavedTravelProfile ? travelProfile : null}
-                onSubmit={submitInitialTripBrief}
-                loading={applyingTripBrief}
-                error={tripBriefCaptureError}
-              />
+                <NewTripStarter key={activeBrowserOwnerId ?? "guest"} ownerId={activeBrowserOwnerId} language={language} travelProfile={hasSavedTravelProfile ? travelProfile : null} onSubmit={submitNewTripIntake} />
                 <section className={styles.firstPlaceEntry} aria-label={language === "es" ? "Añade tu primer lugar" : "Add your first place"}>
                   <h2>{language === "es" ? "Añade tu primer lugar" : "Add your first place"}</h2>
                   <CanonicalPlaceAutocomplete

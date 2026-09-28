@@ -15,14 +15,12 @@ import {
   HOME_TRIP_DRAFT_KEY,
   homepageCompletedReceiptIsUnchanged,
   homepageHandoffReceiptForOwner,
-  homepageSemanticInputFingerprint,
+  homepageReceiptForProjection,
   homepageSnapshotForDescribePrompt,
-  homepageSubmissionFingerprint,
   projectHomepageInput,
   readHomepageInput,
   reusableHomepageReceipt,
   type HomepageDestinationEntry,
-  type HomepageHandoffReceipt,
   type HomepageInputSnapshot,
   type StoredHomepageInput,
 } from "@/lib/easyt/home-trip-handoff";
@@ -222,11 +220,7 @@ export default function HomeTripStarter() {
           projected = projectHomepageInput({ snapshot: submitted, capture, profile: travelProfile, handoffId });
           if (!projected.ok) return;
         }
-        receipt = {
-          version: 1, ownerId: submittedOwner, handoffId: projected.draft.handoffId!,
-          inputFingerprint: homepageSubmissionFingerprint(projected.draft),
-          semanticInputFingerprint: homepageSemanticInputFingerprint(submitted), tripId: generatedId("trip"),
-        } satisfies HomepageHandoffReceipt;
+        receipt = homepageReceiptForProjection(submitted, projected.draft, generatedId("trip"));
       }
       const stored: StoredHomepageInput = { snapshot: submitted, receipt };
       const draft = { ...projected.draft, homepage: { ...projected.draft.homepage!, receipt } };

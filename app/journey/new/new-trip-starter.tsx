@@ -13,6 +13,7 @@ import type { JourneyCaptureResult } from "@/lib/easyt/journey-capture";
 import type { JourneyEndSelection } from "@/lib/easyt/trip";
 import type { TripInterest } from "@/lib/easyt/trip-interest";
 import { resumableNewTripSnapshot } from "./new-trip-entry-state";
+import { createLatestJourneyCaptureRequestGate, journeyCaptureFailureMessage, requestJourneyCapture } from "@/lib/easyt/journey-capture-client";
 
 function emptyInput(ownerId: string | null): HomepageInputSnapshot {
   return {
@@ -34,6 +35,8 @@ export function NewTripStarter({ ownerId, language, travelProfile, onSubmit }: {
 }) {
   const [snapshot, setSnapshot] = useState<HomepageInputSnapshot>(() => emptyInput(ownerId));
   const snapshotRef = useRef(snapshot);
+  const captureRequestGateRef = useRef(createLatestJourneyCaptureRequestGate());
+  const submitInFlightRef = useRef(false);
   const nextEntryId = useRef(2);
   const [ready, setReady] = useState(false);
   const [startInput, setStartInput] = useState("");
@@ -44,6 +47,8 @@ export function NewTripStarter({ ownerId, language, travelProfile, onSubmit }: {
   const [error, setError] = useState("");
 
   useEffect(() => {
+    captureRequestGateRef.current.cancel();
+    submitInFlightRef.current = false;
     let next = emptyInput(ownerId);
     try {
       const stored = readHomepageInput(JSON.parse(window.localStorage.getItem(homepageInputStorageKey(ownerId)) ?? "null"), ownerId);
@@ -67,8 +72,12 @@ export function NewTripStarter({ ownerId, language, travelProfile, onSubmit }: {
     setEndInput(next.journeyEnd.state === "selected" && next.journeyEnd.value.mode === "explicit" ? next.journeyEnd.value.place.name : "");
     setReady(true);
   }, [ownerId, language]);
+  useEffect(() => () => captureRequestGateRef.current.cancel(), []);
 
   const update = (change: (current: HomepageInputSnapshot) => HomepageInputSnapshot) => {
+    captureRequestGateRef.current.cancel();
+    submitInFlightRef.current = false;
+    setLoading(false);
     const next = { ...change(snapshotRef.current), revision: snapshotRef.current.revision + 1 };
     snapshotRef.current = next;
     setSnapshot(next);
@@ -77,12 +86,31 @@ export function NewTripStarter({ ownerId, language, travelProfile, onSubmit }: {
     catch { setError(language === "es" ? "No pudimos guardar estos cambios en este dispositivo." : "We couldn't save these changes on this device."); }
   };
   const submit = async () => {
-    if (loading || snapshotRef.current.ownerId !== ownerId) return;
+    if (submitInFlightRef.current || snapshotRef.current.ownerId !== ownerId) return;
+    submitInFlightRef.current = true;
     const submitted = snapshotRef.current;
+    const request = captureRequestGateRef.current.begin();
+    const isCurrent = () => request.isCurrent()
+      && snapshotRef.current.revision === submitted.revision
+      && snapshotRef.current.ownerId === submitted.ownerId
+      && snapshotRef.current.mode === submitted.mode;
     setLoading(true);
-    try { await onSubmit(submitted); }
-    catch { setError(language === "es" ? "No pudimos iniciar este viaje. Inténtalo de nuevo." : "We couldn't start this trip. Try again."); }
-    finally { setLoading(false); }
+    let responseReceived = false;
+    try {
+      const capture = submitted.mode === "describe"
+        ? await requestJourneyCapture(submitted.prompt, { signal: request.signal, onResponse: () => { responseReceived = true; } })
+        : undefined;
+      if (!isCurrent()) return;
+      await onSubmit(submitted, capture);
+    } catch {
+      if (isCurrent()) setError(journeyCaptureFailureMessage(responseReceived ? "interpretation" : "network", language));
+    } finally {
+      if (isCurrent()) {
+        submitInFlightRef.current = false;
+        setLoading(false);
+      }
+      request.finish();
+    }
   };
   if (!ready || snapshot.ownerId !== ownerId) return null;
 
