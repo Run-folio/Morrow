@@ -74,16 +74,6 @@ const tourItem: ActivityInventoryItem = {
   provenance: { kind: "live_provider_search", provider: "viator", checkedAt: "2026-09-12T00:00:00.000Z" },
 };
 const tour = exploreResultForActivity(cusco, tourItem, trip);
-const organicDayTrip = exploreResultForPlace(cusco, {
-  id: "day-trip-ollantaytambo",
-  title: "Ollantaytambo",
-  area: "Ollantaytambo, Peru",
-  type: "Day trip",
-  tags: ["Day trip", "day-trips"],
-  description: "A verified nearby town 42 km from Cusco. Check current transport options before adding it to a day.",
-  coordinates: [-72.264, -13.258],
-  qualityScore: 7,
-});
 const results = [qorikancha, market, ...mapped, restaurant, tour];
 const longContentResult = {
   ...mapped[0]!,
@@ -270,14 +260,15 @@ export const Restaurant: Story = { args: { initialResults: [restaurant], initial
 export const MustSee: Story = { args: { initialCategory: "must-see" } };
 export const Food: Story = { args: { initialCategory: "food" } };
 export const Tours: Story = { args: { initialCategory: "tours" } };
-export const OrganicDayTripsWithoutViator: Story = { args: { initialResults: [organicDayTrip], initialCategory: "day-trips", initialProviderState: "degraded" } };
+export const LegacyDayTripsSelectionNormalizesToTours: Story = { args: { trip: tokyoTrip, initialResults: [tokyoOrganicDayTrip, tokyoCommercialDayTrip], initialDestinationId: "tokyo", initialCategory: "day-trips" } };
 export const TokyoForYou: Story = { args: { trip: tokyoTrip, initialResults: [tokyoLandmark, ...tokyoOutdoors], initialDestinationId: "tokyo" } };
 export const TokyoMustSee: Story = { args: { trip: tokyoTrip, initialResults: [tokyoLandmark, ...tokyoOutdoors], initialDestinationId: "tokyo", initialCategory: "must-see" } };
 export const TokyoFoodRichCandidates: Story = { args: { trip: tokyoTrip, initialResults: tokyoRestaurants, initialDestinationId: "tokyo", initialCategory: "food" } };
 export const TokyoToursAvailable: Story = { args: { trip: tokyoTrip, initialResults: [tokyoTour], initialDestinationId: "tokyo", initialCategory: "tours" } };
 export const TokyoToursProviderUnavailable: Story = { args: { trip: tokyoTrip, initialResults: [], initialDestinationId: "tokyo", initialCategory: "tours", initialProviderState: "degraded" } };
-export const TokyoDayTripsOrganicAndCommercial: Story = { args: { trip: tokyoTrip, initialResults: [tokyoOrganicDayTrip, tokyoCommercialDayTrip], initialDestinationId: "tokyo", initialCategory: "day-trips" } };
-export const TokyoOutdoorsSemantic: Story = { args: { trip: tokyoTrip, initialResults: tokyoOutdoors, initialDestinationId: "tokyo", initialCategory: "outdoors" } };
+export const TokyoToursDayTripProvider: Story = { args: { trip: tokyoTrip, initialResults: [tokyoOrganicDayTrip, tokyoCommercialDayTrip], initialDestinationId: "tokyo", initialCategory: "tours" } };
+export const TokyoOutdoorsForYou: Story = { args: { trip: tokyoTrip, initialResults: tokyoOutdoors, initialDestinationId: "tokyo", initialCategory: "for-you" } };
+export const LegacyOutdoorsSelectionNormalizesToForYou: Story = { args: { trip: tokyoTrip, initialResults: tokyoOutdoors, initialDestinationId: "tokyo", initialCategory: "outdoors" } };
 export const SparseDestination: Story = { args: { trip: tokyoTrip, initialResults: [], initialDestinationId: "tokyo", initialCategory: "must-see", initialProviderState: "degraded" } };
 export const TokyoNoImageRestaurants: Story = { args: { trip: tokyoTrip, initialResults: tokyoRestaurants.slice(0, 6), initialDestinationId: "tokyo", initialCategory: "food" } };
 export const ScheduledResult: Story = { args: { initialSelectedResultId: qorikancha.identity } };
@@ -295,12 +286,13 @@ export const KeyboardFocusStable: Story = { play: ({ canvasElement }) => { canva
 export const MissingImage: Story = { args: { initialResults: [mapped[2]!] } };
 export const RejectedImageFallback: Story = { args: { initialResults: [rejectedImageResult] } };
 export const ProviderDegraded: Story = { args: { initialProviderState: "degraded" } };
-export const EmptyCategory: Story = { args: { initialCategory: "outdoors", initialResults: [restaurant] } };
+export const EmptyCategory: Story = { args: { initialCategory: "food", initialResults: [mapped[0]!] } };
 export const Mobile390Results: Story = { globals: { viewport: { value: "morrovia390", isRotated: false } } };
 export const Mobile390HorizontalStops: Story = { args: { initialDestinationId: "arequipa" }, globals: { viewport: { value: "morrovia390", isRotated: false } } };
 export const Mobile430HorizontalStops: Story = { args: { initialDestinationId: "sacred-valley" }, globals: { viewport: { value: "morrovia430", isRotated: false } } };
 export const Mobile430SelectedDetail: Story = { args: { initialSelectedResultId: mapped[0]!.identity }, globals: { viewport: { value: "morrovia430", isRotated: false } } };
-export const Mobile390HorizontalCategories: Story = { args: { initialCategory: "day-trips" }, globals: { viewport: { value: "morrovia390", isRotated: false } } };
+export const Mobile390HorizontalCategories: Story = { args: { initialCategory: "for-you" }, globals: { viewport: { value: "morrovia390", isRotated: false } } };
+export const Mobile430HorizontalCategories: Story = { args: { initialCategory: "for-you" }, globals: { viewport: { value: "morrovia430", isRotated: false } } };
 export const Mobile390OrganicCard: Story = { args: { initialResults: [mapped[0]!] }, globals: { viewport: { value: "morrovia390", isRotated: false } } };
 export const Mobile430CommercialCard: Story = { args: { initialResults: [tour] }, globals: { viewport: { value: "morrovia430", isRotated: false } } };
 export const Mobile430LongTitle: Story = { args: { initialDestinationId: "sacred-valley", initialResults: [mapped[1]!] }, globals: { viewport: { value: "morrovia430", isRotated: false } } };

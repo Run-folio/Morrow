@@ -17,6 +17,23 @@ const explorePage = readFileSync(new URL("../app/journey/[tripId]/explore/page.t
 const design = readFileSync(new URL("../app/journey/journey-design.css", import.meta.url), "utf8");
 const appNavigationStyles = readFileSync(new URL("../app/journey/easyt-navigation.module.css", import.meta.url), "utf8");
 
+test("Explore renders only the four surface categories and normalizes stale initial state before source selection", () => {
+  assert.match(workspace, /explorePrimaryCategories\.map\(\(item\) =>/);
+  assert.match(workspace, /normalizeExploreCategory\(initialCategory\)/);
+  assert.match(workspace, /exploreSourcePlan\(normalizedInitialCategory, trip\)/);
+  assert.doesNotMatch(workspace, /exploreCategories\.map\(\(item\) =>/);
+});
+
+test("Explore Storybook keeps legacy selectors as regression fixtures and presents four-category acceptance", () => {
+  assert.match(stories, /export const LegacyDayTripsSelectionNormalizesToTours/);
+  assert.match(stories, /export const LegacyOutdoorsSelectionNormalizesToForYou/);
+  assert.match(stories, /export const TokyoToursDayTripProvider/);
+  assert.match(stories, /export const TokyoOutdoorsForYou/);
+  assert.match(stories, /Mobile390HorizontalCategories:[\s\S]*initialCategory: "for-you"/);
+  assert.match(stories, /Mobile430HorizontalCategories:[\s\S]*initialCategory: "for-you"/);
+  assert.doesNotMatch(stories, /export const TokyoDayTripsOrganicAndCommercial|export const TokyoOutdoorsSemantic/);
+});
+
 test("Explore is a canonical TripShell workspace without a second navigation owner", () => {
   assert.match(navigation, /id: "explore"[\s\S]*suffix: "\/explore"/);
   assert.match(navigation, /remainder\.startsWith\("\/explore"\)/);
@@ -163,6 +180,6 @@ test("responsive cards avoid horizontal overflow and retain 44px touch controls"
 
 test("Storybook covers destination, interaction, inventory and responsive Explore acceptance states", () => {
   for (const story of [
-    "DefaultExplore", "FreeTimeRail", "LongRoute", "AllTripForYou", "SelectedRomeStop", "SelectedAthensStop", "MixedOrganicAndViator", "OrganicReadyCommercialLoading", "PartialProviderFailureNoBanner", "BlockingProviderFailure", "OrganicAttraction", "EntryTicket", "Tours", "Restaurant", "ScheduledResult", "SavedResult", "HoverContentStable", "KeyboardFocusStable", "MissingImage", "RejectedImageFallback", "EmptyCategory", "ProviderDegraded", "SelectedDetail", "DeepScrollStickyDetail", "Mobile390HorizontalStops", "Mobile430HorizontalStops", "Mobile390HorizontalCategories", "Mobile390OrganicCard", "Mobile430CommercialCard", "Mobile430SelectedDetail", "Mobile390ScheduledState", "Mobile430SavedState", "TokyoForYou", "TokyoMustSee", "TokyoFoodRichCandidates", "TokyoToursAvailable", "TokyoToursProviderUnavailable", "TokyoDayTripsOrganicAndCommercial", "TokyoOutdoorsSemantic", "SparseDestination", "TokyoNoImageRestaurants", "OrganicDayTripsWithoutViator",
+    "DefaultExplore", "FreeTimeRail", "LongRoute", "AllTripForYou", "SelectedRomeStop", "SelectedAthensStop", "MixedOrganicAndViator", "OrganicReadyCommercialLoading", "PartialProviderFailureNoBanner", "BlockingProviderFailure", "OrganicAttraction", "EntryTicket", "Tours", "Restaurant", "ScheduledResult", "SavedResult", "HoverContentStable", "KeyboardFocusStable", "MissingImage", "RejectedImageFallback", "EmptyCategory", "ProviderDegraded", "SelectedDetail", "DeepScrollStickyDetail", "Mobile390HorizontalStops", "Mobile430HorizontalStops", "Mobile390HorizontalCategories", "Mobile430HorizontalCategories", "Mobile390OrganicCard", "Mobile430CommercialCard", "Mobile430SelectedDetail", "Mobile390ScheduledState", "Mobile430SavedState", "TokyoForYou", "TokyoMustSee", "TokyoFoodRichCandidates", "TokyoToursAvailable", "TokyoToursProviderUnavailable", "TokyoToursDayTripProvider", "TokyoOutdoorsForYou", "LegacyDayTripsSelectionNormalizesToTours", "LegacyOutdoorsSelectionNormalizesToForYou", "SparseDestination", "TokyoNoImageRestaurants",
   ]) assert.match(stories, new RegExp(`export const ${story}`), story);
 });
