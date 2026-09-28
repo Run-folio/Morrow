@@ -33,6 +33,17 @@ test("populated day shows occupied periods and saved unslotted rows before secon
   assert.match(styles, /\.secondaryPeriods > summary \{[^}]*min-height: 44px/);
 });
 
+test("populated day offers one primary Add activity and keeps exact daypart insertion secondary", () => {
+  assert.match(component, /hasVisibleActivities \? <div className=\{styles\.populatedActions\}>/);
+  assert.match(component, /onAddOpen\?\.\(null\)/);
+  assert.match(component, /const showPeriodAdd = !hasVisibleActivities \|\| addComposerDayPart === part/);
+  assert.match(component, /showPeriodAdd \? <div className=\{styles\.addHere\}>/);
+  assert.match(component, /className=\{styles\.partInsertActions\}/);
+  assert.match(component, /itineraryDayParts\.map\(\(part\) => <EasyTButton/);
+  assert.match(component, /onClick=\{\(\) => onAddOpen\?\.\(part\)\}/);
+  assert.match(component, /dragActive \? emptyParts\.map\(renderPeriod\) : emptyParts\.filter\(\(part\) => part === addComposerDayPart\)\.map\(renderPeriod\)/);
+});
+
 test("the production itinerary owner consumes canonical composition and persists period changes through its mutation path", () => {
   assert.match(workspace, /composeItineraryDay\(workingTrip, active\.id\)/);
   assert.match(workspace, /assignItineraryIdeaDayPart\(current, activity\.id, dayPart\)/);

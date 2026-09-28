@@ -18,6 +18,12 @@
 .secondaryPeriods { border-top: 1px solid var(--morrovia-line); }
 .secondaryPeriods > summary { min-height: 44px; padding: 12px; color: var(--morrovia-ink-soft); cursor: pointer; font: var(--morrovia-type-control); }
 .secondaryPeriods[open] > .periodGrid { padding-top: 8px; }
+.partInsertActions { display: flex; flex-wrap: wrap; gap: 8px; padding: 4px 12px 10px; }
+.partInsertActions > button { min-height: 44px; }
+.populatedActions { display: flex; justify-content: flex-end; }
+.populatedActions > button { min-height: 44px; }
+.populatedActions > form { display: grid; gap: 8px; width: 100%; max-width: 440px; }
+.populatedActions > form > div:last-child { display: flex; flex-wrap: wrap; gap: 8px; }
 
 /* Compact editorial rows retain the existing multi-item and insertion owners. */
 .planner .freePeriod { min-height: 0; padding: 0; }
