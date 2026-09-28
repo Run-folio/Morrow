@@ -7,7 +7,8 @@ const read = (path: string) => readFileSync(new URL(`../${path}`, import.meta.ur
 test("builder distinguishes device recovery from canonical account persistence", () => {
   const source = read("app/journey/new/trip-builder.tsx");
 
-  assert.match(source, /Changes saved on this device/);
+  assert.match(source, /Saved on this device/);
+  assert.match(source, /<MorroviaSaveStatus state=\{visibleSaveState\} label=\{visibleSaveLabel\}/);
   assert.match(source, /Saving to your account…/);
   assert.match(source, /Saved to your account/);
   assert.match(source, /Changes not synced to your account/);
