@@ -337,9 +337,7 @@ export default function TripOverviewWorkspace({
         <section ref={nextOrientationTarget} className={styles.routeCard} aria-labelledby="overview-route-title">
           <div className={styles.routeIntro}>
             <div>
-              <p>Your route</p>
-              <h2 id="overview-route-title">Your route is ready to shape</h2>
-              <span>Here’s your trip at a glance. Review the route, check the timing and start planning your days.</span>
+              <h2 id="overview-route-title">Your route</h2>
             </div>
             <div className={styles.routeActions}>
               <EasyTLinkButton href={primaryAction.href} size="small">{primaryAction.label}<ArrowRight aria-hidden="true" /></EasyTLinkButton>

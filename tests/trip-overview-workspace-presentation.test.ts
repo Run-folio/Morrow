@@ -28,7 +28,8 @@ test("Overview prioritises the route, one planning action and three next-to-arra
   assert.ok(route >= 0 && route < arrange);
   assert.ok(arrange < plans);
   assert.ok(plans < beforeGo);
-  assert.match(source, /Your route is ready to shape/);
+  assert.match(source, /<h2 id="overview-route-title">Your route<\/h2>/);
+  assert.doesNotMatch(source, /Your route is ready to shape|Here’s your trip at a glance/);
   assert.match(source, /label: firstArrival[\s\S]*\? "Plan my days"/);
   assert.match(source, />Explore on map</);
   assert.match(source, />Adjust route</);
