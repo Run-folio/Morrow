@@ -160,6 +160,7 @@ export const PartiallyEnrichedShortlist: Story = { args: { initialFinderState: p
 export const BookingFactsSeparateTripComCta: Story = { args: { initialFinderState: enriched, initialSelectedPlaceId: "booking-property-42" } };
 export const RankingComparison: Story = { args: { initialFinderState: rankingComparison, initialSelectedPlaceId: "strong-mapped" } };
 export const ProviderUnavailableMappedBaseReady: Story = { args: { initialFinderState: unavailable } };
+export const FailedStaySearch: Story = { args: { initialFinderState: { corePlaces: [], coreUnavailable: true, accommodationInventoryStatus: "unavailable" } } };
 export const BookingFailureMappedShortlist: Story = { args: { initialFinderState: unavailable, initialSelectedPlaceId: "sakura-house" } };
 export const NoPropertyImage: Story = { args: { initialFinderState: sparse, initialSelectedPlaceId: "small-ryokan" } };
 export const NoPropertyImageMobile390: Story = { ...NoPropertyImage, globals: { viewport: { value: "morrovia390", isRotated: false } } };

@@ -100,6 +100,7 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 export const CanonicalAgenda: Story = {};
+export const CanonicalAgendaSpanish: Story = { args: { language: "es" } };
 export const CanonicalAgendaMobile320: Story = { globals: { viewport: { value: "morrovia320", isRotated: false } } };
 export const CanonicalAgendaMobile390: Story = { globals: { viewport: { value: "morrovia390", isRotated: false } } };
 export const CanonicalAgendaMobile430: Story = { globals: { viewport: { value: "morrovia430", isRotated: false } } };
