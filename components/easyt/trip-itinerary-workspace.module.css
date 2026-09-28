@@ -1896,6 +1896,7 @@
   .notice { order: 3; }
   .dayPanel > .details { order: 4; }
   .sequenceEditor { order: 5; }
+  .dayPanel > [data-contextual-feedback-slot="itinerary"] { order: 7; }
   .dayHeader { display: block; }
   .omioAction > a { width: 100%; justify-content: center; }
   .location { margin-top: 12px; }

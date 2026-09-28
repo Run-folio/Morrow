@@ -122,7 +122,7 @@ export function EasyTFeedback({ ownerId, onDismiss, onSubmitted, storyState }: P
   };
 
   if (dismissed) return null;
-  return <aside className={styles.feedback} aria-label={copy.invite}>
+  return <aside className={styles.feedback} aria-label={flow.phase === "sent" ? copy.thanks : flow.phase === "already-submitted" ? copy.already : open ? copy.question : copy.invite}>
     <EasyTButton className={styles.close} variant="quiet" icon={X} iconOnly onClick={dismiss}>{copy.close}</EasyTButton>
     {flow.phase === "sent" || flow.phase === "already-submitted" ? <p role="status">{flow.phase === "sent" ? copy.thanks : copy.already}</p> : !open ? (
       <EasyTButton variant="secondary" icon={MessageCircleHeart} onClick={() => { setOpen(true); requestAnimationFrame(() => questionRef.current?.focus()); }}>{copy.invite}</EasyTButton>

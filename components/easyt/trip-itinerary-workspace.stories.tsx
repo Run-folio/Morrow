@@ -9,6 +9,7 @@ import { tourTripFixture } from "./storybook/tour-trip.fixture";
 import { cancunReturnTripFixture } from "./storybook/cancun-return-trip.fixture";
 import TripItineraryWorkspace from "./trip-itinerary-workspace";
 import TripShell from "./trip-shell";
+import { setStorybookAuthOwner } from "../../.storybook/auth-client.mock";
 
 const day = (dayNumber: number, stopId: string, date: string, title: string, reason: string, notes: string[], type: PlanItem["type"] = "activity", image: string | null = "/journey/peru-sacred-valley-route.jpg"): PlanItem => ({
   id: `day-${dayNumber}`,
@@ -395,7 +396,10 @@ const meta = {
   title: "Morrovia/05 Product Patterns/Trip workspace/Itinerary",
   component: TripItineraryWorkspace,
   parameters: { layout: "fullscreen", nextjs: { appDirectory: true, navigation: { pathname: "/journey/cusco-sacred-valley-arequipa/itinerary" } } },
-  decorators: [(Story, context) => <main className="morrovia-editorial-page" style={{ minHeight: "100vh" }}>{context.args.presentation === "legacy" ? <Story /> : <><EasyTNavigation current="trips" /><TripShell trip={context.args.trip} cacheTrip={false} orientationAutoStart={false} feedbackStoryEligible={Boolean(context.parameters.feedbackStoryEligible)}><Story /></TripShell></>}</main>],
+  decorators: [(Story, context) => {
+    if (context.parameters.feedbackAuthenticatedFixture && context.args.trip.ownerId) setStorybookAuthOwner(context.args.trip.ownerId);
+    return <main className="morrovia-editorial-page" style={{ minHeight: "100vh" }}>{context.args.presentation === "legacy" ? <Story /> : <><EasyTNavigation current="trips" /><TripShell trip={context.args.trip} cacheTrip={false} orientationAutoStart={false} feedbackStoryEligible={Boolean(context.parameters.feedbackStoryEligible)}><Story /></TripShell></>}</main>;
+  }],
   args: {
     trip,
     presentation: "shell",
@@ -484,7 +488,14 @@ export const RichDayPlannerIntegrated: Story = {
   },
 };
 // The production workspace renders ContextualFeedbackSlot after the saved day work.
-export const ContextualFeedbackPopulatedDay: Story = { ...RichDayPlannerIntegrated, parameters: { feedbackStoryEligible: true } };
+const feedbackItineraryNavigation = { nextjs: { appDirectory: true, navigation: { pathname: "/journey/storybook-itinerary-rich-day-integrated/itinerary" } } };
+export const ContextualFeedbackPopulatedDay: Story = { ...RichDayPlannerIntegrated, parameters: { ...feedbackItineraryNavigation, feedbackStoryEligible: true } };
+export const ContextualFeedbackAuthenticatedEntry: Story = { ...RichDayPlannerIntegrated, parameters: { ...feedbackItineraryNavigation, feedbackAuthenticatedFixture: true } };
+export const ContextualFeedbackOtherAccountEntry: Story = {
+  ...RichDayPlannerIntegrated,
+  args: { ...RichDayPlannerIntegrated.args, trip: { ...RichDayPlannerIntegrated.args!.trip!, ownerId: "storybook-other-traveller" } },
+  parameters: { ...feedbackItineraryNavigation, feedbackAuthenticatedFixture: true },
+};
 export const RichDayPlannerIntegratedMobile390: Story = {
   ...RichDayPlannerIntegrated,
   args: {

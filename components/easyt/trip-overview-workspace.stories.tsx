@@ -5,6 +5,7 @@ import type { ReadinessCard, TravelReadinessProfile } from "@/lib/easyt/travel-r
 import { tourTripFixture } from "./storybook/tour-trip.fixture";
 import TripOverviewWorkspace from "./trip-overview-workspace";
 import TripShell from "./trip-shell";
+import { setStorybookAuthOwner } from "../../.storybook/auth-client.mock";
 import { createPlanningConfidence } from "@/lib/easyt/planning-confidence";
 
 const image = "/journey/peru-sacred-valley-route.jpg";
@@ -171,7 +172,10 @@ const meta = {
     layout: "fullscreen",
     nextjs: { appDirectory: true, navigation: { pathname: "/journey/cusco-sacred-valley-arequipa" } },
   },
-  decorators: [(Story, context) => <main className="morrovia-editorial-page" style={{ minHeight: "100vh", paddingTop: 1 }}><TripShell trip={context.args.trip} cacheTrip={false} orientationAutoStart={false} feedbackStoryEligible={Boolean(context.parameters.feedbackStoryEligible)}><Story /></TripShell></main>],
+  decorators: [(Story, context) => {
+    if (context.parameters.feedbackAuthenticatedFixture && context.args.trip.ownerId) setStorybookAuthOwner(context.args.trip.ownerId);
+    return <main className="morrovia-editorial-page" style={{ minHeight: "100vh", paddingTop: 1 }}><TripShell trip={context.args.trip} cacheTrip={false} orientationAutoStart={false} feedbackStoryEligible={Boolean(context.parameters.feedbackStoryEligible)}><Story /></TripShell></main>;
+  }],
   args: {
     trip: baseTrip,
     initialPrepActions: prepActions,
@@ -220,6 +224,7 @@ export const ReturningPartiallyPlanned: Story = {
 };
 // The production workspace renders the same ContextualFeedbackSlot after route work.
 export const ContextualFeedbackPopulatedOverview: Story = { ...ReturningPartiallyPlanned, parameters: { feedbackStoryEligible: true } };
+export const ContextualFeedbackAuthenticatedEntry: Story = { ...ReturningPartiallyPlanned, parameters: { feedbackAuthenticatedFixture: true } };
 
 export const HealthIssue: Story = {
   args: {
