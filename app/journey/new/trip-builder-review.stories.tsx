@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
 import { useEffect, useState } from "react";
 import TripBuilder from "./trip-builder";
+import { currentTripStorageKey } from "@/lib/easyt/storage";
 import { HOME_TRIP_DRAFT_KEY } from "@/lib/easyt/home-trip-handoff";
 import { routePlannerPayload } from "@/lib/easyt/public-route-handoff";
 import { publicRouteDetailFor } from "@/lib/easyt/public-route";
@@ -212,11 +213,16 @@ export const TourCapture: Story = { args: { state: "tour" } };
 
 // Mount the production document: fixtures seed only its existing handoff
 // boundary, never a parallel route, capture, or persistence implementation.
-function BuilderEntryFixture({ entry }: { entry: "empty" | "populated" | "clarification" }) {
+function BuilderEntryFixture({ entry, language = "en", routeKey = "morocco-rail" }: { entry: "empty" | "populated" | "clarification"; language?: "en" | "es"; routeKey?: string }) {
   const [ready, setReady] = useState(false);
   useEffect(() => {
     const previousUrl = window.location.href;
     const previousDraft = window.localStorage.getItem(HOME_TRIP_DRAFT_KEY);
+    const pointerKey = currentTripStorageKey(null);
+    const previousPointer = window.localStorage.getItem(pointerKey);
+    window.localStorage.removeItem(pointerKey);
+    const previousLanguage = window.localStorage.getItem("easyt-language");
+    window.localStorage.setItem("easyt-language", language);
     const originalFetch = window.fetch;
     window.fetch = (input, init) => {
       const url = new URL(typeof input === "string" ? input : input instanceof URL ? input.href : input.url, window.location.href);
@@ -234,18 +240,22 @@ function BuilderEntryFixture({ entry }: { entry: "empty" | "populated" | "clarif
       url.searchParams.set("homeDraft", "1");
       const brief = "Two weeks in Thailand";
       window.localStorage.setItem(HOME_TRIP_DRAFT_KEY, JSON.stringify(entry === "populated"
-        ? routePlannerPayload(publicRouteDetailFor("morocco-rail")!.planDraft, new Date(2027, 3, 2, 12))
+        ? routePlannerPayload(publicRouteDetailFor(routeKey)!.planDraft, new Date(2027, 3, 2, 12))
         : { brief, structuredBrief: extractStructuredTripBrief(brief) }));
     }
     window.history.replaceState(window.history.state, "", url);
     setReady(true);
     return () => {
       window.fetch = originalFetch;
+      if (previousPointer === null) window.localStorage.removeItem(pointerKey);
+      else window.localStorage.setItem(pointerKey, previousPointer);
+      if (previousLanguage === null) window.localStorage.removeItem("easyt-language");
+      else window.localStorage.setItem("easyt-language", previousLanguage);
       window.history.replaceState(window.history.state, "", previousUrl);
       if (previousDraft === null) window.localStorage.removeItem(HOME_TRIP_DRAFT_KEY);
       else window.localStorage.setItem(HOME_TRIP_DRAFT_KEY, previousDraft);
     };
-  }, [entry]);
+  }, [entry, language, routeKey]);
   return ready ? <main className="morrovia-editorial-page"><TripBuilder /></main> : null;
 }
 
@@ -288,3 +298,7 @@ export const BroadAreaGuidanceAt390: Story = { args: { state: "broad-area" }, gl
 export const RouteShapeReviewAt390: Story = { args: { state: "route-shape-review" }, globals: { viewport: { value: "morrovia390", isRotated: false } } };
 export const CompressedWarningAt390: Story = { args: { state: "compressed" }, globals: { viewport: { value: "morrovia390", isRotated: false } } };
 export const BuilderReviewAt768: Story = { args: { state: "resolved" }, globals: { viewport: { value: "morrovia768", isRotated: false } } };
+
+// Production Builder variants for skim-first content and long-label acceptance.
+export const SkimFirstSpanish: Story = { ...PopulatedHandoff, render: () => <BuilderEntryFixture entry="populated" language="es" /> };
+export const SkimFirstLongDestinations: Story = { ...PopulatedHandoff, render: () => <BuilderEntryFixture entry="populated" routeKey="mexico-guatemala" /> };

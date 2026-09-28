@@ -102,17 +102,18 @@ export function TripBuilderRouteWorkspace({
 
   return <section data-builder-route-workspace className={styles.builderRouteWorkspace} aria-labelledby="builder-route-title">
     <header className={styles.builderRouteHeader}>
-      <div>
-        <p>ROUTE PLAN</p>
-        <h2 id="builder-route-title">Your route<span className="sr-only"> — Nights per stop</span></h2>
-        <span className={`${styles.builderRouteNightStatus} ${nightStatus.complete ? "" : styles.builderRouteNightStatusIncomplete}`} role="status">
-          {nightStatus.complete ? <CheckCircle2 aria-hidden="true" /> : <AlertTriangle aria-hidden="true" />}
-          <strong>{nightStatus.total} {nightStatus.language === "es" ? "en total" : "total"}</strong>
-          <span aria-hidden="true">·</span>
-          <b>{nightStatus.complete
-            ? (nightStatus.language === "es" ? "Todas asignadas" : "All allocated")
-            : (nightStatus.language === "es" ? `${nightStatus.allocated} de ${nightStatus.total} asignadas` : `${nightStatus.allocated} of ${nightStatus.total} allocated`)}</b>
-        </span>
+      <div className={`${styles.builderRouteNightStatus} ${nightStatus.complete ? "" : styles.builderRouteNightStatusIncomplete}`} role="status">
+        <h2 id="builder-route-title" className={nightStatus.complete ? undefined : styles.builderRouteAllocationWarning}>
+          {nightStatus.complete ? <CheckCircle2 aria-hidden="true" /> : <AlertTriangle aria-hidden="true" />} {" "}
+          <span className="sr-only">{nightStatus.language === "es" ? "Tu ruta — Noches por parada: " : "Your route — Nights per stop: "}</span>
+          <span>
+            {nightStatus.total} {nightStatus.language === "es" ? (nightStatus.total === 1 ? "noche" : "noches") : (nightStatus.total === 1 ? "night" : "nights")}
+            {" · "}
+            {nightStatus.complete
+              ? (nightStatus.language === "es" ? "Todas asignadas" : "All allocated")
+              : (nightStatus.language === "es" ? `${nightStatus.allocated} de ${nightStatus.total} asignadas` : `${nightStatus.allocated} of ${nightStatus.total} allocated`)}
+          </span>
+        </h2>
       </div>
     </header>
 
