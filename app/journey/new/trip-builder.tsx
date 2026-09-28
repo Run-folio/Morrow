@@ -3957,7 +3957,7 @@ function TripBuilderDocument() {
                   {stopChecking ? <p role="status">{ui.checking}</p> : null}
                   {stopError ? <p id={stopErrorId} role="alert" className={styles.hintError}>{stopError}</p> : null}
                 </section>}
-                <div className={styles.importTripEntry}><EasyTLinkButton href="/journey/new/import" variant="secondary" size="small" icon={FileSpreadsheet}>Import existing trip</EasyTLinkButton></div>
+                {entryKind !== "fresh" && <div className={styles.importTripEntry}><EasyTLinkButton href="/journey/new/import" variant="secondary" size="small" icon={FileSpreadsheet}>Import existing trip</EasyTLinkButton></div>}
               </div>}
               {hasSavedTravelProfile && !arrivedFromHomepage && <section className={styles.travelStyle} aria-label={language === "es" ? "Tu estilo de viaje" : "Your travel style"}>
                 <div className={styles.travelStyleHead}><span>{language === "es" ? "TU ESTILO DE VIAJE" : "YOUR TRAVEL STYLE"}</span><a href="/journey/profile">{language === "es" ? "Editar" : "Edit"}</a></div>

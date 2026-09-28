@@ -273,6 +273,17 @@ export function readHomepageInput(value: unknown, ownerId: string | null): Store
     : { snapshot: value.snapshot, receipt: value.receipt };
 }
 
+/** Preserve the current intake before leaving for the existing import route. */
+export function persistHomepageIntakeForImport(
+  storage: Pick<Storage, "setItem">,
+  snapshot: HomepageInputSnapshot,
+): boolean {
+  try {
+    storage.setItem(homepageInputStorageKey(snapshot.ownerId), JSON.stringify({ snapshot }));
+    return true;
+  } catch { return false; }
+}
+
 function canonicalFingerprintValue(value: unknown): unknown {
   if (Array.isArray(value)) return value.map(canonicalFingerprintValue);
   if (!homepageRecord(value)) return value;

@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { MorroviaTripCapture } from "@/components/easyt/morrovia-trip-capture";
 import { JourneyEndpointsEditor } from "@/components/easyt/journey-endpoints-editor";
 import { HomeDestinationEditor } from "@/app/journey/home/home-destination-editor";
-import { homepageSnapshotForDescribePrompt, readHomepageInput, type HomepageDestinationEntry, type HomepageInputSnapshot } from "@/lib/easyt/home-trip-handoff";
+import { homepageSnapshotForDescribePrompt, persistHomepageIntakeForImport, readHomepageInput, type HomepageDestinationEntry, type HomepageInputSnapshot } from "@/lib/easyt/home-trip-handoff";
 import { homepageInputStorageKey } from "@/lib/easyt/private-browser-context";
 import { journeyEndpointPlaceFromSuggestion } from "@/lib/easyt/journey-endpoints";
 import { tripInterestsWithProfileDefaults, type TravelProfile } from "@/lib/easyt/travel-profile";
@@ -14,6 +14,9 @@ import type { JourneyEndSelection } from "@/lib/easyt/trip";
 import type { TripInterest } from "@/lib/easyt/trip-interest";
 import { resumableNewTripSnapshot } from "./new-trip-entry-state";
 import { createLatestJourneyCaptureRequestGate, journeyCaptureFailureMessage, requestJourneyCapture } from "@/lib/easyt/journey-capture-client";
+import { EasyTLinkButton } from "@/components/easyt/easyt-controls";
+import { FileSpreadsheet } from "lucide-react";
+import styles from "./trip-builder.module.css";
 
 function emptyInput(ownerId: string | null): HomepageInputSnapshot {
   return {
@@ -114,6 +117,12 @@ export function NewTripStarter({ ownerId, language, travelProfile, onSubmit }: {
   };
   if (!ready || snapshot.ownerId !== ownerId) return null;
 
+  const persistBeforeImport = () => {
+    const saved = persistHomepageIntakeForImport(window.localStorage, snapshotRef.current);
+    if (!saved) setError(language === "es" ? "No pudimos guardar tu idea antes de abrir la importación." : "We couldn't save your trip idea before opening Import.");
+    return saved;
+  };
+
   const interests = snapshot.interests.state === "selected" ? snapshot.interests.value
     : snapshot.interests.state === "cleared" ? [] : tripInterestsWithProfileDefaults([], travelProfile, false);
   const travellers = snapshot.travellers.state === "selected" ? snapshot.travellers.value : 2;
@@ -122,7 +131,7 @@ export function NewTripStarter({ ownerId, language, travelProfile, onSubmit }: {
   const destinationSummary = labels.length === 0 ? (language === "es" ? "Añade tu primera parada" : "Add your first stop")
     : labels.length === 1 ? labels[0] : `${labels[0]} · +${labels.length - 1} ${language === "es" ? "más" : "more"}`;
 
-  return <MorroviaTripCapture
+  return <><MorroviaTripCapture
     formId="new-trip-planner" progressiveDetails language={language} value={snapshot.prompt}
     onValueChange={(prompt) => update((current) => {
       const next = homepageSnapshotForDescribePrompt(current, prompt);
@@ -157,5 +166,8 @@ export function NewTripStarter({ ownerId, language, travelProfile, onSubmit }: {
     travellers={travellers} onTravellersChange={(value) => update((current) => ({ ...current, travellers: { state: "selected", value } }))}
     interests={interests} onInterestsChange={(value: TripInterest[]) => update((current) => ({ ...current, interests: { state: "selected", value } }))}
     travelProfile={travelProfile} onSubmit={submit} loading={loading} error={error}
-  />;
+  />
+    <div className={styles.importTripEntry}><EasyTLinkButton href="/journey/new/import" variant="secondary" size="small" icon={FileSpreadsheet}
+      onClick={(event) => { if (!persistBeforeImport()) event.preventDefault(); }}>{language === "es" ? "Importar un viaje existente" : "Import existing trip"}</EasyTLinkButton></div>
+  </>;
 }
