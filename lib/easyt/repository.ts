@@ -3,6 +3,7 @@ import "server-only";
 import { createHash, createHmac, randomBytes, randomUUID } from "node:crypto";
 
 import { getEasyTDatabase } from "./database";
+import { createFeedbackSurveyStore, type FeedbackSurveySql } from "./feedback-survey-store.ts";
 import {
   canPromoteTripForOwner,
   canonicalTripForOwner,
@@ -239,6 +240,22 @@ export async function setCountryMemory(input: { ownerId: string; countryId: stri
     values (${input.ownerId}, ${input.countryId}, ${input.note?.trim() || null}, ${input.photoData || null})
     on conflict (owner_id, country_id) do update set note = excluded.note, photo_data = excluded.photo_data, updated_at = now()
   `;
+}
+
+function contextualFeedbackStore() {
+  return createFeedbackSurveyStore(getEasyTDatabase() as unknown as FeedbackSurveySql);
+}
+
+export async function getContextualFeedbackState(ownerId: string) {
+  return contextualFeedbackStore().state(ownerId);
+}
+
+export async function dismissContextualFeedback(ownerId: string) {
+  return contextualFeedbackStore().dismiss(ownerId);
+}
+
+export async function submitContextualFeedback(input: { ownerId: string; attemptId: string; rating: number; comment?: string }) {
+  return contextualFeedbackStore().submit(input);
 }
 
 export async function createEasyTFeedback(input: {
