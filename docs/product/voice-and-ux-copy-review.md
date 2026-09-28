@@ -1,6 +1,6 @@
 # Morrovia voice and contextual UX copy review
 
-28 September 2026 · **PROPOSAL ONLY — founder review gate**
+28 September 2026 · **FOUNDER-APPROVED DIRECTION — bounded implementation in progress**
 
 **Clear first. Warm second. Adventurous where it fits.** A well-travelled friend who helps you make a good plan without taking over.
 
@@ -16,10 +16,11 @@ Fresh branch: `codex/product-voice-copy-review`. Reference worktrees were read o
 | O | `codex/route-overview-cta` · `74956c2743dfc2fede54813765b7deefa668d6a8` | Overview CTA and consolidated warning presentation |
 | T | `codex/trips-card-cleanup` · `eff90f0955b2bd9b3fbf1c9bb5062d92c1b73e48` | Trips library and empty state; accepted geometry |
 | E | `codex/explore-category-simplification` · `d18a9c17384e794f13859ecabd623176f7261f83` | Current four-category Explore |
+| F | `codex/contextual-feedback` · `761db6b89f4d004985b836501fe57125d110b0d3` | Implemented contextual survey owner; V20/V21 wording is handed to this track only |
 
-A/I/O/T/E below resolve to those commits, not to a guessed combined release. All listed branch heads were present. The audit branch has untracked mockup artifacts; the base commit itself is clean committed documentation/product history. Those artifacts were read in place, not committed or modified here.
+A/I/O/T/E/F below resolve to those commits, not to a guessed combined release. All listed branch heads were present. The audit branch has untracked mockup artifacts; the base commit itself is clean committed documentation/product history. Those artifacts were read in place, not committed or modified here.
 
-**Evidence classes:** “Current” below means source-inspected, locally implemented at the named commit. The [historical audit](skim-first-ux-audit.md) is an index, not current #349 evidence. The [existing mockup review](/Users/shaun/.codex/worktrees/skim-first-ux-audit/Morrovia/docs/product/skim-first-mockup-review.md) contains non-production proposals. The [Explore spec](../superpowers/specs/2026-09-28-explore-empty-retry-design.md) and [feedback spec](../superpowers/specs/2026-09-28-contextual-one-time-feedback-design.md) are approved behavioural direction, not implemented behaviour. This document edits neither spec. Proposed Spanish on an English-only surface is a review translation, not an integrated locale.
+**Evidence classes:** “Current” below means source-inspected at the named commit. The [historical audit](skim-first-ux-audit.md) is an index, not current #349 evidence. The [existing mockup review](/Users/shaun/.codex/worktrees/skim-first-ux-audit/Morrovia/docs/product/skim-first-mockup-review.md) contains non-production proposals. The [Explore spec](../superpowers/specs/2026-09-28-explore-empty-retry-design.md) remains a separate behavioural track. The [feedback spec](../superpowers/specs/2026-09-28-contextual-one-time-feedback-design.md) now has a local implementation at F, with its isolated PostgreSQL gate still unverified. Proposed Spanish on an English-only surface is a review translation, not an integrated locale.
 
 ## Highest-value decisions
 
@@ -28,9 +29,9 @@ A/I/O/T/E below resolve to those commits, not to a guessed combined release. All
 3. Replace internal “Builder” wording with the actual task; keep **Use this route**.
 4. Carry **Couldn’t load ideas / Try again** into the separately approved Explore work. Do not ship a retry label without its scoped handler.
 5. Keep device/account/pending save distinctions and transport uncertainty. Compress only redundant success prose.
-6. Consider **How’s planning your trip going?** separately from visual feedback cleanup: it changes the survey’s question from general product sentiment to planning experience.
+6. Use **How’s planning your trip going?** for the new contextual survey through its existing feedback owner. This changes the new survey’s intended measure to planning experience without reinterpreting historical feedback.
 
-Founder decisions: approve REWRITE/REMOVE entries; approve or reject the survey measurement change (V20); approve the data-aware warning presentation dependency (V08). No changes to timing, eligibility, scale, account uniqueness or retry policy are proposed. Navigation vocabulary remains unchanged; “View journey” versus “Route” can be evaluated later as a distinct information-architecture question.
+Founder decisions: the KEEP entries and overall voice are approved. V03 is REMOVE; V04 is one short sentence; V07 uses the canonical allocation states; V08 is approved only when both authoritative dates reach the existing warning owner; V20 measures the new contextual survey’s planning experience; V21 separates definite failure from uncertain delivery. No timing, eligibility, scale, account uniqueness or retry-policy change is authorized here. Navigation vocabulary remains unchanged.
 
 ## Proposals by existing owner
 
@@ -64,25 +65,25 @@ Every entry includes the current English/Spanish, proposed pair, action inspecti
 
 - **Source:** A · `app/journey/routes/[slug]/route-detail-view.tsx`, heroActions/editable; `route-plan-link.tsx`, RoutePlanLink.
 - **Current English:** “Use this route”; “Use this reviewed route as your starting point, then shape the dates and nights in Builder.”
-- **Proposed English:** “Use this route”; “Start with this route, then adjust the dates and nights.”
+- **Proposed English:** KEEP “Use this route”; REMOVE the supporting sentence beneath it, without replacement.
 - **Current Spanish:** MISSING
-- **Proposed Spanish:** “Usar esta ruta”; “Empieza con esta ruta y ajusta las fechas y las noches.”
-- **Decision:** REWRITE.
+- **Proposed Spanish:** “Usar esta ruta” is a review translation only; REMOVE the supporting sentence in any localized version.
+- **Decision:** REMOVE.
 - **Actual action/destination (source inspection):** RoutePlanLink guards new-trip navigation then opens /journey/new?inspire=${encodeURIComponent(draft.routeKey)}.
 - **Meaning/variables to preserve:** Editable route handoff, exact routeKey; no automatic booking or account-save claim. Keep source/review disclosures elsewhere.
-- **Reason:** Retain legitimate first-use explanation without exposing an internal surface name. If the earlier skim-first removal is implemented, do not reinsert this sentence.
+- **Reason:** The prior approved skim-first decision removes this redundant explanation. Preserve substantive route guidance and source disclosures elsewhere.
 
 ### V04 · Discovery · reviewed places with no fixed nights
 
 - **Source:** A · `lib/easyt/i18n.ts`, builder.countryDiscovery.introSupported.
 - **Current English:** “Start with these supported places and adjust the selection.”
-- **Proposed English:** “Choose a few places to start with. You can adjust your selection.”
+- **Proposed English:** “Choose a few places to start with.”
 - **Current Spanish:** “Empieza con estos lugares verificados y ajusta la selección.”
-- **Proposed Spanish:** “Elige algunos lugares para empezar. Puedes ajustar tu selección.”
+- **Proposed Spanish:** “Elige algunos lugares para empezar.”
 - **Decision:** REWRITE.
 - **Actual action/destination (source inspection):** This introductory text accompanies selection; existing Add/Remove remain.
-- **Meaning/variables to preserve:** Do not relabel reviewed evidence as first-hand expertise. Source badges stay.
-- **Reason:** “Supported” is implementation vocabulary; source provenance already owns the evidence claim.
+- **Meaning/variables to preserve:** Add/Remove, source evidence and overnight-base/visit distinctions stay. Do not relabel reviewed evidence as first-hand expertise.
+- **Reason:** “Supported” is implementation vocabulary; the existing controls already show that selection can change.
 
 ### V05 · Discovery · shortlist actions
 
@@ -112,13 +113,13 @@ Every entry includes the current English/Spanish, proposed pair, action inspecti
 
 - **Source:** A · `app/journey/new/trip-builder-route-workspace.tsx`, nightStatus.
 - **Current English:** `${nightStatus.allocated} of ${nightStatus.total} allocated` beside the total-night heading
-- **Proposed English:** “You’ve planned ${nightStatus.allocated} night(s), but your trip has ${nightStatus.total}.”
+- **Proposed English:** Use canonical allocation state: “2 nights left to plan” when under; “1 night too many” when over; KEEP the existing completed-state label when fully allocated. Values and singular/plural are dynamic.
 - **Current Spanish:** `${nightStatus.allocated} de ${nightStatus.total} asignadas`
-- **Proposed Spanish:** “Has distribuido ${nightStatus.allocated} noche(s), pero tu viaje tiene ${nightStatus.total}.”
+- **Proposed Spanish:** “Quedan 2 noches por planificar” when under; “Sobra 1 noche” when over; KEEP the existing completed-state label. Apply current singular/plural conventions.
 - **Decision:** REWRITE.
 - **Actual action/destination (source inspection):** Informational status only; existing night steppers call onEditNights.
-- **Meaning/variables to preserve:** Render night/nights and noche/noches by allocated count; total retains nights as unit. No conversion to days or change to locks/blocking. Example: 7 nights vs 6.
-- **Reason:** Clarifies the mismatch; deliberately longer. Replace the mismatch line only, do not add another status row; 390/430 fit remains to be checked.
+- **Meaning/variables to preserve:** Use the existing allocation state and dynamic difference; surrounding allocation heading retains the total and nights unit. Do not change allocation, blocking, severity or persistence rules.
+- **Reason:** Short state-specific labels identify the next action. A longer comparison belongs only in an existing conflict explanation when needed; add no duplicate status row.
 
 ### V08 · Overview · end-date mismatch
 
@@ -127,10 +128,10 @@ Every entry includes the current English/Spanish, proposed pair, action inspecti
 - **Proposed English:** “Your last stop ends on {lastStopDate}, but your trip ends on {tripEndDate}.”
 - **Current Spanish:** MISSING
 - **Proposed Spanish:** “Tu última parada termina el {lastStopDate}, pero tu viaje termina el {tripEndDate}.”
-- **Decision:** NEEDS PRODUCT DECISION.
+- **Decision:** APPROVED WITH DATA GATE; separate from the static-copy batch.
 - **Actual action/destination (source inspection):** Existing Review timing/route action remains the issue’s href; this entry changes no destination.
-- **Meaning/variables to preserve:** Current conciseFinding receives a message and extracts only one date. Proposed placeholders require both authoritative dates and existing locale formatting, not string guessing. Preserve year across year boundaries.
-- **Reason:** Concrete comparison supports a decision. This needs a separately approved presentation interface/data dependency; illustrative 28 Aug vs 27 Aug is not a current fixture assertion.
+- **Meaning/variables to preserve:** Use the existing trip/warning owner only when both authoritative dates are available. Do not parse new truth from warning prose, guess a missing date, hardcode examples or change scheduling/date ownership. Preserve year across year boundaries.
+- **Reason:** A concrete comparison supports a decision when the data supports it. Document the smallest presentation interface extension separately if needed.
 
 ### V09 · Overview · healthy or unresolved route
 
@@ -266,27 +267,27 @@ Every entry includes the current English/Spanish, proposed pair, action inspecti
 
 ### V20 · Feedback · deliberate open
 
-- **Source:** A · `components/easyt/easyt-feedback.tsx`, copy.title/rate; approved feedback spec.
+- **Source:** F · `components/easyt/easyt-feedback.tsx`, copy.question/rate; approved feedback spec.
 - **Current English:** “How’s Morrovia feeling?”; rating group “Rate Morrovia from 1 to 5”; “Send feedback”
 - **Proposed English:** “How’s planning your trip going?”; group “Rate your trip-planning experience from 1 to 5”; KEEP Send feedback.
 - **Current Spanish:** “¿Cómo se siente Morrovia?”; “Valora Morrovia del 1 al 5”; “Enviar comentarios”
 - **Proposed Spanish:** “¿Cómo va la planificación de tu viaje?”; “Valora tu experiencia al planificar el viaje del 1 al 5”; KEEP Enviar comentarios.
-- **Decision:** NEEDS PRODUCT DECISION.
-- **Actual action/destination (source inspection):** Current send posts rating/comment to /api/easyt/feedback. Contextual invitation/account contract is approved but not implemented here.
-- **Meaning/variables to preserve:** Keep five choices, numeric meaning and selected state. Current individual rating labels are English-only even in Spanish mode (MISSING localized choice labels); proposed spoken choice ${index + 1} out of 5 / ${index + 1} de 5. Do not reinterpret historical responses as the new question.
-- **Reason:** Preferred founder voice narrows measurement from general sentiment to planning experience. Approve survey wording/measurement together without changing scale or eligibility.
+- **Decision:** APPROVED FOR THE NEW CONTEXTUAL SURVEY; implementation belongs to F.
+- **Actual action/destination (source inspection):** Deliberate open exposes the existing five-point form; explicit send posts to /api/easyt/feedback/survey. No survey submission occurs from a rating choice alone.
+- **Meaning/variables to preserve:** Define this survey as rating the traveller’s trip-planning experience. Keep five choices, numeric meaning and selected state. Current individual rating labels are English-only even in Spanish mode (MISSING localized choice labels); proposed spoken choice ${index + 1} out of 5 / ${index + 1} de 5. Historical responses retain their original meaning. Timing, eligibility, dismissal, one-response-per-account and idempotency remain unchanged.
+- **Reason:** The new survey deliberately measures planning experience; it does not reinterpret the older general feedback endpoint.
 
 ### V21 · Feedback · invitation / failure / success
 
-- **Source:** A · same owner copy.aria/error/thanks; approved feedback spec Invitation and form states.
-- **Current English:** Invitation accessible name “Share feedback”; failure “Saved privately on this device. Try again later.”; success “Thank you.” / “Your feedback helps shape Morrovia.”
-- **Proposed English:** Invitation “Share feedback”; expanded form has no invitation label/action. Failure “Couldn’t send feedback. Try again.” / “Try again”; success “Thank you.”
-- **Current Spanish:** “Compartir comentarios”; “Guardado en este dispositivo; inténtalo de nuevo más tarde.”; “Gracias.” / “Tus comentarios ayudan a mejorar Morrovia.”
-- **Proposed Spanish:** “Compartir comentarios”; expanded form has no invitation. “No se pudieron enviar los comentarios. Inténtalo de nuevo.” / “Reintentar”; “Gracias.”
-- **Decision:** REWRITE.
-- **Actual action/destination (source inspection):** Future scoped retry must use existing feedback/account owners under the approved spec. Current retry/draft handling is not proof of that behaviour.
-- **Meaning/variables to preserve:** Retain note/rating, dismiss, accessible form label and sending state. For uncertain outcome do not claim definite rejection; use “We couldn’t confirm your feedback was sent.” / “No pudimos confirmar el envío de tus comentarios.” Retry same identity.
-- **Reason:** Remove unsupported device/privacy assurance. No new timing, suppression or persistence conditions. Keep invitation accessible naming distinct from repeated visible invitation inside form.
+- **Source:** F · same owner copy.invite/error/uncertainty/thanks; approved feedback spec Invitation and form states.
+- **Current English:** Invitation “Share feedback”; definite failure “Feedback could not be sent. You can try again.”; uncertain outcome “We couldn’t confirm the response. Try again with the same answer.”; success “Thank you for your feedback.”
+- **Proposed English:** KEEP invitation and no repeated invitation inside the open form. Definite failure “Couldn’t send feedback.” with action “Try again”. Uncertain outcome must say delivery could not be confirmed; keep a distinct retry action. KEEP concise success.
+- **Current Spanish:** “Compartir comentarios”; definite failure “No se pudo enviar. Puedes intentarlo de nuevo.”; uncertain outcome “No pudimos confirmar el envío. Inténtalo de nuevo sin cambiar tu respuesta.”; success “Gracias por tus comentarios.”
+- **Proposed Spanish:** KEEP invitation and no repeated invitation inside the open form. Definite failure “No se pudieron enviar los comentarios.” with action “Reintentar”. Uncertain outcome must say delivery could not be confirmed; keep a distinct retry action. KEEP concise success.
+- **Decision:** REWRITE IN F ONLY.
+- **Actual action/destination (source inspection):** The existing survey owner handles exact-attempt retry, dismissal and account state. This copy branch changes none of those behaviours.
+- **Meaning/variables to preserve:** Retain note/rating, dismiss, accessible form label and sending state. Definite failure must not repeat the retry instruction in both message and button; uncertain delivery must not claim rejection.
+- **Reason:** One clear failure message and one action reduce repetition without weakening the delivery distinction.
 
 ### V22 · Map · delayed loading
 
@@ -304,7 +305,7 @@ Every entry includes the current English/Spanish, proposed pair, action inspecti
 
 - Empty activity plan: V10 invitation and Add activity are useful. Populated day: V11 saved itinerary leads; no new guidance or congratulations. Logistics-only is not “nothing planned.”
 - Discovery: invite choice without inventing destination knowledge. Existing Route Detail’s “Connections to confirm” and “Confirm current schedules, changes and reservations for your dates.” are **KEEP** (`route-detail-view.tsx`, A). Editorial example using those supported facts: “Follow this route at your own pace; check the connections for your dates.” This is illustrative, not a replacement of every route description.
-- Unequal allocation: V07 uses real nights; 7/6 is illustrative. End dates: V08 needs both real values; no fake date formatting or duration conversion.
+- Unequal allocation: V07 uses the canonical under/over/complete state and real night difference. End dates: V08 needs both authoritative values; no fake date formatting or duration conversion.
 - Account save: V19 only after acknowledgement. Device-only, pending, conflict and failed save are different states; existing serious recovery and destructive-confirmation details are **KEEP**, outside rewrite scope.
 - Stay/Transport: selected/chosen, booked, estimated and unknown are not interchangeable. Provider attribution, photo/map credits, affiliate disclosure, legal/privacy copy and authentication boundaries are **KEEP**, outside this copy pass.
 - Global navigation: existing Overview, Itinerary, Explore, Stay, Transport remain unchanged. “View journey” is retained pending any separate vocabulary decision; no global rename.
@@ -326,18 +327,17 @@ No new visual design or production components are proposed. Existing owners reta
 
 No full review board regenerated. No production bundles/components edited for a preview. No new matched copy screenshots were produced: existing artifacts do not contain the new bilingual proposals or a unified latest release. Therefore **390/430px Spanish expansion, long names and text zoom remain unverified visually**, especially V07 and V08. Proposed wording is not claimed to fit by character count. Future copy implementation must use existing layouts, preserve 44px targets/type sizes, wrap important meaning and test 1/2 nights, cross-year dates and long destination names. Source inspection of actions is not browser navigation testing. No retry/save/booking/survey acceptance is claimed.
 
-## Self-review and recommended small batches
+## Self-review and owner-based implementation batches
 
 Reviewed each entry for action meaning, state, unnecessary warmth, loss of qualification, duplicate skim-first prose, terminology and bilingual equivalence. Current Spanish missing from source is labelled MISSING; proposed Spanish is never called implemented. Existing literal actions and good first-use copy are KEEP. No unrelated skim-first recommendation becomes an implementation ticket.
 
-1. **Overview / route warning owners:** V09 first; V08 only after its presentation/data decision. Keep consolidated warning structure and canonical issue destinations.
-2. **Public entry / library owners:** V01–V04 and V12, with V02/V03 English-only locale gaps recorded. Do not reinsert text already removed in a later accepted implementation.
-3. **Shared small-copy owners:** V18/V19/V22; keep error/recovery and accessibility tests intact. No timers or new status model.
-4. **Workspace owners:** V07/V16/V17 after responsive copy acceptance; no Builder redesign or transport identity changes.
-5. **Existing approved behavioural tracks:** supply V14–V15 to Explore and V20–V21 to feedback after founder wording/measurement review. Do not implement their behaviour from this branch.
+1. **First bounded batch — public Route Detail (V03 only):** Branch from the latest accepted committed Route Detail source, remove the one redundant hero supporting sentence, and preserve Use this route, its handoff and substantive guidance/source disclosures. No Spanish route locale is wired today; track the approved Spanish removal direction without claiming a translated surface changed. Return matched 390/430/desktop screenshots and this batch’s commit for founder review before expanding.
+2. **Later static-copy owners:** Select each latest accepted owner branch/commit separately for V01, V02, V04, V07, V09, V12, V16–V19 and V22. Keep small batches; do not apply all changes against this review branch’s frozen product snapshot.
+3. **Separate data-dependent work:** V08 requires both authoritative dates from the existing warning owner. Document the smallest interface change before implementation; no date inference from text.
+4. **Separate behaviour-dependent work:** V14/V15 remain with Explore empty/retry; V20/V21 move to the existing contextual feedback track. This generic copy branch does not build retry, survey or submission behaviour.
 
 Checks: 22/22 proposal records have all nine required fields; all review-document links resolve locally. Documentation headings/links and reference file presence; source branch/commit verification; complete proposal field inventory; bilingual and dynamic-value self-review; `git diff --check`; documentation-only diff scope. No application build, CI, provider call, production save or browser functional test was run for this documentation task.
 
-**MORROVIA VOICE + UX COPY: READY FOR FOUNDER REVIEW**
+**MORROVIA VOICE + UX COPY: DIRECTION APPROVED; FIRST BOUNDED BATCH IN PROGRESS**
 
-Stop here. Production strings and behaviour remain unchanged. Local only; no push, deployment, CI, staging or main changes.
+This document records the founder corrections. Product changes occur only in isolated owner-based child branches. Local only; no push, deployment, CI, staging or main changes.
