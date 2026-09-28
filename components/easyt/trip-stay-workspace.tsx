@@ -146,7 +146,7 @@ function StayFinderSurface({
         <h3 className="sr-only" id="stay-options-title">Stay options for {context.stop.name}</h3>
         {inventoryLoading ? <p className={styles.inventoryNote} role="status">Checking current room availability.</p> : null}
         {finder.status === "loading" ? <div className={styles.loading}><MorroviaSectionStatus title="Finding stays for this stop" detail={`Keeping ${context.stop.name}, ${context.nights} nights and ${context.dateLabel} in place.`} /><div aria-hidden="true"><MorroviaSkeleton height={240} radius="card" /><MorroviaSkeleton height={240} radius="card" /></div></div> : null}
-        {finder.status === "failed" ? <MorroviaSectionStatus state="error" title="Stay options are unavailable" detail="No mapped or live options could be loaded. Your trip and selected stop are unchanged." retryLabel="Try stay search again" onRetry={finder.retry} /> : null}
+        {finder.status === "failed" ? <MorroviaSectionStatus state="error" title="Couldn’t load stays" retryLabel="Try again" onRetry={finder.retry} /> : null}
         {finder.status === "empty" ? <MorroviaStatusBanner title="No stay options found" detail="No valid accommodation came back for this stop. Try again later or check the booking provider directly." /> : null}
         {finder.candidates.length ? <div className={styles.grid}>{finder.candidates.map((place) => {
           const isSelected = place.id === selectedBase?.id;

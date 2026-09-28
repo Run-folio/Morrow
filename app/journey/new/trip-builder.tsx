@@ -3725,7 +3725,7 @@ function TripBuilderDocument() {
     : clarificationIsLandmark
       ? `${placeTypeLabel(activeClarificationMention!.placeType)} · ${language === "es" ? "Tu intención de visita se mantiene separada de las bases de la ruta." : "Your visit intent stays separate from route bases."}`
       : clarificationDiscovery
-        ? language === "es" ? "Morrovia propone unos pocos lugares para empezar. Puedes cambiarlos antes de continuar." : "Morrovia suggests a few places to start. You can change them before continuing."
+        ? ""
         : language === "es" ? `Añade uno o más lugares en ${clarificationParentName} alrededor de los que quieres que Morrovia planifique.` : `Add one or more places you would like Morrovia to plan around in ${clarificationParentName}.`;
   const clarificationQuestion = clarificationIsLandmark && activeClarificationMention
     ? activeClarificationMention.placeType === "landmark"
@@ -3759,7 +3759,7 @@ function TripBuilderDocument() {
         : saveState === "cloud"
           ? "Guardado en tu cuenta"
           : saveState === "local"
-            ? "Cambios guardados en este dispositivo"
+            ? "Guardado en este dispositivo"
             : deviceStorageBlocked || deviceRecoveryBlocked
               ? "Los cambios solo están en esta pestaña"
               : "Cambios no sincronizados con tu cuenta"
@@ -3770,7 +3770,7 @@ function TripBuilderDocument() {
         : saveState === "cloud"
           ? "Saved to your account"
           : saveState === "local"
-            ? "Changes saved on this device"
+            ? "Saved on this device"
             : deviceStorageBlocked || deviceRecoveryBlocked
               ? "Changes are only in this tab"
               : "Changes not synced to your account";
@@ -3847,7 +3847,6 @@ function TripBuilderDocument() {
         <div className={styles.pane}>
           <div id="builder-summary" tabIndex={-1} className={styles.stack}>
               <header className={styles.stepHero}>
-                <p>{language === "es" ? "TU VIAJE" : "YOUR TRIP"}</p>
                 <h1 className={styles.stepHeroTitle}>{hasRouteSkeleton
                   ? (language === "es" ? "Dale forma a la ruta." : "Shape the route.")
                   : hasPromptContext || pendingClarificationIds.length || inlineStopBaseMention
@@ -3856,7 +3855,6 @@ function TripBuilderDocument() {
                 {(hasRouteSkeleton || hasPromptContext) && <span className={styles.saveState}><MorroviaSaveStatus state={visibleSaveState} label={visibleSaveLabel} /></span>}
               </header>
               {!hasRouteSkeleton && !hasPromptContext && !pendingClarificationIds.length && !inlineStopBaseMention && hydrated && <div className={styles.initialCapture}>
-                <h2>{language === "es" ? "Describe tu viaje" : "Describe your trip"}</h2>
                 <MorroviaTripCapture
                 disabled={stopChecking}
                 language={language}
@@ -3920,6 +3918,7 @@ function TripBuilderDocument() {
                     endValue={detailsDraft.journeyEndInput}
                     endSelection={detailsDraft.journeyEnd}
                     showHint={false}
+                    showHeading={false}
                     onStartChange={(value) => setDetailsDraft((current) => ({ ...current, journeyOrigin: { name: value } }))}
                     onStartSelect={(suggestion) => setDetailsDraft((current) => ({ ...current, journeyOrigin: journeyEndpointPlaceFromSuggestion(suggestion) }))}
                     onEndChange={(value) => setDetailsDraft((current) => ({
@@ -4129,7 +4128,7 @@ function TripBuilderDocument() {
                   })}</div>
                 </section>}
 
-                {pickedUpPreferences.length > 0 && <section className={styles.pickedPreferences} aria-label={language === "es" ? "Preferencias" : "Preferences"}><strong>{language === "es" ? "PREFERENCIAS" : "PREFERENCES"}</strong><div>{pickedUpPreferences.map((preference) => <span key={preference}>{preference}</span>)}</div></section>}
+                {pickedUpPreferences.length > 0 && <section className={styles.pickedPreferences} aria-label={language === "es" ? "Preferencias" : "Preferences"}><div>{pickedUpPreferences.map((preference) => <span key={preference}>{preference}</span>)}</div></section>}
 
               {(effectiveIntent.hardConstraints.fixedCommitments.length > 0 || showTripDetails) && <section id="builder-constraints" className={`${styles.intentPanel} ${summaryFocus === "constraints" ? styles.summaryEditorOn : ""}`} aria-label={language === "es" ? "Intención y condiciones del viaje" : "Trip intent and constraints"}>
                 <button type="button" className={styles.detailsToggle} aria-expanded={showTripDetails} aria-controls={isHomepagePromptHandoff ? "builder-advanced-content" : undefined} onClick={() => setShowTripDetails((current) => !current)}><span><b>{language === "es" ? "Planes fijos" : "Fixed plans"}</b>{effectiveIntent.hardConstraints.fixedCommitments.length ? <small>{language === "es" ? `${effectiveIntent.hardConstraints.fixedCommitments.length} guardado${effectiveIntent.hardConstraints.fixedCommitments.length === 1 ? "" : "s"}` : `${effectiveIntent.hardConstraints.fixedCommitments.length} saved`}</small> : null}</span>{showTripDetails ? <ChevronDown aria-hidden="true" /> : <ChevronRight aria-hidden="true" />}</button>

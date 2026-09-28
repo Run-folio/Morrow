@@ -23,7 +23,7 @@ import styles from "./trip-transport-workspace.module.css";
 type Language = "en" | "es";
 
 const copyFor = (language: Language) => language === "es" ? {
-  eyebrow: "Transporte", heading: "Tus traslados, en orden", intro: "Cómo te mueves entre cada lugar y qué necesita atención.",
+  eyebrow: "Transporte", heading: "Tus traslados",
   empty: "El transporte aparecerá cuando la ruta incluya un trayecto entre lugares.", journey: "trayecto", journeys: "trayectos",
   needsAttention: "necesita atención", ready: "listos para revisar", viewDetails: "Ver detalles", selectedJourney: "Trayecto seleccionado",
   showMap: "Mostrar mapa de la ruta", hideMap: "Ocultar mapa de la ruta",
@@ -33,7 +33,7 @@ const copyFor = (language: Language) => language === "es" ? {
   timeUnknown: "La duración aún necesita confirmación.", planningEstimate: "Estimación de planificación; comprueba horarios antes de reservar.",
   openBooking: "Abrir reserva", findTickets: "Buscar opciones",
 } : {
-  eyebrow: "Transport", heading: "Your transport, in journey order", intro: "How you are getting between each place, and what still needs attention.",
+  eyebrow: "Transport", heading: "Your transport",
   empty: "Transport will appear once the route includes a journey between places.", journey: "journey", journeys: "journeys",
   needsAttention: "needs attention", ready: "ready to review", viewDetails: "View details", selectedJourney: "Selected journey",
   showMap: "Show route map", hideMap: "Hide route map",
@@ -130,7 +130,7 @@ export default function TripTransportWorkspace({ trip, language = "en" }: { trip
 
   return <section className={styles.workspace} aria-labelledby={headingId}>
     <header className={styles.header}>
-      <div className={styles.heading}><span>{copy.eyebrow}</span><h2 id={headingId}>{copy.heading}</h2><p>{copy.intro}</p></div>
+      <div className={styles.heading}><span>{copy.eyebrow}</span><h2 id={headingId}>{copy.heading}</h2></div>
       {items.length ? <div className={styles.summaryCounts} aria-label={language === "es" ? "Resumen de traslados" : "Journey summary"}>
         <span><strong>{items.length}</strong>{items.length === 1 ? copy.journey : copy.journeys}</span>
         <span data-tone={needsAttention ? "attention" : undefined}><strong>{needsAttention}</strong>{copy.needsAttention}</span>

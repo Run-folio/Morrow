@@ -12,6 +12,7 @@ import type { EasyTTrip } from "@/lib/easyt/trip";
 import { effectiveTripLeg, tripWithEffectiveTransportChoices } from "@/lib/easyt/transport-mode-choice";
 import styles from "./trip-builder.module.css";
 import { useBuilderStopReorder } from "./use-builder-stop-reorder";
+import { builderNightAllocationLabel, type BuilderNightStatus } from "./builder-night-allocation-label";
 
 export type BuilderOrderSource = "drag" | "move-menu" | "route-check";
 
@@ -22,7 +23,7 @@ export type TripBuilderRouteWorkspaceProps = {
   lockedStopIds: readonly string[];
   fixedOrder: boolean;
   routeCheckProposalStopIds: readonly string[] | null;
-  nightStatus: { total: number; allocated: number; complete: boolean; language: "en" | "es" };
+  nightStatus: BuilderNightStatus;
   onSelectStop: (stopId: string) => void;
   onPreviewOrder: (stopIds: readonly string[] | null) => void;
   onCommitOrder: (stopIds: readonly string[], source: BuilderOrderSource) => boolean;
@@ -102,17 +103,16 @@ export function TripBuilderRouteWorkspace({
 
   return <section data-builder-route-workspace className={styles.builderRouteWorkspace} aria-labelledby="builder-route-title">
     <header className={styles.builderRouteHeader}>
-      <div>
-        <p>ROUTE PLAN</p>
-        <h2 id="builder-route-title">Your route<span className="sr-only"> — Nights per stop</span></h2>
-        <span className={`${styles.builderRouteNightStatus} ${nightStatus.complete ? "" : styles.builderRouteNightStatusIncomplete}`} role="status">
-          {nightStatus.complete ? <CheckCircle2 aria-hidden="true" /> : <AlertTriangle aria-hidden="true" />}
-          <strong>{nightStatus.total} {nightStatus.language === "es" ? "en total" : "total"}</strong>
-          <span aria-hidden="true">·</span>
-          <b>{nightStatus.complete
-            ? (nightStatus.language === "es" ? "Todas asignadas" : "All allocated")
-            : (nightStatus.language === "es" ? `${nightStatus.allocated} de ${nightStatus.total} asignadas` : `${nightStatus.allocated} of ${nightStatus.total} allocated`)}</b>
-        </span>
+      <div className={`${styles.builderRouteNightStatus} ${nightStatus.complete ? "" : styles.builderRouteNightStatusIncomplete}`} role="status">
+        <h2 id="builder-route-title" className={nightStatus.complete ? undefined : styles.builderRouteAllocationWarning}>
+          {nightStatus.complete ? <CheckCircle2 aria-hidden="true" /> : <AlertTriangle aria-hidden="true" />} {" "}
+          <span className="sr-only">{nightStatus.language === "es" ? "Tu ruta — Noches por parada: " : "Your route — Nights per stop: "}</span>
+          <span>
+            {nightStatus.total} {nightStatus.language === "es" ? (nightStatus.total === 1 ? "noche" : "noches") : (nightStatus.total === 1 ? "night" : "nights")}
+            {" · "}
+            {builderNightAllocationLabel(nightStatus)}
+          </span>
+        </h2>
       </div>
     </header>
 

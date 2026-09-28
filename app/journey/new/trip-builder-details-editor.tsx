@@ -83,9 +83,6 @@ export function TripBuilderDetailsEditor({
   };
 
   return <section id="builder-origin" className={className} aria-label={language === "es" ? "Detalles del viaje" : "Journey details"}>
-    <div className={styles.placesSectionHead}>
-      <strong>{language === "es" ? "Tu viaje" : "Your journey"}</strong>
-    </div>
     <div key={draftRevision} className={styles.detailsFields}>
       {children({ draft, setDraft })}
       <div className={styles.detailsCompactGrid}>

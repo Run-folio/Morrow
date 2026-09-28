@@ -38,7 +38,7 @@ export function MorroviaSectionStatus({
   title,
 }: {
   compact?: boolean;
-  detail: string;
+  detail?: string;
   onRetry?: () => void;
   retryLabel?: string;
   state?: "loading" | "long" | "error" | "success";
@@ -57,7 +57,7 @@ export function MorroviaSectionStatus({
       </span>
       <div>
         <strong>{title}</strong>
-        <p>{detail}</p>
+        {detail ? <p>{detail}</p> : null}
       </div>
       {failed && onRetry ? (
         <EasyTButton icon={RotateCcw} variant="secondary" onClick={onRetry}>{retryLabel}</EasyTButton>
@@ -125,7 +125,7 @@ const mapCopy = {
   recalculating: ["Updating the route", "Your stops and edits stay in place while transfer estimates refresh."],
   place: ["Checking this place", "Loading the selected stop details."],
   local: ["Finding places nearby", "Keeping the map and selected stop in place while local results refresh."],
-  long: ["The map is taking longer than usual", "Your route is safe. You can keep reviewing the trip while the map catches up."],
+  long: ["The map is taking longer than usual", "You can keep reviewing your route while the map loads."],
   error: ["The map could not finish loading", "Your ordered route is still available. Try the map again when you’re ready."],
 } as const;
 
