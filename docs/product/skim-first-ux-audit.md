@@ -10,24 +10,35 @@ Principle commit: `149be77` · Builder commit: `10c26d6`
 
 The governing principle is [Skim-first content and hierarchy](../design-system.md#skim-first-content-and-hierarchy): **If the interface already communicates it, do not explain it again.** Use the minimum explanation required for confident use.
 
-Only Builder presentation and the approved documentation changed. Findings below are recommendations, not implemented changes. TripShell, Itinerary, destination-track and feedback/Undo remain owned by the separate #349 work. Their screenshots show the frozen base, not the outcome of #349. Reconcile those findings against that work before opening another implementation ticket.
+This branch changed only Builder presentation and the approved documentation. The separate #349 branch has since completed the compact shared mobile TripShell and simplified mobile Itinerary orientation/content hierarchy. Its work supersedes F01 and F02; neither is an implementation ticket from this audit. The screenshots here remain historical frozen-base evidence, not captures of the completed #349 result. Other findings are recommendations, not implemented changes on this branch.
 
-## Top 10 highest-value simplifications
+## Completed or superseded by #349
+
+| Finding | Status | Boundary |
+|---|---|---|
+| F01 · Shared mobile TripShell | **Completed/superseded** | #349 delivered compact shared mobile trip identity, actions and navigation. Do not rebuild it from this audit branch. |
+| F02 · Mobile Itinerary orientation and empty-day hierarchy | **Completed/superseded** | #349 delivered the compact day orientation and content hierarchy while retaining canonical day navigation. Do not replay it here. |
+
+F13 is **partially addressed**: #349 compacted the ordinary device-only mobile notice. Its separate successful account-save copy remains a lower-priority review item; it is not a reason to reopen the mobile TripShell.
+
+## Revised Top 10 still-actionable simplifications
 
 Ranked by exposure, mobile viewport cost, comprehension and confidence that information survives.
 
 | Rank | Finding | Proposed simplification | Ownership / confidence |
 |---|---|---|---|
-| 1 | F01 · TripShell | Compact repeated mobile identity and metadata above every workspace. | #349; high confidence in need, reuse its accepted design |
-| 2 | F02 · Itinerary | Consolidate repeated day orientation and reduce empty-day scaffolding. | #349; preserve exact day selection and dayparts |
-| 3 | F03 · Overview | One primary route action; secondary route destinations in a quieter group. | Structural; distinguish navigation destinations first |
-| 4 | F04 · Routes | Bring search and route choices into the initial mobile view. | Structural; retain the editorial photography |
-| 5 | F05 · My Trips | Remove the library eyebrow and shorten the repeated welcome treatment. | High confidence; keep featured-current identity |
-| 6 | F06 · Empty My Trips | One first-trip invitation instead of a second “another trip” campaign. | High confidence |
-| 7 | F07 · Explore empty | One clear empty result and a useful recovery action. | High confidence; distinguish empty from provider failure |
-| 8 | F08 · Transport | Compress the heading, introductory sentence and summary strip. | High confidence; retain booking/estimate distinctions |
-| 9 | F10 · Route Detail | Remove the sentence explaining “Use this route.” | High confidence; preserve substantive route rationale |
-| 10 | F09 · Stay | Shorten repeated distance sentences into qualified metadata. | High confidence; keep the actual reference point |
+| 1 | F04 · Routes | Bring search and route choices into the initial mobile view. | High exposure and viewport cost; retain editorial photography |
+| 2 | F03 · Overview | Give the route actions a clear primary/secondary hierarchy. | High-frequency workspace; verify each distinct destination. Separate route warning/CTA cleanup does not settle the action hierarchy |
+| 3 | F06 · Empty My Trips | Use one first-trip invitation instead of a second “another trip” campaign. | High-confidence entry-point simplification |
+| 4 | F05 · My Trips | Remove the library eyebrow and shorten the repeated welcome treatment. | Broad library exposure; keep featured-current identity |
+| 5 | F08 · Transport | Compress the heading, introduction and summary strip. | Bring the first journey into view sooner; retain booking/estimate distinctions |
+| 6 | F07 · Explore empty | Use one clear empty result and a useful recovery action. | High-confidence repetition; distinguish genuine empty from provider failure |
+| 7 | F14 · Explore provider failure | Replace the misleading “0 ideas” result summary with an unavailable state. | Correctness and trust; preserve destination/category context |
+| 8 | F18 · My Trips survey overlay | Decide when the survey may interrupt first-trip or library tasks. | High impact, **founder product decision required** before implementation |
+| 9 | F26 · Transport estimate explanation | Disclose repeated estimate detail where it is needed. | Repeated-card cost; preserve uncertainty and provenance |
+| 10 | F10 · Route Detail | Remove the sentence explaining “Use this route.” | Small, high-confidence copy win; preserve substantive route rationale |
+
+F09 (Stay), F11 (Discovery), F12 (rename dialog), F13's residual account-success copy, and F15–F17 remain lower-priority candidates. F19 remains a separate taxonomy decision. F20–F25 are information to keep, not simplification tickets.
 
 ### Representative evidence
 
@@ -35,7 +46,7 @@ All images below were captured during this audit from local production component
 
 | Surface | 390px evidence | What to notice / direction |
 |---|---|---|
-| Itinerary | ![Frozen-base Itinerary](skim-first-ux-audit/08-itinerary-mobile.jpg) | Trip metadata, view tabs, heading, range, jump label and day rail precede day content. Follow #349; do not add another navigator. |
+| Itinerary | ![Frozen-base Itinerary](skim-first-ux-audit/08-itinerary-mobile.jpg) | Historical pre-#349 orientation stack. F02 is completed/superseded; do not treat this capture as the current Itinerary. |
 | Overview | ![Overview](skim-first-ux-audit/07-overview-mobile.jpg) | Four route-oriented actions precede the route. Clarify the primary job and demote secondary actions. |
 | Routes | ![Routes](skim-first-ux-audit/03-routes-mobile.jpg) | The hero occupies almost the entire viewport before search. Reduce layout cost, not legibility. |
 | Empty Trips | ![Empty Trips](skim-first-ux-audit/18-empty-trips-mobile.jpg) | A first-trip invitation is followed by an “another trip” invitation; survey overlay competes with both. |
@@ -167,25 +178,25 @@ All numbered accepted evidence has `-mobile.jpg` and `-desktop.jpg` files in [th
 
 ## Structural findings
 
-### F01 · Shared TripShell / mobile identity — REDESIGN HIERARCHY · High
+### F01 · Shared TripShell / mobile identity — COMPLETED/SUPERSEDED BY #349
 
-**Current:** Planning label, image, title, route string, dates, duration, overnight-place and transfer counts, actions and workspace tabs precede every task.
+**Historical frozen-base state:** Planning label, image, title, route string, dates, duration, overnight-place and transfer counts, actions and workspace tabs preceded every task.
 
 **Why:** Repeated page-wide context consumes a large share of mobile space on each workspace visit.
 
-**Direction:** Use the approved compact #349 shell; retain identity, actions, truthful state and shared navigation. Do not implement a parallel shell here.
+**Resolution:** #349 implemented the approved compact shared mobile shell, retaining identity, actions, truthful state and navigation. No further F01 implementation belongs to this audit branch.
 
 **Risk if removed:** Loss of trip identity, meaningful logistics or save status.
 
 **Evidence:** [08 mobile](skim-first-ux-audit/08-itinerary-mobile.jpg), [10 desktop](skim-first-ux-audit/10-stay-desktop.jpg).
 
-### F02 · Itinerary / orientation and empty rows — REDESIGN HIERARCHY · High
+### F02 · Itinerary / orientation and empty rows — COMPLETED/SUPERSEDED BY #349
 
-**Current:** Day by day toggle, Day by day heading, trip date range, Jump to date/destination label, day rail heading, selected day and four empty daypart rows.
+**Historical frozen-base state:** Day by day toggle, Day by day heading, trip date range, Jump to date/destination label, day rail heading, selected day and four empty daypart rows.
 
 **Why:** The same orientation is repeatedly announced before planning content.
 
-**Direction:** Follow #349's approved heading, compact mobile navigation and empty-day composition. Keep the precise desktop day rail and all daypart capabilities.
+**Resolution:** #349 implemented the approved heading, compact mobile navigation and empty-day composition while retaining the precise desktop day rail and daypart capabilities. No further F02 implementation belongs to this audit branch.
 
 **Risk if removed:** Wrong-day edits, lost daypart access or competing selection owners.
 
@@ -319,7 +330,7 @@ All numbered accepted evidence has `-mobile.jpg` and `-desktop.jpg` files in [th
 
 **Why:** Routine reassurance competes with the task and can be confused with a recovery warning.
 
-**Direction:** Compact explicit device/account status plus Save trip where needed. Successful account feedback can be brief. Follow #349; do not change persistence state rules.
+**Resolution / remaining direction:** #349 compacted the ordinary mobile device-only notice while preserving the save action and state rules. Only the separate successful account-save reassurance remains for possible later copy review. Do not reopen the completed mobile shell treatment or change persistence semantics.
 
 **Risk if removed:** False cloud-save impression or loss of promotion access.
 
@@ -487,6 +498,8 @@ All numbered accepted evidence has `-mobile.jpg` and `-desktop.jpg` files in [th
 
 ## Counts and proposed implementation waves
 
+The classification counts below describe the original 26-finding inventory, including the two findings now completed by #349. Current status: **2 completed/superseded** (F01–F02); **24 open or partially addressed**, including the residual F13 account-success copy. Six of the 24 are KEEP guardrails, not implementation tasks.
+
 | Classification | Count |
 |---|---:|
 | KEEP | 6 |
@@ -498,17 +511,17 @@ All numbered accepted evidence has `-mobile.jpg` and `-desktop.jpg` files in [th
 | NEEDS PRODUCT DECISION | 2 |
 | **Total** | **26** |
 
-1. **Owner reconciliation:** Compare F01/F02/F12/F13 with the accepted #349 result. Compare library/Explore observations with their separate post-MVP branches. No duplicate implementation or cherry-pick here.
-2. **Focused content wins:** F05/F06/F10/F11/F15, then F08/F09. One surface at a time, with matched mobile/desktop captures and tests for retained semantics.
-3. **Structural composition:** F03/F04/F07/F14 and F26. Review route action destinations, empty versus unavailable, and estimate disclosure before changing layout.
-4. **Product decisions:** F18/F19 require founder direction. F16/F17 are lower-priority refinements after the primary tasks are easier to scan.
+1. **Completed ownership:** F01 and F02 are closed by #349. Its ordinary mobile device-only treatment addresses part of F13. F12 and F13's account-success copy require separate owner review; compare other library/Explore findings with their post-MVP branches before implementation. No duplicate implementation or cherry-pick here.
+2. **Highest-value composition:** F04 and F03, then F06/F05/F08. Verify route destinations and preserve meaningful state; use matched mobile/desktop captures if a later implementation is approved.
+3. **Empty, unavailable and estimate clarity:** F07/F14/F26, then smaller F10/F09/F11/F15. Keep genuine empty results distinct from provider failure and preserve estimate uncertainty.
+4. **Product decisions:** F18/F19 require founder direction. F16/F17 and the residual F13 copy are lower-priority refinements.
 
-Every wave retains F20–F25. Do not weaken existing tests or UI audit baselines. No audit recommendation has been implemented outside Builder.
+Every wave retains F20–F25. Do not weaken existing tests or UI audit baselines. No additional product recommendation is implemented on this audit branch; F01/F02 were completed independently in #349.
 
 ## Review verdict
 
 - **DOCUMENTATION: READY**
-- **BUILDER: READY FOR FOUNDER REVIEW**, with authenticated/browser-gated and localization limits stated above.
-- **PRODUCT-WIDE AUDIT: READY FOR FOUNDER REVIEW**, with map/private-account coverage limits stated above.
+- **BUILDER: ACCEPTED PENDING FINAL VISUAL REVIEW**, with authenticated/browser-gated and localization limits stated above. Do not reopen without a concrete regression in the supplied screenshots.
+- **PRODUCT-WIDE AUDIT: RECONCILED WITH #349**, with F01/F02 closed and the remaining findings unimplemented.
 
 Stop here for founder review. No push, deployment, CI, staging or main changes.
