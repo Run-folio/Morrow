@@ -184,12 +184,14 @@ export function MorroviaStatusBanner({
 export function MorroviaBriefNotice({
   action,
   autoDismissMs,
+  className = "",
   detail,
   onDismiss,
   title,
 }: {
   action?: ReactNode;
   autoDismissMs?: number;
+  className?: string;
   detail?: string;
   onDismiss?: () => void;
   title: string;
@@ -228,7 +230,7 @@ export function MorroviaBriefNotice({
 
   return (
     <div
-      className={styles.briefNotice}
+      className={`${styles.briefNotice} ${className}`}
       role="status"
       aria-live="polite"
       aria-atomic="true"

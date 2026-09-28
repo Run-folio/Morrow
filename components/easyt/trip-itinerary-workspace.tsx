@@ -1393,6 +1393,7 @@ export default function TripItineraryWorkspace({
           safety="Your itinerary is unchanged. Try the part-of-day control instead."
         /></div> : null}
         {notice ? <div className={styles.notice}><MorroviaBriefNotice
+          className={styles.compactNotice}
           title={notice}
           autoDismissMs={undoReceipt ? undefined : 3200}
           action={undoReceipt ? <EasyTButton icon={RotateCcw} size="small" variant="secondary" onClick={undoLastItemAction}>{copy.undoActivityAction}</EasyTButton> : undefined}

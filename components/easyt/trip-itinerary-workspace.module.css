@@ -2089,6 +2089,15 @@
 }
 
 @media (max-width: 540px) {
+  .notice .compactNotice {
+    grid-template-columns: 18px minmax(0, 1fr) 44px;
+    gap: 4px 8px;
+    width: 100%;
+    padding: 5px 8px;
+    box-shadow: none;
+  }
+  .notice .compactNotice > button:nth-last-child(2) { grid-column: 2 / 4; grid-row: 2; justify-self: start; min-height: 44px; }
+  .notice .compactNotice > button:last-child { grid-column: 3; grid-row: 1; width: 44px; height: 44px; }
   .workspaceToolbar {
     display: grid;
     grid-template-columns: minmax(0, 1fr) auto;
