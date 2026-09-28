@@ -111,7 +111,7 @@ export function TripShellIdentityAndActions({ mobilePhoto }: { mobilePhoto: Over
     <MorroviaFormDialog
       open={renameOpen}
       title="Rename this trip"
-      detail="Give the trip a personal name, or leave it blank to use Morrovia’s geographic title. Your route and dates will not change."
+      detail="Leave blank to use the destination-based name."
       submitLabel="Save name"
       error={validationError || mutation.error || undefined}
       onCancel={() => setRenameOpen(false)}
