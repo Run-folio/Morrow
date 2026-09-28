@@ -1,0 +1,38 @@
+[
+  {
+    "width": 390,
+    "height": 164.4375,
+    "count": 2,
+    "text": "The final stop ends on 2026-08-28, not at the end of the trip.\nReview timing\nAt least one stop still needs a confirmed number of nights.\nReview timing",
+    "cardGeometry": [
+      {
+        "width": 136,
+        "height": 210
+      },
+      {
+        "width": 136,
+        "height": 210
+      }
+    ],
+    "scrollWidth": 390,
+    "viewportWidth": 390
+  },
+  {
+    "width": 1440,
+    "height": 44,
+    "count": 2,
+    "text": "The final stop ends on 2026-08-28, not at the end of the trip.\nReview timing\nAt least one stop still needs a confirmed number of nights.\nReview timing",
+    "cardGeometry": [
+      {
+        "width": 154,
+        "height": 210
+      },
+      {
+        "width": 154,
+        "height": 210
+      }
+    ],
+    "scrollWidth": 1440,
+    "viewportWidth": 1440
+  }
+]

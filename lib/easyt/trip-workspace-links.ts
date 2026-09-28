@@ -143,8 +143,24 @@ export function stayWorkspaceHref(tripId: string, stopId?: string | null, result
   return `/journey/${encodeURIComponent(tripId)}/stay${suffix ? `?${suffix}` : ""}`;
 }
 
-export function transportWorkspaceHref(tripId: string) {
-  return `/journey/${encodeURIComponent(tripId)}/transport`;
+/** Optional presentation orientation only; the TripLeg remains canonical. */
+export function transportWorkspaceHref(tripId: string, legId?: string | null, reviewLegIds: readonly string[] = []) {
+  const query = new URLSearchParams();
+  if (legId) query.set("leg", legId);
+  for (const id of [...new Set(reviewLegIds)]) query.append("review", id);
+  const suffix = query.toString();
+  return `/journey/${encodeURIComponent(tripId)}/transport${suffix ? `?${suffix}` : ""}`;
+}
+
+export function parseTransportWorkspaceTarget(
+  trip: Pick<EasyTTrip, "legs">,
+  query: QueryReader & { getAll(name: string): string[] },
+) {
+  const canonicalIds = new Set(trip.legs.map((leg) => leg.id));
+  const requested = query.get("leg");
+  const legId = requested && canonicalIds.has(requested) ? requested : null;
+  const reviewLegIds = [...new Set(query.getAll("review"))].filter((id) => canonicalIds.has(id));
+  return { legId, reviewLegIds };
 }
 
 export function parseStayWorkspaceTarget(trip: Pick<WorkspaceTrip, "stops">, query: QueryReader) {

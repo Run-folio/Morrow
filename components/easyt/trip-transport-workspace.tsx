@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { AlertCircle, ArrowRight, CarFront, ExternalLink, Map as MapIcon, Plane, Route, Ship, TrainFront, X, type LucideIcon } from "lucide-react";
 import { JourneyPlannerMap } from "@/components/journey-planner-map";
 import type { JourneyStop } from "@/lib/journey";
@@ -12,6 +13,7 @@ import { mapRouteLegsFromTrip } from "@/lib/easyt/map-spatial-context";
 import { formatTripDuration } from "@/lib/easyt/trip-facts";
 import { formatIsoDate } from "@/lib/easyt/trip-lifecycle";
 import { transferJourneyModeLabel, transferJourneySegmentSummary } from "@/lib/easyt/transfer-journey";
+import { parseTransportWorkspaceTarget } from "@/lib/easyt/trip-workspace-links";
 import type { CanonicalRouteEndpoint, EasyTTrip, TripLeg } from "@/lib/easyt/trip";
 import { clearTripLegTransportChoice, selectTripLegTransportChoice, tripWithEffectiveTransportChoices } from "@/lib/easyt/transport-mode-choice";
 import { useTripShellMutation } from "./trip-shell-client";
@@ -85,7 +87,9 @@ function mapStopsForAgenda(items: ItineraryTransportAgendaLeg[], language: Langu
 export default function TripTransportWorkspace({ trip, language = "en" }: { trip: EasyTTrip; language?: Language }) {
   const copy = copyFor(language);
   const items = useMemo(() => itineraryTransportAgenda(trip), [trip]);
-  const [selectedLegId, setSelectedLegId] = useState<string | null>(items[0]?.leg.id ?? null);
+  const searchParams = useSearchParams();
+  const orientation = parseTransportWorkspaceTarget(trip, searchParams);
+  const [selectedLegId, setSelectedLegId] = useState<string | null>(orientation.legId ?? items[0]?.leg.id ?? null);
   const [mobileMapOpen, setMobileMapOpen] = useState(false);
   const selectedDetailRef = useRef<HTMLDivElement>(null);
   const [mapLifecycle, setMapLifecycle] = useState<"ready" | "unavailable" | null>(null);
@@ -98,6 +102,11 @@ export default function TripTransportWorkspace({ trip, language = "en" }: { trip
   const headingId = "transport-workspace-heading";
   const selectJourney = (id: string) => {
     setSelectedLegId(id);
+    const url = new URL(window.location.href);
+    if (url.searchParams.get("leg") !== id) {
+      url.searchParams.set("leg", id);
+      window.history.pushState(window.history.state, "", url);
+    }
     if (window.matchMedia("(max-width: 820px)").matches) {
       setMobileMapOpen(true);
       window.requestAnimationFrame(() => selectedDetailRef.current?.scrollIntoView({ block: "start" }));
@@ -108,6 +117,16 @@ export default function TripTransportWorkspace({ trip, language = "en" }: { trip
     if (!items.length) setSelectedLegId(null);
     else if (!items.some((item) => item.leg.id === selectedLegId)) setSelectedLegId(items[0]!.leg.id);
   }, [items, selectedLegId]);
+
+  useEffect(() => {
+    const restoreOrientation = () => {
+      const target = parseTransportWorkspaceTarget(trip, new URLSearchParams(window.location.search));
+      setSelectedLegId(items.find((item) => item.leg.id === target.legId)?.leg.id ?? items[0]?.leg.id ?? null);
+    };
+    restoreOrientation();
+    window.addEventListener("popstate", restoreOrientation);
+    return () => window.removeEventListener("popstate", restoreOrientation);
+  }, [items, searchParams, trip]);
 
   return <section className={styles.workspace} aria-labelledby={headingId}>
     <header className={styles.header}>
@@ -126,7 +145,7 @@ export default function TripTransportWorkspace({ trip, language = "en" }: { trip
     {!items.length ? <div className={styles.empty}><Route aria-hidden="true" /><p>{copy.empty}</p></div> : <div className={styles.layout}>
       <div className={styles.list} aria-label={language === "es" ? "Traslados en orden cronológico" : "Journeys in chronological order"}>
         {items.map((item, index) => <TransportCard item={item} index={index} language={language} copy={copy}
-          selected={item.leg.id === selected?.leg.id} onSelect={() => selectJourney(item.leg.id)} key={item.leg.id} />)}
+          selected={item.leg.id === selected?.leg.id} forReview={orientation.reviewLegIds.includes(item.leg.id)} onSelect={() => selectJourney(item.leg.id)} key={item.leg.id} />)}
       </div>
 
       <aside className={styles.mapPanel} id="transport-route-map" data-mobile-open={mobileMapOpen ? "true" : "false"}
@@ -145,15 +164,15 @@ export default function TripTransportWorkspace({ trip, language = "en" }: { trip
   </section>;
 }
 
-function TransportCard({ item, index, language, copy, selected, onSelect }: {
-  item: ItineraryTransportAgendaLeg; index: number; language: Language; copy: ReturnType<typeof copyFor>; selected: boolean; onSelect: () => void;
+function TransportCard({ item, index, language, copy, selected, forReview, onSelect }: {
+  item: ItineraryTransportAgendaLeg; index: number; language: Language; copy: ReturnType<typeof copyFor>; selected: boolean; forReview: boolean; onSelect: () => void;
 }) {
   const { leg } = item;
   const Icon = iconForLeg(leg.mode);
   const durationMinutes = leg.doorToDoorMinutes ?? leg.durationMinutes;
   const knowledge = transportJourneyKnowledge(leg);
   const status = item.status === "booked" ? copy.booked : knowledge !== "known" ? copy.attention : null;
-  return <article className={styles.card} data-transport-leg-id={leg.id} data-selected={selected ? "true" : undefined} data-knowledge={knowledge}>
+  return <article className={styles.card} data-transport-leg-id={leg.id} data-selected={selected ? "true" : undefined} data-review-target={forReview ? "true" : undefined} data-knowledge={knowledge}>
     <span className={styles.sequence} aria-hidden="true">{index + 1}</span>
     <time className={styles.date} dateTime={item.date ?? undefined}>{displayDate(item.date, language, copy.dateUnknown)}</time>
     <span className={styles.modeIcon}><Icon aria-hidden="true" /></span>
@@ -163,6 +182,7 @@ function TransportCard({ item, index, language, copy, selected, onSelect }: {
       <p className={styles.note}>{noteForJourney(item, copy)}</p>
     </div>
     <div className={styles.cardEnd}>
+      {forReview ? <span className={styles.status} data-tone="attention">{language === "es" ? "Revisar ruta" : "Route check"}</span> : null}
       {status ? <span className={styles.status} data-tone={knowledge === "known" ? "booked" : "attention"}>{status}</span> : null}
       <EasyTButton size="small" variant="secondary" aria-pressed={selected} onClick={onSelect}>{copy.viewDetails}</EasyTButton>
     </div>
