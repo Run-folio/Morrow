@@ -9,6 +9,7 @@ const yes = [
   ["itinerary-suggestion-stop-a-place-b", "idea-schedule"],
   ["itinerary-activity-move-activity-a", "activity-move"],
   ["stay-select-stop-a-hotel-b", "stay-select"],
+  ["itinerary-suggestion-cusco-viator:12345", "idea-schedule"],
 ] as const;
 const no = ["itinerary-day-0", "itinerary-day-1-extra", "itinerary-day-future", "itinerary-suggestion-", "itinerary-activity-place-", "stay-select-", "stay-remove-stop-a-hotel-b", "itinerary-stay-stop-a", "itinerary-item-undo", "trip-title", "explore-save-place-a", "transport-choice-leg-a", "unresolved-place-dismiss-a", "itinerary-day-promotion-1"];
 for (const [key, action] of yes) test(`approved acknowledgement ${action} ${key}`, () => assert.equal(isMeaningfulFeedbackAcknowledgement(key, action), true));

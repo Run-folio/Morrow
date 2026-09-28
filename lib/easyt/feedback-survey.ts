@@ -14,7 +14,7 @@ export type MeaningfulFeedbackAction = "activity-add" | "idea-schedule" | "activ
 /** A caller must opt in to one reviewed action; a similar key alone is insufficient. */
 export function isMeaningfulFeedbackAcknowledgement(pendingKey: string, action?: MeaningfulFeedbackAction): boolean {
   if (action === "activity-add") return /^itinerary-day-[1-9]\d*$/.test(pendingKey);
-  if (action === "idea-schedule") return /^itinerary-suggestion-[A-Za-z0-9][A-Za-z0-9_-]*-[A-Za-z0-9][A-Za-z0-9_-]*$/.test(pendingKey);
+  if (action === "idea-schedule") return /^itinerary-suggestion-[A-Za-z0-9][A-Za-z0-9_-]*-[A-Za-z0-9][A-Za-z0-9:_-]*$/.test(pendingKey);
   if (action === "activity-move") return /^itinerary-activity-move-[A-Za-z0-9][A-Za-z0-9_-]*$/.test(pendingKey);
   if (action === "stay-select") return /^stay-select-[A-Za-z0-9][A-Za-z0-9_-]*-[A-Za-z0-9][A-Za-z0-9_-]*$/.test(pendingKey);
   return false;

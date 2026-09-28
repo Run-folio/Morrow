@@ -19,7 +19,7 @@ import { cloneItineraryMutationDocument } from "@/lib/easyt/itinerary-mutations"
 import { createTripMutationPersistenceQueue, newestTripMutationCanonical } from "@/lib/easyt/trip-mutation-persistence";
 import { canonicalTripRevisionCanReplace } from "@/lib/easyt/trip-continuity";
 import type { EasyTTrip } from "@/lib/easyt/trip";
-import type { MeaningfulFeedbackAction } from "@/lib/easyt/feedback-survey";
+import { isMeaningfulFeedbackAcknowledgement, type MeaningfulFeedbackAction } from "@/lib/easyt/feedback-survey";
 
 export type TripMutationSaveState = "idle" | "device" | "saving" | "saved" | "error";
 export type TripMutationFailure = "auth" | "conflict" | "recovery" | "network" | null;
@@ -49,6 +49,7 @@ export function useTripMutationPersistence(initialTrip: EasyTTrip, enabled: bool
   const propIdentityRef = useRef(`${initialTrip.id}:${initialTrip.ownerId ?? "guest"}:${initialTrip.updatedAt}`);
   const ownerScopeRef = useRef(initialTrip.ownerId);
   const conflictRef = useRef(false);
+  const pendingMeaningfulFeedbackRef = useRef<{ ownerId: string; tripId: string; pendingKey: string; feedbackAction: MeaningfulFeedbackAction; originWriteId: string } | null>(null);
 
   useEffect(() => {
     const identity = `${initialTrip.id}:${initialTrip.ownerId ?? "guest"}:${initialTrip.updatedAt}`;
@@ -72,6 +73,7 @@ export function useTripMutationPersistence(initialTrip: EasyTTrip, enabled: bool
     setTripState(canonical);
     setSaveState("idle");
     setLastAcknowledgedMutation(null);
+    pendingMeaningfulFeedbackRef.current = null;
     setFailure(null);
     setConflictTrip(null);
     setError("");
@@ -185,6 +187,9 @@ export function useTripMutationPersistence(initialTrip: EasyTTrip, enabled: bool
     }
 
     recoveryHandleRef.current = recovery.handle;
+    if (sessionOwnerId && feedbackAction && isMeaningfulFeedbackAcknowledgement(pendingKey, feedbackAction)) {
+      pendingMeaningfulFeedbackRef.current = { ownerId: sessionOwnerId, tripId: next.id, pendingKey, feedbackAction, originWriteId: recovery.handle.writeId };
+    }
     setHistoricalRecovery(false);
     tripRef.current = next;
     setTripState(next);
@@ -204,8 +209,10 @@ export function useTripMutationPersistence(initialTrip: EasyTTrip, enabled: bool
     void pendingSave
       .then((saved) => {
         if (!cacheSavedTrip(saved, recovery.handle)) return;
-        if (feedbackAction && saved.ownerId === sessionOwnerId && saved.id === next.id) {
-          setLastAcknowledgedMutation({ ownerId: sessionOwnerId, tripId: saved.id, pendingKey, writeId: recovery.handle.writeId, feedbackAction });
+        const meaningful = pendingMeaningfulFeedbackRef.current;
+        if (meaningful && meaningful.ownerId === sessionOwnerId && meaningful.ownerId === saved.ownerId && meaningful.tripId === saved.id) {
+          setLastAcknowledgedMutation({ ownerId: meaningful.ownerId, tripId: meaningful.tripId, pendingKey: meaningful.pendingKey, feedbackAction: meaningful.feedbackAction, writeId: recovery.handle.writeId });
+          pendingMeaningfulFeedbackRef.current = null;
         }
         ownerScopeRef.current = saved.ownerId;
         tripRef.current = saved;
@@ -216,6 +223,11 @@ export function useTripMutationPersistence(initialTrip: EasyTTrip, enabled: bool
         setSaveState("saved");
       })
       .catch((caught: unknown) => {
+        // An unsuccessful originating save cannot be credited by a later
+        // unrelated save, including a successful Undo of this local edit.
+        if (pendingMeaningfulFeedbackRef.current?.originWriteId === recovery.handle.writeId) {
+          pendingMeaningfulFeedbackRef.current = null;
+        }
         const conflict = caught instanceof EasyTTripSaveConflictError || caught instanceof EasyTTripPromotionConflictError;
         const auth = caught instanceof EasyTTripAuthError;
         markTripRecoveryState(recovery.handle, auth ? "auth" : conflict ? "conflict" : "network");

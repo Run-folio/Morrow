@@ -9,11 +9,13 @@ import styles from "./contextual-feedback.module.css";
 const faces = ["😞", "🙁", "😐", "🙂", "😍"];
 const initialFlow: FeedbackResponseFlow = { phase: "open", rating: null, comment: "", attempt: null };
 const draftKey = (ownerId: string) => `morrovia:contextual-feedback:draft:${encodeURIComponent(ownerId)}`;
-type Props = { ownerId: string; onDismiss(): void; onSubmitted(): void };
+type Props = { ownerId: string; onDismiss(): void; onSubmitted(): void; storyState?: "invitation" | "open" | "failure" | "submitted" };
 
-export function EasyTFeedback({ ownerId, onDismiss, onSubmitted }: Props) {
-  const [open, setOpen] = useState(false);
-  const [flow, setFlow] = useState<FeedbackResponseFlow>(initialFlow);
+export function EasyTFeedback({ ownerId, onDismiss, onSubmitted, storyState }: Props) {
+  const [open, setOpen] = useState(storyState === "open" || storyState === "failure");
+  const [flow, setFlow] = useState<FeedbackResponseFlow>(() => storyState === "failure"
+    ? { ...initialFlow, phase: "failed", rating: 4, comment: "I could find the route, but the save status was unclear." }
+    : storyState === "submitted" ? { ...initialFlow, phase: "sent" } : initialFlow);
   const [message, setMessage] = useState("");
   const [language, setLanguage] = useState<"en" | "es">("en");
   const [dismissed, setDismissed] = useState(false);
@@ -29,6 +31,7 @@ export function EasyTFeedback({ ownerId, onDismiss, onSubmitted }: Props) {
     setLanguage(localStorage.getItem("easyt-language") === "es" ? "es" : "en");
     const updateLanguage = (event: Event) => setLanguage((event as CustomEvent<"en" | "es">).detail);
     window.addEventListener("easyt-language-change", updateLanguage);
+    if (storyState) return () => { live.current = false; window.removeEventListener("easyt-language-change", updateLanguage); };
     try {
       const raw = localStorage.getItem(draftKey(ownerId));
       if (raw) {
@@ -45,13 +48,14 @@ export function EasyTFeedback({ ownerId, onDismiss, onSubmitted }: Props) {
       }
     } catch { /* An unreadable local draft is ignored. */ }
     return () => { live.current = false; window.removeEventListener("easyt-language-change", updateLanguage); };
-  }, [ownerId]);
+  }, [ownerId, storyState]);
 
   useEffect(() => {
+    if (storyState) return;
     if (flow.phase === "sent" || flow.phase === "already-submitted") localStorage.removeItem(draftKey(ownerId));
     else if (flow.phase === "sending" || flow.phase === "uncertain" || flow.rating || flow.comment)
       localStorage.setItem(draftKey(ownerId), JSON.stringify(flow.phase === "sending" ? { ...flow, phase: "uncertain" } : flow));
-  }, [flow, ownerId]);
+  }, [flow, ownerId, storyState]);
 
   const copy = language === "es" ? {
     invite: "Compartir comentarios", close: "Cerrar comentarios", question: "¿Cómo se siente Morrovia?", rate: "Valora Morrovia del 1 al 5",

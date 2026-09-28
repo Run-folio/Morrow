@@ -395,7 +395,7 @@ const meta = {
   title: "Morrovia/05 Product Patterns/Trip workspace/Itinerary",
   component: TripItineraryWorkspace,
   parameters: { layout: "fullscreen", nextjs: { appDirectory: true, navigation: { pathname: "/journey/cusco-sacred-valley-arequipa/itinerary" } } },
-  decorators: [(Story, context) => <main className="morrovia-editorial-page" style={{ minHeight: "100vh" }}>{context.args.presentation === "legacy" ? <Story /> : <><EasyTNavigation current="trips" /><TripShell trip={context.args.trip} cacheTrip={false} orientationAutoStart={false}><Story /></TripShell></>}</main>],
+  decorators: [(Story, context) => <main className="morrovia-editorial-page" style={{ minHeight: "100vh" }}>{context.args.presentation === "legacy" ? <Story /> : <><EasyTNavigation current="trips" /><TripShell trip={context.args.trip} cacheTrip={false} orientationAutoStart={false} feedbackStoryEligible={Boolean(context.parameters.feedbackStoryEligible)}><Story /></TripShell></>}</main>],
   args: {
     trip,
     presentation: "shell",
@@ -483,6 +483,8 @@ export const RichDayPlannerIntegrated: Story = {
     selectedDayNumber: 2,
   },
 };
+// The production workspace renders ContextualFeedbackSlot after the saved day work.
+export const ContextualFeedbackPopulatedDay: Story = { ...RichDayPlannerIntegrated, parameters: { feedbackStoryEligible: true } };
 export const RichDayPlannerIntegratedMobile390: Story = {
   ...RichDayPlannerIntegrated,
   args: {

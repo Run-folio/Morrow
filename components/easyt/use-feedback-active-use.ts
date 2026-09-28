@@ -7,6 +7,7 @@ import { CONTEXTUAL_FEEDBACK_SURVEY_ID } from "@/lib/easyt/feedback-survey";
 export function useFeedbackActiveUse(ownerId: string | null) {
   const [elapsedMs, setElapsedMs] = useState(0);
   const [acknowledgedAction, setAcknowledgedAction] = useState(false);
+  const [hydratedOwnerId, setHydratedOwnerId] = useState<string | null>(null);
   const snapshot = useRef<ActiveUseSnapshot>({ elapsedMs: 0, lastTickMs: null, lastInputMs: null });
   const storageKey = ownerId ? feedbackActiveUseStorageKey(ownerId, CONTEXTUAL_FEEDBACK_SURVEY_ID) : null;
   const markAcknowledgedAction = useCallback(() => {
@@ -19,7 +20,7 @@ export function useFeedbackActiveUse(ownerId: string | null) {
   }, [storageKey]);
 
   useEffect(() => {
-    if (!ownerId || !storageKey) { setElapsedMs(0); setAcknowledgedAction(false); return; }
+    if (!ownerId || !storageKey) { setElapsedMs(0); setAcknowledgedAction(false); setHydratedOwnerId(null); return; }
     const leaseKey = feedbackActiveUseLeaseKey(ownerId, CONTEXTUAL_FEEDBACK_SURVEY_ID);
     const tabId = crypto.randomUUID();
     let cancelled = false;
@@ -29,9 +30,11 @@ export function useFeedbackActiveUse(ownerId: string | null) {
       snapshot.current = { elapsedMs: stored.elapsedMs, lastTickMs: null, lastInputMs: null };
       setElapsedMs(stored.elapsedMs);
       setAcknowledgedAction(stored.acknowledgedAction);
+      setHydratedOwnerId(ownerId);
     } catch {
       snapshot.current = { elapsedMs: 0, lastTickMs: null, lastInputMs: null };
       setElapsedMs(0); setAcknowledgedAction(false);
+      setHydratedOwnerId(ownerId);
     }
     const onInput = (event: Event) => { if (event.isTrusted) snapshot.current.lastInputMs = Date.now(); };
     window.addEventListener("pointerdown", onInput);
@@ -73,5 +76,5 @@ export function useFeedbackActiveUse(ownerId: string | null) {
       try { if (localStorage.getItem(leaseKey)?.startsWith(`${tabId}:`)) localStorage.removeItem(leaseKey); } catch { /* Optional local lease. */ }
     };
   }, [ownerId, storageKey]);
-  return { elapsedMs, qualifiedTime: feedbackTimeQualified(elapsedMs), acknowledgedAction, markAcknowledgedAction };
+  return { elapsedMs, qualifiedTime: feedbackTimeQualified(elapsedMs), acknowledgedAction, hydrated: hydratedOwnerId === ownerId, markAcknowledgedAction };
 }

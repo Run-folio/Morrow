@@ -16,7 +16,7 @@ export function tripShellDuration(startDate: string, endDate: string) {
   return deriveTripDateFacts({ startDate, endDate }).durationDays;
 }
 
-export default function TripShell({ trip, children, deviceOnlyNotice, cacheTrip = true, orientationAutoStart = true, workspaceGuideVersionSeen = 0 }: { trip: EasyTTrip; children: ReactNode; deviceOnlyNotice?: ReactNode; cacheTrip?: boolean; orientationAutoStart?: boolean; workspaceGuideVersionSeen?: number }) {
+export default function TripShell({ trip, children, deviceOnlyNotice, cacheTrip = true, orientationAutoStart = true, workspaceGuideVersionSeen = 0, feedbackStoryEligible = false }: { trip: EasyTTrip; children: ReactNode; deviceOnlyNotice?: ReactNode; cacheTrip?: boolean; orientationAutoStart?: boolean; workspaceGuideVersionSeen?: number; feedbackStoryEligible?: boolean }) {
   const routeLabel = [trip.brief.origin, ...trip.stops.map((stop) => stop.name)].filter(Boolean).join(" → ") || "Route to confirm";
   const imagedDay = trip.planItems.find((item) => Boolean(item.image));
   const image = imagedDay?.image ?? null;
@@ -34,7 +34,7 @@ export default function TripShell({ trip, children, deviceOnlyNotice, cacheTrip 
     <div className={styles.workspace}>
       <WorkspaceOrientationProvider ownerId={trip.ownerId} accountVersionSeen={workspaceGuideVersionSeen} autoStart={orientationAutoStart}>
         <TripShellCanonicalMutationProvider trip={trip}>
-          <ContextualFeedbackProvider>
+          <ContextualFeedbackProvider storyEligible={feedbackStoryEligible}>
           <TripShellChrome tripId={trip.id}><section className={styles.shell} aria-labelledby="trip-shell-title">
           <header className={styles.tripHeader}>
             <TripShellImage

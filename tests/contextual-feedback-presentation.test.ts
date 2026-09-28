@@ -56,3 +56,27 @@ test("feedback is contextual, deliberate and absent from fixed Dashboard placeme
   assert.match(css, /min-height: 44px/);
   assert.doesNotMatch(css, /position: fixed/);
 });
+test("production Storybook covers populated itinerary and overview plus the four response views", () => {
+  const itinerary = readFileSync(new URL("../components/easyt/trip-itinerary-workspace.stories.tsx", import.meta.url), "utf8");
+  const overview = readFileSync(new URL("../components/easyt/trip-overview-workspace.stories.tsx", import.meta.url), "utf8");
+  const feedback = readFileSync(new URL("../components/easyt/contextual-feedback.stories.tsx", import.meta.url), "utf8");
+  assert.match(itinerary, /ContextualFeedbackPopulatedDay/);
+  assert.match(overview, /ContextualFeedbackPopulatedOverview/);
+  assert.match(itinerary, /feedbackStoryEligible: true/);
+  assert.match(overview, /feedbackStoryEligible: true/);
+  assert.match(feedback, /EasyTFeedback/);
+  for (const state of ["Invitation", "OpenedForm", "SubmissionFailure", "Submitted"]) assert.match(feedback, new RegExp(`export const ${state}`));
+});
+test("qualified entry survives async hydration and dismissal cannot be undone by stale state", () => {
+  const controller = readFileSync(new URL("../components/easyt/contextual-feedback-controller.tsx", import.meta.url), "utf8");
+  assert.match(controller, /surveyStateCache/);
+  assert.match(controller, /requestVersionRef/);
+  assert.match(controller, /await retryDismiss\(\)/);
+  assert.match(controller, /context\?\.hydrated/);
+});
+test("reviewed action metadata survives an intervening queued mutation until canonical acknowledgement", () => {
+  const persistence = readFileSync(new URL("../components/easyt/use-trip-mutation-persistence.ts", import.meta.url), "utf8");
+  assert.match(persistence, /pendingMeaningfulFeedbackRef/);
+  assert.match(persistence, /if \(!cacheSavedTrip\(saved, recovery\.handle\)\) return;/);
+  assert.match(persistence, /pendingMeaningfulFeedbackRef\.current\?\.originWriteId === recovery\.handle\.writeId/);
+});
