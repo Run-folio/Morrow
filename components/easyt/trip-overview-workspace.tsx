@@ -26,18 +26,18 @@ import { useEffect, useMemo, useState } from "react";
 import { accommodationProgress, stayBookingForStop } from "@/lib/easyt/accommodation";
 import { tripHealth } from "@/lib/easyt/review";
 import { formatTripDuration, formatTripNights } from "@/lib/easyt/trip-facts";
-import type { EasyTTrip, TripRecommendation } from "@/lib/easyt/trip";
+import type { EasyTTrip } from "@/lib/easyt/trip";
 import ResilientImage from "./resilient-image";
 import {
   firstItineraryDayForStop,
-  itineraryDayForRecommendation,
   itineraryWorkspaceHref,
   mapWorkspaceHref,
+  transportWorkspaceHref,
   tripBuilderHref,
   tripWorkspaceHref,
 } from "@/lib/easyt/trip-workspace-links";
 import styles from "./trip-overview-workspace.module.css";
-import { endEndpointForTrip, originEndpointForTrip } from "@/lib/easyt/trip-legs";
+import { canonicalLegIntegrityIssues, endEndpointForTrip, originEndpointForTrip } from "@/lib/easyt/trip-legs";
 import { mapRouteLegsFromTrip } from "@/lib/easyt/map-spatial-context";
 import type { JourneyStop } from "@/lib/journey";
 import { JourneyPlannerMap } from "@/components/journey-planner-map";
@@ -50,6 +50,7 @@ import { deriveOverviewReadinessCategories, type OverviewReadinessCategory, type
 import type { BookingReadinessAction } from "@/lib/easyt/booking-readiness";
 import type { ReadinessCard, TravelReadinessProfile } from "@/lib/easyt/travel-readiness";
 import { groupTripPrepTasks } from "@/lib/easyt/trip-prep";
+import { presentOverviewIssues } from "@/lib/easyt/trip-overview-issues";
 import { useWorkspaceOrientationReady, useWorkspaceOrientationTarget } from "./workspace-orientation";
 import { sameJourneyPlace } from "@/lib/easyt/journey-endpoints";
 import { personalRouteHref } from "@/lib/easyt/personal-route";
@@ -62,16 +63,7 @@ import {
   dismissUnresolvedPlaceIntent,
   recommendationIsRepresentedByUnresolvedPlaceIntent,
   unresolvedPlaceIntentsForTrip,
-  type UnresolvedPlaceIntent,
 } from "@/lib/easyt/unresolved-place-intent";
-
-type OverviewIssue = {
-  id: string;
-  message: string;
-  severity: TripRecommendation["severity"];
-  href: string;
-  actionLabel: "Review timing" | "Review transport";
-};
 
 const progressIconByCategory: Record<OverviewReadinessCategoryId, LucideIcon> = {
   itinerary: CalendarCheck2,
@@ -100,43 +92,10 @@ function routeIssueHref(tripId: string) {
   return mapWorkspaceHref(tripId, null, "plan", null, null, null, tripWorkspaceHref(tripId));
 }
 
-function recommendationHref(trip: EasyTTrip, recommendation: TripRecommendation) {
-  const dayNumber = itineraryDayForRecommendation(trip, recommendation);
-  return dayNumber ? itineraryWorkspaceHref(trip.id, dayNumber) : routeIssueHref(trip.id);
-}
-
 function openHealthIssues(trip: EasyTTrip) {
   return tripHealth(trip).issues
     .filter((issue) => issue.status === "open")
     .sort((left, right) => ({ critical: 0, warning: 1, info: 2 }[left.severity] - { critical: 0, warning: 1, info: 2 }[right.severity]));
-}
-
-const materialRouteRules = new Set([
-  "route-integrity", "trip-dates", "stay-duration-confidence", "night-allocation-compromise",
-  "destination-identity", "split-base-sequence", "driving-load", "travel-day-impact", "trip-pace",
-  "missing-logistics", "connection-confidence", "recovery-time", "stop-density", "short-stop-heavy-transfer",
-  "transit-to-time-ratio", "fixed-date-conflict", "schedule-lock-conflict", "route-backtracking",
-  "trip-end-mismatch", "missing-transport-decision",
-]);
-
-function issueSummary(trip: EasyTTrip, unresolvedPlaceIntents: readonly UnresolvedPlaceIntent[]): OverviewIssue[] {
-  return openHealthIssues(trip)
-    .filter((issue) => !recommendationIsRepresentedByUnresolvedPlaceIntent(issue, unresolvedPlaceIntents))
-    .filter((issue) => issue.severity === "critical" || materialRouteRules.has(issue.rule)).map((issue: TripRecommendation) => ({
-    id: issue.id,
-    message: issue.message,
-    severity: issue.severity,
-    href: recommendationHref(trip, issue),
-    actionLabel: ["missing-logistics", "connection-confidence", "missing-transport-decision"].includes(issue.rule)
-      || /transfer|transport|connection/i.test(issue.message)
-      ? "Review transport"
-      : "Review timing",
-  }));
-}
-
-function routeRationaleCopy(route: NonNullable<EasyTTrip["brief"]["routeAssessment"]>["route"]) {
-  return route.reasons.find((reason) => !/entered order ranks first under (?:the )?current route criteria/i.test(reason))
-    ?? route.summary;
 }
 
 function conciseTransferLabel(leg: EasyTTrip["legs"][number] | null | undefined) {
@@ -173,8 +132,11 @@ export default function TripOverviewWorkspace({
   const progressOrientationTarget = useWorkspaceOrientationTarget("overview", "overview-progress");
   useWorkspaceOrientationReady("overview", Boolean(trip.stops.length && trip.planItems.length));
   const unresolvedPlaceIntents = useMemo(() => unresolvedPlaceIntentsForTrip(trip), [trip]);
-  const materialRouteIssues = issueSummary(trip, unresolvedPlaceIntents);
-  const visibleIssues = materialRouteIssues.slice(0, 2);
+  const visibleIssues = presentOverviewIssues(
+    trip,
+    openHealthIssues(trip).filter((issue) => !recommendationIsRepresentedByUnresolvedPlaceIntent(issue, unresolvedPlaceIntents)),
+    canonicalLegIntegrityIssues(trip),
+  );
   const accommodation = accommodationProgress(trip);
   const prepProviderStatus = prepReadiness.providerUnavailable
     ? "unavailable"
@@ -194,10 +156,8 @@ export default function TripOverviewWorkspace({
   const mustTasks = outstandingPrepGroups.must;
   const goodTasks = [...outstandingPrepGroups.good, ...outstandingPrepGroups.nice];
   const orderedStops = useMemo(() => [...trip.stops].sort((left, right) => left.order - right.order), [trip.stops]);
-  const routeAssessment = trip.brief.routeAssessment?.route;
-  const routeRationale = routeAssessment && routeAssessment.state !== "insufficient-data" ? routeAssessment : null;
   const itineraryCategory = planningCategories.find((category) => category.id === "itinerary");
-  const criticalRouteIssue = materialRouteIssues.find((issue) => issue.severity === "critical");
+  const criticalRouteIssue = visibleIssues.find((issue) => issue.severity === "critical");
   const primaryAction = criticalRouteIssue
     ? { href: criticalRouteIssue.href, label: "Review route" }
     : {
@@ -365,7 +325,7 @@ export default function TripOverviewWorkspace({
       href: mapWorkspaceHref(trip.id, accommodation.stops.find((stop) => !stayBookingForStop(trip, stop))?.id, "stay", null, null, null, tripWorkspaceHref(trip.id)),
       label: "View stays",
     };
-    if (category.id === "transport") return { href: routeIssueHref(trip.id), label: "Review transport" };
+    if (category.id === "transport") return { href: transportWorkspaceHref(trip.id), label: "Review transport" };
     return null;
   };
 
@@ -410,7 +370,6 @@ export default function TripOverviewWorkspace({
                   {index < steps.length - 1 ? <ChevronRight className={styles.routeDirection} aria-hidden="true" /> : null}
                 </li>)}
               </ol> : <div className={styles.emptyRoute}><MapPin aria-hidden="true" /><p>Add a destination to start shaping this trip.</p></div>}
-              {routeRationale ? <aside className={styles.routeRationale} aria-labelledby="overview-route-rationale-title"><Sparkles aria-hidden="true" /><div><p id="overview-route-rationale-title">Why this order</p><span>{routeRationaleCopy(routeRationale)}</span></div><EasyTLinkButton href={`/journey/${encodeURIComponent(trip.id)}/itinerary`} size="small" variant="quiet">View detailed itinerary<ChevronRight aria-hidden="true" /></EasyTLinkButton></aside> : null}
             </div>
             {overviewMapStops.filter((stop) => stop.coordinates).length > 1 ? <aside className={styles.routeMapPreview} aria-label="Whole-trip map preview">
               <JourneyPlannerMap stops={overviewMapStops} legs={overviewMapLegs} selectedId="" plannerPins={[]} focusCoordinates={null} draftPinCoordinates={null} pinPlacementMode={false} overviewMode surface={{ variant: "preview" }} cameraSafeEdge={34} onMapPinDrop={() => undefined} onPlannerPinSelect={() => undefined} onSelect={() => undefined} />
@@ -445,7 +404,7 @@ export default function TripOverviewWorkspace({
               </aside>;
             })}
           </div> : null}
-          {visibleIssues.length ? <ul className={styles.routeIssues} aria-label="Route and timing checks">{visibleIssues.map((issue) => <li key={issue.id} className={issue.severity === "critical" ? styles.issueCritical : issue.severity === "info" ? styles.issueInfo : undefined}><CircleAlert aria-hidden="true" /><span>{issue.message}</span><Link href={issue.href}>{issue.actionLabel}<ChevronRight aria-hidden="true" /></Link></li>)}</ul> : null}
+          {visibleIssues.length ? <ul className={styles.routeIssues} aria-label="Route and timing checks">{visibleIssues.map((issue) => <li key={issue.id} className={[issue.severity === "critical" ? styles.issueCritical : issue.severity === "info" ? styles.issueInfo : "", issue.actionLabel === "Review transfers" ? styles.issueTransfer : ""].join(" ")}><CircleAlert aria-hidden="true" /><div className={styles.issueCopy}><strong>{issue.title}</strong>{issue.details.map((detail) => <span key={detail}>{detail}</span>)}</div><Link href={issue.href}>{issue.actionLabel}<ChevronRight aria-hidden="true" /></Link></li>)}</ul> : null}
         </section>
 
         <section ref={progressOrientationTarget} className={styles.arrangeCard} aria-labelledby="overview-progress-title">

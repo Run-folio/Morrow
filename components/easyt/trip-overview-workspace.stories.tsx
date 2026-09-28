@@ -96,6 +96,9 @@ const coherentRouteTrip: EasyTTrip = {
   ...baseTrip,
   endDate: "2026-08-28",
   brief: { ...baseTrip.brief, originCoordinates: [-71.967, -13.532], originCountry: "Peru" },
+  legs: baseTrip.legs.map((leg) => leg.id === "valley-arequipa"
+    ? { ...leg, distanceKm: 346, durationMinutes: 180 }
+    : { ...leg, distanceKm: 26 }),
 };
 const prepActions: BookingReadinessAction[] = [{
   id: "trip-connectivity",
@@ -228,6 +231,22 @@ export const HealthIssue: Story = {
     },
   },
 };
+
+const routeReviewTrip = (first: "confirmed" | "unresolved", second: "confirmed" | "unresolved" | "long-road"): EasyTTrip => ({
+  ...coherentRouteTrip,
+  legs: coherentRouteTrip.legs.map((leg, index) => {
+    const state = index === 0 ? first : second;
+    if (state === "unresolved") return { ...leg, mode: "unknown", durationMinutes: null, distanceKm: null };
+    if (state === "long-road") return { ...leg, mode: "road", durationMinutes: 330, distanceKm: 346 };
+    return leg;
+  }),
+});
+
+export const OneTransferNeedsReview: Story = { args: { trip: routeReviewTrip("unresolved", "confirmed") } };
+export const MultipleTransfersNeedReview: Story = { args: { trip: routeReviewTrip("unresolved", "unresolved") } };
+export const LongRoadTransferOnly: Story = { args: { trip: routeReviewTrip("confirmed", "long-road") } };
+export const CombinedTransferChecks: Story = { args: { trip: routeReviewTrip("unresolved", "long-road") } };
+export const ConfirmedRoute: Story = { args: { trip: routeReviewTrip("confirmed", "confirmed") } };
 
 const unresolvedConfidence = createPlanningConfidence({
   state: "inferred",

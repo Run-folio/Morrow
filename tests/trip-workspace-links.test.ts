@@ -142,6 +142,23 @@ test("Transport has a canonical direct workspace href and pathname identity", ()
   assert.equal(workspaceViewFromPathname("/journey/trip-real/itinerary", "trip-real"), "itinerary");
 });
 
+test("Transport links retain exact canonical leg occurrence and a bounded review set", async () => {
+  const links = await import("../lib/easyt/trip-workspace-links.ts");
+  const transportTrip = { legs: [{ id: "tokyo-kyoto" }, { id: "kyoto-tokyo-return" }, { id: "tokyo-return-airport" }] } as EasyTTrip;
+  assert.equal(
+    links.transportWorkspaceHref("trip with spaces", "kyoto-tokyo-return", ["tokyo-kyoto", "kyoto-tokyo-return"]),
+    "/journey/trip%20with%20spaces/transport?leg=kyoto-tokyo-return&review=tokyo-kyoto&review=kyoto-tokyo-return",
+  );
+  assert.deepEqual(
+    links.parseTransportWorkspaceTarget(transportTrip, new URLSearchParams("leg=kyoto-tokyo-return&review=tokyo-kyoto&review=kyoto-tokyo-return")),
+    { legId: "kyoto-tokyo-return", reviewLegIds: ["tokyo-kyoto", "kyoto-tokyo-return"] },
+  );
+  assert.deepEqual(
+    links.parseTransportWorkspaceTarget(transportTrip, new URLSearchParams("leg=unknown&review=unknown&review=tokyo-kyoto&review=tokyo-kyoto")),
+    { legId: null, reviewLegIds: ["tokyo-kyoto"] },
+  );
+});
+
 test("Stay links preserve stop-scoped property identity", () => {
   const selectionId = "result:stay:sacred-valley:booking-42";
   assert.equal(stayWorkspaceHref(trip.id, "sacred-valley", selectionId), `/journey/trip-real/stay?stop=sacred-valley&result=${encodeURIComponent(selectionId)}`);

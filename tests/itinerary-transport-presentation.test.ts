@@ -71,7 +71,9 @@ test("Transport keeps planning information above a subordinate selected-journey 
 });
 
 test("Transport synchronizes one occurrence-safe selected journey with the canonical map projection", () => {
-  assert.match(transport, /useState<string \| null>\(items\[0\]\?\.leg\.id \?\? null\)/);
+  assert.match(transport, /useState<string \| null>\(orientation\.legId \?\? items\[0\]\?\.leg\.id \?\? null\)/);
+  assert.match(transport, /parseTransportWorkspaceTarget\(trip, searchParams\)/);
+  assert.match(transport, /window\.history\.pushState/);
   assert.match(transport, /tripWithEffectiveTransportChoices\(trip\)/);
   assert.match(transport, /mapRouteLegsFromTrip\(effectiveTrip\)/);
   assert.match(transport, /<JourneyPlannerMap/);

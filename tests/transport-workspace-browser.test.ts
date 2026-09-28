@@ -38,7 +38,7 @@ test("Transport keeps selected journey, card and map leg synchronized at desktop
 
     await view.page.reload();
     await view.page.locator('[data-transport-leg-id="trip-japan-choice-leg-1"]').waitFor();
-    assert.equal(await view.page.locator('[data-transport-leg-id="trip-japan-choice-leg-1"]').getAttribute("data-selected"), "true");
+    assert.equal(await view.page.locator('[data-transport-leg-id="trip-japan-choice-leg-2"]').getAttribute("data-selected"), "true");
 
     await view.page.setViewportSize({ width: 390, height: 844 });
     assert.equal(await view.page.locator("#transport-route-map").getAttribute("data-mobile-open"), "false");
@@ -50,6 +50,45 @@ test("Transport keeps selected journey, card and map leg synchronized at desktop
     await view.page.getByRole("button", { name: "Show route map" }).click();
     assert.equal(await view.page.locator('[aria-label="Whole-trip route map preview"]').getAttribute("data-selected-leg-id"), "trip-japan-choice-leg-2");
     assert.equal(await view.page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
+    assert.deepEqual(view.errors, []);
+  } finally { await view.close(); }
+});
+
+test("Transport deep link selects canonical leg, marks the review set, and follows browser history", { skip: !builderBrowserTestsEnabled, timeout: 30_000 }, async () => {
+  const trip = twoLegTrip();
+  const second = "trip-japan-choice-leg-2";
+  const first = "trip-japan-choice-leg-1";
+  const view = await renderBuilder({ path: `/journey/${trip.id}/transport?leg=${second}&review=${first}&review=${second}`, initialTrip: trip });
+  try {
+    assert.equal(await view.page.locator(`[data-transport-leg-id="${second}"]`).getAttribute("data-selected"), "true");
+    assert.equal(await view.page.locator("[data-review-target=true]").count(), 2);
+    await view.page.locator(`[data-transport-leg-id="${first}"]`).getByRole("button", { name: "View details" }).click();
+    assert.match(view.page.url(), /leg=trip-japan-choice-leg-1/);
+    await view.page.goBack();
+    assert.equal(await view.page.locator(`[data-transport-leg-id="${second}"]`).getAttribute("data-selected"), "true");
+    await view.page.goForward();
+    assert.equal(await view.page.locator(`[data-transport-leg-id="${first}"]`).getAttribute("data-selected"), "true");
+    await view.page.reload();
+    assert.equal(await view.page.locator(`[data-transport-leg-id="${first}"]`).getAttribute("data-selected"), "true");
+    assert.deepEqual(view.errors, []);
+  } finally { await view.close(); }
+});
+
+test("Overview Review transfers opens Transport on the affected canonical leg", { skip: !builderBrowserTestsEnabled, timeout: 30_000 }, async () => {
+  const trip = japanTrip();
+  trip.legs[0] = { ...trip.legs[0]!, mode: "unknown", distanceKm: null, durationMinutes: null, doorToDoorMinutes: null, headlineMinutes: null, segments: undefined };
+  const view = await renderBuilder({ path: `/journey/${trip.id}`, initialTrip: trip });
+  try {
+    const review = view.page.getByRole("link", { name: "Review transfers" });
+    await review.waitFor();
+    assert.match(await review.getAttribute("href") ?? "", /\/transport\?leg=trip-japan-choice-leg-1/);
+    await review.click();
+    await view.page.locator('[data-transport-leg-id="trip-japan-choice-leg-1"]').waitFor();
+    assert.equal(await view.page.locator('[data-transport-leg-id="trip-japan-choice-leg-1"]').getAttribute("data-selected"), "true");
+    assert.match(view.page.url(), /\/transport\?leg=trip-japan-choice-leg-1/);
+    await view.page.goBack();
+    await view.page.getByRole("link", { name: "Review transfers" }).waitFor();
+    assert.equal(new URL(view.page.url()).pathname, `/journey/${trip.id}`);
     assert.deepEqual(view.errors, []);
   } finally { await view.close(); }
 });

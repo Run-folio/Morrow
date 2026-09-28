@@ -8,6 +8,7 @@ const mapSource = readFileSync("components/journey-planner-map.tsx", "utf8");
 const shellSource = readFileSync("components/easyt/trip-shell.tsx", "utf8");
 const resolverSource = readFileSync("components/easyt/trip-shell-resolver.tsx", "utf8");
 const shellClientSource = readFileSync("components/easyt/trip-shell-client.tsx", "utf8");
+const issueProjectionSource = readFileSync("lib/easyt/trip-overview-issues.ts", "utf8");
 
 test("Overview map actions return to Overview and keep direct route context", () => {
   assert.match(source, /Explore on map/);
@@ -46,7 +47,7 @@ test("critical trip and persistence states remain truthful without a duplicate h
   const recoveryBanner = shellClientSource.indexOf("{visibleDeviceRecovery ? (");
   const tripProvider = shellClientSource.indexOf("<TripShellTripContext.Provider");
 
-  assert.match(source, /materialRouteIssues/);
+  assert.match(source, /presentOverviewIssues\(/);
   assert.match(source, /issue\.severity === "critical" \? styles\.issueCritical/);
   assert.doesNotMatch(source, /className=\{styles\.healthCard\}/);
   assert.ok(resolverBanner >= 0 && resolverBanner < resolverShell);
@@ -60,11 +61,12 @@ test("Overview removes the decorative stay hero and leaves stay discovery to its
 });
 
 test("material route uncertainty is contextual and keeps canonical severity", () => {
-  assert.match(source, /const visibleIssues = materialRouteIssues\.slice\(0, 2\)/);
-  assert.match(source, /issue\.severity === "critical" \|\| materialRouteRules\.has\(issue\.rule\)/);
+  assert.match(source, /const visibleIssues = presentOverviewIssues\(/);
+  assert.match(issueProjectionSource, /issue\.severity === "critical" \|\| materialRouteRules\.has\(issue\.rule\)/);
+  assert.match(issueProjectionSource, /const critical = presented\.filter\(\(issue\) => issue\.severity === "critical"\)/);
   assert.match(source, /issue\.severity === "critical" \? styles\.issueCritical/);
-  assert.match(source, /severity: issue\.severity/);
-  assert.match(source, /Review timing|Review transport/);
+  assert.match(issueProjectionSource, /severity: issue\.severity/);
+  assert.match(issueProjectionSource, /Review timing|Review transfers/);
   assert.doesNotMatch(source, /Showing the \{visibleIssues\.length\} highest-priority/);
 });
 
@@ -135,12 +137,10 @@ test("the Overview map uses the shared non-interactive preview surface policy", 
   assert.equal((mapSource.match(/new maplibregl\.Map\(/g) ?? []).length, 1);
 });
 
-test("Why this order is one shallow explanation with the existing itinerary action", () => {
-  assert.match(source, /routeRationaleCopy/);
-  assert.match(source, /View detailed itinerary/);
-  assert.doesNotMatch(source, /entered order ranks first under current criteria/i);
-  assert.doesNotMatch(source, /Main trade-off:/);
-  assert.match(styles, /\.routeRationale \{[\s\S]*grid-template-columns: 22px minmax\(0,1fr\) auto/);
+test("healthy route reassurance does not add a second itinerary CTA beneath the approved cards", () => {
+  assert.doesNotMatch(source, /Why this order|Your route already flows well|View detailed itinerary/);
+  assert.doesNotMatch(styles, /\.routeRationale\s*\{/);
+  assert.match(source, /className=\{styles\.routeList\}/);
 });
 
 test("Overview responsive rules keep mobile controls usable without page overflow", () => {

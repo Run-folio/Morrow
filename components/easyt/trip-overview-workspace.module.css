@@ -62,7 +62,7 @@
   gap: 9px;
 }
 
-.routeActions a svg, .routeRationale a svg { width: 15px; height: 15px; }
+.routeActions a svg { width: 15px; height: 15px; }
 .routeComposition {
   margin-top: 20px;
   display: grid;
@@ -190,23 +190,6 @@
 
 .emptyRoute svg { color: var(--morrovia-signal); }
 .emptyRoute p { margin: 0; font-size: 13px; }
-.routeRationale {
-  margin-top: 13px;
-  padding: 10px 12px;
-  display: grid;
-  grid-template-columns: 22px minmax(0,1fr) auto;
-  align-items: center;
-  gap: 10px;
-  border: 1px solid var(--morrovia-line);
-  border-radius: 11px;
-  background: color-mix(in srgb,var(--morrovia-lilac) 48%,#fff);
-}
-
-.routeRationale > svg { width: 17px; height: 17px; color: var(--morrovia-action); }
-.routeRationale > div { min-width: 0; display: grid; gap: 2px; }
-.routeRationale p { margin: 0; color: var(--morrovia-action); font: 800 10px/1.2 var(--morrovia-ui); }
-.routeRationale span { overflow: hidden; color: var(--morrovia-ink-soft); font-size: 10px; line-height: 1.35; text-overflow: ellipsis; white-space: nowrap; }
-.routeRationale > a { white-space: nowrap; }
 .unresolvedIntentList {
   margin-top: 14px;
   display: grid;
@@ -265,6 +248,10 @@
 .routeIssues li > svg { width: 16px; height: 16px; color: var(--morrovia-warning); }
 .routeIssues .issueCritical > svg { color: var(--morrovia-danger); }
 .routeIssues .issueInfo > svg { color: var(--morrovia-action); }
+.routeIssues .issueTransfer { grid-column: 1 / -1; }
+.issueCopy { min-width: 0; display: grid; gap: 3px; }
+.issueCopy strong { color: var(--morrovia-ink); font-size: 12px; }
+.issueCopy span { color: var(--morrovia-ink-soft); font-size: 11px; }
 .routeIssues a { display: inline-flex; align-items: center; gap: 4px; color: var(--morrovia-action); font-weight: 800; text-decoration: none; white-space: nowrap; }
 .routeIssues a svg { width: 13px; height: 13px; }
 .routeIssues a:focus-visible { outline: none; box-shadow: var(--morrovia-focus-shadow); }
@@ -343,8 +330,6 @@
   .beforeGoGrid { grid-template-columns: minmax(0, 1fr); gap: 16px; }
   .beforeGoDisclosure > summary { align-items: flex-start; }
   .beforeGoCounts { flex-wrap: wrap; justify-content: flex-end; }
-  .routeRationale { grid-template-columns: 22px minmax(0,1fr); }
-  .routeRationale > a { grid-column: 2; justify-self: start; }
   .unresolvedIntent { grid-template-columns: auto minmax(0, 1fr); }
   .unresolvedIntentActions { grid-column: 2; justify-content: flex-start; flex-wrap: wrap; }
 }
