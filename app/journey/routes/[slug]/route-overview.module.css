@@ -31,7 +31,6 @@
 .photoLink { color:var(--morrovia-paper)!important; }
 .photoLink:hover { background:color-mix(in srgb,var(--morrovia-ink) 60%,transparent)!important; }
 .hero a:focus-visible,.finalCta a:focus-visible { outline-color:var(--morrovia-paper); }
-.editable { margin-top:18px!important; font:var(--morrovia-type-supporting-body); }
 .photo { height:100%; width:100%; position:relative; overflow:hidden; border-radius:var(--morrovia-radius); background:var(--morrovia-lilac); }
 .photo img { width:100%; height:100%; object-fit:cover; display:block; }
 .heroPhoto { position:absolute; inset:0; border-radius:0; background:var(--morrovia-ink); }
@@ -155,7 +154,6 @@
   .heroMeta { gap:10px; flex-direction:column; margin:18px 0 24px!important; }
   .heroMeta span + span { border:0; padding:0; }
   .heroActions { flex-direction:column; align-items:flex-start; gap:12px; }
-  .editable { max-width:300px; }
   .intro { padding-block:46px 50px; grid-template-columns:1fr; gap:26px; }
   .intro h2 { font-size:35px; margin-top:15px; }
   .intro > div > p:not(.eyebrow) { font-size:16px; }

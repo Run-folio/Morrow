@@ -32,6 +32,20 @@ test("the production Route story composes the real owner at every protected revi
   }
 });
 
+test("Route Detail keeps the route handoff and source guidance without the redundant hero helper", () => {
+  const detail = read("app/journey/routes/[slug]/route-detail-view.tsx");
+  const link = read("app/journey/routes/[slug]/route-plan-link.tsx");
+  const css = read("app/journey/routes/[slug]/route-overview.module.css");
+
+  assert.doesNotMatch(detail, /Use this reviewed route as your starting point/);
+  assert.doesNotMatch(detail, /styles\.editable/);
+  assert.doesNotMatch(css, /\.editable\s*\{/);
+  assert.match(detail, /<RoutePlanLink[^>]+placement="hero">Use this route<\/RoutePlanLink>/);
+  assert.match(detail, /Keep the reviewed sequence, or shape the dates and nights around your trip\./);
+  assert.match(detail, /Sources &amp; review/);
+  assert.match(link, /\/journey\/new\?inspire=\$\{encodeURIComponent\(draft\.routeKey\)\}/);
+});
+
 test("Storybook covers representative rich and factual routes at desktop and mobile review widths", () => {
   const story = read("app/journey/routes/[slug]/route-detail-view.stories.tsx");
   const css = read("app/journey/routes/[slug]/route-overview.module.css");
@@ -57,7 +71,7 @@ test("Route Detail follows the discovery hierarchy and absorbs the duplicated #3
 
   assert.match(detail, /routeDiscoveryPresentation\(detail\)/);
   assert.equal((detail.match(/<RoutePlanLink/g) ?? []).length, 2, "only hero and final conversion actions remain");
-  assert.ok((detail.match(/>Plan this route<\/RoutePlanLink>/g) ?? []).length >= 2);
+  assert.equal((detail.match(/>Use this route<\/RoutePlanLink>/g) ?? []).length, 2);
   assert.doesNotMatch(detail, /A starting point|routeNavigation|Shape the nights in Builder/);
   assert.doesNotMatch(detail, /RouteRelatedRoutes|relatedRouteDetails|related-routes-heading/);
   assert.doesNotMatch(detail, /photoQualification|pending editorial review|No additional route context is recorded yet/);

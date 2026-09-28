@@ -47,7 +47,6 @@ export default function RouteDetailView({ detail, activityAction, navigation, in
         <p className={styles.heroPromise}>{discovery.story.promise}</p>
         <p className={styles.routeOrder}>{detail.stops.map(stop => stop.name).join(" → ")}</p>
         <div className={styles.heroActions}><RoutePlanLink className={styles.onPhoto} draft={detail.planDraft} placement="hero">Use this route</RoutePlanLink></div>
-        <p className={styles.editable}>Use this reviewed route as your starting point, then shape the dates and nights in Builder.</p>
       </div>
     </section>
 
