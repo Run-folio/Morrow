@@ -3,7 +3,8 @@ import { readFileSync } from "node:fs";
 import test from "node:test";
 
 import { dashboardLibraryTrips } from "../lib/easyt/dashboard-library.ts";
-import { dashboardTripPhoto } from "../lib/easyt/dashboard-trip-image.ts";
+import { dashboardTripPhoto, dashboardTripPhotosForCards } from "../lib/easyt/dashboard-trip-image.ts";
+import { routeImageCredit } from "../lib/easyt/route-images.ts";
 import { nextTripUpdatedAt } from "../lib/easyt/trip-continuity.ts";
 import type { EasyTTrip, TripStatus } from "../lib/easyt/trip.ts";
 
@@ -80,7 +81,56 @@ test("dashboard cards prefer reviewed destination photography and reject unknown
   assert.equal(dashboardTripPhoto(noPhoto), null);
 });
 
-test("upcoming cards only layer a map inset over reviewed photography", () => {
+test("trip cards keep maps off photography and place photo credit within the media frame", () => {
   const dashboard = readFileSync(new URL("../app/journey/dashboard/dashboard-client.tsx", import.meta.url), "utf8");
-  assert.match(dashboard, /resolvedKind === "upcoming" && photo \? <div className=\{styles\.cardMapInset\}>/);
+  assert.doesNotMatch(dashboard, /styles\.cardMapInset/);
+  assert.match(dashboard, /className=\{styles\.cardMediaFrame\}/);
+});
+
+test("normal trip cards keep a two-column desktop and one-column mobile footprint across lifecycles", () => {
+  const css = readFileSync(new URL("../app/journey/dashboard/dashboard.module.css", import.meta.url), "utf8");
+  assert.match(css, /\.sectionGrid\s*\{[\s\S]*?grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\)/);
+  assert.doesNotMatch(css, /\.pastSection \.sectionGrid\s*\{[\s\S]*?grid-template-columns:\s*repeat\(3,/);
+  assert.doesNotMatch(css, /\.ideaCard\s*\{[\s\S]*?grid-column:\s*1\s*\/\s*-1/);
+  assert.doesNotMatch(css, /\.ideaCard \.cardMedia\s*\{[\s\S]*?height:/);
+  assert.doesNotMatch(css, /\.pastCard \.cardMedia\s*\{[\s\S]*?height:/);
+  assert.match(css, /@media \(max-width: 700px\)\s*\{[\s\S]*?\.sectionGrid\s*\{[\s\S]*?grid-template-columns:\s*1fr/);
+});
+
+test("idea route sketches do not mount a live map in ordinary cards", () => {
+  const dashboard = readFileSync(new URL("../app/journey/dashboard/dashboard-client.tsx", import.meta.url), "utf8");
+  const card = dashboard.split("export function TripCard(")[1] ?? "";
+  assert.doesNotMatch(card, /TripRoutePreview/);
+});
+
+test("visible cards diversify valid destination photos and keep the selected photo credit", () => {
+  const tokyoA = { ...trip("tokyo-a"), stops: [stop("Tokyo", "Japan", 0), stop("Kyoto", "Japan", 1)] };
+  const tokyoB = { ...trip("tokyo-b"), stops: [stop("Tokyo", "Japan", 0), stop("Takayama", "Japan", 1)] };
+  const londonA = { ...trip("london-a"), stops: [stop("London", "United Kingdom", 0), stop("Paris", "France", 1)] };
+  const londonB = { ...trip("london-b"), stops: [stop("London", "United Kingdom", 0), stop("Lisbon", "Portugal", 1)] };
+  const londonC = { ...trip("london-c"), stops: [stop("London", "United Kingdom", 0), stop("Tokyo", "Japan", 1), stop("Takayama", "Japan", 2)] };
+  const cards = [tokyoA, tokyoB, londonA, londonB, londonC];
+  assert.equal(dashboardTripPhoto(tokyoA)?.src, dashboardTripPhoto(tokyoB)?.src);
+  const result = dashboardTripPhotosForCards(cards);
+  const sources = cards.map((card) => result.get(card.id)?.src);
+  assert.equal(new Set(sources).size, sources.length);
+  assert.deepEqual(result, dashboardTripPhotosForCards(cards));
+  for (const card of cards) {
+    const selected = result.get(card.id);
+    assert.ok(selected?.creditHref);
+    assert.ok(selected?.licenseHref);
+    assert.equal(selected.creditHref, routeImageCredit(selected.src)?.sourceUrl);
+    assert.equal(selected.licenseHref, routeImageCredit(selected.src)?.licenseUrl);
+  }
+});
+
+test("single-photo and unphotographed trips keep valid fallbacks across lifecycle states", () => {
+  const one = { ...trip("one", "planned"), stops: [stop("Tokyo", "Japan", 0)] };
+  const two = { ...trip("two", "archived"), stops: [stop("Tokyo", "Japan", 0)] };
+  const idea = { ...trip("idea", "draft"), stops: [stop("Tokyo", "Japan", 0)] };
+  const none = { ...trip("none", "planned"), stops: [stop("Unknown", "Nowhere", 0)] };
+  const result = dashboardTripPhotosForCards([one, two, idea, none]);
+  assert.equal(result.get(one.id)?.src, result.get(two.id)?.src);
+  assert.equal(result.get(idea.id), undefined);
+  assert.equal(result.get(none.id), undefined);
 });
