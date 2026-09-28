@@ -12,6 +12,10 @@ import { homepageInputStorageKey, travelProfileStorageKey } from "@/lib/easyt/pr
 import { createLatestJourneyCaptureRequestGate, journeyCaptureFailureMessage, requestJourneyCapture } from "@/lib/easyt/journey-capture-client";
 import {
   commitHomepageHandoff,
+  HOME_TRIP_DRAFT_KEY,
+  homepageCompletedReceiptIsUnchanged,
+  homepageHandoffReceiptForOwner,
+  homepageSemanticInputFingerprint,
   homepageSnapshotForDescribePrompt,
   homepageSubmissionFingerprint,
   projectHomepageInput,
@@ -26,6 +30,7 @@ import type { TripInterest } from "@/lib/easyt/trip-interest";
 import type { JourneyEndSelection } from "@/lib/easyt/trip";
 import { journeyEndpointPlaceFromSuggestion } from "@/lib/easyt/journey-endpoints";
 import { beginNewTripNavigation } from "@/lib/easyt/storage";
+import { loadRequestedTrip, loadTripRecovery } from "@/lib/easyt/storage";
 import { HomeDestinationEditor } from "./home-destination-editor";
 
 function iso(date: Date) { return date.toISOString().slice(0, 10); }
@@ -161,6 +166,44 @@ export default function HomeTripStarter() {
     let responseReceived = false;
     let navigationStarted = false;
     try {
+      const unchangedReceipt = homepageCompletedReceiptIsUnchanged(storedInputRef.current)
+        ? storedInputRef.current.receipt : undefined;
+      if (unchangedReceipt) {
+        const existingTrip = loadTripRecovery(unchangedReceipt.tripId, submittedOwner)?.trip
+          ?? await loadRequestedTrip(unchangedReceipt.tripId, submittedOwner);
+        if (!isCurrent()) return;
+        if (existingTrip) {
+          if (!beginNewTripNavigation(submittedOwner, window)) {
+            setCaptureError(language === "es" ? "No pudimos conservar tu trabajo actual. Inténtalo de nuevo." : "We couldn't preserve your current work. Try again.");
+            return;
+          }
+          navigationStarted = true;
+          router.push(`/journey/new?trip=${encodeURIComponent(unchangedReceipt.tripId)}`);
+          return;
+        }
+        let pendingDraft = null;
+        try { pendingDraft = JSON.parse(window.localStorage.getItem(HOME_TRIP_DRAFT_KEY) ?? "null"); } catch { /* fail closed */ }
+        const pendingReceipt = pendingDraft && homepageHandoffReceiptForOwner(pendingDraft, submittedOwner);
+        if (pendingReceipt?.handoffId === unchangedReceipt.handoffId
+          && pendingReceipt.tripId === unchangedReceipt.tripId
+          && pendingReceipt.inputFingerprint === unchangedReceipt.inputFingerprint
+          && pendingReceipt.semanticInputFingerprint === unchangedReceipt.semanticInputFingerprint) {
+          const committed = await commitHomepageHandoff({
+            storage: window.localStorage, stored: storedInputRef.current, draft: pendingDraft, isCurrent,
+            preserveAndBegin: () => beginNewTripNavigation(submittedOwner, window),
+          });
+          if (!isCurrent()) return;
+          if (committed.ok) {
+            navigationStarted = true;
+            router.push(committed.href);
+            return;
+          }
+        }
+        // A completed receipt is never reprojected just because capture has
+        // changed or the old draft is missing.
+        setCaptureError(language === "es" ? "No pudimos recuperar este viaje. Revisa Mis viajes." : "We couldn't recover this trip. Check My Trips.");
+        return;
+      }
       const capture = submitted.mode === "describe"
         ? await requestJourneyCapture(submitted.prompt, { signal: request.signal, onResponse: () => { responseReceived = true; } })
         : undefined;
@@ -181,7 +224,8 @@ export default function HomeTripStarter() {
         }
         receipt = {
           version: 1, ownerId: submittedOwner, handoffId: projected.draft.handoffId!,
-          inputFingerprint: homepageSubmissionFingerprint(projected.draft), tripId: generatedId("trip"),
+          inputFingerprint: homepageSubmissionFingerprint(projected.draft),
+          semanticInputFingerprint: homepageSemanticInputFingerprint(submitted), tripId: generatedId("trip"),
         } satisfies HomepageHandoffReceipt;
       }
       const stored: StoredHomepageInput = { snapshot: submitted, receipt };

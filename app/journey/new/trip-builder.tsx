@@ -36,7 +36,8 @@ import { routePlannerPayload } from "@/lib/easyt/public-route-handoff";
 import { defaultTravelProfile, travelProfileFromUnknown, tripInterestsWithProfileDefaults, type TravelProfile } from "@/lib/easyt/travel-profile";
 import { firstTripWorkspaceHref, mapWorkspaceHref, tripWorkspaceHref } from "@/lib/easyt/trip-workspace-links";
 import { createLatestJourneyCaptureRequestGate, journeyCaptureFailureMessage, requestJourneyCapture } from "@/lib/easyt/journey-capture-client";
-import { HOME_TRIP_DRAFT_KEY, homepageHandoffMatchesTrip, homepageHandoffReceiptForOwner, homeTripDraftInterestsWereExplicit, homeTripDraftTimingFlexibility, initialHandoffRouteStops, mergeHandoffLocationChoice, preferredHandoffLocationChoice, removeHomeTripDraftIfDurable, resolveHandoffBatch, routableHandoffMentions, tripInterestsFromHomeDraft, type HandoffLocationChoice, type HomeTripDraft } from "@/lib/easyt/home-trip-handoff";
+import { HOME_TRIP_DRAFT_KEY, homepageHandoffMatchesTrip, homepageHandoffReceiptForOwner, readHomepageInput, homeTripDraftInterestsWereExplicit, homeTripDraftTimingFlexibility, initialHandoffRouteStops, mergeHandoffLocationChoice, preferredHandoffLocationChoice, removeHomeTripDraftIfDurable, resolveHandoffBatch, routableHandoffMentions, tripInterestsFromHomeDraft, type HandoffLocationChoice, type HomeTripDraft } from "@/lib/easyt/home-trip-handoff";
+import { resolveNewTripEntryState } from "./new-trip-entry-state";
 import { builderRouteInputIsReady, canBuildTrip, placeIssueNeedsAttention } from "@/lib/easyt/can-build-trip";
 import { validateFinalPlan } from "@/lib/easyt/plan-validator";
 import { transferImpactFromMetadata } from "@/lib/easyt/transfer-impact";
@@ -71,7 +72,7 @@ import { MorroviaQuantitySelector } from "@/components/easyt/morrovia-quantity-s
 import { MorroviaConfirmationDialog, MorroviaRecoveryFeedback, MorroviaSaveStatus, MorroviaStatusBanner } from "@/components/easyt/morrovia-feedback";
 import ResilientImage from "@/components/easyt/resilient-image";
 import { MorroviaSectionStatus } from "@/components/easyt/morrovia-loading-states";
-import { travelProfileStorageKey } from "@/lib/easyt/private-browser-context";
+import { homepageInputStorageKey, travelProfileStorageKey } from "@/lib/easyt/private-browser-context";
 import { curatedStopFor, reconcileCuratedRouteKnowledge, type CuratedRouteKnowledge } from "@/lib/easyt/curated-route-knowledge";
 import { buildCanonicalTripLegs } from "@/lib/easyt/trip-legs";
 import { transferJourneyModeLabel } from "@/lib/easyt/transfer-journey";
@@ -816,15 +817,48 @@ function TripBuilderDocument() {
             }));
           }
         } catch { setBudget(defaultTravelProfile.budget); }
+        const receivingHomeDraft = params.get("homeDraft") === "1";
         let homeDraft: HomeTripDraft | null = null;
-        if (params.get("homeDraft") === "1") {
+        let storedHomepageInput = null;
+        if (receivingHomeDraft) {
           try { homeDraft = JSON.parse(window.localStorage.getItem(HOME_TRIP_DRAFT_KEY) ?? "null"); } catch { homeDraft = null; }
+          try {
+            storedHomepageInput = readHomepageInput(JSON.parse(window.localStorage.getItem(homepageInputStorageKey(activeOwnerId)) ?? "null"), activeOwnerId);
+          } catch { storedHomepageInput = null; }
         }
-        if (!homeDraft) {
+        if (!homeDraft && !receivingHomeDraft) {
           const routeDetail = publicRouteDetailFor(params.get("inspire") ?? "");
           if (routeDetail) homeDraft = routePlannerPayload(routeDetail.planDraft);
         }
         let resumedHomepageTrip = false;
+        if (receivingHomeDraft) {
+          const entry = resolveNewTripEntryState({
+            hydrated: true, ownerId: activeOwnerId, homeDraft: true,
+            handoff: params.get("handoff"), storedInput: storedHomepageInput, draft: homeDraft,
+          });
+          if (entry.kind === "unavailable") {
+            homeDraft = null;
+            setTripUnavailable(true);
+          } else if (!homeDraft && storedHomepageInput?.receipt) {
+            const reservedId = storedHomepageInput.receipt.tripId;
+            const existingRecovery = loadTripRecovery(reservedId, activeOwnerId);
+            const existingTrip = existingRecovery?.trip ?? await loadRequestedTrip(reservedId, activeOwnerId);
+            if (!active) return;
+            const recoveredEntry = resolveNewTripEntryState({
+              hydrated: true, ownerId: activeOwnerId, homeDraft: true,
+              handoff: params.get("handoff"), storedInput: storedHomepageInput,
+              reservedTripId: existingTrip?.id,
+            });
+            if (recoveredEntry.kind === "explicit-trip" && existingTrip) {
+              recoveryHandleRef.current = existingRecovery
+                ? { ownerId: existingRecovery.ownerId, tripId: existingRecovery.tripId, writeId: existingRecovery.writeId }
+                : null;
+              applySaved(existingTrip);
+              resumedHomepageTrip = true;
+              setArrivedFromHomepage(true);
+            } else setTripUnavailable(true);
+          }
+        }
         if (homeDraft?.homepage) {
           const homepageReceipt = homepageHandoffReceiptForOwner(homeDraft, activeOwnerId);
           if (!homepageReceipt) {
