@@ -500,9 +500,9 @@ export default function DashboardClient({ trips, stamps, ownerId }: { trips: Eas
       ) : (
         <article className={styles.emptyHero}>
           <p className={styles.eyebrow}>{isSpanish ? "Tu primer viaje" : "Your first trip"}</p>
-          <h2>{isSpanish ? "Empieza con un viaje que ya tienes en mente." : "Start with a trip you’ve been thinking about."}</h2>
-          <p>{isSpanish ? "Describe los lugares, el tiempo y el estilo de viaje." : "Describe the places, time and travel style. Morrovia will help shape the route."}</p>
-          <EasyTLinkButton href="/#start-building">{isSpanish ? "Planificar un viaje nuevo" : "Plan a new trip"}<ArrowRight aria-hidden="true" /></EasyTLinkButton>
+          <h2>{isSpanish ? "¿Adónde quieres ir primero?" : "Where will you go first?"}</h2>
+          <p>{isSpanish ? "Cuéntanos qué lugares, cuándo te gustaría ir y qué estilo de viaje tienes en mente." : "Tell us the places, timing and travel style you have in mind."}</p>
+          <EasyTLinkButton href="/#start-building">{isSpanish ? "Planificar un viaje" : "Plan a trip"}<ArrowRight aria-hidden="true" /></EasyTLinkButton>
         </article>
       )}
 
