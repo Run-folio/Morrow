@@ -128,6 +128,7 @@ Use the minimum explanation required for confident use: if the interface
 already communicates it, do not explain it again. Apply the
 [skim-first content and hierarchy guidance](docs/design-system.md#skim-first-content-and-hierarchy),
 preserving decision-critical information, meaningful risk and accessibility.
+For words that remain, follow [Voice and contextual guidance](docs/design-system.md#voice-and-contextual-guidance).
 
 This section applies to every task that creates, edits or restyles UI. A UI task
 is not complete merely because the changed page looks correct in isolation; it

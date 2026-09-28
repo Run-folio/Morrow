@@ -85,6 +85,54 @@ matched trip/data/status/viewport/scroll comparisons to measure useful changes
 universal density score. Copy retained for a decision or risk is a successful
 application of this principle, even when it occupies more space.
 
+## Voice and contextual guidance
+
+**Clear first. Warm second. Adventurous where it fits.** Write like a
+well-travelled friend who helps someone make a good plan without taking over.
+Keep “Complex trips, made simple.” as the positioning.
+
+Use plain, specific language, confidence proportional to evidence, useful
+curiosity in discovery and respect for the traveller’s choices. Avoid internal
+software terms, generic reassurance, forced enthusiasm, repeated praise,
+travel clichés and promises the product cannot support. Never imply first-hand
+experience, availability or local expertise without a source.
+
+| Context | Voice and purpose |
+| --- | --- |
+| Inspiration/discovery | Invite curiosity through supported details. Editorial headings can have personality; “hidden gems” and “your next adventure awaits” add little. |
+| Planning/editing | Be direct about what changes and what happens next. Keep actions literal: Add activity, Save trip, Edit dates, View tickets, Try again. |
+| Error/uncertainty/recovery | Calmly explain what happened, what is affected and the next available action. No blame, jokes or unsupported reassurance. Failed loading is not an empty result. |
+| Success | Briefly confirm only the acknowledged outcome. Device saving is not account saving; neither is a booking. |
+| First use | Explain the next step when it helps. An empty plan may need an invitation; a populated plan should lead with the traveller’s saved content. |
+
+Use **trip** for the overall saved travel plan, **route** for the sequence of
+places and travel between them, and **itinerary** for the day-by-day plan.
+**Journey** can be editorial; do not use it to rename functional concepts
+inconsistently. Preserve established activity, stay, transport and saved-idea
+terms. Flag confusing navigation for a product decision rather than silently
+renaming it. Prefer “edit your route” to exposing an internal component name.
+
+Apply the skim-first principle above: warmth does not justify new helper
+paragraphs, status rows or repeated headings. Keep good copy. Supporting words
+may be longer when they resolve a real ambiguity; there is no universal word
+count. Guidance should recede once its job is done, but changing its display
+conditions requires a separate behavioural decision.
+
+Preserve exact nights, dates, quantities, estimate/unknown qualifications,
+booking state, local/account/pending-save distinctions and consequential
+recovery or destructive-action details. Keep relevant attribution, provenance,
+privacy and provider wording with their existing owners. A confirmed booking
+does not establish a confirmed duration or schedule. Retain field labels,
+accessible names and readable touch targets.
+
+Review English and Spanish together where supported. Use natural, broadly
+understood Spanish, existing locale formatting, unchanged variable names and
+correct singular/plural forms. Mark missing translations explicitly. Check
+long names and Spanish expansion at 390/430px without clipping or shrinking.
+Check every action label against its actual handler, and review the complete
+heading/message/action in its real state. Copy proposals are not functional
+acceptance or permission to change behaviour.
+
 ## Foundations and tokens
 
 The canonical foundation is `app/journey/journey-design.css`. Storybook imports
