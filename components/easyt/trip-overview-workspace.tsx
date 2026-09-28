@@ -50,7 +50,7 @@ import { deriveOverviewReadinessCategories, type OverviewReadinessCategory, type
 import type { BookingReadinessAction } from "@/lib/easyt/booking-readiness";
 import type { ReadinessCard, TravelReadinessProfile } from "@/lib/easyt/travel-readiness";
 import { groupTripPrepTasks } from "@/lib/easyt/trip-prep";
-import { presentOverviewIssues } from "@/lib/easyt/trip-overview-issues";
+import { presentOverviewIssues, presentRouteCheckSummary } from "@/lib/easyt/trip-overview-issues";
 import { useWorkspaceOrientationReady, useWorkspaceOrientationTarget } from "./workspace-orientation";
 import { sameJourneyPlace } from "@/lib/easyt/journey-endpoints";
 import { personalRouteHref } from "@/lib/easyt/personal-route";
@@ -166,6 +166,8 @@ export default function TripOverviewWorkspace({
           ? "Plan my days"
           : itineraryCategory?.status === "complete" ? "Review itinerary" : "Continue planning",
       };
+  const routeCheck = presentRouteCheckSummary(visibleIssues, primaryAction.href);
+  const routeCheckCount = routeCheck.visible.length + routeCheck.remaining.length;
   const origin = useMemo(() => originEndpointForTrip(trip), [trip]);
   const journeyEnd = useMemo(() => endEndpointForTrip(trip), [trip]);
   const lastRouteStop = orderedStops.at(-1);
@@ -404,7 +406,18 @@ export default function TripOverviewWorkspace({
               </aside>;
             })}
           </div> : null}
-          {visibleIssues.length ? <ul className={styles.routeIssues} aria-label="Route and timing checks">{visibleIssues.map((issue) => <li key={issue.id} className={[issue.severity === "critical" ? styles.issueCritical : issue.severity === "info" ? styles.issueInfo : "", issue.actionLabel === "Review transfers" ? styles.issueTransfer : ""].join(" ")}><CircleAlert aria-hidden="true" /><div className={styles.issueCopy}><strong>{issue.title}</strong>{issue.details.map((detail) => <span key={detail}>{detail}</span>)}</div><Link href={issue.href}>{issue.actionLabel}<ChevronRight aria-hidden="true" /></Link></li>)}</ul> : null}
+          {routeCheck.visible.length ? <aside className={styles.routeCheck} aria-label="Route check" data-route-check="" data-route-finding-count={routeCheckCount}>
+            <div className={styles.routeCheckHeading}>
+              <CircleAlert aria-hidden="true" />
+              <strong>Route check{routeCheckCount > 1 ? ` · ${routeCheckCount} things to review` : ""}</strong>
+            </div>
+            <ul className={styles.routeCheckFindings}>{routeCheck.visible.map((finding) => <li key={finding.id} className={finding.severity === "critical" ? styles.issueCritical : finding.severity === "info" ? styles.issueInfo : ""}>{finding.text}</li>)}</ul>
+            {routeCheck.remaining.length ? <details className={styles.routeCheckMore}>
+              <summary>+ {routeCheck.remaining.length} more <ChevronDown aria-hidden="true" /></summary>
+              <ul className={styles.routeCheckFindings}>{routeCheck.remaining.map((finding) => <li key={finding.id} className={finding.severity === "critical" ? styles.issueCritical : finding.severity === "info" ? styles.issueInfo : ""}>{finding.text}</li>)}</ul>
+            </details> : null}
+            {routeCheck.actions.length ? <div className={styles.routeCheckActions}>{routeCheck.actions.map((action) => <Link key={action.href} href={action.href}>{action.label}<ChevronRight aria-hidden="true" /></Link>)}</div> : null}
+          </aside> : null}
         </section>
 
         <section ref={progressOrientationTarget} className={styles.arrangeCard} aria-labelledby="overview-progress-title">

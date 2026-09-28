@@ -1,15 +1,20 @@
 import type { EasyTTrip, TripRecommendation } from "./trip.ts";
-import { itineraryDayForRecommendation, itineraryWorkspaceHref, mapWorkspaceHref, transportWorkspaceHref, tripWorkspaceHref } from "./trip-workspace-links.ts";
+import { mapWorkspaceHref, transportWorkspaceHref, tripWorkspaceHref } from "./trip-workspace-links.ts";
 
 export type OverviewIssue = {
   id: string;
   title: string;
   details: string[];
+  findings: { message: string; severity: TripRecommendation["severity"] }[];
   severity: TripRecommendation["severity"];
   href: string;
-  actionLabel: "Review timing" | "Review transfers";
+  actionLabel: "Review route" | "Review transfers";
   reviewLegIds: string[];
 };
+
+export type RouteCheckFinding = { id: string; text: string; severity: OverviewIssue["severity"] };
+export type RouteCheckAction = { href: string; label: OverviewIssue["actionLabel"] };
+const severityOrder = { critical: 0, warning: 1, info: 2 };
 
 const materialRouteRules = new Set([
   "route-integrity", "trip-dates", "stay-duration-confidence", "night-allocation-compromise",
@@ -39,14 +44,14 @@ function routeIssueHref(tripId: string) {
 }
 
 function nonTransportIssue(trip: EasyTTrip, issue: TripRecommendation): OverviewIssue {
-  const dayNumber = itineraryDayForRecommendation(trip, issue);
   return {
     id: issue.id,
     title: issue.message,
     details: [],
+    findings: [{ message: issue.message, severity: issue.severity }],
     severity: issue.severity,
-    href: dayNumber ? itineraryWorkspaceHref(trip.id, dayNumber) : routeIssueHref(trip.id),
-    actionLabel: "Review timing",
+    href: routeIssueHref(trip.id),
+    actionLabel: "Review route",
     reviewLegIds: [],
   };
 }
@@ -71,12 +76,21 @@ export function presentOverviewIssues(
       && typeof legId === "string" && integrityLegIds.has(legId);
     return !sameLegAlreadyCounted || issue.severity === "critical";
   });
+  const sortedTransferDetails = [...transferDetails].sort((left, right) => severityOrder[left.severity] - severityOrder[right.severity]);
+  const distinctTransferDetails = sortedTransferDetails.filter((issue, index) =>
+    sortedTransferDetails.findIndex((candidate) => candidate.message === issue.message) === index);
   const transferNotice: OverviewIssue | null = transferTitle ? {
     id: transferTitle.id,
     title: transferTitle.rule === "route-integrity"
       ? transferTitle.message.replace(/ before Morrovia can assess the full route\.$/, "")
       : transferTitle.message,
-    details: [...new Set(transferDetails.map((issue) => issue.message))],
+    details: distinctTransferDetails.map((issue) => issue.message),
+    findings: [
+      { message: transferTitle.rule === "route-integrity"
+        ? transferTitle.message.replace(/ before Morrovia can assess the full route\.$/, "")
+        : transferTitle.message, severity: transferTitle.severity },
+      ...distinctTransferDetails.map((issue) => ({ message: issue.message, severity: issue.severity })),
+    ],
     severity: transferIssues.some((issue) => issue.severity === "critical")
       ? "critical" : transferIssues.some((issue) => issue.severity === "warning") ? "warning" : "info",
     href: transportWorkspaceHref(trip.id, reviewLegIds[0], reviewLegIds.length > 1 ? reviewLegIds : []),
@@ -94,5 +108,36 @@ export function presentOverviewIssues(
   }
   const critical = presented.filter((issue) => issue.severity === "critical");
   const others = presented.filter((issue) => issue.severity !== "critical");
-  return [...critical, ...others.slice(0, Math.max(0, 2 - critical.length))];
+  return [...critical, ...others];
+}
+
+function conciseFinding(message: string) {
+  if (message === "The saved route does not yet represent the complete journey from its origin.") {
+    return "Journey origin isn’t fully represented";
+  }
+  const usableDays = message.match(/^Travel leaves only ([\d.]+) usable days in (.+)\.$/);
+  if (usableDays) return `${usableDays[2]} has only ${usableDays[1]} usable days`;
+  const tripEnd = message.match(/^The final stop ends on (\d{4}-\d{2}-\d{2}), not at the end of the trip\.$/);
+  if (tripEnd) return `Final stop ends on ${tripEnd[1]}, not on trip end`;
+  return message;
+}
+
+/** A display-only summary; canonical findings and destination links remain owned above. */
+export function presentRouteCheckSummary(issues: readonly OverviewIssue[], primaryHref: string) {
+  const findings = issues.flatMap((issue) => issue.findings.map((finding, index) => ({
+    id: `${issue.id}-${index}`,
+    text: conciseFinding(finding.message),
+    severity: finding.severity,
+  } satisfies RouteCheckFinding)));
+  findings.sort((left, right) => severityOrder[left.severity] - severityOrder[right.severity]);
+  const visibleCount = findings.length > 3
+    ? Math.max(3, findings.filter((finding) => finding.severity === "critical").length)
+    : findings.length;
+  const actions: RouteCheckAction[] = [];
+  for (const issue of issues) {
+    if (issue.href !== primaryHref && !actions.some((action) => action.href === issue.href)) {
+      actions.push({ href: issue.href, label: issue.actionLabel });
+    }
+  }
+  return { visible: findings.slice(0, visibleCount), remaining: findings.slice(visibleCount), actions };
 }

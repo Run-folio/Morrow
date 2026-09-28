@@ -6,6 +6,7 @@ import { tourTripFixture } from "./storybook/tour-trip.fixture";
 import TripOverviewWorkspace from "./trip-overview-workspace";
 import TripShell from "./trip-shell";
 import { createPlanningConfidence } from "@/lib/easyt/planning-confidence";
+import { ROUTE_BACKTRACKING_REASON_PREFIX } from "@/lib/easyt/planner";
 
 const image = "/journey/peru-sacred-valley-route.jpg";
 
@@ -247,6 +248,56 @@ export const MultipleTransfersNeedReview: Story = { args: { trip: routeReviewTri
 export const LongRoadTransferOnly: Story = { args: { trip: routeReviewTrip("confirmed", "long-road") } };
 export const CombinedTransferChecks: Story = { args: { trip: routeReviewTrip("unresolved", "long-road") } };
 export const ConfirmedRoute: Story = { args: { trip: routeReviewTrip("confirmed", "confirmed") } };
+
+const routeWarningTrip: EasyTTrip = {
+  ...coherentRouteTrip,
+  endDate: "2026-08-27",
+  stops: coherentRouteTrip.stops.map((stop) => stop.id === "cusco" ? { ...stop, nights: null } : stop),
+  brief: {
+    ...coherentRouteTrip.brief,
+    routeAssessment: coherentRouteTrip.brief.routeAssessment ? {
+      ...coherentRouteTrip.brief.routeAssessment,
+      route: {
+        ...coherentRouteTrip.brief.routeAssessment.route,
+        state: "recommendation",
+        improvementMinutes: 120,
+        reasons: [`${ROUTE_BACKTRACKING_REASON_PREFIX} under the current route criteria.`],
+      },
+    } : undefined,
+  },
+};
+
+export const HealthyRouteCheck: Story = { args: { trip: coherentRouteTrip } };
+export const OneRouteFinding: Story = {
+  args: { trip: { ...routeWarningTrip, endDate: coherentRouteTrip.endDate, stops: coherentRouteTrip.stops } },
+};
+export const TwoRelatedTransportFindings: Story = {
+  args: {
+    trip: {
+      ...routeReviewTrip("unresolved", "long-road"),
+      endDate: "2026-08-30",
+      stops: coherentRouteTrip.stops.map((stop) => stop.id === "arequipa" ? { ...stop, nights: 4, departureDate: "2026-08-30" } : stop),
+    },
+  },
+};
+export const ThreeRouteFindings: Story = { args: { trip: routeWarningTrip } };
+export const MixedRouteAndTransportFindings: Story = {
+  args: {
+    trip: {
+      ...routeReviewTrip("unresolved", "long-road"),
+      endDate: "2026-08-27",
+    },
+  },
+};
+export const ManyRouteFindings: Story = {
+  args: {
+    trip: {
+      ...routeWarningTrip,
+      brief: { ...routeWarningTrip.brief, pace: "slow" },
+      stops: routeWarningTrip.stops.map((stop) => stop.id === "cusco" || stop.id === "sacred-valley" ? { ...stop, nights: 1 } : stop),
+    },
+  },
+};
 
 const unresolvedConfidence = createPlanningConfidence({
   state: "inferred",

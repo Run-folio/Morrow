@@ -1,0 +1,269 @@
+[
+  {
+    "story": "healthy-route-check",
+    "width": 1440,
+    "count": "0",
+    "summary": "",
+    "links": [],
+    "height": 0,
+    "scrollWidth": 1440,
+    "viewportWidth": 1440,
+    "cardGeometry": [
+      {
+        "width": 154,
+        "height": 210
+      },
+      {
+        "width": 154,
+        "height": 210
+      }
+    ],
+    "disclosures": 0,
+    "errors": []
+  },
+  {
+    "story": "one-route-finding",
+    "width": 390,
+    "count": "1",
+    "summary": "Route check\nThis stop order has avoidable backtracking.\nReview route",
+    "links": [
+      {
+        "text": "Review route",
+        "href": "/journey/cusco-sacred-valley-arequipa/map?returnTo=%2Fjourney%2Fcusco-sacred-valley-arequipa"
+      }
+    ],
+    "height": 107.984375,
+    "scrollWidth": 390,
+    "viewportWidth": 390,
+    "cardGeometry": [
+      {
+        "width": 136,
+        "height": 210
+      },
+      {
+        "width": 136,
+        "height": 210
+      }
+    ],
+    "disclosures": 0,
+    "errors": []
+  },
+  {
+    "story": "two-related-transport-findings",
+    "width": 390,
+    "count": "2",
+    "summary": "Route check · 2 things to review\n1 transfer needs checking\n5h 30m of estimated road travel may dominate this transfer day.\nReview transfers",
+    "links": [
+      {
+        "text": "Review transfers",
+        "href": "/journey/cusco-sacred-valley-arequipa/transport?leg=cusco-valley&review=cusco-valley&review=valley-arequipa"
+      }
+    ],
+    "height": 145.578125,
+    "scrollWidth": 390,
+    "viewportWidth": 390,
+    "cardGeometry": [
+      {
+        "width": 136,
+        "height": 210
+      },
+      {
+        "width": 136,
+        "height": 210
+      }
+    ],
+    "disclosures": 0,
+    "errors": []
+  },
+  {
+    "story": "three-route-findings",
+    "width": 1440,
+    "count": "3",
+    "summary": "Route check · 3 things to review\nFinal stop ends on 2026-08-28, not on trip end\nAt least one stop still needs a confirmed number of nights.\nThis stop order has avoidable backtracking.",
+    "links": [],
+    "height": 67.984375,
+    "scrollWidth": 1440,
+    "viewportWidth": 1440,
+    "cardGeometry": [
+      {
+        "width": 154,
+        "height": 210
+      },
+      {
+        "width": 154,
+        "height": 210
+      }
+    ],
+    "disclosures": 0,
+    "errors": []
+  },
+  {
+    "story": "three-route-findings",
+    "width": 390,
+    "count": "3",
+    "summary": "Route check · 3 things to review\nFinal stop ends on 2026-08-28, not on trip end\nAt least one stop still needs a confirmed number of nights.\nThis stop order has avoidable backtracking.",
+    "links": [],
+    "height": 126.375,
+    "scrollWidth": 390,
+    "viewportWidth": 390,
+    "cardGeometry": [
+      {
+        "width": 136,
+        "height": 210
+      },
+      {
+        "width": 136,
+        "height": 210
+      }
+    ],
+    "disclosures": 0,
+    "errors": []
+  },
+  {
+    "story": "three-route-findings",
+    "width": 430,
+    "count": "3",
+    "summary": "Route check · 3 things to review\nFinal stop ends on 2026-08-28, not on trip end\nAt least one stop still needs a confirmed number of nights.\nThis stop order has avoidable backtracking.",
+    "links": [],
+    "height": 109.578125,
+    "scrollWidth": 430,
+    "viewportWidth": 430,
+    "cardGeometry": [
+      {
+        "width": 136,
+        "height": 210
+      },
+      {
+        "width": 136,
+        "height": 210
+      }
+    ],
+    "disclosures": 0,
+    "errors": []
+  },
+  {
+    "story": "three-route-findings",
+    "width": 768,
+    "count": "3",
+    "summary": "Route check · 3 things to review\nFinal stop ends on 2026-08-28, not on trip end\nAt least one stop still needs a confirmed number of nights.\nThis stop order has avoidable backtracking.",
+    "links": [],
+    "height": 109.578125,
+    "scrollWidth": 768,
+    "viewportWidth": 768,
+    "cardGeometry": [
+      {
+        "width": 122,
+        "height": 210
+      },
+      {
+        "width": 122,
+        "height": 210
+      }
+    ],
+    "disclosures": 0,
+    "errors": []
+  },
+  {
+    "story": "three-route-findings",
+    "width": 1024,
+    "count": "3",
+    "summary": "Route check · 3 things to review\nFinal stop ends on 2026-08-28, not on trip end\nAt least one stop still needs a confirmed number of nights.\nThis stop order has avoidable backtracking.",
+    "links": [],
+    "height": 84.78125,
+    "scrollWidth": 1024,
+    "viewportWidth": 1024,
+    "cardGeometry": [
+      {
+        "width": 122,
+        "height": 210
+      },
+      {
+        "width": 122,
+        "height": 210
+      }
+    ],
+    "disclosures": 0,
+    "errors": []
+  },
+  {
+    "story": "mixed-route-and-transport-findings",
+    "width": 1440,
+    "count": "5",
+    "summary": "Route check · 5 things to review\nFinal stop ends on 2026-08-28, not on trip end\n7 allocated nights do not reconcile with the 6-night trip.\n1 transfer needs checking\n+ 2 more\nReview transfers",
+    "links": [
+      {
+        "text": "Review transfers",
+        "href": "/journey/cusco-sacred-valley-arequipa/transport?leg=cusco-valley&review=cusco-valley&review=valley-arequipa"
+      }
+    ],
+    "height": 151.984375,
+    "scrollWidth": 1440,
+    "viewportWidth": 1440,
+    "cardGeometry": [
+      {
+        "width": 154,
+        "height": 210
+      },
+      {
+        "width": 154,
+        "height": 210
+      }
+    ],
+    "disclosures": 1,
+    "errors": []
+  },
+  {
+    "story": "mixed-route-and-transport-findings",
+    "width": 390,
+    "count": "5",
+    "summary": "Route check · 5 things to review\nFinal stop ends on 2026-08-28, not on trip end\n7 allocated nights do not reconcile with the 6-night trip.\n1 transfer needs checking\n+ 2 more\nReview transfers",
+    "links": [
+      {
+        "text": "Review transfers",
+        "href": "/journey/cusco-sacred-valley-arequipa/transport?leg=cusco-valley&review=cusco-valley&review=valley-arequipa"
+      }
+    ],
+    "height": 210.375,
+    "scrollWidth": 390,
+    "viewportWidth": 390,
+    "cardGeometry": [
+      {
+        "width": 136,
+        "height": 210
+      },
+      {
+        "width": 136,
+        "height": 210
+      }
+    ],
+    "disclosures": 1,
+    "errors": []
+  },
+  {
+    "story": "many-route-findings",
+    "width": 390,
+    "count": "5",
+    "summary": "Route check · 5 things to review\nTravel leaves less than a day in Sacred Valley.\nFinal stop ends on 2026-08-28, not on trip end\n4 allocated nights do not reconcile with the 6-night trip.\n+ 2 more\nReview transfers",
+    "links": [
+      {
+        "text": "Review transfers",
+        "href": "/journey/cusco-sacred-valley-arequipa/transport"
+      }
+    ],
+    "height": 210.375,
+    "scrollWidth": 390,
+    "viewportWidth": 390,
+    "cardGeometry": [
+      {
+        "width": 136,
+        "height": 210
+      },
+      {
+        "width": 136,
+        "height": 210
+      }
+    ],
+    "disclosures": 1,
+    "errors": []
+  }
+]

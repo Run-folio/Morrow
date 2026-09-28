@@ -48,7 +48,7 @@ test("critical trip and persistence states remain truthful without a duplicate h
   const tripProvider = shellClientSource.indexOf("<TripShellTripContext.Provider");
 
   assert.match(source, /presentOverviewIssues\(/);
-  assert.match(source, /issue\.severity === "critical" \? styles\.issueCritical/);
+  assert.match(source, /finding\.severity === "critical" \? styles\.issueCritical/);
   assert.doesNotMatch(source, /className=\{styles\.healthCard\}/);
   assert.ok(resolverBanner >= 0 && resolverBanner < resolverShell);
   assert.ok(sessionBanner >= 0 && sessionBanner < tripProvider);
@@ -62,12 +62,23 @@ test("Overview removes the decorative stay hero and leaves stay discovery to its
 
 test("material route uncertainty is contextual and keeps canonical severity", () => {
   assert.match(source, /const visibleIssues = presentOverviewIssues\(/);
+  assert.match(source, /presentRouteCheckSummary\(visibleIssues, primaryAction\.href\)/);
   assert.match(issueProjectionSource, /issue\.severity === "critical" \|\| materialRouteRules\.has\(issue\.rule\)/);
   assert.match(issueProjectionSource, /const critical = presented\.filter\(\(issue\) => issue\.severity === "critical"\)/);
-  assert.match(source, /issue\.severity === "critical" \? styles\.issueCritical/);
+  assert.match(source, /finding\.severity === "critical" \? styles\.issueCritical/);
   assert.match(issueProjectionSource, /severity: issue\.severity/);
-  assert.match(issueProjectionSource, /Review timing|Review transfers/);
+  assert.match(issueProjectionSource, /Review route|Review transfers/);
   assert.doesNotMatch(source, /Showing the \{visibleIssues\.length\} highest-priority/);
+});
+
+test("Route check uses one compact summary and accessible overflow instead of bordered warning cards", () => {
+  assert.match(source, /<aside className=\{styles\.routeCheck\}/);
+  assert.match(source, /routeCheck\.visible\.map/);
+  assert.match(source, /routeCheck\.remaining\.length \? <details/);
+  assert.match(source, /routeCheck\.actions\.map/);
+  assert.doesNotMatch(source, /visibleIssues\.map\(\(issue\) => <li/);
+  assert.match(styles, /\.routeCheck \{/);
+  assert.doesNotMatch(styles, /\.routeIssues li \{[\s\S]*?border: 1px/);
 });
 
 test("unresolved place intent is one quiet route recovery row with canonical recovery and dismissal actions", () => {
