@@ -15,7 +15,7 @@ export function tripShellDuration(startDate: string, endDate: string) {
   return deriveTripDateFacts({ startDate, endDate }).durationDays;
 }
 
-export default function TripShell({ trip, children, cacheTrip = true, orientationAutoStart = true, workspaceGuideVersionSeen = 0 }: { trip: EasyTTrip; children: ReactNode; cacheTrip?: boolean; orientationAutoStart?: boolean; workspaceGuideVersionSeen?: number }) {
+export default function TripShell({ trip, children, deviceOnlyNotice, cacheTrip = true, orientationAutoStart = true, workspaceGuideVersionSeen = 0 }: { trip: EasyTTrip; children: ReactNode; deviceOnlyNotice?: ReactNode; cacheTrip?: boolean; orientationAutoStart?: boolean; workspaceGuideVersionSeen?: number }) {
   const routeLabel = [trip.brief.origin, ...trip.stops.map((stop) => stop.name)].filter(Boolean).join(" → ") || "Route to confirm";
   const imagedDay = trip.planItems.find((item) => Boolean(item.image));
   const image = imagedDay?.image ?? null;
@@ -47,6 +47,7 @@ export default function TripShell({ trip, children, cacheTrip = true, orientatio
             <TripShellIdentityAndActions />
           </header>
 
+          {deviceOnlyNotice ? <div className={styles.deviceOnlyNotice}>{deviceOnlyNotice}</div> : null}
           <TripShellNavigation tripId={trip.id} />
           {sharedPhoto?.sourceUrl ? <details className={styles.mobilePhotoSources}>
             <summary>Trip photo source</summary>

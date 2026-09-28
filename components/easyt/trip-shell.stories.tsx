@@ -4,6 +4,9 @@ import type { EasyTTrip } from "@/lib/easyt/trip";
 import { saveTripRecoveryToStorage, tripRecoveryStorageKey } from "@/lib/easyt/storage";
 import { setStorybookAuthOwner } from "../../.storybook/auth-client.mock";
 import TripShell, { TripWorkspacePlaceholder } from "./trip-shell";
+import { MorroviaStatusBanner } from "./morrovia-feedback";
+import { EasyTLinkButton } from "./easyt-controls";
+import { tripSaveSignInHref } from "@/lib/easyt/trip-workspace-links";
 
 const trip: EasyTTrip = {
   schemaVersion: 1,
@@ -235,6 +238,16 @@ export const CompactMobileNoPhoto: Story = {
 
 export const CompactMobileLongTitle: Story = {
   ...LongCustomTitle,
+  globals: { viewport: { value: "morrovia390", isRotated: false } },
+};
+
+export const CompactMobileDeviceOnly: Story = {
+  ...Overview,
+  args: {
+    ...Overview.args,
+    trip: { ...trip, ownerId: null },
+    deviceOnlyNotice: <MorroviaStatusBanner title="Saved on this device" detail="Keep this trip and continue planning on another device." actions={<EasyTLinkButton size="small" variant="secondary" href={tripSaveSignInHref(trip.id)}>Save this trip</EasyTLinkButton>} />,
+  },
   globals: { viewport: { value: "morrovia390", isRotated: false } },
 };
 
