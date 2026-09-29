@@ -69,6 +69,8 @@ export type HomepageHandoffReceipt = {
   ownerId: string | null;
   handoffId: string;
   inputFingerprint: string;
+  /** Traveller-controlled input at submission, before capture or enrichment. */
+  semanticInputFingerprint?: string;
   tripId: string;
 };
 
@@ -258,6 +260,7 @@ function homepageReceipt(value: unknown, snapshot: HomepageInputSnapshot): value
     && value.ownerId === snapshot.ownerId
     && boundedHomepageString(value.handoffId)
     && boundedHomepageString(value.inputFingerprint, 512)
+    && (value.semanticInputFingerprint === undefined || boundedHomepageString(value.semanticInputFingerprint, 512))
     && boundedHomepageString(value.tripId);
 }
 
@@ -268,6 +271,17 @@ export function readHomepageInput(value: unknown, ownerId: string | null): Store
   return value.receipt === undefined
     ? { snapshot: value.snapshot }
     : { snapshot: value.snapshot, receipt: value.receipt };
+}
+
+/** Preserve the current intake before leaving for the existing import route. */
+export function persistHomepageIntakeForImport(
+  storage: Pick<Storage, "setItem">,
+  snapshot: HomepageInputSnapshot,
+): boolean {
+  try {
+    storage.setItem(homepageInputStorageKey(snapshot.ownerId), JSON.stringify({ snapshot }));
+    return true;
+  } catch { return false; }
 }
 
 function canonicalFingerprintValue(value: unknown): unknown {
@@ -289,6 +303,67 @@ function homepageFingerprintHash(value: string) {
     right = Math.imul(right ^ code, 0x85ebca6b) >>> 0;
   }
   return `${left.toString(16).padStart(8, "0")}${right.toString(16).padStart(8, "0")}`;
+}
+
+function semanticText(value: string) {
+  return value.normalize("NFC").trim().replace(/\s+/gu, " ");
+}
+
+function semanticEndpoint(place: JourneyEndpointPlace) {
+  return place.canonicalPlaceId
+    ? { canonicalPlaceId: place.canonicalPlaceId }
+    : { name: semanticText(place.name), country: semanticText(place.country ?? "") };
+}
+
+/** Stable, traveller-authored submission meaning before any provider capture. */
+export function homepageSemanticInputFingerprint(snapshot: HomepageInputSnapshot): string {
+  const choice = <T>(value: HomepageChoice<T>, selected: (selectedValue: T) => unknown) =>
+    value.state === "selected" ? { state: "selected", value: selected(value.value) } : { state: value.state };
+  const meaning = {
+    version: 1,
+    ownerId: snapshot.ownerId,
+    mode: snapshot.mode,
+    active: snapshot.mode === "describe"
+      ? { prompt: semanticText(snapshot.prompt) }
+      : { entries: snapshot.entries.map((entry) => ({
+        occurrenceId: entry.id,
+        place: entry.selection?.canonicalPlaceId
+          ? { canonicalPlaceId: entry.selection.canonicalPlaceId }
+          : { name: semanticText(entry.text), country: entry.selection?.country ?? "" },
+      })) },
+    dates: choice(snapshot.dates, (value) => value),
+    travellers: choice(snapshot.travellers, (value) => value),
+    budget: choice(snapshot.budget, (value) => value),
+    interests: choice(snapshot.interests, (value) => [...value].sort()),
+    origin: choice(snapshot.origin, semanticEndpoint),
+    journeyEnd: choice(snapshot.journeyEnd, (value) => value.mode === "explicit"
+      ? { mode: "explicit", place: semanticEndpoint(value.place) }
+      : { mode: value.mode }),
+  };
+  return `homepage-input-v1-${homepageFingerprintHash(JSON.stringify(canonicalFingerprintValue(meaning)))}`;
+}
+
+/** A legacy completed receipt is also treated as unchanged: it cannot prove an edit. */
+export function homepageCompletedReceiptIsUnchanged(stored: StoredHomepageInput): boolean {
+  const receipt = stored.receipt;
+  return Boolean(receipt && (!receipt.semanticInputFingerprint
+    || receipt.semanticInputFingerprint === homepageSemanticInputFingerprint(stored.snapshot)));
+}
+
+/** Construct the existing receipt for either producer of a Builder projection. */
+export function homepageReceiptForProjection(
+  snapshot: HomepageInputSnapshot,
+  draft: HomeTripDraft,
+  tripId: string,
+): HomepageHandoffReceipt {
+  if (!draft.handoffId || draft.homepage?.ownerId !== snapshot.ownerId || !tripId.trim()) {
+    throw new Error("Homepage projection has no matching owner or reserved identity");
+  }
+  return {
+    version: 1, ownerId: snapshot.ownerId, handoffId: draft.handoffId,
+    inputFingerprint: homepageSubmissionFingerprint(draft),
+    semanticInputFingerprint: homepageSemanticInputFingerprint(snapshot), tripId,
+  };
 }
 
 /** Fingerprint only projected planning meaning. UI state, revisions and handoff
@@ -338,6 +413,8 @@ export function reusableHomepageReceipt(
   if (!receipt || !draft.homepage || !draft.handoffId) return null;
   return receipt.ownerId === stored.snapshot.ownerId
     && receipt.ownerId === draft.homepage.ownerId
+    && (receipt.semanticInputFingerprint === undefined
+      || receipt.semanticInputFingerprint === homepageSemanticInputFingerprint(stored.snapshot))
     && receipt.handoffId === draft.handoffId
     && receipt.inputFingerprint === homepageSubmissionFingerprint(draft)
     ? receipt
@@ -373,6 +450,7 @@ export async function commitHomepageHandoff(input: {
     || draftReceipt.ownerId !== receipt.ownerId
     || draftReceipt.handoffId !== receipt.handoffId
     || draftReceipt.inputFingerprint !== receipt.inputFingerprint
+    || draftReceipt.semanticInputFingerprint !== receipt.semanticInputFingerprint
     || draftReceipt.tripId !== receipt.tripId) {
     return { ok: false, reason: "storage" };
   }

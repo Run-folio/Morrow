@@ -57,6 +57,8 @@
 .initialCapture{display:grid;width:100%;max-width:800px;margin:12px auto 0;gap:14px}.initialCapture>form{max-width:none;margin-top:0}
 .wizardBody.emptyWorkspace { grid-template-columns: minmax(0, 1fr); }
 .emptyWorkspace .pane { width: 100%; max-width: 980px; margin-inline: auto; }
+.freshWorkspace .pane { max-width: var(--morrovia-page); }
+.freshWorkspace .initialCapture { max-width: 1100px; }
 .initialCapture h2 { margin: 0; font: var(--morrovia-type-body); font-weight: 700; color: var(--morrovia-ink); }
 .firstPlaceEntry { display: grid; gap: 12px; padding-top: 20px; border-top: 1px solid var(--morrovia-line); }
 .stack + .timeStep { margin-top: 32px; }

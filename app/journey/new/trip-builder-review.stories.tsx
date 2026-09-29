@@ -2,7 +2,9 @@ import type { Meta, StoryObj } from "@storybook/nextjs-vite";
 import { useEffect, useState } from "react";
 import TripBuilder from "./trip-builder";
 import { currentTripStorageKey } from "@/lib/easyt/storage";
-import { HOME_TRIP_DRAFT_KEY } from "@/lib/easyt/home-trip-handoff";
+import { HOME_TRIP_DRAFT_KEY, type HomepageInputSnapshot } from "@/lib/easyt/home-trip-handoff";
+import { homepageInputStorageKey } from "@/lib/easyt/private-browser-context";
+import { canonicalPlaceSuggestionFor } from "@/lib/easyt/place-intelligence";
 import { routePlannerPayload } from "@/lib/easyt/public-route-handoff";
 import { publicRouteDetailFor } from "@/lib/easyt/public-route";
 import { extractStructuredTripBrief } from "@/lib/easyt/structured-trip-brief";
@@ -213,11 +215,13 @@ export const TourCapture: Story = { args: { state: "tour" } };
 
 // Mount the production document: fixtures seed only its existing handoff
 // boundary, never a parallel route, capture, or persistence implementation.
-function BuilderEntryFixture({ entry, language = "en", routeKey = "morocco-rail" }: { entry: "empty" | "populated" | "clarification"; language?: "en" | "es"; routeKey?: string }) {
+function BuilderEntryFixture({ entry, language = "en", routeKey = "morocco-rail", snapshot }: { entry: "empty" | "populated" | "clarification"; language?: "en" | "es"; routeKey?: string; snapshot?: HomepageInputSnapshot }) {
   const [ready, setReady] = useState(false);
   useEffect(() => {
     const previousUrl = window.location.href;
     const previousDraft = window.localStorage.getItem(HOME_TRIP_DRAFT_KEY);
+    const inputKey = homepageInputStorageKey(null);
+    const previousInput = window.localStorage.getItem(inputKey);
     const pointerKey = currentTripStorageKey(null);
     const previousPointer = window.localStorage.getItem(pointerKey);
     window.localStorage.removeItem(pointerKey);
@@ -233,6 +237,9 @@ function BuilderEntryFixture({ entry, language = "en", routeKey = "morocco-rail"
     url.searchParams.delete("step");
     url.searchParams.delete("trip");
     url.searchParams.delete("inspire");
+    url.searchParams.delete("handoff");
+    if (snapshot) window.localStorage.setItem(inputKey, JSON.stringify({ snapshot }));
+    else window.localStorage.removeItem(inputKey);
     if (entry === "empty") {
       url.searchParams.delete("homeDraft");
       window.localStorage.removeItem(HOME_TRIP_DRAFT_KEY);
@@ -254,8 +261,10 @@ function BuilderEntryFixture({ entry, language = "en", routeKey = "morocco-rail"
       window.history.replaceState(window.history.state, "", previousUrl);
       if (previousDraft === null) window.localStorage.removeItem(HOME_TRIP_DRAFT_KEY);
       else window.localStorage.setItem(HOME_TRIP_DRAFT_KEY, previousDraft);
+      if (previousInput === null) window.localStorage.removeItem(inputKey);
+      else window.localStorage.setItem(inputKey, previousInput);
     };
-  }, [entry, language, routeKey]);
+  }, [entry, language, routeKey, snapshot]);
   return ready ? <main className="morrovia-editorial-page"><TripBuilder /></main> : null;
 }
 
@@ -302,3 +311,32 @@ export const BuilderReviewAt768: Story = { args: { state: "resolved" }, globals:
 // Production Builder variants for skim-first content and long-label acceptance.
 export const SkimFirstSpanish: Story = { ...PopulatedHandoff, render: () => <BuilderEntryFixture entry="populated" language="es" /> };
 export const SkimFirstLongDestinations: Story = { ...PopulatedHandoff, render: () => <BuilderEntryFixture entry="populated" routeKey="mexico-guatemala" /> };
+
+function starterSnapshot(mode: "stops" | "describe", longStops = false): HomepageInputSnapshot {
+  const names = longStops ? ["Tokyo", "San Cristóbal de las Casas", "Tokyo"] : [];
+  return {
+    version: 1, ownerId: null, revision: 2, mode,
+    entries: names.map((name, index) => {
+      const selection = canonicalPlaceSuggestionFor(name);
+      if (!selection) throw new Error(`Missing story place: ${name}`);
+      return { id: `occurrence-${index + 1}`, text: selection.label, selection };
+    }),
+    prompt: mode === "describe" ? "Two weeks in Japan, visiting Tokyo and Kyoto" : "",
+    dates: { state: "selected", value: { start: "2027-04-02", end: "2027-04-16" } },
+    travellers: { state: "selected", value: 2 },
+    budget: { state: "selected", value: "mid" },
+    interests: { state: "selected", value: ["food", "culture"] },
+    origin: { state: "untouched" }, journeyEnd: { state: "cleared" },
+  };
+}
+
+export const FreshStops: Story = { ...DirectEmptyEntry };
+export const FreshDescribe: Story = { ...DirectEmptyEntry, render: () => <BuilderEntryFixture entry="empty" snapshot={starterSnapshot("describe")} /> };
+export const RestoredRepeatedStops: Story = { ...DirectEmptyEntry, render: () => <BuilderEntryFixture entry="empty" snapshot={starterSnapshot("stops", true)} /> };
+export const RestoredAfterImport: Story = { ...DirectEmptyEntry, render: () => <BuilderEntryFixture entry="empty" snapshot={starterSnapshot("describe")} /> };
+export const FreshSpanish: Story = { ...DirectEmptyEntry, render: () => <BuilderEntryFixture entry="empty" language="es" /> };
+export const FreshStopsAt390: Story = { ...FreshStops, globals: { viewport: { value: "morrovia390", isRotated: false } } };
+export const FreshStopsAt430: Story = { ...FreshStops, globals: { viewport: { value: "morrovia430", isRotated: false } } };
+export const FreshStopsAt768: Story = { ...FreshStops, globals: { viewport: { value: "morrovia768", isRotated: false } } };
+export const FreshStopsAt1024: Story = { ...FreshStops, globals: { viewport: { value: "morrovia1024", isRotated: false } } };
+export const FreshStopsAt1440: Story = { ...FreshStops, globals: { viewport: { value: "morrovia1440", isRotated: false } } };

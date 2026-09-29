@@ -3,6 +3,8 @@ import test from "node:test";
 
 import {
   homepageSubmissionFingerprint,
+  homepageSemanticInputFingerprint,
+  homepageCompletedReceiptIsUnchanged,
   projectHomepageInput,
   readHomepageInput,
   reusableHomepageReceipt,
@@ -71,6 +73,9 @@ test("receipt validation distinguishes absence from malformed or mismatched book
   assert.equal(readHomepageInput({ snapshot, receipt: { ...receipt, ownerId: "owner-b" } }, "owner-a"), null);
   assert.equal(readHomepageInput({ snapshot, receipt: { ...receipt, handoffId: "" } }, "owner-a"), null);
   assert.equal(readHomepageInput({ snapshot, receipt: { ...receipt, tripId: 4 } }, "owner-a"), null);
+  assert.equal(readHomepageInput({ snapshot, receipt: { ...receipt, semanticInputFingerprint: 4 } }, "owner-a"), null);
+  assert.equal(readHomepageInput({ snapshot, receipt: { ...receipt, semanticInputFingerprint: "" } }, "owner-a"), null);
+  assert.deepEqual(readHomepageInput({ snapshot, receipt: { ...receipt, semanticInputFingerprint: homepageSemanticInputFingerprint(snapshot) } }, "owner-a")?.receipt?.tripId, receipt.tripId);
 });
 
 test("semantically identical active input reuses a reserved trip while effective changes do not", () => {
@@ -115,4 +120,20 @@ test("legacy drafts remain ownerless unless their own compatibility metadata say
   const legacyDraft = { handoffId: "legacy", brief: "Two weeks in Japan" };
   assert.equal("homepage" in legacyDraft, false);
   assert.equal(readHomepageInput({ snapshot: legacyDraft }, "owner-a"), null);
+});
+
+test("a completed receipt classifies unchanged semantic input without trusting new provider output", () => {
+  const snapshot = { ...emptyHomepageInput("owner-a"), mode: "describe" as const, prompt: "Kyoto and Tokyo" };
+  const result = projectHomepageInput({ snapshot, profile: null, handoffId: "handoff-1" });
+  assert.equal(result.ok, true);
+  if (!result.ok) throw new Error("projection failed");
+  const receipt: HomepageHandoffReceipt = {
+    version: 1, ownerId: "owner-a", handoffId: "handoff-1", tripId: "trip-a",
+    inputFingerprint: homepageSubmissionFingerprint(result.draft),
+    semanticInputFingerprint: homepageSemanticInputFingerprint(snapshot),
+  };
+  assert.equal(homepageCompletedReceiptIsUnchanged({ snapshot, receipt }), true);
+  assert.equal(homepageCompletedReceiptIsUnchanged({ snapshot: { ...snapshot, prompt: "Kyoto then Osaka" }, receipt }), false);
+  assert.equal(homepageCompletedReceiptIsUnchanged({ snapshot, receipt: { ...receipt, semanticInputFingerprint: undefined } }), true);
+  assert.equal(reusableHomepageReceipt({ snapshot: { ...snapshot, prompt: "Kyoto then Osaka" }, receipt }, result.draft), null);
 });

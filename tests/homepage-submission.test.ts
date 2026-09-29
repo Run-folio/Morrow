@@ -5,6 +5,7 @@ import {
   HOME_TRIP_DRAFT_KEY,
   commitHomepageHandoff,
   homepageSubmissionFingerprint,
+  homepageSemanticInputFingerprint,
   projectHomepageInput,
   readHomepageInput,
   type HomepageHandoffReceipt,
@@ -47,6 +48,7 @@ function acceptedHandoff(ownerId: string | null = "owner-a") {
     ownerId,
     handoffId: "handoff-a",
     inputFingerprint: homepageSubmissionFingerprint(projected.draft),
+    semanticInputFingerprint: homepageSemanticInputFingerprint(snapshot),
     tripId: "trip-reserved-a",
   };
   const draft = { ...projected.draft, homepage: { ...projected.draft.homepage!, receipt } };
@@ -69,6 +71,18 @@ test("a stale homepage request returns before storage or preservation mutation",
   assert.deepEqual(result, { ok: false, reason: "stale" });
   assert.equal(storage.writes, 0);
   assert.equal(preservationCalls, 0);
+});
+
+test("a mismatched semantic receipt in the draft fails before any write", async () => {
+  const storage = new MemoryStorage();
+  const { stored, draft } = acceptedHandoff();
+  const result = await commitHomepageHandoff({
+    storage, stored,
+    draft: { ...draft, homepage: { ...draft.homepage!, receipt: { ...stored.receipt, semanticInputFingerprint: "other" } } },
+    isCurrent: () => true, preserveAndBegin: () => true,
+  });
+  assert.deepEqual(result, { ok: false, reason: "storage" });
+  assert.equal(storage.writes, 0);
 });
 
 test("a request invalidated after staging rolls both slots back before preservation", async () => {
