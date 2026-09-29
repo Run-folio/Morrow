@@ -36,7 +36,7 @@ import { routePlannerPayload } from "@/lib/easyt/public-route-handoff";
 import { defaultTravelProfile, travelProfileFromUnknown, tripInterestsWithProfileDefaults, type TravelProfile } from "@/lib/easyt/travel-profile";
 import { firstTripWorkspaceHref, mapWorkspaceHref, tripWorkspaceHref } from "@/lib/easyt/trip-workspace-links";
 import { createLatestJourneyCaptureRequestGate, journeyCaptureFailureMessage, requestJourneyCapture } from "@/lib/easyt/journey-capture-client";
-import { HOME_TRIP_DRAFT_KEY, createPendingIntakeReceipt, handoffLookupMentions, homepageHandoffMatchesTrip, homepageHandoffReceiptForOwner, homepageReceiptForProjection, homepageSemanticInputFingerprint, projectHomepageInput, readHomepageInput, pendingIntakeReceiptForOwner, pendingHomepageHandoffForOwner, homeTripDraftInterestsWereExplicit, homeTripDraftTimingFlexibility, initialHandoffRouteStops, mergeHandoffLocationChoice, preferredHandoffLocationChoice, removeHomeTripDraftIfDurable, resolveHandoffIncrementally, routableHandoffMentions, tripInterestsFromHomeDraft, type HandoffLocationChoice, type HomeTripDraft, type HomepageInputSnapshot, type PendingHomeTripHandoff, type PendingIntakeReceipt } from "@/lib/easyt/home-trip-handoff";
+import { HOME_TRIP_DRAFT_KEY, acknowledgePendingIntakeReceipt, discardPendingIntakeForEdit, handoffLookupMentions, homepageHandoffMatchesTrip, homepageHandoffReceiptForOwner, homepageReceiptForProjection, persistEditableHomepageInput, pendingReceiptStillCurrent, projectHomepageInput, readHomepageInput, pendingIntakeReceiptForOwner, pendingHomepageHandoffForOwner, reserveDirectDescribeIntake, homeTripDraftInterestsWereExplicit, homeTripDraftTimingFlexibility, initialHandoffRouteStops, mergeHandoffLocationChoice, preferredHandoffLocationChoice, removeHomeTripDraftIfDurable, resolveHandoffIncrementally, routableHandoffMentions, tripInterestsFromHomeDraft, type HandoffLocationChoice, type HomeTripDraft, type HomepageInputSnapshot, type PendingHomeTripHandoff, type PendingIntakeReceipt } from "@/lib/easyt/home-trip-handoff";
 import { resolveNewTripEntryState, type NewTripEntryState } from "./new-trip-entry-state";
 import { NewTripStarter } from "./new-trip-starter";
 import type { JourneyCaptureResult } from "@/lib/easyt/journey-capture";
@@ -469,6 +469,7 @@ function TripBuilderDocument() {
     pending?: PendingIntakeReceipt;
     fromHomepage?: boolean;
   } | null>(null);
+  const receiptAcknowledgementRef = useRef<Promise<boolean> | null>(null);
   const pendingInterpretationRef = useRef<PendingIntakeReceipt | null>(null);
   const activeProjectionTokenRef = useRef<string | null>(null);
   const handoffLookupSessionRef = useRef<{
@@ -881,14 +882,12 @@ function TripBuilderDocument() {
     if (!hydrated || !canUseHydratedTripScope(hydratedOwnerScopeRef.current, activeBrowserOwnerId)
       || snapshot.ownerId !== activeBrowserOwnerId || hasRouteSkeleton || hasPromptContext) throw new Error("New trip intake is no longer current");
     if (snapshot.mode === "describe") {
-      const inputKey = homepageInputStorageKey(snapshot.ownerId);
-      const stored = readHomepageInput(JSON.parse(window.localStorage.getItem(inputKey) ?? "null"), snapshot.ownerId);
-      const existing = pendingIntakeReceiptForOwner(stored?.receipt, snapshot.ownerId);
-      const receipt = existing?.semanticInputFingerprint === homepageSemanticInputFingerprint(snapshot)
-        ? existing : createPendingIntakeReceipt(snapshot, { handoffId: `new-intake-${crypto.randomUUID()}`, tripId });
-      const pendingInput = JSON.stringify({ snapshot, receipt });
-      window.localStorage.setItem(inputKey, pendingInput);
-      if (window.localStorage.getItem(inputKey) !== pendingInput) throw new Error("New trip input did not persist");
+      const reservation = await reserveDirectDescribeIntake({
+        storage: window.localStorage, snapshot, tripId, handoffId: `new-intake-${crypto.randomUUID()}`,
+      });
+      if (!reservation.ok || !canUseHydratedTripScope(hydratedOwnerScopeRef.current, snapshot.ownerId)
+        || activeBrowserOwnerIdRef.current !== snapshot.ownerId) throw new Error("New trip intake could not be reserved");
+      const receipt = reservation.receipt;
       setTripId(receipt.tripId);
       pendingInterpretationRef.current = receipt;
       setPendingInterpretation({ receipt, fromHomepage: false });
@@ -903,7 +902,10 @@ function TripBuilderDocument() {
     const receipt = homepageReceiptForProjection(snapshot, projected.draft, tripId);
     // The completed receipt must follow canonical recovery, so a reload while
     // the Builder is still saving can restore the traveller's original intake.
-    window.localStorage.setItem(homepageInputStorageKey(snapshot.ownerId), JSON.stringify({ snapshot }));
+    const frozenInput = await persistEditableHomepageInput({ storage: window.localStorage, snapshot,
+      isCurrent: () => canUseHydratedTripScope(hydratedOwnerScopeRef.current, snapshot.ownerId)
+        && activeBrowserOwnerIdRef.current === snapshot.ownerId });
+    if (!frozenInput.ok) throw new Error("New trip input did not persist");
     pendingNewTripReceiptRef.current = { snapshot, receipt, draft: { ...projected.draft, homepage: { ...projected.draft.homepage!, receipt } } };
     applyNewTripIntake(projected.draft, () => canUseHydratedTripScope(hydratedOwnerScopeRef.current, snapshot.ownerId));
   };
@@ -914,6 +916,7 @@ function TripBuilderDocument() {
     const previousOwnerScope = hydratedOwnerScopeRef.current;
     hydratedOwnerScopeRef.current = undefined;
     pendingNewTripReceiptRef.current = null;
+    receiptAcknowledgementRef.current = null;
     pendingInterpretationRef.current = null;
     activeProjectionTokenRef.current = null;
     handoffLookupSessionRef.current?.controller.abort();
@@ -1185,7 +1188,8 @@ function TripBuilderDocument() {
                 : null;
               applySaved(existingHomepageTrip);
               if (existingRecovery && homepageHandoffMatchesTrip(homeDraft, existingHomepageTrip)) {
-                removeHomeTripDraftIfDurable(window.localStorage, homeDraft, existingHomepageTrip, true, false);
+                await removeHomeTripDraftIfDurable(window.localStorage, homeDraft, existingHomepageTrip, true, false);
+                if (!active) return;
               }
               resumedHomepageTrip = true;
               hydratedEntryKind = "explicit-trip";
@@ -1248,7 +1252,8 @@ function TripBuilderDocument() {
       && pendingInterpretationRef.current?.semanticInputFingerprint === receipt.semanticInputFingerprint
       && pendingInterpretationRef.current?.inputRevision === receipt.inputRevision
       && canUseHydratedTripScope(hydratedOwnerScopeRef.current, receipt.ownerId)
-      && activeBrowserOwnerIdRef.current === receipt.ownerId;
+      && activeBrowserOwnerIdRef.current === receipt.ownerId
+      && pendingReceiptStillCurrent(window.localStorage, receipt, fromHomepage);
     const timer = window.setTimeout(() => {
       void (async () => {
         try {
@@ -1286,34 +1291,13 @@ function TripBuilderDocument() {
     };
   }, [hydrated, pendingInterpretation, pendingInterpretationRetry, hasSavedTravelProfile, travelProfile, language]);
 
-  const editPendingInterpretation = () => {
+  const editPendingInterpretation = () => { void (async () => {
     if (!pendingInterpretation || !canUseHydratedTripScope(hydratedOwnerScopeRef.current, pendingInterpretation.receipt.ownerId)) return;
     const { receipt, fromHomepage } = pendingInterpretation;
-    const inputKey = homepageInputStorageKey(receipt.ownerId);
-    const priorInput = window.localStorage.getItem(inputKey);
-    const priorHandoff = fromHomepage ? window.localStorage.getItem(HOME_TRIP_DRAFT_KEY) : null;
-    try {
-      const stored = readHomepageInput(JSON.parse(priorInput ?? "null"), receipt.ownerId);
-      const pending = pendingIntakeReceiptForOwner(stored?.receipt, receipt.ownerId);
-      if (!pending || pending.handoffId !== receipt.handoffId || pending.tripId !== receipt.tripId
-        || pending.semanticInputFingerprint !== receipt.semanticInputFingerprint) return;
-      if (fromHomepage && !pendingHomepageHandoffForOwner(JSON.parse(priorHandoff ?? "null"), receipt.ownerId, receipt.handoffId)) return;
-      const editable = JSON.stringify({ snapshot: receipt.frozenSnapshot });
-      window.localStorage.setItem(inputKey, editable);
-      if (window.localStorage.getItem(inputKey) !== editable) throw new Error("Intake write did not persist");
-      if (fromHomepage) {
-        window.localStorage.removeItem(HOME_TRIP_DRAFT_KEY);
-        if (window.localStorage.getItem(HOME_TRIP_DRAFT_KEY) !== null) throw new Error("Pending handoff was not cleared");
-      }
-    } catch {
-      try {
-        if (priorInput === null) window.localStorage.removeItem(inputKey);
-        else window.localStorage.setItem(inputKey, priorInput);
-        if (fromHomepage) {
-          if (priorHandoff === null) window.localStorage.removeItem(HOME_TRIP_DRAFT_KEY);
-          else window.localStorage.setItem(HOME_TRIP_DRAFT_KEY, priorHandoff);
-        }
-      } catch { /* Retain the current pending view when device storage fails. */ }
+    const edited = await discardPendingIntakeForEdit({ storage: window.localStorage, receipt, fromHomepage,
+      isCurrent: () => pendingInterpretationRef.current?.handoffId === receipt.handoffId
+        && canUseHydratedTripScope(hydratedOwnerScopeRef.current, receipt.ownerId) });
+    if (!edited.ok) {
       setTripBriefCaptureError(language === "es" ? "No pudimos guardar el cambio. Inténtalo de nuevo." : "We couldn't save that change. Try again.");
       return;
     }
@@ -1328,7 +1312,7 @@ function TripBuilderDocument() {
     setEntryKind("fresh");
     setTripBriefCaptureError("");
     window.history.replaceState(window.history.state, "", window.location.pathname);
-  };
+  })(); };
 
   useEffect(() => {
     stops.forEach((stop) => {
@@ -3485,41 +3469,39 @@ function TripBuilderDocument() {
       if (pendingReceipt && pendingReceipt.receipt.tripId === trip.id
         && pendingReceipt.snapshot.ownerId === ownerId) {
         if (!homepageHandoffMatchesTrip(pendingReceipt.draft, trip)) return { ...recovery, stored: false };
-        try {
-          const inputKey = homepageInputStorageKey(ownerId);
-          const priorInput = readHomepageInput(JSON.parse(window.localStorage.getItem(inputKey) ?? "null"), ownerId);
-          if (!priorInput) return { ...recovery, stored: false };
-          if (pendingReceipt.pending) {
-            const currentPending = pendingIntakeReceiptForOwner(priorInput.receipt, ownerId);
-            if (!currentPending || currentPending.handoffId !== pendingReceipt.pending.handoffId
-              || currentPending.tripId !== pendingReceipt.pending.tripId
-              || currentPending.semanticInputFingerprint !== pendingReceipt.pending.semanticInputFingerprint
-              || currentPending.inputRevision !== pendingReceipt.pending.inputRevision)
-              return { ...recovery, stored: false };
-            if (pendingReceipt.fromHomepage) {
-              const currentHandoff = JSON.parse(window.localStorage.getItem(HOME_TRIP_DRAFT_KEY) ?? "null");
-              if (!pendingHomepageHandoffForOwner(currentHandoff, ownerId, currentPending.handoffId))
-                return { ...recovery, stored: false };
+        if (!receiptAcknowledgementRef.current) {
+          let acknowledgement: Promise<boolean>;
+          acknowledgement = acknowledgePendingIntakeReceipt({
+            storage: window.localStorage, pending: pendingReceipt.pending,
+            completed: pendingReceipt.receipt, draft: pendingReceipt.draft,
+            fromHomepage: Boolean(pendingReceipt.fromHomepage),
+            isCurrent: () => pendingNewTripReceiptRef.current === pendingReceipt
+              && canUseHydratedTripScope(hydratedOwnerScopeRef.current, ownerId)
+              && activeBrowserOwnerIdRef.current === ownerId,
+          }).then((result) => {
+            if (pendingNewTripReceiptRef.current !== pendingReceipt
+              || !canUseHydratedTripScope(hydratedOwnerScopeRef.current, ownerId)) return false;
+            if (!result.ok) {
+              setDeviceStorageBlocked(true);
+              setSaveState("error");
+              return false;
             }
-          }
-          const completedInput = { snapshot: priorInput.snapshot, receipt: pendingReceipt.receipt };
-          window.localStorage.setItem(inputKey, JSON.stringify(completedInput));
-          if (window.localStorage.getItem(inputKey) !== JSON.stringify(completedInput))
-            return { ...recovery, stored: false };
-          // Complete the owner receipt first. If replacing the shared envelope
-          // then fails, the reserved recovery plus pending envelope still
-          // resolves to the same canonical document on reload.
-          if (pendingReceipt.pending && pendingReceipt.fromHomepage) {
-            window.localStorage.setItem(HOME_TRIP_DRAFT_KEY, JSON.stringify(pendingReceipt.draft));
-            if (window.localStorage.getItem(HOME_TRIP_DRAFT_KEY) !== JSON.stringify(pendingReceipt.draft))
-              return { ...recovery, stored: false };
-          }
-          pendingNewTripReceiptRef.current = null;
-        } catch {
-          // Keep the intake resumable in this tab and block navigation until
-          // both canonical recovery and its completed receipt are durable.
-          return { ...recovery, stored: false };
+            pendingNewTripReceiptRef.current = null;
+            const durableUrl = durableBuilderRecoveryUrl(window.location.href, trip.id);
+            if (durableUrl) window.history.replaceState(window.history.state, "", durableUrl);
+            setDeviceStorageBlocked(false);
+            setCloudSaveError("");
+            setSaveState("local");
+            return true;
+          }).finally(() => {
+            if (receiptAcknowledgementRef.current === acknowledgement) receiptAcknowledgementRef.current = null;
+          });
+          receiptAcknowledgementRef.current = acknowledgement;
         }
+        // The canonical recovery is synchronous, but its receipt/envelope
+        // transition is serialized. Do not claim handoff completion until it
+        // has acknowledged this exact still-current token.
+        return { ...recovery, stored: false };
       }
       const durableUrl = durableBuilderRecoveryUrl(window.location.href, trip.id);
       if (durableUrl) window.history.replaceState(window.history.state, "", durableUrl);
@@ -3545,6 +3527,11 @@ function TripBuilderDocument() {
     const preserveBeforeNewTrip = (event: Event) => {
       if (!hydrated || (!origin.trim() && !tripBrief.trim() && !stops.length)) return;
       const recovery = persistDeviceRecovery(activeTripDocument);
+      if (receiptAcknowledgementRef.current) {
+        event.preventDefault();
+        setSaveState("device-saving");
+        return;
+      }
       setDeviceRecoveryBlocked(recovery.blockedByExistingRecovery);
       setDeviceStorageBlocked(!recovery.stored && !recovery.blockedByExistingRecovery);
       if (shouldAllowNewTripNavigation(recovery)) {
@@ -3578,7 +3565,11 @@ function TripBuilderDocument() {
       }
       lastAcknowledgedCanonicalRef.current = null;
       const recovery = persistDeviceRecovery(activeTripDocument);
-      if (arrivedFromHomepage) removeHomeTripDraftIfDurable(window.localStorage, homeDraftRef.current, activeTripDocument, recovery.stored, resolvingLocations);
+      if (receiptAcknowledgementRef.current) {
+        setSaveState("device-saving");
+        return;
+      }
+      if (arrivedFromHomepage) void removeHomeTripDraftIfDurable(window.localStorage, homeDraftRef.current, activeTripDocument, recovery.stored, resolvingLocations);
       setDeviceRecoveryBlocked(recovery.blockedByExistingRecovery);
       setDeviceStorageBlocked(!recovery.stored && !recovery.blockedByExistingRecovery);
       setSaveState(recovery.stored ? "local" : "error");
@@ -3629,9 +3620,13 @@ function TripBuilderDocument() {
     }
     const usableTrip = recordGeneratedTrip();
     const requestTrip: EasyTTrip = { ...activeTripDocument, status: activeTripDocument.status === "archived" ? "archived" : "planned" };
-    const recovery = persistDeviceRecovery(requestTrip);
+    let recovery = persistDeviceRecovery(requestTrip);
+    if (!recovery.stored && receiptAcknowledgementRef.current) {
+      await receiptAcknowledgementRef.current;
+      recovery = persistDeviceRecovery(requestTrip);
+    }
     try {
-      if (arrivedFromHomepage) removeHomeTripDraftIfDurable(window.localStorage, homeDraftRef.current, requestTrip, recovery.stored, resolvingLocations);
+      if (arrivedFromHomepage) await removeHomeTripDraftIfDurable(window.localStorage, homeDraftRef.current, requestTrip, recovery.stored, resolvingLocations);
       setDeviceRecoveryBlocked(recovery.blockedByExistingRecovery);
       setDeviceStorageBlocked(!recovery.stored && !recovery.blockedByExistingRecovery);
       if (!recovery.stored) {

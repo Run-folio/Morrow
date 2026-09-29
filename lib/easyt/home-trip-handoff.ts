@@ -334,15 +334,51 @@ export function readHomepageInput(value: unknown, ownerId: string | null): Store
     : { snapshot: value.snapshot, receipt: value.receipt as HomepageHandoffReceipt | PendingIntakeReceipt };
 }
 
-/** Preserve the current intake before leaving for the existing import route. */
-export function persistHomepageIntakeForImport(
-  storage: Pick<Storage, "setItem">,
-  snapshot: HomepageInputSnapshot,
-): boolean {
+/** Edits share the receipt lock with submissions so another tab cannot erase
+ * an unacknowledged frozen intake. This writes the existing owner key only. */
+export async function persistEditableHomepageInput(input: {
+  storage: Pick<Storage, "getItem" | "setItem" | "removeItem">;
+  snapshot: HomepageInputSnapshot;
+  preserveCompletedReceipt?: boolean;
+  isCurrent?: () => boolean;
+  lock?: <T>(key: string, run: () => Promise<T>) => Promise<T>;
+}): Promise<{ ok: true; stored: StoredHomepageInput } | { ok: false; reason: "reserved" | "storage" | "stale" }> {
   try {
-    storage.setItem(homepageInputStorageKey(snapshot.ownerId), JSON.stringify({ snapshot }));
-    return true;
-  } catch { return false; }
+    return await withHomepageReceiptLock(input.snapshot.ownerId, input.lock, async () => {
+      if (input.isCurrent && !input.isCurrent()) return { ok: false as const, reason: "stale" as const };
+      const key = homepageInputStorageKey(input.snapshot.ownerId);
+      const raw = input.storage.getItem(key);
+      let previous: StoredHomepageInput | null = null;
+      try { previous = raw ? readHomepageInput(JSON.parse(raw), input.snapshot.ownerId) : null; }
+      catch { return { ok: false as const, reason: "storage" as const }; }
+      if (raw && !previous) return { ok: false as const, reason: "storage" as const };
+      if (previous?.receipt?.version === 2) return { ok: false as const, reason: "reserved" as const };
+      const stored: StoredHomepageInput = input.preserveCompletedReceipt && previous?.receipt?.version === 1
+        ? { snapshot: input.snapshot, receipt: previous.receipt } : { snapshot: input.snapshot };
+      const serialized = JSON.stringify(stored);
+      try {
+        input.storage.setItem(key, serialized);
+        if (input.storage.getItem(key) !== serialized) throw new Error("Editable intake write was not durable");
+      } catch {
+        try {
+          if (raw === null) input.storage.removeItem(key);
+          else input.storage.setItem(key, raw);
+        } catch { /* Keep the original storage failure. */ }
+        return { ok: false as const, reason: "storage" as const };
+      }
+      return { ok: true as const, stored };
+    });
+  } catch { return { ok: false, reason: "storage" }; }
+}
+
+/** Preserve the current intake before leaving for the existing import route. */
+export async function persistHomepageIntakeForImport(
+  storage: Pick<Storage, "getItem" | "setItem" | "removeItem">,
+  snapshot: HomepageInputSnapshot,
+  lock?: <T>(key: string, run: () => Promise<T>) => Promise<T>,
+  isCurrent?: () => boolean,
+): Promise<boolean> {
+  return (await persistEditableHomepageInput({ storage, snapshot, lock, isCurrent })).ok;
 }
 
 function canonicalFingerprintValue(value: unknown): unknown {
@@ -495,13 +531,59 @@ function restoreHomepageStorageValue(
 /** Atomically prepares the versioned Homepage-to-Builder boundary around the
  * existing current-trip preservation owner. The caller remains responsible
  * for navigation and for displaying existing recovery feedback. */
-export async function commitHomepageHandoff(input: {
+type HomepageHandoffCommitInput = {
   storage: Pick<Storage, "getItem" | "setItem" | "removeItem">;
   stored: StoredHomepageInput;
   draft: HomeTripDraft | PendingHomeTripHandoff;
   isCurrent: () => boolean;
   preserveAndBegin: () => boolean;
-}): Promise<{ ok: true; href: string } | { ok: false; reason: "stale" | "storage" | "preservation" }> {
+  lock?: <T>(key: string, run: () => Promise<T>) => Promise<T>;
+};
+type HomepageHandoffCommitResult = { ok: true; href: string } | { ok: false; reason: "stale" | "storage" | "preservation" };
+
+export async function commitHomepageHandoff(input: HomepageHandoffCommitInput): Promise<HomepageHandoffCommitResult> {
+  if (!input.isCurrent()) return { ok: false, reason: "stale" };
+  const ownerId = input.stored.snapshot.ownerId;
+  try {
+    return await withHomepageReceiptLock(ownerId, input.lock, async () => {
+      if (!input.isCurrent()) return { ok: false as const, reason: "stale" as const };
+      const raw = input.storage.getItem(homepageInputStorageKey(ownerId));
+      let previous: StoredHomepageInput | null = null;
+      try { previous = raw ? readHomepageInput(JSON.parse(raw), ownerId) : null; }
+      catch { return { ok: false as const, reason: "storage" as const }; }
+      if (raw && !previous) return { ok: false as const, reason: "storage" as const };
+      if (previous?.receipt?.version === 2) {
+        const pending = pendingIntakeReceiptForOwner(previous.receipt, ownerId);
+        const incoming = "version" in input.draft && input.draft.version === 2
+          ? pendingHomepageHandoffForOwner(input.draft, ownerId, input.draft.receipt.handoffId) : null;
+        if (!pending || !incoming || pending.handoffId !== incoming.handoffId
+          || pending.tripId !== incoming.tripId || pending.inputRevision !== incoming.inputRevision
+          || pending.semanticInputFingerprint !== incoming.semanticInputFingerprint)
+          return { ok: false as const, reason: "preservation" as const };
+        let envelope: unknown;
+        try { envelope = JSON.parse(input.storage.getItem(HOME_TRIP_DRAFT_KEY) ?? "null"); }
+        catch { return { ok: false as const, reason: "storage" as const }; }
+        const durable = pendingHomepageHandoffForOwner(envelope, ownerId, pending.handoffId);
+        if (!durable || durable.tripId !== pending.tripId || durable.inputRevision !== pending.inputRevision
+          || durable.semanticInputFingerprint !== pending.semanticInputFingerprint)
+          return { ok: false as const, reason: "storage" as const };
+        if (!input.isCurrent()) return { ok: false as const, reason: "stale" as const };
+        try {
+          if (!input.preserveAndBegin()) return { ok: false as const, reason: "preservation" as const };
+        } catch { return { ok: false as const, reason: "preservation" as const }; }
+        return { ok: true as const, href: `/journey/new?homeDraft=1&handoff=${encodeURIComponent(pending.handoffId)}` };
+      }
+      if (previous?.receipt?.version === 1
+        && homepageSemanticInputFingerprint(previous.snapshot) === homepageSemanticInputFingerprint(input.stored.snapshot)
+        && (previous.receipt.handoffId !== input.stored.receipt?.handoffId
+          || previous.receipt.tripId !== input.stored.receipt?.tripId))
+        return { ok: false as const, reason: "preservation" as const };
+      return commitHomepageHandoffWithinLock(input);
+    });
+  } catch { return { ok: false, reason: "storage" }; }
+}
+
+async function commitHomepageHandoffWithinLock(input: HomepageHandoffCommitInput): Promise<HomepageHandoffCommitResult> {
   if (!input.isCurrent()) return { ok: false, reason: "stale" };
   const ownerId = input.stored.snapshot.ownerId;
   const decoded = readHomepageInput(input.stored, ownerId);
@@ -587,6 +669,261 @@ export async function commitHomepageHandoff(input: {
     ok: true,
     href: `/journey/new?homeDraft=1&handoff=${encodeURIComponent(receipt.handoffId)}`,
   };
+}
+
+/** The receipt owner serializes Describe reservation across browser tabs.
+ * Read and ID allocation must happen inside the same owner-scoped Web Lock;
+ * localStorage read-then-write alone cannot prevent duplicate trip IDs. */
+export async function reservePendingDescribeHandoff(input: {
+  storage: Pick<Storage, "getItem" | "setItem" | "removeItem">;
+  snapshot: HomepageInputSnapshot;
+  isCurrent: () => boolean;
+  preserveAndBegin: () => boolean;
+  createIds: () => { handoffId: string; tripId: string };
+  lock?: <T>(key: string, run: () => Promise<T>) => Promise<T>;
+}): Promise<({ ok: true; href: string; receipt: PendingIntakeReceipt; stored: StoredHomepageInput }) | { ok: false; reason: "stale" | "storage" | "preservation" }> {
+  try {
+    return await withHomepageReceiptLock(input.snapshot.ownerId, input.lock, async () => {
+      if (!input.isCurrent()) return { ok: false as const, reason: "stale" as const };
+      let raw: string | null;
+      let existingDraft: unknown;
+      try {
+        raw = input.storage.getItem(homepageInputStorageKey(input.snapshot.ownerId));
+        existingDraft = JSON.parse(input.storage.getItem(HOME_TRIP_DRAFT_KEY) ?? "null");
+      } catch { return { ok: false as const, reason: "storage" as const }; }
+      let existingInput: StoredHomepageInput | null = null;
+      try { existingInput = raw ? readHomepageInput(JSON.parse(raw), input.snapshot.ownerId) : null; }
+      catch { return { ok: false as const, reason: "storage" as const }; }
+      if (raw && !existingInput) return { ok: false as const, reason: "storage" as const };
+      const sameInput = existingInput
+        && homepageSemanticInputFingerprint(existingInput.snapshot) === homepageSemanticInputFingerprint(input.snapshot);
+      if (existingInput?.receipt?.version === 2 && !sameInput) {
+        const oldPending = pendingIntakeReceiptForOwner(existingInput.receipt, input.snapshot.ownerId);
+        if (!oldPending) return { ok: false as const, reason: "storage" as const };
+        // A second tab must not replace a frozen submission before its
+        // canonical Builder document has acknowledged the reservation.
+        return { ok: false as const, reason: "preservation" as const };
+      }
+      if (sameInput && existingInput?.receipt?.version === 1) {
+        return { ok: false as const, reason: "storage" as const };
+      }
+      const pending = sameInput && existingInput?.receipt?.version === 2
+        ? pendingIntakeReceiptForOwner(existingInput.receipt, input.snapshot.ownerId) : null;
+      if (sameInput && existingInput?.receipt?.version === 2
+        && (!pending || !samePendingReceipt(
+          pendingHomepageHandoffForOwner(existingDraft, input.snapshot.ownerId, pending.handoffId), pending))) {
+        return { ok: false as const, reason: "storage" as const };
+      }
+      const receipt = pending ?? createPendingIntakeReceipt(input.snapshot, input.createIds());
+      const stored: StoredHomepageInput = { snapshot: input.snapshot, receipt };
+      const draft: PendingHomeTripHandoff = { version: 2, phase: "pending-interpretation", receipt };
+      const committed = await commitHomepageHandoffWithinLock({
+        storage: input.storage, stored, draft, isCurrent: input.isCurrent, preserveAndBegin: input.preserveAndBegin,
+      });
+      return committed.ok ? { ...committed, receipt, stored } : committed;
+    });
+  } catch { return { ok: false, reason: "storage" }; }
+}
+
+async function withHomepageReceiptLock<T>(
+  ownerId: string | null,
+  supplied: (<R>(key: string, run: () => Promise<R>) => Promise<R>) | undefined,
+  run: () => Promise<T>,
+): Promise<T> {
+  const lock = supplied ?? (typeof navigator !== "undefined" && navigator.locks
+    ? <R,>(key: string, work: () => Promise<R>) => navigator.locks.request(key, { mode: "exclusive" }, work)
+    : null);
+  // localStorage has no compare-and-swap; browsers without Web Locks cannot
+  // safely allocate a cross-tab trip identity and must fail closed.
+  if (!lock) throw new Error("Cross-tab receipt lock unavailable");
+  return lock(`morrovia-home-handoff:${ownerId ?? "guest"}`, run);
+}
+
+/** Direct New Trip shares the receipt lock but keeps its already-mounted
+ * Builder as the only document owner. It never writes a Homepage URL envelope. */
+export async function reserveDirectDescribeIntake(input: {
+  storage: Pick<Storage, "getItem" | "setItem" | "removeItem">;
+  snapshot: HomepageInputSnapshot;
+  tripId: string;
+  handoffId: string;
+  lock?: <T>(key: string, run: () => Promise<T>) => Promise<T>;
+}): Promise<{ ok: true; receipt: PendingIntakeReceipt } | { ok: false; reason: "reserved" | "storage" }> {
+  try {
+    return await withHomepageReceiptLock(input.snapshot.ownerId, input.lock, async () => {
+      const key = homepageInputStorageKey(input.snapshot.ownerId);
+      const raw = input.storage.getItem(key);
+      let previous: StoredHomepageInput | null = null;
+      try { previous = raw ? readHomepageInput(JSON.parse(raw), input.snapshot.ownerId) : null; }
+      catch { return { ok: false as const, reason: "storage" as const }; }
+      if (raw && !previous) return { ok: false as const, reason: "storage" as const };
+      if (previous?.receipt?.version === 2) {
+        const pending = pendingIntakeReceiptForOwner(previous.receipt, input.snapshot.ownerId);
+        let homepageEnvelope: unknown;
+        try { homepageEnvelope = JSON.parse(input.storage.getItem(HOME_TRIP_DRAFT_KEY) ?? "null"); }
+        catch { return { ok: false as const, reason: "storage" as const }; }
+        if (!pending || pending.semanticInputFingerprint !== homepageSemanticInputFingerprint(input.snapshot)
+          || pendingHomepageHandoffForOwner(homepageEnvelope, input.snapshot.ownerId, pending.handoffId)) {
+          return { ok: false as const, reason: "reserved" as const };
+        }
+        return { ok: true as const, receipt: pending };
+      }
+      // A completed receipt has already been acknowledged by canonical
+      // recovery. A deliberate submission from a fresh mounted Builder gets
+      // a new identity even when its traveller input happens to match.
+      const receipt = createPendingIntakeReceipt(input.snapshot, { handoffId: input.handoffId, tripId: input.tripId });
+      const serialized = JSON.stringify({ snapshot: input.snapshot, receipt });
+      try {
+        input.storage.setItem(key, serialized);
+        if (input.storage.getItem(key) !== serialized) throw new Error("Intake write was not durable");
+      } catch {
+        try {
+          if (raw === null) input.storage.removeItem(key);
+          else input.storage.setItem(key, raw);
+        } catch { /* Preserve failure; Builder must remain on intake. */ }
+        return { ok: false as const, reason: "storage" as const };
+      }
+      return { ok: true as const, receipt };
+    });
+  } catch { return { ok: false, reason: "storage" }; }
+}
+
+/** Capture application rechecks the durable receipt, not just the mounted
+ * component's ref: another tab can edit or replace intake while a model runs. */
+export function pendingReceiptStillCurrent(
+  storage: Pick<Storage, "getItem">,
+  receipt: PendingIntakeReceipt,
+  fromHomepage: boolean,
+): boolean {
+  try {
+    const raw = storage.getItem(homepageInputStorageKey(receipt.ownerId));
+    const stored = raw ? readHomepageInput(JSON.parse(raw), receipt.ownerId) : null;
+    const current = pendingIntakeReceiptForOwner(stored?.receipt, receipt.ownerId);
+    if (!current || current.handoffId !== receipt.handoffId || current.tripId !== receipt.tripId
+      || current.inputRevision !== receipt.inputRevision
+      || current.semanticInputFingerprint !== receipt.semanticInputFingerprint) return false;
+    if (!fromHomepage) return true;
+    const envelope = JSON.parse(storage.getItem(HOME_TRIP_DRAFT_KEY) ?? "null");
+    return Boolean(pendingHomepageHandoffForOwner(envelope, receipt.ownerId, receipt.handoffId));
+  } catch { return false; }
+}
+
+function samePendingReceipt(left: PendingIntakeReceipt | null, right: PendingIntakeReceipt): boolean {
+  return Boolean(left && left.ownerId === right.ownerId && left.handoffId === right.handoffId
+    && left.tripId === right.tripId && left.inputRevision === right.inputRevision
+    && left.semanticInputFingerprint === right.semanticInputFingerprint);
+}
+
+/** Edit only the frozen intake this Builder actually received. Both keys are
+ * changed under the submission lock, so a newer tab's receipt survives. */
+export async function discardPendingIntakeForEdit(input: {
+  storage: Pick<Storage, "getItem" | "setItem" | "removeItem">;
+  receipt: PendingIntakeReceipt;
+  fromHomepage: boolean;
+  isCurrent?: () => boolean;
+  lock?: <T>(key: string, run: () => Promise<T>) => Promise<T>;
+}): Promise<{ ok: true } | { ok: false; reason: "stale" | "storage" }> {
+  try {
+    return await withHomepageReceiptLock(input.receipt.ownerId, input.lock, async () => {
+      if (input.isCurrent && !input.isCurrent()) return { ok: false as const, reason: "stale" as const };
+      const key = homepageInputStorageKey(input.receipt.ownerId);
+      const priorInput = input.storage.getItem(key);
+      const priorEnvelope = input.fromHomepage ? input.storage.getItem(HOME_TRIP_DRAFT_KEY) : null;
+      let stored: StoredHomepageInput | null;
+      try { stored = readHomepageInput(JSON.parse(priorInput ?? "null"), input.receipt.ownerId); }
+      catch { return { ok: false as const, reason: "storage" as const }; }
+      if (!samePendingReceipt(pendingIntakeReceiptForOwner(stored?.receipt, input.receipt.ownerId), input.receipt))
+        return { ok: false as const, reason: "stale" as const };
+      if (input.fromHomepage) {
+        let envelope: unknown;
+        try { envelope = JSON.parse(priorEnvelope ?? "null"); }
+        catch { return { ok: false as const, reason: "storage" as const }; }
+        if (!samePendingReceipt(pendingHomepageHandoffForOwner(envelope, input.receipt.ownerId, input.receipt.handoffId), input.receipt))
+          return { ok: false as const, reason: "stale" as const };
+      }
+      const editable = JSON.stringify({ snapshot: input.receipt.frozenSnapshot });
+      try {
+        input.storage.setItem(key, editable);
+        if (input.storage.getItem(key) !== editable) throw new Error("Intake edit was not durable");
+        if (input.fromHomepage) {
+          input.storage.removeItem(HOME_TRIP_DRAFT_KEY);
+          if (input.storage.getItem(HOME_TRIP_DRAFT_KEY) !== null) throw new Error("Handoff edit was not durable");
+        }
+        return { ok: true as const };
+      } catch {
+        try {
+          if (priorInput === null) input.storage.removeItem(key);
+          else input.storage.setItem(key, priorInput);
+          if (input.fromHomepage) {
+            if (priorEnvelope === null) input.storage.removeItem(HOME_TRIP_DRAFT_KEY);
+            else input.storage.setItem(HOME_TRIP_DRAFT_KEY, priorEnvelope);
+          }
+        } catch { /* Preserve the failure. */ }
+        return { ok: false as const, reason: "storage" as const };
+      }
+    });
+  } catch { return { ok: false, reason: "storage" }; }
+}
+
+/** A canonical recovery has been written; complete only its own receipt.
+ * A replacement intake token must never be overwritten by old completion. */
+export async function acknowledgePendingIntakeReceipt(input: {
+  storage: Pick<Storage, "getItem" | "setItem" | "removeItem">;
+  pending?: PendingIntakeReceipt;
+  completed: HomepageHandoffReceipt;
+  draft: HomeTripDraft;
+  fromHomepage: boolean;
+  isCurrent?: () => boolean;
+  lock?: <T>(key: string, run: () => Promise<T>) => Promise<T>;
+}): Promise<{ ok: true } | { ok: false; reason: "stale" | "storage" }> {
+  try {
+    return await withHomepageReceiptLock(input.completed.ownerId, input.lock, async () => {
+      if (input.isCurrent && !input.isCurrent()) return { ok: false as const, reason: "stale" as const };
+      const { completed, pending } = input;
+      if (homepageHandoffReceiptForOwner(input.draft, completed.ownerId)?.handoffId !== completed.handoffId
+        || input.draft.homepage?.receipt?.tripId !== completed.tripId
+        || (pending && (pending.ownerId !== completed.ownerId || pending.handoffId !== completed.handoffId
+          || pending.tripId !== completed.tripId || pending.semanticInputFingerprint !== completed.semanticInputFingerprint)))
+        return { ok: false as const, reason: "stale" as const };
+      const key = homepageInputStorageKey(completed.ownerId);
+      const priorInput = input.storage.getItem(key);
+      const priorEnvelope = input.fromHomepage ? input.storage.getItem(HOME_TRIP_DRAFT_KEY) : null;
+      let stored: StoredHomepageInput | null;
+      let envelope: unknown = null;
+      try {
+        stored = readHomepageInput(JSON.parse(priorInput ?? "null"), completed.ownerId);
+        if (input.fromHomepage) envelope = JSON.parse(priorEnvelope ?? "null");
+      } catch { return { ok: false as const, reason: "storage" as const }; }
+      if (!stored || (pending
+        ? !samePendingReceipt(pendingIntakeReceiptForOwner(stored.receipt, completed.ownerId), pending)
+          || (input.fromHomepage && !samePendingReceipt(pendingHomepageHandoffForOwner(envelope, completed.ownerId, pending.handoffId), pending))
+        : stored.receipt?.version === 2
+          || (stored.receipt?.version === 1
+            && (stored.receipt.handoffId !== completed.handoffId || stored.receipt.tripId !== completed.tripId))
+          || homepageSemanticInputFingerprint(stored.snapshot) !== completed.semanticInputFingerprint))
+        return { ok: false as const, reason: "stale" as const };
+      const serialized = JSON.stringify({ snapshot: stored.snapshot, receipt: completed });
+      const completedEnvelope = JSON.stringify(input.draft);
+      try {
+        input.storage.setItem(key, serialized);
+        if (input.storage.getItem(key) !== serialized) throw new Error("Receipt acknowledgement was not durable");
+        if (pending && input.fromHomepage) {
+          input.storage.setItem(HOME_TRIP_DRAFT_KEY, completedEnvelope);
+          if (input.storage.getItem(HOME_TRIP_DRAFT_KEY) !== completedEnvelope) throw new Error("Handoff acknowledgement was not durable");
+        }
+        return { ok: true as const };
+      } catch {
+        try {
+          if (priorInput === null) input.storage.removeItem(key);
+          else input.storage.setItem(key, priorInput);
+          if (input.fromHomepage) {
+            if (priorEnvelope === null) input.storage.removeItem(HOME_TRIP_DRAFT_KEY);
+            else input.storage.setItem(HOME_TRIP_DRAFT_KEY, priorEnvelope);
+          }
+        } catch { /* Preserve the failure. */ }
+        return { ok: false as const, reason: "storage" as const };
+      }
+    });
+  } catch { return { ok: false, reason: "storage" }; }
 }
 
 export type HandoffLocationChoice = {
@@ -1388,19 +1725,22 @@ export function homeTripDraftIsDurable(draft: HomeTripDraft, trip: EasyTTrip, re
   );
 }
 
-export function removeHomeTripDraftIfDurable(
+export async function removeHomeTripDraftIfDurable(
   storage: Pick<Storage, "getItem" | "removeItem">,
   draft: HomeTripDraft | null,
   trip: EasyTTrip,
   recoveryStored: boolean,
   resolutionPending: boolean,
-) {
+  lock?: <T>(key: string, run: () => Promise<T>) => Promise<T>,
+): Promise<boolean> {
   if (!recoveryStored || !draft || !homeTripDraftIsDurable(draft, trip, resolutionPending)) return false;
   try {
-    const stored = JSON.parse(storage.getItem(HOME_TRIP_DRAFT_KEY) ?? "null") as HomeTripDraft | null;
-    if (!stored || !draftMatchesStoredValue(draft, stored)) return false;
-    storage.removeItem(HOME_TRIP_DRAFT_KEY);
-    return true;
+    return await withHomepageReceiptLock(draft.homepage?.ownerId ?? null, lock, async () => {
+      const stored = JSON.parse(storage.getItem(HOME_TRIP_DRAFT_KEY) ?? "null") as HomeTripDraft | null;
+      if (!stored || !draftMatchesStoredValue(draft, stored)) return false;
+      storage.removeItem(HOME_TRIP_DRAFT_KEY);
+      return storage.getItem(HOME_TRIP_DRAFT_KEY) === null;
+    });
   } catch {
     return false;
   }

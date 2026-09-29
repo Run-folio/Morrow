@@ -1,10 +1,11 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { MorroviaTripCapture } from "@/components/easyt/morrovia-trip-capture";
 import { JourneyEndpointsEditor } from "@/components/easyt/journey-endpoints-editor";
 import { HomeDestinationEditor } from "@/app/journey/home/home-destination-editor";
-import { homepageSnapshotForDescribePrompt, persistHomepageIntakeForImport, readHomepageInput, type HomepageDestinationEntry, type HomepageInputSnapshot } from "@/lib/easyt/home-trip-handoff";
+import { homepageSnapshotForDescribePrompt, persistEditableHomepageInput, persistHomepageIntakeForImport, readHomepageInput, type HomepageDestinationEntry, type HomepageInputSnapshot } from "@/lib/easyt/home-trip-handoff";
 import { homepageInputStorageKey } from "@/lib/easyt/private-browser-context";
 import { journeyEndpointPlaceFromSuggestion } from "@/lib/easyt/journey-endpoints";
 import { tripInterestsWithProfileDefaults, type TravelProfile } from "@/lib/easyt/travel-profile";
@@ -34,6 +35,7 @@ export function NewTripStarter({ ownerId, language, travelProfile, onSubmit }: {
   travelProfile: TravelProfile | null;
   onSubmit: (snapshot: HomepageInputSnapshot) => Promise<void>;
 }) {
+  const router = useRouter();
   const [snapshot, setSnapshot] = useState<HomepageInputSnapshot>(() => emptyInput(ownerId));
   const snapshotRef = useRef(snapshot);
   const submitInFlightRef = useRef(false);
@@ -55,7 +57,8 @@ export function NewTripStarter({ ownerId, language, travelProfile, onSubmit }: {
       if (resumable) {
         next = resumable;
         // A materially edited completed intake starts a new handoff identity.
-        if (stored?.receipt) window.localStorage.setItem(homepageInputStorageKey(ownerId), JSON.stringify({ snapshot: next }));
+        // The completed receipt is detached by the next deliberate edit or
+        // submission under the shared owner lock.
       }
     } catch {
       setError(language === "es" ? "No pudimos recuperar lo que escribiste en este dispositivo." : "We couldn't restore the trip input on this device.");
@@ -79,8 +82,11 @@ export function NewTripStarter({ ownerId, language, travelProfile, onSubmit }: {
     snapshotRef.current = next;
     setSnapshot(next);
     setError("");
-    try { window.localStorage.setItem(homepageInputStorageKey(ownerId), JSON.stringify({ snapshot: next })); }
-    catch { setError(language === "es" ? "No pudimos guardar estos cambios en este dispositivo." : "We couldn't save these changes on this device."); }
+    void persistEditableHomepageInput({ storage: window.localStorage, snapshot: next,
+      isCurrent: () => snapshotRef.current.ownerId === next.ownerId && snapshotRef.current.revision === next.revision }).then((result) => {
+      if (!result.ok && result.reason !== "stale" && snapshotRef.current.ownerId === next.ownerId && snapshotRef.current.revision === next.revision)
+        setError(language === "es" ? "No pudimos guardar estos cambios en este dispositivo." : "We couldn't save these changes on this device.");
+    });
   };
   const submit = async () => {
     if (submitInFlightRef.current || snapshotRef.current.ownerId !== ownerId) return;
@@ -104,8 +110,10 @@ export function NewTripStarter({ ownerId, language, travelProfile, onSubmit }: {
   };
   if (!ready || snapshot.ownerId !== ownerId) return null;
 
-  const persistBeforeImport = () => {
-    const saved = persistHomepageIntakeForImport(window.localStorage, snapshotRef.current);
+  const persistBeforeImport = async () => {
+    const current = snapshotRef.current;
+    const saved = await persistHomepageIntakeForImport(window.localStorage, current, undefined,
+      () => snapshotRef.current.ownerId === current.ownerId && snapshotRef.current.revision === current.revision);
     if (!saved) setError(language === "es" ? "No pudimos guardar tu idea antes de abrir la importación." : "We couldn't save your trip idea before opening Import.");
     return saved;
   };
@@ -155,6 +163,6 @@ export function NewTripStarter({ ownerId, language, travelProfile, onSubmit }: {
     travelProfile={travelProfile} onSubmit={submit} loading={loading} error={error}
   />
     <div className={styles.importTripEntry}><EasyTLinkButton href="/journey/new/import" variant="secondary" size="small" icon={FileSpreadsheet}
-      onClick={(event) => { if (!persistBeforeImport()) event.preventDefault(); }}>{language === "es" ? "Importar un viaje existente" : "Import existing trip"}</EasyTLinkButton></div>
+      onClick={(event) => { event.preventDefault(); void persistBeforeImport().then((saved) => { if (saved) router.push("/journey/new/import"); }); }}>{language === "es" ? "Importar un viaje existente" : "Import existing trip"}</EasyTLinkButton></div>
   </>;
 }

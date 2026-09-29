@@ -7,6 +7,7 @@ import {
   createPendingIntakeReceipt,
   pendingIntakeReceiptForOwner,
   pendingHomepageHandoffForOwner,
+  pendingReceiptStillCurrent,
   homepageSubmissionFingerprint,
   homepageSemanticInputFingerprint,
   homepageCompletedReceiptIsUnchanged,
@@ -17,6 +18,8 @@ import {
 } from "../lib/easyt/home-trip-handoff.ts";
 import { homepageInputStorageKey } from "../lib/easyt/private-browser-context.ts";
 import { emptyHomepageInput, selectedEntry, selectedStopsHomepageInput } from "./fixtures/homepage-dual-entry.ts";
+
+const testLock = async <T,>(_key: string, run: () => Promise<T>): Promise<T> => run();
 
 function acceptedDraft(ownerId: string | null = "owner-a") {
   const snapshot = selectedStopsHomepageInput(ownerId);
@@ -30,6 +33,25 @@ test("homepage intake keys use the same exact private owner scope", () => {
   assert.notEqual(homepageInputStorageKey("owner-a"), homepageInputStorageKey("owner-b"));
   assert.notEqual(homepageInputStorageKey("owner-a"), homepageInputStorageKey(null));
   assert.match(homepageInputStorageKey("owner-a"), /owner-owner-a/);
+});
+
+test("late interpretation cannot apply after another tab rotates the pending receipt or Homepage envelope", () => {
+  const snapshot = { ...emptyHomepageInput("owner-a"), mode: "describe" as const, prompt: "Tokyo and Kyoto" };
+  const receipt = createPendingIntakeReceipt(snapshot, { handoffId: "handoff-old", tripId: "trip-old" });
+  const values = new Map<string, string>([
+    [homepageInputStorageKey("owner-a"), JSON.stringify({ snapshot, receipt })],
+    [HOME_TRIP_DRAFT_KEY, JSON.stringify({ version: 2, phase: "pending-interpretation", receipt })],
+  ]);
+  const storage = { getItem: (key: string) => values.get(key) ?? null };
+  assert.equal(pendingReceiptStillCurrent(storage, receipt, true), true);
+  const replacement = createPendingIntakeReceipt({ ...snapshot, prompt: "Tokyo only", revision: 1 }, { handoffId: "handoff-new", tripId: "trip-new" });
+  values.set(homepageInputStorageKey("owner-a"), JSON.stringify({ snapshot: replacement.frozenSnapshot, receipt: replacement }));
+  assert.equal(pendingReceiptStillCurrent(storage, receipt, true), false);
+  values.set(homepageInputStorageKey("owner-a"), JSON.stringify({ snapshot, receipt }));
+  values.set(HOME_TRIP_DRAFT_KEY, JSON.stringify({ version: 2, phase: "pending-interpretation", receipt: replacement }));
+  assert.equal(pendingReceiptStillCurrent(storage, receipt, true), false);
+  assert.equal(pendingReceiptStillCurrent(storage, receipt, false), true);
+  assert.equal(pendingReceiptStillCurrent(storage, { ...receipt, ownerId: "owner-b" }, false), false);
 });
 
 test("the intake codec accepts a complete matching snapshot and fails closed across owner/version boundaries", () => {
@@ -181,7 +203,7 @@ test("pending homepage staging reads back both existing slots and rolls back a f
     },
     removeItem: (name: string) => { values.delete(name); },
   };
-  assert.deepEqual(await commitHomepageHandoff({ storage, stored, draft, isCurrent: () => true,
+  assert.deepEqual(await commitHomepageHandoff({ lock: testLock, storage, stored, draft, isCurrent: () => true,
     preserveAndBegin: () => { preservationCalls += 1; return true; } }), { ok: false, reason: "storage" });
   assert.equal(preservationCalls, 0);
   assert.equal(values.get(key), previousInput);
@@ -190,14 +212,14 @@ test("pending homepage staging reads back both existing slots and rolls back a f
     ...storage,
     setItem: (name: string, value: string) => { if (name !== HOME_TRIP_DRAFT_KEY) values.set(name, value); },
   };
-  assert.deepEqual(await commitHomepageHandoff({ storage: silentStorage, stored, draft, isCurrent: () => true,
+  assert.deepEqual(await commitHomepageHandoff({ lock: testLock, storage: silentStorage, stored, draft, isCurrent: () => true,
     preserveAndBegin: () => { preservationCalls += 1; return true; } }), { ok: false, reason: "storage" });
   assert.equal(preservationCalls, 0);
   const successful = {
     ...storage,
     setItem: (name: string, value: string) => { values.set(name, value); },
   };
-  assert.deepEqual(await commitHomepageHandoff({ storage: successful, stored, draft, isCurrent: () => true,
+  assert.deepEqual(await commitHomepageHandoff({ lock: testLock, storage: successful, stored, draft, isCurrent: () => true,
     preserveAndBegin: () => { preservationCalls += 1; return true; } }),
   { ok: true, href: "/journey/new?homeDraft=1&handoff=handoff-pending" });
   assert.equal(preservationCalls, 1);

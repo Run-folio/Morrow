@@ -10,16 +10,241 @@ import {
   homepageSemanticInputFingerprint,
   projectHomepageInput,
   readHomepageInput,
+  reservePendingDescribeHandoff,
+  persistEditableHomepageInput,
   type HomepageHandoffReceipt,
 } from "../lib/easyt/home-trip-handoff.ts";
 import { homepageInputStorageKey } from "../lib/easyt/private-browser-context.ts";
 import { emptyHomepageInput, selectedStopsHomepageInput } from "./fixtures/homepage-dual-entry.ts";
+import * as handoffTransitions from "../lib/easyt/home-trip-handoff.ts";
+
+const testLock = async <T,>(_key: string, run: () => Promise<T>): Promise<T> => run();
 
 test("Homepage Describe stages frozen intake before navigation without awaiting capture", () => {
   const source = readFileSync(new URL("../app/journey/home/home-trip-starter.tsx", import.meta.url), "utf8");
-  assert.match(source, /createPendingIntakeReceipt\(submitted/);
-  assert.match(source, /commitHomepageHandoff\(/);
+  assert.match(source, /reservePendingDescribeHandoff\(/);
   assert.doesNotMatch(source, /requestJourneyCapture/);
+});
+
+test("interleaved Homepage Describe tabs reserve one receipt after the second re-reads under the owner lock", async () => {
+  const storage = new MemoryStorage();
+  const snapshot = { ...emptyHomepageInput("owner-a"), mode: "describe" as const, prompt: "Tokyo and Kyoto" };
+  let tail = Promise.resolve();
+  const lock = async <T,>(_key: string, run: () => Promise<T>): Promise<T> => {
+    const prior = tail;
+    let release!: () => void;
+    tail = new Promise<void>((resolve) => { release = resolve; });
+    await prior;
+    try { return await run(); } finally { release(); }
+  };
+  let issued = 0;
+  const submit = () => reservePendingDescribeHandoff({
+    storage, snapshot, isCurrent: () => true, preserveAndBegin: () => true, lock,
+    createIds: () => ({ handoffId: `handoff-${++issued}`, tripId: `trip-${issued}` }),
+  });
+  const [first, second] = await Promise.all([submit(), submit()]);
+  assert.equal(first.ok, true);
+  assert.equal(second.ok, true);
+  if (!first.ok || !second.ok) return;
+  assert.equal(first.receipt.tripId, second.receipt.tripId);
+  assert.equal(first.href, second.href);
+  assert.equal(issued, 1);
+  assert.equal(readHomepageInput(JSON.parse(storage.getItem(homepageInputStorageKey("owner-a"))!), "owner-a")?.receipt?.tripId, first.receipt.tripId);
+});
+
+test("a different Homepage Describe submission cannot replace an unacknowledged pending handoff", async () => {
+  const storage = new MemoryStorage();
+  const firstSnapshot = { ...emptyHomepageInput("owner-a"), mode: "describe" as const, prompt: "Tokyo and Kyoto" };
+  const editedSnapshot = { ...firstSnapshot, revision: 1, prompt: "Tokyo and Osaka" };
+  let issued = 0;
+  const lock = async <T,>(_key: string, run: () => Promise<T>): Promise<T> => run();
+  const submit = (snapshot: typeof firstSnapshot) => reservePendingDescribeHandoff({
+    storage, snapshot, isCurrent: () => true, preserveAndBegin: () => true, lock,
+    createIds: () => ({ handoffId: `handoff-${++issued}`, tripId: `trip-${issued}` }),
+  });
+  const first = await submit(firstSnapshot);
+  assert.equal(first.ok, true);
+  const priorInput = storage.getItem(homepageInputStorageKey("owner-a"));
+  const priorEnvelope = storage.getItem(HOME_TRIP_DRAFT_KEY);
+  assert.deepEqual(await submit(editedSnapshot), { ok: false, reason: "preservation" });
+  assert.equal(storage.getItem(homepageInputStorageKey("owner-a")), priorInput);
+  assert.equal(storage.getItem(HOME_TRIP_DRAFT_KEY), priorEnvelope);
+  assert.equal(issued, 1);
+});
+
+test("an edit in another tab cannot erase a pending Homepage receipt", async () => {
+  const storage = new MemoryStorage();
+  const snapshot = { ...emptyHomepageInput("owner-a"), mode: "describe" as const, prompt: "Tokyo and Kyoto" };
+  const receipt = createPendingIntakeReceipt(snapshot, { handoffId: "pending-first", tripId: "trip-first" });
+  const original = JSON.stringify({ snapshot, receipt });
+  storage.setItem(homepageInputStorageKey("owner-a"), original);
+  const edited = { ...snapshot, revision: 1, prompt: "Tokyo and Osaka" };
+  const result = await persistEditableHomepageInput({ storage, snapshot: edited,
+    lock: async <T,>(_key: string, run: () => Promise<T>) => run() });
+  assert.deepEqual(result, { ok: false, reason: "reserved" });
+  assert.equal(storage.getItem(homepageInputStorageKey("owner-a")), original);
+});
+
+test("Homepage Stops cannot replace another tab's pending Describe handoff", async () => {
+  const storage = new MemoryStorage();
+  const describe = { ...emptyHomepageInput("owner-a"), mode: "describe" as const, prompt: "Tokyo and Kyoto" };
+  const pending = createPendingIntakeReceipt(describe, { handoffId: "pending-first", tripId: "trip-first" });
+  const originalInput = JSON.stringify({ snapshot: describe, receipt: pending });
+  const originalEnvelope = JSON.stringify({ version: 2, phase: "pending-interpretation", receipt: pending });
+  storage.setItem(homepageInputStorageKey("owner-a"), originalInput);
+  storage.setItem(HOME_TRIP_DRAFT_KEY, originalEnvelope);
+  const { stored, draft } = acceptedHandoff();
+  const result = await commitHomepageHandoff({ lock: testLock, storage, stored, draft, isCurrent: () => true,
+    preserveAndBegin: () => true });
+  assert.deepEqual(result, { ok: false, reason: "preservation" });
+  assert.equal(storage.getItem(homepageInputStorageKey("owner-a")), originalInput);
+  assert.equal(storage.getItem(HOME_TRIP_DRAFT_KEY), originalEnvelope);
+});
+
+test("two Stops tabs with the same intake cannot create different reserved trips", async () => {
+  const storage = new MemoryStorage();
+  const { stored, draft } = acceptedHandoff();
+  assert.deepEqual(await commitHomepageHandoff({ lock: testLock, storage, stored, draft,
+    isCurrent: () => true, preserveAndBegin: () => true }),
+  { ok: true, href: "/journey/new?homeDraft=1&handoff=handoff-a" });
+  const nextProjection = projectHomepageInput({ snapshot: stored.snapshot, profile: null, handoffId: "handoff-b" });
+  assert.equal(nextProjection.ok, true);
+  if (!nextProjection.ok) return;
+  const nextReceipt: HomepageHandoffReceipt = { version: 1, ownerId: "owner-a", handoffId: "handoff-b",
+    tripId: "trip-b", inputFingerprint: homepageSubmissionFingerprint(nextProjection.draft),
+    semanticInputFingerprint: homepageSemanticInputFingerprint(stored.snapshot) };
+  const nextDraft = { ...nextProjection.draft, homepage: { ...nextProjection.draft.homepage!, receipt: nextReceipt } };
+  assert.deepEqual(await commitHomepageHandoff({ lock: testLock, storage,
+    stored: { snapshot: stored.snapshot, receipt: nextReceipt }, draft: nextDraft,
+    isCurrent: () => true, preserveAndBegin: () => true }), { ok: false, reason: "preservation" });
+  assert.equal(readHomepageInput(JSON.parse(storage.getItem(homepageInputStorageKey("owner-a"))!), "owner-a")?.receipt?.tripId,
+    stored.receipt.tripId);
+});
+
+test("pending Edit clears only its exact receipt and cannot remove a newer handoff", async () => {
+  const discard = (handoffTransitions as unknown as { discardPendingIntakeForEdit?: (input: unknown) => Promise<{ ok: boolean; reason?: string }> }).discardPendingIntakeForEdit;
+  assert.equal(typeof discard, "function");
+  if (!discard) return;
+  const storage = new MemoryStorage();
+  const snapshot = { ...emptyHomepageInput("owner-a"), mode: "describe" as const, prompt: "Tokyo and Kyoto" };
+  const old = createPendingIntakeReceipt(snapshot, { handoffId: "old", tripId: "old-trip" });
+  const next = createPendingIntakeReceipt({ ...snapshot, revision: 1, prompt: "Osaka" }, { handoffId: "new", tripId: "new-trip" });
+  const key = homepageInputStorageKey("owner-a");
+  storage.setItem(key, JSON.stringify({ snapshot, receipt: old }));
+  storage.setItem(HOME_TRIP_DRAFT_KEY, JSON.stringify({ version: 2, phase: "pending-interpretation", receipt: old }));
+  assert.deepEqual(await discard({ storage, receipt: old, fromHomepage: true, lock: testLock }), { ok: true });
+  assert.equal(readHomepageInput(JSON.parse(storage.getItem(key)!), "owner-a")?.receipt, undefined);
+  assert.equal(storage.getItem(HOME_TRIP_DRAFT_KEY), null);
+  storage.setItem(key, JSON.stringify({ snapshot: next.frozenSnapshot, receipt: next }));
+  const nextEnvelope = JSON.stringify({ version: 2, phase: "pending-interpretation", receipt: next });
+  storage.setItem(HOME_TRIP_DRAFT_KEY, nextEnvelope);
+  assert.deepEqual(await discard({ storage, receipt: old, fromHomepage: true, lock: testLock }), { ok: false, reason: "stale" });
+  assert.equal(storage.getItem(HOME_TRIP_DRAFT_KEY), nextEnvelope);
+});
+
+test("canonical acknowledgement cannot overwrite a newer pending token", async () => {
+  const complete = (handoffTransitions as unknown as { acknowledgePendingIntakeReceipt?: (input: unknown) => Promise<{ ok: boolean; reason?: string }> }).acknowledgePendingIntakeReceipt;
+  assert.equal(typeof complete, "function");
+  if (!complete) return;
+  const storage = new MemoryStorage();
+  const { stored, draft } = acceptedHandoff();
+  const old = createPendingIntakeReceipt(stored.snapshot, { handoffId: stored.receipt.handoffId, tripId: stored.receipt.tripId });
+  const next = createPendingIntakeReceipt({ ...stored.snapshot, revision: stored.snapshot.revision + 1 }, { handoffId: "newer", tripId: "newer-trip" });
+  const key = homepageInputStorageKey("owner-a");
+  storage.setItem(key, JSON.stringify({ snapshot: stored.snapshot, receipt: old }));
+  storage.setItem(HOME_TRIP_DRAFT_KEY, JSON.stringify({ version: 2, phase: "pending-interpretation", receipt: old }));
+  assert.deepEqual(await complete({ storage, pending: old, completed: stored.receipt, draft, fromHomepage: true, lock: testLock }), { ok: true });
+  assert.equal(readHomepageInput(JSON.parse(storage.getItem(key)!), "owner-a")?.receipt?.version, 1);
+  storage.setItem(key, JSON.stringify({ snapshot: next.frozenSnapshot, receipt: next }));
+  const nextEnvelope = JSON.stringify({ version: 2, phase: "pending-interpretation", receipt: next });
+  storage.setItem(HOME_TRIP_DRAFT_KEY, nextEnvelope);
+  assert.deepEqual(await complete({ storage, pending: old, completed: stored.receipt, draft, fromHomepage: true, lock: testLock }), { ok: false, reason: "stale" });
+  assert.equal(storage.getItem(HOME_TRIP_DRAFT_KEY), nextEnvelope);
+});
+
+test("acknowledgement rolls back both receipt slots if the second write fails", async () => {
+  const storage = new MemoryStorage();
+  const { stored, draft } = acceptedHandoff();
+  const pending = createPendingIntakeReceipt(stored.snapshot, { handoffId: stored.receipt.handoffId, tripId: stored.receipt.tripId });
+  const inputKey = homepageInputStorageKey("owner-a");
+  const beforeInput = JSON.stringify({ snapshot: stored.snapshot, receipt: pending });
+  const beforeEnvelope = JSON.stringify({ version: 2, phase: "pending-interpretation", receipt: pending });
+  storage.setItem(inputKey, beforeInput);
+  storage.setItem(HOME_TRIP_DRAFT_KEY, beforeEnvelope);
+  storage.failSetAt = storage.writes + 2;
+  const result = await handoffTransitions.acknowledgePendingIntakeReceipt({ storage, pending,
+    completed: stored.receipt, draft, fromHomepage: true, lock: testLock });
+  assert.deepEqual(result, { ok: false, reason: "storage" });
+  assert.equal(storage.getItem(inputKey), beforeInput);
+  assert.equal(storage.getItem(HOME_TRIP_DRAFT_KEY), beforeEnvelope);
+});
+
+test("unavailable owner lock fails closed before an intake edit", async () => {
+  const storage = new MemoryStorage();
+  const snapshot = emptyHomepageInput("owner-a");
+  const result = await persistEditableHomepageInput({ storage, snapshot,
+    lock: async () => { throw new Error("lock unavailable"); } });
+  assert.deepEqual(result, { ok: false, reason: "storage" });
+  assert.equal(storage.writes, 0);
+});
+
+test("an acknowledgement from another owner cannot alter the current receipt", async () => {
+  const storage = new MemoryStorage();
+  const { stored, draft } = acceptedHandoff();
+  const pending = createPendingIntakeReceipt(stored.snapshot, { handoffId: stored.receipt.handoffId, tripId: stored.receipt.tripId });
+  const key = homepageInputStorageKey("owner-a");
+  const original = JSON.stringify({ snapshot: stored.snapshot, receipt: pending });
+  storage.setItem(key, original);
+  const result = await handoffTransitions.acknowledgePendingIntakeReceipt({ storage, pending,
+    completed: { ...stored.receipt, ownerId: "owner-b" }, draft, fromHomepage: false, lock: testLock });
+  assert.deepEqual(result, { ok: false, reason: "stale" });
+  assert.equal(storage.getItem(key), original);
+  assert.equal(storage.getItem(homepageInputStorageKey("owner-b")), null);
+});
+
+test("an Edit waiting on the lock cannot clear a replacement handoff", async () => {
+  const storage = new MemoryStorage();
+  const snapshot = { ...emptyHomepageInput("owner-a"), mode: "describe" as const, prompt: "Tokyo" };
+  const old = createPendingIntakeReceipt(snapshot, { handoffId: "old", tripId: "old-trip" });
+  const newer = createPendingIntakeReceipt({ ...snapshot, revision: 1, prompt: "Kyoto" }, { handoffId: "new", tripId: "new-trip" });
+  const key = homepageInputStorageKey("owner-a");
+  storage.setItem(key, JSON.stringify({ snapshot, receipt: old }));
+  storage.setItem(HOME_TRIP_DRAFT_KEY, JSON.stringify({ version: 2, phase: "pending-interpretation", receipt: old }));
+  let release!: () => void;
+  const gate = new Promise<void>((resolve) => { release = resolve; });
+  const delayed = async <T,>(_key: string, run: () => Promise<T>) => { await gate; return run(); };
+  const edit = handoffTransitions.discardPendingIntakeForEdit({ storage, receipt: old, fromHomepage: true, lock: delayed });
+  const nextInput = JSON.stringify({ snapshot: newer.frozenSnapshot, receipt: newer });
+  const nextEnvelope = JSON.stringify({ version: 2, phase: "pending-interpretation", receipt: newer });
+  storage.setItem(key, nextInput);
+  storage.setItem(HOME_TRIP_DRAFT_KEY, nextEnvelope);
+  release();
+  assert.deepEqual(await edit, { ok: false, reason: "stale" });
+  assert.equal(storage.getItem(key), nextInput);
+  assert.equal(storage.getItem(HOME_TRIP_DRAFT_KEY), nextEnvelope);
+});
+
+test("completion waiting on the lock cannot replace a newer pending receipt", async () => {
+  const storage = new MemoryStorage();
+  const { stored, draft } = acceptedHandoff();
+  const old = createPendingIntakeReceipt(stored.snapshot, { handoffId: stored.receipt.handoffId, tripId: stored.receipt.tripId });
+  const newer = createPendingIntakeReceipt({ ...stored.snapshot, revision: 5 }, { handoffId: "new", tripId: "new-trip" });
+  const key = homepageInputStorageKey("owner-a");
+  storage.setItem(key, JSON.stringify({ snapshot: stored.snapshot, receipt: old }));
+  storage.setItem(HOME_TRIP_DRAFT_KEY, JSON.stringify({ version: 2, phase: "pending-interpretation", receipt: old }));
+  let release!: () => void;
+  const gate = new Promise<void>((resolve) => { release = resolve; });
+  const delayed = async <T,>(_key: string, run: () => Promise<T>) => { await gate; return run(); };
+  const complete = handoffTransitions.acknowledgePendingIntakeReceipt({ storage, pending: old,
+    completed: stored.receipt, draft, fromHomepage: true, lock: delayed });
+  const nextInput = JSON.stringify({ snapshot: newer.frozenSnapshot, receipt: newer });
+  const nextEnvelope = JSON.stringify({ version: 2, phase: "pending-interpretation", receipt: newer });
+  storage.setItem(key, nextInput);
+  storage.setItem(HOME_TRIP_DRAFT_KEY, nextEnvelope);
+  release();
+  assert.deepEqual(await complete, { ok: false, reason: "stale" });
+  assert.equal(storage.getItem(key), nextInput);
+  assert.equal(storage.getItem(HOME_TRIP_DRAFT_KEY), nextEnvelope);
 });
 
 test("two Homepage tabs committing the same frozen Describe receipt converge on one reserved trip", async () => {
@@ -28,7 +253,7 @@ test("two Homepage tabs committing the same frozen Describe receipt converge on 
   const receipt = createPendingIntakeReceipt(snapshot, { handoffId: "same-handoff", tripId: "same-trip" });
   const stored = { snapshot, receipt };
   const draft = { version: 2 as const, phase: "pending-interpretation" as const, receipt };
-  const commit = () => commitHomepageHandoff({ storage, stored, draft, isCurrent: () => true, preserveAndBegin: () => true });
+  const commit = () => commitHomepageHandoff({ lock: testLock, storage, stored, draft, isCurrent: () => true, preserveAndBegin: () => true });
   const first = await commit();
   const second = await commit();
   assert.deepEqual(first, { ok: true, href: "/journey/new?homeDraft=1&handoff=same-handoff" });
@@ -83,7 +308,7 @@ test("a stale homepage request returns before storage or preservation mutation",
   const { stored, draft } = acceptedHandoff();
   let preservationCalls = 0;
 
-  const result = await commitHomepageHandoff({
+  const result = await commitHomepageHandoff({ lock: testLock,
     storage,
     stored,
     draft,
@@ -99,7 +324,7 @@ test("a stale homepage request returns before storage or preservation mutation",
 test("a mismatched semantic receipt in the draft fails before any write", async () => {
   const storage = new MemoryStorage();
   const { stored, draft } = acceptedHandoff();
-  const result = await commitHomepageHandoff({
+  const result = await commitHomepageHandoff({ lock: testLock,
     storage, stored,
     draft: { ...draft, homepage: { ...draft.homepage!, receipt: { ...stored.receipt, semanticInputFingerprint: "other" } } },
     isCurrent: () => true, preserveAndBegin: () => true,
@@ -118,7 +343,7 @@ test("a request invalidated after staging rolls both slots back before preservat
   let checks = 0;
   let preservationCalls = 0;
 
-  const result = await commitHomepageHandoff({
+  const result = await commitHomepageHandoff({ lock: testLock,
     storage,
     stored,
     draft,
@@ -137,7 +362,7 @@ test("a valid handoff stages owner input and reserved identity before preserving
   const { stored, draft } = acceptedHandoff();
   let stagedBeforePreservation = false;
 
-  const result = await commitHomepageHandoff({
+  const result = await commitHomepageHandoff({ lock: testLock,
     storage,
     stored,
     draft,
@@ -165,7 +390,7 @@ test("cancelled preservation keeps the new intake and restores the prior shared 
   const prior = JSON.stringify({ handoffId: "prior", brief: "Keep this recoverable" });
   storage.values.set(HOME_TRIP_DRAFT_KEY, prior);
 
-  const result = await commitHomepageHandoff({
+  const result = await commitHomepageHandoff({ lock: testLock,
     storage,
     stored,
     draft,
@@ -187,7 +412,7 @@ test("storage failures never invoke preservation and retain the previous shared 
     storage.failSetAt = failSetAt;
     let preservationCalls = 0;
 
-    const result = await commitHomepageHandoff({
+    const result = await commitHomepageHandoff({ lock: testLock,
       storage,
       stored,
       draft,
@@ -204,7 +429,7 @@ test("storage failures never invoke preservation and retain the previous shared 
 test("mismatched or malformed receipt bookkeeping fails before mutation", async () => {
   const storage = new MemoryStorage();
   const { stored, draft } = acceptedHandoff();
-  const result = await commitHomepageHandoff({
+  const result = await commitHomepageHandoff({ lock: testLock,
     storage,
     stored: { ...stored, receipt: { ...stored.receipt, inputFingerprint: "old-input" } },
     draft,
@@ -220,7 +445,7 @@ test("validated receipt bookkeeping survives independent JSON reload before retr
   const accepted = acceptedHandoff();
   const stored = JSON.parse(JSON.stringify(accepted.stored));
   const draft = JSON.parse(JSON.stringify(accepted.draft));
-  const result = await commitHomepageHandoff({
+  const result = await commitHomepageHandoff({ lock: testLock,
     storage,
     stored,
     draft,

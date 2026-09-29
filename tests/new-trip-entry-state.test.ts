@@ -174,3 +174,13 @@ test("recovery of a reserved pending handoff wins after the completed receipt wr
   });
   assert.deepEqual(entry, { kind: "explicit-trip", tripId: pending.tripId });
 });
+
+test("canonical recovery resumes the same trip before locked receipt cleanup runs", () => {
+  const snapshot = describe();
+  const pending = createPendingIntakeReceipt(snapshot, { handoffId: "pending-recovery", tripId: "trip-recovery" });
+  const entry = resolveNewTripEntryState({ hydrated: true, ownerId, homeDraft: true,
+    handoff: pending.handoffId, storedInput: { snapshot, receipt: pending },
+    draft: { version: 2, phase: "pending-interpretation", receipt: pending },
+    reservedTripId: pending.tripId });
+  assert.deepEqual(entry, { kind: "explicit-trip", tripId: pending.tripId });
+});

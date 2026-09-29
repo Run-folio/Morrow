@@ -16,6 +16,7 @@ import { builderBrowserTestsEnabled, renderBuilder } from "./helpers/builder-ren
 import { defaultTripIntent, tripFromBuilder, type EasyTTrip } from "../lib/easyt/trip.ts";
 import { emptyHomepageInput, selectedEntry } from "./fixtures/homepage-dual-entry.ts";
 import { findCatalogPlaceById } from "../lib/easyt/place-catalog.ts";
+import { homepageInputStorageKey } from "../lib/easyt/private-browser-context.ts";
 
 function projectedHandoff() {
   const snapshot = emptyHomepageInput("owner-a");
@@ -85,6 +86,7 @@ function memoryStorage(initial: HomeTripDraft) {
     removeItem: (key: string) => { values.delete(key); },
   };
 }
+const ownerLock = async <T,>(_key: string, run: () => Promise<T>) => run();
 
 test("a versioned homepage handoff matches only its reserved canonical initial document", () => {
   const draft = projectedHandoff();
@@ -98,31 +100,46 @@ test("a versioned homepage handoff matches only its reserved canonical initial d
   assert.equal(homepageHandoffMatchesTrip(draft, { ...trip, brief: { ...trip.brief, mustDo: "Later traveller note" } }), false);
 });
 
-test("blank-prompt stops mode becomes durable after exact recovery and never during pending resolution or a failed write", () => {
+test("blank-prompt stops mode becomes durable after exact recovery and never during pending resolution or a failed write", async () => {
   const draft = projectedHandoff();
   const trip = materialize(draft);
   assert.equal(draft.brief, undefined);
 
   const pending = memoryStorage(draft);
-  assert.equal(removeHomeTripDraftIfDurable(pending, draft, trip, true, true), false);
+  assert.equal(await removeHomeTripDraftIfDurable(pending, draft, trip, true, true, ownerLock), false);
   assert.equal(pending.values.has(HOME_TRIP_DRAFT_KEY), true);
 
   const failed = memoryStorage(draft);
-  assert.equal(removeHomeTripDraftIfDurable(failed, draft, trip, false, false), false);
+  assert.equal(await removeHomeTripDraftIfDurable(failed, draft, trip, false, false, ownerLock), false);
   assert.equal(failed.values.has(HOME_TRIP_DRAFT_KEY), true);
 
   const durable = memoryStorage(draft);
-  assert.equal(removeHomeTripDraftIfDurable(durable, draft, trip, true, false), true);
+  assert.equal(await removeHomeTripDraftIfDurable(durable, draft, trip, true, false, ownerLock), true);
   assert.equal(durable.values.has(HOME_TRIP_DRAFT_KEY), false);
 });
 
-test("a newer handoff slot is never deleted by an older durable canonical write", () => {
+test("a newer handoff slot is never deleted by an older durable canonical write", async () => {
   const draft = projectedHandoff();
   const trip = materialize(draft);
   const newer = { ...draft, handoffId: "handoff-new", homepage: { ...draft.homepage!, revision: 5 } };
   const storage = memoryStorage(newer);
-  assert.equal(removeHomeTripDraftIfDurable(storage, draft, trip, true, false), false);
+  assert.equal(await removeHomeTripDraftIfDurable(storage, draft, trip, true, false, ownerLock), false);
   assert.equal(storage.values.has(HOME_TRIP_DRAFT_KEY), true);
+});
+
+test("cleanup rechecks the envelope after waiting for the owner lock", async () => {
+  const draft = projectedHandoff();
+  const trip = materialize(draft);
+  const storage = memoryStorage(draft);
+  let release!: () => void;
+  const gate = new Promise<void>((resolve) => { release = resolve; });
+  const delayedLock = async <T,>(_key: string, run: () => Promise<T>) => { await gate; return run(); };
+  const cleanup = removeHomeTripDraftIfDurable(storage, draft, trip, true, false, delayedLock);
+  const newer = { ...draft, handoffId: "next-handoff", homepage: { ...draft.homepage!, revision: 5 } };
+  storage.values.set(HOME_TRIP_DRAFT_KEY, JSON.stringify(newer));
+  release();
+  assert.equal(await cleanup, false);
+  assert.equal(storage.getItem(HOME_TRIP_DRAFT_KEY), JSON.stringify(newer));
 });
 
 test("occurrence enrichment targets the supplied homepage occurrence instead of a namesake", () => {
@@ -223,6 +240,29 @@ test("pending Describe hydrates one reserved Builder document before capture and
     await view.page.reload();
     await view.page.getByText("Your route — Nights per stop:").waitFor({ timeout: 20_000 });
     assert.equal(view.captureRequests(), 1);
+    assert.deepEqual(view.errors, []);
+  } finally { await view.close(); }
+});
+
+test("a late capture cannot apply when another tab replaces the durable receipt", { skip: !builderBrowserTestsEnabled, timeout: 40_000 }, async () => {
+  const snapshot = { ...emptyHomepageInput(), mode: "describe" as const, prompt: "Tokyo and Kyoto in Japan for one week." };
+  const receipt = createPendingIntakeReceipt(snapshot, { handoffId: "old-capture", tripId: "trip-old-capture" });
+  const view = await renderBuilder({
+    query: "?homeDraft=1&handoff=old-capture",
+    draft: { version: 2, phase: "pending-interpretation", receipt },
+    storedInput: { snapshot, receipt }, captureDelayMs: 1200,
+  });
+  try {
+    await view.page.getByText(snapshot.prompt).waitFor();
+    const nextSnapshot = { ...snapshot, revision: 1, prompt: "Kyoto only" };
+    const nextReceipt = createPendingIntakeReceipt(nextSnapshot, { handoffId: "new-capture", tripId: "trip-new-capture" });
+    await view.page.evaluate(({ key, nextSnapshot, nextReceipt }: { key: string; nextSnapshot: typeof snapshot; nextReceipt: typeof receipt }) => {
+      localStorage.setItem(key, JSON.stringify({ snapshot: nextSnapshot, receipt: nextReceipt }));
+      localStorage.setItem("easyt-home-trip-draft", JSON.stringify({ version: 2, phase: "pending-interpretation", receipt: nextReceipt }));
+    }, { key: homepageInputStorageKey(null), nextSnapshot, nextReceipt });
+    await view.page.waitForTimeout(1800);
+    assert.equal(await view.page.getByText("Your route — Nights per stop:").count(), 0);
+    assert.equal(await view.page.evaluate(() => Object.keys(localStorage).some((key) => key.includes("trip-old-capture"))), false);
     assert.deepEqual(view.errors, []);
   } finally { await view.close(); }
 });

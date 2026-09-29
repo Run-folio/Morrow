@@ -11,16 +11,15 @@ import { travelProfileFromUnknown, tripInterestsWithProfileDefaults, type Travel
 import { homepageInputStorageKey, travelProfileStorageKey } from "@/lib/easyt/private-browser-context";
 import {
   commitHomepageHandoff,
-  createPendingIntakeReceipt,
   HOME_TRIP_DRAFT_KEY,
   homepageCompletedReceiptIsUnchanged,
   homepageHandoffReceiptForOwner,
   homepageReceiptForProjection,
   homepageSemanticInputFingerprint,
   homepageSnapshotForDescribePrompt,
+  persistEditableHomepageInput,
   projectHomepageInput,
-  pendingHomepageHandoffForOwner,
-  pendingIntakeReceiptForOwner,
+  reservePendingDescribeHandoff,
   readHomepageInput,
   reusableHomepageReceipt,
   type HomepageDestinationEntry,
@@ -84,16 +83,14 @@ export default function HomeTripStarter() {
     submitInFlightRef.current = false;
     setLoading(false);
   };
-  const persistSnapshot = (next: HomepageInputSnapshot, receipt = storedInputRef.current.receipt) => {
-    const stored: StoredHomepageInput = receipt ? { snapshot: next, receipt } : { snapshot: next };
-    storedInputRef.current = stored;
-    try {
-      window.localStorage.setItem(homepageInputStorageKey(next.ownerId), JSON.stringify(stored));
-      return true;
-    } catch {
-      setCaptureError(language === "es" ? "No pudimos guardar esta entrada en este dispositivo." : "We couldn't save this trip input on this device.");
-      return false;
-    }
+  const persistSnapshot = (next: HomepageInputSnapshot) => {
+    void persistEditableHomepageInput({ storage: window.localStorage, snapshot: next, preserveCompletedReceipt: true,
+      isCurrent: () => snapshotRef.current.ownerId === next.ownerId && snapshotRef.current.revision === next.revision })
+      .then((result) => {
+        if (snapshotRef.current.ownerId !== next.ownerId || snapshotRef.current.revision !== next.revision) return;
+        if (result.ok) storedInputRef.current = result.stored;
+        else if (result.reason !== "stale") setCaptureError(language === "es" ? "No pudimos guardar esta entrada en este dispositivo." : "We couldn't save this trip input on this device.");
+      });
   };
   const updateSnapshot = (update: (current: HomepageInputSnapshot) => HomepageInputSnapshot) => {
     cancelSubmission();
@@ -210,21 +207,9 @@ export default function HomeTripStarter() {
         return;
       }
       if (submitted.mode === "describe") {
-        const existing = sameStoredMeaning && latestStored?.receipt?.version === 2
-          ? pendingIntakeReceiptForOwner(latestStored.receipt, submittedOwner) : null;
-        let existingHandoff = null;
-        try { existingHandoff = JSON.parse(window.localStorage.getItem(HOME_TRIP_DRAFT_KEY) ?? "null"); }
-        catch { /* Invalid shared handoff is not reusable. */ }
-        const reusable = existing && existing.semanticInputFingerprint === homepageSemanticInputFingerprint(submitted)
-          && pendingHomepageHandoffForOwner(existingHandoff, submittedOwner, existing.handoffId)
-          ? existing : null;
-        const receipt = reusable ?? createPendingIntakeReceipt(submitted, {
-          handoffId: generatedId("handoff"), tripId: generatedId("trip"),
-        });
-        const stored: StoredHomepageInput = { snapshot: submitted, receipt };
-        const draft = { version: 2 as const, phase: "pending-interpretation" as const, receipt };
-        const committed = await commitHomepageHandoff({
-          storage: window.localStorage, stored, draft, isCurrent,
+        const committed = await reservePendingDescribeHandoff({
+          storage: window.localStorage, snapshot: submitted, isCurrent,
+          createIds: () => ({ handoffId: generatedId("handoff"), tripId: generatedId("trip") }),
           preserveAndBegin: () => beginNewTripNavigation(submittedOwner, window),
         });
         if (!isCurrent()) return;
@@ -233,7 +218,7 @@ export default function HomeTripStarter() {
           trackEvent("trip_generation_failed", { trip_source: "homepage", error_type: "unknown", is_authenticated: Boolean(submittedOwner) });
           return;
         }
-        storedInputRef.current = stored;
+        storedInputRef.current = committed.stored;
         navigationStarted = true;
         router.push(committed.href);
         return;

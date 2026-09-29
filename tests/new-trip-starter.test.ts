@@ -30,12 +30,13 @@ test("New trip uses production capture, destination and endpoint controls with o
   assert.match(implementation, /homepageInputStorageKey\(ownerId\)/);
   assert.match(implementation, /readHomepageInput/);
   assert.match(implementation, /resumableNewTripSnapshot/);
-  assert.doesNotMatch(implementation, /commitHomepageHandoff|beginNewTripNavigation|router\.push/);
+  assert.doesNotMatch(implementation, /commitHomepageHandoff|beginNewTripNavigation|router\.push\(["']\/journey\/new["']/);
+  assert.match(implementation, /router\.push\("\/journey\/new\/import"\)/);
 });
 
 test("New trip persists edited intake without carrying a completed receipt", () => {
   const implementation = source();
-  assert.match(implementation, /JSON\.stringify\(\{ snapshot: next \}\)/);
+  assert.match(implementation, /persistEditableHomepageInput\(\{ storage: window\.localStorage, snapshot: next/);
   assert.match(implementation, /onSubmit\(submitted/);
   assert.doesNotMatch(implementation, /receipt:\s*stored\.receipt/);
   assert.equal(emptyHomepageInput("owner-a").mode, "stops");

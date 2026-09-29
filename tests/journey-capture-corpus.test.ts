@@ -322,7 +322,7 @@ test("builder enrichment batch aborts a hung lookup without losing completed res
   ]);
 });
 
-test("reload-safe handoff draft is deleted only after exact brief and full route are durable", () => {
+test("reload-safe handoff draft is deleted only after exact brief and full route are durable", async () => {
   const raw = "From London to Barcelon and Madrid";
   const capture = captureJourneyBrief(raw);
   const draft = createHomeTripDraft({ capture, handoffId: "reload-handoff", datesExplicit: false, startDate: "2026-09-01", endDate: "2026-09-07", travellers: 2, travellersExplicit: false, interests: [] });
@@ -333,11 +333,12 @@ test("reload-safe handoff draft is deleted only after exact brief and full route
     stops: stops.map((name) => ({ name })),
   }) as EasyTTrip;
 
-  assert.equal(removeHomeTripDraftIfDurable(storage, draft, trip(["Barcelona", "Madrid"]), true, true), false);
+  const ownerLock = async <T,>(_key: string, run: () => Promise<T>) => run();
+  assert.equal(await removeHomeTripDraftIfDurable(storage, draft, trip(["Barcelona", "Madrid"]), true, true, ownerLock), false);
   assert.ok(storage.getItem(HOME_TRIP_DRAFT_KEY), "reload must still find a pending handoff");
   const reloadedDraft = JSON.parse(storage.getItem(HOME_TRIP_DRAFT_KEY)!) as HomeTripDraft;
-  assert.equal(removeHomeTripDraftIfDurable(storage, reloadedDraft, trip(["Barcelona"]), true, false), false);
-  assert.equal(removeHomeTripDraftIfDurable(storage, reloadedDraft, trip(["Barcelona", "Madrid"], `${raw} `), true, false), false);
-  assert.equal(removeHomeTripDraftIfDurable(storage, reloadedDraft, trip(["Barcelona", "Madrid"]), true, false), true);
+  assert.equal(await removeHomeTripDraftIfDurable(storage, reloadedDraft, trip(["Barcelona"]), true, false, ownerLock), false);
+  assert.equal(await removeHomeTripDraftIfDurable(storage, reloadedDraft, trip(["Barcelona", "Madrid"], `${raw} `), true, false, ownerLock), false);
+  assert.equal(await removeHomeTripDraftIfDurable(storage, reloadedDraft, trip(["Barcelona", "Madrid"]), true, false, ownerLock), true);
   assert.equal(storage.getItem(HOME_TRIP_DRAFT_KEY), null);
 });
