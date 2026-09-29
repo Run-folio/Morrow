@@ -80,7 +80,8 @@ test("the finder remains mounted while selection drives the existing marker and 
   assert.doesNotMatch(workspace, /const showDayPlanner = Boolean\([^\n]*!selectedLocalPlace/);
   assert.match(workspace, /onPlaceSelect=\{selectLocalPlace\} onViewOnMap=\{focusLocalPlace\}/);
   assert.match(workspace, /const \[selectedMapResult, setSelectedMapResult\] = useState<MapResultPlace \| null>/);
-  assert.match(workspace, /selectedMapResult=\{selectedMapResult\}/);
+  assert.match(workspace, /const selectedLocalPlace = selectedMapResult && mapResults\.some\(\(result\) => result\.selectionId === selectedMapResult\.selectionId\)/);
+  assert.match(workspace, /selectedMapResult=\{selectedLocalPlace\}/);
   assert.match(workspace, /mapResults=\{mapResults\}/);
   assert.match(finder, /const choosePlace = \(place: JourneyLocalPlace\) => \{\s*setChosen\(place\);\s*onPlaceSelect\?\.\(place\);\s*\}/);
   assert.match(finder, /onClick=\{\(\) => \(onViewOnMap \?\? onPlaceSelect\)\(chosen\)\}/);

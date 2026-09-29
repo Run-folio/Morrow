@@ -6,6 +6,7 @@ export type LocalFinderQueryContext = {
   dayId: string;
   coordinates: [number, number];
   locale: string;
+  mapPresentation?: "maplibre";
   staySearch?: {
     checkIn?: string;
     checkOut?: string;
@@ -33,8 +34,9 @@ export function localFinderBaseQueryKey({
   dayId,
   coordinates: [longitude, latitude],
   locale,
+  mapPresentation,
 }: LocalFinderBaseQueryContext) {
-  return [kind, city, country, canonicalPlaceId ?? "", dayId, coordinateKey(latitude), coordinateKey(longitude), locale].join("|");
+  return [kind, city, country, canonicalPlaceId ?? "", dayId, coordinateKey(latitude), coordinateKey(longitude), locale, mapPresentation ?? "none"].join("|");
 }
 
 type LocalFinderPlaceIdentity = {
@@ -118,6 +120,7 @@ export function localFinderQueryKey({
   dayId,
   coordinates: [longitude, latitude],
   locale,
+  mapPresentation,
   staySearch,
 }: LocalFinderQueryContext) {
   return [
@@ -129,6 +132,7 @@ export function localFinderQueryKey({
     latitude,
     longitude,
     locale,
+    mapPresentation ?? "none",
     staySearch?.checkIn ?? "",
     staySearch?.checkOut ?? "",
     staySearch?.adults ?? "",

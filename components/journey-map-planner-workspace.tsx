@@ -34,7 +34,7 @@ import { cacheCanonicalTrip, canUseHydratedTripScope, claimGuestTripRecoveryForO
 import { canApplyCanonicalCopilotChange, tripEditorSyncAction, tripSyncRecoveryPath, tripSyncSignInPath } from "@/lib/easyt/trip-continuity";
 import { createTripMutationPersistenceQueue, mergeTripMutationDocuments } from "@/lib/easyt/trip-mutation-persistence";
 import { addMappedPlaceToTrip, removeMappedPlaceFromTrip } from "@/lib/easyt/map-place-itinerary";
-import { mapResultForDiscoveryPlace, mapResultForHandoffTarget, mapResultForLocalPlace, mapResultForSourceAtStop, mapResultPlanItem, mergeMapResults, projectPersistedMapResults, reconcileMapResultSelection, reconcilePlannerPinSelection, type MapResultPlace } from "@/lib/easyt/map-result-selection";
+import { mapLibreCompatibleResults, mapResultForDiscoveryPlace, mapResultForHandoffTarget, mapResultForLocalPlace, mapResultForSourceAtStop, mapResultPlanItem, mergeMapResults, projectPersistedMapResults, reconcileMapResultSelection, reconcilePlannerPinSelection, type MapResultPlace } from "@/lib/easyt/map-result-selection";
 import { mobileMapDrawerDragDecision } from "@/lib/easyt/mobile-map-drawer";
 import { googlePlaceReferenceChoiceId, itineraryIdeaForLocalPlace, itineraryIdeaForPlace, preferredItineraryIdeaDay, removeItineraryIdea, saveGooglePlaceReference, saveItineraryIdea, scheduleGooglePlaceReference, scheduleItineraryIdea, validIdeaDays } from "@/lib/easyt/itinerary-ideas";
 import { recommendationDetailForMapResult } from "@/lib/easyt/recommendation-detail";
@@ -616,8 +616,15 @@ export function JourneyMapPlannerWorkspace({
     ? googleDiscoveryScopeKey(selectedTripStop.id, googleDiscoveryCategory, selectedBaseCoordinates)
     : null;
   const googleNearby = googleScopeKey ? googleNearbyByScope[googleScopeKey] : undefined;
-  const selectedGooglePlaceId = workspacePlaceSelection.kind === "google" ? workspacePlaceSelection.placeId : null;
+  const selectedGooglePlaceId = googleCanvasActive && workspacePlaceSelection.kind === "google" ? workspacePlaceSelection.placeId : null;
   const currentGoogleDetail = selectedGoogleDetailForPlace(selectedGooglePlaceId, selectedGoogleDetail);
+  useEffect(() => {
+    if (!googleCanvasActive) {
+      setWorkspacePlaceSelection((current) => current.kind === "google" ? { kind: "none" } : current);
+      setGoogleNearbyByScope({});
+      setSelectedGoogleDetail(null);
+    }
+  }, [googleCanvasActive]);
   const selectedGoogleStopId = workspacePlaceSelection.kind === "google" ? workspacePlaceSelection.stopId : null;
   const selectedGoogleChoice = customTrip?.brief.itineraryIdeas?.find((idea): idea is GooglePlaceReferenceIdea => isGooglePlaceReferenceIdea(idea)
     && idea.stopId === selectedGoogleStopId
@@ -971,19 +978,18 @@ export function JourneyMapPlannerWorkspace({
         : [];
     return handoffMapResult?.kind === shapeDayTab ? [handoffMapResult, ...discovered] : discovered;
   }, [handoffMapResult, localMapPlaces, seeMapPlaces, selectedMapStopId, selectedPlanItem?.dayNumber, selectedPlanItem?.stopId, shapeDayTab]);
-  const mapResults = useMemo(() => mergeMapResults(
-    persistedMapProjection.results,
-    transientMapResults,
-    selectedPlanItem?.dayNumber ?? null,
-  ), [persistedMapProjection.results, selectedPlanItem?.dayNumber, transientMapResults]);
+  const mapResults = useMemo(() => {
+    const merged = mergeMapResults(persistedMapProjection.results, transientMapResults, selectedPlanItem?.dayNumber ?? null);
+    return googleCanvasActive ? merged : mapLibreCompatibleResults(merged);
+  }, [googleCanvasActive, persistedMapProjection.results, selectedPlanItem?.dayNumber, transientMapResults]);
   const scheduledRestaurantIds = useMemo(() => mapResults
     .filter((result) => result.kind === "eat"
       && result.state === "scheduled"
       && result.stopId === selectedPlanItem?.stopId
       && result.dayNumber === selectedPlanItem?.dayNumber)
     .map((result) => result.sourceId), [mapResults, selectedPlanItem?.dayNumber, selectedPlanItem?.stopId]);
-  const selectedLocalPlace = selectedMapResult;
-  const selectedLocalPlaceId = selectedMapResult?.selectionId ?? null;
+  const selectedLocalPlace = selectedMapResult && mapResults.some((result) => result.selectionId === selectedMapResult.selectionId) ? selectedMapResult : null;
+  const selectedLocalPlaceId = selectedLocalPlace?.selectionId ?? null;
   const selectedRecommendationPart = customTrip && selectedPlanItem && selectedLocalPlace && selectedLocalPlace.kind !== "stay" && selectedLocalPlace.stopId === selectedPlanItem.stopId
     ? mapPlanFreeTimePart ?? preferredItineraryDayPart(customTrip, selectedPlanItem.id, selectedLocalPlace.kind === "eat" ? "restaurant" : "activity")
     : null;
@@ -2770,7 +2776,7 @@ export function JourneyMapPlannerWorkspace({
               contextCardsHidden={copilotOpen || pinPlacementMode || Boolean(pinCoordinates)}
               plannerPins={persistedMapProjection.plannerPins}
               mapResults={mapResults}
-              selectedMapResult={selectedMapResult}
+              selectedMapResult={selectedLocalPlace}
               focusOffset={mapFocusOffset}
               focusZoom={isShellPresentation ? 9.5 : undefined}
               focusCoordinates={mapMode === "detail" && selectedPlannerPin ? [selectedPlannerPin.longitude, selectedPlannerPin.latitude] : null}
@@ -3208,7 +3214,7 @@ export function JourneyMapPlannerWorkspace({
             return changed;
           }}
         /></div> : null}
-        {!googleCanvasActive && (shapeDayTab === "stay" || shapeDayTab === "eat") && selectedBaseCoordinates ? <JourneyLocalFinder key={`${selectedDay.id}-${localFinderKind}`} tripId={customTrip?.id} stopId={selectedTripStop?.id} canonicalPlaceId={selectedTripStop?.canonicalPlaceId} kind={localFinderKind} city={localFinderKind === "stay" ? selectedTripStop?.name ?? selected.city : selected.city} country={localFinderKind === "stay" ? selectedTripStop?.country ?? selected.country : selected.country} locale={language} dayId={selectedDay.id} dayNumber={selectedPlanItem?.dayNumber} coordinates={localFinderKind === "stay" ? selectedBaseCoordinates : selected.coordinates ?? selectedBaseCoordinates} interests={selectedTripInterests} staySearch={selectedStayDates ? { ...selectedStayDates, adults: Math.max(1, customTrip?.travellers ?? 1), rooms: 1, currency: customTrip?.currency } : undefined} selectedPlaceId={selectedMapResult?.kind === (localFinderKind === "stay" ? "stay" : "eat") && (!selectedMapResult.stopId || selectedMapResult.stopId === selectedTripStop?.id) ? selectedMapResult.sourceId : null} savedPlaceIds={localFinderKind === "restaurant" ? scheduledRestaurantIds : undefined} initialState={storyState?.localFinderInitialState} onPlaceSelect={selectLocalPlace} onViewOnMap={focusLocalPlace} onPlacesChange={setLocalMapPlaces} onRestaurantSelect={handleRestaurantSelect} onSavePlace={saveLocalVenue} onRemovePlace={removeLocalVenue} /> : null}
+        {!googleCanvasActive && (shapeDayTab === "stay" || shapeDayTab === "eat") && selectedBaseCoordinates ? <JourneyLocalFinder mapPresentation="maplibre" key={`${selectedDay.id}-${localFinderKind}`} tripId={customTrip?.id} stopId={selectedTripStop?.id} canonicalPlaceId={selectedTripStop?.canonicalPlaceId} kind={localFinderKind} city={localFinderKind === "stay" ? selectedTripStop?.name ?? selected.city : selected.city} country={localFinderKind === "stay" ? selectedTripStop?.country ?? selected.country : selected.country} locale={language} dayId={selectedDay.id} dayNumber={selectedPlanItem?.dayNumber} coordinates={localFinderKind === "stay" ? selectedBaseCoordinates : selected.coordinates ?? selectedBaseCoordinates} interests={selectedTripInterests} staySearch={selectedStayDates ? { ...selectedStayDates, adults: Math.max(1, customTrip?.travellers ?? 1), rooms: 1, currency: customTrip?.currency } : undefined} selectedPlaceId={selectedMapResult?.kind === (localFinderKind === "stay" ? "stay" : "eat") && (!selectedMapResult.stopId || selectedMapResult.stopId === selectedTripStop?.id) ? selectedMapResult.sourceId : null} savedPlaceIds={localFinderKind === "restaurant" ? scheduledRestaurantIds : undefined} initialState={storyState?.localFinderInitialState} onPlaceSelect={selectLocalPlace} onViewOnMap={focusLocalPlace} onPlacesChange={setLocalMapPlaces} onRestaurantSelect={handleRestaurantSelect} onSavePlace={saveLocalVenue} onRemovePlace={removeLocalVenue} /> : null}
       </aside> : null}
         </div>
       </div>

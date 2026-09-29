@@ -243,6 +243,7 @@ export default function TripStayWorkspace({ trip, initialStopId, initialSelected
 
   return <section className={styles.workspace} aria-label={`Stay planning for ${context.stop.name}`}>
     <JourneyLocalFinder
+      mapPresentation="maplibre"
       key={context.key}
       ownerId={workingTrip.ownerId}
       tripId={workingTrip.id}

@@ -156,6 +156,11 @@ export function mapResultForLocalPlace(place: TransientMapPlace, kind: "stay" | 
   };
 }
 
+/** Never associate Google provider facts with the MapLibre canvas. */
+export function mapLibreCompatibleResults<Result extends { provider?: string }>(results: readonly Result[]): Result[] {
+  return results.filter((result) => result.provider !== "google-places");
+}
+
 export function mapResultForDiscoveryPlace(place: {
   id: string;
   title: string;
