@@ -1,9 +1,11 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { readFileSync } from "node:fs";
 
 import {
   HOME_TRIP_DRAFT_KEY,
   commitHomepageHandoff,
+  createPendingIntakeReceipt,
   homepageSubmissionFingerprint,
   homepageSemanticInputFingerprint,
   projectHomepageInput,
@@ -11,7 +13,28 @@ import {
   type HomepageHandoffReceipt,
 } from "../lib/easyt/home-trip-handoff.ts";
 import { homepageInputStorageKey } from "../lib/easyt/private-browser-context.ts";
-import { selectedStopsHomepageInput } from "./fixtures/homepage-dual-entry.ts";
+import { emptyHomepageInput, selectedStopsHomepageInput } from "./fixtures/homepage-dual-entry.ts";
+
+test("Homepage Describe stages frozen intake before navigation without awaiting capture", () => {
+  const source = readFileSync(new URL("../app/journey/home/home-trip-starter.tsx", import.meta.url), "utf8");
+  assert.match(source, /createPendingIntakeReceipt\(submitted/);
+  assert.match(source, /commitHomepageHandoff\(/);
+  assert.doesNotMatch(source, /requestJourneyCapture/);
+});
+
+test("two Homepage tabs committing the same frozen Describe receipt converge on one reserved trip", async () => {
+  const storage = new MemoryStorage();
+  const snapshot = { ...emptyHomepageInput("owner-a"), mode: "describe" as const, prompt: "Tokyo and Kyoto in Japan" };
+  const receipt = createPendingIntakeReceipt(snapshot, { handoffId: "same-handoff", tripId: "same-trip" });
+  const stored = { snapshot, receipt };
+  const draft = { version: 2 as const, phase: "pending-interpretation" as const, receipt };
+  const commit = () => commitHomepageHandoff({ storage, stored, draft, isCurrent: () => true, preserveAndBegin: () => true });
+  const first = await commit();
+  const second = await commit();
+  assert.deepEqual(first, { ok: true, href: "/journey/new?homeDraft=1&handoff=same-handoff" });
+  assert.deepEqual(second, first);
+  assert.equal(readHomepageInput(JSON.parse(storage.getItem(homepageInputStorageKey("owner-a"))!), "owner-a")?.receipt?.tripId, "same-trip");
+});
 
 class MemoryStorage {
   readonly values = new Map<string, string>();

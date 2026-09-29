@@ -36,7 +36,7 @@ import { routePlannerPayload } from "@/lib/easyt/public-route-handoff";
 import { defaultTravelProfile, travelProfileFromUnknown, tripInterestsWithProfileDefaults, type TravelProfile } from "@/lib/easyt/travel-profile";
 import { firstTripWorkspaceHref, mapWorkspaceHref, tripWorkspaceHref } from "@/lib/easyt/trip-workspace-links";
 import { createLatestJourneyCaptureRequestGate, journeyCaptureFailureMessage, requestJourneyCapture } from "@/lib/easyt/journey-capture-client";
-import { HOME_TRIP_DRAFT_KEY, homepageHandoffMatchesTrip, homepageHandoffReceiptForOwner, homepageReceiptForProjection, projectHomepageInput, readHomepageInput, pendingIntakeReceiptForOwner, pendingHomepageHandoffForOwner, homeTripDraftInterestsWereExplicit, homeTripDraftTimingFlexibility, initialHandoffRouteStops, mergeHandoffLocationChoice, preferredHandoffLocationChoice, removeHomeTripDraftIfDurable, resolveHandoffBatch, routableHandoffMentions, tripInterestsFromHomeDraft, type HandoffLocationChoice, type HomeTripDraft, type HomepageInputSnapshot, type PendingHomeTripHandoff, type PendingIntakeReceipt } from "@/lib/easyt/home-trip-handoff";
+import { HOME_TRIP_DRAFT_KEY, createPendingIntakeReceipt, homepageHandoffMatchesTrip, homepageHandoffReceiptForOwner, homepageReceiptForProjection, homepageSemanticInputFingerprint, projectHomepageInput, readHomepageInput, pendingIntakeReceiptForOwner, pendingHomepageHandoffForOwner, homeTripDraftInterestsWereExplicit, homeTripDraftTimingFlexibility, initialHandoffRouteStops, mergeHandoffLocationChoice, preferredHandoffLocationChoice, removeHomeTripDraftIfDurable, resolveHandoffBatch, routableHandoffMentions, tripInterestsFromHomeDraft, type HandoffLocationChoice, type HomeTripDraft, type HomepageInputSnapshot, type PendingHomeTripHandoff, type PendingIntakeReceipt } from "@/lib/easyt/home-trip-handoff";
 import { resolveNewTripEntryState, type NewTripEntryState } from "./new-trip-entry-state";
 import { NewTripStarter } from "./new-trip-starter";
 import type { JourneyCaptureResult } from "@/lib/easyt/journey-capture";
@@ -818,12 +818,28 @@ function TripBuilderDocument() {
     }
   };
 
-  const submitNewTripIntake = async (snapshot: HomepageInputSnapshot, capture?: JourneyCaptureResult) => {
+  const submitNewTripIntake = async (snapshot: HomepageInputSnapshot) => {
     if (!hydrated || !canUseHydratedTripScope(hydratedOwnerScopeRef.current, activeBrowserOwnerId)
-      || snapshot.ownerId !== activeBrowserOwnerId || hasRouteSkeleton || hasPromptContext
-      || (snapshot.mode === "describe" && !capture)) throw new Error("New trip intake is no longer current");
+      || snapshot.ownerId !== activeBrowserOwnerId || hasRouteSkeleton || hasPromptContext) throw new Error("New trip intake is no longer current");
+    if (snapshot.mode === "describe") {
+      const inputKey = homepageInputStorageKey(snapshot.ownerId);
+      const stored = readHomepageInput(JSON.parse(window.localStorage.getItem(inputKey) ?? "null"), snapshot.ownerId);
+      const existing = pendingIntakeReceiptForOwner(stored?.receipt, snapshot.ownerId);
+      const receipt = existing?.semanticInputFingerprint === homepageSemanticInputFingerprint(snapshot)
+        ? existing : createPendingIntakeReceipt(snapshot, { handoffId: `new-intake-${crypto.randomUUID()}`, tripId });
+      const pendingInput = JSON.stringify({ snapshot, receipt });
+      window.localStorage.setItem(inputKey, pendingInput);
+      if (window.localStorage.getItem(inputKey) !== pendingInput) throw new Error("New trip input did not persist");
+      setTripId(receipt.tripId);
+      pendingInterpretationRef.current = receipt;
+      setPendingInterpretation({ receipt, fromHomepage: false });
+      setTripBrief(receipt.frozenSnapshot.prompt);
+      setHasPromptContext(true);
+      setEntryKind("pending-direct-intake");
+      return;
+    }
     const handoffId = `new-intake-${crypto.randomUUID()}`;
-    const projected = projectHomepageInput({ snapshot, capture, profile: hasSavedTravelProfile ? travelProfile : null, handoffId });
+    const projected = projectHomepageInput({ snapshot, profile: hasSavedTravelProfile ? travelProfile : null, handoffId });
     if (!projected.ok) throw new Error("New trip intake needs review");
     const receipt = homepageReceiptForProjection(snapshot, projected.draft, tripId);
     // The completed receipt must follow canonical recovery, so a reload while

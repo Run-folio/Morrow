@@ -9,11 +9,9 @@ import { homepageInputStorageKey } from "@/lib/easyt/private-browser-context";
 import { journeyEndpointPlaceFromSuggestion } from "@/lib/easyt/journey-endpoints";
 import { tripInterestsWithProfileDefaults, type TravelProfile } from "@/lib/easyt/travel-profile";
 import type { EasyTLanguage } from "@/lib/easyt/i18n";
-import type { JourneyCaptureResult } from "@/lib/easyt/journey-capture";
 import type { JourneyEndSelection } from "@/lib/easyt/trip";
 import type { TripInterest } from "@/lib/easyt/trip-interest";
 import { resumableNewTripSnapshot } from "./new-trip-entry-state";
-import { createLatestJourneyCaptureRequestGate, journeyCaptureFailureMessage, requestJourneyCapture } from "@/lib/easyt/journey-capture-client";
 import { EasyTLinkButton } from "@/components/easyt/easyt-controls";
 import { FileSpreadsheet } from "lucide-react";
 import styles from "./trip-builder.module.css";
@@ -34,11 +32,10 @@ export function NewTripStarter({ ownerId, language, travelProfile, onSubmit }: {
   ownerId: string | null;
   language: EasyTLanguage;
   travelProfile: TravelProfile | null;
-  onSubmit: (snapshot: HomepageInputSnapshot, capture?: JourneyCaptureResult) => Promise<void>;
+  onSubmit: (snapshot: HomepageInputSnapshot) => Promise<void>;
 }) {
   const [snapshot, setSnapshot] = useState<HomepageInputSnapshot>(() => emptyInput(ownerId));
   const snapshotRef = useRef(snapshot);
-  const captureRequestGateRef = useRef(createLatestJourneyCaptureRequestGate());
   const submitInFlightRef = useRef(false);
   const nextEntryId = useRef(2);
   const [ready, setReady] = useState(false);
@@ -50,7 +47,6 @@ export function NewTripStarter({ ownerId, language, travelProfile, onSubmit }: {
   const [error, setError] = useState("");
 
   useEffect(() => {
-    captureRequestGateRef.current.cancel();
     submitInFlightRef.current = false;
     let next = emptyInput(ownerId);
     try {
@@ -75,10 +71,8 @@ export function NewTripStarter({ ownerId, language, travelProfile, onSubmit }: {
     setEndInput(next.journeyEnd.state === "selected" && next.journeyEnd.value.mode === "explicit" ? next.journeyEnd.value.place.name : "");
     setReady(true);
   }, [ownerId, language]);
-  useEffect(() => () => captureRequestGateRef.current.cancel(), []);
 
   const update = (change: (current: HomepageInputSnapshot) => HomepageInputSnapshot) => {
-    captureRequestGateRef.current.cancel();
     submitInFlightRef.current = false;
     setLoading(false);
     const next = { ...change(snapshotRef.current), revision: snapshotRef.current.revision + 1 };
@@ -92,27 +86,20 @@ export function NewTripStarter({ ownerId, language, travelProfile, onSubmit }: {
     if (submitInFlightRef.current || snapshotRef.current.ownerId !== ownerId) return;
     submitInFlightRef.current = true;
     const submitted = snapshotRef.current;
-    const request = captureRequestGateRef.current.begin();
-    const isCurrent = () => request.isCurrent()
-      && snapshotRef.current.revision === submitted.revision
+    const isCurrent = () => snapshotRef.current.revision === submitted.revision
       && snapshotRef.current.ownerId === submitted.ownerId
       && snapshotRef.current.mode === submitted.mode;
     setLoading(true);
-    let responseReceived = false;
     try {
-      const capture = submitted.mode === "describe"
-        ? await requestJourneyCapture(submitted.prompt, { signal: request.signal, onResponse: () => { responseReceived = true; } })
-        : undefined;
       if (!isCurrent()) return;
-      await onSubmit(submitted, capture);
+      await onSubmit(submitted);
     } catch {
-      if (isCurrent()) setError(journeyCaptureFailureMessage(responseReceived ? "interpretation" : "network", language));
+      if (isCurrent()) setError(language === "es" ? "No pudimos conservar tu idea. Inténtalo de nuevo." : "We couldn't save your trip idea. Try again.");
     } finally {
       if (isCurrent()) {
         submitInFlightRef.current = false;
         setLoading(false);
       }
-      request.finish();
     }
   };
   if (!ready || snapshot.ownerId !== ownerId) return null;

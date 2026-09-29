@@ -5,6 +5,8 @@ import test from "node:test";
 import { projectHomepageInput, initialHandoffRouteStops, homepageReceiptForProjection, readHomepageInput } from "../lib/easyt/home-trip-handoff.ts";
 import { createLatestJourneyCaptureRequestGate } from "../lib/easyt/journey-capture-client.ts";
 import { selectedStopsHomepageInput } from "./fixtures/homepage-dual-entry.ts";
+import { builderBrowserTestsEnabled, renderBuilder } from "./helpers/builder-render.ts";
+import { homepageInputStorageKey } from "../lib/easyt/private-browser-context.ts";
 
 const builder = () => readFileSync(new URL("../app/journey/new/trip-builder.tsx", import.meta.url), "utf8");
 const starter = () => readFileSync(new URL("../app/journey/new/new-trip-starter.tsx", import.meta.url), "utf8");
@@ -41,8 +43,9 @@ test("New trip submits into the mounted Builder without a second navigation or p
   assert.match(builderSource, /projectHomepageInput\(\{ snapshot/);
   assert.match(builderSource, /homepageReceiptForProjection\(snapshot, projected\.draft, tripId\)/);
   assert.match(builderSource, /<NewTripStarter/);
-  assert.match(starterSource, /requestJourneyCapture/);
-  assert.match(starterSource, /captureRequestGateRef/);
+  assert.doesNotMatch(starterSource, /requestJourneyCapture|captureRequestGateRef/);
+  assert.match(builderSource, /createPendingIntakeReceipt\(snapshot/);
+  assert.match(starterSource, /onSubmit\(submitted\)/);
   assert.doesNotMatch(starterSource, /commitHomepageHandoff|beginNewTripNavigation|router\.push|HOME_TRIP_DRAFT_KEY/);
 });
 
@@ -62,4 +65,24 @@ test("missing handoff draft checks the reserved trip before declaring the receip
   assert.ok(preflight > 0);
   assert.ok(decision > preflight);
   assert.match(source.slice(decision, decision + 350), /reservedTripId: existingTrip\?\.id/);
+});
+
+test("direct Describe submission records one pending receipt in mounted Builder before capture completes", { skip: !builderBrowserTestsEnabled, timeout: 40_000 }, async () => {
+  const view = await renderBuilder({ captureDelayMs: 1500 });
+  try {
+    await view.page.getByRole("tab", { name: "Describe my trip" }).click();
+    await view.page.locator("textarea").first().fill("Tokyo and Kyoto in Japan for one week.");
+    await view.page.getByRole("button", { name: "Plan my trip" }).click();
+    await view.page.getByText("Tokyo and Kyoto in Japan for one week.").waitFor();
+    const pending = await view.page.evaluate((key: string) => {
+      const record = JSON.parse(localStorage.getItem(key) ?? "null");
+      return { receipt: record?.receipt, href: location.pathname + location.search, handoff: localStorage.getItem("easyt-home-trip-draft") };
+    }, homepageInputStorageKey(null));
+    assert.equal(pending.receipt?.version, 2);
+    assert.equal(pending.href, "/journey/new");
+    assert.equal(pending.handoff, null);
+    await view.page.getByText("Your route — Nights per stop:").waitFor({ timeout: 20_000 });
+    assert.equal(view.captureRequests(), 1);
+    assert.deepEqual(view.errors, []);
+  } finally { await view.close(); }
 });

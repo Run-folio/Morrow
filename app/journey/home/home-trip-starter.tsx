@@ -9,15 +9,18 @@ import { trackEvent } from "@/lib/analytics";
 import { authClient } from "@/lib/auth-client";
 import { travelProfileFromUnknown, tripInterestsWithProfileDefaults, type TravelProfile } from "@/lib/easyt/travel-profile";
 import { homepageInputStorageKey, travelProfileStorageKey } from "@/lib/easyt/private-browser-context";
-import { createLatestJourneyCaptureRequestGate, journeyCaptureFailureMessage, requestJourneyCapture } from "@/lib/easyt/journey-capture-client";
 import {
   commitHomepageHandoff,
+  createPendingIntakeReceipt,
   HOME_TRIP_DRAFT_KEY,
   homepageCompletedReceiptIsUnchanged,
   homepageHandoffReceiptForOwner,
   homepageReceiptForProjection,
+  homepageSemanticInputFingerprint,
   homepageSnapshotForDescribePrompt,
   projectHomepageInput,
+  pendingHomepageHandoffForOwner,
+  pendingIntakeReceiptForOwner,
   readHomepageInput,
   reusableHomepageReceipt,
   type HomepageDestinationEntry,
@@ -60,8 +63,7 @@ export default function HomeTripStarter() {
   const { data: session, isPending: sessionPending } = authClient.useSession();
   const ownerId = session?.user?.id ?? null;
   const promptStartedRef = useRef(false);
-  const captureRequestGateRef = useRef<ReturnType<typeof createLatestJourneyCaptureRequestGate> | null>(null);
-  if (!captureRequestGateRef.current) captureRequestGateRef.current = createLatestJourneyCaptureRequestGate();
+  const submissionGenerationRef = useRef(0);
   const submitInFlightRef = useRef(false);
   const destinationIdRef = useRef(2);
   const initialSnapshot = useRef(emptySnapshot(ownerId));
@@ -78,7 +80,7 @@ export default function HomeTripStarter() {
   const [captureError, setCaptureError] = useState("");
 
   const cancelSubmission = () => {
-    captureRequestGateRef.current?.cancel();
+    submissionGenerationRef.current += 1;
     submitInFlightRef.current = false;
     setLoading(false);
   };
@@ -136,7 +138,6 @@ export default function HomeTripStarter() {
     setStartInput(next.origin.state === "selected" ? next.origin.value.name : "");
     setJourneyEndInput(next.journeyEnd.state === "selected" && next.journeyEnd.value.mode === "explicit" ? next.journeyEnd.value.place.name : "");
   }, [ownerId, sessionPending]);
-  useEffect(() => () => captureRequestGateRef.current?.cancel(), []);
 
   const markPromptStarted = (inputMethod: "text" | "voice", value: string) => {
     if (promptStartedRef.current || value.trim().length < 3) return;
@@ -150,8 +151,8 @@ export default function HomeTripStarter() {
     const submitted = snapshotRef.current;
     const submittedRevision = submitted.revision;
     const submittedOwner = submitted.ownerId;
-    const request = captureRequestGateRef.current!.begin();
-    const isCurrent = () => request.isCurrent()
+    const generation = ++submissionGenerationRef.current;
+    const isCurrent = () => submissionGenerationRef.current === generation
       && snapshotRef.current.revision === submittedRevision
       && snapshotRef.current.ownerId === submittedOwner;
     trackEvent("trip_generation_started", {
@@ -161,11 +162,16 @@ export default function HomeTripStarter() {
     });
     setLoading(true);
     setCaptureError("");
-    let responseReceived = false;
     let navigationStarted = false;
     try {
+      let latestStored: StoredHomepageInput | null = null;
+      try { latestStored = readHomepageInput(JSON.parse(window.localStorage.getItem(homepageInputStorageKey(submittedOwner)) ?? "null"), submittedOwner); }
+      catch { /* The staged handoff still validates and reports storage failure. */ }
+      const sameStoredMeaning = latestStored
+        && homepageSemanticInputFingerprint(latestStored.snapshot) === homepageSemanticInputFingerprint(submitted);
+      if (sameStoredMeaning && latestStored) storedInputRef.current = latestStored;
       const unchangedReceipt = storedInputRef.current.receipt?.version === 1
-        && homepageCompletedReceiptIsUnchanged(storedInputRef.current)
+        && homepageCompletedReceiptIsUnchanged({ snapshot: submitted, receipt: storedInputRef.current.receipt })
         ? storedInputRef.current.receipt : undefined;
       if (unchangedReceipt) {
         const existingTrip = loadTripRecovery(unchangedReceipt.tripId, submittedOwner)?.trip
@@ -203,13 +209,39 @@ export default function HomeTripStarter() {
         setCaptureError(language === "es" ? "No pudimos recuperar este viaje. Revisa Mis viajes." : "We couldn't recover this trip. Check My Trips.");
         return;
       }
-      const capture = submitted.mode === "describe"
-        ? await requestJourneyCapture(submitted.prompt, { signal: request.signal, onResponse: () => { responseReceived = true; } })
-        : undefined;
+      if (submitted.mode === "describe") {
+        const existing = sameStoredMeaning && latestStored?.receipt?.version === 2
+          ? pendingIntakeReceiptForOwner(latestStored.receipt, submittedOwner) : null;
+        let existingHandoff = null;
+        try { existingHandoff = JSON.parse(window.localStorage.getItem(HOME_TRIP_DRAFT_KEY) ?? "null"); }
+        catch { /* Invalid shared handoff is not reusable. */ }
+        const reusable = existing && existing.semanticInputFingerprint === homepageSemanticInputFingerprint(submitted)
+          && pendingHomepageHandoffForOwner(existingHandoff, submittedOwner, existing.handoffId)
+          ? existing : null;
+        const receipt = reusable ?? createPendingIntakeReceipt(submitted, {
+          handoffId: generatedId("handoff"), tripId: generatedId("trip"),
+        });
+        const stored: StoredHomepageInput = { snapshot: submitted, receipt };
+        const draft = { version: 2 as const, phase: "pending-interpretation" as const, receipt };
+        const committed = await commitHomepageHandoff({
+          storage: window.localStorage, stored, draft, isCurrent,
+          preserveAndBegin: () => beginNewTripNavigation(submittedOwner, window),
+        });
+        if (!isCurrent()) return;
+        if (!committed.ok) {
+          setCaptureError(language === "es" ? "No pudimos conservar tu trabajo actual. Inténtalo de nuevo." : "We couldn't preserve your current work. Try again.");
+          trackEvent("trip_generation_failed", { trip_source: "homepage", error_type: "unknown", is_authenticated: Boolean(submittedOwner) });
+          return;
+        }
+        storedInputRef.current = stored;
+        navigationStarted = true;
+        router.push(committed.href);
+        return;
+      }
       if (!isCurrent()) return;
       const priorReceipt = storedInputRef.current.receipt;
       const initialHandoffId = priorReceipt?.handoffId ?? generatedId("handoff");
-      let projected = projectHomepageInput({ snapshot: submitted, capture, profile: travelProfile, handoffId: initialHandoffId });
+      let projected = projectHomepageInput({ snapshot: submitted, profile: travelProfile, handoffId: initialHandoffId });
       if (!projected.ok) {
         setCaptureError(language === "es" ? "Revisa los datos del viaje e inténtalo de nuevo." : "Review your trip details and try again.");
         return;
@@ -218,7 +250,7 @@ export default function HomeTripStarter() {
       if (!receipt) {
         const handoffId = priorReceipt ? generatedId("handoff") : initialHandoffId;
         if (handoffId !== projected.draft.handoffId) {
-          projected = projectHomepageInput({ snapshot: submitted, capture, profile: travelProfile, handoffId });
+          projected = projectHomepageInput({ snapshot: submitted, profile: travelProfile, handoffId });
           if (!projected.ok) return;
         }
         receipt = homepageReceiptForProjection(submitted, projected.draft, generatedId("trip"));
@@ -241,14 +273,13 @@ export default function HomeTripStarter() {
       router.push(committed.href);
     } catch {
       if (!isCurrent()) return;
-      setCaptureError(journeyCaptureFailureMessage(responseReceived ? "interpretation" : "network", language));
-      trackEvent("trip_generation_failed", { trip_source: "homepage", error_type: responseReceived ? "capture" : "network", is_authenticated: Boolean(submittedOwner) });
+      setCaptureError(language === "es" ? "No pudimos conservar tu trabajo actual. Inténtalo de nuevo." : "We couldn't preserve your current work. Try again.");
+      trackEvent("trip_generation_failed", { trip_source: "homepage", error_type: "unknown", is_authenticated: Boolean(submittedOwner) });
     } finally {
       if (isCurrent() && !navigationStarted) {
         submitInFlightRef.current = false;
         setLoading(false);
       }
-      request.finish();
     }
   };
 
