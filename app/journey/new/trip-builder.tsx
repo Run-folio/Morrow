@@ -4194,7 +4194,6 @@ function TripBuilderDocument() {
 
   return (
     <div data-builder-root="true" data-homepage-handoff={isHomepagePromptHandoff ? "true" : undefined} className={`${styles.shellWide} ${mobilePolish.builder} ${isHomepagePromptHandoff ? styles.homepageHandoff : ""}`}>
-      {resolvingLocations ? <div className={styles.locationResolution} role="status">Checking your places…</div> : null}
       <div className={`${styles.wizardBody} ${!hasRouteSkeleton ? styles.emptyWorkspace : ""} ${entryKind === "fresh" ? styles.freshWorkspace : ""}`}>
         <div className={styles.pane}>
           <div id="builder-summary" tabIndex={-1} className={styles.stack}>
@@ -4220,7 +4219,7 @@ function TripBuilderDocument() {
                 } : undefined}
                 retryLabel={language === "es" ? "Intentar de nuevo" : "Try again"}
               /> : null}
-              {pendingInterpretation && tripBriefCaptureError ? <EasyTButton type="button" variant="quiet" onClick={editPendingInterpretation}>
+              {pendingInterpretation ? <EasyTButton type="button" variant="quiet" onClick={editPendingInterpretation}>
                 {language === "es" ? "Editar idea de viaje" : "Edit trip idea"}
               </EasyTButton> : null}
               {!hasRouteSkeleton && !hasPromptContext && !pendingClarificationIds.length && !inlineStopBaseMention && hydrated && <div className={styles.initialCapture}>
@@ -4441,6 +4440,27 @@ function TripBuilderDocument() {
                     {stopError ? <small id={stopErrorId} className={styles.hintError} role="alert">{stopError}</small> : null}
                     {!stopInput.trim() && contextualSuggestions.length > 0 && <div className={styles.suggestions}>{contextualSuggestions.map((suggestion) => <button type="button" key={suggestion.canonicalPlaceId} onClick={() => addStop(suggestion.name, suggestion.country, undefined, undefined, suggestion)}><Plus /> {suggestion.label}</button>)}</div>}
                   </>}</div>}
+                </section>}
+
+                {Object.keys(handoffResolutionStatuses).length > 0 && <section className={styles.recognizedPlaces} aria-label={language === "es" ? "Comprobación de lugares" : "Place checks"}>
+                  <header><strong>{language === "es" ? "COMPROBACIÓN DE LUGARES" : "PLACE CHECKS"}</strong><span>{language === "es" ? "Puedes seguir dando forma a la ruta mientras comprobamos cada lugar." : "You can keep shaping the route while each place is checked."}</span></header>
+                  <div>{intakeMentions.filter((mention) => handoffResolutionStatuses[mention.mentionId]).map((mention) => {
+                    const state = handoffResolutionStatuses[mention.mentionId];
+                    const name = placeDisplayName(mention);
+                    return <article key={mention.mentionId} className={state === "failed" || state === "needs-confirmation" ? styles.recognizedPlaceNeedsAction : undefined}>
+                      <div className={styles.recognizedPlaceIdentity}><span><b>{name}</b><small>{language === "es" ? `Lugar ${mention.order + 1}` : `Place ${mention.order + 1}`}</small></span></div>
+                      <p role="status">{state === "pending"
+                        ? (language === "es" ? `Comprobando ${name}…` : `Checking ${name}…`)
+                        : state === "resolved"
+                          ? (language === "es" ? `${name} comprobado` : `${name} checked`)
+                          : state === "needs-confirmation"
+                            ? (language === "es" ? `Elige un lugar que coincida con ${name} para continuar.` : `Choose a matching place for ${name} to continue.`)
+                            : (language === "es" ? `No pudimos comprobar ${name} ahora. Tu intención sigue guardada.` : `We couldn't check ${name} right now. Your intent is still saved.`)}</p>
+                      {state === "failed" && <EasyTButton type="button" variant="secondary" size="small" onClick={() => handoffLookupSessionRef.current?.retry?.(mention.mentionId)}>
+                        {language === "es" ? `Intentar de nuevo para ${name}` : `Try again for ${name}`}
+                      </EasyTButton>}
+                    </article>;
+                  })}</div>
                 </section>}
 
                 {!clarificationOpen && pendingClarificationIds.length > 0 && <BuilderClarificationResume

@@ -284,3 +284,22 @@ test("failed pending interpretation can return to editable intake without reusin
     assert.deepEqual(view.errors, []);
   } finally { await view.close(); }
 });
+
+test("a failed named-place lookup offers scoped retry while a successful sibling stays intact", { skip: !builderBrowserTestsEnabled, timeout: 40_000 }, async () => {
+  const snapshot = { ...emptyHomepageInput(), mode: "describe" as const, prompt: "Tokyo and Kyoto in Japan for one week." };
+  const receipt = createPendingIntakeReceipt(snapshot, { handoffId: "place-retry", tripId: "trip-place-retry" });
+  const view = await renderBuilder({
+    storedInput: { snapshot, receipt }, geocodeFailures: { Tokyo: 1 },
+    geocodeCandidates: { Kyoto: [{ name: "Kyoto", country: "Japan", coordinates: [135.7681, 35.0116], canonicalPlaceId: "kyoto" }] },
+  });
+  try {
+    await view.page.getByRole("button", { name: "Try again for Tokyo" }).waitFor({ timeout: 20_000 });
+    assert.equal(view.geocodeRequests().Tokyo, 1);
+    assert.equal(view.geocodeRequests().Kyoto, 1);
+    await view.page.getByRole("button", { name: "Try again for Tokyo" }).click();
+    await view.page.waitForFunction(() => document.body.innerText.includes("Tokyo checked"));
+    assert.equal(view.geocodeRequests().Tokyo, 2);
+    assert.equal(view.geocodeRequests().Kyoto, 1);
+    assert.deepEqual(view.errors, []);
+  } finally { await view.close(); }
+});

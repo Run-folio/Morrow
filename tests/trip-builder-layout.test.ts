@@ -256,7 +256,11 @@ test("versioned homepage hydration reserves identity before replay and keeps one
   assert.match(builder, /homepageHandoffReceiptForOwner\(homeDraft, activeOwnerId\)/);
   assert.match(builder, /setTripId\(homepageReceipt\.tripId\)/);
   assert.match(builder, /loadTripRecovery\(homepageReceipt\.tripId, activeOwnerId\)/);
-  assert.match(builder, /mergeHandoffLocationChoice\(current, mention, chosen, homepageOccurrenceId\)/);
+  assert.match(builder, /homepageOccurrenceByMentionId\.get\(mention\.mentionId\)/,
+    "each place lookup must retain its originating occurrence identity");
+  assert.match(builder, /mergeHandoffLocationChoice\(current, mention, chosen, stopId\)/);
+  assert.match(builder, /stop\.name === seed\?\.name && stop\.canonicalPlaceId === seed\?\.canonicalPlaceId/,
+    "a late provider result must not overwrite an edited stop");
   assert.equal((builder.match(/function TripBuilderDocument\(/g) ?? []).length, 1);
 });
 

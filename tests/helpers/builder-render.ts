@@ -51,6 +51,7 @@ export async function renderBuilder({
   captureDelayMs = 0,
   captureFailures = 0,
   geocodeCandidates = {},
+  geocodeFailures = {},
   nearbyCandidates = [],
   nearbyStatus,
   mapUnavailable = false,
@@ -66,6 +67,7 @@ export async function renderBuilder({
   captureDelayMs?: number;
   captureFailures?: number;
   geocodeCandidates?: Record<string, unknown[]>;
+  geocodeFailures?: Record<string, number>;
   nearbyCandidates?: unknown[];
   nearbyStatus?: "ready" | "empty" | "unavailable";
   mapUnavailable?: boolean;
@@ -73,6 +75,7 @@ export async function renderBuilder({
 } = {}) {
   const script = await builderBundle();
   let captureRequests = 0;
+  const geocodeRequests = new Map<string, number>();
   const server = createServer(async (request, response) => {
     if (request.url?.startsWith("/api/")) {
       const url = new URL(request.url, "http://localhost");
@@ -111,6 +114,14 @@ export async function renderBuilder({
       }
       if (url.pathname === "/api/journey-geocode" && url.searchParams.get("candidates") === "1") {
         const place = url.searchParams.get("place") ?? "";
+        const count = (geocodeRequests.get(place) ?? 0) + 1;
+        geocodeRequests.set(place, count);
+        if (count <= (geocodeFailures[place] ?? 0)) {
+          response.statusCode = 503;
+          response.setHeader("Content-Type", "application/json");
+          response.end(JSON.stringify({ error: "Provider unavailable" }));
+          return;
+        }
         const country = url.searchParams.get("country");
         const defaultCandidate = place === "Tokyo"
           ? { name: "Tokyo", country: "Japan", canonicalPlaceId: "tokyo", coordinates: [139.6917, 35.6895], kind: "city" }
@@ -174,5 +185,5 @@ export async function renderBuilder({
     await browser.close(); server.close();
     throw new Error(`Builder failed to render: ${errors.join("; ")}`, { cause: error });
   }
-  return { page, errors, captureRequests: () => captureRequests, close: async () => { await browser.close(); await new Promise<void>((resolve) => server.close(() => resolve())); } };
+  return { page, errors, captureRequests: () => captureRequests, geocodeRequests: () => Object.fromEntries(geocodeRequests), close: async () => { await browser.close(); await new Promise<void>((resolve) => server.close(() => resolve())); } };
 }

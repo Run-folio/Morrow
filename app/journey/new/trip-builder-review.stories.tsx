@@ -2,12 +2,13 @@ import type { Meta, StoryObj } from "@storybook/nextjs-vite";
 import { useEffect, useState } from "react";
 import TripBuilder from "./trip-builder";
 import { currentTripStorageKey } from "@/lib/easyt/storage";
-import { HOME_TRIP_DRAFT_KEY, type HomepageInputSnapshot } from "@/lib/easyt/home-trip-handoff";
+import { HOME_TRIP_DRAFT_KEY, createPendingIntakeReceipt, type HomepageInputSnapshot } from "@/lib/easyt/home-trip-handoff";
 import { homepageInputStorageKey } from "@/lib/easyt/private-browser-context";
 import { canonicalPlaceSuggestionFor } from "@/lib/easyt/place-intelligence";
 import { routePlannerPayload } from "@/lib/easyt/public-route-handoff";
 import { publicRouteDetailFor } from "@/lib/easyt/public-route";
 import { extractStructuredTripBrief } from "@/lib/easyt/structured-trip-brief";
+import { captureJourneyBrief } from "@/lib/easyt/journey-capture";
 import { AlertTriangle, CarFront, Check, CheckCircle2, ChevronRight, MapPin, Route, TrainFront, X } from "lucide-react";
 import { EasyTButton, EasyTField } from "@/components/easyt/easyt-controls";
 import { TOUR_TRIP_ROUTE, tourTripFixture } from "@/components/easyt/storybook/tour-trip.fixture";
@@ -215,7 +216,7 @@ export const TourCapture: Story = { args: { state: "tour" } };
 
 // Mount the production document: fixtures seed only its existing handoff
 // boundary, never a parallel route, capture, or persistence implementation.
-function BuilderEntryFixture({ entry, language = "en", routeKey = "morocco-rail", snapshot }: { entry: "empty" | "populated" | "clarification"; language?: "en" | "es"; routeKey?: string; snapshot?: HomepageInputSnapshot }) {
+function BuilderEntryFixture({ entry, language = "en", routeKey = "morocco-rail", snapshot }: { entry: "empty" | "populated" | "clarification" | "pending" | "partial" | "failed" | "repeated"; language?: "en" | "es"; routeKey?: string; snapshot?: HomepageInputSnapshot }) {
   const [ready, setReady] = useState(false);
   useEffect(() => {
     const previousUrl = window.location.href;
@@ -230,6 +231,14 @@ function BuilderEntryFixture({ entry, language = "en", routeKey = "morocco-rail"
     const originalFetch = window.fetch;
     window.fetch = (input, init) => {
       const url = new URL(typeof input === "string" ? input : input instanceof URL ? input.href : input.url, window.location.href);
+      if (url.pathname === "/api/journey-capture" && entry === "pending") return new Promise(() => {});
+      if (url.pathname === "/api/journey-geocode" && url.searchParams.get("candidates") === "1" && ["partial", "failed", "repeated"].includes(entry)) {
+        const place = url.searchParams.get("place") ?? "";
+        if (entry === "failed" && place === "Tokyo") return Promise.resolve(Response.json({ error: "Provider unavailable" }, { status: 503 }));
+        if (entry === "partial" && place === "Kyoto") return new Promise(() => {});
+        const suggestion = canonicalPlaceSuggestionFor(place);
+        return Promise.resolve(Response.json({ candidates: suggestion ? [{ name: suggestion.name, country: suggestion.country, coordinates: suggestion.coordinates, canonicalPlaceId: suggestion.canonicalPlaceId }] : [] }));
+      }
       if (url.pathname.startsWith("/api/journey-")) return Promise.resolve(Response.json({ candidates: [], places: [], result: null }));
       return originalFetch(input, init);
     };
@@ -243,6 +252,18 @@ function BuilderEntryFixture({ entry, language = "en", routeKey = "morocco-rail"
     if (entry === "empty") {
       url.searchParams.delete("homeDraft");
       window.localStorage.removeItem(HOME_TRIP_DRAFT_KEY);
+    } else if (entry === "pending") {
+      const pendingSnapshot = snapshot ?? starterSnapshot("describe");
+      const receipt = createPendingIntakeReceipt(pendingSnapshot, { handoffId: "storybook-pending", tripId: "storybook-trip-pending" });
+      window.localStorage.setItem(inputKey, JSON.stringify({ snapshot: pendingSnapshot, receipt }));
+      window.localStorage.setItem(HOME_TRIP_DRAFT_KEY, JSON.stringify({ version: 2, phase: "pending-interpretation", receipt }));
+      url.searchParams.set("homeDraft", "1");
+      url.searchParams.set("handoff", receipt.handoffId);
+    } else if (["partial", "failed", "repeated"].includes(entry)) {
+      const brief = entry === "repeated" ? "Tokyo, Kyoto, then Tokyo again in Japan" : "Tokyo and Kyoto in Japan";
+      const captured = captureJourneyBrief(brief);
+      window.localStorage.setItem(HOME_TRIP_DRAFT_KEY, JSON.stringify({ brief, structuredBrief: captured.structuredBrief, locationMentions: captured.structuredBrief.placeMentions }));
+      url.searchParams.set("homeDraft", "1");
     } else {
       url.searchParams.set("homeDraft", "1");
       const brief = "Two weeks in Thailand";
@@ -271,6 +292,10 @@ function BuilderEntryFixture({ entry, language = "en", routeKey = "morocco-rail"
 export const DirectEmptyEntry: Story = { tags: ["!autodocs"], parameters: { nextjs: { appDirectory: true } }, render: () => <BuilderEntryFixture entry="empty" /> };
 export const PopulatedHandoff: Story = { tags: ["!autodocs"], parameters: { nextjs: { appDirectory: true } }, render: () => <BuilderEntryFixture entry="populated" /> };
 export const BuilderClarification: Story = { tags: ["!autodocs"], parameters: { nextjs: { appDirectory: true } }, render: () => <BuilderEntryFixture entry="clarification" /> };
+export const PendingDescribeInterpretation: Story = { ...DirectEmptyEntry, render: () => <BuilderEntryFixture entry="pending" /> };
+export const PartialPlaceChecks: Story = { ...DirectEmptyEntry, render: () => <BuilderEntryFixture entry="partial" /> };
+export const FailedPlaceCheck: Story = { ...DirectEmptyEntry, render: () => <BuilderEntryFixture entry="failed" /> };
+export const RepeatedPlaceOccurrences: Story = { ...DirectEmptyEntry, render: () => <BuilderEntryFixture entry="repeated" /> };
 export const DirectEmptyEntryAt1440: Story = { ...DirectEmptyEntry, globals: { viewport: { value: "morrovia1440", isRotated: false } } };
 export const DirectEmptyEntryAtLaptop: Story = { ...DirectEmptyEntry, globals: { viewport: { value: "morroviaLaptop", isRotated: false } } };
 export const DirectEmptyEntryAt768: Story = { ...DirectEmptyEntry, globals: { viewport: { value: "morrovia768", isRotated: false } } };
