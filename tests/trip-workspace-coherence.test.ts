@@ -1,3 +1,4 @@
+import { legacyItineraryIdeas } from "../lib/easyt/trip.ts";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
@@ -141,7 +142,7 @@ test("Explore → Itinerary → Map preserves one Mount Lycabettus identity, pla
   assert.equal(exploreState.idea.dayPart, "midday");
   assert.equal(scheduleItineraryIdea(scheduled, result.idea, "day-6", "midday"), scheduled, "duplicate Add fails closed");
 
-  const persistedResult = exploreResultForIdea(scheduled, scheduled.brief.itineraryIdeas![0]!)!;
+  const persistedResult = exploreResultForIdea(scheduled, legacyItineraryIdeas(scheduled.brief.itineraryIdeas)![0]!)!;
   assert.equal(persistedResult.identity, result.identity);
   assert.equal(dedupeExploreResults([persistedResult, result]).length, 1);
 
@@ -211,7 +212,7 @@ test("Map restaurant Add uses the canonical idea path and projects scheduled sta
 
   const secondRestaurant = { ...localRestaurant, id: "athens-taverna-2", name: "A second Athens taverna", coordinates: [23.729, 37.969] as [number, number] };
   const withSecond = scheduleItineraryIdea(movedPart, itineraryIdeaForLocalPlace("athens-outbound", secondRestaurant), "day-6", "evening");
-  assert.equal(withSecond.brief.itineraryIdeas?.filter((idea) => idea.category === "restaurant").length, 2);
+  assert.equal(legacyItineraryIdeas(withSecond.brief.itineraryIdeas)?.filter((idea) => idea.category === "restaurant").length, 2);
   assert.equal(projectPersistedMapResults(withSecond).results.filter((item) => item.kind === "eat").length, 2);
 
   const reloaded = JSON.parse(JSON.stringify(withSecond)) as EasyTTrip;
@@ -251,7 +252,7 @@ test("canonical cross-day Move preserves an idea's provider, image and map ident
   const moved = moveItineraryActivityAcrossDays(scheduled, "day-6", result.idea.id, "day-7", "afternoon");
   assert.equal(moved.changed, true);
   assert.ok(moved.undo);
-  const stored = moved.trip.brief.itineraryIdeas?.find((idea) => idea.id === result.idea.id);
+  const stored = legacyItineraryIdeas(moved.trip.brief.itineraryIdeas)?.find((idea) => idea.id === result.idea.id);
   assert.equal(stored?.dayId, "day-7");
   assert.equal(stored?.dayPart, "afternoon");
   assert.equal(stored?.providerProductId, "ATHENS-WALK-1");
@@ -279,7 +280,7 @@ test("cross-day placement moves the exact canonical activity when a similar acti
   const moved = moveItineraryActivityAcrossDays(withBoth, "day-6", original.id, "day-7", "midday");
 
   assert.equal(moved.changed, true);
-  const ideas = moved.trip.brief.itineraryIdeas ?? [];
+  const ideas = legacyItineraryIdeas(moved.trip.brief.itineraryIdeas) ?? [];
   assert.deepEqual(ideas.find(({ id }) => id === original.id), { ...original, dayId: "day-7", dayPart: "midday" });
   assert.deepEqual(ideas.find(({ id }) => id === similar.id), { ...similar, dayId: "day-6", dayPart: "afternoon" });
 });
@@ -318,7 +319,7 @@ test("item-scoped Undo fails closed when the moved item itself changed", () => {
     ...moved.trip,
     brief: {
       ...moved.trip.brief,
-      itineraryIdeas: moved.trip.brief.itineraryIdeas?.map((idea) => idea.id === result.idea.id
+      itineraryIdeas: legacyItineraryIdeas(moved.trip.brief.itineraryIdeas)?.map((idea) => idea.id === result.idea.id
         ? { ...idea, description: "Traveller changed this after moving it." }
         : idea),
     },
@@ -326,7 +327,7 @@ test("item-scoped Undo fails closed when the moved item itself changed", () => {
   const undone = undoItineraryItemAction(edited, moved.undo!);
   assert.equal(undone.changed, false);
   assert.match(undone.reason ?? "", /changed after the action/);
-  const preserved = undone.trip.brief.itineraryIdeas?.find((idea) => idea.id === result.idea.id);
+  const preserved = legacyItineraryIdeas(undone.trip.brief.itineraryIdeas)?.find((idea) => idea.id === result.idea.id);
   assert.equal(preserved?.dayId, "day-7");
   assert.equal(preserved?.description, "Traveller changed this after moving it.");
 });
@@ -363,7 +364,7 @@ test("Undo reverses only a newly added item and restores a previously saved idea
   const planned = scheduleItineraryIdeaWithUndo(saved, idea, "day-6", "afternoon");
   assert.ok(planned.undo);
   const undoneIdea = undoItineraryItemAction(planned.trip, planned.undo!);
-  const restored = undoneIdea.trip.brief.itineraryIdeas?.find((candidate) => candidate.id === idea.id);
+  const restored = legacyItineraryIdeas(undoneIdea.trip.brief.itineraryIdeas)?.find((candidate) => candidate.id === idea.id);
   assert.equal(restored?.dayId, undefined);
   assert.equal(restored?.providerMetadata, idea.providerMetadata);
 });
@@ -417,8 +418,8 @@ test("commercial inventory keeps product provenance separate from booking and ne
   const idea = itineraryIdeaForActivityInventory("athens-outbound", item);
   const scheduled = scheduleItineraryIdea(source, idea, "day-6", "afternoon");
 
-  assert.equal(scheduled.brief.itineraryIdeas?.[0]?.providerProductId, item.providerProductId);
-  assert.deepEqual(scheduled.brief.itineraryIdeas?.[0]?.providerMetadata?.provenance, item.provenance);
+  assert.equal(legacyItineraryIdeas(scheduled.brief.itineraryIdeas)?.[0]?.providerProductId, item.providerProductId);
+  assert.deepEqual(legacyItineraryIdeas(scheduled.brief.itineraryIdeas)?.[0]?.providerMetadata?.provenance, item.provenance);
   assert.equal(scheduled.brief.bookings?.length, 0, "planning and affiliate handoff are not booking truth");
   assert.equal(composeItineraryDay(scheduled, "day-6")?.planned.afternoon.length, 1);
   assert.deepEqual(projectPersistedMapResults(scheduled).results, [], "missing coordinates stay unmapped");
@@ -455,7 +456,7 @@ test("repeated Athens stops retain distinct organic and provider identities in E
   const firstVisit = itineraryIdeaForActivityInventory("athens-outbound", providerItem);
   const returnVisit = itineraryIdeaForActivityInventory("athens-return", providerItem);
   const providerStops = saveItineraryIdea(saveItineraryIdea(source, firstVisit), returnVisit);
-  assert.deepEqual(providerStops.brief.itineraryIdeas?.map((idea) => idea.stopId), ["athens-outbound", "athens-return"]);
+  assert.deepEqual(legacyItineraryIdeas(providerStops.brief.itineraryIdeas)?.map((idea) => idea.stopId), ["athens-outbound", "athens-return"]);
 });
 
 test("explicit Map handoffs carry exact item identity while generic tab links do not", () => {

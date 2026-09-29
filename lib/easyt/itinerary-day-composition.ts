@@ -1,3 +1,4 @@
+import { legacyItineraryIdeas } from "./trip.ts";
 import { stayBookingForStop } from "./accommodation.ts";
 import { itineraryActivityProtection } from "./itinerary-mutations.ts";
 import { itineraryNotesWithSourceIndexesForDisplay } from "./itinerary-presentation.ts";
@@ -181,7 +182,7 @@ export function composeItineraryDay(trip: EasyTTrip, dayId: string): ItineraryDa
   const transfers = transfersForDay(trip, day);
   // Presentation dedupes only exact canonical/provider identity. Distinct
   // authored or imported rows remain visible even when their labels resemble.
-  const scheduledIdeas = [...new Map((trip.brief.itineraryIdeas ?? [])
+  const scheduledIdeas = [...new Map((legacyItineraryIdeas(trip.brief.itineraryIdeas))
     .filter((idea) => idea.dayId === day.id)
     .map((idea) => [idea.provider && idea.providerProductId ? `${idea.provider}:${idea.providerProductId}` : idea.id, idea] as const)).values()];
   const incoming = incomingLegForPlanItem(trip, day);
@@ -287,7 +288,7 @@ export function composeItineraryDay(trip: EasyTTrip, dayId: string): ItineraryDa
     freeDayParts: itineraryDayParts.filter((part) => planned[part].length === 0),
     tonight: tonightForDay(trip, day, stop),
     ideas: {
-      unscheduledCount: (trip.brief.itineraryIdeas ?? []).filter((idea) => idea.stopId === day.stopId && !idea.dayId).length,
+      unscheduledCount: (legacyItineraryIdeas(trip.brief.itineraryIdeas)).filter((idea) => idea.stopId === day.stopId && !idea.dayId).length,
       scheduledHereCount: scheduledIdeas.length,
     },
   };

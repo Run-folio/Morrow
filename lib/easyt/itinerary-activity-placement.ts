@@ -1,3 +1,4 @@
+import { legacyItineraryIdeas } from "./trip.ts";
 import { composeItineraryDay, itineraryDayParts, type ComposedItineraryActivity } from "./itinerary-day-composition.ts";
 import { assignItineraryIdeaDayPart, itineraryIdeaForPlace, removeItineraryIdea, saveItineraryIdea, scheduleItineraryIdea, type IdeaDiscoveryReason } from "./itinerary-ideas.ts";
 import {
@@ -88,10 +89,10 @@ export function scheduleItineraryIdeaWithUndo(
   dayId: string,
   dayPart?: ItineraryDayPart | null,
 ): ItineraryActionResult {
-  const restore = (trip.brief.itineraryIdeas ?? []).find((candidate) => candidate.id === idea.id) ?? null;
+  const restore = (legacyItineraryIdeas(trip.brief.itineraryIdeas)).find((candidate) => candidate.id === idea.id) ?? null;
   const next = scheduleItineraryIdea(trip, idea, dayId, dayPart);
   if (next === trip) return unchanged(trip, "This activity is already on that day.");
-  const expected = (next.brief.itineraryIdeas ?? []).find((candidate) => candidate.id === idea.id);
+  const expected = legacyItineraryIdeas(next.brief.itineraryIdeas).find((candidate) => candidate.id === idea.id);
   if (!expected) return unchanged(trip, "This activity could not be stored safely.");
   return {
     trip: next,
@@ -129,7 +130,7 @@ export function moveItineraryActivityAcrossDays(
   if (activity.source === "itinerary-idea") {
     return scheduleItineraryIdeaWithUndo(
       trip,
-      (trip.brief.itineraryIdeas ?? []).find((candidate) => candidate.id === activity.id)!,
+      (legacyItineraryIdeas(trip.brief.itineraryIdeas)).find((candidate) => candidate.id === activity.id)!,
       targetDayId,
       targetDayPart,
     );
@@ -188,7 +189,7 @@ export function moveItineraryActivityAcrossDays(
 /** Apply an item-scoped inverse to the latest canonical document. */
 export function undoItineraryItemAction(trip: EasyTTrip, receipt: ItineraryItemUndoReceipt): ItineraryMutationResult {
   if (receipt.kind === "itinerary-idea") {
-    const current = (trip.brief.itineraryIdeas ?? []).find((candidate) => candidate.id === receipt.ideaId);
+    const current = (legacyItineraryIdeas(trip.brief.itineraryIdeas)).find((candidate) => candidate.id === receipt.ideaId);
     if (!current || ideaFingerprint(current) !== receipt.expected) {
       return unchanged(trip, "This activity changed after the action, so it was not undone.");
     }
@@ -272,7 +273,7 @@ export function setDiscoveryPlaceScheduled(trip: EasyTTrip, input: {
   reasons?: IdeaDiscoveryReason[];
 }): EasyTTrip {
   const idea = itineraryIdeaForPlace({ stopId: input.stopId, place: input.place, reasons: input.reasons ?? [] });
-  const currentIdea = (trip.brief.itineraryIdeas ?? []).find((item) => item.id === idea.id);
+  const currentIdea = (legacyItineraryIdeas(trip.brief.itineraryIdeas)).find((item) => item.id === idea.id);
   let next = input.selected
     ? scheduleItineraryIdea(
       trip,

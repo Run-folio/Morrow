@@ -233,7 +233,25 @@ export type PlanItem = {
 
 export type ItineraryDayPart = "morning" | "midday" | "afternoon" | "evening";
 
-export type ItineraryIdea = {
+export type GooglePlaceReference = {
+  provider: "google";
+  placeId: string;
+  /** Resolution freshness only; no Google place facts are retained. */
+  lastResolvedAt?: string;
+};
+
+export type GooglePlaceReferenceIdea = {
+  id: string;
+  source: "google-place-reference";
+  stopId: string;
+  category: "activity" | "restaurant" | "stay";
+  providerReference: GooglePlaceReference;
+  dayId?: string;
+  dayPart?: ItineraryDayPart | null;
+  userNote?: string;
+};
+
+export type LegacyItineraryIdea = {
   /** Stable identity for this traveller choice, independent of its day. */
   id: string;
   stopId: string;
@@ -268,6 +286,21 @@ export type ItineraryIdea = {
   /** Optional traveller/provider-authored local clock time. Never inferred. */
   startsAt?: string;
 };
+
+export type ItineraryIdea = LegacyItineraryIdea;
+
+export function isGooglePlaceReferenceIdea(idea: ItineraryIdea | GooglePlaceReferenceIdea): idea is GooglePlaceReferenceIdea {
+  return idea.source === "google-place-reference";
+}
+
+/** Legacy projections may only consume entries with locally owned presentation facts. */
+export function legacyItineraryIdeas(ideas: ReadonlyArray<ItineraryIdea | GooglePlaceReferenceIdea> | undefined): ItineraryIdea[] {
+  return (ideas ?? []).filter((idea): idea is ItineraryIdea => !isGooglePlaceReferenceIdea(idea));
+}
+
+export function googlePlaceReferenceIdeas(ideas: ReadonlyArray<ItineraryIdea | GooglePlaceReferenceIdea> | undefined): GooglePlaceReferenceIdea[] {
+  return (ideas ?? []).filter(isGooglePlaceReferenceIdea);
+}
 
 export type TripRecommendation = {
   id: string;
@@ -323,7 +356,7 @@ export type TripBrief = {
   /** Only traveller-authored itinerary rows are editable; generated suggestions remain read-only. */
   customActivities?: Record<number, string[]>;
   /** Canonical stop-bound discovery choices, whether saved or assigned to a day. */
-  itineraryIdeas?: ItineraryIdea[];
+  itineraryIdeas?: Array<ItineraryIdea | GooglePlaceReferenceIdea>;
   /** Pins are intentionally lightweight: they are part of the editable map, not a separate places database. */
   mapPins?: PlannerMapPin[];
   /** Lightweight traveller-entered confirmations, separate from planning suggestions. */

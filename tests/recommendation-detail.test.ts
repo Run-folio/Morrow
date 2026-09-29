@@ -1,3 +1,4 @@
+import { legacyItineraryIdeas } from "../lib/easyt/trip.ts";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
@@ -116,7 +117,7 @@ test("a forced full-day slot request stays day-level and preserves existing rows
   const result = fullDayResult(trip);
   const next = scheduleItineraryIdea(trip, result.idea, "day-busy", "morning");
   assert.deepEqual(next.planItems.find((day) => day.id === "day-busy")?.notes.slice(0, 2), ["Museum visit", "Market walk"]);
-  assert.equal(next.brief.itineraryIdeas?.find((idea) => idea.providerProductId === "CUSCO-11H")?.dayPart, null);
+  assert.equal(legacyItineraryIdeas(next.brief.itineraryIdeas)?.find((idea) => idea.providerProductId === "CUSCO-11H")?.dayPart, null);
 });
 
 test("a six-hour activity uses extended day-level reasoning rather than standard-slot copy", () => {
@@ -131,7 +132,7 @@ test("a six-hour activity uses extended day-level reasoning rather than standard
   assert.match(detail.whyFit!, /kept at day level/i);
   assert.doesNotMatch(detail.whyFit!, /Choose a part of day/i);
   const scheduled = scheduleItineraryIdea(trip, result.idea, "day-open", "afternoon");
-  assert.equal(scheduled.brief.itineraryIdeas?.find((idea) => idea.id === result.idea.id)?.dayPart, null);
+  assert.equal(legacyItineraryIdeas(scheduled.brief.itineraryIdeas)?.find((idea) => idea.id === result.idea.id)?.dayPart, null);
 });
 
 test("detail headings use a deterministic compact tier for long provider titles", () => {

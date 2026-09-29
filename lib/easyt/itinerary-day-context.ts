@@ -1,3 +1,4 @@
+import { legacyItineraryIdeas } from "./trip.ts";
 import type { JourneyStop } from "../journey.ts";
 import { mapRouteLegsFromTrip, type MapRouteLeg } from "./map-spatial-context.ts";
 import { mappedPlacePinId } from "./map-place-itinerary.ts";
@@ -283,7 +284,7 @@ export function itinerarySuggestionCandidates(
     ...(trip.brief.mapPins ?? []).filter((pin) => pin.dayNumber === day.dayNumber).map((pin) => pin.title),
   ].map(normalized));
   const pinIds = new Set((trip.brief.mapPins ?? []).map((pin) => pin.id));
-  const ideaPlaceIds = new Set((trip.brief.itineraryIdeas ?? [])
+  const ideaPlaceIds = new Set((legacyItineraryIdeas(trip.brief.itineraryIdeas))
     .filter((idea) => idea.stopId === day.stopId)
     .map((idea) => idea.placeId));
   const seen = new Set<string>();

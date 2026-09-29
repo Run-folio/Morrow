@@ -1,3 +1,4 @@
+import { legacyItineraryIdeas } from "./trip.ts";
 import { itineraryImageFor } from "./itinerary-media.ts";
 import { tripDisplayTitle } from "./trip-display.ts";
 import { deriveTripDateFacts, formatTripDuration, formatTripNights, legForTransition, orderedTripPlanItems } from "./trip-facts.ts";
@@ -116,7 +117,7 @@ function highlightForIdea(idea: ItineraryIdea, trip: EasyTTrip): PersonalRouteHi
 function highlightsForStop(trip: EasyTTrip, stop: TripStop) {
   const items = stopItems(trip, stop.id);
   const candidates: PersonalRouteHighlight[] = [
-    ...(trip.brief.itineraryIdeas ?? [])
+    ...(legacyItineraryIdeas(trip.brief.itineraryIdeas))
       .filter((idea) => idea.stopId === stop.id)
       .flatMap((idea) => highlightForIdea(idea, trip) ?? []),
     ...items

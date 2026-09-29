@@ -1,3 +1,4 @@
+import { legacyItineraryIdeas } from "./trip.ts";
 import type { EasyTTrip, ItineraryDayPart, PlanItem, TripBooking } from "./trip.ts";
 
 export type ItineraryActivityLocation = {
@@ -332,7 +333,7 @@ export function moveItineraryIdeaActivity(
   ideaId: string,
   targetNoteIndex: number,
 ): ItineraryMutationResult {
-  const idea = (trip.brief.itineraryIdeas ?? []).find((candidate) => candidate.id === ideaId);
+  const idea = (legacyItineraryIdeas(trip.brief.itineraryIdeas)).find((candidate) => candidate.id === ideaId);
   const day = idea?.dayId ? trip.planItems.find((candidate) => candidate.id === idea.dayId) : null;
   if (!idea || !day) return unchanged(trip, "This saved idea is no longer on the day.");
   const matches = day.notes.flatMap((note, index) => normalized(note) === normalized(idea.title) ? [index] : []);

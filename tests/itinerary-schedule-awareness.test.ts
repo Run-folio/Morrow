@@ -1,3 +1,4 @@
+import { legacyItineraryIdeas } from "../lib/easyt/trip.ts";
 import assert from "node:assert/strict";
 import test from "node:test";
 
@@ -93,7 +94,7 @@ test("duration, provenance and optional exact time survive day-level scheduling 
   const idea = { ...providerIdea("range", "Range tour", { fromMinutes: 480, toMinutes: 600 }), startsAt: "08:30" };
   const trip = scheduleItineraryIdea(tripCopilotFixture(), idea, "japan-day-2", "morning");
   const reloaded = JSON.parse(JSON.stringify(trip)) as EasyTTrip;
-  const stored = reloaded.brief.itineraryIdeas?.find((candidate) => candidate.id === idea.id);
+  const stored = legacyItineraryIdeas(reloaded.brief.itineraryIdeas)?.find((candidate) => candidate.id === idea.id);
   assert.deepEqual(stored?.providerMetadata?.duration, { fromMinutes: 480, toMinutes: 600 });
   assert.equal(stored?.providerMetadata?.provenance.provider, "viator");
   assert.equal(stored?.startsAt, "08:30");

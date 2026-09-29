@@ -1,3 +1,4 @@
+import { legacyItineraryIdeas } from "./trip.ts";
 import { exploreResultState, type ExploreResult, type ExploreResultState } from "./explore.ts";
 import { composeItineraryDay } from "./itinerary-day-composition.ts";
 import { itineraryInterestReason } from "./itinerary-day-context.ts";
@@ -292,8 +293,8 @@ export function recommendationDetailForMapResult(input: { trip: EasyTTrip; resul
     }
   }
   const idea = input.result.canonicalItemId
-    ? (input.trip.brief.itineraryIdeas ?? []).find((candidate) => candidate.id === input.result.canonicalItemId)
-    : (input.trip.brief.itineraryIdeas ?? []).find((candidate) => candidate.stopId === input.result.stopId && candidate.placeId === input.result.sourceId);
+    ? legacyItineraryIdeas(input.trip.brief.itineraryIdeas).find((candidate) => candidate.id === input.result.canonicalItemId)
+    : legacyItineraryIdeas(input.trip.brief.itineraryIdeas).find((candidate) => candidate.stopId === input.result.stopId && candidate.placeId === input.result.sourceId);
   const stopId = input.result.stopId ?? idea?.stopId ?? "";
   const projectedIdea: ItineraryIdea = idea ?? {
     id: `map-detail-${input.result.selectionId}`, stopId, placeId: input.result.sourceId, title: input.result.name,

@@ -1,5 +1,7 @@
 "use client";
 
+import { legacyItineraryIdeas } from "@/lib/easyt/trip";
+
 import {
   Bookmark,
   CalendarPlus,
@@ -229,7 +231,7 @@ export default function TripExploreWorkspace({
   const [notice, setNotice] = useState<string | null>(null);
   const selectedOriginRef = useRef<HTMLButtonElement | null>(null);
 
-  const persistedResults = useMemo(() => (workingTrip.brief.itineraryIdeas ?? [])
+  const persistedResults = useMemo(() => (legacyItineraryIdeas(workingTrip.brief.itineraryIdeas))
     .flatMap((idea) => {
       const result = exploreResultForIdea(workingTrip, idea);
       return result ? [result] : [];

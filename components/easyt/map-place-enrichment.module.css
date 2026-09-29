@@ -18,14 +18,16 @@
 .detail a svg{width:14px;height:14px}
 .category{color:var(--morrovia-ink-soft)}
 .context{color:var(--morrovia-ink-soft);font:var(--morrovia-type-metadata)}
+.actions{display:grid;gap:8px;min-width:0;padding-block:8px;border-block:1px solid var(--morrovia-line)}
+.actions p{font:var(--morrovia-type-metadata);color:var(--morrovia-ink-soft)}
 .photoMedia{display:grid;gap:5px;margin:4px 0 0}
 .photoMedia>img{display:block;width:100%;max-height:220px;object-fit:cover;border-radius:var(--morrovia-control-radius)}
 .photoMedia figcaption{color:var(--morrovia-ink-soft);font:var(--morrovia-type-fine-print)}
 .photoMedia figcaption span{display:inline-flex;align-items:center;gap:4px}
-.photoMedia figcaption img{width:24px;height:24px;border-radius:50%}
+.photoMedia figcaption img{width:24px;height:24px;border-radius:var(--morrovia-radius)}
 .reviews{border-top:1px solid var(--morrovia-line);padding-top:10px}
 .reviews ul{display:grid;gap:12px;list-style:none;padding:8px 0 0}
 .reviews li{display:grid;gap:4px}
 .reviewAuthor{display:flex;flex-wrap:wrap;align-items:center;gap:4px;color:var(--morrovia-ink-soft);font:var(--morrovia-type-fine-print)}
-.reviewAuthor img{width:24px;height:24px;border-radius:50%}
+.reviewAuthor img{width:24px;height:24px;border-radius:var(--morrovia-radius)}
 @media(max-width:390px){.panel{padding-inline:0}.categories{gap:3px}.categories button{font-size:11px}}

@@ -1,4 +1,4 @@
-import type { EasyTTrip, TripBooking, TripStop } from "./trip";
+import { googlePlaceReferenceIdeas, type EasyTTrip, type TripBooking, type TripStop } from "./trip.ts";
 import type { JourneyLocalPlace } from "./local-place.ts";
 import { mappedPlacePinId } from "./map-place-itinerary.ts";
 import { stableStopDateRange } from "./trip-facts.ts";
@@ -44,6 +44,12 @@ export function accommodationProgress(trip: EasyTTrip) {
     datesReadyCount,
     complete: stops.length > 0 && sortedCount === stops.length && datesReadyCount === stops.length,
   };
+}
+
+/** Saved Google stay references are choices to inspect, never booked accommodation. */
+export function savedGoogleStayReferencesForStop(trip: EasyTTrip, stopId: string) {
+  return googlePlaceReferenceIdeas(trip.brief.itineraryIdeas)
+    .filter((idea) => idea.stopId === stopId && idea.category === "stay");
 }
 
 export type StayBookingDraft = {

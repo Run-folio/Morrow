@@ -1,5 +1,7 @@
 "use client";
 
+import { legacyItineraryIdeas } from "@/lib/easyt/trip";
+
 import {
   ArrowRight,
   BedDouble,
@@ -740,7 +742,7 @@ export default function TripItineraryWorkspace({
   const stop = stopForDay(workingTrip, active);
   const image = imageFromPlanItem(active, stop, index) ?? remoteImages[active.id] ?? null;
   const incomingLeg = incomingLegForPlanItem(workingTrip, active);
-  const scheduledIdeaTitles = new Set((workingTrip.brief.itineraryIdeas ?? [])
+  const scheduledIdeaTitles = new Set((legacyItineraryIdeas(workingTrip.brief.itineraryIdeas))
     .filter((idea) => idea.dayId === active.id)
     .map((idea) => normalized(idea.title)));
   const displayNotes = itineraryNotesWithSourceIndexesForDisplay(active, incomingLeg, workingTrip)
@@ -791,7 +793,7 @@ export default function TripItineraryWorkspace({
     ? (workingTrip.brief.bookings ?? []).find((booking) => booking.id === selectedItemId.slice("booking:".length)) ?? null
     : null;
   const experienceAction = activityAction === undefined ? getCurrentPartnerAction("activities") : activityAction;
-  const unscheduledSavedIdeas = (workingTrip.brief.itineraryIdeas ?? []).filter((idea) => idea.stopId === active.stopId && !idea.dayId);
+  const unscheduledSavedIdeas = (legacyItineraryIdeas(workingTrip.brief.itineraryIdeas)).filter((idea) => idea.stopId === active.stopId && !idea.dayId);
   const mapReturnHref = itineraryWorkspaceHref(workingTrip.id, active.dayNumber);
   const mapPlanHref = mapWorkspaceHref(workingTrip.id, active.stopId, "plan", active.dayNumber, null, null, mapReturnHref);
   const mapIdeasHref = mapWorkspaceHref(workingTrip.id, active.stopId, "see", active.dayNumber, null, null, mapReturnHref);

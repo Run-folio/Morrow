@@ -1,3 +1,4 @@
+import { legacyItineraryIdeas } from "../lib/easyt/trip.ts";
 import assert from "node:assert/strict";
 import test from "node:test";
 
@@ -171,33 +172,33 @@ test("optional canonical dayPart supports every broad period and clear without c
   const source = tripFixture();
   const idea = itineraryIdeaForPlace({ stopId: "kyoto", place: place("kiyomizu", "Kiyomizu-dera"), reasons: ["destination-significance"] });
   const unslotted = scheduleItineraryIdea(source, idea, "kyoto-3");
-  assert.equal(unslotted.brief.itineraryIdeas?.[0]?.dayPart, null);
+  assert.equal(legacyItineraryIdeas(unslotted.brief.itineraryIdeas)?.[0]?.dayPart, null);
 
   let changed = assignItineraryIdeaDayPart(unslotted, idea.id, "morning");
-  assert.equal(changed.brief.itineraryIdeas?.[0]?.dayPart, "morning");
+  assert.equal(legacyItineraryIdeas(changed.brief.itineraryIdeas)?.[0]?.dayPart, "morning");
   changed = assignItineraryIdeaDayPart(changed, idea.id, "midday");
-  assert.equal(changed.brief.itineraryIdeas?.[0]?.dayPart, "midday");
+  assert.equal(legacyItineraryIdeas(changed.brief.itineraryIdeas)?.[0]?.dayPart, "midday");
   changed = assignItineraryIdeaDayPart(changed, idea.id, "afternoon");
-  assert.equal(changed.brief.itineraryIdeas?.[0]?.dayPart, "afternoon");
+  assert.equal(legacyItineraryIdeas(changed.brief.itineraryIdeas)?.[0]?.dayPart, "afternoon");
   changed = assignItineraryIdeaDayPart(changed, idea.id, "evening");
-  assert.equal(changed.brief.itineraryIdeas?.[0]?.dayPart, "evening");
+  assert.equal(legacyItineraryIdeas(changed.brief.itineraryIdeas)?.[0]?.dayPart, "evening");
   changed = assignItineraryIdeaDayPart(changed, idea.id, null);
-  assert.equal(changed.brief.itineraryIdeas?.[0]?.dayPart, null);
-  assert.equal(changed.brief.itineraryIdeas?.[0]?.dayId, "kyoto-3");
+  assert.equal(legacyItineraryIdeas(changed.brief.itineraryIdeas)?.[0]?.dayPart, null);
+  assert.equal(legacyItineraryIdeas(changed.brief.itineraryIdeas)?.[0]?.dayId, "kyoto-3");
 });
 
 test("unscheduled, scheduled-unslotted, and scheduled-slotted remain distinct canonical states", () => {
   const source = tripFixture();
   const savedIdea = itineraryIdeaForPlace({ stopId: "kyoto", place: place("gion", "Gion"), reasons: ["destination-significance"] });
   const unscheduled = { ...source, brief: { ...source.brief, itineraryIdeas: [savedIdea] } };
-  assert.equal(unscheduled.brief.itineraryIdeas?.[0]?.dayId, undefined);
+  assert.equal(legacyItineraryIdeas(unscheduled.brief.itineraryIdeas)?.[0]?.dayId, undefined);
 
   const unslotted = scheduleItineraryIdea(unscheduled, savedIdea, "kyoto-3");
-  assert.equal(unslotted.brief.itineraryIdeas?.[0]?.dayId, "kyoto-3");
-  assert.equal(unslotted.brief.itineraryIdeas?.[0]?.dayPart, null);
+  assert.equal(legacyItineraryIdeas(unslotted.brief.itineraryIdeas)?.[0]?.dayId, "kyoto-3");
+  assert.equal(legacyItineraryIdeas(unslotted.brief.itineraryIdeas)?.[0]?.dayPart, null);
 
   const slotted = assignItineraryIdeaDayPart(unslotted, savedIdea.id, "evening");
-  assert.equal(slotted.brief.itineraryIdeas?.[0]?.dayPart, "evening");
+  assert.equal(legacyItineraryIdeas(slotted.brief.itineraryIdeas)?.[0]?.dayPart, "evening");
 });
 
 test("day composition groups explicit periods and leaves legacy untimed rows truthfully unslotted", () => {
@@ -304,22 +305,22 @@ test("specific-day period intent survives JSON reload, a day move, stop reorder,
   const idea = itineraryIdeaForPlace({ stopId: "kyoto", place: place("fushimi", "Fushimi Inari"), reasons: ["destination-significance"] });
   const scheduled = scheduleItineraryIdea(source, idea, "kyoto-3", "afternoon");
   const reloaded = JSON.parse(JSON.stringify(scheduled)) as EasyTTrip;
-  assert.equal(reloaded.brief.itineraryIdeas?.[0]?.dayPart, "afternoon");
+  assert.equal(legacyItineraryIdeas(reloaded.brief.itineraryIdeas)?.[0]?.dayPart, "afternoon");
 
   const movedDay = scheduleItineraryIdea(reloaded, idea, "kyoto-4");
-  assert.equal(movedDay.brief.itineraryIdeas?.[0]?.dayPart, "afternoon");
-  assert.equal(movedDay.brief.itineraryIdeas?.[0]?.dayId, "kyoto-4");
+  assert.equal(legacyItineraryIdeas(movedDay.brief.itineraryIdeas)?.[0]?.dayPart, "afternoon");
+  assert.equal(legacyItineraryIdeas(movedDay.brief.itineraryIdeas)?.[0]?.dayId, "kyoto-4");
 
   const replanned = replanTripAfterDayOrder(scheduled, [scheduled.planItems[2]!, scheduled.planItems[3]!, scheduled.planItems[0]!, scheduled.planItems[1]!]);
   assert.equal(replanned.state, "recalculated");
   if (replanned.state === "recalculated") {
-    assert.equal(replanned.trip.brief.itineraryIdeas?.[0]?.dayPart, "afternoon");
-    assert.equal(replanned.trip.brief.itineraryIdeas?.[0]?.dayId, "kyoto-3");
+    assert.equal(legacyItineraryIdeas(replanned.trip.brief.itineraryIdeas)?.[0]?.dayPart, "afternoon");
+    assert.equal(legacyItineraryIdeas(replanned.trip.brief.itineraryIdeas)?.[0]?.dayId, "kyoto-3");
   }
 
   const promoted = canonicalTripForOwner("owner-a", scheduled);
-  assert.equal(promoted.brief.itineraryIdeas?.[0]?.stopId, `${scheduled.id}-stop-kyoto`);
-  assert.equal(promoted.brief.itineraryIdeas?.[0]?.dayPart, "afternoon");
+  assert.equal(legacyItineraryIdeas(promoted.brief.itineraryIdeas)?.[0]?.stopId, `${scheduled.id}-stop-kyoto`);
+  assert.equal(legacyItineraryIdeas(promoted.brief.itineraryIdeas)?.[0]?.dayPart, "afternoon");
 });
 
 test("add to day, assign afternoon, save, and device reload retains the same stable item and period", () => {
@@ -345,22 +346,22 @@ test("night reduction remaps to a surviving same-stop day, fails closed to saved
     ...scheduled,
     planItems: scheduled.planItems.filter((item) => item.id !== "kyoto-3"),
   });
-  assert.equal(oneKyotoDay.brief.itineraryIdeas?.[0]?.dayId, "kyoto-4");
-  assert.equal(oneKyotoDay.brief.itineraryIdeas?.[0]?.dayPart, "morning");
+  assert.equal(legacyItineraryIdeas(oneKyotoDay.brief.itineraryIdeas)?.[0]?.dayId, "kyoto-4");
+  assert.equal(legacyItineraryIdeas(oneKyotoDay.brief.itineraryIdeas)?.[0]?.dayPart, "morning");
 
   const noKyotoDay = reconcileAuthoredDayState(scheduled, {
     ...scheduled,
     planItems: scheduled.planItems.filter((item) => item.stopId !== "kyoto"),
   });
-  assert.equal(noKyotoDay.brief.itineraryIdeas?.[0]?.dayId, undefined);
-  assert.equal(noKyotoDay.brief.itineraryIdeas?.[0]?.dayPart, undefined);
+  assert.equal(legacyItineraryIdeas(noKyotoDay.brief.itineraryIdeas)?.[0]?.dayId, undefined);
+  assert.equal(legacyItineraryIdeas(noKyotoDay.brief.itineraryIdeas)?.[0]?.dayPart, undefined);
 
   const removedStop = reconcileItineraryIdeas({
     ...scheduled,
     stops: scheduled.stops.filter((stop) => stop.id !== "kyoto"),
     planItems: scheduled.planItems.filter((item) => item.stopId !== "kyoto"),
   });
-  assert.deepEqual(removedStop.brief.itineraryIdeas, []);
+  assert.deepEqual(legacyItineraryIdeas(removedStop.brief.itineraryIdeas), []);
 });
 
 test("trip duplication remaps the scheduled day identity while preserving dayPart", () => {
@@ -374,7 +375,7 @@ test("trip duplication remaps the scheduled day identity while preserving dayPar
     nextId: () => String(++sequence),
   });
 
-  const copiedIdea = duplicate.brief.itineraryIdeas?.[0];
+  const copiedIdea = legacyItineraryIdeas(duplicate.brief.itineraryIdeas)?.[0];
   assert.equal(copiedIdea?.dayPart, "morning");
   assert.equal(duplicate.planItems.some((item) => item.id === copiedIdea?.dayId), true);
   assert.notEqual(copiedIdea?.dayId, "kyoto-3");
@@ -388,7 +389,7 @@ test("automatic Add to Day chooses a deterministic suitable available period wit
   assert.equal(preferredItineraryDayPart(source, "kyoto-4", attraction.category), "morning");
   assert.equal(preferredItineraryDayPart(source, "kyoto-4", food.category), "midday");
   const scheduled = scheduleItineraryIdea(source, attraction, "kyoto-4", preferredItineraryDayPart(source, "kyoto-4", attraction.category));
-  assert.equal(scheduled.brief.itineraryIdeas?.find((idea) => idea.id === attraction.id)?.dayPart, "morning");
+  assert.equal(legacyItineraryIdeas(scheduled.brief.itineraryIdeas)?.find((idea) => idea.id === attraction.id)?.dayPart, "morning");
   assert.equal(composeItineraryDay(scheduled, "kyoto-4")?.planned.morning[0]?.id, attraction.id);
 });
 
@@ -403,13 +404,13 @@ test("a full-day provider activity cannot be dragged into one time-of-day slot",
   };
   const scheduled = scheduleItineraryIdea(source, idea, "kyoto-4", null);
   const forcedAtSchedule = scheduleItineraryIdea(source, idea, "kyoto-4", "afternoon");
-  assert.equal(forcedAtSchedule.brief.itineraryIdeas?.find((candidate) => candidate.id === idea.id)?.dayPart, null, "the scheduling boundary normalises a full-day request to day level");
+  assert.equal(legacyItineraryIdeas(forcedAtSchedule.brief.itineraryIdeas)?.find((candidate) => candidate.id === idea.id)?.dayPart, null, "the scheduling boundary normalises a full-day request to day level");
   const directlyAssigned = assignItineraryIdeaDayPart(scheduled, idea.id, "afternoon");
   assert.equal(directlyAssigned, scheduled, "the direct mutation helper rejects a forced single-part write");
   const placed = placeItineraryActivity(scheduled, "kyoto-4", idea.id, "afternoon", 0);
   assert.equal(placed.changed, false);
   assert.match(placed.reason ?? "", /needs most of the day/);
-  assert.equal(scheduled.brief.itineraryIdeas?.find((candidate) => candidate.id === idea.id)?.dayPart, null);
+  assert.equal(legacyItineraryIdeas(scheduled.brief.itineraryIdeas)?.find((candidate) => candidate.id === idea.id)?.dayPart, null);
 });
 
 test("slot, extended and full-day ideas enforce one duration model at the mutation boundary", () => {
@@ -425,13 +426,13 @@ test("slot, extended and full-day ideas enforce one duration model at the mutati
   for (const part of ["morning", "midday", "afternoon", "evening"] as const) {
     const idea = ideaWithDuration(`two-hour-${part}`, 120);
     const scheduled = scheduleItineraryIdea(source, idea, "kyoto-4", part);
-    assert.equal(scheduled.brief.itineraryIdeas?.find((candidate) => candidate.id === idea.id)?.dayPart, part);
+    assert.equal(legacyItineraryIdeas(scheduled.brief.itineraryIdeas)?.find((candidate) => candidate.id === idea.id)?.dayPart, part);
   }
 
   for (const [id, minutes] of [["six-hour", 360], ["eight-hour", 480], ["twelve-hour", 720]] as const) {
     const idea = ideaWithDuration(id, minutes);
     const scheduled = scheduleItineraryIdea(source, idea, "kyoto-4", "afternoon");
-    assert.equal(scheduled.brief.itineraryIdeas?.find((candidate) => candidate.id === idea.id)?.dayPart, null);
+    assert.equal(legacyItineraryIdeas(scheduled.brief.itineraryIdeas)?.find((candidate) => candidate.id === idea.id)?.dayPart, null);
     assert.equal(assignItineraryIdeaDayPart(scheduled, idea.id, "afternoon"), scheduled);
   }
 });
@@ -448,7 +449,7 @@ test("the hosted-equivalent eleven-hour activity remains day-level after JSON re
   const scheduled = scheduleItineraryIdea(source, idea, "kyoto-4", null);
   const attempted = assignItineraryIdeaDayPart(scheduled, idea.id, "afternoon");
   const reloaded = JSON.parse(JSON.stringify(attempted)) as EasyTTrip;
-  assert.equal(reloaded.brief.itineraryIdeas?.find((candidate) => candidate.id === idea.id)?.dayPart, null);
+  assert.equal(legacyItineraryIdeas(reloaded.brief.itineraryIdeas)?.find((candidate) => candidate.id === idea.id)?.dayPart, null);
   assert.equal(composeItineraryDay(reloaded, "kyoto-4")?.unslotted.some((activity) => activity.id === idea.id), true);
 });
 
@@ -461,7 +462,7 @@ test("suggestion metadata and stable identity survive scheduling and JSON reload
   });
   const scheduled = scheduleItineraryIdea(source, idea, "kyoto-4", "afternoon");
   const reloaded = JSON.parse(JSON.stringify(scheduled)) as EasyTTrip;
-  const stored = reloaded.brief.itineraryIdeas?.find((candidate) => candidate.id === idea.id);
+  const stored = legacyItineraryIdeas(reloaded.brief.itineraryIdeas)?.find((candidate) => candidate.id === idea.id);
   assert.equal(stored?.id, idea.id);
   assert.equal(stored?.image, "/cathedral.jpg");
   assert.equal(stored?.sourceUrl, "https://example.test/cathedral");
@@ -575,7 +576,7 @@ test("dragging a provider suggestion into an occupied period inserts exactly onc
   const placed = scheduleItineraryIdeaAtPosition(occupied, idea, "kyoto-4", "afternoon", 0);
   const reloaded = JSON.parse(JSON.stringify(placed.trip)) as EasyTTrip;
   const composition = composeItineraryDay(reloaded, "kyoto-4")!;
-  const stored = reloaded.brief.itineraryIdeas?.find((candidate) => candidate.id === idea.id);
+  const stored = legacyItineraryIdeas(reloaded.brief.itineraryIdeas)?.find((candidate) => candidate.id === idea.id);
 
   assert.equal(placed.changed, true);
   assert.deepEqual(composition.planned.afternoon.map((activity) => activity.title), ["Provider walking tour", "Existing afternoon"]);
@@ -591,10 +592,10 @@ test("saved ideas remain unscheduled until the canonical schedule action is used
   const source = tripFixture();
   const idea = itineraryIdeaForPlace({ stopId: "kyoto", place: place("garden", "Murin-an Garden"), reasons: ["destination-significance"] });
   const saved = { ...source, brief: { ...source.brief, itineraryIdeas: [idea] } };
-  assert.equal(saved.brief.itineraryIdeas?.[0]?.dayId, undefined);
+  assert.equal(legacyItineraryIdeas(saved.brief.itineraryIdeas)?.[0]?.dayId, undefined);
   assert.equal(saved.planItems.some((day) => day.notes.includes(idea.title)), false);
   const scheduled = scheduleItineraryIdea(saved, idea, "kyoto-4", "afternoon");
-  assert.equal(scheduled.brief.itineraryIdeas?.[0]?.dayId, "kyoto-4");
+  assert.equal(legacyItineraryIdeas(scheduled.brief.itineraryIdeas)?.[0]?.dayId, "kyoto-4");
   assert.equal(scheduled.planItems.find((day) => day.id === "kyoto-4")?.notes.filter((note) => note === idea.title).length, 1);
 });
 
@@ -605,6 +606,6 @@ test("a failed durable write leaves the original suggestion and itinerary unchan
   const scheduled = scheduleItineraryIdea(saved, idea, "kyoto-4", "afternoon");
   const write = saveTripRecoveryToStorage(new FailingStorage(), scheduled, { ownerId: null, writeId: "failed-placement" });
   assert.equal(write.stored, false);
-  assert.equal(saved.brief.itineraryIdeas?.[0]?.dayId, undefined);
+  assert.equal(legacyItineraryIdeas(saved.brief.itineraryIdeas)?.[0]?.dayId, undefined);
   assert.equal(saved.planItems.find((day) => day.id === "kyoto-4")?.notes.includes(idea.title), false);
 });
