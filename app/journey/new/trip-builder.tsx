@@ -36,7 +36,7 @@ import { routePlannerPayload } from "@/lib/easyt/public-route-handoff";
 import { defaultTravelProfile, travelProfileFromUnknown, tripInterestsWithProfileDefaults, type TravelProfile } from "@/lib/easyt/travel-profile";
 import { firstTripWorkspaceHref, mapWorkspaceHref, tripWorkspaceHref } from "@/lib/easyt/trip-workspace-links";
 import { createLatestJourneyCaptureRequestGate, journeyCaptureFailureMessage, requestJourneyCapture } from "@/lib/easyt/journey-capture-client";
-import { HOME_TRIP_DRAFT_KEY, homepageHandoffMatchesTrip, homepageHandoffReceiptForOwner, homepageReceiptForProjection, projectHomepageInput, readHomepageInput, homeTripDraftInterestsWereExplicit, homeTripDraftTimingFlexibility, initialHandoffRouteStops, mergeHandoffLocationChoice, preferredHandoffLocationChoice, removeHomeTripDraftIfDurable, resolveHandoffBatch, routableHandoffMentions, tripInterestsFromHomeDraft, type HandoffLocationChoice, type HomeTripDraft, type HomepageInputSnapshot } from "@/lib/easyt/home-trip-handoff";
+import { HOME_TRIP_DRAFT_KEY, homepageHandoffMatchesTrip, homepageHandoffReceiptForOwner, homepageReceiptForProjection, projectHomepageInput, readHomepageInput, pendingIntakeReceiptForOwner, pendingHomepageHandoffForOwner, homeTripDraftInterestsWereExplicit, homeTripDraftTimingFlexibility, initialHandoffRouteStops, mergeHandoffLocationChoice, preferredHandoffLocationChoice, removeHomeTripDraftIfDurable, resolveHandoffBatch, routableHandoffMentions, tripInterestsFromHomeDraft, type HandoffLocationChoice, type HomeTripDraft, type HomepageInputSnapshot, type PendingHomeTripHandoff, type PendingIntakeReceipt } from "@/lib/easyt/home-trip-handoff";
 import { resolveNewTripEntryState, type NewTripEntryState } from "./new-trip-entry-state";
 import { NewTripStarter } from "./new-trip-starter";
 import type { JourneyCaptureResult } from "@/lib/easyt/journey-capture";
@@ -462,7 +462,17 @@ function TripBuilderDocument() {
   const lastAcknowledgedCanonicalRef = useRef<EasyTTrip | null>(null);
   const hydratedCanonicalTripRef = useRef<EasyTTrip | null>(null);
   const homeDraftRef = useRef<HomeTripDraft | null>(null);
-  const pendingNewTripReceiptRef = useRef<{ snapshot: HomepageInputSnapshot; receipt: ReturnType<typeof homepageReceiptForProjection> } | null>(null);
+  const pendingNewTripReceiptRef = useRef<{
+    snapshot: HomepageInputSnapshot;
+    receipt: ReturnType<typeof homepageReceiptForProjection>;
+    draft: HomeTripDraft;
+    pending?: PendingIntakeReceipt;
+    fromHomepage?: boolean;
+  } | null>(null);
+  const pendingInterpretationRef = useRef<PendingIntakeReceipt | null>(null);
+  const activeProjectionTokenRef = useRef<string | null>(null);
+  const [pendingInterpretation, setPendingInterpretation] = useState<{ receipt: PendingIntakeReceipt; fromHomepage: boolean } | null>(null);
+  const [pendingInterpretationRetry, setPendingInterpretationRetry] = useState(0);
   const captureRequestGateRef = useRef<ReturnType<typeof createLatestJourneyCaptureRequestGate> | null>(null);
   if (!captureRequestGateRef.current) captureRequestGateRef.current = createLatestJourneyCaptureRequestGate();
   const hydratedOwnerScopeRef = useRef<string | null | undefined>(undefined);
@@ -819,7 +829,7 @@ function TripBuilderDocument() {
     // The completed receipt must follow canonical recovery, so a reload while
     // the Builder is still saving can restore the traveller's original intake.
     window.localStorage.setItem(homepageInputStorageKey(snapshot.ownerId), JSON.stringify({ snapshot }));
-    pendingNewTripReceiptRef.current = { snapshot, receipt };
+    pendingNewTripReceiptRef.current = { snapshot, receipt, draft: { ...projected.draft, homepage: { ...projected.draft.homepage!, receipt } } };
     applyNewTripIntake(projected.draft, () => canUseHydratedTripScope(hydratedOwnerScopeRef.current, snapshot.ownerId));
   };
 
@@ -829,6 +839,10 @@ function TripBuilderDocument() {
     const previousOwnerScope = hydratedOwnerScopeRef.current;
     hydratedOwnerScopeRef.current = undefined;
     pendingNewTripReceiptRef.current = null;
+    pendingInterpretationRef.current = null;
+    activeProjectionTokenRef.current = null;
+    setPendingInterpretation(null);
+    captureRequestGateRef.current?.cancel();
     recoveryHandleRef.current = null;
     hydratedCanonicalTripRef.current = null;
     setHydrated(false);
@@ -971,20 +985,74 @@ function TripBuilderDocument() {
           }
         } catch { setBudget(defaultTravelProfile.budget); }
         const receivingHomeDraft = params.get("homeDraft") === "1";
-        let homeDraft: HomeTripDraft | null = null;
+        let homeDraft: HomeTripDraft | PendingHomeTripHandoff | null = null;
         let storedHomepageInput = null;
         if (receivingHomeDraft) {
           try { homeDraft = JSON.parse(window.localStorage.getItem(HOME_TRIP_DRAFT_KEY) ?? "null"); } catch { homeDraft = null; }
-          try {
-            storedHomepageInput = readHomepageInput(JSON.parse(window.localStorage.getItem(homepageInputStorageKey(activeOwnerId)) ?? "null"), activeOwnerId);
-          } catch { storedHomepageInput = null; }
         }
+        try {
+          storedHomepageInput = readHomepageInput(JSON.parse(window.localStorage.getItem(homepageInputStorageKey(activeOwnerId)) ?? "null"), activeOwnerId);
+        } catch { storedHomepageInput = null; }
         if (!homeDraft && !receivingHomeDraft) {
           const routeDetail = publicRouteDetailFor(params.get("inspire") ?? "");
           if (routeDetail) homeDraft = routePlannerPayload(routeDetail.planDraft);
         }
         let resumedHomepageTrip = false;
+        let pendingEntryActive = false;
+        const startPending = (receipt: PendingIntakeReceipt, fromHomepage: boolean) => {
+          setTripId(receipt.tripId);
+          pendingInterpretationRef.current = receipt;
+          setPendingInterpretation({ receipt, fromHomepage });
+          setTripBrief(receipt.frozenSnapshot.prompt);
+          setHasPromptContext(true);
+          setArrivedFromHomepage(fromHomepage);
+          hydratedEntryKind = fromHomepage ? "pending-home-handoff" : "pending-direct-intake";
+          pendingEntryActive = true;
+        };
+        if (!receivingHomeDraft && !params.has("inspire")) {
+          const pending = storedHomepageInput?.receipt
+            && pendingIntakeReceiptForOwner(storedHomepageInput.receipt, activeOwnerId);
+          if (pending) {
+            const existingRecovery = loadTripRecovery(pending.tripId, activeOwnerId);
+            const existingTrip = existingRecovery?.trip ?? await loadRequestedTrip(pending.tripId, activeOwnerId);
+            if (!active) return;
+            if (existingTrip) {
+              recoveryHandleRef.current = existingRecovery ?? null;
+              applySaved(existingTrip);
+              resumedHomepageTrip = true;
+              hydratedEntryKind = "explicit-trip";
+            } else startPending(pending, false);
+          }
+        }
         if (receivingHomeDraft) {
+          if (homeDraft && "version" in homeDraft && homeDraft.version === 2) {
+            const pendingEnvelope = pendingHomepageHandoffForOwner(homeDraft, activeOwnerId, params.get("handoff") ?? "");
+            const existingRecovery = pendingEnvelope ? loadTripRecovery(pendingEnvelope.tripId, activeOwnerId) : null;
+            const existingTrip = pendingEnvelope
+              ? existingRecovery?.trip ?? await loadRequestedTrip(pendingEnvelope.tripId, activeOwnerId)
+              : null;
+            if (!active) return;
+            const entry = resolveNewTripEntryState({
+              hydrated: true, ownerId: activeOwnerId, homeDraft: true,
+              handoff: params.get("handoff"), storedInput: storedHomepageInput, draft: homeDraft,
+              reservedTripId: existingTrip?.id,
+            });
+            if (entry.kind === "pending-home-handoff" && storedHomepageInput?.receipt?.version === 2) {
+              const pending = storedHomepageInput.receipt;
+              startPending(pending, true);
+            } else if (entry.kind === "explicit-trip" && existingTrip && existingTrip.id === entry.tripId) {
+              recoveryHandleRef.current = existingRecovery ?? null;
+              applySaved(existingTrip);
+              resumedHomepageTrip = true;
+              hydratedEntryKind = "explicit-trip";
+            } else {
+              setTripUnavailable(true);
+              hydratedEntryKind = "unavailable";
+            }
+            homeDraft = null;
+          }
+        }
+        if (receivingHomeDraft && !pendingEntryActive && !resumedHomepageTrip && hydratedEntryKind !== "unavailable") {
           if (!homeDraft && storedHomepageInput?.receipt
             && storedHomepageInput.receipt.handoffId === params.get("handoff")) {
             const reservedId = storedHomepageInput.receipt.tripId;
@@ -1017,7 +1085,7 @@ function TripBuilderDocument() {
             }
           }
         }
-        if (homeDraft?.homepage) {
+        if (homeDraft && "homepage" in homeDraft && homeDraft.homepage) {
           const homepageReceipt = homepageHandoffReceiptForOwner(homeDraft, activeOwnerId);
           if (!homepageReceipt) {
             // A versioned handoff is private state. Invalid owner or receipt
@@ -1046,7 +1114,8 @@ function TripBuilderDocument() {
             }
           }
         }
-        if (!resumedHomepageTrip && (homeDraft?.brief || homeDraft?.origin || homeDraft?.destination || homeDraft?.destinations?.length || homeDraft?.locationMentions?.length)) {
+        if (!resumedHomepageTrip && !pendingEntryActive && homeDraft && !("version" in homeDraft)
+          && (homeDraft.brief || homeDraft.origin || homeDraft.destination || homeDraft.destinations?.length || homeDraft.locationMentions?.length)) {
           applyNewTripIntake(homeDraft, () => active, true);
         } else {
           const seed = inspirationByKey[params.get("inspire") ?? ""];
@@ -1090,6 +1159,98 @@ function TripBuilderDocument() {
     void hydrate();
     return () => { active = false; };
   }, [activeBrowserOwnerId, authenticatedOwnerId, browserContextReady, sessionPending]);
+
+  useEffect(() => {
+    if (!hydrated || !pendingInterpretation) return;
+    const { receipt, fromHomepage } = pendingInterpretation;
+    const request = captureRequestGateRef.current!.begin();
+    const isCurrent = () => request.isCurrent()
+      && pendingInterpretationRef.current?.handoffId === receipt.handoffId
+      && pendingInterpretationRef.current?.tripId === receipt.tripId
+      && pendingInterpretationRef.current?.semanticInputFingerprint === receipt.semanticInputFingerprint
+      && pendingInterpretationRef.current?.inputRevision === receipt.inputRevision
+      && canUseHydratedTripScope(hydratedOwnerScopeRef.current, receipt.ownerId)
+      && activeBrowserOwnerIdRef.current === receipt.ownerId;
+    const timer = window.setTimeout(() => {
+      void (async () => {
+        try {
+          const capture = receipt.frozenSnapshot.mode === "describe"
+            ? await requestJourneyCapture(receipt.frozenSnapshot.prompt, { mode: "intent-only", signal: request.signal })
+            : undefined;
+          if (!isCurrent()) return;
+          const projected = projectHomepageInput({
+            snapshot: receipt.frozenSnapshot,
+            capture,
+            profile: hasSavedTravelProfile ? travelProfile : null,
+            handoffId: receipt.handoffId,
+          });
+          if (!projected.ok) throw new Error("The submitted trip needs review");
+          const completedReceipt = homepageReceiptForProjection(receipt.frozenSnapshot, projected.draft, receipt.tripId);
+          const draft: HomeTripDraft = { ...projected.draft,
+            homepage: { ...projected.draft.homepage!, receipt: completedReceipt } };
+          pendingNewTripReceiptRef.current = {
+            snapshot: receipt.frozenSnapshot, receipt: completedReceipt, draft, pending: receipt, fromHomepage,
+          };
+          activeProjectionTokenRef.current = receipt.handoffId;
+          applyNewTripIntake(draft, () => activeProjectionTokenRef.current === receipt.handoffId
+            && canUseHydratedTripScope(hydratedOwnerScopeRef.current, receipt.ownerId), fromHomepage);
+          pendingInterpretationRef.current = null;
+          setPendingInterpretation(null);
+          setTripBriefCaptureError("");
+        } catch {
+          if (isCurrent()) setTripBriefCaptureError(journeyCaptureFailureMessage("network", language));
+        } finally { request.finish(); }
+      })();
+    }, 0);
+    return () => {
+      window.clearTimeout(timer);
+      captureRequestGateRef.current?.cancel();
+    };
+  }, [hydrated, pendingInterpretation, pendingInterpretationRetry, hasSavedTravelProfile, travelProfile, language]);
+
+  const editPendingInterpretation = () => {
+    if (!pendingInterpretation || !canUseHydratedTripScope(hydratedOwnerScopeRef.current, pendingInterpretation.receipt.ownerId)) return;
+    const { receipt, fromHomepage } = pendingInterpretation;
+    const inputKey = homepageInputStorageKey(receipt.ownerId);
+    const priorInput = window.localStorage.getItem(inputKey);
+    const priorHandoff = fromHomepage ? window.localStorage.getItem(HOME_TRIP_DRAFT_KEY) : null;
+    try {
+      const stored = readHomepageInput(JSON.parse(priorInput ?? "null"), receipt.ownerId);
+      const pending = pendingIntakeReceiptForOwner(stored?.receipt, receipt.ownerId);
+      if (!pending || pending.handoffId !== receipt.handoffId || pending.tripId !== receipt.tripId
+        || pending.semanticInputFingerprint !== receipt.semanticInputFingerprint) return;
+      if (fromHomepage && !pendingHomepageHandoffForOwner(JSON.parse(priorHandoff ?? "null"), receipt.ownerId, receipt.handoffId)) return;
+      const editable = JSON.stringify({ snapshot: receipt.frozenSnapshot });
+      window.localStorage.setItem(inputKey, editable);
+      if (window.localStorage.getItem(inputKey) !== editable) throw new Error("Intake write did not persist");
+      if (fromHomepage) {
+        window.localStorage.removeItem(HOME_TRIP_DRAFT_KEY);
+        if (window.localStorage.getItem(HOME_TRIP_DRAFT_KEY) !== null) throw new Error("Pending handoff was not cleared");
+      }
+    } catch {
+      try {
+        if (priorInput === null) window.localStorage.removeItem(inputKey);
+        else window.localStorage.setItem(inputKey, priorInput);
+        if (fromHomepage) {
+          if (priorHandoff === null) window.localStorage.removeItem(HOME_TRIP_DRAFT_KEY);
+          else window.localStorage.setItem(HOME_TRIP_DRAFT_KEY, priorHandoff);
+        }
+      } catch { /* Retain the current pending view when device storage fails. */ }
+      setTripBriefCaptureError(language === "es" ? "No pudimos guardar el cambio. Inténtalo de nuevo." : "We couldn't save that change. Try again.");
+      return;
+    }
+    captureRequestGateRef.current?.cancel();
+    pendingInterpretationRef.current = null;
+    pendingNewTripReceiptRef.current = null;
+    setPendingInterpretation(null);
+    setTripBrief("");
+    setHasPromptContext(false);
+    setArrivedFromHomepage(false);
+    setTripId(crypto.randomUUID());
+    setEntryKind("fresh");
+    setTripBriefCaptureError("");
+    window.history.replaceState(window.history.state, "", window.location.pathname);
+  };
 
   useEffect(() => {
     stops.forEach((stop) => {
@@ -3245,8 +3406,36 @@ function TripBuilderDocument() {
       const pendingReceipt = pendingNewTripReceiptRef.current;
       if (pendingReceipt && pendingReceipt.receipt.tripId === trip.id
         && pendingReceipt.snapshot.ownerId === ownerId) {
+        if (!homepageHandoffMatchesTrip(pendingReceipt.draft, trip)) return { ...recovery, stored: false };
         try {
-          window.localStorage.setItem(homepageInputStorageKey(ownerId), JSON.stringify(pendingNewTripReceiptRef.current));
+          const inputKey = homepageInputStorageKey(ownerId);
+          const priorInput = readHomepageInput(JSON.parse(window.localStorage.getItem(inputKey) ?? "null"), ownerId);
+          if (!priorInput) return { ...recovery, stored: false };
+          if (pendingReceipt.pending) {
+            const currentPending = pendingIntakeReceiptForOwner(priorInput.receipt, ownerId);
+            if (!currentPending || currentPending.handoffId !== pendingReceipt.pending.handoffId
+              || currentPending.tripId !== pendingReceipt.pending.tripId
+              || currentPending.semanticInputFingerprint !== pendingReceipt.pending.semanticInputFingerprint
+              || currentPending.inputRevision !== pendingReceipt.pending.inputRevision)
+              return { ...recovery, stored: false };
+            if (pendingReceipt.fromHomepage) {
+              const currentHandoff = JSON.parse(window.localStorage.getItem(HOME_TRIP_DRAFT_KEY) ?? "null");
+              if (!pendingHomepageHandoffForOwner(currentHandoff, ownerId, currentPending.handoffId))
+                return { ...recovery, stored: false };
+            }
+          }
+          const completedInput = { snapshot: priorInput.snapshot, receipt: pendingReceipt.receipt };
+          window.localStorage.setItem(inputKey, JSON.stringify(completedInput));
+          if (window.localStorage.getItem(inputKey) !== JSON.stringify(completedInput))
+            return { ...recovery, stored: false };
+          // Complete the owner receipt first. If replacing the shared envelope
+          // then fails, the reserved recovery plus pending envelope still
+          // resolves to the same canonical document on reload.
+          if (pendingReceipt.pending && pendingReceipt.fromHomepage) {
+            window.localStorage.setItem(HOME_TRIP_DRAFT_KEY, JSON.stringify(pendingReceipt.draft));
+            if (window.localStorage.getItem(HOME_TRIP_DRAFT_KEY) !== JSON.stringify(pendingReceipt.draft))
+              return { ...recovery, stored: false };
+          }
           pendingNewTripReceiptRef.current = null;
         } catch {
           // Keep the intake resumable in this tab and block navigation until
@@ -3301,7 +3490,7 @@ function TripBuilderDocument() {
   useEffect(() => {
     // A broad-place draft can have no route stops yet. Its explicit discovery
     // choices still need the same device recovery as a shaped route.
-    if (!hydrated || (!origin.trim() && !tripBrief.trim() && !activePlaceMentions.length && !stops.length)) return;
+    if (!hydrated || pendingInterpretation || (!origin.trim() && !tripBrief.trim() && !activePlaceMentions.length && !stops.length)) return;
     setSaveState("device-saving");
     const timer = window.setTimeout(() => {
       const acknowledged = lastAcknowledgedCanonicalRef.current;
@@ -3328,7 +3517,7 @@ function TripBuilderDocument() {
       }
     }, 450);
     return () => window.clearTimeout(timer);
-  }, [hydrated, activeTripDocument, arrivedFromHomepage, cloudConflictTrip, deviceRecoveryBlocked, deviceStorageBlocked, language, persistDeviceRecovery, resolvingLocations]);
+  }, [hydrated, pendingInterpretation, activeTripDocument, arrivedFromHomepage, cloudConflictTrip, deviceRecoveryBlocked, deviceStorageBlocked, language, persistDeviceRecovery, resolvingLocations]);
 
   const recordGeneratedTrip = () => {
     if (generationCompletedRef.current) return buildInvariant.canBuildTrip;
@@ -3941,6 +4130,21 @@ function TripBuilderDocument() {
                     : (language === "es" ? "Empieza tu viaje." : "Start your trip.")}</h1>
                 {(hasRouteSkeleton || hasPromptContext) && <span className={styles.saveState}><MorroviaSaveStatus state={visibleSaveState} label={visibleSaveLabel} /></span>}
               </header>
+              {pendingInterpretation ? <MorroviaSectionStatus
+                state={tripBriefCaptureError ? "error" : "loading"}
+                title={tripBriefCaptureError || (language === "es" ? "Preparando tu ruta" : "Preparing your route")}
+                detail={pendingInterpretation.receipt.frozenSnapshot.mode === "describe"
+                  ? pendingInterpretation.receipt.frozenSnapshot.prompt
+                  : language === "es" ? "Tus lugares y preferencias se han guardado en este dispositivo." : "Your places and preferences are saved on this device."}
+                onRetry={tripBriefCaptureError ? () => {
+                  setTripBriefCaptureError("");
+                  setPendingInterpretationRetry((revision) => revision + 1);
+                } : undefined}
+                retryLabel={language === "es" ? "Intentar de nuevo" : "Try again"}
+              /> : null}
+              {pendingInterpretation && tripBriefCaptureError ? <EasyTButton type="button" variant="quiet" onClick={editPendingInterpretation}>
+                {language === "es" ? "Editar idea de viaje" : "Edit trip idea"}
+              </EasyTButton> : null}
               {!hasRouteSkeleton && !hasPromptContext && !pendingClarificationIds.length && !inlineStopBaseMention && hydrated && <div className={styles.initialCapture}>
                 {entryKind === "fresh" ? <NewTripStarter key={activeBrowserOwnerId ?? "guest"} ownerId={activeBrowserOwnerId} language={language} travelProfile={hasSavedTravelProfile ? travelProfile : null} onSubmit={submitNewTripIntake} /> : <MorroviaTripCapture
                   disabled={stopChecking}

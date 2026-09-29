@@ -157,3 +157,20 @@ test("pending intake keeps one reserved identity across URL handoff, tabs and di
   assert.equal(resolveNewTripEntryState({ hydrated: true, ownerId, trip: "explicit", storedInput }).tripId, "explicit");
   assert.equal(resolveNewTripEntryState({ hydrated: true, ownerId, currentDraftTripId: "current", storedInput }).tripId, "current");
 });
+
+test("recovery of a reserved pending handoff wins after the completed receipt write but before envelope cleanup", () => {
+  const snapshot = describe();
+  const pending = createPendingIntakeReceipt(snapshot, { handoffId: "pending-crash", tripId: "trip-crash" });
+  const completed: HomepageHandoffReceipt = {
+    version: 1, ownerId, handoffId: pending.handoffId, tripId: pending.tripId,
+    inputFingerprint: "projected-draft-fingerprint",
+    semanticInputFingerprint: pending.semanticInputFingerprint,
+  };
+  const entry = resolveNewTripEntryState({
+    hydrated: true, ownerId, homeDraft: true, handoff: pending.handoffId,
+    storedInput: { snapshot, receipt: completed },
+    draft: { version: 2, phase: "pending-interpretation", receipt: pending },
+    reservedTripId: pending.tripId,
+  });
+  assert.deepEqual(entry, { kind: "explicit-trip", tripId: pending.tripId });
+});

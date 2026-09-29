@@ -3,6 +3,7 @@ import test from "node:test";
 
 import {
   HOME_TRIP_DRAFT_KEY,
+  createPendingIntakeReceipt,
   homepageHandoffMatchesTrip,
   homepageSubmissionFingerprint,
   mergeHandoffLocationChoice,
@@ -11,6 +12,7 @@ import {
   type HomeTripDraft,
   type HomepageHandoffReceipt,
 } from "../lib/easyt/home-trip-handoff.ts";
+import { builderBrowserTestsEnabled, renderBuilder } from "./helpers/builder-render.ts";
 import { defaultTripIntent, tripFromBuilder, type EasyTTrip } from "../lib/easyt/trip.ts";
 import { emptyHomepageInput, selectedEntry } from "./fixtures/homepage-dual-entry.ts";
 import { findCatalogPlaceById } from "../lib/easyt/place-catalog.ts";
@@ -201,4 +203,84 @@ test("a clarified planning area retains its original position through its select
     structuredBrief,
   });
   assert.equal(homepageHandoffMatchesTrip(draft, trip), true);
+});
+
+test("pending Describe hydrates one reserved Builder document before capture and resumes it after reload", { skip: !builderBrowserTestsEnabled, timeout: 40_000 }, async () => {
+  const snapshot = { ...emptyHomepageInput(), mode: "describe" as const, prompt: "Tokyo and Kyoto in Japan for one week." };
+  const receipt = createPendingIntakeReceipt(snapshot, { handoffId: "pending-browser", tripId: "trip-pending-browser" });
+  const view = await renderBuilder({
+    query: "?homeDraft=1&handoff=pending-browser",
+    draft: { version: 2, phase: "pending-interpretation", receipt },
+    storedInput: { snapshot, receipt },
+    captureDelayMs: 1200,
+  });
+  try {
+    assert.match(await view.page.locator("body").innerText(), /Tokyo and Kyoto/);
+    assert.equal(await view.page.locator('[aria-label="Your route"]').count(), 0);
+    await view.page.getByText("Your route — Nights per stop:").waitFor({ timeout: 20_000 });
+    await view.page.waitForFunction(() => Object.keys(localStorage).some((key) => key.includes("trip-pending-browser")));
+    assert.equal(view.captureRequests(), 1);
+    await view.page.reload();
+    await view.page.getByText("Your route — Nights per stop:").waitFor({ timeout: 20_000 });
+    assert.equal(view.captureRequests(), 1);
+    assert.deepEqual(view.errors, []);
+  } finally { await view.close(); }
+});
+
+test("failed pending interpretation keeps the frozen idea and retries under the same reservation", { skip: !builderBrowserTestsEnabled, timeout: 40_000 }, async () => {
+  const snapshot = { ...emptyHomepageInput(), mode: "describe" as const, prompt: "Tokyo and Kyoto in Japan for one week." };
+  const receipt = createPendingIntakeReceipt(snapshot, { handoffId: "pending-retry", tripId: "trip-pending-retry" });
+  const view = await renderBuilder({
+    query: "?homeDraft=1&handoff=pending-retry",
+    draft: { version: 2, phase: "pending-interpretation", receipt },
+    storedInput: { snapshot, receipt },
+    captureFailures: 1,
+  });
+  try {
+    await view.page.getByRole("button", { name: "Try again" }).waitFor();
+    assert.match(await view.page.locator("body").innerText(), /Tokyo and Kyoto/);
+    assert.equal(view.captureRequests(), 1);
+    await view.page.getByRole("button", { name: "Try again" }).click();
+    await view.page.getByText("Your route — Nights per stop:").waitFor({ timeout: 20_000 });
+    assert.equal(view.captureRequests(), 2);
+    assert.deepEqual(view.errors, []);
+  } finally { await view.close(); }
+});
+
+test("direct pending intake reloads before interpretation without a fresh starter or a second trip", { skip: !builderBrowserTestsEnabled, timeout: 40_000 }, async () => {
+  const snapshot = { ...emptyHomepageInput(), mode: "describe" as const, prompt: "Tokyo and Kyoto in Japan for one week." };
+  const receipt = createPendingIntakeReceipt(snapshot, { handoffId: "direct-reload", tripId: "trip-direct-reload" });
+  const view = await renderBuilder({ storedInput: { snapshot, receipt }, captureDelayMs: 1200 });
+  try {
+    await view.page.getByText(snapshot.prompt).waitFor();
+    assert.equal(await view.page.getByRole("heading", { name: "New trip" }).count(), 0);
+    await view.page.reload();
+    await view.page.getByText(snapshot.prompt).waitFor();
+    await view.page.getByText("Your route — Nights per stop:").waitFor({ timeout: 20_000 });
+    await view.page.waitForFunction(() => Object.keys(localStorage).some((key) => key.startsWith("easyt:trip-recovery:v2:") && key.includes("trip-direct-reload")));
+    const reservedRecoveryIds = await view.page.evaluate(() => Object.keys(localStorage)
+      .filter((key) => key.startsWith("easyt:trip-recovery:v2:") && key.includes("trip-direct-reload")));
+    assert.equal(reservedRecoveryIds.length, 1);
+    assert.deepEqual(view.errors, []);
+  } finally { await view.close(); }
+});
+
+test("failed pending interpretation can return to editable intake without reusing the old handoff", { skip: !builderBrowserTestsEnabled, timeout: 40_000 }, async () => {
+  const snapshot = { ...emptyHomepageInput(), mode: "describe" as const, prompt: "Tokyo and Kyoto in Japan for one week." };
+  const receipt = createPendingIntakeReceipt(snapshot, { handoffId: "pending-edit", tripId: "trip-pending-edit" });
+  const view = await renderBuilder({
+    query: "?homeDraft=1&handoff=pending-edit",
+    draft: { version: 2, phase: "pending-interpretation", receipt },
+    storedInput: { snapshot, receipt }, captureFailures: 1,
+  });
+  try {
+    await view.page.getByRole("button", { name: "Edit trip idea" }).click();
+    await view.page.getByRole("heading", { name: "New trip" }).waitFor();
+    await view.page.waitForFunction(() => Array.from(document.querySelectorAll("textarea"))
+      .some((field) => field.value === "Tokyo and Kyoto in Japan for one week."));
+    const state = await view.page.evaluate(() => ({ url: location.search, handoff: localStorage.getItem("easyt-home-trip-draft") }));
+    assert.equal(state.url, "");
+    assert.equal(state.handoff, null);
+    assert.deepEqual(view.errors, []);
+  } finally { await view.close(); }
 });

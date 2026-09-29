@@ -52,9 +52,18 @@ export function resolveNewTripEntryState(input: NewTripEntryStateInput): NewTrip
     const stored = input.storedInput;
     if (!stored?.receipt || stored.snapshot.ownerId !== input.ownerId
       || !input.handoff || stored.receipt.handoffId !== input.handoff) return { kind: "unavailable" };
+    const pendingEnvelope = input.draft && pendingHomepageHandoffForOwner(input.draft, input.ownerId, input.handoff);
+    // Recovery is canonical if it already contains the reserved trip. A crash
+    // can occur after receipt completion but before clearing the v2 envelope.
+    if (pendingEnvelope && stored.receipt.version === 1
+      && input.reservedTripId === pendingEnvelope.tripId
+      && stored.receipt.ownerId === input.ownerId
+      && stored.receipt.tripId === pendingEnvelope.tripId
+      && stored.receipt.semanticInputFingerprint === pendingEnvelope.semanticInputFingerprint)
+      return { kind: "explicit-trip", tripId: pendingEnvelope.tripId };
     if (stored.receipt.version === 2) {
       const storedPending = pendingIntakeReceiptForOwner(stored.receipt, input.ownerId);
-      const draftPending = input.draft && pendingHomepageHandoffForOwner(input.draft, input.ownerId, input.handoff);
+      const draftPending = pendingEnvelope;
       if (input.reservedTripId === storedPending?.tripId) return { kind: "explicit-trip", tripId: input.reservedTripId };
       if (!storedPending || !draftPending || input.reservedTripId
         || storedPending.tripId !== draftPending.tripId

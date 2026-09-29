@@ -5,6 +5,7 @@ import { fileURLToPath } from "node:url";
 import { homedir } from "node:os";
 import { existsSync } from "node:fs";
 import { captureJourneyBrief } from "../../lib/easyt/journey-capture.ts";
+import { homepageInputStorageKey } from "../../lib/easyt/private-browser-context.ts";
 
 // Use an existing browser runtime; this helper never installs a dependency.
 const require = createRequire(import.meta.url);
@@ -42,10 +43,13 @@ async function builderBundle() {
 export async function renderBuilder({
   query = "",
   draft,
+  storedInput,
   initialTrip,
   path = "/journey/new",
   browserName = "chromium",
   geocodeDelayMs = 0,
+  captureDelayMs = 0,
+  captureFailures = 0,
   geocodeCandidates = {},
   nearbyCandidates = [],
   nearbyStatus,
@@ -54,10 +58,13 @@ export async function renderBuilder({
 }: {
   query?: string;
   draft?: unknown;
+  storedInput?: { snapshot: { ownerId: string | null } } & Record<string, unknown>;
   initialTrip?: { id: string; ownerId: string | null } & Record<string, unknown>;
   path?: string;
   browserName?: "chromium" | "webkit";
   geocodeDelayMs?: number;
+  captureDelayMs?: number;
+  captureFailures?: number;
   geocodeCandidates?: Record<string, unknown[]>;
   nearbyCandidates?: unknown[];
   nearbyStatus?: "ready" | "empty" | "unavailable";
@@ -65,6 +72,7 @@ export async function renderBuilder({
   language?: "en" | "es";
 } = {}) {
   const script = await builderBundle();
+  let captureRequests = 0;
   const server = createServer(async (request, response) => {
     if (request.url?.startsWith("/api/")) {
       const url = new URL(request.url, "http://localhost");
@@ -81,9 +89,16 @@ export async function renderBuilder({
         return;
       }
       if (url.pathname === "/api/journey-capture") {
+        captureRequests += 1;
         const chunks: Buffer[] = [];
         for await (const chunk of request) chunks.push(Buffer.from(chunk));
         const { brief } = JSON.parse(Buffer.concat(chunks).toString());
+        if (captureDelayMs) await new Promise((resolve) => setTimeout(resolve, captureDelayMs));
+        if (captureRequests <= captureFailures) {
+          response.statusCode = 503;
+          response.end(JSON.stringify({ error: "Provider unavailable" }));
+          return;
+        }
         response.setHeader("Content-Type", "application/json");
         response.end(JSON.stringify(captureJourneyBrief(brief)));
         return;
@@ -127,6 +142,9 @@ export async function renderBuilder({
     await route.continue();
   });
   if (draft) await page.addInitScript((value: unknown) => localStorage.setItem("easyt-home-trip-draft", JSON.stringify(value)), draft);
+  if (storedInput) await page.addInitScript(({ key, value }: { key: string; value: unknown }) => localStorage.setItem(key, JSON.stringify(value)), {
+    key: homepageInputStorageKey(storedInput.snapshot.ownerId), value: storedInput,
+  });
   if (language) await page.addInitScript((value: "en" | "es") => localStorage.setItem("easyt-language", value), language);
   if (mapUnavailable) await page.addInitScript(() => { (window as Window & { __MORROVIA_MAP_UNAVAILABLE__?: boolean }).__MORROVIA_MAP_UNAVAILABLE__ = true; });
   if (initialTrip) await page.addInitScript((value: { id: string; ownerId: string | null } & Record<string, unknown>) => {
@@ -156,5 +174,5 @@ export async function renderBuilder({
     await browser.close(); server.close();
     throw new Error(`Builder failed to render: ${errors.join("; ")}`, { cause: error });
   }
-  return { page, errors, close: async () => { await browser.close(); await new Promise<void>((resolve) => server.close(() => resolve())); } };
+  return { page, errors, captureRequests: () => captureRequests, close: async () => { await browser.close(); await new Promise<void>((resolve) => server.close(() => resolve())); } };
 }

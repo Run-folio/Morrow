@@ -48,10 +48,11 @@ test("New trip submits into the mounted Builder without a second navigation or p
 
 test("direct intake stays resumable until canonical device recovery is acknowledged", () => {
   const source = builder();
-  assert.match(source, /pendingNewTripReceiptRef\.current = \{ snapshot, receipt \}/);
+  assert.match(source, /pendingNewTripReceiptRef\.current = \{ snapshot, receipt, draft:/);
   assert.match(source, /JSON\.stringify\(\{ snapshot \}\)/);
   assert.match(source, /if \(recovery\.stored\) \{[\s\S]*const pendingReceipt = pendingNewTripReceiptRef\.current/);
-  assert.match(source, /JSON\.stringify\(pendingNewTripReceiptRef\.current\)/);
+  assert.match(source, /homepageHandoffMatchesTrip\(pendingReceipt\.draft, trip\)/);
+  assert.match(source, /window\.localStorage\.setItem\(inputKey, JSON\.stringify\(completedInput\)\)/);
 });
 
 test("missing handoff draft checks the reserved trip before declaring the receipt unavailable", () => {
