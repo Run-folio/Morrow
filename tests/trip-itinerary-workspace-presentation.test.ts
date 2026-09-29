@@ -230,7 +230,8 @@ test("saved ideas have one shared stop-scoped unscheduled owner in the planning 
   const desktopSavedIndex = itinerary.indexOf("<SavedIdeasSection", railIndex);
   const panelIndex = itinerary.indexOf("className={styles.dayPanel}");
   assert.ok(panelIndex < railIndex && railIndex < desktopSavedIndex);
-  assert.match(itinerary, /const unscheduledSavedIdeas = \(workingTrip\.brief\.itineraryIdeas \?\? \[\]\)\.filter\(\(idea\) => idea\.stopId === active\.stopId && !idea\.dayId\)/);
+  assert.match(itinerary, /const unscheduledSavedIdeas = \(legacyItineraryIdeas\(workingTrip\.brief\.itineraryIdeas\)\)\.filter\(\(idea\) => idea\.stopId === active\.stopId && !idea\.dayId\)/);
+  assert.match(itinerary, /const unscheduledGoogleReferences = googlePlaceReferenceIdeas\(workingTrip\.brief\.itineraryIdeas\)\.filter\(\(idea\) => idea\.stopId === active\.stopId && !idea\.dayId\)/);
   assert.match(itinerary, /function SavedIdeasSection/);
   assert.match(itinerary, /if \(!ideas\.length\) return null/);
   assert.match(itinerary, /className=\{styles\.savedIdeas\} role="list"/);

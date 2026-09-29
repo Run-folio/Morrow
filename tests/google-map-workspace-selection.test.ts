@@ -2,8 +2,10 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 import {
+  selectedGoogleDetailForPlace,
   googleDiscoveryScopeKey,
   googlePlaceSelectionForScope,
+  googleSavedReferenceSelection,
   shouldApplyGoogleDiscoveryResult,
 } from "../lib/easyt/google-map-workspace-selection.ts";
 
@@ -27,6 +29,24 @@ test("same-name occurrences and categories have separate cached result scopes", 
   assert.equal(googleDiscoveryScopeKey("tokyo-return", "see"), googleDiscoveryScopeKey("tokyo-return", "see"));
   assert.equal(shouldApplyGoogleDiscoveryResult("tokyo-return:see", "tokyo-return:see"), true);
   assert.equal(shouldApplyGoogleDiscoveryResult("tokyo-first:see", "tokyo-return:see"), false);
+  assert.notEqual(googleDiscoveryScopeKey("tokyo-return", "see", [139.7, 35.6]), googleDiscoveryScopeKey("tokyo-return", "see", [139.8, 35.6]));
+  assert.equal(googleDiscoveryScopeKey("tokyo-return", "see", [139.7, 35.6]), googleDiscoveryScopeKey("tokyo-return", "see", [139.7, 35.6]));
+});
+
+test("a previous selection's detail cannot render under a newer Place ID", () => {
+  const oldDetail = { providerPlaceId: "place-a", name: "A" };
+  assert.equal(selectedGoogleDetailForPlace("place-b", oldDetail), null);
+  assert.equal(selectedGoogleDetailForPlace("place-a", oldDetail), oldDetail);
+  assert.match(child, /selectedGoogleDetailForPlace\(props\.selectedPlaceId, props\.detail\)/);
+  assert.match(parent, /selectedGoogleDetailForPlace\(selectedGooglePlaceId, selectedGoogleDetail\)/);
+});
+
+test("a saved reference keeps its exact canonical idea and day instead of borrowing the currently viewed day", () => {
+  assert.deepEqual(googleSavedReferenceSelection("ChIJone", "tokyo-return", "idea-day-8"), {
+    kind: "google", placeId: "ChIJone", stopId: "tokyo-return", dayId: null, referenceId: "idea-day-8",
+  });
+  assert.match(parent, /idea\.id === workspacePlaceSelection\.referenceId/);
+  assert.match(child, /onSelectSavedReference\?\.\(reference\.id, reference\.placeId\)/);
 });
 
 test("the integrated map has one parent-owned category, selection, and detail path", () => {

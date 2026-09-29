@@ -7,6 +7,7 @@ import { MorroviaSectionStatus } from "./morrovia-loading-states";
 import { priceLevelLabel, type EnrichedPlace, type EnrichedReview, type PlaceEnrichmentCategory } from "@/lib/easyt/place-enrichment";
 import type { GooglePlacePhotoAttribution } from "@/lib/easyt/google-place-photo";
 import type { GooglePlaceFailureKind } from "@/lib/easyt/google-place-request-control";
+import { selectedGoogleDetailForPlace } from "@/lib/easyt/google-map-workspace-selection";
 import styles from "./map-place-enrichment.module.css";
 
 type Props = {
@@ -28,6 +29,7 @@ type Props = {
   listScrollTop: number;
   onListScroll(top: number): void;
   onSelectPlace(placeId: string): void;
+  onSelectSavedReference?(referenceId: string, placeId: string): void;
   onBackToPlaces(): void;
   onRetry(): void;
   actions?: ReactNode;
@@ -37,8 +39,9 @@ type Props = {
 export default function MapPlaceEnrichment(props: Props) {
   const panelRef = useRef<HTMLElement>(null);
   const backFocusPlaceIdRef = useRef<string | null>(null);
+  const exactDetail = selectedGoogleDetailForPlace(props.selectedPlaceId, props.detail);
   const selected = props.selectedPlaceId
-    ? props.detail ?? props.places.find((place) => place.providerPlaceId === props.selectedPlaceId) ?? null
+    ? exactDetail ?? props.places.find((place) => place.providerPlaceId === props.selectedPlaceId) ?? null
     : null;
   useLayoutEffect(() => {
     if (!props.selectedPlaceId && panelRef.current) {
@@ -71,11 +74,11 @@ export default function MapPlaceEnrichment(props: Props) {
         {selected.attributions?.map((item) => <small key={item.name}>{item.url ? <a href={item.url} target="_blank" rel="noopener noreferrer">{item.name}</a> : item.name}</small>)}
         {props.actions ? <div className={styles.actions}>{props.actions}</div> : null}
         {props.onRequestMedia && !props.mediaRequested ? <EasyTButton variant="quiet" size="small" onClick={props.onRequestMedia}>Load photos and reviews</EasyTButton> : null}
-        {props.photo ? <figure className={styles.photoMedia}>
+        {exactDetail && props.photo ? <figure className={styles.photoMedia}>
           <img src={props.photo.src} alt={`Provider photo of ${selected.name}`} />
           <figcaption>Photo: {props.photo.attributions.length ? props.photo.attributions.map((credit, index) => <span key={`${credit.displayName}-${index}`}>{index ? " · " : null}{credit.photoUri ? <img src={credit.photoUri} alt="" /> : null}{credit.uri ? <a href={credit.uri} target="_blank" rel="noopener noreferrer">{credit.displayName}</a> : credit.displayName}</span>) : "Google Maps"} · <a href={props.photo.sourceUrl} target="_blank" rel="noopener noreferrer">View source photo</a></figcaption>
         </figure> : null}
-        {props.reviews.length ? <details className={styles.reviews}><summary>{props.reviews.length} {props.reviews.length === 1 ? "review" : "reviews"} from Google Maps</summary><ul>{props.reviews.map((review) => <li key={review.sourceUrl}>
+        {exactDetail && props.reviews.length ? <details className={styles.reviews}><summary>{props.reviews.length} {props.reviews.length === 1 ? "review" : "reviews"} from Google Maps</summary><ul>{props.reviews.map((review) => <li key={review.sourceUrl}>
           <p>{review.text}</p>
           <p className={styles.reviewAuthor}>{review.author.avatarUrl ? <img src={review.author.avatarUrl} alt="" /> : null}{review.author.url ? <a href={review.author.url} target="_blank" rel="noopener noreferrer">{review.author.name}</a> : review.author.name}{review.rating !== undefined ? ` · ${review.rating} ★` : null} · <a href={review.sourceUrl} target="_blank" rel="noopener noreferrer">View review on Google Maps</a></p>
         </li>)}</ul></details> : null}
@@ -85,7 +88,7 @@ export default function MapPlaceEnrichment(props: Props) {
         ? "This saved Google place could not be found. Your saved reference is still here; try again or choose a place from the list."
         : "Couldn't load place details. Your saved reference is still here."} <EasyTButton variant="quiet" size="small" onClick={props.onRetry}>Try again</EasyTButton></p> : null}
     </div> : <>
-      {props.savedReferences?.length ? <div className={styles.savedReferences}><strong>Saved Google places</strong><ul>{props.savedReferences.map((reference) => <li key={reference.id}><EasyTButton variant="quiet" fullWidth onClick={() => props.onSelectPlace(reference.placeId)}>Saved Google place{reference.dayLabel ? ` · ${reference.dayLabel}` : " · for later"}</EasyTButton></li>)}</ul></div> : null}
+      {props.savedReferences?.length ? <div className={styles.savedReferences}><strong>Saved Google places</strong><ul>{props.savedReferences.map((reference) => <li key={reference.id}><EasyTButton variant="quiet" fullWidth onClick={() => props.onSelectSavedReference?.(reference.id, reference.placeId)}>Saved Google place{reference.dayLabel ? ` · ${reference.dayLabel}` : " · for later"}</EasyTButton></li>)}</ul></div> : null}
       {props.status === "loading" ? <MorroviaSectionStatus state="loading" title="Finding nearby places" detail="Checking this destination now." /> : null}
       {props.status === "unavailable" ? <p role="status">{props.failure === "offline" ? "You're offline. Nearby places could not be refreshed." : props.failure === "quota" ? "Google Maps is temporarily at its request limit." : props.failure === "configuration" ? "Google Maps places are not configured for this session." : "Couldn't load places."}{props.places.length ? " Previous places remain visible below." : ""} <EasyTButton variant="quiet" size="small" onClick={props.onRetry}>Try again</EasyTButton></p> : null}
       {props.status === "empty" ? <p role="status">No places found for this category.</p> : null}

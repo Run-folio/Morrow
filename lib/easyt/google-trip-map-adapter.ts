@@ -94,6 +94,14 @@ export function createGoogleTripMapSession(api: GoogleTripMapApi, element: HTMLE
     mapTypeControl: false,
     streetViewControl: false,
   });
+  const fitWholeRoute = () => {
+    if (mappedStops.length < 2) return;
+    const longitudes = mappedStops.map((stop) => stop.coordinates[0]);
+    const latitudes = mappedStops.map((stop) => stop.coordinates[1]);
+    const bounds = { north: Math.max(...latitudes), south: Math.min(...latitudes), east: Math.max(...longitudes), west: Math.min(...longitudes) };
+    if (bounds.north !== bounds.south || bounds.east !== bounds.west) map.fitBounds?.(bounds, 48);
+  };
+  if (!options.selectedStopId) fitWholeRoute();
   const click = map.addListener("click", (event) => {
     if (typeof event.placeId === "string" && event.placeId.trim()) {
       const handled = options.onNativePoi(event.placeId);
@@ -104,7 +112,13 @@ export function createGoogleTripMapSession(api: GoogleTripMapApi, element: HTMLE
   });
   const overlays: OverlayObject[] = [];
   const listeners: Listener[] = [click];
+  const occupiedMarkerCoordinates = new Set<string>();
   for (const stop of mappedStops) {
+    const coordinateKey = stop.coordinates.join(",");
+    // One map hit area per exact point. The shared destination strip retains
+    // direct access to every canonical occurrence at a coincident location.
+    if (occupiedMarkerCoordinates.has(coordinateKey)) continue;
+    occupiedMarkerCoordinates.add(coordinateKey);
     const marker = new api.Marker({ map, position: { lat: stop.coordinates[1], lng: stop.coordinates[0] }, title: stop.name });
     overlays.push(marker);
     listeners.push(marker.addListener("click", () => options.onSelectStop(stop.id)));
@@ -138,10 +152,15 @@ export function createGoogleTripMapSession(api: GoogleTripMapApi, element: HTMLE
       selectedStopId = next.selectedStopId;
       const stop = byId.get(next.selectedStopId ?? "");
       if (stop) { map.setCenter({ lat: stop.coordinates[1], lng: stop.coordinates[0] }); map.setZoom(9); }
+      else if (!next.selectedStopId) fitWholeRoute();
     },
     updatePlaces(places: readonly GoogleCanvasPlace[]) {
       clearPlaces();
+      const occupied = new Set(occupiedMarkerCoordinates);
       for (const place of places) {
+        const coordinateKey = place.coordinates.join(",");
+        if (occupied.has(coordinateKey)) continue;
+        occupied.add(coordinateKey);
         const marker = new api.Marker({
           map,
           position: { lat: place.coordinates[1], lng: place.coordinates[0] },

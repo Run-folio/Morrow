@@ -90,9 +90,10 @@ test("same-name stops and route legs keep canonical IDs; detail updates do not r
     onNativePoi: () => {}, onEmptyClick: () => {},
     onSelectStop: (id) => stops.push(id), onSelectLeg: (id) => legs.push(id),
   });
-  api.markers[2]!.fire("click");
+  assert.equal(api.markers.length, 2, "coincident canonical stops share one map hit area; the route strip selects each occurrence directly");
+  api.markers[0]!.fire("click");
   api.legLines[0]!.fire("click");
-  assert.deepEqual(stops, ["tokyo-second"]);
+  assert.deepEqual(stops, ["tokyo-first"]);
   assert.deepEqual(legs, ["leg-second-tokyo"]);
   const map = api.lastMap!;
   const originalCenterCalls = map.centerCalls;
@@ -103,6 +104,24 @@ test("same-name stops and route legs keep canonical IDs; detail updates do not r
   assert.equal(map.listenerRemoved, true);
   assert.ok(api.markers.every((marker) => marker.map === null));
   assert.ok(api.legLines.every((line) => line.map === null));
+});
+
+test("Whole route fits canonical stop bounds on entry and after leaving a selected stop", () => {
+  const api = fakeApi();
+  const stops = [
+    { id: "delhi", name: "Delhi", coordinates: [77.2, 28.6] as [number, number] },
+    { id: "agra", name: "Agra", coordinates: [78.0, 27.2] as [number, number] },
+  ];
+  const session = createGoogleTripMapSession(api, {} as HTMLElement, {
+    stops, legs: [], selectedStopId: null,
+    onNativePoi: () => {}, onEmptyClick: () => {}, onSelectStop: () => {}, onSelectLeg: () => {},
+  });
+  assert.equal(api.lastMap!.boundsCalls.length, 1);
+  session.update({ selectedStopId: "agra" });
+  session.update({ selectedStopId: null });
+  assert.equal(api.lastMap!.boundsCalls.length, 2);
+  assert.deepEqual(api.lastMap!.boundsCalls[1], { north: 28.6, south: 27.2, east: 78, west: 77.2 });
+  session.destroy();
 });
 
 test("nearby result markers update without remounting the Google map and emit exact Place IDs", () => {
@@ -180,10 +199,11 @@ function fakeApi() {
   }
   class FakeMap extends FakeEventTarget {
     centerCalls = 0;
+    boundsCalls: unknown[] = [];
     listenerRemoved = false;
     setCenter() { this.centerCalls++; }
     setZoom() {}
-    fitBounds() {}
+    fitBounds(bounds: unknown) { this.boundsCalls.push(bounds); }
     override addListener(name: string, callback: (event: any) => void) {
       const listener = super.addListener(name, callback);
       return { remove: () => { listener.remove(); this.listenerRemoved = true; } };
