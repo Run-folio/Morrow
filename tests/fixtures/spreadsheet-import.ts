@@ -4,6 +4,14 @@ export const simpleDestinationDateCsv = `Destination,Arrival date,Departure date
 Tokyo,2027-04-02,2027-04-06
 Kyoto,2027-04-06,2027-04-10`;
 
+export const philippinesImportCsv = `Stop order,Journey origin,Destination,Arrival date,Departure date,Nights,Arriving from,Journey / transport,Notes
+1,Manila,Manila,2026-12-11,2026-12-13,2,,Arrival route to confirm,Trip starts in Manila
+2,Manila,El Nido,2026-12-13,2026-12-18,5,Manila,Transfer to confirm,
+3,Manila,Bohol,2026-12-18,2026-12-22,4,El Nido,Transfer to confirm,
+4,Manila,Siquijor,2026-12-22,2026-12-27,5,Bohol,Transfer to confirm,
+5,Manila,Cebu City,2026-12-27,2026-12-30,3,Siquijor,Transfer to confirm,
+6,Manila,Manila,2026-12-30,2026-12-31,1,Cebu City,Transfer to confirm,Final Manila occurrence`;
+
 export const richTripCsv = `Destination,Country,Arrival date,Departure date,Nights,Hotel,Transport,From,To,Transport date,Activity,Activity date,Booking reference,Notes,Trip origin
 Tokyo,Japan,2027-04-02,2027-04-06,4,Hotel Niwa,,,,,,,STAY-TYO-1,Quiet room,London
 Tokyo,Japan,2027-04-02,2027-04-06,,,,,,,Senso-ji,2027-04-03,,Morning visit,London

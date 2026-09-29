@@ -537,7 +537,26 @@ export function buildSpreadsheetImportProposal(
   const endDate = dates.length ? [...dates].sort().at(-1) ?? null : null;
   const totalNights = stops.reduce((total, stop) => total + (stop.nights ?? 0), 0);
   if (!stops.length) issues.push({ id: "no-stops", status: "needs-review", title: "No destinations detected", detail: "Map a destination column before continuing." });
-  const blockingIssuePrefixes = ["column-ambiguous", "arrival-date-ambiguous", "arrival-date-invalid", "departure-date-ambiguous", "departure-date-invalid", "invalid-nights", "date-order", "nights-conflict", "incomplete-stop-dates", "no-stops"];
+  for (const [index, stop] of stops.entries()) {
+    if (!stop.arrivalDate || !stop.departureDate || stop.nights === null) continue;
+    if (stop.departureDate <= stop.arrivalDate || stop.nights <= 0) issues.push({
+      id: `stop-interval-${stop.id}`, status: "needs-review", title: `Check dates for ${stop.name}`,
+      detail: "An overnight stop needs a departure after arrival and at least one night.", rowNumber: stop.sourceRows[0],
+    });
+    const next = stops[index + 1];
+    if (next?.arrivalDate && stop.departureDate !== next.arrivalDate) issues.push({
+      id: `stop-continuity-${stop.id}`, status: "needs-review", title: `Check route dates after ${stop.name}`,
+      detail: stop.departureDate < next.arrivalDate ? "The route has an unallocated date between stops." : "The stop dates overlap.", rowNumber: next.sourceRows[0],
+    });
+    if (next?.arrivalDate) for (const activity of activities) {
+      if (activity.stopId !== stop.id || activity.date < stop.departureDate) continue;
+      issues.push({
+        id: `activity-boundary-${activity.id}`, status: "needs-review", title: `Check the date for ${activity.title}`,
+        detail: "An activity on the transfer date needs review before assigning it to the outgoing or incoming stop.", rowNumber: activity.sourceRow,
+      });
+    }
+  }
+  const blockingIssuePrefixes = ["column-ambiguous", "arrival-date-ambiguous", "arrival-date-invalid", "departure-date-ambiguous", "departure-date-invalid", "invalid-nights", "date-order", "nights-conflict", "incomplete-stop-dates", "no-stops", "stop-interval", "stop-continuity", "activity-boundary"];
   const canConfirmStructure = stops.length > 0 && stops.every((stop) => Boolean(stop.arrivalDate && stop.departureDate && stop.nights !== null))
     && !issues.some((issue) => blockingIssuePrefixes.some((prefix) => issue.id.startsWith(prefix)));
 

@@ -37,6 +37,7 @@ import {
   duplicateTripCsv,
   messySpreadsheetCsv,
   partiallyUnmappableCsv,
+  philippinesImportCsv,
   pastedGoogleSheetsTable,
   richTripCsv,
   richTripXlsxFixture,
@@ -72,6 +73,37 @@ const origin: ResolvedImportOrigin = {
   providerId: "fixture-origin",
   coordinates: [-0.1276, 51.5072],
 };
+
+test("Philippines review keeps six dated occurrences and does not book Journey / transport", () => {
+  const proposal = buildSpreadsheetImportProposal(parseDelimitedText(philippinesImportCsv, "Philippines.csv"));
+  assert.deepEqual(proposal.stops.map((stop) => stop.name), ["Manila", "El Nido", "Bohol", "Siquijor", "Cebu City", "Manila"]);
+  assert.equal(new Set(proposal.stops.map((stop) => stop.id)).size, 6);
+  assert.equal(proposal.totalNights, 20);
+  assert.deepEqual([proposal.startDate, proposal.endDate], ["2026-12-11", "2026-12-31"]);
+  assert.equal(proposal.bookings.filter((booking) => booking.type === "transport").length, 0);
+  assert.equal(proposal.canConfirmStructure, true);
+  assert.ok(proposal.ignoredColumns.includes("Journey / transport"));
+});
+
+test("review blocks stop gaps, overlaps and zero-night intervals before confirmation", () => {
+  const changed = [
+    ["2026-12-14,2026-12-18,4", "gap"],
+    ["2026-12-12,2026-12-18,6", "overlap"],
+    ["2026-12-13,2026-12-13,0", "zero nights"],
+  ] as const;
+  for (const [dates, label] of changed) {
+    const csv = philippinesImportCsv.replace("2026-12-13,2026-12-18,5", dates);
+    const proposal = buildSpreadsheetImportProposal(parseDelimitedText(csv));
+    assert.equal(proposal.canConfirmStructure, false, label);
+    assert.ok(proposal.issues.some((issue) => issue.status === "needs-review"), label);
+  }
+});
+
+test("review blocks an outgoing-stop activity on its departure boundary", () => {
+  const csv = `${philippinesImportCsv}\n7,Manila,Manila,2026-12-11,2026-12-13,2,, , ,Museum,2026-12-13`;
+  const proposal = buildSpreadsheetImportProposal(parseDelimitedText(csv.replace("Notes\n", "Notes,Activity,Activity date\n")));
+  assert.equal(proposal.canConfirmStructure, false);
+});
 
 test("A. simple destination/date CSV detects stops, derives nights, and preserves route order", () => {
   const table = parseDelimitedText(simpleDestinationDateCsv, "simple.csv");
