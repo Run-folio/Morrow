@@ -58,7 +58,8 @@ import { formatIsoDate, parseIsoDate } from "@/lib/easyt/trip-lifecycle";
 import { deriveTripDateFacts, formatTripNights, incomingLegForPlanItem, orderedTripPlanItems, stableStopDateRange } from "@/lib/easyt/trip-facts";
 import { conciseMapDescription, formatMapDuration, mapRouteLegsFromTrip, type MapCopilotScope } from "@/lib/easyt/map-spatial-context";
 import type { MorroviaMapInsets, MorroviaMapSurface } from "@/lib/easyt/map-surface-policy";
-import { isEnrichedPlace, type EnrichedPlace, type PlaceEnrichmentCategory } from "@/lib/easyt/place-enrichment";
+import { isEnrichedPlace, isEnrichedReview, type EnrichedPlace, type EnrichedReview, type PlaceEnrichmentCategory } from "@/lib/easyt/place-enrichment";
+import { decodeGooglePhotoAttributions, safeGooglePhotoSourceUrl, type GooglePlacePhotoAttribution } from "@/lib/easyt/google-place-photo";
 import { googleCanvasEligible } from "@/lib/easyt/google-trip-map-adapter";
 import { createLatestGoogleDetailRequest } from "@/lib/easyt/google-place-details-client";
 import { nativeGooglePoiSelection, type WorkspacePlaceSelection } from "@/lib/easyt/map-workspace-selection";
@@ -453,6 +454,8 @@ export function JourneyMapPlannerWorkspace({
   const [selectedMapResult, setSelectedMapResult] = useState<MapResultPlace | null>(null);
   const [workspacePlaceSelection, setWorkspacePlaceSelection] = useState<WorkspacePlaceSelection>({ kind: "none" });
   const [selectedGoogleDetail, setSelectedGoogleDetail] = useState<EnrichedPlace | null>(null);
+  const [selectedGoogleReviews, setSelectedGoogleReviews] = useState<EnrichedReview[]>([]);
+  const [selectedGooglePhoto, setSelectedGooglePhoto] = useState<{ src: string; sourceUrl: string; attributions: GooglePlacePhotoAttribution[] } | null>(null);
   const [googleDetailStatus, setGoogleDetailStatus] = useState<"idle" | "loading" | "unavailable">("idle");
   const [googleNearbyByScope, setGoogleNearbyByScope] = useState<Record<string, GoogleNearbyState>>({});
   const [googleNearbyRetry, setGoogleNearbyRetry] = useState<{ scopeKey: string; sequence: number } | null>(null);
@@ -619,6 +622,31 @@ export function JourneyMapPlannerWorkspace({
     }).then(() => { if (active) setGoogleDetailStatus((status) => status === "loading" ? "unavailable" : status); });
     return () => { active = false; request.clear(); };
   }, [googleCanvasActive, selectedGooglePlaceId, workspacePlaceSelection.kind === "google" ? workspacePlaceSelection.stopId : null, workspacePlaceSelection.kind === "google" ? workspacePlaceSelection.dayId : null, googleDetailRetry]);
+  useEffect(() => {
+    setSelectedGoogleReviews([]);
+    setSelectedGooglePhoto(null);
+    if (!googleCanvasActive || !selectedGoogleDetail || selectedGoogleDetail.providerPlaceId !== selectedGooglePlaceId) return;
+    const controller = new AbortController();
+    const query = new URLSearchParams({ id: selectedGooglePlaceId });
+    let objectUrl: string | null = null;
+    void fetch(`/api/journey-place-enrichment?mode=reviews&${query}`, { cache: "no-store", signal: controller.signal })
+      .then(async (response) => {
+        if (!response.ok) return;
+        const data: unknown = await response.json();
+        const reviews = data && typeof data === "object" ? (data as { reviews?: unknown }).reviews : undefined;
+        if (!controller.signal.aborted && Array.isArray(reviews) && reviews.every(isEnrichedReview)) setSelectedGoogleReviews(reviews.slice(0, 3));
+      }).catch(() => {});
+    void fetch(`/api/journey-place-enrichment?mode=photo&${query}`, { cache: "no-store", signal: controller.signal })
+      .then(async (response) => {
+        const sourceUrl = safeGooglePhotoSourceUrl(response.headers.get("x-morrovia-photo-source"));
+        if (!response.ok || !sourceUrl || !["image/jpeg", "image/png", "image/webp"].includes(response.headers.get("content-type") ?? "")) return;
+        const blob = await response.blob();
+        if (controller.signal.aborted) return;
+        objectUrl = URL.createObjectURL(blob);
+        setSelectedGooglePhoto({ src: objectUrl, sourceUrl, attributions: decodeGooglePhotoAttributions(response.headers.get("x-morrovia-photo-attribution")) });
+      }).catch(() => {});
+    return () => { controller.abort(); if (objectUrl) URL.revokeObjectURL(objectUrl); };
+  }, [googleCanvasActive, selectedGoogleDetail, selectedGooglePlaceId]);
   const selectedRecommendedLeg = customTrip && selectedPlanItem ? incomingLegForPlanItem(customTrip, selectedPlanItem) ?? undefined : undefined;
   const selectedLeg = customTrip && selectedRecommendedLeg ? effectiveTripLeg(customTrip, selectedRecommendedLeg) : undefined;
   const selectedCanonicalTravel = customTrip && selectedLeg ? {
@@ -3016,6 +3044,8 @@ export function JourneyMapPlannerWorkspace({
           selectedPlaceId={workspacePlaceSelection.kind === "google" && workspacePlaceSelection.stopId === selectedTripStop.id ? workspacePlaceSelection.placeId : null}
           detail={selectedGoogleDetail}
           detailStatus={googleDetailStatus}
+          photo={selectedGooglePhoto}
+          reviews={selectedGoogleReviews}
           listScrollTop={googleScopeKey ? googleResultsScrollRef.current[googleScopeKey] ?? 0 : 0}
           onListScroll={(top) => { if (googleScopeKey) googleResultsScrollRef.current[googleScopeKey] = top; }}
           onSelectPlace={selectGoogleDiscoveryPlace}

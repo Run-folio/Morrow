@@ -4,7 +4,8 @@ import { useLayoutEffect, useRef, type ReactNode } from "react";
 import { ArrowUpRight, ChevronLeft } from "lucide-react";
 import { EasyTButton } from "./easyt-controls";
 import { MorroviaSectionStatus } from "./morrovia-loading-states";
-import { priceLevelLabel, type EnrichedPlace, type PlaceEnrichmentCategory } from "@/lib/easyt/place-enrichment";
+import { priceLevelLabel, type EnrichedPlace, type EnrichedReview, type PlaceEnrichmentCategory } from "@/lib/easyt/place-enrichment";
+import type { GooglePlacePhotoAttribution } from "@/lib/easyt/google-place-photo";
 import styles from "./map-place-enrichment.module.css";
 
 type Props = {
@@ -16,6 +17,8 @@ type Props = {
   selectedPlaceId: string | null;
   detail: EnrichedPlace | null;
   detailStatus: "idle" | "loading" | "unavailable";
+  photo: { src: string; sourceUrl: string; attributions: GooglePlacePhotoAttribution[] } | null;
+  reviews: readonly EnrichedReview[];
   listScrollTop: number;
   onListScroll(top: number): void;
   onSelectPlace(placeId: string): void;
@@ -46,12 +49,20 @@ export default function MapPlaceEnrichment(props: Props) {
         {selected.address ? <p>{selected.address}</p> : null}
         {selected.rating !== undefined ? <p>{selected.rating.toFixed(1)} ★{selected.ratingCount !== undefined ? ` · ${selected.ratingCount.toLocaleString()} ratings` : ""}</p> : null}
         {priceLevelLabel(selected.priceLevel) ? <p>Price level: {priceLevelLabel(selected.priceLevel)}</p> : null}
-        {selected.openNow !== undefined ? <p>{selected.openNow ? "Open now" : "Closed now"}</p> : null}
+        {selected.openNow !== undefined ? <p>{selected.openNow ? "Open now (at lookup)" : "Closed now (at lookup)"}</p> : null}
         {selected.hours?.length ? <details><summary>Current opening hours</summary><ul>{selected.hours.map((hour) => <li key={hour}>{hour}</li>)}</ul></details> : null}
         {selected.website ? <a href={selected.website} target="_blank" rel="noopener noreferrer">Website <ArrowUpRight aria-hidden="true" /></a> : null}
         <a href={selected.mapsUrl} target="_blank" rel="noopener noreferrer">Open in Google Maps <ArrowUpRight aria-hidden="true" /></a>
         {selected.attributions?.map((item) => <small key={item.name}>{item.url ? <a href={item.url} target="_blank" rel="noopener noreferrer">{item.name}</a> : item.name}</small>)}
         {props.actions}
+        {props.photo ? <figure className={styles.photoMedia}>
+          <img src={props.photo.src} alt={`Provider photo of ${selected.name}`} />
+          <figcaption>Photo: {props.photo.attributions.length ? props.photo.attributions.map((credit, index) => <span key={`${credit.displayName}-${index}`}>{index ? " · " : null}{credit.photoUri ? <img src={credit.photoUri} alt="" /> : null}{credit.uri ? <a href={credit.uri} target="_blank" rel="noopener noreferrer">{credit.displayName}</a> : credit.displayName}</span>) : "Google Maps"} · <a href={props.photo.sourceUrl} target="_blank" rel="noopener noreferrer">View source photo</a></figcaption>
+        </figure> : null}
+        {props.reviews.length ? <details className={styles.reviews}><summary>{props.reviews.length} {props.reviews.length === 1 ? "review" : "reviews"} from Google Maps</summary><ul>{props.reviews.map((review) => <li key={review.sourceUrl}>
+          <p>{review.text}</p>
+          <p className={styles.reviewAuthor}>{review.author.avatarUrl ? <img src={review.author.avatarUrl} alt="" /> : null}{review.author.url ? <a href={review.author.url} target="_blank" rel="noopener noreferrer">{review.author.name}</a> : review.author.name}{review.rating !== undefined ? ` · ${review.rating} ★` : null} · <a href={review.sourceUrl} target="_blank" rel="noopener noreferrer">View review on Google Maps</a></p>
+        </li>)}</ul></details> : null}
       </> : null}
       {props.detailStatus === "loading" ? <p role="status">Loading place details…</p> : null}
       {props.detailStatus === "unavailable" ? <p role="status">Couldn't load place details. <EasyTButton variant="quiet" size="small" onClick={props.onRetry}>Try again</EasyTButton></p> : null}

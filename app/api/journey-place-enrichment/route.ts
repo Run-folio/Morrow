@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireEasyTOwner } from "@/lib/easyt/owner";
 import { googlePlaceEnrichmentProvider } from "@/lib/easyt/google-place-enrichment.server";
 import { placeEnrichmentEnabled, validPlaceEnrichmentQuery } from "@/lib/easyt/place-enrichment";
+import { encodeGooglePhotoAttributions } from "@/lib/easyt/google-place-photo";
 
 export const dynamic = "force-dynamic";
 const noStore = { "Cache-Control": "private, no-store" };
@@ -33,6 +34,19 @@ export async function GET(request: NextRequest) {
       if (!/^[a-zA-Z0-9_-]{1,180}$/.test(id)) return NextResponse.json({ error: "invalid_place" }, { status: 400, headers: noStore });
       const place = await provider.details(id);
       return place ? NextResponse.json({ place }, { headers: noStore }) : unavailable();
+    }
+    if (mode === "reviews" || mode === "photo") {
+      const id = request.nextUrl.searchParams.get("id") ?? "";
+      if (!/^[a-zA-Z0-9_-]{1,180}$/.test(id)) return NextResponse.json({ error: "invalid_place" }, { status: 400, headers: noStore });
+      if (mode === "reviews") return NextResponse.json({ reviews: await provider.reviews(id) }, { headers: noStore });
+      const photo = await provider.photo(id);
+      return photo ? new NextResponse(photo.body, { headers: {
+        ...noStore,
+        "Content-Type": photo.contentType,
+        "X-Content-Type-Options": "nosniff",
+        "X-Morrovia-Photo-Source": photo.sourceUrl,
+        ...(photo.attributions.length ? { "X-Morrovia-Photo-Attribution": encodeGooglePhotoAttributions(photo.attributions) } : {}),
+      } }) : unavailable();
     }
     return NextResponse.json({ error: "invalid_mode" }, { status: 400, headers: noStore });
   } catch {

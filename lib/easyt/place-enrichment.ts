@@ -16,6 +16,12 @@ export type EnrichedPlace = {
   hasPhoto?: true;
   attributions?: Array<{ name: string; url?: string }>;
 };
+export type EnrichedReview = {
+  text: string;
+  rating?: number;
+  sourceUrl: string;
+  author: { name: string; url?: string; avatarUrl?: string };
+};
 
 const types: Record<PlaceEnrichmentCategory, string[]> = {
   see: ["tourist_attraction", "museum", "art_gallery", "park"],
@@ -53,6 +59,31 @@ function safeUrl(value: unknown, hosts?: readonly string[]): string | undefined 
     if (url.protocol !== "https:" || (hosts && !hosts.some((host) => url.hostname === host || url.hostname.endsWith(`.${host}`)))) return undefined;
     return url.toString();
   } catch { return undefined; }
+}
+
+/** Reviews are transient Google content and must retain their own source and author. */
+export function normalizeEnrichedReview(value: unknown): EnrichedReview | null {
+  const review = record(value);
+  const author = record(review.authorAttribution);
+  const sourceUrl = safeUrl(review.googleMapsUri, ["google.com"]);
+  const body = text(record(review.text).text, 600);
+  const authorName = text(author.displayName, 100);
+  if (!sourceUrl || !body || !authorName) return null;
+  const result: EnrichedReview = { text: body, sourceUrl, author: { name: authorName } };
+  if (typeof review.rating === "number" && Number.isFinite(review.rating) && review.rating >= 1 && review.rating <= 5) result.rating = review.rating;
+  const authorUrl = safeUrl(author.uri, ["google.com"]);
+  const avatarUrl = safeUrl(author.photoUri, ["googleusercontent.com"]);
+  if (authorUrl) result.author.url = authorUrl;
+  if (avatarUrl) result.author.avatarUrl = avatarUrl;
+  return result;
+}
+
+export function isEnrichedReview(value: unknown): value is EnrichedReview {
+  const review = record(value);
+  const author = record(review.author);
+  return typeof review.text === "string" && Boolean(review.text.trim())
+    && typeof author.name === "string" && Boolean(author.name.trim())
+    && Boolean(safeUrl(review.sourceUrl, ["google.com"]));
 }
 
 export function isEnrichedPlace(value: unknown): value is EnrichedPlace {

@@ -1,6 +1,7 @@
 export type GooglePlacePhotoAttribution = {
   displayName: string;
   uri?: string;
+  photoUri?: string;
 };
 
 const googlePlaceIdPattern = /^[A-Za-z0-9_-]{10,255}$/;
@@ -31,6 +32,17 @@ export function exactGooglePhotoResource(placeId: string, value: unknown) {
     : null;
 }
 
+/** A selected photo needs its own Google Maps source link, not merely a place link. */
+export function safeGooglePhotoSourceUrl(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+  try {
+    const url = new URL(value);
+    return url.protocol === "https:" && (url.hostname === "google.com" || url.hostname.endsWith(".google.com"))
+      ? url.toString()
+      : null;
+  } catch { return null; }
+}
+
 /**
  * A fallback mapped place may request Google media only after the server has
  * resolved the same normalized name and, when both sources provide it, exact
@@ -57,11 +69,12 @@ export function safeGooglePhotoAttributions(value: unknown): GooglePlacePhotoAtt
   if (!Array.isArray(value)) return [];
   return value.slice(0, 4).flatMap((entry) => {
     if (!entry || typeof entry !== "object") return [];
-    const candidate = entry as { displayName?: unknown; uri?: unknown };
+    const candidate = entry as { displayName?: unknown; uri?: unknown; photoUri?: unknown };
     const displayName = typeof candidate.displayName === "string" ? candidate.displayName.trim().slice(0, 160) : "";
     if (!displayName) return [];
-    const uri = typeof candidate.uri === "string" && /^https:\/\//.test(candidate.uri) ? candidate.uri : undefined;
-    return [{ displayName, ...(uri ? { uri } : {}) }];
+    const uri = safeGooglePhotoSourceUrl(candidate.uri) ?? undefined;
+    const photoUri = typeof candidate.photoUri === "string" && /^https:\/\/([a-z0-9-]+\.)?googleusercontent\.com\//i.test(candidate.photoUri) ? candidate.photoUri : undefined;
+    return [{ displayName, ...(uri ? { uri } : {}), ...(photoUri ? { photoUri } : {}) }];
   });
 }
 

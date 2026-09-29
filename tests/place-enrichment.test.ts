@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { isEnrichedPlace, normalizeEnrichedPlace, placeEnrichmentEnabled, placeEnrichmentTypes, priceLevelLabel, validPlaceEnrichmentQuery } from "../lib/easyt/place-enrichment.ts";
+import { isEnrichedPlace, isEnrichedReview, normalizeEnrichedPlace, normalizeEnrichedReview, placeEnrichmentEnabled, placeEnrichmentTypes, priceLevelLabel, validPlaceEnrichmentQuery } from "../lib/easyt/place-enrichment.ts";
+import { safeGooglePhotoSourceUrl } from "../lib/easyt/google-place-photo.ts";
 
 const rawPlace = {
   id: "ChIJtokyo-1",
@@ -59,4 +60,14 @@ test("price levels become useful copy only when recognized", () => {
   assert.equal(priceLevelLabel("PRICE_LEVEL_MODERATE"), "Moderate");
   assert.equal(priceLevelLabel("PRICE_LEVEL_UNSPECIFIED"), undefined);
   assert.equal(priceLevelLabel("unexpected"), undefined);
+});
+
+test("review text, author and source are bounded; unsafe outbound URLs are dropped", () => {
+  const normalized = normalizeEnrichedReview({ text: { text: "A useful visit" }, rating: 5, googleMapsUri: "https://www.google.com/maps/reviews/1", authorAttribution: { displayName: "A traveller", uri: "https://www.google.com/maps/contrib/1", photoUri: "https://lh3.googleusercontent.com/avatar" } });
+  assert.equal(isEnrichedReview(normalized), true);
+  assert.equal(normalized?.author.name, "A traveller");
+  assert.equal(normalizeEnrichedReview({ text: { text: "Unsafe" }, googleMapsUri: "https://attacker.test/review", authorAttribution: { displayName: "A traveller" } }), null);
+  assert.equal(normalizeEnrichedReview({ text: { text: "Unsafe" }, googleMapsUri: "javascript:alert(1)", authorAttribution: { displayName: "A traveller" } }), null);
+  assert.equal(safeGooglePhotoSourceUrl("https://www.google.com/maps/place/photo"), "https://www.google.com/maps/place/photo");
+  assert.equal(safeGooglePhotoSourceUrl("https://attacker.test/photo"), null);
 });
