@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { buildSpreadsheetImportProposal, canonicalTripFromSpreadsheetProposal, parseDelimitedText } from "../lib/easyt/spreadsheet-import.ts";
 import { buildImportedDatedDays } from "../lib/easyt/imported-trip-hydration.ts";
+import { tripRouteDisplayLabel } from "../lib/easyt/trip-legs.ts";
 import { philippinesImportCsv } from "./fixtures/spreadsheet-import.ts";
 
 const proposal = buildSpreadsheetImportProposal(parseDelimitedText(philippinesImportCsv));
@@ -36,4 +37,14 @@ test("pure imported projection creates 21 stable dated days with final Manila de
   assert.equal(first.planItems[20].stopId, trip.stops[5].id);
   assert.ok(first.planItems.every((item) => item.type === "open" && item.notes.length === 0));
   assert.deepEqual(first, second);
+});
+
+test("shared route label hides only equivalent origin and first stop", () => {
+  assert.equal(tripRouteDisplayLabel(trip), "Manila → El Nido → Bohol → Siquijor → Cebu City → Manila");
+  assert.equal(trip.stops.length, 6);
+  assert.notEqual(trip.stops[0].id, trip.stops[5].id);
+  const distinctOrigin = { ...trip, brief: { ...trip.brief, originCanonicalPlaceId: "place:other-manila", originCoordinates: [121.5, 14.6] as [number, number] } };
+  assert.equal(tripRouteDisplayLabel(distinctOrigin), "Manila → Manila → El Nido → Bohol → Siquijor → Cebu City → Manila");
+  const adjacentRepeat = { ...trip, stops: [trip.stops[0], { ...trip.stops[0], id: "adjacent-repeat", order: 0.5 }, ...trip.stops.slice(1)] };
+  assert.equal(tripRouteDisplayLabel(adjacentRepeat), "Manila → Manila → El Nido → Bohol → Siquijor → Cebu City → Manila");
 });

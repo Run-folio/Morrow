@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import type { EasyTTrip } from "@/lib/easyt/trip";
 import { deriveTripDateFacts } from "@/lib/easyt/trip-facts";
+import { tripRouteDisplayLabel } from "@/lib/easyt/trip-legs";
 import { routeImageCredit } from "@/lib/easyt/route-images";
 import { overviewStopImage, type OverviewPlaceImage } from "@/lib/easyt/trip-overview-imagery";
 import { TripShellCanonicalMutationProvider, TripShellChrome, TripShellIdentityAndActions, TripShellImage, TripShellNavigation, TripShellTripProvider } from "./trip-shell-client";
@@ -17,7 +18,7 @@ export function tripShellDuration(startDate: string, endDate: string) {
 }
 
 export default function TripShell({ trip, children, deviceOnlyNotice, cacheTrip = true, orientationAutoStart = true, workspaceGuideVersionSeen = 0, feedbackStoryEligible = false }: { trip: EasyTTrip; children: ReactNode; deviceOnlyNotice?: ReactNode; cacheTrip?: boolean; orientationAutoStart?: boolean; workspaceGuideVersionSeen?: number; feedbackStoryEligible?: boolean }) {
-  const routeLabel = [trip.brief.origin, ...trip.stops.map((stop) => stop.name)].filter(Boolean).join(" → ") || "Route to confirm";
+  const routeLabel = tripRouteDisplayLabel(trip);
   const imagedDay = trip.planItems.find((item) => Boolean(item.image));
   const image = imagedDay?.image ?? null;
   const reviewed = image ? routeImageCredit(image) : null;

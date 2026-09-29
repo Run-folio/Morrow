@@ -30,6 +30,7 @@ import { MorroviaConfirmationDialog, MorroviaFormDialog, MorroviaSaveStatus, Mor
 import { useWorkspaceOrientationBlocker, useWorkspaceOrientationTarget, WorkspaceOrientationLauncher } from "./workspace-orientation";
 import { renameTripIdentity, tripCustomTitle, tripDisplayTitle } from "@/lib/easyt/trip-display";
 import { deriveTripDateFacts } from "@/lib/easyt/trip-facts";
+import { tripRouteDisplayLabel } from "@/lib/easyt/trip-legs";
 import { personalRouteHref } from "@/lib/easyt/personal-route";
 import { overnightAccommodationStops } from "@/lib/easyt/accommodation";
 import type { OverviewPlaceImage } from "@/lib/easyt/trip-overview-imagery";
@@ -57,7 +58,7 @@ export function useOptionalTripShellMutation() {
 export function TripShellIdentityAndActions({ mobilePhoto }: { mobilePhoto: OverviewPlaceImage | null }) {
   const mutation = useTripShellMutation();
   const trip = mutation.trip;
-  const routeLabel = [trip.brief.origin, ...trip.stops.map((stop) => stop.name)].filter(Boolean).join(" → ") || "Route to confirm";
+  const routeLabel = tripRouteDisplayLabel(trip);
   const dateFacts = deriveTripDateFacts({ startDate: trip.startDate, endDate: trip.endDate });
   const duration = dateFacts.durationDays;
   const overnightPlaceCount = overnightAccommodationStops(trip).length;
