@@ -48,7 +48,7 @@ test("native POI absent from any nearby list selects its exact Place ID and supp
   const empty: Array<[number, number]> = [];
   const session = createGoogleTripMapSession(api, {} as HTMLElement, {
     stops: [], legs: [], selectedStopId: null,
-    onNativePoi: (id) => selected.push(id),
+    onNativePoi: (id) => { selected.push(id); },
     onEmptyClick: (point) => empty.push(point),
     onSelectStop: () => {}, onSelectLeg: () => {},
   });
@@ -59,6 +59,19 @@ test("native POI absent from any nearby list selects its exact Place ID and supp
   api.lastMap!.fire("click", { latLng: { lat: () => 35.7, lng: () => 139.7 }, stop: () => stopped++ });
   assert.deepEqual(empty, [[139.7, 35.7]]);
   assert.equal(stopped, 1);
+  session.destroy();
+});
+
+test("a native POI keeps its Google popup when no canonical stop can handle it", () => {
+  const api = fakeApi();
+  const session = createGoogleTripMapSession(api, {} as HTMLElement, {
+    stops: [], legs: [], selectedStopId: null,
+    onNativePoi: () => false,
+    onEmptyClick: () => {}, onSelectStop: () => {}, onSelectLeg: () => {},
+  });
+  let stopped = 0;
+  api.lastMap!.fire("click", { placeId: "ChIJunhandled", stop: () => stopped++ });
+  assert.equal(stopped, 0);
   session.destroy();
 });
 
@@ -90,6 +103,24 @@ test("same-name stops and route legs keep canonical IDs; detail updates do not r
   assert.equal(map.listenerRemoved, true);
   assert.ok(api.markers.every((marker) => marker.map === null));
   assert.ok(api.legLines.every((line) => line.map === null));
+});
+
+test("nearby result markers update without remounting the Google map and emit exact Place IDs", () => {
+  const api = fakeApi();
+  const picked: string[] = [];
+  const session = createGoogleTripMapSession(api, {} as HTMLElement, {
+    stops: [{ id: "agra", name: "Agra", coordinates: [78.008, 27.176] }],
+    legs: [], selectedStopId: "agra",
+    onNativePoi: () => {}, onEmptyClick: () => {}, onSelectStop: () => {}, onSelectLeg: () => {},
+    onSelectPlace: (id) => picked.push(id),
+  });
+  session.updatePlaces([{ id: "ChIJnearby-one", name: "Nearby one", coordinates: [78.01, 27.18] }]);
+  api.markers[1]!.fire("click");
+  assert.deepEqual(picked, ["ChIJnearby-one"]);
+  assert.equal(api.mapCreations, 1);
+  session.updatePlaces([]);
+  assert.equal(api.markers[1]!.map, null);
+  session.destroy();
 });
 
 test("native POI selection retains canonical occurrence and intended day", () => {

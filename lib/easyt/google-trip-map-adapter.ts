@@ -20,14 +20,16 @@ export type GoogleTripMapApi = {
 };
 export type GoogleCanvasStop = { id: string; name: string; coordinates: [number, number] | null };
 export type GoogleCanvasLeg = { id: string; fromStopId: string; toStopId: string };
+export type GoogleCanvasPlace = { id: string; name: string; coordinates: [number, number] };
 export type GoogleTripMapOptions = {
   stops: readonly GoogleCanvasStop[];
   legs: readonly GoogleCanvasLeg[];
   selectedStopId: string | null;
-  onNativePoi(placeId: string): void;
+  onNativePoi(placeId: string): boolean | void;
   onEmptyClick(point: [number, number]): void;
   onSelectStop(stopId: string): void;
   onSelectLeg(legId: string): void;
+  onSelectPlace?(placeId: string): void;
   mapId?: string;
 };
 
@@ -94,8 +96,8 @@ export function createGoogleTripMapSession(api: GoogleTripMapApi, element: HTMLE
   });
   const click = map.addListener("click", (event) => {
     if (typeof event.placeId === "string" && event.placeId.trim()) {
-      event.stop?.();
-      options.onNativePoi(event.placeId);
+      const handled = options.onNativePoi(event.placeId);
+      if (handled !== false) event.stop?.();
     } else if (event.latLng) {
       options.onEmptyClick([event.latLng.lng(), event.latLng.lat()]);
     }
@@ -122,6 +124,14 @@ export function createGoogleTripMapSession(api: GoogleTripMapApi, element: HTMLE
     listeners.push(line.addListener("click", () => options.onSelectLeg(leg.id)));
   }
   let selectedStopId = options.selectedStopId;
+  let placeOverlays: OverlayObject[] = [];
+  let placeListeners: Listener[] = [];
+  const clearPlaces = () => {
+    for (const listener of placeListeners) listener.remove();
+    for (const overlay of placeOverlays) overlay.setMap(null);
+    placeListeners = [];
+    placeOverlays = [];
+  };
   return {
     update(next: { selectedStopId: string | null }) {
       if (next.selectedStopId === selectedStopId) return;
@@ -129,7 +139,21 @@ export function createGoogleTripMapSession(api: GoogleTripMapApi, element: HTMLE
       const stop = byId.get(next.selectedStopId ?? "");
       if (stop) { map.setCenter({ lat: stop.coordinates[1], lng: stop.coordinates[0] }); map.setZoom(9); }
     },
+    updatePlaces(places: readonly GoogleCanvasPlace[]) {
+      clearPlaces();
+      for (const place of places) {
+        const marker = new api.Marker({
+          map,
+          position: { lat: place.coordinates[1], lng: place.coordinates[0] },
+          title: place.name,
+          icon: { path: 0, scale: 7, fillColor: "#e6006e", fillOpacity: 1, strokeColor: "#ffffff", strokeWeight: 2 },
+        });
+        placeOverlays.push(marker);
+        placeListeners.push(marker.addListener("click", () => options.onSelectPlace?.(place.id)));
+      }
+    },
     destroy() {
+      clearPlaces();
       for (const listener of listeners) listener.remove();
       for (const overlay of overlays) overlay.setMap(null);
     },

@@ -1201,4 +1201,4 @@ button.mapPlanAgendaRow{cursor:pointer;border-radius:var(--morrovia-control-radi
 .mapContextHeading>button,.mapExternalActions a,.mapContextActions button{transition:color .18s,background .18s,border-color .18s,box-shadow .18s,transform .12s}
 .mapContextHeading>button:active,.mapExternalActions a:active,.mapContextActions button:active{transform:translateY(1px)}
 .enrichmentToggle{align-self:flex-start;max-width:100%;margin:8px 0 2px}
-.enrichmentPanel{flex:1;min-height:0;min-width:0;overflow-y:auto;overscroll-behavior:contain}
+.enrichmentPanel{display:flex;flex:1;min-height:0;min-width:0;overflow:hidden}
