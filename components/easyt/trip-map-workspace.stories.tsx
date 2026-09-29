@@ -951,11 +951,25 @@ export const MapPlanSingleDayStop: Story = {
 const enrichedPlaces = [
   { providerPlaceId: "ChIJdelhiFixture1", name: "Old Delhi landmark (fixture)", coordinates: [77.241, 28.656] as [number, number], category: "Historic place", address: "Old Delhi", mapsUrl: "https://www.google.com/maps/search/?api=1&query_place_id=ChIJdelhiFixture1", rating: 4.5, ratingCount: 2300, openNow: true, hours: ["Monday: Closed", "Tuesday: 9:30 AM–5:00 PM"] },
   { providerPlaceId: "ChIJdelhiFixture2", name: "Delhi garden (fixture)", coordinates: [77.219, 28.593] as [number, number], category: "Garden", address: "New Delhi", mapsUrl: "https://www.google.com/maps/search/?api=1&query_place_id=ChIJdelhiFixture2" },
+  { providerPlaceId: "ChIJagraFixture1", name: "Agra Fort (fixture)", coordinates: [78.021, 27.179] as [number, number], category: "Historic place", address: "Agra", mapsUrl: "https://www.google.com/maps/search/?api=1&query_place_id=ChIJagraFixture1" },
+  { providerPlaceId: "ChIJjaipurFixture1", name: "Jaipur city palace (fixture)", coordinates: [75.823, 26.925] as [number, number], category: "Museum", address: "Jaipur", mapsUrl: "https://www.google.com/maps/search/?api=1&query_place_id=ChIJjaipurFixture1" },
+  { providerPlaceId: "ChIJnative-story-fixture", name: "Native POI outside Nearby (fixture)", coordinates: [77.235, 28.65] as [number, number], category: "Historic place", address: "Delhi", mapsUrl: "https://www.google.com/maps/search/?api=1&query_place_id=ChIJnative-story-fixture" },
 ];
+const fixturePlacesByScope = {
+  "delhi:see": enrichedPlaces.slice(0, 2),
+  "agra:see": [enrichedPlaces[2]!],
+  "jaipur:see": [enrichedPlaces[3]!],
+  "delhi:eat": [{ providerPlaceId: "ChIJkarimsFixture", name: "Karim's (fixture)", coordinates: [77.233, 28.65] as [number, number], category: "Restaurant", address: "Old Delhi", mapsUrl: "https://www.google.com/maps/search/?api=1&query_place_id=ChIJkarimsFixture" }],
+};
+const googleFixture = {
+  sdkLoader: loadFixtureGoogleCanvas,
+  placesByScope: fixturePlacesByScope,
+  detailsById: Object.fromEntries([...enrichedPlaces, ...fixturePlacesByScope["delhi:eat"]].map((place) => [place.providerPlaceId, place])),
+};
 
 export const GooglePlacesEnrichmentFixture: Story = {
   ...GoldenTriangle,
-  args: { storyTrip: goldenTriangleTrip, storyState: { mapMode: "detail", shapeDayTab: "plan", enrichmentOpen: true, enrichmentPlaces: enrichedPlaces } },
+  args: { storyTrip: goldenTriangleTrip, storyState: { mapMode: "detail", shapeDayTab: "see", mobileShapeDayOpen: true, googleFixture } },
 };
 
 export const GooglePlacesEnrichmentDetailFixture: Story = {
@@ -968,13 +982,25 @@ export const GooglePlacesEnrichmentDetailFixture: Story = {
 
 export const GooglePlacesEnrichmentMobile390: Story = {
   ...GooglePlacesEnrichmentFixture,
-  args: { storyTrip: goldenTriangleTrip, storyState: { mapMode: "detail", shapeDayTab: "plan", mobileShapeDayOpen: true, enrichmentOpen: true, enrichmentPlaces: enrichedPlaces } },
+  args: { storyTrip: goldenTriangleTrip, storyState: { mapMode: "detail", shapeDayTab: "see", mobileShapeDayOpen: true, mobileDrawerOpen: true, googleFixture } },
   globals: { viewport: { value: "morrovia390", isRotated: false } },
 };
 
 export const GooglePlacesEnrichmentUnavailable: Story = {
   ...GooglePlacesEnrichmentFixture,
-  args: { storyTrip: goldenTriangleTrip, storyState: { mapMode: "detail", enrichmentOpen: true, enrichmentPlaces: [], enrichmentUnavailable: true } },
+  args: { storyTrip: goldenTriangleTrip, storyState: { mapMode: "detail", shapeDayTab: "see", googleFixture: { ...googleFixture, unavailableScopes: ["agra:see"] } } },
+  parameters: { nextjs: { appDirectory: true, navigation: { pathname: "/journey/delhi-agra-jaipur/map", query: { stop: "agra", mode: "see", day: "5" } } } },
+};
+
+export const GooglePlacesEnrichmentNoMedia: Story = {
+  ...GooglePlacesEnrichmentFixture,
+  parameters: { nextjs: { appDirectory: true, navigation: { pathname: "/journey/delhi-agra-jaipur/map", query: { stop: "agra", mode: "see", day: "5" } } } },
+  play: async ({ canvasElement }) => { Array.from(canvasElement.querySelectorAll<HTMLButtonElement>('[aria-label^="Google Maps places"] button')).find((button) => button.textContent?.includes("Agra Fort"))?.click(); },
+};
+
+export const GooglePlacesEnrichmentJaipur: Story = {
+  ...GooglePlacesEnrichmentFixture,
+  parameters: { nextjs: { appDirectory: true, navigation: { pathname: "/journey/delhi-agra-jaipur/map", query: { stop: "jaipur", mode: "see", day: "7" } } } },
 };
 
 // Provider boundary fixture: the production canvas and event contract render without a live key.
@@ -1020,7 +1046,7 @@ const googleCanvasFixtureApi = (() => {
   }
   return { Map: FixtureMap, Marker: FixtureMarker, Polyline: FixtureLine } as unknown as GoogleTripMapApi;
 })();
-const loadFixtureGoogleCanvas = async () => googleCanvasFixtureApi;
+async function loadFixtureGoogleCanvas() { return googleCanvasFixtureApi; }
 
 function GoogleCanvasAdapterStory() {
   const [selection, setSelection] = useState("Choose a canonical stop or native POI");

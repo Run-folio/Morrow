@@ -36,18 +36,27 @@ type Props = {
 /** Controlled projection. The Map workspace owns category, scoped results, selection and requests. */
 export default function MapPlaceEnrichment(props: Props) {
   const panelRef = useRef<HTMLElement>(null);
+  const backFocusPlaceIdRef = useRef<string | null>(null);
   const selected = props.selectedPlaceId
     ? props.detail ?? props.places.find((place) => place.providerPlaceId === props.selectedPlaceId) ?? null
     : null;
   useLayoutEffect(() => {
-    if (!props.selectedPlaceId && panelRef.current) panelRef.current.scrollTop = props.listScrollTop;
+    if (!props.selectedPlaceId && panelRef.current) {
+      panelRef.current.scrollTop = props.listScrollTop;
+      if (backFocusPlaceIdRef.current) {
+        const button = [...panelRef.current.querySelectorAll<HTMLButtonElement>("button[data-place-id]")]
+          .find((candidate) => candidate.dataset.placeId === backFocusPlaceIdRef.current);
+        (button ?? panelRef.current.querySelector<HTMLButtonElement>("button[data-place-id]"))?.focus();
+        backFocusPlaceIdRef.current = null;
+      }
+    }
   }, [props.selectedPlaceId, props.listScrollTop]);
 
   return <section ref={panelRef} className={styles.panel} aria-label={`Google Maps places near ${props.destination}`}
     onScroll={(event) => { if (!props.selectedPlaceId) props.onListScroll(event.currentTarget.scrollTop); }}>
     <div className={styles.source}>Places near {props.destination} <span>Google Maps</span></div>
     {props.selectedPlaceId ? <div className={styles.detail}>
-      <EasyTButton variant="quiet" size="small" icon={ChevronLeft} onClick={props.onBackToPlaces}>Back to places</EasyTButton>
+      <EasyTButton variant="quiet" size="small" icon={ChevronLeft} onClick={() => { backFocusPlaceIdRef.current = props.selectedPlaceId; props.onBackToPlaces(); }}>Back to places</EasyTButton>
       <p className={styles.context}>{props.contextLabel}</p>
       {selected ? <>
         <h3>{selected.name}</h3>
@@ -80,7 +89,7 @@ export default function MapPlaceEnrichment(props: Props) {
       {props.status === "loading" ? <MorroviaSectionStatus state="loading" title="Finding nearby places" detail="Checking this destination now." /> : null}
       {props.status === "unavailable" ? <p role="status">{props.failure === "offline" ? "You're offline. Nearby places could not be refreshed." : props.failure === "quota" ? "Google Maps is temporarily at its request limit." : props.failure === "configuration" ? "Google Maps places are not configured for this session." : "Couldn't load places."}{props.places.length ? " Previous places remain visible below." : ""} <EasyTButton variant="quiet" size="small" onClick={props.onRetry}>Try again</EasyTButton></p> : null}
       {props.status === "empty" ? <p role="status">No places found for this category.</p> : null}
-      {props.places.length ? <ul className={styles.results}>{props.places.map((place) => <li key={place.providerPlaceId}><EasyTButton variant="quiet" fullWidth className={styles.resultButton} onClick={() => props.onSelectPlace(place.providerPlaceId)}><strong>{place.name}</strong>{place.category ? <span>{place.category}</span> : null}{place.address ? <small>{place.address}</small> : null}</EasyTButton></li>)}</ul> : null}
+      {props.places.length ? <ul className={styles.results}>{props.places.map((place) => <li key={place.providerPlaceId}><EasyTButton variant="quiet" fullWidth className={styles.resultButton} data-place-id={place.providerPlaceId} onClick={() => props.onSelectPlace(place.providerPlaceId)}><strong>{place.name}</strong>{place.category ? <span>{place.category}</span> : null}{place.address ? <small>{place.address}</small> : null}</EasyTButton></li>)}</ul> : null}
     </>}
   </section>;
 }

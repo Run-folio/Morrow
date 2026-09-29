@@ -62,7 +62,7 @@ import { conciseMapDescription, formatMapDuration, mapRouteLegsFromTrip, type Ma
 import type { MorroviaMapInsets, MorroviaMapSurface } from "@/lib/easyt/map-surface-policy";
 import { isEnrichedPlace, isEnrichedReview, type EnrichedPlace, type EnrichedReview, type PlaceEnrichmentCategory } from "@/lib/easyt/place-enrichment";
 import { decodeGooglePhotoAttributions, safeGooglePhotoSourceUrl, type GooglePlacePhotoAttribution } from "@/lib/easyt/google-place-photo";
-import { googleCanvasEligible } from "@/lib/easyt/google-trip-map-adapter";
+import { googleCanvasEligible, type GoogleTripMapApi } from "@/lib/easyt/google-trip-map-adapter";
 import { createLatestGoogleDetailRequest } from "@/lib/easyt/google-place-details-client";
 import { nativeGooglePoiSelection, type WorkspacePlaceSelection } from "@/lib/easyt/map-workspace-selection";
 import { googleDiscoveryScopeKey, googlePlaceSelectionForScope } from "@/lib/easyt/google-map-workspace-selection";
@@ -360,6 +360,13 @@ export type JourneyMapPlannerWorkspaceProps = {
     enrichmentOpen?: boolean;
     enrichmentPlaces?: EnrichedPlace[];
     enrichmentUnavailable?: boolean;
+    /** Storybook-only provider boundary; never used by the production route. */
+    googleFixture?: {
+      sdkLoader: (key: string) => Promise<GoogleTripMapApi>;
+      placesByScope: Record<string, EnrichedPlace[]>;
+      detailsById: Record<string, EnrichedPlace>;
+      unavailableScopes?: string[];
+    };
   };
 };
 
@@ -592,7 +599,7 @@ export function JourneyMapPlannerWorkspace({
   }, [selectedDay.id, selectedPlanItem?.stopId]);
   const selectedTripStop = customTrip?.stops.find((stop) => stop.id === (mapDetailScope === "stop" ? selectedMapStopId : null))
     ?? customTrip?.stops.find((stop) => stop.id === selectedPlanItem?.stopId);
-  const googleCanvasActive = googleCanvasEligible({
+  const googleCanvasActive = Boolean(storyState?.googleFixture) || googleCanvasEligible({
     flag: enrichmentAvailable,
     authenticated: Boolean(authenticatedOwnerId),
     expanded: isExpandedMap,
@@ -629,6 +636,13 @@ export function JourneyMapPlannerWorkspace({
       setGoogleDetailStatus("idle");
       return;
     }
+    if (storyState?.googleFixture) {
+      const detail = storyState.googleFixture.detailsById[selectedGooglePlaceId];
+      setSelectedGoogleDetail(detail ?? null);
+      setGoogleDetailStatus(detail ? "idle" : "unavailable");
+      setGoogleReferenceUnavailable(detail ? null : "not-found");
+      return;
+    }
     setSelectedGoogleDetail(null);
     setGoogleDetailStatus("loading");
     setGoogleReferenceUnavailable(null);
@@ -652,6 +666,7 @@ export function JourneyMapPlannerWorkspace({
   useEffect(() => {
     setSelectedGoogleReviews([]);
     setSelectedGooglePhoto(null);
+    if (storyState?.googleFixture) return;
     if (!googleCanvasActive || !selectedGoogleDetail || selectedGoogleDetail.providerPlaceId !== selectedGooglePlaceId || googleMediaRequestedPlaceId !== selectedGooglePlaceId) return;
     const controller = new AbortController();
     const query = new URLSearchParams({ id: selectedGooglePlaceId });
@@ -703,6 +718,13 @@ export function JourneyMapPlannerWorkspace({
     : selected.coordinates;
   useEffect(() => {
     if (!googleCanvasActive || !googleScopeKey || !googleDiscoveryCategory || !selectedBaseCoordinates) return;
+    if (storyState?.googleFixture) {
+      const places = storyState.googleFixture.placesByScope[googleScopeKey] ?? [];
+      setGoogleNearbyByScope((current) => ({ ...current, [googleScopeKey]: storyState.googleFixture!.unavailableScopes?.includes(googleScopeKey)
+        ? { places, status: "unavailable", failure: "provider" }
+        : { places, status: places.length ? "ready" : "empty" } }));
+      return;
+    }
     const cached = googleNearbyByScope[googleScopeKey];
     const retrySequence = googleNearbyRetry?.scopeKey === googleScopeKey ? googleNearbyRetry.sequence : 0;
     if (googleNearbyRequestDecision(cached?.status, googleNearbyAttemptRef.current[googleScopeKey], retrySequence) === "reuse") return;
@@ -2706,11 +2728,12 @@ export function JourneyMapPlannerWorkspace({
       {!hasCanonicalPlanner ? <div className={styles.productNavigation}>
         <EasyTNavigation current="prototype" storageOwnerId={activeBrowserOwnerId} />
       </div> : null}
-      <main ref={workspaceRef} data-map-expanded={isShellPresentation && isExpandedMap} className={`${styles.journey} ${mobileLayout.plan} ${mapDocks.plan} ${hasCanonicalPlanner ? styles.canonicalPlanner : ""} ${isShellPresentation ? styles.shellPlanner : ""} ${isShellPresentation && isExpandedMap ? styles.shellPlannerExpanded : ""}`}>
+      <main ref={workspaceRef} data-map-expanded={isShellPresentation && isExpandedMap} data-google-discovery={googleCanvasActive} className={`${styles.journey} ${mobileLayout.plan} ${mapDocks.plan} ${hasCanonicalPlanner ? styles.canonicalPlanner : ""} ${isShellPresentation ? styles.shellPlanner : ""} ${isShellPresentation && isExpandedMap ? styles.shellPlannerExpanded : ""}`}>
       {hasCanonicalPlanner ? (
         <div className={styles.mapDetailLayer}>
             {googleCanvasActive ? <GoogleTripMapCanvas
-              browserKey={process.env.NEXT_PUBLIC_GOOGLE_MAPS_BROWSER_KEY!}
+              browserKey={storyState?.googleFixture ? "storybook-fixture" : process.env.NEXT_PUBLIC_GOOGLE_MAPS_BROWSER_KEY!}
+              sdkLoader={storyState?.googleFixture?.sdkLoader}
               mapId={process.env.NEXT_PUBLIC_GOOGLE_MAPS_MAP_ID}
               stops={canonicalMapStops.map((stop) => ({ id: stop.id, name: stop.city, coordinates: stop.coordinates ?? null }))}
               legs={canonicalMapLegs.map((leg) => ({ id: leg.id, fromStopId: leg.fromStopId, toStopId: leg.toStopId }))}

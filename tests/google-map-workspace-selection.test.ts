@@ -9,6 +9,7 @@ import {
 
 const parent = readFileSync(new URL("../components/journey-map-planner-workspace.tsx", import.meta.url), "utf8");
 const child = readFileSync(new URL("../components/easyt/map-place-enrichment.tsx", import.meta.url), "utf8");
+const stories = readFileSync(new URL("../components/easyt/trip-map-workspace.stories.tsx", import.meta.url), "utf8");
 
 test("native POI, list row and custom marker select the same exact provider ID and canonical day", () => {
   const scope = { stopId: "tokyo-return", dayId: "day-8", category: "see" as const };
@@ -37,4 +38,13 @@ test("the integrated map has one parent-owned category, selection, and detail pa
   assert.match(child, /onSelectPlace/);
   assert.match(child, /onBackToPlaces/);
   assert.equal((parent.match(/id="map-contextual-sheet"/g) ?? []).length, 1);
+});
+
+test("production Map stories exercise distinct scoped Delhi, Agra and Jaipur provider fixtures", () => {
+  assert.match(stories, /const googleFixture = \{[\s\S]*placesByScope: fixturePlacesByScope/);
+  assert.match(stories, /"delhi:see"/);
+  assert.match(stories, /"agra:see"/);
+  assert.match(stories, /"jaipur:see"/);
+  assert.match(stories, /GooglePlacesEnrichmentNoMedia/);
+  assert.match(stories, /GooglePlacesEnrichmentUnavailable/);
 });
