@@ -66,6 +66,7 @@ import { googleCanvasEligible } from "@/lib/easyt/google-trip-map-adapter";
 import { createLatestGoogleDetailRequest } from "@/lib/easyt/google-place-details-client";
 import { nativeGooglePoiSelection, type WorkspacePlaceSelection } from "@/lib/easyt/map-workspace-selection";
 import { googleDiscoveryScopeKey, googlePlaceSelectionForScope } from "@/lib/easyt/google-map-workspace-selection";
+import { googleNearbyRequestDecision, googlePlaceFailureKind, type GooglePlaceFailureKind } from "@/lib/easyt/google-place-request-control";
 import { originEndpointForTrip, routeEndpointForLeg, tripLegClassificationLabel, tripOriginEndpointId } from "@/lib/easyt/trip-legs";
 import { clearTripLegTransportChoice, effectiveTripLeg, selectTripLegTransportChoice, tripWithEffectiveTransportChoices } from "@/lib/easyt/transport-mode-choice";
 import EasyTNavigation from "@/app/journey/easyt-navigation";
@@ -95,7 +96,7 @@ type PlaceMedia = { image?: string; alt?: string; description?: string; sourceUr
 type ShapeDayTab = "plan" | "stay" | "eat" | "see";
 const shapeDayTabs: ShapeDayTab[] = ["plan", "stay", "eat", "see"];
 type TripHealthDetail = "accommodation" | "travel" | "activities" | "budget";
-type GoogleNearbyState = { places: EnrichedPlace[]; status: "loading" | "ready" | "empty" | "unavailable" };
+type GoogleNearbyState = { places: EnrichedPlace[]; status: "loading" | "ready" | "empty" | "unavailable"; failure?: GooglePlaceFailureKind };
 
 function customBriefFromEasyT(trip: EasyTTrip): CustomBrief {
   const start = parseIsoDate(trip.startDate);
@@ -461,9 +462,11 @@ export function JourneyMapPlannerWorkspace({
   const [refreshedGoogleReference, setRefreshedGoogleReference] = useState<{ choiceId: string; reference: GooglePlaceReference } | null>(null);
   const [selectedGoogleReviews, setSelectedGoogleReviews] = useState<EnrichedReview[]>([]);
   const [selectedGooglePhoto, setSelectedGooglePhoto] = useState<{ src: string; sourceUrl: string; attributions: GooglePlacePhotoAttribution[] } | null>(null);
+  const [googleMediaRequestedPlaceId, setGoogleMediaRequestedPlaceId] = useState<string | null>(null);
   const [googleDetailStatus, setGoogleDetailStatus] = useState<"idle" | "loading" | "unavailable">("idle");
   const [googleNearbyByScope, setGoogleNearbyByScope] = useState<Record<string, GoogleNearbyState>>({});
   const [googleNearbyRetry, setGoogleNearbyRetry] = useState<{ scopeKey: string; sequence: number } | null>(null);
+  const googleNearbyAttemptRef = useRef<Record<string, number>>({});
   const [googleDetailRetry, setGoogleDetailRetry] = useState(0);
   const googleResultsScrollRef = useRef<Record<string, number>>({});
   const googleDetailRequestRef = useRef(createLatestGoogleDetailRequest());
@@ -606,6 +609,7 @@ export function JourneyMapPlannerWorkspace({
   const selectedGoogleChoice = customTrip?.brief.itineraryIdeas?.find((idea): idea is GooglePlaceReferenceIdea => isGooglePlaceReferenceIdea(idea)
     && idea.stopId === selectedGoogleStopId
     && idea.providerReference.placeId === selectedGooglePlaceId);
+  useEffect(() => { setGoogleMediaRequestedPlaceId(null); }, [selectedGooglePlaceId]);
   const googleDayOptions = customTrip && selectedGoogleStopId ? validIdeaDays(customTrip, selectedGoogleStopId) : [];
   useEffect(() => {
     const target = selectedGoogleChoice?.dayId ?? (workspacePlaceSelection.kind === "google" ? workspacePlaceSelection.dayId : null);
@@ -630,42 +634,49 @@ export function JourneyMapPlannerWorkspace({
     setGoogleReferenceUnavailable(null);
     const request = googleDetailRequestRef.current;
     let active = true;
+    let completed = false;
+    trackEvent("map_google_request", { operation: selectedGoogleChoice ? "reference_resolve" : "details", outcome: "started" });
     void request.select(selectedGooglePlaceId, (detail, reference) => {
       if (!active) return;
+      completed = true;
       setSelectedGoogleDetail(detail);
       setGoogleDetailStatus("idle");
+      trackEvent("map_google_request", { operation: selectedGoogleChoice ? "reference_resolve" : "details", outcome: "success" });
       if (reference && selectedGoogleChoice && reference.lastResolvedAt !== selectedGoogleChoice.providerReference.lastResolvedAt) {
         setRefreshedGoogleReference({ choiceId: selectedGoogleChoice.id, reference });
       }
-    }, selectedGoogleChoice?.providerReference, (reason) => { if (active) setGoogleReferenceUnavailable(reason); })
-      .then(() => { if (active) setGoogleDetailStatus((status) => status === "loading" ? "unavailable" : status); });
+    }, selectedGoogleChoice?.providerReference, (reason) => { if (active) { completed = true; setGoogleReferenceUnavailable(reason); setGoogleDetailStatus("unavailable"); trackEvent("map_google_request", { operation: "reference_resolve", outcome: "failure", failure_kind: "provider" }); } })
+      .then(() => { if (active && !completed) { setGoogleDetailStatus("unavailable"); trackEvent("map_google_request", { operation: selectedGoogleChoice ? "reference_resolve" : "details", outcome: "failure", failure_kind: typeof navigator !== "undefined" && !navigator.onLine ? "offline" : "provider" }); } });
     return () => { active = false; request.clear(); };
   }, [googleCanvasActive, selectedGooglePlaceId, workspacePlaceSelection.kind === "google" ? workspacePlaceSelection.stopId : null, workspacePlaceSelection.kind === "google" ? workspacePlaceSelection.dayId : null, googleDetailRetry]);
   useEffect(() => {
     setSelectedGoogleReviews([]);
     setSelectedGooglePhoto(null);
-    if (!googleCanvasActive || !selectedGoogleDetail || selectedGoogleDetail.providerPlaceId !== selectedGooglePlaceId) return;
+    if (!googleCanvasActive || !selectedGoogleDetail || selectedGoogleDetail.providerPlaceId !== selectedGooglePlaceId || googleMediaRequestedPlaceId !== selectedGooglePlaceId) return;
     const controller = new AbortController();
     const query = new URLSearchParams({ id: selectedGooglePlaceId });
     let objectUrl: string | null = null;
+    trackEvent("map_google_request", { operation: "reviews", outcome: "started" });
     void fetch(`/api/journey-place-enrichment?mode=reviews&${query}`, { cache: "no-store", signal: controller.signal })
       .then(async (response) => {
-        if (!response.ok) return;
+        if (!response.ok) throw new Error("reviews_unavailable");
         const data: unknown = await response.json();
         const reviews = data && typeof data === "object" ? (data as { reviews?: unknown }).reviews : undefined;
-        if (!controller.signal.aborted && Array.isArray(reviews) && reviews.every(isEnrichedReview)) setSelectedGoogleReviews(reviews.slice(0, 3));
-      }).catch(() => {});
+        if (!controller.signal.aborted && Array.isArray(reviews) && reviews.every(isEnrichedReview)) { setSelectedGoogleReviews(reviews.slice(0, 3)); trackEvent("map_google_request", { operation: "reviews", outcome: "success" }); }
+      }).catch(() => { if (!controller.signal.aborted) trackEvent("map_google_request", { operation: "reviews", outcome: "failure", failure_kind: "provider" }); });
+    trackEvent("map_google_request", { operation: "photo", outcome: "started" });
     void fetch(`/api/journey-place-enrichment?mode=photo&${query}`, { cache: "no-store", signal: controller.signal })
       .then(async (response) => {
         const sourceUrl = safeGooglePhotoSourceUrl(response.headers.get("x-morrovia-photo-source"));
-        if (!response.ok || !sourceUrl || !["image/jpeg", "image/png", "image/webp"].includes(response.headers.get("content-type") ?? "")) return;
+        if (!response.ok || !sourceUrl || !["image/jpeg", "image/png", "image/webp"].includes(response.headers.get("content-type") ?? "")) throw new Error("photo_unavailable");
         const blob = await response.blob();
         if (controller.signal.aborted) return;
         objectUrl = URL.createObjectURL(blob);
         setSelectedGooglePhoto({ src: objectUrl, sourceUrl, attributions: decodeGooglePhotoAttributions(response.headers.get("x-morrovia-photo-attribution")) });
-      }).catch(() => {});
+        trackEvent("map_google_request", { operation: "photo", outcome: "success" });
+      }).catch(() => { if (!controller.signal.aborted) trackEvent("map_google_request", { operation: "photo", outcome: "failure", failure_kind: "provider" }); });
     return () => { controller.abort(); if (objectUrl) URL.revokeObjectURL(objectUrl); };
-  }, [googleCanvasActive, selectedGoogleDetail, selectedGooglePlaceId]);
+  }, [googleCanvasActive, selectedGoogleDetail, selectedGooglePlaceId, googleMediaRequestedPlaceId]);
   const selectedRecommendedLeg = customTrip && selectedPlanItem ? incomingLegForPlanItem(customTrip, selectedPlanItem) ?? undefined : undefined;
   const selectedLeg = customTrip && selectedRecommendedLeg ? effectiveTripLeg(customTrip, selectedRecommendedLeg) : undefined;
   const selectedCanonicalTravel = customTrip && selectedLeg ? {
@@ -693,22 +704,30 @@ export function JourneyMapPlannerWorkspace({
   useEffect(() => {
     if (!googleCanvasActive || !googleScopeKey || !googleDiscoveryCategory || !selectedBaseCoordinates) return;
     const cached = googleNearbyByScope[googleScopeKey];
-    const retryRequested = googleNearbyRetry?.scopeKey === googleScopeKey;
-    if (cached && !retryRequested) return;
-    if (retryRequested) setGoogleNearbyRetry(null);
+    const retrySequence = googleNearbyRetry?.scopeKey === googleScopeKey ? googleNearbyRetry.sequence : 0;
+    if (googleNearbyRequestDecision(cached?.status, googleNearbyAttemptRef.current[googleScopeKey], retrySequence) === "reuse") return;
+    googleNearbyAttemptRef.current[googleScopeKey] = retrySequence;
     const controller = new AbortController();
     const scopeKey = googleScopeKey;
     const query = new URLSearchParams({ mode: "nearby", category: googleDiscoveryCategory, lat: String(selectedBaseCoordinates[1]), lon: String(selectedBaseCoordinates[0]) });
     setGoogleNearbyByScope((current) => ({ ...current, [scopeKey]: { places: current[scopeKey]?.places ?? [], status: "loading" } }));
+    trackEvent("map_google_request", { operation: retrySequence ? "retry" : "nearby", outcome: "started" });
     void fetch(`/api/journey-place-enrichment?${query}`, { cache: "no-store", signal: controller.signal })
       .then(async (response) => {
-        if (!response.ok) throw new Error("unavailable");
+        if (!response.ok) throw Object.assign(new Error("unavailable"), { status: response.status });
         const body: unknown = await response.json();
         const places = body && typeof body === "object" ? (body as { places?: unknown }).places : undefined;
         if (!Array.isArray(places) || !places.every(isEnrichedPlace)) throw new Error("malformed");
-        if (!controller.signal.aborted) setGoogleNearbyByScope((current) => ({ ...current, [scopeKey]: { places, status: places.length ? "ready" : "empty" } }));
+        if (!controller.signal.aborted) {
+          setGoogleNearbyByScope((current) => ({ ...current, [scopeKey]: { places, status: places.length ? "ready" : "empty" } }));
+          trackEvent("map_google_request", { operation: "nearby", outcome: "success" });
+        }
       })
-      .catch(() => { if (!controller.signal.aborted) setGoogleNearbyByScope((current) => ({ ...current, [scopeKey]: { places: current[scopeKey]?.places ?? [], status: "unavailable" } })); });
+      .catch((error: unknown) => { if (!controller.signal.aborted) {
+        const failure = googlePlaceFailureKind(error && typeof error === "object" && "status" in error ? Number(error.status) : undefined, typeof navigator !== "undefined" && !navigator.onLine);
+        setGoogleNearbyByScope((current) => ({ ...current, [scopeKey]: { places: current[scopeKey]?.places ?? [], status: "unavailable", failure } }));
+        trackEvent("map_google_request", { operation: "nearby", outcome: "failure", failure_kind: failure });
+      } });
     return () => controller.abort();
     // The cache is read at scope entry; a completed request must not trigger itself again.
   }, [googleCanvasActive, googleScopeKey, googleDiscoveryCategory, selectedBaseCoordinates?.[0], selectedBaseCoordinates?.[1], googleNearbyRetry]);
@@ -3093,12 +3112,15 @@ export function JourneyMapPlannerWorkspace({
             .filter((idea) => idea.stopId === selectedTripStop.id && (shapeDayTab === "stay" ? idea.category === "stay" : shapeDayTab === "eat" ? idea.category === "restaurant" : idea.category === "activity"))
             .map((idea) => ({ id: idea.id, placeId: idea.providerReference.placeId, dayLabel: idea.dayId ? `Day ${customTrip?.planItems.find((day) => day.id === idea.dayId)?.dayNumber ?? "?"}` : null }))}
           status={googleNearby?.status ?? "loading"}
+          failure={googleNearby?.failure}
           selectedPlaceId={workspacePlaceSelection.kind === "google" && workspacePlaceSelection.stopId === selectedTripStop.id ? workspacePlaceSelection.placeId : null}
           detail={selectedGoogleDetail}
           detailStatus={googleDetailStatus}
           unavailableReason={googleReferenceUnavailable}
           photo={selectedGooglePhoto}
           reviews={selectedGoogleReviews}
+          mediaRequested={googleMediaRequestedPlaceId === selectedGooglePlaceId}
+          onRequestMedia={() => { if (selectedGooglePlaceId) setGoogleMediaRequestedPlaceId(selectedGooglePlaceId); }}
           listScrollTop={googleScopeKey ? googleResultsScrollRef.current[googleScopeKey] ?? 0 : 0}
           onListScroll={(top) => { if (googleScopeKey) googleResultsScrollRef.current[googleScopeKey] = top; }}
           onSelectPlace={selectGoogleDiscoveryPlace}

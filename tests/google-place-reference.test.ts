@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { accommodationProgress, savedGoogleStayReferencesForStop } from "../lib/easyt/accommodation.ts";
 import { removeItineraryIdea, saveGooglePlaceReference, scheduleGooglePlaceReference, validIdeaDays } from "../lib/easyt/itinerary-ideas.ts";
-import { defaultTripIntent, type EasyTTrip } from "../lib/easyt/trip.ts";
+import { defaultTripIntent, googlePlaceReferenceIdeas, type EasyTTrip } from "../lib/easyt/trip.ts";
 import { projectPersistedMapResults } from "../lib/easyt/map-result-selection.ts";
 import { loadTripRecoveryFromStorage, saveTripRecoveryToStorage, type EasyTBrowserStorage } from "../lib/easyt/storage.ts";
 import { canonicalTripForOwner, duplicateTripDocument } from "../lib/easyt/trip-promotion.ts";
@@ -97,21 +97,21 @@ test("owner promotion, duplication and day reconciliation preserve reference bin
   const saved = saveGooglePlaceReference(base, input);
   const scheduled = scheduleGooglePlaceReference(saved, saved.brief.itineraryIdeas![0]!.id, "day-4", "afternoon");
   const promoted = canonicalTripForOwner("account-owner", scheduled);
-  const promotedReference = promoted.brief.itineraryIdeas![0]!;
+  const promotedReference = googlePlaceReferenceIdeas(promoted.brief.itineraryIdeas)[0]!;
   assert.equal(promotedReference.stopId, `${base.id}-stop-tokyo-second`);
   assert.equal(promotedReference.dayId, "day-4");
-  assert.deepEqual(promotedReference.providerReference, scheduled.brief.itineraryIdeas![0]!.providerReference);
+  assert.deepEqual(promotedReference.providerReference, googlePlaceReferenceIdeas(scheduled.brief.itineraryIdeas)[0]!.providerReference);
 
   let sequence = 0;
   const duplicated = duplicateTripDocument(scheduled, { id: "copied-trip", now: "2026-10-01T00:00:00Z", nextId: () => String(++sequence) });
-  const duplicateReference = duplicated.brief.itineraryIdeas![0]!;
+  const duplicateReference = googlePlaceReferenceIdeas(duplicated.brief.itineraryIdeas)[0]!;
   assert.equal(duplicateReference.stopId, duplicated.planItems.find((day) => day.id === duplicateReference.dayId)?.stopId);
   assert.notEqual(duplicateReference.dayId, "day-4");
-  assert.deepEqual(duplicateReference.providerReference, scheduled.brief.itineraryIdeas![0]!.providerReference);
+  assert.deepEqual(duplicateReference.providerReference, googlePlaceReferenceIdeas(scheduled.brief.itineraryIdeas)[0]!.providerReference);
 
   const reconciled = reconcileAuthoredDayState(scheduled, { ...scheduled, planItems: scheduled.planItems.filter((day) => day.id !== "day-4") });
-  const reconciledReference = reconciled.brief.itineraryIdeas![0]!;
+  const reconciledReference = googlePlaceReferenceIdeas(reconciled.brief.itineraryIdeas)[0]!;
   assert.equal(reconciledReference.stopId, "tokyo-second");
   assert.notEqual(reconciledReference.dayId, "day-4");
-  assert.deepEqual(reconciledReference.providerReference, scheduled.brief.itineraryIdeas![0]!.providerReference);
+  assert.deepEqual(reconciledReference.providerReference, googlePlaceReferenceIdeas(scheduled.brief.itineraryIdeas)[0]!.providerReference);
 });

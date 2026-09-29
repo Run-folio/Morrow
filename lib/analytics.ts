@@ -60,6 +60,7 @@ export type LaunchAnalyticsEventMap = {
   map_place_enrichment_category: { category: "see" | "eat" | "stay" | "practical" };
   map_place_enrichment_result: { category: "see" | "eat" | "stay" | "practical" };
   map_place_enrichment_handoff: { category: "see" | "eat" | "stay" | "practical" };
+  map_google_request: { operation: "sdk" | "nearby" | "details" | "reference_resolve" | "photo" | "reviews" | "retry"; outcome: "started" | "success" | "failure"; failure_kind?: "configuration" | "quota" | "offline" | "provider" };
   trip_stay_viewed: { trip_id?: string; workspace_view: "stay"; route_mode: RouteMode; stop_count?: number };
   trip_transport_viewed: { trip_id?: string; workspace_view: "transport"; route_mode: RouteMode; stop_count?: number };
   explore_opened: { trip_id: string; workspace_view: "explore"; stop_count: number };

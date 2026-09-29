@@ -10,6 +10,7 @@ import {
   type GoogleTripMapApi,
 } from "@/lib/easyt/google-trip-map-adapter";
 import presentation from "./morrovia-map-presentation.module.css";
+import { trackEvent } from "@/lib/analytics";
 
 type Props = {
   browserKey: string;
@@ -44,6 +45,7 @@ export function GoogleTripMapCanvas(props: Props) {
     if (!element) return;
     let active = true;
     setStatus("loading");
+    trackEvent("map_google_request", { operation: "sdk", outcome: "started" });
     void (props.sdkLoader ?? loadGoogleMapsSdk)(props.browserKey)
       .then((api) => {
         if (!active) return;
@@ -60,8 +62,9 @@ export function GoogleTripMapCanvas(props: Props) {
         });
         sessionRef.current.updatePlaces(callbacksRef.current.places ?? []);
         setStatus("ready");
+        trackEvent("map_google_request", { operation: "sdk", outcome: "success" });
       })
-      .catch(() => { if (active) { setStatus("unavailable"); callbacksRef.current.onUnavailable(); } });
+      .catch(() => { if (active) { setStatus("unavailable"); trackEvent("map_google_request", { operation: "sdk", outcome: "failure", failure_kind: "provider" }); callbacksRef.current.onUnavailable(); } });
     return () => { active = false; sessionRef.current?.destroy(); sessionRef.current = null; };
     // Deliberately keyed to canonical overlay identities, not category or detail state.
   }, [props.browserKey, props.mapId, props.sdkLoader, stopKey, legKey]);
