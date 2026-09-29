@@ -72,19 +72,29 @@ function interpretationSemantics(capture: JourneyCaptureResult) {
   };
 }
 
-test("Homepage and direct Builder use the same canonical capture request contract", () => {
+test("Homepage stages Describe intake and Builder owns its canonical intent-only capture", () => {
   const homepage = readFileSync(new URL("../app/journey/home/home-trip-starter.tsx", import.meta.url), "utf8");
   const builder = readFileSync(new URL("../app/journey/new/trip-builder.tsx", import.meta.url), "utf8");
 
-  assert.match(homepage, /submitted\.mode === "describe"[\s\S]*requestJourneyCapture\(submitted\.prompt,/);
+  assert.match(homepage, /submitted\.mode === "describe"[\s\S]*reservePendingDescribeHandoff\(/);
+  assert.doesNotMatch(homepage, /requestJourneyCapture\(/,
+    "Homepage must not run provider interpretation before durable handoff and navigation");
   assert.match(homepage, /if \(submitInFlightRef\.current\) return;/);
   assert.match(homepage, /snapshotRef\.current\.revision === submittedRevision/);
   assert.match(homepage, /snapshotRef\.current\.ownerId === submittedOwner/);
-  assert.match(homepage, /commitHomepageHandoff/);
+  assert.match(homepage, /reservePendingDescribeHandoff/);
   assert.match(homepage, /beginNewTripNavigation/);
+  assert.match(builder, /requestJourneyCapture\(receipt\.frozenSnapshot\.prompt, \{ mode: "intent-only", signal: request\.signal \}\)/);
   assert.match(builder, /requestJourneyCapture\(brief,/);
   assert.doesNotMatch(builder, /captureJourneyBrief\(tripBrief\)/,
     "direct Builder capture must not bypass provider-enriched interpretation");
+});
+
+test("pending capture generation follows the frozen receipt and retry, not presentation or profile changes", () => {
+  const builder = readFileSync(new URL("../app/journey/new/trip-builder.tsx", import.meta.url), "utf8");
+  assert.match(builder, /\}, \[hydrated, pendingInterpretation, pendingInterpretationRetry\]\);/);
+  assert.match(builder, /profile: currentPresentationRef\.current\.hasSavedTravelProfile \? currentPresentationRef\.current\.travelProfile : null/);
+  assert.match(builder, /journeyCaptureFailureMessage\("network", currentPresentationRef\.current\.language\)/);
 });
 
 test("intent-only capture is opt-in while every existing caller keeps full mode", async () => {

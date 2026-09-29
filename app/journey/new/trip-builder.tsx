@@ -36,7 +36,7 @@ import { routePlannerPayload } from "@/lib/easyt/public-route-handoff";
 import { defaultTravelProfile, travelProfileFromUnknown, tripInterestsWithProfileDefaults, type TravelProfile } from "@/lib/easyt/travel-profile";
 import { firstTripWorkspaceHref, mapWorkspaceHref, tripWorkspaceHref } from "@/lib/easyt/trip-workspace-links";
 import { createLatestJourneyCaptureRequestGate, journeyCaptureFailureMessage, requestJourneyCapture } from "@/lib/easyt/journey-capture-client";
-import { HOME_TRIP_DRAFT_KEY, acknowledgePendingIntakeReceipt, discardPendingIntakeForEdit, handoffLookupMentions, homepageHandoffMatchesTrip, homepageHandoffReceiptForOwner, homepageReceiptForProjection, persistEditableHomepageInput, pendingReceiptStillCurrent, projectHomepageInput, readHomepageInput, pendingIntakeReceiptForOwner, pendingHomepageHandoffForOwner, reserveDirectDescribeIntake, homeTripDraftInterestsWereExplicit, homeTripDraftTimingFlexibility, initialHandoffRouteStops, mergeHandoffLocationChoice, preferredHandoffLocationChoice, removeHomeTripDraftIfDurable, resolveHandoffIncrementally, routableHandoffMentions, tripInterestsFromHomeDraft, type HandoffLocationChoice, type HomeTripDraft, type HomepageInputSnapshot, type PendingHomeTripHandoff, type PendingIntakeReceipt } from "@/lib/easyt/home-trip-handoff";
+import { HOME_TRIP_DRAFT_KEY, acknowledgePendingIntakeReceipt, createHandoffSharedLookup, discardPendingIntakeForEdit, handoffLookupMentions, handoffOutcomeIsCurrent, handoffStopOccurrenceId, homepageHandoffMatchesTrip, homepageHandoffReceiptForOwner, homepageReceiptForProjection, insertHandoffOccurrence, persistEditableHomepageInput, pendingReceiptStillCurrent, projectHomepageInput, readHomepageInput, pendingIntakeReceiptForOwner, pendingHomepageHandoffForOwner, reserveDirectDescribeIntake, retireHandoffResolutionStatus, homeTripDraftInterestsWereExplicit, homeTripDraftTimingFlexibility, initialHandoffRouteStops, mergeHandoffLocationChoice, preferredHandoffLocationChoice, removeHomeTripDraftIfDurable, resolveHandoffIncrementally, routableHandoffMentions, tripInterestsFromHomeDraft, type HandoffLocationChoice, type HomeTripDraft, type HomepageInputSnapshot, type PendingHomeTripHandoff, type PendingIntakeReceipt } from "@/lib/easyt/home-trip-handoff";
 import { resolveNewTripEntryState, type NewTripEntryState } from "./new-trip-entry-state";
 import { NewTripStarter } from "./new-trip-starter";
 import type { JourneyCaptureResult } from "@/lib/easyt/journey-capture";
@@ -89,6 +89,7 @@ import { fixedCommitmentDisplayLabel, projectFixedCommitmentsToStops } from "@/l
 import { createAbortableEffectScope } from "@/lib/easyt/abortable-effect";
 import { withProviderTimeout } from "@/lib/easyt/provider-timeout";
 import { hasUsefulRouteSkeleton } from "./trip-builder-entry";
+import { markPlanningMilestone, planningAttemptOutcome, planningContentIsActionable, planningRequiredInterpretationIsComplete } from "@/lib/easyt/planning-attempt-performance";
 import { durableBuilderRecoveryUrl } from "@/lib/easyt/builder-durable-url";
 import { clearTripLegTransportChoice, selectTripLegTransportChoice } from "@/lib/easyt/transport-mode-choice";
 
@@ -471,11 +472,14 @@ function TripBuilderDocument() {
   } | null>(null);
   const receiptAcknowledgementRef = useRef<Promise<boolean> | null>(null);
   const pendingInterpretationRef = useRef<PendingIntakeReceipt | null>(null);
+  const planningAttemptIdRef = useRef<string | null>(null);
+  const planningModeRef = useRef<"stops" | "describe">("stops");
+  const handoffOccurrenceMentionIdsRef = useRef<Record<string, string>>({});
   const activeProjectionTokenRef = useRef<string | null>(null);
   const handoffLookupSessionRef = useRef<{
     controller: AbortController;
-    lookups: Map<string, Promise<LocationChoice[]>>;
     statuses: Map<string, "pending" | "resolved" | "needs-confirmation" | "failed">;
+    handled: Set<string>;
     retry?: (mentionId: string) => void;
   } | null>(null);
   const [pendingInterpretation, setPendingInterpretation] = useState<{ receipt: PendingIntakeReceipt; fromHomepage: boolean } | null>(null);
@@ -588,6 +592,10 @@ function TripBuilderDocument() {
   const [planningSuggestions, setPlanningSuggestions] = useState<GuidedPlanningAreaSuggestion[]>([]);
   const [completedPlanningAreaMentionIds, setCompletedPlanningAreaMentionIds] = useState<string[]>([]);
   const [removedPlaceMentionIds, setRemovedPlaceMentionIds] = useState<string[]>([]);
+  const removedPlaceMentionIdsRef = useRef(removedPlaceMentionIds);
+  removedPlaceMentionIdsRef.current = removedPlaceMentionIds;
+  const placeSelectionsRef = useRef(placeSelections);
+  placeSelectionsRef.current = placeSelections;
   const [resolvingPlaceMentionId, setResolvingPlaceMentionId] = useState<string | null>(null);
   const [applyingAreaShapeId, setApplyingAreaShapeId] = useState<string | null>(null);
   const [clarificationOpen, setClarificationOpen] = useState(false);
@@ -635,6 +643,8 @@ function TripBuilderDocument() {
   const [budgetPreference, setBudgetPreference] = useState<TripBudgetPreference | undefined>();
   const [travelProfile, setTravelProfile] = useState<TravelProfile>(defaultTravelProfile);
   const [hasSavedTravelProfile, setHasSavedTravelProfile] = useState(false);
+  const currentPresentationRef = useRef({ language, travelProfile, hasSavedTravelProfile });
+  currentPresentationRef.current = { language, travelProfile, hasSavedTravelProfile };
   const [showBudgetOverride, setShowBudgetOverride] = useState(false);
   const [timingWarningOpen, setTimingWarningOpen] = useState(false);
   const [hasPromptContext, setHasPromptContext] = useState(false);
@@ -701,6 +711,8 @@ function TripBuilderDocument() {
   }, [browserOffline, expiredSessionOwnerId, session, sessionError, sessionPending]);
 
   const applyNewTripIntake = (draft: HomeTripDraft, isCurrent: () => boolean, fromHomepage = false) => {
+    planningAttemptIdRef.current = draft.homepage?.receipt?.handoffId ?? draft.handoffId ?? null;
+    planningModeRef.current = draft.homepage?.mode ?? "stops";
     if (fromHomepage) {
       homeDraftRef.current = draft;
       setArrivedFromHomepage(true);
@@ -774,17 +786,14 @@ function TripBuilderDocument() {
     setCompletedPlanningAreaMentionIds(completedPlanningAreasForBrief(homeStructuredBrief));
     setRemovedPlaceMentionIds(homeStructuredBrief.removedPlaceMentionIds ?? []);
     const locationMentions = homeStructuredBrief.placeMentions ?? draft.locationMentions ?? [];
-    const homepageOccurrenceByMentionId = new Map(
-      Object.entries(draft.homepage?.occurrenceMentionIds ?? {})
-        .map(([occurrenceId, mentionId]) => [mentionId, occurrenceId]),
-    );
+    handoffOccurrenceMentionIdsRef.current = draft.homepage?.occurrenceMentionIds ?? {};
     const initialStops = initialHandoffRouteStops(locationMentions, draftStops, capturedJourneyEnd);
     if (initialStops.length) setStops(initialStops);
     handoffLookupSessionRef.current?.controller.abort();
-    handoffLookupSessionRef.current?.lookups.clear();
     const lookupSession = {
-      controller: new AbortController(), lookups: new Map<string, Promise<LocationChoice[]>>(),
+      controller: new AbortController(),
       statuses: new Map<string, "pending" | "resolved" | "needs-confirmation" | "failed">(),
+      handled: new Set<string>(),
       retry: undefined as ((mentionId: string) => void) | undefined,
     };
     handoffLookupSessionRef.current = lookupSession;
@@ -803,29 +812,28 @@ function TripBuilderDocument() {
       // Let the builder render immediately. These requests enrich the
       // route after arrival instead of holding the homepage transition.
       const lookupKey = (mention: CapturedLocation) => `${mention.canonicalName.toLocaleLowerCase()}\u001f${mention.parentCountries.length === 1 ? mention.parentCountries[0]!.toLocaleLowerCase() : ""}`;
-      const resolveMention = async (mention: CapturedLocation) => {
+      const resolveMention = createHandoffSharedLookup(lookupKey, async (mention: CapturedLocation, signal) => {
         const country = mention.parentCountries.length === 1 ? mention.parentCountries[0] : undefined;
-        const key = lookupKey(mention);
-        let shared = lookupSession.lookups.get(key);
-        if (!shared) {
-          shared = (async () => {
-            const response = await fetch(`/api/journey-geocode?place=${encodeURIComponent(mention.canonicalName)}&candidates=1${country ? `&country=${encodeURIComponent(country)}` : ""}`, { signal: lookupSession.controller.signal });
-            if (!response.ok) throw new Error("Place lookup unavailable");
-            const payload = await response.json() as { candidates?: LocationChoice[] };
-            return payload.candidates ?? [];
-          })();
-          lookupSession.lookups.set(key, shared);
-          void shared.catch(() => { if (lookupSession.lookups.get(key) === shared) lookupSession.lookups.delete(key); });
-        }
-        return shared;
-      };
+        const response = await fetch(`/api/journey-geocode?place=${encodeURIComponent(mention.canonicalName)}&candidates=1${country ? `&country=${encodeURIComponent(country)}` : ""}`, { signal });
+        if (!response.ok) throw new Error("Place lookup unavailable");
+        const payload = await response.json() as { candidates?: LocationChoice[] };
+        return payload.candidates ?? [];
+      }, lookupSession.controller.signal);
       const onOutcome = ({ item: mention, value: choices, status }: {
         item: CapturedLocation; value?: LocationChoice[]; status: "resolved" | "failed" | "timeout";
       }) => {
           if (!isCurrent() || handoffLookupSessionRef.current !== lookupSession) return;
+          const currentStatus = lookupSession.statuses.get(mention.mentionId);
+          if (!handoffOutcomeIsCurrent(mention.mentionId, currentStatus,
+            removedPlaceMentionIdsRef.current, [...lookupSession.handled, ...placeSelectionsRef.current.map((selection) => selection.mentionId)])) {
+            if (currentStatus === "pending") {
+              lookupSession.statuses.delete(mention.mentionId);
+              setHandoffResolutionStatuses((current) => retireHandoffResolutionStatus(current, mention.mentionId));
+            }
+            return;
+          }
           if (status !== "resolved") {
             lookupSession.statuses.set(mention.mentionId, "failed");
-            lookupSession.lookups.delete(lookupKey(mention));
             setHandoffResolutionStatuses((current) => ({ ...current, [mention.mentionId]: "failed" }));
             return;
           }
@@ -851,7 +859,7 @@ function TripBuilderDocument() {
               providerId: chosen.providerId,
             });
           } else {
-            const stopId = homepageOccurrenceByMentionId.get(mention.mentionId) ?? `${mention.canonicalName.toLowerCase().replace(/[^a-z0-9]+/g, "-")}-${mention.order}`;
+            const stopId = handoffStopOccurrenceId(mention, handoffOccurrenceMentionIdsRef.current);
             const seed = seedById.get(stopId);
             setStops((current) => current.some((stop) => stop.id === stopId
               && stop.name === seed?.name && stop.canonicalPlaceId === seed?.canonicalPlaceId
@@ -879,6 +887,7 @@ function TripBuilderDocument() {
   };
 
   const submitNewTripIntake = async (snapshot: HomepageInputSnapshot) => {
+    const submittedAt = performance.now();
     if (!hydrated || !canUseHydratedTripScope(hydratedOwnerScopeRef.current, activeBrowserOwnerId)
       || snapshot.ownerId !== activeBrowserOwnerId || hasRouteSkeleton || hasPromptContext) throw new Error("New trip intake is no longer current");
     if (snapshot.mode === "describe") {
@@ -888,6 +897,10 @@ function TripBuilderDocument() {
       if (!reservation.ok || !canUseHydratedTripScope(hydratedOwnerScopeRef.current, snapshot.ownerId)
         || activeBrowserOwnerIdRef.current !== snapshot.ownerId) throw new Error("New trip intake could not be reserved");
       const receipt = reservation.receipt;
+      markPlanningMilestone(receipt.handoffId, "submit", submittedAt);
+      markPlanningMilestone(receipt.handoffId, "durable-intake");
+      planningAttemptIdRef.current = receipt.handoffId;
+      planningModeRef.current = "describe";
       setTripId(receipt.tripId);
       pendingInterpretationRef.current = receipt;
       setPendingInterpretation({ receipt, fromHomepage: false });
@@ -900,12 +913,16 @@ function TripBuilderDocument() {
     const projected = projectHomepageInput({ snapshot, profile: hasSavedTravelProfile ? travelProfile : null, handoffId });
     if (!projected.ok) throw new Error("New trip intake needs review");
     const receipt = homepageReceiptForProjection(snapshot, projected.draft, tripId);
+    markPlanningMilestone(receipt.handoffId, "submit", submittedAt);
+    planningAttemptIdRef.current = receipt.handoffId;
+    planningModeRef.current = "stops";
     // The completed receipt must follow canonical recovery, so a reload while
     // the Builder is still saving can restore the traveller's original intake.
     const frozenInput = await persistEditableHomepageInput({ storage: window.localStorage, snapshot,
       isCurrent: () => canUseHydratedTripScope(hydratedOwnerScopeRef.current, snapshot.ownerId)
         && activeBrowserOwnerIdRef.current === snapshot.ownerId });
     if (!frozenInput.ok) throw new Error("New trip input did not persist");
+    markPlanningMilestone(receipt.handoffId, "durable-intake");
     pendingNewTripReceiptRef.current = { snapshot, receipt, draft: { ...projected.draft, homepage: { ...projected.draft.homepage!, receipt } } };
     applyNewTripIntake(projected.draft, () => canUseHydratedTripScope(hydratedOwnerScopeRef.current, snapshot.ownerId));
   };
@@ -918,9 +935,9 @@ function TripBuilderDocument() {
     pendingNewTripReceiptRef.current = null;
     receiptAcknowledgementRef.current = null;
     pendingInterpretationRef.current = null;
+    planningAttemptIdRef.current = null;
     activeProjectionTokenRef.current = null;
     handoffLookupSessionRef.current?.controller.abort();
-    handoffLookupSessionRef.current?.lookups.clear();
     handoffLookupSessionRef.current = null;
     setPendingInterpretation(null);
     captureRequestGateRef.current?.cancel();
@@ -1081,6 +1098,8 @@ function TripBuilderDocument() {
         let resumedHomepageTrip = false;
         let pendingEntryActive = false;
         const startPending = (receipt: PendingIntakeReceipt, fromHomepage: boolean) => {
+          planningAttemptIdRef.current = receipt.handoffId;
+          planningModeRef.current = receipt.frozenSnapshot.mode;
           setTripId(receipt.tripId);
           pendingInterpretationRef.current = receipt;
           setPendingInterpretation({ receipt, fromHomepage });
@@ -1264,7 +1283,7 @@ function TripBuilderDocument() {
           const projected = projectHomepageInput({
             snapshot: receipt.frozenSnapshot,
             capture,
-            profile: hasSavedTravelProfile ? travelProfile : null,
+            profile: currentPresentationRef.current.hasSavedTravelProfile ? currentPresentationRef.current.travelProfile : null,
             handoffId: receipt.handoffId,
           });
           if (!projected.ok) throw new Error("The submitted trip needs review");
@@ -1281,7 +1300,10 @@ function TripBuilderDocument() {
           setPendingInterpretation(null);
           setTripBriefCaptureError("");
         } catch {
-          if (isCurrent()) setTripBriefCaptureError(journeyCaptureFailureMessage("network", language));
+          if (isCurrent()) {
+            planningAttemptOutcome(receipt.handoffId, "error");
+            setTripBriefCaptureError(journeyCaptureFailureMessage("network", currentPresentationRef.current.language));
+          }
         } finally { request.finish(); }
       })();
     }, 0);
@@ -1289,7 +1311,7 @@ function TripBuilderDocument() {
       window.clearTimeout(timer);
       captureRequestGateRef.current?.cancel();
     };
-  }, [hydrated, pendingInterpretation, pendingInterpretationRetry, hasSavedTravelProfile, travelProfile, language]);
+  }, [hydrated, pendingInterpretation, pendingInterpretationRetry]);
 
   const editPendingInterpretation = () => { void (async () => {
     if (!pendingInterpretation || !canUseHydratedTripScope(hydratedOwnerScopeRef.current, pendingInterpretation.receipt.ownerId)) return;
@@ -1302,6 +1324,7 @@ function TripBuilderDocument() {
       return;
     }
     captureRequestGateRef.current?.cancel();
+    planningAttemptOutcome(receipt.handoffId, "abandoned");
     pendingInterpretationRef.current = null;
     pendingNewTripReceiptRef.current = null;
     setPendingInterpretation(null);
@@ -2290,6 +2313,7 @@ function TripBuilderDocument() {
 
   const cancelTransientPlanningClarification = (mentionId: string) => {
     if (mentionId === transientPlanningMentionId) {
+      handoffLookupSessionRef.current?.handled.add(mentionId);
       setCapturedStructuredBrief((current) => {
         const mentions = (current.placeMentions ?? []).filter((mention) => mention.mentionId !== mentionId);
         return {
@@ -2566,6 +2590,7 @@ function TripBuilderDocument() {
     plan: ReturnType<typeof builderClarificationRemovalPlan>,
   ) => {
     if (!plan.ownershipKnown) return;
+    handoffLookupSessionRef.current?.handled.add(mention.mentionId);
     const removableStopIds = new Set(plan.removableStopIds);
     rememberStructuralChange("remove_requested_place", Math.max(1, removableStopIds.size));
     setPlaceSelections((current) => current.filter((selection) => selection.mentionId !== mention.mentionId));
@@ -2631,6 +2656,7 @@ function TripBuilderDocument() {
   const confirmAttractionVisit = (mention: CapturedLocation, proposal: AttractionVisitCandidate, routeStopId = proposal.target.routeStopId) => {
     const stop = stops.find((item) => item.id === routeStopId);
     if (!stop) return;
+    handoffLookupSessionRef.current?.handled.add(mention.mentionId);
     rememberStructuralChange("confirm_attraction_visit_base", 0);
     const selection = confirmedAttractionVisitSelection(mention, proposal, {
       routeStopId: stop.id, name: stop.name, canonicalPlaceId: stop.canonicalPlaceId, country: stop.country,
@@ -2650,6 +2676,7 @@ function TripBuilderDocument() {
     const selectedResult = selectPlaceCandidate(result, mention.mentionId, canonicalPlaceId);
     const selectedMention = selectedResult.mentions.find((item) => item.mentionId === mention.mentionId);
     if (!selectedMention) return;
+    handoffLookupSessionRef.current?.handled.add(mention.mentionId);
     const nextBrief = extractStructuredTripBrief(tripBrief || capturedStructuredBrief.source.rawPrompt || "", selectedResult.parserVersion, selectedResult);
     setCapturedStructuredBrief(nextBrief);
     setIntakeMentions(selectedResult.mentions);
@@ -2671,6 +2698,7 @@ function TripBuilderDocument() {
   };
 
   const chooseProviderClarification = (mention: CapturedLocation, choice: LocationChoice) => {
+    handoffLookupSessionRef.current?.handled.add(mention.mentionId);
     if (isOriginMention(mention)) {
       replaceJourneyOrigin({
         name: choice.name,
@@ -2683,10 +2711,9 @@ function TripBuilderDocument() {
       });
     } else {
       const canonicalPlaceId = choice.canonicalPlaceId ?? (choice.providerId ? `open-world:${choice.providerId}` : undefined) ?? mention.canonicalPlaceId;
-      setStops((current) => isDuplicatePlaceIdentity(current, { name: choice.name, canonicalPlaceId })
-        ? current
-        : [...current, {
-          id: `${choice.name.toLowerCase().replace(/[^a-z0-9]+/g, "-")}-${mention.order}`,
+      const stopId = handoffStopOccurrenceId(mention, handoffOccurrenceMentionIdsRef.current);
+      setStops((current) => insertHandoffOccurrence(current, {
+          id: stopId,
           name: choice.name,
           country: choice.country,
           canonicalPlaceId,
@@ -2696,7 +2723,7 @@ function TripBuilderDocument() {
           coordinates: choice.coordinates,
           intent: "place",
           locality: choice.locality,
-        }]);
+        }, mention, capturedStructuredBrief.placeMentions ?? intakeMentions, handoffOccurrenceMentionIdsRef.current));
     }
     setLocationChoices((current) => current.filter((item) => item.mention.mentionId !== mention.mentionId));
     advanceClarificationSession();
@@ -3380,6 +3407,29 @@ function TripBuilderDocument() {
     routeOrderFixed: Boolean(structuredRouteConstraints.fixedCommitments?.length),
     document: activeTripDocument,
   }), [origin, originCoordinates, journeyEnd, stops, resolvingLocations, buildPlaceIssues, routeIntelligence.route.constraintIssues, structuredRouteConstraints.requiredStopIds, structuredRouteConstraints.maximumStops, structuredRouteConstraints.fixedCommitments, effectiveIntent.hardConstraints.mustSeeStopIds, startDate, endDate, totalDays, effectiveStructuredBrief.duration, effectiveStructuredBrief.issues, nightAllocation, allocation, finalPlanValidation, activeTripDocument]);
+  useEffect(() => {
+    const attemptId = planningAttemptIdRef.current;
+    if (!hydrated || !attemptId) return;
+    markPlanningMilestone(attemptId, "shell-visible");
+    const controlsEnabled = !pendingInterpretation && !deviceRecoveryBlocked && !deviceStorageBlocked && !cloudConflictTrip;
+    if (planningContentIsActionable({
+      mode: planningModeRef.current,
+      editableCanonicalOccurrences: hasRouteSkeleton ? stops.length : 0,
+      selectableClarification: clarificationOpen && Boolean(activeClarificationMention),
+      controlsEnabled,
+    })) markPlanningMilestone(attemptId, "first-actionable");
+    const lookupStates = Object.values(handoffResolutionStatuses);
+    if (planningRequiredInterpretationIsComplete({
+      pendingInterpretation: Boolean(pendingInterpretation),
+      pendingLookup: resolvingLocations || lookupStates.includes("pending"),
+      failedLookup: lookupStates.includes("failed"),
+      routeOccurrences: hasRouteSkeleton ? stops.length : 0,
+      selectableDiscovery: clarificationOpen && Boolean(activeClarificationMention),
+    })) markPlanningMilestone(attemptId, "required-complete");
+    if (!pendingInterpretation && buildInvariant.canBuildTrip) markPlanningMilestone(attemptId, "route-ready");
+    // Intent-only capture defers optional suggestions and assessments. Place
+    // resolution alone cannot certify that optional enrichment is complete.
+  }, [hydrated, pendingInterpretation, hasRouteSkeleton, stops.length, clarificationOpen, activeClarificationMention, deviceRecoveryBlocked, deviceStorageBlocked, cloudConflictTrip, handoffResolutionStatuses, resolvingLocations, buildInvariant.canBuildTrip]);
   const gateConflict = buildInvariant.firstConflict;
   const gate = gateConflict?.code === "itinerary-stop-uncovered"
     ? (language === "es" ? "No pudimos incluir todas las paradas en el itinerario. Revisa tu ruta e inténtalo de nuevo." : "We couldn't include every stop in the itinerary. Review your route and try again.")
@@ -3560,11 +3610,13 @@ function TripBuilderDocument() {
     const timer = window.setTimeout(() => {
       const acknowledged = lastAcknowledgedCanonicalRef.current;
       if (acknowledged && tripDocumentsCanonicalEquivalent(activeTripDocument, acknowledged)) {
+        if (planningAttemptIdRef.current) markPlanningMilestone(planningAttemptIdRef.current, "durable-intake");
         setSaveState("cloud");
         return;
       }
       lastAcknowledgedCanonicalRef.current = null;
       const recovery = persistDeviceRecovery(activeTripDocument);
+      if (recovery.stored && planningAttemptIdRef.current) markPlanningMilestone(planningAttemptIdRef.current, "durable-intake");
       if (receiptAcknowledgementRef.current) {
         setSaveState("device-saving");
         return;
@@ -4209,6 +4261,8 @@ function TripBuilderDocument() {
                   ? pendingInterpretation.receipt.frozenSnapshot.prompt
                   : language === "es" ? "Tus lugares y preferencias se han guardado en este dispositivo." : "Your places and preferences are saved on this device."}
                 onRetry={tripBriefCaptureError ? () => {
+                  markPlanningMilestone(pendingInterpretation.receipt.handoffId, "submit");
+                  markPlanningMilestone(pendingInterpretation.receipt.handoffId, "durable-intake");
                   setTripBriefCaptureError("");
                   setPendingInterpretationRetry((revision) => revision + 1);
                 } : undefined}

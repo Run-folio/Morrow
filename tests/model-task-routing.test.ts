@@ -200,3 +200,8 @@ test("intent-only route avoids provider and suggestion work without a second mod
   assert.match(route, /mode === "intent-only" \? false/);
   assert.match(route, /semanticConfig\.mode === "shadow" && mode !== "intent-only"/);
 });
+
+test("intent-only and full planning requests cannot share a weaker in-flight validation result", () => {
+  const route = readFileSync(new URL("../app/api/journey-capture/route.ts", import.meta.url), "utf8");
+  assert.match(route, /requireSuggestions === false \? "intent-only" : requireSuggestions === true \? "suggest" : "assess"/);
+});

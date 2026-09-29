@@ -1,0 +1,66 @@
+[
+  {
+    "label": "before",
+    "scenario": "slow",
+    "calls": {
+      "Tokyo": 1,
+      "Kyoto": 1
+    },
+    "midTokyoChecked": false,
+    "midKyotoPending": false,
+    "midFailed": false,
+    "endTokyoChecked": false,
+    "endKyotoChecked": false,
+    "retryVisible": 0,
+    "retried": false,
+    "errors": []
+  },
+  {
+    "label": "before",
+    "scenario": "failure",
+    "calls": {
+      "Tokyo": 1,
+      "Kyoto": 1
+    },
+    "midTokyoChecked": false,
+    "midKyotoPending": false,
+    "midFailed": false,
+    "endTokyoChecked": false,
+    "endKyotoChecked": false,
+    "retryVisible": 0,
+    "retried": false,
+    "errors": []
+  },
+  {
+    "label": "after",
+    "scenario": "slow",
+    "calls": {
+      "Tokyo": 1,
+      "Kyoto": 1
+    },
+    "midTokyoChecked": true,
+    "midKyotoPending": true,
+    "midFailed": false,
+    "endTokyoChecked": true,
+    "endKyotoChecked": true,
+    "retryVisible": 0,
+    "retried": false,
+    "errors": []
+  },
+  {
+    "label": "after",
+    "scenario": "failure",
+    "calls": {
+      "Tokyo": 2,
+      "Kyoto": 1
+    },
+    "midTokyoChecked": false,
+    "midKyotoPending": false,
+    "midFailed": true,
+    "endTokyoChecked": true,
+    "endKyotoChecked": true,
+    "retryVisible": 0,
+    "retried": true,
+    "errors": []
+  }
+]

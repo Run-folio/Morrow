@@ -957,7 +957,7 @@ export type HandoffRouteStop = {
   locality?: string;
 };
 
-function handoffRouteStopId(mention: ResolvedPlaceMention) {
+function handoffRouteStopId(mention: Pick<ResolvedPlaceMention, "canonicalName" | "order">) {
   return `${mention.canonicalName.toLowerCase().replace(/[^a-z0-9]+/g, "-")}-${mention.order}`;
 }
 
@@ -1539,6 +1539,102 @@ export async function resolveHandoffBatch<T, R>(
 }
 
 export type HandoffOutcome<T, R> = { item: T; value?: R; status: "resolved" | "failed" | "timeout" };
+
+export function handoffStopOccurrenceId(
+  mention: Pick<ResolvedPlaceMention, "mentionId" | "order" | "canonicalName">,
+  occurrenceMentionIds: Readonly<Record<string, string>>,
+): string {
+  return Object.entries(occurrenceMentionIds).find(([, mentionId]) => mentionId === mention.mentionId)?.[0]
+    ?? handoffRouteStopId(mention);
+}
+
+export function insertHandoffOccurrence<T extends { id: string }>(
+  current: readonly T[],
+  addition: T,
+  mention: Pick<ResolvedPlaceMention, "mentionId" | "order" | "canonicalName">,
+  mentions: readonly Pick<ResolvedPlaceMention, "mentionId" | "order" | "canonicalName">[],
+  occurrenceMentionIds: Readonly<Record<string, string>>,
+): T[] {
+  if (current.some((stop) => stop.id === addition.id)) return [...current];
+  const positioned = mentions.map((item) => ({ id: handoffStopOccurrenceId(item, occurrenceMentionIds), order: item.order }))
+    .filter((item) => current.some((stop) => stop.id === item.id));
+  const preceding = positioned.filter((item) => item.order < mention.order).sort((a, b) => b.order - a.order)[0];
+  const following = positioned.filter((item) => item.order > mention.order).sort((a, b) => a.order - b.order)[0];
+  const index = preceding ? current.findIndex((stop) => stop.id === preceding.id) + 1
+    : following ? current.findIndex((stop) => stop.id === following.id) : current.length;
+  return [...current.slice(0, index), addition, ...current.slice(index)];
+}
+
+export function handoffOutcomeIsCurrent(
+  mentionId: string,
+  status: string | undefined,
+  removedMentionIds: readonly string[],
+  handledMentionIds: readonly string[],
+): boolean {
+  return status === "pending" && !removedMentionIds.includes(mentionId) && !handledMentionIds.includes(mentionId);
+}
+
+export function retireHandoffResolutionStatus<T extends string>(
+  current: Readonly<Record<string, T>>,
+  mentionId: string,
+): Record<string, T> {
+  const next = { ...current };
+  delete next[mentionId];
+  return next;
+}
+
+/** A session-local query cache whose underlying request lives only while at
+ * least one occurrence still awaits it. Per-occurrence queue timeouts can
+ * therefore cancel provider work without poisoning a surviving namesake. */
+export function createHandoffSharedLookup<T, R>(
+  keyOf: (item: T) => string,
+  fetcher: (item: T, signal: AbortSignal) => Promise<R>,
+  sessionSignal: AbortSignal,
+): (item: T, signal: AbortSignal) => Promise<R> {
+  type Entry = { controller: AbortController; promise: Promise<R>; consumers: number; settled: boolean };
+  const cache = new Map<string, Entry>();
+  sessionSignal.addEventListener("abort", () => {
+    for (const entry of cache.values()) entry.controller.abort();
+    cache.clear();
+  }, { once: true });
+  return (item, signal) => {
+    if (signal.aborted || sessionSignal.aborted) return Promise.reject(new Error("Place lookup cancelled"));
+    const key = keyOf(item);
+    let entry = cache.get(key);
+    if (!entry) {
+      const controller = new AbortController();
+      entry = { controller, promise: fetcher(item, controller.signal), consumers: 0, settled: false };
+      const current = entry;
+      cache.set(key, current);
+      void current.promise.then(
+        () => { current.settled = true; },
+        () => { current.settled = true; if (cache.get(key) === current) cache.delete(key); },
+      );
+    }
+    const shared = entry;
+    shared.consumers += 1;
+    return new Promise<R>((resolve, reject) => {
+      let complete = false;
+      const finish = () => {
+        if (complete) return false;
+        complete = true;
+        signal.removeEventListener("abort", abort);
+        shared.consumers -= 1;
+        if (!shared.consumers && !shared.settled) {
+          shared.controller.abort();
+          if (cache.get(key) === shared) cache.delete(key);
+        }
+        return true;
+      };
+      const abort = () => { if (finish()) reject(new Error("Place lookup cancelled")); };
+      signal.addEventListener("abort", abort, { once: true });
+      void shared.promise.then(
+        (value) => { if (finish()) resolve(value); },
+        (error) => { if (finish()) reject(error); },
+      );
+    });
+  };
+}
 
 /** Publish each occurrence independently. The caller owns generation and
  * canonical application; this queue owns only bounded lookup scheduling. */

@@ -6,6 +6,7 @@ import { MorroviaTripCapture } from "@/components/easyt/morrovia-trip-capture";
 import { JourneyEndpointsEditor } from "@/components/easyt/journey-endpoints-editor";
 import { languageFromStorage, type EasyTLanguage } from "@/lib/easyt/i18n";
 import { trackEvent } from "@/lib/analytics";
+import { markPlanningMilestone, planningAttemptOutcome } from "@/lib/easyt/planning-attempt-performance";
 import { authClient } from "@/lib/auth-client";
 import { travelProfileFromUnknown, tripInterestsWithProfileDefaults, type TravelProfile } from "@/lib/easyt/travel-profile";
 import { homepageInputStorageKey, travelProfileStorageKey } from "@/lib/easyt/private-browser-context";
@@ -145,6 +146,7 @@ export default function HomeTripStarter() {
   const submit = async () => {
     if (submitInFlightRef.current) return;
     submitInFlightRef.current = true;
+    const submittedAt = performance.now();
     const submitted = snapshotRef.current;
     const submittedRevision = submitted.revision;
     const submittedOwner = submitted.ownerId;
@@ -171,6 +173,7 @@ export default function HomeTripStarter() {
         && homepageCompletedReceiptIsUnchanged({ snapshot: submitted, receipt: storedInputRef.current.receipt })
         ? storedInputRef.current.receipt : undefined;
       if (unchangedReceipt) {
+        markPlanningMilestone(unchangedReceipt.handoffId, "submit", submittedAt);
         const existingTrip = loadTripRecovery(unchangedReceipt.tripId, submittedOwner)?.trip
           ?? await loadRequestedTrip(unchangedReceipt.tripId, submittedOwner);
         if (!isCurrent()) return;
@@ -180,6 +183,7 @@ export default function HomeTripStarter() {
             return;
           }
           navigationStarted = true;
+          markPlanningMilestone(unchangedReceipt.handoffId, "durable-intake");
           router.push(`/journey/new?trip=${encodeURIComponent(unchangedReceipt.tripId)}`);
           return;
         }
@@ -197,6 +201,7 @@ export default function HomeTripStarter() {
           if (!isCurrent()) return;
           if (committed.ok) {
             navigationStarted = true;
+            markPlanningMilestone(unchangedReceipt.handoffId, "durable-intake");
             router.push(committed.href);
             return;
           }
@@ -219,6 +224,8 @@ export default function HomeTripStarter() {
           return;
         }
         storedInputRef.current = committed.stored;
+        markPlanningMilestone(committed.receipt.handoffId, "submit", submittedAt);
+        markPlanningMilestone(committed.receipt.handoffId, "durable-intake");
         navigationStarted = true;
         router.push(committed.href);
         return;
@@ -241,6 +248,7 @@ export default function HomeTripStarter() {
         receipt = homepageReceiptForProjection(submitted, projected.draft, generatedId("trip"));
       }
       const stored: StoredHomepageInput = { snapshot: submitted, receipt };
+      markPlanningMilestone(receipt.handoffId, "submit", submittedAt);
       const draft = { ...projected.draft, homepage: { ...projected.draft.homepage!, receipt } };
       if (!isCurrent()) return;
       const committed = await commitHomepageHandoff({
@@ -249,11 +257,13 @@ export default function HomeTripStarter() {
       });
       if (!isCurrent()) return;
       if (!committed.ok) {
+        planningAttemptOutcome(receipt.handoffId, "error");
         setCaptureError(language === "es" ? "No pudimos conservar tu trabajo actual. Inténtalo de nuevo." : "We couldn't preserve your current work. Try again.");
         trackEvent("trip_generation_failed", { trip_source: "homepage", error_type: "unknown", is_authenticated: Boolean(submittedOwner) });
         return;
       }
       storedInputRef.current = stored;
+      markPlanningMilestone(receipt.handoffId, "durable-intake");
       navigationStarted = true;
       router.push(committed.href);
     } catch {

@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from "@storybook/nextjs-vite";
 import { useEffect, useState } from "react";
 import TripBuilder from "./trip-builder";
 import { currentTripStorageKey } from "@/lib/easyt/storage";
-import { HOME_TRIP_DRAFT_KEY, createPendingIntakeReceipt, type HomepageInputSnapshot } from "@/lib/easyt/home-trip-handoff";
+import { HOME_TRIP_DRAFT_KEY, createPendingIntakeReceipt, homepageReceiptForProjection, projectHomepageInput, type HomepageInputSnapshot } from "@/lib/easyt/home-trip-handoff";
 import { homepageInputStorageKey } from "@/lib/easyt/private-browser-context";
 import { canonicalPlaceSuggestionFor } from "@/lib/easyt/place-intelligence";
 import { routePlannerPayload } from "@/lib/easyt/public-route-handoff";
@@ -260,10 +260,18 @@ function BuilderEntryFixture({ entry, language = "en", routeKey = "morocco-rail"
       url.searchParams.set("homeDraft", "1");
       url.searchParams.set("handoff", receipt.handoffId);
     } else if (["partial", "failed", "repeated"].includes(entry)) {
-      const brief = entry === "repeated" ? "Tokyo, Kyoto, then Tokyo again in Japan" : "Tokyo and Kyoto in Japan";
-      const captured = captureJourneyBrief(brief);
-      window.localStorage.setItem(HOME_TRIP_DRAFT_KEY, JSON.stringify({ brief, structuredBrief: captured.structuredBrief, locationMentions: captured.structuredBrief.placeMentions }));
+      const handoffId = `storybook-${entry}`;
+      const submitted = entry === "repeated" ? starterSnapshot("stops", true) : {
+        ...starterSnapshot("describe"), prompt: "Tokyo and Kyoto for one week",
+      };
+      const captured = submitted.mode === "describe" ? captureJourneyBrief(submitted.prompt) : undefined;
+      const projected = projectHomepageInput({ snapshot: submitted, capture: captured, profile: null, handoffId });
+      if (!projected.ok) throw new Error("Invalid Builder story handoff");
+      const receipt = homepageReceiptForProjection(submitted, projected.draft, `storybook-trip-${entry}`);
+      window.localStorage.setItem(inputKey, JSON.stringify({ snapshot: submitted, receipt }));
+      window.localStorage.setItem(HOME_TRIP_DRAFT_KEY, JSON.stringify({ ...projected.draft, homepage: { ...projected.draft.homepage!, receipt } }));
       url.searchParams.set("homeDraft", "1");
+      url.searchParams.set("handoff", handoffId);
     } else {
       url.searchParams.set("homeDraft", "1");
       const brief = "Two weeks in Thailand";

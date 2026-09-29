@@ -1,0 +1,12 @@
+{"label":"before","mode":"stops","run":1,"navigationMs":27,"firstActionableMs":368,"hasEditor":true,"overflow":false,"routeTopPx":1003.359375,"marks":[],"errors":[]}
+{"label":"before","mode":"stops","run":2,"navigationMs":41,"firstActionableMs":374,"hasEditor":true,"overflow":false,"routeTopPx":1003.359375,"marks":[],"errors":[]}
+{"label":"before","mode":"stops","run":3,"navigationMs":24,"firstActionableMs":371,"hasEditor":true,"overflow":false,"routeTopPx":1003.359375,"marks":[],"errors":[]}
+{"label":"before","mode":"describe","run":1,"navigationMs":49,"firstActionableMs":1950,"hasEditor":true,"overflow":false,"routeTopPx":1103.359375,"marks":[],"errors":[]}
+{"label":"before","mode":"describe","run":2,"navigationMs":31,"firstActionableMs":362,"hasEditor":true,"overflow":false,"routeTopPx":1103.359375,"marks":[],"errors":[]}
+{"label":"before","mode":"describe","run":3,"navigationMs":31,"firstActionableMs":365,"hasEditor":true,"overflow":false,"routeTopPx":1103.359375,"marks":[],"errors":[]}
+{"label":"after","mode":"stops","run":1,"navigationMs":23,"firstActionableMs":836,"hasEditor":true,"overflow":false,"routeTopPx":1182.84375,"marks":["submit","durable-intake","shell-visible","first-actionable"],"errors":[]}
+{"label":"after","mode":"stops","run":2,"navigationMs":29,"firstActionableMs":359,"hasEditor":true,"overflow":false,"routeTopPx":1182.84375,"marks":["submit","durable-intake","shell-visible","first-actionable"],"errors":[]}
+{"label":"after","mode":"stops","run":3,"navigationMs":35,"firstActionableMs":2596,"hasEditor":true,"overflow":false,"routeTopPx":1182.84375,"marks":["submit","durable-intake","shell-visible","first-actionable"],"errors":[]}
+{"label":"after","mode":"describe","run":1,"navigationMs":33,"firstActionableMs":378,"hasEditor":true,"overflow":false,"routeTopPx":1373.734375,"marks":["submit","durable-intake","shell-visible","first-actionable"],"errors":[]}
+{"label":"after","mode":"describe","run":2,"navigationMs":31,"firstActionableMs":373,"hasEditor":true,"overflow":false,"routeTopPx":1373.734375,"marks":["submit","durable-intake","shell-visible","first-actionable"],"errors":[]}
+{"label":"after","mode":"describe","run":3,"navigationMs":28,"firstActionableMs":369,"hasEditor":true,"overflow":false,"routeTopPx":1373.734375,"marks":["submit","durable-intake","shell-visible","first-actionable"],"errors":[]}

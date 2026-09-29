@@ -1,0 +1,42 @@
+[
+  {
+    "width": 390,
+    "scrollWidth": 390,
+    "overflow": false,
+    "routeTop": 1373.734375,
+    "saveStatus": true,
+    "errors": []
+  },
+  {
+    "width": 430,
+    "scrollWidth": 430,
+    "overflow": false,
+    "routeTop": 1405.8125,
+    "saveStatus": true,
+    "errors": []
+  },
+  {
+    "width": 768,
+    "scrollWidth": 768,
+    "overflow": false,
+    "routeTop": 1012.484375,
+    "saveStatus": true,
+    "errors": []
+  },
+  {
+    "width": 1024,
+    "scrollWidth": 1024,
+    "overflow": false,
+    "routeTop": 729.6875,
+    "saveStatus": true,
+    "errors": []
+  },
+  {
+    "width": 1440,
+    "scrollWidth": 1440,
+    "overflow": false,
+    "routeTop": 762.046875,
+    "saveStatus": true,
+    "errors": []
+  }
+]

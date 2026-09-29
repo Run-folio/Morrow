@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { handoffLookupMentions, mergeHandoffLocationChoice, resolveHandoffIncrementally } from "../lib/easyt/home-trip-handoff.ts";
+import { createHandoffSharedLookup, handoffLookupMentions, handoffOutcomeIsCurrent, handoffRouteStops, handoffStopOccurrenceId, insertHandoffOccurrence, mergeHandoffLocationChoice, resolveHandoffIncrementally, retireHandoffResolutionStatus } from "../lib/easyt/home-trip-handoff.ts";
 import { captureJourneyBrief } from "../lib/easyt/journey-capture.ts";
 
 function deferred<T>() {
@@ -101,6 +101,77 @@ test("late coordinate enrichment keeps current user order and separate Tokyo occ
   assert.deepEqual(enriched.map((stop) => stop.name), ["Tokyo", "Kyoto", "Tokyo"]);
   assert.equal(enriched[0]?.providerId, "provider-tokyo");
   assert.equal(enriched[2]?.providerId, undefined);
+});
+
+test("late provider outcomes cannot restore a handled or removed occurrence", () => {
+  assert.equal(handoffOutcomeIsCurrent("tokyo-2", "pending", [], []), true);
+  assert.equal(handoffOutcomeIsCurrent("tokyo-2", "resolved", [], []), false);
+  assert.equal(handoffOutcomeIsCurrent("tokyo-2", "pending", ["tokyo-2"], []), false);
+  assert.equal(handoffOutcomeIsCurrent("tokyo-2", "pending", [], ["tokyo-2"]), false);
+});
+
+test("retiring one handled lookup leaves a sibling pending without a false completion", () => {
+  const status = { "tokyo-first": "pending" as const, kyoto: "pending" as const };
+  assert.deepEqual(retireHandoffResolutionStatus(status, "tokyo-first"), { kyoto: "pending" });
+  assert.deepEqual(status, { "tokyo-first": "pending", kyoto: "pending" });
+});
+
+test("two unresolved visits to one canonical place retain separate occurrence IDs", () => {
+  const first = { mentionId: "mention-a", order: 1, canonicalName: "Tokyo" };
+  const second = { mentionId: "mention-b", order: 3, canonicalName: "Tokyo" };
+  const mapping = { "destination-1": "mention-a", "destination-3": "mention-b" };
+  assert.equal(handoffStopOccurrenceId(first, mapping), "destination-1");
+  assert.equal(handoffStopOccurrenceId(second, mapping), "destination-3");
+  assert.notEqual(handoffStopOccurrenceId(first, {}), handoffStopOccurrenceId(second, {}));
+});
+
+test("Describe lookup IDs match the initial canonical route seeds and preserve an unresolved middle occurrence", () => {
+  const mentions = captureJourneyBrief("Tokyo, Kyoto and Osaka").mentions.filter((mention) => mention.role !== "origin");
+  const seeds = handoffRouteStops(mentions);
+  for (const mention of mentions) {
+    const seed = seeds.find((stop) => stop.name === mention.canonicalName);
+    if (seed) assert.equal(handoffStopOccurrenceId(mention, {}), seed.id);
+  }
+  const current = [{ id: "tokyo-1", name: "Tokyo" }, { id: "kyoto-3", name: "Kyoto" }];
+  const mentionOrder = [{ mentionId: "tokyo", order: 1, canonicalName: "Tokyo" }, { mentionId: "middle", order: 2, canonicalName: "X" }, { mentionId: "kyoto", order: 3, canonicalName: "Kyoto" }];
+  assert.deepEqual(insertHandoffOccurrence(current, { id: "x-2", name: "X" }, mentionOrder[1]!, mentionOrder, {}).map((stop) => stop.id), ["tokyo-1", "x-2", "kyoto-3"]);
+  assert.deepEqual(insertHandoffOccurrence([...current].reverse(), { id: "x-2", name: "X" }, mentionOrder[1]!, mentionOrder, {}).map((stop) => stop.id), ["kyoto-3", "tokyo-1", "x-2"], "an existing user reorder remains intact");
+});
+
+test("a timed-out occurrence aborts its own provider work", async () => {
+  let aborted = false;
+  const outcomes = await resolveHandoffIncrementally(["slow"], async (_id, signal) => new Promise<string>((_, reject) => {
+    signal.addEventListener("abort", () => { aborted = true; reject(new Error("aborted")); }, { once: true });
+  }), { timeoutMs: 5, onOutcome: () => {} });
+  assert.equal(outcomes[0]?.status, "timeout");
+  assert.equal(aborted, true);
+});
+
+test("shared lookup aborts when its final consumer times out but keeps a surviving repeated occurrence", async () => {
+  const session = new AbortController();
+  let calls = 0;
+  let providerAborts = 0;
+  const lookup = createHandoffSharedLookup((name: string) => name, async (_name, signal) => {
+    calls += 1;
+    return new Promise<string>((resolve, reject) => {
+      signal.addEventListener("abort", () => { providerAborts += 1; reject(new Error("aborted")); });
+      setTimeout(() => resolve("Tokyo"), 20);
+    });
+  }, session.signal);
+  const first = new AbortController();
+  const second = new AbortController();
+  const a = lookup("Tokyo", first.signal);
+  const b = lookup("Tokyo", second.signal);
+  first.abort();
+  await assert.rejects(a);
+  assert.equal(await b, "Tokyo");
+  assert.equal(calls, 1);
+  assert.equal(providerAborts, 0);
+  const lone = new AbortController();
+  const pending = lookup("Kyoto", lone.signal);
+  lone.abort();
+  await assert.rejects(pending);
+  assert.equal(providerAborts, 1);
 });
 
 test("scoped retry keeps the successful sibling and requests only the failed occurrence again", async () => {

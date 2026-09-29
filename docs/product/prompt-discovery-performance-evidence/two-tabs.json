@@ -1,0 +1,14 @@
+{
+  "webLocks": true,
+  "urls": [
+    "http://localhost:4317/journey/new?homeDraft=1&handoff=handoff-408a2e6e-7ab7-40a1-9801-baa4166fcac5",
+    "http://localhost:4317/journey/new?homeDraft=1&handoff=handoff-408a2e6e-7ab7-40a1-9801-baa4166fcac5"
+  ],
+  "sameHandoff": true,
+  "receipt": {
+    "handoffId": "handoff-408a2e6e-7ab7-40a1-9801-baa4166fcac5",
+    "tripId": "trip-2460a13e-99b1-4a37-8026-b8547c789ef4",
+    "draftMatches": true
+  },
+  "errors": []
+}

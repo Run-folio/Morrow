@@ -256,7 +256,7 @@ test("versioned homepage hydration reserves identity before replay and keeps one
   assert.match(builder, /homepageHandoffReceiptForOwner\(homeDraft, activeOwnerId\)/);
   assert.match(builder, /setTripId\(homepageReceipt\.tripId\)/);
   assert.match(builder, /loadTripRecovery\(homepageReceipt\.tripId, activeOwnerId\)/);
-  assert.match(builder, /homepageOccurrenceByMentionId\.get\(mention\.mentionId\)/,
+  assert.match(builder, /handoffStopOccurrenceId\(mention, handoffOccurrenceMentionIdsRef\.current\)/,
     "each place lookup must retain its originating occurrence identity");
   assert.match(builder, /mergeHandoffLocationChoice\(current, mention, chosen, stopId\)/);
   assert.match(builder, /stop\.name === seed\?\.name && stop\.canonicalPlaceId === seed\?\.canonicalPlaceId/,

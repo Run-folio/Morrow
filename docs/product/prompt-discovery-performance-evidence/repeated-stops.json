@@ -1,0 +1,112 @@
+[
+  {
+    "label": "before",
+    "intake": [
+      {
+        "id": "destination-1",
+        "canonicalId": "tokyo"
+      },
+      {
+        "id": "destination-2",
+        "canonicalId": "kyoto"
+      },
+      {
+        "id": "destination-3",
+        "canonicalId": "tokyo"
+      }
+    ],
+    "stops": [
+      {
+        "id": "destination-1",
+        "name": "Tokyo",
+        "canonicalId": "tokyo"
+      },
+      {
+        "id": "destination-2",
+        "name": "Kyoto",
+        "canonicalId": "kyoto"
+      },
+      {
+        "id": "destination-3",
+        "name": "Tokyo",
+        "canonicalId": "tokyo"
+      }
+    ],
+    "reloaded": [
+      {
+        "id": "destination-1",
+        "name": "Tokyo",
+        "canonicalId": "tokyo"
+      },
+      {
+        "id": "destination-2",
+        "name": "Kyoto",
+        "canonicalId": "kyoto"
+      },
+      {
+        "id": "destination-3",
+        "name": "Tokyo",
+        "canonicalId": "tokyo"
+      }
+    ],
+    "distinctOccurrences": true,
+    "retainedAfterReload": true,
+    "overflow": false,
+    "errors": []
+  },
+  {
+    "label": "after",
+    "intake": [
+      {
+        "id": "destination-1",
+        "canonicalId": "tokyo"
+      },
+      {
+        "id": "destination-2",
+        "canonicalId": "kyoto"
+      },
+      {
+        "id": "destination-3",
+        "canonicalId": "tokyo"
+      }
+    ],
+    "stops": [
+      {
+        "id": "destination-1",
+        "name": "Tokyo",
+        "canonicalId": "tokyo"
+      },
+      {
+        "id": "destination-2",
+        "name": "Kyoto",
+        "canonicalId": "kyoto"
+      },
+      {
+        "id": "destination-3",
+        "name": "Tokyo",
+        "canonicalId": "tokyo"
+      }
+    ],
+    "reloaded": [
+      {
+        "id": "destination-1",
+        "name": "Tokyo",
+        "canonicalId": "tokyo"
+      },
+      {
+        "id": "destination-2",
+        "name": "Kyoto",
+        "canonicalId": "kyoto"
+      },
+      {
+        "id": "destination-3",
+        "name": "Tokyo",
+        "canonicalId": "tokyo"
+      }
+    ],
+    "distinctOccurrences": true,
+    "retainedAfterReload": true,
+    "overflow": false,
+    "errors": []
+  }
+]

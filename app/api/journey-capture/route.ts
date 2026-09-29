@@ -29,7 +29,8 @@ const inFlightPlanningRequests = new Map<string, { expiresAt: number; result: Pr
 
 function deduplicatedPlanningRequest(brief: string, requireSuggestions: boolean | undefined, attempt = 1) {
   const now = Date.now();
-  const key = `${createHash("sha256").update(brief).digest("hex")}:${requireSuggestions ? "suggest" : "assess"}:${attempt}`;
+  const validationMode = requireSuggestions === false ? "intent-only" : requireSuggestions === true ? "suggest" : "assess";
+  const key = `${createHash("sha256").update(brief).digest("hex")}:${validationMode}:${attempt}`;
   const current = inFlightPlanningRequests.get(key);
   if (current && current.expiresAt > now) return current.result;
   const result = evaluatePlanningModel({

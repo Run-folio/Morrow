@@ -1,0 +1,453 @@
+[
+  {
+    "phase": "after-correction",
+    "source": "optimized-local-fallback",
+    "name": "stops",
+    "run": 1,
+    "thermal": "cold-context",
+    "width": 390,
+    "height": 844,
+    "errors": [],
+    "requests": [
+      "journey-geocode",
+      "journey-geocode",
+      "journey-geocode"
+    ],
+    "urlObservedUpperBoundMs": 495,
+    "milestonesMs": {
+      "submit": 0,
+      "durable-intake": 49,
+      "shell-visible": 822,
+      "first-actionable": 822,
+      "required-complete": 830
+    },
+    "hasRoute": true,
+    "hasDiscovery": false,
+    "hasCanonicalTokyo": true,
+    "firstActionableVerified": true,
+    "overflow": false,
+    "urlKind": "handoff"
+  },
+  {
+    "phase": "after-correction",
+    "source": "optimized-local-fallback",
+    "name": "stops",
+    "run": 2,
+    "thermal": "warm-server",
+    "width": 390,
+    "height": 844,
+    "errors": [],
+    "requests": [
+      "journey-geocode",
+      "journey-geocode"
+    ],
+    "urlObservedUpperBoundMs": 79,
+    "milestonesMs": {
+      "submit": 0,
+      "durable-intake": 48,
+      "shell-visible": 396,
+      "first-actionable": 397,
+      "required-complete": 407
+    },
+    "hasRoute": true,
+    "hasDiscovery": false,
+    "hasCanonicalTokyo": true,
+    "firstActionableVerified": true,
+    "overflow": false,
+    "urlKind": "handoff"
+  },
+  {
+    "phase": "after-correction",
+    "source": "optimized-local-fallback",
+    "name": "stops",
+    "run": 3,
+    "thermal": "warm-server",
+    "width": 390,
+    "height": 844,
+    "errors": [],
+    "requests": [
+      "journey-geocode",
+      "journey-geocode"
+    ],
+    "urlObservedUpperBoundMs": 77,
+    "milestonesMs": {
+      "submit": 0,
+      "durable-intake": 48,
+      "shell-visible": 409,
+      "first-actionable": 409,
+      "required-complete": 419
+    },
+    "hasRoute": true,
+    "hasDiscovery": false,
+    "hasCanonicalTokyo": true,
+    "firstActionableVerified": true,
+    "overflow": false,
+    "urlKind": "handoff"
+  },
+  {
+    "phase": "after-correction",
+    "source": "optimized-local-fallback",
+    "name": "describe",
+    "run": 1,
+    "thermal": "cold-context",
+    "width": 390,
+    "height": 844,
+    "errors": [],
+    "requests": [
+      "journey-capture",
+      "journey-geocode",
+      "journey-geocode",
+      "journey-discover",
+      "journey-discover"
+    ],
+    "urlObservedUpperBoundMs": 71,
+    "milestonesMs": {
+      "submit": 0,
+      "durable-intake": 53,
+      "shell-visible": 989,
+      "first-actionable": 1022,
+      "required-complete": 1118
+    },
+    "hasRoute": true,
+    "hasDiscovery": true,
+    "hasCanonicalTokyo": true,
+    "firstActionableVerified": true,
+    "overflow": false,
+    "urlKind": "handoff"
+  },
+  {
+    "phase": "after-correction",
+    "source": "optimized-local-fallback",
+    "name": "describe",
+    "run": 2,
+    "thermal": "warm-server",
+    "width": 390,
+    "height": 844,
+    "errors": [],
+    "requests": [
+      "journey-capture",
+      "journey-geocode",
+      "journey-geocode",
+      "journey-discover",
+      "journey-discover"
+    ],
+    "urlObservedUpperBoundMs": 86,
+    "milestonesMs": {
+      "submit": 0,
+      "durable-intake": 52,
+      "shell-visible": 395,
+      "first-actionable": 426,
+      "required-complete": 517
+    },
+    "hasRoute": true,
+    "hasDiscovery": true,
+    "hasCanonicalTokyo": true,
+    "firstActionableVerified": true,
+    "overflow": false,
+    "urlKind": "handoff"
+  },
+  {
+    "phase": "after-correction",
+    "source": "optimized-local-fallback",
+    "name": "describe",
+    "run": 3,
+    "thermal": "warm-server",
+    "width": 390,
+    "height": 844,
+    "errors": [],
+    "requests": [
+      "journey-capture",
+      "journey-geocode",
+      "journey-geocode",
+      "journey-discover",
+      "journey-discover"
+    ],
+    "urlObservedUpperBoundMs": 54,
+    "milestonesMs": {
+      "submit": 0,
+      "durable-intake": 40,
+      "shell-visible": 1166,
+      "first-actionable": 1193,
+      "required-complete": 1285
+    },
+    "hasRoute": true,
+    "hasDiscovery": true,
+    "hasCanonicalTokyo": true,
+    "firstActionableVerified": true,
+    "overflow": false,
+    "urlKind": "handoff"
+  },
+  {
+    "phase": "after-correction",
+    "source": "optimized-local-fallback",
+    "name": "broad",
+    "run": 1,
+    "thermal": "cold-context",
+    "width": 390,
+    "height": 844,
+    "errors": [],
+    "requests": [
+      "journey-capture"
+    ],
+    "urlObservedUpperBoundMs": 56,
+    "milestonesMs": {
+      "submit": 0,
+      "durable-intake": 40,
+      "shell-visible": 667,
+      "first-actionable": 711,
+      "required-complete": 711
+    },
+    "hasRoute": false,
+    "hasDiscovery": true,
+    "hasCanonicalTokyo": false,
+    "firstActionableVerified": true,
+    "overflow": false,
+    "urlKind": "handoff"
+  },
+  {
+    "phase": "after-correction",
+    "source": "optimized-local-fallback",
+    "name": "mixed",
+    "run": 1,
+    "thermal": "cold-context",
+    "width": 390,
+    "height": 844,
+    "errors": [],
+    "requests": [
+      "journey-capture",
+      "journey-geocode",
+      "journey-geocode",
+      "journey-discover"
+    ],
+    "urlObservedUpperBoundMs": 75,
+    "milestonesMs": {
+      "submit": 0,
+      "durable-intake": 58,
+      "shell-visible": 1066,
+      "first-actionable": 1100,
+      "required-complete": 1118
+    },
+    "hasRoute": true,
+    "hasDiscovery": true,
+    "hasCanonicalTokyo": true,
+    "firstActionableVerified": true,
+    "overflow": false,
+    "urlKind": "handoff"
+  },
+  {
+    "phase": "after-correction",
+    "source": "optimized-local-fallback",
+    "name": "repeated",
+    "run": 1,
+    "thermal": "cold-context",
+    "width": 390,
+    "height": 844,
+    "errors": [],
+    "requests": [
+      "journey-geocode",
+      "journey-geocode",
+      "journey-geocode",
+      "journey-geocode",
+      "journey-geocode"
+    ],
+    "urlObservedUpperBoundMs": 77,
+    "milestonesMs": {
+      "submit": 0,
+      "durable-intake": 53,
+      "shell-visible": 418,
+      "first-actionable": 418,
+      "required-complete": 426
+    },
+    "hasRoute": true,
+    "hasDiscovery": false,
+    "hasCanonicalTokyo": true,
+    "repeatedOccurrencesVisible": true,
+    "firstActionableVerified": true,
+    "overflow": false,
+    "urlKind": "handoff"
+  },
+  {
+    "phase": "after-correction",
+    "source": "optimized-local-fallback",
+    "name": "slow",
+    "run": 1,
+    "thermal": "cold-context",
+    "width": 390,
+    "height": 844,
+    "errors": [],
+    "requests": [
+      "journey-capture",
+      "journey-geocode",
+      "journey-geocode",
+      "journey-discover",
+      "journey-discover"
+    ],
+    "urlObservedUpperBoundMs": 77,
+    "milestonesMs": {
+      "submit": 0,
+      "durable-intake": 45,
+      "shell-visible": 402,
+      "first-actionable": 433,
+      "required-complete": 2962
+    },
+    "hasRoute": true,
+    "hasDiscovery": true,
+    "hasCanonicalTokyo": true,
+    "firstActionableVerified": true,
+    "overflow": false,
+    "urlKind": "canonical-trip"
+  },
+  {
+    "phase": "after-correction",
+    "source": "optimized-local-fallback",
+    "name": "failure",
+    "run": 1,
+    "thermal": "cold-context",
+    "width": 390,
+    "height": 844,
+    "errors": [],
+    "requests": [
+      "journey-capture",
+      "journey-geocode",
+      "journey-geocode",
+      "journey-discover"
+    ],
+    "urlObservedUpperBoundMs": 69,
+    "milestonesMs": {
+      "submit": 0,
+      "durable-intake": 49,
+      "shell-visible": 695,
+      "first-actionable": 730
+    },
+    "hasRoute": true,
+    "hasDiscovery": true,
+    "hasCanonicalTokyo": true,
+    "firstActionableVerified": true,
+    "overflow": false,
+    "urlKind": "canonical-trip"
+  },
+  {
+    "phase": "after-correction",
+    "source": "optimized-local-fallback",
+    "name": "describe",
+    "run": 1,
+    "thermal": "cold-context",
+    "width": 430,
+    "height": 844,
+    "errors": [],
+    "requests": [
+      "journey-capture",
+      "journey-geocode",
+      "journey-geocode",
+      "journey-discover",
+      "journey-discover"
+    ],
+    "urlObservedUpperBoundMs": 73,
+    "milestonesMs": {
+      "submit": 0,
+      "durable-intake": 42,
+      "shell-visible": 398,
+      "first-actionable": 425,
+      "required-complete": 522
+    },
+    "hasRoute": true,
+    "hasDiscovery": true,
+    "hasCanonicalTokyo": true,
+    "firstActionableVerified": true,
+    "overflow": false,
+    "urlKind": "handoff"
+  },
+  {
+    "phase": "after-correction",
+    "source": "optimized-local-fallback",
+    "name": "describe",
+    "run": 1,
+    "thermal": "cold-context",
+    "width": 768,
+    "height": 844,
+    "errors": [],
+    "requests": [
+      "journey-capture",
+      "journey-geocode",
+      "journey-geocode",
+      "journey-discover",
+      "journey-discover"
+    ],
+    "urlObservedUpperBoundMs": 72,
+    "milestonesMs": {
+      "submit": 0,
+      "durable-intake": 53,
+      "shell-visible": 843,
+      "first-actionable": 876,
+      "required-complete": 973
+    },
+    "hasRoute": true,
+    "hasDiscovery": true,
+    "hasCanonicalTokyo": true,
+    "firstActionableVerified": true,
+    "overflow": false,
+    "urlKind": "handoff"
+  },
+  {
+    "phase": "after-correction",
+    "source": "optimized-local-fallback",
+    "name": "describe",
+    "run": 1,
+    "thermal": "cold-context",
+    "width": 1024,
+    "height": 844,
+    "errors": [],
+    "requests": [
+      "journey-capture",
+      "journey-geocode",
+      "journey-geocode",
+      "journey-discover",
+      "journey-discover"
+    ],
+    "urlObservedUpperBoundMs": 56,
+    "milestonesMs": {
+      "submit": 0,
+      "durable-intake": 39,
+      "shell-visible": 4364,
+      "first-actionable": 4393,
+      "required-complete": 4506
+    },
+    "hasRoute": true,
+    "hasDiscovery": true,
+    "hasCanonicalTokyo": true,
+    "firstActionableVerified": true,
+    "overflow": false,
+    "urlKind": "handoff"
+  },
+  {
+    "phase": "after-correction",
+    "source": "optimized-local-fallback",
+    "name": "describe",
+    "run": 1,
+    "thermal": "cold-context",
+    "width": 1440,
+    "height": 844,
+    "errors": [],
+    "requests": [
+      "journey-capture",
+      "journey-geocode",
+      "journey-geocode",
+      "journey-discover",
+      "journey-discover"
+    ],
+    "urlObservedUpperBoundMs": 57,
+    "milestonesMs": {
+      "submit": 0,
+      "durable-intake": 41,
+      "shell-visible": 5335,
+      "first-actionable": 5367,
+      "required-complete": 5480
+    },
+    "hasRoute": true,
+    "hasDiscovery": true,
+    "hasCanonicalTokyo": true,
+    "firstActionableVerified": true,
+    "overflow": false,
+    "urlKind": "handoff"
+  }
+]

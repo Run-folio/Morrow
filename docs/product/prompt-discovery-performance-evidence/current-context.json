@@ -1,0 +1,17 @@
+{
+  "reload": {
+    "sameReservedTrip": true,
+    "sameOrientation": true,
+    "routeRestored": true,
+    "noFreshStarter": true
+  },
+  "cancellation": {
+    "promptRestored": true,
+    "staleRouteAbsent": true
+  },
+  "importReturn": {
+    "openedExistingRoute": true,
+    "promptRestored": true
+  },
+  "ownerSwitch": "authenticated browser credentials unavailable"
+}

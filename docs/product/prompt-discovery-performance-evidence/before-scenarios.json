@@ -1,0 +1,57 @@
+[
+  {
+    "label": "before",
+    "name": "broad",
+    "navigationMs": 27,
+    "firstActionableMs": 391,
+    "selectedTokyo": false,
+    "hasDiscovery": true,
+    "hasRoute": false,
+    "hasSavedState": true,
+    "overflow": false,
+    "requests": [
+      "journey-capture"
+    ],
+    "errors": []
+  },
+  {
+    "label": "before",
+    "name": "mixed",
+    "navigationMs": 40,
+    "firstActionableMs": 379,
+    "selectedTokyo": false,
+    "hasDiscovery": true,
+    "hasRoute": true,
+    "hasSavedState": true,
+    "overflow": false,
+    "requests": [
+      "journey-capture",
+      "journey-geocode",
+      "journey-discover",
+      "journey-transfer-resolution",
+      "journey-transfer-resolution"
+    ],
+    "errors": []
+  },
+  {
+    "label": "before",
+    "name": "repeated",
+    "navigationMs": 36,
+    "firstActionableMs": 388,
+    "selectedTokyo": false,
+    "hasDiscovery": true,
+    "hasRoute": true,
+    "hasSavedState": true,
+    "overflow": false,
+    "requests": [
+      "journey-capture",
+      "journey-geocode",
+      "journey-geocode",
+      "journey-discover",
+      "journey-discover",
+      "journey-transfer-resolution",
+      "journey-transfer-resolution"
+    ],
+    "errors": []
+  }
+]
