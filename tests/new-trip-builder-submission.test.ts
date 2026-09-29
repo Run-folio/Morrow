@@ -45,3 +45,20 @@ test("New trip submits into the mounted Builder without a second navigation or p
   assert.match(starterSource, /captureRequestGateRef/);
   assert.doesNotMatch(starterSource, /commitHomepageHandoff|beginNewTripNavigation|router\.push|HOME_TRIP_DRAFT_KEY/);
 });
+
+test("direct intake stays resumable until canonical device recovery is acknowledged", () => {
+  const source = builder();
+  assert.match(source, /pendingNewTripReceiptRef\.current = \{ snapshot, receipt \}/);
+  assert.match(source, /JSON\.stringify\(\{ snapshot \}\)/);
+  assert.match(source, /if \(recovery\.stored\) \{[\s\S]*const pendingReceipt = pendingNewTripReceiptRef\.current/);
+  assert.match(source, /JSON\.stringify\(pendingNewTripReceiptRef\.current\)/);
+});
+
+test("missing handoff draft checks the reserved trip before declaring the receipt unavailable", () => {
+  const source = builder();
+  const preflight = source.indexOf("const existingRecovery = loadTripRecovery(reservedId, activeOwnerId)");
+  const decision = source.indexOf("const entry = resolveNewTripEntryState({", preflight);
+  assert.ok(preflight > 0);
+  assert.ok(decision > preflight);
+  assert.match(source.slice(decision, decision + 350), /reservedTripId: existingTrip\?\.id/);
+});

@@ -462,6 +462,7 @@ function TripBuilderDocument() {
   const lastAcknowledgedCanonicalRef = useRef<EasyTTrip | null>(null);
   const hydratedCanonicalTripRef = useRef<EasyTTrip | null>(null);
   const homeDraftRef = useRef<HomeTripDraft | null>(null);
+  const pendingNewTripReceiptRef = useRef<{ snapshot: HomepageInputSnapshot; receipt: ReturnType<typeof homepageReceiptForProjection> } | null>(null);
   const captureRequestGateRef = useRef<ReturnType<typeof createLatestJourneyCaptureRequestGate> | null>(null);
   if (!captureRequestGateRef.current) captureRequestGateRef.current = createLatestJourneyCaptureRequestGate();
   const hydratedOwnerScopeRef = useRef<string | null | undefined>(undefined);
@@ -815,7 +816,10 @@ function TripBuilderDocument() {
     const projected = projectHomepageInput({ snapshot, capture, profile: hasSavedTravelProfile ? travelProfile : null, handoffId });
     if (!projected.ok) throw new Error("New trip intake needs review");
     const receipt = homepageReceiptForProjection(snapshot, projected.draft, tripId);
-    window.localStorage.setItem(homepageInputStorageKey(snapshot.ownerId), JSON.stringify({ snapshot, receipt }));
+    // The completed receipt must follow canonical recovery, so a reload while
+    // the Builder is still saving can restore the traveller's original intake.
+    window.localStorage.setItem(homepageInputStorageKey(snapshot.ownerId), JSON.stringify({ snapshot }));
+    pendingNewTripReceiptRef.current = { snapshot, receipt };
     applyNewTripIntake(projected.draft, () => canUseHydratedTripScope(hydratedOwnerScopeRef.current, snapshot.ownerId));
   };
 
@@ -824,6 +828,7 @@ function TripBuilderDocument() {
     if (canUseHydratedTripScope(hydratedOwnerScopeRef.current, activeBrowserOwnerId)) return;
     const previousOwnerScope = hydratedOwnerScopeRef.current;
     hydratedOwnerScopeRef.current = undefined;
+    pendingNewTripReceiptRef.current = null;
     recoveryHandleRef.current = null;
     hydratedCanonicalTripRef.current = null;
     setHydrated(false);
@@ -980,25 +985,18 @@ function TripBuilderDocument() {
         }
         let resumedHomepageTrip = false;
         if (receivingHomeDraft) {
-          const entry = resolveNewTripEntryState({
-            hydrated: true, ownerId: activeOwnerId, homeDraft: true,
-            handoff: params.get("handoff"), storedInput: storedHomepageInput, draft: homeDraft,
-          });
-          if (entry.kind === "unavailable") {
-            homeDraft = null;
-            setTripUnavailable(true);
-            hydratedEntryKind = "unavailable";
-          } else if (!homeDraft && storedHomepageInput?.receipt) {
+          if (!homeDraft && storedHomepageInput?.receipt
+            && storedHomepageInput.receipt.handoffId === params.get("handoff")) {
             const reservedId = storedHomepageInput.receipt.tripId;
             const existingRecovery = loadTripRecovery(reservedId, activeOwnerId);
             const existingTrip = existingRecovery?.trip ?? await loadRequestedTrip(reservedId, activeOwnerId);
             if (!active) return;
-            const recoveredEntry = resolveNewTripEntryState({
+            const entry = resolveNewTripEntryState({
               hydrated: true, ownerId: activeOwnerId, homeDraft: true,
               handoff: params.get("handoff"), storedInput: storedHomepageInput,
               reservedTripId: existingTrip?.id,
             });
-            if (recoveredEntry.kind === "explicit-trip" && existingTrip) {
+            if (entry.kind === "explicit-trip" && existingTrip) {
               recoveryHandleRef.current = existingRecovery
                 ? { ownerId: existingRecovery.ownerId, tripId: existingRecovery.tripId, writeId: existingRecovery.writeId }
                 : null;
@@ -1007,6 +1005,16 @@ function TripBuilderDocument() {
               setArrivedFromHomepage(true);
               hydratedEntryKind = "explicit-trip";
             } else { setTripUnavailable(true); hydratedEntryKind = "unavailable"; }
+          } else {
+            const entry = resolveNewTripEntryState({
+              hydrated: true, ownerId: activeOwnerId, homeDraft: true,
+              handoff: params.get("handoff"), storedInput: storedHomepageInput, draft: homeDraft,
+            });
+            if (entry.kind === "unavailable") {
+              homeDraft = null;
+              setTripUnavailable(true);
+              hydratedEntryKind = "unavailable";
+            }
           }
         }
         if (homeDraft?.homepage) {
@@ -3234,6 +3242,18 @@ function TripBuilderDocument() {
     });
     if (recovery.stored) {
       recoveryHandleRef.current = recovery.handle;
+      const pendingReceipt = pendingNewTripReceiptRef.current;
+      if (pendingReceipt && pendingReceipt.receipt.tripId === trip.id
+        && pendingReceipt.snapshot.ownerId === ownerId) {
+        try {
+          window.localStorage.setItem(homepageInputStorageKey(ownerId), JSON.stringify(pendingNewTripReceiptRef.current));
+          pendingNewTripReceiptRef.current = null;
+        } catch {
+          // Keep the intake resumable in this tab and block navigation until
+          // both canonical recovery and its completed receipt are durable.
+          return { ...recovery, stored: false };
+        }
+      }
       const durableUrl = durableBuilderRecoveryUrl(window.location.href, trip.id);
       if (durableUrl) window.history.replaceState(window.history.state, "", durableUrl);
       const canonicalTrip = hydratedCanonicalTripRef.current;
@@ -3908,7 +3928,7 @@ function TripBuilderDocument() {
   return (
     <div data-builder-root="true" data-homepage-handoff={isHomepagePromptHandoff ? "true" : undefined} className={`${styles.shellWide} ${mobilePolish.builder} ${isHomepagePromptHandoff ? styles.homepageHandoff : ""}`}>
       {resolvingLocations ? <div className={styles.locationResolution} role="status">Checking your places…</div> : null}
-      <div className={`${styles.wizardBody} ${!hasRouteSkeleton ? styles.emptyWorkspace : ""}`}>
+      <div className={`${styles.wizardBody} ${!hasRouteSkeleton ? styles.emptyWorkspace : ""} ${entryKind === "fresh" ? styles.freshWorkspace : ""}`}>
         <div className={styles.pane}>
           <div id="builder-summary" tabIndex={-1} className={styles.stack}>
               <header className={styles.stepHero}>

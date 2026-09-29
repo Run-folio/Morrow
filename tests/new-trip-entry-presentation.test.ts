@@ -22,6 +22,13 @@ test("shared capture keeps accessible tabs, validation and deliberate submission
   assert.match(capture, /type="submit"/);
 });
 
+test("fresh desktop capture can use the shared planner row width without widening populated Builder", () => {
+  const builder = readFileSync(new URL("../app/journey/new/trip-builder.tsx", import.meta.url), "utf8");
+  const css = readFileSync(new URL("../app/journey/new/trip-builder.module.css", import.meta.url), "utf8");
+  assert.match(builder, /entryKind === "fresh" \? styles\.freshWorkspace/);
+  assert.match(css, /\.freshWorkspace \.initialCapture\s*\{[^}]*max-width:\s*1100px/);
+});
+
 test("real fresh Builder has one mode selector, submit and import entry", { skip: !builderBrowserTestsEnabled }, async () => {
   const view = await renderBuilder();
   try {

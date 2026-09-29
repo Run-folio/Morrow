@@ -102,3 +102,36 @@ test("handoff requires exact owner, URL token, stored receipt and draft integrit
   assert.equal(resolveNewTripEntryState({ ...base, draft: null, reservedTripId: "trip-a" }).kind, "explicit-trip");
   assert.equal(resolveNewTripEntryState({ ...base, draft: null, reservedTripId: "trip-other" }).kind, "unavailable");
 });
+
+test("one homepage handoff is consumed once, then import return cannot consume it again", () => {
+  const { stored, draft } = handoff(describe());
+  const pending = { hydrated: true, ownerId, homeDraft: true, handoff: "handoff-a", storedInput: stored, draft };
+  assert.equal(resolveNewTripEntryState(pending).kind, "home-handoff");
+  assert.deepEqual(resolveNewTripEntryState({ ...pending, reservedTripId: "trip-a" }), { kind: "explicit-trip", tripId: "trip-a" });
+  assert.equal(resolveNewTripEntryState({ hydrated: true, ownerId, storedInput: stored }).kind, "fresh");
+  assert.equal(resumableNewTripSnapshot(stored), null);
+  const importedReturn = { ...stored, snapshot: { ...stored.snapshot, prompt: "Visit Kyoto, Tokyo and Osaka" } };
+  const resumed = resolveNewTripEntryState({ hydrated: true, ownerId, storedInput: importedReturn });
+  assert.equal(resumed.kind, "fresh");
+  assert.equal(resumed.snapshot?.prompt, importedReturn.snapshot.prompt);
+  assert.equal(resolveNewTripEntryState({ ...pending, storedInput: importedReturn }).kind, "home-handoff");
+  const legacy = { ...stored, receipt: { ...stored.receipt, semanticInputFingerprint: undefined } };
+  assert.equal(resolveNewTripEntryState({ hydrated: true, ownerId, storedInput: legacy }).snapshot, undefined);
+});
+
+test("route handoff and canonical repeated stops retain distinct entry identities", () => {
+  const structured = selectedStopsHomepageInput(ownerId, [["tokyo-1", "Tokyo"], ["kyoto", "Kyoto"], ["tokyo-2", "Tokyo"]]);
+  const input = resolveNewTripEntryState({ hydrated: true, ownerId, storedInput: { snapshot: structured } });
+  assert.equal(input.kind, "fresh");
+  assert.deepEqual(input.snapshot?.entries.map((entry) => entry.id), ["tokyo-1", "kyoto", "tokyo-2"]);
+  assert.equal(resolveNewTripEntryState({ hydrated: true, ownerId, inspire: "route-a", storedInput: { snapshot: structured } }).kind, "route-handoff");
+  assert.notEqual(homepageSemanticInputFingerprint(structured), homepageSemanticInputFingerprint({ ...structured, entries: [...structured.entries].reverse() }));
+});
+
+test("owner change and reload fail closed while unrelated saved trips leave fresh entry fresh", () => {
+  const { stored, draft } = handoff(describe());
+  assert.equal(resolveNewTripEntryState({ hydrated: false, ownerId, storedInput: stored }).kind, "loading");
+  assert.equal(resolveNewTripEntryState({ hydrated: true, ownerId: "owner-b", homeDraft: true, handoff: "handoff-a", storedInput: stored, draft }).kind, "unavailable");
+  assert.equal(resolveNewTripEntryState({ hydrated: true, ownerId: "owner-b", storedInput: stored }).kind, "fresh");
+  assert.equal(resolveNewTripEntryState({ hydrated: true, ownerId, savedLibraryTripId: "library-trip", storedInput: stored }).kind, "fresh");
+});
