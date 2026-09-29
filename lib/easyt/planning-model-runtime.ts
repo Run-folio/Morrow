@@ -51,8 +51,8 @@ export async function evaluatePlanningModel(input: {
       validationIssues: validation.issues,
     };
     const needsSuggestions = input.requireSuggestions
-      || validation.output.intent.destinationCandidates.some((item) => item.role === "planning-area")
-      || validation.output.intent.pointsOfInterest.length > 0;
+      ?? (validation.output.intent.destinationCandidates.some((item) => item.role === "planning-area")
+        || validation.output.intent.pointsOfInterest.length > 0);
     if (needsSuggestions && validation.output.suggestions.length === 0) return {
       status: "empty-result",
       output: null,

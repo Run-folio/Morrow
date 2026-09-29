@@ -27,7 +27,7 @@ const RATE_WINDOW_MS = 60_000;
 const RATE_LIMIT = 8;
 const inFlightPlanningRequests = new Map<string, { expiresAt: number; result: Promise<ReturnType<typeof evaluatePlanningModel> extends Promise<infer R> ? R : never> }>();
 
-function deduplicatedPlanningRequest(brief: string, requireSuggestions: boolean, attempt = 1) {
+function deduplicatedPlanningRequest(brief: string, requireSuggestions: boolean | undefined, attempt = 1) {
   const now = Date.now();
   const key = `${createHash("sha256").update(brief).digest("hex")}:${requireSuggestions ? "suggest" : "assess"}:${attempt}`;
   const current = inFlightPlanningRequests.get(key);
@@ -59,22 +59,28 @@ function consumeCaptureRateLimit(key: string, now = Date.now()) {
 }
 
 export async function POST(request: NextRequest) {
-  let body: { brief?: unknown };
+  let body: { brief?: unknown; mode?: unknown };
   try {
-    body = await request.json() as { brief?: unknown };
+    body = await request.json() as { brief?: unknown; mode?: unknown };
   } catch {
     return NextResponse.json({ message: "Invalid trip brief." }, { status: 400 });
   }
   const brief = typeof body.brief === "string" ? body.brief.slice(0, 600) : "";
   if (!brief.trim()) return NextResponse.json({ message: "Add a trip brief first." }, { status: 400 });
+  if (body.mode !== undefined && body.mode !== "full" && body.mode !== "intent-only") {
+    return NextResponse.json({ message: "Invalid capture mode." }, { status: 400 });
+  }
+  const mode = body.mode === "intent-only" ? "intent-only" : "full";
 
   // Preserve every named intent deterministically, then enrich those mentions
   // through the same bounded open-world resolver used by Builder Search.
   const deterministic = captureJourneyBrief(brief);
-  const openWorldProvider = createOpenWorldPlaceProvider();
+  const openWorldProvider = mode === "intent-only" ? null : createOpenWorldPlaceProvider();
   const routing = routeTripCaptureModel({ rawPrompt: brief, deterministic });
   const providerFallback = async (model?: string, status?: SemanticIntentStatus, callCount = 0, fallbackModel?: string) => {
-    const capture = await captureJourneyBriefWithProvider(brief, openWorldProvider);
+    const capture = openWorldProvider
+      ? await captureJourneyBriefWithProvider(brief, openWorldProvider)
+      : captureJourneyBrief(brief);
     return model && status ? {
       ...capture,
       semanticExtraction: {
@@ -101,7 +107,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(await providerFallback(routing.selectedModel ?? semanticConfig.primary.model, "unavailable"));
     }
     if (routing.routingClass === "high-value-planning") {
-      const requirePlanningSuggestions = routing.task === "planning_destination_expansion";
+      const requirePlanningSuggestions = mode === "intent-only" ? false
+        : routing.task === "planning_destination_expansion" ? true : undefined;
       let terra = await deduplicatedPlanningRequest(brief, requirePlanningSuggestions);
       let terraCallCount = 1;
       if (terra.status === "empty-result" || terra.status === "invalid-response") {
@@ -126,17 +133,18 @@ export async function POST(request: NextRequest) {
         const capture = await captureJourneyBriefFromSemanticIntent(
           brief,
           terra.output.intent,
-          openWorldProvider,
+          openWorldProvider ?? undefined,
           {},
           { model: routing.selectedModel!, status: "completed", task: routing.task, complexity: routing.complexity, callCount: terraCallCount },
         );
-        const planningSuggestions = await canonicalizePlanningSuggestions({
+        if (mode === "intent-only" && capture.mentionCoverage.complete) return NextResponse.json(capture);
+        const planningSuggestions = openWorldProvider ? await canonicalizePlanningSuggestions({
           suggestions: terra.output.suggestions,
           capture,
           provider: openWorldProvider,
-        });
+        }) : [];
         const suggestionsRequired = terra.output.suggestions.length > 0;
-        if ((!suggestionsRequired || planningSuggestions.length > 0) && capture.mentionCoverage.complete) {
+        if (openWorldProvider && (!suggestionsRequired || planningSuggestions.length > 0) && capture.mentionCoverage.complete) {
           return NextResponse.json({
             ...capture,
             ...(planningSuggestions.length ? { planningSuggestions } : {}),
@@ -160,7 +168,7 @@ export async function POST(request: NextRequest) {
         const capture = await captureJourneyBriefFromSemanticIntent(
           brief,
           luna.intent,
-          openWorldProvider,
+          openWorldProvider ?? undefined,
           {},
           { model: lunaProvider.model, status: luna.status, task: routing.task, complexity: routing.complexity, fallbackModel: lunaProvider.model, callCount: terraCallCount + 1 },
         );
@@ -196,7 +204,7 @@ export async function POST(request: NextRequest) {
       const capture = await captureJourneyBriefFromSemanticIntent(
         brief,
         extraction.intent,
-        openWorldProvider,
+        openWorldProvider ?? undefined,
         {},
         { model: semanticConfig.primary.model, status: extraction.status, task: routing.task, complexity: routing.complexity, callCount: 1 },
       );
@@ -214,7 +222,7 @@ export async function POST(request: NextRequest) {
     }
     return NextResponse.json(await providerFallback(semanticConfig.primary.model, extraction.status, 1));
   }
-  if (semanticConfig.mode === "shadow") {
+  if (semanticConfig.mode === "shadow" && mode !== "intent-only") {
     after(async () => {
       const result = await runConfiguredOpenAISemanticIntentShadow({ rawPrompt: brief, deterministic });
       console.info("[semantic-intent-shadow]", {

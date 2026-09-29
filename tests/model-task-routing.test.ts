@@ -82,6 +82,14 @@ test("planning runtime rejects malformed and empty complex results", async () =>
   assert.equal((await evaluatePlanningModel({ rawPrompt: "Thailand", provider: provider(empty) })).status, "empty-result");
 });
 
+test("essential intent does not retry a valid planning area solely for missing optional suggestions", async () => {
+  const output = planningOutput();
+  const provider: PlanningModelProvider = { model: "fixture", plan: async () => ({ value: { ...output, suggestions: [] } }) };
+  const result = await evaluatePlanningModel({ rawPrompt: "Thailand", provider, requireSuggestions: false });
+  assert.equal(result.status, "completed");
+  assert.deepEqual(result.output?.suggestions, []);
+});
+
 test("model suggestions only survive provider-backed canonical and containment validation", async () => {
   const capture = captureJourneyBrief("Thailand");
   const provider: PlaceIntelligenceProvider = {
@@ -115,7 +123,8 @@ test("model suggestions only survive provider-backed canonical and containment v
   });
   assert.deepEqual(draft.planningSuggestions, canonical);
   const builder = readFileSync(new URL("../app/journey/new/trip-builder.tsx", import.meta.url), "utf8");
-  assert.match(builder, /setPlanningSuggestions\(homeDraft\.planningSuggestions \?\? \[\]\)/);
+  assert.match(builder, /setPlanningSuggestions\(draft\.planningSuggestions \?\? \[\]\)/,
+    "the accepted Builder projection owns validated suggestions regardless of its entry source");
 });
 
 test("nearby-base model suggestions cannot use a broad country mention to bypass the canonical anchor predicate", async () => {
@@ -180,4 +189,14 @@ test("fallback order is Terra to Luna to provider-backed deterministic capture a
     const source = readFileSync(new URL(file, import.meta.url), "utf8");
     assert.doesNotMatch(source, /openai|planning-model|journey-capture\/route/i, file);
   }
+});
+
+test("intent-only route avoids provider and suggestion work without a second model call", () => {
+  const route = readFileSync(new URL("../app/api/journey-capture/route.ts", import.meta.url), "utf8");
+  assert.match(route, /mode === "intent-only" \? null : createOpenWorldPlaceProvider\(\)/);
+  assert.match(route, /openWorldProvider\s*\? await captureJourneyBriefWithProvider\(brief, openWorldProvider\)\s*: captureJourneyBrief\(brief\)/);
+  assert.match(route, /mode === "intent-only" && capture\.mentionCoverage\.complete\) return NextResponse\.json\(capture\)/);
+  assert.match(route, /openWorldProvider \? await canonicalizePlanningSuggestions/);
+  assert.match(route, /mode === "intent-only" \? false/);
+  assert.match(route, /semanticConfig\.mode === "shadow" && mode !== "intent-only"/);
 });

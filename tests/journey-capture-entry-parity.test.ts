@@ -87,6 +87,18 @@ test("Homepage and direct Builder use the same canonical capture request contrac
     "direct Builder capture must not bypass provider-enriched interpretation");
 });
 
+test("intent-only capture is opt-in while every existing caller keeps full mode", async () => {
+  const canonical = await captureJourneyBriefWithProvider(SIX_STOP_PROMPT, sufficientEvidenceProvider);
+  const requests: unknown[] = [];
+  const fetcher = async (_input: RequestInfo | URL, init?: RequestInit) => {
+    requests.push(JSON.parse(String(init?.body)));
+    return new Response(JSON.stringify(canonical), { status: 200 });
+  };
+  await requestJourneyCapture(SIX_STOP_PROMPT, { fetcher });
+  await requestJourneyCapture(SIX_STOP_PROMPT, { mode: "intent-only", fetcher });
+  assert.deepEqual(requests, [{ brief: SIX_STOP_PROMPT }, { brief: SIX_STOP_PROMPT, mode: "intent-only" }]);
+});
+
 test("six-stop interpretation remains identical across entry points, cold/warm calls and repetition", async () => {
   const canonical = await captureJourneyBriefWithProvider(SIX_STOP_PROMPT, sufficientEvidenceProvider);
   const fetcher = responseFetcher(canonical);

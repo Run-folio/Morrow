@@ -118,12 +118,12 @@ export function applySelectedOriginToJourneyCapture(
 
 export async function requestJourneyCapture(
   brief: string,
-  options: { fetcher?: JourneyCaptureFetch; onResponse?: () => void; signal?: AbortSignal } = {},
+  options: { mode?: "full" | "intent-only"; fetcher?: JourneyCaptureFetch; onResponse?: () => void; signal?: AbortSignal } = {},
 ): Promise<JourneyCaptureResult> {
   const response = await (options.fetcher ?? fetch)("/api/journey-capture", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ brief }),
+    body: JSON.stringify({ brief, ...(options.mode && options.mode !== "full" ? { mode: options.mode } : {}) }),
     signal: options.signal,
   });
   options.onResponse?.();
