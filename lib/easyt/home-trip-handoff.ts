@@ -74,9 +74,27 @@ export type HomepageHandoffReceipt = {
   tripId: string;
 };
 
+/** Frozen traveller input awaiting Builder-owned interpretation. */
+export type PendingIntakeReceipt = {
+  version: 2;
+  phase: "pending-interpretation";
+  ownerId: string | null;
+  handoffId: string;
+  tripId: string;
+  inputRevision: number;
+  semanticInputFingerprint: string;
+  frozenSnapshot: HomepageInputSnapshot;
+};
+
+export type PendingHomeTripHandoff = {
+  version: 2;
+  phase: "pending-interpretation";
+  receipt: PendingIntakeReceipt;
+};
+
 export type StoredHomepageInput = {
   snapshot: HomepageInputSnapshot;
-  receipt?: HomepageHandoffReceipt;
+  receipt?: HomepageHandoffReceipt | PendingIntakeReceipt;
 };
 
 export function moveHomepageEntry(
@@ -264,13 +282,56 @@ function homepageReceipt(value: unknown, snapshot: HomepageInputSnapshot): value
     && boundedHomepageString(value.tripId);
 }
 
+export function createPendingIntakeReceipt(
+  snapshot: HomepageInputSnapshot,
+  identity: { handoffId: string; tripId: string },
+): PendingIntakeReceipt {
+  if (!homepageSnapshot(snapshot, snapshot.ownerId)
+    || !boundedHomepageString(identity.handoffId)
+    || !boundedHomepageString(identity.tripId)) throw new Error("Invalid pending intake identity");
+  const frozenSnapshot = structuredClone(snapshot);
+  return {
+    version: 2,
+    phase: "pending-interpretation",
+    ownerId: snapshot.ownerId,
+    handoffId: identity.handoffId,
+    tripId: identity.tripId,
+    inputRevision: snapshot.revision,
+    semanticInputFingerprint: homepageSemanticInputFingerprint(frozenSnapshot),
+    frozenSnapshot,
+  };
+}
+
+export function pendingIntakeReceiptForOwner(value: unknown, ownerId: string | null): PendingIntakeReceipt | null {
+  if (!homepageRecord(value) || value.version !== 2 || value.phase !== "pending-interpretation"
+    || value.ownerId !== ownerId || !boundedHomepageString(value.handoffId)
+    || !boundedHomepageString(value.tripId) || !Number.isSafeInteger(value.inputRevision)
+    || Number(value.inputRevision) < 0 || value.inputFingerprint !== undefined
+    || !homepageSnapshot(value.frozenSnapshot, ownerId)
+    || value.inputRevision !== value.frozenSnapshot.revision
+    || value.semanticInputFingerprint !== homepageSemanticInputFingerprint(value.frozenSnapshot)) return null;
+  return value as unknown as PendingIntakeReceipt;
+}
+
+export function pendingHomepageHandoffForOwner(
+  value: unknown,
+  ownerId: string | null,
+  handoffId: string,
+): PendingIntakeReceipt | null {
+  if (!homepageRecord(value) || value.version !== 2 || value.phase !== "pending-interpretation") return null;
+  const receipt = pendingIntakeReceiptForOwner(value.receipt, ownerId);
+  return receipt?.handoffId === handoffId ? receipt : null;
+}
+
 /** Decode owner-private intake without repairing or adopting malformed state. */
 export function readHomepageInput(value: unknown, ownerId: string | null): StoredHomepageInput | null {
   if (!homepageRecord(value) || !homepageSnapshot(value.snapshot, ownerId)) return null;
-  if (value.receipt !== undefined && !homepageReceipt(value.receipt, value.snapshot)) return null;
+  if (value.receipt !== undefined
+    && !homepageReceipt(value.receipt, value.snapshot)
+    && !pendingIntakeReceiptForOwner(value.receipt, ownerId)) return null;
   return value.receipt === undefined
     ? { snapshot: value.snapshot }
-    : { snapshot: value.snapshot, receipt: value.receipt };
+    : { snapshot: value.snapshot, receipt: value.receipt as HomepageHandoffReceipt | PendingIntakeReceipt };
 }
 
 /** Preserve the current intake before leaving for the existing import route. */
@@ -346,6 +407,7 @@ export function homepageSemanticInputFingerprint(snapshot: HomepageInputSnapshot
 /** A legacy completed receipt is also treated as unchanged: it cannot prove an edit. */
 export function homepageCompletedReceiptIsUnchanged(stored: StoredHomepageInput): boolean {
   const receipt = stored.receipt;
+  if (receipt?.version === 2) return false;
   return Boolean(receipt && (!receipt.semanticInputFingerprint
     || receipt.semanticInputFingerprint === homepageSemanticInputFingerprint(stored.snapshot)));
 }
@@ -410,7 +472,7 @@ export function reusableHomepageReceipt(
   draft: HomeTripDraft,
 ): HomepageHandoffReceipt | null {
   const receipt = stored.receipt;
-  if (!receipt || !draft.homepage || !draft.handoffId) return null;
+  if (!receipt || receipt.version !== 1 || !draft.homepage || !draft.handoffId) return null;
   return receipt.ownerId === stored.snapshot.ownerId
     && receipt.ownerId === draft.homepage.ownerId
     && (receipt.semanticInputFingerprint === undefined
@@ -436,22 +498,32 @@ function restoreHomepageStorageValue(
 export async function commitHomepageHandoff(input: {
   storage: Pick<Storage, "getItem" | "setItem" | "removeItem">;
   stored: StoredHomepageInput;
-  draft: HomeTripDraft;
+  draft: HomeTripDraft | PendingHomeTripHandoff;
   isCurrent: () => boolean;
   preserveAndBegin: () => boolean;
 }): Promise<{ ok: true; href: string } | { ok: false; reason: "stale" | "storage" | "preservation" }> {
   if (!input.isCurrent()) return { ok: false, reason: "stale" };
   const ownerId = input.stored.snapshot.ownerId;
   const decoded = readHomepageInput(input.stored, ownerId);
-  const receipt = decoded ? reusableHomepageReceipt(decoded, input.draft) : null;
-  const draftReceipt = input.draft.homepage?.receipt;
-  if (!receipt || !draftReceipt
-    || draftReceipt.version !== receipt.version
-    || draftReceipt.ownerId !== receipt.ownerId
-    || draftReceipt.handoffId !== receipt.handoffId
-    || draftReceipt.inputFingerprint !== receipt.inputFingerprint
-    || draftReceipt.semanticInputFingerprint !== receipt.semanticInputFingerprint
-    || draftReceipt.tripId !== receipt.tripId) {
+  const pendingDraft = "version" in input.draft && input.draft.version === 2 ? input.draft : null;
+  const pending = pendingDraft
+    ? pendingHomepageHandoffForOwner(pendingDraft, ownerId, pendingDraft.receipt.handoffId)
+    : null;
+  const projected = pendingDraft ? null : decoded ? reusableHomepageReceipt(decoded, input.draft as HomeTripDraft) : null;
+  const draftReceipt = pendingDraft ? null : (input.draft as HomeTripDraft).homepage?.receipt;
+  const receipt = pending ?? projected;
+  if (!receipt || !decoded?.receipt
+    || (pending ? decoded.receipt.version !== 2
+      || decoded.receipt.handoffId !== pending.handoffId
+      || decoded.receipt.tripId !== pending.tripId
+      || decoded.receipt.semanticInputFingerprint !== pending.semanticInputFingerprint
+      || decoded.receipt.inputRevision !== pending.inputRevision
+      : !draftReceipt || draftReceipt.version !== 1
+        || draftReceipt.ownerId !== projected?.ownerId
+        || draftReceipt.handoffId !== projected.handoffId
+        || draftReceipt.inputFingerprint !== projected.inputFingerprint
+        || draftReceipt.semanticInputFingerprint !== projected.semanticInputFingerprint
+        || draftReceipt.tripId !== projected.tripId)) {
     return { ok: false, reason: "storage" };
   }
 
@@ -467,6 +539,11 @@ export async function commitHomepageHandoff(input: {
       return { ok: false, reason: "stale" };
     }
     input.storage.setItem(HOME_TRIP_DRAFT_KEY, JSON.stringify(input.draft));
+    const stagedInput = input.storage.getItem(inputKey);
+    const stagedDraft = input.storage.getItem(HOME_TRIP_DRAFT_KEY);
+    const observed = stagedInput ? readHomepageInput(JSON.parse(stagedInput), ownerId) : null;
+    if (!observed?.receipt || !stagedDraft || stagedInput !== JSON.stringify(input.stored)
+      || stagedDraft !== JSON.stringify(input.draft)) throw new Error("Handoff staging was not durable");
     if (!input.isCurrent()) {
       restoreHomepageStorageValue(input.storage, HOME_TRIP_DRAFT_KEY, previousDraft);
       restoreHomepageStorageValue(input.storage, inputKey, previousInput);

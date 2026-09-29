@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
+  createPendingIntakeReceipt,
   homepageSemanticInputFingerprint,
   homepageSubmissionFingerprint,
   projectHomepageInput,
@@ -134,4 +135,25 @@ test("owner change and reload fail closed while unrelated saved trips leave fres
   assert.equal(resolveNewTripEntryState({ hydrated: true, ownerId: "owner-b", homeDraft: true, handoff: "handoff-a", storedInput: stored, draft }).kind, "unavailable");
   assert.equal(resolveNewTripEntryState({ hydrated: true, ownerId: "owner-b", storedInput: stored }).kind, "fresh");
   assert.equal(resolveNewTripEntryState({ hydrated: true, ownerId, savedLibraryTripId: "library-trip", storedInput: stored }).kind, "fresh");
+});
+
+test("pending intake keeps one reserved identity across URL handoff, tabs and direct reload", () => {
+  const snapshot = describe();
+  const receipt = createPendingIntakeReceipt(snapshot, { handoffId: "pending-a", tripId: "trip-pending-a" });
+  const storedInput = { snapshot: { ...snapshot, prompt: "Edited outer input" }, receipt };
+  const draft = { version: 2 as const, phase: "pending-interpretation" as const, receipt };
+  const home = { hydrated: true, ownerId, homeDraft: true, handoff: "pending-a", storedInput, draft };
+  for (const tab of [home, { ...home }]) {
+    const state = resolveNewTripEntryState(tab);
+    assert.equal(state.kind, "pending-home-handoff");
+    assert.equal(state.tripId, "trip-pending-a");
+    assert.equal(state.snapshot?.prompt, snapshot.prompt);
+  }
+  assert.equal(resolveNewTripEntryState({ ...home, reservedTripId: "trip-pending-a" }).kind, "explicit-trip");
+  assert.equal(resolveNewTripEntryState({ ...home, ownerId: "owner-b" }).kind, "unavailable");
+  assert.equal(resolveNewTripEntryState({ ...home, handoff: "wrong" }).kind, "unavailable");
+  assert.equal(resolveNewTripEntryState({ ...home, draft: { ...draft, receipt: { ...receipt, tripId: "other" } } }).kind, "unavailable");
+  assert.equal(resolveNewTripEntryState({ hydrated: true, ownerId, storedInput }).kind, "pending-direct-intake");
+  assert.equal(resolveNewTripEntryState({ hydrated: true, ownerId, trip: "explicit", storedInput }).tripId, "explicit");
+  assert.equal(resolveNewTripEntryState({ hydrated: true, ownerId, currentDraftTripId: "current", storedInput }).tripId, "current");
 });

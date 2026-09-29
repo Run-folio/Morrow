@@ -164,7 +164,8 @@ export default function HomeTripStarter() {
     let responseReceived = false;
     let navigationStarted = false;
     try {
-      const unchangedReceipt = homepageCompletedReceiptIsUnchanged(storedInputRef.current)
+      const unchangedReceipt = storedInputRef.current.receipt?.version === 1
+        && homepageCompletedReceiptIsUnchanged(storedInputRef.current)
         ? storedInputRef.current.receipt : undefined;
       if (unchangedReceipt) {
         const existingTrip = loadTripRecovery(unchangedReceipt.tripId, submittedOwner)?.trip

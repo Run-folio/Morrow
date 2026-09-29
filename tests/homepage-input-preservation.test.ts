@@ -2,6 +2,11 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
+  HOME_TRIP_DRAFT_KEY,
+  commitHomepageHandoff,
+  createPendingIntakeReceipt,
+  pendingIntakeReceiptForOwner,
+  pendingHomepageHandoffForOwner,
   homepageSubmissionFingerprint,
   homepageSemanticInputFingerprint,
   homepageCompletedReceiptIsUnchanged,
@@ -136,4 +141,65 @@ test("a completed receipt classifies unchanged semantic input without trusting n
   assert.equal(homepageCompletedReceiptIsUnchanged({ snapshot: { ...snapshot, prompt: "Kyoto then Osaka" }, receipt }), false);
   assert.equal(homepageCompletedReceiptIsUnchanged({ snapshot, receipt: { ...receipt, semanticInputFingerprint: undefined } }), true);
   assert.equal(reusableHomepageReceipt({ snapshot: { ...snapshot, prompt: "Kyoto then Osaka" }, receipt }, result.draft), null);
+});
+
+test("pending intake validates its frozen semantic input independently of later edits", () => {
+  const snapshot = { ...emptyHomepageInput("owner-a"), mode: "describe" as const, prompt: "Tokyo and Kyoto", revision: 7 };
+  const receipt = createPendingIntakeReceipt(snapshot, { handoffId: "handoff-pending", tripId: "trip-pending" });
+  const stored = { snapshot: { ...snapshot, prompt: "Later edit", revision: 8 }, receipt };
+  assert.equal(receipt.phase, "pending-interpretation");
+  assert.equal(receipt.semanticInputFingerprint, homepageSemanticInputFingerprint(snapshot));
+  assert.deepEqual(readHomepageInput(stored, "owner-a")?.receipt, receipt);
+  assert.deepEqual(pendingIntakeReceiptForOwner(receipt, "owner-a"), receipt);
+  assert.equal(pendingIntakeReceiptForOwner(receipt, "owner-b"), null);
+  assert.equal(pendingIntakeReceiptForOwner({ ...receipt, semanticInputFingerprint: "wrong" }, "owner-a"), null);
+  assert.equal(pendingIntakeReceiptForOwner({ ...receipt, frozenSnapshot: { ...snapshot, prompt: "Tampered" } }, "owner-a"), null);
+  assert.equal(pendingIntakeReceiptForOwner({ ...receipt, inputRevision: 6 }, "owner-a"), null);
+  const envelope = { version: 2 as const, phase: "pending-interpretation" as const, receipt };
+  assert.deepEqual(pendingHomepageHandoffForOwner(envelope, "owner-a", "handoff-pending"), receipt);
+  assert.equal(pendingHomepageHandoffForOwner(envelope, "owner-a", "other-token"), null);
+  assert.equal(pendingHomepageHandoffForOwner(envelope, "owner-b", "handoff-pending"), null);
+});
+
+test("pending homepage staging reads back both existing slots and rolls back a failed second write", async () => {
+  const snapshot = { ...emptyHomepageInput("owner-a"), mode: "describe" as const, prompt: "Tokyo and Kyoto" };
+  const receipt = createPendingIntakeReceipt(snapshot, { handoffId: "handoff-pending", tripId: "trip-pending" });
+  const stored = { snapshot, receipt };
+  const draft = { version: 2 as const, phase: "pending-interpretation" as const, receipt };
+  const key = homepageInputStorageKey("owner-a");
+  const previousInput = JSON.stringify({ snapshot: emptyHomepageInput("owner-a") });
+  const previousDraft = JSON.stringify({ handoffId: "earlier", brief: "Keep this work" });
+  const values = new Map([[key, previousInput], [HOME_TRIP_DRAFT_KEY, previousDraft]]);
+  let preservationCalls = 0;
+  let writes = 0;
+  const storage = {
+    getItem: (name: string) => values.get(name) ?? null,
+    setItem: (name: string, value: string) => {
+      writes += 1;
+      if (writes === 2) throw new Error("quota");
+      values.set(name, value);
+    },
+    removeItem: (name: string) => { values.delete(name); },
+  };
+  assert.deepEqual(await commitHomepageHandoff({ storage, stored, draft, isCurrent: () => true,
+    preserveAndBegin: () => { preservationCalls += 1; return true; } }), { ok: false, reason: "storage" });
+  assert.equal(preservationCalls, 0);
+  assert.equal(values.get(key), previousInput);
+  assert.equal(values.get(HOME_TRIP_DRAFT_KEY), previousDraft);
+  const silentStorage = {
+    ...storage,
+    setItem: (name: string, value: string) => { if (name !== HOME_TRIP_DRAFT_KEY) values.set(name, value); },
+  };
+  assert.deepEqual(await commitHomepageHandoff({ storage: silentStorage, stored, draft, isCurrent: () => true,
+    preserveAndBegin: () => { preservationCalls += 1; return true; } }), { ok: false, reason: "storage" });
+  assert.equal(preservationCalls, 0);
+  const successful = {
+    ...storage,
+    setItem: (name: string, value: string) => { values.set(name, value); },
+  };
+  assert.deepEqual(await commitHomepageHandoff({ storage: successful, stored, draft, isCurrent: () => true,
+    preserveAndBegin: () => { preservationCalls += 1; return true; } }),
+  { ok: true, href: "/journey/new?homeDraft=1&handoff=handoff-pending" });
+  assert.equal(preservationCalls, 1);
+  assert.deepEqual(readHomepageInput(JSON.parse(values.get(key)!), "owner-a")?.receipt, receipt);
 });
