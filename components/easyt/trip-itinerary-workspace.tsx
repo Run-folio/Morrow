@@ -1,6 +1,6 @@
 "use client";
 
-import { legacyItineraryIdeas } from "@/lib/easyt/trip";
+import { googlePlaceReferenceIdeas, legacyItineraryIdeas } from "@/lib/easyt/trip";
 
 import {
   ArrowRight,
@@ -794,6 +794,7 @@ export default function TripItineraryWorkspace({
     : null;
   const experienceAction = activityAction === undefined ? getCurrentPartnerAction("activities") : activityAction;
   const unscheduledSavedIdeas = (legacyItineraryIdeas(workingTrip.brief.itineraryIdeas)).filter((idea) => idea.stopId === active.stopId && !idea.dayId);
+  const unscheduledGoogleReferences = googlePlaceReferenceIdeas(workingTrip.brief.itineraryIdeas).filter((idea) => idea.stopId === active.stopId && !idea.dayId);
   const mapReturnHref = itineraryWorkspaceHref(workingTrip.id, active.dayNumber);
   const mapPlanHref = mapWorkspaceHref(workingTrip.id, active.stopId, "plan", active.dayNumber, null, null, mapReturnHref);
   const mapIdeasHref = mapWorkspaceHref(workingTrip.id, active.stopId, "see", active.dayNumber, null, null, mapReturnHref);
@@ -876,7 +877,7 @@ export default function TripItineraryWorkspace({
         dayPart: selectedActivity.dayPart,
         canMoveTime: selectedActivity.dayPartEditable
           && activityAllowsDayPart(selectedActivity.providerMetadata?.duration, "morning"),
-        canRemove: !booking && (selectedActivity.source === "itinerary-idea" || selectedActivity.source === "authored-activity"),
+        canRemove: !booking && (selectedActivity.source === "itinerary-idea" || selectedActivity.source === "google-place-reference" || selectedActivity.source === "authored-activity"),
       };
     }
     if (selectedItemId?.startsWith("stay:") && stayBooking && stop) {
@@ -1572,7 +1573,7 @@ export default function TripItineraryWorkspace({
             const accepted = mutation.mutateTrip((current) => removeItineraryIdea(current, selectedRecommendationState!.idea.id), `itinerary-suggestion-${selectedRecommendation.stopId}-${selectedRecommendation.idea.placeId}`);
             if (accepted) { closeSelectedDetail(); setNotice("Removed from itinerary"); }
           } : selectedActivity ? () => {
-            if (selectedActivity.source === "itinerary-idea" && selectedActivity.placeId) {
+            if ((selectedActivity.source === "itinerary-idea" && selectedActivity.placeId) || selectedActivity.source === "google-place-reference") {
               const accepted = mutation.mutateTrip((current) => removeItineraryIdea(current, selectedActivity.id), `itinerary-idea-remove-${selectedActivity.id}`);
               if (accepted) { closeSelectedDetail(); setNotice(copy.activityRemoved); }
               return;
@@ -1679,6 +1680,16 @@ export default function TripItineraryWorkspace({
             } : undefined}
             onDragEnd={nativePlannerDrag ? clearPlannerDrag : undefined}
           />
+        </div> : null}
+        {unscheduledGoogleReferences.length ? <div className={styles.contextSection}>
+          <div className={styles.googleReferenceSection} aria-label="Saved Google places for later">
+            <strong>Saved from Google Maps</strong>
+            <p>Check current details in the Google map before adding one to a day.</p>
+            {unscheduledGoogleReferences.map((idea) => <div key={idea.id}>
+              <span>Saved Google place</span>
+              <EasyTLinkButton size="small" variant="secondary" href={mapWorkspaceHref(workingTrip.id, idea.stopId, idea.category === "stay" ? "stay" : idea.category === "restaurant" ? "eat" : "see", active.dayNumber, null, null, mapReturnHref)}>Open in map</EasyTLinkButton>
+            </div>)}
+          </div>
         </div> : null}
         <details ref={itinerarySuggestionsOrientationTarget} id={`${tabIdPrefix}-ideas`} className={`${styles.contextSection} ${styles.ideasSection}`}>
           <summary><span>{copy.suggestions}</span><Lightbulb aria-hidden="true" /></summary>

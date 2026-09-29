@@ -7,7 +7,7 @@ import { JourneyLocalFinder, type JourneyLocalFinderInitialState, type JourneyLo
 import { JourneyPlannerMap } from "@/components/journey-planner-map";
 import { JourneyRouteStopTrack, type JourneyPlannerStripStop } from "@/components/journey-planner-strip";
 import { getCurrentPartnerAction } from "@/lib/easyt/booking-readiness";
-import { removeMappedStayForStop, selectMappedStayForStop, stayBookingForStop } from "@/lib/easyt/accommodation";
+import { removeMappedStayForStop, savedGoogleStayReferencesForStop, selectMappedStayForStop, stayBookingForStop } from "@/lib/easyt/accommodation";
 import { hasBookingLiveInformation } from "@/lib/easyt/local-place";
 import { mapResultForLocalPlace, mapResultHandoffForLocalPlace, mapResultSelectionId } from "@/lib/easyt/map-result-selection";
 import { recommendationDetailForStayResult } from "@/lib/easyt/recommendation-detail";
@@ -63,6 +63,7 @@ function StayFinderSurface({
   const photos = useJourneyLocalPlacePhotos(finder.candidates);
   const [unavailablePhotoSources, setUnavailablePhotoSources] = useState<Record<string, string>>({});
   const booking = stayBookingForStop(workingTrip, context.stop);
+  const savedGoogleStays = savedGoogleStayReferencesForStop(workingTrip, context.stop.id);
   const partnerAction = getCurrentPartnerAction("accommodation");
   const mapDayNumber = workingTrip.planItems.find((day) => day.stopId === context.stop.id)?.dayNumber ?? null;
   const selectedBase = finder.selectedPlace;
@@ -140,6 +141,11 @@ function StayFinderSurface({
         detail="Not in the current shortlist."
         actions={<EasyTLinkButton size="small" variant="secondary" href={`/journey/${encodeURIComponent(workingTrip.id)}/itinerary`}>Manage in itinerary</EasyTLinkButton>}
       /> : null}
+      {savedGoogleStays.length ? <section className={styles.googleReferences} aria-label="Saved Google stays">
+        <strong>Saved from Google Maps</strong>
+        <p>{savedGoogleStays.length} stay {savedGoogleStays.length === 1 ? "reference" : "references"} saved for this stop. No accommodation is booked by saving a place.</p>
+        <EasyTLinkButton size="small" variant="secondary" href={mapWorkspaceHref(workingTrip.id, context.stop.id, "stay", mapDayNumber, null, null, stayWorkspaceHref(workingTrip.id, context.stop.id))}>Check in Google map</EasyTLinkButton>
+      </section> : null}
 
       <section className={styles.options} aria-labelledby="stay-options-title">
         <h3 className="sr-only" id="stay-options-title">Stay options for {context.stop.name}</h3>

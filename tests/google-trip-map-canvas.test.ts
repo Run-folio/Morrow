@@ -152,6 +152,21 @@ test("native POI detail uses the authenticated server boundary and discards a st
   assert.deepEqual(called.map((url) => new URL(url, "http://local").searchParams.get("mode")), ["details", "details"]);
 });
 
+test("saved reference uses the authenticated resolve path and returns only freshness metadata to the trip owner", async () => {
+  const calls: URLSearchParams[] = [];
+  const request = createLatestGoogleDetailRequest((url) => {
+    calls.push(new URL(String(url), "http://local").searchParams);
+    return Promise.resolve(Response.json({ status: "resolved", detail: {
+      providerPlaceId: "ChIJsaved", name: "Transient name", coordinates: [139.7, 35.7], mapsUrl: "https://www.google.com/maps/place/ChIJsaved",
+    }, refreshedReference: { provider: "google", placeId: "ChIJsaved", lastResolvedAt: "2026-09-28T12:00:00.000Z" } }));
+  });
+  const results: unknown[] = [];
+  await request.select("ChIJsaved", (detail, reference) => results.push({ detail, reference }), { provider: "google", placeId: "ChIJsaved", lastResolvedAt: "2024-01-01T00:00:00.000Z" });
+  assert.equal(calls[0]?.get("mode"), "resolve");
+  assert.equal(calls[0]?.get("lastResolvedAt"), "2024-01-01T00:00:00.000Z");
+  assert.equal((results[0] as { reference: { placeId: string } }).reference.placeId, "ChIJsaved");
+});
+
 function fakeApi() {
   class FakeEventTarget {
     listeners = new Map<string, (event: any) => void>();

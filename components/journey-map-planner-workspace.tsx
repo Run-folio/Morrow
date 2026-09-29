@@ -47,7 +47,7 @@ import type { ItineraryDiscoveryPlace } from "@/lib/easyt/itinerary-day-context"
 import { requestedTripMatch } from "@/lib/easyt/trip-id-resolution";
 import { languageFromStorage, type EasyTLanguage } from "@/lib/easyt/i18n";
 import { authClient } from "@/lib/auth-client";
-import { isGooglePlaceReferenceIdea, tripIntentForTrip, type EasyTTrip, type ItineraryDayPart, type ItineraryIdea, type PlannerMapPin, type PlannerPinCategory } from "@/lib/easyt/trip";
+import { googlePlaceReferenceIdeas, isGooglePlaceReferenceIdea, tripIntentForTrip, type EasyTTrip, type GooglePlaceReference, type GooglePlaceReferenceIdea, type ItineraryDayPart, type ItineraryIdea, type PlannerMapPin, type PlannerPinCategory } from "@/lib/easyt/trip";
 import { tripDisplayTitle } from "@/lib/easyt/trip-display";
 import { estimateLeg } from "@/lib/easyt/planner";
 import { replanTripAfterDayOrder } from "@/lib/easyt/trip-replan";
@@ -457,6 +457,8 @@ export function JourneyMapPlannerWorkspace({
   const [workspacePlaceSelection, setWorkspacePlaceSelection] = useState<WorkspacePlaceSelection>({ kind: "none" });
   const [googleTargetDayId, setGoogleTargetDayId] = useState("");
   const [selectedGoogleDetail, setSelectedGoogleDetail] = useState<EnrichedPlace | null>(null);
+  const [googleReferenceUnavailable, setGoogleReferenceUnavailable] = useState<"invalid" | "not-found" | "provider-failure" | null>(null);
+  const [refreshedGoogleReference, setRefreshedGoogleReference] = useState<{ choiceId: string; reference: GooglePlaceReference } | null>(null);
   const [selectedGoogleReviews, setSelectedGoogleReviews] = useState<EnrichedReview[]>([]);
   const [selectedGooglePhoto, setSelectedGooglePhoto] = useState<{ src: string; sourceUrl: string; attributions: GooglePlacePhotoAttribution[] } | null>(null);
   const [googleDetailStatus, setGoogleDetailStatus] = useState<"idle" | "loading" | "unavailable">("idle");
@@ -601,15 +603,14 @@ export function JourneyMapPlannerWorkspace({
   const googleNearby = googleScopeKey ? googleNearbyByScope[googleScopeKey] : undefined;
   const selectedGooglePlaceId = workspacePlaceSelection.kind === "google" ? workspacePlaceSelection.placeId : null;
   const selectedGoogleStopId = workspacePlaceSelection.kind === "google" ? workspacePlaceSelection.stopId : null;
-  const selectedGoogleChoice = customTrip?.brief.itineraryIdeas?.find((idea) => isGooglePlaceReferenceIdea(idea)
+  const selectedGoogleChoice = customTrip?.brief.itineraryIdeas?.find((idea): idea is GooglePlaceReferenceIdea => isGooglePlaceReferenceIdea(idea)
     && idea.stopId === selectedGoogleStopId
     && idea.providerReference.placeId === selectedGooglePlaceId);
   const googleDayOptions = customTrip && selectedGoogleStopId ? validIdeaDays(customTrip, selectedGoogleStopId) : [];
   useEffect(() => {
-    setGoogleTargetDayId(workspacePlaceSelection.kind === "google" && workspacePlaceSelection.dayId
-      && googleDayOptions.some((day) => day.id === workspacePlaceSelection.dayId)
-      ? workspacePlaceSelection.dayId : "");
-  }, [selectedGooglePlaceId, selectedGoogleStopId, workspacePlaceSelection.kind === "google" ? workspacePlaceSelection.dayId : null]);
+    const target = selectedGoogleChoice?.dayId ?? (workspacePlaceSelection.kind === "google" ? workspacePlaceSelection.dayId : null);
+    setGoogleTargetDayId(target && googleDayOptions.some((day) => day.id === target) ? target : "");
+  }, [selectedGooglePlaceId, selectedGoogleStopId, selectedGoogleChoice?.dayId, workspacePlaceSelection.kind === "google" ? workspacePlaceSelection.dayId : null]);
   useEffect(() => {
     if (workspacePlaceSelection.kind !== "google") return;
     if (selectedTripStop?.id !== workspacePlaceSelection.stopId
@@ -626,13 +627,18 @@ export function JourneyMapPlannerWorkspace({
     }
     setSelectedGoogleDetail(null);
     setGoogleDetailStatus("loading");
+    setGoogleReferenceUnavailable(null);
     const request = googleDetailRequestRef.current;
     let active = true;
-    void request.select(selectedGooglePlaceId, (detail) => {
+    void request.select(selectedGooglePlaceId, (detail, reference) => {
       if (!active) return;
       setSelectedGoogleDetail(detail);
       setGoogleDetailStatus("idle");
-    }).then(() => { if (active) setGoogleDetailStatus((status) => status === "loading" ? "unavailable" : status); });
+      if (reference && selectedGoogleChoice && reference.lastResolvedAt !== selectedGoogleChoice.providerReference.lastResolvedAt) {
+        setRefreshedGoogleReference({ choiceId: selectedGoogleChoice.id, reference });
+      }
+    }, selectedGoogleChoice?.providerReference, (reason) => { if (active) setGoogleReferenceUnavailable(reason); })
+      .then(() => { if (active) setGoogleDetailStatus((status) => status === "loading" ? "unavailable" : status); });
     return () => { active = false; request.clear(); };
   }, [googleCanvasActive, selectedGooglePlaceId, workspacePlaceSelection.kind === "google" ? workspacePlaceSelection.stopId : null, workspacePlaceSelection.kind === "google" ? workspacePlaceSelection.dayId : null, googleDetailRetry]);
   useEffect(() => {
@@ -1535,6 +1541,18 @@ export function JourneyMapPlannerWorkspace({
     persistPlannerMutation(next, recovery.handle);
     return true;
   }, [activeBrowserOwnerId, canonicalMutation, cloudConflictTrip, customTrip, persistPlannerMutation, savePlannerRecovery, session?.user]);
+
+  useEffect(() => {
+    if (!refreshedGoogleReference || selectedGoogleChoice?.id !== refreshedGoogleReference.choiceId
+      || selectedGoogleChoice.providerReference.placeId !== refreshedGoogleReference.reference.placeId) return;
+    if (selectedGoogleChoice.providerReference.lastResolvedAt !== refreshedGoogleReference.reference.lastResolvedAt) {
+      updatePlannerTrip((trip) => ({ ...trip, brief: { ...trip.brief, itineraryIdeas: (trip.brief.itineraryIdeas ?? []).map((idea) => isGooglePlaceReferenceIdea(idea)
+        && idea.id === refreshedGoogleReference.choiceId
+        && idea.providerReference.placeId === refreshedGoogleReference.reference.placeId
+        ? { ...idea, providerReference: refreshedGoogleReference.reference } : idea) } }), "Google place reference refreshed");
+    }
+    setRefreshedGoogleReference(null);
+  }, [refreshedGoogleReference, selectedGoogleChoice, updatePlannerTrip]);
 
   const saveSelectedGooglePlace = useCallback(() => {
     if (!selectedGooglePlaceId || !selectedGoogleStopId || !selectedGoogleDetail || selectedGoogleDetail.providerPlaceId !== selectedGooglePlaceId) return false;
@@ -3071,10 +3089,14 @@ export function JourneyMapPlannerWorkspace({
             : selectedTripStop.name}
           category={googleDiscoveryCategory ?? "see"}
           places={googleNearby?.places ?? []}
+          savedReferences={googlePlaceReferenceIdeas(customTrip?.brief.itineraryIdeas)
+            .filter((idea) => idea.stopId === selectedTripStop.id && (shapeDayTab === "stay" ? idea.category === "stay" : shapeDayTab === "eat" ? idea.category === "restaurant" : idea.category === "activity"))
+            .map((idea) => ({ id: idea.id, placeId: idea.providerReference.placeId, dayLabel: idea.dayId ? `Day ${customTrip?.planItems.find((day) => day.id === idea.dayId)?.dayNumber ?? "?"}` : null }))}
           status={googleNearby?.status ?? "loading"}
           selectedPlaceId={workspacePlaceSelection.kind === "google" && workspacePlaceSelection.stopId === selectedTripStop.id ? workspacePlaceSelection.placeId : null}
           detail={selectedGoogleDetail}
           detailStatus={googleDetailStatus}
+          unavailableReason={googleReferenceUnavailable}
           photo={selectedGooglePhoto}
           reviews={selectedGoogleReviews}
           listScrollTop={googleScopeKey ? googleResultsScrollRef.current[googleScopeKey] ?? 0 : 0}

@@ -1,4 +1,4 @@
-import { legacyItineraryIdeas } from "./trip.ts";
+import { googlePlaceReferenceIdeas, legacyItineraryIdeas } from "./trip.ts";
 import { stayBookingForStop } from "./accommodation.ts";
 import { itineraryActivityProtection } from "./itinerary-mutations.ts";
 import { itineraryNotesWithSourceIndexesForDisplay } from "./itinerary-presentation.ts";
@@ -27,7 +27,7 @@ export type ComposedItineraryActivity = {
   title: string;
   category: "restaurant" | "activity" | "other";
   booking: TripBooking | null;
-  source: "itinerary-idea" | "authored-activity" | "generated-activity" | "day-note";
+  source: "itinerary-idea" | "google-place-reference" | "authored-activity" | "generated-activity" | "day-note";
   /** Null is a deliberate "planned, time not set" state. */
   dayPart: ItineraryDayPart | null;
   noteIndex: number | null;
@@ -246,6 +246,19 @@ export function composeItineraryDay(trip: EasyTTrip, dayId: string): ItineraryDa
       startsAt: idea.startsAt,
     });
   }
+  const scheduledGoogleReferences = googlePlaceReferenceIdeas(trip.brief.itineraryIdeas)
+    .filter((idea) => idea.dayId === day.id && idea.category !== "stay");
+  for (const idea of scheduledGoogleReferences) drafts.push({
+    id: idea.id,
+    title: "Saved Google place",
+    category: idea.category === "restaurant" ? "restaurant" : "activity",
+    booking: null,
+    source: "google-place-reference",
+    explicitPart: idea.dayPart ?? null,
+    noteIndex: null,
+    dayPartEditable: false,
+    sourceUrl: `https://www.google.com/maps/search/?api=1&query=place&query_place_id=${encodeURIComponent(idea.providerReference.placeId)}`,
+  });
   const allActivities: ComposedItineraryActivity[] = drafts.map((activity) => ({
     id: activity.id,
     title: activity.title,
@@ -288,8 +301,8 @@ export function composeItineraryDay(trip: EasyTTrip, dayId: string): ItineraryDa
     freeDayParts: itineraryDayParts.filter((part) => planned[part].length === 0),
     tonight: tonightForDay(trip, day, stop),
     ideas: {
-      unscheduledCount: (legacyItineraryIdeas(trip.brief.itineraryIdeas)).filter((idea) => idea.stopId === day.stopId && !idea.dayId).length,
-      scheduledHereCount: scheduledIdeas.length,
+      unscheduledCount: (trip.brief.itineraryIdeas ?? []).filter((idea) => idea.stopId === day.stopId && idea.category !== "stay" && !idea.dayId).length,
+      scheduledHereCount: scheduledIdeas.length + scheduledGoogleReferences.length,
     },
   };
 }

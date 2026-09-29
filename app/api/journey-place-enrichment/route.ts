@@ -3,6 +3,7 @@ import { requireEasyTOwner } from "@/lib/easyt/owner";
 import { googlePlaceEnrichmentProvider } from "@/lib/easyt/google-place-enrichment.server";
 import { placeEnrichmentEnabled, validPlaceEnrichmentQuery } from "@/lib/easyt/place-enrichment";
 import { encodeGooglePhotoAttributions } from "@/lib/easyt/google-place-photo";
+import { resolveGooglePlaceReference } from "@/lib/easyt/google-place-reference-lifecycle";
 
 export const dynamic = "force-dynamic";
 const noStore = { "Cache-Control": "private, no-store" };
@@ -34,6 +35,13 @@ export async function GET(request: NextRequest) {
       if (!/^[a-zA-Z0-9_-]{1,180}$/.test(id)) return NextResponse.json({ error: "invalid_place" }, { status: 400, headers: noStore });
       const place = await provider.details(id);
       return place ? NextResponse.json({ place }, { headers: noStore }) : unavailable();
+    }
+    if (mode === "resolve") {
+      const id = request.nextUrl.searchParams.get("id") ?? "";
+      if (!/^[a-zA-Z0-9_-]{1,180}$/.test(id)) return NextResponse.json({ error: "invalid_place" }, { status: 400, headers: noStore });
+      const lastResolvedAt = request.nextUrl.searchParams.get("lastResolvedAt") ?? undefined;
+      const reference = { provider: "google" as const, placeId: id, ...(lastResolvedAt ? { lastResolvedAt } : {}) };
+      return NextResponse.json(await resolveGooglePlaceReference(reference, provider), { headers: noStore });
     }
     if (mode === "reviews" || mode === "photo") {
       const id = request.nextUrl.searchParams.get("id") ?? "";

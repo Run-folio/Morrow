@@ -8,11 +8,12 @@ const detail = readFileSync(new URL("../components/easyt/map-place-enrichment.ts
 test("all selected-only Places modes retain the authenticated no-store server boundary", () => {
   assert.match(route, /await requireEasyTOwner\(\)/);
   assert.match(route, /const noStore = \{ "Cache-Control": "private, no-store" \}/);
-  for (const mode of ["nearby", "details", "reviews", "photo"]) {
+  for (const mode of ["nearby", "details", "resolve", "reviews", "photo"]) {
     assert.match(route, new RegExp(`mode === "${mode}"`));
   }
   assert.match(route, /provider\.reviews\(id\)/);
   assert.match(route, /provider\.photo\(id\)/);
+  assert.match(route, /resolveGooglePlaceReference\(reference, provider\)/);
   assert.match(route, /"X-Content-Type-Options": "nosniff"/);
   assert.doesNotMatch(route, /NEXT_PUBLIC_GOOGLE_MAPS_BROWSER_KEY/);
 });

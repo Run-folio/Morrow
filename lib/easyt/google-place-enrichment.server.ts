@@ -13,6 +13,7 @@ export type PlaceEnrichmentProvider = {
   details(providerPlaceId: string): Promise<EnrichedPlace | null>;
   reviews(providerPlaceId: string): Promise<EnrichedReview[]>;
   photo(providerPlaceId: string): Promise<SelectedGooglePhoto | null>;
+  refreshPlaceId(providerPlaceId: string): Promise<string>;
 };
 
 const base = "https://places.googleapis.com/v1";
@@ -30,6 +31,16 @@ export function googlePlaceEnrichmentProvider(apiKey: string, request: typeof fe
     return value as Record<string, unknown>;
   }
   return {
+    async refreshPlaceId(providerPlaceId) {
+      if (!validId(providerPlaceId)) throw new Error("INVALID_REQUEST");
+      const response = await request(`${base}/places/${encodeURIComponent(providerPlaceId)}`, {
+        headers: { "X-Goog-Api-Key": apiKey, "X-Goog-FieldMask": "id" },
+        cache: "no-store", signal: AbortSignal.timeout(5000),
+      });
+      const data = await read(response);
+      if (typeof data.id !== "string" || !validId(data.id)) throw new Error("NOT_FOUND");
+      return data.id;
+    },
     async nearby(input) {
       if (!validPlaceEnrichmentQuery(input)) throw new Error("places_invalid_query");
       const response = await request(`${base}/places:searchNearby`, {

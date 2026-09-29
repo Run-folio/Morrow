@@ -70,7 +70,7 @@ export function saveGooglePlaceReference(trip: EasyTTrip, input: {
   lastResolvedAt?: string;
 }): EasyTTrip {
   const placeId = input.placeId.trim();
-  if (!placeId || !trip.stops.some((stop) => stop.id === input.stopId)) return trip;
+  if (!/^[a-zA-Z0-9_-]{1,180}$/.test(placeId) || !trip.stops.some((stop) => stop.id === input.stopId)) return trip;
   const id = googlePlaceReferenceChoiceId(input.stopId, placeId);
   const existing = (trip.brief.itineraryIdeas ?? []).find((item) => item.id === id);
   if (existing) return trip;
