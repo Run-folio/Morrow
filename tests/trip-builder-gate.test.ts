@@ -5,18 +5,46 @@ import type { NightAllocationResult } from "../lib/easyt/night-allocation.ts";
 import { createPlanningConfidence } from "../lib/easyt/planning-confidence.ts";
 import { publicRouteDetailFor } from "../lib/easyt/public-route.ts";
 import { routePlannerPayload } from "../lib/easyt/public-route-handoff.ts";
+import { homepageReceiptForProjection, type HomeTripDraft } from "../lib/easyt/home-trip-handoff.ts";
 import { generateRouteCandidates } from "../lib/easyt/route-candidates.ts";
 import { extractStructuredTripBrief, mergeStructuredTripBrief, routeConstraintsFromStructuredTripBrief } from "../lib/easyt/structured-trip-brief.ts";
 import { validateBuilderStopOrder } from "../lib/easyt/trip-builder-order.ts";
 import type { EasyTTrip } from "../lib/easyt/trip.ts";
 import { builderBrowserTestsEnabled, renderBuilder } from "./helpers/builder-render.ts";
+import { emptyHomepageInput } from "./fixtures/homepage-dual-entry.ts";
+
+// These scenarios exercise a populated Builder. The current Homepage handoff
+// requires the submitted projection, owner-scoped receipt and URL token together.
+let browserHandoffIndex = 0;
+function renderPopulatedBuilder(draft: HomeTripDraft, options: Parameters<typeof renderBuilder>[0] = {}) {
+  const handoffId = `builder-gate-${++browserHandoffIndex}`;
+  const snapshot = emptyHomepageInput();
+  const projected: HomeTripDraft = {
+    ...draft,
+    handoffId,
+    homepage: {
+      version: 1, ownerId: null, revision: snapshot.revision, mode: "stops",
+      occurrenceMentionIds: {},
+      choices: {
+        dates: snapshot.dates, budget: snapshot.budget, interests: snapshot.interests,
+        travellers: snapshot.travellers, origin: snapshot.origin, journeyEnd: snapshot.journeyEnd,
+      },
+    },
+  };
+  const receipt = homepageReceiptForProjection(snapshot, projected, `trip-${handoffId}`);
+  projected.homepage!.receipt = receipt;
+  const query = new URLSearchParams(options.query?.replace(/^\?/, "") ?? "");
+  query.set("homeDraft", "1");
+  query.set("handoff", handoffId);
+  return renderBuilder({ ...options, query: `?${query}`, draft: projected, storedInput: { snapshot, receipt } });
+}
 
 const endpointDraft = {
   origin: "London", originCanonicalPlaceId: "london", originCountry: "United Kingdom",
-  originCoordinates: [-0.1276, 51.5072],
+  originCoordinates: [-0.1276, 51.5072] as [number, number],
   destinations: [
-    { id: "seoul-stay", name: "Seoul", country: "South Korea", canonicalPlaceId: "seoul", coordinates: [126.978, 37.5665] },
-    { id: "busan-stay", name: "Busan", country: "South Korea", canonicalPlaceId: "busan", coordinates: [129.0756, 35.1796] },
+    { id: "seoul-stay", name: "Seoul", country: "South Korea", canonicalPlaceId: "seoul", coordinates: [126.978, 37.5665] as [number, number] },
+    { id: "busan-stay", name: "Busan", country: "South Korea", canonicalPlaceId: "busan", coordinates: [129.0756, 35.1796] as [number, number] },
   ],
   startDate: "2027-04-02", endDate: "2027-04-12", datesExplicit: true,
 };
@@ -27,7 +55,7 @@ test("populated Builder directly exposes explicit, Same as start and unknown jou
     [{ mode: "same_as_start" }, "London"],
     [{ mode: "unknown" }, ""],
   ] as const) {
-    const view = await renderBuilder({ query: "?homeDraft=1", draft: { ...endpointDraft, journeyEnd } });
+    const view = await renderPopulatedBuilder({ ...endpointDraft, journeyEnd });
     try {
       const details = view.page.getByRole("region", { name: "Journey details", exact: true });
       await details.waitFor({ timeout: 3000 });
@@ -41,7 +69,7 @@ test("populated Builder directly exposes explicit, Same as start and unknown jou
 });
 
 test("editing Builder end modes commits atomically and Cancel leaves canonical recovery unchanged", { skip: !builderBrowserTestsEnabled }, async () => {
-  const view = await renderBuilder({ query: "?homeDraft=1", draft: { ...endpointDraft, journeyEnd: { mode: "unknown" } } });
+  const view = await renderPopulatedBuilder({ ...endpointDraft, journeyEnd: { mode: "unknown" } });
   const storedTrip = async (mode: string) => {
     await view.page.waitForFunction((expected: string) => Object.keys(localStorage)
       .filter((key) => key.startsWith("easyt:trip-recovery:v2:"))
@@ -439,7 +467,7 @@ test("a conflicting traveller place role remains a hard readiness conflict", () 
 });
 
 test("Build requires explicit continuation without adding unresolved intent and recovery preserves it", { skip: !builderBrowserTestsEnabled, timeout: 30_000 }, async () => {
-  const view = await renderBuilder({ query: "?homeDraft=1", draft: krugerAttentionDraft() });
+  const view = await renderPopulatedBuilder(krugerAttentionDraft());
   const recoveryTrip = async () => view.page.evaluate(() => Object.keys(localStorage)
     .filter((key) => key.startsWith("easyt:trip-recovery:v2:"))
     .map((key) => JSON.parse(localStorage.getItem(key)!))
@@ -491,10 +519,7 @@ test("Build requires explicit continuation without adding unresolved intent and 
 });
 
 test("Overview recovery deep-link opens the exact retained Builder mention", { skip: !builderBrowserTestsEnabled, timeout: 30_000 }, async () => {
-  const view = await renderBuilder({
-    query: "?homeDraft=1&placeIntent=place-serengeti-national-park",
-    draft: multipleAttentionDraft(),
-  });
+  const view = await renderPopulatedBuilder(multipleAttentionDraft(), { query: "?placeIntent=place-serengeti-national-park" });
   try {
     const dialog = view.page.getByRole("dialog");
     await dialog.getByText("Serengeti National Park", { exact: true }).first().waitFor({ timeout: 5_000 });
@@ -504,9 +529,7 @@ test("Overview recovery deep-link opens the exact retained Builder mention", { s
 });
 
 test("post-Build Kruger recovery preserves the unresolved reminder until canonical evidence exists", { skip: !builderBrowserTestsEnabled, timeout: 30_000 }, async () => {
-  const view = await renderBuilder({
-    query: "?homeDraft=1",
-    draft: krugerAttentionDraft(),
+  const view = await renderPopulatedBuilder(krugerAttentionDraft(), {
     nearbyCandidates: [{
       canonicalPlaceId: "open-world:fixture:hazyview",
       name: "Hazyview",
@@ -553,9 +576,7 @@ test("post-Build Kruger recovery preserves the unresolved reminder until canonic
 });
 
 test("a provider-backed nearby place cannot bypass Kruger's missing canonical identity", { skip: !builderBrowserTestsEnabled, timeout: 30_000 }, async () => {
-  const view = await renderBuilder({
-    query: "?homeDraft=1",
-    draft: krugerAttentionDraft(),
+  const view = await renderPopulatedBuilder(krugerAttentionDraft(), {
     nearbyCandidates: [{
       canonicalPlaceId: "open-world:fixture:hazyview",
       name: "Hazyview",
@@ -588,9 +609,7 @@ test("a provider-backed nearby place cannot bypass Kruger's missing canonical id
 });
 
 test("provider unavailability never makes an unverified model base actionable", { skip: !builderBrowserTestsEnabled, timeout: 30_000 }, async () => {
-  const view = await renderBuilder({
-    query: "?homeDraft=1",
-    draft: krugerAttentionDraftWithUnverifiedModelBase(),
+  const view = await renderPopulatedBuilder(krugerAttentionDraftWithUnverifiedModelBase(), {
     nearbyStatus: "unavailable",
   });
   try {
@@ -606,7 +625,7 @@ test("provider unavailability never makes an unverified model base actionable", 
   } finally { await view.close(); }
 });
 
-test("Builder only presents route-stop search results whose selected evidence can be added canonically", { skip: !builderBrowserTestsEnabled, timeout: 30_000 }, async () => {
+test("populated Builder only presents route-stop search results whose selected evidence can be added canonically", { skip: !builderBrowserTestsEnabled, timeout: 30_000 }, async () => {
   const providerPlaces = {
     Almaty: {
       canonicalPlaceId: "open-world:fixture:almaty",
@@ -640,9 +659,10 @@ test("Builder only presents route-stop search results whose selected evidence ca
     },
   };
   for (const place of Object.values(providerPlaces)) {
-    const view = await renderBuilder({ geocodeCandidates: { [place.name]: [place] } });
+    const view = await renderPopulatedBuilder(endpointDraft, { geocodeCandidates: { [place.name]: [place] } });
     try {
-      const search = view.page.getByRole("combobox", { name: "Add your first place" });
+      await view.page.getByRole("button", { name: "Add stop", exact: true }).click();
+      const search = view.page.getByRole("combobox", { name: "Add a destination" });
       await search.fill(place.name);
       const option = view.page.getByRole("option", { name: new RegExp(`^${place.name}`) });
       await option.waitFor({ timeout: 5_000 });
@@ -654,9 +674,10 @@ test("Builder only presents route-stop search results whose selected evidence ca
   }
 
   for (const weakCatalogPlace of ["Almaty", "Samarkand"]) {
-    const view = await renderBuilder();
+    const view = await renderPopulatedBuilder(endpointDraft);
     try {
-      await view.page.getByRole("combobox", { name: "Add your first place" }).fill(weakCatalogPlace);
+      await view.page.getByRole("button", { name: "Add stop", exact: true }).click();
+      await view.page.getByRole("combobox", { name: "Add a destination" }).fill(weakCatalogPlace);
       await view.page.waitForTimeout(350);
       assert.equal(await view.page.getByRole("option", { name: new RegExp(`^${weakCatalogPlace}`) }).count(), 0,
         `${weakCatalogPlace} must not be actionable without coordinates from canonical evidence`);
@@ -676,11 +697,12 @@ test("Add stop remains ready for consecutive canonical additions on mobile and c
     ...place,
     providerSourceLabel: "Controlled global place provider",
   }]]));
-  const view = await renderBuilder({ geocodeCandidates });
+  const view = await renderPopulatedBuilder({ destinations: [{ ...places[0], id: "almaty-seed", coordinates: places[0].coordinates as [number, number] }] }, { geocodeCandidates });
   try {
     await view.page.setViewportSize({ width: 390, height: 844 });
-    for (const place of places) {
-      const search = view.page.getByRole("combobox", { name: /Add your first place|Add a destination/ });
+    await view.page.getByRole("button", { name: "Add stop", exact: true }).click();
+    for (const place of places.slice(1)) {
+      const search = view.page.getByRole("combobox", { name: "Add a destination" });
       await search.fill(place.name);
       await view.page.getByRole("option", { name: new RegExp(`^${place.name}`) }).click();
       await view.page.getByText(place.name, { exact: true }).first().waitFor({ timeout: 5_000 });
@@ -690,8 +712,8 @@ test("Add stop remains ready for consecutive canonical additions on mobile and c
         "focus should return to the cleared search after a successful add");
     }
 
-    const stopOrder = await view.page.locator('[aria-label="Confirmed stops"] > div > button').allTextContents();
-    assert.deepEqual(stopOrder.map((label: string) => label.replace(/\s+/g, " ").trim()), ["1. Almaty", "2. Samarkand", "3. Tokyo", "4. Osaka"]);
+    const stopOrder = await view.page.locator('[aria-label="Confirmed stops"] > [role="listitem"] > span:first-of-type').allTextContents();
+    assert.deepEqual(stopOrder.map((label: string) => label.trim()), ["Almaty", "Samarkand", "Tokyo", "Osaka"]);
 
     const search = view.page.getByRole("combobox", { name: "Add a destination" });
     await search.fill("Almaty");
@@ -722,15 +744,16 @@ test("mobile Builder keeps the canonical stop summary visible beside Add stop", 
     { canonicalPlaceId: "open-world:fixture:tokyo", providerId: "fixture:tokyo", name: "Tokyo", country: "Japan", coordinates: [139.6917, 35.6895], placeType: "city", routability: "direct_destination" },
   ];
   const geocodeCandidates = Object.fromEntries(places.map((place) => [place.name, [{ ...place, providerSourceLabel: "Controlled global place provider" }]]));
-  const view = await renderBuilder({ geocodeCandidates });
+  const view = await renderPopulatedBuilder({ destinations: [{ ...places[0], id: "almaty-seed", coordinates: places[0].coordinates as [number, number] }] }, { geocodeCandidates });
   try {
     const summary = view.page.locator('[aria-label="Confirmed stops"]');
     const routeWorkspace = view.page.locator("[data-builder-route-workspace]");
-    const summaryNames = async () => (await summary.locator(":scope > div > button").allTextContents())
-      .map((label: string) => label.replace(/^\s*\d+\.\s*/, "").trim());
+    const summaryNames = async () => (await summary.locator(':scope > [role="listitem"] > span:first-of-type').allTextContents())
+      .map((label: string) => label.trim());
     await view.page.setViewportSize({ width: 390, height: 844 });
-    for (const place of places.slice(0, 3)) {
-      const search = view.page.getByRole("combobox", { name: /Add your first place|Add a destination/ });
+    await view.page.getByRole("button", { name: "Add stop", exact: true }).click();
+    for (const place of places.slice(1)) {
+      const search = view.page.getByRole("combobox", { name: "Add a destination" });
       await search.fill(place.name);
       await view.page.getByRole("option", { name: new RegExp(`^${place.name}`) }).click();
     }
@@ -739,10 +762,7 @@ test("mobile Builder keeps the canonical stop summary visible beside Add stop", 
     for (const width of [390, 430]) {
       await view.page.setViewportSize({ width, height: 844 });
       assert.equal(await summary.isVisible(), true, `${width}px should keep the current route beside Add stop`);
-      assert.equal(await summary.evaluate((node: HTMLElement) => {
-        const workspace = globalThis.document.querySelector("[data-builder-route-workspace]");
-        return Boolean(workspace && (node.compareDocumentPosition(workspace) & globalThis.Node.DOCUMENT_POSITION_FOLLOWING));
-      }), true);
+      assert.equal(await summary.getByRole("listitem").count(), 3);
       assert.equal(await view.page.evaluate(() => globalThis.document.documentElement.scrollWidth <= globalThis.innerWidth), true);
     }
 

@@ -204,7 +204,9 @@ test("the persisted 21-night Cancún itinerary suppresses the generated same-pla
   assert.equal(first?.transfers.some((transfer) => transfer.origin === "Cancún" && transfer.destination === "Cancún"), false);
   assert.doesNotMatch(JSON.stringify({ transfers: first?.transfers, planned: first?.planned }), /Cancún → Cancún|Morrovia planning estimate: about 0h 3[05]m/);
   assert.equal(first?.tonight.destination, "Cancún");
-  assert.equal(first?.planned.morning.some((activity) => activity.title.includes("Check in")), true);
+  assert.equal(first?.tonight.state, "not-organised");
+  assert.equal(first?.planned.morning.some((activity) => activity.title.includes("Check in")), false,
+    "generated check-in guidance must not become a saved Morning activity");
 
   const transfers = trip.planItems.flatMap((day) => composeItineraryDay(trip, day.id)?.transfers ?? []);
   const uniqueTransfers = [...new Map(transfers.map((transfer) => [transfer.id, transfer])).values()];

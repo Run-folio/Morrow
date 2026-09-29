@@ -1,0 +1,5928 @@
+[
+  {
+    "phase": "final-after",
+    "source": "optimized-local-fallback",
+    "name": "stops",
+    "run": 1,
+    "thermal": "cold-context",
+    "width": 390,
+    "height": 844,
+    "errors": [],
+    "requests": [
+      "journey-geocode",
+      "journey-geocode"
+    ],
+    "urlObservedUpperBoundMs": 76,
+    "milestonesMs": {
+      "submit": 0,
+      "durable-intake": 49,
+      "shell-visible": 395,
+      "first-actionable": 395,
+      "required-complete": 401
+    },
+    "trace": [
+      {
+        "name": "route-requested",
+        "ms": 49.2
+      },
+      {
+        "name": "route-committed",
+        "ms": 55.8
+      },
+      {
+        "name": "builder-mounted",
+        "ms": 360.2,
+        "detail": {
+          "busy": "true"
+        }
+      },
+      {
+        "name": "entry-render-committed",
+        "ms": 385.5
+      },
+      {
+        "name": "actionable-render-committed",
+        "ms": 389
+      },
+      {
+        "name": "orientation-visible",
+        "ms": 395.8
+      },
+      {
+        "name": "actionable-visible",
+        "ms": 395.8
+      }
+    ],
+    "storage": {
+      "reads": 23,
+      "writes": 3,
+      "durationMs": 0.09999999403953552
+    },
+    "longTasks": [],
+    "routeResources": [
+      {
+        "path": "/journey/new",
+        "ms": 49.3,
+        "durationMs": 2.8
+      },
+      {
+        "path": "/_next/static/chunks/6033-95c3313b76afc1aa.js",
+        "ms": 52.3,
+        "durationMs": 1.6
+      },
+      {
+        "path": "/_next/static/chunks/5785-89234ab51336d6d3.js",
+        "ms": 52.4,
+        "durationMs": 2.7
+      },
+      {
+        "path": "/_next/static/chunks/1647-e1fefcfcaeb39573.js",
+        "ms": 52.4,
+        "durationMs": 3
+      },
+      {
+        "path": "/_next/static/chunks/app/journey/new/page-89d2025fffcc6f06.js",
+        "ms": 52.5,
+        "durationMs": 3.1
+      },
+      {
+        "path": "/_next/static/css/b1af8a1a52c1c280.css",
+        "ms": 52.7,
+        "durationMs": 2.3
+      },
+      {
+        "path": "/_next/static/css/1c8cbdfc8cfe4433.css",
+        "ms": 52.7,
+        "durationMs": 2.4
+      },
+      {
+        "path": "/_next/static/css/771a7cf9c1bcc79c.css",
+        "ms": 52.8,
+        "durationMs": 2.6
+      },
+      {
+        "path": "/_next/static/css/2a9a39cbe5bdc43a.css",
+        "ms": 52.8,
+        "durationMs": 2.4
+      },
+      {
+        "path": "/_next/static/chunks/app/journey/affiliate-disclosure/page-98f3367cce9be9a6.js",
+        "ms": 80.7,
+        "durationMs": 3.3
+      },
+      {
+        "path": "/_next/static/chunks/app/journey/about/page-bd3cfe2fde6000aa.js",
+        "ms": 81.1,
+        "durationMs": 2.7
+      },
+      {
+        "path": "/_next/static/css/e416fa544c0d017a.css",
+        "ms": 81.2,
+        "durationMs": 2.9
+      },
+      {
+        "path": "/_next/static/css/00d6ab3e20b1e0b6.css",
+        "ms": 81.6,
+        "durationMs": 2.5
+      },
+      {
+        "path": "/_next/static/chunks/app/journey/terms/page-4da96ffacff8bc61.js",
+        "ms": 81.6,
+        "durationMs": 2.6
+      },
+      {
+        "path": "/_next/static/chunks/app/journey/help/page-a6e29892ab3831f2.js",
+        "ms": 81.8,
+        "durationMs": 3
+      },
+      {
+        "path": "/_next/static/css/c7aaf4d1958886af.css",
+        "ms": 81.9,
+        "durationMs": 3.7
+      },
+      {
+        "path": "/_next/static/chunks/e474d18f-ceb145d073fa9f25.js",
+        "ms": 392,
+        "durationMs": 1.9
+      },
+      {
+        "path": "/_next/static/chunks/ca4dcb09-8d71e4f5e9270f73.js",
+        "ms": 392.3,
+        "durationMs": 3.6
+      },
+      {
+        "path": "/_next/static/chunks/e919c1aa-4ba5daa1c31d082f.js",
+        "ms": 393.2,
+        "durationMs": 4.1
+      },
+      {
+        "path": "/_next/static/chunks/8cc6faea-06177138421f2356.js",
+        "ms": 393.4,
+        "durationMs": 3.9
+      },
+      {
+        "path": "/_next/static/chunks/d648eb28-05c9445a2e0b2734.js",
+        "ms": 393.6,
+        "durationMs": 6
+      },
+      {
+        "path": "/_next/static/chunks/783-8f61c9f901101bef.js",
+        "ms": 393.7,
+        "durationMs": 5.9
+      },
+      {
+        "path": "/_next/static/chunks/7013.b9295c299dc81cfb.js",
+        "ms": 393.9,
+        "durationMs": 11.7
+      },
+      {
+        "path": "/_next/static/css/e82518b135ceef38.css",
+        "ms": 396.8,
+        "durationMs": 3.4
+      }
+    ],
+    "hasRoute": true,
+    "hasDiscovery": false,
+    "hasCanonicalTokyo": true,
+    "firstActionableVerified": true,
+    "overflow": false,
+    "urlKind": "handoff"
+  },
+  {
+    "phase": "final-after",
+    "source": "optimized-local-fallback",
+    "name": "stops",
+    "run": 2,
+    "thermal": "warm-server",
+    "width": 390,
+    "height": 844,
+    "errors": [],
+    "requests": [
+      "journey-geocode",
+      "journey-geocode"
+    ],
+    "urlObservedUpperBoundMs": 76,
+    "milestonesMs": {
+      "submit": 0,
+      "durable-intake": 51,
+      "shell-visible": 411,
+      "first-actionable": 411,
+      "required-complete": 432
+    },
+    "trace": [
+      {
+        "name": "route-requested",
+        "ms": 51.3
+      },
+      {
+        "name": "route-committed",
+        "ms": 59.3
+      },
+      {
+        "name": "builder-mounted",
+        "ms": 363.3,
+        "detail": {
+          "busy": "true"
+        }
+      },
+      {
+        "name": "entry-render-committed",
+        "ms": 397
+      },
+      {
+        "name": "actionable-render-committed",
+        "ms": 401.6
+      },
+      {
+        "name": "orientation-visible",
+        "ms": 411.8
+      },
+      {
+        "name": "actionable-visible",
+        "ms": 411.9
+      }
+    ],
+    "storage": {
+      "reads": 23,
+      "writes": 3,
+      "durationMs": 0.30000001192092896
+    },
+    "longTasks": [],
+    "routeResources": [
+      {
+        "path": "/journey/new",
+        "ms": 51.5,
+        "durationMs": 4.1
+      },
+      {
+        "path": "/_next/static/chunks/6033-95c3313b76afc1aa.js",
+        "ms": 55.9,
+        "durationMs": 6.7
+      },
+      {
+        "path": "/_next/static/chunks/5785-89234ab51336d6d3.js",
+        "ms": 56,
+        "durationMs": 7.3
+      },
+      {
+        "path": "/_next/static/chunks/1647-e1fefcfcaeb39573.js",
+        "ms": 56,
+        "durationMs": 7.6
+      },
+      {
+        "path": "/_next/static/chunks/app/journey/new/page-89d2025fffcc6f06.js",
+        "ms": 56.1,
+        "durationMs": 7.5
+      },
+      {
+        "path": "/_next/static/css/b1af8a1a52c1c280.css",
+        "ms": 56.2,
+        "durationMs": 6.9
+      },
+      {
+        "path": "/_next/static/css/1c8cbdfc8cfe4433.css",
+        "ms": 56.3,
+        "durationMs": 6.8
+      },
+      {
+        "path": "/_next/static/css/2a9a39cbe5bdc43a.css",
+        "ms": 56.4,
+        "durationMs": 6.8
+      },
+      {
+        "path": "/_next/static/css/771a7cf9c1bcc79c.css",
+        "ms": 56.4,
+        "durationMs": 6.8
+      },
+      {
+        "path": "/_next/static/chunks/app/journey/about/page-bd3cfe2fde6000aa.js",
+        "ms": 86.1,
+        "durationMs": 3.6
+      },
+      {
+        "path": "/_next/static/css/e416fa544c0d017a.css",
+        "ms": 86.2,
+        "durationMs": 3.5
+      },
+      {
+        "path": "/_next/static/css/c7aaf4d1958886af.css",
+        "ms": 87.6,
+        "durationMs": 3
+      },
+      {
+        "path": "/_next/static/chunks/app/journey/help/page-a6e29892ab3831f2.js",
+        "ms": 87.6,
+        "durationMs": 3.9
+      },
+      {
+        "path": "/_next/static/chunks/app/journey/affiliate-disclosure/page-98f3367cce9be9a6.js",
+        "ms": 88,
+        "durationMs": 4
+      },
+      {
+        "path": "/_next/static/css/00d6ab3e20b1e0b6.css",
+        "ms": 88.3,
+        "durationMs": 3.4
+      },
+      {
+        "path": "/_next/static/chunks/app/journey/terms/page-4da96ffacff8bc61.js",
+        "ms": 88.3,
+        "durationMs": 4.6
+      },
+      {
+        "path": "/_next/static/chunks/e474d18f-ceb145d073fa9f25.js",
+        "ms": 408.6,
+        "durationMs": 1.1
+      },
+      {
+        "path": "/_next/static/chunks/ca4dcb09-8d71e4f5e9270f73.js",
+        "ms": 408.8,
+        "durationMs": 18.9
+      },
+      {
+        "path": "/_next/static/chunks/e919c1aa-4ba5daa1c31d082f.js",
+        "ms": 408.9,
+        "durationMs": 19.5
+      },
+      {
+        "path": "/_next/static/chunks/8cc6faea-06177138421f2356.js",
+        "ms": 409.2,
+        "durationMs": 19.6
+      },
+      {
+        "path": "/_next/static/chunks/d648eb28-05c9445a2e0b2734.js",
+        "ms": 409.4,
+        "durationMs": 19.4
+      },
+      {
+        "path": "/_next/static/chunks/783-8f61c9f901101bef.js",
+        "ms": 409.6,
+        "durationMs": 20.4
+      },
+      {
+        "path": "/_next/static/chunks/7013.b9295c299dc81cfb.js",
+        "ms": 409.8,
+        "durationMs": 24.3
+      },
+      {
+        "path": "/_next/static/css/e82518b135ceef38.css",
+        "ms": 414.9,
+        "durationMs": 15.9
+      }
+    ],
+    "hasRoute": true,
+    "hasDiscovery": false,
+    "hasCanonicalTokyo": true,
+    "firstActionableVerified": true,
+    "overflow": false,
+    "urlKind": "handoff"
+  },
+  {
+    "phase": "final-after",
+    "source": "optimized-local-fallback",
+    "name": "stops",
+    "run": 3,
+    "thermal": "warm-server",
+    "width": 390,
+    "height": 844,
+    "errors": [],
+    "requests": [
+      "journey-geocode",
+      "journey-geocode"
+    ],
+    "urlObservedUpperBoundMs": 69,
+    "milestonesMs": {
+      "submit": 0,
+      "durable-intake": 50,
+      "shell-visible": 701,
+      "first-actionable": 701,
+      "required-complete": 707
+    },
+    "trace": [
+      {
+        "name": "route-requested",
+        "ms": 50.1
+      },
+      {
+        "name": "route-committed",
+        "ms": 56.8
+      },
+      {
+        "name": "builder-mounted",
+        "ms": 661.6,
+        "detail": {
+          "busy": "true"
+        }
+      },
+      {
+        "name": "entry-render-committed",
+        "ms": 688.5
+      },
+      {
+        "name": "actionable-render-committed",
+        "ms": 693.8
+      },
+      {
+        "name": "orientation-visible",
+        "ms": 702.3
+      },
+      {
+        "name": "actionable-visible",
+        "ms": 702.4
+      }
+    ],
+    "storage": {
+      "reads": 23,
+      "writes": 3,
+      "durationMs": 0
+    },
+    "longTasks": [],
+    "routeResources": [
+      {
+        "path": "/journey/new",
+        "ms": 50.2,
+        "durationMs": 2.1
+      },
+      {
+        "path": "/_next/static/chunks/6033-95c3313b76afc1aa.js",
+        "ms": 52.9,
+        "durationMs": 1.3
+      },
+      {
+        "path": "/_next/static/chunks/5785-89234ab51336d6d3.js",
+        "ms": 53,
+        "durationMs": 1.6
+      },
+      {
+        "path": "/_next/static/chunks/1647-e1fefcfcaeb39573.js",
+        "ms": 53,
+        "durationMs": 1.8
+      },
+      {
+        "path": "/_next/static/css/b1af8a1a52c1c280.css",
+        "ms": 53.1,
+        "durationMs": 2.1
+      },
+      {
+        "path": "/_next/static/chunks/app/journey/new/page-89d2025fffcc6f06.js",
+        "ms": 53.1,
+        "durationMs": 2.2
+      },
+      {
+        "path": "/_next/static/css/1c8cbdfc8cfe4433.css",
+        "ms": 53.2,
+        "durationMs": 2.1
+      },
+      {
+        "path": "/_next/static/css/2a9a39cbe5bdc43a.css",
+        "ms": 53.4,
+        "durationMs": 1.9
+      },
+      {
+        "path": "/_next/static/css/771a7cf9c1bcc79c.css",
+        "ms": 53.4,
+        "durationMs": 1.9
+      },
+      {
+        "path": "/_next/static/chunks/app/journey/about/page-bd3cfe2fde6000aa.js",
+        "ms": 380.5,
+        "durationMs": 6.8
+      },
+      {
+        "path": "/_next/static/css/e416fa544c0d017a.css",
+        "ms": 380.9,
+        "durationMs": 6
+      },
+      {
+        "path": "/_next/static/chunks/app/journey/help/page-a6e29892ab3831f2.js",
+        "ms": 382.3,
+        "durationMs": 5.6
+      },
+      {
+        "path": "/_next/static/css/c7aaf4d1958886af.css",
+        "ms": 382.4,
+        "durationMs": 5.3
+      },
+      {
+        "path": "/_next/static/chunks/app/journey/affiliate-disclosure/page-98f3367cce9be9a6.js",
+        "ms": 387.7,
+        "durationMs": 4.1
+      },
+      {
+        "path": "/_next/static/chunks/app/journey/terms/page-4da96ffacff8bc61.js",
+        "ms": 391.7,
+        "durationMs": 2.1
+      },
+      {
+        "path": "/_next/static/css/00d6ab3e20b1e0b6.css",
+        "ms": 391.9,
+        "durationMs": 1.8
+      },
+      {
+        "path": "/_next/static/chunks/e474d18f-ceb145d073fa9f25.js",
+        "ms": 699,
+        "durationMs": 1.5
+      },
+      {
+        "path": "/_next/static/chunks/ca4dcb09-8d71e4f5e9270f73.js",
+        "ms": 699.3,
+        "durationMs": 2.1
+      },
+      {
+        "path": "/_next/static/chunks/e919c1aa-4ba5daa1c31d082f.js",
+        "ms": 699.5,
+        "durationMs": 3.6
+      },
+      {
+        "path": "/_next/static/chunks/8cc6faea-06177138421f2356.js",
+        "ms": 699.7,
+        "durationMs": 3.7
+      },
+      {
+        "path": "/_next/static/chunks/d648eb28-05c9445a2e0b2734.js",
+        "ms": 699.8,
+        "durationMs": 5
+      },
+      {
+        "path": "/_next/static/chunks/783-8f61c9f901101bef.js",
+        "ms": 700,
+        "durationMs": 4.8
+      },
+      {
+        "path": "/_next/static/chunks/7013.b9295c299dc81cfb.js",
+        "ms": 700.3,
+        "durationMs": 16.8
+      },
+      {
+        "path": "/_next/static/css/e82518b135ceef38.css",
+        "ms": 703.4,
+        "durationMs": 3
+      }
+    ],
+    "hasRoute": true,
+    "hasDiscovery": false,
+    "hasCanonicalTokyo": true,
+    "firstActionableVerified": true,
+    "overflow": false,
+    "urlKind": "handoff"
+  },
+  {
+    "phase": "final-after",
+    "source": "optimized-local-fallback",
+    "name": "stops",
+    "run": 4,
+    "thermal": "warm-server",
+    "width": 390,
+    "height": 844,
+    "errors": [],
+    "requests": [
+      "journey-geocode",
+      "journey-geocode"
+    ],
+    "urlObservedUpperBoundMs": 70,
+    "milestonesMs": {
+      "submit": 0,
+      "durable-intake": 47,
+      "shell-visible": 404,
+      "first-actionable": 404,
+      "required-complete": 415
+    },
+    "trace": [
+      {
+        "name": "route-requested",
+        "ms": 47.4
+      },
+      {
+        "name": "route-committed",
+        "ms": 55.5
+      },
+      {
+        "name": "builder-mounted",
+        "ms": 371.1,
+        "detail": {
+          "busy": "true"
+        }
+      },
+      {
+        "name": "entry-render-committed",
+        "ms": 395
+      },
+      {
+        "name": "actionable-render-committed",
+        "ms": 398.8
+      },
+      {
+        "name": "orientation-visible",
+        "ms": 410.7
+      },
+      {
+        "name": "actionable-visible",
+        "ms": 410.7
+      }
+    ],
+    "storage": {
+      "reads": 23,
+      "writes": 3,
+      "durationMs": 0.09999999403953552
+    },
+    "longTasks": [],
+    "routeResources": [
+      {
+        "path": "/journey/new",
+        "ms": 47.6,
+        "durationMs": 2.4
+      },
+      {
+        "path": "/_next/static/chunks/app/journey/error-f2b2eef08f6a59ee.js",
+        "ms": 52.7,
+        "durationMs": 1.4
+      },
+      {
+        "path": "/_next/static/chunks/app/journey/not-found-20aa5a0ea45270d6.js",
+        "ms": 52.7,
+        "durationMs": 1.8
+      },
+      {
+        "path": "/_next/static/chunks/app/journey/layout-20e20296852fdd77.js",
+        "ms": 52.8,
+        "durationMs": 2
+      },
+      {
+        "path": "/_next/static/chunks/6033-95c3313b76afc1aa.js",
+        "ms": 52.9,
+        "durationMs": 2.2
+      },
+      {
+        "path": "/_next/static/chunks/5785-89234ab51336d6d3.js",
+        "ms": 52.9,
+        "durationMs": 2.5
+      },
+      {
+        "path": "/_next/static/chunks/1647-e1fefcfcaeb39573.js",
+        "ms": 53,
+        "durationMs": 2.7
+      },
+      {
+        "path": "/_next/static/chunks/app/journey/new/page-89d2025fffcc6f06.js",
+        "ms": 53.1,
+        "durationMs": 2.7
+      },
+      {
+        "path": "/_next/static/css/b1af8a1a52c1c280.css",
+        "ms": 53.2,
+        "durationMs": 2.2
+      },
+      {
+        "path": "/_next/static/css/1c8cbdfc8cfe4433.css",
+        "ms": 53.2,
+        "durationMs": 2.3
+      },
+      {
+        "path": "/_next/static/css/771a7cf9c1bcc79c.css",
+        "ms": 53.4,
+        "durationMs": 2.3
+      },
+      {
+        "path": "/_next/static/css/2a9a39cbe5bdc43a.css",
+        "ms": 53.4,
+        "durationMs": 2.1
+      },
+      {
+        "path": "/_next/static/chunks/app/journey/cookies/page-4b6728c59e1fb82f.js",
+        "ms": 353.6,
+        "durationMs": 6.9
+      },
+      {
+        "path": "/_next/static/css/f7e3139f895231e2.css",
+        "ms": 353.9,
+        "durationMs": 6.8
+      },
+      {
+        "path": "/_next/static/css/3cd6503d59afc5f7.css",
+        "ms": 354,
+        "durationMs": 5.7
+      },
+      {
+        "path": "/_next/static/css/5e35e1acd7fba0e5.css",
+        "ms": 354.1,
+        "durationMs": 6.8
+      },
+      {
+        "path": "/_next/static/chunks/app/journey/privacy/page-d1d31e838cef7b01.js",
+        "ms": 356,
+        "durationMs": 8.9
+      },
+      {
+        "path": "/_next/static/css/03a51805e7467245.css",
+        "ms": 356.1,
+        "durationMs": 6.9
+      },
+      {
+        "path": "/_next/static/chunks/app/journey/about/page-bd3cfe2fde6000aa.js",
+        "ms": 367.3,
+        "durationMs": 4.6
+      },
+      {
+        "path": "/_next/static/css/e416fa544c0d017a.css",
+        "ms": 367.4,
+        "durationMs": 4.5
+      },
+      {
+        "path": "/_next/static/chunks/app/journey/help/page-a6e29892ab3831f2.js",
+        "ms": 369.3,
+        "durationMs": 4.6
+      },
+      {
+        "path": "/_next/static/css/c7aaf4d1958886af.css",
+        "ms": 369.4,
+        "durationMs": 4.4
+      },
+      {
+        "path": "/_next/static/chunks/app/journey/affiliate-disclosure/page-98f3367cce9be9a6.js",
+        "ms": 379,
+        "durationMs": 8.3
+      },
+      {
+        "path": "/_next/static/chunks/app/journey/terms/page-4da96ffacff8bc61.js",
+        "ms": 382.3,
+        "durationMs": 5.8
+      },
+      {
+        "path": "/_next/static/css/00d6ab3e20b1e0b6.css",
+        "ms": 382.4,
+        "durationMs": 5.5
+      },
+      {
+        "path": "/_next/static/chunks/e474d18f-ceb145d073fa9f25.js",
+        "ms": 402.4,
+        "durationMs": 2.3
+      },
+      {
+        "path": "/_next/static/chunks/ca4dcb09-8d71e4f5e9270f73.js",
+        "ms": 402.7,
+        "durationMs": 3.7
+      },
+      {
+        "path": "/_next/static/chunks/e919c1aa-4ba5daa1c31d082f.js",
+        "ms": 402.9,
+        "durationMs": 5.2
+      },
+      {
+        "path": "/_next/static/chunks/8cc6faea-06177138421f2356.js",
+        "ms": 403,
+        "durationMs": 6
+      },
+      {
+        "path": "/_next/static/chunks/d648eb28-05c9445a2e0b2734.js",
+        "ms": 403.2,
+        "durationMs": 6
+      }
+    ],
+    "hasRoute": true,
+    "hasDiscovery": false,
+    "hasCanonicalTokyo": true,
+    "firstActionableVerified": true,
+    "overflow": false,
+    "urlKind": "handoff"
+  },
+  {
+    "phase": "final-after",
+    "source": "optimized-local-fallback",
+    "name": "stops",
+    "run": 5,
+    "thermal": "warm-server",
+    "width": 390,
+    "height": 844,
+    "errors": [],
+    "requests": [
+      "journey-geocode",
+      "journey-geocode"
+    ],
+    "urlObservedUpperBoundMs": 93,
+    "milestonesMs": {
+      "submit": 0,
+      "durable-intake": 51,
+      "shell-visible": 409,
+      "first-actionable": 410,
+      "required-complete": 419
+    },
+    "trace": [
+      {
+        "name": "route-requested",
+        "ms": 51.2
+      },
+      {
+        "name": "route-committed",
+        "ms": 61.4
+      },
+      {
+        "name": "builder-mounted",
+        "ms": 377.1,
+        "detail": {
+          "busy": "true"
+        }
+      },
+      {
+        "name": "entry-render-committed",
+        "ms": 398.2
+      },
+      {
+        "name": "actionable-render-committed",
+        "ms": 403.7
+      },
+      {
+        "name": "orientation-visible",
+        "ms": 411
+      },
+      {
+        "name": "actionable-visible",
+        "ms": 411.7
+      }
+    ],
+    "storage": {
+      "reads": 23,
+      "writes": 3,
+      "durationMs": 0.10000002384185791
+    },
+    "longTasks": [],
+    "routeResources": [
+      {
+        "path": "/journey/new",
+        "ms": 51.3,
+        "durationMs": 3.7
+      },
+      {
+        "path": "/_next/static/chunks/app/journey/error-f2b2eef08f6a59ee.js",
+        "ms": 56.3,
+        "durationMs": 4.4
+      },
+      {
+        "path": "/_next/static/chunks/app/journey/not-found-20aa5a0ea45270d6.js",
+        "ms": 56.4,
+        "durationMs": 4.7
+      },
+      {
+        "path": "/_next/static/chunks/app/journey/layout-20e20296852fdd77.js",
+        "ms": 56.5,
+        "durationMs": 5
+      },
+      {
+        "path": "/_next/static/chunks/6033-95c3313b76afc1aa.js",
+        "ms": 56.6,
+        "durationMs": 5.1
+      },
+      {
+        "path": "/_next/static/chunks/5785-89234ab51336d6d3.js",
+        "ms": 56.7,
+        "durationMs": 5.3
+      },
+      {
+        "path": "/_next/static/chunks/1647-e1fefcfcaeb39573.js",
+        "ms": 56.7,
+        "durationMs": 6
+      },
+      {
+        "path": "/_next/static/chunks/app/journey/new/page-89d2025fffcc6f06.js",
+        "ms": 56.8,
+        "durationMs": 5.9
+      },
+      {
+        "path": "/_next/static/css/b1af8a1a52c1c280.css",
+        "ms": 57,
+        "durationMs": 5
+      },
+      {
+        "path": "/_next/static/css/1c8cbdfc8cfe4433.css",
+        "ms": 57.1,
+        "durationMs": 5
+      },
+      {
+        "path": "/_next/static/css/2a9a39cbe5bdc43a.css",
+        "ms": 57.2,
+        "durationMs": 5.5
+      },
+      {
+        "path": "/_next/static/css/771a7cf9c1bcc79c.css",
+        "ms": 57.2,
+        "durationMs": 5.5
+      },
+      {
+        "path": "/_next/static/chunks/app/journey/cookies/page-4b6728c59e1fb82f.js",
+        "ms": 338.2,
+        "durationMs": 8
+      },
+      {
+        "path": "/_next/static/css/f7e3139f895231e2.css",
+        "ms": 338.5,
+        "durationMs": 7.7
+      },
+      {
+        "path": "/_next/static/css/3cd6503d59afc5f7.css",
+        "ms": 338.6,
+        "durationMs": 7
+      },
+      {
+        "path": "/_next/static/css/5e35e1acd7fba0e5.css",
+        "ms": 338.7,
+        "durationMs": 8.6
+      },
+      {
+        "path": "/_next/static/chunks/app/journey/privacy/page-d1d31e838cef7b01.js",
+        "ms": 341.1,
+        "durationMs": 10
+      },
+      {
+        "path": "/_next/static/css/03a51805e7467245.css",
+        "ms": 341.2,
+        "durationMs": 7.4
+      },
+      {
+        "path": "/_next/static/chunks/app/journey/about/page-bd3cfe2fde6000aa.js",
+        "ms": 354,
+        "durationMs": 3.1
+      },
+      {
+        "path": "/_next/static/css/e416fa544c0d017a.css",
+        "ms": 354.2,
+        "durationMs": 3.1
+      },
+      {
+        "path": "/_next/static/chunks/app/journey/help/page-a6e29892ab3831f2.js",
+        "ms": 355.5,
+        "durationMs": 4.5
+      },
+      {
+        "path": "/_next/static/css/c7aaf4d1958886af.css",
+        "ms": 355.6,
+        "durationMs": 3.7
+      },
+      {
+        "path": "/_next/static/chunks/app/journey/affiliate-disclosure/page-98f3367cce9be9a6.js",
+        "ms": 359.8,
+        "durationMs": 3
+      },
+      {
+        "path": "/_next/static/chunks/app/journey/terms/page-4da96ffacff8bc61.js",
+        "ms": 362.6,
+        "durationMs": 1.6
+      },
+      {
+        "path": "/_next/static/css/00d6ab3e20b1e0b6.css",
+        "ms": 362.8,
+        "durationMs": 1.3
+      },
+      {
+        "path": "/_next/static/chunks/e474d18f-ceb145d073fa9f25.js",
+        "ms": 407.5,
+        "durationMs": 1.3
+      },
+      {
+        "path": "/_next/static/chunks/ca4dcb09-8d71e4f5e9270f73.js",
+        "ms": 407.8,
+        "durationMs": 1.9
+      },
+      {
+        "path": "/_next/static/chunks/e919c1aa-4ba5daa1c31d082f.js",
+        "ms": 407.9,
+        "durationMs": 6.1
+      },
+      {
+        "path": "/_next/static/chunks/8cc6faea-06177138421f2356.js",
+        "ms": 408.1,
+        "durationMs": 6.1
+      },
+      {
+        "path": "/_next/static/chunks/d648eb28-05c9445a2e0b2734.js",
+        "ms": 408.2,
+        "durationMs": 6
+      }
+    ],
+    "hasRoute": true,
+    "hasDiscovery": false,
+    "hasCanonicalTokyo": true,
+    "firstActionableVerified": true,
+    "overflow": false,
+    "urlKind": "handoff"
+  },
+  {
+    "phase": "final-after",
+    "source": "optimized-local-fallback",
+    "name": "stops",
+    "run": 6,
+    "thermal": "warm-server",
+    "width": 390,
+    "height": 844,
+    "errors": [],
+    "requests": [
+      "journey-geocode",
+      "journey-geocode"
+    ],
+    "urlObservedUpperBoundMs": 78,
+    "milestonesMs": {
+      "submit": 0,
+      "durable-intake": 50,
+      "shell-visible": 418,
+      "first-actionable": 418,
+      "required-complete": 478
+    },
+    "trace": [
+      {
+        "name": "route-requested",
+        "ms": 50.7
+      },
+      {
+        "name": "route-committed",
+        "ms": 56.9
+      },
+      {
+        "name": "builder-mounted",
+        "ms": 364,
+        "detail": {
+          "busy": "true"
+        }
+      },
+      {
+        "name": "entry-render-committed",
+        "ms": 391.2
+      },
+      {
+        "name": "actionable-render-committed",
+        "ms": 406.2
+      },
+      {
+        "name": "orientation-visible",
+        "ms": 420.6
+      },
+      {
+        "name": "actionable-visible",
+        "ms": 420.8
+      }
+    ],
+    "storage": {
+      "reads": 23,
+      "writes": 3,
+      "durationMs": 0
+    },
+    "longTasks": [],
+    "routeResources": [
+      {
+        "path": "/journey/new",
+        "ms": 50.9,
+        "durationMs": 2.2
+      },
+      {
+        "path": "/_next/static/chunks/6033-95c3313b76afc1aa.js",
+        "ms": 53.5,
+        "durationMs": 1.4
+      },
+      {
+        "path": "/_next/static/chunks/5785-89234ab51336d6d3.js",
+        "ms": 53.6,
+        "durationMs": 1.7
+      },
+      {
+        "path": "/_next/static/chunks/1647-e1fefcfcaeb39573.js",
+        "ms": 53.7,
+        "durationMs": 2.1
+      },
+      {
+        "path": "/_next/static/chunks/app/journey/new/page-89d2025fffcc6f06.js",
+        "ms": 53.7,
+        "durationMs": 2.2
+      },
+      {
+        "path": "/_next/static/css/b1af8a1a52c1c280.css",
+        "ms": 53.8,
+        "durationMs": 2
+      },
+      {
+        "path": "/_next/static/css/1c8cbdfc8cfe4433.css",
+        "ms": 53.9,
+        "durationMs": 2.1
+      },
+      {
+        "path": "/_next/static/css/2a9a39cbe5bdc43a.css",
+        "ms": 54,
+        "durationMs": 2.1
+      },
+      {
+        "path": "/_next/static/css/771a7cf9c1bcc79c.css",
+        "ms": 54,
+        "durationMs": 2.1
+      },
+      {
+        "path": "/_next/static/chunks/app/journey/about/page-bd3cfe2fde6000aa.js",
+        "ms": 82.6,
+        "durationMs": 2.9
+      },
+      {
+        "path": "/_next/static/css/e416fa544c0d017a.css",
+        "ms": 82.7,
+        "durationMs": 2.8
+      },
+      {
+        "path": "/_next/static/chunks/app/journey/help/page-a6e29892ab3831f2.js",
+        "ms": 83.1,
+        "durationMs": 3.1
+      },
+      {
+        "path": "/_next/static/css/c7aaf4d1958886af.css",
+        "ms": 83.2,
+        "durationMs": 2.3
+      },
+      {
+        "path": "/_next/static/chunks/app/journey/affiliate-disclosure/page-98f3367cce9be9a6.js",
+        "ms": 83.6,
+        "durationMs": 4.1
+      },
+      {
+        "path": "/_next/static/css/00d6ab3e20b1e0b6.css",
+        "ms": 83.9,
+        "durationMs": 2.6
+      },
+      {
+        "path": "/_next/static/chunks/app/journey/terms/page-4da96ffacff8bc61.js",
+        "ms": 83.9,
+        "durationMs": 3.8
+      },
+      {
+        "path": "/_next/static/chunks/e474d18f-ceb145d073fa9f25.js",
+        "ms": 415.5,
+        "durationMs": 59
+      },
+      {
+        "path": "/_next/static/chunks/ca4dcb09-8d71e4f5e9270f73.js",
+        "ms": 415.8,
+        "durationMs": 61.8
+      },
+      {
+        "path": "/_next/static/chunks/e919c1aa-4ba5daa1c31d082f.js",
+        "ms": 415.9,
+        "durationMs": 66.5
+      },
+      {
+        "path": "/_next/static/chunks/8cc6faea-06177138421f2356.js",
+        "ms": 416.1,
+        "durationMs": 68.1
+      },
+      {
+        "path": "/_next/static/chunks/d648eb28-05c9445a2e0b2734.js",
+        "ms": 416.3,
+        "durationMs": 69.9
+      },
+      {
+        "path": "/_next/static/chunks/783-8f61c9f901101bef.js",
+        "ms": 416.5,
+        "durationMs": 70.3
+      },
+      {
+        "path": "/_next/static/chunks/7013.b9295c299dc81cfb.js",
+        "ms": 416.7,
+        "durationMs": 101.8
+      },
+      {
+        "path": "/_next/static/css/e82518b135ceef38.css",
+        "ms": 422,
+        "durationMs": 53.1
+      }
+    ],
+    "hasRoute": true,
+    "hasDiscovery": false,
+    "hasCanonicalTokyo": true,
+    "firstActionableVerified": true,
+    "overflow": false,
+    "urlKind": "handoff"
+  },
+  {
+    "phase": "final-after",
+    "source": "optimized-local-fallback",
+    "name": "stops",
+    "run": 7,
+    "thermal": "warm-server",
+    "width": 390,
+    "height": 844,
+    "errors": [],
+    "requests": [
+      "journey-geocode",
+      "journey-geocode"
+    ],
+    "urlObservedUpperBoundMs": 81,
+    "milestonesMs": {
+      "submit": 0,
+      "durable-intake": 48,
+      "shell-visible": 400,
+      "first-actionable": 400,
+      "required-complete": 411
+    },
+    "trace": [
+      {
+        "name": "route-requested",
+        "ms": 48.3
+      },
+      {
+        "name": "route-committed",
+        "ms": 57.1
+      },
+      {
+        "name": "builder-mounted",
+        "ms": 360.9,
+        "detail": {
+          "busy": "true"
+        }
+      },
+      {
+        "name": "entry-render-committed",
+        "ms": 386.3
+      },
+      {
+        "name": "actionable-render-committed",
+        "ms": 391.4
+      },
+      {
+        "name": "orientation-visible",
+        "ms": 401.7
+      },
+      {
+        "name": "actionable-visible",
+        "ms": 401.8
+      }
+    ],
+    "storage": {
+      "reads": 23,
+      "writes": 3,
+      "durationMs": 0.19999998807907104
+    },
+    "longTasks": [],
+    "routeResources": [
+      {
+        "path": "/journey/new",
+        "ms": 48.5,
+        "durationMs": 3.5
+      },
+      {
+        "path": "/_next/static/chunks/6033-95c3313b76afc1aa.js",
+        "ms": 54.1,
+        "durationMs": 3.3
+      },
+      {
+        "path": "/_next/static/chunks/5785-89234ab51336d6d3.js",
+        "ms": 54.2,
+        "durationMs": 3.3
+      },
+      {
+        "path": "/_next/static/chunks/1647-e1fefcfcaeb39573.js",
+        "ms": 54.2,
+        "durationMs": 3.6
+      },
+      {
+        "path": "/_next/static/chunks/app/journey/new/page-89d2025fffcc6f06.js",
+        "ms": 54.3,
+        "durationMs": 3.5
+      },
+      {
+        "path": "/_next/static/css/b1af8a1a52c1c280.css",
+        "ms": 54.4,
+        "durationMs": 2.7
+      },
+      {
+        "path": "/_next/static/css/1c8cbdfc8cfe4433.css",
+        "ms": 54.4,
+        "durationMs": 3.2
+      },
+      {
+        "path": "/_next/static/css/2a9a39cbe5bdc43a.css",
+        "ms": 54.5,
+        "durationMs": 3.3
+      },
+      {
+        "path": "/_next/static/css/771a7cf9c1bcc79c.css",
+        "ms": 54.6,
+        "durationMs": 3.2
+      },
+      {
+        "path": "/_next/static/css/e416fa544c0d017a.css",
+        "ms": 80,
+        "durationMs": 4.7
+      },
+      {
+        "path": "/_next/static/chunks/app/journey/about/page-bd3cfe2fde6000aa.js",
+        "ms": 80,
+        "durationMs": 5.2
+      },
+      {
+        "path": "/_next/static/css/c7aaf4d1958886af.css",
+        "ms": 80.4,
+        "durationMs": 6.5
+      },
+      {
+        "path": "/_next/static/chunks/app/journey/help/page-a6e29892ab3831f2.js",
+        "ms": 80.4,
+        "durationMs": 7.2
+      },
+      {
+        "path": "/_next/static/chunks/app/journey/affiliate-disclosure/page-98f3367cce9be9a6.js",
+        "ms": 82.8,
+        "durationMs": 6.1
+      },
+      {
+        "path": "/_next/static/chunks/app/journey/terms/page-4da96ffacff8bc61.js",
+        "ms": 86,
+        "durationMs": 4.9
+      },
+      {
+        "path": "/_next/static/css/00d6ab3e20b1e0b6.css",
+        "ms": 86,
+        "durationMs": 6.9
+      },
+      {
+        "path": "/_next/static/chunks/e474d18f-ceb145d073fa9f25.js",
+        "ms": 396.8,
+        "durationMs": 2.5
+      },
+      {
+        "path": "/_next/static/chunks/ca4dcb09-8d71e4f5e9270f73.js",
+        "ms": 397.1,
+        "durationMs": 4.4
+      },
+      {
+        "path": "/_next/static/chunks/e919c1aa-4ba5daa1c31d082f.js",
+        "ms": 398.2,
+        "durationMs": 7.4
+      },
+      {
+        "path": "/_next/static/chunks/8cc6faea-06177138421f2356.js",
+        "ms": 398.5,
+        "durationMs": 7.1
+      },
+      {
+        "path": "/_next/static/chunks/d648eb28-05c9445a2e0b2734.js",
+        "ms": 398.6,
+        "durationMs": 7
+      },
+      {
+        "path": "/_next/static/chunks/783-8f61c9f901101bef.js",
+        "ms": 398.8,
+        "durationMs": 8.1
+      },
+      {
+        "path": "/_next/static/chunks/7013.b9295c299dc81cfb.js",
+        "ms": 399.1,
+        "durationMs": 12.3
+      },
+      {
+        "path": "/_next/static/css/e82518b135ceef38.css",
+        "ms": 403,
+        "durationMs": 6.6
+      }
+    ],
+    "hasRoute": true,
+    "hasDiscovery": false,
+    "hasCanonicalTokyo": true,
+    "firstActionableVerified": true,
+    "overflow": false,
+    "urlKind": "handoff"
+  },
+  {
+    "phase": "final-after",
+    "source": "optimized-local-fallback",
+    "name": "stops",
+    "run": 8,
+    "thermal": "warm-server",
+    "width": 390,
+    "height": 844,
+    "errors": [],
+    "requests": [
+      "journey-geocode",
+      "journey-geocode"
+    ],
+    "urlObservedUpperBoundMs": 71,
+    "milestonesMs": {
+      "submit": 0,
+      "durable-intake": 51,
+      "shell-visible": 698,
+      "first-actionable": 698,
+      "required-complete": 705
+    },
+    "trace": [
+      {
+        "name": "route-requested",
+        "ms": 51.8
+      },
+      {
+        "name": "route-committed",
+        "ms": 58
+      },
+      {
+        "name": "builder-mounted",
+        "ms": 663.4,
+        "detail": {
+          "busy": "true"
+        }
+      },
+      {
+        "name": "entry-render-committed",
+        "ms": 686.5
+      },
+      {
+        "name": "actionable-render-committed",
+        "ms": 690.8
+      },
+      {
+        "name": "orientation-visible",
+        "ms": 699.4
+      },
+      {
+        "name": "actionable-visible",
+        "ms": 699.5
+      }
+    ],
+    "storage": {
+      "reads": 23,
+      "writes": 3,
+      "durationMs": 0.09999999403953552
+    },
+    "longTasks": [],
+    "routeResources": [
+      {
+        "path": "/journey/new",
+        "ms": 52,
+        "durationMs": 2.6
+      },
+      {
+        "path": "/_next/static/chunks/6033-95c3313b76afc1aa.js",
+        "ms": 55.2,
+        "durationMs": 1.6
+      },
+      {
+        "path": "/_next/static/chunks/5785-89234ab51336d6d3.js",
+        "ms": 55.3,
+        "durationMs": 2.1
+      },
+      {
+        "path": "/_next/static/chunks/1647-e1fefcfcaeb39573.js",
+        "ms": 55.3,
+        "durationMs": 2.6
+      },
+      {
+        "path": "/_next/static/chunks/app/journey/new/page-89d2025fffcc6f06.js",
+        "ms": 55.4,
+        "durationMs": 2.5
+      },
+      {
+        "path": "/_next/static/css/b1af8a1a52c1c280.css",
+        "ms": 55.5,
+        "durationMs": 2.4
+      },
+      {
+        "path": "/_next/static/css/1c8cbdfc8cfe4433.css",
+        "ms": 55.6,
+        "durationMs": 2.3
+      },
+      {
+        "path": "/_next/static/css/2a9a39cbe5bdc43a.css",
+        "ms": 55.6,
+        "durationMs": 2.3
+      },
+      {
+        "path": "/_next/static/css/771a7cf9c1bcc79c.css",
+        "ms": 55.7,
+        "durationMs": 2.2
+      },
+      {
+        "path": "/_next/static/chunks/app/journey/about/page-bd3cfe2fde6000aa.js",
+        "ms": 380.5,
+        "durationMs": 4.2
+      },
+      {
+        "path": "/_next/static/css/e416fa544c0d017a.css",
+        "ms": 380.7,
+        "durationMs": 4.2
+      },
+      {
+        "path": "/_next/static/chunks/app/journey/help/page-a6e29892ab3831f2.js",
+        "ms": 382.4,
+        "durationMs": 6.2
+      },
+      {
+        "path": "/_next/static/css/c7aaf4d1958886af.css",
+        "ms": 382.5,
+        "durationMs": 4.5
+      },
+      {
+        "path": "/_next/static/chunks/app/journey/affiliate-disclosure/page-98f3367cce9be9a6.js",
+        "ms": 386.9,
+        "durationMs": 2.5
+      },
+      {
+        "path": "/_next/static/chunks/app/journey/terms/page-4da96ffacff8bc61.js",
+        "ms": 389.8,
+        "durationMs": 1.3
+      },
+      {
+        "path": "/_next/static/css/00d6ab3e20b1e0b6.css",
+        "ms": 389.9,
+        "durationMs": 1.3
+      },
+      {
+        "path": "/_next/static/chunks/e474d18f-ceb145d073fa9f25.js",
+        "ms": 695.6,
+        "durationMs": 2.1
+      },
+      {
+        "path": "/_next/static/chunks/ca4dcb09-8d71e4f5e9270f73.js",
+        "ms": 695.9,
+        "durationMs": 2.8
+      },
+      {
+        "path": "/_next/static/chunks/e919c1aa-4ba5daa1c31d082f.js",
+        "ms": 696.1,
+        "durationMs": 4.2
+      },
+      {
+        "path": "/_next/static/chunks/8cc6faea-06177138421f2356.js",
+        "ms": 696.5,
+        "durationMs": 3.9
+      },
+      {
+        "path": "/_next/static/chunks/d648eb28-05c9445a2e0b2734.js",
+        "ms": 696.6,
+        "durationMs": 3.8
+      },
+      {
+        "path": "/_next/static/chunks/783-8f61c9f901101bef.js",
+        "ms": 696.8,
+        "durationMs": 4.9
+      },
+      {
+        "path": "/_next/static/chunks/7013.b9295c299dc81cfb.js",
+        "ms": 697,
+        "durationMs": 10.6
+      },
+      {
+        "path": "/_next/static/css/e82518b135ceef38.css",
+        "ms": 700.4,
+        "durationMs": 2.8
+      }
+    ],
+    "hasRoute": true,
+    "hasDiscovery": false,
+    "hasCanonicalTokyo": true,
+    "firstActionableVerified": true,
+    "overflow": false,
+    "urlKind": "handoff"
+  },
+  {
+    "phase": "final-after",
+    "source": "optimized-local-fallback",
+    "name": "stops",
+    "run": 9,
+    "thermal": "warm-server",
+    "width": 390,
+    "height": 844,
+    "errors": [],
+    "requests": [
+      "journey-geocode",
+      "journey-geocode",
+      "journey-geocode"
+    ],
+    "urlObservedUpperBoundMs": 964,
+    "milestonesMs": {
+      "submit": 0,
+      "durable-intake": 942,
+      "shell-visible": 1281,
+      "first-actionable": 1281,
+      "required-complete": 1287
+    },
+    "trace": [
+      {
+        "name": "route-requested",
+        "ms": 942.4
+      },
+      {
+        "name": "route-committed",
+        "ms": 948.7
+      },
+      {
+        "name": "builder-mounted",
+        "ms": 1252.3,
+        "detail": {
+          "busy": "true"
+        }
+      },
+      {
+        "name": "entry-render-committed",
+        "ms": 1271.5
+      },
+      {
+        "name": "actionable-render-committed",
+        "ms": 1275.3
+      },
+      {
+        "name": "orientation-visible",
+        "ms": 1285.6
+      },
+      {
+        "name": "actionable-visible",
+        "ms": 1285.7
+      }
+    ],
+    "storage": {
+      "reads": 21,
+      "writes": 2,
+      "durationMs": 0
+    },
+    "longTasks": [],
+    "routeResources": [
+      {
+        "path": "/journey/new",
+        "ms": 942.6,
+        "durationMs": 2.8
+      },
+      {
+        "path": "/_next/static/chunks/6033-95c3313b76afc1aa.js",
+        "ms": 945.7,
+        "durationMs": 6.7
+      },
+      {
+        "path": "/_next/static/chunks/5785-89234ab51336d6d3.js",
+        "ms": 945.9,
+        "durationMs": 6.5
+      },
+      {
+        "path": "/_next/static/chunks/1647-e1fefcfcaeb39573.js",
+        "ms": 945.9,
+        "durationMs": 6.7
+      },
+      {
+        "path": "/_next/static/chunks/app/journey/new/page-89d2025fffcc6f06.js",
+        "ms": 946,
+        "durationMs": 7.7
+      },
+      {
+        "path": "/_next/static/css/b1af8a1a52c1c280.css",
+        "ms": 946.1,
+        "durationMs": 6.7
+      },
+      {
+        "path": "/_next/static/css/1c8cbdfc8cfe4433.css",
+        "ms": 946.2,
+        "durationMs": 7.5
+      },
+      {
+        "path": "/_next/static/css/2a9a39cbe5bdc43a.css",
+        "ms": 946.3,
+        "durationMs": 7.4
+      },
+      {
+        "path": "/_next/static/css/771a7cf9c1bcc79c.css",
+        "ms": 946.3,
+        "durationMs": 7.5
+      },
+      {
+        "path": "/_next/static/chunks/e474d18f-ceb145d073fa9f25.js",
+        "ms": 1279.3,
+        "durationMs": 1.5
+      },
+      {
+        "path": "/_next/static/chunks/ca4dcb09-8d71e4f5e9270f73.js",
+        "ms": 1279.5,
+        "durationMs": 3.2
+      },
+      {
+        "path": "/_next/static/chunks/e919c1aa-4ba5daa1c31d082f.js",
+        "ms": 1279.7,
+        "durationMs": 4
+      },
+      {
+        "path": "/_next/static/chunks/8cc6faea-06177138421f2356.js",
+        "ms": 1279.9,
+        "durationMs": 4
+      },
+      {
+        "path": "/_next/static/chunks/d648eb28-05c9445a2e0b2734.js",
+        "ms": 1280,
+        "durationMs": 4
+      },
+      {
+        "path": "/_next/static/chunks/783-8f61c9f901101bef.js",
+        "ms": 1280.2,
+        "durationMs": 5.3
+      },
+      {
+        "path": "/_next/static/chunks/7013.b9295c299dc81cfb.js",
+        "ms": 1280.5,
+        "durationMs": 10
+      },
+      {
+        "path": "/_next/static/css/e82518b135ceef38.css",
+        "ms": 1282.3,
+        "durationMs": 3.4
+      }
+    ],
+    "hasRoute": true,
+    "hasDiscovery": false,
+    "hasCanonicalTokyo": true,
+    "firstActionableVerified": true,
+    "overflow": false,
+    "urlKind": "handoff"
+  },
+  {
+    "phase": "final-after",
+    "source": "optimized-local-fallback",
+    "name": "stops",
+    "run": 10,
+    "thermal": "warm-server",
+    "width": 390,
+    "height": 844,
+    "errors": [],
+    "requests": [
+      "journey-geocode",
+      "journey-geocode"
+    ],
+    "urlObservedUpperBoundMs": 70,
+    "milestonesMs": {
+      "submit": 0,
+      "durable-intake": 51,
+      "shell-visible": 710,
+      "first-actionable": 710,
+      "required-complete": 719
+    },
+    "trace": [
+      {
+        "name": "route-requested",
+        "ms": 51.5
+      },
+      {
+        "name": "route-committed",
+        "ms": 57.7
+      },
+      {
+        "name": "builder-mounted",
+        "ms": 665.7,
+        "detail": {
+          "busy": "true"
+        }
+      },
+      {
+        "name": "entry-render-committed",
+        "ms": 699.8
+      },
+      {
+        "name": "actionable-render-committed",
+        "ms": 704.2
+      },
+      {
+        "name": "orientation-visible",
+        "ms": 712
+      },
+      {
+        "name": "actionable-visible",
+        "ms": 712.1
+      }
+    ],
+    "storage": {
+      "reads": 23,
+      "writes": 3,
+      "durationMs": 0.09999999403953552
+    },
+    "longTasks": [],
+    "routeResources": [
+      {
+        "path": "/journey/new",
+        "ms": 51.6,
+        "durationMs": 2.4
+      },
+      {
+        "path": "/_next/static/chunks/6033-95c3313b76afc1aa.js",
+        "ms": 54.6,
+        "durationMs": 1.8
+      },
+      {
+        "path": "/_next/static/chunks/5785-89234ab51336d6d3.js",
+        "ms": 54.7,
+        "durationMs": 1.9
+      },
+      {
+        "path": "/_next/static/chunks/1647-e1fefcfcaeb39573.js",
+        "ms": 54.7,
+        "durationMs": 2
+      },
+      {
+        "path": "/_next/static/chunks/app/journey/new/page-89d2025fffcc6f06.js",
+        "ms": 54.7,
+        "durationMs": 2.2
+      },
+      {
+        "path": "/_next/static/css/b1af8a1a52c1c280.css",
+        "ms": 54.8,
+        "durationMs": 1.9
+      },
+      {
+        "path": "/_next/static/css/1c8cbdfc8cfe4433.css",
+        "ms": 54.9,
+        "durationMs": 1.8
+      },
+      {
+        "path": "/_next/static/css/2a9a39cbe5bdc43a.css",
+        "ms": 54.9,
+        "durationMs": 1.9
+      },
+      {
+        "path": "/_next/static/css/771a7cf9c1bcc79c.css",
+        "ms": 55,
+        "durationMs": 1.9
+      },
+      {
+        "path": "/_next/static/chunks/app/journey/about/page-bd3cfe2fde6000aa.js",
+        "ms": 379.5,
+        "durationMs": 4.1
+      },
+      {
+        "path": "/_next/static/css/e416fa544c0d017a.css",
+        "ms": 379.8,
+        "durationMs": 4.1
+      },
+      {
+        "path": "/_next/static/chunks/app/journey/help/page-a6e29892ab3831f2.js",
+        "ms": 381.9,
+        "durationMs": 3.7
+      },
+      {
+        "path": "/_next/static/css/c7aaf4d1958886af.css",
+        "ms": 382,
+        "durationMs": 3.5
+      },
+      {
+        "path": "/_next/static/chunks/app/journey/affiliate-disclosure/page-98f3367cce9be9a6.js",
+        "ms": 385.8,
+        "durationMs": 2
+      },
+      {
+        "path": "/_next/static/chunks/app/journey/terms/page-4da96ffacff8bc61.js",
+        "ms": 387.7,
+        "durationMs": 1.7
+      },
+      {
+        "path": "/_next/static/css/00d6ab3e20b1e0b6.css",
+        "ms": 387.8,
+        "durationMs": 1.5
+      },
+      {
+        "path": "/_next/static/chunks/e474d18f-ceb145d073fa9f25.js",
+        "ms": 708.4,
+        "durationMs": 2
+      },
+      {
+        "path": "/_next/static/chunks/ca4dcb09-8d71e4f5e9270f73.js",
+        "ms": 708.7,
+        "durationMs": 5.5
+      },
+      {
+        "path": "/_next/static/chunks/e919c1aa-4ba5daa1c31d082f.js",
+        "ms": 708.8,
+        "durationMs": 7.6
+      },
+      {
+        "path": "/_next/static/chunks/8cc6faea-06177138421f2356.js",
+        "ms": 709.1,
+        "durationMs": 7.5
+      },
+      {
+        "path": "/_next/static/chunks/d648eb28-05c9445a2e0b2734.js",
+        "ms": 709.2,
+        "durationMs": 8.2
+      },
+      {
+        "path": "/_next/static/chunks/783-8f61c9f901101bef.js",
+        "ms": 709.5,
+        "durationMs": 7.9
+      },
+      {
+        "path": "/_next/static/chunks/7013.b9295c299dc81cfb.js",
+        "ms": 709.7,
+        "durationMs": 12.6
+      },
+      {
+        "path": "/_next/static/css/e82518b135ceef38.css",
+        "ms": 713,
+        "durationMs": 5.1
+      }
+    ],
+    "hasRoute": true,
+    "hasDiscovery": false,
+    "hasCanonicalTokyo": true,
+    "firstActionableVerified": true,
+    "overflow": false,
+    "urlKind": "handoff"
+  },
+  {
+    "phase": "final-after",
+    "source": "optimized-local-fallback",
+    "name": "describe",
+    "run": 1,
+    "thermal": "cold-context",
+    "width": 390,
+    "height": 844,
+    "errors": [],
+    "requests": [
+      "journey-capture",
+      "journey-geocode",
+      "journey-geocode",
+      "journey-discover",
+      "journey-discover"
+    ],
+    "urlObservedUpperBoundMs": 77,
+    "milestonesMs": {
+      "submit": 0,
+      "durable-intake": 50,
+      "shell-visible": 998,
+      "first-actionable": 1033,
+      "required-complete": 1131
+    },
+    "trace": [
+      {
+        "name": "route-requested",
+        "ms": 50.7
+      },
+      {
+        "name": "route-committed",
+        "ms": 55.8
+      },
+      {
+        "name": "builder-mounted",
+        "ms": 976.4,
+        "detail": {
+          "busy": "true"
+        }
+      },
+      {
+        "name": "entry-render-committed",
+        "ms": 987.8
+      },
+      {
+        "name": "interpretation-requested",
+        "ms": 1000.2
+      },
+      {
+        "name": "interpretation-response",
+        "ms": 1007.4,
+        "detail": {
+          "status": 200
+        }
+      },
+      {
+        "name": "actionable-render-committed",
+        "ms": 1025.5
+      },
+      {
+        "name": "orientation-visible",
+        "ms": 1027.9
+      },
+      {
+        "name": "actionable-visible",
+        "ms": 1034
+      }
+    ],
+    "storage": {
+      "reads": 26,
+      "writes": 2,
+      "durationMs": 0.09999999403953552
+    },
+    "longTasks": [],
+    "routeResources": [
+      {
+        "path": "/journey/new",
+        "ms": 50.8,
+        "durationMs": 1.9
+      },
+      {
+        "path": "/_next/static/chunks/app/journey/error-f2b2eef08f6a59ee.js",
+        "ms": 52.9,
+        "durationMs": 617.9
+      },
+      {
+        "path": "/_next/static/chunks/app/journey/not-found-20aa5a0ea45270d6.js",
+        "ms": 53,
+        "durationMs": 617.9
+      },
+      {
+        "path": "/_next/static/chunks/app/journey/layout-20e20296852fdd77.js",
+        "ms": 53.1,
+        "durationMs": 618
+      },
+      {
+        "path": "/_next/static/chunks/6033-95c3313b76afc1aa.js",
+        "ms": 53.1,
+        "durationMs": 618.1
+      },
+      {
+        "path": "/_next/static/chunks/5785-89234ab51336d6d3.js",
+        "ms": 53.2,
+        "durationMs": 618.3
+      },
+      {
+        "path": "/_next/static/chunks/1647-e1fefcfcaeb39573.js",
+        "ms": 53.2,
+        "durationMs": 618.7
+      },
+      {
+        "path": "/_next/static/chunks/app/journey/new/page-89d2025fffcc6f06.js",
+        "ms": 53.3,
+        "durationMs": 619.5
+      },
+      {
+        "path": "/_next/static/css/b1af8a1a52c1c280.css",
+        "ms": 53.4,
+        "durationMs": 0.3
+      },
+      {
+        "path": "/_next/static/css/1c8cbdfc8cfe4433.css",
+        "ms": 53.4,
+        "durationMs": 0.4
+      },
+      {
+        "path": "/_next/static/css/2a9a39cbe5bdc43a.css",
+        "ms": 53.5,
+        "durationMs": 0.4
+      },
+      {
+        "path": "/_next/static/css/771a7cf9c1bcc79c.css",
+        "ms": 53.5,
+        "durationMs": 0.4
+      },
+      {
+        "path": "/_next/static/chunks/app/journey/cookies/page-4b6728c59e1fb82f.js",
+        "ms": 659.5,
+        "durationMs": 8.9
+      },
+      {
+        "path": "/_next/static/css/f7e3139f895231e2.css",
+        "ms": 659.8,
+        "durationMs": 8.7
+      },
+      {
+        "path": "/_next/static/css/3cd6503d59afc5f7.css",
+        "ms": 660,
+        "durationMs": 3.9
+      },
+      {
+        "path": "/_next/static/css/5e35e1acd7fba0e5.css",
+        "ms": 660,
+        "durationMs": 8.7
+      },
+      {
+        "path": "/_next/static/chunks/app/journey/privacy/page-d1d31e838cef7b01.js",
+        "ms": 663.4,
+        "durationMs": 10.5
+      },
+      {
+        "path": "/_next/static/css/03a51805e7467245.css",
+        "ms": 663.6,
+        "durationMs": 6.6
+      },
+      {
+        "path": "/_next/static/chunks/app/journey/about/page-bd3cfe2fde6000aa.js",
+        "ms": 706.1,
+        "durationMs": 6.6
+      },
+      {
+        "path": "/_next/static/css/e416fa544c0d017a.css",
+        "ms": 706.4,
+        "durationMs": 6.1
+      },
+      {
+        "path": "/_next/static/chunks/app/journey/help/page-a6e29892ab3831f2.js",
+        "ms": 707.1,
+        "durationMs": 6.5
+      },
+      {
+        "path": "/_next/static/css/c7aaf4d1958886af.css",
+        "ms": 707.2,
+        "durationMs": 6.4
+      },
+      {
+        "path": "/_next/static/chunks/app/journey/affiliate-disclosure/page-98f3367cce9be9a6.js",
+        "ms": 710.4,
+        "durationMs": 5.2
+      },
+      {
+        "path": "/_next/static/chunks/app/journey/terms/page-4da96ffacff8bc61.js",
+        "ms": 713.9,
+        "durationMs": 3.8
+      },
+      {
+        "path": "/_next/static/css/00d6ab3e20b1e0b6.css",
+        "ms": 714,
+        "durationMs": 3.8
+      },
+      {
+        "path": "/_next/static/chunks/e474d18f-ceb145d073fa9f25.js",
+        "ms": 1030.3,
+        "durationMs": 4.9
+      },
+      {
+        "path": "/_next/static/chunks/ca4dcb09-8d71e4f5e9270f73.js",
+        "ms": 1030.5,
+        "durationMs": 6.3
+      },
+      {
+        "path": "/_next/static/chunks/e919c1aa-4ba5daa1c31d082f.js",
+        "ms": 1030.8,
+        "durationMs": 6
+      },
+      {
+        "path": "/_next/static/chunks/8cc6faea-06177138421f2356.js",
+        "ms": 1030.9,
+        "durationMs": 7.4
+      },
+      {
+        "path": "/_next/static/chunks/d648eb28-05c9445a2e0b2734.js",
+        "ms": 1031.1,
+        "durationMs": 7.3
+      }
+    ],
+    "hasRoute": true,
+    "hasDiscovery": true,
+    "hasCanonicalTokyo": true,
+    "firstActionableVerified": true,
+    "overflow": false,
+    "urlKind": "handoff"
+  },
+  {
+    "phase": "final-after",
+    "source": "optimized-local-fallback",
+    "name": "describe",
+    "run": 2,
+    "thermal": "warm-server",
+    "width": 390,
+    "height": 844,
+    "errors": [],
+    "requests": [
+      "journey-capture",
+      "journey-geocode",
+      "journey-geocode",
+      "journey-discover",
+      "journey-discover"
+    ],
+    "urlObservedUpperBoundMs": 80,
+    "milestonesMs": {
+      "submit": 0,
+      "durable-intake": 56,
+      "shell-visible": 682,
+      "first-actionable": 714,
+      "required-complete": 812
+    },
+    "trace": [
+      {
+        "name": "route-requested",
+        "ms": 56.8
+      },
+      {
+        "name": "route-committed",
+        "ms": 65.7
+      },
+      {
+        "name": "builder-mounted",
+        "ms": 670.1,
+        "detail": {
+          "busy": "true"
+        }
+      },
+      {
+        "name": "entry-render-committed",
+        "ms": 678.8
+      },
+      {
+        "name": "interpretation-requested",
+        "ms": 682
+      },
+      {
+        "name": "interpretation-response",
+        "ms": 686,
+        "detail": {
+          "status": 200
+        }
+      },
+      {
+        "name": "actionable-render-committed",
+        "ms": 708.5
+      },
+      {
+        "name": "orientation-visible",
+        "ms": 710.4
+      },
+      {
+        "name": "actionable-visible",
+        "ms": 744.1
+      }
+    ],
+    "storage": {
+      "reads": 28,
+      "writes": 3,
+      "durationMs": 0.09999999403953552
+    },
+    "longTasks": [],
+    "routeResources": [
+      {
+        "path": "/journey/new",
+        "ms": 56.8,
+        "durationMs": 6.1
+      },
+      {
+        "path": "/_next/static/chunks/6033-95c3313b76afc1aa.js",
+        "ms": 63.1,
+        "durationMs": 1.7
+      },
+      {
+        "path": "/_next/static/chunks/5785-89234ab51336d6d3.js",
+        "ms": 63.1,
+        "durationMs": 2.2
+      },
+      {
+        "path": "/_next/static/chunks/1647-e1fefcfcaeb39573.js",
+        "ms": 63.3,
+        "durationMs": 2.4
+      },
+      {
+        "path": "/_next/static/chunks/app/journey/new/page-89d2025fffcc6f06.js",
+        "ms": 63.3,
+        "durationMs": 2.4
+      },
+      {
+        "path": "/_next/static/css/b1af8a1a52c1c280.css",
+        "ms": 63.4,
+        "durationMs": 2.1
+      },
+      {
+        "path": "/_next/static/css/1c8cbdfc8cfe4433.css",
+        "ms": 63.5,
+        "durationMs": 2.2
+      },
+      {
+        "path": "/_next/static/css/2a9a39cbe5bdc43a.css",
+        "ms": 63.5,
+        "durationMs": 2.2
+      },
+      {
+        "path": "/_next/static/css/771a7cf9c1bcc79c.css",
+        "ms": 63.6,
+        "durationMs": 2.1
+      },
+      {
+        "path": "/_next/static/chunks/app/journey/about/page-bd3cfe2fde6000aa.js",
+        "ms": 397.1,
+        "durationMs": 3.8
+      },
+      {
+        "path": "/_next/static/css/e416fa544c0d017a.css",
+        "ms": 397.3,
+        "durationMs": 3.7
+      },
+      {
+        "path": "/_next/static/css/c7aaf4d1958886af.css",
+        "ms": 397.9,
+        "durationMs": 4.6
+      },
+      {
+        "path": "/_next/static/chunks/app/journey/help/page-a6e29892ab3831f2.js",
+        "ms": 397.9,
+        "durationMs": 6.7
+      },
+      {
+        "path": "/_next/static/chunks/app/journey/affiliate-disclosure/page-98f3367cce9be9a6.js",
+        "ms": 398.2,
+        "durationMs": 8.6
+      },
+      {
+        "path": "/_next/static/css/00d6ab3e20b1e0b6.css",
+        "ms": 398.5,
+        "durationMs": 5.6
+      },
+      {
+        "path": "/_next/static/chunks/app/journey/terms/page-4da96ffacff8bc61.js",
+        "ms": 398.5,
+        "durationMs": 8.1
+      },
+      {
+        "path": "/_next/static/chunks/e474d18f-ceb145d073fa9f25.js",
+        "ms": 712,
+        "durationMs": 7.3
+      },
+      {
+        "path": "/_next/static/chunks/ca4dcb09-8d71e4f5e9270f73.js",
+        "ms": 712.3,
+        "durationMs": 8
+      },
+      {
+        "path": "/_next/static/chunks/e919c1aa-4ba5daa1c31d082f.js",
+        "ms": 712.4,
+        "durationMs": 9.3
+      },
+      {
+        "path": "/_next/static/chunks/8cc6faea-06177138421f2356.js",
+        "ms": 712.6,
+        "durationMs": 9.1
+      },
+      {
+        "path": "/_next/static/chunks/d648eb28-05c9445a2e0b2734.js",
+        "ms": 712.8,
+        "durationMs": 8.9
+      },
+      {
+        "path": "/_next/static/chunks/783-8f61c9f901101bef.js",
+        "ms": 713,
+        "durationMs": 13.8
+      },
+      {
+        "path": "/_next/static/chunks/7013.b9295c299dc81cfb.js",
+        "ms": 713.2,
+        "durationMs": 15.2
+      },
+      {
+        "path": "/_next/static/css/e82518b135ceef38.css",
+        "ms": 714.9,
+        "durationMs": 11.9
+      }
+    ],
+    "hasRoute": true,
+    "hasDiscovery": true,
+    "hasCanonicalTokyo": true,
+    "firstActionableVerified": true,
+    "overflow": false,
+    "urlKind": "handoff"
+  },
+  {
+    "phase": "final-after",
+    "source": "optimized-local-fallback",
+    "name": "describe",
+    "run": 3,
+    "thermal": "warm-server",
+    "width": 390,
+    "height": 844,
+    "errors": [],
+    "requests": [
+      "journey-capture",
+      "journey-geocode",
+      "journey-geocode",
+      "journey-discover",
+      "journey-discover"
+    ],
+    "urlObservedUpperBoundMs": 74,
+    "milestonesMs": {
+      "submit": 0,
+      "durable-intake": 57,
+      "shell-visible": 685,
+      "first-actionable": 716,
+      "required-complete": 816
+    },
+    "trace": [
+      {
+        "name": "route-requested",
+        "ms": 57.3
+      },
+      {
+        "name": "route-committed",
+        "ms": 62.9
+      },
+      {
+        "name": "builder-mounted",
+        "ms": 666.9,
+        "detail": {
+          "busy": "true"
+        }
+      },
+      {
+        "name": "entry-render-committed",
+        "ms": 680.1
+      },
+      {
+        "name": "interpretation-requested",
+        "ms": 685.2
+      },
+      {
+        "name": "interpretation-response",
+        "ms": 690.2,
+        "detail": {
+          "status": 200
+        }
+      },
+      {
+        "name": "actionable-render-committed",
+        "ms": 711.3
+      },
+      {
+        "name": "orientation-visible",
+        "ms": 712.9
+      },
+      {
+        "name": "actionable-visible",
+        "ms": 746.9
+      }
+    ],
+    "storage": {
+      "reads": 28,
+      "writes": 3,
+      "durationMs": 0
+    },
+    "longTasks": [],
+    "routeResources": [
+      {
+        "path": "/journey/new",
+        "ms": 57.5,
+        "durationMs": 2
+      },
+      {
+        "path": "/_next/static/chunks/6033-95c3313b76afc1aa.js",
+        "ms": 59.8,
+        "durationMs": 1.1
+      },
+      {
+        "path": "/_next/static/chunks/5785-89234ab51336d6d3.js",
+        "ms": 59.8,
+        "durationMs": 1.2
+      },
+      {
+        "path": "/_next/static/chunks/1647-e1fefcfcaeb39573.js",
+        "ms": 59.9,
+        "durationMs": 1.3
+      },
+      {
+        "path": "/_next/static/chunks/app/journey/new/page-89d2025fffcc6f06.js",
+        "ms": 60,
+        "durationMs": 1.5
+      },
+      {
+        "path": "/_next/static/css/b1af8a1a52c1c280.css",
+        "ms": 60.1,
+        "durationMs": 1.2
+      },
+      {
+        "path": "/_next/static/css/1c8cbdfc8cfe4433.css",
+        "ms": 60.1,
+        "durationMs": 1.6
+      },
+      {
+        "path": "/_next/static/css/2a9a39cbe5bdc43a.css",
+        "ms": 60.3,
+        "durationMs": 1.5
+      },
+      {
+        "path": "/_next/static/css/771a7cf9c1bcc79c.css",
+        "ms": 60.3,
+        "durationMs": 1.6
+      },
+      {
+        "path": "/_next/static/chunks/app/journey/about/page-bd3cfe2fde6000aa.js",
+        "ms": 377.5,
+        "durationMs": 5.6
+      },
+      {
+        "path": "/_next/static/css/e416fa544c0d017a.css",
+        "ms": 377.6,
+        "durationMs": 5.3
+      },
+      {
+        "path": "/_next/static/chunks/app/journey/help/page-a6e29892ab3831f2.js",
+        "ms": 378.3,
+        "durationMs": 4.9
+      },
+      {
+        "path": "/_next/static/css/c7aaf4d1958886af.css",
+        "ms": 378.4,
+        "durationMs": 4.8
+      },
+      {
+        "path": "/_next/static/chunks/app/journey/affiliate-disclosure/page-98f3367cce9be9a6.js",
+        "ms": 380.4,
+        "durationMs": 4.7
+      },
+      {
+        "path": "/_next/static/chunks/app/journey/terms/page-4da96ffacff8bc61.js",
+        "ms": 384.5,
+        "durationMs": 2.6
+      },
+      {
+        "path": "/_next/static/css/00d6ab3e20b1e0b6.css",
+        "ms": 384.7,
+        "durationMs": 2.5
+      },
+      {
+        "path": "/_next/static/chunks/e474d18f-ceb145d073fa9f25.js",
+        "ms": 714.3,
+        "durationMs": 3.3
+      },
+      {
+        "path": "/_next/static/chunks/ca4dcb09-8d71e4f5e9270f73.js",
+        "ms": 714.5,
+        "durationMs": 5.3
+      },
+      {
+        "path": "/_next/static/chunks/e919c1aa-4ba5daa1c31d082f.js",
+        "ms": 714.6,
+        "durationMs": 6.3
+      },
+      {
+        "path": "/_next/static/chunks/8cc6faea-06177138421f2356.js",
+        "ms": 714.9,
+        "durationMs": 6.2
+      },
+      {
+        "path": "/_next/static/chunks/d648eb28-05c9445a2e0b2734.js",
+        "ms": 715,
+        "durationMs": 6.7
+      },
+      {
+        "path": "/_next/static/chunks/783-8f61c9f901101bef.js",
+        "ms": 715.2,
+        "durationMs": 6.5
+      },
+      {
+        "path": "/_next/static/chunks/7013.b9295c299dc81cfb.js",
+        "ms": 715.5,
+        "durationMs": 9.4
+      },
+      {
+        "path": "/_next/static/css/e82518b135ceef38.css",
+        "ms": 717.5,
+        "durationMs": 3.7
+      }
+    ],
+    "hasRoute": true,
+    "hasDiscovery": true,
+    "hasCanonicalTokyo": true,
+    "firstActionableVerified": true,
+    "overflow": false,
+    "urlKind": "handoff"
+  },
+  {
+    "phase": "final-after",
+    "source": "optimized-local-fallback",
+    "name": "describe",
+    "run": 4,
+    "thermal": "warm-server",
+    "width": 390,
+    "height": 844,
+    "errors": [],
+    "requests": [
+      "journey-capture",
+      "journey-geocode",
+      "journey-geocode",
+      "journey-discover",
+      "journey-discover"
+    ],
+    "urlObservedUpperBoundMs": 100,
+    "milestonesMs": {
+      "submit": 0,
+      "durable-intake": 55,
+      "shell-visible": 379,
+      "first-actionable": 409,
+      "required-complete": 505
+    },
+    "trace": [
+      {
+        "name": "route-requested",
+        "ms": 55.4
+      },
+      {
+        "name": "route-committed",
+        "ms": 62.1
+      },
+      {
+        "name": "builder-mounted",
+        "ms": 364.8,
+        "detail": {
+          "busy": "true"
+        }
+      },
+      {
+        "name": "entry-render-committed",
+        "ms": 375.2
+      },
+      {
+        "name": "interpretation-requested",
+        "ms": 378.9
+      },
+      {
+        "name": "interpretation-response",
+        "ms": 383,
+        "detail": {
+          "status": 200
+        }
+      },
+      {
+        "name": "actionable-render-committed",
+        "ms": 402.8
+      },
+      {
+        "name": "orientation-visible",
+        "ms": 404.9
+      },
+      {
+        "name": "actionable-visible",
+        "ms": 441.9
+      }
+    ],
+    "storage": {
+      "reads": 28,
+      "writes": 3,
+      "durationMs": 0.09999999403953552
+    },
+    "longTasks": [],
+    "routeResources": [
+      {
+        "path": "/journey/new",
+        "ms": 55.6,
+        "durationMs": 3.1
+      },
+      {
+        "path": "/_next/static/chunks/6033-95c3313b76afc1aa.js",
+        "ms": 59.3,
+        "durationMs": 2.2
+      },
+      {
+        "path": "/_next/static/chunks/5785-89234ab51336d6d3.js",
+        "ms": 59.3,
+        "durationMs": 2.5
+      },
+      {
+        "path": "/_next/static/chunks/1647-e1fefcfcaeb39573.js",
+        "ms": 59.4,
+        "durationMs": 2.6
+      },
+      {
+        "path": "/_next/static/chunks/app/journey/new/page-89d2025fffcc6f06.js",
+        "ms": 59.5,
+        "durationMs": 2.8
+      },
+      {
+        "path": "/_next/static/css/b1af8a1a52c1c280.css",
+        "ms": 59.6,
+        "durationMs": 2.1
+      },
+      {
+        "path": "/_next/static/css/1c8cbdfc8cfe4433.css",
+        "ms": 59.6,
+        "durationMs": 2.4
+      },
+      {
+        "path": "/_next/static/css/2a9a39cbe5bdc43a.css",
+        "ms": 59.7,
+        "durationMs": 2.7
+      },
+      {
+        "path": "/_next/static/css/771a7cf9c1bcc79c.css",
+        "ms": 59.8,
+        "durationMs": 2.6
+      },
+      {
+        "path": "/_next/static/chunks/app/journey/about/page-bd3cfe2fde6000aa.js",
+        "ms": 93.7,
+        "durationMs": 6.4
+      },
+      {
+        "path": "/_next/static/css/e416fa544c0d017a.css",
+        "ms": 93.9,
+        "durationMs": 7.7
+      },
+      {
+        "path": "/_next/static/chunks/app/journey/help/page-a6e29892ab3831f2.js",
+        "ms": 94.4,
+        "durationMs": 8.2
+      },
+      {
+        "path": "/_next/static/css/c7aaf4d1958886af.css",
+        "ms": 94.5,
+        "durationMs": 8.2
+      },
+      {
+        "path": "/_next/static/chunks/app/journey/affiliate-disclosure/page-98f3367cce9be9a6.js",
+        "ms": 98.7,
+        "durationMs": 4.1
+      },
+      {
+        "path": "/_next/static/chunks/app/journey/terms/page-4da96ffacff8bc61.js",
+        "ms": 99.4,
+        "durationMs": 3.5
+      },
+      {
+        "path": "/_next/static/css/00d6ab3e20b1e0b6.css",
+        "ms": 99.5,
+        "durationMs": 3.4
+      },
+      {
+        "path": "/_next/static/chunks/e474d18f-ceb145d073fa9f25.js",
+        "ms": 406.4,
+        "durationMs": 2.5
+      },
+      {
+        "path": "/_next/static/chunks/ca4dcb09-8d71e4f5e9270f73.js",
+        "ms": 406.6,
+        "durationMs": 3.3
+      },
+      {
+        "path": "/_next/static/chunks/e919c1aa-4ba5daa1c31d082f.js",
+        "ms": 406.9,
+        "durationMs": 6.9
+      },
+      {
+        "path": "/_next/static/chunks/8cc6faea-06177138421f2356.js",
+        "ms": 407.1,
+        "durationMs": 6.7
+      },
+      {
+        "path": "/_next/static/chunks/d648eb28-05c9445a2e0b2734.js",
+        "ms": 407.2,
+        "durationMs": 6.7
+      },
+      {
+        "path": "/_next/static/chunks/783-8f61c9f901101bef.js",
+        "ms": 407.9,
+        "durationMs": 8
+      },
+      {
+        "path": "/_next/static/chunks/7013.b9295c299dc81cfb.js",
+        "ms": 408.2,
+        "durationMs": 9.8
+      },
+      {
+        "path": "/_next/static/css/e82518b135ceef38.css",
+        "ms": 411.2,
+        "durationMs": 5.5
+      }
+    ],
+    "hasRoute": true,
+    "hasDiscovery": true,
+    "hasCanonicalTokyo": true,
+    "firstActionableVerified": true,
+    "overflow": false,
+    "urlKind": "handoff"
+  },
+  {
+    "phase": "final-after",
+    "source": "optimized-local-fallback",
+    "name": "describe",
+    "run": 5,
+    "thermal": "warm-server",
+    "width": 390,
+    "height": 844,
+    "errors": [],
+    "requests": [
+      "journey-capture",
+      "journey-geocode",
+      "journey-geocode",
+      "journey-discover",
+      "journey-discover"
+    ],
+    "urlObservedUpperBoundMs": 57,
+    "milestonesMs": {
+      "submit": 0,
+      "durable-intake": 41,
+      "shell-visible": 667,
+      "first-actionable": 700,
+      "required-complete": 804
+    },
+    "trace": [
+      {
+        "name": "route-requested",
+        "ms": 41.7
+      },
+      {
+        "name": "route-committed",
+        "ms": 46.6
+      },
+      {
+        "name": "builder-mounted",
+        "ms": 650.3,
+        "detail": {
+          "busy": "true"
+        }
+      },
+      {
+        "name": "entry-render-committed",
+        "ms": 662.1
+      },
+      {
+        "name": "interpretation-requested",
+        "ms": 667.8
+      },
+      {
+        "name": "interpretation-response",
+        "ms": 674,
+        "detail": {
+          "status": 200
+        }
+      },
+      {
+        "name": "actionable-render-committed",
+        "ms": 694.7
+      },
+      {
+        "name": "orientation-visible",
+        "ms": 696.2
+      },
+      {
+        "name": "actionable-visible",
+        "ms": 732.6
+      }
+    ],
+    "storage": {
+      "reads": 28,
+      "writes": 3,
+      "durationMs": 0
+    },
+    "longTasks": [],
+    "routeResources": [
+      {
+        "path": "/journey/new",
+        "ms": 41.7,
+        "durationMs": 2.1
+      },
+      {
+        "path": "/_next/static/chunks/6033-95c3313b76afc1aa.js",
+        "ms": 44,
+        "durationMs": 1
+      },
+      {
+        "path": "/_next/static/chunks/5785-89234ab51336d6d3.js",
+        "ms": 44.1,
+        "durationMs": 1.3
+      },
+      {
+        "path": "/_next/static/chunks/1647-e1fefcfcaeb39573.js",
+        "ms": 44.2,
+        "durationMs": 1.5
+      },
+      {
+        "path": "/_next/static/chunks/app/journey/new/page-89d2025fffcc6f06.js",
+        "ms": 44.2,
+        "durationMs": 1.8
+      },
+      {
+        "path": "/_next/static/css/b1af8a1a52c1c280.css",
+        "ms": 44.4,
+        "durationMs": 1.4
+      },
+      {
+        "path": "/_next/static/css/1c8cbdfc8cfe4433.css",
+        "ms": 44.4,
+        "durationMs": 1.5
+      },
+      {
+        "path": "/_next/static/css/2a9a39cbe5bdc43a.css",
+        "ms": 44.5,
+        "durationMs": 1.9
+      },
+      {
+        "path": "/_next/static/css/771a7cf9c1bcc79c.css",
+        "ms": 44.5,
+        "durationMs": 2
+      },
+      {
+        "path": "/_next/static/chunks/app/journey/about/page-bd3cfe2fde6000aa.js",
+        "ms": 362.8,
+        "durationMs": 6.3
+      },
+      {
+        "path": "/_next/static/css/e416fa544c0d017a.css",
+        "ms": 363,
+        "durationMs": 6.2
+      },
+      {
+        "path": "/_next/static/chunks/app/journey/help/page-a6e29892ab3831f2.js",
+        "ms": 363.6,
+        "durationMs": 5.7
+      },
+      {
+        "path": "/_next/static/css/c7aaf4d1958886af.css",
+        "ms": 363.8,
+        "durationMs": 5.2
+      },
+      {
+        "path": "/_next/static/chunks/app/journey/affiliate-disclosure/page-98f3367cce9be9a6.js",
+        "ms": 370.2,
+        "durationMs": 3.6
+      },
+      {
+        "path": "/_next/static/chunks/app/journey/terms/page-4da96ffacff8bc61.js",
+        "ms": 372.9,
+        "durationMs": 2
+      },
+      {
+        "path": "/_next/static/css/00d6ab3e20b1e0b6.css",
+        "ms": 373.1,
+        "durationMs": 2
+      },
+      {
+        "path": "/_next/static/chunks/e474d18f-ceb145d073fa9f25.js",
+        "ms": 697.6,
+        "durationMs": 3.1
+      },
+      {
+        "path": "/_next/static/chunks/ca4dcb09-8d71e4f5e9270f73.js",
+        "ms": 697.9,
+        "durationMs": 5.5
+      },
+      {
+        "path": "/_next/static/chunks/e919c1aa-4ba5daa1c31d082f.js",
+        "ms": 698.1,
+        "durationMs": 6.3
+      },
+      {
+        "path": "/_next/static/chunks/8cc6faea-06177138421f2356.js",
+        "ms": 698.3,
+        "durationMs": 6.5
+      },
+      {
+        "path": "/_next/static/chunks/d648eb28-05c9445a2e0b2734.js",
+        "ms": 698.8,
+        "durationMs": 6.4
+      },
+      {
+        "path": "/_next/static/chunks/783-8f61c9f901101bef.js",
+        "ms": 699,
+        "durationMs": 7.1
+      },
+      {
+        "path": "/_next/static/chunks/7013.b9295c299dc81cfb.js",
+        "ms": 699.3,
+        "durationMs": 8.2
+      },
+      {
+        "path": "/_next/static/css/e82518b135ceef38.css",
+        "ms": 701.8,
+        "durationMs": 4.8
+      }
+    ],
+    "hasRoute": true,
+    "hasDiscovery": true,
+    "hasCanonicalTokyo": true,
+    "firstActionableVerified": true,
+    "overflow": false,
+    "urlKind": "handoff"
+  },
+  {
+    "phase": "final-after",
+    "source": "optimized-local-fallback",
+    "name": "describe",
+    "run": 6,
+    "thermal": "warm-server",
+    "width": 390,
+    "height": 844,
+    "errors": [],
+    "requests": [
+      "journey-capture",
+      "journey-geocode",
+      "journey-geocode",
+      "journey-discover",
+      "journey-discover"
+    ],
+    "urlObservedUpperBoundMs": 56,
+    "milestonesMs": {
+      "submit": 0,
+      "durable-intake": 40,
+      "shell-visible": 674,
+      "first-actionable": 708,
+      "required-complete": 807
+    },
+    "trace": [
+      {
+        "name": "route-requested",
+        "ms": 40.1
+      },
+      {
+        "name": "route-committed",
+        "ms": 45
+      },
+      {
+        "name": "builder-mounted",
+        "ms": 649.2,
+        "detail": {
+          "busy": "true"
+        }
+      },
+      {
+        "name": "entry-render-committed",
+        "ms": 662.7
+      },
+      {
+        "name": "interpretation-requested",
+        "ms": 675.9
+      },
+      {
+        "name": "interpretation-response",
+        "ms": 682,
+        "detail": {
+          "status": 200
+        }
+      },
+      {
+        "name": "actionable-render-committed",
+        "ms": 701.9
+      },
+      {
+        "name": "orientation-visible",
+        "ms": 703.4
+      },
+      {
+        "name": "actionable-visible",
+        "ms": 708.8
+      }
+    ],
+    "storage": {
+      "reads": 28,
+      "writes": 3,
+      "durationMs": 0
+    },
+    "longTasks": [],
+    "routeResources": [
+      {
+        "path": "/journey/new",
+        "ms": 40.2,
+        "durationMs": 1.8
+      },
+      {
+        "path": "/_next/static/chunks/app/journey/error-f2b2eef08f6a59ee.js",
+        "ms": 42.2,
+        "durationMs": 142.9
+      },
+      {
+        "path": "/_next/static/chunks/app/journey/not-found-20aa5a0ea45270d6.js",
+        "ms": 42.4,
+        "durationMs": 142.7
+      },
+      {
+        "path": "/_next/static/chunks/app/journey/layout-20e20296852fdd77.js",
+        "ms": 42.4,
+        "durationMs": 142.9
+      },
+      {
+        "path": "/_next/static/chunks/6033-95c3313b76afc1aa.js",
+        "ms": 42.5,
+        "durationMs": 142.9
+      },
+      {
+        "path": "/_next/static/chunks/5785-89234ab51336d6d3.js",
+        "ms": 42.5,
+        "durationMs": 143
+      },
+      {
+        "path": "/_next/static/chunks/1647-e1fefcfcaeb39573.js",
+        "ms": 42.6,
+        "durationMs": 143.1
+      },
+      {
+        "path": "/_next/static/chunks/app/journey/new/page-89d2025fffcc6f06.js",
+        "ms": 42.7,
+        "durationMs": 143.9
+      },
+      {
+        "path": "/_next/static/css/b1af8a1a52c1c280.css",
+        "ms": 42.8,
+        "durationMs": 0.2
+      },
+      {
+        "path": "/_next/static/css/1c8cbdfc8cfe4433.css",
+        "ms": 42.8,
+        "durationMs": 0.3
+      },
+      {
+        "path": "/_next/static/css/2a9a39cbe5bdc43a.css",
+        "ms": 42.9,
+        "durationMs": 0.4
+      },
+      {
+        "path": "/_next/static/css/771a7cf9c1bcc79c.css",
+        "ms": 42.9,
+        "durationMs": 0.6
+      },
+      {
+        "path": "/_next/static/chunks/app/journey/cookies/page-4b6728c59e1fb82f.js",
+        "ms": 178.4,
+        "durationMs": 5.5
+      },
+      {
+        "path": "/_next/static/css/f7e3139f895231e2.css",
+        "ms": 178.6,
+        "durationMs": 5.2
+      },
+      {
+        "path": "/_next/static/css/3cd6503d59afc5f7.css",
+        "ms": 178.7,
+        "durationMs": 2.7
+      },
+      {
+        "path": "/_next/static/css/5e35e1acd7fba0e5.css",
+        "ms": 178.7,
+        "durationMs": 5.4
+      },
+      {
+        "path": "/_next/static/chunks/app/journey/privacy/page-d1d31e838cef7b01.js",
+        "ms": 180.7,
+        "durationMs": 6.4
+      },
+      {
+        "path": "/_next/static/css/03a51805e7467245.css",
+        "ms": 180.9,
+        "durationMs": 4
+      },
+      {
+        "path": "/_next/static/chunks/app/journey/about/page-bd3cfe2fde6000aa.js",
+        "ms": 359.4,
+        "durationMs": 4.1
+      },
+      {
+        "path": "/_next/static/css/e416fa544c0d017a.css",
+        "ms": 359.5,
+        "durationMs": 3.6
+      },
+      {
+        "path": "/_next/static/chunks/app/journey/help/page-a6e29892ab3831f2.js",
+        "ms": 360.1,
+        "durationMs": 4.4
+      },
+      {
+        "path": "/_next/static/css/c7aaf4d1958886af.css",
+        "ms": 360.2,
+        "durationMs": 3.6
+      },
+      {
+        "path": "/_next/static/chunks/app/journey/affiliate-disclosure/page-98f3367cce9be9a6.js",
+        "ms": 364.3,
+        "durationMs": 2
+      },
+      {
+        "path": "/_next/static/css/00d6ab3e20b1e0b6.css",
+        "ms": 366.3,
+        "durationMs": 1.6
+      },
+      {
+        "path": "/_next/static/chunks/app/journey/terms/page-4da96ffacff8bc61.js",
+        "ms": 366.3,
+        "durationMs": 1.7
+      },
+      {
+        "path": "/_next/static/chunks/e474d18f-ceb145d073fa9f25.js",
+        "ms": 705.1,
+        "durationMs": 2
+      },
+      {
+        "path": "/_next/static/chunks/ca4dcb09-8d71e4f5e9270f73.js",
+        "ms": 706,
+        "durationMs": 3.4
+      },
+      {
+        "path": "/_next/static/chunks/e919c1aa-4ba5daa1c31d082f.js",
+        "ms": 706.2,
+        "durationMs": 3.3
+      },
+      {
+        "path": "/_next/static/chunks/8cc6faea-06177138421f2356.js",
+        "ms": 706.3,
+        "durationMs": 4.3
+      },
+      {
+        "path": "/_next/static/chunks/d648eb28-05c9445a2e0b2734.js",
+        "ms": 706.5,
+        "durationMs": 4.1
+      }
+    ],
+    "hasRoute": true,
+    "hasDiscovery": true,
+    "hasCanonicalTokyo": true,
+    "firstActionableVerified": true,
+    "overflow": false,
+    "urlKind": "handoff"
+  },
+  {
+    "phase": "final-after",
+    "source": "optimized-local-fallback",
+    "name": "describe",
+    "run": 7,
+    "thermal": "warm-server",
+    "width": 390,
+    "height": 844,
+    "errors": [],
+    "requests": [
+      "journey-capture",
+      "journey-geocode",
+      "journey-geocode",
+      "journey-discover",
+      "journey-discover"
+    ],
+    "urlObservedUpperBoundMs": 77,
+    "milestonesMs": {
+      "submit": 0,
+      "durable-intake": 56,
+      "shell-visible": 685,
+      "first-actionable": 717,
+      "required-complete": 816
+    },
+    "trace": [
+      {
+        "name": "route-requested",
+        "ms": 56.6
+      },
+      {
+        "name": "route-committed",
+        "ms": 63.8
+      },
+      {
+        "name": "builder-mounted",
+        "ms": 668.2,
+        "detail": {
+          "busy": "true"
+        }
+      },
+      {
+        "name": "entry-render-committed",
+        "ms": 679.7
+      },
+      {
+        "name": "interpretation-requested",
+        "ms": 686.4
+      },
+      {
+        "name": "interpretation-response",
+        "ms": 692.3,
+        "detail": {
+          "status": 200
+        }
+      },
+      {
+        "name": "actionable-render-committed",
+        "ms": 712.3
+      },
+      {
+        "name": "orientation-visible",
+        "ms": 713.7
+      },
+      {
+        "name": "actionable-visible",
+        "ms": 718.3
+      }
+    ],
+    "storage": {
+      "reads": 28,
+      "writes": 3,
+      "durationMs": 0.20000001788139343
+    },
+    "longTasks": [],
+    "routeResources": [
+      {
+        "path": "/journey/new",
+        "ms": 56.8,
+        "durationMs": 3.3
+      },
+      {
+        "path": "/_next/static/chunks/6033-95c3313b76afc1aa.js",
+        "ms": 60.7,
+        "durationMs": 1.7
+      },
+      {
+        "path": "/_next/static/chunks/5785-89234ab51336d6d3.js",
+        "ms": 60.8,
+        "durationMs": 2
+      },
+      {
+        "path": "/_next/static/chunks/1647-e1fefcfcaeb39573.js",
+        "ms": 60.9,
+        "durationMs": 2.3
+      },
+      {
+        "path": "/_next/static/chunks/app/journey/new/page-89d2025fffcc6f06.js",
+        "ms": 60.9,
+        "durationMs": 2.5
+      },
+      {
+        "path": "/_next/static/css/b1af8a1a52c1c280.css",
+        "ms": 61.1,
+        "durationMs": 2.1
+      },
+      {
+        "path": "/_next/static/css/1c8cbdfc8cfe4433.css",
+        "ms": 61.1,
+        "durationMs": 2.2
+      },
+      {
+        "path": "/_next/static/css/771a7cf9c1bcc79c.css",
+        "ms": 61.2,
+        "durationMs": 2.2
+      },
+      {
+        "path": "/_next/static/css/2a9a39cbe5bdc43a.css",
+        "ms": 61.2,
+        "durationMs": 2.2
+      },
+      {
+        "path": "/_next/static/chunks/app/journey/about/page-bd3cfe2fde6000aa.js",
+        "ms": 373.1,
+        "durationMs": 4.4
+      },
+      {
+        "path": "/_next/static/css/e416fa544c0d017a.css",
+        "ms": 373.2,
+        "durationMs": 4.2
+      },
+      {
+        "path": "/_next/static/chunks/app/journey/help/page-a6e29892ab3831f2.js",
+        "ms": 373.6,
+        "durationMs": 3.9
+      },
+      {
+        "path": "/_next/static/css/c7aaf4d1958886af.css",
+        "ms": 373.7,
+        "durationMs": 3.8
+      },
+      {
+        "path": "/_next/static/chunks/app/journey/affiliate-disclosure/page-98f3367cce9be9a6.js",
+        "ms": 377.6,
+        "durationMs": 1.9
+      },
+      {
+        "path": "/_next/static/chunks/app/journey/terms/page-4da96ffacff8bc61.js",
+        "ms": 379.2,
+        "durationMs": 1.4
+      },
+      {
+        "path": "/_next/static/css/00d6ab3e20b1e0b6.css",
+        "ms": 379.3,
+        "durationMs": 1.2
+      },
+      {
+        "path": "/_next/static/chunks/e474d18f-ceb145d073fa9f25.js",
+        "ms": 715.2,
+        "durationMs": 2.8
+      },
+      {
+        "path": "/_next/static/chunks/ca4dcb09-8d71e4f5e9270f73.js",
+        "ms": 715.5,
+        "durationMs": 4.2
+      },
+      {
+        "path": "/_next/static/chunks/e919c1aa-4ba5daa1c31d082f.js",
+        "ms": 715.7,
+        "durationMs": 4.9
+      },
+      {
+        "path": "/_next/static/chunks/8cc6faea-06177138421f2356.js",
+        "ms": 715.8,
+        "durationMs": 5.6
+      },
+      {
+        "path": "/_next/static/chunks/d648eb28-05c9445a2e0b2734.js",
+        "ms": 716,
+        "durationMs": 5.5
+      },
+      {
+        "path": "/_next/static/chunks/783-8f61c9f901101bef.js",
+        "ms": 716.1,
+        "durationMs": 8.4
+      },
+      {
+        "path": "/_next/static/chunks/7013.b9295c299dc81cfb.js",
+        "ms": 716.3,
+        "durationMs": 12
+      },
+      {
+        "path": "/_next/static/css/e82518b135ceef38.css",
+        "ms": 719.3,
+        "durationMs": 5.9
+      }
+    ],
+    "hasRoute": true,
+    "hasDiscovery": true,
+    "hasCanonicalTokyo": true,
+    "firstActionableVerified": true,
+    "overflow": false,
+    "urlKind": "handoff"
+  },
+  {
+    "phase": "final-after",
+    "source": "optimized-local-fallback",
+    "name": "describe",
+    "run": 8,
+    "thermal": "warm-server",
+    "width": 390,
+    "height": 844,
+    "errors": [],
+    "requests": [
+      "journey-capture",
+      "journey-geocode",
+      "journey-geocode",
+      "journey-discover",
+      "journey-discover"
+    ],
+    "urlObservedUpperBoundMs": 71,
+    "milestonesMs": {
+      "submit": 0,
+      "durable-intake": 54,
+      "shell-visible": 1466,
+      "first-actionable": 1496,
+      "required-complete": 1597
+    },
+    "trace": [
+      {
+        "name": "route-requested",
+        "ms": 54.5
+      },
+      {
+        "name": "route-committed",
+        "ms": 59.2
+      },
+      {
+        "name": "builder-mounted",
+        "ms": 1446.3,
+        "detail": {
+          "busy": "true"
+        }
+      },
+      {
+        "name": "entry-render-committed",
+        "ms": 1457.2
+      },
+      {
+        "name": "interpretation-requested",
+        "ms": 1466.9
+      },
+      {
+        "name": "interpretation-response",
+        "ms": 1472.1,
+        "detail": {
+          "status": 200
+        }
+      },
+      {
+        "name": "actionable-render-committed",
+        "ms": 1489.9
+      },
+      {
+        "name": "orientation-visible",
+        "ms": 1491.5
+      },
+      {
+        "name": "actionable-visible",
+        "ms": 1527.3
+      }
+    ],
+    "storage": {
+      "reads": 28,
+      "writes": 3,
+      "durationMs": 0
+    },
+    "longTasks": [],
+    "routeResources": [
+      {
+        "path": "/journey/new",
+        "ms": 54.6,
+        "durationMs": 1.8
+      },
+      {
+        "path": "/_next/static/chunks/app/journey/error-f2b2eef08f6a59ee.js",
+        "ms": 56.7,
+        "durationMs": 1084.6
+      },
+      {
+        "path": "/_next/static/chunks/app/journey/not-found-20aa5a0ea45270d6.js",
+        "ms": 56.7,
+        "durationMs": 1084.8
+      },
+      {
+        "path": "/_next/static/chunks/app/journey/layout-20e20296852fdd77.js",
+        "ms": 56.8,
+        "durationMs": 1085
+      },
+      {
+        "path": "/_next/static/chunks/6033-95c3313b76afc1aa.js",
+        "ms": 56.9,
+        "durationMs": 1085.1
+      },
+      {
+        "path": "/_next/static/chunks/5785-89234ab51336d6d3.js",
+        "ms": 56.9,
+        "durationMs": 1085.2
+      },
+      {
+        "path": "/_next/static/chunks/1647-e1fefcfcaeb39573.js",
+        "ms": 56.9,
+        "durationMs": 1085.3
+      },
+      {
+        "path": "/_next/static/chunks/app/journey/new/page-89d2025fffcc6f06.js",
+        "ms": 57,
+        "durationMs": 1086
+      },
+      {
+        "path": "/_next/static/css/b1af8a1a52c1c280.css",
+        "ms": 57.2,
+        "durationMs": 0.2
+      },
+      {
+        "path": "/_next/static/css/1c8cbdfc8cfe4433.css",
+        "ms": 57.2,
+        "durationMs": 0.2
+      },
+      {
+        "path": "/_next/static/css/2a9a39cbe5bdc43a.css",
+        "ms": 57.2,
+        "durationMs": 0.3
+      },
+      {
+        "path": "/_next/static/css/771a7cf9c1bcc79c.css",
+        "ms": 57.3,
+        "durationMs": 0.3
+      },
+      {
+        "path": "/_next/static/chunks/app/journey/cookies/page-4b6728c59e1fb82f.js",
+        "ms": 1111.1,
+        "durationMs": 27.6
+      },
+      {
+        "path": "/_next/static/css/f7e3139f895231e2.css",
+        "ms": 1111.9,
+        "durationMs": 26.5
+      },
+      {
+        "path": "/_next/static/css/3cd6503d59afc5f7.css",
+        "ms": 1112.3,
+        "durationMs": 9
+      },
+      {
+        "path": "/_next/static/css/5e35e1acd7fba0e5.css",
+        "ms": 1112.5,
+        "durationMs": 26.3
+      },
+      {
+        "path": "/_next/static/chunks/app/journey/privacy/page-d1d31e838cef7b01.js",
+        "ms": 1120.4,
+        "durationMs": 20.8
+      },
+      {
+        "path": "/_next/static/css/03a51805e7467245.css",
+        "ms": 1120.7,
+        "durationMs": 19.9
+      },
+      {
+        "path": "/_next/static/chunks/app/journey/about/page-bd3cfe2fde6000aa.js",
+        "ms": 1175.8,
+        "durationMs": 3.1
+      },
+      {
+        "path": "/_next/static/css/e416fa544c0d017a.css",
+        "ms": 1175.9,
+        "durationMs": 2.9
+      },
+      {
+        "path": "/_next/static/chunks/app/journey/help/page-a6e29892ab3831f2.js",
+        "ms": 1177.1,
+        "durationMs": 4.6
+      },
+      {
+        "path": "/_next/static/css/c7aaf4d1958886af.css",
+        "ms": 1177.2,
+        "durationMs": 3.1
+      },
+      {
+        "path": "/_next/static/chunks/app/journey/affiliate-disclosure/page-98f3367cce9be9a6.js",
+        "ms": 1180.6,
+        "durationMs": 2.9
+      },
+      {
+        "path": "/_next/static/chunks/app/journey/terms/page-4da96ffacff8bc61.js",
+        "ms": 1183.7,
+        "durationMs": 1.5
+      },
+      {
+        "path": "/_next/static/css/00d6ab3e20b1e0b6.css",
+        "ms": 1183.8,
+        "durationMs": 1.4
+      },
+      {
+        "path": "/_next/static/chunks/e474d18f-ceb145d073fa9f25.js",
+        "ms": 1492.9,
+        "durationMs": 1.9
+      },
+      {
+        "path": "/_next/static/chunks/ca4dcb09-8d71e4f5e9270f73.js",
+        "ms": 1493.2,
+        "durationMs": 3.3
+      },
+      {
+        "path": "/_next/static/chunks/e919c1aa-4ba5daa1c31d082f.js",
+        "ms": 1493.4,
+        "durationMs": 3.5
+      },
+      {
+        "path": "/_next/static/chunks/8cc6faea-06177138421f2356.js",
+        "ms": 1493.6,
+        "durationMs": 3.6
+      },
+      {
+        "path": "/_next/static/chunks/d648eb28-05c9445a2e0b2734.js",
+        "ms": 1493.8,
+        "durationMs": 4.6
+      }
+    ],
+    "hasRoute": true,
+    "hasDiscovery": true,
+    "hasCanonicalTokyo": true,
+    "firstActionableVerified": true,
+    "overflow": false,
+    "urlKind": "handoff"
+  },
+  {
+    "phase": "final-after",
+    "source": "optimized-local-fallback",
+    "name": "describe",
+    "run": 9,
+    "thermal": "warm-server",
+    "width": 390,
+    "height": 844,
+    "errors": [],
+    "requests": [
+      "journey-capture",
+      "journey-geocode",
+      "journey-geocode",
+      "journey-discover",
+      "journey-discover"
+    ],
+    "urlObservedUpperBoundMs": 97,
+    "milestonesMs": {
+      "submit": 0,
+      "durable-intake": 54,
+      "shell-visible": 387,
+      "first-actionable": 418,
+      "required-complete": 549
+    },
+    "trace": [
+      {
+        "name": "route-requested",
+        "ms": 55.1
+      },
+      {
+        "name": "route-committed",
+        "ms": 62.4
+      },
+      {
+        "name": "builder-mounted",
+        "ms": 365.9,
+        "detail": {
+          "busy": "true"
+        }
+      },
+      {
+        "name": "entry-render-committed",
+        "ms": 382.3
+      },
+      {
+        "name": "interpretation-requested",
+        "ms": 388.4
+      },
+      {
+        "name": "interpretation-response",
+        "ms": 394,
+        "detail": {
+          "status": 200
+        }
+      },
+      {
+        "name": "actionable-render-committed",
+        "ms": 413.2
+      },
+      {
+        "name": "orientation-visible",
+        "ms": 414.6
+      },
+      {
+        "name": "actionable-visible",
+        "ms": 419.4
+      }
+    ],
+    "storage": {
+      "reads": 28,
+      "writes": 3,
+      "durationMs": 0
+    },
+    "longTasks": [],
+    "routeResources": [
+      {
+        "path": "/journey/new",
+        "ms": 55.3,
+        "durationMs": 3.3
+      },
+      {
+        "path": "/_next/static/chunks/6033-95c3313b76afc1aa.js",
+        "ms": 58.9,
+        "durationMs": 1.4
+      },
+      {
+        "path": "/_next/static/chunks/5785-89234ab51336d6d3.js",
+        "ms": 59,
+        "durationMs": 2.1
+      },
+      {
+        "path": "/_next/static/chunks/1647-e1fefcfcaeb39573.js",
+        "ms": 59,
+        "durationMs": 2.3
+      },
+      {
+        "path": "/_next/static/chunks/app/journey/new/page-89d2025fffcc6f06.js",
+        "ms": 59.1,
+        "durationMs": 2.2
+      },
+      {
+        "path": "/_next/static/css/b1af8a1a52c1c280.css",
+        "ms": 59.2,
+        "durationMs": 2.3
+      },
+      {
+        "path": "/_next/static/css/1c8cbdfc8cfe4433.css",
+        "ms": 59.3,
+        "durationMs": 2.2
+      },
+      {
+        "path": "/_next/static/css/2a9a39cbe5bdc43a.css",
+        "ms": 59.4,
+        "durationMs": 2.5
+      },
+      {
+        "path": "/_next/static/css/771a7cf9c1bcc79c.css",
+        "ms": 59.5,
+        "durationMs": 2.4
+      },
+      {
+        "path": "/_next/static/chunks/app/journey/about/page-bd3cfe2fde6000aa.js",
+        "ms": 95.4,
+        "durationMs": 5.4
+      },
+      {
+        "path": "/_next/static/css/e416fa544c0d017a.css",
+        "ms": 95.5,
+        "durationMs": 5.3
+      },
+      {
+        "path": "/_next/static/chunks/app/journey/help/page-a6e29892ab3831f2.js",
+        "ms": 96.5,
+        "durationMs": 4.6
+      },
+      {
+        "path": "/_next/static/css/c7aaf4d1958886af.css",
+        "ms": 96.6,
+        "durationMs": 4.4
+      },
+      {
+        "path": "/_next/static/chunks/app/journey/affiliate-disclosure/page-98f3367cce9be9a6.js",
+        "ms": 101.7,
+        "durationMs": 2.2
+      },
+      {
+        "path": "/_next/static/css/00d6ab3e20b1e0b6.css",
+        "ms": 103.6,
+        "durationMs": 1.4
+      },
+      {
+        "path": "/_next/static/chunks/app/journey/terms/page-4da96ffacff8bc61.js",
+        "ms": 103.6,
+        "durationMs": 1.5
+      },
+      {
+        "path": "/_next/static/chunks/e474d18f-ceb145d073fa9f25.js",
+        "ms": 416,
+        "durationMs": 1.1
+      },
+      {
+        "path": "/_next/static/chunks/ca4dcb09-8d71e4f5e9270f73.js",
+        "ms": 416.2,
+        "durationMs": 2.4
+      },
+      {
+        "path": "/_next/static/chunks/e919c1aa-4ba5daa1c31d082f.js",
+        "ms": 416.5,
+        "durationMs": 2.6
+      },
+      {
+        "path": "/_next/static/chunks/8cc6faea-06177138421f2356.js",
+        "ms": 416.6,
+        "durationMs": 2.5
+      },
+      {
+        "path": "/_next/static/chunks/d648eb28-05c9445a2e0b2734.js",
+        "ms": 416.8,
+        "durationMs": 7.6
+      },
+      {
+        "path": "/_next/static/chunks/783-8f61c9f901101bef.js",
+        "ms": 416.9,
+        "durationMs": 8.5
+      },
+      {
+        "path": "/_next/static/chunks/7013.b9295c299dc81cfb.js",
+        "ms": 417.2,
+        "durationMs": 9.7
+      },
+      {
+        "path": "/_next/static/css/e82518b135ceef38.css",
+        "ms": 420.4,
+        "durationMs": 5.1
+      }
+    ],
+    "hasRoute": true,
+    "hasDiscovery": true,
+    "hasCanonicalTokyo": true,
+    "firstActionableVerified": true,
+    "overflow": false,
+    "urlKind": "handoff"
+  },
+  {
+    "phase": "final-after",
+    "source": "optimized-local-fallback",
+    "name": "describe",
+    "run": 10,
+    "thermal": "warm-server",
+    "width": 390,
+    "height": 844,
+    "errors": [],
+    "requests": [
+      "journey-capture",
+      "journey-geocode",
+      "journey-geocode",
+      "journey-discover",
+      "journey-discover"
+    ],
+    "urlObservedUpperBoundMs": 72,
+    "milestonesMs": {
+      "submit": 0,
+      "durable-intake": 54,
+      "shell-visible": 1732,
+      "first-actionable": 1772,
+      "required-complete": 1955
+    },
+    "trace": [
+      {
+        "name": "route-requested",
+        "ms": 54.2
+      },
+      {
+        "name": "route-committed",
+        "ms": 60.5
+      },
+      {
+        "name": "builder-mounted",
+        "ms": 1706.3,
+        "detail": {
+          "busy": "true"
+        }
+      },
+      {
+        "name": "entry-render-committed",
+        "ms": 1726.8
+      },
+      {
+        "name": "interpretation-requested",
+        "ms": 1732.6
+      },
+      {
+        "name": "interpretation-response",
+        "ms": 1743.5,
+        "detail": {
+          "status": 200
+        }
+      },
+      {
+        "name": "actionable-render-committed",
+        "ms": 1766.6
+      },
+      {
+        "name": "orientation-visible",
+        "ms": 1768.2
+      },
+      {
+        "name": "actionable-visible",
+        "ms": 1772.8
+      }
+    ],
+    "storage": {
+      "reads": 28,
+      "writes": 3,
+      "durationMs": 0.20000001788139343
+    },
+    "longTasks": [],
+    "routeResources": [
+      {
+        "path": "/journey/new",
+        "ms": 54.3,
+        "durationMs": 3.4
+      },
+      {
+        "path": "/_next/static/chunks/6033-95c3313b76afc1aa.js",
+        "ms": 58,
+        "durationMs": 2.2
+      },
+      {
+        "path": "/_next/static/chunks/5785-89234ab51336d6d3.js",
+        "ms": 58.1,
+        "durationMs": 2.8
+      },
+      {
+        "path": "/_next/static/chunks/1647-e1fefcfcaeb39573.js",
+        "ms": 58.2,
+        "durationMs": 3
+      },
+      {
+        "path": "/_next/static/chunks/app/journey/new/page-89d2025fffcc6f06.js",
+        "ms": 58.2,
+        "durationMs": 3
+      },
+      {
+        "path": "/_next/static/css/1c8cbdfc8cfe4433.css",
+        "ms": 58.4,
+        "durationMs": 2.3
+      },
+      {
+        "path": "/_next/static/css/b1af8a1a52c1c280.css",
+        "ms": 58.4,
+        "durationMs": 2.3
+      },
+      {
+        "path": "/_next/static/css/2a9a39cbe5bdc43a.css",
+        "ms": 58.5,
+        "durationMs": 2.4
+      },
+      {
+        "path": "/_next/static/css/771a7cf9c1bcc79c.css",
+        "ms": 58.6,
+        "durationMs": 2.3
+      },
+      {
+        "path": "/_next/static/chunks/app/journey/about/page-bd3cfe2fde6000aa.js",
+        "ms": 1411,
+        "durationMs": 5.1
+      },
+      {
+        "path": "/_next/static/css/e416fa544c0d017a.css",
+        "ms": 1411.2,
+        "durationMs": 4.4
+      },
+      {
+        "path": "/_next/static/chunks/app/journey/help/page-a6e29892ab3831f2.js",
+        "ms": 1412.9,
+        "durationMs": 6.6
+      },
+      {
+        "path": "/_next/static/css/c7aaf4d1958886af.css",
+        "ms": 1413,
+        "durationMs": 6.4
+      },
+      {
+        "path": "/_next/static/chunks/app/journey/affiliate-disclosure/page-98f3367cce9be9a6.js",
+        "ms": 1419.8,
+        "durationMs": 2.7
+      },
+      {
+        "path": "/_next/static/chunks/app/journey/terms/page-4da96ffacff8bc61.js",
+        "ms": 1422,
+        "durationMs": 2.8
+      },
+      {
+        "path": "/_next/static/css/00d6ab3e20b1e0b6.css",
+        "ms": 1422.1,
+        "durationMs": 2.5
+      },
+      {
+        "path": "/_next/static/chunks/e474d18f-ceb145d073fa9f25.js",
+        "ms": 1769.9,
+        "durationMs": 7.9
+      },
+      {
+        "path": "/_next/static/chunks/ca4dcb09-8d71e4f5e9270f73.js",
+        "ms": 1770.2,
+        "durationMs": 11
+      },
+      {
+        "path": "/_next/static/chunks/e919c1aa-4ba5daa1c31d082f.js",
+        "ms": 1770.4,
+        "durationMs": 11.2
+      },
+      {
+        "path": "/_next/static/chunks/8cc6faea-06177138421f2356.js",
+        "ms": 1770.5,
+        "durationMs": 11.2
+      },
+      {
+        "path": "/_next/static/chunks/d648eb28-05c9445a2e0b2734.js",
+        "ms": 1770.7,
+        "durationMs": 11
+      },
+      {
+        "path": "/_next/static/chunks/783-8f61c9f901101bef.js",
+        "ms": 1770.9,
+        "durationMs": 10.9
+      },
+      {
+        "path": "/_next/static/chunks/7013.b9295c299dc81cfb.js",
+        "ms": 1771.1,
+        "durationMs": 28.9
+      },
+      {
+        "path": "/_next/static/css/e82518b135ceef38.css",
+        "ms": 1773.7,
+        "durationMs": 8.4
+      }
+    ],
+    "hasRoute": true,
+    "hasDiscovery": true,
+    "hasCanonicalTokyo": true,
+    "firstActionableVerified": true,
+    "overflow": false,
+    "urlKind": "handoff"
+  },
+  {
+    "phase": "final-after",
+    "source": "optimized-local-fallback",
+    "name": "broad",
+    "run": 1,
+    "thermal": "cold-context",
+    "width": 390,
+    "height": 844,
+    "errors": [],
+    "requests": [
+      "journey-capture"
+    ],
+    "urlObservedUpperBoundMs": 93,
+    "milestonesMs": {
+      "submit": 0,
+      "durable-intake": 56,
+      "shell-visible": 386,
+      "first-actionable": 433,
+      "required-complete": 433
+    },
+    "trace": [
+      {
+        "name": "route-requested",
+        "ms": 56.8
+      },
+      {
+        "name": "route-committed",
+        "ms": 61.7
+      },
+      {
+        "name": "builder-mounted",
+        "ms": 365.8,
+        "detail": {
+          "busy": "true"
+        }
+      },
+      {
+        "name": "entry-render-committed",
+        "ms": 380.9
+      },
+      {
+        "name": "interpretation-requested",
+        "ms": 386
+      },
+      {
+        "name": "interpretation-response",
+        "ms": 392.9,
+        "detail": {
+          "status": 200
+        }
+      },
+      {
+        "name": "actionable-render-committed",
+        "ms": 435.5
+      },
+      {
+        "name": "orientation-visible",
+        "ms": 437.2
+      },
+      {
+        "name": "actionable-visible",
+        "ms": 457.3
+      }
+    ],
+    "storage": {
+      "reads": 31,
+      "writes": 7,
+      "durationMs": 0.09999999403953552
+    },
+    "longTasks": [],
+    "routeResources": [
+      {
+        "path": "/journey/new",
+        "ms": 56.9,
+        "durationMs": 1.8
+      },
+      {
+        "path": "/_next/static/chunks/6033-95c3313b76afc1aa.js",
+        "ms": 59.1,
+        "durationMs": 1.1
+      },
+      {
+        "path": "/_next/static/chunks/5785-89234ab51336d6d3.js",
+        "ms": 59.2,
+        "durationMs": 1.5
+      },
+      {
+        "path": "/_next/static/chunks/1647-e1fefcfcaeb39573.js",
+        "ms": 59.3,
+        "durationMs": 1.5
+      },
+      {
+        "path": "/_next/static/chunks/app/journey/new/page-89d2025fffcc6f06.js",
+        "ms": 59.3,
+        "durationMs": 1.6
+      },
+      {
+        "path": "/_next/static/css/b1af8a1a52c1c280.css",
+        "ms": 59.4,
+        "durationMs": 1.6
+      },
+      {
+        "path": "/_next/static/css/1c8cbdfc8cfe4433.css",
+        "ms": 59.4,
+        "durationMs": 1.7
+      },
+      {
+        "path": "/_next/static/css/2a9a39cbe5bdc43a.css",
+        "ms": 59.5,
+        "durationMs": 1.7
+      },
+      {
+        "path": "/_next/static/css/771a7cf9c1bcc79c.css",
+        "ms": 59.6,
+        "durationMs": 1.7
+      },
+      {
+        "path": "/_next/static/chunks/app/journey/about/page-bd3cfe2fde6000aa.js",
+        "ms": 90.7,
+        "durationMs": 3.5
+      },
+      {
+        "path": "/_next/static/css/e416fa544c0d017a.css",
+        "ms": 90.8,
+        "durationMs": 4
+      },
+      {
+        "path": "/_next/static/css/c7aaf4d1958886af.css",
+        "ms": 91.1,
+        "durationMs": 3.8
+      },
+      {
+        "path": "/_next/static/chunks/app/journey/help/page-a6e29892ab3831f2.js",
+        "ms": 91.1,
+        "durationMs": 4.3
+      },
+      {
+        "path": "/_next/static/chunks/app/journey/affiliate-disclosure/page-98f3367cce9be9a6.js",
+        "ms": 92,
+        "durationMs": 3.9
+      },
+      {
+        "path": "/_next/static/chunks/app/journey/terms/page-4da96ffacff8bc61.js",
+        "ms": 95.3,
+        "durationMs": 1.9
+      },
+      {
+        "path": "/_next/static/css/00d6ab3e20b1e0b6.css",
+        "ms": 95.4,
+        "durationMs": 1.8
+      }
+    ],
+    "hasRoute": false,
+    "hasDiscovery": true,
+    "hasCanonicalTokyo": false,
+    "firstActionableVerified": true,
+    "overflow": false,
+    "urlKind": "canonical-trip"
+  },
+  {
+    "phase": "final-after",
+    "source": "optimized-local-fallback",
+    "name": "repeated",
+    "run": 1,
+    "thermal": "cold-context",
+    "width": 390,
+    "height": 844,
+    "errors": [],
+    "requests": [
+      "journey-geocode",
+      "journey-geocode",
+      "journey-geocode",
+      "journey-geocode",
+      "journey-geocode"
+    ],
+    "urlObservedUpperBoundMs": 91,
+    "milestonesMs": {
+      "submit": 0,
+      "durable-intake": 65,
+      "shell-visible": 440,
+      "first-actionable": 440,
+      "required-complete": 451
+    },
+    "trace": [
+      {
+        "name": "route-requested",
+        "ms": 65.7
+      },
+      {
+        "name": "route-committed",
+        "ms": 70.3
+      },
+      {
+        "name": "builder-mounted",
+        "ms": 373.8,
+        "detail": {
+          "busy": "true"
+        }
+      },
+      {
+        "name": "entry-render-committed",
+        "ms": 424.2
+      },
+      {
+        "name": "actionable-render-committed",
+        "ms": 431.4
+      },
+      {
+        "name": "orientation-visible",
+        "ms": 440.9
+      },
+      {
+        "name": "actionable-visible",
+        "ms": 441
+      }
+    ],
+    "storage": {
+      "reads": 23,
+      "writes": 3,
+      "durationMs": 0
+    },
+    "longTasks": [],
+    "routeResources": [
+      {
+        "path": "/journey/new",
+        "ms": 65.8,
+        "durationMs": 1.6
+      },
+      {
+        "path": "/_next/static/chunks/6033-95c3313b76afc1aa.js",
+        "ms": 67.7,
+        "durationMs": 1.4
+      },
+      {
+        "path": "/_next/static/chunks/5785-89234ab51336d6d3.js",
+        "ms": 67.8,
+        "durationMs": 1.7
+      },
+      {
+        "path": "/_next/static/chunks/1647-e1fefcfcaeb39573.js",
+        "ms": 67.8,
+        "durationMs": 1.9
+      },
+      {
+        "path": "/_next/static/css/b1af8a1a52c1c280.css",
+        "ms": 67.9,
+        "durationMs": 1.4
+      },
+      {
+        "path": "/_next/static/chunks/app/journey/new/page-89d2025fffcc6f06.js",
+        "ms": 67.9,
+        "durationMs": 2
+      },
+      {
+        "path": "/_next/static/css/1c8cbdfc8cfe4433.css",
+        "ms": 68.1,
+        "durationMs": 1.7
+      },
+      {
+        "path": "/_next/static/css/2a9a39cbe5bdc43a.css",
+        "ms": 68.1,
+        "durationMs": 1.8
+      },
+      {
+        "path": "/_next/static/css/771a7cf9c1bcc79c.css",
+        "ms": 68.1,
+        "durationMs": 1.9
+      },
+      {
+        "path": "/_next/static/chunks/e474d18f-ceb145d073fa9f25.js",
+        "ms": 437.9,
+        "durationMs": 2.7
+      },
+      {
+        "path": "/_next/static/chunks/ca4dcb09-8d71e4f5e9270f73.js",
+        "ms": 438.1,
+        "durationMs": 4.4
+      },
+      {
+        "path": "/_next/static/chunks/e919c1aa-4ba5daa1c31d082f.js",
+        "ms": 438.4,
+        "durationMs": 6.9
+      },
+      {
+        "path": "/_next/static/chunks/8cc6faea-06177138421f2356.js",
+        "ms": 438.5,
+        "durationMs": 7.4
+      },
+      {
+        "path": "/_next/static/chunks/d648eb28-05c9445a2e0b2734.js",
+        "ms": 438.7,
+        "durationMs": 7.8
+      },
+      {
+        "path": "/_next/static/chunks/783-8f61c9f901101bef.js",
+        "ms": 438.8,
+        "durationMs": 7.9
+      },
+      {
+        "path": "/_next/static/chunks/7013.b9295c299dc81cfb.js",
+        "ms": 439,
+        "durationMs": 11.4
+      },
+      {
+        "path": "/_next/static/css/e82518b135ceef38.css",
+        "ms": 442.2,
+        "durationMs": 5.4
+      }
+    ],
+    "hasRoute": true,
+    "hasDiscovery": false,
+    "hasCanonicalTokyo": true,
+    "repeatedOccurrencesVisible": true,
+    "firstActionableVerified": true,
+    "overflow": false,
+    "urlKind": "handoff"
+  },
+  {
+    "phase": "final-after",
+    "source": "optimized-local-fallback",
+    "name": "slow",
+    "run": 1,
+    "thermal": "cold-context",
+    "width": 390,
+    "height": 844,
+    "errors": [],
+    "requests": [
+      "journey-capture",
+      "journey-geocode",
+      "journey-geocode",
+      "journey-discover",
+      "journey-discover"
+    ],
+    "urlObservedUpperBoundMs": 72,
+    "milestonesMs": {
+      "submit": 0,
+      "durable-intake": 55,
+      "shell-visible": 819,
+      "first-actionable": 854,
+      "required-complete": 3441
+    },
+    "trace": [
+      {
+        "name": "route-requested",
+        "ms": 55.7
+      },
+      {
+        "name": "route-committed",
+        "ms": 62.2
+      },
+      {
+        "name": "builder-mounted",
+        "ms": 792.1,
+        "detail": {
+          "busy": "true"
+        }
+      },
+      {
+        "name": "entry-render-committed",
+        "ms": 809.2
+      },
+      {
+        "name": "interpretation-requested",
+        "ms": 821
+      },
+      {
+        "name": "interpretation-response",
+        "ms": 828.6,
+        "detail": {
+          "status": 200
+        }
+      },
+      {
+        "name": "actionable-render-committed",
+        "ms": 846.8
+      },
+      {
+        "name": "orientation-visible",
+        "ms": 848.4
+      },
+      {
+        "name": "actionable-visible",
+        "ms": 856.2
+      }
+    ],
+    "storage": {
+      "reads": 33,
+      "writes": 7,
+      "durationMs": 0.699999988079071
+    },
+    "longTasks": [
+      {
+        "ms": 3385.7,
+        "durationMs": 50
+      }
+    ],
+    "routeResources": [
+      {
+        "path": "/journey/new",
+        "ms": 55.7,
+        "durationMs": 3.1
+      },
+      {
+        "path": "/_next/static/chunks/app/journey/error-f2b2eef08f6a59ee.js",
+        "ms": 59.6,
+        "durationMs": 426.4
+      },
+      {
+        "path": "/_next/static/chunks/app/journey/not-found-20aa5a0ea45270d6.js",
+        "ms": 59.7,
+        "durationMs": 427.3
+      },
+      {
+        "path": "/_next/static/chunks/app/journey/layout-20e20296852fdd77.js",
+        "ms": 59.8,
+        "durationMs": 428.3
+      },
+      {
+        "path": "/_next/static/chunks/6033-95c3313b76afc1aa.js",
+        "ms": 59.9,
+        "durationMs": 429.4
+      },
+      {
+        "path": "/_next/static/chunks/5785-89234ab51336d6d3.js",
+        "ms": 59.9,
+        "durationMs": 430.4
+      },
+      {
+        "path": "/_next/static/chunks/1647-e1fefcfcaeb39573.js",
+        "ms": 59.9,
+        "durationMs": 431.9
+      },
+      {
+        "path": "/_next/static/chunks/app/journey/new/page-89d2025fffcc6f06.js",
+        "ms": 60,
+        "durationMs": 438.5
+      },
+      {
+        "path": "/_next/static/css/b1af8a1a52c1c280.css",
+        "ms": 60.1,
+        "durationMs": 7.4
+      },
+      {
+        "path": "/_next/static/css/1c8cbdfc8cfe4433.css",
+        "ms": 60.2,
+        "durationMs": 6.3
+      },
+      {
+        "path": "/_next/static/css/2a9a39cbe5bdc43a.css",
+        "ms": 60.2,
+        "durationMs": 6.6
+      },
+      {
+        "path": "/_next/static/css/771a7cf9c1bcc79c.css",
+        "ms": 60.3,
+        "durationMs": 6.8
+      },
+      {
+        "path": "/_next/static/chunks/app/journey/cookies/page-4b6728c59e1fb82f.js",
+        "ms": 472.4,
+        "durationMs": 10.5
+      },
+      {
+        "path": "/_next/static/css/f7e3139f895231e2.css",
+        "ms": 472.8,
+        "durationMs": 8.8
+      },
+      {
+        "path": "/_next/static/css/3cd6503d59afc5f7.css",
+        "ms": 473,
+        "durationMs": 4.8
+      },
+      {
+        "path": "/_next/static/css/5e35e1acd7fba0e5.css",
+        "ms": 473,
+        "durationMs": 10.5
+      },
+      {
+        "path": "/_next/static/chunks/app/journey/privacy/page-d1d31e838cef7b01.js",
+        "ms": 476.9,
+        "durationMs": 8.4
+      },
+      {
+        "path": "/_next/static/css/03a51805e7467245.css",
+        "ms": 477.2,
+        "durationMs": 7.4
+      },
+      {
+        "path": "/_next/static/chunks/app/journey/about/page-bd3cfe2fde6000aa.js",
+        "ms": 530.1,
+        "durationMs": 6.8
+      },
+      {
+        "path": "/_next/static/css/e416fa544c0d017a.css",
+        "ms": 530.2,
+        "durationMs": 6.4
+      },
+      {
+        "path": "/_next/static/chunks/app/journey/help/page-a6e29892ab3831f2.js",
+        "ms": 533.9,
+        "durationMs": 16.7
+      },
+      {
+        "path": "/_next/static/css/c7aaf4d1958886af.css",
+        "ms": 534.1,
+        "durationMs": 15.6
+      },
+      {
+        "path": "/_next/static/chunks/app/journey/affiliate-disclosure/page-98f3367cce9be9a6.js",
+        "ms": 551.6,
+        "durationMs": 3.2
+      },
+      {
+        "path": "/_next/static/chunks/app/journey/terms/page-4da96ffacff8bc61.js",
+        "ms": 554.5,
+        "durationMs": 2.9
+      },
+      {
+        "path": "/_next/static/css/00d6ab3e20b1e0b6.css",
+        "ms": 554.6,
+        "durationMs": 2.8
+      },
+      {
+        "path": "/_next/static/chunks/e474d18f-ceb145d073fa9f25.js",
+        "ms": 850.8,
+        "durationMs": 1.8
+      },
+      {
+        "path": "/_next/static/chunks/ca4dcb09-8d71e4f5e9270f73.js",
+        "ms": 851.1,
+        "durationMs": 2.4
+      },
+      {
+        "path": "/_next/static/chunks/e919c1aa-4ba5daa1c31d082f.js",
+        "ms": 851.3,
+        "durationMs": 4.5
+      },
+      {
+        "path": "/_next/static/chunks/8cc6faea-06177138421f2356.js",
+        "ms": 851.6,
+        "durationMs": 4.2
+      },
+      {
+        "path": "/_next/static/chunks/d648eb28-05c9445a2e0b2734.js",
+        "ms": 851.7,
+        "durationMs": 4.2
+      }
+    ],
+    "hasRoute": true,
+    "hasDiscovery": true,
+    "hasCanonicalTokyo": true,
+    "firstActionableVerified": true,
+    "overflow": false,
+    "urlKind": "canonical-trip"
+  },
+  {
+    "phase": "final-after",
+    "source": "optimized-local-fallback",
+    "name": "failure",
+    "run": 1,
+    "thermal": "cold-context",
+    "width": 390,
+    "height": 844,
+    "errors": [],
+    "requests": [
+      "journey-capture",
+      "journey-geocode",
+      "journey-geocode",
+      "journey-discover"
+    ],
+    "urlObservedUpperBoundMs": 55,
+    "milestonesMs": {
+      "submit": 0,
+      "durable-intake": 40,
+      "shell-visible": 877,
+      "first-actionable": 904
+    },
+    "trace": [
+      {
+        "name": "route-requested",
+        "ms": 40.6
+      },
+      {
+        "name": "route-committed",
+        "ms": 45.8
+      },
+      {
+        "name": "builder-mounted",
+        "ms": 861.4,
+        "detail": {
+          "busy": "true"
+        }
+      },
+      {
+        "name": "entry-render-committed",
+        "ms": 869.4
+      },
+      {
+        "name": "interpretation-requested",
+        "ms": 878.7
+      },
+      {
+        "name": "interpretation-response",
+        "ms": 883.6,
+        "detail": {
+          "status": 200
+        }
+      },
+      {
+        "name": "actionable-render-committed",
+        "ms": 899.9
+      },
+      {
+        "name": "orientation-visible",
+        "ms": 901.2
+      },
+      {
+        "name": "actionable-visible",
+        "ms": 933.1
+      }
+    ],
+    "storage": {
+      "reads": 32,
+      "writes": 7,
+      "durationMs": 0.29999998211860657
+    },
+    "longTasks": [],
+    "routeResources": [
+      {
+        "path": "/journey/new",
+        "ms": 40.7,
+        "durationMs": 1.9
+      },
+      {
+        "path": "/_next/static/chunks/app/journey/error-f2b2eef08f6a59ee.js",
+        "ms": 43.4,
+        "durationMs": 508.3
+      },
+      {
+        "path": "/_next/static/chunks/app/journey/not-found-20aa5a0ea45270d6.js",
+        "ms": 43.4,
+        "durationMs": 509.6
+      },
+      {
+        "path": "/_next/static/chunks/app/journey/layout-20e20296852fdd77.js",
+        "ms": 43.6,
+        "durationMs": 513.5
+      },
+      {
+        "path": "/_next/static/chunks/6033-95c3313b76afc1aa.js",
+        "ms": 43.6,
+        "durationMs": 517
+      },
+      {
+        "path": "/_next/static/chunks/5785-89234ab51336d6d3.js",
+        "ms": 43.6,
+        "durationMs": 518.9
+      },
+      {
+        "path": "/_next/static/chunks/1647-e1fefcfcaeb39573.js",
+        "ms": 43.7,
+        "durationMs": 520.2
+      },
+      {
+        "path": "/_next/static/chunks/app/journey/new/page-89d2025fffcc6f06.js",
+        "ms": 43.8,
+        "durationMs": 537.1
+      },
+      {
+        "path": "/_next/static/css/1c8cbdfc8cfe4433.css",
+        "ms": 43.9,
+        "durationMs": 4.3
+      },
+      {
+        "path": "/_next/static/css/b1af8a1a52c1c280.css",
+        "ms": 43.9,
+        "durationMs": 4.3
+      },
+      {
+        "path": "/_next/static/css/2a9a39cbe5bdc43a.css",
+        "ms": 44,
+        "durationMs": 5.1
+      },
+      {
+        "path": "/_next/static/css/771a7cf9c1bcc79c.css",
+        "ms": 44,
+        "durationMs": 5.7
+      },
+      {
+        "path": "/_next/static/chunks/app/journey/cookies/page-4b6728c59e1fb82f.js",
+        "ms": 538.3,
+        "durationMs": 8.7
+      },
+      {
+        "path": "/_next/static/css/f7e3139f895231e2.css",
+        "ms": 538.7,
+        "durationMs": 8.1
+      },
+      {
+        "path": "/_next/static/css/3cd6503d59afc5f7.css",
+        "ms": 538.9,
+        "durationMs": 5.1
+      },
+      {
+        "path": "/_next/static/css/5e35e1acd7fba0e5.css",
+        "ms": 539,
+        "durationMs": 8.6
+      },
+      {
+        "path": "/_next/static/chunks/app/journey/privacy/page-d1d31e838cef7b01.js",
+        "ms": 543,
+        "durationMs": 7.1
+      },
+      {
+        "path": "/_next/static/css/03a51805e7467245.css",
+        "ms": 543.2,
+        "durationMs": 5.6
+      },
+      {
+        "path": "/_next/static/chunks/app/journey/about/page-bd3cfe2fde6000aa.js",
+        "ms": 603.4,
+        "durationMs": 4
+      },
+      {
+        "path": "/_next/static/css/e416fa544c0d017a.css",
+        "ms": 603.6,
+        "durationMs": 3.9
+      },
+      {
+        "path": "/_next/static/chunks/app/journey/help/page-a6e29892ab3831f2.js",
+        "ms": 604,
+        "durationMs": 4.2
+      },
+      {
+        "path": "/_next/static/css/c7aaf4d1958886af.css",
+        "ms": 604,
+        "durationMs": 4.7
+      },
+      {
+        "path": "/_next/static/chunks/app/journey/affiliate-disclosure/page-98f3367cce9be9a6.js",
+        "ms": 605.7,
+        "durationMs": 6.5
+      },
+      {
+        "path": "/_next/static/chunks/app/journey/terms/page-4da96ffacff8bc61.js",
+        "ms": 606.2,
+        "durationMs": 6.1
+      },
+      {
+        "path": "/_next/static/css/00d6ab3e20b1e0b6.css",
+        "ms": 606.4,
+        "durationMs": 6
+      },
+      {
+        "path": "/_next/static/chunks/e474d18f-ceb145d073fa9f25.js",
+        "ms": 902.7,
+        "durationMs": 1.3
+      },
+      {
+        "path": "/_next/static/chunks/ca4dcb09-8d71e4f5e9270f73.js",
+        "ms": 902.9,
+        "durationMs": 3.1
+      },
+      {
+        "path": "/_next/static/chunks/e919c1aa-4ba5daa1c31d082f.js",
+        "ms": 903,
+        "durationMs": 3.2
+      },
+      {
+        "path": "/_next/static/chunks/8cc6faea-06177138421f2356.js",
+        "ms": 903.3,
+        "durationMs": 3
+      },
+      {
+        "path": "/_next/static/chunks/d648eb28-05c9445a2e0b2734.js",
+        "ms": 903.4,
+        "durationMs": 3.1
+      }
+    ],
+    "hasRoute": true,
+    "hasDiscovery": true,
+    "hasCanonicalTokyo": true,
+    "firstActionableVerified": true,
+    "overflow": false,
+    "urlKind": "canonical-trip"
+  },
+  {
+    "phase": "final-after",
+    "source": "optimized-local-fallback",
+    "name": "describe",
+    "run": 1,
+    "thermal": "cold-context",
+    "width": 430,
+    "height": 844,
+    "errors": [],
+    "requests": [
+      "journey-capture",
+      "journey-geocode",
+      "journey-geocode",
+      "journey-discover",
+      "journey-discover"
+    ],
+    "urlObservedUpperBoundMs": 87,
+    "milestonesMs": {
+      "submit": 0,
+      "durable-intake": 56,
+      "shell-visible": 398,
+      "first-actionable": 429,
+      "required-complete": 529
+    },
+    "trace": [
+      {
+        "name": "route-requested",
+        "ms": 56.8
+      },
+      {
+        "name": "route-committed",
+        "ms": 62.2
+      },
+      {
+        "name": "builder-mounted",
+        "ms": 365.2,
+        "detail": {
+          "busy": "true"
+        }
+      },
+      {
+        "name": "entry-render-committed",
+        "ms": 386.5
+      },
+      {
+        "name": "interpretation-requested",
+        "ms": 400.4
+      },
+      {
+        "name": "orientation-visible",
+        "ms": 404.2
+      },
+      {
+        "name": "interpretation-response",
+        "ms": 406.1,
+        "detail": {
+          "status": 200
+        }
+      },
+      {
+        "name": "actionable-render-committed",
+        "ms": 424.9
+      },
+      {
+        "name": "actionable-visible",
+        "ms": 462.4
+      }
+    ],
+    "storage": {
+      "reads": 34,
+      "writes": 3,
+      "durationMs": 0.09999999403953552
+    },
+    "longTasks": [],
+    "routeResources": [
+      {
+        "path": "/journey/new",
+        "ms": 57,
+        "durationMs": 1.6
+      },
+      {
+        "path": "/_next/static/chunks/app/journey/error-f2b2eef08f6a59ee.js",
+        "ms": 58.9,
+        "durationMs": 1.1
+      },
+      {
+        "path": "/_next/static/chunks/app/journey/not-found-20aa5a0ea45270d6.js",
+        "ms": 59,
+        "durationMs": 1.2
+      },
+      {
+        "path": "/_next/static/chunks/app/journey/layout-20e20296852fdd77.js",
+        "ms": 59.1,
+        "durationMs": 1.2
+      },
+      {
+        "path": "/_next/static/chunks/6033-95c3313b76afc1aa.js",
+        "ms": 59.1,
+        "durationMs": 1.5
+      },
+      {
+        "path": "/_next/static/chunks/5785-89234ab51336d6d3.js",
+        "ms": 59.3,
+        "durationMs": 1.8
+      },
+      {
+        "path": "/_next/static/chunks/1647-e1fefcfcaeb39573.js",
+        "ms": 59.3,
+        "durationMs": 2.1
+      },
+      {
+        "path": "/_next/static/chunks/app/journey/new/page-89d2025fffcc6f06.js",
+        "ms": 59.3,
+        "durationMs": 2.2
+      },
+      {
+        "path": "/_next/static/css/b1af8a1a52c1c280.css",
+        "ms": 59.5,
+        "durationMs": 1.7
+      },
+      {
+        "path": "/_next/static/css/1c8cbdfc8cfe4433.css",
+        "ms": 59.5,
+        "durationMs": 1.8
+      },
+      {
+        "path": "/_next/static/css/2a9a39cbe5bdc43a.css",
+        "ms": 59.6,
+        "durationMs": 1.9
+      },
+      {
+        "path": "/_next/static/css/771a7cf9c1bcc79c.css",
+        "ms": 59.6,
+        "durationMs": 1.9
+      },
+      {
+        "path": "/_next/static/chunks/app/journey/cookies/page-4b6728c59e1fb82f.js",
+        "ms": 354.4,
+        "durationMs": 8.6
+      },
+      {
+        "path": "/_next/static/css/3cd6503d59afc5f7.css",
+        "ms": 354.9,
+        "durationMs": 5
+      },
+      {
+        "path": "/_next/static/css/f7e3139f895231e2.css",
+        "ms": 354.9,
+        "durationMs": 7.9
+      },
+      {
+        "path": "/_next/static/css/5e35e1acd7fba0e5.css",
+        "ms": 355,
+        "durationMs": 8.1
+      },
+      {
+        "path": "/_next/static/chunks/app/journey/privacy/page-d1d31e838cef7b01.js",
+        "ms": 359.1,
+        "durationMs": 7.5
+      },
+      {
+        "path": "/_next/static/css/03a51805e7467245.css",
+        "ms": 359.3,
+        "durationMs": 5.8
+      },
+      {
+        "path": "/_next/static/chunks/app/journey/about/page-bd3cfe2fde6000aa.js",
+        "ms": 377.1,
+        "durationMs": 6.9
+      },
+      {
+        "path": "/_next/static/css/e416fa544c0d017a.css",
+        "ms": 377.3,
+        "durationMs": 6.7
+      },
+      {
+        "path": "/_next/static/chunks/app/journey/help/page-a6e29892ab3831f2.js",
+        "ms": 377.8,
+        "durationMs": 6.7
+      },
+      {
+        "path": "/_next/static/css/c7aaf4d1958886af.css",
+        "ms": 377.9,
+        "durationMs": 6.2
+      },
+      {
+        "path": "/_next/static/chunks/app/journey/affiliate-disclosure/page-98f3367cce9be9a6.js",
+        "ms": 378.9,
+        "durationMs": 6.5
+      },
+      {
+        "path": "/_next/static/chunks/app/journey/terms/page-4da96ffacff8bc61.js",
+        "ms": 387.4,
+        "durationMs": 2.4
+      },
+      {
+        "path": "/_next/static/css/00d6ab3e20b1e0b6.css",
+        "ms": 387.6,
+        "durationMs": 2.1
+      },
+      {
+        "path": "/_next/static/chunks/e474d18f-ceb145d073fa9f25.js",
+        "ms": 427.5,
+        "durationMs": 2.1
+      },
+      {
+        "path": "/_next/static/chunks/ca4dcb09-8d71e4f5e9270f73.js",
+        "ms": 427.7,
+        "durationMs": 3
+      },
+      {
+        "path": "/_next/static/chunks/e919c1aa-4ba5daa1c31d082f.js",
+        "ms": 427.9,
+        "durationMs": 3.8
+      },
+      {
+        "path": "/_next/static/chunks/8cc6faea-06177138421f2356.js",
+        "ms": 428.1,
+        "durationMs": 3.8
+      },
+      {
+        "path": "/_next/static/chunks/d648eb28-05c9445a2e0b2734.js",
+        "ms": 428.2,
+        "durationMs": 4.6
+      }
+    ],
+    "hasRoute": true,
+    "hasDiscovery": true,
+    "hasCanonicalTokyo": true,
+    "firstActionableVerified": true,
+    "overflow": false,
+    "urlKind": "handoff"
+  },
+  {
+    "phase": "final-after",
+    "source": "optimized-local-fallback",
+    "name": "describe",
+    "run": 1,
+    "thermal": "cold-context",
+    "width": 768,
+    "height": 844,
+    "errors": [],
+    "requests": [
+      "journey-capture",
+      "journey-geocode",
+      "journey-geocode",
+      "journey-discover",
+      "journey-discover"
+    ],
+    "urlObservedUpperBoundMs": 84,
+    "milestonesMs": {
+      "submit": 0,
+      "durable-intake": 56,
+      "shell-visible": 392,
+      "first-actionable": 426,
+      "required-complete": 530
+    },
+    "trace": [
+      {
+        "name": "route-requested",
+        "ms": 56.1
+      },
+      {
+        "name": "route-committed",
+        "ms": 60.8
+      },
+      {
+        "name": "builder-mounted",
+        "ms": 367.3,
+        "detail": {
+          "busy": "true"
+        }
+      },
+      {
+        "name": "entry-render-committed",
+        "ms": 382.4
+      },
+      {
+        "name": "interpretation-requested",
+        "ms": 393.8
+      },
+      {
+        "name": "interpretation-response",
+        "ms": 399,
+        "detail": {
+          "status": 200
+        }
+      },
+      {
+        "name": "actionable-render-committed",
+        "ms": 418.8
+      },
+      {
+        "name": "orientation-visible",
+        "ms": 420.9
+      },
+      {
+        "name": "actionable-visible",
+        "ms": 427.6
+      }
+    ],
+    "storage": {
+      "reads": 28,
+      "writes": 3,
+      "durationMs": 0.09999999403953552
+    },
+    "longTasks": [],
+    "routeResources": [
+      {
+        "path": "/journey/new",
+        "ms": 56.2,
+        "durationMs": 1.6
+      },
+      {
+        "path": "/_next/static/chunks/app/journey/error-f2b2eef08f6a59ee.js",
+        "ms": 58.2,
+        "durationMs": 1.3
+      },
+      {
+        "path": "/_next/static/chunks/app/journey/not-found-20aa5a0ea45270d6.js",
+        "ms": 58.3,
+        "durationMs": 1.6
+      },
+      {
+        "path": "/_next/static/chunks/6033-95c3313b76afc1aa.js",
+        "ms": 58.4,
+        "durationMs": 2.2
+      },
+      {
+        "path": "/_next/static/chunks/app/journey/layout-20e20296852fdd77.js",
+        "ms": 58.4,
+        "durationMs": 2
+      },
+      {
+        "path": "/_next/static/chunks/5785-89234ab51336d6d3.js",
+        "ms": 58.5,
+        "durationMs": 2.1
+      },
+      {
+        "path": "/_next/static/chunks/1647-e1fefcfcaeb39573.js",
+        "ms": 58.5,
+        "durationMs": 2.3
+      },
+      {
+        "path": "/_next/static/chunks/app/journey/new/page-89d2025fffcc6f06.js",
+        "ms": 58.6,
+        "durationMs": 2.3
+      },
+      {
+        "path": "/_next/static/css/b1af8a1a52c1c280.css",
+        "ms": 58.7,
+        "durationMs": 2.1
+      },
+      {
+        "path": "/_next/static/css/1c8cbdfc8cfe4433.css",
+        "ms": 58.8,
+        "durationMs": 2
+      },
+      {
+        "path": "/_next/static/css/2a9a39cbe5bdc43a.css",
+        "ms": 58.8,
+        "durationMs": 2
+      },
+      {
+        "path": "/_next/static/css/771a7cf9c1bcc79c.css",
+        "ms": 58.9,
+        "durationMs": 2.1
+      },
+      {
+        "path": "/_next/static/chunks/e474d18f-ceb145d073fa9f25.js",
+        "ms": 423.5,
+        "durationMs": 1.9
+      },
+      {
+        "path": "/_next/static/chunks/ca4dcb09-8d71e4f5e9270f73.js",
+        "ms": 423.8,
+        "durationMs": 2.6
+      },
+      {
+        "path": "/_next/static/chunks/e919c1aa-4ba5daa1c31d082f.js",
+        "ms": 424.1,
+        "durationMs": 4
+      },
+      {
+        "path": "/_next/static/chunks/8cc6faea-06177138421f2356.js",
+        "ms": 424.2,
+        "durationMs": 4.1
+      },
+      {
+        "path": "/_next/static/chunks/d648eb28-05c9445a2e0b2734.js",
+        "ms": 424.5,
+        "durationMs": 3.8
+      },
+      {
+        "path": "/_next/static/chunks/783-8f61c9f901101bef.js",
+        "ms": 424.6,
+        "durationMs": 3.7
+      },
+      {
+        "path": "/_next/static/chunks/7013.b9295c299dc81cfb.js",
+        "ms": 424.9,
+        "durationMs": 6.9
+      },
+      {
+        "path": "/_next/static/css/e82518b135ceef38.css",
+        "ms": 429.4,
+        "durationMs": 1.4
+      }
+    ],
+    "hasRoute": true,
+    "hasDiscovery": true,
+    "hasCanonicalTokyo": true,
+    "firstActionableVerified": true,
+    "overflow": false,
+    "urlKind": "handoff"
+  },
+  {
+    "phase": "final-after",
+    "source": "optimized-local-fallback",
+    "name": "describe",
+    "run": 1,
+    "thermal": "cold-context",
+    "width": 1024,
+    "height": 844,
+    "errors": [],
+    "requests": [
+      "journey-capture",
+      "journey-geocode",
+      "journey-geocode",
+      "journey-discover",
+      "journey-discover"
+    ],
+    "urlObservedUpperBoundMs": 72,
+    "milestonesMs": {
+      "submit": 0,
+      "durable-intake": 52,
+      "shell-visible": 3360,
+      "first-actionable": 3397,
+      "required-complete": 3519
+    },
+    "trace": [
+      {
+        "name": "route-requested",
+        "ms": 52.5
+      },
+      {
+        "name": "route-committed",
+        "ms": 59.1
+      },
+      {
+        "name": "builder-mounted",
+        "ms": 3343.1,
+        "detail": {
+          "busy": "true"
+        }
+      },
+      {
+        "name": "entry-render-committed",
+        "ms": 3356.8
+      },
+      {
+        "name": "interpretation-requested",
+        "ms": 3360.6
+      },
+      {
+        "name": "interpretation-response",
+        "ms": 3373.4,
+        "detail": {
+          "status": 200
+        }
+      },
+      {
+        "name": "actionable-render-committed",
+        "ms": 3393.3
+      },
+      {
+        "name": "orientation-visible",
+        "ms": 3394.7
+      },
+      {
+        "name": "actionable-visible",
+        "ms": 3468
+      }
+    ],
+    "storage": {
+      "reads": 26,
+      "writes": 2,
+      "durationMs": 0
+    },
+    "longTasks": [],
+    "routeResources": [
+      {
+        "path": "/journey/new",
+        "ms": 52.7,
+        "durationMs": 2.6
+      },
+      {
+        "path": "/_next/static/chunks/6033-95c3313b76afc1aa.js",
+        "ms": 55.9,
+        "durationMs": 1.6
+      },
+      {
+        "path": "/_next/static/chunks/5785-89234ab51336d6d3.js",
+        "ms": 56.1,
+        "durationMs": 2
+      },
+      {
+        "path": "/_next/static/chunks/1647-e1fefcfcaeb39573.js",
+        "ms": 56.1,
+        "durationMs": 2.2
+      },
+      {
+        "path": "/_next/static/chunks/app/journey/new/page-89d2025fffcc6f06.js",
+        "ms": 56.1,
+        "durationMs": 2.2
+      },
+      {
+        "path": "/_next/static/css/b1af8a1a52c1c280.css",
+        "ms": 56.3,
+        "durationMs": 1.8
+      },
+      {
+        "path": "/_next/static/css/1c8cbdfc8cfe4433.css",
+        "ms": 56.3,
+        "durationMs": 1.8
+      },
+      {
+        "path": "/_next/static/css/2a9a39cbe5bdc43a.css",
+        "ms": 56.4,
+        "durationMs": 2
+      },
+      {
+        "path": "/_next/static/css/771a7cf9c1bcc79c.css",
+        "ms": 56.5,
+        "durationMs": 2
+      },
+      {
+        "path": "/_next/static/chunks/app/journey/about/page-bd3cfe2fde6000aa.js",
+        "ms": 3054.9,
+        "durationMs": 3.9
+      },
+      {
+        "path": "/_next/static/css/e416fa544c0d017a.css",
+        "ms": 3055,
+        "durationMs": 4.1
+      },
+      {
+        "path": "/_next/static/chunks/app/journey/help/page-a6e29892ab3831f2.js",
+        "ms": 3055.5,
+        "durationMs": 3.8
+      },
+      {
+        "path": "/_next/static/css/c7aaf4d1958886af.css",
+        "ms": 3055.6,
+        "durationMs": 3.5
+      },
+      {
+        "path": "/_next/static/chunks/app/journey/affiliate-disclosure/page-98f3367cce9be9a6.js",
+        "ms": 3057.4,
+        "durationMs": 2.8
+      },
+      {
+        "path": "/_next/static/chunks/app/journey/terms/page-4da96ffacff8bc61.js",
+        "ms": 3060.1,
+        "durationMs": 1.4
+      },
+      {
+        "path": "/_next/static/css/00d6ab3e20b1e0b6.css",
+        "ms": 3060.2,
+        "durationMs": 1.3
+      },
+      {
+        "path": "/_next/static/chunks/e474d18f-ceb145d073fa9f25.js",
+        "ms": 3362.4,
+        "durationMs": 3.1
+      },
+      {
+        "path": "/_next/static/chunks/8cc6faea-06177138421f2356.js",
+        "ms": 3362.6,
+        "durationMs": 5.3
+      },
+      {
+        "path": "/_next/static/chunks/e919c1aa-4ba5daa1c31d082f.js",
+        "ms": 3362.6,
+        "durationMs": 3.9
+      },
+      {
+        "path": "/_next/static/chunks/ca4dcb09-8d71e4f5e9270f73.js",
+        "ms": 3362.6,
+        "durationMs": 3.7
+      },
+      {
+        "path": "/_next/static/chunks/d648eb28-05c9445a2e0b2734.js",
+        "ms": 3362.7,
+        "durationMs": 5.3
+      },
+      {
+        "path": "/_next/static/chunks/1271-85819ec2bb2b31f6.js",
+        "ms": 3362.7,
+        "durationMs": 15.4
+      },
+      {
+        "path": "/_next/static/chunks/783-8f61c9f901101bef.js",
+        "ms": 3362.8,
+        "durationMs": 9.2
+      },
+      {
+        "path": "/_next/static/chunks/9442-4a2c3e0f732b44a1.js",
+        "ms": 3362.9,
+        "durationMs": 15.2
+      },
+      {
+        "path": "/_next/static/chunks/app/journey/dashboard/page-72e8fd2aa8ba6723.js",
+        "ms": 3362.9,
+        "durationMs": 15.4
+      },
+      {
+        "path": "/_next/static/chunks/app/journey/dashboard/loading-70aaedf01d5fd7b9.js",
+        "ms": 3363.1,
+        "durationMs": 15.1
+      },
+      {
+        "path": "/_next/static/chunks/7013.b9295c299dc81cfb.js",
+        "ms": 3396,
+        "durationMs": 6.1
+      },
+      {
+        "path": "/_next/static/css/e82518b135ceef38.css",
+        "ms": 3434.6,
+        "durationMs": 0.7
+      },
+      {
+        "path": "/_next/static/chunks/8798.749aa98049ad0e01.js",
+        "ms": 3549.8,
+        "durationMs": 2.6
+      }
+    ],
+    "hasRoute": true,
+    "hasDiscovery": true,
+    "hasCanonicalTokyo": true,
+    "firstActionableVerified": true,
+    "overflow": false,
+    "urlKind": "handoff"
+  },
+  {
+    "phase": "final-after",
+    "source": "optimized-local-fallback",
+    "name": "describe",
+    "run": 1,
+    "thermal": "cold-context",
+    "width": 1440,
+    "height": 844,
+    "errors": [],
+    "requests": [
+      "journey-capture",
+      "journey-geocode",
+      "journey-geocode",
+      "journey-discover",
+      "journey-discover"
+    ],
+    "urlObservedUpperBoundMs": 73,
+    "milestonesMs": {
+      "submit": 0,
+      "durable-intake": 54,
+      "shell-visible": 3430,
+      "first-actionable": 3473,
+      "required-complete": 3595
+    },
+    "trace": [
+      {
+        "name": "route-requested",
+        "ms": 54.5
+      },
+      {
+        "name": "route-committed",
+        "ms": 60
+      },
+      {
+        "name": "builder-mounted",
+        "ms": 3411.8,
+        "detail": {
+          "busy": "true"
+        }
+      },
+      {
+        "name": "entry-render-committed",
+        "ms": 3425.1
+      },
+      {
+        "name": "interpretation-requested",
+        "ms": 3430.1
+      },
+      {
+        "name": "interpretation-response",
+        "ms": 3450.1,
+        "detail": {
+          "status": 200
+        }
+      },
+      {
+        "name": "orientation-visible",
+        "ms": 3452.7
+      },
+      {
+        "name": "actionable-render-committed",
+        "ms": 3468.8
+      },
+      {
+        "name": "actionable-visible",
+        "ms": 3544.1
+      }
+    ],
+    "storage": {
+      "reads": 28,
+      "writes": 3,
+      "durationMs": 0
+    },
+    "longTasks": [],
+    "routeResources": [
+      {
+        "path": "/journey/new",
+        "ms": 54.6,
+        "durationMs": 2.3
+      },
+      {
+        "path": "/_next/static/chunks/6033-95c3313b76afc1aa.js",
+        "ms": 57.4,
+        "durationMs": 1.4
+      },
+      {
+        "path": "/_next/static/chunks/5785-89234ab51336d6d3.js",
+        "ms": 57.5,
+        "durationMs": 1.8
+      },
+      {
+        "path": "/_next/static/chunks/1647-e1fefcfcaeb39573.js",
+        "ms": 57.6,
+        "durationMs": 2
+      },
+      {
+        "path": "/_next/static/chunks/app/journey/new/page-89d2025fffcc6f06.js",
+        "ms": 57.6,
+        "durationMs": 3
+      },
+      {
+        "path": "/_next/static/css/b1af8a1a52c1c280.css",
+        "ms": 57.7,
+        "durationMs": 2.4
+      },
+      {
+        "path": "/_next/static/css/1c8cbdfc8cfe4433.css",
+        "ms": 57.7,
+        "durationMs": 2.5
+      },
+      {
+        "path": "/_next/static/css/2a9a39cbe5bdc43a.css",
+        "ms": 57.8,
+        "durationMs": 3.3
+      },
+      {
+        "path": "/_next/static/css/771a7cf9c1bcc79c.css",
+        "ms": 57.9,
+        "durationMs": 3.2
+      },
+      {
+        "path": "/_next/static/chunks/app/journey/about/page-bd3cfe2fde6000aa.js",
+        "ms": 3122.6,
+        "durationMs": 5.3
+      },
+      {
+        "path": "/_next/static/css/e416fa544c0d017a.css",
+        "ms": 3122.8,
+        "durationMs": 5.8
+      },
+      {
+        "path": "/_next/static/chunks/app/journey/help/page-a6e29892ab3831f2.js",
+        "ms": 3123.3,
+        "durationMs": 5.6
+      },
+      {
+        "path": "/_next/static/css/c7aaf4d1958886af.css",
+        "ms": 3123.4,
+        "durationMs": 5.2
+      },
+      {
+        "path": "/_next/static/chunks/app/journey/affiliate-disclosure/page-98f3367cce9be9a6.js",
+        "ms": 3126.4,
+        "durationMs": 5.8
+      },
+      {
+        "path": "/_next/static/chunks/app/journey/terms/page-4da96ffacff8bc61.js",
+        "ms": 3130,
+        "durationMs": 5.3
+      },
+      {
+        "path": "/_next/static/css/00d6ab3e20b1e0b6.css",
+        "ms": 3130.1,
+        "durationMs": 4.1
+      },
+      {
+        "path": "/_next/static/chunks/e474d18f-ceb145d073fa9f25.js",
+        "ms": 3431.7,
+        "durationMs": 2.6
+      },
+      {
+        "path": "/_next/static/chunks/ca4dcb09-8d71e4f5e9270f73.js",
+        "ms": 3431.8,
+        "durationMs": 3.5
+      },
+      {
+        "path": "/_next/static/chunks/8cc6faea-06177138421f2356.js",
+        "ms": 3431.9,
+        "durationMs": 4.2
+      },
+      {
+        "path": "/_next/static/chunks/e919c1aa-4ba5daa1c31d082f.js",
+        "ms": 3431.9,
+        "durationMs": 4.1
+      },
+      {
+        "path": "/_next/static/chunks/d648eb28-05c9445a2e0b2734.js",
+        "ms": 3432,
+        "durationMs": 4.2
+      },
+      {
+        "path": "/_next/static/chunks/783-8f61c9f901101bef.js",
+        "ms": 3432.1,
+        "durationMs": 4.7
+      },
+      {
+        "path": "/_next/static/chunks/1271-85819ec2bb2b31f6.js",
+        "ms": 3432.1,
+        "durationMs": 20.7
+      },
+      {
+        "path": "/_next/static/chunks/9442-4a2c3e0f732b44a1.js",
+        "ms": 3432.2,
+        "durationMs": 20.5
+      },
+      {
+        "path": "/_next/static/chunks/app/journey/dashboard/loading-70aaedf01d5fd7b9.js",
+        "ms": 3432.3,
+        "durationMs": 21.3
+      },
+      {
+        "path": "/_next/static/chunks/app/journey/dashboard/page-72e8fd2aa8ba6723.js",
+        "ms": 3432.3,
+        "durationMs": 25.4
+      },
+      {
+        "path": "/_next/static/chunks/7013.b9295c299dc81cfb.js",
+        "ms": 3472,
+        "durationMs": 5.3
+      },
+      {
+        "path": "/_next/static/css/e82518b135ceef38.css",
+        "ms": 3507.4,
+        "durationMs": 0.5
+      },
+      {
+        "path": "/_next/static/chunks/8798.749aa98049ad0e01.js",
+        "ms": 3627.5,
+        "durationMs": 2.2
+      }
+    ],
+    "hasRoute": true,
+    "hasDiscovery": true,
+    "hasCanonicalTokyo": true,
+    "firstActionableVerified": true,
+    "overflow": false,
+    "urlKind": "handoff"
+  },
+  {
+    "phase": "final-after",
+    "source": "optimized-local-fallback",
+    "name": "mixed",
+    "run": 1,
+    "thermal": "cold-context",
+    "width": 390,
+    "height": 844,
+    "errors": [],
+    "requests": [
+      "journey-capture",
+      "journey-geocode",
+      "journey-geocode",
+      "journey-discover"
+    ],
+    "urlObservedUpperBoundMs": 843,
+    "milestonesMs": {
+      "submit": 0,
+      "durable-intake": 44,
+      "shell-visible": 1139,
+      "first-actionable": 1167,
+      "required-complete": 1244
+    },
+    "trace": [
+      {
+        "name": "route-requested",
+        "ms": 43.8
+      },
+      {
+        "name": "route-committed",
+        "ms": 812.8
+      },
+      {
+        "name": "builder-mounted",
+        "ms": 1119.7,
+        "detail": {
+          "busy": "true"
+        }
+      },
+      {
+        "name": "entry-render-committed",
+        "ms": 1134.4
+      },
+      {
+        "name": "interpretation-requested",
+        "ms": 1139
+      },
+      {
+        "name": "interpretation-response",
+        "ms": 1146.5,
+        "detail": {
+          "status": 200
+        }
+      },
+      {
+        "name": "actionable-render-committed",
+        "ms": 1162.4
+      },
+      {
+        "name": "orientation-visible",
+        "ms": 1163.8
+      },
+      {
+        "name": "actionable-visible",
+        "ms": 1180.3
+      }
+    ],
+    "storage": {
+      "reads": 25,
+      "writes": 2,
+      "durationMs": 0
+    },
+    "longTasks": [],
+    "routeResources": [
+      {
+        "path": "/journey/new",
+        "ms": 44,
+        "durationMs": 763.9
+      },
+      {
+        "path": "/_next/static/chunks/app/journey/error-f2b2eef08f6a59ee.js",
+        "ms": 803,
+        "durationMs": 9.5
+      },
+      {
+        "path": "/_next/static/chunks/app/journey/cookies/page-4b6728c59e1fb82f.js",
+        "ms": 803.2,
+        "durationMs": 9.8
+      },
+      {
+        "path": "/_next/static/chunks/app/journey/layout-20e20296852fdd77.js",
+        "ms": 803.2,
+        "durationMs": 10
+      },
+      {
+        "path": "/_next/static/css/f7e3139f895231e2.css",
+        "ms": 803.4,
+        "durationMs": 6.3
+      },
+      {
+        "path": "/_next/static/css/3cd6503d59afc5f7.css",
+        "ms": 803.5,
+        "durationMs": 5.8
+      },
+      {
+        "path": "/_next/static/css/5e35e1acd7fba0e5.css",
+        "ms": 803.5,
+        "durationMs": 6.4
+      },
+      {
+        "path": "/_next/static/chunks/app/journey/not-found-20aa5a0ea45270d6.js",
+        "ms": 804,
+        "durationMs": 9.4
+      },
+      {
+        "path": "/_next/static/chunks/app/journey/privacy/page-d1d31e838cef7b01.js",
+        "ms": 804.1,
+        "durationMs": 10.9
+      },
+      {
+        "path": "/_next/static/css/03a51805e7467245.css",
+        "ms": 804.2,
+        "durationMs": 6.8
+      },
+      {
+        "path": "/_next/static/chunks/6033-95c3313b76afc1aa.js",
+        "ms": 808.1,
+        "durationMs": 6.6
+      },
+      {
+        "path": "/_next/static/chunks/5785-89234ab51336d6d3.js",
+        "ms": 808.2,
+        "durationMs": 7.4
+      },
+      {
+        "path": "/_next/static/chunks/1647-e1fefcfcaeb39573.js",
+        "ms": 808.2,
+        "durationMs": 8
+      },
+      {
+        "path": "/_next/static/css/b1af8a1a52c1c280.css",
+        "ms": 808.3,
+        "durationMs": 3.5
+      },
+      {
+        "path": "/_next/static/chunks/app/journey/new/page-89d2025fffcc6f06.js",
+        "ms": 808.3,
+        "durationMs": 13.9
+      },
+      {
+        "path": "/_next/static/css/1c8cbdfc8cfe4433.css",
+        "ms": 808.4,
+        "durationMs": 1.9
+      },
+      {
+        "path": "/_next/static/css/2a9a39cbe5bdc43a.css",
+        "ms": 808.4,
+        "durationMs": 3
+      },
+      {
+        "path": "/_next/static/css/771a7cf9c1bcc79c.css",
+        "ms": 808.5,
+        "durationMs": 3.5
+      },
+      {
+        "path": "/_next/static/css/e416fa544c0d017a.css",
+        "ms": 850.1,
+        "durationMs": 2.9
+      },
+      {
+        "path": "/_next/static/chunks/app/journey/about/page-bd3cfe2fde6000aa.js",
+        "ms": 850.1,
+        "durationMs": 4.4
+      },
+      {
+        "path": "/_next/static/css/c7aaf4d1958886af.css",
+        "ms": 850.4,
+        "durationMs": 3.8
+      },
+      {
+        "path": "/_next/static/chunks/app/journey/help/page-a6e29892ab3831f2.js",
+        "ms": 850.4,
+        "durationMs": 4.4
+      },
+      {
+        "path": "/_next/static/chunks/app/journey/affiliate-disclosure/page-98f3367cce9be9a6.js",
+        "ms": 850.6,
+        "durationMs": 4.4
+      },
+      {
+        "path": "/_next/static/chunks/app/journey/terms/page-4da96ffacff8bc61.js",
+        "ms": 851.2,
+        "durationMs": 3.9
+      },
+      {
+        "path": "/_next/static/css/00d6ab3e20b1e0b6.css",
+        "ms": 851.2,
+        "durationMs": 4.7
+      },
+      {
+        "path": "/_next/static/chunks/e474d18f-ceb145d073fa9f25.js",
+        "ms": 1165.1,
+        "durationMs": 2.6
+      },
+      {
+        "path": "/_next/static/chunks/ca4dcb09-8d71e4f5e9270f73.js",
+        "ms": 1165.4,
+        "durationMs": 5
+      },
+      {
+        "path": "/_next/static/chunks/e919c1aa-4ba5daa1c31d082f.js",
+        "ms": 1165.5,
+        "durationMs": 6.7
+      },
+      {
+        "path": "/_next/static/chunks/8cc6faea-06177138421f2356.js",
+        "ms": 1165.7,
+        "durationMs": 6.7
+      },
+      {
+        "path": "/_next/static/chunks/d648eb28-05c9445a2e0b2734.js",
+        "ms": 1165.9,
+        "durationMs": 6.7
+      }
+    ],
+    "hasRoute": true,
+    "hasDiscovery": true,
+    "hasCanonicalTokyo": true,
+    "firstActionableVerified": true,
+    "overflow": false,
+    "urlKind": "handoff"
+  }
+]
