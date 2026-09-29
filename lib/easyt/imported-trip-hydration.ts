@@ -63,5 +63,17 @@ export function buildImportedDatedDays(input: ImportedDatedDayInput): ImportedDa
     nextDay = departure;
   }
   if (nextDay !== end || planItems.length !== end - start + 1) throw new Error("Imported stop timing does not cover the trip span.");
-  return { planItems, activityCommentsByDay: {} };
+  const activityCommentsByDay: Record<number, string[]> = {};
+  for (const activity of input.activities) {
+    const dateDay = dayNumber(activity.date);
+    const day = planItems[dateDay - start];
+    if (!day || day.date !== activity.date || day.stopId !== activity.stopId) {
+      throw new Error("Imported activity does not match its reviewed stop and day.");
+    }
+    day.notes.push(activity.title);
+    if (activity.notes.length) activityCommentsByDay[day.dayNumber] = [
+      ...(activityCommentsByDay[day.dayNumber] ?? []), ...activity.notes,
+    ];
+  }
+  return { planItems, activityCommentsByDay };
 }

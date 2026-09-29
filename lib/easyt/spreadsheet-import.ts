@@ -1,9 +1,9 @@
 import { buildCanonicalTripLegs } from "./trip-legs.ts";
+import { buildImportedDatedDays } from "./imported-trip-hydration.ts";
 import {
   defaultTripIntent,
   tripFromBuilder,
   type EasyTTrip,
-  type PlanItem,
   type TripBooking,
   type TripLeg,
 } from "./trip.ts";
@@ -643,25 +643,11 @@ export function canonicalTripFromSpreadsheetProposal(input: {
     const imported = proposal.stops.find((candidate) => candidate.id === stop.id)!;
     return { ...stop, arrivalDate: imported.arrivalDate, departureDate: imported.departureDate, nights: imported.nights };
   });
-  const planItems: PlanItem[] = proposal.activities.map((activity) => {
-    const place = placeByStop.get(activity.stopId)!;
-    return {
-      id: activity.id,
-      stopId: activity.stopId,
-      dayNumber: daysBetween(proposal.startDate!, activity.date) + 1,
-      date: activity.date,
-      type: "activity",
-      title: activity.title,
-      reason: "Imported from the traveller’s reviewed spreadsheet.",
-      notes: activity.notes,
-      startsAt: null,
-      endsAt: null,
-      bookingUrl: null,
-      latitude: place.coordinates[1],
-      longitude: place.coordinates[0],
-    };
+  const { planItems, activityCommentsByDay } = buildImportedDatedDays({
+    tripId: id, startDate: proposal.startDate, endDate: proposal.endDate, stops,
+    activities: proposal.activities,
   });
-  const dayNotes: Record<number, string[]> = {};
+  const dayNotes: Record<number, string[]> = { ...activityCommentsByDay };
   for (const stop of proposal.stops) for (const note of stop.notes) {
     const day = daysBetween(proposal.startDate, note.date) + 1;
     dayNotes[day] = [...(dayNotes[day] ?? []), note.text];
@@ -699,6 +685,7 @@ export function canonicalTripFromSpreadsheetProposal(input: {
     brief: {
       ...base.brief,
       bookings: proposal.bookings.map(bookingFromProposal),
+      customActivities: Object.fromEntries(planItems.filter((day) => day.notes.length).map((day) => [day.dayNumber, [...day.notes]])),
       ...(Object.keys(dayNotes).length ? { dayNotes } : {}),
     },
   };

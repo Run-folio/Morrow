@@ -23,6 +23,7 @@ import {
   type EasyTBrowserStorage,
 } from "../lib/easyt/storage.ts";
 import { isEasyTTrip } from "../lib/easyt/trip.ts";
+import { composeItineraryDay } from "../lib/easyt/itinerary-day-composition.ts";
 import { firstTripWorkspaceHref, itineraryWorkspaceHref, mapWorkspaceHref } from "../lib/easyt/trip-workspace-links.ts";
 import {
   formatImportDate,
@@ -208,11 +209,29 @@ test("canonical confirmation creates one normal trip with exact stops, bookings,
   assert.deepEqual(trip.stops.map((stop) => [stop.name, stop.arrivalDate, stop.departureDate, stop.nights]), [["Tokyo", "2027-04-02", "2027-04-06", 4], ["Kyoto", "2027-04-06", "2027-04-10", 4]]);
   assert.equal(trip.brief.bookings?.length, 3);
   assert.equal(trip.brief.bookings?.[0].endDate, "2027-04-06");
-  assert.equal(trip.planItems.length, 2);
+  assert.equal(trip.planItems.length, 9);
+  assert.equal(new Set(trip.planItems.map((item) => item.date)).size, 9);
+  assert.deepEqual(trip.planItems.find((item) => item.date === "2027-04-03")?.notes, ["Senso-ji"]);
+  assert.deepEqual(trip.planItems.find((item) => item.date === "2027-04-08")?.notes, ["Fushimi Inari"]);
+  assert.deepEqual(trip.brief.customActivities?.[2], ["Senso-ji"]);
+  assert.deepEqual(trip.brief.dayNotes?.[2], ["Morning visit"]);
+  const composed = composeItineraryDay(trip, trip.planItems.find((item) => item.date === "2027-04-03")!.id)!;
+  assert.deepEqual([...Object.values(composed.planned).flat(), ...composed.unslotted].map((item) => item.title), ["Senso-ji"]);
   assert.equal(trip.legs.find((leg) => leg.fromEndpoint?.name === "Tokyo" && leg.toEndpoint?.name === "Kyoto")?.mode, "train");
   assert.equal(firstTripWorkspaceHref(trip.id), "/journey/trip-spreadsheet-fixture?created=1");
   assert.equal(mapWorkspaceHref(trip.id), "/journey/trip-spreadsheet-fixture/map");
   assert.equal(itineraryWorkspaceHref(trip.id), "/journey/trip-spreadsheet-fixture/itinerary");
+});
+
+test("Philippines confirmation creates one day per date without inventing activity content", () => {
+  const proposal = buildSpreadsheetImportProposal(parseDelimitedText(philippinesImportCsv));
+  const manilaOrigin = { ...origin, name: "Manila", country: "Philippines", canonicalPlaceId: "fixture:manila" };
+  const trip = canonicalTripFromSpreadsheetProposal({ id: "trip-philippines-import", proposal, origin: manilaOrigin, places: resolvedPlaces(proposal) });
+  assert.equal(trip.planItems.length, 21);
+  assert.equal(trip.planItems[20].stopId, trip.stops[5].id);
+  assert.deepEqual(trip.planItems[20].notes, []);
+  assert.equal(trip.stops[0].id === trip.stops[5].id, false);
+  assert.equal(trip.planItems.some((item) => item.type !== "open"), false);
 });
 
 test("review is temporary; only explicit confirmation enters existing recovery and canonical cache paths", () => {
