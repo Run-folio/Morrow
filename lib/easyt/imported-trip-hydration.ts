@@ -1,4 +1,4 @@
-import type { PlanItem, TripStop } from "./trip.ts";
+import type { PlanItem, TripLeg, TripStop } from "./trip.ts";
 
 export type ImportedDatedDayInput = {
   tripId: string;
@@ -76,4 +76,33 @@ export function buildImportedDatedDays(input: ImportedDatedDayInput): ImportedDa
     ];
   }
   return { planItems, activityCommentsByDay };
+}
+
+/** Imported stop timing proves that a transfer exists, not how to make it. */
+export function unconfirmedImportedLeg(leg: TripLeg): TripLeg {
+  const {
+    transferImpact: _impact,
+    label: _label,
+    planningConfidence: _planningConfidence,
+    curatedRouteTransfer: _curatedRouteTransfer,
+    gatewayResolutionRequired: _gatewayResolutionRequired,
+    ...metadata
+  } = leg.routeMetadata;
+  return {
+    ...leg,
+    mode: "unknown",
+    distanceKm: null,
+    routedDistanceKm: null,
+    durationMinutes: null,
+    headlineMinutes: null,
+    doorToDoorMinutes: null,
+    usableDayLoss: null,
+    provider: null,
+    provenance: "unknown",
+    confidence: "unknown",
+    scheduleNeedsChecking: true,
+    segments: undefined,
+    routeGeometry: undefined,
+    routeMetadata: { ...metadata, planningEstimate: false, source: "spreadsheet-import-unconfirmed", roadFallbackEligible: false, routingConfidence: "unconfirmed" },
+  };
 }

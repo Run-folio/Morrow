@@ -24,6 +24,7 @@ import {
 } from "../lib/easyt/storage.ts";
 import { isEasyTTrip } from "../lib/easyt/trip.ts";
 import { composeItineraryDay } from "../lib/easyt/itinerary-day-composition.ts";
+import { resolveCanonicalRoadFallback } from "../lib/easyt/road-transfer-resolution.ts";
 import { firstTripWorkspaceHref, itineraryWorkspaceHref, mapWorkspaceHref } from "../lib/easyt/trip-workspace-links.ts";
 import {
   formatImportDate,
@@ -232,6 +233,43 @@ test("Philippines confirmation creates one day per date without inventing activi
   assert.deepEqual(trip.planItems[20].notes, []);
   assert.equal(trip.stops[0].id === trip.stops[5].id, false);
   assert.equal(trip.planItems.some((item) => item.type !== "open"), false);
+  assert.equal(trip.legs.length, 5);
+  assert.ok(trip.legs.every((leg) => leg.mode === "unknown" && leg.durationMinutes === null && leg.usableDayLoss === null && leg.scheduleNeedsChecking));
+  assert.ok(trip.legs.every((leg) => leg.routeMetadata.roadFallbackEligible === false));
+  assert.ok(trip.legs.every((leg) => leg.routeMetadata.label === undefined && leg.routeMetadata.transferImpact === undefined));
+});
+
+test("unbooked imported island legs never acquire a confident road duration from fallback", async () => {
+  const proposal = buildSpreadsheetImportProposal(parseDelimitedText(philippinesImportCsv));
+  const trip = canonicalTripFromSpreadsheetProposal({ id: "trip-island-legs", proposal, origin: { ...origin, name: "Manila", canonicalPlaceId: "fixture:manila" }, places: resolvedPlaces(proposal) });
+  for (const [from, to] of [["El Nido", "Bohol"], ["Siquijor", "Cebu City"]]) {
+    const leg = trip.legs.find((item) => item.fromEndpoint?.name === from && item.toEndpoint?.name === to)!;
+    const result = await resolveCanonicalRoadFallback(leg, { provider: { provider: "openrouteservice", route: async () => { throw new Error("Road provider must not be called"); } } });
+    assert.equal(result.reason, "explicit_or_unsupported_source");
+    assert.equal(result.leg.mode, "unknown");
+    assert.equal(result.leg.durationMinutes, null);
+  }
+});
+
+test("complete dated transport booking binds only the adjacent final Manila occurrence", () => {
+  const booked = philippinesImportCsv.split("\n").map((row, index) => `${row},${index === 0 ? "Transport,From,To,Transport date,Booking reference" : index === 6 ? "Flight,Cebu City,Manila,2026-12-30,BOOK-6" : ",,,,"}`).join("\n");
+  const proposal = buildSpreadsheetImportProposal(parseDelimitedText(booked));
+  const trip = canonicalTripFromSpreadsheetProposal({ id: "trip-booked-final", proposal, origin: { ...origin, name: "Manila", canonicalPlaceId: "fixture:manila" }, places: resolvedPlaces(proposal) });
+  assert.equal(proposal.bookings.filter((booking) => booking.type === "transport").length, 1);
+  const bookedLegs = trip.legs.filter((leg) => leg.routeMetadata.importedBookingId);
+  assert.equal(bookedLegs.length, 1);
+  assert.equal(bookedLegs[0].fromStopId, trip.stops[4].id);
+  assert.equal(bookedLegs[0].toStopId, trip.stops[5].id);
+  assert.equal(bookedLegs[0].mode, "flight");
+  assert.equal(bookedLegs[0].durationMinutes, null, "booking confirms mode but not a duration");
+});
+
+test("transport with matching names but a mismatched date cannot bind a leg", () => {
+  const mismatched = philippinesImportCsv.split("\n").map((row, index) => `${row},${index === 0 ? "Transport,From,To,Transport date,Booking reference" : index === 6 ? "Flight,Manila,El Nido,2026-12-30,BOOK-MISMATCH" : ",,,,"}`).join("\n");
+  const proposal = buildSpreadsheetImportProposal(parseDelimitedText(mismatched));
+  const trip = canonicalTripFromSpreadsheetProposal({ id: "trip-date-mismatch", proposal, origin: { ...origin, name: "Manila", canonicalPlaceId: "fixture:manila" }, places: resolvedPlaces(proposal) });
+  assert.equal(proposal.bookings.filter((booking) => booking.type === "transport").length, 1);
+  assert.equal(trip.legs.filter((leg) => leg.routeMetadata.importedBookingId).length, 0);
 });
 
 test("review is temporary; only explicit confirmation enters existing recovery and canonical cache paths", () => {

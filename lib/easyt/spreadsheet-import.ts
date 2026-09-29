@@ -1,5 +1,5 @@
 import { buildCanonicalTripLegs } from "./trip-legs.ts";
-import { buildImportedDatedDays } from "./imported-trip-hydration.ts";
+import { buildImportedDatedDays, unconfirmedImportedLeg } from "./imported-trip-hydration.ts";
 import {
   defaultTripIntent,
   tripFromBuilder,
@@ -656,15 +656,20 @@ export function canonicalTripFromSpreadsheetProposal(input: {
     tripId: id,
     origin: { name: origin.name, country: origin.country, canonicalPlaceId: origin.canonicalPlaceId, providerId: origin.providerId, coordinates: origin.coordinates },
     stops,
-  });
+  }).map(unconfirmedImportedLeg);
   for (const booking of proposal.bookings) {
     if (!booking.transportDetails) continue;
     const fromKey = normalise(booking.transportDetails.from);
     const toKey = normalise(booking.transportDetails.to);
+    const matches = legs.filter((leg) => {
+      const incoming = stops.find((stop) => stop.id === leg.toStopId);
+      return normalise(leg.fromEndpoint?.name ?? "") === fromKey
+        && normalise(leg.toEndpoint?.name ?? "") === toKey
+        && incoming?.arrivalDate === booking.date;
+    });
+    if (matches.length !== 1) continue;
     legs = legs.map((leg) => {
-      const fromName = normalise(leg.fromEndpoint?.name ?? "");
-      const toName = normalise(leg.toEndpoint?.name ?? "");
-      if (fromName !== fromKey || toName !== toKey) return leg;
+      if (leg.id !== matches[0].id || leg.routeMetadata.importedBookingId) return leg;
       const mode = modeForLeg(booking.transportDetails!.mode);
       return {
         ...leg,
@@ -673,7 +678,7 @@ export function canonicalTripFromSpreadsheetProposal(input: {
         provenance: "unknown" as const,
         confidence: booking.transportDetails!.mode ? "high" as const : "unknown" as const,
         scheduleNeedsChecking: true,
-        routeMetadata: { ...leg.routeMetadata, importedBookingId: booking.id, sourceMode: booking.transportDetails!.sourceMode },
+        routeMetadata: { ...leg.routeMetadata, source: "spreadsheet-import-booking", importedBookingId: booking.id, sourceMode: booking.transportDetails!.sourceMode },
       };
     });
   }
