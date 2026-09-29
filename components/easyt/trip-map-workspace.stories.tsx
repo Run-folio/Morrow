@@ -1,9 +1,11 @@
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
 import { setStorybookAuthOwner } from "../../.storybook/auth-client.mock";
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import "maplibre-gl/dist/maplibre-gl.css";
 import TripShell from "./trip-shell";
 import TripMapWorkspace from "./trip-map-workspace";
+import { GoogleTripMapCanvas } from "./google-trip-map-canvas";
+import type { GoogleTripMapApi } from "@/lib/easyt/google-trip-map-adapter";
 import { JourneyMapPlannerWorkspace, type JourneyMapPlannerWorkspaceProps } from "@/components/journey-map-planner-workspace";
 import type { JourneyLocalPlace } from "@/components/journey-local-finder";
 import { defaultTripIntent, type EasyTTrip, type PlanItem } from "@/lib/easyt/trip";
@@ -973,4 +975,68 @@ export const GooglePlacesEnrichmentMobile390: Story = {
 export const GooglePlacesEnrichmentUnavailable: Story = {
   ...GooglePlacesEnrichmentFixture,
   args: { storyTrip: goldenTriangleTrip, storyState: { mapMode: "detail", enrichmentOpen: true, enrichmentPlaces: [], enrichmentUnavailable: true } },
+};
+
+// Provider boundary fixture: the production canvas and event contract render without a live key.
+// Integrated discovery states below are exercised with the production workspace in Task 7.
+const googleCanvasFixtureApi = (() => {
+  class FixtureMap {
+    listeners = new Map<string, (event: { placeId?: string; stop?(): void }) => void>();
+    constructor(readonly element: HTMLElement) {
+      element.style.background = "var(--morrovia-surface, #f4f4fb)";
+      const label = document.createElement("p");
+      label.textContent = "Google canvas adapter fixture — no live tiles or Places data";
+      label.style.cssText = "position:absolute;left:20px;top:20px;max-width:240px";
+      element.append(label);
+      const nativePoi = document.createElement("button");
+      nativePoi.type = "button";
+      nativePoi.textContent = "Native POI outside Nearby";
+      nativePoi.style.cssText = "position:absolute;left:45%;top:42%;min-height:44px;padding:8px;border:1px solid currentColor;border-radius:12px;background:white";
+      nativePoi.onclick = () => this.listeners.get("click")?.({ placeId: "ChIJnative-story-fixture", stop() {} });
+      element.append(nativePoi);
+    }
+    addListener(name: string, callback: (event: { placeId?: string; stop?(): void }) => void) {
+      this.listeners.set(name, callback);
+      return { remove: () => this.listeners.delete(name) };
+    }
+    setCenter() {}
+    setZoom() {}
+  }
+  class FixtureMarker {
+    node: HTMLButtonElement;
+    constructor(options: { map: FixtureMap; title: string }) {
+      this.node = document.createElement("button");
+      this.node.type = "button";
+      this.node.textContent = options.title;
+      this.node.style.cssText = "position:relative;z-index:2;min-height:44px;margin:90px 16px 0;padding:8px;border:1px solid currentColor;border-radius:12px;background:white";
+      options.map.element.append(this.node);
+    }
+    addListener(_name: string, callback: () => void) { this.node.onclick = callback; return { remove: () => { this.node.onclick = null; } }; }
+    setMap(map: unknown) { if (!map) this.node.remove(); }
+  }
+  class FixtureLine {
+    addListener() { return { remove() {} }; }
+    setMap() {}
+  }
+  return { Map: FixtureMap, Marker: FixtureMarker, Polyline: FixtureLine } as unknown as GoogleTripMapApi;
+})();
+const loadFixtureGoogleCanvas = async () => googleCanvasFixtureApi;
+
+function GoogleCanvasAdapterStory() {
+  const [selection, setSelection] = useState("Choose a canonical stop or native POI");
+  return <section aria-label="Google canvas adapter fixture" style={{ position: "relative", height: "min(70vh, 620px)", margin: 24 }}>
+    <GoogleTripMapCanvas browserKey="storybook-fixture" sdkLoader={loadFixtureGoogleCanvas}
+      stops={[{ id: "delhi-first", name: "Delhi · first stop", coordinates: [77.209, 28.613] }, { id: "agra", name: "Agra", coordinates: [78.008, 27.176] }, { id: "delhi-return", name: "Delhi · return", coordinates: [77.209, 28.613] }]}
+      legs={[{ id: "delhi-agra", fromStopId: "delhi-first", toStopId: "agra" }]}
+      selectedStopId="agra" onSelectStop={(stopId) => setSelection(`Canonical stop: ${stopId}`)}
+      onSelectLeg={(legId) => setSelection(`Canonical leg: ${legId}`)}
+      onNativePoi={(placeId) => setSelection(`Native Place ID: ${placeId}`)}
+      onEmptyClick={() => setSelection("Map background")}
+      onUnavailable={() => setSelection("Provider unavailable")} />
+    <p role="status" style={{ position: "absolute", bottom: 16, left: 16, zIndex: 4, background: "white", padding: 12 }}>{selection}</p>
+  </section>;
+}
+
+export const GoogleCanvasAdapterFixture: Story = {
+  render: () => <GoogleCanvasAdapterStory />,
 };

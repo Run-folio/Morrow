@@ -7,6 +7,7 @@ import { ArrowRight, ArrowUpRight, BedDouble, Binoculars, Building2, CalendarDay
 import { useCallback, useEffect, useMemo, useRef, useState, type DragEvent, type KeyboardEvent as ReactKeyboardEvent, type PointerEvent as ReactPointerEvent } from "react";
 import { JourneyGlobe, type JourneyMapPlace } from "@/components/journey-globe";
 import { JourneyPlannerMap } from "@/components/journey-planner-map";
+import { GoogleTripMapCanvas } from "@/components/easyt/google-trip-map-canvas";
 import { JourneyCarousel } from "@/components/journey-carousel";
 import { JourneyLocalFinder, type JourneyLocalFinderInitialState, type JourneyLocalPlace } from "@/components/journey-local-finder";
 import { JourneyItineraryAccommodation } from "@/components/journey-itinerary-accommodation";
@@ -58,6 +59,9 @@ import { deriveTripDateFacts, formatTripNights, incomingLegForPlanItem, orderedT
 import { conciseMapDescription, formatMapDuration, mapRouteLegsFromTrip, type MapCopilotScope } from "@/lib/easyt/map-spatial-context";
 import type { MorroviaMapInsets, MorroviaMapSurface } from "@/lib/easyt/map-surface-policy";
 import type { EnrichedPlace } from "@/lib/easyt/place-enrichment";
+import { googleCanvasEligible } from "@/lib/easyt/google-trip-map-adapter";
+import { createLatestGoogleDetailRequest } from "@/lib/easyt/google-place-details-client";
+import { nativeGooglePoiSelection, type WorkspacePlaceSelection } from "@/lib/easyt/map-workspace-selection";
 import { originEndpointForTrip, routeEndpointForLeg, tripLegClassificationLabel, tripOriginEndpointId } from "@/lib/easyt/trip-legs";
 import { clearTripLegTransportChoice, effectiveTripLeg, selectTripLegTransportChoice, tripWithEffectiveTransportChoices } from "@/lib/easyt/transport-mode-choice";
 import EasyTNavigation from "@/app/journey/easyt-navigation";
@@ -443,8 +447,13 @@ export function JourneyMapPlannerWorkspace({
   const [localMapPlaces, setLocalMapPlaces] = useState<JourneyLocalPlace[]>(storyState?.localPlaces ?? []);
   const [enrichmentOpen, setEnrichmentOpen] = useState(Boolean(storyState?.enrichmentOpen));
   const [enrichmentAvailable, setEnrichmentAvailable] = useState(Boolean(storyState?.enrichmentPlaces));
+  const [googleSdkUnavailable, setGoogleSdkUnavailable] = useState(false);
   const [seeMapPlaces, setSeeMapPlaces] = useState<JourneyItineraryDiscoveryResult[]>([]);
   const [selectedMapResult, setSelectedMapResult] = useState<MapResultPlace | null>(null);
+  const [workspacePlaceSelection, setWorkspacePlaceSelection] = useState<WorkspacePlaceSelection>({ kind: "none" });
+  const [selectedGoogleDetail, setSelectedGoogleDetail] = useState<EnrichedPlace | null>(null);
+  const [googleDetailStatus, setGoogleDetailStatus] = useState<"idle" | "loading" | "unavailable">("idle");
+  const googleDetailRequestRef = useRef(createLatestGoogleDetailRequest());
   const lastVisibleMapResultIdRef = useRef<string | null>(null);
   const [plannerWarning, setPlannerWarning] = useState("");
   const [lastPlannerTrip, setLastPlannerTrip] = useState<EasyTTrip | null>(null);
@@ -567,6 +576,32 @@ export function JourneyMapPlannerWorkspace({
   }, [selectedDay.id, selectedPlanItem?.stopId]);
   const selectedTripStop = customTrip?.stops.find((stop) => stop.id === (mapDetailScope === "stop" ? selectedMapStopId : null))
     ?? customTrip?.stops.find((stop) => stop.id === selectedPlanItem?.stopId);
+  const googleCanvasActive = googleCanvasEligible({
+    flag: enrichmentAvailable,
+    authenticated: Boolean(authenticatedOwnerId),
+    expanded: isExpandedMap,
+    serverAvailable: enrichmentAvailable && !googleSdkUnavailable,
+    browserKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_BROWSER_KEY,
+  });
+  const selectedGooglePlaceId = workspacePlaceSelection.kind === "google" ? workspacePlaceSelection.placeId : null;
+  useEffect(() => {
+    if (!googleCanvasActive || !selectedGooglePlaceId) {
+      googleDetailRequestRef.current.clear();
+      setSelectedGoogleDetail(null);
+      setGoogleDetailStatus("idle");
+      return;
+    }
+    setSelectedGoogleDetail(null);
+    setGoogleDetailStatus("loading");
+    const request = googleDetailRequestRef.current;
+    let active = true;
+    void request.select(selectedGooglePlaceId, (detail) => {
+      if (!active) return;
+      setSelectedGoogleDetail(detail);
+      setGoogleDetailStatus("idle");
+    }).then(() => { if (active) setGoogleDetailStatus((status) => status === "loading" ? "unavailable" : status); });
+    return () => { active = false; request.clear(); };
+  }, [googleCanvasActive, selectedGooglePlaceId]);
   const selectedRecommendedLeg = customTrip && selectedPlanItem ? incomingLegForPlanItem(customTrip, selectedPlanItem) ?? undefined : undefined;
   const selectedLeg = customTrip && selectedRecommendedLeg ? effectiveTripLeg(customTrip, selectedRecommendedLeg) : undefined;
   const selectedCanonicalTravel = customTrip && selectedLeg ? {
@@ -840,8 +875,8 @@ export function JourneyMapPlannerWorkspace({
   const selectedDestinationMapsUrl = selectedDestinationCoordinates
     ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${selectedDestinationCoordinates[1]},${selectedDestinationCoordinates[0]}`)}`
     : null;
-  const wholeRouteMapContext = mapMode === "overview" && !selectedLocalPlace && !selectedPlannerPin && !selectedRouteLeg;
-  const hasExplicitMapContext = Boolean(selectedLocalPlace || selectedPlannerPin || selectedRouteLeg);
+  const wholeRouteMapContext = mapMode === "overview" && !selectedLocalPlace && !selectedPlannerPin && !selectedRouteLeg && !selectedGooglePlaceId;
+  const hasExplicitMapContext = Boolean(selectedLocalPlace || selectedPlannerPin || selectedRouteLeg || selectedGooglePlaceId);
   const mapFocusOffset: [number, number] | undefined = isShellPresentation && mapCameraOcclusions.bottom
     ? undefined
     : isShellPresentation
@@ -930,7 +965,9 @@ export function JourneyMapPlannerWorkspace({
       ? "Map pin"
       : mobileMapSheetView === "planner"
         ? "Shape the day"
-        : selectedLocalPlace?.name
+        : selectedGoogleDetail?.name
+          ?? (selectedGooglePlaceId ? "Selected Google place" : null)
+          ?? selectedLocalPlace?.name
           ?? selectedPlannerPin?.title
           ?? (selectedRouteLeg ? `${selectedRouteLeg.fromName} → ${selectedRouteLeg.toName}` : null)
           ?? (mapMode === "overview" ? "Whole route" : selectedTripStop?.name ?? selected.city);
@@ -1045,6 +1082,49 @@ export function JourneyMapPlannerWorkspace({
     setMobileShapeDayOpen(false);
     setMobileMapDrawerOpen(true);
   }, [canonicalMapLegs]);
+  const selectCanonicalMapLeg = (legId: string) => {
+    if (!canonicalMapLegs.some((leg) => leg.id === legId)) return;
+    drawerScrollResetRef.current = true;
+    setMobileShapeDayOpen(false);
+    setSelectedRouteLegId(legId);
+    setTransferDetailsExpanded(false);
+    setSelectedMapResult(null);
+    setWorkspacePlaceSelection({ kind: "none" });
+    setSelectedPlannerPin(null);
+    setPinPlacementMode(false);
+    setDestinationExpanded(false);
+    setMobileMapDrawerOpen(true);
+  };
+  const selectCanonicalMapStop = (stopId: string) => {
+    const firstItem = customTrip?.planItems.filter((item) => item.stopId === stopId).sort((left, right) => left.dayNumber - right.dayNumber)[0];
+    if (!customTrip || !customTrip.stops.some((stop) => stop.id === stopId)) return;
+    drawerScrollResetRef.current = true;
+    setIsPlaying(false);
+    setMobileShapeDayOpen(false);
+    setSelectedMapStopId(stopId);
+    if (firstItem) {
+      setSelectedId(`${customTrip.id}-day-${firstItem.dayNumber}`);
+      setSelectedDayId(`${customTrip.id}-calendar-${firstItem.dayNumber}`);
+    }
+    setSelectedMapResult(null);
+    setWorkspacePlaceSelection({ kind: "none" });
+    setSelectedPlannerPin(null);
+    setSelectedRouteLegId(null);
+    setMapDetailScope("stop");
+    setMapMode("detail");
+    setMobileMapDrawerOpen(true);
+  };
+  const selectGoogleNativePoi = (placeId: string) => {
+    const stopId = selectedTripStop?.id;
+    if (!stopId || !customTrip?.stops.some((stop) => stop.id === stopId)) return;
+    const dayId = selectedPlanItem?.stopId === stopId ? selectedPlanItem.id : null;
+    setWorkspacePlaceSelection(nativeGooglePoiSelection(placeId, stopId, dayId));
+    setSelectedMapResult(null);
+    setSelectedPlannerPin(null);
+    setSelectedRouteLegId(null);
+    setMobileShapeDayOpen(false);
+    setMobileMapDrawerOpen(true);
+  };
   const selectMapPlanDay = useCallback((dayNumber: number) => {
     if (!customTrip || !selectedPlanItem) return;
     const day = customTrip.planItems.find((candidate) => candidate.dayNumber === dayNumber && candidate.stopId === selectedPlanItem.stopId);
@@ -2480,7 +2560,21 @@ export function JourneyMapPlannerWorkspace({
       <main ref={workspaceRef} data-map-expanded={isShellPresentation && isExpandedMap} className={`${styles.journey} ${mobileLayout.plan} ${mapDocks.plan} ${hasCanonicalPlanner ? styles.canonicalPlanner : ""} ${isShellPresentation ? styles.shellPlanner : ""} ${isShellPresentation && isExpandedMap ? styles.shellPlannerExpanded : ""}`}>
       {hasCanonicalPlanner ? (
         <div className={styles.mapDetailLayer}>
-            <JourneyPlannerMap
+            {googleCanvasActive ? <GoogleTripMapCanvas
+              browserKey={process.env.NEXT_PUBLIC_GOOGLE_MAPS_BROWSER_KEY!}
+              mapId={process.env.NEXT_PUBLIC_GOOGLE_MAPS_MAP_ID}
+              stops={canonicalMapStops.map((stop) => ({ id: stop.id, name: stop.city, coordinates: stop.coordinates ?? null }))}
+              legs={canonicalMapLegs.map((leg) => ({ id: leg.id, fromStopId: leg.fromStopId, toStopId: leg.toStopId }))}
+              selectedStopId={mapMode === "overview" ? null : selectedTripStop?.id ?? null}
+              onNativePoi={selectGoogleNativePoi}
+              onEmptyClick={(coordinates) => {
+                if (pinPlacementMode) { setPinCoordinates(coordinates); setPinPlacementMode(false); }
+                else setWorkspacePlaceSelection({ kind: "none" });
+              }}
+              onSelectStop={selectCanonicalMapStop}
+              onSelectLeg={selectCanonicalMapLeg}
+              onUnavailable={() => setGoogleSdkUnavailable(true)}
+            /> : <JourneyPlannerMap
               surface={surface}
               stops={canonicalMapStops}
               legs={canonicalMapLegs}
@@ -2507,26 +2601,9 @@ export function JourneyMapPlannerWorkspace({
               onMapPinDrop={(coordinates) => { setPinCoordinates(coordinates); setPinPlacementMode(false); }}
               onPlannerPinSelect={selectPlannerPin}
               onMapResultSelect={(place) => { drawerScrollResetRef.current = true; setMobileShapeDayOpen(false); selectMapResult(place); setMobileMapDrawerOpen(true); }}
-              onLegSelect={(leg) => { drawerScrollResetRef.current = true; setMobileShapeDayOpen(false); setSelectedRouteLegId(leg.id); setTransferDetailsExpanded(false); setSelectedMapResult(null); setSelectedPlannerPin(null); setPinPlacementMode(false); setDestinationExpanded(false); setMobileMapDrawerOpen(true); }}
-              onSelect={(id) => {
-                const firstItem = customTrip?.planItems.filter((item) => item.stopId === id).sort((left, right) => left.dayNumber - right.dayNumber)[0];
-                if (!customTrip) return;
-                drawerScrollResetRef.current = true;
-                setIsPlaying(false);
-                setMobileShapeDayOpen(false);
-                setSelectedMapStopId(id);
-                if (firstItem) {
-                  setSelectedId(`${customTrip.id}-day-${firstItem.dayNumber}`);
-                  setSelectedDayId(`${customTrip.id}-calendar-${firstItem.dayNumber}`);
-                }
-                setSelectedMapResult(null);
-                setSelectedPlannerPin(null);
-                setSelectedRouteLegId(null);
-                setMapDetailScope("stop");
-                setMapMode("detail");
-                setMobileMapDrawerOpen(true);
-              }}
-            />
+              onLegSelect={(leg) => selectCanonicalMapLeg(leg.id)}
+              onSelect={selectCanonicalMapStop}
+            />}
           </div>
       ) : (
         <>
@@ -2707,15 +2784,23 @@ export function JourneyMapPlannerWorkspace({
           </EasyTButton>
         </header>
         <div id="map-contextual-sheet-content" ref={drawerBodyRef} className={styles.mobileMapSheetBody}>
-      <aside className={`${styles.itineraryPanel} ${hasCanonicalPlanner ? `${styles.itineraryWithFinder} ${styles.canonicalPlannerStatus}` : ""} ${hasCanonicalPlanner && tripStatusExpanded ? styles.tripStatusExpanded : ""} ${tripHealthDetail ? styles.healthDetailOpen : ""} ${pinPlacementMode || Boolean(pinCoordinates) ? styles.mapContextHidden : ""} ${defaultMapContext ? styles.mapDefaultContext : ""} ${isShellPresentation && !showShellContext ? styles.mapContextEmpty : ""} ${isShellPresentation && selectedRouteLeg ? styles.mapTransferContext : ""} ${isShellPresentation && (selectedLocalPlace || selectedPlannerPin) ? styles.mapPlaceContext : ""} ${isShellPresentation && mapMode === "detail" && !selectedLocalPlace && !selectedPlannerPin && !selectedRouteLeg ? styles.mapDestinationContext : ""}`} aria-label="Selected map context" aria-live="polite">
-        {isShellPresentation && customTrip ? showShellContext ? <section className={`${styles.mapContextPanel} ${selectedLocalPlace || selectedPlannerPin || selectedRouteLeg ? styles.mapContextEntity : ""}`} aria-labelledby="map-context-title">
-          <p className={styles.mapContextEyebrow}>{selectedLocalPlace || selectedPlannerPin ? "Selected place" : selectedRouteLeg ? "Selected transfer" : mapMode === "overview" ? "Whole route" : mapDetailScope === "day" ? "Selected day" : "Selected stop"}</p>
+      <aside className={`${styles.itineraryPanel} ${hasCanonicalPlanner ? `${styles.itineraryWithFinder} ${styles.canonicalPlannerStatus}` : ""} ${hasCanonicalPlanner && tripStatusExpanded ? styles.tripStatusExpanded : ""} ${tripHealthDetail ? styles.healthDetailOpen : ""} ${pinPlacementMode || Boolean(pinCoordinates) ? styles.mapContextHidden : ""} ${defaultMapContext ? styles.mapDefaultContext : ""} ${isShellPresentation && !showShellContext ? styles.mapContextEmpty : ""} ${isShellPresentation && selectedRouteLeg ? styles.mapTransferContext : ""} ${isShellPresentation && (selectedLocalPlace || selectedPlannerPin || selectedGooglePlaceId) ? styles.mapPlaceContext : ""} ${isShellPresentation && mapMode === "detail" && !selectedLocalPlace && !selectedPlannerPin && !selectedRouteLeg && !selectedGooglePlaceId ? styles.mapDestinationContext : ""}`} aria-label="Selected map context" aria-live="polite">
+        {isShellPresentation && customTrip ? showShellContext ? <section className={`${styles.mapContextPanel} ${selectedLocalPlace || selectedPlannerPin || selectedRouteLeg || selectedGooglePlaceId ? styles.mapContextEntity : ""}`} aria-labelledby="map-context-title">
+          <p className={styles.mapContextEyebrow}>{selectedGooglePlaceId || selectedLocalPlace || selectedPlannerPin ? "Selected place" : selectedRouteLeg ? "Selected transfer" : mapMode === "overview" ? "Whole route" : mapDetailScope === "day" ? "Selected day" : "Selected stop"}</p>
           <div className={styles.mapContextHeading}>
-            <h2 id="map-context-title" className={selectedRecommendationDetail ? "sr-only" : undefined}>{selectedLocalPlace?.name ?? selectedPlannerPin?.title ?? (selectedRouteLeg ? `${selectedRouteLeg.fromName} → ${selectedRouteLeg.toName}` : mapMode === "overview" ? `${customTrip.stops.length} ${customTrip.stops.length === 1 ? "stop" : "stops"}, one connected trip` : selectedTripStop?.name ?? selected.city)}</h2>
-            {selectedLocalPlace ? <button type="button" onClick={dismissSelectedMapResult} aria-label="Close selected place details"><X aria-hidden="true" /></button> : selectedPlannerPin ? <button type="button" onClick={() => { const id = selectedPlannerPin.id; setSelectedPlannerPin(null); setMobileMapDrawerOpen(false); restoreMapMarkerFocus("plannerPinId", id); }} aria-label="Close selected pin details"><X aria-hidden="true" /></button> : selectedRouteLeg ? <button type="button" onClick={clearSelectedRouteLeg} aria-label="Close transfer details"><X aria-hidden="true" /></button> : mapMode === "detail" ? <button type="button" onClick={resetWholeRoute} aria-label="Close destination details"><X aria-hidden="true" /></button> : null}
+            <h2 id="map-context-title" className={selectedRecommendationDetail ? "sr-only" : undefined}>{selectedGoogleDetail?.name ?? (selectedGooglePlaceId ? "Selected Google place" : null) ?? selectedLocalPlace?.name ?? selectedPlannerPin?.title ?? (selectedRouteLeg ? `${selectedRouteLeg.fromName} → ${selectedRouteLeg.toName}` : mapMode === "overview" ? `${customTrip.stops.length} ${customTrip.stops.length === 1 ? "stop" : "stops"}, one connected trip` : selectedTripStop?.name ?? selected.city)}</h2>
+            {selectedGooglePlaceId ? <button type="button" onClick={() => setWorkspacePlaceSelection({ kind: "none" })} aria-label="Close selected Google place details"><X aria-hidden="true" /></button> : selectedLocalPlace ? <button type="button" onClick={dismissSelectedMapResult} aria-label="Close selected place details"><X aria-hidden="true" /></button> : selectedPlannerPin ? <button type="button" onClick={() => { const id = selectedPlannerPin.id; setSelectedPlannerPin(null); setMobileMapDrawerOpen(false); restoreMapMarkerFocus("plannerPinId", id); }} aria-label="Close selected pin details"><X aria-hidden="true" /></button> : selectedRouteLeg ? <button type="button" onClick={clearSelectedRouteLeg} aria-label="Close transfer details"><X aria-hidden="true" /></button> : mapMode === "detail" ? <button type="button" onClick={resetWholeRoute} aria-label="Close destination details"><X aria-hidden="true" /></button> : null}
           </div>
 
-          {selectedRecommendationDetail && selectedLocalPlace ? <div className={styles.mapPlaceDetail}>
+          {selectedGooglePlaceId ? <div className={styles.mapPlaceDetail}>
+            <p>{workspacePlaceSelection.kind === "google" ? `At ${customTrip.stops.find((stop) => stop.id === workspacePlaceSelection.stopId)?.name ?? "selected stop"}${selectedPlanItem?.id === workspacePlaceSelection.dayId ? ` · Day ${selectedPlanItem.dayNumber}` : ""}` : null}</p>
+            {googleDetailStatus === "loading" ? <p role="status">Loading place details…</p> : null}
+            {googleDetailStatus === "unavailable" ? <p role="status">Place details unavailable. Select the place again to retry.</p> : null}
+            {selectedGoogleDetail?.category ? <p>{selectedGoogleDetail.category}</p> : null}
+            {selectedGoogleDetail?.address ? <p>{selectedGoogleDetail.address}</p> : null}
+            {selectedGoogleDetail ? <a href={selectedGoogleDetail.mapsUrl} target="_blank" rel="noopener noreferrer">Open in Google Maps <ArrowUpRight aria-hidden="true" /></a> : null}
+            {selectedGoogleDetail?.attributions?.map((item) => <small key={item.name}>{item.url ? <a href={item.url} target="_blank" rel="noopener noreferrer">{item.name}</a> : item.name}</small>)}
+          </div> : selectedRecommendationDetail && selectedLocalPlace ? <div className={styles.mapPlaceDetail}>
             <ItineraryItemDetail
               embedded
               omitEmptyMedia
@@ -2873,8 +2958,8 @@ export function JourneyMapPlannerWorkspace({
         <header className={styles.shapeDayHeader}><small>{language === "es" ? `EN ${selected.city.toLocaleUpperCase()}` : `AT ${selected.city.toLocaleUpperCase()}`}</small><span><strong>Shape the day</strong>{selectedTripStop?.nights ? <em>{selectedTripStop.nights} {selectedTripStop.nights === 1 ? "night" : "nights"}</em> : null}</span><button type="button" className={styles.mobileShapeDayClose} onClick={() => { setMobileShapeDayOpen(false); setMobileMapDrawerOpen(false); }} aria-label="Close Shape the day"><X aria-hidden="true" /></button><div className={styles.finderTabs} role="tablist" aria-label="Shape the day">
           {shapeDayTabs.map((tab) => <button key={tab} type="button" role="tab" aria-selected={!enrichmentOpen && shapeDayTab === tab} aria-pressed={!enrichmentOpen && shapeDayTab === tab} tabIndex={!enrichmentOpen && shapeDayTab === tab ? 0 : -1} className={!enrichmentOpen && shapeDayTab === tab ? styles.finderTabActive : ""} onClick={() => { setEnrichmentOpen(false); selectShapeDayTab(tab); }} onKeyDown={(event) => onShapeDayTabKeyDown(event, tab)}>{tab === "plan" ? "Plan" : tab === "stay" ? "Stay" : tab === "eat" ? "Eat" : "See"}</button>)}
         </div>{customTrip && tripIssueCount > 0 ? <details className={styles.mobileTripStatus} open={tripStatusExpanded} onToggle={(event) => setTripStatusExpanded(event.currentTarget.open)}><summary><span>{language === "es" ? "Estado del viaje" : "Trip status"}</span><b>{tripIssueCount} {language === "es" ? "problemas" : tripIssueCount === 1 ? "issue" : "issues"}</b></summary></details> : null}</header>
-        {enrichmentAvailable && selectedTripStop && selectedBaseCoordinates ? <EasyTButton className={styles.enrichmentToggle} size="small" variant={enrichmentOpen ? "secondary" : "quiet"} aria-pressed={enrichmentOpen} onClick={() => { if (!enrichmentOpen) trackEvent("map_place_enrichment_opened", { category: "see" }); setEnrichmentOpen(!enrichmentOpen); }}>{enrichmentOpen ? "Back to day planning" : "Explore with Google Maps"}</EasyTButton> : null}
-        {enrichmentOpen && selectedTripStop && selectedBaseCoordinates ? <div className={styles.enrichmentPanel}><MapPlaceEnrichment key={selectedTripStop.id} stopId={selectedTripStop.id} destination={selectedTripStop.name} coordinates={selectedBaseCoordinates} fixturePlaces={storyState?.enrichmentPlaces} fixtureUnavailable={storyState?.enrichmentUnavailable} /></div> : null}
+        {googleCanvasActive && selectedTripStop && selectedBaseCoordinates ? <EasyTButton className={styles.enrichmentToggle} size="small" variant={enrichmentOpen ? "secondary" : "quiet"} aria-pressed={enrichmentOpen} onClick={() => { if (!enrichmentOpen) trackEvent("map_place_enrichment_opened", { category: "see" }); setEnrichmentOpen(!enrichmentOpen); }}>{enrichmentOpen ? "Back to day planning" : "Explore with Google Maps"}</EasyTButton> : null}
+        {googleCanvasActive && enrichmentOpen && selectedTripStop && selectedBaseCoordinates ? <div className={styles.enrichmentPanel}><MapPlaceEnrichment key={selectedTripStop.id} stopId={selectedTripStop.id} destination={selectedTripStop.name} coordinates={selectedBaseCoordinates} fixturePlaces={storyState?.enrichmentPlaces} fixtureUnavailable={storyState?.enrichmentUnavailable} /></div> : null}
         {!enrichmentOpen && shapeDayTab === "plan" ? <PlanWorkspace
           context={{
             selectedDay,
