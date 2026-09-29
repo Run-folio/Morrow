@@ -1148,6 +1148,22 @@ export function routableHandoffMentions(mentions: ResolvedPlaceMention[]) {
     && mention.routability === "direct_destination");
 }
 
+/** Optional coordinate lookup for a known direct stop, or candidate lookup
+ * for a named unresolved semantic destination. Broad areas remain Discovery
+ * decisions and cannot become guessed route stops through this path. */
+export function handoffLookupMentions(mentions: readonly ResolvedPlaceMention[]) {
+  return mentions.filter((mention) => {
+    if (mention.role === "excluded" || mention.role === "fixed_end" || mention.role === "anchor"
+      || mention.requiresBaseSelection) return false;
+    if (mention.status === "unresolved") return mention.placeType === "unknown"
+      && (mention.role === "preferred" || mention.role === "required" || mention.role === "origin" || mention.role === "fixed_start")
+      && Boolean(mention.sourceText.trim());
+    return (mention.status === "resolved" || mention.status === "partially_resolved")
+      && mention.routability === "direct_destination" && Boolean(mention.canonicalPlaceId)
+      && !mention.coordinates;
+  });
+}
+
 export function homeTripDraftTimingFlexibility(
   draft: Pick<HomeTripDraft, "datesExplicit">,
   fallback: "fixed" | "flexible",
@@ -1183,6 +1199,59 @@ export async function resolveHandoffBatch<T, R>(
       if (timeout) clearTimeout(timeout);
     }
   }));
+}
+
+export type HandoffOutcome<T, R> = { item: T; value?: R; status: "resolved" | "failed" | "timeout" };
+
+/** Publish each occurrence independently. The caller owns generation and
+ * canonical application; this queue owns only bounded lookup scheduling. */
+export async function resolveHandoffIncrementally<T, R>(
+  items: readonly T[],
+  resolveItem: (item: T, signal: AbortSignal) => Promise<R>,
+  options: {
+    signal?: AbortSignal;
+    concurrency?: number;
+    timeoutMs?: number;
+    onOutcome: (outcome: HandoffOutcome<T, R>) => void;
+  },
+): Promise<HandoffOutcome<T, R>[]> {
+  const concurrency = Math.max(1, Math.min(3, Math.floor(options.concurrency ?? 3)));
+  const timeoutMs = Math.max(1, Math.min(10_000, options.timeoutMs ?? 4_000));
+  const outcomes: HandoffOutcome<T, R>[] = new Array(items.length);
+  let nextIndex = 0;
+  const worker = async () => {
+    while (nextIndex < items.length && !options.signal?.aborted) {
+      const index = nextIndex++;
+      const item = items[index]!;
+      const controller = new AbortController();
+      let timedOut = false;
+      let timer: ReturnType<typeof setTimeout> | undefined;
+      let onAbort: (() => void) | undefined;
+      const interrupted = new Promise<never>((_, reject) => {
+        onAbort = () => { controller.abort(); reject(new Error("Place resolution cancelled")); };
+        options.signal?.addEventListener("abort", onAbort, { once: true });
+        timer = setTimeout(() => {
+          timedOut = true;
+          controller.abort();
+          reject(new Error("Place resolution timed out"));
+        }, timeoutMs);
+      });
+      let outcome: HandoffOutcome<T, R>;
+      try {
+        const value = await Promise.race([resolveItem(item, controller.signal), interrupted]);
+        outcome = { item, value, status: "resolved" };
+      } catch {
+        outcome = { item, status: timedOut ? "timeout" : "failed" };
+      } finally {
+        if (timer) clearTimeout(timer);
+        if (onAbort) options.signal?.removeEventListener("abort", onAbort);
+      }
+      outcomes[index] = outcome;
+      if (!options.signal?.aborted) options.onOutcome(outcome);
+    }
+  };
+  await Promise.all(Array.from({ length: Math.min(concurrency, items.length) }, () => worker()));
+  return outcomes;
 }
 
 function draftMatchesStoredValue(draft: HomeTripDraft, stored: HomeTripDraft) {

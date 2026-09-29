@@ -36,7 +36,7 @@ import { routePlannerPayload } from "@/lib/easyt/public-route-handoff";
 import { defaultTravelProfile, travelProfileFromUnknown, tripInterestsWithProfileDefaults, type TravelProfile } from "@/lib/easyt/travel-profile";
 import { firstTripWorkspaceHref, mapWorkspaceHref, tripWorkspaceHref } from "@/lib/easyt/trip-workspace-links";
 import { createLatestJourneyCaptureRequestGate, journeyCaptureFailureMessage, requestJourneyCapture } from "@/lib/easyt/journey-capture-client";
-import { HOME_TRIP_DRAFT_KEY, createPendingIntakeReceipt, homepageHandoffMatchesTrip, homepageHandoffReceiptForOwner, homepageReceiptForProjection, homepageSemanticInputFingerprint, projectHomepageInput, readHomepageInput, pendingIntakeReceiptForOwner, pendingHomepageHandoffForOwner, homeTripDraftInterestsWereExplicit, homeTripDraftTimingFlexibility, initialHandoffRouteStops, mergeHandoffLocationChoice, preferredHandoffLocationChoice, removeHomeTripDraftIfDurable, resolveHandoffBatch, routableHandoffMentions, tripInterestsFromHomeDraft, type HandoffLocationChoice, type HomeTripDraft, type HomepageInputSnapshot, type PendingHomeTripHandoff, type PendingIntakeReceipt } from "@/lib/easyt/home-trip-handoff";
+import { HOME_TRIP_DRAFT_KEY, createPendingIntakeReceipt, handoffLookupMentions, homepageHandoffMatchesTrip, homepageHandoffReceiptForOwner, homepageReceiptForProjection, homepageSemanticInputFingerprint, projectHomepageInput, readHomepageInput, pendingIntakeReceiptForOwner, pendingHomepageHandoffForOwner, homeTripDraftInterestsWereExplicit, homeTripDraftTimingFlexibility, initialHandoffRouteStops, mergeHandoffLocationChoice, preferredHandoffLocationChoice, removeHomeTripDraftIfDurable, resolveHandoffIncrementally, routableHandoffMentions, tripInterestsFromHomeDraft, type HandoffLocationChoice, type HomeTripDraft, type HomepageInputSnapshot, type PendingHomeTripHandoff, type PendingIntakeReceipt } from "@/lib/easyt/home-trip-handoff";
 import { resolveNewTripEntryState, type NewTripEntryState } from "./new-trip-entry-state";
 import { NewTripStarter } from "./new-trip-starter";
 import type { JourneyCaptureResult } from "@/lib/easyt/journey-capture";
@@ -471,6 +471,12 @@ function TripBuilderDocument() {
   } | null>(null);
   const pendingInterpretationRef = useRef<PendingIntakeReceipt | null>(null);
   const activeProjectionTokenRef = useRef<string | null>(null);
+  const handoffLookupSessionRef = useRef<{
+    controller: AbortController;
+    lookups: Map<string, Promise<LocationChoice[]>>;
+    statuses: Map<string, "pending" | "resolved" | "needs-confirmation" | "failed">;
+    retry?: (mentionId: string) => void;
+  } | null>(null);
   const [pendingInterpretation, setPendingInterpretation] = useState<{ receipt: PendingIntakeReceipt; fromHomepage: boolean } | null>(null);
   const [pendingInterpretationRetry, setPendingInterpretationRetry] = useState(0);
   const captureRequestGateRef = useRef<ReturnType<typeof createLatestJourneyCaptureRequestGate> | null>(null);
@@ -575,6 +581,7 @@ function TripBuilderDocument() {
   }, [selectedRouteStopId, stops]);
   const [locationChoices, setLocationChoices] = useState<Array<{ mention: CapturedLocation; choices: LocationChoice[] }>>([]);
   const [resolvingLocations, setResolvingLocations] = useState(false);
+  const [handoffResolutionStatuses, setHandoffResolutionStatuses] = useState<Record<string, "pending" | "resolved" | "needs-confirmation" | "failed">>({});
   const [intakeMentions, setIntakeMentions] = useState<CapturedLocation[]>([]);
   const [placeSelections, setPlaceSelections] = useState<PlaceSelection[]>([]);
   const [planningSuggestions, setPlanningSuggestions] = useState<GuidedPlanningAreaSuggestion[]>([]);
@@ -653,6 +660,7 @@ function TripBuilderDocument() {
   }, []);
 
   useEffect(() => () => captureRequestGateRef.current?.cancel(), []);
+  useEffect(() => () => handoffLookupSessionRef.current?.controller.abort(), []);
 
   useEffect(() => {
     const updateRememberedOwner = () => setRememberedOwnerId(loadRememberedOwner());
@@ -771,34 +779,69 @@ function TripBuilderDocument() {
     );
     const initialStops = initialHandoffRouteStops(locationMentions, draftStops, capturedJourneyEnd);
     if (initialStops.length) setStops(initialStops);
+    handoffLookupSessionRef.current?.controller.abort();
+    handoffLookupSessionRef.current?.lookups.clear();
+    const lookupSession = {
+      controller: new AbortController(), lookups: new Map<string, Promise<LocationChoice[]>>(),
+      statuses: new Map<string, "pending" | "resolved" | "needs-confirmation" | "failed">(),
+      retry: undefined as ((mentionId: string) => void) | undefined,
+    };
+    handoffLookupSessionRef.current = lookupSession;
+    setLocationChoices([]);
     if (locationMentions.length) {
       setIntakeMentions(locationMentions);
-      const routableMentions = routableHandoffMentions(locationMentions);
+      const lookupMentions = handoffLookupMentions(locationMentions);
+      lookupMentions.forEach((mention) => lookupSession.statuses.set(mention.mentionId, "pending"));
+      setHandoffResolutionStatuses(Object.fromEntries(lookupMentions.map((mention) => [mention.mentionId, "pending" as const])));
       // Canonical handoffs are already valid route input. Provider
       // lookups may enrich them, but their timing must not suppress the
       // itinerary or create a browser-dependent false validation block.
-      setResolvingLocations(Boolean(routableMentions.length) && !builderRouteInputIsReady(initialStops));
+      setResolvingLocations(Boolean(lookupMentions.length) && !builderRouteInputIsReady(initialStops));
+      const originVersion = originResolutionVersionRef.current;
+      const seedById = new Map(initialStops.map((stop) => [stop.id, stop]));
       // Let the builder render immediately. These requests enrich the
       // route after arrival instead of holding the homepage transition.
-      void (async () => {
-        const outcomes = await resolveHandoffBatch(routableMentions, async (mention, signal) => {
-            const country = mention.parentCountries.length === 1 ? mention.parentCountries[0] : undefined;
-            const response = await fetch(`/api/journey-geocode?place=${encodeURIComponent(mention.canonicalName)}&candidates=1${country ? `&country=${encodeURIComponent(country)}` : ""}`, { signal });
+      const lookupKey = (mention: CapturedLocation) => `${mention.canonicalName.toLocaleLowerCase()}\u001f${mention.parentCountries.length === 1 ? mention.parentCountries[0]!.toLocaleLowerCase() : ""}`;
+      const resolveMention = async (mention: CapturedLocation) => {
+        const country = mention.parentCountries.length === 1 ? mention.parentCountries[0] : undefined;
+        const key = lookupKey(mention);
+        let shared = lookupSession.lookups.get(key);
+        if (!shared) {
+          shared = (async () => {
+            const response = await fetch(`/api/journey-geocode?place=${encodeURIComponent(mention.canonicalName)}&candidates=1${country ? `&country=${encodeURIComponent(country)}` : ""}`, { signal: lookupSession.controller.signal });
+            if (!response.ok) throw new Error("Place lookup unavailable");
             const payload = await response.json() as { candidates?: LocationChoice[] };
-            return { mention, choices: payload.candidates ?? [] };
-        });
-        const selections = outcomes.map((outcome) => outcome.value ?? { mention: outcome.item, choices: [] });
-        if (!isCurrent()) return;
-        const uncertain = selections.filter(({ choices }) => new Set(choices.map((choice) => choice.country.toLocaleLowerCase())).size > 1);
-        const uncertainKeys = new Set(uncertain.map(({ mention }) => mention.mentionId));
-        const automatic = selections.filter(({ mention }) => !uncertainKeys.has(mention.mentionId));
-        for (const { mention, choices } of automatic) {
-          const chosen = preferredHandoffLocationChoice(mention, choices);
-          if (!chosen) continue;
+            return payload.candidates ?? [];
+          })();
+          lookupSession.lookups.set(key, shared);
+          void shared.catch(() => { if (lookupSession.lookups.get(key) === shared) lookupSession.lookups.delete(key); });
+        }
+        return shared;
+      };
+      const onOutcome = ({ item: mention, value: choices, status }: {
+        item: CapturedLocation; value?: LocationChoice[]; status: "resolved" | "failed" | "timeout";
+      }) => {
+          if (!isCurrent() || handoffLookupSessionRef.current !== lookupSession) return;
+          if (status !== "resolved") {
+            lookupSession.statuses.set(mention.mentionId, "failed");
+            lookupSession.lookups.delete(lookupKey(mention));
+            setHandoffResolutionStatuses((current) => ({ ...current, [mention.mentionId]: "failed" }));
+            return;
+          }
+          const candidates = choices ?? [];
+          const needsConfirmation = mention.status === "unresolved" || !candidates.length
+            || new Set(candidates.map((choice) => choice.country.toLocaleLowerCase())).size > 1;
+          const nextStatus = needsConfirmation ? "needs-confirmation" : "resolved";
+          lookupSession.statuses.set(mention.mentionId, nextStatus);
+          setHandoffResolutionStatuses((current) => ({ ...current, [mention.mentionId]: nextStatus }));
+          if (needsConfirmation) {
+            setLocationChoices((current) => [...current.filter(({ mention: prior }) => prior.mentionId !== mention.mentionId), { mention, choices: candidates }]);
+            return;
+          }
+          const chosen = preferredHandoffLocationChoice(mention, candidates);
+          if (!chosen) return;
           if (isOriginMention(mention)) {
-            if (draft?.origin) continue;
-            // Provider enrichment supplies coordinates and locality, but
-            // must not rename the canonical intent captured from the prompt.
+            if (draft.origin || originResolutionVersionRef.current !== originVersion) return;
             replaceJourneyOrigin({
               name: mention.canonicalName,
               coordinates: chosen.coordinates,
@@ -806,15 +849,31 @@ function TripBuilderDocument() {
               country: chosen.country,
               providerId: chosen.providerId,
             });
+          } else {
+            const stopId = homepageOccurrenceByMentionId.get(mention.mentionId) ?? `${mention.canonicalName.toLowerCase().replace(/[^a-z0-9]+/g, "-")}-${mention.order}`;
+            const seed = seedById.get(stopId);
+            setStops((current) => current.some((stop) => stop.id === stopId
+              && stop.name === seed?.name && stop.canonicalPlaceId === seed?.canonicalPlaceId
+              && stop.providerId === seed?.providerId)
+              ? mergeHandoffLocationChoice(current, mention, chosen, stopId) : current);
           }
-          else {
-            const homepageOccurrenceId = homepageOccurrenceByMentionId.get(mention.mentionId);
-            setStops((current) => mergeHandoffLocationChoice(current, mention, chosen, homepageOccurrenceId));
-          }
-        }
-        setLocationChoices(uncertain);
-        setResolvingLocations(false);
-      })();
+      };
+      const runLookups = (items: CapturedLocation[]) => void resolveHandoffIncrementally(items, resolveMention, {
+        signal: lookupSession.controller.signal, onOutcome,
+      }).finally(() => {
+        if (isCurrent() && handoffLookupSessionRef.current === lookupSession) setResolvingLocations(false);
+      });
+      lookupSession.retry = (mentionId) => {
+        const mention = lookupMentions.find((item) => item.mentionId === mentionId);
+        if (!mention || lookupSession.statuses.get(mentionId) !== "failed" || !isCurrent()) return;
+        lookupSession.statuses.set(mentionId, "pending");
+        setHandoffResolutionStatuses((current) => ({ ...current, [mentionId]: "pending" }));
+        runLookups([mention]);
+      };
+      runLookups(lookupMentions);
+    } else {
+      setHandoffResolutionStatuses({});
+      setResolvingLocations(false);
     }
   };
 
@@ -857,6 +916,9 @@ function TripBuilderDocument() {
     pendingNewTripReceiptRef.current = null;
     pendingInterpretationRef.current = null;
     activeProjectionTokenRef.current = null;
+    handoffLookupSessionRef.current?.controller.abort();
+    handoffLookupSessionRef.current?.lookups.clear();
+    handoffLookupSessionRef.current = null;
     setPendingInterpretation(null);
     captureRequestGateRef.current?.cancel();
     recoveryHandleRef.current = null;
