@@ -377,11 +377,17 @@ test("Oaxaca fixed commitment survives route projection, validation, build paylo
   assert.deepEqual(tripIntentForTrip(persisted).hardConstraints.fixedCommitments[0]?.place, stepOneCommitment.place);
 });
 
-test("Builder keeps fixed commitments visible on Step 2 with direct resolution actions", () => {
+test("Builder keeps fixed plans in the current disclosure and canonical build payload", () => {
   const builder = readFileSync(new URL("../app/journey/new/trip-builder.tsx", import.meta.url), "utf8");
   assert.match(builder, /projectFixedCommitmentsToStops/);
-  assert.match(builder, /FIXED COMMITMENTS/);
-  assert.match(builder, /Add \$\{suggestion\.name\} to route/);
+  assert.match(builder, /id="builder-constraints"[\s\S]*aria-expanded=\{showTripDetails\}/);
+  assert.match(builder, /"Fixed plans"/);
+  assert.match(builder, /\$\{effectiveIntent\.hardConstraints\.fixedCommitments\.length\} saved/);
+  assert.match(builder, /showTripDetails && <div id=\{isHomepagePromptHandoff \? "builder-advanced-content"/);
+  assert.match(builder, /onClick=\{addFixedCommitment\}/);
+  assert.match(builder, /effectiveIntent\.hardConstraints\.fixedCommitments\.length > 0 && \(!isHomepagePromptHandoff \|\| showTripDetails\)/);
+  assert.match(builder, /className=\{styles\.commitmentChips\}[\s\S]*aria-label=\{`\$\{language === "es" \? "Quitar" : "Remove"\} \$\{item\.label\}`\}/);
+  assert.match(builder, /fixedCommitments: current\.hardConstraints\.fixedCommitments\.filter\(\(commitment\) => commitment\.id !== item\.id\)/);
   assert.match(builder, /fixedCommitments: projectedFixedCommitments/,
-    "the build payload must use the same projected commitment state shown on Step 2");
+    "the build payload must use the same projected commitment state shown in the Builder");
 });

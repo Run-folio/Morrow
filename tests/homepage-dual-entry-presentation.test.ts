@@ -70,7 +70,7 @@ test("the connected dual-entry homepage is the only production composition", () 
   assert.doesNotMatch(immersiveSource, /presentation\?:|plannerSlot\?:|dualEntry/);
   assert.match(immersiveSource, /<HomeTripStarter\s*\/>/);
   assert.match(immersiveSource, /<EasyTNavigation current="home" landing logoTone="light" deferPrefetch\s*\/>/);
-  assert.match(immersiveSource, /<HomepageRouteInspiration routes=\{routes\}\s*\/>[\s\S]*<HomepageHowItWorks\s*\/>[\s\S]*<RouteChapters/);
+  assert.match(immersiveSource, /<HomepageRouteInspiration routes=\{routes\} previewRoutes=\{previewRoutes\}\s*\/>[\s\S]*<HomepageHowItWorks\s*\/>[\s\S]*<RouteChapters/);
 });
 
 test("dual-entry hero is compact on desktop and may grow with open planner panels", () => {
@@ -112,7 +112,9 @@ test("homepage stories use the real connected owner and canonical hierarchy", ()
   assert.match(immersiveStories, /title: "Morrovia\/05 Product Patterns\/Homepage dual entry"/);
   assert.doesNotMatch(immersiveStories, /initialImmersiveRouteIndex/);
   assert.match(immersiveStories, /const previewRouteIndex =/);
-  assert.match(immersiveStories, /<ImmersiveHome routes=\{routes\} initialIndex=\{previewRouteIndex\}\s*\/>/);
+  assert.match(immersiveStories, /const previewRoutes = discoveryCatalogue\(\)/);
+  assert.match(immersiveStories, /args: \{ routes, previewRoutes, initialIndex: previewRouteIndex \}/);
+  assert.match(immersiveStories, /<ImmersiveHome routes=\{routes\} previewRoutes=\{previewRoutes\} initialIndex=\{previewRouteIndex\}\s*\/>/);
   assert.doesNotMatch(immersiveStories, /PreviewPlanner|plannerSlot|presentation="dual-entry"/);
 });
 
