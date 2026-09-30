@@ -19,18 +19,21 @@ test("the center timeline exposes direct add, edit, remove, reorder, and local s
 
 test("semantic dayparts are primary while the unnumbered detailed editor stays available", () => {
   assert.match(workspace, /<RichItineraryDayPlanner/);
-  assert.match(workspace, /<details className=\{styles\.sequenceEditor\}>/);
+  assert.match(workspace, /workspaceView === "days" && reorderableEditorNotes > 1 \? <details key=\{active\.id\} className=\{styles\.sequenceEditor\}>/);
   assert.match(workspace, /addComposerDayPart=/);
   assert.match(workspace, /onMoveActivity=\{moveComposedActivity\}/);
   assert.doesNotMatch(workspace, /pad\(sequence\)/);
 });
 
-test("the add flow advertises only canonical Activity and Day note categories", () => {
+test("activity entry has one planner owner while authored notes remain in the Notes rail", () => {
   const start = workspace.indexOf("function InsertionControl");
   const end = workspace.indexOf("function TransferRow", start);
   const insertionControl = workspace.slice(start, end);
-  assert.match(insertionControl, /options=\{\[\{ value: "activity", label: copy\.activity \}, \{ value: "note", label: copy\.note \}\]\}/);
-  assert.doesNotMatch(insertionControl, /value: "(?:food|stay|transport|buffer)"/);
+  assert.doesNotMatch(insertionControl, /<EasyTButton|<form/);
+  assert.match(workspace, /<RichItineraryDayPlanner/);
+  assert.match(workspace, /onAddSubmit=\{submitAddFlow\}/);
+  assert.match(workspace, /dayNotes\.map\(\(note, noteIndex\) => <article className=\{styles\.noteCard\}/);
+  assert.match(workspace, /const result = addItineraryDayNote\(current, addFlow\.dayNumber, addDraft\)/);
 });
 
 test("truthful item status never infers confirmation or per-item time from presence", () => {

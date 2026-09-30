@@ -599,26 +599,31 @@
 
 .sequenceEditor {
   margin-top: 14px;
-  border: 1px solid var(--morrovia-line);
-  border-radius: var(--morrovia-control-radius);
-  background: var(--morrovia-paper);
 }
 
 .sequenceEditor > summary {
   min-height: 44px;
-  padding: 11px 13px;
+  padding: 11px 0;
   color: var(--morrovia-ink-soft);
   cursor: pointer;
   font: 750 11px/1.4 var(--morrovia-meta);
 }
 
 .sequenceEditor[open] > summary {
+  padding-inline: 13px;
+  border: 1px solid var(--morrovia-line);
+  border-radius: var(--morrovia-control-radius) var(--morrovia-control-radius) 0 0;
   border-bottom: 1px solid var(--morrovia-line);
+  background: var(--morrovia-paper);
 }
 
 .sequenceEditor > .details {
   margin-top: 0;
   padding: 10px;
+  border: 1px solid var(--morrovia-line);
+  border-top: 0;
+  border-radius: 0 0 var(--morrovia-control-radius) var(--morrovia-control-radius);
+  background: var(--morrovia-paper);
 }
 
 .detailRow {

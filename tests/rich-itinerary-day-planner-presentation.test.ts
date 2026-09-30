@@ -10,38 +10,38 @@ const workspace = readFileSync(new URL("../components/easyt/trip-itinerary-works
 const workspaceStories = readFileSync(new URL("../components/easyt/trip-itinerary-workspace.stories.tsx", import.meta.url), "utf8");
 const composition = readFileSync(new URL("../lib/easyt/itinerary-day-composition.ts", import.meta.url), "utf8");
 
-test("empty day has one invitation while four dayparts remain in an accessible disclosure", () => {
+test("empty day keeps one invitation and opens the same composer without a second daypart strip", () => {
   assert.match(component, /const hasVisibleActivities =/);
   assert.match(component, /!hasVisibleActivities/);
   assert.match(component, /className=\{styles\.emptyInvitation\}/);
   assert.match(component, /onAddOpen\?\.\(null\)/);
   assert.match(component, /onSeeSuggestions\?\.\(\)/);
-  assert.match(component, /<details[^>]*className=\{styles\.emptyDayparts\}/);
-  assert.match(component, /itineraryDayParts\.map/);
+  assert.match(component, /addComposerOpen \? addComposer : <div className=\{styles\.emptyActions\}>/);
+  assert.doesNotMatch(component, /className=\{styles\.emptyDayparts\}/);
+  assert.match(component, /<EasyTSelect label=\{copy\.choosePeriod\}/);
   assert.match(workspace, /onSeeSuggestions=\{\(\) =>/);
   assert.match(workspace, /document\.getElementById\(`\$\{tabIdPrefix\}-ideas`\)/);
 });
 
-test("populated day shows occupied periods and saved unslotted rows before secondary empty insertion targets", () => {
+test("populated day shows occupied periods and saved unslotted rows before its single Add action", () => {
   assert.match(component, /const occupiedParts = itineraryDayParts\.filter/);
   assert.match(component, /const emptyParts = itineraryDayParts\.filter/);
   assert.match(component, /occupiedParts\.map\(renderPeriod\)/);
   assert.match(component, /unslotted\.length \? \(/);
-  assert.match(component, /className=\{styles\.secondaryPeriods\}/);
+  assert.match(component, /className=\{styles\.populatedActions\}/);
   assert.match(component, /emptyParts\.map\(renderPeriod\)/);
-  assert.ok(component.indexOf("unslotted.length ? (") < component.indexOf("className={styles.secondaryPeriods}"));
-  assert.match(styles, /\.secondaryPeriods > summary \{[^}]*min-height: 44px/);
+  assert.ok(component.indexOf("unslotted.length ? (") < component.indexOf("className={styles.populatedActions}"));
+  assert.match(component, /dragActive && emptyParts\.length/);
+  assert.doesNotMatch(component, /className=\{styles\.secondaryPeriods\}/);
 });
 
-test("populated day offers one primary Add activity and keeps exact daypart insertion secondary", () => {
-  assert.match(component, /hasVisibleActivities \? <div className=\{styles\.populatedActions\}>/);
-  assert.match(component, /onAddOpen\?\.\(null\)/);
-  assert.match(component, /const showPeriodAdd = !hasVisibleActivities \|\| addComposerDayPart === part/);
-  assert.match(component, /showPeriodAdd \? <div className=\{styles\.addHere\}>/);
-  assert.match(component, /className=\{styles\.partInsertActions\}/);
-  assert.match(component, /itineraryDayParts\.map\(\(part\) => <EasyTButton/);
-  assert.match(component, /onClick=\{\(\) => onAddOpen\?\.\(part\)\}/);
-  assert.match(component, /dragActive \? emptyParts\.map\(renderPeriod\) : emptyParts\.filter\(\(part\) => part === addComposerDayPart\)\.map\(renderPeriod\)/);
+test("one populated Add action uses the controlled composer for exact daypart intent", () => {
+  assert.match(component, /hasVisibleActivities && onAddOpen \? <div className=\{styles\.populatedActions\}>/);
+  assert.match(component, /onClick=\{\(\) => onAddOpen\(null\)\}/);
+  assert.match(component, /onAddComposerDayPartChange\?\.\(event\.target\.value \? event\.target\.value as ItineraryDayPart : null\)/);
+  assert.match(workspace, /onAddComposerDayPartChange=\{\(dayPart\) => setAddFlow/);
+  assert.match(workspace, /addItineraryActivityWithUndo\(current, addFlow\.dayNumber, addFlow\.noteIndex, addDraft, addFlow\.dayPart\)/);
+  assert.doesNotMatch(component, /className=\{styles\.partInsertActions\}/);
 });
 
 test("mobile populated plan removes surplus section gap without shrinking activity controls", () => {
@@ -124,18 +124,19 @@ test("mobile hides pointer drag without removing the explicit scheduling and reo
   assert.match(component, /onMoveActivity\(activity, "later"\)/);
 });
 
-test("mobile empty dayparts compress without hiding their add actions", () => {
+test("mobile retains drop zones only during drag and leaves daypart choice in the composer", () => {
   assert.match(component, /data-empty=\{activities\.length === 0\}/);
-  assert.match(component, /aria-label=\{`\$\{copy\.addActivity\}.*dayPartLabels/);
+  assert.match(component, /dragActive && emptyParts\.length/);
+  assert.match(component, /onAddComposerDayPartChange/);
   assert.match(styles, /@media \(max-width: 680px\)[\s\S]*\.periodGrid:has\(\.period\[data-empty="true"\]\)[\s\S]*grid-template-columns: repeat\(2, minmax\(0, 1fr\)\)/);
   assert.match(styles, /\.period\[data-empty="true"\][\s\S]*grid-column: span 2/);
 });
 
-test("compact empty periods, contextual add controls, first-class travel, and tonight context stay distinct", () => {
+test("single Add composer, first-class travel, and tonight context stay distinct", () => {
   assert.doesNotMatch(component, /No activity is set for this part of the day|copy\.freeDetail/);
-  assert.match(component, /Add something/);
-  assert.match(component, /addComposerDayPart === part/);
-  assert.match(component, /aria-label=\{`\$\{copy\.addActivity\}/);
+  assert.match(component, /const addComposer = <form/);
+  assert.match(component, /<option value="">\{copy\.unsetPeriod\}<\/option>/);
+  assert.doesNotMatch(component, /Day context and notes|Retained day context/);
   assert.match(component, /composition\.transfers\.map/);
   assert.match(component, /tonight\.state === "booked"/);
   assert.match(component, /tonight\.state === "not-organised"/);

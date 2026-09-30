@@ -91,6 +91,28 @@ function handle(writeId: string): TripRecoveryHandle {
   return { ownerId: "owner-a", tripId: "trip-itinerary-mutations", writeId };
 }
 
+test("legacy unowned PlanItem prose stays canonical while authored day notes use the Notes owner", () => {
+  const source = itineraryTrip();
+  const legacy = {
+    ...source,
+    brief: { ...source.brief, customActivities: {}, dayNotes: { 1: ["Confirm dinner booking"] } },
+    planItems: source.planItems.map((item) => item.dayNumber === 1 ? {
+      ...item,
+      type: "open" as const,
+      notes: ["Choose one walkable neighbourhood"],
+      contextNotes: ["Leave the evening for a nearby meal"],
+    } : item),
+  };
+  const composition = composeItineraryDay(legacy, legacy.planItems[0]!.id)!;
+  assert.equal(composition.unslotted[0]!.source, "day-note");
+  assert.deepEqual(composition.context.notes, ["Leave the evening for a nearby meal"]);
+  assert.deepEqual(legacy.planItems[0]!.notes, ["Choose one walkable neighbourhood"]);
+  assert.deepEqual(legacy.brief.dayNotes?.[1], ["Confirm dinner booking"]);
+  const authored = addItineraryDayNote(legacy, 1, "Ask the hotel about a late arrival");
+  assert.deepEqual(authored.trip.brief.dayNotes?.[1], ["Confirm dinner booking", "Ask the hotel about a late arrival"]);
+  assert.deepEqual(authored.trip.planItems[0]!.notes, legacy.planItems[0]!.notes);
+});
+
 test("Itinerary adds an activity at the requested canonical position and adds a day note without inventing time", () => {
   const base = itineraryTrip();
   const activity = insertItineraryActivity(base, 1, 1, "Lunch in Monti");

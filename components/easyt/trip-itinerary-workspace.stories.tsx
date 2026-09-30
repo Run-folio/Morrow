@@ -505,6 +505,54 @@ export const RichDayPlannerIntegratedMobile390: Story = {
   globals: { viewport: { value: "morrovia390", isRotated: false } },
 };
 
+// Matched production-component evidence for the Day by day hierarchy correction.
+const tokyoHierarchyTrip: EasyTTrip = {
+  ...RichDayPlannerIntegrated.args!.trip!,
+  id: "storybook-itinerary-tokyo-hierarchy",
+  title: "Japan",
+  brief: {
+    ...RichDayPlannerIntegrated.args!.trip!.brief,
+    dayNotes: { 2: ["Confirm the garden opening time before setting out."] },
+    bookings: [{ id: "stay-tokyo", type: "stay", title: "Keio Plaza Hotel", date: "2026-08-21", confirmation: null, url: null }],
+    itineraryIdeas: RichDayPlannerIntegrated.args!.trip!.brief.itineraryIdeas!.map((idea, index) => ({
+      ...idea,
+      title: index === 0 ? "Shinjuku Gyo-en" : "Mount Fuji day trip",
+      area: "Tokyo",
+      dayPart: index === 0 ? "morning" as const : null,
+    })),
+  },
+  stops: RichDayPlannerIntegrated.args!.trip!.stops.map((stop) => stop.id === "cusco" ? { ...stop, name: "Tokyo", country: "Japan", latitude: 35.6938, longitude: 139.7034 } : stop),
+  planItems: RichDayPlannerIntegrated.args!.trip!.planItems.map((item) => item.dayNumber === 2 ? {
+    ...item,
+    title: "Explore Tokyo",
+    notes: ["Shinjuku Gyo-en", "Choose one walkable neighbourhood", "Leave the evening for a nearby meal"],
+    noteDayParts: ["morning", null, null],
+  } : item),
+};
+const seoulHierarchyTrip: EasyTTrip = {
+  ...tokyoHierarchyTrip,
+  id: "storybook-itinerary-seoul-empty-hierarchy",
+  title: "Seoul",
+  brief: { ...tokyoHierarchyTrip.brief, itineraryIdeas: [], dayNotes: {} },
+  stops: tokyoHierarchyTrip.stops.map((stop) => stop.id === "cusco" ? { ...stop, name: "Seoul", country: "South Korea", latitude: 37.5665, longitude: 126.978 } : stop),
+  planItems: tokyoHierarchyTrip.planItems.map((item) => item.dayNumber === 2 ? { ...item, title: "Explore Seoul", notes: [], noteDayParts: [], contextNotes: [] } : item),
+};
+const tokyoMultiHierarchyTrip: EasyTTrip = {
+  ...tokyoHierarchyTrip,
+  id: "storybook-itinerary-tokyo-multiple-hierarchy",
+  brief: { ...tokyoHierarchyTrip.brief, customActivities: { 2: ["Shinjuku Gyo-en", "Meiji Shrine", "Evening food walk"] } },
+  planItems: tokyoHierarchyTrip.planItems.map((item) => item.dayNumber === 2 ? {
+    ...item,
+    notes: ["Shinjuku Gyo-en", "Meiji Shrine", "Evening food walk"],
+    noteDayParts: ["morning", "afternoon", "evening"],
+  } : item),
+};
+export const HierarchyTokyoPopulated: Story = { args: { trip: tokyoHierarchyTrip, selectedDayNumber: 2, initialSuggestions: { 2: [interestSuggestionPool[0]] } } };
+export const HierarchySeoulEmpty: Story = { args: { trip: seoulHierarchyTrip, selectedDayNumber: 2, initialSuggestions: { 2: [interestSuggestionPool[0]] } } };
+export const HierarchyTokyoMultiple: Story = { args: { trip: tokyoMultiHierarchyTrip, selectedDayNumber: 2, initialSuggestions: { 2: [interestSuggestionPool[0]] } } };
+export const HierarchyTokyoPopulatedSpanish: Story = { ...HierarchyTokyoPopulated, args: { ...HierarchyTokyoPopulated.args, language: "es" } };
+export const HierarchySeoulEmptySpanish: Story = { ...HierarchySeoulEmpty, args: { ...HierarchySeoulEmpty.args, language: "es" } };
+
 export const NativeDragAfterSuggestionsFailure: Story = {
   args: {
     ...RichDayPlannerIntegrated.args,

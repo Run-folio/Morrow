@@ -103,7 +103,7 @@ test("simple production controls compose the canonical controls without replacin
   assert.match(discover, /<Select label="Travel style"/);
 
   const dashboard = read("app/journey/dashboard/dashboard-client.tsx");
-  assert.match(dashboard, /EasyTSegmentedControl<LibraryView>/);
+  assert.match(dashboard, /EasyTSegmentedControl<DashboardLibraryView>/);
   assert.match(dashboard, /EasyTTextArea fieldClassName=\{accountStyles\.field\}/);
   assert.match(dashboard, /controls: "dashboard-trip-grid"/);
 });

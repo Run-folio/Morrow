@@ -8,11 +8,11 @@
 
 .emptyInvitation { display: grid; justify-items: center; gap: 14px; padding: 28px 18px; border: 1px solid var(--morrovia-line); border-radius: var(--morrovia-radius); background: var(--morrovia-paper); text-align: center; }
 .emptyInvitation > div:first-child { display: grid; justify-items: center; gap: 7px; }
-.emptyInvitation svg { width: 28px; height: 28px; color: var(--morrovia-action); }
+.emptyInvitation > div:first-child > svg { width: 28px; height: 28px; color: var(--morrovia-action); }
 .emptyInvitation h3 { margin: 0; color: var(--morrovia-ink); font: var(--morrovia-type-control); }
 .emptyInvitation p { max-width: 38ch; margin: 0; color: var(--morrovia-ink-soft); font: var(--morrovia-type-supporting-body); }
-.emptyActions, .emptyComposer > div:last-child { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; }
-.emptyComposer { width: min(100%, 420px); display: grid; gap: 10px; }
+.emptyActions, .addComposerActions { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; }
+.addComposer { width: min(100%, 420px); display: grid; gap: 10px; }
 .emptyDayparts > summary { min-height: 44px; padding: 10px 12px; color: var(--morrovia-ink-soft); cursor: pointer; font: var(--morrovia-type-control); }
 .emptyDayparts[data-compact="false"] > summary { display: none; }
 .secondaryPeriods { border-top: 1px solid var(--morrovia-line); }
@@ -22,8 +22,7 @@
 .partInsertActions > button { min-height: 44px; }
 .populatedActions { display: flex; justify-content: flex-end; }
 .populatedActions > button { min-height: 44px; }
-.populatedActions > form { display: grid; gap: 8px; width: 100%; max-width: 440px; }
-.populatedActions > form > div:last-child { display: flex; flex-wrap: wrap; gap: 8px; }
+.populatedActions > form { max-width: 440px; }
 
 /* Compact editorial rows retain the existing multi-item and insertion owners. */
 .planner .freePeriod { min-height: 0; padding: 0; }

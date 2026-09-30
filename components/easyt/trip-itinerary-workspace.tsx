@@ -777,6 +777,13 @@ export default function TripItineraryWorkspace({
     .map((idea) => normalized(idea.title)));
   const displayNotes = itineraryNotesWithSourceIndexesForDisplay(active, incomingLeg, workingTrip)
     .filter(({ note }) => !scheduledIdeaTitles.has(normalized(note)));
+  const firstVisibleNoteIndex = displayNotes[0]?.sourceIndex ?? active.notes.length;
+  // This editor reorders PlanItem note rows. A scheduled idea without a note
+  // row can change daypart in its own card, but has no row for this editor.
+  const reorderableEditorNotes = displayNotes.filter(({ sourceIndex }) => itineraryActivityProtection(workingTrip, {
+    dayNumber: active.dayNumber,
+    noteIndex: sourceIndex,
+  }).editable).length;
 
   if (presentation === "legacy") {
     return (
@@ -872,7 +879,6 @@ export default function TripItineraryWorkspace({
     : null;
   const dayPendingKey = `itinerary-day-${active.dayNumber}`;
   const dayPending = mutation.isPending(dayPendingKey);
-  const firstVisibleNoteIndex = displayNotes[0]?.sourceIndex ?? active.notes.length;
   const selectedDetail: ItineraryItemDetailModel | null = selectedRecommendation && selectedRecommendationState
     ? recommendationDetailForExploreResult({
       trip: workingTrip,
@@ -1438,6 +1444,7 @@ export default function TripItineraryWorkspace({
               suggestions.scrollIntoView({ block: "nearest" });
             }}
             onAddDraftChange={(value) => { setAddDraft(value); setAddError(""); }}
+            onAddComposerDayPartChange={(dayPart) => setAddFlow((flow) => flow ? { ...flow, dayPart: dayPart ?? undefined } : flow)}
             onAddCancel={() => { setAddFlow(null); setAddDraft(""); setAddError(""); }}
             onAddSubmit={submitAddFlow}
             onDayPartChange={changeActivityDayPart}
@@ -1473,34 +1480,16 @@ export default function TripItineraryWorkspace({
           />
         </div> : null}
 
-        {workspaceView === "days" ? <details className={styles.sequenceEditor}>
+        {workspaceView === "days" && reorderableEditorNotes > 1 ? <details key={active.id} className={styles.sequenceEditor}>
           <summary>{copy.editActivityOrder}</summary>
         <div className={styles.details} aria-label={`${stop?.name ?? active.title} activity editing controls`} aria-busy={dayPending || undefined} data-selected-item={selectedItemId ?? undefined}>
           {!incomingLeg ? <InsertionControl
-            addFlow={addFlow?.dayNumber === active.dayNumber && addFlow.noteIndex === firstVisibleNoteIndex ? addFlow : null}
-            copy={copy}
-            draft={addDraft}
-            error={addError}
-            onDraftChange={(value) => { setAddDraft(value); setAddError(""); }}
-            onKindChange={(kind) => setAddFlow((flow) => flow ? { ...flow, kind } : flow)}
-            onOpen={() => openAddFlow(firstVisibleNoteIndex)}
-            onCancel={() => { setAddFlow(null); setAddDraft(""); setAddError(""); }}
-            onSubmit={submitAddFlow}
             draggedActivity={draggedActivity}
             onDrop={(event) => { event.preventDefault(); if (draggedActivity) moveActivityTo(draggedActivity, firstVisibleNoteIndex); }}
           /> : null}
           {incomingLeg ? <>
             {dayComposition ? null : <TransferRow leg={incomingLeg} copy={copy} trip={workingTrip} selected={selectedItemId === `leg-${incomingLeg.id}`} onSelect={() => setSelectedItemId(`leg-${incomingLeg.id}`)} />}
             <InsertionControl
-              addFlow={addFlow?.dayNumber === active.dayNumber && addFlow.noteIndex === firstVisibleNoteIndex ? addFlow : null}
-              copy={copy}
-              draft={addDraft}
-              error={addError}
-              onDraftChange={(value) => { setAddDraft(value); setAddError(""); }}
-              onKindChange={(kind) => setAddFlow((flow) => flow ? { ...flow, kind } : flow)}
-              onOpen={() => openAddFlow(firstVisibleNoteIndex)}
-              onCancel={() => { setAddFlow(null); setAddDraft(""); setAddError(""); }}
-              onSubmit={submitAddFlow}
               draggedActivity={draggedActivity}
               onDrop={(event) => { event.preventDefault(); if (draggedActivity) moveActivityTo(draggedActivity, firstVisibleNoteIndex); }}
             />
@@ -1545,21 +1534,11 @@ export default function TripItineraryWorkspace({
                 onDragEnd={nativePlannerDrag ? () => setDraggedActivity(null) : undefined}
               />
               <InsertionControl
-                addFlow={addFlow?.dayNumber === active.dayNumber && addFlow.noteIndex === sourceIndex + 1 ? addFlow : null}
-                copy={copy}
-                draft={addDraft}
-                error={addError}
-                onDraftChange={(value) => { setAddDraft(value); setAddError(""); }}
-                onKindChange={(kind) => setAddFlow((flow) => flow ? { ...flow, kind } : flow)}
-                onOpen={() => openAddFlow(sourceIndex + 1)}
-                onCancel={() => { setAddFlow(null); setAddDraft(""); setAddError(""); }}
-                onSubmit={submitAddFlow}
                 draggedActivity={draggedActivity}
                 onDrop={(event) => { event.preventDefault(); if (draggedActivity) moveActivityTo(draggedActivity, sourceIndex + 1); }}
               />
             </div>;
           })}
-          {!displayNotes.length && !incomingLeg ? <div className={styles.timelineEmpty}><CirclePlus aria-hidden="true" /><p>{copy.noDetails}</p><EasyTButton icon={CirclePlus} size="small" variant="secondary" onClick={() => openAddFlow(active.notes.length)}>{copy.addActivity}</EasyTButton></div> : null}
         </div>
         </details> : null}
         {presentation === "shell" && workspaceView === "days" ? <ContextualFeedbackSlot workspace="itinerary" entryKey={`itinerary:${active.id}:days`} hasContent={Boolean(dayComposition && (itineraryDayParts.some((part) => dayComposition.planned[part].length > 0) || dayComposition.unslotted.length > 0))} blocked={Boolean(addFlow || editingActivity || removeTarget || moveFlow || plannerDrag || draggedActivity || openMenuId || openSavedPickerId || selectedItemId || selectedRecommendation || plannerError || mutation.saveState === "saving" || mutation.saveState === "error")} /> : null}
@@ -2661,50 +2640,15 @@ function TimelineRow({
 }
 
 function InsertionControl({
-  addFlow,
-  copy,
-  draft,
-  error,
-  onDraftChange,
-  onKindChange,
-  onOpen,
-  onCancel,
-  onSubmit,
   draggedActivity,
   onDrop,
 }: {
-  addFlow: AddFlow | null;
-  copy: ReturnType<typeof itineraryCopy>;
-  draft: string;
-  error: string;
-  onDraftChange: (value: string) => void;
-  onKindChange: (kind: AddFlow["kind"]) => void;
-  onOpen: () => void;
-  onCancel: () => void;
-  onSubmit: () => void;
   draggedActivity: ActivityTarget | null;
   onDrop: (event: DragEvent<HTMLDivElement>) => void;
 }) {
   return (
     <div className={`${styles.insertionGroup} ${draggedActivity ? styles.insertionDropReady : ""}`} onDragOver={(event) => { if (draggedActivity) event.preventDefault(); }} onDrop={onDrop}>
-      <div className={styles.insertion}><span aria-hidden="true" /><EasyTButton icon={CirclePlus} size="small" variant="quiet" onClick={onOpen}>{copy.addHere}</EasyTButton><span aria-hidden="true" /></div>
-      {addFlow ? <form className={styles.addComposer} onSubmit={(event) => { event.preventDefault(); onSubmit(); }}>
-        <EasyTSegmentedControl
-          ariaLabel="Itinerary item type"
-          options={[{ value: "activity", label: copy.activity }, { value: "note", label: copy.note }]}
-          value={addFlow.kind}
-          onChange={onKindChange}
-        />
-        <EasyTField
-          autoFocus
-          label={addFlow.kind === "activity" ? copy.activityName : copy.noteText}
-          hint={addFlow.kind === "note" ? copy.noteHint : undefined}
-          error={error || undefined}
-          value={draft}
-          onChange={(event) => onDraftChange(event.target.value)}
-        />
-        <div className={styles.addComposerActions}><EasyTButton type="submit" icon={CirclePlus} size="small" disabled={!draft.trim()}>{addFlow.kind === "activity" ? copy.addActivity : copy.addNote}</EasyTButton><EasyTButton size="small" variant="quiet" onClick={onCancel}>{copy.cancel}</EasyTButton></div>
-      </form> : null}
+      <div className={styles.insertion} aria-hidden="true"><span /><span /></div>
     </div>
   );
 }
