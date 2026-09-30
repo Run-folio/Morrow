@@ -175,6 +175,6 @@ test("Overview counts separate leg occurrences and omits transfer counts without
 
 test("Overview does not count resolved transport findings", async () => {
   const api = await import("../lib/easyt/trip-overview-issues.ts");
-  const resolved = { ...issue("missing-logistics", "This transfer needs a confirmed time.", "tokyo-kyoto"), status: "resolved" as const };
+  const resolved = { ...issue("missing-logistics", "This transfer needs a confirmed time.", "tokyo-kyoto"), status: "applied" as const };
   assert.deepEqual(api.presentOverviewIssues(trip, [resolved], []), []);
 });
