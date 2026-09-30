@@ -38,6 +38,11 @@ export type HomepageInputSnapshot = {
   journeyEnd: HomepageChoice<JourneyEndSelection>;
 };
 
+/** The planner shows only dates represented by the traveller's intake. */
+export function homepageVisibleDateRange(snapshot: Pick<HomepageInputSnapshot, "dates">) {
+  return snapshot.dates.state === "selected" ? snapshot.dates.value : { start: "", end: "" };
+}
+
 export function homepageSnapshotForDescribePrompt(snapshot: HomepageInputSnapshot, prompt: string): HomepageInputSnapshot {
   if (snapshot.mode !== "describe" || prompt === snapshot.prompt
     || (snapshot.origin.state !== "selected" && snapshot.journeyEnd.state !== "selected")) return { ...snapshot, prompt };

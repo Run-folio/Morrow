@@ -18,6 +18,7 @@ import {
   homepageReceiptForProjection,
   homepageSemanticInputFingerprint,
   homepageSnapshotForDescribePrompt,
+  homepageVisibleDateRange,
   persistEditableHomepageInput,
   projectHomepageInput,
   reservePendingDescribeHandoff,
@@ -34,7 +35,6 @@ import { beginNewTripNavigation } from "@/lib/easyt/storage";
 import { loadRequestedTrip, loadTripRecovery } from "@/lib/easyt/storage";
 import { HomeDestinationEditor } from "./home-destination-editor";
 
-function iso(date: Date) { return date.toISOString().slice(0, 10); }
 function generatedId(prefix: string) {
   try { return `${prefix}-${crypto.randomUUID()}`; }
   catch { return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2)}`; }
@@ -74,8 +74,7 @@ export default function HomeTripStarter() {
   const [startInput, setStartInput] = useState("");
   const [journeyEndInput, setJourneyEndInput] = useState("");
   const [travelProfile, setTravelProfile] = useState<TravelProfile | null>(null);
-  const [startDate, setStartDate] = useState(() => iso(new Date()));
-  const [endDate, setEndDate] = useState(() => iso(new Date(Date.now() + 6 * 86_400_000)));
+  const { start: startDate, end: endDate } = homepageVisibleDateRange(snapshot);
   const [loading, setLoading] = useState(false);
   const [captureError, setCaptureError] = useState("");
 
@@ -129,10 +128,6 @@ export default function HomeTripStarter() {
     destinationIdRef.current = nextDestinationNumber(next.entries);
     snapshotRef.current = next;
     setSnapshot(next);
-    if (next.dates.state === "selected") {
-      setStartDate(next.dates.value.start);
-      setEndDate(next.dates.value.end);
-    }
     setStartInput(next.origin.state === "selected" ? next.origin.value.name : "");
     setJourneyEndInput(next.journeyEnd.state === "selected" && next.journeyEnd.value.mode === "explicit" ? next.journeyEnd.value.place.name : "");
   }, [ownerId, sessionPending]);
@@ -321,7 +316,7 @@ export default function HomeTripStarter() {
       onEndModeChange={(mode) => { setJourneyEndInput(""); updateSnapshot((current) => ({ ...current, journeyEnd: { state: "selected", value: { mode } } })); }}
     />}
     startDate={startDate} endDate={endDate}
-    onDatesChange={(range) => { setStartDate(range.start); setEndDate(range.end); updateSnapshot((current) => ({ ...current, dates: { state: "selected", value: range } })); }}
+    onDatesChange={(range) => updateSnapshot((current) => ({ ...current, dates: { state: "selected", value: range } }))}
     travellers={travellers}
     onTravellersChange={(value) => updateSnapshot((current) => ({ ...current, travellers: { state: "selected", value } }))}
     interests={interests}

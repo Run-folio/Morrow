@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { MorroviaTripCapture } from "@/components/easyt/morrovia-trip-capture";
 import { JourneyEndpointsEditor } from "@/components/easyt/journey-endpoints-editor";
 import { HomeDestinationEditor } from "@/app/journey/home/home-destination-editor";
-import { homepageSnapshotForDescribePrompt, persistEditableHomepageInput, persistHomepageIntakeForImport, readHomepageInput, type HomepageDestinationEntry, type HomepageInputSnapshot } from "@/lib/easyt/home-trip-handoff";
+import { homepageSnapshotForDescribePrompt, homepageVisibleDateRange, persistEditableHomepageInput, persistHomepageIntakeForImport, readHomepageInput, type HomepageDestinationEntry, type HomepageInputSnapshot } from "@/lib/easyt/home-trip-handoff";
 import { homepageInputStorageKey } from "@/lib/easyt/private-browser-context";
 import { journeyEndpointPlaceFromSuggestion } from "@/lib/easyt/journey-endpoints";
 import { tripInterestsWithProfileDefaults, type TravelProfile } from "@/lib/easyt/travel-profile";
@@ -27,8 +27,6 @@ function emptyInput(ownerId: string | null): HomepageInputSnapshot {
   };
 }
 
-function iso(date: Date) { return date.toISOString().slice(0, 10); }
-
 export function NewTripStarter({ ownerId, language, travelProfile, onSubmit }: {
   ownerId: string | null;
   language: EasyTLanguage;
@@ -43,8 +41,7 @@ export function NewTripStarter({ ownerId, language, travelProfile, onSubmit }: {
   const [ready, setReady] = useState(false);
   const [startInput, setStartInput] = useState("");
   const [endInput, setEndInput] = useState("");
-  const [startDate, setStartDate] = useState(() => iso(new Date()));
-  const [endDate, setEndDate] = useState(() => iso(new Date(Date.now() + 6 * 86_400_000)));
+  const { start: startDate, end: endDate } = homepageVisibleDateRange(snapshot);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -66,10 +63,6 @@ export function NewTripStarter({ ownerId, language, travelProfile, onSubmit }: {
     nextEntryId.current = Math.max(1, ...next.entries.map((entry) => Number(entry.id.match(/^destination-(\d+)$/)?.[1] ?? 0))) + 1;
     snapshotRef.current = next;
     setSnapshot(next);
-    if (next.dates.state === "selected") {
-      setStartDate(next.dates.value.start);
-      setEndDate(next.dates.value.end);
-    }
     setStartInput(next.origin.state === "selected" ? next.origin.value.name : "");
     setEndInput(next.journeyEnd.state === "selected" && next.journeyEnd.value.mode === "explicit" ? next.journeyEnd.value.place.name : "");
     setReady(true);
@@ -157,7 +150,7 @@ export function NewTripStarter({ ownerId, language, travelProfile, onSubmit }: {
       onEndModeChange={(mode) => { setEndInput(""); update((current) => ({ ...current, journeyEnd: { state: "selected", value: { mode } } })); }}
     />}
     startDate={startDate} endDate={endDate}
-    onDatesChange={(range) => { setStartDate(range.start); setEndDate(range.end); update((current) => ({ ...current, dates: { state: "selected", value: range } })); }}
+    onDatesChange={(range) => update((current) => ({ ...current, dates: { state: "selected", value: range } }))}
     travellers={travellers} onTravellersChange={(value) => update((current) => ({ ...current, travellers: { state: "selected", value } }))}
     interests={interests} onInterestsChange={(value: TripInterest[]) => update((current) => ({ ...current, interests: { state: "selected", value } }))}
     travelProfile={travelProfile} onSubmit={submit} loading={loading} error={error}
