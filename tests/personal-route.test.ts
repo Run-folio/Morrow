@@ -133,9 +133,12 @@ test("personal route access is owner-scoped, no-store, noindex and read-only for
 test("Overview exposes one Journey action beside Map and public Route Detail keeps its planning handoff", () => {
   const overview = read("components/easyt/trip-overview-workspace.tsx");
   const publicDetail = read("app/journey/routes/[slug]/route-detail-view.tsx");
+  const routePlanLink = read("app/journey/routes/[slug]/route-plan-link.tsx");
   assert.equal(overview.match(/View journey/g)?.length, 1);
   assert.match(overview, /personalRouteHref\(trip\.id\)/);
   assert.equal(overview.match(/Explore on map/g)?.length, 1);
-  assert.match(publicDetail, />Plan this route<\/RoutePlanLink>/);
-  assert.match(publicDetail, /RoutePlanLink/);
+  assert.equal((publicDetail.match(/draft=\{detail\.planDraft\}[^>]*>Use this route<\/RoutePlanLink>/g) ?? []).length, 2);
+  assert.match(routePlanLink, /\/journey\/new\?inspire=\$\{encodeURIComponent\(draft\.routeKey\)\}/);
+  assert.match(routePlanLink, /beginNewTripNavigation\(ownerId, window\)/);
+  assert.match(routePlanLink, /window\.location\.assign\(href\)/);
 });

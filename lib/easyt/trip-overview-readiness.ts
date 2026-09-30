@@ -32,7 +32,7 @@ function providerFallback(providerStatus: "loading" | "available" | "unavailable
   return { detail: "Review before departure", status: "to-do" as const };
 }
 
-function shapedItineraryDayNumbers(trip: EasyTTrip) {
+export function shapedItineraryDayNumbers(trip: EasyTTrip) {
   const byId = new Map(trip.planItems.map((day) => [day.id, day.dayNumber]));
   const shaped = new Set<number>();
   for (const idea of trip.brief.itineraryIdeas ?? []) {

@@ -1,6 +1,7 @@
 import { accommodationProgress } from "./accommodation.ts";
 import { tripHealth } from "./review.ts";
 import { deriveItineraryCoverage } from "./trip-facts.ts";
+import { shapedItineraryDayNumbers } from "./trip-overview-readiness.ts";
 import type { EasyTTrip } from "./trip.ts";
 
 export type TripReadinessSignal = {
@@ -21,9 +22,18 @@ export function tripReadinessSummary(trip: EasyTTrip) {
   const savedPrep = trip.brief.checklist ?? [];
   const completedPrep = savedPrep.filter((item) => item.complete).length;
   const persistedCritical = trip.recommendations.some((item) => item.status === "open" && item.severity === "critical");
+  const importedOutline = trip.brief.capturedIntent?.parserVersion === "spreadsheet-v1";
+  const shapedDays = importedOutline ? shapedItineraryDayNumbers(trip).size : 0;
+  const itineraryComplete = itinerary.state === "complete"
+    && (!importedOutline || (itinerary.expectedDays !== null && shapedDays >= itinerary.expectedDays));
+  const itineraryLabel = importedOutline && !itineraryComplete
+    ? shapedDays === 0
+      ? `Outline created for ${itinerary.plannedDays} ${itinerary.plannedDays === 1 ? "day" : "days"}. Add activities or leave time free.`
+      : `${shapedDays} of ${itinerary.expectedDays ?? itinerary.plannedDays} days shaped. Keep planning or leave time free.`
+    : itinerary.label;
 
   const signals: TripReadinessSignal[] = [
-    { id: "itinerary", complete: itinerary.state === "complete", blocked: false, label: itinerary.label },
+    { id: "itinerary", complete: itineraryComplete, blocked: false, label: itineraryLabel },
     {
       id: "stays",
       complete: stays.complete,
