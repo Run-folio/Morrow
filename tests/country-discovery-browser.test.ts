@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import { captureJourneyBrief } from '../lib/easyt/journey-capture.ts';
-import { createHomeTripDraft, handoffRouteStops, homepageSubmissionFingerprint, projectHomepageInput } from '../lib/easyt/home-trip-handoff.ts';
+import { homepageSemanticInputFingerprint, homepageSubmissionFingerprint, projectHomepageInput, handoffRouteStops } from '../lib/easyt/home-trip-handoff.ts';
 import { tripFromBuilder } from '../lib/easyt/trip.ts';
 import type { CanonicalPlaceSuggestion, PlaceType } from '../lib/easyt/place-intelligence.ts';
 import { emptyHomepageInput } from './fixtures/homepage-dual-entry.ts';
@@ -12,12 +12,27 @@ const homeDraft = (destination: string, originName = 'Madrid') => {
   const origin = originName === 'London'
     ? { name: 'London', country: 'United Kingdom', canonicalPlaceId: 'london', coordinates: [-0.1276, 51.5072] as [number, number] }
     : { name: 'Madrid', country: 'Spain', canonicalPlaceId: 'madrid', coordinates: [-3.7038, 40.4168] as [number, number] };
-  const capture = captureJourneyBrief(`Starting from ${origin.name}, 10 days in ${destination}`);
-  const draft = createHomeTripDraft({ capture, handoffId: `discovery-${destination}`, datesExplicit: true,
-    startDate: '2026-10-06', endDate: '2026-10-16', travellers: 2, travellersExplicit: true, interests: ['nature'],
-    origin });
+  const prompt = `Starting from ${origin.name}, 10 days in ${destination}`;
+  const snapshot = { ...emptyHomepageInput(), mode: 'describe' as const, prompt,
+    dates: { state: 'selected' as const, value: { start: '2026-10-06', end: '2026-10-16' } },
+    travellers: { state: 'selected' as const, value: 2 }, interests: { state: 'selected' as const, value: ['nature' as const] },
+    origin: { state: 'selected' as const, value: origin } };
+  const capture = captureJourneyBrief(prompt);
+  const projected = projectHomepageInput({ snapshot, capture, profile: null, handoffId: `discovery-${destination}` });
+  assert.equal(projected.ok, true);
+  if (!projected.ok) throw new Error(`Expected ${destination} homepage input to project`);
+  const draft = projected.draft;
   draft.destinations = handoffRouteStops(capture.mentions, capture.journeyEnd);
-  return draft;
+  const receipt = { version: 1 as const, ownerId: null, handoffId: `discovery-${destination}`,
+    inputFingerprint: homepageSubmissionFingerprint(draft), semanticInputFingerprint: homepageSemanticInputFingerprint(snapshot),
+    tripId: `trip-discovery-${destination.toLocaleLowerCase().replace(/[^a-z0-9]+/gu, '-')}` };
+  draft.homepage = { ...draft.homepage!, receipt };
+  return { draft, storedInput: { snapshot, receipt } };
+};
+
+const renderHomeDraft = (destination: string, originName = 'Madrid', options: Omit<Parameters<typeof renderBuilder>[0], 'query' | 'draft' | 'storedInput'> = {}) => {
+  const fixture = homeDraft(destination, originName);
+  return renderBuilder({ ...options, query: `?homeDraft=1&handoff=${encodeURIComponent(fixture.storedInput.receipt!.handoffId)}`, draft: fixture.draft, storedInput: fixture.storedInput });
 };
 
 test('Discovery completion restores the standard Builder stop editing state', () => {
@@ -53,24 +68,22 @@ const providerHomepageDraft = (input: {
   const result = projectHomepageInput({ snapshot, profile: null, handoffId: `provider-${input.name}` });
   assert.equal(result.ok, true);
   if (!result.ok) throw new Error(`Expected ${input.name} homepage input to project`);
-  return {
-    ...result.draft,
-    homepage: { ...result.draft.homepage!, receipt: {
-      version: 1 as const,
-      ownerId: null,
-      handoffId: `provider-${input.name}`,
-      inputFingerprint: homepageSubmissionFingerprint(result.draft),
-      tripId: `trip-provider-${input.name.toLocaleLowerCase()}`,
-    } },
-  };
+  const receipt = { version: 1 as const, ownerId: null, handoffId: `provider-${input.name}`,
+    inputFingerprint: homepageSubmissionFingerprint(result.draft),
+    semanticInputFingerprint: homepageSemanticInputFingerprint(snapshot),
+    tripId: `trip-provider-${input.name.toLocaleLowerCase()}` };
+  return { draft: { ...result.draft, homepage: { ...result.draft.homepage!, receipt } }, storedInput: { snapshot, receipt } };
 };
+
+const renderProviderHomepageDraft = (fixture: ReturnType<typeof providerHomepageDraft>) =>
+  renderBuilder({ query: `?homeDraft=1&handoff=${encodeURIComponent(fixture.storedInput.receipt!.handoffId)}`, draft: fixture.draft, storedInput: fixture.storedInput });
 
 test('provider-selected Japan reaches production Discovery evidence through the real homepage handoff', { skip: !builderBrowserTestsEnabled, timeout: 45_000 }, async () => {
   const draft = providerHomepageDraft({
     name: 'Japan', country: 'Japan', canonicalPlaceId: 'open-world:nominatim:relation:382313',
     placeType: 'country', routability: 'planning_area', coordinates: [138, 37],
   });
-  const view = await renderBuilder({ query: '?homeDraft=1', draft });
+  const view = await renderProviderHomepageDraft(draft);
   try {
     const dialog = view.page.getByRole('dialog');
     await view.page.setViewportSize({ width: 1024, height: 768 });
@@ -90,8 +103,7 @@ test('provider-selected Japan reaches production Discovery evidence through the 
 });
 
 test('an ambiguous typed place can be explicitly resolved in Discovery without reviewed route content', { skip: !builderBrowserTestsEnabled, timeout: 60_000 }, async () => {
-  const draft = homeDraft('Springfield');
-  const view = await renderBuilder({ query: '?homeDraft=1', draft, geocodeCandidates: {
+  const view = await renderHomeDraft('Springfield', 'Madrid', { geocodeCandidates: {
     Springfield: [
       { name: 'Springfield', country: 'United States', region: 'Illinois', canonicalPlaceId: 'open-world:springfield-il',
         providerId: 'springfield-il', coordinates: [-89.65, 39.78], kind: 'city' },
@@ -124,7 +136,7 @@ test('provider-selected Namibia reaches its reviewed Discovery set', { skip: !bu
     name: 'Namibia', country: 'Namibia', canonicalPlaceId: 'open-world:nominatim:relation:195266',
     placeType: 'country', routability: 'planning_area', coordinates: [17, -22],
   });
-  const view = await renderBuilder({ query: '?homeDraft=1', draft });
+  const view = await renderProviderHomepageDraft(draft);
   try {
     const dialog = view.page.getByRole('dialog');
     await dialog.getByRole('heading', { name: 'Windhoek', exact: true }).waitFor();
@@ -138,7 +150,7 @@ test('provider-selected Africa starts with truthful reviewed route-family direct
     name: 'Africa', country: '', canonicalPlaceId: 'open-world:nominatim:continent:africa',
     placeType: 'continent', routability: 'planning_area', coordinates: [20, 2],
   });
-  const view = await renderBuilder({ query: '?homeDraft=1', draft });
+  const view = await renderProviderHomepageDraft(draft);
   try {
     const dialog = view.page.getByRole('dialog');
     await dialog.getByRole('heading', { name: 'Choose a direction', exact: true }).waitFor();
@@ -166,7 +178,7 @@ test('provider-selected Africa starts with truthful reviewed route-family direct
 });
 
 test('Japan card focus drives the map, Add stays isolated, and direct commit opens Builder without Review', { skip: !builderBrowserTestsEnabled, timeout: 60_000 }, async () => {
-  const view = await renderBuilder({ query: '?homeDraft=1', draft: homeDraft('Japan') });
+  const view = await renderHomeDraft('Japan');
   await view.page.setViewportSize({ width: 1440, height: 900 });
   try {
     const dialog = view.page.getByRole('dialog');
@@ -196,7 +208,7 @@ test('Japan card focus drives the map, Add stays isolated, and direct commit ope
 });
 
 test('Japan Discovery handoff returns to the editable Builder surface', { skip: !builderBrowserTestsEnabled, timeout: 60_000 }, async () => {
-  const view = await renderBuilder({ query: '?homeDraft=1', draft: homeDraft('Japan') });
+  const view = await renderHomeDraft('Japan');
   await view.page.setViewportSize({ width: 1440, height: 900 });
   try {
     const dialog = view.page.getByRole('dialog');
@@ -241,7 +253,7 @@ test('Discovery handoff retains normal Builder controls and persists exercised e
     nightAllocations: { kanazawa: 3, kyoto: 5, osaka: 2 }, draft: [], status: 'planned',
   });
   const normal = await renderBuilder({ query: `?trip=${normalTrip.id}&recover=1`, initialTrip: normalTrip });
-  const discovery = await renderBuilder({ query: '?homeDraft=1', draft: homeDraft('Japan') });
+  const discovery = await renderHomeDraft('Japan');
   await normal.page.setViewportSize({ width: 1440, height: 900 });
   await discovery.page.setViewportSize({ width: 1440, height: 900 });
   try {
@@ -379,7 +391,7 @@ for (const [country, clickOrder] of [
   ['Australia', ['Airlie Beach', 'Sydney', 'Port Douglas']],
   ['Japan', ['Osaka', 'Kanazawa', 'Kyoto']],
 ] as const) test(`${country} Discovery commits place membership through the normal route-order owner`, { skip: !builderBrowserTestsEnabled, timeout: 90_000 }, async () => {
-  const view = await renderBuilder({ query: '?homeDraft=1', draft: homeDraft(country, 'London') });
+  const view = await renderHomeDraft(country, 'London');
   const dialog = view.page.getByRole('dialog');
   try {
     await dialog.getByRole('heading', { name: country === 'Australia' ? 'Choose a direction' : 'Explore places' }).waitFor();
@@ -446,7 +458,7 @@ for (const [country, clickOrder] of [
 });
 
 test('Australia direction filters switch inside Explore while preserving a cross-region shortlist', { skip: !builderBrowserTestsEnabled, timeout: 60_000 }, async () => {
-  const view = await renderBuilder({ query: '?homeDraft=1', draft: homeDraft('Australia', 'London') });
+  const view = await renderHomeDraft('Australia', 'London');
   try {
     const dialog = view.page.getByRole('dialog');
     await dialog.getByRole('button', { name: 'Explore direction: East coast', exact: true }).click();
@@ -496,7 +508,7 @@ test('Australia direction filters switch inside Explore while preserving a cross
 });
 
 test('Africa direction filters switch reviewed route families inside Explore without changing trip route', { skip: !builderBrowserTestsEnabled, timeout: 60_000 }, async () => {
-  const view = await renderBuilder({ query: '?homeDraft=1', draft: homeDraft('Africa', 'London') });
+  const view = await renderHomeDraft('Africa', 'London');
   try {
     const dialog = view.page.getByRole('dialog');
     await dialog.getByRole('button', { name: 'Explore direction: Namibia Self-Drive', exact: true }).click();
@@ -519,7 +531,7 @@ test('Africa direction filters switch reviewed route families inside Explore wit
 });
 
 test('Hokkaido remains an unresolved canonical region when no reviewed contained places exist', { skip: !builderBrowserTestsEnabled, timeout: 45_000 }, async () => {
-  const view = await renderBuilder({ query: '?homeDraft=1', draft: homeDraft('Hokkaido', 'London') });
+  const view = await renderHomeDraft('Hokkaido', 'London');
   try {
     const dialog = view.page.getByRole('dialog');
     await dialog.getByRole('heading', { name: 'Explore places', exact: true }).waitFor();
@@ -542,7 +554,7 @@ test('Hokkaido remains an unresolved canonical region when no reviewed contained
 });
 
 test('Sapporo remains a direct actionable city path outside Hokkaido region Discovery', { skip: !builderBrowserTestsEnabled, timeout: 45_000 }, async () => {
-  const view = await renderBuilder({ query: '?homeDraft=1', draft: homeDraft('Sapporo', 'London') });
+  const view = await renderHomeDraft('Sapporo', 'London');
   try {
     assert.equal(await view.page.getByRole('dialog').count(), 0, 'an actionable city does not open Discovery');
     const route = view.page.locator('[data-builder-route-workspace]');
@@ -554,7 +566,7 @@ test('Sapporo remains a direct actionable city path outside Hokkaido region Disc
 
 for (const [intent, base] of [['Taj Mahal', 'Agra'], ['Lake Atitlán', 'Panajachel']] as const) test(`${intent} resolves through one supported base action and commits without a visible Review step`,
   { skip: !builderBrowserTestsEnabled, timeout: 60_000 }, async () => {
-  const view = await renderBuilder({ query: '?homeDraft=1', draft: homeDraft(intent) });
+  const view = await renderHomeDraft(intent);
   try {
     const dialog = view.page.getByRole('dialog');
     await dialog.getByRole('heading', { name: 'Choose a base', exact: true }).waitFor();
@@ -581,7 +593,7 @@ for (const [intent, base] of [['Taj Mahal', 'Agra'], ['Lake Atitlán', 'Panajach
 });
 
 test('390 mobile Discovery keeps the primary action in the modal footer', { skip: !builderBrowserTestsEnabled, timeout: 45_000 }, async () => {
-  const view = await renderBuilder({ query: '?homeDraft=1', draft: homeDraft('Japan') });
+  const view = await renderHomeDraft('Japan');
   await view.page.setViewportSize({ width: 390, height: 844 });
   try {
     const dialog = view.page.getByRole('dialog');
@@ -598,7 +610,7 @@ test('provider-selected Australia retains its rich Discovery directions', { skip
     name: 'Australia', country: 'Australia', canonicalPlaceId: 'open-world:nominatim:relation:80500',
     placeType: 'country', routability: 'planning_area', coordinates: [134, -25],
   });
-  const view = await renderBuilder({ query: '?homeDraft=1', draft });
+  const view = await renderProviderHomepageDraft(draft);
   try {
     const dialog = view.page.getByRole('dialog');
     await dialog.getByRole('heading', { name: 'Choose a direction', exact: true }).waitFor();
@@ -612,7 +624,7 @@ test('provider-selected genuine zero remains unresolved without fabricated place
     name: 'Eritrea', country: 'Eritrea', canonicalPlaceId: 'open-world:nominatim:relation:296961',
     placeType: 'country', routability: 'planning_area', coordinates: [39, 15],
   });
-  const view = await renderBuilder({ query: '?homeDraft=1', draft });
+  const view = await renderProviderHomepageDraft(draft);
   try {
     const dialog = view.page.getByRole('dialog');
     await dialog.getByText("We don't have reviewed places here yet.", { exact: true }).waitFor();
@@ -626,7 +638,7 @@ test('provider-selected actionable Tokyo still skips Discovery', { skip: !builde
     name: 'Tokyo', country: 'Japan', canonicalPlaceId: 'open-world:nominatim:relation:1543125',
     placeType: 'city', routability: 'direct_destination', coordinates: [139.6917, 35.6895],
   });
-  const view = await renderBuilder({ query: '?homeDraft=1', draft });
+  const view = await renderProviderHomepageDraft(draft);
   try {
     assert.equal(await view.page.getByRole('dialog').count(), 0);
     assert.equal(await view.page.getByRole('button', { name: 'Continue shaping your route', exact: true }).count(), 0);
@@ -635,7 +647,7 @@ test('provider-selected actionable Tokyo still skips Discovery', { skip: !builde
 });
 
 test('Tajikistan offers reviewed stay bases and commits selected canonical places once at 390px', { skip: !builderBrowserTestsEnabled, timeout: 45_000 }, async () => {
-  const view = await renderBuilder({ query: '?homeDraft=1', draft: homeDraft('Tajikistan') });
+  const view = await renderHomeDraft('Tajikistan');
   await view.page.setViewportSize({ width: 390, height: 844 });
   try {
     const dialog = view.page.getByRole('dialog');
@@ -660,7 +672,7 @@ test('Tajikistan offers reviewed stay bases and commits selected canonical place
 });
 
 test('Africa aggregates reviewed places while retaining continent intent without a default country or overnight stop', { skip: !builderBrowserTestsEnabled, timeout: 45_000 }, async () => {
-  const view = await renderBuilder({ query: '?homeDraft=1', draft: homeDraft('Africa') });
+  const view = await renderHomeDraft('Africa');
   await view.page.setViewportSize({ width: 390, height: 844 });
   try {
     const dialog = view.page.getByRole('dialog');
@@ -688,7 +700,7 @@ test('Africa aggregates reviewed places while retaining continent intent without
 });
 
 test('Spanish sparse Discovery localizes controls and evidence without changing canonical place names', { skip: !builderBrowserTestsEnabled, timeout: 45_000 }, async () => {
-  const view = await renderBuilder({ query: '?homeDraft=1', draft: homeDraft('Tajikistan'), language: 'es' });
+  const view = await renderHomeDraft('Tajikistan', 'Madrid', { language: 'es' });
   await view.page.setViewportSize({ width: 390, height: 844 });
   try {
     const dialog = view.page.getByRole('dialog');
@@ -706,7 +718,7 @@ test('Spanish sparse Discovery localizes controls and evidence without changing 
 for (const [destination, expectedPlace] of [
   ['Namibia', 'Windhoek'], ['Japan', 'Tokyo'], ['Italy', 'Rome'], ['Madagascar', 'Antananarivo'], ['Thailand', 'Bangkok'],
 ] as const) test(`${destination} production evidence reaches Adaptive Discovery`, { skip: !builderBrowserTestsEnabled, timeout: 45_000 }, async () => {
-  const view = await renderBuilder({ query: '?homeDraft=1', draft: homeDraft(destination) });
+  const view = await renderHomeDraft(destination);
   try {
     const dialog = view.page.getByRole('dialog');
     await dialog.getByRole('heading', { name: expectedPlace, exact: true }).waitFor();
@@ -715,7 +727,7 @@ for (const [destination, expectedPlace] of [
 });
 
 test('genuine zero content keeps unresolved intent, renders no empty rails, and creates no stop', { skip: !builderBrowserTestsEnabled, timeout: 45_000 }, async () => {
-  const view = await renderBuilder({ query: '?homeDraft=1', draft: homeDraft('Eritrea') });
+  const view = await renderHomeDraft('Eritrea');
   try {
     const dialog = view.page.getByRole('dialog');
     await dialog.getByText("We don't have reviewed places here yet.", { exact: true }).waitFor();
@@ -736,7 +748,7 @@ test('genuine zero content keeps unresolved intent, renders no empty rails, and 
 });
 
 test('Spanish genuine zero content and pending intent remain localized', { skip: !builderBrowserTestsEnabled, timeout: 45_000 }, async () => {
-  const view = await renderBuilder({ query: '?homeDraft=1', draft: homeDraft('Eritrea'), language: 'es' });
+  const view = await renderHomeDraft('Eritrea', 'Madrid', { language: 'es' });
   try {
     const dialog = view.page.getByRole('dialog');
     await dialog.getByText('Aún no tenemos lugares revisados aquí.', { exact: true }).waitFor();
