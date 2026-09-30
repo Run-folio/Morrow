@@ -5273,7 +5273,7 @@
       },
       {
         "value": "14px",
-        "count": 336,
+        "count": 337,
         "examples": [
           "app/journey/about/about.module.css",
           "app/journey/account.module.css",
@@ -6078,7 +6078,7 @@
       },
       {
         "value": "50%",
-        "count": 88,
+        "count": 89,
         "examples": [
           "app/journey/account.module.css",
           "app/journey/easyt-navigation.module.css",
@@ -8224,6 +8224,6 @@
         }
       ]
     },
-    "documentedExceptions": 56
+    "documentedExceptions": 57
   }
 }

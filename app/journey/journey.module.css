@@ -1143,6 +1143,7 @@ button.mapPlanAgendaRow{cursor:pointer;border-radius:var(--morrovia-control-radi
     border-radius:3px!important;
   }
   .shellPlanner .mapPlaceContext{max-height:min(440px,calc(100% - var(--map-workspace-strip-height) - 168px))!important}
+  .shellPlanner .mapContextEmpty{display:none!important}
   .shellPlanner .finderDock :global([class*="sectionStatus"]){grid-template-columns:auto minmax(0,1fr)!important}
   .shellPlanner .finderDock :global([class*="sectionStatus"])>button{grid-column:1/-1!important;width:100%}
   .shellPlanner :global(.planner-map .maplibregl-ctrl-top-right){top:14px!important;right:18px!important}
@@ -1201,4 +1202,5 @@ button.mapPlanAgendaRow{cursor:pointer;border-radius:var(--morrovia-control-radi
 .mapContextHeading>button,.mapExternalActions a,.mapContextActions button{transition:color .18s,background .18s,border-color .18s,box-shadow .18s,transform .12s}
 .mapContextHeading>button:active,.mapExternalActions a:active,.mapContextActions button:active{transform:translateY(1px)}
 .enrichmentToggle{align-self:flex-start;max-width:100%;margin:8px 0 2px}
-.enrichmentPanel{display:flex;flex:1;min-height:0;min-width:0;overflow:hidden}
+.enrichmentPanel{display:flex;box-sizing:border-box;flex:1;width:100%;max-width:100%;min-height:0;min-width:0;overflow:hidden}
+.shellPlanner .finderDock{box-sizing:border-box;max-width:100%!important;min-width:0}

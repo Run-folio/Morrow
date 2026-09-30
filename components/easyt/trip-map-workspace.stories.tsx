@@ -1003,11 +1003,56 @@ export const GooglePlacesEnrichmentJaipur: Story = {
   parameters: { nextjs: { appDirectory: true, navigation: { pathname: "/journey/delhi-agra-jaipur/map", query: { stop: "jaipur", mode: "see", day: "7" } } } },
 };
 
+const longNamePlace = {
+  ...enrichedPlaces[0]!,
+  providerPlaceId: "ChIJlong-story-fixture",
+  name: "The exceptionally long name of a historic courtyard and cultural centre near the old city market",
+  address: "A very long street and building address that should wrap within the selected place card, Old Delhi, India",
+};
+export const GooglePlacesEnrichmentLongName: Story = {
+  ...GooglePlacesEnrichmentFixture,
+  args: { storyTrip: goldenTriangleTrip, storyState: { mapMode: "detail", shapeDayTab: "see", mobileShapeDayOpen: true, googleFixture: {
+    ...googleFixture,
+    placesByScope: { ...fixturePlacesByScope, "delhi:see": [longNamePlace] },
+    detailsById: { ...googleFixture.detailsById, [longNamePlace.providerPlaceId]: longNamePlace },
+  } } },
+  play: async ({ canvasElement }) => { Array.from(canvasElement.querySelectorAll<HTMLButtonElement>("button[data-place-id]")).find((button) => button.dataset.placeId === longNamePlace.providerPlaceId)?.click(); },
+};
+
+const densePlaces = Array.from({ length: 6 }, (_, index) => ({
+  ...enrichedPlaces[0]!, providerPlaceId: `ChIJdense-story-${index}`, name: `Nearby place ${index + 1}`,
+  coordinates: [77.241, 28.656] as [number, number],
+}));
+export const GooglePlacesEnrichmentDenseMarkers: Story = {
+  ...GooglePlacesEnrichmentFixture,
+  args: { storyTrip: goldenTriangleTrip, storyState: { mapMode: "detail", shapeDayTab: "see", mobileShapeDayOpen: true, googleFixture: {
+    ...googleFixture,
+    placesByScope: { ...fixturePlacesByScope, "delhi:see": densePlaces },
+    detailsById: { ...googleFixture.detailsById, ...Object.fromEntries(densePlaces.map((place) => [place.providerPlaceId, place])) },
+  } } },
+};
+
+export const GooglePlacesEnrichmentNativePoi: Story = {
+  ...GooglePlacesEnrichmentFixture,
+  play: async ({ canvasElement }) => { Array.from(canvasElement.querySelectorAll<HTMLButtonElement>("button")).find((button) => button.textContent === "Native POI outside Nearby")?.click(); },
+};
+
+export const GooglePlacesEnrichmentNativeFailure: Story = {
+  ...GooglePlacesEnrichmentFixture,
+  args: { storyTrip: goldenTriangleTrip, storyState: { mapMode: "detail", shapeDayTab: "see", mobileShapeDayOpen: true, googleFixture: {
+    ...googleFixture,
+    detailsById: Object.fromEntries(Object.entries(googleFixture.detailsById).filter(([id]) => id !== "ChIJnative-story-fixture")),
+  } } },
+  play: async ({ canvasElement }) => { Array.from(canvasElement.querySelectorAll<HTMLButtonElement>("button")).find((button) => button.textContent === "Native POI outside Nearby")?.click(); },
+};
+
 // Provider boundary fixture: the production canvas and event contract render without a live key.
 // Integrated discovery states below are exercised with the production workspace in Task 7.
 const googleCanvasFixtureApi = (() => {
   class FixtureMap {
-    listeners = new Map<string, (event: { placeId?: string; stop?(): void }) => void>();
+    listeners = new Map<string, (event: { placeId?: string; latLng?: { lat(): number; lng(): number }; stop?(): void }) => void>();
+    overlays = new Set<FixtureOverlayView>();
+    pan: [number, number] = [0, 0];
     constructor(readonly element: HTMLElement) {
       element.style.background = "var(--morrovia-surface, #f4f4fb)";
       const label = document.createElement("p");
@@ -1018,15 +1063,17 @@ const googleCanvasFixtureApi = (() => {
       nativePoi.type = "button";
       nativePoi.textContent = "Native POI outside Nearby";
       nativePoi.style.cssText = "position:absolute;left:45%;top:42%;min-height:44px;padding:8px;border:1px solid currentColor;border-radius:12px;background:white";
-      nativePoi.onclick = () => this.listeners.get("click")?.({ placeId: "ChIJnative-story-fixture", stop() {} });
+      nativePoi.onclick = () => this.listeners.get("click")?.({ placeId: "ChIJnative-story-fixture", latLng: { lat: () => 28.65, lng: () => 77.235 }, stop() {} });
       element.append(nativePoi);
     }
-    addListener(name: string, callback: (event: { placeId?: string; stop?(): void }) => void) {
+    addListener(name: string, callback: (event: { placeId?: string; latLng?: { lat(): number; lng(): number }; stop?(): void }) => void) {
       this.listeners.set(name, callback);
       return { remove: () => this.listeners.delete(name) };
     }
     setCenter() {}
     setZoom() {}
+    panTo() { this.pan = [0, 0]; this.overlays.forEach((overlay) => overlay.draw?.()); }
+    panBy(x: number, y: number) { this.pan = [x, y]; this.overlays.forEach((overlay) => overlay.draw?.()); }
   }
   class FixtureMarker {
     node: HTMLButtonElement;
@@ -1044,7 +1091,25 @@ const googleCanvasFixtureApi = (() => {
     addListener() { return { remove() {} }; }
     setMap() {}
   }
-  return { Map: FixtureMap, Marker: FixtureMarker, Polyline: FixtureLine } as unknown as GoogleTripMapApi;
+  class FixtureLatLng {
+    constructor(readonly latitude: number, readonly longitude: number) {}
+  }
+  class FixtureOverlayView {
+    private map: FixtureMap | null = null;
+    onAdd?(): void;
+    draw?(): void;
+    onRemove?(): void;
+    setMap(map: FixtureMap | null) {
+      if (map) { this.map = map; map.overlays.add(this); this.onAdd?.(); this.draw?.(); }
+      else { this.map?.overlays.delete(this); this.onRemove?.(); this.map = null; }
+    }
+    getPanes() { return this.map ? { overlayMouseTarget: this.map.element } : null; }
+    getProjection() { return { fromLatLngToDivPixel: (point: FixtureLatLng) => ({
+      x: (this.map?.element.clientWidth ?? 390) * 0.65 + (point.longitude - 77.2) * 360 - (this.map?.pan[0] ?? 0),
+      y: (this.map?.element.clientHeight ?? 520) / 2 - (point.latitude - 28.6) * 360 - (this.map?.pan[1] ?? 0),
+    }) }; }
+  }
+  return { Map: FixtureMap, Marker: FixtureMarker, Polyline: FixtureLine, LatLng: FixtureLatLng, OverlayView: FixtureOverlayView } as unknown as GoogleTripMapApi;
 })();
 async function loadFixtureGoogleCanvas() { return googleCanvasFixtureApi; }
 

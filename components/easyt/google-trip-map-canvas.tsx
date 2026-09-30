@@ -19,7 +19,10 @@ type Props = {
   legs: readonly GoogleCanvasLeg[];
   places?: readonly GoogleCanvasPlace[];
   selectedStopId: string | null;
-  onNativePoi(placeId: string): boolean | void;
+  selectedPlaceId?: string | null;
+  temporaryPlace?: GoogleCanvasPlace | null;
+  focusInset?: number;
+  onNativePoi(placeId: string, coordinates?: [number, number]): boolean | void;
   onEmptyClick(point: [number, number]): void;
   onSelectStop(stopId: string): void;
   onSelectLeg(legId: string): void;
@@ -38,7 +41,8 @@ export function GoogleTripMapCanvas(props: Props) {
   const [status, setStatus] = useState<"loading" | "ready" | "unavailable">("loading");
   const stopKey = props.stops.map((stop) => `${stop.id}:${stop.coordinates?.join(",") ?? ""}`).join("|");
   const legKey = props.legs.map((leg) => `${leg.id}:${leg.fromStopId}:${leg.toStopId}`).join("|");
-  const placeKey = props.places?.map((place) => `${place.id}:${place.coordinates.join(",")}`).join("|") ?? "";
+  const placeKey = props.places?.map((place) => `${place.id}:${place.category}:${place.coordinates.join(",")}`).join("|") ?? "";
+  const temporaryKey = props.temporaryPlace ? `${props.temporaryPlace.id}:${props.temporaryPlace.coordinates.join(",")}` : "";
 
   useEffect(() => {
     const element = containerRef.current;
@@ -54,13 +58,13 @@ export function GoogleTripMapCanvas(props: Props) {
           legs: props.legs,
           selectedStopId: props.selectedStopId,
           mapId: props.mapId,
-          onNativePoi: (placeId) => callbacksRef.current.onNativePoi(placeId),
+          onNativePoi: (placeId, coordinates) => callbacksRef.current.onNativePoi(placeId, coordinates),
           onEmptyClick: (point) => callbacksRef.current.onEmptyClick(point),
           onSelectStop: (stopId) => callbacksRef.current.onSelectStop(stopId),
           onSelectLeg: (legId) => callbacksRef.current.onSelectLeg(legId),
           onSelectPlace: (placeId) => callbacksRef.current.onSelectPlace?.(placeId),
         });
-        sessionRef.current.updatePlaces(callbacksRef.current.places ?? []);
+        sessionRef.current.updatePlaces(callbacksRef.current.places ?? [], callbacksRef.current.selectedPlaceId, callbacksRef.current.temporaryPlace, callbacksRef.current.focusInset);
         setStatus("ready");
         trackEvent("map_google_request", { operation: "sdk", outcome: "success" });
       })
@@ -70,7 +74,7 @@ export function GoogleTripMapCanvas(props: Props) {
   }, [props.browserKey, props.mapId, props.sdkLoader, stopKey, legKey]);
 
   useEffect(() => { sessionRef.current?.update({ selectedStopId: props.selectedStopId }); }, [props.selectedStopId]);
-  useEffect(() => { sessionRef.current?.updatePlaces(props.places ?? []); }, [placeKey]);
+  useEffect(() => { sessionRef.current?.updatePlaces(props.places ?? [], props.selectedPlaceId, props.temporaryPlace, props.focusInset); }, [placeKey, props.selectedPlaceId, temporaryKey, props.focusInset]);
 
   return <div className={`planner-map ${presentation.surface}`} data-basemap-status={status} aria-busy={status === "loading" || undefined} aria-label="Google trip map">
     <div ref={containerRef} className={presentation.canvas} />

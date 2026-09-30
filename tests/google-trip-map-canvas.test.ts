@@ -3,6 +3,8 @@ import test from "node:test";
 import {
   createGoogleMapsSdkLoader,
   createGoogleTripMapSession,
+  googlePlaceMarkerIcon,
+  googlePlaceMarkerOffset,
   googleCanvasEligible,
   type GoogleTripMapApi,
 } from "../lib/easyt/google-trip-map-adapter.ts";
@@ -133,13 +135,95 @@ test("nearby result markers update without remounting the Google map and emit ex
     onNativePoi: () => {}, onEmptyClick: () => {}, onSelectStop: () => {}, onSelectLeg: () => {},
     onSelectPlace: (id) => picked.push(id),
   });
-  session.updatePlaces([{ id: "ChIJnearby-one", name: "Nearby one", coordinates: [78.01, 27.18] }]);
+  session.updatePlaces([{ id: "ChIJnearby-one", name: "Nearby one", category: "eat", coordinates: [78.01, 27.18] }], "ChIJnearby-one");
   api.markers[1]!.fire("click");
   assert.deepEqual(picked, ["ChIJnearby-one"]);
+  assert.equal((api.markers[1]!.options as { icon: { scaledSize: { width: number; height: number } } }).icon.scaledSize.width, 52);
   assert.equal(api.mapCreations, 1);
   session.updatePlaces([]);
   assert.equal(api.markers[1]!.map, null);
   session.destroy();
+});
+
+test("Morrovia result markers have readable categories, 44px targets and separated dense positions", () => {
+  const api = fakeApi();
+  for (const category of ["stay", "eat", "see"] as const) {
+    const icon = googlePlaceMarkerIcon(api, category, false, [0, 0]);
+    assert.equal(icon.scaledSize.width, 44);
+    assert.equal(icon.scaledSize.height, 44);
+    assert.match(decodeURIComponent(icon.url), new RegExp(category.toUpperCase()));
+  }
+  const offsets = Array.from({ length: 6 }, (_, index) => googlePlaceMarkerOffset(index, 6));
+  assert.equal(new Set(offsets.map((point) => point.join(","))).size, 6);
+  assert.ok(offsets.every(([x, y], index) => offsets.slice(index + 1).every(([otherX, otherY]) => Math.hypot(x - otherX, y - otherY) >= 44)));
+  assert.equal(googlePlaceMarkerIcon(api, "see", true, [0, 0]).scaledSize.width, 52);
+});
+
+test("native POI gets a temporary selected Morrovia marker and pans without resetting zoom", () => {
+  const api = fakeApi();
+  const selections: string[] = [];
+  const session = createGoogleTripMapSession(api, {} as HTMLElement, {
+    stops: [], legs: [], selectedStopId: null,
+    onNativePoi: (id) => { selections.push(id); }, onEmptyClick: () => {},
+    onSelectStop: () => {}, onSelectLeg: () => {}, onSelectPlace: (id) => selections.push(id),
+  });
+  let stopped = 0;
+  api.lastMap!.fire("click", { placeId: "ChIJnative", latLng: { lat: () => 27.18, lng: () => 78.01 }, stop: () => stopped++ });
+  assert.equal(stopped, 1);
+  session.updatePlaces([], "ChIJnative", { id: "ChIJnative", name: "Selected Google place", category: "see", coordinates: [78.01, 27.18] }, 300);
+  assert.equal(api.markers.length, 1);
+  assert.equal((api.markers[0]!.options as { icon: { scaledSize: { width: number } } }).icon.scaledSize.width, 52);
+  assert.equal(api.lastMap!.panCalls, 1);
+  assert.equal(api.lastMap!.zoomCalls, 0);
+  assert.deepEqual(api.lastMap!.lastPanBy, [-150, 0], "selection moves clear of the desktop panel; mobile canvas is already above its sheet");
+  api.markers[0]!.fire("click");
+  assert.deepEqual(selections, ["ChIJnative", "ChIJnative"]);
+  session.destroy();
+});
+
+test("browser overlays use focusable Morrovia buttons above the Google canvas", () => {
+  const api = fakeApi();
+  const buttons: Array<{ type: string; className: string; textContent: string; removed: boolean; getAttribute(name: string): string | null; fire(): void }> = [];
+  const pane = { append: (_button: unknown) => {} };
+  const documentOwner: { activeElement: { getAttribute(name: string): string | null } | null; createElement(): unknown } = { activeElement: null, createElement: () => {
+    const listeners = new Map<string, (event: { stopPropagation(): void }) => void>();
+    const attributes = new Map<string, string>();
+    const button = {
+      type: "", className: "", textContent: "", title: "", style: {} as Record<string, string>, removed: false,
+      setAttribute(name: string, value: string) { attributes.set(name, value); },
+      getAttribute(name: string) { return attributes.get(name) ?? null; },
+      focus() { documentOwner.activeElement = this; },
+      addEventListener(name: string, callback: (event: { stopPropagation(): void }) => void) { listeners.set(name, callback); },
+      fire() { listeners.get("click")?.({ stopPropagation() {} }); }, remove() { this.removed = true; },
+    };
+    buttons.push(button);
+    return button;
+  } };
+  Object.assign(api, {
+    LatLng: class { constructor(_lat: number, _lng: number) {} },
+    OverlayView: class {
+      onAdd?(): void; draw?(): void; onRemove?(): void;
+      setMap(map: unknown) { if (map) { this.onAdd?.(); this.draw?.(); } else this.onRemove?.(); }
+      getPanes() { return { overlayMouseTarget: pane }; }
+      getProjection() { return { fromLatLngToDivPixel: () => ({ x: 120, y: 120 }) }; }
+    },
+  });
+  const picked: string[] = [];
+  const session = createGoogleTripMapSession(api, { ownerDocument: documentOwner } as unknown as HTMLElement, {
+    stops: [], legs: [], selectedStopId: null, onNativePoi: () => {}, onEmptyClick: () => {},
+    onSelectStop: () => {}, onSelectLeg: () => {}, onSelectPlace: (id) => picked.push(id),
+  });
+  session.updatePlaces([{ id: "ChIJone", name: "Courtyard", category: "see", coordinates: [77.2, 28.6] }], "ChIJone");
+  assert.equal(api.markers.length, 0, "browser result markers use the HTML overlay, not the tiny legacy icon");
+  assert.equal(buttons[0]?.type, "button");
+  assert.match(buttons[0]?.className ?? "", /planner-map__place--see is-active/);
+  buttons[0]?.fire();
+  assert.deepEqual(picked, ["ChIJone"]);
+  documentOwner.activeElement = buttons[0] as typeof documentOwner.activeElement;
+  session.updatePlaces([{ id: "ChIJone", name: "Courtyard", category: "see", coordinates: [77.2, 28.6] }], "ChIJone");
+  assert.equal(documentOwner.activeElement, buttons[1], "updating selection retains keyboard focus on the replacement marker");
+  session.destroy();
+  assert.equal(buttons[0]?.removed, true);
 });
 
 test("native POI selection retains canonical occurrence and intended day", () => {
@@ -190,6 +274,7 @@ function fakeApi() {
   class FakeEventTarget {
     listeners = new Map<string, (event: any) => void>();
     map: unknown = undefined;
+    options: unknown = undefined;
     fire(name: string, event?: unknown) { this.listeners.get(name)?.(event); }
     addListener(name: string, callback: (event: any) => void) {
       this.listeners.set(name, callback);
@@ -199,10 +284,15 @@ function fakeApi() {
   }
   class FakeMap extends FakeEventTarget {
     centerCalls = 0;
+    panCalls = 0;
+    zoomCalls = 0;
+    lastPanBy: [number, number] | null = null;
     boundsCalls: unknown[] = [];
     listenerRemoved = false;
     setCenter() { this.centerCalls++; }
-    setZoom() {}
+    setZoom() { this.zoomCalls++; }
+    panTo() { this.panCalls++; }
+    panBy(x: number, y: number) { this.lastPanBy = [x, y]; }
     fitBounds(bounds: unknown) { this.boundsCalls.push(bounds); }
     override addListener(name: string, callback: (event: any) => void) {
       const listener = super.addListener(name, callback);
@@ -218,8 +308,10 @@ function fakeApi() {
       constructor() { super(); api.mapCreations++; api.lastMap = this; }
     },
     Marker: class extends FakeEventTarget {
-      constructor(options: { map: unknown }) { super(); this.map = options.map; api.markers.push(this); }
+      constructor(options: { map: unknown }) { super(); this.map = options.map; this.options = options; api.markers.push(this); }
     },
+    Size: class { width: number; height: number; constructor(width: number, height: number) { this.width = width; this.height = height; } },
+    Point: class { x: number; y: number; constructor(x: number, y: number) { this.x = x; this.y = y; } },
     Polyline: class extends FakeEventTarget {
       constructor(options: { map: unknown }) { super(); this.map = options.map; api.legLines.push(this); }
     },

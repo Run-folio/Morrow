@@ -463,6 +463,7 @@ export function JourneyMapPlannerWorkspace({
   const [seeMapPlaces, setSeeMapPlaces] = useState<JourneyItineraryDiscoveryResult[]>([]);
   const [selectedMapResult, setSelectedMapResult] = useState<MapResultPlace | null>(null);
   const [workspacePlaceSelection, setWorkspacePlaceSelection] = useState<WorkspacePlaceSelection>({ kind: "none" });
+  const [nativeGooglePoint, setNativeGooglePoint] = useState<{ placeId: string; coordinates: [number, number] | null } | null>(null);
   const [googleTargetDayId, setGoogleTargetDayId] = useState("");
   const [selectedGoogleDetail, setSelectedGoogleDetail] = useState<EnrichedPlace | null>(null);
   const [googleReferenceUnavailable, setGoogleReferenceUnavailable] = useState<"invalid" | "not-found" | "provider-failure" | null>(null);
@@ -618,11 +619,17 @@ export function JourneyMapPlannerWorkspace({
   const googleNearby = googleScopeKey ? googleNearbyByScope[googleScopeKey] : undefined;
   const selectedGooglePlaceId = googleCanvasActive && workspacePlaceSelection.kind === "google" ? workspacePlaceSelection.placeId : null;
   const currentGoogleDetail = selectedGoogleDetailForPlace(selectedGooglePlaceId, selectedGoogleDetail);
+  const selectedGoogleMapPoint = selectedGooglePlaceId && nativeGooglePoint?.placeId === selectedGooglePlaceId
+    ? nativeGooglePoint.coordinates : currentGoogleDetail?.coordinates ?? null;
+  const temporaryGooglePlace = selectedGooglePlaceId && selectedGoogleMapPoint && googleDiscoveryCategory
+    ? { id: selectedGooglePlaceId, name: currentGoogleDetail?.name ?? "Selected Google place", category: googleDiscoveryCategory, coordinates: selectedGoogleMapPoint }
+    : null;
   useEffect(() => {
     if (!googleCanvasActive) {
       setWorkspacePlaceSelection((current) => current.kind === "google" ? { kind: "none" } : current);
       setGoogleNearbyByScope({});
       setSelectedGoogleDetail(null);
+      setNativeGooglePoint(null);
     }
   }, [googleCanvasActive]);
   const selectedGoogleStopId = workspacePlaceSelection.kind === "google" ? workspacePlaceSelection.stopId : null;
@@ -1251,11 +1258,12 @@ export function JourneyMapPlannerWorkspace({
     setMapMode("detail");
     setMobileMapDrawerOpen(true);
   };
-  const selectGoogleNativePoi = (placeId: string) => {
+  const selectGoogleNativePoi = (placeId: string, coordinates?: [number, number]) => {
     const stopId = selectedTripStop?.id;
     if (!stopId || !customTrip?.stops.some((stop) => stop.id === stopId)) return false;
     const dayId = selectedPlanItem?.stopId === stopId ? selectedPlanItem.id : null;
     setWorkspacePlaceSelection(nativeGooglePoiSelection(placeId, stopId, dayId));
+    setNativeGooglePoint({ placeId, coordinates: coordinates ?? null });
     setSelectedMapResult(null);
     setSelectedPlannerPin(null);
     setSelectedRouteLegId(null);
@@ -1266,6 +1274,7 @@ export function JourneyMapPlannerWorkspace({
   };
   const selectGoogleDiscoveryPlace = (placeId: string) => {
     if (!selectedTripStop || !googleDiscoveryCategory) return;
+    if (nativeGooglePoint?.placeId !== placeId) setNativeGooglePoint(null);
     setWorkspacePlaceSelection(googlePlaceSelectionForScope(placeId, {
       stopId: selectedTripStop.id,
       dayId: selectedPlanItem?.stopId === selectedTripStop.id ? selectedPlanItem.id : null,
@@ -1278,6 +1287,7 @@ export function JourneyMapPlannerWorkspace({
     if (!selectedTripStop || !customTrip?.brief.itineraryIdeas?.some((idea) => isGooglePlaceReferenceIdea(idea)
       && idea.id === referenceId && idea.stopId === selectedTripStop.id && idea.providerReference.placeId === placeId)) return;
     setWorkspacePlaceSelection(googleSavedReferenceSelection(placeId, selectedTripStop.id, referenceId));
+    setNativeGooglePoint(null);
     setMobileShapeDayOpen(true);
     setMobileMapDrawerOpen(true);
   };
@@ -2753,8 +2763,11 @@ export function JourneyMapPlannerWorkspace({
               mapId={process.env.NEXT_PUBLIC_GOOGLE_MAPS_MAP_ID}
               stops={canonicalMapStops.map((stop) => ({ id: stop.id, name: stop.city, coordinates: stop.coordinates ?? null }))}
               legs={canonicalMapLegs.map((leg) => ({ id: leg.id, fromStopId: leg.fromStopId, toStopId: leg.toStopId }))}
-              places={googleDiscoveryCategory ? (googleNearby?.places ?? []).map((place) => ({ id: place.providerPlaceId, name: place.name, coordinates: place.coordinates })) : []}
+              places={googleDiscoveryCategory ? (googleNearby?.places ?? []).map((place) => ({ id: place.providerPlaceId, name: place.name, category: googleDiscoveryCategory, coordinates: place.coordinates })) : []}
               selectedStopId={mapMode === "overview" ? null : selectedTripStop?.id ?? null}
+              selectedPlaceId={selectedGooglePlaceId}
+              temporaryPlace={temporaryGooglePlace}
+              focusInset={mapCameraOcclusions.left ?? 0}
               onNativePoi={selectGoogleNativePoi}
               onEmptyClick={(coordinates) => {
                 if (pinPlacementMode) { setPinCoordinates(coordinates); setPinPlacementMode(false); }
@@ -3147,6 +3160,7 @@ export function JourneyMapPlannerWorkspace({
             : selectedTripStop.name}
           category={googleDiscoveryCategory ?? "see"}
           places={googleNearby?.places ?? []}
+          selectedFallback={selectedGooglePlaceId && nativeGooglePoint?.placeId === selectedGooglePlaceId ? { label: "Selected on the map", destination: selectedTripStop.name } : null}
           savedReferences={googlePlaceReferenceIdeas(customTrip?.brief.itineraryIdeas)
             .filter((idea) => idea.stopId === selectedTripStop.id && (shapeDayTab === "stay" ? idea.category === "stay" : shapeDayTab === "eat" ? idea.category === "restaurant" : idea.category === "activity"))
             .map((idea) => ({ id: idea.id, placeId: idea.providerReference.placeId, dayLabel: idea.dayId ? `Day ${customTrip?.planItems.find((day) => day.id === idea.dayId)?.dayNumber ?? "?"}` : null }))}
@@ -3166,14 +3180,14 @@ export function JourneyMapPlannerWorkspace({
           onSelectSavedReference={selectGoogleSavedReference}
           onBackToPlaces={() => setWorkspacePlaceSelection({ kind: "none" })}
           onRetry={() => { if (selectedGooglePlaceId) setGoogleDetailRetry((value) => value + 1); else if (googleScopeKey) setGoogleNearbyRetry((value) => ({ scopeKey: googleScopeKey, sequence: (value?.sequence ?? 0) + 1 })); }}
-          actions={selectedGooglePlaceId && selectedGoogleDetail?.providerPlaceId === selectedGooglePlaceId && selectedGoogleStopId === selectedTripStop.id ? <>
+          actions={selectedGooglePlaceId && selectedGoogleStopId === selectedTripStop.id ? <>
             {selectedGoogleChoice ? <p role="status">{selectedGoogleChoice.dayId ? `Added to Day ${customTrip?.planItems.find((day) => day.id === selectedGoogleChoice.dayId)?.dayNumber ?? "?"}` : "Saved for later"} · Not booked</p> : null}
             {shapeDayTab !== "stay" && googleDayOptions.length ? <EasyTSelect label="Day for this place" value={googleTargetDayId} onChange={(event) => setGoogleTargetDayId(event.target.value)}>
               <option value="">Choose a day</option>
               {googleDayOptions.map((day) => <option key={day.id} value={day.id}>Day {day.dayNumber} · {day.date}</option>)}
             </EasyTSelect> : null}
-            {shapeDayTab !== "stay" && googleDayOptions.length ? <EasyTButton fullWidth disabled={!googleTargetDayId || selectedGoogleChoice?.dayId === googleTargetDayId} onClick={addSelectedGooglePlaceToDay}>{selectedGoogleChoice?.dayId ? "Move to selected day" : `Add to Day ${googleDayOptions.find((day) => day.id === googleTargetDayId)?.dayNumber ?? ""}`}</EasyTButton> : null}
-            <EasyTButton variant="secondary" fullWidth disabled={Boolean(selectedGoogleChoice)} onClick={saveSelectedGooglePlace}>{shapeDayTab === "stay" ? "Save stay for later" : "Save for later"}</EasyTButton>
+            {shapeDayTab !== "stay" && googleDayOptions.length ? <EasyTButton fullWidth disabled={!currentGoogleDetail || !googleTargetDayId || selectedGoogleChoice?.dayId === googleTargetDayId} onClick={addSelectedGooglePlaceToDay}>{selectedGoogleChoice?.dayId ? "Move to selected day" : `Add to Day ${googleDayOptions.find((day) => day.id === googleTargetDayId)?.dayNumber ?? ""}`}</EasyTButton> : null}
+            <EasyTButton variant="secondary" fullWidth disabled={!currentGoogleDetail || Boolean(selectedGoogleChoice)} onClick={saveSelectedGooglePlace}>{shapeDayTab === "stay" ? "Save stay for later" : "Save for later"}</EasyTButton>
             {selectedGoogleChoice ? <EasyTButton variant="quiet" fullWidth onClick={() => updatePlannerTrip((trip) => removeItineraryIdea(trip, selectedGoogleChoice.id), "Google place removed")}>Remove saved place</EasyTButton> : null}
           </> : null}
         /></div> : null}

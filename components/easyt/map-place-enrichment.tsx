@@ -15,6 +15,7 @@ type Props = {
   contextLabel: string;
   category: PlaceEnrichmentCategory;
   places: readonly EnrichedPlace[];
+  selectedFallback?: { label: string; destination: string } | null;
   savedReferences?: readonly { id: string; placeId: string; dayLabel: string | null }[];
   status: "loading" | "ready" | "empty" | "unavailable";
   failure?: GooglePlaceFailureKind;
@@ -82,11 +83,20 @@ export default function MapPlaceEnrichment(props: Props) {
           <p>{review.text}</p>
           <p className={styles.reviewAuthor}>{review.author.avatarUrl ? <img src={review.author.avatarUrl} alt="" /> : null}{review.author.url ? <a href={review.author.url} target="_blank" rel="noopener noreferrer">{review.author.name}</a> : review.author.name}{review.rating !== undefined ? ` · ${review.rating} ★` : null} · <a href={review.sourceUrl} target="_blank" rel="noopener noreferrer">View review on Google Maps</a></p>
         </li>)}</ul></details> : null}
-      </> : null}
+      </> : <>
+        <h3>{props.selectedFallback?.label ?? "Saved Google place"}</h3>
+        <p>{props.selectedFallback
+          ? `Near ${props.selectedFallback.destination}. ${props.detailStatus === "loading" ? "Checking the place name and details now." : "Place details are unavailable right now."}`
+          : "Your saved reference remains available while we check current place details."}</p>
+        <a href={`https://www.google.com/maps/search/?api=1&query=Google%20place&query_place_id=${encodeURIComponent(props.selectedPlaceId)}`} target="_blank" rel="noopener noreferrer">Open in Google Maps <ArrowUpRight aria-hidden="true" /></a>
+        {props.actions ? <div className={styles.actions}>{props.actions}</div> : null}
+      </>}
       {props.detailStatus === "loading" ? <p role="status">Loading place details…</p> : null}
-      {props.detailStatus === "unavailable" ? <p role="status">{props.unavailableReason === "invalid" || props.unavailableReason === "not-found"
-        ? "This saved Google place could not be found. Your saved reference is still here; try again or choose a place from the list."
-        : "Couldn't load place details. Your saved reference is still here."} <EasyTButton variant="quiet" size="small" onClick={props.onRetry}>Try again</EasyTButton></p> : null}
+      {props.detailStatus === "unavailable" ? <p role="status">{props.selectedFallback
+        ? "Couldn't load this place from Google Maps. Try again or choose a place from the list."
+        : props.unavailableReason === "invalid" || props.unavailableReason === "not-found"
+          ? "This saved Google place could not be found. Your saved reference is still here; try again or choose a place from the list."
+          : "Couldn't load place details. Your saved reference is still here."} <EasyTButton variant="quiet" size="small" onClick={props.onRetry}>Try again</EasyTButton></p> : null}
     </div> : <>
       {props.savedReferences?.length ? <div className={styles.savedReferences}><strong>Saved Google places</strong><ul>{props.savedReferences.map((reference) => <li key={reference.id}><EasyTButton variant="quiet" fullWidth onClick={() => props.onSelectSavedReference?.(reference.id, reference.placeId)}>Saved Google place{reference.dayLabel ? ` · ${reference.dayLabel}` : " · for later"}</EasyTButton></li>)}</ul></div> : null}
       {props.status === "loading" ? <MorroviaSectionStatus state="loading" title="Finding nearby places" detail="Checking this destination now." /> : null}

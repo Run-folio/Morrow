@@ -1,13 +1,13 @@
 .wideMap {
-  width: 100vw;
-  margin-left: 50%;
-  transform: translateX(-50%);
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
 }
 
 .wideMap:has([data-map-expanded="true"]) {
-  width: 100vw;
+  width: 100%;
   height: calc(100svh - var(--morrovia-navigation-height));
   min-height: 680px;
-  margin-left: calc(50% - 50vw);
+  margin-left: 0;
   transform: none;
 }
