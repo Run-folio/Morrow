@@ -1,12 +1,14 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
+import { mapLibreCompatibleResults } from "../lib/easyt/map-result-selection.ts";
 
 import {
   firstUsefulLocalSearchWithFallback,
   localSearchFallbackHedgeMs,
   localSearchProviderOutcome,
   localSearchScope,
+  localSearchPrimaryLanes,
   type LocalSearchProviderOutcome,
 } from "../lib/easyt/local-search-strategy.ts";
 
@@ -22,6 +24,53 @@ test("Antigua-style empty and failed primary lanes accept one useful named fallb
   );
   assert.deepEqual(result, { state: "ready", places: ["Antigua restaurant"] });
   assert.equal(fallbackCalls, 1);
+});
+
+test("MapLibre local search excludes Google before invocation while permitted providers and honest states remain", async () => {
+  let googleCalls = 0;
+  let osmCalls = 0;
+  const google = async () => { googleCalls++; return outcome("ready", ["Google fact"]); };
+  const osm = async () => { osmCalls++; return outcome("ready", ["OSM place"]); };
+  const maplibre = await firstUsefulLocalSearchWithFallback(localSearchPrimaryLanes("maplibre", google, osm), async () => outcome("empty"), () => new Promise(() => {}));
+  assert.deepEqual(maplibre, { state: "ready", places: ["OSM place"] });
+  assert.equal(googleCalls, 0);
+  assert.equal(osmCalls, 1);
+  const noMap = await firstUsefulLocalSearchWithFallback(localSearchPrimaryLanes("none", google, async () => outcome("empty")), async () => outcome("empty"), () => new Promise(() => {}));
+  assert.deepEqual(noMap, { state: "ready", places: ["Google fact"] });
+  assert.equal(googleCalls, 1);
+  const empty = await firstUsefulLocalSearchWithFallback(localSearchPrimaryLanes("maplibre", google, async () => outcome("empty")), async () => outcome("failed"), async () => {});
+  const failed = await firstUsefulLocalSearchWithFallback(localSearchPrimaryLanes("maplibre", google, async () => outcome("failed")), async () => outcome("failed"), async () => {});
+  assert.equal(empty.state, "empty");
+  assert.equal(failed.state, "failed");
+  assert.equal(googleCalls, 1);
+});
+
+test("Map and Stay opt into the server-owned MapLibre boundary before local search", () => {
+  const route = source("app/api/journey-local-search/route.ts");
+  const finder = source("components/journey-local-finder.tsx");
+  const map = source("components/journey-map-planner-workspace.tsx");
+  const stay = source("components/easyt/trip-stay-workspace.tsx");
+  assert.match(route, /localSearchPrimaryLanes\(mapPresentation/);
+  assert.match(finder, /query\.set\("mapPresentation", mapPresentation\)/);
+  assert.match(map, /<JourneyLocalFinder[^>]*mapPresentation="maplibre"/);
+  assert.match(stay, /<JourneyLocalFinder[\s\S]*?mapPresentation="maplibre"/);
+  assert.match(map, /googleCanvasActive \? <GoogleTripMapCanvas/);
+  assert.match(map, /fetch\(`\/api\/journey-place-enrichment\?\$\{query\}`/);
+  assert.match(map, /if \(!googleCanvasActive\)[\s\S]*?setGoogleNearbyByScope\(\{\}\)/);
+  assert.match(map, /mapLibreCompatibleResults\(/);
+  assert.match(finder, /payload\.places\.filter\(\(place\) => place\.provider !== "google-places"\)/);
+});
+
+test("MapLibre drops late Google facts while retaining canonical neutral reference and permitted results", () => {
+  const results = [
+    { sourceId: "osm", provider: "openstreetmap" },
+    { sourceId: "old-google", provider: "google-places" },
+    { sourceId: "user-pin" },
+  ];
+  assert.deepEqual(mapLibreCompatibleResults(results), [results[0], results[2]]);
+  const map = source("components/journey-map-planner-workspace.tsx");
+  assert.match(map, /const selectedGooglePlaceId = googleCanvasActive && workspacePlaceSelection\.kind === "google"/);
+  assert.match(map, /googlePlaceReferenceIdeas\(customTrip\?\.brief\.itineraryIdeas\)/);
 });
 
 test("a useful primary result wins and a provider failure stays local", async () => {

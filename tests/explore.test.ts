@@ -1,3 +1,4 @@
+import { legacyItineraryIdeas } from "../lib/easyt/trip.ts";
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
@@ -174,7 +175,7 @@ test("restaurant results use the canonical itinerary idea model and remain unsch
   });
   const saved = saveItineraryIdea(base, result.idea);
   assert.equal(exploreResultState(saved, result).state, "saved");
-  assert.equal(saved.brief.itineraryIdeas?.[0]?.dayId, undefined);
+  assert.equal(legacyItineraryIdeas(saved.brief.itineraryIdeas)?.[0]?.dayId, undefined);
   assert.equal(saved.planItems.every((day) => !day.notes.includes(result.title)), true);
 });
 
@@ -187,7 +188,7 @@ test("Add to Day schedules exactly one canonical item and survives JSON reload",
   const scheduled = scheduleItineraryIdea(base, result.idea, target!.day.id, target!.dayPart);
   const repeated = scheduleItineraryIdea(scheduled, result.idea, target!.day.id, target!.dayPart);
   const reloaded = JSON.parse(JSON.stringify(repeated)) as EasyTTrip;
-  assert.equal(reloaded.brief.itineraryIdeas?.filter((idea) => idea.placeId === place.id).length, 1);
+  assert.equal(legacyItineraryIdeas(reloaded.brief.itineraryIdeas)?.filter((idea) => idea.placeId === place.id).length, 1);
   assert.equal(reloaded.planItems[1]!.notes.filter((note) => note === place.title).length, 1);
   assert.equal(exploreResultState(reloaded, result).state, "planned");
 });
@@ -204,7 +205,7 @@ test("an eleven-hour activity is persisted as day-level rather than an afternoon
   assert.equal(target?.dayPart, null);
   const scheduled = scheduleItineraryIdea(base, result.idea, target!.day.id, target!.dayPart);
   const reloaded = JSON.parse(JSON.stringify(scheduled)) as EasyTTrip;
-  const stored = reloaded.brief.itineraryIdeas?.find((idea) => idea.id === result.idea.id);
+  const stored = legacyItineraryIdeas(reloaded.brief.itineraryIdeas)?.find((idea) => idea.id === result.idea.id);
   assert.equal(stored?.dayPart, null);
   assert.deepEqual(stored?.providerMetadata?.duration, { fixedMinutes: 660 });
 });
@@ -223,13 +224,13 @@ test("Save and Add update card state without changing the active provider order"
   const selectedIdentity = selected.identity;
   assert.equal(projectExploreResults(source, [], []).find((result) => result.identity === selectedIdentity)?.title, "C", "selection never changes eligibility or order");
   const savedTrip = saveItineraryIdea(base, selected.idea);
-  const savedProjection = projectExploreResults(source, [], (savedTrip.brief.itineraryIdeas ?? []).flatMap((idea) => exploreResultForIdea(savedTrip, idea) ?? []));
+  const savedProjection = projectExploreResults(source, [], (legacyItineraryIdeas(savedTrip.brief.itineraryIdeas) ?? []).flatMap((idea) => exploreResultForIdea(savedTrip, idea) ?? []));
   assert.deepEqual(savedProjection.map((result) => result.title), ["A", "B", "C", "D", "E"]);
   assert.equal(exploreResultState(savedTrip, savedProjection[2]!).state, "saved");
 
   const occupied = { ...savedTrip, planItems: savedTrip.planItems.map((day) => day.id === "day-2" ? { ...day, notes: ["Existing afternoon plan"], noteDayParts: ["afternoon" as const] } : day) };
   const scheduledTrip = scheduleItineraryIdea(occupied, selected.idea, "day-2", "afternoon");
-  const scheduledProjection = projectExploreResults(source, [], (scheduledTrip.brief.itineraryIdeas ?? []).flatMap((idea) => exploreResultForIdea(scheduledTrip, idea) ?? []));
+  const scheduledProjection = projectExploreResults(source, [], (legacyItineraryIdeas(scheduledTrip.brief.itineraryIdeas) ?? []).flatMap((idea) => exploreResultForIdea(scheduledTrip, idea) ?? []));
   assert.deepEqual(scheduledProjection.map((result) => result.title), ["A", "B", "C", "D", "E"]);
   assert.equal(exploreResultState(scheduledTrip, scheduledProjection[2]!).state, "planned");
   assert.deepEqual(scheduledTrip.planItems.find((day) => day.id === "day-2")?.notes, ["Existing afternoon plan", "C"], "Add inserts without replacing an occupied daypart");
@@ -238,7 +239,7 @@ test("Save and Add update card state without changing the active provider order"
   assert.equal(exploreDiscoveryRequestKey(base), exploreDiscoveryRequestKey(scheduledTrip));
 
   const removedTrip = removeItineraryIdea(scheduledTrip, selected.idea.id);
-  const removedProjection = projectExploreResults(source, [], (removedTrip.brief.itineraryIdeas ?? []).flatMap((idea) => exploreResultForIdea(removedTrip, idea) ?? []));
+  const removedProjection = projectExploreResults(source, [], (legacyItineraryIdeas(removedTrip.brief.itineraryIdeas) ?? []).flatMap((idea) => exploreResultForIdea(removedTrip, idea) ?? []));
   assert.deepEqual(removedProjection.map((result) => result.title), ["A", "B", "C", "D", "E"]);
   assert.equal(exploreResultState(removedTrip, removedProjection[2]!).state, "available");
 });

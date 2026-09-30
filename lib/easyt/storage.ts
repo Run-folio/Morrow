@@ -1,3 +1,4 @@
+import { legacyItineraryIdeas } from "./trip.ts";
 import { isEasyTTrip, tripIntentForTrip, type EasyTTrip } from "./trip.ts";
 import { normalizeLegacyGeneratedDayContext } from "./itinerary-generated-context.ts";
 import {
@@ -535,7 +536,7 @@ function authoredActivitySchedule(trip: EasyTTrip) {
   const entries = trip.planItems.flatMap((day) => {
     const authoredTitles = new Set([
       ...(trip.brief.customActivities?.[day.dayNumber] ?? []),
-      ...(trip.brief.itineraryIdeas ?? []).filter((idea) => idea.dayId === day.id).map((idea) => idea.title),
+      ...(legacyItineraryIdeas(trip.brief.itineraryIdeas)).filter((idea) => idea.dayId === day.id).map((idea) => idea.title),
     ].map(normalized));
     return day.notes.flatMap((title, order) => authoredTitles.has(normalized(title)) ? [{
       dayId: day.id,

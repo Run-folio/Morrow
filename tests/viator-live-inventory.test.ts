@@ -1,3 +1,4 @@
+import { legacyItineraryIdeas } from "../lib/easyt/trip.ts";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
@@ -51,7 +52,7 @@ test("Save and Add use canonical state, persist broad placement, and never creat
   assert.equal(ideaStateForPlace(saved, "paris-stop", activityInventoryIdentity({ provider: "viator", providerProductId: "P-456" })).state, "saved");
   const planned = scheduleItineraryIdea(saved, idea, "day-2", "afternoon");
   assert.equal(ideaStateForPlace(planned, "paris-stop", idea.placeId).state, "planned");
-  assert.equal(planned.brief.itineraryIdeas?.[0]?.dayPart, "afternoon");
+  assert.equal(legacyItineraryIdeas(planned.brief.itineraryIdeas)?.[0]?.dayPart, "afternoon");
   assert.equal(planned.planItems[1]?.notes.includes(idea.title), true);
   assert.equal(planned.brief.mapPins?.length ?? 0, 0);
   assert.equal(planned.brief.bookings?.length ?? 0, 0);
@@ -64,7 +65,7 @@ test("stable product identity prevents duplicate Save while similar titles from 
   const once = saveItineraryIdea(trip(), first);
   assert.equal(saveItineraryIdea(once, first), once);
   const twice = saveItineraryIdea(once, second);
-  assert.deepEqual(twice.brief.itineraryIdeas?.map((idea) => idea.providerProductId), ["A", "B"]);
+  assert.deepEqual(legacyItineraryIdeas(twice.brief.itineraryIdeas)?.map((idea) => idea.providerProductId), ["A", "B"]);
   const repeatedStop: EasyTTrip = {
     ...once,
     stops: [...once.stops, { ...once.stops[0]!, id: "paris-return", order: 1 }],
@@ -72,7 +73,7 @@ test("stable product identity prevents duplicate Save while similar titles from 
   };
   const sameProductAtRepeatedStop = itineraryIdeaForActivityInventory("paris-return", item("A", "Louvre highlights tour"));
   const savedAtBothStops = saveItineraryIdea(repeatedStop, sameProductAtRepeatedStop);
-  assert.deepEqual(savedAtBothStops.brief.itineraryIdeas?.map((idea) => idea.stopId), ["paris-stop", "paris-return"]);
+  assert.deepEqual(legacyItineraryIdeas(savedAtBothStops.brief.itineraryIdeas)?.map((idea) => idea.stopId), ["paris-stop", "paris-return"]);
   const plannedReturn = scheduleItineraryIdea(savedAtBothStops, sameProductAtRepeatedStop, "day-3");
   assert.equal(ideaStateForPlace(plannedReturn, "paris-stop", sameProductAtRepeatedStop.placeId).state, "saved");
   assert.equal(ideaStateForPlace(plannedReturn, "paris-return", sameProductAtRepeatedStop.placeId).state, "planned");
@@ -82,8 +83,8 @@ test("selected provider metadata survives reload and moving/removing a coordinat
   const idea = itineraryIdeaForActivityInventory("paris-stop", item("MOVE", "Seine architecture cruise", { image: "https://images.example/cruise.jpg", duration: { fromMinutes: 60, toMinutes: 90 } }), ["cities"]);
   const dayOne = scheduleItineraryIdea(trip(), idea, "day-1", "midday");
   const reloaded = JSON.parse(JSON.stringify(dayOne)) as EasyTTrip;
-  assert.equal(reloaded.brief.itineraryIdeas?.[0]?.sourceUrl, idea.sourceUrl);
-  assert.deepEqual(reloaded.brief.itineraryIdeas?.[0]?.providerMetadata?.duration, { fromMinutes: 60, toMinutes: 90 });
+  assert.equal(legacyItineraryIdeas(reloaded.brief.itineraryIdeas)?.[0]?.sourceUrl, idea.sourceUrl);
+  assert.deepEqual(legacyItineraryIdeas(reloaded.brief.itineraryIdeas)?.[0]?.providerMetadata?.duration, { fromMinutes: 60, toMinutes: 90 });
   const moved = scheduleItineraryIdea(reloaded, idea, "day-2", "evening");
   assert.equal(moved.planItems[0]?.notes.includes(idea.title), false);
   assert.equal(moved.planItems[1]?.notes.includes(idea.title), true);

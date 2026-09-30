@@ -80,6 +80,7 @@ type JourneyLocalFinderProps = {
   candidateLimit?: number;
   autoSelectFirst?: boolean;
   analyticsSurface?: "map" | "stay";
+  mapPresentation?: "maplibre";
   render?: (state: JourneyLocalFinderRenderState) => ReactNode;
   onPlaceSelect?: (place: JourneyLocalPlace) => void;
   onViewOnMap?: (place: JourneyLocalPlace) => void;
@@ -89,12 +90,12 @@ type JourneyLocalFinderProps = {
   onRemovePlace?: (place: JourneyLocalPlace, kind: "restaurant" | "stay") => boolean | void;
 };
 
-export function JourneyLocalFinder({ ownerId, tripId, stopId, canonicalPlaceId, kind, city, country, locale = "en", dayId, dayNumber, coordinates, interests, staySearch, selectedPlaceId, savedPlaceIds, initialState, candidateLimit = 4, autoSelectFirst = true, analyticsSurface = "map", render, onPlaceSelect, onViewOnMap, onPlacesChange, onRestaurantSelect, onSavePlace, onRemovePlace }: JourneyLocalFinderProps) {
+export function JourneyLocalFinder({ ownerId, tripId, stopId, canonicalPlaceId, kind, city, country, locale = "en", dayId, dayNumber, coordinates, interests, staySearch, selectedPlaceId, savedPlaceIds, initialState, candidateLimit = 4, autoSelectFirst = true, analyticsSurface = "map", mapPresentation, render, onPlaceSelect, onViewOnMap, onPlacesChange, onRestaurantSelect, onSavePlace, onRemovePlace }: JourneyLocalFinderProps) {
   const longitude = coordinates[0];
   const latitude = coordinates[1];
-  const baseResultKey = localFinderBaseQueryKey({ kind, city, country, canonicalPlaceId, dayId: stopId ?? dayId, coordinates: [longitude, latitude], locale });
+  const baseResultKey = localFinderBaseQueryKey({ kind, city, country, canonicalPlaceId, dayId: stopId ?? dayId, coordinates: [longitude, latitude], locale, mapPresentation });
   const cachedBasePayload = initialState || kind !== "stay" ? null : peekLocalFinderBaseResult<ReturnType<typeof localSearchPayload>>(baseResultKey);
-  const initialCorePlaces = initialState?.corePlaces ?? cachedBasePayload?.places ?? [];
+  const initialCorePlaces = (initialState?.corePlaces ?? cachedBasePayload?.places ?? []).filter((place) => mapPresentation !== "maplibre" || place.provider !== "google-places");
   const { data: session } = authClient.useSession();
   const contextOwnerId = session?.user?.id ?? ownerId ?? null;
   // These defaults are the existing “Show best matches” choice. Keeping them
@@ -143,7 +144,7 @@ export function JourneyLocalFinder({ ownerId, tripId, stopId, canonicalPlaceId, 
     // Retrying the same provider request should never blank a useful local
     // shortlist. A changed stop, date range, or finder kind is a genuinely
     // different result set, so it starts from the honest initial state.
-    const resultKey = localFinderQueryKey({ kind, city, country, canonicalPlaceId, dayId, coordinates: [longitude, latitude], locale, staySearch });
+    const resultKey = localFinderQueryKey({ kind, city, country, canonicalPlaceId, dayId, coordinates: [longitude, latitude], locale, staySearch, mapPresentation });
     const cachedBaseResult = kind === "stay" ? peekLocalFinderBaseResult<ReturnType<typeof localSearchPayload>>(baseResultKey) : null;
     const retainExistingResults = Boolean(cachedBaseResult?.places.length)
       || (loadedBaseResultKeyRef.current === baseResultKey && corePlaces.length > 0);
@@ -174,7 +175,7 @@ export function JourneyLocalFinder({ ownerId, tripId, stopId, canonicalPlaceId, 
       }
     }
     if (cachedBaseResult?.places.length) {
-      setCorePlaces(cachedBaseResult.places);
+      setCorePlaces(cachedBaseResult.places.filter((place) => mapPresentation !== "maplibre" || place.provider !== "google-places"));
       loadedBaseResultKeyRef.current = baseResultKey;
     }
     setLoading(!retainExistingResults);
@@ -207,9 +208,11 @@ export function JourneyLocalFinder({ ownerId, tripId, stopId, canonicalPlaceId, 
           const requestBasePlaces = async () => {
             const query = new URLSearchParams({ kind, city, country, lat: String(latitude), lon: String(longitude), locale });
             if (canonicalPlaceId) query.set("canonicalPlaceId", canonicalPlaceId);
+            if (mapPresentation) query.set("mapPresentation", mapPresentation);
             const response = await fetch(`/api/journey-local-search?${query}`);
             if (!response.ok) throw new Error("Local recommendations unavailable");
-            return localSearchPayload(await response.json());
+            const payload = localSearchPayload(await response.json());
+            return mapPresentation === "maplibre" ? { ...payload, places: payload.places.filter((place) => place.provider !== "google-places") } : payload;
           };
           const payload = kind === "stay"
             ? await loadLocalFinderBaseResult(baseResultKey, requestBasePlaces, { shouldCache: (result) => result.places.length > 0 && !result.unavailable })
@@ -263,10 +266,10 @@ export function JourneyLocalFinder({ ownerId, tripId, stopId, canonicalPlaceId, 
     });
     try {
       const store = JSON.parse(window.localStorage.getItem(storageKey) ?? "{}") as Record<string, JourneyLocalPlace>;
-      if (!canonicalSavedState && store[dayId]) { setSaved(store[dayId]); setChosen(store[dayId]); }
+      if (!canonicalSavedState && store[dayId] && (mapPresentation !== "maplibre" || store[dayId].provider !== "google-places")) { setSaved(store[dayId]); setChosen(store[dayId]); }
     } catch { /* The finder remains usable without local persistence. */ }
     return () => { active = false; controller.abort(); };
-  }, [analyticsSurface, baseResultKey, canonicalPlaceId, canonicalSavedState, city, country, dayId, initialState, kind, latitude, locale, longitude, searchVersion, staySearch?.adults, staySearch?.bookerCountry, staySearch?.checkIn, staySearch?.checkOut, staySearch?.currency, staySearch?.rooms, storageKey]);
+  }, [analyticsSurface, baseResultKey, canonicalPlaceId, canonicalSavedState, city, country, dayId, initialState, kind, latitude, locale, longitude, mapPresentation, searchVersion, staySearch?.adults, staySearch?.bookerCountry, staySearch?.checkIn, staySearch?.checkOut, staySearch?.currency, staySearch?.rooms, storageKey]);
 
   useEffect(() => {
     const measurement = performanceRequestRef.current;

@@ -1,5 +1,7 @@
 "use client";
 
+import { legacyItineraryIdeas } from "@/lib/easyt/trip";
+
 import { Map, MapPin, Plus, Sparkles, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { trackEvent } from "@/lib/analytics";
@@ -117,7 +119,7 @@ export function JourneyItineraryRefinement({ trip, stop, day, selectedPlaceId, o
     {loading && !places.length ? <div className={styles.loadingSkeletons} aria-hidden="true"><MorroviaSkeleton height={54} radius="card" /><MorroviaSkeleton height={54} radius="card" /></div> : null}
     {!loading && searchUnavailable ? <MorroviaSectionStatus state="error" title="Attractions are unavailable" detail="Your day and existing selections are unchanged. Try the provider again when you’re ready." retryLabel="Try places again" onRetry={() => setSearchVersion((current) => current + 1)} /> : null}
     {visible.length ? <div className={styles.places}>{visible.map((place) => {
-      const scheduledIdea = (trip.brief.itineraryIdeas ?? []).find((idea) => idea.stopId === stop.id && idea.placeId === place.id && Boolean(idea.dayId));
+      const scheduledIdea = (legacyItineraryIdeas(trip.brief.itineraryIdeas)).find((idea) => idea.stopId === stop.id && idea.placeId === place.id && Boolean(idea.dayId));
       const isSelected = selected.includes(place.title) || Boolean(scheduledIdea);
       const interestReason = itineraryInterestReason(place, interests);
       const scheduledPart = scheduledIdea?.dayPart ? scheduledIdea.dayPart[0]!.toUpperCase() + scheduledIdea.dayPart.slice(1) : null;

@@ -1,3 +1,4 @@
+import { legacyItineraryIdeas } from "../lib/easyt/trip.ts";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
@@ -135,7 +136,7 @@ test("reproduces the stale header queue after an Explore save", async () => {
     (error: unknown) => error instanceof EasyTTripSaveConflictError
       && error.canonicalTrip.updatedAt === explored.updatedAt,
   );
-  assert.equal(repository.canonical.brief.itineraryIdeas?.[0]?.title, "Tsukiji market");
+  assert.equal(legacyItineraryIdeas(repository.canonical.brief.itineraryIdeas)?.[0]?.title, "Tsukiji market");
   assert.equal(tripCustomTitle(repository.canonical), null);
 });
 
@@ -200,9 +201,9 @@ test("a shared queue preserves Explore, itinerary metadata, rename, Map and a se
     "2026-09-01T00:00:04.000Z",
   ]);
   assert.equal(tripCustomTitle(final), "日本の秋");
-  assert.equal(final.brief.itineraryIdeas?.length, 2);
-  assert.equal(final.brief.itineraryIdeas?.find((item) => item.id === "idea-fuji")?.providerMetadata?.duration?.fixedMinutes, 660);
-  assert.equal(final.brief.itineraryIdeas?.find((item) => item.id === "idea-fuji")?.providerMetadata?.provenance.provider, "viator");
+  assert.equal(legacyItineraryIdeas(final.brief.itineraryIdeas)?.length, 2);
+  assert.equal(legacyItineraryIdeas(final.brief.itineraryIdeas)?.find((item) => item.id === "idea-fuji")?.providerMetadata?.duration?.fixedMinutes, 660);
+  assert.equal(legacyItineraryIdeas(final.brief.itineraryIdeas)?.find((item) => item.id === "idea-fuji")?.providerMetadata?.provenance.provider, "viator");
   assert.equal(final.brief.mapPins?.[0]?.title, "Coffee");
   assert.equal(final.stops[0]?.name, "Tokyo");
   assert.equal(final.startDate, base.startDate);
@@ -236,8 +237,8 @@ test("an occupied Afternoon keeps its slot activity while an 11-hour activity st
 
   assert.deepEqual(composition.planned.afternoon.map((item) => item.title), ["First activity"]);
   assert.deepEqual(composition.unslotted.map((item) => item.title), ["Mt Fuji 11-hour experience"]);
-  assert.equal(reloaded.brief.itineraryIdeas?.find((item) => item.id === longIdea.id)?.providerMetadata?.duration?.fixedMinutes, 660);
-  assert.equal(reloaded.brief.itineraryIdeas?.find((item) => item.id === longIdea.id)?.startsAt, "07:00");
+  assert.equal(legacyItineraryIdeas(reloaded.brief.itineraryIdeas)?.find((item) => item.id === longIdea.id)?.providerMetadata?.duration?.fixedMinutes, 660);
+  assert.equal(legacyItineraryIdeas(reloaded.brief.itineraryIdeas)?.find((item) => item.id === longIdea.id)?.startsAt, "07:00");
   assert.equal(tripCustomTitle(reloaded), "Fuji and food");
 });
 
@@ -257,7 +258,7 @@ test("Rename followed by Explore and Itinerary additions keeps the returned revi
     "2026-09-01T00:00:02.000Z",
   ]);
   assert.equal(tripCustomTitle(scheduled), "Tokyo details");
-  assert.equal(scheduled.brief.itineraryIdeas?.[0]?.dayPart, "midday");
+  assert.equal(legacyItineraryIdeas(scheduled.brief.itineraryIdeas)?.[0]?.dayPart, "midday");
 });
 
 test("a workspace remount uses the acknowledged Explore revision for the next Stay CAS", async () => {
@@ -287,7 +288,7 @@ test("a workspace remount uses the acknowledged Explore revision for the next St
     "2026-09-01T00:00:01.000Z",
   ]);
   assert.equal(stayBookingForStop(stayed, stayed.stops[0]!)?.title, "Keio Plaza Hotel");
-  assert.equal(stayed.brief.itineraryIdeas?.[0]?.title, "Tsukiji market");
+  assert.equal(legacyItineraryIdeas(stayed.brief.itineraryIdeas)?.[0]?.title, "Tsukiji market");
 });
 
 test("the hosted Explore to Stay sequence finishes canonical with no stranded recovery", async () => {
@@ -330,7 +331,7 @@ test("the hosted Explore to Stay sequence finishes canonical with no stranded re
   const freshClient = loadCachedTripFromStorage(storage, base.id, "owner-a")!;
   assert.equal(loadTripRecoveryFromStorage(storage, base.id, "owner-a"), null);
   assert.equal(freshClient.updatedAt, "2026-09-01T00:00:02.000Z");
-  assert.equal(freshClient.brief.itineraryIdeas?.[0]?.dayPart, "midday");
+  assert.equal(legacyItineraryIdeas(freshClient.brief.itineraryIdeas)?.[0]?.dayPart, "midday");
   assert.equal(stayBookingForStop(freshClient, freshClient.stops[0]!)?.title, "Keio Plaza Hotel");
 });
 
@@ -362,7 +363,7 @@ test("immediate Explore and Stay mutations share the returned canonical revision
   const canonical = await second;
 
   assert.equal(submissions[1]?.updatedAt, "2026-09-01T00:00:01.000Z");
-  assert.equal(canonical.brief.itineraryIdeas?.[0]?.dayPart, "midday");
+  assert.equal(legacyItineraryIdeas(canonical.brief.itineraryIdeas)?.[0]?.dayPart, "midday");
   assert.equal(stayBookingForStop(canonical, canonical.stops[0]!)?.title, "Keio Plaza Hotel");
 });
 
@@ -448,7 +449,7 @@ test("guest promotion preserves the custom title, itinerary additions and provid
     },
   }, "day-1", "afternoon");
   const promoted = canonicalTripForOwner("owner-a", scheduled);
-  const promotedIdea = promoted.brief.itineraryIdeas?.find((candidate) => candidate.id === "idea-fuji-promotion");
+  const promotedIdea = legacyItineraryIdeas(promoted.brief.itineraryIdeas)?.find((candidate) => candidate.id === "idea-fuji-promotion");
 
   assert.equal(promoted.ownerId, "owner-a");
   assert.equal(tripCustomTitle(promoted), "Guest Fuji trip");

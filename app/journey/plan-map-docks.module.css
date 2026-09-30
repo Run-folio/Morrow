@@ -95,6 +95,20 @@
 
   .plan:has(:global([data-mobile-drawer-state="open"])) { --mobile-map-sheet-height:calc(100% - var(--mobile-map-strip-height) - var(--mobile-map-visible-space)); }
 
+  .plan[data-google-discovery="true"]:has(:global([data-mobile-drawer-state="open"])) {
+    --mobile-map-sheet-height:min(56svh,calc(100% - var(--mobile-map-strip-height) - var(--mobile-map-visible-space)));
+  }
+  .plan[data-google-discovery="true"] :global(.planner-map) {
+    bottom:var(--mobile-map-sheet-height)!important;
+  }
+  .plan[data-google-discovery="true"] :global([class*="mapContextualSurface"]) {
+    box-sizing:border-box;
+  }
+  .plan[data-google-discovery="true"] :global([class*="finderDock"]) > header > small,
+  .plan[data-google-discovery="true"] :global([class*="finderDock"]) > header > span {
+    display:none;
+  }
+
   .plan :global([class*="mapContextualSurface"]) {
     position:absolute;
     z-index:20;

@@ -1,5 +1,7 @@
 "use client";
 
+import { googlePlaceReferenceIdeas, legacyItineraryIdeas } from "@/lib/easyt/trip";
+
 import {
   Bookmark,
   CalendarPlus,
@@ -228,11 +230,13 @@ export default function TripExploreWorkspace({
   const [notice, setNotice] = useState<string | null>(null);
   const selectedOriginRef = useRef<HTMLButtonElement | null>(null);
 
-  const persistedResults = useMemo(() => (workingTrip.brief.itineraryIdeas ?? [])
+  const persistedResults = useMemo(() => (legacyItineraryIdeas(workingTrip.brief.itineraryIdeas))
     .flatMap((idea) => {
       const result = exploreResultForIdea(workingTrip, idea);
       return result ? [result] : [];
     }), [workingTrip]);
+  const savedGoogleReferences = googlePlaceReferenceIdeas(workingTrip.brief.itineraryIdeas)
+    .filter((idea) => idea.stopId === destinationId);
   const results = useMemo(
     () => projectExploreResults(organicResults, commercialResults, persistedResults),
     [commercialResults, organicResults, persistedResults],
@@ -507,6 +511,14 @@ export default function TripExploreWorkspace({
           </article>;
         })}
       </div> : null}
+      {savedGoogleReferences.length ? <section className={styles.referenceSection} aria-label="Saved Google places">
+        <strong>Saved from Google Maps</strong>
+        <p>Open the Google map to check current place details. These are saved ideas, not bookings.</p>
+        <ul>{savedGoogleReferences.map((idea) => <li key={idea.id}>
+          <span>Saved Google place{idea.dayId ? ` · Day ${workingTrip.planItems.find((day) => day.id === idea.dayId)?.dayNumber ?? "?"}` : " · for later"}</span>
+          <EasyTLinkButton variant="secondary" size="small" href={mapWorkspaceHref(workingTrip.id, idea.stopId, idea.category === "stay" ? "stay" : idea.category === "restaurant" ? "eat" : "see", idea.dayId ? workingTrip.planItems.find((day) => day.id === idea.dayId)?.dayNumber ?? null : null, null, null, exploreWorkspaceHref(workingTrip.id, idea.stopId, requestedDayNumber))}>Open in map</EasyTLinkButton>
+        </li>)}</ul>
+      </section> : null}
     </div>
 
     <aside className={`${styles.rail} ${selectedResult ? styles.railSelected : ""}`} aria-label={selectedResult ? "Selected Explore result" : "Explore trip context"}>

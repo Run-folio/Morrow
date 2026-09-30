@@ -1444,6 +1444,10 @@
   text-transform: uppercase;
 }
 
+.googleReferenceSection { display: grid; gap: 10px; color: var(--morrovia-ink); }
+.googleReferenceSection > p { margin: 0; color: var(--morrovia-muted); }
+.googleReferenceSection > div { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; }
+
 .savedIdeasSection > summary:focus-visible {
   outline: none;
   box-shadow: var(--morrovia-focus-shadow);

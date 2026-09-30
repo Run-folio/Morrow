@@ -1,3 +1,4 @@
+import { legacyItineraryIdeas } from "./trip.ts";
 import { stayBookingForStop } from "./accommodation.ts";
 import type { JourneyLocalPlace } from "./local-place.ts";
 import { mergeLocalFinderPlaces } from "./local-finder-query.ts";
@@ -55,7 +56,7 @@ function uniqueCoordinates(values: Array<[number, number]>) {
 
 function plannedCoordinatesForStop(trip: EasyTTrip, stopId: string) {
   const stopDays = new Set(trip.planItems.filter((day) => day.stopId === stopId).map((day) => day.dayNumber));
-  const ideaCoordinates = (trip.brief.itineraryIdeas ?? [])
+  const ideaCoordinates = (legacyItineraryIdeas(trip.brief.itineraryIdeas))
     .filter((idea) => idea.stopId === stopId && Boolean(idea.dayId) && validCoordinates(idea.coordinates))
     .map((idea) => idea.coordinates as [number, number]);
   const pinCoordinates = (trip.brief.mapPins ?? [])

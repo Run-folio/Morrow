@@ -1,3 +1,4 @@
+import { legacyItineraryIdeas } from "../lib/easyt/trip.ts";
 import assert from "node:assert/strict";
 import test from "node:test";
 import { destinationHighlightCandidates, itinerarySuggestionCandidates, personalisedItineraryCandidates, type ItineraryDiscoveryPlace } from "../lib/easyt/itinerary-day-context.ts";
@@ -32,7 +33,7 @@ test("destination significance and interest relevance remain distinct and sparse
 test("saves an unscheduled stop-bound idea and removes it safely", () => {
   const idea = itineraryIdeaForPlace({ stopId: "kyoto", place: places[1], reasons: ["interest-relevance"] });
   const saved = saveItineraryIdea(trip(), idea);
-  assert.equal(saved.brief.itineraryIdeas?.[0]?.dayId, undefined);
+  assert.equal(legacyItineraryIdeas(saved.brief.itineraryIdeas)?.[0]?.dayId, undefined);
   assert.equal(ideaStateForPlace(saved, "kyoto", "market").state, "saved");
   assert.equal(removeItineraryIdea(saved, idea.id).brief.itineraryIdeas?.length, 0);
 });
@@ -96,9 +97,9 @@ test("route reorder preserves stop/day identity and stop removal drops orphaned 
   const idea = itineraryIdeaForPlace({ stopId: "kyoto", place: places[0], reasons: ["destination-significance"] });
   const scheduled = scheduleItineraryIdea(base, idea, "day-1");
   const reordered = reconcileItineraryIdeas({ ...scheduled, planItems: [...scheduled.planItems].reverse() });
-  assert.equal(reordered.brief.itineraryIdeas?.[0]?.dayId, "day-1");
+  assert.equal(legacyItineraryIdeas(reordered.brief.itineraryIdeas)?.[0]?.dayId, "day-1");
   const removed = reconcileItineraryIdeas({ ...scheduled, stops: [], planItems: [] });
-  assert.deepEqual(removed.brief.itineraryIdeas, []);
+  assert.deepEqual(legacyItineraryIdeas(removed.brief.itineraryIdeas), []);
 });
 
 test("a scheduled canonical idea remains eligible for its source card to show Added feedback", () => {
@@ -117,7 +118,7 @@ test("Map discovery uses the canonical idea path and preserves metadata, broad p
     selected: true,
     reasons: ["destination-significance"],
   });
-  const idea = added.brief.itineraryIdeas?.[0];
+  const idea = legacyItineraryIdeas(added.brief.itineraryIdeas)?.[0];
   assert.equal(idea?.placeId, "temple");
   assert.equal(idea?.description, places[0]!.description);
   assert.equal(idea?.area, "Kyoto");
@@ -133,7 +134,7 @@ test("Map discovery uses the canonical idea path and preserves metadata, broad p
     dayId: "day-2",
     selected: false,
   });
-  assert.equal(removed.brief.itineraryIdeas?.length, 0);
+  assert.equal(legacyItineraryIdeas(removed.brief.itineraryIdeas)?.length, 0);
   assert.deepEqual(removed.brief.selectedPlaces.kyoto, []);
   assert.equal(removed.planItems[1]!.notes.includes("Kiyomizu-dera"), false);
   assert.equal(setDiscoveryPlaceScheduled(removed, { stopId: "kyoto", place: places[0]!, dayId: "day-2", selected: false }), removed);

@@ -13,6 +13,15 @@ export type LocalSearchOutcome<Result> = {
 
 export const localSearchFallbackHedgeMs = 1_000;
 
+/** The mapped Trip Map and Stay finder cannot request Google Places facts for MapLibre. */
+export function localSearchPrimaryLanes<Result>(
+  mapPresentation: "maplibre" | "none",
+  google: () => Promise<LocalSearchProviderOutcome<Result>>,
+  openStreetMap: () => Promise<LocalSearchProviderOutcome<Result>>,
+): readonly (() => Promise<LocalSearchProviderOutcome<Result>>)[] {
+  return mapPresentation === "maplibre" ? [openStreetMap] : [google, openStreetMap];
+}
+
 export function localSearchScope(kind: LocalSearchKind, placeType?: PlaceTypeLiteral) {
   const compactDestination = placeType === "town" || placeType === "island" || placeType === "archipelago";
   const primaryRadiusKm = kind === "stay" ? 7.5 : 5;

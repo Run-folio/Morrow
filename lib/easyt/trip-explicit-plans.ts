@@ -1,3 +1,4 @@
+import { legacyItineraryIdeas } from "./trip.ts";
 import { fixedCommitmentDisplayLabel, projectFixedCommitmentsToStops, type FixedCommitmentConstraint } from "./fixed-commitment.ts";
 import { scheduleItineraryIdea, removeItineraryIdea, itineraryIdeaDayOptions, type ItineraryIdeaDayOption } from "./itinerary-ideas.ts";
 import { haversineKm } from "./planner.ts";
@@ -49,7 +50,7 @@ export function explicitVisitIntentsForTrip(trip: EasyTTrip): ExplicitVisitPlan[
   return structured.placeMentions.flatMap((mention) => {
     if (removed.has(mention.mentionId) || (!mention.isAnchor && mention.role !== "anchor" && mention.routability !== "anchor_or_poi")) return [];
     if (trip.stops.some((stop) => samePlace(mention, stop))) return [];
-    const scheduledIdea = (trip.brief.itineraryIdeas ?? []).find((idea) => idea.explicitVisitMentionId === mention.mentionId) ?? null;
+    const scheduledIdea = (legacyItineraryIdeas(trip.brief.itineraryIdeas)).find((idea) => idea.explicitVisitMentionId === mention.mentionId) ?? null;
     return [{
       mentionId: mention.mentionId,
       name: mention.canonicalName || mention.sourceText,
@@ -84,7 +85,7 @@ export function scheduleExplicitVisitIntent(trip: EasyTTrip, mentionId: string, 
 }
 
 export function removeExplicitVisitIntent(trip: EasyTTrip, mentionId: string) {
-  const idea = (trip.brief.itineraryIdeas ?? []).find((item) => item.explicitVisitMentionId === mentionId);
+  const idea = (legacyItineraryIdeas(trip.brief.itineraryIdeas)).find((item) => item.explicitVisitMentionId === mentionId);
   const withoutIdea = idea ? removeItineraryIdea(trip, idea.id) : trip;
   const structured = withoutIdea.brief.structuredBrief;
   if (!structured) return withoutIdea;

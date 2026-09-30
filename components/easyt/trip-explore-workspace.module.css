@@ -69,6 +69,11 @@
 .resultsHeader strong { font: 750 14px/1.3 var(--morrovia-ui); }
 .resultsHeader span { color: var(--morrovia-ink-soft); font: var(--morrovia-type-supporting-body); }
 .resultsHeader small { color: var(--morrovia-muted); font: var(--morrovia-type-metadata); }
+.referenceSection{display:grid;gap:8px;margin-top:20px;padding:14px;border:1px solid var(--morrovia-line);border-radius:var(--morrovia-control-radius);background:var(--morrovia-paper)}
+.referenceSection>strong{font:var(--morrovia-type-control)}
+.referenceSection>p{margin:0;color:var(--morrovia-ink-soft);font:var(--morrovia-type-supporting-body)}
+.referenceSection ul{display:grid;gap:8px;list-style:none;margin:0;padding:0}
+.referenceSection li{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px;min-width:0}
 
 .loading { margin-top: 12px; }
 .loading > div:last-child { margin-top: 12px; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }

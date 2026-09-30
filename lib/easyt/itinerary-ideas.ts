@@ -1,5 +1,5 @@
 import { addMappedPlaceToTrip, removeMappedPlaceFromTrip } from "./map-place-itinerary.ts";
-import type { EasyTTrip, ItineraryDayPart, ItineraryIdea, PlanItem } from "./trip.ts";
+import { isGooglePlaceReferenceIdea, type EasyTTrip, type GooglePlaceReferenceIdea, type ItineraryDayPart, type ItineraryIdea, type LegacyItineraryIdea, type PlanItem } from "./trip.ts";
 import type { ItineraryDiscoveryPlace } from "./itinerary-day-context.ts";
 import { activityAllowsDayPart } from "./itinerary-schedule-awareness.ts";
 
@@ -21,7 +21,7 @@ export function itineraryIdeaForPlace(input: {
   stopId: string;
   place: ItineraryDiscoveryPlace;
   reasons: IdeaDiscoveryReason[];
-}): ItineraryIdea {
+}): LegacyItineraryIdea {
   const { stopId, place, reasons } = input;
   return {
     id: ideaId(stopId, place.id), stopId, placeId: place.id, title: place.title,
@@ -38,7 +38,7 @@ export function itineraryIdeaForPlace(input: {
  * Provider-specific UI state stays outside the trip document; only durable
  * place identity, display evidence and trustworthy coordinates are retained.
  */
-export function itineraryIdeaForLocalPlace(stopId: string, place: LocalItineraryPlace): ItineraryIdea {
+export function itineraryIdeaForLocalPlace(stopId: string, place: LocalItineraryPlace): LegacyItineraryIdea {
   return {
     id: ideaId(stopId, place.id),
     stopId,
@@ -55,15 +55,48 @@ export function itineraryIdeaForLocalPlace(stopId: string, place: LocalItinerary
 }
 
 export function ideaStateForPlace(trip: EasyTTrip, stopId: string, placeId: string) {
-  const idea = (trip.brief.itineraryIdeas ?? []).find((item) => item.placeId === placeId && item.stopId === stopId);
+  const idea = (trip.brief.itineraryIdeas ?? []).find((item): item is LegacyItineraryIdea => !isGooglePlaceReferenceIdea(item) && item.placeId === placeId && item.stopId === stopId);
   if (!idea) return { state: "available" as const, idea: null, day: null };
   const day = idea.dayId ? trip.planItems.find((item) => item.id === idea.dayId) ?? null : null;
   return day ? { state: "planned" as const, idea, day } : { state: "saved" as const, idea, day: null };
 }
 
-export function saveItineraryIdea(trip: EasyTTrip, idea: ItineraryIdea): EasyTTrip {
+/** Google choices retain only a provider reference and canonical Morrovia binding. */
+export function saveGooglePlaceReference(trip: EasyTTrip, input: {
+  stopId: string;
+  placeId: string;
+  category: GooglePlaceReferenceIdea["category"];
+  userNote?: string;
+  lastResolvedAt?: string;
+}): EasyTTrip {
+  const placeId = input.placeId.trim();
+  if (!/^[a-zA-Z0-9_-]{1,180}$/.test(placeId) || !trip.stops.some((stop) => stop.id === input.stopId)) return trip;
+  const id = googlePlaceReferenceChoiceId(input.stopId, placeId);
+  const existing = (trip.brief.itineraryIdeas ?? []).find((item) => item.id === id);
+  if (existing) return trip;
+  const idea: GooglePlaceReferenceIdea = {
+    id, source: "google-place-reference", stopId: input.stopId, category: input.category,
+    providerReference: { provider: "google", placeId, ...(input.lastResolvedAt ? { lastResolvedAt: input.lastResolvedAt } : {}) },
+    ...(input.userNote?.trim() ? { userNote: input.userNote.trim() } : {}),
+  };
+  return { ...trip, brief: { ...trip.brief, itineraryIdeas: [...(trip.brief.itineraryIdeas ?? []), idea] } };
+}
+
+export function googlePlaceReferenceChoiceId(stopId: string, placeId: string): string {
+  return `google-place-${encodeURIComponent(stopId)}-${encodeURIComponent(placeId.trim())}`;
+}
+
+/** Explicit scheduling never copies a provider name into authored notes or map pins. */
+export function scheduleGooglePlaceReference(trip: EasyTTrip, choiceId: string, dayId: string, dayPart: ItineraryDayPart | null = null): EasyTTrip {
+  const idea = (trip.brief.itineraryIdeas ?? []).find((item): item is GooglePlaceReferenceIdea => item.id === choiceId && isGooglePlaceReferenceIdea(item));
+  if (!idea || !trip.planItems.some((day) => day.id === dayId && day.stopId === idea.stopId)) return trip;
+  if (idea.dayId === dayId && (idea.dayPart ?? null) === dayPart) return trip;
+  return { ...trip, brief: { ...trip.brief, itineraryIdeas: (trip.brief.itineraryIdeas ?? []).map((item) => item.id === choiceId ? { ...idea, dayId, dayPart } : item) } };
+}
+
+export function saveItineraryIdea(trip: EasyTTrip, idea: LegacyItineraryIdea): EasyTTrip {
   const existing = (trip.brief.itineraryIdeas ?? []).find((item) => item.id === idea.id
-    || Boolean(idea.provider && idea.providerProductId && item.stopId === idea.stopId && item.provider === idea.provider && item.providerProductId === idea.providerProductId));
+    || Boolean(!isGooglePlaceReferenceIdea(item) && idea.provider && idea.providerProductId && item.stopId === idea.stopId && item.provider === idea.provider && item.providerProductId === idea.providerProductId));
   if (existing) return trip;
   if (!trip.stops.some((stop) => stop.id === idea.stopId)) return trip;
   return { ...trip, brief: { ...trip.brief, itineraryIdeas: [...(trip.brief.itineraryIdeas ?? []), idea] } };
@@ -71,14 +104,15 @@ export function saveItineraryIdea(trip: EasyTTrip, idea: ItineraryIdea): EasyTTr
 
 export function scheduleItineraryIdea(
   trip: EasyTTrip,
-  idea: ItineraryIdea,
+  idea: LegacyItineraryIdea,
   dayId: string,
   dayPart?: ItineraryDayPart | null,
 ): EasyTTrip {
   const day = trip.planItems.find((item) => item.id === dayId && item.stopId === idea.stopId);
   if (!day) return trip;
   const existing = (trip.brief.itineraryIdeas ?? []).find((item) => item.id === idea.id
-    || Boolean(idea.provider && idea.providerProductId && item.stopId === idea.stopId && item.provider === idea.provider && item.providerProductId === idea.providerProductId));
+    || Boolean(!isGooglePlaceReferenceIdea(item) && idea.provider && idea.providerProductId && item.stopId === idea.stopId && item.provider === idea.provider && item.providerProductId === idea.providerProductId));
+  if (existing && isGooglePlaceReferenceIdea(existing)) return trip;
   if (existing && existing.id !== idea.id) return trip;
   const requestedDayPart = dayPart === undefined ? existing?.dayPart ?? null : dayPart;
   const scheduledDayPart = activityAllowsDayPart(idea.providerMetadata?.duration, requestedDayPart)
@@ -111,7 +145,7 @@ export function assignItineraryIdeaDayPart(
   const ideas = trip.brief.itineraryIdeas ?? [];
   const idea = ideas.find((item) => item.id === ideaId);
   if (!idea?.dayId || !trip.planItems.some((day) => day.id === idea.dayId && day.stopId === idea.stopId)) return trip;
-  if (!activityAllowsDayPart(idea.providerMetadata?.duration, dayPart)) return trip;
+  if (!activityAllowsDayPart(isGooglePlaceReferenceIdea(idea) ? undefined : idea.providerMetadata?.duration, dayPart)) return trip;
   if ((idea.dayPart ?? null) === dayPart) return trip;
   return {
     ...trip,
@@ -125,6 +159,7 @@ export function assignItineraryIdeaDayPart(
 export function removeItineraryIdea(trip: EasyTTrip, id: string): EasyTTrip {
   const idea = (trip.brief.itineraryIdeas ?? []).find((item) => item.id === id);
   if (!idea) return trip;
+  if (isGooglePlaceReferenceIdea(idea)) return { ...trip, brief: { ...trip.brief, itineraryIdeas: (trip.brief.itineraryIdeas ?? []).filter((item) => item.id !== id) } };
   let next = trip;
   const day = idea.dayId ? trip.planItems.find((item) => item.id === idea.dayId) : undefined;
   if (day && idea.coordinates) next = removeMappedPlaceFromTrip(next, { id: idea.placeId, name: idea.title, coordinates: idea.coordinates }, idea.category, day.dayNumber, idea.stopId);
@@ -181,7 +216,7 @@ export function reconcileItineraryIdeas(trip: EasyTTrip): EasyTTrip {
 
 export function sameIdeaTitle(left: string, right: string) { return normalize(left) === normalize(right); }
 
-function addCoordinateLessIdeaToTrip(trip: EasyTTrip, idea: ItineraryIdea, day: PlanItem) {
+function addCoordinateLessIdeaToTrip(trip: EasyTTrip, idea: LegacyItineraryIdea, day: PlanItem) {
   const activities = trip.brief.customActivities?.[day.dayNumber] ?? [];
   const alreadyStored = activities.some((activity) => normalize(activity) === normalize(idea.title));
   const alreadyNoted = day.notes.some((note) => normalize(note) === normalize(idea.title));
@@ -195,7 +230,7 @@ function addCoordinateLessIdeaToTrip(trip: EasyTTrip, idea: ItineraryIdea, day: 
   };
 }
 
-function removeCoordinateLessIdeaFromTrip(trip: EasyTTrip, idea: ItineraryIdea, day: PlanItem) {
+function removeCoordinateLessIdeaFromTrip(trip: EasyTTrip, idea: LegacyItineraryIdea, day: PlanItem) {
   return {
     ...trip,
     brief: { ...trip.brief, customActivities: { ...(trip.brief.customActivities ?? {}), [day.dayNumber]: (trip.brief.customActivities?.[day.dayNumber] ?? []).filter((item) => normalize(item) !== normalize(idea.title)) } },

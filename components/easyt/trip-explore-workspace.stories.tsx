@@ -1,3 +1,4 @@
+import { legacyItineraryIdeas } from "@/lib/easyt/trip";
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
 import { exploreResultForActivity, exploreResultForIdea, exploreResultForLocalPlace, exploreResultForPlace } from "@/lib/easyt/explore";
 import { saveItineraryIdea } from "@/lib/easyt/itinerary-ideas";
@@ -10,8 +11,8 @@ const trip = structuredClone(tourTripFixture);
 const cusco = trip.stops[0]!;
 const valley = trip.stops[1]!;
 
-const qorikancha = exploreResultForIdea(trip, trip.brief.itineraryIdeas![0]!)!;
-const market = exploreResultForIdea(trip, trip.brief.itineraryIdeas![1]!)!;
+const qorikancha = exploreResultForIdea(trip, legacyItineraryIdeas(trip.brief.itineraryIdeas)[0]!)!;
+const market = exploreResultForIdea(trip, legacyItineraryIdeas(trip.brief.itineraryIdeas)[1]!)!;
 const mapped = [
   exploreResultForPlace(cusco, {
     id: "sacsayhuaman",

@@ -20,6 +20,11 @@ function deferred<Value>() {
 
 test.beforeEach(() => clearLocalFinderBaseCacheForTests());
 
+test("MapLibre and unassociated local search never share Google-capable cached facts", () => {
+  const base = { kind: "stay" as const, city: "Tokyo", country: "Japan", dayId: "tokyo-one", coordinates: [139.69, 35.68] as [number, number], locale: "en" };
+  assert.notEqual(localFinderBaseQueryKey(base), localFinderBaseQueryKey({ ...base, mapPresentation: "maplibre" }));
+});
+
 test("successful base results survive a safe return visit without another request", async () => {
   let requestCount = 0;
   const now = () => 10_000;

@@ -353,7 +353,8 @@ test("mobile Map has one contextual two-state drawer owner", () => {
   assert.match(mapWorkspaceSource, /data-mobile-sheet-view=\{mobileMapSheetView\}/);
   assert.match(mapWorkspaceSource, /data-mobile-drawer-state=\{mobileMapDrawerOpen \? "open" : "collapsed"\}/);
   assert.match(mapWorkspaceSource, /aria-label=\{`\$\{mobileMapDrawerOpen \? "Collapse" : "Expand"\} \$\{mobileMapSheetTitle\} details`\}/);
-  assert.match(mapWorkspaceSource, /: selectedLocalPlace\?\.name[\s\S]*selectedPlannerPin\?\.title[\s\S]*selectedRouteLeg\.fromName/);
+  assert.match(mapWorkspaceSource, /: currentGoogleDetail\?\.name[\s\S]*selectedLocalPlace\?\.name[\s\S]*selectedPlannerPin\?\.title[\s\S]*selectedRouteLeg\.fromName/,
+    "only the exact current Google POI and existing map selections share the contextual sheet title");
   assert.doesNotMatch(mapWorkspaceSource, /MobileMapSheetSize|mobileMapSheetSize|mobileMapSheetCollapsed/);
   for (const view of ["planner", "context", "status", "pin"]) {
     assert.match(mapDockStylesSource, new RegExp(`data-mobile-sheet-view="${view}"`));

@@ -1,3 +1,4 @@
+import { legacyItineraryIdeas } from "../lib/easyt/trip.ts";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
@@ -55,7 +56,7 @@ test("requested visit schedules through the canonical itinerary activity represe
   const visit = explicitVisitIntentsForTrip(trip)[0]!;
   const day = explicitVisitDayOptions(trip, visit).find(({ protectedDay }) => !protectedDay)!.day;
   const scheduled = scheduleExplicitVisitIntent(trip, visit.mentionId, day.id);
-  const idea = scheduled.brief.itineraryIdeas?.find((item) => item.explicitVisitMentionId === visit.mentionId);
+  const idea = legacyItineraryIdeas(scheduled.brief.itineraryIdeas)?.find((item) => item.explicitVisitMentionId === visit.mentionId);
   assert.equal(idea?.source, "traveller-visit-intent");
   assert.equal(idea?.dayId, day.id);
   assert.ok(scheduled.planItems.find((item) => item.id === day.id)?.notes.includes("Chichén Itzá"));
@@ -88,7 +89,7 @@ test("explicit plans disappear only after deliberate canonical removal", () => {
   const withoutVisit = removeExplicitVisitIntent(scheduled, visit.mentionId);
   assert.equal(explicitVisitIntentsForTrip(withoutVisit).length, 0);
   assert.ok(withoutVisit.brief.structuredBrief?.removedPlaceMentionIds?.includes(visit.mentionId));
-  assert.equal(withoutVisit.brief.itineraryIdeas?.some((item) => item.explicitVisitMentionId === visit.mentionId), false);
+  assert.equal(legacyItineraryIdeas(withoutVisit.brief.itineraryIdeas)?.some((item) => item.explicitVisitMentionId === visit.mentionId), false);
   const commitmentId = fixedCommitmentPlansForTrip(trip)[0]!.commitment.id;
   assert.equal(fixedCommitmentPlansForTrip(removeFixedCommitment(trip, commitmentId)).length, 0);
 });

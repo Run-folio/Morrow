@@ -9,6 +9,7 @@ import {
   firstUsefulLocalSearchWithFallback,
   localSearchProviderOutcome,
   localSearchScope,
+  localSearchPrimaryLanes,
 } from "@/lib/easyt/local-search-strategy";
 
 type OverpassElement = {
@@ -252,6 +253,7 @@ export async function GET(request: NextRequest) {
   const country = request.nextUrl.searchParams.get("country")?.trim();
   const canonicalPlaceId = request.nextUrl.searchParams.get("canonicalPlaceId")?.trim();
   const kind = request.nextUrl.searchParams.get("kind") === "stay" ? "stay" : "restaurant";
+  const mapPresentation = request.nextUrl.searchParams.get("mapPresentation") === "maplibre" ? "maplibre" : "none";
   const requestedLatitude = Number(request.nextUrl.searchParams.get("lat"));
   const requestedLongitude = Number(request.nextUrl.searchParams.get("lon"));
   const requestedLocale = request.nextUrl.searchParams.get("locale")?.trim().toLocaleLowerCase() || "en";
@@ -276,15 +278,16 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    // Google and OSM remain independent immediate lanes. Exactly one bounded,
+    // MapLibre requests start only the permitted OSM lane. Unassociated searches
+    // retain Google and OSM as independent immediate lanes. Exactly one bounded,
     // destination-aware Photon fallback is hedged after one second, so a slow
     // provider cannot block useful local results. Live stay inventory remains
     // a separate client request and is never inferred here.
     const scope = localSearchScope(kind, catalogMatchesRequest ? catalogPlace?.placeType : undefined);
-    const outcome = await firstUsefulLocalSearchWithFallback([
+    const outcome = await firstUsefulLocalSearchWithFallback(localSearchPrimaryLanes(mapPresentation,
       () => localSearchProviderOutcome(() => googleOperationalPlaces(kind, country ?? "", latitude, longitude, locale, scope.primaryRadiusKm)),
       () => localSearchProviderOutcome(() => openStreetMapPlaces(kind, city, country ?? "", latitude, longitude, locale, scope.primaryRadiusKm)),
-    ], () => localSearchProviderOutcome(() => photonFallback(
+    ), () => localSearchProviderOutcome(() => photonFallback(
       kind,
       city,
       country ?? "",

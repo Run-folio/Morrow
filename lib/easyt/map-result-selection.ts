@@ -1,3 +1,4 @@
+import { legacyItineraryIdeas } from "./trip.ts";
 import { mappedPlacePinId } from "./map-place-itinerary.ts";
 import type { ExploreResult } from "./explore.ts";
 import type { JourneyLocalPlace } from "./local-place.ts";
@@ -155,6 +156,11 @@ export function mapResultForLocalPlace(place: TransientMapPlace, kind: "stay" | 
   };
 }
 
+/** Never associate Google provider facts with the MapLibre canvas. */
+export function mapLibreCompatibleResults<Result extends { provider?: string }>(results: readonly Result[]): Result[] {
+  return results.filter((result) => result.provider !== "google-places");
+}
+
 export function mapResultForDiscoveryPlace(place: {
   id: string;
   title: string;
@@ -241,7 +247,7 @@ export function projectPersistedMapResults(trip: EasyTTrip | null): {
   const projectedPinIds = new Set<string>();
   const results: MapResultPlace[] = [];
 
-  for (const idea of trip.brief.itineraryIdeas ?? []) {
+  for (const idea of legacyItineraryIdeas(trip.brief.itineraryIdeas)) {
     if (!validCoordinates(idea.coordinates)) continue;
     let persistedPinId: string | undefined;
     if (idea.dayId) {

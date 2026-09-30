@@ -1,5 +1,7 @@
 "use client";
 
+import { legacyItineraryIdeas } from "@/lib/easyt/trip";
+
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
@@ -7,6 +9,7 @@ import { ArrowRight, ArrowUpRight, BedDouble, Binoculars, Building2, CalendarDay
 import { useCallback, useEffect, useMemo, useRef, useState, type DragEvent, type KeyboardEvent as ReactKeyboardEvent, type PointerEvent as ReactPointerEvent } from "react";
 import { JourneyGlobe, type JourneyMapPlace } from "@/components/journey-globe";
 import { JourneyPlannerMap } from "@/components/journey-planner-map";
+import { GoogleTripMapCanvas } from "@/components/easyt/google-trip-map-canvas";
 import { JourneyCarousel } from "@/components/journey-carousel";
 import { JourneyLocalFinder, type JourneyLocalFinderInitialState, type JourneyLocalPlace } from "@/components/journey-local-finder";
 import { JourneyItineraryAccommodation } from "@/components/journey-itinerary-accommodation";
@@ -17,7 +20,8 @@ import { JourneyWeather } from "@/components/journey-weather";
 import EasyTTripCopilot from "@/components/easyt/easyt-trip-copilot";
 import { MorroviaRecoveryFeedback, MorroviaSaveStatus } from "@/components/easyt/morrovia-feedback";
 import { MorroviaSectionStatus } from "@/components/easyt/morrovia-loading-states";
-import { EasyTButton } from "@/components/easyt/easyt-controls";
+import { EasyTButton, EasyTSelect } from "@/components/easyt/easyt-controls";
+import MapPlaceEnrichment from "@/components/easyt/map-place-enrichment";
 import ItineraryItemDetail from "@/components/easyt/itinerary-item-detail";
 import TripTransportChoiceControl from "@/components/easyt/trip-transport-choice-control";
 import { affiliateDisclosure, MorroviaAffiliateLink } from "@/components/easyt/affiliate-link";
@@ -30,9 +34,9 @@ import { cacheCanonicalTrip, canUseHydratedTripScope, claimGuestTripRecoveryForO
 import { canApplyCanonicalCopilotChange, tripEditorSyncAction, tripSyncRecoveryPath, tripSyncSignInPath } from "@/lib/easyt/trip-continuity";
 import { createTripMutationPersistenceQueue, mergeTripMutationDocuments } from "@/lib/easyt/trip-mutation-persistence";
 import { addMappedPlaceToTrip, removeMappedPlaceFromTrip } from "@/lib/easyt/map-place-itinerary";
-import { mapResultForDiscoveryPlace, mapResultForHandoffTarget, mapResultForLocalPlace, mapResultForSourceAtStop, mapResultPlanItem, mergeMapResults, projectPersistedMapResults, reconcileMapResultSelection, reconcilePlannerPinSelection, type MapResultPlace } from "@/lib/easyt/map-result-selection";
+import { mapLibreCompatibleResults, mapResultForDiscoveryPlace, mapResultForHandoffTarget, mapResultForLocalPlace, mapResultForSourceAtStop, mapResultPlanItem, mergeMapResults, projectPersistedMapResults, reconcileMapResultSelection, reconcilePlannerPinSelection, type MapResultPlace } from "@/lib/easyt/map-result-selection";
 import { mobileMapDrawerDragDecision } from "@/lib/easyt/mobile-map-drawer";
-import { itineraryIdeaForLocalPlace, itineraryIdeaForPlace, preferredItineraryIdeaDay, removeItineraryIdea, saveItineraryIdea, scheduleItineraryIdea } from "@/lib/easyt/itinerary-ideas";
+import { googlePlaceReferenceChoiceId, itineraryIdeaForLocalPlace, itineraryIdeaForPlace, preferredItineraryIdeaDay, removeItineraryIdea, saveGooglePlaceReference, saveItineraryIdea, scheduleGooglePlaceReference, scheduleItineraryIdea, validIdeaDays } from "@/lib/easyt/itinerary-ideas";
 import { recommendationDetailForMapResult } from "@/lib/easyt/recommendation-detail";
 import { preferredItineraryDayPart, setDiscoveryPlaceScheduled } from "@/lib/easyt/itinerary-activity-placement";
 import { composeItineraryDay } from "@/lib/easyt/itinerary-day-composition";
@@ -43,7 +47,7 @@ import type { ItineraryDiscoveryPlace } from "@/lib/easyt/itinerary-day-context"
 import { requestedTripMatch } from "@/lib/easyt/trip-id-resolution";
 import { languageFromStorage, type EasyTLanguage } from "@/lib/easyt/i18n";
 import { authClient } from "@/lib/auth-client";
-import { tripIntentForTrip, type EasyTTrip, type ItineraryDayPart, type ItineraryIdea, type PlannerMapPin, type PlannerPinCategory } from "@/lib/easyt/trip";
+import { googlePlaceReferenceIdeas, isGooglePlaceReferenceIdea, tripIntentForTrip, type EasyTTrip, type GooglePlaceReference, type GooglePlaceReferenceIdea, type ItineraryDayPart, type ItineraryIdea, type PlannerMapPin, type PlannerPinCategory } from "@/lib/easyt/trip";
 import { tripDisplayTitle } from "@/lib/easyt/trip-display";
 import { estimateLeg } from "@/lib/easyt/planner";
 import { replanTripAfterDayOrder } from "@/lib/easyt/trip-replan";
@@ -56,6 +60,13 @@ import { formatIsoDate, parseIsoDate } from "@/lib/easyt/trip-lifecycle";
 import { deriveTripDateFacts, formatTripNights, incomingLegForPlanItem, orderedTripPlanItems, stableStopDateRange } from "@/lib/easyt/trip-facts";
 import { conciseMapDescription, formatMapDuration, mapRouteLegsFromTrip, type MapCopilotScope } from "@/lib/easyt/map-spatial-context";
 import type { MorroviaMapInsets, MorroviaMapSurface } from "@/lib/easyt/map-surface-policy";
+import { isEnrichedPlace, isEnrichedReview, type EnrichedPlace, type EnrichedReview, type PlaceEnrichmentCategory } from "@/lib/easyt/place-enrichment";
+import { decodeGooglePhotoAttributions, safeGooglePhotoSourceUrl, type GooglePlacePhotoAttribution } from "@/lib/easyt/google-place-photo";
+import { googleCanvasEligible, type GoogleTripMapApi } from "@/lib/easyt/google-trip-map-adapter";
+import { createLatestGoogleDetailRequest } from "@/lib/easyt/google-place-details-client";
+import { nativeGooglePoiSelection, type WorkspacePlaceSelection } from "@/lib/easyt/map-workspace-selection";
+import { googleDiscoveryScopeKey, googlePlaceSelectionForScope, googleSavedReferenceSelection, selectedGoogleDetailForPlace } from "@/lib/easyt/google-map-workspace-selection";
+import { googleNearbyRequestDecision, googlePlaceFailureKind, type GooglePlaceFailureKind } from "@/lib/easyt/google-place-request-control";
 import { originEndpointForTrip, routeEndpointForLeg, tripLegClassificationLabel, tripOriginEndpointId } from "@/lib/easyt/trip-legs";
 import { clearTripLegTransportChoice, effectiveTripLeg, selectTripLegTransportChoice, tripWithEffectiveTransportChoices } from "@/lib/easyt/transport-mode-choice";
 import EasyTNavigation from "@/app/journey/easyt-navigation";
@@ -85,6 +96,7 @@ type PlaceMedia = { image?: string; alt?: string; description?: string; sourceUr
 type ShapeDayTab = "plan" | "stay" | "eat" | "see";
 const shapeDayTabs: ShapeDayTab[] = ["plan", "stay", "eat", "see"];
 type TripHealthDetail = "accommodation" | "travel" | "activities" | "budget";
+type GoogleNearbyState = { places: EnrichedPlace[]; status: "loading" | "ready" | "empty" | "unavailable"; failure?: GooglePlaceFailureKind };
 
 function customBriefFromEasyT(trip: EasyTTrip): CustomBrief {
   const start = parseIsoDate(trip.startDate);
@@ -345,6 +357,16 @@ export type JourneyMapPlannerWorkspaceProps = {
     mobileDrawerOpen?: boolean;
     mobileShapeDayOpen?: boolean;
     tripStatusExpanded?: boolean;
+    enrichmentOpen?: boolean;
+    enrichmentPlaces?: EnrichedPlace[];
+    enrichmentUnavailable?: boolean;
+    /** Storybook-only provider boundary; never used by the production route. */
+    googleFixture?: {
+      sdkLoader: (key: string) => Promise<GoogleTripMapApi>;
+      placesByScope: Record<string, EnrichedPlace[]>;
+      detailsById: Record<string, EnrichedPlace>;
+      unavailableScopes?: string[];
+    };
   };
 };
 
@@ -436,8 +458,25 @@ export function JourneyMapPlannerWorkspace({
   const [copilotOpen, setCopilotOpen] = useState(false);
   const [mobileShapeDayOpen, setMobileShapeDayOpen] = useState(() => storyState?.mobileShapeDayOpen ?? (!isShellPresentation || Boolean(initialMapTarget && initialMapTarget.mode !== "plan")));
   const [localMapPlaces, setLocalMapPlaces] = useState<JourneyLocalPlace[]>(storyState?.localPlaces ?? []);
+  const [enrichmentAvailable, setEnrichmentAvailable] = useState(Boolean(storyState?.enrichmentPlaces));
+  const [googleSdkUnavailable, setGoogleSdkUnavailable] = useState(false);
   const [seeMapPlaces, setSeeMapPlaces] = useState<JourneyItineraryDiscoveryResult[]>([]);
   const [selectedMapResult, setSelectedMapResult] = useState<MapResultPlace | null>(null);
+  const [workspacePlaceSelection, setWorkspacePlaceSelection] = useState<WorkspacePlaceSelection>({ kind: "none" });
+  const [googleTargetDayId, setGoogleTargetDayId] = useState("");
+  const [selectedGoogleDetail, setSelectedGoogleDetail] = useState<EnrichedPlace | null>(null);
+  const [googleReferenceUnavailable, setGoogleReferenceUnavailable] = useState<"invalid" | "not-found" | "provider-failure" | null>(null);
+  const [refreshedGoogleReference, setRefreshedGoogleReference] = useState<{ choiceId: string; reference: GooglePlaceReference } | null>(null);
+  const [selectedGoogleReviews, setSelectedGoogleReviews] = useState<EnrichedReview[]>([]);
+  const [selectedGooglePhoto, setSelectedGooglePhoto] = useState<{ src: string; sourceUrl: string; attributions: GooglePlacePhotoAttribution[] } | null>(null);
+  const [googleMediaRequestedPlaceId, setGoogleMediaRequestedPlaceId] = useState<string | null>(null);
+  const [googleDetailStatus, setGoogleDetailStatus] = useState<"idle" | "loading" | "unavailable">("idle");
+  const [googleNearbyByScope, setGoogleNearbyByScope] = useState<Record<string, GoogleNearbyState>>({});
+  const [googleNearbyRetry, setGoogleNearbyRetry] = useState<{ scopeKey: string; sequence: number } | null>(null);
+  const googleNearbyAttemptRef = useRef<Record<string, number>>({});
+  const [googleDetailRetry, setGoogleDetailRetry] = useState(0);
+  const googleResultsScrollRef = useRef<Record<string, number>>({});
+  const googleDetailRequestRef = useRef(createLatestGoogleDetailRequest());
   const lastVisibleMapResultIdRef = useRef<string | null>(null);
   const [plannerWarning, setPlannerWarning] = useState("");
   const [lastPlannerTrip, setLastPlannerTrip] = useState<EasyTTrip | null>(null);
@@ -486,6 +525,14 @@ export function JourneyMapPlannerWorkspace({
   activeBrowserOwnerIdRef.current = activeBrowserOwnerId;
   const appliedDeepLinkRef = useRef<string | null>(null);
   const appliedMapResultTargetRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (storyState?.enrichmentPlaces || !expandedReturnHref || !authenticatedOwnerId) return;
+    const controller = new AbortController();
+    void fetch("/api/journey-place-enrichment?mode=availability", { cache: "no-store", signal: controller.signal })
+      .then((response) => { if (!controller.signal.aborted) setEnrichmentAvailable(response.ok); })
+      .catch(() => { if (!controller.signal.aborted) setEnrichmentAvailable(false); });
+    return () => controller.abort();
+  }, [authenticatedOwnerId, expandedReturnHref, storyState?.enrichmentPlaces]);
   useEffect(() => {
     if (!canonicalMutation) return;
     setCustomTrip((current) => JSON.stringify(current) === JSON.stringify(canonicalMutation.trip)
@@ -552,6 +599,113 @@ export function JourneyMapPlannerWorkspace({
   }, [selectedDay.id, selectedPlanItem?.stopId]);
   const selectedTripStop = customTrip?.stops.find((stop) => stop.id === (mapDetailScope === "stop" ? selectedMapStopId : null))
     ?? customTrip?.stops.find((stop) => stop.id === selectedPlanItem?.stopId);
+  const googleCanvasActive = Boolean(storyState?.googleFixture) || googleCanvasEligible({
+    flag: enrichmentAvailable,
+    authenticated: Boolean(authenticatedOwnerId),
+    expanded: isExpandedMap,
+    serverAvailable: enrichmentAvailable && !googleSdkUnavailable,
+    browserKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_BROWSER_KEY,
+  });
+  const googleDiscoveryCategory: PlaceEnrichmentCategory | null = shapeDayTab === "plan" ? null : shapeDayTab;
+  const selectedBaseCoordinates: [number, number] | null = selectedTripStop?.longitude !== null
+    && selectedTripStop?.longitude !== undefined
+    && selectedTripStop.latitude !== null
+    ? [selectedTripStop.longitude, selectedTripStop.latitude]
+    : selected.coordinates;
+  const googleScopeKey = selectedTripStop && googleDiscoveryCategory
+    ? googleDiscoveryScopeKey(selectedTripStop.id, googleDiscoveryCategory, selectedBaseCoordinates)
+    : null;
+  const googleNearby = googleScopeKey ? googleNearbyByScope[googleScopeKey] : undefined;
+  const selectedGooglePlaceId = googleCanvasActive && workspacePlaceSelection.kind === "google" ? workspacePlaceSelection.placeId : null;
+  const currentGoogleDetail = selectedGoogleDetailForPlace(selectedGooglePlaceId, selectedGoogleDetail);
+  useEffect(() => {
+    if (!googleCanvasActive) {
+      setWorkspacePlaceSelection((current) => current.kind === "google" ? { kind: "none" } : current);
+      setGoogleNearbyByScope({});
+      setSelectedGoogleDetail(null);
+    }
+  }, [googleCanvasActive]);
+  const selectedGoogleStopId = workspacePlaceSelection.kind === "google" ? workspacePlaceSelection.stopId : null;
+  const selectedGoogleChoice = customTrip?.brief.itineraryIdeas?.find((idea): idea is GooglePlaceReferenceIdea => isGooglePlaceReferenceIdea(idea)
+    && idea.stopId === selectedGoogleStopId
+    && idea.providerReference.placeId === selectedGooglePlaceId
+    && (workspacePlaceSelection.kind !== "google" || !workspacePlaceSelection.referenceId || idea.id === workspacePlaceSelection.referenceId));
+  useEffect(() => { setGoogleMediaRequestedPlaceId(null); }, [selectedGooglePlaceId]);
+  const googleDayOptions = customTrip && selectedGoogleStopId ? validIdeaDays(customTrip, selectedGoogleStopId) : [];
+  useEffect(() => {
+    const target = selectedGoogleChoice?.dayId ?? (workspacePlaceSelection.kind === "google" ? workspacePlaceSelection.dayId : null);
+    setGoogleTargetDayId(target && googleDayOptions.some((day) => day.id === target) ? target : "");
+  }, [selectedGooglePlaceId, selectedGoogleStopId, selectedGoogleChoice?.dayId, workspacePlaceSelection.kind === "google" ? workspacePlaceSelection.dayId : null]);
+  useEffect(() => {
+    if (workspacePlaceSelection.kind !== "google") return;
+    if (selectedTripStop?.id !== workspacePlaceSelection.stopId
+      || (workspacePlaceSelection.dayId && selectedPlanItem?.id !== workspacePlaceSelection.dayId)) {
+      setWorkspacePlaceSelection({ kind: "none" });
+    }
+  }, [workspacePlaceSelection, selectedTripStop?.id, selectedPlanItem?.id]);
+  useEffect(() => {
+    if (!googleCanvasActive || !selectedGooglePlaceId) {
+      googleDetailRequestRef.current.clear();
+      setSelectedGoogleDetail(null);
+      setGoogleDetailStatus("idle");
+      return;
+    }
+    if (storyState?.googleFixture) {
+      const detail = storyState.googleFixture.detailsById[selectedGooglePlaceId];
+      setSelectedGoogleDetail(detail ?? null);
+      setGoogleDetailStatus(detail ? "idle" : "unavailable");
+      setGoogleReferenceUnavailable(detail ? null : "not-found");
+      return;
+    }
+    setSelectedGoogleDetail(null);
+    setGoogleDetailStatus("loading");
+    setGoogleReferenceUnavailable(null);
+    const request = googleDetailRequestRef.current;
+    let active = true;
+    let completed = false;
+    trackEvent("map_google_request", { operation: selectedGoogleChoice ? "reference_resolve" : "details", outcome: "started" });
+    void request.select(selectedGooglePlaceId, (detail, reference) => {
+      if (!active) return;
+      completed = true;
+      setSelectedGoogleDetail(detail);
+      setGoogleDetailStatus("idle");
+      trackEvent("map_google_request", { operation: selectedGoogleChoice ? "reference_resolve" : "details", outcome: "success" });
+      if (reference && selectedGoogleChoice && reference.lastResolvedAt !== selectedGoogleChoice.providerReference.lastResolvedAt) {
+        setRefreshedGoogleReference({ choiceId: selectedGoogleChoice.id, reference });
+      }
+    }, selectedGoogleChoice?.providerReference, (reason) => { if (active) { completed = true; setGoogleReferenceUnavailable(reason); setGoogleDetailStatus("unavailable"); trackEvent("map_google_request", { operation: "reference_resolve", outcome: "failure", failure_kind: "provider" }); } })
+      .then(() => { if (active && !completed) { setGoogleDetailStatus("unavailable"); trackEvent("map_google_request", { operation: selectedGoogleChoice ? "reference_resolve" : "details", outcome: "failure", failure_kind: typeof navigator !== "undefined" && !navigator.onLine ? "offline" : "provider" }); } });
+    return () => { active = false; request.clear(); };
+  }, [googleCanvasActive, selectedGooglePlaceId, workspacePlaceSelection.kind === "google" ? workspacePlaceSelection.stopId : null, workspacePlaceSelection.kind === "google" ? workspacePlaceSelection.dayId : null, googleDetailRetry]);
+  useEffect(() => {
+    setSelectedGoogleReviews([]);
+    setSelectedGooglePhoto(null);
+    if (storyState?.googleFixture) return;
+    if (!googleCanvasActive || !selectedGoogleDetail || selectedGoogleDetail.providerPlaceId !== selectedGooglePlaceId || googleMediaRequestedPlaceId !== selectedGooglePlaceId) return;
+    const controller = new AbortController();
+    const query = new URLSearchParams({ id: selectedGooglePlaceId });
+    let objectUrl: string | null = null;
+    trackEvent("map_google_request", { operation: "reviews", outcome: "started" });
+    void fetch(`/api/journey-place-enrichment?mode=reviews&${query}`, { cache: "no-store", signal: controller.signal })
+      .then(async (response) => {
+        if (!response.ok) throw new Error("reviews_unavailable");
+        const data: unknown = await response.json();
+        const reviews = data && typeof data === "object" ? (data as { reviews?: unknown }).reviews : undefined;
+        if (!controller.signal.aborted && Array.isArray(reviews) && reviews.every(isEnrichedReview)) { setSelectedGoogleReviews(reviews.slice(0, 3)); trackEvent("map_google_request", { operation: "reviews", outcome: "success" }); }
+      }).catch(() => { if (!controller.signal.aborted) trackEvent("map_google_request", { operation: "reviews", outcome: "failure", failure_kind: "provider" }); });
+    trackEvent("map_google_request", { operation: "photo", outcome: "started" });
+    void fetch(`/api/journey-place-enrichment?mode=photo&${query}`, { cache: "no-store", signal: controller.signal })
+      .then(async (response) => {
+        const sourceUrl = safeGooglePhotoSourceUrl(response.headers.get("x-morrovia-photo-source"));
+        if (!response.ok || !sourceUrl || !["image/jpeg", "image/png", "image/webp"].includes(response.headers.get("content-type") ?? "")) throw new Error("photo_unavailable");
+        const blob = await response.blob();
+        if (controller.signal.aborted) return;
+        objectUrl = URL.createObjectURL(blob);
+        setSelectedGooglePhoto({ src: objectUrl, sourceUrl, attributions: decodeGooglePhotoAttributions(response.headers.get("x-morrovia-photo-attribution")) });
+        trackEvent("map_google_request", { operation: "photo", outcome: "success" });
+      }).catch(() => { if (!controller.signal.aborted) trackEvent("map_google_request", { operation: "photo", outcome: "failure", failure_kind: "provider" }); });
+    return () => { controller.abort(); if (objectUrl) URL.revokeObjectURL(objectUrl); };
+  }, [googleCanvasActive, selectedGoogleDetail, selectedGooglePlaceId, googleMediaRequestedPlaceId]);
   const selectedRecommendedLeg = customTrip && selectedPlanItem ? incomingLegForPlanItem(customTrip, selectedPlanItem) ?? undefined : undefined;
   const selectedLeg = customTrip && selectedRecommendedLeg ? effectiveTripLeg(customTrip, selectedRecommendedLeg) : undefined;
   const selectedCanonicalTravel = customTrip && selectedLeg ? {
@@ -571,11 +725,44 @@ export function JourneyMapPlannerWorkspace({
     ? customTrip.legs.reduce((total, leg) => total + (leg.doorToDoorMinutes ?? leg.durationMinutes ?? 0), 0)
     : null;
   const selectedStayDates = customTrip && selectedTripStop ? stableStopDateRange(selectedTripStop, customTrip) : null;
-  const selectedBaseCoordinates: [number, number] | null = selectedTripStop?.longitude !== null
-    && selectedTripStop?.longitude !== undefined
-    && selectedTripStop.latitude !== null
-    ? [selectedTripStop.longitude, selectedTripStop.latitude]
-    : selected.coordinates;
+  useEffect(() => {
+    if (!googleCanvasActive || !googleScopeKey || !googleDiscoveryCategory || !selectedBaseCoordinates) return;
+    if (storyState?.googleFixture) {
+      const fixtureScope = googleScopeKey.split("@")[0]!;
+      const places = storyState.googleFixture.placesByScope[fixtureScope] ?? [];
+      setGoogleNearbyByScope((current) => ({ ...current, [googleScopeKey]: storyState.googleFixture!.unavailableScopes?.includes(fixtureScope)
+        ? { places, status: "unavailable", failure: "provider" }
+        : { places, status: places.length ? "ready" : "empty" } }));
+      return;
+    }
+    const cached = googleNearbyByScope[googleScopeKey];
+    const retrySequence = googleNearbyRetry?.scopeKey === googleScopeKey ? googleNearbyRetry.sequence : 0;
+    if (googleNearbyRequestDecision(cached?.status, googleNearbyAttemptRef.current[googleScopeKey], retrySequence) === "reuse") return;
+    googleNearbyAttemptRef.current[googleScopeKey] = retrySequence;
+    const controller = new AbortController();
+    const scopeKey = googleScopeKey;
+    const query = new URLSearchParams({ mode: "nearby", category: googleDiscoveryCategory, lat: String(selectedBaseCoordinates[1]), lon: String(selectedBaseCoordinates[0]) });
+    setGoogleNearbyByScope((current) => ({ ...current, [scopeKey]: { places: current[scopeKey]?.places ?? [], status: "loading" } }));
+    trackEvent("map_google_request", { operation: retrySequence ? "retry" : "nearby", outcome: "started" });
+    void fetch(`/api/journey-place-enrichment?${query}`, { cache: "no-store", signal: controller.signal })
+      .then(async (response) => {
+        if (!response.ok) throw Object.assign(new Error("unavailable"), { status: response.status });
+        const body: unknown = await response.json();
+        const places = body && typeof body === "object" ? (body as { places?: unknown }).places : undefined;
+        if (!Array.isArray(places) || !places.every(isEnrichedPlace)) throw new Error("malformed");
+        if (!controller.signal.aborted) {
+          setGoogleNearbyByScope((current) => ({ ...current, [scopeKey]: { places, status: places.length ? "ready" : "empty" } }));
+          trackEvent("map_google_request", { operation: "nearby", outcome: "success" });
+        }
+      })
+      .catch((error: unknown) => { if (!controller.signal.aborted) {
+        const failure = googlePlaceFailureKind(error && typeof error === "object" && "status" in error ? Number(error.status) : undefined, typeof navigator !== "undefined" && !navigator.onLine);
+        setGoogleNearbyByScope((current) => ({ ...current, [scopeKey]: { places: current[scopeKey]?.places ?? [], status: "unavailable", failure } }));
+        trackEvent("map_google_request", { operation: "nearby", outcome: "failure", failure_kind: failure });
+      } });
+    return () => controller.abort();
+    // The cache is read at scope entry; a completed request must not trigger itself again.
+  }, [googleCanvasActive, googleScopeKey, googleDiscoveryCategory, selectedBaseCoordinates?.[0], selectedBaseCoordinates?.[1], googleNearbyRetry]);
   const selectedActivities = (selectedPlanItem?.notes ?? selectedDay.items).map((item) => {
     if (!selectedLeg || !/^(?:Estimated door-to-door: about|Morrovia planning estimate:)/i.test(item)) return item;
     const minutes = selectedLeg.doorToDoorMinutes ?? selectedLeg.durationMinutes;
@@ -791,19 +978,18 @@ export function JourneyMapPlannerWorkspace({
         : [];
     return handoffMapResult?.kind === shapeDayTab ? [handoffMapResult, ...discovered] : discovered;
   }, [handoffMapResult, localMapPlaces, seeMapPlaces, selectedMapStopId, selectedPlanItem?.dayNumber, selectedPlanItem?.stopId, shapeDayTab]);
-  const mapResults = useMemo(() => mergeMapResults(
-    persistedMapProjection.results,
-    transientMapResults,
-    selectedPlanItem?.dayNumber ?? null,
-  ), [persistedMapProjection.results, selectedPlanItem?.dayNumber, transientMapResults]);
+  const mapResults = useMemo(() => {
+    const merged = mergeMapResults(persistedMapProjection.results, transientMapResults, selectedPlanItem?.dayNumber ?? null);
+    return googleCanvasActive ? merged : mapLibreCompatibleResults(merged);
+  }, [googleCanvasActive, persistedMapProjection.results, selectedPlanItem?.dayNumber, transientMapResults]);
   const scheduledRestaurantIds = useMemo(() => mapResults
     .filter((result) => result.kind === "eat"
       && result.state === "scheduled"
       && result.stopId === selectedPlanItem?.stopId
       && result.dayNumber === selectedPlanItem?.dayNumber)
     .map((result) => result.sourceId), [mapResults, selectedPlanItem?.dayNumber, selectedPlanItem?.stopId]);
-  const selectedLocalPlace = selectedMapResult;
-  const selectedLocalPlaceId = selectedMapResult?.selectionId ?? null;
+  const selectedLocalPlace = selectedMapResult && mapResults.some((result) => result.selectionId === selectedMapResult.selectionId) ? selectedMapResult : null;
+  const selectedLocalPlaceId = selectedLocalPlace?.selectionId ?? null;
   const selectedRecommendationPart = customTrip && selectedPlanItem && selectedLocalPlace && selectedLocalPlace.kind !== "stay" && selectedLocalPlace.stopId === selectedPlanItem.stopId
     ? mapPlanFreeTimePart ?? preferredItineraryDayPart(customTrip, selectedPlanItem.id, selectedLocalPlace.kind === "eat" ? "restaurant" : "activity")
     : null;
@@ -825,8 +1011,8 @@ export function JourneyMapPlannerWorkspace({
   const selectedDestinationMapsUrl = selectedDestinationCoordinates
     ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${selectedDestinationCoordinates[1]},${selectedDestinationCoordinates[0]}`)}`
     : null;
-  const wholeRouteMapContext = mapMode === "overview" && !selectedLocalPlace && !selectedPlannerPin && !selectedRouteLeg;
-  const hasExplicitMapContext = Boolean(selectedLocalPlace || selectedPlannerPin || selectedRouteLeg);
+  const wholeRouteMapContext = mapMode === "overview" && !selectedLocalPlace && !selectedPlannerPin && !selectedRouteLeg && !selectedGooglePlaceId;
+  const hasExplicitMapContext = Boolean(selectedLocalPlace || selectedPlannerPin || selectedRouteLeg || selectedGooglePlaceId);
   const mapFocusOffset: [number, number] | undefined = isShellPresentation && mapCameraOcclusions.bottom
     ? undefined
     : isShellPresentation
@@ -837,6 +1023,7 @@ export function JourneyMapPlannerWorkspace({
   const showShellContext = Boolean(
     !tripStatusExpanded
     && !copilotOpen
+    && !(googleCanvasActive && shapeDayTab !== "plan")
     && (wholeRouteMapContext || hasExplicitMapContext || mapMode === "detail"),
   );
   const defaultMapContext = Boolean(
@@ -915,7 +1102,9 @@ export function JourneyMapPlannerWorkspace({
       ? "Map pin"
       : mobileMapSheetView === "planner"
         ? "Shape the day"
-        : selectedLocalPlace?.name
+        : currentGoogleDetail?.name
+          ?? (selectedGooglePlaceId ? "Selected Google place" : null)
+          ?? selectedLocalPlace?.name
           ?? selectedPlannerPin?.title
           ?? (selectedRouteLeg ? `${selectedRouteLeg.fromName} → ${selectedRouteLeg.toName}` : null)
           ?? (mapMode === "overview" ? "Whole route" : selectedTripStop?.name ?? selected.city);
@@ -1030,6 +1219,68 @@ export function JourneyMapPlannerWorkspace({
     setMobileShapeDayOpen(false);
     setMobileMapDrawerOpen(true);
   }, [canonicalMapLegs]);
+  const selectCanonicalMapLeg = (legId: string) => {
+    if (!canonicalMapLegs.some((leg) => leg.id === legId)) return;
+    drawerScrollResetRef.current = true;
+    setMobileShapeDayOpen(false);
+    setSelectedRouteLegId(legId);
+    setTransferDetailsExpanded(false);
+    setSelectedMapResult(null);
+    setWorkspacePlaceSelection({ kind: "none" });
+    setSelectedPlannerPin(null);
+    setPinPlacementMode(false);
+    setDestinationExpanded(false);
+    setMobileMapDrawerOpen(true);
+  };
+  const selectCanonicalMapStop = (stopId: string) => {
+    const firstItem = customTrip?.planItems.filter((item) => item.stopId === stopId).sort((left, right) => left.dayNumber - right.dayNumber)[0];
+    if (!customTrip || !customTrip.stops.some((stop) => stop.id === stopId)) return;
+    drawerScrollResetRef.current = true;
+    setIsPlaying(false);
+    setMobileShapeDayOpen(false);
+    setSelectedMapStopId(stopId);
+    if (firstItem) {
+      setSelectedId(`${customTrip.id}-day-${firstItem.dayNumber}`);
+      setSelectedDayId(`${customTrip.id}-calendar-${firstItem.dayNumber}`);
+    }
+    setSelectedMapResult(null);
+    setWorkspacePlaceSelection({ kind: "none" });
+    setSelectedPlannerPin(null);
+    setSelectedRouteLegId(null);
+    setMapDetailScope("stop");
+    setMapMode("detail");
+    setMobileMapDrawerOpen(true);
+  };
+  const selectGoogleNativePoi = (placeId: string) => {
+    const stopId = selectedTripStop?.id;
+    if (!stopId || !customTrip?.stops.some((stop) => stop.id === stopId)) return false;
+    const dayId = selectedPlanItem?.stopId === stopId ? selectedPlanItem.id : null;
+    setWorkspacePlaceSelection(nativeGooglePoiSelection(placeId, stopId, dayId));
+    setSelectedMapResult(null);
+    setSelectedPlannerPin(null);
+    setSelectedRouteLegId(null);
+    if (shapeDayTab === "plan") setShapeDayTab("see");
+    setMobileShapeDayOpen(true);
+    setMobileMapDrawerOpen(true);
+    return true;
+  };
+  const selectGoogleDiscoveryPlace = (placeId: string) => {
+    if (!selectedTripStop || !googleDiscoveryCategory) return;
+    setWorkspacePlaceSelection(googlePlaceSelectionForScope(placeId, {
+      stopId: selectedTripStop.id,
+      dayId: selectedPlanItem?.stopId === selectedTripStop.id ? selectedPlanItem.id : null,
+      category: googleDiscoveryCategory,
+    }));
+    setMobileShapeDayOpen(true);
+    setMobileMapDrawerOpen(true);
+  };
+  const selectGoogleSavedReference = (referenceId: string, placeId: string) => {
+    if (!selectedTripStop || !customTrip?.brief.itineraryIdeas?.some((idea) => isGooglePlaceReferenceIdea(idea)
+      && idea.id === referenceId && idea.stopId === selectedTripStop.id && idea.providerReference.placeId === placeId)) return;
+    setWorkspacePlaceSelection(googleSavedReferenceSelection(placeId, selectedTripStop.id, referenceId));
+    setMobileShapeDayOpen(true);
+    setMobileMapDrawerOpen(true);
+  };
   const selectMapPlanDay = useCallback((dayNumber: number) => {
     if (!customTrip || !selectedPlanItem) return;
     const day = customTrip.planItems.find((candidate) => candidate.dayNumber === dayNumber && candidate.stopId === selectedPlanItem.stopId);
@@ -1349,6 +1600,36 @@ export function JourneyMapPlannerWorkspace({
   }, [activeBrowserOwnerId, canonicalMutation, cloudConflictTrip, customTrip, persistPlannerMutation, savePlannerRecovery, session?.user]);
 
   useEffect(() => {
+    if (!refreshedGoogleReference || selectedGoogleChoice?.id !== refreshedGoogleReference.choiceId
+      || selectedGoogleChoice.providerReference.placeId !== refreshedGoogleReference.reference.placeId) return;
+    if (selectedGoogleChoice.providerReference.lastResolvedAt !== refreshedGoogleReference.reference.lastResolvedAt) {
+      updatePlannerTrip((trip) => ({ ...trip, brief: { ...trip.brief, itineraryIdeas: (trip.brief.itineraryIdeas ?? []).map((idea) => isGooglePlaceReferenceIdea(idea)
+        && idea.id === refreshedGoogleReference.choiceId
+        && idea.providerReference.placeId === refreshedGoogleReference.reference.placeId
+        ? { ...idea, providerReference: refreshedGoogleReference.reference } : idea) } }), "Google place reference refreshed");
+    }
+    setRefreshedGoogleReference(null);
+  }, [refreshedGoogleReference, selectedGoogleChoice, updatePlannerTrip]);
+
+  const saveSelectedGooglePlace = useCallback(() => {
+    if (!selectedGooglePlaceId || !selectedGoogleStopId || !selectedGoogleDetail || selectedGoogleDetail.providerPlaceId !== selectedGooglePlaceId) return false;
+    const category = shapeDayTab === "stay" ? "stay" : shapeDayTab === "eat" ? "restaurant" : "activity";
+    return updatePlannerTrip((trip) => saveGooglePlaceReference(trip, {
+      stopId: selectedGoogleStopId, placeId: selectedGooglePlaceId, category, lastResolvedAt: new Date().toISOString(),
+    }), "Google place saved for later");
+  }, [selectedGoogleDetail, selectedGooglePlaceId, selectedGoogleStopId, shapeDayTab, updatePlannerTrip]);
+
+  const addSelectedGooglePlaceToDay = useCallback(() => {
+    if (!selectedGooglePlaceId || !selectedGoogleStopId || !selectedGoogleDetail || selectedGoogleDetail.providerPlaceId !== selectedGooglePlaceId || !googleTargetDayId) return false;
+    if (!customTrip?.planItems.some((day) => day.id === googleTargetDayId && day.stopId === selectedGoogleStopId)) return false;
+    const category = shapeDayTab === "eat" ? "restaurant" : "activity";
+    const choiceId = googlePlaceReferenceChoiceId(selectedGoogleStopId, selectedGooglePlaceId);
+    return updatePlannerTrip((trip) => scheduleGooglePlaceReference(saveGooglePlaceReference(trip, {
+      stopId: selectedGoogleStopId, placeId: selectedGooglePlaceId, category, lastResolvedAt: new Date().toISOString(),
+    }), choiceId, googleTargetDayId), "Google place added to day");
+  }, [customTrip?.planItems, googleTargetDayId, selectedGoogleDetail, selectedGooglePlaceId, selectedGoogleStopId, shapeDayTab, updatePlannerTrip]);
+
+  useEffect(() => {
     if (!lastPlannerTrip) return;
     const timer = window.setTimeout(() => {
       setLastPlannerTrip(null);
@@ -1365,7 +1646,7 @@ export function JourneyMapPlannerWorkspace({
         : preferredItineraryIdeaDay(trip, stopId);
       if (typeof place !== "string" && targetDay) return setDiscoveryPlaceScheduled(trip, { stopId, place, dayId: targetDay.id, selected });
       const legacyIdea = !selected && typeof place === "string"
-        ? (trip.brief.itineraryIdeas ?? []).find((item) => item.stopId === stopId && item.title.toLocaleLowerCase() === title.toLocaleLowerCase())
+        ? (legacyItineraryIdeas(trip.brief.itineraryIdeas)).find((item) => item.stopId === stopId && item.title.toLocaleLowerCase() === title.toLocaleLowerCase())
         : null;
       let next = legacyIdea ? removeItineraryIdea(trip, legacyIdea.id) : trip;
       const existing = next.brief.selectedPlaces[stopId] ?? [];
@@ -1448,7 +1729,7 @@ export function JourneyMapPlannerWorkspace({
       const title = source?.notes[from.index];
       if (!source || !target || !title) return trip;
       const normalizedTitle = title.trim().replace(/\s+/g, " ").toLocaleLowerCase();
-      const matchingIdeas = (trip.brief.itineraryIdeas ?? []).filter((idea) => (
+      const matchingIdeas = (legacyItineraryIdeas(trip.brief.itineraryIdeas)).filter((idea) => (
         idea.dayId === source.id
         && idea.title.trim().replace(/\s+/g, " ").toLocaleLowerCase() === normalizedTitle
       ));
@@ -1529,7 +1810,7 @@ export function JourneyMapPlannerWorkspace({
     updatePlannerTrip((trip) => {
       const day = trip.planItems.find((item) => item.dayNumber === location.dayNumber);
       const normalizedTitle = title.trim().replace(/\s+/g, " ").toLocaleLowerCase();
-      const matchingIdeas = (trip.brief.itineraryIdeas ?? []).filter((idea) => (
+      const matchingIdeas = (legacyItineraryIdeas(trip.brief.itineraryIdeas)).filter((idea) => (
         idea.dayId === day?.id
         && idea.title.trim().replace(/\s+/g, " ").toLocaleLowerCase() === normalizedTitle
       ));
@@ -1586,6 +1867,7 @@ export function JourneyMapPlannerWorkspace({
     setShapeDayTab(tab);
     setMobileShapeDayOpen(true);
     setSelectedMapResult(null);
+    setWorkspacePlaceSelection({ kind: "none" });
     setSelectedPlannerPin(null);
     setSelectedRouteLegId(null);
     if (tab === "stay" || tab === "eat") setLocalFinderKind(tab === "stay" ? "stay" : "restaurant");
@@ -1654,7 +1936,7 @@ export function JourneyMapPlannerWorkspace({
       (trip) => {
         if (category === "restaurant") {
           const candidate = itineraryIdeaForLocalPlace(selectedPlanItem.stopId, venue);
-          const existing = (trip.brief.itineraryIdeas ?? []).find((idea) => idea.id === candidate.id);
+          const existing = (legacyItineraryIdeas(trip.brief.itineraryIdeas)).find((idea) => idea.id === candidate.id);
           return scheduleItineraryIdea(
             trip,
             existing ?? candidate,
@@ -1677,7 +1959,7 @@ export function JourneyMapPlannerWorkspace({
     return updatePlannerTrip(
       (trip) => {
         if (category === "restaurant") {
-          const idea = (trip.brief.itineraryIdeas ?? []).find((candidate) => (
+          const idea = (legacyItineraryIdeas(trip.brief.itineraryIdeas)).find((candidate) => (
             candidate.stopId === selectedPlanItem.stopId
             && candidate.placeId === venue.id
             && candidate.category === "restaurant"
@@ -1710,7 +1992,7 @@ export function JourneyMapPlannerWorkspace({
       : eatPlace
         ? itineraryIdeaForLocalPlace(stopId, eatPlace)
         : selectedLocalPlace.canonicalItemId
-          ? customTrip?.brief.itineraryIdeas?.find((candidate) => candidate.id === selectedLocalPlace.canonicalItemId)
+          ? legacyItineraryIdeas(customTrip?.brief.itineraryIdeas).find((candidate) => candidate.id === selectedLocalPlace.canonicalItemId)
           : null;
     return idea ? updatePlannerTrip((trip) => saveItineraryIdea(trip, idea), "Recommendation saved for later") : false;
   }, [customTrip?.brief.itineraryIdeas, localMapPlaces, seeMapPlaces, selectedLocalPlace, selectedPlanItem, updatePlannerTrip]);
@@ -1733,7 +2015,7 @@ export function JourneyMapPlannerWorkspace({
     const eatPlace = selectedLocalPlace.kind === "eat" ? localMapPlaces.find((place) => place.id === selectedLocalPlace.sourceId) : null;
     if (eatPlace) return saveLocalVenue(eatPlace, "restaurant");
     const idea = selectedLocalPlace.canonicalItemId
-      ? customTrip?.brief.itineraryIdeas?.find((candidate) => candidate.id === selectedLocalPlace.canonicalItemId)
+      ? legacyItineraryIdeas(customTrip?.brief.itineraryIdeas).find((candidate) => candidate.id === selectedLocalPlace.canonicalItemId)
       : null;
     return idea ? updatePlannerTrip(
       (trip) => scheduleItineraryIdea(trip, idea, selectedPlanItem.id, selectedRecommendationPart),
@@ -1750,8 +2032,8 @@ export function JourneyMapPlannerWorkspace({
         : false;
     }
     const idea = selectedLocalPlace.canonicalItemId
-      ? customTrip?.brief.itineraryIdeas?.find((candidate) => candidate.id === selectedLocalPlace.canonicalItemId)
-      : customTrip?.brief.itineraryIdeas?.find((candidate) => candidate.stopId === selectedLocalPlace.stopId && candidate.placeId === selectedLocalPlace.sourceId);
+      ? legacyItineraryIdeas(customTrip?.brief.itineraryIdeas).find((candidate) => candidate.id === selectedLocalPlace.canonicalItemId)
+      : legacyItineraryIdeas(customTrip?.brief.itineraryIdeas).find((candidate) => candidate.stopId === selectedLocalPlace.stopId && candidate.placeId === selectedLocalPlace.sourceId);
     return idea ? updatePlannerTrip((trip) => removeItineraryIdea(trip, idea.id), "Recommendation removed") : false;
   }, [customTrip?.brief.itineraryIdeas, selectedLocalPlace, updatePlannerTrip]);
 
@@ -2462,10 +2744,27 @@ export function JourneyMapPlannerWorkspace({
       {!hasCanonicalPlanner ? <div className={styles.productNavigation}>
         <EasyTNavigation current="prototype" storageOwnerId={activeBrowserOwnerId} />
       </div> : null}
-      <main ref={workspaceRef} data-map-expanded={isShellPresentation && isExpandedMap} className={`${styles.journey} ${mobileLayout.plan} ${mapDocks.plan} ${hasCanonicalPlanner ? styles.canonicalPlanner : ""} ${isShellPresentation ? styles.shellPlanner : ""} ${isShellPresentation && isExpandedMap ? styles.shellPlannerExpanded : ""}`}>
+      <main ref={workspaceRef} data-map-expanded={isShellPresentation && isExpandedMap} data-google-discovery={googleCanvasActive} className={`${styles.journey} ${mobileLayout.plan} ${mapDocks.plan} ${hasCanonicalPlanner ? styles.canonicalPlanner : ""} ${isShellPresentation ? styles.shellPlanner : ""} ${isShellPresentation && isExpandedMap ? styles.shellPlannerExpanded : ""}`}>
       {hasCanonicalPlanner ? (
         <div className={styles.mapDetailLayer}>
-            <JourneyPlannerMap
+            {googleCanvasActive ? <GoogleTripMapCanvas
+              browserKey={storyState?.googleFixture ? "storybook-fixture" : process.env.NEXT_PUBLIC_GOOGLE_MAPS_BROWSER_KEY!}
+              sdkLoader={storyState?.googleFixture?.sdkLoader}
+              mapId={process.env.NEXT_PUBLIC_GOOGLE_MAPS_MAP_ID}
+              stops={canonicalMapStops.map((stop) => ({ id: stop.id, name: stop.city, coordinates: stop.coordinates ?? null }))}
+              legs={canonicalMapLegs.map((leg) => ({ id: leg.id, fromStopId: leg.fromStopId, toStopId: leg.toStopId }))}
+              places={googleDiscoveryCategory ? (googleNearby?.places ?? []).map((place) => ({ id: place.providerPlaceId, name: place.name, coordinates: place.coordinates })) : []}
+              selectedStopId={mapMode === "overview" ? null : selectedTripStop?.id ?? null}
+              onNativePoi={selectGoogleNativePoi}
+              onEmptyClick={(coordinates) => {
+                if (pinPlacementMode) { setPinCoordinates(coordinates); setPinPlacementMode(false); }
+                else setWorkspacePlaceSelection({ kind: "none" });
+              }}
+              onSelectStop={selectCanonicalMapStop}
+              onSelectLeg={selectCanonicalMapLeg}
+              onSelectPlace={selectGoogleDiscoveryPlace}
+              onUnavailable={() => setGoogleSdkUnavailable(true)}
+            /> : <JourneyPlannerMap
               surface={surface}
               stops={canonicalMapStops}
               legs={canonicalMapLegs}
@@ -2477,7 +2776,7 @@ export function JourneyMapPlannerWorkspace({
               contextCardsHidden={copilotOpen || pinPlacementMode || Boolean(pinCoordinates)}
               plannerPins={persistedMapProjection.plannerPins}
               mapResults={mapResults}
-              selectedMapResult={selectedMapResult}
+              selectedMapResult={selectedLocalPlace}
               focusOffset={mapFocusOffset}
               focusZoom={isShellPresentation ? 9.5 : undefined}
               focusCoordinates={mapMode === "detail" && selectedPlannerPin ? [selectedPlannerPin.longitude, selectedPlannerPin.latitude] : null}
@@ -2492,26 +2791,9 @@ export function JourneyMapPlannerWorkspace({
               onMapPinDrop={(coordinates) => { setPinCoordinates(coordinates); setPinPlacementMode(false); }}
               onPlannerPinSelect={selectPlannerPin}
               onMapResultSelect={(place) => { drawerScrollResetRef.current = true; setMobileShapeDayOpen(false); selectMapResult(place); setMobileMapDrawerOpen(true); }}
-              onLegSelect={(leg) => { drawerScrollResetRef.current = true; setMobileShapeDayOpen(false); setSelectedRouteLegId(leg.id); setTransferDetailsExpanded(false); setSelectedMapResult(null); setSelectedPlannerPin(null); setPinPlacementMode(false); setDestinationExpanded(false); setMobileMapDrawerOpen(true); }}
-              onSelect={(id) => {
-                const firstItem = customTrip?.planItems.filter((item) => item.stopId === id).sort((left, right) => left.dayNumber - right.dayNumber)[0];
-                if (!customTrip) return;
-                drawerScrollResetRef.current = true;
-                setIsPlaying(false);
-                setMobileShapeDayOpen(false);
-                setSelectedMapStopId(id);
-                if (firstItem) {
-                  setSelectedId(`${customTrip.id}-day-${firstItem.dayNumber}`);
-                  setSelectedDayId(`${customTrip.id}-calendar-${firstItem.dayNumber}`);
-                }
-                setSelectedMapResult(null);
-                setSelectedPlannerPin(null);
-                setSelectedRouteLegId(null);
-                setMapDetailScope("stop");
-                setMapMode("detail");
-                setMobileMapDrawerOpen(true);
-              }}
-            />
+              onLegSelect={(leg) => selectCanonicalMapLeg(leg.id)}
+              onSelect={selectCanonicalMapStop}
+            />}
           </div>
       ) : (
         <>
@@ -2692,12 +2974,12 @@ export function JourneyMapPlannerWorkspace({
           </EasyTButton>
         </header>
         <div id="map-contextual-sheet-content" ref={drawerBodyRef} className={styles.mobileMapSheetBody}>
-      <aside className={`${styles.itineraryPanel} ${hasCanonicalPlanner ? `${styles.itineraryWithFinder} ${styles.canonicalPlannerStatus}` : ""} ${hasCanonicalPlanner && tripStatusExpanded ? styles.tripStatusExpanded : ""} ${tripHealthDetail ? styles.healthDetailOpen : ""} ${pinPlacementMode || Boolean(pinCoordinates) ? styles.mapContextHidden : ""} ${defaultMapContext ? styles.mapDefaultContext : ""} ${isShellPresentation && !showShellContext ? styles.mapContextEmpty : ""} ${isShellPresentation && selectedRouteLeg ? styles.mapTransferContext : ""} ${isShellPresentation && (selectedLocalPlace || selectedPlannerPin) ? styles.mapPlaceContext : ""} ${isShellPresentation && mapMode === "detail" && !selectedLocalPlace && !selectedPlannerPin && !selectedRouteLeg ? styles.mapDestinationContext : ""}`} aria-label="Selected map context" aria-live="polite">
-        {isShellPresentation && customTrip ? showShellContext ? <section className={`${styles.mapContextPanel} ${selectedLocalPlace || selectedPlannerPin || selectedRouteLeg ? styles.mapContextEntity : ""}`} aria-labelledby="map-context-title">
-          <p className={styles.mapContextEyebrow}>{selectedLocalPlace || selectedPlannerPin ? "Selected place" : selectedRouteLeg ? "Selected transfer" : mapMode === "overview" ? "Whole route" : mapDetailScope === "day" ? "Selected day" : "Selected stop"}</p>
+      <aside className={`${styles.itineraryPanel} ${hasCanonicalPlanner ? `${styles.itineraryWithFinder} ${styles.canonicalPlannerStatus}` : ""} ${hasCanonicalPlanner && tripStatusExpanded ? styles.tripStatusExpanded : ""} ${tripHealthDetail ? styles.healthDetailOpen : ""} ${pinPlacementMode || Boolean(pinCoordinates) ? styles.mapContextHidden : ""} ${defaultMapContext ? styles.mapDefaultContext : ""} ${isShellPresentation && !showShellContext ? styles.mapContextEmpty : ""} ${isShellPresentation && selectedRouteLeg ? styles.mapTransferContext : ""} ${isShellPresentation && (selectedLocalPlace || selectedPlannerPin || selectedGooglePlaceId) ? styles.mapPlaceContext : ""} ${isShellPresentation && mapMode === "detail" && !selectedLocalPlace && !selectedPlannerPin && !selectedRouteLeg && !selectedGooglePlaceId ? styles.mapDestinationContext : ""}`} aria-label="Selected map context" aria-live="polite">
+        {isShellPresentation && customTrip ? showShellContext ? <section className={`${styles.mapContextPanel} ${selectedLocalPlace || selectedPlannerPin || selectedRouteLeg || selectedGooglePlaceId ? styles.mapContextEntity : ""}`} aria-labelledby="map-context-title">
+          <p className={styles.mapContextEyebrow}>{selectedGooglePlaceId || selectedLocalPlace || selectedPlannerPin ? "Selected place" : selectedRouteLeg ? "Selected transfer" : mapMode === "overview" ? "Whole route" : mapDetailScope === "day" ? "Selected day" : "Selected stop"}</p>
           <div className={styles.mapContextHeading}>
-            <h2 id="map-context-title" className={selectedRecommendationDetail ? "sr-only" : undefined}>{selectedLocalPlace?.name ?? selectedPlannerPin?.title ?? (selectedRouteLeg ? `${selectedRouteLeg.fromName} → ${selectedRouteLeg.toName}` : mapMode === "overview" ? `${customTrip.stops.length} ${customTrip.stops.length === 1 ? "stop" : "stops"}, one connected trip` : selectedTripStop?.name ?? selected.city)}</h2>
-            {selectedLocalPlace ? <button type="button" onClick={dismissSelectedMapResult} aria-label="Close selected place details"><X aria-hidden="true" /></button> : selectedPlannerPin ? <button type="button" onClick={() => { const id = selectedPlannerPin.id; setSelectedPlannerPin(null); setMobileMapDrawerOpen(false); restoreMapMarkerFocus("plannerPinId", id); }} aria-label="Close selected pin details"><X aria-hidden="true" /></button> : selectedRouteLeg ? <button type="button" onClick={clearSelectedRouteLeg} aria-label="Close transfer details"><X aria-hidden="true" /></button> : mapMode === "detail" ? <button type="button" onClick={resetWholeRoute} aria-label="Close destination details"><X aria-hidden="true" /></button> : null}
+            <h2 id="map-context-title" className={selectedRecommendationDetail ? "sr-only" : undefined}>{currentGoogleDetail?.name ?? (selectedGooglePlaceId ? "Selected Google place" : null) ?? selectedLocalPlace?.name ?? selectedPlannerPin?.title ?? (selectedRouteLeg ? `${selectedRouteLeg.fromName} → ${selectedRouteLeg.toName}` : mapMode === "overview" ? `${customTrip.stops.length} ${customTrip.stops.length === 1 ? "stop" : "stops"}, one connected trip` : selectedTripStop?.name ?? selected.city)}</h2>
+            {selectedGooglePlaceId ? <EasyTButton iconOnly icon={X} variant="quiet" onClick={() => setWorkspacePlaceSelection({ kind: "none" })}>Close selected Google place details</EasyTButton> : selectedLocalPlace ? <button type="button" onClick={dismissSelectedMapResult} aria-label="Close selected place details"><X aria-hidden="true" /></button> : selectedPlannerPin ? <button type="button" onClick={() => { const id = selectedPlannerPin.id; setSelectedPlannerPin(null); setMobileMapDrawerOpen(false); restoreMapMarkerFocus("plannerPinId", id); }} aria-label="Close selected pin details"><X aria-hidden="true" /></button> : selectedRouteLeg ? <button type="button" onClick={clearSelectedRouteLeg} aria-label="Close transfer details"><X aria-hidden="true" /></button> : mapMode === "detail" ? <button type="button" onClick={resetWholeRoute} aria-label="Close destination details"><X aria-hidden="true" /></button> : null}
           </div>
 
           {selectedRecommendationDetail && selectedLocalPlace ? <div className={styles.mapPlaceDetail}>
@@ -2858,6 +3140,43 @@ export function JourneyMapPlannerWorkspace({
         <header className={styles.shapeDayHeader}><small>{language === "es" ? `EN ${selected.city.toLocaleUpperCase()}` : `AT ${selected.city.toLocaleUpperCase()}`}</small><span><strong>Shape the day</strong>{selectedTripStop?.nights ? <em>{selectedTripStop.nights} {selectedTripStop.nights === 1 ? "night" : "nights"}</em> : null}</span><button type="button" className={styles.mobileShapeDayClose} onClick={() => { setMobileShapeDayOpen(false); setMobileMapDrawerOpen(false); }} aria-label="Close Shape the day"><X aria-hidden="true" /></button><div className={styles.finderTabs} role="tablist" aria-label="Shape the day">
           {shapeDayTabs.map((tab) => <button key={tab} type="button" role="tab" aria-selected={shapeDayTab === tab} aria-pressed={shapeDayTab === tab} tabIndex={shapeDayTab === tab ? 0 : -1} className={shapeDayTab === tab ? styles.finderTabActive : ""} onClick={() => selectShapeDayTab(tab)} onKeyDown={(event) => onShapeDayTabKeyDown(event, tab)}>{tab === "plan" ? "Plan" : tab === "stay" ? "Stay" : tab === "eat" ? "Eat" : "See"}</button>)}
         </div>{customTrip && tripIssueCount > 0 ? <details className={styles.mobileTripStatus} open={tripStatusExpanded} onToggle={(event) => setTripStatusExpanded(event.currentTarget.open)}><summary><span>{language === "es" ? "Estado del viaje" : "Trip status"}</span><b>{tripIssueCount} {language === "es" ? "problemas" : tripIssueCount === 1 ? "issue" : "issues"}</b></summary></details> : null}</header>
+        {googleCanvasActive && shapeDayTab !== "plan" && selectedTripStop ? <div className={styles.enrichmentPanel}><MapPlaceEnrichment
+          destination={selectedTripStop.name}
+          contextLabel={workspacePlaceSelection.kind === "google"
+            ? `${customTrip?.stops.find((stop) => stop.id === workspacePlaceSelection.stopId)?.name ?? selectedTripStop.name}${customTrip?.planItems.find((item) => item.id === (selectedGoogleChoice?.dayId ?? workspacePlaceSelection.dayId))?.dayNumber ? ` · Day ${customTrip.planItems.find((item) => item.id === (selectedGoogleChoice?.dayId ?? workspacePlaceSelection.dayId))!.dayNumber}` : " · choose a day before adding"}`
+            : selectedTripStop.name}
+          category={googleDiscoveryCategory ?? "see"}
+          places={googleNearby?.places ?? []}
+          savedReferences={googlePlaceReferenceIdeas(customTrip?.brief.itineraryIdeas)
+            .filter((idea) => idea.stopId === selectedTripStop.id && (shapeDayTab === "stay" ? idea.category === "stay" : shapeDayTab === "eat" ? idea.category === "restaurant" : idea.category === "activity"))
+            .map((idea) => ({ id: idea.id, placeId: idea.providerReference.placeId, dayLabel: idea.dayId ? `Day ${customTrip?.planItems.find((day) => day.id === idea.dayId)?.dayNumber ?? "?"}` : null }))}
+          status={googleNearby?.status ?? "loading"}
+          failure={googleNearby?.failure}
+          selectedPlaceId={workspacePlaceSelection.kind === "google" && workspacePlaceSelection.stopId === selectedTripStop.id ? workspacePlaceSelection.placeId : null}
+          detail={currentGoogleDetail}
+          detailStatus={googleDetailStatus}
+          unavailableReason={googleReferenceUnavailable}
+          photo={selectedGooglePhoto}
+          reviews={selectedGoogleReviews}
+          mediaRequested={googleMediaRequestedPlaceId === selectedGooglePlaceId}
+          onRequestMedia={() => { if (selectedGooglePlaceId) setGoogleMediaRequestedPlaceId(selectedGooglePlaceId); }}
+          listScrollTop={googleScopeKey ? googleResultsScrollRef.current[googleScopeKey] ?? 0 : 0}
+          onListScroll={(top) => { if (googleScopeKey) googleResultsScrollRef.current[googleScopeKey] = top; }}
+          onSelectPlace={selectGoogleDiscoveryPlace}
+          onSelectSavedReference={selectGoogleSavedReference}
+          onBackToPlaces={() => setWorkspacePlaceSelection({ kind: "none" })}
+          onRetry={() => { if (selectedGooglePlaceId) setGoogleDetailRetry((value) => value + 1); else if (googleScopeKey) setGoogleNearbyRetry((value) => ({ scopeKey: googleScopeKey, sequence: (value?.sequence ?? 0) + 1 })); }}
+          actions={selectedGooglePlaceId && selectedGoogleDetail?.providerPlaceId === selectedGooglePlaceId && selectedGoogleStopId === selectedTripStop.id ? <>
+            {selectedGoogleChoice ? <p role="status">{selectedGoogleChoice.dayId ? `Added to Day ${customTrip?.planItems.find((day) => day.id === selectedGoogleChoice.dayId)?.dayNumber ?? "?"}` : "Saved for later"} · Not booked</p> : null}
+            {shapeDayTab !== "stay" && googleDayOptions.length ? <EasyTSelect label="Day for this place" value={googleTargetDayId} onChange={(event) => setGoogleTargetDayId(event.target.value)}>
+              <option value="">Choose a day</option>
+              {googleDayOptions.map((day) => <option key={day.id} value={day.id}>Day {day.dayNumber} · {day.date}</option>)}
+            </EasyTSelect> : null}
+            {shapeDayTab !== "stay" && googleDayOptions.length ? <EasyTButton fullWidth disabled={!googleTargetDayId || selectedGoogleChoice?.dayId === googleTargetDayId} onClick={addSelectedGooglePlaceToDay}>{selectedGoogleChoice?.dayId ? "Move to selected day" : `Add to Day ${googleDayOptions.find((day) => day.id === googleTargetDayId)?.dayNumber ?? ""}`}</EasyTButton> : null}
+            <EasyTButton variant="secondary" fullWidth disabled={Boolean(selectedGoogleChoice)} onClick={saveSelectedGooglePlace}>{shapeDayTab === "stay" ? "Save stay for later" : "Save for later"}</EasyTButton>
+            {selectedGoogleChoice ? <EasyTButton variant="quiet" fullWidth onClick={() => updatePlannerTrip((trip) => removeItineraryIdea(trip, selectedGoogleChoice.id), "Google place removed")}>Remove saved place</EasyTButton> : null}
+          </> : null}
+        /></div> : null}
         {shapeDayTab === "plan" ? <PlanWorkspace
           context={{
             selectedDay,
@@ -2881,7 +3200,7 @@ export function JourneyMapPlannerWorkspace({
           editHref={customTrip && selectedPlanItem ? itineraryWorkspaceHref(customTrip.id, selectedPlanItem.dayNumber) : editTripHref}
           copy={planCopy}
         /> : null}
-        {shapeDayTab === "see" && customTrip ? <div ref={mapResultActionsOrientationTarget} className={styles.shapeDaySee}><JourneyItineraryRefinement key={selectedPlanItem?.stopId} compact trip={customTrip} stop={customTrip.stops.find((stop) => stop.id === selectedPlanItem?.stopId)} day={selectedPlanItem ?? undefined} selectedPlaceId={selectedMapResult?.kind === "see" ? selectedMapResult.sourceId : null} onPlaceSelect={selectSeePlace} onPlacesChange={setSeeMapPlaces} onSelectionChange={handleAttractionSelection} onExploreMap={() => setMapMode("detail")} activityAction={activityAction}
+        {!googleCanvasActive && shapeDayTab === "see" && customTrip ? <div ref={mapResultActionsOrientationTarget} className={styles.shapeDaySee}><JourneyItineraryRefinement key={selectedPlanItem?.stopId} compact trip={customTrip} stop={customTrip.stops.find((stop) => stop.id === selectedPlanItem?.stopId)} day={selectedPlanItem ?? undefined} selectedPlaceId={selectedMapResult?.kind === "see" ? selectedMapResult.sourceId : null} onPlaceSelect={selectSeePlace} onPlacesChange={setSeeMapPlaces} onSelectionChange={handleAttractionSelection} onExploreMap={() => setMapMode("detail")} activityAction={activityAction}
           onSaveInventoryIdea={(idea: ItineraryIdea) => updatePlannerTrip((trip) => saveItineraryIdea(trip, idea), "Saved for later")}
           onScheduleInventoryIdea={(idea: ItineraryIdea) => {
             if (!selectedPlanItem) return false;
@@ -2895,7 +3214,7 @@ export function JourneyMapPlannerWorkspace({
             return changed;
           }}
         /></div> : null}
-        {(shapeDayTab === "stay" || shapeDayTab === "eat") && selectedBaseCoordinates ? <JourneyLocalFinder key={`${selectedDay.id}-${localFinderKind}`} tripId={customTrip?.id} stopId={selectedTripStop?.id} canonicalPlaceId={selectedTripStop?.canonicalPlaceId} kind={localFinderKind} city={localFinderKind === "stay" ? selectedTripStop?.name ?? selected.city : selected.city} country={localFinderKind === "stay" ? selectedTripStop?.country ?? selected.country : selected.country} locale={language} dayId={selectedDay.id} dayNumber={selectedPlanItem?.dayNumber} coordinates={localFinderKind === "stay" ? selectedBaseCoordinates : selected.coordinates ?? selectedBaseCoordinates} interests={selectedTripInterests} staySearch={selectedStayDates ? { ...selectedStayDates, adults: Math.max(1, customTrip?.travellers ?? 1), rooms: 1, currency: customTrip?.currency } : undefined} selectedPlaceId={selectedMapResult?.kind === (localFinderKind === "stay" ? "stay" : "eat") && (!selectedMapResult.stopId || selectedMapResult.stopId === selectedTripStop?.id) ? selectedMapResult.sourceId : null} savedPlaceIds={localFinderKind === "restaurant" ? scheduledRestaurantIds : undefined} initialState={storyState?.localFinderInitialState} onPlaceSelect={selectLocalPlace} onViewOnMap={focusLocalPlace} onPlacesChange={setLocalMapPlaces} onRestaurantSelect={handleRestaurantSelect} onSavePlace={saveLocalVenue} onRemovePlace={removeLocalVenue} /> : null}
+        {!googleCanvasActive && (shapeDayTab === "stay" || shapeDayTab === "eat") && selectedBaseCoordinates ? <JourneyLocalFinder mapPresentation="maplibre" key={`${selectedDay.id}-${localFinderKind}`} tripId={customTrip?.id} stopId={selectedTripStop?.id} canonicalPlaceId={selectedTripStop?.canonicalPlaceId} kind={localFinderKind} city={localFinderKind === "stay" ? selectedTripStop?.name ?? selected.city : selected.city} country={localFinderKind === "stay" ? selectedTripStop?.country ?? selected.country : selected.country} locale={language} dayId={selectedDay.id} dayNumber={selectedPlanItem?.dayNumber} coordinates={localFinderKind === "stay" ? selectedBaseCoordinates : selected.coordinates ?? selectedBaseCoordinates} interests={selectedTripInterests} staySearch={selectedStayDates ? { ...selectedStayDates, adults: Math.max(1, customTrip?.travellers ?? 1), rooms: 1, currency: customTrip?.currency } : undefined} selectedPlaceId={selectedMapResult?.kind === (localFinderKind === "stay" ? "stay" : "eat") && (!selectedMapResult.stopId || selectedMapResult.stopId === selectedTripStop?.id) ? selectedMapResult.sourceId : null} savedPlaceIds={localFinderKind === "restaurant" ? scheduledRestaurantIds : undefined} initialState={storyState?.localFinderInitialState} onPlaceSelect={selectLocalPlace} onViewOnMap={focusLocalPlace} onPlacesChange={setLocalMapPlaces} onRestaurantSelect={handleRestaurantSelect} onSavePlace={saveLocalVenue} onRemovePlace={removeLocalVenue} /> : null}
       </aside> : null}
         </div>
       </div>
