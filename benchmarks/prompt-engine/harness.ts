@@ -95,6 +95,15 @@ export function evaluatePromptEngineCase(scenario: PromptEngineCase): PromptEngi
   if (!constraintsOk) failures.push("hard constraint changed");
   const identitiesOk = (expected.canonicalPlaceIds ?? []).every((id) => has(actualIds, id));
   if (!identitiesOk) failures.push("canonical place identity changed");
+  const prohibitedIdentitiesAbsent = (expected.prohibitedCanonicalPlaceIds ?? []).every((id) =>
+    !has(actualIds, id) && !brief.destinations.some((destination) => destination.canonicalPlaceId === id));
+  if (!prohibitedIdentitiesAbsent) failures.push("unrequested canonical place invented");
+  const unresolvedScopeOk = (expected.unresolvedPlaceMentions ?? []).every(({ sourceText, parentCountry }) =>
+    brief.placeMentions?.some((mention) => mention.sourceText === sourceText
+      && mention.status === "unresolved"
+      && mention.canonicalPlaceId === undefined
+      && mention.parentCountries.includes(parentCountry)));
+  if (!unresolvedScopeOk) failures.push("unresolved place scope changed");
   const unknownOk = (expected.unknownFields ?? []).every((field) => brief[field] === undefined);
   if (!unknownOk) failures.push("unknown input was invented");
   const expectedWarningsOk = warningChecks.every(Boolean);
@@ -113,7 +122,7 @@ export function evaluatePromptEngineCase(scenario: PromptEngineCase): PromptEngi
     constraints: score(constraintsOk),
     route: score(routeOk),
     "time-realism": score(timeOk),
-    "state-preservation": score(identitiesOk && unknownOk),
+    "state-preservation": score(identitiesOk && prohibitedIdentitiesAbsent && unresolvedScopeOk && unknownOk),
     uncertainty: score(expectedWarningsOk && unknownOk),
     explanation: score(explanationOk),
   };

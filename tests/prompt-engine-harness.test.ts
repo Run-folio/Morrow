@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
 import { PROMPT_ENGINE_CASES, PROMPT_ENGINE_DIMENSIONS } from "../benchmarks/prompt-engine/fixtures.ts";
-import { comparablePromptEngineSnapshot, runPromptEngineHarness } from "../benchmarks/prompt-engine/harness.ts";
+import { comparablePromptEngineSnapshot, evaluatePromptEngineCase, runPromptEngineHarness } from "../benchmarks/prompt-engine/harness.ts";
 import { captureJourneyBrief } from "../lib/easyt/journey-capture.ts";
 
 test("prompt engine gauntlet has 16 complete, reviewable cases", () => {
@@ -24,6 +24,20 @@ test("deterministic prompt capture and recorded plan boundary match the baseline
   const path = fileURLToPath(new URL("../benchmarks/prompt-engine/baseline.json", import.meta.url));
   assert.deepEqual(first, JSON.parse(readFileSync(path, "utf8")));
   assert.equal(Object.keys(first.dimensions).length, PROMPT_ENGINE_DIMENSIONS.length);
+});
+
+test("regional traveller intent counts as preserved only when its unresolved scope survives", () => {
+  const scenario = PROMPT_ENGINE_CASES.find((item) => item.id === "southeast-asia-fixed-anchor");
+  assert.ok(scenario);
+  const mention = captureJourneyBrief(scenario.rawPrompt).structuredBrief.placeMentions?.find((item) => item.sourceText === "southern Vietnam");
+  assert.equal(mention?.status, "unresolved");
+  assert.equal(mention?.canonicalPlaceId, undefined);
+  assert.deepEqual(mention?.parentCountries, ["Vietnam"]);
+  assert.equal(evaluatePromptEngineCase(scenario).dimensions["state-preservation"], 2);
+  const alteredExpectation = { ...scenario, expectedHardFacts: { ...scenario.expectedHardFacts, unresolvedPlaceMentions: [{ sourceText: "northern Vietnam", parentCountry: "Vietnam" }] } };
+  assert.equal(evaluatePromptEngineCase(alteredExpectation).dimensions["state-preservation"], 0);
+  const countryExpansion = { ...scenario, expectedHardFacts: { ...scenario.expectedHardFacts, prohibitedCanonicalPlaceIds: ["bangkok"] } };
+  assert.equal(evaluatePromptEngineCase(countryExpansion).dimensions["state-preservation"], 0, "a prohibited canonical stop must fail even when regional wording survives");
 });
 
 test("Spanish aliases retain one origin and the ordered Japanese route intent", () => {

@@ -21,6 +21,9 @@ export type PromptEngineCase = {
     interests?: string[];
     hardConstraints?: Array<TripBriefHardConstraint["type"]>;
     canonicalPlaceIds?: string[];
+    prohibitedCanonicalPlaceIds?: string[];
+    /** Traveller-named regions retained without silently expanding to a whole-country stop. */
+    unresolvedPlaceMentions?: Array<{ sourceText: string; parentCountry: string }>;
     unknownFields?: Array<"duration" | "travellers" | "budget" | "pace">;
   };
   /** Outcome sets intentionally allow legitimate route ordering changes. */
@@ -134,9 +137,9 @@ export const PROMPT_ENGINE_CASES: PromptEngineCase[] = [
     id: "southeast-asia-fixed-anchor",
     name: "Southeast Asia — protected landmark and ground preference",
     rawPrompt: "We have 11 nights from Bangkok and Angkor Wat is the whole reason for the trip. We would also like Cambodia and southern Vietnam, using ground transport where it makes sense. Two travellers.",
-    expectedHardFacts: { durationDays: 11, durationUnit: "nights", hardConstraints: ["duration", "start-at", "must-visit"], canonicalPlaceIds: ["bangkok", "angkor-wat", "cambodia", "vietnam"] },
-    acceptableVariations: ["Ground transport is preferred, not promised for every leg.", "Cambodia and Vietnam may remain broader intent alongside concrete stops."],
-    prohibitedOutcomes: ["Drop Angkor Wat.", "Present an unverified ground transfer as confirmed."],
+    expectedHardFacts: { durationDays: 11, durationUnit: "nights", hardConstraints: ["duration", "start-at", "must-visit"], canonicalPlaceIds: ["bangkok", "angkor-wat", "cambodia"], prohibitedCanonicalPlaceIds: ["vietnam"], unresolvedPlaceMentions: [{ sourceText: "southern Vietnam", parentCountry: "Vietnam" }] },
+    acceptableVariations: ["Ground transport is preferred, not promised for every leg.", "Cambodia and southern Vietnam may remain broader intent alongside concrete stops."],
+    prohibitedOutcomes: ["Drop Angkor Wat.", "Expand southern Vietnam into an all-Vietnam stop or invent a city.", "Present an unverified ground transfer as confirmed."],
     expectedWarningsOrConflicts: [],
     reviewNotes: ["Does the explanation separate a route preference from service certainty?"],
     recordedPlan: { origin: { name: "Bangkok", coordinates: [100.5018, 13.7563] }, stops: [stop("bangkok", "Bangkok", "Thailand", [100.5018, 13.7563]), stop("angkor", "Angkor Wat", "Cambodia", [103.867, 13.4125]), stop("hcmc", "Ho Chi Minh City", "Vietnam", [106.6297, 10.8231])] },
