@@ -79,16 +79,17 @@ export function presentOverviewIssues(
   const sortedTransferDetails = [...transferDetails].sort((left, right) => severityOrder[left.severity] - severityOrder[right.severity]);
   const distinctTransferDetails = sortedTransferDetails.filter((issue, index) =>
     sortedTransferDetails.findIndex((candidate) => candidate.message === issue.message) === index);
-  const transferNotice: OverviewIssue | null = transferTitle ? {
+  const transferNoticeTitle = transferTitle?.rule === "route-integrity"
+    ? `${reviewLegIds.length} ${reviewLegIds.length === 1 ? "transfer needs" : "transfers need"} checking`
+    : transferTitle?.message;
+  const transferNotice: OverviewIssue | null = transferTitle && (reviewLegIds.length > 0 || transferTitle.rule !== "route-integrity") ? {
     id: transferTitle.id,
     title: transferTitle.rule === "route-integrity"
-      ? transferTitle.message.replace(/ before Morrovia can assess the full route\.$/, "")
+      ? transferNoticeTitle!
       : transferTitle.message,
     details: distinctTransferDetails.map((issue) => issue.message),
     findings: [
-      { message: transferTitle.rule === "route-integrity"
-        ? transferTitle.message.replace(/ before Morrovia can assess the full route\.$/, "")
-        : transferTitle.message, severity: transferTitle.severity },
+      { message: transferTitle.rule === "route-integrity" ? transferNoticeTitle! : transferTitle.message, severity: transferTitle.severity },
       ...distinctTransferDetails.map((issue) => ({ message: issue.message, severity: issue.severity })),
     ],
     severity: transferIssues.some((issue) => issue.severity === "critical")

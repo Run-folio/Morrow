@@ -139,3 +139,42 @@ test("combined transport summary keeps each finding's own severity", async () =>
     ["warning", "2 transfers need checking"],
   ]);
 });
+
+test("Overview counts distinct affected canonical legs rather than integrity findings", async () => {
+  const api = await import("../lib/easyt/trip-overview-issues.ts");
+  const oneLegTrip = { ...trip, legs: [{ id: "tokyo-kyoto" }] } as EasyTTrip;
+  const presented = api.presentOverviewIssues(oneLegTrip, [
+    issue("route-integrity", "3 transfers need checking before Morrovia can assess the full route."),
+  ], [
+    { legId: "tokyo-kyoto", message: "Both endpoints need validated coordinates." },
+    { legId: "tokyo-kyoto", message: "The saved transfer has a warning." },
+    { legId: "tokyo-kyoto", message: "Transfer time needs checking." },
+  ]);
+  assert.equal(presented[0]?.title, "1 transfer needs checking");
+  assert.deepEqual(presented[0]?.reviewLegIds, ["tokyo-kyoto"]);
+});
+
+test("Overview counts separate leg occurrences and omits transfer counts without an affected canonical leg", async () => {
+  const api = await import("../lib/easyt/trip-overview-issues.ts");
+  const repeatedPlaceLegs = { ...trip, legs: [{ id: "manila-first-el-nido" }, { id: "cebu-manila-final" }] } as EasyTTrip;
+  const twoLegs = api.presentOverviewIssues(repeatedPlaceLegs, [
+    issue("route-integrity", "2 transfers need checking before Morrovia can assess the full route."),
+  ], [
+    { legId: "manila-first-el-nido", message: "The first Manila occurrence needs coordinates." },
+    { legId: "manila-first-el-nido", message: "The El Nido occurrence needs coordinates." },
+    { legId: "cebu-manila-final", message: "The final Manila occurrence needs a transfer time." },
+  ]);
+  assert.equal(twoLegs[0]?.title, "2 transfers need checking");
+  assert.deepEqual(twoLegs[0]?.reviewLegIds, ["manila-first-el-nido", "cebu-manila-final"]);
+
+  const empty = api.presentOverviewIssues({ ...trip, legs: [] } as EasyTTrip, [
+    issue("route-integrity", "3 transfers need checking before Morrovia can assess the full route."),
+  ], [{ legId: null, message: "The canonical route endpoint count does not match." }]);
+  assert.deepEqual(empty, []);
+});
+
+test("Overview does not count resolved transport findings", async () => {
+  const api = await import("../lib/easyt/trip-overview-issues.ts");
+  const resolved = { ...issue("missing-logistics", "This transfer needs a confirmed time.", "tokyo-kyoto"), status: "resolved" as const };
+  assert.deepEqual(api.presentOverviewIssues(trip, [resolved], []), []);
+});
