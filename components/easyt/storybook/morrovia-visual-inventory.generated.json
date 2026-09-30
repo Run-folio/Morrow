@@ -2342,6 +2342,13 @@
         ]
       },
       {
+        "value": "#5e5e5e",
+        "count": 1,
+        "examples": [
+          "components/easyt/map-place-enrichment.module.css"
+        ]
+      },
+      {
         "value": "#5f5867",
         "count": 1,
         "examples": [
@@ -5236,7 +5243,7 @@
     "observedSpacing": [
       {
         "value": "8px",
-        "count": 550,
+        "count": 560,
         "examples": [
           "app/journey/account.module.css",
           "app/journey/admin/feedback/feedback.module.css",
@@ -5246,7 +5253,7 @@
       },
       {
         "value": "10px",
-        "count": 515,
+        "count": 519,
         "examples": [
           "app/journey/about/about.module.css",
           "app/journey/account.module.css",
@@ -5256,7 +5263,7 @@
       },
       {
         "value": "12px",
-        "count": 493,
+        "count": 498,
         "examples": [
           "app/journey/about/about.module.css",
           "app/journey/account.module.css",
@@ -5266,7 +5273,7 @@
       },
       {
         "value": "14px",
-        "count": 334,
+        "count": 336,
         "examples": [
           "app/journey/about/about.module.css",
           "app/journey/account.module.css",
@@ -5286,7 +5293,7 @@
       },
       {
         "value": "18px",
-        "count": 310,
+        "count": 312,
         "examples": [
           "app/journey/about/about.module.css",
           "app/journey/account.module.css",
@@ -5316,7 +5323,7 @@
       },
       {
         "value": "4px",
-        "count": 245,
+        "count": 251,
         "examples": [
           "app/journey/about/about.module.css",
           "app/journey/account.module.css",
@@ -5326,7 +5333,7 @@
       },
       {
         "value": "20px",
-        "count": 235,
+        "count": 236,
         "examples": [
           "app/journey/account.module.css",
           "app/journey/admin/feedback/feedback.module.css",
@@ -5336,7 +5343,7 @@
       },
       {
         "value": "6px",
-        "count": 235,
+        "count": 236,
         "examples": [
           "app/journey/account.module.css",
           "app/journey/discover/discover.module.css",
@@ -5356,7 +5363,7 @@
       },
       {
         "value": "5px",
-        "count": 223,
+        "count": 225,
         "examples": [
           "app/journey/account.module.css",
           "app/journey/dashboard/dashboard.module.css",
@@ -5366,7 +5373,7 @@
       },
       {
         "value": "3px",
-        "count": 157,
+        "count": 160,
         "examples": [
           "app/journey/account.module.css",
           "app/journey/dashboard/dashboard.module.css",
@@ -5386,7 +5393,7 @@
       },
       {
         "value": "2px",
-        "count": 144,
+        "count": 147,
         "examples": [
           "app/journey/account.module.css",
           "app/journey/dashboard/dashboard.module.css",
@@ -5396,7 +5403,7 @@
       },
       {
         "value": "11px",
-        "count": 136,
+        "count": 137,
         "examples": [
           "app/journey/about/about.module.css",
           "app/journey/account.module.css",
@@ -7666,6 +7673,16 @@
         ]
       },
       {
+        "value": "max-width: 390px",
+        "count": 11,
+        "examples": [
+          "app/journey/new/trip-builder.module.css",
+          "app/journey/passport/passport.module.css",
+          "components/easyt/destination-accommodation-module.module.css",
+          "components/easyt/live-activity-inventory.module.css"
+        ]
+      },
+      {
         "value": "max-width: 560px",
         "count": 11,
         "examples": [
@@ -7683,16 +7700,6 @@
           "app/journey/dashboard/dashboard.module.css",
           "app/journey/discover/discover.module.css",
           "app/journey/home/home.module.css"
-        ]
-      },
-      {
-        "value": "max-width: 390px",
-        "count": 10,
-        "examples": [
-          "app/journey/new/trip-builder.module.css",
-          "app/journey/passport/passport.module.css",
-          "components/easyt/destination-accommodation-module.module.css",
-          "components/easyt/live-activity-inventory.module.css"
         ]
       },
       {
@@ -8217,6 +8224,6 @@
         }
       ]
     },
-    "documentedExceptions": 55
+    "documentedExceptions": 56
   }
 }
