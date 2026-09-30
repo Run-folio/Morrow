@@ -228,6 +228,11 @@ export const ReturningPartiallyPlanned: Story = {
 };
 // The production workspace renders the same ContextualFeedbackSlot after route work.
 export const ContextualFeedbackPopulatedOverview: Story = { ...ReturningPartiallyPlanned, parameters: { feedbackStoryEligible: true } };
+export const ContextualFeedbackRouteOnlyOverview: Story = {
+  ...ReturningPartiallyPlanned,
+  args: { ...ReturningPartiallyPlanned.args, trip: { ...ReturningPartiallyPlanned.args!.trip!, planItems: [] } },
+  parameters: { feedbackStoryEligible: true },
+};
 export const ContextualFeedbackAuthenticatedEntry: Story = { ...ReturningPartiallyPlanned, parameters: { feedbackAuthenticatedFixture: true } };
 
 export const HealthIssue: Story = {

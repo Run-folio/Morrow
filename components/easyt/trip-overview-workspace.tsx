@@ -440,7 +440,7 @@ export default function TripOverviewWorkspace({
         </section>
 
         <TripExplicitPlans trip={trip} variant="overview" />
-        <ContextualFeedbackSlot workspace="overview" entryKey={`overview:${trip.id}`} hasContent={Boolean(trip.stops.length && trip.planItems.length)} blocked={Boolean(travellerDetailsOpen || mutation.saveState === "saving" || mutation.saveState === "error" || prepProviderStatus !== "available" || criticalRouteIssue)} />
+        <ContextualFeedbackSlot workspace="overview" entryKey={`overview:${trip.id}`} hasContent={Boolean(trip.stops.length)} blocked={Boolean(travellerDetailsOpen || mutation.saveState === "saving" || mutation.saveState === "error" || prepProviderStatus !== "available" || criticalRouteIssue)} />
 
         <section className={styles.beforeGo} id="before-you-go" aria-labelledby="overview-before-go-title">
           <details className={styles.beforeGoDisclosure} open={beforeGoOpen} onToggle={(event) => setBeforeGoOpen(event.currentTarget.open)}>

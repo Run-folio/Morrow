@@ -18,6 +18,7 @@ const itineraryOther = "morrovia-05-product-patterns-trip-workspace-itinerary--c
 const itineraryUnauth = "morrovia-05-product-patterns-trip-workspace-itinerary--rich-day-planner-integrated";
 const itineraryVisual = "morrovia-05-product-patterns-trip-workspace-itinerary--contextual-feedback-populated-day";
 const overviewVisual = "morrovia-05-product-patterns-trip-workspace-overview--contextual-feedback-populated-overview";
+const overviewRouteOnly = "morrovia-05-product-patterns-trip-workspace-overview--contextual-feedback-route-only-overview";
 const feedbackInvitation = "morrovia-05-product-patterns-contextual-feedback--invitation";
 const activeKey = (owner: string) => `morrovia:feedback-active:${owner}:contextual-beta-v1`;
 const qualified = { elapsedMs: 600_000, acknowledgedAction: true };
@@ -106,6 +107,20 @@ test("ineligible, unauthenticated and submitted accounts receive no invitation",
       await noOverflow(page);
       await page.close();
     }
+  } finally { await browser.close(); }
+});
+
+test("a qualifying stay on a trip without planned activities can surface feedback on Overview", { skip: !safeBase && "Set a loopback MORROVIA_FEEDBACK_STORYBOOK_URL" }, async () => {
+  const browser = await chromium.launch({ channel: "chrome", headless: true });
+  try {
+    const page = await browser.newPage({ viewport: { width: 390, height: 844 } });
+    await page.goto(story(overviewRouteOnly), { waitUntil: "domcontentloaded" });
+    const slot = page.locator('[data-contextual-feedback-slot="overview"]');
+    await slot.waitFor();
+    assert.equal(await page.getByRole("button", { name: "Share feedback" }).count(), 1);
+    assert.equal(await page.getByRole("heading", { name: "Keep building your trip" }).count(), 1, "the invitation remains in the real Overview workspace");
+    await noOverflow(page);
+    await page.close();
   } finally { await browser.close(); }
 });
 
