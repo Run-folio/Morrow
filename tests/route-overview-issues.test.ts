@@ -154,6 +154,36 @@ test("Overview counts distinct affected canonical legs rather than integrity fin
   assert.deepEqual(presented[0]?.reviewLegIds, ["tokyo-kyoto"]);
 });
 
+test("Overview names one affected transfer despite three non-integrity findings", async () => {
+  const api = await import("../lib/easyt/trip-overview-issues.ts");
+  const presented = api.presentOverviewIssues(trip, [
+    issue("missing-logistics", "This transfer needs a confirmed mode.", "tokyo-kyoto"),
+    issue("connection-confidence", "Connection time needs checking.", "tokyo-kyoto"),
+    issue("driving-load", "The estimated road travel may dominate the day.", "tokyo-kyoto"),
+  ], []);
+  assert.equal(presented.length, 1);
+  assert.equal(presented[0]?.title, "1 transfer needs checking");
+  assert.deepEqual(presented[0]?.reviewLegIds, ["tokyo-kyoto"]);
+  assert.deepEqual(presented[0]?.details, [
+    "This transfer needs a confirmed mode.",
+    "Connection time needs checking.",
+    "The estimated road travel may dominate the day.",
+  ]);
+});
+
+test("Overview counts two distinct leg-scoped recommendations without route-integrity and leaves legless checks unnumbered", async () => {
+  const api = await import("../lib/easyt/trip-overview-issues.ts");
+  const two = api.presentOverviewIssues(trip, [
+    issue("missing-logistics", "Mode needs confirmation.", "tokyo-kyoto"),
+    issue("connection-confidence", "Time needs checking.", "kyoto-tokyo-return"),
+  ], []);
+  assert.equal(two[0]?.title, "2 transfers need checking");
+  assert.deepEqual(two[0]?.reviewLegIds, ["tokyo-kyoto", "kyoto-tokyo-return"]);
+  const legless = api.presentOverviewIssues(trip, [issue("missing-logistics", "Route check: transport details need review.")], []);
+  assert.equal(legless[0]?.title, "Route check: transport details need review.");
+  assert.deepEqual(legless[0]?.reviewLegIds, []);
+});
+
 test("Overview counts separate leg occurrences and omits transfer counts without an affected canonical leg", async () => {
   const api = await import("../lib/easyt/trip-overview-issues.ts");
   const repeatedPlaceLegs = { ...trip, legs: [{ id: "manila-first-el-nido" }, { id: "cebu-manila-final" }] } as EasyTTrip;
