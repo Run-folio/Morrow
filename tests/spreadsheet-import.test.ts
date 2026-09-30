@@ -281,6 +281,12 @@ test("transport with matching names but a mismatched date cannot bind a leg", ()
   assert.equal(transportBookingForLeg(trip, firstLeg, trip.stops[0], trip.stops[1]), undefined);
   assert.equal(itineraryTransportAgenda(trip).find((item) => item.leg.id === firstLeg.id)?.status, "confirm");
   assert.equal(transportBookingProgress(trip).sortedCount, 0);
+  const confirmedLater = { ...trip, brief: { ...trip.brief, bookings: [
+    ...(trip.brief.bookings ?? []),
+    { id: `transport-${firstLeg.id}`, type: "transport" as const, title: "Traveller confirmed transfer", date: "2026-12-13", confirmation: "CONFIRMED", url: null },
+  ] } };
+  assert.equal(transportBookingForLeg(confirmedLater, firstLeg, confirmedLater.stops[0], confirmedLater.stops[1])?.id, `transport-${firstLeg.id}`);
+  assert.equal(itineraryTransportAgenda(confirmedLater).find((item) => item.leg.id === firstLeg.id)?.status, "booked");
 });
 
 test("review is temporary; only explicit confirmation enters existing recovery and canonical cache paths", () => {

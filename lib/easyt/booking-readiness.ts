@@ -241,9 +241,10 @@ export function transportBookingForLeg(trip: EasyTTrip, leg: TripLeg, from?: Tri
     // Matching their free-text endpoint names again would attach an unmatched
     // booking to a different occurrence or date after review.
     const importedBookingId = leg.routeMetadata.importedBookingId;
-    return typeof importedBookingId === "string"
-      ? (trip.brief.bookings ?? []).find((booking) => booking.type === "transport" && booking.id === importedBookingId)
-      : undefined;
+    return (trip.brief.bookings ?? []).find((booking) => booking.type === "transport"
+      && (booking.id === leg.id
+        || booking.id === `transport-${leg.id}`
+        || (typeof importedBookingId === "string" && booking.id === importedBookingId)));
   }
   const fromName = normalise(from?.name ?? "");
   const toName = normalise(to?.name ?? "");
