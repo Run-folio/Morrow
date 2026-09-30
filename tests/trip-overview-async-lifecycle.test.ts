@@ -88,10 +88,13 @@ test("embedded Itinerary selection updates pins without making the map a present
   const mapSource = readFileSync("components/journey-planner-map.tsx", "utf8");
   assert.match(mapSource, /const routeFocusKey = presentationOnly \? null : focusCoordinates/);
   assert.match(mapSource, /const routeSelectionKey = presentationOnly \? null : selectedLegId/);
-  assert.match(mapSource, /\}, \[domainSelection, interactivePlannerPinIds, plannerPins, surface\.variant\]\);/);
+  assert.match(mapSource, /if \(!domainSelection\) \{\s*pinMarkersRef\.current\.forEach\(\(marker\) => marker\.remove\(\)\)/);
+  assert.match(mapSource, /const interactive = !interactivePlannerPinIds \|\| interactivePlannerPinIds\.includes\(pin\.id\)/);
+  assert.match(mapSource, /\}, \[domainSelection, interactivePlannerPinIds, plannerPins\]\);/);
   assert.match(mapSource, /selectedPlannerPinIdRef\.current/);
   assert.match(mapSource, /bindMapMarkerActivation\(element,/);
-  assert.match(mapSource, /if \(surface\.variant === "embedded"\) drawPins\(\)/);
+  assert.match(mapSource, /if \(!domainSelection\) \{\s*pinMarkersRef\.current\.forEach\(\(marker\) => marker\.remove\(\)\)/);
+  assert.match(mapSource, /drawPins\(\);\s*\}, \[domainSelection, interactivePlannerPinIds, plannerPins\]\);/);
 });
 
 test("the canonical full Map uses workspace policy rather than Overview preview policy", () => {

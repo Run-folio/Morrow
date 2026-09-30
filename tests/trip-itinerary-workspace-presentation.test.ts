@@ -136,7 +136,9 @@ test("Itinerary uses embedded selection while full Map uses the shared workspace
   assert.match(map, /map\.remove\(\);\s*map\.off\("error", handleMapError\)/);
   assert.match(map, /map\.on\("error", handleMapError\)/);
   assert.match(map, /basemapLifecycle\.handleError\(event\)/);
-  assert.match(map, /\}, \[domainSelection, interactivePlannerPinIds, plannerPins, surface\.variant\]\);/);
+  assert.match(map, /if \(!domainSelection\) \{\s*pinMarkersRef\.current\.forEach\(\(marker\) => marker\.remove\(\)\)/);
+  assert.match(map, /const interactive = !interactivePlannerPinIds \|\| interactivePlannerPinIds\.includes\(pin\.id\)/);
+  assert.match(map, /\}, \[domainSelection, interactivePlannerPinIds, plannerPins\]\);/);
 });
 
 test("Itinerary suggestions reuse discovery, the canonical idea bridge, Map's mapped-place mutation, and the shared persistence hook", () => {

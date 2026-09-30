@@ -3,6 +3,7 @@ import type { EasyTTrip, TripLeg, TripStop } from "./trip.ts";
 import { deriveTripDateFacts, stableStopDateRange } from "./trip-facts.ts";
 import { validateOptionalAffiliateUrl } from "./affiliate-configuration.ts";
 import { LEGACY_ROAD_COMPATIBILITY_SOURCE } from "./transport-leg-compatibility.ts";
+import { SPREADSHEET_IMPORT_PARSER_VERSION } from "./spreadsheet-import.ts";
 
 export type BookingCategory = "accommodation" | "flight" | "activity" | "car-rental" | "connectivity" | "ground-transport" | "transport" | "insurance";
 export type AffiliateAnalyticsCategory = "accommodation" | "car_rental" | "activities" | "airport_transfer" | "travel_insurance";
@@ -235,6 +236,15 @@ const selectedDecision = (trip: EasyTTrip, leg: TripLeg) => trip.brief.decisionS
 const normalise = (value: string) => value.trim().toLocaleLowerCase();
 
 export function transportBookingForLeg(trip: EasyTTrip, leg: TripLeg, from?: TripStop, to?: TripStop) {
+  if (trip.brief.capturedIntent?.parserVersion === SPREADSHEET_IMPORT_PARSER_VERSION) {
+    // Spreadsheet bookings are attached to a dated, canonical leg at import.
+    // Matching their free-text endpoint names again would attach an unmatched
+    // booking to a different occurrence or date after review.
+    const importedBookingId = leg.routeMetadata.importedBookingId;
+    return typeof importedBookingId === "string"
+      ? (trip.brief.bookings ?? []).find((booking) => booking.type === "transport" && booking.id === importedBookingId)
+      : undefined;
+  }
   const fromName = normalise(from?.name ?? "");
   const toName = normalise(to?.name ?? "");
   return (trip.brief.bookings ?? []).find((booking) => {

@@ -25,6 +25,10 @@ import {
 import { isEasyTTrip } from "../lib/easyt/trip.ts";
 import { composeItineraryDay } from "../lib/easyt/itinerary-day-composition.ts";
 import { resolveCanonicalRoadFallback } from "../lib/easyt/road-transfer-resolution.ts";
+import { transportBookingForLeg, transportBookingProgress } from "../lib/easyt/booking-readiness.ts";
+import { itineraryTransportAgenda } from "../lib/easyt/itinerary-transport-agenda.ts";
+import { deriveItineraryCoverage } from "../lib/easyt/trip-facts.ts";
+import { pendingSpreadsheetImportForRetry } from "../lib/easyt/spreadsheet-import-submission.ts";
 import { firstTripWorkspaceHref, itineraryWorkspaceHref, mapWorkspaceHref } from "../lib/easyt/trip-workspace-links.ts";
 import {
   formatImportDate,
@@ -211,6 +215,7 @@ test("canonical confirmation creates one normal trip with exact stops, bookings,
   assert.equal(trip.brief.bookings?.length, 3);
   assert.equal(trip.brief.bookings?.[0].endDate, "2027-04-06");
   assert.equal(trip.planItems.length, 9);
+  assert.equal(deriveItineraryCoverage(trip).label, "9 days outlined", "partial authored activity does not make every structural day planned");
   assert.equal(new Set(trip.planItems.map((item) => item.date)).size, 9);
   assert.deepEqual(trip.planItems.find((item) => item.date === "2027-04-03")?.notes, ["Senso-ji"]);
   assert.deepEqual(trip.planItems.find((item) => item.date === "2027-04-08")?.notes, ["Fushimi Inari"]);
@@ -262,6 +267,8 @@ test("complete dated transport booking binds only the adjacent final Manila occu
   assert.equal(bookedLegs[0].toStopId, trip.stops[5].id);
   assert.equal(bookedLegs[0].mode, "flight");
   assert.equal(bookedLegs[0].durationMinutes, null, "booking confirms mode but not a duration");
+  assert.equal(transportBookingForLeg(trip, bookedLegs[0], trip.stops[4], trip.stops[5])?.id, bookedLegs[0].routeMetadata.importedBookingId);
+  assert.equal(itineraryTransportAgenda(trip).find((item) => item.leg.id === bookedLegs[0].id)?.status, "booked");
 });
 
 test("transport with matching names but a mismatched date cannot bind a leg", () => {
@@ -270,6 +277,10 @@ test("transport with matching names but a mismatched date cannot bind a leg", ()
   const trip = canonicalTripFromSpreadsheetProposal({ id: "trip-date-mismatch", proposal, origin: { ...origin, name: "Manila", canonicalPlaceId: "fixture:manila" }, places: resolvedPlaces(proposal) });
   assert.equal(proposal.bookings.filter((booking) => booking.type === "transport").length, 1);
   assert.equal(trip.legs.filter((leg) => leg.routeMetadata.importedBookingId).length, 0);
+  const firstLeg = trip.legs.find((leg) => leg.fromStopId === trip.stops[0].id && leg.toStopId === trip.stops[1].id)!;
+  assert.equal(transportBookingForLeg(trip, firstLeg, trip.stops[0], trip.stops[1]), undefined);
+  assert.equal(itineraryTransportAgenda(trip).find((item) => item.leg.id === firstLeg.id)?.status, "confirm");
+  assert.equal(transportBookingProgress(trip).sortedCount, 0);
 });
 
 test("review is temporary; only explicit confirmation enters existing recovery and canonical cache paths", () => {
@@ -285,6 +296,27 @@ test("review is temporary; only explicit confirmation enters existing recovery a
   assert.deepEqual(cached, { stored: true, recoveryResolved: true });
   assert.equal(loadTripRecoveryFromStorage(storage, trip.id, "owner-one"), null);
   assert.equal(loadCachedTripFromStorage(storage, trip.id, "owner-one")?.id, "trip-import-once");
+});
+
+test("failed account acknowledgement retries the same reviewed import and recovery handle", () => {
+  const proposal = buildSpreadsheetImportProposal(parseDelimitedText(philippinesImportCsv));
+  const storage = new MemoryStorage();
+  const trip = canonicalTripFromSpreadsheetProposal({ id: "trip-import-retry", proposal, origin: { ...origin, name: "Manila", canonicalPlaceId: "fixture:manila" }, places: resolvedPlaces(proposal) });
+  const saved = saveTripRecoveryToStorage(storage, trip, { ownerId: "owner-one", writeId: "import-write" });
+  assert.equal(saved.stored, true);
+  const pending = { reviewedInputKey: "reviewed-philippines", ownerId: "owner-one", trip, handle: saved.handle };
+  const recovery = loadTripRecoveryFromStorage(storage, trip.id, "owner-one");
+  const storedKeyCount = storage.length;
+  const retry = pendingSpreadsheetImportForRetry(pending, { reviewedInputKey: "reviewed-philippines", ownerId: "owner-one", recovery });
+  assert.equal(retry?.trip, trip);
+  assert.equal(retry?.handle.writeId, saved.handle.writeId);
+  assert.equal(storage.length, storedKeyCount, "retry does not write a second recovery");
+  assert.throws(() => pendingSpreadsheetImportForRetry(pending, { reviewedInputKey: "edited-review", ownerId: "owner-one", recovery }), /changed/i);
+  assert.throws(() => pendingSpreadsheetImportForRetry(pending, { reviewedInputKey: "reviewed-philippines", ownerId: "owner-two", recovery }), /account/i);
+  assert.throws(() => pendingSpreadsheetImportForRetry(pending, { reviewedInputKey: "reviewed-philippines", ownerId: "owner-one", recovery: null }), /recovery/i);
+  const replacement = saveTripRecoveryToStorage(storage, { ...trip, title: "Newer edit" }, { ownerId: "owner-one", writeId: "newer-write", replace: saved.handle });
+  assert.equal(replacement.stored, true);
+  assert.throws(() => pendingSpreadsheetImportForRetry(pending, { reviewedInputKey: "reviewed-philippines", ownerId: "owner-one", recovery: loadTripRecoveryFromStorage(storage, trip.id, "owner-one") }), /recovery/i);
 });
 
 test("malformed and oversized structures fail with specific recovery messages", () => {

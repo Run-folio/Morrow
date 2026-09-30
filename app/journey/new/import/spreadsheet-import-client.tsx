@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { ArrowLeft, FileSpreadsheet, Upload } from "lucide-react";
-import { useEffect, useMemo, useState, type ChangeEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
 import { EasyTButton, EasyTSelect, EasyTSegmentedControl, EasyTTextArea } from "@/components/easyt/easyt-controls";
 import { MorroviaRecoveryFeedback, MorroviaStatusBanner } from "@/components/easyt/morrovia-feedback";
 import { authClient } from "@/lib/auth-client";
@@ -20,7 +20,8 @@ import {
   type SpreadsheetTable,
 } from "@/lib/easyt/spreadsheet-import";
 import { parseSpreadsheetWorkbook } from "@/lib/easyt/spreadsheet-import-file";
-import { cacheCanonicalTrip, saveTripRecovery, saveTripRecoveryToEasyT } from "@/lib/easyt/storage";
+import { cacheCanonicalTrip, loadTripRecovery, saveTripRecovery, saveTripRecoveryToEasyT } from "@/lib/easyt/storage";
+import { pendingSpreadsheetImportForRetry, type PendingSpreadsheetImportSubmission } from "@/lib/easyt/spreadsheet-import-submission";
 import { tripBuildDocumentsCanonicalEquivalent } from "@/lib/easyt/trip-promotion";
 import { firstTripWorkspaceHref } from "@/lib/easyt/trip-workspace-links";
 import { SpreadsheetImportReview, type SpreadsheetImportPlaceCandidate } from "./spreadsheet-import-review";
@@ -60,6 +61,8 @@ export default function SpreadsheetImportClient() {
   const [originError, setOriginError] = useState("");
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState("");
+  const confirmingRef = useRef(false);
+  const pendingSubmissionRef = useRef<PendingSpreadsheetImportSubmission | null>(null);
 
   const table = sheets[sheetIndex] ?? null;
   const proposal = useMemo<SpreadsheetImportProposal | null>(() => table ? buildSpreadsheetImportProposal(table, mappings) : null, [mappings, table]);
@@ -208,35 +211,47 @@ export default function SpreadsheetImportClient() {
   const canConfirm = Boolean(proposal?.canConfirmStructure && resolvedOrigin && allPlacesResolved && !resolvingPlaces && !sessionPending);
 
   const confirm = async () => {
-    if (!proposal || !resolvedOrigin || !canConfirm || saving) return;
+    if (!proposal || !resolvedOrigin || !canConfirm || saving || confirmingRef.current) return;
+    confirmingRef.current = true;
     setSaving(true);
     setSaveError("");
     try {
-      const trip = canonicalTripFromSpreadsheetProposal({
-        id: `trip-${crypto.randomUUID()}`,
-        proposal,
-        origin: resolvedOrigin,
-        places: proposal.stops.map((stop) => resolvedPlaces[stop.id]),
-      });
       const ownerId = session?.user?.id ?? null;
-      const recovery = saveTripRecovery(trip, { ownerId });
-      if (!recovery.stored) throw new Error(recovery.blockedByExistingRecovery
-        ? "A different recovery copy already exists on this device. Open or resolve it before importing another trip."
-        : "This browser could not preserve the reviewed trip. Keep this page open and check private-browsing or storage settings.");
-      if (!ownerId) {
-        window.location.assign(firstTripWorkspaceHref(trip.id));
-        return;
+      const reviewedInputKey = JSON.stringify({ proposal, origin: resolvedOrigin, places: proposal.stops.map((stop) => resolvedPlaces[stop.id]) });
+      let pending = pendingSpreadsheetImportForRetry(pendingSubmissionRef.current, {
+        reviewedInputKey,
+        ownerId,
+        recovery: pendingSubmissionRef.current ? loadTripRecovery(pendingSubmissionRef.current.trip.id, ownerId) : null,
+      });
+      if (!pending) {
+        const trip = canonicalTripFromSpreadsheetProposal({
+          id: `trip-${crypto.randomUUID()}`,
+          proposal,
+          origin: resolvedOrigin,
+          places: proposal.stops.map((stop) => resolvedPlaces[stop.id]),
+        });
+        const recovery = saveTripRecovery(trip, { ownerId });
+        if (!recovery.stored) throw new Error(recovery.blockedByExistingRecovery
+          ? "A different recovery copy already exists on this device. Open or resolve it before importing another trip."
+          : "This browser could not preserve the reviewed trip. Keep this page open and check private-browsing or storage settings.");
+        if (!ownerId) {
+          window.location.assign(firstTripWorkspaceHref(trip.id));
+          return;
+        }
+        pending = { reviewedInputKey, ownerId, trip, handle: recovery.handle };
+        pendingSubmissionRef.current = pending;
       }
-      const saved = await saveTripRecoveryToEasyT(trip, recovery.handle);
-      if (saved.id !== trip.id || saved.ownerId !== ownerId || !tripBuildDocumentsCanonicalEquivalent(trip, saved, ownerId)) {
+      const saved = await saveTripRecoveryToEasyT(pending.trip, pending.handle);
+      if (saved.id !== pending.trip.id || saved.ownerId !== ownerId || !tripBuildDocumentsCanonicalEquivalent(pending.trip, saved, ownerId)) {
         throw new Error("The account save did not match the trip you reviewed. The reviewed copy remains recoverable on this device.");
       }
-      const cached = cacheCanonicalTrip(saved, recovery.handle);
+      const cached = cacheCanonicalTrip(saved, pending.handle);
       if (!cached.stored || !cached.recoveryResolved) throw new Error("The trip reached your account, but this browser could not acknowledge the save. Keep this page open and retry.");
       window.location.assign(firstTripWorkspaceHref(saved.id));
     } catch (error) {
       setSaveError(error instanceof Error ? error.message : "Morrovia could not save this trip. The reviewed information has not been silently changed.");
       setSaving(false);
+      confirmingRef.current = false;
     }
   };
 

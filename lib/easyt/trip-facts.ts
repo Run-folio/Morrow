@@ -85,8 +85,8 @@ export function deriveItineraryCoverage(
       : plannedDays >= expectedDays
         ? "complete"
         : "partial";
-  const onlyEmptyOpenDays = plannedDays > 0 && trip.planItems.every((item) => item.type === "open" && item.notes.length === 0);
-  const label = onlyEmptyOpenDays
+  const onlyOutlinedDays = plannedDays > 0 && trip.planItems.every((item) => item.type === "open");
+  const label = onlyOutlinedDays
     ? `${plannedDays} ${plannedDays === 1 ? "day" : "days"} outlined`
     : expectedDays === null
     ? dates.state === "invalid"
