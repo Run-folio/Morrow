@@ -87,7 +87,8 @@ test("recovery comparison treats budget provenance as traveller-authored state",
 test("builder hydration and the unified details commit retain budget provenance", () => {
   const source = readFileSync(new URL("../app/journey/new/trip-builder.tsx", import.meta.url), "utf8");
   assert.match(source, /setBudgetPreference\(saved\.brief\.budgetPreference\)/);
-  assert.match(source, /setBudgetPreference\(homeDraft\.budgetPreference\)/);
+  assert.match(source, /const applyNewTripIntake = \(draft: HomeTripDraft,/);
+  assert.match(source, /setBudgetPreference\(draft\.budgetPreference\)/);
   assert.match(source, /budgetPreference,/);
   assert.match(source, /budgetPreference: \{ source: "explicit", value: detailsDraft\.budget \}/);
 });

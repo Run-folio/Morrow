@@ -66,7 +66,7 @@ test("shared capture surface owns field association, focus, announcement and cle
   assert.match(styles, /\.promptFieldError[\s\S]*?border-color: var\(--morrovia-danger\)/);
 });
 
-test("Homepage and Builder consume one capture validator while Builder keeps structural gates separate", () => {
+test("Homepage defers Describe interpretation to Builder while both entries retain capture validation", () => {
   const homepage = read("app/journey/home/home-trip-starter.tsx");
   const builder = read("app/journey/new/trip-builder.tsx");
   const capture = read("components/easyt/morrovia-trip-capture.tsx");
@@ -75,18 +75,22 @@ test("Homepage and Builder consume one capture validator while Builder keeps str
   assert.match(capture, /validateJourneyCaptureSubmission/);
   assert.doesNotMatch(homepage, /missing_trip_intent|validateJourneyCaptureSubmission/);
   assert.doesNotMatch(builder, /disabled=\{!tripBrief\.trim\(\)/);
-  assert.match(homepage, /requestJourneyCapture\(tripBrief,/);
+  assert.doesNotMatch(homepage, /requestJourneyCapture\(/);
+  assert.match(homepage, /reservePendingDescribeHandoff\(/);
+  assert.match(builder, /requestJourneyCapture\(receipt\.frozenSnapshot\.prompt, \{ mode: "intent-only"/);
   assert.match(builder, /requestJourneyCapture\(brief,/);
   assert.match(builder, /buildInvariant\.canBuildTrip/,
     "Builder-only structural validation must remain with the Builder gate");
 });
 
-test("Homepage and Builder share provider-failure recovery semantics without clearing entered state", () => {
+test("Builder owns provider-failure recovery while Homepage preserves submitted intake", () => {
   const homepage = read("app/journey/home/home-trip-starter.tsx");
   const builder = read("app/journey/new/trip-builder.tsx");
-  assert.match(homepage, /journeyCaptureFailureMessage\(responseReceived \? "interpretation" : "network", language\)/);
+  assert.match(homepage, /setCaptureError\(""\);/);
+  assert.match(homepage, /reservePendingDescribeHandoff\(/);
   assert.match(builder, /journeyCaptureFailureMessage\(responseReceived \? "interpretation" : "network", language\)/);
-  assert.match(homepage, /onValueChange=\{\(value\) => \{ setBrief\(value\); setCaptureError\(""\); \}\}/);
+  assert.match(builder, /journeyCaptureFailureMessage\("network", currentPresentationRef\.current\.language\)/);
+  assert.match(homepage, /onValueChange=\{\(prompt\) => \{[\s\S]*?homepageSnapshotForDescribePrompt\(snapshotRef\.current, prompt\)/);
   assert.match(builder, /onValueChange=\{\(value\) => \{ setTripBrief\(value\); setTripBriefCaptureError\(""\); \}\}/);
   assert.doesNotMatch(homepage, /setStartDate\([^)]*\)[\s\S]{0,120}setCaptureError/);
 });
