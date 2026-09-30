@@ -31,6 +31,7 @@ import { useWorkspaceOrientationBlocker, useWorkspaceOrientationTarget, Workspac
 import { renameTripIdentity, tripCustomTitle, tripDisplayTitle } from "@/lib/easyt/trip-display";
 import { deriveTripDateFacts } from "@/lib/easyt/trip-facts";
 import { tripRouteDisplayLabel } from "@/lib/easyt/trip-legs";
+import { importedLegacyRepairContextAllows, repairEligibleSpreadsheetV1Trip } from "@/lib/easyt/imported-trip-hydration";
 import { personalRouteHref } from "@/lib/easyt/personal-route";
 import { overnightAccommodationStops } from "@/lib/easyt/accommodation";
 import type { OverviewPlaceImage } from "@/lib/easyt/trip-overview-imagery";
@@ -142,6 +143,7 @@ export function TripShellTripProvider({ trip, children, cacheTrip = true }: { tr
   const [discardFailed, setDiscardFailed] = useState(false);
   const [discardDialogOpen, setDiscardDialogOpen] = useState(false);
   const trackedWorkspaceVisitRef = useRef<string | null>(null);
+  const legacyRepairAttemptedRef = useRef(new Set<string>());
   const conflictActions = tripConflictResolutionActions(trip.id);
   const visibleActiveTrip = mutation.trip.id === trip.id
     && mutation.trip.ownerId === trip.ownerId
@@ -179,6 +181,27 @@ export function TripShellTripProvider({ trip, children, cacheTrip = true }: { tr
   useEffect(() => {
     if (ownerBoundary === "mismatch") window.location.reload();
   }, [ownerBoundary]);
+
+  useEffect(() => {
+    if (!cacheTrip || mutation.trip.brief.capturedIntent?.parserVersion !== "spreadsheet-v1" || mutation.trip.planItems.length !== 0) return;
+    const identity = `${mutation.trip.id}:${mutation.trip.ownerId ?? "guest"}:${mutation.trip.updatedAt}`;
+    if (legacyRepairAttemptedRef.current.has(identity)) return;
+    if (!importedLegacyRepairContextAllows({
+      tripId: mutation.trip.id,
+      ownerId: mutation.trip.ownerId,
+      updatedAt: mutation.trip.updatedAt,
+      sessionOwnerId: session?.user?.id ?? null,
+      sessionPending,
+      ownerBoundary,
+      recoveryClassifiedFor: mutation.recoveryClassifiedFor,
+      hasPendingSaves: mutation.hasPendingSaves(),
+      historicalRecovery: mutation.historicalRecovery,
+      saveState: mutation.saveState,
+      visibleDeviceRecovery: Boolean(visibleDeviceRecovery),
+    })) return;
+    legacyRepairAttemptedRef.current.add(identity);
+    mutation.mutateTrip(repairEligibleSpreadsheetV1Trip, "import-legacy-hydration-v1");
+  }, [cacheTrip, mutation.trip, mutation.recoveryClassifiedFor, mutation.hasPendingSaves, mutation.historicalRecovery, mutation.saveState, mutation.mutateTrip, ownerBoundary, session?.user?.id, sessionPending, visibleDeviceRecovery]);
 
   useEffect(() => {
     // A server-resolved deep link is canonical for this owner. Refresh the

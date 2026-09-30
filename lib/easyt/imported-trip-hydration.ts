@@ -1,4 +1,4 @@
-import type { PlanItem, TripLeg, TripStop } from "./trip.ts";
+import type { EasyTTrip, PlanItem, TripLeg, TripStop } from "./trip.ts";
 
 export type ImportedDatedDayInput = {
   tripId: string;
@@ -104,5 +104,58 @@ export function unconfirmedImportedLeg(leg: TripLeg): TripLeg {
     segments: undefined,
     routeGeometry: undefined,
     routeMetadata: { ...metadata, planningEstimate: false, source: "spreadsheet-import-unconfirmed", roadFallbackEligible: false, routingConfidence: "unconfirmed" },
+  };
+}
+
+export type ImportedLegacyRepairContext = {
+  tripId: string;
+  ownerId: string | null;
+  updatedAt: string;
+  sessionOwnerId: string | null;
+  sessionPending: boolean;
+  ownerBoundary: string;
+  recoveryClassifiedFor: string | null;
+  hasPendingSaves: boolean;
+  historicalRecovery: boolean;
+  saveState: string;
+  visibleDeviceRecovery: boolean;
+};
+
+/** This is a read-only gate. The TripShell mutation owner performs the write. */
+export function importedLegacyRepairContextAllows(context: ImportedLegacyRepairContext): boolean {
+  return !context.sessionPending
+    && context.ownerBoundary === "current"
+    && context.ownerId !== null
+    && context.ownerId === context.sessionOwnerId
+    && context.recoveryClassifiedFor === `${context.tripId}:${context.ownerId}:${context.updatedAt}`
+    && !context.hasPendingSaves
+    && !context.historicalRecovery
+    && !context.visibleDeviceRecovery
+    && context.saveState === "idle";
+}
+
+/** Only the old, untouched spreadsheet projection can be repaired automatically. */
+export function repairEligibleSpreadsheetV1Trip(current: EasyTTrip): EasyTTrip {
+  if (current.brief.capturedIntent?.parserVersion !== "spreadsheet-v1" || current.planItems.length !== 0) return current;
+  if (new Set(current.stops.map((stop) => stop.id)).size !== current.stops.length) return current;
+  if (new Set(current.stops.map((stop) => stop.order)).size !== current.stops.length) return current;
+  if (Object.values(current.brief.customActivities ?? {}).some((items) => items.length > 0)) return current;
+  if ((current.brief.itineraryIdeas?.length ?? 0) > 0) return current;
+  if ((current.brief.mapPins ?? []).some((pin) => pin.dayNumber !== undefined && pin.dayNumber !== null)) return current;
+  if ((current.brief.bookings ?? []).some((booking) => booking.type === "transport")) return current;
+  const replaceableLegs = current.legs.filter((leg) => leg.routeMetadata.source === "morrovia-planner" && leg.routeMetadata.planningEstimate === true);
+  if (replaceableLegs.some((leg) => leg.routeMetadata.userConfirmed === true || leg.routeMetadata.confirmed === true || leg.routeMetadata.importedBookingId || leg.routeMetadata.decisionOption)) return current;
+  let dated: ImportedDatedDayResult;
+  try {
+    dated = buildImportedDatedDays({ tripId: current.id, startDate: current.startDate, endDate: current.endDate, stops: current.stops, activities: [] });
+  } catch {
+    return current;
+  }
+  return {
+    ...current,
+    planItems: dated.planItems,
+    legs: current.legs.map((leg) => leg.routeMetadata.source === "morrovia-planner" && leg.routeMetadata.planningEstimate === true
+      ? unconfirmedImportedLeg(leg)
+      : leg),
   };
 }

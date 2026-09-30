@@ -38,6 +38,7 @@ export function useTripMutationPersistence(initialTrip: EasyTTrip, enabled: bool
   const [conflictTrip, setConflictTrip] = useState<EasyTTrip | null>(null);
   const [error, setError] = useState("");
   const [historicalRecovery, setHistoricalRecovery] = useState(false);
+  const [recoveryClassifiedFor, setRecoveryClassifiedFor] = useState<string | null>(null);
   const [pendingKeys, setPendingKeys] = useState<Record<string, number>>({});
   const [lastAcknowledgedMutation, setLastAcknowledgedMutation] = useState<{ ownerId: string; tripId: string; pendingKey: string; writeId: string; feedbackAction: MeaningfulFeedbackAction } | null>(null);
   const tripRef = useRef(initialTrip);
@@ -80,6 +81,7 @@ export function useTripMutationPersistence(initialTrip: EasyTTrip, enabled: bool
     conflictRef.current = false;
     const recovery = loadTripRecovery(canonical.id, canonical.ownerId);
     const recoveryClass = classifyTripRecovery({ recovery, canonicalTrip: canonical });
+    setRecoveryClassifiedFor(`${canonical.id}:${canonical.ownerId ?? "guest"}:${canonical.updatedAt}`);
     const activeLocalRecovery = recoveryClass === "active-local-document";
     recoveryHandleRef.current = activeLocalRecovery ? recovery : null;
     const divergentRecovery = recoveryClass === "genuine-divergence";
@@ -100,6 +102,7 @@ export function useTripMutationPersistence(initialTrip: EasyTTrip, enabled: bool
     setTripState(canonical);
     const recovery = loadTripRecovery(canonical.id, canonical.ownerId);
     const recoveryClass = classifyTripRecovery({ recovery, canonicalTrip: canonical });
+    setRecoveryClassifiedFor(`${canonical.id}:${canonical.ownerId ?? "guest"}:${canonical.updatedAt}`);
     const activeLocalRecovery = recoveryClass === "active-local-document";
     recoveryHandleRef.current = activeLocalRecovery ? recovery : null;
     const divergentRecovery = recoveryClass === "genuine-divergence";
@@ -392,6 +395,7 @@ export function useTripMutationPersistence(initialTrip: EasyTTrip, enabled: bool
     failure,
     hasPendingSaves,
     historicalRecovery,
+    recoveryClassifiedFor,
     isPending: (key: string) => Boolean(pendingKeys[key]),
     lastAcknowledgedMutation,
     mutateTrip,

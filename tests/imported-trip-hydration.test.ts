@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { buildSpreadsheetImportProposal, canonicalTripFromSpreadsheetProposal, parseDelimitedText } from "../lib/easyt/spreadsheet-import.ts";
-import { buildImportedDatedDays } from "../lib/easyt/imported-trip-hydration.ts";
+import { buildImportedDatedDays, repairEligibleSpreadsheetV1Trip, importedLegacyRepairContextAllows } from "../lib/easyt/imported-trip-hydration.ts";
 import { tripRouteDisplayLabel } from "../lib/easyt/trip-legs.ts";
 import { itineraryCalendarDays, itineraryCalendarWeeks, itineraryCalendarNightBands } from "../lib/easyt/itinerary-calendar.ts";
 import { exploreDestinationOptions, exploreDiscoveryRequestKey } from "../lib/easyt/explore.ts";
@@ -11,6 +11,7 @@ import { overviewStopImage } from "../lib/easyt/trip-overview-imagery.ts";
 import { personalRoutePresentation } from "../lib/easyt/personal-route.ts";
 import { deriveItineraryCoverage } from "../lib/easyt/trip-facts.ts";
 import { philippinesImportCsv } from "./fixtures/spreadsheet-import.ts";
+import { cacheCanonicalTripWithRecoveryToStorage, loadTripRecoveryFromStorage, saveTripRecoveryToStorage, type EasyTBrowserStorage } from "../lib/easyt/storage.ts";
 
 const proposal = buildSpreadsheetImportProposal(parseDelimitedText(philippinesImportCsv));
 const trip = canonicalTripFromSpreadsheetProposal({
@@ -79,4 +80,71 @@ test("21 structural import days do not claim a fully planned itinerary", () => {
   assert.match(deriveItineraryCoverage(hydrated).label, /outline/i);
   const overview = deriveOverviewReadinessCategories({ trip: hydrated, prepTasks: [], providerStatus: "unavailable" }).find((item) => item.id === "itinerary")!;
   assert.equal(overview.status, "in-progress");
+});
+
+test("eligible legacy spreadsheet import repairs once without changing identity or notes", () => {
+  const old = {
+    ...trip, ownerId: "owner-a", planItems: [],
+    legs: trip.legs.map((leg) => ({ ...leg, mode: "road" as const, durationMinutes: 165, provider: "Planning estimate", provenance: "planning_estimate" as const, routeMetadata: { source: "morrovia-planner", planningEstimate: true } })),
+  };
+  const repaired = repairEligibleSpreadsheetV1Trip(old);
+  assert.equal(repaired.id, old.id);
+  assert.equal(repaired.ownerId, old.ownerId);
+  assert.deepEqual(repaired.stops, old.stops);
+  assert.deepEqual(repaired.brief.dayNotes, old.brief.dayNotes);
+  assert.deepEqual(repaired.brief.bookings, old.brief.bookings);
+  assert.equal(repaired.planItems.length, 21);
+  assert.equal(repaired.planItems[20].stopId, old.stops[5].id);
+  assert.ok(repaired.legs.every((leg) => leg.mode === "unknown" && leg.durationMinutes === null));
+  assert.equal(repairEligibleSpreadsheetV1Trip(repaired), repaired);
+});
+
+test("legacy repair refuses partial, authored, ambiguous or confirmed state", () => {
+  const old = { ...trip, planItems: [] };
+  const noMarker = { ...old, brief: { ...old.brief, capturedIntent: undefined } };
+  const partial = { ...old, planItems: [trip.planItems[0]] };
+  const authored = { ...old, brief: { ...old.brief, customActivities: { 2: ["Traveller dinner"] } } };
+  const scheduled = { ...old, brief: { ...old.brief, itineraryIdeas: [{ id: "saved-idea", stopId: old.stops[0].id, placeId: "place", title: "Market", category: "activity" as const, source: "personalised-recommendation" as const, reasons: [], dayId: "old-day" }] } };
+  const ambiguous = { ...old, stops: old.stops.map((stop, index) => index === 1 ? { ...stop, arrivalDate: "2026-12-14" } : stop) };
+  const confirmed = { ...old, legs: old.legs.map((leg, index) => index === 0 ? { ...leg, mode: "road" as const, routeMetadata: { source: "morrovia-planner", planningEstimate: true, userConfirmed: true } } : leg) };
+  const booked = { ...old, brief: { ...old.brief, bookings: [{ id: "ticket", type: "transport" as const, title: "Booked crossing", date: "2026-12-13", endDate: null, confirmation: "ABC", url: null, location: null, notes: [] }] } };
+  const duplicateOccurrence = { ...old, stops: old.stops.map((stop, index) => index === 5 ? { ...stop, id: old.stops[0].id } : stop) };
+  for (const candidate of [noMarker, partial, authored, scheduled, ambiguous, confirmed, booked, duplicateOccurrence]) {
+    assert.equal(repairEligibleSpreadsheetV1Trip(candidate), candidate);
+  }
+});
+
+test("legacy repair waits for exact owner, classified recovery and quiet save state", () => {
+  const context = { tripId: trip.id, ownerId: "owner-a", updatedAt: trip.updatedAt, sessionOwnerId: "owner-a", sessionPending: false, ownerBoundary: "current", recoveryClassifiedFor: `${trip.id}:owner-a:${trip.updatedAt}`, hasPendingSaves: false, historicalRecovery: false, saveState: "idle", visibleDeviceRecovery: false } as const;
+  assert.equal(importedLegacyRepairContextAllows(context), true);
+  assert.equal(importedLegacyRepairContextAllows({ ...context, sessionOwnerId: "owner-b" }), false);
+  assert.equal(importedLegacyRepairContextAllows({ ...context, sessionPending: true }), false);
+  assert.equal(importedLegacyRepairContextAllows({ ...context, ownerBoundary: "mismatch" }), false);
+  assert.equal(importedLegacyRepairContextAllows({ ...context, recoveryClassifiedFor: null }), false);
+  assert.equal(importedLegacyRepairContextAllows({ ...context, hasPendingSaves: true }), false);
+  assert.equal(importedLegacyRepairContextAllows({ ...context, historicalRecovery: true }), false);
+  assert.equal(importedLegacyRepairContextAllows({ ...context, visibleDeviceRecovery: true }), false);
+  assert.equal(importedLegacyRepairContextAllows({ ...context, saveState: "error" }), false);
+});
+
+test("legacy repair acknowledgement resolves only its exact write and keeps a newer device edit", () => {
+  const values = new Map<string, string>();
+  const storage: EasyTBrowserStorage = {
+    get length() { return values.size; },
+    getItem: (key) => values.get(key) ?? null,
+    setItem: (key, value) => { values.set(key, value); },
+    removeItem: (key) => { values.delete(key); },
+    key: (index) => [...values.keys()][index] ?? null,
+  };
+  const old = { ...trip, ownerId: "owner-a", planItems: [] };
+  const repaired = repairEligibleSpreadsheetV1Trip(old);
+  const repairWrite = saveTripRecoveryToStorage(storage, repaired, { ownerId: "owner-a", writeId: "repair-1" });
+  assert.equal(repairWrite.stored, true);
+  const newer = { ...repaired, brief: { ...repaired.brief, customTitle: "My Philippines trip" } };
+  const newerWrite = saveTripRecoveryToStorage(storage, newer, { ownerId: "owner-a", writeId: "user-edit-2", replace: repairWrite.handle });
+  assert.equal(newerWrite.stored, true);
+  const ack = cacheCanonicalTripWithRecoveryToStorage(storage, { ...repaired, updatedAt: "2026-09-30T00:00:00.000Z" }, repairWrite.handle);
+  assert.equal(ack.stored, true);
+  assert.equal(loadTripRecoveryFromStorage(storage, old.id, "owner-a")?.writeId, newerWrite.handle.writeId);
+  assert.equal(loadTripRecoveryFromStorage(storage, old.id, "owner-a")?.trip.brief.customTitle, "My Philippines trip");
 });

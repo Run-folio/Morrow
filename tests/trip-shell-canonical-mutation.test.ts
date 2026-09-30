@@ -153,6 +153,17 @@ test("one mounted TripShell has one canonical mutation owner", () => {
   assert.match(map, /useTripShellMutation\(\)/);
 });
 
+test("legacy imported repair waits for classified owner state and uses only the shared mutation owner", () => {
+  const shell = readFileSync(new URL("../components/easyt/trip-shell-client.tsx", import.meta.url), "utf8");
+  const hook = readFileSync(new URL("../components/easyt/use-trip-mutation-persistence.ts", import.meta.url), "utf8");
+  const provider = shell.slice(shell.indexOf("export function TripShellTripProvider"), shell.indexOf("export function useTripShellTrip"));
+  assert.match(provider, /importedLegacyRepairContextAllows\(/);
+  assert.match(provider, /mutation\.mutateTrip\(repairEligibleSpreadsheetV1Trip, "import-legacy-hydration-v1"\)/);
+  assert.match(provider, /recoveryClassifiedFor: mutation\.recoveryClassifiedFor/);
+  assert.doesNotMatch(provider, /saveTripRecovery\(|saveTripRecoveryToEasyT\(|localStorage\.setItem\(/);
+  assert.match(hook, /setRecoveryClassifiedFor\(/);
+});
+
 test("a shared queue preserves Explore, itinerary metadata, rename, Map and a second rename", async () => {
   const base = trip();
   const repository = fakeRepository(base);
