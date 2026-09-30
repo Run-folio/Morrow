@@ -1,0 +1,1060 @@
+{
+  "note": "Deterministic prompt-engine snapshot comparison; each case includes all seven dimension scores and failure labels.",
+  "sources": {
+    "expected": "benchmarks/prompt-engine/baseline.json",
+    "previousSha": "8a29efc0e6b6dafff1f70bb111f38c2ecb57cda0",
+    "currentCandidateSha": "e2f4c7e82aab29746764204e80ba65bff5cf546d"
+  },
+  "totals": {
+    "expected": {
+      "total": 208,
+      "dimensions": {
+        "intent": 28,
+        "constraints": 28,
+        "route": 26,
+        "time-realism": 32,
+        "state-preservation": 32,
+        "uncertainty": 30,
+        "explanation": 32
+      }
+    },
+    "previous": {
+      "total": 206,
+      "dimensions": {
+        "intent": 28,
+        "constraints": 28,
+        "route": 26,
+        "time-realism": 32,
+        "state-preservation": 30,
+        "uncertainty": 30,
+        "explanation": 32
+      }
+    },
+    "currentCandidate": {
+      "total": 206,
+      "dimensions": {
+        "intent": 28,
+        "constraints": 28,
+        "route": 26,
+        "time-realism": 32,
+        "state-preservation": 30,
+        "uncertainty": 30,
+        "explanation": 32
+      }
+    },
+    "corrected": {
+      "total": 208,
+      "dimensions": {
+        "intent": 28,
+        "constraints": 28,
+        "route": 26,
+        "time-realism": 32,
+        "state-preservation": 32,
+        "uncertainty": 30,
+        "explanation": 32
+      }
+    }
+  },
+  "cases": [
+    {
+      "id": "p0-central-america-overland-coverage",
+      "expected": {
+        "id": "p0-central-america-overland-coverage",
+        "score": 14,
+        "dimensions": {
+          "intent": 2,
+          "constraints": 2,
+          "route": 2,
+          "time-realism": 2,
+          "state-preservation": 2,
+          "uncertainty": 2,
+          "explanation": 2
+        },
+        "deterministicFailures": []
+      },
+      "previous": {
+        "id": "p0-central-america-overland-coverage",
+        "score": 14,
+        "dimensions": {
+          "intent": 2,
+          "constraints": 2,
+          "route": 2,
+          "time-realism": 2,
+          "state-preservation": 2,
+          "uncertainty": 2,
+          "explanation": 2
+        },
+        "deterministicFailures": []
+      },
+      "currentCandidate": {
+        "id": "p0-central-america-overland-coverage",
+        "score": 14,
+        "dimensions": {
+          "intent": 2,
+          "constraints": 2,
+          "route": 2,
+          "time-realism": 2,
+          "state-preservation": 2,
+          "uncertainty": 2,
+          "explanation": 2
+        },
+        "deterministicFailures": []
+      },
+      "corrected": {
+        "id": "p0-central-america-overland-coverage",
+        "score": 14,
+        "dimensions": {
+          "intent": 2,
+          "constraints": 2,
+          "route": 2,
+          "time-realism": 2,
+          "state-preservation": 2,
+          "uncertainty": 2,
+          "explanation": 2
+        },
+        "deterministicFailures": []
+      }
+    },
+    {
+      "id": "japan-explicit-constraints",
+      "expected": {
+        "id": "japan-explicit-constraints",
+        "score": 10,
+        "dimensions": {
+          "intent": 2,
+          "constraints": 0,
+          "route": 0,
+          "time-realism": 2,
+          "state-preservation": 2,
+          "uncertainty": 2,
+          "explanation": 2
+        },
+        "deterministicFailures": [
+          "hard constraint changed",
+          "route state is not appropriate for the captured intent"
+        ]
+      },
+      "previous": {
+        "id": "japan-explicit-constraints",
+        "score": 10,
+        "dimensions": {
+          "intent": 2,
+          "constraints": 0,
+          "route": 0,
+          "time-realism": 2,
+          "state-preservation": 2,
+          "uncertainty": 2,
+          "explanation": 2
+        },
+        "deterministicFailures": [
+          "hard constraint changed",
+          "route state is not appropriate for the captured intent"
+        ]
+      },
+      "currentCandidate": {
+        "id": "japan-explicit-constraints",
+        "score": 10,
+        "dimensions": {
+          "intent": 2,
+          "constraints": 0,
+          "route": 0,
+          "time-realism": 2,
+          "state-preservation": 2,
+          "uncertainty": 2,
+          "explanation": 2
+        },
+        "deterministicFailures": [
+          "hard constraint changed",
+          "route state is not appropriate for the captured intent"
+        ]
+      },
+      "corrected": {
+        "id": "japan-explicit-constraints",
+        "score": 10,
+        "dimensions": {
+          "intent": 2,
+          "constraints": 0,
+          "route": 0,
+          "time-realism": 2,
+          "state-preservation": 2,
+          "uncertainty": 2,
+          "explanation": 2
+        },
+        "deterministicFailures": [
+          "hard constraint changed",
+          "route state is not appropriate for the captured intent"
+        ]
+      }
+    },
+    {
+      "id": "patagonia-regions-unknown-bases",
+      "expected": {
+        "id": "patagonia-regions-unknown-bases",
+        "score": 14,
+        "dimensions": {
+          "intent": 2,
+          "constraints": 2,
+          "route": 2,
+          "time-realism": 2,
+          "state-preservation": 2,
+          "uncertainty": 2,
+          "explanation": 2
+        },
+        "deterministicFailures": []
+      },
+      "previous": {
+        "id": "patagonia-regions-unknown-bases",
+        "score": 14,
+        "dimensions": {
+          "intent": 2,
+          "constraints": 2,
+          "route": 2,
+          "time-realism": 2,
+          "state-preservation": 2,
+          "uncertainty": 2,
+          "explanation": 2
+        },
+        "deterministicFailures": []
+      },
+      "currentCandidate": {
+        "id": "patagonia-regions-unknown-bases",
+        "score": 14,
+        "dimensions": {
+          "intent": 2,
+          "constraints": 2,
+          "route": 2,
+          "time-realism": 2,
+          "state-preservation": 2,
+          "uncertainty": 2,
+          "explanation": 2
+        },
+        "deterministicFailures": []
+      },
+      "corrected": {
+        "id": "patagonia-regions-unknown-bases",
+        "score": 14,
+        "dimensions": {
+          "intent": 2,
+          "constraints": 2,
+          "route": 2,
+          "time-realism": 2,
+          "state-preservation": 2,
+          "uncertainty": 2,
+          "explanation": 2
+        },
+        "deterministicFailures": []
+      }
+    },
+    {
+      "id": "unknown-place-remains-unknown",
+      "expected": {
+        "id": "unknown-place-remains-unknown",
+        "score": 14,
+        "dimensions": {
+          "intent": 2,
+          "constraints": 2,
+          "route": 2,
+          "time-realism": 2,
+          "state-preservation": 2,
+          "uncertainty": 2,
+          "explanation": 2
+        },
+        "deterministicFailures": []
+      },
+      "previous": {
+        "id": "unknown-place-remains-unknown",
+        "score": 14,
+        "dimensions": {
+          "intent": 2,
+          "constraints": 2,
+          "route": 2,
+          "time-realism": 2,
+          "state-preservation": 2,
+          "uncertainty": 2,
+          "explanation": 2
+        },
+        "deterministicFailures": []
+      },
+      "currentCandidate": {
+        "id": "unknown-place-remains-unknown",
+        "score": 14,
+        "dimensions": {
+          "intent": 2,
+          "constraints": 2,
+          "route": 2,
+          "time-realism": 2,
+          "state-preservation": 2,
+          "uncertainty": 2,
+          "explanation": 2
+        },
+        "deterministicFailures": []
+      },
+      "corrected": {
+        "id": "unknown-place-remains-unknown",
+        "score": 14,
+        "dimensions": {
+          "intent": 2,
+          "constraints": 2,
+          "route": 2,
+          "time-realism": 2,
+          "state-preservation": 2,
+          "uncertainty": 2,
+          "explanation": 2
+        },
+        "deterministicFailures": []
+      }
+    },
+    {
+      "id": "georgia-ambiguity",
+      "expected": {
+        "id": "georgia-ambiguity",
+        "score": 12,
+        "dimensions": {
+          "intent": 0,
+          "constraints": 2,
+          "route": 2,
+          "time-realism": 2,
+          "state-preservation": 2,
+          "uncertainty": 2,
+          "explanation": 2
+        },
+        "deterministicFailures": [
+          "intent facts changed"
+        ]
+      },
+      "previous": {
+        "id": "georgia-ambiguity",
+        "score": 12,
+        "dimensions": {
+          "intent": 0,
+          "constraints": 2,
+          "route": 2,
+          "time-realism": 2,
+          "state-preservation": 2,
+          "uncertainty": 2,
+          "explanation": 2
+        },
+        "deterministicFailures": [
+          "intent facts changed"
+        ]
+      },
+      "currentCandidate": {
+        "id": "georgia-ambiguity",
+        "score": 12,
+        "dimensions": {
+          "intent": 0,
+          "constraints": 2,
+          "route": 2,
+          "time-realism": 2,
+          "state-preservation": 2,
+          "uncertainty": 2,
+          "explanation": 2
+        },
+        "deterministicFailures": [
+          "intent facts changed"
+        ]
+      },
+      "corrected": {
+        "id": "georgia-ambiguity",
+        "score": 12,
+        "dimensions": {
+          "intent": 0,
+          "constraints": 2,
+          "route": 2,
+          "time-realism": 2,
+          "state-preservation": 2,
+          "uncertainty": 2,
+          "explanation": 2
+        },
+        "deterministicFailures": [
+          "intent facts changed"
+        ]
+      }
+    },
+    {
+      "id": "peru-anchor-and-region",
+      "expected": {
+        "id": "peru-anchor-and-region",
+        "score": 14,
+        "dimensions": {
+          "intent": 2,
+          "constraints": 2,
+          "route": 2,
+          "time-realism": 2,
+          "state-preservation": 2,
+          "uncertainty": 2,
+          "explanation": 2
+        },
+        "deterministicFailures": []
+      },
+      "previous": {
+        "id": "peru-anchor-and-region",
+        "score": 14,
+        "dimensions": {
+          "intent": 2,
+          "constraints": 2,
+          "route": 2,
+          "time-realism": 2,
+          "state-preservation": 2,
+          "uncertainty": 2,
+          "explanation": 2
+        },
+        "deterministicFailures": []
+      },
+      "currentCandidate": {
+        "id": "peru-anchor-and-region",
+        "score": 14,
+        "dimensions": {
+          "intent": 2,
+          "constraints": 2,
+          "route": 2,
+          "time-realism": 2,
+          "state-preservation": 2,
+          "uncertainty": 2,
+          "explanation": 2
+        },
+        "deterministicFailures": []
+      },
+      "corrected": {
+        "id": "peru-anchor-and-region",
+        "score": 14,
+        "dimensions": {
+          "intent": 2,
+          "constraints": 2,
+          "route": 2,
+          "time-realism": 2,
+          "state-preservation": 2,
+          "uncertainty": 2,
+          "explanation": 2
+        },
+        "deterministicFailures": []
+      }
+    },
+    {
+      "id": "italy-exclusion",
+      "expected": {
+        "id": "italy-exclusion",
+        "score": 14,
+        "dimensions": {
+          "intent": 2,
+          "constraints": 2,
+          "route": 2,
+          "time-realism": 2,
+          "state-preservation": 2,
+          "uncertainty": 2,
+          "explanation": 2
+        },
+        "deterministicFailures": []
+      },
+      "previous": {
+        "id": "italy-exclusion",
+        "score": 14,
+        "dimensions": {
+          "intent": 2,
+          "constraints": 2,
+          "route": 2,
+          "time-realism": 2,
+          "state-preservation": 2,
+          "uncertainty": 2,
+          "explanation": 2
+        },
+        "deterministicFailures": []
+      },
+      "currentCandidate": {
+        "id": "italy-exclusion",
+        "score": 14,
+        "dimensions": {
+          "intent": 2,
+          "constraints": 2,
+          "route": 2,
+          "time-realism": 2,
+          "state-preservation": 2,
+          "uncertainty": 2,
+          "explanation": 2
+        },
+        "deterministicFailures": []
+      },
+      "corrected": {
+        "id": "italy-exclusion",
+        "score": 14,
+        "dimensions": {
+          "intent": 2,
+          "constraints": 2,
+          "route": 2,
+          "time-realism": 2,
+          "state-preservation": 2,
+          "uncertainty": 2,
+          "explanation": 2
+        },
+        "deterministicFailures": []
+      }
+    },
+    {
+      "id": "alias-deduplication",
+      "expected": {
+        "id": "alias-deduplication",
+        "score": 14,
+        "dimensions": {
+          "intent": 2,
+          "constraints": 2,
+          "route": 2,
+          "time-realism": 2,
+          "state-preservation": 2,
+          "uncertainty": 2,
+          "explanation": 2
+        },
+        "deterministicFailures": []
+      },
+      "previous": {
+        "id": "alias-deduplication",
+        "score": 14,
+        "dimensions": {
+          "intent": 2,
+          "constraints": 2,
+          "route": 2,
+          "time-realism": 2,
+          "state-preservation": 2,
+          "uncertainty": 2,
+          "explanation": 2
+        },
+        "deterministicFailures": []
+      },
+      "currentCandidate": {
+        "id": "alias-deduplication",
+        "score": 14,
+        "dimensions": {
+          "intent": 2,
+          "constraints": 2,
+          "route": 2,
+          "time-realism": 2,
+          "state-preservation": 2,
+          "uncertainty": 2,
+          "explanation": 2
+        },
+        "deterministicFailures": []
+      },
+      "corrected": {
+        "id": "alias-deduplication",
+        "score": 14,
+        "dimensions": {
+          "intent": 2,
+          "constraints": 2,
+          "route": 2,
+          "time-realism": 2,
+          "state-preservation": 2,
+          "uncertainty": 2,
+          "explanation": 2
+        },
+        "deterministicFailures": []
+      }
+    },
+    {
+      "id": "french-alps-nesting",
+      "expected": {
+        "id": "french-alps-nesting",
+        "score": 14,
+        "dimensions": {
+          "intent": 2,
+          "constraints": 2,
+          "route": 2,
+          "time-realism": 2,
+          "state-preservation": 2,
+          "uncertainty": 2,
+          "explanation": 2
+        },
+        "deterministicFailures": []
+      },
+      "previous": {
+        "id": "french-alps-nesting",
+        "score": 14,
+        "dimensions": {
+          "intent": 2,
+          "constraints": 2,
+          "route": 2,
+          "time-realism": 2,
+          "state-preservation": 2,
+          "uncertainty": 2,
+          "explanation": 2
+        },
+        "deterministicFailures": []
+      },
+      "currentCandidate": {
+        "id": "french-alps-nesting",
+        "score": 14,
+        "dimensions": {
+          "intent": 2,
+          "constraints": 2,
+          "route": 2,
+          "time-realism": 2,
+          "state-preservation": 2,
+          "uncertainty": 2,
+          "explanation": 2
+        },
+        "deterministicFailures": []
+      },
+      "corrected": {
+        "id": "french-alps-nesting",
+        "score": 14,
+        "dimensions": {
+          "intent": 2,
+          "constraints": 2,
+          "route": 2,
+          "time-realism": 2,
+          "state-preservation": 2,
+          "uncertainty": 2,
+          "explanation": 2
+        },
+        "deterministicFailures": []
+      }
+    },
+    {
+      "id": "southeast-asia-fixed-anchor",
+      "expected": {
+        "id": "southeast-asia-fixed-anchor",
+        "score": 14,
+        "dimensions": {
+          "intent": 2,
+          "constraints": 2,
+          "route": 2,
+          "time-realism": 2,
+          "state-preservation": 2,
+          "uncertainty": 2,
+          "explanation": 2
+        },
+        "deterministicFailures": []
+      },
+      "previous": {
+        "id": "southeast-asia-fixed-anchor",
+        "score": 12,
+        "dimensions": {
+          "intent": 2,
+          "constraints": 2,
+          "route": 2,
+          "time-realism": 2,
+          "state-preservation": 0,
+          "uncertainty": 2,
+          "explanation": 2
+        },
+        "deterministicFailures": [
+          "canonical place identity changed"
+        ]
+      },
+      "currentCandidate": {
+        "id": "southeast-asia-fixed-anchor",
+        "score": 12,
+        "dimensions": {
+          "intent": 2,
+          "constraints": 2,
+          "route": 2,
+          "time-realism": 2,
+          "state-preservation": 0,
+          "uncertainty": 2,
+          "explanation": 2
+        },
+        "deterministicFailures": [
+          "canonical place identity changed"
+        ]
+      },
+      "corrected": {
+        "id": "southeast-asia-fixed-anchor",
+        "score": 14,
+        "dimensions": {
+          "intent": 2,
+          "constraints": 2,
+          "route": 2,
+          "time-realism": 2,
+          "state-preservation": 2,
+          "uncertainty": 2,
+          "explanation": 2
+        },
+        "deterministicFailures": []
+      }
+    },
+    {
+      "id": "maximum-stops-conflict",
+      "expected": {
+        "id": "maximum-stops-conflict",
+        "score": 10,
+        "dimensions": {
+          "intent": 2,
+          "constraints": 0,
+          "route": 2,
+          "time-realism": 2,
+          "state-preservation": 2,
+          "uncertainty": 0,
+          "explanation": 2
+        },
+        "deterministicFailures": [
+          "hard constraint changed",
+          "expected warning or conflict missing"
+        ]
+      },
+      "previous": {
+        "id": "maximum-stops-conflict",
+        "score": 10,
+        "dimensions": {
+          "intent": 2,
+          "constraints": 0,
+          "route": 2,
+          "time-realism": 2,
+          "state-preservation": 2,
+          "uncertainty": 0,
+          "explanation": 2
+        },
+        "deterministicFailures": [
+          "hard constraint changed",
+          "expected warning or conflict missing"
+        ]
+      },
+      "currentCandidate": {
+        "id": "maximum-stops-conflict",
+        "score": 10,
+        "dimensions": {
+          "intent": 2,
+          "constraints": 0,
+          "route": 2,
+          "time-realism": 2,
+          "state-preservation": 2,
+          "uncertainty": 0,
+          "explanation": 2
+        },
+        "deterministicFailures": [
+          "hard constraint changed",
+          "expected warning or conflict missing"
+        ]
+      },
+      "corrected": {
+        "id": "maximum-stops-conflict",
+        "score": 10,
+        "dimensions": {
+          "intent": 2,
+          "constraints": 0,
+          "route": 2,
+          "time-realism": 2,
+          "state-preservation": 2,
+          "uncertainty": 0,
+          "explanation": 2
+        },
+        "deterministicFailures": [
+          "hard constraint changed",
+          "expected warning or conflict missing"
+        ]
+      }
+    },
+    {
+      "id": "minimal-intent-unknowns",
+      "expected": {
+        "id": "minimal-intent-unknowns",
+        "score": 14,
+        "dimensions": {
+          "intent": 2,
+          "constraints": 2,
+          "route": 2,
+          "time-realism": 2,
+          "state-preservation": 2,
+          "uncertainty": 2,
+          "explanation": 2
+        },
+        "deterministicFailures": []
+      },
+      "previous": {
+        "id": "minimal-intent-unknowns",
+        "score": 14,
+        "dimensions": {
+          "intent": 2,
+          "constraints": 2,
+          "route": 2,
+          "time-realism": 2,
+          "state-preservation": 2,
+          "uncertainty": 2,
+          "explanation": 2
+        },
+        "deterministicFailures": []
+      },
+      "currentCandidate": {
+        "id": "minimal-intent-unknowns",
+        "score": 14,
+        "dimensions": {
+          "intent": 2,
+          "constraints": 2,
+          "route": 2,
+          "time-realism": 2,
+          "state-preservation": 2,
+          "uncertainty": 2,
+          "explanation": 2
+        },
+        "deterministicFailures": []
+      },
+      "corrected": {
+        "id": "minimal-intent-unknowns",
+        "score": 14,
+        "dimensions": {
+          "intent": 2,
+          "constraints": 2,
+          "route": 2,
+          "time-realism": 2,
+          "state-preservation": 2,
+          "uncertainty": 2,
+          "explanation": 2
+        },
+        "deterministicFailures": []
+      }
+    },
+    {
+      "id": "budget-question-is-not-budget",
+      "expected": {
+        "id": "budget-question-is-not-budget",
+        "score": 12,
+        "dimensions": {
+          "intent": 2,
+          "constraints": 2,
+          "route": 0,
+          "time-realism": 2,
+          "state-preservation": 2,
+          "uncertainty": 2,
+          "explanation": 2
+        },
+        "deterministicFailures": [
+          "route state is not appropriate for the captured intent"
+        ]
+      },
+      "previous": {
+        "id": "budget-question-is-not-budget",
+        "score": 12,
+        "dimensions": {
+          "intent": 2,
+          "constraints": 2,
+          "route": 0,
+          "time-realism": 2,
+          "state-preservation": 2,
+          "uncertainty": 2,
+          "explanation": 2
+        },
+        "deterministicFailures": [
+          "route state is not appropriate for the captured intent"
+        ]
+      },
+      "currentCandidate": {
+        "id": "budget-question-is-not-budget",
+        "score": 12,
+        "dimensions": {
+          "intent": 2,
+          "constraints": 2,
+          "route": 0,
+          "time-realism": 2,
+          "state-preservation": 2,
+          "uncertainty": 2,
+          "explanation": 2
+        },
+        "deterministicFailures": [
+          "route state is not appropriate for the captured intent"
+        ]
+      },
+      "corrected": {
+        "id": "budget-question-is-not-budget",
+        "score": 12,
+        "dimensions": {
+          "intent": 2,
+          "constraints": 2,
+          "route": 0,
+          "time-realism": 2,
+          "state-preservation": 2,
+          "uncertainty": 2,
+          "explanation": 2
+        },
+        "deterministicFailures": [
+          "route state is not appropriate for the captured intent"
+        ]
+      }
+    },
+    {
+      "id": "caucasus-context-resolves-georgia",
+      "expected": {
+        "id": "caucasus-context-resolves-georgia",
+        "score": 14,
+        "dimensions": {
+          "intent": 2,
+          "constraints": 2,
+          "route": 2,
+          "time-realism": 2,
+          "state-preservation": 2,
+          "uncertainty": 2,
+          "explanation": 2
+        },
+        "deterministicFailures": []
+      },
+      "previous": {
+        "id": "caucasus-context-resolves-georgia",
+        "score": 14,
+        "dimensions": {
+          "intent": 2,
+          "constraints": 2,
+          "route": 2,
+          "time-realism": 2,
+          "state-preservation": 2,
+          "uncertainty": 2,
+          "explanation": 2
+        },
+        "deterministicFailures": []
+      },
+      "currentCandidate": {
+        "id": "caucasus-context-resolves-georgia",
+        "score": 14,
+        "dimensions": {
+          "intent": 2,
+          "constraints": 2,
+          "route": 2,
+          "time-realism": 2,
+          "state-preservation": 2,
+          "uncertainty": 2,
+          "explanation": 2
+        },
+        "deterministicFailures": []
+      },
+      "corrected": {
+        "id": "caucasus-context-resolves-georgia",
+        "score": 14,
+        "dimensions": {
+          "intent": 2,
+          "constraints": 2,
+          "route": 2,
+          "time-realism": 2,
+          "state-preservation": 2,
+          "uncertainty": 2,
+          "explanation": 2
+        },
+        "deterministicFailures": []
+      }
+    },
+    {
+      "id": "short-italy-time-realism",
+      "expected": {
+        "id": "short-italy-time-realism",
+        "score": 14,
+        "dimensions": {
+          "intent": 2,
+          "constraints": 2,
+          "route": 2,
+          "time-realism": 2,
+          "state-preservation": 2,
+          "uncertainty": 2,
+          "explanation": 2
+        },
+        "deterministicFailures": []
+      },
+      "previous": {
+        "id": "short-italy-time-realism",
+        "score": 14,
+        "dimensions": {
+          "intent": 2,
+          "constraints": 2,
+          "route": 2,
+          "time-realism": 2,
+          "state-preservation": 2,
+          "uncertainty": 2,
+          "explanation": 2
+        },
+        "deterministicFailures": []
+      },
+      "currentCandidate": {
+        "id": "short-italy-time-realism",
+        "score": 14,
+        "dimensions": {
+          "intent": 2,
+          "constraints": 2,
+          "route": 2,
+          "time-realism": 2,
+          "state-preservation": 2,
+          "uncertainty": 2,
+          "explanation": 2
+        },
+        "deterministicFailures": []
+      },
+      "corrected": {
+        "id": "short-italy-time-realism",
+        "score": 14,
+        "dimensions": {
+          "intent": 2,
+          "constraints": 2,
+          "route": 2,
+          "time-realism": 2,
+          "state-preservation": 2,
+          "uncertainty": 2,
+          "explanation": 2
+        },
+        "deterministicFailures": []
+      }
+    },
+    {
+      "id": "spanish-aliases-and-origin",
+      "expected": {
+        "id": "spanish-aliases-and-origin",
+        "score": 10,
+        "dimensions": {
+          "intent": 0,
+          "constraints": 2,
+          "route": 0,
+          "time-realism": 2,
+          "state-preservation": 2,
+          "uncertainty": 2,
+          "explanation": 2
+        },
+        "deterministicFailures": [
+          "intent facts changed",
+          "route state is not appropriate for the captured intent"
+        ]
+      },
+      "previous": {
+        "id": "spanish-aliases-and-origin",
+        "score": 10,
+        "dimensions": {
+          "intent": 0,
+          "constraints": 2,
+          "route": 0,
+          "time-realism": 2,
+          "state-preservation": 2,
+          "uncertainty": 2,
+          "explanation": 2
+        },
+        "deterministicFailures": [
+          "intent facts changed",
+          "route state is not appropriate for the captured intent"
+        ]
+      },
+      "currentCandidate": {
+        "id": "spanish-aliases-and-origin",
+        "score": 10,
+        "dimensions": {
+          "intent": 0,
+          "constraints": 2,
+          "route": 0,
+          "time-realism": 2,
+          "state-preservation": 2,
+          "uncertainty": 2,
+          "explanation": 2
+        },
+        "deterministicFailures": [
+          "intent facts changed",
+          "route state is not appropriate for the captured intent"
+        ]
+      },
+      "corrected": {
+        "id": "spanish-aliases-and-origin",
+        "score": 10,
+        "dimensions": {
+          "intent": 0,
+          "constraints": 2,
+          "route": 0,
+          "time-realism": 2,
+          "state-preservation": 2,
+          "uncertainty": 2,
+          "explanation": 2
+        },
+        "deterministicFailures": [
+          "intent facts changed",
+          "route state is not appropriate for the captured intent"
+        ]
+      }
+    }
+  ]
+}
