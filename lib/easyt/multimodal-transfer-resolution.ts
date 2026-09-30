@@ -529,8 +529,9 @@ async function mixedGatewayCandidate(
 }
 
 function shouldPreserve(leg: TripLeg) {
-  const metadata = leg.routeMetadata as { source?: unknown; routingConfidence?: unknown; decisionOption?: unknown; userConfirmed?: unknown; confirmed?: unknown };
+  const metadata = leg.routeMetadata as { source?: unknown; routingConfidence?: unknown; roadFallbackEligible?: unknown; decisionOption?: unknown; userConfirmed?: unknown; confirmed?: unknown };
   if (metadata.decisionOption !== undefined || metadata.userConfirmed === true || metadata.confirmed === true) return true;
+  if (metadata.source === "spreadsheet-import-unconfirmed" && leg.mode === "unknown" && metadata.roadFallbackEligible === false) return true;
   if (metadata.source === "curated-route" || metadata.source === "traveller-authored" || metadata.source === "imported-booking") return true;
   const { excludedModes } = transportRules(leg);
   if (metadata.source === "morrovia-planner"

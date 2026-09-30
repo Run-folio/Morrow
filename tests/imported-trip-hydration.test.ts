@@ -11,7 +11,9 @@ import { overviewStopImage } from "../lib/easyt/trip-overview-imagery.ts";
 import { personalRoutePresentation } from "../lib/easyt/personal-route.ts";
 import { deriveItineraryCoverage } from "../lib/easyt/trip-facts.ts";
 import { philippinesImportCsv } from "./fixtures/spreadsheet-import.ts";
-import { cacheCanonicalTripWithRecoveryToStorage, loadTripRecoveryFromStorage, saveTripRecoveryToStorage, type EasyTBrowserStorage } from "../lib/easyt/storage.ts";
+import { cacheCanonicalTripWithRecoveryToStorage, loadTripRecoveryFromStorage, saveTripRecoveryToEasyT, saveTripRecoveryToStorage, type EasyTBrowserStorage } from "../lib/easyt/storage.ts";
+import { resolveTripTransferJourneys } from "../lib/easyt/multimodal-transfer-resolution.ts";
+import { canonicalTripForOwner, tripBuildDocumentsCanonicalEquivalent } from "../lib/easyt/trip-promotion.ts";
 
 const proposal = buildSpreadsheetImportProposal(parseDelimitedText(philippinesImportCsv));
 const trip = canonicalTripFromSpreadsheetProposal({
@@ -24,6 +26,75 @@ const trip = canonicalTripFromSpreadsheetProposal({
     country: "Philippines",
     coordinates: [120 + index, 14 + index] as [number, number],
   })),
+});
+
+test("Philippines reviewed import survives server promotion without invented transfers", async () => {
+  const request = structuredClone(trip);
+  const resolved = await resolveTripTransferJourneys(request);
+  const saved = canonicalTripForOwner("owner-a", resolved);
+  assert.deepEqual(resolved.legs, request.legs);
+  assert.deepEqual(saved.stops.map((stop) => stop.name), ["Manila", "El Nido", "Bohol", "Siquijor", "Cebu City", "Manila"]);
+  assert.equal(saved.planItems.length, 21);
+  assert.equal(saved.brief.bookings?.length ?? 0, 0);
+  assert.ok(saved.legs.every((leg) => leg.mode === "unknown"
+    && leg.durationMinutes === null
+    && leg.headlineMinutes === null
+    && leg.doorToDoorMinutes === null
+    && leg.provenance === "unknown"
+    && leg.routeMetadata.source === "spreadsheet-import-unconfirmed"
+    && leg.routeMetadata.roadFallbackEligible === false));
+  assert.equal(tripBuildDocumentsCanonicalEquivalent(request, saved, "owner-a"), true);
+  assert.equal(tripBuildDocumentsCanonicalEquivalent(request, { ...saved, updatedAt: "2026-10-01T00:00:00.000Z" }, "owner-a"), true);
+  assert.equal(tripBuildDocumentsCanonicalEquivalent(request, {
+    ...saved, legs: saved.legs.map((leg, index) => index === 2 ? { ...leg, mode: "road", durationMinutes: 165 } : leg),
+  }, "owner-a"), false);
+});
+
+test("eligible planning leg resolves while an explicit traveller transport choice remains authoritative", async () => {
+  const baseline = trip.legs[2]!;
+  const eligible = { ...baseline, routeMetadata: { ...baseline.routeMetadata, source: "morrovia-planner", roadFallbackEligible: true } };
+  const resolved = await resolveTripTransferJourneys({ ...trip, legs: [eligible] });
+  assert.notEqual(resolved.legs[0]?.mode, "unknown");
+  const chosen = { ...baseline, mode: "ferry" as const, durationMinutes: 90, routeMetadata: { ...baseline.routeMetadata, source: "traveller-authored", userConfirmed: true } };
+  const preserved = await resolveTripTransferJourneys({ ...trip, legs: [chosen] });
+  assert.deepEqual(preserved.legs[0], chosen);
+});
+
+test("uncertain Philippines import acknowledgement retries the same account trip", async () => {
+  const values = new Map<string, string>();
+  const storage: EasyTBrowserStorage = {
+    get length() { return values.size; },
+    getItem: (key) => values.get(key) ?? null,
+    setItem: (key, value) => { values.set(key, value); },
+    removeItem: (key) => { values.delete(key); },
+    key: (index) => [...values.keys()][index] ?? null,
+  };
+  const recovery = saveTripRecoveryToStorage(storage, trip, { ownerId: "owner-a", writeId: "philippines-create" });
+  assert.equal(recovery.stored, true);
+  let stored: typeof trip | null = null;
+  let inserts = 0;
+  const request: typeof fetch = async (_input, init) => {
+    const incoming = JSON.parse(String(init?.body)) as typeof trip;
+    const candidate = canonicalTripForOwner("owner-a", await resolveTripTransferJourneys(incoming));
+    const response = (body: unknown, status: number) => new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json" } });
+    if (init?.method === "POST") {
+      if (stored) return response({ trip: stored, outcome: "conflict", conflictReason: "cloud-different", category: "conflict", error: "Existing trip" }, 409);
+      stored = candidate;
+      inserts += 1;
+      return response({ trip: stored, outcome: "promoted" }, 201);
+    }
+    if (stored?.status === "draft") {
+      stored = { ...candidate, updatedAt: "2026-10-01T00:00:00.000Z" };
+      return response({ trip: stored }, 200);
+    }
+    return response({ trip: stored, category: "conflict", conflictReason: "cloud-changed", error: "Existing trip" }, 409);
+  };
+  const first = await saveTripRecoveryToEasyT(trip, recovery.handle, request);
+  const retry = await saveTripRecoveryToEasyT(trip, recovery.handle, request);
+  assert.equal(inserts, 1);
+  assert.deepEqual(retry, first);
+  assert.deepEqual(stored, first);
+  assert.equal(tripBuildDocumentsCanonicalEquivalent(trip, first, "owner-a"), true);
 });
 
 test("pure imported projection creates 21 stable dated days with final Manila departure-day ownership", () => {
