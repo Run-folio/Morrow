@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { buildSpreadsheetImportProposal, canonicalTripFromSpreadsheetProposal, parseDelimitedText } from "../lib/easyt/spreadsheet-import.ts";
 import { buildImportedDatedDays, repairEligibleSpreadsheetV1Trip, importedLegacyRepairContextAllows } from "../lib/easyt/imported-trip-hydration.ts";
-import { tripRouteDisplayLabel } from "../lib/easyt/trip-legs.ts";
+import { tripRouteDisplayEndpoints, tripRouteDisplayLabel } from "../lib/easyt/trip-legs.ts";
 import { itineraryCalendarDays, itineraryCalendarWeeks, itineraryCalendarNightBands } from "../lib/easyt/itinerary-calendar.ts";
 import { exploreDestinationOptions, exploreDiscoveryRequestKey } from "../lib/easyt/explore.ts";
 import { tripReadinessSummary } from "../lib/easyt/trip-readiness-summary.ts";
@@ -126,6 +126,17 @@ test("shared route label hides only equivalent origin and first stop", () => {
   assert.equal(tripRouteDisplayLabel(distinctOrigin), "Manila → Manila → El Nido → Bohol → Siquijor → Cebu City → Manila");
   const adjacentRepeat = { ...trip, stops: [trip.stops[0], { ...trip.stops[0], id: "adjacent-repeat", order: 0.5 }, ...trip.stops.slice(1)] };
   assert.equal(tripRouteDisplayLabel(adjacentRepeat), "Manila → Manila → El Nido → Bohol → Siquijor → Cebu City → Manila");
+});
+
+test("Overview route projection keeps overnight occurrences while hiding only an equivalent origin", () => {
+  const canonicalBefore = structuredClone(trip);
+  assert.deepEqual(tripRouteDisplayEndpoints(trip).map((endpoint) => endpoint.name), ["Manila", "El Nido", "Bohol", "Siquijor", "Cebu City", "Manila"]);
+  assert.deepEqual(tripRouteDisplayEndpoints(trip).filter((endpoint) => endpoint.kind === "stop").map((endpoint) => endpoint.id), trip.stops.map((stop) => stop.id));
+  assert.equal(tripRouteDisplayEndpoints(trip)[0]?.id, trip.stops[0]?.id);
+  const otherManila = { ...trip, brief: { ...trip.brief, originCanonicalPlaceId: "place:other-manila", originCoordinates: [121.5, 14.6] as [number, number] } };
+  assert.equal(tripRouteDisplayEndpoints(otherManila).length, 7);
+  assert.equal(tripRouteDisplayEndpoints(otherManila)[0]?.kind, "origin");
+  assert.deepEqual(trip, canonicalBefore);
 });
 
 test("hydrated import enters existing calendar, Explore, route and image projections", () => {

@@ -123,14 +123,18 @@ export function canonicalRouteEndpoints(trip: Pick<EasyTTrip, "id" | "brief" | "
 
 /** Keep all overnight occurrences in the displayed route, while omitting an
  * origin that is the same place as the first overnight stop. */
-export function tripRouteDisplayLabel(trip: Pick<EasyTTrip, "id" | "brief" | "stops">): string {
+export function tripRouteDisplayEndpoints(trip: Pick<EasyTTrip, "id" | "brief" | "stops">): CanonicalRouteEndpoint[] {
   const stops = [...trip.stops].sort((left, right) => left.order - right.order);
   const origin = originEndpointForTrip(trip);
   const first = stops[0] ? stopEndpoint(stops[0]) : null;
-  const names = [
-    ...(origin.name.trim() && (!first || !sameRoutePlace(origin, first)) ? [origin.name] : []),
-    ...stops.map((stop) => stop.name).filter(Boolean),
+  return [
+    ...(origin.name.trim() && (!first || !sameRoutePlace(origin, first)) ? [origin] : []),
+    ...stops.map(stopEndpoint),
   ];
+}
+
+export function tripRouteDisplayLabel(trip: Pick<EasyTTrip, "id" | "brief" | "stops">): string {
+  const names = tripRouteDisplayEndpoints(trip).map((endpoint) => endpoint.name).filter(Boolean);
   return names.join(" → ") || "Route to confirm";
 }
 

@@ -37,7 +37,7 @@ import {
   tripWorkspaceHref,
 } from "@/lib/easyt/trip-workspace-links";
 import styles from "./trip-overview-workspace.module.css";
-import { canonicalLegIntegrityIssues, endEndpointForTrip, originEndpointForTrip } from "@/lib/easyt/trip-legs";
+import { canonicalLegIntegrityIssues, endEndpointForTrip, originEndpointForTrip, tripRouteDisplayEndpoints } from "@/lib/easyt/trip-legs";
 import { mapRouteLegsFromTrip } from "@/lib/easyt/map-spatial-context";
 import type { JourneyStop } from "@/lib/journey";
 import { JourneyPlannerMap } from "@/components/journey-planner-map";
@@ -170,6 +170,7 @@ export default function TripOverviewWorkspace({
   const routeCheck = presentRouteCheckSummary(visibleIssues, primaryAction.href);
   const routeCheckCount = routeCheck.visible.length + routeCheck.remaining.length;
   const origin = useMemo(() => originEndpointForTrip(trip), [trip]);
+  const routeDisplayEndpoints = useMemo(() => tripRouteDisplayEndpoints(trip), [trip]);
   const journeyEnd = useMemo(() => endEndpointForTrip(trip), [trip]);
   const lastRouteStop = orderedStops.at(-1);
   const journeyEndIsLastStop = Boolean(journeyEnd && lastRouteStop && sameJourneyPlace({
@@ -351,7 +352,7 @@ export default function TripOverviewWorkspace({
             <div className={styles.routeJourney}>
               {orderedStops.length ? <ol className={styles.routeList} aria-label={`Trip route from ${trip.brief.origin}${journeyEnd ? ` to ${journeyEnd.name}` : ""}`} tabIndex={0}>
                 {[
-                  { id: origin.id, name: origin.name, image: initialPlaceImages[origin.id] ?? resolvedPlaceImages[imageCacheKeysByOccurrence[origin.id]], meta: "Journey origin", href: routeIssueHref(trip.id), transfer: conciseTransferLabel(trip.legs.find((item) => item.classification === "arrival" || item.fromEndpoint?.kind === "origin")) },
+                  ...(routeDisplayEndpoints[0]?.kind === "origin" ? [{ id: origin.id, name: origin.name, image: initialPlaceImages[origin.id] ?? resolvedPlaceImages[imageCacheKeysByOccurrence[origin.id]], meta: "Journey origin", href: routeIssueHref(trip.id), transfer: conciseTransferLabel(trip.legs.find((item) => item.classification === "arrival" || item.fromEndpoint?.kind === "origin")) }] : []),
                   ...orderedStops.map((stop, index) => {
                     const next = orderedStops[index + 1];
                     const leg = next
