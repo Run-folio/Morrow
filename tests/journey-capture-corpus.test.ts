@@ -26,6 +26,20 @@ const CALENDAR_AND_PREFERENCE_WORDS = [
 
 const PRIVATE_BETA_JAPAN_KOREA_PROMPT = "Plan a 19-day trip from Tokyo to Busan, visiting Tokyo, Takayama, Kanazawa, Kyoto, Osaka, Seoul and Busan. Two travellers, interested in food, culture and nature.";
 
+test("leading travel actions stay out of geography while named places and broad scope survive", () => {
+  const broad = captureJourneyBrief("Explore northern Thailand for two weeks, with a quieter mountain base and food experiences.");
+  assert.equal(broad.mentions.some((mention) => mention.sourceText === "Explore"), false);
+  assert.deepEqual(broad.mentions.map((mention) => mention.sourceText), ["northern Thailand"]);
+  assert.equal(broad.mentions[0]?.placeType, "region");
+  assert.deepEqual(broad.mentions[0]?.parentCountries, ["Thailand"]);
+  assert.equal(broad.structuredBrief.placeIssues?.some((issue) => issue.blocksRoute), true);
+  for (const prompt of ["Explore Tokyo and Kyoto", "Plan a trip through Peru", "Paris and Rome", "Visit London then Paris"]) {
+    const capture = captureJourneyBrief(prompt);
+    assert.equal(capture.mentions.some((mention) => ["Explore", "Plan", "Visit"].includes(mention.sourceText)), false, prompt);
+    assert.equal(capture.mentions.some((mention) => mention.canonicalPlaceId), true, prompt);
+  }
+});
+
 test("explicit place intent is conserved across long, reordered, fuzzy, ambiguous and regional captures", () => {
   const cases = [
     {

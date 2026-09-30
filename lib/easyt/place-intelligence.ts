@@ -612,13 +612,17 @@ export function normalizePlacePhrase(value: string) {
     .replace(/\s+/g, " ");
 }
 
-type BroadPlanningIntent = { placeType: PlaceType; routability: "needs_base_selection" };
+type BroadPlanningIntent = { placeType: PlaceType; routability: "needs_base_selection"; parentCountry?: string };
 
 /** These phrases describe geographic scope or an experience, not an overnight
  * endpoint. Qualified canonical entities are resolved by the catalogue first;
  * this guard applies only when the traveller's surviving phrase is generic. */
 function broadPlanningIntentForPhrase(value: string): BroadPlanningIntent | undefined {
   const phrase = normalizePlacePhrase(value).replace(/^the\s+/, "");
+  const directionalCountry = phrase.match(/^(?:northern|southern|eastern|western|central|north|south|east|west)\s+(.+)$/);
+  const country = directionalCountry && PLACE_CATALOG.find((entry) => entry.placeType === "country"
+    && [entry.canonicalName, ...entry.aliases].some((name) => normalizePlacePhrase(name) === directionalCountry[1]));
+  if (country) return { placeType: "region", routability: "needs_base_selection", parentCountry: country.canonicalName };
   // Preserve explicit geography semantics even when the named entity has no
   // canonical catalogue identity. This shapes the unresolved decision only;
   // it does not supply identity, coordinates, containment, or route truth.
@@ -649,11 +653,13 @@ function broadIntentShape(sourceText: string) {
     routability: broad.routability,
     requiresBaseSelection: true,
     isAnchor: true,
+    parentCountries: broad.parentCountry ? [broad.parentCountry] : [],
   } : {
     placeType: "unknown" as const,
     routability: "non_routable_reference" as const,
     requiresBaseSelection: false,
     isAnchor: false,
+    parentCountries: [],
   };
 }
 
@@ -1295,18 +1301,21 @@ function levenshtein(left: string, right: string) {
   return rows[left.length][right.length];
 }
 
-/**
- * Source-text authority for the narrow case where `Plan` frames the request
- * instead of naming a place. Semantic extraction may classify spans, but it
- * cannot override this unambiguous leading command context.
- */
+/** Leading planning commands are grammar rather than place names when they
+ * introduce the request. The rest of the named geography stays in the prompt. */
 export function isLeadingPlanningImperativeSourceSpan(sourceText: string, prompt: string, sourceStart?: number) {
-  if (normalizePlacePhrase(sourceText) !== "plan") return false;
+  const action = normalizePlacePhrase(sourceText);
+  if (action !== "plan" && action !== "explore") return false;
   const leadingWhitespace = prompt.length - prompt.trimStart().length;
-  const commandContext = /^plan\s+(?:(?:a|an|my|our|the|this)\b|\d+\s*(?:-\s*)?(?:days?|nights?|weeks?)\b)/iu.test(prompt.trimStart());
+  const commandContext = action === "plan"
+    ? /^plan\s+(?:(?:a|an|my|our|the|this)\b|\d+\s*(?:-\s*)?(?:days?|nights?|weeks?)\b)/iu.test(prompt.trimStart())
+    : /^explore\s+[^,.;!?]+/iu.test(prompt.trimStart());
   if (!commandContext) return false;
   if (sourceStart !== undefined) return sourceStart === leadingWhitespace;
-  return [...prompt.matchAll(/\bplan\b/giu)].length === 1;
+  // Semantic candidates have no source offset. A later "explore" does not
+  // make the leading command a destination; "Plan" can also be a place name,
+  // so preserve its existing ambiguity guard when the word occurs twice.
+  return action === "explore" || [...prompt.matchAll(/\bplan\b/giu)].length === 1;
 }
 
 function unresolvedCandidates(prompt: string, occupied: Array<{ start: number; end: number }>) {
@@ -1938,7 +1947,21 @@ export function appendSelectedPlanningAreaMention(
 }
 
 function buildDeterministicMentions(prompt: string, context: PlaceResolutionContext) {
-  const rawMatches = rawCatalogMatches(prompt);
+  const catalogMatches = rawCatalogMatches(prompt);
+  // A directional qualifier changes a named country into the traveller's
+  // requested regional scope. Keep the complete phrase for clarification;
+  // the country match alone would silently widen northern Thailand to all of
+  // Thailand when semantic capture is unavailable.
+  const qualifiedCountries = unique(catalogMatches.flatMap((match) => {
+    if (match.entry.placeType !== "country") return [];
+    const qualifier = prompt.slice(0, match.start).match(/\b(?:northern|southern|eastern|western|central|north|south|east|west)\s+$/iu);
+    if (!qualifier) return [];
+    const start = match.start - qualifier[0].length;
+    if (catalogMatches.some((other) => other.start <= start && other.end >= match.end && other.start < match.start)) return [];
+    const sourceText = prompt.slice(start, match.end);
+    return [{ sourceText, start, end: match.end, reviewOnly: true, forcedRole: roleAt(prompt, sourceText, start, "region"), fuzzy: undefined }];
+  }), (item) => `${item.start}:${item.end}`);
+  const rawMatches = catalogMatches.filter((match) => !qualifiedCountries.some((qualified) => match.start >= qualified.start && match.end <= qualified.end));
   const promptIds = new Set(rawMatches.map((match) => match.entry.canonicalPlaceId));
   const groups = new Map<string, RawCatalogMatch[]>();
   rawMatches.forEach((match) => {
@@ -1975,7 +1998,8 @@ function buildDeterministicMentions(prompt: string, context: PlaceResolutionCont
   }
 
   const occupied = resolved.map((mention) => ({ start: mention._start, end: mention._end }));
-  for (const candidate of unresolvedCandidates(prompt, occupied)) {
+  const qualified = qualifiedCountries.filter((candidate) => !occupied.some((range) => range.start < candidate.end && range.end > candidate.start));
+  for (const candidate of [...qualified, ...unresolvedCandidates(prompt, [...occupied, ...qualified])]) {
     const savedSelection = (context.selectedPlaces ?? []).find((place) => normalizePlacePhrase(place.canonicalName) === normalizePlacePhrase(candidate.sourceText));
     const role = candidate.forcedRole ?? (candidate.reviewOnly
       ? "anchor"
@@ -2019,7 +2043,7 @@ function buildDeterministicMentions(prompt: string, context: PlaceResolutionCont
         sourceText: candidate.sourceText, sourceTexts: [candidate.sourceText], normalizedPhrase: normalizePlacePhrase(candidate.sourceText),
         canonicalName: candidate.sourceText, aliases: [], placeType: broad.placeType, status: "unresolved",
         confidence: unknownPlanningConfidence("Morrovia retained this possible place phrase but could not resolve it."), provenance,
-        parentCountries: [], routability: broad.routability, directlyRoutable: false, requiresBaseSelection: broad.requiresBaseSelection,
+        parentCountries: broad.parentCountries, routability: broad.routability, directlyRoutable: false, requiresBaseSelection: broad.requiresBaseSelection,
         isAnchor: broad.isAnchor, role, order: 0, candidates: [], _start: candidate.start, _end: candidate.end, _roles: [role],
       });
     }
@@ -2105,7 +2129,7 @@ function unresolvedExplicitMention(input: ExplicitPlaceMention, order: number): 
     status: "unresolved",
     confidence: unknownPlanningConfidence("Morrovia retained this semantic place mention but could not resolve it."),
     provenance,
-    parentCountries: [],
+    parentCountries: broad.parentCountries,
     routability: broad.routability,
     directlyRoutable: false,
     requiresBaseSelection: broad.requiresBaseSelection,
@@ -2242,8 +2266,11 @@ function retainBroadPlanningIntent(
 ) {
   const broad = !mention.canonicalPlaceId ? broadPlanningIntentForPhrase(mention.sourceText) : undefined;
   if (!broad) return undefined;
-  if (!candidates.length) return mention;
-  const countries = sharedCandidateCountries(candidates);
+  const inScopeCandidates = broad.parentCountry
+    ? candidates.filter((candidate) => candidate.parentCountries.some((country) => normalizePlacePhrase(country) === normalizePlacePhrase(broad.parentCountry!)))
+    : candidates;
+  if (!inScopeCandidates.length) return mention;
+  const countries = broad.parentCountry ? [broad.parentCountry] : sharedCandidateCountries(inScopeCandidates);
   const guard: PlaceProvenance = {
     id: `broad-intent:${slug(mention.sourceText)}`,
     label: "Morrovia broad-place guard",
@@ -2262,7 +2289,7 @@ function retainBroadPlanningIntent(
     directlyRoutable: false,
     requiresBaseSelection: true,
     isAnchor: true,
-    candidates,
+    candidates: inScopeCandidates,
   };
 }
 

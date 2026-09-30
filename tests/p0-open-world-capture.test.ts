@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { captureJourneyBrief, captureJourneyBriefFromSemanticIntent, developmentJourneyCaptureDiagnostics } from "../lib/easyt/journey-capture.ts";
-import type { PlaceIntelligenceProvider, PlaceProviderCandidate } from "../lib/easyt/place-intelligence.ts";
+import { resolvePlaceMentions, type PlaceIntelligenceProvider, type PlaceProviderCandidate } from "../lib/easyt/place-intelligence.ts";
 import {
   SEMANTIC_TRIP_INTENT_RAW_PROMPT_VERSION,
   SEMANTIC_TRIP_INTENT_SCHEMA_VERSION,
@@ -9,9 +9,70 @@ import {
 } from "../lib/easyt/semantic-trip-intent.ts";
 import { SEMANTIC_INTENT_EXTRACTION_POLICY } from "../lib/easyt/openai-semantic-intent-request.ts";
 import { handoffRouteStops, initialHandoffRouteStops, mergeHandoffLocationChoice, preferredHandoffLocationChoice } from "../lib/easyt/home-trip-handoff.ts";
+import { discoveryEntryForBrief } from "../lib/easyt/discovery-entry.ts";
+import { planningContentIsActionable, planningRequiredInterpretationIsComplete } from "../lib/easyt/planning-attempt-performance.ts";
 
 const promptA = "Denver, Dallas, Puerto Vallarta and Oaxaca, starting from Paris.";
 const promptB = "Cusco, Rio, Buenos Aires, Calafate and Santiago from Madrid.";
+const broadThailandPrompt = "Explore northern Thailand for two weeks, with a quieter mountain base and food experiences.";
+
+test("broad Describe retains northern Thailand for an actionable decision without turning Explore into a place", async () => {
+  const semantic = intent(null, ["Explore", "northern Thailand"]);
+  semantic.destinationCandidates[1]!.role = "planning-area";
+  semantic.duration = { sourceText: "two weeks", value: 2, unit: "weeks" };
+  const capture = await captureJourneyBriefFromSemanticIntent(broadThailandPrompt, semantic);
+  assert.deepEqual(capture.mentions.map((mention) => mention.sourceText), ["northern Thailand"]);
+  const area = capture.mentions[0]!;
+  assert.equal(area.placeType, "region");
+  assert.deepEqual(area.parentCountries, ["Thailand"]);
+  assert.equal(area.requiresBaseSelection, true);
+  assert.equal(area.directlyRoutable, false);
+  assert.equal(capture.structuredBrief.placeIssues?.some((issue) => issue.blocksRoute), true);
+  assert.equal(discoveryEntryForBrief(capture.structuredBrief, [], area.mentionId).kind, "clarification");
+  assert.equal(planningContentIsActionable({ mode: "describe", editableCanonicalOccurrences: 0, selectableClarification: true, controlsEnabled: true }), true);
+  assert.equal(planningRequiredInterpretationIsComplete({ pendingInterpretation: false, pendingLookup: false, failedLookup: false, routeOccurrences: 0, selectableDiscovery: true }), true);
+  assert.equal(planningRequiredInterpretationIsComplete({ pendingInterpretation: false, pendingLookup: false, failedLookup: false, routeOccurrences: 0, selectableDiscovery: false }), false);
+  const persisted = JSON.parse(JSON.stringify(capture)) as typeof capture;
+  assert.equal(discoveryEntryForBrief(persisted.structuredBrief, [], area.mentionId).kind, "clarification", "reload keeps the decision");
+  const requests: string[] = [];
+  const provider: PlaceIntelligenceProvider = {
+    id: "broad-fixture",
+    label: "Broad fixture",
+    lookup: async (phrase) => {
+      requests.push(phrase);
+      return phrase === "northern Thailand" ? [candidate("chiang-mai", "Chiang Mai", "Thailand")] : [];
+    },
+  };
+  const enriched = await captureJourneyBriefFromSemanticIntent(broadThailandPrompt, semantic, provider);
+  assert.equal(requests.includes("Explore"), false);
+  assert.deepEqual(enriched.mentions.map((mention) => mention.sourceText), ["northern Thailand"]);
+  assert.equal(enriched.mentions[0]?.canonicalName, "northern Thailand", "a provider city is only a clarification candidate");
+  assert.equal(enriched.mentions[0]?.directlyRoutable, false);
+  assert.equal(enriched.mentions[0]?.requiresBaseSelection, true);
+});
+
+test("qualified country preserves exclusion and start roles", () => {
+  assert.equal(resolvePlaceMentions("Avoid northern Thailand; visit Bangkok").mentions.find((mention) => mention.sourceText === "northern Thailand")?.role, "excluded");
+  assert.equal(resolvePlaceMentions("Start in northern Thailand, then visit Bangkok").mentions.find((mention) => mention.sourceText === "northern Thailand")?.role, "fixed_start");
+});
+
+test("repeated Explore command is not a semantic place", async () => {
+  const rawPrompt = "Explore northern Thailand, then explore Bangkok";
+  const capture = await captureJourneyBriefFromSemanticIntent(rawPrompt, intent(null, ["Explore", "northern Thailand", "Bangkok"]));
+  assert.deepEqual(capture.mentions.map((mention) => mention.sourceText), ["northern Thailand", "Bangkok"]);
+});
+
+test("a provider in another country cannot replace or clarify a known directional country", async () => {
+  const rawPrompt = "Explore northern Thailand";
+  const capture = await captureJourneyBriefFromSemanticIntent(rawPrompt, intent(null, ["northern Thailand"]), {
+    id: "wrong-country-fixture",
+    label: "Wrong country fixture",
+    lookup: async () => [candidate("luang-prabang", "Luang Prabang", "Laos")],
+  });
+  const area = capture.mentions.find((mention) => mention.sourceText === "northern Thailand");
+  assert.deepEqual(area?.parentCountries, ["Thailand"]);
+  assert.equal(area?.candidates.some((option) => option.canonicalName === "Luang Prabang"), false);
+});
 
 function intent(
   origin: string | null,
