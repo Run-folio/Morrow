@@ -33,6 +33,7 @@ export type HomepageHeroPhoto = {
   country: string;
   rights: string;
   source: string;
+  authorUrl?: string;
   focalPosition?: string;
   firstParty: boolean;
   fallback?: HomepageHeroPhoto;
@@ -105,7 +106,7 @@ function heroFor(key: string): ImmersiveRoute["heroPhoto"] {
     const photo = routeEditorialPhoto(featured.photoKey);
     if (photo) {
       const credit = `${photo.place} · ${photo.author} · ${photo.license}`;
-      fallback = { variants: photo.variants, credit, creditEs: credit, country: photo.country, rights: photo.license, source: photo.sourceUrl, focalPosition: featured.focalPosition, firstParty: false };
+      fallback = { variants: photo.variants, credit, creditEs: credit, country: photo.country, rights: photo.license, source: photo.sourceUrl, authorUrl: photo.authorUrl, focalPosition: featured.focalPosition, firstParty: false };
     }
   }
   const slot = homepageFirstPartyPhotoSlots[key as keyof typeof homepageFirstPartyPhotoSlots];

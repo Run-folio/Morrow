@@ -460,7 +460,7 @@ export default function DashboardClient({ trips, stamps, ownerId }: { trips: Eas
               <h2 id="current-journey-title"><span>{featuredTitle?.direct}</span>{featuredTitle?.expressive ? <em>{featuredTitle.expressive}</em> : null}</h2>
               <p>{routeLabel(featuredTrip, copy.routeWaiting)}</p>
             </div>
-            {featuredPhoto?.creditLabel ? <MorroviaPhotoCredit photoLabel={featuredPhoto.alt} credit={featuredPhoto.creditLabel} sourceHref={featuredPhoto.creditHref} licenseHref={featuredPhoto.licenseHref} fullCreditHref={featuredPhoto.fullCreditHref} /> : null}
+            {featuredPhoto?.creditLabel ? <MorroviaPhotoCredit presentation="inline" photoLabel={featuredPhoto.alt} credit={featuredPhoto.creditLabel} authorHref={featuredPhoto.authorHref} sourceHref={featuredPhoto.creditHref} licenseHref={featuredPhoto.licenseHref} fullCreditHref={featuredPhoto.fullCreditHref} /> : null}
           </div>
           <div className={styles.currentDetails}>
             {featuredRecoveryIssue ? <MorroviaStatusBanner className={styles.featuredRecoveryNotice} tone="warning"
@@ -553,7 +553,7 @@ export default function DashboardClient({ trips, stamps, ownerId }: { trips: Eas
           <h2 id="closing-invitation-title"><span>{isSpanish ? "¿Algún otro lugar" : "Somewhere else"}</span><em>{isSpanish ? "en mente?" : "on your mind?"}</em></h2>
           <EasyTLinkButton variant="secondary" href="/#start-building">{isSpanish ? "Empezar otro viaje" : "Start another trip"}<ArrowRight aria-hidden="true" /></EasyTLinkButton>
         </div>
-        {closingPhoto ? <MorroviaPhotoCredit photoLabel={closingPhoto.alt} credit={`${closingPhoto.author} · ${closingPhoto.license}`} sourceHref={closingPhoto.sourceUrl} licenseHref={closingPhoto.licenseUrl} fullCreditHref={`/journey/immersive/credits.html#${closingPhoto.key}`} /> : null}
+      {closingPhoto ? <MorroviaPhotoCredit photoLabel={closingPhoto.alt} credit={`${closingPhoto.author} · ${closingPhoto.license}`} authorHref={closingPhoto.authorUrl} sourceHref={closingPhoto.sourceUrl} licenseHref={closingPhoto.licenseUrl} fullCreditHref={`/journey/immersive/credits.html#${closingPhoto.key}`} /> : null}
       </section>
 
       <footer className={styles.libraryFooter}>
@@ -729,7 +729,7 @@ export function TripCard({ kind, trip, photo: selectedPhoto, language, copy, rec
       <Link className={styles.cardMedia} href={primaryHref} onClick={() => resolvedKind === "idea" ? trackEvent("trip_edit_started", { trip_id: trip.id, source: "dashboard" }) : trackTripReopened(trip)} tabIndex={working ? -1 : undefined} aria-disabled={working || undefined}>
         {resolvedKind === "idea" ? <div className={styles.routePreviewFallback} aria-label={`${title} ${language === "es" ? "boceto de ruta" : "route sketch"}`}><MapPin aria-hidden="true" /><span>{routeLabel(trip, copy.routeWaiting)}</span></div> : <ResilientImage src={photo?.src} alt={photo?.alt ?? ""} fallback={<div className={styles.tripImageFallback}><Globe2 aria-hidden="true" /><span>{routeLabel(trip, copy.routeWaiting)}</span></div>} />}
       </Link>
-      {resolvedKind !== "idea" && photo?.creditLabel ? <MorroviaPhotoCredit photoLabel={photo.alt} credit={photo.creditLabel} sourceHref={photo.creditHref} licenseHref={photo.licenseHref} fullCreditHref={photo.fullCreditHref} /> : null}
+      {resolvedKind !== "idea" && photo?.creditLabel ? <MorroviaPhotoCredit placement="bottom-left" photoLabel={photo.alt} credit={photo.creditLabel} authorHref={photo.authorHref} sourceHref={photo.creditHref} licenseHref={photo.licenseHref} fullCreditHref={photo.fullCreditHref} /> : null}
     </div>
     <div className={styles.cardBody}>
       <h3><Link href={primaryHref} onClick={() => resolvedKind === "idea" ? trackEvent("trip_edit_started", { trip_id: trip.id, source: "dashboard" }) : trackTripReopened(trip)}>{title}</Link></h3>

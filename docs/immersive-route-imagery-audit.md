@@ -34,6 +34,24 @@ Homepage destinations and route chapters consume the same inventory. Routes cata
 
 Provider imagery for other routes/attractions remains under its existing lookup/attribution path; it is not the rights evidence for these 18 destination images or four heroes. This audit does not certify unrelated legacy assets.
 
+## Inline attribution regression trace · 2026-09-30
+
+At accepted base `af1b964c6d88e91c7cdaac2b4690327b261b10cb`, the shared
+`MorroviaPhotoCredit` control and the dashboard card call site still exist, so
+this checkout does not show a complete code removal that would explain the
+staging observation by itself. It does show three attribution gaps: dashboard
+cards use the control's default bottom-right placement beside a separate
+right-aligned card action area; `routeImageCredit` dropped the curated record's
+existing `authorUrl` while keeping its source and licence URLs; and the shared
+disclosure linked the whole Unsplash credit label to one URL, with no explicit
+Escape close/focus return. Dynamic Unsplash records encode the photographer in
+their label and URL, while curated Unsplash records already have separate
+photographer and photo-page URLs. The patch restores those existing links to
+the shared disclosure instead of adding another image metadata owner. The
+deployed staging revision was not available in this source checkout, so the
+exact staging-only change that made the affordance disappear remains
+unverified.
+
 ## Generated atmosphere
 
 These existing assets are explicitly generated fictional atmosphere, not destination evidence or booking inventory. Generated assets are unchanged by this content pass.

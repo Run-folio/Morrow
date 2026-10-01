@@ -1381,7 +1381,7 @@ export default function TripItineraryWorkspace({
             {normalized(active.title) !== normalized(stop?.name ?? "") && normalized(active.title) !== normalized(`Explore ${stop?.name ?? ""}`)
               ? <span className={styles.dayRole}>{active.title}</span> : null}
           </div>
-          {dayHero?.sourceLabel ? <MorroviaPhotoCredit className={styles.dayHeroCredit} language={language} credit={dayHero.sourceLabel} photoLabel={dayHero.alt} sourceHref={dayHero.sourceUrl} licenseHref={dayHero.licenseUrl} fullCreditHref={dayHero.fullCreditUrl} /> : null}
+          {dayHero?.sourceLabel ? <MorroviaPhotoCredit className={styles.dayHeroCredit} presentation="inline" language={language} credit={dayHero.sourceLabel} photoLabel={dayHero.alt} authorHref={dayHero.authorUrl} sourceHref={dayHero.sourceUrl} licenseHref={dayHero.licenseUrl} fullCreditHref={dayHero.fullCreditUrl} /> : null}
         </header>
 
         {mutation.saveState === "error" ? <div className={styles.recoveryFeedback}><MorroviaRecoveryFeedback

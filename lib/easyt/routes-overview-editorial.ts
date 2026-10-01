@@ -31,7 +31,7 @@ export function catalogueWithEditorialImages(routes: readonly DiscoveryRoute[], 
 
 function photograph(key: string): DiscoveryImage | null {
   const photo = routeEditorialPhoto(key);
-  return photo ? { variants: photo.variants, alt: photo.alt, credit: `${photo.author} · ${photo.license}`, sourceUrl: photo.sourceUrl, license: photo.license, licenseUrl: photo.licenseUrl } : null;
+  return photo ? { variants: photo.variants, alt: photo.alt, credit: `${photo.author} · ${photo.license}`, authorUrl: photo.authorUrl, sourceUrl: photo.sourceUrl, license: photo.license, licenseUrl: photo.licenseUrl } : null;
 }
 
 /** Source URL identifies the asset across responsive sizes, not a particular WebP. */

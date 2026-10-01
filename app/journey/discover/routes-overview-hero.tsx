@@ -17,6 +17,6 @@ export default function RoutesOverviewHero({ image, navigation, count, imageUnav
       <p className={styles.support}>Considered journeys. Open possibilities.<br />Find your starting point, then change anything.</p>
       <EasyTLinkButton href="#discover-routes" variant="quiet" icon={ArrowDown} className={styles.browse}>Browse {count} starting points</EasyTLinkButton>
     </div>
-    {image && !imageUnavailable && <MorroviaPhotoCredit placement="bottom-left" photoLabel={image.alt} credit={image.credit} sourceHref={image.sourceUrl} licenseHref={image.licenseUrl} fullCreditHref="/journey/immersive/credits.html" />}
+    {image && !imageUnavailable && <MorroviaPhotoCredit presentation="inline" placement="bottom-left" photoLabel={image.alt} credit={image.credit} authorHref={image.authorUrl} sourceHref={image.sourceUrl} licenseHref={image.licenseUrl} fullCreditHref="/journey/immersive/credits.html" />}
   </section>;
 }

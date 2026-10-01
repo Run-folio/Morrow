@@ -47,6 +47,6 @@ export default function RouteHeroImage({ image, routeKey, query, fallbackQueries
       <span>{duration}</span>
       {!source && <small>{status === "loading" ? "Finding a photograph…" : "Photography unavailable"}</small>}
     </div>
-    {credit ? <MorroviaPhotoCredit photoLabel={credit.alt ?? alt} credit={credit.sourceLabel} sourceHref={credit.sourceUrl} licenseHref={"licenseUrl" in credit ? credit.licenseUrl : null} fullCreditHref={"fullCreditUrl" in credit ? credit.fullCreditUrl : null} /> : null}
+    {credit ? <MorroviaPhotoCredit presentation="inline" photoLabel={credit.alt ?? alt} credit={credit.sourceLabel} authorHref={"authorUrl" in credit ? credit.authorUrl : null} sourceHref={credit.sourceUrl} licenseHref={"licenseUrl" in credit ? credit.licenseUrl : null} fullCreditHref={"fullCreditUrl" in credit ? credit.fullCreditUrl : null} /> : null}
   </div>;
 }

@@ -39,7 +39,7 @@ function Photo({ imageKey, name, language }: { imageKey: string | null; name: st
     <>
       {/* Content imagery is bounded by the visible page; the browser loads it only near view. */}
       <img src={credit.src} alt={credit.alt} loading="lazy" decoding="async" />
-      <MorroviaPhotoCredit language={language} credit={credit.sourceLabel} photoLabel={name} sourceHref={credit.sourceUrl}
+      <MorroviaPhotoCredit language={language} credit={credit.sourceLabel} photoLabel={name} authorHref={credit.authorUrl} sourceHref={credit.sourceUrl}
         licenseHref={credit.licenseUrl} fullCreditHref={credit.fullCreditUrl} />
     </>
   </div>;

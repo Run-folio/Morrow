@@ -15,6 +15,6 @@ export default function RouteDetailPhoto({ photo, label, eager = false, landscap
       width={768} height={1024} loading={eager ? "eager" : "lazy"} fetchPriority={eager ? "high" : "auto"}
       decoding="async" alt={photo?.alt ?? ""}
       fallback={<div className={styles.photoFallback}><ImageOff aria-hidden="true" /><span>{label}</span><small>Photography pending editorial review</small></div>} />
-    {photo ? <MorroviaPhotoCredit photoLabel={photo.alt} credit={`${photo.author} · ${photo.license}`} sourceHref={photo.sourceUrl} licenseHref={photo.licenseUrl} fullCreditHref={`/journey/immersive/credits.html#${photo.key}`} /> : null}
+    {photo ? <MorroviaPhotoCredit presentation="inline" photoLabel={photo.alt} credit={`${photo.author} · ${photo.license}`} authorHref={photo.authorUrl} sourceHref={photo.sourceUrl} licenseHref={photo.licenseUrl} fullCreditHref={`/journey/immersive/credits.html#${photo.key}`} /> : null}
   </figure>;
 }

@@ -16,6 +16,6 @@ export default function DiscoveryPhoto({ route, image = route.image, priority = 
       srcSet={image?.variants.map((variant) => `${variant.src} ${variant.width}w`).join(", ")} sizes={sizes}
       width={image?.variants.at(-1)?.width ?? 768} height={image?.variants.at(-1)?.height ?? 512}
       alt={image?.alt ?? ""} loading={priority ? "eager" : "lazy"} fetchPriority={priority ? "high" : "auto"} decoding="async" />
-    {source && image ? <MorroviaPhotoCredit placement="top-right" photoLabel={image.alt} credit={image.credit} sourceHref={image.sourceUrl} licenseHref={image.licenseUrl} fullCreditHref="/journey/immersive/credits.html" /> : null}
+    {source && image ? <MorroviaPhotoCredit presentation="inline" placement="bottom-left" photoLabel={image.alt} credit={image.credit} authorHref={image.authorUrl} sourceHref={image.sourceUrl} licenseHref={image.licenseUrl} fullCreditHref="/journey/immersive/credits.html" /> : null}
   </div>;
 }

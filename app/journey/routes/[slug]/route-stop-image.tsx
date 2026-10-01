@@ -51,6 +51,6 @@ export default function RouteStopImage({ routeKey, stop, country, index, fallbac
   const selectedPhoto = canonicalPhoto ?? photo;
   const source = selectedPhoto?.src ?? fallbackImage;
   return <div ref={containerRef} className={`${styles.stopImage} ${source ? "" : styles.stopImagePending}`} style={source ? { backgroundImage: `url(${source})` } : undefined} role={source ? "img" : undefined} aria-label={source ? selectedPhoto?.alt ?? `${stop}, ${country}` : undefined}>
-    {selectedPhoto ? <MorroviaPhotoCredit photoLabel={selectedPhoto.alt ?? `${stop}, ${country}`} credit={selectedPhoto.sourceLabel} sourceHref={selectedPhoto.sourceUrl} licenseHref={"licenseUrl" in selectedPhoto ? selectedPhoto.licenseUrl : null} fullCreditHref={"fullCreditUrl" in selectedPhoto ? selectedPhoto.fullCreditUrl : null} /> : null}
+    {selectedPhoto ? <MorroviaPhotoCredit photoLabel={selectedPhoto.alt ?? `${stop}, ${country}`} credit={selectedPhoto.sourceLabel} authorHref={"authorUrl" in selectedPhoto ? selectedPhoto.authorUrl : null} sourceHref={selectedPhoto.sourceUrl} licenseHref={"licenseUrl" in selectedPhoto ? selectedPhoto.licenseUrl : null} fullCreditHref={"fullCreditUrl" in selectedPhoto ? selectedPhoto.fullCreditUrl : null} /> : null}
   </div>;
 }

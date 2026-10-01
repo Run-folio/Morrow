@@ -17,6 +17,7 @@ const RoutePreview = dynamic(() => import("@/app/journey/discover/route-preview"
 
 type InspirationPhoto = {
   credit: string;
+  authorHref?: string;
   focalPosition?: string;
   fullCreditHref?: string;
   licenseHref?: string;
@@ -34,6 +35,7 @@ function inspirationPhotos(route: ImmersiveRoute, es: boolean): InspirationPhoto
     variants: candidate.variants,
     credit: es ? candidate.creditEs : candidate.credit,
     photoLabel: candidate.country,
+    authorHref: candidate.authorUrl,
     sourceHref: candidate.source.startsWith("http") ? candidate.source : undefined,
     fullCreditHref: candidate.firstParty ? undefined : "/journey/immersive/credits.html",
     focalPosition: candidate.focalPosition,
@@ -42,7 +44,7 @@ function inspirationPhotos(route: ImmersiveRoute, es: boolean): InspirationPhoto
   return [
     ...(hero ? [heroCandidate(hero)] : []),
     ...(heroFallback ? [heroCandidate(heroFallback)] : []),
-    ...(photo ? [{ variants: photo.variants, credit: `${photo.author} · ${photo.license}`, photoLabel: photo.alt, sourceHref: photo.sourceUrl, licenseHref: photo.licenseUrl, fullCreditHref: `/journey/immersive/credits.html#${photo.key}`, cloudinaryOwned: photo.provenance === "reviewed-morrovia-first-party" }] : []),
+    ...(photo ? [{ variants: photo.variants, credit: `${photo.author} · ${photo.license}`, authorHref: photo.authorUrl, photoLabel: photo.alt, sourceHref: photo.sourceUrl, licenseHref: photo.licenseUrl, fullCreditHref: `/journey/immersive/credits.html#${photo.key}`, cloudinaryOwned: photo.provenance === "reviewed-morrovia-first-party" }] : []),
   ];
 }
 
@@ -62,7 +64,7 @@ function HomepageRouteCard({ route, es, onSelect }: { route: ImmersiveRoute; es:
       <span className={styles.inspirationTitle}>{route.title}</span>
       <span className={styles.inspirationMeta}>{days} {es ? "días" : "days"}{" · "}{route.stops.length} {es ? "paradas" : "stops"}</span>
     </EasyTLinkButton>
-    {photo ? <MorroviaPhotoCredit className={styles.inspirationCredit} placement="top-right" photoLabel={photo.photoLabel} credit={photo.credit} sourceHref={photo.sourceHref} licenseHref={photo.licenseHref} fullCreditHref={photo.fullCreditHref} /> : null}
+    {photo ? <MorroviaPhotoCredit className={styles.inspirationCredit} placement="bottom-left" photoLabel={photo.photoLabel} credit={photo.credit} authorHref={photo.authorHref} sourceHref={photo.sourceHref} licenseHref={photo.licenseHref} fullCreditHref={photo.fullCreditHref} /> : null}
   </article>;
 }
 

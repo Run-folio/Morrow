@@ -20,6 +20,7 @@ import {
   loadRememberedOwner,
 } from "@/lib/easyt/storage";
 import { isEasyTTrip, type EasyTTrip } from "@/lib/easyt/trip";
+import { describePhotoAttribution } from "@/lib/easyt/photo-attribution";
 import ResilientImage from "@/components/easyt/resilient-image";
 import { journeyReauthenticationPath, tripConflictResolutionActions } from "@/lib/easyt/trip-continuity";
 import { ownerBoundaryState } from "@/lib/easyt/private-browser-context";
@@ -57,6 +58,9 @@ export function useOptionalTripShellMutation() {
 }
 
 export function TripShellIdentityAndActions({ mobilePhoto }: { mobilePhoto: OverviewPlaceImage | null }) {
+  const photoAttribution = mobilePhoto?.sourceUrl && mobilePhoto.sourceLabel
+    ? describePhotoAttribution({ credit: mobilePhoto.sourceLabel, authorHref: mobilePhoto.authorUrl, sourceHref: mobilePhoto.sourceUrl, licenseHref: mobilePhoto.licenseUrl })
+    : null;
   const mutation = useTripShellMutation();
   const trip = mutation.trip;
   const routeLabel = tripRouteDisplayLabel(trip);
@@ -96,10 +100,13 @@ export function TripShellIdentityAndActions({ mobilePhoto }: { mobilePhoto: Over
         <div><dt><MapPin aria-hidden="true" /><span className={styles.srOnly}>Overnight places</span></dt><dd>{overnightPlaceCount} {overnightPlaceCount === 1 ? "overnight place" : "overnight places"}</dd></div>
         <div><dt><Route aria-hidden="true" /><span className={styles.srOnly}>Transfers</span></dt><dd>{mutation.trip.legs.length} {mutation.trip.legs.length === 1 ? "transfer" : "transfers"}</dd></div>
       </dl>
-      {mobilePhoto?.sourceUrl ? <details className={styles.mobilePhotoSources}>
+      {mobilePhoto?.sourceUrl && photoAttribution ? <details className={styles.mobilePhotoSources}>
         <summary>Trip photo source</summary>
-        <div><a href={mobilePhoto.sourceUrl} target="_blank" rel="noreferrer">{mobilePhoto.sourceLabel ?? mobilePhoto.alt}</a>
-          {mobilePhoto.licenseUrl ? <a href={mobilePhoto.licenseUrl} target="_blank" rel="noreferrer">Licence</a> : null}
+        <div>{photoAttribution.kind === "unsplash" ? <>
+          <a href={photoAttribution.photographerHref} target="_blank" rel="noopener noreferrer">Photo by {photoAttribution.photographer}</a>
+          <a href={photoAttribution.sourceHref} target="_blank" rel="noopener noreferrer">Unsplash</a>
+        </> : <a href={photoAttribution.sourceHref} target="_blank" rel="noopener noreferrer">{photoAttribution.credit}</a>}
+          {photoAttribution.licenseHref ? <a href={photoAttribution.licenseHref} target="_blank" rel="noopener noreferrer">Licence</a> : null}
           {mobilePhoto.fullCreditUrl ? <a href={mobilePhoto.fullCreditUrl}>Full credits</a> : null}
         </div>
       </details> : null}

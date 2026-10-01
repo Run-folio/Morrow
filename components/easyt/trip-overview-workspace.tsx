@@ -367,7 +367,7 @@ export default function TripOverviewWorkspace({
                     <ResilientImage src={step.image?.src} alt={step.image?.alt ?? ""} fallback={<div className={styles.stopFallback}><MapPin aria-hidden="true" /></div>} />
                     <div className={styles.stopOverlay}><h3>{step.name}</h3><span>{step.meta}</span></div>
                   </article></Link>
-                  {step.image?.sourceLabel ? <MorroviaPhotoCredit className={styles.stopCredit} placement="top-right" credit={step.image.sourceLabel} photoLabel={step.image.alt} sourceHref={step.image.sourceUrl} licenseHref={step.image.licenseUrl} fullCreditHref={step.image.fullCreditUrl} /> : null}
+                  {step.image?.sourceLabel ? <MorroviaPhotoCredit placement="bottom-left" credit={step.image.sourceLabel} photoLabel={step.image.alt} authorHref={step.image.authorUrl} sourceHref={step.image.sourceUrl} licenseHref={step.image.licenseUrl} fullCreditHref={step.image.fullCreditUrl} /> : null}
                   {step.transfer ? <div className={styles.transfer}><ArrowRight aria-hidden="true" /><span>{step.transfer}</span></div> : <div className={styles.transferSpacer} aria-hidden="true" />}
                   {index < steps.length - 1 ? <ChevronRight className={styles.routeDirection} aria-hidden="true" /> : null}
                 </li>)}

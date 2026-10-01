@@ -4,6 +4,7 @@ import type { EasyTTrip } from "./trip.ts";
 export type DashboardTripPhoto = {
   src: string;
   alt: string;
+  authorHref: string | null;
   creditHref: string | null;
   creditLabel: string | null;
   licenseHref: string | null;
@@ -21,6 +22,7 @@ function storedTripPhoto(trip: EasyTTrip): DashboardTripPhoto | null {
   return {
     src,
     alt: credit.alt,
+    authorHref: credit.authorUrl ?? null,
     creditHref: credit.sourceUrl,
     creditLabel: credit.sourceLabel,
     licenseHref: credit.licenseUrl,
@@ -39,6 +41,7 @@ export function canonicalDashboardTripPhotos(trip: EasyTTrip): DashboardTripPhot
       return [{
         src,
         alt: photo.alt,
+        authorHref: photo.authorUrl ?? null,
         creditHref: photo.sourceUrl,
         creditLabel: `${photo.author} · ${photo.license}`,
         licenseHref: photo.licenseUrl,

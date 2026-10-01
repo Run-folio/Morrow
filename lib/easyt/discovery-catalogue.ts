@@ -3,14 +3,14 @@ import { discoveryCharacter } from "./route-discovery.ts";
 import type { RouteFamily } from "./route-catalog.ts";
 import { routeDestinationPhoto, routeImagePhoto, type RoutePhotoRecord } from "./route-images.ts";
 
-export type DiscoveryImage = { variants: { src: string; width: number; height?: number }[]; alt: string; credit: string; sourceUrl: string; license: string; licenseUrl?: string };
+export type DiscoveryImage = { variants: { src: string; width: number; height?: number }[]; alt: string; credit: string; authorUrl?: string; sourceUrl: string; license: string; licenseUrl?: string };
 export type DiscoveryRoute = Pick<RouteFamily, "key" | "title" | "region" | "interests" | "bestFor" | "suggestedDays"> & {
   href: string; countries: string[]; character: string; imageQuery: string;
   stops: { id: string; name: string; country: string; coordinates: [number, number]; reason: string }[];
   image: DiscoveryImage | null; supportingImage: DiscoveryImage | null;
 };
 function discoveryImage(photo: RoutePhotoRecord | null): DiscoveryImage | null {
-  return photo ? { variants: photo.variants, alt: photo.alt, credit: `${photo.author} · ${photo.license}`, sourceUrl: photo.sourceUrl, license: photo.license, licenseUrl: photo.licenseUrl } : null;
+  return photo ? { variants: photo.variants, alt: photo.alt, credit: `${photo.author} · ${photo.license}`, authorUrl: photo.authorUrl, sourceUrl: photo.sourceUrl, license: photo.license, licenseUrl: photo.licenseUrl } : null;
 }
 
 /** Resolve through the same licensed image owner used by immersive Route Detail. */

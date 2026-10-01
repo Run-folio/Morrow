@@ -9,6 +9,7 @@ import type { EasyTTrip, TripStop } from "./trip.ts";
 export type OverviewPlaceImage = {
   src: string;
   alt: string;
+  authorUrl?: string;
   sourceUrl?: string;
   sourceLabel?: string;
   licenseUrl?: string;
@@ -20,6 +21,7 @@ function reviewedPhotoImage(photo: RoutePhotoRecord | null): OverviewPlaceImage 
   return photo && src ? {
     src,
     alt: photo.alt,
+    ...(photo.authorUrl ? { authorUrl: photo.authorUrl } : {}),
     sourceUrl: photo.sourceUrl,
     sourceLabel: `${photo.author} · ${photo.license}`,
     licenseUrl: photo.licenseUrl,
@@ -55,6 +57,7 @@ export function overviewStopImage(trip: EasyTTrip, stop: TripStop): OverviewPlac
     return {
       src: imagedDay.image,
       alt: credit?.alt ?? imagedDay.title,
+      ...(credit?.authorUrl ? { authorUrl: credit.authorUrl } : {}),
       sourceUrl: credit?.sourceUrl ?? imagedDay.sourceUrl ?? undefined,
       sourceLabel: credit?.sourceLabel ?? (imagedDay.sourceUrl ? "Photo source" : undefined),
       licenseUrl: credit?.licenseUrl,
