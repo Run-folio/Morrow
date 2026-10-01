@@ -624,6 +624,12 @@
 .finderDock>header>span{display:flex;align-items:center;justify-content:space-between;gap:16px}
 .finderDock>header strong,.shapeDayHeader strong{color:var(--ink);font-family:var(--morrovia-display,Georgia,serif);font-size:27px;font-weight:500;letter-spacing:-.035em;line-height:1.05}
 .finderDock>header em{flex:0 0 auto;padding:7px 10px;color:var(--accent);background:var(--mist);border:0;border-radius:999px;font:700 9px/1 var(--morrovia-meta,var(--font-geist-mono,monospace));letter-spacing:.04em;text-transform:none}
+.finderPlaceHeading{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:start;gap:4px 12px;min-width:0}
+.finderPlaceHeading h2{grid-column:1;grid-row:1;margin:0;color:var(--ink);font:500 27px/1.05 var(--morrovia-display,var(--font-geist-serif,Georgia,serif));letter-spacing:-.035em;overflow-wrap:anywhere}
+.finderPlaceHeading em{grid-column:2;grid-row:1;align-self:center}
+.finderPlaceHeading small{grid-column:1/-1;grid-row:2;color:var(--morrovia-muted);font:var(--morrovia-type-metadata)}
+.shapeDayPlan .mapPlanSavedReferences>li{display:block;min-width:0;padding:0}
+.shapeDayPlan .mapPlanSavedReferenceLink{display:flex;width:100%;min-width:0;justify-content:flex-start;white-space:normal;text-align:left;overflow-wrap:anywhere}
 .finderTabs{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:0;margin-top:9px;padding:4px;border:1px solid var(--hairline);border-radius:12px;background:color-mix(in srgb,var(--mist) 46%,#fff);overflow:hidden}
 .finderTabs button{min-height:38px;border:0;border-right:1px solid color-mix(in srgb,var(--hairline) 78%,transparent);border-radius:8px;color:color-mix(in srgb,var(--accent) 72%,var(--morrovia-muted));background:transparent;font:700 11px var(--morrovia-ui,var(--font-geist-sans,Geist,Inter,sans-serif));letter-spacing:0;transition:color .18s,background .18s}
 .finderTabs button:last-child{border-right:0}.finderTabs button:hover:not([aria-pressed="true"]){color:var(--accent);background:rgba(255,255,255,.72)}
@@ -1080,7 +1086,7 @@ button.mapPlanAgendaRow{cursor:pointer;border-radius:var(--morrovia-control-radi
   .shellPlanner .mapContextEntity{gap:0}
   .shellPlanner .mapContextEntity .mapContextEyebrow{display:none}
   .shellPlanner .mapContextEntity .mapContextHeading h2{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;clip-path:inset(50%)}
-  .shellPlanner .mapContextEntity .mapContextHeading>button{display:none!important}
+  .shellPlanner .mapContextEntity .mapContextHeading>button{display:flex!important}
 }
 
 @media(min-width:981px){

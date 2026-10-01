@@ -21,6 +21,7 @@ import type { RecommendationDetailModel } from "@/lib/easyt/recommendation-detai
 import { recommendationDetailTitleTier } from "@/lib/easyt/recommendation-detail-title";
 import { EasyTButton, EasyTLinkButton, EasyTSelect } from "./easyt-controls";
 import ResilientImage from "./resilient-image";
+import placeEnrichmentStyles from "./map-place-enrichment.module.css";
 import styles from "./itinerary-item-detail.module.css";
 
 export type ItineraryItemDetailModel = RecommendationDetailModel;
@@ -39,6 +40,7 @@ type Props = {
   embedded?: boolean;
   omitEmptyMedia?: boolean;
   compactMapHeader?: boolean;
+  providerContent?: ReactNode;
 };
 
 const partLabels: Record<ItineraryDayPart, string> = {
@@ -62,6 +64,7 @@ export default function RecommendationDetail({
   embedded = false,
   omitEmptyMedia = false,
   compactMapHeader = false,
+  providerContent,
 }: Props) {
   const headingId = useId();
   const shellRef = useRef<HTMLElement>(null);
@@ -148,6 +151,8 @@ export default function RecommendationDetail({
         {detail.whyFit ? <section className={styles.why} aria-label="Why this fits"><Sparkles aria-hidden="true" /><div><h3>{detail.whyFitLabel ?? "Why it fits this part of the day"}</h3><p>{detail.whyFit}</p></div></section> : null}
 
         {detail.practical?.length ? <section className={styles.practical}><h3>Practical info</h3><dl>{detail.practical.map((fact) => <div key={fact.label}><dt>{fact.label}</dt><dd>{fact.value}</dd></div>)}</dl></section> : null}
+
+        {providerContent ? <section aria-label="Place details from provider">{providerContent}</section> : null}
 
         {detail.canMoveTime && onDayPartChange ? <EasyTSelect label="Part of day" value={detail.dayPart ?? ""} disabled={pending} onChange={(event) => onDayPartChange(event.target.value ? event.target.value as ItineraryDayPart : null)}>
           <option value="">Time not set</option>

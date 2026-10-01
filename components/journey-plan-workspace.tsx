@@ -7,6 +7,7 @@ import type { JourneyCalendarDay, JourneyStop } from "@/lib/journey";
 import type { MapPlanAgendaItem, MapPlanDayOption } from "@/lib/easyt/map-plan-agenda";
 import type { ItineraryDayPart, PlanItem } from "@/lib/easyt/trip";
 import styles from "@/app/journey/journey.module.css";
+import { EasyTButton, EasyTLinkButton } from "@/components/easyt/easyt-controls";
 
 export type PlanWorkspaceCopy = {
   addActivity: string;
@@ -36,6 +37,9 @@ export interface PlanWorkspaceProps {
   };
   editHref: string;
   copy: PlanWorkspaceCopy;
+  googleCanvasActive?: boolean;
+  savedReferences?: readonly { id: string; placeId: string; dayLabel: string | null; mapsUrl: string }[];
+  onSelectSavedReference?: (referenceId: string, placeId: string) => void;
 }
 
 function dayDateLabel(date: string) {
@@ -73,7 +77,7 @@ function AgendaRow({ item, navigation }: { item: MapPlanAgendaItem; navigation: 
   </li>;
 }
 
-export function PlanWorkspace({ context, activity, navigation, editHref, copy }: PlanWorkspaceProps) {
+export function PlanWorkspace({ context, activity, navigation, editHref, copy, googleCanvasActive = false, savedReferences = [], onSelectSavedReference }: PlanWorkspaceProps) {
   const { selectedDay, selectedStop, planItem, days, items, freeTime } = context;
   const [addingActivity, setAddingActivity] = useState(false);
 
@@ -90,6 +94,21 @@ export function PlanWorkspace({ context, activity, navigation, editHref, copy }:
       {items.length ? <ol className={styles.mapPlanAgenda}>
         {items.map((item) => <AgendaRow key={`${item.kind}-${item.id}`} item={item} navigation={navigation} />)}
       </ol> : <p className={styles.mapPlanEmpty}>Nothing is scheduled for this day yet.</p>}
+
+      {savedReferences.length ? <section aria-label="Saved for later">
+        <h3>Saved for later</h3>
+        <ul className={`${styles.mapPlanAgenda} ${styles.mapPlanSavedReferences}`}>
+          {savedReferences.map((reference) => <li key={reference.id}>
+            {googleCanvasActive && onSelectSavedReference
+              ? <EasyTButton variant="quiet" fullWidth onClick={() => onSelectSavedReference(reference.id, reference.placeId)}>
+                  Saved place{reference.dayLabel ? ` · ${reference.dayLabel}` : " · for later"}
+                </EasyTButton>
+              : <EasyTLinkButton className={styles.mapPlanSavedReferenceLink} variant="quiet" fullWidth icon={ArrowUpRight} href={reference.mapsUrl} target="_blank" rel="noopener noreferrer">
+                  Saved Google place{reference.dayLabel ? ` · ${reference.dayLabel}` : " · for later"} · Open in Google Maps
+                </EasyTLinkButton>}
+          </li>)}
+        </ul>
+      </section> : null}
 
       {freeTime ? <button type="button" className={styles.mapPlanFreeTime} onClick={() => navigation.onFindNearby(freeTime)}><span><strong>{titleCase(freeTime)} free</strong><small>Find something nearby</small></span><ArrowUpRight aria-hidden="true" /></button> : null}
 

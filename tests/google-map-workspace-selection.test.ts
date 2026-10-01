@@ -11,7 +11,6 @@ import { googleCanvasPlacesForMapResults } from "../lib/easyt/google-map-result-
 import { nativeGooglePoiSelection } from "../lib/easyt/map-workspace-selection.ts";
 
 const parent = readFileSync(new URL("../components/journey-map-planner-workspace.tsx", import.meta.url), "utf8");
-const child = readFileSync(new URL("../components/easyt/map-place-enrichment.tsx", import.meta.url), "utf8");
 const stories = readFileSync(new URL("../components/easyt/trip-map-workspace.stories.tsx", import.meta.url), "utf8");
 
 test("the displayed Morrovia row and custom pin keep one stop-scoped identity while native POIs keep their exact Place ID", () => {
@@ -44,7 +43,6 @@ test("a previous selection's detail cannot render under a newer Place ID", () =>
   const oldDetail = { providerPlaceId: "place-a", name: "A" };
   assert.equal(selectedGoogleDetailForPlace("place-b", oldDetail), null);
   assert.equal(selectedGoogleDetailForPlace("place-a", oldDetail), oldDetail);
-  assert.match(child, /selectedGoogleDetailForPlace\(props\.selectedPlaceId, props\.detail\)/);
   assert.match(parent, /selectedGoogleDetailForPlace\(selectedGooglePlaceId, selectedGoogleDetail\)/);
 });
 
@@ -54,18 +52,18 @@ test("a saved reference keeps its exact canonical idea and day instead of borrow
   });
   assert.match(parent, /idea\.id === workspacePlaceSelection\.referenceId/);
   assert.match(parent, /const savedGoogleReferences = customTrip && selectedTripStop[\s\S]*googlePlaceReferenceIdeas\(customTrip\.brief\.itineraryIdeas\)[\s\S]*idea\.stopId === selectedTripStop\.id/);
-  assert.match(parent, /<GoogleSavedReferenceList references=\{savedGoogleReferences\}/);
-  assert.match(child, /onSelect\(reference\.id, reference\.placeId\)/);
+  assert.match(parent, /savedReferences=\{savedGoogleReferences\}/);
+  assert.match(parent, /onSelectSavedReference=\{selectGoogleSavedReference\}/);
 });
 
 test("the integrated map has one parent-owned category, selection, and detail path", () => {
   assert.match(parent, /createLatestGoogleDetailRequest/);
   assert.match(parent, /GoogleTripMapCanvas/);
-  assert.match(parent, /MapPlaceEnrichment/);
+  assert.match(parent, /<ItineraryItemDetail[\s\S]*?detail=\{selectedPlaceDetail\}/);
+  assert.doesNotMatch(parent, /<MapPlaceEnrichment/);
   assert.doesNotMatch(parent, /Explore with Google Maps|Back to day planning/);
-  assert.doesNotMatch(child, /useState|See.*Eat.*Stay.*Practical/);
-  assert.match(child, /onSelectPlace/);
-  assert.match(child, /onBackToPlaces/);
+  assert.match(parent, /onNativePoi=\{selectGoogleNativePoi\}/);
+  assert.match(parent, /onSelectPlace=\{selectGoogleCanvasPlace\}/);
   assert.equal((parent.match(/id="map-contextual-sheet"/g) ?? []).length, 1);
 });
 

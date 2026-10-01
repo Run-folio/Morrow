@@ -943,6 +943,27 @@ export const MapPlanFreeTime: Story = {
   parameters: { nextjs: { appDirectory: true, navigation: { pathname: "/journey/delhi-agra-jaipur/map", query: { stop: "jaipur", mode: "plan", day: "10" } } } },
 };
 
+const googleSavedReferencePlanTrip: EasyTTrip = {
+  ...goldenTriangleMapPlanTrip,
+  brief: {
+    ...goldenTriangleMapPlanTrip.brief,
+    itineraryIdeas: [...(goldenTriangleMapPlanTrip.brief.itineraryIdeas ?? []), {
+      id: "agra-google-saved-reference-fixture",
+      source: "google-place-reference",
+      stopId: "agra",
+      category: "stay",
+      providerReference: { provider: "google", placeId: "ChIJagraSavedReferenceFixture" },
+      dayId: "india-day-5",
+    }],
+  },
+};
+
+export const MapPlanSavedGoogleReferenceMapLibre: Story = {
+  ...GoldenTriangle,
+  args: { storyTrip: googleSavedReferencePlanTrip, storyState: { mapMode: "detail", shapeDayTab: "plan", mobileShapeDayOpen: true, mobileDrawerOpen: true } },
+  parameters: mapPlanAgraDayFiveParameters,
+};
+
 export const MapPlanSingleDayStop: Story = {
   args: { storyTrip: cancunReturnTripFixture, storyState: { mapMode: "detail", shapeDayTab: "plan" } },
   parameters: { nextjs: { appDirectory: true, navigation: { pathname: "/journey/storybook-cancun-return/map", query: { stop: "antigua", mode: "plan", day: "3" } } } },

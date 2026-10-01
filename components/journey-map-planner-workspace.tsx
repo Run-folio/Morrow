@@ -21,8 +21,8 @@ import EasyTTripCopilot from "@/components/easyt/easyt-trip-copilot";
 import { MorroviaRecoveryFeedback, MorroviaSaveStatus } from "@/components/easyt/morrovia-feedback";
 import { MorroviaSectionStatus } from "@/components/easyt/morrovia-loading-states";
 import { EasyTButton, EasyTSelect } from "@/components/easyt/easyt-controls";
-import MapPlaceEnrichment, { GoogleSavedReferenceList } from "@/components/easyt/map-place-enrichment";
 import ItineraryItemDetail from "@/components/easyt/itinerary-item-detail";
+import placeMediaStyles from "@/components/easyt/map-place-enrichment.module.css";
 import TripTransportChoiceControl from "@/components/easyt/trip-transport-choice-control";
 import { affiliateDisclosure, MorroviaAffiliateLink } from "@/components/easyt/affiliate-link";
 import { useWorkspaceOrientationReady, useWorkspaceOrientationTarget } from "@/components/easyt/workspace-orientation";
@@ -37,7 +37,7 @@ import { addMappedPlaceToTrip, removeMappedPlaceFromTrip } from "@/lib/easyt/map
 import { mapLibreCompatibleResults, mapResultForDiscoveryPlace, mapResultForHandoffTarget, mapResultForLocalPlace, mapResultForSourceAtStop, mapResultPlanItem, mergeMapResults, projectPersistedMapResults, reconcileMapResultSelection, reconcilePlannerPinSelection, type MapResultPlace } from "@/lib/easyt/map-result-selection";
 import { mobileMapDrawerDragDecision } from "@/lib/easyt/mobile-map-drawer";
 import { googlePlaceReferenceChoiceId, itineraryIdeaForLocalPlace, itineraryIdeaForPlace, preferredItineraryIdeaDay, removeItineraryIdea, saveGooglePlaceReference, saveItineraryIdea, scheduleGooglePlaceReference, scheduleItineraryIdea, validIdeaDays } from "@/lib/easyt/itinerary-ideas";
-import { recommendationDetailForMapResult } from "@/lib/easyt/recommendation-detail";
+import { recommendationDetailForMapResult, type RecommendationDetailModel } from "@/lib/easyt/recommendation-detail";
 import { preferredItineraryDayPart, setDiscoveryPlaceScheduled } from "@/lib/easyt/itinerary-activity-placement";
 import { composeItineraryDay } from "@/lib/easyt/itinerary-day-composition";
 import { mapPlanAgendaForDay, mapPlanDaysForStop } from "@/lib/easyt/map-plan-agenda";
@@ -88,6 +88,25 @@ const destinationIcons: Record<string, LucideIcon> = {
   gate: Torus,
   skyline: Building2,
 };
+
+function googlePlaceRecommendationDetail(place: EnrichedPlace | null, placeId: string, category: PlaceEnrichmentCategory | null, photo: { src: string } | null): RecommendationDetailModel {
+  const practical = [
+    place?.rating !== undefined ? { label: "Google rating", value: `${place.rating.toFixed(1)} ★${place.ratingCount !== undefined ? ` · ${place.ratingCount.toLocaleString()} ratings` : ""}` } : null,
+    place?.priceLevel ? { label: "Google price level", value: place.priceLevel.replace(/^PRICE_LEVEL_/, "").toLowerCase().replace(/_/g, " ") } : null,
+    place?.openNow !== undefined ? { label: "At lookup", value: place.openNow ? "Open" : "Closed" } : null,
+  ].filter((fact): fact is { label: string; value: string } => Boolean(fact));
+  return {
+    id: placeId,
+    kind: category === "stay" ? "accommodation" : category === "eat" ? "restaurant" : "activity",
+    title: place?.name ?? "Google place",
+    location: place?.address ?? null,
+    image: photo?.src ?? null,
+    imageAlt: place ? `Provider photo of ${place.name}` : "",
+    category: place?.category ?? (category ? category[0]!.toUpperCase() + category.slice(1) : "Place"),
+    practical,
+    canRemove: false,
+  };
+}
 
 type CustomPick = { id: string; title: string; area: string; type: string; duration: string; description: string; image?: string; sourceUrl?: string; coordinates?: [number, number]; country?: string };
 type CustomDestination = { id: string; name: string; country?: string; coordinates?: [number, number]; kind?: string };
@@ -632,9 +651,9 @@ export function JourneyMapPlannerWorkspace({
   const savedGoogleReferences = customTrip && selectedTripStop
     ? googlePlaceReferenceIdeas(customTrip.brief.itineraryIdeas)
       .filter((idea) => idea.stopId === selectedTripStop.id)
-      .map((idea) => ({ id: idea.id, placeId: idea.providerReference.placeId, dayLabel: idea.dayId ? `Day ${customTrip.planItems.find((day) => day.id === idea.dayId)?.dayNumber ?? "?"}` : null }))
+      .map((idea) => ({ id: idea.id, placeId: idea.providerReference.placeId, dayLabel: idea.dayId ? `Day ${customTrip.planItems.find((day) => day.id === idea.dayId)?.dayNumber ?? "?"}` : null, mapsUrl: `https://www.google.com/maps/search/?api=1&query_place_id=${encodeURIComponent(idea.providerReference.placeId)}` }))
     : [];
-  useEffect(() => { setGoogleMediaRequestedPlaceId(null); }, [selectedGooglePlaceId]);
+  useEffect(() => { setGoogleMediaRequestedPlaceId(selectedGooglePlaceId); }, [selectedGooglePlaceId]);
   const googleDayOptions = customTrip && selectedGoogleStopId ? validIdeaDays(customTrip, selectedGoogleStopId) : [];
   useEffect(() => {
     const target = selectedGoogleChoice?.dayId ?? (workspacePlaceSelection.kind === "google" ? workspacePlaceSelection.dayId : null);
@@ -968,6 +987,10 @@ export function JourneyMapPlannerWorkspace({
       context: { surface: "map", activeDayId: selectedPlanItem?.stopId === selectedLocalPlace.stopId ? selectedPlanItem.id : undefined, activeDayPart: selectedRecommendationPart },
     })
     : null;
+  const selectedGoogleRecommendationDetail = selectedGooglePlaceId
+    ? googlePlaceRecommendationDetail(currentGoogleDetail, selectedGooglePlaceId, googleDiscoveryCategory, selectedGooglePhoto)
+    : null;
+  const selectedPlaceDetail = selectedRecommendationDetail ?? selectedGoogleRecommendationDetail;
   const selectedMapStopFirstItem = customTrip?.planItems.filter((item) => item.stopId === selectedTripStop?.id).sort((left, right) => left.dayNumber - right.dayNumber)[0];
   const selectedDestinationMediaKey = customTrip && selectedMapStopFirstItem ? `${customTrip.id}-day-${selectedMapStopFirstItem.dayNumber}` : selected.id;
   const selectedDestinationMedia = placeMedia[selectedDestinationMediaKey];
@@ -991,7 +1014,7 @@ export function JourneyMapPlannerWorkspace({
   const showShellContext = Boolean(
     !tripStatusExpanded
     && !copilotOpen
-    && !(googleCanvasActive && shapeDayTab !== "plan")
+    && !(googleCanvasActive && shapeDayTab !== "plan" && !selectedGooglePlaceId)
     && (wholeRouteMapContext || hasExplicitMapContext || mapMode === "detail"),
   );
   const defaultMapContext = Boolean(
@@ -1232,7 +1255,7 @@ export function JourneyMapPlannerWorkspace({
     setSelectedPlannerPin(null);
     setSelectedRouteLegId(null);
     if (shapeDayTab === "plan") setShapeDayTab("see");
-    setMobileShapeDayOpen(true);
+    setMobileShapeDayOpen(false);
     setMobileMapDrawerOpen(true);
     return true;
   };
@@ -1253,7 +1276,7 @@ export function JourneyMapPlannerWorkspace({
       && idea.id === referenceId && idea.stopId === selectedTripStop.id && idea.providerReference.placeId === placeId)) return;
     setWorkspacePlaceSelection(googleSavedReferenceSelection(placeId, selectedTripStop.id, referenceId));
     setNativeGooglePoint(null);
-    setMobileShapeDayOpen(true);
+    setMobileShapeDayOpen(false);
     setMobileMapDrawerOpen(true);
   };
   const selectMapPlanDay = useCallback((dayNumber: number) => {
@@ -2936,7 +2959,7 @@ export function JourneyMapPlannerWorkspace({
         </motion.div>
       </section>
 
-      {showDayPlanner ? <button type="button" className={styles.mapDayControl} aria-expanded={mobileMapDrawerOpen && mobileMapSheetView === "planner"} aria-controls="map-contextual-sheet" onClick={() => { setMobileMapDrawerOpen(true); setMobileShapeDayOpen(true); }}><CalendarDays aria-hidden="true" /><span><small>{selectedDay.label || `Day ${selectedPlanItem?.dayNumber ?? 1}`}</small><strong>Shape the day · {selected.city}</strong></span></button> : null}
+      {showDayPlanner ? <button type="button" className={styles.mapDayControl} aria-label={`Open planning for ${selected.city}`} aria-expanded={mobileMapDrawerOpen && mobileMapSheetView === "planner"} aria-controls="map-contextual-sheet" onClick={() => { setMobileMapDrawerOpen(true); setMobileShapeDayOpen(true); }}><CalendarDays aria-hidden="true" /><span><small>{selectedDay.label || `Day ${selectedPlanItem?.dayNumber ?? 1}`}</small><strong>{selected.city}</strong></span></button> : null}
 
       <div
         id="map-contextual-sheet"
@@ -2953,37 +2976,69 @@ export function JourneyMapPlannerWorkspace({
         </header>
         <div id="map-contextual-sheet-content" ref={drawerBodyRef} className={styles.mobileMapSheetBody}>
       <aside className={`${styles.itineraryPanel} ${hasCanonicalPlanner ? `${styles.itineraryWithFinder} ${styles.canonicalPlannerStatus}` : ""} ${hasCanonicalPlanner && tripStatusExpanded ? styles.tripStatusExpanded : ""} ${tripHealthDetail ? styles.healthDetailOpen : ""} ${pinPlacementMode || Boolean(pinCoordinates) ? styles.mapContextHidden : ""} ${defaultMapContext ? styles.mapDefaultContext : ""} ${isShellPresentation && !showShellContext ? styles.mapContextEmpty : ""} ${isShellPresentation && selectedRouteLeg ? styles.mapTransferContext : ""} ${isShellPresentation && (selectedLocalPlace || selectedPlannerPin || selectedGooglePlaceId) ? styles.mapPlaceContext : ""} ${isShellPresentation && mapMode === "detail" && !selectedLocalPlace && !selectedPlannerPin && !selectedRouteLeg && !selectedGooglePlaceId ? styles.mapDestinationContext : ""}`} aria-label="Selected map context" aria-live="polite">
-        {isShellPresentation && customTrip ? showShellContext && !selectedGooglePlaceId ? <section className={`${styles.mapContextPanel} ${selectedLocalPlace || selectedPlannerPin || selectedRouteLeg ? styles.mapContextEntity : ""}`} aria-labelledby="map-context-title">
+        {isShellPresentation && customTrip ? showShellContext ? <section className={`${styles.mapContextPanel} ${selectedLocalPlace || selectedGooglePlaceId || selectedPlannerPin || selectedRouteLeg ? styles.mapContextEntity : ""}`} aria-labelledby="map-context-title">
           <p className={styles.mapContextEyebrow}>{selectedGooglePlaceId || selectedLocalPlace || selectedPlannerPin ? "Selected place" : selectedRouteLeg ? "Selected transfer" : mapMode === "overview" ? "Whole route" : mapDetailScope === "day" ? "Selected day" : "Selected stop"}</p>
           <div className={styles.mapContextHeading}>
-            <h2 id="map-context-title" className={selectedRecommendationDetail ? "sr-only" : undefined}>{currentGoogleDetail?.name ?? (selectedGooglePlaceId ? "Selected Google place" : null) ?? selectedLocalPlace?.name ?? selectedPlannerPin?.title ?? (selectedRouteLeg ? `${selectedRouteLeg.fromName} → ${selectedRouteLeg.toName}` : mapMode === "overview" ? `${customTrip.stops.length} ${customTrip.stops.length === 1 ? "stop" : "stops"}, one connected trip` : selectedTripStop?.name ?? selected.city)}</h2>
+          <h2 id="map-context-title" className={selectedPlaceDetail ? "sr-only" : undefined}>{currentGoogleDetail?.name ?? (selectedGooglePlaceId ? "Google place" : null) ?? selectedLocalPlace?.name ?? selectedPlannerPin?.title ?? (selectedRouteLeg ? `${selectedRouteLeg.fromName} → ${selectedRouteLeg.toName}` : mapMode === "overview" ? `${customTrip.stops.length} ${customTrip.stops.length === 1 ? "stop" : "stops"}, one connected trip` : selectedTripStop?.name ?? selected.city)}</h2>
             {selectedGooglePlaceId ? <EasyTButton iconOnly icon={X} variant="quiet" onClick={() => setWorkspacePlaceSelection({ kind: "none" })}>Close selected Google place details</EasyTButton> : selectedLocalPlace ? <button type="button" onClick={dismissSelectedMapResult} aria-label="Close selected place details"><X aria-hidden="true" /></button> : selectedPlannerPin ? <button type="button" onClick={() => { const id = selectedPlannerPin.id; setSelectedPlannerPin(null); setMobileMapDrawerOpen(false); restoreMapMarkerFocus("plannerPinId", id); }} aria-label="Close selected pin details"><X aria-hidden="true" /></button> : selectedRouteLeg ? <button type="button" onClick={clearSelectedRouteLeg} aria-label="Close transfer details"><X aria-hidden="true" /></button> : mapMode === "detail" ? <button type="button" onClick={resetWholeRoute} aria-label="Close destination details"><X aria-hidden="true" /></button> : null}
           </div>
 
-          {selectedRecommendationDetail && selectedLocalPlace ? <div className={styles.mapPlaceDetail}>
+          {selectedPlaceDetail ? <div className={styles.mapPlaceDetail}>
             <ItineraryItemDetail
               embedded
               omitEmptyMedia
-              compactMapHeader
-              detail={selectedRecommendationDetail}
-              mapHref={selectedLocalPlace.mapsUrl}
-              onClose={dismissSelectedMapResult}
+              detail={selectedPlaceDetail}
+              pending={Boolean(selectedGooglePlaceId && googleDetailStatus === "loading")}
+              mapHref={selectedLocalPlace?.mapsUrl ?? null}
+              onClose={() => {
+                if (selectedGooglePlaceId) {
+                  setWorkspacePlaceSelection({ kind: "none" });
+                  if (shapeDayTab === "plan") setMobileShapeDayOpen(true);
+                } else dismissSelectedMapResult();
+              }}
+              providerContent={selectedGooglePlaceId ? <>
+                {googleDetailStatus === "loading" ? <p role="status">Loading place details…</p> : null}
+                {googleDetailStatus === "unavailable" ? <p role="status">Place details are unavailable. Your selection is still here. <EasyTButton variant="quiet" size="small" onClick={() => setGoogleDetailRetry((value) => value + 1)}>Try again</EasyTButton></p> : null}
+                {currentGoogleDetail?.openNow !== undefined ? <p>{currentGoogleDetail.openNow ? "Open now (at lookup)" : "Closed now (at lookup)"}</p> : null}
+                {currentGoogleDetail?.hours?.length ? <details><summary>Current opening hours</summary><ul>{currentGoogleDetail.hours.map((hour) => <li key={hour}>{hour}</li>)}</ul></details> : null}
+                {currentGoogleDetail?.website ? <a href={currentGoogleDetail.website} target="_blank" rel="noopener noreferrer">Website <ArrowUpRight aria-hidden="true" /></a> : null}
+                {currentGoogleDetail ? <a href={currentGoogleDetail.mapsUrl} target="_blank" rel="noopener noreferrer">Open in Google Maps <ArrowUpRight aria-hidden="true" /></a> : <a href={`https://www.google.com/maps/search/?api=1&query_place_id=${encodeURIComponent(selectedGooglePlaceId)}`} target="_blank" rel="noopener noreferrer">Open in Google Maps <ArrowUpRight aria-hidden="true" /></a>}
+                {currentGoogleDetail?.attributions?.map((item) => <small key={item.name}>{item.url ? <a href={item.url} target="_blank" rel="noopener noreferrer">{item.name}</a> : item.name}</small>)}
+                {selectedGooglePhoto ? <figure className={placeMediaStyles.photoMedia}>
+                  <img src={selectedGooglePhoto.src} alt={`Provider photo of ${currentGoogleDetail?.name ?? "this place"}`} />
+                  <figcaption>Photo: {selectedGooglePhoto.attributions.length ? selectedGooglePhoto.attributions.map((credit, index) => <span key={`${credit.displayName}-${index}`}>{index ? " · " : null}{credit.photoUri ? <img src={credit.photoUri} alt="" /> : null}{credit.uri ? <a href={credit.uri} target="_blank" rel="noopener noreferrer">{credit.displayName}</a> : credit.displayName}</span>) : "Google Maps"} · <a href={selectedGooglePhoto.sourceUrl} target="_blank" rel="noopener noreferrer">View source photo</a></figcaption>
+                </figure> : null}
+                {selectedGoogleReviews.length ? <details className={placeMediaStyles.reviews}><summary>{selectedGoogleReviews.length} {selectedGoogleReviews.length === 1 ? "review" : "reviews"} from Google Maps</summary><ul>{selectedGoogleReviews.map((review) => <li key={review.sourceUrl}>
+                  <p>{review.text}</p>
+                  <p className={placeMediaStyles.reviewAuthor}>{review.author.avatarUrl ? <img src={review.author.avatarUrl} alt="" /> : null}{review.author.url ? <a href={review.author.url} target="_blank" rel="noopener noreferrer">{review.author.name}</a> : review.author.name}{review.rating !== undefined ? ` · ${review.rating} ★` : null} · <a href={review.sourceUrl} target="_blank" rel="noopener noreferrer">View review on Google Maps</a></p>
+                </li>)}</ul></details> : null}
+              </> : undefined}
               primaryActions={<>
-                {selectedLocalPlace.kind === "stay" && selectedLocalPlace.state === "result" ? <EasyTButton fullWidth onClick={saveSelectedRecommendation}>Save stay for {selectedTripStop?.name ?? "this stop"}</EasyTButton> : null}
-                {selectedLocalPlace.kind !== "stay" && selectedLocalPlace.state !== "scheduled" && selectedPlanItem ? <EasyTButton fullWidth onClick={addSelectedRecommendation}>Add to Day {selectedPlanItem.dayNumber}</EasyTButton> : null}
-                {selectedLocalPlace.kind !== "stay" && selectedLocalPlace.state === "result" ? <EasyTButton variant="secondary" onClick={saveSelectedRecommendation}>Save for later</EasyTButton> : null}
-                {selectedLocalPlace.kind === "stay" && getCurrentPartnerAction("accommodation") ? <><MorroviaAffiliateLink
+                {selectedLocalPlace?.kind === "stay" && selectedLocalPlace.state === "result" ? <EasyTButton fullWidth onClick={saveSelectedRecommendation}>Save stay for {selectedTripStop?.name ?? "this stop"}</EasyTButton> : null}
+                {selectedLocalPlace && selectedLocalPlace.kind !== "stay" && selectedLocalPlace.state !== "scheduled" && selectedPlanItem ? <EasyTButton fullWidth onClick={addSelectedRecommendation}>Add to Day {selectedPlanItem.dayNumber}</EasyTButton> : null}
+                {selectedLocalPlace && selectedLocalPlace.kind !== "stay" && selectedLocalPlace.state === "result" ? <EasyTButton variant="secondary" onClick={saveSelectedRecommendation}>Save for later</EasyTButton> : null}
+                {selectedLocalPlace?.kind === "stay" && getCurrentPartnerAction("accommodation") ? <><MorroviaAffiliateLink
                   action={{ ...getCurrentPartnerAction("accommodation")!, cta: "Check availability" }}
                   context={{ placement: "map_stay_finder", tripId: customTrip.id, stopId: selectedLocalPlace.stopId ?? undefined, workspaceView: "map", destinationCount: 1 }}
                   variant="secondary"
                 /><small>{affiliateDisclosure}</small></> : null}
-                {selectedLocalPlace.provider === "viator" && selectedLocalPlace.providerUrl ? <><MorroviaAffiliateLink
+                {selectedLocalPlace?.provider === "viator" && selectedLocalPlace.providerUrl ? <><MorroviaAffiliateLink
                   action={{ provider: "viator", category: "activities", href: selectedLocalPlace.providerUrl, cta: "View on Viator", affiliate: true }}
                   context={{ placement: "itinerary_day_experiences", tripId: customTrip.id, stopId: selectedLocalPlace.stopId ?? undefined, workspaceView: "map" }}
                   variant="secondary"
                 /><small>{affiliateDisclosure}</small></> : null}
+                {selectedGooglePlaceId && selectedGoogleStopId === selectedTripStop?.id ? <>
+                  {selectedGoogleChoice ? <p role="status">{selectedGoogleChoice.dayId ? `Added to Day ${customTrip.planItems.find((day) => day.id === selectedGoogleChoice.dayId)?.dayNumber ?? "?"}` : "Saved for later"} · Not booked</p> : null}
+                  {shapeDayTab !== "stay" && googleDayOptions.length ? <EasyTSelect label="Day for this place" value={googleTargetDayId} onChange={(event) => setGoogleTargetDayId(event.target.value)}>
+                    <option value="">Choose a day</option>
+                    {googleDayOptions.map((day) => <option key={day.id} value={day.id}>Day {day.dayNumber} · {day.date}</option>)}
+                  </EasyTSelect> : null}
+                  {shapeDayTab !== "stay" && googleDayOptions.length ? <EasyTButton fullWidth disabled={!currentGoogleDetail || !googleTargetDayId || selectedGoogleChoice?.dayId === googleTargetDayId} onClick={addSelectedGooglePlaceToDay}>{selectedGoogleChoice?.dayId ? "Move to selected day" : `Add to Day ${googleDayOptions.find((day) => day.id === googleTargetDayId)?.dayNumber ?? ""}`}</EasyTButton> : null}
+                  <EasyTButton variant="secondary" fullWidth disabled={!currentGoogleDetail || Boolean(selectedGoogleChoice)} onClick={saveSelectedGooglePlace}>{shapeDayTab === "stay" ? "Save stay for later" : "Save for later"}</EasyTButton>
+                  {selectedGoogleChoice ? <EasyTButton variant="quiet" fullWidth onClick={() => updatePlannerTrip((trip) => removeItineraryIdea(trip, selectedGoogleChoice.id), "Google place removed")}>Remove saved place</EasyTButton> : null}
+                </> : null}
               </>}
-              onRemove={selectedRecommendationDetail.canRemove || selectedLocalPlace.state !== "result" ? () => { if (removeSelectedRecommendation()) clearSelectedLocalPlace(); } : undefined}
+              onRemove={selectedLocalPlace && (selectedRecommendationDetail?.canRemove || selectedLocalPlace.state !== "result") ? () => { if (removeSelectedRecommendation()) clearSelectedLocalPlace(); } : undefined}
             />
           </div> : selectedLocalPlace ? <div className={styles.mapPlaceDetail}>
             {selectedLocalPlace.nativeName ? <p>{selectedLocalPlace.nativeName}</p> : null}
@@ -3114,45 +3169,10 @@ export function JourneyMapPlannerWorkspace({
         {selectedPlannerPin ? <div className={styles.selectedPinDetail}><small>{planCopy.selectedPin}</small><form onSubmit={(event) => { event.preventDefault(); savePinEdit(); }}><input value={pinEditDraft} onChange={(event) => setPinEditDraft(event.target.value)} aria-label={planCopy.renamePin} /><button type="submit" disabled={!pinEditDraft.trim()}>{planCopy.saveName}</button></form><span>{pinCategoryLabel(selectedPlannerPin.category)} · {language === "es" ? "Día" : "Day"} {selectedPlannerPin.dayNumber}</span><button type="button" onClick={() => { updatePlannerTrip((trip) => ({ ...trip, brief: { ...trip.brief, mapPins: (trip.brief.mapPins ?? []).filter((item) => item.id !== selectedPlannerPin.id) } }), "Map pin removed"); setSelectedPlannerPin(null); }}>{planCopy.removeSelectedPin}</button></div> : null}
       </aside> : null}
 
-      {showFinderDock ? <aside id="shape-day-workspace" className={`${styles.finderDock} ${mobileShapeDayOpen ? styles.mobileShapeDayOpen : styles.mobileShapeDayClosed} ${shapeDayTab === "stay" ? styles.finderDockStay : shapeDayTab === "eat" ? styles.finderDockEat : shapeDayTab === "see" ? styles.finderDockSee : ""}`} aria-label={planCopy.findPlaces}>
-        <header className={styles.shapeDayHeader}><small>{language === "es" ? `EN ${selected.city.toLocaleUpperCase()}` : `AT ${selected.city.toLocaleUpperCase()}`}</small><span><strong>Shape the day</strong>{selectedTripStop?.nights ? <em>{selectedTripStop.nights} {selectedTripStop.nights === 1 ? "night" : "nights"}</em> : null}</span><button type="button" className={styles.mobileShapeDayClose} onClick={() => { setMobileShapeDayOpen(false); setMobileMapDrawerOpen(false); }} aria-label="Close Shape the day"><X aria-hidden="true" /></button><div className={styles.finderTabs} role="tablist" aria-label="Shape the day">
+      {showFinderDock ? <aside id="shape-day-workspace" className={`${styles.finderDock} ${mobileShapeDayOpen ? styles.mobileShapeDayOpen : styles.mobileShapeDayClosed} ${shapeDayTab === "stay" ? styles.finderDockStay : shapeDayTab === "eat" ? styles.finderDockEat : shapeDayTab === "see" ? styles.finderDockSee : ""}`} aria-label={`Map planning for ${selected.city}`}>
+        <header className={styles.shapeDayHeader}><div className={styles.finderPlaceHeading}><h2>{selected.city}</h2>{selectedTripStop?.nights ? <em>{selectedTripStop.nights} {selectedTripStop.nights === 1 ? "night" : "nights"}</em> : null}<small>{selectedDay.label || `Day ${selectedPlanItem?.dayNumber ?? 1}`}</small></div><button type="button" className={styles.mobileShapeDayClose} onClick={() => { setMobileShapeDayOpen(false); setMobileMapDrawerOpen(false); }} aria-label={`Close ${selected.city} planning`}><X aria-hidden="true" /></button><div className={styles.finderTabs} role="tablist" aria-label={`${selected.city} planning`}>
           {shapeDayTabs.map((tab) => <button key={tab} type="button" role="tab" aria-selected={shapeDayTab === tab} aria-pressed={shapeDayTab === tab} tabIndex={shapeDayTab === tab ? 0 : -1} className={shapeDayTab === tab ? styles.finderTabActive : ""} onClick={() => selectShapeDayTab(tab)} onKeyDown={(event) => onShapeDayTabKeyDown(event, tab)}>{tab === "plan" ? "Plan" : tab === "stay" ? "Stay" : tab === "eat" ? "Eat" : "See"}</button>)}
-        </div>{customTrip && tripIssueCount > 0 ? <details className={styles.mobileTripStatus} open={tripStatusExpanded} onToggle={(event) => setTripStatusExpanded(event.currentTarget.open)}><summary><span>{language === "es" ? "Estado del viaje" : "Trip status"}</span><b>{tripIssueCount} {language === "es" ? "problemas" : tripIssueCount === 1 ? "issue" : "issues"}</b></summary></details> : null}</header>
-        {googleCanvasActive && selectedGooglePlaceId && shapeDayTab !== "plan" && selectedTripStop ? <div className={styles.enrichmentPanel}><MapPlaceEnrichment
-          destination={selectedTripStop.name}
-          contextLabel={workspacePlaceSelection.kind === "google"
-            ? `${customTrip?.stops.find((stop) => stop.id === workspacePlaceSelection.stopId)?.name ?? selectedTripStop.name}${customTrip?.planItems.find((item) => item.id === (selectedGoogleChoice?.dayId ?? workspacePlaceSelection.dayId))?.dayNumber ? ` · Day ${customTrip.planItems.find((item) => item.id === (selectedGoogleChoice?.dayId ?? workspacePlaceSelection.dayId))!.dayNumber}` : " · choose a day before adding"}`
-            : selectedTripStop.name}
-          category={googleDiscoveryCategory ?? "see"}
-          places={[]}
-          selectedFallback={selectedGooglePlaceId && nativeGooglePoint?.placeId === selectedGooglePlaceId ? { label: "Selected on the map", destination: selectedTripStop.name } : null}
-          savedReferences={savedGoogleReferences}
-          status="empty"
-          selectedPlaceId={workspacePlaceSelection.kind === "google" && workspacePlaceSelection.stopId === selectedTripStop.id ? workspacePlaceSelection.placeId : null}
-          detail={currentGoogleDetail}
-          detailStatus={googleDetailStatus}
-          unavailableReason={googleReferenceUnavailable}
-          photo={selectedGooglePhoto}
-          reviews={selectedGoogleReviews}
-          mediaRequested={googleMediaRequestedPlaceId === selectedGooglePlaceId}
-          onRequestMedia={() => { if (selectedGooglePlaceId) setGoogleMediaRequestedPlaceId(selectedGooglePlaceId); }}
-          listScrollTop={googleScopeKey ? googleResultsScrollRef.current[googleScopeKey] ?? 0 : 0}
-          onListScroll={(top) => { if (googleScopeKey) googleResultsScrollRef.current[googleScopeKey] = top; }}
-          onSelectPlace={selectGoogleCanvasPlace}
-          onSelectSavedReference={selectGoogleSavedReference}
-          onBackToPlaces={() => setWorkspacePlaceSelection({ kind: "none" })}
-          onRetry={() => { if (selectedGooglePlaceId) setGoogleDetailRetry((value) => value + 1); }}
-          actions={selectedGooglePlaceId && selectedGoogleStopId === selectedTripStop.id ? <>
-            {selectedGoogleChoice ? <p role="status">{selectedGoogleChoice.dayId ? `Added to Day ${customTrip?.planItems.find((day) => day.id === selectedGoogleChoice.dayId)?.dayNumber ?? "?"}` : "Saved for later"} · Not booked</p> : null}
-            {shapeDayTab !== "stay" && googleDayOptions.length ? <EasyTSelect label="Day for this place" value={googleTargetDayId} onChange={(event) => setGoogleTargetDayId(event.target.value)}>
-              <option value="">Choose a day</option>
-              {googleDayOptions.map((day) => <option key={day.id} value={day.id}>Day {day.dayNumber} · {day.date}</option>)}
-            </EasyTSelect> : null}
-            {shapeDayTab !== "stay" && googleDayOptions.length ? <EasyTButton fullWidth disabled={!currentGoogleDetail || !googleTargetDayId || selectedGoogleChoice?.dayId === googleTargetDayId} onClick={addSelectedGooglePlaceToDay}>{selectedGoogleChoice?.dayId ? "Move to selected day" : `Add to Day ${googleDayOptions.find((day) => day.id === googleTargetDayId)?.dayNumber ?? ""}`}</EasyTButton> : null}
-            <EasyTButton variant="secondary" fullWidth disabled={!currentGoogleDetail || Boolean(selectedGoogleChoice)} onClick={saveSelectedGooglePlace}>{shapeDayTab === "stay" ? "Save stay for later" : "Save for later"}</EasyTButton>
-            {selectedGoogleChoice ? <EasyTButton variant="quiet" fullWidth onClick={() => updatePlannerTrip((trip) => removeItineraryIdea(trip, selectedGoogleChoice.id), "Google place removed")}>Remove saved place</EasyTButton> : null}
-          </> : null}
-        /></div> : null}
+        </div></header>
         {shapeDayTab === "plan" ? <PlanWorkspace
           context={{
             selectedDay,
@@ -3175,8 +3195,10 @@ export function JourneyMapPlannerWorkspace({
           }}
           editHref={customTrip && selectedPlanItem ? itineraryWorkspaceHref(customTrip.id, selectedPlanItem.dayNumber) : editTripHref}
           copy={planCopy}
+          googleCanvasActive={googleCanvasActive}
+          savedReferences={savedGoogleReferences}
+          onSelectSavedReference={selectGoogleSavedReference}
         /> : null}
-        {googleCanvasActive && !selectedGooglePlaceId && shapeDayTab !== "plan" ? <GoogleSavedReferenceList references={savedGoogleReferences} onSelect={selectGoogleSavedReference} /> : null}
         {!selectedGooglePlaceId && shapeDayTab === "see" && customTrip ? <div ref={mapResultActionsOrientationTarget} className={styles.shapeDaySee}><JourneyItineraryRefinement key={selectedPlanItem?.stopId} compact trip={customTrip} stop={customTrip.stops.find((stop) => stop.id === selectedPlanItem?.stopId)} day={selectedPlanItem ?? undefined} selectedPlaceId={selectedMapResult?.kind === "see" ? selectedMapResult.sourceId : null} onPlaceSelect={selectSeePlace} onPlacesChange={setSeeMapPlaces} onSelectionChange={handleAttractionSelection} onExploreMap={() => setMapMode("detail")} activityAction={activityAction}
           onSaveInventoryIdea={(idea: ItineraryIdea) => updatePlannerTrip((trip) => saveItineraryIdea(trip, idea), "Saved for later")}
           onScheduleInventoryIdea={(idea: ItineraryIdea) => {

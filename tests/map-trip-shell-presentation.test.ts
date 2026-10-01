@@ -103,7 +103,8 @@ test("desktop Map has one persistent left rail and only contextual secondary det
   assert.match(mapWorkspaceSource, /\{showFinderDock \? <aside id="shape-day-workspace"/);
   assert.match(mapWorkspaceSource, /styles\.mapDefaultContext/);
   assert.match(mapWorkspaceSource, /!tripStatusExpanded\s*&&\s*!copilotOpen/);
-  assert.match(mapWorkspaceSource, /tripIssueCount > 0/);
+  assert.match(mapWorkspaceSource, /className=\{styles\.tripStatusToggle\}/,
+    "trip-wide checks stay in the dedicated health workspace, outside destination planning");
   assert.match(mapStylesSource, /\.shellPlanner \.finderDock\{[^}]*left:0!important[^}]*width:var\(--map-workspace-rail-width\)!important/);
   assert.match(mapStylesSource, /\.shellPlanner \.mapDefaultContext\{display:none!important\}/);
   assert.match(mapStylesSource, /\.shellPlanner \.mapPlaceContext[^}]*position:absolute!important/);
@@ -367,8 +368,11 @@ test("mobile Map has one contextual two-state drawer owner", () => {
 test("mobile result detail replaces the list and keeps selection replacement and recovery paths", () => {
   assert.match(mapWorkspaceSource, /const dismissSelectedMapResult = useCallback\(\(\) => \{[\s\S]*clearSelectedLocalPlace\(\);[\s\S]*setMobileShapeDayOpen\(true\);[\s\S]*setMobileMapDrawerOpen\(true\);/);
   assert.match(mapWorkspaceSource, /if \(selectedMapResult\) \{[\s\S]*dismissSelectedMapResult\(\);/);
-  assert.match(mapWorkspaceSource, /aria-label="Close selected place details"[\s\S]*onClose=\{dismissSelectedMapResult\}/);
-  assert.match(mapStylesSource, /\.shellPlanner \.mapContextEntity \.mapContextHeading>button\{display:none!important\}/);
+  assert.match(mapWorkspaceSource, /aria-label="Close selected place details"/);
+  assert.match(mapWorkspaceSource, /onClose=\{\(\) => \{[\s\S]*if \(selectedGooglePlaceId\) \{[\s\S]*setWorkspacePlaceSelection\(\{ kind: "none" \}\);[\s\S]*if \(shapeDayTab === "plan"\) setMobileShapeDayOpen\(true\);[\s\S]*else dismissSelectedMapResult\(\);/,
+    "closing a Google place clears that selection and restores Plan when it was the originating workspace");
+  assert.match(mapStylesSource, /\.shellPlanner \.mapContextEntity \.mapContextHeading>button\{display:flex!important\}/,
+    "the shared selected-place card keeps an explicit close action on mobile");
   assert.match(mapStylesSource, /\.shellPlanner \.mapContextEntity \.mapContextEyebrow\{display:none\}/);
   assert.match(mapDockStylesSource, /data-mobile-sheet-view="planner"[\s\S]*\[class\*="finderDock"\]/);
   assert.match(mapDockStylesSource, /data-mobile-sheet-view="context"[\s\S]*\[class\*="canonicalPlannerStatus"\]/);

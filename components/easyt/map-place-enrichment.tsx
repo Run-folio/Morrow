@@ -25,8 +25,6 @@ type Props = {
   unavailableReason?: "invalid" | "not-found" | "provider-failure" | null;
   photo: { src: string; sourceUrl: string; attributions: GooglePlacePhotoAttribution[] } | null;
   reviews: readonly EnrichedReview[];
-  mediaRequested?: boolean;
-  onRequestMedia?(): void;
   listScrollTop: number;
   onListScroll(top: number): void;
   onSelectPlace(placeId: string): void;
@@ -87,7 +85,6 @@ export default function MapPlaceEnrichment(props: Props) {
         <a href={selected.mapsUrl} target="_blank" rel="noopener noreferrer">Open in Google Maps <ArrowUpRight aria-hidden="true" /></a>
         {selected.attributions?.map((item) => <small key={item.name}>{item.url ? <a href={item.url} target="_blank" rel="noopener noreferrer">{item.name}</a> : item.name}</small>)}
         {props.actions ? <div className={styles.actions}>{props.actions}</div> : null}
-        {props.onRequestMedia && !props.mediaRequested ? <EasyTButton variant="quiet" size="small" onClick={props.onRequestMedia}>Load photos and reviews</EasyTButton> : null}
         {exactDetail && props.photo ? <figure className={styles.photoMedia}>
           <img src={props.photo.src} alt={`Provider photo of ${selected.name}`} />
           <figcaption>Photo: {props.photo.attributions.length ? props.photo.attributions.map((credit, index) => <span key={`${credit.displayName}-${index}`}>{index ? " · " : null}{credit.photoUri ? <img src={credit.photoUri} alt="" /> : null}{credit.uri ? <a href={credit.uri} target="_blank" rel="noopener noreferrer">{credit.displayName}</a> : credit.displayName}</span>) : "Google Maps"} · <a href={props.photo.sourceUrl} target="_blank" rel="noopener noreferrer">View source photo</a></figcaption>
