@@ -36,6 +36,19 @@ type Props = {
   actions?: ReactNode;
 };
 
+export function GoogleSavedReferenceList({ references, onSelect }: {
+  references: readonly { id: string; placeId: string; dayLabel: string | null }[];
+  onSelect(referenceId: string, placeId: string): void;
+}) {
+  if (!references.length) return null;
+  return <details className={styles.savedReferences}>
+    <summary>Saved Google places</summary>
+    <ul>{references.map((reference) => <li key={reference.id}><EasyTButton variant="quiet" fullWidth onClick={() => onSelect(reference.id, reference.placeId)}>
+      Saved Google place{reference.dayLabel ? ` · ${reference.dayLabel}` : " · for later"}
+    </EasyTButton></li>)}</ul>
+  </details>;
+}
+
 /** Controlled projection. The Map workspace owns category, scoped results, selection and requests. */
 export default function MapPlaceEnrichment(props: Props) {
   const panelRef = useRef<HTMLElement>(null);
@@ -98,7 +111,7 @@ export default function MapPlaceEnrichment(props: Props) {
           ? "This saved Google place could not be found. Your saved reference is still here; try again or choose a place from the list."
           : "Couldn't load place details. Your saved reference is still here."} <EasyTButton variant="quiet" size="small" onClick={props.onRetry}>Try again</EasyTButton></p> : null}
     </div> : <>
-      {props.savedReferences?.length ? <div className={styles.savedReferences}><strong>Saved Google places</strong><ul>{props.savedReferences.map((reference) => <li key={reference.id}><EasyTButton variant="quiet" fullWidth onClick={() => props.onSelectSavedReference?.(reference.id, reference.placeId)}>Saved Google place{reference.dayLabel ? ` · ${reference.dayLabel}` : " · for later"}</EasyTButton></li>)}</ul></div> : null}
+      {props.savedReferences?.length ? <GoogleSavedReferenceList references={props.savedReferences} onSelect={(referenceId, placeId) => props.onSelectSavedReference?.(referenceId, placeId)} /> : null}
       {props.status === "loading" ? <MorroviaSectionStatus state="loading" title="Finding nearby places" detail="Checking this destination now." /> : null}
       {props.status === "unavailable" ? <p role="status">{props.failure === "offline" ? "You're offline. Nearby places could not be refreshed." : props.failure === "quota" ? "Google Maps is temporarily at its request limit." : props.failure === "configuration" ? "Google Maps places are not configured for this session." : "Couldn't load places."}{props.places.length ? " Previous places remain visible below." : ""} <EasyTButton variant="quiet" size="small" onClick={props.onRetry}>Try again</EasyTButton></p> : null}
       {props.status === "empty" ? <p role="status">No places found for this category.</p> : null}

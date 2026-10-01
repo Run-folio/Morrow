@@ -46,7 +46,9 @@ test("a saved reference keeps its exact canonical idea and day instead of borrow
     kind: "google", placeId: "ChIJone", stopId: "tokyo-return", dayId: null, referenceId: "idea-day-8",
   });
   assert.match(parent, /idea\.id === workspacePlaceSelection\.referenceId/);
-  assert.match(child, /onSelectSavedReference\?\.\(reference\.id, reference\.placeId\)/);
+  assert.match(parent, /const savedGoogleReferences = customTrip && selectedTripStop[\s\S]*googlePlaceReferenceIdeas\(customTrip\.brief\.itineraryIdeas\)[\s\S]*idea\.stopId === selectedTripStop\.id/);
+  assert.match(parent, /<GoogleSavedReferenceList references=\{savedGoogleReferences\}/);
+  assert.match(child, /onSelect\(reference\.id, reference\.placeId\)/);
 });
 
 test("the integrated map has one parent-owned category, selection, and detail path", () => {

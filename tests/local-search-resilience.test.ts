@@ -70,7 +70,8 @@ test("MapLibre drops late Google facts while retaining canonical neutral referen
   assert.deepEqual(mapLibreCompatibleResults(results), [results[0], results[2]]);
   const map = source("components/journey-map-planner-workspace.tsx");
   assert.match(map, /const selectedGooglePlaceId = googleCanvasActive && workspacePlaceSelection\.kind === "google"/);
-  assert.match(map, /googlePlaceReferenceIdeas\(customTrip\?\.brief\.itineraryIdeas\)/);
+  assert.match(map, /const savedGoogleReferences = customTrip && selectedTripStop[\s\S]*googlePlaceReferenceIdeas\(customTrip\.brief\.itineraryIdeas\)[\s\S]*idea\.stopId === selectedTripStop\.id/);
+  assert.match(map, /<GoogleSavedReferenceList references=\{savedGoogleReferences\}/);
 });
 
 test("a useful primary result wins and a provider failure stays local", async () => {
