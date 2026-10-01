@@ -5313,7 +5313,7 @@
       },
       {
         "value": "9px",
-        "count": 284,
+        "count": 285,
         "examples": [
           "app/journey/about/about.module.css",
           "app/journey/account.module.css",
@@ -5323,7 +5323,7 @@
       },
       {
         "value": "4px",
-        "count": 251,
+        "count": 252,
         "examples": [
           "app/journey/about/about.module.css",
           "app/journey/account.module.css",
@@ -5363,7 +5363,7 @@
       },
       {
         "value": "5px",
-        "count": 225,
+        "count": 226,
         "examples": [
           "app/journey/account.module.css",
           "app/journey/dashboard/dashboard.module.css",
@@ -5393,7 +5393,7 @@
       },
       {
         "value": "2px",
-        "count": 147,
+        "count": 148,
         "examples": [
           "app/journey/account.module.css",
           "app/journey/dashboard/dashboard.module.css",

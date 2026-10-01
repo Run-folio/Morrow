@@ -127,7 +127,7 @@ test("route storytelling resolves imagery, stays image-led and links to the cano
   assert.doesNotMatch(source, /\/api\/journey-place\?/);
   assert.doesNotMatch(source, /Promise\.all\(imageResolutionCandidates/);
   assert.match(source, /resolvedPlaceImages\[imageCacheKeysByOccurrence\[stop\.id\]\]/);
-  assert.match(source, /<MorroviaPhotoCredit className=\{styles\.stopCredit\}/);
+  assert.match(source, /step\.image\?\.sourceLabel \? <MorroviaPhotoCredit placement="bottom-left" credit=\{step\.image\.sourceLabel\} photoLabel=\{step\.image\.alt\} authorHref=\{step\.image\.authorUrl\}/);
   assert.match(source, /formatTripNights\(stop\.nights\)/);
   assert.match(source, /className=\{styles\.stopNumber\}>\{index \+ 1\}/);
   assert.doesNotMatch(source, /className=\{styles\.stopNumber\}>From/);

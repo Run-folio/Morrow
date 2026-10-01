@@ -64,9 +64,9 @@ const mapStoriesSource = readFileSync(
 );
 
 test("the same Map workspace can expand above page chrome without a second map", () => {
-  assert.match(tripMapWorkspaceStylesSource, /width:\s*100vw/);
-  assert.match(tripMapWorkspaceStylesSource, /margin-left: 50%/);
-  assert.match(tripMapWorkspaceStylesSource, /transform: translateX\(-50%\)/);
+  assert.match(tripMapWorkspaceStylesSource, /\.wideMap\s*\{[^}]*width:\s*100%;[^}]*max-width:\s*100%;[^}]*min-width:\s*0/);
+  assert.match(tripMapWorkspaceStylesSource, /\.wideMap:has\(\[data-map-expanded="true"\]\)\s*\{[^}]*width:\s*100%;[^}]*margin-left:\s*0;[^}]*transform:\s*none/);
+  assert.doesNotMatch(tripMapWorkspaceStylesSource, /\.wideMap[^}]*width:\s*100vw/);
   assert.match(mapStylesSource, /--map-workspace-strip-height:\s*64px/);
   assert.match(mapStylesSource, /--map-workspace-rail-width:\s*clamp\(360px,[^,]+,420px\)/);
   assert.match(mapStylesSource, /height:\s*calc\(100svh - var\(--morrovia-navigation-height\)\)/);
