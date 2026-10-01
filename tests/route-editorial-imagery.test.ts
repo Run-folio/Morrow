@@ -4,7 +4,7 @@ import test from 'node:test';
 import { immersiveHomepageRoutes, immersiveRouteKeys } from '../lib/easyt/immersive-homepage-routes.ts';
 import { homepageFirstPartyPhotoSlots, routeEditorialImagery } from '../lib/easyt/route-editorial-imagery.ts';
 import { isReviewedFirstPartyHomepagePhoto, routeDestinationPhoto, routeEditorialPhoto, routeImages, routePhotoForSource, type RoutePhotoRecord } from '../lib/easyt/route-images.ts';
-import { homepageCloudinaryImageLoader } from '../lib/easyt/homepage-cloudinary-image.ts';
+import { homepageCloudinaryImageLoader, homepageRouteCardCloudinaryVariants } from '../lib/easyt/homepage-cloudinary-image.ts';
 import { publicRouteDetailFor } from '../lib/easyt/public-route.ts';
 import { routeDetailPresentation } from '../app/journey/routes/[slug]/route-detail-presentation.ts';
 
@@ -72,12 +72,35 @@ test('all seven homepage routes have one gated first-party photography slot', ()
 
 test('Homepage Cloudinary delivery is responsive, format-aware and account-scoped', () => {
  const source = homepageFirstPartyPhotoSlots['balkans-overland'].sourceUrl;
+ assert.notEqual(homepageCloudinaryImageLoader({ src: source, width: 640 }), homepageCloudinaryImageLoader({ src: source, width: 1920 }), 'mobile and ultrawide heroes receive different bounded derivatives');
  assert.equal(homepageCloudinaryImageLoader({ src: source, width: 828 }), source.replace('/image/upload/', '/image/upload/f_auto,q_auto:low,c_limit,w_828/'));
  assert.match(homepageCloudinaryImageLoader({ src: source, width: 3840 }), /f_auto,q_auto:low,c_limit,w_1920/);
  assert.throws(() => homepageCloudinaryImageLoader({ src: 'https://res.cloudinary.com/another-account/image/upload/photo.jpg', width: 828 }));
  const nextConfig = readFileSync(new URL('../next.config.ts', import.meta.url), 'utf8');
  assert.match(nextConfig, /deviceSizes: \[640, 750, 828, 1080, 1200, 1440, 1920, 2048, 3840\]/);
  assert.match(nextConfig, /hostname: "res\.cloudinary\.com"[\s\S]+pathname: "\/dbt3wkwa3\/\*\*"/);
+});
+
+test('homepage route-card delivery uses stable bounded Cloudinary variants without changing photo identity', () => {
+ const source = homepageFirstPartyPhotoSlots['namibia-self-drive'].sourceUrl;
+ const variants = homepageRouteCardCloudinaryVariants(source);
+ assert.deepEqual(variants.map(variant => variant.width), [384, 768]);
+ assert.ok(variants[0].width >= 2 * 172, 'mobile 2x coverage exceeds the measured 172px card');
+ assert.ok(variants[1].width >= 2 * 220, 'desktop 2x coverage exceeds the 220px card slot');
+ assert.ok(variants.every(variant => variant.width < 1000), 'card delivery never sends original multi-thousand-pixel dimensions');
+ assert.ok(variants.every(variant => variant.src.includes('/image/upload/f_auto,q_auto,c_limit,w_')));
+ assert.ok(variants.every(variant => variant.src.includes('/v1746632023/namibia_vwfyeb.jpg')));
+ assert.deepEqual(homepageRouteCardCloudinaryVariants(source), variants, 'repeat renders reuse the exact same URL set');
+ assert.throws(() => homepageRouteCardCloudinaryVariants('https://res.cloudinary.com/another-account/image/upload/photo.jpg'));
+});
+
+test('homepage route-card markup requests accurate responsive sizes and keeps lazy loading and photo credits', () => {
+ const source = readFileSync(new URL('../app/journey/home/immersive/homepage-route-inspiration.tsx', import.meta.url), 'utf8');
+ assert.match(source, /homepageRouteCardCloudinaryVariants/);
+ assert.match(source, /sizes="\(max-width: 520px\) calc\(\(100vw - 46px\) \/ 2\), \(max-width: 700px\) calc\(\(100vw - 44px\) \/ 2\), \(max-width: 1100px\) calc\(\(100vw - 84px\) \/ 4\), \(max-width: 1448px\) calc\(\(100vw - 120px\) \/ 7\), 189px"/);
+ assert.match(source, /loading="lazy" decoding="async"/);
+ assert.doesNotMatch(source, /priority=/);
+ assert.match(source, /<MorroviaPhotoCredit[\s\S]+photoLabel=\{photo\.photoLabel\}/);
 });
 
 test('landmark images never become overnight route stops or change the Builder draft', () => {
