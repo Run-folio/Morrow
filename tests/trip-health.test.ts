@@ -4,7 +4,7 @@ import { knownKnowledgeFact } from "../lib/easyt/destination-knowledge.ts";
 import { allocateTripNights } from "../lib/easyt/night-allocation.ts";
 import type { PlaceIssue } from "../lib/easyt/place-intelligence.ts";
 import { unknownPlanningConfidence } from "../lib/easyt/planning-confidence.ts";
-import { reviewTrip, tripHealth } from "../lib/easyt/review.ts";
+import { countAffectedCanonicalTripLegs, reviewTrip, tripHealth } from "../lib/easyt/review.ts";
 import { extractStructuredTripBrief, mergeStructuredTripBrief } from "../lib/easyt/structured-trip-brief.ts";
 import { estimateTransferImpact } from "../lib/easyt/transfer-impact.ts";
 import type { EasyTTrip } from "../lib/easyt/trip.ts";
@@ -73,6 +73,76 @@ const readyTrip = (): EasyTTrip => {
   }));
   return trip;
 };
+
+const twoLegReadyTrip = (): EasyTTrip => {
+  const trip = readyTrip();
+  const firstStop = trip.stops[0]!;
+  const secondStop = { ...firstStop, id: "b", order: 1, name: "B", longitude: 10, arrivalDate: "2026-09-03", departureDate: "2026-09-05", nights: 2 };
+  trip.stops = [{ ...firstStop, departureDate: "2026-09-03", nights: 2 }, secondStop];
+  const firstLeg = trip.legs[0]!;
+  trip.legs = [
+    firstLeg,
+    {
+      ...firstLeg,
+      id: "health-leg-2",
+      fromStopId: "a",
+      toStopId: "b",
+      fromEndpoint: { kind: "stop", id: "a", name: "A", country: "Test", coordinates: [0, 0] },
+      toEndpoint: { kind: "stop", id: "b", name: "B", country: "Test", coordinates: [10, 0] },
+      classification: "international",
+      distanceKm: 1_112,
+      straightLineDistanceKm: 1_112,
+      durationMinutes: 1_200,
+      headlineMinutes: 1_080,
+      doorToDoorMinutes: 1_200,
+    },
+  ];
+  return trip;
+};
+
+test("transfer attention counts distinct canonical legs while preserving every finding and review target", async () => {
+  const trip = readyTrip();
+  trip.legs[0]!.warnings = ["First issue on this transfer.", "Second issue on this transfer.", "Third issue on this transfer."];
+  const sameLeg = reviewTrip(trip).find((item) => item.rule === "route-integrity");
+  assert.equal(sameLeg?.message, "1 transfer needs checking before Morrovia can assess the full route.");
+  assert.match(sameLeg?.evidence ?? "", /First issue.*Second issue.*Third issue/);
+
+  const overview = await import("../lib/easyt/trip-overview-issues.ts");
+  const integrity = [
+    { legId: "health-leg-1", message: "First issue on this transfer." },
+    { legId: "health-leg-1", message: "Second issue on this transfer." },
+    { legId: "health-leg-1", message: "Third issue on this transfer." },
+  ];
+  const presented = overview.presentOverviewIssues(trip, [sameLeg!], integrity);
+  assert.deepEqual(presented[0]?.reviewLegIds, ["health-leg-1"]);
+
+  const twoLegs = twoLegReadyTrip();
+  twoLegs.legs[0]!.warnings = ["First leg needs review.", "Another first-leg issue."];
+  twoLegs.legs[1]!.warnings = ["Second leg needs review."];
+  const multiple = reviewTrip(twoLegs).find((item) => item.rule === "route-integrity");
+  assert.equal(multiple?.message, "2 transfers need checking before Morrovia can assess the full route.");
+});
+
+test("legless and unknown leg references do not add to the canonical transfer count", () => {
+  const canonicalTrip = readyTrip();
+  const findings = [
+    { legId: "health-leg-1", message: "Transfer issue one." },
+    { legId: "health-leg-1", message: "Transfer issue two." },
+    { legId: null, message: "A route-level issue without a TripLeg." },
+    { legId: "removed-leg", message: "A stale reference is not a canonical TripLeg." },
+  ];
+  assert.equal(countAffectedCanonicalTripLegs(canonicalTrip, findings), 1);
+  assert.equal(countAffectedCanonicalTripLegs(canonicalTrip, [findings[2]!]), 0);
+  assert.equal(countAffectedCanonicalTripLegs(canonicalTrip, []), 0);
+
+  canonicalTrip.brief.originCoordinates = undefined;
+  canonicalTrip.legs[0]!.warnings = ["A transfer detail remains visible."];
+  const routeIntegrity = reviewTrip(canonicalTrip).find((item) => item.rule === "route-integrity");
+  assert.equal(routeIntegrity?.severity, "critical");
+  assert.doesNotMatch(routeIntegrity?.message ?? "", /\d+ transfers? need/);
+  assert.match(routeIntegrity?.evidence ?? "", /origin needs validated coordinates/);
+  assert.match(routeIntegrity?.evidence ?? "", /A transfer detail remains visible/);
+});
 
 const countryReentryTrip = (): EasyTTrip => {
   const trip = baseTrip();

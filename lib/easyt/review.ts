@@ -62,6 +62,17 @@ function placeIssueEvidence(issue: PlaceIssue) {
   return `${place} is retained as ${issueKind}. ${routeImpact}${options}`;
 }
 
+/** Counts only distinct canonical TripLegs represented by integrity findings. */
+export function countAffectedCanonicalTripLegs(
+  trip: Pick<EasyTTrip, "legs">,
+  findings: readonly { legId: string | null }[],
+) {
+  const canonicalLegIds = new Set(trip.legs.map((leg) => leg.id).filter((id) => typeof id === "string" && id.trim().length > 0));
+  return new Set(findings
+    .map((finding) => finding.legId)
+    .filter((id): id is string => typeof id === "string" && canonicalLegIds.has(id))).size;
+}
+
 /**
  * Conservative, explainable checks for the saved-trip review surface.
  * These are planning signals, not live timetable, visa, or booking claims.
@@ -121,12 +132,15 @@ export function reviewTrip(trip: EasyTTrip): TripRecommendation[] {
   const legIntegrity = canonicalLegIntegrityIssues(trip);
   if (legIntegrity.length) {
     const blocking = legIntegrity.some((issue) => /origin is missing|origin needs|canonical route must contain|no longer matches/.test(issue.message));
+    const transferCount = countAffectedCanonicalTripLegs(trip, legIntegrity);
     results.push(recommendation(trip, {
       rule: "route-integrity",
       severity: blocking ? "critical" : "warning",
       message: blocking
         ? "The saved route does not yet represent the complete journey from its origin."
-        : `${legIntegrity.length} ${legIntegrity.length === 1 ? "transfer needs" : "transfers need"} checking before Morrovia can assess the full route.`,
+        : transferCount > 0
+          ? `${transferCount} ${transferCount === 1 ? "transfer needs" : "transfers need"} checking before Morrovia can assess the full route.`
+          : "Review the saved route before Morrovia can assess the full journey.",
       evidence: legIntegrity.slice(0, 4).map((issue) => issue.message).join(" "),
       affectedDays: [...new Set(legIntegrity.flatMap((issue) => issue.legId
         ? trip.planItems.filter((item) => item.stopId === trip.legs.find((leg) => leg.id === issue.legId)?.toStopId).map((item) => item.dayNumber)
