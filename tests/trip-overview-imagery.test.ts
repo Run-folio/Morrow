@@ -70,6 +70,7 @@ test("Overview uses persisted imagery before the reviewed destination inventory"
     sourceLabel: "Photo source",
     licenseUrl: undefined,
     fullCreditUrl: undefined,
+    provenance: undefined,
   });
 });
 

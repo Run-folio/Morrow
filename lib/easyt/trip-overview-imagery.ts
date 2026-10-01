@@ -14,6 +14,7 @@ export type OverviewPlaceImage = {
   sourceLabel?: string;
   licenseUrl?: string;
   fullCreditUrl?: string;
+  provenance?: "reviewed-provider" | "reviewed-morrovia-first-party";
 };
 
 function reviewedPhotoImage(photo: RoutePhotoRecord | null): OverviewPlaceImage | null {
@@ -26,6 +27,7 @@ function reviewedPhotoImage(photo: RoutePhotoRecord | null): OverviewPlaceImage 
     sourceLabel: `${photo.author} · ${photo.license}`,
     licenseUrl: photo.licenseUrl,
     fullCreditUrl: `/journey/immersive/credits.html#${photo.key}`,
+    provenance: photo.provenance,
   } : null;
 }
 
@@ -62,6 +64,7 @@ export function overviewStopImage(trip: EasyTTrip, stop: TripStop): OverviewPlac
       sourceLabel: credit?.sourceLabel ?? (imagedDay.sourceUrl ? "Photo source" : undefined),
       licenseUrl: credit?.licenseUrl,
       fullCreditUrl: credit?.fullCreditUrl,
+      provenance: credit?.provenance,
     };
   }
 

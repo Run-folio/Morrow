@@ -10,6 +10,7 @@ export type DashboardTripPhoto = {
   licenseHref: string | null;
   fullCreditHref: string | null;
   place: string | null;
+  provenance?: "reviewed-provider" | "reviewed-morrovia-first-party";
 };
 
 function storedTripPhoto(trip: EasyTTrip): DashboardTripPhoto | null {
@@ -28,6 +29,7 @@ function storedTripPhoto(trip: EasyTTrip): DashboardTripPhoto | null {
     licenseHref: credit.licenseUrl,
     fullCreditHref: credit.fullCreditUrl,
     place: null,
+    provenance: credit.provenance,
   };
 }
 
@@ -47,6 +49,7 @@ export function canonicalDashboardTripPhotos(trip: EasyTTrip): DashboardTripPhot
         licenseHref: photo.licenseUrl,
         fullCreditHref: `/journey/immersive/credits.html#${photo.key}`,
         place: photo.place,
+        provenance: photo.provenance,
       }];
     });
 }

@@ -1,3 +1,6 @@
+"use client";
+
+import { useState } from "react";
 import { ImageOff } from "lucide-react";
 import ResilientImage from "@/components/easyt/resilient-image";
 import MorroviaPhotoCredit from "@/components/easyt/morrovia-photo-credit";
@@ -8,13 +11,14 @@ import styles from "./route-overview.module.css";
 export default function RouteDetailPhoto({ photo, label, eager = false, landscape = false, className = "" }: {
   photo: RoutePhoto | null; label: string; eager?: boolean; landscape?: boolean; className?: string;
 }) {
+  const [imageDisplayed, setImageDisplayed] = useState(false);
   return <figure className={`${styles.photo} ${photo ? "" : styles.photoMissing} ${className}`}>
     <ResilientImage key={photo?.key ?? label} src={photo?.variants[1]?.src}
       srcSet={photo?.variants.map(variant => `${variant.src} ${variant.width}w`).join(", ")}
       sizes={landscape ? "100vw" : "(max-width:700px) 100vw, (min-width:1700px) 700px, 50vw"}
       width={768} height={1024} loading={eager ? "eager" : "lazy"} fetchPriority={eager ? "high" : "auto"}
-      decoding="async" alt={photo?.alt ?? ""}
+      decoding="async" alt={photo?.alt ?? ""} onDisplayState={setImageDisplayed}
       fallback={<div className={styles.photoFallback}><ImageOff aria-hidden="true" /><span>{label}</span><small>Photography pending editorial review</small></div>} />
-    {photo ? <MorroviaPhotoCredit presentation="inline" photoLabel={photo.alt} credit={`${photo.author} · ${photo.license}`} authorHref={photo.authorUrl} sourceHref={photo.sourceUrl} licenseHref={photo.licenseUrl} fullCreditHref={`/journey/immersive/credits.html#${photo.key}`} /> : null}
+    {photo && imageDisplayed ? <MorroviaPhotoCredit ownership={photo.provenance === "reviewed-morrovia-first-party" ? "morrovia" : "third-party"} photoLabel={photo.alt} credit={`${photo.author} · ${photo.license}`} authorHref={photo.authorUrl} sourceHref={photo.sourceUrl} licenseHref={photo.licenseUrl} fullCreditHref={`/journey/immersive/credits.html#${photo.key}`} /> : null}
   </figure>;
 }

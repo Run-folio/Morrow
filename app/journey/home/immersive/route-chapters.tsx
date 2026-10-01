@@ -1,6 +1,7 @@
 "use client";
 
 import { ArrowDown, ArrowRight } from "lucide-react";
+import { useState } from "react";
 import { EasyTButton, EasyTLinkButton } from "@/components/easyt/easyt-controls";
 import { routeEditorialImagery } from "@/lib/easyt/route-editorial-imagery";
 import type { ImmersiveRoute } from "@/lib/easyt/immersive-homepage-routes";
@@ -15,7 +16,8 @@ import styles from "./immersive.module.css";
 export function DestinationPhoto({ route, index, photoOverride, landscape = false, sizes }: { route: ImmersiveRoute; index: number; photoOverride?: RoutePhotoRecord | null; landscape?: boolean; sizes?: string }) {
   const stop = route.stops[index];
   const photo = photoOverride === undefined ? route.photos[index] : photoOverride;
-  return <div className={styles.destinationPhoto}>{photo ? <><ResilientImage key={photo.key} src={photo.variants[1].src} srcSet={photo.variants.map((item) => `${item.src} ${item.width}w`).join(", ")} sizes={sizes ?? (landscape ? "100vw" : "(max-width:840px) 45vw, 23vw")} width={768} height={1024} alt={landscape ? "" : photo.alt} loading="lazy" decoding="async" fallback={<div className={styles.photoFallback}>{stop.name}</div>} /><MorroviaPhotoCredit presentation="inline" photoLabel={photo.alt} credit={`${photo.author} · ${photo.license}`} authorHref={photo.authorUrl} sourceHref={photo.sourceUrl} licenseHref={photo.licenseUrl} fullCreditHref={`/journey/immersive/credits.html#${photo.key}`} /></> : <div className={styles.photoFallback}>{stop.name}</div>}</div>;
+  const [imageDisplayed, setImageDisplayed] = useState(false);
+  return <div className={styles.destinationPhoto}>{photo ? <><ResilientImage key={photo.key} src={photo.variants[1].src} srcSet={photo.variants.map((item) => `${item.src} ${item.width}w`).join(", ")} sizes={sizes ?? (landscape ? "100vw" : "(max-width:840px) 45vw, 23vw")} width={768} height={1024} alt={landscape ? "" : photo.alt} loading="lazy" decoding="async" onDisplayState={setImageDisplayed} fallback={<div className={styles.photoFallback}>{stop.name}</div>} />{imageDisplayed ? <MorroviaPhotoCredit ownership={photo.provenance === "reviewed-morrovia-first-party" ? "morrovia" : "third-party"} photoLabel={photo.alt} credit={`${photo.author} · ${photo.license}`} authorHref={photo.authorUrl} sourceHref={photo.sourceUrl} licenseHref={photo.licenseUrl} fullCreditHref={`/journey/immersive/credits.html#${photo.key}`} /> : null}</> : <div className={styles.photoFallback}>{stop.name}</div>}</div>;
 }
 
 export default function RouteChapters({ routes, index, onChange, children }: {

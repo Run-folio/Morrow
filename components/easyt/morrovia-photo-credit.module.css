@@ -1,18 +1,61 @@
-.root { position:absolute; z-index:6; right:var(--photo-credit-inline,8px); bottom:var(--photo-credit-block,8px); max-width:none; padding:0; color:var(--morrovia-paper); font:var(--morrovia-type-fine-print); }
-.root[data-placement="top-right"] { top:0; bottom:auto; }
-.root[data-placement="bottom-left"] { right:auto; left:var(--photo-credit-inline,8px); }
-.root summary { display:grid; place-items:center; width:44px; height:44px; margin-left:auto; border-radius:var(--morrovia-control-radius); list-style:none; cursor:pointer; color:var(--morrovia-paper); background:color-mix(in srgb,var(--morrovia-photo-ink) 72%,transparent); }
-.root[data-placement="bottom-left"] summary { margin-left:0; }
-.root summary::-webkit-details-marker { display:none; }
-.root summary svg { width:16px; height:16px; }
-.root summary:hover { background:color-mix(in srgb,var(--morrovia-photo-ink) 82%,transparent); }
-.root summary:focus-visible { outline:3px solid var(--morrovia-focus-ring); outline-offset:2px; }
-.root[open] { width:min(230px,100%); }
-.panel { position:absolute; right:0; bottom:48px; z-index:8; display:grid; gap:2px; width:min(230px, calc(100vw - 24px)); max-width:calc(100vw - 24px); padding:8px 12px; border:1px solid color-mix(in srgb,var(--morrovia-paper) 30%,transparent); border-radius:var(--morrovia-control-radius); background:color-mix(in srgb,var(--morrovia-photo-ink) 90%,transparent); box-shadow:var(--morrovia-shadow-overlay); }
-.root[data-placement="top-right"] .panel { top:44px; bottom:auto; }
-.root[data-placement="bottom-left"] .panel { right:auto; left:0; }
-.panel a,.panel span { display:flex; align-items:center; min-height:44px; color:var(--morrovia-paper); overflow-wrap:anywhere; }
-.panel a { text-decoration:underline; }
-.inline { position:absolute; z-index:6; left:var(--photo-credit-inline,8px); bottom:var(--photo-credit-block,8px); display:flex; flex-wrap:wrap; align-items:center; gap:0 4px; max-width:min(calc(100% - 16px), 560px); padding:5px 9px; border-radius:var(--morrovia-control-radius); color:var(--morrovia-paper); background:color-mix(in srgb,var(--morrovia-photo-ink) 80%,transparent); font:var(--morrovia-type-fine-print); }
-.inline a { color:inherit; overflow-wrap:anywhere; text-decoration:underline; text-underline-offset:2px; }
-.inline a:focus-visible { outline:3px solid var(--morrovia-focus-ring); outline-offset:2px; }
+.root {
+  position: absolute;
+  z-index: 12;
+  left: var(--photo-credit-inline, 8px);
+  right: auto;
+  bottom: var(--photo-credit-block, 8px);
+  width: 44px;
+  height: 44px;
+  color: var(--morrovia-paper);
+}
+.root[data-placement="top-right"] { top: 8px; right: 8px; bottom: auto; left: auto; }
+.root[data-placement="bottom-right"] { right: 8px; bottom: 8px; left: auto; }
+.trigger {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--morrovia-control-radius);
+  color: var(--morrovia-paper);
+  background: transparent;
+  cursor: pointer;
+}
+.trigger:hover .cameraGlyph,
+.trigger[aria-expanded="true"] .cameraGlyph {
+  background: color-mix(in srgb, var(--morrovia-photo-ink) 62%, var(--morrovia-paper));
+}
+.trigger:focus-visible { outline: 3px solid var(--morrovia-focus-ring); outline-offset: 1px; }
+.cameraGlyph {
+  box-sizing: content-box;
+  width: 16px;
+  height: 16px;
+  padding: 5px;
+  border: 1px solid color-mix(in srgb, var(--morrovia-paper) 48%, var(--morrovia-photo-ink));
+  border-radius: var(--morrovia-control-radius);
+  color: var(--morrovia-paper);
+  background: color-mix(in srgb, var(--morrovia-photo-ink) 44%, var(--morrovia-paper));
+  transition: background-color 120ms ease;
+}
+.panel {
+  position: fixed;
+  z-index: 10000;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px 6px;
+  box-sizing: border-box;
+  max-height: calc(100vh - 24px);
+  overflow: auto;
+  padding: 9px 12px;
+  border: 1px solid color-mix(in srgb, var(--morrovia-paper) 42%, var(--morrovia-photo-ink));
+  border-radius: var(--morrovia-control-radius);
+  color: var(--morrovia-paper);
+  background: color-mix(in srgb, var(--morrovia-photo-ink) 94%, var(--morrovia-paper));
+  box-shadow: var(--morrovia-shadow-overlay);
+  font: 500 13px/1.45 var(--morrovia-ui);
+}
+.panel a,.panel span { color: inherit; overflow-wrap: anywhere; }
+.panel a { min-height: 32px; display: inline-flex; align-items: center; text-decoration: underline; text-underline-offset: 2px; }
+.panel a:focus-visible { outline: 3px solid var(--morrovia-focus-ring); outline-offset: 2px; }

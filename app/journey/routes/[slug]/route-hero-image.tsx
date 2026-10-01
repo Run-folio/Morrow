@@ -19,6 +19,7 @@ type RouteHeroImageProps = {
 export default function RouteHeroImage({ image, routeKey, query, fallbackQueries, eyebrow, duration, alt }: RouteHeroImageProps) {
   const [liveImage, setLiveImage] = useState<CachedRoutePhoto | null>(null);
   const [status, setStatus] = useState<"loading" | "unavailable">(image ? "unavailable" : "loading");
+  const [imageDisplayed, setImageDisplayed] = useState(false);
 
   useEffect(() => {
     if (image) return;
@@ -41,12 +42,22 @@ export default function RouteHeroImage({ image, routeKey, query, fallbackQueries
 
   const source = liveImage?.src ?? image;
   const credit = liveImage ?? routeImageCredit(image);
+  useEffect(() => {
+    setImageDisplayed(false);
+    if (!source) return;
+    let active = true;
+    const probe = new window.Image();
+    probe.onload = () => { if (active) setImageDisplayed(true); };
+    probe.onerror = () => { if (active) setImageDisplayed(false); };
+    probe.src = source;
+    return () => { active = false; };
+  }, [source]);
   return <div className={`${styles.heroImage} ${!source ? styles.heroImagePending : ""}`} style={source ? { backgroundImage: `url(${source})` } : undefined} role={source ? "img" : undefined} aria-label={source ? liveImage?.alt ?? alt : undefined}>
     <div>
       <p>{eyebrow}</p>
       <span>{duration}</span>
       {!source && <small>{status === "loading" ? "Finding a photograph…" : "Photography unavailable"}</small>}
     </div>
-    {credit ? <MorroviaPhotoCredit presentation="inline" photoLabel={credit.alt ?? alt} credit={credit.sourceLabel} authorHref={"authorUrl" in credit ? credit.authorUrl : null} sourceHref={credit.sourceUrl} licenseHref={"licenseUrl" in credit ? credit.licenseUrl : null} fullCreditHref={"fullCreditUrl" in credit ? credit.fullCreditUrl : null} /> : null}
+    {credit && imageDisplayed ? <MorroviaPhotoCredit ownership={"provenance" in credit && credit.provenance === "reviewed-morrovia-first-party" ? "morrovia" : "third-party"} photoLabel={credit.alt ?? alt} credit={credit.sourceLabel} authorHref={"authorUrl" in credit ? credit.authorUrl : null} sourceHref={credit.sourceUrl} licenseHref={"licenseUrl" in credit ? credit.licenseUrl : null} fullCreditHref={"fullCreditUrl" in credit ? credit.fullCreditUrl : null} /> : null}
   </div>;
 }

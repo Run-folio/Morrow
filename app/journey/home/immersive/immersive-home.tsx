@@ -28,6 +28,7 @@ export default function ImmersiveHome({ routes, previewRoutes, initialIndex }: {
   const heroPhoto = route ? (() => { const heroPhoto = route.heroPhoto; return heroPhoto; })() : undefined;
   const [failedFirstPartyHeroes, setFailedFirstPartyHeroes] = useState<string[]>([]);
   const visibleHeroPhoto = heroPhoto?.firstParty && route && failedFirstPartyHeroes.includes(route.key) ? heroPhoto.fallback ?? null : heroPhoto;
+  const [heroImageDisplayed, setHeroImageDisplayed] = useState(false);
   const lastViewedRoute = useRef<string | null>(null);
   useEffect(() => {
     if (!route) return;
@@ -36,6 +37,7 @@ export default function ImmersiveHome({ routes, previewRoutes, initialIndex }: {
     lastViewedRoute.current = route.key;
     trackEvent("homepage_route_viewed", { route_id: route.key, selection, stop_count: route.stops.length });
   }, [route]);
+  useEffect(() => setHeroImageDisplayed(false), [route?.key, visibleHeroPhoto?.variants.at(-1)?.src]);
   const language = useHomepageLanguage();
   const es = language === "es";
   const [systemQuiet, setSystemQuiet] = useState(false);
@@ -53,12 +55,13 @@ export default function ImmersiveHome({ routes, previewRoutes, initialIndex }: {
       event.currentTarget.style.setProperty("--depth-x", `${((event.clientX - rect.left) / rect.width - .5) * 10}px`);
     }} onPointerLeave={(event) => event.currentTarget.style.setProperty("--depth-x", "0px")}>
       <div className={styles.heroDecorative}>
-        {route ? <Image className={styles.landscape} src={visibleHeroPhoto?.variants.at(-1)?.src ?? "/journey/immersive/hero-1536.webp"} loader={visibleHeroPhoto?.firstParty ? homepageCloudinaryImageLoader : undefined} sizes="100vw" fill priority={route.key === routes[initialIndex]?.key} alt="" style={{ objectPosition: visibleHeroPhoto?.focalPosition ?? "center" }} onError={() => {
+        {route ? <Image className={styles.landscape} src={visibleHeroPhoto?.variants.at(-1)?.src ?? "/journey/immersive/hero-1536.webp"} loader={visibleHeroPhoto?.firstParty ? homepageCloudinaryImageLoader : undefined} sizes="100vw" fill priority={route.key === routes[initialIndex]?.key} alt="" style={{ objectPosition: visibleHeroPhoto?.focalPosition ?? "center" }} onLoad={() => setHeroImageDisplayed(true)} onError={() => {
+          setHeroImageDisplayed(false);
           if (visibleHeroPhoto?.firstParty) setFailedFirstPartyHeroes(current => current.includes(route.key) ? current : [...current, route.key]);
         }} /> : <FallbackImage className={styles.landscape} src="/journey/immersive/hero-1536.webp" sizes="100vw" fill alt="" />}
         <div className={styles.heroShade} />
       </div>
-      <MorroviaPhotoCredit presentation="inline" className={styles.heroPhotoCredit} placement="bottom-left" photoLabel={visibleHeroPhoto?.country ?? "Homepage hero"} credit={visibleHeroPhoto ? (es ? visibleHeroPhoto.creditEs : visibleHeroPhoto.credit) : (es ? "Paisaje imaginado · inspirado en los Andes" : "Imagined landscape · inspired by the Andes")} authorHref={visibleHeroPhoto?.authorUrl} sourceHref={!visibleHeroPhoto?.firstParty && visibleHeroPhoto?.source.startsWith("http") ? visibleHeroPhoto.source : null} fullCreditHref={visibleHeroPhoto?.firstParty ? undefined : "/journey/immersive/credits.html"} />
+      {heroImageDisplayed && visibleHeroPhoto && !visibleHeroPhoto.firstParty ? <MorroviaPhotoCredit ownership="third-party" className={styles.heroPhotoCredit} placement="bottom-left" photoLabel={visibleHeroPhoto.country} credit={es ? visibleHeroPhoto.creditEs : visibleHeroPhoto.credit} authorHref={visibleHeroPhoto.authorUrl} sourceHref={visibleHeroPhoto.source.startsWith("http") ? visibleHeroPhoto.source : null} fullCreditHref="/journey/immersive/credits.html" /> : null}
       <div className={styles.navigation}><EasyTNavigation current="home" landing logoTone="light" deferPrefetch /></div>
       <div className={`${styles.heroBody} ${styles.heroBodyDualEntry}`}>
         <div className={styles.heroCopy}><span className={styles.eyebrow}>{es ? "Viajes complejos, hechos sencillos." : "Complex trips, made simple."}</span><h1>{es ? "Ve más lejos." : "Go further."}<em>{es ? "Hazlo tuyo." : "Make it yours."}</em></h1><p>{es ? "Planifica un viaje con varias paradas y adapta la ruta, los alojamientos y las actividades a tu gusto." : "Plan a trip with several stops, then shape the route, stays and activities around you."}</p></div>

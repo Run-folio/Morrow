@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { findRoutePhotos, readRoutePhoto, saveRoutePhoto, trackRoutePhoto, type CachedRoutePhoto } from "@/lib/easyt/route-photo-cache";
+import { routeImageCredit } from "@/lib/easyt/route-images";
 import MorroviaPhotoCredit from "@/components/easyt/morrovia-photo-credit";
 import styles from "./route-overview.module.css";
 
@@ -11,6 +12,7 @@ export default function RouteAttractionImage({ routeKey, attraction, stop, count
   const subjectKey = attraction.toLocaleLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "") || String(index);
   const cacheKey = `${routeKey}:attraction:${subjectKey}`;
   const [photo, setPhoto] = useState<CachedRoutePhoto | null>(null);
+  const [imageDisplayed, setImageDisplayed] = useState(false);
   const [shouldLoad, setShouldLoad] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -37,8 +39,19 @@ export default function RouteAttractionImage({ routeKey, attraction, stop, count
     }).catch(() => undefined);
     return () => controller.abort();
   }, [attraction, cacheKey, country, shouldLoad, stop]);
+  const displayedCredit = photo ?? (fallbackImage ? routeImageCredit(fallbackImage) : null);
   const source = photo?.src ?? fallbackImage;
+  useEffect(() => {
+    setImageDisplayed(false);
+    if (!source) return;
+    let active = true;
+    const probe = new window.Image();
+    probe.onload = () => { if (active) setImageDisplayed(true); };
+    probe.onerror = () => { if (active) setImageDisplayed(false); };
+    probe.src = source;
+    return () => { active = false; };
+  }, [source]);
   return <div ref={containerRef} className={`${styles.attractionImage} ${source ? "" : styles.attractionImagePending}`} style={source ? { backgroundImage: `url(${source})` } : undefined} role={source ? "img" : undefined} aria-label={source ? photo?.alt ?? attraction : undefined}>
-    {photo ? <MorroviaPhotoCredit photoLabel={photo.alt ?? attraction} credit={photo.sourceLabel} sourceHref={photo.sourceUrl} /> : null}
+    {displayedCredit && imageDisplayed ? <MorroviaPhotoCredit ownership={"provenance" in displayedCredit && displayedCredit.provenance === "reviewed-morrovia-first-party" ? "morrovia" : "third-party"} photoLabel={displayedCredit.alt ?? attraction} credit={displayedCredit.sourceLabel} authorHref={"authorUrl" in displayedCredit ? displayedCredit.authorUrl : null} sourceHref={displayedCredit.sourceUrl} licenseHref={"licenseUrl" in displayedCredit ? displayedCredit.licenseUrl : null} fullCreditHref={"fullCreditUrl" in displayedCredit ? displayedCredit.fullCreditUrl : null} /> : null}
   </div>;
 }

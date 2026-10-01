@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { Compass } from "lucide-react";
 import ResilientImage from "@/components/easyt/resilient-image";
 import MorroviaPhotoCredit from "@/components/easyt/morrovia-photo-credit";
@@ -9,13 +10,14 @@ import styles from "./discover.module.css";
 export default function DiscoveryPhoto({ route, image = route.image, priority = false, sizes = "(max-width:700px) 100vw, 55vw", className = "", unavailable = false }: {
   route: DiscoveryRoute; image?: DiscoveryImage | null; priority?: boolean; sizes?: string; className?: string; unavailable?: boolean;
 }) {
+  const [imageDisplayed, setImageDisplayed] = useState(false);
   const source = unavailable ? null : image?.variants.at(-1)?.src;
   const fallback = <div className={styles.fallback}><Compass aria-hidden="true" /><strong>{route.countries.join(" → ")}</strong><span>{route.stops.map((stop) => stop.name).join(" → ")}</span><small>Photography pending editorial review</small></div>;
   return <div className={`${styles.photoShell} ${className}`}>
     <ResilientImage key={source ?? route.key} src={source} fallback={fallback} className={styles.photo}
       srcSet={image?.variants.map((variant) => `${variant.src} ${variant.width}w`).join(", ")} sizes={sizes}
       width={image?.variants.at(-1)?.width ?? 768} height={image?.variants.at(-1)?.height ?? 512}
-      alt={image?.alt ?? ""} loading={priority ? "eager" : "lazy"} fetchPriority={priority ? "high" : "auto"} decoding="async" />
-    {source && image ? <MorroviaPhotoCredit presentation="inline" placement="bottom-left" photoLabel={image.alt} credit={image.credit} authorHref={image.authorUrl} sourceHref={image.sourceUrl} licenseHref={image.licenseUrl} fullCreditHref="/journey/immersive/credits.html" /> : null}
+      alt={image?.alt ?? ""} loading={priority ? "eager" : "lazy"} fetchPriority={priority ? "high" : "auto"} decoding="async" onDisplayState={setImageDisplayed} />
+    {source && image && imageDisplayed ? <MorroviaPhotoCredit ownership={image.provenance === "reviewed-morrovia-first-party" ? "morrovia" : "third-party"} placement="bottom-left" photoLabel={image.alt} credit={image.credit} authorHref={image.authorUrl} sourceHref={image.sourceUrl} licenseHref={image.licenseUrl} fullCreditHref="/journey/immersive/credits.html" /> : null}
   </div>;
 }

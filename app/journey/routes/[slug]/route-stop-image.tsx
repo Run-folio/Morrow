@@ -15,6 +15,7 @@ export default function RouteStopImage({ routeKey, stop, country, index, fallbac
   const subjectKey = stop.toLocaleLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "") || String(index);
   const cacheKey = `${routeKey}:stop:${subjectKey}`;
   const [photo, setPhoto] = useState<CachedRoutePhoto | null>(null);
+  const [imageDisplayed, setImageDisplayed] = useState(false);
   const [shouldLoad, setShouldLoad] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -49,8 +50,19 @@ export default function RouteStopImage({ routeKey, stop, country, index, fallbac
   }, [cacheKey, country, shouldLoad, stop, canonicalImage]);
 
   const selectedPhoto = canonicalPhoto ?? photo;
+  const displayedCredit = selectedPhoto ?? (fallbackImage ? routeImageCredit(fallbackImage) : null);
   const source = selectedPhoto?.src ?? fallbackImage;
+  useEffect(() => {
+    setImageDisplayed(false);
+    if (!source) return;
+    let active = true;
+    const probe = new window.Image();
+    probe.onload = () => { if (active) setImageDisplayed(true); };
+    probe.onerror = () => { if (active) setImageDisplayed(false); };
+    probe.src = source;
+    return () => { active = false; };
+  }, [source]);
   return <div ref={containerRef} className={`${styles.stopImage} ${source ? "" : styles.stopImagePending}`} style={source ? { backgroundImage: `url(${source})` } : undefined} role={source ? "img" : undefined} aria-label={source ? selectedPhoto?.alt ?? `${stop}, ${country}` : undefined}>
-    {selectedPhoto ? <MorroviaPhotoCredit photoLabel={selectedPhoto.alt ?? `${stop}, ${country}`} credit={selectedPhoto.sourceLabel} authorHref={"authorUrl" in selectedPhoto ? selectedPhoto.authorUrl : null} sourceHref={selectedPhoto.sourceUrl} licenseHref={"licenseUrl" in selectedPhoto ? selectedPhoto.licenseUrl : null} fullCreditHref={"fullCreditUrl" in selectedPhoto ? selectedPhoto.fullCreditUrl : null} /> : null}
+    {displayedCredit && imageDisplayed ? <MorroviaPhotoCredit ownership={"provenance" in displayedCredit && displayedCredit.provenance === "reviewed-morrovia-first-party" ? "morrovia" : "third-party"} photoLabel={displayedCredit.alt ?? `${stop}, ${country}`} credit={displayedCredit.sourceLabel} authorHref={"authorUrl" in displayedCredit ? displayedCredit.authorUrl : null} sourceHref={displayedCredit.sourceUrl} licenseHref={"licenseUrl" in displayedCredit ? displayedCredit.licenseUrl : null} fullCreditHref={"fullCreditUrl" in displayedCredit ? displayedCredit.fullCreditUrl : null} /> : null}
   </div>;
 }

@@ -187,6 +187,8 @@ export default function DashboardClient({ trips, stamps, ownerId }: { trips: Eas
   const [recoveryState, setRecoveryState] = useState<"checking" | "none" | "syncing" | "issue">("checking");
   const [recoveryVersion, setRecoveryVersion] = useState(0);
   const [showDetachedRecoveries, setShowDetachedRecoveries] = useState(false);
+  const [featuredImageDisplayed, setFeaturedImageDisplayed] = useState(false);
+  const [closingImageDisplayed, setClosingImageDisplayed] = useState(false);
   const copy = easytCopy[language].dashboard;
 
   useEffect(() => {
@@ -277,6 +279,7 @@ export default function DashboardClient({ trips, stamps, ownerId }: { trips: Eas
   const ideaTrips = useMemo(() => secondaryTrips.filter((trip) => trip.status === "draft"), [secondaryTrips]);
   const pastTrips = useMemo(() => secondaryTrips.filter((trip) => trip.status === "archived"), [secondaryTrips]);
   const featuredPhoto = featuredTrip ? featuredDashboardTripPhoto(featuredTrip) : null;
+  useEffect(() => setFeaturedImageDisplayed(false), [featuredPhoto?.src]);
   const cardPhotos = useMemo(() => dashboardTripPhotosForCards(
     sort === "updated" ? secondaryTrips : [...upcomingTrips, ...ideaTrips, ...pastTrips],
     featuredPhoto ? [featuredPhoto.src] : [],
@@ -420,6 +423,7 @@ export default function DashboardClient({ trips, stamps, ownerId }: { trips: Eas
   const featuredTitle = featuredTrip ? featuredTitleParts(tripDisplayTitle(featuredTrip)) : null;
   const closingPhoto = routeDestinationPhoto("Tokyo", "Japan");
   const closingPhotoSrc = closingPhoto?.variants.at(-1)?.src;
+  useEffect(() => setClosingImageDisplayed(false), [closingPhotoSrc]);
   const featuredRecoveryIssue = featuredTrip ? recoveryIssues[featuredTrip.id] : undefined;
   const orphanRecoveryIssues = Object.values(recoveryIssues).filter((issue) => !trips.some((trip) => trip.id === issue.tripId));
 
@@ -453,6 +457,7 @@ export default function DashboardClient({ trips, stamps, ownerId }: { trips: Eas
             <ResilientImage
               src={featuredPhoto?.src}
               alt={featuredPhoto?.alt ?? ""}
+              onDisplayState={setFeaturedImageDisplayed}
               fallback={<div className={styles.currentMediaFallback}><Globe2 aria-hidden="true" /><span>{routeLabel(featuredTrip, copy.routeWaiting)}</span></div>}
             />
             <div className={styles.currentIdentity}>
@@ -460,7 +465,7 @@ export default function DashboardClient({ trips, stamps, ownerId }: { trips: Eas
               <h2 id="current-journey-title"><span>{featuredTitle?.direct}</span>{featuredTitle?.expressive ? <em>{featuredTitle.expressive}</em> : null}</h2>
               <p>{routeLabel(featuredTrip, copy.routeWaiting)}</p>
             </div>
-            {featuredPhoto?.creditLabel ? <MorroviaPhotoCredit presentation="inline" photoLabel={featuredPhoto.alt} credit={featuredPhoto.creditLabel} authorHref={featuredPhoto.authorHref} sourceHref={featuredPhoto.creditHref} licenseHref={featuredPhoto.licenseHref} fullCreditHref={featuredPhoto.fullCreditHref} /> : null}
+            {featuredPhoto?.creditLabel && featuredImageDisplayed ? <MorroviaPhotoCredit ownership={featuredPhoto.provenance === "reviewed-morrovia-first-party" ? "morrovia" : "third-party"} photoLabel={featuredPhoto.alt} credit={featuredPhoto.creditLabel} authorHref={featuredPhoto.authorHref} sourceHref={featuredPhoto.creditHref} licenseHref={featuredPhoto.licenseHref} fullCreditHref={featuredPhoto.fullCreditHref} /> : null}
           </div>
           <div className={styles.currentDetails}>
             {featuredRecoveryIssue ? <MorroviaStatusBanner className={styles.featuredRecoveryNotice} tone="warning"
@@ -547,13 +552,13 @@ export default function DashboardClient({ trips, stamps, ownerId }: { trips: Eas
       </section> : null}
 
       <section className={styles.closingInvitation} aria-labelledby="closing-invitation-title">
-        <ResilientImage src={closingPhotoSrc} alt={closingPhoto?.alt ?? ""} fallback={<div className={styles.closingFallback}><Globe2 aria-hidden="true" /></div>} />
+        <ResilientImage src={closingPhotoSrc} alt={closingPhoto?.alt ?? ""} onDisplayState={setClosingImageDisplayed} fallback={<div className={styles.closingFallback}><Globe2 aria-hidden="true" /></div>} />
         <div className={styles.closingContent}>
           <p className={styles.eyebrow}>{isSpanish ? "Otro lugar que te llama" : "Another way to go"}</p>
           <h2 id="closing-invitation-title"><span>{isSpanish ? "¿Algún otro lugar" : "Somewhere else"}</span><em>{isSpanish ? "en mente?" : "on your mind?"}</em></h2>
           <EasyTLinkButton variant="secondary" href="/#start-building">{isSpanish ? "Empezar otro viaje" : "Start another trip"}<ArrowRight aria-hidden="true" /></EasyTLinkButton>
         </div>
-      {closingPhoto ? <MorroviaPhotoCredit photoLabel={closingPhoto.alt} credit={`${closingPhoto.author} · ${closingPhoto.license}`} authorHref={closingPhoto.authorUrl} sourceHref={closingPhoto.sourceUrl} licenseHref={closingPhoto.licenseUrl} fullCreditHref={`/journey/immersive/credits.html#${closingPhoto.key}`} /> : null}
+      {closingPhoto && closingImageDisplayed ? <MorroviaPhotoCredit ownership={closingPhoto.provenance === "reviewed-morrovia-first-party" ? "morrovia" : "third-party"} photoLabel={closingPhoto.alt} credit={`${closingPhoto.author} · ${closingPhoto.license}`} authorHref={closingPhoto.authorUrl} sourceHref={closingPhoto.sourceUrl} licenseHref={closingPhoto.licenseUrl} fullCreditHref={`/journey/immersive/credits.html#${closingPhoto.key}`} /> : null}
       </section>
 
       <footer className={styles.libraryFooter}>
@@ -712,6 +717,9 @@ export function TripCard({ kind, trip, photo: selectedPhoto, language, copy, rec
   onGift: (trip: EasyTTrip) => void;
   onRemove: (trip: EasyTTrip) => void;
 }) {
+  const [imageDisplayed, setImageDisplayed] = useState(false);
+  const photoAnchorRef = useRef<HTMLDivElement>(null);
+  useEffect(() => setImageDisplayed(false), [selectedPhoto?.src]);
   const resolvedKind = kind ?? (trip.status === "draft" ? "idea" : trip.status === "archived" ? "past" : "upcoming");
   const title = tripDisplayTitle(trip);
   const photo = selectedPhoto ?? dashboardTripPhoto(trip);
@@ -725,11 +733,11 @@ export function TripCard({ kind, trip, photo: selectedPhoto, language, copy, rec
       : (language === "es" ? "Planificar los días" : "Plan your days");
   const recoveryIssue = recoveryIssues[trip.id];
   return <article className={`${styles.tripCard} ${resolvedKind === "past" ? styles.pastCard : ""} ${working ? styles.working : ""}`} aria-busy={working || undefined}>
-    <div className={styles.cardMediaFrame}>
+    <div ref={photoAnchorRef} className={styles.cardMediaFrame}>
       <Link className={styles.cardMedia} href={primaryHref} onClick={() => resolvedKind === "idea" ? trackEvent("trip_edit_started", { trip_id: trip.id, source: "dashboard" }) : trackTripReopened(trip)} tabIndex={working ? -1 : undefined} aria-disabled={working || undefined}>
-        {resolvedKind === "idea" ? <div className={styles.routePreviewFallback} aria-label={`${title} ${language === "es" ? "boceto de ruta" : "route sketch"}`}><MapPin aria-hidden="true" /><span>{routeLabel(trip, copy.routeWaiting)}</span></div> : <ResilientImage src={photo?.src} alt={photo?.alt ?? ""} fallback={<div className={styles.tripImageFallback}><Globe2 aria-hidden="true" /><span>{routeLabel(trip, copy.routeWaiting)}</span></div>} />}
+        {resolvedKind === "idea" ? <div className={styles.routePreviewFallback} aria-label={`${title} ${language === "es" ? "boceto de ruta" : "route sketch"}`}><MapPin aria-hidden="true" /><span>{routeLabel(trip, copy.routeWaiting)}</span></div> : <ResilientImage src={photo?.src} alt={photo?.alt ?? ""} onDisplayState={setImageDisplayed} fallback={<div className={styles.tripImageFallback}><Globe2 aria-hidden="true" /><span>{routeLabel(trip, copy.routeWaiting)}</span></div>} />}
       </Link>
-      {resolvedKind !== "idea" && photo?.creditLabel ? <MorroviaPhotoCredit placement="bottom-left" photoLabel={photo.alt} credit={photo.creditLabel} authorHref={photo.authorHref} sourceHref={photo.creditHref} licenseHref={photo.licenseHref} fullCreditHref={photo.fullCreditHref} /> : null}
+      {resolvedKind !== "idea" && photo?.creditLabel && imageDisplayed ? <MorroviaPhotoCredit anchorRef={photoAnchorRef} ownership={photo.provenance === "reviewed-morrovia-first-party" ? "morrovia" : "third-party"} placement="bottom-left" photoLabel={photo.alt} credit={photo.creditLabel} authorHref={photo.authorHref} sourceHref={photo.creditHref} licenseHref={photo.licenseHref} fullCreditHref={photo.fullCreditHref} /> : null}
     </div>
     <div className={styles.cardBody}>
       <h3><Link href={primaryHref} onClick={() => resolvedKind === "idea" ? trackEvent("trip_edit_started", { trip_id: trip.id, source: "dashboard" }) : trackTripReopened(trip)}>{title}</Link></h3>

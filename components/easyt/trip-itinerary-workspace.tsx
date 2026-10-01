@@ -541,6 +541,8 @@ export default function TripItineraryWorkspace({
     writeOrientation(selectedIndex, view);
   };
   const [remoteImages, setRemoteImages] = useState<Record<string, JourneyImage>>({});
+  const [dayHeroDisplayed, setDayHeroDisplayed] = useState(false);
+  const dayHeroRef = useRef<HTMLImageElement>(null);
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
   const [selectedRecommendation, setSelectedRecommendation] = useState<ExploreResult | null>(null);
   const [addFlow, setAddFlow] = useState<AddFlow | null>(null);
@@ -770,6 +772,7 @@ export default function TripItineraryWorkspace({
 
   const stop = stopForDay(workingTrip, active);
   const dayHero = presentationImages.dayById[active.id] ?? null;
+  useEffect(() => setDayHeroDisplayed(false), [dayHero?.src]);
   const image = imageFromPlanItem(active, stop, index) ?? remoteImages[active.id] ?? null;
   const incomingLeg = incomingLegForPlanItem(workingTrip, active);
   const scheduledIdeaTitles = new Set((legacyItineraryIdeas(workingTrip.brief.itineraryIdeas))
@@ -1374,14 +1377,14 @@ export default function TripItineraryWorkspace({
         aria-label={workspaceView === "calendar" ? `${copy.day} ${active.dayNumber}: ${stop?.name ?? active.title}` : undefined}
       >
         <header className={styles.dayHeader} data-photo={Boolean(dayHero)}>
-          {dayHero ? <img className={styles.dayHeaderPhoto} src={dayHero.src} alt={dayHero.alt} /> : null}
+          {dayHero ? <img ref={dayHeroRef} className={styles.dayHeaderPhoto} src={dayHero.src} alt={dayHero.alt} onLoad={() => setDayHeroDisplayed(true)} onError={() => setDayHeroDisplayed(false)} /> : null}
           <div>
             <p><span>{copy.day} {pad(active.dayNumber)}</span><i aria-hidden="true">·</i><time dateTime={active.date}>{displayDayDate(active.date, language)}</time></p>
             <h2>{stop?.name ?? active.title}</h2>
             {normalized(active.title) !== normalized(stop?.name ?? "") && normalized(active.title) !== normalized(`Explore ${stop?.name ?? ""}`)
               ? <span className={styles.dayRole}>{active.title}</span> : null}
           </div>
-          {dayHero?.sourceLabel ? <MorroviaPhotoCredit className={styles.dayHeroCredit} presentation="inline" language={language} credit={dayHero.sourceLabel} photoLabel={dayHero.alt} authorHref={dayHero.authorUrl} sourceHref={dayHero.sourceUrl} licenseHref={dayHero.licenseUrl} fullCreditHref={dayHero.fullCreditUrl} /> : null}
+          {dayHero?.sourceLabel && dayHeroDisplayed ? <MorroviaPhotoCredit anchorRef={dayHeroRef} ownership={dayHero.provenance === "reviewed-morrovia-first-party" ? "morrovia" : "unknown"} className={styles.dayHeroCredit} language={language} credit={dayHero.sourceLabel} photoLabel={dayHero.alt} authorHref={dayHero.authorUrl} sourceHref={dayHero.sourceUrl} licenseHref={dayHero.licenseUrl} fullCreditHref={dayHero.fullCreditUrl} /> : null}
         </header>
 
         {mutation.saveState === "error" ? <div className={styles.recoveryFeedback}><MorroviaRecoveryFeedback

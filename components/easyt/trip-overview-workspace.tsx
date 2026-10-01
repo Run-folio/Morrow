@@ -22,7 +22,7 @@ import {
   Sparkles,
   type LucideIcon,
 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { accommodationProgress, stayBookingForStop } from "@/lib/easyt/accommodation";
 import { tripHealth } from "@/lib/easyt/review";
 import { formatTripDuration, formatTripNights } from "@/lib/easyt/trip-facts";
@@ -105,6 +105,19 @@ function conciseTransferLabel(leg: EasyTTrip["legs"][number] | null | undefined)
   if (!minutes) return "Transfer to confirm";
   const duration = formatTripDuration(minutes);
   return leg.mode === "flight" ? `${duration} by air` : `${duration} transfer`;
+}
+
+function OverviewStepMedia({ image, name, meta, number }: { image: OverviewPlaceImage | null; name: string; meta: string; number: number }) {
+  const mediaRef = useRef<HTMLElement>(null);
+  const [imageDisplayed, setImageDisplayed] = useState(false);
+  return <>
+    <article ref={mediaRef}>
+      <div className={styles.stopNumber}>{number}</div>
+      <ResilientImage src={image?.src} alt={image?.alt ?? ""} onDisplayState={setImageDisplayed} fallback={<div className={styles.stopFallback}><MapPin aria-hidden="true" /></div>} />
+      <div className={styles.stopOverlay}><h3>{name}</h3><span>{meta}</span></div>
+    </article>
+    {image?.sourceLabel && imageDisplayed ? <MorroviaPhotoCredit anchorRef={mediaRef} ownership={image.provenance === "reviewed-morrovia-first-party" ? "morrovia" : "unknown"} placement="bottom-left" credit={image.sourceLabel} photoLabel={image.alt} authorHref={image.authorUrl} sourceHref={image.sourceUrl} licenseHref={image.licenseUrl} fullCreditHref={image.fullCreditUrl} /> : null}
+  </>;
 }
 
 export default function TripOverviewWorkspace({
@@ -362,12 +375,7 @@ export default function TripOverviewWorkspace({
                   }),
                   ...(journeyEnd && !journeyEndIsLastStop ? [{ id: journeyEnd.id, name: journeyEnd.name, image: initialPlaceImages[journeyEnd.id] ?? resolvedPlaceImages[imageCacheKeysByOccurrence[journeyEnd.id]], meta: "Journey end", href: routeIssueHref(trip.id), transfer: null }] : []),
                 ].map((step, index, steps) => <li key={step.id} className={styles.routeStep}>
-                  <Link className={styles.routeStopLink} href={step.href}><article>
-                    <div className={styles.stopNumber}>{index + 1}</div>
-                    <ResilientImage src={step.image?.src} alt={step.image?.alt ?? ""} fallback={<div className={styles.stopFallback}><MapPin aria-hidden="true" /></div>} />
-                    <div className={styles.stopOverlay}><h3>{step.name}</h3><span>{step.meta}</span></div>
-                  </article></Link>
-                  {step.image?.sourceLabel ? <MorroviaPhotoCredit placement="bottom-left" credit={step.image.sourceLabel} photoLabel={step.image.alt} authorHref={step.image.authorUrl} sourceHref={step.image.sourceUrl} licenseHref={step.image.licenseUrl} fullCreditHref={step.image.fullCreditUrl} /> : null}
+                  <Link className={styles.routeStopLink} href={step.href}><OverviewStepMedia image={step.image} name={step.name} meta={step.meta} number={index + 1} /></Link>
                   {step.transfer ? <div className={styles.transfer}><ArrowRight aria-hidden="true" /><span>{step.transfer}</span></div> : <div className={styles.transferSpacer} aria-hidden="true" />}
                   {index < steps.length - 1 ? <ChevronRight className={styles.routeDirection} aria-hidden="true" /> : null}
                 </li>)}
