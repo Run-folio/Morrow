@@ -955,16 +955,9 @@ const enrichedPlaces = [
   { providerPlaceId: "ChIJjaipurFixture1", name: "Jaipur city palace (fixture)", coordinates: [75.823, 26.925] as [number, number], category: "Museum", address: "Jaipur", mapsUrl: "https://www.google.com/maps/search/?api=1&query_place_id=ChIJjaipurFixture1" },
   { providerPlaceId: "ChIJnative-story-fixture", name: "Native POI outside Nearby (fixture)", coordinates: [77.235, 28.65] as [number, number], category: "Historic place", address: "Delhi", mapsUrl: "https://www.google.com/maps/search/?api=1&query_place_id=ChIJnative-story-fixture" },
 ];
-const fixturePlacesByScope = {
-  "delhi:see": enrichedPlaces.slice(0, 2),
-  "agra:see": [enrichedPlaces[2]!],
-  "jaipur:see": [enrichedPlaces[3]!],
-  "delhi:eat": [{ providerPlaceId: "ChIJkarimsFixture", name: "Karim's (fixture)", coordinates: [77.233, 28.65] as [number, number], category: "Restaurant", address: "Old Delhi", mapsUrl: "https://www.google.com/maps/search/?api=1&query_place_id=ChIJkarimsFixture" }],
-};
 const googleFixture = {
   sdkLoader: loadFixtureGoogleCanvas,
-  placesByScope: fixturePlacesByScope,
-  detailsById: Object.fromEntries([...enrichedPlaces, ...fixturePlacesByScope["delhi:eat"]].map((place) => [place.providerPlaceId, place])),
+  detailsById: Object.fromEntries(enrichedPlaces.map((place) => [place.providerPlaceId, place])),
 };
 
 export const GooglePlacesEnrichmentFixture: Story = {
@@ -975,8 +968,8 @@ export const GooglePlacesEnrichmentFixture: Story = {
 export const GooglePlacesEnrichmentDetailFixture: Story = {
   ...GooglePlacesEnrichmentFixture,
   play: async ({ canvasElement }) => {
-    Array.from(canvasElement.querySelectorAll<HTMLButtonElement>('[aria-label^="Google Maps places"] button'))
-      .find((button) => button.textContent?.includes("Old Delhi landmark"))?.click();
+    Array.from(canvasElement.querySelectorAll<HTMLButtonElement>("button"))
+      .find((button) => button.textContent === "Native POI outside Nearby")?.click();
   },
 };
 
@@ -988,14 +981,14 @@ export const GooglePlacesEnrichmentMobile390: Story = {
 
 export const GooglePlacesEnrichmentUnavailable: Story = {
   ...GooglePlacesEnrichmentFixture,
-  args: { storyTrip: goldenTriangleTrip, storyState: { mapMode: "detail", shapeDayTab: "see", googleFixture: { ...googleFixture, unavailableScopes: ["agra:see"] } } },
+  args: { storyTrip: goldenTriangleTrip, storyState: { mapMode: "detail", shapeDayTab: "see", googleFixture: { ...googleFixture, detailsById: Object.fromEntries(Object.entries(googleFixture.detailsById).filter(([id]) => id !== "ChIJnative-story-fixture")) } } },
   parameters: { nextjs: { appDirectory: true, navigation: { pathname: "/journey/delhi-agra-jaipur/map", query: { stop: "agra", mode: "see", day: "5" } } } },
 };
 
 export const GooglePlacesEnrichmentNoMedia: Story = {
   ...GooglePlacesEnrichmentFixture,
   parameters: { nextjs: { appDirectory: true, navigation: { pathname: "/journey/delhi-agra-jaipur/map", query: { stop: "agra", mode: "see", day: "5" } } } },
-  play: async ({ canvasElement }) => { Array.from(canvasElement.querySelectorAll<HTMLButtonElement>('[aria-label^="Google Maps places"] button')).find((button) => button.textContent?.includes("Agra Fort"))?.click(); },
+  play: async ({ canvasElement }) => { Array.from(canvasElement.querySelectorAll<HTMLButtonElement>("button")).find((button) => button.textContent === "Native POI outside Nearby")?.click(); },
 };
 
 export const GooglePlacesEnrichmentJaipur: Story = {
@@ -1013,23 +1006,18 @@ export const GooglePlacesEnrichmentLongName: Story = {
   ...GooglePlacesEnrichmentFixture,
   args: { storyTrip: goldenTriangleTrip, storyState: { mapMode: "detail", shapeDayTab: "see", mobileShapeDayOpen: true, googleFixture: {
     ...googleFixture,
-    placesByScope: { ...fixturePlacesByScope, "delhi:see": [longNamePlace] },
-    detailsById: { ...googleFixture.detailsById, [longNamePlace.providerPlaceId]: longNamePlace },
+    detailsById: { ...googleFixture.detailsById, "ChIJnative-story-fixture": longNamePlace },
   } } },
-  play: async ({ canvasElement }) => { Array.from(canvasElement.querySelectorAll<HTMLButtonElement>("button[data-place-id]")).find((button) => button.dataset.placeId === longNamePlace.providerPlaceId)?.click(); },
+  play: async ({ canvasElement }) => { Array.from(canvasElement.querySelectorAll<HTMLButtonElement>("button")).find((button) => button.textContent === "Native POI outside Nearby")?.click(); },
 };
 
 const densePlaces = Array.from({ length: 6 }, (_, index) => ({
-  ...enrichedPlaces[0]!, providerPlaceId: `ChIJdense-story-${index}`, name: `Nearby place ${index + 1}`,
-  coordinates: [77.241, 28.656] as [number, number],
+  id: `dense-map-hotel-${index}`, name: `Nearby hotel ${index + 1}`, address: "Central Delhi, India", category: "Hotel",
+  coordinates: [77.241, 28.656] as [number, number], mapsUrl: "https://maps.google.com/?q=28.656,77.241", provider: "booking-demand" as const,
 }));
 export const GooglePlacesEnrichmentDenseMarkers: Story = {
   ...GooglePlacesEnrichmentFixture,
-  args: { storyTrip: goldenTriangleTrip, storyState: { mapMode: "detail", shapeDayTab: "see", mobileShapeDayOpen: true, googleFixture: {
-    ...googleFixture,
-    placesByScope: { ...fixturePlacesByScope, "delhi:see": densePlaces },
-    detailsById: { ...googleFixture.detailsById, ...Object.fromEntries(densePlaces.map((place) => [place.providerPlaceId, place])) },
-  } } },
+  args: { storyTrip: goldenTriangleTrip, storyState: { mapMode: "detail", shapeDayTab: "stay", mobileShapeDayOpen: true, localPlaces: densePlaces, localFinderInitialState: { corePlaces: densePlaces, accommodationInventoryStatus: "empty" }, googleFixture } },
 };
 
 export const GooglePlacesEnrichmentNativePoi: Story = {

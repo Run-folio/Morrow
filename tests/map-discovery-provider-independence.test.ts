@@ -12,7 +12,9 @@ const lacks = (source: string, pattern: RegExp, message: string) => assert.ok(!p
 
 test("Google canvas selection changes one map panel without suppressing Morrovia inventory", () => {
   has(workspace, /googleCanvasActive \? <GoogleTripMapCanvas/, "Google remains the eligible basemap");
-  has(workspace, /places=\{googleDiscoveryCategory \? \(googleNearby\?\.places/, "Nearby Google results remain map-selectable");
+  has(workspace, /places=\{googleCanvasPlaces\}/, "Google custom pins use the displayed Morrovia result collection");
+  has(workspace, /onSelectPlace=\{selectGoogleCanvasPlace\}/, "Google custom pins resolve through the parent Morrovia selection owner");
+  lacks(workspace, /journey-place-enrichment\?\$\{query\}|mode: "nearby"/, "Trip Map does not fetch a competing Google Nearby inventory");
   has(workspace, /onNativePoi=\{selectGoogleNativePoi\}/, "native Google POIs retain their selection callback");
 
   has(workspace, /\{!selectedGooglePlaceId && shapeDayTab === "see" && customTrip \?/, "See inventory is present until a Google Place ID is selected");
@@ -25,7 +27,7 @@ test("Google canvas selection changes one map panel without suppressing Morrovia
 
 test("Google selected-place details keep enrichment identity, save and day actions", () => {
   has(workspace, /selectedGoogleDetailForPlace\(selectedGooglePlaceId, selectedGoogleDetail\)/, "detail remains keyed by exact Place ID");
-  has(workspace, /onSelectPlace=\{selectGoogleDiscoveryPlace\}/, "nearby map markers use the Google selection owner");
+  has(workspace, /onSelectPlace=\{selectGoogleCanvasPlace\}/, "Morrovia result markers use the shared map-result selection owner");
   has(workspace, /onSelectSavedReference=\{selectGoogleSavedReference\}/, "saved references keep their existing selector");
   has(workspace, /<GoogleSavedReferenceList/, "saved Place ID references remain reachable from Morrovia inventory");
   has(workspace, /onBackToPlaces=\{\(\) => setWorkspacePlaceSelection\(\{ kind: "none" \}\)\}/, "Back to places restores discovery state");

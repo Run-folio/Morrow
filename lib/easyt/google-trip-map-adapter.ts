@@ -13,6 +13,7 @@ type MapObject = {
   setZoom(zoom: number): void;
   panTo?(center: { lat: number; lng: number }): void;
   panBy?(x: number, y: number): void;
+  getZoom?(): number | undefined;
   fitBounds?(bounds: unknown, padding?: number | { top: number; right: number; bottom: number; left: number }): void;
 };
 type OverlayObject = { addListener(name: string, callback: () => void): Listener; setMap(map: MapObject | null): void; setIcon?(icon: unknown): void; setZIndex?(zIndex: number): void; setOptions?(options: Record<string, unknown>): void };
@@ -33,7 +34,7 @@ export type GoogleTripMapApi = {
 };
 export type GoogleCanvasStop = { id: string; name: string; coordinates: [number, number] | null; sequence?: number };
 export type GoogleCanvasLeg = { id: string; fromStopId: string; toStopId: string };
-export type GoogleCanvasPlace = { id: string; name: string; category: "stay" | "eat" | "see"; coordinates: [number, number] };
+export type GoogleCanvasPlace = { id: string; sourceId?: string; stopId?: string | null; name: string; category: "stay" | "eat" | "see"; coordinates: [number, number] };
 export type GoogleMapInsets = Partial<{ top: number; right: number; bottom: number; left: number }>;
 export type GoogleTripMapOptions = {
   stops: readonly GoogleCanvasStop[];
@@ -56,36 +57,15 @@ function cameraInsetsKey(insets: GoogleMapInsets): string {
   return `${insets.top ?? 0}:${insets.right ?? 0}:${insets.bottom ?? 0}:${insets.left ?? 0}`;
 }
 
-/** Keep nearby result hit areas individually reachable when projected points collide. */
-export function googlePlaceMarkerOffsetsForScreenPositions(points: readonly (readonly [number, number])[]): Array<[number, number]> {
-  const placed: Array<[number, number]> = [];
-  const offsets: Array<[number, number]> = [];
-  for (const [x, y] of points) {
-    const candidates: Array<[number, number]> = [[0, 0]];
-    for (let radius = 1; radius <= points.length; radius++) {
-      for (let step = -radius; step <= radius; step++) {
-        candidates.push([step * 48, -radius * 48], [step * 48, radius * 48]);
-      }
-      for (let step = -radius + 1; step < radius; step++) {
-        candidates.push([-radius * 48, step * 48], [radius * 48, step * 48]);
-      }
-    }
-    const offset = candidates.find(([dx, dy]) => placed.every(([otherX, otherY]) => Math.hypot(x + dx - otherX, y + dy - otherY) >= 48)) ?? [0, 0];
-    offsets.push(offset);
-    placed.push([x + offset[0], y + offset[1]]);
-  }
-  return offsets;
-}
-
 /** The Google icon API needs fixed SVG colours; these mirror current Journey tokens. */
-export function googlePlaceMarkerIcon(api: GoogleTripMapApi, category: GoogleCanvasPlace["category"], selected: boolean, offset: readonly [number, number]) {
+export function googlePlaceMarkerIcon(api: GoogleTripMapApi, category: GoogleCanvasPlace["category"], selected: boolean) {
   const size = selected ? 52 : 44;
   const center = size / 2;
   const label = category === "stay" ? "STAY" : category === "eat" ? "EAT" : "SEE";
   const fill = category === "stay" ? "#3025ce" : category === "eat" ? "#d01866" : "#17106f";
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}"><circle cx="${center}" cy="${center}" r="${center - 2}" fill="#fbfaff" stroke="${selected ? "#d01866" : "#17106f"}" stroke-width="${selected ? 4 : 2}"/><circle cx="${center}" cy="${center}" r="${center - (selected ? 8 : 5)}" fill="${fill}"/><text x="50%" y="51%" dominant-baseline="central" text-anchor="middle" fill="#fbfaff" font-family="Arial,sans-serif" font-size="${selected ? 10 : 9}" font-weight="700">${label}</text></svg>`;
   const scaledSize = api.Size ? new api.Size(size, size) : { width: size, height: size };
-  const anchor = api.Point ? new api.Point(center - offset[0], center - offset[1]) : { x: center - offset[0], y: center - offset[1] };
+  const anchor = api.Point ? new api.Point(center, center) : { x: center, y: center };
   return { url: `data:image/svg+xml,${encodeURIComponent(svg)}`, scaledSize, anchor };
 }
 
@@ -94,14 +74,6 @@ function googleStopMarkerIcon(api: GoogleTripMapApi, index: number, selected: bo
   const label = origin ? "↗" : String(Math.max(1, index)).padStart(2, "0");
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}"><circle cx="${size / 2}" cy="${size / 2}" r="${size / 2 - 3}" fill="#17106f" stroke="${selected ? "#d01866" : "#fbfaff"}" stroke-width="${selected ? 4 : 3}"/><text x="50%" y="51%" dominant-baseline="central" text-anchor="middle" fill="#fbfaff" font-family="Arial,sans-serif" font-size="${index === 0 ? 17 : 11}" font-weight="700">${label}</text></svg>`;
   return { url: `data:image/svg+xml,${encodeURIComponent(svg)}`, scaledSize: api.Size ? new api.Size(size, size) : { width: size, height: size } };
-}
-
-/** Fan out nearby results at the same map point so no marker hides another. */
-export function googlePlaceMarkerOffset(index: number, count: number): [number, number] {
-  if (count < 2) return [0, 0];
-  const columns = Math.ceil(Math.sqrt(count));
-  const rows = Math.ceil(count / columns);
-  return [Math.round((index % columns - (columns - 1) / 2) * 48), Math.round((Math.floor(index / columns) - (rows - 1) / 2) * 48)];
 }
 
 export function googleCanvasEligible(input: {
@@ -282,60 +254,137 @@ export function createGoogleTripMapSession(api: GoogleTripMapApi, element: HTMLE
       const insetKey = cameraInsetsKey(cameraInsets);
       const OverlayView = api.OverlayView;
       if (OverlayView && api.LatLng && element.ownerDocument) {
-        const records = visible.map((place) => {
-          const selected = place.id === nextSelectedPlaceId;
+        const root = element.ownerDocument.createElement("div");
+        root.className = "planner-map__google-overlays";
+        root.style.position = "absolute";
+        root.style.inset = "0";
+        root.style.pointerEvents = "none";
+        let openGroupKey = "";
+        let projection: ReturnType<HtmlOverlayObject["getProjection"]> | null = null;
+        const makeButton = (label: string, className: string, zIndex: number, onClick: (event: Event) => void) => {
           const button = element.ownerDocument!.createElement("button");
           button.type = "button";
-          button.className = `planner-map__place planner-map__place--${place.category}${selected ? " is-active" : ""}`;
-          button.textContent = place.category === "stay" ? "Stay" : place.category === "eat" ? "Eat" : "See";
-          button.setAttribute("aria-label", `${place.name} · ${button.textContent}`);
-          button.setAttribute("aria-pressed", String(selected));
-          button.setAttribute("data-google-place-id", place.id);
-          button.title = place.name;
+          button.className = className;
+          button.textContent = label;
           button.style.position = "absolute";
-          button.style.zIndex = selected ? "500" : "100";
+          button.style.zIndex = String(zIndex);
+          button.style.pointerEvents = "auto";
+          button.style.transform = "translate(-50%, -50%)";
+          if (className.includes("planner-map__place")) {
+            const size = className.includes("is-active") ? 52 : 44;
+            button.style.width = `${size}px`;
+            button.style.height = `${size}px`;
+            if (className.includes("planner-map__place-overlap")) button.style.minWidth = "64px";
+          }
           button.addEventListener("pointerdown", (event) => event.stopPropagation());
-          button.addEventListener("click", (event) => { event.stopPropagation(); options.onSelectPlace?.(place.id); });
-          return { place, button, point: new api.LatLng!(place.coordinates[1], place.coordinates[0]), projection: null as ReturnType<HtmlOverlayObject["getProjection"]> | null };
-        });
-        const reflow = () => {
-          const projection = records.find((record) => record.projection)?.projection;
-          if (!projection) return;
-          const pixels = records.map((record) => projection.fromLatLngToDivPixel(record.point));
-          const valid = pixels.map((pixel, index) => pixel ? { pixel, index } : null).filter((value): value is { pixel: { x: number; y: number }; index: number } => value !== null);
-          const offsets = googlePlaceMarkerOffsetsForScreenPositions(valid.map(({ pixel }) => [pixel.x, pixel.y] as [number, number]));
-          valid.forEach(({ pixel, index }, position) => {
-            const record = records[index]!;
-            record.button.style.left = `${pixel.x + offsets[position]![0]}px`;
-            record.button.style.top = `${pixel.y + offsets[position]![1]}px`;
-          });
+          button.addEventListener("click", onClick);
+          return button;
         };
-        for (const record of records) {
-          const marker = new class extends OverlayView {
-            onAdd() { this.getPanes()?.overlayMouseTarget.append(record.button); }
-            draw() { record.projection = this.getProjection(); reflow(); }
-            onRemove() { record.button.remove(); }
-          }();
-          placeOverlays.push(marker);
-          if (record.place.id === focusedPlaceId) record.button.focus({ preventScroll: true });
-        }
-        for (const overlay of placeOverlays) overlay.setMap(map);
+        const render = () => {
+          if (!projection || !root.replaceChildren) return;
+          root.replaceChildren();
+          const zoom = map.getZoom?.() ?? 12;
+          const localResults = visible.filter((place) => place.id === nextSelectedPlaceId || zoom > 6 || place.id.startsWith("google-poi:"));
+          const projected = localResults.map((place) => ({ place, pixel: projection!.fromLatLngToDivPixel(new api.LatLng!(place.coordinates[1], place.coordinates[0])) }))
+            .filter((record): record is { place: GoogleCanvasPlace; pixel: { x: number; y: number } } => record.pixel !== null);
+          const groups: Array<{ records: typeof projected; anchor: { x: number; y: number } }> = [];
+          for (const record of projected) {
+            const group = groups.find((candidate) => candidate.records.some((member) => Math.hypot(record.pixel.x - member.pixel.x, record.pixel.y - member.pixel.y) < 44));
+            if (group) group.records.push(record);
+            else groups.push({ records: [record], anchor: record.pixel });
+          }
+          for (const group of groups) {
+            const groupKey = group.records.map(({ place }) => place.id).sort().join("|");
+            const selected = group.records.find(({ place }) => place.id === nextSelectedPlaceId)?.place;
+            if (group.records.length === 1) {
+              const place = group.records[0]!.place;
+              const active = place.id === nextSelectedPlaceId;
+              const label = place.category === "stay" ? "Stay" : place.category === "eat" ? "Eat" : "See";
+              const button = makeButton(label, `planner-map__place planner-map__place--${place.category}${active ? " is-active" : ""}`, active ? 500 : 100, (event) => { event.stopPropagation(); options.onSelectPlace?.(place.id); });
+              button.setAttribute("aria-label", `${place.name} · ${label}`);
+              button.setAttribute("aria-pressed", String(active));
+              button.setAttribute("data-google-place-id", place.id);
+              button.title = place.name;
+              button.style.left = `${group.anchor.x}px`;
+              button.style.top = `${group.anchor.y}px`;
+              root.append(button);
+              if (place.id === focusedPlaceId) button.focus({ preventScroll: true });
+              continue;
+            }
+            const category = selected?.category ?? group.records[0]!.place.category;
+            const label = category === "stay" ? "Stay" : category === "eat" ? "Eat" : "See";
+            const overlap = makeButton(`${label} +${group.records.length - 1}`, `planner-map__place planner-map__place--${category} planner-map__place-overlap${selected ? " is-active" : ""}`, selected ? 500 : 100, (event) => {
+              event.stopPropagation();
+              openGroupKey = openGroupKey === groupKey ? "" : groupKey;
+              render();
+            });
+            overlap.setAttribute("aria-label", `Choose from ${group.records.length} overlapping places`);
+            overlap.setAttribute("aria-expanded", String(openGroupKey === groupKey));
+            overlap.style.left = `${group.anchor.x}px`;
+            overlap.style.top = `${group.anchor.y}px`;
+            root.append(overlap);
+            if (openGroupKey === groupKey) {
+              const choices = element.ownerDocument!.createElement("div");
+              choices.className = "planner-map__place-choices";
+              choices.style.position = "absolute";
+              choices.style.left = `${group.anchor.x}px`;
+              choices.style.top = `${group.anchor.y + 28}px`;
+              choices.style.zIndex = "550";
+              choices.style.pointerEvents = "auto";
+              for (const { place } of group.records) {
+                const option = element.ownerDocument!.createElement("button");
+                option.type = "button";
+                option.textContent = `${place.name} · ${place.category}`;
+                option.setAttribute("data-google-place-id", place.id);
+                option.addEventListener("click", (event) => { event.stopPropagation(); openGroupKey = ""; options.onSelectPlace?.(place.id); });
+                choices.append(option);
+                if (place.id === focusedPlaceId) option.focus({ preventScroll: true });
+              }
+              root.append(choices);
+            }
+          }
+          // Transparent hit targets sit above nearby result pins, so the visible route marker
+          // always selects its canonical stop when a hotel overlaps it.
+          const routePoints = mappedStops.map((stop) => ({ stop, pixel: projection!.fromLatLngToDivPixel(new api.LatLng!(stop.coordinates[1], stop.coordinates[0])) }))
+            .filter((record): record is { stop: typeof mappedStops[number]; pixel: { x: number; y: number } } => record.pixel !== null);
+          const stopGroups = new Map<string, typeof routePoints>();
+          for (const record of routePoints) {
+            const key = `${record.pixel.x},${record.pixel.y}`;
+            stopGroups.set(key, [...(stopGroups.get(key) ?? []), record]);
+          }
+          for (const records of stopGroups.values()) {
+            const { stop, pixel } = records[0]!;
+            const hit = makeButton("", "planner-map__google-stop-hit", 700, (event) => { event.stopPropagation(); options.onSelectStop(stop.id); });
+            hit.setAttribute("aria-label", `Select ${stop.name}, stop ${stop.sequence ?? records[0]!.stop.sequence ?? 1}`);
+            hit.setAttribute("data-google-stop-id", stop.id);
+            hit.style.left = `${pixel.x}px`;
+            hit.style.top = `${pixel.y}px`;
+            hit.style.width = "52px";
+            hit.style.height = "52px";
+            hit.style.padding = "0";
+            hit.style.border = "0";
+            hit.style.background = "transparent";
+            root.append(hit);
+          }
+        };
+        const marker = new class extends OverlayView {
+          onAdd() { this.getPanes()?.overlayMouseTarget.append(root); }
+          draw() { projection = this.getProjection(); render(); }
+          onRemove() { root.remove(); }
+        }();
+        placeOverlays.push(marker);
+        marker.setMap(map);
+        const zoomListener = map.addListener("zoom_changed", render);
+        placeListeners.push(zoomListener);
       } else {
-        const clusters = new Map<string, GoogleCanvasPlace[]>();
         for (const place of visible) {
-          const key = `${place.coordinates[0].toFixed(4)},${place.coordinates[1].toFixed(4)}`;
-          clusters.set(key, [...(clusters.get(key) ?? []), place]);
-        }
-        for (const place of visible) {
-          const key = `${place.coordinates[0].toFixed(4)},${place.coordinates[1].toFixed(4)}`;
-          const group = clusters.get(key)!;
+          if (place.id !== nextSelectedPlaceId && (map.getZoom?.() ?? 12) <= 6 && !place.id.startsWith("google-poi:")) continue;
           const selected = place.id === nextSelectedPlaceId;
-          const offset = googlePlaceMarkerOffset(group.findIndex((member) => member.id === place.id), group.length);
-          const marker = new api.Marker({ map, position: { lat: place.coordinates[1], lng: place.coordinates[0] }, title: `${place.name} · ${place.category}`, icon: googlePlaceMarkerIcon(api, place.category, selected, offset), optimized: false, zIndex: selected ? 500 : 100 });
+          const marker = new api.Marker({ map, position: { lat: place.coordinates[1], lng: place.coordinates[0] }, title: `${place.name} · ${place.category}`, icon: googlePlaceMarkerIcon(api, place.category, selected), optimized: false, zIndex: selected ? 150 : 100 });
           placeOverlays.push(marker);
           placeListeners.push(marker.addListener("click", () => options.onSelectPlace?.(place.id)));
-          placeListeners.push(marker.addListener("mouseover", () => { if (!selected) marker.setIcon?.(googlePlaceMarkerIcon(api, place.category, true, offset)); }));
-          placeListeners.push(marker.addListener("mouseout", () => { if (!selected) marker.setIcon?.(googlePlaceMarkerIcon(api, place.category, false, offset)); }));
+          placeListeners.push(marker.addListener("mouseover", () => { if (!selected) marker.setIcon?.(googlePlaceMarkerIcon(api, place.category, true)); }));
+          placeListeners.push(marker.addListener("mouseout", () => { if (!selected) marker.setIcon?.(googlePlaceMarkerIcon(api, place.category, false)); }));
         }
       }
       const placeSelectionChanged = nextSelectedPlaceId !== selectedPlaceId;
@@ -347,6 +396,8 @@ export function createGoogleTripMapSession(api: GoogleTripMapApi, element: HTMLE
         selectedPlaceInsetsKey = insetKey;
         const selectedPlace = visible.find((place) => place.id === nextSelectedPlaceId);
         if (selectedPlace) {
+          const isNativeSelection = selectedPlace.id.startsWith("google-poi:");
+          if (!isNativeSelection && (map.getZoom?.() ?? 12) < 9) map.setZoom(12);
           framePlace(selectedPlace);
           cameraFocusedPlaceId = selectedPlace.id;
         } else if (previousPlaceId) {

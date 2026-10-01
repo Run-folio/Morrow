@@ -5243,7 +5243,7 @@
     "observedSpacing": [
       {
         "value": "8px",
-        "count": 558,
+        "count": 559,
         "examples": [
           "app/journey/account.module.css",
           "app/journey/admin/feedback/feedback.module.css",
@@ -5263,7 +5263,7 @@
       },
       {
         "value": "12px",
-        "count": 498,
+        "count": 499,
         "examples": [
           "app/journey/about/about.module.css",
           "app/journey/account.module.css",
@@ -5323,12 +5323,22 @@
       },
       {
         "value": "4px",
-        "count": 252,
+        "count": 253,
         "examples": [
           "app/journey/about/about.module.css",
           "app/journey/account.module.css",
           "app/journey/admin/feedback/feedback.module.css",
           "app/journey/discover/discover.module.css"
+        ]
+      },
+      {
+        "value": "6px",
+        "count": 237,
+        "examples": [
+          "app/journey/account.module.css",
+          "app/journey/discover/discover.module.css",
+          "app/journey/home/home-destination-editor.module.css",
+          "app/journey/home/home.module.css"
         ]
       },
       {
@@ -5339,16 +5349,6 @@
           "app/journey/admin/feedback/feedback.module.css",
           "app/journey/contact/contact.module.css",
           "app/journey/dashboard/dashboard.module.css"
-        ]
-      },
-      {
-        "value": "6px",
-        "count": 236,
-        "examples": [
-          "app/journey/account.module.css",
-          "app/journey/discover/discover.module.css",
-          "app/journey/home/home-destination-editor.module.css",
-          "app/journey/home/home.module.css"
         ]
       },
       {
@@ -6078,7 +6078,7 @@
       },
       {
         "value": "50%",
-        "count": 89,
+        "count": 90,
         "examples": [
           "app/journey/account.module.css",
           "app/journey/easyt-navigation.module.css",
@@ -8224,6 +8224,6 @@
         }
       ]
     },
-    "documentedExceptions": 57
+    "documentedExceptions": 58
   }
 }

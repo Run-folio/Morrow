@@ -6,7 +6,6 @@ import {
   createGoogleMapsSdkLoader,
   createGoogleTripMapSession,
   googlePlaceMarkerIcon,
-  googlePlaceMarkerOffsetsForScreenPositions,
   googleCanvasEligible,
   type GoogleTripMapApi,
 } from "../lib/easyt/google-trip-map-adapter.ts";
@@ -201,18 +200,42 @@ test("nearby result markers update without remounting the Google map and emit ex
   session.destroy();
 });
 
-test("Morrovia result markers have readable categories, 44px targets and separated dense positions", () => {
+test("Morrovia result markers keep each hit target on its actual coordinate", () => {
   const api = fakeApi();
   for (const category of ["stay", "eat", "see"] as const) {
-    const icon = googlePlaceMarkerIcon(api, category, false, [0, 0]);
+    const icon = googlePlaceMarkerIcon(api, category, false);
     assert.equal(icon.scaledSize.width, 44);
     assert.equal(icon.scaledSize.height, 44);
     assert.match(decodeURIComponent(icon.url), new RegExp(category.toUpperCase()));
   }
-  const offsets = googlePlaceMarkerOffsetsForScreenPositions([[0, 0], [8, 4], [18, -3], [400, 0], [405, 5], [900, 0]]);
-  const positions = [[0, 0], [8, 4], [18, -3], [400, 0], [405, 5], [900, 0]].map(([x, y], index) => [x! + offsets[index]![0], y! + offsets[index]![1]] as const);
-  assert.ok(positions.every(([x, y], index) => positions.slice(index + 1).every(([otherX, otherY]) => Math.hypot(x - otherX, y - otherY) >= 44)));
-  assert.equal(googlePlaceMarkerIcon(api, "see", true, [0, 0]).scaledSize.width, 52);
+  const apiWithOverlay = fakeApi();
+  const documentOwner = fakeDocument();
+  Object.assign(apiWithOverlay, {
+    LatLng: class { lat: number; lng: number; constructor(lat: number, lng: number) { this.lat = lat; this.lng = lng; } },
+    OverlayView: class { onAdd?(): void; draw?(): void; onRemove?(): void; setMap(map: unknown) { if (map) { this.onAdd?.(); this.draw?.(); } else this.onRemove?.(); } getPanes() { return { overlayMouseTarget: { append() {} } }; } getProjection() { return { fromLatLngToDivPixel: (point: { lat: number; lng: number }) => ({ x: point.lng * 10000, y: point.lat * 10000 }) }; } },
+  });
+  const session = createGoogleTripMapSession(apiWithOverlay, { ownerDocument: documentOwner } as unknown as HTMLElement, { stops: [], legs: [], selectedStopId: null, onNativePoi: () => {}, onEmptyClick: () => {}, onSelectStop: () => {}, onSelectLeg: () => {} });
+  session.updatePlaces([
+    { id: "coincident-a", name: "A", category: "see", coordinates: [72.87771, 19.07601] },
+    { id: "coincident-b", name: "B", category: "stay", coordinates: [72.87771, 19.07601] },
+  ]);
+  const overlap = documentOwner.elements.find((element) => element.className.includes("planner-map__place-overlap"));
+  assert.ok(overlap, "coincident recommendations render one overlap control instead of false-offset individual pins");
+  assert.deepEqual([overlap.style.left, overlap.style.top], ["728777.1px", "190760.1px"]);
+  assert.equal(googlePlaceMarkerIcon(api, "see", true).scaledSize.width, 52);
+  session.destroy();
+});
+
+test("regional zoom hides unselected local results and explicit list selection returns to a local view", () => {
+  const api = fakeApi();
+  const session = createGoogleTripMapSession(api, {} as HTMLElement, { stops: [{ id: "mumbai", name: "Mumbai", coordinates: [72.8777, 19.076] }], legs: [], selectedStopId: "mumbai", onNativePoi: () => {}, onEmptyClick: () => {}, onSelectStop: () => {}, onSelectLeg: () => {}, onSelectPlace: () => {} });
+  api.lastMap!.zoom = 3;
+  session.updatePlaces([{ id: "result:stay:mumbai:hotel-1", name: "Hotel", category: "stay", coordinates: [72.88, 19.08] }]);
+  assert.equal(api.markers.filter((marker) => marker.map).length, 1, "only the route stop remains at regional zoom");
+  session.updatePlaces([{ id: "result:stay:mumbai:hotel-1", name: "Hotel", category: "stay", coordinates: [72.88, 19.08] }], "result:stay:mumbai:hotel-1");
+  assert.equal(api.lastMap!.lastZoom, 12, "explicit result navigation restores a usable local zoom");
+  assert.equal(api.markers.filter((marker) => marker.map).length, 2);
+  session.destroy();
 });
 
 test("native POI gets a temporary selected Morrovia marker and pans without resetting zoom", () => {
@@ -226,37 +249,23 @@ test("native POI gets a temporary selected Morrovia marker and pans without rese
   let stopped = 0;
   api.lastMap!.fire("click", { placeId: "ChIJnative", latLng: { lat: () => 27.18, lng: () => 78.01 }, stop: () => stopped++ });
   assert.equal(stopped, 1);
-  session.updatePlaces([], "ChIJnative", { id: "ChIJnative", name: "Selected Google place", category: "see", coordinates: [78.01, 27.18] }, { left: 300 });
-  assert.equal(api.markers.length, 1);
+  session.updatePlaces([], "google-poi:ChIJnative", { id: "google-poi:ChIJnative", name: "Selected Google place", category: "see", coordinates: [78.01, 27.18] }, { left: 300 });
+  assert.equal(api.markers.filter((marker) => marker.map).length, 1);
   assert.equal((api.markers[0]!.options as { icon: { scaledSize: { width: number } } }).icon.scaledSize.width, 52);
   assert.equal(api.lastMap!.panCalls, 1);
   assert.equal(api.lastMap!.zoomCalls, 0);
   assert.deepEqual(api.lastMap!.lastPanBy, [-150, 0], "selection moves clear of the desktop panel; mobile canvas is already above its sheet");
   api.markers[0]!.fire("click");
-  assert.deepEqual(selections, ["ChIJnative", "ChIJnative"]);
+  assert.deepEqual(selections, ["ChIJnative", "google-poi:ChIJnative"]);
   session.destroy();
 });
 
 test("browser overlays use focusable Morrovia buttons above the Google canvas", () => {
   const api = fakeApi();
-  const buttons: Array<{ type: string; className: string; textContent: string; removed: boolean; getAttribute(name: string): string | null; fire(): void }> = [];
+  const documentOwner = fakeDocument();
   const pane = { append: (_button: unknown) => {} };
-  const documentOwner: { activeElement: { getAttribute(name: string): string | null } | null; createElement(): unknown } = { activeElement: null, createElement: () => {
-    const listeners = new Map<string, (event: { stopPropagation(): void }) => void>();
-    const attributes = new Map<string, string>();
-    const button = {
-      type: "", className: "", textContent: "", title: "", style: {} as Record<string, string>, removed: false,
-      setAttribute(name: string, value: string) { attributes.set(name, value); },
-      getAttribute(name: string) { return attributes.get(name) ?? null; },
-      focus() { documentOwner.activeElement = this; },
-      addEventListener(name: string, callback: (event: { stopPropagation(): void }) => void) { listeners.set(name, callback); },
-      fire() { listeners.get("click")?.({ stopPropagation() {} }); }, remove() { this.removed = true; },
-    };
-    buttons.push(button);
-    return button;
-  } };
   Object.assign(api, {
-    LatLng: class { constructor(_lat: number, _lng: number) {} },
+    LatLng: class { lat: number; lng: number; constructor(lat: number, lng: number) { this.lat = lat; this.lng = lng; } },
     OverlayView: class {
       onAdd?(): void; draw?(): void; onRemove?(): void;
       setMap(map: unknown) { if (map) { this.onAdd?.(); this.draw?.(); } else this.onRemove?.(); }
@@ -270,26 +279,22 @@ test("browser overlays use focusable Morrovia buttons above the Google canvas", 
     onSelectStop: () => {}, onSelectLeg: () => {}, onSelectPlace: (id) => picked.push(id),
   });
   session.updatePlaces([{ id: "ChIJone", name: "Courtyard", category: "see", coordinates: [77.2, 28.6] }], "ChIJone");
+  const buttons = documentOwner.elements.filter((element) => element.className.includes("planner-map__place"));
   assert.equal(api.markers.length, 0, "browser result markers use the HTML overlay, not the tiny legacy icon");
   assert.equal(buttons[0]?.type, "button");
   assert.match(buttons[0]?.className ?? "", /planner-map__place--see is-active/);
-  buttons[0]?.fire();
+  buttons[0]?.fire("click");
   assert.deepEqual(picked, ["ChIJone"]);
-  documentOwner.activeElement = buttons[0] as typeof documentOwner.activeElement;
+  documentOwner.activeElement = buttons[0]!;
   session.updatePlaces([{ id: "ChIJone", name: "Courtyard", category: "see", coordinates: [77.2, 28.6] }], "ChIJone");
-  assert.equal(documentOwner.activeElement, buttons[1], "updating selection retains keyboard focus on the replacement marker");
+  assert.equal(documentOwner.activeElement, documentOwner.elements.filter((element) => element.className.includes("planner-map__place")).at(-1), "updating selection retains keyboard focus on the replacement marker");
   session.destroy();
   assert.equal(buttons[0]?.removed, true);
 });
 
-test("nearby markers at distinct coordinates are decluttered by projected screen position", () => {
+test("close recommendations stay anchored and expose an overlap-choice list", () => {
   const api = fakeApi();
-  const buttons: Array<{ style: Record<string, string>; setAttribute(name: string, value: string): void; addEventListener(): void; remove(): void }> = [];
-  const documentOwner = { activeElement: null, createElement: () => {
-    const button = { style: {} as Record<string, string>, setAttribute() {}, addEventListener() {}, remove() {} };
-    buttons.push(button);
-    return button;
-  } };
+  const documentOwner = fakeDocument();
   const pane = { append() {} };
   Object.assign(api, {
     LatLng: class { lat: number; lng: number; constructor(lat: number, lng: number) { this.lat = lat; this.lng = lng; } },
@@ -308,13 +313,16 @@ test("nearby markers at distinct coordinates are decluttered by projected screen
     { id: "place-a", name: "A", category: "see", coordinates: [72.87771, 19.07601] },
     { id: "place-b", name: "B", category: "stay", coordinates: [72.87791, 19.07601] },
   ]);
-  const positions = buttons.map((button) => [Number.parseFloat(button.style.left), Number.parseFloat(button.style.top)] as const);
-  assert.equal(positions.length, 2);
-  assert.ok(Math.hypot(positions[0]![0] - positions[1]![0], positions[0]![1] - positions[1]![1]) >= 44, `projected markers should have separate hit areas: ${positions.map((point) => point.join(",")).join(" / ")}`);
+  const group = documentOwner.elements.find((element) => element.className.includes("planner-map__place-overlap"));
+  assert.ok(group);
+  assert.deepEqual([group.style.left, group.style.top], ["728777.1px", "190760.1px"], "the overlap control remains anchored to a real member coordinate");
+  group.fire("click");
+  assert.equal(documentOwner.elements.filter((element) => element.className === "planner-map__place-choices").length, 1);
+  assert.deepEqual(documentOwner.elements.filter((element) => element.attributes.has("data-google-place-id")).map((element) => element.attributes.get("data-google-place-id")), ["place-a", "place-b"]);
   session.destroy();
 });
 
-test("Google map marker hierarchy keeps stop markers distinct and the selected recommendation on top", () => {
+test("Google map marker hierarchy keeps canonical route stops above recommendations", () => {
   const api = fakeApi();
   const session = createGoogleTripMapSession(api, {} as HTMLElement, {
     stops: [{ id: "mumbai", name: "Mumbai", coordinates: [72.8777, 19.076] }], legs: [], selectedStopId: "mumbai",
@@ -323,9 +331,33 @@ test("Google map marker hierarchy keeps stop markers distinct and the selected r
   session.updatePlaces([{ id: "hotel", name: "Hotel", category: "stay", coordinates: [72.88, 19.08] }], "hotel");
   const stopOptions = api.markers[0]!.options as { zIndex: number; icon: { url: string } };
   const resultOptions = api.markers[1]!.options as { zIndex: number; icon: { url: string } };
-  assert.ok(stopOptions.zIndex < resultOptions.zIndex);
+  assert.ok(stopOptions.zIndex > resultOptions.zIndex);
   assert.match(decodeURIComponent(stopOptions.icon.url), /00/);
   assert.match(decodeURIComponent(resultOptions.icon.url), /STAY/);
+  session.destroy();
+});
+
+test("rendered route hit target wins over an overlapping hotel and selects the exact stop", () => {
+  const api = fakeApi();
+  const documentOwner = fakeDocument();
+  const pickedStops: string[] = [];
+  Object.assign(api, {
+    LatLng: class { lat: number; lng: number; constructor(lat: number, lng: number) { this.lat = lat; this.lng = lng; } },
+    OverlayView: class { onAdd?(): void; draw?(): void; onRemove?(): void; setMap(map: unknown) { if (map) { this.onAdd?.(); this.draw?.(); } else this.onRemove?.(); } getPanes() { return { overlayMouseTarget: { append() {} } }; } getProjection() { return { fromLatLngToDivPixel: (point: { lat: number; lng: number }) => ({ x: point.lng * 10000, y: point.lat * 10000 }) }; } },
+  });
+  const coordinate: [number, number] = [77.2, 28.6];
+  const session = createGoogleTripMapSession(api, { ownerDocument: documentOwner } as unknown as HTMLElement, {
+    stops: [{ id: "swakopmund-04", name: "Swakopmund", coordinates: coordinate, sequence: 4 }], legs: [], selectedStopId: "swakopmund-04",
+    onNativePoi: () => {}, onEmptyClick: () => {}, onSelectStop: (id) => pickedStops.push(id), onSelectLeg: () => {},
+  });
+  session.updatePlaces([{ id: "result:stay:swakopmund:artemis", name: "Artemis Hotel", category: "stay", coordinates: coordinate }]);
+  const routeHit = documentOwner.elements.find((element) => element.attributes.has("data-google-stop-id"));
+  const hotelPin = documentOwner.elements.find((element) => element.attributes.get("data-google-place-id") === "result:stay:swakopmund:artemis");
+  assert.ok(routeHit && hotelPin);
+  assert.equal(routeHit.style.zIndex, "700");
+  assert.equal(hotelPin.style.zIndex, "100");
+  routeHit.fire("click");
+  assert.deepEqual(pickedStops, ["swakopmund-04"]);
   session.destroy();
 });
 
@@ -402,6 +434,7 @@ function fakeApi() {
     setMap(map: unknown) { this.map = map; }
   }
   class FakeMap extends FakeEventTarget {
+    zoom = 12;
     centerCalls = 0;
     panCalls = 0;
     zoomCalls = 0;
@@ -413,7 +446,8 @@ function fakeApi() {
     boundsCalls: unknown[] = [];
     listenerRemoved = false;
     setCenter(center: { lat: number; lng: number }) { this.centerCalls++; this.lastCenter = center; }
-    setZoom(zoom: number) { this.zoomCalls++; this.lastZoom = zoom; }
+    setZoom(zoom: number) { this.zoomCalls++; this.lastZoom = zoom; this.zoom = zoom; }
+    getZoom() { return this.zoom; }
     panTo(center: { lat: number; lng: number }) { this.panCalls++; this.lastPanTo = center; this.lastCenter = center; }
     panBy(x: number, y: number) { this.lastPanBy = [x, y]; }
     setOptions(options: Record<string, unknown>) { this.options = { ...(this.options as object), ...options }; }
@@ -441,4 +475,32 @@ function fakeApi() {
     },
   };
   return api as unknown as GoogleTripMapApi & typeof api;
+}
+
+function fakeDocument() {
+  class FakeElement {
+    type = "";
+    className = "";
+    textContent = "";
+    title = "";
+    style: Record<string, string> = {};
+    removed = false;
+    children: FakeElement[] = [];
+    attributes = new Map<string, string>();
+    listeners = new Map<string, (event: { stopPropagation(): void }) => void>();
+    append(child: FakeElement) { this.children.push(child); }
+    replaceChildren(...children: FakeElement[]) { this.children.forEach((child) => { child.removed = true; }); this.children = children; }
+    setAttribute(name: string, value: string) { this.attributes.set(name, value); }
+    getAttribute(name: string) { return this.attributes.get(name) ?? null; }
+    addEventListener(name: string, callback: (event: { stopPropagation(): void }) => void) { this.listeners.set(name, callback); }
+    focus() { owner.activeElement = this; }
+    fire(name: string) { this.listeners.get(name)?.({ stopPropagation() {} }); }
+    remove() { this.removed = true; this.children.forEach((child) => { child.removed = true; }); }
+  }
+  const owner: { activeElement: FakeElement | null; elements: FakeElement[]; createElement(): FakeElement } = {
+    activeElement: null,
+    elements: [],
+    createElement() { const element = new FakeElement(); owner.elements.push(element); return element; },
+  };
+  return owner;
 }

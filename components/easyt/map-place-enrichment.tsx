@@ -69,9 +69,9 @@ export default function MapPlaceEnrichment(props: Props) {
     }
   }, [props.selectedPlaceId, props.listScrollTop]);
 
-  return <section ref={panelRef} className={styles.panel} aria-label={`Google Maps places near ${props.destination}`}
+  return <section ref={panelRef} className={styles.panel} aria-label={`Google Maps place details for ${props.destination}`}
     onScroll={(event) => { if (!props.selectedPlaceId) props.onListScroll(event.currentTarget.scrollTop); }}>
-    <div className={styles.source}>Places near {props.destination} <span>Google Maps</span></div>
+    <div className={styles.source}>Google Maps place details · {props.destination} <span>Google Maps</span></div>
     {props.selectedPlaceId ? <div className={styles.detail}>
       <EasyTButton variant="quiet" size="small" icon={ChevronLeft} onClick={() => { backFocusPlaceIdRef.current = props.selectedPlaceId; props.onBackToPlaces(); }}>Back to places</EasyTButton>
       <p className={styles.context}>{props.contextLabel}</p>
