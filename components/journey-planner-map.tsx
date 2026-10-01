@@ -47,6 +47,7 @@ type JourneyPlannerMapProps = {
   stopSelectionEnabled?: boolean;
   mapResults?: MapResultPlace[];
   selectedMapResult?: MapResultPlace | null;
+  previewedMapResultId?: string | null;
   focusOffset?: [number, number];
   focusZoom?: number;
   /** Optional local bounds for an embedded map; the full route owns its usual camera. */
@@ -69,6 +70,7 @@ type JourneyPlannerMapProps = {
   onMapPinDrop: (coordinates: [number, number]) => void;
   onPlannerPinSelect: (pin: PlannerMapPin) => void;
   onMapResultSelect?: (place: MapResultPlace) => void;
+  onPreviewMapResult?: (place: MapResultPlace | null) => void;
   onLegSelect?: (leg: MapRouteLeg) => void;
   onSelect: (id: string) => void;
 };
@@ -136,6 +138,7 @@ export function JourneyPlannerMap({
   stopSelectionEnabled = true,
   mapResults = [],
   selectedMapResult = null,
+  previewedMapResultId = null,
   focusOffset,
   focusZoom,
   cameraFitCoordinates,
@@ -152,6 +155,7 @@ export function JourneyPlannerMap({
   onMapPinDrop,
   onPlannerPinSelect,
   onMapResultSelect,
+  onPreviewMapResult,
   onLegSelect,
   onSelect,
 }: JourneyPlannerMapProps) {
@@ -181,11 +185,13 @@ export function JourneyPlannerMap({
   const onSelectRef = useRef(onSelect);
   const onPlannerPinSelectRef = useRef(onPlannerPinSelect);
   const onMapResultSelectRef = useRef(onMapResultSelect);
+  const onPreviewMapResultRef = useRef(onPreviewMapResult);
   const onLifecycleChangeRef = useRef(onLifecycleChange);
   onLegSelectRef.current = onLegSelect;
   onSelectRef.current = onSelect;
   onPlannerPinSelectRef.current = onPlannerPinSelect;
   onMapResultSelectRef.current = onMapResultSelect;
+  onPreviewMapResultRef.current = onPreviewMapResult;
   onLifecycleChangeRef.current = onLifecycleChange;
   selectedLegIdRef.current = selectedLegId;
   selectedPlannerPinIdRef.current = selectedPlannerPinId;
@@ -845,10 +851,14 @@ export function JourneyPlannerMap({
       localPlaceMarkersRef.current = mapResults.map((place) => {
         const element = document.createElement("button");
         element.type = "button";
-        element.className = `planner-map__local-place is-${place.kind} ${place.selectionId === selectedMapResult?.selectionId ? "is-active" : ""}`;
+        element.className = `planner-map__local-place is-${place.kind} ${place.selectionId === selectedMapResult?.selectionId ? "is-active" : ""} ${place.selectionId === previewedMapResultId ? "is-preview" : ""}`;
         element.dataset.mapResultId = place.selectionId;
         element.setAttribute("aria-label", `Show ${place.name}`);
         element.title = `Show ${place.name}`;
+        element.addEventListener("pointerenter", () => onPreviewMapResultRef.current?.(place));
+        element.addEventListener("pointerleave", () => onPreviewMapResultRef.current?.(null));
+        element.addEventListener("focus", () => onPreviewMapResultRef.current?.(place));
+        element.addEventListener("blur", () => onPreviewMapResultRef.current?.(null));
         const PlaceIcon = place.kind === "stay" ? BedDouble : place.kind === "eat" ? Utensils : Landmark;
         element.innerHTML = renderToStaticMarkup(<><PlaceIcon aria-hidden="true" /><span>{place.price ? `${place.price.currency} ${Math.round(place.price.total)}` : place.kind === "stay" ? "Stay" : place.kind === "eat" ? "Eat" : "See"}</span></>);
         bindMapMarkerActivation(element, () => { interruptMapCamera(map as unknown as MapCamera); currentCameraRequestRef.current = null; onMapResultSelectRef.current?.(place); });
@@ -868,6 +878,10 @@ export function JourneyPlannerMap({
   useEffect(() => {
     localPlaceMarkersRef.current.forEach((marker) => marker.getElement().classList.toggle("is-active", marker.getElement().dataset.mapResultId === selectedMapResult?.selectionId));
   }, [selectedMapResult?.selectionId]);
+
+  useEffect(() => {
+    localPlaceMarkersRef.current.forEach((marker) => marker.getElement().classList.toggle("is-preview", marker.getElement().dataset.mapResultId === previewedMapResultId));
+  }, [previewedMapResultId]);
 
   useEffect(() => {
     const map = mapRef.current;

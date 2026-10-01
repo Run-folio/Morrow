@@ -46,6 +46,7 @@ export type GoogleTripMapOptions = {
   onSelectStop(stopId: string): void;
   onSelectLeg(legId: string): void;
   onSelectPlace?(placeId: string): void;
+  onPreviewPlace?(placeId: string | null): void;
   mapId?: string;
 };
 
@@ -137,6 +138,7 @@ export function createGoogleTripMapSession(api: GoogleTripMapApi, element: HTMLE
     zoom: selected ? 9.5 : 2,
     ...(options.mapId ? { mapId: options.mapId } : {}),
     clickableIcons: true,
+    gestureHandling: "greedy",
     mapTypeControl: false,
     streetViewControl: false,
   });
@@ -214,16 +216,29 @@ export function createGoogleTripMapSession(api: GoogleTripMapApi, element: HTMLE
   }
   let selectedStopId = options.selectedStopId;
   let selectedPlaceId: string | null = null;
+  let previewedPlaceId: string | null = null;
   let cameraFocusedPlaceId: string | null = null;
   let selectedPlaceInsetsKey = "";
   let selectedStopInsetsKey = cameraInsetsKey(cameraInsets);
   let placeOverlays: Array<{ setMap(map: MapObject | null): void }> = [];
   let placeListeners: Listener[] = [];
+  let previewRoots: HTMLElement[] = [];
+  const previewPlace = (placeId: string | null) => {
+    previewedPlaceId = placeId;
+    for (const root of previewRoots) {
+      root.querySelectorAll<HTMLElement>("[data-google-place-id]").forEach((button) => {
+        const previewed = Boolean(placeId && button.getAttribute("data-google-place-id") === placeId);
+        button.classList.toggle("is-preview", previewed);
+        button.style.zIndex = previewed ? "480" : button.classList.contains("is-active") ? "500" : "100";
+      });
+    }
+  };
   const clearPlaces = () => {
     for (const listener of placeListeners) listener.remove();
     for (const overlay of placeOverlays) overlay.setMap(null);
     placeListeners = [];
     placeOverlays = [];
+    previewRoots = [];
   };
   return {
     update(next: { selectedStopId: string | null; cameraInsets?: GoogleMapInsets }) {
@@ -261,6 +276,7 @@ export function createGoogleTripMapSession(api: GoogleTripMapApi, element: HTMLE
         root.style.pointerEvents = "none";
         let openGroupKey = "";
         let projection: ReturnType<HtmlOverlayObject["getProjection"]> | null = null;
+        previewRoots.push(root);
         const makeButton = (label: string, className: string, zIndex: number, onClick: (event: Event) => void) => {
           const button = element.ownerDocument!.createElement("button");
           button.type = "button";
@@ -277,6 +293,12 @@ export function createGoogleTripMapSession(api: GoogleTripMapApi, element: HTMLE
             if (className.includes("planner-map__place-overlap")) button.style.minWidth = "64px";
           }
           button.addEventListener("pointerdown", (event) => event.stopPropagation());
+          if (className.includes("planner-map__place")) {
+            button.addEventListener("pointerenter", () => { const id = button.getAttribute("data-google-place-id"); previewPlace(id); options.onPreviewPlace?.(id); });
+            button.addEventListener("focus", () => { const id = button.getAttribute("data-google-place-id"); previewPlace(id); options.onPreviewPlace?.(id); });
+            button.addEventListener("pointerleave", () => { previewPlace(null); options.onPreviewPlace?.(null); });
+            button.addEventListener("blur", () => { previewPlace(null); options.onPreviewPlace?.(null); });
+          }
           button.addEventListener("click", onClick);
           return button;
         };
@@ -300,7 +322,8 @@ export function createGoogleTripMapSession(api: GoogleTripMapApi, element: HTMLE
               const place = group.records[0]!.place;
               const active = place.id === nextSelectedPlaceId;
               const label = place.category === "stay" ? "Stay" : place.category === "eat" ? "Eat" : "See";
-              const button = makeButton(label, `planner-map__place planner-map__place--${place.category}${active ? " is-active" : ""}`, active ? 500 : 100, (event) => { event.stopPropagation(); options.onSelectPlace?.(place.id); });
+              const previewed = place.id === previewedPlaceId;
+              const button = makeButton(label, `planner-map__place planner-map__place--${place.category}${active ? " is-active" : ""}${previewed ? " is-preview" : ""}`, active ? 500 : previewed ? 480 : 100, (event) => { event.stopPropagation(); options.onSelectPlace?.(place.id); });
               button.setAttribute("aria-label", `${place.name} · ${label}`);
               button.setAttribute("aria-pressed", String(active));
               button.setAttribute("data-google-place-id", place.id);
@@ -383,8 +406,8 @@ export function createGoogleTripMapSession(api: GoogleTripMapApi, element: HTMLE
           const marker = new api.Marker({ map, position: { lat: place.coordinates[1], lng: place.coordinates[0] }, title: `${place.name} · ${place.category}`, icon: googlePlaceMarkerIcon(api, place.category, selected), optimized: false, zIndex: selected ? 150 : 100 });
           placeOverlays.push(marker);
           placeListeners.push(marker.addListener("click", () => options.onSelectPlace?.(place.id)));
-          placeListeners.push(marker.addListener("mouseover", () => { if (!selected) marker.setIcon?.(googlePlaceMarkerIcon(api, place.category, true)); }));
-          placeListeners.push(marker.addListener("mouseout", () => { if (!selected) marker.setIcon?.(googlePlaceMarkerIcon(api, place.category, false)); }));
+          placeListeners.push(marker.addListener("mouseover", () => { previewedPlaceId = place.id; options.onPreviewPlace?.(place.id); if (!selected) marker.setIcon?.(googlePlaceMarkerIcon(api, place.category, true)); }));
+          placeListeners.push(marker.addListener("mouseout", () => { previewedPlaceId = null; options.onPreviewPlace?.(null); if (!selected) marker.setIcon?.(googlePlaceMarkerIcon(api, place.category, false)); }));
         }
       }
       const placeSelectionChanged = nextSelectedPlaceId !== selectedPlaceId;
@@ -409,6 +432,7 @@ export function createGoogleTripMapSession(api: GoogleTripMapApi, element: HTMLE
         }
       }
     },
+    previewPlace,
     destroy() {
       clearPlaces();
       for (const listener of listeners) listener.remove();

@@ -292,6 +292,44 @@ test("browser overlays use focusable Morrovia buttons above the Google canvas", 
   assert.equal(buttons[0]?.removed, true);
 });
 
+test("expanded Google canvas lets wheel and trackpad gestures zoom without a modifier", () => {
+  const api = fakeApi();
+  createGoogleTripMapSession(api, {} as HTMLElement, {
+    stops: [], legs: [], selectedStopId: null,
+    onNativePoi: () => {}, onEmptyClick: () => {}, onSelectStop: () => {}, onSelectLeg: () => {},
+  });
+  assert.equal((api.lastMap!.options as { gestureHandling?: string }).gestureHandling, "greedy");
+});
+
+test("hover and keyboard focus on a recommendation pin preview its exact source place", () => {
+  const api = fakeApi();
+  const documentOwner = fakeDocument();
+  const pane = { append: (_button: unknown) => {} };
+  Object.assign(api, {
+    LatLng: class { lat: number; lng: number; constructor(lat: number, lng: number) { this.lat = lat; this.lng = lng; } },
+    OverlayView: class {
+      onAdd?(): void; draw?(): void; onRemove?(): void;
+      setMap(map: unknown) { if (map) { this.onAdd?.(); this.draw?.(); } else this.onRemove?.(); }
+      getPanes() { return { overlayMouseTarget: pane }; }
+      getProjection() { return { fromLatLngToDivPixel: (point: { lat: number; lng: number }) => ({ x: point.lng * 10000, y: point.lat * 10000 }) }; }
+    },
+  });
+  const previews: Array<string | null> = [];
+  const session = createGoogleTripMapSession(api, { ownerDocument: documentOwner } as unknown as HTMLElement, {
+    stops: [], legs: [], selectedStopId: null,
+    onNativePoi: () => {}, onEmptyClick: () => {}, onSelectStop: () => {}, onSelectLeg: () => {},
+    onPreviewPlace: (id) => previews.push(id),
+  });
+  session.updatePlaces([{ id: "result:stay:stop-1:hotel-exact", sourceId: "hotel-exact", stopId: "stop-1", name: "Exact hotel", category: "stay", coordinates: [77.2, 28.6] }]);
+  const pin = documentOwner.elements.find((element) => element.attributes.get("data-google-place-id") === "result:stay:stop-1:hotel-exact");
+  assert.ok(pin);
+  pin.fire("pointerenter");
+  pin.fire("focus");
+  pin.fire("pointerleave");
+  assert.deepEqual(previews, ["result:stay:stop-1:hotel-exact", "result:stay:stop-1:hotel-exact", null]);
+  session.destroy();
+});
+
 test("close recommendations stay anchored and expose an overlap-choice list", () => {
   const api = fakeApi();
   const documentOwner = fakeDocument();
@@ -463,7 +501,7 @@ function fakeApi() {
     markers: [] as FakeEventTarget[],
     legLines: [] as FakeEventTarget[],
     Map: class extends FakeMap {
-      constructor() { super(); api.mapCreations++; api.lastMap = this; }
+      constructor(_element?: HTMLElement, options?: Record<string, unknown>) { super(); this.options = options; api.mapCreations++; api.lastMap = this; }
     },
     Marker: class extends FakeEventTarget {
       constructor(options: { map: unknown }) { super(); this.map = options.map; this.options = options; api.markers.push(this); }
@@ -487,11 +525,13 @@ function fakeDocument() {
     removed = false;
     children: FakeElement[] = [];
     attributes = new Map<string, string>();
+    classList = { toggle: (name: string, force?: boolean) => { const classes = new Set(this.className.split(/\s+/).filter(Boolean)); if (force) classes.add(name); else classes.delete(name); this.className = [...classes].join(" "); }, contains: (name: string) => this.className.split(/\s+/).includes(name) };
     listeners = new Map<string, (event: { stopPropagation(): void }) => void>();
     append(child: FakeElement) { this.children.push(child); }
     replaceChildren(...children: FakeElement[]) { this.children.forEach((child) => { child.removed = true; }); this.children = children; }
     setAttribute(name: string, value: string) { this.attributes.set(name, value); }
     getAttribute(name: string) { return this.attributes.get(name) ?? null; }
+    querySelectorAll(selector: string) { return selector === "[data-google-place-id]" ? owner.elements.filter((element) => element.getAttribute("data-google-place-id") !== null && !element.removed) : []; }
     addEventListener(name: string, callback: (event: { stopPropagation(): void }) => void) { this.listeners.set(name, callback); }
     focus() { owner.activeElement = this; }
     fire(name: string) { this.listeners.get(name)?.({ stopPropagation() {} }); }

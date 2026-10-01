@@ -21,6 +21,7 @@ type Props = {
   places?: readonly GoogleCanvasPlace[];
   selectedStopId: string | null;
   selectedPlaceId?: string | null;
+  previewPlaceId?: string | null;
   temporaryPlace?: GoogleCanvasPlace | null;
   cameraInsets?: GoogleMapInsets;
   onNativePoi(placeId: string, coordinates?: [number, number]): boolean | void;
@@ -28,6 +29,7 @@ type Props = {
   onSelectStop(stopId: string): void;
   onSelectLeg(legId: string): void;
   onSelectPlace?(placeId: string): void;
+  onPreviewPlace?(placeId: string | null): void;
   onUnavailable(): void;
   /** Storybook-only SDK boundary; the production parent uses the browser loader. */
   sdkLoader?: (key: string) => Promise<GoogleTripMapApi>;
@@ -65,6 +67,7 @@ export function GoogleTripMapCanvas(props: Props) {
           onSelectStop: (stopId) => callbacksRef.current.onSelectStop(stopId),
           onSelectLeg: (legId) => callbacksRef.current.onSelectLeg(legId),
           onSelectPlace: (placeId) => callbacksRef.current.onSelectPlace?.(placeId),
+          onPreviewPlace: (placeId) => callbacksRef.current.onPreviewPlace?.(placeId),
         });
         sessionRef.current.updatePlaces(callbacksRef.current.places ?? [], callbacksRef.current.selectedPlaceId, callbacksRef.current.temporaryPlace, callbacksRef.current.cameraInsets);
         setStatus("ready");
@@ -77,6 +80,7 @@ export function GoogleTripMapCanvas(props: Props) {
 
   useEffect(() => { sessionRef.current?.update({ selectedStopId: props.selectedStopId, cameraInsets: props.cameraInsets }); }, [props.selectedStopId, props.cameraInsets]);
   useEffect(() => { sessionRef.current?.updatePlaces(props.places ?? [], props.selectedPlaceId, props.temporaryPlace, props.cameraInsets); }, [placeKey, props.selectedPlaceId, temporaryKey, props.cameraInsets]);
+  useEffect(() => { sessionRef.current?.previewPlace(props.previewPlaceId ?? null); }, [props.previewPlaceId]);
 
   return <div className={`planner-map ${presentation.surface}`} data-basemap-status={status} aria-busy={status === "loading" || undefined} aria-label="Google trip map">
     <div ref={containerRef} className={presentation.canvas} />

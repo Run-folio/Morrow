@@ -62,15 +62,18 @@ function TransferIcon({ item }: { item: MapPlanAgendaItem }) {
 }
 
 function AgendaRow({ item, navigation }: { item: MapPlanAgendaItem; navigation: PlanWorkspaceProps["navigation"] }) {
-  const content = <>
+  const content = item.kind === "transfer" ? <>
+    <TransferIcon item={item} />
+    <strong className={styles.mapPlanTitle}>{item.title}</strong>
+    {item.metadata ? <small className={styles.mapPlanMeta}>{item.metadata}</small> : null}
+  </> : <>
     <span className={styles.mapPlanSchedule}>{item.scheduleLabel ?? ""}</span>
     <strong className={styles.mapPlanTitle}>{item.title}</strong>
     {item.metadata ? <small className={styles.mapPlanMeta}>{item.metadata}</small> : null}
     {item.kind === "activity" && item.mapSelectionId ? <MapPin className={styles.mapPlanMappable} aria-hidden="true" /> : null}
-    {item.kind === "transfer" ? <TransferIcon item={item} /> : null}
   </>;
   return <li className={`${styles.mapPlanAgendaItem} ${item.kind === "transfer" ? styles.mapPlanTransfer : ""}`}>
-    {item.kind === "transfer" ? <button type="button" className={styles.mapPlanAgendaRow} onClick={() => navigation.onSelectTransfer(item.id)} aria-label={`Show transfer ${item.title} on the map`}>{content}<ArrowUpRight className={styles.mapPlanOpenIcon} aria-hidden="true" /></button>
+    {item.kind === "transfer" ? <button type="button" className={styles.mapPlanAgendaRow} onClick={() => navigation.onSelectTransfer(item.id)} aria-label={`Show transfer ${item.title} on the map`}>{content}</button>
       : item.mapSelectionId ? <button type="button" className={styles.mapPlanAgendaRow} onClick={() => navigation.onSelectItem(item.mapSelectionId!)} aria-label={`Show ${item.title} on the map`}>{content}</button>
         : <div className={styles.mapPlanAgendaRow}>{content}</div>}
     {item.detail ? <details className={styles.mapPlanTransferDetail}><summary>Transfer details</summary><p>{item.detail}</p></details> : null}

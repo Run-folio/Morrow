@@ -16,6 +16,7 @@
 .surface :global(.planner-map__place--stay){background:var(--morrovia-action)}
 .surface :global(.planner-map__place--eat){background:var(--morrovia-signal)}
 .surface :global(.planner-map__place:hover),.surface :global(.planner-map__place:focus-visible),.surface :global(.planner-map__place.is-active){z-index:3!important;width:52px;height:52px;outline:5px solid var(--morrovia-signal);outline-offset:3px}
+.surface :global(.planner-map__place.is-preview){z-index:4!important;width:52px;height:52px;outline:5px solid var(--morrovia-signal);outline-offset:3px}
 .surface :global(.planner-map__place:focus-visible){outline:5px solid var(--morrovia-focus-ring);outline-offset:4px}
 .surface[data-basemap-status] :global(.planner-map__place.is-active){z-index:600!important}
 .surface :global(.planner-map__google-overlays){overflow:hidden}
