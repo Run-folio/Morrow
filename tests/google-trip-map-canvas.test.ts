@@ -1,10 +1,12 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import test from "node:test";
 import {
+  canonicalMapStopCoordinates,
   createGoogleMapsSdkLoader,
   createGoogleTripMapSession,
   googlePlaceMarkerIcon,
-  googlePlaceMarkerOffset,
+  googlePlaceMarkerOffsetsForScreenPositions,
   googleCanvasEligible,
   type GoogleTripMapApi,
 } from "../lib/easyt/google-trip-map-adapter.ts";
@@ -48,7 +50,7 @@ test("native POI absent from any nearby list selects its exact Place ID and supp
   const api = fakeApi();
   const selected: string[] = [];
   const empty: Array<[number, number]> = [];
-  const session = createGoogleTripMapSession(api, {} as HTMLElement, {
+  const session = createGoogleTripMapSession(api, { clientWidth: 1000, clientHeight: 600 } as HTMLElement, {
     stops: [], legs: [], selectedStopId: null,
     onNativePoi: (id) => { selected.push(id); },
     onEmptyClick: (point) => empty.push(point),
@@ -108,21 +110,75 @@ test("same-name stops and route legs keep canonical IDs; detail updates do not r
   assert.ok(api.legLines.every((line) => line.map === null));
 });
 
-test("Whole route fits canonical stop bounds on entry and after leaving a selected stop", () => {
+test("local destination mode subdues long-haul legs and whole-route mode restores their context", () => {
+  const api = fakeApi();
+  const session = createGoogleTripMapSession(api, {} as HTMLElement, {
+    stops: [
+      { id: "mumbai", name: "Mumbai", coordinates: [72.8777, 19.076] },
+      { id: "dubai", name: "Dubai", coordinates: [55.2708, 25.2048] },
+      { id: "cape-town", name: "Cape Town", coordinates: [18.4241, -33.9249] },
+    ],
+    legs: [
+      { id: "leg-1", fromStopId: "mumbai", toStopId: "dubai" },
+      { id: "leg-2", fromStopId: "dubai", toStopId: "cape-town" },
+    ], selectedStopId: "mumbai", cameraInsets: { left: 300 },
+    onNativePoi: () => {}, onEmptyClick: () => {}, onSelectStop: () => {}, onSelectLeg: () => {},
+  });
+  assert.ok(api.legLines.every((line) => (line.options as { strokeOpacity: number }).strokeOpacity < 0.2));
+  session.update({ selectedStopId: null });
+  assert.ok(api.legLines.every((line) => (line.options as { strokeOpacity: number }).strokeOpacity === 0.7));
+  session.destroy();
+});
+
+test("whole-route framing includes the workspace rail while local stop framing offsets into the visible map", () => {
   const api = fakeApi();
   const stops = [
     { id: "delhi", name: "Delhi", coordinates: [77.2, 28.6] as [number, number] },
     { id: "agra", name: "Agra", coordinates: [78.0, 27.2] as [number, number] },
   ];
-  const session = createGoogleTripMapSession(api, {} as HTMLElement, {
+  const session = createGoogleTripMapSession(api, { clientWidth: 1000, clientHeight: 600 } as HTMLElement, {
     stops, legs: [], selectedStopId: null,
+    cameraInsets: { left: 300 },
     onNativePoi: () => {}, onEmptyClick: () => {}, onSelectStop: () => {}, onSelectLeg: () => {},
   });
   assert.equal(api.lastMap!.boundsCalls.length, 1);
+  assert.deepEqual(api.lastMap!.lastBoundsPadding, { top: 48, right: 48, bottom: 48, left: 348 });
   session.update({ selectedStopId: "agra" });
+  assert.deepEqual(api.lastMap!.lastPanBy, [-150, 0], "left rail moves the selected destination into the visible map area");
+  assert.equal(api.lastMap!.lastZoom, 9.5);
   session.update({ selectedStopId: null });
   assert.equal(api.lastMap!.boundsCalls.length, 2);
   assert.deepEqual(api.lastMap!.boundsCalls[1], { north: 28.6, south: 27.2, east: 78, west: 77.2 });
+  assert.deepEqual(api.lastMap!.lastBoundsPadding, { top: 48, right: 48, bottom: 48, left: 348 });
+  session.destroy();
+});
+
+test("returning from a selected place restores the selected stop camera", () => {
+  const api = fakeApi();
+  const session = createGoogleTripMapSession(api, { clientWidth: 1000, clientHeight: 600 } as HTMLElement, {
+    stops: [{ id: "mumbai", name: "Mumbai", coordinates: [72.8777, 19.076] }],
+    legs: [], selectedStopId: "mumbai", cameraInsets: { left: 300 },
+    onNativePoi: () => {}, onEmptyClick: () => {}, onSelectStop: () => {}, onSelectLeg: () => {},
+  });
+  session.updatePlaces([{ id: "hotel", name: "Hotel", category: "stay", coordinates: [72.88, 19.08] }], "hotel", null, { left: 300 });
+  assert.deepEqual(api.lastMap!.lastCenter, { lat: 19.08, lng: 72.88 });
+  const zoomBeforeBack = api.lastMap!.zoomCalls;
+  session.updatePlaces([], null, null, { left: 300 });
+  assert.deepEqual(api.lastMap!.lastCenter, { lat: 19.076, lng: 72.8777 });
+  assert.equal(api.lastMap!.lastZoom, 9.5);
+  assert.equal(api.lastMap!.zoomCalls, zoomBeforeBack + 1, "Back to places restores destination scale");
+  session.destroy();
+});
+
+test("safe-area changes reframe a local destination without resetting the user's zoom", () => {
+  const api = fakeApi();
+  const session = createGoogleTripMapSession(api, { clientWidth: 390, clientHeight: 700 } as HTMLElement, {
+    stops: [{ id: "mumbai", name: "Mumbai", coordinates: [72.8777, 19.076] }], legs: [], selectedStopId: "mumbai",
+    onNativePoi: () => {}, onEmptyClick: () => {}, onSelectStop: () => {}, onSelectLeg: () => {},
+  });
+  session.update({ selectedStopId: "mumbai", cameraInsets: { bottom: 280 } });
+  assert.equal(api.lastMap!.lastPanBy?.[1], 140, "the destination moves into the map space above the mobile sheet");
+  assert.equal(api.lastMap!.zoomCalls, 0, "changing the sheet inset preserves the current zoom");
   session.destroy();
 });
 
@@ -153,16 +209,16 @@ test("Morrovia result markers have readable categories, 44px targets and separat
     assert.equal(icon.scaledSize.height, 44);
     assert.match(decodeURIComponent(icon.url), new RegExp(category.toUpperCase()));
   }
-  const offsets = Array.from({ length: 6 }, (_, index) => googlePlaceMarkerOffset(index, 6));
-  assert.equal(new Set(offsets.map((point) => point.join(","))).size, 6);
-  assert.ok(offsets.every(([x, y], index) => offsets.slice(index + 1).every(([otherX, otherY]) => Math.hypot(x - otherX, y - otherY) >= 44)));
+  const offsets = googlePlaceMarkerOffsetsForScreenPositions([[0, 0], [8, 4], [18, -3], [400, 0], [405, 5], [900, 0]]);
+  const positions = [[0, 0], [8, 4], [18, -3], [400, 0], [405, 5], [900, 0]].map(([x, y], index) => [x! + offsets[index]![0], y! + offsets[index]![1]] as const);
+  assert.ok(positions.every(([x, y], index) => positions.slice(index + 1).every(([otherX, otherY]) => Math.hypot(x - otherX, y - otherY) >= 44)));
   assert.equal(googlePlaceMarkerIcon(api, "see", true, [0, 0]).scaledSize.width, 52);
 });
 
 test("native POI gets a temporary selected Morrovia marker and pans without resetting zoom", () => {
   const api = fakeApi();
   const selections: string[] = [];
-  const session = createGoogleTripMapSession(api, {} as HTMLElement, {
+  const session = createGoogleTripMapSession(api, { clientWidth: 1000, clientHeight: 600 } as HTMLElement, {
     stops: [], legs: [], selectedStopId: null,
     onNativePoi: (id) => { selections.push(id); }, onEmptyClick: () => {},
     onSelectStop: () => {}, onSelectLeg: () => {}, onSelectPlace: (id) => selections.push(id),
@@ -170,7 +226,7 @@ test("native POI gets a temporary selected Morrovia marker and pans without rese
   let stopped = 0;
   api.lastMap!.fire("click", { placeId: "ChIJnative", latLng: { lat: () => 27.18, lng: () => 78.01 }, stop: () => stopped++ });
   assert.equal(stopped, 1);
-  session.updatePlaces([], "ChIJnative", { id: "ChIJnative", name: "Selected Google place", category: "see", coordinates: [78.01, 27.18] }, 300);
+  session.updatePlaces([], "ChIJnative", { id: "ChIJnative", name: "Selected Google place", category: "see", coordinates: [78.01, 27.18] }, { left: 300 });
   assert.equal(api.markers.length, 1);
   assert.equal((api.markers[0]!.options as { icon: { scaledSize: { width: number } } }).icon.scaledSize.width, 52);
   assert.equal(api.lastMap!.panCalls, 1);
@@ -205,7 +261,7 @@ test("browser overlays use focusable Morrovia buttons above the Google canvas", 
       onAdd?(): void; draw?(): void; onRemove?(): void;
       setMap(map: unknown) { if (map) { this.onAdd?.(); this.draw?.(); } else this.onRemove?.(); }
       getPanes() { return { overlayMouseTarget: pane }; }
-      getProjection() { return { fromLatLngToDivPixel: () => ({ x: 120, y: 120 }) }; }
+      getProjection() { return { fromLatLngToDivPixel: (point: { lat: number; lng: number }) => ({ x: point.lng * 10000, y: point.lat * 10000 }) }; }
     },
   });
   const picked: string[] = [];
@@ -224,6 +280,61 @@ test("browser overlays use focusable Morrovia buttons above the Google canvas", 
   assert.equal(documentOwner.activeElement, buttons[1], "updating selection retains keyboard focus on the replacement marker");
   session.destroy();
   assert.equal(buttons[0]?.removed, true);
+});
+
+test("nearby markers at distinct coordinates are decluttered by projected screen position", () => {
+  const api = fakeApi();
+  const buttons: Array<{ style: Record<string, string>; setAttribute(name: string, value: string): void; addEventListener(): void; remove(): void }> = [];
+  const documentOwner = { activeElement: null, createElement: () => {
+    const button = { style: {} as Record<string, string>, setAttribute() {}, addEventListener() {}, remove() {} };
+    buttons.push(button);
+    return button;
+  } };
+  const pane = { append() {} };
+  Object.assign(api, {
+    LatLng: class { lat: number; lng: number; constructor(lat: number, lng: number) { this.lat = lat; this.lng = lng; } },
+    OverlayView: class {
+      onAdd?(): void; draw?(): void; onRemove?(): void;
+      setMap(map: unknown) { if (map) { this.onAdd?.(); this.draw?.(); } else this.onRemove?.(); }
+      getPanes() { return { overlayMouseTarget: pane }; }
+      getProjection() { return { fromLatLngToDivPixel: (point: { lat: number; lng: number }) => ({ x: point.lng * 10000, y: point.lat * 10000 }) }; }
+    },
+  });
+  const session = createGoogleTripMapSession(api, { ownerDocument: documentOwner } as unknown as HTMLElement, {
+    stops: [], legs: [], selectedStopId: null,
+    onNativePoi: () => {}, onEmptyClick: () => {}, onSelectStop: () => {}, onSelectLeg: () => {},
+  });
+  session.updatePlaces([
+    { id: "place-a", name: "A", category: "see", coordinates: [72.87771, 19.07601] },
+    { id: "place-b", name: "B", category: "stay", coordinates: [72.87791, 19.07601] },
+  ]);
+  const positions = buttons.map((button) => [Number.parseFloat(button.style.left), Number.parseFloat(button.style.top)] as const);
+  assert.equal(positions.length, 2);
+  assert.ok(Math.hypot(positions[0]![0] - positions[1]![0], positions[0]![1] - positions[1]![1]) >= 44, `projected markers should have separate hit areas: ${positions.map((point) => point.join(",")).join(" / ")}`);
+  session.destroy();
+});
+
+test("Google map marker hierarchy keeps stop markers distinct and the selected recommendation on top", () => {
+  const api = fakeApi();
+  const session = createGoogleTripMapSession(api, {} as HTMLElement, {
+    stops: [{ id: "mumbai", name: "Mumbai", coordinates: [72.8777, 19.076] }], legs: [], selectedStopId: "mumbai",
+    onNativePoi: () => {}, onEmptyClick: () => {}, onSelectStop: () => {}, onSelectLeg: () => {},
+  });
+  session.updatePlaces([{ id: "hotel", name: "Hotel", category: "stay", coordinates: [72.88, 19.08] }], "hotel");
+  const stopOptions = api.markers[0]!.options as { zIndex: number; icon: { url: string } };
+  const resultOptions = api.markers[1]!.options as { zIndex: number; icon: { url: string } };
+  assert.ok(stopOptions.zIndex < resultOptions.zIndex);
+  assert.match(decodeURIComponent(stopOptions.icon.url), /00/);
+  assert.match(decodeURIComponent(resultOptions.icon.url), /STAY/);
+  session.destroy();
+});
+
+test("finder result content wraps within its rail and keeps only vertical scrolling", () => {
+  const journeyCss = readFileSync(new URL("../app/journey/journey.module.css", import.meta.url), "utf8");
+  const refinementCss = readFileSync(new URL("../components/journey-itinerary-refinement.module.css", import.meta.url), "utf8");
+  assert.match(journeyCss, /\.shellPlanner \.finderDock\s*\{[^}]*overflow-x:hidden/i);
+  assert.match(refinementCss, /\.compact \.places \.placeSelect[^}]*overflow-wrap:anywhere/);
+  assert.match(refinementCss, /\.compact \.places article[^}]*min-width:0/);
 });
 
 test("native POI selection retains canonical occurrence and intended day", () => {
@@ -255,6 +366,13 @@ test("native POI detail uses the authenticated server boundary and discards a st
   assert.deepEqual(called.map((url) => new URL(url, "http://local").searchParams.get("mode")), ["details", "details"]);
 });
 
+test("canonical route stop coordinates outrank a plan-day activity point", () => {
+  assert.deepEqual(canonicalMapStopCoordinates([14.5053, -22.6784], [14.1, -22.2]), [14.5053, -22.6784]);
+  assert.deepEqual(canonicalMapStopCoordinates(null, [14.1, -22.2]), [14.1, -22.2]);
+  const source = readFileSync(new URL("../components/journey-map-planner-workspace.tsx", import.meta.url), "utf8");
+  assert.match(source, /canonicalMapStopCoordinates\([\s\S]*?mappedStop\?\.coordinates/);
+});
+
 test("saved reference uses the authenticated resolve path and returns only freshness metadata to the trip owner", async () => {
   const calls: URLSearchParams[] = [];
   const request = createLatestGoogleDetailRequest((url) => {
@@ -276,6 +394,7 @@ function fakeApi() {
     map: unknown = undefined;
     options: unknown = undefined;
     fire(name: string, event?: unknown) { this.listeners.get(name)?.(event); }
+    setOptions(options: Record<string, unknown>) { this.options = { ...(this.options as object), ...options }; }
     addListener(name: string, callback: (event: any) => void) {
       this.listeners.set(name, callback);
       return { remove: () => { this.listeners.delete(name); } };
@@ -287,13 +406,18 @@ function fakeApi() {
     panCalls = 0;
     zoomCalls = 0;
     lastPanBy: [number, number] | null = null;
+    lastPanTo: { lat: number; lng: number } | null = null;
+    lastCenter: { lat: number; lng: number } | null = null;
+    lastZoom: number | null = null;
+    lastBoundsPadding: unknown = undefined;
     boundsCalls: unknown[] = [];
     listenerRemoved = false;
-    setCenter() { this.centerCalls++; }
-    setZoom() { this.zoomCalls++; }
-    panTo() { this.panCalls++; }
+    setCenter(center: { lat: number; lng: number }) { this.centerCalls++; this.lastCenter = center; }
+    setZoom(zoom: number) { this.zoomCalls++; this.lastZoom = zoom; }
+    panTo(center: { lat: number; lng: number }) { this.panCalls++; this.lastPanTo = center; this.lastCenter = center; }
     panBy(x: number, y: number) { this.lastPanBy = [x, y]; }
-    fitBounds(bounds: unknown) { this.boundsCalls.push(bounds); }
+    setOptions(options: Record<string, unknown>) { this.options = { ...(this.options as object), ...options }; }
+    fitBounds(bounds: unknown, padding?: unknown) { this.boundsCalls.push(bounds); this.lastBoundsPadding = padding; }
     override addListener(name: string, callback: (event: any) => void) {
       const listener = super.addListener(name, callback);
       return { remove: () => { listener.remove(); this.listenerRemoved = true; } };
@@ -313,7 +437,7 @@ function fakeApi() {
     Size: class { width: number; height: number; constructor(width: number, height: number) { this.width = width; this.height = height; } },
     Point: class { x: number; y: number; constructor(x: number, y: number) { this.x = x; this.y = y; } },
     Polyline: class extends FakeEventTarget {
-      constructor(options: { map: unknown }) { super(); this.map = options.map; api.legLines.push(this); }
+      constructor(options: { map: unknown }) { super(); this.map = options.map; this.options = options; api.legLines.push(this); }
     },
   };
   return api as unknown as GoogleTripMapApi & typeof api;

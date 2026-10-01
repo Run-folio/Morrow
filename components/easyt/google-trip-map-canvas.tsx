@@ -7,6 +7,7 @@ import {
   type GoogleCanvasLeg,
   type GoogleCanvasStop,
   type GoogleCanvasPlace,
+  type GoogleMapInsets,
   type GoogleTripMapApi,
 } from "@/lib/easyt/google-trip-map-adapter";
 import presentation from "./morrovia-map-presentation.module.css";
@@ -21,7 +22,7 @@ type Props = {
   selectedStopId: string | null;
   selectedPlaceId?: string | null;
   temporaryPlace?: GoogleCanvasPlace | null;
-  focusInset?: number;
+  cameraInsets?: GoogleMapInsets;
   onNativePoi(placeId: string, coordinates?: [number, number]): boolean | void;
   onEmptyClick(point: [number, number]): void;
   onSelectStop(stopId: string): void;
@@ -57,6 +58,7 @@ export function GoogleTripMapCanvas(props: Props) {
           stops: props.stops,
           legs: props.legs,
           selectedStopId: props.selectedStopId,
+          cameraInsets: props.cameraInsets,
           mapId: props.mapId,
           onNativePoi: (placeId, coordinates) => callbacksRef.current.onNativePoi(placeId, coordinates),
           onEmptyClick: (point) => callbacksRef.current.onEmptyClick(point),
@@ -64,7 +66,7 @@ export function GoogleTripMapCanvas(props: Props) {
           onSelectLeg: (legId) => callbacksRef.current.onSelectLeg(legId),
           onSelectPlace: (placeId) => callbacksRef.current.onSelectPlace?.(placeId),
         });
-        sessionRef.current.updatePlaces(callbacksRef.current.places ?? [], callbacksRef.current.selectedPlaceId, callbacksRef.current.temporaryPlace, callbacksRef.current.focusInset);
+        sessionRef.current.updatePlaces(callbacksRef.current.places ?? [], callbacksRef.current.selectedPlaceId, callbacksRef.current.temporaryPlace, callbacksRef.current.cameraInsets);
         setStatus("ready");
         trackEvent("map_google_request", { operation: "sdk", outcome: "success" });
       })
@@ -73,8 +75,8 @@ export function GoogleTripMapCanvas(props: Props) {
     // Deliberately keyed to canonical overlay identities, not category or detail state.
   }, [props.browserKey, props.mapId, props.sdkLoader, stopKey, legKey]);
 
-  useEffect(() => { sessionRef.current?.update({ selectedStopId: props.selectedStopId }); }, [props.selectedStopId]);
-  useEffect(() => { sessionRef.current?.updatePlaces(props.places ?? [], props.selectedPlaceId, props.temporaryPlace, props.focusInset); }, [placeKey, props.selectedPlaceId, temporaryKey, props.focusInset]);
+  useEffect(() => { sessionRef.current?.update({ selectedStopId: props.selectedStopId, cameraInsets: props.cameraInsets }); }, [props.selectedStopId, props.cameraInsets]);
+  useEffect(() => { sessionRef.current?.updatePlaces(props.places ?? [], props.selectedPlaceId, props.temporaryPlace, props.cameraInsets); }, [placeKey, props.selectedPlaceId, temporaryKey, props.cameraInsets]);
 
   return <div className={`planner-map ${presentation.surface}`} data-basemap-status={status} aria-busy={status === "loading" || undefined} aria-label="Google trip map">
     <div ref={containerRef} className={presentation.canvas} />

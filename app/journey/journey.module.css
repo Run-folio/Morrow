@@ -1204,3 +1204,4 @@ button.mapPlanAgendaRow{cursor:pointer;border-radius:var(--morrovia-control-radi
 .enrichmentToggle{align-self:flex-start;max-width:100%;margin:8px 0 2px}
 .enrichmentPanel{display:flex;box-sizing:border-box;flex:1;width:100%;max-width:100%;min-height:0;min-width:0;overflow:hidden}
 .shellPlanner .finderDock{box-sizing:border-box;max-width:100%!important;min-width:0}
+.shellPlanner .finderDock{overflow-x:hidden!important}

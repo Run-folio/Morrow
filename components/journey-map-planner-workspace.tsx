@@ -62,7 +62,7 @@ import { conciseMapDescription, formatMapDuration, mapRouteLegsFromTrip, type Ma
 import type { MorroviaMapInsets, MorroviaMapSurface } from "@/lib/easyt/map-surface-policy";
 import { isEnrichedPlace, isEnrichedReview, type EnrichedPlace, type EnrichedReview, type PlaceEnrichmentCategory } from "@/lib/easyt/place-enrichment";
 import { decodeGooglePhotoAttributions, safeGooglePhotoSourceUrl, type GooglePlacePhotoAttribution } from "@/lib/easyt/google-place-photo";
-import { googleCanvasEligible, type GoogleTripMapApi } from "@/lib/easyt/google-trip-map-adapter";
+import { canonicalMapStopCoordinates, googleCanvasEligible, type GoogleTripMapApi } from "@/lib/easyt/google-trip-map-adapter";
 import { createLatestGoogleDetailRequest } from "@/lib/easyt/google-place-details-client";
 import { nativeGooglePoiSelection, type WorkspacePlaceSelection } from "@/lib/easyt/map-workspace-selection";
 import { googleDiscoveryScopeKey, googlePlaceSelectionForScope, googleSavedReferenceSelection, selectedGoogleDetailForPlace } from "@/lib/easyt/google-map-workspace-selection";
@@ -892,11 +892,12 @@ export function JourneyMapPlannerWorkspace({
           .filter((item) => item.stopId === stop.id)
           .sort((left, right) => left.dayNumber - right.dayNumber)[0];
         const mappedStop = firstItem ? journey.stops.find((item) => item.id === `${customTrip.id}-day-${firstItem.dayNumber}`) : undefined;
-        const coordinates: [number, number] | null = stop.longitude !== null && stop.latitude !== null
-          ? [stop.longitude, stop.latitude]
-          : mappedStop?.coordinates ?? null;
+        const coordinates = canonicalMapStopCoordinates(
+          stop.longitude !== null && stop.latitude !== null ? [stop.longitude, stop.latitude] : null,
+          mappedStop?.coordinates,
+        );
         return mappedStop
-          ? { ...mappedStop, id: stop.id, coordinates: mappedStop.coordinates ?? coordinates }
+          ? { ...mappedStop, id: stop.id, coordinates }
           : {
               id: stop.id,
               city: stop.name,
@@ -2766,13 +2767,13 @@ export function JourneyMapPlannerWorkspace({
               browserKey={storyState?.googleFixture ? "storybook-fixture" : process.env.NEXT_PUBLIC_GOOGLE_MAPS_BROWSER_KEY!}
               sdkLoader={storyState?.googleFixture?.sdkLoader}
               mapId={process.env.NEXT_PUBLIC_GOOGLE_MAPS_MAP_ID}
-              stops={canonicalMapStops.map((stop) => ({ id: stop.id, name: stop.city, coordinates: stop.coordinates ?? null }))}
+              stops={canonicalMapStops.map((stop, index) => ({ id: stop.id, name: stop.city, coordinates: stop.coordinates ?? null, sequence: index }))}
               legs={canonicalMapLegs.map((leg) => ({ id: leg.id, fromStopId: leg.fromStopId, toStopId: leg.toStopId }))}
               places={googleDiscoveryCategory ? (googleNearby?.places ?? []).map((place) => ({ id: place.providerPlaceId, name: place.name, category: googleDiscoveryCategory, coordinates: place.coordinates })) : []}
               selectedStopId={mapMode === "overview" ? null : selectedTripStop?.id ?? null}
               selectedPlaceId={selectedGooglePlaceId}
               temporaryPlace={temporaryGooglePlace}
-              focusInset={mapCameraOcclusions.left ?? 0}
+              cameraInsets={mapCameraOcclusions}
               onNativePoi={selectGoogleNativePoi}
               onEmptyClick={(coordinates) => {
                 if (pinPlacementMode) { setPinCoordinates(coordinates); setPinPlacementMode(false); }
