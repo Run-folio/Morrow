@@ -68,8 +68,10 @@ function isScheduledTransport(leg: TripLeg) {
 /** Traveller-facing status projection. Confidence and provenance remain on the canonical leg. */
 export function transportPresentationState(leg: TripLeg, booked = false): TransportPresentationState {
   if (booked) return "booked";
-  if (leg.mode === "unknown" || !hasUsableJourneyDuration(leg) || leg.confidence === "low" || leg.confidence === "unknown") return "needs-checking";
-  if (isScheduledTransport(leg) && leg.scheduleNeedsChecking) return leg.mode === "train" || leg.mode === "flight" ? "check-timetable" : "check-service";
+  if (leg.mode === "unknown" || !hasUsableJourneyDuration(leg)) return "needs-checking";
+  if (isScheduledTransport(leg) && (leg.scheduleNeedsChecking || leg.confidence === "low" || leg.confidence === "unknown")) {
+    return leg.mode === "train" || leg.mode === "flight" ? "check-timetable" : "check-service";
+  }
   return "planning-estimate";
 }
 

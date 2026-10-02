@@ -108,6 +108,7 @@ test("uses canonical transport bookings as the only booked truth", () => {
   const source = trip();
   const agenda = itineraryTransportAgenda(source);
   assert.deepEqual(agenda.map((item) => item.status), ["available", "available", "booked", "confirm"]);
+  assert.deepEqual(transportPresentationCounts(agenda).find(({ state }) => state === "booked"), { state: "booked", count: 1 });
 
   const leg = source.legs[1]!;
   assert.equal(itineraryTransportAgendaStatus(leg, null), "available");
@@ -131,10 +132,12 @@ test("maps canonical journey facts to traveller-facing transport states and usef
   const scheduled = { ...source.legs[1]!, scheduleNeedsChecking: true };
   const ferry = { ...source.legs[1]!, mode: "ferry" as const, scheduleNeedsChecking: true };
   const unknown = { ...source.legs[1]!, mode: "unknown" as const, durationMinutes: null, doorToDoorMinutes: null };
+  const missingRoadDuration = { ...source.legs[1]!, mode: "road" as const, durationMinutes: null, doorToDoorMinutes: null };
   assert.equal(transportPresentationState(road), "planning-estimate");
   assert.equal(transportPresentationState(scheduled), "check-timetable");
   assert.equal(transportPresentationState(ferry), "check-service");
   assert.equal(transportPresentationState(unknown), "needs-checking");
+  assert.equal(transportPresentationState(missingRoadDuration), "needs-checking");
   assert.equal(transportPresentationState(unknown, true), "booked");
   assert.deepEqual(transportPresentationCounts([
     { leg: road, booking: null },
@@ -149,6 +152,14 @@ test("maps canonical journey facts to traveller-facing transport states and usef
     { state: "check-service", count: 1 },
     { state: "needs-checking", count: 1 },
   ]);
+});
+
+test("keeps known-duration road legs as planning estimates when confidence is low or unknown", () => {
+  const knownLeg = trip().legs[1]!;
+  const road = { ...knownLeg, mode: "road" as const, durationMinutes: 390, doorToDoorMinutes: 390 };
+
+  assert.equal(transportPresentationState({ ...road, confidence: "low" }), "planning-estimate");
+  assert.equal(transportPresentationState({ ...road, confidence: "unknown" }), "planning-estimate");
 });
 
 test("does not reuse a free-text booking for the reverse repeated-city leg", () => {
