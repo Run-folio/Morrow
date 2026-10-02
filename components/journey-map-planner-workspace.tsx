@@ -62,7 +62,7 @@ import { conciseMapDescription, formatMapDuration, mapRouteLegsFromTrip, type Ma
 import type { MorroviaMapInsets, MorroviaMapSurface } from "@/lib/easyt/map-surface-policy";
 import { isEnrichedReview, type EnrichedPlace, type EnrichedReview, type PlaceEnrichmentCategory } from "@/lib/easyt/place-enrichment";
 import { decodeGooglePhotoAttributions, safeGooglePhotoSourceUrl, type GooglePlacePhotoAttribution } from "@/lib/easyt/google-place-photo";
-import { canonicalMapStopCoordinates, googleCanvasEligible, type GoogleTripMapApi } from "@/lib/easyt/google-trip-map-adapter";
+import { canonicalMapStopCoordinates, GOOGLE_MAP_RENDERER_ENABLED, googleCanvasEligible, type GoogleTripMapApi } from "@/lib/easyt/google-trip-map-adapter";
 import { startGoogleMapAvailabilityProbe } from "@/lib/easyt/google-map-availability";
 import { googleCanvasPlacesForMapResults } from "@/lib/easyt/google-map-result-projection";
 import { createLatestGoogleDetailRequest } from "@/lib/easyt/google-place-details-client";
@@ -618,13 +618,15 @@ export function JourneyMapPlannerWorkspace({
   const selectedTripStop = customTrip?.stops.find((stop) => stop.id === (mapDetailScope === "stop" ? selectedMapStopId : null))
     ?? customTrip?.stops.find((stop) => stop.id === selectedPlanItem?.stopId);
   const googleCanvasActive = Boolean(storyState?.googleFixture) || googleCanvasEligible({
+    rendererEnabled: GOOGLE_MAP_RENDERER_ENABLED,
     flag: enrichmentAvailable === true,
     authenticated: Boolean(authenticatedOwnerId),
     expanded: isExpandedMap,
     serverAvailable: enrichmentAvailable === true && !googleSdkUnavailable,
     browserKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_BROWSER_KEY,
   });
-  const googleCanvasPending = Boolean(expandedReturnHref && authenticatedOwnerId && enrichmentAvailable === null && !storyState?.googleFixture);
+  const googlePlacesAvailable = enrichmentAvailable === true;
+  const googleCanvasPending = GOOGLE_MAP_RENDERER_ENABLED && Boolean(expandedReturnHref && authenticatedOwnerId && enrichmentAvailable === null && !storyState?.googleFixture);
   const googleDiscoveryCategory: PlaceEnrichmentCategory | null = shapeDayTab === "plan" ? null : shapeDayTab;
   const selectedBaseCoordinates: [number, number] | null = selectedTripStop?.longitude !== null
     && selectedTripStop?.longitude !== undefined
@@ -634,7 +636,7 @@ export function JourneyMapPlannerWorkspace({
   const googleScopeKey = selectedTripStop && googleDiscoveryCategory
     ? googleDiscoveryScopeKey(selectedTripStop.id, googleDiscoveryCategory, selectedBaseCoordinates)
     : null;
-  const selectedGooglePlaceId = googleCanvasActive && workspacePlaceSelection.kind === "google" ? workspacePlaceSelection.placeId : null;
+  const selectedGooglePlaceId = googlePlacesAvailable && workspacePlaceSelection.kind === "google" ? workspacePlaceSelection.placeId : null;
   const currentGoogleDetail = selectedGoogleDetailForPlace(selectedGooglePlaceId, selectedGoogleDetail);
   const selectedGoogleMapPoint = selectedGooglePlaceId && nativeGooglePoint?.placeId === selectedGooglePlaceId
     ? nativeGooglePoint.coordinates : currentGoogleDetail?.coordinates ?? null;
@@ -643,11 +645,12 @@ export function JourneyMapPlannerWorkspace({
     : null;
   useEffect(() => {
     if (!googleCanvasActive) {
-      setWorkspacePlaceSelection((current) => current.kind === "google" ? { kind: "none" } : current);
+      if (workspacePlaceSelection.kind === "google" && workspacePlaceSelection.referenceId) return;
+      if (workspacePlaceSelection.kind === "google") setWorkspacePlaceSelection({ kind: "none" });
       setSelectedGoogleDetail(null);
       setNativeGooglePoint(null);
     }
-  }, [googleCanvasActive]);
+  }, [googleCanvasActive, workspacePlaceSelection]);
   const selectedGoogleStopId = workspacePlaceSelection.kind === "google" ? workspacePlaceSelection.stopId : null;
   const selectedGoogleChoice = customTrip?.brief.itineraryIdeas?.find((idea): idea is GooglePlaceReferenceIdea => isGooglePlaceReferenceIdea(idea)
     && idea.stopId === selectedGoogleStopId
@@ -672,7 +675,7 @@ export function JourneyMapPlannerWorkspace({
     }
   }, [workspacePlaceSelection, selectedTripStop?.id, selectedPlanItem?.id]);
   useEffect(() => {
-    if (!googleCanvasActive || !selectedGooglePlaceId) {
+    if (!googlePlacesAvailable || !selectedGooglePlaceId) {
       googleDetailRequestRef.current.clear();
       setSelectedGoogleDetail(null);
       setGoogleDetailStatus("idle");
@@ -704,12 +707,12 @@ export function JourneyMapPlannerWorkspace({
     }, selectedGoogleChoice?.providerReference, (reason) => { if (active) { completed = true; setGoogleReferenceUnavailable(reason); setGoogleDetailStatus("unavailable"); trackEvent("map_google_request", { operation: "reference_resolve", outcome: "failure", failure_kind: "provider" }); } })
       .then(() => { if (active && !completed) { setGoogleDetailStatus("unavailable"); trackEvent("map_google_request", { operation: selectedGoogleChoice ? "reference_resolve" : "details", outcome: "failure", failure_kind: typeof navigator !== "undefined" && !navigator.onLine ? "offline" : "provider" }); } });
     return () => { active = false; request.clear(); };
-  }, [googleCanvasActive, selectedGooglePlaceId, workspacePlaceSelection.kind === "google" ? workspacePlaceSelection.stopId : null, workspacePlaceSelection.kind === "google" ? workspacePlaceSelection.dayId : null, googleDetailRetry]);
+  }, [googlePlacesAvailable, googleCanvasActive, selectedGooglePlaceId, workspacePlaceSelection.kind === "google" ? workspacePlaceSelection.stopId : null, workspacePlaceSelection.kind === "google" ? workspacePlaceSelection.dayId : null, googleDetailRetry]);
   useEffect(() => {
     setSelectedGoogleReviews([]);
     setSelectedGooglePhoto(null);
     if (storyState?.googleFixture) return;
-    if (!googleCanvasActive || !selectedGoogleDetail || selectedGoogleDetail.providerPlaceId !== selectedGooglePlaceId || googleMediaRequestedPlaceId !== selectedGooglePlaceId) return;
+    if (!googlePlacesAvailable || !selectedGoogleDetail || selectedGoogleDetail.providerPlaceId !== selectedGooglePlaceId || googleMediaRequestedPlaceId !== selectedGooglePlaceId) return;
     const controller = new AbortController();
     const query = new URLSearchParams({ id: selectedGooglePlaceId });
     let objectUrl: string | null = null;
@@ -733,7 +736,7 @@ export function JourneyMapPlannerWorkspace({
         trackEvent("map_google_request", { operation: "photo", outcome: "success" });
       }).catch(() => { if (!controller.signal.aborted) trackEvent("map_google_request", { operation: "photo", outcome: "failure", failure_kind: "provider" }); });
     return () => { controller.abort(); if (objectUrl) URL.revokeObjectURL(objectUrl); };
-  }, [googleCanvasActive, selectedGoogleDetail, selectedGooglePlaceId, googleMediaRequestedPlaceId]);
+  }, [googlePlacesAvailable, selectedGoogleDetail, selectedGooglePlaceId, googleMediaRequestedPlaceId]);
   const selectedRecommendedLeg = customTrip && selectedPlanItem ? incomingLegForPlanItem(customTrip, selectedPlanItem) ?? undefined : undefined;
   const selectedLeg = customTrip && selectedRecommendedLeg ? effectiveTripLeg(customTrip, selectedRecommendedLeg) : undefined;
   const selectedCanonicalTravel = customTrip && selectedLeg ? {
@@ -3255,7 +3258,7 @@ export function JourneyMapPlannerWorkspace({
           }}
           editHref={customTrip && selectedPlanItem ? itineraryWorkspaceHref(customTrip.id, selectedPlanItem.dayNumber) : editTripHref}
           copy={planCopy}
-          googleCanvasActive={googleCanvasActive}
+          googlePlacesAvailable={googlePlacesAvailable}
           savedReferences={savedGoogleReferences}
           onSelectSavedReference={selectGoogleSavedReference}
         /> : null}

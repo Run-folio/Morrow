@@ -33,8 +33,8 @@ test("saved Google references are disclosed in the existing Plan workspace inste
   assert.match(plan, /savedReferences\??:/);
   assert.match(plan, /Saved for later/);
   assert.match(workspace, /<PlanWorkspace[\s\S]*?savedReferences=\{savedGoogleReferences\}/);
-  assert.match(workspace, /googleCanvasActive=\{googleCanvasActive\}/);
-  assert.match(plan, /googleCanvasActive[\s\S]*?mapsUrl[\s\S]*?Open in Google Maps/);
+  assert.match(workspace, /googlePlacesAvailable=\{googlePlacesAvailable\}/);
+  assert.match(plan, /googlePlacesAvailable[\s\S]*?mapsUrl[\s\S]*?Open in Google Maps/);
   assert.match(plan, /className=\{styles\.mapPlanSavedReferenceLink\}/);
   assert.match(plan, /styles\.mapPlanSavedReferences/);
   assert.match(journeyStyles, /\.shapeDayPlan \.mapPlanSavedReferences>li\{[^}]*display:block/);

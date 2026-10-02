@@ -50,6 +50,9 @@ export type GoogleTripMapOptions = {
   mapId?: string;
 };
 
+/** Keep the Google renderer parked for beta while preserving its implementation. */
+export const GOOGLE_MAP_RENDERER_ENABLED = false;
+
 export function canonicalMapStopCoordinates(canonical: [number, number] | null | undefined, projected: [number, number] | null | undefined): [number, number] | null {
   return canonical ?? projected ?? null;
 }
@@ -78,9 +81,9 @@ function googleStopMarkerIcon(api: GoogleTripMapApi, index: number, selected: bo
 }
 
 export function googleCanvasEligible(input: {
-  flag: boolean; authenticated: boolean; expanded: boolean; serverAvailable: boolean; browserKey?: string;
+  rendererEnabled: boolean; flag: boolean; authenticated: boolean; expanded: boolean; serverAvailable: boolean; browserKey?: string;
 }): boolean {
-  return input.flag && input.authenticated && input.expanded && input.serverAvailable && Boolean(input.browserKey?.trim());
+  return input.rendererEnabled && input.flag && input.authenticated && input.expanded && input.serverAvailable && Boolean(input.browserKey?.trim());
 }
 
 export function createGoogleMapsSdkLoader(

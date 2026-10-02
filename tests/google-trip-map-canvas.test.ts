@@ -5,6 +5,7 @@ import {
   canonicalMapStopCoordinates,
   createGoogleMapsSdkLoader,
   createGoogleTripMapSession,
+  GOOGLE_MAP_RENDERER_ENABLED,
   googlePlaceMarkerIcon,
   googleCanvasEligible,
   type GoogleTripMapApi,
@@ -13,12 +14,25 @@ import { nativeGooglePoiSelection } from "../lib/easyt/map-workspace-selection.t
 import { createLatestGoogleDetailRequest } from "../lib/easyt/google-place-details-client.ts";
 
 test("flag, account, expansion and complete browser configuration gate the canvas", () => {
-  const ready = { flag: true, authenticated: true, expanded: true, serverAvailable: true, browserKey: "browser-key" };
+  const ready = { rendererEnabled: true, flag: true, authenticated: true, expanded: true, serverAvailable: true, browserKey: "browser-key" };
   assert.equal(googleCanvasEligible(ready), true);
+  assert.equal(googleCanvasEligible({ ...ready, rendererEnabled: false }), false);
   for (const key of ["flag", "authenticated", "expanded", "serverAvailable"] as const) {
     assert.equal(googleCanvasEligible({ ...ready, [key]: false }), false, key);
   }
   assert.equal(googleCanvasEligible({ ...ready, browserKey: " " }), false);
+});
+
+test("the beta parks Google map rendering without changing Places enrichment availability", () => {
+  assert.equal(GOOGLE_MAP_RENDERER_ENABLED, false);
+  assert.equal(googleCanvasEligible({
+    rendererEnabled: GOOGLE_MAP_RENDERER_ENABLED,
+    flag: true,
+    authenticated: true,
+    expanded: true,
+    serverAvailable: true,
+    browserKey: "browser-key",
+  }), false);
 });
 
 test("SDK loading is single-flight and retries after a failed load", async () => {

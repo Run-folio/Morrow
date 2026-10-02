@@ -37,7 +37,7 @@ export interface PlanWorkspaceProps {
   };
   editHref: string;
   copy: PlanWorkspaceCopy;
-  googleCanvasActive?: boolean;
+  googlePlacesAvailable?: boolean;
   savedReferences?: readonly { id: string; placeId: string; dayLabel: string | null; mapsUrl: string }[];
   onSelectSavedReference?: (referenceId: string, placeId: string) => void;
 }
@@ -80,7 +80,7 @@ function AgendaRow({ item, navigation }: { item: MapPlanAgendaItem; navigation: 
   </li>;
 }
 
-export function PlanWorkspace({ context, activity, navigation, editHref, copy, googleCanvasActive = false, savedReferences = [], onSelectSavedReference }: PlanWorkspaceProps) {
+export function PlanWorkspace({ context, activity, navigation, editHref, copy, googlePlacesAvailable = false, savedReferences = [], onSelectSavedReference }: PlanWorkspaceProps) {
   const { selectedDay, selectedStop, planItem, days, items, freeTime } = context;
   const [addingActivity, setAddingActivity] = useState(false);
 
@@ -102,7 +102,7 @@ export function PlanWorkspace({ context, activity, navigation, editHref, copy, g
         <h3>Saved for later</h3>
         <ul className={`${styles.mapPlanAgenda} ${styles.mapPlanSavedReferences}`}>
           {savedReferences.map((reference) => <li key={reference.id}>
-            {googleCanvasActive && onSelectSavedReference
+            {googlePlacesAvailable && onSelectSavedReference
               ? <EasyTButton variant="quiet" fullWidth onClick={() => onSelectSavedReference(reference.id, reference.placeId)}>
                   Saved place{reference.dayLabel ? ` · ${reference.dayLabel}` : " · for later"}
                 </EasyTButton>

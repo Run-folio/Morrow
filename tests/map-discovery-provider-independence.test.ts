@@ -26,14 +26,22 @@ test("Google canvas selection changes one map panel without suppressing Morrovia
   has(workspace, /<section className=\{`\$\{styles\.mapContextPanel\}/, "the parent renders one selected-place context panel");
 });
 
-test("expanded-map provider eligibility stays in a bounded loading state and SDK completion reads the latest canvas state", () => {
+test("the beta renderer switch keeps MapLibre immediate and leaves Places availability independent", () => {
   has(workspace, /useState<boolean \| null>\(storyState\?\.enrichmentPlaces \? true : null\)/, "unknown eligibility is kept distinct from confirmed provider unavailability");
   const availability = read("lib/easyt/google-map-availability.ts");
   has(workspace, /startGoogleMapAvailabilityProbe\([\s\S]*?timeoutMs: 7000/, "the expanded map uses its bounded provider availability probe");
   has(availability, /scheduleTimeout\([\s\S]*?options\.timeoutMs/, "provider eligibility retains a bounded timeout before the existing MapLibre fallback");
   has(availability, /options\.clearTimeout\(timeout\)/, "settling the availability request cancels the fallback timer");
-  has(workspace, /const googleCanvasPending = Boolean\(expandedReturnHref && authenticatedOwnerId && enrichmentAvailable === null/, "only an expanded authenticated workspace waits for provider resolution");
-  has(workspace, /googleCanvasPending \? <div[\s\S]*?Preparing map[\s\S]*?: googleCanvasActive \? <GoogleTripMapCanvas/, "MapLibre is not exposed while Google eligibility is unresolved");
+  has(workspace, /rendererEnabled: GOOGLE_MAP_RENDERER_ENABLED/, "beta rendering stays behind the explicit Google renderer feature switch");
+  has(workspace, /const googleCanvasPending = GOOGLE_MAP_RENDERER_ENABLED && Boolean\(expandedReturnHref && authenticatedOwnerId && enrichmentAvailable === null/, "a disabled Google renderer never delays the MapLibre canvas");
+  has(workspace, /googleCanvasPending \? <div[\s\S]*?Preparing map[\s\S]*?: googleCanvasActive \? <GoogleTripMapCanvas[\s\S]*?: <JourneyPlannerMap/, "the production map falls through to the canonical MapLibre renderer");
+  has(workspace, /fetch\("\/api\/journey-place-enrichment\?mode=availability"/, "Places availability remains probed independently of the parked renderer");
+  has(workspace, /const googlePlacesAvailable = enrichmentAvailable === true/, "off-map enrichment has a separate availability state");
+  has(workspace, /const selectedGooglePlaceId = googlePlacesAvailable && workspacePlaceSelection\.kind === "google"/, "saved Place ID details stay selectable without a Google canvas");
+  has(workspace, /workspacePlaceSelection\.kind === "google" && workspacePlaceSelection\.referenceId\) return/, "saved Place selection survives while the map renderer is parked");
+  has(workspace, /googlePlacesAvailable=\{googlePlacesAvailable\}/, "saved references use Places availability rather than renderer state");
+  has(workspace, /if \(!googlePlacesAvailable \|\| !selectedGooglePlaceId\)/, "saved-place detail resolution remains independent of the renderer");
+  has(workspace, /if \(!googlePlacesAvailable \|\| !selectedGoogleDetail/, "photo and review enrichment remains independent of the renderer");
   const canvas = readFileSync(new URL("../components/easyt/google-trip-map-canvas.tsx", import.meta.url), "utf8");
   has(canvas, /const latest = callbacksRef\.current[\s\S]*?stops: latest\.stops[\s\S]*?legs: latest\.legs[\s\S]*?selectedStopId: latest\.selectedStopId[\s\S]*?updatePlaces\(latest\.places/, "an SDK that resolves late initializes from the latest route, selection and results");
 });
