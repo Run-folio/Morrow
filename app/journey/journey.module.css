@@ -1033,6 +1033,35 @@ button.mapPlanAgendaRow{cursor:pointer;border-radius:var(--morrovia-control-radi
 .mapSourceLabel{margin:-3px 0 0;color:var(--morrovia-muted);font:650 7px/1.35 var(--morrovia-meta);text-decoration:none}
 .shellPlanner .mapAssistant{right:310px!important;bottom:14px!important}
 
+/* Map workspace: keep the selected canonical detail beside the finder and reserve the
+   remaining viewport for the same map instance. */
+@media(min-width:981px){
+  .shellPlanner.mapDetailsAttached{--map-workspace-details-width:clamp(300px,22vw,360px)}
+  .shellPlanner.mapDetailsAttached .mapDetailLayer{left:calc(var(--map-workspace-rail-width) + var(--map-workspace-details-width));right:0}
+  .shellPlanner.mapDetailsAttached :global(.journey-map),
+  .shellPlanner.mapDetailsAttached :global(.planner-map){inset:var(--map-workspace-strip-height) 0 0!important;width:100%!important;height:auto!important}
+  .shellPlanner.mapDetailsAttached .mapPlaceContext,
+  .shellPlanner.mapDetailsAttached .mapTransferContext,
+  .shellPlanner.mapDetailsAttached .mapDestinationContext{
+    top:var(--map-workspace-strip-height)!important;
+    right:auto!important;
+    bottom:0!important;
+    left:var(--map-workspace-rail-width)!important;
+    width:var(--map-workspace-details-width)!important;
+    max-width:none!important;
+    max-height:none!important;
+    padding:20px 18px!important;
+    overflow-y:auto!important;
+    overscroll-behavior:contain;
+    border-right:1px solid var(--hairline)!important;
+    border-radius:0!important;
+    box-shadow:none!important;
+  }
+  .shellPlanner.mapDetailsAttached .mapContextPanel{min-height:100%;align-content:start}
+  .shellPlanner.mapDetailsAttached .mapContextEyebrow{position:sticky;top:-20px;z-index:2;padding:8px 0;background:var(--morrovia-paper)}
+  .shellPlanner.mapDetailsAttached .mapContextHeading{position:sticky;top:0;z-index:2;padding:5px 0 10px;background:var(--morrovia-paper)}
+}
+
 @media(max-width:720px){
   .shellPlanner .mapAssistant{right:12px!important;bottom:calc(var(--morrovia-mobile-dock-offset,82px) + 12px)!important}
   .shellPlanner .canonicalPlannerStatus:has(.mapLegDetail),.shellPlanner .canonicalPlannerStatus:has(.mapPlaceDetail),.shellPlanner .canonicalPlannerStatus:has(.mapDestinationImage),.shellPlanner .canonicalPlannerStatus:has(.mapDestinationDescription){top:auto!important;right:12px!important;bottom:calc(var(--morrovia-mobile-dock-offset,82px) + 68px)!important;left:12px!important;width:auto!important;max-width:none!important;max-height:min(52%,390px)!important;padding:15px!important;overflow-y:auto!important;border-radius:15px!important;box-shadow:var(--workspace-shadow)!important}

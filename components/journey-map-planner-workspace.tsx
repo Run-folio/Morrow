@@ -969,7 +969,13 @@ export function JourneyMapPlannerWorkspace({
     const merged = mergeMapResults(persistedMapProjection.results, transientMapResults, selectedPlanItem?.dayNumber ?? null);
     return googleCanvasActive ? merged : mapLibreCompatibleResults(merged);
   }, [googleCanvasActive, persistedMapProjection.results, selectedPlanItem?.dayNumber, transientMapResults]);
-  const googleCanvasPlaces = useMemo(() => googleCanvasPlacesForMapResults(mapResults), [mapResults]);
+  const googleCanvasPlaces = useMemo(() => googleCanvasPlacesForMapResults(
+    mapResults,
+    persistedMapProjection.plannerPins.map((pin) => ({
+      ...pin,
+      stopId: customTrip?.planItems.find((item) => item.dayNumber === pin.dayNumber)?.stopId ?? null,
+    })),
+  ), [customTrip?.planItems, mapResults, persistedMapProjection.plannerPins]);
   const scheduledRestaurantIds = useMemo(() => mapResults
     .filter((result) => result.kind === "eat"
       && result.state === "scheduled"
@@ -1059,8 +1065,12 @@ export function JourneyMapPlannerWorkspace({
     observer.observe(workspace);
     const rail = workspace.querySelector<HTMLElement>(`.${styles.finderDock}`);
     if (rail) observer.observe(rail);
+    const details = workspace.querySelector<HTMLElement>(`.${styles.canonicalPlannerStatus}`);
+    if (details) observer.observe(details);
+    const mapLayer = workspace.querySelector<HTMLElement>(`.${styles.mapDetailLayer}`);
+    if (mapLayer) observer.observe(mapLayer);
     return () => observer.disconnect();
-  }, [isShellPresentation, mobileShapeDayOpen, shapeDayTab, showFinderDock]);
+  }, [hasExplicitMapContext, isShellPresentation, mapMode, mobileShapeDayOpen, shapeDayTab, showFinderDock]);
   useEffect(() => {
     const workspace = workspaceRef.current;
     if (!isShellPresentation || !workspace || typeof ResizeObserver === "undefined") return;
@@ -1267,6 +1277,11 @@ export function JourneyMapPlannerWorkspace({
   const selectGoogleCanvasPlace = (placeId: string) => {
     if (placeId.startsWith("google-poi:")) {
       selectGoogleNativePoi(placeId.slice("google-poi:".length), nativeGooglePoint?.coordinates ?? undefined);
+      return;
+    }
+    const plannerPin = persistedMapProjection.plannerPins.find((pin) => pin.id === placeId);
+    if (plannerPin) {
+      selectPlannerPin(plannerPin);
       return;
     }
     const result = mapResults.find((candidate) => candidate.selectionId === placeId);
@@ -1927,6 +1942,7 @@ export function JourneyMapPlannerWorkspace({
     drawerScrollResetRef.current = true;
     setSelectedPlannerPin(pin);
     setSelectedMapResult(null);
+    setWorkspacePlaceSelection({ kind: "none" });
     setSelectedRouteLegId(null);
     setMobileShapeDayOpen(false);
     setMobileMapDrawerOpen(true);
@@ -2580,12 +2596,19 @@ export function JourneyMapPlannerWorkspace({
     if (storyState.localPlaces !== undefined) setLocalMapPlaces(storyState.localPlaces);
     if (storyState.selectedLocalPlaceId !== undefined) {
       const place = storyState.localPlaces?.find((candidate) => candidate.id === storyState.selectedLocalPlaceId);
-      if (place) setSelectedMapResult(mapResultForLocalPlace(place, storyState.shapeDayTab === "eat" ? "eat" : "stay"));
+      if (place) {
+        const kind = storyState.shapeDayTab === "eat" ? "eat" : "stay";
+        const projected = mapResults.find((result) => result.kind === kind && result.sourceId === place.id);
+        setSelectedMapResult(projected ?? mapResultForLocalPlace(place, kind, {
+          stopId: selectedPlanItem?.stopId ?? selectedMapStopId,
+          dayNumber: selectedPlanItem?.dayNumber ?? null,
+        }));
+      }
     }
     if (storyState.mobileDrawerOpen !== undefined) setMobileMapDrawerOpen(storyState.mobileDrawerOpen);
     if (storyState.mobileShapeDayOpen !== undefined) setMobileShapeDayOpen(storyState.mobileShapeDayOpen);
     if (storyState.tripStatusExpanded !== undefined) setTripStatusExpanded(storyState.tripStatusExpanded);
-  }, [customTrip, planHydrated, storyState]);
+  }, [customTrip, mapResults, planHydrated, selectedMapStopId, selectedPlanItem?.dayNumber, selectedPlanItem?.stopId, storyState]);
 
   useEffect(() => {
     if (!storyState?.selectedMapResultId) return;
@@ -2759,7 +2782,7 @@ export function JourneyMapPlannerWorkspace({
       {!hasCanonicalPlanner ? <div className={styles.productNavigation}>
         <EasyTNavigation current="prototype" storageOwnerId={activeBrowserOwnerId} />
       </div> : null}
-      <main ref={workspaceRef} data-map-expanded={isShellPresentation && isExpandedMap} data-google-discovery={googleCanvasActive} className={`${styles.journey} ${mobileLayout.plan} ${mapDocks.plan} ${hasCanonicalPlanner ? styles.canonicalPlanner : ""} ${isShellPresentation ? styles.shellPlanner : ""} ${isShellPresentation && isExpandedMap ? styles.shellPlannerExpanded : ""}`}>
+      <main ref={workspaceRef} data-map-expanded={isShellPresentation && isExpandedMap} data-google-discovery={googleCanvasActive} className={`${styles.journey} ${mobileLayout.plan} ${mapDocks.plan} ${hasCanonicalPlanner ? styles.canonicalPlanner : ""} ${isShellPresentation ? styles.shellPlanner : ""} ${isShellPresentation && isExpandedMap ? styles.shellPlannerExpanded : ""} ${isShellPresentation && showShellContext && (hasExplicitMapContext || mapMode === "detail") ? styles.mapDetailsAttached : ""}`}>
       {hasCanonicalPlanner ? (
         <div className={styles.mapDetailLayer}>
             {googleCanvasActive ? <GoogleTripMapCanvas
@@ -2767,10 +2790,10 @@ export function JourneyMapPlannerWorkspace({
               sdkLoader={storyState?.googleFixture?.sdkLoader}
               mapId={process.env.NEXT_PUBLIC_GOOGLE_MAPS_MAP_ID}
               stops={canonicalMapStops.map((stop, index) => ({ id: stop.id, name: stop.city, coordinates: stop.coordinates ?? null, sequence: index }))}
-              legs={canonicalMapLegs.map((leg) => ({ id: leg.id, fromStopId: leg.fromStopId, toStopId: leg.toStopId }))}
+              legs={canonicalMapLegs.map((leg) => ({ id: leg.id, fromStopId: leg.fromStopId, toStopId: leg.toStopId, modeLabel: leg.modeLabel, durationLabel: `${formatMapDuration(leg.doorToDoorMinutes)}${leg.scheduleNeedsChecking ? " · needs checking" : ""}`, routeGeometry: leg.routeGeometry }))}
               places={googleCanvasPlaces}
               selectedStopId={mapMode === "overview" ? null : selectedTripStop?.id ?? null}
-              selectedPlaceId={selectedLocalPlace?.selectionId ?? (selectedGooglePlaceId ? `google-poi:${selectedGooglePlaceId}` : null)}
+              selectedPlaceId={selectedLocalPlace?.selectionId ?? selectedPlannerPin?.id ?? (selectedGooglePlaceId ? `google-poi:${selectedGooglePlaceId}` : null)}
               previewPlaceId={previewedMapResult?.selectionId ?? null}
               temporaryPlace={temporaryGooglePlace}
               cameraInsets={mapCameraOcclusions}

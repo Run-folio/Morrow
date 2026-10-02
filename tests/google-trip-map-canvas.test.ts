@@ -109,6 +109,49 @@ test("same-name stops and route legs keep canonical IDs; detail updates do not r
   assert.ok(api.legLines.every((line) => line.map === null));
 });
 
+test("canonical transfer metadata appears on the route and its badge selects the same leg", () => {
+  const api = fakeApi();
+  const documentOwner = fakeDocument();
+  Object.assign(api, {
+    LatLng: class { lat: number; lng: number; constructor(lat: number, lng: number) { this.lat = lat; this.lng = lng; } },
+    OverlayView: class {
+      onAdd?(): void; draw?(): void; onRemove?(): void;
+      setMap(map: unknown) { if (map) { this.onAdd?.(); this.draw?.(); } else this.onRemove?.(); }
+      getPanes() { return { overlayMouseTarget: { append() {} } }; }
+      getProjection() { return { fromLatLngToDivPixel: (point: { lat: number; lng: number }) => ({ x: point.lng * 100, y: point.lat * 100 }) }; }
+    },
+  });
+  const selectedLegs: string[] = [];
+  const selectedPlaces: string[] = [];
+  const session = createGoogleTripMapSession(api, { ownerDocument: documentOwner } as unknown as HTMLElement, {
+    stops: [
+      { id: "windhoek", name: "Windhoek", coordinates: [17.0832, -22.5609] },
+      { id: "swakopmund", name: "Swakopmund", coordinates: [14.5053, -22.6784] },
+    ],
+    legs: [{ id: "leg-windhoek-swakopmund", fromStopId: "windhoek", toStopId: "swakopmund", modeLabel: "Road", durationLabel: "3h 45m", routeGeometry: [[17.0832, -22.5609], [16, -22.6], [14.5053, -22.6784]] }],
+    selectedStopId: null,
+    onNativePoi: () => {}, onEmptyClick: () => {}, onSelectStop: () => {}, onSelectLeg: (id) => selectedLegs.push(id), onSelectPlace: (id) => selectedPlaces.push(id),
+  });
+  session.updatePlaces([]);
+  const badge = documentOwner.elements.find((element) => element.className.includes("planner-map__leg-badge"));
+  assert.ok(badge, "Google retains a route-anchored transport marker in whole-route mode");
+  assert.match(badge.textContent, /road/i);
+  assert.match(badge.textContent, /3h 45m/);
+  assert.deepEqual([badge.style.left, badge.style.top], ["1600px", "-2260px"], "the badge follows canonical route geometry rather than an unrelated map offset");
+  assert.deepEqual((api.legLines[0]!.options as { path: Array<{ lat: number; lng: number }> }).path, [
+    { lat: -22.5609, lng: 17.0832 }, { lat: -22.6, lng: 16 }, { lat: -22.6784, lng: 14.5053 },
+  ]);
+  badge.fire("click");
+  assert.deepEqual(selectedLegs, ["leg-windhoek-swakopmund"]);
+  session.updatePlaces([{ id: "pin-artemis", sourceId: "pin-artemis", stopId: "swakopmund", name: "Artemis Hotel", category: "stay", coordinates: [14.5266, -22.6784], plannerPin: true }], "pin-artemis");
+  const pin = documentOwner.elements.find((element) => element.className.includes("planner-map__place") && element.getAttribute("data-google-place-id") === "pin-artemis");
+  assert.ok(pin, "the exact saved pin is rendered as a selectable Google overlay");
+  assert.deepEqual([pin.style.left, pin.style.top], ["1452.66px", "-2267.84px"]);
+  pin.fire("click");
+  assert.deepEqual(selectedPlaces, ["pin-artemis"]);
+  session.destroy();
+});
+
 test("local destination mode subdues long-haul legs and whole-route mode restores their context", () => {
   const api = fakeApi();
   const session = createGoogleTripMapSession(api, {} as HTMLElement, {
@@ -230,9 +273,13 @@ test("regional zoom hides unselected local results and explicit list selection r
   const api = fakeApi();
   const session = createGoogleTripMapSession(api, {} as HTMLElement, { stops: [{ id: "mumbai", name: "Mumbai", coordinates: [72.8777, 19.076] }], legs: [], selectedStopId: "mumbai", onNativePoi: () => {}, onEmptyClick: () => {}, onSelectStop: () => {}, onSelectLeg: () => {}, onSelectPlace: () => {} });
   api.lastMap!.zoom = 3;
-  session.updatePlaces([{ id: "result:stay:mumbai:hotel-1", name: "Hotel", category: "stay", coordinates: [72.88, 19.08] }]);
+  const result = { id: "result:stay:mumbai:hotel-1", name: "Hotel", category: "stay" as const, coordinates: [72.88, 19.08] as [number, number] };
+  const saved = { id: "saved:activity-1", name: "Saved activity", category: "see" as const, coordinates: [72.89, 19.09] as [number, number], state: "scheduled" as const };
+  session.updatePlaces([result]);
   assert.equal(api.markers.filter((marker) => marker.map).length, 1, "only the route stop remains at regional zoom");
-  session.updatePlaces([{ id: "result:stay:mumbai:hotel-1", name: "Hotel", category: "stay", coordinates: [72.88, 19.08] }], "result:stay:mumbai:hotel-1");
+  session.updatePlaces([result, saved]);
+  assert.equal(api.markers.filter((marker) => marker.map).length, 2, "scheduled trip content stays discoverable when local recommendations are hidden");
+  session.updatePlaces([result], "result:stay:mumbai:hotel-1");
   assert.equal(api.lastMap!.lastZoom, 12, "explicit result navigation restores a usable local zoom");
   assert.equal(api.markers.filter((marker) => marker.map).length, 2);
   session.destroy();

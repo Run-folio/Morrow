@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { googleCanvasPlacesForMapResults } from "../lib/easyt/google-map-result-projection.ts";
 import type { MapResultPlace } from "../lib/easyt/map-result-selection.ts";
+import type { PlannerMapPin } from "../lib/easyt/trip.ts";
 
 const result = (selectionId: string, stopId: string | null, coordinates: [number, number]): MapResultPlace => ({
   selectionId, sourceId: "booking-hotel-42", stopId, dayNumber: 3, dayPart: null,
@@ -32,4 +33,25 @@ test("results without reliable coordinates stay out of pins without being name-m
   const withBadCoordinates = { ...result("result:stay:one:hotel", "one", [0, 0]), coordinates: [NaN, 200] as [number, number] };
   const valid = result("result:stay:two:hotel", "two", [72.8777, 19.076]);
   assert.deepEqual(googleCanvasPlacesForMapResults([withBadCoordinates, valid]).map((place) => place.id), [valid.selectionId]);
+});
+
+test("saved custom pins reach the Google canvas with their canonical pin identity and coordinates", () => {
+  const pin: PlannerMapPin = { id: "custom-favourite-7", title: "Our lookout", category: "custom", dayNumber: 5, latitude: -22.6784, longitude: 14.5053 };
+  assert.deepEqual(googleCanvasPlacesForMapResults([], [pin]), [{
+    id: pin.id,
+    sourceId: pin.id,
+    stopId: null,
+    name: pin.title,
+    category: "custom",
+    coordinates: [pin.longitude, pin.latitude],
+    plannerPin: true,
+  }]);
+});
+
+test("persisted result identity and canonical stop occurrence stay attached to saved Google overlays", () => {
+  const saved: MapResultPlace = { ...result("saved:idea-17", "swakopmund", [14.5053, -22.6784]), state: "scheduled" };
+  assert.deepEqual(googleCanvasPlacesForMapResults([saved]), [{
+    id: saved.selectionId, sourceId: saved.sourceId, stopId: saved.stopId, name: saved.name,
+    category: saved.kind, coordinates: saved.coordinates, state: "scheduled",
+  }]);
 });

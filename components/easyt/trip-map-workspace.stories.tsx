@@ -232,6 +232,61 @@ const providerPlaces = {
   },
 } satisfies Record<string, JourneyLocalPlace>;
 
+const namibiaHotel: JourneyLocalPlace = {
+  ...providerPlaces.hotel,
+  id: "booking-artemis-swakopmund",
+  name: "Artemis Hotel Swakopmund",
+  address: "Sam Nujoma Avenue, Swakopmund, Namibia",
+  coordinates: [14.5266, -22.6784],
+  mapsUrl: "https://www.google.com/maps/search/?api=1&query=Artemis%20Hotel%20Swakopmund",
+};
+const namibiaRestaurant: JourneyLocalPlace = {
+  ...providerPlaces.restaurant,
+  id: "google-hafeni-swakopmund",
+  name: "Hafeni Traditional Restaurant",
+  address: "Lukas Nampala Street, Swakopmund, Namibia",
+  coordinates: [14.526, -22.678],
+  mapsUrl: "https://www.google.com/maps/search/?api=1&query=Hafeni%20Traditional%20Restaurant",
+};
+const namibiaMapTrip: EasyTTrip = {
+  ...trip,
+  id: "namibia-self-drive-map-restoration",
+  title: "Namibia Self-Drive",
+  startDate: "2026-10-01",
+  endDate: "2026-10-08",
+  brief: {
+    ...trip.brief,
+    origin: "Windhoek",
+    bookings: [],
+    itineraryIdeas: [{
+      id: "namibia-hafeni-idea", placeId: namibiaRestaurant.id, stopId: "swakopmund", dayId: "namibia-day-5",
+      title: namibiaRestaurant.name, category: "restaurant", coordinates: namibiaRestaurant.coordinates,
+      area: "Swakopmund", placeType: "restaurant", source: "personalised-recommendation", reasons: ["interest-relevance"],
+    }],
+    mapPins: [{ id: "pin-namibia-custom", title: "Cape Cross lookout", category: "custom", dayNumber: 5, latitude: -21.78, longitude: 13.95 }],
+  },
+  stops: [
+    { id: "windhoek", order: 0, name: "Windhoek", country: "Namibia", latitude: -22.5609, longitude: 17.0658, arrivalDate: "2026-10-01", departureDate: "2026-10-02", nights: 1 },
+    { id: "sossusvlei", order: 1, name: "Sossusvlei", country: "Namibia", latitude: -24.7333, longitude: 15.3, arrivalDate: "2026-10-02", departureDate: "2026-10-04", nights: 2 },
+    { id: "swakopmund", order: 2, name: "Swakopmund", country: "Namibia", latitude: -22.6784, longitude: 14.5053, arrivalDate: "2026-10-04", departureDate: "2026-10-06", nights: 2 },
+    { id: "damaraland", order: 3, name: "Damaraland", country: "Namibia", latitude: -20.5, longitude: 14.4, arrivalDate: "2026-10-06", departureDate: "2026-10-08", nights: 2 },
+  ],
+  legs: [
+    { id: "leg-windhoek-sossusvlei", fromStopId: "windhoek", toStopId: "sossusvlei", mode: "road", distanceKm: 350, durationMinutes: 300, provider: null, routeMetadata: {} },
+    { id: "leg-sossusvlei-swakopmund", fromStopId: "sossusvlei", toStopId: "swakopmund", mode: "unknown", distanceKm: null, durationMinutes: null, provider: null, routeMetadata: {} },
+    { id: "leg-swakopmund-damaraland", fromStopId: "swakopmund", toStopId: "damaraland", mode: "road", distanceKm: 330, durationMinutes: 300, provider: null, routeMetadata: {} },
+  ],
+  planItems: [
+    { ...day(1, "windhoek", "Arrive in Windhoek", "arrival"), id: "namibia-day-1", date: "2026-10-01" },
+    { ...day(2, "sossusvlei", "Drive to Sossusvlei", "transport"), id: "namibia-day-2", date: "2026-10-02" },
+    { ...day(3, "sossusvlei", "Explore Sossusvlei"), id: "namibia-day-3", date: "2026-10-03" },
+    { ...day(4, "swakopmund", "Drive to Swakopmund", "transport"), id: "namibia-day-4", date: "2026-10-04" },
+    { ...day(5, "swakopmund", "Explore Swakopmund"), id: "namibia-day-5", date: "2026-10-05" },
+    { ...day(6, "damaraland", "Drive to Damaraland", "transport"), id: "namibia-day-6", date: "2026-10-06" },
+    { ...day(7, "damaraland", "Explore Damaraland"), id: "namibia-day-7", date: "2026-10-07" },
+  ],
+};
+
 const dubrovnikPlaces = {
   hotel: {
     id: "booking-dubrovnik-harbour",
@@ -675,6 +730,34 @@ export const MapWorkspaceDesktop1440SelectedStay: Story = {
     },
   },
   globals: { viewport: { value: "morrovia1440", isRotated: false } },
+};
+
+const namibiaSwakopmundParameters = {
+  nextjs: { appDirectory: true, navigation: { pathname: "/journey/namibia-self-drive-map-restoration/map", query: { stop: "swakopmund", mode: "stay" } } },
+};
+
+export const NamibiaDesktop1440AttachedStay: Story = {
+  args: { storyTrip: namibiaMapTrip, storyState: { mapMode: "detail", shapeDayTab: "stay", localPlaces: [namibiaHotel], selectedLocalPlaceId: namibiaHotel.id } },
+  globals: { viewport: { value: "morrovia1440", isRotated: false } },
+  parameters: namibiaSwakopmundParameters,
+};
+
+export const NamibiaDesktop1440SavedRestaurant: Story = {
+  args: { storyTrip: namibiaMapTrip, storyState: { mapMode: "detail", shapeDayTab: "eat", selectedMapResultId: "idea:namibia-hafeni-idea" } },
+  globals: { viewport: { value: "morrovia1440", isRotated: false } },
+  parameters: { nextjs: { appDirectory: true, navigation: { pathname: "/journey/namibia-self-drive-map-restoration/map", query: { stop: "swakopmund", mode: "eat" } } } },
+};
+
+export const NamibiaDesktop1024SavedCustomPin: Story = {
+  args: { storyTrip: namibiaMapTrip, storyState: { mapMode: "detail", shapeDayTab: "plan", selectedPlannerPinId: "pin-namibia-custom" } },
+  globals: { viewport: { value: "morrovia1024", isRotated: false } },
+  parameters: namibiaSwakopmundParameters,
+};
+
+export const NamibiaMobile390AttachedStay: Story = {
+  args: { storyTrip: namibiaMapTrip, storyState: { mapMode: "detail", shapeDayTab: "stay", localPlaces: [namibiaHotel], selectedLocalPlaceId: namibiaHotel.id, mobileDrawerOpen: true } },
+  globals: { viewport: { value: "morrovia390", isRotated: false } },
+  parameters: namibiaSwakopmundParameters,
 };
 
 export const MapWorkspaceMobile390WholeRoute: Story = {

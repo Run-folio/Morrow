@@ -33,8 +33,8 @@ export type GoogleTripMapApi = {
   OverlayView?: new () => HtmlOverlayObject;
 };
 export type GoogleCanvasStop = { id: string; name: string; coordinates: [number, number] | null; sequence?: number };
-export type GoogleCanvasLeg = { id: string; fromStopId: string; toStopId: string };
-export type GoogleCanvasPlace = { id: string; sourceId?: string; stopId?: string | null; name: string; category: "stay" | "eat" | "see"; coordinates: [number, number] };
+export type GoogleCanvasLeg = { id: string; fromStopId: string; toStopId: string; modeLabel?: string; durationLabel?: string; routeGeometry?: Array<[number, number]> };
+export type GoogleCanvasPlace = { id: string; sourceId?: string; stopId?: string | null; name: string; category: "stay" | "eat" | "see" | "custom" | "transport"; coordinates: [number, number]; state?: "result" | "saved" | "scheduled"; plannerPin?: true };
 export type GoogleMapInsets = Partial<{ top: number; right: number; bottom: number; left: number }>;
 export type GoogleTripMapOptions = {
   stops: readonly GoogleCanvasStop[];
@@ -62,8 +62,8 @@ function cameraInsetsKey(insets: GoogleMapInsets): string {
 export function googlePlaceMarkerIcon(api: GoogleTripMapApi, category: GoogleCanvasPlace["category"], selected: boolean) {
   const size = selected ? 52 : 44;
   const center = size / 2;
-  const label = category === "stay" ? "STAY" : category === "eat" ? "EAT" : "SEE";
-  const fill = category === "stay" ? "#3025ce" : category === "eat" ? "#d01866" : "#17106f";
+  const label = category === "stay" ? "STAY" : category === "eat" ? "EAT" : category === "transport" ? "GO" : category === "custom" ? "PIN" : "SEE";
+  const fill = category === "stay" ? "#3025ce" : category === "eat" ? "#d01866" : category === "transport" ? "#5446df" : "#17106f";
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}"><circle cx="${center}" cy="${center}" r="${center - 2}" fill="#fbfaff" stroke="${selected ? "#d01866" : "#17106f"}" stroke-width="${selected ? 4 : 2}"/><circle cx="${center}" cy="${center}" r="${center - (selected ? 8 : 5)}" fill="${fill}"/><text x="50%" y="51%" dominant-baseline="central" text-anchor="middle" fill="#fbfaff" font-family="Arial,sans-serif" font-size="${selected ? 10 : 9}" font-weight="700">${label}</text></svg>`;
   const scaledSize = api.Size ? new api.Size(size, size) : { width: size, height: size };
   const anchor = api.Point ? new api.Point(center, center) : { x: center, y: center };
@@ -206,7 +206,9 @@ export function createGoogleTripMapSession(api: GoogleTripMapApi, element: HTMLE
     if (!from || !to) continue;
     const line = new api.Polyline({
       map,
-      path: [{ lat: from[1], lng: from[0] }, { lat: to[1], lng: to[0] }],
+      path: leg.routeGeometry?.length
+        ? leg.routeGeometry.map(([longitude, latitude]) => ({ lat: latitude, lng: longitude }))
+        : [{ lat: from[1], lng: from[0] }, { lat: to[1], lng: to[0] }],
       strokeColor: "#e6006e", strokeOpacity: options.selectedStopId ? 0.12 : 0.7, strokeWeight: options.selectedStopId ? 1 : 2,
       icons: [], // schematic connection, not road directions
     });
@@ -306,7 +308,7 @@ export function createGoogleTripMapSession(api: GoogleTripMapApi, element: HTMLE
           if (!projection || !root.replaceChildren) return;
           root.replaceChildren();
           const zoom = map.getZoom?.() ?? 12;
-          const localResults = visible.filter((place) => place.id === nextSelectedPlaceId || zoom > 6 || place.id.startsWith("google-poi:"));
+          const localResults = visible.filter((place) => place.id === nextSelectedPlaceId || zoom > 6 || place.id.startsWith("google-poi:") || place.plannerPin || place.state === "saved" || place.state === "scheduled");
           const projected = localResults.map((place) => ({ place, pixel: projection!.fromLatLngToDivPixel(new api.LatLng!(place.coordinates[1], place.coordinates[0])) }))
             .filter((record): record is { place: GoogleCanvasPlace; pixel: { x: number; y: number } } => record.pixel !== null);
           const groups: Array<{ records: typeof projected; anchor: { x: number; y: number } }> = [];
@@ -321,7 +323,7 @@ export function createGoogleTripMapSession(api: GoogleTripMapApi, element: HTMLE
             if (group.records.length === 1) {
               const place = group.records[0]!.place;
               const active = place.id === nextSelectedPlaceId;
-              const label = place.category === "stay" ? "Stay" : place.category === "eat" ? "Eat" : "See";
+              const label = place.category === "stay" ? "Stay" : place.category === "eat" ? "Eat" : place.category === "transport" ? "Transport" : place.category === "custom" ? "Pin" : "See";
               const previewed = place.id === previewedPlaceId;
               const button = makeButton(label, `planner-map__place planner-map__place--${place.category}${active ? " is-active" : ""}${previewed ? " is-preview" : ""}`, active ? 500 : previewed ? 480 : 100, (event) => { event.stopPropagation(); options.onSelectPlace?.(place.id); });
               button.setAttribute("aria-label", `${place.name} · ${label}`);
@@ -335,7 +337,7 @@ export function createGoogleTripMapSession(api: GoogleTripMapApi, element: HTMLE
               continue;
             }
             const category = selected?.category ?? group.records[0]!.place.category;
-            const label = category === "stay" ? "Stay" : category === "eat" ? "Eat" : "See";
+            const label = category === "stay" ? "Stay" : category === "eat" ? "Eat" : category === "transport" ? "Transport" : category === "custom" ? "Pin" : "See";
             const overlap = makeButton(`${label} +${group.records.length - 1}`, `planner-map__place planner-map__place--${category} planner-map__place-overlap${selected ? " is-active" : ""}`, selected ? 500 : 100, (event) => {
               event.stopPropagation();
               openGroupKey = openGroupKey === groupKey ? "" : groupKey;
@@ -365,6 +367,34 @@ export function createGoogleTripMapSession(api: GoogleTripMapApi, element: HTMLE
               }
               root.append(choices);
             }
+          }
+          // Transfer badges stay tied to their canonical endpoint geometry. They
+          // are schematic context, not a claim about a navigable road route.
+          for (const leg of options.legs) {
+            if (!leg.modeLabel && !leg.durationLabel) continue;
+            const from = byId.get(leg.fromStopId)?.coordinates;
+            const to = byId.get(leg.toStopId)?.coordinates;
+            if (!from || !to) continue;
+            const geometry = leg.routeGeometry?.length ? leg.routeGeometry : [from, to];
+            const midpoint = geometry.length % 2
+              ? geometry[Math.floor(geometry.length / 2)]!
+              : [
+                  (geometry[geometry.length / 2 - 1]![0] + geometry[geometry.length / 2]![0]) / 2,
+                  (geometry[geometry.length / 2 - 1]![1] + geometry[geometry.length / 2]![1]) / 2,
+                ] as [number, number];
+            const pixel = projection!.fromLatLngToDivPixel(new api.LatLng!(midpoint[1], midpoint[0]));
+            if (!pixel) continue;
+            const label = [leg.modeLabel, leg.durationLabel].filter(Boolean).join(" · ");
+            const badge = makeButton(label, "planner-map__leg-badge", 600, (event) => {
+              event.stopPropagation();
+              options.onSelectLeg(leg.id);
+            });
+            badge.setAttribute("aria-label", `${leg.modeLabel ?? "Transfer"} · ${leg.durationLabel ?? "Timing to confirm"}; view transfer details`);
+            badge.setAttribute("data-google-leg-id", leg.id);
+            badge.style.left = `${pixel.x}px`;
+            badge.style.top = `${pixel.y}px`;
+            badge.style.transform = "translate(-50%, -50%)";
+            root.append(badge);
           }
           // Transparent hit targets sit above nearby result pins, so the visible route marker
           // always selects its canonical stop when a hotel overlaps it.
@@ -401,7 +431,7 @@ export function createGoogleTripMapSession(api: GoogleTripMapApi, element: HTMLE
         placeListeners.push(zoomListener);
       } else {
         for (const place of visible) {
-          if (place.id !== nextSelectedPlaceId && (map.getZoom?.() ?? 12) <= 6 && !place.id.startsWith("google-poi:")) continue;
+          if (place.id !== nextSelectedPlaceId && (map.getZoom?.() ?? 12) <= 6 && !place.id.startsWith("google-poi:") && !place.plannerPin && place.state !== "saved" && place.state !== "scheduled") continue;
           const selected = place.id === nextSelectedPlaceId;
           const marker = new api.Marker({ map, position: { lat: place.coordinates[1], lng: place.coordinates[0] }, title: `${place.name} · ${place.category}`, icon: googlePlaceMarkerIcon(api, place.category, selected), optimized: false, zIndex: selected ? 150 : 100 });
           placeOverlays.push(marker);

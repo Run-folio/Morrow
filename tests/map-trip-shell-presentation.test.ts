@@ -108,9 +108,8 @@ test("desktop Map has one persistent left rail and only contextual secondary det
   assert.match(mapStylesSource, /\.shellPlanner \.finderDock\{[^}]*left:0!important[^}]*width:var\(--map-workspace-rail-width\)!important/);
   assert.match(mapStylesSource, /\.shellPlanner \.mapDefaultContext\{display:none!important\}/);
   assert.match(mapStylesSource, /\.shellPlanner \.mapPlaceContext[^}]*position:absolute!important/);
-  assert.match(mapStylesSource, /\.shellPlanner \.mapPlaceContext,[\s\S]*right:92px!important;[\s\S]*bottom:48px!important/);
-  assert.match(mapStylesSource, /\.shellPlanner \.mapPlaceContext,[\s\S]*max-height:min\(440px,calc\(100% - var\(--map-workspace-strip-height\) - 168px\)\)!important/,
-    "selected detail stays compact instead of becoming a second rail");
+  assert.match(mapStylesSource, /\.shellPlanner\.mapDetailsAttached \.mapPlaceContext,[\s\S]*left:var\(--map-workspace-rail-width\)!important/,
+    "selected detail attaches beside the finder in the shared map workspace");
   assert.match(mapStylesSource, /\.shellPlanner \.finderDock :global\(\[class\*="sectionStatus"\]\)\{grid-template-columns:auto minmax\(0,1fr\)!important\}/,
     "shared status cards reflow to the desktop rail's container width");
   assert.match(mapStylesSource, /\.shellPlanner \.finderDock :global\(\[class\*="sectionStatus"\]\)>button\{grid-column:1\/-1!important;width:100%\}/);
@@ -120,12 +119,27 @@ test("desktop Map has one persistent left rail and only contextual secondary det
   assert.match(mapWorkspaceSource, /focusOffset=\{mapFocusOffset\}/);
 });
 
+test("selected details occupy the column between the finder and map instead of floating at far right", () => {
+  assert.match(mapWorkspaceSource, /styles\.mapDetailsAttached/,
+    "the single selected-detail owner marks the desktop three-column layout state");
+  assert.match(mapStylesSource, /\.shellPlanner\.mapDetailsAttached \.mapDetailLayer\{[^}]*left:calc\(var\(--map-workspace-rail-width\) \+ var\(--map-workspace-details-width\)\)/,
+    "the map canvas begins after both visible panels, so camera dimensions exclude their widths");
+  assert.match(mapStylesSource, /\.shellPlanner\.mapDetailsAttached \.mapPlaceContext,[\s\S]*left:var\(--map-workspace-rail-width\)!important;[\s\S]*right:auto!important/,
+    "selected place details attach immediately after the finder rather than floating over the map");
+  assert.match(mapStylesSource, /--map-workspace-details-width:/,
+    "the details column uses an explicit responsive width token");
+});
+
 test("Storybook covers the risk-based simplified Map workspace matrix", () => {
   for (const story of [
     "MapWorkspaceDesktop1440WholeRoute",
     "MapWorkspaceDesktop1440Destination",
     "MapWorkspaceDesktop1440StayResults",
     "MapWorkspaceDesktop1440SelectedStay",
+    "NamibiaDesktop1440AttachedStay",
+    "NamibiaDesktop1440SavedRestaurant",
+    "NamibiaDesktop1024SavedCustomPin",
+    "NamibiaMobile390AttachedStay",
     "MapWorkspaceMobile390WholeRoute",
     "MapWorkspaceMobile390SelectedStay",
   ]) {
@@ -145,6 +159,8 @@ test("the canonical Map workspace keeps one MapLibre camera model", () => {
   assert.match(mapRuntimeSource, /showCompass: false/);
   assert.match(mapSource, /fitMapCamera\(/);
   assert.match(mapWorkspaceSource, /legs=\{canonicalMapLegs\}/);
+  assert.match(mapWorkspaceSource, /legs=\{canonicalMapLegs\.map\(\(leg\) => \(\{ id: leg\.id, fromStopId: leg\.fromStopId, toStopId: leg\.toStopId, modeLabel: leg\.modeLabel, durationLabel:[\s\S]*routeGeometry: leg\.routeGeometry \}\)\)\}/,
+    "Google receives canonical leg identity, mode, timing and existing route geometry");
   assert.match(mapSource, /maplibregl\.setWorkerUrl\(MORROVIA_MAP_WORKER_URL\)/);
   assert.match(mapRuntimeSource, /MORROVIA_MAP_WORKER_URL = "\/maplibre\/maplibre-gl-worker\.mjs"/);
   assert.match(mapSource, /geometry: \{ type: "LineString" as const, coordinates: mappedStops\.map\(\(stop\) => stop\.coordinates\) \}/);

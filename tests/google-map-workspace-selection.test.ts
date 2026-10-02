@@ -27,6 +27,10 @@ test("the displayed Morrovia row and custom pin keep one stop-scoped identity wh
   assert.deepEqual(native, { kind: "google", placeId: "ChIJunfetched", stopId: "tokyo-return", dayId: "day-8" });
   assert.notEqual(native.placeId, pin.id, "a native POI never aliases the Morrovia result by name");
   assert.match(parent, /mapResults\.find\(\(candidate\) => candidate\.selectionId === placeId\)[\s\S]*selectMapResult\(result\)/);
+  assert.match(parent, /persistedMapProjection\.plannerPins\.find\(\(pin\) => pin\.id === placeId\)[\s\S]*selectPlannerPin\(plannerPin\)/,
+    "a saved custom overlay resolves by its canonical pin ID, not a display name");
+  assert.match(parent, /selectedLocalPlace\?\.selectionId \?\? selectedPlannerPin\?\.id/,
+    "the selected canonical pin remains highlighted in the Google overlay collection");
 });
 
 test("same-name occurrences and categories have separate cached result scopes", () => {

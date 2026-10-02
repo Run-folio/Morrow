@@ -43,6 +43,8 @@
 .surface :global(.planner-map__leg.is-unknown){border-style:dashed;background:var(--morrovia-muted)}
 .surface :global(.planner-map__leg-icon){display:grid;place-items:center;font:var(--morrovia-type-control)}
 .surface :global(.planner-map__leg-icon svg){width:24px;height:24px;stroke-width:1.9}
+.surface :global(.planner-map__leg-badge){min-height:32px;max-width:min(240px,calc(100vw - 32px));padding:6px 10px;border:1px solid var(--morrovia-line);border-radius:var(--morrovia-control-radius);background:var(--morrovia-paper);box-shadow:var(--morrovia-map-marker-shadow);color:var(--morrovia-ink);font:700 10px/1.2 var(--morrovia-ui);white-space:nowrap;cursor:pointer;pointer-events:auto}
+.surface :global(.planner-map__leg-badge:hover),.surface :global(.planner-map__leg-badge:focus-visible){border-color:var(--morrovia-signal);outline:3px solid var(--morrovia-focus-ring);outline-offset:2px}
 .surface :global(.maplibregl-ctrl-group button){width:44px;height:44px}
 @media(prefers-reduced-motion:reduce){.surface :global(.planner-map__stop),.surface :global(.planner-map__leg),.surface :global(.planner-map__place){transition:none}}
 @media(max-width:720px){.surface :global(.planner-map__leg){width:46px;height:46px}.surface :global(.planner-map__leg-icon svg){width:21px;height:21px}}
