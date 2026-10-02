@@ -237,7 +237,8 @@ function BuilderEntryFixture({ entry, language = "en", routeKey = "morocco-rail"
         if (entry === "failed" && place === "Tokyo") return Promise.resolve(Response.json({ error: "Provider unavailable" }, { status: 503 }));
         if (entry === "partial" && place === "Kyoto") return new Promise(() => {});
         const suggestion = canonicalPlaceSuggestionFor(place);
-        return Promise.resolve(Response.json({ candidates: suggestion ? [{ name: suggestion.name, country: suggestion.country, coordinates: suggestion.coordinates, canonicalPlaceId: suggestion.canonicalPlaceId }] : [] }));
+        const fixture = acceptancePlaceCoordinates[place];
+        return Promise.resolve(Response.json({ candidates: suggestion ? [{ name: suggestion.name, country: suggestion.country, coordinates: fixture?.coordinates ?? suggestion.coordinates, canonicalPlaceId: suggestion.canonicalPlaceId }] : [] }));
       }
       if (url.pathname.startsWith("/api/journey-")) return Promise.resolve(Response.json({ candidates: [], places: [], result: null }));
       return originalFetch(input, init);
@@ -260,14 +261,15 @@ function BuilderEntryFixture({ entry, language = "en", routeKey = "morocco-rail"
       url.searchParams.set("homeDraft", "1");
       url.searchParams.set("handoff", receipt.handoffId);
     } else if (["partial", "failed", "repeated"].includes(entry)) {
-      const handoffId = `storybook-${entry}`;
-      const submitted = entry === "repeated" ? starterSnapshot("stops", true) : {
+      const fixtureIdentity = snapshot ? `${entry}-${snapshot.entries.map((item) => item.selection?.canonicalPlaceId ?? item.id).join("-")}` : entry;
+      const handoffId = `storybook-${fixtureIdentity}`;
+      const submitted = entry === "repeated" ? snapshot ?? starterSnapshot("stops", true) : {
         ...starterSnapshot("describe"), prompt: "Tokyo and Kyoto for one week",
       };
       const captured = submitted.mode === "describe" ? captureJourneyBrief(submitted.prompt) : undefined;
       const projected = projectHomepageInput({ snapshot: submitted, capture: captured, profile: null, handoffId });
       if (!projected.ok) throw new Error("Invalid Builder story handoff");
-      const receipt = homepageReceiptForProjection(submitted, projected.draft, `storybook-trip-${entry}`);
+      const receipt = homepageReceiptForProjection(submitted, projected.draft, `storybook-trip-${fixtureIdentity}`);
       window.localStorage.setItem(inputKey, JSON.stringify({ snapshot: submitted, receipt }));
       window.localStorage.setItem(HOME_TRIP_DRAFT_KEY, JSON.stringify({ ...projected.draft, homepage: { ...projected.draft.homepage!, receipt } }));
       url.searchParams.set("homeDraft", "1");
@@ -373,3 +375,30 @@ export const FreshStopsAt430: Story = { ...FreshStops, globals: { viewport: { va
 export const FreshStopsAt768: Story = { ...FreshStops, globals: { viewport: { value: "morrovia768", isRotated: false } } };
 export const FreshStopsAt1024: Story = { ...FreshStops, globals: { viewport: { value: "morrovia1024", isRotated: false } } };
 export const FreshStopsAt1440: Story = { ...FreshStops, globals: { viewport: { value: "morrovia1440", isRotated: false } } };
+
+
+const acceptancePlaceCoordinates: Record<string, { coordinates: [number, number] }> = {
+  London: { coordinates: [-0.1276, 51.5072] }, Lima: { coordinates: [-77.0428, -12.0464] },
+  Tokyo: { coordinates: [139.6917, 35.6895] }, Kyoto: { coordinates: [135.7681, 35.0116] }, Osaka: { coordinates: [135.5023, 34.6937] },
+  Seoul: { coordinates: [126.978, 37.5665] }, Busan: { coordinates: [129.0756, 35.1796] },
+  Cusco: { coordinates: [-71.9675, -13.532] }, Arequipa: { coordinates: [-71.5375, -16.409] },
+};
+
+function acceptanceRouteSnapshot(names: string[], originName: string): HomepageInputSnapshot {
+  const origin = canonicalPlaceSuggestionFor(originName);
+  if (!origin) throw new Error(`Missing story origin: ${originName}`);
+  return {
+    ...starterSnapshot("stops"),
+    entries: names.map((name, index) => {
+      const selection = canonicalPlaceSuggestionFor(name);
+      if (!selection) throw new Error(`Missing story place: ${name}`);
+      return { id: `acceptance-${index + 1}`, text: selection.label, selection: { ...selection, coordinates: acceptancePlaceCoordinates[name]?.coordinates ?? selection.coordinates } };
+    }),
+    origin: { state: "selected", value: { name: origin.name, country: origin.country, canonicalPlaceId: origin.canonicalPlaceId, coordinates: acceptancePlaceCoordinates[originName]?.coordinates ?? origin.coordinates } },
+    journeyEnd: { state: "selected", value: { mode: "same_as_start" } },
+    dates: { state: "selected", value: { start: "2027-04-02", end: "2027-04-23" } },
+  };
+}
+
+export const JapanKoreaAcceptance: Story = { ...DirectEmptyEntry, render: () => <BuilderEntryFixture entry="repeated" snapshot={acceptanceRouteSnapshot(["Tokyo", "Kyoto", "Osaka", "Seoul", "Busan"], "London")} /> };
+export const RepeatedPeruAcceptance: Story = { ...DirectEmptyEntry, render: () => <BuilderEntryFixture entry="repeated" snapshot={acceptanceRouteSnapshot(["Cusco", "Arequipa", "Cusco", "Arequipa"], "Lima")} /> };

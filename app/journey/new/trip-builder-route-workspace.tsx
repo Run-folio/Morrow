@@ -28,6 +28,7 @@ export type TripBuilderRouteWorkspaceProps = {
   onPreviewOrder: (stopIds: readonly string[] | null) => void;
   onCommitOrder: (stopIds: readonly string[], source: BuilderOrderSource) => boolean;
   onEditNights: (stopId: string, nights: number) => void;
+  onRemoveStop: (stopId: string) => void;
   onTransportChoiceChange: (legId: string, identity: string | null) => void;
 };
 
@@ -64,6 +65,7 @@ export function TripBuilderRouteWorkspace({
   onPreviewOrder,
   onCommitOrder,
   onEditNights,
+  onRemoveStop,
   onTransportChoiceChange,
 }: TripBuilderRouteWorkspaceProps) {
   const rowRefs = useRef(new Map<string, HTMLDivElement>());
@@ -182,6 +184,8 @@ export function TripBuilderRouteWorkspace({
                   <button type="button" disabled={isLocked || index === 0} onClick={() => reorder.moveFromMenu(stop.id, index - 1)}>Earlier</button>
                   {/* morrovia-ui-audit-allow-next-line native-control -- The accessible reorder fallback is a menu item whose compact row semantics differ from a standard action button. */}
                   <button type="button" disabled={isLocked || index === presentedTrip.stops.length - 1} onClick={() => reorder.moveFromMenu(stop.id, index + 1)}>Later</button>
+                  {/* morrovia-ui-audit-allow-next-line native-control -- Stop removal reuses this row's existing action menu and the Builder's guarded mutation owner. */}
+                  <button type="button" disabled={locked.has(stop.id)} onClick={() => onRemoveStop(stop.id)}>Remove stop</button>
                 </div>
               </details>
             </div>;

@@ -23,6 +23,7 @@ function AllocationStory({ initialNights, language }: { initialNights: number[];
     onPreviewOrder={() => {}}
     onCommitOrder={() => false}
     onEditNights={(stopId, nights) => setTrip((current) => ({ ...current, stops: current.stops.map((stop) => stop.id === stopId ? { ...stop, nights } : stop) }))}
+    onRemoveStop={(stopId) => setTrip((current) => ({ ...current, stops: current.stops.filter((stop) => stop.id !== stopId).map((stop, order) => ({ ...stop, order })) }))}
     onTransportChoiceChange={() => {}}
   />;
 }

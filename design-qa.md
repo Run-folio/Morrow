@@ -2209,3 +2209,14 @@ The real production page was rendered inside fixed-width same-origin browser fra
 - Route Detail tests, public-route tests, image/provenance tests, affiliate/privacy tests, map presentation tests, UI convergence, TypeScript, production build, and Storybook build passed. The strict UI audit passed against this Route Detail implementation before a concurrent dashboard redesign added unrelated raw-color debt; the current audit output identifies only `app/journey/dashboard/dashboard.module.css`. That concurrent work was left untouched. An isolated build also confirmed the Route Detail changes were independently sound while the dashboard work was in flight.
 
 final result: passed
+
+
+## 2026-10-02 — Builder editing parity
+
+- Reused production Stops chips, Add stop, guarded removal confirmation, allocation row menu, endpoint/date editor and occurrence IDs. One mutation owner handles chips and row removal.
+- Desktop/mobile Stops editor now remains visible, wraps long names and offers exact Remove stop in each row menu. Remaining counts stay fixed; removed nights remain unallocated. First/last/only occurrence and explicit arrival locks have regression coverage. Ambiguous legacy saved-stay associations block removal and link to existing stay review rather than losing another visit's record.
+- Removed the separate Place checks section. Pending/failure/ambiguity feedback and existing retry/choice actions sit beside the relevant stop or endpoint.
+- Rendered production Builder at 390/430/1024/1440: no horizontal overflow; chip removal kept the return Cusco visit; row removal kept the first Arequipa visit; released 6 then 5 nights remained unallocated. Dates/endpoints stayed fixed. Cancel reverted the details draft; Save followed by Saved on this device and reload retained changed budget and route. Add stop opened its existing editor. Failed-check fixture retains inline Try again (fixture deliberately stays failed).
+- Focused Builder/allocation/cascade: 244 tests, 205 passed, 39 opt-in browser tests skipped, zero failures. Typecheck passed. Added production Builder acceptance stories and allocation-menu coverage.
+- UI debt cleanup intentionally lowers only this file's native-control baseline from 29 to 28 under docs/design-system.md policy.
+- Browser evidence: artifacts/builder-map-cleanup/builder-{390,430,1024,1440}.png, builder-mobile-removal.png, builder-inline-correction.png. End-to-end authenticated/cloud saving and physical mobile devices not exercised.
