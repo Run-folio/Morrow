@@ -63,6 +63,7 @@ import type { MorroviaMapInsets, MorroviaMapSurface } from "@/lib/easyt/map-surf
 import { isEnrichedReview, type EnrichedPlace, type EnrichedReview, type PlaceEnrichmentCategory } from "@/lib/easyt/place-enrichment";
 import { decodeGooglePhotoAttributions, safeGooglePhotoSourceUrl, type GooglePlacePhotoAttribution } from "@/lib/easyt/google-place-photo";
 import { canonicalMapStopCoordinates, googleCanvasEligible, type GoogleTripMapApi } from "@/lib/easyt/google-trip-map-adapter";
+import { startGoogleMapAvailabilityProbe } from "@/lib/easyt/google-map-availability";
 import { googleCanvasPlacesForMapResults } from "@/lib/easyt/google-map-result-projection";
 import { createLatestGoogleDetailRequest } from "@/lib/easyt/google-place-details-client";
 import { nativeGooglePoiSelection, type WorkspacePlaceSelection } from "@/lib/easyt/map-workspace-selection";
@@ -542,17 +543,13 @@ export function JourneyMapPlannerWorkspace({
   const appliedMapResultTargetRef = useRef<string | null>(null);
   useEffect(() => {
     if (storyState?.enrichmentPlaces || !expandedReturnHref || !authenticatedOwnerId) return;
-    const controller = new AbortController();
-    let active = true;
-    const timeout = window.setTimeout(() => {
-      if (!active) return;
-      setEnrichmentAvailable(false);
-      controller.abort();
-    }, 7000);
-    void fetch("/api/journey-place-enrichment?mode=availability", { cache: "no-store", signal: controller.signal })
-      .then((response) => { if (active) setEnrichmentAvailable(response.ok); })
-      .catch(() => { if (active) setEnrichmentAvailable(false); });
-    return () => { active = false; window.clearTimeout(timeout); controller.abort(); };
+    return startGoogleMapAvailabilityProbe({
+      request: (signal) => fetch("/api/journey-place-enrichment?mode=availability", { cache: "no-store", signal }),
+      onResult: setEnrichmentAvailable,
+      scheduleTimeout: (callback, delayMs) => window.setTimeout(callback, delayMs),
+      clearTimeout: (handle) => window.clearTimeout(handle as number),
+      timeoutMs: 7000,
+    });
   }, [authenticatedOwnerId, expandedReturnHref, storyState?.enrichmentPlaces]);
   useEffect(() => {
     if (!canonicalMutation) return;
@@ -1032,7 +1029,7 @@ export function JourneyMapPlannerWorkspace({
     !tripStatusExpanded
     && !copilotOpen
     && !(googleCanvasActive && shapeDayTab !== "plan" && !selectedGooglePlaceId && !selectedLocalPlace)
-    && (wholeRouteMapContext || hasExplicitMapContext || mapMode === "detail"),
+    && (wholeRouteMapContext || hasExplicitMapContext),
   );
   const defaultMapContext = Boolean(
     isShellPresentation
@@ -2797,7 +2794,7 @@ export function JourneyMapPlannerWorkspace({
       {!hasCanonicalPlanner ? <div className={styles.productNavigation}>
         <EasyTNavigation current="prototype" storageOwnerId={activeBrowserOwnerId} />
       </div> : null}
-      <main ref={workspaceRef} data-map-expanded={isShellPresentation && isExpandedMap} data-google-discovery={googleCanvasActive} className={`${styles.journey} ${mobileLayout.plan} ${mapDocks.plan} ${hasCanonicalPlanner ? styles.canonicalPlanner : ""} ${isShellPresentation ? styles.shellPlanner : ""} ${isShellPresentation && isExpandedMap ? styles.shellPlannerExpanded : ""} ${isShellPresentation && showShellContext && (hasExplicitMapContext || mapMode === "detail") ? styles.mapDetailsAttached : ""}`}>
+      <main ref={workspaceRef} data-map-expanded={isShellPresentation && isExpandedMap} data-google-discovery={googleCanvasActive} className={`${styles.journey} ${mobileLayout.plan} ${mapDocks.plan} ${hasCanonicalPlanner ? styles.canonicalPlanner : ""} ${isShellPresentation ? styles.shellPlanner : ""} ${isShellPresentation && isExpandedMap ? styles.shellPlannerExpanded : ""} ${isShellPresentation && showShellContext && hasExplicitMapContext ? styles.mapDetailsAttached : ""}`}>
       {hasCanonicalPlanner ? (
         <div className={styles.mapDetailLayer}>
             {googleCanvasPending ? <div className={styles.mapProviderPending}><MorroviaSectionStatus compact title="Preparing map" detail="Checking the available map provider." /></div> : googleCanvasActive ? <GoogleTripMapCanvas

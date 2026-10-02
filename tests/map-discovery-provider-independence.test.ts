@@ -28,7 +28,10 @@ test("Google canvas selection changes one map panel without suppressing Morrovia
 
 test("expanded-map provider eligibility stays in a bounded loading state and SDK completion reads the latest canvas state", () => {
   has(workspace, /useState<boolean \| null>\(storyState\?\.enrichmentPlaces \? true : null\)/, "unknown eligibility is kept distinct from confirmed provider unavailability");
-  has(workspace, /}, 7000\)/, "provider eligibility has a bounded timeout before the existing MapLibre fallback");
+  const availability = read("lib/easyt/google-map-availability.ts");
+  has(workspace, /startGoogleMapAvailabilityProbe\([\s\S]*?timeoutMs: 7000/, "the expanded map uses its bounded provider availability probe");
+  has(availability, /scheduleTimeout\([\s\S]*?options\.timeoutMs/, "provider eligibility retains a bounded timeout before the existing MapLibre fallback");
+  has(availability, /options\.clearTimeout\(timeout\)/, "settling the availability request cancels the fallback timer");
   has(workspace, /const googleCanvasPending = Boolean\(expandedReturnHref && authenticatedOwnerId && enrichmentAvailable === null/, "only an expanded authenticated workspace waits for provider resolution");
   has(workspace, /googleCanvasPending \? <div[\s\S]*?Preparing map[\s\S]*?: googleCanvasActive \? <GoogleTripMapCanvas/, "MapLibre is not exposed while Google eligibility is unresolved");
   const canvas = readFileSync(new URL("../components/easyt/google-trip-map-canvas.tsx", import.meta.url), "utf8");

@@ -130,6 +130,15 @@ test("selected details occupy the column between the finder and map instead of f
     "the details column uses an explicit responsive width token");
 });
 
+test("stop and day navigation alone never reserves an empty attached detail column", () => {
+  assert.match(mapWorkspaceSource, /const showShellContext = Boolean\([\s\S]*?\(wholeRouteMapContext \|\| hasExplicitMapContext\)\s*,\n\s*\);/,
+    "only whole-route or explicitly selected map context may render the contextual panel");
+  assert.match(mapWorkspaceSource, /className=\{`\$\{styles\.journey\}[\s\S]*?showShellContext && hasExplicitMapContext \? styles\.mapDetailsAttached : ""\}/,
+    "the three-column layout must open only for a selected result, pin, transfer, or native POI");
+  assert.doesNotMatch(mapWorkspaceSource, /wholeRouteMapContext \|\| hasExplicitMapContext \|\| mapMode === "detail"/,
+    "camera detail mode is not itself a selected detail item");
+});
+
 test("Storybook covers the risk-based simplified Map workspace matrix", () => {
   for (const story of [
     "MapWorkspaceDesktop1440WholeRoute",
