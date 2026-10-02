@@ -5,6 +5,7 @@ import { effectiveTripLeg } from "./transport-mode-choice.ts";
 
 export type ItineraryTransportAgendaStatus = "booked" | "available" | "confirm";
 export type TransportJourneyKnowledge = "known" | "partial" | "unknown";
+export type TransportPresentationState = "booked" | "planning-estimate" | "check-timetable" | "check-service" | "needs-checking";
 
 export type ItineraryTransportAgendaLeg = {
   leg: TripLeg;
@@ -49,6 +50,41 @@ export function transportJourneyKnowledge(leg: TripLeg): TransportJourneyKnowled
     || leg.confidence === "low"
     || leg.confidence === "unknown") return "partial";
   return "known";
+}
+
+function hasUsableJourneyDuration(leg: TripLeg) {
+  const duration = leg.doorToDoorMinutes ?? leg.durationMinutes;
+  return typeof duration === "number" && Number.isFinite(duration) && duration > 0;
+}
+
+function isScheduledTransport(leg: TripLeg) {
+  if (["train", "flight", "ferry"].includes(leg.mode)) return true;
+  if (leg.mode === "road") {
+    return /\b(bus|coach|shuttle)\b/i.test(`${leg.provider ?? ""} ${(leg.segments ?? []).map((segment) => segment.provider ?? "").join(" ")}`);
+  }
+  return leg.mode === "mixed";
+}
+
+/** Traveller-facing status projection. Confidence and provenance remain on the canonical leg. */
+export function transportPresentationState(leg: TripLeg, booked = false): TransportPresentationState {
+  if (booked) return "booked";
+  if (leg.mode === "unknown" || !hasUsableJourneyDuration(leg) || leg.confidence === "low" || leg.confidence === "unknown") return "needs-checking";
+  if (isScheduledTransport(leg) && leg.scheduleNeedsChecking) return leg.mode === "train" || leg.mode === "flight" ? "check-timetable" : "check-service";
+  return "planning-estimate";
+}
+
+export function transportPresentationCounts(items: readonly Pick<ItineraryTransportAgendaLeg, "leg" | "booking">[]) {
+  const counts = new Map<TransportPresentationState, number>();
+  for (const item of items) {
+    const state = transportPresentationState(item.leg, item.booking?.type === "transport");
+    counts.set(state, (counts.get(state) ?? 0) + 1);
+  }
+  return [
+    { state: "journeys" as const, count: items.length },
+    ...(["booked", "planning-estimate", "check-timetable", "check-service", "needs-checking"] as const)
+      .map((state) => ({ state, count: counts.get(state) ?? 0 }))
+      .filter(({ count }) => count > 0),
+  ];
 }
 
 /**

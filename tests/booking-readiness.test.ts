@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { affiliatePartners, buildBookingReadiness, getAccommodationBookingUrl, getBookingAction, omioBookingActionForLeg } from "../lib/easyt/booking-readiness.ts";
+import { affiliateClickEventForAction } from "../lib/easyt/affiliate-click.ts";
+import { affiliatePartners, buildBookingReadiness, getAccommodationBookingUrl, getBookingAction, omioBookingActionForLeg, transportAffiliateActionForLeg } from "../lib/easyt/booking-readiness.ts";
 import type { EasyTTrip } from "../lib/easyt/trip.ts";
 
 const trip = (): EasyTTrip => ({
@@ -105,6 +106,43 @@ test("uses Trip.com car rental only when a driving route actually calls for a ca
     preferences: { budgetSensitivity: "mid", transportModes: ["train", "flight"], pace: "balanced", interests: [], dislikes: [] },
   };
   assert.equal(buildBookingReadiness(source).some((action) => action.category === "car-rental"), false);
+});
+
+test("selected transport handoff routes eligible road legs to Trip.com car hire and keeps Omio mode-aware", () => {
+  const source = trip();
+  const road = { ...mainLeg(source), mode: "road" as const, classification: "intercity" as const, distanceKm: 180, durationMinutes: 240, confidence: "medium" as const };
+  const carHire = transportAffiliateActionForLeg(source, road);
+  assert.deepEqual({ provider: carHire?.provider, category: carHire?.category, href: carHire?.href, cta: carHire?.cta }, {
+    provider: "trip.com", category: "car_rental", href: affiliatePartners.tripCom.carRentalUrl, cta: "Compare car hire",
+  });
+  const click = affiliateClickEventForAction(carHire!, { placement: "itinerary_transfer", tripId: source.id, transferId: road.id, originStopId: road.fromStopId, destinationStopId: road.toStopId });
+  assert.deepEqual({ name: click.name, category: click.name === "affiliate_click" ? click.properties.category : null }, { name: "affiliate_click", category: "car_rental" });
+  assert.equal(omioBookingActionForLeg(source, road), null);
+
+  for (const mode of ["train", "ferry", "flight"] as const) {
+    const scheduled = transportAffiliateActionForLeg(source, { ...mainLeg(source), mode, classification: "intercity" });
+    assert.deepEqual({ provider: scheduled?.provider, href: scheduled?.href }, { provider: "omio", href: affiliatePartners.omio.transportUrl });
+  }
+  const coach = transportAffiliateActionForLeg(source, { ...road, provider: "Regional coach service" });
+  assert.deepEqual({ provider: coach?.provider, href: coach?.href }, { provider: "omio", href: affiliatePartners.omio.transportUrl });
+  const unknown = transportAffiliateActionForLeg(source, { ...road, mode: "unknown", durationMinutes: null, doorToDoorMinutes: null });
+  assert.deepEqual({ provider: unknown?.provider, href: unknown?.href }, { provider: "omio", href: affiliatePartners.omio.transportUrl });
+});
+
+test("transport handoff does not promote car hire for local, unresolved, avoided or booked road legs", () => {
+  const source = trip();
+  const road = { ...mainLeg(source), mode: "road" as const, classification: "intercity" as const, distanceKm: 180, durationMinutes: 240, confidence: "medium" as const };
+  assert.equal(transportAffiliateActionForLeg(source, { ...road, classification: "local" }), null);
+  assert.equal(transportAffiliateActionForLeg(source, { ...road, durationMinutes: null, doorToDoorMinutes: null, confidence: "unknown" }), null);
+  source.brief.intent = {
+    version: 1, travellers: 2, timing: { flexibility: "fixed", durationDays: 6 },
+    hardConstraints: { originRequired: true, mustSeeStopIds: ["paris", "rome"], optionalStopIds: [], fixedCommitments: [], avoidDriving: true },
+    preferences: { budgetSensitivity: "mid", transportModes: ["train", "flight"], pace: "balanced", interests: [], dislikes: [] },
+  };
+  assert.equal(transportAffiliateActionForLeg(source, road), null);
+  source.brief.intent.hardConstraints.avoidDriving = false;
+  source.brief.bookings = [{ id: `transport-${road.id}`, type: "transport", title: "Paris to Rome", date: "2026-10-04", confirmation: "BOOKED", url: "https://bookings.example/rail" }];
+  assert.equal(transportAffiliateActionForLeg(source, road), null);
 });
 
 test("keeps an existing configured car-hire partner ahead of the Trip.com fallback", () => {

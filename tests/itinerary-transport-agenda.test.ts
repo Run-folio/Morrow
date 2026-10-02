@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { omioBookingActionForLeg } from "../lib/easyt/booking-readiness.ts";
-import { itineraryTransportAgenda, itineraryTransportAgendaStatus, transportJourneyKnowledge } from "../lib/easyt/itinerary-transport-agenda.ts";
+import { itineraryTransportAgenda, itineraryTransportAgendaStatus, transportJourneyKnowledge, transportPresentationCounts, transportPresentationState } from "../lib/easyt/itinerary-transport-agenda.ts";
 import { selectTripLegTransportChoice, supportedTransportChoicesForLeg } from "../lib/easyt/transport-mode-choice.ts";
 import type { EasyTTrip, TripLeg } from "../lib/easyt/trip.ts";
 
@@ -123,6 +123,32 @@ test("classifies known, partial and unknown journey truth without inventing miss
   assert.equal(transportJourneyKnowledge({ ...known, scheduleNeedsChecking: true }), "partial");
   assert.equal(transportJourneyKnowledge({ ...known, durationMinutes: null, doorToDoorMinutes: null }), "partial");
   assert.equal(transportJourneyKnowledge({ ...known, mode: "unknown", durationMinutes: null, doorToDoorMinutes: null }), "unknown");
+});
+
+test("maps canonical journey facts to traveller-facing transport states and useful counts", () => {
+  const source = trip();
+  const road = { ...source.legs[1]!, mode: "road" as const, scheduleNeedsChecking: true };
+  const scheduled = { ...source.legs[1]!, scheduleNeedsChecking: true };
+  const ferry = { ...source.legs[1]!, mode: "ferry" as const, scheduleNeedsChecking: true };
+  const unknown = { ...source.legs[1]!, mode: "unknown" as const, durationMinutes: null, doorToDoorMinutes: null };
+  assert.equal(transportPresentationState(road), "planning-estimate");
+  assert.equal(transportPresentationState(scheduled), "check-timetable");
+  assert.equal(transportPresentationState(ferry), "check-service");
+  assert.equal(transportPresentationState(unknown), "needs-checking");
+  assert.equal(transportPresentationState(unknown, true), "booked");
+  assert.deepEqual(transportPresentationCounts([
+    { leg: road, booking: null },
+    { leg: road, booking: null },
+    { leg: scheduled, booking: null },
+    { leg: ferry, booking: null },
+    { leg: unknown, booking: null },
+  ]), [
+    { state: "journeys", count: 5 },
+    { state: "planning-estimate", count: 2 },
+    { state: "check-timetable", count: 1 },
+    { state: "check-service", count: 1 },
+    { state: "needs-checking", count: 1 },
+  ]);
 });
 
 test("does not reuse a free-text booking for the reverse repeated-city leg", () => {

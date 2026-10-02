@@ -44,25 +44,26 @@ test("Transport presents a calm chronological journey list with one contextual a
   assert.match(transport, /item\.from\.name[\s\S]*item\.to\.name/);
   assert.match(transport, /transferJourneyModeLabel\(leg\)/);
   assert.match(transport, /leg\.doorToDoorMinutes \?\? leg\.durationMinutes/);
-  assert.match(transport, /data-knowledge=\{knowledge\}/);
+  assert.match(transport, /data-knowledge=\{transportJourneyKnowledge\(leg\)\}/);
   assert.match(transport, /View details/);
   assert.match(transport, /item\.booking\?\.url/);
-  assert.match(transport, /item\.booking \? null : omioBookingActionForLeg\(trip, leg\)/);
+  assert.match(transport, /item\.booking \? null : transportAffiliateActionForLeg\(trip, leg\)/);
+  assert.match(transport, /data-presentation-state=\{state\}/);
+  assert.match(transport, /data-knowledge=\{transportJourneyKnowledge\(leg\)\}/);
   assert.match(transport, /durationMinutes === null \? null/);
   assert.doesNotMatch(transport, /<details className=\{styles\.details\}>/);
   assert.doesNotMatch(transport, /copy\.distance|copy\.confidence|copy\.source/);
 });
 
-test("Omio uses the existing affiliate handoff and cannot mutate canonical state", () => {
-  assert.match(transport, /function OmioAction/);
+test("transport partners use the existing affiliate handoff and cannot mutate canonical state", () => {
+  assert.match(transport, /function TransportAffiliateAction/);
   assert.match(transport, /<MorroviaAffiliateLink action=\{\{ \.\.\.action, cta: label \}\}/);
   assert.match(transport, /placement: "itinerary_transfer"/);
   assert.match(transport, /action=\{\{ \.\.\.action, cta: label \}\}/);
-  assert.match(transport, /findTickets: "Find options"/);
   assert.match(transport, /cta: label \}\}[\s\S]*variant="secondary"/);
   assert.doesNotMatch(transport, /MorroviaPartnerPromotion|Contact support|Need help/);
   assert.match(transport, /<small>\{affiliateDisclosure\}<\/small>/);
-  const action = transport.slice(transport.indexOf("function OmioAction"));
+  const action = transport.slice(transport.indexOf("function TransportAffiliateAction"));
   assert.doesNotMatch(action, /mutate|booked\s*=|status\s*=|fetch\(/);
 });
 
@@ -100,8 +101,28 @@ test("Transport preserves the list when the map is unavailable and keeps mobile 
   assert.match(transportStyles, /overflow-x:\s*clip/);
 });
 
+test("Transport summary and cards use traveller-facing states, mode-aware copy, and detail-only handoffs", () => {
+  assert.match(transport, /transportPresentationCounts\(items\)/);
+  assert.match(transport, /planningEstimate: "Planning estimate"/);
+  assert.match(transport, /roadEstimateNote/);
+  assert.doesNotMatch(transport, /Planning estimate; check live schedules before booking\./);
+  assert.match(transport, /Compare car hire/);
+  assert.match(transport, /transportAffiliateActionForLeg\(trip, leg\)/);
+  assert.match(transport, /MorroviaAffiliateLink action=\{\{ \.\.\.action, cta: label \}\}/);
+  assert.match(transport, /affiliateDisclosure/);
+  assert.equal((transport.match(/<MorroviaAffiliateLink/g) ?? []).length, 1);
+});
+
+test("Transport traveller-facing copy has English and Spanish parity", () => {
+  assert.match(transport, /planningEstimate: "Estimación de planificación"/);
+  assert.match(transport, /checkTimetable: "Consultar horario"/);
+  assert.match(transport, /checkService: "Confirmar servicio"/);
+  assert.match(transport, /needsCheckingStatus: "Necesita comprobarse"/);
+  assert.match(transport, /roadEstimateNote/);
+});
+
 test("the first-class workspace has responsive Storybook coverage and narrow-screen containment", () => {
-  for (const story of ["CanonicalAgendaMobile320", "CanonicalAgendaMobile390", "CanonicalAgendaMobile430", "CanonicalAgendaTablet768", "CanonicalAgendaDesktop1024", "CanonicalAgendaDesktop1440", "PartialUnknownTransport", "EvidenceBackedModeChoice", "ExplicitTravellerChoice"]) {
+  for (const story of ["NamibiaSelfDrivePlanningEstimates", "CanonicalAgendaMobile320", "CanonicalAgendaMobile390", "CanonicalAgendaMobile430", "CanonicalAgendaTablet768", "CanonicalAgendaDesktop1024", "CanonicalAgendaDesktop1440", "PartialUnknownTransport", "EvidenceBackedModeChoice", "ExplicitTravellerChoice"]) {
     assert.match(stories, new RegExp(`export const ${story}`));
   }
   assert.match(transportStyles, /@media \(max-width: 820px\)[\s\S]*--morrovia-mobile-dock-offset/);

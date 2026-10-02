@@ -94,7 +94,7 @@ export type ResolvedBookingAction = {
   affiliate: true;
 };
 
-export type CurrentPartnerCategory = "accommodation" | "activities" | "transport" | "connectivity" | "travel_insurance";
+export type CurrentPartnerCategory = "accommodation" | "activities" | "transport" | "car_rental" | "connectivity" | "travel_insurance";
 export type ResolvedAffiliateAction = {
   provider: string;
   category: CurrentPartnerCategory;
@@ -158,6 +158,10 @@ export function getCurrentPartnerAction(
     cta: "Explore transport",
     affiliate: true,
   });
+  if (category === "car_rental") {
+    const action = getBookingAction({ category: "car_rental" });
+    return action ? { provider: action.provider, category, href: action.href, cta: "Compare car hire", affiliate: true } : undefined;
+  }
   if (category === "connectivity") return validApprovedAffiliateAction({
     provider: affiliatePartners.saily.provider,
     category,
@@ -333,6 +337,27 @@ export function omioBookingActionForLeg(trip: EasyTTrip, leg: TripLeg, now = new
     affiliate: true,
     livePrice: false,
   };
+}
+
+/** Selects a supported affiliate handoff for one selected canonical journey. */
+export function transportAffiliateActionForLeg(trip: EasyTTrip, leg: TripLeg, now = new Date()): ResolvedAffiliateAction | null {
+  const from = trip.stops.find((stop) => stop.id === leg.fromStopId);
+  const to = trip.stops.find((stop) => stop.id === leg.toStopId);
+  if (!from || !to || transportBookingForLeg(trip, leg, from, to)) return null;
+
+  const duration = leg.doorToDoorMinutes ?? leg.durationMinutes;
+  const intercity = leg.classification === "intercity" || leg.classification === "international"
+    || (leg.classification !== "local" && typeof leg.distanceKm === "number" && leg.distanceKm >= 120);
+  const credibleRoad = leg.mode === "road"
+    && intercity
+    && !describesCoachOrBus(leg)
+    && typeof duration === "number" && Number.isFinite(duration) && duration > 0
+    && leg.confidence !== "low" && leg.confidence !== "unknown"
+    && leg.routeMetadata.source !== LEGACY_ROAD_COMPATIBILITY_SOURCE
+    && !trip.brief.intent?.hardConstraints.avoidDriving;
+  if (credibleRoad) return getCurrentPartnerAction("car_rental") ?? null;
+
+  return omioBookingActionForLeg(trip, leg, now);
 }
 
 /**

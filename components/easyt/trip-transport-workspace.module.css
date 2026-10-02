@@ -39,7 +39,8 @@
 }
 .summaryCounts strong { color: var(--morrovia-ink); font: 800 18px/1 var(--morrovia-ui); }
 .summaryCounts [data-tone="attention"] strong { color: var(--morrovia-warning); }
-.summaryCounts [data-tone="ready"] strong { color: var(--morrovia-success); }
+.summaryCounts [data-tone="booked"] strong { color: var(--morrovia-success); }
+.summaryCounts [data-tone="estimate"] strong { color: var(--morrovia-ink); }
 .mobileMapToggle { display: none !important; }
 
 .layout {
@@ -80,6 +81,7 @@
 /* morrovia-ui-audit-allow-next-line raw-radius -- A compact semantic status chip remains pill-shaped rather than reading as another button. */
 .status { width: fit-content; padding: 5px 7px; border-radius: 999px; color: var(--morrovia-ink-soft); background: var(--morrovia-warning-soft); font: var(--morrovia-type-metadata); }
 .status[data-tone="booked"] { color: var(--morrovia-success); background: color-mix(in srgb, var(--morrovia-success) 8%, var(--morrovia-paper)); }
+.status[data-tone="estimate"] { color: var(--morrovia-ink-soft); background: transparent; }
 
 .mapPanel { min-width: 0; position: sticky; top: var(--morrovia-sticky-content-offset); display: grid; gap: 10px; }
 .mapFrame { height: clamp(300px, 35vw, 430px); overflow: hidden; border: 1px solid var(--morrovia-line); border-radius: var(--morrovia-control-radius); background: var(--morrovia-paper); }
