@@ -3,6 +3,8 @@ import { mapWorkspaceHref, transportWorkspaceHref, tripWorkspaceHref } from "./t
 
 export type OverviewIssue = {
   id: string;
+  rule: string;
+  insight?: { rule: string; message: string };
   title: string;
   details: string[];
   findings: { message: string; severity: TripRecommendation["severity"] }[];
@@ -46,6 +48,8 @@ function routeIssueHref(tripId: string) {
 function nonTransportIssue(trip: EasyTTrip, issue: TripRecommendation): OverviewIssue {
   return {
     id: issue.id,
+    rule: issue.rule,
+    insight: { rule: issue.rule, message: issue.message },
     title: issue.message,
     details: [],
     findings: [{ message: issue.message, severity: issue.severity }],
@@ -85,8 +89,15 @@ export function presentOverviewIssues(
   const transferFindings = transferTitle?.rule === "route-integrity" || reviewLegIds.length === 0
     ? distinctTransferDetails
     : [transferTitle, ...distinctTransferDetails];
+  const transferInsight = [...transferIssues].sort((left, right) => (
+    severityOrder[left.severity] - severityOrder[right.severity]
+      || Number(right.rule === "driving-load") - Number(left.rule === "driving-load")
+      || left.message.localeCompare(right.message)
+  ))[0];
   const transferNotice: OverviewIssue | null = transferTitle && (reviewLegIds.length > 0 || transferTitle.rule !== "route-integrity") ? {
     id: transferTitle.id,
+    rule: transferTitle.rule,
+    ...(transferInsight ? { insight: { rule: transferInsight.rule, message: transferInsight.message } } : {}),
     title: transferNoticeTitle!,
     details: transferFindings.map((issue) => issue.message),
     findings: [
@@ -111,6 +122,32 @@ export function presentOverviewIssues(
   const critical = presented.filter((issue) => issue.severity === "critical");
   const others = presented.filter((issue) => issue.severity !== "critical");
   return [...critical, ...others];
+}
+
+export type OverviewRouteInsight = { label: string; title: string; detail: string };
+
+/** One display-only insight; OverviewIssue order already places critical material first. */
+export function presentOverviewRouteInsight(issues: readonly OverviewIssue[]): OverviewRouteInsight | null {
+  const issue = issues[0];
+  if (!issue) return null;
+  const rule = issue.insight?.rule ?? issue.rule;
+  const detail = issue.insight?.message ?? issue.findings[0]?.message ?? issue.title;
+  if (rule === "driving-load") {
+    return { label: "Travel day", title: "A long road day may need a closer look", detail };
+  }
+  if (["travel-day-impact", "short-stop-heavy-transfer", "transit-to-time-ratio", "stop-density"].includes(rule)) {
+    return { label: "Stop timing", title: "Time at this stop may be limited", detail };
+  }
+  if (["route-integrity", "missing-logistics", "connection-confidence", "missing-transport-decision"].includes(rule)) {
+    return { label: "Transfer details", title: "A transfer still needs checking", detail: "Confirm its route and timing before booking." };
+  }
+  if (["route-backtracking", "split-base-sequence"].includes(rule)) {
+    return { label: "Route order", title: "Check the order of these stops", detail };
+  }
+  if (["trip-dates", "trip-end-mismatch", "fixed-date-conflict", "schedule-lock-conflict"].includes(rule)) {
+    return { label: "Trip timing", title: "Check the route against your dates", detail };
+  }
+  return { label: "Route insight", title: "One part of the plan may need a check", detail };
 }
 
 function conciseFinding(message: string) {

@@ -11,7 +11,7 @@ const shellClientSource = readFileSync("components/easyt/trip-shell-client.tsx",
 const issueProjectionSource = readFileSync("lib/easyt/trip-overview-issues.ts", "utf8");
 
 test("Overview map actions return to Overview and keep direct route context", () => {
-  assert.match(source, /Explore on map/);
+  assert.doesNotMatch(source, /Explore on map/);
   assert.doesNotMatch(source, /href=\{`\/journey\/\$\{encodeURIComponent\(trip\.id\)\}\/map`\}/);
   assert.match(source, /mapWorkspaceHref\(tripId, null, "plan", null, null, null, tripWorkspaceHref\(tripId\)\)/);
 });
@@ -30,9 +30,9 @@ test("Overview prioritises the route, one planning action and three next-to-arra
   assert.ok(plans < beforeGo);
   assert.match(source, /<h2 id="overview-route-title">Your route<\/h2>/);
   assert.doesNotMatch(source, /Your route is ready to shape|Here’s your trip at a glance/);
-  assert.match(source, /label: firstArrival[\s\S]*\? "Plan my days"/);
-  assert.match(source, />Explore on map</);
-  assert.match(source, />Adjust route</);
+  assert.match(shellClientSource, />Explore map<\/EasyTLinkButton>[\s\S]*>View my route<\/EasyTLinkButton>[\s\S]*>Edit<\/EasyTLinkButton>/);
+  assert.doesNotMatch(source, /Review route|Explore on map|View journey|Adjust route/);
+  assert.doesNotMatch(source, /className=\{styles\.routeActions\}/);
   assert.match(source, /Next to arrange/);
   assert.match(source, /Keep building your trip/);
   assert.doesNotMatch(source, /Your next step|Trip health|Readiness at a glance|Planning progress/);
@@ -49,7 +49,8 @@ test("critical trip and persistence states remain truthful without a duplicate h
   const tripProvider = shellClientSource.indexOf("<TripShellTripContext.Provider");
 
   assert.match(source, /presentOverviewIssues\(/);
-  assert.match(source, /finding\.severity === "critical" \? styles\.issueCritical/);
+  assert.match(source, /const criticalRouteIssue = visibleIssues\.find\(\(issue\) => issue\.severity === "critical"\)/);
+  assert.match(source, /criticalRouteIssue\)/);
   assert.doesNotMatch(source, /className=\{styles\.healthCard\}/);
   assert.ok(resolverBanner >= 0 && resolverBanner < resolverShell);
   assert.ok(sessionBanner >= 0 && sessionBanner < tripProvider);
@@ -63,23 +64,24 @@ test("Overview removes the decorative stay hero and leaves stay discovery to its
 
 test("material route uncertainty is contextual and keeps canonical severity", () => {
   assert.match(source, /const visibleIssues = presentOverviewIssues\(/);
-  assert.match(source, /presentRouteCheckSummary\(visibleIssues, primaryAction\.href\)/);
+  assert.match(source, /presentOverviewRouteInsight\(visibleIssues\)/);
   assert.match(issueProjectionSource, /issue\.severity === "critical" \|\| materialRouteRules\.has\(issue\.rule\)/);
   assert.match(issueProjectionSource, /const critical = presented\.filter\(\(issue\) => issue\.severity === "critical"\)/);
-  assert.match(source, /finding\.severity === "critical" \? styles\.issueCritical/);
+  assert.match(source, /routeInsight\.title/);
   assert.match(issueProjectionSource, /severity: issue\.severity/);
   assert.match(issueProjectionSource, /Review route|Review transfers/);
   assert.doesNotMatch(source, /Showing the \{visibleIssues\.length\} highest-priority/);
 });
 
-test("Route check uses one compact summary and accessible overflow instead of bordered warning cards", () => {
-  assert.match(source, /<aside className=\{styles\.routeCheck\}/);
-  assert.match(source, /routeCheck\.visible\.map/);
-  assert.match(source, /routeCheck\.remaining\.length \? <details/);
-  assert.match(source, /routeCheck\.actions\.map/);
-  assert.doesNotMatch(source, /visibleIssues\.map\(\(issue\) => <li/);
-  assert.match(styles, /\.routeCheck \{/);
-  assert.doesNotMatch(styles, /\.routeIssues li \{[\s\S]*?border: 1px/);
+test("Overview presents one calm route insight with a detailed-itinerary handoff", () => {
+  assert.match(source, /presentOverviewRouteInsight\(visibleIssues\)/);
+  assert.match(source, /data-route-insight=""/);
+  assert.match(source, /routeInsight\.title/);
+  assert.match(source, /routeInsight\.detail/);
+  assert.match(source, />View detailed itinerary<ChevronRight aria-hidden="true" \/><\/EasyTLinkButton>/);
+  assert.doesNotMatch(source, /Route check|things to review|routeCheck\.visible|routeCheck\.remaining|routeCheck\.actions/);
+  assert.match(styles, /\.routeRationale \{/);
+  assert.match(styles, /\.routeRationale span[^}]*white-space: normal/);
 });
 
 test("unresolved place intent is one quiet route recovery row with canonical recovery and dismissal actions", () => {
@@ -127,14 +129,14 @@ test("route storytelling resolves imagery, stays image-led and links to the cano
   assert.doesNotMatch(source, /\/api\/journey-place\?/);
   assert.doesNotMatch(source, /Promise\.all\(imageResolutionCandidates/);
   assert.match(source, /resolvedPlaceImages\[imageCacheKeysByOccurrence\[stop\.id\]\]/);
-  assert.match(source, /step\.image\?\.sourceLabel \? <MorroviaPhotoCredit placement="bottom-left" credit=\{step\.image\.sourceLabel\} photoLabel=\{step\.image\.alt\} authorHref=\{step\.image\.authorUrl\}/);
+  assert.match(source, /MorroviaPhotoCredit anchorRef=\{mediaRef\}[^>]*placement="bottom-right"/);
   assert.match(source, /formatTripNights\(stop\.nights\)/);
-  assert.match(source, /className=\{styles\.stopNumber\}>\{index \+ 1\}/);
+  assert.match(source, /className=\{styles\.stopNumber\}>\{number\}/);
   assert.doesNotMatch(source, /className=\{styles\.stopNumber\}>From/);
   assert.match(source, /conciseTransferLabel\(leg\)/);
   assert.match(source, /className=\{styles\.transfer\}><ArrowRight/);
   assert.match(source, /className=\{styles\.stopOverlay\}/);
-  assert.match(source, /href=\{routeIssueHref\(trip\.id\)\}/);
+  assert.match(source, /href: routeIssueHref\(trip\.id\)/);
   assert.match(source, /<JourneyPlannerMap[\s\S]*overviewMode surface=\{\{ variant: "preview" \}\}/);
   assert.doesNotMatch(source, /View full map/);
   assert.doesNotMatch(source, /GEORGIA|Tbilisi|Stepantsminda|Ushguli|Mestia/);
@@ -150,15 +152,17 @@ test("the Overview map uses the shared non-interactive preview surface policy", 
   assert.equal((mapSource.match(/new maplibregl\.Map\(/g) ?? []).length, 1);
 });
 
-test("healthy route reassurance does not add a second itinerary CTA beneath the approved cards", () => {
-  assert.doesNotMatch(source, /Why this order|Your route already flows well|View detailed itinerary/);
-  assert.doesNotMatch(styles, /\.routeRationale\s*\{/);
+test("healthy route rationale reuses the single-insight card pattern", () => {
+  assert.match(source, /routeRationale && !routeInsight/);
+  assert.match(source, /Why this order/);
+  assert.match(source, /View detailed itinerary/);
+  assert.match(styles, /\.routeRationale\s*\{/);
   assert.match(source, /className=\{styles\.routeList\}/);
 });
 
 test("Overview responsive rules keep mobile controls usable without page overflow", () => {
   assert.match(styles, /@media \(max-width: 520px\)/);
-  assert.match(styles, /\.routeActions > a \{ --control-height: 44px;/);
+  assert.match(styles, /\.routeRationale > a \{ grid-column: 2/);
   assert.match(styles, /\.arrangeGrid \{ grid-template-columns: minmax\(0, 1fr\);/);
   assert.match(styles, /\.routeList \{ overflow-x: auto;/);
   assert.match(styles, /\.routeMapPreview \{ min-height: 220px;/);

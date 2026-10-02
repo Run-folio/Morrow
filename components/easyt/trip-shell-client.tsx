@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { BedDouble, CalendarDays, Clock3, Edit3, House, MapPin, Route, Sparkles } from "lucide-react";
+import { BedDouble, CalendarDays, Clock3, Edit3, House, Map, MapPin, Route, Sparkles } from "lucide-react";
 import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from "react";
 import { authClient } from "@/lib/auth-client";
 import { trackEvent } from "@/lib/analytics";
@@ -24,7 +24,7 @@ import { describePhotoAttribution } from "@/lib/easyt/photo-attribution";
 import ResilientImage from "@/components/easyt/resilient-image";
 import { journeyReauthenticationPath, tripConflictResolutionActions } from "@/lib/easyt/trip-continuity";
 import { ownerBoundaryState } from "@/lib/easyt/private-browser-context";
-import { isTripMapPathname, shouldResetOverviewEntry, tripBuilderHref, tripWorkspaceHref, workspaceViewFromPathname, workspaceVisitKey } from "@/lib/easyt/trip-workspace-links";
+import { isTripMapPathname, mapWorkspaceHref, shouldResetOverviewEntry, tripBuilderHref, tripWorkspaceHref, workspaceViewFromPathname, workspaceVisitKey } from "@/lib/easyt/trip-workspace-links";
 import { EasyTButton, EasyTLinkButton } from "./easyt-controls";
 import { EasyTField } from "./easyt-controls";
 import { MorroviaConfirmationDialog, MorroviaFormDialog, MorroviaSaveStatus, MorroviaStatusBanner } from "./morrovia-feedback";
@@ -113,7 +113,8 @@ export function TripShellIdentityAndActions({ mobilePhoto }: { mobilePhoto: Over
     </div>
     <div className={styles.headerActions}>
       {trip.ownerId && mutation.saveState !== "idle" ? <MorroviaSaveStatus state={mutation.saveState} /> : null}
-      <EasyTLinkButton className={styles.editAction} href={personalRouteHref(trip.id)} icon={Route} size="small" variant="secondary">Route</EasyTLinkButton>
+      <EasyTLinkButton className={styles.editAction} href={mapWorkspaceHref(trip.id, null, "plan", null, null, null, tripWorkspaceHref(trip.id))} icon={Map} size="small" variant="secondary">Explore map</EasyTLinkButton>
+      <EasyTLinkButton className={styles.editAction} href={personalRouteHref(trip.id)} icon={Route} size="small" variant="secondary">View my route</EasyTLinkButton>
       <EasyTLinkButton className={styles.editAction} href={editHref} icon={Edit3} size="small" variant="secondary" aria-label="Edit trip brief">Edit</EasyTLinkButton>
       <WorkspaceOrientationLauncher onRenameTrip={openRename} />
     </div>

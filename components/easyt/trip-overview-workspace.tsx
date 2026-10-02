@@ -9,15 +9,11 @@ import {
   CheckCircle2,
   ChevronDown,
   ChevronRight,
-  CircleAlert,
   ClipboardCheck,
   FileCheck2,
   HeartPulse,
-  Map,
   MapPin,
-  Route,
   ShieldCheck,
-  SlidersHorizontal,
   Smartphone,
   Sparkles,
   type LucideIcon,
@@ -50,7 +46,7 @@ import { deriveOverviewReadinessCategories, type OverviewReadinessCategory, type
 import type { BookingReadinessAction } from "@/lib/easyt/booking-readiness";
 import type { ReadinessCard, TravelReadinessProfile } from "@/lib/easyt/travel-readiness";
 import { groupTripPrepTasks } from "@/lib/easyt/trip-prep";
-import { presentOverviewIssues, presentRouteCheckSummary } from "@/lib/easyt/trip-overview-issues";
+import { presentOverviewIssues, presentOverviewRouteInsight } from "@/lib/easyt/trip-overview-issues";
 import { useWorkspaceOrientationReady, useWorkspaceOrientationTarget } from "./workspace-orientation";
 import { sameJourneyPlace } from "@/lib/easyt/journey-endpoints";
 import { personalRouteHref } from "@/lib/easyt/personal-route";
@@ -93,6 +89,11 @@ function routeIssueHref(tripId: string) {
   return mapWorkspaceHref(tripId, null, "plan", null, null, null, tripWorkspaceHref(tripId));
 }
 
+function routeRationaleCopy(route: NonNullable<EasyTTrip["brief"]["routeAssessment"]>["route"]) {
+  return route.reasons.find((reason) => !/entered order ranks first under (?:the )?current route criteria/i.test(reason))
+    ?? route.summary;
+}
+
 function openHealthIssues(trip: EasyTTrip) {
   return tripHealth(trip).issues
     .filter((issue) => issue.status === "open")
@@ -108,15 +109,17 @@ function conciseTransferLabel(leg: EasyTTrip["legs"][number] | null | undefined)
 }
 
 function OverviewStepMedia({ image, name, meta, number }: { image: OverviewPlaceImage | null; name: string; meta: string; number: number }) {
-  const mediaRef = useRef<HTMLElement>(null);
+  const mediaRef = useRef<HTMLDivElement>(null);
   const [imageDisplayed, setImageDisplayed] = useState(false);
   return <>
-    <article ref={mediaRef}>
+    <article>
       <div className={styles.stopNumber}>{number}</div>
-      <ResilientImage src={image?.src} alt={image?.alt ?? ""} onDisplayState={setImageDisplayed} fallback={<div className={styles.stopFallback}><MapPin aria-hidden="true" /></div>} />
+      <div className={styles.stopPhoto} ref={mediaRef}>
+        <ResilientImage src={image?.src} alt={image?.alt ?? ""} onDisplayState={setImageDisplayed} fallback={<div className={styles.stopFallback}><MapPin aria-hidden="true" /></div>} />
+      </div>
       <div className={styles.stopOverlay}><h3>{name}</h3><span>{meta}</span></div>
     </article>
-    {image?.sourceLabel && imageDisplayed ? <MorroviaPhotoCredit anchorRef={mediaRef} ownership={image.provenance === "reviewed-morrovia-first-party" ? "morrovia" : "unknown"} placement="bottom-left" credit={image.sourceLabel} photoLabel={image.alt} authorHref={image.authorUrl} sourceHref={image.sourceUrl} licenseHref={image.licenseUrl} fullCreditHref={image.fullCreditUrl} /> : null}
+    {image?.sourceLabel && imageDisplayed ? <MorroviaPhotoCredit anchorRef={mediaRef} ownership={image.provenance === "reviewed-morrovia-first-party" ? "morrovia" : "unknown"} placement="bottom-right" credit={image.sourceLabel} photoLabel={image.alt} authorLabel={image.author} authorHref={image.authorUrl} sourceLabel={image.sourceUrl ? "Source" : undefined} sourceHref={image.sourceUrl} licenseLabel={image.license} licenseHref={image.licenseUrl} fullCreditHref={image.fullCreditUrl} /> : null}
   </>;
 }
 
@@ -170,18 +173,10 @@ export default function TripOverviewWorkspace({
   const mustTasks = outstandingPrepGroups.must;
   const goodTasks = [...outstandingPrepGroups.good, ...outstandingPrepGroups.nice];
   const orderedStops = useMemo(() => [...trip.stops].sort((left, right) => left.order - right.order), [trip.stops]);
-  const itineraryCategory = planningCategories.find((category) => category.id === "itinerary");
   const criticalRouteIssue = visibleIssues.find((issue) => issue.severity === "critical");
-  const primaryAction = criticalRouteIssue
-    ? { href: criticalRouteIssue.href, label: "Review route" }
-    : {
-        href: `/journey/${encodeURIComponent(trip.id)}/itinerary`,
-        label: firstArrival || itineraryCategory?.status === "to-do" || itineraryCategory?.percent === 0
-          ? "Plan my days"
-          : itineraryCategory?.status === "complete" ? "Review itinerary" : "Continue planning",
-      };
-  const routeCheck = presentRouteCheckSummary(visibleIssues, primaryAction.href);
-  const routeCheckCount = routeCheck.visible.length + routeCheck.remaining.length;
+  const routeInsight = presentOverviewRouteInsight(visibleIssues);
+  const routeAssessment = trip.brief.routeAssessment?.route;
+  const routeRationale = routeAssessment && routeAssessment.state !== "insufficient-data" ? routeAssessment : null;
   const origin = useMemo(() => originEndpointForTrip(trip), [trip]);
   const routeDisplayEndpoints = useMemo(() => tripRouteDisplayEndpoints(trip), [trip]);
   const journeyEnd = useMemo(() => endEndpointForTrip(trip), [trip]);
@@ -354,12 +349,6 @@ export default function TripOverviewWorkspace({
             <div>
               <h2 id="overview-route-title">Your route</h2>
             </div>
-            <div className={styles.routeActions}>
-              <EasyTLinkButton href={primaryAction.href} size="small">{primaryAction.label}<ArrowRight aria-hidden="true" /></EasyTLinkButton>
-              <EasyTLinkButton href={routeIssueHref(trip.id)} size="small" variant="secondary" icon={Map}>Explore on map</EasyTLinkButton>
-              <EasyTLinkButton href={personalRouteHref(trip.id)} size="small" variant="secondary" icon={Route}>View journey</EasyTLinkButton>
-              <EasyTLinkButton href={tripBuilderHref(trip.id, trip.ownerId)} size="small" variant="quiet" icon={SlidersHorizontal}>Adjust route</EasyTLinkButton>
-            </div>
           </div>
           <div className={styles.routeComposition}>
             <div className={styles.routeJourney}>
@@ -380,6 +369,14 @@ export default function TripOverviewWorkspace({
                   {index < steps.length - 1 ? <ChevronRight className={styles.routeDirection} aria-hidden="true" /> : null}
                 </li>)}
               </ol> : <div className={styles.emptyRoute}><MapPin aria-hidden="true" /><p>Add a destination to start shaping this trip.</p></div>}
+            {routeInsight ? <aside className={styles.routeRationale} aria-labelledby="overview-route-rationale-title" data-route-insight="">
+              <Sparkles aria-hidden="true" />
+              <div><p id="overview-route-rationale-title">{routeInsight.label}</p><strong>{routeInsight.title}</strong><span>{routeInsight.detail}</span></div>
+              <EasyTLinkButton href={itineraryWorkspaceHref(trip.id)} size="small" variant="quiet">View detailed itinerary<ChevronRight aria-hidden="true" /></EasyTLinkButton>
+            </aside> : routeRationale && !routeInsight ? <aside className={styles.routeRationale} aria-labelledby="overview-route-rationale-title">
+              <Sparkles aria-hidden="true" /><div><p id="overview-route-rationale-title">Why this order</p><span>{routeRationaleCopy(routeRationale)}</span></div>
+              <EasyTLinkButton href={itineraryWorkspaceHref(trip.id)} size="small" variant="quiet">View detailed itinerary<ChevronRight aria-hidden="true" /></EasyTLinkButton>
+            </aside> : null}
             </div>
             {overviewMapStops.filter((stop) => stop.coordinates).length > 1 ? <aside className={styles.routeMapPreview} aria-label="Whole-trip map preview">
               <JourneyPlannerMap stops={overviewMapStops} legs={overviewMapLegs} selectedId="" plannerPins={[]} focusCoordinates={null} draftPinCoordinates={null} pinPlacementMode={false} overviewMode surface={{ variant: "preview" }} cameraSafeEdge={34} onMapPinDrop={() => undefined} onPlannerPinSelect={() => undefined} onSelect={() => undefined} />
@@ -414,18 +411,6 @@ export default function TripOverviewWorkspace({
               </aside>;
             })}
           </div> : null}
-          {routeCheck.visible.length ? <aside className={styles.routeCheck} aria-label="Route check" data-route-check="" data-route-finding-count={routeCheckCount}>
-            <div className={styles.routeCheckHeading}>
-              <CircleAlert aria-hidden="true" />
-              <strong>Route check{routeCheckCount > 1 ? ` · ${routeCheckCount} things to review` : ""}</strong>
-            </div>
-            <ul className={styles.routeCheckFindings}>{routeCheck.visible.map((finding) => <li key={finding.id} className={finding.severity === "critical" ? styles.issueCritical : finding.severity === "info" ? styles.issueInfo : ""}>{finding.text}</li>)}</ul>
-            {routeCheck.remaining.length ? <details className={styles.routeCheckMore}>
-              <summary>+ {routeCheck.remaining.length} more <ChevronDown aria-hidden="true" /></summary>
-              <ul className={styles.routeCheckFindings}>{routeCheck.remaining.map((finding) => <li key={finding.id} className={finding.severity === "critical" ? styles.issueCritical : finding.severity === "info" ? styles.issueInfo : ""}>{finding.text}</li>)}</ul>
-            </details> : null}
-            {routeCheck.actions.length ? <div className={styles.routeCheckActions}>{routeCheck.actions.map((action) => <Link key={action.href} href={action.href}>{action.label}<ChevronRight aria-hidden="true" /></Link>)}</div> : null}
-          </aside> : null}
         </section>
 
         <section ref={progressOrientationTarget} className={styles.arrangeCard} aria-labelledby="overview-progress-title">

@@ -18,6 +18,11 @@ test("one shared camera disclosure owns compact, keyboard-accessible photo credi
   assert.match(component, /sourceHref/);
   assert.match(component, /licenseHref/);
   assert.match(component, /fullCreditHref/);
+  assert.match(component, /authorLabel\?: string/);
+  assert.match(component, /licenseLabel\?: string/);
+  assert.match(component, /sourceLabel\?: string/);
+  assert.match(component, /Photo by \{structuredAuthorLabel\}/);
+  assert.match(component, /licenseLabel \? <>[\s\S]*<a href=\{licenseHref\}/);
   assert.match(styles, /width:\s*44px;\s*height:\s*44px/);
   assert.match(styles, /\.cameraGlyph[^{]*\{[^}]*width:\s*16px/);
   assert.match(styles, /position:\s*fixed/);
@@ -92,6 +97,20 @@ test("route stop and highlight camera remains inside the photograph bounds", () 
   assert.match(stop, /ref=\{containerRef\}[\s\S]*MorroviaPhotoCredit/);
   assert.match(attraction, /ref=\{containerRef\}[\s\S]*MorroviaPhotoCredit/);
   assert.match(detail, /MorroviaPhotoCredit[\s\S]*\/\s*figure/);
+});
+
+test("Overview route-card photo credits anchor bottom-right on the photo and keep structured metadata", () => {
+  const overview = read("components/easyt/trip-overview-workspace.tsx");
+  const imagery = read("lib/easyt/trip-overview-imagery.ts");
+  const credit = read("components/easyt/morrovia-photo-credit.tsx");
+  assert.match(overview, /className=\{styles\.stopPhoto\} ref=\{mediaRef\}/);
+  assert.match(overview, /placement="bottom-right"/);
+  assert.match(overview, /authorLabel=\{image\.author\}/);
+  assert.match(overview, /licenseLabel=\{image\.license\}/);
+  assert.match(imagery, /author: photo\.author/);
+  assert.match(imagery, /license: photo\.license/);
+  assert.match(credit, /placement === "bottom-right"[\s\S]*rect\.right - 52/);
+  assert.match(credit, /ownership === "morrovia" \|\| !attribution/);
 });
 
 test("photo attribution keeps canonical author, source, licence and full-credit identity", () => {

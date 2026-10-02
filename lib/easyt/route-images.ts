@@ -86,9 +86,11 @@ export function routeImageCredit(image: string) {
   return record ? {
     src: image,
     alt: record.alt,
+    author: record.author,
     authorUrl: record.authorUrl,
     sourceUrl: record.sourceUrl,
     licenseUrl: record.licenseUrl,
+    license: record.license,
     provenance: record.provenance,
     fullCreditUrl: `/journey/immersive/credits.html#${record.key}`,
     sourceLabel: `${record.author} · ${record.license}`,

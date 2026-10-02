@@ -9,10 +9,12 @@ import type { EasyTTrip, TripStop } from "./trip.ts";
 export type OverviewPlaceImage = {
   src: string;
   alt: string;
+  author?: string;
   authorUrl?: string;
   sourceUrl?: string;
   sourceLabel?: string;
   licenseUrl?: string;
+  license?: string;
   fullCreditUrl?: string;
   provenance?: "reviewed-provider" | "reviewed-morrovia-first-party";
 };
@@ -22,10 +24,12 @@ function reviewedPhotoImage(photo: RoutePhotoRecord | null): OverviewPlaceImage 
   return photo && src ? {
     src,
     alt: photo.alt,
+    author: photo.author,
     ...(photo.authorUrl ? { authorUrl: photo.authorUrl } : {}),
     sourceUrl: photo.sourceUrl,
     sourceLabel: `${photo.author} · ${photo.license}`,
     licenseUrl: photo.licenseUrl,
+    license: photo.license,
     fullCreditUrl: `/journey/immersive/credits.html#${photo.key}`,
     provenance: photo.provenance,
   } : null;
@@ -59,10 +63,12 @@ export function overviewStopImage(trip: EasyTTrip, stop: TripStop): OverviewPlac
     return {
       src: imagedDay.image,
       alt: credit?.alt ?? imagedDay.title,
+      ...(credit?.author ? { author: credit.author } : {}),
       ...(credit?.authorUrl ? { authorUrl: credit.authorUrl } : {}),
       sourceUrl: credit?.sourceUrl ?? imagedDay.sourceUrl ?? undefined,
       sourceLabel: credit?.sourceLabel ?? (imagedDay.sourceUrl ? "Photo source" : undefined),
       licenseUrl: credit?.licenseUrl,
+      ...(credit?.license ? { license: credit.license } : {}),
       fullCreditUrl: credit?.fullCreditUrl,
       provenance: credit?.provenance,
     };

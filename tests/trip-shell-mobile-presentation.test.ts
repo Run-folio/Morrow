@@ -33,6 +33,7 @@ test("mobile identity is compact and its actions remain full-size", () => {
   assert.match(mobile, /\.eyebrow,\s*\.routeSummary\s*\{\s*display:\s*none/);
   assert.match(mobile, /\.metadata div:nth-child\(n\s*\+\s*3\)\s*\{\s*display:\s*none/);
   assert.match(mobile, /\.headerActions\s*\{[^}]*grid-column:\s*2/);
+  assert.match(mobile, /\.headerActions\s*\{[^}]*flex-wrap:\s*wrap/);
   assert.match(css, /\.editAction\s*\{[^}]*min-height:\s*44px/);
   assert.match(mobile, /\.subnav a\s*\{[^}]*min-height:\s*44px/);
 });

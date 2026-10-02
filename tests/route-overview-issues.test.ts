@@ -93,6 +93,49 @@ test("one Route check preserves one concise finding and avoids a duplicate prima
   assert.deepEqual(summary.actions, []);
 });
 
+test("Overview chooses the highest-priority insight deterministically without showing validator labels or counts", async () => {
+  const api = await import("../lib/easyt/trip-overview-issues.ts");
+  const recommendations = [
+    issue("driving-load", "6h 30m of estimated road travel may dominate this transfer day.", "tokyo-kyoto"),
+    { ...issue("travel-day-impact", "Travel leaves less than a day in Kyoto."), severity: "critical" as const },
+  ];
+  const overview = api.presentOverviewIssues(trip, recommendations, []);
+  const insight = api.presentOverviewRouteInsight(overview);
+  assert.deepEqual(insight, {
+    label: "Stop timing",
+    title: "Time at this stop may be limited",
+    detail: "Travel leaves less than a day in Kyoto.",
+  });
+  assert.deepEqual(api.presentOverviewRouteInsight(overview), insight);
+  assert.doesNotMatch(JSON.stringify(insight), /confidence|severity|things to review|\d+ transfers?/i);
+});
+
+test("Overview transfer insights stay concise and hide transfer counts", async () => {
+  const api = await import("../lib/easyt/trip-overview-issues.ts");
+  const overview = api.presentOverviewIssues(trip, [
+    issue("missing-logistics", "One connection needs an estimate.", "kyoto-tokyo-return"),
+  ], []);
+  const insight = api.presentOverviewRouteInsight(overview);
+  assert.deepEqual(insight, {
+    label: "Transfer details",
+    title: "A transfer still needs checking",
+    detail: "Confirm its route and timing before booking.",
+  });
+});
+
+test("Overview can promote a long transfer day from grouped canonical transfer checks", async () => {
+  const api = await import("../lib/easyt/trip-overview-issues.ts");
+  const overview = api.presentOverviewIssues(trip, [
+    issue("route-integrity", "2 transfers need checking before Morrovia can assess the full route."),
+    issue("driving-load", "6h 30m of estimated road travel may dominate this transfer day.", "tokyo-kyoto"),
+  ], [{ legId: "tokyo-kyoto", message: "Check road timing" }]);
+  assert.deepEqual(api.presentOverviewRouteInsight(overview), {
+    label: "Travel day",
+    title: "A long road day may need a closer look",
+    detail: "6h 30m of estimated road travel may dominate this transfer day.",
+  });
+});
+
 test("transport checks stay together and mixed route/transport review keeps distinct destinations", async () => {
   const api = await import("../lib/easyt/trip-overview-issues.ts");
   const issues = api.presentOverviewIssues(trip, [

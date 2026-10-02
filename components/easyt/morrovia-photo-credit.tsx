@@ -10,6 +10,9 @@ export type MorroviaPhotoCreditProps = {
   language?: "en" | "es";
   credit: string;
   photoLabel?: string;
+  authorLabel?: string;
+  sourceLabel?: string;
+  licenseLabel?: string;
   authorHref?: string | null;
   sourceHref?: string | null;
   licenseHref?: string | null;
@@ -27,6 +30,9 @@ export default function MorroviaPhotoCredit({
   language = "en",
   credit,
   photoLabel,
+  authorLabel: structuredAuthorLabel,
+  sourceLabel,
+  licenseLabel,
   authorHref,
   sourceHref,
   licenseHref,
@@ -52,8 +58,13 @@ export default function MorroviaPhotoCredit({
     const trigger = triggerRef.current;
     if (!anchor || !trigger) return;
     const rect = anchor.getBoundingClientRect();
-    setFloatingStyle({ left: rect.left + 8, top: Math.max(8, rect.bottom - 52) });
-  }, [anchorRef]);
+    const left = placement === "bottom-right" ? rect.right - 52 : rect.left + 8;
+    const top = placement === "top-right" ? rect.top + 8 : rect.bottom - 52;
+    setFloatingStyle({
+      left: Math.max(8, Math.min(left, window.innerWidth - 52)),
+      top: Math.max(8, Math.min(top, window.innerHeight - 52)),
+    });
+  }, [anchorRef, placement]);
 
   const positionPanel = useCallback(() => {
     const trigger = triggerRef.current;
@@ -79,7 +90,7 @@ export default function MorroviaPhotoCredit({
       window.removeEventListener("resize", positionCamera);
       window.removeEventListener("scroll", positionCamera, true);
     };
-  }, [anchorRef, portalReady, positionCamera]);
+  }, [anchorRef, placement, portalReady, positionCamera]);
 
   useLayoutEffect(() => {
     if (!open || !portalReady) return;
@@ -111,11 +122,17 @@ export default function MorroviaPhotoCredit({
 
   const external = (href: string) => /^https?:\/\//.test(href);
   const linkProps = (href: string) => external(href) ? { target: "_blank" as const, rel: "noopener noreferrer" } : {};
-  const authorLabel = attribution.kind === "unsplash" ? attribution.photographer : attribution.credit || photoLabel;
+  const authorLabel = structuredAuthorLabel ?? (attribution.kind === "unsplash" ? attribution.photographer : attribution.credit || photoLabel);
   const ariaLabel = authorLabel
     ? `${language === "es" ? "Créditos de la foto" : "Photo credit"}: ${authorLabel}${attribution.kind === "unsplash" ? " on Unsplash" : ""}`
     : language === "es" ? "Créditos de la foto" : "Photo credit";
-  const links = attribution.kind === "unsplash"
+  const hasStructuredMetadata = Boolean(structuredAuthorLabel || sourceLabel || licenseLabel);
+  const links = hasStructuredMetadata ? <>
+      {structuredAuthorLabel ? <>{authorHref ? <a href={authorHref} {...linkProps(authorHref)}>Photo by {structuredAuthorLabel}</a> : <span>Photo by {structuredAuthorLabel}</span>}</> : null}
+      {sourceLabel ? <>{sourceHref ? <a href={sourceHref} {...linkProps(sourceHref)}>{sourceLabel}</a> : <span>{sourceLabel}</span>}</> : null}
+      {licenseLabel ? <>{licenseHref ? <a href={licenseHref} {...linkProps(licenseHref)}>{licenseLabel}</a> : <span>{licenseLabel}</span>}</> : null}
+      {!licenseLabel && licenseHref ? <a href={licenseHref} {...linkProps(licenseHref)}>{language === "es" ? "Detalles de la licencia" : "Licence details"}</a> : null}
+    </> : attribution.kind === "unsplash"
     ? <>
       <a href={attribution.photographerHref} {...linkProps(attribution.photographerHref)}>{language === "es" ? `Foto de ${attribution.photographer}` : `Photo by ${attribution.photographer}`}</a>
       <span>{language === "es" ? "en" : "on"}</span>

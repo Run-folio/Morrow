@@ -396,7 +396,7 @@
 
   .editAction { min-height: 44px; padding-inline: 12px; }
 
-  .headerActions { grid-column: 2; justify-self: start; margin-top: 4px; }
+  .headerActions { grid-column: 2; justify-self: start; margin-top: 4px; flex-wrap: wrap; }
 
   .subnav {
     min-height: 50px;
