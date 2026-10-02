@@ -88,8 +88,8 @@ test("expanded Map restores scroll and focus before Escape can dismiss map state
   assert.match(mapWorkspaceSource, /window\.scrollTo\(\{ top: scrollY, behavior: "instant" \}\)/);
   assert.match(mapWorkspaceSource, /if \(restoreScrollOnExitRef\.current\) window\.scrollTo/);
   assert.match(mapWorkspaceSource, /\[data-map-expand-control\]/);
-  assert.match(mapWorkspaceSource, /if \(isExpandedMap\) \{[\s\S]*?toggleExpandedMap\(\);[\s\S]*?return;[\s\S]*?if \(selectedMapResult\)/);
-  assert.match(mapWorkspaceSource, /if \(event\.key !== "Escape"\) return;[\s\S]*?if \(isExpandedMap\)[\s\S]*?if \(copilotOpen\) return;/);
+  assert.match(mapWorkspaceSource, /if \(workspacePlaceSelection\.kind === "google"\) \{[\s\S]*?dismissGooglePlace\(\);[\s\S]*?if \(selectedMapResult\)[\s\S]*?if \(isExpandedMap\) \{[\s\S]*?toggleExpandedMap\(\)/);
+  assert.match(mapWorkspaceSource, /if \(event\.key !== "Escape"\) return;[\s\S]*?if \(copilotOpen\) return;[\s\S]*?if \(workspacePlaceSelection\.kind === "google"\)/);
 });
 
 test("TripShell keeps the ResizeObserver and reframes only while scripted camera ownership remains", () => {
@@ -385,8 +385,8 @@ test("mobile result detail replaces the list and keeps selection replacement and
   assert.match(mapWorkspaceSource, /const dismissSelectedMapResult = useCallback\(\(\) => \{[\s\S]*clearSelectedLocalPlace\(\);[\s\S]*setMobileShapeDayOpen\(true\);[\s\S]*setMobileMapDrawerOpen\(true\);/);
   assert.match(mapWorkspaceSource, /if \(selectedMapResult\) \{[\s\S]*dismissSelectedMapResult\(\);/);
   assert.match(mapWorkspaceSource, /aria-label="Close selected place details"/);
-  assert.match(mapWorkspaceSource, /onClose=\{\(\) => \{[\s\S]*if \(selectedGooglePlaceId\) \{[\s\S]*setWorkspacePlaceSelection\(\{ kind: "none" \}\);[\s\S]*if \(shapeDayTab === "plan"\) setMobileShapeDayOpen\(true\);[\s\S]*else dismissSelectedMapResult\(\);/,
-    "closing a Google place clears that selection and restores Plan when it was the originating workspace");
+  assert.match(mapWorkspaceSource, /onClose=\{\(\) => \{[\s\S]*if \(selectedGooglePlaceId\) \{[\s\S]*dismissGooglePlace\(\);[\s\S]*if \(shapeDayTab === "plan"\) setMobileShapeDayOpen\(true\);[\s\S]*else dismissSelectedMapResult\(\);/,
+    "closing a Google place clears that selection, restores map focus and restores Plan when it was the originating workspace");
   assert.match(mapStylesSource, /\.shellPlanner \.mapContextEntity \.mapContextHeading>button\{display:flex!important\}/,
     "the shared selected-place card keeps an explicit close action on mobile");
   assert.match(mapStylesSource, /\.shellPlanner \.mapContextEntity \.mapContextEyebrow\{display:none\}/);

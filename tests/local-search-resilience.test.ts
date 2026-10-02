@@ -54,9 +54,8 @@ test("Map and Stay opt into the server-owned MapLibre boundary before local sear
   assert.match(finder, /query\.set\("mapPresentation", mapPresentation\)/);
   assert.match(map, /<JourneyLocalFinder[^>]*mapPresentation="maplibre"/);
   assert.match(stay, /<JourneyLocalFinder[\s\S]*?mapPresentation="maplibre"/);
-  assert.match(map, /googleCanvasActive \? <GoogleTripMapCanvas/);
-  assert.match(map, /fetch\(`\/api\/journey-place-enrichment\?\$\{query\}`/);
-  assert.match(map, /if \(!googleCanvasActive\)[\s\S]*?setGoogleNearbyByScope\(\{\}\)/);
+  assert.match(map, /googleCanvasPending \? <div[\s\S]*?: googleCanvasActive \? <GoogleTripMapCanvas/);
+  assert.match(map, /fetch\("\/api\/journey-place-enrichment\?mode=availability"/);
   assert.match(map, /mapLibreCompatibleResults\(/);
   assert.match(finder, /payload\.places\.filter\(\(place\) => place\.provider !== "google-places"\)/);
 });
@@ -71,7 +70,7 @@ test("MapLibre drops late Google facts while retaining canonical neutral referen
   const map = source("components/journey-map-planner-workspace.tsx");
   assert.match(map, /const selectedGooglePlaceId = googleCanvasActive && workspacePlaceSelection\.kind === "google"/);
   assert.match(map, /const savedGoogleReferences = customTrip && selectedTripStop[\s\S]*googlePlaceReferenceIdeas\(customTrip\.brief\.itineraryIdeas\)[\s\S]*idea\.stopId === selectedTripStop\.id/);
-  assert.match(map, /<GoogleSavedReferenceList references=\{savedGoogleReferences\}/);
+  assert.match(map, /savedReferences=\{savedGoogleReferences\}/);
 });
 
 test("a useful primary result wins and a provider failure stays local", async () => {

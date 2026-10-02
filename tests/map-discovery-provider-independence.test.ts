@@ -11,7 +11,7 @@ const has = (source: string, pattern: RegExp, message: string) => assert.ok(patt
 const lacks = (source: string, pattern: RegExp, message: string) => assert.ok(!pattern.test(source), message);
 
 test("Google canvas selection changes one map panel without suppressing Morrovia inventory", () => {
-  has(workspace, /googleCanvasActive \? <GoogleTripMapCanvas/, "Google remains the eligible basemap");
+  has(workspace, /googleCanvasPending \? <div[\s\S]*?Preparing map[\s\S]*?: googleCanvasActive \? <GoogleTripMapCanvas/, "the expanded map waits for provider eligibility before choosing Google or its fallback");
   has(workspace, /places=\{googleCanvasPlaces\}/, "Google custom pins use the displayed Morrovia result collection");
   has(workspace, /onSelectPlace=\{selectGoogleCanvasPlace\}/, "Google custom pins resolve through the parent Morrovia selection owner");
   lacks(workspace, /journey-place-enrichment\?\$\{query\}|mode: "nearby"/, "Trip Map does not fetch a competing Google Nearby inventory");
@@ -26,6 +26,15 @@ test("Google canvas selection changes one map panel without suppressing Morrovia
   has(workspace, /<section className=\{`\$\{styles\.mapContextPanel\}/, "the parent renders one selected-place context panel");
 });
 
+test("expanded-map provider eligibility stays in a bounded loading state and SDK completion reads the latest canvas state", () => {
+  has(workspace, /useState<boolean \| null>\(storyState\?\.enrichmentPlaces \? true : null\)/, "unknown eligibility is kept distinct from confirmed provider unavailability");
+  has(workspace, /}, 7000\)/, "provider eligibility has a bounded timeout before the existing MapLibre fallback");
+  has(workspace, /const googleCanvasPending = Boolean\(expandedReturnHref && authenticatedOwnerId && enrichmentAvailable === null/, "only an expanded authenticated workspace waits for provider resolution");
+  has(workspace, /googleCanvasPending \? <div[\s\S]*?Preparing map[\s\S]*?: googleCanvasActive \? <GoogleTripMapCanvas/, "MapLibre is not exposed while Google eligibility is unresolved");
+  const canvas = readFileSync(new URL("../components/easyt/google-trip-map-canvas.tsx", import.meta.url), "utf8");
+  has(canvas, /const latest = callbacksRef\.current[\s\S]*?stops: latest\.stops[\s\S]*?legs: latest\.legs[\s\S]*?selectedStopId: latest\.selectedStopId[\s\S]*?updatePlaces\(latest\.places/, "an SDK that resolves late initializes from the latest route, selection and results");
+});
+
 test("Google selected-place details keep enrichment identity, save and day actions", () => {
   has(workspace, /selectedGoogleDetailForPlace\(selectedGooglePlaceId, selectedGoogleDetail\)/, "detail remains keyed by exact Place ID");
   has(workspace, /onSelectPlace=\{selectGoogleCanvasPlace\}/, "Morrovia result markers use the shared map-result selection owner");
@@ -33,7 +42,7 @@ test("Google selected-place details keep enrichment identity, save and day actio
   has(workspace, /savedReferences=\{savedGoogleReferences\}/, "saved Place ID references remain reachable from the existing Plan inventory");
   has(planWorkspace, /savedReferences\.map\(\(reference\)/, "Plan renders every saved reference without moving it into finder inventory");
   has(planWorkspace, /onSelectSavedReference\(reference\.id, reference\.placeId\)/, "saved reference selection keeps its exact reference and Place ID");
-  has(workspace, /onClose=\{\(\) => \{\s*if \(selectedGooglePlaceId\) \{\s*setWorkspacePlaceSelection\(\{ kind: "none" \}\)/, "closing the shared Google detail clears only selection and restores discovery state");
+  has(workspace, /onClose=\{\(\) => \{\s*if \(selectedGooglePlaceId\) \{\s*dismissGooglePlace\(\)/, "closing the shared Google detail clears selection and restores map focus");
   has(workspace, /onClick=\{addSelectedGooglePlaceToDay\}/, "existing Add to Day action remains");
   has(workspace, /onClick=\{saveSelectedGooglePlace\}/, "existing Save for later action remains");
   has(workspace, /selectedGoogleDetailForPlace\(selectedGooglePlaceId, selectedGoogleDetail\)/, "details remain scoped to selected Place ID");

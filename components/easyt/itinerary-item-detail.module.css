@@ -302,6 +302,14 @@
   min-height: 44px;
 }
 
+.stackedActions {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.stackedActions > * {
+  grid-column: 1 / -1;
+}
+
 @media (max-width: 900px) {
   .scrim {
     position: fixed;

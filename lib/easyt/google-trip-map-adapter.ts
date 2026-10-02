@@ -276,6 +276,11 @@ export function createGoogleTripMapSession(api: GoogleTripMapApi, element: HTMLE
         root.style.position = "absolute";
         root.style.inset = "0";
         root.style.pointerEvents = "none";
+        // Google controls the dimensions of overlayMouseTarget panes. In some
+        // live sessions that pane has a zero-height box, which clips this
+        // viewport-sized root. Div-pixel projection is relative to the map
+        // element, so host and clip the root at that same viewport instead.
+        root.style.zIndex = "106";
         let openGroupKey = "";
         let projection: ReturnType<HtmlOverlayObject["getProjection"]> | null = null;
         previewRoots.push(root);
@@ -421,7 +426,7 @@ export function createGoogleTripMapSession(api: GoogleTripMapApi, element: HTMLE
           }
         };
         const marker = new class extends OverlayView {
-          onAdd() { this.getPanes()?.overlayMouseTarget.append(root); }
+          onAdd() { element.append(root); }
           draw() { projection = this.getProjection(); render(); }
           onRemove() { root.remove(); }
         }();

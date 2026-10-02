@@ -56,12 +56,13 @@ export function GoogleTripMapCanvas(props: Props) {
     void (props.sdkLoader ?? loadGoogleMapsSdk)(props.browserKey)
       .then((api) => {
         if (!active) return;
+        const latest = callbacksRef.current;
         sessionRef.current = createGoogleTripMapSession(api, element, {
-          stops: props.stops,
-          legs: props.legs,
-          selectedStopId: props.selectedStopId,
-          cameraInsets: props.cameraInsets,
-          mapId: props.mapId,
+          stops: latest.stops,
+          legs: latest.legs,
+          selectedStopId: latest.selectedStopId,
+          cameraInsets: latest.cameraInsets,
+          mapId: latest.mapId,
           onNativePoi: (placeId, coordinates) => callbacksRef.current.onNativePoi(placeId, coordinates),
           onEmptyClick: (point) => callbacksRef.current.onEmptyClick(point),
           onSelectStop: (stopId) => callbacksRef.current.onSelectStop(stopId),
@@ -69,7 +70,7 @@ export function GoogleTripMapCanvas(props: Props) {
           onSelectPlace: (placeId) => callbacksRef.current.onSelectPlace?.(placeId),
           onPreviewPlace: (placeId) => callbacksRef.current.onPreviewPlace?.(placeId),
         });
-        sessionRef.current.updatePlaces(callbacksRef.current.places ?? [], callbacksRef.current.selectedPlaceId, callbacksRef.current.temporaryPlace, callbacksRef.current.cameraInsets);
+        sessionRef.current.updatePlaces(latest.places ?? [], latest.selectedPlaceId, latest.temporaryPlace, latest.cameraInsets);
         setStatus("ready");
         trackEvent("map_google_request", { operation: "sdk", outcome: "success" });
       })
@@ -82,7 +83,7 @@ export function GoogleTripMapCanvas(props: Props) {
   useEffect(() => { sessionRef.current?.updatePlaces(props.places ?? [], props.selectedPlaceId, props.temporaryPlace, props.cameraInsets); }, [placeKey, props.selectedPlaceId, temporaryKey, props.cameraInsets]);
   useEffect(() => { sessionRef.current?.previewPlace(props.previewPlaceId ?? null); }, [props.previewPlaceId]);
 
-  return <div className={`planner-map ${presentation.surface}`} data-basemap-status={status} aria-busy={status === "loading" || undefined} aria-label="Google trip map">
+  return <div className={`planner-map ${presentation.surface}`} tabIndex={-1} data-basemap-status={status} aria-busy={status === "loading" || undefined} aria-label="Google trip map">
     <div ref={containerRef} className={presentation.canvas} />
     {status === "loading" ? <div className={presentation.basemapStatus} role="status">Opening Google map</div> : null}
     {status === "unavailable" ? <div className={presentation.basemapStatus} role="alert"><strong>Google map unavailable</strong><span>Try reopening the map. Your trip is unchanged.</span></div> : null}

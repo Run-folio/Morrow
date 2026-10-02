@@ -152,6 +152,20 @@ test("Stay detail omits missing media instead of reserving a placeholder hero", 
   assert.match(component, /onError=\{\(\) => setFailedImageSrc\(detail\.image \?\? null\)/);
 });
 
+test("Map-embedded place actions use a stacked layout and omit the redundant map action only in Map context", () => {
+  const component = readFileSync(new URL("../components/easyt/itinerary-item-detail.tsx", import.meta.url), "utf8");
+  const styles = readFileSync(new URL("../components/easyt/itinerary-item-detail.module.css", import.meta.url), "utf8");
+  const map = readFileSync(new URL("../components/journey-map-planner-workspace.tsx", import.meta.url), "utf8");
+  const journeyStyles = readFileSync(new URL("../app/journey/journey.module.css", import.meta.url), "utf8");
+  assert.match(component, /!omitMapAction && mapHref/);
+  assert.match(component, /stackActions \? styles\.stackedActions/);
+  assert.match(styles, /\.stackedActions\s*\{\s*grid-template-columns:\s*minmax\(0, 1fr\)/);
+  assert.match(styles, /\.stackedActions > \*\s*\{\s*grid-column:\s*1 \/ -1/);
+  assert.match(map, /<ItineraryItemDetail[\s\S]*?omitMapAction[\s\S]*?stackActions/);
+  assert.match(map, /mapPartnerAction[\s\S]*?<MorroviaAffiliateLink[\s\S]*?fullWidth[\s\S]*?<small>\{affiliateDisclosure\}<\/small>/);
+  assert.match(journeyStyles, /\.mapContextHeading>button\{margin-left:auto\}/);
+});
+
 test("all entry surfaces use one presentation and one canonical mutation path", () => {
   const explore = readFileSync(new URL("../components/easyt/trip-explore-workspace.tsx", import.meta.url), "utf8");
   const itinerary = readFileSync(new URL("../components/easyt/trip-itinerary-workspace.tsx", import.meta.url), "utf8");

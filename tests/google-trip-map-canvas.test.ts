@@ -123,7 +123,7 @@ test("canonical transfer metadata appears on the route and its badge selects the
   });
   const selectedLegs: string[] = [];
   const selectedPlaces: string[] = [];
-  const session = createGoogleTripMapSession(api, { ownerDocument: documentOwner } as unknown as HTMLElement, {
+  const session = createGoogleTripMapSession(api, { ownerDocument: documentOwner, append() {} } as unknown as HTMLElement, {
     stops: [
       { id: "windhoek", name: "Windhoek", coordinates: [17.0832, -22.5609] },
       { id: "swakopmund", name: "Swakopmund", coordinates: [14.5053, -22.6784] },
@@ -257,7 +257,7 @@ test("Morrovia result markers keep each hit target on its actual coordinate", ()
     LatLng: class { lat: number; lng: number; constructor(lat: number, lng: number) { this.lat = lat; this.lng = lng; } },
     OverlayView: class { onAdd?(): void; draw?(): void; onRemove?(): void; setMap(map: unknown) { if (map) { this.onAdd?.(); this.draw?.(); } else this.onRemove?.(); } getPanes() { return { overlayMouseTarget: { append() {} } }; } getProjection() { return { fromLatLngToDivPixel: (point: { lat: number; lng: number }) => ({ x: point.lng * 10000, y: point.lat * 10000 }) }; } },
   });
-  const session = createGoogleTripMapSession(apiWithOverlay, { ownerDocument: documentOwner } as unknown as HTMLElement, { stops: [], legs: [], selectedStopId: null, onNativePoi: () => {}, onEmptyClick: () => {}, onSelectStop: () => {}, onSelectLeg: () => {} });
+  const session = createGoogleTripMapSession(apiWithOverlay, { ownerDocument: documentOwner, append() {} } as unknown as HTMLElement, { stops: [], legs: [], selectedStopId: null, onNativePoi: () => {}, onEmptyClick: () => {}, onSelectStop: () => {}, onSelectLeg: () => {} });
   session.updatePlaces([
     { id: "coincident-a", name: "A", category: "see", coordinates: [72.87771, 19.07601] },
     { id: "coincident-b", name: "B", category: "stay", coordinates: [72.87771, 19.07601] },
@@ -321,7 +321,7 @@ test("browser overlays use focusable Morrovia buttons above the Google canvas", 
     },
   });
   const picked: string[] = [];
-  const session = createGoogleTripMapSession(api, { ownerDocument: documentOwner } as unknown as HTMLElement, {
+  const session = createGoogleTripMapSession(api, { ownerDocument: documentOwner, append() {} } as unknown as HTMLElement, {
     stops: [], legs: [], selectedStopId: null, onNativePoi: () => {}, onEmptyClick: () => {},
     onSelectStop: () => {}, onSelectLeg: () => {}, onSelectPlace: (id) => picked.push(id),
   });
@@ -362,7 +362,7 @@ test("hover and keyboard focus on a recommendation pin preview its exact source 
     },
   });
   const previews: Array<string | null> = [];
-  const session = createGoogleTripMapSession(api, { ownerDocument: documentOwner } as unknown as HTMLElement, {
+  const session = createGoogleTripMapSession(api, { ownerDocument: documentOwner, append() {} } as unknown as HTMLElement, {
     stops: [], legs: [], selectedStopId: null,
     onNativePoi: () => {}, onEmptyClick: () => {}, onSelectStop: () => {}, onSelectLeg: () => {},
     onPreviewPlace: (id) => previews.push(id),
@@ -390,7 +390,7 @@ test("close recommendations stay anchored and expose an overlap-choice list", ()
       getProjection() { return { fromLatLngToDivPixel: (point: { lat: number; lng: number }) => ({ x: point.lng * 10000, y: point.lat * 10000 }) }; }
     },
   });
-  const session = createGoogleTripMapSession(api, { ownerDocument: documentOwner } as unknown as HTMLElement, {
+  const session = createGoogleTripMapSession(api, { ownerDocument: documentOwner, append() {} } as unknown as HTMLElement, {
     stops: [], legs: [], selectedStopId: null,
     onNativePoi: () => {}, onEmptyClick: () => {}, onSelectStop: () => {}, onSelectLeg: () => {},
   });
@@ -431,7 +431,7 @@ test("rendered route hit target wins over an overlapping hotel and selects the e
     OverlayView: class { onAdd?(): void; draw?(): void; onRemove?(): void; setMap(map: unknown) { if (map) { this.onAdd?.(); this.draw?.(); } else this.onRemove?.(); } getPanes() { return { overlayMouseTarget: { append() {} } }; } getProjection() { return { fromLatLngToDivPixel: (point: { lat: number; lng: number }) => ({ x: point.lng * 10000, y: point.lat * 10000 }) }; } },
   });
   const coordinate: [number, number] = [77.2, 28.6];
-  const session = createGoogleTripMapSession(api, { ownerDocument: documentOwner } as unknown as HTMLElement, {
+  const session = createGoogleTripMapSession(api, { ownerDocument: documentOwner, append() {} } as unknown as HTMLElement, {
     stops: [{ id: "swakopmund-04", name: "Swakopmund", coordinates: coordinate, sequence: 4 }], legs: [], selectedStopId: "swakopmund-04",
     onNativePoi: () => {}, onEmptyClick: () => {}, onSelectStop: (id) => pickedStops.push(id), onSelectLeg: () => {},
   });

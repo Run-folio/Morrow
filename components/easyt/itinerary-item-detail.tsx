@@ -40,6 +40,8 @@ type Props = {
   embedded?: boolean;
   omitEmptyMedia?: boolean;
   compactMapHeader?: boolean;
+  omitMapAction?: boolean;
+  stackActions?: boolean;
   providerContent?: ReactNode;
 };
 
@@ -64,6 +66,8 @@ export default function RecommendationDetail({
   embedded = false,
   omitEmptyMedia = false,
   compactMapHeader = false,
+  omitMapAction = false,
+  stackActions = false,
   providerContent,
 }: Props) {
   const headingId = useId();
@@ -159,9 +163,9 @@ export default function RecommendationDetail({
           {(Object.keys(partLabels) as ItineraryDayPart[]).map((part) => <option value={part} key={part}>{partLabels[part]}</option>)}
         </EasyTSelect> : null}
 
-        <div className={styles.actions}>
+        <div className={`${styles.actions} ${stackActions ? styles.stackedActions : ""}`}>
           {primaryActions}
-          {mapHref ? <EasyTLinkButton href={mapHref} icon={MapIcon} fullWidth loading={mapPending} onClick={() => setMapPending(true)}>{mapPending ? "Opening map…" : "View on map"}</EasyTLinkButton> : null}
+          {!omitMapAction && mapHref ? <EasyTLinkButton href={mapHref} icon={MapIcon} fullWidth loading={mapPending} onClick={() => setMapPending(true)}>{mapPending ? "Opening map…" : "View on map"}</EasyTLinkButton> : null}
           {detail.bookingHref ? <EasyTLinkButton href={detail.bookingHref} target="_blank" rel="noopener noreferrer" icon={ExternalLink} variant="secondary">Open booking</EasyTLinkButton> : null}
           {onManage ? <EasyTButton icon={BedDouble} variant="secondary" onClick={onManage}>{manageLabel}</EasyTButton> : null}
           {onAddNote ? <EasyTButton icon={NotebookPen} variant="secondary" onClick={onAddNote}>Add note</EasyTButton> : null}
