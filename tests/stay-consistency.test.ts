@@ -57,14 +57,25 @@ test("property detail and Choose stay are distinct semantic buttons using canoni
   assert.match(stayStyles, /\.cardActions[\s\S]*z-index: 2;/);
 });
 
-test("Stay cards omit the media region when no useful property image exists", () => {
+test("Stay cards keep a neutral media region when no exact property image exists", () => {
   assert.match(stay, /const imageSource = place\.image \?\? photos\[place\.id\]\?\.src/);
   assert.match(stay, /const hasImage = Boolean\(imageSource && unavailablePhotoSources\[place\.id\] !== imageSource\)/);
-  assert.match(stay, /\{hasImage \? <div className=\{styles\.cardMedia\}/);
+  assert.match(stay, /<div className=\{`\$\{styles\.cardMedia\} \$\{hasImage \? "" : styles\.cardMediaEmpty\}`\}>/);
+  assert.match(stay, /Photos unavailable/);
   assert.match(stay, /onError=\{\(\) => setUnavailablePhotoSources/);
-  assert.match(stay, /className=\{`\$\{styles\.card\}[\s\S]*styles\.cardNoMedia/);
-  assert.match(stayStyles, /\.cardNoMedia/);
+  assert.match(stayStyles, /\.cardMediaEmpty/);
   assert.match(stories, /BookingOnlyNoImageProperty/);
+});
+
+test("Stay results do not request Google Places photos beside the MapLibre mini-map", () => {
+  assert.match(stay, /useJourneyLocalPlacePhotos\(finder\.candidates, \{ allowGooglePlaceLookup: false \}\)/);
+  assert.match(photoClient, /allowGooglePlaceLookup/);
+});
+
+test("Stay map local-place markers use the shared MapLibre presentation owner", () => {
+  const mapPresentation = source("components/easyt/morrovia-map-presentation.module.css");
+  assert.match(mapPresentation, /\.surface :global\(\.planner-map__local-place\)/);
+  assert.match(mapPresentation, /\.surface :global\(\.planner-map__local-place\.is-active\)/);
 });
 
 test("Stay map is a projection of the current finder shortlist with one selection owner", () => {
@@ -195,6 +206,8 @@ test("responsive stories and styles cover the required route-track and Stay matr
     assert.match(routeStories, new RegExp(`export const ${story}`));
   }
   assert.match(stayStyles, /@media \(max-width: 900px\)[\s\S]*\.layout \{ display: block;/);
-  assert.match(stayStyles, /@media \(max-width: 620px\)[\s\S]*\.card \{ display: flex;/);
+  assert.match(stayStyles, /\.grid \{[\s\S]*grid-template-columns: repeat\(3, minmax\(0, 1fr\)\)/);
+  assert.match(stayStyles, /@media \(max-width: 1280px\)[\s\S]*\.grid, \.loading > div:last-child \{ grid-template-columns: repeat\(2, minmax\(0, 1fr\)\);/);
+  assert.match(stayStyles, /@media \(max-width: 620px\)[\s\S]*\.grid, \.loading > div:last-child \{ grid-template-columns: minmax\(0, 1fr\);/);
   assert.match(routeTrackStyles, /overflow-x:auto/);
 });

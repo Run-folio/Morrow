@@ -75,7 +75,7 @@
 
 .grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   align-items: stretch;
   gap: 14px;
 }
@@ -95,18 +95,20 @@
 .card:hover { border-color: color-mix(in srgb, var(--morrovia-action) 44%, var(--morrovia-line)); }
 .card:focus-within { box-shadow: var(--morrovia-focus-shadow); }
 .cardSelected { border-color: var(--morrovia-signal); outline: 2px solid color-mix(in srgb, var(--morrovia-signal) 14%, transparent); outline-offset: -3px; }
-.cardNoMedia > .chosenBadge { position: relative; top: auto; right: auto; align-self: flex-start; margin: 12px 12px 0; }
 
 .cardMedia {
   position: relative;
-  height: 180px;
+  height: clamp(150px, 15vw, 210px);
   overflow: hidden;
   background: var(--morrovia-lilac);
 }
 
 .cardMedia img { width: 100%; height: 100%; display: block; object-fit: cover; }
+.cardMediaEmpty { background: color-mix(in srgb, var(--morrovia-lilac) 56%, var(--morrovia-paper)); }
 
 .cardMediaFallback {
+  width: 100%;
+  height: 100%;
   display: grid;
   place-content: center;
   justify-items: center;
@@ -115,7 +117,7 @@
   font: var(--morrovia-type-fine-print);
 }
 
-.cardMediaFallback > svg { width: 28px; height: 28px; color: var(--morrovia-action); }
+.cardMediaFallback > svg { width: 28px; height: 28px; color: color-mix(in srgb, var(--morrovia-muted) 72%, var(--morrovia-line)); }
 
 .chosenBadge {
   position: absolute;
@@ -244,17 +246,12 @@
 .partnerHandoff strong { color: var(--morrovia-ink); font: var(--morrovia-type-control); }
 .partnerHandoff p { margin: 0; color: var(--morrovia-ink-soft); font: var(--morrovia-type-fine-print); }
 
+@media (max-width: 1280px) {
+  .grid, .loading > div:last-child { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
 @media (max-width: 1100px) {
   .layout { grid-template-columns: minmax(0, 1fr) minmax(280px, 320px); }
-  .grid, .loading > div:last-child { grid-template-columns: minmax(0, 1fr); }
-  .card { display: grid; grid-template-columns: minmax(170px, 34%) minmax(0, 1fr); }
-  .cardNoMedia { grid-template-columns: minmax(0, 1fr); }
-  .cardMedia { height: 100%; min-height: 230px; }
-  .cardActions { grid-column: 2; }
-  .cardNoMedia .cardActions { grid-column: 1; }
-  .cardOpen { inset: 0 0 0 0; }
-  .cardActions ~ .cardOpen { inset-block-end: 0; }
-  .cardActions { align-self: end; }
 }
 
 @media (max-width: 900px) {
@@ -271,7 +268,6 @@
   .feedbackRow { padding: 10px 10px 0; }
   .intro h2 { font-size: 34px; }
   .grid, .loading > div:last-child { grid-template-columns: minmax(0, 1fr); }
-  .card { display: flex; }
   .cardMedia { height: 190px; min-height: 0; }
   .cardActions { width: 100%; }
   .cardOpen { inset: 0 0 58px; }

@@ -13,15 +13,17 @@ export type JourneyLocalPlacePhoto = {
 
 export function useJourneyLocalPlacePhotos(
   places: readonly JourneyLocalPlace[],
-  options: { limit?: number; kind?: "lodging" | "restaurant" } = {},
+  options: { limit?: number; kind?: "lodging" | "restaurant"; allowGooglePlaceLookup?: boolean } = {},
 ) {
   const limit = Math.max(1, Math.min(options.limit ?? 6, 18));
   const kind = options.kind ?? "lodging";
+  const allowGooglePlaceLookup = options.allowGooglePlaceLookup ?? true;
   const exactPhotoPlaces = useMemo(() => places.filter((place) => (
     !place.image
+    && allowGooglePlaceLookup
     && ((place.provider === "google-places" && Boolean(place.providerProductId))
       || place.provider === "openstreetmap")
-  )).slice(0, limit), [limit, places]);
+  )).slice(0, limit), [allowGooglePlaceLookup, limit, places]);
   const requestKey = exactPhotoPlaces.map((place) => `${place.id}:${place.providerProductId ?? `${place.name}:${place.coordinates.join(":")}`}`).join("|");
   const [photos, setPhotos] = useState<Record<string, JourneyLocalPlacePhoto>>({});
 
