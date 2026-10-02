@@ -225,9 +225,9 @@ test("the route-first map restores progressive spatial intelligence", () => {
   assert.match(mapSource, /const card = cards\.get\(stop\.id\)/);
   assert.match(mapSource, /createMorroviaStopMarker\(document,/);
   assert.match(mapMarkerSource, /element\.dataset\.mapStopId = model\.dataset\.mapStopId/);
-  assert.match(mapWorkspaceSource, /Selected transfer/);
+  assert.match(mapWorkspaceSource, /selectedRouteLeg \? "Transfer"/);
   assert.match(mapWorkspaceSource, /Door to door/);
-  assert.match(mapWorkspaceSource, /Exact schedules and current operating details still need checking/);
+  assert.match(mapWorkspaceSource, /Check the latest timetable before booking/);
   assert.match(mapWorkspaceSource, /Open in Google Maps/);
   assert.match(mapWorkspaceSource, /selectedDestinationMedia\?\.learnMoreUrl/);
   assert.match(mapWorkspaceSource, /scope=\{copilotScope\}/);
@@ -253,9 +253,26 @@ test("trip map markers stay compact while retaining accessible mode and exact se
   assert.match(mapSource, /className="planner-map__leg-icon"/);
   assert.ok(mapSource.includes('element.setAttribute("aria-label", `Inspect transfer ${index + 1}: ${leg.fromName} to ${leg.toName}, ${leg.modeLabel}`)'));
   assert.match(mapSource, /onLegSelectRef\.current\?\.\(leg\)/);
-  assert.doesNotMatch(mapSource, /planner-map__leg-card/);
-  assert.doesNotMatch(mapStylesSource, /planner-map__leg-card/);
+  assert.match(mapSource, /planner-map__leg-card/);
+  assert.match(mapSource, /leg\.distanceKm !== null[\s\S]*Door-to-door/);
+  assert.match(mapSource, /<small>Planning estimate<\/small>/);
+  assert.match(mapStylesSource, /planner-map__leg:focus-visible \.planner-map__leg-card/);
+  assert.match(mapStylesSource, /\(hover:hover\) and \(pointer:fine\)/);
+  assert.match(mapStylesSource, /planner-map__leg-card[^}]*pointer-events:none/);
+  assert.doesNotMatch(mapStylesSource, /planner-map__leg\.is-active \.planner-map__leg-card/);
   assert.match(mapPresentationStylesSource, /planner-map__leg-icon svg\)\{width:24px;height:24px/);
+});
+
+test("selected transfer details use traveller-facing facts and retain route warnings", () => {
+  assert.match(mapWorkspaceSource, /selectedRouteLeg \? "Transfer"/);
+  assert.match(mapWorkspaceSource, /Plan around[\s\S]*door to door/);
+  assert.match(mapWorkspaceSource, /Driving time|Flight time|Rail time|Ferry time|Walking time|Travel time/);
+  assert.match(mapWorkspaceSource, /Planning estimate/);
+  assert.match(mapWorkspaceSource, /selectedRouteLeg\.warnings\.map/);
+  assert.doesNotMatch(mapWorkspaceSource, /Approximate planning connection\. This line is not a live or navigable route/);
+  assert.doesNotMatch(mapWorkspaceSource, /<dt>Journey<\/dt>|<dt>Headline<\/dt>|confidence\} confidence/);
+  assert.match(mapStylesSource, /\.shellPlanner\.mapDetailsAttached \.mapContextEyebrow\{[^}]*background:transparent/);
+  assert.match(mapStylesSource, /\.shellPlanner\.mapDetailsAttached \.mapContextHeading\{[^}]*background:transparent/);
 });
 
 test("shared presentation owns transport marker backgrounds and interaction states", () => {
@@ -362,7 +379,8 @@ test("map overlays expose keyboard-equivalent controls and predictable Escape cl
 test("mobile transfer context progressively discloses evidence without hiding uncertainty", () => {
   assert.match(mapWorkspaceSource, /className=\{styles\.mapTransferPrimary\}/);
   assert.match(mapWorkspaceSource, /aria-controls="selected-transfer-details"/);
-  assert.match(mapWorkspaceSource, /selectedRouteLeg\.confidence/);
+  assert.match(mapWorkspaceSource, /selectedRouteLeg\.warnings\.map/);
+  assert.match(mapWorkspaceSource, /Check the latest timetable before booking/);
   assert.match(mapStylesSource, /\.mapTransferSecondary\[data-expanded="true"\]/);
   assert.match(mapStylesSource, /\.mapTransferDetailToggle\{display:flex;min-height:44px/);
   assert.match(mapStoriesSource, /Mobile390SelectedTransfer/);

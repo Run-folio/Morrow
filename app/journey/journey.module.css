@@ -1019,15 +1019,19 @@ button.mapPlanAgendaRow{cursor:pointer;border-radius:var(--morrovia-control-radi
 .mapDestinationImage{width:100%;height:108px;object-fit:cover;border-radius:9px;background:var(--mist)}
 .mapDestinationImageFallback{display:grid;place-items:center;align-content:center;gap:6px;color:var(--morrovia-muted);font:700 8px/1.3 var(--morrovia-meta);letter-spacing:.06em;text-transform:uppercase}.mapDestinationImageFallback svg{width:18px;color:var(--morrovia-signal)}
 .mapDestinationDescription,.mapPlaceDetail>p,.mapLegNote{margin:0;color:var(--morrovia-muted);font-size:10px;line-height:1.48}
-.mapProvenance{margin:0;color:var(--morrovia-muted);font:650 8px/1.45 var(--morrovia-meta)}
-.mapProvenance strong{color:var(--accent)}
 .mapScheduleCheck{display:flex;align-items:flex-start;gap:6px;margin:0;padding:9px;border-radius:8px;background:var(--mist);color:var(--accent);font-size:9px;font-weight:650;line-height:1.4}
 .mapScheduleCheck svg{flex:0 0 14px;width:14px;height:14px;color:var(--signal)}
 .mapLegDetail,.mapPlaceDetail{display:grid;gap:9px}
 .mapPartnerAction{display:grid;gap:8px;min-width:0}
 .mapPartnerAction small{display:block;min-width:0;color:var(--morrovia-muted);font-size:10px;line-height:1.45;overflow-wrap:anywhere}
-.mapTransferPrimary,.mapTransferDetailToggle{display:none}
+.mapTransferPrimary{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));margin:0;border-top:1px solid var(--hairline)}
+.mapTransferPrimary div{display:grid;gap:3px;min-width:0;padding:10px 7px 3px 0}
+.mapTransferPrimary div+div{padding-left:8px;border-left:1px solid var(--hairline)}
+.mapTransferPrimary dt{color:var(--morrovia-muted);font:700 7px var(--morrovia-meta);letter-spacing:.08em;text-transform:uppercase}
+.mapTransferPrimary dd{margin:0;overflow-wrap:anywhere;color:var(--accent);font-size:11px;font-weight:750;line-height:1.3}
+.mapTransferDetailToggle{display:none}
 .mapTransferSecondary{display:grid;gap:9px}
+.mapPlanningStatus{margin:0;color:var(--morrovia-muted);font:650 8px/1.4 var(--morrovia-meta)}
 .mapPlanningKey{display:flex;align-items:center;gap:7px;margin:0;color:var(--morrovia-muted);font-size:8px;line-height:1.4}
 .mapPlanningKey span{width:25px;border-top:3px dashed var(--signal)}
 .mapExternalActions{display:flex;flex-wrap:wrap;gap:6px}
@@ -1062,8 +1066,8 @@ button.mapPlanAgendaRow{cursor:pointer;border-radius:var(--morrovia-control-radi
     box-shadow:none!important;
   }
   .shellPlanner.mapDetailsAttached .mapContextPanel{min-height:100%;align-content:start}
-  .shellPlanner.mapDetailsAttached .mapContextEyebrow{position:sticky;top:-20px;z-index:2;padding:8px 0;background:var(--morrovia-paper)}
-  .shellPlanner.mapDetailsAttached .mapContextHeading{position:sticky;top:0;z-index:2;padding:5px 0 10px;background:var(--morrovia-paper)}
+  .shellPlanner.mapDetailsAttached .mapContextEyebrow{position:sticky;top:-20px;z-index:2;padding:8px 0;background:transparent}
+  .shellPlanner.mapDetailsAttached .mapContextHeading{position:sticky;top:0;z-index:2;padding:5px 0 10px;background:transparent}
 }
 
 @media(max-width:720px){
@@ -1075,11 +1079,6 @@ button.mapPlanAgendaRow{cursor:pointer;border-radius:var(--morrovia-control-radi
   .shellPlanner .canonicalPlannerStatus:has(.mapLegDetail) .mapContextPanel h2,.shellPlanner .canonicalPlannerStatus:has(.mapPlaceDetail) .mapContextPanel h2,.shellPlanner .canonicalPlannerStatus:has(.mapDestinationImage) .mapContextPanel h2,.shellPlanner .canonicalPlannerStatus:has(.mapDestinationDescription) .mapContextPanel h2{font:600 21px/1.05 var(--morrovia-display);letter-spacing:-.035em}
   .shellPlanner .canonicalPlannerStatus:has(.mapLegDetail) .mapContextCopy,.shellPlanner .canonicalPlannerStatus:has(.mapLegDetail) .mapContextFacts,.shellPlanner .canonicalPlannerStatus:has(.mapPlaceDetail) .mapContextCopy,.shellPlanner .canonicalPlannerStatus:has(.mapPlaceDetail) .mapContextFacts,.shellPlanner .canonicalPlannerStatus:has(.mapDestinationImage) .mapContextCopy,.shellPlanner .canonicalPlannerStatus:has(.mapDestinationImage) .mapContextFacts,.shellPlanner .canonicalPlannerStatus:has(.mapDestinationDescription) .mapContextCopy,.shellPlanner .canonicalPlannerStatus:has(.mapDestinationDescription) .mapContextFacts{display:grid}
   .mapDestinationImage{height:92px}
-  .mapTransferPrimary{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));margin:0;border-top:1px solid var(--hairline)}
-  .mapTransferPrimary div{display:grid;gap:3px;min-width:0;padding:10px 7px 3px 0}
-  .mapTransferPrimary div+div{padding-left:8px;border-left:1px solid var(--hairline)}
-  .mapTransferPrimary dt{color:var(--morrovia-muted);font:700 7px var(--morrovia-meta);letter-spacing:.08em;text-transform:uppercase}
-  .mapTransferPrimary dd{margin:0;overflow-wrap:anywhere;color:var(--accent);font-size:11px;font-weight:750;line-height:1.3}
   .mapTransferDetailToggle{display:flex;min-height:44px;align-items:center;justify-content:space-between;padding:0 4px;border:0;background:transparent;color:var(--accent);font:750 10px var(--morrovia-ui);cursor:pointer}
   .mapTransferDetailToggle svg{width:16px;height:16px;transition:transform .18s ease}
   .mapTransferDetailToggle[aria-expanded="true"] svg{transform:rotate(180deg)}
@@ -1116,6 +1115,17 @@ button.mapPlanAgendaRow{cursor:pointer;border-radius:var(--morrovia-control-radi
 .journey :global(.planner-map__destination-card>span){padding:9px 10px}
 .journey :global(.planner-map__destination-card strong){font:750 12px/1.15 var(--morrovia-ui)}
 .journey :global(.planner-map__destination-card small){font-size:8px}
+
+.journey :global(.planner-map__leg-card){position:absolute;bottom:62px;left:50%;display:none;width:min(300px,calc(100vw - 32px));gap:7px;padding:13px 15px;border:1px solid color-mix(in srgb,var(--signal) 58%,#fff);border-radius:3px;background:rgba(23,16,111,.97);box-shadow:0 16px 34px rgba(23,16,111,.26);color:#fff;font-family:var(--morrovia-ui);text-align:left;transform:translateX(-50%);pointer-events:none}
+.journey :global(.planner-map__leg-meta){display:flex;align-items:center;justify-content:space-between;gap:12px}
+.journey :global(.planner-map__leg-meta strong){color:var(--signal);font:800 8px/1 var(--morrovia-meta);letter-spacing:.13em}
+.journey :global(.planner-map__leg-meta em){color:rgba(255,255,255,.72);font:700 9px/1 var(--morrovia-meta);font-style:normal}
+.journey :global(.planner-map__leg-card>b){font:720 14px/1.25 var(--morrovia-ui)}
+.journey :global(.planner-map__leg-card>span:not(.planner-map__leg-meta)){color:rgba(255,255,255,.75);font:600 9px/1.35 var(--morrovia-meta)}
+.journey :global(.planner-map__leg-card>small){padding-top:7px;border-top:1px solid rgba(255,255,255,.16);color:rgba(255,255,255,.58);font:650 7px/1.35 var(--morrovia-meta);letter-spacing:.02em}
+@media(min-width:981px) and (hover:hover) and (pointer:fine){
+  .journey :global(.planner-map__leg:hover .planner-map__leg-card),.journey :global(.planner-map__leg:focus-visible .planner-map__leg-card){display:grid}
+}
 
 @media(max-width:980px){
   .shellPlanner .mapContextEntity{gap:0}

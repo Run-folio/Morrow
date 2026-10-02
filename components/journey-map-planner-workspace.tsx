@@ -3036,7 +3036,7 @@ export function JourneyMapPlannerWorkspace({
         <div id="map-contextual-sheet-content" ref={drawerBodyRef} className={styles.mobileMapSheetBody}>
       <aside className={`${styles.itineraryPanel} ${hasCanonicalPlanner ? `${styles.itineraryWithFinder} ${styles.canonicalPlannerStatus}` : ""} ${hasCanonicalPlanner && tripStatusExpanded ? styles.tripStatusExpanded : ""} ${tripHealthDetail ? styles.healthDetailOpen : ""} ${pinPlacementMode || Boolean(pinCoordinates) ? styles.mapContextHidden : ""} ${defaultMapContext ? styles.mapDefaultContext : ""} ${isShellPresentation && !showShellContext ? styles.mapContextEmpty : ""} ${isShellPresentation && selectedRouteLeg ? styles.mapTransferContext : ""} ${isShellPresentation && (selectedLocalPlace || selectedPlannerPin || selectedGooglePlaceId) ? styles.mapPlaceContext : ""} ${isShellPresentation && mapMode === "detail" && !selectedLocalPlace && !selectedPlannerPin && !selectedRouteLeg && !selectedGooglePlaceId ? styles.mapDestinationContext : ""}`} aria-label="Selected map context" aria-live="polite">
         {isShellPresentation && customTrip ? showShellContext ? <section className={`${styles.mapContextPanel} ${selectedLocalPlace || selectedGooglePlaceId || selectedPlannerPin || selectedRouteLeg ? styles.mapContextEntity : ""}`} aria-labelledby="map-context-title">
-          <p className={styles.mapContextEyebrow}>{selectedGooglePlaceId || selectedLocalPlace || selectedPlannerPin ? "Selected place" : selectedRouteLeg ? "Selected transfer" : mapMode === "overview" ? "Whole route" : mapDetailScope === "day" ? "Selected day" : "Selected stop"}</p>
+          <p className={styles.mapContextEyebrow}>{selectedGooglePlaceId || selectedLocalPlace || selectedPlannerPin ? "Selected place" : selectedRouteLeg ? "Transfer" : mapMode === "overview" ? "Whole route" : mapDetailScope === "day" ? "Selected day" : "Selected stop"}</p>
           <div className={styles.mapContextHeading}>
           <h2 id="map-context-title" className={selectedPlaceDetail ? "sr-only" : undefined}>{currentGoogleDetail?.name ?? (selectedGooglePlaceId ? "Google place" : null) ?? selectedLocalPlace?.name ?? selectedPlannerPin?.title ?? (selectedRouteLeg ? `${selectedRouteLeg.fromName} → ${selectedRouteLeg.toName}` : mapMode === "overview" ? `${customTrip.stops.length} ${customTrip.stops.length === 1 ? "stop" : "stops"}, one connected trip` : selectedTripStop?.name ?? selected.city)}</h2>
             {selectedGooglePlaceId ? <EasyTButton iconOnly icon={X} variant="quiet" onClick={dismissGooglePlace}>Close selected Google place details</EasyTButton> : selectedLocalPlace ? <button type="button" onClick={dismissSelectedMapResult} aria-label="Close selected place details"><X aria-hidden="true" /></button> : selectedPlannerPin ? <button type="button" onClick={() => { const id = selectedPlannerPin.id; setSelectedPlannerPin(null); setMobileMapDrawerOpen(false); restoreMapMarkerFocus("plannerPinId", id); }} aria-label="Close selected pin details"><X aria-hidden="true" /></button> : selectedRouteLeg ? <button type="button" onClick={clearSelectedRouteLeg} aria-label="Close transfer details"><X aria-hidden="true" /></button> : mapMode === "detail" ? <button type="button" onClick={resetWholeRoute} aria-label="Close destination details"><X aria-hidden="true" /></button> : null}
@@ -3119,25 +3119,19 @@ export function JourneyMapPlannerWorkspace({
             <p>A place you saved to this trip. Its current access, opening and booking details still need checking.</p>
             <dl className={styles.mapContextFacts}><div><dt>Category</dt><dd>{pinCategoryLabel(selectedPlannerPin.category)}</dd></div><div><dt>Day</dt><dd>{selectedPlannerPin.dayNumber ? `Day ${selectedPlannerPin.dayNumber}` : "Trip-wide"}</dd></div></dl>
           </div> : selectedRouteLeg ? <div className={styles.mapLegDetail}>
+            <p className={styles.mapContextCopy}>{selectedRouteLeg.doorToDoorMinutes !== null
+              ? `Plan around ${formatMapDuration(selectedRouteLeg.doorToDoorMinutes)} door to door${selectedRouteLeg.mode === "road" ? " by road" : selectedRouteLeg.mode === "flight" ? " by air" : selectedRouteLeg.mode === "train" ? " by rail" : selectedRouteLeg.mode === "ferry" ? " by ferry" : selectedRouteLeg.mode === "walk" ? " on foot" : ""}.`
+              : "Door-to-door timing is not available yet for this transfer."}</p>
             <dl className={styles.mapTransferPrimary}>
-              <div><dt>Mode</dt><dd>{selectedRouteLeg.modeLabel}</dd></div>
-              <div><dt>Total</dt><dd>{formatMapDuration(selectedRouteLeg.doorToDoorMinutes)}</dd></div>
-              <div><dt>Status</dt><dd>{selectedRouteLeg.confidence ? `${selectedRouteLeg.confidence.level} confidence` : "Needs confirmation"}</dd></div>
+              <div><dt>Distance</dt><dd>{selectedRouteLeg.distanceKm !== null ? `${Math.round(selectedRouteLeg.distanceKm).toLocaleString()} km` : "Not available"}</dd></div>
+              <div><dt>{selectedRouteLeg.mode === "road" ? "Driving time" : selectedRouteLeg.mode === "flight" ? "Flight time" : selectedRouteLeg.mode === "train" ? "Rail time" : selectedRouteLeg.mode === "ferry" ? "Ferry time" : selectedRouteLeg.mode === "walk" ? "Walking time" : "Travel time"}</dt><dd>{selectedRouteLeg.headlineMinutes !== null ? `~${formatMapDuration(selectedRouteLeg.headlineMinutes)}` : "Not available"}</dd></div>
+              <div><dt>Door to door</dt><dd>{selectedRouteLeg.doorToDoorMinutes !== null ? `~${formatMapDuration(selectedRouteLeg.doorToDoorMinutes)}` : "Not available"}</dd></div>
             </dl>
             <EasyTButton variant="quiet" size="small" className={styles.mapTransferDetailToggle} aria-expanded={transferDetailsExpanded} aria-controls="selected-transfer-details" onClick={() => setTransferDetailsExpanded((expanded) => !expanded)}>{transferDetailsExpanded ? "Hide details" : "Details"}<ChevronDown aria-hidden="true" /></EasyTButton>
             <div id="selected-transfer-details" className={styles.mapTransferSecondary} data-expanded={transferDetailsExpanded ? "true" : "false"}>
-            <p className={styles.mapContextCopy}>Approximate planning connection. This line is not a live or navigable route.</p>
-            <dl className={styles.mapContextFacts}>
-              <div><dt>Journey</dt><dd>{tripLegClassificationLabel(selectedRouteLeg.classification)}</dd></div>
-              <div><dt>Mode</dt><dd>{selectedRouteLeg.modeLabel}</dd></div>
-              <div><dt>Distance</dt><dd>{selectedRouteLeg.distanceKm !== null ? `${Math.round(selectedRouteLeg.distanceKm).toLocaleString()} km` : "To confirm"}</dd></div>
-              <div><dt>Headline</dt><dd>{selectedRouteLeg.headlineMinutes !== null ? formatMapDuration(selectedRouteLeg.headlineMinutes) : "Not separately known"}</dd></div>
-              <div><dt>Door to door</dt><dd>{formatMapDuration(selectedRouteLeg.doorToDoorMinutes)}</dd></div>
-            </dl>
-            <p className={styles.mapProvenance}><strong>{selectedRouteLeg.provenanceLabel}</strong>{selectedRouteLeg.confidence ? ` · ${selectedRouteLeg.confidence.state} · ${selectedRouteLeg.confidence.level} confidence` : " · confidence not supplied"}</p>
             {selectedRouteLeg.planningNote ? <p className={styles.mapLegNote}>{selectedRouteLeg.planningNote}</p> : null}
             {selectedRouteLeg.warnings.map((warning) => <p key={warning} className={styles.mapScheduleCheck}><Clock3 aria-hidden="true" /> {warning}</p>)}
-            {selectedRouteLeg.scheduleNeedsChecking ? <p className={styles.mapScheduleCheck}><Clock3 aria-hidden="true" /> Exact schedules and current operating details still need checking.</p> : null}
+            {selectedRouteLeg.scheduleNeedsChecking ? <p className={styles.mapPlanningStatus}>{["flight", "train", "ferry"].includes(selectedRouteLeg.mode) ? "Check the latest timetable before booking." : "Planning estimate"}</p> : null}
             </div>
           </div> : mapMode === "overview" ? <>
             <p className={styles.mapContextCopy}>The complete route is fitted to the map. Select a transport marker or stop for spatial detail.</p>
