@@ -136,7 +136,10 @@ export function useBuilderStopReorder(options: {
       if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId);
       drop();
     },
-    onPointerCancel: () => cancel(),
+    onPointerCancel: (event: PointerEvent<HTMLElement>) => {
+      // Native mouse drag emits pointercancel after dragstart; only captured touch/pen gestures own this cancellation.
+      if (gestureRef.current?.pointerId === event.pointerId) cancel();
+    },
   } as HTMLAttributes<HTMLElement>), [begin, cancel, draggingId, drop, fixedOrder, lockedStopIds, previewAt]);
 
   return { draggingId, previewIds, gripProps, previewAt, previewActiveAt, drop, cancel, moveFromMenu };
