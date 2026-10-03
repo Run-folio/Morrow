@@ -174,7 +174,7 @@
       "components/easyt/morrovia-loading-states.module.css": 5,
       "components/easyt/morrovia-loading-states.stories.module.css": 1,
       "components/easyt/morrovia-quantity-selector.module.css": 1,
-      "components/easyt/trip-overview-workspace.module.css": 1,
+      "components/easyt/trip-overview-workspace.module.css": 2,
       "components/easyt/trip-shell.module.css": 1,
       "components/journey-planner-strip.module.css": 5
     }
