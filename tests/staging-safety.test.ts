@@ -1,7 +1,14 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { missingStagingSchemaColumns, missingStagingSchemaConstraints, validateStagingProviderPolicy } from "../scripts/staging-safety.mjs";
+import {
+  loadStagingConfig,
+  markDisposableTestAccountEmailVerified,
+  missingStagingSchemaColumns,
+  missingStagingSchemaConstraints,
+  TEST_ACCOUNTS,
+  validateStagingProviderPolicy,
+} from "../scripts/staging-safety.mjs";
 
 test("staging provider policy makes Luna-only access explicit", () => {
   assert.equal(validateStagingProviderPolicy({ MORROVIA_STAGING_PROVIDER_MODE: "disabled" }), "disabled");
@@ -80,4 +87,72 @@ test("staging preflight requires the canonical journey-end persistence constrain
     constraint_name: "easyt_legs_to_endpoint_kind_check",
     definition: "CHECK ((to_endpoint_kind = ANY (ARRAY['origin'::text, 'stop'::text, 'end'::text])))",
   }]), []);
+});
+
+test("the verified seed mutation accepts only exact disposable account emails", async () => {
+  const seen: Array<{ sql: string; params: unknown[] }> = [];
+  const client = { query: async (sql: string, params: unknown[] = []) => {
+    seen.push({ sql, params });
+    if (sql.includes("information_schema.columns")) {
+      return { rowCount: 1, rows: [{ column_name: "emailVerified", data_type: "boolean", is_nullable: "NO" }] };
+    }
+    if (sql.startsWith('select id, email from "user"')) {
+      return { rowCount: 1, rows: [{ id: "user-a", email: TEST_ACCOUNTS[0].email }] };
+    }
+    return { rowCount: 1, rows: [{ id: "user-a" }] };
+  } };
+
+  await markDisposableTestAccountEmailVerified(client, TEST_ACCOUNTS[0].email);
+  const update = seen.at(-1);
+  assert.ok(update);
+  assert.equal(update.params[1], TEST_ACCOUNTS[0].email);
+  assert.match(update.sql, /update "user" set "emailVerified" = true/i);
+});
+
+test("the verified seed mutation rejects arbitrary emails before querying", async () => {
+  let queries = 0;
+  const client = { query: async () => { queries += 1; return { rowCount: 0, rows: [] }; } };
+  await assert.rejects(
+    markDisposableTestAccountEmailVerified(client, "traveller@example.com"),
+    /not an approved disposable staging account/,
+  );
+  assert.equal(queries, 0);
+});
+
+test("staging seed configuration rejects a production environment", () => {
+  assert.throws(() => loadStagingConfig({ MORROVIA_ENVIRONMENT: "production" }), /must be exactly staging/);
+});
+
+test("verified seed mutation fails closed when the Better Auth field is absent", async () => {
+  const client = { query: async (sql: string) => sql.includes("information_schema.columns")
+    ? { rowCount: 0, rows: [] }
+    : { rowCount: 0, rows: [] } };
+  await assert.rejects(markDisposableTestAccountEmailVerified(client, TEST_ACCOUNTS[0].email), /emailVerified.*boolean column/);
+});
+
+test("verified seed mutation fails closed when the Better Auth user is missing or ambiguous", async (t) => {
+  for (const rows of [[], [
+    { id: "user-a", email: TEST_ACCOUNTS[0].email },
+    { id: "user-a-duplicate", email: TEST_ACCOUNTS[0].email.toUpperCase() },
+  ]]) {
+    await t.test(rows.length ? "ambiguous" : "missing", async () => {
+      const client = { query: async (sql: string) => sql.includes("information_schema.columns")
+        ? { rowCount: 1, rows: [{ column_name: "emailVerified", data_type: "boolean", is_nullable: "NO" }] }
+        : { rowCount: rows.length, rows } };
+      await assert.rejects(markDisposableTestAccountEmailVerified(client, TEST_ACCOUNTS[0].email), /exactly one Better Auth user/);
+    });
+  }
+});
+
+test("verified seed mutation requires exactly one updated Better Auth row", async (t) => {
+  for (const rowCount of [0, 2]) {
+    await t.test(`row count ${rowCount}`, async () => {
+      const client = { query: async (sql: string) => {
+        if (sql.includes("information_schema.columns")) return { rowCount: 1, rows: [{ column_name: "emailVerified", data_type: "boolean", is_nullable: "NO" }] };
+        if (sql.startsWith('select id, email from "user"')) return { rowCount: 1, rows: [{ id: "user-a", email: TEST_ACCOUNTS[0].email }] };
+        return { rowCount, rows: [] };
+      } };
+      await assert.rejects(markDisposableTestAccountEmailVerified(client, TEST_ACCOUNTS[0].email), /exactly one Better Auth user row/);
+    });
+  }
 });

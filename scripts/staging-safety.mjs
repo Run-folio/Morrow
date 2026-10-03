@@ -59,8 +59,8 @@ const STAGING_PROVIDER_KEYS = [
   "CAR_HIRE_AFFILIATE_URL",
 ];
 
-function required(name) {
-  const value = process.env[name]?.trim();
+function required(name, environment) {
+  const value = environment[name]?.trim();
   if (!value) throw new Error(`Missing ${name}.`);
   return value;
 }
@@ -85,15 +85,16 @@ export function validateStagingProviderPolicy(environment = process.env) {
   return providerMode;
 }
 
-export function loadStagingConfig() {
-  if (process.env.MORROVIA_ENVIRONMENT !== "staging") {
+/** @param {Record<string, string | undefined>} [environment=process.env] */
+export function loadStagingConfig(environment = process.env) {
+  if (environment.MORROVIA_ENVIRONMENT !== "staging") {
     throw new Error("Refusing to run: MORROVIA_ENVIRONMENT must be exactly staging.");
   }
-  const providerMode = validateStagingProviderPolicy();
+  const providerMode = validateStagingProviderPolicy(environment);
 
-  const stagingUrl = required("MORROVIA_STAGING_URL");
-  const publicUrl = required("NEXT_PUBLIC_APP_URL");
-  const authUrl = required("BETTER_AUTH_URL");
+  const stagingUrl = required("MORROVIA_STAGING_URL", environment);
+  const publicUrl = required("NEXT_PUBLIC_APP_URL", environment);
+  const authUrl = required("BETTER_AUTH_URL", environment);
   if (!sameOrigin(stagingUrl, publicUrl) || !sameOrigin(stagingUrl, authUrl)) {
     throw new Error("Staging, public, and Better Auth URLs must use one exact origin.");
   }
@@ -102,10 +103,10 @@ export function loadStagingConfig() {
     throw new Error("Refusing to run against the production Morrovia host.");
   }
 
-  const databaseUrl = required("DATABASE_URL");
+  const databaseUrl = required("DATABASE_URL", environment);
   const database = new URL(databaseUrl);
-  const expectedDbName = required("MORROVIA_STAGING_DB_NAME");
-  const expectedDbHost = required("MORROVIA_STAGING_DB_HOST").toLowerCase();
+  const expectedDbName = required("MORROVIA_STAGING_DB_NAME", environment);
+  const expectedDbHost = required("MORROVIA_STAGING_DB_HOST", environment).toLowerCase();
   const databaseName = decodeURIComponent(database.pathname.replace(/^\//, ""));
   if (databaseName !== expectedDbName || expectedDbName === "neondb" || !expectedDbName.startsWith("morrovia_staging")) {
     throw new Error("Staging must use a separately named morrovia_staging database, never neondb.");
@@ -113,13 +114,54 @@ export function loadStagingConfig() {
   if (database.hostname.toLowerCase() !== expectedDbHost) {
     throw new Error("DATABASE_URL host does not match MORROVIA_STAGING_DB_HOST.");
   }
-  if (required("MORROVIA_STAGING_DATABASE_ENVIRONMENT") !== "staging") {
+  if (required("MORROVIA_STAGING_DATABASE_ENVIRONMENT", environment) !== "staging") {
     throw new Error("MORROVIA_STAGING_DATABASE_ENVIRONMENT must be exactly staging.");
   }
-  if (!required("BETTER_AUTH_SECRET") || required("BETTER_AUTH_SECRET").length < 32) {
+  if (!required("BETTER_AUTH_SECRET", environment) || required("BETTER_AUTH_SECRET", environment).length < 32) {
     throw new Error("Use a new staging-only BETTER_AUTH_SECRET of at least 32 characters.");
   }
   return { databaseUrl, expectedDbName, expectedDbHost, stagingUrl: new URL(stagingUrl).origin, providerMode };
+}
+
+/**
+ * Set the Better Auth verification bit only for the exact disposable accounts
+ * used by the staging seed. Call only with the client returned from a
+ * successful verifyStagingDatabase() call.
+ */
+export async function markDisposableTestAccountEmailVerified(client, email) {
+  if (!TEST_ACCOUNTS.some((account) => account.email === email)) {
+    throw new Error("Email is not an approved disposable staging account.");
+  }
+
+  const field = await client.query(`
+    select column_name, data_type, is_nullable
+    from information_schema.columns
+    where table_schema = 'public'
+      and table_name = 'user'
+      and column_name = 'emailVerified'
+  `);
+  if (field.rowCount !== 1 || field.rows.length !== 1
+    || field.rows[0].column_name !== "emailVerified"
+    || field.rows[0].data_type !== "boolean"
+    || field.rows[0].is_nullable !== "NO") {
+    throw new Error('Staging Better Auth schema is missing the expected "user"."emailVerified" boolean column.');
+  }
+
+  const users = await client.query(
+    'select id, email from "user" where lower(email) = lower($1)',
+    [email],
+  );
+  if (users.rowCount !== 1 || users.rows.length !== 1 || users.rows[0].email !== email) {
+    throw new Error("Disposable staging account must match exactly one Better Auth user.");
+  }
+
+  const updated = await client.query(
+    'update "user" set "emailVerified" = true where id = $1 and email = $2 returning id',
+    [users.rows[0].id, email],
+  );
+  if (updated.rowCount !== 1 || updated.rows.length !== 1) {
+    throw new Error("Disposable staging verification update must affect exactly one Better Auth user row.");
+  }
 }
 
 export async function verifyStagingDatabase(config) {

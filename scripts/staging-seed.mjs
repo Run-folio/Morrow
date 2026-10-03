@@ -1,27 +1,49 @@
-import { TEST_ACCOUNTS, loadStagingConfig, verifyStagingDatabase } from "./staging-safety.mjs";
+import { markDisposableTestAccountEmailVerified, loadStagingConfig, TEST_ACCOUNTS, verifyStagingDatabase } from "./staging-safety.mjs";
+import { runStagingSeed } from "./staging-seed-workflow.mjs";
 
-const config = loadStagingConfig();
-const { client, report } = await verifyStagingDatabase(config);
-await client.end();
+let client;
+let clientClosed = false;
+let report;
 
-for (const account of TEST_ACCOUNTS) {
-  const password = process.env[account.passwordKey];
-  if (!password || password.length < 16) {
-    throw new Error(`${account.passwordKey} must be a unique staging-only password of at least 16 characters.`);
-  }
-  const signUp = await fetch(`${config.stagingUrl}/api/auth/sign-up/email`, {
+async function postAuth(config, path, body) {
+  const response = await fetch(`${config.stagingUrl}${path}`, {
     method: "POST",
     headers: { "content-type": "application/json", origin: config.stagingUrl },
-    body: JSON.stringify({ name: account.name, email: account.email, password }),
+    body: JSON.stringify(body),
   });
-  if (!signUp.ok) throw new Error(`Could not create ${account.name} (HTTP ${signUp.status}). Run staging:reset first if it already exists.`);
-
-  const signIn = await fetch(`${config.stagingUrl}/api/auth/sign-in/email`, {
-    method: "POST",
-    headers: { "content-type": "application/json", origin: config.stagingUrl },
-    body: JSON.stringify({ email: account.email, password }),
-  });
-  if (!signIn.ok) throw new Error(`${account.name} was created but could not sign in (HTTP ${signIn.status}).`);
+  await response.body?.cancel();
+  return { ok: response.ok, status: response.status };
 }
 
-console.log(JSON.stringify({ ok: true, ...report, seededAccounts: TEST_ACCOUNTS.map(({ name, email }) => ({ name, email })) }));
+try {
+  const config = loadStagingConfig();
+  const staging = await verifyStagingDatabase(config);
+  client = staging.client;
+  report = staging.report;
+
+  const seeded = await runStagingSeed({
+    accounts: TEST_ACCOUNTS,
+    getPassword: (key) => process.env[key],
+    signUp: ({ name, email, password }) => postAuth(config, "/api/auth/sign-up/email", { name, email, password }),
+    markVerified: (email) => markDisposableTestAccountEmailVerified(client, email),
+    closeDatabase: async () => {
+      await client.end();
+      clientClosed = true;
+    },
+    signIn: ({ email, password }) => postAuth(config, "/api/auth/sign-in/email", { email, password }),
+  });
+
+  console.log(JSON.stringify({ ok: true, ...report, ...seeded }));
+} catch (error) {
+  const message = error instanceof Error ? error.message : "Staging seed failed.";
+  console.error(JSON.stringify({ ok: false, ...(report ?? {}), error: message }));
+  process.exitCode = 1;
+} finally {
+  if (client && !clientClosed) {
+    try {
+      await client.end();
+    } catch {
+      // The primary failure is already reported without exposing connection details.
+    }
+  }
+}
