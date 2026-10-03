@@ -374,6 +374,10 @@ export function TripShellNavigation({ tripId }: { tripId: string }) {
         return (
           <Link
             key={view.id}
+            // These dynamic sibling pages share a loading boundary. The
+            // default partial prefetch can leave only its fallback available
+            // during overlapping transitions; keep each full page ready.
+            prefetch={true}
             className={active ? styles.subnavActive : undefined}
             href={view.id === "overview" ? tripWorkspaceHref(tripId) : `${baseHref}${view.suffix}`}
             aria-current={active ? "page" : undefined}
