@@ -348,14 +348,13 @@ export function transportAffiliateActionForLeg(trip: EasyTTrip, leg: TripLeg, no
   const duration = leg.doorToDoorMinutes ?? leg.durationMinutes;
   const intercity = leg.classification === "intercity" || leg.classification === "international"
     || (leg.classification !== "local" && typeof leg.distanceKm === "number" && leg.distanceKm >= 120);
-  const credibleRoad = leg.mode === "road"
+  const carHireEligibleRoad = leg.mode === "road"
     && intercity
     && !describesCoachOrBus(leg)
     && typeof duration === "number" && Number.isFinite(duration) && duration > 0
-    && leg.confidence !== "low" && leg.confidence !== "unknown"
     && leg.routeMetadata.source !== LEGACY_ROAD_COMPATIBILITY_SOURCE
     && !trip.brief.intent?.hardConstraints.avoidDriving;
-  if (credibleRoad) return getCurrentPartnerAction("car_rental") ?? null;
+  if (carHireEligibleRoad) return getCurrentPartnerAction("car_rental") ?? null;
 
   return omioBookingActionForLeg(trip, leg, now);
 }

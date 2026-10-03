@@ -2,6 +2,8 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { affiliateClickEventForAction } from "../lib/easyt/affiliate-click.ts";
 import { affiliatePartners, buildBookingReadiness, getAccommodationBookingUrl, getBookingAction, omioBookingActionForLeg, transportAffiliateActionForLeg } from "../lib/easyt/booking-readiness.ts";
+import { transportPresentationState } from "../lib/easyt/itinerary-transport-agenda.ts";
+import { LEGACY_ROAD_COMPATIBILITY_SOURCE } from "../lib/easyt/transport-leg-compatibility.ts";
 import type { EasyTTrip } from "../lib/easyt/trip.ts";
 
 const trip = (): EasyTTrip => ({
@@ -129,11 +131,41 @@ test("selected transport handoff routes eligible road legs to Trip.com car hire 
   assert.deepEqual({ provider: unknown?.provider, href: unknown?.href }, { provider: "omio", href: affiliatePartners.omio.transportUrl });
 });
 
+test("Windhoek to Sossusvlei keeps car hire available for a low-confidence road planning estimate", () => {
+  const source = trip();
+  source.id = "namibia-self-drive";
+  source.title = "Namibia";
+  source.brief.origin = "Windhoek";
+  source.stops = [
+    { id: "windhoek", order: 0, name: "Windhoek", country: "Namibia", latitude: -22.5609, longitude: 17.0832, arrivalDate: "2026-10-01", departureDate: "2026-10-02", nights: 1 },
+    { id: "sossusvlei", order: 1, name: "Sossusvlei", country: "Namibia", latitude: -24.7333, longitude: 15.2928, arrivalDate: "2026-10-02", departureDate: "2026-10-04", nights: 2 },
+  ];
+  const road = {
+    ...mainLeg(source), id: "namibia-road-1", fromStopId: "windhoek", toStopId: "sossusvlei",
+    fromEndpoint: { kind: "stop" as const, id: "windhoek", name: "Windhoek", country: "Namibia", coordinates: [17.0832, -22.5609] as [number, number] },
+    toEndpoint: { kind: "stop" as const, id: "sossusvlei", name: "Sossusvlei", country: "Namibia", coordinates: [15.2928, -24.7333] as [number, number] },
+    classification: "intercity" as const, mode: "road" as const, distanceKm: null,
+    durationMinutes: 390, doorToDoorMinutes: 390, headlineMinutes: 390, provider: "Morrovia planning estimate",
+    provenance: "planning_estimate" as const, confidence: "unknown" as const, scheduleNeedsChecking: true, warnings: [], routeMetadata: { planningEstimate: true },
+  };
+  source.legs = [road];
+  source.planItems = [];
+
+  assert.equal(transportPresentationState(road), "planning-estimate");
+  const action = transportAffiliateActionForLeg(source, road);
+  assert.deepEqual({ provider: action?.provider, category: action?.category, href: action?.href, cta: action?.cta }, {
+    provider: "trip.com", category: "car_rental", href: affiliatePartners.tripCom.carRentalUrl, cta: "Compare car hire",
+  });
+  assert.equal(omioBookingActionForLeg(source, road), null);
+  assert.equal(transportAffiliateActionForLeg(source, { ...road, confidence: "low" })?.href, affiliatePartners.tripCom.carRentalUrl);
+});
+
 test("transport handoff does not promote car hire for local, unresolved, avoided or booked road legs", () => {
   const source = trip();
   const road = { ...mainLeg(source), mode: "road" as const, classification: "intercity" as const, distanceKm: 180, durationMinutes: 240, confidence: "medium" as const };
   assert.equal(transportAffiliateActionForLeg(source, { ...road, classification: "local" }), null);
   assert.equal(transportAffiliateActionForLeg(source, { ...road, durationMinutes: null, doorToDoorMinutes: null, confidence: "unknown" }), null);
+  assert.equal(transportAffiliateActionForLeg(source, { ...road, routeMetadata: { ...road.routeMetadata, source: LEGACY_ROAD_COMPATIBILITY_SOURCE } }), null);
   source.brief.intent = {
     version: 1, travellers: 2, timing: { flexibility: "fixed", durationDays: 6 },
     hardConstraints: { originRequired: true, mustSeeStopIds: ["paris", "rome"], optionalStopIds: [], fixedCommitments: [], avoidDriving: true },
