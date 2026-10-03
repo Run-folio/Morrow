@@ -36,6 +36,7 @@ import styles from "./trip-overview-workspace.module.css";
 import { canonicalLegIntegrityIssues, endEndpointForTrip, originEndpointForTrip, tripRouteDisplayEndpoints } from "@/lib/easyt/trip-legs";
 import { mapRouteLegsFromTrip } from "@/lib/easyt/map-spatial-context";
 import type { JourneyStop } from "@/lib/journey";
+import { MorroviaMapPreview } from "./morrovia-map-preview";
 import { JourneyPlannerMap } from "@/components/journey-planner-map";
 import { EasyTButton, EasyTLinkButton } from "./easyt-controls";
 import { MorroviaStatusBanner } from "./morrovia-feedback";
@@ -378,9 +379,9 @@ export default function TripOverviewWorkspace({
               <EasyTLinkButton href={itineraryWorkspaceHref(trip.id)} size="small" variant="quiet">View detailed itinerary<ChevronRight aria-hidden="true" /></EasyTLinkButton>
             </aside> : null}
             </div>
-            {overviewMapStops.filter((stop) => stop.coordinates).length > 1 ? <aside className={styles.routeMapPreview} aria-label="Whole-trip map preview">
+            {overviewMapStops.filter((stop) => stop.coordinates).length > 1 ? <MorroviaMapPreview className={styles.routeMapPreview} title="Journey map" size="large" href={mapWorkspaceHref(trip.id, null, "plan", null, null, null, tripWorkspaceHref(trip.id))}>
               <JourneyPlannerMap stops={overviewMapStops} legs={overviewMapLegs} selectedId="" plannerPins={[]} focusCoordinates={null} draftPinCoordinates={null} pinPlacementMode={false} overviewMode surface={{ variant: "preview" }} cameraSafeEdge={34} onMapPinDrop={() => undefined} onPlannerPinSelect={() => undefined} onSelect={() => undefined} />
-            </aside> : null}
+            </MorroviaMapPreview> : null}
           </div>
           {unresolvedPlaceIntents.length ? <div className={styles.unresolvedIntentList} aria-label="Places not included in this route">
             {unresolvedPlaceIntents.map((intent) => {

@@ -85,6 +85,7 @@ import {
   undoItineraryItemAction,
   type ItineraryItemUndoReceipt,
 } from "@/lib/easyt/itinerary-activity-placement";
+import { MorroviaMapPreview } from "./morrovia-map-preview";
 import { JourneyPlannerMap } from "@/components/journey-planner-map";
 import { JourneyRouteStopTrack } from "@/components/journey-planner-strip";
 import MorroviaPhotoCredit from "@/components/easyt/morrovia-photo-credit";
@@ -1614,9 +1615,7 @@ export default function TripItineraryWorkspace({
           } : undefined}
         /> : null}
         {workspaceView === "days" ? <div className={styles.contextRailBody} hidden={Boolean(selectedDetail || selectedTransportAgenda || selectedBooking)}>
-        {embeddedMapContext && (embeddedMapContext.stops.length || embeddedMapContext.pins.length) ? <details className={styles.contextSection} open>
-          <summary><span>{copy.dayMap}</span><MapPin aria-hidden="true" /></summary>
-          <div className={styles.mapPreview}>
+        {embeddedMapContext && (embeddedMapContext.stops.length || embeddedMapContext.pins.length) ? <MorroviaMapPreview title={copy.dayMap} href={mapPlanHref} language={language}>
             {!selectedDetail ? <JourneyPlannerMap
               stops={embeddedMapContext.stops}
               legs={embeddedMapContext.legs}
@@ -1645,9 +1644,7 @@ export default function TripItineraryWorkspace({
               onLegSelect={(leg) => setSelectedItemId(`leg-${leg.id}`)}
               onSelect={() => undefined}
             /> : null}
-          </div>
-          <EasyTLinkButton className={styles.contextAction} href={mapPlanHref} icon={MapIcon} size="small" variant="quiet" fullWidth>{copy.openFullMap}</EasyTLinkButton>
-        </details> : null}
+        </MorroviaMapPreview> : null}
 
         {logisticsLegs.length || otherDayBookings.length ? <details className={styles.contextSection} open>
           <summary><span>{copy.logistics}</span><span className={styles.sectionCount}>{otherDayBookings.length + logisticsLegs.length}</span></summary>

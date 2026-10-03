@@ -215,19 +215,6 @@
   background: var(--morrovia-paper);
 }
 
-.mapPanel {
-  padding: 14px;
-  display: grid;
-  gap: 10px;
-  border: 1px solid var(--morrovia-line);
-  border-radius: var(--morrovia-radius);
-  background: var(--morrovia-paper);
-}
-
-.mapPanel h3 { margin: 0; color: var(--morrovia-ink); font: var(--morrovia-type-control); }
-.mapPreview { position: relative; isolation: isolate; height: 230px; overflow: hidden; border: 1px solid var(--morrovia-line); border-radius: var(--morrovia-control-radius); }
-.mapPreview > div { height: 100%; }
-
 .detail {
   padding: 14px;
   border: 1px solid var(--morrovia-line);
@@ -260,7 +247,6 @@
   .layout { display: block; }
   .main { border-right: 0; }
   .rail { position: static; max-height: none; overflow: visible; border-top: 1px solid var(--morrovia-line); }
-  .mapPreview { height: 260px; }
 }
 
 @media (max-width: 620px) {
@@ -272,7 +258,6 @@
   .cardActions { width: 100%; }
   .cardOpen { inset: 0 0 58px; }
   .rail { padding: 12px; }
-  .mapPreview { height: 220px; }
 }
 
 @media (max-width: 390px) {
@@ -281,7 +266,7 @@
   .intro h2 { font-size: 30px; }
   .cardBody { padding: 12px 12px 7px; }
   .cardActions { padding: 7px 12px 12px; }
-  .mapPanel, .detail { padding: 10px; }
+  .detail { padding: 10px; }
 }
 
 @media (prefers-reduced-motion: reduce) {

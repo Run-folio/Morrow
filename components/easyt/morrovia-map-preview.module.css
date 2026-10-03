@@ -1,0 +1,14 @@
+.card{display:grid;min-width:0;align-content:start;gap:10px;padding:14px;border:1px solid var(--morrovia-line);border-radius:var(--morrovia-radius);background:var(--morrovia-paper)}
+.card h3{margin:0;color:var(--morrovia-ink);font:var(--morrovia-type-control)}
+.frame{position:relative;isolation:isolate;height:230px;overflow:hidden;border-radius:var(--morrovia-control-radius);background:var(--morrovia-surface)}
+.large .frame{height:300px}
+.frame :global(.planner-map){position:absolute;inset:0}
+.frame :global(.maplibregl-canvas){outline:0}
+.empty{display:grid;height:100%;align-items:center;padding:14px}
+/* Compact geographic markers use the same presentation in all previews. */
+.frame :global(.planner-map__stop){width:28px;height:28px;font:var(--morrovia-type-metadata)}
+/* morrovia-ui-audit-allow-next-line raw-radius -- Itinerary pins retain their established pointed geographic silhouette. */
+.frame :global(.planner-map__pin){display:grid;width:28px;height:28px;padding:0;place-items:center;border:2px solid var(--morrovia-paper);border-radius:50% 50% 50% 0;background:var(--morrovia-ink);color:var(--morrovia-paper);cursor:pointer;transform:rotate(-45deg)}
+.frame :global(.planner-map__pin span){transform:rotate(45deg)}
+.frame :global(.planner-map__pin.is-active),.frame :global(.planner-map__pin:focus-visible){outline:3px solid var(--morrovia-focus-ring);outline-offset:2px}
+@media(max-width:720px){.frame,.large .frame{height:220px}}

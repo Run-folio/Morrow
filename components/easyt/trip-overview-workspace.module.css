@@ -137,34 +137,7 @@
 .transferSpacer { min-height: 13px; }
 .routeDirection { position: absolute; top: 80px; right: -19px; width: 15px; height: 15px; color: var(--morrovia-ink-soft); }
 
-.routeMapPreview {
-  position: relative;
-  min-height: 267px;
-  overflow: hidden;
-  border: 1px solid var(--morrovia-line);
-  border-radius: 12px;
-  background: var(--morrovia-lilac);
-}
-
-.routeMapPreview :global(.planner-map) { position: absolute; inset: 0; }
-.routeMapPreview :global(.maplibregl-canvas) { outline: 0; }
-.routeMapPreview :global(.maplibregl-ctrl-attrib) { font-size: 8px; }
-.routeMapPreview :global(.planner-map__stop.is-preview) {
-  display: grid;
-  width: 29px;
-  height: 29px;
-  place-items: center;
-  padding: 0;
-  border: 2px solid #fff;
-  border-radius: 50%;
-  background: var(--morrovia-action);
-  box-shadow: 0 5px 13px rgba(23,16,111,.2);
-  color: #fff;
-  font: 800 9px/1 var(--morrovia-ui);
-}
-
-.routeMapPreview :global(.planner-map__stop.is-preview.is-origin) { background: var(--morrovia-ink); }
-.routeMapPreview :global(.planner-map__stop.is-preview::after) { display: none; }
+.routeMapPreview { min-width: 0; }
 .emptyRoute {
   min-height: 120px;
   margin-top: 18px;
@@ -292,7 +265,6 @@
 @media (max-width: 980px) {
   .routeIntro { align-items: flex-start; }
   .routeComposition { grid-template-columns: minmax(0, 1fr); }
-  .routeMapPreview { min-height: 250px; }
 }
 
 @media (max-width: 800px) {
@@ -315,7 +287,6 @@
   .arrangeIcon { width: 44px; height: 44px; }
   .routeList { overflow-x: auto; padding: 4px 1px 8px; }
   .routeList > li { flex-basis: 136px; min-width: 136px; }
-  .routeMapPreview { min-height: 220px; }
   .beforeGoDisclosure > summary { padding: 19px 18px; display: grid; }
   .beforeGoCounts { justify-content: flex-start; }
   .beforeGoContent { padding: 0 18px 20px; }

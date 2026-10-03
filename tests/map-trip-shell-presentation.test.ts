@@ -255,11 +255,12 @@ test("trip map markers stay compact while retaining accessible mode and exact se
   assert.match(mapSource, /onLegSelectRef\.current\?\.\(leg\)/);
   assert.match(mapSource, /planner-map__leg-card/);
   assert.match(mapSource, /leg\.distanceKm !== null[\s\S]*Door-to-door/);
-  assert.match(mapSource, /<small>Planning estimate<\/small>/);
-  assert.match(mapStylesSource, /planner-map__leg:focus-visible \.planner-map__leg-card/);
-  assert.match(mapStylesSource, /\(hover:hover\) and \(pointer:fine\)/);
-  assert.match(mapStylesSource, /planner-map__leg-card[^}]*pointer-events:none/);
-  assert.doesNotMatch(mapStylesSource, /planner-map__leg\.is-active \.planner-map__leg-card/);
+  assert.match(mapSource, /Timing to confirm" : "Planning estimate/);
+  const preview = readFileSync(new URL("../components/easyt/morrovia-map-leg-preview.ts", import.meta.url), "utf8");
+  assert.match(preview, /addEventListener\('focus'/);
+  assert.match(preview, /\(hover: hover\) and \(pointer: fine\)/);
+  assert.match(mapPresentationStylesSource, /planner-map__leg-card\.is-visible[^}]*pointer-events:none/);
+  assert.doesNotMatch(mapStylesSource, /planner-map__leg-card/);
   assert.match(mapPresentationStylesSource, /planner-map__leg-icon svg\)\{width:24px;height:24px/);
 });
 

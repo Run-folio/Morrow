@@ -7,7 +7,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { mapRouteCasing, mapRouteLine, mapRoutePlanning, mapRouteSelected, mapRouteSubdued } from "./easyt/morrovia-map-presentation";
 import { createMorroviaStopMarker, setMorroviaStopMarkerState } from "./easyt/morrovia-map-markers";
-import { installMorroviaMapControls, MORROVIA_MAP_WORKER_URL, morroviaMapOptions } from "./easyt/morrovia-map-runtime";
+import { installMorroviaMapAttribution, installMorroviaMapControls, MORROVIA_MAP_WORKER_URL, morroviaMapOptions } from "./easyt/morrovia-map-runtime";
+import { createMorroviaLegPreview } from "./easyt/morrovia-map-leg-preview";
 import { EasyTButton } from "./easyt/easyt-controls";
 import { mapTransportIcon, mapTransportIconRotation } from "./easyt/morrovia-transport-icons";
 import mapPresentation from "./easyt/morrovia-map-presentation.module.css";
@@ -176,6 +177,7 @@ export function JourneyPlannerMap({
   const lastCameraTargetKeyRef = useRef<string | null>(null);
   const currentCameraRequestRef = useRef<string | null>(null);
   const lastCameraInteractionKeyRef = useRef(cameraInteractionKey);
+  const [mapUnavailable, setMapUnavailable] = useState(false);
   const [basemapStatus, setBasemapStatus] = useState<MorroviaBasemapStatus>("loading");
   const [basemapStyleRevision, setBasemapStyleRevision] = useState(0);
   const [cameraViewportKey, setCameraViewportKey] = useState("unmeasured");
@@ -286,6 +288,7 @@ export function JourneyPlannerMap({
           zoom: (presentationOnly || surface.variant === "embedded") && (selectedResult || mapResults.length || focusCoordinates) ? focusZoom ?? 13 : 9,
         });
       } catch (error) {
+        setMapUnavailable(true);
         onLifecycleChangeRef.current?.("unavailable");
         console.error("Morrovia could not initialise the route map.", error);
         return;
@@ -296,6 +299,7 @@ export function JourneyPlannerMap({
 
     const map = mapRef.current;
     if (!map) return;
+    const disposeAttribution = installMorroviaMapAttribution(map);
     let ownerActive = true;
     let removing = false;
     let lifecycleState: "starting" | "ready" | "unavailable" = "starting";
@@ -308,6 +312,7 @@ export function JourneyPlannerMap({
       if (!ownerActive || lifecycleState === "unavailable") return;
       if (lifecycleState === "ready") return;
       lifecycleState = "unavailable";
+      setMapUnavailable(true);
       onLifecycleChangeRef.current?.("unavailable");
     };
     const basemapLifecycle = createMorroviaBasemapLifecycle(map as unknown as MorroviaBasemapMap, {
@@ -345,6 +350,7 @@ export function JourneyPlannerMap({
 
     return () => {
       ownerActive = false;
+      disposeAttribution();
       basemapLifecycle.dispose();
       if (basemapLifecycleRef.current === basemapLifecycle) basemapLifecycleRef.current = null;
       stopMarkersRef.current.forEach((marker) => marker.remove());
@@ -671,7 +677,16 @@ export function JourneyPlannerMap({
       legMarkersRef.current = [];
       return;
     }
+    const legPreview = createMorroviaLegPreview(map.getContainer());
+    let previewFrame = 0;
+    const positionPreview = () => {
+      window.cancelAnimationFrame(previewFrame);
+      previewFrame = window.requestAnimationFrame(legPreview.position);
+    };
+    map.on("move", positionPreview);
+    map.on("resize", positionPreview);
     const drawLegMarkers = () => {
+      legPreview.hide();
       legMarkersRef.current.forEach((marker) => marker.remove());
       legMarkersRef.current = spatialLegs.map((leg, index) => {
         const element = document.createElement("button");
@@ -687,7 +702,7 @@ export function JourneyPlannerMap({
             <span className="planner-map__leg-meta"><strong>{leg.modeLabel.toLocaleUpperCase()}</strong><em>{leg.headlineMinutes !== null ? `~${formatMapDuration(leg.headlineMinutes)}` : "Timing to confirm"}</em></span>
             <b>{leg.fromName} → {leg.toName}</b>
             <span>{leg.distanceKm !== null ? `${Math.round(leg.distanceKm).toLocaleString()} km` : "Distance not available"} · Door-to-door {leg.doorToDoorMinutes !== null ? `~${formatMapDuration(leg.doorToDoorMinutes)}` : "timing to confirm"}</span>
-            <small>Planning estimate</small>
+            <small>{leg.mode === "unknown" || (leg.headlineMinutes === null && leg.doorToDoorMinutes === null) ? "Timing to confirm" : "Planning estimate"}</small>
           </span>
         </>);
         const activateLeg = (event: MouseEvent | PointerEvent) => {
@@ -695,8 +710,14 @@ export function JourneyPlannerMap({
           if (!mapRouteLegActivationEvent(event)) return;
           interruptMapCamera(map as unknown as MapCamera);
           currentCameraRequestRef.current = null;
-          onLegSelectRef.current?.(leg);
+          if (onLegSelectRef.current) {
+            legPreview.hide();
+            onLegSelectRef.current?.(leg);
+          } else {
+            legPreview.show(element, true);
+          }
         };
+        legPreview.bind(element);
         element.addEventListener("pointerup", activateLeg);
         element.addEventListener("click", activateLeg);
         element.addEventListener("mouseenter", () => { if (map.getLayer("trip-route-hover")) map.setFilter("trip-route-hover", ["==", ["get", "id"], leg.id]); });
@@ -706,6 +727,10 @@ export function JourneyPlannerMap({
     };
     drawLegMarkers();
     return () => {
+      legPreview.destroy();
+      window.cancelAnimationFrame(previewFrame);
+      map.off("move", positionPreview);
+      map.off("resize", positionPreview);
       legMarkersRef.current.forEach((marker) => marker.remove());
       legMarkersRef.current = [];
     };
@@ -1003,10 +1028,11 @@ export function JourneyPlannerMap({
     };
   }, [panZoom]);
 
-  return <div className={`planner-map ${mapPresentation.surface}`} data-basemap-status={basemapStatus} aria-busy={basemapStatus === "loading" || undefined} aria-label={presentationOnly ? previewLabel ?? "Whole-trip route map preview" : "Interactive trip map"}>
+  return <div className={`planner-map ${mapPresentation.surface}`} data-basemap-status={basemapStatus} aria-busy={!mapUnavailable && basemapStatus === "loading" || undefined} aria-label={presentationOnly ? previewLabel ?? "Whole-trip route map preview" : "Interactive trip map"}>
     <div ref={containerRef} className={mapPresentation.canvas} />
     {comparisonLegs.length && comparisonLabel ? <span className="sr-only">{comparisonLabel}</span> : null}
-    {!presentationOnly && basemapStatus !== "detailed" ? <div className={mapPresentation.basemapStatus} role={basemapStatus === "fallback" ? "alert" : "status"}>
+    {mapUnavailable ? <div className={mapPresentation.basemapStatus} role="alert"><strong>Map unavailable</strong><span>Your trip is still available. Reload to try the map again.</span></div> : null}
+    {!mapUnavailable && basemapStatus !== "detailed" ? <div className={mapPresentation.basemapStatus} role={basemapStatus === "fallback" ? "alert" : "status"}>
       <strong>{basemapStatus === "fallback" ? "Detailed map unavailable" : "Opening detailed map"}</strong>
       <span>{basemapStatus === "fallback" ? "Showing local route geography instead." : "Loading roads, places and labels."}</span>
       {basemapStatus === "fallback" ? <EasyTButton variant="quiet" size="small" onClick={() => basemapLifecycleRef.current?.retry()}>Try detailed map again</EasyTButton> : null}

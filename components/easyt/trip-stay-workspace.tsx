@@ -1,9 +1,10 @@
 "use client";
 
-import { BedDouble, Check, Map as MapIcon, MapPin, Star } from "lucide-react";
+import { BedDouble, Check, MapPin, Star } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { JourneyLocalFinder, type JourneyLocalFinderInitialState, type JourneyLocalFinderRenderState, type JourneyLocalPlace } from "@/components/journey-local-finder";
+import { MorroviaMapPreview } from "./morrovia-map-preview";
 import { JourneyPlannerMap } from "@/components/journey-planner-map";
 import { JourneyRouteStopTrack, type JourneyPlannerStripStop } from "@/components/journey-planner-strip";
 import { getCurrentPartnerAction } from "@/lib/easyt/booking-readiness";
@@ -192,16 +193,12 @@ function StayFinderSurface({
     </div>
 
     {showRail ? <aside className={styles.rail} aria-label="Stay map and decision support">
-      {finder.candidates.length ? <section className={styles.mapPanel} aria-labelledby="stay-map-title">
-        <h3 id="stay-map-title">Stay map</h3>
-        <div className={styles.mapPreview}>
+      {finder.candidates.length ? <MorroviaMapPreview title="Stay map" href={fullMapHref(selected)}>
           <JourneyPlannerMap stops={[]} legs={[]} selectedId="" plannerPins={[]} mapResults={mapResults} selectedMapResult={selectedMapResult} focusCoordinates={context.searchCoordinates} focusZoom={13} draftPinCoordinates={null} pinPlacementMode={false} surface={{ variant: "embedded", interaction: "selection-only" }} previewLabel={`Stay options in ${context.stop.name}`} onMapPinDrop={() => undefined} onPlannerPinSelect={() => undefined} onMapResultSelect={(result) => {
             const place = finder.candidates.find((candidate) => candidate.id === result.sourceId);
             if (place) selectPlace(place);
           }} onSelect={() => undefined} />
-        </div>
-        <EasyTLinkButton href={fullMapHref(selected)} icon={MapIcon} variant="quiet" fullWidth>Open full map</EasyTLinkButton>
-      </section> : null}
+      </MorroviaMapPreview> : null}
 
       {detail && selected ? <div ref={detailRef} className={styles.detail}>
         <ItineraryItemDetail

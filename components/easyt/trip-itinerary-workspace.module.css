@@ -1102,70 +1102,6 @@
   text-align: center;
 }
 
-.mapPreview {
-  position: relative;
-  height: 184px;
-  margin-top: 8px;
-  overflow: hidden;
-  border: 1px solid var(--morrovia-line);
-  border-radius: var(--morrovia-control-radius);
-  background: var(--morrovia-lilac);
-}
-
-.mapPreview :global(.planner-map) {
-  position: absolute;
-  inset: 0;
-}
-
-.mapPreview :global(.maplibregl-canvas) {
-  outline: 0;
-}
-
-.mapPreview :global(.maplibregl-ctrl-attrib) {
-  font-size: 7px;
-}
-
-.mapPreview :global(.planner-map__stop.is-preview) {
-  width: 28px;
-  height: 28px;
-  display: grid;
-  padding: 0;
-  place-items: center;
-  border: 2px solid var(--morrovia-paper);
-  border-radius: var(--morrovia-radius);
-  background: var(--morrovia-action);
-  color: var(--morrovia-paper);
-  font: 800 8px/1 var(--morrovia-ui);
-}
-
-.mapPreview :global(.planner-map__stop.is-preview::after) {
-  display: none;
-}
-
-.mapPreview :global(.planner-map__pin) {
-  display: grid;
-  width: 28px;
-  height: 28px;
-  padding: 0;
-  place-items: center;
-  border: 2px solid var(--morrovia-paper);
-  border-radius: 50% 50% 50% 0;
-  background: var(--morrovia-ink);
-  color: var(--morrovia-paper);
-  cursor: pointer;
-  transform: rotate(-45deg);
-}
-
-.mapPreview :global(.planner-map__pin span) {
-  transform: rotate(45deg);
-}
-
-.mapPreview :global(.planner-map__pin.is-active) {
-  outline: 3px solid color-mix(in srgb, var(--morrovia-signal) 76%, var(--morrovia-paper));
-  outline-offset: 2px;
-  transform: rotate(-45deg) scale(1.13);
-}
-
 .contextAction {
   margin-top: 6px;
   justify-content: space-between;
@@ -1935,8 +1871,6 @@
   .contextSection { padding: 14px 12px; }
   .contextSection > summary { min-height: 44px; }
   .contextRail { padding-bottom: var(--morrovia-mobile-dock-offset, calc(82px + env(safe-area-inset-bottom))); }
-  .mapPreview { height: 210px; }
-  .mapPreview :global(.planner-map__leg) { display: none; }
   .discoveryMedia > a,
   .bookingCard > a { min-width: 44px; min-height: 44px; }
   .savedIdeas button,
