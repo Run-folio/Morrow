@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import test from "node:test";
 
 import { passportPresentationFor } from "../lib/easyt/passport-presentation.ts";
@@ -52,4 +53,11 @@ test("stale intelligence remains distinct from unsupported coverage and provider
   assert.equal(presentation.verification, "needs-confirmation");
   assert.equal(presentation.freshness, known.dataUpdatedAt);
   assert.notEqual(presentation.passportValidityContext, "");
+});
+
+test("Passport intro promises source verification rather than a specific entry classification", () => {
+  const client = readFileSync(new URL("../app/journey/passport/passport-destination-client.tsx", import.meta.url), "utf8");
+  assert.match(client, /intro: "Choose your passport and destination to see what needs confirmation and open the official source\."/);
+  assert.match(client, /intro: "Elige tu pasaporte y destino para ver qué debes confirmar y abrir la fuente oficial\."/);
+  assert.doesNotMatch(client, /intro: "(?:See the tourist-entry position|Consulta la posición de entrada turística)/);
 });

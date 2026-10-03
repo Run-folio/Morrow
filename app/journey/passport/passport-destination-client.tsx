@@ -40,7 +40,7 @@ import editorial from "../surface-editorial.module.css";
 
 const copy = {
   en: {
-    eyebrow: "PASSPORT TO DESTINATION", title: "Check what to verify before you book.", intro: "See the tourist-entry position and permitted stay available for your passport and destination, then verify it with the official authority.",
+    eyebrow: "PASSPORT TO DESTINATION", title: "Check what to verify before you book.", intro: "Choose your passport and destination to see what needs confirmation and open the official source.",
     passport: "Your passport", destination: "Destination", check: "Check requirements", checking: "Checking…", private: "We do not save this check or ask for passport numbers, photos or copies.", failed: "Requirements could not be checked. Try again before relying on this result.",
     resultEyebrow: "TOURIST ENTRY RESULT", entry: "Tourist entry", stay: "Permitted stay", confidence: "Result status", verified: "Result available", needsConfirmation: "Needs confirmation", unavailable: "Entry information unavailable", resultAvailable: "Passport Index result available", noResult: "No matched rule is available",
     officialStrip: "Requirements can change. Check the destination authority before you book or travel.", open: "View official source", considerations: "Entry considerations", passportChecks: "Passport checks", validity: "Passport validity", scope: "Tourist-entry scope",
@@ -49,7 +49,7 @@ const copy = {
     prepEyebrow: "PLANNING A TRIP?", prepTitle: "Trip readiness lives in each trip Overview.", prepCopy: "Keep entry checks, saved reminders, stays and transport decisions with the trip they affect.", prepAction: "Open your trips", buildAction: "Build a plan",
   },
   es: {
-    eyebrow: "PASAPORTE AL DESTINO", title: "Comprueba qué verificar antes de reservar.", intro: "Consulta la posición de entrada turística y la estancia disponible para tu pasaporte y destino, y verifícala con la autoridad oficial.",
+    eyebrow: "PASAPORTE AL DESTINO", title: "Comprueba qué verificar antes de reservar.", intro: "Elige tu pasaporte y destino para ver qué debes confirmar y abrir la fuente oficial.",
     passport: "Tu pasaporte", destination: "Destino", check: "Comprobar requisitos", checking: "Comprobando…", private: "No guardamos esta consulta ni pedimos números, fotos o copias del pasaporte.", failed: "No se pudieron comprobar los requisitos. Inténtalo de nuevo antes de confiar en el resultado.",
     resultEyebrow: "RESULTADO DE ENTRADA TURÍSTICA", entry: "Entrada turística", stay: "Estancia permitida", confidence: "Estado del resultado", verified: "Resultado disponible", needsConfirmation: "Requiere confirmación", unavailable: "Información de entrada no disponible", resultAvailable: "Resultado de Passport Index disponible", noResult: "No hay una regla coincidente disponible",
     officialStrip: "Los requisitos pueden cambiar. Consulta la autoridad del destino antes de reservar o viajar.", open: "Ver fuente oficial", considerations: "Consideraciones de entrada", passportChecks: "Comprobaciones del pasaporte", validity: "Validez del pasaporte", scope: "Alcance de entrada turística",
