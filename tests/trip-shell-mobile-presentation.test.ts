@@ -37,3 +37,10 @@ test("mobile identity is compact and its actions remain full-size", () => {
   assert.match(css, /\.editAction\s*\{[^}]*min-height:\s*44px/);
   assert.match(mobile, /\.subnav a\s*\{[^}]*min-height:\s*44px/);
 });
+
+test("constrained tablet header gives the title a full identity column and actions a second row", () => {
+  const tablet = css.slice(css.indexOf("@media (min-width: 761px) and (max-width: 980px)"));
+  assert.match(tablet, /\.tripHeader\s*\{[^}]*grid-template-columns:\s*138px minmax\(0,\s*1fr\)/);
+  assert.match(tablet, /\.headerActions\s*\{[^}]*grid-column:\s*2/);
+  assert.match(tablet, /\.headerActions\s*\{[^}]*flex-wrap:\s*wrap/);
+});

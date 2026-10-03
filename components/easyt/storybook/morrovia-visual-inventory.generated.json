@@ -5240,7 +5240,7 @@
     "observedSpacing": [
       {
         "value": "8px",
-        "count": 561,
+        "count": 562,
         "examples": [
           "app/journey/account.module.css",
           "app/journey/admin/feedback/feedback.module.css",
@@ -5290,7 +5290,7 @@
       },
       {
         "value": "18px",
-        "count": 313,
+        "count": 314,
         "examples": [
           "app/journey/about/about.module.css",
           "app/journey/account.module.css",
@@ -5340,7 +5340,7 @@
       },
       {
         "value": "20px",
-        "count": 234,
+        "count": 235,
         "examples": [
           "app/journey/account.module.css",
           "app/journey/admin/feedback/feedback.module.css",
@@ -7824,6 +7824,14 @@
         ]
       },
       {
+        "value": "min-width: 761px",
+        "count": 2,
+        "examples": [
+          "app/journey/home/home.module.css",
+          "components/easyt/trip-shell.module.css"
+        ]
+      },
+      {
         "value": "max-width: 1000px",
         "count": 1,
         "examples": [
@@ -7933,13 +7941,6 @@
         "count": 1,
         "examples": [
           "app/journey/plan-next/map-plan-next.module.css"
-        ]
-      },
-      {
-        "value": "min-width: 761px",
-        "count": 1,
-        "examples": [
-          "app/journey/home/home.module.css"
         ]
       },
       {

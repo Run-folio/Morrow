@@ -17,11 +17,15 @@ test("mobile day orientation stays compact and scrolls its own rail", () => {
   assert.match(mobile, /\.workspaceToolbar p\s*\{\s*display:\s*none/);
   assert.match(mobile, /\.railHeader\s*\{\s*display:\s*none/);
   assert.match(mobile, /\.dayHeader\[data-photo="true"\]\s*\{[^}]*min-height:\s*\d+px/);
+  assert.match(styles, /\.dayHeader\[data-photo="true"\] > \.dayHeaderContent\s*\{/);
+  assert.doesNotMatch(styles, /\.dayHeader\[data-photo="true"\] > div\s*\{/);
+  assert.match(mobile, /\.dayHeader h2\s*\{[^}]*overflow-wrap:\s*break-word/);
 });
 
 test("matched populated acceptance route uses the trip's real Itinerary path", () => {
   assert.match(stories, /export const AcceptancePlannedMexicoStayPhoto:[\s\S]*parameters: itineraryStoryRoute\(mexicoPlannedTrip\.id\)/);
   assert.match(stories, /export const AcceptanceMobile390:[\s\S]*\.\.\.AcceptancePlannedMexicoStayPhoto/);
+  assert.match(stories, /export const AcceptanceLongDestinationStayMobile320:[\s\S]*viewport: \{ value: "morrovia320"/);
 });
 
 test("320px saved-stay copy wraps inside its existing card and does not widen the page", () => {

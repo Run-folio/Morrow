@@ -1130,6 +1130,12 @@ const mexicoPlannedTrip: EasyTTrip = {
   planItems: mexicoAcceptanceTrip.planItems.map((item) => item.dayNumber === 2 ? { ...item, notes: ["Zócalo and Metropolitan Cathedral", "Frida Kahlo Museum"], noteDayParts: ["morning", "afternoon"] } : item),
 };
 
+const mexicoLongTitleTrip: EasyTTrip = {
+  ...mexicoPlannedTrip,
+  id: "storybook-itinerary-long-destination-stay",
+  stops: mexicoPlannedTrip.stops.map((stop) => stop.id === "mexico-city" ? { ...stop, name: "Mexico City Historic Centre and Chapultepec" } : stop),
+};
+
 const mexicoLogisticsOnlyTrip: EasyTTrip = {
   ...mexicoAcceptanceTrip,
   id: "storybook-itinerary-349-mexico-logistics-only",
@@ -1169,6 +1175,7 @@ export const AcceptanceRepeatedTokyo: Story = { ...RepeatedDestinationSecondOccu
 export const AcceptanceDenseDay: Story = { ...DenseDay, parameters: itineraryStoryRoute(edgeCaseTrip.id) };
 export const AcceptanceLogisticsOnly: Story = { args: { trip: mexicoLogisticsOnlyTrip, selectedDayNumber: 1, initialSuggestions: { 1: [] }, initialActivityInventory: { 1: [] }, activityAction: null }, parameters: itineraryStoryRoute(mexicoLogisticsOnlyTrip.id) };
 export const AcceptanceMobile390: Story = { ...AcceptancePlannedMexicoStayPhoto, globals: { viewport: { value: "morrovia390", isRotated: false } } };
+export const AcceptanceLongDestinationStayMobile320: Story = { ...AcceptancePlannedMexicoStayPhoto, args: { ...AcceptancePlannedMexicoStayPhoto.args, trip: mexicoLongTitleTrip }, parameters: itineraryStoryRoute(mexicoLongTitleTrip.id), globals: { viewport: { value: "morrovia320", isRotated: false } } };
 export const AcceptanceMobile430: Story = { ...AcceptancePlannedMexicoStayPhoto, globals: { viewport: { value: "morrovia430", isRotated: false } } };
 export const AcceptanceTablet768: Story = { ...AcceptancePlannedMexicoStayPhoto, globals: { viewport: { value: "morrovia768", isRotated: false } } };
 export const AcceptanceDesktop1024: Story = { ...AcceptancePlannedMexicoStayPhoto, globals: { viewport: { value: "morrovia1024", isRotated: false } } };

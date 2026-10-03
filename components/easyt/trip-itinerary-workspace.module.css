@@ -464,10 +464,10 @@
 .dayHeader[data-photo="true"]::after { position: absolute; z-index: 1; inset: 0; content: ""; border-radius: inherit; background: linear-gradient(90deg, var(--morrovia-paper) 34%, color-mix(in srgb, var(--morrovia-paper) 78%, transparent) 58%, transparent 100%); pointer-events: none; }
 .dayHeaderMedia { position: absolute; inset: 0 0 0 auto; width: 72%; height: 100%; border-radius: inherit; }
 .dayHeaderPhoto { position: absolute; inset: 0; width: 100%; height: 100%; border-radius: inherit; object-fit: cover; object-position: center; }
-.dayHeader[data-photo="true"] > div { position: relative; z-index: 2; max-width: 75%; }
+.dayHeader[data-photo="true"] > .dayHeaderContent { position: relative; z-index: 2; max-width: 75%; }
 .dayHeroCredit { --photo-credit-inline: 6px; --photo-credit-block: 6px; }
 
-.dayHeader > div {
+.dayHeaderContent {
   min-width: 0;
 }
 
@@ -2070,7 +2070,7 @@
   .dayList { padding: 6px 12px; }
   .dayPanel { padding: 12px 12px calc(24px + env(safe-area-inset-bottom)); }
   .dayHeader[data-photo="true"] { min-height: 100px; margin: -4px -4px 8px; padding: 10px 12px; }
-  .dayHeader h2 { margin: 5px 0 0; font-size: clamp(27px, 8vw, 34px); }
+  .dayHeader h2 { margin: 5px 0 0; font-size: clamp(27px, 8vw, 34px); overflow-wrap: break-word; }
   .stayContext { margin-top: 8px; padding: 8px 10px; }
   .stayContext { grid-template-columns: 20px minmax(0, 1fr); }
   .stayContext > a { grid-column: 2; justify-self: start; }

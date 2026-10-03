@@ -1387,7 +1387,7 @@ export default function TripItineraryWorkspace({
             <img className={styles.dayHeaderPhoto} src={dayHero.src} alt={dayHero.alt} onLoad={() => setDayHeroDisplayed(true)} onError={() => setDayHeroDisplayed(false)} />
             {dayHero.sourceLabel && dayHeroDisplayed ? <MorroviaPhotoCredit ownership={dayHero.provenance === "reviewed-morrovia-first-party" ? "morrovia" : "unknown"} className={styles.dayHeroCredit} language={language} credit={dayHero.sourceLabel} photoLabel={dayHero.alt} authorHref={dayHero.authorUrl} sourceHref={dayHero.sourceUrl} licenseHref={dayHero.licenseUrl} fullCreditHref={dayHero.fullCreditUrl} /> : null}
           </div> : null}
-          <div>
+          <div className={styles.dayHeaderContent}>
             <p><span>{copy.day} {pad(active.dayNumber)}</span><i aria-hidden="true">·</i><time dateTime={active.date}>{displayDayDate(active.date, language)}</time></p>
             <h2>{stop?.name ?? active.title}</h2>
             {normalized(active.title) !== normalized(stop?.name ?? "") && normalized(active.title) !== normalized(`Explore ${stop?.name ?? ""}`)
