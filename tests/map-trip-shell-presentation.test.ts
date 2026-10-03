@@ -453,7 +453,7 @@ test("Map workspace navigation contains no legacy planner destinations", () => {
   assert.match(mapWorkspaceSource, /mapWorkspaceHref\(/);
 });
 
-test("TripShell keeps five planning tabs and moves Route into header actions", () => {
+test("TripShell keeps five planning tabs and the approved route action in the header", () => {
   const overview = tripShellSource.indexOf('{ id: "overview", label: "Overview", icon: House, suffix: "" }');
   const itinerary = tripShellSource.indexOf('{ id: "itinerary", label: "Itinerary"');
   const explore = tripShellSource.indexOf('{ id: "explore", label: "Explore"');
@@ -463,10 +463,10 @@ test("TripShell keeps five planning tabs and moves Route into header actions", (
   assert.ok(overview >= 0);
   assert.ok(overview < itinerary && itinerary < explore && explore < stay && stay < transport);
   assert.doesNotMatch(tripShellSource, /id: "journey"|id: "map"/);
-  assert.match(tripShellSource, /href=\{personalRouteHref\(trip\.id\)\}[\s\S]*>Route<\/EasyTLinkButton>[\s\S]*aria-label="Edit trip brief"[\s\S]*>Edit<\/EasyTLinkButton>/);
+  assert.match(tripShellSource, /href=\{personalRouteHref\(trip\.id\)\}[\s\S]*>View my route<\/EasyTLinkButton>[\s\S]*aria-label="Edit trip brief"[\s\S]*>Edit<\/EasyTLinkButton>/);
   assert.match(tripShellSource, /trip\.ownerId && mutation\.saveState !== "idle" \? <MorroviaSaveStatus state=\{mutation\.saveState\} \/> : null/);
   assert.doesNotMatch(tripShellSource, /id: "prep"|label: "Prep"|suffix: "\/prep"/);
-  assert.match(tripShellSource, /: "overview";/);
+  assert.match(tripShellSource, /committedSegment\)\?\.id \?\? "overview";/);
 });
 
 test("Map is a focused route with shared planner ownership and an explicit return action", () => {

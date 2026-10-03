@@ -2,7 +2,7 @@
 
 import { useSearchParams } from "next/navigation";
 import TripExploreWorkspace from "@/components/easyt/trip-explore-workspace";
-import { useTripShellTrip } from "@/components/easyt/trip-shell-client";
+import { TripWorkspaceCommit, useTripShellTrip } from "@/components/easyt/trip-shell-client";
 
 export default function TripExploreWorkspacePage() {
   const trip = useTripShellTrip();
@@ -14,9 +14,9 @@ export default function TripExploreWorkspacePage() {
   const rawDay = searchParams.get("day") ?? "";
   const requestedDayNumber = /^\d+$/.test(rawDay) ? Number.parseInt(rawDay, 10) : null;
 
-  return <TripExploreWorkspace
+  return <TripWorkspaceCommit view="explore"><TripExploreWorkspace
     trip={trip}
     initialDestinationId={initialDestinationId}
     requestedDayNumber={requestedDayNumber}
-  />;
+  /></TripWorkspaceCommit>;
 }

@@ -1,9 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter, useSelectedLayoutSegment } from "next/navigation";
 import { BedDouble, CalendarDays, Clock3, Edit3, House, Map, MapPin, Route, Sparkles } from "lucide-react";
-import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from "react";
 import { authClient } from "@/lib/auth-client";
 import { trackEvent } from "@/lib/analytics";
 import {
@@ -349,25 +349,98 @@ const views = [
   { id: "transport", label: "Transport", icon: Route, suffix: "/transport" },
 ] as const;
 
+type TripWorkspaceView = typeof views[number]["id"];
+type TripWorkspaceNavigation = {
+  pendingView: TripWorkspaceView | null;
+  queuedView: TripWorkspaceView | null;
+  navigate: (view: TripWorkspaceView, alreadyCommitted: boolean, cancel: () => void) => void;
+  committed: (view: TripWorkspaceView) => void;
+};
+const TripWorkspaceNavigationContext = createContext<TripWorkspaceNavigation | null>(null);
+
+/** Keep one sibling transition in flight; retain the traveller's last click. */
+export function TripWorkspaceNavigationProvider({ tripId, children }: { tripId: string; children: ReactNode }) {
+  const router = useRouter();
+  const pendingRef = useRef<TripWorkspaceView | null>(null);
+  const queuedRef = useRef<TripWorkspaceView | null>(null);
+  const [pendingView, setPendingView] = useState<TripWorkspaceView | null>(null);
+  const [queuedView, setQueuedView] = useState<TripWorkspaceView | null>(null);
+  const hrefFor = useCallback((view: TripWorkspaceView) => view === "overview"
+    ? tripWorkspaceHref(tripId)
+    : `/journey/${encodeURIComponent(tripId)}${views.find((item) => item.id === view)!.suffix}`, [tripId]);
+
+  const navigate = useCallback((view: TripWorkspaceView, alreadyCommitted: boolean, cancel: () => void) => {
+    if (pendingRef.current) {
+      queuedRef.current = view;
+      setQueuedView(view);
+      cancel();
+      return;
+    }
+    if (alreadyCommitted) return;
+    pendingRef.current = view;
+    setPendingView(view);
+  }, []);
+
+  const committed = useCallback((view: TripWorkspaceView) => {
+    if (pendingRef.current !== view) return;
+    const next = queuedRef.current;
+    queuedRef.current = null;
+    setQueuedView(null);
+    if (next && next !== view) {
+      pendingRef.current = next;
+      setPendingView(next);
+      router.push(hrefFor(next));
+    } else {
+      pendingRef.current = null;
+      setPendingView(null);
+    }
+  }, [hrefFor, router]);
+
+  useEffect(() => {
+    const onHistory = () => {
+      pendingRef.current = null;
+      queuedRef.current = null;
+      setPendingView(null);
+      setQueuedView(null);
+    };
+    window.addEventListener("popstate", onHistory);
+    return () => window.removeEventListener("popstate", onHistory);
+  }, []);
+
+  useEffect(() => {
+    if (!pendingView) return;
+    const timeout = window.setTimeout(() => {
+      const next = queuedRef.current;
+      pendingRef.current = null;
+      queuedRef.current = null;
+      setPendingView(null);
+      setQueuedView(null);
+      // A failed route response must not hold the workspace links indefinitely.
+      if (next) router.push(hrefFor(next));
+      else router.refresh();
+    }, 10_000);
+    return () => window.clearTimeout(timeout);
+  }, [hrefFor, pendingView, router]);
+
+  return <TripWorkspaceNavigationContext.Provider value={{ pendingView, queuedView, navigate, committed }}>{children}</TripWorkspaceNavigationContext.Provider>;
+}
+
+/** A route child acknowledges its mount after React commits its workspace. */
+export function TripWorkspaceCommit({ view, children }: { view: TripWorkspaceView; children: ReactNode }) {
+  const committed = useContext(TripWorkspaceNavigationContext)?.committed;
+  useEffect(() => { committed?.(view); }, [committed, view]);
+  return <>{children}</>;
+}
+
 export function TripShellNavigation({ tripId }: { tripId: string }) {
-  const pathname = usePathname();
+  const committedSegment = useSelectedLayoutSegment();
+  const navigation = useContext(TripWorkspaceNavigationContext);
   const baseHref = `/journey/${encodeURIComponent(tripId)}`;
-  const decodedPathname = decodeURIComponent(pathname);
-  const decodedBase = `/journey/${tripId}`;
-  const remainder = decodedPathname.slice(decodedBase.length);
-  const activeView = remainder.startsWith("/transport")
-    ? "transport"
-    : remainder.startsWith("/itinerary")
-    ? "itinerary"
-    : remainder.startsWith("/explore")
-        ? "explore"
-        : remainder.startsWith("/stay")
-          ? "stay"
-      : "overview";
+  const activeView = views.find((view) => view.id === committedSegment)?.id ?? "overview";
   const orientationTarget = useWorkspaceOrientationTarget("overview", "workspace-navigation");
 
   return (
-    <nav ref={orientationTarget} className={styles.subnav} aria-label="Trip workspace">
+    <nav ref={orientationTarget} className={styles.subnav} aria-label="Trip workspace" aria-busy={Boolean(navigation?.pendingView)}>
       {views.map((view) => {
         const Icon = view.icon;
         const active = activeView === view.id;
@@ -381,12 +454,17 @@ export function TripShellNavigation({ tripId }: { tripId: string }) {
             className={active ? styles.subnavActive : undefined}
             href={view.id === "overview" ? tripWorkspaceHref(tripId) : `${baseHref}${view.suffix}`}
             aria-current={active ? "page" : undefined}
+            data-pending={(navigation?.queuedView ?? navigation?.pendingView) === view.id ? "true" : undefined}
+            onNavigate={(event) => {
+              navigation?.navigate(view.id, active, () => event.preventDefault());
+            }}
           >
             <Icon aria-hidden="true" />
             <span>{view.label}</span>
           </Link>
         );
       })}
+      {navigation?.pendingView ? <span className={styles.srOnly} role="status">Opening {views.find((view) => view.id === (navigation.queuedView ?? navigation.pendingView))?.label}…</span> : null}
     </nav>
   );
 }

@@ -241,6 +241,21 @@
   background: var(--morrovia-lilac);
 }
 
+.subnav a[data-pending="true"] {
+  background: var(--morrovia-lilac);
+}
+
+.subnav a[data-pending="true"]::before {
+  position: absolute;
+  top: 8px;
+  right: 9px;
+  width: 6px;
+  height: 6px;
+  border-radius: var(--morrovia-radius);
+  background: var(--morrovia-action);
+  content: "";
+}
+
 .subnav svg {
   width: 19px;
   height: 19px;

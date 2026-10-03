@@ -36,7 +36,8 @@ test("Explore Storybook keeps legacy selectors as regression fixtures and presen
 
 test("Explore is a canonical TripShell workspace without a second navigation owner", () => {
   assert.match(navigation, /id: "explore"[\s\S]*suffix: "\/explore"/);
-  assert.match(navigation, /remainder\.startsWith\("\/explore"\)/);
+  assert.match(navigation, /useSelectedLayoutSegment\(\)/);
+  assert.match(navigation, /views\.find\(\(view\) => view\.id === committedSegment\)/);
   assert.match(navigation, /view === "explore"[\s\S]*trackEvent\("explore_opened"/);
   assert.doesNotMatch(workspace, /bottomNav|fixedNavigation|globalDock/);
   assert.doesNotMatch(workspace, /trackEvent\("explore_opened"/);
