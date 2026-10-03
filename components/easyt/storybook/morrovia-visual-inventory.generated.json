@@ -5260,7 +5260,7 @@
       },
       {
         "value": "12px",
-        "count": 501,
+        "count": 502,
         "examples": [
           "app/journey/about/about.module.css",
           "app/journey/account.module.css",
@@ -5270,7 +5270,7 @@
       },
       {
         "value": "14px",
-        "count": 340,
+        "count": 341,
         "examples": [
           "app/journey/about/about.module.css",
           "app/journey/account.module.css",
@@ -5330,7 +5330,7 @@
       },
       {
         "value": "6px",
-        "count": 239,
+        "count": 238,
         "examples": [
           "app/journey/account.module.css",
           "app/journey/discover/discover.module.css",

@@ -1,9 +1,12 @@
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
 import { useEffect, useRef, useState } from "react";
+import { expect, userEvent, within } from "storybook/test";
+import { HomeDestinationEditor } from "../../app/journey/home/home-destination-editor";
 import { TOUR_TRIP_PROMPT, tourTripFixture } from "./storybook/tour-trip.fixture";
 import { EasyTButton, EasyTField } from "./easyt-controls";
 import { MorroviaTripCapture, type MorroviaTripCaptureProps } from "./morrovia-trip-capture";
 import { JourneyEndpointsEditor } from "./journey-endpoints-editor";
+import type { HomepageDestinationEntry } from "@/lib/easyt/home-trip-handoff";
 
 const endpointEntry = (start: string, end: string, mode: "unknown" | "same_as_start" | "explicit") => <JourneyEndpointsEditor
   showHeading={false}
@@ -169,6 +172,68 @@ const wideHomepageArgs = {
 } satisfies NonNullable<Story["args"]>;
 
 export const WideHomepageCapture: Story = { args: wideHomepageArgs };
+
+function ResponsiveHomepageStops() {
+  const [entries, setEntries] = useState<HomepageDestinationEntry[]>([{ id: "mobile-stop-1", text: "Lisbon", selection: null }]);
+  const homepageEntry = {
+    ...wideHomepageArgs.homepageEntry,
+    destinationEntry: entries.map((entry) => entry.text || "New stop").join(" · "),
+    destinationEditor: <HomeDestinationEditor
+      entries={entries}
+      language="en"
+      createEntry={() => ({ id: `mobile-stop-${entries.length + 1}`, text: "", selection: null })}
+      onChange={setEntries}
+    />,
+  };
+  return <ControlledCapture homepageEntry={homepageEntry} />;
+}
+
+export const WideHomepageMobileOrder: Story = {
+  render: () => <ResponsiveHomepageStops />,
+  globals: { viewport: { value: "morrovia390", isRotated: false } },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const form = canvasElement.querySelector("form");
+    const submit = form?.querySelector<HTMLButtonElement>('button[type="submit"]');
+    if (!form || !submit || form.querySelectorAll('button[type="submit"]').length !== 1) throw new globalThis.Error("Homepage must keep exactly one submit action");
+
+    await userEvent.click(canvas.getByRole("button", { name: /Where do you want to go\?/ }));
+    const addStop = canvas.getByRole("button", { name: "Add another stop" });
+    await expect(addStop).toBeVisible();
+    await userEvent.click(addStop);
+    await expect(canvasElement.querySelectorAll("[data-home-destination-entry]")).toHaveLength(2);
+
+    const editor = form.querySelector<HTMLElement>('[class*="wideDestinationEditor"]');
+    const dates = form.querySelector<HTMLElement>('[class*="wideDatePicker"]');
+    if (!editor || !dates) throw new globalThis.Error("Expanded destination editor and Travel dates must both be present");
+    const spacing = dates.getBoundingClientRect().top - editor.getBoundingClientRect().bottom;
+    await expect(spacing).toBeGreaterThanOrEqual(12);
+
+    const checkOrder = async () => {
+      const panel = form.querySelector<HTMLElement>('[class*="wideHomePersonalize"]');
+      if (!panel) throw new globalThis.Error("Expanded Personalize controls are missing");
+      await expect(panel.compareDocumentPosition(submit) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+      await expect(submit.getBoundingClientRect().top).toBeGreaterThanOrEqual(panel.getBoundingClientRect().bottom);
+      const finalPanelControl = Array.from(panel.querySelectorAll<HTMLElement>('button, input, select, textarea, [tabindex]'))
+        .filter((element) => element.tabIndex >= 0).at(-1);
+      if (!finalPanelControl) throw new globalThis.Error("Personalize panel must have keyboard controls");
+      await userEvent.click(finalPanelControl);
+      await userEvent.tab();
+      await expect(submit).toHaveFocus();
+    };
+
+    await userEvent.click(canvas.getByRole("button", { name: "Personalize" }));
+    await checkOrder();
+    await userEvent.click(canvas.getByRole("tab", { name: "Describe my trip" }));
+    const describePersonalize = canvas.getByRole("button", { name: "Personalize" });
+    if (await describePersonalize.getAttribute("aria-expanded") === "true") await userEvent.click(describePersonalize);
+    await userEvent.click(describePersonalize);
+    await checkOrder();
+
+    const root = canvasElement.ownerDocument.documentElement;
+    await expect(root.scrollWidth).toBeLessThanOrEqual(root.clientWidth);
+  },
+};
 
 export const WideHomepageInteraction: Story = {
   args: {

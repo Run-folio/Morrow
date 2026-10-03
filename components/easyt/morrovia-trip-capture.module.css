@@ -28,7 +28,10 @@
 .modeTab[aria-selected="true"] { color: var(--morrovia-ink); }
 .modeTab[aria-selected="true"]::after { position: absolute; right: 10px; bottom: -1px; left: 10px; height: 3px; background: var(--morrovia-action); content: ""; }
 .modeTab:focus-visible { outline: 3px solid var(--morrovia-focus-ring); outline-offset: -3px; }
-.wideMainRow { display: grid; grid-template-columns: minmax(0, 1fr) minmax(168px, max-content); align-items: center; gap: 12px; }
+.wideHomeLayout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(168px, max-content); grid-template-areas: "controls action"; align-items: center; gap: 12px; }
+.wideHomeLayoutPersonalized { grid-template-areas: "controls action" "personalize personalize"; }
+.wideHomeControls { grid-area: controls; }
+.wideHomePersonalize { grid-area: personalize; }
 .wideSegmentGroup { display: grid; grid-template-columns: minmax(280px, 1fr) 250px 220px; min-width: 0; min-height: 68px; border-radius: var(--morrovia-control-radius); background: var(--morrovia-lilac); }
 .wideEntryPanel { min-width: 0; min-height: 68px; }
 .destinationToggle { display:grid; grid-template-columns:auto minmax(0,1fr) auto auto; align-items:center; gap:10px; width:100%; min-height:68px; padding:9px 14px; border:0; border-radius:var(--morrovia-control-radius) 0 0 var(--morrovia-control-radius); background:transparent; color:var(--morrovia-ink); text-align:left; cursor:pointer; }
@@ -79,17 +82,15 @@
 .budgetClear { padding-inline: 6px; }
 .personalizePanel .interestPanel > div { align-items:stretch; }
 .personalizePanel .interestPanel button { min-height:var(--homepage-personalize-control-height); padding: 6px 11px; }
-.wideAction { display: grid; align-self: center; }
+.wideAction { display: grid; grid-area: action; align-self: center; }
 .wideAction button { position: relative; width: 100%; height: 58px; min-height: 58px; padding-inline: 20px; white-space: nowrap; }
 .wideAction button > svg { width: 18px; height: 18px; }
 .wideAction button[aria-busy="true"] > span:first-child { position: absolute; left: 14px; }
-.wideStopsRow > .wideAction { align-self: start; margin-top: 6px; }
 .wideDestinationEditor { grid-column: 1 / -1; min-width: 0; padding-top: 12px; background: var(--morrovia-paper); animation: revealDetails 180ms ease-out; }
 .wideDescribePanel { position: relative; min-width: 0; }
 .wideDescribePanel > .promptField { min-height: 130px; }
 .wideDescribePanel .textareaField textarea { min-height: 100px; resize: vertical; }
 .wideDisclosure { position: absolute; bottom: 9px; left: 14px; z-index: 2; display: flex; }
-.wideUtilityRow { justify-content: end; }
 .wideUtilitySegments { grid-template-columns: minmax(240px, 300px) minmax(190px, 220px); justify-self: end; width: min(100%, 520px); }
 
 .detailsCollapsed { grid-template-columns: minmax(0, 1fr) auto; align-items: center; }
@@ -235,7 +236,8 @@
 .error { margin: 8px 0 0; color: var(--morrovia-danger); font-size: 12px; }
 
 @media (max-width: 1100px) and (min-width: 721px) {
-  .wideMainRow { grid-template-columns: 1fr; }
+  .wideHomeLayout { grid-template-columns: minmax(0, 1fr); grid-template-areas: "controls" "action"; }
+  .wideHomeLayoutPersonalized { grid-template-areas: "controls" "personalize" "action"; }
   .wideSegmentGroup { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
   .wideEntryPanel { grid-column: 1 / -1; }
   .wideDatePicker { border-top: 1px solid var(--morrovia-line); border-left: 0; }
@@ -263,12 +265,15 @@
   .wideCard { padding: 16px; }
   .personalizePanel { grid-template-columns: 1fr; gap: 14px; }
   .destinationToggle { border-radius:var(--morrovia-control-radius) var(--morrovia-control-radius) 0 0; }
-  .wideMainRow { grid-template-columns: 1fr; align-items: stretch; }
+  .wideHomeLayout { grid-template-columns: minmax(0, 1fr); grid-template-areas: "controls" "action"; align-items: stretch; }
+  .wideHomeLayoutPersonalized { grid-template-areas: "controls" "personalize" "action"; }
   .wideSegmentGroup,
   .wideUtilitySegments { grid-template-columns: 1fr; width: 100%; }
   .wideEntryPanel { grid-column: auto; }
   .wideDatePicker,
   .personalizeRow { border-top: 1px solid var(--morrovia-line); border-left: 0; }
+  .wideDestinationEditor + .wideDatePicker { margin-top: 14px; }
+  .wideHomePersonalize { padding-top: 12px; }
   .personalizeToggle { border-radius: 0 0 var(--morrovia-control-radius) var(--morrovia-control-radius); }
   .wideAction button { width: 100%; }
 }

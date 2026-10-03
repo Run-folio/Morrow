@@ -261,6 +261,13 @@ export function MorroviaTripCapture({
     <EasyTButton className={styles.personalizeToggle} variant="secondary" size="small" disabled={disabled || loading} aria-label={text.personalize} aria-expanded={personalizeOpen} aria-controls={personalizeId} icon={SlidersHorizontal} onClick={() => setPersonalizeOpen((current) => !current)}><span className={styles.personalizeLabel}><span>{text.personalize}</span><small>{personalizationSummary || text.personalizeSummary}</small></span><ChevronDown className={styles.personalizeChevron} aria-hidden="true" /></EasyTButton>
   </div> : null;
   const homepageAction = <div className={styles.wideAction}>{submitAction}</div>;
+  const homepageLayoutClass = `${styles.wideHomeLayout}${personalizeOpen ? ` ${styles.wideHomeLayoutPersonalized}` : ""}`;
+  const homepagePersonalizePanel = homepageEntry && personalizeOpen ? <div className={`${styles.personalizePanel} ${styles.wideHomePersonalize}`} id={personalizeId}>
+    {endpointEntry ? <div className={styles.personalizeEndpoints}>{endpointEntry}</div> : null}
+    <MorroviaQuantitySelector className={styles.personalizeTravellers} compact label={text.travellers} locale={language} noun={language === "es" ? "viajero" : "traveller"} nounPlural={language === "es" ? "viajeros" : "travellers"} value={travellers} min={1} max={12} disabled={disabled || loading} onChange={onTravellersChange} />
+    <div className={styles.budgetPanel} aria-label={text.budget}><span>{text.budget}</span><div><div className={styles.budgetChoices}>{(["value", "mid", "high"] as const).map((budget) => <EasyTButton variant="secondary" size="small" key={budget} aria-pressed={homepageEntry.budget === budget} disabled={disabled || loading} onClick={() => homepageEntry.onBudgetChange(budget)}>{text[`budget${budget === "value" ? "Value" : budget === "mid" ? "Mid" : "High"}`]}</EasyTButton>)}</div>{homepageEntry.budget ? <EasyTButton className={styles.budgetClear} variant="quiet" size="small" disabled={disabled || loading} onClick={() => homepageEntry.onBudgetChange(null)}>{text.clear}</EasyTButton> : null}</div></div>
+    <div className={styles.interestPanel} aria-label={text.interestLabel}><span>{text.interestLabel}</span><div>{tripInterestIds.map((interest) => <EasyTButton variant="secondary" size="small" key={interest} aria-pressed={interests.includes(interest)} disabled={disabled || loading} onClick={() => onInterestsChange(interests.includes(interest) ? interests.filter((item) => item !== interest) : [...interests, interest])}>{tripInterestLabels[language][interest]}</EasyTButton>)}</div></div>
+  </div> : null;
 
   return <form id={formId} className={`${styles.root}${homepageEntry ? ` ${styles.wideRoot}` : ""}`} onSubmit={submit}>
     {homepageEntry ? <div className={`${styles.card} ${styles.wideCard}`}>
@@ -269,8 +276,8 @@ export function MorroviaTripCapture({
         <EasyTButton ref={describeTabRef} className={styles.modeTab} variant="quiet" icon={Sparkles} role="tab" id={`${describePanelId}-tab`} aria-selected={homepageEntry.mode === "describe"} aria-controls={describePanelId} tabIndex={homepageEntry.mode === "describe" ? 0 : -1} disabled={disabled || loading} onKeyDown={onTabKeyDown} onClick={() => homepageEntry.onModeChange("describe")}>{text.describeTrip}</EasyTButton>
       </div>
       {homepageEntry.mode === "stops" ? <>
-        <div className={`${styles.wideMainRow} ${styles.wideStopsRow}`}>
-          <div className={styles.wideSegmentGroup}>
+        <div className={homepageLayoutClass}>
+          <div className={`${styles.wideSegmentGroup} ${styles.wideHomeControls}`}>
             <div className={styles.wideEntryPanel} role="tabpanel" id={stopsPanelId} aria-labelledby={`${stopsPanelId}-tab`}>
               <EasyTButton className={styles.destinationToggle} variant="quiet" type="button" aria-expanded={destinationEditorOpen} aria-controls={`${stopsPanelId}-editor`} disabled={disabled || loading} onClick={() => setDestinationEditorOpen((current) => !current)}>
                 <MapPin aria-hidden="true" />
@@ -283,6 +290,7 @@ export function MorroviaTripCapture({
             {homepageDates}
             {homepagePersonalize}
           </div>
+          {homepagePersonalizePanel}
           {homepageAction}
         </div>
       </> : <>
@@ -290,17 +298,12 @@ export function MorroviaTripCapture({
           {promptField}
           <div className={styles.wideDisclosure}><MorroviaContextualDisclosure open={aiDisclosureOpen} onOpenChange={setAiDisclosureOpen} title={text.aiTitle} detail={text.aiDisclosure} linkHref="/journey/privacy#ai-and-speech" linkLabel={text.privacy} triggerLabel={text.aiLabel} /></div>
         </div>
-        <div className={`${styles.wideMainRow} ${styles.wideUtilityRow}`}>
-          <div className={`${styles.wideSegmentGroup} ${styles.wideUtilitySegments}`}>{homepageDates}{homepagePersonalize}</div>
+        <div className={homepageLayoutClass}>
+          <div className={`${styles.wideSegmentGroup} ${styles.wideUtilitySegments} ${styles.wideHomeControls}`}>{homepageDates}{homepagePersonalize}</div>
+          {homepagePersonalizePanel}
           {homepageAction}
         </div>
       </>}
-      {personalizeOpen ? <div className={styles.personalizePanel} id={personalizeId}>
-        {endpointEntry ? <div className={styles.personalizeEndpoints}>{endpointEntry}</div> : null}
-        <MorroviaQuantitySelector className={styles.personalizeTravellers} compact label={text.travellers} locale={language} noun={language === "es" ? "viajero" : "traveller"} nounPlural={language === "es" ? "viajeros" : "travellers"} value={travellers} min={1} max={12} disabled={disabled || loading} onChange={onTravellersChange} />
-        <div className={styles.budgetPanel} aria-label={text.budget}><span>{text.budget}</span><div><div className={styles.budgetChoices}>{(["value", "mid", "high"] as const).map((budget) => <EasyTButton variant="secondary" size="small" key={budget} aria-pressed={homepageEntry.budget === budget} disabled={disabled || loading} onClick={() => homepageEntry.onBudgetChange(budget)}>{text[`budget${budget === "value" ? "Value" : budget === "mid" ? "Mid" : "High"}`]}</EasyTButton>)}</div>{homepageEntry.budget ? <EasyTButton className={styles.budgetClear} variant="quiet" size="small" disabled={disabled || loading} onClick={() => homepageEntry.onBudgetChange(null)}>{text.clear}</EasyTButton> : null}</div></div>
-        <div className={styles.interestPanel} aria-label={text.interestLabel}><span>{text.interestLabel}</span><div>{tripInterestIds.map((interest) => <EasyTButton variant="secondary" size="small" key={interest} aria-pressed={interests.includes(interest)} disabled={disabled || loading} onClick={() => onInterestsChange(interests.includes(interest) ? interests.filter((item) => item !== interest) : [...interests, interest])}>{tripInterestLabels[language][interest]}</EasyTButton>)}</div></div>
-      </div> : null}
     </div> : <div className={`${styles.card}${progressiveDetails && !detailsOpen ? ` ${styles.detailsCollapsed}` : ""}`}>
       <span className={`${styles.label}${progressiveDetails ? ` ${styles.homepageLabel}` : ""}`}>{progressiveDetails ? text.homepageLabel : text.briefLabel}</span>
       {promptField}

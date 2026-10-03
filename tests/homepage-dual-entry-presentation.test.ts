@@ -58,6 +58,26 @@ test("Homepage stop rows remain before trip details and the primary action in DO
   assert.ok(personalize < primaryAction, "The primary action must follow the complete stop/details group");
 });
 
+test("expanded Homepage details precede the single primary action in both modes", () => {
+  const cardMarkup = captureSource.slice(captureSource.indexOf("{homepageEntry ? <div"), captureSource.indexOf(": <div className={`${styles.card}"));
+  const stopsPersonalization = cardMarkup.indexOf("{homepagePersonalizePanel}");
+  const stopsAction = cardMarkup.indexOf("{homepageAction}");
+  const describeAction = cardMarkup.indexOf("{homepageAction}", stopsAction + 1);
+  const describePersonalization = cardMarkup.indexOf("{homepagePersonalizePanel}", stopsPersonalization + 1);
+
+  assert.ok(stopsPersonalization >= 0 && describePersonalization > stopsPersonalization, "Both modes must render the expanded Personalize panel");
+  assert.ok(stopsAction >= 0 && stopsPersonalization < stopsAction,
+    "Stops mode must put its DOM action after the expanded Personalize panel");
+  assert.ok(describeAction >= 0 && describePersonalization < describeAction,
+    "Describe mode must put its DOM action after the expanded Personalize panel");
+  assert.equal((cardMarkup.match(/<EasyTButton type="submit"/g) ?? []).length, 0,
+    "Homepage must keep the single submit action owned by submitAction");
+});
+
+test("mobile destination editor leaves clear space before Homepage dates", () => {
+  assert.match(captureStyles, /@media \(max-width: 720px\)[\s\S]*?\.wideDestinationEditor \+ \.wideDatePicker \{ margin-top: 14px; \}/);
+});
+
 test("wide capture stories exercise keyboard and click tabs plus retained personalization", () => {
   assert.match(captureStories, /WideHomepageCapture/);
   assert.match(captureStories, /new KeyboardEvent\("keydown", \{ key: "ArrowRight"/);
@@ -128,7 +148,9 @@ test("wide capture disables every opt-in control while loading", () => {
 
 test("wide capture stacks its compact segment group before it overflows", () => {
   assert.match(captureStyles, /@media \(max-width: 1100px\) and \(min-width: 721px\)/);
-  assert.match(captureStyles, /\.wideMainRow \{ grid-template-columns: 1fr; \}/);
+  assert.match(captureStyles, /\.wideHomeLayout \{ grid-template-columns: minmax\(0, 1fr\); grid-template-areas: "controls" "action"; \}/);
+  assert.match(captureStyles, /\.wideHomeLayoutPersonalized \{ grid-template-areas: "controls" "personalize" "action"; \}/);
+  assert.match(captureStyles, /@media \(max-width: 720px\)[\s\S]*?\.wideHomeLayoutPersonalized \{ grid-template-areas: "controls" "personalize" "action"; \}/);
   assert.match(captureStyles, /\.wideSegmentGroup \{ grid-template-columns: minmax\(0, 1fr\) minmax\(0, 1fr\); \}/);
 });
 
