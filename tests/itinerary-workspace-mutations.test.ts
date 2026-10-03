@@ -15,7 +15,11 @@ import { createTripMutationPersistenceQueue } from "../lib/easyt/trip-mutation-p
 import { composeItineraryDay } from "../lib/easyt/itinerary-day-composition.ts";
 import { addItineraryActivityWithUndo, moveItineraryActivityAcrossDays, removeItineraryActivityWithUndo, undoItineraryItemAction } from "../lib/easyt/itinerary-activity-placement.ts";
 import {
+  cacheCanonicalTrip,
+  cacheCanonicalTripToStorage,
   loadLocalTripFromStorage,
+  loadTripRecoveryFromStorage,
+  saveTripRecovery,
   saveTripRecoveryToEasyT,
   saveTripRecoveryToStorage,
   type EasyTBrowserStorage,
@@ -309,4 +313,152 @@ test("multiple rapid Itinerary edits serialize and retain both authored changes"
   assert.equal(submissions[1]?.updatedAt, "revision-2");
   assert.equal(saved.planItems[0]?.notes.includes("Lunch in Monti"), true);
   assert.equal(saved.planItems[0]?.notes.includes("Vatican Museums"), true);
+});
+
+test("immediate Add then Undo persists the pre-Add document after a slow first acknowledgement", async () => {
+  const base = itineraryTrip();
+  const added = addItineraryActivityWithUndo(base, 1, 1, "Lunch in Monti");
+  assert.equal(added.changed, true);
+  const undone = undoItineraryItemAction(added.trip, added.undo!);
+  assert.equal(undone.changed, true);
+  assert.deepEqual(undone.trip, base);
+
+  let releaseFirst: (() => void) | undefined;
+  const firstResponse = new Promise<void>((resolve) => { releaseFirst = resolve; });
+  const submissions: EasyTTrip[] = [];
+  let canonical = base;
+  let revision = 1;
+  const queue = createTripMutationPersistenceQueue(async (trip) => {
+    submissions.push(structuredClone(trip));
+    if (submissions.length === 1) await firstResponse;
+    canonical = { ...structuredClone(trip), updatedAt: `revision-${++revision}` };
+    return canonical;
+  });
+  queue.reset(base);
+
+  const addSave = queue.enqueue(added.trip, handle("add"), base);
+  const undoSave = queue.enqueue(undone.trip, handle("undo"), added.trip);
+  await Promise.resolve();
+  assert.equal(submissions.length, 1);
+  releaseFirst?.();
+  await Promise.all([addSave, undoSave]);
+
+  assert.equal(submissions[1]?.updatedAt, "revision-2");
+  assert.deepEqual({ ...canonical, updatedAt: base.updatedAt }, base);
+});
+
+test("Undo after the Add acknowledgement persists the original activity state", async () => {
+  const base = itineraryTrip();
+  const added = addItineraryActivityWithUndo(base, 1, 1, "Lunch in Monti");
+  let canonical = base;
+  let revision = 1;
+  const queue = createTripMutationPersistenceQueue(async (trip) => {
+    canonical = { ...structuredClone(trip), updatedAt: `revision-${++revision}` };
+    return canonical;
+  });
+  queue.reset(base);
+
+  const acknowledgedAdd = await queue.enqueue(added.trip, handle("acknowledged-add"), base);
+  const undone = undoItineraryItemAction(acknowledgedAdd, added.undo!);
+  assert.equal(undone.changed, true);
+  await queue.enqueue(undone.trip, handle("undo-after-ack"), acknowledgedAdd);
+
+  assert.deepEqual({ ...canonical, updatedAt: base.updatedAt }, base);
+});
+
+test("the first Add acknowledgement keeps a newer pending Undo recovery until its own save", (t) => {
+  const storage = new MemoryStorage();
+  const originalWindow = Object.getOwnPropertyDescriptor(globalThis, "window");
+  Object.defineProperty(globalThis, "window", { configurable: true, value: { localStorage: storage } });
+  t.after(() => {
+    if (originalWindow) Object.defineProperty(globalThis, "window", originalWindow);
+    else Reflect.deleteProperty(globalThis, "window");
+  });
+  const base = itineraryTrip();
+  const added = addItineraryActivityWithUndo(base, 1, 1, "Lunch in Monti");
+  const undone = undoItineraryItemAction(added.trip, added.undo!);
+  cacheCanonicalTripToStorage(storage, base);
+  const addRecovery = saveTripRecovery(added.trip, { ownerId: base.ownerId, accountSavePending: true });
+  const undoRecovery = saveTripRecovery(undone.trip, { ownerId: base.ownerId, replace: addRecovery.handle, accountSavePending: true });
+  assert.equal(undoRecovery.stored, true);
+
+  const acknowledgedAdd = { ...added.trip, updatedAt: "revision-2" };
+  cacheCanonicalTrip(acknowledgedAdd, addRecovery.handle);
+
+  assert.equal(loadTripRecoveryFromStorage(storage, base.id, base.ownerId)?.writeId, undoRecovery.handle.writeId);
+  cacheCanonicalTrip({ ...undone.trip, updatedAt: "revision-3" }, undoRecovery.handle);
+  assert.equal(loadTripRecoveryFromStorage(storage, base.id, base.ownerId), null);
+});
+
+test("immediate Remove then Undo restores the authored activity in the account document", async () => {
+  const base = itineraryTrip();
+  const removed = removeItineraryActivityWithUndo(base, { dayNumber: 1, noteIndex: 1, title: "Evening passeggiata" });
+  assert.equal(removed.changed, true);
+  const undone = undoItineraryItemAction(removed.trip, removed.undo!);
+  assert.equal(undone.changed, true);
+  let canonical = base;
+  let revision = 1;
+  const queue = createTripMutationPersistenceQueue(async (trip) => {
+    canonical = { ...structuredClone(trip), updatedAt: `revision-${++revision}` };
+    return canonical;
+  });
+  queue.reset(base);
+
+  await Promise.all([
+    queue.enqueue(removed.trip, handle("remove"), base),
+    queue.enqueue(undone.trip, handle("undo-remove"), removed.trip),
+  ]);
+
+  assert.deepEqual({ ...canonical, updatedAt: base.updatedAt }, base);
+});
+
+test("a queued unrelated field edit survives an immediate Itinerary Undo", async () => {
+  const base = itineraryTrip();
+  const added = addItineraryActivityWithUndo(base, 1, 1, "Lunch in Monti");
+  const renamed = { ...added.trip, title: "Autumn in Rome" };
+  const undone = undoItineraryItemAction(renamed, added.undo!);
+  let canonical = base;
+  let revision = 1;
+  const queue = createTripMutationPersistenceQueue(async (trip) => {
+    canonical = { ...structuredClone(trip), updatedAt: `revision-${++revision}` };
+    return canonical;
+  });
+  queue.reset(base);
+
+  await Promise.all([
+    queue.enqueue(added.trip, handle("add-before-title"), base),
+    queue.enqueue(renamed, handle("title"), added.trip),
+    queue.enqueue(undone.trip, handle("undo-after-title"), renamed),
+  ]);
+
+  assert.equal(canonical.title, "Autumn in Rome");
+  assert.deepEqual(canonical.planItems, base.planItems);
+  assert.deepEqual(canonical.brief.customActivities, base.brief.customActivities);
+});
+
+test("an external canonical change still rejects a queued Itinerary Undo", async () => {
+  const base = itineraryTrip();
+  const added = addItineraryActivityWithUndo(base, 1, 1, "Lunch in Monti");
+  const undone = undoItineraryItemAction(added.trip, added.undo!);
+  let canonical = base;
+  let revision = 1;
+  let saves = 0;
+  const queue = createTripMutationPersistenceQueue(async (trip) => {
+    if (trip.updatedAt !== canonical.updatedAt) {
+      throw new EasyTTripSaveConflictError("changed", canonical, "cloud-changed");
+    }
+    const saved = { ...structuredClone(trip), updatedAt: `revision-${++revision}` };
+    canonical = ++saves === 1
+      ? { ...saved, title: "External edit", updatedAt: `revision-${++revision}` }
+      : saved;
+    return saved;
+  });
+  queue.reset(base);
+
+  const addSave = queue.enqueue(added.trip, handle("add-before-external"), base);
+  const undoSave = queue.enqueue(undone.trip, handle("undo-after-external"), added.trip);
+  await addSave;
+  await assert.rejects(undoSave, (error: unknown) => error instanceof EasyTTripSaveConflictError && error.reason === "cloud-changed");
+  assert.equal(canonical.title, "External edit");
+  assert.equal(canonical.planItems[0]?.notes.includes("Lunch in Monti"), true);
 });

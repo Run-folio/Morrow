@@ -116,12 +116,25 @@ export function createTripMutationPersistenceQueue(persist: PersistTripMutation)
   let tail: Promise<EasyTTrip | null> = Promise.resolve(null);
   let generation = 0;
   const canonicalByRevision = new Map<string, EasyTTrip>();
+  let precedingAuthored: EasyTTrip | null = null;
 
   return {
-    enqueue(trip: EasyTTrip, recovery: TripRecoveryHandle) {
+    enqueue(trip: EasyTTrip, recovery: TripRecoveryHandle, authoredFrom?: EasyTTrip) {
       const requestGeneration = generation;
       const authored = structuredClone(trip);
-      const authoredBase = canonicalByRevision.get(authored.updatedAt);
+      // A local inverse can return to the original document without advancing
+      // updatedAt. Only an exact predecessor from this queue proves that the
+      // change is intentional; independent edits still use their CAS revision.
+      const followsLocalEdit = authoredFrom
+        && precedingAuthored
+        && authored.updatedAt === authoredFrom.updatedAt
+        && canonicalByRevision.has(authoredFrom.updatedAt)
+        && sameTripDocument(authoredFrom, authored)
+        && jsonEqual(authoredFrom, precedingAuthored);
+      const authoredBase = followsLocalEdit
+        ? structuredClone(authoredFrom)
+        : canonicalByRevision.get(authored.updatedAt);
+      precedingAuthored = authored;
       const request = tail.then(async (latestCanonical) => {
         const canRebase = authoredBase
           && latestCanonical
@@ -140,6 +153,7 @@ export function createTripMutationPersistenceQueue(persist: PersistTripMutation)
     reset(canonicalTrip: EasyTTrip | null = null) {
       generation += 1;
       canonicalByRevision.clear();
+      precedingAuthored = null;
       if (canonicalTrip) canonicalByRevision.set(canonicalTrip.updatedAt, structuredClone(canonicalTrip));
       tail = Promise.resolve(canonicalTrip);
     },

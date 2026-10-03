@@ -207,7 +207,7 @@ export function useTripMutationPersistence(initialTrip: EasyTTrip, enabled: bool
       return true;
     }
 
-    const pendingSave = queueRef.current!.enqueue(next, recovery.handle);
+    const pendingSave = queueRef.current!.enqueue(next, recovery.handle, current);
     pendingSavesRef.current.add(pendingSave);
     void pendingSave
       .then((saved) => {

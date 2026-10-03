@@ -820,9 +820,14 @@ export function cacheCanonicalTripWithRecoveryToStorage(
   // or another cloud writer). A device snapshot equal to the previously cached
   // A contains no unique work, so it is safe to retire after B is durable.
   // A snapshot that differs from both A and B remains untouched.
+  // An in-flight inverse can equal the previous canonical document while the
+  // preceding Add is being acknowledged. Keep that newer recovery until its
+  // own save resolves; historical snapshots may still be retired as before.
   const redundantRecovery = Boolean(currentRecovery && (
     tripRecoveryMatchesCanonical(currentRecovery, trip)
-      || (previousCanonical && tripRecoveryMatchesCanonical(currentRecovery, previousCanonical))
+      || (previousCanonical
+        && !tripRecoveryIsAwaitingCanonicalSave(currentRecovery)
+        && tripRecoveryMatchesCanonical(currentRecovery, previousCanonical))
   ));
   const recoveryResolved = stored && currentRecovery && (acknowledgedRecovery || redundantRecovery)
     ? resolveTripRecoveryInStorage(storage, currentRecovery)
