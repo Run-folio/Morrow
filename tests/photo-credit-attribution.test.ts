@@ -19,6 +19,20 @@ test("Unsplash credit links the photographer and Unsplash separately with referr
   });
 });
 
+test("dynamic Eibner Saliba result parses its available Unsplash attribution without licence metadata", () => {
+  assert.deepEqual(describePhotoAttribution({
+    credit: "Photo by Eibner Saliba on Unsplash",
+    sourceHref: "https://unsplash.com/@eibnersaliba?utm_source=morrovia&utm_medium=referral",
+  }), {
+    kind: "unsplash",
+    photographer: "Eibner Saliba",
+    photographerHref: "https://unsplash.com/@eibnersaliba?utm_source=morrovia&utm_medium=referral",
+    sourceLabel: "Unsplash",
+    sourceHref: "https://unsplash.com/?utm_source=morrovia&utm_medium=referral",
+    licenseHref: null,
+  });
+});
+
 test("licensed non-Unsplash attribution preserves its actual source and licence", () => {
   assert.deepEqual(describePhotoAttribution({
     credit: "Basile Morin · CC BY-SA 4.0",

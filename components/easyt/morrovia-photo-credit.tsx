@@ -96,27 +96,30 @@ export default function MorroviaPhotoCredit({
 
   const external = (href: string) => /^https?:\/\//.test(href);
   const linkProps = (href: string) => external(href) ? { target: "_blank" as const, rel: "noopener noreferrer" } : {};
-  const authorLabel = structuredAuthorLabel ?? (attribution.kind === "unsplash" ? attribution.photographer : attribution.credit || photoLabel);
-  const ariaLabel = authorLabel
-    ? `${language === "es" ? "Créditos de la foto" : "Photo credit"}: ${authorLabel}${attribution.kind === "unsplash" ? " on Unsplash" : ""}`
+  const parsedUnsplash = attribution.kind === "unsplash" ? attribution : null;
+  const genericSourceLabel = sourceLabel?.trim().toLocaleLowerCase("en") === "source";
+  const authorLabel = structuredAuthorLabel ?? parsedUnsplash?.photographer;
+  const triggerAuthorLabel = authorLabel ?? (attribution.kind === "source" ? attribution.credit : photoLabel);
+  const authorHrefForDisplay = authorHref ?? (parsedUnsplash && authorLabel === parsedUnsplash.photographer ? parsedUnsplash.photographerHref : undefined);
+  const sourceLabelForDisplay = sourceLabel && !genericSourceLabel
+    ? sourceLabel
+    : parsedUnsplash?.sourceLabel ?? (attribution.kind === "source" ? attribution.credit : sourceLabel);
+  const sourceHrefForDisplay = sourceLabel && !genericSourceLabel
+    ? sourceHref
+    : parsedUnsplash?.sourceHref ?? sourceHref;
+  const licenseLabelForDisplay = licenseLabel;
+  const licenseHrefForDisplay = licenseHref ?? attribution.licenseHref ?? undefined;
+  const ariaLabel = triggerAuthorLabel
+    ? `${language === "es" ? "Créditos de la foto" : "Photo credit"}: ${triggerAuthorLabel}${attribution.kind === "unsplash" ? " on Unsplash" : ""}`
     : language === "es" ? "Créditos de la foto" : "Photo credit";
-  const hasStructuredMetadata = Boolean(structuredAuthorLabel || sourceLabel || licenseLabel);
-  const links = hasStructuredMetadata ? <>
-      {structuredAuthorLabel ? <>{authorHref ? <a href={authorHref} {...linkProps(authorHref)}>Photo by {structuredAuthorLabel}</a> : <span>Photo by {structuredAuthorLabel}</span>}</> : null}
-      {sourceLabel ? <>{sourceHref ? <a href={sourceHref} {...linkProps(sourceHref)}>{sourceLabel}</a> : <span>{sourceLabel}</span>}</> : null}
-      {licenseLabel ? <>{licenseHref ? <a href={licenseHref} {...linkProps(licenseHref)}>{licenseLabel}</a> : <span>{licenseLabel}</span>}</> : null}
-      {!licenseLabel && licenseHref ? <a href={licenseHref} {...linkProps(licenseHref)}>{language === "es" ? "Detalles de la licencia" : "Licence details"}</a> : null}
-    </> : attribution.kind === "unsplash"
-    ? <>
-      <a href={attribution.photographerHref} {...linkProps(attribution.photographerHref)}>{language === "es" ? `Foto de ${attribution.photographer}` : `Photo by ${attribution.photographer}`}</a>
-      <span>{language === "es" ? "en" : "on"}</span>
-      <a href={attribution.sourceHref} {...linkProps(attribution.sourceHref)}>{attribution.sourceLabel}</a>
-      {attribution.licenseHref ? <a href={attribution.licenseHref} {...linkProps(attribution.licenseHref)}>{language === "es" ? "Detalles de la licencia" : "Licence details"}</a> : null}
-    </>
-    : <>
-      <a href={attribution.sourceHref} {...linkProps(attribution.sourceHref)}>{attribution.credit}</a>
-      {attribution.licenseHref ? <a href={attribution.licenseHref} {...linkProps(attribution.licenseHref)}>{language === "es" ? "Detalles de la licencia" : "Licence details"}</a> : null}
-    </>;
+  const hasDisplayMetadata = Boolean(authorLabel || sourceLabelForDisplay || licenseLabelForDisplay || licenseHrefForDisplay);
+  const links = hasDisplayMetadata ? <>
+      {authorLabel ? <>{authorHrefForDisplay ? <a href={authorHrefForDisplay} {...linkProps(authorHrefForDisplay)}>{language === "es" ? `Foto de ${authorLabel}` : `Photo by ${authorLabel}`}</a> : <span>{language === "es" ? `Foto de ${authorLabel}` : `Photo by ${authorLabel}`}</span>}</> : null}
+      {parsedUnsplash && authorLabel ? <span>{language === "es" ? "en" : "on"}</span> : null}
+      {sourceLabelForDisplay ? <>{sourceHrefForDisplay ? <a href={sourceHrefForDisplay} {...linkProps(sourceHrefForDisplay)}>{sourceLabelForDisplay}</a> : <span>{sourceLabelForDisplay}</span>}</> : null}
+      {licenseLabelForDisplay ? <>{licenseHrefForDisplay ? <a href={licenseHrefForDisplay} {...linkProps(licenseHrefForDisplay)}>{licenseLabelForDisplay}</a> : <span>{licenseLabelForDisplay}</span>}</> : null}
+      {!licenseLabelForDisplay && licenseHrefForDisplay ? <a href={licenseHrefForDisplay} {...linkProps(licenseHrefForDisplay)}>{language === "es" ? "Detalles de la licencia" : "Licence details"}</a> : null}
+    </> : null;
   const fullCreditLink = fullCreditHref && fullCreditHref !== sourceHref
     ? <a href={fullCreditHref} {...linkProps(fullCreditHref)}>{language === "es" ? "Créditos completos" : "Full image credits"}</a>
     : null;

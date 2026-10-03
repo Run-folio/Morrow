@@ -21,8 +21,10 @@ test("one shared camera disclosure owns compact, keyboard-accessible photo credi
   assert.match(component, /authorLabel\?: string/);
   assert.match(component, /licenseLabel\?: string/);
   assert.match(component, /sourceLabel\?: string/);
-  assert.match(component, /Photo by \{structuredAuthorLabel\}/);
-  assert.match(component, /licenseLabel \? <>[\s\S]*<a href=\{licenseHref\}/);
+  assert.match(component, /structuredAuthorLabel \?\? parsedUnsplash\?\.photographer/);
+  assert.match(component, /Photo by \$\{authorLabel\}/);
+  assert.match(component, /sourceLabel && !genericSourceLabel/);
+  assert.match(component, /licenseLabelForDisplay \? <>[\s\S]*<a href=\{licenseHrefForDisplay\}/);
   assert.match(styles, /width:\s*44px;\s*height:\s*44px/);
   assert.match(styles, /\.cameraGlyph[^{]*\{[^}]*width:\s*16px/);
   assert.match(component, /size\?: "compact" \| "default"/);
