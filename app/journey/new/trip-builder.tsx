@@ -85,7 +85,7 @@ import { builderDetailsFingerprint, prepareBuilderDocumentCommit } from "@/lib/e
 import { currentBuilderRouteProposal, validateBuilderStopOrder } from "@/lib/easyt/trip-builder-order";
 import { normalizeTripInterests, tripInterestIds, tripInterestLabels, type TripInterest } from "@/lib/easyt/trip-interest";
 import { canonicalJourneyEndpointPlace, isSameCanonicalPlace, journeyEndFromCapturedIntent, journeyEndpointIdentityIsCoherent, journeyEndpointPlaceFromSuggestion, normalizeJourneyEnd, plannerEndpointForJourneyEnd, resolveTypedJourneyEndpoint } from "@/lib/easyt/journey-endpoints";
-import { builderClarificationProgress, builderClarificationRemovalPlan, builderClarificationResumeLabel, orderedBuilderClarificationIds, shouldAutoOpenBuilderClarification, shouldYieldBuilderClarification } from "@/lib/easyt/builder-clarification";
+import { builderClarificationProgress, builderClarificationRemovalPlan, builderClarificationResumeLabel, orderedBuilderClarificationIds, reviewedRouteStopSatisfiesMention, shouldAutoOpenBuilderClarification, shouldYieldBuilderClarification } from "@/lib/easyt/builder-clarification";
 import { fixedCommitmentDisplayLabel, projectFixedCommitmentsToStops } from "@/lib/easyt/fixed-commitment";
 import { createAbortableEffectScope } from "@/lib/easyt/abortable-effect";
 import { withProviderTimeout } from "@/lib/easyt/provider-timeout";
@@ -1377,6 +1377,7 @@ function TripBuilderDocument() {
     () => reconcileCuratedRouteKnowledge(curatedRoute, stops.map((stop) => stop.id)),
     [curatedRoute, stops],
   );
+  const reviewedRouteDraft = useMemo(() => sourceRouteKey ? publicRouteDetailFor(sourceRouteKey)?.planDraft : undefined, [sourceRouteKey]);
   const analyticsTripSource = sourceRouteKey ? "route" as const : arrivedFromHomepage ? "homepage" as const : "builder" as const;
   const isHomepagePromptHandoff = arrivedFromHomepage && !sourceRouteKey;
 
@@ -1535,7 +1536,11 @@ function TripBuilderDocument() {
     .filter((mention) => !(effectiveStructuredBrief.removedPlaceMentionIds ?? []).includes(mention.mentionId)), [effectiveStructuredBrief, intakeMentions]);
   const endpointMentionIds = useMemo(() => new Set(activePlaceMentions.filter(isEndMention).map((mention) => mention.mentionId)), [activePlaceMentions]);
   const placeIssues = (effectiveStructuredBrief.placeIssues ?? []).filter((issue) => !endpointMentionIds.has(issue.mentionId));
-  const reviewPlaceMentions = useMemo(() => placeMentionsNeedingReview(activePlaceMentions, placeIssues), [activePlaceMentions, placeIssues]);
+  const reviewPlaceMentions = useMemo(() => placeMentionsNeedingReview(activePlaceMentions, placeIssues)
+    .filter((mention) => !reviewedRouteStopSatisfiesMention({
+      mention, brief: effectiveStructuredBrief, stops, sourceRouteKey,
+      curatedRoute: currentCuratedRoute, reviewedDraft: reviewedRouteDraft,
+    })), [activePlaceMentions, placeIssues, effectiveStructuredBrief, stops, sourceRouteKey, currentCuratedRoute, reviewedRouteDraft]);
   const selectedMentionIds = useMemo(() => new Set(activePlaceMentions.filter((mention) => {
     const hasSelection = (effectiveStructuredBrief.placeSelections ?? []).some((selection) => selection.mentionId === mention.mentionId);
     const needsExplicitCompletion = placeMentionSupportsMultipleSelections(mention)
@@ -1549,11 +1554,14 @@ function TripBuilderDocument() {
     .filter((mention) => !(mention.mentionId === transientPlanningMentionId && mention.mentionId === originPlanningMentionId)), [originPlanningMentionId, pendingReviewPlaceMentions, transientPlanningMentionId]);
   const providerClarificationMentionIds = useMemo(() => new Set(locationChoices.map(({ mention }) => mention.mentionId)), [locationChoices]);
   const pendingClarificationIds = useMemo(() => orderedBuilderClarificationIds([
-    ...locationChoices.map(({ mention }) => ({ id: mention.mentionId, order: mention.order })),
+    ...locationChoices.filter(({ mention }) => !reviewedRouteStopSatisfiesMention({
+      mention, brief: effectiveStructuredBrief, stops, sourceRouteKey,
+      curatedRoute: currentCuratedRoute, reviewedDraft: reviewedRouteDraft,
+    })).map(({ mention }) => ({ id: mention.mentionId, order: mention.order })),
     ...geographyReviewPlaceMentions
       .filter((mention) => !providerClarificationMentionIds.has(mention.mentionId))
       .map((mention) => ({ id: mention.mentionId, order: mention.order })),
-  ]), [geographyReviewPlaceMentions, locationChoices, providerClarificationMentionIds]);
+  ]), [geographyReviewPlaceMentions, locationChoices, providerClarificationMentionIds, effectiveStructuredBrief, stops, sourceRouteKey, currentCuratedRoute, reviewedRouteDraft]);
   const activeClarificationId = clarificationSessionIds[clarificationIndex];
   const activeProviderClarification = activeClarificationId
     ? locationChoices.find(({ mention }) => mention.mentionId === activeClarificationId)

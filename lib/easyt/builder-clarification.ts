@@ -1,3 +1,57 @@
+import type { CuratedRouteKnowledge } from "./curated-route-knowledge.ts";
+import type { ResolvedPlaceMention } from "./place-intelligence.ts";
+import type { PublicRoutePlanDraft } from "./public-route.ts";
+import type { StructuredTripBrief } from "./structured-trip-brief.ts";
+
+type ReviewedRouteStop = {
+  id: string;
+  name: string;
+  country: string;
+  canonicalPlaceId?: string;
+  coordinates?: readonly [number, number];
+};
+
+/** A reviewed regional stop can satisfy its route-level decision without
+ * pretending that the region is a town or inventing a more precise base. */
+export function reviewedRouteStopSatisfiesMention({
+  mention, brief, stops, sourceRouteKey, curatedRoute, reviewedDraft,
+}: {
+  mention: ResolvedPlaceMention;
+  brief: StructuredTripBrief;
+  stops: readonly ReviewedRouteStop[];
+  sourceRouteKey?: string;
+  curatedRoute?: CuratedRouteKnowledge;
+  reviewedDraft?: PublicRoutePlanDraft;
+}): boolean {
+  if (!sourceRouteKey || !curatedRoute || !reviewedDraft
+    || sourceRouteKey !== curatedRoute.routeKey || sourceRouteKey !== reviewedDraft.routeKey
+    || curatedRoute.reviewedAt !== reviewedDraft.curatedRoute?.reviewedAt
+    || mention.status !== "resolved" || !mention.canonicalPlaceId
+    || (mention.routability !== "planning_area" && mention.routability !== "needs_base_selection")) return false;
+  const issues = (brief.placeIssues ?? []).filter((issue) => issue.mentionId === mention.mentionId);
+  if (issues.some((issue) => issue.code !== "region_requires_base" || issue.blocksRoute)) return false;
+  const destination = brief.destinations.find((item) => item.placeMentionId === mention.mentionId
+    && item.canonicalPlaceId === mention.canonicalPlaceId);
+  if (!destination?.id) return false;
+  const index = curatedRoute.canonicalStopIds.indexOf(destination.id);
+  if (index < 0) return false;
+  const expected = reviewedDraft.destinations[index];
+  const reviewed = curatedRoute.stops[index];
+  const actual = stops[index];
+  // Account canonicalization prefixes trip-owned stop IDs while preserving the
+  // original occurrence ID. Both the brief and reviewed snapshot must agree.
+  const sameOccurrence = expected && (destination.id === expected.id || destination.id.endsWith(`-stop-${expected.id}`));
+  return Boolean(expected && reviewed && actual
+    && sameOccurrence && reviewed.stopId === destination.id && actual.id === destination.id
+    && expected.name === reviewed.name && actual.name === expected.name && destination.name === expected.name
+    && expected.country === reviewed.country && actual.country === expected.country
+    && expected.canonicalPlaceId === reviewed.canonicalPlaceId
+    && actual.canonicalPlaceId === expected.canonicalPlaceId
+    && mention.canonicalPlaceId === expected.canonicalPlaceId
+    && actual.coordinates?.[0] === expected.coordinates[0]
+    && actual.coordinates?.[1] === expected.coordinates[1]);
+}
+
 export type BuilderClarificationTarget = {
   id: string;
   order: number;
