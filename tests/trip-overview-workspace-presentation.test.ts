@@ -4,6 +4,7 @@ import test from "node:test";
 
 const source = readFileSync("components/easyt/trip-overview-workspace.tsx", "utf8");
 const styles = readFileSync("components/easyt/trip-overview-workspace.module.css", "utf8");
+const mapPreviewStyles = readFileSync("components/easyt/morrovia-map-preview.module.css", "utf8");
 const mapSource = readFileSync("components/journey-planner-map.tsx", "utf8");
 const shellSource = readFileSync("components/easyt/trip-shell.tsx", "utf8");
 const resolverSource = readFileSync("components/easyt/trip-shell-resolver.tsx", "utf8");
@@ -59,7 +60,7 @@ test("critical trip and persistence states remain truthful without a duplicate h
 
 test("Overview removes the decorative stay hero and leaves stay discovery to its canonical workspace", () => {
   assert.doesNotMatch(source, /journey-accommodation-search|representativeStay|Available for your selected dates/);
-  assert.match(source, /mapWorkspaceHref\(trip\.id, accommodation\.stops\.find/);
+  assert.match(source, /stayWorkspaceHref\(trip\.id, accommodation\.stops\.find/);
 });
 
 test("material route uncertainty is contextual and keeps canonical severity", () => {
@@ -104,20 +105,20 @@ test("Next to arrange stays derived and exposes only Days, Stays and Transport",
   assert.match(source, /progressStatusLabel\[status\]/);
   assert.match(source, /\["itinerary", "accommodation", "transport"\]/);
   assert.match(styles, /\.arrangeGrid[\s\S]*grid-template-columns: repeat\(3, minmax\(0, 1fr\)\)/);
-  assert.doesNotMatch(source, /role="progressbar"/);
-  assert.match(source, /category\.id === "accommodation" && !accommodation\.stops\.length\) return null/);
+  assert.match(source, /role="progressbar"/);
+  assert.match(source, /percent !== null/);
 });
 
 test("Before You Go reuses canonical preparation tasks and actions without a second route", () => {
   assert.match(source, /useTripPrepReadiness\(\{/);
-  assert.match(source, /<TripPreparationTaskSection id="overview-must" title="Must do"/);
-  assert.match(source, /<TripPreparationTaskSection id="overview-good" title="Good to do"/);
+  assert.match(source, /<TripPreparationCards tasks=\{practicalTasks\}/);
+  assert.doesNotMatch(source, /Must do|Good to do|Saved checklist|outstandingPrepGroups/);
   assert.match(source, /<TripTravellerDetailsEditor/);
   assert.doesNotMatch(source, /TripPrepDetails|Detailed preparation guidance/);
   assert.match(source, /id="before-you-go"/);
   assert.doesNotMatch(source, /\/journey\/\$\{encodeURIComponent\(trip\.id\)\}\/prep/);
-  assert.match(styles, /\.beforeGoGrid/);
-  assert.match(source, /<details className=\{styles\.beforeGoDisclosure\}/);
+  assert.match(source, /deriveOverviewPracticalTasks/);
+  assert.doesNotMatch(source, /<details className=\{styles\.beforeGoDisclosure\}/);
 });
 
 test("route storytelling resolves imagery, stays image-led and links to the canonical Map", () => {
@@ -129,7 +130,7 @@ test("route storytelling resolves imagery, stays image-led and links to the cano
   assert.doesNotMatch(source, /\/api\/journey-place\?/);
   assert.doesNotMatch(source, /Promise\.all\(imageResolutionCandidates/);
   assert.match(source, /resolvedPlaceImages\[imageCacheKeysByOccurrence\[stop\.id\]\]/);
-  assert.match(source, /MorroviaPhotoCredit anchorRef=\{mediaRef\}[^>]*placement="bottom-right"/);
+  assert.match(source, /MorroviaPhotoCredit size="compact"[^>]*placement="bottom-right"/);
   assert.match(source, /formatTripNights\(stop\.nights\)/);
   assert.match(source, /className=\{styles\.stopNumber\}>\{number\}/);
   assert.doesNotMatch(source, /className=\{styles\.stopNumber\}>From/);
@@ -165,6 +166,11 @@ test("Overview responsive rules keep mobile controls usable without page overflo
   assert.match(styles, /\.routeRationale > a \{ grid-column: 2/);
   assert.match(styles, /\.arrangeGrid \{ grid-template-columns: minmax\(0, 1fr\);/);
   assert.match(styles, /\.routeList \{ overflow-x: auto;/);
-  assert.match(styles, /\.routeMapPreview \{ min-height: 220px;/);
+  assert.match(source, /<MorroviaMapPreview className=\{styles\.routeMapPreview\} title="Journey map" size="large"/);
+  assert.match(styles, /\.routeMapPreview \{ min-width: 0; \}/);
+  assert.match(mapPreviewStyles, /\.frame\{[^}]*overflow:hidden/);
+  const mobileFrame = mapPreviewStyles.match(/@media\(max-width:720px\)\{\.frame,\.large \.frame\{height:(\d+)px\}\}/);
+  assert.ok(mobileFrame, "the shared map preview keeps a responsive mobile frame");
+  assert.ok(Number(mobileFrame[1]) >= 200, "the mobile map preview remains tall enough to use");
   assert.match(styles, /overflow-x: auto;/);
 });

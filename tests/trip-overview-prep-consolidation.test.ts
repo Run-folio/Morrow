@@ -7,8 +7,10 @@ import { tripHealth } from "../lib/easyt/review.ts";
 import { deriveOverviewReadinessCategories } from "../lib/easyt/trip-overview-readiness.ts";
 import type { EasyTTrip } from "../lib/easyt/trip.ts";
 import type { TripPrepTask } from "../lib/easyt/trip-prep.ts";
-import { deriveTripPrepTasks, groupTripPrepTasks } from "../lib/easyt/trip-prep.ts";
+import { deriveOverviewPracticalTasks, setOverviewPrepChoice, deriveTripPrepTasks, groupTripPrepTasks } from "../lib/easyt/trip-prep.ts";
 import type { TravelReadinessProfile } from "../lib/easyt/travel-readiness.ts";
+import { loadTripRecoveryFromStorage, saveTripRecoveryToStorage, tripDocumentsCanonicalEquivalent, type EasyTBrowserStorage } from "../lib/easyt/storage.ts";
+import { preserveBuilderCanonicalState } from "../lib/easyt/trip-builder-preservation.ts";
 
 const trip = (): EasyTTrip => ({
   schemaVersion: 1,
@@ -230,11 +232,167 @@ test("the shell omits Prep and the old trip URL redirects on the server", () => 
 test("Overview preparation actions reuse one shared task UI and preserve accessible external handoffs", () => {
   const overview = readFileSync("components/easyt/trip-overview-workspace.tsx", "utf8");
   const preparation = readFileSync("components/easyt/trip-preparation.tsx", "utf8");
-  assert.match(overview, /<TripPreparationTaskSection id="overview-must" title="Must do"/);
-  assert.match(overview, /groupTripPrepTasks\(prepReadiness\.tasks\.filter\(\(task\) => task\.status !== "complete"\)\)/);
+  assert.match(overview, /<TripPreparationCards/);
+  assert.match(overview, /mutation\.mutateTrip\(\(current\) => setOverviewPrepChoice/);
   assert.match(preparation, /if \(action\.opensTravellerDetails\)/);
   assert.match(preparation, /aria-label=\{`\$\{action\.label\}: \$\{task\.title\}, opens \$\{action\.provider \?\? "provider"\} in a new tab`\}/);
   assert.match(preparation, /renderAsSurface/);
   assert.match(preparation, /placement: "overview_before_you_go"/);
   assert.doesNotMatch(preparation, /onClick=\{\(\) => undefined\}|taskSummary/);
+});
+
+const missingProfile = { nationalities: [], residenceCountry: "", passportExpiryMonth: "" };
+function practical(source: EasyTTrip, profile: TravelReadinessProfile = missingProfile, tasks: TripPrepTask[] = [], language: "en" | "es" = "en") {
+  return deriveOverviewPracticalTasks({ trip: source, tasks, profile, language });
+}
+
+test("Overview renders exactly four practical topics and never duplicates canonical Stay or Transport work", () => {
+  const cards = practical(trip(), missingProfile, [...prepTasks,
+    { id: "stay", title: "Accommodation", detail: "", category: "must", kind: "accommodation", status: "to-do" },
+    { id: "transport", title: "Transport", detail: "", category: "good", kind: "transport", status: "to-do" },
+  ]);
+  assert.deepEqual(cards.map((card) => card.id), ["passport", "insurance", "connectivity", "activity"]);
+  assert.equal(cards[3].action?.href, "/journey/overview-readiness/explore?stop=paris");
+});
+
+test("prep declarations are reversible, explicit and preserve every existing checklist item", () => {
+  const source = trip();
+  const originalChecklist = structuredClone(source.brief.checklist);
+  let changed = setOverviewPrepChoice(source, "insurance", "sorted");
+  assert.equal(practical(changed)[1].status, "sorted");
+  changed = setOverviewPrepChoice(changed, "insurance", "not-needed");
+  assert.equal(practical(changed)[1].status, "not-needed");
+  const declaration = changed.brief.checklist?.find((item) => item.id === "overview-prep-insurance");
+  assert.equal(declaration?.complete, false);
+  assert.equal(declaration?.resolution, "not-needed");
+  changed = setOverviewPrepChoice(changed, "insurance", "to-review");
+  assert.equal(practical(changed)[1].status, "to-review");
+  assert.equal(changed.brief.checklist?.find((item) => item.id === "overview-prep-insurance")?.resolution, undefined);
+  assert.deepEqual(changed.brief.checklist?.slice(0, originalChecklist?.length), originalChecklist);
+  assert.equal(changed.brief.checklist?.filter((item) => item.id === "overview-prep-insurance").length, 1);
+  assert.deepEqual(source.brief.checklist, originalChecklist);
+});
+
+test("all four practical review checkboxes toggle through stable trip checklist IDs", () => {
+  const kinds = ["passport", "insurance", "connectivity", "activity"] as const;
+  const source = trip();
+  let changed = source;
+  for (const kind of kinds) {
+    changed = setOverviewPrepChoice(changed, kind, "sorted");
+    assert.equal(practical(changed).find((task) => task.id === kind)?.status, "sorted");
+  }
+  assert.deepEqual(
+    changed.brief.checklist?.filter((item) => item.id.startsWith("overview-prep-")).map((item) => item.id),
+    ["overview-prep-passport", "overview-prep-insurance", "overview-prep-connectivity", "overview-prep-activities"],
+  );
+  for (const kind of kinds) {
+    changed = setOverviewPrepChoice(changed, kind, "to-review");
+    assert.equal(practical(changed).find((task) => task.id === kind)?.status, "to-review");
+  }
+  assert.deepEqual(source.brief.checklist, trip().brief.checklist);
+});
+
+test("passport review is declared by the traveller, not inferred from profile or legacy entry completion", () => {
+  const source = trip();
+  source.brief.checklist?.push({ id: "legacy-passport", label: "Passport checked", complete: true });
+  const profile = { nationalities: ["Spain"], residenceCountry: "Spain", passportExpiryMonth: "2028-12" };
+  assert.equal(practical(source, profile)[0].status, "details-added");
+  const reviewed = setOverviewPrepChoice(source, "passport", "sorted");
+  assert.equal(practical(reviewed, profile)[0].status, "sorted");
+  assert.equal(reviewed.brief.checklist?.find((item) => item.id === "legacy-passport")?.complete, true);
+  const unchecked = setOverviewPrepChoice(reviewed, "passport", "to-review");
+  assert.equal(practical(unchecked, profile)[0].status, "details-added");
+  assert.equal(unchecked.brief.checklist?.find((item) => item.id === "overview-prep-passport")?.complete, false);
+});
+
+test("legacy completion stays visible and an explicit review choice can override it without deleting it", () => {
+  const source = trip();
+  source.brief.checklist?.push({ id: "insurance", label: "Travel insurance", complete: true });
+  assert.equal(practical(source)[1].status, "sorted");
+  const changed = setOverviewPrepChoice(source, "insurance", "to-review");
+  assert.equal(practical(changed)[1].status, "to-review");
+  assert.equal(changed.brief.checklist?.find((item) => item.id === "insurance")?.complete, true);
+});
+
+test("saved fields establish details added without claiming passport validity or entry eligibility", () => {
+  assert.equal(practical(trip())[0].status, "to-review"); // Legacy completed passport checklist is not saved profile data.
+  const added = practical(trip(), { nationalities: ["Spain"], residenceCountry: "Spain", passportExpiryMonth: "" })[0];
+  assert.equal(added.status, "details-added");
+  assert.doesNotMatch(JSON.stringify(added), /valid|approved|ready to travel/i);
+  assert.equal(added.action?.opensTravellerDetails, true);
+});
+
+test("provider links remain exact and never count as completion; missing providers remain truthful", () => {
+  const source = trip();
+  source.brief.checklist = [];
+  const tasks: TripPrepTask[] = [{ id: "insurance", title: "Insurance", detail: "", kind: "insurance", status: "to-do", category: "must", action: { label: "Quote", href: "https://approved.example/insurance?affiliate=123", external: true, affiliate: true, provider: "world-nomads" } }];
+  const cards = practical(source, missingProfile, tasks);
+  assert.equal(cards[1].action?.href, tasks[0].action?.href);
+  assert.equal(cards[1].action?.affiliate, true);
+  assert.equal(cards[1].status, "to-review");
+  assert.equal(practical(source)[1].action, undefined);
+  assert.equal(practical(source)[2].action, undefined);
+  source.stops = [];
+  assert.equal(practical(source)[3].action, undefined);
+});
+
+test("Stay dates and estimates do not create selected or booked progress, and unknown counts stay unknown", () => {
+  const source = trip();
+  source.brief.bookings = [];
+  const categories = deriveOverviewReadinessCategories({ trip: source, prepTasks: [], providerStatus: "available" });
+  assert.equal(categories.find((card) => card.id === "accommodation")?.status, "to-do");
+  assert.equal(categories.find((card) => card.id === "accommodation")?.percent, 0);
+  assert.equal(categories.find((card) => card.id === "transport")?.percent, 0);
+  source.stops[0].nights = null;
+  assert.equal(deriveOverviewReadinessCategories({ trip: source, prepTasks: [], providerStatus: "available" }).find((card) => card.id === "accommodation")?.percent, null);
+  source.legs = [];
+  assert.equal(deriveOverviewReadinessCategories({ trip: source, prepTasks: [], providerStatus: "available" }).find((card) => card.id === "transport")?.percent, null);
+  source.startDate = ""; source.endDate = ""; source.planItems = [];
+  assert.equal(deriveOverviewReadinessCategories({ trip: source, prepTasks: [], providerStatus: "available" }).find((card) => card.id === "itinerary")?.percent, null);
+});
+
+test("practical prep has English and Spanish copy with the same status and destination", () => {
+  const source = setOverviewPrepChoice(trip(), "connectivity", "not-needed");
+  const english = practical(source);
+  const spanish = practical(source, missingProfile, [], "es");
+  assert.equal(spanish[0].title, "Pasaporte y datos del viajero");
+  assert.equal(spanish[3].title, "Actividades");
+  assert.deepEqual(spanish.map((card) => card.status), english.map((card) => card.status));
+  assert.equal(spanish[3].action?.href, english[3].action?.href);
+});
+
+test("declarations survive canonical recovery reload and Builder rebuild, isolated by trip and owner", () => {
+  const values = new Map<string, string>();
+  const storage: EasyTBrowserStorage = {
+    get length() { return values.size; },
+    getItem: (key) => values.get(key) ?? null,
+    setItem: (key, value) => { values.set(key, value); },
+    removeItem: (key) => { values.delete(key); },
+    key: (index) => [...values.keys()][index] ?? null,
+  };
+  const source = trip();
+  const changed = setOverviewPrepChoice(source, "insurance", "not-needed");
+  assert.equal(tripDocumentsCanonicalEquivalent(source, changed), false);
+  assert.equal(saveTripRecoveryToStorage(storage, changed).stored, true);
+  const reloaded = loadTripRecoveryFromStorage(storage, changed.id, changed.ownerId)?.trip;
+  assert.ok(reloaded);
+  assert.equal(practical(reloaded)[1].status, "not-needed");
+  assert.equal(loadTripRecoveryFromStorage(storage, "another-trip", changed.ownerId), null);
+  assert.equal(loadTripRecoveryFromStorage(storage, changed.id, "another-owner"), null);
+  const second = { ...trip(), id: "another-trip" };
+  assert.equal(saveTripRecoveryToStorage(storage, second).stored, true);
+  assert.equal(practical(loadTripRecoveryFromStorage(storage, second.id, second.ownerId)!.trip)[1].status, "to-review");
+  const rebuilt = preserveBuilderCanonicalState(reloaded, source);
+  assert.equal(practical(rebuilt)[1].status, "not-needed");
+});
+
+
+test("an empty trip does not imply stays or transfers are already sorted", () => {
+  const empty = { ...trip(), stops: [], legs: [], planItems: [], startDate: "", endDate: "" };
+  const categories = deriveOverviewReadinessCategories({ trip: empty, prepTasks: [], providerStatus: "available" });
+  for (const id of ["accommodation", "transport"]) {
+    const category = categories.find((item) => item.id === id);
+    assert.equal(category?.percent, null);
+    assert.equal(category?.status, "needs-review");
+  }
 });

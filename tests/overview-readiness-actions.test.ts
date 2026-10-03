@@ -14,7 +14,7 @@ test("the three next-to-arrange categories retain one canonical whole-tile actio
     assert.match(overview, new RegExp(`category\\.id === "${id}"`));
   }
   for (const label of ["Open itinerary", "View stays", "Review transport"]) {
-    assert.match(overview, new RegExp(`label: "${label.replace("/", "\\/")}"`));
+    assert.match(overview, new RegExp(`"${label}"`));
   }
   assert.match(overview, /<Link className=\{className\} href=\{action\.href\}[\s\S]*>\{content\}<\/Link>/);
   assert.match(overviewStyles, /\.arrangeItemInteractive:focus-visible/);
@@ -31,21 +31,19 @@ test("task rows expose their single action across the row without nested control
   assert.doesNotMatch(preparation.match(/const content = <>[\s\S]*?<\/\>;/)?.[0] ?? "", /<(?:a|button|Link|EasyTButton|EasyTLinkButton|MorroviaAffiliateLink)\b/);
 });
 
-test("Before You Go uses one accessible disclosure around the canonical task groups", () => {
-  assert.match(overview, /<details className=\{styles\.beforeGoDisclosure\} open=\{beforeGoOpen\} onToggle=/);
-  assert.match(overview, /<summary>/);
-  assert.match(overview, /id="overview-must" title="Must do"[\s\S]*tasks=\{mustTasks\}/);
-  assert.match(overview, /id="overview-good" title="Good to do"[\s\S]*tasks=\{goodTasks\}/);
-  assert.match(preparation, /<details className=\{styles\.taskDisclosure\} open=\{open\} onToggle=/);
-  assert.match(preparation, /<summary aria-expanded=\{open\} aria-controls=\{`\$\{id\}-tasks`\}>/);
-  assert.match(preparation, /\{tasks\.length\} outstanding \{tasks\.length === 1 \? "task" : "tasks"\}/);
+test("Practical prep is one four-card surface with separate review controls", () => {
+  assert.match(overview, /<TripPreparationCards/);
+  assert.doesNotMatch(overview, /beforeGoDisclosure|mustTasks|goodTasks|showPartnerPromotion/);
+  assert.match(preparation, /<article key=\{task.id\}[\s\S]*data-prep-kind/);
+  assert.match(preparation, /role="checkbox"[\s\S]*aria-checked=\{reviewed\}[\s\S]*onStatusChange/);
+  assert.doesNotMatch(preparation, /overviewPrepStatusSelect|overviewPrepStatusField/);
+  assert.match(preparation, /<EasyTLinkButton[\s\S]*action.href/);
 });
 
-test("NEW10 is resolved once for the Good-to-do context while every Omio row keeps its handoff", () => {
+test("legacy shared task rows retain their Omio promotion outside the new Overview presentation", () => {
   assert.equal((preparation.match(/<MorroviaPartnerPromotion/g) ?? []).length, 1);
   assert.match(preparation, /tasks\.find\(\(task\) => task\.action\?\.provider === "omio"\)\?\.action/);
   assert.match(preparation, /tasks\.map\(\(task\) => <TripPreparationTaskRow/);
-  assert.match(overview, /showPartnerPromotion promotionNow=/);
   assert.match(stories, /initialPrepActions: \[\.\.\.prepActions, \.\.\.omioPrepActions\]/);
 });
 
@@ -57,7 +55,7 @@ test("Insurance and connectivity retain canonical state-neutral affiliate bounda
 });
 
 test("Storybook covers disclosure, insurance, Omio and responsive review states", () => {
-  for (const story of ["ReturningPartiallyPlanned", "InsuranceQuoteHandoff", "BeforeYouGoCollapsed", "BeforeYouGoExpanded", "OmioGoodToDo", "BeforeYouGoMobile390", "Mobile430", "Tablet768", "Desktop1024", "Desktop1440", "Desktop1680"]) {
+  for (const story of ["ReturningPartiallyPlanned", "InsuranceQuoteHandoff", "PracticalPrep", "PracticalPrepWithProviderOptions", "TransportActionsStayInTransport", "ApprovedPlanningAndPrep", "PartiallySortedPracticalPrep", "PracticalPrepSpanish", "BeforeYouGoMobile390", "Mobile430", "Tablet768", "Desktop1024", "Desktop1440", "Desktop1680"]) {
     assert.match(stories, new RegExp(`export const ${story}`));
   }
 });

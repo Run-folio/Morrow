@@ -445,6 +445,7 @@
 }
 
 .dayPanel {
+  position: relative;
   min-width: 0;
   grid-column: 2;
   padding: 24px clamp(20px, 2vw, 30px) 22px;
@@ -461,7 +462,8 @@
 
 .dayHeader[data-photo="true"] { min-height: 138px; align-items: center; margin: -12px -12px 14px; padding: 14px 18px; border-radius: var(--morrovia-control-radius); }
 .dayHeader[data-photo="true"]::after { position: absolute; z-index: 1; inset: 0; content: ""; border-radius: inherit; background: linear-gradient(90deg, var(--morrovia-paper) 34%, color-mix(in srgb, var(--morrovia-paper) 78%, transparent) 58%, transparent 100%); pointer-events: none; }
-.dayHeaderPhoto { position: absolute; inset: 0 0 0 auto; width: 72%; height: 100%; border-radius: inherit; object-fit: cover; object-position: center; }
+.dayHeaderMedia { position: absolute; inset: 0 0 0 auto; width: 72%; height: 100%; border-radius: inherit; }
+.dayHeaderPhoto { position: absolute; inset: 0; width: 100%; height: 100%; border-radius: inherit; object-fit: cover; object-position: center; }
 .dayHeader[data-photo="true"] > div { position: relative; z-index: 2; max-width: 75%; }
 .dayHeroCredit { --photo-credit-inline: 6px; --photo-credit-block: 6px; }
 
@@ -508,10 +510,15 @@
   transition: border-color .18s ease, box-shadow .18s ease, background-color .18s ease;
 }
 
-.recoveryFeedback,
+.recoveryFeedback { margin-top: 12px; }
 .notice {
-  margin-top: 12px;
+  position: absolute;
+  z-index: 30;
+  top: 16px;
+  right: clamp(20px, 2vw, 30px);
+  pointer-events: none;
 }
+.notice .compactNotice { pointer-events: auto; }
 
 .dayHeader > div > span {
   display: block;
@@ -2035,15 +2042,14 @@
 }
 
 @media (max-width: 540px) {
-  .notice .compactNotice {
-    grid-template-columns: 18px minmax(0, 1fr) 44px;
-    gap: 4px 8px;
-    width: 100%;
-    padding: 5px 8px;
-    box-shadow: none;
+  .notice {
+    position: fixed;
+    z-index: var(--morrovia-layer-dock);
+    top: calc(var(--morrovia-navigation-height) + 12px);
+    right: 12px;
+    left: 12px;
   }
-  .notice .compactNotice > button:nth-last-child(2) { grid-column: 2 / 4; grid-row: 2; justify-self: start; min-height: 44px; }
-  .notice .compactNotice > button:last-child { grid-column: 3; grid-row: 1; width: 44px; height: 44px; }
+  .notice .compactNotice { width: 100%; }
   .workspaceToolbar {
     display: grid;
     grid-template-columns: minmax(0, 1fr) auto;

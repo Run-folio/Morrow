@@ -718,7 +718,6 @@ export function TripCard({ kind, trip, photo: selectedPhoto, language, copy, rec
   onRemove: (trip: EasyTTrip) => void;
 }) {
   const [imageDisplayed, setImageDisplayed] = useState(false);
-  const photoAnchorRef = useRef<HTMLDivElement>(null);
   useEffect(() => setImageDisplayed(false), [selectedPhoto?.src]);
   const resolvedKind = kind ?? (trip.status === "draft" ? "idea" : trip.status === "archived" ? "past" : "upcoming");
   const title = tripDisplayTitle(trip);
@@ -733,11 +732,11 @@ export function TripCard({ kind, trip, photo: selectedPhoto, language, copy, rec
       : (language === "es" ? "Planificar los días" : "Plan your days");
   const recoveryIssue = recoveryIssues[trip.id];
   return <article className={`${styles.tripCard} ${resolvedKind === "past" ? styles.pastCard : ""} ${working ? styles.working : ""}`} aria-busy={working || undefined}>
-    <div ref={photoAnchorRef} className={styles.cardMediaFrame}>
+    <div className={styles.cardMediaFrame}>
       <Link className={styles.cardMedia} href={primaryHref} onClick={() => resolvedKind === "idea" ? trackEvent("trip_edit_started", { trip_id: trip.id, source: "dashboard" }) : trackTripReopened(trip)} tabIndex={working ? -1 : undefined} aria-disabled={working || undefined}>
         {resolvedKind === "idea" ? <div className={styles.routePreviewFallback} aria-label={`${title} ${language === "es" ? "boceto de ruta" : "route sketch"}`}><MapPin aria-hidden="true" /><span>{routeLabel(trip, copy.routeWaiting)}</span></div> : <ResilientImage src={photo?.src} alt={photo?.alt ?? ""} onDisplayState={setImageDisplayed} fallback={<div className={styles.tripImageFallback}><Globe2 aria-hidden="true" /><span>{routeLabel(trip, copy.routeWaiting)}</span></div>} />}
       </Link>
-      {resolvedKind !== "idea" && photo?.creditLabel && imageDisplayed ? <MorroviaPhotoCredit anchorRef={photoAnchorRef} ownership={photo.provenance === "reviewed-morrovia-first-party" ? "morrovia" : "third-party"} placement="bottom-left" photoLabel={photo.alt} credit={photo.creditLabel} authorHref={photo.authorHref} sourceHref={photo.creditHref} licenseHref={photo.licenseHref} fullCreditHref={photo.fullCreditHref} /> : null}
+      {resolvedKind !== "idea" && photo?.creditLabel && imageDisplayed ? <MorroviaPhotoCredit size="compact" ownership={photo.provenance === "reviewed-morrovia-first-party" ? "morrovia" : "third-party"} placement="bottom-right" photoLabel={photo.alt} credit={photo.creditLabel} authorHref={photo.authorHref} sourceHref={photo.creditHref} licenseHref={photo.licenseHref} fullCreditHref={photo.fullCreditHref} /> : null}
     </div>
     <div className={styles.cardBody}>
       <h3><Link href={primaryHref} onClick={() => resolvedKind === "idea" ? trackEvent("trip_edit_started", { trip_id: trip.id, source: "dashboard" }) : trackTripReopened(trip)}>{title}</Link></h3>

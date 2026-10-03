@@ -1,0 +1,48 @@
+{
+  "comparison": "pre-redesign styles with existing route-photo changes preserved vs final redesign",
+  "before": {
+    "version": 1,
+    "rules": {
+      "raw-color": {
+        "components/easyt/trip-overview-workspace.module.css": 14
+      },
+      "raw-radius": {
+        "components/easyt/trip-overview-workspace.module.css": 11
+      },
+      "raw-shadow": {
+        "components/easyt/trip-overview-workspace.module.css": 3
+      }
+    }
+  },
+  "after": {
+    "version": 1,
+    "rules": {
+      "raw-color": {
+        "components/easyt/trip-overview-workspace.module.css": 12
+      },
+      "raw-radius": {
+        "components/easyt/trip-overview-workspace.module.css": 11
+      },
+      "raw-shadow": {
+        "components/easyt/trip-overview-workspace.module.css": 3
+      }
+    }
+  },
+  "increases": [],
+  "reductions": [
+    {
+      "rule": {
+        "allowException": true,
+        "id": "raw-color",
+        "files": "style",
+        "pattern": {},
+        "alternative": "Use the closest --morrovia-* semantic colour token from app/journey/journey-design.css."
+      },
+      "path": "components/easyt/trip-overview-workspace.module.css",
+      "before": 14,
+      "now": 12
+    }
+  ],
+  "directiveErrors": [],
+  "exceptions": 4
+}

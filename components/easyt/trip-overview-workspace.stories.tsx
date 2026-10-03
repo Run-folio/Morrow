@@ -1,13 +1,17 @@
+import { useState, type ReactNode } from "react";
+import { loadTripRecovery } from "@/lib/easyt/storage";
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
 import { affiliatePartners, type BookingReadinessAction } from "@/lib/easyt/booking-readiness";
 import type { EasyTTrip, PlanItem } from "@/lib/easyt/trip";
 import type { ReadinessCard, TravelReadinessProfile } from "@/lib/easyt/travel-readiness";
 import { tourTripFixture } from "./storybook/tour-trip.fixture";
-import TripOverviewWorkspace from "./trip-overview-workspace";
+import TripOverviewWorkspace, { OverviewStepMedia } from "./trip-overview-workspace";
 import TripShell from "./trip-shell";
+import workspaceStyles from "./trip-overview-workspace.module.css";
 import { setStorybookAuthOwner } from "../../.storybook/auth-client.mock";
 import { createPlanningConfidence } from "@/lib/easyt/planning-confidence";
 import { ROUTE_BACKTRACKING_REASON_PREFIX } from "@/lib/easyt/planner";
+import { overviewStopImage } from "@/lib/easyt/trip-overview-imagery";
 
 const image = "/journey/peru-sacred-valley-route.jpg";
 
@@ -102,6 +106,19 @@ const coherentRouteTrip: EasyTTrip = {
     ? { ...leg, distanceKm: 346, durationMinutes: 180 }
     : { ...leg, distanceKm: 26 }),
 };
+const creditedPhotoTrip: EasyTTrip = {
+  ...baseTrip,
+  title: "Tokyo to Kyoto & Osaka",
+  brief: { ...baseTrip.brief, origin: "Tokyo", originCountry: "Japan", originCoordinates: [139.6917, 35.6895] },
+  stops: baseTrip.stops.map((stop, index) => ({
+    ...stop,
+    name: ["Tokyo", "Kyoto", "Osaka"][index] ?? stop.name,
+    country: "Japan",
+    latitude: [35.6762, 35.0116, 34.6937][index] ?? stop.latitude,
+    longitude: [139.6503, 135.7681, 135.5023][index] ?? stop.longitude,
+  })),
+  planItems: baseTrip.planItems.map((item) => ({ ...item, image: null, sourceUrl: null })),
+};
 const prepActions: BookingReadinessAction[] = [{
   id: "trip-connectivity",
   category: "connectivity",
@@ -169,6 +186,13 @@ const prepReadinessCards: ReadinessCard[] = [{
   partner: "world-nomads",
 }];
 
+function OverviewStoryFrame({ trip, restoreSavedFixture, children }: { trip: EasyTTrip; restoreSavedFixture: boolean; children: (trip: EasyTTrip) => ReactNode }) {
+  // Production device-trip entry loads its canonical document before mounting the shell.
+  // This opt-in fixture does the same so a browser reload exercises the real recovery store.
+  const [initialTrip] = useState(() => restoreSavedFixture && typeof window !== "undefined" ? loadTripRecovery(trip.id, trip.ownerId)?.trip ?? trip : trip);
+  return children(initialTrip);
+}
+
 const meta = {
   title: "Morrovia/05 Product Patterns/Trip workspace/Overview",
   component: TripOverviewWorkspace,
@@ -178,7 +202,7 @@ const meta = {
   },
   decorators: [(Story, context) => {
     if (context.parameters.feedbackAuthenticatedFixture && context.args.trip.ownerId) setStorybookAuthOwner(context.args.trip.ownerId);
-    return <main className="morrovia-editorial-page" style={{ minHeight: "100vh", paddingTop: 1 }}><TripShell trip={context.args.trip} cacheTrip={false} orientationAutoStart={false} feedbackStoryEligible={Boolean(context.parameters.feedbackStoryEligible)}><Story /></TripShell></main>;
+    return <OverviewStoryFrame key={context.id} trip={context.args.trip} restoreSavedFixture={Boolean(context.parameters.restoreSavedFixture)}>{(trip) => <main className="morrovia-editorial-page" style={{ minHeight: "100vh", paddingTop: 1 }}><TripShell trip={trip} cacheTrip={false} orientationAutoStart={false} feedbackStoryEligible={Boolean(context.parameters.feedbackStoryEligible)}><Story args={{ ...context.args, trip }} /></TripShell></main>}</OverviewStoryFrame>;
   }],
   args: {
     trip: baseTrip,
@@ -194,6 +218,17 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 export const ActivePlanning: Story = {};
+
+export const ThirdPartyPhotoCredits: Story = { args: { trip: creditedPhotoTrip } };
+export const CompactPhotoCreditCard: Story = {
+  render: () => <div className={workspaceStyles.routeList} style={{ width: 220 }}>
+    <OverviewStepMedia image={overviewStopImage(creditedPhotoTrip, creditedPhotoTrip.stops[0])} name="Tokyo" meta="3 nights" number={1} href="/journey/trip/cusco-sacred-valley-arequipa" />
+  </div>,
+  play: async ({ canvasElement }) => {
+    await new Promise<void>((resolve) => window.setTimeout(resolve, 1200));
+    canvasElement.querySelector<HTMLButtonElement>('button[aria-label^="Photo credit"]')?.click();
+  },
+};
 
 export const TourCapture: Story = {
   args: {
@@ -411,13 +446,13 @@ export const AllPreparationIncomplete: Story = {
 
 export const InsuranceQuoteHandoff: Story = {};
 
-export const BeforeYouGoCollapsed: Story = {};
+export const PracticalPrep: Story = {};
 
-export const BeforeYouGoExpanded: Story = {
+export const PracticalPrepWithProviderOptions: Story = {
   args: { initialGoodTasksOpen: true },
 };
 
-export const OmioGoodToDo: Story = {
+export const TransportActionsStayInTransport: Story = {
   args: { initialPrepActions: [...prepActions, ...omioPrepActions], initialGoodTasksOpen: true },
 };
 
@@ -519,3 +554,45 @@ export const Tablet768: Story = { globals: { viewport: { value: "morrovia768", i
 export const Desktop1024: Story = { globals: { viewport: { value: "morrovia1024", isRotated: false } } };
 export const Desktop1440: Story = { globals: { viewport: { value: "morrovia1440", isRotated: false } } };
 export const Desktop1680: Story = { globals: { viewport: { value: "morrovia1680", isRotated: false } } };
+
+// Canonical Namibia outline: three shaped days, seven overnight stops and six unbooked road legs.
+const overviewNamibiaStops = [
+  ["windhoek", "Windhoek", 17.0832, -22.5609, "2026-10-01", "2026-10-02", 1],
+  ["sossusvlei", "Sossusvlei", 15.2928, -24.7333, "2026-10-02", "2026-10-04", 2],
+  ["swakopmund", "Swakopmund", 14.5266, -22.6784, "2026-10-04", "2026-10-06", 2],
+  ["damaraland", "Damaraland", 14.5, -20.5, "2026-10-06", "2026-10-08", 2],
+  ["etosha", "Etosha", 16, -19.2, "2026-10-08", "2026-10-11", 3],
+  ["waterberg", "Waterberg", 17.25, -20.5, "2026-10-11", "2026-10-13", 2],
+  ["windhoek-return", "Windhoek", 17.0832, -22.5609, "2026-10-13", "2026-10-14", 1],
+] as const;
+const overviewNamibiaRouteStops = overviewNamibiaStops.map(([id, name, longitude, latitude, arrivalDate, departureDate, nights], order) => ({ id, name, longitude, latitude, arrivalDate, departureDate, nights, order, country: "Namibia" }));
+const overviewNamibiaTrip: EasyTTrip = {
+  ...baseTrip,
+  id: "storybook-overview-namibia-prep",
+  title: "Namibia",
+  startDate: "2026-10-01",
+  endDate: "2026-10-14",
+  brief: { ...baseTrip.brief, origin: "Windhoek", originCountry: "Namibia", originCoordinates: [17.0832, -22.5609], journeyEnd: { mode: "same_as_start" }, routeAssessment: undefined, bookings: [], checklist: [], customActivities: { "1": ["Explore central Windhoek"], "4": ["Explore Swakopmund"], "9": ["Etosha game drive"] } },
+  stops: overviewNamibiaRouteStops,
+  legs: [390, 225, 225, 240, 195, 210].map((durationMinutes, index) => ({ id: `namibia-road-${index + 1}`, fromStopId: overviewNamibiaRouteStops[index]!.id, toStopId: overviewNamibiaRouteStops[index + 1]!.id, mode: "road", durationMinutes, doorToDoorMinutes: durationMinutes, distanceKm: null, provider: "Morrovia planning estimate", provenance: "planning_estimate", confidence: "medium", routeMetadata: { planningEstimate: true } })),
+  planItems: Array.from({ length: 14 }, (_, index) => ({ ...planDay(index + 1, (overviewNamibiaRouteStops.find((stop) => `2026-10-${String(index + 1).padStart(2, "0")}` < stop.departureDate) ?? overviewNamibiaRouteStops[6]!).id, "Plan this day"), date: `2026-10-${String(index + 1).padStart(2, "0")}`, image: null })),
+};
+export const ApprovedPlanningAndPrep: Story = {
+  args: { trip: overviewNamibiaTrip, language: "en", initialPrepActions: prepActions.filter((action) => action.category === "connectivity").map((action) => ({ ...action, tripId: overviewNamibiaTrip.id, detail: "Compare data coverage for Namibia before purchasing." })) },
+};
+export const PartiallySortedPracticalPrep: Story = {
+  ...ApprovedPlanningAndPrep,
+  args: { ...ApprovedPlanningAndPrep.args, trip: { ...overviewNamibiaTrip, id: "storybook-overview-namibia-partial", brief: { ...overviewNamibiaTrip.brief, checklist: [{ id: "overview-prep-insurance", label: "Travel insurance", complete: true }, { id: "overview-prep-connectivity", label: "Trip connectivity", complete: false, resolution: "not-needed" }] } }, initialPrepProfile: { nationalities: ["United Kingdom"], residenceCountry: "United Kingdom", passportExpiryMonth: "" } },
+};
+export const PracticalPrepSpanish: Story = { ...ApprovedPlanningAndPrep, args: { ...ApprovedPlanningAndPrep.args, language: "es" } };
+export const ApprovedPlanningMobile: Story = { ...ApprovedPlanningAndPrep, globals: { viewport: { value: "morrovia390", isRotated: false } } };
+export const ApprovedPlanningTablet: Story = { ...ApprovedPlanningAndPrep, globals: { viewport: { value: "morrovia768", isRotated: false } } };
+export const ApprovedPlanningNarrow: Story = { ...ApprovedPlanningAndPrep, globals: { viewport: { value: "morrovia320", isRotated: false } } };
+
+export const PersistedPracticalPrep: Story = {
+  ...ApprovedPlanningAndPrep,
+  args: { ...ApprovedPlanningAndPrep.args, trip: { ...overviewNamibiaTrip, id: "storybook-overview-namibia-persisted-prep", ownerId: null } },
+  parameters: { restoreSavedFixture: true },
+};
+
+export const PersistedPracticalPrepMobile: Story = { ...PersistedPracticalPrep, globals: { viewport: { value: "morrovia390", isRotated: false } } };

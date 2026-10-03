@@ -479,6 +479,8 @@ export type TripChecklistItem = {
   id: string;
   label: string;
   complete: boolean;
+  /** Explicit traveller declaration; not needed is distinct from completion or provider verification. */
+  resolution?: "not-needed";
 };
 
 export type EasyTTrip = {

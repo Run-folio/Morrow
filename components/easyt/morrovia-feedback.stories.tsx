@@ -125,6 +125,17 @@ function AutoDismissNoticeContext() {
   return <PrototypeChrome current="trips"><section className={styles.dashboardPage}><div className={styles.sectionHeading}><div><p className={styles.eyebrow}>RESTORED TRIP</p><h1>Back in your trips.</h1><p className={styles.intro}>This harmless notice may leave after six seconds. Hovering or focusing it pauses the timer.</p></div>{!visible ? <EasyTButton variant="secondary" onClick={() => setVisible(true)}>Show restored notice</EasyTButton> : null}</div>{visible ? <div className={styles.noticePlacement}><MorroviaBriefNotice title="Trip restored" detail="“Japan in spring” is back in Active trips." autoDismissMs={6000} onDismiss={() => setVisible(false)} /></div> : null}</section></PrototypeChrome>;
 }
 
+function UndoNoticeContext() {
+  const [visible, setVisible] = useState(true);
+  const [undone, setUndone] = useState(false);
+  return <PrototypeChrome><section className={styles.workspace}>
+    <h2>Day 1</h2>
+    <EasyTButton variant="secondary" onClick={() => { setUndone(false); setVisible(true); }}>Add activity again</EasyTButton>
+    {visible ? <MorroviaBriefNotice title="Added to Day 1" variant="toast" autoDismissMs={5000} autoDismissWithAction action={<EasyTButton size="small" variant="quiet" onClick={() => { setUndone(true); setVisible(false); }}>Undo</EasyTButton>} onDismiss={() => setVisible(false)} /> : null}
+    <p data-testid="undo-notice-outcome">{undone ? "Activity undone" : "Activity planned"}</p>
+  </section></PrototypeChrome>;
+}
+
 function PersistentRecoveryContext() {
   const [state, setState] = useState<"error" | "retrying" | "saved">("error");
   const retry = () => { setState("retrying"); window.setTimeout(() => setState("saved"), 750); };
@@ -209,6 +220,8 @@ export const CurrentSaveFailure: Story = TripSaveFailedDeviceSafe;
 export const NightsChangedInline: Story = { render: () => <NightsContext /> };
 export const BriefTripDuplicatedNotice: Story = { render: () => <BriefNoticeContext /> };
 export const HarmlessAutoDismissNotice: Story = { render: () => <AutoDismissNoticeContext /> };
+export const ItineraryUndoNotice: Story = { render: () => <UndoNoticeContext /> };
+export const ItineraryUndoNoticeMobile390: Story = { ...ItineraryUndoNotice, globals: { viewport: { value: "morrovia390", isRotated: false } } };
 export const PersistentRouteRecovery: Story = { render: () => <PersistentRecoveryContext /> };
 export const PersistentStatusBanners: Story = { render: () => <StatusBannerContext /> };
 export const ContextualTransparencyDisclosure: Story = { render: () => <ContextualDisclosureContext /> };

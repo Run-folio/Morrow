@@ -92,7 +92,7 @@ test("Stay map is a projection of the current finder shortlist with one selectio
 test("Open full map preserves exact stop and property handoff identity", () => {
   assert.match(stay, /mapResultSelectionId\("stay", place\.id, context\.stop\.id\)/);
   assert.match(stay, /mapResultHandoffForLocalPlace\(place, "stay", context\.stop\.id, mapDayNumber, selectionId\)/);
-  assert.match(stay, /<EasyTLinkButton href=\{fullMapHref\(selected\)\}[\s\S]*>Open full map<\/EasyTLinkButton>/);
+  assert.match(stay, /<MorroviaMapPreview title="Stay map" href=\{fullMapHref\(selected\)\}>/);
 });
 
 test("Map, Explore, and Stay share JourneyRouteStopTrack while keeping workspace semantics local", () => {

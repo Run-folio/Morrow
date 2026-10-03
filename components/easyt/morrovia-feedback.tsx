@@ -184,21 +184,30 @@ export function MorroviaStatusBanner({
 export function MorroviaBriefNotice({
   action,
   autoDismissMs,
+  autoDismissWithAction = false,
   className = "",
   detail,
   onDismiss,
   title,
+  variant = "default",
 }: {
   action?: ReactNode;
   autoDismissMs?: number;
+  autoDismissWithAction?: boolean;
   className?: string;
   detail?: string;
   onDismiss?: () => void;
   title: string;
+  variant?: "default" | "toast";
 }) {
   const timerRef = useRef<number | null>(null);
   const remainingRef = useRef(autoDismissMs ?? 0);
   const startedAtRef = useRef(0);
+  const hoveringRef = useRef(false);
+  const focusedRef = useRef(false);
+  const onDismissRef = useRef(onDismiss);
+  onDismissRef.current = onDismiss;
+  const canAutoDismiss = Boolean(onDismiss && autoDismissMs && (!action || autoDismissWithAction));
 
   const clearTimer = useCallback(() => {
     if (timerRef.current !== null) window.clearTimeout(timerRef.current);
@@ -206,11 +215,15 @@ export function MorroviaBriefNotice({
   }, []);
 
   const resumeTimer = useCallback(() => {
-    if (!onDismiss || !autoDismissMs || action || remainingRef.current <= 0) return;
+    if (!canAutoDismiss || hoveringRef.current || focusedRef.current || remainingRef.current <= 0) return;
     clearTimer();
     startedAtRef.current = Date.now();
-    timerRef.current = window.setTimeout(onDismiss, remainingRef.current);
-  }, [action, autoDismissMs, clearTimer, onDismiss]);
+    timerRef.current = window.setTimeout(() => {
+      timerRef.current = null;
+      remainingRef.current = 0;
+      onDismissRef.current?.();
+    }, remainingRef.current);
+  }, [canAutoDismiss, clearTimer]);
 
   const pauseTimer = useCallback(() => {
     if (timerRef.current === null) return;
@@ -222,21 +235,24 @@ export function MorroviaBriefNotice({
     remainingRef.current = autoDismissMs ?? 0;
     resumeTimer();
     return clearTimer;
-  }, [autoDismissMs, clearTimer, resumeTimer]);
+  }, [autoDismissMs, clearTimer, resumeTimer, title]);
 
   const resumeAfterFocus = (event: FocusEvent<HTMLDivElement>) => {
-    if (!event.currentTarget.contains(event.relatedTarget as Node | null)) resumeTimer();
+    if (event.currentTarget.contains(event.relatedTarget as Node | null)) return;
+    focusedRef.current = false;
+    resumeTimer();
   };
 
   return (
     <div
       className={`${styles.briefNotice} ${className}`}
+      data-variant={variant}
       role="status"
       aria-live="polite"
       aria-atomic="true"
-      onMouseEnter={pauseTimer}
-      onMouseLeave={resumeTimer}
-      onFocusCapture={pauseTimer}
+      onMouseEnter={() => { hoveringRef.current = true; pauseTimer(); }}
+      onMouseLeave={() => { hoveringRef.current = false; resumeTimer(); }}
+      onFocusCapture={() => { focusedRef.current = true; pauseTimer(); }}
       onBlurCapture={resumeAfterFocus}
     >
       <Check aria-hidden="true" />

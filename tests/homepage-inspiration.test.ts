@@ -27,7 +27,7 @@ test("homepage inspiration reuses reviewed route photos with resilient fallback 
   assert.match(source, /route\.heroPhoto\?\.fallback/);
   assert.match(source, /route\.photos\.find/);
   assert.match(source, /focalPosition/);
-  assert.match(source, /placement="bottom-left"/);
+  assert.match(source, /placement="bottom-right"/);
   assert.doesNotMatch(source, /homepageRouteStopCards/);
   const card = source.match(/function HomepageRouteCard[\s\S]*?\n}/)?.[0] ?? "";
   assert.ok(card.includes("</EasyTLinkButton>") && card.indexOf("</EasyTLinkButton>") < card.indexOf("<MorroviaPhotoCredit"), "photo credit must be a sibling after the card link");

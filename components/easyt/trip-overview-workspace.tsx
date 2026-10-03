@@ -6,12 +6,9 @@ import {
   BedDouble,
   CalendarCheck2,
   CarFront,
-  CheckCircle2,
-  ChevronDown,
   ChevronRight,
   ClipboardCheck,
   FileCheck2,
-  HeartPulse,
   MapPin,
   ShieldCheck,
   Smartphone,
@@ -27,6 +24,7 @@ import ResilientImage from "./resilient-image";
 import {
   firstItineraryDayForStop,
   itineraryWorkspaceHref,
+  stayWorkspaceHref,
   mapWorkspaceHref,
   transportWorkspaceHref,
   tripBuilderHref,
@@ -41,12 +39,13 @@ import { JourneyPlannerMap } from "@/components/journey-planner-map";
 import { EasyTButton, EasyTLinkButton } from "./easyt-controls";
 import { MorroviaStatusBanner } from "./morrovia-feedback";
 import { MorroviaSectionStatus } from "./morrovia-loading-states";
-import { TripPreparationTaskSection, TripTravellerDetailsEditor } from "./trip-preparation";
+import { TripPreparationCards, TripTravellerDetailsEditor } from "./trip-preparation";
 import { useTripPrepReadiness, type TripPrepProviderStatus } from "./use-trip-prep-readiness";
-import { deriveOverviewReadinessCategories, type OverviewReadinessCategory, type OverviewReadinessCategoryId } from "@/lib/easyt/trip-overview-readiness";
+import { deriveOverviewReadinessCategories, overviewPlanningCardText, type OverviewReadinessCategory, type OverviewReadinessCategoryId } from "@/lib/easyt/trip-overview-readiness";
 import type { BookingReadinessAction } from "@/lib/easyt/booking-readiness";
 import type { ReadinessCard, TravelReadinessProfile } from "@/lib/easyt/travel-readiness";
-import { groupTripPrepTasks } from "@/lib/easyt/trip-prep";
+import { deriveOverviewPracticalTasks, setOverviewPrepChoice } from "@/lib/easyt/trip-prep";
+import { languageFromStorage, EASYT_LANGUAGE_CHANGE_EVENT } from "@/lib/easyt/i18n";
 import { presentOverviewIssues, presentOverviewRouteInsight } from "@/lib/easyt/trip-overview-issues";
 import { useWorkspaceOrientationReady, useWorkspaceOrientationTarget } from "./workspace-orientation";
 import { sameJourneyPlace } from "@/lib/easyt/journey-endpoints";
@@ -82,6 +81,7 @@ type TripOverviewWorkspaceProps = {
   initialPrepProviderStatus?: TripPrepProviderStatus;
   now?: string;
   initialGoodTasksOpen?: boolean;
+  language?: "en" | "es";
 };
 
 type ReadinessTileAction = { href: string; label: string };
@@ -109,19 +109,18 @@ function conciseTransferLabel(leg: EasyTTrip["legs"][number] | null | undefined)
   return leg.mode === "flight" ? `${duration} by air` : `${duration} transfer`;
 }
 
-function OverviewStepMedia({ image, name, meta, number }: { image: OverviewPlaceImage | null; name: string; meta: string; number: number }) {
-  const mediaRef = useRef<HTMLDivElement>(null);
+export function OverviewStepMedia({ image, name, meta, number, href }: { image: OverviewPlaceImage | null; name: string; meta: string; number: number; href: string }) {
   const [imageDisplayed, setImageDisplayed] = useState(false);
-  return <>
-    <article>
+  return <article>
       <div className={styles.stopNumber}>{number}</div>
-      <div className={styles.stopPhoto} ref={mediaRef}>
-        <ResilientImage src={image?.src} alt={image?.alt ?? ""} onDisplayState={setImageDisplayed} fallback={<div className={styles.stopFallback}><MapPin aria-hidden="true" /></div>} />
+      <div className={styles.stopPhoto}>
+        <Link href={href} className={styles.stopImageLink} aria-label={`${name} · ${meta}`}>
+          <ResilientImage src={image?.src} alt={image?.alt ?? ""} onDisplayState={setImageDisplayed} fallback={<div className={styles.stopFallback}><MapPin aria-hidden="true" /></div>} />
+        </Link>
+        {image?.sourceLabel && imageDisplayed ? <MorroviaPhotoCredit size="compact" ownership={image.provenance === "reviewed-morrovia-first-party" ? "morrovia" : "unknown"} placement="bottom-right" credit={image.sourceLabel} photoLabel={image.alt} authorLabel={image.author} authorHref={image.authorUrl} sourceLabel={image.sourceUrl ? "Source" : undefined} sourceHref={image.sourceUrl} licenseLabel={image.license} licenseHref={image.licenseUrl} fullCreditHref={image.fullCreditUrl} /> : null}
       </div>
-      <div className={styles.stopOverlay}><h3>{name}</h3><span>{meta}</span></div>
-    </article>
-    {image?.sourceLabel && imageDisplayed ? <MorroviaPhotoCredit anchorRef={mediaRef} ownership={image.provenance === "reviewed-morrovia-first-party" ? "morrovia" : "unknown"} placement="bottom-right" credit={image.sourceLabel} photoLabel={image.alt} authorLabel={image.author} authorHref={image.authorUrl} sourceLabel={image.sourceUrl ? "Source" : undefined} sourceHref={image.sourceUrl} licenseLabel={image.license} licenseHref={image.licenseUrl} fullCreditHref={image.fullCreditUrl} /> : null}
-  </>;
+      <Link href={href} className={styles.stopOverlay}><h3>{name}</h3><span>{meta}</span></Link>
+    </article>;
 }
 
 export default function TripOverviewWorkspace({
@@ -132,14 +131,22 @@ export default function TripOverviewWorkspace({
   initialPrepProfile,
   initialPrepProviderStatus,
   now,
-  initialGoodTasksOpen = false,
+  language: suppliedLanguage,
 }: TripOverviewWorkspaceProps) {
   const mutation = useTripShellMutation();
   const [travellerDetailsOpen, setTravellerDetailsOpen] = useState(false);
-  const [beforeGoOpen, setBeforeGoOpen] = useState(initialGoodTasksOpen);
+  const [language, setLanguage] = useState<"en" | "es">(suppliedLanguage ?? "en");
+  useEffect(() => {
+    if (suppliedLanguage) { setLanguage(suppliedLanguage); return; }
+    const update = () => setLanguage(languageFromStorage());
+    update();
+    window.addEventListener(EASYT_LANGUAGE_CHANGE_EVENT, update);
+    return () => window.removeEventListener(EASYT_LANGUAGE_CHANGE_EVENT, update);
+  }, [suppliedLanguage]);
   const [resolvedPlaceImages, setResolvedPlaceImages] = useState<Record<string, OverviewPlaceImage>>({});
   const prepReadiness = useTripPrepReadiness({
     trip,
+    language,
     initialActions: initialPrepActions,
     initialReadinessCards: initialPrepReadinessCards,
     initialProfile: initialPrepProfile,
@@ -167,12 +174,7 @@ export default function TripOverviewWorkspace({
     providerStatus: prepProviderStatus,
   }), [prepProviderStatus, prepReadiness.tasks, trip]);
   const planningCategories = readinessCategories.filter((category) => ["itinerary", "accommodation", "transport"].includes(category.id));
-  const outstandingPrepGroups = useMemo(
-    () => groupTripPrepTasks(prepReadiness.tasks.filter((task) => task.status !== "complete")),
-    [prepReadiness.tasks],
-  );
-  const mustTasks = outstandingPrepGroups.must;
-  const goodTasks = [...outstandingPrepGroups.good, ...outstandingPrepGroups.nice];
+  const practicalTasks = deriveOverviewPracticalTasks({ trip: mutation.trip, tasks: prepReadiness.tasks, profile: prepReadiness.profile, language });
   const orderedStops = useMemo(() => [...trip.stops].sort((left, right) => left.order - right.order), [trip.stops]);
   const criticalRouteIssue = visibleIssues.find((issue) => issue.severity === "critical");
   const routeInsight = presentOverviewRouteInsight(visibleIssues);
@@ -332,13 +334,12 @@ export default function TripOverviewWorkspace({
   };
 
   const progressAction = (category: OverviewReadinessCategory): ReadinessTileAction | null => {
-    if (category.id === "itinerary") return { href: `/journey/${encodeURIComponent(trip.id)}/itinerary`, label: "Open itinerary" };
-    if (category.id === "accommodation" && !accommodation.stops.length) return null;
+    if (category.id === "itinerary") return { href: itineraryWorkspaceHref(trip.id), label: language === "es" ? "Abrir itinerario" : "Open itinerary" };
     if (category.id === "accommodation") return {
-      href: mapWorkspaceHref(trip.id, accommodation.stops.find((stop) => !stayBookingForStop(trip, stop))?.id, "stay", null, null, null, tripWorkspaceHref(trip.id)),
-      label: "View stays",
+      href: stayWorkspaceHref(trip.id, accommodation.stops.find((stop) => !stayBookingForStop(trip, stop))?.id),
+      label: language === "es" ? "Ver alojamientos" : "View stays",
     };
-    if (category.id === "transport") return { href: transportWorkspaceHref(trip.id), label: "Review transport" };
+    if (category.id === "transport") return { href: transportWorkspaceHref(trip.id), label: language === "es" ? "Revisar transporte" : "Review transport" };
     return null;
   };
 
@@ -365,7 +366,7 @@ export default function TripOverviewWorkspace({
                   }),
                   ...(journeyEnd && !journeyEndIsLastStop ? [{ id: journeyEnd.id, name: journeyEnd.name, image: initialPlaceImages[journeyEnd.id] ?? resolvedPlaceImages[imageCacheKeysByOccurrence[journeyEnd.id]], meta: "Journey end", href: routeIssueHref(trip.id), transfer: null }] : []),
                 ].map((step, index, steps) => <li key={step.id} className={styles.routeStep}>
-                  <Link className={styles.routeStopLink} href={step.href}><OverviewStepMedia image={step.image} name={step.name} meta={step.meta} number={index + 1} /></Link>
+                  <OverviewStepMedia image={step.image} name={step.name} meta={step.meta} number={index + 1} href={step.href} />
                   {step.transfer ? <div className={styles.transfer}><ArrowRight aria-hidden="true" /><span>{step.transfer}</span></div> : <div className={styles.transferSpacer} aria-hidden="true" />}
                   {index < steps.length - 1 ? <ChevronRight className={styles.routeDirection} aria-hidden="true" /> : null}
                 </li>)}
@@ -416,19 +417,12 @@ export default function TripOverviewWorkspace({
 
         <section ref={progressOrientationTarget} className={styles.arrangeCard} aria-labelledby="overview-progress-title">
           <div className={styles.sectionHeading}>
-            <div><p>Next to arrange</p><h2 id="overview-progress-title">Keep building your trip</h2><span className={styles.sectionDetail}>A few key things to sort next. You’re making useful progress.</span></div>
+            <div><p>{language === "es" ? "Lo próximo por organizar" : "Next to arrange"}</p><h2 id="overview-progress-title">{language === "es" ? "Sigue preparando tu viaje" : "Keep building your trip"}</h2><span className={styles.sectionDetail}>{language === "es" ? "Organiza lo esencial para disfrutar de lo que viene." : "Get the essentials in place so you can look forward to your trip."}</span></div>
           </div>
           <div className={styles.arrangeGrid}>
             {planningCategories.map((category) => {
-              const tileAction = progressAction(category);
-              return <ArrangeItem
-                key={category.id}
-                icon={progressIconByCategory[category.id]}
-                label={category.label}
-                detail={category.detail}
-                status={category.status}
-                action={tileAction}
-              />;
+              const text = overviewPlanningCardText(trip, category, language);
+              return <ArrangeItem key={category.id} icon={progressIconByCategory[category.id]} label={text.label} detail={text.detail} status={category.status} percent={category.percent} language={language} action={progressAction(category)} />;
             })}
           </div>
         </section>
@@ -437,59 +431,50 @@ export default function TripOverviewWorkspace({
         <ContextualFeedbackSlot workspace="overview" entryKey={`overview:${trip.id}`} hasContent={Boolean(trip.stops.length)} blocked={Boolean(travellerDetailsOpen || mutation.saveState === "saving" || mutation.saveState === "error" || prepProviderStatus !== "available" || criticalRouteIssue)} />
 
         <section className={styles.beforeGo} id="before-you-go" aria-labelledby="overview-before-go-title">
-          <details className={styles.beforeGoDisclosure} open={beforeGoOpen} onToggle={(event) => setBeforeGoOpen(event.currentTarget.open)}>
-            <summary>
-              <div className={styles.beforeGoHeading}><p>Before you go</p><h2 id="overview-before-go-title">Get ready for a smoother trip</h2><span className={styles.sectionDetail}>Practical details stay quiet until you’re ready for them.</span></div>
-              <div className={styles.beforeGoCounts}>
-                <span className={styles.mustCount}>{mustTasks.length} must do</span>
-                <span>{goodTasks.length} good to do</span>
-                <ChevronDown aria-hidden="true" />
-              </div>
-            </summary>
-            <div className={styles.beforeGoContent}>
-              {prepProviderStatus !== "available" ? <div className={styles.beforeGoStatus}>
-                {prepProviderStatus === "unavailable"
-                  ? <MorroviaStatusBanner title="Some guidance is unavailable" detail="Your saved trip is unchanged. Retry before relying on the provider-backed task list." actions={<EasyTButton size="small" variant="secondary" onClick={prepReadiness.retryProviders}>Try again</EasyTButton>} />
-                  : <MorroviaSectionStatus title="Checking practical tasks" detail="Your saved trip tasks remain visible while current guidance loads." />}
-              </div> : null}
-              {mustTasks.length || goodTasks.length ? <div className={styles.beforeGoGrid}>
-                <TripPreparationTaskSection id="overview-must" title="Must do" icon={Sparkles} tasks={mustTasks} tripId={trip.id} onOpenTravellerDetails={openTravellerDetails} />
-                <TripPreparationTaskSection id="overview-good" title="Good to do" icon={HeartPulse} tasks={goodTasks} tripId={trip.id} onOpenTravellerDetails={openTravellerDetails} showPartnerPromotion promotionNow={now ? new Date(now) : undefined} />
-              </div> : <div className={styles.beforeGoEmpty}><CheckCircle2 aria-hidden="true" /><div><strong>No outstanding practical tasks</strong><span>Keep official guidance and booking details checked before departure.</span></div></div>}
-              {travellerDetailsOpen ? <div id="overview-traveller-details"><TripTravellerDetailsEditor ownerId={trip.ownerId} profile={prepReadiness.profile} onClose={() => setTravellerDetailsOpen(false)} onSave={prepReadiness.setProfile} /></div> : null}
-            </div>
-          </details>
+          <div className={styles.sectionHeading}>
+            <div><p>{language === "es" ? "Antes de salir" : "Before you go"}</p><h2 id="overview-before-go-title">{language === "es" ? "Preparativos prácticos" : "Practical prep"}</h2><span className={styles.sectionDetail}>{language === "es" ? "Algunos detalles útiles que organizar antes del viaje." : "A few useful details to sort before your trip."}</span></div>
+          </div>
+          {prepProviderStatus !== "available" ? <div className={styles.beforeGoStatus}>
+            {prepProviderStatus === "unavailable"
+              ? <MorroviaStatusBanner title={language === "es" ? "Parte de la información no está disponible" : "Some guidance is unavailable"} detail={language === "es" ? "Tu viaje guardado no ha cambiado. Vuelve a intentarlo antes de usar la información de los proveedores." : "Your saved trip is unchanged. Retry before relying on the provider-backed task list."} actions={<EasyTButton size="small" variant="secondary" onClick={prepReadiness.retryProviders}>{language === "es" ? "Volver a intentar" : "Try again"}</EasyTButton>} />
+              : <MorroviaSectionStatus title={language === "es" ? "Consultando los preparativos" : "Checking practical tasks"} detail={language === "es" ? "Las tareas guardadas siguen visibles mientras se carga la información actual." : "Your saved trip tasks remain visible while current guidance loads."} />}
+          </div> : null}
+          <TripPreparationCards tasks={practicalTasks} tripId={trip.id} language={language} onOpenTravellerDetails={openTravellerDetails}
+            isPending={(kind) => mutation.isPending(`overview-prep-${kind}`)}
+            onStatusChange={(kind, choice) => mutation.mutateTrip((current) => setOverviewPrepChoice(current, kind, choice), `overview-prep-${kind}`)}
+          />
+          {travellerDetailsOpen ? <div id="overview-traveller-details"><TripTravellerDetailsEditor ownerId={trip.ownerId} profile={prepReadiness.profile} language={language} onClose={() => setTravellerDetailsOpen(false)} onSave={prepReadiness.setProfile} /></div> : null}
         </section>
       </div>
     </section>
   );
 }
 
-const progressStatusLabel: Record<OverviewReadinessCategory["status"], string> = {
-  complete: "Ready",
-  "in-progress": "Started",
-  "to-do": "To do",
-  "needs-review": "Needs review",
-};
-
-function ArrangeItem({ icon: Icon, label, detail, status, action }: {
+function ArrangeItem({ icon: Icon, label, detail, status, percent, language, action }: {
   icon: LucideIcon;
   label: string;
   detail: string;
   status: OverviewReadinessCategory["status"];
+  percent: number | null;
+  language: "en" | "es";
   action: ReadinessTileAction | null;
 }) {
+  const progressStatusLabel = language === "es"
+    ? { complete: "Organizado", "in-progress": "En marcha", "to-do": "Por hacer", "needs-review": "Por revisar" }
+    : { complete: "Sorted", "in-progress": "Started", "to-do": "To do", "needs-review": "To review" };
   const className = `${styles.arrangeItem} ${action ? styles.arrangeItemInteractive : ""}`;
   const content = <>
     <div className={styles.arrangeIcon}><Icon aria-hidden="true" /></div>
     <div className={styles.arrangeCopy}>
       <div className={styles.arrangeTitle}><h3>{label}</h3><small className={`${styles.progressStatus} ${styles[`progressStatus-${status}`]}`}>{progressStatusLabel[status]}</small></div>
       <span>{detail}</span>
-      {action ? <strong>{action.label}<ArrowRight aria-hidden="true" /></strong> : null}
+      {percent !== null ? <div className={styles.progressTrackRow}>
+        <div className={styles.progressTrack} role="progressbar" aria-label={label} aria-valuenow={percent} aria-valuemin={0} aria-valuemax={100}><span style={{ width: `${percent}%` }} /></div>
+        <span>{percent}%</span>
+      </div> : <span className={styles.progressUnknown}>{language === "es" ? "Progreso por confirmar" : "Progress to confirm"}</span>}
     </div>
-    {action ? <ChevronRight className={styles.arrangeChevron} aria-hidden="true" /> : null}
+    {action ? <strong className={styles.arrangeAction}>{action.label}<ArrowRight aria-hidden="true" /></strong> : null}
   </>;
-
   if (!action) return <article className={className}>{content}</article>;
   return <Link className={className} href={action.href} aria-label={`${action.label}: ${label}`}>{content}</Link>;
 }

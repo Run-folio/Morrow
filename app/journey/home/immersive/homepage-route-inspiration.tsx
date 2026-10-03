@@ -3,7 +3,7 @@
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
-import { useMemo, useRef, useState, type MouseEvent } from "react";
+import { useMemo, useState, type MouseEvent } from "react";
 import { EasyTLinkButton } from "@/components/easyt/easyt-controls";
 import MorroviaPhotoCredit from "@/components/easyt/morrovia-photo-credit";
 import ResilientImage from "@/components/easyt/resilient-image";
@@ -53,22 +53,26 @@ function inspirationPhotos(route: ImmersiveRoute, es: boolean): InspirationPhoto
 function HomepageRouteCard({ route, es, onSelect }: { route: ImmersiveRoute; es: boolean; onSelect: (event: MouseEvent<HTMLAnchorElement>) => void }) {
   const [photoIndex, setPhotoIndex] = useState(0);
   const [imageDisplayed, setImageDisplayed] = useState(false);
-  const photoAnchorRef = useRef<HTMLSpanElement>(null);
   const photo = inspirationPhotos(route, es)[photoIndex];
   const originalImageSrc = photo?.variants.at(-1)?.src ?? photo?.variants[0]?.src;
   const imageVariants = photo?.cloudinaryOwned && originalImageSrc
     ? homepageRouteCardCloudinaryVariants(originalImageSrc)
     : photo?.variants ?? [];
   const days = route.dayRange.min === route.dayRange.max ? route.dayRange.min : `${route.dayRange.min}–${route.dayRange.max}`;
+  const routeLabel = `${es ? "Vista previa de la ruta" : "Preview route"}: ${route.title} · ${days} ${es ? "días" : "days"} · ${route.stops.length} ${es ? "paradas" : "stops"}`;
   return <article className={styles.inspirationCard}>
-    <EasyTLinkButton href={route.href} prefetch={false} variant="quiet" className={styles.inspirationCardTrigger} aria-label={`${es ? "Vista previa de la ruta" : "Preview route"}: ${route.title} · ${days} ${es ? "días" : "days"} · ${route.stops.length} ${es ? "paradas" : "stops"}`} onClick={onSelect}>
-      <span ref={photoAnchorRef} className={styles.inspirationPhoto}>
-        {photo ? <ResilientImage key={photo.variants[0]?.src} src={imageVariants.at(-1)?.src ?? originalImageSrc} srcSet={imageVariants.map((variant) => `${variant.src} ${variant.width}w`).join(", ")} sizes="(max-width: 520px) calc((100vw - 46px) / 2), (max-width: 700px) calc((100vw - 44px) / 2), (max-width: 1100px) calc((100vw - 84px) / 4), (max-width: 1448px) calc((100vw - 120px) / 7), 189px" width={768} height={512} alt="" loading="lazy" decoding="async" style={{ objectPosition: photo.focalPosition ?? "center" }} onDisplayState={setImageDisplayed} onError={() => setPhotoIndex((index) => index + 1)} fallback={<span className={styles.photoFallback}>{route.title}</span>} /> : <span className={styles.photoFallback}>{route.title}</span>}
-      </span>
+    <div className={styles.inspirationPhotoFrame}>
+      <EasyTLinkButton href={route.href} prefetch={false} variant="quiet" className={styles.inspirationPhotoLink} aria-label={routeLabel} onClick={onSelect}>
+        <span className={styles.inspirationPhoto}>
+          {photo ? <ResilientImage key={photo.variants[0]?.src} src={imageVariants.at(-1)?.src ?? originalImageSrc} srcSet={imageVariants.map((variant) => `${variant.src} ${variant.width}w`).join(", ")} sizes="(max-width: 520px) calc((100vw - 46px) / 2), (max-width: 700px) calc((100vw - 44px) / 2), (max-width: 1100px) calc((100vw - 84px) / 4), (max-width: 1448px) calc((100vw - 120px) / 7), 189px" width={768} height={512} alt="" loading="lazy" decoding="async" style={{ objectPosition: photo.focalPosition ?? "center" }} onDisplayState={setImageDisplayed} onError={() => setPhotoIndex((index) => index + 1)} fallback={<span className={styles.photoFallback}>{route.title}</span>} /> : <span className={styles.photoFallback}>{route.title}</span>}
+        </span>
+      </EasyTLinkButton>
+      {photo && photo.ownership !== "morrovia" && imageDisplayed ? <MorroviaPhotoCredit size="compact" ownership={photo.ownership} className={styles.inspirationCredit} placement="bottom-right" photoLabel={photo.photoLabel} credit={photo.credit} authorHref={photo.authorHref} sourceHref={photo.sourceHref} licenseHref={photo.licenseHref} fullCreditHref={photo.fullCreditHref} /> : null}
+    </div>
+    <EasyTLinkButton href={route.href} prefetch={false} variant="quiet" className={styles.inspirationCardTrigger} aria-label={routeLabel} onClick={onSelect}>
       <span className={styles.inspirationTitle}>{route.title}</span>
       <span className={styles.inspirationMeta}>{days} {es ? "días" : "days"}{" · "}{route.stops.length} {es ? "paradas" : "stops"}</span>
     </EasyTLinkButton>
-    {photo && photo.ownership !== "morrovia" && imageDisplayed ? <MorroviaPhotoCredit anchorRef={photoAnchorRef} ownership={photo.ownership} className={styles.inspirationCredit} placement="bottom-left" photoLabel={photo.photoLabel} credit={photo.credit} authorHref={photo.authorHref} sourceHref={photo.sourceHref} licenseHref={photo.licenseHref} fullCreditHref={photo.fullCreditHref} /> : null}
   </article>;
 }
 

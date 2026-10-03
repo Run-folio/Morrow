@@ -92,7 +92,7 @@ test("the production Before-you-go composition gives every single-action task ro
 test("the surface itself owns padding, focus, hover and a touch target without pseudo-element hit areas", () => {
   const overviewStyles = readFileSync("components/easyt/trip-overview-workspace.module.css", "utf8");
   const preparationStyles = readFileSync("components/easyt/trip-preparation.module.css", "utf8");
-  assert.match(overviewStyles, /\.arrangeItem \{[\s\S]*?min-height: 142px;[\s\S]*?padding: 17px;/);
+  assert.match(overviewStyles, /\.arrangeItem \{[\s\S]*?min-height: 198px;[\s\S]*?padding: 20px;/);
   assert.match(overviewStyles, /\.arrangeItemInteractive:hover/);
   assert.match(overviewStyles, /\.arrangeItemInteractive:focus-visible/);
   assert.match(preparationStyles, /\.taskRow \{[\s\S]*?min-height: 72px;[\s\S]*?padding: 10px 12px;/);
@@ -105,4 +105,27 @@ test("affiliate surfaces retain canonical outbound semantics and an announced ne
   const affiliate = readFileSync("components/easyt/affiliate-link.tsx", "utf8");
   assert.match(affiliate, /renderAsSurface[\s\S]*target="_blank"[\s\S]*rel="sponsored noopener noreferrer"/);
   assert.match(affiliate, /<span className="sr-only">\{`Opens \$\{providerLabel\} in a new tab\.`\}<\/span>/);
+});
+
+
+test("practical cards keep review and navigation as separate native interactive controls", () => {
+  const { file } = sourceFile("components/easyt/trip-preparation.tsx");
+  const cards = findFunction(file, "TripPreparationCards");
+  const elements = jsxNodes(cards);
+  for (const element of elements.filter((node) => interactiveTags.has(tagName(node)))) {
+    if (ts.isJsxElement(element)) {
+      const nested = element.children.flatMap((child) => jsxNodes(child)).filter((node) => interactiveTags.has(tagName(node)));
+      assert.equal(nested.length, 0, `${tagName(element)} must not contain the status or another action`);
+    }
+  }
+  assert.ok(!elements.some((node) => tagName(node) === "EasyTSelect"));
+  const review = elements.find((node) => tagName(node) === "EasyTButton" && /role="checkbox"/.test(node.getText()));
+  assert.ok(review);
+  assert.match(review.getText(), /aria-checked=\{reviewed\}/);
+  assert.match(review.getText(), /onStatusChange\(task.id, reviewed \? "to-review" : "sorted"\)/);
+  assert.match(review.getText(), /Mark \$\{task.title\} as/);
+  assert.match(review.getText(), /Marcar la tarea \$\{task.title\} como/);
+  const styles = readFileSync("components/easyt/trip-preparation.module.css", "utf8");
+  assert.match(styles, /\.overviewPrepReview \{[^}]*width: 44px; min-height: 44px;/);
+  assert.match(styles, /\.overviewPrepReview\[aria-checked="true"\]/);
 });

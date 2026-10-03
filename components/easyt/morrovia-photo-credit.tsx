@@ -2,7 +2,7 @@
 
 import { Camera } from "lucide-react";
 import { createPortal } from "react-dom";
-import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState, type RefObject } from "react";
+import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 import styles from "./morrovia-photo-credit.module.css";
 import { describePhotoAttribution } from "@/lib/easyt/photo-attribution";
 
@@ -18,10 +18,9 @@ export type MorroviaPhotoCreditProps = {
   licenseHref?: string | null;
   fullCreditHref?: string | null;
   placement?: "top-right" | "bottom-right" | "bottom-left";
+  size?: "compact" | "default";
   /** Only verified asset-level ownership suppresses the control. */
   ownership?: "morrovia" | "third-party" | "unknown";
-  /** Positions the control on an image when valid markup keeps it outside a link. */
-  anchorRef?: RefObject<HTMLElement | null>;
   className?: string;
 };
 
@@ -38,13 +37,12 @@ export default function MorroviaPhotoCredit({
   licenseHref,
   fullCreditHref,
   placement = "bottom-left",
+  size = "default",
   ownership = "unknown",
-  anchorRef,
   className = "",
 }: MorroviaPhotoCreditProps) {
   const [open, setOpen] = useState(false);
   const [portalReady, setPortalReady] = useState(false);
-  const [floatingStyle, setFloatingStyle] = useState<{ left: number; top: number } | null>(null);
   const [panelStyle, setPanelStyle] = useState<{ left: number; top: number; width: number } | null>(null);
   const popoverId = useId();
   const triggerRef = useRef<HTMLButtonElement>(null);
@@ -52,19 +50,6 @@ export default function MorroviaPhotoCredit({
   const attribution = describePhotoAttribution({ credit, authorHref, sourceHref, licenseHref });
 
   useEffect(() => setPortalReady(true), []);
-
-  const positionCamera = useCallback(() => {
-    const anchor = anchorRef?.current;
-    const trigger = triggerRef.current;
-    if (!anchor || !trigger) return;
-    const rect = anchor.getBoundingClientRect();
-    const left = placement === "bottom-right" ? rect.right - 52 : rect.left + 8;
-    const top = placement === "top-right" ? rect.top + 8 : rect.bottom - 52;
-    setFloatingStyle({
-      left: Math.max(8, Math.min(left, window.innerWidth - 52)),
-      top: Math.max(8, Math.min(top, window.innerHeight - 52)),
-    });
-  }, [anchorRef, placement]);
 
   const positionPanel = useCallback(() => {
     const trigger = triggerRef.current;
@@ -80,17 +65,6 @@ export default function MorroviaPhotoCredit({
       : Math.min(window.innerHeight - panelHeight - 12, anchor.bottom + 8);
     setPanelStyle({ left, top: Math.max(12, top), width });
   }, []);
-
-  useLayoutEffect(() => {
-    if (!anchorRef || !portalReady) return;
-    positionCamera();
-    window.addEventListener("resize", positionCamera);
-    window.addEventListener("scroll", positionCamera, true);
-    return () => {
-      window.removeEventListener("resize", positionCamera);
-      window.removeEventListener("scroll", positionCamera, true);
-    };
-  }, [anchorRef, placement, portalReady, positionCamera]);
 
   useLayoutEffect(() => {
     if (!open || !portalReady) return;
@@ -147,7 +121,7 @@ export default function MorroviaPhotoCredit({
     ? <a href={fullCreditHref} {...linkProps(fullCreditHref)}>{language === "es" ? "Créditos completos" : "Full image credits"}</a>
     : null;
 
-  const root = <div className={`${styles.root} ${className}`} data-placement={placement} style={anchorRef && floatingStyle ? { position: "fixed", left: floatingStyle.left, top: floatingStyle.top } : undefined}>
+  const root = <div className={`${styles.root} ${size === "compact" ? styles.compact : ""} ${className}`} data-placement={placement}>
     {/* morrovia-ui-audit-allow-next-line native-control -- The disclosure is an icon-only, 44px camera target with its own popover semantics, not a styled action button. */}
     <button ref={triggerRef} type="button" className={styles.trigger} aria-label={ariaLabel} aria-expanded={open} aria-haspopup="dialog" aria-controls={popoverId} onClick={(event) => {
       event.stopPropagation();
@@ -162,5 +136,5 @@ export default function MorroviaPhotoCredit({
     {fullCreditLink}
   </div>, document.body) : null;
 
-  return <>{anchorRef && portalReady ? createPortal(root, document.body) : root}{portal}</>;
+  return <>{root}{portal}</>;
 }

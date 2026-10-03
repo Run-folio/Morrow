@@ -1,0 +1,109 @@
+{
+  "before": {
+    "increases": [
+      {
+        "rule": "raw-color",
+        "path": "app/journey/journey.module.css",
+        "before": 410,
+        "now": 411
+      },
+      {
+        "rule": "raw-shadow",
+        "path": "components/easyt/trip-overview-workspace.module.css",
+        "before": 2,
+        "now": 3
+      },
+      {
+        "rule": "inline-radius",
+        "path": "components/easyt/morrovia-photo-credit.stories.tsx",
+        "before": 0,
+        "now": 1
+      },
+      {
+        "rule": "inline-radius",
+        "path": "components/easyt/storybook/morrovia-routes-discovery.stories.tsx",
+        "before": 0,
+        "now": 1
+      }
+    ],
+    "reductions": [
+      {
+        "rule": "raw-color",
+        "path": "components/easyt/trip-overview-workspace.module.css",
+        "before": 13,
+        "now": 12
+      },
+      {
+        "rule": "raw-shadow",
+        "path": "app/journey/journey.module.css",
+        "before": 44,
+        "now": 42
+      }
+    ],
+    "directiveErrors": [],
+    "coverageErrors": []
+  },
+  "after": {
+    "increases": [
+      {
+        "rule": "inline-radius",
+        "path": "components/easyt/morrovia-photo-credit.stories.tsx",
+        "before": 0,
+        "now": 1
+      },
+      {
+        "rule": "inline-radius",
+        "path": "components/easyt/storybook/morrovia-routes-discovery.stories.tsx",
+        "before": 0,
+        "now": 1
+      }
+    ],
+    "reductions": [
+      {
+        "rule": "native-control",
+        "path": "app/journey/new/trip-builder.tsx",
+        "before": 29,
+        "now": 28
+      },
+      {
+        "rule": "raw-color",
+        "path": "app/journey/journey.module.css",
+        "before": 410,
+        "now": 403
+      },
+      {
+        "rule": "raw-color",
+        "path": "components/easyt/trip-overview-workspace.module.css",
+        "before": 13,
+        "now": 9
+      },
+      {
+        "rule": "raw-radius",
+        "path": "app/journey/journey.module.css",
+        "before": 143,
+        "now": 142
+      },
+      {
+        "rule": "raw-radius",
+        "path": "components/easyt/trip-itinerary-workspace.module.css",
+        "before": 5,
+        "now": 4
+      },
+      {
+        "rule": "raw-radius",
+        "path": "components/easyt/trip-overview-workspace.module.css",
+        "before": 11,
+        "now": 9
+      },
+      {
+        "rule": "raw-shadow",
+        "path": "app/journey/journey.module.css",
+        "before": 44,
+        "now": 41
+      }
+    ],
+    "directiveErrors": [],
+    "coverageErrors": []
+  },
+  "introduced": []
+}

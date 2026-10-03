@@ -70,7 +70,9 @@ export function deriveOverviewReadinessCategories({
         ? `${shapedDays} of ${itinerary.expectedDays} days shaped.`
         : `${shapedDays} of ${itineraryTarget} days shaped. Keep planning or leave time free.`;
   const stays = accommodationProgress(trip);
+  const unknownNights = trip.stops.length === 0 || trip.stops.some((stop) => stop.nights === null || stop.nights === undefined);
   const transport = transportBookingProgress(trip);
+  const unknownTransfers = trip.stops.length === 0 || (trip.stops.length > 1 && transport.total === 0);
   const passport = taskForKind(prepTasks, "passport");
   const insurance = taskForKind(prepTasks, "insurance");
   const connectivity = taskForKind(prepTasks, "connectivity");
@@ -84,21 +86,21 @@ export function deriveOverviewReadinessCategories({
       label: "Days",
       detail: itineraryDetail,
       status: itineraryComplete ? "complete" : itinerary.plannedDays ? "in-progress" : "to-do",
-      percent: itineraryTarget ? Math.min(100, Math.round((shapedDays / itineraryTarget) * 100)) : 0,
+      percent: itineraryTarget ? Math.min(100, Math.round((shapedDays / itineraryTarget) * 100)) : null,
     },
     {
       id: "accommodation",
       label: "Stays",
-      detail: stays.stops.length ? `${stays.sortedCount} of ${stays.stops.length} overnight ${stays.stops.length === 1 ? "stay" : "stays"} selected` : "No overnight stays to arrange",
-      status: !stays.stops.length || stays.complete ? "complete" : stays.sortedCount || stays.datesReadyCount ? "in-progress" : "to-do",
-      percent: stays.stops.length ? Math.round((stays.sortedCount / stays.stops.length) * 100) : 100,
+      detail: unknownNights ? "Confirm overnight stops to see stay progress" : stays.stops.length ? `${stays.sortedCount} of ${stays.stops.length} overnight ${stays.stops.length === 1 ? "stay" : "stays"} selected` : "No overnight stays to arrange",
+      status: unknownNights ? "needs-review" : !stays.stops.length || stays.complete ? "complete" : stays.sortedCount ? "in-progress" : "to-do",
+      percent: unknownNights ? null : stays.stops.length ? Math.round((stays.sortedCount / stays.stops.length) * 100) : 100,
     },
     {
       id: "transport",
       label: "Transport",
-      detail: transport.total ? `${transport.sortedCount} of ${transport.total} ${transport.total === 1 ? "transfer" : "transfers"} sorted` : "No transfers to arrange",
-      status: transport.complete ? "complete" : transport.sortedCount ? "in-progress" : "to-do",
-      percent: transport.total ? Math.round((transport.sortedCount / transport.total) * 100) : 100,
+      detail: unknownTransfers ? "Confirm transfers to see transport progress" : transport.total ? `${transport.sortedCount} of ${transport.total} ${transport.total === 1 ? "transfer" : "transfers"} sorted` : "No transfers to arrange",
+      status: unknownTransfers ? "needs-review" : transport.complete ? "complete" : transport.sortedCount ? "in-progress" : "to-do",
+      percent: unknownTransfers ? null : transport.total ? Math.round((transport.sortedCount / transport.total) * 100) : 100,
     },
     {
       id: "passport",
@@ -129,4 +131,30 @@ export function deriveOverviewReadinessCategories({
       percent: checklist.length ? Math.round((checklistComplete / checklist.length) * 100) : null,
     },
   ];
+}
+
+/** Concise localized card copy, using the same canonical counts as the progress selector. */
+export function overviewPlanningCardText(trip: EasyTTrip, category: OverviewReadinessCategory, language: "en" | "es") {
+  const spanish = language === "es";
+  if (category.id === "itinerary") {
+    const coverage = deriveItineraryCoverage(trip);
+    const total = coverage.expectedDays ?? coverage.plannedDays;
+    const count = shapedItineraryDayNumbers(trip).size;
+    return { label: spanish ? "Días" : "Days", detail: total
+      ? spanish ? `${count} de ${total} días preparados.` : `${count} of ${total} days shaped.`
+      : spanish ? "Añade fechas o un esquema de días para ver el progreso." : "Add dates or a day outline to see progress." };
+  }
+  if (category.id === "accommodation") {
+    const stays = accommodationProgress(trip);
+    return { label: spanish ? "Alojamientos" : "Stays", detail: category.percent === null
+      ? spanish ? "Confirma las noches para ver el progreso." : "Confirm overnight stops to see stay progress."
+      : stays.stops.length ? spanish ? `${stays.sortedCount} de ${stays.stops.length} alojamientos seleccionados.` : `${stays.sortedCount} of ${stays.stops.length} overnight ${stays.stops.length === 1 ? "stay" : "stays"} selected.`
+      : spanish ? "No hay alojamientos que organizar." : "No overnight stays to arrange." };
+  }
+  const transport = transportBookingProgress(trip);
+  return { label: spanish ? "Transporte" : "Transport", detail: category.percent === null
+    ? spanish ? "Confirma los traslados para ver el progreso." : "Confirm transfers to see transport progress."
+    : transport.total
+    ? spanish ? `${transport.sortedCount} de ${transport.total} traslados organizados.` : `${transport.sortedCount} of ${transport.total} ${transport.total === 1 ? "transfer" : "transfers"} sorted.`
+    : spanish ? "No hay traslados que organizar." : "No transfers to arrange." };
 }

@@ -25,7 +25,11 @@ test("one shared camera disclosure owns compact, keyboard-accessible photo credi
   assert.match(component, /licenseLabel \? <>[\s\S]*<a href=\{licenseHref\}/);
   assert.match(styles, /width:\s*44px;\s*height:\s*44px/);
   assert.match(styles, /\.cameraGlyph[^{]*\{[^}]*width:\s*16px/);
-  assert.match(styles, /position:\s*fixed/);
+  assert.match(component, /size\?: "compact" \| "default"/);
+  assert.doesNotMatch(component, /anchorRef|positionCamera|scroll", positionCamera/);
+  assert.match(styles, /\.compact \.cameraGlyph[^{]*\{[^}]*width:\s*14px/);
+  assert.match(styles, /\.compact \.cameraGlyph[^{]*\{[^}]*opacity:\s*\.56/);
+  assert.match(styles, /position:\s*fixed/); // popover only
   assert.match(styles, /overflow-wrap:\s*anywhere/);
   assert.doesNotMatch(component, /presentation\?:/);
   assert.doesNotMatch(styles, /\.inline/);
@@ -45,15 +49,22 @@ test("verified owned assets suppress the control and third-party fallback attrib
   assert.match(homeCards, /ownership=\{photo\.ownership\}/);
 });
 
-test("homepage route-card camera is outside navigation and anchored to the image itself", () => {
+test("homepage route-card camera is outside navigation and rendered in the image frame", () => {
   const source = read("app/journey/home/immersive/homepage-route-inspiration.tsx");
   const css = read("app/journey/home/immersive/immersive.module.css");
-  assert.match(source, /photoAnchorRef/);
-  assert.match(source, /ref=\{photoAnchorRef\}/);
-  assert.match(source, /<EasyTLinkButton[\s\S]*?<\/EasyTLinkButton>[\s\S]*?<MorroviaPhotoCredit/);
-  assert.match(source, /anchorRef=\{photoAnchorRef\}/);
+  assert.doesNotMatch(source, /photoAnchorRef|anchorRef/);
+  assert.match(source, /inspirationPhotoFrame[\s\S]*?MorroviaPhotoCredit/);
+  assert.match(source, /size="compact"/);
   assert.match(source, /imageDisplayed[\s\S]*MorroviaPhotoCredit/);
   assert.match(css, /\.inspirationPhoto[^{]*\{[^}]*aspect-ratio:3\/2/);
+});
+
+test("small route catalogue thumbnails use the compact camera target", () => {
+  const catalogue = read("app/journey/discover/discovery-browser.tsx");
+  const photo = read("app/journey/discover/discovery-photo.tsx");
+  assert.match(catalogue, /creditSize="compact"/);
+  assert.match(catalogue, /creditPlacement="bottom-right"/);
+  assert.match(photo, /size=\{creditSize\}/);
 });
 
 test("editorial catalogue, detail, dashboard, overview and itinerary use closed camera disclosures", () => {
@@ -103,13 +114,14 @@ test("Overview route-card photo credits anchor bottom-right on the photo and kee
   const overview = read("components/easyt/trip-overview-workspace.tsx");
   const imagery = read("lib/easyt/trip-overview-imagery.ts");
   const credit = read("components/easyt/morrovia-photo-credit.tsx");
-  assert.match(overview, /className=\{styles\.stopPhoto\} ref=\{mediaRef\}/);
+  assert.match(overview, /className=\{styles\.stopPhoto\}/);
   assert.match(overview, /placement="bottom-right"/);
+  assert.match(overview, /size="compact"/);
   assert.match(overview, /authorLabel=\{image\.author\}/);
   assert.match(overview, /licenseLabel=\{image\.license\}/);
   assert.match(imagery, /author: photo\.author/);
   assert.match(imagery, /license: photo\.license/);
-  assert.match(credit, /placement === "bottom-right"[\s\S]*rect\.right - 52/);
+  assert.doesNotMatch(credit, /anchorRef|positionCamera|window\.addEventListener\("scroll", positionCamera/);
   assert.match(credit, /ownership === "morrovia" \|\| !attribution/);
 });
 

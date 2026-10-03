@@ -38,6 +38,16 @@
   background: color-mix(in srgb, var(--morrovia-photo-ink) 44%, var(--morrovia-paper));
   transition: background-color 120ms ease;
 }
+.compact .cameraGlyph {
+  width: 14px;
+  height: 14px;
+  padding: 3px;
+  opacity: .56;
+  transition: background-color 120ms ease, opacity 120ms ease;
+}
+.compact .trigger:hover .cameraGlyph,
+.compact .trigger:focus-visible .cameraGlyph,
+.compact .trigger[aria-expanded="true"] .cameraGlyph { opacity: 1; }
 .panel {
   position: fixed;
   z-index: 10000;

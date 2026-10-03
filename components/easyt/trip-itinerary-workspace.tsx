@@ -24,7 +24,6 @@ import {
   Pencil,
   Plane,
   Route,
-  RotateCcw,
   Ship,
   Sparkles,
   TrainFront,
@@ -155,6 +154,11 @@ const itineraryDayPartLabels: Record<"en" | "es", Record<ItineraryDayPart, strin
   es: { morning: "Mañana", midday: "Mediodía", afternoon: "Tarde", evening: "Noche" },
 };
 
+function addedToDayNotice(language: "en" | "es", dayNumber: number, dayPart?: ItineraryDayPart | null) {
+  const day = language === "es" ? `Añadido al día ${dayNumber}` : `Added to Day ${dayNumber}`;
+  return dayPart ? `${day} · ${itineraryDayPartLabels[language][dayPart]}` : day;
+}
+
 const pad = (value: number) => String(value).padStart(2, "0");
 
 function displayDate(value: string, language: "en" | "es", compact = false) {
@@ -267,7 +271,7 @@ function itineraryCopy(language: "en" | "es") {
     moveActivityDetail: "Elige otro día elegible en esta parada exacta de la ruta. Los planes existentes de ese día se conservarán.",
     moveTo: "Mover a",
     partOfDay: "Momento del día",
-    undoActivityAction: "Deshacer acción de actividad",
+    undoActivityAction: "Deshacer",
     activityActionUndone: "Se deshizo la última acción de actividad",
     sameStopMoveError: "Elige un día en la misma parada de la ruta para esta actividad.",
     moveFailed: "Esta actividad no se pudo mover de forma segura.",
@@ -381,7 +385,7 @@ function itineraryCopy(language: "en" | "es") {
     moveActivityDetail: "Choose another eligible day in this exact route stop. Existing plans on that day will be kept.",
     moveTo: "Move to",
     partOfDay: "Part of day",
-    undoActivityAction: "Undo activity action",
+    undoActivityAction: "Undo",
     activityActionUndone: "Last activity action undone",
     sameStopMoveError: "Choose a day in the same route stop for this activity.",
     moveFailed: "This activity could not be moved safely.",
@@ -543,7 +547,6 @@ export default function TripItineraryWorkspace({
   };
   const [remoteImages, setRemoteImages] = useState<Record<string, JourneyImage>>({});
   const [dayHeroDisplayed, setDayHeroDisplayed] = useState(false);
-  const dayHeroRef = useRef<HTMLImageElement>(null);
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
   const [selectedRecommendation, setSelectedRecommendation] = useState<ExploreResult | null>(null);
   const [addFlow, setAddFlow] = useState<AddFlow | null>(null);
@@ -562,7 +565,12 @@ export default function TripItineraryWorkspace({
   const [compactDayMap, setCompactDayMap] = useState(false);
   const [openSavedPickerId, setOpenSavedPickerId] = useState<string | null>(null);
   const [plannerError, setPlannerError] = useState("");
-  const [notice, setNotice] = useState<string | null>(null);
+  const [notice, setNoticeValue] = useState<string | null>(null);
+  const [noticeVersion, setNoticeVersion] = useState(0);
+  const setNotice = useCallback((value: string | null) => {
+    setNoticeValue(value);
+    if (value !== null) setNoticeVersion((version) => version + 1);
+  }, []);
   const [undoReceipt, setUndoReceipt] = useState<ItineraryItemUndoReceipt | null>(null);
   const [moveFlow, setMoveFlow] = useState<MoveFlow | null>(null);
   const [moveError, setMoveError] = useState("");
@@ -973,7 +981,7 @@ export default function TripItineraryWorkspace({
       setAddError(mutationReason || "This change could not be stored safely.");
       return;
     }
-    setNotice(addFlow.kind === "activity" ? copy.activityAdded : copy.noteAdded);
+    setNotice(addFlow.kind === "activity" ? addedToDayNotice(language, addFlow.dayNumber, addFlow.dayPart) : copy.noteAdded);
     setUndoReceipt(receipt);
     setAddFlow(null);
     setAddDraft("");
@@ -1018,10 +1026,7 @@ export default function TripItineraryWorkspace({
     if (!accepted) return false;
     setUndoReceipt(receipt);
     const target = workingTrip.planItems.find((day) => day.id === dayId);
-    const partLabel = scheduledPart ? scheduledPart[0]!.toUpperCase() + scheduledPart.slice(1) : null;
-    setNotice(target && partLabel
-      ? `${idea.title} added to ${target.id === active.id ? partLabel : `Day ${target.dayNumber} · ${partLabel}`}`
-      : copy.suggestionAdded);
+    setNotice(target ? addedToDayNotice(language, target.dayNumber, scheduledPart) : copy.suggestionAdded);
     trackEvent("attraction_selected", { trip_id: workingTrip.id, stop_id: active.stopId, source: "itinerary_rail" });
     return true;
   };
@@ -1050,7 +1055,7 @@ export default function TripItineraryWorkspace({
         receipt = result.undo ?? null;
         return result.trip;
       }, `itinerary-suggestion-${dragged.idea.stopId}-${dragged.idea.placeId}`);
-      if (accepted) { setUndoReceipt(receipt); setNotice(`${dragged.idea.title} added to ${dayPart[0]!.toUpperCase()}${dayPart.slice(1)}`); }
+      if (accepted) { setUndoReceipt(receipt); setNotice(addedToDayNotice(language, active.dayNumber, dayPart)); }
       else if (mutationReason && !mutationReason.includes("already")) setPlannerError(mutationReason);
       return;
     }
@@ -1378,14 +1383,16 @@ export default function TripItineraryWorkspace({
         aria-label={workspaceView === "calendar" ? `${copy.day} ${active.dayNumber}: ${stop?.name ?? active.title}` : undefined}
       >
         <header className={styles.dayHeader} data-photo={Boolean(dayHero)}>
-          {dayHero ? <img ref={dayHeroRef} className={styles.dayHeaderPhoto} src={dayHero.src} alt={dayHero.alt} onLoad={() => setDayHeroDisplayed(true)} onError={() => setDayHeroDisplayed(false)} /> : null}
+          {dayHero ? <div className={styles.dayHeaderMedia}>
+            <img className={styles.dayHeaderPhoto} src={dayHero.src} alt={dayHero.alt} onLoad={() => setDayHeroDisplayed(true)} onError={() => setDayHeroDisplayed(false)} />
+            {dayHero.sourceLabel && dayHeroDisplayed ? <MorroviaPhotoCredit ownership={dayHero.provenance === "reviewed-morrovia-first-party" ? "morrovia" : "unknown"} className={styles.dayHeroCredit} language={language} credit={dayHero.sourceLabel} photoLabel={dayHero.alt} authorHref={dayHero.authorUrl} sourceHref={dayHero.sourceUrl} licenseHref={dayHero.licenseUrl} fullCreditHref={dayHero.fullCreditUrl} /> : null}
+          </div> : null}
           <div>
             <p><span>{copy.day} {pad(active.dayNumber)}</span><i aria-hidden="true">·</i><time dateTime={active.date}>{displayDayDate(active.date, language)}</time></p>
             <h2>{stop?.name ?? active.title}</h2>
             {normalized(active.title) !== normalized(stop?.name ?? "") && normalized(active.title) !== normalized(`Explore ${stop?.name ?? ""}`)
               ? <span className={styles.dayRole}>{active.title}</span> : null}
           </div>
-          {dayHero?.sourceLabel && dayHeroDisplayed ? <MorroviaPhotoCredit anchorRef={dayHeroRef} ownership={dayHero.provenance === "reviewed-morrovia-first-party" ? "morrovia" : "unknown"} className={styles.dayHeroCredit} language={language} credit={dayHero.sourceLabel} photoLabel={dayHero.alt} authorHref={dayHero.authorUrl} sourceHref={dayHero.sourceUrl} licenseHref={dayHero.licenseUrl} fullCreditHref={dayHero.fullCreditUrl} /> : null}
         </header>
 
         {mutation.saveState === "error" ? <div className={styles.recoveryFeedback}><MorroviaRecoveryFeedback
@@ -1400,10 +1407,13 @@ export default function TripItineraryWorkspace({
           safety="Your itinerary is unchanged. Try the part-of-day control instead."
         /></div> : null}
         {notice ? <div className={styles.notice}><MorroviaBriefNotice
+          key={noticeVersion}
           className={styles.compactNotice}
           title={notice}
-          autoDismissMs={undoReceipt ? undefined : 3200}
-          action={undoReceipt ? <EasyTButton icon={RotateCcw} size="small" variant="secondary" onClick={undoLastItemAction}>{copy.undoActivityAction}</EasyTButton> : undefined}
+          variant="toast"
+          autoDismissMs={undoReceipt ? 5000 : 3200}
+          autoDismissWithAction
+          action={undoReceipt ? <EasyTButton size="small" variant="quiet" onClick={undoLastItemAction}>{copy.undoActivityAction}</EasyTButton> : undefined}
           onDismiss={() => { setNotice(null); setUndoReceipt(null); }}
         /></div> : null}
 

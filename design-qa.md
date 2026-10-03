@@ -2210,6 +2210,76 @@ The real production page was rendered inside fixed-width same-origin browser fra
 
 final result: passed
 
+## 2026-10-02 — Approved Overview planning and practical-prep redesign
+
+### Scope and source
+
+- Branch: `codex/maplibre-beta`; starting HEAD: `006aaf71ab6c9a5e61a34a0e85757b3af665f35a`.
+- Approved reference: `codex-clipboard-a32332ca-0cbc-4963-a93e-f708ec6db639.png` and the supplied Overview implementation brief.
+- Edited only the two Overview sections below Your route and their focused selectors, persisted checklist declaration, shared preparation composition, stories and tests. Pre-existing homepage, photo-credit and itinerary-toast edits remain in the worktree and are not part of this task.
+
+### Result and reused owners
+
+- Next to arrange is three equal Days / Stays / Transport cards with canonical counts, status, slim percentage bars and existing workspace navigation helpers.
+- Practical prep is one four-card grid, in the approved order. Removed Overview priority buckets/counters, the generic checklist card and duplicated stay/transport tasks. Legacy task derivation and saved checklist rows remain intact.
+- Reused EasyTButton, EasyTLinkButton, EasyTSelect, MorroviaAffiliateLink, the traveller-details editor, MorroviaPhotoCredit, ResilientImage, status banners and existing Morrovia tokens. New composition is scoped to Overview; existing task rows remain unchanged.
+- Prep choices use stable checklist IDs and the canonical shell mutation queue/recovery/CAS path. `resolution: "not-needed"` is a minimal optional backward-compatible declaration, with `complete: false`; it is distinct from booking or verification. Sorted and reversal survive recovery roundtrips and do not erase legacy checklist entries.
+- Passport Details added requires saved nationality and residence; it does not certify entry eligibility. Dates or affiliate clicks cannot count as selected stays/booked transport. Empty/missing planning data stays unknown; genuine zero-work cases remain safe.
+- EN/ES headings, controls, editor, statuses, guidance-loading states and disclosures are aligned.
+
+### Visual refinement and browser evidence
+
+Actual browser captures are under `artifacts/overview-redesign/`:
+
+- `desktop-final-full.jpg` / `desktop-final.jpg`: 1440 × 1100 viewport, three planning columns and 2 × 2 prep grid.
+- `mobile390-full.jpg` / `mobile390.jpg`: exact 390 × 844 viewport, single columns, page scroll width 390.
+- `tablet768-full.jpg`: 768 × 1024, content-driven single columns, no page overflow.
+- `narrow320-full.jpg`: 320 × 740, no page overflow or clipped actions.
+- `spanish320-full.jpg`: Spanish narrow layout, no overflow.
+- `partially-sorted-full.jpg` / `partially-sorted.jpg`: saved traveller fields, Insurance Sorted, Connectivity Not needed, Activities To review; cards retain their positions.
+- `reference-comparison.jpg`: side-by-side approved reference and actual desktop sections.
+- `status-menu-accessibility.txt`: expanded native menu observed through accessibility; all three available choices remain exposed.
+
+Refinement corrected the decorative note inheriting uppercase eyebrow styles, restrained mobile passport status width, action wrapping, truthful Stays state, and preserved full readable provider disclosures. Licensed Windhoek imagery replaces the mockup's unrelated Greek destination. Existing serif italic and Lucide stamp are intentional token/asset-compatible approximations; no new font or image pipeline was added. Decorations are hidden on mobile.
+
+Browser checks passed: native type-to-select Sorted and reversal to To review, Tab to the next independent action, native menu expansion and Escape collapse retaining focus, status changes without CTA navigation, persistence after real reload in the recovery-backed Storybook fixture, correct itinerary/stay/transport/activity/provider hrefs, and opening the existing traveller editor.
+
+The required OS-native open-menu screenshot remains unavailable: browser screenshots omit native popups, and foreground Chrome was in use by the user. No misleading screenshot was retained or substituted. Native menu viewport appearance still needs direct visual sign-off; semantic/keyboard behavior was verified.
+
+### Verification
+
+- Focused Overview/prep/readiness/booking/mutation suites: **95/95 passed**.
+- Empty-trip regression was observed failing (100% instead of unknown) before the narrow selector fix and passing afterward.
+- Typecheck: passed after correcting the new fixture's unknown dates to canonical empty strings.
+- Storybook production build: passed; existing bundle-size warnings remain informational.
+- `git diff --check`: passed.
+- Strict UI audit was run. It still fails on existing worktree drift: Journey raw color +1, prior route-photo focus shadow +1, and two photo-credit story inline radii +1 each, plus accepted-debt reductions.
+- Isolated audit comparison preserves the existing route-photo CSS before the redesign boundary in both snapshots and compares old vs new planning/preparation styles: **zero new increases**, zero directive errors; raw color reduced 14 → 12. Evidence: `ui-audit-comparison.json`. Checked-in audit baseline was not edited.
+- Four narrow documented geometry/elevation exceptions cover prep circular icons, capsule label/control and the unique low-elevation tilted postcard; all other new color/radius/focus roles use canonical tokens.
+
+### Readiness
+
+Implementation and built preview are ready for review. Final staging sign-off is pending the native-menu visual capture and resolution/classification of the preserved worktree's strict audit drift. No deployment, main update or mixed-scope commit was made.
+
+Overview task files (some already contained preserved unrelated edits):
+
+- `components/easyt/trip-overview-workspace.tsx`
+- `components/easyt/trip-overview-workspace.module.css`
+- `components/easyt/trip-overview-workspace.stories.tsx`
+- `components/easyt/trip-preparation.tsx`
+- `components/easyt/trip-preparation.module.css`
+- `components/easyt/storybook/morrovia-visual-inventory.generated.json`
+- `lib/easyt/trip-overview-readiness.ts`
+- `lib/easyt/trip-prep.ts`
+- `lib/easyt/trip.ts`
+- `tests/overview-readiness-actions.test.ts`
+- `tests/overview-readiness-dom-contract.test.ts`
+- `tests/trip-overview-booking-action.test.ts`
+- `tests/trip-overview-prep-consolidation.test.ts`
+- `tests/trip-overview-workspace-presentation.test.ts`
+- `design-qa.md` (appended only)
+- `artifacts/overview-redesign/` (actual browser and comparison evidence)
+
 
 ## 2026-10-02 — Builder editing parity
 
@@ -2235,3 +2305,11 @@ final result: passed
 - Intentional exception: existing pointed geographic day pins retain their established silhouette; one shared raw-radius directive documents that shape. No fonts, providers, generation, persistence, affiliate routing or booking model changed. No deployment and no main changes.
 - Evidence: artifacts/builder-map-cleanup/{japan-before,japan-after,peru-before,peru-focus-after,japan-mobile390-transfer}.png; overview/stay/itinerary-{390,430,1024,1440}.png; full-map-after-pan.png; audit-comparison.json.
 - Not verified end-to-end: authenticated/cloud saves, full-map navigation and return through a running Next app, physical touch devices, and pointer-hover timing. Context URL/unit checks, actual keyboard/tap-style activation and native attribution controls were verified locally. Deterministic failed-place fixture deliberately remains failed after retry; no live geocoding acceptance claim.
+
+## 2026-10-02 — Batch 12 cumulative integration gate
+
+- The later approved Overview cleanup supersedes the decorative imagery and native three-choice prep menu shown in the earlier `overview-redesign` captures. Current `overview-cleanup` captures show the final plain headers and four direct review check controls. Local Storybook browser checks passed at 1440, 768, 390 and 320 pixels: no horizontal overflow, four separate checkboxes, and direct on/off toggling.
+- The itinerary add confirmation is a floating, opt-in five-second toast with quiet Undo. Desktop and 390-pixel Storybook browser checks verified no layout reflow, hover/focus pause, automatic dismissal after leaving, Undo, and manual dismissal. The populated-day browser suite passed 6/6 after its assertion was updated to the approved short `Undo` label.
+- Focused photo-credit/Homepage tests passed 83/83; Overview/prep/presentation 72/72; Itinerary/mutation 63/63; Map/Stay/Transport 56 passed with seven opt-in browser cases skipped. The stale Stay shared-preview test assertion was updated to the committed map-preview owner; its suite now passes. Builder gate passed 33 with 24 opt-in browser cases skipped. Typecheck and Storybook production build passed.
+- Strict UI audit has one remaining inherited finding: the raw Overview card shadow is present in starting HEAD `4d3cc989`. The two new photo-credit Storybook inline radii were removed. The checked-in baseline was lowered only for Overview raw-color 11→9 and raw-radius 10→8; no allowed debt count increased. The previously classified TripShell presentation assertion still expects `Route` instead of the accepted `View my route` and remains outside this integration patch.
+- The named screenshots and comparison files referenced above are retained as repository QA evidence under `artifacts/`. The earlier `overview-redesign` images document a superseded intermediate state; use `overview-cleanup` for the final Overview presentation. Three uncited local captures are excluded from the candidate commit and retained separately.

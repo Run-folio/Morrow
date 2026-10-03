@@ -1,6 +1,7 @@
 import "maplibre-gl/dist/maplibre-gl.css";
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
 import DiscoveryBrowser from "@/app/journey/discover/discovery-browser";
+import DiscoveryPhoto from "@/app/journey/discover/discovery-photo";
 import RoutePreview from "@/app/journey/discover/route-preview";
 import { discoveryCatalogue, type DiscoveryRoute } from "@/lib/easyt/discovery-catalogue";
 import { initialDiscoveryFilters } from "@/lib/easyt/route-discovery";
@@ -18,6 +19,25 @@ const meta = {title:"Morrovia/05 Product Patterns/Routes Discovery",component:Di
 export default meta;
 type Story=StoryObj<typeof meta>;
 export const Default: Story = { args: { routes: catalogueWithEditorialImages(routes, routesOverviewEditorial(routes)), editorial: routesOverviewEditorial(routes) } };
+export const Catalogue: Story = {
+  ...Default,
+  play: async ({ canvasElement }) => {
+    await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+    canvasElement.querySelector("#all-routes")?.scrollIntoView({ block: "start" });
+  },
+};
+const compactPhotoRoute = catalogueWithEditorialImages(routes, routesOverviewEditorial(routes)).find((route) => route.image?.credit && route.image.variants.length > 0)!;
+export const CompactPhotoCard: Story = {
+  render: () => <main className={styles.page}>
+    <div style={{ position: "relative", width: "min(720px, 90vw)", height: 460, overflow: "hidden" }}>
+      <DiscoveryPhoto route={compactPhotoRoute} priority sizes="720px" creditSize="compact" creditPlacement="bottom-right" />
+    </div>
+  </main>,
+  play: async ({ canvasElement }) => {
+    await new Promise<void>((resolve) => window.setTimeout(resolve, 1200));
+    canvasElement.querySelector<HTMLButtonElement>('button[aria-label^="Photo credit"]')?.click();
+  },
+};
 const editorial = routesOverviewEditorial(routes);
 const editorialArgs = { routes: catalogueWithEditorialImages(routes, editorial), editorial };
 export const EditorialCarousel: Story = { args: editorialArgs };

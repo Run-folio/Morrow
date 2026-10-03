@@ -25,7 +25,7 @@ export type DiscoveryBrowserProps = { routes: DiscoveryRoute[]; navigation?: Rea
 
 export function RouteItem({ route, index, onSelect, featured = false, compact = false, active = false, imageUnavailable = false }: { route: DiscoveryRoute; index: number; onSelect: (route: DiscoveryRoute) => void; featured?: boolean; compact?: boolean; active?: boolean; imageUnavailable?: boolean }) {
   return <article className={`${featured ? styles["route-story"] : styles["route-row"]} ${active ? styles.active : ""}`}>
-    <DiscoveryPhoto route={route} className={styles.itemPhoto} sizes={featured ? "(max-width:700px) 100vw, 55vw" : "100px"} unavailable={imageUnavailable} />
+    <DiscoveryPhoto route={route} className={styles.itemPhoto} sizes={featured ? "(max-width:700px) 100vw, 55vw" : "100px"} unavailable={imageUnavailable} creditSize="compact" creditPlacement="bottom-right" />
     {featured && <span className={styles["story-wash"]} />}
     <Button variant="quiet" className={styles.itemSelect} aria-label={`${compact ? "Show on map:" : "Preview"} ${route.title}`} aria-pressed={compact ? active : undefined} onClick={() => onSelect(route)}>
       <span className={styles["row-number"]}>{String(index + 1).padStart(2, "0")}</span>

@@ -38,7 +38,7 @@ test("populated day has one post-plan Add flow, keeps saved content, suggestions
     await planner.getByRole("combobox", { name: "Part of day", exact: true }).selectOption("afternoon");
     await planner.getByRole("button", { name: "Save", exact: true }).click();
     assert.match(await planner.innerText(), /Afternoon[\s\S]*Meiji Shrine/);
-    await page.getByRole("button", { name: "Undo activity action" }).click();
+    await page.getByRole("button", { name: "Undo", exact: true }).click();
     assert.equal(await planner.getByText("Meiji Shrine", { exact: true }).count(), 0);
     await page.close();
   } finally { await browser.close(); }

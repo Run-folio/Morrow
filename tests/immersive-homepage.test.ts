@@ -216,15 +216,18 @@ test("destination imagery is matched to canonical places with explicit source ri
   assert.match(korea.photos[korea.stops.findIndex((stop) => stop.name === "Busan")]?.key ?? "", /O3i91C0vuY0$/);
 });
 
-test("reduced-motion handling stops scroll work and the final action focuses the original prompt", () => {
+test("reduced-motion handling stops scroll work and the final action starts a new trip", () => {
   const route = readFileSync(new URL("../app/journey/home/immersive/route-chapters.tsx", import.meta.url), "utf8");
   const css = readFileSync(new URL("../app/journey/home/immersive/immersive.module.css", import.meta.url), "utf8");
   const closing = readFileSync(new URL("../app/journey/home/immersive/closing-chapter.tsx", import.meta.url), "utf8");
   assert.doesNotMatch(route, /placesStage/);
   assert.doesNotMatch(route, /desktop.addEventListener\("change", listen\)/);
   assert.match(css, /prefers-reduced-motion:reduce/);
-  assert.match(closing, /#start-building textarea/);
-  assert.match(closing, /focus\(\{ preventScroll: true \}\)/);
+  assert.match(closing, /beginNewTripNavigation\(/);
+  assert.match(closing, /window\.location\.assign\("\/journey\/new"\)/);
+  assert.match(closing, /es \? "Planificar mi viaje" : "Plan my trip"/);
+  assert.doesNotMatch(closing, /#start-building textarea|scrollIntoView/);
+  assert.doesNotMatch(closing, /\.focus\(/);
 });
 
 test("annotated homepage cleanup removes redundant copy and preserves functional actions", () => {

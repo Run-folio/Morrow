@@ -5,6 +5,7 @@ import {
   BedDouble,
   CalendarDays,
   CarFront,
+  Check,
   ClipboardCheck,
   ChevronDown,
   ExternalLink,
@@ -20,9 +21,9 @@ import { useEffect, useState } from "react";
 
 import { trackEvent } from "@/lib/analytics";
 import { travelReadinessStorageKey } from "@/lib/easyt/private-browser-context";
-import type { TripPrepTask, TripPrepTaskStatus } from "@/lib/easyt/trip-prep";
+import type { OverviewPracticalTask, OverviewPrepKind, TripPrepTask, TripPrepTaskStatus } from "@/lib/easyt/trip-prep";
 import type { TravelReadinessProfile } from "@/lib/easyt/travel-readiness";
-import { EasyTButton, EasyTField } from "./easyt-controls";
+import { EasyTButton, EasyTField, EasyTLinkButton } from "./easyt-controls";
 import { affiliateDisclosureForProvider, MorroviaAffiliateLink } from "./affiliate-link";
 import { MorroviaPartnerPromotion } from "./partner-promotion";
 import styles from "./trip-preparation.module.css";
@@ -191,11 +192,13 @@ export function TripTravellerDetailsEditor({
   profile,
   onClose,
   onSave,
+  language = "en",
 }: {
   ownerId?: string | null;
   profile: TravelReadinessProfile;
   onClose: () => void;
   onSave: (profile: TravelReadinessProfile) => void;
+  language?: "en" | "es";
 }) {
   const [draft, setDraft] = useState(profile);
   const [saveState, setSaveState] = useState<"idle" | "saved" | "error">("idle");
@@ -217,18 +220,69 @@ export function TripTravellerDetailsEditor({
 
   return <section className={styles.travellerEditor} aria-labelledby="overview-traveller-details-title">
     <header>
-      <div><p>Traveller details</p><h3 id="overview-traveller-details-title">Personalise entry and passport checks</h3><span>Only nationality, residence and passport expiry month are stored on this device. Never enter passport numbers or upload documents.</span></div>
+      <div><p>{language === "es" ? "Datos del viajero" : "Traveller details"}</p><h3 id="overview-traveller-details-title">{language === "es" ? "Personaliza las consultas de entrada y pasaporte" : "Personalise entry and passport checks"}</h3><span>{language === "es" ? "Solo se guardan en este dispositivo la nacionalidad, la residencia y el mes de caducidad del pasaporte. No introduzcas números de pasaporte ni subas documentos." : "Only nationality, residence and passport expiry month are stored on this device. Never enter passport numbers or upload documents."}</span></div>
       <ShieldCheck aria-hidden="true" />
     </header>
     <div className={styles.travellerFields}>
-      <EasyTField label="Nationality / nationalities" value={draft.nationalities.join(", ")} onChange={(event) => setDraft((current) => ({ ...current, nationalities: event.target.value.split(",").map((country) => country.trim()).filter(Boolean).slice(0, 4) }))} placeholder="For example, United Kingdom" />
-      <EasyTField label="Country of residence" value={draft.residenceCountry} onChange={(event) => setDraft((current) => ({ ...current, residenceCountry: event.target.value }))} placeholder="For example, United Kingdom" />
-      <EasyTField label="Passport expiry month" type="month" value={draft.passportExpiryMonth} onChange={(event) => setDraft((current) => ({ ...current, passportExpiryMonth: event.target.value }))} />
+      <EasyTField label={language === "es" ? "Nacionalidad / nacionalidades" : "Nationality / nationalities"} value={draft.nationalities.join(", ")} onChange={(event) => setDraft((current) => ({ ...current, nationalities: event.target.value.split(",").map((country) => country.trim()).filter(Boolean).slice(0, 4) }))} placeholder={language === "es" ? "Por ejemplo, España" : "For example, United Kingdom"} />
+      <EasyTField label={language === "es" ? "País de residencia" : "Country of residence"} value={draft.residenceCountry} onChange={(event) => setDraft((current) => ({ ...current, residenceCountry: event.target.value }))} placeholder={language === "es" ? "Por ejemplo, España" : "For example, United Kingdom"} />
+      <EasyTField label={language === "es" ? "Mes de caducidad del pasaporte" : "Passport expiry month"} type="month" value={draft.passportExpiryMonth} onChange={(event) => setDraft((current) => ({ ...current, passportExpiryMonth: event.target.value }))} />
     </div>
     <div className={styles.travellerActions}>
-      <EasyTButton size="small" onClick={save}>Save on this device</EasyTButton>
-      <EasyTButton size="small" variant="quiet" onClick={onClose}>Close</EasyTButton>
-      {saveState === "saved" ? <span role="status">Traveller details saved.</span> : saveState === "error" ? <span role="alert">Morrovia couldn’t save these details in this browser. Nothing changed.</span> : null}
+      <EasyTButton size="small" onClick={save}>{language === "es" ? "Guardar en este dispositivo" : "Save on this device"}</EasyTButton>
+      <EasyTButton size="small" variant="quiet" onClick={onClose}>{language === "es" ? "Cerrar" : "Close"}</EasyTButton>
+      {saveState === "saved" ? <span role="status">{language === "es" ? "Datos del viajero guardados." : "Traveller details saved."}</span> : saveState === "error" ? <span role="alert">{language === "es" ? "Morrovia no pudo guardar los datos en este navegador. No se aplicaron cambios." : "Morrovia couldn’t save these details in this browser. Nothing changed."}</span> : null}
     </div>
   </section>;
+}
+
+/** Overview card presentation composes existing controls and affiliate owners; legacy task rows stay unchanged. */
+export function TripPreparationCards({ tasks, tripId, language, onOpenTravellerDetails, onStatusChange, isPending }: {
+  tasks: OverviewPracticalTask[];
+  tripId: string;
+  language: "en" | "es";
+  onOpenTravellerDetails: () => void;
+  onStatusChange: (kind: OverviewPrepKind, choice: "to-review" | "sorted") => void;
+  isPending: (kind: OverviewPrepKind) => boolean;
+}) {
+  return <div className={styles.overviewPrepGrid}>
+    {tasks.map((task) => {
+      const Icon = iconByKind[task.id];
+      const action = task.action;
+      const reviewed = task.status === "sorted" || task.status === "not-needed";
+      const legacyTask: TripPrepTask = { ...task, kind: task.id, category: "good", status: "to-do" };
+      const disclosure = language === "es"
+        ? action?.provider === "world-nomads"
+          ? "Recibimos una comisión cuando obtienes una cotización de World Nomads mediante este enlace. No representamos a World Nomads. Esto no es una recomendación de contratar un seguro de viaje."
+          : "Enlace de socio · Morrovia puede recibir una comisión sin coste adicional para ti. La reserva, el pago y las condiciones del proveedor se aplican en su sitio."
+        : affiliateDisclosureForProvider(action?.provider ?? "");
+      return <article key={task.id} className={styles.overviewPrepCard} data-prep-kind={task.id} data-prep-state={task.status}>
+        <span className={styles.overviewPrepIcon}><Icon aria-hidden="true" /></span>
+        <div className={styles.overviewPrepCopy}>
+          <h3>{task.title}</h3>
+          <p>{task.detail}</p>
+          {action?.affiliate ? <small className={styles.overviewPrepDisclosure}>{disclosure}</small> : null}
+          <div className={styles.overviewPrepAction}>
+            {action?.opensTravellerDetails ? <EasyTButton variant="quiet" size="small" onClick={onOpenTravellerDetails}>{action.label}<ArrowRight aria-hidden="true" /></EasyTButton>
+              : action?.href && action.affiliate && (action.provider === "world-nomads" || action.provider === "saily") ? <MorroviaAffiliateLink
+                action={{ provider: action.provider, category: action.provider === "world-nomads" ? "travel_insurance" : "connectivity", href: action.href, cta: action.label, affiliate: true }}
+                context={{ placement: "overview_before_you_go", tripId, workspaceView: "overview" }} variant="quiet"
+              /> : action?.href ? <EasyTLinkButton href={action.href} target={action.external ? "_blank" : undefined} rel={action.external ? action.affiliate ? "sponsored noopener noreferrer" : "noopener noreferrer" : undefined} variant="quiet" size="small" onClick={taskActionClick(legacyTask, tripId)}>{action.label}{action.external ? <ExternalLink aria-hidden="true" /> : <ArrowRight aria-hidden="true" />}</EasyTLinkButton>
+              : <span className={styles.overviewPrepUnavailable}>{language === "es" ? "Opciones no disponibles por ahora" : "Options currently unavailable"}</span>}
+          </div>
+        </div>
+        <EasyTButton
+          className={styles.overviewPrepReview}
+          variant="quiet"
+          role="checkbox"
+          aria-checked={reviewed}
+          aria-label={language === "es"
+            ? `Marcar la tarea ${task.title} como ${reviewed ? "pendiente" : "revisada"}`
+            : `Mark ${task.title} as ${reviewed ? "not reviewed" : "reviewed"}`}
+          disabled={isPending(task.id)}
+          onClick={() => onStatusChange(task.id, reviewed ? "to-review" : "sorted")}
+        ><span className={styles.overviewPrepReviewMark}><Check aria-hidden="true" /></span></EasyTButton>
+      </article>;
+    })}
+  </div>;
 }

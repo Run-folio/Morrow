@@ -3,7 +3,7 @@ import type { BookingReadinessAction } from "./booking-readiness.ts";
 import { tripIntentForTrip, type EasyTTrip, type TripChecklistItem } from "./trip.ts";
 import { deriveTripDateFacts } from "./trip-facts.ts";
 import type { ReadinessCard, TravelReadinessProfile } from "./travel-readiness.ts";
-import { mapWorkspaceHref, tripWorkspaceHref } from "./trip-workspace-links.ts";
+import { exploreWorkspaceHref, mapWorkspaceHref, tripWorkspaceHref } from "./trip-workspace-links.ts";
 
 export type TripPrepTaskStatus = "complete" | "in-progress" | "to-do" | "urgent";
 export type TripPrepTaskCategory = "must" | "good" | "nice";
@@ -253,4 +253,83 @@ export function groupTripPrepTasks(tasks: TripPrepTask[]) {
     good: tasks.filter((task) => task.category === "good"),
     nice: tasks.filter((task) => task.category === "nice"),
   };
+}
+
+export type OverviewPrepChoice = "to-review" | "sorted" | "not-needed";
+export type OverviewPrepKind = "passport" | "insurance" | "connectivity" | "activity";
+export type OverviewPracticalTask = {
+  id: "passport" | OverviewPrepKind;
+  title: string;
+  detail: string;
+  status: OverviewPrepChoice | "details-added";
+  action?: TripPrepTask["action"];
+};
+
+const overviewPrepDefinitions = {
+  passport: { id: "overview-prep-passport", label: "Review passport and traveller details", pattern: /passport|visa|entry/i },
+  insurance: { id: "overview-prep-insurance", label: "Review travel insurance", pattern: /insurance/i },
+  connectivity: { id: "overview-prep-connectivity", label: "Review connectivity", pattern: /esim|data|connect/i },
+  activity: { id: "overview-prep-activities", label: "Review activities", pattern: /activit/i },
+} as const;
+
+/** Explicit choices live in the existing trip checklist and survive every trip save/rebuild boundary. */
+export function setOverviewPrepChoice(trip: EasyTTrip, kind: OverviewPrepKind, choice: OverviewPrepChoice): EasyTTrip {
+  const definition = overviewPrepDefinitions[kind];
+  const checklist = trip.brief.checklist ?? [];
+  const existing = checklist.find((item) => item.id === definition.id);
+  const { resolution: _previousResolution, ...previous } = existing ?? { id: definition.id, label: definition.label, complete: false };
+  const item: TripChecklistItem = { ...previous, complete: choice === "sorted", ...(choice === "not-needed" ? { resolution: "not-needed" } : {}) };
+  if (existing && JSON.stringify(existing) === JSON.stringify(item)) return trip;
+  return { ...trip, brief: { ...trip.brief, checklist: existing ? checklist.map((entry) => entry.id === item.id ? item : entry) : [...checklist, item] } };
+}
+
+function overviewPrepChoice(trip: EasyTTrip, kind: OverviewPrepKind): OverviewPrepChoice {
+  const definition = overviewPrepDefinitions[kind];
+  const checklist = trip.brief.checklist ?? [];
+  // Passport review is a declaration, separate from profile fields or legacy entry checks.
+  const saved = checklist.find((item) => item.id === definition.id)
+    ?? (kind === "passport" ? undefined : matchingChecklist(checklist, definition.pattern));
+  return saved?.resolution === "not-needed" ? "not-needed" : saved?.complete ? "sorted" : "to-review";
+}
+
+/** Overview-only projection: preserve the full task list and its categories for other consumers. */
+export function deriveOverviewPracticalTasks({ trip, tasks, profile, language = "en" }: {
+  trip: EasyTTrip;
+  tasks: TripPrepTask[];
+  profile: TravelReadinessProfile;
+  language?: "en" | "es";
+}): OverviewPracticalTask[] {
+  const spanish = language === "es";
+  const insuranceAction = tasks.find((task) => task.kind === "insurance" && task.action?.href)?.action;
+  const connectivityAction = tasks.find((task) => task.kind === "connectivity" && task.action?.href)?.action;
+  const firstStop = [...trip.stops].sort((left, right) => left.order - right.order)[0];
+  return [
+    {
+      id: "passport",
+      title: spanish ? "Pasaporte y datos del viajero" : "Passport & traveller details",
+      detail: spanish ? "Añade nacionalidad y residencia para una orientación de entrada más útil." : "Add nationality and residence for more useful entry guidance.",
+      status: overviewPrepChoice(trip, "passport") === "to-review"
+        ? profile.nationalities.some((country) => country.trim()) && profile.residenceCountry.trim() ? "details-added" : "to-review"
+        : overviewPrepChoice(trip, "passport"),
+      action: { label: spanish ? "Revisar datos del viajero" : "Review traveller details", opensTravellerDetails: true },
+    },
+    {
+      id: "insurance", title: spanish ? "Seguro" : "Insurance",
+      detail: spanish ? "Valora si necesitas cobertura para tu viaje." : "Consider whether you need cover for your trip.",
+      status: overviewPrepChoice(trip, "insurance"),
+      ...(insuranceAction ? { action: { ...insuranceAction, label: spanish ? "Obtener una cotización de seguro de viaje" : "Get a travel insurance quote" } } : {}),
+    },
+    {
+      id: "connectivity", title: spanish ? "Conectividad" : "Connectivity",
+      detail: spanish ? "Compara cobertura eSIM, datos y periodos de validez." : "Compare eSIM coverage, data amounts and validity.",
+      status: overviewPrepChoice(trip, "connectivity"),
+      ...(connectivityAction ? { action: { ...connectivityAction, label: spanish ? "Consultar cobertura eSIM" : "Check eSIM coverage" } } : {}),
+    },
+    {
+      id: "activity", title: spanish ? "Actividades" : "Activities",
+      detail: spanish ? "Consulta las actividades clave, los días de apertura y las condiciones de cancelación antes de reservar." : "Check key activities, opening days and cancellation terms before booking.",
+      status: overviewPrepChoice(trip, "activity"),
+      ...(firstStop ? { action: { label: spanish ? "Explorar actividades" : "Browse activities", href: exploreWorkspaceHref(trip.id, firstStop.id) } } : {}),
+    },
+  ];
 }
