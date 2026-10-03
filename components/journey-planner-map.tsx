@@ -38,6 +38,8 @@ type JourneyPlannerMapProps = {
   selectedId: string;
   featuredStopId?: string;
   destinationCards?: JourneyMapDestinationCard[];
+  /** Builder's destination-only selection uses the action colour; other map domains keep their semantics. */
+  destinationSelectionTone?: "action";
   selectedLegId?: string | null;
   contextCardsHidden?: boolean;
   plannerPins: PlannerMapPin[];
@@ -131,6 +133,7 @@ export function JourneyPlannerMap({
   selectedId,
   featuredStopId,
   destinationCards = [],
+  destinationSelectionTone,
   selectedLegId,
   contextCardsHidden = false,
   plannerPins,
@@ -1028,7 +1031,7 @@ export function JourneyPlannerMap({
     };
   }, [panZoom]);
 
-  return <div className={`planner-map ${mapPresentation.surface}`} data-basemap-status={basemapStatus} aria-busy={!mapUnavailable && basemapStatus === "loading" || undefined} aria-label={presentationOnly ? previewLabel ?? "Whole-trip route map preview" : "Interactive trip map"}>
+  return <div className={`planner-map ${mapPresentation.surface}`} data-destination-selection-tone={destinationSelectionTone} data-basemap-status={basemapStatus} aria-busy={!mapUnavailable && basemapStatus === "loading" || undefined} aria-label={presentationOnly ? previewLabel ?? "Whole-trip route map preview" : "Interactive trip map"}>
     <div ref={containerRef} className={mapPresentation.canvas} />
     {comparisonLegs.length && comparisonLabel ? <span className="sr-only">{comparisonLabel}</span> : null}
     {mapUnavailable ? <div className={mapPresentation.basemapStatus} role="alert"><strong>Map unavailable</strong><span>Your trip is still available. Reload to try the map again.</span></div> : null}

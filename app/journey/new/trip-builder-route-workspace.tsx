@@ -7,6 +7,7 @@ import { MorroviaSectionStatus } from "@/components/easyt/morrovia-loading-state
 import type { JourneyStop } from "@/lib/journey";
 import { formatMapDuration, mapRouteLegsFromTrip } from "@/lib/easyt/map-spatial-context";
 import { buildBuilderRoutePreview } from "@/lib/easyt/trip-builder-route-preview";
+import { builderDestinationCards } from "@/lib/easyt/builder-map-destination-cards";
 import { transferJourneyModeLabel } from "@/lib/easyt/transfer-journey";
 import type { EasyTTrip } from "@/lib/easyt/trip";
 import { effectiveTripLeg, tripWithEffectiveTransportChoices } from "@/lib/easyt/transport-mode-choice";
@@ -85,6 +86,7 @@ export function TripBuilderRouteWorkspace({
   const recommendedTrip = preview?.ok ? preview.trip : canonicalTrip;
   const presentedTrip = tripWithEffectiveTransportChoices(recommendedTrip);
   const mapStops = useMemo(() => presentedTrip.stops.map(mapStop), [presentedTrip.stops]);
+  const destinationCards = useMemo(() => builderDestinationCards(presentedTrip), [presentedTrip]);
   const mapLegs = useMemo(() => mapRouteLegsFromTrip(presentedTrip), [presentedTrip]);
   const routeCheckProposal = useMemo(() => routeCheckProposalStopIds ? buildBuilderRoutePreview(canonicalTrip, routeCheckProposalStopIds) : null, [canonicalTrip, routeCheckProposalStopIds]);
   const comparisonLegs = useMemo(() => routeCheckProposal?.ok ? mapRouteLegsFromTrip(routeCheckProposal.trip) : [], [routeCheckProposal]);
@@ -211,7 +213,10 @@ export function TripBuilderRouteWorkspace({
             comparisonLegs={comparisonLegs}
             comparisonLabel={routeCheckProposal?.ok ? "Morrovia's proposed route order" : undefined}
             onLifecycleChange={setMapLifecycle}
-            selectedId={selectedStopId ?? presentedTrip.stops[0]?.id ?? ""}
+            selectedId={selectedStopId ?? ""}
+            featuredStopId={selectedStopId ?? undefined}
+            destinationCards={destinationCards}
+            destinationSelectionTone="action"
             plannerPins={[]}
             focusCoordinates={null}
             draftPinCoordinates={null}
