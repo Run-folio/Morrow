@@ -7,6 +7,8 @@ export type EasyTLanguage = "en" | "es";
 
 export const EASYT_LANGUAGE_STORAGE_KEY = "easyt-language";
 export const EASYT_LANGUAGE_CHANGE_EVENT = "easyt-language-change";
+/** Beta launch rendering locale. Remove this override when the full locale rollout is ready. */
+export const BETA_RENDERING_LANGUAGE: EasyTLanguage = "en";
 
 export type EasyTLanguageRuntime = {
   read: () => string | null;
@@ -227,29 +229,18 @@ export function commitSessionLanguage(
 }
 
 export function establishSessionLanguage(
-  accountLanguage?: EasyTLanguage,
+  _accountLanguage?: EasyTLanguage,
   runtime: EasyTLanguageRuntime = browserLanguageRuntime(),
 ): EasyTLanguage {
-  let storedLanguage: string | null = null;
-  try { storedLanguage = runtime.read(); } catch { /* Fall back to the account or English. */ }
-  const establishedLanguage = supportedLanguage(storedLanguage) ?? supportedLanguage(accountLanguage);
-  if (establishedLanguage) return commitSessionLanguage(establishedLanguage, runtime);
-
-  // English is the rendering fallback, not an explicit session preference.
-  // Leaving storage empty lets a subsequently loaded account preference seed
-  // the current browser session instead of being masked by a provisional value.
-  runtime.setDocumentLanguage("en");
-  runtime.notify("en");
-  return "en";
+  // Keep any browser or account language preference intact, but do not let the
+  // incomplete locale surface alter beta rendering or the document language.
+  runtime.setDocumentLanguage(BETA_RENDERING_LANGUAGE);
+  runtime.notify(BETA_RENDERING_LANGUAGE);
+  return BETA_RENDERING_LANGUAGE;
 }
 
 export function languageFromStorage(): EasyTLanguage {
-  if (typeof window === "undefined") return "en";
-  try {
-    return resolveSessionLanguage(window.localStorage.getItem(EASYT_LANGUAGE_STORAGE_KEY));
-  } catch {
-    return "en";
-  }
+  return BETA_RENDERING_LANGUAGE;
 }
 
 export function discoveryConfirmLabel(language: EasyTLanguage, baseCount: number, visitCount: number): string {

@@ -55,6 +55,7 @@ export default function ProfileForm({
   name: initialName,
   email,
   language,
+  preferenceLanguage = language,
   initialTravelProfile,
   initialTravelReadinessProfile,
 }: {
@@ -62,6 +63,7 @@ export default function ProfileForm({
   name: string;
   email: string;
   language: "en" | "es";
+  preferenceLanguage?: "en" | "es";
   initialTravelProfile: TravelProfile;
   initialTravelReadinessProfile: TravelReadinessProfile;
 }) {
@@ -176,7 +178,7 @@ export default function ProfileForm({
       const response = await fetch("/api/easyt/profile", {
         method: "PATCH",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ language, travelProfile, travelReadinessProfile }),
+        body: JSON.stringify({ language: preferenceLanguage, travelProfile, travelReadinessProfile }),
       });
       if (response.ok) {
         window.localStorage.setItem(travelProfileStorageKey(ownerId), JSON.stringify(travelProfile));

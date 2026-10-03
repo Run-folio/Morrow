@@ -4,8 +4,9 @@ import test from "node:test";
 
 const read = (path: string) => readFileSync(new URL(`../${path}`, import.meta.url), "utf8");
 
-test("desktop navigation protects the founder-approved hierarchy and one-dropdown model", () => {
+test("desktop navigation protects the founder-approved hierarchy and hides beta language controls", () => {
   const navigation = read("app/journey/easyt-navigation.tsx");
+  const navigationStyles = read("app/journey/easyt-navigation.module.css");
   const tour = read("components/easyt/easyt-product-tour.tsx");
 
   assert.doesNotMatch(navigation, /href="\/journey\/home#how-it-works"/);
@@ -24,17 +25,19 @@ test("desktop navigation protects the founder-approved hierarchy and one-dropdow
   const separator = navigation.indexOf('className={styles.landingDivider}');
   const howItWorks = navigation.indexOf('<EasyTProductTour triggerLabel={howItWorksLabel} dispatchOpen />');
   const account = navigation.indexOf('<details ref={accountMenuRef}');
-  const language = navigation.indexOf('className={styles.landingLanguage}');
-  assert.ok(newTrip < routes && routes < trips && trips < separator && separator < howItWorks && howItWorks < account && account < language,
-    "desktop order is New trip, Routes, My Trips, separator, How it works, Account, language");
+  assert.ok(newTrip < routes && routes < trips && trips < separator && separator < howItWorks && howItWorks < account,
+    "desktop order is New trip, Routes, My Trips, separator, How it works, Account");
   assert.match(desktop, /<summary aria-label=\{labels\.account\}/);
   assert.equal((desktop.match(/<details\b/g) ?? []).length, 1, "Account is the only desktop dropdown");
 
   const accountStart = desktop.indexOf('<details ref={accountMenuRef}');
-  const accountEnd = desktop.indexOf('<label className={styles.landingLanguage}');
-  const accountMenu = desktop.slice(accountStart, accountEnd);
+  const accountMenu = desktop.slice(accountStart);
   for (const href of ["stamped", "passport", "about", "help"]) assert.match(accountMenu, new RegExp(`href="/journey/${href}"`));
   assert.doesNotMatch(accountMenu, /EasyTProductTour|howItWorksLabel/);
+  assert.doesNotMatch(navigation, /landingLanguage|compactLanguage|<Languages|<select value=\{language\}/,
+    "desktop and compact navigation expose no language selector or orphan language icon");
+  assert.doesNotMatch(navigationStyles, /landingLanguage|compactLanguage/,
+    "selector-only navigation styles are removed");
   assert.match(accountMenu, /href="\/journey\/profile"/);
   assert.match(accountMenu, /href="\/journey\/privacy"/);
   assert.match(accountMenu, /href="\/journey\/dashboard"><UserRound[^>]*aria-hidden="true" \/><span>\{signInLabel\}/,
@@ -43,6 +46,14 @@ test("desktop navigation protects the founder-approved hierarchy and one-dropdow
   assert.match(tour, /PRODUCT_TOUR_OPEN_EVENT/);
   assert.match(tour, /returnFocusRef/);
   assert.match(tour, /dispatchOpen\) \{ window\.dispatchEvent\(new Event\(PRODUCT_TOUR_OPEN_EVENT\)\); return; \}/);
+});
+
+test("beta profile rendering does not replace an existing account language preference", () => {
+  const profileLocale = read("app/journey/profile/profile-locale-content.tsx");
+  const profileForm = read("app/journey/profile/profile-form.tsx");
+
+  assert.match(profileLocale, /preferenceLanguage=\{accountLanguage\}/);
+  assert.match(profileForm, /JSON\.stringify\(\{ language: preferenceLanguage, travelProfile, travelReadinessProfile \}\)/);
 });
 
 test("the canonical homepage route story and global home links remain intact", () => {

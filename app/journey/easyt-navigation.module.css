@@ -112,7 +112,6 @@
 .landingMenuTrigger::-webkit-details-marker { display: none; }
 .landingMenuTrigger svg { width: 14px; height: 14px; }
 .landingMenuTrigger:focus-visible { outline: none; box-shadow: var(--morrovia-focus-shadow); }
-.landingLanguage{display:inline-flex;align-items:center;gap:4px;min-height:36px;padding:0 8px;border:1px solid #d9d6eb;border-radius:999px;background:#fff;color:#201c72}.landingLanguage svg{width:13px;height:13px}.landingLanguage select{appearance:none;min-width:31px;border:0;background:transparent;color:inherit;font:700 11px var(--morrovia-ui);outline:none;cursor:pointer}
 .compactMenu { display: none; }
 .quietLink,
 .primaryLink,
@@ -330,7 +329,7 @@
   }
   .landingHeader { grid-template-columns: auto 1fr auto; min-height: var(--morrovia-navigation-height, 66px); padding-inline: 16px; }
   .landingActions { grid-column: 3; gap: 8px; }
-  .landingActions > a, .landingDivider, .landingTour, .landingLanguage, .landingActions > .accountMenu { display: none; }
+  .landingActions > a, .landingDivider, .landingTour, .landingActions > .accountMenu { display: none; }
   .compactMenu { position: relative; display: block; }
   .compactMenu summary {
     min-height: 44px;
@@ -367,7 +366,6 @@
   }
   .compactPopover > a,
   .compactPopover > button,
-  .compactLanguage,
   .compactTour button {
     min-height: 44px;
     padding: 0 11px;
@@ -386,13 +384,11 @@
   .compactTour button { cursor: pointer; }
   .compactPopover > a:hover,
   .compactPopover > button:hover,
-  .compactLanguage:hover,
   .compactTour button:hover { background: var(--morrovia-lilac); color: var(--morrovia-ink); }
   .compactPopover > a[aria-current="page"] { background: var(--morrovia-lilac); color: var(--morrovia-ink); }
   .compactPopover > a:focus-visible,
   .compactPopover > button:focus-visible,
   .compactTour button:focus-visible,
-  .compactLanguage:focus-within { outline: none; box-shadow: var(--morrovia-focus-shadow); }
   .compactPopover svg { width: 16px; height: 16px; flex: none; color: var(--morrovia-ink-soft); }
   .compactDivider { height: 1px; margin: 5px 4px; background: var(--morrovia-line); }
   .compactSectionLabel { padding: 4px 11px 2px; color: var(--morrovia-muted); font: var(--morrovia-type-eyebrow); letter-spacing: .1em; text-transform: uppercase; }
@@ -400,7 +396,6 @@
   .compactTour button { width: 100%; font-size: 13px; }
   .compactTour button::before { content: "✦"; color: var(--morrovia-ink-soft); }
   .compactTour button::after { content: none; }
-  .compactLanguage select { margin-left: auto; border: 0; background: transparent; color: inherit; font: 700 12px var(--morrovia-ui, var(--font-geist-sans, Geist, Inter, Arial, sans-serif)); outline: none; cursor: pointer; }
 }
 @media (max-width: 520px) {
   .actions {

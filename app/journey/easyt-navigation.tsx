@@ -7,7 +7,6 @@ import {
   CircleHelp,
   Compass,
   Info,
-  Languages,
   LogOut,
   Map,
   Menu,
@@ -22,7 +21,7 @@ import { beginNewTripNavigation, forgetRememberedOwner, rememberLastOwner } from
 import { EasyTLinkButton } from "@/components/easyt/easyt-controls";
 import MorroviaBrandLogo from "@/components/morrovia-brand-logo";
 import EasyTProductTour from "@/components/easyt/easyt-product-tour";
-import { commitSessionLanguage, EASYT_LANGUAGE_CHANGE_EVENT, easytCopy, establishSessionLanguage, type EasyTLanguage } from "@/lib/easyt/i18n";
+import { EASYT_LANGUAGE_CHANGE_EVENT, easytCopy, establishSessionLanguage, type EasyTLanguage } from "@/lib/easyt/i18n";
 import styles from "./easyt-navigation.module.css";
 
 type EasyTNavigationProps = {
@@ -114,17 +113,6 @@ export default function EasyTNavigation({
     return () => { cancelled = true; };
   }, [activeAccount?.email]);
 
-  const changeLanguage = (next: Language) => {
-    setLanguage(commitSessionLanguage(next));
-    if (activeAccount) {
-      void fetch("/api/easyt/profile", {
-        method: "PATCH",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ language: next }),
-      });
-    }
-  };
-
   const signOut = async () => {
     // Remove the offline address hint before the session is cleared so a cold
     // signed-out shell cannot reopen the previous account's local documents.
@@ -215,13 +203,6 @@ export default function EasyTNavigation({
             </> : <Link prefetch={deferPrefetch ? false : undefined} href="/journey/dashboard"><UserRound aria-hidden="true" /><span>{signInLabel}</span></Link>}
           </div>
         </details>
-        <label className={styles.landingLanguage}>
-          <Languages aria-hidden="true" />
-          <select value={language} onChange={(event) => changeLanguage(event.target.value as Language)} aria-label={labels.language}>
-            <option value="en">EN</option>
-            <option value="es">ES</option>
-          </select>
-        </label>
         <details ref={compactMenuRef} className={styles.compactMenu} onToggle={(event) => {
           if (event.currentTarget.open) {
             accountMenuRef.current && (accountMenuRef.current.open = false);
@@ -250,14 +231,6 @@ export default function EasyTNavigation({
               {isAdmin && <Link prefetch={deferPrefetch ? false : undefined} href="/journey/admin" aria-current={current === "admin" ? "page" : undefined}><ShieldCheck aria-hidden="true" /><span>Admin</span></Link>}
               <button type="button" onClick={signOut} disabled={signOutBusy}><LogOut aria-hidden="true" /><span>{labels.signOut}</span></button>
             </> : <Link prefetch={deferPrefetch ? false : undefined} href="/journey/dashboard"><UserRound aria-hidden="true" /><span>{signInLabel}</span></Link>}
-            <label className={styles.compactLanguage}>
-              <Languages aria-hidden="true" />
-              <span>{labels.language}</span>
-              <select value={language} onChange={(event) => changeLanguage(event.target.value as Language)} aria-label={labels.language}>
-                <option value="en">EN</option>
-                <option value="es">ES</option>
-              </select>
-            </label>
           </div>
         </details>
       </nav>

@@ -54,6 +54,7 @@ export default function ProfileLocaleContent({
         name={name}
         email={email}
         language={language}
+        preferenceLanguage={accountLanguage}
         initialTravelProfile={initialTravelProfile}
         initialTravelReadinessProfile={initialTravelReadinessProfile}
       />

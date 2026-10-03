@@ -29,39 +29,40 @@ test("an account preference seeds a browser session only when no valid session l
   assert.equal(i18n.resolveSessionLanguage?.(undefined, undefined), "en");
 });
 
-test("session establishment synchronizes storage, document language and current consumers", () => {
-  const state: Runtime = { stored: null, documentLanguage: "en", notifications: [] };
+test("beta session establishment renders English without overwriting browser or account preference", () => {
+  const state: Runtime = { stored: "es", documentLanguage: "es", notifications: [] };
 
   const established = i18n.establishSessionLanguage?.("es", runtime(state));
 
-  assert.equal(established, "es");
+  assert.equal(established, "en");
   assert.equal(state.stored, "es");
-  assert.equal(state.documentLanguage, "es");
-  assert.deepEqual(state.notifications, ["es"]);
+  assert.equal(state.documentLanguage, "en");
+  assert.deepEqual(state.notifications, ["en"]);
+  assert.equal(i18n.languageFromStorage(), "en", "stored locale does not select beta rendering language");
 });
 
-test("the English fallback does not become a persisted session choice before an account locale is known", () => {
+test("fresh beta sessions render English and account Spanish preference remains stored only at account", () => {
   const state: Runtime = { stored: null, documentLanguage: "", notifications: [] };
 
   assert.equal(i18n.establishSessionLanguage?.(undefined, runtime(state)), "en");
   assert.equal(state.stored, null);
   assert.equal(state.documentLanguage, "en");
 
-  assert.equal(i18n.establishSessionLanguage?.("es", runtime(state)), "es");
-  assert.equal(state.stored, "es");
-  assert.equal(state.documentLanguage, "es");
-  assert.deepEqual(state.notifications, ["en", "es"]);
+  assert.equal(i18n.establishSessionLanguage?.("es", runtime(state)), "en");
+  assert.equal(state.stored, null);
+  assert.equal(state.documentLanguage, "en");
+  assert.deepEqual(state.notifications, ["en", "en"]);
 });
 
-test("an explicit language selection always replaces the current session locale immediately", () => {
+test("the explicit locale API remains available for the full localization rollout", () => {
   const state: Runtime = { stored: "es", documentLanguage: "es", notifications: [] };
 
-  const selected = i18n.commitSessionLanguage?.("en", runtime(state));
+  const selected = i18n.commitSessionLanguage?.("es", runtime(state));
 
-  assert.equal(selected, "en");
-  assert.equal(state.stored, "en");
-  assert.equal(state.documentLanguage, "en");
-  assert.deepEqual(state.notifications, ["en"]);
+  assert.equal(selected, "es");
+  assert.equal(state.stored, "es");
+  assert.equal(state.documentLanguage, "es");
+  assert.deepEqual(state.notifications, ["es"]);
 });
 
 test("an explicit selection still reaches the document and live consumers when storage is unavailable", () => {
@@ -75,4 +76,9 @@ test("an explicit selection still reaches the document and live consumers when s
   assert.equal(state.stored, null);
   assert.equal(state.documentLanguage, "es");
   assert.deepEqual(state.notifications, ["es"]);
+});
+
+test("Spanish localization dictionaries remain available for the post-beta rollout", () => {
+  assert.equal(i18n.easytCopy.es.nav.newTrip, "Nuevo viaje");
+  assert.equal(i18n.easytCopy.es.nav.language, "Idioma");
 });
