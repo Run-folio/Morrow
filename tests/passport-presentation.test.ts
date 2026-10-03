@@ -4,7 +4,7 @@ import test from "node:test";
 import { passportPresentationFor } from "../lib/easyt/passport-presentation.ts";
 import { touristEntryRequirementFor } from "../lib/easyt/visa-requirements.ts";
 
-test("verified Passport Index results expose only supported provenance and freshness", () => {
+test("snapshot-only Passport Index rows need confirmation while preserving provenance and reminders", () => {
   const requirement = touristEntryRequirementFor("United Kingdom", "Guatemala", "en");
   const presentation = passportPresentationFor({
     requirement,
@@ -13,8 +13,8 @@ test("verified Passport Index results expose only supported provenance and fresh
     passportExpiryMonth: "2031-11",
   });
 
-  assert.equal(presentation.verification, "verified");
-  assert.equal(presentation.informationState, "known");
+  assert.equal(presentation.verification, "needs-confirmation");
+  assert.equal(presentation.informationState, "stale");
   assert.equal(presentation.source.official, true);
   assert.equal(presentation.source.label, requirement.sourceLabel);
   assert.equal(presentation.freshness, requirement.dataUpdatedAt);

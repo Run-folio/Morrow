@@ -177,11 +177,13 @@ test("provider failure is separate from unsupported coverage and never removes a
   assert.ok(passportDestinationCountries.some((country) => country.code === "UZ"));
 });
 
-test("existing dataset-backed requirements still map through canonical codes and aliases", () => {
+test("snapshot-backed requirements remain source-first across canonical codes and aliases", () => {
   const byCode = touristEntryRequirementFor("GB", "GT");
   const byLegacyName = touristEntryRequirementFor("United Kingdom", "Guatemala");
-  assert.equal(byCode.informationState, "known");
+  assert.equal(byCode.informationState, "stale");
+  assert.equal(byCode.status, "not-verified");
   assert.equal(byCode.status, byLegacyName.status);
-  assert.equal(byCode.permittedStay, byLegacyName.permittedStay);
+  assert.equal(byCode.permittedStay, "");
+  assert.equal(byLegacyName.permittedStay, "");
   assert.match(byCode.sourceHref, /igm\.gob\.gt/);
 });

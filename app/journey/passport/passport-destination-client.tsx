@@ -183,7 +183,7 @@ export default function PassportDestinationClient() {
           <div><p>{t.resultEyebrow}</p><h2 id="passport-result-title"><span aria-hidden="true">{resultDestination?.flag ?? "🌐"}</span>{resultDestination?.name ?? result.destination}</h2><span>{resultNationality?.flag ?? "🌐"} {resultNationality ? passportCountryLabel(resultNationality) : result.nationality} <span aria-hidden="true">→</span> {resultDestination?.flag ?? "🌐"} {resultDestination?.name ?? result.destination}</span></div>
           <span className={`${styles.status} ${!resultAvailable ? styles.notVerified : ""}`}>{resultAvailable ? <BadgeCheck aria-hidden="true" /> : <BadgeHelp aria-hidden="true" />}{resultAvailable ? t.verified : resultSupported ? t.needsConfirmation : t.unavailable}</span>
         </header>
-        {resultSupported ? <div className={styles.facts}>
+        {resultAvailable ? <div className={styles.facts}>
           <section><FileCheck2 aria-hidden="true" /><span>{t.entry}</span><strong>{result.requirement.visaAnswer}</strong><small>{resultAvailable ? result.requirement.statusLabel : t.noResult}</small></section>
           <section><CalendarDays aria-hidden="true" /><span>{t.stay}</span><strong>{result.requirement.permittedStay}</strong><small>{resultAvailable ? result.requirement.detail : t.needsConfirmation}</small></section>
           <section><ShieldCheck aria-hidden="true" /><span>{t.confidence}</span><strong>{result.requirement.statusLabel}</strong><small>{resultAvailable ? t.resultAvailable : t.noResult}</small></section>
