@@ -31,25 +31,29 @@ export function HomeDestinationEditor({
   entries,
   language,
   disabled = false,
+  focusEntryId,
   createEntry,
   onChange,
 }: {
   entries: HomepageDestinationEntry[];
   language: EasyTLanguage;
   disabled?: boolean;
-  createEntry: () => HomepageDestinationEntry;
+  focusEntryId?: string | null;
+  createEntry?: () => HomepageDestinationEntry;
   onChange: (entries: HomepageDestinationEntry[]) => void;
 }) {
   const text = copy[language];
   const entryNodes = useRef(new Map<string, HTMLElement>());
   const pendingFocusId = useRef<string | null>(null);
+  const focusedExternalId = useRef<string | null>(null);
 
   useEffect(() => {
-    const id = pendingFocusId.current;
+    const id = pendingFocusId.current ?? (focusEntryId !== focusedExternalId.current ? focusEntryId : null);
     if (!id) return;
     pendingFocusId.current = null;
+    focusedExternalId.current = focusEntryId ?? null;
     entryNodes.current.get(id)?.querySelector<HTMLInputElement>('input[role="combobox"]')?.focus();
-  }, [entries]);
+  }, [entries, focusEntryId]);
 
   const commitWithFocus = (next: HomepageDestinationEntry[], focusId: string) => {
     pendingFocusId.current = focusId;
@@ -102,12 +106,12 @@ export function HomeDestinationEditor({
         </div>
       </li>)}
     </ol>
-    <div className={styles.footer}>
+    {createEntry ? <div className={styles.footer}>
       <p aria-live="polite">{statusParts.join(" · ")}</p>
       <EasyTButton icon={Plus} size="small" variant="secondary" disabled={disabled} aria-label={text.add} onClick={() => {
         const entry = createEntry();
         commitWithFocus([...entries, entry], entry.id);
       }}>{text.add}</EasyTButton>
-    </div>
+    </div> : <p className={styles.status} aria-live="polite">{statusParts.join(" · ")}</p>}
   </section>;
 }

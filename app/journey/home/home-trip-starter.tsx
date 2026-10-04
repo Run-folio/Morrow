@@ -77,6 +77,7 @@ export default function HomeTripStarter() {
   const { start: startDate, end: endDate } = homepageVisibleDateRange(snapshot);
   const [loading, setLoading] = useState(false);
   const [captureError, setCaptureError] = useState("");
+  const [focusEntryId, setFocusEntryId] = useState<string | null>(null);
 
   const cancelSubmission = () => {
     submissionGenerationRef.current += 1;
@@ -291,9 +292,14 @@ export default function HomeTripStarter() {
       mode: snapshot.mode,
       onModeChange: (mode) => updateSnapshot((current) => ({ ...current, mode })),
       destinationEntry: destinationSummary(snapshot.entries, language),
+      onAddStop: () => {
+        const entry = { id: `destination-${destinationIdRef.current++}`, text: "", selection: null };
+        setFocusEntryId(entry.id);
+        updateSnapshot((current) => ({ ...current, entries: [...current.entries, entry] }));
+      },
       destinationEditor: <HomeDestinationEditor
         entries={snapshot.entries} language={language} disabled={loading}
-        createEntry={() => ({ id: `destination-${destinationIdRef.current++}`, text: "", selection: null })}
+        focusEntryId={focusEntryId}
         onChange={(entries: HomepageDestinationEntry[]) => updateSnapshot((current) => ({ ...current, entries }))}
       />,
       budget: snapshot.budget.state === "selected" ? snapshot.budget.value : null,

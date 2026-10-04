@@ -175,13 +175,19 @@ export const WideHomepageCapture: Story = { args: wideHomepageArgs };
 
 function ResponsiveHomepageStops() {
   const [entries, setEntries] = useState<HomepageDestinationEntry[]>([{ id: "mobile-stop-1", text: "Lisbon", selection: null }]);
+  const [focusEntryId, setFocusEntryId] = useState<string | null>(null);
   const homepageEntry = {
     ...wideHomepageArgs.homepageEntry,
     destinationEntry: entries.map((entry) => entry.text || "New stop").join(" · "),
+    onAddStop: () => {
+      const entry = { id: `mobile-stop-${entries.length + 1}`, text: "", selection: null };
+      setFocusEntryId(entry.id);
+      setEntries((current) => [...current, entry]);
+    },
     destinationEditor: <HomeDestinationEditor
       entries={entries}
       language="en"
-      createEntry={() => ({ id: `mobile-stop-${entries.length + 1}`, text: "", selection: null })}
+      focusEntryId={focusEntryId}
       onChange={setEntries}
     />,
   };
@@ -200,6 +206,8 @@ export const WideHomepageMobileOrder: Story = {
     await userEvent.click(canvas.getByRole("button", { name: /Where do you want to go\?/ }));
     const addStop = canvas.getByRole("button", { name: "Add another stop" });
     await expect(addStop).toBeVisible();
+    const header = form.querySelector<HTMLElement>('[class*="destinationHeader"]');
+    if (!header?.contains(addStop)) throw new globalThis.Error("Add another stop must be in the destination header");
     await userEvent.click(addStop);
     await expect(canvasElement.querySelectorAll("[data-home-destination-entry]")).toHaveLength(2);
 

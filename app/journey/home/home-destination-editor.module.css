@@ -6,6 +6,7 @@
 .actions { display: flex; align-items: center; gap: 2px; }
 .actions button { min-width: 32px; min-height: 32px; padding: 6px; color: var(--morrovia-muted); }
 .actions button:hover:not(:disabled) { color: var(--morrovia-action); }
+.status { margin: 0; padding-left: 31px; color: var(--morrovia-muted); font: 600 11px/1.35 var(--morrovia-ui); }
 .footer { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding-left: 31px; }
 .footer p { margin: 0; color: var(--morrovia-muted); font: 600 11px/1.35 var(--morrovia-ui); }
 
@@ -13,6 +14,7 @@
   .entry { grid-template-columns: 22px minmax(0, 1fr); align-items: start; }
   .index { width: 22px; height: 22px; margin-top: 12px; }
   .actions { grid-column: 2; justify-content: flex-end; margin-top: -3px; }
+  .status { padding-left: 29px; }
   .footer { align-items: stretch; flex-direction: column; padding-left: 29px; }
   .footer button { width: 100%; }
 }

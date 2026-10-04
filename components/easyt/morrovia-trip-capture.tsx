@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowRight, CalendarDays, ChevronDown, Heart, MapPin, Search, SlidersHorizontal, Sparkles, UsersRound } from "lucide-react";
+import { ArrowRight, CalendarDays, ChevronDown, Heart, MapPin, Plus, Search, SlidersHorizontal, Sparkles, UsersRound } from "lucide-react";
 import { useEffect, useId, useRef, useState, type FormEvent, type KeyboardEvent, type ReactNode } from "react";
 import type { EasyTLanguage } from "@/lib/easyt/i18n";
 import { journeyCaptureValidationMessage, validateJourneyCaptureSubmission, type JourneyCaptureValidationIssue } from "@/lib/easyt/journey-capture-client";
@@ -40,6 +40,7 @@ const copy = {
     describeTrip: "Describe my trip",
     destinationLabel: "Where do you want to go?",
     editPlaces: "Edit places",
+    addStop: "Add another stop",
     travelDates: "Travel dates",
     clearDates: "Clear dates",
     datesHeading: "When are you travelling?",
@@ -77,6 +78,7 @@ const copy = {
     describeTrip: "Describir mi viaje",
     destinationLabel: "¿Adónde quieres ir?",
     editPlaces: "Editar lugares",
+    addStop: "Añadir otra parada",
     travelDates: "Fechas del viaje",
     clearDates: "Borrar fechas",
     datesHeading: "¿Cuándo viajas?",
@@ -96,6 +98,7 @@ export type HomepageCaptureEntry = {
   onModeChange: (mode: "stops" | "describe") => void;
   destinationEntry: ReactNode;
   destinationEditor?: ReactNode;
+  onAddStop?: () => void;
   budget: "value" | "mid" | "high" | null;
   onBudgetChange: (value: "value" | "mid" | "high" | null) => void;
   datesChosen: boolean;
@@ -279,12 +282,15 @@ export function MorroviaTripCapture({
         <div className={homepageLayoutClass}>
           <div className={`${styles.wideSegmentGroup} ${styles.wideHomeControls}`}>
             <div className={styles.wideEntryPanel} role="tabpanel" id={stopsPanelId} aria-labelledby={`${stopsPanelId}-tab`}>
-              <EasyTButton className={styles.destinationToggle} variant="quiet" type="button" aria-expanded={destinationEditorOpen} aria-controls={`${stopsPanelId}-editor`} disabled={disabled || loading} onClick={() => setDestinationEditorOpen((current) => !current)}>
-                <MapPin aria-hidden="true" />
-                <span className={styles.destinationLabel}><small>{text.destinationLabel}</small><strong>{homepageEntry.destinationEntry}</strong></span>
-                <small>{text.editPlaces}</small>
-                <ChevronDown aria-hidden="true" />
-              </EasyTButton>
+              <div className={styles.destinationHeader}>
+                <EasyTButton className={styles.destinationToggle} variant="quiet" type="button" aria-expanded={destinationEditorOpen} aria-controls={`${stopsPanelId}-editor`} disabled={disabled || loading} onClick={() => setDestinationEditorOpen((current) => !current)}>
+                  <MapPin aria-hidden="true" />
+                  <span className={styles.destinationLabel}><small>{text.destinationLabel}</small><strong>{homepageEntry.destinationEntry}</strong></span>
+                  <small>{text.editPlaces}</small>
+                  <ChevronDown aria-hidden="true" />
+                </EasyTButton>
+                {destinationEditorOpen && homepageEntry.onAddStop ? <EasyTButton className={styles.destinationAdd} icon={Plus} size="small" variant="secondary" disabled={disabled || loading} onClick={homepageEntry.onAddStop}>{text.addStop}</EasyTButton> : null}
+              </div>
             </div>
             {homepageEntry.destinationEditor && destinationEditorOpen ? <div className={styles.wideDestinationEditor} id={`${stopsPanelId}-editor`}>{homepageEntry.destinationEditor}</div> : null}
             {homepageDates}

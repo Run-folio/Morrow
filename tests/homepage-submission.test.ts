@@ -72,6 +72,55 @@ test("a different Homepage Describe submission cannot replace an unacknowledged 
   assert.equal(issued, 1);
 });
 
+test("a new Describe prompt can reserve after a completed unrelated handoff", async () => {
+  for (const ownerId of [null, "owner-a"]) {
+    const storage = new MemoryStorage();
+    const prior = { ...emptyHomepageInput(ownerId), mode: "describe" as const, prompt: "Wales for five weeks" };
+    const completed: HomepageHandoffReceipt = {
+      version: 1, ownerId, handoffId: "previous-handoff", tripId: "previous-trip",
+      inputFingerprint: "previous-projection", semanticInputFingerprint: homepageSemanticInputFingerprint(prior),
+    };
+    storage.setItem(homepageInputStorageKey(ownerId), JSON.stringify({ snapshot: prior, receipt: completed }));
+    const next = { ...prior, revision: prior.revision + 1, prompt: "Scotland for two weeks" };
+    const edited = await persistEditableHomepageInput({ storage, snapshot: next, preserveCompletedReceipt: true, lock: testLock });
+    assert.equal(edited.ok, true);
+    let issued = 0;
+    const result = await reservePendingDescribeHandoff({
+      storage, snapshot: next, isCurrent: () => true, preserveAndBegin: () => true, lock: testLock,
+      createIds: () => ({ handoffId: `new-handoff-${++issued}`, tripId: `new-trip-${issued}` }),
+    });
+    assert.equal(result.ok, true, `new ${ownerId ?? "guest"} intake should not inherit the old receipt`);
+    if (!result.ok) continue;
+    assert.equal(result.receipt.tripId, "new-trip-1");
+    assert.equal(result.receipt.frozenSnapshot.prompt, next.prompt);
+    assert.equal(issued, 1);
+    assert.equal(completed.tripId, "previous-trip");
+  }
+});
+
+test("a failed Describe preservation keeps the prompt and retries the same reserved identity", async () => {
+  const storage = new MemoryStorage();
+  const snapshot = { ...emptyHomepageInput(null), mode: "describe" as const, prompt: "Wales for five weeks" };
+  const priorDraft = JSON.stringify({ handoffId: "unrelated-draft" });
+  storage.setItem(HOME_TRIP_DRAFT_KEY, priorDraft);
+  let issued = 0;
+  let allowNavigation = false;
+  const submit = () => reservePendingDescribeHandoff({
+    storage, snapshot, isCurrent: () => true, preserveAndBegin: () => allowNavigation, lock: testLock,
+    createIds: () => ({ handoffId: `handoff-${++issued}`, tripId: `trip-${issued}` }),
+  });
+  assert.deepEqual(await submit(), { ok: false, reason: "preservation" });
+  assert.equal(storage.getItem(HOME_TRIP_DRAFT_KEY), priorDraft);
+  assert.equal(readHomepageInput(JSON.parse(storage.getItem(homepageInputStorageKey(null))!), null)?.snapshot.prompt, snapshot.prompt);
+  allowNavigation = true;
+  const retried = await submit();
+  assert.equal(retried.ok, true);
+  if (!retried.ok) return;
+  assert.equal(retried.receipt.tripId, "trip-1");
+  assert.equal(issued, 1);
+  assert.equal(JSON.parse(storage.getItem(HOME_TRIP_DRAFT_KEY)!).receipt.tripId, "trip-1");
+});
+
 test("an edit in another tab cannot erase a pending Homepage receipt", async () => {
   const storage = new MemoryStorage();
   const snapshot = { ...emptyHomepageInput("owner-a"), mode: "describe" as const, prompt: "Tokyo and Kyoto" };

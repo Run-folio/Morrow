@@ -709,14 +709,16 @@ export async function reservePendingDescribeHandoff(input: {
         // canonical Builder document has acknowledged the reservation.
         return { ok: false as const, reason: "preservation" as const };
       }
-      if (sameInput && existingInput?.receipt?.version === 1) {
+      if (sameInput && existingInput?.receipt?.version === 1
+        && homepageCompletedReceiptIsUnchanged(existingInput)) {
         return { ok: false as const, reason: "storage" as const };
       }
       const pending = sameInput && existingInput?.receipt?.version === 2
         ? pendingIntakeReceiptForOwner(existingInput.receipt, input.snapshot.ownerId) : null;
       if (sameInput && existingInput?.receipt?.version === 2
-        && (!pending || !samePendingReceipt(
-          pendingHomepageHandoffForOwner(existingDraft, input.snapshot.ownerId, pending.handoffId), pending))) {
+        && (!pending || (homepageRecord(existingDraft) && existingDraft.version === 2
+          && !samePendingReceipt(
+            pendingHomepageHandoffForOwner(existingDraft, input.snapshot.ownerId, pending.handoffId), pending)))) {
         return { ok: false as const, reason: "storage" as const };
       }
       const receipt = pending ?? createPendingIntakeReceipt(input.snapshot, input.createIds());

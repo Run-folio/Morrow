@@ -5240,7 +5240,7 @@
     "observedSpacing": [
       {
         "value": "8px",
-        "count": 564,
+        "count": 567,
         "examples": [
           "app/journey/account.module.css",
           "app/journey/admin/feedback/feedback.module.css",
@@ -5767,6 +5767,15 @@
         ]
       },
       {
+        "value": "31px",
+        "count": 6,
+        "examples": [
+          "app/journey/home/home-destination-editor.module.css",
+          "app/journey/home/home.module.css",
+          "app/journey/new/new-trip.module.css"
+        ]
+      },
+      {
         "value": "60px",
         "count": 6,
         "examples": [
@@ -5792,15 +5801,6 @@
           "app/journey/contact/contact.module.css",
           "app/journey/dashboard/dashboard.module.css",
           "app/journey/home/home.module.css"
-        ]
-      },
-      {
-        "value": "31px",
-        "count": 5,
-        "examples": [
-          "app/journey/home/home-destination-editor.module.css",
-          "app/journey/home/home.module.css",
-          "app/journey/new/new-trip.module.css"
         ]
       },
       {
@@ -5920,6 +5920,13 @@
         ]
       },
       {
+        "value": "29px",
+        "count": 2,
+        "examples": [
+          "app/journey/home/home-destination-editor.module.css"
+        ]
+      },
+      {
         "value": "69px",
         "count": 2,
         "examples": [
@@ -5996,13 +6003,6 @@
         "count": 1,
         "examples": [
           "app/journey/dashboard/dashboard.module.css"
-        ]
-      },
-      {
-        "value": "29px",
-        "count": 1,
-        "examples": [
-          "app/journey/home/home-destination-editor.module.css"
         ]
       },
       {

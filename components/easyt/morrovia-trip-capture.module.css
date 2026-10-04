@@ -34,7 +34,9 @@
 .wideHomePersonalize { grid-area: personalize; }
 .wideSegmentGroup { display: grid; grid-template-columns: minmax(280px, 1fr) 250px 220px; min-width: 0; min-height: 68px; border-radius: var(--morrovia-control-radius); background: var(--morrovia-lilac); }
 .wideEntryPanel { min-width: 0; min-height: 68px; }
-.destinationToggle { display:grid; grid-template-columns:auto minmax(0,1fr) auto auto; align-items:center; gap:10px; width:100%; min-height:68px; padding:9px 14px; border:0; border-radius:var(--morrovia-control-radius) 0 0 var(--morrovia-control-radius); background:transparent; color:var(--morrovia-ink); text-align:left; cursor:pointer; }
+.destinationHeader { display:flex; flex-wrap:wrap; align-items:center; gap:8px; min-width:0; padding-right:8px; }
+.destinationToggle { display:grid; flex:1 1 220px; grid-template-columns:auto minmax(0,1fr) auto auto; align-items:center; gap:10px; width:auto; min-height:68px; padding:9px 14px; border:0; border-radius:var(--morrovia-control-radius) 0 0 var(--morrovia-control-radius); background:transparent; color:var(--morrovia-ink); text-align:left; cursor:pointer; }
+.destinationAdd { flex:0 0 auto; }
 .destinationToggle:hover:not(:disabled) { background:color-mix(in srgb,var(--morrovia-paper) 55%,transparent); }
 .destinationToggle:focus-visible { outline:3px solid var(--morrovia-focus-ring); outline-offset:-3px; }
 .destinationToggle > svg:first-child { width:20px; height:20px; color:var(--morrovia-action); }
@@ -265,6 +267,7 @@
   .wideCard { padding: 16px; }
   .personalizePanel { grid-template-columns: 1fr; gap: 14px; }
   .destinationToggle { border-radius:var(--morrovia-control-radius) var(--morrovia-control-radius) 0 0; }
+  .destinationAdd { margin:0 0 8px auto; }
   .wideHomeLayout { grid-template-columns: minmax(0, 1fr); grid-template-areas: "controls" "action"; align-items: stretch; }
   .wideHomeLayoutPersonalized { grid-template-areas: "controls" "personalize" "action"; }
   .wideSegmentGroup,
