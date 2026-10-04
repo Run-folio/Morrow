@@ -185,6 +185,12 @@
     transform:none!important;
     backdrop-filter:none!important;
   }
+  .plan :global([class*="mobileMapSheetBody"] > [class*="canonicalPlannerStatus"]:has([class*="mapPlaceDetail"])) {
+    top:auto!important;
+    right:auto!important;
+    bottom:auto!important;
+    left:auto!important;
+  }
   .plan :global([class*="mapContextualSurface"][data-mobile-sheet-view="planner"]) :global([class*="finderDock"]),
   .plan :global([class*="mapContextualSurface"][data-mobile-sheet-view="context"]) :global([class*="canonicalPlannerStatus"]),
   .plan :global([class*="mapContextualSurface"][data-mobile-sheet-view="status"]) :global([class*="canonicalPlannerStatus"]),
