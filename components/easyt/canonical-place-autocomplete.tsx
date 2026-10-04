@@ -260,6 +260,7 @@ export function CanonicalPlaceAutocomplete({
       aria-describedby={describedBy}
       onFocus={() => setOpen(true)}
       onBlur={() => window.setTimeout(() => {
+        if (document.activeElement === inputRef.current) return;
         setOpen(false);
         if (submitFreeTextOnBlur) onSubmitFreeText?.();
       }, 100)}

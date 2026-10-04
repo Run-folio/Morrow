@@ -306,6 +306,23 @@ test('unresolved text does not count as a stop when the shortlist is empty', { s
   } finally { await view.close(); }
 });
 
+test('quick refocus keeps empty-search guidance open beside an existing valid stop', { skip: !builderBrowserTestsEnabled, timeout: 50_000 }, async () => {
+  const view = await renderHomeDraft('Balkans', 'Madrid', { geocodeCandidates: { asdfgh: [] } });
+  try {
+    const dialog = view.page.getByRole('dialog');
+    await dialog.getByRole('heading', { name: 'Explore places', exact: true }).waitFor();
+    await dialog.getByRole('button', { name: 'Add to shortlist: Athens' }).click();
+    const search = dialog.getByRole('combobox', { name: /Search for somewhere specific/ });
+    await search.fill('asdfgh');
+    await search.evaluate((input: HTMLInputElement) => { input.blur(); input.focus(); });
+    await view.page.waitForTimeout(300);
+    await dialog.getByText('No matching places found. Try the place with its country.').waitFor();
+    assert.equal(await search.getAttribute('aria-expanded'), 'true');
+    assert.equal(await dialog.getByRole('button', { name: 'Add 1 place', exact: true }).isEnabled(), true);
+    assert.deepEqual(view.errors, []);
+  } finally { await view.close(); }
+});
+
 test('provider-selected Namibia reaches its reviewed Discovery set', { skip: !builderBrowserTestsEnabled, timeout: 45_000 }, async () => {
   const draft = providerHomepageDraft({
     name: 'Namibia', country: 'Namibia', canonicalPlaceId: 'open-world:nominatim:relation:195266',
