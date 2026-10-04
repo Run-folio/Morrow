@@ -15,7 +15,7 @@ import {
   type HomepageHandoffReceipt,
 } from "../lib/easyt/home-trip-handoff.ts";
 import { homepageInputStorageKey } from "../lib/easyt/private-browser-context.ts";
-import { emptyHomepageInput, selectedStopsHomepageInput } from "./fixtures/homepage-dual-entry.ts";
+import { emptyHomepageInput, selectedEntry, selectedStopsHomepageInput } from "./fixtures/homepage-dual-entry.ts";
 import * as handoffTransitions from "../lib/easyt/home-trip-handoff.ts";
 
 const testLock = async <T,>(_key: string, run: () => Promise<T>): Promise<T> => run();
@@ -168,6 +168,119 @@ test("two Stops tabs with the same intake cannot create different reserved trips
     isCurrent: () => true, preserveAndBegin: () => true }), { ok: false, reason: "preservation" });
   assert.equal(readHomepageInput(JSON.parse(storage.getItem(homepageInputStorageKey("owner-a"))!), "owner-a")?.receipt?.tripId,
     stored.receipt.tripId);
+});
+
+test("an edited completed Stops intake can commit a distinct trip without losing the first", async () => {
+  const storage = new MemoryStorage();
+  const first = acceptedHandoff();
+  assert.equal((await commitHomepageHandoff({ lock: testLock, storage, ...first,
+    isCurrent: () => true, preserveAndBegin: () => true })).ok, true);
+  const firstDraft = storage.getItem(HOME_TRIP_DRAFT_KEY);
+  const editedSnapshot = { ...first.stored.snapshot, revision: first.stored.snapshot.revision + 1,
+    entries: [...first.stored.snapshot.entries, selectedEntry("osaka", "Osaka")] };
+  const edited = await persistEditableHomepageInput({ storage, snapshot: editedSnapshot,
+    preserveCompletedReceipt: true, lock: testLock });
+  assert.equal(edited.ok, true);
+  assert.equal(edited.ok && edited.stored.receipt?.tripId, first.stored.receipt.tripId);
+  const projection = projectHomepageInput({ snapshot: editedSnapshot, profile: null, handoffId: "handoff-b" });
+  assert.equal(projection.ok, true);
+  if (!projection.ok) return;
+  const receipt: HomepageHandoffReceipt = { version: 1, ownerId: "owner-a", handoffId: "handoff-b",
+    tripId: "trip-b", inputFingerprint: homepageSubmissionFingerprint(projection.draft),
+    semanticInputFingerprint: homepageSemanticInputFingerprint(editedSnapshot) };
+  const draft = { ...projection.draft, homepage: { ...projection.draft.homepage!, receipt } };
+  const result = await commitHomepageHandoff({ lock: testLock, storage,
+    stored: { snapshot: editedSnapshot, receipt }, draft, isCurrent: () => true,
+    preserveAndBegin: () => true });
+  assert.deepEqual(result, { ok: true, href: "/journey/new?homeDraft=1&handoff=handoff-b" });
+  assert.notEqual(receipt.tripId, first.stored.receipt.tripId);
+  assert.notEqual(storage.getItem(HOME_TRIP_DRAFT_KEY), firstDraft);
+  assert.equal(JSON.parse(storage.getItem(HOME_TRIP_DRAFT_KEY)!).homepage.receipt.tripId, "trip-b");
+});
+
+for (const [label, change] of [
+  ["changed canonical stop", (snapshot: ReturnType<typeof selectedStopsHomepageInput>) => ({
+    ...snapshot, entries: [snapshot.entries[0]!, selectedEntry("new-third", "Seoul"), snapshot.entries[2]!],
+  })],
+  ["added stop", (snapshot: ReturnType<typeof selectedStopsHomepageInput>) => ({
+    ...snapshot, entries: [...snapshot.entries, selectedEntry("new-fourth", "Seoul")],
+  })],
+  ["removed stop", (snapshot: ReturnType<typeof selectedStopsHomepageInput>) => ({
+    ...snapshot, entries: snapshot.entries.slice(0, 2),
+  })],
+  ["reordered stops", (snapshot: ReturnType<typeof selectedStopsHomepageInput>) => ({
+    ...snapshot, entries: [snapshot.entries[1]!, snapshot.entries[0]!, snapshot.entries[2]!],
+  })],
+  ["changed dates", (snapshot: ReturnType<typeof selectedStopsHomepageInput>) => ({
+    ...snapshot, dates: { state: "selected" as const, value: { start: "2026-10-15", end: "2026-10-20" } },
+  })],
+] as const) {
+  test(`a completed Stops receipt yields a new handoff for ${label}`, async () => {
+    const storage = new MemoryStorage();
+    const first = acceptedHandoff("owner-a", [["tokyo", "Tokyo"], ["kyoto", "Kyoto"], ["osaka", "Osaka"]]);
+    assert.equal((await commitHomepageHandoff({ lock: testLock, storage, ...first,
+      isCurrent: () => true, preserveAndBegin: () => true })).ok, true);
+    const snapshot = { ...change(first.stored.snapshot), revision: first.stored.snapshot.revision + 1 };
+    const persisted = await persistEditableHomepageInput({ storage, snapshot,
+      preserveCompletedReceipt: true, lock: testLock });
+    assert.equal(persisted.ok, true);
+    const projection = projectHomepageInput({ snapshot, profile: null, handoffId: "handoff-changed" });
+    assert.equal(projection.ok, true);
+    if (!projection.ok) return;
+    const receipt: HomepageHandoffReceipt = { version: 1, ownerId: "owner-a", handoffId: "handoff-changed",
+      tripId: "trip-changed", inputFingerprint: homepageSubmissionFingerprint(projection.draft),
+      semanticInputFingerprint: homepageSemanticInputFingerprint(snapshot) };
+    const draft = { ...projection.draft, homepage: { ...projection.draft.homepage!, receipt } };
+    const result = await commitHomepageHandoff({ lock: testLock, storage,
+      stored: { snapshot, receipt }, draft, isCurrent: () => true, preserveAndBegin: () => true });
+    assert.equal(result.ok, true, `${label} should create a distinct handoff`);
+    assert.equal(readHomepageInput(JSON.parse(storage.getItem(homepageInputStorageKey("owner-a"))!), "owner-a")?.receipt?.tripId,
+      "trip-changed");
+  });
+}
+
+test("failed changed Stops preservation retains the edited draft and retries the same identity", async () => {
+  const storage = new MemoryStorage();
+  const first = acceptedHandoff();
+  assert.equal((await commitHomepageHandoff({ lock: testLock, storage, ...first,
+    isCurrent: () => true, preserveAndBegin: () => true })).ok, true);
+  const firstEnvelope = storage.getItem(HOME_TRIP_DRAFT_KEY);
+  const snapshot = { ...first.stored.snapshot, revision: first.stored.snapshot.revision + 1,
+    entries: [...first.stored.snapshot.entries, selectedEntry("osaka", "Osaka")] };
+  assert.equal((await persistEditableHomepageInput({ storage, snapshot,
+    preserveCompletedReceipt: true, lock: testLock })).ok, true);
+  const projection = projectHomepageInput({ snapshot, profile: null, handoffId: "handoff-retry" });
+  assert.equal(projection.ok, true);
+  if (!projection.ok) return;
+  const receipt: HomepageHandoffReceipt = { version: 1, ownerId: "owner-a", handoffId: "handoff-retry",
+    tripId: "trip-retry", inputFingerprint: homepageSubmissionFingerprint(projection.draft),
+    semanticInputFingerprint: homepageSemanticInputFingerprint(snapshot) };
+  const stored = { snapshot, receipt };
+  const draft = { ...projection.draft, homepage: { ...projection.draft.homepage!, receipt } };
+  let preserveCalls = 0;
+  const attempt = (preserveAndBegin: () => boolean) => commitHomepageHandoff({ lock: testLock, storage,
+    stored, draft, isCurrent: () => true, preserveAndBegin });
+  assert.deepEqual(await attempt(() => { preserveCalls++; return false; }), { ok: false, reason: "preservation" });
+  assert.equal(storage.getItem(HOME_TRIP_DRAFT_KEY), firstEnvelope);
+  assert.equal(readHomepageInput(JSON.parse(storage.getItem(homepageInputStorageKey("owner-a"))!), "owner-a")?.snapshot.entries.length, 3);
+  assert.deepEqual(await attempt(() => { preserveCalls++; return true; }),
+    { ok: true, href: "/journey/new?homeDraft=1&handoff=handoff-retry" });
+  assert.equal(preserveCalls, 2);
+  assert.equal(JSON.parse(storage.getItem(HOME_TRIP_DRAFT_KEY)!).homepage.receipt.tripId, "trip-retry");
+});
+
+test("a completed owner A Stops receipt cannot block owner B's handoff", async () => {
+  const storage = new MemoryStorage();
+  const ownerA = acceptedHandoff("owner-a");
+  assert.equal((await commitHomepageHandoff({ lock: testLock, storage, ...ownerA,
+    isCurrent: () => true, preserveAndBegin: () => true })).ok, true);
+  const ownerAInput = storage.getItem(homepageInputStorageKey("owner-a"));
+  const ownerB = acceptedHandoff("owner-b");
+  assert.equal((await commitHomepageHandoff({ lock: testLock, storage, ...ownerB,
+    isCurrent: () => true, preserveAndBegin: () => true })).ok, true);
+  assert.equal(storage.getItem(homepageInputStorageKey("owner-a")), ownerAInput);
+  assert.equal(readHomepageInput(JSON.parse(storage.getItem(homepageInputStorageKey("owner-b"))!), "owner-b")?.receipt?.ownerId,
+    "owner-b");
 });
 
 test("pending Edit clears only its exact receipt and cannot remove a newer handoff", async () => {
@@ -334,8 +447,8 @@ class MemoryStorage {
   }
 }
 
-function acceptedHandoff(ownerId: string | null = "owner-a") {
-  const snapshot = selectedStopsHomepageInput(ownerId);
+function acceptedHandoff(ownerId: string | null = "owner-a", destinations?: Array<[string, string]>) {
+  const snapshot = selectedStopsHomepageInput(ownerId, destinations);
   snapshot.revision = 4;
   const projected = projectHomepageInput({ snapshot, profile: null, handoffId: "handoff-a" });
   assert.equal(projected.ok, true);

@@ -578,7 +578,11 @@ export async function commitHomepageHandoff(input: HomepageHandoffCommitInput): 
         } catch { return { ok: false as const, reason: "preservation" as const }; }
         return { ok: true as const, href: `/journey/new?homeDraft=1&handoff=${encodeURIComponent(pending.handoffId)}` };
       }
+      // An editable snapshot may retain the last completed receipt while its
+      // author changes stops or dates. Only a receipt for that snapshot can
+      // protect its reserved identity from a competing commit.
       if (previous?.receipt?.version === 1
+        && homepageCompletedReceiptIsUnchanged(previous)
         && homepageSemanticInputFingerprint(previous.snapshot) === homepageSemanticInputFingerprint(input.stored.snapshot)
         && (previous.receipt.handoffId !== input.stored.receipt?.handoffId
           || previous.receipt.tripId !== input.stored.receipt?.tripId))

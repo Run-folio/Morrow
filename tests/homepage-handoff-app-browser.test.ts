@@ -48,7 +48,7 @@ test("a fresh guest can start another Describe trip after a durable unrelated tr
 test("Homepage Stops Add control stays in the header and hands off selected places", { skip: !enabled, timeout: 60_000 }, async () => {
   const browser = await chromium.launch({ channel: process.env.MORROVIA_BROWSER_CHANNEL ?? "chrome", headless: true });
   try {
-    for (const width of [390, 430]) {
+    for (const width of [390, 430, 768, 1440]) {
       const context = await browser.newContext({ viewport: { width, height: 844 } });
       try {
         const page = await context.newPage();
@@ -73,6 +73,43 @@ test("Homepage Stops Add control stays in the header and hands off selected plac
       }
     }
   } finally {
+    await browser.close();
+  }
+});
+
+test("a guest can add a selected stop after a completed Stops handoff", { skip: !enabled, timeout: 90_000 }, async () => {
+  const browser = await chromium.launch({ channel: process.env.MORROVIA_BROWSER_CHANNEL ?? "chrome", headless: true });
+  const context = await browser.newContext({ viewport: { width: 390, height: 844 } });
+  try {
+    const page = await context.newPage();
+    await page.goto(baseUrl);
+    await page.getByRole("button", { name: /Where do you want to go/ }).click();
+    const add = page.getByRole("button", { name: "Add another stop" });
+    const choose = async (index: number, name: string, country: string) => {
+      await page.getByRole("combobox").nth(index).fill(name);
+      await page.getByRole("option", { name: new RegExp(`${name}.*${country}`) }).first().click();
+    };
+    await choose(0, "Madrid", "Spain");
+    await add.click();
+    await choose(1, "Lisbon", "Portugal");
+    await page.getByRole("button", { name: "Plan my trip" }).first().click();
+    await page.waitForURL(/\/journey\/new\?/);
+    const first = await page.evaluate(() => JSON.parse(localStorage.getItem("easyt-private:guest:homepage-input") ?? "null"));
+    assert.equal(first.receipt.version, 1);
+    assert.deepEqual(first.snapshot.entries.map((entry: { selection: { name: string } }) => entry.selection.name), ["Madrid", "Lisbon"]);
+    await page.goto(baseUrl);
+    await page.getByRole("button", { name: /Where do you want to go/ }).click();
+    await add.click();
+    await choose(2, "Porto", "Portugal");
+    await page.getByRole("button", { name: "Plan my trip" }).first().click();
+    await page.waitForURL(/\/journey\/new\?/);
+    const second = await page.evaluate(() => JSON.parse(localStorage.getItem("easyt-private:guest:homepage-input") ?? "null"));
+    assert.deepEqual(second.snapshot.entries.map((entry: { selection: { name: string } }) => entry.selection.name), ["Madrid", "Lisbon", "Porto"]);
+    assert.notEqual(second.receipt.tripId, first.receipt.tripId);
+    assert.notEqual(second.receipt.handoffId, first.receipt.handoffId);
+    assert.doesNotMatch(await page.locator("body").innerText(), /couldn't preserve your current work/i);
+  } finally {
+    await context.close();
     await browser.close();
   }
 });
