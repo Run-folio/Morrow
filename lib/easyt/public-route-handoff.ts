@@ -1,7 +1,6 @@
 import type { PublicRoutePlanDraft } from "./public-route.ts";
 import { mergeStructuredTripBrief } from "./structured-trip-brief.ts";
 import { normalizeTripInterests } from "./trip-interest.ts";
-import { normalizeJourneyEnd } from "./journey-endpoints.ts";
 
 function localIsoDate(date: Date) {
   const year = date.getFullYear();
@@ -16,10 +15,6 @@ export function routePlannerPayload(draft: PublicRoutePlanDraft, start = new Dat
   end.setDate(end.getDate() + Math.max(0, draft.durationDays - 1));
   const startDate = localIsoDate(start);
   const endDate = localIsoDate(end);
-  const endConstraint = draft.structuredBrief.hardConstraints.find(item => item.type === "end-at");
-  const endingStop = endConstraint?.type === "end-at"
-    ? draft.destinations.find(stop => stop.name === endConstraint.value)
-    : undefined;
   return {
     sourceRouteKey: draft.routeKey,
     curatedRoute: draft.curatedRoute,
@@ -27,7 +22,7 @@ export function routePlannerPayload(draft: PublicRoutePlanDraft, start = new Dat
     originCoordinates: draft.originCoordinates,
     originCanonicalPlaceId: draft.originCanonicalPlaceId,
     originCountry: draft.originCountry,
-    journeyEnd: normalizeJourneyEnd(endingStop ? { mode: "explicit", place: endingStop } : undefined),
+    journeyEnd: { mode: "unknown" as const },
     destinations: draft.destinations,
     routeHints: draft.routeHints,
     regions: [] as string[],
@@ -39,9 +34,14 @@ export function routePlannerPayload(draft: PublicRoutePlanDraft, start = new Dat
     interestsExplicit: true,
     brief: `${draft.routeTitle}.`,
     decisionSelections: { routeOrder: "entered" as const, transportByLeg: {} },
-    structuredBrief: mergeStructuredTripBrief(draft.structuredBrief, {
-      dates: { start: startDate, end: endDate, fixed: false },
-    }),
+    structuredBrief: {
+      ...mergeStructuredTripBrief(draft.structuredBrief, {
+        dates: { start: startDate, end: endDate, fixed: false },
+      }),
+      // Date enrichment must not collapse separate occurrences of a repeated
+      // stop, such as the first and last Reykjavík stays on the Iceland loop.
+      destinations: draft.structuredBrief.destinations,
+    },
     nightAllocations: draft.nightAllocations,
   };
 }

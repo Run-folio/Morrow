@@ -4,6 +4,12 @@ import { readFileSync } from "node:fs";
 import { publicRouteDetailFor } from "../lib/easyt/public-route.ts";
 import { routePlannerPayload } from "../lib/easyt/public-route-handoff.ts";
 import { immersiveRouteKeys } from "../lib/easyt/immersive-homepage-routes.ts";
+import { initialHandoffRouteStops } from "../lib/easyt/home-trip-handoff.ts";
+import { canonicalPlaceSuggestionFor } from "../lib/easyt/place-intelligence.ts";
+import { routeFamilyByKey } from "../lib/easyt/route-catalog.ts";
+import { mergeStructuredTripBrief, routeConstraintsFromStructuredTripBrief } from "../lib/easyt/structured-trip-brief.ts";
+import { validateFinalPlan } from "../lib/easyt/plan-validator.ts";
+import { generateRouteCandidates } from "../lib/easyt/route-candidates.ts";
 
 test("Route Detail starts templates through the recovery boundary and leaves modified navigation to the destination tab", () => {
   const source = readFileSync(new URL("../app/journey/routes/[slug]/route-plan-link.tsx", import.meta.url), "utf8");
@@ -50,19 +56,84 @@ test("the reviewed Morocco route reaches Builder with canonical stops and no fal
   assert.deepEqual(stored.destinations.map((stop) => stop.canonicalPlaceId), payload.destinations.map((stop) => stop.canonicalPlaceId));
 });
 
-test('approved route handoffs carry a resolved ending base through JSON reload into Builder', async () => {
-  const { normalizeJourneyEnd, journeyEndpointIdentityIsCoherent } = await import('../lib/easyt/journey-endpoints.ts');
+test('approved route handoffs retain the final overnight base without inventing a fixed departure', () => {
   for (const key of immersiveRouteKeys) {
     const detail = publicRouteDetailFor(key)!;
     const payload = JSON.parse(JSON.stringify(routePlannerPayload(detail.planDraft)));
-    const end = normalizeJourneyEnd(payload.journeyEnd);
-    assert.equal(end.mode, 'explicit');
-    assert.ok(end.mode === 'explicit');
-    assert.equal(end.place.name, detail.stops.at(-1)!.name);
-    assert.equal(end.place.canonicalPlaceId, payload.destinations.at(-1).canonicalPlaceId);
-    assert.ok(journeyEndpointIdentityIsCoherent(end.place));
-    assert.deepEqual(end.place.coordinates, payload.destinations.at(-1).coordinates);
+    assert.equal(payload.journeyEnd.mode, 'unknown');
+    assert.equal(payload.destinations.at(-1).name, detail.stops.at(-1)!.name);
+    assert.equal(payload.structuredBrief.hardConstraints.some((constraint: { type: string }) => constraint.type === 'start-at' || constraint.type === 'end-at'), false);
     assert.equal(payload.datesExplicit, false);
+  }
+});
+
+test("adding Istanbul after the reviewed Balkan route does not inherit a fixed Ohrid departure", () => {
+  const detail = publicRouteDetailFor("balkans-overland");
+  assert.ok(detail);
+  const payload = JSON.parse(JSON.stringify(routePlannerPayload(detail.planDraft, new Date(2026, 9, 15, 12))));
+  const hydrated = initialHandoffRouteStops(payload.structuredBrief.placeMentions ?? [], payload.destinations, payload.journeyEnd);
+  const istanbul = canonicalPlaceSuggestionFor("Istanbul");
+  const verifiedIstanbul = routeFamilyByKey["romania-bulgaria-turkey"]?.stops.find((stop) => stop.name === "Istanbul");
+  assert.ok(istanbul && verifiedIstanbul);
+  // Builder's canonical Add stop path appends the verified place occurrence.
+  const stops = [...hydrated, {
+    id: "istanbul-added", name: istanbul.name, country: istanbul.country,
+    canonicalPlaceId: istanbul.canonicalPlaceId, coordinates: verifiedIstanbul.coordinates,
+  }];
+  assert.deepEqual(stops.map((stop) => stop.name), ["Split", "Dubrovnik", "Kotor", "Shkodër", "Tirana", "Ohrid", "Istanbul"]);
+  const brief = mergeStructuredTripBrief(payload.structuredBrief, {
+    destinations: [
+      { name: payload.origin, role: "arrival-gateway", priority: "required" },
+      ...stops.map((stop) => ({
+        id: stop.id, name: stop.name, canonicalPlaceId: stop.canonicalPlaceId,
+        role: payload.structuredBrief.destinations.find((destination: { id?: string }) => destination.id === stop.id)?.role ?? "preferred",
+        priority: "normal" as const,
+      })),
+      ...(payload.journeyEnd.mode === "explicit"
+        ? [{ name: payload.journeyEnd.place.name, role: "departure-gateway" as const, priority: "required" as const }]
+        : []),
+    ],
+  });
+  const constraints = routeConstraintsFromStructuredTripBrief(brief, stops.map((stop) => stop.id));
+  const nights = { ...payload.nightAllocations, "catalog-balkans-overland-5": 1, "istanbul-added": 1 };
+  const validation = validateFinalPlan({
+    plan: {
+      version: 1,
+      origin: { name: payload.origin, coordinates: payload.originCoordinates },
+      stops: stops.map((stop) => ({ ...stop, nights: nights[stop.id] ?? 0 })),
+      totalNights: 14,
+      pace: "balanced",
+      startDate: payload.startDate,
+      endDate: payload.endDate,
+      constraints,
+    },
+    structuredBrief: brief,
+    estimateLeg: (from, to) => ({
+      mode: "road", distanceKm: 100, durationMinutes: 120,
+      label: `${from.name} → ${to.name}`, note: "Fixture planning estimate.", confidence: "medium",
+    }),
+  });
+  assert.equal(payload.sourceRouteKey, "balkans-overland");
+  assert.equal(stops.reduce((sum, stop) => sum + (nights[stop.id] ?? 0), 0), 14);
+  assert.equal(constraints.fixedEndStopId, undefined);
+  assert.equal(validation.issues.some((issue) => issue.code === "fixed-end-broken"), false);
+  assert.equal(validation.errorCount, 0, JSON.stringify(validation.issues));
+  for (const ordered of [
+    [...hydrated.slice(0, 3), stops.at(-1)!, ...hydrated.slice(3)],
+    [...hydrated.slice(0, 2), hydrated[3]!, hydrated[2]!, ...hydrated.slice(4), stops.at(-1)!],
+  ]) {
+    const edited = mergeStructuredTripBrief(brief, {
+      destinations: ordered.map((stop) => ({ id: stop.id, name: stop.name, canonicalPlaceId: stop.canonicalPlaceId, role: "preferred", priority: "normal" })),
+    });
+    const editedConstraints = routeConstraintsFromStructuredTripBrief(edited, ordered.map((stop) => stop.id));
+    const candidates = generateRouteCandidates({
+      origin: { name: payload.origin, coordinates: payload.originCoordinates },
+      stops: ordered,
+      constraints: editedConstraints,
+      estimateLeg: (from, to) => ({ mode: "road", distanceKm: 100, durationMinutes: 120, label: `${from.name} → ${to.name}`, note: "Fixture planning estimate.", confidence: "medium" }),
+    });
+    assert.equal(editedConstraints.fixedEndStopId, undefined);
+    assert.deepEqual(candidates.candidates.find((candidate) => candidate.metadata.matchesOriginalOrder)?.stops.map((stop) => stop.id), ordered.map((stop) => stop.id));
   }
 });
 
