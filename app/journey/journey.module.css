@@ -261,6 +261,17 @@
 .restaurantResult>small{display:block;margin-top:8px;color:rgba(31,29,61,.42);font:6.5px var(--morrovia-meta)}
 .localCandidates{display:grid;gap:0;padding-top:11px}.localCandidates>p{display:flex;justify-content:space-between;margin:0;padding-bottom:7px;color:rgba(31,29,61,.5);font:650 7px var(--morrovia-meta);letter-spacing:.07em;text-transform:uppercase}.localCandidates>p span{color:var(--signal)}.localCandidates button{display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%;padding:10px 0;color:var(--accent);background:transparent;border:0;border-top:1px solid rgba(31,29,61,.11);text-align:left;cursor:pointer}.localCandidates button:hover strong{color:var(--signal)}.localCandidates button>span{display:grid;gap:3px;min-width:0}.localCandidates strong{overflow:hidden;font:650 11px var(--morrovia-ui);text-overflow:ellipsis;white-space:nowrap}.localCandidates small{overflow:hidden;color:rgba(31,29,61,.56);font:600 7px var(--morrovia-meta);text-overflow:ellipsis;white-space:nowrap}.localCandidates em{flex:0 0 auto;color:var(--signal);font:650 7px var(--morrovia-meta);font-style:normal;text-transform:capitalize}
 .localCandidates .finderWhy{color:#766f7b;font:600 7px/1.25 var(--morrovia-meta);white-space:normal}
+.localCandidates .localCandidate{display:grid;grid-template-columns:46px minmax(0,1fr);align-items:center;justify-content:initial;gap:9px;min-height:58px;padding:8px 2px;border-top:1px solid var(--hairline)}
+.localCandidates .localCandidate>span{display:grid;gap:3px;min-width:0}
+.localCandidates .localCandidate strong{white-space:normal;line-height:1.25}
+.localCandidates .localCandidate small{font:var(--morrovia-type-fine-print);white-space:normal;line-height:1.3}
+.localCandidateImage,.localCandidateImageFallback{width:46px;height:42px;object-fit:cover;border-radius:var(--morrovia-control-radius);background:var(--mist)}
+.localCandidateImageFallback{display:grid;place-items:center;color:var(--morrovia-signal)}
+.localCandidateImageFallback svg{width:16px;height:16px}
+.localCandidates .localCandidateSelected{border-radius:var(--morrovia-control-radius);background:var(--mist)!important}
+.localCandidates .localCandidate:focus-visible{outline:3px solid var(--morrovia-focus-ring);outline-offset:1px}
+.localCandidates .localCandidatesMore{justify-self:start;width:auto;min-height:40px;margin-top:8px;padding:0 12px;border:1px solid var(--morrovia-line);border-radius:var(--morrovia-control-radius);background:var(--morrovia-paper);color:var(--morrovia-action)}
+.mapProgressiveFinder .finderFilters{position:relative;top:auto;right:auto;z-index:2;margin:4px 0 0}
 .exploreMore{margin-top:12px;border-top:1px solid #dedfe2;border-bottom:1px solid #dedfe2}
 .exploreMore>summary{display:flex;align-items:center;justify-content:space-between;gap:15px;padding:11px 0;cursor:pointer;list-style:none;color:var(--accent);font:650 11px var(--morrovia-meta)}
 .exploreMore>summary::-webkit-details-marker{display:none}

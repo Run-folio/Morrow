@@ -157,7 +157,7 @@ export function rankedStayShortlist(
         - (anchor ? Math.min(20, mapDistanceKm(anchor, place.coordinates)) : 0),
     }))
     .sort((left, right) => right.score - left.score || left.index - right.index)
-    .slice(0, Math.max(0, Math.min(6, limit)))
+    .slice(0, Math.max(0, Math.min(24, limit)))
     .map(({ place }) => place);
 }
 

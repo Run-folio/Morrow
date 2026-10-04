@@ -7,6 +7,9 @@ const plan = readFileSync(new URL("../components/journey-plan-workspace.tsx", im
 const stories = readFileSync(new URL("../components/easyt/trip-map-workspace.stories.tsx", import.meta.url), "utf8");
 const journeyStyles = readFileSync(new URL("../app/journey/journey.module.css", import.meta.url), "utf8");
 const localFinder = readFileSync(new URL("../components/journey-local-finder.tsx", import.meta.url), "utf8");
+const seeRefinement = readFileSync(new URL("../components/journey-itinerary-refinement.tsx", import.meta.url), "utf8");
+const liveInventory = readFileSync(new URL("../components/easyt/live-activity-inventory.tsx", import.meta.url), "utf8");
+const selectedDetail = readFileSync(new URL("../components/easyt/itinerary-item-detail.tsx", import.meta.url), "utf8");
 
 function finderMarkup() {
   const start = workspace.indexOf("{showFinderDock ? <aside id=\"shape-day-workspace\"");
@@ -72,6 +75,48 @@ test("sidebar recommendation hover and keyboard focus preview the exact result w
   assert.doesNotMatch(candidateRows, /onMouseEnter=\{\(\) => choosePlace/);
   assert.match(workspace, /previewLocalPlace[\s\S]*?mapResultForSourceAtStop\(mapResults, kind, place\.id, stopId, dayNumber\)/);
   assert.match(workspace, /previewedMapResult\?\.selectionId/);
+});
+
+test("Map See leads with six ranked places, removes category and map-navigation chrome, and keeps result selection", () => {
+  assert.match(seeRefinement, /compact \? 6 : 8/);
+  assert.match(seeRefinement, /Show more places/);
+  assert.doesNotMatch(seeRefinement, /SEE IN \$\{stop\.name\}|Best fits|Explore more on map|className=\{styles\.filters\}/);
+  assert.match(seeRefinement, /onClick=\{\(\) => onPlaceSelect\?\.\(place\)\}/);
+  assert.match(seeRefinement, /onSelectionChange\(stop\.id, place, !isSelected\)/);
+  assert.match(finderMarkup(), /progressiveDisplay candidateLimit=\{24\}/);
+});
+
+test("Map Stay and Eat progressively reveal six ranked candidates while map sync follows visible rows", () => {
+  assert.match(localFinder, /progressiveDisplay\?: boolean/);
+  assert.match(localFinder, /Show more stays|Show more places/);
+  assert.match(localFinder, /onPlacesChange\?\.\(visibleCandidates\.map/);
+  assert.match(localFinder, /onClick=\{\(\) => choosePlace\(place\)\}/);
+});
+
+test("Map Viator requests and reveals real inventory in six-item batches with the minimal fallback", () => {
+  assert.match(liveInventory, /body: JSON\.stringify\(\{ workspace/);
+  assert.match(liveInventory, /workspace === "map" \? 6 : 4/);
+  assert.match(liveInventory, /Show more experiences/);
+  assert.match(seeRefinement, /Browse tours and activities/);
+  assert.doesNotMatch(seeRefinement, /More ways to explore|Booking options from/);
+  const inventoryRoute = readFileSync(new URL("../app/api/journey-activity-inventory/route.ts", import.meta.url), "utf8");
+  assert.match(inventoryRoute, /workspace === "map" \? 12 : 4/);
+  assert.match(liveInventory, /MorroviaAffiliateLink/);
+  assert.match(liveInventory, /affiliateDisclosure/);
+});
+
+test("shared selected-place detail has a compact Map-only treatment and keeps its real actions", () => {
+  assert.match(workspace, /mapSelectionPresentation/);
+  assert.match(selectedDetail, /detail\.category && !mapSelectionPresentation/);
+  assert.match(selectedDetail, /rating\|distance\|saved location/);
+  assert.match(selectedDetail, /Close details for \$\{detail\.title\}/);
+  assert.match(selectedDetail, /detail\.dateSummary/);
+  assert.match(selectedDetail, /detail\.commercialFacts/);
+  assert.match(workspace, /saveSelectedRecommendation/);
+  assert.match(workspace, /Check availability/);
+  assert.match(workspace, /onSelectionChange=\{handleAttractionSelection\}/);
+  const mapDetailMarkup = workspace.slice(workspace.indexOf("{selectedPlaceDetail ? <div className={styles.mapPlaceDetail}"), workspace.indexOf("</div> : selectedLocalPlace ? <div", workspace.indexOf("{selectedPlaceDetail ? <div className={styles.mapPlaceDetail}")));
+  assert.doesNotMatch(mapDetailMarkup, /<dt>Source<\/dt>|<dt>Type<\/dt>/);
 });
 
 test("Plan transfer uses one left-edge mode icon, left-aligned route text and secondary duration", () => {

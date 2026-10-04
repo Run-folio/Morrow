@@ -64,7 +64,7 @@ test("Google selected-place details keep enrichment identity, save and day actio
 
 test("Google map See and Stay retain Morrovia provider and affiliate owners", () => {
   has(refinement, /<LiveActivityInventory/, "live activity inventory remains owned by See");
-  has(refinement, /<MorroviaAffiliateLink action=\{experienceAction\}/, "See partner handoff remains");
+  has(refinement, /<MorroviaAffiliateLink action=\{\{ \.\.\.experienceAction, cta: "Browse tours and activities" \}\}/, "See keeps the same partner handoff with concise contextual copy");
   has(refinement, /\{affiliateDisclosure\}/, "See affiliate disclosure remains");
   has(workspace, /activityAction=\{activityAction\}/, "map See receives its configured affiliate action");
   has(finder, /journey-accommodation-search/, "Stay commercial inventory remains available");

@@ -182,7 +182,7 @@ test("commercial availability is bounded and missing enrichment remains neutral"
   assert.equal(after.some((place) => place.id === "mapped-strong"), true, "the selected canonical property identity survives enrichment");
 
   const overflow = Array.from({ length: 8 }, (_, index) => mappedHotel({ id: `mapped-${index}`, name: `Mapped hotel ${index}`, coordinates: [139.69 + index * 0.002, 35.68] }));
-  assert.equal(rankedStayShortlist(overflow, context, 99).length, 6);
+  assert.equal(rankedStayShortlist(overflow, context, 99).length, 8, "the shared ranker keeps more already-ranked results when the Map asks for them");
 });
 
 test("Stay workspace and Map Stay project the same shared property identity", () => {

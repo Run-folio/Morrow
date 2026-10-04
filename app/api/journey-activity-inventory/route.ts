@@ -14,7 +14,8 @@ function optionalString(value: unknown, maximum: number) {
 export async function POST(request: Request) {
   try {
     await requireEasyTOwner();
-    const body = await request.json() as { destination?: Record<string, unknown>; locale?: unknown; currency?: unknown };
+    const body = await request.json() as { workspace?: unknown; destination?: Record<string, unknown>; locale?: unknown; currency?: unknown };
+    const workspace = body.workspace === "map" ? "map" : "itinerary";
     const canonicalPlaceId = typeof body.destination?.canonicalPlaceId === "string" ? body.destination.canonicalPlaceId.trim() : "";
     const name = typeof body.destination?.name === "string" ? body.destination.name.trim() : "";
     const country = optionalString(body.destination?.country, 80);
@@ -48,7 +49,7 @@ export async function POST(request: Request) {
         ...(coordinates ? { coordinates } : {}),
         ...(aliases.length ? { aliases } : {}),
       },
-      count: 4,
+      count: workspace === "map" ? 12 : 4,
       ...(typeof body.locale === "string" ? { locale: body.locale } : {}),
       ...(typeof body.currency === "string" ? { currency: body.currency } : {}),
     });

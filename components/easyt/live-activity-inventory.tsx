@@ -6,7 +6,6 @@ import { affiliateDisclosure, MorroviaAffiliateLink } from "./affiliate-link";
 import { EasyTButton } from "./easyt-controls";
 import { MorroviaSectionStatus } from "./morrovia-loading-states";
 import ResilientImage from "./resilient-image";
-import { itineraryInterestReason } from "@/lib/easyt/itinerary-day-context";
 import { activityInventoryIdentity, itineraryIdeaForActivityInventory, rankActivityInventory, type ActivityInventoryItem } from "@/lib/easyt/activity-inventory";
 import { createAbortableEffectScope } from "@/lib/easyt/abortable-effect";
 import { recommendationDurationMs } from "@/lib/easyt/recommendation-performance";
@@ -45,6 +44,7 @@ function priceLabel(price: ActivityInventoryItem["price"]) {
 export default function LiveActivityInventory({ trip, stop, day, placement, workspace, fallback = null, onSave, onSchedule, onRemove, isPending = () => false, initialItems, discoveryCategory = "for-you" }: LiveActivityInventoryProps) {
   const [items, setItems] = useState<ActivityInventoryItem[]>(initialItems ?? []);
   const [status, setStatus] = useState<"loading" | "ready" | "unavailable">(initialItems ? "ready" : "loading");
+  const [visibleCount, setVisibleCount] = useState(workspace === "map" ? 6 : 4);
   const interests = tripIntentForTrip(trip).preferences.interests;
   const placeMention = trip.brief.structuredBrief?.placeMentions?.find((mention) => mention.canonicalPlaceId === stop.canonicalPlaceId);
   const usesCommercialInventory = discoveryCategory !== "outdoors";
@@ -60,7 +60,7 @@ export default function LiveActivityInventory({ trip, stop, day, placement, work
     void fetch("/api/journey-activity-inventory", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ destination: {
+      body: JSON.stringify({ workspace, destination: {
         canonicalPlaceId: stop.canonicalPlaceId,
         name: stop.name,
         country: stop.country,
@@ -94,27 +94,25 @@ export default function LiveActivityInventory({ trip, stop, day, placement, work
     return () => scope.dispose();
   }, [initialItems, placeMention?.aliases, placeMention?.placeType, stop.canonicalPlaceId, stop.country, stop.countryCode, stop.id, stop.latitude, stop.longitude, stop.name, stop.region, trip.currency, usesCommercialInventory, workspace]);
 
-  const ranked = useMemo(() => rankActivityInventory(items, interests)
-    .filter((item) => discoveryCategoryMatches({
+  const ranked = useMemo(
+    () => rankActivityInventory(items, interests).filter((item) => discoveryCategoryMatches({
       kind: "tour",
       category: /\b(?:day trip|full[- ]day|half[- ]day|excursion)\b/i.test(`${item.title} ${(item.tags ?? []).join(" ")}`) ? "Day trip" : "Tour",
       tags: item.tags,
       qualityScore: item.rating !== undefined ? Math.round(item.rating * 2 + Math.min(5, Math.log10((item.reviewCount ?? 0) + 1))) : undefined,
-    }, discoveryCategory))
-    .slice(0, 4), [discoveryCategory, interests, items]);
-  if (status === "loading") return <section className={styles.group}><h4>Things to do</h4><MorroviaSectionStatus title="Finding experiences" detail={`Checking current options around ${stop.name}.`} /></section>;
+    }, discoveryCategory)),
+    [discoveryCategory, interests, items],
+  );
+  const visible = useMemo(() => ranked.slice(0, visibleCount), [ranked, visibleCount]);
+  if (status === "loading") return <section className={styles.group} aria-label="Live experiences"><MorroviaSectionStatus title="Finding experiences" detail={`Checking current options around ${stop.name}.`} /></section>;
   if (!ranked.length) return <>{discoveryCategory === "for-you" || discoveryCategory === "tours" ? fallback : null}</>;
 
-  return <section className={styles.group} aria-labelledby={`${workspace}-live-experiences-${stop.id}`}>
-    <header><h4 id={`${workspace}-live-experiences-${stop.id}`}>Things to do</h4></header>
-    <div className={styles.list}>{ranked.map((item) => {
+  return <section className={styles.group} aria-label="Live experiences">
+    <div className={styles.list}>{visible.map((item) => {
       const identity = activityInventoryIdentity(item);
       const idea = itineraryIdeaForActivityInventory(stop.id, item, interests);
       const state = ideaStateForPlace(trip, stop.id, identity);
       const pending = isPending(idea);
-      const interestReason = idea.reasons.includes("interest-relevance")
-        ? itineraryInterestReason({ title: item.title, type: "Experience", tags: item.tags ?? [], description: "" }, interests)
-        : null;
       const duration = durationLabel(item.duration);
       const price = priceLabel(item.price);
       const action = item.productUrl ? { provider: "viator", category: "activities", href: item.productUrl, cta: "View on Viator", affiliate: true } as const : null;
@@ -124,7 +122,7 @@ export default function LiveActivityInventory({ trip, stop, day, placement, work
           {item.rating !== undefined ? <span><Star aria-hidden="true" />{item.rating.toFixed(1)}{item.reviewCount !== undefined ? ` (${item.reviewCount})` : ""}</span> : null}
           {duration ? <span><Clock3 aria-hidden="true" />{duration}</span> : null}
           {price ? <span>{price}</span> : null}
-        </div>{interestReason ? <p>{interestReason}</p> : null}</div>
+        </div></div>
         <div className={styles.actions}>
           {state.state === "planned" ? <>
             <span className={styles.state}><CheckCircle2 aria-hidden="true" />Day {state.day.dayNumber}{state.idea.dayPart ? ` · ${state.idea.dayPart[0]!.toUpperCase()}${state.idea.dayPart.slice(1)}` : " · Placement to review"}</span>
@@ -135,6 +133,7 @@ export default function LiveActivityInventory({ trip, stop, day, placement, work
         </div>
       </article>;
     })}</div>
+    {workspace === "map" && ranked.length > visible.length ? <EasyTButton variant="secondary" size="small" className={styles.showMore} onClick={() => setVisibleCount((count) => Math.min(ranked.length, count + 6))}>Show more experiences</EasyTButton> : null}
     <small className={styles.disclosure}>Experiences from Viator · {affiliateDisclosure}</small>
   </section>;
 }

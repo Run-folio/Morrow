@@ -14,6 +14,8 @@ import { travelProfileStorageKey } from "@/lib/easyt/private-browser-context";
 import { authClient } from "@/lib/auth-client";
 import { MorroviaSectionStatus, MorroviaSkeleton } from "@/components/easyt/morrovia-loading-states";
 import { compactAffiliateDisclosure } from "@/components/easyt/affiliate-link";
+import ResilientImage from "@/components/easyt/resilient-image";
+import { EasyTButton } from "@/components/easyt/easyt-controls";
 import { localFinderBaseQueryKey, localFinderQueryKey, mergeLocalFinderPlaces } from "@/lib/easyt/local-finder-query";
 import { loadLocalFinderBaseResult, peekLocalFinderBaseResult } from "@/lib/easyt/local-finder-base-cache";
 import { recommendationDurationMs, streamIndependentRecommendationLanes } from "@/lib/easyt/recommendation-performance";
@@ -35,10 +37,10 @@ export type StaySearch = { checkIn?: string; checkOut?: string; adults?: number;
 function stayCandidateFacts(place: JourneyLocalPlace) {
   const hasBookingFacts = hasBookingLiveInformation(place);
   const availability = hasBookingFacts && place.availability === "available"
-    ? "Booking.com live information · Available for your dates"
+    ? "Available for your dates"
     : place.operational === true
-      ? "Operational property · check rooms"
-      : "Mapped property · check before booking";
+      ? "Operational property"
+      : null;
   const ratingSource = place.provider === "booking-demand" ? "Booking.com"
     : place.provider === "google-places" ? "Google Places"
       : null;
@@ -79,6 +81,7 @@ type JourneyLocalFinderProps = {
   savedPlaceIds?: readonly string[];
   initialState?: JourneyLocalFinderInitialState;
   candidateLimit?: number;
+  progressiveDisplay?: boolean;
   autoSelectFirst?: boolean;
   analyticsSurface?: "map" | "stay";
   mapPresentation?: "maplibre";
@@ -92,7 +95,7 @@ type JourneyLocalFinderProps = {
   onRemovePlace?: (place: JourneyLocalPlace, kind: "restaurant" | "stay") => boolean | void;
 };
 
-export function JourneyLocalFinder({ ownerId, tripId, stopId, canonicalPlaceId, kind, city, country, locale = "en", dayId, dayNumber, coordinates, interests, staySearch, selectedPlaceId, previewedPlaceId, savedPlaceIds, initialState, candidateLimit = 4, autoSelectFirst = true, analyticsSurface = "map", mapPresentation, render, onPlaceSelect, onViewOnMap, onPreviewPlace, onPlacesChange, onRestaurantSelect, onSavePlace, onRemovePlace }: JourneyLocalFinderProps) {
+export function JourneyLocalFinder({ ownerId, tripId, stopId, canonicalPlaceId, kind, city, country, locale = "en", dayId, dayNumber, coordinates, interests, staySearch, selectedPlaceId, previewedPlaceId, savedPlaceIds, initialState, candidateLimit = 4, progressiveDisplay = false, autoSelectFirst = true, analyticsSurface = "map", mapPresentation, render, onPlaceSelect, onViewOnMap, onPreviewPlace, onPlacesChange, onRestaurantSelect, onSavePlace, onRemovePlace }: JourneyLocalFinderProps) {
   const longitude = coordinates[0];
   const latitude = coordinates[1];
   const baseResultKey = localFinderBaseQueryKey({ kind, city, country, canonicalPlaceId, dayId: stopId ?? dayId, coordinates: [longitude, latitude], locale, mapPresentation });
@@ -116,6 +119,7 @@ export function JourneyLocalFinder({ ownerId, tripId, stopId, canonicalPlaceId, 
   const [searchUnavailable, setSearchUnavailable] = useState(initialState?.coreUnavailable ?? false);
   const [searchVersion, setSearchVersion] = useState(0);
   const [accommodationInventoryStatus, setAccommodationInventoryStatus] = useState<AccommodationInventoryStatus>(initialState?.accommodationInventoryStatus ?? "not-requested");
+  const [visibleCandidateCount, setVisibleCandidateCount] = useState(6);
   const reportedSaveRef = useRef("");
   const reportedAccommodationSearchRef = useRef("");
   const autoSelectedRef = useRef(false);
@@ -128,7 +132,6 @@ export function JourneyLocalFinder({ ownerId, tripId, stopId, canonicalPlaceId, 
   const Icon = kind === "restaurant" ? Utensils : BedDouble;
   const isReady = kind === "restaurant" ? Boolean(meal && pace && mood) : true;
   const places = useMemo(() => mergeLocalFinderPlaces(corePlaces, commercialPlaces), [commercialPlaces, corePlaces]);
-  const liveInventory = commercialPlaces.length > 0;
   const displayPlaces = useMemo(() => kind === "stay" ? places.filter((place) => !/construction/i.test(place.category)) : places, [kind, places]);
 
   useEffect(() => {
@@ -331,10 +334,12 @@ export function JourneyLocalFinder({ ownerId, tripId, stopId, canonicalPlaceId, 
       .slice(0, candidateLimit);
   }, [candidateLimit, city, country, dayId, displayPlaces, interests, isReady, kind, latitude, longitude, moment, mood, pace, profile, staySearch?.checkIn, staySearch?.checkOut, stopId]);
 
+  const visibleCandidates = useMemo(() => progressiveDisplay ? candidates.slice(0, visibleCandidateCount) : candidates, [candidates, progressiveDisplay, visibleCandidateCount]);
+
   useEffect(() => {
-    onPlacesChange?.(candidates.map(({ place }) => place));
+    onPlacesChange?.(visibleCandidates.map(({ place }) => place));
     return () => onPlacesChange?.([]);
-  }, [candidates, onPlacesChange]);
+  }, [onPlacesChange, visibleCandidates]);
 
   useEffect(() => {
     if (!selectedPlaceId) return;
@@ -415,20 +420,37 @@ export function JourneyLocalFinder({ ownerId, tripId, stopId, canonicalPlaceId, 
     });
   }
 
-  return <section className={`${styles.restaurantFinder} ${kind === "stay" ? styles.finderStay : styles.finderEat}`} aria-label={`${label} for ${city}`}>
-    <header><span><Icon /></span><div><small>{kind === "stay" ? `STAY IN ${city}` : `EAT IN ${city}`}</small><strong>{loading ? "Nearby options" : displayPlaces.length ? `${displayPlaces.length} ${kind === "stay" ? "stays" : "places"} nearby` : searchUnavailable ? "Search unavailable" : kind === "stay" ? "No stays found" : "No places found"}</strong></div></header>
+  return <section className={`${styles.restaurantFinder} ${kind === "stay" ? styles.finderStay : styles.finderEat} ${progressiveDisplay ? styles.mapProgressiveFinder : ""}`} aria-label={`${label} for ${city}`}>
+    {!progressiveDisplay ? <header><span><Icon /></span><div><small>{kind === "stay" ? `STAY IN ${city}` : `EAT IN ${city}`}</small><strong>{loading ? "Nearby options" : displayPlaces.length ? `${displayPlaces.length} ${kind === "stay" ? "stays" : "places"} nearby` : searchUnavailable ? "Search unavailable" : kind === "stay" ? "No stays found" : "No places found"}</strong></div></header> : null}
     {loading ? <MorroviaSectionStatus title={kind === "stay" ? "Checking stay options" : "Finding places nearby"} detail={kind === "stay" ? "Looking for options that fit your dates and selected stop." : "Keeping this day and map context in place while local results load."} /> : null}
     {loading && !displayPlaces.length ? <div className={styles.localLoadingSkeletons} aria-hidden="true"><MorroviaSkeleton height={58} radius="card" /><MorroviaSkeleton height={58} radius="card" /></div> : null}
-    {!loading && kind === "stay" && accommodationInventoryStatus === "loading" && displayPlaces.length ? <p className={styles.restaurantLocalNote} role="status">Mapped stays are ready to use. Current room availability is still loading.</p> : null}
-    {!loading && kind === "stay" && accommodationInventoryStatus === "unavailable" && displayPlaces.length ? <p className={styles.restaurantLocalNote}>Mapped stays remain usable. Current room availability could not be checked.</p> : null}
-    {!loading && kind === "stay" && accommodationInventoryStatus === "unconfigured" && displayPlaces.length ? <p className={styles.restaurantLocalNote}>Mapped stays are ready. Check current availability with the booking provider.</p> : null}
+    {!progressiveDisplay && !loading && kind === "stay" && accommodationInventoryStatus === "loading" && displayPlaces.length ? <p className={styles.restaurantLocalNote} role="status">Mapped stays are ready to use. Current room availability is still loading.</p> : null}
+    {!progressiveDisplay && !loading && kind === "stay" && accommodationInventoryStatus === "unavailable" && displayPlaces.length ? <p className={styles.restaurantLocalNote}>Mapped stays remain usable. Current room availability could not be checked.</p> : null}
+    {!progressiveDisplay && !loading && kind === "stay" && accommodationInventoryStatus === "unconfigured" && displayPlaces.length ? <p className={styles.restaurantLocalNote}>Mapped stays are ready. Check current availability with the booking provider.</p> : null}
     {!loading && kind === "stay" && !displayPlaces.length && accommodationInventoryStatus === "loading" ? <MorroviaSectionStatus title="Checking current availability" detail="No mapped stay is ready yet. Your stop and dates remain in place while the live search finishes." /> : null}
     {!loading && kind === "stay" && !displayPlaces.length && accommodationInventoryStatus !== "loading" && (searchUnavailable || accommodationInventoryStatus === "unavailable") ? <MorroviaSectionStatus state="error" title="Stay options are unavailable" detail={accommodationInventoryStatus === "unavailable" ? "Live accommodation availability could not be checked, and no mapped stays are available for this base. Your trip is unchanged." : "Mapped stay results could not be loaded for this overnight base. Your trip is unchanged."} retryLabel="Try stay search again" onRetry={() => setSearchVersion((current) => current + 1)} /> : null}
     {!loading && kind === "restaurant" && !displayPlaces.length && searchUnavailable ? <MorroviaSectionStatus state="error" title="We couldn’t load places here right now" detail="Your day and map are unchanged." retryLabel="Try again" onRetry={() => setSearchVersion((current) => current + 1)} /> : null}
-    {!loading && !displayPlaces.length && !searchUnavailable && accommodationInventoryStatus !== "loading" && accommodationInventoryStatus !== "unavailable" ? <p className={styles.restaurantLocalNote}>{kind === "stay" ? "No stays came back for this overnight base. Try the search again or use the accommodation link to check current options." : "No mapped venues came back for this area. Open Maps to search around the day’s location instead."}</p> : null}
+    {progressiveDisplay && !loading && !displayPlaces.length && !searchUnavailable && accommodationInventoryStatus !== "loading" && accommodationInventoryStatus !== "unavailable" ? <p className={styles.restaurantLocalNote}>{kind === "stay" ? "No stays found for this stop." : "No places found nearby."}</p> : null}
+    {!progressiveDisplay && !loading && !displayPlaces.length && !searchUnavailable && accommodationInventoryStatus !== "loading" && accommodationInventoryStatus !== "unavailable" ? <p className={styles.restaurantLocalNote}>{kind === "stay" ? "No stays came back for this overnight base. Try the search again or use the accommodation link to check current options." : "No mapped venues came back for this area. Open Maps to search around the day’s location instead."}</p> : null}
     {!loading && kind === "restaurant" && displayPlaces.length ? <details className={styles.finderFilters}><summary>Filters</summary><div><>{finderMoments.map((option) => <button key={option.value} type="button" aria-pressed={moment === option.value} onClick={() => setMoment(option.value)}>{option.label}</button>)}{(["lunch", "dinner"] as const).map((option) => <button key={option} type="button" aria-pressed={meal === option} onClick={() => setMeal(option)}>{option}</button>)}{(["quick", "relaxed", "occasion"] as const).map((option) => <button key={option} type="button" aria-pressed={pace === option} onClick={() => setPace(option)}>{option}</button>)}{(["local", "comfort", "surprise"] as const).map((option) => <button key={option} type="button" aria-pressed={mood === option} onClick={() => setMood(option)}>{option}</button>)}</></div></details> : null}
-    {chosen && !(kind === "stay" && selectedPlaceId) ? (() => { const chosenIsSaved = canonicalSavedState ? Boolean(savedPlaceIds?.includes(chosen.id)) : saved?.id === chosen.id; const hasBookingFacts = hasBookingLiveInformation(chosen); return <article className={`${styles.restaurantResult} ${kind === "stay" ? styles.featuredStay : ""}`} aria-current="true"><p><span>{chosenIsSaved ? kind === "stay" ? "Stay added" : `Added to Day ${dayNumber ?? ""}`.trim() : `Selected ${kind === "stay" ? "stay" : meal}`}</span>{chosenIsSaved ? <b>{dayNumber ? `Day ${dayNumber}` : "In today’s plan"} ↑</b> : kind === "stay" && chosen.availability === "available" ? <b>Room option found</b> : null}</p><h3>{chosen.name}</h3>{chosen.nativeName ? <span>{chosen.nativeName}</span> : null}<span><MapPin aria-hidden="true" /> {chosen.address}</span>{kind === "stay" && hasBookingFacts && chosen.availability === "available" && (chosen.price || (chosen.provider === "booking-demand" && chosen.rating)) ? <p className={styles.restaurantFit}>{["Booking.com live information", chosen.price ? `${chosen.price.currency} ${chosen.price.total.toFixed(0)} for your dates` : null, chosen.provider === "booking-demand" && chosen.rating ? `${chosen.rating.toFixed(1)} rating` : null].filter(Boolean).join(" · ")}</p> : kind === "restaurant" ? <p className={styles.restaurantFit}>{recommendNearbyPlace(chosen, { kind, moment, mood, pace, profile, interests }).reasons.join(" · ")}</p> : null}<div className={styles.restaurantActions}>{onPlaceSelect ? <button type="button" aria-label={`View ${chosen.name} on the map`} onClick={() => (onViewOnMap ?? onPlaceSelect)(chosen)}>View on map</button> : <a href={chosen.mapsUrl} target="_blank" rel="noopener noreferrer">Open in Maps <ArrowUpRight aria-hidden="true" /></a>}{kind === "stay" && stayBookingUrl ? <span className={styles.affiliateAction}><a href={stayBookingUrl} target="_blank" rel="sponsored noopener noreferrer" aria-label={`Check availability for ${chosen.name} independently on Trip.com, opens in a new tab`} onClick={() => trackEvent("affiliate_click", { category: "accommodation", provider: affiliatePartners.tripCom.provider, placement: "map_stay_finder", workspace_view: "map", destination_count: 1, ...(tripId ? { trip_id: tripId } : {}), ...(stopId ? { stop_id: stopId } : {}) })}>Check separately on Trip.com <ArrowUpRight aria-hidden="true" /></a>{hasBookingFacts ? <small>Trip.com confirms its own price, availability and terms.</small> : null}</span> : null}<button type="button" className={styles.restaurantSave} onClick={save} disabled={chosenIsSaved}>{chosenIsSaved ? dayNumber ? `Added to Day ${dayNumber}` : "Added to itinerary" : kind === "stay" && saved ? "Replace stay" : kind === "stay" ? "Add stay" : dayNumber ? `Add to Day ${dayNumber}` : "Add to day"}</button><button type="button" aria-label="Change selection" onClick={reset}><RotateCcw aria-hidden="true" /></button></div></article>; })() : null}
+    {chosen && !progressiveDisplay && !(kind === "stay" && selectedPlaceId) ? (() => {
+      const chosenIsSaved = canonicalSavedState ? Boolean(savedPlaceIds?.includes(chosen.id)) : saved?.id === chosen.id;
+      const hasBookingFacts = hasBookingLiveInformation(chosen);
+      return <article className={`${styles.restaurantResult} ${kind === "stay" ? styles.featuredStay : ""}`} aria-current="true">
+        <p><span>{chosenIsSaved ? kind === "stay" ? "Stay added" : `Added to Day ${dayNumber ?? ""}`.trim() : `Selected ${kind === "stay" ? "stay" : meal}`}</span>{chosenIsSaved ? <b>{dayNumber ? `Day ${dayNumber}` : "In today’s plan"} ↑</b> : kind === "stay" && chosen.availability === "available" ? <b>Room option found</b> : null}</p>
+        <h3>{chosen.name}</h3>{chosen.nativeName ? <span>{chosen.nativeName}</span> : null}<span><MapPin aria-hidden="true" /> {chosen.address}</span>
+        {kind === "stay" && hasBookingFacts && chosen.availability === "available" && (chosen.price || (chosen.provider === "booking-demand" && chosen.rating)) ? <p className={styles.restaurantFit}>{["Booking.com live information", chosen.price ? `${chosen.price.currency} ${chosen.price.total.toFixed(0)} for your dates` : null, chosen.provider === "booking-demand" && chosen.rating ? `${chosen.rating.toFixed(1)} rating` : null].filter(Boolean).join(" · ")}</p> : kind === "restaurant" ? <p className={styles.restaurantFit}>{recommendNearbyPlace(chosen, { kind, moment, mood, pace, profile, interests }).reasons.join(" · ")}</p> : null}
+        <div className={styles.restaurantActions}>{onPlaceSelect ? <button type="button" aria-label={`View ${chosen.name} on the map`} onClick={() => (onViewOnMap ?? onPlaceSelect)(chosen)}>View on map</button> : <a href={chosen.mapsUrl} target="_blank" rel="noopener noreferrer">Open in Maps <ArrowUpRight aria-hidden="true" /></a>}{kind === "stay" && stayBookingUrl ? <span className={styles.affiliateAction}><a href={stayBookingUrl} target="_blank" rel="sponsored noopener noreferrer" aria-label={`Check availability for ${chosen.name} independently on Trip.com, opens in a new tab`} onClick={() => trackEvent("affiliate_click", { category: "accommodation", provider: affiliatePartners.tripCom.provider, placement: "map_stay_finder", workspace_view: "map", destination_count: 1, ...(tripId ? { trip_id: tripId } : {}), ...(stopId ? { stop_id: stopId } : {}) })}>Check separately on Trip.com <ArrowUpRight aria-hidden="true" /></a>{hasBookingFacts ? <small>Trip.com confirms its own price, availability and terms.</small> : null}</span> : null}<button type="button" className={styles.restaurantSave} onClick={save} disabled={chosenIsSaved}>{chosenIsSaved ? dayNumber ? `Added to Day ${dayNumber}` : "Added to itinerary" : kind === "stay" && saved ? "Replace stay" : kind === "stay" ? "Add stay" : dayNumber ? `Add to Day ${dayNumber}` : "Add to day"}</button><button type="button" aria-label="Change selection" onClick={reset}><RotateCcw aria-hidden="true" /></button></div>
+      </article>;
+    })() : null}
     {kind === "stay" && stayBookingUrl && !selectedPlaceId ? <small className={styles.finderAffiliateDisclosure}>{compactAffiliateDisclosure} <Link href="/journey/affiliate-disclosure">How partner links work</Link></small> : null}
-    {isReady && candidates.length ? <div className={styles.localCandidates}><p><span>{kind === "restaurant" ? "RECOMMENDED NEARBY" : liveInventory ? "STAY SHORTLIST" : "RECOMMENDED NEARBY"}</span><b>{chosen ? "Browse options" : kind === "stay" ? "Shortlist" : "Best match"}</b></p>{candidates.map(({ place, recommendation }, index) => { const selected = place.id === chosen?.id || place.id === selectedPlaceId; const previewed = place.id === previewedPlaceId; return <button key={place.id} type="button" aria-pressed={selected} data-previewed={previewed || undefined} className={`${selected ? styles.localCandidateSelected : ""} ${previewed ? styles.localCandidatePreviewed : ""}`} onMouseEnter={() => onPreviewPlace?.(place)} onMouseLeave={() => onPreviewPlace?.(null)} onFocus={() => onPreviewPlace?.(place)} onBlur={() => onPreviewPlace?.(null)} onClick={() => choosePlace(place)}><span><strong>{kind === "restaurant" && !chosen && index === 0 ? "Best match · " : ""}{place.name}</strong>{place.nativeName ? <small>{place.nativeName}</small> : null}<small>{place.address}</small><small className={styles.finderWhy}>{kind === "stay" ? stayCandidateFacts(place) : `${recommendation.reasons[0]} · ${recommendation.confidence} confidence`}</small></span><em>{place.category.replace(/_/g, " ")}</em></button>; })}</div> : null}
+    {isReady && candidates.length ? <div className={styles.localCandidates}>{visibleCandidates.map(({ place, recommendation }, index) => {
+      const selected = place.id === chosen?.id || place.id === selectedPlaceId;
+      const previewed = place.id === previewedPlaceId;
+      const facts = kind === "stay" ? stayCandidateFacts(place) ?? place.address : place.address;
+      return <button key={place.id} type="button" aria-pressed={selected} data-previewed={previewed || undefined} className={`${styles.localCandidate} ${selected ? styles.localCandidateSelected : ""} ${previewed ? styles.localCandidatePreviewed : ""}`} onMouseEnter={() => onPreviewPlace?.(place)} onMouseLeave={() => onPreviewPlace?.(null)} onFocus={() => onPreviewPlace?.(place)} onBlur={() => onPreviewPlace?.(null)} onClick={() => choosePlace(place)}>
+        {progressiveDisplay ? <>{place.image ? <ResilientImage className={styles.localCandidateImage} src={place.image} alt="" fallback={<span className={styles.localCandidateImageFallback}><Icon aria-hidden="true" /></span>} /> : <span className={styles.localCandidateImageFallback}><Icon aria-hidden="true" /></span>}<span><strong>{place.name}</strong>{facts ? <small>{facts}</small> : null}</span></> : <span><strong>{kind === "restaurant" && !chosen && index === 0 ? "Best match · " : ""}{place.name}</strong>{place.nativeName ? <small>{place.nativeName}</small> : null}<small>{place.address}</small><small className={styles.finderWhy}>{kind === "stay" ? stayCandidateFacts(place) : `${recommendation.reasons[0]} · ${recommendation.confidence} confidence`}</small></span>}
+      </button>;
+    })}{progressiveDisplay && candidates.length > visibleCandidates.length ? <EasyTButton variant="secondary" size="small" className={styles.localCandidatesMore} onClick={() => setVisibleCandidateCount((count) => Math.min(candidates.length, count + 6))}>{kind === "stay" ? "Show more stays" : "Show more places"}</EasyTButton> : null}</div> : null}
   </section>;
 }

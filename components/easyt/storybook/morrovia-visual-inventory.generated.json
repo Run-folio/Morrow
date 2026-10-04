@@ -179,7 +179,7 @@
     "rawColors": [
       {
         "value": "#fff",
-        "count": 509,
+        "count": 508,
         "examples": [
           "app/journey/account.module.css",
           "app/journey/admin/feedback/feedback.module.css",
@@ -864,13 +864,6 @@
         ]
       },
       {
-        "value": "#d9d6eb",
-        "count": 3,
-        "examples": [
-          "app/journey/easyt-navigation.module.css"
-        ]
-      },
-      {
         "value": "#dcd8df",
         "count": 3,
         "examples": [
@@ -1090,13 +1083,6 @@
         ]
       },
       {
-        "value": "#201c72",
-        "count": 2,
-        "examples": [
-          "app/journey/easyt-navigation.module.css"
-        ]
-      },
-      {
         "value": "#3d3944",
         "count": 2,
         "examples": [
@@ -1301,6 +1287,13 @@
         "count": 2,
         "examples": [
           "app/journey/new/trip-builder.module.css"
+        ]
+      },
+      {
+        "value": "#d9d6eb",
+        "count": 2,
+        "examples": [
+          "app/journey/easyt-navigation.module.css"
         ]
       },
       {
@@ -1857,6 +1850,13 @@
       },
       {
         "value": "#1f1983",
+        "count": 1,
+        "examples": [
+          "app/journey/easyt-navigation.module.css"
+        ]
+      },
+      {
+        "value": "#201c72",
         "count": 1,
         "examples": [
           "app/journey/easyt-navigation.module.css"
@@ -5240,7 +5240,7 @@
     "observedSpacing": [
       {
         "value": "8px",
-        "count": 562,
+        "count": 564,
         "examples": [
           "app/journey/account.module.css",
           "app/journey/admin/feedback/feedback.module.css",
@@ -5250,7 +5250,7 @@
       },
       {
         "value": "10px",
-        "count": 527,
+        "count": 525,
         "examples": [
           "app/journey/about/about.module.css",
           "app/journey/account.module.css",
@@ -5260,7 +5260,7 @@
       },
       {
         "value": "12px",
-        "count": 502,
+        "count": 504,
         "examples": [
           "app/journey/about/about.module.css",
           "app/journey/account.module.css",
@@ -5320,7 +5320,7 @@
       },
       {
         "value": "4px",
-        "count": 252,
+        "count": 255,
         "examples": [
           "app/journey/about/about.module.css",
           "app/journey/account.module.css",
@@ -5330,7 +5330,7 @@
       },
       {
         "value": "6px",
-        "count": 238,
+        "count": 240,
         "examples": [
           "app/journey/account.module.css",
           "app/journey/discover/discover.module.css",
@@ -5349,6 +5349,16 @@
         ]
       },
       {
+        "value": "5px",
+        "count": 228,
+        "examples": [
+          "app/journey/account.module.css",
+          "app/journey/dashboard/dashboard.module.css",
+          "app/journey/discover/discover.module.css",
+          "app/journey/easyt-navigation.module.css"
+        ]
+      },
+      {
         "value": "24px",
         "count": 227,
         "examples": [
@@ -5359,18 +5369,8 @@
         ]
       },
       {
-        "value": "5px",
-        "count": 227,
-        "examples": [
-          "app/journey/account.module.css",
-          "app/journey/dashboard/dashboard.module.css",
-          "app/journey/discover/discover.module.css",
-          "app/journey/easyt-navigation.module.css"
-        ]
-      },
-      {
         "value": "3px",
-        "count": 160,
+        "count": 162,
         "examples": [
           "app/journey/account.module.css",
           "app/journey/dashboard/dashboard.module.css",
@@ -5380,7 +5380,7 @@
       },
       {
         "value": "2px",
-        "count": 149,
+        "count": 151,
         "examples": [
           "app/journey/account.module.css",
           "app/journey/dashboard/dashboard.module.css",
@@ -5510,7 +5510,7 @@
       },
       {
         "value": "42px",
-        "count": 39,
+        "count": 40,
         "examples": [
           "app/journey/about/about.module.css",
           "app/journey/discover/discover.module.css",
@@ -6065,7 +6065,7 @@
     "rawRadii": [
       {
         "value": "999px",
-        "count": 107,
+        "count": 106,
         "examples": [
           "app/journey/account.module.css",
           "app/journey/admin/feedback/feedback.module.css",
@@ -7961,16 +7961,16 @@
   },
   "audit": {
     "totals": {
-      "native-control": 202,
+      "native-control": 200,
       "native-date-input": 0,
       "native-number-input": 0,
       "native-dialog": 0,
       "native-confirm": 0,
       "legacy-ui-import": 0,
       "deprecated-ui-owner": 0,
-      "raw-color": 1889,
+      "raw-color": 1886,
       "large-accent-surface": 0,
-      "raw-radius": 553,
+      "raw-radius": 552,
       "raw-shadow": 167,
       "raw-font-family": 0,
       "page-local-font-role": 0,
@@ -8079,7 +8079,7 @@
         },
         {
           "path": "app/journey/easyt-navigation.module.css",
-          "count": 20
+          "count": 17
         }
       ],
       "raw-radius": [
@@ -8116,11 +8116,11 @@
           "count": 11
         },
         {
-          "path": "app/journey/easyt-navigation.module.css",
-          "count": 10
+          "path": "app/journey/admin/feedback/feedback.module.css",
+          "count": 9
         },
         {
-          "path": "app/journey/admin/feedback/feedback.module.css",
+          "path": "app/journey/easyt-navigation.module.css",
           "count": 9
         },
         {

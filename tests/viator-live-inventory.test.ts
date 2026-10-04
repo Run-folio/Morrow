@@ -121,7 +121,7 @@ test("UI integration keeps Morrovia discovery, aborts stale requests, uses canon
   assert.match(itinerary, /preferredItineraryDayPart\(current, dayId, idea\.category\)/);
   assert.match(itinerary, /onRemove=\{\(idea\) => removeSuggestion\(idea\.placeId, idea\.id\)\}/);
   assert.match(itinerary, /removeItineraryIdea\(current, ideaId\)/);
-  assert.match(route, /count:\s*4/);
+  assert.match(route, /count:\s*workspace === "map" \? 12 : 4/);
   assert.doesNotMatch(route, /while\s*\(|for\s*\(.*start|database|repository/);
 });
 

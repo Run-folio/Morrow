@@ -42,6 +42,7 @@ type Props = {
   compactMapHeader?: boolean;
   omitMapAction?: boolean;
   stackActions?: boolean;
+  mapSelectionPresentation?: boolean;
   providerContent?: ReactNode;
 };
 
@@ -68,6 +69,7 @@ export default function RecommendationDetail({
   compactMapHeader = false,
   omitMapAction = false,
   stackActions = false,
+  mapSelectionPresentation = false,
   providerContent,
 }: Props) {
   const headingId = useId();
@@ -78,6 +80,9 @@ export default function RecommendationDetail({
   const [failedImageSrc, setFailedImageSrc] = useState<string | null>(null);
   const KindIcon = detail.kind === "restaurant" ? Utensils : detail.kind === "accommodation" ? BedDouble : Sparkles;
   const titleTier = recommendationDetailTitleTier(detail.title);
+  const practicalFacts = mapSelectionPresentation
+    ? detail.practical?.filter((fact) => /^(rating|distance|saved location)$/i.test(fact.label))
+    : detail.practical;
 
   useEffect(() => {
     if (embedded) return;
@@ -114,7 +119,7 @@ export default function RecommendationDetail({
     {!embedded ? <EasyTButton className={styles.scrim} iconOnly variant="quiet" aria-label="Close recommendation details" onClick={onClose}>Close recommendation details</EasyTButton> : null}
     <section
       ref={shellRef}
-      className={`${styles.shell} ${embedded ? styles.embedded : ""} ${compactMapHeader ? styles.compactMapHeader : ""}`}
+      className={`${styles.shell} ${embedded ? styles.embedded : ""} ${compactMapHeader ? styles.compactMapHeader : ""} ${mapSelectionPresentation ? styles.mapSelectionPresentation : ""}`}
       role={embedded ? undefined : "dialog"}
       aria-modal={!embedded && mobileSheet || undefined}
       aria-labelledby={headingId}
@@ -128,14 +133,15 @@ export default function RecommendationDetail({
 
       <div className={styles.content}>
         <header className={styles.header}>
-          <span><KindIcon aria-hidden="true" />{detail.kind === "accommodation" ? "Your stay" : detail.kind === "restaurant" ? "Restaurant" : detail.kind === "tour" ? "Bookable experience" : "Activity"}</span>
+          {mapSelectionPresentation ? <EasyTButton className={styles.mapSelectionClose} type="button" icon={X} iconOnly variant="quiet" aria-label={`Close details for ${detail.title}`} onClick={onClose}>Close</EasyTButton> : null}
+          {!mapSelectionPresentation ? <span><KindIcon aria-hidden="true" />{detail.kind === "accommodation" ? "Your stay" : detail.kind === "restaurant" ? "Restaurant" : detail.kind === "tour" ? "Bookable experience" : "Activity"}</span> : null}
           <h2 id={headingId} className={titleTier === "compact" ? styles.compactTitle : undefined} data-title-tier={titleTier}>{detail.title}</h2>
           {detail.location ? <p><MapPin aria-hidden="true" />{detail.location}</p> : null}
           {detail.summary ? <div className={styles.description}>{detail.summary}</div> : null}
         </header>
 
         <dl className={styles.facts}>
-          {detail.category ? <div><Tag aria-hidden="true" /><dt>Category</dt><dd>{detail.category}</dd></div> : null}
+          {detail.category && !mapSelectionPresentation ? <div><Tag aria-hidden="true" /><dt>Category</dt><dd>{detail.category}</dd></div> : null}
           {detail.duration ? <div><Clock3 aria-hidden="true" /><dt>Duration</dt><dd>{detail.duration}</dd></div> : null}
           {detail.dateSummary ? <div><CalendarDays aria-hidden="true" /><dt>When</dt><dd>{detail.dateSummary}</dd></div> : null}
           {detail.price ? <div><span aria-hidden="true">£</span><dt>Price</dt><dd>{detail.price}</dd></div> : null}
@@ -152,9 +158,9 @@ export default function RecommendationDetail({
           <p>{detail.commercialFacts.qualification}</p>
         </section> : null}
 
-        {detail.whyFit ? <section className={styles.why} aria-label="Why this fits"><Sparkles aria-hidden="true" /><div><h3>{detail.whyFitLabel ?? "Why it fits this part of the day"}</h3><p>{detail.whyFit}</p></div></section> : null}
+        {detail.whyFit && !mapSelectionPresentation ? <section className={styles.why} aria-label="Why this fits"><Sparkles aria-hidden="true" /><div><h3>{detail.whyFitLabel ?? "Why it fits this part of the day"}</h3><p>{detail.whyFit}</p></div></section> : null}
 
-        {detail.practical?.length ? <section className={styles.practical}><h3>Practical info</h3><dl>{detail.practical.map((fact) => <div key={fact.label}><dt>{fact.label}</dt><dd>{fact.value}</dd></div>)}</dl></section> : null}
+        {practicalFacts?.length ? <section className={styles.practical}>{!mapSelectionPresentation ? <h3>Practical info</h3> : null}<dl>{practicalFacts.map((fact) => <div key={fact.label}><dt>{fact.label}</dt><dd>{fact.value}</dd></div>)}</dl></section> : null}
 
         {providerContent ? <section aria-label="Place details from provider">{providerContent}</section> : null}
 
