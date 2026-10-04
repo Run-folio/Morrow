@@ -4,15 +4,18 @@ import { useState } from "react";
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
 import { expect, fn, userEvent, waitFor, within } from "storybook/test";
 import { DiscoveryModal } from "./discovery-modal";
+import { discoverySelectablePlaces } from "@/lib/easyt/discovery-confirmation";
 import { createDiscoveryDraft, reduceDiscoveryDraft, type DiscoveryDraft, type DiscoveryDraftAction } from "@/lib/easyt/discovery-draft";
 import { projectDiscovery, type DiscoveryProjection } from "@/lib/easyt/discovery-projection";
 import type { DiscoveryEntry } from "@/lib/easyt/discovery-entry";
-import { resolvePlaceMentions, type ResolvedPlaceMention } from "@/lib/easyt/place-intelligence";
+import { resolvePlaceMentions, type CanonicalPlaceSuggestion, type ResolvedPlaceMention } from "@/lib/easyt/place-intelligence";
 
 const mention = (name: string) => resolvePlaceMentions(name).mentions[0]!;
 const initial = createDiscoveryDraft();
 const projection = (name: string, draft = initial) => projectDiscovery({ mention: mention(name), draft, context: { interests: [], existingPlaceIds: [] } });
 const australia = projection("Australia");
+const australiaStops = discoverySelectablePlaces(australia.places);
+const balkans = projection("Balkans");
 const africa = projection("Africa");
 const japan = projection("Japan");
 const tajikistan = projection("Tajikistan");
@@ -24,9 +27,10 @@ const japanMention = mention("Japan");
 
 type Scene = { entry: DiscoveryEntry; mention: ResolvedPlaceMention; projection: DiscoveryProjection; draft: DiscoveryDraft;
   canonicalTrip?: EasyTTrip; language?: "en" | "es"; existingPlaceIds?: string[]; note?: string; loading?: boolean; saveError?: string; timingDecoy?: boolean;
+  baseChoice?: { area: CanonicalPlaceSuggestion; candidates: CanonicalPlaceSuggestion[]; status: "ready" | "empty" };
   actionSpy?: (action: DiscoveryDraftAction) => void; confirmSpy?: () => void; closeSpy?: () => void };
 
-function SceneModal({ entry, mention: sceneMention, projection: sceneProjection, draft: initialDraft, language = "en", existingPlaceIds = [], note, loading, saveError, timingDecoy, actionSpy, confirmSpy, closeSpy, canonicalTrip }: Scene) {
+function SceneModal({ entry, mention: sceneMention, projection: sceneProjection, draft: initialDraft, language = "en", existingPlaceIds = [], note, loading, saveError, timingDecoy, baseChoice, actionSpy, confirmSpy, closeSpy, canonicalTrip }: Scene) {
   const [draft, setDraft] = useState(initialDraft);
   const [searchValue, setSearchValue] = useState("");
   const onAction = (action: DiscoveryDraftAction) => { actionSpy?.(action); setDraft(current => reduceDiscoveryDraft(current, action)); };
@@ -36,6 +40,7 @@ function SceneModal({ entry, mention: sceneMention, projection: sceneProjection,
     <DiscoveryModal open entry={entry} mention={sceneMention} projection={sceneProjection} draft={draft} language={language} loading={loading} saveError={saveError}
       canonicalReview={canonicalTrip ? buildDiscoveryReview({ mention: sceneMention, draft, projection: sceneProjection, trip: canonicalTrip }) : undefined}
       existingPlaceIds={existingPlaceIds} onAction={onAction} onConfirm={() => confirmSpy?.()} onClose={() => closeSpy?.()}
+      baseChoice={baseChoice ? { ...baseChoice, value: searchValue, onChange: setSearchValue, onSelect: () => {}, onCancel: () => {} } : undefined}
       search={{ value: searchValue, onChange: setSearchValue, onSelect: () => {} }} />
   </main>;
 }
@@ -47,7 +52,7 @@ type Story = StoryObj<typeof meta>;
 
 const countryEntry = { kind: "country", step: "directions" } as const;
 const placesDraft = { ...initial, step: "places" as const };
-const selectedDraft = { ...placesDraft, shortlistIds: australia.places.slice(0, 2).map(place => place.id) };
+const selectedDraft = { ...placesDraft, shortlistIds: australiaStops.slice(0, 2).map(place => place.id) };
 
 export const AustraliaDirections: Story = { args: { entry: countryEntry, mention: australiaMention, projection: australia, draft: initial } };
 export const AustraliaPlaces: Story = { args: { entry: countryEntry, mention: australiaMention, projection: australia, draft: placesDraft } };
@@ -62,15 +67,15 @@ export const MeasuredFirstCard: Story = { args: { ...AustraliaPlaces.args },
 export const AustraliaMapCardPreview: Story = { args: { ...AustraliaPlaces.args, actionSpy: fn(), confirmSpy: fn() },
   play: async ({ canvasElement, args }) => {
     const canvas = within(canvasElement);
-    const place = australia.places[0]!;
+    const place = australiaStops[0]!;
     const card = canvas.getByRole("heading", { name: place.name }).closest("article")!;
     await userEvent.click(card);
     await expect(card).toHaveAttribute("data-highlighted", "true");
     await expect(args.actionSpy).not.toHaveBeenCalled();
     await expect(args.confirmSpy).not.toHaveBeenCalled();
   } };
-const pinRevealProjection = { ...australia, visiblePlaceIds: australia.places.slice(0, 6).map(place => place.id) };
-const offscreenPinPlace = australia.places[10]!;
+const pinRevealProjection = { ...australia, visiblePlaceIds: australiaStops.slice(0, 6).map(place => place.id) };
+const offscreenPinPlace = australiaStops[10]!;
 export const AustraliaPinRevealsExactCard: Story = { args: { ...AustraliaPlaces.args, projection: pinRevealProjection, actionSpy: fn(), confirmSpy: fn() },
   play: async ({ canvasElement, args }) => {
     const canvas = within(canvasElement);
@@ -106,18 +111,31 @@ export const ShortlistAddRemoveInteraction: Story = { args: { ...AustraliaPlaces
     const add = canvas.getAllByRole("button", { name: /Add to shortlist:/ })[0]!;
     await expect(add).toHaveTextContent(/^Add$/);
     await userEvent.click(add);
-    await expect(args.actionSpy).toHaveBeenCalledWith({ type: "add-shortlist", placeId: australia.places[0]!.id });
+    await expect(args.actionSpy).toHaveBeenCalledWith({ type: "add-shortlist", placeId: australiaStops[0]!.id });
     await expect(within(canvas.getByRole("complementary", { name: "Shortlist places" })).getByText("1 place")).toBeVisible();
     const remove = canvas.getByRole("button", { name: /Remove from shortlist:/ });
     await expect(remove).toHaveTextContent(/^Remove$/);
     await userEvent.click(remove);
-    await expect(args.actionSpy).toHaveBeenCalledWith({ type: "remove-shortlist", placeId: australia.places[0]!.id });
+    await expect(args.actionSpy).toHaveBeenCalledWith({ type: "remove-shortlist", placeId: australiaStops[0]!.id });
     await expect(within(canvas.getByRole("complementary", { name: "Shortlist places" })).getByText("0 places")).toBeVisible();
     await expect(args.confirmSpy).not.toHaveBeenCalled();
   } };
-export const AustraliaBrowseOnly: Story = { args: { entry: countryEntry, mention: australiaMention,
+export const AustraliaNoEligibleStops: Story = { args: { entry: countryEntry, mention: australiaMention,
   projection: { ...australia, places: australia.places.filter(place => place.actionability === "browse-only").slice(0, 2), visiblePlaceIds: australia.places.filter(place => place.actionability === "browse-only").slice(0, 2).map(place => place.id) }, draft: placesDraft } };
-export const AustraliaExistingStop: Story = { args: { ...AustraliaPlaces.args, existingPlaceIds: [australia.places[0]!.id] } };
+export const BalkansStopsOnly: Story = { args: { entry: { kind: "region", step: "places" }, mention: mention("Balkans"), projection: balkans,
+  draft: placesDraft, note: "The stop grid excludes browse-only islands; canonical search can add other verified places." } };
+const creteArea: CanonicalPlaceSuggestion = { canonicalPlaceId: "open-world:nominatim:relation:453129", name: "Crete", label: "Crete, Greece",
+  country: "Greece", region: "Region of Crete", placeType: "island", routability: "needs_base_selection",
+  coordinates: [24.4633423, 35.3084952], bounds: { south: 34.9212109, west: 23.5144812, north: 35.6957793, east: 26.3189698 },
+  provenance: [{ id: "nominatim:relation:453129", label: "OpenStreetMap contributors", kind: "provider", supports: "Place identity" }] };
+const heraklionBase: CanonicalPlaceSuggestion = { canonicalPlaceId: "open-world:nominatim:node:29438069", name: "Heraklion", label: "Heraklion, Greece",
+  country: "Greece", region: "Region of Crete", placeType: "city", routability: "direct_destination", coordinates: [25.1332843, 35.33908],
+  provenance: [{ id: "nominatim:node:29438069", label: "OpenStreetMap contributors", kind: "provider", supports: "Place identity" }] };
+export const BalkansCreteChooseBase: Story = { args: { ...BalkansStopsOnly.args,
+  draft: { ...placesDraft, shortlistIds: ["athens"] }, baseChoice: { area: creteArea, candidates: [heraklionBase], status: "ready" } } };
+export const BalkansCreteNoSafeBase: Story = { args: { ...BalkansCreteChooseBase.args,
+  baseChoice: { area: creteArea, candidates: [], status: "empty" } } };
+export const AustraliaExistingStop: Story = { args: { ...AustraliaPlaces.args, existingPlaceIds: [australiaStops[0]!.id] } };
 export const AustraliaNoPhoto: Story = { args: { ...AustraliaPlaces.args } };
 export const AustraliaLoading: Story = { args: { ...AustraliaPlaces.args, loading: true } };
 export const AustraliaSaveError: Story = { args: { ...AustraliaShortlist.args, saveError: "We couldn't save this choice. Your original idea is still available." } };
@@ -164,7 +182,7 @@ export const Mobile390MapOptional: Story = { args: { ...AustraliaPlaces.args, ac
   parameters: { viewport: { defaultViewport: "morrovia390" } },
   play: async ({ canvasElement, args }) => {
     const canvas = within(canvasElement);
-    const place = australia.places[0]!;
+    const place = australiaStops[0]!;
     await userEvent.click(canvas.getByRole("heading", { name: place.name }).closest("article")!);
     await userEvent.click(canvas.getByRole("button", { name: "Map" }));
     await expect(canvas.getByRole("button", { name: "Cards" })).toBeVisible();

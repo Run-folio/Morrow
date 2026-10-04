@@ -1,5 +1,7 @@
 import type { StructuredTripBrief } from "./structured-trip-brief.ts";
 import type { DiscoveryPlace } from "./discovery-content.ts";
+import type { CanonicalPlaceSuggestion } from "./place-intelligence.ts";
+import { discoveryDirectStopSuggestion } from "./discovery-confirmation.ts";
 
 export const DISCOVERY_DRAFT_VERSION = 1 as const;
 
@@ -10,6 +12,10 @@ export type DiscoveryDraft = {
   step: DiscoveryStep;
   directionId: string | null;
   shortlistIds: string[];
+  /** Explicit canonical choices from search, outside the reviewed recommendation collection. */
+  searchSelections?: CanonicalPlaceSuggestion[];
+  /** Explicit acknowledgement when a searched stop extends the broad geographic idea. */
+  outsideAcceptedSearchIds?: string[];
   baseByIntentId: Record<string, string>;
   visitBaseByIntentId: Record<string, string>;
   removedIds: string[];
@@ -20,6 +26,7 @@ export type DiscoveryDraftAction =
   | { type: "set-step"; step: DiscoveryStep }
   | { type: "change-direction"; directionId: string | null }
   | { type: "add-shortlist" | "remove-shortlist"; placeId: string }
+  | { type: "add-search-shortlist"; suggestion: CanonicalPlaceSuggestion; outsideAccepted?: boolean }
   | { type: "choose-base" | "choose-visit-base"; intentId: string; baseId: string }
   | { type: "mark-review-ready" | "mark-confirmed" | "reset" };
 
@@ -82,10 +89,23 @@ export function reduceDiscoveryDraft(draft: DiscoveryDraft, action: DiscoveryDra
         removedIds: draft.removedIds.filter((id) => id !== action.placeId),
         reviewState: "editing",
       };
+    case "add-search-shortlist":
+      return {
+        ...draft,
+        shortlistIds: [...new Set([...draft.shortlistIds, action.suggestion.canonicalPlaceId])],
+        searchSelections: [...(draft.searchSelections ?? []).filter(item => item.canonicalPlaceId !== action.suggestion.canonicalPlaceId), action.suggestion],
+        outsideAcceptedSearchIds: action.outsideAccepted
+          ? [...new Set([...(draft.outsideAcceptedSearchIds ?? []), action.suggestion.canonicalPlaceId])]
+          : (draft.outsideAcceptedSearchIds ?? []).filter(id => id !== action.suggestion.canonicalPlaceId),
+        removedIds: draft.removedIds.filter(id => id !== action.suggestion.canonicalPlaceId),
+        reviewState: "editing",
+      };
     case "remove-shortlist":
       return {
         ...draft,
         shortlistIds: draft.shortlistIds.filter((id) => id !== action.placeId),
+        searchSelections: draft.searchSelections?.filter(item => item.canonicalPlaceId !== action.placeId),
+        outsideAcceptedSearchIds: draft.outsideAcceptedSearchIds?.filter(id => id !== action.placeId),
         removedIds: [...new Set([...draft.removedIds, action.placeId])],
         reviewState: "editing",
       };
@@ -104,7 +124,8 @@ export function reduceDiscoveryDraft(draft: DiscoveryDraft, action: DiscoveryDra
   }
 }
 
-/** Cards and canonical search resolve to the same explicit draft action. */
+/** Reviewed-card search resolves through the same explicit draft action; other
+ * canonical search choices are stored with their verified suggestion. */
 export function selectCanonicalSearchResult(
   draft: DiscoveryDraft,
   result: { canonicalPlaceId: string; country: string },
@@ -114,7 +135,7 @@ export function selectCanonicalSearchResult(
   const place = eligiblePlaces.find(item => item.id === result.canonicalPlaceId && item.country === result.country);
   if (!place) return draft;
   if (choice.type === "add-shortlist") {
-    if (place.actionability === "browse-only") return draft;
+    if (!discoveryDirectStopSuggestion(place)) return draft;
     return reduceDiscoveryDraft(draft, { type: "add-shortlist", placeId: place.id });
   }
   if (place.actionability !== "overnight-base" || !place.stayEvidence.length

@@ -62,7 +62,7 @@ import { discoveryEntryForBrief, type DiscoveryEntry } from "@/lib/easyt/discove
 import { readDiscoveryDraft, reduceDiscoveryDraft, selectCanonicalSearchResult } from "@/lib/easyt/discovery-draft";
 import { buildDiscoveryReview } from "@/lib/easyt/discovery-review";
 import { commitDiscoveryReview, completeDiscoveryMention } from "@/lib/easyt/discovery-commit";
-import { discoveryClarificationSearchCanAdd } from "@/lib/easyt/discovery-confirmation";
+import { discoveryBaseForSearchedArea, discoveryClarificationSearchCanAdd, discoverySearchOutsideMention, discoverySearchStopSuggestion } from "@/lib/easyt/discovery-confirmation";
 import { flushSync } from "react-dom";
 import { projectDiscovery } from "@/lib/easyt/discovery-projection";
 import { discoveryProjectionKey } from "@/lib/easyt/discovery-projection-key";
@@ -541,6 +541,9 @@ function TripBuilderDocument() {
   const [tripBrief, setTripBrief] = useState("");
   const [baseSearchInputs, setBaseSearchInputs] = useState<Record<string, string>>({});
   const [baseSearchErrors, setBaseSearchErrors] = useState<Record<string, string>>({});
+  const [outsideDiscoveryChoice, setOutsideDiscoveryChoice] = useState<{ mentionId: string; suggestion: CanonicalPlaceSuggestion } | null>(null);
+  const [pendingDiscoveryBase, setPendingDiscoveryBase] = useState<{ mentionId: string; area: CanonicalPlaceSuggestion } | null>(null);
+  const [searchedAreaBases, setSearchedAreaBases] = useState<NearbyBaseDiscoveryState | null>(null);
   const [originPlanningMentionId, setOriginPlanningMentionId] = useState<string | null>(null);
   const [transientPlanningMentionId, setTransientPlanningMentionId] = useState<string | null>(null);
   const originResolutionVersionRef = useRef(0);
@@ -1636,6 +1639,35 @@ function TripBuilderDocument() {
   }, [activeClarificationMention?.mentionId, activeNearbyBaseAnchorKey, clarificationOpen, nearbyBaseRetryNonce]);
 
   useEffect(() => {
+    const pending = pendingDiscoveryBase;
+    if (!clarificationOpen || !pending || pending.mentionId !== activeClarificationMention?.mentionId) return;
+    const anchor = nearbyBaseAnchorForMention({ canonicalPlaceId: pending.area.canonicalPlaceId,
+      canonicalName: pending.area.name, placeType: pending.area.placeType, parentCountries: [pending.area.country],
+      parentRegionId: pending.area.region, coordinates: pending.area.coordinates, routability: pending.area.routability ?? "needs_base_selection" });
+    if (!anchor) { setSearchedAreaBases({ mentionId: pending.mentionId, status: "empty", suggestions: [] }); return; }
+    const scope = createAbortableEffectScope("Discovery area base search");
+    const params = new URLSearchParams({ nearbyBases: "1", anchorName: anchor.canonicalName,
+      anchorType: anchor.placeType, anchorLon: String(anchor.coordinates![0]), anchorLat: String(anchor.coordinates![1]),
+      anchorId: anchor.canonicalPlaceId ?? "" });
+    anchor.parentCountries.forEach(country => params.append("anchorCountry", country));
+    if (anchor.parentRegionId) params.set("anchorRegion", anchor.parentRegionId);
+    setSearchedAreaBases({ mentionId: pending.mentionId, status: "loading", suggestions: [] });
+    withProviderTimeout({ label: "Discovery area bases", timeoutMs: 7_000, signal: scope.signal,
+      request: signal => fetch(`/api/journey-geocode?${params}`, { signal }) })
+      .then(async response => {
+        if (!response.ok) throw new Error("Discovery area bases unavailable");
+        return response.json() as Promise<{ candidates?: NearbyBaseSuggestion[] }>;
+      })
+      .then(payload => scope.commit(() => {
+        const suggestions = (payload.candidates ?? []).filter(candidate => discoveryBaseForSearchedArea(pending.area, candidate));
+        setSearchedAreaBases({ mentionId: pending.mentionId, status: suggestions.length ? "ready" : "empty", suggestions });
+      }))
+      .catch(error => { if (!scope.isCancellation(error)) scope.commit(() =>
+        setSearchedAreaBases({ mentionId: pending.mentionId, status: "unavailable", suggestions: [] })); });
+    return () => scope.dispose();
+  }, [activeClarificationMention?.mentionId, clarificationOpen, pendingDiscoveryBase]);
+
+  useEffect(() => {
     const scope = `${activeBrowserOwnerId ?? "guest"}:${tripId}`;
     if (clarificationScopeRef.current === undefined) {
       clarificationScopeRef.current = scope;
@@ -2386,6 +2418,7 @@ function TripBuilderDocument() {
     resolvesMentionId?: string,
     selectionDraft?: PlaceSelectionDraft,
     canonicalSuggestion?: CanonicalPlaceSuggestion,
+    discoverySelectionVerified = false,
   ) => {
     const targetMentionId = resolvesMentionId ?? resolvingPlaceMentionId;
     const targetMention = targetMentionId
@@ -2467,7 +2500,7 @@ function TripBuilderDocument() {
           ? `${value} no es una base cercana verificada para ${placeDisplayName(targetMention!)}. Busca otro lugar cercano.`
           : `${value} is not a verified base ${preposition} ${placeDisplayName(targetMention!)}. Search for another nearby place.`);
       }
-      if (targetMention && !targetNearbyAnchor && (targetMention.requiresBaseSelection || targetMention.routability === "planning_area") && !placeCandidateWithinPlanningParent({
+      if (targetMention && !discoverySelectionVerified && !targetNearbyAnchor && (targetMention.requiresBaseSelection || targetMention.routability === "planning_area") && !placeCandidateWithinPlanningParent({
         canonicalName: resolvedCandidate.canonicalName,
         placeType: resolvedCandidate.placeType,
         parentCountries: resolvedCandidate.parentCountries,
@@ -2671,6 +2704,7 @@ function TripBuilderDocument() {
   const addGuidedPlanningPlace = (
     mention: CapturedLocation,
     suggestion: GuidedPlanningAreaSuggestion,
+    discoverySelectionVerified = false,
   ) => addStop(suggestion.name, suggestion.country, mention.mentionId, undefined, {
     canonicalPlaceId: suggestion.canonicalPlaceId,
     name: suggestion.name,
@@ -2683,7 +2717,7 @@ function TripBuilderDocument() {
     coordinates: suggestion.coordinates,
     routability: "direct_destination",
     provenance: suggestion.provenance,
-  });
+  }, discoverySelectionVerified);
 
   const applyGuidedPlanningShape = async (
     mention: CapturedLocation,
@@ -4027,6 +4061,21 @@ function TripBuilderDocument() {
     ? buildDiscoveryReview({ mention: activeClarificationMention, draft: discoveryDraft, projection: discoveryProjection,
       trip: activeTripDocument, currentValidation: finalPlanValidation,
       constraints: { ...structuredRouteConstraints, fixedCommitments: projectedFixedCommitments } }) : undefined;
+  const addDiscoverySearchSelection = (suggestion: CanonicalPlaceSuggestion, outsideAccepted: boolean) => {
+    if (!activeClarificationMention || !discoveryDraft || !discoverySearchStopSuggestion(suggestion)) return;
+    const mentionId = activeClarificationMention.mentionId;
+    const action = { type: "add-search-shortlist" as const, suggestion, outsideAccepted };
+    setCapturedStructuredBrief(current => {
+      const read = readDiscoveryDraft(current, mentionId);
+      if (read.status === "unsupported-version") return current;
+      return { ...current, discoveryDraftByMentionId: { ...current.discoveryDraftByMentionId,
+        [mentionId]: reduceDiscoveryDraft(read.draft, action) } };
+    });
+    setBaseSearchInputs(current => ({ ...current, [mentionId]: "" }));
+    setBaseSearchErrors(current => ({ ...current, [mentionId]: "" }));
+    setOutsideDiscoveryChoice(null);
+    setPendingDiscoveryBase(null);
+  };
   // flushSync checkpoints must read the document and handlers from the committed render,
   // never the closure that started a multi-choice confirmation.
   const applyDiscoveryRouteOrder = (orderedStopIds: readonly string[]) => {
@@ -4856,8 +4905,10 @@ function TripBuilderDocument() {
                   // reviewed-evidence validation. Builder remains the sole mutation owner.
                   flushSync(() => { added = discoveryOwnersRef.current.addGuidedPlanningPlace(mention, {
                     ...suggestion, coordinates: [...coordinates] as [number, number], regionCanonicalPlaceId: mention.canonicalPlaceId ?? "",
-                    reason: "Traveller confirmed this reviewed place.", anchorMatched: false,
-                  }); });
+                    reason: discoveryDraft.searchSelections?.some(item => item.canonicalPlaceId === choice.id)
+                      ? "Traveller selected this canonical place in search." : "Traveller confirmed this reviewed place.",
+                    anchorMatched: false,
+                  }, true); });
                   if (!await added) return false;
                   const ownerHasChoice = () => {
                     const current = discoveryOwnersRef.current.trip;
@@ -4913,7 +4964,8 @@ function TripBuilderDocument() {
                 }),
               });
               if (!result.ok) {
-                const names = result.committedIds.map(id => discoveryProjection.places.find(place => place.id === id)?.name ?? mention.canonicalName).join(", ");
+                const names = result.committedIds.map(id => discoveryProjection.places.find(place => place.id === id)?.name
+                  ?? discoveryDraft.searchSelections?.find(item => item.canonicalPlaceId === id)?.name ?? mention.canonicalName).join(", ");
                 setBaseSearchErrors(current => ({ ...current, [mention.mentionId]: language === "es"
                   ? `${names ? `Guardados: ${names}. ` : ""}Quedan elecciones sin confirmar. Vuelve a intentarlo; se conservarán las elecciones guardadas.`
                   : `${names ? `Saved: ${names}. ` : ""}Some choices still need confirmation. Retry; saved choices will be reused.` }));
@@ -4970,6 +5022,8 @@ function TripBuilderDocument() {
           onChange: (value) => {
             setBaseSearchInputs((current) => ({ ...current, [activeClarificationMention.mentionId]: value }));
             setBaseSearchErrors((current) => ({ ...current, [activeClarificationMention.mentionId]: "" }));
+            setOutsideDiscoveryChoice(null);
+            setPendingDiscoveryBase(null);
           },
           onSelect: (suggestion) => {
             if (discoveryEntry.kind === "clarification") {
@@ -4985,9 +5039,29 @@ function TripBuilderDocument() {
                 .then((added) => { if (added) advanceClarificationSession(); });
               return;
             }
+            const choosingBase = discoveryEntry.kind === "landmark" || discoveryEntry.kind === "natural-area";
+            if (!choosingBase) {
+              if (!discoverySearchStopSuggestion(suggestion)) {
+                if (placeSuggestionRequiresBaseSelection(suggestion)) {
+                  setPendingDiscoveryBase({ mentionId: activeClarificationMention.mentionId, area: suggestion });
+                  setBaseSearchInputs(current => ({ ...current, [activeClarificationMention.mentionId]: "" }));
+                  setBaseSearchErrors(current => ({ ...current, [activeClarificationMention.mentionId]: "" }));
+                  return;
+                }
+                setBaseSearchErrors(current => ({ ...current, [activeClarificationMention.mentionId]: language === "es"
+                  ? `${suggestion.name} necesita una ciudad o población como base antes de añadirla como parada. Tus lugares elegidos siguen guardados.`
+                  : `${suggestion.name} needs a city or town as a base before it can be added as a stop. Your selected places remain saved.` }));
+                return;
+              }
+              if (discoverySearchOutsideMention(suggestion, activeClarificationMention)) {
+                setOutsideDiscoveryChoice({ mentionId: activeClarificationMention.mentionId, suggestion });
+                return;
+              }
+              addDiscoverySearchSelection(suggestion, false);
+              return;
+            }
             const reviewedPlace = discoveryProjection.places.find((place) => place.id === suggestion.canonicalPlaceId
               && place.country === suggestion.country);
-            const choosingBase = discoveryEntry.kind === "landmark" || discoveryEntry.kind === "natural-area";
             const suitablePlace = Boolean(reviewedPlace && (choosingBase
               ? discoveryBaseSuitableForMention(reviewedPlace, activeClarificationMention)
               : discoveryPlaceWithinMention(suggestion.canonicalPlaceId, activeClarificationMention)));
@@ -5019,6 +5093,37 @@ function TripBuilderDocument() {
             });
           },
         }}
+        outsideChoice={outsideDiscoveryChoice?.mentionId === activeClarificationMention.mentionId ? {
+          suggestion: outsideDiscoveryChoice.suggestion,
+          onAdd: () => addDiscoverySearchSelection(outsideDiscoveryChoice.suggestion, true),
+          onCancel: () => {
+            setOutsideDiscoveryChoice(null);
+            setBaseSearchInputs(current => ({ ...current, [activeClarificationMention.mentionId]: "" }));
+          },
+        } : undefined}
+        baseChoice={pendingDiscoveryBase?.mentionId === activeClarificationMention.mentionId ? {
+          area: pendingDiscoveryBase.area,
+          candidates: searchedAreaBases?.mentionId === activeClarificationMention.mentionId ? searchedAreaBases.suggestions : [],
+          status: searchedAreaBases?.mentionId === activeClarificationMention.mentionId ? searchedAreaBases.status : "loading",
+          value: baseSearchInputs[activeClarificationMention.mentionId] ?? "",
+          onChange: value => { setBaseSearchInputs(current => ({ ...current, [activeClarificationMention.mentionId]: value }));
+            setBaseSearchErrors(current => ({ ...current, [activeClarificationMention.mentionId]: "" })); },
+          onSelect: suggestion => {
+            if (!discoveryBaseForSearchedArea(pendingDiscoveryBase.area, suggestion)) {
+              setBaseSearchErrors(current => ({ ...current, [activeClarificationMention.mentionId]: language === "es"
+                ? `No podemos confirmar ${suggestion.name} como base en ${pendingDiscoveryBase.area.name}. Busca otra ciudad o población.`
+                : `We cannot confirm ${suggestion.name} as a base in ${pendingDiscoveryBase.area.name}. Search for another city or town.` }));
+              return;
+            }
+            if (discoverySearchOutsideMention(suggestion, activeClarificationMention)) {
+              setPendingDiscoveryBase(null);
+              setOutsideDiscoveryChoice({ mentionId: activeClarificationMention.mentionId, suggestion });
+              return;
+            }
+            addDiscoverySearchSelection(suggestion, false);
+          },
+          onCancel: () => { setPendingDiscoveryBase(null); setBaseSearchErrors(current => ({ ...current, [activeClarificationMention.mentionId]: "" })); },
+        } : undefined}
       /> : renderedDiscoveryEntry.kind === "legacy-recovery" ? <BuilderClarificationDialog
         open={clarificationOpen && Boolean(activeClarificationId) && Boolean(activeProviderClarification || activeClarificationMention)}
         language={language}

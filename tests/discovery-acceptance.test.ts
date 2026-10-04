@@ -11,7 +11,61 @@ import { extractStructuredTripBrief } from '../lib/easyt/structured-trip-brief.t
 import { canonicalPlaceSuggestionsForQuery, confirmedAttractionVisitSelection, inferAttractionVisitSelections } from '../lib/easyt/place-intelligence.ts';
 import { discoveryConfirmLabel, discoveryPendingDecisionLabel } from '../lib/easyt/i18n.ts';
 import { availableActions } from '../lib/easyt/i18n.ts';
-import { discoveryClarificationSearchCanAdd, discoveryConfirmationChoiceForId, discoveryDirectStopSuggestion } from '../lib/easyt/discovery-confirmation.ts';
+import { discoveryBaseForSearchedArea, discoveryClarificationSearchCanAdd, discoveryConfirmationChoiceForId, discoveryDirectStopSuggestion, discoverySearchOutsideMention, discoverySearchStopSuggestion, discoverySelectablePlaces } from '../lib/easyt/discovery-confirmation.ts';
+
+test('Crete search accepts only a canonical contained overnight base, never the island or mainland', () => {
+  const source = [{ id: 'nominatim:relation:453129', label: 'OpenStreetMap contributors', kind: 'provider' as const, supports: 'Place identity' }];
+  const crete = { canonicalPlaceId: 'open-world:nominatim:relation:453129', name: 'Crete', label: 'Crete, Greece',
+    country: 'Greece', region: 'Region of Crete', placeType: 'island' as const, routability: 'needs_base_selection' as const,
+    coordinates: [24.4633423, 35.3084952] as [number, number],
+    bounds: { south: 34.9212109, west: 23.5144812, north: 35.6957793, east: 26.3189698 }, provenance: source };
+  const heraklion = { canonicalPlaceId: 'open-world:nominatim:relation:1234', name: 'Heraklion', label: 'Heraklion, Greece',
+    country: 'Greece', region: 'Region of Crete', placeType: 'city' as const, routability: 'direct_destination' as const,
+    coordinates: [25.1442, 35.3387] as [number, number], provenance: source };
+  assert.equal(discoverySearchStopSuggestion(crete), null);
+  assert.deepEqual(discoveryBaseForSearchedArea(crete, heraklion), heraklion);
+  assert.equal(discoveryBaseForSearchedArea(crete, crete), null);
+  assert.equal(discoveryBaseForSearchedArea(crete, { ...heraklion, coordinates: [23.7275, 37.9838] }), null);
+  assert.equal(discoveryBaseForSearchedArea(crete, { ...heraklion, country: 'Turkey' }), null);
+  assert.equal(discoveryBaseForSearchedArea(crete, { ...heraklion, placeType: 'region' }), null);
+  assert.equal(discoveryBaseForSearchedArea({ ...crete, bounds: undefined }, heraklion), null);
+});
+
+test('Balkans stop grid contains only places with a canonical Add path', () => {
+  const { projection } = entryAndProjection('Balkans');
+  const selectable = discoverySelectablePlaces(projection.places);
+  assert.ok(selectable.length > 0);
+  assert.ok(selectable.every((place: DiscoveryPlace) => discoveryDirectStopSuggestion(place)));
+  assert.equal(selectable.some((place: DiscoveryPlace) => place.id === 'naxos'), false);
+});
+
+test('a canonical Istanbul search can join a reviewed Balkans shortlist without becoming reviewed evidence', () => {
+  const input = fixture('Balkans', ['athens']);
+  const suggestion = { ...canonicalPlaceSuggestionsForQuery('Istanbul').find(item => item.canonicalPlaceId === 'istanbul')!,
+    coordinates: [28.9784, 41.0082] as [number, number],
+    provenance: [{ id: 'open-world:istanbul', label: 'Place provider', kind: 'provider' as const,
+      supports: 'The traveller selected this verified place candidate.' }] };
+  assert.ok(suggestion);
+  const draft = reduceDiscoveryDraft(input.draft, { type: 'add-search-shortlist', suggestion, outsideAccepted: true });
+  assert.deepEqual(draft.shortlistIds, ['athens', 'istanbul']);
+  assert.equal(input.projection.places.some(place => place.id === 'istanbul'), false);
+  const review = buildDiscoveryReview({ ...input, draft });
+  assert.equal(review.canConfirm, true);
+  assert.deepEqual(review.bases.map(base => base.id), ['athens', 'istanbul']);
+  assert.deepEqual(review.bases[1]?.suggestion, suggestion);
+  assert.equal(review.orderedStopIds, undefined, 'explicit searched stop order stays as selected');
+  assert.equal(discoverySearchStopSuggestion({ ...suggestion, country: 'Greece' }), null,
+    'a provider country conflicting with a canonical catalog identity must fail closed');
+  const sydney = canonicalPlaceSuggestionsForQuery('Sydney').find(item => item.canonicalPlaceId === 'sydney')!;
+  assert.equal(discoverySearchStopSuggestion({ ...sydney, coordinates: [0, 0] }), null,
+    'a provider coordinate conflicting with a catalog location must fail closed');
+});
+
+test('a canonical Tokyo search remains an explicit outside-Balkans decision', () => {
+  const tokyo = canonicalPlaceSuggestionsForQuery('Tokyo').find(item => item.canonicalPlaceId === 'tokyo')!;
+  assert.ok(tokyo);
+  assert.equal(discoverySearchOutsideMention(tokyo, entryAndProjection('Balkans').mention), true);
+});
 
 test('an explicit ambiguity choice may add an overnight city without reviewed recommendation evidence', () => {
   const springfield = { canonicalPlaceId: 'open-world:springfield-il', name: 'Springfield', label: 'Springfield, Illinois, United States',
@@ -33,16 +87,15 @@ const entryAndProjection = (name: string) => {
   return { brief, entry, mention, draft, projection: projectDiscovery({ mention, draft, context }) };
 };
 
-test('Japan, Namibia, Italy and Australia Add actions match canonical direct-stop confirmation eligibility', () => {
+test('Japan, Namibia, Italy and Australia grid candidates match canonical direct-stop confirmation eligibility', () => {
   for (const name of ['Japan', 'Namibia', 'Italy', 'Australia']) {
     const { projection } = entryAndProjection(name);
+    const selectable = discoverySelectablePlaces(projection.places);
     for (const place of projection.places) {
-      const actions = availableActions(place);
-      const exposesNormalAdd = place.actionability === 'overnight-base';
+      const exposesNormalAdd = selectable.some(item => item.id === place.id);
       const confirmation = discoveryConfirmationChoiceForId(place.id, projection);
       assert.equal(exposesNormalAdd, !('reason' in confirmation), `${name}: ${place.name} card and commit eligibility must agree`);
-      if (exposesNormalAdd) assert.ok(actions.includes('stay-here'), `${name}: ${place.name} exposes Add without stay eligibility`);
-      else assert.ok(!actions.includes('stay-here'), `${name}: ${place.name} browse/visit action must not masquerade as an overnight Add`);
+      if (exposesNormalAdd) assert.ok(discoveryDirectStopSuggestion(place), `${name}: ${place.name} exposes Add without a canonical route identity`);
     }
   }
   const australia = entryAndProjection('Australia').projection;
@@ -53,8 +106,8 @@ test('Japan, Namibia, Italy and Australia Add actions match canonical direct-sto
   }
   for (const id of ['brisbane', 'noosa', 'gold-coast']) {
     const place = australia.places.find(candidate => candidate.id === id)!;
-    assert.notEqual(place.actionability, 'overnight-base', `${id} must not be promoted without explicit stay evidence`);
-    assert.ok('reason' in discoveryConfirmationChoiceForId(id, australia), `${id} must not be directly committable`);
+    assert.notEqual(place.actionability, 'overnight-base', `${id} must not gain an unproven stay recommendation`);
+    assert.equal(Boolean(discoveryDirectStopSuggestion(place)), ['city', 'town'].includes(place.placeType), `${id} stop eligibility follows canonical routability`);
   }
 });
 
@@ -73,9 +126,8 @@ test('Australian Add eligibility follows reviewed overnight evidence for each au
     if (item.staySource) assert.ok(place.stayEvidence.some(source => source.id.startsWith(item.staySource)), item.id);
     const canShowAdd = Boolean(discoveryDirectStopSuggestion(place));
     assert.equal(canShowAdd, !('reason' in discoveryConfirmationChoiceForId(item.id, australia)), `${item.id} Add/commit gate`);
-    assert.equal(availableActions(place).includes('stay-here'), canShowAdd, `${item.id} card action agrees with final gate`);
   }
-  for (const place of australia.places.filter(candidate => availableActions(candidate).includes('stay-here'))) {
+  for (const place of discoverySelectablePlaces(australia.places)) {
     assert.ok(discoveryDirectStopSuggestion(place), `${place.id} exposes Add only when canonical direct-stop commit is supported`);
     assert.equal('reason' in discoveryConfirmationChoiceForId(place.id, australia), false, `${place.id} passes final confirmation eligibility`);
   }

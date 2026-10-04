@@ -4,6 +4,7 @@ import { memo, useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, 
 import { MapPin, Plus, Check } from "lucide-react";
 import type { DiscoveryEntry } from "@/lib/easyt/discovery-entry";
 import type { DiscoveryPlace } from "@/lib/easyt/discovery-content";
+import { discoverySelectablePlaces } from "@/lib/easyt/discovery-confirmation";
 import { discoveryFailureFocusPlan } from "@/lib/easyt/discovery-map-target";
 import { resolveDiscoveryBaseChoice, type DiscoveryDraft, type DiscoveryDraftAction } from "@/lib/easyt/discovery-draft";
 import type { DiscoveryProjection } from "@/lib/easyt/discovery-projection";
@@ -57,7 +58,7 @@ const PlaceCard = memo(function PlaceCard({ place, draft, mention, entry, langua
   const isSpecialResolution = isBaseStep && (entry.kind === "landmark" || entry.kind === "natural-area");
   const baseSelected = baseId === place.id;
   const actions = availableActions(place);
-  const role = copy.roles[place.actionability];
+  const role = isBaseStep ? copy.roles[place.actionability] : copy.roles.routeStop;
   const type = copy.types[place.placeType as keyof typeof copy.types] ?? copy.types.other;
   const location = mention.placeType === "country" && mention.canonicalName === place.country
     ? type : `${type} · ${place.country}`;
@@ -79,11 +80,11 @@ const PlaceCard = memo(function PlaceCard({ place, draft, mention, entry, langua
           onClick={(event) => { event.stopPropagation(); onAction({ type: isSpecialResolution ? "choose-visit-base" : "choose-base", intentId: mention.mentionId, baseId: place.id }); }}>
           {baseSelected ? copy.roles.chosen : isSpecialResolution ? discoveryStayInLabel(language, place.name) : baseId ? copy.actions.changeBase : copy.actions.chooseBase}
         </EasyTButton> : <span className={styles.notBase}>{copy.notBase}</span>
-        : actions.includes("stay-here") || selected ? <EasyTButton variant={selected ? "secondary" : "primary"} size="small" icon={selected ? Check : Plus}
+        : <EasyTButton variant={selected ? "secondary" : "primary"} size="small" icon={selected ? Check : Plus}
           aria-label={`${selected ? copy.accessibility.removeFromShortlist : copy.accessibility.addToShortlist}: ${place.name}`}
           aria-pressed={selected} onClick={(event) => { event.stopPropagation(); onAction({ type: selected ? "remove-shortlist" : "add-shortlist", placeId: place.id }); }}>
           {selected ? copy.actions.remove : copy.actions.shortlist}
-        </EasyTButton> : null}
+        </EasyTButton>}
       </div>
     </div>
   </article>;
@@ -122,8 +123,10 @@ export function DiscoverySteps({ entry, mention, projection, draft, language, ex
   }, [mobileMapOpen]);
   useEffect(() => setVisibleCount(Math.max(6, projection.visiblePlaceIds.length)), [draft.directionId, projection.visiblePlaceIds.length]);
   const activeDirection = projection.directions.find(direction => direction.id === draft.directionId);
-  const allPlaces = useMemo(() => activeDirection ? projection.places.filter(place => activeDirection.placeIds.includes(place.id)) : projection.places,
-    [activeDirection, projection.places]);
+  const allPlaces = useMemo(() => {
+    const candidates = specialResolution ? projection.places : discoverySelectablePlaces(projection.places);
+    return activeDirection ? candidates.filter(place => activeDirection.placeIds.includes(place.id)) : candidates;
+  }, [activeDirection, projection.places, specialResolution]);
   const mapPlacesKey = discoveryMapPlacesKey(allPlaces);
   // Recommendations can change after a shortlist edit; marker geometry cannot.
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -153,7 +156,8 @@ export function DiscoverySteps({ entry, mention, projection, draft, language, ex
   }, [wantsMap, mapUnavailable, MapComponent, handleMapUnavailable]);
   const visible = allPlaces.slice(0, visibleCount);
   const { baseId } = resolveDiscoveryBaseChoice(draft, mention.mentionId);
-  const selectedNames = draft.shortlistIds.map(id => projection.places.find(place => place.id === id)?.name ?? id);
+  const selectedNames = draft.shortlistIds.map(id => projection.places.find(place => place.id === id)?.name
+    ?? draft.searchSelections?.find(item => item.canonicalPlaceId === id)?.name ?? id);
   const registerCard = useCallback((id: string, element: HTMLElement | null) => {
     if (element) cardsRef.current.set(id, element); else cardsRef.current.delete(id);
   }, []);
@@ -183,7 +187,7 @@ export function DiscoverySteps({ entry, mention, projection, draft, language, ex
     </div>
   </div>;
 
-  if (projection.places.length === 0) return <div className={styles.emptyState} data-discovery-state="empty">
+  if (allPlaces.length === 0 && !projection.directions.length && draft.shortlistIds.length === 0) return <div className={styles.emptyState} data-discovery-state="empty">
     <MorroviaStatusBanner
       title={draft.step === "bases" ? copy.emptyBase : copy.empty}
       detail={draft.step === "bases" ? copy.emptyBaseDetail : copy.emptyDetail} />
@@ -234,7 +238,11 @@ export function DiscoverySteps({ entry, mention, projection, draft, language, ex
       </div>
       {!specialResolution ? <div className={styles.shortlist} role="complementary" aria-label={copy.accessibility.shortlist}>
         <div className={styles.shortlistHeading}><strong>{copy.shortlist}</strong><span>{discoveryShortlistCount(language, draft.shortlistIds.length)}</span></div>
-        {selectedNames.length ? <ol>{selectedNames.map((name, index) => <li key={draft.shortlistIds[index]}>{name}</li>)}</ol> : null}
+        {selectedNames.length ? <ol>{selectedNames.map((name, index) => <li key={draft.shortlistIds[index]}>{name}
+          {draft.searchSelections?.some(item => item.canonicalPlaceId === draft.shortlistIds[index])
+            ? <EasyTButton variant="quiet" size="small" onClick={() => onAction({ type: "remove-shortlist", placeId: draft.shortlistIds[index]! })}>
+              {copy.actions.remove} {name}</EasyTButton> : null}
+        </li>)}</ol> : null}
       </div> : null}
       </aside>
     </div>

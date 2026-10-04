@@ -24,16 +24,14 @@ export function discoveryReviewState(mentionId: string, draft: DiscoveryDraft, p
     const place = places.get(id);
     return {
       id,
-      name: place?.name ?? id,
+      name: place?.name ?? draft.searchSelections?.find(item => item.canonicalPlaceId === id)?.name ?? id,
       role: place?.actionability ?? null,
       existing: existingPlaceIds.includes(id),
       outsideDirection: Boolean(direction && !direction.placeIds.includes(id)),
-      confirmable: place?.actionability === "overnight-base"
-        && !("reason" in discoveryConfirmationChoiceForId(id, projection)),
+      confirmable: !("reason" in discoveryConfirmationChoiceForId(id, projection, draft)),
     };
   });
-  const baseConfirmable = Boolean(base && base.actionability === "overnight-base"
-    && !("reason" in discoveryConfirmationChoiceForId(baseId!, projection)));
+  const baseConfirmable = Boolean(base && !("reason" in discoveryConfirmationChoiceForId(baseId!, projection, draft)));
   return {
     choices,
     base: baseId ? { id: baseId, name: base?.name ?? baseId, confirmable: baseConfirmable,

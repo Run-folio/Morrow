@@ -1,4 +1,4 @@
-import { discoveryConfirmationChoiceForId, type DiscoveryReadyChoice } from './discovery-confirmation.ts';
+import { discoveryConfirmationChoiceForId, discoverySearchOutsideMention, type DiscoveryReadyChoice } from './discovery-confirmation.ts';
 import { discoveryBaseSuitableForMention } from './discovery-content.ts';
 import { resolveDiscoveryBaseChoice, type DiscoveryDraft } from './discovery-draft.ts';
 import type { DiscoveryProjection } from './discovery-projection.ts';
@@ -26,9 +26,13 @@ export function buildDiscoveryReview(input: { mention: ResolvedPlaceMention; dra
   const bases: DiscoveryReadyChoice[] = [];
   const visits: DiscoveryVisit[] = [];
   const addBase = (id: string) => {
-    const place = projection.places.find(item => item.id === id);
-    const choice = discoveryConfirmationChoiceForId(id, projection);
-    if (!place || 'reason' in choice) {
+    const choice = discoveryConfirmationChoiceForId(id, projection, draft);
+    if ('reason' in choice) {
+      blockedIds.add(id); return false;
+    }
+    if (draft.searchSelections?.some(item => item.canonicalPlaceId === id)
+      && discoverySearchOutsideMention(choice.suggestion, mention)
+      && !draft.outsideAcceptedSearchIds?.includes(id)) {
       blockedIds.add(id); return false;
     }
     if (trip.stops.filter(stop => stop.canonicalPlaceId === id).length > 1) { blockedIds.add(id); return false; }
@@ -143,7 +147,9 @@ export function buildDiscoveryReview(input: { mention: ResolvedPlaceMention; dra
   const existingOrder = trip.stops.map(stop => stop.id);
   const suggestedExistingOrder = suggestedOrder?.filter(id => existingOrder.includes(id));
   const preservesExistingOrder = !suggestedExistingOrder || suggestedExistingOrder.every((id, index) => id === existingOrder[index]);
-  const routeOrderSource = preservesExistingOrder ? suggestedOrder : undefined;
+  // A traveller's explicit search shortlist is an entered sequence. Keep the
+  // route scorer advisory here so it cannot silently move a searched stop.
+  const routeOrderSource = preservesExistingOrder && !draft.searchSelections?.length ? suggestedOrder : undefined;
   const orderedStopIds = routeOrderSource
     ? [...new Set([...routeOrderSource, ...previewStops.map(stop => stop.id)])]
     : undefined;

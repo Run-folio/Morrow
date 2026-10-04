@@ -115,7 +115,7 @@ test('an ambiguous typed place can be explicitly resolved in Discovery without r
     const dialog = view.page.getByRole('dialog');
     await dialog.getByRole('heading', { name: 'Explore places', exact: true }).waitFor();
     await dialog.getByRole('combobox', { name: /Search for somewhere specific/ }).fill('Springfield');
-    await dialog.getByRole('option', { name: /Springfield.*Illinois/ }).click();
+    await dialog.getByRole('option', { name: /Springfield.*Illinois/ }).evaluate((button: HTMLButtonElement) => button.click());
     await view.page.waitForFunction(() => !document.querySelector('[role="dialog"]'));
     await view.page.getByRole('button', { name: 'Remove Springfield' }).waitFor();
     await view.page.waitForFunction(() => Object.values(localStorage).some(raw => {
@@ -128,6 +128,181 @@ test('an ambiguous typed place can be explicitly resolved in Discovery without r
     assert.ok(saved.some((trip: { stops: Array<{ canonicalPlaceId?: string }> }) =>
       trip.stops.filter(stop => stop.canonicalPlaceId === 'open-world:springfield-il').length === 1), JSON.stringify(saved));
     assert.deepEqual(view.errors, []);
+  } finally { await view.close(); }
+});
+
+test('Balkans search adds a canonical outside stop only after explicit confirmation and keeps prior choices through invalid search', { skip: !builderBrowserTestsEnabled, timeout: 75_000 }, async () => {
+  const view = await renderHomeDraft('Balkans', 'Madrid', { geocodeCandidates: {
+    Istanbul: [{ name: 'Istanbul', country: 'Turkey', canonicalPlaceId: 'istanbul',
+      providerId: 'istanbul-provider', coordinates: [28.9784, 41.0082], kind: 'city', routability: 'direct_destination' }],
+  } });
+  try {
+    const dialog = view.page.getByRole('dialog');
+    await dialog.getByRole('heading', { name: 'Explore places', exact: true }).waitFor();
+    assert.equal(await dialog.getByRole('heading', { name: 'Naxos', exact: true }).count(), 0,
+      'a browse-only island cannot appear in the stop-selection grid');
+    await dialog.getByRole('button', { name: 'Add to shortlist: Athens' }).click();
+    const search = dialog.getByRole('combobox', { name: /Search for somewhere specific/ });
+    await search.fill('Istanbul');
+    await dialog.getByRole('option', { name: /Istanbul.*Turkey/ }).evaluate((button: HTMLButtonElement) => button.click());
+    await dialog.getByText('Istanbul is outside Balkans. Add it to your trip anyway?').waitFor();
+    assert.equal(await dialog.getByRole('button', { name: 'Add 1 place', exact: true }).isEnabled(), true,
+      'a pending outside choice must not trap existing valid selections');
+    await dialog.getByRole('button', { name: 'Cancel', exact: true }).evaluate((button: HTMLButtonElement) => button.click());
+    await search.fill('Istanbul');
+    await dialog.getByRole('option', { name: /Istanbul.*Turkey/ }).evaluate((button: HTMLButtonElement) => button.click());
+    await dialog.getByRole('button', { name: 'Add to trip', exact: true }).evaluate((button: HTMLButtonElement) => button.click());
+    await dialog.getByRole('button', { name: 'Add 2 places', exact: true }).waitFor();
+    await search.fill('asdfgh');
+    await dialog.getByText('No matching places found. Try the place with its country.').waitFor();
+    assert.equal(await dialog.getByRole('button', { name: 'Add 2 places', exact: true }).isEnabled(), true);
+    await dialog.getByRole('button', { name: 'Add 2 places', exact: true }).evaluate((button: HTMLButtonElement) => button.click());
+    await view.page.waitForTimeout(1800);
+    assert.equal(await view.page.getByRole('dialog').count(), 0, `${await dialog.innerText().catch(() => 'dialog remained open')}\n${JSON.stringify(await view.page.evaluate(() => Object.values(localStorage).flatMap(raw => { try { const trip = JSON.parse(raw).trip; return trip ? [{ stops: trip.stops, selections: trip.brief?.structuredBrief?.placeSelections }] : []; } catch { return []; } })))}`);
+    const saved = await view.page.evaluate(() => Object.values(localStorage).flatMap(raw => {
+      try { const trip = JSON.parse(raw).trip; return trip ? [trip] : []; } catch { return []; }
+    }));
+    assert.ok(saved.some((trip: { stops: Array<{ canonicalPlaceId?: string }> }) =>
+      JSON.stringify(trip.stops.map(stop => stop.canonicalPlaceId)) === JSON.stringify(['athens', 'istanbul'])));
+    await view.page.reload();
+    await view.page.waitForFunction(() => !document.querySelector('[role="dialog"]'));
+    const restored = await view.page.evaluate(() => Object.values(localStorage).flatMap(raw => {
+      try { const trip = JSON.parse(raw).trip; return trip ? [trip] : []; } catch { return []; }
+    }));
+    assert.ok(restored.some((trip: { stops: Array<{ canonicalPlaceId?: string }> }) =>
+      trip.stops.length === 2 && ['athens', 'istanbul'].every(id => trip.stops.some(stop => stop.canonicalPlaceId === id))));
+    assert.deepEqual(view.errors, []);
+  } finally { await view.close(); }
+});
+
+test('Crete base selection adds only an explicitly chosen overnight town before Builder', { skip: !builderBrowserTestsEnabled, timeout: 75_000 }, async () => {
+  const view = await renderHomeDraft('Balkans', 'Madrid', { geocodeCandidates: {
+    Crete: [{ name: 'Crete', country: 'Greece', region: 'Region of Crete', canonicalPlaceId: 'open-world:nominatim:relation:453129',
+      providerId: 'nominatim:relation:453129', coordinates: [24.4633423, 35.3084952],
+      bounds: { south: 34.9212109, west: 23.5144812, north: 35.6957793, east: 26.3189698 },
+      kind: 'island', routability: 'needs_base_selection' }],
+  }, nearbyCandidates: [
+    { name: 'Heraklion', country: 'Greece', region: 'Region of Crete', canonicalPlaceId: 'open-world:nominatim:relation:1234',
+      providerId: 'nominatim:relation:1234', coordinates: [25.1442, 35.3387], placeType: 'city', routability: 'direct_destination',
+      provenance: [{ id: 'open-world:nominatim:relation:1234', label: 'OpenStreetMap contributors', kind: 'provider', supports: 'Place identity' }] },
+    { name: 'Athens', country: 'Greece', region: 'Attica', canonicalPlaceId: 'athens', providerId: 'athens',
+      coordinates: [23.7275, 37.9838], placeType: 'city', routability: 'direct_destination',
+      provenance: [{ id: 'athens', label: 'Place catalog', kind: 'catalog', supports: 'Place identity' }] },
+  ] });
+  try {
+    const dialog = view.page.getByRole('dialog');
+    await dialog.getByRole('heading', { name: 'Explore places', exact: true }).waitFor();
+    await dialog.getByRole('button', { name: 'Add to shortlist: Athens' }).click();
+    const search = dialog.getByRole('combobox', { name: /Search for somewhere specific/ });
+    await search.fill('Crete');
+    await dialog.getByRole('option', { name: /Crete.*Greece/ }).click();
+    await dialog.getByRole('heading', { name: 'Choose a base in Crete' }).waitFor();
+    await view.page.waitForFunction(() => document.activeElement?.getAttribute('aria-label') === 'Choose a base in Crete');
+    assert.equal(await dialog.getByText('Athens', { exact: true }).count() > 0, true);
+    assert.equal(await dialog.getByRole('button', { name: 'Add 1 place', exact: true }).isEnabled(), true);
+    assert.equal(await dialog.getByRole('button', { name: 'Add Athens as a base' }).count(), 0);
+    await dialog.getByRole('button', { name: 'Add Heraklion as a base' }).evaluate((button: HTMLButtonElement) => button.click());
+    await dialog.getByRole('button', { name: 'Add 2 places', exact: true }).waitFor();
+    await dialog.getByRole('button', { name: 'Add 2 places', exact: true }).evaluate((button: HTMLButtonElement) => button.click());
+    await view.page.waitForFunction(() => !document.querySelector('[role="dialog"]'));
+    const saved = await view.page.evaluate(() => Object.values(localStorage).flatMap(raw => {
+      try { const trip = JSON.parse(raw).trip; return trip ? [trip] : []; } catch { return []; }
+    }));
+    assert.ok(saved.some((trip: { stops: Array<{ canonicalPlaceId?: string }> }) =>
+      JSON.stringify(trip.stops.map(stop => stop.canonicalPlaceId)) === JSON.stringify(['athens', 'open-world:nominatim:relation:1234'])));
+    await view.page.reload();
+    await view.page.waitForFunction(() => !document.querySelector('[role="dialog"]'));
+    assert.deepEqual(view.errors, []);
+  } finally { await view.close(); }
+});
+
+test('Crete with no safe base keeps existing valid stops available and permits another search', { skip: !builderBrowserTestsEnabled, timeout: 55_000 }, async () => {
+  const view = await renderHomeDraft('Balkans', 'Madrid', { geocodeCandidates: {
+    Crete: [{ name: 'Crete', country: 'Greece', region: 'Region of Crete', canonicalPlaceId: 'open-world:nominatim:relation:453129',
+      providerId: 'nominatim:relation:453129', coordinates: [24.4633423, 35.3084952],
+      bounds: { south: 34.9212109, west: 23.5144812, north: 35.6957793, east: 26.3189698 },
+      kind: 'island', routability: 'needs_base_selection' }],
+  }, nearbyStatus: 'empty' });
+  try {
+    const dialog = view.page.getByRole('dialog');
+    await dialog.getByRole('heading', { name: 'Explore places', exact: true }).waitFor();
+    await dialog.getByRole('button', { name: 'Add to shortlist: Athens' }).click();
+    await dialog.getByRole('combobox', { name: /Search for somewhere specific/ }).fill('Crete');
+    await dialog.getByRole('option', { name: /Crete.*Greece/ }).click();
+    await dialog.getByText(/We cannot confirm a safe base in Crete right now/).waitFor();
+    assert.equal(await dialog.getByRole('button', { name: 'Add 1 place', exact: true }).isEnabled(), true);
+    await dialog.getByRole('button', { name: 'Search another place' }).evaluate((button: HTMLButtonElement) => button.click());
+    await dialog.getByRole('combobox', { name: /Search for somewhere specific/ }).waitFor();
+    assert.equal(await dialog.getByRole('button', { name: 'Add 1 place', exact: true }).isEnabled(), true);
+    assert.deepEqual(view.errors, []);
+  } finally { await view.close(); }
+});
+
+test('Crete accepts a manually searched canonical town when nearby discovery is unavailable', { skip: !builderBrowserTestsEnabled, timeout: 55_000 }, async () => {
+  const view = await renderHomeDraft('Balkans', 'Madrid', { geocodeCandidates: {
+    Crete: [{ name: 'Crete', country: 'Greece', region: 'Region of Crete', canonicalPlaceId: 'open-world:nominatim:relation:453129',
+      providerId: 'nominatim:relation:453129', coordinates: [24.4633423, 35.3084952],
+      bounds: { south: 34.9212109, west: 23.5144812, north: 35.6957793, east: 26.3189698 },
+      kind: 'island', routability: 'needs_base_selection' }],
+    Heraklion: [{ name: 'Heraklion', country: 'Greece', region: 'Region of Crete', canonicalPlaceId: 'open-world:nominatim:node:29438069',
+      providerId: 'nominatim:node:29438069', coordinates: [25.1332843, 35.33908], kind: 'city', routability: 'direct_destination' }],
+  }, nearbyStatus: 'unavailable' });
+  try {
+    const dialog = view.page.getByRole('dialog');
+    await dialog.getByRole('heading', { name: 'Explore places', exact: true }).waitFor();
+    await dialog.getByRole('combobox', { name: /Search for somewhere specific/ }).fill('Crete');
+    await dialog.getByRole('option', { name: /Crete.*Greece/ }).click();
+    await dialog.getByText(/We cannot confirm a safe base in Crete right now/).waitFor();
+    await dialog.getByRole('combobox', { name: 'Search for a city or town in Crete' }).fill('Heraklion');
+    await dialog.getByRole('option', { name: /Heraklion.*Greece/ }).evaluate((button: HTMLButtonElement) => button.click());
+    await dialog.getByRole('button', { name: 'Add 1 place', exact: true }).evaluate((button: HTMLButtonElement) => button.click());
+    await view.page.waitForFunction(() => !document.querySelector('[role="dialog"]'));
+    const saved = await view.page.evaluate(() => Object.values(localStorage).flatMap(raw => {
+      try { const trip = JSON.parse(raw).trip; return trip ? [trip] : []; } catch { return []; }
+    }));
+    assert.ok(saved.some((trip: { stops: Array<{ canonicalPlaceId?: string }> }) =>
+      trip.stops.length === 1 && trip.stops[0]?.canonicalPlaceId === 'open-world:nominatim:node:29438069'));
+    assert.deepEqual(view.errors, []);
+  } finally { await view.close(); }
+});
+
+test('an ambiguous search never guesses or blocks an existing Balkans stop', { skip: !builderBrowserTestsEnabled, timeout: 70_000 }, async () => {
+  const view = await renderHomeDraft('Balkans', 'Madrid', { geocodeCandidates: {
+    Springfield: [
+      { name: 'Springfield', country: 'United States', region: 'Illinois', canonicalPlaceId: 'open-world:springfield-il',
+        providerId: 'springfield-il', coordinates: [-89.65, 39.78], kind: 'city', routability: 'direct_destination' },
+      { name: 'Springfield', country: 'United States', region: 'Massachusetts', canonicalPlaceId: 'open-world:springfield-ma',
+        providerId: 'springfield-ma', coordinates: [-72.59, 42.1], kind: 'city', routability: 'direct_destination' },
+    ],
+  } });
+  try {
+    const dialog = view.page.getByRole('dialog');
+    await dialog.getByRole('heading', { name: 'Explore places', exact: true }).waitFor();
+    await dialog.getByRole('button', { name: 'Add to shortlist: Athens' }).click();
+    await dialog.getByRole('combobox', { name: /Search for somewhere specific/ }).fill('Springfield');
+    await dialog.getByRole('option', { name: /Springfield.*Illinois/ }).waitFor();
+    assert.equal(await dialog.getByRole('option', { name: /Springfield/ }).count(), 2);
+    assert.equal(await dialog.getByRole('button', { name: 'Add 1 place', exact: true }).isEnabled(), true);
+    await dialog.getByRole('button', { name: 'Add 1 place', exact: true }).evaluate((button: HTMLButtonElement) => button.click());
+    await view.page.waitForFunction(() => !document.querySelector('[role="dialog"]'));
+    const saved = await view.page.evaluate(() => Object.values(localStorage).flatMap(raw => {
+      try { const trip = JSON.parse(raw).trip; return trip ? [trip] : []; } catch { return []; }
+    }));
+    assert.ok(saved.some((trip: { stops: Array<{ canonicalPlaceId?: string }> }) =>
+      trip.stops.length === 1 && trip.stops[0]?.canonicalPlaceId === 'athens'));
+    assert.deepEqual(view.errors, []);
+  } finally { await view.close(); }
+});
+
+test('unresolved text does not count as a stop when the shortlist is empty', { skip: !builderBrowserTestsEnabled, timeout: 50_000 }, async () => {
+  const view = await renderHomeDraft('Balkans');
+  try {
+    const dialog = view.page.getByRole('dialog');
+    await dialog.getByRole('heading', { name: 'Explore places', exact: true }).waitFor();
+    await dialog.getByRole('combobox', { name: /Search for somewhere specific/ }).fill('asdfgh');
+    await dialog.getByText('No matching places found. Try the place with its country.').waitFor();
+    assert.equal(await dialog.getByRole('button', { name: 'Add 0 places', exact: true }).count(), 0);
+    assert.equal(await dialog.locator('footer button').last().isDisabled(), true);
   } finally { await view.close(); }
 });
 
@@ -374,7 +549,8 @@ test('Discovery handoff retains normal Builder controls and persists exercised e
     await page.getByRole('button', { name: new RegExp(`Add one night to Kanazawa; ${editedKanazawaNights} nights currently`) }).waitFor({ timeout: 5_000 });
     assert.deepEqual(await reloadedRoute.locator('[data-builder-stop-index]').evaluateAll((rows: HTMLElement[]) =>
       rows.map(row => row.querySelector('[role="cell"] strong')?.textContent?.trim() ?? '')), expectedAfterDrag);
-    await page.getByRole('button', { name: 'Remove Kanazawa', exact: true }).click();
+    await page.getByRole('button', { name: 'Add stop', exact: true }).click();
+    await page.getByRole('list', { name: 'Confirmed stops' }).getByRole('button', { name: /^Remove Kanazawa, stop \d+$/ }).click();
     await page.getByRole('dialog').getByRole('button', { name: 'Remove Kanazawa', exact: true }).click();
     await page.waitForFunction(() => document.querySelectorAll('[data-builder-route-workspace] [data-builder-stop-index]').length === 2);
     assert.deepEqual(await reloadedRoute.locator('[data-builder-stop-index]').evaluateAll((rows: HTMLElement[]) =>
@@ -410,16 +586,16 @@ for (const [country, clickOrder] of [
           await more.click();
           card = dialog.locator('[data-discovery-card="true"]').filter({ hasText: name });
         }
-        assert.equal(await card.getAttribute('data-actionability'), 'browse-only', `${name} has visitor relevance but no reviewed stay evidence`);
-        assert.equal(await card.getByRole('button', { name: `Add to shortlist: ${name}`, exact: true }).count(), 0,
-          `${name} does not expose Add without reviewed stay evidence`);
+        assert.equal(await card.getAttribute('data-actionability'), 'browse-only', `${name} has no reviewed stay evidence`);
+        assert.equal(await card.getByRole('button', { name: `Add to shortlist: ${name}`, exact: true }).count(), 1,
+          `${name} is a canonical city or town stop even without reviewed stay evidence`);
       }
       const etosha = dialog.locator('[data-discovery-card="true"]').filter({ hasText: 'Etosha National Park' });
       assert.equal(await etosha.count(), 0, 'natural-area example is not part of the East Coast direction');
-      const browseOnly = dialog.locator('[data-discovery-card="true"]').filter({ hasText: 'Gold Coast' });
-      assert.equal(await browseOnly.getAttribute('data-actionability'), 'browse-only');
-      assert.equal(await browseOnly.getByRole('button', { name: 'Add to shortlist: Gold Coast', exact: true }).count(), 0,
-        'a visible place without stay evidence does not expose Add');
+      const goldCoast = dialog.locator('[data-discovery-card="true"]').filter({ hasText: 'Gold Coast' });
+      assert.equal(await goldCoast.getAttribute('data-actionability'), 'browse-only');
+      assert.equal(await goldCoast.getByRole('button', { name: 'Add to shortlist: Gold Coast', exact: true }).count(), 1,
+        'a canonical city can be a stop without claiming reviewed stay evidence');
       await dialog.getByRole('button', { name: 'East coast', exact: true }).click();
     }
     for (const name of clickOrder) {
@@ -516,9 +692,7 @@ test('Africa direction filters switch reviewed route families inside Explore wit
     await dialog.getByRole('button', { name: 'Namibia Self-Drive', exact: true }).waitFor();
     const shortlist = dialog.getByRole('complementary', { name: 'Shortlist places' });
     const etosha = dialog.locator('[data-discovery-card="true"]').filter({ hasText: 'Etosha National Park' });
-    assert.equal(await etosha.getAttribute('data-actionability'), 'browse-only');
-    assert.equal(await etosha.getByRole('button', { name: 'Add to shortlist: Etosha National Park', exact: true }).count(), 0,
-      'natural areas remain explore-only without reviewed overnight-base evidence');
+    assert.equal(await etosha.count(), 0, 'natural areas without a direct stop path are not in the stop grid');
     await dialog.getByRole('button', { name: 'Add to shortlist: Windhoek', exact: true }).click();
     await dialog.getByRole('button', { name: 'Morocco, medinas to mountains', exact: true }).click();
     assert.match(await shortlist.innerText(), /Windhoek/, 'shortlist persists while the route-family filter changes');
@@ -537,7 +711,7 @@ test('Hokkaido remains an unresolved canonical region when no reviewed contained
     await dialog.getByRole('heading', { name: 'Explore places', exact: true }).waitFor();
     assert.equal(await dialog.locator('[data-discovery-card="true"]').count(), 0,
       'Hokkaido has canonical identity but no reviewed visitor-place evidence to show');
-    await dialog.getByText("We don't have reviewed places here yet.", { exact: true }).waitFor();
+    await dialog.getByText('No suggested stops here yet.', { exact: true }).waitFor();
     assert.equal(await dialog.getByRole('combobox', { name: 'Search for somewhere specific: Hokkaido' }).count(), 1);
     const before = await view.page.locator('[data-builder-route-workspace] [data-builder-stop-index]').count();
     await dialog.getByRole('button', { name: 'Finish later', exact: true }).click();
@@ -627,7 +801,7 @@ test('provider-selected genuine zero remains unresolved without fabricated place
   const view = await renderProviderHomepageDraft(draft);
   try {
     const dialog = view.page.getByRole('dialog');
-    await dialog.getByText("We don't have reviewed places here yet.", { exact: true }).waitFor();
+    await dialog.getByText('No suggested stops here yet.', { exact: true }).waitFor();
     assert.equal(await dialog.locator('[data-discovery-card="true"]').count(), 0);
     assert.deepEqual(view.errors, []);
   } finally { await view.close(); }
@@ -680,9 +854,8 @@ test('Africa aggregates reviewed places while retaining continent intent without
     await dialog.getByRole('button', { name: 'Explore direction: Namibia Self-Drive', exact: true }).click();
     await dialog.getByRole('heading', { name: 'Explore places', exact: true }).waitFor();
     assert.ok(await dialog.locator('[data-discovery-card="true"]').count() > 1);
-    await dialog.getByRole('combobox', { name: 'Search for somewhere specific: Africa' }).fill('Arusha');
-    await dialog.getByRole('option', { name: /Arusha/ }).first().click();
-    await dialog.getByRole('alert').filter({ hasText: /cannot confirm Arusha/ }).waitFor();
+    await dialog.getByRole('combobox', { name: 'Search for somewhere specific: Africa' }).fill('asdfgh');
+    await dialog.getByText('No matching places found. Try the place with its country.').waitFor();
     await dialog.getByRole('button', { name: 'Finish later', exact: true }).click();
     await view.page.waitForFunction(() => !document.querySelector('[role="dialog"]'));
     const trips = await view.page.evaluate(() => Object.values(localStorage).flatMap(raw => {
@@ -730,7 +903,7 @@ test('genuine zero content keeps unresolved intent, renders no empty rails, and 
   const view = await renderHomeDraft('Eritrea');
   try {
     const dialog = view.page.getByRole('dialog');
-    await dialog.getByText("We don't have reviewed places here yet.", { exact: true }).waitFor();
+    await dialog.getByText('No suggested stops here yet.', { exact: true }).waitFor();
     assert.equal(await dialog.locator('[data-discovery-card="true"]').count(), 0);
     assert.equal(await dialog.locator('[data-discovery-map]').count(), 0);
     assert.equal(await dialog.getByText('Shortlist', { exact: true }).count(), 0);
@@ -751,7 +924,7 @@ test('Spanish genuine zero content and pending intent remain localized', { skip:
   const view = await renderHomeDraft('Eritrea', 'Madrid', { language: 'es' });
   try {
     const dialog = view.page.getByRole('dialog');
-    await dialog.getByText('Aún no tenemos lugares revisados aquí.', { exact: true }).waitFor();
+    await dialog.getByText('Aún no hay paradas sugeridas aquí.', { exact: true }).waitFor();
     await dialog.getByRole('button', { name: 'Terminar más tarde', exact: true }).click();
     await view.page.getByText('Lugares aún por elegir', { exact: true }).waitFor();
     assert.deepEqual(view.errors, []);

@@ -20,14 +20,14 @@ test("card and canonical search add the same reviewed place, and Back preserves 
   assert.deepEqual(reduceDiscoveryDraft(bySearch, { type: "remove-shortlist", placeId: "melbourne" }).removedIds, ["melbourne"]);
 });
 
-test("search rejects provider-only, wrong-country and browse-only route choices", () => {
+test("reviewed search rejects unknown identities and base-only choices but accepts a canonical city without stay recommendations", () => {
   const empty = createDiscoveryDraft();
   assert.deepEqual(selectCanonicalSearchResult(empty, { canonicalPlaceId: "provider-only", country: "Australia" }, places), empty);
   assert.deepEqual(selectCanonicalSearchResult(empty, { canonicalPlaceId: "melbourne", country: "Japan" }, places), empty);
   const browse = places.find(place => place.actionability === "browse-only" && place.placeType === "city")!;
-  assert.deepEqual(availableActions(browse), ["explore"], "browse-only candidates must not advertise Add/shortlist actions");
+  assert.deepEqual(availableActions(browse), ["explore"], "stay recommendations still require stay evidence");
   assert.deepEqual(selectCanonicalSearchResult(empty, { canonicalPlaceId: browse.id, country: browse.country }, places, { type: "choose-base", intentId: mention.mentionId }), empty);
-  assert.deepEqual(selectCanonicalSearchResult(empty, { canonicalPlaceId: browse.id, country: browse.country }, places), empty);
+  assert.deepEqual(selectCanonicalSearchResult(empty, { canonicalPlaceId: browse.id, country: browse.country }, places).shortlistIds, [browse.id]);
 });
 
 test("search and card shortlist the same reviewed visit-only place", () => {

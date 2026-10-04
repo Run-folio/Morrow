@@ -8,7 +8,7 @@ import type { DiscoveryDraft, DiscoveryDraftAction, DiscoveryStep } from "@/lib/
 import type { DiscoveryProjection } from "@/lib/easyt/discovery-projection";
 import type { DiscoveryReview } from "@/lib/easyt/discovery-review";
 import { discoveryReviewState } from "@/lib/easyt/discovery-review-state";
-import type { CanonicalPlaceSuggestion, ResolvedPlaceMention } from "@/lib/easyt/place-intelligence";
+import { nearbyBaseAnchorForMention, type CanonicalPlaceSuggestion, type ResolvedPlaceMention } from "@/lib/easyt/place-intelligence";
 import { discoveryAddPlacesLabel, discoveryAddToTripLabel, easytCopy, type EasyTLanguage } from "@/lib/easyt/i18n";
 import { CanonicalPlaceAutocomplete } from "./canonical-place-autocomplete";
 import { BuilderClarificationShell } from "./builder-clarification-shell";
@@ -24,8 +24,11 @@ type Search = {
   onChange: (value: string) => void;
   onSelect: (suggestion: CanonicalPlaceSuggestion) => void;
 };
+type BaseChoice = { area: CanonicalPlaceSuggestion; candidates: CanonicalPlaceSuggestion[];
+  status: "loading" | "ready" | "empty" | "unavailable"; value: string;
+  onChange: (value: string) => void; onSelect: (suggestion: CanonicalPlaceSuggestion) => void; onCancel: () => void };
 
-export function DiscoveryModal({ open, entry, mention, projection, draft, onAction, onConfirm, onClose, language = "en", search, existingPlaceIds = [], loading = false, saveError, canonicalReview }: {
+export function DiscoveryModal({ open, entry, mention, projection, draft, onAction, onConfirm, onClose, language = "en", search, outsideChoice, baseChoice, existingPlaceIds = [], loading = false, saveError, canonicalReview }: {
   open: boolean;
   entry: DiscoveryEntry;
   mention: ResolvedPlaceMention;
@@ -36,6 +39,8 @@ export function DiscoveryModal({ open, entry, mention, projection, draft, onActi
   onClose: (action: "closed" | "finish_later") => void;
   language?: EasyTLanguage;
   search?: Search;
+  outsideChoice?: { suggestion: CanonicalPlaceSuggestion; onAdd: () => void; onCancel: () => void };
+  baseChoice?: BaseChoice;
   existingPlaceIds?: readonly string[];
   loading?: boolean;
   saveError?: string;
@@ -45,7 +50,16 @@ export function DiscoveryModal({ open, entry, mention, projection, draft, onActi
   const shownRef = useRef<string | null>(null);
   const timingRef = useRef<string | null>(null);
   const modalRef = useRef<HTMLDivElement>(null);
+  const baseChoiceRef = useRef<HTMLElement>(null);
   useEffect(() => setHighlightedPlaceId(null), [mention.mentionId, open]);
+  useEffect(() => {
+    if (!open || !baseChoice) return;
+    const frame = requestAnimationFrame(() => {
+      baseChoiceRef.current?.scrollIntoView({ block: "nearest" });
+      baseChoiceRef.current?.focus({ preventScroll: true });
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [open, baseChoice?.area.canonicalPlaceId]);
   const copy = easytCopy[language].builder.visualDiscovery;
   const specialResolution = entry.kind === "landmark" || entry.kind === "natural-area";
   const steps: DiscoveryStep[] = specialResolution
@@ -79,10 +93,11 @@ export function DiscoveryModal({ open, entry, mention, projection, draft, onActi
     });
     return () => cancelAnimationFrame(frame);
   }, [open, loading, mention.mentionId, projection.places.length, step]);
-  const searchElement = search ? <CanonicalPlaceAutocomplete language={language} label={`${easytCopy[language].builder.countryDiscovery.searchSpecific}: ${name}`}
+  const searchElement = search && !baseChoice ? <CanonicalPlaceAutocomplete language={language} label={`${easytCopy[language].builder.countryDiscovery.searchSpecific}: ${name}`}
     value={search.value} placeholder={copy.searchPlaceholder}
     contextCountries={mention.parentCountries}
     includeNonRoutable
+    requireCoordinates
     invalid={Boolean(search.error)} onChange={search.onChange} onSelect={search.onSelect} /> : undefined;
 
   return <BuilderClarificationShell open={open} itemKey={`${mention.mentionId}:${step}`} title={copy.steps[step]}
@@ -126,6 +141,43 @@ export function DiscoveryModal({ open, entry, mention, projection, draft, onActi
     {!loading && step !== "directions" && (canonicalReview ? !canonicalReview.canConfirm : !review.canConfirm)
       && (draft.shortlistIds.length > 0 || Object.keys(draft.baseByIntentId).length > 0 || Object.keys(draft.visitBaseByIntentId).length > 0)
       ? <MorroviaStatusBanner tone="warning" title={copy.reviewStatus.resolveTitle} detail={copy.reviewStatus.resolveDetail} /> : null}
+    {outsideChoice ? <div className={styles.outsideChoice} role="group" aria-label={language === "es" ? "Lugar fuera de la zona" : "Place outside the area"}>
+      <p>{language === "es"
+        ? `${outsideChoice.suggestion.name} está fuera de ${name}. ¿Quieres añadirlo igualmente a tu viaje?`
+        : `${outsideChoice.suggestion.name} is outside ${name}. Add it to your trip anyway?`}</p>
+      <div><EasyTButton size="small" onClick={outsideChoice.onAdd}>{language === "es" ? "Añadir al viaje" : "Add to trip"}</EasyTButton>
+        <EasyTButton size="small" variant="secondary" onClick={outsideChoice.onCancel}>{language === "es" ? "Cancelar" : "Cancel"}</EasyTButton></div>
+    </div> : null}
+    {baseChoice ? <section ref={baseChoiceRef} tabIndex={-1} className={styles.baseChoice} aria-label={language === "es" ? `Elige una base en ${baseChoice.area.name}` : `Choose a base in ${baseChoice.area.name}`}>
+      <h3>{language === "es" ? `Elige una base en ${baseChoice.area.name}` : `Choose a base in ${baseChoice.area.name}`}</h3>
+      <p>{language === "es"
+        ? `${baseChoice.area.name} necesita una ciudad o población donde alojarte. Elige una; solo ese lugar se añadirá como parada.`
+        : `${baseChoice.area.name} needs a city or town to stay in. Choose one; only that place will be added as a stop.`}</p>
+      {baseChoice.status === "loading" ? <p role="status">{language === "es" ? "Buscando bases cercanas…" : "Finding nearby bases…"}</p> : null}
+      {baseChoice.candidates.length ? <div className={styles.baseCandidates}>
+        {baseChoice.candidates.map(candidate => <EasyTButton key={candidate.canonicalPlaceId} size="small" variant="secondary"
+          onClick={() => baseChoice.onSelect(candidate)} aria-label={language === "es"
+            ? `Añadir ${candidate.name} como base` : `Add ${candidate.name} as a base`}>
+          {candidate.name}</EasyTButton>)}
+      </div> : null}
+      {baseChoice.status === "empty" || baseChoice.status === "unavailable" ? <p role="status">{language === "es"
+        ? `No podemos confirmar una base segura en ${baseChoice.area.name} ahora. Busca otra ciudad o lugar; tus paradas elegidas siguen disponibles.`
+        : `We cannot confirm a safe base in ${baseChoice.area.name} right now. Search another city or place; your selected stops remain available.`}</p> : null}
+      <CanonicalPlaceAutocomplete language={language}
+        label={language === "es" ? `Busca una ciudad o población en ${baseChoice.area.name}` : `Search for a city or town in ${baseChoice.area.name}`}
+        value={baseChoice.value} placeholder={language === "es" ? "Busca una base" : "Search for a base"}
+        contextCountries={[baseChoice.area.country]}
+        parentConstraint={{ canonicalPlaceId: baseChoice.area.canonicalPlaceId, canonicalName: baseChoice.area.name,
+          placeType: baseChoice.area.placeType, parentCountries: [baseChoice.area.country],
+          parentRegionId: baseChoice.area.region, bounds: baseChoice.area.bounds }}
+        nearbyAnchor={nearbyBaseAnchorForMention({ canonicalPlaceId: baseChoice.area.canonicalPlaceId,
+          canonicalName: baseChoice.area.name, placeType: baseChoice.area.placeType,
+          parentCountries: [baseChoice.area.country], parentRegionId: baseChoice.area.region,
+          coordinates: baseChoice.area.coordinates, routability: baseChoice.area.routability ?? "needs_base_selection" })}
+        allowedPlaceTypes={["city", "town"]} requireCoordinates
+        invalid={Boolean(search?.error)} onChange={baseChoice.onChange} onSelect={baseChoice.onSelect} />
+      <EasyTButton size="small" variant="quiet" onClick={baseChoice.onCancel}>{language === "es" ? "Buscar otro lugar" : "Search another place"}</EasyTButton>
+    </section> : null}
     {search?.error ? <p role="alert">{search.error}</p> : null}
     {saveError ? <MorroviaStatusBanner tone="warning" title={copy.status.saveBlocked} detail={saveError} /> : null}
     </div>

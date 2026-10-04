@@ -49,12 +49,12 @@ test("partial confirmation leaves Discovery open and explains unresolved choices
   assert.match(modal, /search\?\.error[^\n]*role="alert"/);
 });
 
-test("provider-only search has a localized unresolved path with preserved intent", () => {
+test("canonical search uses stop eligibility and asks before extending the original geography", () => {
   const builder = read("app/journey/new/trip-builder.tsx");
-  assert.match(builder, /discoveryProjection\.places\.find\(\(place\) => place\.id === suggestion\.canonicalPlaceId/);
-  assert.match(builder, /!suitablePlace \|\| !reviewedPlace/);
-  assert.match(builder, /Your original idea is saved; search for another place or Finish later/);
-  assert.match(builder, /Tu idea original sigue guardada; busca otro lugar o termina más tarde/);
+  assert.match(builder, /discoverySearchStopSuggestion\(suggestion\)/);
+  assert.match(builder, /discoverySearchOutsideMention\(suggestion, activeClarificationMention\)/);
+  assert.match(builder, /addDiscoverySearchSelection\(suggestion, false\)/);
+  assert.match(read("components/easyt/discovery-modal.tsx"), /outsideChoice\.onAdd/);
 });
 
 test("global visual steps own direction, shortlist, and progressive display without country gates", () => {
@@ -84,12 +84,12 @@ test("the adaptive shell has an honest loading and sparse recovery presentation"
 test("a genuine zero-result entry renders only the intentional search state", () => {
   const steps = read("components/easyt/discovery-steps.tsx");
   const copy = read("lib/easyt/i18n.ts");
-  assert.match(steps, /if \(projection\.places\.length === 0\) return/);
+  assert.match(steps, /if \(allPlaces\.length === 0 && !projection\.directions\.length && draft\.shortlistIds\.length === 0\) return/);
   assert.match(steps, /data-discovery-state="empty"/);
   assert.match(steps, /copy\.empty/);
   assert.match(steps, /\{search \? <div className=\{styles\.search\}>\{search\}<\/div> : null\}/);
-  assert.match(copy, /We don't have reviewed places here yet\./);
-  assert.match(copy, /Aún no tenemos lugares revisados aquí\./);
+  assert.match(copy, /No suggested stops here yet\./);
+  assert.match(copy, /Aún no hay paradas sugeridas aquí\./);
 });
 
 test("pending unresolved intent uses semantic EN and ES labels", () => {

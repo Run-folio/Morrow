@@ -9,11 +9,11 @@ const mention = resolvePlaceMentions("Australia").mentions[0]!;
 const projection = projectDiscovery({ mention, draft: createDiscoveryDraft(), context: { interests: [], existingPlaceIds: [] } });
 const base = projection.places.find(place => place.actionability === "overnight-base")!;
 const visit = projection.places.find(place => place.actionability === "visit")!;
-const browse = projection.places.find(place => place.actionability === "browse-only")!;
+const browse = projection.places.find(place => place.actionability === "browse-only" && ["city", "town"].includes(place.placeType))!;
 const selectedBase = { [mention.mentionId]: base.id };
 
-test("a selected base cannot confirm a mixed exploratory shortlist", () => {
-  for (const exploratoryId of [visit.id, browse.id, "missing-reviewed-id"]) {
+test("a selected base cannot confirm a mixed shortlist containing a non-stop or missing identity", () => {
+  for (const exploratoryId of [visit.id, "missing-reviewed-id"]) {
     const draft = { ...createDiscoveryDraft(), baseByIntentId: selectedBase, shortlistIds: [base.id, exploratoryId] };
     const review = discoveryReviewState(mention.mentionId, draft, projection, [base.id]);
     assert.equal(review.canConfirm, false);
@@ -21,6 +21,9 @@ test("a selected base cannot confirm a mixed exploratory shortlist", () => {
     assert.equal(review.choices[0]?.existing, true);
     assert.equal(review.choices[1]?.confirmable, false);
   }
+  const validCity = { ...createDiscoveryDraft(), baseByIntentId: selectedBase, shortlistIds: [base.id, browse.id] };
+  assert.equal(discoveryReviewState(mention.mentionId, validCity, projection).canConfirm, true,
+    "a canonical city remains a stop choice even without a reviewed stay recommendation");
 });
 
 test("every shortlisted overnight base is confirmable; a valid chosen base works alone", () => {
