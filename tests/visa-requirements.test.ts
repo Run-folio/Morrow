@@ -53,3 +53,53 @@ test("keeps the official source as the verification destination", () => {
   assert.equal(result.status, "not-verified");
   assert.match(result.sourceHref, /igm\.gob\.gt/);
 });
+
+test("only the reviewed British citizen tourist pilot has dated, scoped entry answers", () => {
+  const cases = [
+    { destination: "Kazakhstan", stay: /30 days.*90 days.*180-day/i, source: /gov\.uk\/foreign-travel-advice\/kazakhstan\/entry-requirements/ },
+    { destination: "Uzbekistan", stay: /30 days/i, source: /gov\.uk\/foreign-travel-advice\/uzbekistan\/entry-requirements/ },
+    { destination: "Kyrgyzstan", stay: /30 calendar days.*60-day/i, source: /gov\.uk\/foreign-travel-advice\/kyrgyzstan\/entry-requirements/ },
+  ];
+  for (const { destination, stay, source } of cases) {
+    const result = touristEntryRequirementFor("GB", destination, "en", new Date("2026-10-05T12:00:00Z"));
+    assert.equal(result.informationState, "known", destination);
+    assert.equal(result.status, "visa-free", destination);
+    assert.match(result.permittedStay, stay, destination);
+    assert.match(result.sourceHref, source, destination);
+    assert.match(result.detail, /from the UK.*full British citizen passport.*tourism/i, destination);
+    assert.equal(result.dataUpdatedAt, "2026-10-05", destination);
+    assert.equal(result.reviewDueAt, "2026-11-04", destination);
+    assert.ok(result.conditions.length > 0, destination);
+  }
+});
+
+test("an overdue pilot rule downgrades without retaining a visa or stay claim", () => {
+  const result = touristEntryRequirementFor("GB", "KZ", "en", new Date("2026-11-05T00:00:00Z"));
+  assert.equal(result.status, "not-verified");
+  assert.notEqual(result.informationState, "known");
+  assert.equal(result.permittedStay, "");
+  assert.match(result.sourceHref, /gov\.uk\/foreign-travel-advice\/kazakhstan\/entry-requirements/);
+});
+
+test("reviewed and unverified answers remain understandable in Spanish", () => {
+  const reviewed = touristEntryRequirementFor("GB", "UZ", "es", new Date("2026-10-05T12:00:00Z"));
+  assert.equal(reviewed.informationState, "known");
+  assert.match(reviewed.visaAnswer, /sin visado/i);
+  assert.match(reviewed.detail, /pasaporte completo de ciudadano británico.*turismo/i);
+  const unverified = touristEntryRequirementFor("GT", "AU", "es");
+  assert.equal(unverified.status, "not-verified");
+  assert.match(unverified.detail, /no hemos verificado/i);
+});
+
+test("unreviewed passport pairs stay unverified with an honest source handoff", () => {
+  const destinationSource = touristEntryRequirementFor("GT", "KZ");
+  assert.equal(destinationSource.status, "not-verified");
+  assert.equal(destinationSource.permittedStay, "");
+  assert.match(destinationSource.sourceHref, /gov\.kz\/memleket\/entities\/mfa/);
+  assert.doesNotMatch(destinationSource.sourceHref, /foreign-travel-advice\/kazakhstan/);
+
+  const missingSource = touristEntryRequirementFor("GT", "AQ");
+  assert.equal(missingSource.status, "not-verified");
+  assert.equal(missingSource.sourceHref, "");
+  assert.match(missingSource.detail, /official/i);
+});

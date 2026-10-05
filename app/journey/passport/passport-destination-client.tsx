@@ -7,7 +7,6 @@ import {
   BadgeCheck,
   BadgeHelp,
   CalendarDays,
-  CheckCircle2,
   ExternalLink,
   FileCheck2,
   Globe2,
@@ -40,20 +39,20 @@ import editorial from "../surface-editorial.module.css";
 
 const copy = {
   en: {
-    eyebrow: "PASSPORT TO DESTINATION", title: "Check what to verify before you book.", intro: "Choose your passport and destination to see what needs confirmation and open the official source.",
+    eyebrow: "PASSPORT TO DESTINATION", title: "Check what to verify before you book.", intro: "Choose your passport and destination to see a reviewed tourist rule where available, or find an official source to check.",
     passport: "Your passport", destination: "Destination", check: "Check requirements", checking: "Checking…", private: "We do not save this check or ask for passport numbers, photos or copies.", failed: "Requirements could not be checked. Try again before relying on this result.",
-    resultEyebrow: "TOURIST ENTRY RESULT", entry: "Tourist entry", stay: "Permitted stay", confidence: "Result status", verified: "Result available", needsConfirmation: "Needs confirmation", unavailable: "Entry information unavailable", resultAvailable: "Passport Index result available", noResult: "No matched rule is available",
-    officialStrip: "Requirements can change. Check the destination authority before you book or travel.", open: "View official source", considerations: "Entry considerations", passportChecks: "Passport checks", validity: "Passport validity", scope: "Tourist-entry scope",
-    sourceTitle: "Verification source", official: "Official destination authority", sourceAvailable: "Official source available", sourceConfirm: "Source needs confirmation", snapshot: "Dataset snapshot", freshnessUnknown: "No freshness date is available for this result.",
+    resultEyebrow: "TOURIST ENTRY RESULT", entry: "Tourist entry", stay: "Permitted stay", confidence: "Result status", verified: "Reviewed rule", needsConfirmation: "Needs confirmation", unavailable: "Entry information unavailable", resultAvailable: "Official guidance reviewed", noResult: "No matched rule is available",
+    officialStrip: "Requirements can change. Check the destination authority before you book or travel.", open: "View official source", considerations: "Entry checks", passportChecks: "Passport checks", validity: "Passport validity", scope: "Tourist-entry scope",
+    sourceTitle: "Verification source", official: "Official source", sourceAvailable: "Source available", sourceConfirm: "Source needs confirmation", snapshot: "Checked", reviewDue: "Review due", freshnessUnknown: "No review date is available for this result.",
     trustTitle: "Use this as a planning check, not a border decision.", trustCopy: "Morrovia does not issue visas, guarantee entry or replace advice from an embassy, consulate or border authority.", privacyTitle: "Your documents stay private", privacyCopy: "This public check uses nationality and destination only. Do not enter passport numbers, scans or booking details.",
     prepEyebrow: "PLANNING A TRIP?", prepTitle: "Trip readiness lives in each trip Overview.", prepCopy: "Keep entry checks, saved reminders, stays and transport decisions with the trip they affect.", prepAction: "Open your trips", buildAction: "Build a plan",
   },
   es: {
-    eyebrow: "PASAPORTE AL DESTINO", title: "Comprueba qué verificar antes de reservar.", intro: "Elige tu pasaporte y destino para ver qué debes confirmar y abrir la fuente oficial.",
+    eyebrow: "PASAPORTE AL DESTINO", title: "Comprueba qué verificar antes de reservar.", intro: "Elige tu pasaporte y destino para ver una regla turística revisada, si existe, o encontrar una fuente oficial.",
     passport: "Tu pasaporte", destination: "Destino", check: "Comprobar requisitos", checking: "Comprobando…", private: "No guardamos esta consulta ni pedimos números, fotos o copias del pasaporte.", failed: "No se pudieron comprobar los requisitos. Inténtalo de nuevo antes de confiar en el resultado.",
-    resultEyebrow: "RESULTADO DE ENTRADA TURÍSTICA", entry: "Entrada turística", stay: "Estancia permitida", confidence: "Estado del resultado", verified: "Resultado disponible", needsConfirmation: "Requiere confirmación", unavailable: "Información de entrada no disponible", resultAvailable: "Resultado de Passport Index disponible", noResult: "No hay una regla coincidente disponible",
-    officialStrip: "Los requisitos pueden cambiar. Consulta la autoridad del destino antes de reservar o viajar.", open: "Ver fuente oficial", considerations: "Consideraciones de entrada", passportChecks: "Comprobaciones del pasaporte", validity: "Validez del pasaporte", scope: "Alcance de entrada turística",
-    sourceTitle: "Fuente de verificación", official: "Autoridad oficial del destino", sourceAvailable: "Fuente oficial disponible", sourceConfirm: "La fuente requiere confirmación", snapshot: "Instantánea de datos", freshnessUnknown: "Este resultado no incluye una fecha de actualización.",
+    resultEyebrow: "RESULTADO DE ENTRADA TURÍSTICA", entry: "Entrada turística", stay: "Estancia permitida", confidence: "Estado del resultado", verified: "Regla revisada", needsConfirmation: "Requiere confirmación", unavailable: "Información de entrada no disponible", resultAvailable: "Guía oficial revisada", noResult: "No hay una regla coincidente disponible",
+    officialStrip: "Los requisitos pueden cambiar. Consulta la autoridad del destino antes de reservar o viajar.", open: "Ver fuente oficial", considerations: "Comprobaciones de entrada", passportChecks: "Comprobaciones del pasaporte", validity: "Validez del pasaporte", scope: "Alcance de entrada turística",
+    sourceTitle: "Fuente de verificación", official: "Fuente oficial", sourceAvailable: "Fuente disponible", sourceConfirm: "La fuente requiere confirmación", snapshot: "Comprobado", reviewDue: "Próxima revisión", freshnessUnknown: "Este resultado no incluye una fecha de revisión.",
     trustTitle: "Úsalo como comprobación de planificación, no como decisión fronteriza.", trustCopy: "Morrovia no emite visados, garantiza la entrada ni sustituye el consejo de una embajada, consulado o autoridad fronteriza.", privacyTitle: "Tus documentos siguen siendo privados", privacyCopy: "Esta consulta pública solo usa nacionalidad y destino. No introduzcas números, escaneos ni datos de reservas.",
     prepEyebrow: "¿PLANIFICANDO UN VIAJE?", prepTitle: "La preparación vive en el resumen de cada viaje.", prepCopy: "Mantén las comprobaciones, recordatorios, alojamientos y decisiones de transporte junto al viaje al que afectan.", prepAction: "Abrir tus viajes", buildAction: "Crear un plan",
   },
@@ -77,6 +76,7 @@ export default function PassportDestinationClient() {
   const [profile, setProfile] = useState<TravelReadinessProfile>(defaultTravelReadinessProfile);
   const [resultState, setResultState] = useState(emptyPassportResult);
   const requestIdRef = useRef(0);
+  const passportChosenRef = useRef(false);
   const abortRef = useRef<AbortController | null>(null);
   const resultRef = useRef<HTMLElement | null>(null);
   const errorRef = useRef<HTMLParagraphElement | null>(null);
@@ -110,7 +110,7 @@ export default function PassportDestinationClient() {
     } catch { /* Keep privacy-safe defaults. */ }
     setProfile(savedProfile);
     const savedNationality = savedProfile.nationalities.map(passportCountryCodeFor).find((code): code is string => Boolean(code));
-    if (savedNationality && savedNationality !== nationality) {
+    if (savedNationality && !passportChosenRef.current && savedNationality !== nationality) {
       invalidateResult();
       setNationality(savedNationality);
     }
@@ -155,7 +155,6 @@ export default function PassportDestinationClient() {
     passportExpiryMonth: profile.passportExpiryMonth,
   }) : null;
   const resultAvailable = presentation?.verification === "verified";
-  const resultSupported = presentation?.informationState !== "unsupported";
   const resultNationality = result ? countryFor(result.nationality) : null;
   const resultDestination = result ? countryFor(result.destination) : null;
 
@@ -169,7 +168,7 @@ export default function PassportDestinationClient() {
     <section className={styles.tool} aria-labelledby="passport-check-title">
       <h2 id="passport-check-title" className={styles.srOnly}>{t.eyebrow}</h2>
       <form className={styles.form} onSubmit={(event) => { event.preventDefault(); void checkDestination(); }}>
-        <EasyTSelect id="passport-nationality" label={t.passport} value={nationality} onChange={(event) => { invalidateResult(); setNationality(event.target.value); }}>{passportNationalityCountries.map((country) => <option key={country.code} value={country.code}>{country.flag} {passportCountryLabel(country)}</option>)}</EasyTSelect>
+        <EasyTSelect id="passport-nationality" label={t.passport} value={nationality} onChange={(event) => { passportChosenRef.current = true; invalidateResult(); setNationality(event.target.value); }}>{passportNationalityCountries.map((country) => <option key={country.code} value={country.code}>{country.flag} {passportCountryLabel(country)}</option>)}</EasyTSelect>
         <EasyTSelect id="passport-destination" label={t.destination} value={destination} onChange={(event) => { invalidateResult(); setDestination(event.target.value); }}>{passportDestinationCountries.map((country) => <option key={country.code} value={country.code}>{country.flag} {country.name}</option>)}</EasyTSelect>
         <EasyTButton type="submit" loading={resultState.status === "loading"}>{resultState.status === "loading" ? t.checking : t.check}<ArrowRight aria-hidden="true" /></EasyTButton>
       </form>
@@ -180,45 +179,29 @@ export default function PassportDestinationClient() {
     {result && presentation ? <div className={styles.results}>
       <article ref={resultRef} tabIndex={-1} className={styles.result} aria-labelledby="passport-result-title">
         <header className={styles.resultHeading}>
-          <div><p>{t.resultEyebrow}</p><h2 id="passport-result-title"><span aria-hidden="true">{resultDestination?.flag ?? "🌐"}</span>{resultDestination?.name ?? result.destination}</h2><span>{resultNationality?.flag ?? "🌐"} {resultNationality ? passportCountryLabel(resultNationality) : result.nationality} <span aria-hidden="true">→</span> {resultDestination?.flag ?? "🌐"} {resultDestination?.name ?? result.destination}</span></div>
-          <span className={`${styles.status} ${!resultAvailable ? styles.notVerified : ""}`}>{resultAvailable ? <BadgeCheck aria-hidden="true" /> : <BadgeHelp aria-hidden="true" />}{resultAvailable ? t.verified : resultSupported ? t.needsConfirmation : t.unavailable}</span>
+          <div><p>{t.resultEyebrow}</p><h2 id="passport-result-title"><span aria-hidden="true">{resultDestination?.flag ?? "🌐"}</span>{resultDestination?.name ?? result.destination}</h2><span>{resultNationality?.flag ?? "🌐"} {resultNationality ? passportCountryLabel(resultNationality) : result.nationality} <span aria-hidden="true">→</span> {resultDestination?.flag ?? "🌐"} {resultDestination?.name ?? result.destination}</span>{resultAvailable ? <small className={styles.ruleScope}>{language === "es" ? "Pasaporte completo de ciudadano británico · desde el Reino Unido · turismo" : "Full British citizen passport · from the UK · tourism"}</small> : null}</div>
+          <span className={`${styles.status} ${!resultAvailable ? styles.notVerified : ""}`}>{resultAvailable ? <BadgeCheck aria-hidden="true" /> : <BadgeHelp aria-hidden="true" />}{resultAvailable ? t.verified : result.requirement.informationState === "unsupported" ? t.unavailable : t.needsConfirmation}</span>
         </header>
         {resultAvailable ? <div className={styles.facts}>
-          <section><FileCheck2 aria-hidden="true" /><span>{t.entry}</span><strong>{result.requirement.visaAnswer}</strong><small>{resultAvailable ? result.requirement.statusLabel : t.noResult}</small></section>
-          <section><CalendarDays aria-hidden="true" /><span>{t.stay}</span><strong>{result.requirement.permittedStay}</strong><small>{resultAvailable ? result.requirement.detail : t.needsConfirmation}</small></section>
-          <section><ShieldCheck aria-hidden="true" /><span>{t.confidence}</span><strong>{result.requirement.statusLabel}</strong><small>{resultAvailable ? t.resultAvailable : t.noResult}</small></section>
+          <section><FileCheck2 aria-hidden="true" /><span>{t.entry}</span><strong>{result.requirement.visaAnswer}</strong></section>
+          <section><CalendarDays aria-hidden="true" /><span>{t.stay}</span><strong>{result.requirement.permittedStay}</strong></section>
         </div> : null}
-        <div className={styles.sourceStrip}><Info aria-hidden="true" /><p>{resultSupported ? t.officialStrip : result.requirement.detail}</p>{presentation.source.href ? <a href={presentation.source.href} target="_blank" rel="noreferrer">{t.open}<ArrowRight aria-hidden="true" /></a> : null}</div>
+        {!resultAvailable ? <div className={styles.sourceStrip}><Info aria-hidden="true" /><p>{result.requirement.detail}</p>{presentation.source.href ? <a href={presentation.source.href} target="_blank" rel="noopener noreferrer">{t.open}<ArrowRight aria-hidden="true" /></a> : null}</div> : null}
       </article>
 
-      {resultSupported ? <section className={styles.requirements} aria-labelledby="passport-considerations-title">
+      {resultAvailable ? <section className={styles.requirements} aria-labelledby="passport-considerations-title">
         <div className={styles.considerationList}>
           <h2 id="passport-considerations-title">{t.considerations}</h2>
-          <div className={styles.leadConsideration}><span className={resultAvailable ? styles.knownIcon : styles.confirmIcon}>{resultAvailable ? <CheckCircle2 aria-hidden="true" /> : <AlertCircle aria-hidden="true" />}</span><div><h3>{t.entry}</h3><p>{result.requirement.detail}</p></div></div>
-          {presentation.entryConsiderations.map((condition, index) => <div className={styles.consideration} key={`${condition}-${index}`}><span className={styles.confirmIcon}><AlertCircle aria-hidden="true" /></span><div><h3>{t.needsConfirmation}</h3><p>{condition}</p></div></div>)}
-        </div>
-        <div className={styles.passportList}>
-          <h2>{t.passportChecks}</h2>
-          <div className={styles.consideration}><span className={styles.confirmIcon}><FileCheck2 aria-hidden="true" /></span><div><h3>{t.validity}</h3><p>{presentation.passportValidityContext}</p></div></div>
-          <div className={styles.consideration}><span className={styles.confirmIcon}><Globe2 aria-hidden="true" /></span><div><h3>{t.scope}</h3><p>{presentation.scopeContext}</p></div></div>
+          {presentation.entryConsiderations.map((condition, index) => <div className={styles.consideration} key={`${condition}-${index}`}><span className={styles.confirmIcon}><FileCheck2 aria-hidden="true" /></span><div><p>{condition}</p></div></div>)}
+          {profile.passportExpiryMonth ? <div className={styles.consideration}><span className={styles.confirmIcon}><CalendarDays aria-hidden="true" /></span><div><p>{presentation.passportValidityContext}</p></div></div> : null}
         </div>
         <aside className={styles.provenance} aria-labelledby="passport-source-title">
           <Globe2 aria-hidden="true" />
           <div><p>{presentation.source.official ? t.official : t.sourceTitle}</p><h2 id="passport-source-title">{presentation.source.label ?? t.sourceTitle}</h2><span>{presentation.source.official ? t.sourceAvailable : t.sourceConfirm}</span></div>
-          <dl><div><dt>{t.snapshot}</dt><dd>{presentation.freshness ?? t.freshnessUnknown}</dd></div></dl>
+          <dl><div><dt>{t.snapshot}</dt><dd>{presentation.freshness ?? t.freshnessUnknown}</dd></div>{result.requirement.reviewDueAt ? <div><dt>{t.reviewDue}</dt><dd>{result.requirement.reviewDueAt}</dd></div> : null}</dl>
           {presentation.source.href ? <a href={presentation.source.href} target="_blank" rel="noreferrer">{t.open}<ExternalLink aria-hidden="true" /></a> : null}
         </aside>
-      </section> : <section className={`${styles.requirements} ${styles.requirementsUnavailable}`} aria-labelledby="passport-considerations-title">
-        <div className={styles.considerationList}>
-          <h2 id="passport-considerations-title">{t.unavailable}</h2>
-          <div className={styles.leadConsideration}><span className={styles.confirmIcon}><AlertCircle aria-hidden="true" /></span><div><h3>{t.needsConfirmation}</h3><p>{result.requirement.detail}</p></div></div>
-        </div>
-        {presentation.source.href ? <aside className={styles.provenance} aria-labelledby="passport-source-title">
-          <Globe2 aria-hidden="true" />
-          <div><p>{presentation.source.official ? t.official : t.sourceTitle}</p><h2 id="passport-source-title">{presentation.source.label ?? t.sourceTitle}</h2><span>{presentation.source.official ? t.sourceAvailable : t.sourceConfirm}</span></div>
-          <a href={presentation.source.href} target="_blank" rel="noreferrer">{t.open}<ExternalLink aria-hidden="true" /></a>
-        </aside> : null}
-      </section>}
+      </section> : null}
 
       <section className={styles.trust} aria-label={language === "es" ? "Confianza y privacidad" : "Trust and privacy"}>
         <article><Info aria-hidden="true" /><div><h2>{t.trustTitle}</h2><p>{t.trustCopy}</p></div></article>

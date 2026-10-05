@@ -57,7 +57,7 @@ test("stale intelligence remains distinct from unsupported coverage and provider
 
 test("Passport intro promises source verification rather than a specific entry classification", () => {
   const client = readFileSync(new URL("../app/journey/passport/passport-destination-client.tsx", import.meta.url), "utf8");
-  assert.match(client, /intro: "Choose your passport and destination to see what needs confirmation and open the official source\."/);
-  assert.match(client, /intro: "Elige tu pasaporte y destino para ver qué debes confirmar y abrir la fuente oficial\."/);
+  assert.match(client, /intro: "Choose your passport and destination to see a reviewed tourist rule where available, or find an official source to check\."/);
+  assert.match(client, /intro: "Elige tu pasaporte y destino para ver una regla turística revisada, si existe, o encontrar una fuente oficial\."/);
   assert.doesNotMatch(client, /intro: "(?:See the tourist-entry position|Consulta la posición de entrada turística)/);
 });

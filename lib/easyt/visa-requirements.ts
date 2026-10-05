@@ -17,6 +17,40 @@ export type TouristEntryRequirement = {
   sourceLabel: string;
   sourceHref: string;
   dataUpdatedAt: string;
+  reviewDueAt?: string;
+};
+
+// Manually checked against the linked, passport-specific official guidance on 5 October 2026.
+// The result expires after 30 days unless a human reviews the source again.
+const pilotReview = { checkedAt: "2026-10-05", reviewDueAt: "2026-11-04" };
+const britishCitizenTouristRules: Record<string, {
+  stay: string;
+  stayEs: string;
+  conditions: string[];
+  conditionsEs: string[];
+  href: string;
+}> = {
+  KZ: {
+    stay: "Up to 30 days per visit; no more than 90 days in any 180-day period",
+    stayEs: "Hasta 30 días por visita; no más de 90 días en cualquier período de 180 días",
+    conditions: ["Passport valid for at least 30 days from arrival, with one blank page.", "Your hotel or host must register your arrival within 3 working days."],
+    conditionsEs: ["Pasaporte válido al menos 30 días desde la llegada, con una página en blanco.", "El hotel o anfitrión debe registrar tu llegada en 3 días laborables."],
+    href: "https://www.gov.uk/foreign-travel-advice/kazakhstan/entry-requirements",
+  },
+  UZ: {
+    stay: "Up to 30 days",
+    stayEs: "Hasta 30 días",
+    conditions: ["Passport expiry must be at least 3 months after arrival.", "Register within 3 days of arrival; register again if staying more than 3 days in another city. Hotels normally register guests."],
+    conditionsEs: ["El pasaporte debe caducar al menos 3 meses después de la llegada.", "Regístrate en los 3 días posteriores a la llegada y de nuevo si permaneces más de 3 días en otra ciudad. Los hoteles suelen registrar a sus huéspedes."],
+    href: "https://www.gov.uk/foreign-travel-advice/uzbekistan/entry-requirements",
+  },
+  KG: {
+    stay: "Up to 30 calendar days in each 60-day period",
+    stayEs: "Hasta 30 días naturales en cada período de 60 días",
+    conditions: ["Passport expiry must be at least 6 months after arrival.", "For a longer stay, arrange the appropriate documents before the visa-free period ends; registration rules may apply."],
+    conditionsEs: ["El pasaporte debe caducar al menos 6 meses después de la llegada.", "Para una estancia más larga, tramita los documentos adecuados antes de que termine el período sin visado; pueden aplicarse reglas de registro."],
+    href: "https://www.gov.uk/foreign-travel-advice/kyrgyzstan/entry-requirements",
+  },
 };
 
 type DatasetRule = { status: string; days?: number };
@@ -75,9 +109,28 @@ const missingRequirement = (destination: string, language: VisaLanguage): Touris
  * The bundled Passport Index snapshot has no verified update contract or
  * pair-level government evidence. Keep it source-first until that contract exists.
  */
-export const touristEntryRequirementFor = (passport: string, destination: string, language: VisaLanguage = "en"): TouristEntryRequirement => {
+export const touristEntryRequirementFor = (passport: string, destination: string, language: VisaLanguage = "en", asOf = new Date()): TouristEntryRequirement => {
   const passportCountry = countryFor(passport);
   const destinationCountry = countryFor(destination);
+  const reviewedRule = passportCountry?.code === "GB" && destinationCountry ? britishCitizenTouristRules[destinationCountry.code] : undefined;
+  if (reviewedRule && asOf.toISOString().slice(0, 10) <= pilotReview.reviewDueAt) {
+    const isSpanish = language === "es";
+    return {
+      informationState: "known",
+      status: "visa-free",
+      statusLabel: isSpanish ? "Regla oficial revisada" : "Reviewed official rule",
+      visaAnswer: isSpanish ? "Sin visado para turismo" : "Visa-free for tourism",
+      permittedStay: isSpanish ? reviewedRule.stayEs : reviewedRule.stay,
+      detail: isSpanish
+        ? "Para viajar desde el Reino Unido con un pasaporte completo de ciudadano británico por turismo. Otros pasaportes, puntos de partida y motivos de viaje pueden tener reglas distintas."
+        : "For travel from the UK on a full British citizen passport for tourism. Other passports, departure points and purposes may have different rules.",
+      conditions: isSpanish ? reviewedRule.conditionsEs : reviewedRule.conditions,
+      sourceLabel: "UK Government – entry requirements",
+      sourceHref: reviewedRule.href,
+      dataUpdatedAt: pilotReview.checkedAt,
+      reviewDueAt: pilotReview.reviewDueAt,
+    };
+  }
   const passportName = passportCountry?.name ?? passport.trim();
   const destinationName = destinationCountry?.name ?? destination.trim();
   const passportDatasetName = passportCountry ? passportDatasetNameByCode.get(passportCountry.code) : passportName;
@@ -85,7 +138,7 @@ export const touristEntryRequirementFor = (passport: string, destination: string
   const rule = passportDatasetName && destinationDatasetName ? dataset.rules[passportDatasetName]?.[destinationDatasetName] : undefined;
   const officialSource = entrySourceForCountry(destination);
 
-  if (!rule) return missingRequirement(destinationName, language);
+  if (!rule && !reviewedRule) return missingRequirement(destinationName, language);
 
   return {
     informationState: "stale",
@@ -95,12 +148,13 @@ export const touristEntryRequirementFor = (passport: string, destination: string
       ? "Consulta el requisito actual con la autoridad oficial del destino."
       : "Check the current entry requirement with the destination's official authority.",
     permittedStay: "",
-    detail: language === "es"
-      ? `La instantánea de Passport Index del ${dataset.sourceUpdatedAt} no está verificada frente a los requisitos gubernamentales actuales para este pasaporte. Confirma la información oficial antes de reservar o viajar.`
-      : `The Passport Index snapshot dated ${dataset.sourceUpdatedAt} is not verified against current government requirements for this passport. Confirm the official information before booking or travel.`,
+    detail: reviewedRule
+      ? language === "es" ? "Esta regla requiere una nueva revisión. Confirma las condiciones actuales en la fuente oficial antes de reservar o viajar." : "This rule is due for review. Confirm the current conditions with the official source before booking or travel."
+      : language === "es" ? "No hemos verificado el requisito actual para este pasaporte. Confírmalo con la autoridad oficial del destino antes de reservar o viajar." : "We have not verified the current requirement for this passport. Confirm it with the destination's official authority before booking or travel.",
     conditions: [],
-    sourceLabel: officialSource?.label ?? "Official destination authority",
-    sourceHref: officialSource?.href ?? dataset.source,
-    dataUpdatedAt: dataset.sourceUpdatedAt,
+    sourceLabel: reviewedRule ? "UK Government – entry requirements" : officialSource?.label ?? "Official destination authority",
+    sourceHref: reviewedRule?.href ?? officialSource?.href ?? "",
+    dataUpdatedAt: reviewedRule ? pilotReview.checkedAt : dataset.sourceUpdatedAt,
+    reviewDueAt: reviewedRule ? pilotReview.reviewDueAt : undefined,
   };
 };

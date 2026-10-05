@@ -70,7 +70,6 @@
   background: #fff;
   box-shadow: 0 16px 40px rgba(23, 16, 111, .055);
 }
-.requirementsUnavailable { grid-template-columns: minmax(0, 1fr) minmax(270px, .82fr); }
 .tool { padding: 28px 30px 24px; }
 .form {
   display: grid;
@@ -176,6 +175,12 @@
   letter-spacing: -.035em;
 }
 .resultHeading h2 span { font-size: 24px; }
+.ruleScope {
+  display: block;
+  margin-top: 8px;
+  color: var(--morrovia-ink-soft);
+  font: var(--morrovia-type-supporting-body);
+}
 .resultHeading > div > span {
   display: block;
   margin-top: 7px;
@@ -201,7 +206,7 @@
 
 .facts {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 14px;
   margin-top: 26px;
 }
@@ -236,7 +241,7 @@
 
 .requirements {
   display: grid;
-  grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr) minmax(270px, .82fr);
+  grid-template-columns: minmax(0, 1fr) minmax(270px, .55fr);
   gap: 28px;
   padding: 30px;
 }
@@ -248,31 +253,22 @@
   font-size: 22px;
   letter-spacing: -.025em;
 }
-.considerationList,
-.passportList { min-width: 0; }
-.considerationList > h2,
-.passportList > h2 { margin-bottom: 17px; }
-.consideration,
-.leadConsideration {
+.considerationList { min-width: 0; }
+.considerationList > h2 { margin-bottom: 17px; }
+.consideration {
   display: grid;
   grid-template-columns: auto 1fr;
   gap: 11px;
   padding: 13px 0;
   border-top: 1px solid var(--morrovia-line);
 }
-.leadConsideration { border-top: 0; padding-top: 0; }
-.consideration h3,
-.leadConsideration h3 { margin: 0; color: var(--morrovia-ink); font: 750 13px var(--morrovia-ui); }
+.consideration h3 { margin: 0; color: var(--morrovia-ink); font: 750 13px var(--morrovia-ui); }
 .consideration p,
-.leadConsideration p,
 .trust p,
 .prepHandoff span { margin: 4px 0 0; color: var(--morrovia-ink-soft); font: var(--morrovia-type-supporting-body); }
 .provenance span { margin: 4px 0 0; color: var(--morrovia-ink-soft); font: var(--morrovia-type-fine-print); }
-.knownIcon,
 .confirmIcon { display: grid; place-items: center; width: 24px; height: 24px; border-radius: 50%; }
-.knownIcon { color: var(--morrovia-success); background: #eaf8f3; }
 .confirmIcon { color: var(--morrovia-warning); background: var(--morrovia-warning-soft); }
-.knownIcon svg,
 .confirmIcon svg { width: 15px; height: 15px; }
 
 .provenance {
