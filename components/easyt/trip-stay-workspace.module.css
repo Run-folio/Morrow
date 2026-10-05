@@ -50,6 +50,7 @@
   font: 500 clamp(30px, 4vw, 48px)/1.02 var(--morrovia-display);
   letter-spacing: -.035em;
 }
+.intro p { margin: 8px 0 0; color: var(--morrovia-muted); font: var(--morrovia-type-metadata); }
 
 .options { display: grid; gap: 12px; }
 

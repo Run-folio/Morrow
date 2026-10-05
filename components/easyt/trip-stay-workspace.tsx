@@ -7,7 +7,7 @@ import { JourneyLocalFinder, type JourneyLocalFinderInitialState, type JourneyLo
 import { MorroviaMapPreview } from "./morrovia-map-preview";
 import { JourneyPlannerMap } from "@/components/journey-planner-map";
 import { JourneyRouteStopTrack, type JourneyPlannerStripStop } from "@/components/journey-planner-strip";
-import { getCurrentPartnerAction } from "@/lib/easyt/booking-readiness";
+import { affiliateProviderLabel, getCurrentPartnerAction } from "@/lib/easyt/booking-readiness";
 import { removeMappedStayForStop, savedGoogleStayReferencesForStop, selectMappedStayForStop, stayBookingForStop } from "@/lib/easyt/accommodation";
 import { hasBookingLiveInformation } from "@/lib/easyt/local-place";
 import { mapResultForLocalPlace, mapResultHandoffForLocalPlace, mapResultSelectionId } from "@/lib/easyt/map-result-selection";
@@ -16,7 +16,7 @@ import { routeTimelineStopsForTrip } from "@/lib/easyt/route-timeline";
 import { stayCandidateFit, stayIsSelected, stayWorkspaceContext, type StayWorkspaceContext } from "@/lib/easyt/stay-workspace";
 import type { EasyTTrip } from "@/lib/easyt/trip";
 import { mapWorkspaceHref, stayWorkspaceHref, tripBuilderHref } from "@/lib/easyt/trip-workspace-links";
-import { affiliateDisclosure, MorroviaAffiliateLink } from "./affiliate-link";
+import { MorroviaAffiliateDisclosure, MorroviaAffiliateLink } from "./affiliate-link";
 import { EasyTButton, EasyTLinkButton } from "./easyt-controls";
 import ItineraryItemDetail from "./itinerary-item-detail";
 import { JourneyLocalPlacePhotoAttribution, JourneyLocalPlacePhotoMedia, useJourneyLocalPlacePhotos } from "./journey-local-place-photo";
@@ -66,6 +66,7 @@ function StayFinderSurface({
   const booking = stayBookingForStop(workingTrip, context.stop);
   const savedGoogleStays = savedGoogleStayReferencesForStop(workingTrip, context.stop.id);
   const partnerAction = getCurrentPartnerAction("accommodation");
+  const partnerLabel = partnerAction ? affiliateProviderLabel(partnerAction.provider) : null;
   const mapDayNumber = workingTrip.planItems.find((day) => day.stopId === context.stop.id)?.dayNumber ?? null;
   const selectedBase = finder.selectedPlace;
   const selectedPhoto = selectedBase ? photos[selectedBase.id] : undefined;
@@ -135,6 +136,7 @@ function StayFinderSurface({
     <div className={styles.main}>
       <header className={styles.intro}>
         <h2>Where to stay in {context.stop.name}</h2>
+        <p>{context.nights} {context.nights === 1 ? "night" : "nights"} · {context.dateLabel}</p>
       </header>
 
       {booking && !finder.candidates.some((place) => stayIsSelected(workingTrip, context, place)) ? <MorroviaStatusBanner
@@ -209,7 +211,7 @@ function StayFinderSurface({
           mapHref={fullMapHref(selected)}
           primaryActions={<>
             {!selectedSaved ? <EasyTButton fullWidth loading={mutation.saveState === "saving"} onClick={() => chooseStay(selected)}>Choose stay</EasyTButton> : <span className={styles.selectedStatus}><Check aria-hidden="true" />Chosen for this stop</span>}
-            {partnerAction ? <div className={styles.partnerHandoff}><strong>Check independently on Trip.com</strong>{hasBookingLiveInformation(selected) ? <p>Trip.com prices, availability and terms may differ from the Booking.com live information above.</p> : <p>Trip.com will confirm its own current prices, availability and terms.</p>}<MorroviaAffiliateLink action={{ ...partnerAction, cta: "Check Trip.com availability" }} context={{ placement: "stay_workspace_detail", tripId: workingTrip.id, stopId: context.stop.id, workspaceView: "stay", destinationCount: 1 }} variant="secondary" /><small className={styles.disclosure}>{affiliateDisclosure}</small></div> : null}
+            {partnerAction && partnerLabel ? <div className={styles.partnerHandoff}><strong>Check on {partnerLabel}</strong><p>{partnerLabel} confirms its own current prices, availability and terms. Opening it does not choose or book this stay.</p><MorroviaAffiliateLink action={{ ...partnerAction, cta: `Check accommodation on ${partnerLabel}` }} context={{ placement: "stay_workspace_detail", tripId: workingTrip.id, stopId: context.stop.id, workspaceView: "stay", destinationCount: 1 }} variant="secondary" /><MorroviaAffiliateDisclosure provider={partnerAction.provider} /></div> : null}
           </>}
           onRemove={selectedSaved ? removeStay : undefined}
         />
@@ -256,7 +258,6 @@ export default function TripStayWorkspace({ trip, initialStopId, initialSelected
       dayId={context.key}
       dayNumber={workingTrip.planItems.find((day) => day.stopId === context.stop.id)?.dayNumber}
       coordinates={context.searchCoordinates}
-      staySearch={context.checkIn && context.checkOut ? { checkIn: context.checkIn, checkOut: context.checkOut, adults: Math.max(1, workingTrip.travellers), rooms: 1, currency: workingTrip.currency } : undefined}
       selectedPlaceId={selectedPlaceId}
       savedPlaceIds={[]}
       initialState={initialFinderState}

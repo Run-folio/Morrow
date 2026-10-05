@@ -199,7 +199,7 @@ test("chosen mismatch and compact card copy remain truthful", () => {
 });
 
 test("responsive stories and styles cover the required route-track and Stay matrix", () => {
-  for (const story of ["StayWithImages", "StayWithoutImages", "ChosenStay", "SavedStayNotInShortlist", "SelectedPropertyWithMiniMap", "MultipleSameNameProperties", "BookingEnrichedMappedProperty", "BookingOnlyNoImageProperty"]) {
+  for (const story of ["PropertyPhotoUnavailableShortlist", "StayWithoutImages", "ChosenStay", "SavedStayNotInShortlist", "SelectedPropertyWithMiniMap", "MultipleSameNameProperties", "BookingEnrichedMappedProperty", "BookingOnlyNoImageProperty"]) {
     assert.match(stories, new RegExp(`export const ${story}`));
   }
   for (const story of ["MapVariant", "ExploreVariant", "StayVariant", "Mobile320", "Mobile390", "Mobile430", "Tablet768", "Desktop1440"]) {

@@ -242,8 +242,8 @@ test("Stay production surface reuses shared owners and keeps commercial action s
   assert.match(workspace, /surface=\{\{ variant: "embedded", interaction: "selection-only" \}\}/);
   assert.match(workspace, /selectedMapResult=\{selectedMapResult\}/);
   assert.match(workspace, /onMapResultSelect=\{\(result\) => \{[\s\S]*result\.sourceId[\s\S]*selectPlace\(place\)/);
-  assert.match(workspace, /Check independently on Trip\.com/);
-  assert.match(workspace, /may differ from the Booking\.com live information above/);
+  assert.match(workspace, /Check on \{partnerLabel\}/);
+  assert.match(workspace, /Opening it does not choose or book this stay/);
   assert.match(styles, /\.rail \{[\s\S]*position: sticky;[\s\S]*top: var\(--morrovia-sticky-content-offset\);[\s\S]*max-height: calc\(100svh - var\(--morrovia-sticky-content-offset\) - 14px\);[\s\S]*overflow-y: auto;/);
   assert.match(styles, /\.workspace\s*\{[^}]*overflow:\s*hidden;/, "the narrow stop track must not escape the Stay workspace");
   assert.match(styles, /@media \(max-width: 900px\)[\s\S]*\.rail \{ position: static; max-height: none; overflow: visible;/);
@@ -257,13 +257,22 @@ test("Stay production surface reuses shared owners and keeps commercial action s
   assert.doesNotMatch(map, /const selectedRecommendationDetail = customTrip && selectedLocalPlace && selectedLocalPlace\.kind !== "stay"/);
 });
 
+test("Stay uses mapped candidates while Booking.com is parked and the partner link stays outbound", () => {
+  const workspace = readFileSync(new URL("../components/easyt/trip-stay-workspace.tsx", import.meta.url), "utf8");
+  const stories = readFileSync(new URL("../components/easyt/trip-stay-workspace.stories.tsx", import.meta.url), "utf8");
+  assert.doesNotMatch(workspace, /staySearch=\{/);
+  assert.match(workspace, /hasBookingLiveInformation\(place\)/, "legacy provider facts stay explicitly attributed if injected for a fixture");
+  assert.match(workspace, /affiliateProviderLabel\(partnerAction\.provider\)/);
+  assert.doesNotMatch(stories, /\/journey\/ginza-night\.jpg|\/journey\/kanazawa\.jpg/);
+});
+
 test("Stay stories cover the required evidence, provider and compact viewport matrix", () => {
   const stories = readFileSync(new URL("../components/easyt/trip-stay-workspace.stories.tsx", import.meta.url), "utf8");
   for (const story of [
     "TokyoThreeNightStay", "RepeatedTokyoStay", "StrongAreaEvidence", "NoNeighbourhoodFallback",
     "SixOptionShortlist", "MappedResultsBookingLoading", "BookingEnriched", "PartiallyEnrichedShortlist",
     "BookingFactsSeparateTripComCta", "RankingComparison", "ProviderUnavailableMappedBaseReady", "BookingFailureMappedShortlist",
-    "NoPropertyImage", "SparsePropertyDetail", "RichPropertyDetail", "StayWithImages", "StayWithoutImages",
+    "NoPropertyImage", "SparsePropertyDetail", "RichPropertyDetail", "PropertyPhotoUnavailableShortlist", "StayWithoutImages",
     "ChosenStay", "SavedStayNotInShortlist", "SelectedPropertyWithMiniMap", "MultipleSameNameProperties",
     "BookingEnrichedMappedProperty", "BookingOnlyNoImageProperty", "Mobile320", "Mobile390", "Mobile430",
     "Tablet768", "Desktop1024", "Desktop1440",
