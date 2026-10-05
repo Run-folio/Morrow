@@ -1,10 +1,11 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { composeItineraryDayWithExplicitPeriods } from "../lib/easyt/itinerary-day-part-intent.ts";
+import { composeItineraryDayForPlanning, composeItineraryDayWithExplicitPeriods } from "../lib/easyt/itinerary-day-part-intent.ts";
+import { insertItineraryActivity } from "../lib/easyt/itinerary-mutations.ts";
 import { assignItineraryActivityDayPart } from "../lib/easyt/itinerary-mutations.ts";
 import { mapPlanAgendaForDay } from "../lib/easyt/map-plan-agenda.ts";
-import type { EasyTTrip } from "../lib/easyt/trip.ts";
+import { legacyItineraryIdeas, type EasyTTrip } from "../lib/easyt/trip.ts";
 
 function tripFixture(): EasyTTrip {
   return {
@@ -102,4 +103,45 @@ test("Map Plan projects every item in an occupied daypart as a separate stable r
     ["Coffee", "Afternoon"],
     ["Viewpoint", "Afternoon"],
   ]);
+});
+
+test("the day planner shows legacy midday in Afternoon without changing persisted intent", () => {
+  const source = tripFixture();
+  source.planItems[0]!.noteDayParts![1] = "midday";
+  const composition = composeItineraryDayForPlanning(source, "kyoto-1")!;
+  assert.deepEqual(composition.planned.afternoon.map((activity) => activity.title), ["Tea in Higashiyama"]);
+  assert.deepEqual(composition.planned.midday, []);
+  assert.equal(source.planItems[0]!.noteDayParts![1], "midday");
+  assert.deepEqual(composition.unslotted.map((activity) => activity.title), ["Unslotted generated plan", "Nishiki Market"]);
+});
+
+test("reliable local start time chooses Morning, Afternoon or Evening without changing saved time", () => {
+  const source = tripFixture();
+  source.brief.itineraryIdeas = [
+    ...source.brief.itineraryIdeas!,
+    ...(["09:30", "14:00", "19:30"] as const).map((startsAt, index) => ({
+      id: `timed-${index}`, stopId: "kyoto", placeId: `place-${index}`, title: `Timed ${index}`,
+      category: "activity" as const, coordinates: [135.764, 35.005] as [number, number],
+      source: "traveller-visit-intent" as const, reasons: ["interest-relevance" as const],
+      dayId: "kyoto-1", dayPart: null, startsAt,
+    })),
+  ];
+  const composition = composeItineraryDayForPlanning(source, "kyoto-1")!;
+  assert.equal(composition.planned.morning.some((activity) => activity.title === "Timed 0"), true);
+  assert.equal(composition.planned.afternoon.some((activity) => activity.title === "Timed 1"), true);
+  assert.equal(composition.planned.evening.some((activity) => activity.title === "Timed 2"), true);
+  assert.deepEqual(legacyItineraryIdeas(source.brief.itineraryIdeas).slice(1).map((idea) => idea.startsAt), ["09:30", "14:00", "19:30"]);
+});
+
+test("direct Morning and Evening additions persist broad intent with no exact clock time", () => {
+  let source = tripFixture();
+  for (const [part, title] of [["morning", "Breakfast"], ["evening", "Dinner"]] as const) {
+    const result = insertItineraryActivity(source, 1, source.planItems[0]!.notes.length, title, part);
+    assert.equal(result.changed, true);
+    source = structuredClone(result.trip);
+    assert.equal(composeItineraryDayForPlanning(source, "kyoto-1")!.planned[part].some((activity) => activity.title === title), true);
+    assert.equal(source.planItems[0]!.noteDayParts?.at(-1), part);
+  }
+  assert.equal(legacyItineraryIdeas(source.brief.itineraryIdeas).some((idea) => idea.title === "Breakfast" || idea.title === "Dinner"), false);
+  assert.equal(insertItineraryActivity(source, 1, source.planItems[0]!.notes.length, "Breakfast", "morning").changed, false);
 });

@@ -19,13 +19,13 @@ import {
 } from "@/lib/easyt/trip-facts";
 import { tripLegClassificationLabel } from "@/lib/easyt/trip-legs";
 import {
-  itineraryDayParts,
   type ComposedItineraryActivity,
   type ItineraryDayComposition,
 } from "@/lib/easyt/itinerary-day-composition";
+import { itineraryPlanningParts, type ItineraryPlanningPart } from "@/lib/easyt/itinerary-day-part-intent";
 import type { ItineraryDayPart } from "@/lib/easyt/trip";
 import { activityAllowsDayPart, activityDayPartFit, activityDurationLabel, activityStartTimeLabel, isFullDayActivity, itineraryScheduleWarnings } from "@/lib/easyt/itinerary-schedule-awareness";
-import { EasyTButton, EasyTField, EasyTLinkButton, EasyTSelect } from "./easyt-controls";
+import { EasyTButton, EasyTField, EasyTSelect } from "./easyt-controls";
 import ItineraryActivityIdentity from "./itinerary-activity-identity";
 import styles from "./rich-itinerary-day-planner.module.css";
 
@@ -40,8 +40,7 @@ type RichItineraryDayPlannerProps = {
   pendingActivityId?: string | null;
   onAddCancel?: () => void;
   onAddDraftChange?: (value: string) => void;
-  onAddComposerDayPartChange?: (dayPart: ItineraryDayPart | null) => void;
-  onAddOpen?: (dayPart: ItineraryDayPart | null) => void;
+  onAddOpen?: (dayPart: ItineraryPlanningPart) => void;
   onSeeSuggestions?: () => void;
   onAddSubmit?: () => void;
   onDayPartChange?: (activity: ComposedItineraryActivity, dayPart: ItineraryDayPart | null) => void;
@@ -77,6 +76,8 @@ function copyFor(language: "en" | "es") {
     timingUnknown: "Horario por confirmar",
     scheduleCheck: "Consulta los horarios actuales antes de reservar.",
     addActivity: "Añadir actividad",
+    addPlan: "Añadir plan",
+    addPlanTo: "Añadir plan al",
     addHere: "Añadir algo",
     activityName: "Actividad para",
     save: "Guardar",
@@ -103,6 +104,8 @@ function copyFor(language: "en" | "es") {
     timingUnknown: "Timing to confirm",
     scheduleCheck: "Check current schedules before booking.",
     addActivity: "Add activity",
+    addPlan: "Add plan",
+    addPlanTo: "Add plan to",
     addHere: "Add something",
     activityName: "Activity for",
     save: "Save",
@@ -224,7 +227,7 @@ function ActivityRow({
             }}
           >
             <option value="">{copy.unsetPeriod}</option>
-            {itineraryDayParts.map((part) => (
+            {itineraryPlanningParts.map((part) => (
               <option value={part} key={part}>{dayPartLabels[language][part]}</option>
             ))}
           </EasyTSelect>
@@ -265,14 +268,11 @@ export default function RichItineraryDayPlanner({
   addComposerOpen = false,
   addDraft = "",
   addError = "",
-  ideasHref,
   language = "en",
   pendingActivityId,
   onAddCancel,
   onAddDraftChange,
-  onAddComposerDayPartChange,
   onAddOpen,
-  onSeeSuggestions,
   onAddSubmit,
   onDayPartChange,
   onMoveActivity,
@@ -295,22 +295,25 @@ export default function RichItineraryDayPlanner({
   const titleId = `rich-day-${composition.day.id}`;
   const tonight = composition.tonight;
   const unslotted = composition.unslotted.filter((activity) => activity.source !== "day-note");
-  const hasVisibleActivities = unslotted.length > 0 || itineraryDayParts.some((part) => composition.planned[part].some((activity) => activity.source !== "day-note"));
-  const occupiedParts = itineraryDayParts.filter((part) => composition.planned[part].some((activity) => activity.source !== "day-note"));
-  const emptyParts = itineraryDayParts.filter((part) => !occupiedParts.includes(part));
   const controlPrefix = useId().replaceAll(":", "");
   const focusAfterMoveRef = useRef<string | null>(null);
+  const focusAfterAddRef = useRef<{ dayId: string; part: ItineraryPlanningPart } | null>(null);
   const [dropTarget, setDropTarget] = useState<string | null>(null);
   const warnings = itineraryScheduleWarnings(composition);
   const warningsFor = (activityId: string) => [...new Set(warnings.filter((warning) => warning.activityIds.includes(activityId)).map((warning) => warning.message))];
-  const addComposer = <form className={styles.addComposer} onSubmit={(event) => { event.preventDefault(); onAddSubmit?.(); }}>
-    <EasyTField autoFocus label={copy.activityName} error={addError || undefined} value={addDraft} onChange={(event) => onAddDraftChange?.(event.target.value)} />
-    <EasyTSelect label={copy.choosePeriod} value={addComposerDayPart ?? ""} onChange={(event) => onAddComposerDayPartChange?.(event.target.value ? event.target.value as ItineraryDayPart : null)}>
-      <option value="">{copy.unsetPeriod}</option>
-      {itineraryDayParts.map((part) => <option value={part} key={part}>{dayPartLabels[language][part]}</option>)}
-    </EasyTSelect>
+  const addComposer = (part: ItineraryPlanningPart) => <form className={styles.addComposer} onSubmit={(event) => { event.preventDefault(); onAddSubmit?.(); }}>
+    <EasyTField autoFocus label={`${copy.activityName} ${dayPartLabels[language][part]}`} error={addError || undefined} value={addDraft} onChange={(event) => onAddDraftChange?.(event.target.value)} />
     <div className={styles.addComposerActions}><EasyTButton type="submit" icon={CirclePlus} size="small" disabled={!addDraft.trim()}>{copy.save}</EasyTButton><EasyTButton size="small" variant="quiet" onClick={onAddCancel}>{copy.cancel}</EasyTButton></div>
   </form>;
+  useEffect(() => {
+    if (addComposerOpen && addComposerDayPart && addComposerDayPart !== "midday") {
+      focusAfterAddRef.current = { dayId: composition.day.id, part: addComposerDayPart };
+      return;
+    }
+    const previous = focusAfterAddRef.current;
+    if (previous?.dayId === composition.day.id) document.getElementById(`${titleId}-add-${previous.part}`)?.focus();
+    focusAfterAddRef.current = null;
+  }, [addComposerOpen, addComposerDayPart, composition.day.id, titleId]);
   useEffect(() => {
     const activityId = focusAfterMoveRef.current;
     if (!activityId) return;
@@ -320,7 +323,7 @@ export default function RichItineraryDayPlanner({
       focusAfterMoveRef.current = null;
     }
   }, [composition, controlPrefix]);
-  const renderPeriod = (part: ItineraryDayPart) => {
+  const renderPeriod = (part: ItineraryPlanningPart) => {
     const activities = composition.planned[part].filter((activity) => activity.source !== "day-note");
     const headingId = `${titleId}-${part}`;
     return (
@@ -394,6 +397,16 @@ export default function RichItineraryDayPlanner({
           >
           </div>
         )}
+        <div className={styles.addHere}>
+          {addComposerOpen && addComposerDayPart === part ? addComposer(part) : onAddOpen ? <EasyTButton
+            id={`${titleId}-add-${part}`}
+            icon={CirclePlus}
+            size="small"
+            variant="quiet"
+            aria-label={`${copy.addPlanTo} ${formatDayDate(composition.context.date, language)} ${dayPartLabels[language][part].toLowerCase()}`}
+            onClick={() => onAddOpen?.(part)}
+          >{copy.addPlan}</EasyTButton> : null}
+        </div>
       </section>
     );
   };
@@ -435,16 +448,7 @@ export default function RichItineraryDayPlanner({
         </section>
       ) : null}
 
-      {!hasVisibleActivities ? <section className={styles.emptyInvitation} aria-label={language === "es" ? "Planifica este día" : "Plan this day"}>
-        <div><CalendarDays aria-hidden="true" /><h3>{language === "es" ? `Planifica tu día en ${composition.context.destination}` : `Plan your day in ${composition.context.destination}`}</h3>
-          <p>{language === "es" ? "Añade actividades o explora sugerencias cuando quieras." : "Add activities or explore suggestions when you are ready."}</p></div>
-        {addComposerOpen ? addComposer : <div className={styles.emptyActions}>
-          {onAddOpen ? <EasyTButton icon={CirclePlus} size="small" onClick={() => onAddOpen?.(null)}>{copy.addActivity}</EasyTButton> : null}
-          {onSeeSuggestions ? <EasyTButton size="small" variant="secondary" onClick={() => onSeeSuggestions?.()}>{language === "es" ? "Ver sugerencias" : "See suggestions"}</EasyTButton> : ideasHref ? <EasyTLinkButton href={ideasHref} size="small" variant="secondary">{language === "es" ? "Ver sugerencias" : "See suggestions"}</EasyTLinkButton> : null}
-        </div>}
-      </section> : null}
-
-      {occupiedParts.length ? <div className={styles.periodGrid}>{occupiedParts.map(renderPeriod)}</div> : null}
+      <div className={styles.periodGrid}>{itineraryPlanningParts.map(renderPeriod)}</div>
 
       {unslotted.length ? (
         <section className={styles.unslotted} aria-labelledby={`${titleId}-unslotted`}>
@@ -481,11 +485,6 @@ export default function RichItineraryDayPlanner({
           </div>
         </section>
       ) : null}
-
-      {dragActive && emptyParts.length ? <div className={styles.periodGrid}>{emptyParts.map(renderPeriod)}</div> : null}
-      {hasVisibleActivities && onAddOpen ? <div className={styles.populatedActions}>
-        {addComposerOpen ? addComposer : <EasyTButton icon={CirclePlus} size="small" onClick={() => onAddOpen(null)}>{copy.addActivity}</EasyTButton>}
-      </div> : null}
 
       {showTonight ? <section className={`${styles.tonight} ${selectedTonight ? styles.tonightSelected : ""}`} aria-labelledby={`${titleId}-tonight`}>
         <BedDouble aria-hidden="true" />

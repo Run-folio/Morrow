@@ -28,10 +28,13 @@
 .planner .freePeriod { min-height: 0; padding: 0; }
 .planner .travel { padding: 12px; }
 .planner .transfer { background: var(--morrovia-paper); }
-.planner .period { overflow: visible; }
+.planner .period { overflow: visible; border: 0; border-top: 1px solid var(--morrovia-line); border-radius: 0; background: transparent; }
 .planner .periodHeading { padding: 8px 12px; }
 .planner .activity { padding: 8px 12px; }
 .planner .addHere { padding: 4px 12px 8px; }
+.planner .addHere > button { min-height: 44px; }
+.planner .periodGrid { gap: 0; }
+.planner .periodHeading { border-bottom: 0; background: transparent; }
 .planner .unslotted { background: var(--morrovia-paper); }
 .contextNotes { padding: 12px; border-top: 1px solid var(--morrovia-line); font: var(--morrovia-type-supporting-body); }
 .contextNotes summary { cursor: pointer; min-height: 44px; color: var(--morrovia-ink); }
@@ -615,12 +618,12 @@
 
 @media (max-width: 680px) {
   .periodGrid:has(.period[data-empty="true"]) {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 8px;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0;
   }
 
   .period[data-empty="false"] {
-    grid-column: span 2;
+    grid-column: 1;
   }
 
   .period[data-empty="true"] .periodHeading {

@@ -5240,7 +5240,7 @@
     "observedSpacing": [
       {
         "value": "8px",
-        "count": 569,
+        "count": 568,
         "examples": [
           "app/journey/account.module.css",
           "app/journey/admin/feedback/feedback.module.css",
@@ -6095,7 +6095,7 @@
       },
       {
         "value": "0",
-        "count": 60,
+        "count": 61,
         "examples": [
           "app/journey/account.module.css",
           "app/journey/discover/discover.module.css",

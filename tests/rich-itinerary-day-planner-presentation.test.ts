@@ -10,36 +10,24 @@ const workspace = readFileSync(new URL("../components/easyt/trip-itinerary-works
 const workspaceStories = readFileSync(new URL("../components/easyt/trip-itinerary-workspace.stories.tsx", import.meta.url), "utf8");
 const composition = readFileSync(new URL("../lib/easyt/itinerary-day-composition.ts", import.meta.url), "utf8");
 
-test("empty day keeps one invitation and opens the same composer without a second daypart strip", () => {
-  assert.match(component, /const hasVisibleActivities =/);
-  assert.match(component, /!hasVisibleActivities/);
-  assert.match(component, /className=\{styles\.emptyInvitation\}/);
-  assert.match(component, /onAddOpen\?\.\(null\)/);
-  assert.match(component, /onSeeSuggestions\?\.\(\)/);
-  assert.match(component, /addComposerOpen \? addComposer : <div className=\{styles\.emptyActions\}>/);
-  assert.doesNotMatch(component, /className=\{styles\.emptyDayparts\}/);
-  assert.match(component, /<EasyTSelect label=\{copy\.choosePeriod\}/);
-  assert.match(workspace, /onSeeSuggestions=\{\(\) =>/);
-  assert.match(workspace, /document\.getElementById\(`\$\{tabIdPrefix\}-ideas`\)/);
+test("empty day exposes the same three direct planning slots as a populated day", () => {
+  assert.match(component, /itineraryPlanningParts\.map\(renderPeriod\)/);
+  assert.doesNotMatch(component, /className=\{styles\.emptyInvitation\}/);
+  assert.match(component, /onAddOpen\?\.\(part\)/);
+  assert.match(component, /addComposerOpen && addComposerDayPart === part/);
 });
 
-test("populated day shows occupied periods and saved unslotted rows before its single Add action", () => {
-  assert.match(component, /const occupiedParts = itineraryDayParts\.filter/);
-  assert.match(component, /const emptyParts = itineraryDayParts\.filter/);
-  assert.match(component, /occupiedParts\.map\(renderPeriod\)/);
+test("populated day shows all three periods and saved unslotted rows", () => {
+  assert.match(component, /itineraryPlanningParts\.map\(renderPeriod\)/);
   assert.match(component, /unslotted\.length \? \(/);
-  assert.match(component, /className=\{styles\.populatedActions\}/);
-  assert.match(component, /emptyParts\.map\(renderPeriod\)/);
-  assert.ok(component.indexOf("unslotted.length ? (") < component.indexOf("className={styles.populatedActions}"));
-  assert.match(component, /dragActive && emptyParts\.length/);
+  assert.ok(component.indexOf("className={styles.periodGrid}") < component.indexOf("unslotted.length ? ("));
   assert.doesNotMatch(component, /className=\{styles\.secondaryPeriods\}/);
 });
 
-test("one populated Add action uses the controlled composer for exact daypart intent", () => {
-  assert.match(component, /hasVisibleActivities && onAddOpen \? <div className=\{styles\.populatedActions\}>/);
-  assert.match(component, /onClick=\{\(\) => onAddOpen\(null\)\}/);
-  assert.match(component, /onAddComposerDayPartChange\?\.\(event\.target\.value \? event\.target\.value as ItineraryDayPart : null\)/);
-  assert.match(workspace, /onAddComposerDayPartChange=\{\(dayPart\) => setAddFlow/);
+test("direct Add uses the controlled composer and canonical daypart intent", () => {
+  assert.match(component, /onClick=\{\(\) => onAddOpen\?\.\(part\)\}/);
+  assert.match(component, /addComposer\(part\)/);
+  assert.match(workspace, /openAddFlow\(active\.notes\.length, "activity", dayPart\)/);
   assert.match(workspace, /addItineraryActivityWithUndo\(current, addFlow\.dayNumber, addFlow\.noteIndex, addDraft, addFlow\.dayPart\)/);
   assert.doesNotMatch(component, /className=\{styles\.partInsertActions\}/);
 });
@@ -54,7 +42,7 @@ test("travel card copy can wrap inside the shared quiet button at mobile widths"
 });
 
 test("the production itinerary owner consumes canonical composition and persists period changes through its mutation path", () => {
-  assert.match(workspace, /composeItineraryDay\(workingTrip, active\.id\)/);
+  assert.match(workspace, /composeItineraryDayForPlanning\(workingTrip, active\.id\)/);
   assert.match(workspace, /assignItineraryIdeaDayPart\(current, activity\.id, dayPart\)/);
   assert.match(workspace, /assignItineraryActivityDayPart/);
   assert.match(workspace, /<RichItineraryDayPlanner/);
@@ -64,7 +52,7 @@ test("the production itinerary owner consumes canonical composition and persists
 });
 
 test("broad periods use semantic headings, canonical controls, and a keyboard-accessible clear state", () => {
-  assert.match(component, /itineraryDayParts\.map/);
+  assert.match(component, /itineraryPlanningParts\.map/);
   assert.match(component, /<section[\s\S]{0,180}className=\{`\$\{styles\.period\}/);
   assert.match(component, /<EasyTSelect/);
   assert.match(component, /<option value="">/);
@@ -124,17 +112,16 @@ test("mobile hides pointer drag without removing the explicit scheduling and reo
   assert.match(component, /onMoveActivity\(activity, "later"\)/);
 });
 
-test("mobile retains drop zones only during drag and leaves daypart choice in the composer", () => {
+test("mobile keeps the same three slot actions and narrow one-column rhythm", () => {
   assert.match(component, /data-empty=\{activities\.length === 0\}/);
-  assert.match(component, /dragActive && emptyParts\.length/);
-  assert.match(component, /onAddComposerDayPartChange/);
-  assert.match(styles, /@media \(max-width: 680px\)[\s\S]*\.periodGrid:has\(\.period\[data-empty="true"\]\)[\s\S]*grid-template-columns: repeat\(2, minmax\(0, 1fr\)\)/);
-  assert.match(styles, /\.period\[data-empty="true"\][\s\S]*grid-column: span 2/);
+  assert.match(component, /itineraryPlanningParts\.map\(renderPeriod\)/);
+  assert.match(styles, /@media \(max-width: 680px\)[\s\S]*\.periodGrid:has\(\.period\[data-empty="true"\]\)[\s\S]*grid-template-columns: minmax\(0, 1fr\)/);
+  assert.match(styles, /\.planner \.addHere > button \{ min-height: 44px; \}/);
 });
 
-test("single Add composer, first-class travel, and tonight context stay distinct", () => {
+test("slot Add composer, first-class travel, and tonight context stay distinct", () => {
   assert.doesNotMatch(component, /No activity is set for this part of the day|copy\.freeDetail/);
-  assert.match(component, /const addComposer = <form/);
+  assert.match(component, /const addComposer = \(part: ItineraryPlanningPart\) => <form/);
   assert.match(component, /<option value="">\{copy\.unsetPeriod\}<\/option>/);
   assert.doesNotMatch(component, /Day context and notes|Retained day context/);
   assert.match(component, /composition\.transfers\.map/);
@@ -162,7 +149,7 @@ test("long names and compact breakpoints remain contained without a parallel mob
 });
 
 test("day parts use the canonical calm surface and heading typography at every width", () => {
-  assert.match(styles, /\.period \{[\s\S]*border: 1px solid var\(--morrovia-line\)[\s\S]*border-radius: var\(--morrovia-control-radius\)[\s\S]*background: var\(--morrovia-paper\)/);
+  assert.match(styles, /\.planner \.period \{[^}]*border: 0;[^}]*border-top: 1px solid var\(--morrovia-line\)/);
   assert.match(styles, /\.periodHeading \{[\s\S]*background: var\(--morrovia-paper\)/);
   assert.match(styles, /\.periodHeading h3,[\s\S]*font: var\(--morrovia-type-control\)/);
 });

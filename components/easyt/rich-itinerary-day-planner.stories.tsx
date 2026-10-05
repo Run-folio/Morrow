@@ -1,6 +1,7 @@
 import { useMemo, useRef, useState } from "react";
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
-import { composeItineraryDay, type ComposedItineraryActivity } from "@/lib/easyt/itinerary-day-composition";
+import { type ComposedItineraryActivity } from "@/lib/easyt/itinerary-day-composition";
+import { composeItineraryDayForPlanning } from "@/lib/easyt/itinerary-day-part-intent";
 import { assignItineraryIdeaDayPart } from "@/lib/easyt/itinerary-ideas";
 import { assignItineraryActivityDayPart, insertItineraryActivity, moveItineraryActivity, moveItineraryIdeaActivity } from "@/lib/easyt/itinerary-mutations";
 import { placeItineraryActivity } from "@/lib/easyt/itinerary-activity-placement";
@@ -63,7 +64,7 @@ function StoryFrame({ trip, dayId }: { trip: EasyTTrip; dayId: string }) {
   const [error, setError] = useState("");
   const [draggedActivity, setDraggedActivity] = useState<ComposedItineraryActivity | null>(null);
   const draggedActivityRef = useRef<ComposedItineraryActivity | null>(null);
-  const composition = useMemo(() => composeItineraryDay(workingTrip, dayId), [dayId, workingTrip]);
+  const composition = useMemo(() => composeItineraryDayForPlanning(workingTrip, dayId), [dayId, workingTrip]);
   if (!composition) return null;
   const assign = (activity: ComposedItineraryActivity, dayPart: ItineraryDayPart | null) => {
     setWorkingTrip((current) => activity.source === "itinerary-idea"
@@ -138,7 +139,7 @@ function StoryFrame({ trip, dayId }: { trip: EasyTTrip; dayId: string }) {
   );
 }
 
-const fullComposition = composeItineraryDay(baseTrip, "kyoto-2")!;
+const fullComposition = composeItineraryDayForPlanning(baseTrip, "kyoto-2")!;
 
 const meta = {
   title: "Morrovia/05 Product Patterns/Trip workspace/Itinerary/Rich day planner",
@@ -205,7 +206,7 @@ const fullDayTrip: EasyTTrip = {
   planItems: baseTrip.planItems.map((day) => day.id === "kyoto-2" ? { ...day, notes: ["Kyoto and Nara full-day experience", "Evening theatre"], noteDayParts: ["morning", "evening"] } : day),
 };
 
-const emptyTrip: EasyTTrip = {
+const emptyPlanningTrip: EasyTTrip = {
   ...baseTrip,
   brief: { ...baseTrip.brief, itineraryIdeas: baseTrip.brief.itineraryIdeas?.filter((idea) => !idea.dayId), customActivities: {} },
   planItems: baseTrip.planItems.map((day) => day.id === "kyoto-2" ? { ...day, notes: [], noteDayParts: [] } : day),
@@ -255,6 +256,14 @@ export const FullFourSectionDay: Story = {
 };
 
 export const SparseDay: Story = { render: () => <StoryFrame trip={sparseTrip} dayId="kyoto-2" /> };
+
+const emptyTrip: EasyTTrip = {
+  ...baseTrip,
+  brief: { ...baseTrip.brief, bookings: [], customActivities: {}, itineraryIdeas: [] },
+  planItems: baseTrip.planItems.map((day) => day.id === "kyoto-2" ? { ...day, notes: [], noteDayParts: [] } : day),
+};
+
+export const EmptyPlanningDay: Story = { render: () => <StoryFrame trip={emptyPlanningTrip} dayId="kyoto-2" /> };
 export const CompletelyEmptyDay: Story = { render: () => <StoryFrame trip={emptyTrip} dayId="kyoto-2" /> };
 
 export const AutomaticLegacyPlacement: Story = {

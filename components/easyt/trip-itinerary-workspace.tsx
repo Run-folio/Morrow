@@ -71,7 +71,8 @@ import {
 } from "@/lib/easyt/itinerary-day-context";
 import { createAbortableEffectScope } from "@/lib/easyt/abortable-effect";
 import { assignItineraryIdeaDayPart, ideaStateForPlace, itineraryIdeaDayOptions, preferredItineraryIdeaDay, removeItineraryIdea, saveItineraryIdea, type ItineraryIdeaDayOption } from "@/lib/easyt/itinerary-ideas";
-import { composeItineraryDay, itineraryDayParts, type ComposedItineraryActivity, type ItineraryDayComposition } from "@/lib/easyt/itinerary-day-composition";
+import { itineraryDayParts, type ComposedItineraryActivity, type ItineraryDayComposition } from "@/lib/easyt/itinerary-day-composition";
+import { composeItineraryDayForPlanning } from "@/lib/easyt/itinerary-day-part-intent";
 import { itineraryStayPresentation } from "@/lib/easyt/itinerary-stay-presentation";
 import {
   addItineraryActivityWithUndo,
@@ -717,7 +718,7 @@ export default function TripItineraryWorkspace({
     [active, workingTrip],
   );
   const dayComposition = useMemo(
-    () => active ? composeItineraryDay(workingTrip, active.id) : null,
+    () => active ? composeItineraryDayForPlanning(workingTrip, active.id) : null,
     [active, workingTrip],
   );
   const selectedActivity = useMemo(() => {
@@ -1449,7 +1450,7 @@ export default function TripItineraryWorkspace({
             addError={addError}
             ideasHref={mapIdeasHref}
             language={language}
-            onAddOpen={(dayPart) => openAddFlow(active.notes.length, "activity", dayPart ?? undefined)}
+            onAddOpen={(dayPart) => openAddFlow(active.notes.length, "activity", dayPart)}
             onSeeSuggestions={() => {
               const suggestions = document.getElementById(`${tabIdPrefix}-ideas`);
               if (!(suggestions instanceof HTMLDetailsElement)) return;
@@ -1458,7 +1459,6 @@ export default function TripItineraryWorkspace({
               suggestions.scrollIntoView({ block: "nearest" });
             }}
             onAddDraftChange={(value) => { setAddDraft(value); setAddError(""); }}
-            onAddComposerDayPartChange={(dayPart) => setAddFlow((flow) => flow ? { ...flow, dayPart: dayPart ?? undefined } : flow)}
             onAddCancel={() => { setAddFlow(null); setAddDraft(""); setAddError(""); }}
             onAddSubmit={submitAddFlow}
             onDayPartChange={changeActivityDayPart}
