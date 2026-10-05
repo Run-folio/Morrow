@@ -44,6 +44,10 @@ jobs:
           done
           curl --silent --fail http://127.0.0.1:3100/journey/new > /dev/null
           npm run test:core-journey-browser
+      - name: Run deterministic Transport workspace regression
+        env:
+          MORROVIA_BUILDER_BROWSER_TESTS: "1"
+        run: npm run test:transport-browser
       - name: Upload failure evidence
         if: failure()
         uses: actions/upload-artifact@v4

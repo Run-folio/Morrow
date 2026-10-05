@@ -12,6 +12,12 @@ const bundled = `${homedir()}/.cache/codex-runtimes/codex-primary-runtime/depend
 const { chromium } = require(process.env.MORROVIA_PLAYWRIGHT_MODULE ?? (existsSync(bundled) ? bundled : "playwright")) as typeof import("playwright");
 const enabled = process.env.MORROVIA_CORE_JOURNEY_BROWSER_TESTS === "1";
 const base = process.env.MORROVIA_BASE_URL ?? "http://127.0.0.1:3100";
+if (enabled) {
+  const target = new URL(base);
+  if (target.protocol !== "http:" || !["127.0.0.1", "localhost", "[::1]"].includes(target.hostname)) {
+    throw new Error("Tier 1 browser tests may target only a local HTTP app; hosted staging and production are excluded.");
+  }
+}
 const artifacts = process.env.MORROVIA_BROWSER_ARTIFACT_DIR ?? "/tmp/morrovia-core-journey";
 const consent = JSON.stringify(createPrivacyConsentRecord({ analytics: false, affiliateTracking: false }, "2026-10-05T12:00:00.000Z"));
 

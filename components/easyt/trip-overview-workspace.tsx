@@ -339,7 +339,12 @@ export default function TripOverviewWorkspace({
       href: stayWorkspaceHref(trip.id, accommodation.stops.find((stop) => !stayBookingForStop(trip, stop))?.id),
       label: language === "es" ? "Ver alojamientos" : "View stays",
     };
-    if (category.id === "transport") return { href: transportWorkspaceHref(trip.id), label: language === "es" ? "Revisar transporte" : "Review transport" };
+    if (category.id === "transport") {
+      const transferIssue = visibleIssues.find((issue) => issue.actionLabel === "Review transfers");
+      return transferIssue
+        ? { href: transferIssue.href, label: language === "es" ? "Revisar traslados" : "Review transfers" }
+        : { href: transportWorkspaceHref(trip.id), label: language === "es" ? "Revisar transporte" : "Review transport" };
+    }
     return null;
   };
 

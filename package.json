@@ -14,6 +14,7 @@
     "typecheck": "tsc --project tsconfig.typecheck.json --noEmit --incremental false",
     "release:gate": "node scripts/release-gate-smoke.mjs",
     "test:core-journey-browser": "node --experimental-strip-types --test tests/core-journey-app-browser.test.ts",
+    "test:transport-browser": "node --experimental-strip-types --test tests/transport-workspace-browser.test.ts",
     "staging:preflight": "node --env-file=.env.staging scripts/staging-preflight.mjs",
     "staging:seed": "node --env-file=.env.staging scripts/staging-seed.mjs",
     "staging:reset": "node --env-file=.env.staging scripts/staging-reset.mjs",
