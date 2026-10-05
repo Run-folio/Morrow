@@ -58,6 +58,7 @@ test("real Itinerary direct slot planning persists Morning and Evening across re
       await dialog.getByRole("textbox", { name: "Add your own", exact: true }).fill(title);
       await dialog.getByRole("button", { name: `Add to ${part[0]!.toUpperCase()}${part.slice(1)}` }).click();
       await planner.locator(`section[data-day-part="${part}"]`).getByText(title, { exact: true }).waitFor();
+      await page.waitForFunction((dayPart: string) => document.activeElement?.getAttribute("aria-label")?.endsWith(` ${dayPart}`), part);
       assert.equal(await planner.getByRole("button", { name: new RegExp(`Add plan to .* ${part}`, "i") }).evaluate((button: HTMLButtonElement) => document.activeElement === button), true);
     }
     await page.getByLabel("Jump to date / destination").selectOption({ index: 0 });

@@ -380,7 +380,8 @@ export function MorroviaContentDialog({
     if (open && !dialog.open) {
       returnFocusRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
       dialog.showModal();
-      window.requestAnimationFrame(() => dialog.querySelector<HTMLElement>(autoFocusSelector)?.focus());
+      // A later frame can move focus after the user has started typing in another field.
+      dialog.querySelector<HTMLElement>(autoFocusSelector)?.focus();
     } else if (!open && dialog.open) {
       dialog.close();
       window.requestAnimationFrame(() => returnFocusRef.current?.focus());
