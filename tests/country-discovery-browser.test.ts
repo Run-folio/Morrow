@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import { captureJourneyBrief } from '../lib/easyt/journey-capture.ts';
-import { homepageSemanticInputFingerprint, homepageSubmissionFingerprint, projectHomepageInput, handoffRouteStops } from '../lib/easyt/home-trip-handoff.ts';
+import { createPendingIntakeReceipt, homepageSemanticInputFingerprint, homepageSubmissionFingerprint, projectHomepageInput, handoffRouteStops } from '../lib/easyt/home-trip-handoff.ts';
 import { tripFromBuilder } from '../lib/easyt/trip.ts';
 import type { CanonicalPlaceSuggestion, PlaceType } from '../lib/easyt/place-intelligence.ts';
 import { emptyHomepageInput } from './fixtures/homepage-dual-entry.ts';
@@ -431,6 +431,33 @@ test('Japan Discovery handoff returns to the editable Builder surface', { skip: 
     assert.deepEqual(view.errors, []);
   } finally { await view.close(); }
 });
+
+test('fast Discovery confirmation waits for the Homepage receipt before checkpointing all stops',
+  { skip: !builderBrowserTestsEnabled, timeout: 60_000 }, async () => {
+    const snapshot = { ...emptyHomepageInput(), mode: 'describe' as const, prompt: 'Starting from Tokyo, 14 days in Japan' };
+    const receipt = createPendingIntakeReceipt(snapshot, { handoffId: 'fast-japan-receipt', tripId: 'trip-fast-japan-receipt' });
+    const view = await renderBuilder({
+      query: '?homeDraft=1&handoff=fast-japan-receipt',
+      draft: { version: 2, phase: 'pending-interpretation', receipt },
+      storedInput: { snapshot, receipt }, receiptLockDelayMs: 5000,
+    });
+    try {
+      const dialog = view.page.getByRole('dialog');
+      await dialog.getByRole('heading', { name: 'Explore places', exact: true }).waitFor();
+      for (const name of ['Kanazawa', 'Kyoto', 'Osaka']) {
+        await dialog.getByRole('button', { name: `Add to shortlist: ${name}` }).click();
+      }
+      await dialog.getByRole('button', { name: 'Add 3 places', exact: true }).evaluate((button: HTMLButtonElement) => button.click());
+      await dialog.waitFor({ state: 'hidden', timeout: 10000 });
+      const saved = await view.page.evaluate(() => Object.values(localStorage).flatMap(raw => {
+        try { const trip = JSON.parse(raw).trip; return trip ? [trip] : []; } catch { return []; }
+      }));
+      assert.ok(saved.some((trip: { stops: Array<{ canonicalPlaceId?: string }> }) =>
+        ['kanazawa', 'kyoto', 'osaka'].every(id => trip.stops.filter(stop => stop.canonicalPlaceId === id).length === 1)),
+      'the first confirmation saves all three stops after the pending receipt acknowledges');
+      assert.deepEqual(view.errors, []);
+    } finally { await view.close(); }
+  });
 
 test('Discovery handoff retains normal Builder controls and persists exercised edits', { skip: !builderBrowserTestsEnabled, timeout: 90_000 }, async () => {
   const normalTrip = tripFromBuilder({

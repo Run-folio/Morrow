@@ -4882,7 +4882,14 @@ function TripBuilderDocument() {
           const mention = activeClarificationMention;
           const checkpoint = async () => {
             const owners = discoveryOwnersRef.current;
-            const recovery = owners.persistDeviceRecovery(owners.trip);
+            let recovery = owners.persistDeviceRecovery(owners.trip);
+            if (!recovery.stored && receiptAcknowledgementRef.current) {
+              const acknowledged = await receiptAcknowledgementRef.current;
+              const current = discoveryOwnersRef.current;
+              if (acknowledged && current.trip.id === owners.trip.id) {
+                recovery = current.persistDeviceRecovery(current.trip);
+              }
+            }
             setDeviceRecoveryBlocked(recovery.blockedByExistingRecovery);
             setDeviceStorageBlocked(!recovery.stored && !recovery.blockedByExistingRecovery);
             setSaveState(recovery.stored ? "local" : "error");

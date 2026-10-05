@@ -55,6 +55,7 @@ export async function renderBuilder({
   nearbyCandidates = [],
   nearbyStatus,
   mapUnavailable = false,
+  receiptLockDelayMs = 0,
   language,
 }: {
   query?: string;
@@ -71,6 +72,7 @@ export async function renderBuilder({
   nearbyCandidates?: unknown[];
   nearbyStatus?: "ready" | "empty" | "unavailable";
   mapUnavailable?: boolean;
+  receiptLockDelayMs?: number;
   language?: "en" | "es";
 } = {}) {
   const script = await builderBundle();
@@ -157,6 +159,15 @@ export async function renderBuilder({
     key: homepageInputStorageKey(storedInput.snapshot.ownerId), value: storedInput,
   });
   if (language) await page.addInitScript((value: "en" | "es") => localStorage.setItem("easyt-language", value), language);
+  if (receiptLockDelayMs) await page.addInitScript((delay: number) => {
+    const original = navigator.locks.request.bind(navigator.locks);
+    navigator.locks.request = ((...args: Parameters<typeof original>) => {
+      if (args[0] !== "morrovia-home-handoff:guest") return original(...args);
+      return new Promise((resolve, reject) => window.setTimeout(() => {
+        original(...args).then(resolve, reject);
+      }, delay)) as ReturnType<typeof original>;
+    }) as typeof navigator.locks.request;
+  }, receiptLockDelayMs);
   if (mapUnavailable) await page.addInitScript(() => { (window as Window & { __MORROVIA_MAP_UNAVAILABLE__?: boolean }).__MORROVIA_MAP_UNAVAILABLE__ = true; });
   if (initialTrip) await page.addInitScript((value: { id: string; ownerId: string | null } & Record<string, unknown>) => {
     const scope = value.ownerId === null ? "guest" : `owner-${encodeURIComponent(value.ownerId)}`;
