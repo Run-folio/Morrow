@@ -2361,12 +2361,26 @@ function ItineraryDaySuggestions({ trip, day, stop, copy, language, initialPlace
             {result.image ? <ResilientImage src={result.image} alt="" fallback={<span className={styles.discoveryFallback}><MapPin aria-hidden="true" /></span>} /> : null}
             <div><strong>{result.title}</strong><span>{meta || result.location}</span></div>
             <div className={styles.contextualAddResultActions}>
-              <EasyTButton size="small" disabled={pending} onClick={() => {
+              <EasyTButton
+                size="small"
+                disabled={pending}
+                aria-label={addPart
+                  ? language === "es"
+                    ? `Añadir ${result.title} a ${itineraryDayPartLabels[language][addPart]} del día ${day.dayNumber}`
+                    : `Add ${result.title} to ${itineraryDayPartLabels[language][addPart]} on Day ${day.dayNumber}`
+                  : `${addLabels.add} ${result.title}`}
+                onClick={() => {
                 if (!addPart) return;
                 if (onSchedule(result.idea, day.id, addPart)) onAddCancel();
                 else setAddResultError(addLabels.addError);
               }}>{pending ? addLabels.add + "…" : addLabels.add}</EasyTButton>
-              {state?.state === "available" ? <EasyTButton size="small" variant="quiet" disabled={pending} onClick={() => { if (!onSave(result.idea)) setAddResultError(addLabels.saveError); }}>{addLabels.save}</EasyTButton> : state?.state === "saved" ? <span>{addLabels.saved}</span> : null}
+              {state?.state === "available" ? <EasyTButton
+                size="small"
+                variant="quiet"
+                disabled={pending}
+                aria-label={language === "es" ? `Guardar ${result.title} para después` : `Save ${result.title} for later`}
+                onClick={() => { if (!onSave(result.idea)) setAddResultError(addLabels.saveError); }}
+              >{addLabels.save}</EasyTButton> : state?.state === "saved" ? <span>{addLabels.saved}</span> : null}
             </div>
           </article>;
         })}
