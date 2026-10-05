@@ -122,8 +122,8 @@ export const touristEntryRequirementFor = (passport: string, destination: string
       visaAnswer: isSpanish ? "Sin visado para turismo" : "Visa-free for tourism",
       permittedStay: isSpanish ? reviewedRule.stayEs : reviewedRule.stay,
       detail: isSpanish
-        ? "Para viajar desde el Reino Unido con un pasaporte completo de ciudadano británico por turismo. Otros pasaportes, puntos de partida y motivos de viaje pueden tener reglas distintas."
-        : "For travel from the UK on a full British citizen passport for tourism. Other passports, departure points and purposes may have different rules.",
+        ? "Para turismo con un pasaporte completo de ciudadano británico. Otros tipos de pasaporte y motivos de viaje pueden tener reglas distintas."
+        : "For tourism with a full British citizen passport. Other passport types and travel purposes may have different rules.",
       conditions: isSpanish ? reviewedRule.conditionsEs : reviewedRule.conditions,
       sourceLabel: "UK Government – entry requirements",
       sourceHref: reviewedRule.href,

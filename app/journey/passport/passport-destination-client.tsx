@@ -43,7 +43,7 @@ const copy = {
     passport: "Your passport", destination: "Destination", check: "Check requirements", checking: "Checking…", private: "We do not save this check or ask for passport numbers, photos or copies.", failed: "Requirements could not be checked. Try again before relying on this result.",
     resultEyebrow: "TOURIST ENTRY RESULT", entry: "Tourist entry", stay: "Permitted stay", confidence: "Result status", verified: "Reviewed rule", needsConfirmation: "Needs confirmation", unavailable: "Entry information unavailable", resultAvailable: "Official guidance reviewed", noResult: "No matched rule is available",
     officialStrip: "Requirements can change. Check the destination authority before you book or travel.", open: "View official source", considerations: "Entry checks", passportChecks: "Passport checks", validity: "Passport validity", scope: "Tourist-entry scope",
-    sourceTitle: "Verification source", official: "Official source", sourceAvailable: "Source available", sourceConfirm: "Source needs confirmation", snapshot: "Checked", reviewDue: "Review due", freshnessUnknown: "No review date is available for this result.",
+    sourceTitle: "Verification source", official: "Official source", sourceAvailable: "Source available", sourceConfirm: "Source needs confirmation", snapshot: "Checked", freshnessUnknown: "No review date is available for this result.",
     trustTitle: "Use this as a planning check, not a border decision.", trustCopy: "Morrovia does not issue visas, guarantee entry or replace advice from an embassy, consulate or border authority.", privacyTitle: "Your documents stay private", privacyCopy: "This public check uses nationality and destination only. Do not enter passport numbers, scans or booking details.",
     prepEyebrow: "PLANNING A TRIP?", prepTitle: "Trip readiness lives in each trip Overview.", prepCopy: "Keep entry checks, saved reminders, stays and transport decisions with the trip they affect.", prepAction: "Open your trips", buildAction: "Build a plan",
   },
@@ -52,7 +52,7 @@ const copy = {
     passport: "Tu pasaporte", destination: "Destino", check: "Comprobar requisitos", checking: "Comprobando…", private: "No guardamos esta consulta ni pedimos números, fotos o copias del pasaporte.", failed: "No se pudieron comprobar los requisitos. Inténtalo de nuevo antes de confiar en el resultado.",
     resultEyebrow: "RESULTADO DE ENTRADA TURÍSTICA", entry: "Entrada turística", stay: "Estancia permitida", confidence: "Estado del resultado", verified: "Regla revisada", needsConfirmation: "Requiere confirmación", unavailable: "Información de entrada no disponible", resultAvailable: "Guía oficial revisada", noResult: "No hay una regla coincidente disponible",
     officialStrip: "Los requisitos pueden cambiar. Consulta la autoridad del destino antes de reservar o viajar.", open: "Ver fuente oficial", considerations: "Comprobaciones de entrada", passportChecks: "Comprobaciones del pasaporte", validity: "Validez del pasaporte", scope: "Alcance de entrada turística",
-    sourceTitle: "Fuente de verificación", official: "Fuente oficial", sourceAvailable: "Fuente disponible", sourceConfirm: "La fuente requiere confirmación", snapshot: "Comprobado", reviewDue: "Próxima revisión", freshnessUnknown: "Este resultado no incluye una fecha de revisión.",
+    sourceTitle: "Fuente de verificación", official: "Fuente oficial", sourceAvailable: "Fuente disponible", sourceConfirm: "La fuente requiere confirmación", snapshot: "Comprobado", freshnessUnknown: "Este resultado no incluye una fecha de revisión.",
     trustTitle: "Úsalo como comprobación de planificación, no como decisión fronteriza.", trustCopy: "Morrovia no emite visados, garantiza la entrada ni sustituye el consejo de una embajada, consulado o autoridad fronteriza.", privacyTitle: "Tus documentos siguen siendo privados", privacyCopy: "Esta consulta pública solo usa nacionalidad y destino. No introduzcas números, escaneos ni datos de reservas.",
     prepEyebrow: "¿PLANIFICANDO UN VIAJE?", prepTitle: "La preparación vive en el resumen de cada viaje.", prepCopy: "Mantén las comprobaciones, recordatorios, alojamientos y decisiones de transporte junto al viaje al que afectan.", prepAction: "Abrir tus viajes", buildAction: "Crear un plan",
   },
@@ -66,6 +66,13 @@ function safeProfile(value: unknown): TravelReadinessProfile {
     residenceCountry: typeof profile.residenceCountry === "string" ? profile.residenceCountry : "",
     passportExpiryMonth: typeof profile.passportExpiryMonth === "string" && /^\d{4}-(0[1-9]|1[0-2])$/.test(profile.passportExpiryMonth) ? profile.passportExpiryMonth : "",
   };
+}
+
+function checkedDateLabel(value: string | null, language: EasyTLanguage): string | null {
+  if (!value || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return null;
+  return new Date(`${value}T00:00:00Z`).toLocaleDateString(language === "es" ? "es-ES" : "en-GB", {
+    day: "numeric", month: "long", year: "numeric", timeZone: "UTC",
+  });
 }
 
 export default function PassportDestinationClient() {
@@ -179,7 +186,7 @@ export default function PassportDestinationClient() {
     {result && presentation ? <div className={styles.results}>
       <article ref={resultRef} tabIndex={-1} className={styles.result} aria-labelledby="passport-result-title">
         <header className={styles.resultHeading}>
-          <div><p>{t.resultEyebrow}</p><h2 id="passport-result-title"><span aria-hidden="true">{resultDestination?.flag ?? "🌐"}</span>{resultDestination?.name ?? result.destination}</h2><span>{resultNationality?.flag ?? "🌐"} {resultNationality ? passportCountryLabel(resultNationality) : result.nationality} <span aria-hidden="true">→</span> {resultDestination?.flag ?? "🌐"} {resultDestination?.name ?? result.destination}</span>{resultAvailable ? <small className={styles.ruleScope}>{language === "es" ? "Pasaporte completo de ciudadano británico · desde el Reino Unido · turismo" : "Full British citizen passport · from the UK · tourism"}</small> : null}</div>
+          <div><p>{t.resultEyebrow}</p><h2 id="passport-result-title"><span aria-hidden="true">{resultDestination?.flag ?? "🌐"}</span>{resultDestination?.name ?? result.destination}</h2><span>{resultNationality?.flag ?? "🌐"} {resultNationality ? passportCountryLabel(resultNationality) : result.nationality} <span aria-hidden="true">→</span> {resultDestination?.flag ?? "🌐"} {resultDestination?.name ?? result.destination}</span>{resultAvailable ? <small className={styles.ruleScope}>{language === "es" ? "Pasaporte completo de ciudadano británico · turismo" : "Full British citizen passport · tourism"}</small> : null}</div>
           <span className={`${styles.status} ${!resultAvailable ? styles.notVerified : ""}`}>{resultAvailable ? <BadgeCheck aria-hidden="true" /> : <BadgeHelp aria-hidden="true" />}{resultAvailable ? t.verified : result.requirement.informationState === "unsupported" ? t.unavailable : t.needsConfirmation}</span>
         </header>
         {resultAvailable ? <div className={styles.facts}>
@@ -198,7 +205,7 @@ export default function PassportDestinationClient() {
         <aside className={styles.provenance} aria-labelledby="passport-source-title">
           <Globe2 aria-hidden="true" />
           <div><p>{presentation.source.official ? t.official : t.sourceTitle}</p><h2 id="passport-source-title">{presentation.source.label ?? t.sourceTitle}</h2><span>{presentation.source.official ? t.sourceAvailable : t.sourceConfirm}</span></div>
-          <dl><div><dt>{t.snapshot}</dt><dd>{presentation.freshness ?? t.freshnessUnknown}</dd></div>{result.requirement.reviewDueAt ? <div><dt>{t.reviewDue}</dt><dd>{result.requirement.reviewDueAt}</dd></div> : null}</dl>
+          <dl><div><dt>{t.snapshot}</dt><dd>{checkedDateLabel(presentation.freshness, language) ?? t.freshnessUnknown}</dd></div></dl>
           {presentation.source.href ? <a href={presentation.source.href} target="_blank" rel="noreferrer">{t.open}<ExternalLink aria-hidden="true" /></a> : null}
         </aside>
       </section> : null}

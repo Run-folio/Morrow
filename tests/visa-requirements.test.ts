@@ -66,7 +66,9 @@ test("only the reviewed British citizen tourist pilot has dated, scoped entry an
     assert.equal(result.status, "visa-free", destination);
     assert.match(result.permittedStay, stay, destination);
     assert.match(result.sourceHref, source, destination);
-    assert.match(result.detail, /from the UK.*full British citizen passport.*tourism/i, destination);
+    assert.match(result.detail, /full British citizen passport/i, destination);
+    assert.match(result.detail, /tourism/i, destination);
+    assert.doesNotMatch(result.detail, /from the UK|departure point/i, destination);
     assert.equal(result.dataUpdatedAt, "2026-10-05", destination);
     assert.equal(result.reviewDueAt, "2026-11-04", destination);
     assert.ok(result.conditions.length > 0, destination);
@@ -85,7 +87,8 @@ test("reviewed and unverified answers remain understandable in Spanish", () => {
   const reviewed = touristEntryRequirementFor("GB", "UZ", "es", new Date("2026-10-05T12:00:00Z"));
   assert.equal(reviewed.informationState, "known");
   assert.match(reviewed.visaAnswer, /sin visado/i);
-  assert.match(reviewed.detail, /pasaporte completo de ciudadano británico.*turismo/i);
+  assert.match(reviewed.detail, /pasaporte completo de ciudadano británico/i);
+  assert.match(reviewed.detail, /turismo/i);
   const unverified = touristEntryRequirementFor("GT", "AU", "es");
   assert.equal(unverified.status, "not-verified");
   assert.match(unverified.detail, /no hemos verificado/i);
