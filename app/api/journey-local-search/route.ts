@@ -10,6 +10,7 @@ import {
   localSearchProviderOutcome,
   localSearchScope,
   localSearchPrimaryLanes,
+  providerResults,
 } from "@/lib/easyt/local-search-strategy";
 
 type OverpassElement = {
@@ -102,10 +103,10 @@ async function photonFallback(kind: "restaurant" | "stay", city: string, country
     next: { revalidate: 60 * 60 * 12 },
     signal: AbortSignal.timeout(5000),
   });
-  if (!response.ok) return [];
-  const data = await response.json() as { features?: PhotonPlace[] };
+  if (!response.ok) throw new Error("Fallback venue lookup unavailable");
+  const features = providerResults<PhotonPlace>(await response.json(), "features");
   const places: LocalPlace[] = [];
-  for (const place of data.features ?? []) {
+  for (const place of features) {
       const properties = place.properties ?? {};
       const [lon, lat] = place.geometry?.coordinates ?? [];
       const displayName = resolveOsmPlaceDisplayName(photonNameTags(properties), locale);
@@ -202,10 +203,10 @@ async function openStreetMapPlaces(kind: "restaurant" | "stay", city: string, co
     signal: AbortSignal.timeout(4500),
   });
   if (!response.ok) throw new Error("Local venue lookup unavailable");
-  const data = await response.json() as { elements?: OverpassElement[] };
+  const elements = providerResults<OverpassElement>(await response.json(), "elements");
   const seen = new Set<string>();
   const places: LocalPlace[] = [];
-  for (const place of data.elements ?? []) {
+  for (const place of elements) {
     const tags = place.tags ?? {};
     const lat = place.lat ?? place.center?.lat;
     const lon = place.lon ?? place.center?.lon;

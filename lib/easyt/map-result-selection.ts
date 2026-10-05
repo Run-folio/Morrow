@@ -355,6 +355,7 @@ export function mergeMapResults(
     const matchIndex = remaining.findIndex((candidate) => (
       candidate.kind === result.kind
       && (!candidate.stopId || !result.stopId || candidate.stopId === result.stopId)
+      && (candidate.dayNumber === null || result.dayNumber === null || candidate.dayNumber === result.dayNumber)
       && (candidate.sourceId === result.sourceId || Boolean(expectedPinId && candidate.persistedPinId === expectedPinId))
     ));
     if (matchIndex < 0) return result;
@@ -363,6 +364,12 @@ export function mergeMapResults(
       ...saved,
       ...result,
       selectionId: saved.selectionId,
+      sourceId: saved.canonicalItemId ? saved.sourceId : result.sourceId,
+      stopId: saved.stopId,
+      dayNumber: saved.dayNumber,
+      dayPart: saved.dayPart,
+      canonicalItemId: saved.canonicalItemId,
+      coordinates: saved.coordinates,
       state: saved.state,
       persistedPinId: saved.persistedPinId,
     };

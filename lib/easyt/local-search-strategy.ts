@@ -13,6 +13,14 @@ export type LocalSearchOutcome<Result> = {
 
 export const localSearchFallbackHedgeMs = 1_000;
 
+/** Only an explicit collection is evidence of a valid empty provider search. */
+export function providerResults<Result>(payload: unknown, key: string): Result[] {
+  if (!payload || typeof payload !== "object" || !Array.isArray((payload as Record<string, unknown>)[key])) {
+    throw new Error("Local venue provider returned an invalid response");
+  }
+  return (payload as Record<string, Result[]>)[key];
+}
+
 /** The mapped Trip Map and Stay finder cannot request Google Places facts for MapLibre. */
 export function localSearchPrimaryLanes<Result>(
   mapPresentation: "maplibre" | "none",

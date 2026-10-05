@@ -85,7 +85,8 @@ test("the finder remains mounted while selection drives the existing marker and 
   assert.match(workspace, /mapResults=\{mapResults\}/);
   assert.match(finder, /const choosePlace = \(place: JourneyLocalPlace\) => \{\s*setChosen\(place\);\s*onPlaceSelect\?\.\(place\);\s*\}/);
   assert.match(finder, /onClick=\{\(\) => \(onViewOnMap \?\? onPlaceSelect\)\(chosen\)\}/);
-  assert.match(map, /classList\.toggle\("is-active", marker\.getElement\(\)\.dataset\.mapResultId === selectedMapResult\?\.selectionId\)/);
+  assert.match(map, /element\.classList\.toggle\("is-active", selected\)/);
+  assert.match(map, /element\.setAttribute\("aria-pressed", String\(selected\)\)/);
   assert.match(map, /const selectedResult = selectedMapResult/);
   assert.match(map, /selectedResult[\s\S]*?focusMapCamera\(map as unknown as MapCamera, \{ center: target, zoom, offset \}\)/);
   assert.match(map, /planner-map__local-place[\s\S]*?interruptMapCamera\(map as unknown as MapCamera\)[\s\S]*?onMapResultSelectRef\.current\?\.\(place\)/);

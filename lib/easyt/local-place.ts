@@ -78,17 +78,18 @@ export function isJourneyLocalPlace(value: unknown): value is JourneyLocalPlace 
 }
 
 export function localSearchPayload(value: unknown) {
-  if (!isRecord(value) || !Array.isArray(value.places)) {
+  if (!isRecord(value) || !Array.isArray(value.places)
+    || (value.searchStatus !== "ready" && value.searchStatus !== "empty" && value.searchStatus !== "failed")) {
     return { places: [] as JourneyLocalPlace[], searchStatus: "failed" as const, unavailable: true };
   }
-  const places = value.places.filter(isJourneyLocalPlace);
-  const searchStatus = value.searchStatus === "ready" || value.searchStatus === "empty" || value.searchStatus === "failed"
-    ? value.searchStatus
-    : places.length ? "ready" : value.unavailable === true ? "failed" : "empty";
+  const searchStatus = value.searchStatus;
+  const validPlaces = value.places.filter(isJourneyLocalPlace);
+  const places = searchStatus === "ready" ? validPlaces : [];
   return {
     places,
     searchStatus,
-    unavailable: searchStatus === "failed" || value.unavailable === true || places.length !== value.places.length,
+    unavailable: searchStatus === "failed" || value.unavailable === true || validPlaces.length !== value.places.length
+      || (searchStatus === "ready" && places.length === 0) || (searchStatus === "empty" && value.places.length > 0),
   };
 }
 

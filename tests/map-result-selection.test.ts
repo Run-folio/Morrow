@@ -298,6 +298,40 @@ test("See keeps multiple distinct saved activities and projects each trustworthy
   assert.deepEqual(projection.results.filter((result) => result.kind === "see").map((result) => result.sourceId), ["sensoji", "meiji"]);
 });
 
+test("a discovered refresh cannot replace the canonical saved identity or coordinates", () => {
+  const trip = tripFixture();
+  const idea: ItineraryIdea = {
+    id: "hanoi-temple-idea", stopId: "tokyo", placeId: "temple-of-literature", title: "Temple of Literature",
+    category: "activity", coordinates: [105.835, 21.028], source: "personalised-recommendation", reasons: [],
+    dayId: "tokyo-day-1", dayPart: "morning",
+  };
+  trip.brief.itineraryIdeas = [idea];
+  const [persisted] = projectPersistedMapResults(JSON.parse(JSON.stringify(trip)) as EasyTTrip).results;
+  const discovery = mapResultForDiscoveryPlace({ id: idea.placeId, title: "Temple of Literature", area: "Hanoi", type: "Culture", coordinates: [105.84, 21.03] }, { stopId: "tokyo", dayNumber: 1 })!;
+  const [merged] = mergeMapResults([persisted!], [discovery], 1);
+  assert.equal(merged.selectionId, "idea:hanoi-temple-idea");
+  assert.equal(merged.canonicalItemId, idea.id);
+  assert.equal(merged.state, "scheduled");
+  assert.deepEqual(merged.coordinates, idea.coordinates);
+  assert.equal(merged.sourceId, idea.placeId);
+  assert.equal(mapResultForSourceAtStop([merged], "see", idea.placeId, "tokyo", 1), merged);
+});
+
+test("the same venue scheduled on another day remains a separate canonical item", () => {
+  const trip = tripFixture();
+  trip.planItems.push({ ...trip.planItems[0]!, id: "tokyo-day-2", dayNumber: 2, date: "2026-10-02" });
+  trip.brief.itineraryIdeas = [1, 2].map((dayNumber) => ({
+    id: `temple-day-${dayNumber}`, stopId: "tokyo", placeId: "temple", title: "Temple",
+    category: "activity" as const, coordinates: [139.71, 35.68] as [number, number],
+    dayId: `tokyo-day-${dayNumber}`, source: "personalised-recommendation" as const, reasons: [],
+  }));
+  const projected = projectPersistedMapResults(trip).results;
+  const current = mapResultForDiscoveryPlace({ id: "temple", title: "Temple", area: "Tokyo", type: "Culture", coordinates: [139.71, 35.68] }, { stopId: "tokyo", dayNumber: 2 })!;
+  const merged = mergeMapResults(projected, [current], 2);
+  assert.equal(merged.length, 2);
+  assert.equal(mapResultForSourceAtStop(merged, "see", "temple", "tokyo", 2)?.canonicalItemId, "temple-day-2");
+});
+
 test("only Stay asks the canonical mutation owner to replace a previous local choice", () => {
   const finder = readFileSync(new URL("../components/journey-local-finder.tsx", import.meta.url), "utf8");
   const workspace = readFileSync(new URL("../components/journey-map-planner-workspace.tsx", import.meta.url), "utf8");

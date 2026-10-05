@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 import { mapLibreCompatibleResults } from "../lib/easyt/map-result-selection.ts";
+import { localSearchPayload } from "../lib/easyt/local-place.ts";
 
 import {
   firstUsefulLocalSearchWithFallback,
@@ -9,6 +10,7 @@ import {
   localSearchProviderOutcome,
   localSearchScope,
   localSearchPrimaryLanes,
+  providerResults,
   type LocalSearchProviderOutcome,
 } from "../lib/easyt/local-search-strategy.ts";
 
@@ -68,7 +70,7 @@ test("MapLibre drops late Google facts while retaining canonical neutral referen
   ];
   assert.deepEqual(mapLibreCompatibleResults(results), [results[0], results[2]]);
   const map = source("components/journey-map-planner-workspace.tsx");
-  assert.match(map, /const selectedGooglePlaceId = googleCanvasActive && workspacePlaceSelection\.kind === "google"/);
+  assert.match(map, /const selectedGooglePlaceId = googlePlacesAvailable && workspacePlaceSelection\.kind === "google"/);
   assert.match(map, /const savedGoogleReferences = customTrip && selectedTripStop[\s\S]*googlePlaceReferenceIdeas\(customTrip\.brief\.itineraryIdeas\)[\s\S]*idea\.stopId === selectedTripStop\.id/);
   assert.match(map, /savedReferences=\{savedGoogleReferences\}/);
 });
@@ -113,6 +115,25 @@ test("fallback expansion is bounded and starts at most once", async () => {
 test("provider normalization never labels a thrown lookup as a valid empty", async () => {
   assert.deepEqual(await localSearchProviderOutcome(async () => []), { state: "empty", places: [] });
   assert.deepEqual(await localSearchProviderOutcome(async () => { throw new Error("offline"); }), { state: "failed", places: [] });
+});
+
+test("provider payloads distinguish an explicit empty collection from malformed or failed responses", async () => {
+  assert.deepEqual(providerResults({ elements: [] }, "elements"), []);
+  assert.deepEqual(providerResults({ features: [] }, "features"), []);
+  for (const payload of [{}, null, { elements: null }, { elements: {} }, { features: "broken" }]) {
+    assert.throws(() => providerResults(payload, "elements"));
+    assert.throws(() => providerResults(payload, "features"));
+  }
+});
+
+test("finder treats a broken API response as unavailable instead of zero places", () => {
+  assert.equal(localSearchPayload({ places: [] }).unavailable, true);
+  assert.equal(localSearchPayload({ places: [], searchStatus: "ready" }).unavailable, true);
+  assert.equal(localSearchPayload({ places: [], searchStatus: "empty" }).unavailable, false);
+  assert.equal(localSearchPayload({ places: [], searchStatus: "failed" }).unavailable, true);
+  const contradictory = localSearchPayload({ places: [{ id: "venue" }], searchStatus: "failed" });
+  assert.equal(contradictory.unavailable, true);
+  assert.deepEqual(contradictory.places, []);
 });
 
 test("restaurant and Stay scopes retain conservative compact-destination bounds", () => {

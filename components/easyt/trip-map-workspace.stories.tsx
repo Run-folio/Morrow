@@ -943,6 +943,71 @@ export const Mobile390EmptyResultsOpen: Story = {
   globals: { viewport: { value: "morrovia390", isRotated: false } },
 };
 
+const localMapReviewTrip = (id: string, name: string, country: string, coordinates: [number, number]): EasyTTrip => ({
+  ...trip,
+  id: `map-review-${id}`,
+  title: name,
+  brief: { ...trip.brief, origin: name, bookings: [], itineraryIdeas: [], mapPins: [] },
+  stops: [{ id, order: 0, name, country, latitude: coordinates[1], longitude: coordinates[0], arrivalDate: "2026-08-21", departureDate: "2026-08-24", nights: 3 }],
+  legs: [],
+  planItems: [{ ...day(1, id, `Explore ${name}`), id: `${id}-day-1` }],
+});
+const reviewPlace = (id: string, name: string, address: string, coordinates: [number, number], category: string): JourneyLocalPlace => ({
+  id, name, address, coordinates, category, provider: "openstreetmap", availability: "check",
+  mapsUrl: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(name)}`,
+});
+const siemReapReviewTrip = localMapReviewTrip("siem-reap", "Siem Reap", "Cambodia", [103.859, 13.362]);
+const hoiAnReviewTrip = localMapReviewTrip("hoi-an", "Hội An", "Vietnam", [108.338, 15.880]);
+const hanoiReviewTrip: EasyTTrip = {
+  ...localMapReviewTrip("hanoi", "Hanoi", "Vietnam", [105.834, 21.028]),
+  brief: {
+    ...trip.brief, origin: "Hanoi", bookings: [], mapPins: [], itineraryIdeas: [
+      { id: "hanoi-temple", stopId: "hanoi", placeId: "temple-of-literature", title: "Temple of Literature", category: "activity", coordinates: [105.8357, 21.0278], area: "Hanoi", placeType: "Historic site", source: "personalised-recommendation", reasons: [], dayId: "hanoi-day-1", dayPart: "morning" },
+      { id: "hanoi-palace", stopId: "hanoi", placeId: "presidential-palace", title: "Presidential Palace", category: "activity", coordinates: [105.8353, 21.0381], area: "Hanoi", placeType: "Historic site", source: "personalised-recommendation", reasons: [], dayId: "hanoi-day-1", dayPart: "afternoon" },
+      { id: "hanoi-lake", stopId: "hanoi", placeId: "hoan-kiem-lake", title: "Hoàn Kiếm Lake", category: "activity", coordinates: [105.8524, 21.0287], area: "Hanoi", placeType: "Park", source: "personalised-recommendation", reasons: [] },
+    ],
+  },
+};
+export const LocalSiemReapStay: Story = {
+  args: { storyTrip: siemReapReviewTrip, storyState: { mapMode: "detail", shapeDayTab: "stay", mobileShapeDayOpen: true, mobileDrawerOpen: true, localFinderInitialState: { corePlaces: [reviewPlace("siem-stay-a", "Riverside Guesthouse", "Siem Reap, Cambodia", [103.856, 13.360], "guest_house")], accommodationInventoryStatus: "unconfigured" } } },
+};
+export const LocalHoiAnEat: Story = {
+  args: { storyTrip: hoiAnReviewTrip, storyState: { mapMode: "detail", shapeDayTab: "eat", mobileShapeDayOpen: true, mobileDrawerOpen: true, localFinderInitialState: { corePlaces: [reviewPlace("hoi-eat-a", "Riverside Kitchen", "Hội An, Vietnam", [108.339, 15.879], "restaurant")], accommodationInventoryStatus: "not-requested" } } },
+};
+export const LocalHoiAnStay: Story = {
+  args: { storyTrip: hoiAnReviewTrip, storyState: { mapMode: "detail", shapeDayTab: "stay", mobileShapeDayOpen: true, mobileDrawerOpen: true, localFinderInitialState: { corePlaces: [reviewPlace("hoi-stay-a", "Old Town Guesthouse", "Hội An, Vietnam", [108.337, 15.881], "guest_house")], accommodationInventoryStatus: "unconfigured" } } },
+};
+export const LocalHoiAnUnavailable: Story = {
+  args: { storyTrip: hoiAnReviewTrip, storyState: { mapMode: "detail", shapeDayTab: "eat", mobileShapeDayOpen: true, mobileDrawerOpen: true, localFinderInitialState: { corePlaces: [], coreUnavailable: true, accommodationInventoryStatus: "not-requested" } } },
+};
+export const LocalHoiAnEmpty: Story = {
+  args: { storyTrip: hoiAnReviewTrip, storyState: { mapMode: "detail", shapeDayTab: "eat", mobileShapeDayOpen: true, mobileDrawerOpen: true, localFinderInitialState: { corePlaces: [], accommodationInventoryStatus: "not-requested" } } },
+};
+const hoiAnRetryDecorator = (Story: () => ReactNode) => {
+  const fetchFromStory = window.fetch.bind(window);
+  let attempts = 0;
+  window.fetch = async (input, init) => {
+    const url = new URL(typeof input === "string" ? input : input instanceof URL ? input.href : input.url, window.location.href);
+    if (url.pathname !== "/api/journey-local-search") return fetchFromStory(input, init);
+    attempts += 1;
+    return new Response(JSON.stringify(attempts === 1
+      ? { places: [], searchStatus: "failed", unavailable: true }
+      : { places: [reviewPlace("hoi-retry-eat", "Old Town Kitchen", "Hội An, Vietnam", [108.341, 15.878], "restaurant")], searchStatus: "ready" }),
+    { status: 200, headers: { "Content-Type": "application/json" } });
+  };
+  return <Story />;
+};
+export const LocalHoiAnRetry: Story = {
+  args: { storyTrip: hoiAnReviewTrip, storyState: { mapMode: "detail", shapeDayTab: "eat", mobileShapeDayOpen: true, mobileDrawerOpen: true } },
+  decorators: [hoiAnRetryDecorator],
+};
+export const LocalHanoiPlanned: Story = {
+  args: { storyTrip: hanoiReviewTrip, storyState: { mapMode: "detail", shapeDayTab: "see", selectedMapResultId: "idea:hanoi-temple" } },
+};
+export const LocalHanoiPlan: Story = {
+  args: { storyTrip: hanoiReviewTrip, storyState: { mapMode: "detail", shapeDayTab: "plan", mobileShapeDayOpen: true, mobileDrawerOpen: true } },
+};
+
 export const Mobile390SelectedDetailOpen: Story = {
   ...DetailedBasemap,
   args: { storyTrip: goldenTriangleTrip, storyState: { mapMode: "detail", localPlaces: [{ ...providerPlaces.hotel, description: "A restored heritage stay close to Old Delhi's historic lanes. Check current room availability, access and cancellation terms before booking. The map selection keeps this property linked to its existing detail and to the correct Delhi stop." }], selectedLocalPlaceId: providerPlaces.hotel.id, mobileDrawerOpen: true } },

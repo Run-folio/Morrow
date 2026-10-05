@@ -30,13 +30,14 @@
 .surface :global(.planner-map__place.is-preview){z-index:4!important;width:52px;height:52px;outline:5px solid var(--morrovia-signal);outline-offset:3px}
 .surface :global(.planner-map__place:focus-visible){outline:5px solid var(--morrovia-focus-ring);outline-offset:4px}
 .surface[data-basemap-status] :global(.planner-map__place.is-active){z-index:600!important}
-.surface :global(.planner-map__local-place){display:inline-flex;min-width:54px;min-height:32px;align-items:center;justify-content:center;gap:5px;padding:0 10px;color:var(--morrovia-ink);background:var(--morrovia-paper);border:1px solid var(--morrovia-line);/* morrovia-ui-audit-allow-next-line raw-radius -- MapLibre place pins use a pill silhouette to distinguish them from compact rectangular controls */
+.surface :global(.planner-map__local-place){display:inline-flex;box-sizing:border-box;min-width:54px;min-height:44px;align-items:center;justify-content:center;gap:5px;padding:0 10px;color:var(--morrovia-paper);background:var(--morrovia-signal);border:2px solid var(--morrovia-paper);touch-action:manipulation;/* morrovia-ui-audit-allow-next-line raw-radius -- MapLibre place pins use a pill silhouette to distinguish them from compact rectangular controls */
 border-radius:999px;box-shadow:var(--morrovia-map-marker-shadow);font:750 9px var(--morrovia-ui);cursor:pointer;transition:transform .18s,border-color .18s,color .18s,background .18s,box-shadow .18s}
-.surface :global(.planner-map__local-place svg){width:14px;height:14px;flex:none;color:var(--morrovia-signal);stroke-width:2}
-.surface :global(.planner-map__local-place:hover),.surface :global(.planner-map__local-place:focus-visible){outline:0;border-color:var(--morrovia-signal);color:var(--morrovia-signal);box-shadow:var(--morrovia-focus-shadow),var(--morrovia-map-marker-shadow);transform:translateY(-2px)}
-.surface :global(.planner-map__local-place.is-preview){outline:0;border-color:var(--morrovia-signal);color:var(--morrovia-signal);box-shadow:var(--morrovia-focus-shadow),var(--morrovia-map-marker-shadow);transform:translateY(-2px)}
-.surface :global(.planner-map__local-place.is-active){color:var(--morrovia-paper);background:var(--morrovia-signal);border-color:var(--morrovia-paper);box-shadow:var(--morrovia-focus-shadow),var(--morrovia-map-marker-shadow);transform:translateY(-4px)}
-.surface :global(.planner-map__local-place.is-active svg){color:var(--morrovia-paper)}
+.surface :global(.planner-map__local-place svg){width:14px;height:14px;flex:none;color:inherit;stroke-width:2}
+.surface :global(.planner-map__local-place.is-scheduled){color:var(--morrovia-paper);background:var(--morrovia-ink);border-color:var(--morrovia-paper)}
+.surface :global(.planner-map__local-place.is-saved){color:var(--morrovia-ink);background:var(--morrovia-paper);border-color:var(--morrovia-ink)}
+.surface :global(.planner-map__local-place:hover),.surface :global(.planner-map__local-place.is-preview){z-index:3!important;box-shadow:var(--morrovia-focus-shadow),var(--morrovia-map-marker-shadow);transform:translateY(-2px)}
+.surface :global(.planner-map__local-place.is-active){z-index:4!important;box-shadow:var(--morrovia-focus-shadow),var(--morrovia-map-marker-shadow);transform:translateY(-4px)}
+.surface :global(.planner-map__local-place:focus-visible){z-index:5!important;outline:3px solid var(--morrovia-focus-ring);outline-offset:4px}
 .surface :global(.planner-map__google-overlays){overflow:hidden}
 .surface :global(.planner-map__place-choices){display:grid;gap:4px;max-width:min(280px,calc(100vw - 32px));max-height:min(280px,calc(100vh - 120px));overflow:auto;padding:6px;border:1px solid var(--morrovia-line);border-radius:var(--morrovia-control-radius);background:var(--morrovia-paper);box-shadow:var(--morrovia-map-marker-shadow)}
 .surface :global(.planner-map__place-choices button){min-height:44px;padding:8px 12px;border:0;border-radius:var(--morrovia-control-radius);background:var(--morrovia-paper);color:var(--morrovia-ink);font:var(--morrovia-type-control);text-align:left;cursor:pointer}

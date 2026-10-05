@@ -885,16 +885,17 @@ export function JourneyPlannerMap({
       localPlaceMarkersRef.current = mapResults.map((place) => {
         const element = document.createElement("button");
         element.type = "button";
-        element.className = `planner-map__local-place is-${place.kind} ${place.selectionId === selectedMapResult?.selectionId ? "is-active" : ""} ${place.selectionId === previewedMapResultId ? "is-preview" : ""}`;
+        element.className = `planner-map__local-place is-${place.kind} is-${place.state} ${place.selectionId === selectedMapResult?.selectionId ? "is-active" : ""} ${place.selectionId === previewedMapResultId ? "is-preview" : ""}`;
         element.dataset.mapResultId = place.selectionId;
-        element.setAttribute("aria-label", `Show ${place.name}`);
-        element.title = `Show ${place.name}`;
+        element.setAttribute("aria-label", `Show ${place.name}, ${place.state === "scheduled" ? "Planned" : place.state === "saved" ? "Saved" : "result"}`);
+        element.setAttribute("aria-pressed", String(place.selectionId === selectedMapResult?.selectionId));
+        element.title = `${place.name} · ${place.state === "scheduled" ? "Planned" : place.state === "saved" ? "Saved" : "result"}`;
         element.addEventListener("pointerenter", () => onPreviewMapResultRef.current?.(place));
         element.addEventListener("pointerleave", () => onPreviewMapResultRef.current?.(null));
         element.addEventListener("focus", () => onPreviewMapResultRef.current?.(place));
         element.addEventListener("blur", () => onPreviewMapResultRef.current?.(null));
         const PlaceIcon = place.kind === "stay" ? BedDouble : place.kind === "eat" ? Utensils : Landmark;
-        element.innerHTML = renderToStaticMarkup(<><PlaceIcon aria-hidden="true" /><span>{place.price ? `${place.price.currency} ${Math.round(place.price.total)}` : place.kind === "stay" ? "Stay" : place.kind === "eat" ? "Eat" : "See"}</span></>);
+        element.innerHTML = renderToStaticMarkup(<><PlaceIcon aria-hidden="true" /><span>{place.state === "scheduled" ? "Planned" : place.state === "saved" ? "Saved" : place.price ? `${place.price.currency} ${Math.round(place.price.total)}` : place.kind === "stay" ? "Stay" : place.kind === "eat" ? "Eat" : "See"}</span></>);
         bindMapMarkerActivation(element, () => { interruptMapCamera(map as unknown as MapCamera); currentCameraRequestRef.current = null; onMapResultSelectRef.current?.(place); });
         return new maplibregl.Marker({ element, anchor: "bottom" }).setLngLat(place.coordinates).addTo(map);
       });
@@ -910,7 +911,12 @@ export function JourneyPlannerMap({
   }, [domainSelection, mapResults]);
 
   useEffect(() => {
-    localPlaceMarkersRef.current.forEach((marker) => marker.getElement().classList.toggle("is-active", marker.getElement().dataset.mapResultId === selectedMapResult?.selectionId));
+    localPlaceMarkersRef.current.forEach((marker) => {
+      const element = marker.getElement();
+      const selected = element.dataset.mapResultId === selectedMapResult?.selectionId;
+      element.classList.toggle("is-active", selected);
+      element.setAttribute("aria-pressed", String(selected));
+    });
   }, [selectedMapResult?.selectionId]);
 
   useEffect(() => {
