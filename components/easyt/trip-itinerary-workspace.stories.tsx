@@ -873,6 +873,33 @@ export const CalendarAttributedPhoto: Story = {
     selectedDayNumber: 1,
   },
 };
+export const CalendarRealArrivalTransfer: Story = {
+  ...Calendar,
+  args: {
+    trip: {
+      ...tokyoHierarchyTrip,
+      id: "storybook-calendar-real-arrival-transfer",
+      brief: { ...tokyoHierarchyTrip.brief, origin: "London" },
+      planItems: tokyoHierarchyTrip.planItems.map((item) => item.dayNumber === 1 ? { ...item, title: "Arrive in Tokyo" } : item),
+      legs: [{
+        id: "storybook-arrival-london-tokyo",
+        fromStopId: "storybook-calendar-real-arrival-transfer-origin",
+        toStopId: "cusco",
+        classification: "arrival",
+        mode: "flight",
+        distanceKm: 9500,
+        durationMinutes: 900,
+        doorToDoorMinutes: 1020,
+        provider: "Planning estimate",
+        provenance: "planning_estimate",
+        confidence: "medium",
+        routeMetadata: {},
+        fromEndpoint: { kind: "origin", id: "storybook-calendar-real-arrival-transfer-origin", name: "London", country: "United Kingdom", coordinates: [-0.1276, 51.5072] },
+        toEndpoint: { kind: "stop", id: "cusco", name: "Tokyo", country: "Japan", coordinates: [139.7034, 35.6938] },
+      }, ...tokyoHierarchyTrip.legs],
+    },
+  },
+};
 export const CalendarActivityDrag: Story = {
   ...RichDayPlannerIntegrated,
   args: {

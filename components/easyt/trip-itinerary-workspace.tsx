@@ -2050,7 +2050,7 @@ function ItineraryCalendar({ weeks, selectedDayId, copy, language, dragItem, nat
           >
             <span><time dateTime={day.day.date}>{displayDayDate(day.day.date, language)}</time><i>{pad(day.day.dayNumber)}</i></span>
             <strong>{day.stop?.name ?? day.day.title}</strong>
-            {day.day.type === "open" && day.items.length === 0 ? null : <small>{planItemLabel(day.day.type, language)}</small>}
+            {day.day.type === "arrival" || (day.day.type === "open" && day.items.length === 0) ? null : <small>{planItemLabel(day.day.type, language)}</small>}
             {day.departure || (day.arrival && !hasCalendarArrivalEvent(day)) ? <em>{[day.arrival && !hasCalendarArrivalEvent(day) ? copy.arrival : null, day.departure ? copy.departure : null].filter(Boolean).join(" · ")}</em> : null}
           </EasyTButton>
           {day.items.length ? <ul className={styles.calendarItems}>
