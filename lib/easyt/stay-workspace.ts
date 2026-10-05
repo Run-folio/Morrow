@@ -2,6 +2,7 @@ import { legacyItineraryIdeas } from "./trip.ts";
 import { stayBookingForStop } from "./accommodation.ts";
 import type { JourneyLocalPlace } from "./local-place.ts";
 import { mergeLocalFinderPlaces } from "./local-finder-query.ts";
+import { mappedPlacePinId } from "./map-place-itinerary.ts";
 import { formatIsoDate } from "./trip-lifecycle.ts";
 import { stableStopDateRange } from "./trip-facts.ts";
 import type { EasyTTrip, TripStop } from "./trip.ts";
@@ -175,5 +176,15 @@ export function stayCandidateFit(place: JourneyLocalPlace, context: StayWorkspac
 
 export function stayIsSelected(trip: EasyTTrip, context: StayWorkspaceContext, place: JourneyLocalPlace) {
   const booking = stayBookingForStop(trip, context.stop);
-  return Boolean(booking && booking.title.trim().toLocaleLowerCase() === place.name.trim().toLocaleLowerCase());
+  if (!booking || booking.title.trim().toLocaleLowerCase() !== place.name.trim().toLocaleLowerCase()) return false;
+  const stopDays = trip.planItems.filter((day) => day.stopId === context.stop.id);
+  const dayNumbers = new Set(stopDays.map((day) => day.dayNumber));
+  const firstDay = [...stopDays].sort((left, right) => left.dayNumber - right.dayNumber)[0];
+  if (!firstDay) return false;
+  const expectedPinId = mappedPlacePinId(firstDay.dayNumber, "stay", place);
+  return (trip.brief.mapPins ?? []).some((pin) => pin.category === "stay" && dayNumbers.has(pin.dayNumber)
+    && (pin.id === expectedPinId
+      || (pin.title.trim().toLocaleLowerCase() === place.name.trim().toLocaleLowerCase()
+        && Math.abs(pin.longitude - place.coordinates[0]) < 0.00001
+        && Math.abs(pin.latitude - place.coordinates[1]) < 0.00001)));
 }

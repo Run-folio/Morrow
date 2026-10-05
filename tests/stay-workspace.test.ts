@@ -7,7 +7,7 @@ import { accommodationInventoryPayload, type JourneyLocalPlace } from "../lib/ea
 import { mergeLocalFinderPlaces } from "../lib/easyt/local-finder-query.ts";
 import { mapResultForLocalPlace, mapResultSelectionId } from "../lib/easyt/map-result-selection.ts";
 import { recommendationDetailForMapResult, recommendationDetailForStayResult } from "../lib/easyt/recommendation-detail.ts";
-import { isStayCandidate, rankedStayShortlist, stayAreaGuidance, stayCandidateFit, stayWorkspaceContext } from "../lib/easyt/stay-workspace.ts";
+import { isStayCandidate, rankedStayShortlist, stayAreaGuidance, stayCandidateFit, stayIsSelected, stayWorkspaceContext } from "../lib/easyt/stay-workspace.ts";
 import type { EasyTTrip } from "../lib/easyt/trip.ts";
 
 function tripFixture(): EasyTTrip {
@@ -207,6 +207,17 @@ test("saving a stay is stop-scoped and never schedules it as a daypart activity"
   const removed = removeMappedStayForStop(returned, "tokyo-first", mappedHotel());
   assert.equal(stayBookingForStop(removed, removed.stops[0]!), undefined);
   assert.equal(stayBookingForStop(removed, removed.stops[2]!)?.title, "Return Hotel");
+});
+
+test("chosen state belongs to the exact mapped property when nearby hotels share a name", () => {
+  const trip = tripFixture();
+  const east = mappedHotel({ id: "garden-east", name: "Garden Hotel", address: "Shinjuku East, Tokyo", coordinates: [139.712, 35.684] });
+  const west = mappedHotel({ id: "garden-west", name: "Garden Hotel", address: "Shinjuku West, Tokyo", coordinates: [139.703, 35.69] });
+  const saved = selectMappedStayForStop(trip, "tokyo-first", east);
+  const context = stayWorkspaceContext(saved, "tokyo-first")!;
+  assert.equal(stayIsSelected(saved, context, east), true);
+  assert.equal(stayIsSelected(saved, context, west), false);
+  assert.equal(stayIsSelected(trip, stayWorkspaceContext(trip, "tokyo-first")!, east), false);
 });
 
 test("fit copy keeps distance truthful and concise without inventing neighbourhood or travel-time claims", () => {
