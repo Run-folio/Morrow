@@ -156,7 +156,7 @@ test("day suggestions lead retained cross-destination intentions with a three-re
   const savedIndex = itinerary.indexOf("<SavedIdeasSection", suggestionIndex);
   assert.ok(suggestionIndex > -1 && suggestionIndex < explicitIndex && explicitIndex < savedIndex);
   assert.match(itinerary, /<ItineraryDaySuggestions[\s\S]*previewLimit=\{3\}/);
-  assert.match(itinerary, /const displayedResults = previewLimit === undefined \? results : results\.slice\(0, previewLimit\)/);
+  assert.match(itinerary, /const displayedResults = previewLimit === undefined \? results\.slice\(0, 8\) : results\.slice\(0, previewLimit\)/);
   assert.match(itinerary, /displayedResults\.map\(\(result\) =>/);
   assert.match(itinerary, /key=\{`\$\{workingTrip\.id\}-\$\{active\.id\}`\}/);
 });

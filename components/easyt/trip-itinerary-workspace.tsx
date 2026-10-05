@@ -104,7 +104,8 @@ import { MorroviaPartnerPromotion } from "@/components/easyt/partner-promotion";
 import TripExplicitPlans from "@/components/easyt/trip-explicit-plans";
 import { removeExplicitVisitIntent, removeFixedCommitment, scheduleExplicitVisitIntent } from "@/lib/easyt/trip-explicit-plans";
 import type { ActivityInventoryItem } from "@/lib/easyt/activity-inventory";
-import { dedupeExploreResults, exploreResultForActivity, exploreResultForIdea, exploreResultForPlace, type ExploreResult } from "@/lib/easyt/explore";
+import { dedupeExploreResults, exploreResultForActivity, exploreResultForIdea, exploreResultForLocalPlace, exploreResultForPlace, type ExploreLocalPlace, type ExploreResult } from "@/lib/easyt/explore";
+import { discoveryCategoryMatches } from "@/lib/easyt/discovery-taxonomy";
 import { rankItineraryRecommendations } from "@/lib/easyt/itinerary-recommendations";
 import { recommendationDurationMs } from "@/lib/easyt/recommendation-performance";
 import { activityAllowsDayPart, activityDayPartFit } from "@/lib/easyt/itinerary-schedule-awareness";
@@ -539,10 +540,12 @@ export default function TripItineraryWorkspace({
     window.history.pushState(window.history.state, "", url);
   };
   const setSelectedIndex = (dayIndex: number) => {
+    setAddFlow(null);
     updateSelectedIndex(dayIndex);
     writeOrientation(dayIndex, workspaceView);
   };
   const setWorkspaceView = (view: "days" | "calendar") => {
+    setAddFlow(null);
     updateWorkspaceView(view);
     writeOrientation(selectedIndex, view);
   };
@@ -957,6 +960,8 @@ export default function TripItineraryWorkspace({
   const selectedCalendarDay = calendarWeeks.flatMap((week) => week.days).find((day) => day?.id === active.id) ?? null;
 
   const openAddFlow = (noteIndex: number, kind: AddFlow["kind"] = "activity", dayPart?: ItineraryDayPart) => {
+    setSelectedItemId(null);
+    setSelectedRecommendation(null);
     setAddFlow({ dayNumber: active.dayNumber, noteIndex, kind, dayPart });
     setAddDraft("");
     setAddError("");
@@ -1444,10 +1449,6 @@ export default function TripItineraryWorkspace({
         {workspaceView === "days" && dayComposition ? <div ref={itineraryPlannerOrientationTarget} className={styles.details} aria-busy={dayPending || undefined}>
           <RichItineraryDayPlanner
             composition={dayComposition}
-            addComposerDayPart={addFlow?.dayNumber === active.dayNumber && addFlow.kind === "activity" ? addFlow.dayPart ?? null : null}
-            addComposerOpen={addFlow?.dayNumber === active.dayNumber && addFlow.kind === "activity"}
-            addDraft={addDraft}
-            addError={addError}
             ideasHref={mapIdeasHref}
             language={language}
             onAddOpen={(dayPart) => openAddFlow(active.notes.length, "activity", dayPart)}
@@ -1458,9 +1459,6 @@ export default function TripItineraryWorkspace({
               suggestions.querySelector("summary")?.focus();
               suggestions.scrollIntoView({ block: "nearest" });
             }}
-            onAddDraftChange={(value) => { setAddDraft(value); setAddError(""); }}
-            onAddCancel={() => { setAddFlow(null); setAddDraft(""); setAddError(""); }}
-            onAddSubmit={submitAddFlow}
             onDayPartChange={changeActivityDayPart}
             onMoveActivity={moveComposedActivity}
             onMoveToDay={(activity, trigger) => openMoveFlow(activity, active.id, trigger)}
@@ -1678,6 +1676,12 @@ export default function TripItineraryWorkspace({
             initialActivityInventory={initialActivityInventory?.[active.dayNumber]}
             experienceAction={stop ? experienceAction : null}
             previewLimit={3}
+            addPart={addFlow?.dayNumber === active.dayNumber && addFlow.kind === "activity" ? addFlow.dayPart ?? null : null}
+            addDraft={addDraft}
+            addError={addError}
+            onAddDraftChange={(value) => { setAddDraft(value); setAddError(""); }}
+            onAddCancel={() => { setAddFlow(null); setAddDraft(""); setAddError(""); }}
+            onAddSubmit={submitAddFlow}
             isPending={(placeId) => mutation.isPending(`itinerary-suggestion-${active.stopId}-${placeId}`)}
             onSave={(idea) => {
               const accepted = mutation.mutateTrip((current) => saveItineraryIdea(current, idea), `itinerary-suggestion-${idea.stopId}-${idea.placeId}`);
@@ -2095,7 +2099,7 @@ function OmioTransportAction({ action, trip, leg }: { action: ResolvedAffiliateA
   </div>;
 }
 
-function ItineraryDaySuggestions({ trip, day, stop, copy, language, initialPlaces, initialActivityInventory, experienceAction, previewLimit, isPending, onSave, onSchedule, onRemove, onOpenDetail, selectedResultId, onSelectedDetailRefresh, draggingIdeaId, onDragStart, onDragEnd, onInteractionReset }: {
+function ItineraryDaySuggestions({ trip, day, stop, copy, language, initialPlaces, initialActivityInventory, experienceAction, previewLimit, addPart, addDraft, addError, onAddDraftChange, onAddCancel, onAddSubmit, isPending, onSave, onSchedule, onRemove, onOpenDetail, selectedResultId, onSelectedDetailRefresh, draggingIdeaId, onDragStart, onDragEnd, onInteractionReset }: {
   trip: EasyTTrip;
   day: PlanItem;
   stop: TripStop | null;
@@ -2105,6 +2109,12 @@ function ItineraryDaySuggestions({ trip, day, stop, copy, language, initialPlace
   initialActivityInventory?: ActivityInventoryItem[];
   experienceAction?: ResolvedAffiliateAction | null;
   previewLimit?: number;
+  addPart: ItineraryDayPart | null;
+  addDraft: string;
+  addError: string;
+  onAddDraftChange: (value: string) => void;
+  onAddCancel: () => void;
+  onAddSubmit: () => void;
   isPending: (placeId: string) => boolean;
   onSave: (idea: ItineraryIdea) => boolean;
   onSchedule: (idea: ItineraryIdea, dayId: string, dayPart?: ItineraryDayPart | null) => boolean;
@@ -2124,9 +2134,69 @@ function ItineraryDaySuggestions({ trip, day, stop, copy, language, initialPlace
   const [retryVersion, setRetryVersion] = useState(0);
   const [error, setError] = useState("");
   const [openPickerId, setOpenPickerId] = useState<string | null>(null);
+  const [localPlaces, setLocalPlaces] = useState<ExploreLocalPlace[]>([]);
+  const [foodStatus, setFoodStatus] = useState<"idle" | "loading" | "ready" | "error">("idle");
+  const [addCategory, setAddCategory] = useState<"for-you" | "must-see" | "culture" | "tours" | "outdoors" | "food">("for-you");
+  const [addQuery, setAddQuery] = useState("");
+  const [addResultError, setAddResultError] = useState("");
+  const addDialogRef = useRef<HTMLDialogElement>(null);
+  const addOriginRef = useRef<HTMLElement | null>(null);
   const interactionResetRef = useRef(onInteractionReset);
   interactionResetRef.current = onInteractionReset;
   const interests = tripIntentForTrip(trip).preferences.interests;
+  const addLabels = language === "es" ? {
+    title: "Añadir plan", close: "Cerrar", search: "Buscar ideas", own: "Añade el tuyo", add: "Añadir", save: "Guardar para después", saved: "Guardado para después",
+    categories: { "for-you": "Para ti", "must-see": "Imprescindibles", culture: "Cultura", tours: "Excursiones", outdoors: "Naturaleza", food: "Comida y bebida" },
+    finding: "Buscando ideas", findingDetail: "Según este destino y tus intereses.", empty: "No hay ideas que coincidan. Prueba otra categoría o añade la tuya.", foodError: "No hay sugerencias de comida ahora. Puedes añadir un lugar tú mismo.", addError: "No se pudo añadir este plan.", saveError: "No se pudo guardar esta idea.", rating: "valoración", planOnly: "Solo planificación",
+  } : {
+    title: "Add a plan", close: "Close", search: "Search ideas", own: "Add your own", add: "Add", save: "Save for later", saved: "Saved for later",
+    categories: { "for-you": "For you", "must-see": "Must-see", culture: "Culture", tours: "Tours", outdoors: "Nature / outdoors", food: "Food & drink" },
+    finding: "Finding ideas", findingDetail: "Using this destination and your trip interests.", empty: "No matching ideas yet. Search another category or add your own.", foodError: "Food ideas are unavailable right now. You can still add your own place.", addError: "This plan could not be added safely.", saveError: "This idea could not be saved safely.", rating: "rating", planOnly: "Plan only",
+  };
+
+  useEffect(() => {
+    const dialog = addDialogRef.current;
+    if (!dialog) return;
+    if (addPart && !dialog.open) {
+      addOriginRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+      setAddCategory(addPart === "evening" ? "food" : "for-you");
+      setAddQuery("");
+      setAddResultError("");
+      dialog.showModal();
+      window.requestAnimationFrame(() => dialog.querySelector<HTMLInputElement>("[data-add-search]")?.focus());
+    } else if (!addPart && dialog.open) {
+      dialog.close();
+      window.requestAnimationFrame(() => addOriginRef.current?.focus());
+    }
+  }, [addPart]);
+
+  useEffect(() => {
+    if (!addPart || addCategory !== "food" || foodStatus !== "idle" || !stop) return;
+    if (stop.latitude === null || stop.longitude === null) {
+      setFoodStatus("ready");
+      return;
+    }
+    const scope = createAbortableEffectScope(`Food ideas for ${stop.name}`);
+    const query = new URLSearchParams({ city: stop.name, country: stop.country, kind: "restaurant", lat: String(stop.latitude), lon: String(stop.longitude), locale: language });
+    if (stop.canonicalPlaceId) query.set("canonicalPlaceId", stop.canonicalPlaceId);
+    setFoodStatus("loading");
+    void fetch(`/api/journey-local-search?${query}`, { signal: scope.signal })
+      .then(async (response) => {
+        if (!response.ok) throw new Error("Restaurant discovery unavailable");
+        return response.json() as Promise<{ places?: ExploreLocalPlace[]; unavailable?: boolean }>;
+      })
+      .then((payload) => {
+        if (payload.unavailable) throw new Error("Restaurant discovery unavailable");
+        scope.commit(() => { setLocalPlaces(payload.places ?? []); setFoodStatus("ready"); });
+      })
+      .catch((caught: unknown) => {
+        if (!scope.isCancellation(caught)) scope.commit(() => setFoodStatus("error"));
+      });
+    return () => {
+      scope.dispose();
+      setFoodStatus((current) => current === "loading" ? "idle" : current);
+    };
+  }, [addPart, addCategory, language, stop?.id]);
 
   useEffect(() => {
     if (initialPlaces) {
@@ -2229,9 +2299,27 @@ function ItineraryDaySuggestions({ trip, day, stop, copy, language, initialPlace
     if (!stop) return [];
     const organic = itinerarySuggestionCandidates(trip, day, places).map((place) => exploreResultForPlace(stop, place, interests));
     const commercial = inventory.map((item) => exploreResultForActivity(stop, item, trip));
-    return rankItineraryRecommendations(trip, day, dedupeExploreResults([...organic, ...commercial])).slice(0, 8);
+    return rankItineraryRecommendations(trip, day, dedupeExploreResults([...organic, ...commercial]));
   }, [day, interests, inventory, places, stop, trip]);
-  const displayedResults = previewLimit === undefined ? results : results.slice(0, previewLimit);
+  const displayedResults = previewLimit === undefined ? results.slice(0, 8) : results.slice(0, previewLimit);
+  const addResults = useMemo(() => {
+    if (!stop || !addPart) return [];
+    const local = localPlaces.map((place) => exploreResultForLocalPlace(stop, place));
+    const all = dedupeExploreResults([...results, ...local]).filter((result) => {
+      const state = ideaStateForPlace(trip, stop.id, result.idea.placeId);
+      if (state.state === "planned") return false;
+      if (!activityAllowsDayPart(result.idea.providerMetadata?.duration, addPart)) return false;
+      if (addCategory === "culture") return /museum|gallery|historic|culture|temple|heritage|theatre|theater/i.test([result.title, result.category, ...result.tags].join(" "));
+      return discoveryCategoryMatches(result, addCategory);
+    });
+    const searched = addQuery.trim().toLocaleLowerCase();
+    const matches = searched ? all.filter((result) => [result.title, result.category, result.location, ...result.tags].join(" ").toLocaleLowerCase().includes(searched)) : all;
+    return rankItineraryRecommendations(trip, day, matches, addPart).sort((left, right) => {
+      if (addCategory !== "food") return 0;
+      const bias = (result: ExploreResult) => /cafe|coffee|market|lunch/i.test([result.title, result.category].join(" ")) ? 1 : /dinner|restaurant/i.test([result.title, result.category].join(" ")) ? -1 : 0;
+      return addPart === "evening" ? bias(left) - bias(right) : bias(right) - bias(left);
+    });
+  }, [addCategory, addPart, addQuery, day, localPlaces, results, stop, trip]);
   useEffect(() => {
     if (!selectedResultId) return;
     const current = results.find((result) => result.identity === selectedResultId);
@@ -2246,9 +2334,53 @@ function ItineraryDaySuggestions({ trip, day, stop, copy, language, initialPlace
   const experienceFallback = stop && experienceAction && commercialStatus !== "loading" && !hasLiveViatorProduct
     ? <CompactExperienceHandoff action={experienceAction} tripId={trip.id} stopId={stop.id} />
     : null;
-  if (!results.length && loading) return <div className={styles.suggestionStatus}><MorroviaSectionStatus title={copy.suggestionsLoading} detail={copy.suggestionsLoadingDetail} /></div>;
-  if (unavailable) return <><div className={styles.suggestionStatus}><MorroviaSectionStatus compact state="error" title={copy.suggestionsUnavailable} detail="Your saved day is unchanged." retryLabel="Try suggestions again" onRetry={() => { onInteractionReset(); setRetryVersion((current) => current + 1); }} /></div>{experienceFallback}</>;
-  if (!results.length) return <><p className={styles.suggestionEmpty}>{copy.noNewSuggestions}</p>{experienceFallback}</>;
+  const contextualDialog = <dialog
+    ref={addDialogRef}
+    className={styles.contextualAddDialog}
+    aria-label={addPart ? language === "es" ? `Añadir a ${itineraryDayPartLabels[language][addPart]} en el día ${day.dayNumber}` : `Add to ${itineraryDayPartLabels[language][addPart]} on Day ${day.dayNumber}` : addLabels.title}
+    onCancel={(event) => { event.preventDefault(); onAddCancel(); }}
+    onClick={(event) => { if (event.target === event.currentTarget) onAddCancel(); }}
+  >
+    <div className={styles.contextualAddBody}>
+      <header className={styles.contextualAddHeader}>
+        <div><p>{copy.day} {day.dayNumber} · {stop?.name ?? day.title} · {addPart ? itineraryDayPartLabels[language][addPart] : ""}</p><h2>{addLabels.title}</h2></div>
+        <EasyTButton variant="quiet" size="small" icon={X} aria-label={language === "es" ? "Cerrar panel" : "Close Add panel"} onClick={onAddCancel}>{addLabels.close}</EasyTButton>
+      </header>
+      <EasyTField label={addLabels.search} data-add-search="true" value={addQuery} onChange={(event) => setAddQuery(event.target.value)} />
+      <div className={styles.contextualAddCategories} aria-label={language === "es" ? "Categorías de ideas" : "Idea categories"}>
+        {(["for-you", "must-see", "culture", "tours", "outdoors", "food"] as const).map((category) => <EasyTButton key={category} size="small" variant={addCategory === category ? "primary" : "quiet"} aria-pressed={addCategory === category} onClick={() => { setAddCategory(category); setAddResultError(""); }}>{addLabels.categories[category]}</EasyTButton>)}
+      </div>
+      <div className={styles.contextualAddResults} aria-live="polite">
+        {!addResults.length && (loading || (addCategory === "food" && foodStatus === "loading")) ? <MorroviaSectionStatus compact title={addLabels.finding} detail={addLabels.findingDetail} /> : null}
+        {!addResults.length && !(loading || (addCategory === "food" && foodStatus === "loading")) ? <p>{addCategory === "food" && foodStatus === "error" ? addLabels.foodError : addLabels.empty}</p> : null}
+        {addResults.slice(0, addQuery ? 12 : addCategory === "for-you" ? 3 : 6).map((result) => {
+          const state = stop ? ideaStateForPlace(trip, stop.id, result.idea.placeId) : null;
+          const pending = isPending(result.idea.placeId);
+          const meta = [result.category, result.duration, result.price, result.rating === undefined ? null : `${result.rating.toFixed(1)} ${addLabels.rating}`, result.idea.source === "live-provider-inventory" ? `Viator · ${addLabels.planOnly}` : result.provider === "google-places" ? "Google" : result.provider === "openstreetmap" ? "OpenStreetMap" : null].filter(Boolean).join(" · ");
+          return <article key={result.identity} className={`${styles.contextualAddResult} ${result.image ? "" : styles.contextualAddResultNoMedia}`} data-add-result-id={result.sourceId}>
+            {result.image ? <ResilientImage src={result.image} alt="" fallback={<span className={styles.discoveryFallback}><MapPin aria-hidden="true" /></span>} /> : null}
+            <div><strong>{result.title}</strong><span>{meta || result.location}</span></div>
+            <div className={styles.contextualAddResultActions}>
+              <EasyTButton size="small" disabled={pending} onClick={() => {
+                if (!addPart) return;
+                if (onSchedule(result.idea, day.id, addPart)) onAddCancel();
+                else setAddResultError(addLabels.addError);
+              }}>{pending ? addLabels.add + "…" : addLabels.add}</EasyTButton>
+              {state?.state === "available" ? <EasyTButton size="small" variant="quiet" disabled={pending} onClick={() => { if (!onSave(result.idea)) setAddResultError(addLabels.saveError); }}>{addLabels.save}</EasyTButton> : state?.state === "saved" ? <span>{addLabels.saved}</span> : null}
+            </div>
+          </article>;
+        })}
+      </div>
+      {addResultError ? <p className={styles.suggestionError} role="alert">{addResultError}</p> : null}
+      <form className={styles.contextualAddManual} onSubmit={(event) => { event.preventDefault(); onAddSubmit(); }}>
+        <EasyTField label={addLabels.own} value={addDraft} error={addError || undefined} onChange={(event) => onAddDraftChange(event.target.value)} />
+        <EasyTButton type="submit" size="small" disabled={!addDraft.trim()}>{language === "es" ? "Añadir a" : "Add to"} {addPart ? itineraryDayPartLabels[language][addPart] : copy.day}</EasyTButton>
+      </form>
+    </div>
+  </dialog>;
+  if (!results.length && loading) return <><div className={styles.suggestionStatus}><MorroviaSectionStatus title={copy.suggestionsLoading} detail={copy.suggestionsLoadingDetail} /></div>{contextualDialog}</>;
+  if (unavailable) return <><div className={styles.suggestionStatus}><MorroviaSectionStatus compact state="error" title={copy.suggestionsUnavailable} detail="Your saved day is unchanged." retryLabel="Try suggestions again" onRetry={() => { onInteractionReset(); setRetryVersion((current) => current + 1); }} /></div>{experienceFallback}{contextualDialog}</>;
+  if (!results.length) return <><p className={styles.suggestionEmpty}>{copy.noNewSuggestions}</p>{experienceFallback}{contextualDialog}</>;
   return <><section className={styles.discoveryGroup} aria-label={`Useful ideas for Day ${day.dayNumber}`}>
     <h4>Shortlist for {stop?.name}</h4>
     <div className={styles.discoveryList}>{displayedResults.map((result) => {
@@ -2286,7 +2418,7 @@ function ItineraryDaySuggestions({ trip, day, stop, copy, language, initialPlace
     })}</div>
     {loading ? <p className={styles.suggestionProgress} role="status">More ideas are still loading…</p> : null}
     {error ? <p className={styles.suggestionError} role="alert">{error}</p> : null}
-  </section>{experienceFallback}</>;
+  </section>{experienceFallback}{contextualDialog}</>;
 }
 
 function CompactExperienceHandoff({ action, tripId, stopId }: { action: ResolvedAffiliateAction; tripId: string; stopId: string }) {

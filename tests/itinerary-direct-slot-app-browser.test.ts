@@ -46,14 +46,16 @@ test("real Itinerary direct slot planning persists Morning and Evening across re
     assert.deepEqual(await planner.locator("section[data-day-part]").evaluateAll((sections: HTMLElement[]) => sections.map((section) => section.dataset.dayPart)), ["morning", "afternoon", "evening"]);
     for (const [part, title] of [["morning", "Kyoto breakfast"], ["evening", "Kyoto night walk"]] as const) {
       await planner.getByRole("button", { name: new RegExp(`Add plan to .* ${part}`, "i") }).click();
+      const dialog = page.getByRole("dialog", { name: new RegExp(`Add to ${part} on Day 2`, "i") });
       if (part === "evening") {
+        await dialog.getByRole("button", { name: "Close Add panel" }).click();
         await page.getByLabel("Jump to date / destination").selectOption({ index: 0 });
         await page.getByLabel("Jump to date / destination").selectOption({ index: 1 });
-        assert.equal(await planner.getByRole("textbox", { name: "Activity for Evening" }).count(), 0);
+        assert.equal(await dialog.count(), 0);
         await planner.getByRole("button", { name: /Add plan to .* evening/i }).click();
       }
-      await planner.getByRole("textbox", { name: `Activity for ${part[0]!.toUpperCase()}${part.slice(1)}` }).fill(title);
-      await planner.locator(`section[data-day-part="${part}"]`).getByRole("button", { name: "Save", exact: true }).click();
+      await dialog.getByRole("textbox", { name: "Add your own", exact: true }).fill(title);
+      await dialog.getByRole("button", { name: `Add to ${part[0]!.toUpperCase()}${part.slice(1)}` }).click();
       await planner.locator(`section[data-day-part="${part}"]`).getByText(title, { exact: true }).waitFor();
       assert.equal(await planner.getByRole("button", { name: new RegExp(`Add plan to .* ${part}`, "i") }).evaluate((button: HTMLButtonElement) => document.activeElement === button), true);
     }

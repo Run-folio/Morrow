@@ -34,8 +34,9 @@ test("populated day keeps saved content and adds directly to the chosen part", {
     assert.ok(await page.getByRole("button", { name: /Add to Day 2/ }).count() > 0);
     await planner.getByRole("button", { name: /Add plan to .* afternoon/i }).click();
     assert.equal(await planner.getByRole("combobox", { name: "Part of day" }).count(), 0);
-    await planner.getByRole("textbox", { name: "Activity for Afternoon" }).fill("Meiji Shrine");
-    await planner.locator('section[data-day-part="afternoon"]').getByRole("button", { name: "Save", exact: true }).click();
+    const dialog = page.getByRole("dialog", { name: "Add to Afternoon on Day 2" });
+    await dialog.getByRole("textbox", { name: "Add your own", exact: true }).fill("Meiji Shrine");
+    await dialog.getByRole("button", { name: "Add to Afternoon" }).click();
     assert.match(await planner.innerText(), /Afternoon[\s\S]*Meiji Shrine/);
     assert.equal(await planner.getByText("Meiji Shrine", { exact: true }).count(), 1);
     await page.close();
@@ -142,8 +143,25 @@ test("Evening direct Add keeps the active day and chosen slot", { skip: !base },
     const page = await openStory(browser, "seoul-empty", 390);
     const planner = page.locator('section[aria-label="Day 2 planner"]');
     await planner.getByRole("button", { name: /Add plan to .* evening/i }).click();
-    await planner.getByRole("textbox", { name: "Activity for Evening" }).fill("Seoul night walk");
-    await planner.locator('section[data-day-part="evening"]').getByRole("button", { name: "Save", exact: true }).click();
+    const dialog = page.getByRole("dialog", { name: "Add to Evening on Day 2" });
+    await dialog.getByRole("textbox", { name: "Add your own", exact: true }).fill("Seoul night walk");
+    await dialog.getByRole("button", { name: "Add to Evening" }).click();
     assert.equal(await planner.locator('section[data-day-part="evening"]').getByText("Seoul night walk", { exact: true }).count(), 1);
+  } finally { await browser.close(); }
+});
+
+test("contextual Add offers live provider inventory as a plan, with source attribution", { skip: !base }, async () => {
+  const browser = await chromium.launch({ channel: "chrome", headless: true });
+  try {
+    const page = await browser.newPage({ viewport: { width: 430, height: 900 } });
+    await page.goto(`${base}/iframe.html?id=morrovia-05-product-patterns-trip-workspace-itinerary--contextual-add-panel&viewMode=story`);
+    const dialog = page.getByRole("dialog", { name: /Add to Afternoon on Day 1/ });
+    await dialog.waitFor();
+    const tour = dialog.locator("article").filter({ hasText: "Cusco culture walk" });
+    await tour.waitFor();
+    assert.match(await tour.innerText(), /Viator · Plan only/);
+    await tour.getByRole("button", { name: "Add", exact: true }).click();
+    await page.locator('section[data-day-part="afternoon"]').getByText("Cusco culture walk", { exact: true }).waitFor();
+    await page.close();
   } finally { await browser.close(); }
 });

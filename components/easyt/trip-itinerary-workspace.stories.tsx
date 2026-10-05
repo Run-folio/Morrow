@@ -681,6 +681,21 @@ export const ContextualThreeSuggestionPreview: Story = {
   },
 };
 
+export const ContextualAddPanel: Story = {
+  args: {
+    initialSuggestions: { 1: [{ id: "cusco-museum", title: "Museo Inka", area: "Cusco", type: "Museum", tags: ["Culture"], description: "A major visitor museum for regional Inca history.", coordinates: [-71.979, -13.516], qualityScore: 18 }] },
+    initialActivityInventory: { 1: [{ ...storyCommercialInventory[0], providerProductId: "CUSCO-CULTURE-2H", title: "Cusco culture walk", duration: { fixedMinutes: 120 } }] },
+  },
+  play: async ({ canvasElement }) => {
+    const add = canvasElement.querySelector<HTMLButtonElement>('section[data-day-part="afternoon"] button[aria-label^="Add plan"]');
+    if (!add) throw new Error("Afternoon Add must be available");
+    add.click();
+    await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+    const dialog = canvasElement.querySelector<HTMLDialogElement>("dialog[open]");
+    if (!dialog?.textContent?.includes("Add a plan") || !dialog.textContent.includes("Add your own")) throw new Error("Contextual Add panel must open with discovery and manual entry");
+  },
+};
+
 export const CommercialProviderUnavailable: Story = { ...MixedOrganicAndCommercialShortlist, args: { ...MixedOrganicAndCommercialShortlist.args, initialActivityInventory: { 1: [] } } };
 export const OrganicProviderUnavailable: Story = { args: { initialSuggestions: { 1: [] }, initialActivityInventory: { 1: storyCommercialInventory } } };
 export const FullDayExperienceOnOpenDay: Story = MixedOrganicAndCommercialShortlist;

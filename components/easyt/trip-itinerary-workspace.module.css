@@ -1431,6 +1431,54 @@
   gap: 7px;
 }
 
+.contextualAddDialog {
+  width: min(660px, calc(100vw - 24px));
+  max-height: min(760px, calc(100dvh - 24px));
+  padding: 0;
+  overflow: auto;
+  border: 1px solid var(--morrovia-line);
+  border-radius: var(--morrovia-control-radius);
+  background: var(--morrovia-paper);
+  color: var(--morrovia-ink);
+  box-shadow: var(--morrovia-shadow-overlay);
+}
+
+.contextualAddDialog::backdrop { background: var(--morrovia-overlay); }
+
+.contextualAddBody { display: grid; gap: 16px; padding: 20px; }
+
+.contextualAddHeader { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
+.contextualAddHeader p { margin: 0 0 4px; color: var(--morrovia-muted); font: 700 11px/1.4 var(--morrovia-meta); }
+.contextualAddHeader h2 { margin: 0; font-size: 22px; line-height: 1.2; }
+
+.contextualAddCategories { display: flex; flex-wrap: wrap; gap: 6px; }
+.contextualAddCategories button { min-height: 40px; }
+
+.contextualAddResults { display: grid; gap: 8px; max-height: 320px; overflow-y: auto; }
+.contextualAddResults > p { margin: 0; color: var(--morrovia-muted); font-size: 13px; }
+.contextualAddResult { display: grid; grid-template-columns: 72px minmax(0, 1fr) auto; gap: 10px; align-items: center; min-width: 0; padding: 9px; border: 1px solid var(--morrovia-line); border-radius: var(--morrovia-control-radius); }
+.contextualAddResultNoMedia { grid-template-columns: minmax(0, 1fr) auto; }
+.contextualAddResult > img { width: 72px; height: 64px; object-fit: cover; border-radius: var(--morrovia-control-radius); }
+.contextualAddResult > div:nth-child(2) { min-width: 0; display: grid; gap: 3px; }
+.contextualAddResultNoMedia > div:first-child { min-width: 0; display: grid; gap: 3px; }
+.contextualAddResult strong { overflow-wrap: anywhere; font-size: 13px; }
+.contextualAddResult span { color: var(--morrovia-muted); font-size: 11px; }
+.contextualAddResultActions { display: flex; gap: 4px; align-items: center; flex-wrap: wrap; justify-content: flex-end; }
+.contextualAddResultActions button { min-height: 40px; }
+.contextualAddManual { display: flex; align-items: end; gap: 8px; padding-top: 12px; border-top: 1px solid var(--morrovia-line); }
+.contextualAddManual > :first-child { flex: 1; min-width: 0; }
+
+@media (max-width: 640px) {
+  .contextualAddDialog { width: 100vw; max-width: 100vw; max-height: min(92dvh, 900px); margin: auto 0 0; border-radius: var(--morrovia-control-radius) var(--morrovia-control-radius) 0 0; }
+  .contextualAddBody { padding: 16px; }
+  .contextualAddResult { grid-template-columns: 56px minmax(0, 1fr); }
+  .contextualAddResultNoMedia { grid-template-columns: minmax(0, 1fr); }
+  .contextualAddResult > img { width: 56px; height: 56px; }
+  .contextualAddResultActions { grid-column: 1 / -1; justify-content: flex-start; }
+  .contextualAddManual { flex-wrap: wrap; }
+  .contextualAddManual > :first-child { flex-basis: 100%; }
+}
+
 .discoveryGroup { margin-top: 10px; }
 
 .discoveryGroup > h4 {
