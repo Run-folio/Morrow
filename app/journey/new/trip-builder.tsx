@@ -3763,6 +3763,13 @@ function TripBuilderDocument() {
       setDeviceRecoveryBlocked(recovery.blockedByExistingRecovery);
       setDeviceStorageBlocked(!recovery.stored && !recovery.blockedByExistingRecovery);
       if (!recovery.stored) {
+        trackEvent("trip_save_failed", {
+          trip_source: analyticsTripSource,
+          trip_id: requestTrip.id,
+          save_state: "local",
+          error_type: recovery.blockedByExistingRecovery ? "conflict" : "repository",
+          is_authenticated: Boolean(session?.user),
+        });
         setCloudSaveError(recovery.blockedByExistingRecovery
           ? (language === "es"
             ? "Ya existe una copia de recuperación en este dispositivo. Ábrela antes de guardar cambios desde la nube."
@@ -3784,6 +3791,13 @@ function TripBuilderDocument() {
         });
       }
       if (cloudConflictTrip) {
+        trackEvent("trip_save_failed", {
+          trip_source: analyticsTripSource,
+          trip_id: requestTrip.id,
+          save_state: "cloud",
+          error_type: "conflict",
+          is_authenticated: true,
+        });
         setCloudSaveError("This trip changed on another device. Open the cloud copy before trying another cloud save; your device edits remain preserved.");
         setSaveState("error");
         return null;

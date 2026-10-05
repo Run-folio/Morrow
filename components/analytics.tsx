@@ -3,7 +3,7 @@
 import Script from "next/script";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import { initializeAnalytics, pageView, trackEvent } from "@/lib/analytics";
+import { analyticsEnvironment, initializeAnalytics, pageView, trackEvent } from "@/lib/analytics";
 import { hasAnalyticsConsent, PRIVACY_CONSENT_CHANGE_EVENT } from "@/lib/privacy-consent";
 
 // Keep analytics opt-in per deployment. This prevents local/staging traffic from
@@ -23,7 +23,7 @@ export function Analytics() {
     return () => window.removeEventListener(PRIVACY_CONSENT_CHANGE_EVENT, updateConsent);
   }, []);
 
-  const configuredForThisEnvironment = POSTHOG_CONFIGURED || (IS_PRODUCTION && Boolean(GA_MEASUREMENT_ID));
+  const configuredForThisEnvironment = IS_PRODUCTION && analyticsEnvironment() === "production" && (POSTHOG_CONFIGURED || Boolean(GA_MEASUREMENT_ID));
   if (!configuredForThisEnvironment || !hasConsent) {
     return null;
   }

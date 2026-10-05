@@ -13,7 +13,7 @@ type StampStatus = "unmarked" | "visited" | "want";
 type StampStatusSource = "map" | "explorer" | "country_card";
 
 export type CommercialOutboundPartner = "booking_com" | "trip_com" | "saily" | "omio" | "viator" | "world_nomads" | "configured_partner" | "unknown_legacy";
-export type CommercialOutboundPlacement = "home_footer" | "homepage_stays" | "homepage_experiences" | "homepage_transport" | "homepage_connectivity" | "trip_readiness" | "booking_readiness" | "trip_prep_accommodation" | "itinerary_accommodation" | "itinerary_transfer" | "itinerary_day_experiences" | "overview_next_action" | "overview_before_you_go" | "map_stay_finder" | "map_see_experiences" | "route_detail_experiences" | "unknown_legacy";
+export type CommercialOutboundPlacement = "home_footer" | "homepage_stays" | "homepage_experiences" | "homepage_transport" | "homepage_connectivity" | "trip_readiness" | "booking_readiness" | "trip_prep_accommodation" | "itinerary_accommodation" | "itinerary_transfer" | "itinerary_day_experiences" | "overview_next_action" | "overview_before_you_go" | "map_stay_finder" | "stay_workspace_detail" | "map_see_experiences" | "route_detail_experiences" | "unknown_legacy";
 export type CommercialOutboundCategory = "accommodation" | "connectivity" | "transport" | "ground_transport" | "activities" | "car_rental" | "airport_transfer" | "flight" | "travel_insurance" | "other";
 export type CommercialOutboundClick = {
   canonical_event: "commercial_outbound_click";
@@ -63,6 +63,8 @@ export type LaunchAnalyticsEventMap = {
   map_google_request: { operation: "sdk" | "nearby" | "details" | "reference_resolve" | "photo" | "reviews" | "retry"; outcome: "started" | "success" | "failure"; failure_kind?: "configuration" | "quota" | "offline" | "provider" };
   trip_stay_viewed: { trip_id?: string; workspace_view: "stay"; route_mode: RouteMode; stop_count?: number };
   trip_transport_viewed: { trip_id?: string; workspace_view: "transport"; route_mode: RouteMode; stop_count?: number };
+  itinerary_item_added: { trip_id: string; stop_id: string; source: "manual"; item_kind: "activity" };
+  stay_chosen: { trip_id: string; stop_id: string; source: "stay_workspace" };
   explore_opened: { trip_id: string; workspace_view: "explore"; stop_count: number };
   explore_destination_changed: { trip_id: string; destination_scope: "all" | "stop" };
   explore_category_changed: { trip_id: string; category: string };
@@ -196,6 +198,7 @@ export function normalizeCommercialOutboundClick(eventName: string, properties: 
             : sourcePlacement === "overview_next_action" ? "overview_next_action"
               : sourcePlacement === "overview_before_you_go" ? "overview_before_you_go"
                 : sourcePlacement === "map_stay_finder" ? "map_stay_finder"
+                  : sourcePlacement === "stay_workspace_detail" ? "stay_workspace_detail"
                   : sourcePlacement === "map_see_experiences" ? "map_see_experiences"
                     : sourcePlacement === "route_detail_experiences" ? "route_detail_experiences"
                 : sourcePlacement === "trip_prep_booking_readiness" || sourcePlacement === "booking_readiness_transport" ? "booking_readiness"
@@ -224,7 +227,7 @@ export function normalizeCommercialOutboundClick(eventName: string, properties: 
     ...(stringProperty("trip_id", "tripId") ? { trip_id: stringProperty("trip_id", "tripId") } : {}),
     ...(stringProperty("stop_id", "stopId") ? { stop_id: stringProperty("stop_id", "stopId") } : {}),
     ...(stringProperty("transfer_id", "transferId") ? { transfer_id: stringProperty("transfer_id", "transferId") } : {}),
-    ...(workspace === "overview" || workspace === "itinerary" || workspace === "map" || workspace === "explore" || workspace === "prep" ? { workspace_view: workspace } : {}),
+    ...(workspace === "overview" || workspace === "itinerary" || workspace === "map" || workspace === "explore" || workspace === "stay" || workspace === "prep" ? { workspace_view: workspace } : {}),
     ...(typeof properties.destination_count === "number" ? { destination_count: properties.destination_count } : {}),
   };
 }
@@ -291,7 +294,7 @@ function sanitizePostHogEvent(event: CaptureResult | null): CaptureResult | null
 }
 
 function ensurePostHogInitialized() {
-  if (!isBrowser() || postHogInitialized || !POSTHOG_KEY || !POSTHOG_HOST || !hasAnalyticsConsent()) return postHogInitialized;
+  if (!isBrowser() || process.env.NODE_ENV !== "production" || analyticsEnvironment() !== "production" || postHogInitialized || !POSTHOG_KEY || !POSTHOG_HOST || !hasAnalyticsConsent()) return postHogInitialized;
   try {
     posthog.init(POSTHOG_KEY, {
       api_host: POSTHOG_HOST,

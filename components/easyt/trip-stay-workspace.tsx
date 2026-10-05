@@ -3,6 +3,7 @@
 import { BedDouble, Check, MapPin, Star } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { trackEvent } from "@/lib/analytics";
 import { JourneyLocalFinder, type JourneyLocalFinderInitialState, type JourneyLocalFinderRenderState, type JourneyLocalPlace } from "@/components/journey-local-finder";
 import { MorroviaMapPreview } from "./morrovia-map-preview";
 import { JourneyPlannerMap } from "@/components/journey-planner-map";
@@ -119,7 +120,10 @@ function StayFinderSurface({
       `stay-select-${context.stop.id}-${place.id}`,
       "stay-select",
     );
-    if (changed) setNotice(`${place.name} chosen for ${context.stop.name}.`);
+    if (changed) {
+      setNotice(`${place.name} chosen for ${context.stop.name}.`);
+      trackEvent("stay_chosen", { trip_id: workingTrip.id, stop_id: context.stop.id, source: "stay_workspace" });
+    }
   };
 
   const removeStay = () => {

@@ -987,6 +987,7 @@ export default function TripItineraryWorkspace({
       setAddError(mutationReason || "This change could not be stored safely.");
       return;
     }
+    if (addFlow.kind === "activity") trackEvent("itinerary_item_added", { trip_id: workingTrip.id, stop_id: active.stopId, source: "manual", item_kind: "activity" });
     setNotice(addFlow.kind === "activity" ? addedToDayNotice(language, addFlow.dayNumber, addFlow.dayPart) : copy.noteAdded);
     setUndoReceipt(receipt);
     setAddFlow(null);
@@ -1061,7 +1062,7 @@ export default function TripItineraryWorkspace({
         receipt = result.undo ?? null;
         return result.trip;
       }, `itinerary-suggestion-${dragged.idea.stopId}-${dragged.idea.placeId}`);
-      if (accepted) { setUndoReceipt(receipt); setNotice(addedToDayNotice(language, active.dayNumber, dayPart)); }
+      if (accepted) { setUndoReceipt(receipt); setNotice(addedToDayNotice(language, active.dayNumber, dayPart)); trackEvent("attraction_selected", { trip_id: workingTrip.id, stop_id: active.stopId, source: "itinerary_drag" }); }
       else if (mutationReason && !mutationReason.includes("already")) setPlannerError(mutationReason);
       return;
     }
