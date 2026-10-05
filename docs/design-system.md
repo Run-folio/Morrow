@@ -307,6 +307,7 @@ Use only components that actually exist:
 | Date picker | `MorroviaDatePicker` in `components/easyt/morrovia-date-picker.tsx` | `Morrovia/02 Controls/Date, quantity and forms` |
 | Quantity/traveller selector | `MorroviaQuantitySelector` in `components/easyt/morrovia-quantity-selector.tsx` | `Morrovia/02 Controls/Date, quantity and forms — TravellerStates` |
 | Consequential dialog | `MorroviaConfirmationDialog` in `components/easyt/morrovia-feedback.tsx` | `Morrovia/03 Status & Feedback/Confirmation and recovery` |
+| Task-content modal | `MorroviaContentDialog` in the same file; compose page-owned content inside it | `Morrovia/03 Status & Feedback/Confirmation and recovery — ContentDialogFocusAndRestore` |
 | Brief notice/save state | `MorroviaBriefNotice`, `MorroviaSaveStatus` in the same file | `Morrovia/03 Status & Feedback/Confirmation and recovery` |
 | Persistent status/recovery | `MorroviaStatusBanner`, `MorroviaRecoveryFeedback` in the same file | `Morrovia/03 Status & Feedback/Confirmation and recovery — PersistentStatusBanners` |
 | Contextual disclosure | `MorroviaContextualDisclosure` in the same file | `Morrovia/03 Status & Feedback/Confirmation and recovery — ContextualTransparencyDisclosure` |

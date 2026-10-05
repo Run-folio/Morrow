@@ -7964,7 +7964,7 @@
       "native-control": 200,
       "native-date-input": 0,
       "native-number-input": 0,
-      "native-dialog": 1,
+      "native-dialog": 0,
       "native-confirm": 0,
       "legacy-ui-import": 0,
       "deprecated-ui-owner": 0,

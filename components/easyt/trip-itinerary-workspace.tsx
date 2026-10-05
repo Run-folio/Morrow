@@ -91,7 +91,7 @@ import { DeferredJourneyPlannerMap } from "./deferred-journey-planner-map";
 import { JourneyRouteStopTrack } from "@/components/journey-planner-strip";
 import MorroviaPhotoCredit from "@/components/easyt/morrovia-photo-credit";
 import { EasyTButton, EasyTField, EasyTLinkButton, EasyTSelect, EasyTSegmentedControl } from "@/components/easyt/easyt-controls";
-import { MorroviaBriefNotice, MorroviaConfirmationDialog, MorroviaFormDialog, MorroviaRecoveryFeedback } from "@/components/easyt/morrovia-feedback";
+import { MorroviaBriefNotice, MorroviaConfirmationDialog, MorroviaContentDialog, MorroviaFormDialog, MorroviaRecoveryFeedback } from "@/components/easyt/morrovia-feedback";
 import { MorroviaSectionStatus } from "@/components/easyt/morrovia-loading-states";
 import ResilientImage from "@/components/easyt/resilient-image";
 import { useTripMutationPersistence } from "@/components/easyt/use-trip-mutation-persistence";
@@ -2155,8 +2155,6 @@ function ItineraryDaySuggestions({ trip, day, stop, copy, language, initialPlace
   const [addCategory, setAddCategory] = useState<"for-you" | "must-see" | "culture" | "tours" | "outdoors" | "food">("for-you");
   const [addQuery, setAddQuery] = useState("");
   const [addResultError, setAddResultError] = useState("");
-  const addDialogRef = useRef<HTMLDialogElement>(null);
-  const addOriginRef = useRef<HTMLElement | null>(null);
   const interactionResetRef = useRef(onInteractionReset);
   interactionResetRef.current = onInteractionReset;
   const interests = tripIntentForTrip(trip).preferences.interests;
@@ -2171,18 +2169,10 @@ function ItineraryDaySuggestions({ trip, day, stop, copy, language, initialPlace
   };
 
   useEffect(() => {
-    const dialog = addDialogRef.current;
-    if (!dialog) return;
-    if (addPart && !dialog.open) {
-      addOriginRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    if (addPart) {
       setAddCategory(addPart === "evening" ? "food" : "for-you");
       setAddQuery("");
       setAddResultError("");
-      dialog.showModal();
-      window.requestAnimationFrame(() => dialog.querySelector<HTMLInputElement>("[data-add-search]")?.focus());
-    } else if (!addPart && dialog.open) {
-      dialog.close();
-      window.requestAnimationFrame(() => addOriginRef.current?.focus());
     }
   }, [addPart]);
 
@@ -2350,12 +2340,12 @@ function ItineraryDaySuggestions({ trip, day, stop, copy, language, initialPlace
   const experienceFallback = stop && experienceAction && commercialStatus !== "loading" && !hasLiveViatorProduct
     ? <CompactExperienceHandoff action={experienceAction} tripId={trip.id} stopId={stop.id} />
     : null;
-  const contextualDialog = <dialog
-    ref={addDialogRef}
+  const contextualDialog = <MorroviaContentDialog
     className={styles.contextualAddDialog}
-    aria-label={addPart ? language === "es" ? `Añadir a ${itineraryDayPartLabels[language][addPart]} en el día ${day.dayNumber}` : `Add to ${itineraryDayPartLabels[language][addPart]} on Day ${day.dayNumber}` : addLabels.title}
-    onCancel={(event) => { event.preventDefault(); onAddCancel(); }}
-    onClick={(event) => { if (event.target === event.currentTarget) onAddCancel(); }}
+    ariaLabel={addPart ? language === "es" ? `Añadir a ${itineraryDayPartLabels[language][addPart]} en el día ${day.dayNumber}` : `Add to ${itineraryDayPartLabels[language][addPart]} on Day ${day.dayNumber}` : addLabels.title}
+    autoFocusSelector="[data-add-search]"
+    open={Boolean(addPart)}
+    onClose={onAddCancel}
   >
     <div className={styles.contextualAddBody}>
       <header className={styles.contextualAddHeader}>
@@ -2407,7 +2397,7 @@ function ItineraryDaySuggestions({ trip, day, stop, copy, language, initialPlace
         <EasyTButton type="submit" size="small" disabled={!addDraft.trim()}>{language === "es" ? "Añadir a" : "Add to"} {addPart ? itineraryDayPartLabels[language][addPart] : copy.day}</EasyTButton>
       </form>
     </div>
-  </dialog>;
+  </MorroviaContentDialog>;
   if (!results.length && loading) return <><div className={styles.suggestionStatus}><MorroviaSectionStatus title={copy.suggestionsLoading} detail={copy.suggestionsLoadingDetail} /></div>{contextualDialog}</>;
   if (unavailable) return <><div className={styles.suggestionStatus}><MorroviaSectionStatus compact state="error" title={copy.suggestionsUnavailable} detail="Your saved day is unchanged." retryLabel="Try suggestions again" onRetry={() => { onInteractionReset(); setRetryVersion((current) => current + 1); }} /></div>{experienceFallback}{contextualDialog}</>;
   if (!results.length) return <><p className={styles.suggestionEmpty}>{copy.noNewSuggestions}</p>{experienceFallback}{contextualDialog}</>;

@@ -355,6 +355,57 @@ export function MorroviaConfirmationDialog({
   );
 }
 
+/** Modal behaviour for a page-owned task flow with its own content and layout. */
+export function MorroviaContentDialog({
+  ariaLabel,
+  autoFocusSelector,
+  children,
+  className = styles.dialog,
+  onClose,
+  open,
+}: {
+  ariaLabel: string;
+  autoFocusSelector: string;
+  children: ReactNode;
+  className?: string;
+  onClose: () => void;
+  open: boolean;
+}) {
+  const dialogRef = useRef<HTMLDialogElement>(null);
+  const returnFocusRef = useRef<HTMLElement | null>(null);
+
+  useEffect(() => {
+    const dialog = dialogRef.current;
+    if (!dialog) return;
+    if (open && !dialog.open) {
+      returnFocusRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+      dialog.showModal();
+      window.requestAnimationFrame(() => dialog.querySelector<HTMLElement>(autoFocusSelector)?.focus());
+    } else if (!open && dialog.open) {
+      dialog.close();
+      window.requestAnimationFrame(() => returnFocusRef.current?.focus());
+    }
+  }, [autoFocusSelector, open]);
+
+  return <dialog
+    ref={dialogRef}
+    className={className}
+    aria-label={ariaLabel}
+    onCancel={(event) => { event.preventDefault(); onClose(); }}
+    onClick={(event) => { if (event.target === event.currentTarget) onClose(); }}
+    onKeyDown={(event) => {
+      if (event.key !== "Tab") return;
+      const focusable = [...event.currentTarget.querySelectorAll<HTMLElement>('a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])')]
+        .filter((element) => element.getClientRects().length > 0);
+      const first = focusable[0];
+      const last = focusable.at(-1);
+      if (!first || !last) { event.preventDefault(); event.currentTarget.focus(); return; }
+      if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
+      else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
+    }}
+  >{children}</dialog>;
+}
+
 export function MorroviaFormDialog({
   cancelLabel = "Cancel",
   children,

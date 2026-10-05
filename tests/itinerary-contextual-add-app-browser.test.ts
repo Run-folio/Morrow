@@ -70,6 +70,29 @@ test("contextual Add uses daypart, discovery and restaurant results with durable
       await reopened.getByRole("button", { name: "Close Add panel" }).click();
       await page.waitForFunction(() => document.activeElement?.getAttribute("aria-label")?.startsWith("Add plan to"));
       assert.equal(await afternoonAdd.evaluate((button: HTMLButtonElement) => document.activeElement === button), true, "focus returns to the originating slot after close");
+      if (width === 390 || width === 1440) {
+        await afternoonAdd.click();
+        const escapeDialog = page.getByRole("dialog", { name: "Add to Afternoon on Day 2" });
+        await escapeDialog.waitFor({ state: "visible" });
+        await page.waitForFunction(() => document.activeElement?.hasAttribute("data-add-search"));
+        for (let step = 0; step < 12; step += 1) {
+          await page.keyboard.press("Tab");
+          assert.equal(await page.evaluate(() => Boolean(document.activeElement?.closest('dialog[open]'))), true, "Tab stays inside the Add dialog");
+        }
+        for (let step = 0; step < 12; step += 1) {
+          await page.keyboard.press("Shift+Tab");
+          assert.equal(await page.evaluate(() => Boolean(document.activeElement?.closest('dialog[open]'))), true, "Shift+Tab stays inside the Add dialog");
+        }
+        await page.keyboard.press("Escape");
+        await escapeDialog.waitFor({ state: "hidden" });
+        assert.equal(await afternoonAdd.evaluate((button: HTMLButtonElement) => document.activeElement === button), true, "Escape returns focus to the slot");
+        await afternoonAdd.click();
+        const backdropDialog = page.getByRole("dialog", { name: "Add to Afternoon on Day 2" });
+        await backdropDialog.waitFor({ state: "visible" });
+        await page.mouse.click(2, 2);
+        await backdropDialog.waitFor({ state: "hidden" });
+        assert.equal(await afternoonAdd.evaluate((button: HTMLButtonElement) => document.activeElement === button), true, "backdrop dismissal returns focus to the slot");
+      }
       await planner.getByRole("button", { name: /Add plan to .* evening/i }).click();
       const evening = page.getByRole("dialog", { name: "Add to Evening on Day 2" });
       await evening.getByText("Kyoto Supper", { exact: true }).waitFor({ timeout: 5_000 }).catch(async (error: unknown) => { console.error(await evening.innerText()); throw error; });

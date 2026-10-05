@@ -6,7 +6,7 @@ import EasyTNavigation from "@/app/journey/easyt-navigation";
 import TripShell from "./trip-shell";
 import { EasyTButton, EasyTField } from "./easyt-controls";
 import { affiliateDisclosure } from "./affiliate-link";
-import { MorroviaBriefNotice, MorroviaConfirmationDialog, MorroviaContextualDisclosure, MorroviaFormDialog, MorroviaRecoveryFeedback, MorroviaSaveStatus, MorroviaStatusBanner, type MorroviaSaveState } from "./morrovia-feedback";
+import { MorroviaBriefNotice, MorroviaConfirmationDialog, MorroviaContentDialog, MorroviaContextualDisclosure, MorroviaFormDialog, MorroviaRecoveryFeedback, MorroviaSaveStatus, MorroviaStatusBanner, type MorroviaSaveState } from "./morrovia-feedback";
 import styles from "./morrovia-feedback.stories.module.css";
 
 const prototypeTrip: EasyTTrip = {
@@ -202,6 +202,20 @@ function RenameTripContext() {
   </section></PrototypeChrome>;
 }
 
+function ContentDialogContext() {
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState("");
+  return <PrototypeChrome><section className={styles.workspace}>
+    <h2>Kyoto day plan</h2>
+    <EasyTButton onClick={() => setOpen(true)}>Add to Morning</EasyTButton>
+    <MorroviaContentDialog open={open} ariaLabel="Add to Morning" autoFocusSelector="[data-content-dialog-focus]" onClose={() => setOpen(false)}>
+      <h2>Add a plan</h2>
+      <EasyTField data-content-dialog-focus="true" label="Search ideas" value={query} onChange={(event) => setQuery(event.target.value)} />
+      <EasyTButton variant="secondary" onClick={() => setOpen(false)}>Close</EasyTButton>
+    </MorroviaContentDialog>
+  </section></PrototypeChrome>;
+}
+
 function AffiliateBoundaryContext() {
   const [providerOpened, setProviderOpened] = useState(false);
   return <main className={`${styles.page} morrovia-editorial-page`}><TripShell trip={prototypeTrip} cacheTrip={false}><section className={styles.workspace}><p className={styles.eyebrow}>ACCOMMODATION</p><h2>Keep the provider boundary honest.</h2><p className={styles.intro}>Opening a booking site is useful, but it does not prove that a stay was booked or paid for.</p><article className={styles.stayCard} aria-live="polite"><span className={styles.stayIcon}><BedDouble aria-hidden="true" /></span><div><span>KYOTO · 21–25 APRIL</span><h3>Kyoto stay</h3><p>No saved accommodation yet</p></div><strong>Needs a stay</strong><div className={styles.stayActions}><EasyTButton icon={ExternalLink} variant="secondary" onClick={() => setProviderOpened(true)}>Open Trip.com</EasyTButton></div>{providerOpened ? <p className={styles.providerOpened} role="status"><ExternalLink aria-hidden="true" />Trip.com opened. This stop still needs a stay.</p> : null}</article><p className={styles.partnerDisclosure}>{affiliateDisclosure}</p></section></TripShell></main>;
@@ -235,3 +249,5 @@ export const Mobile390RenameTrip: Story = { globals: { viewport: { value: "morro
 export const Mobile390StatusBanners: Story = { globals: { viewport: { value: "morrovia390", isRotated: false } }, render: () => <StatusBannerContext /> };
 export const Tablet768AffiliateBoundary: Story = { globals: { viewport: { value: "morrovia768", isRotated: false } }, render: () => <AffiliateBoundaryContext /> };
 export const DialogFocusAndRestore: Story = { render: () => <RemoveStopContext startOpen={false} /> };
+export const ContentDialogFocusAndRestore: Story = { render: () => <ContentDialogContext /> };
+export const ContentDialogMobile390: Story = { ...ContentDialogFocusAndRestore, globals: { viewport: { value: "morrovia390", isRotated: false } } };
