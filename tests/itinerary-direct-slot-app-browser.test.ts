@@ -43,6 +43,7 @@ test("real Itinerary direct slot planning persists Morning and Evening across re
     await page.getByText("SKIP WORKSPACE GUIDE").click({ timeout: 3_000 }).catch(() => {});
     const planner = page.locator('section[aria-label="Day 2 planner"]');
     await planner.waitFor({ state: "visible", timeout: 20_000 });
+    await page.getByText("Saved on this device").waitFor();
     assert.deepEqual(await planner.locator("section[data-day-part]").evaluateAll((sections: HTMLElement[]) => sections.map((section) => section.dataset.dayPart)), ["morning", "afternoon", "evening"]);
     for (const [part, title] of [["morning", "Kyoto breakfast"], ["evening", "Kyoto night walk"]] as const) {
       await planner.getByRole("button", { name: new RegExp(`Add plan to .* ${part}`, "i") }).click();

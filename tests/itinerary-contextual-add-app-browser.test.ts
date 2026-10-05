@@ -50,6 +50,7 @@ test("contextual Add uses daypart, discovery and restaurant results with durable
       const afternoon = page.getByRole("dialog", { name: "Add to Afternoon on Day 2" });
       await afternoon.getByText("Kyoto Museum", { exact: true }).waitFor();
       await afternoon.getByRole("button", { name: "Culture" }).click();
+      await page.waitForFunction(() => document.querySelector('dialog[open] button[aria-pressed="true"]')?.textContent?.includes("Culture"));
       assert.equal(await afternoon.getByRole("button", { name: "Culture" }).getAttribute("aria-pressed"), "true");
       assert.equal(await afternoon.getByText("Kyoto Garden", { exact: true }).count(), 0);
       if (width === 390) await page.screenshot({ path: "/tmp/morrovia-387-contextual-add-390.png" });
@@ -62,6 +63,7 @@ test("contextual Add uses daypart, discovery and restaurant results with durable
       await afternoonAdd.click();
       const reopened = page.getByRole("dialog", { name: "Add to Afternoon on Day 2" });
       assert.equal(await reopened.getByText("Kyoto Museum", { exact: true }).count(), 0);
+      await reopened.getByRole("button", { name: "Save Kyoto Garden for later" }).waitFor();
       assert.equal(await reopened.getByRole("button", { name: "Save Kyoto Garden for later" }).count(), 1, "Save names its item");
       await reopened.getByRole("button", { name: "Save Kyoto Garden for later" }).click();
       await reopened.locator('[data-add-result-id="kyoto-garden"]').getByText("Saved for later").waitFor();
