@@ -86,7 +86,7 @@ import {
   type ItineraryItemUndoReceipt,
 } from "@/lib/easyt/itinerary-activity-placement";
 import { MorroviaMapPreview } from "./morrovia-map-preview";
-import { JourneyPlannerMap } from "@/components/journey-planner-map";
+import { DeferredJourneyPlannerMap } from "./deferred-journey-planner-map";
 import { JourneyRouteStopTrack } from "@/components/journey-planner-strip";
 import MorroviaPhotoCredit from "@/components/easyt/morrovia-photo-credit";
 import { EasyTButton, EasyTField, EasyTLinkButton, EasyTSelect, EasyTSegmentedControl } from "@/components/easyt/easyt-controls";
@@ -1625,7 +1625,7 @@ export default function TripItineraryWorkspace({
         /> : null}
         {workspaceView === "days" ? <div className={styles.contextRailBody} hidden={Boolean(selectedDetail || selectedTransportAgenda || selectedBooking)}>
         {embeddedMapContext && (embeddedMapContext.stops.length || embeddedMapContext.pins.length) ? <MorroviaMapPreview title={copy.dayMap} href={mapPlanHref} language={language}>
-            {!selectedDetail ? <JourneyPlannerMap
+            {!selectedDetail ? <DeferredJourneyPlannerMap
               stops={embeddedMapContext.stops}
               legs={embeddedMapContext.legs}
               selectedId={embeddedMapContext.selectedStopId}

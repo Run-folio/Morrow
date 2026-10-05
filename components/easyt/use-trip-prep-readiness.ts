@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 
 import type { BookingReadinessAction } from "@/lib/easyt/booking-readiness";
 import { createAbortableEffectScope } from "@/lib/easyt/abortable-effect";
-import { travelReadinessStorageKey } from "@/lib/easyt/private-browser-context";
+import { privateContextScope, travelReadinessStorageKey } from "@/lib/easyt/private-browser-context";
 import type { EasyTTrip } from "@/lib/easyt/trip";
 import { tripIntentForTrip } from "@/lib/easyt/trip";
 import { deriveTripPrepTasks } from "@/lib/easyt/trip-prep";
@@ -42,7 +42,9 @@ export function useTripPrepReadiness({
   now,
 }: UseTripPrepReadinessInput) {
   const avoidDriving = tripIntentForTrip(trip).hardConstraints.avoidDriving;
+  const profileScope = privateContextScope(trip.ownerId);
   const [profile, setProfile] = useState<TravelReadinessProfile>(initialProfile ?? defaultTravelReadinessProfile);
+  const [hydratedProfileScope, setHydratedProfileScope] = useState<string | null>(initialProfile ? profileScope : null);
   const [actions, setActions] = useState<BookingReadinessAction[]>(initialActions ?? []);
   const [readinessCards, setReadinessCards] = useState<ReadinessCard[]>(initialReadinessCards ?? []);
   const [actionsStatus, setActionsStatus] = useState<TripPrepProviderStatus>(initialProviderStatus ?? (initialActions !== undefined ? "available" : "loading"));
@@ -52,17 +54,21 @@ export function useTripPrepReadiness({
   useEffect(() => {
     if (initialProfile) {
       setProfile(initialProfile);
+      setHydratedProfileScope(profileScope);
       return;
     }
+    let nextProfile = defaultTravelReadinessProfile;
     try {
       const stored = JSON.parse(window.localStorage.getItem(travelReadinessStorageKey(trip.ownerId)) ?? "null") as Partial<TravelReadinessProfile> | null;
-      if (stored && Array.isArray(stored.nationalities)) setProfile({
+      if (stored && Array.isArray(stored.nationalities)) nextProfile = {
         nationalities: stored.nationalities.filter((country): country is string => typeof country === "string"),
         residenceCountry: typeof stored.residenceCountry === "string" ? stored.residenceCountry : "",
         passportExpiryMonth: typeof stored.passportExpiryMonth === "string" ? stored.passportExpiryMonth : "",
-      });
+      };
     } catch { /* Use the existing privacy-safe empty profile. */ }
-  }, [initialProfile, trip.ownerId]);
+    setProfile(nextProfile);
+    setHydratedProfileScope(profileScope);
+  }, [initialProfile, profileScope, trip.ownerId]);
 
   useEffect(() => {
     if (initialActions !== undefined || initialProviderStatus !== undefined) return;
@@ -93,6 +99,7 @@ export function useTripPrepReadiness({
 
   useEffect(() => {
     if (initialReadinessCards !== undefined || initialProviderStatus !== undefined) return;
+    if (hydratedProfileScope !== profileScope) return;
     if (!trip.stops.length) {
       setReadinessCards([]);
       setReadinessStatus("available");
@@ -121,7 +128,7 @@ export function useTripPrepReadiness({
     };
     void resolve();
     return scope.dispose;
-  }, [avoidDriving, initialProviderStatus, initialReadinessCards, language, profile, providerRetryVersion, trip.startDate, trip.stops]);
+  }, [avoidDriving, hydratedProfileScope, initialProviderStatus, initialReadinessCards, language, profile, profileScope, providerRetryVersion, trip.startDate, trip.stops]);
 
   const effectiveNow = useMemo(() => parseIsoDate(now) ?? new Date(), [now]);
   const tasks = useMemo(
