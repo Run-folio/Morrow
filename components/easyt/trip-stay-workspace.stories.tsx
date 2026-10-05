@@ -128,6 +128,10 @@ const sameNamePlaces: JourneyLocalFinderInitialState = { corePlaces: [
 ], accommodationInventoryStatus: "unconfigured" };
 const chosenTrip = selectMappedStayForStop(trip, "tokyo-first", mappedPlaces[0]!);
 const mismatchTrip = selectMappedStayForStop(trip, "tokyo-first", mappedStay("saved-outside-shortlist", "Tokyo Station Hotel", [139.767, 35.681]));
+const legacyGoogleTrip: EasyTTrip = { ...trip, brief: { ...trip.brief, itineraryIdeas: [
+  ...(trip.brief.itineraryIdeas ?? []),
+  { id: "legacy-google-stay", stopId: "tokyo-first", category: "stay", source: "google-place-reference", providerReference: { provider: "google", placeId: "legacy-place" } },
+] } };
 
 const meta = {
   title: "Morrovia/05 Product Patterns/Trip workspace/Stay",
@@ -154,6 +158,8 @@ export const PartiallyEnrichedShortlist: Story = { args: { initialFinderState: p
 export const BookingFactsSeparateTripComCta: Story = { args: { initialFinderState: enriched, initialSelectedPlaceId: "booking-property-42" } };
 export const RankingComparison: Story = { args: { initialFinderState: rankingComparison, initialSelectedPlaceId: "strong-mapped" } };
 export const ProviderUnavailableMappedBaseReady: Story = { args: { initialFinderState: unavailable } };
+export const EmptyStaySearch: Story = { args: { initialFinderState: { corePlaces: [], accommodationInventoryStatus: "unconfigured" } } };
+export const SavedGoogleStayReference: Story = { args: { trip: legacyGoogleTrip, initialFinderState: ready } };
 export const FailedStaySearch: Story = { args: { initialFinderState: { corePlaces: [], coreUnavailable: true, accommodationInventoryStatus: "unavailable" } } };
 export const BookingFailureMappedShortlist: Story = { args: { initialFinderState: unavailable, initialSelectedPlaceId: "sakura-house" } };
 export const NoPropertyImage: Story = { args: { initialFinderState: sparse, initialSelectedPlaceId: "small-ryokan" } };

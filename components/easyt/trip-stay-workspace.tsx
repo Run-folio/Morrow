@@ -185,7 +185,7 @@ function StayFinderSurface({
       {savedGoogleStays.length ? <section className={styles.googleReferences} aria-label="Saved Google stays">
         <strong>Saved from Google Maps</strong>
         <p>{savedGoogleStays.length} stay {savedGoogleStays.length === 1 ? "reference" : "references"} saved for this stop. No accommodation is booked by saving a place.</p>
-        <EasyTLinkButton size="small" variant="secondary" href={mapWorkspaceHref(workingTrip.id, context.stop.id, "stay", mapDayNumber, null, null, stayWorkspaceHref(workingTrip.id, context.stop.id))}>Check in Google map</EasyTLinkButton>
+        <EasyTLinkButton size="small" variant="secondary" href={mapWorkspaceHref(workingTrip.id, context.stop.id, "stay", mapDayNumber, null, null, stayWorkspaceHref(workingTrip.id, context.stop.id))}>View on map</EasyTLinkButton>
       </section> : null}
 
       <section className={styles.options} aria-labelledby="stay-options-title">
@@ -193,7 +193,7 @@ function StayFinderSurface({
         {inventoryLoading ? <p className={styles.inventoryNote} role="status">Checking current room availability.</p> : null}
         {finder.status === "loading" ? <div className={styles.loading}><MorroviaSectionStatus title="Finding stays for this stop" detail={`Keeping ${context.stop.name}, ${context.nights} nights and ${context.dateLabel} in place.`} /><div aria-hidden="true"><MorroviaSkeleton height={240} radius="card" /><MorroviaSkeleton height={240} radius="card" /></div></div> : null}
         {finder.status === "failed" ? <MorroviaSectionStatus state="error" title="Couldn’t load stays" retryLabel="Try again" onRetry={finder.retry} /> : null}
-        {finder.status === "empty" ? <MorroviaStatusBanner title="No stay options found" detail="No valid accommodation came back for this stop. Try again later or check the booking provider directly." /> : null}
+        {finder.status === "empty" ? <MorroviaStatusBanner title="No stay options found" detail="No mapped stays came back for this stop. Try again later." /> : null}
         {finder.candidates.length ? <div className={styles.grid}>{finder.candidates.map((place) => {
           const isSelected = place.id === selectedBase?.id;
           const isChosen = stayIsSelected(workingTrip, context, place);

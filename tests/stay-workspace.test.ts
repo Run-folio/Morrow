@@ -270,7 +270,7 @@ test("Stay stories cover the required evidence, provider and compact viewport ma
   const stories = readFileSync(new URL("../components/easyt/trip-stay-workspace.stories.tsx", import.meta.url), "utf8");
   for (const story of [
     "TokyoThreeNightStay", "RepeatedTokyoStay", "StrongAreaEvidence", "NoNeighbourhoodFallback",
-    "SixOptionShortlist", "MappedResultsBookingLoading", "BookingEnriched", "PartiallyEnrichedShortlist",
+    "SixOptionShortlist", "MappedResultsBookingLoading", "EmptyStaySearch", "SavedGoogleStayReference", "BookingEnriched", "PartiallyEnrichedShortlist",
     "BookingFactsSeparateTripComCta", "RankingComparison", "ProviderUnavailableMappedBaseReady", "BookingFailureMappedShortlist",
     "NoPropertyImage", "SparsePropertyDetail", "RichPropertyDetail", "PropertyPhotoUnavailableShortlist", "StayWithoutImages",
     "ChosenStay", "SavedStayNotInShortlist", "SelectedPropertyWithMiniMap", "MultipleSameNameProperties",

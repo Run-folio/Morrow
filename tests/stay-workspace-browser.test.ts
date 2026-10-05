@@ -52,3 +52,30 @@ test("Stay map and property detail stay usable from shortlist to chosen state at
     }
   } finally { await browser.close(); }
 });
+
+test("empty Stay state does not direct travellers to an absent provider action", { skip: !base }, async () => {
+  const browser = await chromium.launch({ channel: "chrome", headless: true });
+  try {
+    const page = await browser.newPage({ viewport: { width: 390, height: 900 } });
+    await page.goto(`${base}/iframe.html?id=morrovia-05-product-patterns-trip-workspace-stay--empty-stay-search&viewMode=story`);
+    const empty = page.getByText("No stay options found").locator("..");
+    await empty.waitFor();
+    assert.doesNotMatch(await empty.innerText(), /check the booking provider directly/i);
+    const workspace = page.getByRole("region", { name: "Stay planning for Tokyo" });
+    const bounds = await workspace.boundingBox();
+    assert.ok(bounds && bounds.height < 500, "an empty Stay state should not reserve the full map-and-shortlist height");
+  } finally { await browser.close(); }
+});
+
+test("legacy Google reference opens Morrovia's map with an accurate label", { skip: !base }, async () => {
+  const browser = await chromium.launch({ channel: "chrome", headless: true });
+  try {
+    const page = await browser.newPage({ viewport: { width: 390, height: 900 } });
+    await page.goto(`${base}/iframe.html?id=morrovia-05-product-patterns-trip-workspace-stay--saved-google-stay-reference&viewMode=story`);
+    const reference = page.getByRole("region", { name: "Saved Google stays" });
+    await reference.waitFor();
+    const link = reference.getByRole("link", { name: "View on map" });
+    assert.match(await link.getAttribute("href") ?? "", /\/journey\/storybook-tokyo-return\/map/);
+    assert.equal(await reference.getByRole("link", { name: /Google map/ }).count(), 0);
+  } finally { await browser.close(); }
+});
