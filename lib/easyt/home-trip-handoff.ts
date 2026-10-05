@@ -9,6 +9,7 @@ import { createPlanningConfidence } from "./planning-confidence.ts";
 import { structuredTripBriefFromSavedSelections, validateStructuredTripBrief, type StructuredTripBrief, type TripBriefProvenance } from "./structured-trip-brief.ts";
 import type { TravelProfile } from "./travel-profile.ts";
 import { homepageInputStorageKey } from "./private-browser-context.ts";
+import { addLocalDays } from "./local-date.ts";
 
 export const HOME_TRIP_DRAFT_KEY = "easyt-home-trip-draft";
 
@@ -41,6 +42,19 @@ export type HomepageInputSnapshot = {
 /** The planner shows only dates represented by the traveller's intake. */
 export function homepageVisibleDateRange(snapshot: Pick<HomepageInputSnapshot, "dates">) {
   return snapshot.dates.state === "selected" ? snapshot.dates.value : { start: "", end: "" };
+}
+
+/** A start date anchors a provisional Builder range; only a stated duration or end date is traveller intent. */
+export function homepageBuilderDateRange(
+  draft: Pick<HomeTripDraft, "startDate" | "endDate" | "durationDays">,
+  fallbackDurationDays: number,
+) {
+  if (draft.endDate || !draft.startDate) return { endDate: draft.endDate, durationSuggested: false };
+  const durationDays = Math.max(1, Math.round(draft.durationDays ?? fallbackDurationDays));
+  return {
+    endDate: addLocalDays(draft.startDate, durationDays - 1),
+    durationSuggested: draft.durationDays === undefined,
+  };
 }
 
 export function homepageSnapshotForDescribePrompt(snapshot: HomepageInputSnapshot, prompt: string): HomepageInputSnapshot {

@@ -36,7 +36,7 @@ import { routePlannerPayload } from "@/lib/easyt/public-route-handoff";
 import { defaultTravelProfile, travelProfileFromUnknown, tripInterestsWithProfileDefaults, type TravelProfile } from "@/lib/easyt/travel-profile";
 import { firstTripWorkspaceHref, mapWorkspaceHref, stayWorkspaceHref, tripWorkspaceHref } from "@/lib/easyt/trip-workspace-links";
 import { createLatestJourneyCaptureRequestGate, journeyCaptureFailureMessage, requestJourneyCapture } from "@/lib/easyt/journey-capture-client";
-import { HOME_TRIP_DRAFT_KEY, acknowledgePendingIntakeReceipt, createHandoffSharedLookup, discardPendingIntakeForEdit, handoffLookupMentions, handoffOutcomeIsCurrent, handoffStopOccurrenceId, homepageHandoffMatchesTrip, homepageHandoffReceiptForOwner, homepageReceiptForProjection, insertHandoffOccurrence, persistEditableHomepageInput, pendingReceiptStillCurrent, projectHomepageInput, readHomepageInput, pendingIntakeReceiptForOwner, pendingHomepageHandoffForOwner, reserveDirectDescribeIntake, retireHandoffResolutionStatus, homeTripDraftInterestsWereExplicit, homeTripDraftTimingFlexibility, initialHandoffRouteStops, mergeHandoffLocationChoice, preferredHandoffLocationChoice, removeHomeTripDraftIfDurable, resolveHandoffIncrementally, routableHandoffMentions, tripInterestsFromHomeDraft, type HandoffLocationChoice, type HomeTripDraft, type HomepageInputSnapshot, type PendingHomeTripHandoff, type PendingIntakeReceipt } from "@/lib/easyt/home-trip-handoff";
+import { HOME_TRIP_DRAFT_KEY, acknowledgePendingIntakeReceipt, createHandoffSharedLookup, discardPendingIntakeForEdit, handoffLookupMentions, handoffOutcomeIsCurrent, handoffStopOccurrenceId, homepageBuilderDateRange, homepageHandoffMatchesTrip, homepageHandoffReceiptForOwner, homepageReceiptForProjection, insertHandoffOccurrence, persistEditableHomepageInput, pendingReceiptStillCurrent, projectHomepageInput, readHomepageInput, pendingIntakeReceiptForOwner, pendingHomepageHandoffForOwner, reserveDirectDescribeIntake, retireHandoffResolutionStatus, homeTripDraftInterestsWereExplicit, homeTripDraftTimingFlexibility, initialHandoffRouteStops, mergeHandoffLocationChoice, preferredHandoffLocationChoice, removeHomeTripDraftIfDurable, resolveHandoffIncrementally, routableHandoffMentions, tripInterestsFromHomeDraft, type HandoffLocationChoice, type HomeTripDraft, type HomepageInputSnapshot, type PendingHomeTripHandoff, type PendingIntakeReceipt } from "@/lib/easyt/home-trip-handoff";
 import { resolveNewTripEntryState, type NewTripEntryState } from "./new-trip-entry-state";
 import { NewTripStarter } from "./new-trip-starter";
 import type { JourneyCaptureResult } from "@/lib/easyt/journey-capture";
@@ -634,6 +634,7 @@ function TripBuilderDocument() {
   const [startDate, setStartDate] = useState(today);
   const [endDate, setEndDate] = useState(oneWeekLater);
   const [datesManuallyEdited, setDatesManuallyEdited] = useState(false);
+  const [endDateStillSuggested, setEndDateStillSuggested] = useState(false);
 
   const [filter, setFilter] = useState("All");
   const [picks, setPicks] = useState<Record<string, string[]>>({});
@@ -742,9 +743,11 @@ function TripBuilderDocument() {
     const draftStops = draft.destinations?.length ? draft.destinations : draft.destination ? [draft.destination] : [];
     if (draft.routeHints) setRouteHints(draft.routeHints);
     if (draft.nightAllocations) setDayAllocations(draft.nightAllocations);
+    const intakeDates = homepageBuilderDateRange(draft, defaultTripIntent().timing.durationDays);
     if (draft.startDate) setStartDate(draft.startDate);
-    if (draft.endDate) setEndDate(draft.endDate);
-    if (!draft.datesExplicit && draft.durationDays) {
+    if (intakeDates.endDate) setEndDate(intakeDates.endDate);
+    setEndDateStillSuggested(intakeDates.durationSuggested);
+    if (!draft.startDate && !draft.datesExplicit && draft.durationDays) {
       const durationEnd = new Date(`${draft.startDate || today}T00:00:00`);
       durationEnd.setDate(durationEnd.getDate() + Math.max(1, draft.durationDays) - 1);
       setEndDate(iso(durationEnd));
@@ -977,6 +980,7 @@ function TripBuilderDocument() {
       setStops(saved.stops.map(({ id, name, country, canonicalPlaceId, countryCode, region, providerId, longitude, latitude }) => ({ id, name, country, canonicalPlaceId, countryCode, region, providerId, coordinates: longitude !== null && latitude !== null ? [longitude, latitude] : undefined })));
       setStartDate(saved.startDate);
       setEndDate(saved.endDate);
+      setEndDateStillSuggested(saved.brief.endDateIsSuggestion === true);
       setPicks(saved.brief.selectedPlaces);
       setDayAllocations(saved.brief.nightAllocations ?? (saved.brief.nightAllocation && saved.brief.nightAllocation.state !== "conflict"
         ? saved.brief.nightAllocation.allocations
@@ -2263,6 +2267,7 @@ function TripBuilderDocument() {
     setStartDate(nextStart);
     setEndDate(nextEnd);
     setDatesManuallyEdited(true);
+    setEndDateStillSuggested(false);
   };
 
   const updateTravellers = (value: number) => {
@@ -2313,6 +2318,7 @@ function TripBuilderDocument() {
     setManualNightStopIds((current) => [...new Set([...current, ...editedIds])]);
     setEndDate(iso(nextEnd));
     setDatesManuallyEdited(true);
+    setEndDateStillSuggested(false);
     setRouteNightDraft(null);
     setEditingRouteStopId(null);
   };
@@ -2879,6 +2885,7 @@ function TripBuilderDocument() {
       const date = new Date(`${startDate}T00:00:00`);
       date.setDate(date.getDate() + Math.max(1, capture.durationDays - 1));
       setEndDate(iso(date));
+      setEndDateStillSuggested(false);
     }
   };
 
@@ -3208,6 +3215,7 @@ function TripBuilderDocument() {
       stops,
       startDate,
       endDate,
+      endDateIsSuggestion: endDateStillSuggested,
       picks: effectivePicks,
       mustDo: tripBrief,
       pace: effectiveIntent.preferences.pace === "packed" ? "full" : "slow",
@@ -3335,6 +3343,7 @@ function TripBuilderDocument() {
         : undefined;
       const proposedBrief: EasyTTrip["brief"] = {
         ...activeTripDocument.brief,
+        endDateIsSuggestion: detailsDraft.startDate === startDate && detailsDraft.endDate === endDate && endDateStillSuggested,
         origin: nextOrigin.name,
         originCoordinates: nextOrigin.coordinates,
         originCanonicalPlaceId: nextOrigin.canonicalPlaceId,
@@ -3390,6 +3399,7 @@ function TripBuilderDocument() {
           : (language === "es" ? "Revisa los datos del viaje antes de guardarlos." : "Review the trip details before saving."));
         return false;
       }
+      if (detailsDraft.startDate !== startDate || detailsDraft.endDate !== endDate) setEndDateStillSuggested(false);
       commitTripDetailsDocument(result.document);
       return true;
     } finally {
@@ -3923,6 +3933,7 @@ function TripBuilderDocument() {
   };
 
   const continueBuildTrip = () => {
+    if (endDateStillSuggested) return;
     if (!buildInvariant.canBuildTrip) {
       surfaceBuildConflict();
       return;
@@ -3941,6 +3952,7 @@ function TripBuilderDocument() {
   };
 
   const buildTrip = () => {
+    if (endDateStillSuggested) return;
     if (!buildInvariant.canBuildTrip) {
       surfaceBuildConflict();
       return;
@@ -3955,6 +3967,7 @@ function TripBuilderDocument() {
   useEffect(() => {
     if (!buildRequested) return;
     setBuildRequested(false);
+    if (endDateStillSuggested) return;
     if (!buildInvariant.canBuildTrip) {
       surfaceBuildConflict();
       return;
@@ -3968,7 +3981,7 @@ function TripBuilderDocument() {
         window.location.assign(!saved.ownerId ? firstTripWorkspaceHref(saved.id) : !session?.user ? tripSyncSignInPath(saved.id) : firstTripWorkspaceHref(saved.id));
       } else settleUnacknowledgedBuild();
     })();
-  }, [buildRequested, activeTripDocument, buildInvariant.canBuildTrip]);
+  }, [buildRequested, activeTripDocument, buildInvariant.canBuildTrip, endDateStillSuggested]);
 
   useEffect(() => {
     if (!hydrated || legacyFocusScheduledRef.current) return;
@@ -4456,6 +4469,8 @@ function TripBuilderDocument() {
                   endSelection={journeyEnd}
                   startDate={startDate}
                   endDate={endDate}
+                  dateHint={endDateStillSuggested ? (language === "es" ? `Solo has elegido la fecha de inicio. La fecha final y los ${defaultTripIntent().timing.durationDays} días son una sugerencia.` : `Only your start date is set. The end date and ${defaultTripIntent().timing.durationDays}-day length are suggestions.`) : undefined}
+                  onAcceptSuggestedDates={endDateStillSuggested ? () => { setEndDateStillSuggested(false); setDatesManuallyEdited(true); } : undefined}
                   travellers={effectiveIntent.travellers}
                   budget={budget}
                   sourceFingerprint={builderDetailsFingerprint(activeTripDocument)}
@@ -5384,10 +5399,11 @@ function TripBuilderDocument() {
       /></div> : null}
       {hasRouteSkeleton && <div className={styles.wizardFoot}>
         <div className={styles.footRight}>
+          {endDateStillSuggested && <small className={styles.gate}>{language === "es" ? "Confirma las fechas arriba" : "Confirm trip dates above"}</small>}
           {gate && gateConflict?.code !== "itinerary-stop-uncovered" && <small className={styles.gate}>{gate}</small>}
-          <button type="button" className={styles.primary} disabled={Boolean(gate) || openingTrip || Boolean(cloudConflictTrip) || (Boolean(session?.user) && saveState === "error")} aria-busy={openingTrip || undefined}
+          <button type="button" className={styles.primary} disabled={endDateStillSuggested || Boolean(gate) || openingTrip || Boolean(cloudConflictTrip) || (Boolean(session?.user) && saveState === "error")} aria-busy={openingTrip || undefined}
             onClick={async () => {
-              if (gate) return;
+              if (gate || endDateStillSuggested) return;
               buildTrip();
             }}>
             {openingTrip ? (language === "es" ? "Abriendo tu ruta…" : "Opening your route…") : (language === "es" ? "Crear viaje" : "Build trip")} {!openingTrip ? "→" : ""}

@@ -29,6 +29,8 @@ export function TripBuilderDetailsEditor({
   endSelection,
   startDate,
   endDate,
+  dateHint,
+  onAcceptSuggestedDates,
   travellers,
   budget,
   sourceFingerprint,
@@ -43,6 +45,8 @@ export function TripBuilderDetailsEditor({
   endSelection: JourneyEndSelection;
   startDate: string;
   endDate: string;
+  dateHint?: string;
+  onAcceptSuggestedDates?: () => void;
   travellers: number;
   budget: BudgetBand;
   sourceFingerprint: string;
@@ -86,15 +90,23 @@ export function TripBuilderDetailsEditor({
     <div key={draftRevision} className={styles.detailsFields}>
       {children({ draft, setDraft })}
       <div className={styles.detailsCompactGrid}>
-        <MorroviaDatePicker
-          mode="range"
-          locale={language}
-          startLabel={language === "es" ? "Fecha de inicio" : "Start date"}
-          endLabel={language === "es" ? "Fecha final" : "End date"}
-          startValue={draft.startDate}
-          endValue={draft.endDate}
-          onChange={(range) => setDraft((current) => ({ ...current, startDate: range.start, endDate: range.end }))}
-        />
+        <div>
+          <MorroviaDatePicker
+            mode="range"
+            locale={language}
+            startLabel={language === "es" ? "Fecha de inicio" : "Start date"}
+            endLabel={language === "es" ? "Fecha final" : "End date"}
+            startValue={draft.startDate}
+            endValue={draft.endDate}
+            onChange={(range) => setDraft((current) => ({ ...current, startDate: range.start, endDate: range.end }))}
+          />
+          {dateHint ? <div>
+            <p className={styles.hint}>{draft.startDate !== startDate || draft.endDate !== endDate
+              ? language === "es" ? "Guarda los cambios para confirmar las fechas elegidas." : "Save changes to confirm your chosen dates."
+              : dateHint}</p>
+            {draft.startDate === startDate && draft.endDate === endDate ? <EasyTButton type="button" variant="secondary" size="small" onClick={onAcceptSuggestedDates}>{language === "es" ? "Aceptar fechas sugeridas" : "Accept suggested dates"}</EasyTButton> : null}
+          </div> : null}
+        </div>
         <MorroviaQuantitySelector
           compact
           label={language === "es" ? "Viajeros" : "Travellers"}

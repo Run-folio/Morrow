@@ -325,6 +325,8 @@ export type TripChange = {
 
 export type TripBrief = {
   origin: string;
+  /** Preview end date awaiting the traveller's explicit duration choice. */
+  endDateIsSuggestion?: boolean;
   /** Traveller-authored identity. Null explicitly opts back into the generated geographic title. */
   customTitle?: string | null;
   originCoordinates?: [number, number];
@@ -531,6 +533,7 @@ export type BuilderTripInput = {
   stops: Array<{ id: string; name: string; country: string; canonicalPlaceId?: string; countryCode?: string; region?: string; providerId?: string; coordinates?: [number, number]; intent?: "place" | "landmark"; locality?: string }>;
   startDate: string;
   endDate: string;
+  endDateIsSuggestion?: boolean;
   picks: Record<string, string[]>;
   mustDo: string;
   pace: TripPace;
@@ -659,6 +662,7 @@ export function tripFromBuilder(input: BuilderTripInput): EasyTTrip {
     currency: "GBP",
     brief: {
       origin: input.origin,
+      endDateIsSuggestion: input.endDateIsSuggestion,
       originCoordinates: input.originCoordinates,
       originCanonicalPlaceId: input.originCanonicalPlaceId,
       originCountry: input.originCountry,

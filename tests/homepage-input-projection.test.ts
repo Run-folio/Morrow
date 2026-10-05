@@ -2,7 +2,8 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { captureJourneyBrief } from "../lib/easyt/journey-capture.ts";
-import { homepageSnapshotForDescribePrompt, projectHomepageInput, type HomepageDestinationEntry } from "../lib/easyt/home-trip-handoff.ts";
+import { homepageBuilderDateRange, homepageSnapshotForDescribePrompt, projectHomepageInput, type HomepageDestinationEntry } from "../lib/easyt/home-trip-handoff.ts";
+import { formatLocalDateRange } from "../lib/easyt/local-date.ts";
 import { findCatalogPlaceById } from "../lib/easyt/place-catalog.ts";
 import type { CanonicalPlaceSuggestion } from "../lib/easyt/place-intelligence.ts";
 import { defaultTravelProfile } from "../lib/easyt/travel-profile.ts";
@@ -212,7 +213,7 @@ test("dates and travellers reject malformed values outside supported ranges", ()
   ]);
 });
 
-test("dates reject partial and reversed ranges while accepting the 1 to 12 traveller bounds", () => {
+test("dates reject reversed ranges while a selected start alone remains flexible", () => {
   const snapshot = emptyHomepageInput();
   snapshot.entries = [selectedEntry("a", "Tokyo")];
   snapshot.dates = { state: "selected", value: { start: "2026-07-10", end: "2026-07-01" } };
@@ -223,13 +224,46 @@ test("dates reject partial and reversed ranges while accepting the 1 to 12 trave
 
   snapshot.dates = { state: "selected", value: { start: "2026-07-01", end: "" } };
   result = projected(snapshot);
-  assert.equal(result.ok, false);
-  if (!result.ok) assert.deepEqual(result.issues, [{ field: "dates", code: "invalid" }]);
+  assert.equal(result.ok, true);
+  if (result.ok) {
+    assert.equal(result.draft.startDate, "2026-07-01");
+    assert.equal(result.draft.endDate, undefined);
+    assert.equal(result.draft.datesExplicit, false);
+    assert.equal(result.draft.durationDays, undefined);
+  }
 
   snapshot.dates = { state: "untouched" };
   snapshot.travellers = { state: "selected", value: 12 };
   result = projected(snapshot);
   assert.equal(result.ok, true);
+});
+
+test("start-only dates show their anchor and distinguish suggested duration from stated duration", () => {
+  assert.equal(formatLocalDateRange("2026-11-10", "", "en", "Add dates"), "From 10 Nov 2026");
+  assert.equal(formatLocalDateRange("2026-11-10", "", "es", "Añadir fechas"), "Desde el 10 nov 2026");
+  assert.deepEqual(homepageBuilderDateRange({ startDate: "2026-11-10" }, 7), {
+    endDate: "2026-11-16", durationSuggested: true,
+  });
+  assert.deepEqual(homepageBuilderDateRange({ startDate: "2026-11-10", durationDays: 14 }, 7), {
+    endDate: "2026-11-23", durationSuggested: false,
+  });
+  assert.deepEqual(homepageBuilderDateRange({ startDate: "2026-11-10", endDate: "2026-11-27", durationDays: 14 }, 7), {
+    endDate: "2026-11-27", durationSuggested: false,
+  });
+});
+
+test("a Central Asia start-only prompt retains its stated two weeks without fixing an end date", () => {
+  const snapshot = emptyHomepageInput();
+  snapshot.mode = "describe";
+  snapshot.prompt = "Kazakhstan, Uzbekistan, Kyrgyzstan, 2 weeks";
+  snapshot.dates = { state: "selected", value: { start: "2026-11-10", end: "" } };
+  const result = projected(snapshot);
+  assert.equal(result.ok, true);
+  if (!result.ok) return;
+  assert.equal(result.draft.startDate, "2026-11-10");
+  assert.equal(result.draft.endDate, undefined);
+  assert.equal(result.draft.durationDays, 14);
+  assert.equal(result.draft.datesExplicit, false);
 });
 
 test("selected dates, travellers and budget take precedence over capture and profile", () => {

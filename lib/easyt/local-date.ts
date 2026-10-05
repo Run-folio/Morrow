@@ -64,10 +64,11 @@ export function formatLocalDate(value: string, locale = "en", options?: Intl.Dat
 export function formatLocalDateRange(startValue: string, endValue: string, locale = "en", placeholder = ""): string {
   const start = localDateFromIso(startValue);
   const end = localDateFromIso(endValue);
-  if (!start || !end) return placeholder;
+  if (!start) return placeholder;
   const day = new Intl.DateTimeFormat(locale, { day: "numeric" });
   const month = new Intl.DateTimeFormat(locale, { month: "short" });
   const dayMonth = (value: Date) => `${day.format(value)} ${month.format(value)}`;
+  if (!end) return `${locale.startsWith("es") ? "Desde el" : "From"} ${dayMonth(start)} ${start.getFullYear()}`;
   if (start.getFullYear() !== end.getFullYear()) return `${dayMonth(start)} ${start.getFullYear()}–${dayMonth(end)} ${end.getFullYear()}`;
   if (start.getMonth() !== end.getMonth()) return `${dayMonth(start)}–${dayMonth(end)} ${end.getFullYear()}`;
   return `${day.format(start)}–${day.format(end)} ${month.format(end)} ${end.getFullYear()}`;
