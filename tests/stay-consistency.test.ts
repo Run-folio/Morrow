@@ -84,7 +84,7 @@ test("Stay map is a projection of the current finder shortlist with one selectio
   assert.match(stay, /selectedMapResult=\{selectedMapResult\}/);
   assert.match(stay, /onMapResultSelect=\{\(result\)/);
   assert.match(stay, /const place = finder\.candidates\.find\(\(candidate\) => candidate\.id === result\.sourceId\)/);
-  assert.match(stay, /if \(place\) selectPlace\(place\)/);
+  assert.match(stay, /if \(place\) selectPlace\(place, "map"\)/);
   assert.equal((stay.match(/<JourneyLocalFinder/g) ?? []).length, 1, "the mini-map must not start another finder");
   assert.doesNotMatch(photoClient, /journey-local-search|journey-accommodation-search/);
 });

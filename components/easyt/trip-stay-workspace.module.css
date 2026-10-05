@@ -223,6 +223,8 @@
   background: var(--morrovia-paper);
 }
 
+.detailClose { margin: 0 0 10px auto; }
+
 .detailPhotoCredit { margin: 8px 2px 0; color: var(--morrovia-muted); font: var(--morrovia-type-fine-print); }
 .detailPhotoCredit a { color: inherit; text-decoration: underline; text-underline-offset: 2px; }
 
@@ -247,7 +249,8 @@
   .layout { overflow: visible; }
   .layout { display: block; }
   .main { border-right: 0; }
-  .rail { position: static; max-height: none; overflow: visible; border-top: 1px solid var(--morrovia-line); }
+  .rail { position: static; max-height: none; overflow: visible; padding: 0; border-top: 0; }
+  .detail { padding: 0; border: 0; }
 }
 
 @media (max-width: 620px) {

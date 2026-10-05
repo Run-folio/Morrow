@@ -78,14 +78,39 @@ function StayFinderSurface({
     dayNumber: mapDayNumber,
   })), [context.stop.id, finder.candidates, mapDayNumber]);
   const selectedMapResult = selected ? mapResults.find((result) => result.sourceId === selected.id) ?? null : null;
-  const detailRef = useRef<HTMLDivElement>(null);
+  const selectionOrigin = useRef<HTMLElement | null>(null);
+  const selectionOriginLabel = useRef<string | null>(null);
+  const selectionOriginMapId = useRef<string | null>(null);
+  const [compact, setCompact] = useState(false);
 
-  const selectPlace = (place: JourneyLocalPlace) => {
+  useEffect(() => {
+    const viewport = window.matchMedia("(max-width: 900px)");
+    const update = () => setCompact(viewport.matches);
+    update();
+    viewport.addEventListener("change", update);
+    return () => viewport.removeEventListener("change", update);
+  }, []);
+
+  const selectPlace = (place: JourneyLocalPlace, source: "card" | "map" = "card") => {
+    selectionOrigin.current = source === "card" && document.activeElement instanceof HTMLElement && document.activeElement !== document.body ? document.activeElement : null;
+    selectionOriginLabel.current = selectionOrigin.current?.getAttribute("aria-label") ?? null;
+    selectionOriginMapId.current = source === "map" ? mapResultSelectionId("stay", place.id, context.stop.id) : null;
     setSelectedPlaceId(place.id);
     finder.selectPlace(place);
-    if (window.matchMedia("(max-width: 900px)").matches) {
-      window.requestAnimationFrame(() => detailRef.current?.scrollIntoView({ block: "start" }));
-    }
+  };
+
+  const closeDetail = () => {
+    finder.clearSelection();
+    setSelectedPlaceId(null);
+    window.requestAnimationFrame(() => {
+      const original = selectionOrigin.current;
+      const replacement = selectionOriginMapId.current
+        ? [...document.querySelectorAll<HTMLElement>("button[data-map-result-id]")].find((button) => button.dataset.mapResultId === selectionOriginMapId.current)
+        : selectionOriginLabel.current
+        ? [...document.querySelectorAll<HTMLElement>("button[aria-label]")].find((button) => button.getAttribute("aria-label") === selectionOriginLabel.current)
+        : null;
+      (original?.isConnected ? original : replacement)?.focus();
+    });
   };
 
   const chooseStay = (place: JourneyLocalPlace) => {
@@ -120,8 +145,14 @@ function StayFinderSurface({
     );
   };
 
-  const showRail = finder.candidates.length > 0 || Boolean(detail);
+  const showRail = compact ? Boolean(detail) : finder.candidates.length > 0 || Boolean(detail);
   const inventoryLoading = finder.accommodationInventoryStatus === "loading" && finder.candidates.length > 0;
+  const mapPreview = finder.candidates.length ? <MorroviaMapPreview title="Stay map" href={fullMapHref(selected)}>
+    <JourneyPlannerMap stops={[]} legs={[]} selectedId="" plannerPins={[]} mapResults={mapResults} selectedMapResult={selectedMapResult} focusCoordinates={context.searchCoordinates} focusZoom={13} draftPinCoordinates={null} pinPlacementMode={false} surface={{ variant: "embedded", interaction: "selection-only" }} previewLabel={`Stay options in ${context.stop.name}`} onMapPinDrop={() => undefined} onPlannerPinSelect={() => undefined} onMapResultSelect={(result) => {
+      const place = finder.candidates.find((candidate) => candidate.id === result.sourceId);
+      if (place) selectPlace(place, "map");
+    }} onSelect={() => undefined} />
+  </MorroviaMapPreview> : null;
 
   return <div className={`${styles.layout} ${showRail ? "" : styles.layoutNoRail}`}>
     {notice || mutation.error ? <div className={styles.feedbackRow}>
@@ -138,6 +169,8 @@ function StayFinderSurface({
         <h2>Where to stay in {context.stop.name}</h2>
         <p>{context.nights} {context.nights === 1 ? "night" : "nights"} · {context.dateLabel}</p>
       </header>
+
+      {compact ? mapPreview : null}
 
       {booking && !finder.candidates.some((place) => stayIsSelected(workingTrip, context, place)) ? <MorroviaStatusBanner
         tone="success"
@@ -195,19 +228,15 @@ function StayFinderSurface({
     </div>
 
     {showRail ? <aside className={styles.rail} aria-label="Stay map and decision support">
-      {finder.candidates.length ? <MorroviaMapPreview title="Stay map" href={fullMapHref(selected)}>
-          <JourneyPlannerMap stops={[]} legs={[]} selectedId="" plannerPins={[]} mapResults={mapResults} selectedMapResult={selectedMapResult} focusCoordinates={context.searchCoordinates} focusZoom={13} draftPinCoordinates={null} pinPlacementMode={false} surface={{ variant: "embedded", interaction: "selection-only" }} previewLabel={`Stay options in ${context.stop.name}`} onMapPinDrop={() => undefined} onPlannerPinSelect={() => undefined} onMapResultSelect={(result) => {
-            const place = finder.candidates.find((candidate) => candidate.id === result.sourceId);
-            if (place) selectPlace(place);
-          }} onSelect={() => undefined} />
-      </MorroviaMapPreview> : null}
+      {!compact ? mapPreview : null}
 
-      {detail && selected ? <div ref={detailRef} className={styles.detail}>
+      {detail && selected ? <div className={styles.detail}>
+        {!compact ? <EasyTButton className={styles.detailClose} size="small" variant="quiet" aria-label={`Close details for ${selected.name}`} onClick={closeDetail}>Close</EasyTButton> : null}
         <ItineraryItemDetail
           detail={detail}
-          embedded
+          embedded={!compact}
           pending={mutation.saveState === "saving"}
-          onClose={() => { finder.clearSelection(); setSelectedPlaceId(null); }}
+          onClose={closeDetail}
           mapHref={fullMapHref(selected)}
           primaryActions={<>
             {!selectedSaved ? <EasyTButton fullWidth loading={mutation.saveState === "saving"} onClick={() => chooseStay(selected)}>Choose stay</EasyTButton> : <span className={styles.selectedStatus}><Check aria-hidden="true" />Chosen for this stop</span>}
