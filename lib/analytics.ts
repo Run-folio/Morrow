@@ -63,7 +63,7 @@ export type LaunchAnalyticsEventMap = {
   map_google_request: { operation: "sdk" | "nearby" | "details" | "reference_resolve" | "photo" | "reviews" | "retry"; outcome: "started" | "success" | "failure"; failure_kind?: "configuration" | "quota" | "offline" | "provider" };
   trip_stay_viewed: { trip_id?: string; workspace_view: "stay"; route_mode: RouteMode; stop_count?: number };
   trip_transport_viewed: { trip_id?: string; workspace_view: "transport"; route_mode: RouteMode; stop_count?: number };
-  itinerary_item_added: { trip_id: string; stop_id: string; source: "manual"; item_kind: "activity" };
+  itinerary_item_added: { trip_id: string; stop_id: string; source: "manual" | "suggestion" | "viator" | "food_place"; item_kind: "activity" | "restaurant" };
   stay_chosen: { trip_id: string; stop_id: string; source: "stay_workspace" };
   explore_opened: { trip_id: string; workspace_view: "explore"; stop_count: number };
   explore_destination_changed: { trip_id: string; destination_scope: "all" | "stop" };

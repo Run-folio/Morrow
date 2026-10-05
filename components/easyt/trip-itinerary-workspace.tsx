@@ -51,6 +51,7 @@ import {
 import { formatTripDuration, incomingLegForPlanItem } from "@/lib/easyt/trip-facts";
 import { formatIsoDate } from "@/lib/easyt/trip-lifecycle";
 import { trackEvent } from "@/lib/analytics";
+import { itineraryAddSourceForIdea, newlyScheduledItineraryIdea } from "@/lib/easyt/itinerary-add-analytics";
 import { affiliateProviderLabel, getCurrentPartnerAction, omioBookingActionForLeg, type ResolvedAffiliateAction } from "@/lib/easyt/booking-readiness";
 import { removeStayBooking, stayBookingForStop } from "@/lib/easyt/accommodation";
 import { routeEndpointForLeg } from "@/lib/easyt/trip-legs";
@@ -1019,6 +1020,7 @@ export default function TripItineraryWorkspace({
   const scheduleIdea = (idea: ItineraryIdea, dayId: string, requestedPart?: ItineraryDayPart | null) => {
     let scheduledPart: ItineraryDayPart | null = requestedPart ?? null;
     let receipt: ItineraryItemUndoReceipt | null = null;
+    let newItem = false;
     const accepted = mutation.mutateTrip((current) => {
       const preferredPart = requestedPart === undefined
         ? activityDayPartFit(idea.providerMetadata?.duration) === "slot"
@@ -1028,13 +1030,17 @@ export default function TripItineraryWorkspace({
       scheduledPart = activityAllowsDayPart(idea.providerMetadata?.duration, preferredPart) ? preferredPart : null;
       const result = scheduleItineraryIdeaWithUndo(current, idea, dayId, scheduledPart);
       receipt = result.undo ?? null;
+      newItem = newlyScheduledItineraryIdea(current, result.trip, idea);
       return result.trip;
     }, `itinerary-suggestion-${idea.stopId}-${idea.placeId}`, "idea-schedule");
     if (!accepted) return false;
     setUndoReceipt(receipt);
     const target = workingTrip.planItems.find((day) => day.id === dayId);
     setNotice(target ? addedToDayNotice(language, target.dayNumber, scheduledPart) : copy.suggestionAdded);
-    trackEvent("attraction_selected", { trip_id: workingTrip.id, stop_id: active.stopId, source: "itinerary_rail" });
+    if (newItem) {
+      trackEvent("itinerary_item_added", { trip_id: workingTrip.id, stop_id: idea.stopId, source: itineraryAddSourceForIdea(idea), item_kind: idea.category });
+      trackEvent("attraction_selected", { trip_id: workingTrip.id, stop_id: active.stopId, source: "itinerary_rail" });
+    }
     return true;
   };
 
@@ -1056,13 +1062,22 @@ export default function TripItineraryWorkspace({
     if (dragged.kind === "suggestion") {
       let mutationReason = "";
       let receipt: ItineraryItemUndoReceipt | null = null;
+      let newItem = false;
       const accepted = mutation.mutateTrip((current) => {
         const result = scheduleItineraryIdeaAtPositionWithUndo(current, dragged.idea, active.id, dayPart, insertionIndex);
         mutationReason = result.reason ?? "";
         receipt = result.undo ?? null;
+        newItem = newlyScheduledItineraryIdea(current, result.trip, dragged.idea);
         return result.trip;
       }, `itinerary-suggestion-${dragged.idea.stopId}-${dragged.idea.placeId}`);
-      if (accepted) { setUndoReceipt(receipt); setNotice(addedToDayNotice(language, active.dayNumber, dayPart)); trackEvent("attraction_selected", { trip_id: workingTrip.id, stop_id: active.stopId, source: "itinerary_drag" }); }
+      if (accepted) {
+        setUndoReceipt(receipt);
+        setNotice(addedToDayNotice(language, active.dayNumber, dayPart));
+        if (newItem) {
+          trackEvent("itinerary_item_added", { trip_id: workingTrip.id, stop_id: dragged.idea.stopId, source: itineraryAddSourceForIdea(dragged.idea), item_kind: dragged.idea.category });
+          trackEvent("attraction_selected", { trip_id: workingTrip.id, stop_id: active.stopId, source: "itinerary_drag" });
+        }
+      }
       else if (mutationReason && !mutationReason.includes("already")) setPlannerError(mutationReason);
       return;
     }

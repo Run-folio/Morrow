@@ -30,7 +30,7 @@ These typed events answer the minimum launch questions without replacing the exi
 | `trip_save_failed` | The same meaningful persistence boundary fails. | opaque `trip_id`, `trip_source`, `save_state`, coarse `error_type`, `is_authenticated` |
 | `trip_overview_viewed` / `trip_itinerary_viewed` / `trip_map_viewed` / `trip_transport_viewed` | The corresponding shared Trip Workspace route is visited. | opaque `trip_id`, `workspace_view`, `route_mode`, `stop_count` |
 | `trip_reopened` | A saved trip is deliberately opened from the dashboard. | opaque `trip_id`, `source`, `save_state`, `stop_count` |
-| `itinerary_item_added` | A traveller adds a manual activity to a day and the local trip mutation is accepted. Notes and failed additions do not count. | opaque `trip_id`, `stop_id`, categorical `source` and `item_kind` |
+| `itinerary_item_added` | A traveller first schedules a canonical activity or restaurant on a day and the local trip mutation is accepted. Manual Add, Morrovia suggestions, Viator planning choices and Food/place results count; Saved-to-planned counts once. Notes, duplicate retries, moves and failed additions do not count. | opaque `trip_id`, `stop_id`; `source` (`manual`, `suggestion`, `viator`, `food_place`); `item_kind` (`activity`, `restaurant`) |
 | `stay_chosen` | A traveller chooses a mapped property in Stay and the local trip mutation is accepted. This is a planning choice, not a booking. | opaque `trip_id`, `stop_id`, categorical `source` |
 | `trip_edit_started` | Edit is deliberately opened from the dashboard. | opaque `trip_id`, `source` |
 | `route_repair_applied` | An existing map health recommendation is deliberately applied. | opaque `trip_id`, `repair_count`, machine-safe `repair_category`, `source` |
@@ -197,7 +197,7 @@ These events never include country names, country codes or country IDs; note or 
 | `accommodation_map_opened` | Traveller opens the existing Stay Finder from itinerary accommodation. | `trip_id`, `stop_id` | Every deliberate open. |
 | `attraction_refinement_viewed` | A destination's itinerary refinement panel is shown. | `trip_id`, `stop_id`, `selected_count` | Once per trip, stop and browser session. |
 | `attraction_selected` / `attraction_removed` | Traveller adds or removes a destination attraction. | `trip_id`, `stop_id` | Every deliberate change. |
-| `itinerary_item_added` | Traveller adds a manual activity directly to an itinerary day. | opaque `trip_id`, `stop_id`, categorical `source`, `item_kind` | After an accepted local mutation; notes and failed additions do not count. |
+| `itinerary_item_added` | Traveller first schedules a canonical activity or restaurant on an itinerary day. | opaque `trip_id`, `stop_id`, categorical `source`, `item_kind` | After an accepted local mutation; notes, duplicate retries and moves do not count. |
 | `stay_chosen` | Traveller chooses a mapped Stay option for an overnight stop. | opaque `trip_id`, `stop_id`, categorical `source` | After an accepted local mutation; this is not a booking or availability confirmation. |
 | `attraction_filter_used` | Traveller narrows the destination shortlist by category. | `trip_id`, `stop_id`, `filter` | Every deliberate filter change away from All. |
 | `attraction_map_opened` | Traveller opens deeper map discovery from destination refinement. | `trip_id`, `stop_id` | Every deliberate open. |
@@ -224,7 +224,7 @@ These names are reserved for the collaboration MVP. They must not be emitted unt
 
 The public Route Detail page emits `route_started` only when a traveller deliberately selects its planner CTA; the consent-gated pageview already measures route views. The builder already emits intent, route generation, route acceptance and structural-refinement events. The map plan emits health and readiness events. Commercial CTAs emit exactly one member of the documented outbound-click union: the generic event for supported partners and the established dedicated event for Omio or Viator. Saily uses the generic event only. Stamps uses the shared consent-gated pageview and emits `stamp_status_changed` and `stamp_note_added` only from their successful production save paths.
 
-Dragging a suggestion into a day emits the existing `attraction_selected` event with `source = itinerary_drag` after its mutation is accepted. Direct manual additions use `itinerary_item_added`; neither event contains the entered title. Stay choice uses `stay_chosen`, while its Trip.com outbound CTA remains one `affiliate_click` with `placement = stay_workspace_detail`.
+Dragging a suggestion into a day emits the existing `attraction_selected` event with `source = itinerary_drag` when a distinct choice is first scheduled. New canonical itinerary additions also emit `itinerary_item_added` after accepted local persistence, with a categorical source and item kind; neither event contains the entered title or provider response. A move of a planned item does not emit another add or selection event. Stay choice uses `stay_chosen`, while its Trip.com outbound CTA remains one `affiliate_click` with `placement = stay_workspace_detail`.
 
 `booking_attributed`, and the collaboration events remain intentionally inactive until Morrovia receives a partner conversion signal or ships authenticated shared trips. Do not create a synthetic event from a click, a redirect or an estimated commission.
 

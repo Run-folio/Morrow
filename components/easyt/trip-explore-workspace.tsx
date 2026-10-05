@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { trackEvent } from "@/lib/analytics";
+import { itineraryAddSourceForIdea, newlyScheduledItineraryIdea } from "@/lib/easyt/itinerary-add-analytics";
 import { JourneyRouteStopTrack } from "@/components/journey-planner-strip";
 import type { ActivityInventoryItem } from "@/lib/easyt/activity-inventory";
 import {
@@ -366,13 +367,21 @@ export default function TripExploreWorkspace({
     const chosenDay = selectedDayByResult[result.identity] ?? requestedDayNumber;
     const target = exploreScheduleTarget(workingTrip, result, chosenDay);
     if (!target) return;
+    let newItem = false;
     const changed = mutation.mutateTrip(
-      (current) => scheduleItineraryIdea(current, result.idea, target.day.id, target.dayPart),
+      (current) => {
+        const next = scheduleItineraryIdea(current, result.idea, target.day.id, target.dayPart);
+        newItem = newlyScheduledItineraryIdea(current, next, result.idea);
+        return next;
+      },
       `explore-schedule-${result.identity}`,
     );
     if (!changed) return;
     setNotice(`${result.title} added to Day ${target.day.dayNumber}.`);
-    trackEvent("explore_added_to_day", { trip_id: workingTrip.id, stop_id: result.stopId, day_number: target.day.dayNumber, result_kind: result.kind });
+    if (newItem) {
+      trackEvent("itinerary_item_added", { trip_id: workingTrip.id, stop_id: result.stopId, source: itineraryAddSourceForIdea(result.idea), item_kind: result.idea.category });
+      trackEvent("explore_added_to_day", { trip_id: workingTrip.id, stop_id: result.stopId, day_number: target.day.dayNumber, result_kind: result.kind });
+    }
   };
 
   const removeResult = (result: ExploreResult) => {
