@@ -13,6 +13,7 @@
     "test:email": "node --experimental-strip-types --test tests/email-system.test.ts tests/contact-form.test.ts tests/private-session-boundary.test.ts",
     "typecheck": "tsc --project tsconfig.typecheck.json --noEmit --incremental false",
     "release:gate": "node scripts/release-gate-smoke.mjs",
+    "test:core-journey-browser": "node --experimental-strip-types --test tests/core-journey-app-browser.test.ts",
     "staging:preflight": "node --env-file=.env.staging scripts/staging-preflight.mjs",
     "staging:seed": "node --env-file=.env.staging scripts/staging-seed.mjs",
     "staging:reset": "node --env-file=.env.staging scripts/staging-reset.mjs",
@@ -127,6 +128,7 @@
     "autoprefixer": "^10.4.21",
     "eslint": "^9.29.0",
     "eslint-config-next": "^15.5.21",
+    "playwright": "1.62.1",
     "postcss": "^8.5.6",
     "storybook": "^10.5.5",
     "tailwindcss": "^3.4.17"
