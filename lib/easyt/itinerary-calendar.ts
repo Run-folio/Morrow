@@ -26,6 +26,13 @@ export type ItineraryCalendarDay = {
   departure: boolean;
 };
 
+/** A projected transfer into this stop is the concrete event represented by Arrival. */
+export function hasCalendarArrivalEvent(day: ItineraryCalendarDay) {
+  return day.items.some((item) => item.kind === "transfer"
+    && item.agenda.to.kind === "stop"
+    && item.agenda.to.id === day.stop?.id);
+}
+
 export type ItineraryCalendarWeek = {
   id: string;
   startDate: string | null;

@@ -854,6 +854,25 @@ export const Calendar: Story = {
     [...canvasElement.querySelectorAll<HTMLButtonElement>("button")].find((button) => button.textContent?.trim() === "Calendar")?.click();
   },
 };
+export const CalendarAttributedPhoto: Story = {
+  ...Calendar,
+  args: {
+    trip: {
+      ...tokyoHierarchyTrip,
+      id: "storybook-calendar-attributed-photo",
+      brief: { ...tokyoHierarchyTrip.brief, customActivities: {} },
+      planItems: tokyoHierarchyTrip.planItems.map((item) => item.dayNumber === 1 ? {
+        ...item,
+        title: "Arrive in Tokyo",
+        notes: [],
+        noteDayParts: [],
+        image: "/journey/ginza-night.jpg",
+        sourceUrl: "https://commons.wikimedia.org/wiki/File:Illuminated_street_corner_at_blue_hour_-_facade_of_the_building_Fujiya_in_Ginza_Chuo-ku_Tokyo_Japan.jpg",
+      } : item),
+    },
+    selectedDayNumber: 1,
+  },
+};
 export const CalendarActivityDrag: Story = {
   ...RichDayPlannerIntegrated,
   args: {

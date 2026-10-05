@@ -1355,13 +1355,6 @@
         ]
       },
       {
-        "value": "#eaf8f3",
-        "count": 2,
-        "examples": [
-          "app/journey/passport/passport.module.css"
-        ]
-      },
-      {
         "value": "#ececef",
         "count": 2,
         "examples": [
@@ -3627,6 +3620,13 @@
         ]
       },
       {
+        "value": "#eaf8f3",
+        "count": 1,
+        "examples": [
+          "app/journey/passport/passport.module.css"
+        ]
+      },
+      {
         "value": "#ebecef",
         "count": 1,
         "examples": [
@@ -5260,7 +5260,7 @@
       },
       {
         "value": "12px",
-        "count": 506,
+        "count": 505,
         "examples": [
           "app/journey/about/about.module.css",
           "app/journey/account.module.css",
@@ -5270,7 +5270,7 @@
       },
       {
         "value": "14px",
-        "count": 344,
+        "count": 343,
         "examples": [
           "app/journey/about/about.module.css",
           "app/journey/account.module.css",
@@ -5330,7 +5330,7 @@
       },
       {
         "value": "6px",
-        "count": 242,
+        "count": 243,
         "examples": [
           "app/journey/account.module.css",
           "app/journey/discover/discover.module.css",
@@ -5360,7 +5360,7 @@
       },
       {
         "value": "24px",
-        "count": 227,
+        "count": 226,
         "examples": [
           "app/journey/about/about.module.css",
           "app/journey/account.module.css",
@@ -7968,7 +7968,7 @@
       "native-confirm": 0,
       "legacy-ui-import": 0,
       "deprecated-ui-owner": 0,
-      "raw-color": 1886,
+      "raw-color": 1885,
       "large-accent-surface": 0,
       "raw-radius": 552,
       "raw-shadow": 167,

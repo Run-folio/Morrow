@@ -66,6 +66,23 @@ test("Calendar selection resolves canonical IDs in place, with an explicit full-
   assert.match(itinerary, /items\.slice\(0, 4\)/);
 });
 
+test("Calendar keeps day cards selectable while removing redundant empty-card and weekday copy", () => {
+  const calendar = itinerary.slice(itinerary.indexOf("function ItineraryCalendar("), itinerary.indexOf("function CalendarItemButton("));
+  assert.doesNotMatch(calendar, /calendarWeekdays|calendarWeekdayLabels|calendarEmptyDay|copy\.noCalendarPlans/);
+  assert.match(calendar, /day\.day\.type === "open" && day\.items\.length === 0/);
+  assert.match(calendar, /hasCalendarArrivalEvent\(day\)/);
+  assert.match(calendar, /<time dateTime=\{day\.day\.date\}>/);
+  assert.match(calendar, /aria-pressed=\{selectedDayId === day\.id\}/);
+  assert.match(itinerary, /<EasyTButton variant="secondary" size="small" onClick=\{onOpenDay\}>Open full day<\/EasyTButton>/);
+});
+
+test("Calendar places the existing photo-credit control below its side image", () => {
+  assert.match(itinerary, /workspaceView === "days" \? dayHeroCredit : null/);
+  assert.match(itinerary, /workspaceView === "calendar" \? dayHeroCredit : null/);
+  assert.match(styles, /\.calendarDayHeroCredit\s*\{[^}]*position:\s*relative/);
+  assert.match(stories, /export const CalendarAttributedPhoto: Story/);
+});
+
 test("Calendar exposes canonical Move, item-scoped Undo, and transport or booking detail owners", () => {
   assert.match(itinerary, /scheduleItineraryIdeaWithUndo/);
   assert.match(itinerary, /scheduleItineraryIdeaAtPositionWithUndo/);

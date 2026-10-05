@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { itineraryCalendarDays, itineraryCalendarNightBands, itineraryCalendarWeeks } from "../lib/easyt/itinerary-calendar.ts";
+import { hasCalendarArrivalEvent, itineraryCalendarDays, itineraryCalendarNightBands, itineraryCalendarWeeks } from "../lib/easyt/itinerary-calendar.ts";
 import type { EasyTTrip, PlanItem, TripLeg } from "../lib/easyt/trip.ts";
 
 const day = (id: string, stopId: string, dayNumber: number, date: string, title: string, type: PlanItem["type"] = "activity"): PlanItem => ({
@@ -134,6 +134,18 @@ test("projects each canonical transfer once with truthful booked and unknown sta
   assert.deepEqual(transfers.map((item) => item.agenda.leg.id), ["arrival-tokyo-first", "tokyo-kyoto", "kyoto-tokyo-return"]);
   assert.deepEqual(transfers.map((item) => item.agenda.status), ["available", "booked", "confirm"]);
   assert.equal(transfers[2]?.agenda.leg.durationMinutes, null);
+});
+
+test("a real arriving transfer suppresses only its duplicate generic Arrival label", () => {
+  const withTransfer = itineraryCalendarDays(representativeTrip())[0]!;
+  assert.equal(withTransfer.arrival, true);
+  assert.equal(hasCalendarArrivalEvent(withTransfer), true);
+
+  const withoutTransfer = representativeTrip();
+  withoutTransfer.legs = [];
+  const genericArrival = itineraryCalendarDays(withoutTransfer)[0]!;
+  assert.equal(genericArrival.arrival, true);
+  assert.equal(hasCalendarArrivalEvent(genericArrival), false);
 });
 
 test("keeps a canonical final departure visible on the last owned day without inventing a new day", () => {
