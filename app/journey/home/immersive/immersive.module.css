@@ -38,7 +38,8 @@
 .heroBodyDualEntry { width:min(1400px,calc(100% - 80px)); grid-template-columns: 1fr; align-content: center; gap: 22px; padding-block: 24px 16px; }
 .heroBodyDualEntry .heroCopy { max-width: 1060px; }
 .heroBodyDualEntry .heroCopy h1 { margin: 8px 0; font-size: clamp(60px,5.4vw,86px); }
-.heroBodyDualEntry .heroCopy h1 em { display: block; max-width: none; }
+.heroBodyDualEntry .heroCopy h1 span { display: block; }
+.heroEmphasis { font-family: var(--morrovia-display); font-style: italic; font-weight: 400; }
 .heroBodyDualEntry .heroCopy p { max-width: 560px; }
 .heroBodyDualEntry .planner { max-width: none; justify-self: stretch; padding: 0; background: transparent; }
 .heroBottom a { display: flex; align-items: center; gap: 10px; }

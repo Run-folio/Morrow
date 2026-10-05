@@ -99,8 +99,17 @@ test("dual-entry hero is compact on desktop and may grow with open planner panel
   assert.doesNotMatch(immersiveStyles.match(/\.heroDualEntry\s*\{[^}]*\}/)?.[0] ?? "", /overflow:\s*(?:hidden|clip)/);
   assert.match(immersiveStyles, /\.heroDecorative\s*\{[^}]*overflow:\s*clip/);
   assert.match(immersiveStyles, /\.heroDualEntry[\s\S]*\.heroBodyDualEntry[\s\S]*width:min\(1400px,calc\(100% - 80px\)\)/);
-  assert.match(immersiveSource, /Plan a trip with several stops, then shape the route, stays and activities around you\./);
+  assert.match(immersiveSource, /Plan your route, stays and activities, all in one place\./);
   assert.match(immersiveStories, /FullComposition/);
+});
+
+test("#390 hero uses one heading with the approved two-part promise and no eyebrow", () => {
+  const hero = immersiveSource.slice(immersiveSource.indexOf('<div className={styles.heroCopy}>'), immersiveSource.indexOf('<div className={styles.planner}>'));
+  assert.equal((hero.match(/<h1\b/g) ?? []).length, 1);
+  assert.match(hero, /<h1><span>\{es \? "Viajes con varias paradas," : "Multi-stop trips,"\}<\/span><span className=\{styles\.heroEmphasis\}>\{es \? "hechos sencillos\." : "made simple\."\}<\/span><\/h1>/);
+  assert.doesNotMatch(hero, /styles\.eyebrow/);
+  assert.match(hero, /Plan your route, stays and activities, all in one place\./);
+  assert.match(immersiveStyles, /\.heroEmphasis\s*\{[^}]*font-family:\s*var\(--morrovia-display\)[^}]*font-style:\s*italic/);
 });
 
 test("Homepage planner gives its two entry modes and compact destination a clear hierarchy", () => {
