@@ -266,7 +266,8 @@ function homepageSnapshot(value: unknown, ownerId: string | null): value is Home
   }
 
   return homepageChoice(value.dates, (candidate) => homepageRecord(candidate)
-      && homepageDate(candidate.start) && homepageDate(candidate.end) && String(candidate.end) >= String(candidate.start))
+      && homepageDate(candidate.start) && (candidate.end === "" || homepageDate(candidate.end))
+      && (candidate.end === "" || String(candidate.end) >= String(candidate.start)))
     && homepageChoice(value.budget, (candidate) => ["value", "mid", "high"].includes(String(candidate)))
     && homepageChoice(value.interests, (candidate) => Array.isArray(candidate)
       && candidate.length <= homepageInterestIds.size
@@ -1280,7 +1281,7 @@ function withHomepageChoices(
   const travellersExplicit = snapshot.travellers.state !== "untouched";
 
   const selectedDates = snapshot.dates.state === "selected" ? snapshot.dates.value : undefined;
-  const datesExplicit = Boolean(selectedDates);
+  const datesExplicit = Boolean(selectedDates?.start && selectedDates?.end);
   const origin = snapshot.origin.state === "selected" ? canonicalJourneyEndpointPlace(snapshot.origin.value)
     : snapshot.origin.state === "cleared" ? undefined
       : draft.origin ? canonicalJourneyEndpointPlace({
@@ -1337,8 +1338,8 @@ function withHomepageChoices(
       ...structured,
       ...(snapshot.dates.state === "cleared" ? { dates: {} } : selectedDates ? { dates: {
         start: { value: selectedDates.start, provenance: homepageExplicit() },
-        end: { value: selectedDates.end, provenance: homepageExplicit() },
-        fixed: { value: true, provenance: homepageExplicit() },
+        ...(selectedDates.end ? { end: { value: selectedDates.end, provenance: homepageExplicit() } } : {}),
+        ...(selectedDates.end ? { fixed: { value: true, provenance: homepageExplicit() } } : {}),
       } } : {}),
       ...(snapshot.travellers.state === "cleared" ? { travellers: undefined } : travellers ? { travellers: { value: travellers, provenance: travellersExplicit ? homepageExplicit() : structured.travellers?.provenance ?? homepageProfileDefault() } } : {}),
       interests: snapshot.interests.state === "cleared" ? [] : chosenInterests.map((value) => ({ value, provenance: interestsExplicit ? homepageExplicit() : structured!.interests.find((item) => item.value === value)?.provenance ?? homepageProfileDefault() })),
@@ -1361,7 +1362,7 @@ function withHomepageChoices(
       originProviderId: origin.providerId,
     } : { origin: undefined, originCoordinates: undefined, originCanonicalPlaceId: undefined, originCountry: undefined, originProviderId: undefined }),
     journeyEnd,
-    ...(selectedDates ? { startDate: selectedDates.start, endDate: selectedDates.end } : { startDate: undefined, endDate: undefined }),
+    ...(selectedDates ? { startDate: selectedDates.start, endDate: selectedDates.end || undefined } : { startDate: undefined, endDate: undefined }),
     datesExplicit,
     travellers,
     travellersExplicit,
@@ -1383,7 +1384,7 @@ export function projectHomepageInput(input: {
   const issues: HomepageInputIssue[] = [];
   if (snapshot.dates.state === "selected") {
     const { start, end } = snapshot.dates.value;
-    if (!validHomepageDate(start) || !validHomepageDate(end) || end < start) issues.push({ field: "dates", code: "invalid" });
+    if (!validHomepageDate(start) || (end !== "" && (!validHomepageDate(end) || end < start))) issues.push({ field: "dates", code: "invalid" });
   }
   if (snapshot.travellers.state === "selected" && (!Number.isInteger(snapshot.travellers.value) || snapshot.travellers.value < 1 || snapshot.travellers.value > 12)) {
     issues.push({ field: "travellers", code: "invalid" });

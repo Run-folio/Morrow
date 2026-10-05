@@ -19,6 +19,8 @@ const balkans = projection("Balkans");
 const africa = projection("Africa");
 const japan = projection("Japan");
 const tajikistan = projection("Tajikistan");
+const kazakhstan = projection("Kazakhstan");
+const uzbekistan = projection("Uzbekistan");
 const philippines = projection("Philippines");
 const taj = projection("Taj Mahal");
 const australiaMention = mention("Australia");
@@ -154,6 +156,14 @@ export const AustraliaLoadingInteraction: Story = { args: { ...AustraliaLoading.
 export const AustraliaSpanish: Story = { args: { ...AustraliaPlaces.args, language: "es" } };
 export const TajikistanSmallerCountry: Story = { args: { entry: { kind: "country", step: "places" }, mention: mention("Tajikistan"), projection: tajikistan, draft: placesDraft,
   note: "Production: three reviewed Tajikistan places, with no licensed images or verified overnight bases." } };
+export const KazakhstanReviewedBases: Story = { args: { entry: { kind: "country", step: "places" }, mention: mention("Kazakhstan"), projection: kazakhstan, draft: placesDraft } };
+export const UzbekistanReviewedBases: Story = { args: { entry: { kind: "country", step: "places" }, mention: mention("Uzbekistan"), projection: uzbekistan, draft: placesDraft } };
+export const Mobile390KazakhstanSearch: Story = { ...KazakhstanReviewedBases, parameters: { viewport: { defaultViewport: "morrovia390" } },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.type(canvas.getByRole("combobox"), "Almaty");
+    await expect(canvas.getByRole("listbox")).toBeVisible();
+  } };
 
 export const AfricaDirections: Story = { args: { entry: { kind: "continent", step: "directions" }, mention: africaMention, projection: africa, draft: initial,
   note: "Production directions derived from reviewed route families; choosing one only filters the places shown next." } };

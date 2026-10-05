@@ -11,7 +11,7 @@ import {
   type PlaceType,
   type PlanningParentConstraint,
 } from "@/lib/easyt/place-intelligence";
-import { placeAutocompleteKeyAction } from "@/lib/easyt/place-autocomplete";
+import { placeAutocompleteKeyAction, prioritizeRouteStopSuggestions } from "@/lib/easyt/place-autocomplete";
 import { createAbortableEffectScope } from "@/lib/easyt/abortable-effect";
 import type { EasyTLanguage } from "@/lib/easyt/i18n";
 import { EasyTButton } from "./easyt-controls";
@@ -56,6 +56,7 @@ export function CanonicalPlaceAutocomplete({
   onSubmitFreeText,
   submitFreeTextOnBlur = false,
   revealSuggestionsKey,
+  menuPlacement = "overlay",
 }: {
   language?: EasyTLanguage;
   label: string;
@@ -84,6 +85,8 @@ export function CanonicalPlaceAutocomplete({
   onSubmitFreeText?: () => void;
   submitFreeTextOnBlur?: boolean;
   revealSuggestionsKey?: number;
+  /** Inline placement keeps the list reachable inside a scrolling modal. */
+  menuPlacement?: "overlay" | "inline";
 }) {
   const resolvedEmptyMessage = emptyMessage ?? (language === "es" ? "No encontramos lugares coincidentes. Prueba el lugar con su país." : "No matching places found. Try the place with its country.");
   const resolvedFailureMessage = failureMessage ?? (language === "es" ? "La búsqueda de lugares no está disponible temporalmente." : "Place search is temporarily unavailable.");
@@ -224,11 +227,11 @@ export function CanonicalPlaceAutocomplete({
     return () => { window.clearTimeout(timer); scope.dispose(); };
   }, [allowedTypeKey, contextCountries, deferredValue, nearbyAnchorKey, parentConstraintKey, retryNonce, searchIntent]);
 
-  const suggestions = useMemo(() => [...catalogSuggestions, ...providerSuggestions]
+  const suggestions = useMemo(() => prioritizeRouteStopSuggestions([...catalogSuggestions, ...providerSuggestions]
     .filter((suggestion) => !excludeCanonicalIds.includes(suggestion.canonicalPlaceId))
     .filter((suggestion) => !requireCoordinates || Boolean(suggestion.coordinates))
     .filter((suggestion, index, all) => all.findIndex((candidate) => candidate.canonicalPlaceId === suggestion.canonicalPlaceId) === index)
-    .slice(0, 8), [catalogSuggestions, excludeCanonicalIds, providerSuggestions, requireCoordinates]);
+    .slice(0, 8), searchIntent), [catalogSuggestions, excludeCanonicalIds, providerSuggestions, requireCoordinates, searchIntent]);
   const searching = value !== deferredValue || providerSearching;
   const choose = (suggestion: CanonicalPlaceSuggestion) => {
     onSelect(suggestion);
@@ -284,7 +287,7 @@ export function CanonicalPlaceAutocomplete({
       onMouseDown={(event) => event.preventDefault()}
       onClick={() => { onClear(); setOpen(false); setActiveIndex(-1); }}
     >{clearLabel ?? `Clear ${label}`}</EasyTButton> : null}
-    {open && value.trim().length >= 2 ? <div id={listId} role="listbox" className={styles.menu}>
+    {open && value.trim().length >= 2 ? <div id={listId} role="listbox" className={`${styles.menu} ${menuPlacement === "inline" ? styles.menuInline : ""}`}>
       {searching && !suggestions.length ? <p role="status">{language === "es" ? "Buscando lugares…" : "Searching places…"}</p> : suggestions.length ? suggestions.map((suggestion, index) => (
         /* morrovia-ui-audit-allow-next-line native-control -- Listbox options require role=option and aria-selected semantics rather than the standard action-button contract. */
         <button

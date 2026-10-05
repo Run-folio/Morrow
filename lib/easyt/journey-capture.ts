@@ -180,6 +180,15 @@ function geographySourceSpan(
 
   if (isLeadingPlanningImperativeSourceSpan(boundaryCleaned, rawBrief)) return null;
 
+  // A model may return an entire comma-separated destination and duration
+  // clause as one candidate. The individually resolved places are the
+  // geographic spans; the enclosing clause must never become another place.
+  const containedPlaceIds = new Set(deterministicMentions
+    .filter((mention) => mention.canonicalPlaceId && boundaryCleaned.toLocaleLowerCase()
+      .includes(mention.sourceText.toLocaleLowerCase()))
+    .map((mention) => mention.canonicalPlaceId));
+  if (containedPlaceIds.size > 1) return null;
+
   const canonicalEvidence = deterministicMentions.some((mention) => sameRawPlaceSpan(mention.sourceText, boundaryCleaned)
     && Boolean(mention.canonicalPlaceId)
     && !mention.provenance.some((item) => item.id.startsWith("fuzzy:")));

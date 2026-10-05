@@ -16,7 +16,17 @@ import {
   selectPlaceCandidate,
   type PlaceIntelligenceProvider,
 } from "../lib/easyt/place-intelligence.ts";
-import { isDuplicatePlaceIdentity, placeAutocompleteKeyAction } from "../lib/easyt/place-autocomplete.ts";
+import { isDuplicatePlaceIdentity, placeAutocompleteKeyAction, prioritizeRouteStopSuggestions } from "../lib/easyt/place-autocomplete.ts";
+
+test("route-stop search puts a city ahead of its same-name region", () => {
+  const ranked = prioritizeRouteStopSuggestions([
+    { name: "Almaty Region", canonicalPlaceId: "almaty-region", placeType: "region", routability: "needs_base_selection" },
+    { name: "Almaty", canonicalPlaceId: "almaty", placeType: "city", routability: "direct_destination" },
+    { name: "Almaty Airport", canonicalPlaceId: "almaty-airport", placeType: "transport_gateway", routability: "direct_destination" },
+  ], "route-stop");
+  assert.deepEqual(ranked.map(item => item.canonicalPlaceId), ["almaty", "almaty-region", "almaty-airport"]);
+  assert.equal(ranked[placeAutocompleteKeyAction("ArrowDown", -1, ranked.length).activeIndex]?.placeType, "city");
+});
 import { NIKKO_CANONICAL_FIXTURE } from "./fixtures/prebeta-place-trip-state.ts";
 
 test("exact provider geography reconnects to one reviewed catalogue identity and ambiguous facts fail closed", () => {

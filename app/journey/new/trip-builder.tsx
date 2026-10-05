@@ -745,7 +745,7 @@ function TripBuilderDocument() {
     if (draft.startDate) setStartDate(draft.startDate);
     if (draft.endDate) setEndDate(draft.endDate);
     if (!draft.datesExplicit && draft.durationDays) {
-      const durationEnd = new Date(`${today}T00:00:00`);
+      const durationEnd = new Date(`${draft.startDate || today}T00:00:00`);
       durationEnd.setDate(durationEnd.getDate() + Math.max(1, draft.durationDays) - 1);
       setEndDate(iso(durationEnd));
     }
@@ -5057,7 +5057,11 @@ function TripBuilderDocument() {
               // This is the traveller choosing an identity, not a reviewed
               // Discovery recommendation. Builder Add verifies and owns it.
               void addStop(suggestion.name, suggestion.country, activeClarificationMention.mentionId, undefined, suggestion)
-                .then((added) => { if (added) advanceClarificationSession(); });
+                .then((added) => {
+                  if (!added) return;
+                  completePlanningArea(activeClarificationMention, true);
+                  advanceClarificationSession();
+                });
               return;
             }
             const choosingBase = discoveryEntry.kind === "landmark" || discoveryEntry.kind === "natural-area";

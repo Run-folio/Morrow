@@ -5330,7 +5330,7 @@
       },
       {
         "value": "6px",
-        "count": 241,
+        "count": 242,
         "examples": [
           "app/journey/account.module.css",
           "app/journey/discover/discover.module.css",

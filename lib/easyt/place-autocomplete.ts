@@ -10,6 +10,25 @@ export type PlaceAutocompleteIdentity = {
   placeType?: string;
 };
 
+/** Keep the provider's relevance order, but make an exact same-name route
+ * endpoint the first choice when an administrative area shares its label. */
+export function prioritizeRouteStopSuggestions<T extends { name: string; placeType?: string; routability?: string }>(
+  suggestions: readonly T[], intent: "route-stop" | "planning-area" | "anchor" | "unknown",
+): T[] {
+  if (intent !== "route-stop") return [...suggestions];
+  const result = [...suggestions];
+  const nameKey = (item: T) => (item.placeType === "region" || item.placeType === "sub_region"
+    ? item.name.replace(/\s+(?:region|province|state)$/i, "") : item.name).trim().toLocaleLowerCase();
+  const names = new Set(result.map(nameKey));
+  for (const name of names) {
+    const slots = result.map((item, index) => nameKey(item) === name ? index : -1).filter(index => index >= 0);
+    const ordered = slots.map(index => result[index]!).sort((left, right) =>
+      Number(right.routability === "direct_destination") - Number(left.routability === "direct_destination"));
+    slots.forEach((index, offset) => { result[index] = ordered[offset]!; });
+  }
+  return result;
+}
+
 /** Treat canonical identity as authoritative. Display text is only a fallback
  * for legacy identities that have no IDs, and then only within the same type. */
 export function isDuplicatePlaceIdentity(

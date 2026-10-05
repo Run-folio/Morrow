@@ -302,10 +302,10 @@ export function MorroviaDatePicker(props: MorroviaDatePickerProps) {
       return;
     }
     if (activeBoundary === "start") {
-      const nextEnd = props.endValue && props.endValue >= value ? props.endValue : value;
+      const nextEnd = props.endValue && props.endValue >= value ? props.endValue : "";
       props.onChange({ start: value, end: nextEnd });
       setActiveBoundary("end");
-      setMonth(startOfLocalMonth(nextEnd));
+      setMonth(startOfLocalMonth(nextEnd || value));
       setTypedDate("");
       return;
     }

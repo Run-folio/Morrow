@@ -31,6 +31,13 @@ export const DatePickerRangeSelected: Story = {
   },
 };
 
+export const DatePickerStartOnly: Story = {
+  render: function StartOnlyDateStory() {
+    const [range, setRange] = useState({ start: "2026-10-15", end: "" });
+    return <div style={storyGrid}><MorroviaDatePicker mode="range" startLabel="Start date" endLabel="End date" startValue={range.start} endValue={range.end} onChange={setRange} /></div>;
+  },
+};
+
 export const DatePickerDisabledDates: Story = {
   render: function DisabledDateStory() {
     const [value, setValue] = useState("2026-09-12");

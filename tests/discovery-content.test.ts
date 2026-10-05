@@ -13,6 +13,20 @@ const resolvedMention = (name: string) => {
   return mention;
 };
 
+test("reviewed Central Asia bases appear under the correct country in Discovery", () => {
+  const expected = new Map([
+    ["Kazakhstan", ["almaty"]],
+    ["Uzbekistan", ["tashkent", "samarkand"]],
+  ]);
+  for (const [country, ids] of expected) {
+    const places = discoveryPlacesForMention(resolvedMention(country));
+    assert.deepEqual(places.map(place => place.id).sort(), [...ids].sort());
+    assert.ok(places.every(place => place.country === country && place.actionability === "overnight-base"));
+    assert.ok(places.every(place => place.stayEvidence.length && place.relevance.sources.length));
+  }
+  assert.deepEqual(discoveryPlacesForMention(resolvedMention("Kyrgyzstan")), []);
+});
+
 test("Australia has at least 20 distinct, geographically canonical and visitor-reviewed places", () => {
   const places = australiaDiscoveryPlaces();
   assert.ok(places.length >= 20);

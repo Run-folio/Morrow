@@ -97,6 +97,7 @@ export function DiscoveryModal({ open, entry, mention, projection, draft, onActi
     value={search.value} placeholder={copy.searchPlaceholder}
     contextCountries={mention.parentCountries}
     includeNonRoutable
+    menuPlacement="inline"
     requireCoordinates
     invalid={Boolean(search.error)} onChange={search.onChange} onSelect={search.onSelect} /> : undefined;
 
@@ -175,6 +176,7 @@ export function DiscoveryModal({ open, entry, mention, projection, draft, onActi
           parentCountries: [baseChoice.area.country], parentRegionId: baseChoice.area.region,
           coordinates: baseChoice.area.coordinates, routability: baseChoice.area.routability ?? "needs_base_selection" })}
         allowedPlaceTypes={["city", "town"]} requireCoordinates
+        menuPlacement="inline"
         invalid={Boolean(search?.error)} onChange={baseChoice.onChange} onSelect={baseChoice.onSelect} />
       <EasyTButton size="small" variant="quiet" onClick={baseChoice.onCancel}>{language === "es" ? "Buscar otro lugar" : "Search another place"}</EasyTButton>
     </section> : null}

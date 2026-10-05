@@ -61,6 +61,17 @@ function semanticIntentForSpans(input: {
   };
 }
 
+test("a semantic span grouping several countries and a duration cannot become a fourth destination", async () => {
+  for (const prompt of ["kazakstan, uzbekistan, kyrgystan, 2 weeks", "Kazakhstan, Uzbekistan, Kyrgyzstan, 2 weeks"]) {
+    const calls: string[] = [];
+    const intent = semanticIntentForSpans({ destinations: [prompt, ...prompt.split(", ").slice(0, 3)] });
+    const capture = await captureJourneyBriefFromSemanticIntent(prompt, intent, recordingPlaceProvider(calls));
+    assert.equal(capture.durationDays, 14);
+    assert.deepEqual(capture.mentions.map(mention => mention.canonicalPlaceId), ["kazakhstan", "uzbekistan", "kyrgyzstan"]);
+    assert.ok(!calls.includes(prompt), "the grouped span must never reach place lookup");
+  }
+});
+
 function recordingPlaceProvider(calls: string[]): PlaceIntelligenceProvider {
   const records: Record<string, { canonicalName: string; placeType: "city" | "country" | "landmark"; country: string; coordinates: [number, number] }> = {
     "los angeles": { canonicalName: "Los Angeles", placeType: "city", country: "United States", coordinates: [-118.2437, 34.0522] },

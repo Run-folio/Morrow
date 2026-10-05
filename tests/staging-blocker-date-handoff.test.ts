@@ -7,6 +7,7 @@ import { formatLocalDateRange } from "../lib/easyt/local-date.ts";
 import { formatIsoDate } from "../lib/easyt/trip-lifecycle.ts";
 import { tripFromBuilder } from "../lib/easyt/trip.ts";
 import { emptyHomepageInput, selectedEntry } from "./fixtures/homepage-dual-entry.ts";
+import { captureJourneyBrief } from "../lib/easyt/journey-capture.ts";
 
 test("untouched dates do not display an implicit UTC range that Builder cannot receive", () => {
   const newTrip = readFileSync("app/journey/new/new-trip-starter.tsx", "utf8");
@@ -28,6 +29,41 @@ test("untouched dates do not display an implicit UTC range that Builder cannot r
     assert.equal(projected.draft.startDate, undefined);
     assert.equal(projected.draft.endDate, undefined);
   }
+});
+
+test("a start date alone keeps the prompt duration flexible through homepage recovery", () => {
+  const snapshot = emptyHomepageInput();
+  snapshot.mode = "describe";
+  snapshot.prompt = "Kazakhstan, Uzbekistan, Kyrgyzstan, 2 weeks";
+  snapshot.dates = { state: "selected", value: { start: "2026-10-15", end: "" } };
+  const projected = projectHomepageInput({ snapshot, profile: null, handoffId: "start-only" });
+  assert.equal(projected.ok, true);
+  if (!projected.ok) return;
+  assert.equal(projected.draft.startDate, "2026-10-15");
+  assert.equal(projected.draft.endDate, undefined);
+  assert.equal(projected.draft.datesExplicit, false);
+  assert.equal(projected.draft.durationDays, 14);
+  const receipt = homepageReceiptForProjection(snapshot, projected.draft, "trip-start-only");
+  const recovered = readHomepageInput(JSON.parse(JSON.stringify({ snapshot, receipt })), snapshot.ownerId);
+  assert.deepEqual(recovered?.snapshot.dates, snapshot.dates);
+});
+
+test("two weeks and fourteen nights remain distinct calendar lengths", () => {
+  assert.equal(captureJourneyBrief("Kazakhstan, Uzbekistan, Kyrgyzstan, 2 weeks").durationDays, 14);
+  assert.equal(captureJourneyBrief("Kazakhstan, Uzbekistan, Kyrgyzstan, 14 nights").durationDays, 15);
+});
+
+test("an explicit fifteen-day date range stays authoritative over a two-week prompt", () => {
+  const snapshot = emptyHomepageInput();
+  snapshot.mode = "describe";
+  snapshot.prompt = "Kazakhstan, Uzbekistan, Kyrgyzstan, 2 weeks";
+  snapshot.dates = { state: "selected", value: { start: "2026-10-15", end: "2026-10-29" } };
+  const projected = projectHomepageInput({ snapshot, profile: null, handoffId: "explicit-range" });
+  assert.equal(projected.ok, true);
+  if (!projected.ok) return;
+  assert.deepEqual([projected.draft.startDate, projected.draft.endDate, projected.draft.datesExplicit],
+    ["2026-10-15", "2026-10-29", true]);
+  assert.equal(projected.draft.durationDays, 14);
 });
 
 test("explicit Stops and Describe dates retain calendar meaning through receipt, projection, JSON and Builder", () => {

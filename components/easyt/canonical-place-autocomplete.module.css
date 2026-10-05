@@ -8,6 +8,7 @@
 .hasClear > input { padding-right: 52px; }
 .clear { position: absolute; z-index: 2; top: 5px; right: 5px; min-width: 40px; padding: 0; }
 .menu { position: absolute; z-index: 30; top: calc(100% + 6px); right: 0; left: 0; display: grid; max-height: min(320px,48svh); overflow: auto; padding: 6px; border: 1px solid var(--morrovia-line); border-radius: var(--morrovia-control-radius); background: var(--morrovia-paper); box-shadow: var(--morrovia-shadow-overlay); }
+.menuInline { position: static; margin-top: 6px; box-shadow: none; }
 .menu > p { margin: 0; padding: 11px 12px; color: var(--morrovia-muted); font-size: 12px; line-height: 1.4; }
 .menu > button { display: grid; grid-template-columns: 20px minmax(0,1fr); align-items: center; gap: 9px; min-height: 52px; padding: 7px 10px; border: 0; border-radius: var(--morrovia-control-radius); background: transparent; color: var(--morrovia-ink); text-align: left; cursor: pointer; }
 .menu > button:hover,.menu > .optionOn { background: var(--morrovia-lilac); }
