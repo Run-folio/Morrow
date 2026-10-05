@@ -41,7 +41,8 @@ test("Stay map and property detail stay usable from shortlist to chosen state at
       await page.locator('[data-recommendation-detail-kind="accommodation"]').getByText("City Inn", { exact: true }).waitFor();
       await page.getByRole("button", { name: "Close details for City Inn" }).click();
       try {
-        await page.waitForFunction(() => document.activeElement?.getAttribute("aria-label") === "Show City Inn", undefined, { timeout: 2000 });
+        await page.waitForFunction(() => document.activeElement?.getAttribute("aria-label")?.startsWith("Show City Inn"), undefined, { timeout: 2000 });
+        assert.equal(await pin.evaluate((button: HTMLButtonElement) => document.activeElement === button), true);
       } catch {
         assert.fail(`pin focus did not return at ${width}px: ${await page.evaluate(() => document.activeElement?.getAttribute("aria-label") ?? document.activeElement?.tagName)}`);
       }
