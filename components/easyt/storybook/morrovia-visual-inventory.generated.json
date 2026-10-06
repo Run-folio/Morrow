@@ -5240,7 +5240,7 @@
     "observedSpacing": [
       {
         "value": "8px",
-        "count": 571,
+        "count": 573,
         "examples": [
           "app/journey/account.module.css",
           "app/journey/admin/feedback/feedback.module.css",
@@ -7568,12 +7568,12 @@
       },
       {
         "value": "max-width: 720px",
-        "count": 25,
+        "count": 26,
         "examples": [
+          "app/journey/home/home-destination-editor.module.css",
           "app/journey/home/home-fidelity.module.css",
           "app/journey/journey.module.css",
-          "app/journey/new/new-trip.module.css",
-          "app/journey/plan-next/map-plan-next.module.css"
+          "app/journey/new/new-trip.module.css"
         ]
       },
       {

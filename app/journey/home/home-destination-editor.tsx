@@ -52,6 +52,7 @@ export function HomeDestinationEditor({ entries, language, disabled = false, foc
   const anchors = entries.filter(entry => entry.selection && entry.selection.routability !== "planning_area" && !isOvernightBaseEligible({ placeType: entry.selection.placeType, routability: entry.selection.routability ?? (entry.selection.placeType === "city" || entry.selection.placeType === "town" ? "direct_destination" : "anchor_or_poi") })).length;
   return <section className={styles.root} aria-label={es ? "Lugares que quieres visitar" : "Places you want to visit"}>
     <span className={styles.label}>{es ? "Lugares que quieres visitar" : "Places you want to visit"}</span>
+    <div className={styles.destinationField} data-home-destination-field>
     <ul className={styles.entries}>
       {entries.map((entry, index) => <li key={entry.id} className={`${styles.entry} ${editingId === entry.id ? styles.editing : ""}`} data-home-destination-entry={entry.id}
         ref={node => { if (node) nodes.current.set(entry.id, node); else nodes.current.delete(entry.id); }}>
@@ -75,14 +76,15 @@ export function HomeDestinationEditor({ entries, language, disabled = false, foc
             onChange(next);
           }}>{es ? "Eliminar" : "Remove"}</EasyTButton>
       </li>)}
-      {createEntry ? <li className={styles.add}><EasyTButton ref={addRef} icon={Plus} variant="quiet" disabled={disabled}
+    </ul>
+      {createEntry ? <EasyTButton className={styles.add} ref={addRef} icon={Plus} variant="secondary" disabled={disabled}
         aria-label={es ? "Añadir destino" : "Add destination"} onClick={() => {
           const next = homepageDestinationAddTarget(latest.current.entries, createEntry);
           focusTarget.current = next.focusEntryId;
           setEditingId(next.focusEntryId);
           onChange(next.entries);
-        }}>{es ? "Añadir destino" : "Add destination"}</EasyTButton></li> : null}
-    </ul>
+        }}>{es ? "Añadir destino" : "Add destination"}</EasyTButton> : null}
+    </div>
     {unconfirmed || areas || anchors ? <p className={styles.status} aria-live="polite">{[
       unconfirmed ? `${unconfirmed} ${es ? "sin confirmar" : "unconfirmed"}` : "",
       areas ? `${areas} ${es ? "zonas de planificación" : "planning areas"}` : "",

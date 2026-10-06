@@ -71,6 +71,22 @@ test("Homepage destination chips have one Add owner and hand off selected places
         assert.equal(await page.getByRole("combobox").count(), 2);
         await page.getByRole("combobox", { name: "Destination", exact: true }).fill("Lisbon");
         await page.getByRole("option", { name: /Lisbon.*Portugal/ }).first().click();
+        const destinationField = page.locator('[data-home-destination-field]');
+        assert.equal(await destinationField.count(), 1, "destination tags and Add must share one field");
+        assert.equal(await destinationField.locator('[data-home-destination-entry]').count(), 2);
+        assert.equal(await destinationField.getByRole("button", { name: "Add destination" }).count(), 1);
+        const frame = await destinationField.evaluate((element: HTMLElement) => ({
+          border: parseFloat(getComputedStyle(element).borderTopWidth),
+          radius: parseFloat(getComputedStyle(element).borderTopLeftRadius),
+        }));
+        assert.ok(frame.border > 0 && frame.radius > 0, "the shared field has one visible rounded boundary");
+        if (width >= 1440) {
+          const firstTag = await destinationField.locator('[data-home-destination-entry]').first().boundingBox();
+          const action = await add.boundingBox();
+          assert.ok(firstTag && action);
+          assert.ok(Math.abs(firstTag.y + firstTag.height / 2 - action.y - action.height / 2) <= 1,
+            "desktop Add destination stays inline with the tags");
+        }
         assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth + 1), false);
         await page.getByRole("button", { name: "Plan my trip" }).first().click();
         await page.waitForURL(/\/journey\/new\?/);
