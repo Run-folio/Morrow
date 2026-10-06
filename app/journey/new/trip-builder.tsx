@@ -48,7 +48,7 @@ import { buildCountryDiscovery, updateCountryDiscoveryChoice } from "@/lib/easyt
 import { countryCodeFor } from "@/lib/easyt/country-registry";
 import { findCatalogPlaceById } from "@/lib/easyt/place-catalog";
 import { extractStructuredTripBrief, mergeStructuredTripBrief, routeConstraintsFromStructuredTripBrief, routeScoringPreferencesFromStructuredBrief, structuredTripBriefFromSavedSelections, type StructuredTripBrief } from "@/lib/easyt/structured-trip-brief";
-import { OVERNIGHT_BASE_PLACE_TYPES, PLACE_INTELLIGENCE_PARSER_VERSION, PLACE_INTELLIGENCE_VERSION, appendSelectedPlanningAreaMention, confirmedAttractionVisitSelection, canonicalPlaceFactsMatch, canonicalPlaceSuggestionFor, canonicalPlaceSuggestionSuitableAsNearbyBase, canonicalPlaceSuggestionsForQuery, guidedPlanningAreaShapes, guidedPlanningAreaSuggestions, inferAttractionVisitSelections, isOvernightBaseEligible, nearbyBaseAnchorForMention, nearbyBaseSearchPreposition, placeCandidateSuitableAsNearbyBase, placeCandidateWithinPlanningParent, placeMentionSupportsMultipleSelections, placeMentionsNeedingReview, placeResolutionIssuesForMentions, placeSuggestionRequiresBaseSelection, planningAreaSuggestionsWithinParent, rankAttractionVisitTargets, regionalBaseSuggestions, selectPlaceCandidate, type AttractionVisitCandidate, type CanonicalPlaceSuggestion, type GuidedPlanningAreaShape, type GuidedPlanningAreaSuggestion, type NearbyBaseSuggestion, type PlaceIntelligenceResult, type PlaceIssue, type PlaceIssueOption, type PlaceSelection, type PlaceType, type PlanningParentConstraint, type ResolvedPlaceMention } from "@/lib/easyt/place-intelligence";
+import { OVERNIGHT_BASE_PLACE_TYPES, PLACE_INTELLIGENCE_PARSER_VERSION, PLACE_INTELLIGENCE_VERSION, appendSelectedPlanningAreaMention, confirmedAttractionVisitSelection, canonicalPlaceFactsMatch, canonicalPlaceSuggestionFor, canonicalPlaceSuggestionSuitableAsNearbyBase, canonicalPlaceSuggestionsForQuery, guidedPlanningAreaShapes, guidedPlanningAreaSuggestions, inferAttractionVisitSelections, isOvernightBaseEligible, nearbyBaseAnchorForMention, nearbyBaseSearchPreposition, placeCandidateSuitableAsNearbyBase, placeCandidateWithinPlanningParent, placeMentionSupportsMultipleSelections, placeMentionsNeedingReview, placeResolutionIssuesForMentions, placeSuggestionRequiresBaseSelection, planningAreaSuggestionsWithinParent, rankAttractionVisitTargets, regionalBaseSuggestions, selectPlaceCandidate, selectPlaceSearchSuggestion, type AttractionVisitCandidate, type CanonicalPlaceSuggestion, type GuidedPlanningAreaShape, type GuidedPlanningAreaSuggestion, type NearbyBaseSuggestion, type PlaceIntelligenceResult, type PlaceIssue, type PlaceIssueOption, type PlaceSelection, type PlaceType, type PlanningParentConstraint, type ResolvedPlaceMention } from "@/lib/easyt/place-intelligence";
 import { isDuplicatePlaceIdentity } from "@/lib/easyt/place-autocomplete";
 import { MorroviaTripCapture } from "@/components/easyt/morrovia-trip-capture";
 import { CanonicalPlaceAutocomplete } from "@/components/easyt/canonical-place-autocomplete";
@@ -2546,7 +2546,12 @@ function TripBuilderDocument() {
         && !placeSelections.some((selection) => selection.mentionId !== targetMentionId && selection.routeStopId === existingTargetSelection.routeStopId)
         ? existingTargetSelection.routeStopId
         : undefined;
-      const id = existingBase?.id ?? replaceableRouteStopId ?? `${resolvedName.toLowerCase().replace(/[^a-z0-9]+/g, "-")}-${Date.now()}`;
+      const unresolvedCapturedOccurrence = Boolean(targetMention && capturedStructuredBrief.destinations.some((destination) =>
+        destination.placeMentionId === targetMentionId && !destination.canonicalPlaceId));
+      const capturedOccurrenceId = unresolvedCapturedOccurrence && targetMention
+        ? handoffStopOccurrenceId(targetMention, handoffOccurrenceMentionIdsRef.current)
+        : undefined;
+      const id = existingBase?.id ?? replaceableRouteStopId ?? capturedOccurrenceId ?? `${resolvedName.toLowerCase().replace(/[^a-z0-9]+/g, "-")}-${Date.now()}`;
       const addedStop: Stop = {
         id,
         name: resolvedName,
@@ -2562,7 +2567,9 @@ function TripBuilderDocument() {
         rememberStructuralChange(replaceableRouteStopId ? "change_regional_base" : "add_stop", 1);
         setStops((current) => replaceableRouteStopId
           ? current.map((stop) => stop.id === replaceableRouteStopId ? addedStop : stop)
-          : [...current, addedStop]);
+          : unresolvedCapturedOccurrence && targetMention
+            ? insertHandoffOccurrence(current, addedStop, targetMention, capturedStructuredBrief.placeMentions ?? intakeMentions, handoffOccurrenceMentionIdsRef.current)
+            : [...current, addedStop]);
       }
       if (targetMentionId) {
         const nextSelection: PlaceSelection = {
@@ -5136,14 +5143,60 @@ function TripBuilderDocument() {
                   : `Choose a verified city or town to stay in for ${suggestion.name}.` }));
                 return;
               }
-              // This is the traveller choosing an identity, not a reviewed
-              // Discovery recommendation. Builder Add verifies and owns it.
-              void addStop(suggestion.name, suggestion.country, activeClarificationMention.mentionId, undefined, suggestion)
-                .then((added) => {
-                  if (!added) return;
-                  completePlanningArea(activeClarificationMention, true);
-                  advanceClarificationSession();
-                });
+              const placeResult: PlaceIntelligenceResult = {
+                version: PLACE_INTELLIGENCE_VERSION,
+                parserVersion: PLACE_INTELLIGENCE_PARSER_VERSION,
+                sequenceKind: "unordered",
+                mentions: capturedStructuredBrief.placeMentions ?? intakeMentions,
+                issues: capturedStructuredBrief.placeIssues ?? [],
+              };
+              const selectedResult = selectPlaceSearchSuggestion(placeResult, activeClarificationMention.mentionId, suggestion);
+              const selectedMention = selectedResult.mentions.find((mention) => mention.mentionId === activeClarificationMention.mentionId);
+              if (!selectedMention?.canonicalPlaceId || selectedMention.status !== "resolved") {
+                setBaseSearchErrors((current) => ({ ...current, [activeClarificationMention.mentionId]: language === "es"
+                  ? `No pudimos confirmar ${suggestion.name} como la identidad de ${placeDisplayName(activeClarificationMention)}.`
+                  : `We could not confirm ${suggestion.name} as the identity of ${placeDisplayName(activeClarificationMention)}.` }));
+                return;
+              }
+              handoffLookupSessionRef.current?.handled.add(activeClarificationMention.mentionId);
+              setHandoffResolutionStatuses((current) => retireHandoffResolutionStatus(current, activeClarificationMention.mentionId));
+              setLocationChoices((current) => current.filter(({ mention }) => mention.mentionId !== activeClarificationMention.mentionId));
+              const nextBrief = extractStructuredTripBrief(
+                tripBrief || capturedStructuredBrief.source.rawPrompt || "",
+                selectedResult.parserVersion,
+                selectedResult,
+              );
+              setCapturedStructuredBrief(nextBrief);
+              setIntakeMentions(selectedResult.mentions);
+              const selectedFixedCommitments = fixedTripCommitmentsFromStructuredBrief(nextBrief).filter((commitment) =>
+                commitment.place?.canonicalPlaceId === suggestion.canonicalPlaceId
+                || commitment.place?.name.toLocaleLowerCase() === suggestion.name.toLocaleLowerCase());
+              if (selectedFixedCommitments.length) setTripIntent((current) => {
+                const fixedCommitments = [...current.hardConstraints.fixedCommitments];
+                for (const commitment of selectedFixedCommitments) {
+                  const index = fixedCommitments.findIndex((existing) => existing.place?.canonicalPlaceId === suggestion.canonicalPlaceId
+                    || existing.place?.name.toLocaleLowerCase() === suggestion.name.toLocaleLowerCase());
+                  if (index < 0) fixedCommitments.push(commitment);
+                  else fixedCommitments[index] = {
+                    ...fixedCommitments[index]!,
+                    place: fixedCommitments[index]!.place ?? commitment.place,
+                    fixedNights: fixedCommitments[index]!.fixedNights ?? commitment.fixedNights,
+                  };
+                }
+                return { ...current, hardConstraints: { ...current.hardConstraints, fixedCommitments } };
+              });
+              // Explicit search resolves the original phrase and retains its
+              // occurrence/night constraints. It is not a new appended stop.
+              void addStop(suggestion.name, suggestion.country, activeClarificationMention.mentionId, {
+                kind: "ambiguity",
+                selectedCanonicalPlaceId: suggestion.canonicalPlaceId,
+                selectedName: suggestion.name,
+                selectedPlaceType: suggestion.placeType,
+                selectedParentCountries: [suggestion.country],
+                provenance: selectedMention.provenance[0]!,
+              }, suggestion).then((added) => {
+                if (added) advanceClarificationSession();
+              });
               return;
             }
             const choosingBase = discoveryEntry.kind === "landmark" || discoveryEntry.kind === "natural-area";

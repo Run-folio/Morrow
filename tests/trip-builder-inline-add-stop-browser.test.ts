@@ -104,6 +104,83 @@ test("the inline field adds successive cities and retains the saved route on rel
   }
 });
 
+test("clarification search resolves each original stop occurrence in prompt order with its fixed nights", { skip: !builderBrowserTestsEnabled, timeout: 60_000 }, async () => {
+  const suggestion = (name: string, canonicalPlaceId: string, coordinates: [number, number]) => ({
+    name, canonicalPlaceId, country: "Morocco", region: "Drâa-Tafilalet", coordinates,
+    placeType: "town", routability: "direct_destination",
+    provenance: [{ id: `fixture:${canonicalPlaceId}`, label: "Test place provider", kind: "provider", supports: "Fixture identity for Builder regression." }],
+  });
+  const view = await renderBuilder({ geocodeCandidates: {
+    "Aït Benhaddou": [suggestion("Aït Benhaddou", "open-world:nominatim:node:365060850", [-7.13, 31.05])],
+    Merzouga: [suggestion("Merzouga", "open-world:nominatim:node:3901504169", [-4.01, 31.1])],
+  } });
+  const page = view.page;
+  try {
+    await page.getByRole("tab", { name: "Describe my trip" }).click();
+    await page.getByRole("textbox", { name: "Start your plan" }).fill("10 nights: Marrakech 3, Aït Benhaddou 1, Merzouga 2, Fes 4.");
+    await page.getByRole("button", { name: "Plan my trip", exact: true }).click();
+    await page.locator("[data-builder-stop-index]").nth(1).waitFor({ timeout: 15_000 });
+
+    for (const place of ["Aït Benhaddou", "Merzouga"]) {
+      const choose = page.getByRole("button", { name: `Choose place ${place}`, exact: true });
+      if (await choose.isVisible().catch(() => false)) await choose.click();
+      const dialog = page.getByRole("dialog");
+      await dialog.getByRole("heading", { name: "Explore places", exact: true }).waitFor();
+      const search = dialog.getByRole("combobox");
+      await search.fill(place);
+      const option = dialog.getByRole("option", { name: new RegExp(`^${place}.*Morocco.*Town`, "i") });
+      await option.waitFor({ timeout: 10_000 });
+      await option.click();
+      await dialog.waitFor({ state: "hidden", timeout: 15_000 }).catch(() => {});
+    }
+
+    const result: Array<{ name: string; nights: number | null }> = await page.locator("[data-builder-stop-index]").evaluateAll((rows: Element[]) => rows.map((row: Element) => {
+      const name = row.querySelector("strong")?.textContent?.trim() ?? "";
+      const controls = [...row.querySelectorAll("button[aria-label]")].map((button) => button.getAttribute("aria-label") ?? "");
+      const nightsLabel = controls.find((label) => /\d+ nights?/.test(label)) ?? "";
+      const nights = nightsLabel.match(/;\s*(\d+)\s+nights?/i)?.[1] ?? nightsLabel.match(/(\d+)\s+nights?/i)?.[1] ?? null;
+      return { name, nights: nights === null ? null : Number(nights) };
+    }));
+    assert.deepEqual(result.map(({ name }: { name: string; nights: number | null }) => name), ["Marrakech", "Aït Benhaddou", "Merzouga", "Fes"]);
+    assert.deepEqual(result.map(({ nights }: { name: string; nights: number | null }) => nights), [3, 1, 2, 4]);
+    assert.equal(await page.getByText("Confirm which place you mean by Aït Benhaddou.", { exact: true }).count(), 0);
+    assert.equal(await page.getByText("Confirm which place you mean by Merzouga.", { exact: true }).count(), 0);
+
+    const savedBeforeReload = await page.waitForFunction(() => Object.values(localStorage).flatMap((raw) => {
+      try { const trip = JSON.parse(raw as string).trip; return trip?.stops ? [trip] : []; } catch { return []; }
+    }).find((trip: { stops: Array<{ name: string }> }) =>
+      trip.stops.map((stop) => stop.name).join("|") === "Marrakech|Aït Benhaddou|Merzouga|Fes") ?? null, undefined, { timeout: 15_000 });
+    const before = await savedBeforeReload.jsonValue() as {
+      id: string;
+      stops: Array<{ id: string; name: string; canonicalPlaceId?: string; nights?: number | null }>;
+      brief: { structuredBrief?: { hardConstraints?: Array<{ type: string; fixedNights?: number; place?: { name?: string } }> } };
+    };
+    assert.deepEqual(before.stops.map(({ canonicalPlaceId }) => canonicalPlaceId), [
+      "marrakech", "open-world:nominatim:node:365060850", "open-world:nominatim:node:3901504169", "fes",
+    ]);
+    assert.equal(new Set(before.stops.map(({ id }) => id)).size, 4, "the original occurrences keep distinct stable stop IDs");
+    assert.deepEqual(before.stops.map(({ nights }) => nights), [3, 1, 2, 4]);
+    assert.deepEqual(before.brief.structuredBrief?.hardConstraints?.filter((constraint) => constraint.type === "fixed-commitment")
+      .map((constraint) => [constraint.place?.name, constraint.fixedNights])
+      .sort((left, right) => String(left[0]).localeCompare(String(right[0]))), [
+      ["Aït Benhaddou", 1], ["Fes", 4], ["Marrakech", 3], ["Merzouga", 2],
+    ]);
+    await page.reload();
+    await page.locator("[data-builder-stop-index]").nth(3).waitFor();
+    assert.deepEqual(await page.locator("[data-builder-stop-index]").evaluateAll((rows: Element[]) => rows.map((row: Element) => row.querySelector("strong")?.textContent?.trim() ?? "")),
+      ["Marrakech", "Aït Benhaddou", "Merzouga", "Fes"]);
+    assert.equal(await page.getByText("Confirm which place you mean by Aït Benhaddou.", { exact: true }).count(), 0);
+    assert.equal(await page.getByText("Confirm which place you mean by Merzouga.", { exact: true }).count(), 0);
+    const savedAfterReload = await page.evaluate((tripId: string) => Object.values(localStorage).flatMap((raw) => {
+      try { const trip = JSON.parse(raw as string).trip; return trip?.id === tripId ? [trip] : []; } catch { return []; }
+    })[0], before.id) as typeof before | undefined;
+    assert.ok(savedAfterReload);
+    assert.deepEqual(savedAfterReload.stops.map(({ id, canonicalPlaceId, nights }) => ({ id, canonicalPlaceId, nights })),
+      before.stops.map(({ id, canonicalPlaceId, nights }) => ({ id, canonicalPlaceId, nights })));
+    assert.deepEqual(view.errors, []);
+  } finally { await view.close(); }
+});
+
 test("a broad country uses Discovery and never becomes a phantom route stop", { skip: !builderBrowserTestsEnabled, timeout: 40_000 }, async () => {
   const view = await renderBuilder({
     query: "?inspire=morocco-rail",

@@ -134,9 +134,11 @@ export async function renderBuilder({
         response.end(JSON.stringify({ candidates }));
         return;
       }
-      const result = url.pathname === "/api/journey-geocode" && url.searchParams.get("place") === "Tokyo"
+      const queryPlace = url.pathname === "/api/journey-geocode" ? url.searchParams.get("place") ?? "" : "";
+      const result = geocodeCandidates[queryPlace]?.[0]
+        ?? (url.pathname === "/api/journey-geocode" && queryPlace === "Tokyo"
         ? { name: "Tokyo", country: "Japan", canonicalPlaceId: "tokyo", coordinates: [139.6917, 35.6895], kind: "city" }
-        : null;
+        : null);
       response.setHeader("Content-Type", "application/json"); response.end(JSON.stringify({ candidates: result ? [result] : [], places: [], result })); return;
     }
     response.setHeader("Content-Type", "text/html; charset=utf-8");

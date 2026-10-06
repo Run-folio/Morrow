@@ -2885,6 +2885,56 @@ export function selectPlaceCandidate(
   return { ...result, mentions, issues: resultIssuesForMentions(mentions) };
 }
 
+/** Promote a verified canonical search choice into an existing unresolved
+ * phrase while retaining its source text, role, mention ID and prompt order. */
+export function selectPlaceSearchSuggestion(
+  result: PlaceIntelligenceResult,
+  mentionId: string,
+  suggestion: CanonicalPlaceSuggestion,
+): PlaceIntelligenceResult {
+  const mention = result.mentions.find((item) => item.mentionId === mentionId);
+  const coordinates = suggestion.coordinates;
+  if (!mention || !suggestion.canonicalPlaceId || !suggestion.name.trim() || !suggestion.country.trim()
+    || !coordinates || coordinates.length !== 2 || !coordinates.every(Number.isFinite)
+    || Math.abs(coordinates[0]) > 180 || Math.abs(coordinates[1]) > 90
+    || (suggestion.routability ?? "direct_destination") !== "direct_destination"
+    || !isOvernightBaseEligible({ placeType: suggestion.placeType, routability: "direct_destination" })
+    || !canonicalPlaceFactsMatch(suggestion.canonicalPlaceId, { country: suggestion.country, coordinates })) return result;
+
+  const source: PlaceProvenance = {
+    id: `builder:${mentionId}:${suggestion.canonicalPlaceId}`,
+    label: "Traveller builder selection",
+    kind: "builder",
+    supports: "The traveller explicitly selected this geographic identity from canonical search.",
+  };
+  const selected = candidateToMention({
+    canonicalPlaceId: suggestion.canonicalPlaceId,
+    canonicalName: suggestion.name,
+    aliases: [],
+    placeType: suggestion.placeType,
+    parentCountries: [suggestion.country],
+    parentRegionId: suggestion.region,
+    accessPlaceName: suggestion.accessPlaceName,
+    bounds: suggestion.bounds,
+    coordinates,
+    routability: "direct_destination",
+    confidence: createPlanningConfidence({
+      state: "structured", level: "high", freshness: "current", scope: "traveller-intent",
+      sources: [{ id: source.id, label: source.label, kind: "traveller", supports: source.supports }],
+      reason: "The traveller explicitly selected this geographic identity from canonical search.",
+    }),
+    provenance: [source, ...suggestion.provenance],
+  }, {
+    sourceText: mention.sourceText,
+    sourceTexts: mention.sourceTexts,
+    order: mention.order,
+    role: mention.role,
+    mentionId: mention.mentionId,
+  });
+  const mentions = result.mentions.map((item) => item.mentionId === mentionId ? selected : item);
+  return { ...result, mentions, issues: resultIssuesForMentions(mentions) };
+}
+
 export {
   PLACE_CATALOG,
   catalogAliasesForPlace,
