@@ -125,9 +125,41 @@ test("every mappable canonical stop participates in the whole route in saved ord
 test("an unknown canonical mode remains unknown on the map", () => {
   const unknown = mapRouteLegsFromTrip(trip)[1];
   assert.equal(unknown.mode, "unknown");
-  assert.equal(unknown.modeLabel, "Unknown transport");
+  assert.equal(unknown.modeLabel, "Transfer needs checking");
   assert.equal(unknown.headlineMinutes, null);
   assert.equal(unknown.doorToDoorMinutes, null);
+});
+
+test("a routed road reference appears on the map without selecting road or claiming door-to-door timing", () => {
+  const roadEstimateTrip = {
+    ...trip,
+    legs: [trip.legs[0], {
+      ...trip.legs[1],
+      roadEstimate: {
+        provider: "openrouteservice" as const,
+        profile: "driving-car" as const,
+        provenance: "routed" as const,
+        checkedAt: "2026-10-05T12:00:00.000Z",
+        distanceKm: 245,
+        durationMinutes: 270,
+        confidence: "medium" as const,
+        routeGeometry: [[23.7275, 37.9838], [24.5, 38.2], [25.3777, 37.1036]] as Array<[number, number]>,
+        attribution: "Deterministic fixture",
+        warnings: ["Road estimate only; no passenger service or private-driver availability is confirmed."],
+      },
+    }],
+  } as unknown as Pick<EasyTTrip, "stops" | "legs">;
+
+  const reference = mapRouteLegsFromTrip(roadEstimateTrip)[1]!;
+  assert.equal(reference.mode, "unknown");
+  assert.equal(reference.modeLabel, "Transfer needs checking");
+  assert.equal(reference.distanceKm, 245);
+  assert.equal(reference.headlineMinutes, null);
+  assert.equal(reference.doorToDoorMinutes, null);
+  assert.deepEqual(reference.routeGeometry, [[23.7275, 37.9838], [24.5, 38.2], [25.3777, 37.1036]]);
+  assert.match(reference.planningNote ?? "", /Road estimate only.*245 km.*4h 30m driving/i);
+  assert.ok(reference.warnings.some((warning) => /no passenger service/i.test(warning)));
+  assert.equal(reference.routeProvider, "openrouteservice");
 });
 
 test("known rail aliases normalize at the Map presentation boundary without inference", () => {

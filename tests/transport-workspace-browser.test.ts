@@ -54,6 +54,67 @@ test("Transport keeps selected journey, card and map leg synchronized at desktop
   } finally { await view.close(); }
 });
 
+test("routed road evidence stays a separate reference across Builder and Transport at narrow and desktop widths", { skip: !builderBrowserTestsEnabled, timeout: 30_000 }, async () => {
+  const trip = japanTrip();
+  trip.legs[0] = {
+    ...trip.legs[0]!,
+    mode: "unknown",
+    distanceKm: null,
+    durationMinutes: null,
+    headlineMinutes: null,
+    doorToDoorMinutes: null,
+    routeGeometry: undefined,
+    segments: undefined,
+    provider: "No supported service fact for this exact leg.",
+    provenance: "unknown",
+    confidence: "unknown",
+    warnings: [
+      "Road estimate only; no passenger service or private-driver availability is confirmed.",
+      "Border crossing eligibility, waits and stops are not included in this road estimate.",
+    ],
+    roadEstimate: {
+      provider: "openrouteservice",
+      profile: "driving-car",
+      provenance: "routed",
+      checkedAt: "2026-10-05T12:00:00.000Z",
+      distanceKm: 455,
+      durationMinutes: 390,
+      confidence: "medium",
+      routeGeometry: [[139.6917, 35.6895], [137.4, 35.2], [135.7681, 35.0116]],
+      attribution: "OpenRouteService road route reference",
+      warnings: [
+        "Road estimate only; no passenger service or private-driver availability is confirmed.",
+        "Border crossing eligibility, waits and stops are not included in this road estimate.",
+      ],
+    },
+    routeMetadata: { source: "multimodal-resolver", planningEstimate: true, multimodalResolution: { version: 1, selected: "unresolved", candidates: [], rejected: [] } },
+  };
+
+  const transport = await renderBuilder({ path: `/journey/${trip.id}/transport`, initialTrip: trip });
+  try {
+    for (const width of [390, 430, 768, 1440]) {
+      await transport.page.setViewportSize({ width, height: 900 });
+      const card = transport.page.locator('[data-transport-leg-id="trip-japan-choice-leg-1"]');
+      assert.match(await card.innerText(), /Transfer needs checking/);
+      assert.match(await card.innerText(), /Road estimate only.*455 km.*6h 30m driving/);
+      assert.match(await card.innerText(), /no passenger service/i);
+      assert.equal(await transport.page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
+    }
+    await transport.page.getByRole("button", { name: "Change transport mode" }).first().click();
+    assert.equal(await transport.page.getByRole("button", { name: /Road · ~6h 30m/ }).count(), 0);
+    assert.equal(await transport.page.getByText("No other evidence-backed mode is currently supported for this leg.", { exact: true }).count(), 1);
+    assert.deepEqual(transport.errors, []);
+  } finally { await transport.close(); }
+
+  const builder = await renderBuilder({ path: `/journey/new?trip=${trip.id}&recover=1`, initialTrip: trip });
+  try {
+    const row = builder.page.locator('[data-builder-route-workspace] [data-builder-stop-index="1"]');
+    await row.waitFor();
+    assert.match((await row.innerText()).replaceAll(/\s+/g, " "), /Transfer needs checking\s*To confirm\s*Road estimate only · 455 km · about 6h 30m driving/);
+    assert.deepEqual(builder.errors, []);
+  } finally { await builder.close(); }
+});
+
 test("Transport deep link selects canonical leg, marks the review set, and follows browser history", { skip: !builderBrowserTestsEnabled, timeout: 30_000 }, async () => {
   const trip = twoLegTrip();
   const second = "trip-japan-choice-leg-2";

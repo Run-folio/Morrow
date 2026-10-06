@@ -39,7 +39,7 @@ export function transferJourneyModeLabel(leg: Pick<TripLeg, "mode" | "segments">
   if (leg.mode === "flight") return "Flight";
   if (leg.mode === "ferry") return "Ferry";
   if (leg.mode === "walk") return "Walk";
-  return "Unknown transport";
+  return "Transfer needs checking";
 }
 
 export function transferJourneySegmentSummary(leg: Pick<TripLeg, "segments">) {

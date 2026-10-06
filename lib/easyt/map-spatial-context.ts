@@ -1,8 +1,9 @@
-import type { EasyTTrip, TripLeg } from "./trip.ts";
+import type { EasyTTrip, RoadEstimateReference, TripLeg } from "./trip.ts";
 import type { PlanningConfidence } from "./planning-confidence.ts";
 import type { TransferImpact } from "./transfer-impact.ts";
 import { routeEndpointForLeg } from "./trip-legs.ts";
 import { canonicalTransferSegments, transferJourneyModeLabel } from "./transfer-journey.ts";
+import { formatRoadEstimateReference } from "./road-estimate-presentation.ts";
 
 export type MapTransportMode = TripLeg["mode"];
 
@@ -51,6 +52,7 @@ export type MapRouteLeg = {
     routeGeometry?: Array<[number, number]>;
   }>;
   routeProvider?: "openrouteservice";
+  roadEstimate?: RoadEstimateReference;
 };
 
 type MapPoint = { x: number; y: number };
@@ -245,7 +247,7 @@ export function mapTransportModeLabel(mode: MapTransportMode) {
   if (mode === "ferry") return "Ferry";
   if (mode === "walk") return "Walk";
   if (mode === "mixed") return "Mixed transfer";
-  return "Unknown transport";
+  return "Transfer needs checking";
 }
 
 function knownPlanningMinutes(value: TransferImpact["headline"] | TransferImpact["doorToDoor"] | undefined) {
@@ -278,7 +280,7 @@ export function mapRouteLegsFromTrip(trip: Pick<EasyTTrip, "stops" | "legs"> & P
       || scheduleConfidence?.confirmation.needed !== false
       || metadata.planningEstimate !== false);
     const curated = Boolean(metadata.curatedRouteTransfer);
-    const routeSegments = canonicalTransferSegments(leg).flatMap((segment) => {
+    const routeSegments = (leg.mode === "unknown" && leg.roadEstimate ? [] : canonicalTransferSegments(leg)).flatMap((segment) => {
       if (!segment.fromEndpoint.coordinates || !segment.toEndpoint.coordinates) return [];
       const mode = canonicalMapTransportMode(segment.mode);
       return [{
@@ -288,7 +290,8 @@ export function mapRouteLegsFromTrip(trip: Pick<EasyTTrip, "stops" | "legs"> & P
         ...(segment.routeGeometry?.length ? { routeGeometry: segment.routeGeometry } : {}),
       }];
     });
-    const usesOpenRouteService = canonicalTransferSegments(leg).some((segment) => segment.provenance === "routing_engine" && /openrouteservice/i.test(segment.provider ?? ""));
+    const usesOpenRouteService = Boolean(leg.roadEstimate)
+      || canonicalTransferSegments(leg).some((segment) => segment.provenance === "routing_engine" && /openrouteservice/i.test(segment.provider ?? ""));
     const mode = canonicalMapTransportMode(leg.mode);
     return [{
       id: leg.id,
@@ -300,7 +303,7 @@ export function mapRouteLegsFromTrip(trip: Pick<EasyTTrip, "stops" | "legs"> & P
       toCoordinates: to.coordinates,
       mode,
       modeLabel: mode === leg.mode ? transferJourneyModeLabel(leg) : mapTransportModeLabel(mode),
-      distanceKm: leg.routedDistanceKm ?? leg.distanceKm,
+      distanceKm: leg.mode === "unknown" && leg.roadEstimate ? leg.roadEstimate.distanceKm : leg.routedDistanceKm ?? leg.distanceKm,
       headlineMinutes: leg.headlineMinutes ?? knownPlanningMinutes(impact?.headline),
       doorToDoorMinutes: leg.doorToDoorMinutes ?? knownPlanningMinutes(impact?.doorToDoor) ?? leg.durationMinutes,
       confidence,
@@ -312,14 +315,19 @@ export function mapRouteLegsFromTrip(trip: Pick<EasyTTrip, "stops" | "legs"> & P
           ? "Morrovia planning estimate"
           : leg.provider?.trim() || "Saved transfer",
       scheduleNeedsChecking,
-      planningNote: leg.provider?.trim() || metadata.curatedRouteTransfer?.note?.trim() || null,
+      planningNote: leg.mode === "unknown" && leg.roadEstimate
+        ? `${formatRoadEstimateReference(leg.roadEstimate)}. ${leg.roadEstimate.attribution}`
+        : leg.provider?.trim() || metadata.curatedRouteTransfer?.note?.trim() || null,
       classification: leg.classification ?? (from.kind === "origin" ? "arrival" : "intercity"),
-      warnings: leg.warnings ?? [],
-      ...(leg.routeGeometry?.length ? { routeGeometry: leg.routeGeometry } : {}),
+      warnings: [...new Set([...(leg.warnings ?? []), ...(leg.roadEstimate?.warnings ?? [])])],
+      ...(leg.mode === "unknown" && leg.roadEstimate?.routeGeometry.length
+        ? { routeGeometry: leg.roadEstimate.routeGeometry }
+        : leg.routeGeometry?.length ? { routeGeometry: leg.routeGeometry } : {}),
       ...(routeSegments.length > 1 ? { routeSegments } : {}),
       ...((metadata as { roadRouting?: { provider?: unknown } }).roadRouting?.provider === "openrouteservice" || usesOpenRouteService
         ? { routeProvider: "openrouteservice" as const }
         : {}),
+      ...(leg.roadEstimate ? { roadEstimate: leg.roadEstimate } : {}),
     }];
   });
 }

@@ -13,6 +13,7 @@ import { mapRouteLegsFromTrip } from "@/lib/easyt/map-spatial-context";
 import { formatTripDuration } from "@/lib/easyt/trip-facts";
 import { formatIsoDate } from "@/lib/easyt/trip-lifecycle";
 import { transferJourneyModeLabel } from "@/lib/easyt/transfer-journey";
+import { formatRoadEstimateReference } from "@/lib/easyt/road-estimate-presentation";
 import { parseTransportWorkspaceTarget } from "@/lib/easyt/trip-workspace-links";
 import type { CanonicalRouteEndpoint, EasyTTrip, TripLeg } from "@/lib/easyt/trip";
 import { clearTripLegTransportChoice, selectTripLegTransportChoice, tripWithEffectiveTransportChoices } from "@/lib/easyt/transport-mode-choice";
@@ -78,13 +79,23 @@ function iconForLeg(mode: TripLeg["mode"]): LucideIcon {
   return Route;
 }
 
-function noteForJourney(item: ItineraryTransportAgendaLeg, copy: ReturnType<typeof copyFor>) {
+function noteForJourney(item: ItineraryTransportAgendaLeg, copy: ReturnType<typeof copyFor>, language: Language) {
   const duration = item.leg.doorToDoorMinutes ?? item.leg.durationMinutes;
+  const state = transportPresentationState(item.leg, item.booking?.type === "transport");
+  if (state === "booked") return copy.bookedJourney;
+  if (item.leg.roadEstimate) {
+    const warnings = item.leg.roadEstimate.warnings.map((warning) => {
+      if (language === "en") return warning;
+      if (/no passenger service or private-driver availability/i.test(warning)) return "No se ha confirmado un servicio de pasajeros ni la disponibilidad de un conductor privado.";
+      if (/border crossing eligibility, waits and stops/i.test(warning)) return "Esta estimación no incluye la elegibilidad para cruzar la frontera, las esperas ni las paradas.";
+      if (/stops and road conditions/i.test(warning)) return "No incluye paradas ni condiciones de la carretera, salvo que la fuente indique lo contrario.";
+      return warning;
+    });
+    return [formatRoadEstimateReference(item.leg.roadEstimate, language), ...warnings].join(". ");
+  }
   const scheduleWarning = item.leg.mode === "road" ? /\b(schedule|timetable|live service|live transport)\b/i : null;
   const routeWarning = item.leg.warnings?.find((warning) => !scheduleWarning?.test(warning));
   if (routeWarning) return routeWarning;
-  const state = transportPresentationState(item.leg, item.booking?.type === "transport");
-  if (state === "booked") return copy.bookedJourney;
   if (state === "needs-checking") {
     if (item.leg.mode === "unknown" && !duration) return copy.modeAndTimeUnknown;
     if (item.leg.mode === "unknown") return copy.modeUnknown;
@@ -214,7 +225,7 @@ function TransportCard({ item, index, language, copy, selected, forReview, onSel
     <div className={styles.cardBody}>
       <h3>{item.from.name}<span className="sr-only"> {language === "es" ? "a" : "to"} </span><ArrowRight aria-hidden="true" />{item.to.name}</h3>
       <p className={styles.mode}>{transferJourneyModeLabel(leg)}{durationMinutes === null ? null : <><i aria-hidden="true">·</i>~{formatTripDuration(durationMinutes)}</>}</p>
-      <p className={styles.note}>{noteForJourney(item, copy)}</p>
+      <p className={styles.note}>{noteForJourney(item, copy, language)}</p>
     </div>
     <div className={styles.cardEnd}>
       {forReview ? <span className={styles.status} data-tone="attention">{language === "es" ? "Revisar ruta" : "Route check"}</span> : null}
@@ -236,7 +247,7 @@ function SelectedJourneyDetail({ trip, item, language, copy }: { trip: EasyTTrip
     <div className={styles.detailHeading}><span className={styles.modeIcon}><Icon aria-hidden="true" /></span><div>
       <h3>{item.from.name}<span aria-hidden="true"> → </span>{item.to.name}</h3><p>{displayDate(item.date, language, copy.dateUnknown)}</p>
     </div></div>
-    <p className={styles.detailNote}>{noteForJourney(item, copy)}</p>
+    <p className={styles.detailNote}>{noteForJourney(item, copy, language)}</p>
     <TripTransportChoiceControl trip={trip} leg={recommendedLeg} pending={mutation.isPending(pendingKey)} showUnavailable
       onChange={(identity) => mutation.mutateTrip((current) => identity
         ? selectTripLegTransportChoice(current, leg.id, identity)

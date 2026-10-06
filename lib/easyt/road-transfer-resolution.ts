@@ -7,7 +7,7 @@ import {
   type RoadRoutingProvider,
 } from "./road-routing.ts";
 import { estimateTransferImpact } from "./transfer-impact.ts";
-import type { EasyTTrip, TripLeg } from "./trip.ts";
+import type { EasyTTrip, RoadEstimateReference, TripLeg } from "./trip.ts";
 import { findCatalogPlaceById, matchCatalogPlace } from "./place-catalog.ts";
 
 export type RoadFallbackSkipReason =
@@ -26,6 +26,7 @@ export type RoadFallbackResolution = {
   leg: TripLeg;
   outcome: "resolved" | "unchanged";
   reason?: RoadFallbackSkipReason;
+  estimate?: RoadEstimateReference;
 };
 
 const MAX_STRAIGHT_LINE_ROAD_KM = 1_200;
@@ -115,7 +116,7 @@ function routeIsPlausible(result: RoadRouteResult, straightLineDistanceKm: numbe
 
 export async function resolveCanonicalRoadFallback(
   leg: TripLeg,
-  options: { provider?: RoadRoutingProvider } = {},
+  options: { provider?: RoadRoutingProvider; allowCrossBorderEstimate?: boolean } = {},
 ): Promise<RoadFallbackResolution> {
   if (leg.mode !== "unknown" || leg.durationMinutes !== null) return { leg, outcome: "unchanged", reason: "already_resolved" };
   if (!roadFallbackEligible(leg)) return { leg, outcome: "unchanged", reason: "explicit_or_unsupported_source" };
@@ -124,7 +125,8 @@ export async function resolveCanonicalRoadFallback(
   if (!from || !to || !validCoordinates(from.coordinates) || !validCoordinates(to.coordinates)) {
     return { leg, outcome: "unchanged", reason: "missing_coordinates" };
   }
-  if (!from.country || !to.country || normalizedIdentity(from.country) !== normalizedIdentity(to.country)) {
+  const international = Boolean(from.country && to.country && normalizedIdentity(from.country) !== normalizedIdentity(to.country));
+  if (international && !options.allowCrossBorderEstimate) {
     return { leg, outcome: "unchanged", reason: "cross_border" };
   }
   // A driving provider may legally include a ferry edge while still returning
@@ -157,9 +159,25 @@ export async function resolveCanonicalRoadFallback(
     mode: "road",
     headlineMinutes: durationFact,
     knownDoorToDoorMinutes: durationFact,
-    international: false,
+    international,
     connectionCount: 0,
   });
+  const estimateWarnings = [
+    "Road estimate only; no passenger service or private-driver availability is confirmed.",
+    ...(international ? ["Border crossing eligibility, waits and stops are not included in this road estimate."] : ["Stops and road conditions are not included unless the routing source states otherwise."]),
+  ];
+  const estimate: RoadEstimateReference = {
+    provider: result.provider,
+    profile: result.profile,
+    provenance: result.provenance,
+    checkedAt: result.providerCheckedAt,
+    distanceKm: result.distanceKm,
+    durationMinutes: result.durationMinutes,
+    confidence: result.confidence,
+    routeGeometry: result.routeGeometry,
+    attribution: result.attribution,
+    warnings: estimateWarnings,
+  };
   const resolved: TripLeg = {
     ...leg,
     mode: "road",
@@ -174,7 +192,7 @@ export async function resolveCanonicalRoadFallback(
     provenance: "routing_engine",
     confidence: result.confidence,
     scheduleNeedsChecking: true,
-    warnings: [],
+    warnings: estimateWarnings,
     routeGeometry: result.routeGeometry,
     routeMetadata: {
       ...leg.routeMetadata,
@@ -193,7 +211,7 @@ export async function resolveCanonicalRoadFallback(
       },
     },
   };
-  return { leg: resolved, outcome: "resolved" };
+  return { leg: resolved, outcome: "resolved", estimate };
 }
 
 export async function resolveCanonicalRoadFallbacks(

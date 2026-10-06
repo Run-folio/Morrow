@@ -27,6 +27,13 @@ test("Route Check keeps canonical rows and markers while presenting a comparison
     "Build must never silently apply a Route Check recommendation");
 });
 
+test("Builder labels a routed road estimate separately from an unresolved transport mode", () => {
+  const workspace = readFileSync(new URL("../app/journey/new/trip-builder-route-workspace.tsx", import.meta.url), "utf8");
+  assert.match(workspace, /transferJourneyModeLabel\(leg\)/);
+  assert.match(workspace, /formatMapDuration\(transferMinutes\)/);
+  assert.match(workspace, /leg\?\.mode === "unknown" && leg\.roadEstimate[\s\S]*formatRoadEstimateReference\(leg\.roadEstimate\)/);
+});
+
 test("one concise disclosure owns warnings and Route Check results", () => {
   const builder = readFileSync(new URL("../app/journey/new/trip-builder.tsx", import.meta.url), "utf8");
 

@@ -81,9 +81,11 @@ const athens = stop("athens", 0, "Athens", "Greece", [23.7275, 37.9838]);
 const naxos = stop("naxos", 1, "Naxos", "Greece", [25.376, 37.1036]);
 const paros = stop("paros", 1, "Paros", "Greece", [25.1503, 37.085]);
 
-test("Huacachina to Lima selects one routed road journey and no unknown marker state", async () => {
+test("Huacachina to Lima selects routed road when the traveller prefers driving", async () => {
   const provider = new FixtureRoadProvider();
-  const resolved = await resolveCanonicalTransferJourney(baseline(huacachina, lima), { provider });
+  const leg = baseline(huacachina, lima);
+  leg.routeMetadata.transportConstraints = { preferredModes: ["road"] };
+  const resolved = await resolveCanonicalTransferJourney(leg, { provider });
   assert.equal(resolved.leg.mode, "road");
   assert.equal(resolved.leg.durationMinutes, 255);
   assert.equal(resolved.leg.distanceKm, 305);
@@ -142,11 +144,13 @@ test("a normal direct-air journey remains flight", async () => {
   assert.equal(resolved.leg.segments?.[0]?.toEndpoint.name, "Lima");
 });
 
-test("a short land journey selects road rather than flight", async () => {
+test("a short land journey selects routed road when driving is preferred", async () => {
   const from = stop("short-a", 0, "Short A", "Testland", [0, 0]);
   const to = stop("short-b", 1, "Short B", "Testland", [0.25, 0]);
   const provider = new FixtureRoadProvider((input) => roadResult(input, 32, 45));
-  const resolved = await resolveCanonicalTransferJourney(baseline(from, to), { provider });
+  const leg = baseline(from, to);
+  leg.routeMetadata.transportConstraints = { preferredModes: ["road"] };
+  const resolved = await resolveCanonicalTransferJourney(leg, { provider });
   assert.equal(resolved.leg.mode, "road");
   assert.equal(resolved.leg.durationMinutes, 45);
 });

@@ -16,6 +16,7 @@ import type {
   TransferSegment,
   TripLeg,
   TripLegProvenance,
+  RoadEstimateReference,
   TripTransferMode,
 } from "./trip.ts";
 
@@ -24,7 +25,6 @@ export type TransferEvidenceKind =
   | "intercity_rail_network"
   | "direct_rail_connectivity"
   | "routed_road"
-  | "deterministic_road_estimate"
   | "canonical_gateway_access"
   | "direct_air_connectivity"
   | "legacy_flight_estimate"
@@ -71,7 +71,6 @@ export const MULTIMODAL_SELECTION_RULES = {
   minimumUnverifiedInternationalFlightKm: 1_200,
   inferredRailStationAllowanceMinutes: 30,
   inferredRailSpeedKmh: 200,
-  maximumDeterministicRoadFallbackKm: 350,
   maximumCandidates: 8,
   scoring: {
     maximumScore: 100,
@@ -322,73 +321,43 @@ function railCandidate(
   });
 }
 
-async function roadCandidate(leg: TripLeg, provider?: RoadRoutingProvider): Promise<TransferJourneyCandidate | null> {
+async function roadCandidate(leg: TripLeg, provider?: RoadRoutingProvider): Promise<{ candidate: TransferJourneyCandidate; estimate: RoadEstimateReference } | null> {
   const routed = leg.mode === "road" && leg.durationMinutes !== null && leg.provenance === "routing_engine"
-    ? { leg, outcome: "resolved" as const }
+    ? { leg, outcome: "resolved" as const, estimate: leg.roadEstimate }
     : await resolveCanonicalRoadFallback({
         ...leg,
         mode: "unknown",
         durationMinutes: null,
         routeMetadata: { ...leg.routeMetadata, source: "morrovia-planner", roadFallbackEligible: true, decisionOption: undefined },
-      }, { provider });
+      }, { provider, allowCrossBorderEstimate: true });
   const existing = routed.leg;
-  if (existing.mode !== "road" || existing.durationMinutes === null) {
-    // An attempted provider failure is evidence that this particular road
-    // journey could not be established. Do not overwrite that result with a
-    // coordinate-only estimate; the deterministic fallback is for a missing
-    // provider, not a failed live lookup.
-    return routed.reason === "provider_no_route" || (provider && routed.reason === "provider_failure")
-      ? null
-      : deterministicRoadCandidate(leg);
-  }
+  if (existing.mode !== "road" || existing.durationMinutes === null || !routed.estimate) return null;
   const roadSegment = segmentFromLeg(existing);
   if (!roadSegment || roadSegment.durationMinutes === null) return null;
-  return candidate({
-    id: "road:routed",
-    summaryMode: "road",
-    segments: [roadSegment],
-    totalDurationMinutes: roadSegment.durationMinutes,
-    distanceKm: roadSegment.distanceKm,
-    confidence: existing.confidence === "high" ? "high" : existing.confidence === "low" ? "low" : "medium",
-    provenance: "routing_engine",
-    evidence: "routed_road",
-    connectionCount: 0,
-    reasons: ["The road provider returned a plausible routed journey between the actual endpoints."],
-  });
+  return {
+    candidate: candidate({
+      id: "road:routed",
+      summaryMode: "road",
+      segments: [roadSegment],
+      totalDurationMinutes: roadSegment.durationMinutes,
+      distanceKm: roadSegment.distanceKm,
+      confidence: existing.confidence === "high" ? "high" : existing.confidence === "low" ? "low" : "medium",
+      provenance: "routing_engine",
+      evidence: "routed_road",
+      connectionCount: 0,
+      reasons: ["The road provider returned a plausible routed journey between the actual endpoints. This is a driving estimate, not evidence of passenger service."],
+    }),
+    estimate: routed.estimate,
+  };
 }
 
-function deterministicRoadCandidate(leg: TripLeg): TransferJourneyCandidate | null {
-  const from = leg.fromEndpoint;
-  const to = leg.toEndpoint;
-  if (!from || !to || !from.coordinates || !to.coordinates || !sameCountry(from, to)) return null;
-  if (directRoadPlausibilityConflict(leg)) return null;
-  const distanceKm = haversineKm(from.coordinates, to.coordinates);
-  if (distanceKm === null || distanceKm < 1 || distanceKm > MULTIMODAL_SELECTION_RULES.maximumDeterministicRoadFallbackKm) return null;
-  const existingMinutes = leg.mode === "road" ? leg.doorToDoorMinutes ?? leg.durationMinutes : null;
-  const durationMinutes = existingMinutes ?? roundPlanningMinutes(60 + (distanceKm / 55) * 60);
-  const roadSegment = segment({
-    mode: "road",
-    fromEndpoint: from,
-    toEndpoint: to,
-    distanceKm,
-    durationMinutes,
-    provider: "Morrovia coordinate-based road planning fallback; verify the live route and suitable ground transport.",
-    provenance: "planning_estimate",
-    confidence: "low",
-    scheduleNeedsChecking: true,
-  });
-  return candidate({
-    id: "road:deterministic-fallback",
-    summaryMode: "road",
-    segments: [roadSegment],
-    totalDurationMinutes: durationMinutes,
-    distanceKm,
-    confidence: "low",
-    provenance: "planning_estimate",
-    evidence: "deterministic_road_estimate",
-    connectionCount: 0,
-    reasons: ["Canonical coordinates support a conservative domestic road estimate after routed evidence was unavailable.", "This remains low confidence and needs a live route check."],
-  });
+function attachRoadEstimate(leg: TripLeg, estimate: RoadEstimateReference | undefined): TripLeg {
+  if (!estimate) return leg;
+  return {
+    ...leg,
+    roadEstimate: estimate,
+    warnings: [...new Set([...(leg.warnings ?? []), ...estimate.warnings])],
+  };
 }
 
 function directFlightCandidate(
@@ -660,7 +629,7 @@ function selectionRationale(selected: TransferJourneyCandidate, diagnostic: Tran
   return null;
 }
 
-function applyCandidate(leg: TripLeg, selected: TransferJourneyCandidate, diagnostic: TransferResolutionDiagnostic): TripLeg {
+function applyCandidate(leg: TripLeg, selected: TransferJourneyCandidate, diagnostic: TransferResolutionDiagnostic, roadEstimate?: RoadEstimateReference): TripLeg {
   const dominantMode = selected.summaryMode === "mixed"
     ? selected.segments.some((segment) => segment.mode === "flight")
       ? "flight"
@@ -680,7 +649,7 @@ function applyCandidate(leg: TripLeg, selected: TransferJourneyCandidate, diagno
     connectionCount: selected.evidence === "legacy_flight_estimate" ? null : selected.connectionCount,
   });
   const onlySegment = selected.segments.length === 1 ? selected.segments[0] : null;
-  return {
+  return attachRoadEstimate({
     ...leg,
     mode: selected.summaryMode,
     segments: selected.segments,
@@ -709,7 +678,7 @@ function applyCandidate(leg: TripLeg, selected: TransferJourneyCandidate, diagno
       transferImpact,
       multimodalResolution: diagnostic,
     },
-  };
+  }, roadEstimate);
 }
 
 export async function resolveCanonicalTransferJourney(
@@ -749,11 +718,15 @@ export async function resolveCanonicalTransferJourney(
     && rail.totalDurationMinutes <= MULTIMODAL_SELECTION_RULES.scoring.strongRailMaximumMinutes
     && (rail.connectionCount === null || rail.connectionCount <= 1)
     && !travellerPrefersRoad);
+  let roadEstimate: RoadEstimateReference | undefined;
   if (!excludedModes.has("road") && !credibleLowChangeRailDominatesRoad) {
-    const road = await roadCandidate(leg, options.provider);
-    if (road) candidates.push(road);
+    // A complete gateway composition has already routed its ground access;
+    // avoid a second, unrelated origin-to-destination driving request.
+    const road = mixed ? null : await roadCandidate(leg, options.provider);
+    roadEstimate = road?.estimate;
+    if (road && travellerPrefersRoad) candidates.push(road.candidate);
     if (canonicalGatewayAccess) candidates.push(canonicalGatewayAccess);
-    if (!road && !canonicalGatewayAccess) diagnostic.rejected.push("No plausible routed or deterministic road candidate was available.");
+    if (!road && !canonicalGatewayAccess) diagnostic.rejected.push("No plausible routed road estimate or canonical gateway access was available.");
   } else if (credibleLowChangeRailDominatesRoad) {
     diagnostic.rejected.push("Road lookup skipped because credible low-change rail is under six hours and the traveller has no road preference.");
   }
@@ -770,7 +743,7 @@ export async function resolveCanonicalTransferJourney(
       && (excludedModes.has(leg.mode) || leg.segments?.some((segment) => excludedModes.has(segment.mode)));
     if (gatewayContradictsDirectFlight || unsupportedPlannerRoad || unsupportedPlannerFlight || excludedPlannerMode) {
       return {
-        leg: {
+        leg: attachRoadEstimate({
           ...leg,
           mode: "unknown",
           durationMinutes: null,
@@ -790,16 +763,16 @@ export async function resolveCanonicalTransferJourney(
           routeGeometry: undefined,
           segments: undefined,
           routeMetadata: { ...leg.routeMetadata, source: "multimodal-resolver", multimodalResolution: diagnostic },
-        },
+        }, roadEstimate),
         outcome: "unresolved",
         diagnostic,
       };
     }
-    return { leg, outcome: "unresolved", diagnostic };
+    return { leg: attachRoadEstimate(leg, roadEstimate), outcome: "unresolved", diagnostic };
   }
   diagnostic.selected = selected.summaryMode;
   diagnostic.selectedCandidateId = selected.id;
-  return { leg: applyCandidate(leg, selected, diagnostic), outcome: "resolved", diagnostic };
+  return { leg: applyCandidate(leg, selected, diagnostic, roadEstimate), outcome: "resolved", diagnostic };
 }
 
 export async function resolveCanonicalTransferJourneys(

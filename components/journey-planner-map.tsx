@@ -705,7 +705,9 @@ export function JourneyPlannerMap({
             <span className="planner-map__leg-meta"><strong>{leg.modeLabel.toLocaleUpperCase()}</strong><em>{leg.headlineMinutes !== null ? `~${formatMapDuration(leg.headlineMinutes)}` : "Timing to confirm"}</em></span>
             <b>{leg.fromName} → {leg.toName}</b>
             <span>{leg.distanceKm !== null ? `${Math.round(leg.distanceKm).toLocaleString()} km` : "Distance not available"} · Door-to-door {leg.doorToDoorMinutes !== null ? `~${formatMapDuration(leg.doorToDoorMinutes)}` : "timing to confirm"}</span>
-            <small>{leg.mode === "unknown" || (leg.headlineMinutes === null && leg.doorToDoorMinutes === null) ? "Timing to confirm" : "Planning estimate"}</small>
+            <small>{leg.roadEstimate
+              ? `Road estimate only · about ${formatMapDuration(leg.roadEstimate.durationMinutes)} driving`
+              : leg.mode === "unknown" || (leg.headlineMinutes === null && leg.doorToDoorMinutes === null) ? "Timing to confirm" : "Planning estimate"}</small>
           </span>
         </>);
         const activateLeg = (event: MouseEvent | PointerEvent) => {

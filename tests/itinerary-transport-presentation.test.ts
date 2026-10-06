@@ -69,7 +69,7 @@ test("transport partners use the existing affiliate handoff and cannot mutate ca
 
 test("Transport keeps planning information above a subordinate selected-journey handoff", () => {
   assert.ok(transport.indexOf("item.from.name") < transport.indexOf("transferJourneyModeLabel(leg)"));
-  assert.ok(transport.indexOf("transferJourneyModeLabel(leg)") < transport.indexOf("noteForJourney(item, copy)"));
+  assert.ok(transport.indexOf("transferJourneyModeLabel(leg)") < transport.indexOf("noteForJourney(item, copy, language)"));
   assert.match(transportStyles, /\.workspace \{[\s\S]*background: var\(--morrovia-paper\)/);
   assert.match(transportStyles, /\.card \{[\s\S]*background: var\(--morrovia-paper\)/);
   assert.doesNotMatch(transportStyles, /background: var\(--morrovia-lilac(?:-strong)?\)/);
@@ -119,10 +119,12 @@ test("Transport traveller-facing copy has English and Spanish parity", () => {
   assert.match(transport, /checkService: "Confirmar servicio"/);
   assert.match(transport, /needsCheckingStatus: "Necesita comprobarse"/);
   assert.match(transport, /roadEstimateNote/);
+  assert.match(transport, /formatRoadEstimateReference\(item\.leg\.roadEstimate, language\)/);
+  assert.match(transport, /No se ha confirmado un servicio de pasajeros/);
 });
 
 test("the first-class workspace has responsive Storybook coverage and narrow-screen containment", () => {
-  for (const story of ["NamibiaSelfDrivePlanningEstimates", "CanonicalAgendaMobile320", "CanonicalAgendaMobile390", "CanonicalAgendaMobile430", "CanonicalAgendaTablet768", "CanonicalAgendaDesktop1024", "CanonicalAgendaDesktop1440", "PartialUnknownTransport", "EvidenceBackedModeChoice", "ExplicitTravellerChoice"]) {
+  for (const story of ["NamibiaSelfDrivePlanningEstimates", "CanonicalAgendaMobile320", "CanonicalAgendaMobile390", "CanonicalAgendaMobile430", "CanonicalAgendaTablet768", "CanonicalAgendaDesktop1024", "CanonicalAgendaDesktop1440", "PartialUnknownTransport", "RoadReferenceWithoutSelectedMode", "EvidenceBackedModeChoice", "ExplicitTravellerChoice"]) {
     assert.match(stories, new RegExp(`export const ${story}`));
   }
   assert.match(transportStyles, /@media \(max-width: 820px\)[\s\S]*--morrovia-mobile-dock-offset/);

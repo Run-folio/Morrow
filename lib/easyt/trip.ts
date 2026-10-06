@@ -190,10 +190,25 @@ export type TripLeg = {
   confidence?: "high" | "medium" | "low" | "unknown";
   scheduleNeedsChecking?: boolean;
   warnings?: string[];
+  /** A driving route reference kept separate from the selected transport mode. */
+  roadEstimate?: RoadEstimateReference;
   /** Optional canonical route path as GeoJSON-order [longitude, latitude] points. */
   routeGeometry?: Array<[number, number]>;
   /** Optional segment detail; legacy single-mode legs remain valid without it. */
   segments?: TransferSegment[];
+};
+
+export type RoadEstimateReference = {
+  provider: "openrouteservice";
+  profile: "driving-car";
+  provenance: "routed";
+  checkedAt: string;
+  distanceKm: number;
+  durationMinutes: number;
+  confidence: "medium";
+  routeGeometry: Array<[number, number]>;
+  attribution: string;
+  warnings: string[];
 };
 
 export type CanonicalRouteEndpoint = {

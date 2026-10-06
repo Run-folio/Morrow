@@ -4883,12 +4883,12 @@ function TripBuilderDocument() {
                       : activeTripDocument.stops.find((candidate) => candidate.id === leg?.fromStopId)?.name;
                     const transferIsUnknown = leg?.mode === "unknown";
                     const transferContext = transferIsUnknown
-                      ? (language === "es" ? "Traslado por confirmar · Transporte desconocido" : "Transfer to confirm · Unknown transport")
+                      ? (language === "es" ? "Traslado por confirmar · Transporte por comprobar" : "Transfer to confirm · Transport needs checking")
                       : leg
                       ? `${transferOrigin ? `From ${transferOrigin} · ` : ""}${transferJourneyModeLabel(leg)}`
                       : startsAtOrigin
                         ? (language === "es" ? "Empieza aquí · Sin traslado de llegada" : "Starts here · No arrival transfer")
-                        : (language === "es" ? "Traslado por confirmar · Transporte desconocido" : "Transfer to confirm · Unknown transport");
+                        : (language === "es" ? "Traslado por confirmar · Transporte por comprobar" : "Transfer to confirm · Transport needs checking");
                     return <div key={stop.id} role="row" className={`${styles.routeTimeRow} ${dragId === stop.id ? styles.routeTimeRowDragging : ""}`} onDragOver={(event) => event.preventDefault()} onDrop={(event) => { event.preventDefault(); moveStop(stops.findIndex((item) => item.id === (dragId ?? event.dataTransfer.getData("text/plain"))), index); setDragId(null); }}>
                       <StopReorderControl stop={stop} canMoveUp={!locked && canMoveStop(index, index - 1)} canMoveDown={!locked && canMoveStop(index, index + 1)} onMoveUp={() => moveStop(index, index - 1)} onMoveDown={() => moveStop(index, index + 1)} onDragStart={(event) => { setDragId(stop.id); event.dataTransfer.effectAllowed = "move"; event.dataTransfer.setData("text/plain", stop.id); }} onDragEnd={() => setDragId(null)} />
                       <div className={styles.routeStopIdentity} role="cell">

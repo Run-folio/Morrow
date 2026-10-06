@@ -31,6 +31,35 @@ const transportTrip: EasyTTrip = {
   } : leg),
 };
 
+const roadReferenceTrip: EasyTTrip = {
+  ...transportTrip,
+  id: "storybook-road-reference-without-selected-mode",
+  title: "Central Asia road reference",
+  legs: transportTrip.legs.map((leg, index) => index === 2 ? {
+    ...leg,
+    mode: "unknown",
+    distanceKm: null,
+    durationMinutes: null,
+    headlineMinutes: null,
+    doorToDoorMinutes: null,
+    roadEstimate: {
+      provider: "openrouteservice",
+      profile: "driving-car",
+      provenance: "routed",
+      checkedAt: "2026-10-05T12:00:00.000Z",
+      distanceKm: 245,
+      durationMinutes: 270,
+      confidence: "medium",
+      routeGeometry: [[76.886, 43.2389], [75.7, 43.05], [74.5698, 42.8746]],
+      attribution: "Road route reference · OpenRouteService",
+      warnings: [
+        "Road estimate only; no passenger service or private-driver availability is confirmed.",
+        "Border crossing eligibility, waits and stops are not included in this road estimate.",
+      ],
+    },
+  } : leg),
+};
+
 const namibiaStops = [
   ["windhoek", "Windhoek", [17.0832, -22.5609], "2026-10-01", "2026-10-02", 1],
   ["sossusvlei", "Sossusvlei", [15.2928, -24.7333], "2026-10-02", "2026-10-04", 2],
@@ -151,6 +180,7 @@ export const SelectedJourneyDesktop1440: Story = { globals: { viewport: { value:
 export const PartialUnknownTransport: Story = {
   args: { trip: transportTrip },
 };
+export const RoadReferenceWithoutSelectedMode: Story = { args: { trip: roadReferenceTrip } };
 
 export const EvidenceBackedModeChoice: Story = {
   args: { trip: modeChoiceTrip },

@@ -9,6 +9,7 @@ import { formatMapDuration, mapRouteLegsFromTrip } from "@/lib/easyt/map-spatial
 import { buildBuilderRoutePreview } from "@/lib/easyt/trip-builder-route-preview";
 import { builderDestinationCards } from "@/lib/easyt/builder-map-destination-cards";
 import { transferJourneyModeLabel } from "@/lib/easyt/transfer-journey";
+import { formatRoadEstimateReference } from "@/lib/easyt/road-estimate-presentation";
 import type { EasyTTrip } from "@/lib/easyt/trip";
 import { effectiveTripLeg, tripWithEffectiveTransportChoices } from "@/lib/easyt/transport-mode-choice";
 import styles from "./trip-builder.module.css";
@@ -156,6 +157,7 @@ export function TripBuilderRouteWorkspace({
               <div className={styles.builderRouteTransfer} role="cell">
                 <Route aria-hidden="true" />
                 <span><strong>{leg ? `${leg.fromEndpoint?.name ? `From ${leg.fromEndpoint.name} · ` : ""}${transferJourneyModeLabel(leg)}` : index === 0 ? "Starts here" : "Transfer to confirm"}</strong><small>{leg ? formatMapDuration(transferMinutes) : "No arrival transfer"}</small>
+                  {leg?.mode === "unknown" && leg.roadEstimate ? <small>{formatRoadEstimateReference(leg.roadEstimate)}</small> : null}
                   {recommendedLeg && !preview?.ok ? <span onClick={(event) => event.stopPropagation()}>
                     <TripTransportChoiceControl
                       trip={canonicalTrip}
