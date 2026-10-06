@@ -1236,7 +1236,7 @@ function roleAt(prompt: string, sourceText: string, start: number, placeType: Pl
   const before = normalizePlacePhrase(prompt.slice(Math.max(0, start - 64), start));
   const after = normalizePlacePhrase(rawAfter);
   if (/(?:do not|dont|not|never)(?: want to)? visit$|(?:skip|exclude|excluding|avoid)$/.test(before)) return "excluded";
-  if (/(?:^| )(?:finish|finishing|end|ending)(?: the trip)? (?:in|at)$|fly(?:ing)? (?:home|back)? from$|(?:fly(?:ing)? )?out of$|(?:back|return(?:ing)?) to$|one way to$/.test(before)) return "fixed_end";
+  if (/(?:^| )(?:finish|finishing|end|ending)(?: the trip)? (?:in|at)$|fly(?:ing)? (?:home|back)? from$|(?:^| )home from$|(?:fly(?:ing)? )?out of$|(?:back|return(?:ing)?) to$|one way to$/.test(before)) return "fixed_end";
   if (/(?:^| )(?:start|starting|begin|beginning)(?: the trip)?(?: (?:in|at))?$/.test(before)) return "fixed_start";
   if (/(?:leaving from|departing from|depart from|from|desde|saliendo de)$/.test(before)) return "origin";
   // Arrow separators are removed by geographic normalization. Preserve their

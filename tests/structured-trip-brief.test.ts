@@ -2,6 +2,8 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { resolvePlaceMentions } from "../lib/easyt/place-intelligence.ts";
 import { createDiscoveryDraft, reduceDiscoveryDraft, readDiscoveryDraft } from "../lib/easyt/discovery-draft.ts";
+import { allocateTripNights } from "../lib/easyt/night-allocation.ts";
+import { projectFixedCommitmentsToStops } from "../lib/easyt/fixed-commitment.ts";
 import {
   extractStructuredTripBrief,
   formatStructuredTripBriefDebug,
@@ -57,6 +59,54 @@ test("explicit prompt preserves gateways, exact nights and a must-visit anchor",
   assert.equal(brief.travellers?.value, 2);
   assert.equal(brief.transportPreferences.some((preference) => preference.value === "ground"), true);
   assert.equal(brief.hardConstraints.some((constraint) => constraint.type === "duration"), true);
+});
+
+test("prompted city night counts remain explicit fixed stay constraints", () => {
+  const brief = extractStructuredTripBrief("10 nights in Italy: Rome 3, Florence 3, Bologna 1, Venice 3.");
+  const stays = brief.hardConstraints
+    .filter((constraint) => constraint.type === "fixed-commitment")
+    .map((constraint) => constraint.type === "fixed-commitment" ? ({ place: constraint.place?.name, nights: constraint.fixedNights }) : null);
+
+  assert.deepEqual(stays, [
+    { place: "Rome", nights: 3 },
+    { place: "Florence", nights: 3 },
+    { place: "Bologna", nights: 1 },
+    { place: "Venice", nights: 3 },
+  ]);
+
+  const stops = ["Rome", "Florence", "Bologna", "Venice"].map((name, index) => ({
+    id: `stop-${index}`,
+    name,
+    country: "Italy",
+    canonicalPlaceId: brief.destinations.find((destination) => destination.name === name)?.canonicalPlaceId,
+  }));
+  const route = routeConstraintsFromStructuredTripBrief(brief);
+  const fixedCommitments = projectFixedCommitmentsToStops(route.fixedCommitments, stops);
+  const allocation = allocateTripNights({ totalNights: 10, stops, fixedCommitments });
+  assert.deepEqual(allocation.allocations, { "stop-0": 3, "stop-1": 3, "stop-2": 1, "stop-3": 3 });
+});
+
+test("fly-in and fly-home language assigns separate arrival and departure gateways", () => {
+  const brief = extractStructuredTripBrief("14 nights, fly into Tokyo and home from Osaka: Tokyo 4, Kanazawa 2, Kyoto 4, Hiroshima 2, Osaka 2.");
+
+  assert.equal(brief.destinations.find((place) => place.role === "arrival-gateway")?.name, "Tokyo");
+  assert.equal(brief.destinations.find((place) => place.role === "departure-gateway")?.name, "Osaka");
+  assert.deepEqual(
+    brief.hardConstraints.filter((constraint) => constraint.type === "start-at" || constraint.type === "end-at")
+      .map((constraint) => ({ type: constraint.type, value: "value" in constraint ? constraint.value : "" })),
+    [{ type: "start-at", value: "Tokyo" }, { type: "end-at", value: "Osaka" }],
+  );
+  assert.deepEqual(
+    brief.hardConstraints.filter((constraint) => constraint.type === "fixed-commitment")
+      .map((constraint) => constraint.type === "fixed-commitment" ? ({ place: constraint.place?.name, nights: constraint.fixedNights }) : null),
+    [
+      { place: "Tokyo", nights: 4 },
+      { place: "Kanazawa", nights: 2 },
+      { place: "Kyoto", nights: 4 },
+      { place: "Hiroshima", nights: 2 },
+      { place: "Osaka", nights: 2 },
+    ],
+  );
 });
 
 test("explicit ordered routes preserve their first locality as the canonical origin", () => {

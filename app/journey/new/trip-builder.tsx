@@ -20,7 +20,7 @@ import { acknowledgeTripBuildSave, cacheCanonicalTrip, canUseHydratedTripScope, 
 import { tripBuildDocumentsCanonicalEquivalent } from "@/lib/easyt/trip-promotion";
 import { EasyTTripPersistenceError, isTripPersistenceAuthenticationError, tripRecoveryStateForPersistenceError } from "@/lib/easyt/trip-persistence-error";
 import { tripEditorSyncAction, tripSyncRecoveryPath, tripSyncSignInPath } from "@/lib/easyt/trip-continuity";
-import { defaultTripIntent, isEasyTTrip, tripFromBuilder, tripIntentForTrip, type EasyTTrip, type FixedTripCommitment, type JourneyEndSelection, type JourneyEndpointPlace, type TripBudgetPreference, type TripDecisionSelections, type TripIntent, type TripIntentPace, type TripLeg, type TripScheduleLocks, type TripStatus, type TripStop, type TripTransportMode } from "@/lib/easyt/trip";
+import { defaultTripIntent, fixedTripCommitmentsFromStructuredBrief, isEasyTTrip, tripFromBuilder, tripIntentForTrip, type EasyTTrip, type FixedTripCommitment, type JourneyEndSelection, type JourneyEndpointPlace, type TripBudgetPreference, type TripDecisionSelections, type TripIntent, type TripIntentPace, type TripLeg, type TripScheduleLocks, type TripStatus, type TripStop, type TripTransportMode } from "@/lib/easyt/trip";
 import { arrivalLoadFromTransfer, assessRouteIntelligence, buildCredibleItinerary, estimateLegForConstraints, routeIntelligenceForPersistence, routeTransferSavingMinutes, travelStayConsequence, usableStopDays, type PlannedDay, type PlannerPlace } from "@/lib/easyt/planner";
 import { allocateTripNights, calendarDayAllocationsFromNights, rebalanceTripNights, tripNightsBetween, type NightAllocationStopInput } from "@/lib/easyt/night-allocation";
 import { classifyAnalyticsSaveError, hasAnalyticsConsent, trackEvent } from "@/lib/analytics";
@@ -769,6 +769,7 @@ function TripBuilderDocument() {
     const structuredInterests = normalizeTripInterests(homeStructuredBrief.interests.map((interest) => interest.value));
     const handoffInterests = tripInterestsFromHomeDraft(draft, structuredInterests);
     const structuredAvoidDriving = homeStructuredBrief.hardConstraints.some((constraint) => constraint.type === "no-driving");
+    const structuredFixedCommitments = fixedTripCommitmentsFromStructuredBrief(homeStructuredBrief);
     setTripIntent((current) => ({
       ...current,
       timing: {
@@ -788,7 +789,7 @@ function TripBuilderDocument() {
           ? handoffInterests
           : current.preferences.interests,
       },
-      hardConstraints: { ...current.hardConstraints, avoidDriving: structuredAvoidDriving || current.hardConstraints.avoidDriving },
+      hardConstraints: { ...current.hardConstraints, fixedCommitments: structuredFixedCommitments, avoidDriving: structuredAvoidDriving || current.hardConstraints.avoidDriving },
       journeyEnd: capturedJourneyEnd,
     }));
     setCapturedStructuredBrief(homeStructuredBrief);
@@ -2014,6 +2015,7 @@ function TripBuilderDocument() {
     label: commitment.label,
     date: commitment.date,
     stopId: commitment.stopId,
+    fixedNights: commitment.fixedNights,
   })), [projectedFixedCommitments]);
   const manualNightRebalance = useMemo(() => manualNightStopIds.length ? rebalanceTripNights({
     totalNights,

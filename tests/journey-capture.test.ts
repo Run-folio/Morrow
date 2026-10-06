@@ -5,10 +5,19 @@ import {
   captureJourneyBriefWithProvider,
 } from "../lib/easyt/journey-capture.ts";
 import type { PlaceIntelligenceProvider } from "../lib/easyt/place-intelligence.ts";
-import { createHomeTripDraft, routableHandoffMentions } from "../lib/easyt/home-trip-handoff.ts";
+import { createHomeTripDraft, handoffRouteStops, routableHandoffMentions } from "../lib/easyt/home-trip-handoff.ts";
 import { EXPECTED_MIXED_GEOGRAPHY, MIXED_CENTRAL_AMERICA_PROMPT } from "./fixtures/prebeta-place-trip-state.ts";
 
 const CENTRAL_PROMPT = "3 weeks through Patagonia, Tierra del Fuego and Easter Island. We like nature, prefer a relaxed pace and do not want to drive.";
+
+test("fly-in and home-from endpoints preserve the listed final overnight as one distinct stop", () => {
+  const capture = captureJourneyBrief("14 nights, fly into Tokyo and home from Osaka: Tokyo 4, Kanazawa 2, Kyoto 4, Hiroshima 2, Osaka 2.");
+  const draftStops = handoffRouteStops(capture.mentions, capture.journeyEnd);
+
+  assert.equal(capture.journeyEnd?.mode, "explicit");
+  assert.equal(capture.journeyEnd?.mode === "explicit" ? capture.journeyEnd.place.name : "", "Osaka");
+  assert.deepEqual(draftStops.map((stop) => stop.name), ["Tokyo", "Kanazawa", "Kyoto", "Hiroshima", "Osaka"]);
+});
 
 test("leading planning imperatives frame intent instead of becoming a destination", () => {
   const cases = [

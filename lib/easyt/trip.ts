@@ -23,6 +23,7 @@ export type FixedTripCommitment = {
   commitmentType?: FixedCommitmentType;
   place?: FixedCommitmentPlace;
   stopId?: string;
+  fixedNights?: number;
 };
 export type JourneyEndpointPlace = {
   name: string;
@@ -103,16 +104,7 @@ export function tripIntentForTrip(trip: Pick<EasyTTrip, "startDate" | "endDate" 
   const structured = trip.brief.structuredBrief;
   if (!structured) return compatible;
   const routePreferences = routePreferencesFromStructuredBrief(structured);
-  const fixedCommitments = structured.hardConstraints.flatMap((constraint) => constraint.type === "fixed-commitment"
-    ? [{
-        id: `structured-${constraint.date ?? "open"}-${constraint.value.toLocaleLowerCase().replace(/[^a-z0-9]+/g, "-")}`,
-        label: constraint.value,
-        date: constraint.date,
-        commitmentType: constraint.commitmentType,
-        place: constraint.place,
-        stopId: constraint.stopId,
-      }]
-    : []);
+  const fixedCommitments = fixedTripCommitmentsFromStructuredBrief(structured);
   return {
     ...compatible,
     travellers: structured.travellers?.value ?? compatible.travellers,
@@ -132,6 +124,20 @@ export function tripIntentForTrip(trip: Pick<EasyTTrip, "startDate" | "endDate" 
       budgetSensitivity: structured.budget?.value ?? compatible.preferences.budgetSensitivity,
     },
   };
+}
+
+export function fixedTripCommitmentsFromStructuredBrief(brief: StructuredTripBrief): FixedTripCommitment[] {
+  return brief.hardConstraints.flatMap((constraint) => constraint.type === "fixed-commitment"
+    ? [{
+        id: `structured-${constraint.date ?? "open"}-${constraint.value.toLocaleLowerCase().replace(/[^a-z0-9]+/g, "-")}`,
+        label: constraint.value,
+        date: constraint.date,
+        commitmentType: constraint.commitmentType,
+        place: constraint.place,
+        stopId: constraint.stopId,
+        fixedNights: constraint.fixedNights,
+      }]
+    : []);
 }
 
 export type TripStop = {

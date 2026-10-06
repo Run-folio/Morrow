@@ -1,12 +1,43 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { defaultTripIntent, isEasyTTrip, tripFromBuilder } from "../lib/easyt/trip.ts";
+import { defaultTripIntent, isEasyTTrip, tripFromBuilder, tripIntentForTrip } from "../lib/easyt/trip.ts";
 import { canonicalTripForOwner, tripBuildDocumentsCanonicalEquivalent } from "../lib/easyt/trip-promotion.ts";
 import { normalizedLegEndpoints } from "../lib/easyt/trip-persistence.ts";
 import { extractStructuredTripBrief, mergeStructuredTripBrief } from "../lib/easyt/structured-trip-brief.ts";
 import { createDiscoveryDraft, readDiscoveryDraft, reduceDiscoveryDraft } from "../lib/easyt/discovery-draft.ts";
 import { loadTripRecoveryFromStorage, saveTripRecoveryToStorage, type EasyTBrowserStorage } from "../lib/easyt/storage.ts";
+
+test("explicit per-stop nights survive Builder trip persistence and reload", () => {
+  const prompt = "10 nights in Italy: Rome 3, Florence 3, Bologna 1, Venice 3.";
+  const structuredBrief = extractStructuredTripBrief(prompt);
+  const trip = tripFromBuilder({
+    id: "trip-explicit-stay-nights",
+    origin: "Greater London",
+    stops: ["Rome", "Florence", "Bologna", "Venice"].map((name, index) => ({
+      id: `stop-${index}`,
+      name,
+      country: "Italy",
+      canonicalPlaceId: structuredBrief.destinations.find((destination) => destination.name === name)?.canonicalPlaceId,
+      nights: [3, 3, 1, 3][index]!,
+    })),
+    startDate: "2026-10-05",
+    endDate: "2026-10-15",
+    picks: {},
+    mustDo: prompt,
+    pace: "slow",
+    hotels: "few",
+    budget: "mid",
+    draft: [],
+    structuredBrief,
+  });
+  const reloadedIntent = tripIntentForTrip(JSON.parse(JSON.stringify(trip)) as typeof trip);
+
+  assert.deepEqual(
+    reloadedIntent.hardConstraints.fixedCommitments.map((commitment) => ({ place: commitment.place?.name, nights: commitment.fixedNights })),
+    [{ place: "Rome", nights: 3 }, { place: "Florence", nights: 3 }, { place: "Bologna", nights: 1 }, { place: "Venice", nights: 3 }],
+  );
+});
 
 test("the open-world Builder acceptance trip round-trips every reviewed decision", () => {
   const prompt = "cancun, tulum, belize, tikal, antigua, lake atitlan, starting from London. Prefer nature.";

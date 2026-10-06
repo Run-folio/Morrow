@@ -992,6 +992,16 @@ function endpointOwnedRouteMentionId(
   journeyEnd?: JourneyEndSelection,
 ) {
   if (journeyEnd?.mode !== "explicit") return undefined;
+  const explicitEndMention = mentions.find((mention) => mention.role === "fixed_end" && sameJourneyPlace({
+    name: mention.canonicalName,
+    canonicalPlaceId: mention.canonicalPlaceId,
+    country: mention.parentCountries.length === 1 ? mention.parentCountries[0] : undefined,
+  }, journeyEnd.place));
+  // A prompt may mention an endpoint before its overnight stop list (for
+  // example, "home from Osaka: Tokyo 4, ... Osaka 2"). The explicitly tagged
+  // endpoint mention is already excluded from route stays; keep the later,
+  // separately listed overnight occurrence.
+  if (explicitEndMention) return explicitEndMention.mentionId;
   return routableHandoffMentions(mentions)
     .filter((mention) => mention.role !== "origin" && mention.role !== "fixed_start")
     .filter((mention) => sameJourneyPlace({

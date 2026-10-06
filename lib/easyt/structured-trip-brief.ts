@@ -200,8 +200,8 @@ function sourceExcerpt(prompt: string, name: string) {
 
 function explicitGateway(prompt: string, kind: "start" | "end") {
   const pattern = kind === "start"
-    ? /(?:start|begin)(?:ing)?\s+(?:(?:in|at)\s+)?([^,.\n;]+?)(?=\s+(?:and\s+)?(?:then\s+)?(?:travel|go|continue|head|fly|take|finish|end)\b|[,.;\n]|$)/i
-    : /(?:finish|end)(?:ing)?\s+(?:in|at)\s+([^,.\n;]+)/i;
+    ? /(?:(?:start|begin)(?:ing)?\s+(?:(?:in|at)\s+)?|(?:fly|flying)\s+into\s+|(?:arrive|arriving|land|landing)\s+(?:in|at)\s+)([^,.:\n;]+?)(?=\s+(?:(?:and|then)\s+)?(?:travel|go|continue|head|fly|take|finish|end|home|return)\b|[,.:\n;]|$)/i
+    : /(?:(?:finish|end)(?:ing)?\s+(?:in|at)\s+|(?:fly(?:ing)?\s+)?home\s+from\s+)([^,.:\n;]+?)(?=\s+(?:(?:and|then)\s+)?(?:travel|go|continue|head|fly|take|finish|end|home|return)\b|[,.:\n;]|$)/i;
   return pattern.exec(prompt)?.[1]?.trim();
 }
 
@@ -212,6 +212,45 @@ function durationFromPrompt(prompt: string, fallbackDays?: number): TripBriefDur
   if (nights) return { value: Number(nights[1]), unit: "nights", precision: approximate ? "approximate" : "exact", provenance: promptExplicit(nights[0]) };
   if (!fallbackDays) return undefined;
   return { value: fallbackDays, unit: "days", precision: approximate ? "approximate" : "exact", provenance: promptExplicit(sourceExcerpt(prompt, `${fallbackDays}`)) };
+}
+
+function explicitStayNightCommitments(prompt: string, mentions: readonly ResolvedPlaceMention[]) {
+  if (durationFromPrompt(prompt)?.unit !== "nights") return [];
+  const bySourceText = new Map<string, { sourceText: string; mentions: ResolvedPlaceMention[] }>();
+  for (const mention of mentions) {
+    if (mention.role === "excluded" || mention.status === "ambiguous" || mention.status === "unresolved"
+      || mention.routability !== "direct_destination") continue;
+    const sourceTexts = mention.sourceTexts?.length ? mention.sourceTexts : [mention.sourceText];
+    for (const sourceText of sourceTexts) {
+      const key = normalize(sourceText);
+      const group = bySourceText.get(key) ?? { sourceText, mentions: [] };
+      group.mentions.push(mention);
+      bySourceText.set(key, group);
+    }
+  }
+
+  const commitments: Array<{ mention: ResolvedPlaceMention; nights: number; sourceText: string }> = [];
+  for (const group of bySourceText.values()) {
+    const pattern = new RegExp(group.sourceText.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "giu");
+    const occurrences: Array<{ nights?: number; sourceText?: string }> = [];
+    for (const match of prompt.matchAll(pattern)) {
+      const index = match.index;
+      if (index === undefined) continue;
+      const before = index > 0 ? [...prompt.slice(0, index)].at(-1) : undefined;
+      const after = prompt[index + match[0].length];
+      if ((before && /[\p{L}\p{N}]/u.test(before)) || (after && /[\p{L}\p{N}]/u.test(after))) continue;
+      const suffix = prompt.slice(index + match[0].length);
+      const stay = /^\s+(\d{1,2})(?:\s+nights?)?(?=\s*(?:[,;.:]|\band\b|$))/i.exec(suffix);
+      occurrences.push(stay ? { nights: Number(stay[1]), sourceText: `${match[0]} ${stay[1]}${/\s+nights?\b/i.test(stay[0]) ? " nights" : ""}` } : {});
+    }
+    const orderedMentions = group.mentions.sort((left, right) => left.order - right.order);
+    for (let index = 0; index < Math.min(occurrences.length, orderedMentions.length); index += 1) {
+      const occurrence = occurrences[index]!;
+      if (occurrence.nights === undefined) continue;
+      commitments.push({ mention: orderedMentions[index]!, nights: occurrence.nights, sourceText: occurrence.sourceText ?? group.sourceText });
+    }
+  }
+  return commitments.sort((left, right) => left.mention.order - right.mention.order);
 }
 
 function placeIsImportant(prompt: string, name: string) {
@@ -387,6 +426,18 @@ export function extractStructuredTripBrief(
     && destination.role !== "excluded");
   const hardConstraints: TripBriefHardConstraint[] = [];
   if (duration?.precision === "exact") hardConstraints.push({ type: "duration", duration });
+  explicitStayNightCommitments(rawPrompt, placeMentions).forEach(({ mention, nights, sourceText }) => hardConstraints.push({
+    type: "fixed-commitment",
+    value: `${mention.canonicalName} — ${nights} nights`,
+    place: {
+      name: mention.canonicalName,
+      canonicalPlaceId: mention.canonicalPlaceId,
+      country: mention.parentCountries.length === 1 ? mention.parentCountries[0] : undefined,
+      coordinates: mention.coordinates,
+    },
+    fixedNights: nights,
+    provenance: promptExplicit(sourceText),
+  }));
   const startDestination = destinations.find((destination) => destination.role === "arrival-gateway");
   const endDestination = destinations.find((destination) => destination.role === "departure-gateway");
   if (startDestination) hardConstraints.push({ type: "start-at", value: startDestination.name, provenance: startDestination.provenance });
