@@ -37,13 +37,37 @@ export type JourneyEndSelection =
   | { mode: "same_as_start" }
   | { mode: "explicit"; place: JourneyEndpointPlace };
 
+export type DestinationIntent = {
+  id: string;
+  sourceText: string;
+  kind: "overnight_place" | "planning_area";
+  selectedPlace: JourneyEndpointPlace | null;
+  resolution: "pending" | "resolved" | "needs_base" | "ambiguous" | "unresolved" | "unavailable";
+  requestedNights: number | null;
+  routeMembership: "required" | "optional";
+  stopIds: string[];
+};
+
+export type RouteIntent = {
+  version: 1;
+  origin: JourneyEndpointPlace | null;
+  tripType: "return_to_start" | "one_way" | "unknown_legacy";
+  journeyEnd: JourneyEndSelection;
+  destinations: DestinationIntent[];
+  orderAuthority: "optimizable" | "explicit" | "manual" | "legacy_preserved";
+  explicitIntentIds: string[] | null;
+  orderedStopIds: string[];
+  projectionInputKey: string | null;
+};
+
 /**
  * The durable, structured counterpart to a traveller's free-form brief.
  * `hardConstraints` are never discarded when the plan is reshaped; preferences
  * guide trade-offs where the route has room to adapt.
  */
 export type TripIntent = {
-  version: 1;
+  version: 1 | 2;
+  route?: RouteIntent;
   travellers: number;
   /** Journey-level routing context. Absence on legacy documents means unknown. */
   journeyEnd?: JourneyEndSelection;
@@ -90,8 +114,8 @@ export function tripIntentForTrip(trip: Pick<EasyTTrip, "startDate" | "endDate" 
     pace: trip.brief.pace === "full" ? "packed" : "relaxed",
   });
   const saved = trip.brief.intent;
-  const hasCompatibleSavedIntent = saved?.version === 1;
-  const compatible = !saved || saved.version !== 1 ? fallback : {
+  const hasCompatibleSavedIntent = saved?.version === 1 || saved?.version === 2;
+  const compatible = !saved || !hasCompatibleSavedIntent ? fallback : {
     ...fallback,
     ...saved,
     travellers: Math.max(1, Math.min(12, Math.round(saved.travellers || fallback.travellers))),
@@ -100,7 +124,8 @@ export function tripIntentForTrip(trip: Pick<EasyTTrip, "startDate" | "endDate" 
     preferences: { ...fallback.preferences, ...saved.preferences, transportModes: saved.preferences?.transportModes?.length ? saved.preferences.transportModes : fallback.preferences.transportModes, interests: normalizeTripInterests(saved.preferences?.interests), dislikes: saved.preferences?.dislikes ?? [] },
   };
   const savedJourneyEnd = trip.brief.journeyEnd ?? compatible.journeyEnd;
-  if (savedJourneyEnd !== undefined) compatible.journeyEnd = normalizeJourneyEnd(savedJourneyEnd);
+  if (compatible.version === 2) delete compatible.journeyEnd;
+  else if (savedJourneyEnd !== undefined) compatible.journeyEnd = normalizeJourneyEnd(savedJourneyEnd);
   const structured = trip.brief.structuredBrief;
   if (!structured) return compatible;
   const routePreferences = routePreferencesFromStructuredBrief(structured);
@@ -507,7 +532,7 @@ export type TripChecklistItem = {
 };
 
 export type EasyTTrip = {
-  schemaVersion: typeof EASYT_TRIP_SCHEMA_VERSION;
+  schemaVersion: 1 | 2;
   id: string;
   ownerId: string | null;
   title: string;
@@ -526,6 +551,13 @@ export type EasyTTrip = {
   changeHistory?: TripChange[];
   createdAt: string;
   updatedAt: string;
+};
+
+export type CanonicalEasyTTrip = EasyTTrip & {
+  schemaVersion: 2;
+  brief: TripBrief & {
+    intent: Omit<TripIntent, "version" | "journeyEnd" | "route"> & { version: 2; route: RouteIntent };
+  };
 };
 
 export type BuilderDay = {
@@ -733,7 +765,7 @@ export function tripFromBuilder(input: BuilderTripInput): EasyTTrip {
 export function isEasyTTrip(value: unknown): value is EasyTTrip {
   if (!value || typeof value !== "object") return false;
   const trip = value as Partial<EasyTTrip>;
-  return trip.schemaVersion === EASYT_TRIP_SCHEMA_VERSION
+  return (trip.schemaVersion === 1 || trip.schemaVersion === 2)
     && typeof trip.id === "string"
     && typeof trip.startDate === "string"
     && typeof trip.endDate === "string"
