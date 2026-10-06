@@ -84,38 +84,34 @@ function DestinationEditorStory({ language = "en", initialEntries = [storyEntry(
 export const DestinationOccurrences: Story = {
   render: () => <DestinationEditorStory />,
   play: async ({ canvasElement }) => {
-    const settle = () => new Promise((resolve) => window.setTimeout(resolve, 0));
-    const entryIds = () => Array.from(canvasElement.querySelectorAll<HTMLElement>("[data-home-destination-entry]")).map((entry) => entry.dataset.homeDestinationEntry);
-    if (entryIds().join(",") !== "entry-1,entry-2,entry-3") throw new Error("Repeated destinations must keep occurrence IDs");
-
-    const firstInput = canvasElement.querySelector<HTMLInputElement>('input[aria-label="First stop"]');
-    if (!firstInput) throw new Error("First destination input is missing");
-    Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set?.call(firstInput, "Tok");
-    firstInput.dispatchEvent(new Event("input", { bubbles: true }));
-    await new Promise((resolve) => window.setTimeout(resolve, 50));
-    if (!canvasElement.textContent?.includes("1 unconfirmed")) throw new Error("Editing text must clear only that occurrence selection");
-
-    firstInput.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowDown", bubbles: true }));
-    firstInput.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
+    const settle = () => new Promise((resolve) => window.setTimeout(resolve, 50));
+    const ids = () => Array.from(canvasElement.querySelectorAll<HTMLElement>("[data-home-destination-entry]")).map(entry => entry.dataset.homeDestinationEntry);
+    if (ids().join(",") !== "entry-1,entry-2,entry-3") throw new Error("Repeated destinations must keep occurrence IDs");
+    if (canvasElement.querySelector('button[aria-label*="Move"]')) throw new Error("Destination intents must not expose route-order controls");
+    if (canvasElement.querySelectorAll('button[aria-label="Add destination"]').length !== 1) throw new Error("One Add destination owner is required");
+    canvasElement.querySelector<HTMLButtonElement>('[data-home-destination-entry="entry-1"] button')?.click();
     await settle();
-    if (canvasElement.querySelector<HTMLOutputElement>('output[aria-label="Story form submissions"]')?.value !== "0") throw new Error("Autocomplete Enter must select instead of submitting");
-
-    canvasElement.querySelector<HTMLButtonElement>('button[aria-label="Move earlier stop 3"]')?.click();
+    const input = canvasElement.querySelector<HTMLInputElement>('[data-home-destination-entry="entry-1"] input');
+    if (!input) throw new Error("Editing must open only its occurrence");
+    Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set?.call(input, "Tok");
+    input.dispatchEvent(new Event("input", { bubbles: true }));
     await settle();
-    if (entryIds().join(",") !== "entry-1,entry-3,entry-2") throw new Error("Move earlier must target the occurrence ID");
-    if (document.activeElement !== canvasElement.querySelector('[data-home-destination-entry="entry-3"] input')) throw new Error("Reordering must restore focus to the moved entry");
-
-    canvasElement.querySelector<HTMLButtonElement>('button[aria-label="Remove stop 1"]')?.click();
+    input.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowDown", bubbles: true }));
+    input.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
     await settle();
-    if (entryIds().join(",") !== "entry-3,entry-2") throw new Error("Removing first must preserve surviving IDs");
-    if (document.activeElement !== canvasElement.querySelector('[data-home-destination-entry="entry-3"] input')) throw new Error("Removing first must focus the displayed first entry");
+    if (canvasElement.querySelector<HTMLOutputElement>('output[aria-label="Story form submissions"]')?.value !== "0") throw new Error("Autocomplete Enter must not submit");
+    canvasElement.querySelector<HTMLButtonElement>('[data-home-destination-entry="entry-1"] button[aria-label^="Remove"]')?.click();
+    await settle();
+    if (ids().join(",") !== "entry-2,entry-3") throw new Error("Removing one Tokyo must preserve the other occurrence");
+    if (!canvasElement.querySelector('[data-home-destination-entry="entry-3"]')?.textContent?.includes("Tokyo")) throw new Error("Other Tokyo selection changed");
+    if (document.activeElement !== canvasElement.querySelector('[data-home-destination-entry="entry-2"] button')) throw new Error("Removal must restore nearby focus");
   },
 };
 
 export const DestinationSixthOccurrence: Story = {
   render: () => <DestinationEditorStory initialEntries={[storyEntry("entry-1", "Tokyo"), storyEntry("entry-2", "Kyoto"), storyEntry("entry-3", "Tokyo"), storyEntry("entry-4", "Nikko")]} />,
   play: async ({ canvasElement }) => {
-    canvasElement.querySelector<HTMLButtonElement>('button[aria-label="Add another stop"]')?.click();
+    canvasElement.querySelector<HTMLButtonElement>('button[aria-label="Add destination"]')?.click();
     await new Promise((resolve) => window.setTimeout(resolve, 0));
     const entries = canvasElement.querySelectorAll("[data-home-destination-entry]");
     if (entries.length !== 5) throw new Error("Five total must mean five complete entries including the first");
@@ -128,9 +124,9 @@ export const DestinationSixthOccurrence: Story = {
     addedInput.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowDown", bubbles: true }));
     addedInput.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
     await new Promise((resolve) => window.setTimeout(resolve, 0));
-    if (entries[4]?.getAttribute("data-home-destination-entry") !== "entry-5" || addedInput.value !== "Tokyo, Japan") throw new Error("Adding the same place must retain its fresh occurrence ID");
+    if (entries[4]?.getAttribute("data-home-destination-entry") !== "entry-5" || !entries[4]?.textContent?.includes("Tokyo")) throw new Error("Adding the same place must retain its fresh occurrence ID");
     const firstFiveIds = Array.from(entries).map((entry) => entry.getAttribute("data-home-destination-entry"));
-    canvasElement.querySelector<HTMLButtonElement>('button[aria-label="Add another stop"]')?.click();
+    canvasElement.querySelector<HTMLButtonElement>('button[aria-label="Add destination"]')?.click();
     await new Promise((resolve) => window.setTimeout(resolve, 0));
     const sixEntries = canvasElement.querySelectorAll("[data-home-destination-entry]");
     if (sixEntries.length !== 6 || sixEntries[5]?.getAttribute("data-home-destination-entry") !== "entry-6") throw new Error("Adding a sixth destination must use a fresh caller ID");
@@ -150,7 +146,7 @@ export const DestinationLongName: Story = {
 export const DestinationNoResultsRetry: Story = {
   render: () => <DestinationEditorStory initialEntries={[{ id: "entry-empty", text: "", selection: null }]} />,
   play: async ({ canvasElement }) => {
-    const input = canvasElement.querySelector<HTMLInputElement>('input[aria-label="First stop"]');
+    const input = canvasElement.querySelector<HTMLInputElement>('input[aria-label="Destination"]');
     if (!input) throw new Error("First destination input is missing");
     input.focus();
     Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set?.call(input, "No Such Place Qxz");
@@ -162,3 +158,8 @@ export const DestinationNoResultsRetry: Story = {
     if (input.getAttribute("aria-expanded") !== "false") throw new Error("Escape must close autocomplete results");
   },
 };
+
+export const DestinationUnresolvedRecovery: Story = {
+  render: () => <DestinationEditorStory initialEntries={[{ id: "entry-held", text: "San Pedro de Atacama", selection: null }, storyEntry("entry-2", "Tokyo")]} />,
+};
+export const DestinationLongName430: Story = { ...DestinationLongName, globals: { viewport: { value: "morrovia430", isRotated: false } } };

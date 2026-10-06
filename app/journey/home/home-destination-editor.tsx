@@ -1,117 +1,91 @@
 "use client";
 
-import { ArrowDown, ArrowUp, Plus, Trash2 } from "lucide-react";
-import { useEffect, useRef } from "react";
+import { MapPin, Plus, X } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 import { CanonicalPlaceAutocomplete } from "@/components/easyt/canonical-place-autocomplete";
 import { EasyTButton } from "@/components/easyt/easyt-controls";
 import type { EasyTLanguage } from "@/lib/easyt/i18n";
-import { moveHomepageEntry, type HomepageDestinationEntry } from "@/lib/easyt/home-trip-handoff";
-import { isOvernightBaseEligible, type CanonicalPlaceSuggestion, type PlaceRoutability } from "@/lib/easyt/place-intelligence";
+import { homepageDestinationAddTarget, removeHomepageDestination, type HomepageDestinationEntry } from "@/lib/easyt/home-trip-handoff";
+import { isOvernightBaseEligible, type CanonicalPlaceSuggestion } from "@/lib/easyt/place-intelligence";
 import styles from "./home-destination-editor.module.css";
 
-const copy = {
-  en: {
-    first: "First stop", next: "Next stop", placeholder: "City, country or region", add: "Add another stop", clear: "Clear", remove: "Remove", earlier: "Move earlier", later: "Move later",
-    stop: "stop", stops: "stops", area: "planning area", areas: "planning areas", unconfirmed: "unconfirmed",
-  },
-  es: {
-    first: "Primera parada", next: "Siguiente parada", placeholder: "Ciudad, país o región", add: "Añadir otra parada", clear: "Borrar", remove: "Eliminar", earlier: "Mover antes", later: "Mover después",
-    stop: "parada", stops: "paradas", area: "zona de planificación", areas: "zonas de planificación", unconfirmed: "sin confirmar",
-  },
-} as const;
-
-function selectionRoutability(selection: CanonicalPlaceSuggestion): PlaceRoutability {
-  if (selection.routability) return selection.routability;
-  if (selection.placeType === "city" || selection.placeType === "town") return "direct_destination";
-  if (["continent", "country", "macro_region", "region", "sub_region", "island", "archipelago", "natural_area", "coast", "mountain_range", "valley", "travel_corridor"].includes(selection.placeType)) return "planning_area";
-  return "anchor_or_poi";
-}
-
-export function HomeDestinationEditor({
-  entries,
-  language,
-  disabled = false,
-  focusEntryId,
-  createEntry,
-  onChange,
-}: {
-  entries: HomepageDestinationEntry[];
-  language: EasyTLanguage;
-  disabled?: boolean;
-  focusEntryId?: string | null;
-  createEntry?: () => HomepageDestinationEntry;
+export function HomeDestinationEditor({ entries, language, disabled = false, focusEntryId, createEntry, onChange }: {
+  entries: HomepageDestinationEntry[]; language: EasyTLanguage; disabled?: boolean;
+  focusEntryId?: string | null; createEntry?: () => HomepageDestinationEntry;
   onChange: (entries: HomepageDestinationEntry[]) => void;
 }) {
-  const text = copy[language];
-  const entryNodes = useRef(new Map<string, HTMLElement>());
-  const pendingFocusId = useRef<string | null>(null);
-  const focusedExternalId = useRef<string | null>(null);
-
+  const es = language === "es";
+  const [editingId, setEditingId] = useState<string | null>(() => entries.find(entry => !entry.selection)?.id ?? null);
+  const nodes = useRef(new Map<string, HTMLElement>());
+  const addRef = useRef<HTMLButtonElement>(null);
+  const latest = useRef({ entries, disabled, onChange });
+  latest.current = { entries, disabled, onChange };
+  const focusTarget = useRef<string | null>(null);
+  const externalFocus = useRef<string | null>(null);
   useEffect(() => {
-    const id = pendingFocusId.current ?? (focusEntryId !== focusedExternalId.current ? focusEntryId : null);
-    if (!id) return;
-    pendingFocusId.current = null;
-    focusedExternalId.current = focusEntryId ?? null;
-    entryNodes.current.get(id)?.querySelector<HTMLInputElement>('input[role="combobox"]')?.focus();
-  }, [entries, focusEntryId]);
-
-  const commitWithFocus = (next: HomepageDestinationEntry[], focusId: string) => {
-    pendingFocusId.current = focusId;
-    onChange(next);
-  };
+    if (focusEntryId && focusEntryId !== externalFocus.current) {
+      externalFocus.current = focusEntryId;
+      setEditingId(focusEntryId);
+      focusTarget.current = focusEntryId;
+    }
+  }, [focusEntryId]);
+  useEffect(() => {
+    if (!focusTarget.current) return;
+    const id = focusTarget.current;
+    focusTarget.current = null;
+    const node = nodes.current.get(id);
+    (node?.querySelector<HTMLInputElement>('input[role="combobox"]') ?? node?.querySelector<HTMLButtonElement>("button") ?? addRef.current)?.focus();
+  }, [entries, editingId]);
   const replace = (id: string, update: (entry: HomepageDestinationEntry) => HomepageDestinationEntry) => {
-    onChange(entries.map((entry) => entry.id === id ? update(entry) : entry));
+    const current = latest.current;
+    if (current.disabled || !current.entries.some(entry => entry.id === id)) return;
+    current.onChange(current.entries.map(entry => entry.id === id ? update(entry) : entry));
   };
-  const select = (id: string, selection: CanonicalPlaceSuggestion) => replace(id, (entry) => ({ ...entry, text: selection.label, selection }));
-  const confirmed = entries.flatMap((entry) => entry.selection ? [{ selection: entry.selection, routability: selectionRoutability(entry.selection) }] : []);
-  const stopCount = confirmed.filter(({ selection, routability }) => isOvernightBaseEligible({ placeType: selection.placeType, routability })).length;
-  const planningAreaCount = confirmed.filter(({ routability }) => routability === "planning_area").length;
-  const unconfirmedCount = entries.length - stopCount - planningAreaCount;
-  const statusParts = [
-    stopCount ? `${stopCount} ${stopCount === 1 ? text.stop : text.stops}` : "",
-    planningAreaCount ? `${planningAreaCount} ${planningAreaCount === 1 ? text.area : text.areas}` : "",
-    unconfirmedCount ? `${unconfirmedCount} ${text.unconfirmed}` : "",
-  ].filter(Boolean);
-
-  return <section className={styles.root} aria-label={language === "es" ? "Destinos del viaje" : "Trip destinations"}>
-    <ol className={styles.entries}>
-      {entries.map((entry, index) => <li
-        className={styles.entry}
-        data-home-destination-entry={entry.id}
-        key={entry.id}
-        ref={(node) => { if (node) entryNodes.current.set(entry.id, node); else entryNodes.current.delete(entry.id); }}
-      >
-        <span className={styles.index} aria-hidden="true">{index + 1}</span>
-        <div className={styles.field}>
-          <CanonicalPlaceAutocomplete
-            language={language}
-            label={index === 0 ? text.first : `${text.next} ${index + 1}`}
-            value={entry.text}
-            placeholder={text.placeholder}
-            disabled={disabled}
-            clearLabel={`${text.clear} ${index === 0 ? text.first.toLocaleLowerCase() : `${text.next.toLocaleLowerCase()} ${index + 1}`}`}
-            onChange={(value) => replace(entry.id, (current) => ({ ...current, text: value, selection: null }))}
-            onClear={() => replace(entry.id, (current) => ({ ...current, text: "", selection: null }))}
-            onSelect={(suggestion) => select(entry.id, suggestion)}
-          />
-        </div>
-        <div className={styles.actions}>
-          <EasyTButton icon={ArrowUp} iconOnly size="small" variant="quiet" disabled={disabled || index === 0} aria-label={`${text.earlier.replace(/^./, (value) => value.toUpperCase())} ${language === "es" ? "la parada" : "stop"} ${index + 1}`} onClick={() => commitWithFocus(moveHomepageEntry(entries, entry.id, -1), entry.id)}>{text.earlier}</EasyTButton>
-          <EasyTButton icon={ArrowDown} iconOnly size="small" variant="quiet" disabled={disabled || index === entries.length - 1} aria-label={`${text.later.replace(/^./, (value) => value.toUpperCase())} ${language === "es" ? "la parada" : "stop"} ${index + 1}`} onClick={() => commitWithFocus(moveHomepageEntry(entries, entry.id, 1), entry.id)}>{text.later}</EasyTButton>
-          <EasyTButton icon={Trash2} iconOnly size="small" variant="quiet" disabled={disabled || entries.length === 1} aria-label={`${text.remove} ${language === "es" ? "la parada" : "stop"} ${index + 1}`} onClick={() => {
-            const next = entries.filter((candidate) => candidate.id !== entry.id);
-            const focus = next[Math.min(index, next.length - 1)];
-            if (focus) commitWithFocus(next, focus.id);
-          }}>{text.remove}</EasyTButton>
-        </div>
+  const select = (id: string, selection: CanonicalPlaceSuggestion) => {
+    if (latest.current.disabled || !latest.current.entries.some(entry => entry.id === id)) return;
+    replace(id, entry => ({ ...entry, text: selection.label, selection }));
+    focusTarget.current = id;
+    setEditingId(null);
+  };
+  const unconfirmed = entries.filter(entry => entry.text.trim() && !entry.selection).length;
+  const areas = entries.filter(entry => entry.selection?.routability === "planning_area").length;
+  const anchors = entries.filter(entry => entry.selection && entry.selection.routability !== "planning_area" && !isOvernightBaseEligible({ placeType: entry.selection.placeType, routability: entry.selection.routability ?? (entry.selection.placeType === "city" || entry.selection.placeType === "town" ? "direct_destination" : "anchor_or_poi") })).length;
+  return <section className={styles.root} aria-label={es ? "Lugares que quieres visitar" : "Places you want to visit"}>
+    <span className={styles.label}>{es ? "Lugares que quieres visitar" : "Places you want to visit"}</span>
+    <ul className={styles.entries}>
+      {entries.map((entry, index) => <li key={entry.id} className={`${styles.entry} ${editingId === entry.id ? styles.editing : ""}`} data-home-destination-entry={entry.id}
+        ref={node => { if (node) nodes.current.set(entry.id, node); else nodes.current.delete(entry.id); }}>
+        {editingId === entry.id ? <div className={styles.field} onKeyDown={event => {
+          if (event.key === "Escape") { event.preventDefault(); focusTarget.current = entry.id; setEditingId(null); }
+        }}><CanonicalPlaceAutocomplete language={language} label={es ? "Destino" : "Destination"} value={entry.text}
+          placeholder={es ? "Ciudad, país o región" : "City, country or region"} disabled={disabled}
+          onChange={value => replace(entry.id, current => ({ ...current, text: value, selection: null }))}
+          onClear={() => replace(entry.id, current => ({ ...current, text: "", selection: null }))}
+          onSelect={suggestion => select(entry.id, suggestion)} /></div>
+          : <EasyTButton className={styles.chip} icon={MapPin} variant="secondary" disabled={disabled}
+            aria-label={`${es ? "Editar" : "Edit"} ${entry.text || (es ? "destino" : "destination")}`}
+            onClick={() => { focusTarget.current = entry.id; setEditingId(entry.id); }}>{entry.selection?.name ?? (entry.text || (es ? "Destino" : "Destination"))}</EasyTButton>}
+        <EasyTButton icon={X} iconOnly variant="quiet" className={styles.remove} disabled={disabled}
+          aria-label={`${es ? "Eliminar" : "Remove"} ${entry.text || (es ? "destino" : "destination")}`}
+          onClick={() => {
+            const next = removeHomepageDestination(latest.current.entries, entry.id);
+            focusTarget.current = next[Math.min(index, next.length - 1)]?.id ?? "add";
+            if (editingId === entry.id) setEditingId(null);
+            onChange(next);
+          }}>{es ? "Eliminar" : "Remove"}</EasyTButton>
       </li>)}
-    </ol>
-    {createEntry ? <div className={styles.footer}>
-      <p aria-live="polite">{statusParts.join(" · ")}</p>
-      <EasyTButton icon={Plus} size="small" variant="secondary" disabled={disabled} aria-label={text.add} onClick={() => {
-        const entry = createEntry();
-        commitWithFocus([...entries, entry], entry.id);
-      }}>{text.add}</EasyTButton>
-    </div> : <p className={styles.status} aria-live="polite">{statusParts.join(" · ")}</p>}
+      {createEntry ? <li className={styles.add}><EasyTButton ref={addRef} icon={Plus} variant="quiet" disabled={disabled}
+        aria-label={es ? "Añadir destino" : "Add destination"} onClick={() => {
+          const next = homepageDestinationAddTarget(latest.current.entries, createEntry);
+          focusTarget.current = next.focusEntryId;
+          setEditingId(next.focusEntryId);
+          onChange(next.entries);
+        }}>{es ? "Añadir destino" : "Add destination"}</EasyTButton></li> : null}
+    </ul>
+    {unconfirmed || areas || anchors ? <p className={styles.status} aria-live="polite">{[
+      unconfirmed ? `${unconfirmed} ${es ? "sin confirmar" : "unconfirmed"}` : "",
+      areas ? `${areas} ${es ? "zonas de planificación" : "planning areas"}` : "",
+      anchors ? `${anchors} ${es ? "lugares de interés" : "points of interest"}` : "",
+    ].filter(Boolean).join(" · ")}</p> : null}
   </section>;
 }

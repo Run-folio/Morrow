@@ -1984,6 +1984,17 @@ export function homeTripDraftIsDurable(draft: HomeTripDraft, trip: EasyTTrip, re
   );
 }
 
+export function homepageDestinationAddTarget(entries: readonly HomepageDestinationEntry[], createEntry: () => HomepageDestinationEntry): { entries: HomepageDestinationEntry[]; focusEntryId: string } {
+  const blank = entries.find(entry => !entry.selection && !entry.text.trim());
+  if (blank) return { entries: [...entries], focusEntryId: blank.id };
+  const entry = createEntry();
+  return { entries: [...entries, entry], focusEntryId: entry.id };
+}
+
+export function removeHomepageDestination(entries: readonly HomepageDestinationEntry[], id: string): HomepageDestinationEntry[] {
+  return entries.filter(entry => entry.id !== id);
+}
+
 export async function removeHomeTripDraftIfDurable(
   storage: Pick<Storage, "getItem" | "removeItem">,
   draft: HomeTripDraft | null,
