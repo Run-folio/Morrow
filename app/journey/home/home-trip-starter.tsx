@@ -161,7 +161,8 @@ export default function HomeTripStarter() {
   };
 
   const submit = async () => {
-    if (submitInFlightRef.current || recoveryBlocked) return;
+    if (recoveryBlocked) return;
+    if (submitInFlightRef.current) return;
     submitInFlightRef.current = true;
     const submittedAt = performance.now();
     const submitted = snapshotRef.current;

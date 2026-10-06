@@ -263,7 +263,7 @@ export const WideHomepageInteraction: Story = {
     await settle();
     if (canvasElement.querySelectorAll<HTMLButtonElement>('[role="tab"]')[0].getAttribute("aria-selected") !== "true") throw new globalThis.Error("Click must restore Stops mode");
 
-    const personalize = Array.from(canvasElement.querySelectorAll<HTMLButtonElement>("button")).find((button) => button.textContent?.trim() === "Personalize");
+    const personalize = canvasElement.querySelector<HTMLButtonElement>('button[aria-label="Personalize"]');
     if (!personalize) throw new globalThis.Error("Personalize control is missing");
     personalize.click();
     await settle();
@@ -271,21 +271,21 @@ export const WideHomepageInteraction: Story = {
     if (!culture) throw new globalThis.Error("Culture interest is missing from Personalize");
     culture.click();
     await settle();
-    const hide = Array.from(canvasElement.querySelectorAll<HTMLButtonElement>("button")).find((button) => button.textContent?.trim() === "Hide personalization");
+    const hide = canvasElement.querySelector<HTMLButtonElement>('button[aria-label="Personalize"][aria-expanded="true"]');
     if (!hide) throw new globalThis.Error("Hide personalization control is missing");
     const personalizePanelId = hide.getAttribute("aria-controls");
     if (!personalizePanelId || !canvasElement.querySelector(`#${CSS.escape(personalizePanelId)}`)) throw new globalThis.Error("Personalize panel did not open");
     hide.click();
     await settle();
     if (canvasElement.querySelector(`#${CSS.escape(personalizePanelId)}`)) throw new globalThis.Error("Personalize panel did not close");
-    const reopen = Array.from(canvasElement.querySelectorAll<HTMLButtonElement>("button")).find((button) => button.textContent?.trim() === "Personalize");
+    const reopen = canvasElement.querySelector<HTMLButtonElement>('button[aria-label="Personalize"]');
     if (!reopen) throw new globalThis.Error("Personalize reopen control is missing");
     reopen.click();
     await settle();
     if (!canvasElement.querySelector(`#${CSS.escape(personalizePanelId)}`)) throw new globalThis.Error("Personalize panel did not reopen");
     const retainedInterest = Array.from(canvasElement.querySelectorAll<HTMLButtonElement>("button")).find((button) => button.textContent?.trim() === "Culture");
     if (retainedInterest?.getAttribute("aria-pressed") !== "true") throw new globalThis.Error("Expected retained interest after closing Personalize");
-    const retainedDates = canvasElement.textContent?.includes("8 Apr 2027") && canvasElement.textContent?.includes("22 Apr 2027");
+    const retainedDates = canvasElement.textContent?.includes("8–22 Apr 2027");
     if (!retainedDates) throw new globalThis.Error("Expected retained dates after closing Personalize");
   },
 };

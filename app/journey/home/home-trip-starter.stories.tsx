@@ -158,7 +158,9 @@ export const DestinationNoResultsRetry: Story = {
     if (!canvasElement.querySelector('[role="alert"]') || !Array.from(canvasElement.querySelectorAll("button")).some((button) => button.textContent === "Retry")) throw new Error("Provider failure must offer retry");
     input.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
     await new Promise((resolve) => window.setTimeout(resolve, 0));
-    if (input.getAttribute("aria-expanded") !== "false") throw new Error("Escape must close autocomplete results");
+    const currentInput = canvasElement.querySelector<HTMLInputElement>('[data-home-destination-entry="entry-empty"] input');
+    if (currentInput && currentInput.getAttribute("aria-expanded") !== "false") throw new Error("Escape must close autocomplete results");
+    if (!canvasElement.querySelector('[data-home-destination-entry="entry-empty"]')?.textContent?.includes("No Such Place Qxz")) throw new Error("Escape must preserve unresolved draft text");
   },
 };
 
