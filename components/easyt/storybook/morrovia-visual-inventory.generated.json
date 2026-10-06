@@ -7961,7 +7961,7 @@
   },
   "audit": {
     "totals": {
-      "native-control": 200,
+      "native-control": 198,
       "native-date-input": 0,
       "native-number-input": 0,
       "native-dialog": 0,
@@ -7988,7 +7988,7 @@
         },
         {
           "path": "app/journey/new/trip-builder.tsx",
-          "count": 28
+          "count": 26
         },
         {
           "path": "app/journey/stamped/stamped-client.tsx",

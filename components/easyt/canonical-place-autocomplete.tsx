@@ -30,6 +30,7 @@ const placeTypeLabel = (type: PlaceType, language: EasyTLanguage) => (language =
 })[type];
 
 export function CanonicalPlaceAutocomplete({
+  id,
   language = "en",
   label,
   value,
@@ -58,6 +59,7 @@ export function CanonicalPlaceAutocomplete({
   revealSuggestionsKey,
   menuPlacement = "overlay",
 }: {
+  id?: string;
   language?: EasyTLanguage;
   label: string;
   value: string;
@@ -249,6 +251,7 @@ export function CanonicalPlaceAutocomplete({
     {/* morrovia-ui-audit-allow-next-line native-control -- The shared ARIA combobox owns active-descendant, listbox and free-text keyboard behaviour that EasyTField does not expose. */}
     <input
       ref={inputRef}
+      id={id}
       autoFocus={autoFocus}
       disabled={disabled}
       value={value}

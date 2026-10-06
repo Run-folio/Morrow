@@ -394,10 +394,10 @@ test("Journey is the only Add stop entry point after a route exists", () => {
   const builder = readFileSync(new URL("../app/journey/new/trip-builder.tsx", import.meta.url), "utf8");
   const workspace = readFileSync(new URL("../app/journey/new/trip-builder-route-workspace.tsx", import.meta.url), "utf8");
 
-  assert.match(builder, /<div className=\{styles\.placesSectionHead\}>[\s\S]*?<button type="button" onClick=\{\(\) => openSummaryEditor\("stops"\)\}><Plus \/> \{language === "es" \? "Añadir parada" : "Add stop"\}<\/button>/,
-    "the Journey section should expose its canonical stop editor directly");
-  assert.doesNotMatch(builder, /\{stopSectionEditing && <button type="button" onClick=\{\(\) => openSummaryEditor\("stops"\)\}/,
-    "Add stop must remain visible without first entering an editing state");
+  assert.match(builder, /<label className=\{styles\.stopEditorLabel\} htmlFor=\{stopInputId\}>\{copy\.addStop\}<\/label>[\s\S]*?<CanonicalPlaceAutocomplete\s+id=\{stopInputId\}[\s\S]*?label=\{copy\.addStop\}/,
+    "the Journey section should expose one visibly labelled canonical autocomplete");
+  assert.doesNotMatch(builder, /<button type="button" onClick=\{\(\) => openSummaryEditor\("stops"\)\}><Plus \/> \{language === "es" \? "Añadir parada" : "Add stop"\}<\/button>/,
+    "the always-visible field must not be duplicated by a distant header action");
   assert.doesNotMatch(workspace, /onAddStop|>Add stop<|>Añadir parada</,
     "the Route workspace must not duplicate the Journey Add stop action");
 });
@@ -421,6 +421,7 @@ test("night allocation is compact Route metadata instead of a separate band", ()
 test("Builder hierarchy has production Storybook coverage at every required width", () => {
   const stories = readFileSync(new URL("../app/journey/new/trip-builder-review.stories.tsx", import.meta.url), "utf8");
   const styles = readFileSync(new URL("../app/journey/new/trip-builder.module.css", import.meta.url), "utf8");
+  const autocompleteStyles = readFileSync(new URL("../components/easyt/canonical-place-autocomplete.module.css", import.meta.url), "utf8");
 
   for (const width of [320, 390, 430, 768, 1024, 1440]) {
     assert.match(stories, new RegExp(`PopulatedHandoffAt${width}[\\s\\S]*morrovia${width}`),
@@ -430,8 +431,8 @@ test("Builder hierarchy has production Storybook coverage at every required widt
     "Storybook must not preserve the removed standalone Route Check pattern");
   assert.match(stories, /Very fast pace/);
   assert.doesNotMatch(stories, /6 stops in 7 days is very fast-paced\.|<small>\{summary\}<\/small>/);
-  assert.match(styles, /@media\(max-width:520px\)[\s\S]*\.placesSectionHead>button\{[^}]*min-height:44px/,
-    "the mobile Journey Add stop action should retain a full touch target");
+  assert.match(autocompleteStyles, /\.root > input \{[^}]*min-height: 50px/,
+    "the shared inline Add a stop autocomplete should retain a comfortable touch target");
   assert.match(styles, /@media\(max-width:520px\)[\s\S]*\.detailsActions button\{[^}]*min-height:44px/,
     "mobile journey commit controls should retain full touch targets");
 });
@@ -546,7 +547,7 @@ browserTest("legacy populated links focus summary or timing once while the whole
       await view.page.waitForFunction((id: string) => document.activeElement?.id === id, target);
       assert.equal(await view.page.getByRole("heading", { name: "Nights per stop" }).count(), 1);
       assert.equal(new URL(view.page.url()).searchParams.has("step"), false);
-      await view.page.getByRole("button", { name: "Add stop", exact: true }).click();
+      assert.equal(await view.page.getByRole("combobox", { name: "Add a stop", exact: true }).count(), 1);
       assert.equal(await view.page.getByRole("heading", { name: "Nights per stop" }).count(), 1);
     } finally { await view.close(); }
   }

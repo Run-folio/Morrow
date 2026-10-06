@@ -415,8 +415,7 @@ test('Japan Discovery handoff returns to the editable Builder surface', { skip: 
     await stops.waitFor();
     assert.doesNotMatch(await stops.getAttribute('class') ?? '', /mobileStopSummary/,
       'a completed Discovery handoff must not retain the desktop-hidden summary state');
-    await view.page.getByRole('button', { name: 'Add stop', exact: true }).click();
-    await view.page.getByRole('combobox', { name: 'Add a destination' }).waitFor();
+    await view.page.getByRole('combobox', { name: 'Add a stop', exact: true }).waitFor();
     assert.equal(await view.page.locator('[data-builder-route-workspace]').count(), 1);
     assert.equal(await view.page.locator('[role="listitem"][draggable="true"]').count(), 3);
     for (const name of ['Kanazawa', 'Kyoto', 'Osaka']) {
@@ -490,7 +489,7 @@ test('Discovery handoff retains normal Builder controls and persists exercised e
       await route.waitFor();
       await page.getByRole('combobox', { name: 'Starting from', exact: true }).waitFor({ state: 'visible' });
       const base = {
-        addStop: await page.getByRole('button', { name: 'Add stop', exact: true }).isVisible(),
+        addStop: await page.getByRole('combobox', { name: 'Add a stop', exact: true }).isVisible(),
         startingFrom: await page.getByRole('combobox', { name: 'Starting from', exact: true }).isVisible(),
         journeyEnd: await page.getByRole('combobox', { name: 'Ending at', exact: true }).isVisible()
           && await page.getByRole('button', { name: 'Same as start', exact: true }).isVisible(),
@@ -536,9 +535,7 @@ test('Discovery handoff retains normal Builder controls and persists exercised e
     const route = page.locator('[data-builder-route-workspace]');
     const routeOrder = async () => route.locator('[data-builder-stop-index]').evaluateAll((rows: HTMLElement[]) =>
       rows.map(row => row.querySelector('[role="cell"] strong')?.textContent?.trim() ?? ''));
-    await page.getByRole('button', { name: 'Add stop', exact: true }).click();
-    await page.getByRole('combobox', { name: 'Add a destination', exact: true }).waitFor({ state: 'visible' });
-    await page.getByRole('button', { name: 'Done adding stops', exact: true }).click();
+    await page.getByRole('combobox', { name: 'Add a stop', exact: true }).waitFor({ state: 'visible' });
 
     const initialOrder = await routeOrder();
     const kyotoMenu = route.locator('summary[aria-label="Actions for Kyoto"]');
@@ -593,7 +590,6 @@ test('Discovery handoff retains normal Builder controls and persists exercised e
     await page.getByRole('button', { name: new RegExp(`Add one night to Kanazawa; ${editedKanazawaNights} nights currently`) }).waitFor({ timeout: 5_000 });
     assert.deepEqual(await reloadedRoute.locator('[data-builder-stop-index]').evaluateAll((rows: HTMLElement[]) =>
       rows.map(row => row.querySelector('[role="cell"] strong')?.textContent?.trim() ?? '')), expectedAfterDrag);
-    await page.getByRole('button', { name: 'Add stop', exact: true }).click();
     await page.getByRole('list', { name: 'Confirmed stops' }).getByRole('button', { name: /^Remove Kanazawa, stop \d+$/ }).click();
     await page.getByRole('dialog').getByRole('button', { name: 'Remove Kanazawa', exact: true }).click();
     await page.waitForFunction(() => document.querySelectorAll('[data-builder-route-workspace] [data-builder-stop-index]').length === 2);
@@ -657,8 +653,7 @@ for (const [country, clickOrder] of [
     assert.deepEqual([...finalOrder].sort(), [...clickOrder].sort(), 'all chosen places remain committed once');
     assert.notDeepEqual(finalOrder, [...clickOrder], 'ordinary geography click order is membership, not route chronology');
     assert.notDeepEqual(finalOrder, ['Port Douglas', 'Sydney', 'Airlie Beach'], 'the canonical scorer must reject the known large reversal');
-    assert.equal(await route.getByRole('button', { name: 'Add stop', exact: true }).isVisible()
-      || await view.page.getByRole('combobox', { name: 'Add a destination', exact: true }).isVisible(), true,
+    assert.equal(await view.page.getByRole('combobox', { name: 'Add a stop', exact: true }).isVisible(), true,
     'the normal Builder add flow remains available');
     assert.equal(new Set(finalOrder).size, 3, 'the route has no duplicate places');
     const totalAllocatedNights = () => route.getByRole('button', { name: /^Add one night to / }).evaluateAll((buttons: HTMLButtonElement[]) =>

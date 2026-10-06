@@ -661,8 +661,7 @@ test("populated Builder only presents route-stop search results whose selected e
   for (const place of Object.values(providerPlaces)) {
     const view = await renderPopulatedBuilder(endpointDraft, { geocodeCandidates: { [place.name]: [place] } });
     try {
-      await view.page.getByRole("button", { name: "Add stop", exact: true }).click();
-      const search = view.page.getByRole("combobox", { name: "Add a destination" });
+      const search = view.page.getByRole("combobox", { name: "Add a stop", exact: true });
       await search.fill(place.name);
       const option = view.page.getByRole("option", { name: new RegExp(`^${place.name}`) });
       await option.waitFor({ timeout: 5_000 });
@@ -676,8 +675,7 @@ test("populated Builder only presents route-stop search results whose selected e
   for (const weakCatalogPlace of ["Almaty", "Samarkand"]) {
     const view = await renderPopulatedBuilder(endpointDraft);
     try {
-      await view.page.getByRole("button", { name: "Add stop", exact: true }).click();
-      await view.page.getByRole("combobox", { name: "Add a destination" }).fill(weakCatalogPlace);
+      await view.page.getByRole("combobox", { name: "Add a stop", exact: true }).fill(weakCatalogPlace);
       await view.page.waitForTimeout(350);
       assert.equal(await view.page.getByRole("option", { name: new RegExp(`^${weakCatalogPlace}`) }).count(), 0,
         `${weakCatalogPlace} must not be actionable without coordinates from canonical evidence`);
@@ -685,7 +683,7 @@ test("populated Builder only presents route-stop search results whose selected e
   }
 });
 
-test("Add stop remains ready for consecutive canonical additions on mobile and closes explicitly", { skip: !builderBrowserTestsEnabled, timeout: 30_000 }, async () => {
+test("the inline Add a stop field stays ready for consecutive canonical additions on mobile and desktop", { skip: !builderBrowserTestsEnabled, timeout: 30_000 }, async () => {
   const places = [
     { canonicalPlaceId: "open-world:fixture:almaty", providerId: "fixture:almaty", name: "Almaty", country: "Kazakhstan", coordinates: [76.886, 43.2389], placeType: "city", routability: "direct_destination" },
     { canonicalPlaceId: "open-world:fixture:samarkand", providerId: "fixture:samarkand", name: "Samarkand", country: "Uzbekistan", coordinates: [66.9597, 39.6542], placeType: "city", routability: "direct_destination" },
@@ -700,9 +698,8 @@ test("Add stop remains ready for consecutive canonical additions on mobile and c
   const view = await renderPopulatedBuilder({ destinations: [{ ...places[0], id: "almaty-seed", coordinates: places[0].coordinates as [number, number] }] }, { geocodeCandidates });
   try {
     await view.page.setViewportSize({ width: 390, height: 844 });
-    await view.page.getByRole("button", { name: "Add stop", exact: true }).click();
     for (const place of places.slice(1)) {
-      const search = view.page.getByRole("combobox", { name: "Add a destination" });
+      const search = view.page.getByRole("combobox", { name: "Add a stop", exact: true });
       await search.fill(place.name);
       await view.page.getByRole("option", { name: new RegExp(`^${place.name}`) }).click();
       await view.page.getByText(place.name, { exact: true }).first().waitFor({ timeout: 5_000 });
@@ -715,19 +712,18 @@ test("Add stop remains ready for consecutive canonical additions on mobile and c
     const stopOrder = await view.page.locator('[aria-label="Confirmed stops"] > [role="listitem"] > span:first-of-type').allTextContents();
     assert.deepEqual(stopOrder.map((label: string) => label.trim()), ["Almaty", "Samarkand", "Tokyo", "Osaka"]);
 
-    const search = view.page.getByRole("combobox", { name: "Add a destination" });
+    const search = view.page.getByRole("combobox", { name: "Add a stop", exact: true });
     await search.fill("Almaty");
     await view.page.waitForTimeout(350);
     assert.equal(await view.page.getByRole("option", { name: /^Almaty/ }).count(), 0);
     assert.equal(await view.page.getByText("Almaty", { exact: true }).count() > 0, true);
 
-    await view.page.getByRole("button", { name: "Done adding stops" }).click();
-    assert.equal(await view.page.getByRole("combobox", { name: "Add a destination" }).count(), 0);
-    assert.equal(await view.page.getByRole("button", { name: "Add stop", exact: true }).count(), 1);
+    assert.equal(await search.count(), 1, "the field remains available after duplicate prevention");
+    assert.equal(await view.page.getByRole("button", { name: "Done adding stops", exact: true }).count(), 0);
+    assert.equal(await view.page.getByRole("button", { name: "Add stop", exact: true }).count(), 0);
 
     await view.page.setViewportSize({ width: 1280, height: 900 });
-    await view.page.getByRole("button", { name: "Add stop", exact: true }).click();
-    const desktopSearch = view.page.getByRole("combobox", { name: "Add a destination" });
+    const desktopSearch = view.page.getByRole("combobox", { name: "Add a stop", exact: true });
     await desktopSearch.fill(desktopPlace.name);
     await view.page.getByRole("option", { name: new RegExp(`^${desktopPlace.name}`) }).click();
     await view.page.getByText(desktopPlace.name, { exact: true }).first().waitFor();
@@ -737,7 +733,7 @@ test("Add stop remains ready for consecutive canonical additions on mobile and c
   } finally { await view.close(); }
 });
 
-test("mobile Builder keeps the canonical stop summary visible beside Add stop", { skip: !builderBrowserTestsEnabled, timeout: 30_000 }, async () => {
+test("mobile Builder keeps the canonical stop summary beside the inline Add a stop field", { skip: !builderBrowserTestsEnabled, timeout: 30_000 }, async () => {
   const places = [
     { canonicalPlaceId: "open-world:fixture:almaty", providerId: "fixture:almaty", name: "Almaty", country: "Kazakhstan", coordinates: [76.886, 43.2389], placeType: "city", routability: "direct_destination" },
     { canonicalPlaceId: "open-world:fixture:samarkand", providerId: "fixture:samarkand", name: "Samarkand", country: "Uzbekistan", coordinates: [66.9597, 39.6542], placeType: "city", routability: "direct_destination" },
@@ -751,14 +747,11 @@ test("mobile Builder keeps the canonical stop summary visible beside Add stop", 
     const summaryNames = async () => (await summary.locator(':scope > [role="listitem"] > span:first-of-type').allTextContents())
       .map((label: string) => label.trim());
     await view.page.setViewportSize({ width: 390, height: 844 });
-    await view.page.getByRole("button", { name: "Add stop", exact: true }).click();
     for (const place of places.slice(1)) {
-      const search = view.page.getByRole("combobox", { name: "Add a destination" });
+      const search = view.page.getByRole("combobox", { name: "Add a stop", exact: true });
       await search.fill(place.name);
       await view.page.getByRole("option", { name: new RegExp(`^${place.name}`) }).click();
     }
-    await view.page.getByRole("button", { name: "Done adding stops" }).click();
-
     for (const width of [390, 430]) {
       await view.page.setViewportSize({ width, height: 844 });
       assert.equal(await summary.isVisible(), true, `${width}px should keep the current route beside Add stop`);
@@ -766,8 +759,9 @@ test("mobile Builder keeps the canonical stop summary visible beside Add stop", 
       assert.equal(await view.page.evaluate(() => globalThis.document.documentElement.scrollWidth <= globalThis.innerWidth), true);
     }
 
-    assert.equal(await view.page.getByRole("button", { name: "Add stop", exact: true }).count(), 1,
-      "the compact summary should hand off to the existing route-workspace action instead of duplicating it");
+    assert.equal(await view.page.getByRole("combobox", { name: "Add a stop", exact: true }).count(), 1,
+      "the compact route summary stays adjacent to its single direct-add field");
+    assert.equal(await view.page.getByRole("button", { name: "Add stop", exact: true }).count(), 0);
     assert.deepEqual(await summaryNames(), ["Almaty", "Samarkand", "Tokyo"]);
 
     await routeWorkspace.locator('summary[aria-label="Actions for Samarkand"]').click();
@@ -775,9 +769,14 @@ test("mobile Builder keeps the canonical stop summary visible beside Add stop", 
     assert.deepEqual(await summaryNames(), ["Samarkand", "Almaty", "Tokyo"]);
 
     await summary.getByRole("button", { name: "Remove Tokyo" }).click();
+    const removeConfirmation = view.page.getByRole("dialog");
+    await removeConfirmation.getByRole("heading", { name: "Remove Tokyo and its plan?", exact: true }).waitFor();
+    await removeConfirmation.getByRole("button", { name: "Remove Tokyo", exact: true }).click();
+    await view.page.waitForFunction(() =>
+      globalThis.document.querySelector('[aria-label="Confirmed stops"] [role="listitem"]:last-child')?.textContent?.includes("Tokyo") === false);
     assert.deepEqual(await summaryNames(), ["Samarkand", "Almaty"]);
     assert.equal(await summary.isVisible(), true);
-    assert.equal(await view.page.getByRole("combobox", { name: "Add a destination" }).count(), 0);
+    assert.equal(await view.page.getByRole("combobox", { name: "Add a stop", exact: true }).count(), 1);
 
     await view.page.setViewportSize({ width: 1280, height: 900 });
     assert.equal(await routeWorkspace.isVisible(), true);

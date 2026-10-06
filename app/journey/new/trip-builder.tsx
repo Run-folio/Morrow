@@ -619,6 +619,7 @@ function TripBuilderDocument() {
   const clarificationScopeRef = useRef<string | null | undefined>(undefined);
   const originErrorId = useId();
   const stopErrorId = useId();
+  const stopInputId = useId();
   const [tripIntent, setTripIntent] = useState<TripIntent>(() => defaultTripIntent());
   const [capturedStructuredBrief, setCapturedStructuredBrief] = useState<StructuredTripBrief>(() => extractStructuredTripBrief(""));
   const [travellersManuallyEdited, setTravellersManuallyEdited] = useState(false);
@@ -4553,7 +4554,6 @@ function TripBuilderDocument() {
                         ].filter(Boolean).join(" · ")
                         : (language === "es" ? `Paradas (${stops.length})` : `Stops (${stops.length})`)}</strong></div>
                       : <strong>{language === "es" ? "Paradas" : "Stops"}</strong>}
-                    <button type="button" onClick={() => openSummaryEditor("stops")}><Plus /> {language === "es" ? "Añadir parada" : "Add stop"}</button>
                   </div>
                   {!stops.length && totalNights > 0 ? <MorroviaStatusBanner tone="warning" title={builderNightAllocationLabel({ total: totalNights, allocated: 0, complete: false, language })} /> : null}
                   {stops.length > 0 && <div className={styles.handoffStops} role="list" aria-label={language === "es" ? "Paradas confirmadas" : "Confirmed stops"}>
@@ -4600,7 +4600,7 @@ function TripBuilderDocument() {
                         <EasyTButton variant="quiet" size="small" onClick={() => reopenPlanningArea(mention)}>{language === "es" ? "Editar lugares" : "Edit places"}</EasyTButton></span>;
                     })}
                   </div> : null}
-                  {(showStopEditor || !stops.length) && <div className={styles.stopEditor}>{inlineStopBaseMention ? <div className={styles.inlinePlanningClarification}>
+                  <div className={styles.stopEditor}>{inlineStopBaseMention ? <div className={styles.inlinePlanningClarification}>
                     <div className={styles.inlinePlanningIdentity} role="status">
                       <strong>{placeDisplayName(inlineStopBaseMention)}</strong>
                       <span>{placeTypeLabel(inlineStopBaseMention.placeType)}</span>
@@ -4629,10 +4629,11 @@ function TripBuilderDocument() {
                     {baseSearchErrors[inlineStopBaseMention.mentionId] ? <p id={`${stopErrorId}-base`} className={styles.baseSelectorError} role="alert">{baseSearchErrors[inlineStopBaseMention.mentionId]}</p> : null}
                   </div> : <>
                     {resolvingPlaceMentionId ? <small className={styles.baseSelectionContext}>{language === "es" ? "Busca un lugar para" : "Search for a place for"} {inlineStopPlanningMention ? placeDisplayName(inlineStopPlanningMention) : ""}</small> : null}
-                    <div className={styles.inlineEditor}><CanonicalPlaceAutocomplete
-                      autoFocus
+                    <label className={styles.stopEditorLabel} htmlFor={stopInputId}>{copy.addStop}</label>
+                    <CanonicalPlaceAutocomplete
+                      id={stopInputId}
                       requireCoordinates
-                      label={copy.addDestination}
+                      label={copy.addStop}
                       value={stopInput}
                       placeholder={copy.destinationPlaceholder}
                       excludeCanonicalIds={stops.flatMap((stop) => stop.canonicalPlaceId ? [stop.canonicalPlaceId] : [])}
@@ -4643,11 +4644,10 @@ function TripBuilderDocument() {
                       onSelect={(suggestion) => { void addStop(suggestion.name, suggestion.country, undefined, undefined, suggestion); }}
                       onSubmitFreeText={() => { void addStop(); }}
                     />
-                      <button type="button" onClick={() => { if (resolvingPlaceMentionId) cancelTransientPlanningClarification(resolvingPlaceMentionId); setShowStopEditor(false); setResolvingPlaceMentionId(null); setStopInput(""); setStopError(""); setStopChecking(false); }}>{stops.length ? (language === "es" ? "Terminar de añadir paradas" : "Done adding stops") : (language === "es" ? "Cancelar" : "Cancel")}</button></div>
                     {stopChecking ? <small className={styles.hint} role="status">{ui.checking}</small> : null}
                     {stopError ? <small id={stopErrorId} className={styles.hintError} role="alert">{stopError}</small> : null}
                     {!stopInput.trim() && contextualSuggestions.length > 0 && <div className={styles.suggestions}>{contextualSuggestions.map((suggestion) => <button type="button" key={suggestion.canonicalPlaceId} onClick={() => addStop(suggestion.name, suggestion.country, undefined, undefined, suggestion)}><Plus /> {suggestion.label}</button>)}</div>}
-                  </>}</div>}
+                  </>}</div>
                 </section>}
 
                 {!clarificationOpen && pendingClarificationIds.length > 0 && <BuilderClarificationResume

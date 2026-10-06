@@ -3,8 +3,6 @@ import { readFileSync } from "node:fs";
 import test from "node:test";
 import { moveOccurrenceId } from "../app/journey/new/use-builder-stop-reorder.ts";
 import { builderBrowserTestsEnabled, renderBuilder } from "./helpers/builder-render.ts";
-import { publicRouteDetailFor } from "../lib/easyt/public-route.ts";
-import { routePlannerPayload } from "../lib/easyt/public-route-handoff.ts";
 
 const browserTest = (name: string, run: () => Promise<void>) => test(name, { skip: !builderBrowserTestsEnabled, timeout: 20_000 }, run);
 
@@ -59,9 +57,7 @@ test("drag, keyboard and menu share one preview and commit boundary", () => {
 });
 
 browserTest("keyboard and menu reorder the same canonical route exactly once", async () => {
-  const draft = routePlannerPayload(publicRouteDetailFor("morocco-rail")!.planDraft);
-  draft.structuredBrief = { ...draft.structuredBrief!, hardConstraints: [] };
-  const view = await renderBuilder({ query: "?homeDraft=1", draft });
+  const view = await renderBuilder({ query: "?inspire=morocco-rail" });
   try {
     view.page.setDefaultTimeout(3_000);
     const routeNames = async () => view.page.locator("[data-builder-stop-index]").evaluateAll((rows: Element[]) => rows.map((row) => row.querySelector('[role="cell"] strong')?.textContent ?? ""));
@@ -83,9 +79,7 @@ browserTest("keyboard and menu reorder the same canonical route exactly once", a
 });
 
 browserTest("native pointer drag commits the occurrence selected at dragstart", async () => {
-  const draft = routePlannerPayload(publicRouteDetailFor("morocco-rail")!.planDraft);
-  draft.structuredBrief = { ...draft.structuredBrief!, hardConstraints: [] };
-  const view = await renderBuilder({ query: "?homeDraft=1", draft });
+  const view = await renderBuilder({ query: "?inspire=morocco-rail" });
   try {
     view.page.setDefaultTimeout(3_000);
     const rows = view.page.locator("[data-builder-stop-index]");
@@ -115,12 +109,9 @@ browserTest("native pointer drag commits the occurrence selected at dragstart", 
 });
 
 browserTest("homepage stop pills reorder first, middle and last occurrences", async () => {
-  const { sourceRouteKey: _sourceRouteKey, ...draft } = routePlannerPayload(publicRouteDetailFor("morocco-rail")!.planDraft);
-  draft.structuredBrief = { ...draft.structuredBrief!, hardConstraints: [] };
-  const view = await renderBuilder({ query: "?homeDraft=1", draft });
+  const view = await renderBuilder({ query: "?inspire=morocco-rail" });
   try {
     view.page.setDefaultTimeout(3_000);
-    await view.page.getByRole("button", { name: "Add stop" }).click();
     const pills = view.page.locator('[role="listitem"][draggable="true"]');
     const names = () => pills.evaluateAll((items: Element[]) => items.map((item) => item.querySelector("span")?.textContent ?? ""));
     const initial = await names();
