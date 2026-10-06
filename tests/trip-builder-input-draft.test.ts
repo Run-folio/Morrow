@@ -1,0 +1,176 @@
+import assert from "node:assert/strict";
+import test from "node:test";
+import { canonicalRouteFixture } from "./fixtures/batch14-route-documents.ts";
+import { requireReadableTripDocument } from "../lib/easyt/trip-document.ts";
+import { routeProjectionInputKey } from "../lib/easyt/trip-route-intent.ts";
+
+const modulePath = "../lib/easyt/trip-builder-input-draft.ts";
+const modulePromise = import(modulePath).catch((error: NodeJS.ErrnoException) => {
+  if (error.code === "ERR_MODULE_NOT_FOUND" && error.message.includes("trip-builder-input-draft.ts")) return null;
+  throw error;
+});
+async function drafts() {
+  const api = await modulePromise;
+  assert.ok(api, "Task 1 field-bound input draft codec is not implemented");
+  return api;
+}
+function fixture() {
+  const trip = requireReadableTripDocument(canonicalRouteFixture());
+  trip.brief.intent.route.destinations[2]!.requestedNights = 2;
+  return trip;
+}
+type Binding = { kind: "origin" } | { kind: "nights"; stopId: string; intentId: string };
+function nightBinding(trip: ReturnType<typeof fixture>): Binding {
+  return { kind: "nights", stopId: trip.stops[2]!.id, intentId: trip.brief.intent.route.destinations[2]!.id };
+}
+function field(draft: any, binding: Binding) {
+  return draft.fields.find((item: any) => JSON.stringify(item.binding) === JSON.stringify(binding));
+}
+function memoryStorage() {
+  const values = new Map<string, string>();
+  let failNext = false;
+  return {
+    getItem: (key: string) => values.get(key) ?? null,
+    setItem(key: string, value: string) {
+      if (failNext) { failNext = false; throw new Error("Device storage unavailable"); }
+      values.set(key, value);
+    },
+    failNextWrite() { failNext = true; },
+  };
+}
+
+test("partial_night_text_does_not_replace_canonical_requested_nights", async () => {
+  const api = await drafts();
+  const trip = fixture();
+  const before = structuredClone(trip);
+  const binding = nightBinding(trip);
+  const draft = api.updateBuilderInputDraft(api.createBuilderInputDraft(trip), trip, binding, "2x");
+  assert.equal(field(draft, binding).raw, "2x");
+  assert.equal(field(draft, binding).status, "editable");
+  assert.equal(trip.brief.intent.route.destinations[2]!.requestedNights, 2);
+  assert.deepEqual(trip, before);
+  const storage = memoryStorage();
+  assert.equal(api.writeBuilderInputDraft(storage, trip, draft).ok, true);
+  const reloaded = api.readBuilderInputDraft(storage, trip);
+  assert.equal(reloaded.kind, "readable");
+  assert.equal(field(reloaded.draft, binding).raw, "2x");
+  assert.deepEqual(trip, before);
+});
+
+test("future_or_foreign_draft_preserves_original_bytes", async () => {
+  const api = await drafts();
+  const trip = fixture();
+  const storage = memoryStorage();
+  const key = api.builderInputDraftKey(trip.ownerId, trip.id);
+  assert.equal(key, `easyt-private:${trip.ownerId}:builder-input:${encodeURIComponent(trip.id)}`);
+  const draft = api.createBuilderInputDraft(trip);
+  for (const bytes of ["{broken", JSON.stringify({ ...draft, version: 99 }), JSON.stringify({ ...draft, ownerId: "other-owner" }), JSON.stringify({ ...draft, tripId: "other-trip" })]) {
+    storage.setItem(key, bytes);
+    assert.equal(api.readBuilderInputDraft(storage, trip).kind, "protected");
+    assert.equal(api.writeBuilderInputDraft(storage, trip, draft).ok, false);
+    assert.equal(storage.getItem(key), bytes);
+  }
+});
+
+test("partial_nights_and_origin_survive_unrelated_preference_edit_projection_and_reload", async () => {
+  const api = await drafts();
+  const trip = fixture();
+  const binding = nightBinding(trip);
+  let draft = api.updateBuilderInputDraft(api.createBuilderInputDraft(trip), trip, binding, "2x");
+  draft = api.updateBuilderInputDraft(draft, trip, { kind: "origin" }, "Madri");
+  const original = structuredClone(draft);
+  const changed = structuredClone(trip);
+  changed.brief.budgetBand = "high";
+  changed.brief.intent.preferences.budgetSensitivity = "high";
+  changed.brief.intent.route.projectionInputKey = routeProjectionInputKey(changed);
+  changed.updatedAt = "2026-10-06T10:00:00.000Z";
+  draft = api.rebindBuilderInputDraft(draft, changed);
+  const storage = memoryStorage();
+  assert.equal(api.writeBuilderInputDraft(storage, changed, draft).ok, true);
+  // Both device and account canonical documents use the real JSON document codec.
+  for (const canonicalReload of [requireReadableTripDocument(structuredClone(changed)), requireReadableTripDocument(JSON.parse(JSON.stringify(changed)))]) {
+    const result = api.readBuilderInputDraft(storage, canonicalReload);
+    assert.equal(result.kind, "readable");
+    for (const sourceBinding of [binding, { kind: "origin" } as Binding]) {
+      assert.equal(field(result.draft, sourceBinding).raw, field(original, sourceBinding).raw);
+      assert.equal(field(result.draft, sourceBinding).status, "editable");
+    }
+    assert.equal(canonicalReload.brief.intent.route.destinations[2]!.requestedNights, 2);
+    assert.equal(canonicalReload.brief.origin, "London");
+  }
+  assert.deepEqual(original.fields.map((item: any) => item.raw), ["2x", "Madri"]);
+});
+
+test("removed_or_replaced_occurrence_preserves_but_blocks_its_raw_field", async () => {
+  const api = await drafts();
+  const trip = fixture();
+  const binding = nightBinding(trip);
+  const draft = api.updateBuilderInputDraft(api.createBuilderInputDraft(trip), trip, binding, "2x");
+  const originalField = structuredClone(field(draft, binding));
+  for (const kind of ["remove", "replace"] as const) {
+    const changed = structuredClone(trip);
+    if (kind === "remove") {
+      changed.stops = changed.stops.slice(0, 2);
+      changed.brief.intent.route.destinations = changed.brief.intent.route.destinations.slice(0, 2);
+      changed.brief.intent.route.orderedStopIds = changed.stops.map(stop => stop.id);
+    } else {
+      // Keep stable IDs but replace the bound canonical identity.
+      changed.stops[2]!.canonicalPlaceId = changed.stops[0]!.canonicalPlaceId;
+      changed.stops[2]!.name = changed.stops[0]!.name;
+      changed.brief.intent.route.destinations[2]!.selectedPlace = structuredClone(changed.brief.intent.route.destinations[0]!.selectedPlace);
+    }
+    const rebound = api.rebindBuilderInputDraft(draft, changed);
+    const retained = field(rebound, binding);
+    assert.equal(retained.raw, "2x");
+    assert.equal(retained.status, "binding-conflict");
+    assert.deepEqual(retained.binding, originalField.binding);
+    assert.equal(retained.basisKey, originalField.basisKey);
+    assert.equal(rebound.fields.length, 1);
+    const storage = memoryStorage();
+    assert.equal(api.writeBuilderInputDraft(storage, changed, rebound).ok, true);
+    const reloaded = api.readBuilderInputDraft(storage, requireReadableTripDocument(JSON.parse(JSON.stringify(changed))));
+    assert.equal(reloaded.kind, "readable");
+    assert.equal(field(reloaded.draft, binding).status, "binding-conflict");
+    assert.equal(field(reloaded.draft, binding).raw, "2x");
+  }
+  assert.equal(field(draft, binding).status, "editable");
+});
+
+test("accept_one_field_consumes_only_its_matching_raw_revision", async () => {
+  const api = await drafts();
+  const trip = fixture();
+  const binding = nightBinding(trip);
+  let draft = api.updateBuilderInputDraft(api.createBuilderInputDraft(trip), trip, binding, "3");
+  draft = api.updateBuilderInputDraft(draft, trip, { kind: "origin" }, "Madri");
+  const original = structuredClone(draft);
+  const accepted = api.consumeBuilderInputDraft(draft, binding, draft.inputRevision, "3");
+  assert.equal(field(accepted, binding), undefined);
+  assert.equal(field(accepted, { kind: "origin" }).raw, "Madri");
+  assert.deepEqual(api.consumeBuilderInputDraft(draft, binding, draft.inputRevision - 1, "3"), draft);
+  assert.deepEqual(api.consumeBuilderInputDraft(draft, binding, draft.inputRevision, "2"), draft);
+  assert.deepEqual(draft, original);
+});
+
+test("old_envelope_rebinds_safely_after_draft_write_failure", async () => {
+  const api = await drafts();
+  const trip = fixture();
+  const binding = nightBinding(trip);
+  const draft = api.updateBuilderInputDraft(api.createBuilderInputDraft(trip), trip, binding, "2x");
+  const storage = memoryStorage();
+  assert.equal(api.writeBuilderInputDraft(storage, trip, draft).ok, true);
+  const key = api.builderInputDraftKey(trip.ownerId, trip.id);
+  const originalBytes = storage.getItem(key);
+  const changed = structuredClone(trip);
+  changed.brief.budgetBand = "high";
+  changed.brief.intent.preferences.budgetSensitivity = "high";
+  changed.brief.intent.route.projectionInputKey = routeProjectionInputKey(changed);
+  const rebound = api.rebindBuilderInputDraft(draft, changed);
+  storage.failNextWrite();
+  assert.equal(api.writeBuilderInputDraft(storage, changed, rebound).ok, false);
+  assert.equal(storage.getItem(key), originalBytes);
+  const reload = api.readBuilderInputDraft(storage, requireReadableTripDocument(JSON.parse(JSON.stringify(changed))));
+  assert.equal(reload.kind, "readable");
+  assert.equal(field(reload.draft, binding).raw, "2x");
+  assert.equal(field(reload.draft, binding).status, "editable");
+  assert.equal(storage.getItem(key), originalBytes, "hydration must not overwrite the retained envelope");
+});
