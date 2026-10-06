@@ -12,7 +12,7 @@ Schema 2/intent 2 now owns route input in `brief.intent.route`; ordered stop occ
 
 Readers, import/copy/promotion/remapping, API boundaries and guarded repository writes accept supported versions. Unsupported future documents remain visible errors. Exact durable acknowledgements cannot erase newer recovery. Projection acceptance preserves current traveller-owned content, validates existing calendar/locks/commitments and known stay bookings, protects pair-bound transport edits, and stamps only a valid current input key. Pending/provisional projection guards reach existing Builder feedback, Overview and Itinerary selectors.
 
-## Verification against final local product code
+## Verification against the initial completed candidate (`c316a8a`)
 
 | Check | Result |
 | --- | --- |
@@ -28,7 +28,7 @@ Readers, import/copy/promotion/remapping, API boundaries and guarded repository 
 | `npm run lint` |Not completed: existing Next 15 `next lint` asks interactively to configure absent ESLint. No lint infrastructure changed. |
 | `tests/imported-trip-hydration.test.ts` |Known accepted-base failure:11 pass / 1 fail; explicit planning leg remains `unknown`. Reproduced independently on `a3ab161` before branch changes. |
 
-Counts overlap across commands and are not a unique-test total. The focused skips are the existing opt-in public-route inventory and **actual PostgreSQL integration**, not passes. Logs and RED→GREEN evidence are retained in ignored `.superpowers/sdd/2026-10-06-batch14a-canonical-route-implementation/`. Build-generated `next-env.d.ts` was restored; no generated build/config churn is included.
+Counts overlap across commands and are not a unique-test total. The focused skips are `import navigation returns to the unified Builder empty state` (the opt-in spreadsheet-import browser case) and `actual SQL: CAS winner/loser, v1 matching-token rejection, and insert-only owner promotion` (missing disposable database), not passes. Logs and RED→GREEN evidence are retained in ignored `.superpowers/sdd/2026-10-06-batch14a-canonical-route-implementation/`. Build-generated `next-env.d.ts` was restored; no generated build/config churn is included.
 
 Focused command:
 
@@ -132,3 +132,11 @@ Imported-hydration's accepted-base failure, capture duration parsing edge cases,
 - `docs/superpowers/reviews/2026-10-06-batch14a-execution-evidence.md`
 - `docs/superpowers/reviews/2026-10-06-batch14a-independent-review.md`
 - `docs/superpowers/specs/2026-10-06-batch14a-canonical-route-design.md`
+
+## Exact-candidate follow-up: removed transport leg (N1)
+
+Parent’s exact-candidate review at `c316a8a835a1cf0dd4ae99e7a799da30daa956f2` closed the original findings and identified an adjacent omission: the transport merge guard treated a changed pair as incompatible only while both matching leg IDs still existed. A queued provider edit could therefore resurrect a last leg removed by the preceding accepted route edit, leaving a coherent shortened route with a dangling leg marked current.
+
+A separate descendant correction treats a disappeared counterpart leg as incompatible identity in both directions. Existing `EasyTTripSaveConflictError` preserves both source/recovery candidates; no leg IDs, route engine, schema, UI or controller changed. Two regression cases failed before the correction, then passed. Their final fixtures construct the smaller document through `tripFromBuilder` and successful `commitAcceptedRouteProjection`, rather than fabricate its current key. A third control confirms an unrelated title edit still merges with leg removal without resurrecting the leg. Tests are `concurrent_transport_edit_conflicts_with_removed_leg: canonical-removal`, its `authored-removal` converse, and `removed_leg_stays_removed_when_opposite_edit_is_unrelated` in `tests/trip-route-projection.test.ts`.
+
+Targeted projection/mutation tests: **32 passed, 0 failed**. Typecheck passed. The entire focused group was refreshed for the descendant: **186 tests, 184 passed, 0 failed, 2 skipped** (the two named skips above). Its log is `.superpowers/sdd/2026-10-06-batch14a-canonical-route-implementation/removed-leg-focused.log`. Earlier broad build/audit/persistence/capture checks above belong to the initial candidate; this bounded two-line pure merge correction introduces no UI/build/config change. Exact descendant review remains with the parent’s reviewer. Actual SQL approval/configuration is still pending; nothing was installed, provisioned, pushed or deployed.

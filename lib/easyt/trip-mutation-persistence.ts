@@ -108,9 +108,9 @@ export function mergeTripMutationDocuments(base: EasyTTrip, authored: EasyTTrip,
   for (const baseLeg of base.legs) {
     const authoredLeg = authored.legs.find(leg => leg.id === baseLeg.id);
     const canonicalLeg = canonical.legs.find(leg => leg.id === baseLeg.id);
-    const pairChanged = canonicalLeg && (canonicalLeg.fromStopId !== baseLeg.fromStopId || canonicalLeg.toStopId !== baseLeg.toStopId);
+    const pairChanged = !canonicalLeg || canonicalLeg.fromStopId !== baseLeg.fromStopId || canonicalLeg.toStopId !== baseLeg.toStopId;
     if (authoredLeg && !jsonEqual(authoredLeg, baseLeg) && pairChanged) throw new EasyTTripSaveConflictError("Concurrent transport and route edits need review. The recovery copy has been preserved.", canonical, "cloud-changed");
-    const authoredPairChanged = authoredLeg && (authoredLeg.fromStopId !== baseLeg.fromStopId || authoredLeg.toStopId !== baseLeg.toStopId);
+    const authoredPairChanged = !authoredLeg || authoredLeg.fromStopId !== baseLeg.fromStopId || authoredLeg.toStopId !== baseLeg.toStopId;
     if (canonicalLeg && !jsonEqual(canonicalLeg, baseLeg) && authoredPairChanged) throw new EasyTTripSaveConflictError("Concurrent route and transport edits need review. The recovery copy has been preserved.", canonical, "cloud-changed");
   }
   if (base.brief.intent?.route && authored.brief.intent?.route && canonical.brief.intent?.route) {

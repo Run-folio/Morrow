@@ -163,3 +163,24 @@ test('projection_cannot_stamp_current_after_moving_known_booked_stay_outside_boo
  const stops=[trip.stops[1],trip.stops[0],trip.stops[2]].map((stop,order)=>({...stop,order}));const candidate=cascadeTripSchedule({...trip,stops,legs:buildCanonicalTripLegs({tripId:trip.id,origin:{name:'London',coordinates:null},journeyEnd:trip.brief.journeyEnd,stops})}).trip;
  assert.deepEqual(commitAcceptedRouteProjection(trip,{basedOnInputKey:routeProjectionInputKey(trip),projectedTrip:candidate,reason:'manual_order'}),{kind:'rejected',reason:'invalid_projection'});
 });
+
+function smallerAcceptedRoute(base:ReturnType<typeof current>){
+ const stops=base.stops.slice(0,-1);const rebuilt=tripFromBuilder({id:base.id,origin:base.brief.origin,originCanonicalPlaceId:base.brief.originCanonicalPlaceId,journeyEnd:base.brief.journeyEnd,
+  stops:stops.map(stop=>({...stop,coordinates:[stop.longitude!,stop.latitude!] as [number,number]})),startDate:base.startDate,endDate:stops.at(-1)!.departureDate!,mustDo:'',pace:'slow',hotels:'few',budget:'mid',picks:{},draft:[],nightAllocations:Object.fromEntries(stops.map(stop=>[stop.id,stop.nights!])),intent:base.brief.intent,routeIntent:base.brief.intent.route});
+ rebuilt.ownerId=base.ownerId;const accepted=commitAcceptedRouteProjection(rebuilt,{basedOnInputKey:routeProjectionInputKey(rebuilt),projectedTrip:rebuilt,reason:'necessary_reconciliation'});
+ assert.equal(accepted.kind,'accepted');if(accepted.kind!=='accepted')throw new Error('The smaller route must be validated before the merge test');return accepted.trip;
+}
+for(const direction of ['canonical-removal','authored-removal'] as const)test(`concurrent_transport_edit_conflicts_with_removed_leg: ${direction}`,()=>{
+ const base=current();base.brief.intent.route.projectionInputKey=routeProjectionInputKey(base);
+ const edited=structuredClone(base);edited.legs.at(-1)!.provider='My Kyoto-Hiroshima choice';
+ const removed=smallerAcceptedRoute(base);
+ requireReadableTripDocument(removed);assert.equal(routeProjectionStatus(removed),'current');
+ const authored=direction==='canonical-removal'?edited:removed;const canonical=direction==='canonical-removal'?removed:edited;const before=JSON.stringify([base,authored,canonical]);
+ assert.throws(()=>mergeTripMutationDocuments(base,authored,canonical),/transport.*review|route.*review/i);assert.equal(JSON.stringify([base,authored,canonical]),before,'conflict preserves both recovery candidates');
+});
+
+test('removed_leg_stays_removed_when_opposite_edit_is_unrelated',()=>{
+ const base=current();const removed=structuredClone(base);const id=removed.stops.at(-1)!.id;removed.stops=removed.stops.slice(0,-1);removed.legs=removed.legs.slice(0,-1);removed.planItems=removed.planItems.filter(item=>item.stopId!==id);removed.brief.intent.route.destinations=removed.brief.intent.route.destinations.filter(intent=>!intent.stopIds.includes(id));removed.brief.intent.route.orderedStopIds=removed.stops.map(stop=>stop.id);
+ const unrelated=structuredClone(base);unrelated.title='My revised title';
+ for(const [authored,canonical] of [[removed,unrelated],[unrelated,removed]]){const merged=requireReadableTripDocument(mergeTripMutationDocuments(base,authored,canonical));assert.equal(merged.title,unrelated.title);assert.deepEqual(merged.legs,removed.legs);assert.deepEqual(merged.stops,removed.stops);}
+});
