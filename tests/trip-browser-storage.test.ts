@@ -1,3 +1,4 @@
+import { requireReadableTripDocument, TripDocumentReadError } from "../lib/easyt/trip-document.ts";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
@@ -450,7 +451,7 @@ test("canonical refresh retires an aligned or stale baseline snapshot without re
 
   assert.deepEqual(refreshed, { stored: true, recoveryResolved: true });
   assert.equal(loadTripRecoveryFromStorage(storage, cloudA.id, "owner-a"), null);
-  assert.deepEqual(loadCachedTripFromStorage(storage, cloudA.id, "owner-a"), cloudB);
+  assert.deepEqual(loadCachedTripFromStorage(storage, cloudA.id, "owner-a"), requireReadableTripDocument(cloudB));
 });
 
 test("canonical Luna Apply is available only when a recovery is a separate preserved device document", () => {
@@ -1002,7 +1003,7 @@ test("the authenticated workspace promotes a complete planned guest recovery int
   assert.equal(loadTripRecoveryFromStorage(storage, guestTrip.id, null), null);
   const recovery = loadTripRecoveryFromStorage(storage, guestTrip.id, ownerId);
   assert.ok(recovery);
-  assert.deepEqual(recovery.trip, guestTrip);
+  assert.deepEqual(recovery.trip, requireReadableTripDocument(guestTrip));
 
   const accountTrips = new Map<string, EasyTTrip>();
   const requests: Array<{ endpoint: string; method: string; ownerId: string | null; status: EasyTTrip["status"]; id: string }> = [];
@@ -1194,7 +1195,7 @@ test("a cloud response for a different trip ID is rejected and never cached", as
     else Reflect.deleteProperty(globalThis, "window");
   });
 
-  assert.equal(await loadTripFromEasyT(requestedId), null);
+  await assert.rejects(loadTripFromEasyT(requestedId), TripDocumentReadError);
   assert.equal(loadCachedTripFromStorage(storage, wrongTrip.id, "owner-a"), null);
   assert.equal(loadCurrentTripIdFromStorage(storage, "owner-a"), null);
 });
@@ -1511,14 +1512,14 @@ test("blocked browser storage fails closed without exposing, discarding, or clai
   assert.equal(loadCurrentTripIdFromStorage(storage, "owner-a"), trip.id);
 });
 
-test("legacy migration copies recovery before deleting v1 and retains v1 when the copy fails", () => {
+test("legacy reads preserve v1 bytes without creating a recovery write", () => {
   const trip = browserTrip({ id: "trip-legacy" });
   const storage = new MemoryBrowserStorage();
   storage.seed(EASYT_ACTIVE_TRIP_KEY, JSON.stringify(trip));
 
   assert.equal(loadActiveTripFromStorage(storage, "owner-a")?.id, trip.id);
-  assert.equal(storage.peek(EASYT_ACTIVE_TRIP_KEY), null);
-  assert.equal(loadTripRecoveryFromStorage(storage, trip.id, "owner-a")?.trip.id, trip.id);
+  assert.equal(storage.peek(EASYT_ACTIVE_TRIP_KEY), JSON.stringify(trip));
+  assert.equal(loadTripRecoveryFromStorage(storage, trip.id, "owner-a"), null);
 
   const quotaStorage = new MemoryBrowserStorage();
   quotaStorage.seed(EASYT_ACTIVE_TRIP_KEY, JSON.stringify(trip));
@@ -1528,7 +1529,7 @@ test("legacy migration copies recovery before deleting v1 and retains v1 when th
   assert.equal(loadTripRecoveryFromStorage(quotaStorage, trip.id, "owner-a"), null);
 });
 
-test("legacy recovery migrates before a newer clean current pointer can hide it", () => {
+test("legacy recovery is readable without changing a newer clean current pointer", () => {
   const storage = new MemoryBrowserStorage();
   const clean = browserTrip({ id: "trip-new-clean", title: "New clean cache" });
   const legacy = browserTrip({ id: "trip-old-pending", title: "Legacy unsynced recovery" });
@@ -1538,20 +1539,20 @@ test("legacy recovery migrates before a newer clean current pointer can hide it"
   const recovery = loadCurrentTripRecoveryFromStorage(storage, "owner-a");
   assert.equal(recovery?.trip.id, legacy.id);
   assert.equal(recovery?.trip.title, "Legacy unsynced recovery");
-  assert.equal(loadCurrentTripIdFromStorage(storage, "owner-a"), legacy.id);
+  assert.equal(loadCurrentTripIdFromStorage(storage, "owner-a"), clean.id);
   assert.equal(loadCachedTripFromStorage(storage, clean.id, "owner-a")?.id, clean.id);
-  assert.equal(storage.peek(EASYT_ACTIVE_TRIP_KEY), null);
+  assert.equal(storage.peek(EASYT_ACTIVE_TRIP_KEY), JSON.stringify(legacy));
 });
 
-test("direct canonical writes migrate v1 first and a retained v1 record never shadows newer v2 recovery", () => {
+test("canonical writes retain legacy bytes and a retained record never shadows newer scoped recovery", () => {
   const directStorage = new MemoryBrowserStorage();
   const legacy = browserTrip({ id: "trip-direct-legacy", title: "Legacy pending edit" });
   const cloud = browserTrip({ id: "trip-direct-cloud", title: "Direct cloud open" });
   directStorage.seed(EASYT_ACTIVE_TRIP_KEY, JSON.stringify(legacy));
 
   assert.equal(cacheCanonicalTripToStorage(directStorage, cloud), true);
-  assert.equal(directStorage.peek(EASYT_ACTIVE_TRIP_KEY), null);
-  assert.equal(loadTripRecoveryFromStorage(directStorage, legacy.id, "owner-a")?.trip.title, "Legacy pending edit");
+  assert.equal(directStorage.peek(EASYT_ACTIVE_TRIP_KEY), JSON.stringify(legacy));
+  assert.equal(loadLocalTripFromStorage(directStorage, legacy.id, "owner-a")?.title, "Legacy pending edit");
   assert.equal(loadCachedTripFromStorage(directStorage, cloud.id, "owner-a")?.title, "Direct cloud open");
 
   const retainedStorage = new MemoryBrowserStorage();

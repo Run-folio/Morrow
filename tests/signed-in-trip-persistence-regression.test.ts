@@ -1,3 +1,4 @@
+import { requireReadableTripDocument } from "../lib/easyt/trip-document.ts";
 import assert from "node:assert/strict";
 import test from "node:test";
 
@@ -325,7 +326,7 @@ for (const fixture of fixtures) {
     assert.equal(guestRecovery.stored, true);
     assert.equal(
       JSON.stringify(loadTripRecoveryFromStorage(guestStorage, guestEdit.id, null)?.trip),
-      JSON.stringify(guestEdit),
+      JSON.stringify(requireReadableTripDocument(guestEdit)),
     );
   });
 }

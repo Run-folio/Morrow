@@ -1,3 +1,4 @@
+import { TripDocumentReadError } from "./trip-document.ts";
 export type TripPersistenceFailureCategory =
   | "authentication"
   | "conflict"
@@ -50,6 +51,7 @@ export function isTripPersistenceAuthenticationError(error: unknown) {
 
 export function tripRecoveryStateForPersistenceError(error: unknown):
   "auth" | "conflict" | "validation" | "repository" | "network" | "unknown" {
+  if (error instanceof TripDocumentReadError) return "validation";
   if (error instanceof EasyTTripPersistenceError) {
     if (error.category === "authentication") return "auth";
     if (error.category === "conflict") return "conflict";
@@ -66,6 +68,7 @@ export function tripRecoveryStateForPersistenceError(error: unknown):
 
 /** Traveller-safe HTTP classification; raw provider/database errors stay in server logs. */
 export function safeTripPersistenceFailure(error: unknown) {
+  if (error instanceof TripDocumentReadError) return { status: 503, category: "validation" as const, code: error.code, error: error.message };
   const message = error instanceof Error ? error.message : "";
   if (message === "Unauthorized") {
     return { status: 401, category: "authentication" as const, error: "Authentication required." };

@@ -1,5 +1,6 @@
+import { requireReadableTripDocument, prepareTripDocumentForWrite, TripDocumentReadError } from "./trip-document.ts";
 import { legacyItineraryIdeas } from "./trip.ts";
-import { isEasyTTrip, tripIntentForTrip, type EasyTTrip } from "./trip.ts";
+import { tripIntentForTrip, type EasyTTrip } from "./trip.ts";
 import { normalizeLegacyGeneratedDayContext } from "./itinerary-generated-context.ts";
 import {
   canonicalTripRevisionCanReplace,
@@ -337,7 +338,8 @@ function isTripRecoveryRecord(value: unknown): value is TripRecoveryRecord {
       || record.conflictReason === "cloud-newer"
       || record.conflictReason === "cloud-different"
       || record.conflictReason === "cloud-deleted")
-    && isEasyTTrip(record.trip)
+    && record.trip !== undefined
+    && Boolean(requireReadableTripDocument(record.trip))
     && record.trip.id === record.tripId
     && recoveryScopeAcceptsTrip(record.ownerId, record.trip);
 }
@@ -349,7 +351,8 @@ function isTripCacheRecord(value: unknown): value is TripCacheRecord {
     && (typeof record.ownerId === "string" || record.ownerId === null)
     && typeof record.tripId === "string"
     && typeof record.cachedAt === "string"
-    && isEasyTTrip(record.trip)
+    && record.trip !== undefined
+    && Boolean(requireReadableTripDocument(record.trip))
     && record.trip.id === record.tripId
     && record.trip.ownerId === record.ownerId;
 }
@@ -405,7 +408,7 @@ function listTripRecoveryVersionsFromStorage(
     .filter((value): value is TripRecoveryRecord => isTripRecoveryRecord(value)
       && value.ownerId === ownerId
       && value.tripId === tripId)
-    .map((record) => ({ ...record, trip: normalizeLegacyGeneratedDayContext(record.trip) }))
+    .map((record) => ({ ...record, trip: normalizeLegacyGeneratedDayContext(requireReadableTripDocument(record.trip)) }))
     .sort((left, right) => {
       const savedDifference = (Date.parse(right.savedAt) || 0) - (Date.parse(left.savedAt) || 0);
       return savedDifference || right.writeId.localeCompare(left.writeId);
@@ -449,7 +452,7 @@ export function loadCachedTripFromStorage(
   ownerId: string | null,
 ) {
   const parsed = parseStored(safeGet(storage, tripCacheStorageKey(ownerId, tripId)));
-  return isTripCacheRecord(parsed) && parsed.ownerId === ownerId && parsed.tripId === tripId ? normalizeLegacyGeneratedDayContext(parsed.trip) : null;
+  return isTripCacheRecord(parsed) && parsed.ownerId === ownerId && parsed.tripId === tripId ? normalizeLegacyGeneratedDayContext(requireReadableTripDocument(parsed.trip)) : null;
 }
 
 export function listTripRecoveriesFromStorage(storage: EasyTBrowserStorage, ownerId: string | null) {
@@ -458,7 +461,7 @@ export function listTripRecoveriesFromStorage(storage: EasyTBrowserStorage, owne
     .filter((key) => key.startsWith(prefix))
     .map((key) => parseStored(safeGet(storage, key)))
     .filter((value): value is TripRecoveryRecord => isTripRecoveryRecord(value) && value.ownerId === ownerId)
-    .map((record) => ({ ...record, trip: normalizeLegacyGeneratedDayContext(record.trip) }))
+    .map((record) => ({ ...record, trip: normalizeLegacyGeneratedDayContext(requireReadableTripDocument(record.trip)) }))
     .sort((left, right) => (Date.parse(right.savedAt) || 0) - (Date.parse(left.savedAt) || 0));
   const newestByTrip = new Map<string, TripRecoveryRecord>();
   for (const record of records) {
@@ -473,7 +476,7 @@ function listCachedTripsFromStorage(storage: EasyTBrowserStorage, ownerId: strin
     .filter((key) => key.startsWith(prefix))
     .map((key) => parseStored(safeGet(storage, key)))
     .filter((value): value is TripCacheRecord => isTripCacheRecord(value) && value.ownerId === ownerId)
-    .map((record) => ({ ...record, trip: normalizeLegacyGeneratedDayContext(record.trip) }))
+    .map((record) => ({ ...record, trip: normalizeLegacyGeneratedDayContext(requireReadableTripDocument(record.trip)) }))
     .sort((left, right) => (Date.parse(right.cachedAt) || 0) - (Date.parse(left.cachedAt) || 0));
 }
 
@@ -485,6 +488,8 @@ function nextRecoverySavedAt(existing: TripRecoveryRecord | null, requested?: st
 }
 
 function sameRecoveryDocument(left: EasyTTrip, right: EasyTTrip) {
+  left = prepareTripDocumentForWrite(left);
+  right = prepareTripDocumentForWrite(right);
   if (JSON.stringify(left) === JSON.stringify(right)) return true;
   // An ownerless builder document has no canonical cloud revision yet.
   // React may reconstruct the same durable trip while an async Build is in
@@ -734,6 +739,7 @@ function writeTripRecoveryToStorage(
     replace?: TripRecoveryHandle;
   } = {},
 ): TripRecoveryWriteResult {
+  trip = prepareTripDocumentForWrite(trip);
   const ownerId = options.ownerId === undefined ? trip.ownerId : options.ownerId;
   const writeId = options.writeId ?? generatedWriteId();
   const handle = { ownerId, tripId: trip.id, writeId };
@@ -804,7 +810,7 @@ function writeCanonicalTripCacheToStorage(
   trip: EasyTTrip,
   now = new Date().toISOString(),
 ) {
-  trip = normalizeLegacyGeneratedDayContext(trip);
+  trip = normalizeLegacyGeneratedDayContext(prepareTripDocumentForWrite(trip));
   const ownerId = trip.ownerId;
   migrateLegacyTripFromStorage(storage, ownerId);
   const current = loadCachedTripFromStorage(storage, trip.id, ownerId);
@@ -822,6 +828,7 @@ export function cacheCanonicalTripWithRecoveryToStorage(
   resolvedRecovery?: TripRecoveryHandle,
   now = new Date().toISOString(),
 ) {
+  trip = prepareTripDocumentForWrite(trip);
   const previousCanonical = loadCachedTripFromStorage(storage, trip.id, trip.ownerId);
   const stored = writeCanonicalTripCacheToStorage(storage, trip, now);
   const recoveryRecord = resolvedRecovery ? recoveryRecordForHandle(storage, resolvedRecovery) : null;
@@ -842,7 +849,10 @@ export function cacheCanonicalTripWithRecoveryToStorage(
   // An in-flight inverse can equal the previous canonical document while the
   // preceding Add is being acknowledged. Keep that newer recovery until its
   // own save resolves; historical snapshots may still be retired as before.
-  const redundantRecovery = Boolean(currentRecovery && (
+  const rawRecovery = currentRecovery ? recoveryRecordForHandle(storage, currentRecovery) : null;
+  // Representation-only read migration is not a durable acknowledgement.
+  const sameDocumentVersion = rawRecovery?.trip.schemaVersion === trip.schemaVersion;
+  const redundantRecovery = Boolean(currentRecovery && sameDocumentVersion && (
     tripRecoveryMatchesCanonical(currentRecovery, trip)
       || (previousCanonical
         && !tripRecoveryIsAwaitingCanonicalSave(currentRecovery)
@@ -999,18 +1009,19 @@ export function clearCurrentTripInStorage(storage: EasyTBrowserStorage, ownerId:
   return safeRemove(storage, currentTripStorageKey(ownerId));
 }
 
+/** Retain the legacy bytes; reading never creates or acknowledges a write. */
 function migrateLegacyTripFromStorage(storage: EasyTBrowserStorage, ownerId: string | null) {
-  const legacy = parseStored(safeGet(storage, EASYT_ACTIVE_TRIP_KEY));
-  if (!isEasyTTrip(legacy)) return null;
-  if (legacy.ownerId && legacy.ownerId !== ownerId) return null;
-  const scopeOwnerId = legacy.ownerId ?? ownerId;
-  const migrated = writeTripRecoveryToStorage(storage, legacy, {
-    ownerId: scopeOwnerId,
-    state: "pending",
-    writeId: `legacy-${generatedWriteId()}`,
-  });
-  if (migrated.stored) safeRemove(storage, EASYT_ACTIVE_TRIP_KEY);
-  return legacy;
+  const value = parseStored(safeGet(storage, EASYT_ACTIVE_TRIP_KEY));
+  if (!value || typeof value !== "object") return null;
+  const sourceOwner = (value as { ownerId?: unknown }).ownerId;
+  if (sourceOwner && sourceOwner !== ownerId) return null;
+  return requireReadableTripDocument(value);
+}
+
+function legacyRecoveryFromStorage(storage: EasyTBrowserStorage, ownerId: string | null): TripRecoveryRecord | null {
+  const trip = migrateLegacyTripFromStorage(storage, ownerId);
+  return trip ? { version: 2, ownerId: trip.ownerId ?? ownerId, tripId: trip.id,
+    trip, state: "pending", writeId: "legacy-source", savedAt: trip.updatedAt } : null;
 }
 
 export function loadCurrentTripRecoveryFromStorage(
@@ -1025,7 +1036,7 @@ export function loadCurrentTripRecoveryFromStorage(
   if (current) return current;
   const latest = listTripRecoveriesFromStorage(storage, ownerId)[0] ?? null;
   if (latest) return latest;
-  return null;
+  return legacyRecoveryFromStorage(storage, ownerId);
 }
 
 /** A queryless new Builder visit may resume only the draft this owner left current. */
@@ -1062,7 +1073,7 @@ export function loadActiveTripFromStorage(storage: EasyTBrowserStorage, ownerId:
   if (legacy && safeGet(storage, EASYT_ACTIVE_TRIP_KEY)) {
     const scopedOwner = legacy.ownerId ?? ownerId;
     const newerRecovery = loadTripRecoveryFromStorage(storage, legacy.id, scopedOwner);
-    if (!newerRecovery) return legacy;
+    return newerRecovery?.trip ?? legacy;
   }
   const currentId = loadCurrentTripIdFromStorage(storage, ownerId);
   if (currentId) {
@@ -1384,17 +1395,17 @@ export async function saveTripToEasyT(trip: EasyTTrip, request: typeof fetch = f
   } | null;
   const authError = tripSyncAuthError(response.status, payload?.error);
   if (authError) throw authError;
-  if (response.status === 409 && payload && isEasyTTrip(payload.trip) && payload.conflictReason) {
+  if (response.status === 409 && payload?.trip && payload.conflictReason) {
     throw new EasyTTripSaveConflictError(
       payload.error || "This trip changed in the cloud.",
-      payload.trip,
+      requireReadableTripDocument(payload.trip),
       payload.conflictReason,
     );
   }
   if (!response.ok) {
     throw cloudPersistenceError(response, payload, "update");
   }
-  if (!payload || !isEasyTTrip(payload.trip)) {
+  if (!payload?.trip) {
     throw new EasyTTripPersistenceError({
       message: "Morrovia returned an invalid saved trip.",
       category: "validation",
@@ -1402,7 +1413,7 @@ export async function saveTripToEasyT(trip: EasyTTrip, request: typeof fetch = f
       operation: "update",
     });
   }
-  return payload.trip;
+  return requireReadableTripDocument(payload.trip);
 }
 
 export async function saveTripRecoveryToEasyT(
@@ -1496,17 +1507,17 @@ export async function promoteTripToEasyT(trip: EasyTTrip, request: typeof fetch 
   const authError = tripSyncAuthError(response.status, payload?.error);
   if (authError) throw authError;
 
-  if (response.status === 409 && payload && isEasyTTrip(payload.trip) && payload.conflictReason) {
+  if (response.status === 409 && payload?.trip && payload.conflictReason) {
     throw new EasyTTripPromotionConflictError(
       payload.error || "A cloud copy already exists.",
-      payload.trip,
+      requireReadableTripDocument(payload.trip),
       payload.conflictReason,
     );
   }
   if (!response.ok) {
     throw cloudPersistenceError(response, payload, "promotion");
   }
-  if (!payload || !isEasyTTrip(payload.trip)
+  if (!payload?.trip
     || (payload.outcome !== "promoted" && payload.outcome !== "already-canonical")) {
     throw new EasyTTripPersistenceError({
       message: "Morrovia returned an invalid promoted trip.",
@@ -1515,7 +1526,7 @@ export async function promoteTripToEasyT(trip: EasyTTrip, request: typeof fetch 
       operation: "promotion",
     });
   }
-  return { trip: payload.trip, outcome: payload.outcome };
+  return { trip: requireReadableTripDocument(payload.trip), outcome: payload.outcome };
 }
 
 type TripCloudLoadResult =
@@ -1528,9 +1539,14 @@ async function loadTripFromEasyTResult(tripId: string): Promise<TripCloudLoadRes
   // A 404/401 is a definitive access boundary, not an offline condition. Do
   // not reveal a stale browser cache after a deletion or owner-scoped 404.
   if (response.status === 404 || response.status === 401) return { kind: "missing" };
-  if (!response.ok) return { kind: "unavailable" };
+  if (!response.ok) {
+    const error = await response.json().catch(() => null) as { code?: string } | null;
+    if (error?.code === "unsupported_trip_version" || error?.code === "invalid_trip_document") throw new TripDocumentReadError(error.code);
+    return { kind: "unavailable" };
+  }
   const payload = await response.json() as { trip: EasyTTrip };
-  if (!isEasyTTrip(payload.trip) || payload.trip.id !== tripId) return { kind: "missing" };
+  payload.trip = requireReadableTripDocument(payload.trip);
+  if (payload.trip.id !== tripId) throw new TripDocumentReadError("invalid_trip_document");
   // A verified API response is safe to keep for an offline reopen. This clean
   // cache write never touches a pending recovery for the same owner and trip.
   cacheCanonicalTrip(payload.trip);
@@ -1559,7 +1575,8 @@ export async function loadRequestedTrip(tripId: string, ownerId: string | null =
     const cloud = await loadTripFromEasyTResult(tripId);
     if (cloud.kind === "found") return cloud.trip;
     if (cloud.kind === "missing") return null;
-  } catch {
+  } catch (error) {
+    if (error instanceof TripDocumentReadError) throw error;
     // The exact active local document remains usable if cloud loading is
     // temporarily unavailable, matching the established planner behaviour.
   }

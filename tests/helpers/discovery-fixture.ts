@@ -35,6 +35,21 @@ export function applyDiscoveryAddSideEffects(trip: import('../../lib/easyt/trip.
     provenance: choice.suggestion.provenance[0]!,
     ...(mention.routability === 'anchor_or_poi' ? { relationshipType: 'visit-from-base' as const } : {}),
   };
+  const route = trip.brief.intent?.route;
+  if (route) {
+    const parent = route.destinations.find(intent => intent.id === mention.mentionId);
+    if (parent) {
+      route.destinations = route.destinations.filter(intent => intent === parent || !intent.stopIds.includes(stop!.id));
+      if (!parent.stopIds.includes(stop.id)) parent.stopIds.push(stop.id);
+      parent.selectedPlace ??= { name: mention.canonicalName ?? mention.sourceText };
+      parent.resolution = "resolved";
+    } else if (!route.destinations.some(intent => intent.stopIds.includes(stop!.id))) {
+      route.destinations.push({ id: `fixture:${stop.id}`, sourceText: stop.name, kind: "overnight_place",
+        selectedPlace: { name: stop.name, canonicalPlaceId: stop.canonicalPlaceId }, resolution: "resolved",
+        requestedNights: null, routeMembership: "required", stopIds: [stop.id] });
+    }
+    route.orderedStopIds = trip.stops.map(item => item.id);
+  }
   trip.brief.structuredBrief!.placeSelections = [selection, ...(trip.brief.structuredBrief!.placeSelections ?? [])
     .filter(item => item.mentionId !== mention.mentionId || item.selectedCanonicalPlaceId !== choice.id)];
 }

@@ -1,3 +1,4 @@
+import { requireReadableTripDocument } from "../lib/easyt/trip-document.ts";
 import assert from "node:assert/strict";
 import test from "node:test";
 
@@ -127,7 +128,7 @@ test("the first authenticated Build trip promotes its ID before it performs the 
   assert.equal(requests[0]?.body.status, "draft");
   assert.equal(requests[1]?.body.ownerId, "owner-a");
   assert.equal(requests[1]?.body.status, "planned");
-  assert.deepEqual(saved, planned);
+  assert.deepEqual(saved, requireReadableTripDocument(planned));
 });
 
 test("a clean-browser Build acknowledges the normalized canonical trip before dashboard hydration", async () => {
@@ -532,11 +533,11 @@ test("open then archive, restore and delete updates or removes clean cache witho
   cacheCanonicalTripToStorage(storage, opened);
   const archived = trip({ status: "archived", updatedAt: "2026-08-20T12:00:00.000Z" });
   reconcileTripCloudMutationInStorage(storage, "owner-a", opened.id, "archive", archived);
-  assert.deepEqual(loadCachedTripFromStorage(storage, opened.id, "owner-a"), archived);
+  assert.deepEqual(loadCachedTripFromStorage(storage, opened.id, "owner-a"), requireReadableTripDocument(archived));
   assert.equal(loadCurrentTripRecoveryFromStorage(storage, "owner-a"), null);
   const restored = trip({ status: "draft", updatedAt: "2026-08-20T13:00:00.000Z" });
   reconcileTripCloudMutationInStorage(storage, "owner-a", opened.id, "restore", restored);
-  assert.deepEqual(loadCachedTripFromStorage(storage, opened.id, "owner-a"), restored);
+  assert.deepEqual(loadCachedTripFromStorage(storage, opened.id, "owner-a"), requireReadableTripDocument(restored));
   assert.equal(loadCurrentTripRecoveryFromStorage(storage, "owner-a"), null);
   reconcileTripCloudMutationInStorage(storage, "owner-a", opened.id, "delete");
   assert.equal(loadCachedTripFromStorage(storage, opened.id, "owner-a"), null);
