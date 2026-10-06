@@ -218,16 +218,20 @@ export const WideHomepageMobileOrder: Story = {
     await expect(spacing).toBeGreaterThanOrEqual(12);
 
     const checkOrder = async () => {
-      const panel = form.querySelector<HTMLElement>('[class*="wideHomePersonalize"]');
+      const toggle = canvas.getByRole("button", { name: "Personalize" });
+      const panelId = toggle.getAttribute("aria-controls");
+      const panel = panelId ? form.querySelector<HTMLElement>(`#${CSS.escape(panelId)}`) : null;
+      const currentSubmit = form.querySelector<HTMLButtonElement>('button[type="submit"]');
       if (!panel) throw new globalThis.Error("Expanded Personalize controls are missing");
-      await expect(panel.compareDocumentPosition(submit) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-      await expect(submit.getBoundingClientRect().top).toBeGreaterThanOrEqual(panel.getBoundingClientRect().bottom);
+      if (!currentSubmit) throw new globalThis.Error("Homepage submit action is missing");
+      await expect(panel.compareDocumentPosition(currentSubmit) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+      await expect(currentSubmit.getBoundingClientRect().top).toBeGreaterThanOrEqual(panel.getBoundingClientRect().bottom);
       const finalPanelControl = Array.from(panel.querySelectorAll<HTMLElement>('button, input, select, textarea, [tabindex]'))
         .filter((element) => element.tabIndex >= 0).at(-1);
       if (!finalPanelControl) throw new globalThis.Error("Personalize panel must have keyboard controls");
       await userEvent.click(finalPanelControl);
       await userEvent.tab();
-      await expect(submit).toHaveFocus();
+      await expect(currentSubmit).toHaveFocus();
     };
 
     await userEvent.click(canvas.getByRole("button", { name: "Personalize" }));

@@ -340,6 +340,9 @@ test("a failed named-place lookup offers scoped retry while a successful sibling
     assert.equal(view.geocodeRequests().Kyoto, 1);
     const kyoto = view.page.locator('[data-builder-stop-id]').filter({ hasText: "Kyoto" }).first();
     const kyotoId = await kyoto.getAttribute("data-builder-stop-id");
+    const tokyo = view.page.locator('[data-builder-stop-id]').filter({ hasText: "Tokyo" }).first();
+    const tokyoId = await tokyo.getAttribute("data-builder-stop-id");
+    assert.ok(tokyoId);
     const response = view.page.waitForResponse((response: { url: () => string; status: () => number }) => {
       const url = new URL(response.url());
       return url.pathname === "/api/journey-geocode" && url.searchParams.get("place") === "Tokyo" && response.status() === 200;
@@ -350,8 +353,14 @@ test("a failed named-place lookup offers scoped retry while a successful sibling
     assert.equal(view.geocodeRequests().Tokyo, 2);
     assert.equal(view.geocodeRequests().Kyoto, 1);
     assert.equal(await kyoto.getAttribute("data-builder-stop-id"), kyotoId);
+    assert.equal(await tokyo.getAttribute("data-builder-stop-id"), tokyoId);
     assert.equal(await view.page.getByRole("button", { name: "Try again Tokyo", exact: true }).count(), 0);
     assert.equal(await view.page.locator('[data-builder-stop-id]').filter({ hasText: "Tokyo" }).count(), 1);
+    await view.page.waitForFunction((stopId: string) => Object.keys(localStorage)
+      .filter(key => key.startsWith("easyt:trip-recovery:v2:guest:"))
+      .map(key => JSON.parse(localStorage.getItem(key)!))
+      .some(record => record.trip?.stops?.some((stop: { id: string; latitude?: number; longitude?: number }) =>
+        stop.id === stopId && stop.latitude === 35.6895 && stop.longitude === 139.6917)), tokyoId);
     assert.deepEqual(view.errors, []);
   } finally { await view.close(); }
 });
