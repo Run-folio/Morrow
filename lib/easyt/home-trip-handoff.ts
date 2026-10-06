@@ -1,7 +1,7 @@
 import { captureJourneyBrief, type JourneyCaptureResult } from "./journey-capture.ts";
 import { catalogPlaceForProviderIdentity, isOvernightBaseEligible, normalizePlacePhrase, placeResolutionIssuesForMentions, type CanonicalPlaceSuggestion, type GeographicBounds, type PlaceRoutability, type ResolvedPlaceMention } from "./place-intelligence.ts";
 import { findCatalogPlaceById } from "./place-catalog.ts";
-import type { EasyTTrip, JourneyEndSelection, JourneyEndpointPlace, TripBudgetPreference } from "./trip.ts";
+import type { EasyTTrip, JourneyEndSelection, JourneyEndpointPlace, RouteIntent, TripBudgetPreference } from "./trip.ts";
 import type { CuratedRouteKnowledge } from "./curated-route-knowledge.ts";
 import { normalizeTripInterests, tripInterestIds, type TripInterest } from "./trip-interest.ts";
 import { canonicalJourneyEndpointPlace, normalizeJourneyEnd, originPlaceFromBrief, resolvedJourneyEndPlace, sameJourneyPlace } from "./journey-endpoints.ts";
@@ -10,6 +10,7 @@ import { structuredTripBriefFromSavedSelections, validateStructuredTripBrief, ty
 import type { TravelProfile } from "./travel-profile.ts";
 import { homepageInputStorageKey } from "./private-browser-context.ts";
 import { addLocalDays } from "./local-date.ts";
+import { routeIntentFromHandoff } from "./trip-route-intent.ts";
 
 export const HOME_TRIP_DRAFT_KEY = "easyt-home-trip-draft";
 
@@ -131,6 +132,8 @@ export function moveHomepageEntry(
 }
 
 export type HomeTripDraft = {
+  /** Canonical destination intent retained separately from the routable stop seeds. */
+  routeIntent?: RouteIntent;
   handoffId?: string;
   sourceRouteKey?: string;
   curatedRoute?: CuratedRouteKnowledge;
@@ -1093,7 +1096,7 @@ export function createHomeTripDraft(input: {
   journeyEnd?: JourneyEndSelection;
 }): HomeTripDraft {
   const origin = input.origin ? canonicalJourneyEndpointPlace(input.origin) : undefined;
-  return {
+  return withCanonicalHandoffRouteIntent({
     handoffId: input.handoffId,
     locationMentions: input.capture.mentions,
     routeHints: input.capture.routeHints,
@@ -1118,7 +1121,15 @@ export function createHomeTripDraft(input: {
     interests: normalizeTripInterests(input.interests),
     interestsExplicit: input.interestsExplicit ?? input.interests.length > 0,
     brief: input.capture.rawBrief,
-  };
+  });
+}
+
+function withCanonicalHandoffRouteIntent(draft: HomeTripDraft): HomeTripDraft {
+  const seeds = draft.destinations ?? handoffRouteStops(draft.locationMentions ?? [], draft.journeyEnd);
+  const stops = seeds.map((stop, order) => ({ ...stop, order,
+    latitude: stop.coordinates?.[1] ?? null, longitude: stop.coordinates?.[0] ?? null,
+    nights: draft.nightAllocations?.[stop.id] ?? null, arrivalDate: null, departureDate: null }));
+  return { ...draft, routeIntent: routeIntentFromHandoff(draft, stops) };
 }
 
 const homepageExplicit = (): TripBriefProvenance => ({ source: "builder", kind: "explicit", confidence: "high" });
@@ -1476,7 +1487,7 @@ export function projectHomepageInput(input: {
   const projected = withHomepageChoices(draft, snapshot, input.profile, capture);
   return {
     ok: true,
-    draft: {
+    draft: withCanonicalHandoffRouteIntent({
       ...projected,
       homepage: projected.homepage ?? {
         version: 1,
@@ -1493,7 +1504,7 @@ export function projectHomepageInput(input: {
           journeyEnd: snapshot.journeyEnd,
         },
       },
-    },
+    }),
   };
 }
 
