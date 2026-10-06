@@ -225,3 +225,81 @@ test("pending homepage staging reads back both existing slots and rolls back a f
   assert.equal(preservationCalls, 1);
   assert.deepEqual(readHomepageInput(JSON.parse(values.get(key)!), "owner-a")?.receipt, receipt);
 });
+
+test("homepage captured conflict preserves frozen input through correction and retires review only after its own ACK", async () => {
+  const handoff = await import("../lib/easyt/home-trip-handoff.ts");
+  const routes = await import("../lib/easyt/home-route-choice.ts");
+  const { captureJourneyBrief } = await import("../lib/easyt/journey-capture.ts");
+  const snapshot = { ...emptyHomepageInput("owner-a"), mode: "describe" as const, prompt: "Tokyo 3 nights, Kyoto 2 nights, Rome 3 nights", tripType: { state: "selected" as const, value: "return_to_start" as const }, journeyEnd: { state: "selected" as const, value: { mode: "same_as_start" as const } } };
+  const values = new Map<string, string>([["unrelated-recovery", "keep-original-bytes"]]);
+  const storage = { getItem: (key: string) => values.get(key) ?? null, setItem: (key: string, value: string) => { values.set(key, value); }, removeItem: (key: string) => { values.delete(key); } };
+  let allocations = 0;
+  const reserve = (input: typeof snapshot) => handoff.reservePendingDescribeHandoff({ storage, snapshot: input, isCurrent: () => true, preserveAndBegin: () => true, lock: testLock, createIds: () => { allocations++; return { handoffId: `attempt-${allocations}`, tripId: `trip-${allocations}` }; } });
+  const first = await reserve(snapshot);
+  assert(first.ok);
+  const frozen = JSON.stringify(first.receipt);
+  const capture = { ...captureJourneyBrief(snapshot.prompt), journeyEnd: { mode: "explicit" as const, place: { name: "Rome", canonicalPlaceId: "rome" } } };
+  const evidence = routes.homepageCapturedRouteEvidence(snapshot.prompt, capture);
+  const rejected = projectHomepageInput({ snapshot: first.receipt.frozenSnapshot, capture, profile: null, handoffId: first.receipt.handoffId });
+  assert.equal(rejected.ok, false);
+  if (rejected.ok) return;
+  assert.equal((await handoff.retainPendingIntakeReview({ storage, receipt: first.receipt, fromHomepage: true, issues: rejected.issues, evidence, isCurrent: () => true, lock: testLock })).ok, true);
+  const restored = readHomepageInput(JSON.parse(values.get(homepageInputStorageKey("owner-a"))!), "owner-a");
+  assert.equal(restored?.review?.phase, "blocked");
+  assert.equal(JSON.stringify(restored?.review?.receipt), frozen);
+  assert.equal((await handoff.discardPendingIntakeForEdit({ storage, receipt: first.receipt, fromHomepage: true, preserveReview: true, lock: testLock })).ok, true);
+  const corrected = { ...snapshot, revision: 1, routeReview: { version: 1 as const, acceptedTripType: "return_to_start" as const, reviewedInputKey: routes.homepageRouteReviewKey(snapshot, evidence) } };
+  assert.equal((await handoff.persistEditableHomepageInput({ storage, snapshot: corrected, lock: testLock, isCurrent: () => true })).ok, true);
+  const second = await reserve(corrected);
+  assert(second.ok);
+  const duplicate = await reserve(corrected);
+  assert(duplicate.ok);
+  assert.deepEqual(duplicate.receipt, second.receipt);
+  assert.equal(allocations, 2);
+  assert.equal(pendingReceiptStillCurrent(storage, first.receipt, true), false);
+  const projected = projectHomepageInput({ snapshot: second.receipt.frozenSnapshot, capture, profile: null, handoffId: second.receipt.handoffId });
+  assert(projected.ok);
+  assert.equal(projected.draft.routeIntent?.tripType, "return_to_start");
+  assert.deepEqual(projected.draft.routeIntent?.destinations.map(intent => intent.requestedNights), [3, 2, 3]);
+  const completed = handoff.homepageReceiptForProjection(corrected, projected.draft, second.receipt.tripId);
+  const draft = { ...projected.draft, homepage: { ...projected.draft.homepage!, receipt: completed } };
+  assert.deepEqual(await handoff.acknowledgePendingIntakeReceipt({ storage, pending: first.receipt, completed, draft, fromHomepage: true, lock: testLock }), { ok: false, reason: "stale" });
+  assert.equal(readHomepageInput(JSON.parse(values.get(homepageInputStorageKey("owner-a"))!), "owner-a")?.review?.resubmissionHandoffId, second.receipt.handoffId);
+  const beforeLateEdit = values.get(homepageInputStorageKey("owner-a"))!;
+  const newer = JSON.parse(beforeLateEdit);
+  newer.snapshot = { ...newer.snapshot, revision: 2, prompt: "Tokyo and Madrid" };
+  values.set(homepageInputStorageKey("owner-a"), JSON.stringify(newer));
+  assert.deepEqual(await handoff.acknowledgePendingIntakeReceipt({ storage, pending: second.receipt, completed, draft, fromHomepage: true, lock: testLock }), { ok: false, reason: "stale" });
+  assert.equal(JSON.parse(values.get(homepageInputStorageKey("owner-a"))!).snapshot.prompt, "Tokyo and Madrid");
+  values.set(homepageInputStorageKey("owner-a"), beforeLateEdit);
+  assert.equal((await handoff.acknowledgePendingIntakeReceipt({ storage, pending: second.receipt, completed, draft, fromHomepage: true, lock: testLock })).ok, true);
+  assert.equal(readHomepageInput(JSON.parse(values.get(homepageInputStorageKey("owner-a"))!), "owner-a")?.review, undefined);
+  assert.equal(values.get("unrelated-recovery"), "keep-original-bytes");
+  assert.equal(JSON.stringify(first.receipt), frozen);
+});
+
+test("missing-field legacy endings and fresh route choices survive materialisation and device recovery", async () => {
+  const { tripFromBuilder } = await import("../lib/easyt/trip.ts");
+  const { saveTripRecoveryToStorage, loadTripRecoveryFromStorage } = await import("../lib/easyt/storage.ts");
+  const { homepageReceiptForProjection } = await import("../lib/easyt/home-trip-handoff.ts");
+  const ends = [{ mode: "explicit" as const, place: { name: "Rome", canonicalPlaceId: "rome" } }, { mode: "same_as_start" as const }, { mode: "unknown" as const }];
+  for (const end of ends) {
+    const snapshot = { ...emptyHomepageInput(), tripType: undefined, journeyEnd: { state: "selected" as const, value: end }, entries: [selectedEntry("rome-first", "Rome"), selectedEntry("tokyo", "Tokyo"), selectedEntry("rome-last", "Rome")] };
+    const restored = readHomepageInput(JSON.parse(JSON.stringify({ snapshot })), null);
+    assert(restored);
+    const projected = projectHomepageInput({ snapshot: restored.snapshot, profile: null, handoffId: `legacy-${end.mode}` });
+    assert(projected.ok);
+    const draft = projected.draft;
+    const trip = tripFromBuilder({ id: `legacy-trip-${end.mode}`, origin: draft.origin ?? "", journeyEnd: draft.journeyEnd, routeIntent: draft.routeIntent,
+      stops: draft.destinations ?? [], startDate: "2026-10-15", endDate: "2026-10-23", picks: {}, mustDo: "", pace: "slow", hotels: "few", budget: "mid", draft: [], structuredBrief: draft.structuredBrief });
+    const values = new Map<string, string>();
+    const storage = { get length() { return values.size; }, key: (index: number) => [...values.keys()][index] ?? null, getItem: (key: string) => values.get(key) ?? null, setItem: (key: string, value: string) => { values.set(key, value); }, removeItem: (key: string) => { values.delete(key); } };
+    assert.equal(saveTripRecoveryToStorage(storage, trip, { ownerId: null, writeId: "legacy-device" }).stored, true);
+    const recovery = loadTripRecoveryFromStorage(storage, trip.id, null);
+    assert(recovery);
+    assert.deepEqual(recovery.trip.brief.intent?.route?.journeyEnd, end);
+    assert.deepEqual(recovery.trip.stops.map(stop => stop.id), ["rome-first", "tokyo", "rome-last"]);
+    const receipt = homepageReceiptForProjection(restored.snapshot, draft, trip.id);
+    assert.equal(homepageCompletedReceiptIsUnchanged({ snapshot: restored.snapshot, receipt }), true);
+  }
+});

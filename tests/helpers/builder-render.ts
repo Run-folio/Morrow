@@ -81,6 +81,12 @@ export async function renderBuilder({
   const server = createServer(async (request, response) => {
     if (request.url?.startsWith("/api/")) {
       const url = new URL(request.url, "http://localhost");
+      if (url.pathname.startsWith("/api/easyt/trips/")) {
+        response.statusCode = 404;
+        response.setHeader("Content-Type", "application/json");
+        response.end(JSON.stringify({ error: "Trip not found" }));
+        return;
+      }
       if (url.pathname === "/api/journey-transfer-resolution") {
         const chunks: Buffer[] = [];
         for await (const chunk of request) chunks.push(Buffer.from(chunk));

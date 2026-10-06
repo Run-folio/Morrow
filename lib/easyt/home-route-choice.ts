@@ -13,13 +13,23 @@ export type HomepageRouteEvidence = {
 const semanticText = (text: string) => text.normalize("NFKD").replace(/[\u0300-\u036f]/g, "").trim().toLowerCase().replace(/\s+/g, " ");
 const oneWayTrip = /\b(?:one[ -]way\s+(?:trip|journey|route)|(?:trip|journey|route)\s+(?:(?:is|will be|should be)\s+)?one[ -]way|(?:viaje|ruta|recorrido)\s+(?:(?:es|sera)\s+)?(?:de\s+)?solo\s+ida)\b/;
 const returnTrip = /\b(?:round[ -]trip\s+(?:trip|journey|route)|(?:trip|journey|route)\s+(?:is\s+)?round[ -]trip|(?:viaje|ruta|recorrido)\s+(?:de\s+)?ida\s+y\s+vuelta)\b/;
-const uncertain = /\b(?:maybe|might|perhaps|possibly|not sure|whether|not\s+(?:a\s+)?|do not|don't|dont|no sera|no es|no se|quizas|tal vez)\b/;
+const uncertain = /\b(?:maybe|might|perhaps|possibly|not sure|whether|not|do not|don't|dont|won't|wont|wouldn't|wouldnt|never|against|without|instead of|rather than|if|unless|should|would|could|may|no|nunca|si|podria|deberia|seria|quizas|tal vez)\b/;
+
+function affirmativeTripClaim(clause: string): boolean {
+  const cue = oneWayTrip.exec(clause) ?? returnTrip.exec(clause);
+  if (!cue) return false;
+  const prefix = clause.slice(0, cue.index).trim();
+  // A trip noun phrase, an affirmative statement, or a deliberate planning
+  // request can declare intent. Mentioning an alternative does not declare it.
+  if (/^(?:a|an|the|my|our|this|un|mi|nuestro|el|este)?$/.test(prefix)) return true;
+  return /^(?:(?:i|we)\s+(?:want|want to plan|want to take|will take|am taking|are taking|am planning|are planning)|(?:i'd|we'd)\s+like|(?:plan|make|build)|(?:quiero|queremos|planea|planifica)|(?:me|nos)\s+gustaria)\s*(?:(?:a|an|the|my|our|un|mi|nuestro)\s*)?$/.test(prefix);
+}
 
 export function homepageCapturedRouteEvidence(prompt: string, capture?: Pick<JourneyCaptureResult, "journeyEnd">): HomepageRouteEvidence {
   const journeyEnd = normalizeJourneyEnd(capture?.journeyEnd);
-  const clauses = semanticText(prompt).split(/[.!?;\n]/).filter(clause => oneWayTrip.test(clause) || returnTrip.test(clause)
+  const clauses = (semanticText(prompt).match(/[^.!?;\n]+[.!?;]?/g) ?? []).filter(clause => oneWayTrip.test(clause) || returnTrip.test(clause)
     || (uncertain.test(clause) && /\bsolo ida\b/.test(clause) && !/\b(?:billete|boleto|ticket|vuelo)\b/.test(clause)));
-  const negativeOrUnclear = clauses.some(clause => uncertain.test(clause));
+  const negativeOrUnclear = clauses.some(clause => uncertain.test(clause) || /[?¿]/.test(clause) || !affirmativeTripClaim(clause));
   const oneWay = clauses.some(clause => oneWayTrip.test(clause));
   const returning = clauses.some(clause => returnTrip.test(clause));
   const contradicts = (oneWay && returning) || (oneWay && journeyEnd.mode === "same_as_start") || (returning && journeyEnd.mode === "explicit");

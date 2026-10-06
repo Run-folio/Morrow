@@ -82,6 +82,7 @@ export default function HomeTripStarter() {
   const { start: startDate, end: endDate } = homepageVisibleDateRange(snapshot);
   const [loading, setLoading] = useState(false);
   const [captureError, setCaptureError] = useState("");
+  const [recoveryBlocked, setRecoveryBlocked] = useState(false);
   const [focusEntryId, setFocusEntryId] = useState<string | null>(null);
 
   const cancelSubmission = () => {
@@ -99,6 +100,7 @@ export default function HomeTripStarter() {
       });
   };
   const updateSnapshot = (update: (current: HomepageInputSnapshot) => HomepageInputSnapshot, reviewedEvidence?: HomepageRouteEvidence) => {
+    if (recoveryBlocked) return;
     cancelSubmission();
     let next = { ...invalidateHomepageRouteReview(snapshotRef.current, update(snapshotRef.current)), revision: snapshotRef.current.revision + 1 };
     if (reviewedEvidence && next.tripType?.state === "selected") next = { ...next, routeReview: { version: 1, acceptedTripType: next.tripType.value, reviewedInputKey: homepageRouteReviewKey(next, reviewedEvidence) } };
@@ -119,18 +121,32 @@ export default function HomeTripStarter() {
     if (sessionPending) return;
     cancelSubmission();
     let next = emptySnapshot(ownerId);
+    setRecoveryBlocked(false);
+    setCaptureError("");
     try {
       const raw = JSON.parse(window.localStorage.getItem(homepageInputStorageKey(ownerId)) ?? "null");
       const stored = readHomepageInput(raw, ownerId);
       if (stored) {
         next = stored.snapshot;
         storedInputRef.current = stored;
-      } else storedInputRef.current = { snapshot: next };
-      const savedProfile = JSON.parse(window.localStorage.getItem(travelProfileStorageKey(ownerId)) ?? "null");
-      setTravelProfile(ownerId ? travelProfileFromUnknown(savedProfile) : null);
+      } else {
+        const recoverable = readHomepageInput({ snapshot: raw?.snapshot }, ownerId);
+        if (recoverable) next = recoverable.snapshot;
+        storedInputRef.current = { snapshot: next };
+        if (raw !== null) {
+          setRecoveryBlocked(true);
+          setCaptureError(language === "es" ? "No pudimos recuperar esta entrada. La copia guardada sigue en este dispositivo." : "We couldn't restore this trip input. Your saved recovery copy is still on this device.");
+        }
+      }
+      try {
+        const savedProfile = JSON.parse(window.localStorage.getItem(travelProfileStorageKey(ownerId)) ?? "null");
+        setTravelProfile(ownerId ? travelProfileFromUnknown(savedProfile) : null);
+      } catch { setTravelProfile(null); }
     } catch {
       storedInputRef.current = { snapshot: next };
       setTravelProfile(null);
+      setRecoveryBlocked(true);
+      setCaptureError(language === "es" ? "No pudimos recuperar esta entrada. La copia guardada sigue en este dispositivo." : "We couldn't restore this trip input. Your saved recovery copy is still on this device.");
     }
     destinationIdRef.current = nextDestinationNumber(next.entries);
     snapshotRef.current = next;
@@ -145,7 +161,7 @@ export default function HomeTripStarter() {
   };
 
   const submit = async () => {
-    if (submitInFlightRef.current) return;
+    if (submitInFlightRef.current || recoveryBlocked) return;
     submitInFlightRef.current = true;
     const submittedAt = performance.now();
     const submitted = snapshotRef.current;
@@ -334,7 +350,7 @@ export default function HomeTripStarter() {
 
   return <>
   <MorroviaTripCapture
-    formId="start-building" progressiveDetails disabled={sessionPending} language={language} value={snapshot.prompt}
+    formId="start-building" progressiveDetails disabled={sessionPending || recoveryBlocked} language={language} value={snapshot.prompt}
     onValueChange={(prompt) => {
       const next = homepageSnapshotForDescribePrompt(snapshotRef.current, prompt);
       updateSnapshot(() => next);
@@ -342,13 +358,13 @@ export default function HomeTripStarter() {
     onPromptStarted={markPromptStarted}
     homepageEntry={{
       planner: {
-        tripTypeControl: <div data-homepage-trip-type><EasyTSegmentedControl ariaLabel={language === "es" ? "Tipo de viaje" : "Trip type"} disabled={sessionPending || loading}
+        tripTypeControl: <div data-homepage-trip-type><EasyTSegmentedControl ariaLabel={language === "es" ? "Tipo de viaje" : "Trip type"} disabled={sessionPending || recoveryBlocked || loading}
           value={choice.tripType} options={[{ value: "return_to_start", label: language === "es" ? "Volver al inicio" : "Return to start" }, { value: "one_way", label: language === "es" ? "Solo ida" : "One way" }]}
           onChange={type => { if (type !== "unknown_legacy") requestTripType(type); }} /></div>,
         originEntry: <div data-homepage-origin><span>{language === "es" ? "Sales desde" : "Start from"}</span><CanonicalPlaceAutocomplete
           language={language} label={language === "es" ? "Sales desde" : "Start from"} value={originInput}
           placeholder={language === "es" ? "Ciudad o aeropuerto" : "City or airport"} allowedPlaceTypes={["city", "town", "transport_gateway"]}
-          requireCoordinates showPlaceType={false} disabled={sessionPending || loading}
+          requireCoordinates showPlaceType={false} disabled={sessionPending || recoveryBlocked || loading}
           onChange={value => updateSnapshot(current => ({ ...current, originInput: value, origin: { state: "cleared" } }))}
           onClear={() => updateSnapshot(current => ({ ...current, originInput: "", origin: { state: "cleared" } }))}
           onSelect={suggestion => updateSnapshot(current => ({ ...current, originInput: suggestion.label, origin: { state: "selected", value: journeyEndpointPlaceFromSuggestion(suggestion) } }))} /></div>,
@@ -358,7 +374,7 @@ export default function HomeTripStarter() {
       onModeChange: (mode) => updateSnapshot((current) => ({ ...current, mode })),
       destinationEntry: destinationSummary(snapshot.entries, language),
       destinationEditor: <HomeDestinationEditor
-        entries={snapshot.entries} language={language} disabled={loading || sessionPending}
+        entries={snapshot.entries} language={language} disabled={loading || sessionPending || recoveryBlocked}
         createEntry={() => ({ id: `destination-${destinationIdRef.current++}`, text: "", selection: null })}
         focusEntryId={focusEntryId}
         onChange={(entries: HomepageDestinationEntry[]) => updateSnapshot((current) => ({ ...current, entries }))}

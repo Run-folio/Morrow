@@ -335,13 +335,72 @@ test("a failed named-place lookup offers scoped retry while a successful sibling
     geocodeCandidates: { Kyoto: [{ name: "Kyoto", country: "Japan", coordinates: [135.7681, 35.0116], canonicalPlaceId: "kyoto" }] },
   });
   try {
-    await view.page.getByRole("button", { name: "Try again for Tokyo" }).waitFor({ timeout: 20_000 });
+    await view.page.getByRole("button", { name: "Try again Tokyo", exact: true }).waitFor({ timeout: 20_000 });
     assert.equal(view.geocodeRequests().Tokyo, 1);
     assert.equal(view.geocodeRequests().Kyoto, 1);
-    await view.page.getByRole("button", { name: "Try again for Tokyo" }).click();
-    await view.page.waitForFunction(() => document.body.innerText.includes("Tokyo checked"));
+    const kyoto = view.page.locator('[data-builder-stop-id]').filter({ hasText: "Kyoto" }).first();
+    const kyotoId = await kyoto.getAttribute("data-builder-stop-id");
+    const response = view.page.waitForResponse((response: { url: () => string; status: () => number }) => {
+      const url = new URL(response.url());
+      return url.pathname === "/api/journey-geocode" && url.searchParams.get("place") === "Tokyo" && response.status() === 200;
+    });
+    await view.page.getByRole("button", { name: "Try again Tokyo", exact: true }).click();
+    await response;
+    await view.page.waitForFunction(() => Array.from(document.querySelectorAll('[role="status"]')).every(element => !/Checking Tokyo|Couldn't check Tokyo/.test(element.textContent ?? "")));
     assert.equal(view.geocodeRequests().Tokyo, 2);
     assert.equal(view.geocodeRequests().Kyoto, 1);
+    assert.equal(await kyoto.getAttribute("data-builder-stop-id"), kyotoId);
+    assert.equal(await view.page.getByRole("button", { name: "Try again Tokyo", exact: true }).count(), 0);
+    assert.equal(await view.page.locator('[data-builder-stop-id]').filter({ hasText: "Tokyo" }).count(), 1);
+    assert.deepEqual(view.errors, []);
+  } finally { await view.close(); }
+});
+
+test("direct New Trip domain Edit stays in Builder and restores exact intake", { skip: !builderBrowserTestsEnabled, timeout: 40_000 }, async () => {
+  const snapshot = { ...emptyHomepageInput(), mode: "describe" as const, prompt: "Maybe a one-way trip through Japan", budget: { state: "selected" as const, value: "mid" as const }, entries: [selectedEntry("held-tokyo", "Tokyo")] };
+  const receipt = createPendingIntakeReceipt(snapshot, { handoffId: "direct-domain", tripId: "trip-direct-domain" });
+  const view = await renderBuilder({ storedInput: { snapshot, receipt } });
+  try {
+    await view.page.getByText("Review how your trip ends. Edit your trip idea to continue.", { exact: true }).waitFor();
+    assert.equal(await view.page.getByRole("button", { name: "Try again", exact: true }).count(), 0);
+    const blocked = await view.page.evaluate(() => JSON.parse(localStorage.getItem("easyt-private:guest:homepage-input") ?? "null"));
+    assert.deepEqual(blocked.review.receipt, JSON.parse(JSON.stringify(receipt)));
+    assert.equal(blocked.review.phase, "blocked");
+    await view.page.evaluate(() => {
+      const calls: string[] = [];
+      (window as Window & { homeEnvelopeCalls?: string[] }).homeEnvelopeCalls = calls;
+      for (const method of ["getItem", "setItem", "removeItem"] as const) {
+        const original = Storage.prototype[method];
+        Object.defineProperty(Storage.prototype, method, { configurable: true, value: function(this: Storage, ...args: string[]) {
+          if (args[0] === "easyt-home-trip-draft") calls.push(method);
+          return Reflect.apply(original, this, args);
+        } });
+      }
+    });
+    await view.page.getByRole("button", { name: "Edit trip idea", exact: true }).click();
+    const prompt = view.page.getByRole("textbox", { name: "Start your plan", exact: true });
+    await prompt.waitFor();
+    assert.equal(await prompt.inputValue(), snapshot.prompt);
+    assert.equal(new URL(view.page.url()).pathname, "/journey/new");
+    assert.deepEqual(await view.page.evaluate(() => (window as Window & { homeEnvelopeCalls?: string[] }).homeEnvelopeCalls), []);
+    const editable = await view.page.evaluate(() => JSON.parse(localStorage.getItem("easyt-private:guest:homepage-input") ?? "null"));
+    assert.equal(editable.receipt, undefined);
+    assert.deepEqual(editable.snapshot, JSON.parse(JSON.stringify(snapshot)));
+    assert.equal(editable.review.phase, "editing");
+    await prompt.fill("A one-way trip through Japan: Tokyo 3 nights, Kyoto 2 nights");
+    await view.page.getByRole("button", { name: "Plan my trip", exact: true }).click();
+    await view.page.getByText("Your route — Nights per stop:").waitFor({ timeout: 20_000 });
+    await view.page.waitForFunction(() => JSON.parse(localStorage.getItem("easyt-private:guest:homepage-input") ?? "null")?.receipt?.version === 1);
+    const final = await view.page.evaluate(() => {
+      const input = JSON.parse(localStorage.getItem("easyt-private:guest:homepage-input") ?? "null");
+      const trips = Object.keys(localStorage).filter(key => key.startsWith("easyt:trip-recovery:v2:guest:")).map(key => JSON.parse(localStorage.getItem(key)!));
+      return { input, trips };
+    });
+    assert.equal(final.input.review, undefined);
+    assert.notEqual(final.input.receipt.handoffId, receipt.handoffId);
+    assert.equal(new Set(final.trips.map((record: {tripId: string}) => record.tripId)).size, 1);
+    assert.equal(final.trips[0].trip.brief.intent.route.tripType, "one_way");
+    assert.equal(view.captureRequests(), 2);
     assert.deepEqual(view.errors, []);
   } finally { await view.close(); }
 });

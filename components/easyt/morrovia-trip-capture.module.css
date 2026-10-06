@@ -313,6 +313,8 @@
 .plannerFields > div { min-width: 0; }
 .plannerFields > div > span { display: block; margin-bottom: 9px; color: var(--morrovia-muted); font: 600 11px/1.35 var(--morrovia-ui); }
 .plannerFields input { min-height: 44px; }
+.plannerFields button { min-width: 44px; min-height: 44px; }
+.plannerCard .personalizeTravellers button { min-width: 44px; }
 .plannerUtilities { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); border: 1px solid var(--morrovia-line); border-radius: var(--morrovia-control-radius); }
 .plannerUtilities .wideDatePicker { border-left: 0; }
 .plannerBottom { display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "controls action" "personalize personalize"; gap: 12px; }

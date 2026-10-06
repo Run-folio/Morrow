@@ -76,6 +76,7 @@ export function homepageSnapshotForDescribePrompt(snapshot: HomepageInputSnapsho
   return invalidateHomepageRouteReview(snapshot, {
     ...snapshot,
     prompt,
+    ...(start && snapshot.origin.state === "selected" && differs(snapshot.origin.value.name, start) ? { originInput: "" } : {}),
     origin: start && snapshot.origin.state === "selected" && differs(snapshot.origin.value.name, start)
       ? { state: "untouched" } : snapshot.origin,
     journeyEnd: (snapshot.tripType?.state !== "selected" || snapshot.tripType.value === "one_way") && end && snapshot.journeyEnd.state === "selected"
@@ -1018,6 +1019,8 @@ export async function acknowledgePendingIntakeReceipt(input: {
       } catch { return { ok: false as const, reason: "storage" as const }; }
       if (!stored || (pending
         ? !samePendingReceipt(pendingIntakeReceiptForOwner(stored.receipt, completed.ownerId), pending)
+          || stored.snapshot.revision !== pending.inputRevision
+          || homepageSemanticInputFingerprint(stored.snapshot) !== pending.semanticInputFingerprint
           || (input.fromHomepage && !samePendingReceipt(pendingHomepageHandoffForOwner(envelope, completed.ownerId, pending.handoffId), pending))
         : stored.receipt?.version === 2
           || (stored.receipt?.version === 1

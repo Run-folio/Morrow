@@ -56,6 +56,7 @@ export function HomeDestinationEditor({ entries, language, disabled = false, foc
       {entries.map((entry, index) => <li key={entry.id} className={`${styles.entry} ${editingId === entry.id ? styles.editing : ""}`} data-home-destination-entry={entry.id}
         ref={node => { if (node) nodes.current.set(entry.id, node); else nodes.current.delete(entry.id); }}>
         {editingId === entry.id ? <div className={styles.field} onKeyDown={event => {
+          if (event.key === "Enter") event.preventDefault();
           if (event.key === "Escape") { event.preventDefault(); focusTarget.current = entry.id; setEditingId(null); }
         }}><CanonicalPlaceAutocomplete language={language} label={es ? "Destino" : "Destination"} value={entry.text}
           placeholder={es ? "Ciudad, país o región" : "City, country or region"} disabled={disabled}

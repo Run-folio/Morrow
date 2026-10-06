@@ -1282,6 +1282,9 @@ function TripBuilderDocument() {
   useEffect(() => {
     if (!hydrated || !pendingInterpretation) return;
     const { receipt, fromHomepage } = pendingInterpretation;
+    const domainMessage = (fields: string[]) => currentPresentationRef.current.language === "es"
+      ? fields.includes("tripType") ? "Revisa cómo termina tu viaje. Edita la idea para continuar." : "Revisa los datos de tu viaje. Edita la idea para continuar."
+      : fields.includes("tripType") ? "Review how your trip ends. Edit your trip idea to continue." : "Review your trip details. Edit your trip idea to continue.";
     const request = captureRequestGateRef.current!.begin();
     const isCurrent = () => request.isCurrent()
       && pendingInterpretationRef.current?.handoffId === receipt.handoffId
@@ -1300,7 +1303,7 @@ function TripBuilderDocument() {
             && stored.review.receipt.semanticInputFingerprint === receipt.semanticInputFingerprint
             && stored.review.sourceKey === homepageDescribeSourceKey(receipt.frozenSnapshot)) {
             setPendingFailureKind("domain");
-            setTripBriefCaptureError(currentPresentationRef.current.language === "es" ? "Revisa cómo termina tu viaje. Edita la idea para continuar." : "Review how your trip ends. Edit your trip idea to continue.");
+            setTripBriefCaptureError(domainMessage(stored.review.issues.map(issue => issue.field)));
             return;
           }
           const capture = receipt.frozenSnapshot.mode === "describe"
@@ -1319,7 +1322,7 @@ function TripBuilderDocument() {
             if (!isCurrent()) return;
             setPendingFailureKind("domain");
             setTripBriefCaptureError(retained.ok
-              ? (currentPresentationRef.current.language === "es" ? "Revisa cómo termina tu viaje. Edita la idea para continuar." : "Review how your trip ends. Edit your trip idea to continue.")
+              ? domainMessage(projected.issues.map(issue => issue.field))
               : (currentPresentationRef.current.language === "es" ? "No pudimos guardar la revisión. Tu idea original sigue guardada." : "We couldn't save this review. Your original trip idea is still preserved."));
             return;
           }

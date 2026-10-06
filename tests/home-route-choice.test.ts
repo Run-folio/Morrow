@@ -163,6 +163,34 @@ test("opposed whole-trip source and selected toggle require deliberate review", 
   assert.equal(result.ok, false);
 });
 
+test("questions, conditionals and English/Spanish refusals never assert whole-trip One way", async () => {
+  const api = await choices();
+  for (const prompt of [
+    "No quiero un viaje de solo ida por Japón",
+    "I won't take a one-way trip through Japan",
+    "Should this be a one-way trip through Japan?",
+    "Would a one-way trip through Japan work?",
+    "If we take a one-way trip through Japan, would that work?",
+    "Si hago un viaje de solo ida por Japón, ¿sería posible?",
+    "¿Debería ser un viaje de solo ida por Japón?",
+    "No me gustaría un viaje de solo ida por Japón",
+    "We decided against a one-way trip through Japan",
+    "The agent mentioned a one-way trip through Japan",
+  ]) {
+    const evidence = api.homepageCapturedRouteEvidence(prompt);
+    assert.equal(evidence.status, "requires_review", prompt);
+    assert.equal(evidence.tripType, null, prompt);
+    assert.equal(project(describe(prompt)).ok, false, prompt);
+  }
+  for (const prompt of ["A one-way trip through Japan", "I want a one-way trip through Japan", "Plan a one-way trip through Japan", "Un viaje de solo ida por Japón", "Quiero un viaje de solo ida por Japón", "Our trip will be one way through Japan"]) {
+    assert.equal(api.homepageCapturedRouteEvidence(prompt).tripType, "one_way", prompt);
+    const capture = { ...captureJourneyBrief(prompt), journeyEnd: { mode: "unknown" as const } };
+    const result = project(describe(prompt), capture);
+    assert(result.ok, prompt);
+    assert.equal(result.draft.routeIntent?.tripType, "one_way", prompt);
+  }
+});
+
 test("review acknowledgement binds geographic evidence and owner but ignores unrelated controls", async () => {
   const api = await choices();
   const snapshot = { ...describe("Finish in Rome"), tripType: { state: "selected" as const, value: "return_to_start" as const } };
@@ -227,6 +255,20 @@ test("a retained receipt cannot apply its capture after the editable revision ch
   const receipt = handoff.createPendingIntakeReceipt(snapshot, { handoffId: "same", tripId: "same-trip" });
   const values = new Map([[homepageInputStorageKey(snapshot.ownerId), JSON.stringify({ snapshot: { ...snapshot, revision: 1, prompt: "Tokyo and Rome" }, receipt })]]);
   assert.equal(handoff.pendingReceiptStillCurrent({ getItem: key => values.get(key) ?? null }, receipt, false), false);
+});
+
+test("a prompt replacing its selected origin retires stale raw origin before preflight and projection", () => {
+  const snapshot = { ...describe("From London to Tokyo for 5 nights"), tripType: { state: "selected" as const, value: "one_way" as const },
+    origin: { state: "selected" as const, value: { name: "London", canonicalPlaceId: "london" } }, originInput: "London" };
+  const next = handoff.homepageSnapshotForDescribePrompt(snapshot, "From Madrid to Tokyo for 5 nights");
+  assert.equal(next.origin.state, "untouched");
+  assert.equal(next.originInput, "");
+  assert.equal(handoff.homepagePreflightIssues(next).some(issue => issue.field === "origin"), false);
+  const result = project(next);
+  assert(result.ok);
+  assert.equal(result.draft.locationMentions?.find(mention => mention.role === "origin")?.canonicalName, "Madrid");
+  assert.notEqual(result.draft.routeIntent?.origin?.name, "London");
+  assert.equal(snapshot.originInput, "London");
 });
 
 test("legacy known ending cannot hide newly captured contrary endpoint evidence", () => {
