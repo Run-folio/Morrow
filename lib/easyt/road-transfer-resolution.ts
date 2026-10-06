@@ -14,6 +14,7 @@ export type RoadFallbackSkipReason =
   | "already_resolved"
   | "explicit_or_unsupported_source"
   | "missing_coordinates"
+  | "missing_country"
   | "cross_border"
   | "land_separation"
   | "same_place"
@@ -125,7 +126,10 @@ export async function resolveCanonicalRoadFallback(
   if (!from || !to || !validCoordinates(from.coordinates) || !validCoordinates(to.coordinates)) {
     return { leg, outcome: "unchanged", reason: "missing_coordinates" };
   }
-  const international = Boolean(from.country && to.country && normalizedIdentity(from.country) !== normalizedIdentity(to.country));
+  if (!from.country?.trim() || !to.country?.trim()) {
+    return { leg, outcome: "unchanged", reason: "missing_country" };
+  }
+  const international = normalizedIdentity(from.country) !== normalizedIdentity(to.country);
   if (international && !options.allowCrossBorderEstimate) {
     return { leg, outcome: "unchanged", reason: "cross_border" };
   }

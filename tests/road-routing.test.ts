@@ -266,6 +266,31 @@ test("implausible and cross-border results are rejected conservatively", async (
   assert.equal(provider.calls.length, 1);
 });
 
+test("road routing is skipped when either endpoint country is unknown", async () => {
+  const from = stop("country-from", 0, "From", "Peru", [-75.768, -14.088]);
+  const to = stop("country-to", 1, "To", "Peru", [-77.043, -12.046]);
+  const unresolved = unresolvedInternalLeg(from, to, "unknown-country");
+  const withoutOriginCountry = {
+    ...unresolved,
+    fromEndpoint: { ...unresolved.fromEndpoint!, country: undefined },
+  };
+  const withoutDestinationCountry = {
+    ...unresolved,
+    toEndpoint: { ...unresolved.toEndpoint!, country: undefined },
+  };
+
+  for (const leg of [withoutOriginCountry, withoutDestinationCountry]) {
+    const provider = new FixtureProvider(routedResult);
+    const result = await resolveCanonicalRoadFallback(leg, { provider });
+
+    assert.equal(result.reason, "missing_country");
+    assert.equal(result.outcome, "unchanged");
+    assert.equal(result.leg.mode, "unknown");
+    assert.equal(result.estimate, undefined);
+    assert.equal(provider.calls.length, 0);
+  }
+});
+
 test("successful repeated routes use the bounded provider cache and send only routing geography", async () => {
   let calls = 0;
   let providerBody: Record<string, unknown> | null = null;
