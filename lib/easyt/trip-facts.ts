@@ -1,3 +1,4 @@
+import { tripProjectionNeedsReview } from "./trip-route-intent.ts";
 import { formatIsoDate, isoDateKey, parseIsoDate, tripLifecycle, type TripLifecycle } from "./trip-lifecycle.ts";
 import type { EasyTTrip, PlanItem, TripLeg, TripStop } from "./trip.ts";
 
@@ -61,7 +62,7 @@ export function orderedTripPlanItems(trip: Pick<EasyTTrip, "planItems">) {
 
 /** Count represented calendar days, not rows. Duplicate or invalid day numbers do not inflate readiness. */
 export function deriveItineraryCoverage(
-  trip: Pick<EasyTTrip, "startDate" | "endDate" | "planItems">,
+  trip: Pick<EasyTTrip, "startDate" | "endDate" | "planItems"> & Partial<Pick<EasyTTrip, "schemaVersion" | "brief" | "stops">>,
 ): ItineraryCoverage {
   const dates = deriveTripDateFacts(trip);
   const expectedDays = dates.durationDays;
@@ -78,15 +79,16 @@ export function deriveItineraryCoverage(
   const plannedDays = represented.size;
   const missingDays = expectedDays === null ? null : Math.max(0, expectedDays - plannedDays);
   const percent = expectedDays === null ? null : expectedDays === 0 ? 0 : Math.min(100, Math.round((plannedDays / expectedDays) * 100));
+  const projectionPending = tripProjectionNeedsReview(trip);
   const state = plannedDays === 0
     ? "empty"
     : expectedDays === null
       ? "unknown"
-      : plannedDays >= expectedDays
+      : plannedDays >= expectedDays && !projectionPending
         ? "complete"
         : "partial";
   const onlyOutlinedDays = plannedDays > 0 && trip.planItems.every((item) => item.type === "open");
-  const label = onlyOutlinedDays
+  const label = projectionPending ? "Saved itinerary needs route reconciliation" : onlyOutlinedDays
     ? `${plannedDays} ${plannedDays === 1 ? "day" : "days"} outlined`
     : expectedDays === null
     ? dates.state === "invalid"

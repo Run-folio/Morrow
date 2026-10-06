@@ -1,3 +1,5 @@
+import { routeIntentForAcceptedBuilderOrder } from "../lib/easyt/trip-builder-order.ts";
+import { canonicalRouteFixture } from "./fixtures/batch14-route-documents.ts";
 import assert from "node:assert/strict";
 import test from "node:test";
 
@@ -44,4 +46,13 @@ test("keeps a Route Check proposal only while it exactly matches the current rec
   assert.equal(currentBuilderRouteProposal(proposal, ["kyoto-1", "tokyo-2", "tokyo-1"], true), null);
   assert.equal(currentBuilderRouteProposal(proposal, proposal, false), null);
   assert.equal(currentBuilderRouteProposal(null, proposal, true), null);
+});
+
+test("existing accepted order sources establish manual authority without accepting a mere preview",()=>{
+ const route=canonicalRouteFixture().brief.intent!.route!;const before=JSON.stringify(route);
+ for(const source of ["move-menu","mouse-drag","route-check"] as const){
+  const next=routeIntentForAcceptedBuilderOrder(route,[...route.orderedStopIds].reverse(),source);
+  assert.equal(next.orderAuthority,"manual");assert.equal(next.explicitIntentIds,null);
+ }
+ assert.equal(JSON.stringify(route),before);assert.throws(()=>routeIntentForAcceptedBuilderOrder(route,["unknown"],"route-check"));
 });

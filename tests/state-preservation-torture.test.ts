@@ -204,7 +204,7 @@ test("saved-trip Builder date rebuild preserves bookings, Prep, history and auth
   assert.equal(after.brief.mapPins?.[0]?.dayNumber, authoredDay.dayNumber);
 });
 
-test("confirmed Builder stop removal deletes only disclosed stop dependencies", () => {
+test("Builder stop removal keeps confirmed bookings and authored content unassigned for review", () => {
   const source = withAuthoredState();
   source.brief.bookings = [
     ...(source.brief.bookings ?? []),
@@ -219,10 +219,13 @@ test("confirmed Builder stop removal deletes only disclosed stop dependencies", 
   };
 
   const after = preserveBuilderCanonicalState(source, rebuilt);
-  assert.equal(after.brief.bookings?.some((booking) => booking.id === "stay-kyoto"), false);
+  assert.equal(after.brief.bookings?.some((booking) => booking.id === "stay-kyoto"), true);
   assert.equal(after.brief.bookings?.some((booking) => booking.id === "stay-tokyo"), true);
   assert.equal(after.brief.bookings?.some((booking) => booking.id === "rail-pass"), true);
   assert.equal(after.brief.customActivities && Object.values(after.brief.customActivities).flat().includes("Private Kyoto supper"), false);
-  assert.equal(after.brief.mapPins?.some((pin) => pin.id === "guide-pin"), false);
+  assert.equal(after.brief.mapPins?.some((pin) => pin.id === "guide-pin" && pin.dayNumber === 0), true);
+  assert.ok(after.brief.itineraryIdeas?.some(idea => "title" in idea && idea.title === "Private Kyoto supper" && !idea.dayId));
+  assert.ok(after.brief.cascadeStatus?.conflicts.length);
   assert.deepEqual(after.brief.checklist, source.brief.checklist);
 });
+

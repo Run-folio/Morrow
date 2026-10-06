@@ -40,6 +40,8 @@ export function buildBuilderRoutePreview(
       ...canonical,
       stops,
       legs,
+      brief: { ...canonical.brief, ...(canonical.brief.intent?.route ? { intent: { ...canonical.brief.intent,
+        route: { ...canonical.brief.intent.route, orderedStopIds: stops.map(stop => stop.id) } } } : {}) },
     },
   };
 }

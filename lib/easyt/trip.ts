@@ -1,3 +1,5 @@
+import { prepareTripDocumentForWrite } from "./trip-document.ts";
+import { routeIntentFromHandoff } from "./trip-route-intent.ts";
 import { type RouteIntelligenceAssessment, type RoutePlanningConstraints } from "./planner.ts";
 import type { NightAllocationResult } from "./night-allocation.ts";
 import { reconcileCuratedRouteKnowledge, type CuratedRouteKnowledge } from "./curated-route-knowledge.ts";
@@ -7,7 +9,7 @@ import { normalizeJourneyEnd } from "./journey-endpoints.ts";
 import { normalizeTripInterests, type TripInterest } from "./trip-interest.ts";
 import type { FixedCommitmentPlace, FixedCommitmentType } from "./fixed-commitment.ts";
 
-export const EASYT_TRIP_SCHEMA_VERSION = 1 as const;
+export const EASYT_TRIP_SCHEMA_VERSION = 2 as const;
 
 export type TripStatus = "draft" | "planned" | "archived";
 export type TripPace = "slow" | "full";
@@ -575,6 +577,7 @@ export type BuilderDay = {
 };
 
 export type BuilderTripInput = {
+  routeIntent?: RouteIntent;
   id: string;
   sourceRouteKey?: string;
   curatedRoute?: CuratedRouteKnowledge;
@@ -612,7 +615,7 @@ export type BuilderTripInput = {
 
 const slug = (value: string) => value.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
 
-export function tripFromBuilder(input: BuilderTripInput): EasyTTrip {
+export function tripFromBuilder(input: BuilderTripInput): CanonicalEasyTTrip {
   const now = new Date().toISOString();
   const fallbackIntent = defaultTripIntent({
     travellers: 2,
@@ -622,7 +625,8 @@ export function tripFromBuilder(input: BuilderTripInput): EasyTTrip {
     pace: input.pace === "full" ? "packed" : "relaxed",
   });
   const suppliedIntent = input.intent ?? fallbackIntent;
-  const suppliedJourneyEnd = input.journeyEnd ?? suppliedIntent.journeyEnd;
+  const priorRoute = input.routeIntent ?? suppliedIntent.route;
+  const suppliedJourneyEnd = input.journeyEnd ?? priorRoute?.journeyEnd ?? suppliedIntent.journeyEnd;
   const canonicalInterests = normalizeTripInterests(input.intent?.preferences.interests
     ?? input.structuredBrief?.interests.map((interest) => interest.value));
   const canonicalIntent: TripIntent = {
@@ -703,7 +707,7 @@ export function tripFromBuilder(input: BuilderTripInput): EasyTTrip {
     };
   });
 
-  return {
+  const trip: EasyTTrip = {
     schemaVersion: EASYT_TRIP_SCHEMA_VERSION,
     id: input.id,
     ownerId: null,
@@ -760,6 +764,26 @@ export function tripFromBuilder(input: BuilderTripInput): EasyTTrip {
     createdAt: input.createdAt ?? now,
     updatedAt: now,
   };
+  const origin: JourneyEndpointPlace | null = input.origin.trim() ? {
+    name: input.origin,
+    ...(input.originCanonicalPlaceId !== undefined ? { canonicalPlaceId: input.originCanonicalPlaceId } : {}),
+    ...(input.originCountry !== undefined ? { country: input.originCountry } : {}),
+    ...(input.originProviderId !== undefined ? { providerId: input.originProviderId } : {}),
+    ...(input.originCoordinates !== undefined ? { coordinates: input.originCoordinates } : {}),
+  } : null;
+  const journeyEnd = normalizeJourneyEnd(suppliedJourneyEnd);
+  const route = routeIntentFromHandoff({
+    ...input, brief: input.mustDo, structuredBrief: canonicalStructuredBrief,
+    ...(priorRoute ? { routeIntent: { ...priorRoute, origin, journeyEnd,
+      tripType: journeyEnd.mode === "same_as_start" ? "return_to_start" : journeyEnd.mode === "explicit" ? "one_way" : priorRoute.tripType === "one_way" ? "one_way" : "unknown_legacy" } } : {}),
+  }, stops);
+  for (const destination of route.destinations) {
+    if (destination.kind === "overnight_place" && destination.stopIds.length === 1
+      && input.manualNightStopIds?.includes(destination.stopIds[0]!)) destination.requestedNights = stops.find(stop => stop.id === destination.stopIds[0])?.nights ?? destination.requestedNights;
+    destination.routeMembership = destination.stopIds.length && destination.stopIds.every(id => canonicalIntent.hardConstraints.optionalStopIds.includes(id)) ? "optional" : destination.routeMembership;
+  }
+  const { journeyEnd: _legacyEnd, ...intent } = canonicalIntent;
+  return prepareTripDocumentForWrite({ ...trip, brief: { ...trip.brief, intent: { ...intent, version: 2, route: { ...route, origin } } } });
 }
 
 export function isEasyTTrip(value: unknown): value is EasyTTrip {

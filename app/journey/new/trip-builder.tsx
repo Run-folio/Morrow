@@ -20,6 +20,8 @@ import { acknowledgeTripBuildSave, cacheCanonicalTrip, canUseHydratedTripScope, 
 import { tripBuildDocumentsCanonicalEquivalent } from "@/lib/easyt/trip-promotion";
 import { EasyTTripPersistenceError, isTripPersistenceAuthenticationError, tripRecoveryStateForPersistenceError } from "@/lib/easyt/trip-persistence-error";
 import { tripEditorSyncAction, tripSyncRecoveryPath, tripSyncSignInPath } from "@/lib/easyt/trip-continuity";
+import { routeIntentFromHandoff } from "@/lib/easyt/trip-route-intent";
+import { routeIntentForAcceptedBuilderOrder } from "@/lib/easyt/trip-builder-order";
 import { defaultTripIntent, fixedTripCommitmentsFromStructuredBrief, isEasyTTrip, tripFromBuilder, tripIntentForTrip, type EasyTTrip, type FixedTripCommitment, type JourneyEndSelection, type JourneyEndpointPlace, type TripBudgetPreference, type TripDecisionSelections, type TripIntent, type TripIntentPace, type TripLeg, type TripScheduleLocks, type TripStatus, type TripStop, type TripTransportMode } from "@/lib/easyt/trip";
 import { arrivalLoadFromTransfer, assessRouteIntelligence, buildCredibleItinerary, estimateLegForConstraints, routeIntelligenceForPersistence, routeTransferSavingMinutes, travelStayConsequence, usableStopDays, type PlannedDay, type PlannerPlace } from "@/lib/easyt/planner";
 import { allocateTripNights, calendarDayAllocationsFromNights, rebalanceTripNights, tripNightsBetween, type NightAllocationStopInput } from "@/lib/easyt/night-allocation";
@@ -772,6 +774,7 @@ function TripBuilderDocument() {
     const structuredFixedCommitments = fixedTripCommitmentsFromStructuredBrief(homeStructuredBrief);
     setTripIntent((current) => ({
       ...current,
+      route: draft.routeIntent,
       timing: {
         ...current.timing,
         flexibility: homeTripDraftTimingFlexibility(draft!, current.timing.flexibility),
@@ -2935,6 +2938,12 @@ function TripBuilderDocument() {
     if (!result.ok) return false;
     rememberStructuralChange(source === "route-check" ? "apply_route_order" : "reorder_stop", stops.length);
     setStops(result.stops);
+    setTripIntent((current) => {
+      const route = routeIntentFromHandoff({ routeIntent: current.route, origin, journeyEnd, structuredBrief: effectiveStructuredBrief, brief: tripBrief },
+        stops.map((stop, order) => ({ ...stop, order, latitude: stop.coordinates?.[1] ?? null, longitude: stop.coordinates?.[0] ?? null,
+          arrivalDate: null, departureDate: null, nights: allocation[stop.id] ?? null })));
+      return { ...current, route: routeIntentForAcceptedBuilderOrder(route, result.ids, source) };
+    });
     const appliedRecommendedOrder = source === "route-check"
       && proposedIds.join("\u001f") === routeIntelligence.route.recommendedStopIds.join("\u001f");
     setDecisionSelections((current) => ({ ...current, routeOrder: appliedRecommendedOrder ? "recommended" : "entered" }));
@@ -2943,7 +2952,7 @@ function TripBuilderDocument() {
     }
     setRoutePreviewStopIds(null);
     return true;
-  }, [routeIntelligence.route.recommendedStopIds, scheduleLocks.stopIds, stops, structuredRouteConstraints.fixedCommitments]);
+  }, [routeIntelligence.route.recommendedStopIds, scheduleLocks.stopIds, stops, structuredRouteConstraints.fixedCommitments, origin, journeyEnd, effectiveStructuredBrief, tripBrief, allocation]);
 
   const moveStop = (from: number, to: number) => {
     if (!canMoveStop(from, to)) return;
@@ -3261,6 +3270,7 @@ function TripBuilderDocument() {
         })),
       } : undefined,
       routeAssessment: routeIntelligenceForPersistence(routeIntelligence),
+      routeIntent: effectiveIntent.route,
       intent: {
         ...effectiveIntent,
         hardConstraints: {

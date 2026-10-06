@@ -1,3 +1,4 @@
+import { prepareTripDocumentForWrite } from "./trip-document.ts";
 import { assessRouteIntelligence, routeIntelligenceForPersistence, type RoutePlanningConstraints } from "./planner.ts";
 import { cascadeTripSchedule } from "./cascade.ts";
 import { routeConstraintsFromStructuredTripBrief, routeScoringPreferencesFromStructuredBrief } from "./structured-trip-brief.ts";
@@ -93,11 +94,14 @@ export function replanTripAfterDayOrder(trip: EasyTTrip, orderedPlanItems: PlanI
     },
     allocations: Object.fromEntries(stops.map((stop) => [stop.id, Math.max(1, (stop.nights ?? 0) + 1)])),
   });
-  const replannedInput = { ...trip, stops, legs: routeLegsFor(trip, stops, routeConstraints), brief: { ...trip.brief, curatedRoute: reconcileCuratedRouteKnowledge(trip.brief.curatedRoute, fullOrder), routeAssessment: routeIntelligenceForPersistence(routeAssessment) } };
+  const route = trip.brief.intent?.route;
+  const acceptedIntent = route ? { ...trip.brief.intent!, route: { ...route, orderAuthority: "manual" as const,
+    explicitIntentIds: null, orderedStopIds: fullOrder } } : undefined;
+  const replannedInput = { ...trip, stops, legs: routeLegsFor(trip, stops, routeConstraints), brief: { ...trip.brief, ...(acceptedIntent ? { intent: acceptedIntent } : {}), curatedRoute: reconcileCuratedRouteKnowledge(trip.brief.curatedRoute, fullOrder), routeAssessment: routeIntelligenceForPersistence(routeAssessment) } };
   const replanned = reconcileAuthoredDayState(trip, cascadeTripSchedule(replannedInput).trip);
   return {
     state: "recalculated",
     stopIds: fullOrder,
-    trip: replanned,
+    trip: trip.schemaVersion === 2 ? prepareTripDocumentForWrite(replanned) : replanned,
   };
 }

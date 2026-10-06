@@ -5,7 +5,7 @@ import { homedir } from "node:os";
 import test from "node:test";
 import { buildCredibleItinerary } from "../lib/easyt/planner.ts";
 import { insertItineraryActivity } from "../lib/easyt/itinerary-mutations.ts";
-import { tripFromBuilder } from "../lib/easyt/trip.ts";
+import { tripFromBuilder, type EasyTTrip } from "../lib/easyt/trip.ts";
 import { loadTripRecoveryFromStorage, saveTripRecoveryToStorage } from "../lib/easyt/storage.ts";
 import { createPrivacyConsentRecord, PRIVACY_CONSENT_STORAGE_KEY } from "../lib/privacy-consent.ts";
 
@@ -20,7 +20,7 @@ function fixture() {
     { id: "osaka", name: "Osaka", country: "Japan", coordinates: [135.5023, 34.6937] as [number, number] },
     { id: "kyoto-return", name: "Kyoto", country: "Japan", coordinates: [135.7681, 35.0116] as [number, number] },
   ];
-  let trip = tripFromBuilder({
+  let trip: EasyTTrip = tripFromBuilder({
     id: "trip-38638700-3863-4863-8863-386387000001", origin: "Tokyo", stops,
     startDate: "2026-10-04", endDate: "2026-10-10", picks: {}, mustDo: "",
     pace: "slow", hotels: "few", budget: "mid",

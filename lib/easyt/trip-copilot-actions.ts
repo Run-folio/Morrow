@@ -254,6 +254,9 @@ function updateNightAllocation(trip: EasyTTrip, stopId: string, nights: number):
     brief: {
       ...trip.brief,
       manualNightStopIds: [...new Set([...(trip.brief.manualNightStopIds ?? []), stopId])],
+      ...(trip.brief.intent?.route ? { intent: { ...trip.brief.intent, route: { ...trip.brief.intent.route,
+        destinations: trip.brief.intent.route.destinations.map(intent => intent.kind === "overnight_place" && intent.stopIds.length === 1 && intent.stopIds[0] === stopId
+          ? { ...intent, requestedNights: nights } : intent) } } } : {}),
       ...(trip.brief.nightAllocations ? { nightAllocations: { ...trip.brief.nightAllocations, [stopId]: nights } } : {}),
       ...(trip.brief.dayAllocations ? { dayAllocations: { ...trip.brief.dayAllocations, [stopId]: trip.brief.nightAllocations || trip.brief.nightAllocation?.allocations ? nights : nights + 1 } } : {}),
       ...(nightAllocation ? { nightAllocation } : {}),

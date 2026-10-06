@@ -1,3 +1,4 @@
+import { tripProjectionNeedsReview } from "./trip-route-intent.ts";
 import { accommodationProgress } from "./accommodation.ts";
 import { tripHealth } from "./review.ts";
 import { deriveItineraryCoverage } from "./trip-facts.ts";
@@ -16,6 +17,7 @@ export type TripReadinessSignal = {
  * existing canonical selectors; it is not stored and does not affect Stamps.
  */
 export function tripReadinessSummary(trip: EasyTTrip) {
+  const projectionPending = tripProjectionNeedsReview(trip);
   const itinerary = deriveItineraryCoverage(trip);
   const stays = accommodationProgress(trip);
   const health = tripHealth(trip);
@@ -42,9 +44,9 @@ export function tripReadinessSummary(trip: EasyTTrip) {
     },
     {
       id: "route",
-      complete: health.isReady && !persistedCritical,
-      blocked: health.blockingCount > 0 || persistedCritical,
-      label: health.blockingCount || persistedCritical ? "Route needs a critical review" : health.openIssueCount ? "Route has checks to review" : "Route checks clear",
+      complete: !projectionPending && health.isReady && !persistedCritical,
+      blocked: projectionPending || health.blockingCount > 0 || persistedCritical,
+      label: projectionPending ? "Route reconciliation needs review" : health.blockingCount || persistedCritical ? "Route needs a critical review" : health.openIssueCount ? "Route has checks to review" : "Route checks clear",
     },
     {
       id: "prep",

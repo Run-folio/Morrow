@@ -1,3 +1,4 @@
+import { tripProjectionNeedsReview } from "./trip-route-intent.ts";
 import { accommodationProgress } from "./accommodation.ts";
 import { transportBookingProgress } from "./booking-readiness.ts";
 import type { EasyTTrip } from "./trip.ts";
@@ -61,7 +62,7 @@ export function deriveOverviewReadinessCategories({
   const itinerary = deriveItineraryCoverage(trip);
   const shapedDays = shapedItineraryDayNumbers(trip).size;
   const itineraryTarget = itinerary.expectedDays ?? itinerary.plannedDays;
-  const itineraryComplete = itinerary.expectedDays !== null && itinerary.expectedDays > 0 && shapedDays >= itinerary.expectedDays;
+  const itineraryComplete = !tripProjectionNeedsReview(trip) && itinerary.expectedDays !== null && itinerary.expectedDays > 0 && shapedDays >= itinerary.expectedDays;
   const itineraryDetail = itinerary.plannedDays === 0
     ? "No day outline yet"
     : shapedDays === 0

@@ -1,3 +1,4 @@
+import type { RouteIntent } from "./trip.ts";
 export type BuilderStopOrderRejection =
   | "same-order"
   | "length-mismatch"
@@ -46,4 +47,10 @@ export function validateBuilderStopOrder<T extends { id: string }>(
   }
   const ids = [...proposedIds];
   return { ok: true, ids, stops: ids.map((id) => currentById.get(id)!) };
+}
+
+/** Called only after the existing occurrence permutation/lock validation succeeds. */
+export function routeIntentForAcceptedBuilderOrder(route: RouteIntent, ids: readonly string[], source: "move-menu" | "mouse-drag" | "drag" | "route-check"): RouteIntent {
+  if (!source || ids.length !== route.orderedStopIds.length || new Set(ids).size !== ids.length || ids.some(id => !route.orderedStopIds.includes(id))) throw new Error("Invalid accepted route order.");
+  return { ...route, orderAuthority: "manual", explicitIntentIds: null, orderedStopIds: [...ids] };
 }

@@ -1,3 +1,4 @@
+import { readTripDocument } from "./trip-document.ts";
 import type { EasyTTrip } from "./trip";
 
 export type BuilderDocumentCommitResult =
@@ -80,6 +81,6 @@ export function prepareBuilderDocumentCommit(input: {
   if ((input.fingerprint ?? builderDocumentFingerprint)(input.current) !== input.expectedFingerprint) {
     return { ok: false, reason: "stale-source" };
   }
-  if (!input.validate(input.proposed)) return { ok: false, reason: "invalid-document" };
+  if (readTripDocument(input.proposed).kind !== "readable" || !input.validate(input.proposed)) return { ok: false, reason: "invalid-document" };
   return { ok: true, document: input.proposed };
 }

@@ -1,3 +1,5 @@
+import { readTripDocument } from "./trip-document.ts";
+import { routeOrderReviewIssue } from "./trip-route-intent.ts";
 import type { NightAllocationResult } from "./night-allocation.ts";
 import type { PlaceIssue } from "./place-intelligence.ts";
 import type { RouteConstraintIssue } from "./route-candidates.ts";
@@ -12,6 +14,7 @@ export type BuildTripConflictCode =
   | "end-unverified"
   | "route-empty"
   | "route-input-invalid"
+  | "route-order-review-required"
   | "place-review-required"
   | "hard-route-conflict"
   | "required-stops-exceed-maximum"
@@ -63,7 +66,7 @@ export type CanBuildTripInput = {
   transferImpacts?: readonly (TransferImpact | undefined)[];
   routeOrderFixed?: boolean;
   transferDayKeys?: readonly string[];
-  document: Pick<EasyTTrip, "stops" | "planItems" | "startDate" | "endDate">;
+  document: Pick<EasyTTrip, "stops" | "planItems" | "startDate" | "endDate"> & Partial<Pick<EasyTTrip, "schemaVersion" | "brief">>;
 };
 
 export function builderRouteInputIsReady(stops: CanBuildTripInput["stops"]) {
@@ -105,6 +108,13 @@ export function placeIssueNeedsAttention(
  */
 export function canBuildTrip(input: CanBuildTripInput) {
   const conflicts: BuildTripConflict[] = [];
+  if (input.document.schemaVersion === 2) {
+    const decoded = readTripDocument(input.document);
+    if (decoded.kind === "readable" && routeOrderReviewIssue(decoded.trip)) conflicts.push(conflict({
+      code: "route-order-review-required", stage: "places", source: "structured-brief",
+      message: "Confirm the destination order before building this trip.",
+    }));
+  }
   const needsAttention: BuildTripAttention[] = [];
   const stopIds = input.stops.map((stop) => stop.id);
   const uniqueStopIds = new Set(stopIds);

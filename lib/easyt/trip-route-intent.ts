@@ -1,6 +1,7 @@
 import { normalizeJourneyEnd, originPlaceFromBrief } from "./journey-endpoints.ts";
 import type { CanonicalEasyTTrip, DestinationIntent, EasyTTrip, JourneyEndpointPlace, RouteIntent, TripStop } from "./trip.ts";
-import type { TripDocumentIssue } from "./trip-document.ts";
+import { prepareTripDocumentForWrite, type TripDocumentIssue } from "./trip-document.ts";
+import { buildCanonicalTripLegs } from "./trip-legs.ts";
 import type { HomeTripDraft } from "./home-trip-handoff.ts";
 import type { ResolvedPlaceMention } from "./place-intelligence.ts";
 
@@ -72,7 +73,7 @@ export function routeIntentFromHandoff(draft: HomeTripDraft, stops: readonly Tri
         : constraint.place?.name?.toLocaleLowerCase() === item.canonicalName.toLocaleLowerCase());
       return matching.length === 1 && matching[0]!.mentionId === mention.mentionId;
     });
-    const requestedNights = saved?.requestedNights ?? (requested?.type === "fixed-commitment" ? requested.fixedNights! : sourceRequestedNights(draft.brief ?? draft.structuredBrief?.source.rawPrompt ?? "", mention, mentions, draft.structuredBrief?.duration?.unit === "nights"));
+    const requestedNights = saved?.requestedNights ?? (requested?.type === "fixed-commitment" ? requested.fixedNights! : sourceRequestedNights(draft.brief ?? draft.structuredBrief?.source?.rawPrompt ?? "", mention, mentions, draft.structuredBrief?.duration?.unit === "nights"));
     const selectedPlace = mention.canonicalPlaceId ? {
       name: mention.canonicalName, canonicalPlaceId: mention.canonicalPlaceId,
       ...(mention.coordinates ? { coordinates: mention.coordinates } : {}),
@@ -87,13 +88,24 @@ export function routeIntentFromHandoff(draft: HomeTripDraft, stops: readonly Tri
       selectedPlace, resolution, requestedNights, routeMembership: mention.role === "required" ? "required" : saved?.routeMembership ?? "required",
       stopIds: mapped.map(stop => stop.id) };
   });
-  // Existing/editorial stays without capture bindings still have their own occurrence intent.
-  for (const stop of stops) if (!bound.has(stop.id)) destinations.push({
-    id: `legacy-stop:${stop.id}`, sourceText: stop.name, kind: "overnight_place", selectedPlace: placeForRouteStop(stop),
-    resolution: stop.canonicalPlaceId || Number.isFinite(stop.latitude) ? "resolved" : "unresolved",
-    requestedNights: null, routeMembership: "required", stopIds: [stop.id],
-  });
-  const interpretation = draft.homepage?.mode === "stops" ? "unordered" : orderInterpretation(draft.brief ?? draft.structuredBrief?.source.rawPrompt ?? "", sourceMentions.map(mention => mention.sourceText));
+  // Retain unresolved requests even when a rebuilt surface has no capture mentions.
+  for (const prior of previous?.destinations ?? []) if (!removed.has(prior.id)
+    && !destinations.some(intent => intent.id === prior.id) && !prior.stopIds.length) destinations.push(structuredClone(prior));
+  for (const stop of stops) if (!bound.has(stop.id)) {
+    const prior = previous?.destinations.find(intent => intent.stopIds.includes(stop.id));
+    if (prior && !destinations.some(intent => intent.id === prior.id)) {
+      const stopIds = prior.stopIds.filter(id => stopById.has(id) && !bound.has(id));
+      stopIds.forEach(id => bound.add(id));
+      destinations.push({ ...structuredClone(prior), stopIds,
+        ...(prior.kind === "overnight_place" ? { selectedPlace: placeForRouteStop(stop), resolution: stop.canonicalPlaceId || (Number.isFinite(stop.latitude) && Number.isFinite(stop.longitude)) ? "resolved" as const : prior.resolution } : {}) });
+    } else if (!bound.has(stop.id)) {
+      bound.add(stop.id);
+      destinations.push({ id: `legacy-stop:${stop.id}`, sourceText: stop.name, kind: "overnight_place", selectedPlace: placeForRouteStop(stop),
+        resolution: stop.canonicalPlaceId || Number.isFinite(stop.latitude) ? "resolved" : "unresolved",
+        requestedNights: null, routeMembership: "required", stopIds: [stop.id] });
+    }
+  }
+  const interpretation = draft.homepage?.mode === "stops" ? "unordered" : orderInterpretation(draft.brief ?? draft.structuredBrief?.source?.rawPrompt ?? "", sourceMentions.map(mention => mention.sourceText));
   const authority = previous?.orderAuthority ?? (draft.sourceRouteKey ? "legacy_preserved" : interpretation === "explicit" ? "explicit" : "optimizable");
   const journeyEnd = normalizeJourneyEnd(previous?.journeyEnd ?? draft.journeyEnd);
   return { version: 1,
@@ -101,7 +113,7 @@ export function routeIntentFromHandoff(draft: HomeTripDraft, stops: readonly Tri
       country: draft.originCountry, providerId: draft.originProviderId, coordinates: draft.originCoordinates } : null),
     tripType: previous?.tripType ?? (journeyEnd.mode === "same_as_start" ? "return_to_start" : journeyEnd.mode === "explicit" ? "one_way" : "unknown_legacy"),
     journeyEnd, destinations, orderAuthority: authority,
-    explicitIntentIds: authority === "explicit" ? previous?.explicitIntentIds ?? destinations.map(intent => intent.id) : null,
+    explicitIntentIds: authority === "explicit" ? previous?.explicitIntentIds?.filter(id => destinations.some(intent => intent.id === id)) ?? destinations.map(intent => intent.id) : null,
     orderedStopIds: stops.map(stop => stop.id), projectionInputKey: previous?.projectionInputKey ?? null };
 }
 
@@ -240,7 +252,10 @@ export function routeProjectionInputKey(trip: EasyTTrip): string {
     orderAuthority: route.orderAuthority, explicitIntentIds: route.explicitIntentIds, orderedStopIds: route.orderedStopIds,
     stops: trip.stops.map(stop => ({ id: stop.id, place: placeDependency(placeForRouteStop(stop)), nights: stop.nights })),
     startDate: trip.startDate, endDate: trip.endDate,
-    fixedCommitments: trip.brief.intent?.hardConstraints?.fixedCommitments ?? [],
+    fixedCommitments: (trip.brief.intent?.hardConstraints?.fixedCommitments ?? []).map(commitment => ({
+      id: commitment.id, stopId: commitment.stopId, date: commitment.date, fixedNights: commitment.fixedNights,
+      commitmentType: commitment.commitmentType, place: commitment.place ? placeDependency(commitment.place) : null,
+    })),
     scheduleLocks: trip.brief.scheduleLocks ?? null,
   }));
 }
@@ -277,4 +292,67 @@ export function routeNightBudget(trip: CanonicalEasyTTrip, availableNights: numb
   const known = nonnegativeInteger(availableNights) && issues.length === 0;
   return { allocated, held, unallocated: known ? Math.max(0, availableNights - allocated - held) : null,
     overallocated: nonnegativeInteger(availableNights) ? Math.max(0, allocated + held - availableNights) : 0, issues };
+}
+
+export type RouteProjectionCommit = {
+  basedOnInputKey: string;
+  projectedTrip: EasyTTrip;
+  reason: "necessary_reconciliation" | "manual_order" | "accepted_optimization";
+};
+export function commitAcceptedRouteProjection(current: CanonicalEasyTTrip, commit: RouteProjectionCommit):
+  | { kind: "accepted"; trip: CanonicalEasyTTrip }
+  | { kind: "rejected"; reason: "stale_inputs" | "authoritative_order" | "invalid_projection" } {
+  if (commit.basedOnInputKey !== routeProjectionInputKey(current)) return { kind: "rejected", reason: "stale_inputs" };
+  const projected = commit.projectedTrip;
+  const route = current.brief.intent.route;
+  const ids = projected.stops.map(stop => stop.id);
+  const changedOrder = JSON.stringify(ids) !== JSON.stringify(route.orderedStopIds);
+  if (changedOrder && commit.reason === "necessary_reconciliation" && (route.orderAuthority !== "optimizable" || routeOrderReviewIssue(current))) {
+    return { kind: "rejected", reason: "authoritative_order" };
+  }
+  const invalid = () => ({ kind: "rejected", reason: "invalid_projection" } as const);
+  if (projected.id !== current.id || projected.ownerId !== current.ownerId || ids.length !== current.stops.length
+    || new Set(ids).size !== ids.length || ids.some(id => !route.orderedStopIds.includes(id))) return invalid();
+  if (projected.startDate !== current.startDate || projected.endDate !== current.endDate
+    || projected.stops.some(stop => JSON.stringify(stableValue(placeDependency(placeForRouteStop(stop)))) !== JSON.stringify(stableValue(placeDependency(placeForRouteStop(current.stops.find(prior => prior.id === stop.id)!)))))) return invalid();
+  const nextRoute: RouteIntent = { ...structuredClone(route), orderedStopIds: ids,
+    ...(commit.reason === "necessary_reconciliation" ? {} : { orderAuthority: "manual", explicitIntentIds: null }) };
+  const proposedRoute = projected.brief.intent?.route;
+  if (proposedRoute && JSON.stringify(stableValue({ ...proposedRoute, orderedStopIds: [], orderAuthority: null, explicitIntentIds: null, projectionInputKey: null }))
+    !== JSON.stringify(stableValue({ ...route, orderedStopIds: [], orderAuthority: null, explicitIntentIds: null, projectionInputKey: null }))) return invalid();
+  for (const intent of route.destinations) {
+    const stays = intent.stopIds.map(id => projected.stops.find(stop => stop.id === id)!);
+    if (intent.requestedNights !== null && stays.length && (stays.some(stop => stop.nights === null)
+      || stays.reduce((total, stop) => total + (stop.nights ?? 0), 0) !== intent.requestedNights)) return invalid();
+  }
+  for (const id of current.brief.scheduleLocks?.stopIds ?? []) {
+    const prior = current.stops.find(stop => stop.id === id);
+    const next = projected.stops.find(stop => stop.id === id);
+    if (prior && next && (prior.order !== next.order || prior.arrivalDate !== next.arrivalDate || prior.nights !== next.nights)) return invalid();
+  }
+  for (const [id, date] of Object.entries(current.brief.scheduleLocks?.arrivalDates ?? {})) if (projected.stops.find(stop => stop.id === id)?.arrivalDate !== date) return invalid();
+  for (const commitment of current.brief.intent.hardConstraints.fixedCommitments) if (commitment.stopId) {
+    const stop = projected.stops.find(stop => stop.id === commitment.stopId);
+    if (!stop || (commitment.fixedNights !== undefined && stop.nights !== commitment.fixedNights)
+      || (commitment.date && stop.arrivalDate && stop.departureDate && (commitment.date < stop.arrivalDate || commitment.date > stop.departureDate))) return invalid();
+  }
+  const expectedLegs = buildCanonicalTripLegs({ tripId: current.id,
+    origin: { ...(route.origin ?? { name: "" }), coordinates: route.origin?.coordinates ?? null },
+    journeyEnd: route.journeyEnd, stops: projected.stops });
+  if (projected.legs.length !== expectedLegs.length || projected.legs.some((leg, index) => leg.fromStopId !== expectedLegs[index]?.fromStopId || leg.toStopId !== expectedLegs[index]?.toStopId)) return invalid();
+  if (projected.stops.some((stop, index) => stop.order !== index || !nonnegativeInteger(stop.nights))) return invalid();
+  try {
+    const trip = prepareTripDocumentForWrite({ ...projected, schemaVersion: 2,
+      brief: { ...projected.brief, intent: { ...current.brief.intent, route: nextRoute } } });
+    trip.brief.intent.route.projectionInputKey = routeProjectionInputKey(trip);
+    return { kind: "accepted", trip };
+  } catch { return invalid(); }
+}
+
+/** Optional shape supports existing date/itinerary selectors without inventing a document. */
+export function tripProjectionNeedsReview(trip: { schemaVersion?: 1 | 2; brief?: EasyTTrip["brief"]; stops?: TripStop[]; startDate?: string; endDate?: string }): boolean {
+  if (trip.schemaVersion !== 2) return false;
+  const route = trip.brief?.intent?.route;
+  if (!route || !trip.stops || !trip.startDate || !trip.endDate) return true;
+  return routeProjectionStatus(trip as CanonicalEasyTTrip) !== "current";
 }
