@@ -55,6 +55,14 @@ test("timeout is an explicit per-occurrence result while a sibling remains usabl
   assert.equal(outcomes[1]?.value, "usable");
 });
 
+test("a provider response just over four seconds is not timed out by the default handoff lookup", async () => {
+  const outcomes = await resolveHandoffIncrementally(["slow-but-available"],
+    async () => new Promise<string>((resolve) => setTimeout(() => resolve("resolved"), 4_100)),
+    { onOutcome: () => {} });
+  assert.equal(outcomes[0]?.status, "resolved");
+  assert.equal(outcomes[0]?.value, "resolved");
+});
+
 test("abort discards late outcomes and a fresh session can retry the same name", async () => {
   const controller = new AbortController();
   const late = deferred<string>();

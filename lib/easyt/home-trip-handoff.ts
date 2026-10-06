@@ -1685,7 +1685,7 @@ export async function resolveHandoffIncrementally<T, R>(
   },
 ): Promise<HandoffOutcome<T, R>[]> {
   const concurrency = Math.max(1, Math.min(3, Math.floor(options.concurrency ?? 3)));
-  const timeoutMs = Math.max(1, Math.min(10_000, options.timeoutMs ?? 4_000));
+  const timeoutMs = Math.max(1, Math.min(10_000, options.timeoutMs ?? 8_000));
   const outcomes: HandoffOutcome<T, R>[] = new Array(items.length);
   let nextIndex = 0;
   const worker = async () => {
