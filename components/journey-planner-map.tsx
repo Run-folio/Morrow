@@ -1030,12 +1030,10 @@ export function JourneyPlannerMap({
     container.addEventListener("pointerdown", interrupt, { capture: true });
     container.addEventListener("wheel", interrupt, { capture: true, passive: true });
     container.addEventListener("keydown", interruptKeyboardCamera, { capture: true });
-    map.on("dragstart", interrupt);
     return () => {
       container.removeEventListener("pointerdown", interrupt, true);
       container.removeEventListener("wheel", interrupt, true);
       container.removeEventListener("keydown", interruptKeyboardCamera, true);
-      map.off("dragstart", interrupt);
     };
   }, [panZoom]);
 

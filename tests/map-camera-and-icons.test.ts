@@ -131,7 +131,7 @@ test("the Map has one replaceable camera request and explicit manual interruptio
   assert.match(source, /container\.addEventListener\("pointerdown", interrupt/);
   assert.match(source, /container\.addEventListener\("wheel", interrupt/);
   assert.match(source, /container\.addEventListener\("keydown", interruptKeyboardCamera/);
-  assert.match(source, /map\.on\("dragstart", interrupt\)/);
+  assert.doesNotMatch(source, /map\.on\("dragstart", interrupt\)/, "stopping the camera during dragstart would cancel the native pan");
   assert.match(source, /\["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "\+", "-", "="\]/);
   assert.match(source, /<span className="planner-map__leg-icon"[^>]*style=\{rotation[\s\S]*?<MarkerIcon \/>/);
   assert.doesNotMatch(source, /<MarkerIcon style=/);
