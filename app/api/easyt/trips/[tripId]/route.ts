@@ -9,7 +9,7 @@ import {
   restoreTripForOwner,
   saveTripForOwner,
 } from "@/lib/easyt/repository";
-import { isEasyTTrip } from "@/lib/easyt/trip";
+import { readTripDocument, TripDocumentReadError } from "@/lib/easyt/trip-document";
 import { EasyTTripSaveConflictError } from "@/lib/easyt/trip-continuity";
 import { safeTripPersistenceFailure } from "@/lib/easyt/trip-persistence-error";
 
@@ -26,6 +26,7 @@ export async function GET(_request: Request, context: RouteContext) {
       ? NextResponse.json({ trip })
       : NextResponse.json({ error: "Trip not found." }, { status: 404 });
   } catch (error) {
+    if (error instanceof TripDocumentReadError) return NextResponse.json({ error: error.message, code: error.code }, { status: 503 });
     const message =
       error instanceof Error ? error.message : "Unable to load trip.";
     return NextResponse.json(
@@ -39,13 +40,15 @@ export async function PUT(request: Request, context: RouteContext) {
   try {
     const owner = await requireEasyTOwner();
     const { tripId } = await context.params;
-    const body: unknown = await request.json();
-    if (!isEasyTTrip(body) || body.id !== tripId || !body.ownerId)
+    const decoded = readTripDocument(await request.json());
+    if (decoded.kind !== "readable") return NextResponse.json({ error: "Invalid or unsupported trip document.", category: "validation" }, { status: 400 });
+    const body = decoded.trip;
+    if (body.id !== tripId || !body.ownerId)
       return NextResponse.json(
         { error: "Invalid EasyT trip document.", category: "validation" },
         { status: 400 },
       );
-    return NextResponse.json({ trip: await saveTripForOwner(owner.id, body) });
+    return NextResponse.json({ trip: await saveTripForOwner(owner.id, body, { sourceSchemaVersion: decoded.sourceSchemaVersion }) });
   } catch (error) {
     if (error instanceof EasyTTripSaveConflictError) {
       return NextResponse.json(
@@ -55,7 +58,7 @@ export async function PUT(request: Request, context: RouteContext) {
     }
     const failure = safeTripPersistenceFailure(error);
     console.error("Trip update failed.", { category: failure.category, errorName: error instanceof Error ? error.name : "UnknownError", errorCode: (error as { code?: unknown } | null)?.code });
-    return NextResponse.json({ error: failure.error, category: failure.category }, { status: failure.status });
+    return NextResponse.json({ ...failure }, { status: failure.status });
   }
 }
 
@@ -86,6 +89,7 @@ export async function PATCH(request: Request, context: RouteContext) {
       { status: 400 },
     );
   } catch (error) {
+    if (error instanceof TripDocumentReadError) return NextResponse.json({ error: error.message, code: error.code }, { status: 503 });
     const message =
       error instanceof Error ? error.message : "Unable to update trip.";
     return NextResponse.json(
@@ -102,6 +106,7 @@ export async function DELETE(_request: Request, context: RouteContext) {
     await deleteTripForOwner(owner.id, tripId);
     return new NextResponse(null, { status: 204 });
   } catch (error) {
+    if (error instanceof TripDocumentReadError) return NextResponse.json({ error: error.message, code: error.code }, { status: 503 });
     const message =
       error instanceof Error ? error.message : "Unable to delete trip.";
     return NextResponse.json(

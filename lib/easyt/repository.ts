@@ -15,7 +15,8 @@ import {
   EasyTTripSaveConflictError,
   nextTripUpdatedAt,
 } from "./trip-continuity";
-import { EasyTTrip, isEasyTTrip } from "./trip";
+import type { EasyTTrip } from "./trip";
+import { requireReadableTripDocument, prepareTripDocumentForWrite } from "./trip-document.ts";
 import { normalizeLegacyGeneratedDayContext } from "./itinerary-generated-context.ts";
 import { normalizedLegEndpoints } from "./trip-persistence";
 import { resolveTripTransferJourneys } from "./multimodal-transfer-resolution.server";
@@ -336,7 +337,7 @@ export async function listTripsForOwner(ownerId: string): Promise<EasyTTrip[]> {
     where owner_id = ${ownerId} and deleted_at is null
     order by updated_at desc
   `) as TripDocumentRow[];
-  return rows.map((row) => row.document).filter(isEasyTTrip).map((trip) => normalizeLegacyGeneratedDayContext(reconcileLegacyTransportTrip(trip)));
+  return rows.map((row) => requireReadableTripDocument(row.document)).map((trip) => normalizeLegacyGeneratedDayContext(reconcileLegacyTransportTrip(trip)));
 }
 
 export async function getTripForOwner(
@@ -350,12 +351,13 @@ export async function getTripForOwner(
     where id = ${tripId} and owner_id = ${ownerId} and deleted_at is null
     limit 1
   `) as TripDocumentRow[];
-  return rows[0] && isEasyTTrip(rows[0].document) ? normalizeLegacyGeneratedDayContext(await resolveTripTransferJourneys(rows[0].document)) : null;
+  return rows[0] ? normalizeLegacyGeneratedDayContext(await resolveTripTransferJourneys(requireReadableTripDocument(rows[0].document))) : null;
 }
 
 export async function saveTripForOwner(
   ownerId: string,
   trip: EasyTTrip,
+  options: { sourceSchemaVersion: 1 | 2 } = { sourceSchemaVersion: trip.schemaVersion },
 ): Promise<EasyTTrip> {
   if (trip.ownerId !== ownerId) throw new Error("Trip ownership mismatch.");
   const sql = getEasyTDatabase();
@@ -364,15 +366,15 @@ export async function saveTripForOwner(
   // namespace them before persistence and update every relation atomically.
   // The incoming updatedAt remains the compare-and-swap token; only the
   // repository issues the next token after the update has won.
-  const normalizedTrip = normalizeLegacyGeneratedDayContext(trip);
+  const normalizedTrip = normalizeLegacyGeneratedDayContext(prepareTripDocumentForWrite(trip));
   const routedTrip = await resolveTripTransferJourneys(normalizedTrip);
   const document = canonicalTripForOwner(ownerId, routedTrip, nextTripUpdatedAt(trip.updatedAt));
   const documentJson = JSON.stringify(document);
   const transactionResults = await sql.transaction((tx) => [
     tx`select pg_advisory_xact_lock(hashtextextended(${document.id}, 0))`,
-    tx`select set_config('morrovia.save_document', ${documentJson}, true)`,
+    tx`select set_config('morrovia.save_document', ${documentJson}, true), set_config('morrovia.save_won', 'false', true)`,
     tx`
-      update easyt_trips
+      with saved as (update easyt_trips
       set title = ${document.title},
         start_date = ${document.startDate},
         end_date = ${document.endDate},
@@ -393,7 +395,10 @@ export async function saveTripForOwner(
         and owner_id = ${ownerId}
         and deleted_at is null
         and document ->> 'updatedAt' = ${trip.updatedAt}
-      returning document
+        and (schema_version < 2 or ${options.sourceSchemaVersion} >= 2)
+        and schema_version <= 2
+      returning document)
+      select document, set_config('morrovia.save_won', 'true', true) from saved
     `,
     tx`
       delete from easyt_recommendations
@@ -401,7 +406,8 @@ export async function saveTripForOwner(
         and exists (
           select 1 from easyt_trips
           where id = ${document.id} and owner_id = ${ownerId}
-            and deleted_at is null and document = current_setting('morrovia.save_document')::jsonb
+            and deleted_at is null and current_setting('morrovia.save_won', true) = 'true'
+            and document = current_setting('morrovia.save_document')::jsonb
         )
     `,
     tx`
@@ -410,7 +416,8 @@ export async function saveTripForOwner(
         and exists (
           select 1 from easyt_trips
           where id = ${document.id} and owner_id = ${ownerId}
-            and deleted_at is null and document = current_setting('morrovia.save_document')::jsonb
+            and deleted_at is null and current_setting('morrovia.save_won', true) = 'true'
+            and document = current_setting('morrovia.save_document')::jsonb
         )
     `,
     tx`
@@ -419,7 +426,8 @@ export async function saveTripForOwner(
         and exists (
           select 1 from easyt_trips
           where id = ${document.id} and owner_id = ${ownerId}
-            and deleted_at is null and document = current_setting('morrovia.save_document')::jsonb
+            and deleted_at is null and current_setting('morrovia.save_won', true) = 'true'
+            and document = current_setting('morrovia.save_document')::jsonb
         )
     `,
     tx`
@@ -428,7 +436,8 @@ export async function saveTripForOwner(
         and exists (
           select 1 from easyt_trips
           where id = ${document.id} and owner_id = ${ownerId}
-            and deleted_at is null and document = current_setting('morrovia.save_document')::jsonb
+            and deleted_at is null and current_setting('morrovia.save_won', true) = 'true'
+            and document = current_setting('morrovia.save_document')::jsonb
         )
     `,
     ...document.stops.map(
@@ -443,7 +452,8 @@ export async function saveTripForOwner(
         where exists (
           select 1 from easyt_trips
           where id = ${document.id} and owner_id = ${ownerId}
-            and deleted_at is null and document = current_setting('morrovia.save_document')::jsonb
+            and deleted_at is null and current_setting('morrovia.save_won', true) = 'true'
+            and document = current_setting('morrovia.save_document')::jsonb
         )
       `,
     ),
@@ -465,7 +475,8 @@ export async function saveTripForOwner(
         where exists (
           select 1 from easyt_trips
           where id = ${document.id} and owner_id = ${ownerId}
-            and deleted_at is null and document = current_setting('morrovia.save_document')::jsonb
+            and deleted_at is null and current_setting('morrovia.save_won', true) = 'true'
+            and document = current_setting('morrovia.save_document')::jsonb
         )
         `;
       },
@@ -483,7 +494,8 @@ export async function saveTripForOwner(
         where exists (
           select 1 from easyt_trips
           where id = ${document.id} and owner_id = ${ownerId}
-            and deleted_at is null and document = current_setting('morrovia.save_document')::jsonb
+            and deleted_at is null and current_setting('morrovia.save_won', true) = 'true'
+            and document = current_setting('morrovia.save_document')::jsonb
         )
       `,
     ),
@@ -498,14 +510,15 @@ export async function saveTripForOwner(
         where exists (
           select 1 from easyt_trips
           where id = ${document.id} and owner_id = ${ownerId}
-            and deleted_at is null and document = current_setting('morrovia.save_document')::jsonb
+            and deleted_at is null and current_setting('morrovia.save_won', true) = 'true'
+            and document = current_setting('morrovia.save_document')::jsonb
         )
       `,
     ),
   ]);
 
   const updated = (transactionResults[2] as TripDocumentRow[])[0]?.document;
-  if (isEasyTTrip(updated)) return updated;
+  if (updated !== undefined) return requireReadableTripDocument(updated);
 
   const rows = (await sql`
     select owner_id as "ownerId", deleted_at as "deletedAt", document
@@ -516,12 +529,12 @@ export async function saveTripForOwner(
   const existing = rows[0];
   if (!existing) throw new Error("Trip not found.");
   if (existing.ownerId !== ownerId) throw new Error("Trip ownership mismatch.");
-  if (!isEasyTTrip(existing.document)) throw new Error("Stored trip document is invalid.");
+  const existingTrip = requireReadableTripDocument(existing.document);
   throw new EasyTTripSaveConflictError(
     existing.deletedAt
       ? "This trip was removed from the cloud. This device did not recreate it."
       : "This trip changed on another device. This device did not replace it.",
-    existing.document,
+    existingTrip,
     existing.deletedAt ? "cloud-deleted" : "cloud-changed",
   );
 }
@@ -546,7 +559,7 @@ export async function promoteTripForOwner(
   }
 
   const sql = getEasyTDatabase();
-  const routedTrip = await resolveTripTransferJourneys(trip);
+  const routedTrip = await resolveTripTransferJourneys(prepareTripDocumentForWrite(trip));
   const document = canonicalTripForOwner(ownerId, routedTrip);
   const documentJson = JSON.stringify(document);
   const transactionResults = await sql.transaction((tx) => [
@@ -555,9 +568,9 @@ export async function promoteTripForOwner(
     tx`select pg_advisory_xact_lock(hashtextextended(${document.id}, 0))`,
     // Keep the candidate once in transaction-local state instead of repeating
     // a potentially large trip JSON parameter for every normalized child row.
-    tx`select set_config('morrovia.promotion_document', ${documentJson}, true)`,
+    tx`select set_config('morrovia.promotion_document', ${documentJson}, true), set_config('morrovia.promotion_won', 'false', true)`,
     tx`
-      insert into easyt_trips (
+      with inserted as (insert into easyt_trips (
         id, owner_id, title, start_date, end_date, travellers, status,
         pace, currency, brief, document, schema_version, created_at, updated_at, deleted_at
       ) values (
@@ -567,7 +580,8 @@ export async function promoteTripForOwner(
         ${document.createdAt}, ${document.updatedAt}, null
       )
       on conflict (id) do nothing
-      returning id
+      returning id)
+      select id, set_config('morrovia.promotion_won', 'true', true) from inserted
     `,
     tx`
       delete from easyt_recommendations
@@ -575,7 +589,8 @@ export async function promoteTripForOwner(
         and exists (
           select 1 from easyt_trips
           where id = ${document.id} and owner_id = ${ownerId}
-            and deleted_at is null and document = current_setting('morrovia.promotion_document')::jsonb
+            and deleted_at is null and current_setting('morrovia.promotion_won', true) = 'true'
+            and document = current_setting('morrovia.promotion_document')::jsonb
         )
     `,
     tx`
@@ -584,7 +599,8 @@ export async function promoteTripForOwner(
         and exists (
           select 1 from easyt_trips
           where id = ${document.id} and owner_id = ${ownerId}
-            and deleted_at is null and document = current_setting('morrovia.promotion_document')::jsonb
+            and deleted_at is null and current_setting('morrovia.promotion_won', true) = 'true'
+            and document = current_setting('morrovia.promotion_document')::jsonb
         )
     `,
     tx`
@@ -593,7 +609,8 @@ export async function promoteTripForOwner(
         and exists (
           select 1 from easyt_trips
           where id = ${document.id} and owner_id = ${ownerId}
-            and deleted_at is null and document = current_setting('morrovia.promotion_document')::jsonb
+            and deleted_at is null and current_setting('morrovia.promotion_won', true) = 'true'
+            and document = current_setting('morrovia.promotion_document')::jsonb
         )
     `,
     tx`
@@ -602,7 +619,8 @@ export async function promoteTripForOwner(
         and exists (
           select 1 from easyt_trips
           where id = ${document.id} and owner_id = ${ownerId}
-            and deleted_at is null and document = current_setting('morrovia.promotion_document')::jsonb
+            and deleted_at is null and current_setting('morrovia.promotion_won', true) = 'true'
+            and document = current_setting('morrovia.promotion_document')::jsonb
         )
     `,
     ...document.stops.map(
@@ -617,7 +635,8 @@ export async function promoteTripForOwner(
         where exists (
           select 1 from easyt_trips
           where id = ${document.id} and owner_id = ${ownerId}
-            and deleted_at is null and document = current_setting('morrovia.promotion_document')::jsonb
+            and deleted_at is null and current_setting('morrovia.promotion_won', true) = 'true'
+            and document = current_setting('morrovia.promotion_document')::jsonb
         )
       `,
     ),
@@ -639,7 +658,8 @@ export async function promoteTripForOwner(
         where exists (
           select 1 from easyt_trips
           where id = ${document.id} and owner_id = ${ownerId}
-            and deleted_at is null and document = current_setting('morrovia.promotion_document')::jsonb
+            and deleted_at is null and current_setting('morrovia.promotion_won', true) = 'true'
+            and document = current_setting('morrovia.promotion_document')::jsonb
         )
         `;
       },
@@ -657,7 +677,8 @@ export async function promoteTripForOwner(
         where exists (
           select 1 from easyt_trips
           where id = ${document.id} and owner_id = ${ownerId}
-            and deleted_at is null and document = current_setting('morrovia.promotion_document')::jsonb
+            and deleted_at is null and current_setting('morrovia.promotion_won', true) = 'true'
+            and document = current_setting('morrovia.promotion_document')::jsonb
         )
       `,
     ),
@@ -672,7 +693,8 @@ export async function promoteTripForOwner(
         where exists (
           select 1 from easyt_trips
           where id = ${document.id} and owner_id = ${ownerId}
-            and deleted_at is null and document = current_setting('morrovia.promotion_document')::jsonb
+            and deleted_at is null and current_setting('morrovia.promotion_won', true) = 'true'
+            and document = current_setting('morrovia.promotion_document')::jsonb
         )
       `,
     ),
@@ -695,13 +717,11 @@ export async function promoteTripForOwner(
   if (!stored || stored.owner_id !== ownerId) {
     throw new Error("Trip ownership mismatch.");
   }
-  if (!isEasyTTrip(stored.document)) {
-    throw new Error("The canonical trip document could not be read.");
-  }
-  if (inserted) return { trip: stored.document, outcome: "promoted" };
+  const storedTrip = requireReadableTripDocument(stored.document);
+  if (inserted) return { trip: storedTrip, outcome: "promoted" };
   return {
-    trip: stored.document,
-    ...decideExistingTripPromotion(trip, stored.document, {
+    trip: storedTrip,
+    ...decideExistingTripPromotion(trip, storedTrip, {
       exactMatch: stored.matches,
       cloudDeleted: Boolean(stored.deleted_at),
     }),
@@ -709,36 +729,17 @@ export async function promoteTripForOwner(
 }
 
 export async function archiveTripForOwner(ownerId: string, tripId: string) {
-  const sql = getEasyTDatabase();
-  const rows = (await sql`
-    update easyt_trips
-    set status = 'archived', updated_at = now(),
-      document = jsonb_set(
-        jsonb_set(
-          jsonb_set(document, '{archivedFromStatus}', to_jsonb(case when document ->> 'status' = 'planned' then 'planned' else 'draft' end), true),
-          '{status}', '"archived"'::jsonb, true
-        ),
-        '{updatedAt}', to_jsonb(now()::text), true
-      )
-    where id = ${tripId} and owner_id = ${ownerId} and deleted_at is null
-    returning document
-  `) as TripDocumentRow[];
-  return rows[0] && isEasyTTrip(rows[0].document) ? rows[0].document : null;
+  const trip = await getTripForOwner(ownerId, tripId);
+  if (!trip) return null;
+  return saveTripForOwner(ownerId, { ...trip, status: "archived",
+    archivedFromStatus: trip.status === "planned" ? "planned" : trip.archivedFromStatus ?? "draft" });
 }
 
 export async function restoreTripForOwner(ownerId: string, tripId: string) {
-  const sql = getEasyTDatabase();
-  const rows = (await sql`
-    update easyt_trips
-    set status = case when document ->> 'archivedFromStatus' = 'planned' then 'planned' else 'draft' end, updated_at = now(),
-      document = jsonb_set(
-        jsonb_set(document - 'archivedFromStatus', '{status}', to_jsonb(case when document ->> 'archivedFromStatus' = 'planned' then 'planned' else 'draft' end), true),
-        '{updatedAt}', to_jsonb(now()::text), true
-      )
-    where id = ${tripId} and owner_id = ${ownerId} and deleted_at is null
-    returning document
-  `) as TripDocumentRow[];
-  return rows[0] && isEasyTTrip(rows[0].document) ? rows[0].document : null;
+  const trip = await getTripForOwner(ownerId, tripId);
+  if (!trip) return null;
+  const { archivedFromStatus, ...document } = trip;
+  return saveTripForOwner(ownerId, { ...document, status: archivedFromStatus === "planned" ? "planned" : "draft" });
 }
 
 export async function duplicateTripForOwner(
@@ -900,10 +901,10 @@ export async function claimTripGift(
     await sql`update easyt_trip_gifts set status = 'expired' where id = ${gift.id}`;
     throw new Error("This invitation has expired.");
   }
-  if (!isEasyTTrip(gift.document)) throw new Error("The shared trip could not be read.");
+  const giftTrip = requireReadableTripDocument(gift.document);
 
   await ensureEasyTUser(recipient.id, recipient.email, recipient.name);
-  const trip = await copyTripForOwner(recipient.id, gift.document, gift.trip_title);
+  const trip = await copyTripForOwner(recipient.id, giftTrip, gift.trip_title);
   const sql = getEasyTDatabase();
   const updated = (await sql`
     update easyt_trip_gifts

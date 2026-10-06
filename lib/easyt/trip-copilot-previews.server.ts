@@ -6,7 +6,8 @@ import { getEasyTDatabase } from "./database";
 import type { ResolvedTripCopilotAction, TripCopilotPreviewCandidate } from "./trip-copilot-actions.ts";
 import type { TripCopilotPreviewRecord } from "./trip-copilot-apply.ts";
 import { tripCopilotMutationHash, tripCopilotStateHash } from "./trip-copilot-state.ts";
-import { isEasyTTrip, type EasyTTrip } from "./trip.ts";
+import type { EasyTTrip } from "./trip.ts";
+import { requireReadableTripDocument } from "./trip-document.ts";
 
 type PreviewRow = {
   id: string;
@@ -34,7 +35,7 @@ function recordFromRow(row: PreviewRow): TripCopilotPreviewRecord {
     expectedHash: row.expectedHash,
     status: row.status,
     expiresAt: row.expiresAt,
-    resultTrip: isEasyTTrip(row.resultDocument) ? row.resultDocument : null,
+    resultTrip: row.resultDocument == null ? null : requireReadableTripDocument(row.resultDocument),
   };
 }
 

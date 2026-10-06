@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 
 import { requireEasyTOwner } from "@/lib/easyt/owner";
 import { promoteTripForOwner } from "@/lib/easyt/repository";
-import { isEasyTTrip } from "@/lib/easyt/trip";
+import { readTripDocument, TripDocumentReadError } from "@/lib/easyt/trip-document";
 import { safeTripPersistenceFailure } from "@/lib/easyt/trip-persistence-error";
 
 export const dynamic = "force-dynamic";
@@ -13,8 +13,10 @@ export async function POST(request: Request, context: RouteContext) {
   try {
     const owner = await requireEasyTOwner();
     const { tripId } = await context.params;
-    const body: unknown = await request.json();
-    if (!isEasyTTrip(body) || body.id !== tripId) {
+    const decoded = readTripDocument(await request.json());
+    if (decoded.kind !== "readable") return NextResponse.json({ error: "Invalid or unsupported trip document.", category: "validation" }, { status: 400 });
+    const body = decoded.trip;
+    if (body.id !== tripId) {
       return NextResponse.json(
         { error: "Invalid EasyT trip document.", category: "validation" },
         { status: 400 },
@@ -42,6 +44,6 @@ export async function POST(request: Request, context: RouteContext) {
   } catch (error) {
     const failure = safeTripPersistenceFailure(error);
     console.error("Trip promotion failed.", { category: failure.category, errorName: error instanceof Error ? error.name : "UnknownError", errorCode: (error as { code?: unknown } | null)?.code });
-    return NextResponse.json({ error: failure.error, category: failure.category }, { status: failure.status });
+    return NextResponse.json({ ...failure }, { status: failure.status });
   }
 }

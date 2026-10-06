@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 
 import { requireEasyTOwner } from "@/lib/easyt/owner";
 import { listTripsForOwner, promoteTripForOwner, saveTripForOwner } from "@/lib/easyt/repository";
-import { isEasyTTrip } from "@/lib/easyt/trip";
+import { readTripDocument, TripDocumentReadError } from "@/lib/easyt/trip-document";
 import { EasyTTripSaveConflictError } from "@/lib/easyt/trip-continuity";
 import { safeTripPersistenceFailure } from "@/lib/easyt/trip-persistence-error";
 
@@ -13,6 +13,7 @@ export async function GET() {
     const owner = await requireEasyTOwner();
     return NextResponse.json({ trips: await listTripsForOwner(owner.id) });
   } catch (error) {
+    if (error instanceof TripDocumentReadError) return NextResponse.json({ error: error.message, code: error.code }, { status: 503 });
     const message = error instanceof Error ? error.message : "Unable to load trips.";
     return NextResponse.json({ error: message }, { status: message === "Unauthorized" ? 401 : 503 });
   }
@@ -21,8 +22,9 @@ export async function GET() {
 export async function POST(request: Request) {
   try {
     const owner = await requireEasyTOwner();
-    const body: unknown = await request.json();
-    if (!isEasyTTrip(body)) return NextResponse.json({ error: "Invalid EasyT trip document.", category: "validation" }, { status: 400 });
+    const decoded = readTripDocument(await request.json());
+    if (decoded.kind !== "readable") return NextResponse.json({ error: "Invalid or unsupported trip document.", category: "validation" }, { status: 400 });
+    const body = decoded.trip;
     // Compatibility for an already-open legacy client: local documents sent
     // to the old save URL still enter the same insert-only promotion boundary.
     if (!body.ownerId) {
@@ -32,7 +34,7 @@ export async function POST(request: Request) {
         : NextResponse.json({ trip: result.trip });
     }
     try {
-      return NextResponse.json({ trip: await saveTripForOwner(owner.id, body) });
+      return NextResponse.json({ trip: await saveTripForOwner(owner.id, body, { sourceSchemaVersion: decoded.sourceSchemaVersion }) });
     } catch (error) {
       // Old browser bundles used this collection route for both create and
       // update. A truly missing owned row may still enter the same insert-only
@@ -54,6 +56,6 @@ export async function POST(request: Request) {
     }
     const failure = safeTripPersistenceFailure(error);
     console.error("Trip collection save failed.", { category: failure.category, errorName: error instanceof Error ? error.name : "UnknownError", errorCode: (error as { code?: unknown } | null)?.code });
-    return NextResponse.json({ error: failure.error, category: failure.category }, { status: failure.status });
+    return NextResponse.json({ ...failure }, { status: failure.status });
   }
 }

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { resolveOptionalAffiliateConfiguration, warnOptionalAffiliateConfiguration } from "@/lib/easyt/affiliate-configuration";
 import { affiliatePartners, buildBookingReadiness } from "@/lib/easyt/booking-readiness";
-import { isEasyTTrip } from "@/lib/easyt/trip";
+import { readTripDocument } from "@/lib/easyt/trip-document";
 
 export const dynamic = "force-dynamic";
 
@@ -11,8 +11,9 @@ warnOptionalAffiliateConfiguration(optionalAffiliateConfiguration);
 export async function POST(request: Request) {
   try {
     const body = await request.json() as { trip?: unknown };
-    if (!isEasyTTrip(body.trip)) return NextResponse.json({ error: "A valid trip is required." }, { status: 400 });
-    return NextResponse.json({ actions: buildBookingReadiness(body.trip, {
+    const decoded = readTripDocument(body.trip);
+    if (decoded.kind !== "readable") return NextResponse.json({ error: "A valid trip is required." }, { status: 400 });
+    return NextResponse.json({ actions: buildBookingReadiness(decoded.trip, {
       activitiesUrl: affiliatePartners.viator.activitiesUrl,
       activitiesProvider: affiliatePartners.viator.provider,
       carHireUrl: optionalAffiliateConfiguration.urls.carHireUrl,
