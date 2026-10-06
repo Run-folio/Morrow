@@ -2,10 +2,16 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   captureJourneyBrief,
+  captureJourneyBriefFromSemanticIntent,
   captureJourneyBriefWithProvider,
 } from "../lib/easyt/journey-capture.ts";
 import type { PlaceIntelligenceProvider } from "../lib/easyt/place-intelligence.ts";
 import { createHomeTripDraft, handoffRouteStops, routableHandoffMentions } from "../lib/easyt/home-trip-handoff.ts";
+import {
+  SEMANTIC_TRIP_INTENT_RAW_PROMPT_VERSION,
+  SEMANTIC_TRIP_INTENT_SCHEMA_VERSION,
+  type SemanticTripIntent,
+} from "../lib/easyt/semantic-trip-intent.ts";
 import { EXPECTED_MIXED_GEOGRAPHY, MIXED_CENTRAL_AMERICA_PROMPT } from "./fixtures/prebeta-place-trip-state.ts";
 
 const CENTRAL_PROMPT = "3 weeks through Patagonia, Tierra del Fuego and Easter Island. We like nature, prefer a relaxed pace and do not want to drive.";
@@ -17,6 +23,43 @@ test("fly-in and home-from endpoints preserve the listed final overnight as one 
   assert.equal(capture.journeyEnd?.mode, "explicit");
   assert.equal(capture.journeyEnd?.mode === "explicit" ? capture.journeyEnd.place.name : "", "Osaka");
   assert.deepEqual(draftStops.map((stop) => stop.name), ["Tokyo", "Kanazawa", "Kyoto", "Hiroshima", "Osaka"]);
+});
+
+test("hosted semantic capture keeps the early Osaka endpoint separate from the later overnight stop", async () => {
+  const prompt = "14 nights, fly into Tokyo and home from Osaka: Tokyo 4, Kanazawa 2, Kyoto 4, Hiroshima 2, Osaka 2.";
+  const intent: SemanticTripIntent = {
+    schemaVersion: SEMANTIC_TRIP_INTENT_SCHEMA_VERSION,
+    rawPromptVersion: SEMANTIC_TRIP_INTENT_RAW_PROMPT_VERSION,
+    origin: { sourceText: null, certainty: null },
+    journeyEnd: { sourceText: "Osaka", interpretedText: "Osaka", mode: "explicit_place", certainty: "explicit" },
+    duration: { sourceText: "14 nights", value: 14, unit: "nights" },
+    explicitDateTexts: [],
+    destinationCandidates: ["Tokyo", "Osaka", "Kanazawa", "Kyoto", "Hiroshima"].map((sourceText) => ({
+      sourceText,
+      interpretedText: null,
+      role: "route-stop",
+      certainty: "explicit",
+    })),
+    pointsOfInterest: [],
+    transport: {
+      departure: { sourceText: null, mode: null },
+      interStop: { sourceText: null, modes: [] },
+      avoid: [],
+    },
+    pace: { sourceText: null, value: null },
+    interests: [],
+    constraints: [],
+    ambiguities: [],
+    unresolvedMeaningfulText: [],
+  };
+
+  const capture = await captureJourneyBriefFromSemanticIntent(prompt, intent);
+
+  assert.equal(capture.journeyEnd.mode, "explicit");
+  assert.equal(capture.journeyEnd.mode === "explicit" ? capture.journeyEnd.place.name : "", "Osaka");
+  assert.deepEqual(handoffRouteStops(capture.mentions, capture.journeyEnd).map((stop) => stop.name), [
+    "Tokyo", "Kanazawa", "Kyoto", "Hiroshima", "Osaka",
+  ]);
 });
 
 test("leading planning imperatives frame intent instead of becoming a destination", () => {

@@ -319,6 +319,13 @@ function semanticPlaceMentions(
     .filter((input, index, all) => all.findIndex((candidate) => mentionSourceKey(candidate.sourceText) === mentionSourceKey(input.sourceText)
       && semanticJourneyRole(candidate.role) === semanticJourneyRole(input.role)) === index)
     .sort((left, right) => {
+      const deterministicOrderFor = (input: ExplicitPlaceMention) => deterministicMentions.find((mention) => (
+        semanticJourneyRole(mention.role) === semanticJourneyRole(input.role)
+        && [mention.sourceText, ...mention.sourceTexts].some((sourceText) => sameRawPlaceSpan(sourceText, input.sourceText))
+      ))?.order;
+      const leftOrder = deterministicOrderFor(left);
+      const rightOrder = deterministicOrderFor(right);
+      if (leftOrder !== undefined && rightOrder !== undefined && leftOrder !== rightOrder) return leftOrder - rightOrder;
       const raw = rawBrief.toLocaleLowerCase();
       const position = (input: { sourceText: string; role: PlaceMentionRole }) => ["fixed_end", "excluded"].includes(input.role)
         ? raw.lastIndexOf(input.sourceText.toLocaleLowerCase())
