@@ -203,3 +203,16 @@ test("legacy_structured_unresolved_intent_keeps_stable_id_and_requested_nights",
   assert.deepEqual(migrated.stops, source.stops);
   assert.equal(migrated.brief.intent.route.orderAuthority, "legacy_preserved");
 });
+
+test('first_then_finally_and_finish_sequences_protect_authoritative_order',()=>{
+ for(const prompt of ['First Tokyo, then Kyoto, finally Hiroshima','First Tokyo, then Kyoto, finish in Hiroshima']){const {draft,stops}=intake(['Tokyo','Kyoto','Hiroshima'],[4,3,2],-1,prompt);assert.equal(routeIntentFromHandoff(draft,stops).orderAuthority,'explicit');}
+});
+test('replaced_area_bases_keep_parent_and_budget_without_guessing_new_bindings',()=>{
+ const {draft,stops}=intake(['Paris','Lyon'],[3,4]);const route=routeIntentFromHandoff(draft,stops);route.destinations=[{id:'france',sourceText:'France',kind:'planning_area',selectedPlace:{name:'France'},resolution:'resolved',requestedNights:9,routeMembership:'required',stopIds:stops.map(stop=>stop.id)}];
+ const replaced=stops.map(stop=>({...stop,id:'new-'+stop.id}));const next=routeIntentFromHandoff({routeIntent:route},replaced);const parent=next.destinations.find(intent=>intent.id==='france');assert.ok(parent);assert.equal(parent.requestedNights,9);assert.equal(parent.resolution,'needs_base');assert.deepEqual(parent.stopIds,[]);
+});
+
+test('ordinal_or_finish_order_hints_require_review_when_not_fully_proven',()=>{
+ const {draft,stops}=intake(['Tokyo','Kyoto'],[4,3],-1,'First Tokyo, Kyoto second, finish in Osaka');const trip=tripFor(draft,stops);
+ assert.ok(trip.brief.intent.route.orderAuthority==='explicit'||routeOrderReviewIssue(trip));
+});

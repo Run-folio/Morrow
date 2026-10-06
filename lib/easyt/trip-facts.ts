@@ -88,9 +88,9 @@ export function deriveItineraryCoverage(
         ? "complete"
         : "partial";
   const onlyOutlinedDays = plannedDays > 0 && trip.planItems.every((item) => item.type === "open");
-  const label = projectionPending ? "Saved itinerary needs route reconciliation" : onlyOutlinedDays
+  const label = onlyOutlinedDays
     ? `${plannedDays} ${plannedDays === 1 ? "day" : "days"} outlined`
-    : expectedDays === null
+    : projectionPending ? "Saved itinerary needs route reconciliation" : expectedDays === null
     ? dates.state === "invalid"
       ? `${plannedDays} planned ${plannedDays === 1 ? "day" : "days"}; trip dates need review`
       : `${plannedDays} planned ${plannedDays === 1 ? "day" : "days"}; trip dates to confirm`

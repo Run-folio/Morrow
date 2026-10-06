@@ -228,4 +228,3 @@ test("Builder stop removal keeps confirmed bookings and authored content unassig
   assert.ok(after.brief.cascadeStatus?.conflicts.length);
   assert.deepEqual(after.brief.checklist, source.brief.checklist);
 });
-

@@ -398,7 +398,8 @@ export async function saveTripForOwner(
         and (schema_version < 2 or ${options.sourceSchemaVersion} >= 2)
         and schema_version <= 2
       returning document)
-      select document, set_config('morrovia.save_won', 'true', true) from saved
+      select document, set_config('morrovia.save_won', 'true', true),
+        set_config('morrovia.save_document', document::text, true) from saved
     `,
     tx`
       delete from easyt_recommendations

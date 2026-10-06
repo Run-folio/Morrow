@@ -24,7 +24,7 @@ if(process.argv[2]==='repository'){
  state.queries=[];
  await assert.rejects(repo.saveTripForOwner('owner-a',legacy,{sourceSchemaVersion:1}));
  const update=state.queries.find(query=>query.text.includes('with saved as'));
- assert.ok(update?.text.includes('schema_version < 2'));assert.ok(update?.values.includes(1));
+ assert.ok(update?.text.includes("set_config('morrovia.save_document', document::text, true)"));assert.ok(update?.text.includes('schema_version < 2'));assert.ok(update?.values.includes(1));
  assert.ok(state.queries.filter(query=>query.text.includes('easyt_stops')||query.text.includes('easyt_legs')).every(query=>query.text.includes('save_won')));
  const previews=await import('../../lib/easyt/trip-copilot-previews.server.ts');
  state.rows=[[{resultDocument:legacy}]];assert.equal((await previews.getTripCopilotPreviewRecord('owner-a',legacy.id,'preview'))?.resultTrip?.schemaVersion,2);
@@ -38,6 +38,7 @@ if(process.argv[2]==='repository'){
   state.calls=[];const response=await handler(new Request('http://local/api',{method:'POST',body:JSON.stringify(legacy)}));
   assert.equal(response.status,200);assert.equal((state.calls[0][1] as typeof legacy).schemaVersion,2);
   assert.deepEqual(state.calls[0][2],{sourceSchemaVersion:1});
+  assert.equal((await handler(new Request('http://local/api',{method:'POST',body:'{broken'}))).status,400);
   const future=await handler(new Request('http://local/api',{method:'POST',body:JSON.stringify({...legacy,schemaVersion:3})}));assert.equal(future.status,400);
  }
  state.calls=[];const response=await promote.POST(new Request('http://local/api',{method:'POST',body:JSON.stringify({...legacy,ownerId:null})}),context);

@@ -22,7 +22,7 @@ export async function GET() {
 export async function POST(request: Request) {
   try {
     const owner = await requireEasyTOwner();
-    const decoded = readTripDocument(await request.json());
+    const decoded = readTripDocument(await request.json().catch(() => null));
     if (decoded.kind !== "readable") return NextResponse.json({ error: "Invalid or unsupported trip document.", category: "validation" }, { status: 400 });
     const body = decoded.trip;
     // Compatibility for an already-open legacy client: local documents sent

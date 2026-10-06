@@ -165,3 +165,52 @@ test("v2_intent_is_not_replaced_by_default", () => {
   assert.deepEqual((intent as unknown as { route: unknown }).route, (trip.brief.intent as unknown as { route: unknown }).route);
   assert.equal("journeyEnd" in intent, false);
 });
+
+test('malformed_legacy_constraint_owner_is_rejected_without_losing_source',()=>{
+ const source=legacyRouteFixture();const value={...source,brief:{...source.brief,intent:{...source.brief.intent,hardConstraints:{...source.brief.intent!.hardConstraints,fixedCommitments:'broken'}}}};
+ const raw=JSON.stringify(value);assert.equal(readTripDocument(value).kind,'invalid');assert.equal(JSON.stringify(value),raw);
+});
+test('malformed_optional_constraint_provenance_is_retained_and_warned_without_throwing',async()=>{
+ const {captureJourneyBrief}=await import('../lib/easyt/journey-capture.ts');
+ const source=legacyRouteFixture();source.brief.structuredBrief=captureJourneyBrief('Tokyo and Kyoto').structuredBrief;
+ const value={...source,brief:{...source.brief,structuredBrief:{...source.brief.structuredBrief,hardConstraints:[{type:'fixed-commitment',value:'Tokyo stay',place:{name:'Tokyo'},fixedNights:2}]}}};
+ const raw=JSON.stringify(value);const result=readTripDocument(value);assert.equal(result.kind,'readable');assert.equal(JSON.stringify(value),raw);
+ if(result.kind==='readable'){assert.ok(result.issues.some(issue=>issue.path==='brief.structuredBrief'));assert.deepEqual(requireReadableTripDocument(result.trip),result.trip);}
+});
+test('legacy_namespace_stripping_cannot_merge_distinct_occurrence_intents',()=>{
+ const source=legacyRouteFixture();source.stops=[{...source.stops[0],id:'tokyo',order:0},{...source.stops[0],id:'batch14-trip-stop-tokyo',order:1}];
+ const trip=requireReadableTripDocument(source);assert.equal(new Set(trip.brief.intent.route.destinations.map(intent=>intent.id)).size,2);assert.deepEqual(requireReadableTripDocument(trip),trip);
+});
+test('captured_only_unresolved_source_nights_survive_migration',()=>{
+ const source=legacyRouteFixture();source.brief.capturedIntent={originalBrief:'Tokyo 4 nights, Kyoto 3 nights, Mostar 2 nights',regions:[],routeHints:[],mentions:[{sourceText:'Mostar',canonicalName:'Mostar',placeType:'city',role:'stop',order:2,status:'unresolved'}]};
+ const trip=requireReadableTripDocument(source);assert.equal(trip.brief.intent.route.destinations.find(intent=>intent.sourceText==='Mostar')?.requestedNights,2);
+});
+
+test('capture_only_repeated_unresolved_occurrences_keep_separate_night_requests',()=>{
+ const source=legacyRouteFixture();source.brief.capturedIntent={originalBrief:'Mostar 2 nights then Tokyo then Mostar 3 nights',regions:[],routeHints:[],mentions:[{sourceText:'Mostar',canonicalName:'Mostar',placeType:'city',role:'stop',order:0,status:'unresolved'},{sourceText:'Tokyo',canonicalName:'Tokyo',placeType:'city',role:'stop',order:1,status:'resolved'},{sourceText:'Mostar',canonicalName:'Mostar',placeType:'city',role:'stop',order:2,status:'unresolved'}]};
+ const trip=requireReadableTripDocument(source);const held=trip.brief.intent.route.destinations.filter(intent=>intent.sourceText==='Mostar');assert.deepEqual(held.map(intent=>intent.requestedNights),[2,3]);assert.equal(new Set(held.map(intent=>intent.id)).size,2);
+});
+
+test('malformed_optional_mention_fields_are_skipped_for_inference_and_source_survives',async()=>{
+ const {captureJourneyBrief}=await import('../lib/easyt/journey-capture.ts');for(const patch of [{sourceText:undefined},{sourceText:42},{order:undefined},{parentCountries:[42]},{coordinates:['bad',20]}]){
+ const source=legacyRouteFixture();const structured=captureJourneyBrief('Tokyo and Kyoto').structuredBrief;Object.assign(structured.placeMentions![0],patch);const value={...source,brief:{...source.brief,structuredBrief:structured}};const raw=JSON.stringify(value);
+ const result=readTripDocument(value);assert.equal(result.kind,'readable');assert.equal(JSON.stringify(value),raw);if(result.kind==='readable'){assert.ok(result.issues.some(issue=>issue.path==='brief.structuredBrief'));assert.deepEqual(requireReadableTripDocument(result.trip),result.trip);}
+ }
+});
+
+test('malformed_optional_captured_only_source_is_retained_without_throwing',()=>{
+ const source=legacyRouteFixture();const value={...source,brief:{...source.brief,capturedIntent:{originalBrief:'Mostar 2 nights',regions:[],routeHints:[],mentions:[{sourceText:42,canonicalName:'Mostar',order:0,role:'stop',status:'unresolved',placeType:'city'}]}}};
+ const result=readTripDocument(value);assert.equal(result.kind,'readable');if(result.kind==='readable'){assert.ok(result.issues.some(issue=>issue.path==='brief.capturedIntent'));assert.deepEqual(result.trip.brief.capturedIntent,value.brief.capturedIntent);assert.deepEqual(requireReadableTripDocument(result.trip),result.trip);}
+});
+
+test('mixed_namespace_occurrences_survive_owner_canonicalization_and_duplicate',async()=>{
+ const {canonicalTripForOwner,duplicateTripDocument}=await import('../lib/easyt/trip-promotion.ts');const source=legacyRouteFixture();source.stops.push({...source.stops[0],id:'batch14-trip-stop-tokyo',order:3,nights:2});
+ const trip=requireReadableTripDocument(source);const canonical=canonicalTripForOwner('owner-a',trip);assert.equal(new Set(canonical.stops.map(stop=>stop.id)).size,4);assert.deepEqual(requireReadableTripDocument(canonical),canonical);assert.deepEqual(canonicalTripForOwner('owner-a',canonical),canonical);
+ let i=0;const copied=duplicateTripDocument(canonical,{id:'copy-collision',now:canonical.updatedAt,nextId:()=>String(++i)});assert.equal(new Set(copied.stops.map(stop=>stop.id)).size,4);assert.equal(requireReadableTripDocument(copied).brief.intent.route.destinations.length,4);
+});
+
+test('owner_collision_mapping_is_stable_across_authoritative_route_permutations',async()=>{
+ const {canonicalTripForOwner}=await import('../lib/easyt/trip-promotion.ts');const source=legacyRouteFixture();const ids=['tokyo','batch14-trip-stop-tokyo','batch14-trip-stop-occurrence-tokyo','tokyo-1','batch14-trip-stop-tokyo-1'];source.stops=ids.map((id,order)=>({...source.stops[0],id,name:id,order}));
+ const forward=canonicalTripForOwner('owner-a',source);const reverse=canonicalTripForOwner('owner-a',{...source,stops:[...source.stops].reverse().map((stop,order)=>({...stop,order}))});
+ const mappings=(trip:typeof source)=>Object.fromEntries([...trip.stops].sort((a,b)=>a.name.localeCompare(b.name)).map(stop=>[stop.name,stop.id]));assert.deepEqual(mappings(forward),mappings(reverse));assert.deepEqual(reverse.stops.map(stop=>stop.name),ids.toReversed());
+});

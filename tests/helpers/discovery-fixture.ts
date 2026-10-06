@@ -25,7 +25,7 @@ export function applyDiscoveryAddSideEffects(trip: import('../../lib/easyt/trip.
   if (!stop) {
     if (!coordinates) throw new Error('Fixture must provide Add geocode coordinates');
     stop = { ...trip.stops[0]!, id: choice.id, name: choice.name, country: choice.suggestion.country,
-      canonicalPlaceId: choice.id, longitude: coordinates[0], latitude: coordinates[1], nights: 1 };
+      order: trip.stops.length, canonicalPlaceId: choice.id, longitude: coordinates[0], latitude: coordinates[1], nights: 1 };
     trip.stops.push(stop);
   }
   const selection: import('../../lib/easyt/place-intelligence.ts').PlaceSelection = {

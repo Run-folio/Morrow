@@ -53,6 +53,8 @@ export type TripRecoveryRecord = {
   conflictReason?: TripRecoveryConflictReason;
   writeId: string;
   savedAt: string;
+  /** Exact retained legacy source present when this immutable write began. */
+  legacySourceRaw?: string;
 };
 
 export type TripRecoveryHandle = Pick<TripRecoveryRecord, "ownerId" | "tripId" | "writeId">;
@@ -774,6 +776,8 @@ function writeTripRecoveryToStorage(
     writeId,
     savedAt: nextRecoverySavedAt(existing, options.now),
   };
+  const legacy = migrateLegacyTripFromStorage(storage, ownerId);
+  if (legacy?.id === trip.id) record.legacySourceRaw = safeGet(storage, EASYT_ACTIVE_TRIP_KEY) ?? undefined;
   // Each write has an immutable key. An ACK or status update can therefore
   // touch only the exact write it was given, even if another tab writes in the
   // middle of the operation.
@@ -861,6 +865,13 @@ export function cacheCanonicalTripWithRecoveryToStorage(
   const recoveryResolved = stored && currentRecovery && (acknowledgedRecovery || redundantRecovery)
     ? resolveTripRecoveryInStorage(storage, currentRecovery)
     : false;
+  // Only the exact successful write may acknowledge the legacy source it
+  // observed. Keep its bytes, and never hide a later old-client edit.
+  if (stored && acknowledgedRecovery && recoveryRecord?.legacySourceRaw
+    && safeGet(storage, EASYT_ACTIVE_TRIP_KEY) === recoveryRecord.legacySourceRaw) {
+    const sourceOwnerId = (parseStored(recoveryRecord.legacySourceRaw) as { ownerId?: unknown } | null)?.ownerId;
+    safeSet(storage, `${EASYT_ACTIVE_TRIP_KEY}:acknowledged`, JSON.stringify({ ownerId: trip.ownerId, sourceOwnerId, tripId: trip.id, source: recoveryRecord.legacySourceRaw }));
+  }
   return { stored, recoveryResolved };
 }
 
@@ -1011,10 +1022,16 @@ export function clearCurrentTripInStorage(storage: EasyTBrowserStorage, ownerId:
 
 /** Retain the legacy bytes; reading never creates or acknowledges a write. */
 function migrateLegacyTripFromStorage(storage: EasyTBrowserStorage, ownerId: string | null) {
-  const value = parseStored(safeGet(storage, EASYT_ACTIVE_TRIP_KEY));
+  const raw = safeGet(storage, EASYT_ACTIVE_TRIP_KEY);
+  const value = parseStored(raw);
   if (!value || typeof value !== "object") return null;
   const sourceOwner = (value as { ownerId?: unknown }).ownerId;
   if (sourceOwner && sourceOwner !== ownerId) return null;
+  const acknowledgement = parseStored(safeGet(storage, `${EASYT_ACTIVE_TRIP_KEY}:acknowledged`)) as { ownerId?: unknown; sourceOwnerId?: unknown; tripId?: unknown; source?: unknown } | null;
+  // A promoted guest source has been consumed by its acknowledged owner;
+  // it must not reappear as a guest draft for the next signed-in account.
+  if (acknowledgement && (acknowledgement.ownerId === ownerId || acknowledgement.sourceOwnerId === null)
+    && acknowledgement.tripId === (value as { id?: unknown }).id && acknowledgement.source === raw) return null;
   return requireReadableTripDocument(value);
 }
 
@@ -1028,8 +1045,7 @@ export function loadCurrentTripRecoveryFromStorage(
   storage: EasyTBrowserStorage,
   ownerId: string | null,
 ) {
-  // Run the copy-first v1 migration before a newer clean-cache pointer can
-  // hide the only pending document left by an earlier release.
+  // Preserve an unacknowledged legacy source without writing during reads.
   migrateLegacyTripFromStorage(storage, ownerId);
   const currentId = loadCurrentTripIdFromStorage(storage, ownerId);
   const current = currentId ? loadTripRecoveryFromStorage(storage, currentId, ownerId) : null;
@@ -1055,8 +1071,8 @@ export function loadLocalTripFromStorage(
   const legacy = migrateLegacyTripFromStorage(storage, ownerId);
   const recovery = loadTripRecoveryFromStorage(storage, tripId, ownerId);
   if (recovery) return recovery.trip;
-  // A failed copy-first migration remains readable, but never shadows a newer
-  // owner-scoped v2 recovery for the same document.
+  // Unacknowledged legacy input remains recovery; an exact save ACK allows
+  // the canonical cache to become authoritative without deleting its source.
   if (legacy?.id === tripId && (legacy.ownerId === ownerId || legacy.ownerId === null)) {
     return legacy;
   }
@@ -1068,8 +1084,7 @@ export function loadLocalTripFromStorage(
 
 export function loadActiveTripFromStorage(storage: EasyTBrowserStorage, ownerId: string | null) {
   const legacy = migrateLegacyTripFromStorage(storage, ownerId);
-  // If quota or blocked storage prevented the copy, keep the v1 recovery
-  // visible instead of allowing a newer clean pointer to shadow it.
+  // Keep unacknowledged legacy input visible until its exact save succeeds.
   if (legacy && safeGet(storage, EASYT_ACTIVE_TRIP_KEY)) {
     const scopedOwner = legacy.ownerId ?? ownerId;
     const newerRecovery = loadTripRecoveryFromStorage(storage, legacy.id, scopedOwner);

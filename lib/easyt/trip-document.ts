@@ -34,6 +34,13 @@ function place(value: unknown): value is JourneyEndpointPlace {
 function end(value: unknown): value is JourneyEndSelection {
   return object(value) && (["unknown", "same_as_start"].includes(String(value.mode)) || (value.mode === "explicit" && place(value.place)));
 }
+function validIntentCollections(value: unknown): boolean {
+  if (!object(value) || !object(value.timing) || !Number.isFinite(value.timing.durationDays)
+    || !object(value.hardConstraints) || !strings(value.hardConstraints.mustSeeStopIds) || !strings(value.hardConstraints.optionalStopIds)
+    || !Array.isArray(value.hardConstraints.fixedCommitments) || value.hardConstraints.fixedCommitments.some(commitment => !object(commitment) || typeof commitment.id !== "string" || typeof commitment.label !== "string")
+    || !object(value.preferences) || !strings(value.preferences.interests) || !strings(value.preferences.dislikes) || !strings(value.preferences.transportModes)) return false;
+  return true;
+}
 
 function routeIssues(value: unknown, trip: EasyTTrip): TripDocumentIssue[] {
   const invalid = (path: string): TripDocumentIssue[] => [{ code: "invalid_route_intent", path, severity: "blocking" }];
@@ -91,12 +98,28 @@ function optionalIssues(trip: EasyTTrip): TripDocumentIssue[] {
   const issues: TripDocumentIssue[] = [];
   const structured = trip.brief.structuredBrief;
   if (structured && (!Array.isArray(structured.destinations) || !Array.isArray(structured.hardConstraints)
-    || !Array.isArray(structured.interests) || !object(structured.source))) {
+    || !Array.isArray(structured.interests) || !object(structured.source)
+    || (structured.source.rawPrompt !== undefined && typeof structured.source.rawPrompt !== "string")
+    || (structured.source.inputs !== undefined && !strings(structured.source.inputs))
+    || structured.destinations.some(destination => !object(destination) || typeof destination.name !== "string")
+    || structured.hardConstraints.some(constraint => !object(constraint) || typeof constraint.type !== "string"
+      || (constraint.type === "fixed-commitment" && (!object(constraint.provenance) || typeof constraint.provenance.kind !== "string"
+        || (constraint.place !== undefined && !place(constraint.place)))))
+    || (structured.placeSelections !== undefined && (!Array.isArray(structured.placeSelections) || structured.placeSelections.some(selection => !object(selection) || typeof selection.mentionId !== "string")))
+    || (structured.removedPlaceMentionIds !== undefined && !strings(structured.removedPlaceMentionIds))
+    || (structured.placeMentions !== undefined && (!Array.isArray(structured.placeMentions) || structured.placeMentions.some(mention => !object(mention) || typeof mention.mentionId !== "string"
+      || typeof mention.canonicalName !== "string" || typeof mention.sourceText !== "string" || !Number.isInteger(mention.order) || !strings(mention.parentCountries)
+      || !place({ name: mention.canonicalName, canonicalPlaceId: mention.canonicalPlaceId, coordinates: mention.coordinates })))))) {
     issues.push({ code: "malformed_optional_metadata", path: "brief.structuredBrief", severity: "warning" });
+  }
+  const captured = trip.brief.capturedIntent;
+  if (captured && (typeof captured.originalBrief !== "string" || !strings(captured.regions) || !strings(captured.routeHints) || !Array.isArray(captured.mentions)
+    || captured.mentions.some(mention => !object(mention) || typeof mention.sourceText !== "string" || typeof mention.canonicalName !== "string" || !Number.isInteger(mention.order)))) {
+    issues.push({ code: "malformed_optional_metadata", path: "brief.capturedIntent", severity: "warning" });
   }
   const commitments = trip.brief.intent?.hardConstraints?.fixedCommitments;
   if (Array.isArray(commitments)) for (const commitment of commitments) {
-    if (commitment?.stopId || !commitment?.place?.name) continue;
+    if (commitment?.stopId || typeof commitment?.place?.name !== "string") continue;
     const matching = trip.stops.filter(stop => commitment.place?.canonicalPlaceId
       ? stop.canonicalPlaceId === commitment.place.canonicalPlaceId
       : stop.name.toLocaleLowerCase() === commitment.place!.name.toLocaleLowerCase());
@@ -112,17 +135,25 @@ export function readTripDocument(value: unknown): TripDocumentReadResult {
   if (![1, 2].includes(Number(value.schemaVersion)) || typeof value.schemaVersion !== "number") return invalid("schemaVersion");
   if (typeof value.id !== "string" || !value.id || typeof value.startDate !== "string" || typeof value.endDate !== "string"
     || !(value.ownerId === null || typeof value.ownerId === "string") || !object(value.brief)
-    || !Array.isArray(value.stops) || !Array.isArray(value.planItems)) return invalid("document");
+    || typeof value.title !== "string" || !["draft", "planned", "archived"].includes(String(value.status))
+    || typeof value.travellers !== "number" || !Number.isInteger(value.travellers) || value.travellers <= 0 || typeof value.currency !== "string"
+    || typeof value.brief.origin !== "string" || typeof value.brief.mustDo !== "string"
+    || !Array.isArray(value.stops) || !Array.isArray(value.planItems) || !Array.isArray(value.legs) || !Array.isArray(value.recommendations)) return invalid("document");
   const stopIds = new Set<string>();
-  for (const stop of value.stops) {
-    if (!object(stop) || typeof stop.id !== "string" || !stop.id || stopIds.has(stop.id) || typeof stop.name !== "string") return invalid("stops");
+  for (const [index, stop] of value.stops.entries()) {
+    if (!object(stop) || typeof stop.id !== "string" || !stop.id || stopIds.has(stop.id) || typeof stop.name !== "string" || typeof stop.country !== "string" || (!Number.isInteger(stop.order) || Number(stop.order) < 0 || (index > 0 && Number(stop.order) <= Number(value.stops[index - 1]?.order)))
+      || !(stop.nights == null || (typeof stop.nights === "number" && Number.isInteger(stop.nights) && stop.nights >= 0))) return invalid("stops");
     stopIds.add(stop.id);
   }
+  if (value.legs.some(leg => !object(leg) || typeof leg.id !== "string" || typeof leg.fromStopId !== "string" || typeof leg.toStopId !== "string" || !object(leg.routeMetadata))) return invalid("legs");
+  if (value.planItems.some(item => !object(item) || typeof item.id !== "string" || typeof item.stopId !== "string" || !Number.isInteger(item.dayNumber) || typeof item.date !== "string" || typeof item.title !== "string" || !strings(item.notes))) return invalid("planItems");
   const sourceSchemaVersion = value.schemaVersion as 1 | 2;
   const trip = structuredClone(value) as unknown as EasyTTrip;
   const issues = optionalIssues(trip);
   if (sourceSchemaVersion === 2) {
     if (trip.brief.intent?.version !== 2) return invalid("brief.intent.version");
+    const intentValue = trip.brief.intent;
+    if (!validIntentCollections(intentValue)) return invalid("brief.intent");
     const invalidRoute = routeIssues(trip.brief.intent.route, trip);
     if (invalidRoute.length) return { kind: "invalid", issues: invalidRoute };
     const { journeyEnd: _legacy, ...intent } = trip.brief.intent;
@@ -130,6 +161,7 @@ export function readTripDocument(value: unknown): TripDocumentReadResult {
       trip: projectCanonicalRouteEndpoints({ ...trip, brief: { ...trip.brief, intent } } as CanonicalEasyTTrip) };
   }
   const saved = object(trip.brief.intent) ? trip.brief.intent : undefined;
+  if (saved && [saved.timing, saved.hardConstraints, saved.preferences].some(value => value !== undefined && !object(value))) return invalid("brief.intent");
   const durationDays = Math.round((Date.parse(`${trip.endDate}T00:00:00Z`) - Date.parse(`${trip.startDate}T00:00:00Z`)) / 86_400_000) + 1;
   const fallback = defaultTripIntent({ travellers: trip.travellers, stopIds: trip.stops.map(stop => stop.id), budgetSensitivity: trip.brief.budgetBand,
     ...(Number.isFinite(durationDays) && durationDays > 0 ? { durationDays } : {}) });
@@ -138,13 +170,19 @@ export function readTripDocument(value: unknown): TripDocumentReadResult {
     hardConstraints: { ...fallback.hardConstraints, ...(object(saved?.hardConstraints) ? saved.hardConstraints : {}) },
     preferences: { ...fallback.preferences, ...(object(saved?.preferences) ? saved.preferences : {}) },
   };
+  // Required traveller constraints cannot be replaced with invented defaults.
+  // Reject corruption while leaving the original recovery bytes untouched.
+  if (!validIntentCollections(intent)) return invalid("brief.intent");
   // Malformed optional endpoint evidence is retained in the source, never guessed as return.
   if (trip.brief.journeyEnd !== undefined && !end(trip.brief.journeyEnd)) {
     issues.push({ code: "malformed_optional_metadata", path: "brief.journeyEnd", severity: "warning" });
     trip.brief.journeyEnd = { mode: "unknown" };
   }
   if (intent.journeyEnd !== undefined && !end(intent.journeyEnd)) intent.journeyEnd = { mode: "unknown" };
-  const route = routeIntentFromLegacyTrip({ ...trip, brief: { ...trip.brief, intent } });
+  const structuredMalformed = issues.some(issue => issue.path === "brief.structuredBrief" && issue.code === "malformed_optional_metadata");
+  const capturedMalformed = issues.some(issue => issue.path === "brief.capturedIntent" && issue.code === "malformed_optional_metadata");
+  const route = routeIntentFromLegacyTrip({ ...trip, brief: { ...trip.brief, intent,
+    ...(structuredMalformed ? { structuredBrief: undefined } : {}), ...(capturedMalformed ? { capturedIntent: undefined } : {}) } });
   const { journeyEnd: _legacy, ...canonicalIntent } = intent;
   const canonical = { ...trip, schemaVersion: 2, brief: { ...trip.brief, intent: { ...canonicalIntent, version: 2, route } } } as CanonicalEasyTTrip;
   return { kind: "readable", sourceSchemaVersion, issues, trip: projectCanonicalRouteEndpoints(canonical) };

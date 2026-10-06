@@ -2,6 +2,8 @@ import { normalizeJourneyEnd, originPlaceFromBrief } from "./journey-endpoints.t
 import type { CanonicalEasyTTrip, DestinationIntent, EasyTTrip, JourneyEndpointPlace, RouteIntent, TripStop } from "./trip.ts";
 import { prepareTripDocumentForWrite, type TripDocumentIssue } from "./trip-document.ts";
 import { buildCanonicalTripLegs } from "./trip-legs.ts";
+import { reconcileAuthoredDayState } from "./trip-authored-day-state.ts";
+import { cascadeTripSchedule } from "./cascade.ts";
 import type { HomeTripDraft } from "./home-trip-handoff.ts";
 import type { ResolvedPlaceMention } from "./place-intelligence.ts";
 
@@ -13,17 +15,19 @@ function orderInterpretation(prompt: string, sourceTexts: readonly string[]): "u
     if (index >= 0) cursor = index + source.length;
     return { index, length: source.length };
   }).filter(position => position.index >= 0);
-  const connective = /(?:->|[→⇒])|\b(?:then|followed by|next)\b/i;
+  const connective = /(?:->|[→⇒])|\b(?:then|followed by|next|finally|finish(?:\s+in|\s+at)?|end(?:\s+in|\s+at)?)\b/i;
   const sequenced = positions.length >= 2 && positions.slice(1).every((position, index) => connective.test(text.slice(positions[index]!.index + positions[index]!.length, position.index)));
   const numbered = positions.length >= 2 && positions.every(position => /(?:^|\n)\s*\d+[.)]\s*$/.test(text.slice(0, position.index)));
   const directOrder = positions.length === sourceTexts.length && (sequenced || numbered);
-  const materialHint = /\b(?:itinerary|route)\s*:|\bin this order\b/i.test(prompt);
+  const materialHint = /\b(?:itinerary|route)\s*:|\bin this order\b/i.test(prompt)
+    || positions.some(position => /\b(?:first|second|third|fourth|fifth|finally|finish\s+(?:in|at)|end\s+(?:in|at))\s*$/.test(text.slice(0, position.index))
+      || /^\s*(?:first|second|third|fourth|fifth)\b/.test(text.slice(position.index + position.length)));
   if (!directOrder && !materialHint) return "unordered";
   return !directOrder || /\b(?:maybe|might|perhaps|either|not sure|in any order|other way|possibly|not necessarily|flexible order|dont care|don't care)\b/i.test(prompt) ? "ambiguous" : "explicit";
 }
 
 /** A source-bound night request survives failed geography; generated allocation is not evidence. */
-function sourceRequestedNights(prompt: string, mention: ResolvedPlaceMention, allMentions: readonly ResolvedPlaceMention[], bareNightContext: boolean): number | null {
+function sourceRequestedNights(prompt: string, mention: Pick<ResolvedPlaceMention, "sourceText" | "order" | "mentionId">, allMentions: readonly Pick<ResolvedPlaceMention, "sourceText" | "order" | "mentionId">[], bareNightContext: boolean): number | null {
   const source = mention.sourceText;
   if (!source.trim()) return null;
   const sameSource = allMentions.filter(item => item.sourceText.toLocaleLowerCase() === source.toLocaleLowerCase()).sort((a, b) => a.order - b.order);
@@ -67,7 +71,7 @@ export function routeIntentFromHandoff(draft: HomeTripDraft, stops: readonly Tri
       || ["continent", "country", "macro_region", "region", "sub_region", "island", "archipelago", "natural_area", "coast", "mountain_range", "valley", "travel_corridor"].includes(mention.placeType);
     const constraints = Array.isArray(draft.structuredBrief?.hardConstraints) ? draft.structuredBrief.hardConstraints : [];
     const requested = constraints.find(constraint => {
-      if (constraint.type !== "fixed-commitment" || !nonnegativeInteger(constraint.fixedNights) || constraint.provenance.kind !== "explicit") return false;
+      if (constraint?.type !== "fixed-commitment" || !nonnegativeInteger(constraint.fixedNights) || constraint.provenance?.kind !== "explicit") return false;
       const matching = sourceMentions.filter(item => constraint.place?.canonicalPlaceId
         ? item.canonicalPlaceId === constraint.place.canonicalPlaceId
         : constraint.place?.name?.toLocaleLowerCase() === item.canonicalName.toLocaleLowerCase());
@@ -90,7 +94,12 @@ export function routeIntentFromHandoff(draft: HomeTripDraft, stops: readonly Tri
   });
   // Retain unresolved requests even when a rebuilt surface has no capture mentions.
   for (const prior of previous?.destinations ?? []) if (!removed.has(prior.id)
-    && !destinations.some(intent => intent.id === prior.id) && !prior.stopIds.length) destinations.push(structuredClone(prior));
+    && !destinations.some(intent => intent.id === prior.id) && (!prior.stopIds.length || prior.kind === "planning_area")) {
+    const stopIds = prior.stopIds.filter(id => stopById.has(id) && !bound.has(id));
+    stopIds.forEach(id => bound.add(id));
+    destinations.push({ ...structuredClone(prior), stopIds,
+      ...(prior.kind === "planning_area" && !stopIds.length ? { resolution: "needs_base" as const } : {}) });
+  }
   for (const stop of stops) if (!bound.has(stop.id)) {
     const prior = previous?.destinations.find(intent => intent.stopIds.includes(stop.id));
     if (prior && !destinations.some(intent => intent.id === prior.id)) {
@@ -120,8 +129,9 @@ export function routeIntentFromHandoff(draft: HomeTripDraft, stops: readonly Tri
 export function routeOrderReviewIssue(trip: CanonicalEasyTTrip): TripDocumentIssue | null {
   if (trip.brief.intent.route.orderAuthority !== "optimizable") return null;
   const structured = trip.brief.structuredBrief;
-  if (structured?.source?.inputs?.length && structured.source.inputs.every(source => source === "builder" || source === "morrovia-default")) return null;
-  const prompt = structured?.source?.rawPrompt ?? trip.brief.capturedIntent?.originalBrief ?? "";
+  if (Array.isArray(structured?.source?.inputs) && structured.source.inputs.length && structured.source.inputs.every(source => source === "builder" || source === "morrovia-default")) return null;
+  const sourcePrompt = structured?.source?.rawPrompt ?? trip.brief.capturedIntent?.originalBrief;
+  const prompt = typeof sourcePrompt === "string" ? sourcePrompt : "";
   return orderInterpretation(prompt, trip.brief.intent.route.destinations.map(intent => intent.sourceText)) === "ambiguous" ? { code: "route_order_requires_clarification", path: "brief.intent.route.orderAuthority", severity: "blocking" } : null;
 }
 export type HandoffResolutionScope = { ownerId: string | null; tripId: string; inputRevision: number };
@@ -164,8 +174,11 @@ export function routeIntentFromLegacyTrip(trip: EasyTTrip): RouteIntent {
     ? structuredClone(sourceEnd) : normalizeJourneyEnd(sourceEnd);
   const manualIds = Array.isArray(trip.brief.manualNightStopIds) ? trip.brief.manualNightStopIds : [];
   const optionalIds = Array.isArray(trip.brief.intent?.hardConstraints?.optionalStopIds) ? trip.brief.intent.hardConstraints.optionalStopIds : [];
+  const legacyId = (stop: TripStop) => `legacy-stop:${stop.id.startsWith(`${trip.id}-stop-`) ? stop.id.slice(`${trip.id}-stop-`.length) : stop.id}`;
+  const idCounts = new Map<string, number>();
+  trip.stops.forEach(stop => idCounts.set(legacyId(stop), (idCounts.get(legacyId(stop)) ?? 0) + 1));
   let destinations: DestinationIntent[] = trip.stops.map(stop => ({
-    id: `legacy-stop:${stop.id.startsWith(`${trip.id}-stop-`) ? stop.id.slice(`${trip.id}-stop-`.length) : stop.id}`,
+    id: idCounts.get(legacyId(stop))! > 1 ? `legacy-occurrence:${JSON.stringify(stop.id)}` : legacyId(stop),
     sourceText: stop.name,
     kind: "overnight_place",
     selectedPlace: placeForRouteStop(stop),
@@ -198,6 +211,7 @@ export function routeIntentFromLegacyTrip(trip: EasyTTrip): RouteIntent {
   }
   const captured = trip.brief.capturedIntent;
   if (Array.isArray(captured?.mentions)) {
+    const sourceMentions = captured.mentions.filter(mention => mention && typeof mention.sourceText === "string").map(mention => ({ ...mention, mentionId: `legacy-mention:${trip.id}:${captured.mentions.indexOf(mention)}` }));
     captured.mentions.forEach((mention, index) => {
       if (mention?.role !== "stop" || mention.status !== "unresolved" || mention.intent === "landmark" || !mention.sourceText) return;
       if (structuredMentions.some(item => item.order === mention.order && item.sourceText === mention.sourceText && destinations.some(intent => intent.id === item.mentionId))) return;
@@ -205,7 +219,7 @@ export function routeIntentFromLegacyTrip(trip: EasyTTrip): RouteIntent {
       const id = `legacy-mention:${trip.id}:${index}`;
       destinations.push({ id, sourceText: mention.sourceText,
         kind: ["country", "region", "island", "lake"].includes(mention.placeType ?? "") ? "planning_area" : "overnight_place",
-        selectedPlace: null, resolution: "unresolved", requestedNights: null,
+        selectedPlace: null, resolution: "unresolved", requestedNights: sourceRequestedNights(captured.originalBrief ?? "", { ...mention, mentionId: id }, sourceMentions, false),
         routeMembership: "required", stopIds: [] });
     });
   }
@@ -257,6 +271,7 @@ export function routeProjectionInputKey(trip: EasyTTrip): string {
       commitmentType: commitment.commitmentType, place: commitment.place ? placeDependency(commitment.place) : null,
     })),
     scheduleLocks: trip.brief.scheduleLocks ?? null,
+    transport: { modes: [...(trip.brief.intent?.preferences.transportModes ?? [])].sort(), avoidDriving: trip.brief.intent?.hardConstraints.avoidDriving ?? false },
   }));
 }
 
@@ -287,7 +302,10 @@ export function routeNightBudget(trip: CanonicalEasyTTrip, availableNights: numb
       const nights = stops.get(id)?.nights;
       if (nonnegativeInteger(nights)) mapped += nights;
     }
-    if (intent.requestedNights !== null) held += Math.max(0, intent.requestedNights - mapped);
+    if (intent.requestedNights !== null) {
+      held += Math.max(0, intent.requestedNights - mapped);
+      if (mapped > intent.requestedNights) issues.push({ code: "requested_night_budget_exceeded", path: `brief.intent.route.destinations.${intent.id}.requestedNights`, severity: "blocking" });
+    }
   }
   const known = nonnegativeInteger(availableNights) && issues.length === 0;
   return { allocated, held, unallocated: known ? Math.max(0, availableNights - allocated - held) : null,
@@ -341,9 +359,33 @@ export function commitAcceptedRouteProjection(current: CanonicalEasyTTrip, commi
     journeyEnd: route.journeyEnd, stops: projected.stops });
   if (projected.legs.length !== expectedLegs.length || projected.legs.some((leg, index) => leg.fromStopId !== expectedLegs[index]?.fromStopId || leg.toStopId !== expectedLegs[index]?.toStopId)) return invalid();
   if (projected.stops.some((stop, index) => stop.order !== index || !nonnegativeInteger(stop.nights))) return invalid();
+  for (const stop of projected.stops) for (const booking of current.brief.bookings ?? []) {
+    if (booking.type !== "stay" || booking.id !== `stay-${stop.id}`) continue;
+    if (booking.date && (!stop.arrivalDate || !stop.departureDate || booking.date < stop.arrivalDate || booking.date >= stop.departureDate)) return invalid();
+    if (booking.endDate && (!stop.departureDate || booking.endDate > stop.departureDate)) return invalid();
+  }
+  // A successful dependency calculation must supply actual stay dates and
+  // retain a day container for every existing authored stop/day.
+  const day = (value: string | null | undefined) => typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value) && Number.isFinite(Date.parse(`${value}T00:00:00Z`));
+  if (projected.stops.some(stop => !day(stop.arrivalDate) || !day(stop.departureDate) || stop.departureDate! < stop.arrivalDate!)
+    || current.planItems.some(item => {
+      const hasContent = item.notes.length || item.startsAt || item.endsAt || item.bookingUrl;
+      const hasAuthoredDayState = current.brief.dayNotes?.[item.dayNumber]?.length || current.brief.customActivities?.[item.dayNumber]?.length
+        || current.brief.itineraryIdeas?.some(idea => idea.dayId === item.id) || current.brief.mapPins?.some(pin => pin.dayNumber === item.dayNumber);
+      return hasContent ? !projected.planItems.some(next => next.id === item.id && next.stopId === item.stopId)
+        : hasAuthoredDayState && !projected.planItems.some(next => next.stopId === item.stopId);
+    })) return invalid();
   try {
-    const trip = prepareTripDocumentForWrite({ ...projected, schemaVersion: 2,
-      brief: { ...projected.brief, intent: { ...current.brief.intent, route: nextRoute } } });
+    const schedule = cascadeTripSchedule({ ...current, stops: projected.stops, planItems: projected.planItems });
+    if (schedule.status.conflicts.length || schedule.trip.stops.some((stop, index) => stop.arrivalDate !== projected.stops[index]?.arrivalDate || stop.departureDate !== projected.stops[index]?.departureDate)
+      || schedule.trip.planItems.some((item, index) => item.date !== projected.planItems[index]?.date || item.dayNumber !== projected.planItems[index]?.dayNumber)) return invalid();
+    const planItems = projected.planItems.map(item => {
+      const authored = current.planItems.find(prior => prior.id === item.id && prior.stopId === item.stopId);
+      return authored ? { ...authored, date: item.date, dayNumber: item.dayNumber } : item;
+    });
+    const reconciled = reconcileAuthoredDayState(current, { ...current, stops: structuredClone(projected.stops), legs: structuredClone(projected.legs), planItems,
+      brief: { ...current.brief, intent: { ...current.brief.intent, route: nextRoute } } });
+    const trip = prepareTripDocumentForWrite(reconciled);
     trip.brief.intent.route.projectionInputKey = routeProjectionInputKey(trip);
     return { kind: "accepted", trip };
   } catch { return invalid(); }

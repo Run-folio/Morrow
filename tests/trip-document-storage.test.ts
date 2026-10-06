@@ -64,3 +64,26 @@ test("representation_only_migration_never_acknowledges_a_recovery",()=>{
   assert.equal(result.recoveryResolved,false);assert.equal(loadTripRecoveryFromStorage(storage,trip.id,trip.ownerId)?.writeId,handle.writeId);
   assert.equal(cacheCanonicalTripWithRecoveryToStorage(storage,trip,handle).recoveryResolved,true);
 });
+
+test('exact_durable_ack_stops_retained_legacy_source_shadowing_cache_and_selection',async()=>{
+ const {saveTripRecoveryToStorage}=await import('../lib/easyt/storage.ts');const {requireReadableTripDocument}=await import('../lib/easyt/trip-document.ts');
+ const legacy=legacyRouteFixture();const storage=new MemoryStorage();const raw=JSON.stringify(legacy);storage.values.set(EASYT_ACTIVE_TRIP_KEY,raw);
+ const edited=requireReadableTripDocument(legacy);edited.title='Acknowledged newer';const recovery=saveTripRecoveryToStorage(storage,edited,{writeId:'new-edit'});
+ assert.equal(cacheCanonicalTripWithRecoveryToStorage(storage,{...edited,updatedAt:'2026-10-06T20:00:00.000Z'},recovery.handle).recoveryResolved,true);
+ assert.equal(storage.getItem(EASYT_ACTIVE_TRIP_KEY),raw);assert.equal(loadLocalTripFromStorage(storage,legacy.id,legacy.ownerId)?.title,edited.title);assert.equal(loadActiveTripFromStorage(storage,legacy.ownerId)?.title,edited.title);assert.equal(loadCurrentTripRecoveryFromStorage(storage,legacy.ownerId),null);
+ cacheCanonicalTripWithRecoveryToStorage(storage,{...edited,id:'another-trip',updatedAt:'2026-10-06T20:01:00.000Z'});assert.equal(loadActiveTripFromStorage(storage,legacy.ownerId)?.id,'another-trip');
+ storage.values.set(EASYT_ACTIVE_TRIP_KEY,JSON.stringify({...legacy,title:'Later old-client draft'}));assert.equal(loadLocalTripFromStorage(storage,legacy.id,legacy.ownerId)?.title,'Later old-client draft');
+});
+
+test('late_ack_never_hides_a_newer_legacy_edit_or_cross_owner_source',async()=>{
+ const {saveTripRecoveryToStorage}=await import('../lib/easyt/storage.ts');const {requireReadableTripDocument}=await import('../lib/easyt/trip-document.ts');const legacy=legacyRouteFixture();const storage=new MemoryStorage();storage.values.set(EASYT_ACTIVE_TRIP_KEY,JSON.stringify(legacy));
+ const edited=requireReadableTripDocument(legacy);edited.title='Earlier accepted edit';const recovery=saveTripRecoveryToStorage(storage,edited,{writeId:'earlier'});
+ const later={...legacy,title:'Later retained source'};storage.values.set(EASYT_ACTIVE_TRIP_KEY,JSON.stringify(later));cacheCanonicalTripWithRecoveryToStorage(storage,{...edited,updatedAt:'2026-10-06T20:00:00.000Z'},recovery.handle);
+ assert.equal(loadLocalTripFromStorage(storage,legacy.id,legacy.ownerId)?.title,later.title);assert.equal(loadActiveTripFromStorage(storage,'owner-b'),null);
+});
+
+test('exact_guest_promotion_ack_stops_ownerless_source_shadowing_promoted_cache',async()=>{
+ const {saveTripRecoveryToStorage}=await import('../lib/easyt/storage.ts');const {requireReadableTripDocument}=await import('../lib/easyt/trip-document.ts');const legacy={...legacyRouteFixture(),ownerId:null};const storage=new MemoryStorage();const raw=JSON.stringify(legacy);storage.values.set(EASYT_ACTIVE_TRIP_KEY,raw);
+ const edited=requireReadableTripDocument(legacy);edited.title='Promoted edit';const recovery=saveTripRecoveryToStorage(storage,edited,{writeId:'guest-edit'});const promoted={...edited,ownerId:'owner-a'};
+ assert.equal(cacheCanonicalTripWithRecoveryToStorage(storage,promoted,recovery.handle).recoveryResolved,true);assert.equal(loadLocalTripFromStorage(storage,legacy.id,'owner-a')?.title,promoted.title);assert.equal(loadActiveTripFromStorage(storage,'owner-b'),null);assert.equal(loadActiveTripFromStorage(storage,null),null);assert.equal(storage.getItem(EASYT_ACTIVE_TRIP_KEY),raw);
+});

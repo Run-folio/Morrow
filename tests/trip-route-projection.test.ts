@@ -104,3 +104,62 @@ test('Overview_and_Itinerary_do_not_claim_stale_projection_complete',async()=>{
  assert.equal(routeProjectionStatus(trip),'pending');assert.notEqual(deriveItineraryCoverage(trip).state,'complete');
  assert.equal(tripReadinessSummary(trip).signals.find(signal=>signal.id==='route')?.complete,false);
 });
+
+test('projection_cannot_erase_authored_containers_or_overwrite_traveller_metadata',()=>{
+ const trip=current();trip.brief.bookings=[{id:'booking',type:'stay',title:'Keep booking',date:null,confirmation:'confirmed',url:null}];trip.brief.dayNotes={1:['Keep note']};
+ const dropped=structuredClone(trip);dropped.planItems=[];dropped.brief.bookings=[];dropped.brief.dayNotes={};
+ assert.deepEqual(commitAcceptedRouteProjection(trip,{basedOnInputKey:routeProjectionInputKey(trip),projectedTrip:dropped,reason:'necessary_reconciliation'}),{kind:'rejected',reason:'invalid_projection'});
+ const candidate=structuredClone(trip);candidate.brief.bookings=[];candidate.brief.dayNotes={};candidate.title='Provider replacement';
+ const result=commitAcceptedRouteProjection(trip,{basedOnInputKey:routeProjectionInputKey(trip),projectedTrip:candidate,reason:'necessary_reconciliation'});
+ assert.equal(result.kind,'accepted');if(result.kind==='accepted'){assert.deepEqual(result.trip.brief.bookings,trip.brief.bookings);assert.deepEqual(result.trip.brief.dayNotes,trip.brief.dayNotes);assert.equal(result.trip.title,trip.title);}
+});
+test('transport_inputs_invalidate_projection_without_reordering',()=>{
+ const trip=current();trip.brief.intent.route.projectionInputKey=routeProjectionInputKey(trip);
+ for(const change of [(copy:typeof trip)=>{copy.brief.intent.preferences.transportModes=['drive'];},(copy:typeof trip)=>{copy.brief.intent.hardConstraints.avoidDriving=!copy.brief.intent.hardConstraints.avoidDriving;}]){const copy=structuredClone(trip);change(copy);assert.equal(routeProjectionStatus(copy),'pending');assert.deepEqual(copy.stops,trip.stops);}
+});
+
+test('projection_requires_complete_schedule_before_stamping_current',()=>{
+ const trip=current();const candidate=structuredClone(trip);candidate.stops=candidate.stops.map(stop=>({...stop,arrivalDate:null,departureDate:null}));
+ assert.deepEqual(commitAcceptedRouteProjection(trip,{basedOnInputKey:routeProjectionInputKey(trip),projectedTrip:candidate,reason:'necessary_reconciliation'}),{kind:'rejected',reason:'invalid_projection'});
+});
+test('accepted_base_night_edit_updates_one_parent_budget_by_delta',async()=>{
+ const {applyResolvedTripCopilotAction}=await import('../lib/easyt/trip-copilot-actions.ts');const {routeNightBudget}=await import('../lib/easyt/trip-route-intent.ts');
+ const trip=current();trip.brief.intent.route.destinations=[{id:'japan',sourceText:'Japan',kind:'planning_area',selectedPlace:{name:'Japan'},resolution:'resolved',requestedNights:9,routeMembership:'required',stopIds:trip.stops.map(stop=>stop.id)}];
+ const next=requireReadableTripDocument(applyResolvedTripCopilotAction(trip,{action:'change_stop_nights',stopId:'hiroshima',nights:3,resolution:{type:'extend_trip',days:1}}));assert.equal(next.brief.intent.route.destinations[0].requestedNights,10);assert.equal(routeNightBudget(next,10).overallocated,0);
+});
+test('concurrent_leg_edit_never_moves_provider_choice_to_different_endpoints',()=>{
+ const base=current();const authored=structuredClone(base);authored.legs[1].provider='My explicit provider';
+ const canonical=proposal(base);canonical.brief=structuredClone(base.brief);canonical.brief.intent!.route!.orderedStopIds=canonical.stops.map(stop=>stop.id);canonical.brief.intent!.route!.projectionInputKey=routeProjectionInputKey(canonical);
+ assert.throws(()=>mergeTripMutationDocuments(base,authored,canonical),/leg|transport|conflict/i);
+});
+
+test('projection_rejects_chronologically_impossible_and_missing_authored_day',()=>{
+ const trip=current();for(const mutate of [(candidate:typeof trip)=>{candidate.stops[1].arrivalDate='2026-12-01';candidate.stops[1].departureDate='2026-12-04';},(candidate:typeof trip)=>{candidate.planItems=candidate.planItems.slice(1);}]){const candidate=structuredClone(trip);mutate(candidate);assert.deepEqual(commitAcceptedRouteProjection(trip,{basedOnInputKey:routeProjectionInputKey(trip),projectedTrip:candidate,reason:'necessary_reconciliation'}),{kind:'rejected',reason:'invalid_projection'});}
+});
+test('parent_budget_excess_is_a_visible_binding_conflict',async()=>{
+ const {routeNightBudget}=await import('../lib/easyt/trip-route-intent.ts');const trip=current();trip.brief.intent.route.destinations=[{id:'japan',sourceText:'Japan',kind:'planning_area',selectedPlace:{name:'Japan'},resolution:'resolved',requestedNights:8,routeMembership:'required',stopIds:trip.stops.map(stop=>stop.id)}];
+ assert.ok(routeNightBudget(trip,9).issues.some(issue=>issue.code==='requested_night_budget_exceeded'&&issue.severity==='blocking'));
+});
+test('redistribution_within_parent_keeps_total_and_between_parents_changes_each_once',async()=>{
+ const {applyResolvedTripCopilotAction}=await import('../lib/easyt/trip-copilot-actions.ts');const trip=current();trip.brief.intent.route.destinations=[{id:'japan',sourceText:'Japan',kind:'planning_area',selectedPlace:{name:'Japan'},resolution:'resolved',requestedNights:9,routeMembership:'required',stopIds:trip.stops.map(stop=>stop.id)}];
+ const same=requireReadableTripDocument(applyResolvedTripCopilotAction(trip,{action:'change_stop_nights',stopId:'hiroshima',nights:3,resolution:{type:'reduce_stop',stopId:'kyoto',nights:2}}));assert.equal(same.brief.intent.route.destinations[0].requestedNights,9);
+ trip.brief.intent.route.destinations=[{...trip.brief.intent.route.destinations[0],id:'area-a',stopIds:['tokyo','kyoto'],requestedNights:7},{...trip.brief.intent.route.destinations[0],id:'area-b',stopIds:['hiroshima'],requestedNights:2}];
+ const separate=requireReadableTripDocument(applyResolvedTripCopilotAction(trip,{action:'change_stop_nights',stopId:'hiroshima',nights:3,resolution:{type:'reduce_stop',stopId:'kyoto',nights:2}}));assert.deepEqual(separate.brief.intent.route.destinations.map(intent=>intent.requestedNights),[6,3]);
+});
+
+test('necessary_schedule_can_remove_an_empty_generated_day_after_accepted_night_reduction',()=>{
+ const trip=current();trip.planItems=trip.planItems.map(item=>({...item,notes:[]}));trip.stops[0].nights=3;trip.brief.nightAllocations!.tokyo=3;trip.brief.intent.route.destinations[0].requestedNights=3;trip.endDate='2026-10-18';
+ const candidate=cascadeTripSchedule({...trip,planItems:trip.planItems.filter(item=>item.id!=='japan-day-4')}).trip;
+ assert.equal(commitAcceptedRouteProjection(trip,{basedOnInputKey:routeProjectionInputKey(trip),projectedTrip:candidate,reason:'necessary_reconciliation'}).kind,'accepted');
+});
+
+test('late_projection_preserves_newer_authored_plan_item_times_and_booking_link',()=>{
+ const trip=current();const candidate=structuredClone(trip);trip.planItems[1].startsAt='09:00';trip.planItems[1].endsAt='10:30';trip.planItems[1].bookingUrl='https://example.invalid/my-booking';
+ const result=commitAcceptedRouteProjection(trip,{basedOnInputKey:routeProjectionInputKey(trip),projectedTrip:candidate,reason:'necessary_reconciliation'});assert.equal(result.kind,'accepted');if(result.kind==='accepted')assert.deepEqual(result.trip.planItems[1],trip.planItems[1]);
+});
+
+test('projection_cannot_stamp_current_after_moving_known_booked_stay_outside_booking_dates',()=>{
+ const trip=current();trip.brief.bookings=[{id:'stay-tokyo',type:'stay',title:'Tokyo hotel',date:'2026-10-11',confirmation:'paid',url:null}];
+ const stops=[trip.stops[1],trip.stops[0],trip.stops[2]].map((stop,order)=>({...stop,order}));const candidate=cascadeTripSchedule({...trip,stops,legs:buildCanonicalTripLegs({tripId:trip.id,origin:{name:'London',coordinates:null},journeyEnd:trip.brief.journeyEnd,stops})}).trip;
+ assert.deepEqual(commitAcceptedRouteProjection(trip,{basedOnInputKey:routeProjectionInputKey(trip),projectedTrip:candidate,reason:'manual_order'}),{kind:'rejected',reason:'invalid_projection'});
+});

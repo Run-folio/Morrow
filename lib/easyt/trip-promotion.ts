@@ -230,14 +230,25 @@ export function canonicalTripForOwner(
 ): EasyTTrip {
   trip = prepareTripDocumentForWrite(trip);
   const stopPrefix = `${trip.id}-stop-`;
+  const candidateId = (id: string) => id.startsWith(stopPrefix) ? id : `${stopPrefix}${id}`;
+  const counts = new Map<string, number>();
+  trip.stops.forEach(stop => counts.set(candidateId(stop.id), (counts.get(candidateId(stop.id)) ?? 0) + 1));
+  const reserved = new Set(trip.stops.map(stop => candidateId(stop.id)));
   const stopIds = new Map(
-    trip.stops.map((stop) => [
-      stop.id,
-      stop.id.startsWith(stopPrefix) ? stop.id : `${stopPrefix}${stop.id}`,
-    ]),
+    [...trip.stops].sort((a, b) => a.id.localeCompare(b.id)).map((stop) => {
+      let id = candidateId(stop.id);
+      if (!stop.id.startsWith(stopPrefix) && counts.get(id)! > 1) {
+        const base = `${stopPrefix}occurrence-${encodeURIComponent(stop.id)}`;
+        id = base;
+        let suffix = 1;
+        while (reserved.has(id)) id = `${base}-${suffix++}`;
+        reserved.add(id);
+      }
+      return [stop.id, id];
+    }),
   );
 
-  return { ...remapTripStopReferences(normalizeLegacyGeneratedDayContext({ ...trip, ownerId }), stopIds), updatedAt };
+  return prepareTripDocumentForWrite({ ...remapTripStopReferences(normalizeLegacyGeneratedDayContext({ ...trip, ownerId }), stopIds), updatedAt });
 }
 
 function stableJsonValue(value: unknown): unknown {

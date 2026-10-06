@@ -40,7 +40,7 @@ export async function PUT(request: Request, context: RouteContext) {
   try {
     const owner = await requireEasyTOwner();
     const { tripId } = await context.params;
-    const decoded = readTripDocument(await request.json());
+    const decoded = readTripDocument(await request.json().catch(() => null));
     if (decoded.kind !== "readable") return NextResponse.json({ error: "Invalid or unsupported trip document.", category: "validation" }, { status: 400 });
     const body = decoded.trip;
     if (body.id !== tripId || !body.ownerId)
