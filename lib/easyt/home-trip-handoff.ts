@@ -11,6 +11,7 @@ import type { TravelProfile } from "./travel-profile.ts";
 import { homepageInputStorageKey } from "./private-browser-context.ts";
 import { addLocalDays } from "./local-date.ts";
 import { routeIntentFromHandoff } from "./trip-route-intent.ts";
+import { homepageCapturedRouteEvidence, homepageDescribeSourceKey, homepageRouteChoice, homepageRouteReviewKey, invalidateHomepageRouteReview, type HomepageRouteEvidence } from "./home-route-choice.ts";
 
 export const HOME_TRIP_DRAFT_KEY = "easyt-home-trip-draft";
 
@@ -25,6 +26,8 @@ export type HomepageChoice<T> =
   | { state: "selected"; value: T }
   | { state: "cleared" };
 
+export type HomepageTripType = "return_to_start" | "one_way";
+
 export type HomepageInputSnapshot = {
   version: 1;
   ownerId: string | null;
@@ -38,6 +41,9 @@ export type HomepageInputSnapshot = {
   travellers: HomepageChoice<number>;
   origin: HomepageChoice<JourneyEndpointPlace>;
   journeyEnd: HomepageChoice<JourneyEndSelection>;
+  tripType?: HomepageChoice<HomepageTripType>;
+  originInput?: string;
+  routeReview?: { version: 1; acceptedTripType: HomepageTripType; reviewedInputKey: string };
 };
 
 /** The planner shows only dates represented by the traveller's intake. */
@@ -60,27 +66,27 @@ export function homepageBuilderDateRange(
 
 export function homepageSnapshotForDescribePrompt(snapshot: HomepageInputSnapshot, prompt: string): HomepageInputSnapshot {
   if (snapshot.mode !== "describe" || prompt === snapshot.prompt
-    || (snapshot.origin.state !== "selected" && snapshot.journeyEnd.state !== "selected")) return { ...snapshot, prompt };
+    || (snapshot.origin.state !== "selected" && snapshot.journeyEnd.state !== "selected")) return invalidateHomepageRouteReview(snapshot, { ...snapshot, prompt });
   const mentions = captureJourneyBrief(prompt).mentions;
   const start = mentions.find((mention) => mention.role === "origin" || mention.role === "fixed_start");
   const end = mentions.find((mention) => mention.role === "fixed_end");
   const differs = (selected: string, mention: ResolvedPlaceMention) =>
     normalizePlacePhrase(selected) !== normalizePlacePhrase(mention.canonicalName)
     && normalizePlacePhrase(selected) !== normalizePlacePhrase(mention.sourceText);
-  return {
+  return invalidateHomepageRouteReview(snapshot, {
     ...snapshot,
     prompt,
     origin: start && snapshot.origin.state === "selected" && differs(snapshot.origin.value.name, start)
       ? { state: "untouched" } : snapshot.origin,
-    journeyEnd: end && snapshot.journeyEnd.state === "selected"
+    journeyEnd: (snapshot.tripType?.state !== "selected" || snapshot.tripType.value === "one_way") && end && snapshot.journeyEnd.state === "selected"
       && (snapshot.journeyEnd.value.mode !== "explicit" || differs(snapshot.journeyEnd.value.place.name, end))
       ? { state: "untouched" } : snapshot.journeyEnd,
-  };
+  });
 }
 
 export type HomepageInputIssue = {
-  field: "destinations" | "prompt" | "dates" | "travellers";
-  code: "required" | "unresolved" | "invalid";
+  field: "destinations" | "prompt" | "dates" | "travellers" | "tripType" | "origin";
+  code: "required" | "unresolved" | "invalid" | "conflict";
   entryId?: string;
 };
 
@@ -115,6 +121,17 @@ export type PendingHomeTripHandoff = {
 export type StoredHomepageInput = {
   snapshot: HomepageInputSnapshot;
   receipt?: HomepageHandoffReceipt | PendingIntakeReceipt;
+  review?: HomepageIntakeReview;
+};
+
+export type HomepageIntakeReview = {
+  version: 1;
+  receipt: PendingIntakeReceipt;
+  issues: HomepageInputIssue[];
+  evidence: HomepageRouteEvidence;
+  sourceKey: string;
+  phase: "blocked" | "editing";
+  resubmissionHandoffId?: string;
 };
 
 export function moveHomepageEntry(
@@ -169,7 +186,7 @@ export type HomeTripDraft = {
     revision: number;
     mode: HomepageInputSnapshot["mode"];
     occurrenceMentionIds: Record<string, string>;
-    choices: Pick<HomepageInputSnapshot, "dates" | "budget" | "interests" | "travellers" | "origin" | "journeyEnd">;
+    choices: Pick<HomepageInputSnapshot, "dates" | "budget" | "interests" | "travellers" | "origin" | "journeyEnd" | "tripType" | "originInput" | "routeReview">;
     receipt?: HomepageHandoffReceipt;
   };
   brief?: string;
@@ -292,7 +309,12 @@ function homepageSnapshot(value: unknown, ownerId: string | null): value is Home
       && new Set(candidate).size === candidate.length)
     && homepageChoice(value.travellers, (candidate) => Number.isInteger(candidate) && Number(candidate) >= 1 && Number(candidate) <= 12)
     && homepageChoice(value.origin, homepageEndpoint)
-    && homepageChoice(value.journeyEnd, homepageEnd);
+    && homepageChoice(value.journeyEnd, homepageEnd)
+    && (value.tripType === undefined || homepageChoice(value.tripType, candidate => candidate === "return_to_start" || candidate === "one_way"))
+    && (value.originInput === undefined || boundedHomepageString(value.originInput, 512, true))
+    && (value.routeReview === undefined || (homepageRecord(value.routeReview) && value.routeReview.version === 1
+      && ["return_to_start", "one_way"].includes(String(value.routeReview.acceptedTripType))
+      && boundedHomepageString(value.routeReview.reviewedInputKey, 16_384)));
 }
 
 function homepageReceipt(value: unknown, snapshot: HomepageInputSnapshot): value is HomepageHandoffReceipt {
@@ -352,9 +374,26 @@ export function readHomepageInput(value: unknown, ownerId: string | null): Store
   if (value.receipt !== undefined
     && !homepageReceipt(value.receipt, value.snapshot)
     && !pendingIntakeReceiptForOwner(value.receipt, ownerId)) return null;
-  return value.receipt === undefined
-    ? { snapshot: value.snapshot }
-    : { snapshot: value.snapshot, receipt: value.receipt as HomepageHandoffReceipt | PendingIntakeReceipt };
+  if (value.review !== undefined && !homepageIntakeReview(value.review, ownerId)) return null;
+  return { snapshot: value.snapshot,
+    ...(value.receipt !== undefined ? { receipt: value.receipt as HomepageHandoffReceipt | PendingIntakeReceipt } : {}),
+    ...(value.review !== undefined ? { review: value.review as HomepageIntakeReview } : {}) };
+}
+
+function homepageIntakeReview(value: unknown, ownerId: string | null): value is HomepageIntakeReview {
+  if (!homepageRecord(value) || value.version !== 1 || !["blocked", "editing"].includes(String(value.phase))) return false;
+  const receipt = pendingIntakeReceiptForOwner(value.receipt, ownerId);
+  if (!receipt || value.sourceKey !== homepageDescribeSourceKey(receipt.frozenSnapshot)
+    || (value.resubmissionHandoffId !== undefined && !boundedHomepageString(value.resubmissionHandoffId))
+    || !Array.isArray(value.issues) || !value.issues.length || value.issues.length > 32
+    || !value.issues.every(issue => homepageRecord(issue)
+      && ["destinations", "prompt", "dates", "travellers", "tripType", "origin"].includes(String(issue.field))
+      && ["required", "unresolved", "invalid", "conflict"].includes(String(issue.code))
+      && (issue.entryId === undefined || boundedHomepageString(issue.entryId)))) return false;
+  const evidence = value.evidence;
+  return homepageRecord(evidence) && (evidence.tripType === null || ["return_to_start", "one_way"].includes(String(evidence.tripType)))
+    && ["clear", "unknown", "requires_review"].includes(String(evidence.status))
+    && ["capture", "legacy"].includes(String(evidence.source)) && homepageEnd(evidence.journeyEnd);
 }
 
 /** Edits share the receipt lock with submissions so another tab cannot erase
@@ -378,6 +417,7 @@ export async function persistEditableHomepageInput(input: {
       if (previous?.receipt?.version === 2) return { ok: false as const, reason: "reserved" as const };
       const stored: StoredHomepageInput = input.preserveCompletedReceipt && previous?.receipt?.version === 1
         ? { snapshot: input.snapshot, receipt: previous.receipt } : { snapshot: input.snapshot };
+      if (previous?.review) stored.review = previous.review;
       const serialized = JSON.stringify(stored);
       try {
         input.storage.setItem(key, serialized);
@@ -456,6 +496,9 @@ export function homepageSemanticInputFingerprint(snapshot: HomepageInputSnapshot
     budget: choice(snapshot.budget, (value) => value),
     interests: choice(snapshot.interests, (value) => [...value].sort()),
     origin: choice(snapshot.origin, semanticEndpoint),
+    ...(snapshot.tripType !== undefined ? { tripType: choice(snapshot.tripType, value => value) } : {}),
+    ...(snapshot.routeReview !== undefined ? { routeReview: snapshot.routeReview } : {}),
+    ...(snapshot.origin.state !== "selected" && snapshot.originInput?.trim() ? { originInput: semanticText(snapshot.originInput) } : {}),
     journeyEnd: choice(snapshot.journeyEnd, (value) => value.mode === "explicit"
       ? { mode: "explicit", place: semanticEndpoint(value.place) }
       : { mode: value.mode }),
@@ -744,7 +787,8 @@ export async function reservePendingDescribeHandoff(input: {
         return { ok: false as const, reason: "storage" as const };
       }
       const receipt = pending ?? createPendingIntakeReceipt(input.snapshot, input.createIds());
-      const stored: StoredHomepageInput = { snapshot: input.snapshot, receipt };
+      const stored: StoredHomepageInput = { snapshot: input.snapshot, receipt,
+        ...(existingInput?.review ? { review: { ...existingInput.review, resubmissionHandoffId: receipt.handoffId } } : {}) };
       const draft: PendingHomeTripHandoff = { version: 2, phase: "pending-interpretation", receipt };
       const committed = await commitHomepageHandoffWithinLock({
         storage: input.storage, stored, draft, isCurrent: input.isCurrent, preserveAndBegin: input.preserveAndBegin,
@@ -800,7 +844,8 @@ export async function reserveDirectDescribeIntake(input: {
       // recovery. A deliberate submission from a fresh mounted Builder gets
       // a new identity even when its traveller input happens to match.
       const receipt = createPendingIntakeReceipt(input.snapshot, { handoffId: input.handoffId, tripId: input.tripId });
-      const serialized = JSON.stringify({ snapshot: input.snapshot, receipt });
+      const serialized = JSON.stringify({ snapshot: input.snapshot, receipt,
+        ...(previous?.review ? { review: { ...previous.review, resubmissionHandoffId: receipt.handoffId } } : {}) });
       try {
         input.storage.setItem(key, serialized);
         if (input.storage.getItem(key) !== serialized) throw new Error("Intake write was not durable");
@@ -832,7 +877,7 @@ export function pendingReceiptStillCurrent(
       || current.semanticInputFingerprint !== receipt.semanticInputFingerprint) return false;
     if (!fromHomepage) return true;
     const envelope = JSON.parse(storage.getItem(HOME_TRIP_DRAFT_KEY) ?? "null");
-    return Boolean(pendingHomepageHandoffForOwner(envelope, receipt.ownerId, receipt.handoffId));
+    return samePendingReceipt(pendingHomepageHandoffForOwner(envelope, receipt.ownerId, receipt.handoffId), receipt);
   } catch { return false; }
 }
 
@@ -842,15 +887,56 @@ function samePendingReceipt(left: PendingIntakeReceipt | null, right: PendingInt
     && left.semanticInputFingerprint === right.semanticInputFingerprint);
 }
 
+/** Domain rejection is recoverable intake, not a network failure or canonical acknowledgement. */
+export async function retainPendingIntakeReview(input: {
+  storage: Pick<Storage, "getItem" | "setItem" | "removeItem">;
+  receipt: PendingIntakeReceipt;
+  fromHomepage: boolean;
+  issues: HomepageInputIssue[];
+  evidence: HomepageRouteEvidence;
+  isCurrent: () => boolean;
+  lock?: <T>(key: string, run: () => Promise<T>) => Promise<T>;
+}): Promise<{ ok: true; stored: StoredHomepageInput } | { ok: false; reason: "stale" | "storage" }> {
+  try {
+    return await withHomepageReceiptLock(input.receipt.ownerId, input.lock, async () => {
+      if (!input.isCurrent() || !pendingReceiptStillCurrent(input.storage, input.receipt, input.fromHomepage)) return { ok: false as const, reason: "stale" as const };
+      const key = homepageInputStorageKey(input.receipt.ownerId);
+      const prior = input.storage.getItem(key);
+      const current = readHomepageInput(JSON.parse(prior ?? "null"), input.receipt.ownerId);
+      if (!current || current.snapshot.revision !== input.receipt.inputRevision
+        || homepageSemanticInputFingerprint(current.snapshot) !== input.receipt.semanticInputFingerprint) return { ok: false as const, reason: "stale" as const };
+      const review: HomepageIntakeReview = { version: 1, receipt: structuredClone(input.receipt), issues: structuredClone(input.issues),
+        evidence: structuredClone(input.evidence), sourceKey: homepageDescribeSourceKey(input.receipt.frozenSnapshot), phase: "blocked" };
+      if (!homepageIntakeReview(review, input.receipt.ownerId)) return { ok: false as const, reason: "storage" as const };
+      const stored = { ...current, review };
+      const serialized = JSON.stringify(stored);
+      if (!input.isCurrent()) return { ok: false as const, reason: "stale" as const };
+      try {
+        input.storage.setItem(key, serialized);
+        if (input.storage.getItem(key) !== serialized) throw new Error("Domain review was not durable");
+      } catch {
+        try {
+          if (input.storage.getItem(key) === serialized || input.storage.getItem(key) === prior) {
+            if (prior === null) input.storage.removeItem(key); else input.storage.setItem(key, prior);
+          }
+        } catch { /* Never replace another revision. */ }
+        return { ok: false as const, reason: "storage" as const };
+      }
+      return { ok: true as const, stored };
+    });
+  } catch { return { ok: false, reason: "storage" }; }
+}
+
 /** Edit only the frozen intake this Builder actually received. Both keys are
  * changed under the submission lock, so a newer tab's receipt survives. */
 export async function discardPendingIntakeForEdit(input: {
   storage: Pick<Storage, "getItem" | "setItem" | "removeItem">;
   receipt: PendingIntakeReceipt;
   fromHomepage: boolean;
+  preserveReview?: boolean;
   isCurrent?: () => boolean;
   lock?: <T>(key: string, run: () => Promise<T>) => Promise<T>;
-}): Promise<{ ok: true } | { ok: false; reason: "stale" | "storage" }> {
+}): Promise<{ ok: true; stored: StoredHomepageInput } | { ok: false; reason: "stale" | "storage" }> {
   try {
     return await withHomepageReceiptLock(input.receipt.ownerId, input.lock, async () => {
       if (input.isCurrent && !input.isCurrent()) return { ok: false as const, reason: "stale" as const };
@@ -869,7 +955,13 @@ export async function discardPendingIntakeForEdit(input: {
         if (!samePendingReceipt(pendingHomepageHandoffForOwner(envelope, input.receipt.ownerId, input.receipt.handoffId), input.receipt))
           return { ok: false as const, reason: "stale" as const };
       }
-      const editable = JSON.stringify({ snapshot: input.receipt.frozenSnapshot });
+      const snapshot = input.preserveReview ? stored!.snapshot : input.receipt.frozenSnapshot;
+      const review = input.preserveReview && stored?.review ? { ...stored.review, phase: "editing" as const } : undefined;
+      const dropAcknowledgement = review && snapshot.routeReview
+        && snapshot.routeReview.reviewedInputKey !== homepageRouteReviewKey(snapshot, review.evidence);
+      const editableSnapshot = dropAcknowledgement ? { ...snapshot, routeReview: undefined } : snapshot;
+      const editableStored: StoredHomepageInput = { snapshot: editableSnapshot, ...(review ? { review } : {}) };
+      const editable = JSON.stringify(editableStored);
       try {
         input.storage.setItem(key, editable);
         if (input.storage.getItem(key) !== editable) throw new Error("Intake edit was not durable");
@@ -877,7 +969,7 @@ export async function discardPendingIntakeForEdit(input: {
           input.storage.removeItem(HOME_TRIP_DRAFT_KEY);
           if (input.storage.getItem(HOME_TRIP_DRAFT_KEY) !== null) throw new Error("Handoff edit was not durable");
         }
-        return { ok: true as const };
+        return { ok: true as const, stored: editableStored };
       } catch {
         try {
           if (priorInput === null) input.storage.removeItem(key);
@@ -930,7 +1022,9 @@ export async function acknowledgePendingIntakeReceipt(input: {
             && (stored.receipt.handoffId !== completed.handoffId || stored.receipt.tripId !== completed.tripId))
           || homepageSemanticInputFingerprint(stored.snapshot) !== completed.semanticInputFingerprint))
         return { ok: false as const, reason: "stale" as const };
-      const serialized = JSON.stringify({ snapshot: stored.snapshot, receipt: completed });
+      const keepReview = stored.review && stored.review.resubmissionHandoffId !== completed.handoffId;
+      const serialized = JSON.stringify({ snapshot: stored.snapshot, receipt: completed,
+        ...(keepReview ? { review: stored.review } : {}) });
       const completedEnvelope = JSON.stringify(input.draft);
       try {
         input.storage.setItem(key, serialized);
@@ -1409,13 +1503,7 @@ function withHomepageChoices(
   };
 }
 
-export function projectHomepageInput(input: {
-  snapshot: HomepageInputSnapshot;
-  capture?: JourneyCaptureResult;
-  profile: TravelProfile | null;
-  handoffId: string;
-}): { ok: true; draft: HomeTripDraft } | { ok: false; issues: HomepageInputIssue[] } {
-  const { snapshot } = input;
+export function homepagePreflightIssues(snapshot: HomepageInputSnapshot, evidence?: HomepageRouteEvidence): HomepageInputIssue[] {
   const issues: HomepageInputIssue[] = [];
   if (snapshot.dates.state === "selected") {
     const { start, end } = snapshot.dates.value;
@@ -1431,9 +1519,25 @@ export function projectHomepageInput(input: {
       if (!entry.selection) issues.push({ field: "destinations", code: "unresolved", entryId: entry.id });
     });
   }
+  if (snapshot.origin.state !== "selected" && snapshot.originInput?.trim()) issues.push({ field: "origin", code: "unresolved" });
+  const observed = evidence ?? (snapshot.mode === "describe" ? homepageCapturedRouteEvidence(snapshot.prompt, captureJourneyBrief(snapshot.prompt)) : undefined);
+  const choice = homepageRouteChoice(snapshot, observed);
+  if (choice.conflict) issues.push({ field: "tripType", code: observed?.status === "requires_review" ? "unresolved" : "conflict" });
+  return issues;
+}
+
+export function projectHomepageInput(input: {
+  snapshot: HomepageInputSnapshot;
+  capture?: JourneyCaptureResult;
+  profile: TravelProfile | null;
+  handoffId: string;
+}): { ok: true; draft: HomeTripDraft } | { ok: false; issues: HomepageInputIssue[] } {
+  const { snapshot } = input;
+  const capture = snapshot.mode === "describe" ? input.capture ?? captureJourneyBrief(snapshot.prompt) : undefined;
+  const evidence = capture ? homepageCapturedRouteEvidence(snapshot.prompt, capture) : undefined;
+  const issues = homepagePreflightIssues(snapshot, evidence);
   if (issues.length) return { ok: false, issues };
 
-  const capture = snapshot.mode === "describe" ? input.capture ?? captureJourneyBrief(snapshot.prompt) : undefined;
   const draft = snapshot.mode === "describe"
     ? createHomeTripDraft({
       capture: capture!,
@@ -1479,16 +1583,25 @@ export function projectHomepageInput(input: {
             travellers: snapshot.travellers,
             origin: snapshot.origin,
             journeyEnd: snapshot.journeyEnd,
+            tripType: snapshot.tripType,
+            originInput: snapshot.originInput,
+            routeReview: snapshot.routeReview,
           },
         },
       } satisfies HomeTripDraft;
     })();
 
   const projected = withHomepageChoices(draft, snapshot, input.profile, capture);
+  const choice = homepageRouteChoice(snapshot, evidence);
+  const canonical = withCanonicalHandoffRouteIntent(projected);
+  const origin = projected.origin ? canonicalJourneyEndpointPlace({ name: projected.origin, canonicalPlaceId: projected.originCanonicalPlaceId,
+    country: projected.originCountry, providerId: projected.originProviderId, coordinates: projected.originCoordinates }) : null;
   return {
     ok: true,
-    draft: withCanonicalHandoffRouteIntent({
+    draft: {
       ...projected,
+      journeyEnd: choice.journeyEnd,
+      routeIntent: { ...canonical.routeIntent!, origin, tripType: choice.tripType, journeyEnd: choice.journeyEnd },
       homepage: projected.homepage ?? {
         version: 1,
         ownerId: snapshot.ownerId,
@@ -1502,9 +1615,12 @@ export function projectHomepageInput(input: {
           travellers: snapshot.travellers,
           origin: snapshot.origin,
           journeyEnd: snapshot.journeyEnd,
+          tripType: snapshot.tripType,
+          originInput: snapshot.originInput,
+          routeReview: snapshot.routeReview,
         },
       },
-    }),
+    },
   };
 }
 
