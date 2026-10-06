@@ -1,6 +1,7 @@
 import type { PublicRoutePlanDraft } from "./public-route.ts";
 import { mergeStructuredTripBrief } from "./structured-trip-brief.ts";
 import { normalizeTripInterests } from "./trip-interest.ts";
+import { routeIntentFromHandoff } from "./trip-route-intent.ts";
 
 function localIsoDate(date: Date) {
   const year = date.getFullYear();
@@ -15,7 +16,7 @@ export function routePlannerPayload(draft: PublicRoutePlanDraft, start = new Dat
   end.setDate(end.getDate() + Math.max(0, draft.durationDays - 1));
   const startDate = localIsoDate(start);
   const endDate = localIsoDate(end);
-  return {
+  const payload = {
     sourceRouteKey: draft.routeKey,
     curatedRoute: draft.curatedRoute,
     origin: draft.origin,
@@ -44,4 +45,8 @@ export function routePlannerPayload(draft: PublicRoutePlanDraft, start = new Dat
     },
     nightAllocations: draft.nightAllocations,
   };
+  const stops = payload.destinations.map((stop, order) => ({ ...stop, order,
+    latitude: stop.coordinates?.[1] ?? null, longitude: stop.coordinates?.[0] ?? null,
+    nights: payload.nightAllocations[stop.id] ?? null, arrivalDate: null, departureDate: null }));
+  return { ...payload, routeIntent: routeIntentFromHandoff(payload, stops) };
 }

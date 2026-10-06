@@ -1,5 +1,6 @@
 import { buildCanonicalTripLegs } from "./trip-legs.ts";
 import { buildImportedDatedDays, unconfirmedImportedLeg } from "./imported-trip-hydration.ts";
+import { prepareTripDocumentForWrite } from "./trip-document.ts";
 import {
   defaultTripIntent,
   tripFromBuilder,
@@ -682,18 +683,14 @@ export function canonicalTripFromSpreadsheetProposal(input: {
       };
     });
   }
-  return {
-    ...base,
-    stops,
-    legs,
-    planItems,
-    brief: {
-      ...base.brief,
-      bookings: proposal.bookings.map(bookingFromProposal),
+  const document = prepareTripDocumentForWrite({ ...base, stops, legs, planItems,
+    brief: { ...base.brief, bookings: proposal.bookings.map(bookingFromProposal),
       customActivities: Object.fromEntries(planItems.filter((day) => day.notes.length).map((day) => [day.dayNumber, [...day.notes]])),
       ...(Object.keys(dayNotes).length ? { dayNotes } : {}),
-    },
-  };
+    } });
+  document.brief.intent.route.orderAuthority = "explicit";
+  document.brief.intent.route.explicitIntentIds = document.brief.intent.route.destinations.map(intent => intent.id);
+  return document;
 }
 
 export function spreadsheetImportSummary(proposal: SpreadsheetImportProposal) {

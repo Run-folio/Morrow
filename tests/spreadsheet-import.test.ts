@@ -1,6 +1,16 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
+
+test("reviewed_spreadsheet_order_is_authoritative_with_unknown_end", () => {
+  const proposal = buildSpreadsheetImportProposal(parseDelimitedText(philippinesImportCsv));
+  const trip = canonicalTripFromSpreadsheetProposal({ id: "reviewed-route-v2", proposal, origin, places: resolvedPlaces(proposal) });
+  assert.equal(trip.schemaVersion, 2);
+  assert.equal(trip.brief.intent!.route!.orderAuthority, "explicit");
+  assert.equal(trip.brief.intent!.route!.tripType, "unknown_legacy");
+  assert.deepEqual(trip.brief.intent!.route!.orderedStopIds, trip.stops.map(stop => stop.id));
+  assert.deepEqual(trip.brief.intent!.route!.destinations.map(intent => intent.requestedNights), trip.stops.map(stop => stop.nights));
+});
 import { builderBrowserTestsEnabled, renderBuilder } from "./helpers/builder-render.ts";
 
 import {

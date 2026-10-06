@@ -1,6 +1,8 @@
 import type { EasyTTrip, TripLeg } from "./trip";
 import { normalizeLegacyGeneratedDayContext } from "./itinerary-generated-context.ts";
 import { reconcileLegacyTransportLeg } from "./transport-leg-compatibility.ts";
+import { prepareTripDocumentForWrite } from "./trip-document.ts";
+import { routeProjectionInputKey } from "./trip-route-intent.ts";
 
 const singleStopReferenceKeys = new Set([
   "stopId", "fromStopId", "toStopId", "fromEndpointId", "toEndpointId", "neighbouringStopId", "routeStopId",
@@ -8,7 +10,7 @@ const singleStopReferenceKeys = new Set([
 ]);
 const manyStopReferenceKeys = new Set([
   "stopIds", "mustSeeStopIds", "optionalStopIds", "currentStopIds",
-  "recommendedStopIds", "requiredStopIds", "excludedStopIds", "canonicalStopIds", "manualNightStopIds",
+  "recommendedStopIds", "requiredStopIds", "excludedStopIds", "canonicalStopIds", "manualNightStopIds", "orderedStopIds",
 ]);
 const stopReferenceRecordKeys = new Set([
   "selectedPlaces", "dayAllocations", "nightAllocations", "arrivalDates",
@@ -38,6 +40,17 @@ function remapNestedStopReferences(value: unknown, stopIds: StopIdMap, key?: str
   }
   if (!isRecord(value)) return value;
 
+  if (key === "route" && value.version === 1 && Array.isArray(value.destinations) && Array.isArray(value.orderedStopIds)) {
+    return { ...structuredClone(value),
+      orderedStopIds: value.orderedStopIds.map(id => typeof id === "string" ? remappedStopId(id, stopIds) : id),
+      destinations: value.destinations.map(intent => {
+        if (!isRecord(intent)) return intent;
+        return { ...remapNestedStopReferences(intent, stopIds) as Record<string, unknown>,
+          id: intent.id, selectedPlace: structuredClone(intent.selectedPlace) };
+      }),
+    };
+  }
+
   const remapped: Record<string, unknown> = {};
   const isRouteStopShape = typeof value.id === "string"
     && (key === "stops" || "routeStopId" in value || "canonicalPlaceId" in value || "placeMentionId" in value);
@@ -63,21 +76,22 @@ function remapNestedStopReferences(value: unknown, stopIds: StopIdMap, key?: str
  */
 export function remapTripStopReferences(trip: EasyTTrip, stopIds: StopIdMap): EasyTTrip {
   const remapped = remapNestedStopReferences(trip.brief, stopIds) as EasyTTrip["brief"];
-  return {
+  const endpointId = (id: string, kind?: string) => kind === "origin" || kind === "end" ? `${trip.id}-${kind}` : remappedStopId(id, stopIds);
+  const result: EasyTTrip = {
     ...trip,
     brief: remapped,
     stops: trip.stops.map((stop) => ({ ...stop, id: remappedStopId(stop.id, stopIds) })),
     legs: trip.legs.map((leg) => ({
       ...leg,
-      fromStopId: leg.fromEndpoint?.kind === "origin" ? `${trip.id}-origin` : remappedStopId(leg.fromStopId, stopIds),
-      toStopId: leg.toEndpoint?.kind === "origin" ? `${trip.id}-origin` : remappedStopId(leg.toStopId, stopIds),
+      fromStopId: endpointId(leg.fromStopId, leg.fromEndpoint?.kind),
+      toStopId: endpointId(leg.toStopId, leg.toEndpoint?.kind),
       ...(leg.fromEndpoint ? { fromEndpoint: {
         ...leg.fromEndpoint,
-        id: leg.fromEndpoint.kind === "origin" ? `${trip.id}-origin` : remappedStopId(leg.fromEndpoint.id, stopIds),
+        id: endpointId(leg.fromEndpoint.id, leg.fromEndpoint.kind),
       } } : {}),
       ...(leg.toEndpoint ? { toEndpoint: {
         ...leg.toEndpoint,
-        id: leg.toEndpoint.kind === "origin" ? `${trip.id}-origin` : remappedStopId(leg.toEndpoint.id, stopIds),
+        id: endpointId(leg.toEndpoint.id, leg.toEndpoint.kind),
       } } : {}),
       routeMetadata: remapNestedStopReferences(leg.routeMetadata, stopIds) as Record<string, unknown>,
     })),
@@ -87,6 +101,10 @@ export function remapTripStopReferences(trip: EasyTTrip, stopIds: StopIdMap): Ea
       proposedChange: remapNestedStopReferences(recommendation.proposedChange, stopIds) as Record<string, unknown> | null,
     })),
   };
+  if (trip.brief.intent?.route?.projectionInputKey != null && trip.brief.intent.route.projectionInputKey === routeProjectionInputKey(trip)) {
+    result.brief.intent!.route!.projectionInputKey = routeProjectionInputKey(result);
+  }
+  return result;
 }
 
 function collectNestedStopReferences(value: unknown, references: string[], key?: string) {
@@ -103,6 +121,15 @@ function collectNestedStopReferences(value: unknown, references: string[], key?:
     return;
   }
   if (!isRecord(value)) return;
+  if (key === "route" && value.version === 1 && Array.isArray(value.destinations) && Array.isArray(value.orderedStopIds)) {
+    collectNestedStopReferences(value.orderedStopIds, references, "orderedStopIds");
+    value.destinations.forEach(intent => {
+      if (!isRecord(intent)) return;
+      const { id: _intent, selectedPlace: _place, ...bindings } = intent;
+      collectNestedStopReferences(bindings, references);
+    });
+    return;
+  }
   const isRouteStopShape = typeof value.id === "string"
     && (key === "stops" || "routeStopId" in value || "canonicalPlaceId" in value || "placeMentionId" in value);
   for (const [childKey, childValue] of Object.entries(value)) {
@@ -122,6 +149,7 @@ export function tripStopReferenceInvariantIssues(trip: EasyTTrip) {
   const validStopIds = new Set([
     ...trip.stops.map((stop) => stop.id),
     `${trip.id}-origin`,
+    `${trip.id}-end`,
     ...trip.legs.flatMap((leg) => [leg.fromEndpoint, leg.toEndpoint].filter((endpoint) => endpoint?.kind === "origin").map((endpoint) => endpoint!.id)),
   ]);
   const references = [
@@ -200,6 +228,7 @@ export function canonicalTripForOwner(
   trip: EasyTTrip,
   updatedAt = trip.updatedAt,
 ): EasyTTrip {
+  trip = prepareTripDocumentForWrite(trip);
   const stopPrefix = `${trip.id}-stop-`;
   const stopIds = new Map(
     trip.stops.map((stop) => [
@@ -318,6 +347,7 @@ export function duplicateTripDocument(
   source: EasyTTrip,
   input: { id: string; now: string; nextId: () => string; title?: string },
 ): EasyTTrip {
+  source = prepareTripDocumentForWrite(source);
   const stopIds = new Map(source.stops.map((stop) => [stop.id, `${input.id}-stop-${input.nextId()}`]));
   const remapped = remapTripStopReferences({
     ...source,

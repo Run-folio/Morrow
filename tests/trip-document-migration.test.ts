@@ -93,6 +93,12 @@ test("requested_nights_require_manual_or_captured_provenance", () => {
   assert.deepEqual(trip.brief.intent.route.destinations.map(i => i.requestedNights), [null, 3, null]);
 });
 
+test("absent_intent_preserves_actual_trip_duration", () => {
+  const source = legacyRouteFixture();
+  delete source.brief.intent;
+  assert.equal(requireReadableTripDocument(source).brief.intent.timing.durationDays, 10);
+});
+
 test("requested_area_budget_is_not_copied_per_base", () => {
   const trip = requireReadableTripDocument(canonicalRouteFixture());
   trip.brief.intent.route.destinations = [{ id: "japan", sourceText: "Japan", kind: "planning_area", selectedPlace: { name: "Japan" }, resolution: "resolved", requestedNights: 12, routeMembership: "required", stopIds: trip.stops.map(s => s.id) }];

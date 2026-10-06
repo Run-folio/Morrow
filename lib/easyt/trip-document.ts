@@ -74,13 +74,15 @@ function routeIssues(value: unknown, trip: EasyTTrip): TripDocumentIssue[] {
 export function projectCanonicalRouteEndpoints(trip: CanonicalEasyTTrip): CanonicalEasyTTrip {
   const route = trip.brief.intent.route;
   const origin = route.origin;
+  const { origin: _origin, originCanonicalPlaceId: _canonical, originProviderId: _provider,
+    originCountry: _country, originCoordinates: _coordinates, journeyEnd: _end, ...brief } = trip.brief;
   return { ...trip, brief: {
-    ...trip.brief,
+    ...brief,
     origin: origin?.name ?? "",
-    originCanonicalPlaceId: origin?.canonicalPlaceId,
-    originProviderId: origin?.providerId,
-    originCountry: origin?.country,
-    originCoordinates: origin?.coordinates,
+    ...(origin?.canonicalPlaceId !== undefined ? { originCanonicalPlaceId: origin.canonicalPlaceId } : {}),
+    ...(origin?.providerId !== undefined ? { originProviderId: origin.providerId } : {}),
+    ...(origin?.country !== undefined ? { originCountry: origin.country } : {}),
+    ...(origin?.coordinates !== undefined ? { originCoordinates: origin.coordinates } : {}),
     journeyEnd: structuredClone(route.journeyEnd),
   } };
 }
@@ -128,7 +130,9 @@ export function readTripDocument(value: unknown): TripDocumentReadResult {
       trip: projectCanonicalRouteEndpoints({ ...trip, brief: { ...trip.brief, intent } } as CanonicalEasyTTrip) };
   }
   const saved = object(trip.brief.intent) ? trip.brief.intent : undefined;
-  const fallback = defaultTripIntent({ travellers: trip.travellers, stopIds: trip.stops.map(stop => stop.id), budgetSensitivity: trip.brief.budgetBand });
+  const durationDays = Math.round((Date.parse(`${trip.endDate}T00:00:00Z`) - Date.parse(`${trip.startDate}T00:00:00Z`)) / 86_400_000) + 1;
+  const fallback = defaultTripIntent({ travellers: trip.travellers, stopIds: trip.stops.map(stop => stop.id), budgetSensitivity: trip.brief.budgetBand,
+    ...(Number.isFinite(durationDays) && durationDays > 0 ? { durationDays } : {}) });
   const intent = { ...fallback, ...saved,
     timing: { ...fallback.timing, ...(object(saved?.timing) ? saved.timing : {}) },
     hardConstraints: { ...fallback.hardConstraints, ...(object(saved?.hardConstraints) ? saved.hardConstraints : {}) },

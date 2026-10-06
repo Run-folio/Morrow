@@ -1,14 +1,91 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { canonicalTripForOwner, duplicateTripDocument, tripStopReferenceInvariantIssues } from "../lib/easyt/trip-promotion.ts";
+import { canonicalTripForOwner, duplicateTripDocument, tripBuildDocumentsCanonicalEquivalent, tripStopReferenceInvariantIssues } from "../lib/easyt/trip-promotion.ts";
 import { tripFromBuilder, type EasyTTrip } from "../lib/easyt/trip.ts";
+import { requireReadableTripDocument } from "../lib/easyt/trip-document.ts";
+import { routeProjectionInputKey, routeProjectionStatus } from "../lib/easyt/trip-route-intent.ts";
+import { canonicalRouteFixture, legacyRouteFixture } from "./fixtures/batch14-route-documents.ts";
 
 const testConfidence = {
   version: 1 as const, state: "estimated" as const, level: "low" as const,
   freshness: "unknown" as const, scope: "planning-rule" as const, sources: [], reason: "test",
   confirmation: { needed: false, reason: null },
 };
+
+test("promotion_remaps_route_stop_bindings_but_not_intent_or_place_ids", () => {
+  const source = requireReadableTripDocument(canonicalRouteFixture());
+  const intent = source.brief.intent.route.destinations[0]!;
+  intent.id = source.stops[0]!.id;
+  Object.assign(intent, { canonicalPlaceId: "independent:geography" });
+  Object.assign(intent.selectedPlace!, { id: source.stops[0]!.id });
+  source.brief.intent.route.projectionInputKey = routeProjectionInputKey(source);
+  const saved = canonicalTripForOwner("owner-a", source);
+  assert.equal(saved.schemaVersion, 2);
+  assert.deepEqual(saved.brief.intent!.route!.orderedStopIds, saved.stops.map(stop => stop.id));
+  assert.deepEqual(saved.brief.intent!.route!.destinations[0]!.stopIds, [saved.stops[0]!.id]);
+  assert.equal(saved.brief.intent!.route!.destinations[0]!.id, intent.id);
+  assert.deepEqual(saved.brief.intent!.route!.destinations[0]!.selectedPlace, intent.selectedPlace);
+  assert.deepEqual(tripStopReferenceInvariantIssues(saved), []);
+  assert.equal(routeProjectionStatus(requireReadableTripDocument(saved)), "current");
+  assert.deepEqual(JSON.parse(JSON.stringify(saved)), saved);
+});
+
+test("duplicate_preserves_unresolved_intents_nights_and_authored_items", () => {
+  const source = requireReadableTripDocument(canonicalRouteFixture());
+  source.brief.intent.route.destinations.push({ id: "missing", sourceText: "Mostar", kind: "overnight_place", selectedPlace: null, resolution: "unavailable", requestedNights: 2, routeMembership: "required", stopIds: [] });
+  let n = 0;
+  const copy = duplicateTripDocument(source, { id: "copied", now: "2026-10-12T12:00:00.000Z", nextId: () => String(++n) });
+  assert.equal(copy.schemaVersion, 2);
+  assert.equal(copy.brief.intent!.route!.destinations.at(-1)!.requestedNights, 2);
+  assert.equal(copy.brief.intent!.route!.destinations.at(-1)!.id, "missing");
+  assert.deepEqual(copy.brief.intent!.route!.orderedStopIds, copy.stops.map(stop => stop.id));
+  assert.deepEqual(copy.stops.map(stop => stop.nights), source.stops.map(stop => stop.nights));
+  assert.notEqual(copy.stops[0]!.id, source.stops[0]!.id);
+  assert.notEqual(copy.planItems[0]!.id, source.planItems[0]!.id);
+  assert.equal(copy.planItems[0]!.stopId, copy.stops[0]!.id);
+  copy.brief.intent!.route!.destinations.at(-1)!.sourceText = "Edited copy";
+  assert.equal(source.brief.intent.route.destinations.at(-1)!.sourceText, "Mostar");
+  assert.deepEqual(tripStopReferenceInvariantIssues(copy), []);
+});
+
+test("representation_only_migration_is_canonically_equivalent", () => {
+  const source = legacyRouteFixture();
+  const migrated = requireReadableTripDocument(source);
+  assert.equal(tripBuildDocumentsCanonicalEquivalent(source, migrated, "owner-a"), true);
+  assert.equal(tripBuildDocumentsCanonicalEquivalent(source, canonicalTripForOwner("owner-a", migrated), "owner-a"), true);
+});
+
+test("route_authority_or_requested_nights_change_is_not_equivalent", () => {
+  const source = requireReadableTripDocument(canonicalRouteFixture());
+  const altered = structuredClone(source);
+  altered.brief.intent.route.orderAuthority = "optimizable";
+  assert.equal(tripBuildDocumentsCanonicalEquivalent(source, altered, "owner-a"), false);
+  altered.brief.intent.route.orderAuthority = "manual";
+  altered.brief.intent.route.destinations[0]!.requestedNights = 8;
+  assert.equal(tripBuildDocumentsCanonicalEquivalent(source, altered, "owner-a"), false);
+});
+
+test("v1_namespace_normalization_does_not_invent_new_intent_identity", () => {
+  const source = legacyRouteFixture();
+  const namespaced = { ...source, stops: source.stops.map(stop => ({ ...stop, id: `${source.id}-stop-${stop.id}` })) };
+  assert.deepEqual(requireReadableTripDocument(namespaced).brief.intent.route.destinations.map(intent => intent.id), requireReadableTripDocument(source).brief.intent.route.destinations.map(intent => intent.id));
+});
+
+test("duplicate_finish_gateway_gets_new_trip_identity_with_overnight_stay_intact", () => {
+  const source = requireReadableTripDocument(canonicalRouteFixture());
+  const place = { name: "Tokyo", canonicalPlaceId: "place:tokyo" };
+  source.brief.intent.route.journeyEnd = { mode: "explicit", place };
+  source.brief.journeyEnd = { mode: "explicit", place };
+  source.legs.push({ id: "finish", fromStopId: "hiroshima", toStopId: `${source.id}-end`, mode: "unknown", distanceKm: null, durationMinutes: null, provider: null, routeMetadata: {}, toEndpoint: { kind: "end", id: `${source.id}-end`, coordinates: null, ...place } });
+  let n = 0;
+  const copy = duplicateTripDocument(source, { id: "copy-finish", now: source.updatedAt, nextId: () => String(++n) });
+  assert.equal(copy.legs.at(-1)!.toEndpoint!.id, "copy-finish-end");
+  assert.equal(copy.legs.at(-1)!.toStopId, "copy-finish-end");
+  assert.equal(copy.stops.length, source.stops.length);
+  assert.deepEqual(copy.brief.intent!.route!.journeyEnd, source.brief.intent.route.journeyEnd);
+  assert.deepEqual(tripStopReferenceInvariantIssues(copy), []);
+});
 
 function referenceHeavyTrip(): EasyTTrip {
   return {

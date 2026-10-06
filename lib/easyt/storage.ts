@@ -574,6 +574,25 @@ function travellerStructuredIntent(trip: EasyTTrip) {
  * generated from the route and those authored values and are intentionally
  * excluded as a second source of truth.
  */
+function travellerRouteIntent(trip: EasyTTrip) {
+  const intent = trip.brief.intent;
+  if (!intent?.route) return intent;
+  const identity = (place: typeof intent.route.origin) => place ? {
+    name: place.name.trim().toLocaleLowerCase(), country: (place.country ?? "").trim().toLocaleLowerCase(),
+  } : null;
+  const { projectionInputKey: _key, ...route } = intent.route;
+  return { ...intent, route: {
+    ...route, origin: identity(route.origin),
+    journeyEnd: route.journeyEnd.mode === "explicit" ? { mode: "explicit", place: identity(route.journeyEnd.place) } : route.journeyEnd,
+    destinations: route.destinations.map(({ selectedPlace, resolution, ...destination }) => ({
+      ...destination, selectedPlace: identity(selectedPlace),
+      // Provider enrichment can resolve an already-bound stay. Unbound failure
+      // and planning-area states remain recovery-relevant.
+      resolution: destination.stopIds.length && selectedPlace ? "bound" : resolution,
+    })),
+  } };
+}
+
 function travellerAuthoredTripDocument(trip: EasyTTrip) {
   const brief = trip.brief;
   const originIdentity = `${brief.origin.trim().toLocaleLowerCase()}|${(brief.originCountry ?? "").trim().toLocaleLowerCase()}`;
@@ -609,7 +628,7 @@ function travellerAuthoredTripDocument(trip: EasyTTrip) {
       mapPins: sortedById(nonEmptyArray(brief.mapPins)),
       bookings: sortedById(nonEmptyArray(brief.bookings)),
       checklist: sortedById(nonEmptyArray(brief.checklist)),
-      intent: brief.intent,
+      intent: travellerRouteIntent(trip),
       scheduleLocks: nonEmptyScheduleLocks(brief.scheduleLocks),
       decisionSelections: nonEmptyDecisionSelections(brief.decisionSelections),
     },

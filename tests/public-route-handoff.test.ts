@@ -1,5 +1,14 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+
+test("public_route_handoff_retains_editorial_order_and_end_semantics", () => {
+  const detail = publicRouteDetailFor("andean-highlands")!;
+  const payload = routePlannerPayload(detail.planDraft, new Date(2026, 4, 10, 12));
+  assert.ok(payload.routeIntent);
+  assert.equal(payload.routeIntent.tripType, "unknown_legacy");
+  assert.equal(payload.routeIntent.orderAuthority, "legacy_preserved");
+  assert.deepEqual(payload.routeIntent.orderedStopIds, payload.destinations.map(stop => stop.id));
+});
 import { readFileSync } from "node:fs";
 import { publicRouteDetailFor } from "../lib/easyt/public-route.ts";
 import { routePlannerPayload } from "../lib/easyt/public-route-handoff.ts";

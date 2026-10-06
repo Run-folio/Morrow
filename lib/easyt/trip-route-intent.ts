@@ -46,7 +46,7 @@ function sourceRequestedNights(prompt: string, mention: ResolvedPlaceMention, al
 export function routeIntentFromHandoff(draft: HomeTripDraft, stops: readonly TripStop[]): RouteIntent {
   const mentions = draft.locationMentions ?? draft.structuredBrief?.placeMentions ?? [];
   const removed = new Set(draft.structuredBrief?.removedPlaceMentionIds ?? []);
-  const sourceMentions = mentions.filter(mention => !removed.has(mention.mentionId) && mention.role !== "excluded"
+  const sourceMentions = draft.sourceRouteKey ? [] : mentions.filter(mention => !removed.has(mention.mentionId) && mention.role !== "excluded"
     && mention.role !== "origin" && mention.role !== "fixed_start" && mention.role !== "fixed_end"
     && mention.role !== "anchor" && mention.routability !== "anchor_or_poi" && mention.placeType !== "landmark");
   const selections = draft.structuredBrief?.placeSelections ?? [];
@@ -153,7 +153,7 @@ export function routeIntentFromLegacyTrip(trip: EasyTTrip): RouteIntent {
   const manualIds = Array.isArray(trip.brief.manualNightStopIds) ? trip.brief.manualNightStopIds : [];
   const optionalIds = Array.isArray(trip.brief.intent?.hardConstraints?.optionalStopIds) ? trip.brief.intent.hardConstraints.optionalStopIds : [];
   let destinations: DestinationIntent[] = trip.stops.map(stop => ({
-    id: `legacy-stop:${stop.id}`,
+    id: `legacy-stop:${stop.id.startsWith(`${trip.id}-stop-`) ? stop.id.slice(`${trip.id}-stop-`.length) : stop.id}`,
     sourceText: stop.name,
     kind: "overnight_place",
     selectedPlace: placeForRouteStop(stop),
@@ -199,7 +199,8 @@ export function routeIntentFromLegacyTrip(trip: EasyTTrip): RouteIntent {
   }
   return {
     version: 1,
-    origin: trip.brief.origin?.trim() ? originPlaceFromBrief(trip.brief) : null,
+    origin: trip.brief.origin?.trim()
+      ? Object.fromEntries(Object.entries(originPlaceFromBrief(trip.brief)).filter(([, value]) => value !== undefined)) as JourneyEndpointPlace : null,
     tripType: journeyEnd.mode === "same_as_start" ? "return_to_start" : journeyEnd.mode === "explicit" ? "one_way" : "unknown_legacy",
     journeyEnd,
     destinations,
