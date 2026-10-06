@@ -30,6 +30,9 @@ test("responsive Storybook covers discovery at required widths", () => {
     assert.match(stories, new RegExp(`morrovia${width}`));
   }
   assert.match(stories, /CountryDiscovery/);
+  assert.match(stories, /KazakhstanCountryDiscovery/);
+  assert.match(stories, /KyrgyzstanCountryDiscovery/);
+  assert.match(stories, /CountryDiscoveryWithAdditionalPlaceSuggestions/);
 });
 
 test("natural-area clarification keeps reviewed canonical nearby bases alongside provider results", () => {

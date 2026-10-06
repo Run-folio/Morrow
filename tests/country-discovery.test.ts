@@ -38,6 +38,26 @@ test("short trips select fewer places and existing explicit Tokyo is never selec
   assert.ok(withTokyo.candidates.some((candidate) => candidate.placeId === "tokyo" && candidate.alreadyInTrip));
 });
 
+test("Central Asian country discovery offers reviewed canonical cities without treating regions as bases", () => {
+  const kazakhstan = buildCountryDiscovery(mention("Kazakhstan"), { totalNights: 14 });
+  const kyrgyzstan = buildCountryDiscovery(mention("Kyrgyzstan"), { totalNights: 14 });
+  const uzbekistan = buildCountryDiscovery(mention("Uzbekistan"), { totalNights: 14 });
+  const tajikistan = buildCountryDiscovery(mention("Tajikistan"), { totalNights: 14 });
+  assert.ok(kazakhstan.candidates.length >= 4);
+  assert.ok(kyrgyzstan.candidates.length >= 4);
+  assert.ok(uzbekistan.candidates.length >= 2);
+  assert.ok(tajikistan.candidates.length >= 3);
+  assert.ok(kazakhstan.candidates.some((item) => item.placeId === "astana"));
+  assert.ok(kyrgyzstan.candidates.some((item) => item.placeId === "bishkek"));
+  assert.equal(kyrgyzstan.candidates.find((item) => item.placeId === "bishkek")?.recommendationStayGuidance, undefined,
+    "a route family marked needs-review cannot supply a known-stay claim");
+  for (const result of [kazakhstan, kyrgyzstan, uzbekistan, tajikistan]) {
+    assert.ok(result.candidates.every((item) => item.coordinates && ["city", "town"].includes(item.placeType)));
+    assert.ok(result.candidates.every((item) => item.recommendationProvenance.length));
+    assert.equal(new Set(result.candidates.map((item) => item.placeId)).size, result.candidates.length);
+  }
+});
+
 test("Thailand recommendations deduplicate names and Philippines only recommends overnight-capable places", () => {
   const thailand = buildCountryDiscovery(mention("Thailand"), { totalNights: 12 });
   const keys = thailand.candidates.map((candidate) => candidate.name.toLowerCase() + "|" + candidate.countryCode);

@@ -110,6 +110,25 @@ test("model suggestions only survive provider-backed canonical and containment v
   assert.equal(canonical[0]?.name, "Bangkok");
   const wrongCountry = { ...planningOutput().suggestions[0]!, country: "France" };
   assert.equal((await canonicalizePlanningSuggestions({ suggestions: [wrongCountry], capture, provider })).length, 0);
+  const invented = { ...planningOutput().suggestions[0]!, name: "Invented City" };
+  assert.equal((await canonicalizePlanningSuggestions({ suggestions: [invented], capture, provider })).length, 0,
+    "a proposal without a provider-confirmed canonical match is rejected");
+  const regionProvider: PlaceIntelligenceProvider = { ...provider, lookup: async () => [{
+    providerId: "fixture:thailand-region", canonicalName: "Northern Thailand", placeType: "region",
+    parentCountries: ["Thailand"], coordinates: [99, 19], routability: "planning_area", matchQuality: "exact",
+  }] };
+  assert.equal((await canonicalizePlanningSuggestions({ suggestions: planningOutput().suggestions, capture, provider: regionProvider })).length, 0,
+    "a canonical region cannot pass the overnight city/town suggestion boundary");
+  const ambiguousProvider: PlaceIntelligenceProvider = { ...provider, lookup: async () => [
+    ...(await provider.lookup("Bangkok", { countryNames: ["Thailand"] })),
+    { providerId: "fixture:bangkok-ambiguous", canonicalName: "Bangkok", placeType: "city", parentCountries: ["Thailand"],
+      coordinates: [100.6, 13.8], routability: "direct_destination", matchQuality: "exact" },
+  ] };
+  assert.equal((await canonicalizePlanningSuggestions({ suggestions: planningOutput().suggestions, capture, provider: ambiguousProvider })).length, 0,
+    "conflicting canonical matches fail closed");
+  assert.equal((await canonicalizePlanningSuggestions({
+    suggestions: [planningOutput().suggestions[0]!, { ...planningOutput().suggestions[0]!, rationale: "duplicate name" }], capture, provider,
+  })).length, 1, "the canonical resolver deduplicates equivalent model proposals");
   const enrichedCapture = { ...capture, planningSuggestions: canonical };
   const draft = createHomeTripDraft({
     capture: enrichedCapture,

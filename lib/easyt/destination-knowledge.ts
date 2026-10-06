@@ -354,6 +354,36 @@ export const CURATED_DESTINATION_KNOWLEDGE: readonly DestinationKnowledge[] = [
       supports: "Almaty and Tashkent have international air access. Not a schedule, nonstop guarantee or availability check for arbitrary endpoint pairs.",
     },
   })),
+  ...[
+    { canonicalId: "astana", name: "Astana", coordinates: [71.4304, 51.1282] as [number, number], tags: ["culture", "architecture"] },
+    { canonicalId: "shymkent", name: "Shymkent", coordinates: [69.5901, 42.3417] as [number, number], tags: ["culture", "food"] },
+    { canonicalId: "turkistan", name: "Turkistan", coordinates: [68.2696, 43.2973] as [number, number], tags: ["culture", "heritage"] },
+    { canonicalId: "aktau", name: "Aktau", coordinates: [51.1605, 43.6532] as [number, number], tags: ["nature", "coast"] },
+  ].map((place) => curatedDestination({
+    ...place, country: "Kazakhstan", region: "asia", roles: ["base"], experienceTags: place.tags,
+    source: { id: `kazakhstan-travel:${place.canonicalId}`, label: "Kazakhstan national tourism portal", kind: "official",
+      url: place.canonicalId === "astana" ? "https://kazakhstan.travel/en/regions/astana"
+        : place.canonicalId === "shymkent" ? "https://www.kazakhstan.travel/en/regions/shymkent"
+          : place.canonicalId === "turkistan" ? "https://www.kazakhstan.travel/en/regions/turkistan-province"
+            : "https://invest.kazakhstan.travel/en/regions/%D0%BC%D0%B0%D0%BD%D0%B3%D0%B8%D1%81%D1%82%D0%B0%D1%83/",
+      reviewedAt: "2026-10-05",
+      supports: place.canonicalId === "aktau"
+        ? "Kazakhstan's official investment portal identifies Aktau as a base for exploring Mangystau; this does not establish route feasibility, lodging availability, or a recommended stay."
+        : "Kazakhstan's national tourism portal identifies this city or province as a visitor destination; experience tags describe the visitor context, not route feasibility, lodging availability, or a recommended stay.",
+    },
+  })),
+  ...[
+    { canonicalId: "bishkek", name: "Bishkek", coordinates: [74.5698, 42.8746] as [number, number], tags: ["culture", "food"] },
+    { canonicalId: "karakol", name: "Karakol", coordinates: [78.3936, 42.4907] as [number, number], tags: ["culture", "nature", "hiking"] },
+    { canonicalId: "osh", name: "Osh", coordinates: [72.7985, 40.513] as [number, number], tags: ["culture", "food", "heritage"] },
+    { canonicalId: "cholpon-ata", name: "Cholpon-Ata", coordinates: [77.0809, 42.6494] as [number, number], tags: ["nature", "beach"] },
+  ].map((place) => curatedDestination({
+    ...place, country: "Kyrgyzstan", region: "asia", roles: ["base"], experienceTags: place.tags,
+    source: { id: `kyrgyz-tourism:${place.canonicalId}`, label: "Department of Tourism of the Kyrgyz Republic", kind: "official",
+      url: "https://tourism.gov.kg/tourist-sites/", reviewedAt: "2026-10-05",
+      supports: "The Department of Tourism lists visitor resources for the named Kyrgyz city or locality; this supports visitor context only, not connections, lodging availability, or a recommended stay.",
+    },
+  })),
   curatedDestination({
     canonicalId: "tokyo", name: "Tokyo", aliases: ["seed-tokyo"], country: "Japan", region: "asia",
     coordinates: [139.6917, 35.6895], roles: ["anchor", "hub"], minimumNights: 3, idealNights: 4,

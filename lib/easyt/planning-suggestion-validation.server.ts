@@ -26,6 +26,12 @@ function countryMatches(candidate: PlaceProviderCandidate, country: string) {
   return candidate.parentCountries?.some((value) => normalizePlacePhrase(value) === expected);
 }
 
+function nameMatches(candidate: PlaceProviderCandidate, proposedName: string) {
+  const proposed = normalizePlacePhrase(proposedName);
+  return normalizePlacePhrase(candidate.canonicalName) === proposed
+    || candidate.aliases?.some((alias) => normalizePlacePhrase(alias) === proposed) === true;
+}
+
 function candidateFitsParent(parent: ResolvedPlaceMention, candidate: PlaceProviderCandidate) {
   if (!isOvernightBaseEligible({
     placeType: candidate.placeType,
@@ -63,9 +69,13 @@ export async function canonicalizePlanningSuggestions(input: {
       && ["continent", "country", "macro_region", "region"].includes(mention.placeType)
       && mention.parentCountries.some((country) => normalizePlacePhrase(country) === normalizePlacePhrase(suggestion.country)));
     const parentRequiresNearbyBase = Boolean(nearbyBaseAnchorForMention(parent));
-    const candidate = candidates.find((item) => countryMatches(item, suggestion.country)
+    const matchingCandidates = candidates.filter((item) => nameMatches(item, suggestion.name)
+      && countryMatches(item, suggestion.country)
       && (candidateFitsParent(parent, item)
         || Boolean(!parentRequiresNearbyBase && fallbackContainer && candidateFitsParent(fallbackContainer, item))));
+    const distinctCandidates = [...new Map(matchingCandidates.map((item) => [item.providerId, item])).values()];
+    if (distinctCandidates.length !== 1) return undefined;
+    const candidate = distinctCandidates[0];
     if (!candidate?.coordinates) return undefined;
     return {
       mentionId: parent.mentionId,

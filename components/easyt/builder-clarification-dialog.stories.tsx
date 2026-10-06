@@ -53,15 +53,16 @@ type Story = StoryObj<typeof meta>;
 
 export const BroadAreaStep1Of4: Story = {};
 
-const tajikistanMention = resolvePlaceMentions("Tajikistan").mentions[0]!;
-const tajikistanDiscovery = buildCountryDiscovery(tajikistanMention, { totalNights: 8, interests: ["nature"] });
-function CountryDiscoveryFixture(args: ComponentProps<typeof BuilderClarificationDialog> & { noNights?: boolean }) {
-  const [selectedIds, setSelectedIds] = useState(tajikistanDiscovery.selectedIds);
+function CountryDiscoveryFixture(args: ComponentProps<typeof BuilderClarificationDialog> & { noNights?: boolean; country?: string }) {
+  const country = args.country ?? "Tajikistan";
+  const mention = resolvePlaceMentions(country).mentions[0]!;
+  const discovery = buildCountryDiscovery(mention, { totalNights: 8, interests: ["nature"] });
+  const [selectedIds, setSelectedIds] = useState(discovery.selectedIds);
   const language = args.language ?? "en";
   return <BuilderClarificationDialog {...args}
     doneDisabled={!selectedIds.length}
     discovery={{
-      candidates: tajikistanDiscovery.candidates.map((sourceCandidate) => {
+      candidates: discovery.candidates.map((sourceCandidate) => {
         const candidate = countryDiscoveryCandidatePresentation(language, sourceCandidate);
         return {
           id: candidate.placeId, name: candidate.name, country: candidate.country,
@@ -69,7 +70,7 @@ function CountryDiscoveryFixture(args: ComponentProps<typeof BuilderClarificatio
         };
       }),
       selectedIds,
-      availableNights: args.noNights ? undefined : tajikistanDiscovery.availableNights,
+      availableNights: args.noNights ? undefined : discovery.availableNights,
       onToggle: (id, selected) => setSelectedIds((current) => selected ? [...new Set([...current, id])] : current.filter((item) => item !== id)),
     }} />;
 }
@@ -83,8 +84,43 @@ export const CountryDiscovery: Story = {
     search: { ...bulgariaSearch, label: "Search within Tajikistan", placeholder: "Search within Tajikistan", contextCountries: ["Tajikistan"], parentConstraint: { canonicalName: "Tajikistan", placeType: "country", parentCountries: ["Tajikistan"] } },
     doneLabel: "Continue",
     doneDisabled: false,
+    removeLabel: "Remove Tajikistan from trip",
   },
   render: (args) => <CountryDiscoveryFixture {...args} />,
+};
+
+export const KazakhstanCountryDiscovery: Story = {
+  ...CountryDiscovery,
+  args: {
+    ...CountryDiscovery.args,
+    itemKey: "kazakhstan-discovery",
+    title: "Where should you go in Kazakhstan?",
+    removeLabel: "Remove Kazakhstan from trip",
+    search: { ...bulgariaSearch, label: "Search within Kazakhstan", placeholder: "Search within Kazakhstan", contextCountries: ["Kazakhstan"], parentConstraint: { canonicalName: "Kazakhstan", placeType: "country", parentCountries: ["Kazakhstan"] } },
+  },
+  render: (args) => <CountryDiscoveryFixture {...args} country="Kazakhstan" />,
+};
+
+export const KyrgyzstanCountryDiscovery: Story = {
+  ...CountryDiscovery,
+  args: {
+    ...CountryDiscovery.args,
+    itemKey: "kyrgyzstan-discovery",
+    title: "Where should you go in Kyrgyzstan?",
+    removeLabel: "Remove Kyrgyzstan from trip",
+    search: { ...bulgariaSearch, label: "Search within Kyrgyzstan", placeholder: "Search within Kyrgyzstan", contextCountries: ["Kyrgyzstan"], parentConstraint: { canonicalName: "Kyrgyzstan", placeType: "country", parentCountries: ["Kyrgyzstan"] } },
+  },
+  render: (args) => <CountryDiscoveryFixture {...args} country="Kyrgyzstan" />,
+};
+
+export const CountryDiscoveryWithAdditionalPlaceSuggestions: Story = {
+  ...CountryDiscovery,
+  args: {
+    ...CountryDiscovery.args,
+    suggestionsLabel: "MORE PLACE SUGGESTIONS",
+    suggestions: [{ id: "fixture-extra-place", name: "Istaravshan", detail: "Tajikistan · Optional place suggestion; review its route fit." }],
+    suggestionsStatus: "Checking for a few additional place names. Reviewed suggestions are ready to select now.",
+  },
 };
 
 export const CountryDiscovery320: Story = { ...CountryDiscovery, parameters: { viewport: { defaultViewport: "morrovia320" } } };

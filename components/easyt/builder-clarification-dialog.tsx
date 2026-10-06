@@ -252,7 +252,7 @@ export function BuilderClarificationDialog({
           })}</div>
         </section> : null}
 
-        {!discovery && (suggestions.length || suggestionsStatus) ? <section className={styles.suggestions} aria-label={suggestionsLabel ?? text.suggested}>
+        {(!discovery || suggestions.length || suggestionsStatus) ? <section className={styles.suggestions} aria-label={suggestionsLabel ?? text.suggested}>
           <strong>{suggestionsLabel ?? text.suggested}</strong>
           {suggestions.length ? <div>{suggestions.map((suggestion) => <div key={suggestion.id}>
             {/* morrovia-ui-audit-allow-next-line native-control -- A suggestion option has two-line place metadata and a list-selection contract distinct from the shared action button. */}

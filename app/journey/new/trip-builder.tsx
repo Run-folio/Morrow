@@ -594,6 +594,8 @@ function TripBuilderDocument() {
   const [intakeMentions, setIntakeMentions] = useState<CapturedLocation[]>([]);
   const [placeSelections, setPlaceSelections] = useState<PlaceSelection[]>([]);
   const [planningSuggestions, setPlanningSuggestions] = useState<GuidedPlanningAreaSuggestion[]>([]);
+  const [countryEnrichment, setCountryEnrichment] = useState<{ key: string; status: "loading" | "ready" | "unavailable"; suggestions: GuidedPlanningAreaSuggestion[] }>({ key: "", status: "ready", suggestions: [] });
+  const countryEnrichmentRequestsRef = useRef(new Map<string, Promise<GuidedPlanningAreaSuggestion[]>>());
   const [completedPlanningAreaMentionIds, setCompletedPlanningAreaMentionIds] = useState<string[]>([]);
   const [removedPlaceMentionIds, setRemovedPlaceMentionIds] = useState<string[]>([]);
   const removedPlaceMentionIdsRef = useRef(removedPlaceMentionIds);
@@ -4064,6 +4066,58 @@ function TripBuilderDocument() {
       existingPlaceIds: stops.flatMap((stop) => stop.canonicalPlaceId ? [stop.canonicalPlaceId] : []),
       explicitChoiceIds: capturedStructuredBrief.countryDiscoveryChoices?.[activeClarificationMention.mentionId],
     }) : null;
+  const countryEnrichmentKey = activeClarificationMention && clarificationDiscovery && clarificationDiscovery.candidates.length < 6
+    ? JSON.stringify({ owner: activeBrowserOwnerId, trip: activeTripDocument?.id, mention: activeClarificationMention.mentionId,
+      country: activeClarificationMention.canonicalName, interests: effectiveIntent.preferences.interests,
+      pace: effectiveStructuredBrief.pace?.value ?? effectiveIntent.preferences.pace,
+      nights: effectiveStructuredBrief.duration?.value ?? totalDays - 1,
+      existing: stops.flatMap((stop) => stop.canonicalPlaceId ? [stop.canonicalPlaceId] : []).sort() }) : "";
+  useEffect(() => {
+    if (!clarificationOpen || !countryEnrichmentKey || !activeClarificationMention || !clarificationDiscovery
+      || clarificationUsesNearbyBases) return;
+    const existingRequest = countryEnrichmentRequestsRef.current.get(countryEnrichmentKey);
+    if (existingRequest) {
+      setCountryEnrichment({ key: countryEnrichmentKey, status: "loading", suggestions: [] });
+      void existingRequest.then((suggestions) => setCountryEnrichment({ key: countryEnrichmentKey,
+        status: suggestions.length ? "ready" : "unavailable", suggestions }));
+      return;
+    }
+    const countryName = activeClarificationMention.canonicalName;
+    const interests = effectiveIntent.preferences.interests.slice(0, 8).join(", ");
+    const nights = effectiveStructuredBrief.duration?.value ?? Math.max(1, totalDays - 1);
+    const existingNames = stops.filter((stop) => stop.canonicalPlaceId).map((stop) => stop.name).slice(0, 8).join(", ");
+    const prompt = `I am planning a trip in ${countryName}. Suggest up to six additional city or town overnight-base candidates located in ${countryName}. Interests: ${interests || "varied"}. Pace: ${effectiveStructuredBrief.pace?.value ?? effectiveIntent.preferences.pace}. Trip length: about ${nights} nights. Existing stops to avoid duplicating: ${existingNames || "none"}. Return place names only; do not claim connections, schedules, lodging availability, visa rules, opening hours, or trip suitability.`;
+    setCountryEnrichment({ key: countryEnrichmentKey, status: "loading", suggestions: [] });
+    const request = (async () => {
+      const controller = new AbortController();
+      const timeout = window.setTimeout(() => controller.abort(), 18_000);
+      try {
+        const response = await fetch("/api/journey-capture", { method: "POST", headers: { "content-type": "application/json" },
+          body: JSON.stringify({ brief: prompt }), signal: controller.signal });
+        if (!response.ok) return [] as GuidedPlanningAreaSuggestion[];
+        const body = await response.json() as { planningSuggestions?: GuidedPlanningAreaSuggestion[] };
+        const rows = Array.isArray(body.planningSuggestions) ? body.planningSuggestions : [];
+        const seen = new Set<string>();
+        return rows.filter((row) => {
+          const id = row?.canonicalPlaceId;
+          const valid = typeof id === "string" && row.country?.toLocaleLowerCase() === countryName.toLocaleLowerCase()
+            && ["city", "town", "transport_gateway"].includes(row.placeType) && Boolean(row.coordinates?.length === 2)
+            && Boolean(row.provenance?.length) && !clarificationDiscovery.candidates.some((candidate) => candidate.placeId === id)
+            && placeCandidateWithinPlanningParent({ canonicalName: row.name, placeType: row.placeType, parentCountries: [row.country],
+              coordinates: row.coordinates, routability: "direct_destination" }, activeClarificationMention);
+          if (!valid || seen.has(id)) return false;
+          seen.add(id);
+          return true;
+        }).slice(0, 6).map((row) => ({ ...row, mentionId: activeClarificationMention.mentionId, anchorMatched: false,
+          reason: `An additional place resolved within ${countryName}; check how it fits your route.` }));
+      } catch { return [] as GuidedPlanningAreaSuggestion[]; }
+      finally { window.clearTimeout(timeout); }
+    })();
+    countryEnrichmentRequestsRef.current.set(countryEnrichmentKey, request);
+    void request.then((suggestions) => setCountryEnrichment({ key: countryEnrichmentKey,
+      status: suggestions.length ? "ready" : "unavailable", suggestions }));
+  }, [clarificationOpen, countryEnrichmentKey]);
+  const activeCountryEnrichment = countryEnrichment.key === countryEnrichmentKey ? countryEnrichment : null;
   const discoveryEntry: DiscoveryEntry = activeClarificationMention
     ? discoveryEntryForBrief({ ...effectiveStructuredBrief, placeMentions: activePlaceMentions },
       stops.flatMap((stop) => stop.canonicalPlaceId ? [stop.canonicalPlaceId] : []), activeClarificationMention.mentionId)
@@ -4137,7 +4191,7 @@ function TripBuilderDocument() {
   const clarificationModelSuggestions = activeClarificationMention
     ? (clarificationUsesNearbyBases
       ? [...planningSuggestions, ...regionalBaseSuggestions(activeClarificationMention).map((suggestion) => ({ ...suggestion, anchorMatched: false }))]
-      : planningAreaSuggestionsWithinParent(planningSuggestions, planningParentForMention(activeClarificationMention)))
+      : planningAreaSuggestionsWithinParent([...planningSuggestions, ...(activeCountryEnrichment?.suggestions ?? [])], planningParentForMention(activeClarificationMention)))
       .filter((suggestion) => suggestion.mentionId === activeClarificationMention.mentionId
         && (!clarificationUsesNearbyBases || Boolean(activeNearbyBaseAnchor && canonicalPlaceSuggestionSuitableAsNearbyBase(activeNearbyBaseAnchor, {
           canonicalPlaceId: suggestion.canonicalPlaceId,
@@ -4171,10 +4225,13 @@ function TripBuilderDocument() {
     }))
     : [...clarificationModelSuggestions, ...clarificationGuidedSuggestions]
       .filter((suggestion, index, all) => all.findIndex((item) => item.canonicalPlaceId === suggestion.canonicalPlaceId) === index)
+      .filter((suggestion) => !clarificationDiscovery?.candidates.some((candidate) => candidate.placeId === suggestion.canonicalPlaceId))
       .slice(0, 6).map((suggestion) => ({
       id: suggestion.canonicalPlaceId,
       name: suggestion.name,
-      detail: `${suggestion.country} · ${suggestion.reason}`,
+      detail: `${suggestion.country} · ${clarificationModelSuggestions.some((item) => item.canonicalPlaceId === suggestion.canonicalPlaceId)
+        ? language === "es" ? "Lugar opcional; revisa cómo encaja en la ruta." : "Optional place suggestion; review its route fit."
+        : suggestion.reason}`,
     }));
   const clarificationSuggestionsStatus = clarificationUsesNearbyBases
     ? nearbySuggestions.length ? undefined : !activeNearbyBaseAnchor
@@ -4192,7 +4249,15 @@ function TripBuilderDocument() {
               ? `La búsqueda de lugares cercanos no está disponible. Se conserva ${clarificationParentName}; puedes buscar un lugar cercano.`
               : `Nearby place discovery is temporarily unavailable. ${clarificationParentName} is preserved; you can search for a nearby place.`
             : undefined
-    : undefined;
+    : clarificationDiscovery && clarificationDiscovery.candidates.length < 6
+      ? activeCountryEnrichment?.status === "loading" ? language === "es"
+        ? "Buscando algunos lugares más. Ya puedes elegir las sugerencias revisadas."
+        : "Checking for a few additional place names. Reviewed suggestions are ready to select now."
+        : activeCountryEnrichment?.status === "unavailable" ? language === "es"
+          ? "Las sugerencias adicionales no están disponibles ahora. Las sugerencias revisadas siguen disponibles."
+          : "Additional place suggestions are unavailable right now. Reviewed suggestions remain available."
+          : undefined
+      : undefined;
   const clarificationGuidedShapes = activeClarificationMention && clarificationSupportsMultiple
     && !clarificationUsesNearbyBases
     ? guidedPlanningAreaShapes(activeClarificationMention, {
@@ -5208,7 +5273,8 @@ function TripBuilderDocument() {
         suggestions={clarificationSuggestions}
         suggestionsLabel={clarificationUsesNearbyBases
           ? language === "es" ? "LUGARES CERCANOS SUGERIDOS" : "SUGGESTED NEARBY PLACES"
-          : undefined}
+          : clarificationDiscovery ? language === "es" ? "MÁS LUGARES SUGERIDOS" : "MORE PLACE SUGGESTIONS"
+            : undefined}
         suggestionsStatus={clarificationSuggestionsStatus}
         suggestionsActionLabel={clarificationUsesNearbyBases && activeNearbyDiscovery?.status === "unavailable"
           ? language === "es" ? "Reintentar búsqueda cercana" : "Retry nearby search"

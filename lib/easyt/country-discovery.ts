@@ -93,8 +93,12 @@ export function buildCountryDiscovery(mention: ResolvedPlaceMention, context: Co
     // The place catalogue owns identity and containment, not visitor appeal.
     // It cannot alone make a place a recommendation.
     if (!sourceStop && knowledge?.roles.status !== "known") return [];
-    const minimumNights = knowledge?.minimumNights.status === "known" ? knowledge.minimumNights.value : sourceStop?.minimumNights;
-    const idealNights = knowledge?.idealNights.status === "known" ? knowledge.idealNights.value : sourceStop?.recommendedNights;
+    const minimumNights = knowledge
+      ? knowledge.minimumNights.status === "known" ? knowledge.minimumNights.value : undefined
+      : sourceStop?.minimumNights;
+    const idealNights = knowledge
+      ? knowledge.idealNights.status === "known" ? knowledge.idealNights.value : undefined
+      : sourceStop?.recommendedNights;
     const tags = knowledge?.experienceTags.status === "known" ? knowledge.experienceTags.value : [];
     const matchedInterest = tags.find((tag) => interests.has(tag.toLocaleLowerCase()));
     const role = knowledge?.roles.status === "known" ? knowledge.roles.value : [];
@@ -148,8 +152,9 @@ export function buildCountryDiscovery(mention: ResolvedPlaceMention, context: Co
   let reservedNights = existingWithinParent.reduce((sum, place) => {
     const country = place.parentCountries[0] ?? "";
     const known = destinationKnowledge.findDestination({ canonicalPlaceId: place.canonicalPlaceId, name: place.canonicalName, country });
+    const sourceStop = routeStopFor(place.canonicalName, country);
     return sum + (known?.minimumNights.status === "known" ? known.minimumNights.value
-      : routeStopFor(place.canonicalName, country)?.minimumNights ?? 2);
+      : known ? 2 : sourceStop?.minimumNights ?? 2);
   }, Math.max(0, existingWithinParent.length - 1));
   for (const candidate of candidates) {
     if (candidate.alreadyInTrip || candidate.score <= 0 || defaultIds.length + existingWithinParent.length >= maxDefault) continue;
@@ -167,7 +172,7 @@ export function buildCountryDiscovery(mention: ResolvedPlaceMention, context: Co
     if (!sourceStop && candidate.coordinates && defaultCandidates.some((selected) =>
       !routeStopFor(selected.name, selected.country) && selected.coordinates
       && straightLineKm(candidate.coordinates!, selected.coordinates) > 250)) continue;
-    const minimum = known?.minimumNights.status === "known" ? known.minimumNights.value : sourceStop?.minimumNights ?? 2;
+    const minimum = known?.minimumNights.status === "known" ? known.minimumNights.value : known ? 2 : sourceStop?.minimumNights ?? 2;
     const nextReserved = reservedNights + minimum + (defaultIds.length + existingWithinParent.length > 0 ? 1 : 0);
     if (nights !== undefined && nextReserved > nights) continue;
     defaultIds.push(candidate.placeId);
