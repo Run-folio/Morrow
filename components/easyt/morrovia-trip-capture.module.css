@@ -303,3 +303,31 @@
   .attributeActions button,
   .interestPanel button { transition: none; }
 }
+
+/* The homepage planner composes the existing capture owners. */
+.plannerHeader { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; }
+.plannerHeader .modeTabs { flex: 1; }
+.plannerType { flex-shrink: 0; }
+.plannerType button { min-height: 44px; }
+.plannerFields { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 2fr); gap: 16px; padding-block: 12px; }
+.plannerFields > div { min-width: 0; }
+.plannerFields > div > span { display: block; margin-bottom: 9px; color: var(--morrovia-muted); font: 600 11px/1.35 var(--morrovia-ui); }
+.plannerFields input { min-height: 44px; }
+.plannerUtilities { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); border: 1px solid var(--morrovia-line); border-radius: var(--morrovia-control-radius); }
+.plannerUtilities .wideDatePicker { border-left: 0; }
+.plannerBottom { display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "controls action" "personalize personalize"; gap: 12px; }
+.plannerUtilities { grid-area: controls; }
+.plannerBottom .personalizePanel { grid-area: personalize; }
+.plannerSummary { color: var(--morrovia-muted); font: 600 12px/1.4 var(--morrovia-ui); }
+.plannerCard .personalizePanel { grid-template-columns: minmax(180px, .6fr) minmax(250px, .8fr) minmax(0, 1.5fr); }
+@media (max-width: 720px) {
+  .plannerHeader { align-items: stretch; flex-direction: column; }
+  .plannerFields { grid-template-columns: minmax(0, 1fr); }
+  .plannerBottom { grid-template-columns: minmax(0, 1fr); grid-template-areas: "controls" "personalize" "action"; }
+  .plannerCard .personalizePanel { grid-template-columns: minmax(0, 1fr); }
+  .plannerType > div { width: 100%; }
+}
+@media (max-width: 430px) {
+  .plannerUtilities { grid-template-columns: minmax(0, 1fr); }
+  .plannerUtilities .personalizeRow { border-left: 0; border-top: 1px solid var(--morrovia-line); }
+}

@@ -357,3 +357,5 @@
 @media (prefers-reduced-motion: reduce) {
   .spinner { animation: none; }
 }
+
+.segment:disabled { opacity: 0.62; background: var(--morrovia-disabled); cursor: not-allowed; }

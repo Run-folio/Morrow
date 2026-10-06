@@ -131,3 +131,14 @@ export const NarrowScreen: Story = {
     </div>
   ),
 };
+
+export const DisabledSegments: Story = {
+  render: () => <EasyTSegmentedControl ariaLabel="Disabled trip type" disabled value="return" options={[{ value: "return", label: "Return to start" }, { value: "one_way", label: "One way" }]} onChange={() => { throw new Error("Disabled segments must be inert"); }} />,
+  play: async ({ canvasElement }) => {
+    for (const button of canvasElement.querySelectorAll<HTMLButtonElement>("button")) {
+      if (!button.disabled) throw new Error("Disabled segment is interactive");
+      button.click();
+      button.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
+    }
+  },
+};

@@ -9,7 +9,7 @@ import type { TravelProfile } from "@/lib/easyt/travel-profile";
 import { appendVoiceTranscript } from "@/lib/easyt/speech-recognition";
 import { EasyTButton } from "./easyt-controls";
 import { MorroviaDatePicker } from "./morrovia-date-picker";
-import { MorroviaContextualDisclosure } from "./morrovia-feedback";
+import { MorroviaContextualDisclosure, MorroviaBriefNotice } from "./morrovia-feedback";
 import { MorroviaQuantitySelector } from "./morrovia-quantity-selector";
 import { VoiceTripBrief } from "./voice-trip-brief";
 import styles from "./morrovia-trip-capture.module.css";
@@ -94,6 +94,7 @@ const copy = {
 } as const;
 
 export type HomepageCaptureEntry = {
+  planner?: { tripTypeControl: ReactNode; originEntry: ReactNode; routeSummary: ReactNode };
   mode: "stops" | "describe";
   onModeChange: (mode: "stops" | "describe") => void;
   destinationEntry: ReactNode;
@@ -273,11 +274,29 @@ export function MorroviaTripCapture({
   </div> : null;
 
   return <form id={formId} className={`${styles.root}${homepageEntry ? ` ${styles.wideRoot}` : ""}`} onSubmit={submit}>
-    {homepageEntry ? <div className={`${styles.card} ${styles.wideCard}`}>
+    {homepageEntry ? <div className={`${styles.card} ${styles.wideCard}${homepageEntry.planner ? ` ${styles.plannerCard}` : ""}`}>
+      <div className={homepageEntry.planner ? styles.plannerHeader : undefined}>
       <div className={styles.modeTabs} role="tablist" aria-label={language === "es" ? "Cómo empezar el viaje" : "How to start your trip"}>
         <EasyTButton ref={stopsTabRef} className={styles.modeTab} variant="quiet" icon={MapPin} role="tab" id={`${stopsPanelId}-tab`} aria-selected={homepageEntry.mode === "stops"} aria-controls={stopsPanelId} tabIndex={homepageEntry.mode === "stops" ? 0 : -1} disabled={disabled || loading} onKeyDown={onTabKeyDown} onClick={() => homepageEntry.onModeChange("stops")}>{text.planWithStops}</EasyTButton>
         <EasyTButton ref={describeTabRef} className={styles.modeTab} variant="quiet" icon={Sparkles} role="tab" id={`${describePanelId}-tab`} aria-selected={homepageEntry.mode === "describe"} aria-controls={describePanelId} tabIndex={homepageEntry.mode === "describe" ? 0 : -1} disabled={disabled || loading} onKeyDown={onTabKeyDown} onClick={() => homepageEntry.onModeChange("describe")}>{text.describeTrip}</EasyTButton>
       </div>
+      {homepageEntry.planner ? <div className={styles.plannerType}>{homepageEntry.planner.tripTypeControl}</div> : null}
+      </div>
+      {homepageEntry.planner ? <>
+        <div className={styles.plannerFields}>
+          {homepageEntry.planner.originEntry}
+          {homepageEntry.mode === "stops" ? <div role="tabpanel" id={stopsPanelId} aria-labelledby={`${stopsPanelId}-tab`}>{homepageEntry.destinationEditor}</div>
+            : <div className={styles.wideDescribePanel} role="tabpanel" id={describePanelId} aria-labelledby={`${describePanelId}-tab`}>
+              {promptField}<div className={styles.wideDisclosure}><MorroviaContextualDisclosure open={aiDisclosureOpen} onOpenChange={setAiDisclosureOpen} title={text.aiTitle} detail={text.aiDisclosure} linkHref="/journey/privacy#ai-and-speech" linkLabel={text.privacy} triggerLabel={text.aiLabel} /></div>
+            </div>}
+        </div>
+        <div className={styles.plannerBottom}>
+          <div className={styles.plannerUtilities}>{homepageDates}{homepagePersonalize}</div>
+          {homepagePersonalizePanel}
+          {homepageAction}
+        </div>
+        <div className={styles.plannerSummary}>{homepageEntry.planner.routeSummary}</div>
+      </> : <>
       {homepageEntry.mode === "stops" ? <>
         <div className={homepageLayoutClass}>
           <div className={`${styles.wideSegmentGroup} ${styles.wideHomeControls}`}>
@@ -309,6 +328,7 @@ export function MorroviaTripCapture({
           {homepagePersonalizePanel}
           {homepageAction}
         </div>
+      </>}
       </>}
     </div> : <div className={`${styles.card}${progressiveDetails && !detailsOpen ? ` ${styles.detailsCollapsed}` : ""}`}>
       <span className={`${styles.label}${progressiveDetails ? ` ${styles.homepageLabel}` : ""}`}>{progressiveDetails ? text.homepageLabel : text.briefLabel}</span>
@@ -391,6 +411,6 @@ export function MorroviaTripCapture({
         </div>
       </div>
     </div>}
-    {error ? <p className={styles.error} role="alert">{error}</p> : null}
+    {error ? homepageEntry?.planner ? <MorroviaBriefNotice title={error} /> : <p className={styles.error} role="alert">{error}</p> : null}
   </form>;
 }

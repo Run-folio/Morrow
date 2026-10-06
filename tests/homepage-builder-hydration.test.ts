@@ -50,6 +50,7 @@ function materialize(draft: HomeTripDraft): EasyTTrip {
       originProviderId: draft.originProviderId,
       originCoordinates: draft.originCoordinates,
       journeyEnd: draft.journeyEnd,
+      routeIntent: draft.routeIntent,
       stops,
       startDate: draft.startDate!,
       endDate: draft.endDate!,
@@ -218,6 +219,7 @@ test("a clarified planning area retains its original position through its select
     budget: "mid",
     draft: [],
     structuredBrief,
+    journeyEnd: draft.journeyEnd,
   });
   assert.equal(homepageHandoffMatchesTrip(draft, trip), true);
 });

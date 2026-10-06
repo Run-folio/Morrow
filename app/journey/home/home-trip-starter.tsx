@@ -3,7 +3,11 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { MorroviaTripCapture } from "@/components/easyt/morrovia-trip-capture";
-import { JourneyEndpointsEditor } from "@/components/easyt/journey-endpoints-editor";
+import { CanonicalPlaceAutocomplete } from "@/components/easyt/canonical-place-autocomplete";
+import { EasyTSegmentedControl } from "@/components/easyt/easyt-controls";
+import { MorroviaConfirmationDialog } from "@/components/easyt/morrovia-feedback";
+import { captureJourneyBrief } from "@/lib/easyt/journey-capture";
+import { homepageCapturedRouteEvidence, homepageDescribeSourceKey, homepageRouteChoice, homepageRouteReviewKey, invalidateHomepageRouteReview, type HomepageRouteEvidence } from "@/lib/easyt/home-route-choice";
 import { languageFromStorage, type EasyTLanguage } from "@/lib/easyt/i18n";
 import { trackEvent } from "@/lib/analytics";
 import { markPlanningMilestone, planningAttemptOutcome } from "@/lib/easyt/planning-attempt-performance";
@@ -19,6 +23,8 @@ import {
   homepageSemanticInputFingerprint,
   homepageSnapshotForDescribePrompt,
   homepageVisibleDateRange,
+  homepagePreflightIssues,
+  type HomepageTripType,
   persistEditableHomepageInput,
   projectHomepageInput,
   reservePendingDescribeHandoff,
@@ -29,7 +35,6 @@ import {
   type StoredHomepageInput,
 } from "@/lib/easyt/home-trip-handoff";
 import type { TripInterest } from "@/lib/easyt/trip-interest";
-import type { JourneyEndSelection } from "@/lib/easyt/trip";
 import { journeyEndpointPlaceFromSuggestion } from "@/lib/easyt/journey-endpoints";
 import { beginNewTripNavigation } from "@/lib/easyt/storage";
 import { loadRequestedTrip, loadTripRecovery } from "@/lib/easyt/storage";
@@ -44,6 +49,7 @@ function emptySnapshot(ownerId: string | null): HomepageInputSnapshot {
     version: 1, ownerId, revision: 0, mode: "stops",
     entries: [{ id: "destination-1", text: "", selection: null }], prompt: "",
     dates: { state: "untouched" }, budget: { state: "untouched" }, interests: { state: "untouched" },
+    tripType: { state: "untouched" }, originInput: "",
     travellers: { state: "untouched" }, origin: { state: "untouched" }, journeyEnd: { state: "untouched" },
   };
 }
@@ -71,8 +77,7 @@ export default function HomeTripStarter() {
   const storedInputRef = useRef<StoredHomepageInput>({ snapshot: initialSnapshot.current });
   const [snapshot, setSnapshot] = useState<HomepageInputSnapshot>(initialSnapshot.current);
   const [language, setLanguage] = useState<EasyTLanguage>("en");
-  const [startInput, setStartInput] = useState("");
-  const [journeyEndInput, setJourneyEndInput] = useState("");
+  const [proposedType, setProposedType] = useState<{ snapshot: HomepageInputSnapshot; evidence: HomepageRouteEvidence; type: HomepageTripType } | null>(null);
   const [travelProfile, setTravelProfile] = useState<TravelProfile | null>(null);
   const { start: startDate, end: endDate } = homepageVisibleDateRange(snapshot);
   const [loading, setLoading] = useState(false);
@@ -93,9 +98,10 @@ export default function HomeTripStarter() {
         else if (result.reason !== "stale") setCaptureError(language === "es" ? "No pudimos guardar esta entrada en este dispositivo." : "We couldn't save this trip input on this device.");
       });
   };
-  const updateSnapshot = (update: (current: HomepageInputSnapshot) => HomepageInputSnapshot) => {
+  const updateSnapshot = (update: (current: HomepageInputSnapshot) => HomepageInputSnapshot, reviewedEvidence?: HomepageRouteEvidence) => {
     cancelSubmission();
-    const next = { ...update(snapshotRef.current), revision: snapshotRef.current.revision + 1 };
+    let next = { ...invalidateHomepageRouteReview(snapshotRef.current, update(snapshotRef.current)), revision: snapshotRef.current.revision + 1 };
+    if (reviewedEvidence && next.tripType?.state === "selected") next = { ...next, routeReview: { version: 1, acceptedTripType: next.tripType.value, reviewedInputKey: homepageRouteReviewKey(next, reviewedEvidence) } };
     snapshotRef.current = next;
     setSnapshot(next);
     setCaptureError("");
@@ -129,8 +135,7 @@ export default function HomeTripStarter() {
     destinationIdRef.current = nextDestinationNumber(next.entries);
     snapshotRef.current = next;
     setSnapshot(next);
-    setStartInput(next.origin.state === "selected" ? next.origin.value.name : "");
-    setJourneyEndInput(next.journeyEnd.state === "selected" && next.journeyEnd.value.mode === "explicit" ? next.journeyEnd.value.place.name : "");
+    setProposedType(null);
   }, [ownerId, sessionPending]);
 
   const markPromptStarted = (inputMethod: "text" | "voice", value: string) => {
@@ -207,6 +212,17 @@ export default function HomeTripStarter() {
         setCaptureError(language === "es" ? "No pudimos recuperar este viaje. Revisa Mis viajes." : "We couldn't recover this trip. Check My Trips.");
         return;
       }
+      if (!isCurrent()) return;
+      const issues = homepagePreflightIssues(submitted, evidenceFor(submitted));
+      if (!isCurrent()) return;
+      if (issues.length) {
+        setCaptureError(issueMessage(issues[0].field));
+        const form = document.getElementById("start-building");
+        (issues[0].field === "origin" ? form?.querySelector<HTMLInputElement>('[data-homepage-origin] input')
+          : issues[0].field === "tripType" ? form?.querySelector<HTMLButtonElement>('[data-homepage-trip-type] button')
+          : form?.querySelector<HTMLInputElement>('input[role="combobox"], textarea'))?.focus();
+        return;
+      }
       if (submitted.mode === "describe") {
         const committed = await reservePendingDescribeHandoff({
           storage: window.localStorage, snapshot: submitted, isCurrent,
@@ -274,31 +290,76 @@ export default function HomeTripStarter() {
     }
   };
 
+  const evidenceFor = (input: HomepageInputSnapshot): HomepageRouteEvidence | undefined => {
+    const review = storedInputRef.current.review;
+    if (input.mode !== "describe") return undefined;
+    if (review?.sourceKey === homepageDescribeSourceKey(input)) return review.evidence;
+    return homepageCapturedRouteEvidence(input.prompt, captureJourneyBrief(input.prompt));
+  };
+  const issueMessage = (field: string) => language === "es"
+    ? field === "tripType" ? "Revisa cómo termina el viaje. Elige y confirma el tipo de viaje." : field === "origin" ? "Selecciona el lugar de salida de los resultados." : "Revisa los datos del viaje antes de continuar."
+    : field === "tripType" ? "Review how your trip ends. Choose and confirm the trip type." : field === "origin" ? "Select your starting place from the results." : "Review your trip details before continuing.";
+  const chosenSnapshot = (current: HomepageInputSnapshot, type: HomepageTripType, evidence?: HomepageRouteEvidence): HomepageInputSnapshot => ({
+    ...current, tripType: { state: "selected", value: type }, journeyEnd: { state: "selected", value: type === "return_to_start" ? { mode: "same_as_start" }
+      : evidence?.journeyEnd.mode === "explicit" ? evidence.journeyEnd
+      : current.journeyEnd.state === "selected" && current.journeyEnd.value.mode === "explicit" ? current.journeyEnd.value : { mode: "unknown" } },
+  });
+  const requestTripType = (type: HomepageTripType) => {
+    const current = snapshotRef.current;
+    const knownEnd = current.journeyEnd.state === "selected" ? current.journeyEnd.value : { mode: "unknown" as const };
+    const evidence = evidenceFor(current) ?? { tripType: knownEnd.mode === "explicit" ? "one_way" as const : knownEnd.mode === "same_as_start" ? "return_to_start" as const : null,
+      journeyEnd: knownEnd, source: "legacy" as const, status: knownEnd.mode === "unknown" ? "unknown" as const : "clear" as const };
+    const next = chosenSnapshot(current, type, evidence);
+    if (homepageRouteChoice(next, evidence).conflict) {
+      setProposedType({ snapshot: current, evidence: evidence ?? { tripType: null, journeyEnd: current.journeyEnd.state === "selected" ? current.journeyEnd.value : { mode: "unknown" }, source: "legacy", status: "clear" }, type });
+    } else updateSnapshot(() => next);
+  };
+  const acceptTripType = () => {
+    if (!proposedType) return;
+    const current = snapshotRef.current;
+    if (current.ownerId !== proposedType.snapshot.ownerId || current.revision !== proposedType.snapshot.revision
+      || homepageRouteReviewKey(current, evidenceFor(current) ?? proposedType.evidence) !== homepageRouteReviewKey(proposedType.snapshot, proposedType.evidence)) { setProposedType(null); return; }
+    updateSnapshot(() => chosenSnapshot(current, proposedType.type, proposedType.evidence), proposedType.evidence);
+    setProposedType(null);
+  };
+  const choice = homepageRouteChoice(snapshot, evidenceFor(snapshot));
+  const originInput = snapshot.originInput ?? (snapshot.origin.state === "selected" ? snapshot.origin.value.name : "");
+  const summary = choice.conflict ? issueMessage("tripType") : choice.journeyEnd.mode === "explicit"
+    ? `${language === "es" ? "Termina en" : "Finish in"} ${choice.journeyEnd.place.name}`
+    : choice.tripType === "return_to_start" ? (snapshot.origin.state === "selected" ? `${language === "es" ? "Vuelves a" : "Return to"} ${snapshot.origin.value.name}` : language === "es" ? "Vuelve al inicio" : "Return to start")
+    : choice.tripType === "one_way" ? (language === "es" ? "Solo ida" : "One way") : (language === "es" ? "Final del viaje sin confirmar" : "Journey end unconfirmed");
   const interests = snapshot.interests.state === "selected" ? snapshot.interests.value
     : snapshot.interests.state === "cleared" ? [] : tripInterestsWithProfileDefaults([], travelProfile, false);
   const travellers = snapshot.travellers.state === "selected" ? snapshot.travellers.value : 2;
-  const journeyEnd: JourneyEndSelection = snapshot.journeyEnd.state === "selected" ? snapshot.journeyEnd.value : { mode: "unknown" };
 
-  return <MorroviaTripCapture
+  return <>
+  <MorroviaTripCapture
     formId="start-building" progressiveDetails disabled={sessionPending} language={language} value={snapshot.prompt}
     onValueChange={(prompt) => {
       const next = homepageSnapshotForDescribePrompt(snapshotRef.current, prompt);
-      if (next.origin.state !== "selected") setStartInput("");
-      if (next.journeyEnd.state !== "selected") setJourneyEndInput("");
       updateSnapshot(() => next);
     }}
     onPromptStarted={markPromptStarted}
     homepageEntry={{
+      planner: {
+        tripTypeControl: <div data-homepage-trip-type><EasyTSegmentedControl ariaLabel={language === "es" ? "Tipo de viaje" : "Trip type"} disabled={sessionPending || loading}
+          value={choice.tripType} options={[{ value: "return_to_start", label: language === "es" ? "Volver al inicio" : "Return to start" }, { value: "one_way", label: language === "es" ? "Solo ida" : "One way" }]}
+          onChange={type => { if (type !== "unknown_legacy") requestTripType(type); }} /></div>,
+        originEntry: <div data-homepage-origin><span>{language === "es" ? "Sales desde" : "Start from"}</span><CanonicalPlaceAutocomplete
+          language={language} label={language === "es" ? "Sales desde" : "Start from"} value={originInput}
+          placeholder={language === "es" ? "Ciudad o aeropuerto" : "City or airport"} allowedPlaceTypes={["city", "town", "transport_gateway"]}
+          requireCoordinates showPlaceType={false} disabled={sessionPending || loading}
+          onChange={value => updateSnapshot(current => ({ ...current, originInput: value, origin: { state: "cleared" } }))}
+          onClear={() => updateSnapshot(current => ({ ...current, originInput: "", origin: { state: "cleared" } }))}
+          onSelect={suggestion => updateSnapshot(current => ({ ...current, originInput: suggestion.label, origin: { state: "selected", value: journeyEndpointPlaceFromSuggestion(suggestion) } }))} /></div>,
+        routeSummary: <span>{[summary, `${travellers} ${language === "es" ? "viajeros" : "travellers"}`, snapshot.budget.state === "selected" ? ({ value: language === "es" ? "Económico" : "Value", mid: language === "es" ? "Gama media" : "Mid-range", high: language === "es" ? "Lujo" : "Luxury" })[snapshot.budget.value] : ""].filter(Boolean).join(" · ")}</span>,
+      },
       mode: snapshot.mode,
       onModeChange: (mode) => updateSnapshot((current) => ({ ...current, mode })),
       destinationEntry: destinationSummary(snapshot.entries, language),
-      onAddStop: () => {
-        const entry = { id: `destination-${destinationIdRef.current++}`, text: "", selection: null };
-        setFocusEntryId(entry.id);
-        updateSnapshot((current) => ({ ...current, entries: [...current.entries, entry] }));
-      },
       destinationEditor: <HomeDestinationEditor
-        entries={snapshot.entries} language={language} disabled={loading}
+        entries={snapshot.entries} language={language} disabled={loading || sessionPending}
+        createEntry={() => ({ id: `destination-${destinationIdRef.current++}`, text: "", selection: null })}
         focusEntryId={focusEntryId}
         onChange={(entries: HomepageDestinationEntry[]) => updateSnapshot((current) => ({ ...current, entries }))}
       />,
@@ -307,20 +368,6 @@ export default function HomeTripStarter() {
       datesChosen: snapshot.dates.state === "selected",
       onDatesClear: () => updateSnapshot((current) => ({ ...current, dates: { state: "cleared" } })),
     }}
-    endpointEntry={<JourneyEndpointsEditor
-      language={language} startValue={startInput} endValue={journeyEndInput} endSelection={journeyEnd}
-      showHeading={false} showHint={false}
-      onStartChange={(value) => { setStartInput(value); updateSnapshot((current) => ({ ...current, origin: { state: "cleared" } })); }}
-      onStartSelect={(suggestion) => { setStartInput(suggestion.name); updateSnapshot((current) => ({ ...current, origin: { state: "selected", value: journeyEndpointPlaceFromSuggestion(suggestion) } })); }}
-      onEndChange={(value) => {
-        setJourneyEndInput(value);
-        updateSnapshot((current) => ({ ...current, journeyEnd: value.trim()
-          ? { state: "selected", value: { mode: "explicit", place: { name: value.trim() } } }
-          : { state: "cleared" } }));
-      }}
-      onEndSelect={(suggestion) => { setJourneyEndInput(suggestion.name); updateSnapshot((current) => ({ ...current, journeyEnd: { state: "selected", value: { mode: "explicit", place: journeyEndpointPlaceFromSuggestion(suggestion) } } })); }}
-      onEndModeChange={(mode) => { setJourneyEndInput(""); updateSnapshot((current) => ({ ...current, journeyEnd: { state: "selected", value: { mode } } })); }}
-    />}
     startDate={startDate} endDate={endDate}
     onDatesChange={(range) => updateSnapshot((current) => ({ ...current, dates: { state: "selected", value: range } }))}
     travellers={travellers}
@@ -328,5 +375,11 @@ export default function HomeTripStarter() {
     interests={interests}
     onInterestsChange={(value: TripInterest[]) => updateSnapshot((current) => ({ ...current, interests: { state: "selected", value } }))}
     travelProfile={travelProfile} onSubmit={submit} loading={loading} error={captureError}
-  />;
+  />
+  <MorroviaConfirmationDialog open={Boolean(proposedType)} onCancel={() => setProposedType(null)} onConfirm={acceptTripType}
+    title={language === "es" ? "¿Confirmar el tipo de viaje?" : "Confirm trip type?"}
+    detail={language === "es" ? "Tu idea incluye un final diferente. Confirma cómo quieres terminar el viaje." : "Your trip idea includes a different ending. Confirm how you want to finish."}
+    consequences={[proposedType?.type === "return_to_start" ? (language === "es" ? "El viaje volverá al inicio." : "The journey will return to its start.") : (language === "es" ? "El viaje será de solo ida." : "The journey will be one way.")]}
+    confirmLabel={language === "es" ? "Confirmar" : "Confirm"} cancelLabel={language === "es" ? "Cancelar" : "Cancel"} />
+  </>;
 }

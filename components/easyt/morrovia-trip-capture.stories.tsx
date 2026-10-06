@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { expect, userEvent, within } from "storybook/test";
 import { HomeDestinationEditor } from "../../app/journey/home/home-destination-editor";
 import { TOUR_TRIP_PROMPT, tourTripFixture } from "./storybook/tour-trip.fixture";
-import { EasyTButton, EasyTField } from "./easyt-controls";
+import { EasyTButton, EasyTField, EasyTSegmentedControl } from "./easyt-controls";
 import { MorroviaTripCapture, type MorroviaTripCaptureProps } from "./morrovia-trip-capture";
 import { JourneyEndpointsEditor } from "./journey-endpoints-editor";
 import type { HomepageDestinationEntry } from "@/lib/easyt/home-trip-handoff";
@@ -405,3 +405,11 @@ export const WideHomepageDelayedVoiceAfterLoading: Story = {
 };
 
 export const WideHomepageMobile390: Story = { ...WideHomepageCapture, globals: { viewport: { value: "morrovia390", isRotated: false } } };
+
+export const HomepagePlannerSlots: Story = {
+  args: { ...wideHomepageArgs, homepageEntry: { ...wideHomepageArgs.homepageEntry!, planner: {
+    tripTypeControl: <EasyTSegmentedControl ariaLabel="Trip type" value="return" options={[{ value: "return", label: "Return to start" }, { value: "one_way", label: "One way" }]} onChange={() => undefined} />,
+    originEntry: <EasyTField label="Start from" value="London" readOnly />,
+    routeSummary: "Return to London · 2 travellers",
+  } } },
+};

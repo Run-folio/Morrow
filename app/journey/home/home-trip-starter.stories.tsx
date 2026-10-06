@@ -4,7 +4,10 @@ import HomeTripStarter from "./home-trip-starter";
 import { HomeDestinationEditor } from "./home-destination-editor";
 import { MorroviaTripCapture } from "@/components/easyt/morrovia-trip-capture";
 import { EasyTButton, EasyTField } from "@/components/easyt/easyt-controls";
-import type { HomepageDestinationEntry } from "@/lib/easyt/home-trip-handoff";
+import type { HomepageDestinationEntry, HomepageInputSnapshot } from "@/lib/easyt/home-trip-handoff";
+import { captureJourneyBrief } from "@/lib/easyt/journey-capture";
+import { homepageInputStorageKey } from "@/lib/easyt/private-browser-context";
+import { homepageRouteReviewKey, homepageCapturedRouteEvidence } from "@/lib/easyt/home-route-choice";
 import { canonicalPlaceSuggestionFor } from "@/lib/easyt/place-intelligence";
 
 const meta = {
@@ -163,3 +166,55 @@ export const DestinationUnresolvedRecovery: Story = {
   render: () => <DestinationEditorStory initialEntries={[{ id: "entry-held", text: "San Pedro de Atacama", selection: null }, storyEntry("entry-2", "Tokyo")]} />,
 };
 export const DestinationLongName430: Story = { ...DestinationLongName, globals: { viewport: { value: "morrovia430", isRotated: false } } };
+
+function seedPlanner(overrides: Partial<HomepageInputSnapshot>, language = "en") {
+  return () => {
+    const key = homepageInputStorageKey(null);
+    const previous = localStorage.getItem(key);
+    const previousLanguage = localStorage.getItem("easyt-language");
+    const snapshot: HomepageInputSnapshot = {
+      version: 1, ownerId: null, revision: 0, mode: "stops", prompt: "",
+      entries: [storyEntry("tokyo-first", "Tokyo"), storyEntry("kyoto", "Kyoto"), storyEntry("tokyo-last", "Tokyo")],
+      tripType: { state: "untouched" }, originInput: "London",
+      origin: { state: "selected", value: { name: "London", canonicalPlaceId: "london", coordinates: [-.1276, 51.5072] } },
+      journeyEnd: { state: "untouched" }, dates: { state: "selected", value: { start: "2026-10-15", end: "2026-10-29" } },
+      budget: { state: "selected", value: "mid" }, interests: { state: "selected", value: ["food"] }, travellers: { state: "selected", value: 2 }, ...overrides,
+    };
+    localStorage.setItem(key, JSON.stringify({ snapshot }));
+    localStorage.setItem("easyt-language", language);
+    return () => {
+      if (previous === null) localStorage.removeItem(key); else localStorage.setItem(key, previous);
+      if (previousLanguage === null) localStorage.removeItem("easyt-language"); else localStorage.setItem("easyt-language", previousLanguage);
+    };
+  };
+}
+export const PlannerReturn: Story = { beforeEach: seedPlanner({}) };
+export const PlannerOneWay: Story = { beforeEach: seedPlanner({ tripType: { state: "selected", value: "one_way" } }) };
+export const PlannerExplicitFinish: Story = { beforeEach: seedPlanner({ tripType: { state: "selected", value: "one_way" }, journeyEnd: { state: "selected", value: { mode: "explicit", place: { name: "Rome", canonicalPlaceId: "rome" } } } }) };
+export const PlannerLegacyUnknown: Story = { beforeEach: seedPlanner({ tripType: undefined }) };
+export const PlannerDescribeConflict: Story = {
+  beforeEach: seedPlanner({ mode: "describe", prompt: "Tokyo 3 nights, Kyoto 2 nights, finish in Rome 3 nights", tripType: { state: "selected", value: "one_way" }, journeyEnd: { state: "selected", value: { mode: "explicit", place: { name: "Rome", canonicalPlaceId: "rome" } } } }),
+  play: async ({ canvasElement }) => {
+    await new Promise(resolve => setTimeout(resolve, 50));
+    const root = canvasElement.querySelector('[data-homepage-trip-type]');
+    const button = root?.querySelector<HTMLButtonElement>('button');
+    const before = localStorage.getItem(homepageInputStorageKey(null));
+    button?.click();
+    await new Promise(resolve => setTimeout(resolve, 50));
+    const dialog = canvasElement.querySelector<HTMLDialogElement>('dialog');
+    if (!dialog?.open) throw new Error("Replacing a known finish requires review");
+    Array.from(dialog.querySelectorAll<HTMLButtonElement>('button')).find(button => button.textContent === "Cancel")?.click();
+    await new Promise(resolve => setTimeout(resolve, 50));
+    if (localStorage.getItem(homepageInputStorageKey(null)) !== before) throw new Error("Cancel mutated the intake");
+    button?.click();
+    await new Promise(resolve => setTimeout(resolve, 50));
+    Array.from(dialog.querySelectorAll<HTMLButtonElement>('button')).find(button => button.textContent === "Confirm")?.click();
+    await new Promise(resolve => setTimeout(resolve, 100));
+    const stored = JSON.parse(localStorage.getItem(homepageInputStorageKey(null)) ?? "null");
+    if (stored.snapshot.tripType.value !== "return_to_start" || !stored.snapshot.routeReview) throw new Error("Return confirmation was not saved atomically");
+    if (stored.snapshot.prompt !== "Tokyo 3 nights, Kyoto 2 nights, finish in Rome 3 nights") throw new Error("Review must preserve the original source");
+    const evidence = homepageCapturedRouteEvidence(stored.snapshot.prompt, captureJourneyBrief(stored.snapshot.prompt));
+    if (homepageRouteReviewKey(stored.snapshot, evidence) !== stored.snapshot.routeReview.reviewedInputKey) throw new Error("Review evidence key changed");
+  },
+};
+export const PlannerSpanish430: Story = { beforeEach: seedPlanner({ entries: [storyEntry("long", "San Cristóbal de las Casas"), storyEntry("repeat", "Tokyo")] }, "es"), globals: { viewport: { value: "morrovia430", isRotated: false } } };

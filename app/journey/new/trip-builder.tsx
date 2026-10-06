@@ -38,7 +38,8 @@ import { routePlannerPayload } from "@/lib/easyt/public-route-handoff";
 import { defaultTravelProfile, travelProfileFromUnknown, tripInterestsWithProfileDefaults, type TravelProfile } from "@/lib/easyt/travel-profile";
 import { firstTripWorkspaceHref, mapWorkspaceHref, stayWorkspaceHref, tripWorkspaceHref } from "@/lib/easyt/trip-workspace-links";
 import { createLatestJourneyCaptureRequestGate, journeyCaptureFailureMessage, requestJourneyCapture } from "@/lib/easyt/journey-capture-client";
-import { HOME_TRIP_DRAFT_KEY, acknowledgePendingIntakeReceipt, createHandoffSharedLookup, discardPendingIntakeForEdit, handoffLookupMentions, handoffOutcomeIsCurrent, handoffStopOccurrenceId, homepageBuilderDateRange, homepageHandoffMatchesTrip, homepageHandoffReceiptForOwner, homepageReceiptForProjection, insertHandoffOccurrence, persistEditableHomepageInput, pendingReceiptStillCurrent, projectHomepageInput, readHomepageInput, pendingIntakeReceiptForOwner, pendingHomepageHandoffForOwner, reserveDirectDescribeIntake, retireHandoffResolutionStatus, homeTripDraftInterestsWereExplicit, homeTripDraftTimingFlexibility, initialHandoffRouteStops, mergeHandoffLocationChoice, preferredHandoffLocationChoice, removeHomeTripDraftIfDurable, resolveHandoffIncrementally, routableHandoffMentions, tripInterestsFromHomeDraft, type HandoffLocationChoice, type HomeTripDraft, type HomepageInputSnapshot, type PendingHomeTripHandoff, type PendingIntakeReceipt } from "@/lib/easyt/home-trip-handoff";
+import { homepageCapturedRouteEvidence, homepageDescribeSourceKey } from "@/lib/easyt/home-route-choice";
+import { HOME_TRIP_DRAFT_KEY, retainPendingIntakeReview, acknowledgePendingIntakeReceipt, createHandoffSharedLookup, discardPendingIntakeForEdit, handoffLookupMentions, handoffOutcomeIsCurrent, handoffStopOccurrenceId, homepageBuilderDateRange, homepageHandoffMatchesTrip, homepageHandoffReceiptForOwner, homepageReceiptForProjection, insertHandoffOccurrence, persistEditableHomepageInput, pendingReceiptStillCurrent, projectHomepageInput, readHomepageInput, pendingIntakeReceiptForOwner, pendingHomepageHandoffForOwner, reserveDirectDescribeIntake, retireHandoffResolutionStatus, homeTripDraftInterestsWereExplicit, homeTripDraftTimingFlexibility, initialHandoffRouteStops, mergeHandoffLocationChoice, preferredHandoffLocationChoice, removeHomeTripDraftIfDurable, resolveHandoffIncrementally, routableHandoffMentions, tripInterestsFromHomeDraft, type HandoffLocationChoice, type HomeTripDraft, type HomepageInputSnapshot, type PendingHomeTripHandoff, type PendingIntakeReceipt } from "@/lib/easyt/home-trip-handoff";
 import { resolveNewTripEntryState, type NewTripEntryState } from "./new-trip-entry-state";
 import { NewTripStarter } from "./new-trip-starter";
 import type { JourneyCaptureResult } from "@/lib/easyt/journey-capture";
@@ -487,6 +488,7 @@ function TripBuilderDocument() {
   } | null>(null);
   const [pendingInterpretation, setPendingInterpretation] = useState<{ receipt: PendingIntakeReceipt; fromHomepage: boolean } | null>(null);
   const [pendingInterpretationRetry, setPendingInterpretationRetry] = useState(0);
+  const [pendingFailureKind, setPendingFailureKind] = useState<"domain" | "network" | null>(null);
   const captureRequestGateRef = useRef<ReturnType<typeof createLatestJourneyCaptureRequestGate> | null>(null);
   if (!captureRequestGateRef.current) captureRequestGateRef.current = createLatestJourneyCaptureRequestGate();
   const hydratedOwnerScopeRef = useRef<string | null | undefined>(undefined);
@@ -1292,6 +1294,15 @@ function TripBuilderDocument() {
     const timer = window.setTimeout(() => {
       void (async () => {
         try {
+          const stored = readHomepageInput(JSON.parse(window.localStorage.getItem(homepageInputStorageKey(receipt.ownerId)) ?? "null"), receipt.ownerId);
+          if (isCurrent() && stored?.review?.phase === "blocked" && stored.review.receipt.handoffId === receipt.handoffId
+            && stored.review.receipt.tripId === receipt.tripId && stored.review.receipt.inputRevision === receipt.inputRevision
+            && stored.review.receipt.semanticInputFingerprint === receipt.semanticInputFingerprint
+            && stored.review.sourceKey === homepageDescribeSourceKey(receipt.frozenSnapshot)) {
+            setPendingFailureKind("domain");
+            setTripBriefCaptureError(currentPresentationRef.current.language === "es" ? "Revisa cómo termina tu viaje. Edita la idea para continuar." : "Review how your trip ends. Edit your trip idea to continue.");
+            return;
+          }
           const capture = receipt.frozenSnapshot.mode === "describe"
             ? await requestJourneyCapture(receipt.frozenSnapshot.prompt, { mode: "intent-only", signal: request.signal })
             : undefined;
@@ -1302,7 +1313,16 @@ function TripBuilderDocument() {
             profile: currentPresentationRef.current.hasSavedTravelProfile ? currentPresentationRef.current.travelProfile : null,
             handoffId: receipt.handoffId,
           });
-          if (!projected.ok) throw new Error("The submitted trip needs review");
+          if (!projected.ok) {
+            const retained = await retainPendingIntakeReview({ storage: window.localStorage, receipt, fromHomepage, issues: projected.issues,
+              evidence: homepageCapturedRouteEvidence(receipt.frozenSnapshot.prompt, capture), isCurrent });
+            if (!isCurrent()) return;
+            setPendingFailureKind("domain");
+            setTripBriefCaptureError(retained.ok
+              ? (currentPresentationRef.current.language === "es" ? "Revisa cómo termina tu viaje. Edita la idea para continuar." : "Review how your trip ends. Edit your trip idea to continue.")
+              : (currentPresentationRef.current.language === "es" ? "No pudimos guardar la revisión. Tu idea original sigue guardada." : "We couldn't save this review. Your original trip idea is still preserved."));
+            return;
+          }
           const completedReceipt = homepageReceiptForProjection(receipt.frozenSnapshot, projected.draft, receipt.tripId);
           const draft: HomeTripDraft = { ...projected.draft,
             homepage: { ...projected.draft.homepage!, receipt: completedReceipt } };
@@ -1315,9 +1335,11 @@ function TripBuilderDocument() {
           pendingInterpretationRef.current = null;
           setPendingInterpretation(null);
           setTripBriefCaptureError("");
+          setPendingFailureKind(null);
         } catch {
           if (isCurrent()) {
             planningAttemptOutcome(receipt.handoffId, "error");
+            setPendingFailureKind("network");
             setTripBriefCaptureError(journeyCaptureFailureMessage("network", currentPresentationRef.current.language));
           }
         } finally { request.finish(); }
@@ -1332,7 +1354,7 @@ function TripBuilderDocument() {
   const editPendingInterpretation = () => { void (async () => {
     if (!pendingInterpretation || !canUseHydratedTripScope(hydratedOwnerScopeRef.current, pendingInterpretation.receipt.ownerId)) return;
     const { receipt, fromHomepage } = pendingInterpretation;
-    const edited = await discardPendingIntakeForEdit({ storage: window.localStorage, receipt, fromHomepage,
+    const edited = await discardPendingIntakeForEdit({ storage: window.localStorage, receipt, fromHomepage, preserveReview: pendingFailureKind === "domain",
       isCurrent: () => pendingInterpretationRef.current?.handoffId === receipt.handoffId
         && canUseHydratedTripScope(hydratedOwnerScopeRef.current, receipt.ownerId) });
     if (!edited.ok) {
@@ -1340,6 +1362,10 @@ function TripBuilderDocument() {
       return;
     }
     captureRequestGateRef.current?.cancel();
+    if (pendingFailureKind === "domain" && fromHomepage === true) {
+      window.location.assign("/");
+      return;
+    }
     planningAttemptOutcome(receipt.handoffId, "abandoned");
     pendingInterpretationRef.current = null;
     pendingNewTripReceiptRef.current = null;
@@ -1350,6 +1376,7 @@ function TripBuilderDocument() {
     setTripId(crypto.randomUUID());
     setEntryKind("fresh");
     setTripBriefCaptureError("");
+    setPendingFailureKind(null);
     window.history.replaceState(window.history.state, "", window.location.pathname);
   })(); };
 
@@ -4494,7 +4521,7 @@ function TripBuilderDocument() {
                 detail={pendingInterpretation.receipt.frozenSnapshot.mode === "describe"
                   ? pendingInterpretation.receipt.frozenSnapshot.prompt
                   : language === "es" ? "Tus lugares y preferencias se han guardado en este dispositivo." : "Your places and preferences are saved on this device."}
-                onRetry={tripBriefCaptureError ? () => {
+                onRetry={tripBriefCaptureError && pendingFailureKind !== "domain" ? () => {
                   markPlanningMilestone(pendingInterpretation.receipt.handoffId, "submit");
                   markPlanningMilestone(pendingInterpretation.receipt.handoffId, "durable-intake");
                   setTripBriefCaptureError("");

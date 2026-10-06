@@ -20,6 +20,8 @@ export function emptyHomepageInput(ownerId: string | null = null): HomepageInput
     budget: { state: "untouched" },
     interests: { state: "untouched" },
     travellers: { state: "untouched" },
+    tripType: { state: "untouched" },
+    originInput: "",
     origin: { state: "untouched" },
     journeyEnd: { state: "untouched" },
   };

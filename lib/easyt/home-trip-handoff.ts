@@ -872,7 +872,9 @@ export function pendingReceiptStillCurrent(
     const raw = storage.getItem(homepageInputStorageKey(receipt.ownerId));
     const stored = raw ? readHomepageInput(JSON.parse(raw), receipt.ownerId) : null;
     const current = pendingIntakeReceiptForOwner(stored?.receipt, receipt.ownerId);
-    if (!current || current.handoffId !== receipt.handoffId || current.tripId !== receipt.tripId
+    if (!current || stored?.snapshot.revision !== receipt.inputRevision
+      || homepageSemanticInputFingerprint(stored.snapshot) !== receipt.semanticInputFingerprint
+      || current.handoffId !== receipt.handoffId || current.tripId !== receipt.tripId
       || current.inputRevision !== receipt.inputRevision
       || current.semanticInputFingerprint !== receipt.semanticInputFingerprint) return false;
     if (!fromHomepage) return true;

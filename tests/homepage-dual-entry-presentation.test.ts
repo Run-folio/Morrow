@@ -12,6 +12,19 @@ const immersiveStyles = readFileSync(new URL("../app/journey/home/immersive/imme
 const routeChaptersSource = readFileSync(new URL("../app/journey/home/immersive/route-chapters.tsx", import.meta.url), "utf8");
 const immersiveStories = readFileSync(new URL("../app/journey/home/immersive/immersive-home.stories.tsx", import.meta.url), "utf8");
 
+test("approved planner composition keeps origin and type visible and preflights before reservation", () => {
+  assert.match(captureSource, /planner\?:/);
+  assert.match(captureSource, /planner\.originEntry/);
+  assert.match(captureSource, /planner\.tripTypeControl/);
+  assert.match(captureSource, /planner\.routeSummary/);
+  assert.match(homeTripStarterSource, /MorroviaConfirmationDialog/);
+  assert.match(homeTripStarterSource, /homepagePreflightIssues\(submitted/);
+  assert.ok(homeTripStarterSource.indexOf("homepagePreflightIssues(submitted") < homeTripStarterSource.indexOf("const committed = await reservePendingDescribeHandoff"));
+  assert.doesNotMatch(homeTripStarterSource, /<JourneyEndpointsEditor/);
+  const controls = readFileSync(new URL("../components/easyt/easyt-controls.tsx", import.meta.url), "utf8");
+  assert.match(controls.slice(controls.indexOf("export function EasyTSegmentedControl")), /disabled=\{disabled\}/);
+});
+
 test("wide capture is opt-in without removing the canonical capture owner", () => {
   assert.match(captureSource, /homepageEntry\?/);
   assert.match(captureSource, /VoiceTripBrief/);
@@ -43,19 +56,12 @@ test("wide capture keeps one form and one primary submit", () => {
   assert.match(captureSource, /destinationEditorOpen/);
 });
 
-test("Homepage stop rows remain before trip details and the primary action in DOM order", () => {
-  const stopsBranchStart = captureSource.indexOf('homepageEntry.mode === "stops"');
-  const describeBranchStart = captureSource.indexOf("      </> : <>", stopsBranchStart);
-  const stopsMarkup = captureSource.slice(stopsBranchStart, describeBranchStart);
-  const destinationEditor = stopsMarkup.indexOf("styles.wideDestinationEditor");
-  const dates = stopsMarkup.indexOf("{homepageDates}");
-  const personalize = stopsMarkup.indexOf("{homepagePersonalize}");
-  const primaryAction = stopsMarkup.indexOf("{homepageAction}");
-
-  assert.ok(destinationEditor >= 0, "Stops mode must render its destination editor");
-  assert.ok(destinationEditor < dates, "All destination rows must precede trip dates");
-  assert.ok(dates < personalize, "Dates must precede Personalize");
-  assert.ok(personalize < primaryAction, "The primary action must follow the complete stop/details group");
+test("Homepage destination intents and expanded details precede its primary action", () => {
+  const planner = captureSource.slice(captureSource.indexOf('<div className={styles.plannerFields}>'), captureSource.indexOf('      </> : <>', captureSource.indexOf('<div className={styles.plannerFields}>')));
+  assert.ok(planner.indexOf("planner.originEntry") < planner.indexOf("homepageEntry.destinationEditor"));
+  assert.ok(planner.indexOf("homepageEntry.destinationEditor") < planner.indexOf("{homepageDates}"));
+  assert.ok(planner.indexOf("{homepageDates}") < planner.indexOf("{homepagePersonalize}"));
+  assert.ok(planner.indexOf("{homepagePersonalizePanel}") < planner.indexOf("{homepageAction}"));
 });
 
 test("expanded Homepage details precede the single primary action in both modes", () => {

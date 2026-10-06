@@ -237,12 +237,14 @@ export type EasyTSegmentOption<T extends string> = {
 export function EasyTSegmentedControl<T extends string>({
   ariaLabel,
   className = "",
+  disabled = false,
   onChange,
   options,
   value,
 }: {
   ariaLabel: string;
   className?: string;
+  disabled?: boolean;
   onChange: (value: T) => void;
   options: EasyTSegmentOption<T>[];
   value: T;
@@ -255,6 +257,7 @@ export function EasyTSegmentedControl<T extends string>({
           <button
             key={option.value}
             type="button"
+            disabled={disabled}
             aria-controls={option.controls}
             aria-pressed={active}
             className={`${styles.segment} ${active ? styles.segmentActive : ""}`}

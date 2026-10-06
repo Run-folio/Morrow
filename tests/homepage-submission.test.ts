@@ -294,7 +294,7 @@ test("pending Edit clears only its exact receipt and cannot remove a newer hando
   const key = homepageInputStorageKey("owner-a");
   storage.setItem(key, JSON.stringify({ snapshot, receipt: old }));
   storage.setItem(HOME_TRIP_DRAFT_KEY, JSON.stringify({ version: 2, phase: "pending-interpretation", receipt: old }));
-  assert.deepEqual(await discard({ storage, receipt: old, fromHomepage: true, lock: testLock }), { ok: true });
+  assert.equal((await discard({ storage, receipt: old, fromHomepage: true, lock: testLock })).ok, true);
   assert.equal(readHomepageInput(JSON.parse(storage.getItem(key)!), "owner-a")?.receipt, undefined);
   assert.equal(storage.getItem(HOME_TRIP_DRAFT_KEY), null);
   storage.setItem(key, JSON.stringify({ snapshot: next.frozenSnapshot, receipt: next }));

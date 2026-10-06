@@ -37,7 +37,7 @@ test("selected endpointless One way becomes canonical One way, never unknown leg
 test("missing and cleared trip type retain known legacy endings and repeated finish stays", () => {
   for (const end of [{ mode: "unknown" }, { mode: "same_as_start" }, { mode: "explicit", place: { name: "Rome", canonicalPlaceId: "rome" } }] as const) {
     for (const tripType of [undefined, { state: "cleared" as const }]) {
-      const snapshot = { ...emptyHomepageInput("owner-a"), entries: [selectedEntry("first", "Rome"), selectedEntry("middle", "Tokyo"), selectedEntry("last", "Rome")], journeyEnd: { state: "selected" as const, value: end }, ...(tripType ? { tripType } : {}) };
+      const snapshot = { ...emptyHomepageInput("owner-a"), entries: [selectedEntry("first", "Rome"), selectedEntry("middle", "Tokyo"), selectedEntry("last", "Rome")], journeyEnd: { state: "selected" as const, value: end }, tripType };
       const restored = handoff.readHomepageInput({ snapshot }, "owner-a");
       assert(restored);
       const result = project(restored.snapshot);
@@ -220,6 +220,13 @@ test("matching handoff label alone cannot authorise a foreign trip envelope", ()
   const foreign = handoff.createPendingIntakeReceipt(snapshot, { handoffId: "same-label", tripId: "other-trip" });
   const values = new Map([[homepageInputStorageKey(snapshot.ownerId), JSON.stringify({ snapshot, receipt })], [handoff.HOME_TRIP_DRAFT_KEY, JSON.stringify({ version: 2, phase: "pending-interpretation", receipt: foreign })]]);
   assert.equal(handoff.pendingReceiptStillCurrent({ getItem: key => values.get(key) ?? null }, receipt, true), false);
+});
+
+test("a retained receipt cannot apply its capture after the editable revision changes", () => {
+  const snapshot = describe("Tokyo and Kyoto");
+  const receipt = handoff.createPendingIntakeReceipt(snapshot, { handoffId: "same", tripId: "same-trip" });
+  const values = new Map([[homepageInputStorageKey(snapshot.ownerId), JSON.stringify({ snapshot: { ...snapshot, revision: 1, prompt: "Tokyo and Rome" }, receipt })]]);
+  assert.equal(handoff.pendingReceiptStillCurrent({ getItem: key => values.get(key) ?? null }, receipt, false), false);
 });
 
 test("legacy known ending cannot hide newly captured contrary endpoint evidence", () => {
