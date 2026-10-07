@@ -166,10 +166,10 @@ test('mounted_selected_origin_type_and_dates_autosave_dependencies_without_Save_
  try{
  await view.page.locator('[data-builder-edit-session="active"]').waitFor();
  const origin=view.page.locator('#builder-origin').getByRole('combobox',{name:'Starting from',exact:true});await origin.fill('Paris');await view.page.getByRole('option',{name:/^Paris.*France/}).first().click({timeout:5000});
- await view.page.getByRole('button',{name:'Same as start',exact:true}).click();
+ await view.page.getByRole('button',{name:'Return to start',exact:true}).click();
  await view.page.getByRole('button',{name:/Increase travellers/}).click();
- await view.page.getByRole('button',{name:/End date/}).click();
- const dateDialog=view.page.getByRole('dialog');await dateDialog.locator('input').fill('2026-10-20');await dateDialog.locator('input').press('Enter');
+ await view.page.getByRole('button',{name:/Travel dates/}).click();
+ const dateDialog=view.page.getByRole('dialog');await dateDialog.locator('input').fill('2026-10-10');await dateDialog.locator('input').press('Enter');await dateDialog.locator('input').fill('2026-10-20');await dateDialog.locator('input').press('Enter');
  for(let i=0;i<50&&(cloud.endDate!=='2026-10-20'||cloud.brief.intent.route.tripType!=='return_to_start');i++)await view.page.waitForTimeout(100);
  assert.equal(cloud.brief.origin,'Paris');assert.equal(cloud.brief.intent.route.tripType,'return_to_start');assert.equal(cloud.endDate,'2026-10-20');assert.equal(cloud.travellers,3);assert.deepEqual(cloud.brief.intent.route.orderedStopIds,originalOrder);
  assert.ok(cloud.legs.some(leg=>leg.fromEndpoint?.kind==='origin'&&leg.fromEndpoint.canonicalPlaceId==='paris'));assert.ok(cloud.legs.some(leg=>leg.toEndpoint?.kind==='end'&&leg.toEndpoint.canonicalPlaceId==='paris'));

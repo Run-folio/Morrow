@@ -47,7 +47,7 @@ for (const width of [1440, 1024, 390]) test(`real mouse drags Namibia table stop
     await route.waitFor();
     const rows = route.locator("[data-builder-stop-index]");
     const names = () => rows.evaluateAll((items: Element[]) => items.map((row) => row.querySelector('[role="cell"] strong')?.textContent?.trim()));
-    const chipIds = () => page.locator('[role="listitem"][data-builder-stop-id]').evaluateAll((chips: HTMLElement[]) => chips.map((chip) => chip.dataset.builderStopId));
+    const chipIds = () => rows.evaluateAll((rows: HTMLElement[]) => rows.map(row => row.dataset.builderStopId));
     assert.deepEqual(await names(), stopInputs.map((stop) => stop.name));
     assert.deepEqual(await chipIds(), stopInputs.map((stop) => stop.id));
 

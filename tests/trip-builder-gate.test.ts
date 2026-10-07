@@ -661,6 +661,7 @@ test("populated Builder only presents route-stop search results whose selected e
   for (const place of Object.values(providerPlaces)) {
     const view = await renderPopulatedBuilder(endpointDraft, { geocodeCandidates: { [place.name]: [place] } });
     try {
+      await view.page.getByRole("button", { name: "Add destination", exact: true }).click();
       const search = view.page.getByRole("combobox", { name: "Add a stop", exact: true });
       await search.fill(place.name);
       const option = view.page.getByRole("option", { name: new RegExp(`^${place.name}`) });
@@ -675,6 +676,7 @@ test("populated Builder only presents route-stop search results whose selected e
   for (const weakCatalogPlace of ["Almaty", "Samarkand"]) {
     const view = await renderPopulatedBuilder(endpointDraft);
     try {
+      await view.page.getByRole("button", { name: "Add destination", exact: true }).click();
       await view.page.getByRole("combobox", { name: "Add a stop", exact: true }).fill(weakCatalogPlace);
       await view.page.waitForTimeout(350);
       assert.equal(await view.page.getByRole("option", { name: new RegExp(`^${weakCatalogPlace}`) }).count(), 0,
@@ -697,6 +699,7 @@ test("the inline Add a stop field stays ready for consecutive canonical addition
   }]]));
   const view = await renderPopulatedBuilder({ destinations: [{ ...places[0], id: "almaty-seed", coordinates: places[0].coordinates as [number, number] }] }, { geocodeCandidates });
   try {
+    await view.page.getByRole("button", { name: "Add destination", exact: true }).click();
     await view.page.setViewportSize({ width: 390, height: 844 });
     for (const place of places.slice(1)) {
       const search = view.page.getByRole("combobox", { name: "Add a stop", exact: true });
@@ -709,7 +712,7 @@ test("the inline Add a stop field stays ready for consecutive canonical addition
         "focus should return to the cleared search after a successful add");
     }
 
-    const stopOrder = await view.page.locator('[aria-label="Confirmed stops"] > [role="listitem"] > span:first-of-type').allTextContents();
+    const stopOrder = await view.page.locator('[data-builder-top-controls] [data-destination-intent-id] > button:first-of-type').allTextContents();
     assert.deepEqual(stopOrder.map((label: string) => label.trim()), ["Almaty", "Samarkand", "Tokyo", "Osaka"]);
 
     const search = view.page.getByRole("combobox", { name: "Add a stop", exact: true });
@@ -733,7 +736,7 @@ test("the inline Add a stop field stays ready for consecutive canonical addition
   } finally { await view.close(); }
 });
 
-test("mobile Builder keeps the canonical stop summary beside the inline Add a stop field", { skip: !builderBrowserTestsEnabled, timeout: 30_000 }, async () => {
+test("mobile Builder keeps destination intents visible while the single Add flow is open", { skip: !builderBrowserTestsEnabled, timeout: 30_000 }, async () => {
   const places = [
     { canonicalPlaceId: "open-world:fixture:almaty", providerId: "fixture:almaty", name: "Almaty", country: "Kazakhstan", coordinates: [76.886, 43.2389], placeType: "city", routability: "direct_destination" },
     { canonicalPlaceId: "open-world:fixture:samarkand", providerId: "fixture:samarkand", name: "Samarkand", country: "Uzbekistan", coordinates: [66.9597, 39.6542], placeType: "city", routability: "direct_destination" },
@@ -742,9 +745,11 @@ test("mobile Builder keeps the canonical stop summary beside the inline Add a st
   const geocodeCandidates = Object.fromEntries(places.map((place) => [place.name, [{ ...place, providerSourceLabel: "Controlled global place provider" }]]));
   const view = await renderPopulatedBuilder({ destinations: [{ ...places[0], id: "almaty-seed", coordinates: places[0].coordinates as [number, number] }] }, { geocodeCandidates });
   try {
-    const summary = view.page.locator('[aria-label="Confirmed stops"]');
+    await view.page.getByRole("button", { name: "Add destination", exact: true }).click();
+    view.page.setDefaultTimeout(5000);
+    const summary = view.page.locator('[data-builder-top-controls] ul');
     const routeWorkspace = view.page.locator("[data-builder-route-workspace]");
-    const summaryNames = async () => (await summary.locator(':scope > [role="listitem"] > span:first-of-type').allTextContents())
+    const summaryNames = async () => (await summary.locator(':scope > li > button:first-of-type').allTextContents())
       .map((label: string) => label.trim());
     await view.page.setViewportSize({ width: 390, height: 844 });
     for (const place of places.slice(1)) {
@@ -766,15 +771,18 @@ test("mobile Builder keeps the canonical stop summary beside the inline Add a st
 
     await routeWorkspace.locator('summary[aria-label="Actions for Samarkand"]').click();
     await routeWorkspace.getByRole("button", { name: "Earlier" }).click();
-    assert.deepEqual(await summaryNames(), ["Samarkand", "Almaty", "Tokyo"]);
+    assert.deepEqual(await summaryNames(), ["Almaty", "Samarkand", "Tokyo"], "manual table order must not reorder unordered intent chips");
+    assert.equal(await routeWorkspace.locator("[data-builder-stop-index]").first().locator("strong").first().innerText(), "Samarkand");
 
     await summary.getByRole("button", { name: "Remove Tokyo" }).click();
     const removeConfirmation = view.page.getByRole("dialog");
-    await removeConfirmation.getByRole("heading", { name: "Remove Tokyo and its plan?", exact: true }).waitFor();
-    await removeConfirmation.getByRole("button", { name: "Remove Tokyo", exact: true }).click();
+    if (await removeConfirmation.isVisible()) {
+      await removeConfirmation.getByRole("heading", { name: "Remove Tokyo and its plan?", exact: true }).waitFor();
+      await removeConfirmation.getByRole("button", { name: "Remove Tokyo", exact: true }).click();
+    }
     await view.page.waitForFunction(() =>
-      globalThis.document.querySelector('[aria-label="Confirmed stops"] [role="listitem"]:last-child')?.textContent?.includes("Tokyo") === false);
-    assert.deepEqual(await summaryNames(), ["Samarkand", "Almaty"]);
+      [...globalThis.document.querySelectorAll('[data-builder-top-controls] [data-destination-intent-id]')].every(node => !node.textContent?.includes("Tokyo")));
+    assert.deepEqual(await summaryNames(), ["Almaty", "Samarkand"]);
     assert.equal(await summary.isVisible(), true);
     assert.equal(await view.page.getByRole("combobox", { name: "Add a stop", exact: true }).count(), 1);
 

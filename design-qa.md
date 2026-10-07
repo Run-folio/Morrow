@@ -2313,3 +2313,31 @@ Overview task files (some already contained preserved unrelated edits):
 - Focused photo-credit/Homepage tests passed 83/83; Overview/prep/presentation 72/72; Itinerary/mutation 63/63; Map/Stay/Transport 56 passed with seven opt-in browser cases skipped. The stale Stay shared-preview test assertion was updated to the committed map-preview owner; its suite now passes. Builder gate passed 33 with 24 opt-in browser cases skipped. Typecheck and Storybook production build passed.
 - Strict UI audit has one remaining inherited finding: the raw Overview card shadow is present in starting HEAD `4d3cc989`. The two new photo-credit Storybook inline radii were removed. The checked-in baseline was lowered only for Overview raw-color 11→9 and raw-radius 10→8; no allowed debt count increased. The previously classified TripShell presentation assertion still expects `Route` instead of the accepted `View my route` and remains outside this integration patch.
 - The named screenshots and comparison files referenced above are retained as repository QA evidence under `artifacts/`. The earlier `overview-redesign` images document a superseded intermediate state; use `overview-cleanup` for the final Overview presentation. Three uncited local captures are excluded from the candidate commit and retained separately.
+
+---
+
+# Batch14C Task4 visual review
+
+Result: **passed for the authorized top-control/shared-field scope**, pending independent checkpoint review. Base: `7c6398ffb5229029fd1555eecb6b4b447a74f6bc`. No release or hosted-provider signoff.
+
+## Reference and implementation actually viewed
+
+Opened the actual approved Return `image(2).png` (1400×1123) and One way `image(1).png` (1448×1086). Opened actual candidate desktop/mobile screenshots, both reference/candidate comparisons, both matched base/candidate mobile comparisons, tablet/top crops and the corrected Spanish expanded Personalize capture. Evidence lives in `../batch14c-top-visuals/`.
+
+Both modes have type → origin → unordered destination intents → dates/travellers/budget → collapsed Personalize → day count and optional Update route, above the existing table/map. Return uses the reference Vietnam content. One way uses the same Vietnam fixture as its accepted-base comparison; its approved image uses East Asia, so this is a composition comparison, not a claim of identical destination content.
+
+Written decisions take precedence over numbered chips, repeated explanatory copy and bespoke mock controls. The shared approved homepage destination field, existing EasyT segments/buttons, canonical autocomplete, date picker and quantity/budget controls remain the production references. The selected segment uses the current shared filled treatment. Existing heading/navigation/footer/table/map, responsive page width and sticky Build action remain their current owners. Update route is visibly disabled while Task5 is held; it performs no save, reconciliation or optimization.
+
+## Checks and corrections
+
+- Actual local Next captures: Return and One way at390/430/768/1440, eight matched accepted-base captures, and four Spanish long-name mobile fixtures with collapsed/expanded top crops. Canonical trip type assertions prevent an unknown legacy trip being mislabeled One way.
+- Every candidate and Spanish capture has zero page errors and zero horizontal overflow. Visible top buttons and expanded Personalize buttons/inputs meet44px; the date picker overlay retains its separate shared portal owner.
+- Corrected the visible origin label, desktop quantity40px targets and inherited undersized advanced targets. Reused shared controls for the moved advanced content and kept saved travel-style/fixed-commitment content.
+- Actual homepage selected/editing fields were captured against the accepted base at all four widths, with identical content, focus, settled transitions and hidden carets/dev indicators. All selected states and three editing states are pixel-identical.430px editing has a five-pixel edge difference; dimensions, text, controls and keyboard focus match. This does not justify a compensation style.
+- Mounted checks cover origin/date/destination/add draft recovery, ordinary autosave, endpoint replacement confirmation, honest unknown legacy selection, retained booking/provider/reference/pin detail and selected move/remove, parent-intent removal/Undo, failure/retry/CAS/owner protection. Existing five intake/clarification flows and three real mouse-drag/reload cases pass.
+
+## Boundaries
+
+No table/map layout, global tokens, navigation, locale policy or persistence policy changed. The table gains only a stable occurrence-ID data attribute for the existing real mouse test. Map tiles/loading phases vary between captures; no basemap pixel equality or live routing-resolution claim is made. Spanish is an explicit component/event fixture because the beta renders English by policy. The existing sticky Build bar remains visible in full-page/cropped mobile evidence and was not redesigned.
+
+Typecheck, build:check, strict UI audit, Storybook build and diff checks pass. Independent Task4 review is the remaining gate before Task5 or14D/all20. No push, staging or production deployment.

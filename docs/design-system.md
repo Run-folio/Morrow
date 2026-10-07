@@ -324,6 +324,8 @@ not permission to reproduce their styling page-locally.
 | --- | --- |
 | Site navigation and compact mobile menu | `app/journey/easyt-navigation.tsx`; `Morrovia/04 Structure/Global navigation` |
 | Homepage and Builder trip capture | `components/easyt/morrovia-trip-capture.tsx`; `Morrovia/05 Product Patterns/Trip capture` and `Homepage trip starter` |
+| Homepage/Builder destination field and unnumbered intent tags | `components/easyt/morrovia-destination-field.tsx`; `Morrovia/02 Controls/Destination field`. Callers own stable identities, autocomplete and focus. |
+| Builder top inputs and retained-content review | `app/journey/new/trip-builder-top-controls.tsx` and `trip-builder-retained-review.tsx`; `Morrovia/05 Product Patterns/Builder top controls`. Existing table/map keep route order and spatial ownership. |
 | Builder clarification and route review | `app/journey/new/trip-builder.tsx`; `Morrovia/05 Product Patterns/Builder review` |
 | Status, save, recovery and consequential confirmation | `components/easyt/morrovia-feedback.tsx`; `Morrovia/03 Status & Feedback` |
 | Loading, long-wait, retry and progress | `components/easyt/morrovia-loading-states.tsx`; `Morrovia/03 Status & Feedback/Loading and progress` |

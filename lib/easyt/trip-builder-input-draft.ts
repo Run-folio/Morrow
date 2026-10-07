@@ -2,6 +2,7 @@ import type { CanonicalEasyTTrip, JourneyEndpointPlace } from "./trip.ts";
 
 export type BuilderInputBinding =
   | { kind: "origin" }
+  | { kind: "destination-add" }
   | { kind: "destination"; intentId: string }
   | { kind: "nights"; intentId: string; stopId: string }
   | { kind: "date"; field: "startDate" | "endDate" }
@@ -33,7 +34,7 @@ function validBinding(value: unknown): value is BuilderInputBinding {
   if (!record(value)) return false;
   const keys = Object.keys(value).sort().join(",");
   switch (value.kind) {
-    case "origin": case "type": return keys === "kind";
+    case "origin": case "type": case "destination-add": return keys === "kind";
     case "destination": return keys === "intentId,kind" && text(value.intentId);
     case "nights": return keys === "intentId,kind,stopId" && text(value.intentId) && text(value.stopId);
     case "date": return keys === "field,kind" && ["startDate", "endDate"].includes(String(value.field));
@@ -50,6 +51,7 @@ function placeIdentity(place: JourneyEndpointPlace | null): unknown {
 export function builderInputDraftBasis(trip: CanonicalEasyTTrip, binding: BuilderInputBinding): EditableSource {
   const route = trip.brief.intent.route;
   switch (binding.kind) {
+    case "destination-add": return { bound: true, value: "new-destination" };
     case "origin": return { bound: true, value: placeIdentity(route.origin) };
     case "type": return { bound: true, value: { tripType: route.tripType, end: route.journeyEnd.mode === "explicit"
       ? { mode: "explicit", place: placeIdentity(route.journeyEnd.place) } : route.journeyEnd, origin: placeIdentity(route.origin) } };

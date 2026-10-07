@@ -1,0 +1,23 @@
+"use client";
+import { forwardRef, type ReactNode } from 'react';
+import { MapPin, X } from 'lucide-react';
+import { EasyTButton } from './easyt-controls';
+import styles from './morrovia-destination-field.module.css';
+
+/** Shared accepted homepage presentation. Callers retain input, identity and focus ownership. */
+export function MorroviaDestinationField({label,children,addAction,status,homepage=false}:{label:string;children:ReactNode;addAction?:ReactNode;status?:ReactNode;homepage?:boolean}) {
+ return <section className={styles.root} aria-label={label}>
+  <span className={styles.label}>{label}</span>
+  <div className={styles.destinationField} data-home-destination-field={homepage?true:undefined}>
+   <ul className={styles.entries}>{children}</ul>{addAction}
+  </div>
+  {status?<p className={styles.status} aria-live="polite">{status}</p>:null}
+ </section>;
+}
+export const MorroviaDestinationTag=forwardRef<HTMLLIElement,{id:string;label:string;editor?:ReactNode;disabled?:boolean;removeDisabled?:boolean;onEdit:()=>void;onRemove:()=>void;editLabel:string;removeLabel:string;homepage?:boolean}>(function MorroviaDestinationTag({id,label,editor,disabled,removeDisabled,onEdit,onRemove,editLabel,removeLabel,homepage},ref){
+ return <li ref={ref} className={`${styles.entry} ${editor?styles.editing:''}`} data-home-destination-entry={homepage?id:undefined} data-destination-intent-id={homepage?undefined:id}>
+  {editor?<div className={styles.field}>{editor}</div>:<EasyTButton className={styles.chip} icon={MapPin} variant="secondary" disabled={disabled} aria-label={editLabel} onClick={onEdit}>{label}</EasyTButton>}
+  <EasyTButton icon={X} iconOnly variant="quiet" className={styles.remove} disabled={disabled||removeDisabled} aria-label={removeLabel} onClick={onRemove}>{removeLabel}</EasyTButton>
+ </li>;
+});
+export const destinationAddClassName=styles.add;

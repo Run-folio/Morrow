@@ -28,6 +28,9 @@ type SharedDatePickerProps = {
   min?: string;
   name?: string;
   size?: PickerSize;
+  /** Optional caller-owned unaccepted text; canonical date values remain separate. */
+  typedDraft?: Partial<Record<DateBoundary,string>>;
+  onTypedDraftChange?: (boundary:DateBoundary,raw:string)=>void;
 };
 
 type SingleDatePickerProps = SharedDatePickerProps & {
@@ -207,7 +210,8 @@ export function MorroviaDatePicker(props: MorroviaDatePickerProps) {
   const [activeBoundary, setActiveBoundary] = useState<DateBoundary>("start");
   const [month, setMonth] = useState(() => startOfLocalMonth(currentStart || todayLocalIso()));
   const [popoverPosition, setPopoverPosition] = useState<{ left: number; maxHeight?: number; top: number } | null>(null);
-  const [typedDate, setTypedDate] = useState("");
+  const [internalTypedDate, setTypedDate] = useState("");
+  const typedDate=props.typedDraft?.[activeBoundary]??internalTypedDate;
   const rootRef = useRef<HTMLDivElement>(null);
   const popoverRef = useRef<HTMLDivElement>(null);
   const startTriggerRef = useRef<HTMLButtonElement>(null);
@@ -380,7 +384,7 @@ export function MorroviaDatePicker(props: MorroviaDatePickerProps) {
           <button type="button" onClick={() => pick(todayLocalIso())} disabled={!isWithin(todayLocalIso(), calendarMin, props.max)}>{copy[locale].today}</button>
           {isRange && props.onClear && (props.startValue || props.endValue) ? <button type="button" onClick={() => { props.onClear?.(); close(true); }}>{props.clearLabel ?? (locale === "es" ? "Borrar fechas" : "Clear dates")}</button> : null}
         </div>
-        <label><span>{copy[locale].typeIt}</span><input value={typedDate} inputMode="numeric" placeholder={locale === "es" ? "AAAA-MM-DD" : "YYYY-MM-DD"} aria-label={copy[locale].dateFormat} onChange={(event) => setTypedDate(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); submitTypedDate(); } }} /></label>
+        <label><span>{copy[locale].typeIt}</span><input value={typedDate} inputMode="numeric" placeholder={locale === "es" ? "AAAA-MM-DD" : "YYYY-MM-DD"} aria-label={copy[locale].dateFormat} onChange={(event) => {setTypedDate(event.target.value);props.onTypedDraftChange?.(activeBoundary,event.target.value)}} onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); submitTypedDate(); } }} /></label>
       </div>
     </div>
   </> : null;

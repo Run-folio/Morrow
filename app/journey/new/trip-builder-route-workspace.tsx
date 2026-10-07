@@ -139,6 +139,7 @@ export function TripBuilderRouteWorkspace({
             return <div
               key={stop.id}
               data-builder-stop-index={index}
+              data-builder-stop-id={stop.id}
               ref={(node) => { if (node) rowRefs.current.set(stop.id, node); else rowRefs.current.delete(stop.id); }}
               role="row"
               tabIndex={isSelected ? 0 : -1}

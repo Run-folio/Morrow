@@ -220,3 +220,14 @@ test('explicit_browser_scope_keeps_ownerless_body_and_remaps_only_proven_raw_fie
   assert.equal(api.readBuilderInputDraft(storage,next,'owner-a').kind,'readable');
   const foreign={...next,ownerId:'owner-b'}; assert.equal(api.readBuilderInputDraft(storage,foreign,'owner-a').kind,'protected');
 });
+
+test('new destination intake stays owner trip scoped and survives unrelated canonical changes and exact consumption',async()=>{
+ const api=await drafts();const trip=fixture();const binding={kind:'destination-add'} as const;const storage=memoryStorage();
+ const raw='San Pedro part';const input=api.updateBuilderInputDraft(api.createBuilderInputDraft(trip),trip,binding,raw);
+ const newer=structuredClone(trip);newer.brief.budgetBand='high';newer.stops.reverse();const rebound=api.rebindBuilderInputDraft(input,newer);
+ assert.equal(rebound.fields[0]!.raw,raw);assert.equal(rebound.fields[0]!.status,'editable');assert.ok(api.writeBuilderInputDraft(storage,newer,rebound).ok);
+ const loaded=api.readBuilderInputDraft(storage,newer);assert.equal(loaded.kind,'readable');
+ assert.equal(api.consumeBuilderInputDraft(rebound,binding,rebound.inputRevision,'other').fields.length,1);
+ assert.equal(api.consumeBuilderInputDraft(rebound,binding,rebound.inputRevision,raw).fields.length,0);
+ assert.throws(()=>api.rebindBuilderInputDraft(rebound,{...newer,ownerId:'foreign'}));
+});

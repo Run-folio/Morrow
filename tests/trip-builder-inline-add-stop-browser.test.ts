@@ -2,10 +2,11 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { builderBrowserTestsEnabled, renderBuilder } from "./helpers/builder-render.ts";
 
-test("populated Builder keeps one labelled Add a stop field below the route", { skip: !builderBrowserTestsEnabled, timeout: 30_000 }, async () => {
+test("populated Builder opens one labelled existing Add a stop field from its top action", { skip: !builderBrowserTestsEnabled, timeout: 30_000 }, async () => {
   const view = await renderBuilder({ query: "?inspire=morocco-rail" });
   try {
     await view.page.setViewportSize({ width: 1440, height: 1100 });
+    await view.page.getByRole("button", { name: "Add destination", exact: true }).click();
     const section = view.page.locator("#builder-stops");
     const input = section.getByRole("combobox", { name: "Add a stop", exact: true });
     const label = section.getByText("Add a stop", { exact: true });
@@ -15,13 +16,13 @@ test("populated Builder keeps one labelled Add a stop field below the route", { 
     assert.equal(await input.count(), 1);
     assert.equal(await label.count(), 1);
     assert.equal(await label.getAttribute("for"), await input.getAttribute("id"));
-    assert.equal(await view.page.getByRole("button", { name: "Save changes", exact: true }).count(), 1);
-    assert.equal(await view.page.getByRole("button", { name: "Cancel", exact: true }).count(), 1);
+    assert.equal(await view.page.getByRole("button", { name: "Save changes", exact: true }).count(), 0);
+    assert.equal(await view.page.getByRole("button", { name: "Cancel", exact: true }).count(), 0);
 
-    const lastStop = await section.locator("[data-builder-stop-id]").last().boundingBox();
+    const lastStop = await view.page.locator("[data-builder-top-controls]").boundingBox();
     const field = await input.boundingBox();
     assert.ok(lastStop && field);
-    assert.ok(field.y >= lastStop.y + lastStop.height, "the add field follows the existing stop list");
+    assert.ok(field.y >= lastStop.y + lastStop.height, "the existing intake opens below its top action");
     assert.deepEqual(view.errors, []);
   } finally {
     await view.close();
@@ -46,10 +47,11 @@ test("the inline field adds successive cities and retains the saved route on rel
   });
   try {
     await view.page.setViewportSize({ width: 1440, height: 1100 });
+    await view.page.getByRole("button", { name: "Add destination", exact: true }).click();
     const section = view.page.locator("#builder-stops");
     const input = section.getByRole("combobox", { name: "Add a stop", exact: true });
-    const routeNames = () => section.locator("[data-builder-stop-id]").evaluateAll((rows: Element[]) =>
-      rows.map((row) => row.querySelector("span")?.textContent?.replace(/^\d+/, "") ?? ""));
+    const routeNames = () => view.page.locator("[data-builder-route-workspace] [data-builder-stop-id]").evaluateAll((rows: Element[]) =>
+      rows.map((row) => row.querySelector("strong")?.textContent?.trim() ?? ""));
 
     assert.deepEqual(await routeNames(), ["Marrakech", "Fes", "Chefchaouen"]);
     await input.fill("Marrakech");
@@ -62,17 +64,16 @@ test("the inline field adds successive cities and retains the saved route on rel
     assert.deepEqual(await routeNames(), ["Marrakech", "Fes", "Chefchaouen"], "typing is not an Add");
     await input.press("ArrowDown");
     await input.press("Enter");
-    await view.page.waitForFunction(() => document.querySelectorAll("#builder-stops [data-builder-stop-id]").length === 4);
+    await view.page.waitForFunction(() => document.querySelectorAll("[data-builder-route-workspace] [data-builder-stop-id]").length === 4);
     assert.equal(await input.inputValue(), "");
     assert.equal(await input.evaluate((element: Element) => document.activeElement === element), true,
       "the established autocomplete focus remains on the field after a successful addition");
     await input.fill("Tangier");
     await view.page.getByRole("option", { name: /^Tangier/ }).waitFor();
     await view.page.getByRole("option", { name: /^Tangier/ }).click();
-    await view.page.waitForFunction(() => document.querySelectorAll("#builder-stops [data-builder-stop-id]").length === 5);
+    await view.page.waitForFunction(() => document.querySelectorAll("[data-builder-route-workspace] [data-builder-stop-id]").length === 5);
     assert.deepEqual(await routeNames(), ["Marrakech", "Fes", "Chefchaouen", "Rabat", "Tangier"]);
 
-    await view.page.getByRole("button", { name: "Save changes", exact: true }).click();
     const savedRoute = await view.page.waitForFunction(() => {
       const trips = Object.values(localStorage).flatMap((raw) => {
         try { const trip = JSON.parse(raw as string).trip; return trip ? [trip] : []; } catch { return []; }
@@ -89,6 +90,7 @@ test("the inline field adds successive cities and retains the saved route on rel
     assert.ok(savedBeforeReload.brief.nightAllocations, "the canonical saved route retains its night allocations");
 
     await view.page.reload();
+    await view.page.getByRole("button", { name: "Add destination", exact: true }).click();
     await view.page.getByRole("combobox", { name: "Add a stop", exact: true }).waitFor();
     assert.deepEqual(await routeNames(), ["Marrakech", "Fes", "Chefchaouen", "Rabat", "Tangier"]);
     const savedAfterReload = await view.page.evaluate((tripId: string) => Object.values(localStorage).flatMap((raw) => {
@@ -196,22 +198,23 @@ test("a broad country uses Discovery and never becomes a phantom route stop", { 
     },
   });
   try {
+    await view.page.getByRole("button", { name: "Add destination", exact: true }).click();
     const section = view.page.locator("#builder-stops");
     const input = section.getByRole("combobox", { name: "Add a stop", exact: true });
-    const initialNames = await section.locator("[data-builder-stop-id]").evaluateAll((rows: Element[]) =>
-      rows.map((row) => row.querySelector("span")?.textContent?.replace(/^\d+/, "") ?? ""));
+    const initialNames = await view.page.locator("[data-builder-route-workspace] [data-builder-stop-id]").evaluateAll((rows: Element[]) =>
+      rows.map((row) => row.querySelector("strong")?.textContent?.trim() ?? ""));
     await input.fill("Kyrgyzstan");
     await view.page.getByRole("option", { name: /^Kyrgyzstan/ }).first().click();
 
     const dialog = view.page.getByRole("dialog");
     await dialog.getByRole("heading", { name: "Explore places", exact: true }).waitFor();
-    assert.deepEqual(await section.locator("[data-builder-stop-id]").evaluateAll((rows: Element[]) =>
-      rows.map((row) => row.querySelector("span")?.textContent?.replace(/^\d+/, "") ?? "")), initialNames);
+    assert.deepEqual(await view.page.locator("[data-builder-route-workspace] [data-builder-stop-id]").evaluateAll((rows: Element[]) =>
+      rows.map((row) => row.querySelector("strong")?.textContent?.trim() ?? "")), initialNames);
     assert.equal(await section.getByText("Kyrgyzstan", { exact: true }).count(), 0);
     await dialog.getByRole("button", { name: "Finish later", exact: true }).click();
     await dialog.waitFor({ state: "detached" });
-    assert.deepEqual(await section.locator("[data-builder-stop-id]").evaluateAll((rows: Element[]) =>
-      rows.map((row) => row.querySelector("span")?.textContent?.replace(/^\d+/, "") ?? "")), initialNames);
+    assert.deepEqual(await view.page.locator("[data-builder-route-workspace] [data-builder-stop-id]").evaluateAll((rows: Element[]) =>
+      rows.map((row) => row.querySelector("strong")?.textContent?.trim() ?? "")), initialNames);
     assert.deepEqual(view.errors, []);
   } finally {
     await view.close();
@@ -241,6 +244,7 @@ test("a direct city selected through country Discovery resolves the country inte
     },
   });
   try {
+    await view.page.getByRole("button", { name: "Add destination", exact: true }).click();
     const section = view.page.locator("#builder-stops");
     const input = section.getByRole("combobox", { name: "Add a stop", exact: true });
     await input.fill("Kyrgyzstan");
@@ -255,8 +259,8 @@ test("a direct city selected through country Discovery resolves the country inte
     await dialog.getByRole("button", { name: "Add 1 place", exact: true }).click();
     await dialog.waitFor({ state: "detached" });
 
-    const routeNames = await section.locator("[data-builder-stop-id]").evaluateAll((rows: Element[]) =>
-      rows.map((row) => row.querySelector("span")?.textContent?.replace(/^\d+/, "") ?? ""));
+    const routeNames = await view.page.locator("[data-builder-route-workspace] [data-builder-stop-id]").evaluateAll((rows: Element[]) =>
+      rows.map((row) => row.querySelector("strong")?.textContent?.trim() ?? ""));
     assert.deepEqual(routeNames, ["Marrakech", "Fes", "Chefchaouen", "Bishkek City"]);
     assert.equal(routeNames.includes("Kyrgyzstan"), false);
     assert.deepEqual(view.errors, []);

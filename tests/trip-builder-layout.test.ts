@@ -376,7 +376,7 @@ test("the activated Builder keeps one compact details and validation hierarchy",
     "the Builder should not gate canonical journey controls behind presentation state");
   assert.match(builder, /contextualResolvedPlaceMentions/,
     "ordinary self-referential stay-base relationships should be filtered from presentation");
-  assert.match(builder, /\{\(effectiveIntent\.hardConstraints\.fixedCommitments\.length > 0 \|\| showTripDetails\) && <section id="builder-constraints"/,
+  assert.match(builder, /\{!mountedBuilder && \(effectiveIntent\.hardConstraints\.fixedCommitments\.length > 0 \|\| showTripDetails\) && <section id="builder-constraints"/,
     "an empty Fixed plans disclosure must not consume space until explicitly opened");
   assert.doesNotMatch(builder, /<section hidden className=\{styles\.routeCheck\}/,
     "the obsolete top Route Check must not compete with the canonical check below the route workspace");
