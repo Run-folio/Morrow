@@ -1,10 +1,11 @@
 import type { CanonicalEasyTTrip, EasyTTrip, TripRouteReconciliation } from './trip.ts';
 import { requireReadableTripDocument, prepareTripDocumentForWrite } from './trip-document.ts';
-import { prepareAcceptedBuilderEdit, type BuilderAcceptedEdit } from './trip-builder-edit.ts';
+import type { BuilderAcceptedEdit } from './trip-builder-edit.ts';
 import { builderDocumentFingerprint } from './trip-builder-document-commit.ts';
+import { prepareBuilderHandlerEdits } from './trip-builder-handler-contract.ts';
 import { createBuilderInputDraft, updateBuilderInputDraft, rebindBuilderInputDraft, consumeBuilderInputDraft,
   type BuilderInputBinding, type BuilderInputDraft, type BuilderInputReadResult, type writeBuilderInputDraft } from './trip-builder-input-draft.ts';
-import { prepareBuilderNecessaryProjection, pendingBuilderReconciliationUnits, mergeBuilderProjectionResponse,
+import { pendingBuilderReconciliationUnits, mergeBuilderProjectionResponse,
   type BuilderEditScope, type BuilderProjectionResponse } from './trip-builder-reconciliation.ts';
 import { routeProjectionInputKey, routeProjectionStatus } from './trip-route-intent.ts';
 import { createTripMutationPersistenceQueue, mergeTripMutationDocuments } from './trip-mutation-persistence.ts';
@@ -207,6 +208,24 @@ export function createBuilderEditSession(options: BuilderEditSessionOptions) {
       if (failed.ok && storeCanonical(failed.trip, structuredClone(trip))) { continued = true; draft = rebindBuilderInputDraft(draft, trip); if (writeDraft()) scheduleCloud(); publish(); }
     } finally { if (work === request) { work = null; workAbort = null; if (continued) scheduleWork(); } }
   }
+  function acceptEdits(edits: readonly BuilderAcceptedEdit[], expectedInputRevision: number,
+    acceptedInputs?: readonly { binding: BuilderInputBinding; raw: string }[]) {
+    if (!active() || expectedInputRevision !== inputRevision) return { ok: false as const, reason: 'stale-source' as const };
+    if (draftProtected || error?.category === 'protected') return { ok: false as const, reason: 'protected' as const };
+    const prepared = prepareBuilderHandlerEdits(trip, edits, builderDocumentFingerprint(trip));
+    if (!prepared.ok) return prepared;
+    const candidate = prepared.trip;
+    const before = structuredClone(trip);
+    if (!storeCanonical(candidate, before)) return { ok: false as const, reason: 'storage' as const };
+    // A caller can consume only the exact raw field it deliberately accepted. Unrelated bytes remain independent.
+    for (const input of acceptedInputs ?? []) {
+      draft = consumeBuilderInputDraft(draft, input.binding, draft.inputRevision, input.raw);
+    }
+    inputRevision = Math.max(inputRevision + 1, draft.inputRevision);
+    draft = { ...rebindBuilderInputDraft(draft, trip), inputRevision };
+    if (writeDraft()) scheduleCloud();
+    scheduleWork(); publish(); return { ok: true as const, trip: snapshot.trip, releasedNights: prepared.releasedNights };
+  }
   publish();
   scheduleWork();
   if (pending && !paused && !error) scheduleCloud();
@@ -222,22 +241,9 @@ export function createBuilderEditSession(options: BuilderEditSessionOptions) {
       scheduleWork(); publish(); return stored;
     },
     accept(edit: BuilderAcceptedEdit, expectedInputRevision: number, acceptedInput?: { binding: BuilderInputBinding; raw: string }) {
-      if (!active() || expectedInputRevision !== inputRevision) return { ok: false as const, reason: 'stale-source' as const };
-      if (draftProtected || error?.category === 'protected') return { ok: false as const, reason: 'protected' as const };
-      const prepared = prepareAcceptedBuilderEdit(trip, edit, builderDocumentFingerprint(trip));
-      if (!prepared.ok) return prepared;
-      const prefix = prepareBuilderNecessaryProjection(trip, prepared.trip, prepared.scope, prepared.retainedConsumption);
-      if (!prefix.ok) return prefix;
-      const candidate = requireReadableTripDocument(prepareTripDocumentForWrite(prefix.trip));
-      const before = structuredClone(trip);
-      if (!storeCanonical(candidate, before)) return { ok: false as const, reason: 'storage' as const };
-      // A caller can consume only the exact raw field it deliberately accepted. Unrelated bytes remain independent.
-      draft = acceptedInput ? consumeBuilderInputDraft(draft, acceptedInput.binding, expectedInputRevision, acceptedInput.raw) : draft;
-      inputRevision = Math.max(inputRevision + 1, draft.inputRevision);
-      draft = { ...rebindBuilderInputDraft(draft, trip), inputRevision };
-      if (writeDraft()) scheduleCloud();
-      scheduleWork(); publish(); return { ok: true as const, trip: snapshot.trip, releasedNights: prepared.releasedNights };
+      return acceptEdits([edit], expectedInputRevision, acceptedInput ? [acceptedInput] : undefined);
     },
+    acceptBatch: acceptEdits,
     resumeNecessaryWork,
     retrySave() {
       if (!active() || historicalRecovery || draftProtected || pauseReason === 'conflict' || pauseReason === 'auth'

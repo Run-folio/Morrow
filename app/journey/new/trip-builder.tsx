@@ -18,6 +18,10 @@ import dynamic from "next/dynamic";
 import { useCallback, useEffect, useLayoutEffect, useId, useMemo, useRef, useState, type DragEvent as ReactDragEvent } from "react";
 import { acknowledgeTripBuildSave, cacheCanonicalTrip, canUseHydratedTripScope, claimGuestTripRecoveryForOwner, EASYT_BEFORE_NEW_TRIP_EVENT, EASYT_LAST_OWNER_CHANGE_EVENT, EASYT_LAST_OWNER_KEY, EasyTTripAuthError, EasyTTripPromotionConflictError, EasyTTripSaveConflictError, forgetRememberedOwner, loadActiveTrip, loadCurrentDraftRecovery, loadRememberedOwner, loadRequestedTrip, loadTripRecovery, markTripRecoveryState, ownerIdForBrowserRecovery, rememberLastOwner, saveTripRecovery, saveTripRecoveryToEasyT, shouldAllowNewTripNavigation, tripDocumentsCanonicalEquivalent, type TripRecoveryHandle } from "@/lib/easyt/storage";
 import { tripBuildDocumentsCanonicalEquivalent } from "@/lib/easyt/trip-promotion";
+import { builderStructuralSnapshot, type BuilderAcceptedEdit, type BuilderStructuralSnapshot } from "@/lib/easyt/trip-builder-edit";
+import { builderNightsCommand, builderRemoveCommand, builderPlaceCommand, builderDetailsCommands } from "@/lib/easyt/trip-builder-handler-contract";
+import type { BuilderEditSession } from "@/lib/easyt/trip-builder-edit-session";
+import type { BuilderInputBinding } from "@/lib/easyt/trip-builder-input-draft";
 import { EasyTTripPersistenceError, isTripPersistenceAuthenticationError, tripRecoveryStateForPersistenceError } from "@/lib/easyt/trip-persistence-error";
 import { tripEditorSyncAction, tripSyncRecoveryPath, tripSyncSignInPath } from "@/lib/easyt/trip-continuity";
 import { routeIntentFromHandoff } from "@/lib/easyt/trip-route-intent";
@@ -106,7 +110,7 @@ const TripItineraryWorkspace = dynamic(() => import("@/components/easyt/trip-iti
 
 export type Place = PlannerPlace;
 export type Stop = { id: string; name: string; country: string; canonicalPlaceId?: string; countryCode?: string; region?: string; providerId?: string; coordinates?: [number, number]; intent?: "place" | "landmark"; locality?: string };
-type StructuralSnapshot = { stops: Stop[]; allocations: Record<string, number>; manualNightStopIds: string[]; startDate: string; endDate: string; locks: TripScheduleLocks; placeSelections: PlaceSelection[]; completedPlanningAreaMentionIds: string[]; removedPlaceMentionIds: string[]; countryDiscoveryChoices?: Record<string, string[]>; discoveryDraftByMentionId?: StructuredTripBrief["discoveryDraftByMentionId"]; capturedPlaceSelections?: PlaceSelection[]; capturedDestinations: StructuredTripBrief["destinations"]; capturedMustVisit: StructuredTripBrief["mustVisit"]; summary: string };
+type StructuralSnapshot = { canonical?: BuilderStructuralSnapshot; stops: Stop[]; allocations: Record<string, number>; manualNightStopIds: string[]; startDate: string; endDate: string; locks: TripScheduleLocks; placeSelections: PlaceSelection[]; completedPlanningAreaMentionIds: string[]; removedPlaceMentionIds: string[]; countryDiscoveryChoices?: Record<string, string[]>; discoveryDraftByMentionId?: StructuredTripBrief["discoveryDraftByMentionId"]; capturedPlaceSelections?: PlaceSelection[]; capturedDestinations: StructuredTripBrief["destinations"]; capturedMustVisit: StructuredTripBrief["mustVisit"]; summary: string };
 type NightEditFeedback = { title: string; detail?: string; tone: "info" | "warning" };
 type CapturedLocation = ResolvedPlaceMention;
 type LocationChoice = HandoffLocationChoice;
@@ -464,6 +468,8 @@ function TripBuilderDocument() {
   const generationCompletedRef = useRef(false);
   const localSaveTrackedRef = useRef(false);
   const recoveryHandleRef = useRef<TripRecoveryHandle | null>(null);
+  // Dormant during handler conversion. The atomic activation owns mounting and old-writer suppression.
+  const builderEditSessionRef = useRef<BuilderEditSession | null>(null);
   const lastAcknowledgedCanonicalRef = useRef<EasyTTrip | null>(null);
   const hydratedCanonicalTripRef = useRef<EasyTTrip | null>(null);
   const homeDraftRef = useRef<HomeTripDraft | null>(null);
@@ -1001,6 +1007,30 @@ function TripBuilderDocument() {
     setDecisionSelections(saved.brief.decisionSelections ?? { transportByLeg: {} });
     setHasPromptContext(true);
   };
+
+  const dispatchAcceptedBuilderEdits = (edits: readonly BuilderAcceptedEdit[], options?: {
+    expectedInputRevision?: number; acceptedInputs?: readonly { binding: BuilderInputBinding; raw: string }[];
+  }) => {
+    const editor = builderEditSessionRef.current;
+    if (!editor) return false;
+    if (!edits.length) return true;
+    const result = editor.acceptBatch(edits, options?.expectedInputRevision ?? editor.getSnapshot().inputRevision, options?.acceptedInputs);
+    if (!result.ok) {
+      setCloudSaveError(result.reason === "stale-source"
+        ? "The trip changed while this edit was being checked. Review the latest trip and try again."
+        : "This edit could not be accepted safely. Your current trip and input remain preserved.");
+      return false;
+    }
+    applyAcceptedBuilderDocument(result.trip);
+    setSaveState(editor.getSnapshot().saveState);
+    return true;
+  };
+  const dispatchAcceptedBuilderEdit = (edit: BuilderAcceptedEdit | null, options?: {
+    expectedInputRevision?: number; acceptedInput?: { binding: BuilderInputBinding; raw: string };
+  }) => edit !== null && dispatchAcceptedBuilderEdits([edit], {
+    expectedInputRevision: options?.expectedInputRevision,
+    acceptedInputs: options?.acceptedInput ? [options.acceptedInput] : undefined,
+  });
 
   useEffect(() => {
     if (sessionPending || !browserContextReady) return;
@@ -2183,12 +2213,18 @@ function TripBuilderDocument() {
   const routeNightDifference = routeNights - totalNights;
 
   const rememberStructuralChange = (summary: string, affectedStopCount: number) => {
-    setLastStructuralChange({ stops, allocations: dayAllocations, manualNightStopIds, startDate, endDate, locks: scheduleLocks, placeSelections, completedPlanningAreaMentionIds, removedPlaceMentionIds, countryDiscoveryChoices: capturedStructuredBrief.countryDiscoveryChoices, discoveryDraftByMentionId: capturedStructuredBrief.discoveryDraftByMentionId, capturedPlaceSelections: capturedStructuredBrief.placeSelections, capturedDestinations: capturedStructuredBrief.destinations, capturedMustVisit: capturedStructuredBrief.mustVisit, summary });
+    setLastStructuralChange({ ...(builderEditSessionRef.current ? { canonical: builderStructuralSnapshot(builderEditSessionRef.current.getSnapshot().trip) } : {}), stops, allocations: dayAllocations, manualNightStopIds, startDate, endDate, locks: scheduleLocks, placeSelections, completedPlanningAreaMentionIds, removedPlaceMentionIds, countryDiscoveryChoices: capturedStructuredBrief.countryDiscoveryChoices, discoveryDraftByMentionId: capturedStructuredBrief.discoveryDraftByMentionId, capturedPlaceSelections: capturedStructuredBrief.placeSelections, capturedDestinations: capturedStructuredBrief.destinations, capturedMustVisit: capturedStructuredBrief.mustVisit, summary });
     trackEvent("trip_refined", { change_type: summary, affected_stop_count: affectedStopCount });
   };
 
   const undoStructuralChange = () => {
     if (!lastStructuralChange) return;
+    if (builderEditSessionRef.current) {
+      if (lastStructuralChange.canonical && dispatchAcceptedBuilderEdit({ kind: "structural-inverse", snapshot: lastStructuralChange.canonical })) {
+        setNightEditFeedback(null); setLastStructuralChange(null);
+      }
+      return;
+    }
     setStops(lastStructuralChange.stops);
     setDayAllocations(lastStructuralChange.allocations);
     setManualNightStopIds(lastStructuralChange.manualNightStopIds);
@@ -2237,6 +2273,13 @@ function TripBuilderDocument() {
       return;
     }
     setStopRemovalBlocked(null);
+    if (builderEditSessionRef.current) {
+      rememberStructuralChange("remove_stop", 1);
+      if (dispatchAcceptedBuilderEdit(builderRemoveCommand(builderEditSessionRef.current.getSnapshot().trip, stopId))) {
+        setRoutePreviewStopIds(null); setSelectedRouteStopId(null); setNightEditFeedback(null);
+      }
+      return;
+    }
     rememberStructuralChange("remove_stop", Math.max(0, stops.length - stops.findIndex((item) => item.id === stopId) - 1));
     const linkedSelection = placeSelections.find((selection) => selection.routeStopId === stopId);
     const linkedMention = linkedSelection
@@ -2305,6 +2348,12 @@ function TripBuilderDocument() {
     const nextEnd = requestedEnd < requestedStart ? requestedStart : requestedEnd;
     if (nextStart === startDate && nextEnd === endDate) return;
     rememberStructuralChange("change_trip_dates", stops.length);
+    if (builderEditSessionRef.current) {
+      if (dispatchAcceptedBuilderEdit({ kind: "dates", startDate: nextStart, endDate: nextEnd })) {
+        setDatesManuallyEdited(true); setEndDateStillSuggested(false);
+      }
+      return;
+    }
     setStartDate(nextStart);
     setEndDate(nextEnd);
     setDatesManuallyEdited(true);
@@ -2313,6 +2362,10 @@ function TripBuilderDocument() {
 
   const updateTravellers = (value: number) => {
     setTravellersManuallyEdited(true);
+    if (builderEditSessionRef.current) {
+      dispatchAcceptedBuilderEdit({ kind: "travellers", travellers: Math.max(1, Math.min(12, value)) });
+      return;
+    }
     setTripIntent((current) => ({ ...current, travellers: Math.max(1, Math.min(12, value)) }));
   };
 
@@ -2321,6 +2374,11 @@ function TripBuilderDocument() {
     const current = allocation[stopId] ?? 0;
     const next = Math.max(0, Math.min(totalNights, Math.round(requested)));
     if (next === current) return;
+    if (builderEditSessionRef.current) {
+      rememberStructuralChange("change_nights", 1);
+      dispatchAcceptedBuilderEdit(builderNightsCommand(builderEditSessionRef.current.getSnapshot().trip, stopId, next));
+      return;
+    }
     const nextManualStopIds = [...new Set([...manualNightStopIds, stopId])];
     const rebalanced = rebalanceTripNights({
       totalNights,
@@ -2467,6 +2525,7 @@ function TripBuilderDocument() {
     canonicalSuggestion?: CanonicalPlaceSuggestion,
     discoverySelectionVerified = false,
   ) => {
+    const expectedInputRevision = builderEditSessionRef.current?.getSnapshot().inputRevision;
     const targetMentionId = resolvesMentionId ?? resolvingPlaceMentionId;
     const targetMention = targetMentionId
       ? (capturedStructuredBrief.placeMentions ?? intakeMentions).find((mention) => mention.mentionId === targetMentionId)
@@ -2601,7 +2660,16 @@ function TripBuilderDocument() {
       };
       if (!existingBase) {
         rememberStructuralChange(replaceableRouteStopId ? "change_regional_base" : "add_stop", 1);
-        setStops((current) => replaceableRouteStopId
+        if (builderEditSessionRef.current) {
+          if (expectedInputRevision === undefined) return fail("The trip changed while this place was being checked. Try again.");
+          const currentTrip = builderEditSessionRef.current.getSnapshot().trip;
+          const intentId = targetMentionId && currentTrip.brief.intent.route.destinations.some(intent => intent.id === targetMentionId)
+            ? targetMentionId : undefined;
+          if (!dispatchAcceptedBuilderEdit(builderPlaceCommand(currentTrip, { stopId: id, intentId, place: {
+            name: addedStop.name, country: addedStop.country, canonicalPlaceId: addedStop.canonicalPlaceId,
+            providerId: addedStop.providerId, coordinates: addedStop.coordinates,
+          } }), { expectedInputRevision })) return fail("The place could not be added to the current trip safely. Review the current destinations and try again.");
+        } else setStops((current) => replaceableRouteStopId
           ? current.map((stop) => stop.id === replaceableRouteStopId ? addedStop : stop)
           : unresolvedCapturedOccurrence && targetMention
             ? insertHandoffOccurrence(current, addedStop, targetMention, capturedStructuredBrief.placeMentions ?? intakeMentions, handoffOccurrenceMentionIdsRef.current)
@@ -2635,7 +2703,7 @@ function TripBuilderDocument() {
           .some((label) => label.toLocaleLowerCase() === resolvedName.toLocaleLowerCase() || label.toLocaleLowerCase() === value.toLocaleLowerCase()));
         if (restoredMention) setRemovedPlaceMentionIds((current) => current.filter((mentionId) => mentionId !== restoredMention.mentionId));
       }
-      setDecisionSelections((current) => ({ ...current, routeOrder: undefined }));
+      if (!builderEditSessionRef.current) setDecisionSelections((current) => ({ ...current, routeOrder: undefined }));
       setStopInput(""); setStopError(""); setStopChecking(false);
       if (targetMentionId) setShowStopEditor(false);
       else {
@@ -2668,7 +2736,12 @@ function TripBuilderDocument() {
     const routeStop = routeDestination?.id ? stops.find((stop) => stop.id === routeDestination.id) : undefined;
     const id = existingNamed?.id ?? routeStop?.id ?? `${option.label.toLowerCase().replace(/[^a-z0-9]+/g, "-")}-${Date.now()}`;
     rememberStructuralChange("select_regional_base", existingNamed ? 0 : 1);
-    if (!existingNamed && routeStop) {
+    if (builderEditSessionRef.current && !existingNamed) {
+      const currentTrip = builderEditSessionRef.current.getSnapshot().trip;
+      const intentId = currentTrip.brief.intent.route.destinations.some(intent => intent.id === issue.mentionId) ? issue.mentionId : undefined;
+      if (!dispatchAcceptedBuilderEdit(builderPlaceCommand(currentTrip, { stopId: id, intentId,
+        place: { name: option.label, country: optionCountry, canonicalPlaceId: option.canonicalPlaceId, coordinates: option.coordinates } }))) return;
+    } else if (!existingNamed && routeStop) {
       setStops((current) => current.map((stop) => stop.id === routeStop.id ? {
         ...stop,
         name: option.label,
@@ -2970,6 +3043,11 @@ function TripBuilderDocument() {
     });
     if (!result.ok) return false;
     rememberStructuralChange(source === "route-check" ? "apply_route_order" : "reorder_stop", stops.length);
+    if (builderEditSessionRef.current) {
+      const accepted = dispatchAcceptedBuilderEdit({ kind: "order", stopIds: result.ids, source });
+      if (accepted) { setRoutePreviewStopIds(null); setKeptRouteKey(null); }
+      return accepted;
+    }
     setStops(result.stops);
     setTripIntent((current) => {
       const route = routeIntentFromHandoff({ routeIntent: current.route, origin, journeyEnd, structuredBrief: effectiveStructuredBrief, brief: tripBrief },
@@ -2999,7 +3077,7 @@ function TripBuilderDocument() {
     if (!currentRouteCheckProposalStopIds || routeIntelligence.route.state !== "recommendation") return;
     if (scheduleLocks.stopIds.length || Object.keys(scheduleLocks.arrivalDates).length || structuredRouteConstraints.fixedCommitments?.length) return;
     if (!commitStopOrder(currentRouteCheckProposalStopIds, "route-check")) return;
-    setDecisionSelections((current) => ({ ...current, routeOrder: "recommended" }));
+    if (!builderEditSessionRef.current) setDecisionSelections((current) => ({ ...current, routeOrder: "recommended" }));
     setKeptRouteKey(null);
     setRouteCheckProposalStopIds(null);
     trackEvent("route_accepted", { method: "recommended_order", stop_count: stops.length, duration_days: totalDays });
@@ -3037,11 +3115,21 @@ function TripBuilderDocument() {
   const updateIntentPreferences = (update: Partial<TripIntent["preferences"]>) => {
     if (update.pace !== undefined) setPaceManuallyEdited(true);
     if (update.interests !== undefined) setInterestsManuallyEdited(true);
+    if (builderEditSessionRef.current) {
+      dispatchAcceptedBuilderEdit({ kind: "preferences", preferences: update });
+      return;
+    }
     setTripIntent((current) => ({ ...current, preferences: { ...current.preferences, ...update } }));
   };
 
   const toggleTransportMode = (mode: TripTransportMode) => {
     setTransportManuallyEdited(true);
+    if (builderEditSessionRef.current) {
+      const current = builderEditSessionRef.current.getSnapshot().trip.brief.intent.preferences.transportModes;
+      const modes = current.includes(mode) ? current.filter(item => item !== mode) : [...current, mode];
+      dispatchAcceptedBuilderEdit({ kind: "preferences", preferences: { transportModes: modes.length ? modes : [mode] } });
+      return;
+    }
     setTripIntent((current) => {
       const modes = current.preferences.transportModes.includes(mode)
         ? current.preferences.transportModes.filter((item) => item !== mode)
@@ -3052,9 +3140,40 @@ function TripBuilderDocument() {
 
   const toggleInterest = (interest: TripInterest) => {
     setInterestsManuallyEdited(true);
+    if (builderEditSessionRef.current) {
+      const current = builderEditSessionRef.current.getSnapshot().trip.brief.intent.preferences.interests;
+      dispatchAcceptedBuilderEdit({ kind: "preferences", preferences: { interests: current.includes(interest) ? current.filter(item => item !== interest) : [...current, interest] } });
+      return;
+    }
     setTripIntent((current) => ({ ...current, preferences: { ...current.preferences, interests: current.preferences.interests.includes(interest) ? current.preferences.interests.filter((item) => item !== interest) : [...current.preferences.interests, interest] } }));
   };
 
+  const updateBuilderConstraints = (constraints: Partial<Pick<TripIntent["hardConstraints"], "optionalStopIds" | "fixedCommitments" | "avoidDriving">>) => {
+    if (builderEditSessionRef.current) return dispatchAcceptedBuilderEdit({ kind: "constraints", constraints });
+    setTripIntent(current => ({ ...current, hardConstraints: { ...current.hardConstraints, ...constraints } }));
+    return true;
+  };
+  const updateTimingFlexibility = (flexibility: "fixed" | "flexible") => {
+    if (builderEditSessionRef.current) return dispatchAcceptedBuilderEdit({ kind: "timing-flexibility", flexibility });
+    setTripIntent(current => ({ ...current, timing: { ...current.timing, flexibility } }));
+    return true;
+  };
+  const toggleOptionalStop = (stopId: string) => {
+    const nextIds = (ids: string[]) => ids.includes(stopId) ? ids.filter(id => id !== stopId) : [...ids, stopId];
+    if (builderEditSessionRef.current) return updateBuilderConstraints({ optionalStopIds: nextIds(builderEditSessionRef.current.getSnapshot().trip.brief.intent.hardConstraints.optionalStopIds) });
+    setTripIntent(current => ({ ...current, hardConstraints: { ...current.hardConstraints, optionalStopIds: nextIds(current.hardConstraints.optionalStopIds) } }));
+    return true;
+  };
+  const toggleAvoidDriving = () => {
+    if (builderEditSessionRef.current) return updateBuilderConstraints({ avoidDriving: !builderEditSessionRef.current.getSnapshot().trip.brief.intent.hardConstraints.avoidDriving });
+    setTripIntent(current => ({ ...current, hardConstraints: { ...current.hardConstraints, avoidDriving: !current.hardConstraints.avoidDriving } }));
+    return true;
+  };
+  const removeFixedCommitment = (commitmentId: string) => {
+    if (builderEditSessionRef.current) return updateBuilderConstraints({ fixedCommitments: builderEditSessionRef.current.getSnapshot().trip.brief.intent.hardConstraints.fixedCommitments.filter(item => item.id !== commitmentId) });
+    setTripIntent(current => ({ ...current, hardConstraints: { ...current.hardConstraints, fixedCommitments: current.hardConstraints.fixedCommitments.filter(item => item.id !== commitmentId) } }));
+    return true;
+  };
   const addFixedCommitment = () => {
     const label = fixedCommitmentLabel.trim();
     if (!label) return;
@@ -3071,7 +3190,10 @@ function TripBuilderDocument() {
         coordinates: suggestion.coordinates,
       } : { name: label },
     };
-    setTripIntent((current) => ({ ...current, hardConstraints: { ...current.hardConstraints, fixedCommitments: [...current.hardConstraints.fixedCommitments, commitment] } }));
+    if (builderEditSessionRef.current) {
+      const currentIntent = builderEditSessionRef.current.getSnapshot().trip.brief.intent;
+      if (!updateBuilderConstraints({ fixedCommitments: [...currentIntent.hardConstraints.fixedCommitments, commitment] })) return;
+    } else setTripIntent(current => ({ ...current, hardConstraints: { ...current.hardConstraints, fixedCommitments: [...current.hardConstraints.fixedCommitments, commitment] } }));
     setFixedCommitmentLabel("");
     setFixedCommitmentDate("");
   };
@@ -3083,7 +3205,13 @@ function TripBuilderDocument() {
     }
     const selection = journeyEndpointPlaceFromSuggestion(suggestion);
     const resolutionVersion = originResolutionVersionRef.current + 1;
-    replaceJourneyOrigin(selection);
+    if (builderEditSessionRef.current) {
+      const state = builderEditSessionRef.current.getSnapshot();
+      const raw = state.draft.fields.find(field => field.binding.kind === "origin");
+      if (!dispatchAcceptedBuilderEdit({ kind: "origin", place: selection }, { expectedInputRevision: state.inputRevision,
+        ...(raw ? { acceptedInput: { binding: { kind: "origin" }, raw: raw.raw } } : {}) })) return false;
+    } else replaceJourneyOrigin(selection);
+    const enrichmentRevision = builderEditSessionRef.current?.getSnapshot().inputRevision;
     setOriginTouched(true);
     setOriginError("");
     if (suggestion.coordinates) {
@@ -3092,21 +3220,23 @@ function TripBuilderDocument() {
     try {
       const response = await fetch(`/api/journey-geocode?place=${encodeURIComponent(suggestion.name)}&country=${encodeURIComponent(suggestion.country)}`);
       const payload = await response.json() as { result?: LocationChoice | null };
-      if (originResolutionVersionRef.current !== resolutionVersion) return false;
+      if (originResolutionVersionRef.current !== resolutionVersion
+        || (builderEditSessionRef.current && builderEditSessionRef.current.getSnapshot().inputRevision !== enrichmentRevision)) return false;
       if (!payload.result?.coordinates || !canonicalPlaceFactsMatch(suggestion.canonicalPlaceId, payload.result)) {
-        replaceJourneyOrigin(selection);
+        if (!builderEditSessionRef.current) replaceJourneyOrigin(selection);
         setOriginError(ui.verifyOrigin);
         return false;
       }
-      replaceJourneyOrigin({
-        ...selection,
-        coordinates: payload.result.coordinates,
-        providerId: payload.result.providerId,
-      });
+      const enriched = { ...selection, coordinates: payload.result.coordinates, providerId: payload.result.providerId };
+      if (builderEditSessionRef.current) {
+        return dispatchAcceptedBuilderEdit({ kind: "origin", place: enriched }, { expectedInputRevision: enrichmentRevision });
+      }
+      replaceJourneyOrigin(enriched);
       return true;
     } catch {
-      if (originResolutionVersionRef.current !== resolutionVersion) return false;
-      replaceJourneyOrigin(selection);
+      if (originResolutionVersionRef.current !== resolutionVersion
+        || (builderEditSessionRef.current && builderEditSessionRef.current.getSnapshot().inputRevision !== enrichmentRevision)) return false;
+      if (!builderEditSessionRef.current) replaceJourneyOrigin(selection);
       setOriginError(ui.originUnavailable);
       return false;
     }
@@ -3134,6 +3264,10 @@ function TripBuilderDocument() {
   };
 
   const chooseJourneyEndMode = (mode: "same_as_start" | "unknown") => {
+    if (builderEditSessionRef.current) {
+      dispatchAcceptedBuilderEdit({ kind: "type", tripType: mode === "same_as_start" ? "return_to_start" : "one_way" });
+      return;
+    }
     journeyEndResolutionVersionRef.current += 1;
     setJourneyEndTouched(true);
     setJourneyEndInput("");
@@ -3240,6 +3374,11 @@ function TripBuilderDocument() {
     }
   };
   const togglePick = (stopId: string, title: string) => {
+    if (builderEditSessionRef.current) {
+      const current = builderEditSessionRef.current.getSnapshot().trip.brief.selectedPlaces?.[stopId] ?? [];
+      dispatchAcceptedBuilderEdit({ kind: "picks", stopId, titles: current.includes(title) ? current.filter(item => item !== title) : [...current, title] });
+      return;
+    }
     const current = picks[stopId] ?? [];
     setPicks({ ...picks, [stopId]: current.includes(title) ? current.filter((t) => t !== title) : [...current, title] });
   };
@@ -3371,6 +3510,7 @@ function TripBuilderDocument() {
   };
 
   const commitTripDetailsDraft = async (detailsDraft: TripBuilderDetailsDraft, sourceFingerprint: string) => {
+    const capturedRevision = builderEditSessionRef.current?.getSnapshot().inputRevision;
     setDetailsCommitBusy(true);
     setDetailsCommitError("");
     try {
@@ -3384,6 +3524,20 @@ function TripBuilderDocument() {
       const resolvedEnd: JourneyEndSelection = normalizedDraftEnd.mode === "explicit"
         ? { mode: "explicit", place: nextEnd! }
         : normalizedDraftEnd;
+      if (builderEditSessionRef.current) {
+        if (capturedRevision === undefined) return false;
+        const current = builderEditSessionRef.current.getSnapshot();
+        const commands = builderDetailsCommands(current.trip, { ...detailsDraft, journeyOrigin: nextOrigin, journeyEnd: resolvedEnd }, sourceFingerprint);
+        if (!commands.ok || !dispatchAcceptedBuilderEdits(commands.edits, { expectedInputRevision: capturedRevision })) {
+          setDetailsCommitError(commands.ok || commands.reason === "stale-source"
+            ? "The trip changed while these details were checked. Review the latest trip and try again."
+            : "This ending place cannot be added by the new route controls. Your existing trip remains preserved.");
+          return false;
+        }
+        setOriginTouched(true); setOriginError(""); setJourneyEndError("");
+        setDatesManuallyEdited(true); setTravellersManuallyEdited(true);
+        return true;
+      }
       const nextIntent = activeTripDocument.brief.intent
         ? {
           ...activeTripDocument.brief.intent,
@@ -4588,7 +4742,7 @@ function TripBuilderDocument() {
                   startDate={startDate}
                   endDate={endDate}
                   dateHint={endDateStillSuggested ? (language === "es" ? `Solo has elegido la fecha de inicio. La fecha final y los ${defaultTripIntent().timing.durationDays} días son una sugerencia.` : `Only your start date is set. The end date and ${defaultTripIntent().timing.durationDays}-day length are suggestions.`) : undefined}
-                  onAcceptSuggestedDates={endDateStillSuggested ? () => { setEndDateStillSuggested(false); setDatesManuallyEdited(true); } : undefined}
+                  onAcceptSuggestedDates={endDateStillSuggested ? () => { if (builderEditSessionRef.current) { const trip = builderEditSessionRef.current.getSnapshot().trip; if (!dispatchAcceptedBuilderEdit({ kind: "dates", startDate: trip.startDate, endDate: trip.endDate })) return; } setEndDateStillSuggested(false); setDatesManuallyEdited(true); } : undefined}
                   travellers={effectiveIntent.travellers}
                   budget={budget}
                   sourceFingerprint={builderDetailsFingerprint(activeTripDocument)}
@@ -4836,11 +4990,11 @@ function TripBuilderDocument() {
                     </div>
                     {stops.length > 0 && <div className={styles.mustSeeStops}><span>{language === "es" ? "PARADAS IMPRESCINDIBLES" : "MUST-SEE STOPS"}</span><div>{stops.map((stop) => {
                       const mustSee = !effectiveIntent.hardConstraints.optionalStopIds.includes(stop.id);
-                      return <button type="button" key={stop.id} className={mustSee ? styles.intentChoiceOn : ""} onClick={() => setTripIntent((current) => ({ ...current, hardConstraints: { ...current.hardConstraints, optionalStopIds: mustSee ? [...current.hardConstraints.optionalStopIds, stop.id] : current.hardConstraints.optionalStopIds.filter((id) => id !== stop.id) } }))}>{mustSee ? "✓ " : ""}{stop.name}{mustSee ? "" : ` · ${language === "es" ? "opcional" : "optional"}`}</button>;
+                      return <button type="button" key={stop.id} className={mustSee ? styles.intentChoiceOn : ""} onClick={() => toggleOptionalStop(stop.id)}>{mustSee ? "✓ " : ""}{stop.name}{mustSee ? "" : ` · ${language === "es" ? "opcional" : "optional"}`}</button>;
                     })}</div></div>}
                     <div className={styles.intentToggle} role="group" aria-label={language === "es" ? "Flexibilidad de fechas" : "Date flexibility"}>
-                      <button type="button" className={effectiveIntent.timing.flexibility === "fixed" ? styles.intentChoiceOn : ""} onClick={() => setTripIntent((current) => ({ ...current, timing: { ...current.timing, flexibility: "fixed" } }))}>{language === "es" ? "Fechas fijas" : "Dates fixed"}</button>
-                      <button type="button" className={effectiveIntent.timing.flexibility === "flexible" ? styles.intentChoiceOn : ""} onClick={() => setTripIntent((current) => ({ ...current, timing: { ...current.timing, flexibility: "flexible" } }))}>{language === "es" ? "Duración flexible" : "Flexible duration"}</button>
+                      <button type="button" className={effectiveIntent.timing.flexibility === "fixed" ? styles.intentChoiceOn : ""} onClick={() => updateTimingFlexibility("fixed")}>{language === "es" ? "Fechas fijas" : "Dates fixed"}</button>
+                      <button type="button" className={effectiveIntent.timing.flexibility === "flexible" ? styles.intentChoiceOn : ""} onClick={() => updateTimingFlexibility("flexible")}>{language === "es" ? "Duración flexible" : "Flexible duration"}</button>
                     </div>
                     <div className={styles.fixedCommitment}>
                       <label><span>{language === "es" ? "LUGAR DEL PLAN FIJO" : "FIXED PLAN PLACE"}</span><input value={fixedCommitmentLabel} onChange={(event) => setFixedCommitmentLabel(event.target.value)} placeholder={language === "es" ? "Ej. Oaxaca" : "e.g. Oaxaca"} /></label>
@@ -4874,7 +5028,7 @@ function TripBuilderDocument() {
                       <div><span>{language === "es" ? "RITMO" : "PACE"}</span><div className={styles.intentToggle}>{(["relaxed", "balanced", "packed"] as TripIntentPace[]).map((pace) => <button type="button" key={pace} className={effectiveIntent.preferences.pace === pace ? styles.intentChoiceOn : ""} onClick={() => updateIntentPreferences({ pace })}>{language === "es" ? ({ relaxed: "Tranquilo", balanced: "Equilibrado", packed: "Intenso" }[pace]) : ({ relaxed: "Relaxed", balanced: "Balanced", packed: "Packed" }[pace])}</button>)}</div></div>
                     </div>
                     <div className={styles.intentFieldRow}>
-                      <div><span>{language === "es" ? "TRANSPORTE" : "TRANSPORT"}</span><div className={styles.intentToggle}>{(["flight", "train", "drive"] as TripTransportMode[]).map((mode) => <button type="button" key={mode} className={effectiveIntent.preferences.transportModes.includes(mode) ? styles.intentChoiceOn : ""} onClick={() => toggleTransportMode(mode)}>{language === "es" ? ({ flight: "Preferir vuelos en trayectos largos", train: "Preferir tren cuando sea práctico", drive: "Preferir carretera cuando sea útil" }[mode]) : ({ flight: "Prefer flights for long journeys", train: "Prefer rail when practical", drive: "Prefer road where useful" }[mode])}</button>)}<button type="button" className={effectiveIntent.hardConstraints.avoidDriving ? styles.intentChoiceOn : ""} onClick={() => setTripIntent((current) => ({ ...current, hardConstraints: { ...current.hardConstraints, avoidDriving: !current.hardConstraints.avoidDriving } }))}>{language === "es" ? "Evitar coche" : "Avoid driving"}</button></div></div>
+                      <div><span>{language === "es" ? "TRANSPORTE" : "TRANSPORT"}</span><div className={styles.intentToggle}>{(["flight", "train", "drive"] as TripTransportMode[]).map((mode) => <button type="button" key={mode} className={effectiveIntent.preferences.transportModes.includes(mode) ? styles.intentChoiceOn : ""} onClick={() => toggleTransportMode(mode)}>{language === "es" ? ({ flight: "Preferir vuelos en trayectos largos", train: "Preferir tren cuando sea práctico", drive: "Preferir carretera cuando sea útil" }[mode]) : ({ flight: "Prefer flights for long journeys", train: "Prefer rail when practical", drive: "Prefer road where useful" }[mode])}</button>)}<button type="button" className={effectiveIntent.hardConstraints.avoidDriving ? styles.intentChoiceOn : ""} onClick={toggleAvoidDriving}>{language === "es" ? "Evitar coche" : "Avoid driving"}</button></div></div>
                       <div><span>{language === "es" ? "PRESUPUESTO" : "BUDGET"}</span><div className={styles.intentToggle}>{(["value", "mid", "high"] as const).map((band) => <button type="button" key={band} className={budget === band ? styles.intentChoiceOn : ""} onClick={() => { setBudget(band); setBudgetPreference({ source: "explicit", value: band }); updateIntentPreferences({ budgetSensitivity: band }); }}>{language === "es" ? ({ value: "Ajustado", mid: "Medio", high: "Alto" }[band]) : ({ value: "Value", mid: "Mid", high: "High" }[band])}</button>)}</div></div>
                     </div>
                     <div className={styles.intentInterestRow}><span>{language === "es" ? "INTERESES" : "INTERESTS"}</span><div>{tripInterestIds.map((interest) => <button type="button" key={interest} className={effectiveIntent.preferences.interests.includes(interest) ? styles.intentChoiceOn : ""} onClick={() => toggleInterest(interest)}>{tripInterestLabels[language][interest]}</button>)}</div></div>
@@ -4883,7 +5037,7 @@ function TripBuilderDocument() {
                 </div>
                 <footer className={styles.intentSummary}><span>{language === "es" ? "RESUMEN ANTES DE PLANIFICAR" : "PLAN SUMMARY"}</span><p><b>{effectiveIntent.travellers} {language === "es" ? "viajeros" : "travellers"}</b> · {effectiveIntent.timing.flexibility === "fixed" ? (language === "es" ? "fechas fijas" : "fixed dates") : (language === "es" ? `${totalDays} días flexibles` : `${totalDays} flexible days`)} · <b>{stops.map((stop) => stop.name).join(" · ") || (language === "es" ? "sin paradas aún" : "no stops yet")}</b>{effectiveIntent.hardConstraints.fixedCommitments.length ? ` · ${effectiveIntent.hardConstraints.fixedCommitments.length} ${language === "es" ? "condición fija" : "fixed commitment"}${effectiveIntent.hardConstraints.fixedCommitments.length === 1 ? "" : "s"}` : ""}</p></footer>
                 </div>}
-                {effectiveIntent.hardConstraints.fixedCommitments.length > 0 && (!isHomepagePromptHandoff || showTripDetails) && <div className={styles.commitmentChips}>{effectiveIntent.hardConstraints.fixedCommitments.map((item) => <span key={item.id}>{item.date ? `${item.date} · ` : ""}{item.label}<button type="button" aria-label={`${language === "es" ? "Quitar" : "Remove"} ${item.label}`} onClick={() => setTripIntent((current) => ({ ...current, hardConstraints: { ...current.hardConstraints, fixedCommitments: current.hardConstraints.fixedCommitments.filter((commitment) => commitment.id !== item.id) } }))}><X /></button></span>)}</div>}
+                {effectiveIntent.hardConstraints.fixedCommitments.length > 0 && (!isHomepagePromptHandoff || showTripDetails) && <div className={styles.commitmentChips}>{effectiveIntent.hardConstraints.fixedCommitments.map((item) => <span key={item.id}>{item.date ? `${item.date} · ` : ""}{item.label}<button type="button" aria-label={`${language === "es" ? "Quitar" : "Remove"} ${item.label}`} onClick={() => removeFixedCommitment(item.id)}><X /></button></span>)}</div>}
               </section>}
               </section>}
 
@@ -4906,6 +5060,7 @@ function TripBuilderDocument() {
                 onEditNights={updateAllocatedDays}
                 onRemoveStop={requestRemoveStop}
                 onTransportChoiceChange={(legId, identity) => {
+                  if (builderEditSessionRef.current) { dispatchAcceptedBuilderEdit({ kind: "transport", legId, identity }); return; }
                   const next = identity
                     ? selectTripLegTransportChoice(activeTripDocument, legId, identity)
                     : clearTripLegTransportChoice(activeTripDocument, legId);

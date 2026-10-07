@@ -358,3 +358,19 @@ test('lost_B_success_still_conflicts_on_new_C_retry_and_preserves_exact_C_recove
   assert.equal(h.recovery()!.writeId, handle); assert.deepEqual(h.recovery()!.trip, c.trip);
   assert.equal(h.session.retrySave(), false); await h.run(450); assert.equal(h.writes.length, 3); h.session.dispose();
 });
+test('details_commands_validate_as_one_device_acceptance_and_preserve_unrelated_raw_fields', async () => {
+  const h = await harness(); h.session.updateDraft({ binding: { kind: 'origin' }, raw: 'Paris' });
+  h.session.updateDraft({ binding: { kind: 'nights', intentId: 'intent:kyoto', stopId: 'kyoto' }, raw: '3.' });
+  const revision = h.session.getSnapshot().inputRevision;
+  assert.ok(h.session.acceptBatch([origin, { kind: 'dates', startDate: '2026-10-11', endDate: '2026-10-20' }, { kind: 'travellers', travellers: 4 }], revision,
+    [{ binding: { kind: 'origin' }, raw: 'Paris' }]).ok);
+  assert.equal(h.session.getSnapshot().trip.travellers, 4); assert.equal(h.session.getSnapshot().trip.startDate, '2026-10-11');
+  assert.equal([...h.storage.values.keys()].filter(key => key.startsWith('easyt:trip-recovery:v2:')).length, 1);
+  assert.equal(h.session.getSnapshot().draft.fields.length, 1); assert.equal(h.session.getSnapshot().draft.fields[0]!.raw, '3.');
+  assert.deepEqual(h.recovery()!.trip, h.session.getSnapshot().trip); await h.run(450); assert.equal(h.writes.length, 1); h.session.dispose();
+});
+test('invalid_later_details_command_cannot_partially_accept_an_earlier_origin_or_date', async () => {
+  const h = await harness(); const before = h.session.getSnapshot();
+  assert.equal(h.session.acceptBatch([origin, { kind: 'travellers', travellers: 0 }], before.inputRevision).ok, false);
+  assert.deepEqual(h.session.getSnapshot().trip, before.trip); assert.equal(h.recovery(), null); await h.run(450); assert.equal(h.writes.length, 0); h.session.dispose();
+});
