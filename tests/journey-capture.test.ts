@@ -16,6 +16,20 @@ import { EXPECTED_MIXED_GEOGRAPHY, MIXED_CENTRAL_AMERICA_PROMPT } from "./fixtur
 
 const CENTRAL_PROMPT = "3 weeks through Patagonia, Tierra del Fuego and Easter Island. We like nature, prefer a relaxed pace and do not want to drive.";
 
+test("capture binds a contrastive fly-in gateway to Lima without losing Sacred Valley intent", () => {
+  const prompt = "Fly into Lima but spend the trip in the Sacred Valley";
+  const capture = captureJourneyBrief(prompt);
+  assert.equal(capture.rawBrief, prompt);
+  assert.deepEqual(capture.structuredBrief.destinations.map(destination => destination.name), ["Lima", "Sacred Valley"]);
+  const start = capture.structuredBrief.hardConstraints.find(constraint => constraint.type === "start-at");
+  assert.deepEqual(start, { type: "start-at", value: "Lima",
+    provenance: { source: "prompt", kind: "explicit", confidence: "high", sourceText: "Lima" } });
+  assert.deepEqual(capture.mentions.map(mention => mention.canonicalName), ["Lima", "Sacred Valley"]);
+  assert.deepEqual(capture.regions, ["Sacred Valley"]);
+  assert.equal(capture.mentions.find(mention => mention.canonicalPlaceId === "sacred-valley")?.requiresBaseSelection, true);
+  assert.equal(capture.mentionCoverage.complete, true);
+});
+
 test("fly-in and home-from endpoints preserve the listed final overnight as one distinct stop", () => {
   const capture = captureJourneyBrief("14 nights, fly into Tokyo and home from Osaka: Tokyo 4, Kanazawa 2, Kyoto 4, Hiroshima 2, Osaka 2.");
   const draftStops = handoffRouteStops(capture.mentions, capture.journeyEnd);

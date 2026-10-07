@@ -199,9 +199,11 @@ function sourceExcerpt(prompt: string, name: string) {
 }
 
 function explicitGateway(prompt: string, kind: "start" | "end") {
+  // A contrastive clause describes the next intent, not part of the gateway's
+  // place name. Keep the boundary at a whole word so names like Butte survive.
   const pattern = kind === "start"
-    ? /(?:(?:start|begin)(?:ing)?\s+(?:(?:in|at)\s+)?|(?:fly|flying)\s+into\s+|(?:arrive|arriving|land|landing)\s+(?:in|at)\s+)([^,.:\n;]+?)(?=\s+(?:(?:and|then)\s+)?(?:travel|go|continue|head|fly|take|finish|end|home|return)\b|[,.:\n;]|$)/i
-    : /(?:(?:finish|end)(?:ing)?\s+(?:in|at)\s+|(?:fly(?:ing)?\s+)?home\s+from\s+)([^,.:\n;]+?)(?=\s+(?:(?:and|then)\s+)?(?:travel|go|continue|head|fly|take|finish|end|home|return)\b|[,.:\n;]|$)/i;
+    ? /(?:(?:start|begin)(?:ing)?\s+(?:(?:in|at)\s+)?|(?:fly|flying)\s+into\s+|(?:arrive|arriving|land|landing)\s+(?:in|at)\s+)([^,.:\n;]+?)(?=\s+(?:(?:and|then)\s+)?(?:but|travel|go|continue|head|fly|take|finish|end|home|return)\b|[,.:\n;]|$)/i
+    : /(?:(?:finish|end)(?:ing)?\s+(?:in|at)\s+|(?:fly(?:ing)?\s+)?home\s+from\s+)([^,.:\n;]+?)(?=\s+(?:(?:and|then)\s+)?(?:but|travel|go|continue|head|fly|take|finish|end|home|return)\b|[,.:\n;]|$)/i;
   return pattern.exec(prompt)?.[1]?.trim();
 }
 

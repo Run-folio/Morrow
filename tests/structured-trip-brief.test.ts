@@ -109,6 +109,41 @@ test("fly-in and fly-home language assigns separate arrival and departure gatewa
   );
 });
 
+test("a contrastive stay clause cannot become an explicit arrival gateway", () => {
+  const brief = extractStructuredTripBrief("Fly into Lima but spend the trip in the Sacred Valley");
+  assert.deepEqual(brief.destinations.map(destination => destination.name), ["Lima", "Sacred Valley"]);
+  const arrival = brief.destinations.find(destination => destination.role === "arrival-gateway");
+  assert.equal(arrival?.canonicalPlaceId, "lima");
+  assert.equal(arrival?.placeMentionId, brief.placeMentions?.find(mention => mention.canonicalPlaceId === "lima")?.mentionId);
+  assert.deepEqual(brief.hardConstraints.find(constraint => constraint.type === "start-at"), {
+    type: "start-at", value: "Lima",
+    provenance: { source: "prompt", kind: "explicit", confidence: "high", sourceText: "Lima" },
+  });
+  const valley = brief.placeMentions?.find(mention => mention.canonicalPlaceId === "sacred-valley");
+  assert.equal(valley?.requiresBaseSelection, true);
+  assert.equal(brief.destinations.find(destination => destination.canonicalPlaceId === "sacred-valley")?.role, "must-visit");
+  assert.ok(brief.placeIssues?.some(issue => issue.code === "region_requires_base"));
+});
+
+test("contrastive gateway boundaries keep departure identity and subsequent exclusions", () => {
+  const brief = extractStructuredTripBrief("Start in Lima but visit Cusco, finish in Arequipa but avoid Puno.");
+  assert.deepEqual(brief.destinations.map(destination => destination.name), ["Lima", "Cusco", "Arequipa"]);
+  assert.deepEqual(brief.hardConstraints.filter(constraint => constraint.type === "start-at" || constraint.type === "end-at")
+    .map(constraint => ({ type: constraint.type, value: "value" in constraint ? constraint.value : undefined })),
+  [{ type: "start-at", value: "Lima" }, { type: "end-at", value: "Arequipa" }]);
+  assert.ok(brief.hardConstraints.some(constraint => constraint.type === "excluded-destination" && constraint.value === "Puno"));
+  assert.equal(brief.placeMentions?.find(mention => mention.canonicalName === "Puno")?.role, "excluded");
+});
+
+test("contrastive clauses preserve complete multiword and unresolved gateway names", () => {
+  for (const name of ["Buenos Aires", "Butte"]) {
+    const brief = extractStructuredTripBrief(`Fly into ${name} but spend the trip in the Sacred Valley`);
+    assert.equal(brief.destinations.find(destination => destination.role === "arrival-gateway")?.name, name);
+    assert.equal(brief.destinations.length, 2);
+    assert.ok(brief.hardConstraints.some(constraint => constraint.type === "start-at" && constraint.value === name));
+  }
+});
+
 test("explicit ordered routes preserve their first locality as the canonical origin", () => {
   for (const prompt of [
     "Paris → Amsterdam → Brussels for approximately 8 days",
