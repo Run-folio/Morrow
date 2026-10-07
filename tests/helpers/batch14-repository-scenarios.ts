@@ -23,10 +23,10 @@ try{
  const units=nightEdit.trip.brief.cascadeStatus!.routeReconciliation!.residual;
  units.find(unit=>unit.kind==='recommendation')!.phase='failed';units.find(unit=>unit.kind==='recommendation')!.reason='unavailable';
  units.find(unit=>unit.kind==='schedule')!.phase='conflict';units.find(unit=>unit.kind==='schedule')!.reason='protected-date';
- const historical=JSON.stringify(nightEdit.trip.brief.retainedAuthoredContent);
+ const historical=structuredClone(nightEdit.trip.brief.retainedAuthoredContent);
  const workPromotion=await promoteTripForOwner('owner-a',nightEdit.trip);assert.equal(workPromotion.outcome,'promoted');
  const persisted=requireReadableTripDocument((await getTripForOwner('owner-a',workSource.id))!);
- assert.equal(JSON.stringify(persisted.brief.retainedAuthoredContent),historical);
+ assert.deepEqual(persisted.brief.retainedAuthoredContent,historical);
  assert.deepEqual(persisted.brief.cascadeStatus!.routeReconciliation!.residual.map(u=>[u.kind,u.phase,u.reason]),units.map(u=>[u.kind,u.phase,u.reason]));
  assert.ok(persisted.brief.cascadeStatus!.routeReconciliation!.residual.filter(u=>['schedule','recommendation'].includes(u.kind)).every(u=>persisted.stops.some(stop=>stop.id===u.targetId)));
  const retryPromotion=await promoteTripForOwner('owner-a',nightEdit.trip);assert.equal(retryPromotion.outcome,'already-canonical');
@@ -34,7 +34,7 @@ try{
  const workCAS=await Promise.allSettled(workCandidates.map(trip=>saveTripForOwner('owner-a',trip)));
  assert.equal(workCAS.filter(result=>result.status==='fulfilled').length,1);assert.ok(workCAS.some(result=>result.status==='rejected' && result.reason instanceof EasyTTripSaveConflictError));
  const workWinner=requireReadableTripDocument((await getTripForOwner('owner-a',workSource.id))!);
- assert.equal(JSON.stringify(workWinner.brief.retainedAuthoredContent),historical);
+ assert.deepEqual(workWinner.brief.retainedAuthoredContent,historical);
  const workChildStops=await sql`select id,nights from easyt_stops where trip_id=${workSource.id} order by stop_order`;
  assert.deepEqual(workChildStops,workWinner.stops.map(stop=>({id:stop.id,nights:stop.nights})));
  const legacy=legacyRouteFixture();const promoted=await promoteTripForOwner('owner-a',{...legacy,ownerId:null,status:'draft'});
