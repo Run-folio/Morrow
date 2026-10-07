@@ -278,6 +278,7 @@ export function routeProjectionInputKey(trip: EasyTTrip): string {
 export function routeProjectionStatus(trip: CanonicalEasyTTrip): "legacy_unverified" | "current" | "pending" | "provisional" {
   const route = trip.brief.intent.route;
   if (route.destinations.some(intent => intent.routeMembership === "required" && intent.resolution !== "resolved")) return "provisional";
+  if (trip.brief.cascadeStatus?.routeReconciliation?.residual.some(unit => unit.kind !== "recommendation")) return "pending";
   if (route.projectionInputKey === null) return "legacy_unverified";
   return route.projectionInputKey === routeProjectionInputKey(trip) ? "current" : "pending";
 }
@@ -386,7 +387,7 @@ export function commitAcceptedRouteProjection(current: CanonicalEasyTTrip, commi
     const reconciled = reconcileAuthoredDayState(current, { ...current, stops: structuredClone(projected.stops), legs: structuredClone(projected.legs), planItems,
       brief: { ...current.brief, intent: { ...current.brief.intent, route: nextRoute } } });
     const trip = prepareTripDocumentForWrite(reconciled);
-    trip.brief.intent.route.projectionInputKey = routeProjectionInputKey(trip);
+    if (!trip.brief.cascadeStatus?.routeReconciliation?.residual.some(unit => unit.kind !== "recommendation")) trip.brief.intent.route.projectionInputKey = routeProjectionInputKey(trip);
     return { kind: "accepted", trip };
   } catch { return invalid(); }
 }

@@ -55,7 +55,7 @@ test('authored_items_and_bookings_survive_replacement_for_review',()=>{
  trip.brief.itineraryIdeas=[{id:'authored-idea',stopId:stop.id,placeId:'authored',title:'Keep my visit',category:'activity',source:'personalised-recommendation',reasons:[],dayId:trip.planItems[0]?.id}];
  const rebuilt=current();rebuilt.stops=rebuilt.stops.slice(1);rebuilt.brief.intent.route.destinations=rebuilt.brief.intent.route.destinations.slice(1);rebuilt.brief.intent.route.orderedStopIds=rebuilt.stops.map(stop=>stop.id);
  const result=preserveBuilderCanonicalState(trip,rebuilt);
- assert.deepEqual(result.brief.bookings,trip.brief.bookings);assert.equal(result.brief.itineraryIdeas?.some(idea=>idea.id==='authored-idea'),true);assert.ok(result.brief.cascadeStatus?.conflicts.length);
+ assert.deepEqual(result.brief.bookings,trip.brief.bookings);assert.equal(result.brief.retainedAuthoredContent?.entries.some(entry=>entry.itineraryIdeas.some(idea=>idea.id==='authored-idea')),true);assert.equal(result.brief.itineraryIdeas?.some(idea=>idea.id==='authored-idea'),false);assert.ok(result.brief.cascadeStatus?.conflicts.length);
 });
 test('concurrent_order_and_preference_merge_is_atomic',()=>{
  const base=current();const canonical=proposal(base);canonical.brief=structuredClone(base.brief);canonical.brief.intent!.route!.orderedStopIds=canonical.stops.map(stop=>stop.id);canonical.brief.intent!.route!.orderAuthority='manual';

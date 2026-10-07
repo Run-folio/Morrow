@@ -50,6 +50,10 @@ export function cascadeTripSchedule(trip: EasyTTrip): CascadedTrip {
     const offset = Math.max(0, item.dayNumber - (trip.planItems.find((candidate) => candidate.stopId === item.stopId)?.dayNumber ?? item.dayNumber));
     const date = addDays(stopArrival, offset);
     const dayNumber = Math.max(1, Math.round((dateAt(date).getTime() - dateAt(trip.startDate).getTime()) / DAY) + 1);
+    if (date !== item.date && (item.startsAt || item.endsAt || item.bookingUrl)) {
+      conflicts.push(`${item.title} has saved timing or booking details on ${item.date}; review before moving it to ${date}.`);
+      return item;
+    }
     return { ...item, date, dayNumber };
   });
   const affectedPlanItemCount = planItems.filter((item, index) => item.date !== originalPlanItems[index]?.date || item.dayNumber !== originalPlanItems[index]?.dayNumber).length;
@@ -61,7 +65,7 @@ export function cascadeTripSchedule(trip: EasyTTrip): CascadedTrip {
     conflicts.push(`${affectedBookingIds.length} saved booking${affectedBookingIds.length === 1 ? " may" : "s may"} need a date check.`);
   }
 
-  const status: TripCascadeStatus = { conflicts, affectedBookingIds, affectedPlanItemCount };
+  const status: TripCascadeStatus = { ...trip.brief.cascadeStatus, conflicts, affectedBookingIds, affectedPlanItemCount };
   return {
     trip: {
       ...trip,

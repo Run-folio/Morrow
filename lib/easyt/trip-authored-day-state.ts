@@ -1,3 +1,4 @@
+import { retainRemovedAuthoredContent } from "./trip-retained-authored-content.ts";
 import type { EasyTTrip, ItineraryDayPart } from "./trip.ts";
 import { reconcileItineraryIdeas } from "./itinerary-ideas.ts";
 
@@ -77,6 +78,7 @@ function remappedDayPartQueues(before: EasyTTrip, dayMapping: Map<number, number
  * day container (or nearest surviving day at the same stop) after a cascade.
  */
 export function reconcileAuthoredDayState(before: EasyTTrip, after: EasyTTrip): EasyTTrip {
+  after = retainRemovedAuthoredContent(before, after);
   const dayMapping = authoredDayMapping(before, after);
   const dayIdMapping = authoredDayIdMapping(before, after);
   const customActivities = remapAuthoredDays(before.brief.customActivities, dayMapping);

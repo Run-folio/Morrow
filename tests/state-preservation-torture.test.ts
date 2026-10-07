@@ -223,8 +223,9 @@ test("Builder stop removal keeps confirmed bookings and authored content unassig
   assert.equal(after.brief.bookings?.some((booking) => booking.id === "stay-tokyo"), true);
   assert.equal(after.brief.bookings?.some((booking) => booking.id === "rail-pass"), true);
   assert.equal(after.brief.customActivities && Object.values(after.brief.customActivities).flat().includes("Private Kyoto supper"), false);
-  assert.equal(after.brief.mapPins?.some((pin) => pin.id === "guide-pin" && pin.dayNumber === 0), true);
-  assert.ok(after.brief.itineraryIdeas?.some(idea => "title" in idea && idea.title === "Private Kyoto supper" && !idea.dayId));
+  assert.equal(after.brief.mapPins?.some((pin) => pin.id === "guide-pin"), false);
+  assert.equal(after.brief.retainedAuthoredContent?.entries.some(entry => entry.mapPins.some(pin => pin.id === "guide-pin")), true);
+  assert.ok(after.brief.retainedAuthoredContent?.entries.some(entry => entry.days.some(day => day.customActivities?.includes("Private Kyoto supper"))));
   assert.ok(after.brief.cascadeStatus?.conflicts.length);
   assert.deepEqual(after.brief.checklist, source.brief.checklist);
 });

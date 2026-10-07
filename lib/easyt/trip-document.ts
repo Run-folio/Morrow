@@ -1,3 +1,4 @@
+import { validRetainedAuthoredContent } from "./trip-retained-authored-content.ts";
 import { defaultTripIntent, type CanonicalEasyTTrip, type EasyTTrip, type JourneyEndSelection, type JourneyEndpointPlace, type RouteIntent } from "./trip.ts";
 import { routeIntentFromLegacyTrip } from "./trip-route-intent.ts";
 
@@ -147,6 +148,21 @@ export function readTripDocument(value: unknown): TripDocumentReadResult {
   }
   if (value.legs.some(leg => !object(leg) || typeof leg.id !== "string" || typeof leg.fromStopId !== "string" || typeof leg.toStopId !== "string" || !object(leg.routeMetadata))) return invalid("legs");
   if (value.planItems.some(item => !object(item) || typeof item.id !== "string" || typeof item.stopId !== "string" || !Number.isInteger(item.dayNumber) || typeof item.date !== "string" || typeof item.title !== "string" || !strings(item.notes))) return invalid("planItems");
+  if (!validRetainedAuthoredContent(value.brief.retainedAuthoredContent)) return invalid("brief.retainedAuthoredContent");
+  const work = object(value.brief.cascadeStatus) ? value.brief.cascadeStatus.routeReconciliation : undefined;
+  if (work !== undefined) {
+    if (!object(work) || work.version !== 1 || typeof work.inputKey !== "string" || !Array.isArray(work.residual)) return invalid("brief.cascadeStatus.routeReconciliation");
+    const seen = new Set<string>();
+    for (const unit of work.residual) {
+      if (!object(unit) || !["leg", "schedule", "recommendation", "endpoint", "assessment"].includes(String(unit.kind))
+        || typeof unit.targetId !== "string" || !unit.targetId || typeof unit.basisKey !== "string" || !unit.basisKey
+        || !["pending", "failed", "conflict"].includes(String(unit.phase))
+        || (unit.reason !== undefined && !["unavailable", "invalid-bindings", "protected-date"].includes(String(unit.reason)))) return invalid("brief.cascadeStatus.routeReconciliation");
+      const key = `${unit.kind}:${unit.targetId}`;
+      if (seen.has(key)) return invalid("brief.cascadeStatus.routeReconciliation");
+      seen.add(key);
+    }
+  }
   const sourceSchemaVersion = value.schemaVersion as 1 | 2;
   const trip = structuredClone(value) as unknown as EasyTTrip;
   const issues = optionalIssues(trip);

@@ -1,3 +1,4 @@
+export { retainedAuthoredContentForReview } from "./trip-retained-authored-content.ts";
 import type { EasyTTrip, TripChange, TripRecommendation } from "./trip.ts";
 import { arrivalLoadFromTransfer, findDestinationIntegrityIssues, ROUTE_BACKTRACKING_REASON_PREFIX, travelStayConsequence, usableStopDays, type EstimatedLeg, type PlannerStop, type RoutePlanningConstraints } from "./planner.ts";
 import { validateFinalPlan, type PlanLegEstimator, type PlanValidationIssueCode } from "./plan-validator.ts";
@@ -517,7 +518,16 @@ export function reviewTrip(trip: EasyTTrip): TripRecommendation[] {
     }, results.length));
   }
 
+  for (const entry of trip.brief.retainedAuthoredContent?.entries ?? []) {
+    results.push(recommendation(trip, {
+      rule: "retained-authored-content", severity: "warning",
+      message: `Review saved content from ${entry.sourceStop.name}.`,
+      evidence: `${entry.days.length} original day containers, ${entry.itineraryIdeas.length} saved ideas and ${entry.mapPins.length} map pins remain available with their original details.`,
+      affectedDays: [], confidence: "high", proposedChange: null,
+    }, results.length));
+  }
   for (const conflict of trip.brief.cascadeStatus?.conflicts ?? []) {
+    if (conflict === "Review retained activities and bookings after changing destinations.") continue;
     results.push(recommendation(trip, {
       rule: "schedule-lock-conflict",
       severity: "critical",

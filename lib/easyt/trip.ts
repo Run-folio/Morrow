@@ -372,6 +372,7 @@ export type TripChange = {
 };
 
 export type TripBrief = {
+  retainedAuthoredContent?: { version: 1; entries: RetainedAuthoredStopContent[] };
   origin: string;
   /** Preview end date awaiting the traveller's explicit duration choice. */
   endDateIsSuggestion?: boolean;
@@ -439,7 +440,23 @@ export type TripScheduleLocks = {
   arrivalDates: Record<string, string>;
 };
 
+export type RouteReconciliationScope = {
+  legIds: string[]; scheduleStopIds: string[]; recommendationStopIds: string[];
+  endpointChanged: boolean; routeAssessment: boolean;
+};
+export type TripRouteReconciliation = {
+  version: 1; inputKey: string;
+  residual: Array<{ kind: "leg" | "schedule" | "recommendation" | "endpoint" | "assessment";
+    targetId: string; basisKey: string; phase: "pending" | "failed" | "conflict";
+    reason?: "unavailable" | "invalid-bindings" | "protected-date" }>;
+};
+export type RetainedAuthoredStopContent = {
+  id: string; sourceStop: TripStop; sourceIntentIds: string[];
+  days: Array<{ sourceDay: PlanItem; dayNotes?: string[]; customActivities?: string[] }>;
+  itineraryIdeas: Array<ItineraryIdea | GooglePlaceReferenceIdea>; mapPins: PlannerMapPin[];
+};
 export type TripCascadeStatus = {
+  routeReconciliation?: TripRouteReconciliation;
   conflicts: string[];
   affectedBookingIds: string[];
   affectedPlanItemCount: number;

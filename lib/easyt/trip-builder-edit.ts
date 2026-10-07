@@ -1,3 +1,4 @@
+import { restoreRetainedAuthoredContent } from "./trip-retained-authored-content.ts";
 import { builderDocumentFingerprint, prepareBuilderDocumentCommit } from "./trip-builder-document-commit.ts";
 import { projectCanonicalRouteEndpoints, readTripDocument } from "./trip-document.ts";
 import { canonicalJourneyEndpointPlace, journeyEndpointIdentityIsCoherent } from "./journey-endpoints.ts";
@@ -7,11 +8,8 @@ import { clearTripLegTransportChoice, selectTripLegTransportChoice, supportedTra
 import { tripInterestIds } from "./trip-interest.ts";
 import type { BudgetBand, CanonicalEasyTTrip, DestinationIntent, JourneyEndpointPlace, RouteIntent, TripStop, TripIntent } from "./trip.ts";
 
-/** Task 2 will persist work metadata; this is only the computed edit's affected scope. */
-export type RouteReconciliationScope = {
-  legIds: string[]; scheduleStopIds: string[]; recommendationStopIds: string[];
-  endpointChanged: boolean; routeAssessment: boolean;
-};
+import type { RouteReconciliationScope } from "./trip.ts";
+export type { RouteReconciliationScope } from "./trip.ts";
 export type BuilderStructuralSnapshot = Pick<CanonicalEasyTTrip, "id" | "ownerId" | "stops" | "startDate" | "endDate"> & {
   route: RouteIntent;
   nightAllocations: CanonicalEasyTTrip["brief"]["nightAllocations"];
@@ -309,6 +307,7 @@ export function prepareAcceptedBuilderEdit(current: CanonicalEasyTTrip, edit: Bu
       case "structural-inverse": {
         const s = edit.snapshot;
         if (!s || s.id !== trip.id || s.ownerId !== trip.ownerId) return reject("binding-conflict");
+        trip = restoreRetainedAuthoredContent(trip, s.stops) as CanonicalEasyTTrip;
         trip.stops = structuredClone(s.stops);
         // Structural stop/order Undo owns membership, requests and authority, not later endpoint/date edits.
         trip.brief.intent.route = { ...structuredClone(s.route), origin: route.origin, tripType: route.tripType, journeyEnd: route.journeyEnd };
