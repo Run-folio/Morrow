@@ -944,6 +944,64 @@ function TripBuilderDocument() {
     applyNewTripIntake(projected.draft, () => canUseHydratedTripScope(hydratedOwnerScopeRef.current, snapshot.ownerId));
   };
 
+  const applyAcceptedBuilderDocument = (saved: EasyTTrip) => {
+    hydratedCanonicalTripRef.current = saved;
+    setTripId(saved.id);
+    setTripOwnerId(saved.ownerId);
+    setTripStatus(saved.status);
+    setCreatedAt(saved.createdAt);
+    setTripUpdatedAt(saved.updatedAt);
+    replaceJourneyOrigin({
+      name: saved.brief.origin,
+      coordinates: saved.brief.originCoordinates,
+      canonicalPlaceId: saved.brief.originCanonicalPlaceId,
+      country: saved.brief.originCountry,
+      providerId: saved.brief.originProviderId,
+    });
+    setTripBrief(saved.brief.mustDo);
+    const savedJourneyEnd = normalizeJourneyEnd(saved.brief.journeyEnd);
+    setJourneyEnd(savedJourneyEnd);
+    setJourneyEndInput(savedJourneyEnd.mode === "explicit" ? savedJourneyEnd.place.name : "");
+    setSourceRouteKey(saved.brief.sourceRouteKey);
+    setCuratedRoute(saved.brief.curatedRoute);
+    setStops(saved.stops.map(({ id, name, country, canonicalPlaceId, countryCode, region, providerId, longitude, latitude }) => ({ id, name, country, canonicalPlaceId, countryCode, region, providerId, coordinates: longitude !== null && latitude !== null ? [longitude, latitude] : undefined })));
+    setStartDate(saved.startDate);
+    setEndDate(saved.endDate);
+    setEndDateStillSuggested(saved.brief.endDateIsSuggestion === true);
+    setPicks(saved.brief.selectedPlaces);
+    setDayAllocations(saved.brief.nightAllocations ?? (saved.brief.nightAllocation && saved.brief.nightAllocation.state !== "conflict"
+      ? saved.brief.nightAllocation.allocations
+      : saved.brief.dayAllocations ?? {}));
+    setManualNightStopIds(saved.brief.manualNightStopIds ?? []);
+    setBudget(saved.brief.budgetBand);
+    setBudgetPreference(saved.brief.budgetPreference);
+    const savedIntent = tripIntentForTrip(saved);
+    setTripIntent(savedIntent);
+    const savedStructuredBrief = saved.brief.structuredBrief
+      ? mergeStructuredTripBrief(saved.brief.structuredBrief, { interests: savedIntent.preferences.interests })
+      : structuredTripBriefFromSavedSelections({
+      destinations: [
+        ...(saved.brief.origin ? [{ name: saved.brief.origin, canonicalPlaceId: saved.brief.originCanonicalPlaceId, parentCountries: saved.brief.originCountry ? [saved.brief.originCountry] : undefined, role: "arrival-gateway" as const, priority: "required" as const }] : []),
+        ...saved.stops.map((stop) => ({ id: stop.id, name: stop.name, role: "preferred" as const, priority: "normal" as const })),
+      ],
+      travellers: saved.travellers,
+      dates: { start: saved.startDate, end: saved.endDate, fixed: saved.brief.intent?.timing.flexibility === "fixed" },
+      pace: savedIntent.preferences.pace,
+      interests: savedIntent.preferences.interests,
+      transportPreferences: savedIntent.preferences.transportModes,
+      budget: saved.brief.budgetBand,
+      avoidDriving: savedIntent.hardConstraints.avoidDriving,
+    });
+    setCapturedStructuredBrief(savedStructuredBrief);
+    setIntakeMentions(savedStructuredBrief.placeMentions ?? []);
+    setPlaceSelections(savedStructuredBrief.placeSelections ?? []);
+    setCompletedPlanningAreaMentionIds(completedPlanningAreasForBrief(savedStructuredBrief));
+    setRemovedPlaceMentionIds(savedStructuredBrief.removedPlaceMentionIds ?? []);
+    setScheduleLocks(saved.brief.scheduleLocks ?? { stopIds: [], arrivalDates: {} });
+    setDecisionSelections(saved.brief.decisionSelections ?? { transportByLeg: {} });
+    setHasPromptContext(true);
+  };
+
   useEffect(() => {
     if (sessionPending || !browserContextReady) return;
     if (canUseHydratedTripScope(hydratedOwnerScopeRef.current, activeBrowserOwnerId)) return;
@@ -966,62 +1024,7 @@ function TripBuilderDocument() {
     setTripUnavailable(false);
     let active = true;
     const applySaved = (saved: ReturnType<typeof loadActiveTrip>) => {
-      if (!saved || !active) return;
-      hydratedCanonicalTripRef.current = saved;
-      setTripId(saved.id);
-      setTripOwnerId(saved.ownerId);
-      setTripStatus(saved.status);
-      setCreatedAt(saved.createdAt);
-      setTripUpdatedAt(saved.updatedAt);
-      replaceJourneyOrigin({
-        name: saved.brief.origin,
-        coordinates: saved.brief.originCoordinates,
-        canonicalPlaceId: saved.brief.originCanonicalPlaceId,
-        country: saved.brief.originCountry,
-        providerId: saved.brief.originProviderId,
-      });
-      setTripBrief(saved.brief.mustDo);
-      const savedJourneyEnd = normalizeJourneyEnd(saved.brief.journeyEnd);
-      setJourneyEnd(savedJourneyEnd);
-      setJourneyEndInput(savedJourneyEnd.mode === "explicit" ? savedJourneyEnd.place.name : "");
-      setSourceRouteKey(saved.brief.sourceRouteKey);
-      setCuratedRoute(saved.brief.curatedRoute);
-      setStops(saved.stops.map(({ id, name, country, canonicalPlaceId, countryCode, region, providerId, longitude, latitude }) => ({ id, name, country, canonicalPlaceId, countryCode, region, providerId, coordinates: longitude !== null && latitude !== null ? [longitude, latitude] : undefined })));
-      setStartDate(saved.startDate);
-      setEndDate(saved.endDate);
-      setEndDateStillSuggested(saved.brief.endDateIsSuggestion === true);
-      setPicks(saved.brief.selectedPlaces);
-      setDayAllocations(saved.brief.nightAllocations ?? (saved.brief.nightAllocation && saved.brief.nightAllocation.state !== "conflict"
-        ? saved.brief.nightAllocation.allocations
-        : saved.brief.dayAllocations ?? {}));
-      setManualNightStopIds(saved.brief.manualNightStopIds ?? []);
-      setBudget(saved.brief.budgetBand);
-      setBudgetPreference(saved.brief.budgetPreference);
-      const savedIntent = tripIntentForTrip(saved);
-      setTripIntent(savedIntent);
-      const savedStructuredBrief = saved.brief.structuredBrief
-        ? mergeStructuredTripBrief(saved.brief.structuredBrief, { interests: savedIntent.preferences.interests })
-        : structuredTripBriefFromSavedSelections({
-        destinations: [
-          ...(saved.brief.origin ? [{ name: saved.brief.origin, canonicalPlaceId: saved.brief.originCanonicalPlaceId, parentCountries: saved.brief.originCountry ? [saved.brief.originCountry] : undefined, role: "arrival-gateway" as const, priority: "required" as const }] : []),
-          ...saved.stops.map((stop) => ({ id: stop.id, name: stop.name, role: "preferred" as const, priority: "normal" as const })),
-        ],
-        travellers: saved.travellers,
-        dates: { start: saved.startDate, end: saved.endDate, fixed: saved.brief.intent?.timing.flexibility === "fixed" },
-        pace: savedIntent.preferences.pace,
-        interests: savedIntent.preferences.interests,
-        transportPreferences: savedIntent.preferences.transportModes,
-        budget: saved.brief.budgetBand,
-        avoidDriving: savedIntent.hardConstraints.avoidDriving,
-      });
-      setCapturedStructuredBrief(savedStructuredBrief);
-      setIntakeMentions(savedStructuredBrief.placeMentions ?? []);
-      setPlaceSelections(savedStructuredBrief.placeSelections ?? []);
-      setCompletedPlanningAreaMentionIds(completedPlanningAreasForBrief(savedStructuredBrief));
-      setRemovedPlaceMentionIds(savedStructuredBrief.removedPlaceMentionIds ?? []);
-      setScheduleLocks(saved.brief.scheduleLocks ?? { stopIds: [], arrivalDates: {} });
-      setDecisionSelections(saved.brief.decisionSelections ?? { transportByLeg: {} });
-      setHasPromptContext(true);
+      if (saved && active) applyAcceptedBuilderDocument(saved);
     };
     const hydrate = async () => {
       const params = new URLSearchParams(window.location.search);
