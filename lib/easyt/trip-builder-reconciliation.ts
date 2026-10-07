@@ -1,3 +1,4 @@
+import { selectedTransportChoiceForLeg, effectiveTripLeg } from "./transport-mode-choice.ts";
 import { assessRouteIntelligence, routeIntelligenceForPersistence } from "./planner.ts";
 import { plannerEndpointForJourneyEnd, originPlaceFromBrief } from "./journey-endpoints.ts";
 import type { CanonicalEasyTTrip, RouteReconciliationScope, TripLeg, TripRouteReconciliation } from './trip.ts';
@@ -6,7 +7,7 @@ import { buildCanonicalTripLegs, routeEndpointForLeg } from './trip-legs.ts';
 import { routeProjectionInputKey, commitAcceptedRouteProjection } from './trip-route-intent.ts';
 import { cascadeTripSchedule } from './cascade.ts';
 import { reconcileAuthoredDayState } from './trip-authored-day-state.ts';
-import { authoredContentKey, retainRemovedAuthoredContent, restoreRetainedAuthoredContent } from './trip-retained-authored-content.ts';
+import { authoredContentKey, retainRemovedAuthoredContent, restoreRetainedAuthoredContent, prepareRetainedContentPreservationSource, type RetainedContentConsumption } from './trip-retained-authored-content.ts';
 export type BuilderEditScope = {
     ownerId: string | null;
     tripId: string;
@@ -28,6 +29,18 @@ export type BuilderProjectionResponse = {
 const unitId = (u: Pick<Unit, 'kind' | 'targetId'>) => `${u.kind}:${u.targetId}`;
 const pair = (leg: TripLeg) => authoredContentKey([leg.fromStopId, leg.toStopId]);
 const place = (value: ReturnType<typeof routeEndpointForLeg>) => value ? { id: value.id, canonicalPlaceId: value.canonicalPlaceId, providerId: value.providerId, coordinates: value.coordinates, ...(!value.canonicalPlaceId && !value.providerId ? { name: value.name, country: value.country } : {}) } : null;
+/** A saved candidate is authoritative only while its full endpoint evidence still matches. */
+function selectedChoiceHasCurrentEvidence(trip: CanonicalEasyTTrip, leg: TripLeg): boolean {
+    const selected = selectedTransportChoiceForLeg(trip, leg);
+    return Boolean(selected && authoredContentKey([place(selected.segments[0].fromEndpoint), place(selected.segments.at(-1)!.toEndpoint)])
+        === authoredContentKey([place(routeEndpointForLeg(trip, leg, "from")), place(routeEndpointForLeg(trip, leg, "to"))]));
+}
+function withAcceptedTransportChoice(trip: CanonicalEasyTTrip, current: TripLeg, replacement: TripLeg): TripLeg {
+    if (!selectedChoiceHasCurrentEvidence(trip, current))
+        return replacement;
+    const retained = { ...replacement, routeMetadata: { ...replacement.routeMetadata, multimodalResolution: structuredClone(current.routeMetadata.multimodalResolution) } };
+    return effectiveTripLeg(trip, retained);
+}
 function basis(trip: CanonicalEasyTTrip, kind: Unit['kind'], targetId: string): string | null {
     const route = trip.brief.intent.route;
     const schedule = { start: trip.startDate, end: trip.endDate, stops: trip.stops.map(s => ({ id: s.id, nights: s.nights })), locks: trip.brief.scheduleLocks, commitments: trip.brief.intent.hardConstraints.fixedCommitments, bookings: trip.brief.bookings?.map(b => ({ id: b.id, type: b.type, date: b.date, endDate: b.endDate })) };
@@ -35,7 +48,7 @@ function basis(trip: CanonicalEasyTTrip, kind: Unit['kind'], targetId: string): 
         const leg = trip.legs.find(l => l.id === targetId);
         if (!leg)
             return null;
-        return authoredContentKey({ from: place(routeEndpointForLeg(trip, leg, 'from')), to: place(routeEndpointForLeg(trip, leg, 'to')), modes: trip.brief.intent.preferences.transportModes, avoidDriving: trip.brief.intent.hardConstraints.avoidDriving, dates: [trip.startDate, trip.endDate], timing: trip.stops.filter(s => [leg.fromStopId, leg.toStopId].includes(s.id)).map(s => ({ id: s.id, arrival: s.arrivalDate, departure: s.id === leg.fromStopId ? s.departureDate : undefined })) });
+        return authoredContentKey({ from: place(routeEndpointForLeg(trip, leg, 'from')), to: place(routeEndpointForLeg(trip, leg, 'to')), modes: trip.brief.intent.preferences.transportModes, avoidDriving: trip.brief.intent.hardConstraints.avoidDriving, choice: trip.brief.decisionSelections?.transportByLeg[leg.id] ?? null, dates: [trip.startDate, trip.endDate], timing: trip.stops.filter(s => [leg.fromStopId, leg.toStopId].includes(s.id)).map(s => ({ id: s.id, arrival: s.arrivalDate, departure: s.id === leg.fromStopId ? s.departureDate : undefined })) });
     }
     if (kind === 'schedule')
         return trip.stops.some(s => s.id === targetId) ? authoredContentKey(schedule) : null;
@@ -58,7 +71,7 @@ function install(trip: CanonicalEasyTTrip, residual: Unit[]): CanonicalEasyTTrip
     return { ...trip, brief: { ...trip.brief, cascadeStatus: { ...status, ...(residual.length ? { routeReconciliation: { version: 1 as const, inputKey: routeProjectionInputKey(trip), residual: sorted(residual) } } : {}) } } };
 }
 /** This synchronous prefix makes an accepted input safe to save before provider work. */
-export function prepareBuilderNecessaryProjection(before: CanonicalEasyTTrip, candidate: CanonicalEasyTTrip, scope: RouteReconciliationScope): {
+export function prepareBuilderNecessaryProjection(before: CanonicalEasyTTrip, candidate: CanonicalEasyTTrip, scope: RouteReconciliationScope, consumption?: RetainedContentConsumption): {
     ok: true;
     trip: CanonicalEasyTTrip;
 } | {
@@ -68,7 +81,10 @@ export function prepareBuilderNecessaryProjection(before: CanonicalEasyTTrip, ca
     try {
         if (before.id !== candidate.id || before.ownerId !== candidate.ownerId)
             return { ok: false, reason: 'invalid-bindings' };
-        let trip = retainRemovedAuthoredContent(before, prepareTripDocumentForWrite(candidate)) as CanonicalEasyTTrip;
+        const validatedCandidate = prepareTripDocumentForWrite(candidate);
+        if (consumption)
+            before = prepareRetainedContentPreservationSource(before, validatedCandidate, consumption) as CanonicalEasyTTrip;
+        let trip = retainRemovedAuthoredContent(before, validatedCandidate) as CanonicalEasyTTrip;
         const oldPairs = new Map(before.legs.map(l => [pair(l), l]));
         const graph = buildCanonicalTripLegs({ tripId: trip.id, origin: { ...(trip.brief.intent.route.origin ?? { name: '' }), coordinates: trip.brief.intent.route.origin?.coordinates ?? null }, journeyEnd: trip.brief.intent.route.journeyEnd, stops: trip.stops });
         const changed = new Set<string>();
@@ -80,7 +96,8 @@ export function prepareBuilderNecessaryProjection(before: CanonicalEasyTTrip, ca
             if (!affected && old)
                 return structuredClone(old);
             changed.add(id);
-            return { ...leg, id, mode: 'unknown', durationMinutes: null, headlineMinutes: null, doorToDoorMinutes: null, usableDayLoss: null, routedDistanceKm: null, provider: 'Travel options need an updated assessment.', provenance: 'unknown', confidence: 'unknown', routeMetadata: { source: 'necessary-reconciliation', pending: true }, warnings: [], scheduleNeedsChecking: true };
+            const pending: TripLeg = { ...leg, id, mode: 'unknown', durationMinutes: null, headlineMinutes: null, doorToDoorMinutes: null, usableDayLoss: null, routedDistanceKm: null, provider: 'Travel options need an updated assessment.', provenance: 'unknown', confidence: 'unknown', routeMetadata: { source: 'necessary-reconciliation', pending: true }, warnings: [], scheduleNeedsChecking: true };
+            return old ? withAcceptedTransportChoice(trip, old, pending) : pending;
         }) : structuredClone(before.legs);
         const restoredEntries = before.brief.retainedAuthoredContent?.entries.filter(entry => !trip.brief.retainedAuthoredContent?.entries.some(item => item.id === entry.id)) ?? [];
         const active = new Set(trip.stops.map(s => s.id));
@@ -126,10 +143,11 @@ export function prepareBuilderNecessaryProjection(before: CanonicalEasyTTrip, ca
     }
 }
 function finish(trip: CanonicalEasyTTrip, residual: Unit[]): CanonicalEasyTTrip {
+    const hadBlockingWork = trip.brief.cascadeStatus?.routeReconciliation?.residual.some(unit => unit.kind !== "recommendation");
     trip = install(trip, residual);
     if (residual.some(u => u.kind !== 'recommendation'))
         return trip;
-    if (trip.brief.intent.route.projectionInputKey === routeProjectionInputKey(trip))
+    if (!hadBlockingWork && trip.brief.intent.route.projectionInputKey === routeProjectionInputKey(trip))
         return trip;
     // Same-order necessary reconciliation always passes the existing full route guard.
     const accepted = commitAcceptedRouteProjection(trip, { basedOnInputKey: routeProjectionInputKey(trip), projectedTrip: trip, reason: 'necessary_reconciliation' });
@@ -151,7 +169,8 @@ export function mergeBuilderProjectionResponse(current: CanonicalEasyTTrip, resp
 } {
     if (authoredContentKey(response.scope) !== authoredContentKey(expected.scope) || response.scope.ownerId !== current.ownerId || response.scope.tripId !== current.id || response.requestId !== expected.requestId || response.inputKey !== routeProjectionInputKey(current) || authoredContentKey(response.dispatched) !== authoredContentKey(expected.dispatched))
         return { ok: false, reason: 'stale' };
-    if (!Array.isArray(response.results) || !Array.isArray(response.legs)) return {ok:false,reason:"invalid"};
+    if (!Array.isArray(response.results) || !Array.isArray(response.legs))
+        return { ok: false, reason: "invalid" };
     const residual = structuredClone(current.brief.cascadeStatus?.routeReconciliation?.residual ?? []);
     let trip = structuredClone(current);
     const seen = new Set<string>();
@@ -172,12 +191,16 @@ export function mergeBuilderProjectionResponse(current: CanonicalEasyTTrip, resp
                 if (!leg || pair(leg) !== pair(old) || authoredContentKey([place(leg.fromEndpoint ?? null), place(leg.toEndpoint ?? null)]) !== authoredContentKey([place(routeEndpointForLeg(current, old, 'from')), place(routeEndpointForLeg(current, old, 'to'))]))
                     return { ok: false, reason: 'invalid' };
                 if (!leg.routeMetadata || typeof leg.routeMetadata !== "object" || Array.isArray(leg.routeMetadata)
-                    || [leg.durationMinutes,leg.headlineMinutes,leg.doorToDoorMinutes].some(value => value != null && (!Number.isFinite(value) || value < 0))
-                    || (leg.mode === "unknown" && [leg.durationMinutes,leg.headlineMinutes,leg.doorToDoorMinutes].some(value => value != null))) return {ok:false,reason:"invalid"};
+                    || [leg.durationMinutes, leg.headlineMinutes, leg.doorToDoorMinutes].some(value => value != null && (!Number.isFinite(value) || value < 0))
+                    || (leg.mode === "unknown" && [leg.durationMinutes, leg.headlineMinutes, leg.doorToDoorMinutes].some(value => value != null)))
+                    return { ok: false, reason: "invalid" };
+                if (selectedTransportChoiceForLeg(current, leg) && !selectedChoiceHasCurrentEvidence(current, leg))
+                    return { ok: false, reason: "invalid" };
                 const { pending: _pending, ...metadata } = leg.routeMetadata;
-                trip.legs = trip.legs.map(l => l.id === leg.id ? { ...structuredClone(leg), routeMetadata: metadata } : l);
+                trip.legs = trip.legs.map(l => l.id === leg.id ? withAcceptedTransportChoice(current, old, { ...structuredClone(leg), routeMetadata: metadata }) : l);
             }
-            if (unit.kind === "assessment" && response.routeAssessment !== undefined) trip.brief.routeAssessment = structuredClone(response.routeAssessment);
+            if (unit.kind === "assessment" && response.routeAssessment !== undefined)
+                trip.brief.routeAssessment = structuredClone(response.routeAssessment);
             residual.splice(index, 1);
         }
         else
@@ -221,7 +244,7 @@ export function reconcileBuilderDependencies(current: CanonicalEasyTTrip, pendin
                 residual[index] = { ...residual[index], phase: "conflict", reason: "invalid-bindings" };
                 continue;
             }
-            trip.legs = trip.legs.map(leg => leg.id === currentLeg.id ? { ...calculated, id: currentLeg.id } : leg);
+            trip.legs = trip.legs.map(leg => leg.id === currentLeg.id ? withAcceptedTransportChoice(trip, currentLeg, { ...calculated, id: currentLeg.id }) : leg);
             residual.splice(index, 1);
         }
         else if (dispatched.kind === "recommendation") {

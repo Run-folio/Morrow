@@ -121,9 +121,29 @@ export type RetainedContentSelection = {
     ideaIds?: string[];
     pinIds?: string[];
 };
+export type RetainedContentConsumption = {
+    version: 1;
+    ownerId: string | null;
+    tripId: string;
+    sourceKey: string;
+    candidateKey: string;
+    selection: RetainedContentSelection;
+    action: "remove" | "move";
+    target?: {
+        stopId: string;
+        dayId: string;
+    };
+};
+function consumptionFor(before: EasyTTrip, after: EasyTTrip, selection: RetainedContentSelection, action: "remove" | "move", target?: {
+    stopId: string;
+    dayId: string;
+}): RetainedContentConsumption {
+    return { version: 1, ownerId: before.ownerId, tripId: before.id, sourceKey: authoredContentKey(before), candidateKey: authoredContentKey(after), selection: structuredClone(selection), action, ...(target ? { target: structuredClone(target) } : {}) };
+}
 type RetainedActionResult = {
     ok: true;
     trip: EasyTTrip;
+    consumption: RetainedContentConsumption;
 } | {
     ok: false;
     reason: 'stale' | 'invalid-bindings' | 'protected-date';
@@ -151,7 +171,7 @@ export function removeRetainedAuthoredContent(trip: EasyTTrip, selection: Retain
         entries.splice(index, 1);
     if (!entries.length)
         next.brief.retainedAuthoredContent = undefined;
-    return { ok: true, trip: next };
+    return { ok: true, trip: next, consumption: consumptionFor(trip, next, selection, "remove") };
 }
 /** Move selected full values to a real day; incompatible fixed dates remain retained. */
 export function moveRetainedAuthoredContent(trip: EasyTTrip, selection: RetainedContentSelection, target: {
@@ -193,5 +213,16 @@ export function moveRetainedAuthoredContent(trip: EasyTTrip, selection: Retained
             return { ok: false, reason: 'invalid-bindings' };
         (next.brief.mapPins ??= []).push({ ...structuredClone(pin), dayNumber: day.dayNumber });
     }
-    return { ok: true, trip: next };
+    return { ok: true, trip: next, consumption: consumptionFor(trip, next, selection, "move", target) };
+}
+/** Explicit ownership is transient: validate the exact action once before the first save. */
+export function prepareRetainedContentPreservationSource(before: EasyTTrip, candidate: EasyTTrip, receipt: RetainedContentConsumption): EasyTTrip {
+    if (!receipt || receipt.version !== 1 || receipt.ownerId !== before.ownerId || receipt.tripId !== before.id
+        || receipt.sourceKey !== authoredContentKey(before) || receipt.candidateKey !== authoredContentKey(candidate))
+        throw new Error("stale retained consumption");
+    const reproduced = receipt.action === "remove" ? removeRetainedAuthoredContent(before, receipt.selection)
+        : receipt.action === "move" && receipt.target ? moveRetainedAuthoredContent(before, receipt.selection, receipt.target) : null;
+    if (!reproduced?.ok || authoredContentKey(reproduced.trip) !== receipt.candidateKey)
+        throw new Error("invalid retained consumption");
+    return structuredClone(reproduced.trip);
 }

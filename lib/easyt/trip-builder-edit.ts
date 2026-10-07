@@ -1,4 +1,4 @@
-import { restoreRetainedAuthoredContent } from "./trip-retained-authored-content.ts";
+import { restoreRetainedAuthoredContent, moveRetainedAuthoredContent, removeRetainedAuthoredContent, type RetainedContentSelection, type RetainedContentConsumption } from "./trip-retained-authored-content.ts";
 import { builderDocumentFingerprint, prepareBuilderDocumentCommit } from "./trip-builder-document-commit.ts";
 import { projectCanonicalRouteEndpoints, readTripDocument } from "./trip-document.ts";
 import { canonicalJourneyEndpointPlace, journeyEndpointIdentityIsCoherent } from "./journey-endpoints.ts";
@@ -38,10 +38,12 @@ export type BuilderAcceptedEdit =
   | { kind: "preferences"; preferences: Partial<TripIntent["preferences"]>; avoidDriving?: boolean }
   | { kind: "order"; stopIds: string[] }
   | { kind: "transport"; legId: string; identity: string | null }
-  | { kind: "structural-inverse"; snapshot: BuilderStructuralSnapshot };
+  | { kind: "structural-inverse"; snapshot: BuilderStructuralSnapshot }
+  | { kind: "retained-content-remove"; selection: RetainedContentSelection }
+  | { kind: "retained-content-move"; selection: RetainedContentSelection; target: {stopId:string;dayId:string} };
 type Rejection = "stale-source" | "invalid-input" | "endpoint-conflict" | "binding-conflict";
 export type BuilderAcceptedEditResult =
-  | { ok: true; trip: CanonicalEasyTTrip; scope: RouteReconciliationScope; releasedNights: number }
+  | { ok: true; trip: CanonicalEasyTTrip; scope: RouteReconciliationScope; releasedNights: number; retainedConsumption?: RetainedContentConsumption }
   | { ok: false; reason: Rejection };
 
 const budgets = new Set(["value", "mid", "high"]);
@@ -165,6 +167,7 @@ export function prepareAcceptedBuilderEdit(current: CanonicalEasyTTrip, edit: Bu
   let trip = structuredClone(current);
   let route = trip.brief.intent.route;
   let releasedNights = 0;
+  let retainedConsumption: RetainedContentConsumption | undefined;
   try {
     switch (edit.kind) {
       case "origin": {
@@ -304,6 +307,15 @@ export function prepareAcceptedBuilderEdit(current: CanonicalEasyTTrip, edit: Bu
         route = trip.brief.intent.route;
         break;
       }
+      case "retained-content-remove": case "retained-content-move": {
+        const action = edit.kind === "retained-content-remove" ? removeRetainedAuthoredContent(trip,edit.selection)
+          : moveRetainedAuthoredContent(trip,edit.selection,edit.target);
+        if (!action.ok) return reject("binding-conflict");
+        trip = action.trip as CanonicalEasyTTrip;
+        retainedConsumption = action.consumption;
+        route = trip.brief.intent.route;
+        break;
+      }
       case "structural-inverse": {
         const s = edit.snapshot;
         if (!s || s.id !== trip.id || s.ownerId !== trip.ownerId) return reject("binding-conflict");
@@ -326,6 +338,6 @@ export function prepareAcceptedBuilderEdit(current: CanonicalEasyTTrip, edit: Bu
     trip = projectCanonicalRouteEndpoints(trip);
     const checked = prepareBuilderDocumentCommit({ current, proposed: trip, expectedFingerprint, validate: () => true });
     if (!checked.ok) return reject(checked.reason === "stale-source" ? "stale-source" : "invalid-input");
-    return { ok: true, trip, scope: dependencies(current, trip, edit), releasedNights };
+    return { ok: true, trip, scope: dependencies(current, trip, edit), releasedNights, ...(retainedConsumption ? {retainedConsumption} : {}) };
   } catch { return reject("invalid-input"); }
 }
