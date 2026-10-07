@@ -25,7 +25,19 @@ test('mounted_Build_promotes_exact_guest_recovery_then_uses_owned_CAS_and_naviga
     const attention=view.page.getByRole('dialog');if(await attention.count())await attention.getByRole('button',{name:/Build|Continue/}).click({timeout:3000});
     await view.page.waitForURL(new RegExp(`/journey/${initial.id}\\?created=1`),{timeout:7000});
     assert.equal(writes.filter(w=>w.path.endsWith('/promote')).length,1);assert.equal(writes.filter(w=>w.method==='PUT').length,1);assert.equal(cloud!.status,'planned');
-    assert.equal(cloud!.stops.length,3);assert.deepEqual(view.errors,[]);
+    assert.equal(cloud!.stops.length,3);
+    await view.page.getByRole('region',{name:'Trip overview',exact:true}).waitFor();
+    assert.equal(await view.page.getByText('Trip unavailable',{exact:true}).count(),0);
+    const built=structuredClone(cloud!);
+    for(const suffix of ['/itinerary','','/itinerary']){
+      await view.page.goto(new URL(`/journey/${initial.id}${suffix}`,view.page.url()).href);
+      await view.page.getByRole('region',{name:suffix?'Trip itinerary':'Trip overview',exact:true}).waitFor();
+      await view.page.reload();
+      await view.page.getByRole('region',{name:suffix?'Trip itinerary':'Trip overview',exact:true}).waitFor();
+      assert.deepEqual(cloud!.stops,built.stops);assert.deepEqual(cloud!.planItems,built.planItems);
+      assert.deepEqual(cloud!.brief.intent.route.orderedStopIds,built.brief.intent.route.orderedStopIds);
+    }
+    assert.deepEqual(view.errors,[]);
   }catch(error){throw new Error(`${String(error)}; mounted=${await view.page.evaluate(()=>document.querySelector('[data-builder-root]')?.getAttribute('data-builder-edit-session'))}; body=${(await view.page.locator('body').innerText()).slice(-2500)}; writes=${JSON.stringify(writes.map(w=>({method:w.method,path:w.path,status:w.trip.status})))}; errors=${JSON.stringify(view.errors)}; storage=${await view.page.evaluate(()=>JSON.stringify(Object.keys(localStorage)))}`,{cause:error})}finally{await view.close()}
 });
 test('mounted_new_trip_navigation_keeps_latest_edit_and_flushes_same_queue', {skip:!enabled,timeout:30000},async()=>{

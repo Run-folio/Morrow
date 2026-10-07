@@ -2277,7 +2277,7 @@ function TripBuilderDocument() {
     Math.max(0, Math.round(dayAllocations[stop.id] ?? recommendedNights[stop.id] ?? 0)),
   ])), [canonicalBuilder, nightAllocation, stops, dayAllocations, recommendedNights]);
   useEffect(() => {
-    if (canonicalBuilder || !manualNightRebalance) return;
+    if (canonicalBuilder || builderSeed || hydratedCanonicalTripRef.current?.id === tripId || !manualNightRebalance) return;
     if (manualNightRebalance.manualStopIds.join("\u001f") !== manualNightStopIds.join("\u001f")) {
       setManualNightStopIds(manualNightRebalance.manualStopIds);
     }
@@ -2287,7 +2287,7 @@ function TripBuilderDocument() {
     }
     const feedback = nightRebalanceFeedback(manualNightRebalance, language);
     if (feedback) setNightEditFeedback(feedback);
-  }, [manualNightRebalance, manualNightStopIds, dayAllocations, stops, language]);
+  }, [canonicalBuilder, builderSeed, tripId, manualNightRebalance, manualNightStopIds, dayAllocations, stops, language]);
   const calendarDayAllocations = useMemo(
     () => calendarDayAllocationsFromNights(stops.map((stop) => stop.id), allocation),
     [stops, allocation],
@@ -5028,8 +5028,8 @@ function TripBuilderDocument() {
                     return dispatchAcceptedBuilderEdit({kind:"replace-destination",intentId:intent.id,stopId:intent.stopIds[0],place:journeyEndpointPlaceFromSuggestion(suggestion)},{acceptedInput:{binding:{kind:"destination",intentId:intent.id},raw}});
                   }}
                   personalize={topPersonalize}
-                  originReview={topOriginReview}
-                  dateReview={endDateStillSuggested?<EasyTButton variant="secondary" onClick={()=>{if(dispatchAcceptedBuilderEdit({kind:"dates",startDate,endDate}))setEndDateStillSuggested(false)}}>{language==="es"?"Aceptar fechas sugeridas":"Accept suggested dates"}</EasyTButton>:null}
+                  originReview={topOriginReview} destinationReview={activePlaceMentions.filter(mention=>!isOriginMention(mention)&&!isEndMention(mention)&&[...stopResolutionMentions.values()].some(mapped=>mapped.mentionId===mention.mentionId)).map(renderPlaceResolution)}
+                  dateReview={endDateStillSuggested?<div><p className={styles.hint}>{language === "es" ? `Solo has elegido la fecha de inicio. La fecha final y los ${defaultTripIntent().timing.durationDays} días son una sugerencia.` : `Only your start date is set. The end date and ${defaultTripIntent().timing.durationDays}-day length are suggestions.`}</p><EasyTButton variant="secondary" onClick={()=>{if(dispatchAcceptedBuilderEdit({kind:"dates",startDate,endDate}))setEndDateStillSuggested(false)}}>{language==="es"?"Aceptar fechas sugeridas":"Accept suggested dates"}</EasyTButton></div>:null}
                 /> : <TripBuilderDetailsEditor
                   language={language}
                   startPlace={journeyOrigin}

@@ -12,13 +12,13 @@ import type { CanonicalPlaceSuggestion } from '@/lib/easyt/place-intelligence';
 import styles from './trip-builder-top-controls.module.css';
 
 type Type= 'return_to_start'|'one_way';
-export function TripBuilderTopControls({trip,draft,language,disabled=false,onType,onOriginInput,onOriginSelect,onOriginClear,onDates,onDateInput,onTravellers,onBudget,onAdd,onEditIntent,onRemoveIntent,onIntentInput,onIntentSelect,personalize,originReview,dateReview,onUpdateRoute,updatingRoute=false}:{
+export function TripBuilderTopControls({trip,draft,language,disabled=false,onType,onOriginInput,onOriginSelect,onOriginClear,onDates,onDateInput,onTravellers,onBudget,onAdd,onEditIntent,onRemoveIntent,onIntentInput,onIntentSelect,personalize,originReview,destinationReview,dateReview,onUpdateRoute,updatingRoute=false}:{
  trip:CanonicalEasyTTrip;draft:BuilderInputDraft;language:'en'|'es';disabled?:boolean;
  onType:(type:Type)=>void;onOriginInput:(raw:string)=>void;onOriginSelect:(place:CanonicalPlaceSuggestion)=>void;onOriginClear:()=>void;
  onDates:(start:string,end:string)=>void;onDateInput:(field:"startDate"|"endDate",raw:string)=>void;onTravellers:(n:number)=>void;onBudget:(budget:CanonicalEasyTTrip['brief']['budgetBand'])=>void;
  onAdd:()=>void;onEditIntent:(intent:DestinationIntent)=>boolean;onRemoveIntent:(intent:DestinationIntent)=>void;
  onIntentInput:(id:string,raw:string)=>void;onIntentSelect:(intent:DestinationIntent,place:CanonicalPlaceSuggestion)=>boolean;
- personalize:ReactNode;originReview?:ReactNode;dateReview?:ReactNode;onUpdateRoute?:()=>void;updatingRoute?:boolean;
+ personalize:ReactNode;originReview?:ReactNode;destinationReview?:ReactNode;dateReview?:ReactNode;onUpdateRoute?:()=>void;updatingRoute?:boolean;
 }) {
  const es=language==='es';const route=trip.brief.intent.route;
  const [editingId,setEditingId]=useState<string|null>(()=>draft.fields.find(f=>f.binding.kind==='destination'&&f.status==='editable')?.binding.kind==='destination' ? (draft.fields.find(f=>f.binding.kind==='destination'&&f.status==='editable')!.binding as {intentId:string}).intentId:null);
@@ -51,6 +51,7 @@ export function TripBuilderTopControls({trip,draft,language,disabled=false,onTyp
         </div>:undefined} />;
     })}
   </MorroviaDestinationField>
+  {destinationReview}
   <div className={styles.details}>
    <div><MorroviaDatePicker mode="range" locale={language} combinedLabel={es?'Fechas del viaje':'Travel dates'} startLabel={es?'Fecha de inicio':'Start date'} endLabel={es?'Fecha final':'End date'}
     startValue={trip.startDate} endValue={trip.endDate} disabled={disabled}

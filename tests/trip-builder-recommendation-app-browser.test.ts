@@ -65,3 +65,32 @@ test('real unavailable result survives save and reload then targeted retry succe
   assert.deepEqual(authored(h.cloud()),authored(untouched));assert.deepEqual(h.view.errors,[]);
  }finally{await h.view.close()}
 });
+
+test('failed gateway with pending recommendation group persists exact residual and resumes only pending after reload',{skip:!enabled,timeout:30000},async()=>{
+ let cloud=requireReadableTripDocument(canonicalTripForOwner('owner-a',requireReadableTripDocument(canonicalRouteFixture())));
+ let phase='initial';let transferCalls=0;const discoveries:string[]=[];let release!:()=>void;const held=new Promise<void>(resolve=>{release=resolve});
+ const view=await renderBuilder({initialTrip:cloud,seedRecovery:false,ownerId:'owner-a',query:`?trip=${cloud.id}`,
+ geocodeCandidates:{Paris:[{name:'Paris',country:'France',canonicalPlaceId:'paris',coordinates:[2.3522,48.8566],placeType:'city',routability:'direct_destination'}]},
+ transferRequest:({legs})=>{if(legs.length===1)transferCalls++;return {status:503,body:{error:'Fixture transfer unavailable'}}},
+ discoveryRequest:async (destination,context)=>{if(context.cacheControl!=='no-cache')return {status:200,body:{places:[]}};discoveries.push(destination);if(phase==='initial')return {status:200,body:{places:[]}};
+   if(destination==='Hiroshima'&&phase==='edit')await held;
+   return {status:200,body:destination==='Kyoto'?{places:[],unavailable:true}:{places:[{title:'Museum',area:'Centre',type:'Museum',cost:0.5,tags:['Cities'],description:'Current recovered guidance'}]}};
+ },accountRequest:({method,trip})=>{if(method==='GET')return {status:200,body:{trip:cloud}};const candidate=requireReadableTripDocument(trip);if(candidate.updatedAt!==cloud.updatedAt)return {status:409,body:{trip:cloud,conflictReason:'cloud-changed'}};cloud={...candidate,updatedAt:nextTripUpdatedAt(cloud.updatedAt)};return {status:200,body:{trip:cloud}}}});
+ const residual=()=>cloud.brief.cascadeStatus?.routeReconciliation?.residual??[];
+ const untilCondition=async(condition:()=>boolean)=>{for(let i=0;i<70&&!condition();i++)await view.page.waitForTimeout(100);assert.ok(condition(),JSON.stringify(residual()))};
+ try{
+ await view.page.locator('[data-builder-edit-session="active"]').waitFor();phase='edit';
+ await view.page.locator('#builder-origin').getByRole('combobox',{name:'Starting from',exact:true}).fill('Paris');await view.page.getByRole('option',{name:/^Paris.*France/}).first().click();
+ await untilCondition(()=>residual().some(u=>u.kind==='leg'&&u.phase==='failed'));
+ await view.page.getByRole('combobox',{name:'Budget',exact:true}).selectOption('high');
+ await untilCondition(()=>cloud.brief.budgetBand==='high'&&residual().filter(u=>u.kind==='recommendation'&&u.phase==='pending').length===3);
+ const saved=structuredClone(residual());assert.equal(saved.filter(u=>u.phase==='pending').length,3);assert.ok(saved.some(u=>u.kind==='leg'&&u.phase==='failed'));
+ assert.equal(await view.page.getByText('Route details up to date',{exact:true}).count(),0);
+ const callsBefore=transferCalls;const requestsBefore=discoveries.length;phase='reload';
+ await view.page.reload();await view.page.locator('[data-builder-edit-session="active"]').waitFor();
+ await untilCondition(()=>residual().every(u=>u.phase==='failed'));
+ assert.deepEqual(residual().filter(u=>u.kind==='leg'),saved.filter(u=>u.kind==='leg'));assert.deepEqual(residual().filter(u=>u.kind==='recommendation').map(u=>({kind:u.kind,targetId:u.targetId,phase:u.phase})),[{kind:'recommendation',targetId:cloud.stops.find(s=>s.name==='Kyoto')!.id,phase:'failed'}]);assert.equal(transferCalls,callsBefore,'failed gateway is never retried automatically');
+ assert.deepEqual(discoveries.slice(requestsBefore).sort(),['Hiroshima','Kyoto','Tokyo'],'only the pending recommendation group resumes');
+ assert.deepEqual(view.errors,[]);
+ }finally{release();await view.close()}
+});

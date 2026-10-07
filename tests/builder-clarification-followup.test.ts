@@ -25,12 +25,17 @@ const clarificationShell = read("components/easyt/builder-clarification-shell.ts
 const clarificationCss = read("components/easyt/builder-clarification-dialog.module.css");
 const repository = read("lib/easyt/repository.ts");
 
-test("1 Homepage suppresses the endpoint eyebrow", () => {
-  assert.match(home, /showHeading=\{false\}/);
+test("1 Homepage uses the approved trip-type control without a duplicate endpoint editor", () => {
+  assert.match(home, /data-homepage-trip-type/);
+  assert.match(home, /value: "return_to_start"/);
+  assert.match(home, /value: "one_way"/);
+  assert.doesNotMatch(home, /<JourneyEndpointsEditor/);
 });
 
-test("2 Homepage suppresses endpoint helper copy", () => {
-  assert.match(home, /showHint=\{false\}/);
+test("2 Homepage keeps origin separate from destination entry without legacy endpoint helper copy", () => {
+  assert.match(home, /originEntry:[\s\S]*?data-homepage-origin/);
+  assert.match(home, /destinationEditor: <HomeDestinationEditor/);
+  assert.doesNotMatch(home, /showHint=|showHeading=/);
 });
 
 test("3 unknown End has no duplicate Not sure yet action", () => {

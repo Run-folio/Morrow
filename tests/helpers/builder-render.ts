@@ -17,9 +17,9 @@ let bundle: Promise<string> | undefined;
 async function builderBundle() {
   bundle ??= build({
     stdin: {
-      contents: `import React from 'react'; import {createRoot} from 'react-dom/client'; import Builder from './app/journey/new/trip-builder'; import Importer from './app/journey/new/import/spreadsheet-import-client'; import Overview from './components/easyt/trip-overview-workspace'; import Transport from './components/easyt/trip-transport-workspace'; import TripShell from './components/easyt/trip-shell'; import {useTripShellTrip} from './components/easyt/trip-shell-client';
-      function WorkspaceFromShell(){const trip=useTripShellTrip();return location.pathname.endsWith('/transport')?React.createElement(Transport,{trip}):React.createElement(Overview,{trip,initialPrepActions:[],initialPrepReadinessCards:[],initialPrepProviderStatus:'available'});}
-      function App(){if(location.pathname.endsWith('/import'))return React.createElement(Importer);if(location.pathname!=='/journey/new'){const trip=Object.keys(localStorage).filter(key=>key.startsWith('easyt:trip-recovery:v2:')).map(key=>JSON.parse(localStorage.getItem(key))).filter(record=>record.trip).sort((left,right)=>(Date.parse(right.savedAt)||0)-(Date.parse(left.savedAt)||0)||right.writeId.localeCompare(left.writeId))[0]?.trip;return trip?React.createElement(TripShell,{trip,cacheTrip:false,orientationAutoStart:false},React.createElement(WorkspaceFromShell)):React.createElement('p',null,'Trip unavailable');}return React.createElement(Builder);}
+      contents: `import React from 'react'; import {createRoot} from 'react-dom/client'; import Builder from './app/journey/new/trip-builder'; import Importer from './app/journey/new/import/spreadsheet-import-client'; import Overview from './components/easyt/trip-overview-workspace'; import Transport from './components/easyt/trip-transport-workspace'; import Itinerary from './components/easyt/trip-itinerary-workspace'; import {loadLocalTripFromStorage} from './lib/easyt/storage'; import TripShell from './components/easyt/trip-shell'; import {useTripShellTrip} from './components/easyt/trip-shell-client';
+      function WorkspaceFromShell(){const trip=useTripShellTrip();return location.pathname.endsWith('/transport')?React.createElement(Transport,{trip}):location.pathname.endsWith('/itinerary')?React.createElement(Itinerary,{trip}):React.createElement(Overview,{trip,initialPrepActions:[],initialPrepReadinessCards:[],initialPrepProviderStatus:'available'});}
+      function App(){if(location.pathname.endsWith('/import'))return React.createElement(Importer);if(location.pathname!=='/journey/new'){const tripId=decodeURIComponent(location.pathname.split('/')[2]??'');const trip=loadLocalTripFromStorage(localStorage,tripId,window.__BUILDER_TEST_OWNER__??null);return trip?React.createElement(TripShell,{trip,cacheTrip:false,orientationAutoStart:false},React.createElement(WorkspaceFromShell)):React.createElement('p',null,'Trip unavailable');}return React.createElement(Builder);}
       createRoot(document.getElementById('root')).render(React.createElement(App));`,
       resolveDir: fileURLToPath(new URL("../../", import.meta.url)), loader: "tsx",
     },
@@ -62,6 +62,7 @@ export async function renderBuilder({
   accountRequest,
   seedRecovery = true,
   discoveryRequest,
+  transferRequest,
 }: {
   query?: string;
   draft?: unknown;
@@ -82,7 +83,8 @@ export async function renderBuilder({
   ownerId?: string;
   seedRecovery?: boolean;
   accountRequest?: (input:{method:string;path:string;trip:unknown}) => Promise<{status:number;body:unknown}> | {status:number;body:unknown};
-  discoveryRequest?: (destination:string) => Promise<{status:number;body:unknown}> | {status:number;body:unknown};
+  transferRequest?: (input:{legs:unknown[]}) => Promise<{status:number;body:unknown}> | {status:number;body:unknown};
+  discoveryRequest?: (destination:string,context:{cacheControl:string|undefined}) => Promise<{status:number;body:unknown}> | {status:number;body:unknown};
 } = {}) {
   const script = await builderBundle();
   let captureRequests = 0;
@@ -91,7 +93,7 @@ export async function renderBuilder({
     if (request.url?.startsWith("/api/")) {
       const url = new URL(request.url, "http://localhost");
       if (url.pathname === '/api/journey-discover' && discoveryRequest) {
-        const result = await discoveryRequest(url.searchParams.get('destination') ?? '');
+        const result = await discoveryRequest(url.searchParams.get('destination') ?? '',{cacheControl:request.headers['cache-control']});
         response.statusCode = result.status; response.setHeader('Content-Type', 'application/json');
         response.end(JSON.stringify(result.body)); return;
       }
@@ -111,6 +113,7 @@ export async function renderBuilder({
         const chunks: Buffer[] = [];
         for await (const chunk of request) chunks.push(Buffer.from(chunk));
         const payload = JSON.parse(Buffer.concat(chunks).toString()) as { legs?: Array<{ id?: string; fromStopId?: string | null; toStopId?: string }> };
+        if(transferRequest){const result=await transferRequest({legs:payload.legs??[]});response.statusCode=result.status;response.setHeader("Content-Type","application/json");response.end(JSON.stringify(result.body));return;}
         const canonicalLegs = (initialTrip as { legs?: Array<{ id: string; fromStopId: string | null; toStopId: string }> } | undefined)?.legs ?? [];
         const legs = (payload.legs ?? []).map((leg) => canonicalLegs.find((candidate) => candidate.id === leg.id
           && candidate.fromStopId === leg.fromStopId
@@ -222,6 +225,8 @@ export async function renderBuilder({
         ? Boolean(document.querySelector('[data-builder-root="true"]:not([aria-busy="true"])'))
         : location.pathname.endsWith("/transport")
           ? Boolean(document.querySelector('[aria-labelledby="transport-workspace-heading"]'))
+          : location.pathname.endsWith("/itinerary")
+            ? Boolean(document.querySelector('[aria-label="Trip itinerary"]'))
           : Boolean(document.querySelector('[aria-label="Trip overview"]')), undefined, { timeout: 10000 });
   } catch (error) {
     await browser.close(); server.close();

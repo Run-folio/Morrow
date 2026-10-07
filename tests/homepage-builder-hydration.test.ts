@@ -335,7 +335,8 @@ test("a failed named-place lookup offers scoped retry while a successful sibling
     geocodeCandidates: { Kyoto: [{ name: "Kyoto", country: "Japan", coordinates: [135.7681, 35.0116], canonicalPlaceId: "kyoto" }] },
   });
   try {
-    await view.page.getByRole("button", { name: "Try again Tokyo", exact: true }).waitFor({ timeout: 20_000 });
+    await view.page.locator('[data-builder-edit-session="active"]').waitFor();
+    await view.page.getByRole("button", { name: "Try again Tokyo", exact: true }).waitFor({ timeout: 3000 });
     assert.equal(view.geocodeRequests().Tokyo, 1);
     assert.equal(view.geocodeRequests().Kyoto, 1);
     const kyoto = view.page.locator('[data-builder-stop-id]').filter({ hasText: "Kyoto" }).first();
@@ -346,16 +347,15 @@ test("a failed named-place lookup offers scoped retry while a successful sibling
     const response = view.page.waitForResponse((response: { url: () => string; status: () => number }) => {
       const url = new URL(response.url());
       return url.pathname === "/api/journey-geocode" && url.searchParams.get("place") === "Tokyo" && response.status() === 200;
-    });
-    await view.page.getByRole("button", { name: "Try again Tokyo", exact: true }).click();
-    await response;
+    }, { timeout: 3000 });
+    await Promise.all([response, view.page.getByRole("button", { name: "Try again Tokyo", exact: true }).click({timeout:2500})]);
     await view.page.waitForFunction(() => Array.from(document.querySelectorAll('[role="status"]')).every(element => !/Checking Tokyo|Couldn't check Tokyo/.test(element.textContent ?? "")));
     assert.equal(view.geocodeRequests().Tokyo, 2);
     assert.equal(view.geocodeRequests().Kyoto, 1);
     assert.equal(await kyoto.getAttribute("data-builder-stop-id"), kyotoId);
     assert.equal(await tokyo.getAttribute("data-builder-stop-id"), tokyoId);
     assert.equal(await view.page.getByRole("button", { name: "Try again Tokyo", exact: true }).count(), 0);
-    assert.equal(await view.page.locator('[data-builder-stop-id]').filter({ hasText: "Tokyo" }).count(), 1);
+    assert.equal(await view.page.locator(`[data-builder-stop-id="${tokyoId}"]`).count(), 1);
     await view.page.waitForFunction((stopId: string) => Object.keys(localStorage)
       .filter(key => key.startsWith("easyt:trip-recovery:v2:guest:"))
       .map(key => JSON.parse(localStorage.getItem(key)!))

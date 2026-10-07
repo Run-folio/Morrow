@@ -117,6 +117,7 @@ test("clarification search resolves each original stop occurrence in prompt orde
     Merzouga: [suggestion("Merzouga", "open-world:nominatim:node:3901504169", [-4.01, 31.1])],
   } });
   const page = view.page;
+  page.setDefaultTimeout(5000);
   try {
     await page.getByRole("tab", { name: "Describe my trip" }).click();
     await page.getByRole("textbox", { name: "Start your plan" }).fill("10 nights: Marrakech 3, Aït Benhaddou 1, Merzouga 2, Fes 4.");
@@ -125,6 +126,7 @@ test("clarification search resolves each original stop occurrence in prompt orde
 
     for (const place of ["Aït Benhaddou", "Merzouga"]) {
       const choose = page.getByRole("button", { name: `Choose place ${place}`, exact: true });
+      assert.ok(await choose.count()<=1,"each unresolved mention has one clarification action owner");
       if (await choose.isVisible().catch(() => false)) await choose.click();
       const dialog = page.getByRole("dialog");
       await dialog.getByRole("heading", { name: "Explore places", exact: true }).waitFor();
