@@ -4,6 +4,8 @@ import { canonicalRouteFixture, legacyRouteFixture } from "./fixtures/batch14-ro
 import { requireReadableTripDocument, projectCanonicalRouteEndpoints } from "../lib/easyt/trip-document.ts";
 import { builderDocumentFingerprint } from "../lib/easyt/trip-builder-document-commit.ts";
 import type { CanonicalEasyTTrip } from "../lib/easyt/trip.ts";
+import { stopEndpoint } from "../lib/easyt/trip-legs.ts";
+import { supportedTransportChoicesForLeg } from "../lib/easyt/transport-mode-choice.ts";
 
 // Lazy loading lets every named contract fail explicitly at the RED checkpoint.
 // Once the module exists, these tests exercise its real edits, not a fallback.
@@ -165,4 +167,146 @@ test("selected_origin_projects_compatibility_without_reordering", async () => {
   assert.equal(result.trip.brief.intent.route.projectionInputKey, "last-successful-projection");
   assert.deepEqual(trip, before);
   checkCanonical(result.trip);
+});
+
+test("add_pending_destination_holds_nights_without_creating_fake_stop", async () => {
+  const api = await edits();
+  const trip = fixture();
+  const intent = { id: "missing-mostar", sourceText: "Mostar", kind: "overnight_place", selectedPlace: null, resolution: "unavailable", requestedNights: 2, routeMembership: "required", stopIds: [] };
+  const result = api.prepareAcceptedBuilderEdit(trip, { kind: "add-destination", intent }, builderDocumentFingerprint(trip));
+  assert.equal(result.ok, true);
+  assert.deepEqual(result.trip.brief.intent.route.destinations.at(-1), intent);
+  assert.deepEqual(result.trip.stops, trip.stops);
+  assert.equal(result.trip.brief.intent.route.orderAuthority, trip.brief.intent.route.orderAuthority);
+  checkCanonical(result.trip);
+});
+
+test("resolve_pending_occurrence_reuses_owned_ids_nights_and_position", async () => {
+  const api = await edits();
+  const trip = fixture();
+  trip.brief.intent.route.destinations.splice(1, 0, { id: "missing-mostar", sourceText: "Mostar", kind: "overnight_place", selectedPlace: null, resolution: "unavailable", requestedNights: 2, routeMembership: "required", stopIds: [] });
+  const result = api.prepareAcceptedBuilderEdit(trip, { kind: "resolve-destination", intentId: "missing-mostar", stopId: "mostar-occurrence", beforeStopId: "kyoto", place: { name: "Mostar", canonicalPlaceId: "place:mostar", country: "Bosnia and Herzegovina", coordinates: [17.81, 43.34] } }, builderDocumentFingerprint(trip));
+  assert.equal(result.ok, true);
+  assert.equal(result.trip.stops[1].id, "mostar-occurrence");
+  assert.equal(result.trip.stops[1].nights, 2);
+  assert.deepEqual(result.trip.brief.intent.route.destinations[1].stopIds, ["mostar-occurrence"]);
+  assert.equal(result.trip.brief.intent.route.destinations[1].requestedNights, 2);
+  assert.deepEqual(result.trip.stops.filter((stop: { id: string }) => stop.id !== "mostar-occurrence").map((stop: { id: string }) => stop.id), trip.stops.map(stop => stop.id));
+  checkCanonical(result.trip);
+});
+
+test("dates_preferences_and_travellers_change_only_owned_inputs", async () => {
+  const api = await edits();
+  const trip = fixture();
+  for (const edit of [{ kind: "dates", startDate: "2026-11-01", endDate: "2026-11-10" }, { kind: "travellers", travellers: 3 }, { kind: "preferences", preferences: { interests: ["nature"], pace: "packed" } }]) {
+    const result = api.prepareAcceptedBuilderEdit(trip, edit, builderDocumentFingerprint(trip));
+    assert.equal(result.ok, true);
+    assert.deepEqual(result.trip.stops, trip.stops);
+    assert.deepEqual(result.trip.planItems, trip.planItems);
+    assert.deepEqual(result.trip.brief.bookings, trip.brief.bookings);
+    assert.deepEqual(result.trip.brief.intent.route, trip.brief.intent.route);
+    if (edit.kind === "dates") assert.equal(result.trip.startDate, "2026-11-01");
+    if (edit.kind === "travellers") assert.equal(result.trip.brief.intent.travellers, 3);
+    if (edit.kind === "preferences") assert.deepEqual(result.trip.brief.intent.preferences.interests, ["nature"]);
+  }
+});
+
+test("manual_order_and_structural_inverse_restore_authority_and_requests", async () => {
+  const api = await edits();
+  const trip = fixture();
+  trip.brief.intent.route.orderAuthority = "explicit";
+  trip.brief.intent.route.explicitIntentIds = trip.brief.intent.route.destinations.map(intent => intent.id);
+  const snapshot = api.builderStructuralSnapshot(trip);
+  const result = api.prepareAcceptedBuilderEdit(trip, { kind: "order", stopIds: trip.stops.map(stop => stop.id).reverse() }, builderDocumentFingerprint(trip));
+  assert.equal(result.ok, true);
+  assert.equal(result.trip.brief.intent.route.orderAuthority, "manual");
+  assert.deepEqual(result.trip.stops.map((stop: { nights: number }) => stop.nights), trip.stops.map(stop => stop.nights).reverse());
+  const inverse = api.prepareAcceptedBuilderEdit(result.trip, { kind: "structural-inverse", snapshot }, builderDocumentFingerprint(result.trip));
+  assert.equal(inverse.ok, true);
+  assert.deepEqual(inverse.trip.stops, trip.stops);
+  assert.deepEqual(inverse.trip.brief.intent.route, trip.brief.intent.route);
+  checkCanonical(inverse.trip);
+});
+
+test("invalid_values_and_locked_order_are_rejected_without_mutation", async () => {
+  const api = await edits();
+  const trip = fixture();
+  trip.brief.scheduleLocks = { stopIds: [trip.stops[0]!.id], arrivalDates: {} };
+  const before = structuredClone(trip);
+  const fingerprint = builderDocumentFingerprint(trip);
+  for (const edit of [{ kind: "nights", stopId: "tokyo", intentId: "intent:tokyo", nights: -1 }, { kind: "nights", stopId: "tokyo", intentId: "intent:tokyo", nights: 2.5 }, { kind: "dates", startDate: "2026-02-30", endDate: "2026-03-10" }, { kind: "travellers", travellers: 0 }, { kind: "budget", budget: "bogus" }, { kind: "type", tripType: "bogus" }, { kind: "preferences", preferences: { interests: ["bogus"] } }, { kind: "order", stopIds: trip.stops.map(stop => stop.id).reverse() }]) {
+    assert.equal(api.prepareAcceptedBuilderEdit(trip, edit, fingerprint).ok, false);
+    assert.deepEqual(trip, before);
+  }
+});
+
+test("same_verified_place_label_edit_retains_evidence_and_invalidates_no_geometry", async () => {
+  const api = await edits();
+  const trip = fixture();
+  const result = api.prepareAcceptedBuilderEdit(trip, { kind: "replace-destination", intentId: "intent:tokyo", stopId: "tokyo", place: { ...trip.brief.intent.route.destinations[0]!.selectedPlace, name: "Tokyo label" } }, builderDocumentFingerprint(trip));
+  assert.equal(result.ok, true);
+  assert.equal(result.trip.stops[0].name, "Tokyo label");
+  assert.equal(result.trip.stops[0].latitude, trip.stops[0]!.latitude);
+  assert.equal(result.trip.stops[0].longitude, trip.stops[0]!.longitude);
+  assert.deepEqual(result.scope, { legIds: [], scheduleStopIds: [], recommendationStopIds: [], endpointChanged: false, routeAssessment: false });
+});
+
+test("gateway_scope_uses_actual_legacy_leg_ids_and_preserves_unaffected_pairs", async () => {
+  const api = await edits();
+  const trip = fixture();
+  const result = api.prepareAcceptedBuilderEdit(trip, { kind: "replace-destination", intentId: "intent:hiroshima", stopId: "hiroshima", place: { name: "Osaka", canonicalPlaceId: "place:osaka", country: "Japan", coordinates: [135.5, 34.69] } }, builderDocumentFingerprint(trip));
+  assert.equal(result.ok, true);
+  assert.ok(result.scope.legIds.includes("kyoto-hiroshima"));
+  assert.ok(!result.scope.legIds.includes("tokyo-kyoto"));
+});
+
+test("transport_choice_requires_current_geographic_evidence_not_only_occurrence_ids", async () => {
+  const api = await edits();
+  const trip = fixture();
+  const leg = trip.legs[0]!;
+  const segment = { id: "rail-segment", mode: "train", fromEndpoint: stopEndpoint(trip.stops[0]!), toEndpoint: stopEndpoint(trip.stops[1]!), durationMinutes: 210, distanceKm: 450, provider: "Fixture rail", provenance: "canonical_schedule", confidence: "high", scheduleNeedsChecking: true };
+  leg.routeMetadata = { multimodalResolution: { candidates: [{ id: "rail-a", summaryMode: "train", evidence: "fixture:rail", totalDurationMinutes: 210, provenance: "canonical_schedule", segments: [segment] }] } };
+  const choice = supportedTransportChoicesForLeg(trip, leg)[0]!;
+  assert.ok(choice);
+  const edit = { kind: "transport", legId: leg.id, identity: choice.identity };
+  const selected = api.prepareAcceptedBuilderEdit(trip, edit, builderDocumentFingerprint(trip));
+  assert.equal(selected.ok, true);
+  assert.equal(selected.trip.brief.decisionSelections.transportByLeg[leg.id].identity, choice.identity);
+  assert.deepEqual(selected.trip.legs, trip.legs);
+  assert.deepEqual(selected.scope.legIds, [leg.id]);
+  Object.assign(trip.stops[0]!, { name: "Osaka", canonicalPlaceId: "place:osaka", longitude: 135.5, latitude: 34.69 });
+  trip.brief.intent.route.destinations[0]!.selectedPlace = { name: "Osaka", canonicalPlaceId: "place:osaka", coordinates: [135.5, 34.69] };
+  assert.deepEqual(api.prepareAcceptedBuilderEdit(trip, edit, builderDocumentFingerprint(trip)), { ok: false, reason: "binding-conflict" });
+});
+
+test("new_area_base_preserves_allocation_without_replacing_parent_request", async () => {
+  const api = await edits();
+  const trip = fixture();
+  trip.brief.intent.route.destinations = [{ id: "intent:japan", sourceText: "Japan", kind: "planning_area", selectedPlace: { name: "Japan", canonicalPlaceId: "country:japan" }, resolution: "needs_base", requestedNights: 12, routeMembership: "required", stopIds: trip.stops.map(stop => stop.id) }];
+  const stop = { ...trip.stops[2]!, id: "osaka-base", nights: 3 };
+  const result = api.prepareAcceptedBuilderEdit(trip, { kind: "resolve-destination", intentId: "intent:japan", stopId: stop.id, stop, beforeStopId: "hiroshima", place: { name: "Osaka", canonicalPlaceId: "place:osaka", country: "Japan", coordinates: [135.5, 34.69] } }, builderDocumentFingerprint(trip));
+  assert.equal(result.ok, true);
+  assert.equal(result.trip.stops.find((item: { id: string }) => item.id === stop.id).nights, 3);
+  assert.equal(result.trip.brief.intent.route.destinations[0].requestedNights, 12);
+  assert.equal(result.trip.brief.intent.route.destinations[0].selectedPlace.canonicalPlaceId, "country:japan");
+  assert.equal(result.trip.stops.filter((item: { id: string }) => item.id !== stop.id).reduce((sum: number, item: { nights: number }) => sum + item.nights, 0), 9);
+});
+
+test("structural_inverse_keeps_unrelated_accepted_endpoint_dates_and_preferences", async () => {
+  const api = await edits();
+  const trip = fixture();
+  const snapshot = api.builderStructuralSnapshot(trip);
+  const reordered = api.prepareAcceptedBuilderEdit(trip, { kind: "order", stopIds: trip.stops.map(stop => stop.id).reverse() }, builderDocumentFingerprint(trip)).trip;
+  let current = api.prepareAcceptedBuilderEdit(reordered, { kind: "origin", place: { name: "Madrid", canonicalPlaceId: "place:madrid", country: "Spain", coordinates: [-3.7, 40.4] } }, builderDocumentFingerprint(reordered)).trip;
+  current = api.prepareAcceptedBuilderEdit(current, { kind: "dates", startDate: "2026-11-01", endDate: "2026-11-10" }, builderDocumentFingerprint(current)).trip;
+  current = api.prepareAcceptedBuilderEdit(current, { kind: "preferences", preferences: { interests: ["nature"] }, avoidDriving: false }, builderDocumentFingerprint(current)).trip;
+  const result = api.prepareAcceptedBuilderEdit(current, { kind: "structural-inverse", snapshot }, builderDocumentFingerprint(current));
+  assert.equal(result.ok, true);
+  assert.deepEqual(result.trip.brief.intent.route.orderedStopIds, trip.stops.map(stop => stop.id));
+  assert.deepEqual(result.trip.brief.intent.route.origin, current.brief.intent.route.origin);
+  assert.equal(result.trip.startDate, current.startDate);
+  assert.equal(result.trip.endDate, current.endDate);
+  assert.deepEqual(result.trip.brief.intent.timing, current.brief.intent.timing);
+  assert.equal(result.trip.brief.intent.hardConstraints.avoidDriving, false);
+  assert.deepEqual(result.trip.brief.intent.preferences, current.brief.intent.preferences);
 });

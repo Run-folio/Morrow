@@ -546,7 +546,9 @@ test("30 Homepage to Builder draft handoff preserves explicit Start and End", ()
 
 test("31 direct Builder entry writes End to brief, intent and canonical legs", () => {
   const trip = buildTrip({ mode: "explicit", place: seoul });
-  assert.deepEqual(trip.brief.intent?.journeyEnd, trip.brief.journeyEnd);
+  assert.equal(trip.schemaVersion, 2);
+  assert.equal(trip.brief.intent?.journeyEnd, undefined);
+  assert.deepEqual(trip.brief.intent?.route?.journeyEnd, trip.brief.journeyEnd);
   assert.equal(trip.legs.at(-1)?.toEndpoint?.kind, "end");
 });
 

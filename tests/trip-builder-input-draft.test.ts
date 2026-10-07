@@ -174,3 +174,29 @@ test("old_envelope_rebinds_safely_after_draft_write_failure", async () => {
   assert.equal(field(reload.draft, binding).status, "editable");
   assert.equal(storage.getItem(key), originalBytes, "hydration must not overwrite the retained envelope");
 });
+
+test("newer_raw_revision_cannot_be_replaced_by_older_projection_write", async () => {
+  const api = await drafts();
+  const trip = fixture();
+  const binding = nightBinding(trip);
+  const older = api.updateBuilderInputDraft(api.createBuilderInputDraft(trip), trip, binding, "2x");
+  const newer = api.updateBuilderInputDraft(older, trip, binding, "2xx");
+  const storage = memoryStorage();
+  assert.equal(api.writeBuilderInputDraft(storage, trip, newer).ok, true);
+  const bytes = storage.getItem(api.builderInputDraftKey(trip.ownerId, trip.id));
+  assert.equal(api.writeBuilderInputDraft(storage, trip, older).ok, false);
+  assert.equal(storage.getItem(api.builderInputDraftKey(trip.ownerId, trip.id)), bytes);
+});
+
+test("generated_allocation_and_same_identity_enrichment_leave_raw_nights_editable", async () => {
+  const api = await drafts();
+  const trip = fixture();
+  const binding = nightBinding(trip);
+  const draft = api.updateBuilderInputDraft(api.createBuilderInputDraft(trip), trip, binding, "2x");
+  const changed = structuredClone(trip);
+  changed.stops[2]!.nights = 4;
+  changed.stops[2]!.latitude = 34.386;
+  changed.brief.nightAllocations![changed.stops[2]!.id] = 4;
+  changed.brief.intent.route.destinations[2]!.selectedPlace!.providerId = "new-provider-evidence";
+  assert.equal(field(api.rebindBuilderInputDraft(draft, changed), binding).status, "editable");
+});
