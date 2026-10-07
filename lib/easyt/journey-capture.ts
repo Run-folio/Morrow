@@ -1,6 +1,7 @@
 import {
   isLeadingPlanningImperativeSourceSpan,
   normalizePlacePhrase,
+  endpointSourceIsNegated,
   resolvePlaceMentions,
   resolveExplicitPlaceMentions,
   resolveExplicitPlaceMentionsWithProvider,
@@ -234,14 +235,17 @@ function semanticPlaceMentions(
   deterministicMentions: ResolvedPlaceMention[],
 ): ExplicitPlaceMention[] {
   const inputs: ExplicitPlaceMention[] = [];
-  const safeSpan = (value: string) => geographySourceSpan(value, rawBrief, deterministicMentions);
+  const safeSpan = (value: string) => {
+    const sourceText = geographySourceSpan(value, rawBrief, deterministicMentions);
+    return sourceText && !endpointSourceIsNegated(rawBrief, sourceText) ? sourceText : null;
+  };
   if (intent.origin.sourceText) {
     const sourceText = safeSpan(intent.origin.sourceText);
-    if (sourceText) inputs.push({ sourceText, role: "origin" });
+    if (sourceText && !endpointSourceIsNegated(rawBrief, sourceText, "origin")) inputs.push({ sourceText, role: "origin" });
   }
   if (intent.journeyEnd?.mode === "explicit_place" && intent.journeyEnd.sourceText) {
     const sourceText = safeSpan(intent.journeyEnd.sourceText);
-    if (sourceText) {
+    if (sourceText && !endpointSourceIsNegated(rawBrief, sourceText, "fixed_end")) {
       const lookupText = safeLookupText(intent.journeyEnd.interpretedText, sourceText);
       inputs.push({ sourceText, role: "fixed_end", travelIntent: "route-stop", ...(lookupText ? { lookupText } : {}) });
     }

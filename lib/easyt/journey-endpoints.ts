@@ -1,4 +1,4 @@
-import { canonicalPlaceFactsMatch, type CanonicalPlaceSuggestion, type ResolvedPlaceMention } from "./place-intelligence.ts";
+import { canonicalPlaceFactsMatch, capturedEndpointConflict, endpointSourceIsNegated, isNegatedEndpointAt, isNegatedIntentPrefix, type CanonicalPlaceSuggestion, type ResolvedPlaceMention } from "./place-intelligence.ts";
 import { findCatalogPlaceById, matchCatalogPlace, type PlaceCatalogEntry } from "./place-catalog.ts";
 import type { JourneyEndSelection, JourneyEndpointPlace, TripBrief } from "./trip.ts";
 
@@ -209,19 +209,26 @@ export function journeyEndFromCapturedIntent(
   if (/\b(?:do not|don't|dont)\s+know\b.{0,70}\b(?:end|finish|fly home|return)\b|\bnot sure\b.{0,50}\b(?:end|finish|fly home|return)\b/.test(text)) {
     return unknownJourneyEnd();
   }
+  const endpointMentions = mentions.filter(mention => !(mention.role === "fixed_end" && endpointSourceIsNegated(rawBrief, mention.sourceText, "fixed_end"))
+    && !((mention.role === "origin" || mention.role === "fixed_start") && endpointSourceIsNegated(rawBrief, mention.sourceText, "origin")));
+  if (capturedEndpointConflict(endpointMentions)) return unknownJourneyEnd();
 
-  const startMention = mentions.find((mention) => mention.role === "origin" || mention.role === "fixed_start");
+  const startMention = endpointMentions.find((mention) => mention.role === "origin" || mention.role === "fixed_start");
   const start = startMention ? endpointPlaceFromMention(startMention) : null;
-  const fixedEnd = mentions.find((mention) => mention.role === "fixed_end");
+  const fixedEnd = endpointMentions.find((mention) => mention.role === "fixed_end");
   const fixedEndPlace = fixedEnd ? endpointPlaceFromMention(fixedEnd) : null;
-  const relationshipToHome = /\b(?:then|and|going|travel(?:ling|ing))\s+home\b|\bback\s+home\b/.test(text);
-  const relationshipToStart = Boolean(start && new RegExp(`\\b(?:back|return(?:ing)?)\\s+(?:to\\s+)?${normalise(start.name).replace(/-/g, "[\\s-]+")}\\b`).test(normalise(rawBrief).replace(/-/g, " ")));
+  const affirmativeRelationship = (pattern: RegExp) => [...text.matchAll(new RegExp(pattern.source, "g"))]
+    .some(match => !isNegatedIntentPrefix(text.slice(0, match.index)));
+  const relationshipToHome = affirmativeRelationship(/\b(?:then|and|going|travel(?:ling|ing))\s+home\b|\bback\s+home\b/);
+  const relationshipToStart = Boolean(start && affirmativeRelationship(new RegExp(`\\b(?:back|return(?:ing)?)\\s+(?:to\\s+)?${normalise(start.name).replace(/-/g, "[\\s-]+")}\\b`)));
 
   if (start && (relationshipToHome || relationshipToStart || (fixedEndPlace && sameJourneyPlace(start, fixedEndPlace) && /\b(?:back|return)\b/.test(text)))) {
     return { mode: "same_as_start" };
   }
   if (fixedEndPlace) return { mode: "explicit", place: fixedEndPlace };
-  const explicitEndText = /\b(?:finish|finishing|end|ending)(?: the trip)?\s+(?:(?:in|at)\s+)?([^,.\n;]+?)(?=\s+(?:and|then)\b|[,.;\n]|$)/i.exec(rawBrief)?.[1]?.trim();
+  const explicitEndMatch = [...rawBrief.matchAll(/\b(?:finish|finishing|end|ending)(?: the trip)?\s+(?:(?:in|at)\s+)?([^,.\n;]+?)(?=\s+(?:and|then)\b|[,.;\n]|$)/gi)]
+    .find(match => !isNegatedEndpointAt(rawBrief, match.index! + match[0].length - match[1].length));
+  const explicitEndText = explicitEndMatch?.[1]?.trim();
   if (start && explicitEndText && normalise(explicitEndText) === normalise(start.name)) {
     return { mode: "explicit", place: start };
   }

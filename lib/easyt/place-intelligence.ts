@@ -1231,10 +1231,42 @@ function rawCatalogMatches(prompt: string): RawCatalogMatch[] {
   }));
 }
 
+/** Negation is scoped to the following action, never to an earlier clause. */
+export function isNegatedIntentPrefix(prefix: string) {
+  return /(?:^| )(?:do not|dont|will not|wont|not|never|no|nunca)(?: (?:want|wish|plan|intend|need|quiero|queremos|quisiera|deseo))?(?: (?:the|my|our) trip)?(?: to)?(?: (?:be|go|going))?$/.test(normalizePlacePhrase(prefix));
+}
+
+export function isNegatedEndpointAt(prompt: string, placeStart: number) {
+  const before = normalizePlacePhrase(prompt.slice(0, placeStart));
+  const endpoint = /(?:^| )(?:start(?:ing)?|begin(?:ning)?)(?: the trip)?(?: (?:in|at))?$|(?:^| )(?:finish(?:ing)?|end(?:ing)?)(?: the trip)? (?:in|at)$|(?:^| )(?:fly|flying) (?:into|(?:home |back )?from|out of)$|(?:^| )(?:arrive|arriving|land|landing) (?:in|at)$|(?:^| )home from$|(?:^| )(?:back|return(?:ing)?) to$|(?:^| )one way to$|(?:^| )(?:leaving from|departing from|depart from|from|(?:salir |salimos )?desde|saliendo de)$|(?:^| )(?:empezar|comenzar|iniciar|terminar|finalizar|acabar)(?: el viaje)? en$|(?:^| )(?:volver|regresar) a$/.exec(before);
+  return Boolean(endpoint && isNegatedIntentPrefix(before.slice(0, endpoint.index)));
+}
+
+/** A negative endpoint occurrence is not a negative visit instruction. A
+ * separate affirmative stay remains eligible, including semantic recovery. */
+export function endpointSourceIsNegated(prompt: string, sourceText: string, role?: "origin" | "fixed_end") {
+  const pattern = new RegExp(sourceText.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "giu");
+  const positions = [...prompt.matchAll(pattern)].map(match => match.index!);
+  if (!positions.some(position => isNegatedEndpointAt(prompt, position))) return false;
+  return !positions.some(position => {
+    if (isNegatedEndpointAt(prompt, position)) return false;
+    if (!role) return true;
+    const observed = roleAt(prompt, sourceText, position, "unknown");
+    return role === "fixed_end" ? observed === "fixed_end" : ["origin", "fixed_start", "gateway"].includes(observed);
+  });
+}
+
+export function capturedEndpointConflict(mentions: readonly ResolvedPlaceMention[]) {
+  return ["origin", "end"].some(role => new Set(mentions
+    .filter(mention => placeMentionJourneyRole(mention.role) === role)
+    .map(mention => mention.canonicalPlaceId ?? normalizePlacePhrase(mention.canonicalName))).size > 1);
+}
+
 function roleAt(prompt: string, sourceText: string, start: number, placeType: PlaceType): PlaceMentionRole {
   const rawAfter = prompt.slice(start + sourceText.length, Math.min(prompt.length, start + sourceText.length + 45));
   const before = normalizePlacePhrase(prompt.slice(Math.max(0, start - 64), start));
   const after = normalizePlacePhrase(rawAfter);
+  if (isNegatedEndpointAt(prompt, start)) return "preferred";
   if (/(?:do not|dont|not|never)(?: want to)? visit$|(?:skip|exclude|excluding|avoid)$/.test(before)) return "excluded";
   if (/(?:^| )(?:finish|finishing|end|ending)(?: the trip)? (?:in|at)$|fly(?:ing)? (?:home|back)? from$|(?:^| )home from$|(?:fly(?:ing)? )?out of$|(?:back|return(?:ing)?) to$|one way to$/.test(before)) return "fixed_end";
   if (/(?:^| )(?:start|starting|begin|beginning)(?: the trip)?(?: (?:in|at))?$/.test(before)) return "fixed_start";
@@ -2049,7 +2081,10 @@ function buildDeterministicMentions(prompt: string, context: PlaceResolutionCont
     }
   }
 
-  const sorted = resolved.sort((left, right) => left._start - right._start || right._end - left._end);
+  // Keep the raw clause in the source prompt, but do not turn a refused
+  // endpoint into an endpoint or an invented stay. Other occurrences survive.
+  const sorted = resolved.filter(mention => !isNegatedEndpointAt(prompt, mention._start))
+    .sort((left, right) => left._start - right._start || right._end - left._end);
   // In an explicit arrow itinerary, a repeated first/last identity is route
   // structure: depart here and return here. Do not hand the final endpoint to
   // Builder as another overnight stop. Ordinary prose still requires explicit

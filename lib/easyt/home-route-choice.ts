@@ -1,5 +1,6 @@
 import type { HomepageInputSnapshot, HomepageTripType } from "./home-trip-handoff.ts";
 import type { JourneyCaptureResult } from "./journey-capture.ts";
+import { capturedEndpointConflict } from "./place-intelligence.ts";
 import type { JourneyEndSelection, JourneyEndpointPlace, RouteIntent } from "./trip.ts";
 import { normalizeJourneyEnd, sameJourneyPlace } from "./journey-endpoints.ts";
 
@@ -25,7 +26,7 @@ function affirmativeTripClaim(clause: string): boolean {
   return /^(?:(?:i|we)\s+(?:want|want to plan|want to take|will take|am taking|are taking|am planning|are planning)|(?:i'd|we'd)\s+like|(?:plan|make|build)|(?:quiero|queremos|planea|planifica)|(?:me|nos)\s+gustaria)\s*(?:(?:a|an|the|my|our|un|mi|nuestro)\s*)?$/.test(prefix);
 }
 
-export function homepageCapturedRouteEvidence(prompt: string, capture?: Pick<JourneyCaptureResult, "journeyEnd">): HomepageRouteEvidence {
+export function homepageCapturedRouteEvidence(prompt: string, capture?: Pick<JourneyCaptureResult, "journeyEnd"> & Partial<Pick<JourneyCaptureResult, "mentions">>): HomepageRouteEvidence {
   const journeyEnd = normalizeJourneyEnd(capture?.journeyEnd);
   const clauses = (semanticText(prompt).match(/[^.!?;\n]+[.!?;]?/g) ?? []).filter(clause => oneWayTrip.test(clause) || returnTrip.test(clause)
     || (uncertain.test(clause) && /\bsolo ida\b/.test(clause) && !/\b(?:billete|boleto|ticket|vuelo)\b/.test(clause)));
@@ -33,7 +34,7 @@ export function homepageCapturedRouteEvidence(prompt: string, capture?: Pick<Jou
   const oneWay = clauses.some(clause => oneWayTrip.test(clause));
   const returning = clauses.some(clause => returnTrip.test(clause));
   const contradicts = (oneWay && returning) || (oneWay && journeyEnd.mode === "same_as_start") || (returning && journeyEnd.mode === "explicit");
-  if (negativeOrUnclear || contradicts) return { tripType: null, journeyEnd, status: "requires_review", source: "capture" };
+  if (negativeOrUnclear || contradicts || (capture?.mentions && capturedEndpointConflict(capture.mentions))) return { tripType: null, journeyEnd, status: "requires_review", source: "capture" };
   const tripType = oneWay ? "one_way" : returning ? "return_to_start"
     : journeyEnd.mode === "explicit" ? "one_way" : journeyEnd.mode === "same_as_start" ? "return_to_start" : null;
   return { tripType, journeyEnd: returning && journeyEnd.mode === "unknown" ? { mode: "same_as_start" } : journeyEnd,

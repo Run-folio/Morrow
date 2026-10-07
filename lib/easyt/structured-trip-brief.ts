@@ -4,6 +4,8 @@ import {
   placeResolutionIssuesForMentions,
   placeMentionSupportsMultipleSelections,
   reconcileSelfBasePlaceState,
+  isNegatedEndpointAt,
+  endpointSourceIsNegated,
   type PlaceIntelligenceResult,
   type PlaceIssue,
   type PlaceRoutability,
@@ -204,7 +206,11 @@ function explicitGateway(prompt: string, kind: "start" | "end") {
   const pattern = kind === "start"
     ? /(?:(?:start|begin)(?:ing)?\s+(?:(?:in|at)\s+)?|(?:fly|flying)\s+into\s+|(?:arrive|arriving|land|landing)\s+(?:in|at)\s+)([^,.:\n;]+?)(?=\s+(?:(?:and|then)\s+)?(?:but|travel|go|continue|head|fly|take|finish|end|home|return)\b|[,.:\n;]|$)/i
     : /(?:(?:finish|end)(?:ing)?\s+(?:in|at)\s+|(?:fly(?:ing)?\s+)?home\s+from\s+)([^,.:\n;]+?)(?=\s+(?:(?:and|then)\s+)?(?:but|travel|go|continue|head|fly|take|finish|end|home|return)\b|[,.:\n;]|$)/i;
-  return pattern.exec(prompt)?.[1]?.trim();
+  for (const match of prompt.matchAll(new RegExp(pattern.source, "gi"))) {
+    const placeStart = match.index! + match[0].length - match[1].length;
+    if (!isNegatedEndpointAt(prompt, placeStart)) return match[1].trim();
+  }
+  return undefined;
 }
 
 function durationFromPrompt(prompt: string, fallbackDays?: number): TripBriefDuration | undefined {
@@ -392,8 +398,11 @@ export function extractStructuredTripBrief(
   // Capture may supply this result so the provider-neutral boundary runs only
   // once. Direct callers receive the same deterministic behavior here.
   const placeIntelligence = suppliedPlaceIntelligence ?? resolvePlaceMentions(rawPrompt);
-  const placeMentions = placeIntelligence.mentions;
-  const parsed = parseTripBrief(rawPrompt, placeIntelligence);
+  const placeMentions = placeIntelligence.mentions.filter(mention => !endpointSourceIsNegated(rawPrompt, mention.sourceText))
+    .map(mention => ((mention.role === "origin" || mention.role === "fixed_start") && endpointSourceIsNegated(rawPrompt, mention.sourceText, "origin"))
+      || (mention.role === "fixed_end" && endpointSourceIsNegated(rawPrompt, mention.sourceText, "fixed_end"))
+      ? { ...mention, role: "preferred" as const } : mention);
+  const parsed = parseTripBrief(rawPrompt, { ...placeIntelligence, mentions: placeMentions });
   const startText = explicitGateway(rawPrompt, "start") ?? parsed.origin;
   const endText = explicitGateway(rawPrompt, "end");
   const hasExplicitStartMention = placeMentions.some((mention) => mention.role === "origin" || mention.role === "fixed_start");
@@ -440,8 +449,10 @@ export function extractStructuredTripBrief(
     fixedNights: nights,
     provenance: promptExplicit(sourceText),
   }));
-  const startDestination = destinations.find((destination) => destination.role === "arrival-gateway");
-  const endDestination = destinations.find((destination) => destination.role === "departure-gateway");
+  const starts = destinations.filter(destination => destination.role === "arrival-gateway");
+  const ends = destinations.filter(destination => destination.role === "departure-gateway");
+  const startDestination = starts.length === 1 ? starts[0] : undefined;
+  const endDestination = ends.length === 1 ? ends[0] : undefined;
   if (startDestination) hardConstraints.push({ type: "start-at", value: startDestination.name, provenance: startDestination.provenance });
   if (endDestination) hardConstraints.push({ type: "end-at", value: endDestination.name, provenance: endDestination.provenance });
   mustVisit.forEach((destination) => hardConstraints.push({ type: "must-visit", value: destination.name, provenance: destination.provenance }));
