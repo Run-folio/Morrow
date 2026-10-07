@@ -26,6 +26,9 @@ import { requireReadableTripDocument } from "@/lib/easyt/trip-document";
 import { reconcileBuilderDependencies, type BuilderProjectionResponse } from "@/lib/easyt/trip-builder-reconciliation";
 import { parseTypedLocalDate } from "@/lib/easyt/local-date";
 import { TripBuilderTopControls } from "./trip-builder-top-controls";
+import { TripBuilderRouteProposal } from "./trip-builder-route-proposal";
+import { acceptBuilderOptimization, calculateBuilderOptimization, type BuilderOptimizationResult } from "@/lib/easyt/trip-builder-route-proposal";
+import { routeProjectionInputKey } from "@/lib/easyt/trip-route-intent";
 import { TripBuilderRetainedReview } from "./trip-builder-retained-review";
 import { resolveBuilderRecommendation } from "@/lib/easyt/trip-builder-recommendations";
 import { readBuilderInputDraft, writeBuilderInputDraft, type BuilderInputBinding } from "@/lib/easyt/trip-builder-input-draft";
@@ -693,6 +696,16 @@ function TripBuilderDocument() {
   const [dragTargetId, setDragTargetId] = useState<string | null>(null);
   const [routePreviewStopIds, setRoutePreviewStopIds] = useState<readonly string[] | null>(null);
   const [routeCheckProposalStopIds, setRouteCheckProposalStopIds] = useState<readonly string[] | null>(null);
+  const [optimizationResult,setOptimizationResult]=useState<BuilderOptimizationResult|null>(null);
+  const [optimizationChecking,setOptimizationChecking]=useState(false);
+  const [optimizationError,setOptimizationError]=useState("");
+  const optimizationGateRef=useRef<ReturnType<typeof createLatestJourneyCaptureRequestGate>|null>(null);
+  if(!optimizationGateRef.current)optimizationGateRef.current=createLatestJourneyCaptureRequestGate();
+  const optimizationProposal=optimizationResult?.kind==="proposal"?optimizationResult.proposal:null;
+  const optimizationStale=Boolean(optimizationProposal&&(!mountedBuilder||!acceptBuilderOptimization(mountedBuilder.snapshot.trip,optimizationProposal,{ownerId:mountedBuilder.snapshot.browserOwnerId,tripId:mountedBuilder.snapshot.trip.id,inputRevision:mountedBuilder.snapshot.inputRevision}).ok));
+  useEffect(()=>()=>optimizationGateRef.current?.cancel(),[]);
+  useEffect(()=>{optimizationGateRef.current?.cancel();setOptimizationChecking(false);setOptimizationResult(result=>result?.kind==="proposal"?result:null);},[mountedBuilder?.session,mountedBuilder?.snapshot.inputRevision,mountedBuilder?.snapshot.browserOwnerId]);
+  useEffect(()=>{setOptimizationResult(null);setOptimizationError("");},[mountedBuilder?.session]);
   const [selectedRouteStopId, setSelectedRouteStopId] = useState<string | null>(null);
   const [keptRouteKey, setKeptRouteKey] = useState<string | null>(null);
   useEffect(() => {
@@ -1956,12 +1969,12 @@ function TripBuilderDocument() {
       discoveryDraftOpen: Boolean(activeClarificationMention
         && capturedStructuredBrief.discoveryDraftByMentionId?.[activeClarificationMention.mentionId]?.version === 1),
       saveBlocked: Boolean(cloudSaveError || deviceRecoveryBlocked || deviceStorageBlocked),
-      competingModal: Boolean(productTourOpen || cloudConflictTrip || pendingStopRemoval || pendingTopType || pendingTopRemoval),
+      competingModal: Boolean(productTourOpen || cloudConflictTrip || pendingStopRemoval || pendingTopType || pendingTopRemoval || optimizationProposal),
     });
     if (!clarificationMustYield) return;
     setClarificationDismissed(true);
     setClarificationOpen(false);
-  }, [activeClarificationMention, capturedStructuredBrief.discoveryDraftByMentionId, clarificationOpen, cloudConflictTrip, cloudSaveError, deviceRecoveryBlocked, deviceStorageBlocked, pendingStopRemoval, pendingTopType, pendingTopRemoval, productTourOpen]);
+  }, [activeClarificationMention, capturedStructuredBrief.discoveryDraftByMentionId, clarificationOpen, cloudConflictTrip, cloudSaveError, deviceRecoveryBlocked, deviceStorageBlocked, pendingStopRemoval, pendingTopType, pendingTopRemoval, productTourOpen, optimizationProposal]);
 
   const openClarificationSession = (preferredMentionId?: string) => {
     if (!pendingClarificationIds.length) return;
@@ -3305,6 +3318,33 @@ function TripBuilderDocument() {
     setKeptRouteKey(null);
     setRouteCheckProposalStopIds(null);
     trackEvent("route_accepted", { method: "recommended_order", stop_count: stops.length, duration_days: totalDays });
+  };
+
+  const requestRouteOptimization=async()=>{
+    const editor=builderEditSessionRef.current;if(!editor)return;
+    const source=editor.getSnapshot();const scope={ownerId:source.browserOwnerId,tripId:source.trip.id,inputRevision:source.inputRevision};
+    const inputKey=routeProjectionInputKey(source.trip),request=optimizationGateRef.current!.begin();
+    setOptimizationChecking(true);setOptimizationResult(null);setOptimizationError("");
+    try{
+      const result=await Promise.resolve().then(()=>calculateBuilderOptimization(source.trip,scope,`${source.trip.id}:${scope.inputRevision}:${Date.now()}`));
+      const latest=editor.getSnapshot();
+      if(!request.isCurrent()||builderEditSessionRef.current!==editor||latest.browserOwnerId!==scope.ownerId||latest.inputRevision!==scope.inputRevision||routeProjectionInputKey(latest.trip)!==inputKey)return;
+      setOptimizationResult(result);
+    }catch{if(request.isCurrent())setOptimizationResult({kind:"unavailable",reason:"insufficient-data"});}
+    finally{if(request.isCurrent())setOptimizationChecking(false);request.finish();}
+  };
+  const keepOptimizationOrder=()=>{optimizationGateRef.current?.cancel();setOptimizationResult(null);setOptimizationError("");setOptimizationChecking(false);};
+  const acceptRouteOptimization=()=>{
+    const editor=builderEditSessionRef.current;if(!editor||!optimizationProposal)return;
+    const source=editor.getSnapshot(),scope={ownerId:source.browserOwnerId,tripId:source.trip.id,inputRevision:source.inputRevision};
+    const result=acceptBuilderOptimization(source.trip,optimizationProposal,scope);
+    if(!result.ok){setOptimizationError(language==="es"?"El viaje ha cambiado. Revisa la ruta actual.":"The trip changed. Review the current route.");return;}
+    rememberStructuralChange("apply_route_order",source.trip.stops.length);
+    if(!dispatchAcceptedBuilderEdit(result.command,{expectedInputRevision:optimizationProposal.inputRevision})){
+      setOptimizationError(language==="es"?"No pudimos aplicar este orden. Tu ruta actual sigue guardada.":"We could not apply this order. Your current route remains preserved.");return;
+    }
+    keepOptimizationOrder();setKeptRouteKey(null);
+    trackEvent("route_accepted",{method:"recommended_order",stop_count:source.trip.stops.length,duration_days:totalDays});
   };
 
   const applyScoredRouteCandidate = (candidateIndex: number, stopIds: string[]) => {
@@ -4960,6 +5000,7 @@ function TripBuilderDocument() {
               </section>}
               {(hasRouteSkeleton || hasPromptContext || showStopEditor || pendingClarificationIds.length > 0 || inlineStopBaseMention) && <section className={styles.tripUnderstood} aria-label={language === "es" ? "Viaje entendido" : "Trip understood"}>
                 {mountedBuilder ? <TripBuilderTopControls trip={mountedBuilder.snapshot.trip} draft={mountedBuilder.snapshot.draft} language={language}
+                  onUpdateRoute={()=>{void requestRouteOptimization();}} updatingRoute={optimizationChecking}
                   disabled={Boolean(mountedBuilder.snapshot.error?.category === "protected")}
                   onType={type=>{
                     const snapshot=mountedBuilder.session.getSnapshot();
@@ -5316,6 +5357,9 @@ function TripBuilderDocument() {
                 title={language === "es" ? "No pudimos actualizar esta parte del viaje" : "This part of the trip could not be updated"}
                 actions={<EasyTButton variant="quiet" size="small" onClick={()=>mountedBuilder.session.retryNecessaryUnit(unit)}>{language === "es" ? "Reintentar" : "Try again"}</EasyTButton>} />)}
               {nightEditFeedback ? <MorroviaStatusBanner className={styles.nightBalanceNotice} tone={nightEditFeedback.tone} title={nightEditFeedback.title} detail={nightEditFeedback.detail} /> : null}
+              {optimizationResult&&optimizationResult.kind!=="proposal"?<MorroviaStatusBanner tone={optimizationResult.kind==="unavailable"?"warning":"info"}
+                title={optimizationResult.kind==="unavailable"?(language==="es"?"No se pudo comprobar la ruta":"Route check unavailable"):(language==="es"?"No se encontró un orden mejor":"No better order found")}
+                detail={optimizationResult.kind==="unavailable"?(language==="es"?"Tus lugares, fechas y reservas se mantienen. No se ha cambiado el orden.":"Your places, dates and bookings are kept. The order has not changed."):(language==="es"?"Se mantiene el orden actual con tus fechas, reservas y preferencias.":"The current order is kept with your dates, bookings and preferences.")}/>:null}
               {mountedBuilder ? <TripBuilderRetainedReview trip={mountedBuilder.snapshot.trip} language={language}
                 onMove={(selection,target)=>dispatchAcceptedBuilderEdit({kind:"retained-content-move",selection,target},{expectedInputRevision:mountedBuilder.snapshot.inputRevision})}
                 onRemove={selection=>dispatchAcceptedBuilderEdit({kind:"retained-content-remove",selection},{expectedInputRevision:mountedBuilder.snapshot.inputRevision})}/> : null}
@@ -5325,7 +5369,7 @@ function TripBuilderDocument() {
                 selectedStopId={selectedRouteStopId}
                 lockedStopIds={scheduleLocks.stopIds}
                 fixedOrder={Boolean(structuredRouteConstraints.fixedCommitments?.length)}
-                routeCheckProposalStopIds={currentRouteCheckProposalStopIds}
+                routeCheckProposalStopIds={optimizationProposal&&!optimizationStale?optimizationProposal.projectedTrip.stops.map(stop=>stop.id):currentRouteCheckProposalStopIds}
                 nightStatus={{ total: totalNights, allocated: allocatedNights, complete: allNightsAllocated, language }}
                 onSelectStop={setSelectedRouteStopId}
                 onPreviewOrder={setRoutePreviewStopIds}
@@ -6009,6 +6053,7 @@ function TripBuilderDocument() {
         </div>
       </div>
       }
+      {mountedBuilder?<TripBuilderRouteProposal current={mountedBuilder.snapshot.trip} proposal={optimizationProposal} assessment={optimizationResult?.assessment} language={language} stale={optimizationStale} error={optimizationError} onKeep={keepOptimizationOrder} onAccept={acceptRouteOptimization}/>:null}
       <MorroviaConfirmationDialog
         open={buildAttentionReviewOpen && buildAttention.length > 0}
         eyebrow={language === "es" ? "NECESITA ATENCIÓN" : "NEEDS ATTENTION"}

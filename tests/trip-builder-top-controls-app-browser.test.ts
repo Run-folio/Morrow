@@ -24,7 +24,7 @@ test('top controls have two type choices, unordered chips, one add owner and col
  assert.equal(await h.view.page.getByRole('button',{name:'Add destination',exact:true}).count(),1);assert.equal(await h.view.page.getByRole('combobox',{name:'Add a stop',exact:true}).count(),0);
  assert.equal(await top.locator('[data-destination-intent-id]').count(),3);assert.equal(await top.locator('[draggable]').count(),0);
  assert.equal(await top.locator('details[open]').count(),0);await top.locator('summary').click();assert.equal(await top.getByRole('button',{name:'Relaxed',exact:true}).count(),1);
- assert.equal(await top.getByRole('button',{name:'Update route',exact:true}).isDisabled(),true,'proposal task remains held');assert.deepEqual(h.view.errors,[]);
+ assert.equal(await top.getByRole('button',{name:'Update route',exact:true}).isDisabled(),false,'optional proposal action is available');assert.deepEqual(h.view.errors,[]);
  }finally{await h.view.close()}
 });
 test('partial origin and exact intent replacement input survive budget save and reload without changing canonical places',{skip:!enabled,timeout:30000},async()=>{

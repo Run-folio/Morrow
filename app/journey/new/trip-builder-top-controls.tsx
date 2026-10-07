@@ -12,13 +12,13 @@ import type { CanonicalPlaceSuggestion } from '@/lib/easyt/place-intelligence';
 import styles from './trip-builder-top-controls.module.css';
 
 type Type= 'return_to_start'|'one_way';
-export function TripBuilderTopControls({trip,draft,language,disabled=false,onType,onOriginInput,onOriginSelect,onOriginClear,onDates,onDateInput,onTravellers,onBudget,onAdd,onEditIntent,onRemoveIntent,onIntentInput,onIntentSelect,personalize,originReview,dateReview,onUpdateRoute}:{
+export function TripBuilderTopControls({trip,draft,language,disabled=false,onType,onOriginInput,onOriginSelect,onOriginClear,onDates,onDateInput,onTravellers,onBudget,onAdd,onEditIntent,onRemoveIntent,onIntentInput,onIntentSelect,personalize,originReview,dateReview,onUpdateRoute,updatingRoute=false}:{
  trip:CanonicalEasyTTrip;draft:BuilderInputDraft;language:'en'|'es';disabled?:boolean;
  onType:(type:Type)=>void;onOriginInput:(raw:string)=>void;onOriginSelect:(place:CanonicalPlaceSuggestion)=>void;onOriginClear:()=>void;
  onDates:(start:string,end:string)=>void;onDateInput:(field:"startDate"|"endDate",raw:string)=>void;onTravellers:(n:number)=>void;onBudget:(budget:CanonicalEasyTTrip['brief']['budgetBand'])=>void;
  onAdd:()=>void;onEditIntent:(intent:DestinationIntent)=>boolean;onRemoveIntent:(intent:DestinationIntent)=>void;
  onIntentInput:(id:string,raw:string)=>void;onIntentSelect:(intent:DestinationIntent,place:CanonicalPlaceSuggestion)=>boolean;
- personalize:ReactNode;originReview?:ReactNode;dateReview?:ReactNode;onUpdateRoute?:()=>void;
+ personalize:ReactNode;originReview?:ReactNode;dateReview?:ReactNode;onUpdateRoute?:()=>void;updatingRoute?:boolean;
 }) {
  const es=language==='es';const route=trip.brief.intent.route;
  const [editingId,setEditingId]=useState<string|null>(()=>draft.fields.find(f=>f.binding.kind==='destination'&&f.status==='editable')?.binding.kind==='destination' ? (draft.fields.find(f=>f.binding.kind==='destination'&&f.status==='editable')!.binding as {intentId:string}).intentId:null);
@@ -62,6 +62,6 @@ export function TripBuilderTopControls({trip,draft,language,disabled=false,onTyp
    </EasyTSelect>
   </div>
   <details className={styles.personalize}><summary><SlidersHorizontal aria-hidden="true"/><span><strong>{es?'Personalizar':'Personalize'} <small>({es?'opcional':'optional'})</small></strong><small>{es?'Intereses, ritmo y preferencias':'Interests, pace and preferences'}</small></span><ChevronDown aria-hidden="true"/></summary><div>{personalize}</div></details>
-  <div className={styles.actions}><span>{days} {es?'días':'days'}</span><EasyTButton icon={ArrowRight} disabled={disabled||!onUpdateRoute} onClick={onUpdateRoute}>{es?'Actualizar ruta':'Update route'}</EasyTButton></div>
+  <div className={styles.actions}><span>{days} {es?'días':'days'}</span><EasyTButton icon={ArrowRight} loading={updatingRoute} disabled={disabled||!onUpdateRoute} onClick={onUpdateRoute}>{es?'Actualizar ruta':'Update route'}</EasyTButton></div>
  </section>;
 }

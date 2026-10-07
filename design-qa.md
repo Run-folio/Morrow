@@ -2341,3 +2341,12 @@ Written decisions take precedence over numbered chips, repeated explanatory copy
 No table/map layout, global tokens, navigation, locale policy or persistence policy changed. The table gains only a stable occurrence-ID data attribute for the existing real mouse test. Map tiles/loading phases vary between captures; no basemap pixel equality or live routing-resolution claim is made. Spanish is an explicit component/event fixture because the beta renders English by policy. The existing sticky Build bar remains visible in full-page/cropped mobile evidence and was not redesigned.
 
 Typecheck, build:check, strict UI audit, Storybook build and diff checks pass. Independent Task4 review is the remaining gate before Task5 or14D/all20. No push, staging or production deployment.
+
+
+## Batch14C Task5 — optional route proposal checkpoint (7 October 2026)
+
+The page-owned route proposal reuses MorroviaContentDialog, EasyTButton, existing route-status action layout and the existing map comparison projection. No new shared primitive, CSS, tokens, table or map layout. It presents the accepted origin/finish, current/proposed stays and nights, and explicitly estimated travel time; repeated names include their current occurrence number. Keep and Escape restore Update-route focus, while stale proposals block Apply.
+
+Actual local Next captures at390/430/768/1440 are in ../batch14c-t5-visuals; all four dialog crops were opened. The canonical content-modal surface remains legible, fits each width without document/dialog overflow and has44px mobile/48px larger action targets. Screenshots use disposable guest recovery, mocked external APIs and the existing browser runtime; they do not certify live provider/SQL or represent an unprovided Task5 mockup. Existing surrounding table/map/navigation composition is preserved.
+
+Storybook covers proposed order, newer-edit rejection and repeated stops in Spanish. The stories build; no Spanish styled browser capture/play certification is claimed. Mounted tests cover Keep/Escape, focus, raw origin preservation, no improvement/unavailable evidence, source invalidation, Apply across four authority modes, autosave and later ordinary edits/reload. Scope-level QA passes pending independent Task5 review; Task6/14D/full20/release remain held.

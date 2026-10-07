@@ -1,0 +1,44 @@
+import assert from 'node:assert/strict';
+import test from 'node:test';
+import {renderBuilder} from './helpers/builder-render.ts';
+import {canonicalRouteFixture} from './fixtures/batch14-route-documents.ts';
+import {requireReadableTripDocument} from '../lib/easyt/trip-document.ts';
+import {canonicalTripForOwner} from '../lib/easyt/trip-promotion.ts';
+import {prepareBuilderHandlerEdit} from '../lib/easyt/trip-builder-handler-contract.ts';
+import {builderDocumentFingerprint} from '../lib/easyt/trip-builder-document-commit.ts';
+import {routeProjectionInputKey} from '../lib/easyt/trip-route-intent.ts';
+import {nextTripUpdatedAt} from '../lib/easyt/trip-continuity.ts';
+const enabled=process.env.MORROVIA_BUILDER_APP_BROWSER_TESTS==='1';
+async function fixture(authority:'manual'|'explicit'|'legacy_preserved'|'optimizable'='manual',good=false,unknown=false){
+ let cloud=requireReadableTripDocument(canonicalRouteFixture());cloud.brief.bookings=[];cloud.brief.intent.hardConstraints.fixedCommitments=[];cloud.brief.intent.route.origin={name:'London',canonicalPlaceId:'place:london',country:'United Kingdom',coordinates:[-.1276,51.5072]};
+ if(!good){const edited=prepareBuilderHandlerEdit(cloud,{kind:'order',stopIds:['tokyo','hiroshima','kyoto']},builderDocumentFingerprint(cloud));assert.ok(edited.ok);if(edited.ok)cloud=edited.trip}
+ cloud.brief.intent.route.orderAuthority=authority;cloud.brief.intent.route.explicitIntentIds=authority==='explicit'?cloud.brief.intent.route.destinations.map(i=>i.id):null;
+ if(cloud.brief.cascadeStatus)delete cloud.brief.cascadeStatus.routeReconciliation;
+ cloud=requireReadableTripDocument(canonicalTripForOwner('owner-a',cloud));
+ if(unknown){cloud.stops[1]!.longitude=null;cloud.stops[1]!.latitude=null}
+ cloud.brief.intent.route.projectionInputKey=routeProjectionInputKey(cloud);const initial=structuredClone(cloud);const writes:typeof cloud[]=[];
+ const view=await renderBuilder({initialTrip:cloud,seedRecovery:false,ownerId:'owner-a',query:`?trip=${cloud.id}`,accountRequest:({method,trip})=>{if(method==='GET')return {status:200,body:{trip:cloud}};const next=requireReadableTripDocument(trip);if(next.updatedAt!==cloud.updatedAt)return {status:409,body:{trip:cloud,conflictReason:'cloud-changed'}};writes.push(structuredClone(next));cloud={...next,updatedAt:nextTripUpdatedAt(cloud.updatedAt)};return {status:200,body:{trip:cloud}}}});
+ view.page.setDefaultTimeout(4000);await view.page.locator('[data-builder-top-controls]').waitFor();return {view,cloud:()=>cloud,initial,writes};
+}
+async function until(h:Awaited<ReturnType<typeof fixture>>,condition:()=>boolean){for(let i=0;i<60;i++){if(condition())return;await h.view.page.waitForTimeout(100)}assert.ok(condition())}
+test('Update route preview Keep and Escape leave canonical bytes and saves unchanged and restore focus',{skip:!enabled,timeout:30000},async()=>{
+ const h=await fixture();try{const button=h.view.page.getByRole('button',{name:'Update route',exact:true}),before=JSON.stringify(h.cloud());await h.view.page.getByRole('combobox',{name:'Starting from',exact:true}).fill('Lon partial');for(const dismiss of ['Keep','Escape']){await button.click();const dialog=h.view.page.getByRole('dialog',{name:'Review route order',exact:true});await dialog.waitFor();assert.match(await dialog.innerText(),/Current order[\s\S]*Tokyo[\s\S]*Hiroshima[\s\S]*Kyoto[\s\S]*Proposed order[\s\S]*Tokyo[\s\S]*Kyoto[\s\S]*Hiroshima/);assert.equal(JSON.stringify(h.cloud()),before);assert.equal(h.writes.length,0);assert.equal(await dialog.getByRole('button',{name:'Keep current order',exact:true}).evaluate((element:Element)=>document.activeElement===element),true);if(dismiss==='Keep')await dialog.getByRole('button',{name:'Keep current order',exact:true}).click();else await h.view.page.keyboard.press('Escape');await dialog.waitFor({state:'hidden'});await h.view.page.waitForFunction(()=>document.activeElement?.textContent==='Update route');assert.equal(JSON.stringify(h.cloud()),before);assert.equal(h.writes.length,0);assert.equal(await h.view.page.getByRole('combobox',{name:'Starting from',exact:true}).inputValue(),'Lon partial')}assert.deepEqual(h.view.errors,[])}finally{await h.view.close()}
+});
+test('no improvement leaves canonical bytes unchanged and reports current order kept',{skip:!enabled,timeout:30000},async()=>{
+ const h=await fixture('manual',true);try{const before=JSON.stringify(h.cloud());await h.view.page.getByRole('button',{name:'Update route',exact:true}).click();await h.view.page.getByText('No better order found',{exact:true}).waitFor();assert.equal(await h.view.page.getByRole('dialog').count(),0);assert.equal(JSON.stringify(h.cloud()),before);assert.equal(h.writes.length,0);await h.view.page.getByRole('combobox',{name:'Budget',exact:true}).selectOption('high');await h.view.page.getByText('No better order found',{exact:true}).waitFor({state:'hidden'});assert.deepEqual(h.view.errors,[])}finally{await h.view.close()}
+});
+test('insufficient route evidence reports unavailable without saving or inventing an improvement',{skip:!enabled,timeout:30000},async()=>{
+ const h=await fixture('manual',false,true);try{const before=JSON.stringify(h.cloud());await h.view.page.getByRole('button',{name:'Update route',exact:true}).click();await h.view.page.getByText('Route check unavailable',{exact:true}).waitFor();assert.equal(JSON.stringify(h.cloud()),before);assert.equal(h.writes.length,0);assert.deepEqual(h.view.errors,[])}finally{await h.view.close()}
+});
+test('a proposal cannot apply after a newer night edit and its rejection preserves the newer route',{skip:!enabled,timeout:30000},async()=>{
+ const h=await fixture();try{await h.view.page.getByRole('button',{name:'Update route',exact:true}).click();const dialog=h.view.page.getByRole('dialog',{name:'Review route order',exact:true});await dialog.waitFor();
+ // Represents an already-dispatched edit finishing while the modal is open; use the real existing night handler.
+ await h.view.page.getByRole('button',{name:/Add one night to Kyoto/}).evaluate((button:HTMLButtonElement)=>button.click());
+ await dialog.getByRole('alert').filter({hasText:'The trip changed'}).waitFor();assert.equal(await dialog.getByRole('button',{name:'Apply order',exact:true}).isDisabled(),true);await dialog.getByRole('button',{name:'Keep current order',exact:true}).click();await until(h,()=>h.cloud().stops.find(s=>s.name==='Kyoto')!.nights===4);assert.deepEqual(h.cloud().brief.intent.route.orderedStopIds,h.initial.brief.intent.route.orderedStopIds);assert.deepEqual(h.view.errors,[])}finally{await h.view.close()}
+});
+for(const authority of ['explicit','manual','legacy_preserved','optimizable'] as const)test(`${authority} order changes only on Apply order and autosaves through the existing lifecycle`,{skip:!enabled,timeout:30000},async()=>{
+ const h=await fixture(authority);try{await h.view.page.getByRole('button',{name:'Update route',exact:true}).click();const dialog=h.view.page.getByRole('dialog',{name:'Review route order',exact:true});await dialog.waitFor();assert.deepEqual(h.cloud(),h.initial);assert.equal(h.writes.length,0);await dialog.getByRole('button',{name:'Apply order',exact:true}).click();await dialog.waitFor({state:'hidden'});await until(h,()=>h.cloud().stops.map(s=>s.name).join('|')==='Tokyo|Kyoto|Hiroshima');await h.view.page.waitForFunction(()=>!Object.keys(localStorage).some(key=>key.startsWith('easyt:trip-recovery:v2:')));
+ const next=h.cloud();assert.equal(next.brief.intent.route.orderAuthority,'manual');assert.deepEqual(next.brief.intent.route.destinations,h.initial.brief.intent.route.destinations);assert.deepEqual(next.brief.intent.route.origin,h.initial.brief.intent.route.origin);assert.deepEqual(next.brief.intent.route.journeyEnd,h.initial.brief.intent.route.journeyEnd);assert.deepEqual(next.brief.bookings,h.initial.brief.bookings);for(const stop of next.stops){const prior=h.initial.stops.find(s=>s.id===stop.id)!;assert.equal(stop.nights,prior.nights);assert.equal(stop.canonicalPlaceId,prior.canonicalPlaceId)}for(const day of next.planItems){const prior=h.initial.planItems.find(d=>d.id===day.id)!;assert.deepEqual(day.notes,prior.notes);assert.equal(day.bookingUrl,prior.bookingUrl)}assert.ok(h.writes.length>0);
+ const acceptedIds=[...next.brief.intent.route.orderedStopIds];await h.view.page.getByRole('combobox',{name:'Budget',exact:true}).selectOption('high');await until(h,()=>h.cloud().brief.budgetBand==='high');assert.deepEqual(h.cloud().brief.intent.route.orderedStopIds,acceptedIds);await h.view.page.reload();await h.view.page.locator('[data-builder-top-controls]').waitFor();assert.deepEqual(h.cloud().brief.intent.route.orderedStopIds,acceptedIds);assert.equal(await h.view.page.getByRole('dialog').count(),0);assert.deepEqual(h.view.errors,[])
+ }finally{await h.view.close()}
+});
