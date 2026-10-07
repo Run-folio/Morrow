@@ -39,6 +39,11 @@ export function TripBuilderDetailsEditor({
   onCommit,
   className,
   children,
+  rawOrigin,
+  onCancelOrigin,
+  onDatesChange,
+  onTravellersChange,
+  onBudgetChange,
 }: {
   language: "en" | "es";
   startPlace: JourneyEndpointPlace;
@@ -55,9 +60,14 @@ export function TripBuilderDetailsEditor({
   onCommit: (draft: TripBuilderDetailsDraft, sourceFingerprint: string) => Promise<boolean> | boolean;
   className?: string;
   children: (controls: TripBuilderDetailsDraftControls) => ReactNode;
+  rawOrigin?: string;
+  onCancelOrigin?: () => void;
+  onDatesChange?: (start: string, end: string) => void;
+  onTravellersChange?: (value: number) => void;
+  onBudgetChange?: (value: BudgetBand) => void;
 }) {
   const canonicalDraft: TripBuilderDetailsDraft = {
-    journeyOrigin: startPlace,
+    journeyOrigin: rawOrigin === undefined ? startPlace : {name:rawOrigin},
     journeyEnd: endSelection,
     journeyEndInput: endSelection.mode === "explicit" ? endSelection.place.name : "",
     startDate,
@@ -76,7 +86,8 @@ export function TripBuilderDetailsEditor({
   }, [sourceFingerprint]);
 
   const cancel = () => {
-    setDraft(canonicalDraftRef.current);
+    onCancelOrigin?.();
+    setDraft({...canonicalDraftRef.current, journeyOrigin:startPlace});
     setDraftFingerprint(sourceFingerprint);
     setDraftRevision((current) => current + 1);
   };
@@ -98,7 +109,7 @@ export function TripBuilderDetailsEditor({
             endLabel={language === "es" ? "Fecha final" : "End date"}
             startValue={draft.startDate}
             endValue={draft.endDate}
-            onChange={(range) => setDraft((current) => ({ ...current, startDate: range.start, endDate: range.end }))}
+            onChange={(range) => {setDraft((current) => ({ ...current, startDate: range.start, endDate: range.end }));onDatesChange?.(range.start,range.end);}}
           />
           {dateHint ? <div>
             <p className={styles.hint}>{draft.startDate !== startDate || draft.endDate !== endDate
@@ -116,12 +127,12 @@ export function TripBuilderDetailsEditor({
           value={draft.travellers}
           min={1}
           max={12}
-          onChange={(value) => setDraft((current) => ({ ...current, travellers: value }))}
+          onChange={(value) => {setDraft((current) => ({ ...current, travellers: value }));onTravellersChange?.(value);}}
         />
         <EasyTSelect
           label={language === "es" ? "Presupuesto" : "Budget"}
           value={draft.budget}
-          onChange={(event) => setDraft((current) => ({ ...current, budget: event.target.value as BudgetBand }))}
+          onChange={(event) => {setDraft((current) => ({ ...current, budget: event.target.value as BudgetBand }));onBudgetChange?.(event.target.value as BudgetBand);}}
         >
           <option value="value">{language === "es" ? "Ajustado" : "Value"}</option>
           <option value="mid">{language === "es" ? "Medio" : "Mid"}</option>

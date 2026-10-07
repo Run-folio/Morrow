@@ -3,9 +3,9 @@ import { requireReadableTripDocument, prepareTripDocumentForWrite } from './trip
 import { builderStructuralSnapshot, type BuilderAcceptedEdit, type BuilderStructuralSnapshot } from './trip-builder-edit.ts';
 import { builderDocumentFingerprint } from './trip-builder-document-commit.ts';
 import { prepareBuilderHandlerEdits } from './trip-builder-handler-contract.ts';
-import { createBuilderInputDraft, updateBuilderInputDraft, rebindBuilderInputDraft, consumeBuilderInputDraft, remapBuilderInputDraftIdentity,
+import { createBuilderInputDraft, updateBuilderInputDraft, rebindBuilderInputDraft, consumeBuilderInputDraft, remapBuilderInputDraftIdentity, discardBuilderInputDraftField,
   type BuilderInputBinding, type BuilderInputDraft, type BuilderInputReadResult, type writeBuilderInputDraft } from './trip-builder-input-draft.ts';
-import { pendingBuilderReconciliationUnits, mergeBuilderProjectionResponse,
+import { pendingBuilderReconciliationUnits, mergeBuilderProjectionResponse, retryBuilderReconciliationUnit,
   type BuilderEditScope, type BuilderProjectionResponse } from './trip-builder-reconciliation.ts';
 import { routeProjectionInputKey, routeProjectionStatus } from './trip-route-intent.ts';
 import { createTripMutationPersistenceQueue, mergeTripMutationDocuments } from './trip-mutation-persistence.ts';
@@ -325,6 +325,17 @@ export function createBuilderEditSession(options: BuilderEditSessionOptions) {
     },
     acceptBatch: acceptEdits,
     resumeNecessaryWork,
+    discardDraft(binding: BuilderInputBinding) {
+      if(!active() || draftProtected) return false;
+      draft=discardBuilderInputDraftField(draft,binding,draft.inputRevision);inputRevision=draft.inputRevision;
+      const stored=writeDraft();scheduleWork();if(stored)scheduleCloud();publish();return stored;
+    },
+    retryNecessaryUnit(unit: Unit) {
+      if(!active() || draftProtected) return false;
+      const prepared=retryBuilderReconciliationUnit(trip,unit);
+      if(!prepared.ok || !storeCanonical(prepared.trip,trip)) return false;
+      draft=rebindBuilderInputDraft(draft,trip,ownerId);if(writeDraft())scheduleCloud();scheduleWork();publish();return true;
+    },
     retrySave() {
       if (!active() || historicalRecovery || draftProtected || pauseReason === 'conflict' || pauseReason === 'auth'
         || pauseReason === 'validation' || error?.category === 'protected') return false;

@@ -6,8 +6,9 @@ import { routeIntentForAcceptedBuilderOrder, validateBuilderStopOrder } from "./
 import { buildCanonicalTripLegs, routeEndpointForLeg } from "./trip-legs.ts";
 import { clearTripLegTransportChoice, selectTripLegTransportChoice, supportedTransportChoicesForLeg } from "./transport-mode-choice.ts";
 import { tripInterestIds } from "./trip-interest.ts";
-import { structuredTripBriefFromSavedSelections } from "./structured-trip-brief.ts";
-import { placeMentionSupportsMultipleSelections, type PlaceSelection } from "./place-intelligence.ts";
+import { structuredTripBriefFromSavedSelections, mergeStructuredTripBrief } from "./structured-trip-brief.ts";
+import { placeMentionSupportsMultipleSelections, placeResolutionIssuesForMentions, type ResolvedPlaceMention, type PlaceSelection } from "./place-intelligence.ts";
+import { DISCOVERY_DRAFT_VERSION, readDiscoveryDraft, type DiscoveryDraft } from "./discovery-draft.ts";
 import type { BudgetBand, CanonicalEasyTTrip, DestinationIntent, JourneyEndpointPlace, RouteIntent, TripStop, TripIntent } from "./trip.ts";
 
 import type { RouteReconciliationScope } from "./trip.ts";
@@ -22,7 +23,7 @@ export type BuilderStructuralSnapshot = Pick<CanonicalEasyTTrip, "id" | "ownerId
   hardConstraints: TripIntent["hardConstraints"];
   timing: TripIntent["timing"];
   structuredRouting?: Pick<NonNullable<CanonicalEasyTTrip["brief"]["structuredBrief"]>,
-    "destinations" | "mustVisit" | "placeSelections" | "removedPlaceMentionIds" | "countryDiscoveryChoices" | "discoveryDraftByMentionId">;
+    "destinations" | "mustVisit" | "placeSelections" | "placeMentions" | "placeIssues" | "completedPlanningAreaMentionIds" | "removedPlaceMentionIds" | "countryDiscoveryChoices" | "discoveryDraftByMentionId">;
 };
 type DestinationSelection = {
   intentId: string; stopId: string; place: JourneyEndpointPlace;
@@ -46,10 +47,14 @@ export type BuilderAcceptedEdit =
   | { kind: "schedule-locks"; locks: NonNullable<CanonicalEasyTTrip["brief"]["scheduleLocks"]> }
   | { kind: "picks"; stopId: string; titles: string[] }
   | { kind: "planning-selection"; selection: PlaceSelection }
+  | { kind: "planning-area"; mentionId: string; action: "complete" | "reopen" | "remove" }
+  | { kind: "planning-mention"; mention: ResolvedPlaceMention; action: "add" | "cancel" }
+  | { kind: "planning-mention"; mention: ResolvedPlaceMention; action: "replace"; expectedMention: ResolvedPlaceMention }
+  | { kind: "discovery-state"; mentionId: string; draft?: DiscoveryDraft; choiceIds?: string[] }
   | { kind: "build-status" }
   | { kind: "order"; stopIds: string[]; source?: "drag" | "move-menu" | "route-check" }
   | { kind: "transport"; legId: string; identity: string | null }
-  | { kind: "structural-inverse"; snapshot: BuilderStructuralSnapshot }
+  | { kind: "structural-inverse"; snapshot: BuilderStructuralSnapshot; restoreDates?: boolean }
   | { kind: "retained-content-remove"; selection: RetainedContentSelection }
   | { kind: "retained-content-move"; selection: RetainedContentSelection; target: {stopId:string;dayId:string} };
 type Rejection = "stale-source" | "invalid-input" | "endpoint-conflict" | "binding-conflict";
@@ -112,6 +117,8 @@ export function builderStructuralSnapshot(trip: CanonicalEasyTTrip): BuilderStru
     scheduleLocks: trip.brief.scheduleLocks, hardConstraints: trip.brief.intent.hardConstraints, timing: trip.brief.intent.timing,
     ...(trip.brief.structuredBrief ? { structuredRouting: { destinations: trip.brief.structuredBrief.destinations,
       mustVisit: trip.brief.structuredBrief.mustVisit, placeSelections: trip.brief.structuredBrief.placeSelections,
+      placeMentions: trip.brief.structuredBrief.placeMentions, placeIssues: trip.brief.structuredBrief.placeIssues,
+      completedPlanningAreaMentionIds: trip.brief.structuredBrief.completedPlanningAreaMentionIds,
       removedPlaceMentionIds: trip.brief.structuredBrief.removedPlaceMentionIds, countryDiscoveryChoices: trip.brief.structuredBrief.countryDiscoveryChoices,
       discoveryDraftByMentionId: trip.brief.structuredBrief.discoveryDraftByMentionId } } : {}) });
 }
@@ -254,6 +261,7 @@ export function prepareAcceptedBuilderEdit(current: CanonicalEasyTTrip, edit: Bu
               || item.stopId !== undefined && !trip.stops.some(stop => stop.id === item.stopId)
               || item.fixedNights !== undefined && !integer(item.fixedNights)))) return reject("invalid-input");
         trip.brief.intent.hardConstraints = { ...trip.brief.intent.hardConstraints, ...structuredClone(c) };
+        if(trip.brief.structuredBrief && c.fixedCommitments)trip.brief.structuredBrief=mergeStructuredTripBrief(trip.brief.structuredBrief,{fixedCommitments:c.fixedCommitments});
         if (c.optionalStopIds) {
           trip.brief.intent.hardConstraints.mustSeeStopIds = trip.stops.filter(stop => !c.optionalStopIds!.includes(stop.id)).map(stop => stop.id);
           route.destinations = route.destinations.map(intent => intent.stopIds.length ? { ...intent,
@@ -279,16 +287,65 @@ export function prepareAcceptedBuilderEdit(current: CanonicalEasyTTrip, edit: Bu
         trip.brief.selectedPlaces = { ...trip.brief.selectedPlaces, [edit.stopId]: structuredClone(edit.titles) };
         break;
       }
+      case "discovery-state": {
+        const brief=trip.brief.structuredBrief;
+        if(!brief?.placeMentions?.some(mention=>mention.mentionId===edit.mentionId)
+          || readDiscoveryDraft(brief,edit.mentionId).status==="unsupported-version"
+          || edit.draft && (edit.draft.version!==DISCOVERY_DRAFT_VERSION || !Array.isArray(edit.draft.shortlistIds))
+          || edit.choiceIds && (!Array.isArray(edit.choiceIds) || edit.choiceIds.some(id=>!nonempty(id)))) return reject("binding-conflict");
+        if(edit.draft)brief.discoveryDraftByMentionId={...brief.discoveryDraftByMentionId,[edit.mentionId]:structuredClone(edit.draft)};
+        if(edit.choiceIds)brief.countryDiscoveryChoices={...brief.countryDiscoveryChoices,[edit.mentionId]:[...new Set(edit.choiceIds)]};
+        break;
+      }
+      case "planning-mention": {
+        const brief=trip.brief.structuredBrief, mention=edit.mention;
+        if (!brief || !mention || !nonempty(mention.mentionId)) return reject("binding-conflict");
+        const prior=brief.placeMentions?.find(item=>item.mentionId===mention.mentionId);
+        if(edit.action === "cancel") {
+          if(!prior || JSON.stringify(prior)!==JSON.stringify(mention) || brief.placeSelections?.some(s=>s.mentionId===mention.mentionId)
+            || route.destinations.some(intent=>intent.id===mention.mentionId && intent.stopIds.length)) return reject("binding-conflict");
+          brief.placeMentions=brief.placeMentions!.filter(item=>item.mentionId!==mention.mentionId);
+        } else if(edit.action === "add") {
+          if(prior && JSON.stringify(prior)!==JSON.stringify(mention)) return reject("binding-conflict");
+          brief.placeMentions=prior?brief.placeMentions:[...(brief.placeMentions??[]),structuredClone(mention)];
+        } else if(edit.action === "replace") {
+          if(!prior || JSON.stringify(prior)!==JSON.stringify(edit.expectedMention)
+            || mention.mentionId!==edit.expectedMention.mentionId) return reject("binding-conflict");
+          brief.placeMentions=brief.placeMentions!.map(item=>item.mentionId===mention.mentionId?structuredClone(mention):item);
+        } else return reject("invalid-input");
+        brief.placeIssues=placeResolutionIssuesForMentions(brief.placeMentions??[]);
+        brief.removedPlaceMentionIds=brief.removedPlaceMentionIds?.filter(id=>id!==mention.mentionId);
+        break;
+      }
+      case "planning-area": {
+        const brief=trip.brief.structuredBrief;
+        if(!brief?.placeMentions?.some(mention=>mention.mentionId===edit.mentionId)) return reject("binding-conflict");
+        const selections=brief.placeSelections??[], completed=brief.completedPlanningAreaMentionIds??[];
+        if(edit.action === "complete") {
+          if(!selections.some(s=>s.mentionId===edit.mentionId && trip.stops.some(stop=>stop.id===s.routeStopId))) return reject("binding-conflict");
+          brief.completedPlanningAreaMentionIds=[...new Set([...completed,edit.mentionId])];
+        } else if(edit.action === "reopen" || edit.action === "remove") {
+          brief.completedPlanningAreaMentionIds=completed.filter(id=>id!==edit.mentionId);
+          if(edit.action === "remove") {
+            if(route.destinations.some(intent=>intent.id===edit.mentionId && intent.stopIds.length)) return reject("binding-conflict");
+            brief.placeSelections=selections.filter(s=>s.mentionId!==edit.mentionId);
+            brief.removedPlaceMentionIds=[...new Set([...(brief.removedPlaceMentionIds??[]),edit.mentionId])];
+          }
+        } else return reject("invalid-input");
+        break;
+      }
       case "planning-selection": {
         const s = edit.selection;
         const stop = trip.stops.find(stop => stop.id === s?.routeStopId);
         const mention = trip.brief.structuredBrief?.placeMentions?.find(mention => mention.mentionId === s?.mentionId);
         const intent = route.destinations.find(intent => intent.id === s?.mentionId);
         const prior = trip.brief.structuredBrief?.placeSelections?.some(selection => selection.mentionId === s?.mentionId);
-        if (!s || !stop || !["base", "ambiguity", "visit"].includes(s.kind) || !nonempty(s.selectedCanonicalPlaceId) || !nonempty(s.selectedName)
+        const originSelection = !s?.routeStopId && (mention?.role === "origin" || mention?.role === "fixed_start") && s?.kind === "base"
+          && route.origin?.canonicalPlaceId === s.selectedCanonicalPlaceId;
+        if (!s || (!stop && !originSelection) || !["base", "ambiguity", "visit"].includes(s.kind) || !nonempty(s.selectedCanonicalPlaceId) || !nonempty(s.selectedName)
           || !s.provenance || (!mention && !intent && !prior)
           || s.kind === "visit" && mention?.routability !== "anchor_or_poi"
-          || s.kind !== "visit" && stop.canonicalPlaceId !== s.selectedCanonicalPlaceId) return reject("binding-conflict");
+          || s.kind !== "visit" && !originSelection && stop!.canonicalPlaceId !== s.selectedCanonicalPlaceId) return reject("binding-conflict");
         const brief = trip.brief.structuredBrief ?? structuredTripBriefFromSavedSelections({
           destinations: trip.stops.map(stop => ({ id: stop.id, name: stop.name, canonicalPlaceId: stop.canonicalPlaceId, role: "preferred", priority: "normal" })),
           travellers: trip.travellers, dates: { start: trip.startDate, end: trip.endDate, fixed: trip.brief.intent.timing.flexibility === "fixed" },
@@ -433,6 +490,7 @@ export function prepareAcceptedBuilderEdit(current: CanonicalEasyTTrip, edit: Bu
         if (!s || s.id !== trip.id || s.ownerId !== trip.ownerId) return reject("binding-conflict");
         trip = restoreRetainedAuthoredContent(trip, s.stops) as CanonicalEasyTTrip;
         trip.stops = structuredClone(s.stops);
+        if(edit.restoreDates) { trip.startDate=s.startDate;trip.endDate=s.endDate;trip.brief.intent.timing=structuredClone(s.timing); }
         // Structural stop/order Undo owns membership, requests and authority, not later endpoint/date edits.
         trip.brief.intent.route = { ...structuredClone(s.route), origin: route.origin, tripType: route.tripType, journeyEnd: route.journeyEnd };
         for (const key of ["nightAllocations", "dayAllocations", "manualNightStopIds", "selectedPlaces", "scheduleLocks"] as const) {

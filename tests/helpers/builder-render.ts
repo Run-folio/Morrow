@@ -30,7 +30,8 @@ async function builderBundle() {
       builder.onResolve({ filter: /^next\/(navigation|link|image)$/ }, ({ path }) => ({ path, namespace: "framework" }));
       builder.onResolve({ filter: /^@\/components\/journey-planner-map$/ }, () => ({ path: "map", namespace: "fixture" }));
       builder.onLoad({ filter: /^map$/, namespace: "fixture" }, () => ({ resolveDir: fileURLToPath(new URL("../../", import.meta.url)), contents: `import React,{useEffect} from 'react'; export function JourneyPlannerMap({legs=[],stops=[],selectedId,selectedLegId,onSelect,onLegSelect,onLifecycleChange}){useEffect(()=>onLifecycleChange?.(window.__MORROVIA_MAP_UNAVAILABLE__?'unavailable':'ready'),[onLifecycleChange]);return React.createElement('div',{'aria-label':'Whole-trip route map preview','data-selected-leg-id':selectedLegId??''},[...stops.map(stop=>React.createElement('button',{key:'stop:'+stop.id,type:'button','aria-label':'Map stop '+(stop.city||stop.name),'aria-pressed':stop.id===selectedId,onClick:()=>onSelect?.(stop.id)},stop.city||stop.name)),...legs.map(leg=>React.createElement('button',{key:'leg:'+leg.id,type:'button','aria-label':'Map leg '+leg.fromName+' to '+leg.toName,'aria-pressed':leg.id===selectedLegId,onClick:()=>onLegSelect?.(leg)},leg.fromName+' → '+leg.toName))]);}` }));
-      builder.onResolve({ filter: /^@\/lib\/auth-client$/ }, () => ({ path: fileURLToPath(new URL("../../.storybook/auth-client.mock.ts", import.meta.url)) }));
+      builder.onResolve({ filter: /^@\/lib\/auth-client$/ }, () => ({ path: "auth", namespace: "fixture" }));
+      builder.onLoad({ filter: /^auth$/, namespace: "fixture" }, () => ({resolveDir:fileURLToPath(new URL("../../",import.meta.url)),contents:`import {useState,useEffect} from 'react'; export const authClient={useSession(){const [owner,setOwner]=useState(window.__BUILDER_TEST_OWNER__??null);useEffect(()=>{const update=()=>setOwner(window.__BUILDER_TEST_OWNER__??null);window.addEventListener('builder-test-owner',update);return()=>window.removeEventListener('builder-test-owner',update)},[]);return {data:owner?{user:{id:owner,name:'Test traveller',email:'fixture@example.invalid'}}:null,isPending:false,error:null}},getSession:async()=>({data:window.__BUILDER_TEST_OWNER__?{user:{id:window.__BUILDER_TEST_OWNER__}}:null,error:null})};` }));
       builder.onLoad({ filter: /.*/, namespace: "framework" }, ({ path }) => ({ resolveDir: fileURLToPath(new URL("../../", import.meta.url)), contents: path.endsWith("navigation")
         ? `export const useSearchParams=()=>new URLSearchParams(location.search); export const usePathname=()=>location.pathname; export const useSelectedLayoutSegment=()=>null; export const useRouter=()=>({push:href=>location.assign(href),replace:href=>location.replace(href)});`
         : `import React from 'react'; export default function Component({children, priority, fill, unoptimized, ...props}) {return React.createElement('${path.endsWith("link") ? "a" : "img"}',props,children)}`,
@@ -57,6 +58,9 @@ export async function renderBuilder({
   mapUnavailable = false,
   receiptLockDelayMs = 0,
   language,
+  ownerId,
+  accountRequest,
+  seedRecovery = true,
 }: {
   query?: string;
   draft?: unknown;
@@ -74,6 +78,9 @@ export async function renderBuilder({
   mapUnavailable?: boolean;
   receiptLockDelayMs?: number;
   language?: "en" | "es";
+  ownerId?: string;
+  seedRecovery?: boolean;
+  accountRequest?: (input:{method:string;path:string;trip:unknown}) => Promise<{status:number;body:unknown}> | {status:number;body:unknown};
 } = {}) {
   const script = await builderBundle();
   let captureRequests = 0;
@@ -81,6 +88,12 @@ export async function renderBuilder({
   const server = createServer(async (request, response) => {
     if (request.url?.startsWith("/api/")) {
       const url = new URL(request.url, "http://localhost");
+      if (url.pathname.startsWith("/api/easyt/trips/") && accountRequest) {
+        const chunks:Buffer[]=[];for await(const chunk of request)chunks.push(Buffer.from(chunk));
+        const raw=Buffer.concat(chunks).toString();
+        let result;try{result=await accountRequest({method:request.method??'GET',path:url.pathname,trip:raw?JSON.parse(raw):null})}catch(error){errors.push(`Fixture account boundary failed: ${String(error)}`);response.statusCode=500;response.end(JSON.stringify({error:String(error)}));return;}
+        response.statusCode=result.status;response.setHeader('Content-Type','application/json');response.end(JSON.stringify(result.body));return;
+      }
       if (url.pathname.startsWith("/api/easyt/trips/")) {
         response.statusCode = 404;
         response.setHeader("Content-Type", "application/json");
@@ -156,6 +169,7 @@ export async function renderBuilder({
     ? await webkit.launch({ headless: true })
     : await chromium.launch({ channel: process.env.MORROVIA_BROWSER_CHANNEL ?? "chrome", headless: true });
   const page = await browser.newPage();
+  if(ownerId) await page.addInitScript((owner:string)=>{(window as Window & {__BUILDER_TEST_OWNER__?:string}).__BUILDER_TEST_OWNER__=owner},ownerId);
   const errors: string[] = [];
   page.on("pageerror", (error: Error) => errors.push(error.message));
   if (geocodeDelayMs > 0) await page.route("**/api/journey-geocode?**", async (route: { continue: () => Promise<void> }) => {
@@ -177,7 +191,9 @@ export async function renderBuilder({
     }) as typeof navigator.locks.request;
   }, receiptLockDelayMs);
   if (mapUnavailable) await page.addInitScript(() => { (window as Window & { __MORROVIA_MAP_UNAVAILABLE__?: boolean }).__MORROVIA_MAP_UNAVAILABLE__ = true; });
-  if (initialTrip) await page.addInitScript((value: { id: string; ownerId: string | null } & Record<string, unknown>) => {
+  if (initialTrip && seedRecovery) await page.addInitScript((value: { id: string; ownerId: string | null } & Record<string, unknown>) => {
+    if(sessionStorage.getItem('builder-fixture-seeded'))return;
+    sessionStorage.setItem('builder-fixture-seeded','1');
     const scope = value.ownerId === null ? "guest" : `owner-${encodeURIComponent(value.ownerId)}`;
     const writeId = "browser-fixture";
     localStorage.setItem(`easyt:trip-recovery:v2:${scope}:${encodeURIComponent(value.id)}:${writeId}`, JSON.stringify({

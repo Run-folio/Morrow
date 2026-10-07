@@ -31,12 +31,18 @@ for (const width of [1440, 1024, 390]) test(`real mouse drags Namibia table stop
   const browser = await chromium.launch({ channel: process.env.MORROVIA_BROWSER_CHANNEL ?? "chrome", headless: true });
   try {
     const page = await browser.newPage({ viewport: { width, height: 900 } });
+    await page.route('**/api/**',async(route:{request():{url():string;postDataJSON():{legs?:unknown[]}};fulfill(input:{status:number;contentType:string;body:string}):Promise<void>})=>{
+      const request=route.request(),path=new URL(request.url()).pathname;
+      if(path==='/api/journey-transfer-resolution')return route.fulfill({status:200,contentType:'application/json',body:JSON.stringify({legs:request.postDataJSON().legs??[]})});
+      return route.fulfill({status:path.includes('/auth/')?200:404,contentType:'application/json',body:JSON.stringify(path.includes('/auth/')?{session:null,user:null}:{error:'Fixture boundary unavailable'})});
+    });
     await page.addInitScript((value: typeof trip) => {
       localStorage.setItem(`easyt:trip-recovery:v2:guest:${encodeURIComponent(value.id)}:builder-drag-fixture`, JSON.stringify({
         version: 2, ownerId: null, tripId: value.id, trip: value, state: "pending", writeId: "builder-drag-fixture", savedAt: "2026-10-02T12:00:00.000Z",
       }));
     }, trip);
     await page.goto(`${baseUrl}/journey/new?trip=${trip.id}&recover=1`, { waitUntil: "domcontentloaded" });
+    await page.locator('[data-builder-edit-session="active"]').waitFor();
     const route = page.locator("[data-builder-route-workspace]");
     await route.waitFor();
     const rows = route.locator("[data-builder-stop-index]");
@@ -69,6 +75,7 @@ for (const width of [1440, 1024, 390]) test(`real mouse drags Namibia table stop
 
     if (width === 1440) {
       const finalWindhoek = route.getByRole("button", { name: "Reorder Windhoek, stop 7" });
+      await finalWindhoek.scrollIntoViewIfNeeded();
       const duplicateSource = await finalWindhoek.boundingBox();
       const duplicateTarget = await rows.nth(5).boundingBox();
       assert.ok(duplicateSource && duplicateTarget);
@@ -85,6 +92,7 @@ for (const width of [1440, 1024, 390]) test(`real mouse drags Namibia table stop
 
       const orderBeforeCancelledDrag = await chipIds();
       const cancelledGrip = route.getByRole("button", { name: "Reorder Etosha, stop 5" });
+      await cancelledGrip.scrollIntoViewIfNeeded();
       const cancelledSource = await cancelledGrip.boundingBox();
       assert.ok(cancelledSource);
       await page.mouse.move(cancelledSource.x + cancelledSource.width / 2, cancelledSource.y + cancelledSource.height / 2);
@@ -96,5 +104,8 @@ for (const width of [1440, 1024, 390]) test(`real mouse drags Namibia table stop
         "cancelled drag restores the table preview to canonical order");
 
     }
+    const acceptedOrder=await chipIds();
+    await page.reload();await page.locator('[data-builder-edit-session="active"]').waitFor();
+    assert.deepEqual(await chipIds(),acceptedOrder,'manual occurrence order survives device recovery reload');
   } finally { await browser.close(); }
 });

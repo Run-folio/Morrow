@@ -81,6 +81,14 @@ test('accepted_edit_is_device_durable_before_debounce', async () => {
   assert.deepEqual(h.recovery()?.trip, state.trip); assert.equal(h.writes.length, 0); assert.equal(state.saveState, 'local');
   await h.run(450); assert.equal(h.writes.length, 1); h.session.dispose();
 });
+test('targeted_work_retry_and_raw_discard_keep_their_separate_owners',async()=>{
+  const h=await harness();h.session.updateDraft({binding:{kind:'origin'},raw:' unfinished '});accept(h,budget);await h.run(0);
+  const request=h.projections[0]!.request;h.projections[0]!.result.resolve(response(request));await tick();
+  const failed=h.session.getSnapshot().failedUnits[0]!;assert.ok(failed);
+  assert.equal(h.session.retryNecessaryUnit(failed),true);assert.equal(h.session.getSnapshot().draft.fields[0]!.raw,' unfinished ');
+  assert.ok(h.session.getSnapshot().pendingUnits.some(u=>u.kind===failed.kind && u.targetId===failed.targetId));
+  assert.equal(h.session.discardDraft({kind:'origin'}),true);assert.equal(h.session.getSnapshot().draft.fields.length,0);assert.equal(h.session.getSnapshot().trip.brief.origin,'London');h.session.dispose();
+});
 test('A_ack_does_not_replace_B_or_retire_B_recovery', async () => {
   const h = await harness(); accept(h); await h.run(450);
   const b = accept(h, { kind: 'travellers', travellers: 3 }); const handle = h.recovery()!.writeId;

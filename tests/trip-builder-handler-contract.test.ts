@@ -5,6 +5,7 @@ import { requireReadableTripDocument } from '../lib/easyt/trip-document.ts';
 import { builderDocumentFingerprint } from '../lib/easyt/trip-builder-document-commit.ts';
 import { builderStructuralSnapshot } from '../lib/easyt/trip-builder-edit.ts';
 import { extractStructuredTripBrief } from '../lib/easyt/structured-trip-brief.ts';
+import {createDiscoveryDraft} from '../lib/easyt/discovery-draft.ts';
 import { builderDetailsFingerprint } from '../lib/easyt/trip-builder-document-commit.ts';
 const path = '../lib/easyt/trip-builder-handler-contract.ts';
 const loaded = import(path).catch((e: NodeJS.ErrnoException) => { if (e.code === 'ERR_MODULE_NOT_FOUND') return null; throw e; });
@@ -12,6 +13,51 @@ async function api(): Promise<typeof import('../lib/easyt/trip-builder-handler-c
   const value = await loaded; assert.ok(value, 'Builder handler contract missing'); return value;
 }
 const fixture = () => requireReadableTripDocument(canonicalRouteFixture());
+test('discovery_choices_are_durable_without_replacing_route_or_future_drafts',async()=>{
+  const trip=fixture();trip.brief.structuredBrief=extractStructuredTripBrief('Japan');const mentionId=trip.brief.structuredBrief.placeMentions![0]!.mentionId;
+  const draft={...createDiscoveryDraft(),shortlistIds:['place:kyoto']};
+  const result=(await api()).prepareBuilderHandlerEdit(trip,{kind:'discovery-state',mentionId,draft,choiceIds:['place:kyoto']},builderDocumentFingerprint(trip));assert.ok(result.ok);
+  assert.deepEqual(result.trip.brief.structuredBrief!.discoveryDraftByMentionId![mentionId],draft);assert.deepEqual(result.trip.brief.intent.route,trip.brief.intent.route);
+  result.trip.brief.structuredBrief!.discoveryDraftByMentionId![mentionId]={...draft,version:99} as unknown as typeof draft;
+  assert.equal((await api()).prepareBuilderHandlerEdit(result.trip,{kind:'discovery-state',mentionId,draft},builderDocumentFingerprint(result.trip)).ok,false);
+});
+test('origin_base_selection_binds_verified_origin_without_creating_destination_stay',async()=>{
+  const trip=fixture();trip.brief.structuredBrief=extractStructuredTripBrief('Japan');
+  trip.brief.structuredBrief.placeMentions![0]!.role='origin';
+  const mention=trip.brief.structuredBrief.placeMentions!.find(m=>m.role==='origin')!;assert.ok(mention);
+  const place={name:'Kyoto',canonicalPlaceId:'place:kyoto',country:'Japan',coordinates:[135.7681,35.0116] as [number,number]};
+  const selection={mentionId:mention.mentionId,kind:'base' as const,selectedCanonicalPlaceId:place.canonicalPlaceId,selectedName:place.name,selectedPlaceType:'city' as const,selectedParentCountries:['Japan'],provenance:{id:'origin-choice',kind:'builder' as const,label:'Origin',supports:'Selected'}};
+  const result=(await api()).prepareBuilderHandlerEdits(trip,[{kind:'origin',place},{kind:'planning-selection',selection}],builderDocumentFingerprint(trip));assert.ok(result.ok);
+  assert.deepEqual(result.trip.stops.map(s=>s.id),trip.stops.map(s=>s.id));assert.equal(result.trip.brief.structuredBrief!.placeSelections![0]!.routeStopId,undefined);
+});
+test('transient_planning_mention_is_canonical_and_cancel_cannot_erase_committed_selections',async()=>{
+  const trip=fixture();trip.brief.structuredBrief=extractStructuredTripBrief('');
+  const mention=extractStructuredTripBrief('Japan').placeMentions![0]!;
+  const added=(await api()).prepareBuilderHandlerEdit(trip,{kind:'planning-mention',mention,action:'add'},builderDocumentFingerprint(trip));assert.ok(added.ok);
+  assert.deepEqual(added.trip.brief.structuredBrief!.placeMentions,JSON.parse(JSON.stringify([mention])));
+  const cancelled=(await api()).prepareBuilderHandlerEdit(added.trip,{kind:'planning-mention',mention,action:'cancel'},builderDocumentFingerprint(added.trip));assert.ok(cancelled.ok);assert.deepEqual(cancelled.trip.brief.structuredBrief!.placeMentions,[]);
+  added.trip.brief.structuredBrief!.placeSelections=[{mentionId:mention.mentionId,kind:'base',selectedCanonicalPlaceId:trip.stops[1]!.canonicalPlaceId!,selectedName:'Kyoto',selectedPlaceType:'city',selectedParentCountries:['Japan'],routeStopId:'kyoto',provenance:{id:'selection',label:'Selected',kind:'builder',supports:'Chosen'}}];
+  assert.equal((await api()).prepareBuilderHandlerEdit(added.trip,{kind:'planning-mention',mention,action:'cancel'},builderDocumentFingerprint(added.trip)).ok,false);
+});
+test('date_inverse_owns_dates_only_when_the_captured_action_changed_them', async () => {
+  const trip=fixture(), snapshot=builderStructuralSnapshot(trip);
+  const changed=(await api()).prepareBuilderHandlerEdit(trip,{kind:'dates',startDate:'2026-11-01',endDate:'2026-11-14'},builderDocumentFingerprint(trip)); assert.ok(changed.ok);
+  const ordinary=(await api()).prepareBuilderHandlerEdit(changed.trip,{kind:'structural-inverse',snapshot},builderDocumentFingerprint(changed.trip)); assert.ok(ordinary.ok); assert.equal(ordinary.trip.startDate,'2026-11-01');
+  const owned=(await api()).prepareBuilderHandlerEdit(changed.trip,{kind:'structural-inverse',snapshot,restoreDates:true},builderDocumentFingerprint(changed.trip)); assert.ok(owned.ok);
+  assert.equal(owned.trip.startDate,trip.startDate); assert.equal(owned.trip.endDate,trip.endDate); assert.deepEqual(owned.trip.brief.intent.timing,trip.brief.intent.timing);
+});
+test('planning_area_complete_reopen_and_remove_are_durable_exact_commands', async () => {
+  const trip=fixture();trip.brief.structuredBrief=extractStructuredTripBrief('Japan');
+  const mention=trip.brief.structuredBrief.placeMentions![0]!;
+  trip.brief.structuredBrief.placeSelections=[{mentionId:mention.mentionId,kind:'base',selectedCanonicalPlaceId:trip.stops[1]!.canonicalPlaceId!,selectedName:'Kyoto',selectedPlaceType:'city',selectedParentCountries:['Japan'],routeStopId:'kyoto',provenance:{id:'selected-kyoto',label:'Chosen',kind:'builder',supports:'Selected'}}];
+  let result=(await api()).prepareBuilderHandlerEdit(trip,{kind:'planning-area',mentionId:mention.mentionId,action:'complete'},builderDocumentFingerprint(trip)); assert.ok(result.ok);
+  assert.ok(result.trip.brief.structuredBrief!.completedPlanningAreaMentionIds?.includes(mention.mentionId));
+  result=(await api()).prepareBuilderHandlerEdit(result.trip,{kind:'planning-area',mentionId:mention.mentionId,action:'reopen'},builderDocumentFingerprint(result.trip));assert.ok(result.ok);
+  assert.equal(result.trip.brief.structuredBrief!.completedPlanningAreaMentionIds?.includes(mention.mentionId),false);
+  const removed=(await api()).prepareBuilderHandlerEdits(result.trip,[(await api()).builderRemoveCommand(result.trip,'kyoto')!,{kind:'planning-area',mentionId:mention.mentionId,action:'remove'}],builderDocumentFingerprint(result.trip)); assert.ok(removed.ok);
+  assert.ok(removed.trip.brief.structuredBrief!.removedPlaceMentionIds?.includes(mention.mentionId));assert.equal(removed.trip.brief.structuredBrief!.placeSelections?.length,0);
+  assert.deepEqual(removed.trip.stops.map(s=>s.id),['tokyo','hiroshima']);
+});
 test('details_form_emits_explicit_commands_and_rejects_stale_owned_fields', async () => {
   const trip = fixture();
   const draft = { journeyOrigin: trip.brief.intent.route.origin!, journeyEnd: trip.brief.intent.route.journeyEnd,
@@ -142,4 +188,22 @@ test('build_status_uses_the_same_guarded_document_and_does_not_restore_archived_
   const trip = fixture(); const planned = (await api()).prepareBuilderHandlerEdit(trip, { kind: 'build-status' }, builderDocumentFingerprint(trip));
   assert.ok(planned.ok); assert.equal(planned.trip.status, 'planned'); assert.deepEqual(planned.trip.stops, trip.stops);
   trip.status = 'archived'; assert.equal((await api()).prepareBuilderHandlerEdit(trip, { kind: 'build-status' }, builderDocumentFingerprint(trip)).ok, false);
+});
+
+test('identity_clarification_replaces_only_its_exact_captured_mention',async()=>{
+  const trip=fixture();trip.brief.structuredBrief=extractStructuredTripBrief('Japan');
+  const prior=trip.brief.structuredBrief.placeMentions![0]!;
+  const selected={...prior,canonicalName:'Japan selected',canonicalPlaceId:'place:japan'};
+  const result=(await api()).prepareBuilderHandlerEdit(trip,{kind:'planning-mention',action:'replace',mention:selected,expectedMention:prior},builderDocumentFingerprint(trip));
+  assert.ok(result.ok);assert.equal(result.trip.brief.structuredBrief!.placeMentions![0]!.canonicalName,'Japan selected');
+  assert.deepEqual(result.trip.brief.intent.route,trip.brief.intent.route);
+  const stale=(await api()).prepareBuilderHandlerEdit(result.trip,{kind:'planning-mention',action:'replace',mention:selected,expectedMention:prior},builderDocumentFingerprint(result.trip));assert.equal(stale.ok,false);
+});
+
+test('accepted_fixed_commitments_update_structured_presentation_without_losing_unrelated_constraints',async()=>{
+ const trip=fixture();trip.brief.structuredBrief=extractStructuredTripBrief('Japan no driving');
+ const fixedCommitments=[{id:'requested-stay',label:'Kyoto 3 nights',place:{name:'Kyoto',canonicalPlaceId:'place:kyoto'},fixedNights:3}];
+ const result=(await api()).prepareBuilderHandlerEdit(trip,{kind:'constraints',constraints:{fixedCommitments}},builderDocumentFingerprint(trip));assert.ok(result.ok);
+ assert.ok(result.trip.brief.structuredBrief!.hardConstraints.some(c=>c.type==='fixed-commitment' && c.fixedNights===3));
+ assert.equal(result.trip.brief.structuredBrief!.source.rawPrompt,trip.brief.structuredBrief.source.rawPrompt);
 });
