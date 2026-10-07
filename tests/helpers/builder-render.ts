@@ -61,6 +61,7 @@ export async function renderBuilder({
   ownerId,
   accountRequest,
   seedRecovery = true,
+  discoveryRequest,
 }: {
   query?: string;
   draft?: unknown;
@@ -81,6 +82,7 @@ export async function renderBuilder({
   ownerId?: string;
   seedRecovery?: boolean;
   accountRequest?: (input:{method:string;path:string;trip:unknown}) => Promise<{status:number;body:unknown}> | {status:number;body:unknown};
+  discoveryRequest?: (destination:string) => Promise<{status:number;body:unknown}> | {status:number;body:unknown};
 } = {}) {
   const script = await builderBundle();
   let captureRequests = 0;
@@ -88,6 +90,11 @@ export async function renderBuilder({
   const server = createServer(async (request, response) => {
     if (request.url?.startsWith("/api/")) {
       const url = new URL(request.url, "http://localhost");
+      if (url.pathname === '/api/journey-discover' && discoveryRequest) {
+        const result = await discoveryRequest(url.searchParams.get('destination') ?? '');
+        response.statusCode = result.status; response.setHeader('Content-Type', 'application/json');
+        response.end(JSON.stringify(result.body)); return;
+      }
       if (url.pathname.startsWith("/api/easyt/trips/") && accountRequest) {
         const chunks:Buffer[]=[];for await(const chunk of request)chunks.push(Buffer.from(chunk));
         const raw=Buffer.concat(chunks).toString();

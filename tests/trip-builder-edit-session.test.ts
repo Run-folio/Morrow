@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { builderRecommendationProjection } from '../lib/easyt/trip-builder-recommendations.ts';
 import { canonicalRouteFixture } from './fixtures/batch14-route-documents.ts';
 import { requireReadableTripDocument } from '../lib/easyt/trip-document.ts';
 import { normalizeLegacyGeneratedDayContext } from '../lib/easyt/itinerary-generated-context.ts';
@@ -73,7 +74,8 @@ function accept(h: Awaited<ReturnType<typeof harness>>, edit = budget as Paramet
 function response(request: BuilderReconciliationRequest, phase: 'complete' | 'failed' = 'failed', selected = request.dispatched): BuilderProjectionResponse {
   return { scope: request.scope, inputKey: request.inputKey, requestId: request.requestId, dispatched: request.dispatched,
     results: selected.map(unit => ({ ...unit, phase, ...(phase === 'failed' ? { reason: 'unavailable' as const } : {}) })),
-    legs: request.trip.legs.filter(leg => selected.some(unit => unit.kind === 'leg' && unit.targetId === leg.id)) };
+    legs: request.trip.legs.filter(leg => selected.some(unit => unit.kind === 'leg' && unit.targetId === leg.id)),
+    recommendationProjections: phase === 'complete' ? selected.filter(unit => unit.kind === 'recommendation').map(unit => builderRecommendationProjection(request.trip, unit.targetId, [])) : [] };
 }
 
 test('accepted_edit_is_device_durable_before_debounce', async () => {

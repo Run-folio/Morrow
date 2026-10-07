@@ -7,6 +7,7 @@ import { buildCanonicalTripLegs, routeEndpointForLeg } from './trip-legs.ts';
 import { routeProjectionInputKey, commitAcceptedRouteProjection } from './trip-route-intent.ts';
 import { cascadeTripSchedule } from './cascade.ts';
 import { reconcileAuthoredDayState } from './trip-authored-day-state.ts';
+import type { BuilderRecommendationProjection } from './trip-builder-recommendations.ts';
 import { authoredContentKey, retainRemovedAuthoredContent, restoreRetainedAuthoredContent, prepareRetainedContentPreservationSource, type RetainedContentConsumption } from './trip-retained-authored-content.ts';
 export type BuilderEditScope = {
     ownerId: string | null;
@@ -24,6 +25,7 @@ export type BuilderProjectionResponse = {
     dispatched: Unit[];
     results: Result[];
     legs: TripLeg[];
+    recommendationProjections?: BuilderRecommendationProjection[];
     routeAssessment?: CanonicalEasyTTrip["brief"]["routeAssessment"];
 };
 const unitId = (u: Pick<Unit, 'kind' | 'targetId'>) => `${u.kind}:${u.targetId}`;
@@ -203,6 +205,20 @@ export function mergeBuilderProjectionResponse(current: CanonicalEasyTTrip, resp
         if (!unit || !dispatched || unit.phase !== 'pending' || unit.basisKey !== result.basisKey || dispatched.basisKey !== unit.basisKey || basis(current, unit.kind, unit.targetId) !== unit.basisKey)
             return { ok: false, reason: 'stale' };
         if (result.phase === 'complete') {
+            if (unit.kind === 'recommendation') {
+                const projections = response.recommendationProjections;
+                const matches = Array.isArray(projections) ? projections.filter(item => item?.stopId === unit.targetId) : [];
+                const days = current.planItems.filter(day => day.stopId === unit.targetId);
+                const projection = matches[0];
+                if (matches.length !== 1 || !Array.isArray(projection.days) || projection.days.length !== days.length
+                    || new Set(projection.days.map(day => day?.id)).size !== days.length
+                    || projection.days.some(day => !days.some(currentDay => currentDay.id === day?.id)
+                        || !Array.isArray(day.contextNotes) || day.contextNotes.some(note => typeof note !== 'string' || note.length > 10000)))
+                    return { ok: false, reason: 'invalid' };
+                // Copy only generated context for the successful occurrence, never a provider's whole day.
+                trip.planItems = trip.planItems.map(day => day.stopId === unit.targetId
+                    ? { ...day, contextNotes: structuredClone(projection.days.find(item => item.id === day.id)!.contextNotes) } : day);
+            }
             if (unit.kind === 'leg') {
                 const old = current.legs.find(l => l.id === unit.targetId)!;
                 const leg = response.legs.find(l => l.id === unit.targetId);
@@ -266,7 +282,7 @@ export function reconcileBuilderDependencies(current: CanonicalEasyTTrip, pendin
             residual.splice(index, 1);
         }
         else if (dispatched.kind === "recommendation") {
-            // Live place/day/cost providers are supplied by the session adapter.
+            // Discovery and generated day guidance are supplied by the session adapter.
             // This deterministic worker must not acknowledge an unavailable provider calculation.
             residual[index] = { ...residual[index], phase: "failed", reason: "unavailable" };
         }

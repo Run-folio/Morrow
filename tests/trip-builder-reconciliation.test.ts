@@ -9,6 +9,7 @@ import { cascadeTripSchedule } from '../lib/easyt/cascade.ts';
 import { reconcileAuthoredDayState } from '../lib/easyt/trip-authored-day-state.ts';
 import { reconcileItineraryIdeas } from '../lib/easyt/itinerary-ideas.ts';
 import type { CanonicalEasyTTrip } from '../lib/easyt/trip.ts';
+import { builderRecommendationProjection } from '../lib/easyt/trip-builder-recommendations.ts';
 const path = '../lib/easyt/trip-builder-reconciliation.ts';
 const loaded = import(path).catch((error: NodeJS.ErrnoException) => {
     if (error.code === 'ERR_MODULE_NOT_FOUND')
@@ -47,7 +48,8 @@ function live(trip: CanonicalEasyTTrip) {
 async function response(trip: CanonicalEasyTTrip, selected = units(trip), phase: 'complete' | 'failed' | 'conflict' = 'complete', requestId = 'request1') {
     const scope = { ownerId: trip.ownerId, tripId: trip.id, inputRevision: 1 };
     return (await api()).mergeBuilderProjectionResponse(trip, { scope, inputKey: routeProjectionInputKey(trip), requestId, dispatched: selected,
-        results: selected.map(u => ({ ...u, phase, ...(phase === 'failed' ? { reason: 'unavailable' } : {}) })), legs: trip.legs.filter(l => selected.some(u => u.kind === 'leg' && u.targetId === l.id)) }, { scope, requestId, dispatched: selected });
+        results: selected.map(u => ({ ...u, phase, ...(phase === 'failed' ? { reason: 'unavailable' } : {}) })), legs: trip.legs.filter(l => selected.some(u => u.kind === 'leg' && u.targetId === l.id)),
+        recommendationProjections: phase === 'complete' ? selected.filter(u => u.kind === 'recommendation').map(u => builderRecommendationProjection(trip, u.targetId, [])) : [] }, { scope, requestId, dispatched: selected });
 }
 test('legacy_null_key_read_does_not_schedule_or_write', async () => {
     const trip = fixture();
@@ -264,7 +266,8 @@ test('same_name_lossless_payload_survives_successful_projection_rebuild_and_Undo
     assert.ok(result.ok);
     next = result.trip;
     assert.deepEqual(next.brief.retainedAuthoredContent, retained);
-    assert.deepEqual(next.planItems.filter(d => d.stopId === 'hiroshima').map(d => ({ ...d, date: undefined, dayNumber: undefined })), sibling.map(d => ({ ...d, date: undefined, dayNumber: undefined })));
+    const authoredDay = ({contextNotes: _generated, ...d}: typeof trip.planItems[number]) => ({ ...d, date: undefined, dayNumber: undefined });
+    assert.deepEqual(next.planItems.filter(d => d.stopId === 'hiroshima').map(authoredDay), sibling.map(authoredDay));
     const { preserveBuilderCanonicalState } = await import('../lib/easyt/trip-builder-preservation.ts');
     for (let i = 0; i < 2; i++) {
         next = requireReadableTripDocument(preserveBuilderCanonicalState(next, reconcileItineraryIdeas(reconcileAuthoredDayState(next, cascadeTripSchedule(next).trip))));

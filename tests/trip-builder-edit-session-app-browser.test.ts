@@ -146,7 +146,10 @@ test('mounted_remove_order_Undo_preserve_full_authored_content_and_later_prefere
   await view.page.getByRole('button',{name:'Undo',exact:true}).click();
   for(let i=0;i<50&&(Number(cloud.stops.length)!==3||cloud.brief.budgetBand!=='high');i++)await view.page.waitForTimeout(100);
   assert.equal(cloud.stops.length,3);assert.equal(cloud.brief.budgetBand,'high');assert.equal(cloud.brief.retainedAuthoredContent?.entries.length??0,0);
-  const restored=cloud.planItems.filter(item=>item.stopId===original.stops[2]!.id);assert.deepEqual(restored,original.planItems.filter(item=>item.stopId===original.stops[2]!.id));
+  const restored=cloud.planItems.filter(item=>item.stopId===original.stops[2]!.id);
+  const authoredDay=({contextNotes:_generated,...day}:typeof cloud.planItems[number])=>day;
+  assert.deepEqual(restored.map(authoredDay),original.planItems.filter(item=>item.stopId===original.stops[2]!.id).map(authoredDay));
+  assert.ok(restored.every(item=>item.contextNotes?.length),'restored slots receive current generated guidance without changing authored fields');
   await view.page.getByLabel('Actions for Hiroshima',{exact:true}).click();await view.page.locator('[data-builder-route-workspace]').getByRole('button',{name:'Earlier',exact:true}).last().click();
   for(let i=0;i<50&&cloud.brief.intent.route.orderedStopIds[1]!==original.stops[2]!.id;i++)await view.page.waitForTimeout(100);
   assert.equal(cloud.brief.intent.route.orderAuthority,'manual');assert.equal(cloud.stops[1]!.id,original.stops[2]!.id);

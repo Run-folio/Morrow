@@ -24,6 +24,7 @@ import type { BuilderEditSession, BuilderEditSessionOptions, BuilderReconciliati
 import { useBuilderEditSession } from "./use-builder-edit-session";
 import { requireReadableTripDocument } from "@/lib/easyt/trip-document";
 import { reconcileBuilderDependencies, type BuilderProjectionResponse } from "@/lib/easyt/trip-builder-reconciliation";
+import { resolveBuilderRecommendation } from "@/lib/easyt/trip-builder-recommendations";
 import { readBuilderInputDraft, writeBuilderInputDraft, type BuilderInputBinding } from "@/lib/easyt/trip-builder-input-draft";
 import { EasyTTripPersistenceError, isTripPersistenceAuthenticationError, tripRecoveryStateForPersistenceError } from "@/lib/easyt/trip-persistence-error";
 import { tripEditorSyncAction, tripSyncRecoveryPath, tripSyncSignInPath } from "@/lib/easyt/trip-continuity";
@@ -455,6 +456,18 @@ async function reconcileAcceptedBuilderRequest(request: BuilderReconciliationReq
     const residual = remaining.find(item => item.kind === unit.kind && item.targetId === unit.targetId);
     return residual && residual.phase !== "pending" ? { ...residual, phase: residual.phase } : { ...unit, phase: "complete" };
   });
+  const recommendationProjections: NonNullable<BuilderProjectionResponse["recommendationProjections"]> = [];
+  await Promise.all(results.filter(result => result.kind === "recommendation").map(async result => {
+    try {
+      const projection = await resolveBuilderRecommendation(request.trip, result.targetId, signal);
+      recommendationProjections.push(projection);
+      result.phase = "complete";
+      delete result.reason;
+    } catch (error) {
+      if (signal.aborted) throw error;
+      result.phase = "failed"; result.reason = "unavailable";
+    }
+  }));
   let legs = calculated.legs.filter(leg => request.dispatched.some(unit => unit.kind === "leg" && unit.targetId === leg.id));
   if (legs.length) {
     try {
@@ -471,7 +484,7 @@ async function reconcileAcceptedBuilderRequest(request: BuilderReconciliationReq
   }
   if (signal.aborted) throw new DOMException("Builder input changed", "AbortError");
   return {scope:request.scope,inputKey:request.inputKey,requestId:request.requestId,dispatched:request.dispatched,results,legs,
-    routeAssessment:calculated.brief.routeAssessment};
+    routeAssessment:calculated.brief.routeAssessment,recommendationProjections};
 }
 
 function TripBuilderDocument() {
