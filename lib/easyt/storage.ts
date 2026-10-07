@@ -600,7 +600,7 @@ function travellerRouteIntent(trip: EasyTTrip) {
   } };
 }
 
-function travellerAuthoredTripDocument(trip: EasyTTrip) {
+function travellerAuthoredTripDocument(trip: EasyTTrip, compareCalendarIdentity: boolean) {
   const brief = trip.brief;
   const originIdentity = `${brief.origin.trim().toLocaleLowerCase()}|${(brief.originCountry ?? "").trim().toLocaleLowerCase()}`;
   return {
@@ -614,6 +614,11 @@ function travellerAuthoredTripDocument(trip: EasyTTrip) {
     endDate: trip.endDate,
     travellers: trip.travellers,
     currency: trip.currency,
+    // Canonical containers own stable identities, even when their guidance is
+    // regenerated. Legacy planner rows retain their existing rebuild tolerance.
+    calendar: compareCalendarIdentity
+      ? sortedById(trip.planItems)?.map(({ id, stopId, dayNumber, date }) => ({ id, stopId, dayNumber, date }))
+      : undefined,
     brief: {
       originIdentity,
       customTitle: brief.customTitle,
@@ -638,6 +643,10 @@ function travellerAuthoredTripDocument(trip: EasyTTrip) {
       intent: travellerRouteIntent(trip),
       scheduleLocks: nonEmptyScheduleLocks(brief.scheduleLocks),
       decisionSelections: nonEmptyDecisionSelections(brief.decisionSelections),
+      // Calendar identity and historical source payloads are durable work.
+      // A same-route cloud read cannot acknowledge a newer counter or snapshot.
+      builderCalendarGeneration: brief.builderCalendarGeneration,
+      retainedAuthoredContent: brief.retainedAuthoredContent,
     },
     stops: [...trip.stops].sort((left, right) => left.order - right.order || left.id.localeCompare(right.id)).map((stop) => ({
       id: stop.id,
@@ -650,9 +659,10 @@ function travellerAuthoredTripDocument(trip: EasyTTrip) {
 
 /**
  * Compare the traveller-authored trip state after applying the repository's
- * canonical owner/ID normalization. Generated legs, itinerary rows, route
+ * canonical owner/ID normalization. Generated legs, itinerary guidance, route
  * assessments and recommendations can be rebuilt from that state and must not
  * manufacture a second device edit immediately after a successful save.
+ * Canonical calendar identities, generations and retained snapshots must match.
  */
 export function tripDocumentsCanonicalEquivalent(
   localTrip: EasyTTrip,
@@ -660,10 +670,12 @@ export function tripDocumentsCanonicalEquivalent(
   ownerId = canonicalTrip.ownerId,
 ) {
   if (!ownerId || localTrip.id !== canonicalTrip.id) return false;
+  // Decide before write preparation upgrades a legacy representation to v2.
+  const compareCalendarIdentity = localTrip.schemaVersion === 2 && canonicalTrip.schemaVersion === 2;
   const normalizedLocal = canonicalTripForOwner(ownerId, localTrip, canonicalTrip.updatedAt);
   const normalizedCanonical = canonicalTripForOwner(ownerId, canonicalTrip, canonicalTrip.updatedAt);
-  return JSON.stringify(stableJsonValue(travellerAuthoredTripDocument(normalizedLocal)))
-    === JSON.stringify(stableJsonValue(travellerAuthoredTripDocument(normalizedCanonical)));
+  return JSON.stringify(stableJsonValue(travellerAuthoredTripDocument(normalizedLocal, compareCalendarIdentity)))
+    === JSON.stringify(stableJsonValue(travellerAuthoredTripDocument(normalizedCanonical, compareCalendarIdentity)));
 }
 
 /**

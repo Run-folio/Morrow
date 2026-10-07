@@ -1,0 +1,13 @@
+# Task 6 T6-R1 recovery preservation
+
+Independent review stopped Task 6 at `99bb11c36b7c55bc7865e1786e4e8c32c482654a`: semantic cache equivalence excluded the new durable calendar generation and full retained source attachment. Older same-route cloud reads consequently retired unacknowledged richer recovery, losing private source content and allowing consumed calendar IDs to be reused. Both actual-handler review probes reproduced before the fix.
+
+The parent authorized the required narrow data-integrity repair. `storage.ts` now includes `brief.builderCalendarGeneration` and the complete `brief.retainedAuthoredContent` in the existing stable semantic comparison, after the existing owner/identity normalization. Historical snapshots are compared losslessly, including source identity, timing, booking, notes, day parts, ideas/references and pins. No lossy projection or new normalization is applied to their contents.
+
+The review also required examining owned calendar identity separately from generated guidance. Actual accepted growth in opposite stop sequences reproduced equal route/counter values but different live day IDs. Equivalence now compares canonical source day IDs and their stop/date/number bindings, after existing identity normalization. This applies when both source documents were already v2; the decision is made before write preparation upgrades legacy representations. The existing legacy planner-rebuild tolerance and representation-version retirement guard remain intact.
+
+Cache retirement rules, exact write-handle acknowledgement, current/prior-cloud redundancy, generated live guidance tolerance, version/owner/CAS guards and repository/promotion writer implementations are unchanged. Update route remains an optional proposal, with authoritative order requiring acceptance. The table/map/UI are unchanged.
+
+Nine focused recovery cases include the two original failures, full retained payload sensitivity, equal current/prior-cloud redundancy, stale versus exact ACK, opposing-tab calendar identities, final-day retirement/Undo after later edits, and full serialization/promotion/owner-remapping controls. Existing persistence and calendar preservation regressions remain required. Positive provider-refresh fixtures preserve reconciliation target identities; removing required legs is invalid rather than an equivalent provider refresh.
+
+The Task 6 guarded-persistence gate requires a new exact committed archive and fresh isolated actual SQL result, even though SQL writers are unchanged. Final commit/hash/test/cleanup evidence is recorded in the external T6-R1 checkpoint. Independent bounded recheck remains required; 14D/full20, live provider follow-up, push and deployment remain held.
