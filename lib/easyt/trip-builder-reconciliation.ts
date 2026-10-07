@@ -2,7 +2,7 @@ import { selectedTransportChoiceForLeg, effectiveTripLeg } from "./transport-mod
 import { assessRouteIntelligence, routeIntelligenceForPersistence } from "./planner.ts";
 import { plannerEndpointForJourneyEnd, originPlaceFromBrief } from "./journey-endpoints.ts";
 import type { CanonicalEasyTTrip, RouteReconciliationScope, TripLeg, TripRouteReconciliation } from './trip.ts';
-import { prepareTripDocumentForWrite } from './trip-document.ts';
+import { prepareTripDocumentForWrite, TripDocumentReadError } from './trip-document.ts';
 import { buildCanonicalTripLegs, routeEndpointForLeg } from './trip-legs.ts';
 import { routeProjectionInputKey, commitAcceptedRouteProjection } from './trip-route-intent.ts';
 import { cascadeTripSchedule } from './cascade.ts';
@@ -63,6 +63,24 @@ function basis(trip: CanonicalEasyTTrip, kind: Unit['kind'], targetId: string): 
     return authoredContentKey({ route: routeProjectionInputKey(trip), schedule });
 }
 const sorted = (units: Unit[]) => units.sort((a, b) => unitId(a).localeCompare(unitId(b)));
+/** Identity-only canonicalization preserves work; it never validates stale source work or completes it. */
+export function remapBuilderReconciliationIdentity(before: CanonicalEasyTTrip, after: CanonicalEasyTTrip,
+    stopIds: ReadonlyMap<string, string>, legIds: ReadonlyMap<string, string>): CanonicalEasyTTrip {
+    const marker = before.brief.cascadeStatus?.routeReconciliation;
+    if (!marker) return after;
+    if (marker.inputKey !== routeProjectionInputKey(before)) throw new TripDocumentReadError('invalid_trip_document');
+    const residual = marker.residual.map(unit => {
+        if (basis(before, unit.kind, unit.targetId) !== unit.basisKey) throw new TripDocumentReadError('invalid_trip_document');
+        const targetId = unit.kind === 'schedule' || unit.kind === 'recommendation' ? stopIds.get(unit.targetId)
+            : unit.kind === 'leg' ? legIds.get(unit.targetId)
+            : unit.targetId === before.id ? after.id : undefined;
+        const nextBasis = targetId === undefined ? null : basis(after, unit.kind, targetId);
+        if (!nextBasis) throw new TripDocumentReadError('invalid_trip_document');
+        return { ...unit, targetId: targetId!, basisKey: nextBasis };
+    });
+    return { ...after, brief: { ...after.brief, cascadeStatus: { ...after.brief.cascadeStatus!,
+        routeReconciliation: { version: 1, inputKey: routeProjectionInputKey(after), residual } } } };
+}
 export function pendingBuilderReconciliationUnits(trip: CanonicalEasyTTrip): Unit[] {
     return structuredClone(trip.brief.cascadeStatus?.routeReconciliation?.residual.filter(u => u.phase === 'pending') ?? []);
 }

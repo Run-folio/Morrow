@@ -3,6 +3,7 @@ import test from "node:test";
 import { canonicalRouteFixture } from "./fixtures/batch14-route-documents.ts";
 import { requireReadableTripDocument } from "../lib/easyt/trip-document.ts";
 import { routeProjectionInputKey } from "../lib/easyt/trip-route-intent.ts";
+import { canonicalTripForOwner, canonicalTripStopIdentityMap } from '../lib/easyt/trip-promotion.ts';
 
 const modulePath = "../lib/easyt/trip-builder-input-draft.ts";
 const modulePromise = import(modulePath).catch((error: NodeJS.ErrnoException) => {
@@ -199,4 +200,23 @@ test("generated_allocation_and_same_identity_enrichment_leave_raw_nights_editabl
   changed.brief.nightAllocations![changed.stops[2]!.id] = 4;
   changed.brief.intent.route.destinations[2]!.selectedPlace!.providerId = "new-provider-evidence";
   assert.equal(field(api.rebindBuilderInputDraft(draft, changed), binding).status, "editable");
+});
+test('explicit_browser_scope_keeps_ownerless_body_and_remaps_only_proven_raw_fields', async () => {
+  const api=await drafts(); const trip=fixture(); trip.ownerId=null;
+  const storage={values:new Map<string,string>(),getItem(key:string){return this.values.get(key)??null;},setItem(key:string,value:string){this.values.set(key,value);}};
+  let draft=api.createBuilderInputDraft(trip,0,'owner-a');
+  draft=api.updateBuilderInputDraft(draft,trip,{kind:'nights',intentId:'intent:kyoto',stopId:'kyoto'},'3.','owner-a');
+  draft=api.updateBuilderInputDraft(draft,trip,{kind:'destination',intentId:'intent:kyoto'},'Kyo','owner-a');
+  draft=api.updateBuilderInputDraft(draft,trip,{kind:'nights',intentId:'foreign-intent',stopId:'kyoto'},'keep blocked','owner-a');
+  assert.ok(api.writeBuilderInputDraft(storage,trip,draft,'owner-a').ok); assert.equal(trip.ownerId,null);
+  assert.equal(api.readBuilderInputDraft(storage,trip).kind,'empty');
+  const next=requireReadableTripDocument(canonicalTripForOwner('owner-a',trip));
+  const remapped=api.remapBuilderInputDraftIdentity(draft,trip,next,canonicalTripStopIdentityMap(trip),'owner-a');
+  assert.ok(api.writeBuilderInputDraft(storage,next,remapped,'owner-a').ok);
+  assert.equal(remapped.fields[0]!.status,'editable'); assert.equal(remapped.fields[1]!.status,'editable');
+  assert.deepEqual(remapped.fields[2]!.acceptedSource,draft.fields[2]!.acceptedSource);
+  assert.deepEqual(remapped.fields[2]!.binding,draft.fields[2]!.binding); assert.equal(remapped.fields[2]!.raw,'keep blocked');
+  assert.equal(remapped.fields[2]!.status,'binding-conflict');
+  assert.equal(api.readBuilderInputDraft(storage,next,'owner-a').kind,'readable');
+  const foreign={...next,ownerId:'owner-b'}; assert.equal(api.readBuilderInputDraft(storage,foreign,'owner-a').kind,'protected');
 });

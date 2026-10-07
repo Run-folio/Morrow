@@ -5,6 +5,7 @@ import { requireReadableTripDocument } from '../lib/easyt/trip-document.ts';
 import { normalizeLegacyGeneratedDayContext } from '../lib/easyt/itinerary-generated-context.ts';
 import { routeProjectionInputKey } from '../lib/easyt/trip-route-intent.ts';
 import { builderStructuralSnapshot } from '../lib/easyt/trip-builder-edit.ts';
+import { canonicalTripForOwner, remapTripStopReferences } from '../lib/easyt/trip-promotion.ts';
 import { authoredContentKey } from '../lib/easyt/trip-retained-authored-content.ts';
 import { readBuilderInputDraft, writeBuilderInputDraft, builderInputDraftKey } from '../lib/easyt/trip-builder-input-draft.ts';
 import { saveTripRecoveryToStorage, loadTripRecoveryFromStorage, acknowledgeTripBuildSaveInStorage,
@@ -37,15 +38,15 @@ function fixture() {
   const trip = requireReadableTripDocument(normalizeLegacyGeneratedDayContext(canonicalRouteFixture()));
   trip.brief.intent.route.projectionInputKey = routeProjectionInputKey(trip); return trip;
 }
-async function harness(initialTrip = fixture(), storage = new MemoryStorage(), persist?: typeof saveTripRecoveryToEasyT) {
+async function harness(initialTrip = fixture(), storage = new MemoryStorage(), persist?: typeof saveTripRecoveryToEasyT, scopeOwnerId = initialTrip.ownerId) {
   const timers: { callback: () => void; delay: number; active: boolean }[] = [];
   const writes: { trip: CanonicalEasyTTrip; handle: { ownerId: string | null; tripId: string; writeId: string }; result: ReturnType<typeof deferred<CanonicalEasyTTrip>> }[] = [];
   const projections: { request: BuilderReconciliationRequest; signal: AbortSignal; result: ReturnType<typeof deferred<BuilderProjectionResponse>> }[] = [];
-  const recovery = loadTripRecoveryFromStorage(storage, initialTrip.id, initialTrip.ownerId);
-  let owner = initialTrip.ownerId;
+  const recovery = loadTripRecoveryFromStorage(storage, initialTrip.id, scopeOwnerId);
+  let owner = scopeOwnerId;
   const session = (await api()).createBuilderEditSession({ initialTrip, initialRecovery: recovery,
-    getOwnerId: () => owner, readDraft: trip => readBuilderInputDraft(storage, trip),
-    writeDraft: (trip, draft) => writeBuilderInputDraft(storage, trip, draft),
+    getOwnerId: () => owner, readDraft: (trip, browserOwner) => readBuilderInputDraft(storage, trip, browserOwner),
+    writeDraft: (trip, draft, browserOwner) => writeBuilderInputDraft(storage, trip, draft, browserOwner),
     saveRecovery: (trip, options) => saveTripRecoveryToStorage(storage, trip, options),
     acknowledgeRecovery: (reviewed, canonical, handle) => acknowledgeTripBuildSaveInStorage(storage, reviewed, canonical, handle),
     markRecoveryState: (handle, state) => markTripRecoveryStateInStorage(storage, handle, state),
@@ -59,7 +60,7 @@ async function harness(initialTrip = fixture(), storage = new MemoryStorage(), p
   });
   return { session, storage, writes, projections, rotate: (value: string | null) => { owner = value; },
     run: async (delay: number) => { for (const timer of [...timers]) if (timer.active && timer.delay === delay) { timer.active = false; timer.callback(); } await tick(); },
-    recovery: () => loadTripRecoveryFromStorage(storage, initialTrip.id, initialTrip.ownerId),
+    recovery: () => loadTripRecoveryFromStorage(storage, initialTrip.id, scopeOwnerId),
     ack: async (index: number) => { const write = writes[index]!; write.result.resolve({ ...write.trip, updatedAt: nextTripUpdatedAt(write.trip.updatedAt) }); await tick(); },
   };
 }
@@ -373,4 +374,130 @@ test('invalid_later_details_command_cannot_partially_accept_an_earlier_origin_or
   const h = await harness(); const before = h.session.getSnapshot();
   assert.equal(h.session.acceptBatch([origin, { kind: 'travellers', travellers: 0 }], before.inputRevision).ok, false);
   assert.deepEqual(h.session.getSnapshot().trip, before.trip); assert.equal(h.recovery(), null); await h.run(450); assert.equal(h.writes.length, 0); h.session.dispose();
+});
+async function ownerlessHarness(persist?: typeof saveTripRecoveryToEasyT, source = fixture()) {
+  const trip = structuredClone(source); trip.ownerId = null; trip.status = 'draft';
+  const storage = new MemoryStorage(); assert.ok(saveTripRecoveryToStorage(storage, trip, {ownerId:'owner-a'}).stored);
+  return harness(trip,storage,persist,'owner-a');
+}
+test('account_scoped_ownerless_recovery_and_login_do_not_promote_or_assign_owner', async () => {
+  const h = await ownerlessHarness();
+  assert.equal(h.session.getSnapshot().browserOwnerId,'owner-a'); assert.equal(h.session.getSnapshot().trip.ownerId,null);
+  accept(h,budget); assert.equal(h.recovery()!.ownerId,'owner-a'); assert.equal(h.recovery()!.trip.ownerId,null);
+  assert.equal(h.session.updateDraft({binding:{kind:'origin'},raw:'Lon'}),true);
+  await h.run(450); assert.equal(h.writes.length,0); assert.equal(await h.session.flush(),false);
+  h.rotate('owner-b'); assert.equal(h.session.updateDraft({binding:{kind:'origin'},raw:'Foreign'}),false); h.session.dispose();
+});
+test('explicit_promotion_ACK_remaps_exact_raw_and_newer_Undo_without_installing_old_content', async () => {
+  const h = await ownerlessHarness(); accept(h,budget);
+  const saving = h.session.flush({promoteOwnerless:true}); await tick(); assert.equal(h.writes.length,1);
+  const snapshot = builderStructuralSnapshot(h.session.getSnapshot().trip);
+  accept(h,{kind:'remove-destination',intentId:'intent:hiroshima'});
+  accept(h,{kind:'structural-inverse',snapshot}); accept(h,{kind:'travellers',travellers:4});
+  assert.equal(h.session.updateDraft({binding:{kind:'nights',intentId:'intent:kyoto',stopId:'kyoto'},raw:'3.'}),true);
+  await h.run(0); const oldWork = h.projections.at(-1)!;
+  const first = h.writes[0]!; first.result.resolve(requireReadableTripDocument(canonicalTripForOwner('owner-a',first.trip,nextTripUpdatedAt(first.trip.updatedAt))));
+  await tick(); assert.equal(h.session.getSnapshot().trip.travellers,4);
+  assert.equal(h.session.getSnapshot().trip.ownerId,'owner-a'); assert.equal(h.session.getSnapshot().saveState,'cloud-saving');
+  assert.equal(h.writes.length,2); assert.equal(h.writes[1]!.trip.ownerId,'owner-a');
+  const raw = h.session.getSnapshot().draft.fields[0]!; assert.equal(raw.raw,'3.'); assert.equal(raw.status,'editable');
+  assert.equal(raw.binding.kind,'nights'); assert.equal(raw.binding.kind==='nights' && raw.binding.stopId,'batch14-trip-stop-kyoto');
+  const before = h.session.getSnapshot(); oldWork.result.resolve(response(oldWork.request)); await tick();
+  assert.equal(h.session.getSnapshot().acceptedRevision,before.acceptedRevision);
+  assert.equal(oldWork.signal.aborted,true); await h.ack(1); assert.equal(await saving,true);
+  assert.equal(h.recovery(),null); assert.equal(h.session.getSnapshot().saveState,'local','unaccepted raw is device-only');
+  const reload = await harness(h.session.getSnapshot().trip,h.storage);
+  assert.equal(reload.session.getSnapshot().draft.fields[0]!.status,'editable'); assert.equal(reload.session.getSnapshot().draft.fields[0]!.raw,'3.');
+  reload.session.dispose(); h.session.dispose();
+});
+test('promotion_lost_response_retries_exact_insert_before_rebasing_newer_edit', async () => {
+  const h = await ownerlessHarness(); accept(h,budget);
+  const saving = h.session.flush({promoteOwnerless:true}); await tick(); const submitted = h.writes[0]!;
+  accept(h,{kind:'travellers',travellers:4}); submitted.result.reject(new Error('lost response')); await tick(); assert.equal(await saving,false);
+  assert.equal(h.session.retrySave(),true); await tick(); assert.deepEqual(h.writes[1]!.trip,submitted.trip);
+  h.writes[1]!.result.resolve(requireReadableTripDocument(canonicalTripForOwner('owner-a',submitted.trip,nextTripUpdatedAt(submitted.trip.updatedAt))));
+  await tick(); await h.run(450); assert.equal(h.writes[2]!.trip.travellers,4); assert.equal(h.writes[2]!.trip.ownerId,'owner-a');
+  await h.ack(2); assert.equal(h.recovery(),null); h.session.dispose();
+});
+test('actual_promotion_HTTP_auth_conflict_validation_keep_exact_device_recovery_and_pause', async () => {
+  for (const [status,category] of [[401,'auth'],[409,'conflict'],[422,'validation'],[200,'validation']] as const) {
+    const h = await ownerlessHarness((trip,handle) => saveTripRecoveryToEasyT(trip,handle,async (_url,init) => {
+      const body = JSON.parse(String(init?.body)); assert.equal(body.ownerId,null);
+      return new Response(JSON.stringify(status===409 ? {trip:canonicalTripForOwner('owner-a',trip),conflictReason:'cloud-different'} : {category,error:category}),{status});
+    }));
+    accept(h,budget); const before = h.session.getSnapshot();
+    assert.equal(await h.session.flush({promoteOwnerless:true}),false);
+    assert.equal(h.session.getSnapshot().error?.category,category);
+    assert.deepEqual(h.session.getSnapshot().trip,before.trip); assert.equal(h.recovery()!.writeId,before.recovery!.writeId);
+    assert.equal(h.recovery()!.state,category); assert.equal(h.session.retrySave(),false); h.session.dispose();
+  }
+});
+test('promotion_ACK_after_owner_rotation_cannot_install_or_retire_the_old_scope', async () => {
+  const h = await ownerlessHarness(); accept(h,budget); const before=h.session.getSnapshot();
+  const saving=h.session.flush({promoteOwnerless:true}); await tick(); h.rotate('owner-b');
+  h.writes[0]!.result.resolve(requireReadableTripDocument(canonicalTripForOwner('owner-a',h.writes[0]!.trip)));
+  await tick(); assert.equal(await saving,false); assert.equal(h.recovery()!.writeId,before.recovery!.writeId);
+  assert.deepEqual(h.session.getSnapshot().trip,before.trip); h.session.dispose();
+});
+test('promotion_raw_or_latest_recovery_storage_failure_keeps_exact_ownerless_source_for_recovery', async () => {
+  for (const failure of ['draft','recovery']) {
+    const h=await ownerlessHarness(); accept(h,budget);
+    const saving=h.session.flush({promoteOwnerless:true}); await tick();
+    if(failure==='recovery') accept(h,{kind:'travellers',travellers:4});
+    h.session.updateDraft({binding:{kind:'nights',intentId:'intent:kyoto',stopId:'kyoto'},raw:'3.'});
+    const before=h.session.getSnapshot();
+    if(failure==='draft') h.storage.failDraft=true; else h.storage.failRecovery=true;
+    h.writes[0]!.result.resolve(requireReadableTripDocument(canonicalTripForOwner('owner-a',h.writes[0]!.trip)));
+    await tick(); assert.equal(await saving,false); assert.equal(h.session.getSnapshot().error?.category,'storage');
+    assert.deepEqual(h.session.getSnapshot().trip,before.trip); assert.equal(h.recovery()!.writeId,before.recovery!.writeId);
+    assert.equal(h.session.getSnapshot().draft.fields[0]!.raw,'3.');
+    const stored=readBuilderInputDraft(h.storage,h.session.getSnapshot().trip,'owner-a'); assert.equal(stored.kind,'readable');
+    assert.equal(stored.kind==='readable' && stored.draft.fields[0]!.status,'editable'); h.session.dispose();
+  }
+});
+test('promotion_ACK_uses_proven_occurrence_map_when_newer_removal_changes_namespace_collisions', async () => {
+  const source=requireReadableTripDocument(remapTripStopReferences(fixture(),new Map([['tokyo','batch14-trip-stop-kyoto'],['kyoto','kyoto'],['hiroshima','hiroshima']])));
+  const h=await ownerlessHarness(undefined,source); accept(h,budget); const saving=h.session.flush({promoteOwnerless:true}); await tick();
+  const submitted=h.writes[0]!; const canonical=requireReadableTripDocument(canonicalTripForOwner('owner-a',submitted.trip));
+  const kyotoId=canonical.stops.find(stop=>stop.canonicalPlaceId==='place:kyoto')!.id;
+  accept(h,{kind:'remove-destination',intentId:'intent:tokyo'});
+  submitted.result.resolve(canonical); await tick();
+  assert.equal(h.session.getSnapshot().trip.stops.find(stop=>stop.canonicalPlaceId==='place:kyoto')!.id,kyotoId);
+  await h.ack(1); assert.equal(await saving,true); h.session.dispose();
+});
+test('Undo_captured_before_promotion_ACK_restores_historical_authored_content_after_ACK', async () => {
+  const h=await ownerlessHarness(); accept(h,budget); const saving=h.session.flush({promoteOwnerless:true}); await tick();
+  const snapshot=builderStructuralSnapshot(h.session.getSnapshot().trip); accept(h,{kind:'remove-destination',intentId:'intent:hiroshima'});
+  h.writes[0]!.result.resolve(requireReadableTripDocument(canonicalTripForOwner('owner-a',h.writes[0]!.trip))); await tick();
+  accept(h,{kind:'structural-inverse',snapshot});
+  assert.ok(h.session.getSnapshot().trip.stops.some(s=>s.id==='batch14-trip-stop-hiroshima'));
+  assert.ok(h.session.getSnapshot().trip.planItems.some(s=>s.stopId==='batch14-trip-stop-hiroshima'));
+  assert.equal(h.session.getSnapshot().trip.brief.retainedAuthoredContent?.entries.length ?? 0,0);
+  await h.ack(1); await h.run(450); await h.ack(2); assert.equal(await saving,true); h.session.dispose();
+});
+test('owned_save_identity_ACK_rebases_newer_edit_and_valid_raw_using_actual_canonical_ids', async () => {
+  const h=await harness(); accept(h,budget); await h.run(450); accept(h,{kind:'travellers',travellers:4});
+  h.session.updateDraft({binding:{kind:'nights',intentId:'intent:kyoto',stopId:'kyoto'},raw:'3.'});
+  h.writes[0]!.result.resolve(requireReadableTripDocument(canonicalTripForOwner('owner-a',h.writes[0]!.trip))); await tick(); await h.run(450);
+  assert.equal(h.writes[1]!.trip.stops[1]!.id,'batch14-trip-stop-kyoto'); assert.equal(h.writes[1]!.trip.travellers,4);
+  assert.equal(h.session.getSnapshot().draft.fields[0]!.status,'editable'); await h.ack(1);
+  const raw=h.session.getSnapshot().draft.fields[0]!;
+  assert.equal(raw.binding.kind==='nights' && raw.binding.stopId,'batch14-trip-stop-kyoto');
+  const reload=await harness(h.session.getSnapshot().trip,h.storage); assert.equal(reload.session.getSnapshot().draft.fields[0]!.status,'editable');
+  reload.session.dispose(); h.session.dispose();
+});
+test('captured_Undo_frame_restores_a_stop_removed_before_first_promotion_without_rewriting_history', async () => {
+  const h=await ownerlessHarness(); const snapshot=h.session.captureStructuralSnapshot();
+  accept(h,{kind:'remove-destination',intentId:'intent:hiroshima'});
+  const historical=JSON.stringify(h.session.getSnapshot().trip.brief.retainedAuthoredContent);
+  const saving=h.session.flush({promoteOwnerless:true}); await tick();
+  h.writes[0]!.result.resolve(requireReadableTripDocument(canonicalTripForOwner('owner-a',h.writes[0]!.trip))); await tick(); assert.equal(await saving,true);
+  assert.equal(JSON.stringify(h.session.getSnapshot().trip.brief.retainedAuthoredContent),historical);
+  accept(h,{kind:'structural-inverse',snapshot});
+  assert.ok(h.session.getSnapshot().trip.stops.some(stop=>stop.canonicalPlaceId==='place:hiroshima'));
+  assert.equal(h.session.getSnapshot().trip.brief.retainedAuthoredContent?.entries.length ?? 0,0);
+  await h.run(450); h.writes[1]!.result.resolve(requireReadableTripDocument(canonicalTripForOwner('owner-a',h.writes[1]!.trip))); await tick();
+  assert.ok(h.session.getSnapshot().trip.stops.some(stop=>stop.id==='batch14-trip-stop-hiroshima'));
+  assert.ok(h.session.getSnapshot().trip.planItems.some(day=>day.stopId==='batch14-trip-stop-hiroshima'));
+  assert.equal(h.recovery(),null); h.session.dispose();
 });

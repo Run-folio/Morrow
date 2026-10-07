@@ -3,6 +3,9 @@ import { normalizeLegacyGeneratedDayContext } from "./itinerary-generated-contex
 import { reconcileLegacyTransportLeg } from "./transport-leg-compatibility.ts";
 import { prepareTripDocumentForWrite } from "./trip-document.ts";
 import { routeProjectionInputKey } from "./trip-route-intent.ts";
+import { remapBuilderReconciliationIdentity } from "./trip-builder-reconciliation.ts";
+import type { CanonicalEasyTTrip } from "./trip.ts";
+import { validRetainedAuthoredContent } from "./trip-retained-authored-content.ts";
 
 const singleStopReferenceKeys = new Set([
   "stopId", "fromStopId", "toStopId", "fromEndpointId", "toEndpointId", "neighbouringStopId", "routeStopId",
@@ -29,6 +32,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 /** Remap durable stop identities in typed fields and forward-compatible metadata. */
 function remapNestedStopReferences(value: unknown, stopIds: StopIdMap, key?: string): unknown {
+  if (key === "retainedAuthoredContent" && validRetainedAuthoredContent(value)) return structuredClone(value);
   if (typeof value === "string" && key && singleStopReferenceKeys.has(key)) {
     return remappedStopId(value, stopIds);
   }
@@ -74,7 +78,7 @@ function remapNestedStopReferences(value: unknown, stopIds: StopIdMap, key?: str
  * Unknown fields are retained, while known stop-reference field names are
  * remapped recursively to keep durable JSON forward-compatible.
  */
-export function remapTripStopReferences(trip: EasyTTrip, stopIds: StopIdMap): EasyTTrip {
+export function remapTripStopReferences(trip: EasyTTrip, stopIds: StopIdMap, identitySource: EasyTTrip = trip): EasyTTrip {
   const remapped = remapNestedStopReferences(trip.brief, stopIds) as EasyTTrip["brief"];
   const endpointId = (id: string, kind?: string) => kind === "origin" || kind === "end" ? `${trip.id}-${kind}` : remappedStopId(id, stopIds);
   const result: EasyTTrip = {
@@ -101,13 +105,15 @@ export function remapTripStopReferences(trip: EasyTTrip, stopIds: StopIdMap): Ea
       proposedChange: remapNestedStopReferences(recommendation.proposedChange, stopIds) as Record<string, unknown> | null,
     })),
   };
-  if (trip.brief.intent?.route?.projectionInputKey != null && trip.brief.intent.route.projectionInputKey === routeProjectionInputKey(trip)) {
+  if (identitySource.brief.intent?.route?.projectionInputKey != null && identitySource.brief.intent.route.projectionInputKey === routeProjectionInputKey(identitySource)) {
     result.brief.intent!.route!.projectionInputKey = routeProjectionInputKey(result);
   }
-  return result;
+  return identitySource.schemaVersion === 2 ? remapBuilderReconciliationIdentity(identitySource as CanonicalEasyTTrip, result as CanonicalEasyTTrip,
+    stopIds, new Map(trip.legs.map(leg => [leg.id, leg.id]))) : result;
 }
 
 function collectNestedStopReferences(value: unknown, references: string[], key?: string) {
+  if (key === "retainedAuthoredContent" && validRetainedAuthoredContent(value)) return;
   if (typeof value === "string" && key && singleStopReferenceKeys.has(key)) {
     references.push(value);
     return;
@@ -223,18 +229,14 @@ export function decideExistingTripPromotion(
  * changing the trip's ID or edit timestamp. Promotion uses this stable form so
  * retrying the same browser document is an exact, idempotent operation.
  */
-export function canonicalTripForOwner(
-  ownerId: string,
-  trip: EasyTTrip,
-  updatedAt = trip.updatedAt,
-): EasyTTrip {
-  trip = prepareTripDocumentForWrite(trip);
+/** The existing authoritative namespace/occurrence mapping, also used for exact ACK rebinding. */
+export function canonicalTripStopIdentityMap(trip: EasyTTrip): ReadonlyMap<string, string> {
   const stopPrefix = `${trip.id}-stop-`;
   const candidateId = (id: string) => id.startsWith(stopPrefix) ? id : `${stopPrefix}${id}`;
   const counts = new Map<string, number>();
   trip.stops.forEach(stop => counts.set(candidateId(stop.id), (counts.get(candidateId(stop.id)) ?? 0) + 1));
   const reserved = new Set(trip.stops.map(stop => candidateId(stop.id)));
-  const stopIds = new Map(
+  return new Map(
     [...trip.stops].sort((a, b) => a.id.localeCompare(b.id)).map((stop) => {
       let id = candidateId(stop.id);
       if (!stop.id.startsWith(stopPrefix) && counts.get(id)! > 1) {
@@ -247,6 +249,15 @@ export function canonicalTripForOwner(
       return [stop.id, id];
     }),
   );
+}
+
+export function canonicalTripForOwner(
+  ownerId: string,
+  trip: EasyTTrip,
+  updatedAt = trip.updatedAt,
+): EasyTTrip {
+  trip = prepareTripDocumentForWrite(trip);
+  const stopIds = canonicalTripStopIdentityMap(trip);
 
   return prepareTripDocumentForWrite({ ...remapTripStopReferences(normalizeLegacyGeneratedDayContext({ ...trip, ownerId }), stopIds), updatedAt });
 }
@@ -366,15 +377,16 @@ export function duplicateTripDocument(
     ownerId: null,
     title: input.title ?? `${source.title} copy`,
     status: "draft",
-  }, stopIds);
-  const legs = remapped.legs.map((leg) => ({ ...leg, id: `${input.id}-leg-${input.nextId()}` }));
+  }, stopIds, source);
+  const legIds = new Map(remapped.legs.map(leg => [leg.id, `${input.id}-leg-${input.nextId()}`]));
+  const legs = remapped.legs.map((leg) => ({ ...leg, id: legIds.get(leg.id)! }));
   const planItemIds = new Map(remapped.planItems.map((item) => [item.id, `${input.id}-item-${input.nextId()}`]));
   const itineraryIdeas = remapped.brief.itineraryIdeas?.map((idea) => {
     if (!idea.dayId) return { ...idea };
     const dayId = planItemIds.get(idea.dayId);
     return dayId ? { ...idea, dayId } : { ...idea, dayId: undefined, dayPart: undefined };
   });
-  return {
+  const result: EasyTTrip = {
     ...remapped,
     brief: {
       ...remapped.brief,
@@ -386,4 +398,7 @@ export function duplicateTripDocument(
     createdAt: input.now,
     updatedAt: input.now,
   };
+  if (remapped.brief.intent?.route?.projectionInputKey != null && remapped.brief.intent.route.projectionInputKey === routeProjectionInputKey(remapped)) result.brief.intent!.route!.projectionInputKey = routeProjectionInputKey(result);
+  return remapped.schemaVersion === 2 ? remapBuilderReconciliationIdentity(remapped as CanonicalEasyTTrip, result as CanonicalEasyTTrip,
+    new Map(remapped.stops.map(stop => [stop.id, stop.id])), legIds) : result;
 }

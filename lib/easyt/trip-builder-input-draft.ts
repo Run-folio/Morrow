@@ -79,15 +79,16 @@ function fingerprint(fields: BuilderInputField[]) {
 export function builderInputDraftKey(ownerId: string | null, tripId: string) {
   return `easyt-private:${ownerId === null ? "guest" : encodeURIComponent(ownerId)}:builder-input:${encodeURIComponent(tripId)}`;
 }
-export function createBuilderInputDraft(trip: CanonicalEasyTTrip, inputRevision = 0): BuilderInputDraft {
+export function createBuilderInputDraft(trip: CanonicalEasyTTrip, inputRevision = 0, scopeOwnerId = trip.ownerId): BuilderInputDraft {
+  if (trip.ownerId !== null && trip.ownerId !== scopeOwnerId) throw new TypeError('Foreign input owner');
   if (!revision(inputRevision)) throw new TypeError("Invalid input revision");
-  return { version: 1, ownerId: trip.ownerId, tripId: trip.id, inputRevision, basedOnFingerprint: fingerprint([]), fields: [] };
+  return { version: 1, ownerId: scopeOwnerId, tripId: trip.id, inputRevision, basedOnFingerprint: fingerprint([]), fields: [] };
 }
-function sameScope(draft: BuilderInputDraft, trip: CanonicalEasyTTrip) { return draft.ownerId === trip.ownerId && draft.tripId === trip.id; }
-export function updateBuilderInputDraft(draft: BuilderInputDraft, trip: CanonicalEasyTTrip, binding: BuilderInputBinding, raw: string): BuilderInputDraft {
-  if (!sameScope(draft, trip) || !validBinding(binding) || typeof raw !== "string" || raw.length > TEXT_LIMIT
+function sameScope(draft: BuilderInputDraft, trip: CanonicalEasyTTrip, scopeOwnerId = trip.ownerId) { return (trip.ownerId === null || trip.ownerId === scopeOwnerId) && draft.ownerId === scopeOwnerId && draft.tripId === trip.id; }
+export function updateBuilderInputDraft(draft: BuilderInputDraft, trip: CanonicalEasyTTrip, binding: BuilderInputBinding, raw: string, scopeOwnerId = trip.ownerId): BuilderInputDraft {
+  if (!sameScope(draft, trip, scopeOwnerId) || !validBinding(binding) || typeof raw !== "string" || raw.length > TEXT_LIMIT
     || !revision(draft.inputRevision + 1)) throw new TypeError("Invalid or foreign input draft");
-  const next = rebindBuilderInputDraft(draft, trip);
+  const next = rebindBuilderInputDraft(draft, trip, scopeOwnerId);
   const index = next.fields.findIndex(field => bindingKey(field.binding) === bindingKey(binding));
   if (index >= 0 && next.fields[index]!.raw === raw) return next;
   if (index < 0 && next.fields.length >= FIELD_LIMIT) throw new TypeError("Too many input fields");
@@ -101,8 +102,8 @@ export function updateBuilderInputDraft(draft: BuilderInputDraft, trip: Canonica
   next.basedOnFingerprint = fingerprint(next.fields);
   return next;
 }
-export function rebindBuilderInputDraft(draft: BuilderInputDraft, trip: CanonicalEasyTTrip): BuilderInputDraft {
-  if (!sameScope(draft, trip)) throw new TypeError("Foreign input draft");
+export function rebindBuilderInputDraft(draft: BuilderInputDraft, trip: CanonicalEasyTTrip, scopeOwnerId = trip.ownerId): BuilderInputDraft {
+  if (!sameScope(draft, trip, scopeOwnerId)) throw new TypeError("Foreign input draft");
   const next = structuredClone(draft);
   next.fields = next.fields.map(field => {
     const source = builderInputDraftBasis(trip, field.binding);
@@ -112,6 +113,25 @@ export function rebindBuilderInputDraft(draft: BuilderInputDraft, trip: Canonica
   });
   next.basedOnFingerprint = fingerprint(next.fields);
   return next;
+}
+/** Rebind only proven editable fields across an acknowledged identity-only transition. Blocked sources stay historical. */
+export function remapBuilderInputDraftIdentity(draft: BuilderInputDraft, before: CanonicalEasyTTrip, after: CanonicalEasyTTrip,
+  stopIds: ReadonlyMap<string, string>, scopeOwnerId: string | null): BuilderInputDraft {
+  if (!sameScope(draft, before, scopeOwnerId) || before.id !== after.id || after.ownerId !== scopeOwnerId) throw new TypeError('Foreign input identity transition');
+  const fields = draft.fields.map(field => {
+    const prior = builderInputDraftBasis(before, field.binding);
+    if (field.status !== 'editable' || !prior.bound || stable(prior) !== field.basisKey) return { ...field, status: 'binding-conflict' as const };
+    const binding = field.binding.kind === 'nights' ? { ...field.binding, stopId: stopIds.get(field.binding.stopId) ?? field.binding.stopId } : field.binding;
+    const value = structuredClone(prior.value) as Record<string, unknown> | null;
+    if (value && field.binding.kind === 'nights') value.stopId = stopIds.get(field.binding.stopId) ?? field.binding.stopId;
+    if (value && field.binding.kind === 'destination') value.stopIds = (value.stopIds as string[]).map(id => stopIds.get(id) ?? id);
+    if (value && field.binding.kind === 'date') value.constraints = (value.constraints as Array<{stopId?:string}>).map(item => ({ ...item, ...(item.stopId ? {stopId:stopIds.get(item.stopId) ?? item.stopId} : {}) }));
+    const source = builderInputDraftBasis(after, binding);
+    return source.bound && stable({ ...prior, value }) === stable(source)
+      ? { ...field, binding, acceptedSource: source, basisKey: stable(source), status: 'editable' as const }
+      : { ...field, status: 'binding-conflict' as const };
+  });
+  return { ...draft, inputRevision: draft.inputRevision + 1, fields, basedOnFingerprint: fingerprint(fields) };
 }
 /** Accepted arms consume their own source only; a stale/blocked input remains available for review. */
 export function consumeBuilderInputDraft(draft: BuilderInputDraft, binding: BuilderInputBinding, expectedInputRevision: number, expectedRaw: string): BuilderInputDraft {
@@ -146,31 +166,31 @@ function validEnvelope(value: unknown): value is BuilderInputDraft {
 }
 export type BuilderInputReadResult = { kind: "empty" } | { kind: "readable"; draft: BuilderInputDraft }
   | { kind: "protected"; raw: string } | { kind: "error"; reason: "storage" };
-export function readBuilderInputDraft(storage: Pick<BuilderInputStorage, "getItem">, trip: CanonicalEasyTTrip): BuilderInputReadResult {
+export function readBuilderInputDraft(storage: Pick<BuilderInputStorage, "getItem">, trip: CanonicalEasyTTrip, scopeOwnerId = trip.ownerId): BuilderInputReadResult {
   let raw: string | null;
-  try { raw = storage.getItem(builderInputDraftKey(trip.ownerId, trip.id)); } catch { return { kind: "error", reason: "storage" }; }
+  try { raw = storage.getItem(builderInputDraftKey(scopeOwnerId, trip.id)); } catch { return { kind: "error", reason: "storage" }; }
   if (raw === null) return { kind: "empty" };
   try {
     const value: unknown = raw.length <= BYTE_LIMIT ? JSON.parse(raw) : null;
-    if (!validEnvelope(value) || !sameScope(value, trip)) return { kind: "protected", raw };
-    return { kind: "readable", draft: rebindBuilderInputDraft(value, trip) };
+    if (!validEnvelope(value) || !sameScope(value, trip, scopeOwnerId)) return { kind: "protected", raw };
+    return { kind: "readable", draft: rebindBuilderInputDraft(value, trip, scopeOwnerId) };
   } catch { return { kind: "protected", raw }; }
 }
-export function writeBuilderInputDraft(storage: BuilderInputStorage, trip: CanonicalEasyTTrip, draft: BuilderInputDraft):
+export function writeBuilderInputDraft(storage: BuilderInputStorage, trip: CanonicalEasyTTrip, draft: BuilderInputDraft, scopeOwnerId = trip.ownerId):
   { ok: true } | { ok: false; reason: "protected" | "storage" | "stale" | "invalid" } {
   try {
-    if (!validEnvelope(draft) || !sameScope(draft, trip)) return { ok: false, reason: "invalid" };
-    const prior = readBuilderInputDraft(storage, trip);
+    if (!validEnvelope(draft) || !sameScope(draft, trip, scopeOwnerId)) return { ok: false, reason: "invalid" };
+    const prior = readBuilderInputDraft(storage, trip, scopeOwnerId);
     if (prior.kind === "protected") return { ok: false, reason: "protected" };
     if (prior.kind === "error") return { ok: false, reason: "storage" };
     if (prior.kind === "readable") {
       const rawFields = (value: BuilderInputDraft) => stable(value.fields.map(field => ({ binding: field.binding, raw: field.raw })));
       if (prior.draft.inputRevision > draft.inputRevision || prior.draft.inputRevision === draft.inputRevision && rawFields(prior.draft) !== rawFields(draft)) return { ok: false, reason: "stale" };
     }
-    const next = rebindBuilderInputDraft(draft, trip);
+    const next = rebindBuilderInputDraft(draft, trip, scopeOwnerId);
     const serialized = JSON.stringify(next);
     if (serialized.length > BYTE_LIMIT) return { ok: false, reason: "invalid" };
-    storage.setItem(builderInputDraftKey(trip.ownerId, trip.id), serialized);
+    storage.setItem(builderInputDraftKey(scopeOwnerId, trip.id), serialized);
     return { ok: true };
   } catch { return { ok: false, reason: "storage" }; }
 }

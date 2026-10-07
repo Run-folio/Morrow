@@ -18,7 +18,7 @@ import dynamic from "next/dynamic";
 import { useCallback, useEffect, useLayoutEffect, useId, useMemo, useRef, useState, type DragEvent as ReactDragEvent } from "react";
 import { acknowledgeTripBuildSave, cacheCanonicalTrip, canUseHydratedTripScope, claimGuestTripRecoveryForOwner, EASYT_BEFORE_NEW_TRIP_EVENT, EASYT_LAST_OWNER_CHANGE_EVENT, EASYT_LAST_OWNER_KEY, EasyTTripAuthError, EasyTTripPromotionConflictError, EasyTTripSaveConflictError, forgetRememberedOwner, loadActiveTrip, loadCurrentDraftRecovery, loadRememberedOwner, loadRequestedTrip, loadTripRecovery, markTripRecoveryState, ownerIdForBrowserRecovery, rememberLastOwner, saveTripRecovery, saveTripRecoveryToEasyT, shouldAllowNewTripNavigation, tripDocumentsCanonicalEquivalent, type TripRecoveryHandle } from "@/lib/easyt/storage";
 import { tripBuildDocumentsCanonicalEquivalent } from "@/lib/easyt/trip-promotion";
-import { builderStructuralSnapshot, type BuilderAcceptedEdit, type BuilderStructuralSnapshot } from "@/lib/easyt/trip-builder-edit";
+import { type BuilderAcceptedEdit, type BuilderStructuralSnapshot } from "@/lib/easyt/trip-builder-edit";
 import { builderNightsCommand, builderRemoveCommand, builderPlaceCommand, builderDetailsCommands } from "@/lib/easyt/trip-builder-handler-contract";
 import type { BuilderEditSession } from "@/lib/easyt/trip-builder-edit-session";
 import type { BuilderInputBinding } from "@/lib/easyt/trip-builder-input-draft";
@@ -2213,7 +2213,7 @@ function TripBuilderDocument() {
   const routeNightDifference = routeNights - totalNights;
 
   const rememberStructuralChange = (summary: string, affectedStopCount: number) => {
-    setLastStructuralChange({ ...(builderEditSessionRef.current ? { canonical: builderStructuralSnapshot(builderEditSessionRef.current.getSnapshot().trip) } : {}), stops, allocations: dayAllocations, manualNightStopIds, startDate, endDate, locks: scheduleLocks, placeSelections, completedPlanningAreaMentionIds, removedPlaceMentionIds, countryDiscoveryChoices: capturedStructuredBrief.countryDiscoveryChoices, discoveryDraftByMentionId: capturedStructuredBrief.discoveryDraftByMentionId, capturedPlaceSelections: capturedStructuredBrief.placeSelections, capturedDestinations: capturedStructuredBrief.destinations, capturedMustVisit: capturedStructuredBrief.mustVisit, summary });
+    setLastStructuralChange({ ...(builderEditSessionRef.current ? { canonical: builderEditSessionRef.current.captureStructuralSnapshot() } : {}), stops, allocations: dayAllocations, manualNightStopIds, startDate, endDate, locks: scheduleLocks, placeSelections, completedPlanningAreaMentionIds, removedPlaceMentionIds, countryDiscoveryChoices: capturedStructuredBrief.countryDiscoveryChoices, discoveryDraftByMentionId: capturedStructuredBrief.discoveryDraftByMentionId, capturedPlaceSelections: capturedStructuredBrief.placeSelections, capturedDestinations: capturedStructuredBrief.destinations, capturedMustVisit: capturedStructuredBrief.mustVisit, summary });
     trackEvent("trip_refined", { change_type: summary, affected_stop_count: affectedStopCount });
   };
 

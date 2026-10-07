@@ -6,7 +6,7 @@ import { createBuilderEditSession, type BuilderEditSession, type BuilderEditSess
 
 /** One hydrated scope owns one session; acknowledged CAS timestamps never remount it. */
 export function useBuilderEditSession(options: BuilderEditSessionOptions | null, hydrationKey: string) {
-  const scope = options ? JSON.stringify([hydrationKey, options.initialTrip.ownerId, options.initialTrip.id]) : null;
+  const scope = options ? JSON.stringify([hydrationKey, options.initialRecovery?.ownerId ?? options.initialTrip.ownerId, options.initialTrip.id]) : null;
   const current = useRef({ options, scope });
   current.current = { options, scope };
   const [mounted, setMounted] = useState<{ scope: string; session: BuilderEditSession; snapshot: BuilderEditSessionSnapshot } | null>(null);
@@ -20,8 +20,8 @@ export function useBuilderEditSession(options: BuilderEditSessionOptions | null,
     const session = createBuilderEditSession({ ...initial,
       getOwnerId: () => current.current.scope === scope && current.current.options
         ? current.current.options.getOwnerId() : initial.initialTrip.ownerId === null ? 'detached-builder' : null,
-      readDraft: trip => getOptions().readDraft(trip),
-      writeDraft: (trip, draft) => getOptions().writeDraft(trip, draft),
+      readDraft: (trip, ownerId) => getOptions().readDraft(trip, ownerId),
+      writeDraft: (trip, draft, ownerId) => getOptions().writeDraft(trip, draft, ownerId),
       saveRecovery: (trip, recoveryOptions) => getOptions().saveRecovery(trip, recoveryOptions),
       acknowledgeRecovery: (reviewed, canonical, handle) => getOptions().acknowledgeRecovery(reviewed, canonical, handle),
       markRecoveryState: (handle, state) => getOptions().markRecoveryState?.(handle, state) ?? false,
