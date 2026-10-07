@@ -301,3 +301,60 @@ test('retry_after_predecessor_ACK_preserves_rebased_CAS_and_acknowledges_exact_l
   assert.deepEqual(h.writes[2]!.handle, submitted.handle); await h.ack(2);
   assert.equal(h.session.getSnapshot().saveState, 'cloud'); assert.equal(h.recovery(), null); h.session.dispose();
 });
+test('acknowledged_A_then_B_network_failure_and_new_C_retries_with_proven_ancestry', async () => {
+  const h = await harness(); accept(h); await h.run(450);
+  accept(h, { kind: 'travellers', travellers: 3 }); await h.run(450); await h.ack(0);
+  const cloudA = { ...h.writes[0]!.trip, updatedAt: h.writes[1]!.trip.updatedAt };
+  h.writes[1]!.result.reject(new TypeError('offline')); await tick();
+  h.session.updateDraft({ binding: { kind: 'origin' }, raw: '  unfinished origin ' });
+  h.session.updateDraft({ binding: { kind: 'nights', intentId: 'intent:kyoto', stopId: 'kyoto' }, raw: '3.' });
+  const c = accept(h, { kind: 'travellers', travellers: 5 }); const cRecovery = h.recovery()!;
+  assert.equal(h.session.retrySave(), true); await tick(); const retry = h.writes[2]!;
+  assert.equal(retry.trip.updatedAt, cloudA.updatedAt);
+  assert.deepEqual(decideExistingTripUpdate(cloudA.ownerId!, retry.trip, cloudA), { outcome: 'save' });
+  assert.equal(retry.trip.travellers, 5); assert.equal(retry.trip.brief.budgetBand, 'high');
+  assert.equal(retry.handle.writeId, cRecovery.writeId); assert.deepEqual(h.recovery()!.trip, c.trip);
+  assert.deepEqual(h.session.getSnapshot().trip, c.trip); assert.deepEqual(h.session.getSnapshot().draft, c.draft);
+  await h.ack(2); assert.equal(h.recovery(), null); assert.equal(h.session.getSnapshot().canonicalSaveState, 'cloud');
+  assert.equal(h.session.getSnapshot().saveState, 'local'); assert.equal(h.session.getSnapshot().error, null);
+  assert.deepEqual(h.session.getSnapshot().draft, c.draft); h.session.dispose();
+});
+test('newer_structural_inverse_after_rebased_network_failure_keeps_authoritative_route_and_C_handle', async () => {
+  const h = await harness(); const before = builderStructuralSnapshot(h.session.getSnapshot().trip);
+  accept(h, { kind: 'remove-destination', intentId: 'intent:hiroshima' }); await h.run(450);
+  accept(h, { kind: 'travellers', travellers: 3 }); await h.run(450); await h.ack(0);
+  const cloudA = { ...h.writes[0]!.trip, updatedAt: h.writes[1]!.trip.updatedAt };
+  h.writes[1]!.result.reject(new TypeError('offline')); await tick();
+  const c = accept(h, { kind: 'structural-inverse', snapshot: before }); const handle = h.recovery()!.writeId;
+  assert.equal(h.session.retrySave(), true); await tick(); const retry = h.writes[2]!;
+  assert.deepEqual(decideExistingTripUpdate(cloudA.ownerId!, retry.trip, cloudA), { outcome: 'save' });
+  assert.equal(retry.trip.updatedAt, cloudA.updatedAt); assert.equal(retry.handle.writeId, handle);
+  assert.deepEqual(retry.trip.brief.intent.route, c.trip.brief.intent.route);
+  assert.deepEqual(retry.trip.stops, c.trip.stops); assert.equal(retry.trip.travellers, 3);
+  assert.deepEqual(retry.trip.brief.nightAllocations, c.trip.brief.nightAllocations);
+  assert.equal(retry.trip.brief.retainedAuthoredContent?.entries.length ?? 0, 0);
+  await h.ack(2); assert.equal(h.recovery(), null); assert.equal(h.session.getSnapshot().saveState, 'cloud'); h.session.dispose();
+});
+test('lost_B_success_still_conflicts_on_new_C_retry_and_preserves_exact_C_recovery', async () => {
+  const h = await harness(); accept(h); await h.run(450);
+  accept(h, { kind: 'travellers', travellers: 3 }); await h.run(450); await h.ack(0);
+  const cloudB = { ...h.writes[1]!.trip, updatedAt: nextTripUpdatedAt(h.writes[1]!.trip.updatedAt) };
+  h.writes[1]!.result.reject(new TypeError('B response was lost')); await tick();
+  h.session.updateDraft({ binding: { kind: 'origin' }, raw: 'exact raw C  ' });
+  const c = accept(h, { kind: 'travellers', travellers: 5 }); const handle = h.recovery()!.writeId;
+  assert.equal(h.session.retrySave(), true); await tick(); const retry = h.writes[2]!;
+  let decodedConflict: unknown;
+  try {
+    await saveTripRecoveryToEasyT(retry.trip, retry.handle, async (_url, init) => {
+      const decision = decideExistingTripUpdate(cloudB.ownerId!, JSON.parse(String(init?.body)), cloudB);
+      assert.equal(decision.outcome, 'conflict');
+      return new Response(JSON.stringify({ category: 'conflict', trip: cloudB, conflictReason: 'cloud-changed' }), { status: 409 });
+    });
+  } catch (cause) { decodedConflict = cause; }
+  assert.ok(decodedConflict instanceof Error); assert.equal(decodedConflict.name, 'EasyTTripSaveConflictError');
+  retry.result.reject(decodedConflict); await tick();
+  assert.equal(h.session.getSnapshot().error?.category, 'conflict'); assert.equal(h.session.getSnapshot().saveState, 'error');
+  assert.deepEqual(h.session.getSnapshot().trip, c.trip); assert.deepEqual(h.session.getSnapshot().draft, c.draft);
+  assert.equal(h.recovery()!.writeId, handle); assert.deepEqual(h.recovery()!.trip, c.trip);
+  assert.equal(h.session.retrySave(), false); await h.run(450); assert.equal(h.writes.length, 3); h.session.dispose();
+});

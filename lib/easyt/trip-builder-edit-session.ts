@@ -7,7 +7,7 @@ import { createBuilderInputDraft, updateBuilderInputDraft, rebindBuilderInputDra
 import { prepareBuilderNecessaryProjection, pendingBuilderReconciliationUnits, mergeBuilderProjectionResponse,
   type BuilderEditScope, type BuilderProjectionResponse } from './trip-builder-reconciliation.ts';
 import { routeProjectionInputKey, routeProjectionStatus } from './trip-route-intent.ts';
-import { createTripMutationPersistenceQueue } from './trip-mutation-persistence.ts';
+import { createTripMutationPersistenceQueue, mergeTripMutationDocuments } from './trip-mutation-persistence.ts';
 import { tripBuildDocumentsCanonicalEquivalent } from './trip-promotion.ts';
 import { type TripRecoveryHandle, type TripRecoveryRecord,
   type TripRecoveryState, type TripRecoveryWriteResult, type TripBuildSaveAcknowledgement } from './storage.ts';
@@ -73,6 +73,7 @@ export function createBuilderEditSession(options: BuilderEditSessionOptions) {
   let canonicalSaveState: BuilderSessionSaveState = error ? 'error' : recovery || ownerId === null ? 'local' : 'cloud';
   let pending: SaveJob | null = recovery ? { trip: structuredClone(trip), localTrip: structuredClone(trip), handle: recovery, acceptedRevision } : null;
   let failedJob: SaveJob | null = null, inFlight: Promise<void> | null = null;
+  let acknowledgedCanonical: CanonicalEasyTTrip | null = null;
   let lastEnqueuedTrip: CanonicalEasyTTrip | undefined;
   let cloudDue = false, cancelCloud: (() => void) | null = null, cancelWork: (() => void) | null = null;
   let work: BuilderReconciliationRequest | null = null, requestSequence = 0;
@@ -145,6 +146,7 @@ export function createBuilderEditSession(options: BuilderEditSessionOptions) {
     canonicalSaveState = 'cloud-saving'; publish();
     inFlight = queue.enqueue(job.trip, job.handle, job.authoredFrom).then(canonical => {
       if (!active()) return;
+      acknowledgedCanonical = requireReadableTripDocument(canonical);
       const submitted = job.submitted!;
       const acknowledgement = options.acknowledgeRecovery(submitted, canonical, job.handle);
       const isCurrent = acceptedRevision === job.acceptedRevision && exact(recovery, job.handle)
@@ -241,6 +243,25 @@ export function createBuilderEditSession(options: BuilderEditSessionOptions) {
       if (!active() || historicalRecovery || draftProtected || pauseReason === 'conflict' || pauseReason === 'auth'
         || pauseReason === 'validation' || error?.category === 'protected') return false;
       if (draftNeedsWrite && !writeDraft()) return false;
+      if (pending && failedJob?.submitted && acknowledgedCanonical
+        && failedJob.submitted.updatedAt === acknowledgedCanonical.updatedAt
+        && failedJob.submitted.ownerId === ownerId && failedJob.submitted.id === tripId) {
+        // The failed submission contains the prior local edit rebased onto an
+        // exact acknowledged ancestor. Carry later deltas (including inverses)
+        // over that proven submission; a failed queue tail cannot supply it.
+        // Keep the latest local document/write handle distinct from this CAS
+        // submission. An unacknowledged server write still conflicts normally.
+        try {
+          pending = { ...pending, trip: requireReadableTripDocument(mergeTripMutationDocuments(
+            failedJob.localTrip, pending.localTrip, failedJob.submitted,
+          )), authoredFrom: undefined };
+        } catch (cause) {
+          paused = true; pauseReason = tripRecoveryStateForPersistenceError(cause);
+          if (recovery) options.markRecoveryState?.(recovery, pauseReason);
+          saveFailure(pauseReason, 'The retry needs recovery review. The exact device trip remains preserved.');
+          return false;
+        }
+      }
       paused = false; pauseReason = null; error = null;
       if (recovery) options.markRecoveryState?.(recovery, 'pending');
       if (!pending && failedJob) pending = { ...failedJob, trip: structuredClone(failedJob.submitted ?? failedJob.trip), authoredFrom: undefined };
