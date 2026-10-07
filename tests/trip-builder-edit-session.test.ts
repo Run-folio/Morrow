@@ -40,6 +40,7 @@ function fixture() {
 }
 async function harness(initialTrip = fixture(), storage = new MemoryStorage(), persist?: typeof saveTripRecoveryToEasyT, scopeOwnerId = initialTrip.ownerId) {
   const timers: { callback: () => void; delay: number; active: boolean }[] = [];
+  const recoveryWrites: { accountSavePending: boolean }[] = [];
   const writes: { trip: CanonicalEasyTTrip; handle: { ownerId: string | null; tripId: string; writeId: string }; result: ReturnType<typeof deferred<CanonicalEasyTTrip>> }[] = [];
   const projections: { request: BuilderReconciliationRequest; signal: AbortSignal; result: ReturnType<typeof deferred<BuilderProjectionResponse>> }[] = [];
   const recovery = loadTripRecoveryFromStorage(storage, initialTrip.id, scopeOwnerId);
@@ -47,7 +48,7 @@ async function harness(initialTrip = fixture(), storage = new MemoryStorage(), p
   const session = (await api()).createBuilderEditSession({ initialTrip, initialRecovery: recovery,
     getOwnerId: () => owner, readDraft: (trip, browserOwner) => readBuilderInputDraft(storage, trip, browserOwner),
     writeDraft: (trip, draft, browserOwner) => writeBuilderInputDraft(storage, trip, draft, browserOwner),
-    saveRecovery: (trip, options) => saveTripRecoveryToStorage(storage, trip, options),
+    saveRecovery: (trip, options) => { recoveryWrites.push({ accountSavePending: options.accountSavePending }); return saveTripRecoveryToStorage(storage, trip, options); },
     acknowledgeRecovery: (reviewed, canonical, handle) => acknowledgeTripBuildSaveInStorage(storage, reviewed, canonical, handle),
     markRecoveryState: (handle, state) => markTripRecoveryStateInStorage(storage, handle, state),
     persistAccount: async (trip, handle) => {
@@ -58,7 +59,7 @@ async function harness(initialTrip = fixture(), storage = new MemoryStorage(), p
     now: () => '2026-10-07T00:00:00.000Z',
     schedule: (callback, delay) => { const timer = { callback, delay, active: true }; timers.push(timer); return () => { timer.active = false; }; },
   });
-  return { session, storage, writes, projections, rotate: (value: string | null) => { owner = value; },
+  return { session, storage, writes, recoveryWrites, projections, rotate: (value: string | null) => { owner = value; },
     run: async (delay: number) => { for (const timer of [...timers]) if (timer.active && timer.delay === delay) { timer.active = false; timer.callback(); } await tick(); },
     recovery: () => loadTripRecoveryFromStorage(storage, initialTrip.id, scopeOwnerId),
     ack: async (index: number) => { const write = writes[index]!; write.result.resolve({ ...write.trip, updatedAt: nextTripUpdatedAt(write.trip.updatedAt) }); await tick(); },
@@ -387,6 +388,20 @@ test('account_scoped_ownerless_recovery_and_login_do_not_promote_or_assign_owner
   assert.equal(h.session.updateDraft({binding:{kind:'origin'},raw:'Lon'}),true);
   await h.run(450); assert.equal(h.writes.length,0); assert.equal(await h.session.flush(),false);
   h.rotate('owner-b'); assert.equal(h.session.updateDraft({binding:{kind:'origin'},raw:'Foreign'}),false); h.session.dispose();
+});
+test('recovery_scope_alone_never_registers_current_account_save_ownership', async () => {
+  const ownerless = await ownerlessHarness(); accept(ownerless,budget);
+  assert.equal(ownerless.recoveryWrites.at(-1)!.accountSavePending,false);
+  const saving = ownerless.session.flush({promoteOwnerless:true}); await tick();
+  accept(ownerless,{kind:'travellers',travellers:3});
+  assert.equal(ownerless.recoveryWrites.at(-1)!.accountSavePending,true);
+  ownerless.session.dispose(); await ownerless.ack(0); assert.equal(await saving,false);
+  const current = await harness(); accept(current,budget);
+  assert.equal(current.recoveryWrites.at(-1)!.accountSavePending,true); current.session.dispose();
+  const historical = await harness(requireReadableTripDocument(current.recovery()!.trip),current.storage);
+  accept(historical,{kind:'travellers',travellers:4});
+  assert.equal(historical.recoveryWrites.at(-1)!.accountSavePending,false);
+  await historical.run(450); assert.equal(historical.writes.length,0); historical.session.dispose();
 });
 test('explicit_promotion_ACK_remaps_exact_raw_and_newer_Undo_without_installing_old_content', async () => {
   const h = await ownerlessHarness(); accept(h,budget);

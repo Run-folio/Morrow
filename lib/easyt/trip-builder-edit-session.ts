@@ -126,7 +126,9 @@ export function createBuilderEditSession(options: BuilderEditSessionOptions) {
     if (!active() || draftProtected) return false;
     candidate = requireReadableTripDocument(JSON.parse(JSON.stringify(prepareTripDocumentForWrite(candidate))));
     let result: TripRecoveryWriteResult;
-    try { result = options.saveRecovery(candidate, { ownerId, ...(recovery ? { replace: recovery } : {}), accountSavePending: ownerId !== null, state: pauseReason ?? 'pending' }); }
+    const accountSavePending = ownerId !== null && !paused && !historicalRecovery
+      && (candidate.ownerId !== null || promoting);
+    try { result = options.saveRecovery(candidate, { ownerId, ...(recovery ? { replace: recovery } : {}), accountSavePending, state: pauseReason ?? 'pending' }); }
     catch { saveFailure('storage', 'The accepted edit could not be saved on this device.'); return false; }
     if (!result.stored || result.handle.ownerId !== ownerId || result.handle.tripId !== tripId) {
       saveFailure('storage', 'The accepted edit could not safely replace this device recovery.'); return false;
