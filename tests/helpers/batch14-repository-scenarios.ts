@@ -4,7 +4,7 @@ import { getEasyTDatabase, closeBatch14Database } from './batch14-repository-db.
 import { promoteTripForOwner, saveTripForOwner, getTripForOwner, archiveTripForOwner, restoreTripForOwner } from '../../lib/easyt/repository.ts';
 import { EasyTTripSaveConflictError } from '../../lib/easyt/trip-continuity.ts';
 import { TripDocumentReadError, requireReadableTripDocument } from '../../lib/easyt/trip-document.ts';
-import { remapTripStopReferences } from '../../lib/easyt/trip-promotion.ts';
+import { duplicateTripDocument, remapTripStopReferences } from '../../lib/easyt/trip-promotion.ts';
 import { builderDocumentFingerprint } from '../../lib/easyt/trip-builder-document-commit.ts';
 import { prepareBuilderHandlerEdit } from '../../lib/easyt/trip-builder-handler-contract.ts';
 const sql=getEasyTDatabase();
@@ -16,8 +16,15 @@ async function snapshot(){return Promise.all(['easyt_trips','easyt_stops','easyt
 try{
  await sql`insert into easyt_users(id,email) values ('owner-a','batch14-a@example.invalid'),('owner-b','batch14-b@example.invalid')`;
  // Candidate-specific live work + retained provenance through the actual promotion/CAS transaction.
- const original=canonicalRouteFixture();
- const workSource=requireReadableTripDocument(remapTripStopReferences({...original,id:'batch14-live-work',ownerId:null,status:'draft'},new Map(original.stops.map(stop=>[stop.id,stop.id]))));
+ const original=requireReadableTripDocument(canonicalRouteFixture());let fixtureId=0;
+ const workCopy=requireReadableTripDocument(duplicateTripDocument(original,{id:'batch14-live-work',now:original.updatedAt,nextId:()=>String(++fixtureId)}));
+ const testStopIds=new Map(workCopy.brief.intent.route.destinations.map(intent=>{
+  const sourceIntent=original.brief.intent.route.destinations.find(source=>source.id===intent.id)!;
+  assert.equal(intent.stopIds.length,1);assert.equal(sourceIntent.stopIds.length,1);
+  return [intent.stopIds[0]!,sourceIntent.stopIds[0]!];
+ }));
+ // Exercise unnamespaced live targets while keeping each independent trip's child IDs unique.
+ const workSource=requireReadableTripDocument(remapTripStopReferences(workCopy,testStopIds));
  const removal=prepareBuilderHandlerEdit(workSource,{kind:'remove-destination',intentId:'intent:hiroshima'},builderDocumentFingerprint(workSource));assert.ok(removal.ok);
  const nightEdit=prepareBuilderHandlerEdit(removal.trip,{kind:'nights',intentId:'intent:kyoto',stopId:'kyoto',nights:4},builderDocumentFingerprint(removal.trip));assert.ok(nightEdit.ok);
  const units=nightEdit.trip.brief.cascadeStatus!.routeReconciliation!.residual;
