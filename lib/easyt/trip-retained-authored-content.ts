@@ -19,6 +19,8 @@ export function validRetainedAuthoredContent(value: unknown): boolean {
         if (!object(entry) || typeof entry.id !== 'string' || !entry.id || ids.has(entry.id) || !object(entry.sourceStop) || typeof entry.sourceStop.id !== 'string'
             || typeof entry.sourceStop.name !== 'string' || typeof entry.sourceStop.country !== 'string' || !strings(entry.sourceIntentIds) || !Array.isArray(entry.days) || !Array.isArray(entry.itineraryIdeas) || !Array.isArray(entry.mapPins))
             return false;
+        if (entry.sourceKind !== undefined && !['removed_stop', 'retired_day'].includes(String(entry.sourceKind))) return false;
+        if (entry.sourceKind === 'retired_day' && entry.days.length > 1) return false;
         ids.add(entry.id);
         const sourceStopId = entry.sourceStop.id;
         const dayIds = new Set<string>();
@@ -39,17 +41,19 @@ export function validRetainedAuthoredContent(value: unknown): boolean {
             && entry.mapPins.every(pin => object(pin) && typeof pin.id === 'string' && typeof pin.title === 'string' && Number.isInteger(pin.dayNumber) && typeof pin.latitude === 'number' && typeof pin.longitude === 'number');
     });
 }
-/** Capture before any removed-stop filter. Historical bindings remain inside JSONB only. */
-export function retainRemovedAuthoredContent(before: EasyTTrip, after: EasyTTrip): EasyTTrip {
-    if (!validRetainedAuthoredContent(before.brief.retainedAuthoredContent) || !validRetainedAuthoredContent(after.brief.retainedAuthoredContent))
-        throw new Error('invalid retained authored content');
-    const restored = (entry: RetainedAuthoredStopContent) => after.stops.some(stop => authoredContentKey(stop) === authoredContentKey(entry.sourceStop))
+export function retainedSnapshotIsLive(after: EasyTTrip, entry: RetainedAuthoredStopContent) {
+    return after.stops.some(stop => authoredContentKey(stop) === authoredContentKey(entry.sourceStop))
         && entry.days.every(day => after.planItems.some(item => authoredContentKey(item) === authoredContentKey(day.sourceDay))
             && authoredContentKey(after.brief.dayNotes?.[day.sourceDay.dayNumber]) === authoredContentKey(day.dayNotes)
             && authoredContentKey(after.brief.customActivities?.[day.sourceDay.dayNumber]) === authoredContentKey(day.customActivities))
         && entry.itineraryIdeas.every(idea => after.brief.itineraryIdeas?.some(item => authoredContentKey(item) === authoredContentKey(idea)))
         && entry.mapPins.every(pin => after.brief.mapPins?.some(item => authoredContentKey(item) === authoredContentKey(pin)));
-    const entries = structuredClone((before.brief.retainedAuthoredContent?.entries ?? []).filter(entry => !restored(entry)));
+}
+/** Capture before any removed-stop filter. Historical bindings remain inside JSONB only. */
+export function retainRemovedAuthoredContent(before: EasyTTrip, after: EasyTTrip): EasyTTrip {
+    if (!validRetainedAuthoredContent(before.brief.retainedAuthoredContent) || !validRetainedAuthoredContent(after.brief.retainedAuthoredContent))
+        throw new Error('invalid retained authored content');
+    const entries = structuredClone((before.brief.retainedAuthoredContent?.entries ?? []).filter(entry => !retainedSnapshotIsLive(after, entry)));
     for (const entry of after.brief.retainedAuthoredContent?.entries ?? []) {
         const old = entries.find(e => e.id === entry.id);
         if (old && authoredContentKey(old) !== authoredContentKey(entry))
@@ -70,6 +74,23 @@ export function retainRemovedAuthoredContent(before: EasyTTrip, after: EasyTTrip
         if (!old)
             entries.push(entry);
     }
+    // Missing canonical day IDs at a surviving occurrence are historical snapshots,
+    // never candidates for nearest-day reassignment or automatic grow restoration.
+    if (after.schemaVersion === 2) for (const day of before.planItems.filter(day => active.has(day.stopId) && !after.planItems.some(item => item.id === day.id))) {
+        const sourceStop = before.stops.find(stop => stop.id === day.stopId)!;
+        const payload = { sourceKind: 'retired_day' as const, sourceStop: structuredClone(sourceStop),
+            sourceIntentIds: before.brief.intent?.route?.destinations.filter(intent => intent.stopIds.includes(day.stopId)).map(intent => intent.id) ?? [],
+            days: [{ sourceDay: structuredClone(day),
+                ...(before.brief.dayNotes?.[day.dayNumber] !== undefined ? { dayNotes: structuredClone(before.brief.dayNotes[day.dayNumber]) } : {}),
+                ...(before.brief.customActivities?.[day.dayNumber] !== undefined ? { customActivities: structuredClone(before.brief.customActivities[day.dayNumber]) } : {}) }],
+            itineraryIdeas: structuredClone((before.brief.itineraryIdeas ?? []).filter(idea => idea.dayId === day.id)),
+            mapPins: structuredClone((before.brief.mapPins ?? []).filter(pin => pin.dayNumber === day.dayNumber)) };
+        if (entries.some(({id: _id, ...entry}) => authoredContentKey(entry) === authoredContentKey(payload))) continue;
+        const stem = `retained-day:${encodeURIComponent(day.stopId)}:${encodeURIComponent(day.id)}:`;
+        let generation = 0;
+        while (entries.some(entry => entry.id === `${stem}${generation}`)) generation++;
+        entries.push({id: `${stem}${generation}`, ...payload});
+    }
     return { ...after, brief: { ...after.brief, retainedAuthoredContent: entries.length ? { version: 1, entries } : undefined } };
 }
 export function retainedAuthoredContentForReview(trip: EasyTTrip) {
@@ -81,7 +102,7 @@ export function restoreRetainedAuthoredContent(trip: EasyTTrip, sourceStops: Eas
     const entries = next.brief.retainedAuthoredContent?.entries ?? [];
     const restoredIds = new Set<string>();
     for (const entry of entries) {
-        if (!sourceStops.some(stop => authoredContentKey(stop) === authoredContentKey(entry.sourceStop)))
+        if (entry.sourceKind === "retired_day" || !sourceStops.some(stop => authoredContentKey(stop) === authoredContentKey(entry.sourceStop)))
             continue;
         for (const day of entry.days) {
             const existing = next.planItems.find(item => item.id === day.sourceDay.id);
@@ -225,4 +246,121 @@ export function prepareRetainedContentPreservationSource(before: EasyTTrip, cand
     if (!reproduced?.ok || authoredContentKey(reproduced.trip) !== receipt.candidateKey)
         throw new Error("invalid retained consumption");
     return structuredClone(reproduced.trip);
+}
+
+/** In-memory inverse owns calendar identity, not the whole document. */
+export type BuilderCalendarSnapshot = {
+    planItems: EasyTTrip['planItems'];
+    dayNotes: EasyTTrip['brief']['dayNotes'];
+    customActivities: EasyTTrip['brief']['customActivities'];
+    itineraryIdeas: EasyTTrip['brief']['itineraryIdeas'];
+    mapPins: EasyTTrip['brief']['mapPins'];
+    retainedAuthoredContent: EasyTTrip['brief']['retainedAuthoredContent'];
+};
+export function captureBuilderCalendarSnapshot(trip: EasyTTrip): BuilderCalendarSnapshot {
+    return structuredClone({planItems: trip.planItems, dayNotes: trip.brief.dayNotes,
+        customActivities: trip.brief.customActivities, itineraryIdeas: trip.brief.itineraryIdeas,
+        mapPins: trip.brief.mapPins, retainedAuthoredContent: trip.brief.retainedAuthoredContent});
+}
+/** Restore exact missing sources, retaining later values on surviving IDs. */
+export function restoreBuilderCalendarSnapshot(trip: EasyTTrip, snapshot: BuilderCalendarSnapshot, sourceStops: EasyTTrip['stops']): EasyTTrip {
+    const next = structuredClone(trip);
+    const entries = next.brief.retainedAuthoredContent?.entries ?? [];
+    const oldEntryIds = new Set(snapshot.retainedAuthoredContent?.entries.map(entry => entry.id));
+    const targetIds = new Set(snapshot.planItems.map(day => day.id));
+    const currentById = new Map(trip.planItems.map(day => [day.id, day]));
+    const currentByNumber = new Map(trip.planItems.map(day => [day.dayNumber, day]));
+    const restored = new Set<string>();
+    const consumed = new Set<string>();
+    for (const day of trip.planItems.filter(day => !targetIds.has(day.id) && sourceStops.some(stop => stop.id === day.stopId))) {
+        const {id, stopId, date: _date, dayNumber: _number, contextNotes: _generated, ...content} = day;
+        const stop = trip.stops.find(stop => stop.id === stopId)!;
+        const blank = {type: 'open', title: `Flexible day in ${stop.name}`, reason: 'Plan this day around your preferences.', notes: [], startsAt: null, endsAt: null, bookingUrl: null, latitude: null, longitude: null};
+        if (!id.startsWith(`${trip.id}-calendar:`) || authoredContentKey(content) !== authoredContentKey(blank)
+            || trip.brief.dayNotes?.[day.dayNumber]?.length || trip.brief.customActivities?.[day.dayNumber]?.length
+            || trip.brief.itineraryIdeas?.some(idea => idea.dayId === id) || trip.brief.mapPins?.some(pin => pin.dayNumber === day.dayNumber))
+            throw new Error('inverse calendar content conflict');
+    }
+    next.planItems = snapshot.planItems.map(source => {
+        const current = currentById.get(source.id);
+        if (current) {
+            if (current.date !== source.date && (current.startsAt || current.endsAt || current.bookingUrl
+                || trip.brief.itineraryIdeas?.some(idea => idea.dayId === current.id && 'startsAt' in idea && idea.startsAt)))
+                throw new Error('inverse protected date conflict');
+            return {...current, dayNumber: source.dayNumber, date: source.date};
+        }
+        const entry = entries.find(entry => !oldEntryIds.has(entry.id)
+            && sourceStops.some(stop => authoredContentKey(stop) === authoredContentKey(entry.sourceStop))
+            && entry.days.some(day => authoredContentKey(day.sourceDay) === authoredContentKey(source)
+                && authoredContentKey(day.dayNotes) === authoredContentKey(snapshot.dayNotes?.[source.dayNumber])
+                && authoredContentKey(day.customActivities) === authoredContentKey(snapshot.customActivities?.[source.dayNumber])));
+        if (!entry) throw new Error('inverse calendar source conflict');
+        // All values in a consumed entry must belong to this exact captured calendar.
+        if (entry.days.some(day => !snapshot.planItems.some(item => authoredContentKey(item) === authoredContentKey(day.sourceDay)))
+            || entry.itineraryIdeas.some(idea => !snapshot.itineraryIdeas?.some(item => authoredContentKey(item) === authoredContentKey(idea)))
+            || entry.mapPins.some(pin => !snapshot.mapPins?.some(item => authoredContentKey(item) === authoredContentKey(pin))))
+            throw new Error('inverse retained snapshot conflict');
+        consumed.add(entry.id); restored.add(source.id);
+        return structuredClone(source);
+    });
+    const targetById = new Map(next.planItems.map(day => [day.id, day]));
+    const remapRecord = (record: Record<number, string[]> | undefined, captured: Record<number, string[]> | undefined) => {
+        const result: Record<number, string[]> = {};
+        for (const [number, values] of Object.entries(record ?? {})) {
+            const source = currentByNumber.get(Number(number));
+            const target = source ? targetById.get(source.id) : undefined;
+            if (target) result[target.dayNumber] = structuredClone(values);
+            else if (!source) result[Number(number)] = structuredClone(values);
+        }
+        for (const day of next.planItems.filter(day => restored.has(day.id))) if (captured?.[day.dayNumber] !== undefined)
+            result[day.dayNumber] = structuredClone(captured[day.dayNumber]);
+        return record !== undefined || Object.keys(result).length ? result : undefined;
+    };
+    next.brief.dayNotes = remapRecord(trip.brief.dayNotes, snapshot.dayNotes);
+    next.brief.customActivities = remapRecord(trip.brief.customActivities, snapshot.customActivities);
+    next.brief.mapPins = trip.brief.mapPins?.flatMap(pin => {
+        const source = currentByNumber.get(pin.dayNumber), target = source ? targetById.get(source.id) : undefined;
+        return target ? [{...pin, dayNumber: target.dayNumber}] : source ? [] : [pin];
+    });
+    for (const entry of entries.filter(entry => consumed.has(entry.id))) {
+        for (const idea of entry.itineraryIdeas) {
+            const current = next.brief.itineraryIdeas?.find(item => item.id === idea.id);
+            if (current && authoredContentKey(current) !== authoredContentKey(idea)) throw new Error('inverse idea conflict');
+            if (!current) (next.brief.itineraryIdeas ??= []).push(structuredClone(idea));
+        }
+        for (const pin of entry.mapPins) {
+            const current = next.brief.mapPins?.find(item => item.id === pin.id);
+            if (current && authoredContentKey(current) !== authoredContentKey(pin)) throw new Error('inverse pin conflict');
+            if (!current) (next.brief.mapPins ??= []).push(structuredClone(pin));
+        }
+    }
+    const order = new Map(snapshot.itineraryIdeas?.map((idea, index) => [idea.id, index]));
+    next.brief.itineraryIdeas?.sort((a, b) => (order.get(a.id) ?? Infinity) - (order.get(b.id) ?? Infinity));
+    next.brief.retainedAuthoredContent = entries.some(entry => !consumed.has(entry.id)) ? {version: 1, entries: entries.filter(entry => !consumed.has(entry.id))} : undefined;
+    return next;
+}
+
+/** Prefix reconciliation must keep values restored by an exact structural inverse. */
+export function restoreRetiredDayBindings(trip: EasyTTrip, entries: RetainedAuthoredStopContent[], accepted: EasyTTrip): EasyTTrip {
+    const next = structuredClone(trip);
+    for (const entry of entries) for (const source of entry.days) {
+        const day = next.planItems.find(day => day.id === source.sourceDay.id && day.stopId === source.sourceDay.stopId);
+        if (!day) continue; // An incompatible dated source was retained again, not moved.
+        if (source.dayNotes) (next.brief.dayNotes ??= {})[day.dayNumber] = structuredClone(source.dayNotes);
+        if (source.customActivities) (next.brief.customActivities ??= {})[day.dayNumber] = structuredClone(source.customActivities);
+        for (const idea of entry.itineraryIdeas) {
+            const current = next.brief.itineraryIdeas?.find(item => item.id === idea.id);
+            if (current && authoredContentKey(current) !== authoredContentKey(idea)) throw new Error('inverse idea conflict');
+            if (!current) (next.brief.itineraryIdeas ??= []).push(structuredClone(idea));
+        }
+        for (const pin of entry.mapPins) {
+            const restored = {...pin, dayNumber: day.dayNumber};
+            const current = next.brief.mapPins?.find(item => item.id === pin.id);
+            if (current && authoredContentKey(current) !== authoredContentKey(restored)) throw new Error('inverse pin conflict');
+            if (!current) (next.brief.mapPins ??= []).push(structuredClone(restored));
+        }
+    }
+    const order = new Map(accepted.brief.itineraryIdeas?.map((idea, index) => [idea.id, index]));
+    next.brief.itineraryIdeas?.sort((a, b) => (order.get(a.id) ?? Infinity) - (order.get(b.id) ?? Infinity));
+    return next;
 }

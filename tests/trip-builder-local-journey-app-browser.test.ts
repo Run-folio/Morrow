@@ -27,7 +27,7 @@ test(feedbackOnly?'canonical night conflict reload never claims an unapplied leg
    const body=url.pathname.includes('/auth/')?null:url.pathname==='/api/journey-geocode'?{candidates:place?[place]:[],result:place??null}:url.pathname==='/api/journey-discover'?{places:[]}:url.pathname==='/api/journey-transfer-resolution'?{legs:request.postDataJSON().legs??[]}:{error:'Fixture resource not found'};
    await route.fulfill({status:url.pathname.includes('/auth/')||['/api/journey-geocode','/api/journey-discover','/api/journey-transfer-resolution'].includes(url.pathname)?200:404,contentType:'application/json',body:JSON.stringify(body)});
   });
-  await page.goto(baseUrl);
+  await page.goto(baseUrl,{waitUntil:'domcontentloaded'});
   if(type==='Return to start')await page.getByRole('button',{name:'One way',exact:true}).click();
   await page.getByRole('button',{name:type,exact:true}).click();
   await page.getByRole('combobox',{name:'Start from',exact:true}).fill('London');
@@ -66,11 +66,14 @@ test(feedbackOnly?'canonical night conflict reload never claims an unapplied leg
   await page.getByRole('button',{name:/Remove one night from Lisbon/}).click();
   await page.waitForFunction(()=>Object.values(localStorage).some(raw=>{try{const trip=JSON.parse(raw).trip;return trip?.status==='draft'&&trip.stops.reduce((sum:number,stop:{nights:number})=>sum+stop.nights,0)===10&&trip.brief.manualNightStopIds.length===2}catch{return false}}));
   await page.reload();await page.locator('[data-builder-edit-session="active"]').waitFor();
-  const balanced=await readTrip();assert.equal(balanced.stops.find(stop=>stop.id===madrid.id)!.nights,madridNights+1);assert.equal(balanced.stops.reduce((sum,stop)=>sum+(stop.nights??0),0),10);
+  const balanced=await readTrip();assert.ok((balanced.brief.builderCalendarGeneration??0)>0);assert.deepEqual(balanced.planItems.map(day=>day.dayNumber),Array.from({length:11},(_,i)=>i+1));assert.equal(new Set(balanced.planItems.map(day=>day.id)).size,11);assert.deepEqual(balanced.planItems.map(day=>day.date),Array.from({length:11},(_,i)=>new Date(Date.parse('2026-11-10T00:00:00Z')+i*86400000).toISOString().slice(0,10)));assert.equal(balanced.stops.find(stop=>stop.id===madrid.id)!.nights,madridNights+1);assert.equal(balanced.stops.reduce((sum,stop)=>sum+(stop.nights??0),0),10);
+  const reject=page.getByRole('button',{name:'Reject optional',exact:true});if(await reject.count())await reject.click();
   await page.getByRole('button',{name:/^Build trip/}).click();
   const attention=page.getByRole('dialog');if(await attention.count())await attention.getByRole('button',{name:/Build|Continue/}).click();
   await page.getByRole('region',{name:'Trip overview',exact:true}).waitFor();
   const built=await readTrip();assert.equal(built.status,'planned');
+  const guide=page.getByRole('button',{name:'Skip workspace guide',exact:true});try{await guide.waitFor({state:'visible',timeout:1500});await guide.click()}catch(error){if(!(error instanceof Error)||error.name!=='TimeoutError')throw error}
+  await page.evaluate(()=>window.scrollTo(0,0));
   const navigation=page.getByRole('navigation',{name:'Trip workspace'});
   await navigation.getByRole('link',{name:'Itinerary',exact:true}).click();
   await page.getByRole('region',{name:'Trip itinerary',exact:true}).waitFor();await page.reload();

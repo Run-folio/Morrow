@@ -5,10 +5,10 @@ import type { CanonicalEasyTTrip, RouteReconciliationScope, TripLeg, TripRouteRe
 import { prepareTripDocumentForWrite, TripDocumentReadError } from './trip-document.ts';
 import { buildCanonicalTripLegs, routeEndpointForLeg } from './trip-legs.ts';
 import { routeProjectionInputKey, commitAcceptedRouteProjection } from './trip-route-intent.ts';
-import { cascadeTripSchedule } from './cascade.ts';
+import { projectBuilderCalendar } from './trip-builder-calendar.ts';
 import { reconcileAuthoredDayState } from './trip-authored-day-state.ts';
 import type { BuilderRecommendationProjection } from './trip-builder-recommendations.ts';
-import { authoredContentKey, retainRemovedAuthoredContent, restoreRetainedAuthoredContent, prepareRetainedContentPreservationSource, type RetainedContentConsumption } from './trip-retained-authored-content.ts';
+import { authoredContentKey, retainedSnapshotIsLive, restoreRetiredDayBindings, retainRemovedAuthoredContent, restoreRetainedAuthoredContent, prepareRetainedContentPreservationSource, type RetainedContentConsumption } from './trip-retained-authored-content.ts';
 export type BuilderEditScope = {
     ownerId: string | null;
     tripId: string;
@@ -119,15 +119,19 @@ export function prepareBuilderNecessaryProjection(before: CanonicalEasyTTrip, ca
             const pending: TripLeg = { ...leg, id, mode: 'unknown', durationMinutes: null, headlineMinutes: null, doorToDoorMinutes: null, usableDayLoss: null, routedDistanceKm: null, provider: 'Travel options need an updated assessment.', provenance: 'unknown', confidence: 'unknown', routeMetadata: { source: 'necessary-reconciliation', pending: true }, warnings: [], scheduleNeedsChecking: true };
             return old ? withAcceptedTransportChoice(trip, old, pending) : pending;
         }) : structuredClone(before.legs);
-        const restoredEntries = before.brief.retainedAuthoredContent?.entries.filter(entry => !trip.brief.retainedAuthoredContent?.entries.some(item => item.id === entry.id)) ?? [];
+        const restoredEntries = before.brief.retainedAuthoredContent?.entries.filter(entry => entry.sourceKind !== 'retired_day' && !trip.brief.retainedAuthoredContent?.entries.some(item => item.id === entry.id)) ?? [];
+        const restoredRetiredEntries = before.brief.retainedAuthoredContent?.entries.filter(entry => entry.sourceKind === 'retired_day'
+            && !validatedCandidate.brief.retainedAuthoredContent?.entries.some(item => item.id === entry.id)
+            && retainedSnapshotIsLive(validatedCandidate, entry)) ?? [];
         const active = new Set(trip.stops.map(s => s.id));
         trip.planItems = trip.planItems.filter(d => active.has(d.stopId));
         if (scope.scheduleStopIds.length) {
-            trip = reconcileAuthoredDayState(before, cascadeTripSchedule(trip).trip) as CanonicalEasyTTrip;
+            trip = reconcileAuthoredDayState(before, projectBuilderCalendar(before, trip).trip) as CanonicalEasyTTrip;
         }
         else {
             trip = reconcileAuthoredDayState(before, trip) as CanonicalEasyTTrip;
         }
+        if (restoredRetiredEntries.length) trip = restoreRetiredDayBindings(trip, restoredRetiredEntries, validatedCandidate) as CanonicalEasyTTrip;
         if (restoredEntries.length) {
             const entries = [...(trip.brief.retainedAuthoredContent?.entries ?? []).filter(entry => !restoredEntries.some(item => item.id === entry.id)), ...restoredEntries];
             trip = restoreRetainedAuthoredContent({ ...trip, brief: { ...trip.brief, retainedAuthoredContent: { version: 1, entries } } }, restoredEntries.map(entry => entry.sourceStop)) as CanonicalEasyTTrip;
@@ -259,7 +263,7 @@ export function reconcileBuilderDependencies(current: CanonicalEasyTTrip, pendin
     const valid = pendingUnits.filter(dispatched => unitsFor(current).some(unit => unitId(unit) === unitId(dispatched)
         && unit.phase === "pending" && unit.basisKey === dispatched.basisKey && basis(current, unit.kind, unit.targetId) === unit.basisKey));
     const schedule = valid.some(unit => unit.kind === "schedule" || unit.kind === "assessment")
-        ? cascadeTripSchedule(current) : { trip: current, status: current.brief.cascadeStatus ?? { conflicts: [], affectedBookingIds: [], affectedPlanItemCount: 0 } };
+        ? projectBuilderCalendar(current, current) : { trip: current, status: current.brief.cascadeStatus ?? { conflicts: [], affectedBookingIds: [], affectedPlanItemCount: 0 } };
     let trip = schedule.trip === current ? structuredClone(current) : reconcileAuthoredDayState(current, schedule.trip) as CanonicalEasyTTrip;
     const residual = structuredClone(unitsFor(current));
     const constraints = { avoidDriving: current.brief.intent.hardConstraints.avoidDriving,
@@ -286,7 +290,7 @@ export function reconcileBuilderDependencies(current: CanonicalEasyTTrip, pendin
             // This deterministic worker must not acknowledge an unavailable provider calculation.
             residual[index] = { ...residual[index], phase: "failed", reason: "unavailable" };
         }
-        else if (schedule.status.conflicts.length && dispatched.kind !== "endpoint") {
+        else if (trip.brief.cascadeStatus?.conflicts.length && dispatched.kind !== "endpoint") {
             residual[index] = { ...residual[index], phase: "conflict", reason: "protected-date" };
         }
         else {

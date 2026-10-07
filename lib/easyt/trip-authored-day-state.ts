@@ -2,6 +2,10 @@ import { retainRemovedAuthoredContent } from "./trip-retained-authored-content.t
 import type { EasyTTrip, ItineraryDayPart } from "./trip.ts";
 import { reconcileItineraryIdeas } from "./itinerary-ideas.ts";
 
+function isRetiredDay(after: EasyTTrip, id: string) {
+  return after.brief.retainedAuthoredContent?.entries.some(entry => entry.sourceKind === "retired_day" && entry.days.some(day => day.sourceDay.id === id));
+}
+
 function authoredDayMapping(before: EasyTTrip, after: EasyTTrip) {
   const afterById = new Map(after.planItems.map((item) => [item.id, item]));
   const afterByStop = new Map(after.stops.map((stop) => [
@@ -12,7 +16,7 @@ function authoredDayMapping(before: EasyTTrip, after: EasyTTrip) {
     const sameItem = afterById.get(item.id);
     if (sameItem) return [item.dayNumber, sameItem.dayNumber] as const;
     const sameStop = afterByStop.get(item.stopId) ?? [];
-    if (!after.stops.some((stop) => stop.id === item.stopId)) return [item.dayNumber, undefined] as const;
+    if (isRetiredDay(after, item.id) || !after.stops.some((stop) => stop.id === item.stopId)) return [item.dayNumber, undefined] as const;
     const nearest = sameStop.reduce<(typeof sameStop)[number] | undefined>((best, candidate) => !best
       || Math.abs(candidate.dayNumber - item.dayNumber) < Math.abs(best.dayNumber - item.dayNumber)
       ? candidate
@@ -30,7 +34,7 @@ function authoredDayIdMapping(before: EasyTTrip, after: EasyTTrip) {
   return new Map(before.planItems.map((item) => {
     const sameItem = afterById.get(item.id);
     if (sameItem) return [item.id, sameItem.id] as const;
-    if (!after.stops.some((stop) => stop.id === item.stopId)) return [item.id, undefined] as const;
+    if (isRetiredDay(after, item.id) || !after.stops.some((stop) => stop.id === item.stopId)) return [item.id, undefined] as const;
     const sameStop = afterByStop.get(item.stopId) ?? [];
     const nearest = sameStop.reduce<(typeof sameStop)[number] | undefined>((best, candidate) => !best
       || Math.abs(candidate.dayNumber - item.dayNumber) < Math.abs(best.dayNumber - item.dayNumber)
@@ -87,12 +91,12 @@ export function reconcileAuthoredDayState(before: EasyTTrip, after: EasyTTrip): 
     if (dayMapping.has(pin.dayNumber) && dayMapping.get(pin.dayNumber) === undefined) return [];
     return [{ ...pin, dayNumber: dayMapping.get(pin.dayNumber) ?? pin.dayNumber }];
   });
-  const itineraryIdeas = before.brief.itineraryIdeas?.map((idea) => {
-    if (!idea.dayId || !dayIdMapping.has(idea.dayId)) return { ...idea };
+  const itineraryIdeas = before.brief.itineraryIdeas?.flatMap((idea) => {
+    if (!idea.dayId || !dayIdMapping.has(idea.dayId)) return [{ ...idea }];
     const targetDayId = dayIdMapping.get(idea.dayId);
     return targetDayId
-      ? { ...idea, dayId: targetDayId }
-      : { ...idea, dayId: undefined, dayPart: undefined };
+      ? [{ ...idea, dayId: targetDayId }]
+      : isRetiredDay(after, idea.dayId) ? [] : [{ ...idea, dayId: undefined, dayPart: undefined }];
   });
   const dayPartQueues = remappedDayPartQueues(before, dayMapping);
   const planItems = after.planItems.map((item) => {
@@ -115,6 +119,7 @@ export function reconcileAuthoredDayState(before: EasyTTrip, after: EasyTTrip): 
       ...(item.noteDayParts || noteDayParts.some(Boolean) ? { noteDayParts } : {}),
     };
   });
+  const retainedConflicts = (after.brief.retainedAuthoredContent?.entries ?? []).filter(entry => entry.sourceKind === "retired_day").flatMap(entry => entry.days.filter(day => day.sourceDay.startsAt || day.sourceDay.endsAt || day.sourceDay.bookingUrl || entry.itineraryIdeas.some(idea => idea.dayId === day.sourceDay.id && 'startsAt' in idea && idea.startsAt)).map(day => `${day.sourceDay.title} has saved timing or booking details on ${day.sourceDay.date}; review the retained day before applying a new date.`));
   return reconcileItineraryIdeas({
     ...after,
     planItems,
@@ -124,6 +129,7 @@ export function reconcileAuthoredDayState(before: EasyTTrip, after: EasyTTrip): 
       ...(dayNotes ? { dayNotes } : {}),
       ...(mapPins ? { mapPins } : {}),
       ...(itineraryIdeas ? { itineraryIdeas } : {}),
+      ...(retainedConflicts.length ? { cascadeStatus: { ...(after.brief.cascadeStatus ?? { affectedBookingIds: [], affectedPlanItemCount: 0 }), conflicts: [...new Set([...(after.brief.cascadeStatus?.conflicts ?? []), ...retainedConflicts])] } } : {}),
     },
   });
 }

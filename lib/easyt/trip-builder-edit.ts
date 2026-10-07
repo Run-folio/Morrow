@@ -1,4 +1,4 @@
-import { restoreRetainedAuthoredContent, moveRetainedAuthoredContent, removeRetainedAuthoredContent, type RetainedContentSelection, type RetainedContentConsumption } from "./trip-retained-authored-content.ts";
+import { restoreRetainedAuthoredContent, restoreBuilderCalendarSnapshot, captureBuilderCalendarSnapshot, type BuilderCalendarSnapshot, moveRetainedAuthoredContent, removeRetainedAuthoredContent, type RetainedContentSelection, type RetainedContentConsumption } from "./trip-retained-authored-content.ts";
 import { builderDocumentFingerprint, prepareBuilderDocumentCommit } from "./trip-builder-document-commit.ts";
 import { projectCanonicalRouteEndpoints, readTripDocument } from "./trip-document.ts";
 import { canonicalJourneyEndpointPlace, journeyEndpointIdentityIsCoherent } from "./journey-endpoints.ts";
@@ -14,6 +14,7 @@ import type { BudgetBand, CanonicalEasyTTrip, DestinationIntent, JourneyEndpoint
 import type { RouteReconciliationScope } from "./trip.ts";
 export type { RouteReconciliationScope } from "./trip.ts";
 export type BuilderStructuralSnapshot = Pick<CanonicalEasyTTrip, "id" | "ownerId" | "stops" | "startDate" | "endDate"> & {
+  calendar?: BuilderCalendarSnapshot;
   route: RouteIntent;
   nightAllocations: CanonicalEasyTTrip["brief"]["nightAllocations"];
   dayAllocations: CanonicalEasyTTrip["brief"]["dayAllocations"];
@@ -112,6 +113,7 @@ function insertStop(trip: CanonicalEasyTTrip, stop: TripStop, beforeStopId?: str
 }
 export function builderStructuralSnapshot(trip: CanonicalEasyTTrip): BuilderStructuralSnapshot {
   return structuredClone({ id: trip.id, ownerId: trip.ownerId, stops: trip.stops, startDate: trip.startDate, endDate: trip.endDate,
+    calendar: captureBuilderCalendarSnapshot(trip),
     route: trip.brief.intent.route, nightAllocations: trip.brief.nightAllocations, dayAllocations: trip.brief.dayAllocations,
     manualNightStopIds: trip.brief.manualNightStopIds, selectedPlaces: trip.brief.selectedPlaces,
     scheduleLocks: trip.brief.scheduleLocks, hardConstraints: trip.brief.intent.hardConstraints, timing: trip.brief.intent.timing,
@@ -488,6 +490,7 @@ export function prepareAcceptedBuilderEdit(current: CanonicalEasyTTrip, edit: Bu
       case "structural-inverse": {
         const s = edit.snapshot;
         if (!s || s.id !== trip.id || s.ownerId !== trip.ownerId) return reject("binding-conflict");
+        if (s.calendar) trip = restoreBuilderCalendarSnapshot(trip, s.calendar, s.stops) as CanonicalEasyTTrip;
         trip = restoreRetainedAuthoredContent(trip, s.stops) as CanonicalEasyTTrip;
         trip.stops = structuredClone(s.stops);
         if(edit.restoreDates) { trip.startDate=s.startDate;trip.endDate=s.endDate;trip.brief.intent.timing=structuredClone(s.timing); }

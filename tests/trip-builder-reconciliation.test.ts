@@ -184,7 +184,10 @@ test('night_change_keeps_booked_dates_and_reports_conflict', async () => {
     const day = trip.planItems.find(d => d.stopId === 'kyoto')!;
     Object.assign(day, { startsAt: '09:00', endsAt: '10:00', bookingUrl: 'https://example.com/fixed' });
     const next = await accept(trip, { kind: 'nights', intentId: 'intent:tokyo', stopId: 'tokyo', nights: 5 });
-    assert.equal(next.planItems.find(d => d.id === day.id)!.date, day.date);
+    assert.equal(next.planItems.some(d => d.id === day.id), false);
+    const retained = next.brief.retainedAuthoredContent!.entries.flatMap(entry => entry.days).find(source => source.sourceDay.id === day.id)!;
+    assert.deepEqual(retained.sourceDay, day);
+    assert.equal(retained.sourceDay.date, day.date);
     assert.deepEqual(next.brief.bookings, trip.brief.bookings);
     const result = (await api()).reconcileBuilderDependencies(next, units(next));
     assert.equal(result.ok, false);

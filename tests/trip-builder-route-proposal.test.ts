@@ -15,7 +15,7 @@ import type {BuilderAcceptedEdit} from '../lib/easyt/trip-builder-edit.ts';
 const path='../lib/easyt/trip-builder-route-proposal.ts';
 const loaded=import(path).catch((e:NodeJS.ErrnoException)=>{if(e.code==='ERR_MODULE_NOT_FOUND')return null;throw e});
 async function api():Promise<typeof import('../lib/easyt/trip-builder-route-proposal.ts')>{const module=await loaded;assert.ok(module,'Task5 proposal guards are missing');return module}
-function fixture(){const trip=requireReadableTripDocument(canonicalRouteFixture());trip.brief.bookings=[];trip.brief.intent.hardConstraints.fixedCommitments=[];trip.brief.scheduleLocks={stopIds:[],arrivalDates:{}};return trip}
+function fixture(){const trip=requireReadableTripDocument(canonicalRouteFixture());trip.planItems.at(-1)!.contextNotes=[...trip.planItems.at(-1)!.notes];trip.planItems.at(-1)!.notes=[];trip.brief.bookings=[];trip.brief.intent.hardConstraints.fixedCommitments=[];trip.brief.scheduleLocks={stopIds:[],arrivalDates:{}};return trip}
 const scope={ownerId:'owner-a',tripId:'batch14-trip',inputRevision:7};
 const candidate=['tokyo','hiroshima','kyoto'];
 async function proposal(trip=fixture()){const result=(await api()).createBuilderOptimizationProposal(trip,scope,candidate,'proposal-a');assert.equal(result.kind,'proposal');if(result.kind!=='proposal')throw Error('Expected a proposal');return result.proposal}
@@ -65,7 +65,7 @@ test('accepted_projection_preserves_occurrences_requests_authored_content_bookin
  const p=await proposal(trip),result=(await api()).acceptBuilderOptimization(trip,p,scope);assert.ok(result.ok);if(!result.ok)return;
  for(const prior of trip.stops){const next:TripStop=result.trip.stops.find(s=>s.id===prior.id)!;assert.equal(next.canonicalPlaceId,prior.canonicalPlaceId);assert.equal(next.nights,prior.nights)}
  assert.deepEqual(result.trip.brief.intent.route.destinations,trip.brief.intent.route.destinations);assert.deepEqual(result.trip.brief.intent.route.origin,trip.brief.intent.route.origin);assert.deepEqual(result.trip.brief.intent.route.journeyEnd,trip.brief.intent.route.journeyEnd);assert.deepEqual(result.trip.brief.bookings,trip.brief.bookings);
- for(const item of trip.planItems){const next:PlanItem=result.trip.planItems.find(d=>d.id===item.id)!;assert.deepEqual({...next,date:item.date,dayNumber:item.dayNumber},item)}
+ for(const item of trip.planItems){const next:PlanItem|undefined=result.trip.planItems.find(d=>d.id===item.id);if(next)assert.deepEqual({...next,date:item.date,dayNumber:item.dayNumber},item);else {assert.equal(item.notes.length,0);assert.deepEqual(result.trip.brief.retainedAuthoredContent!.entries.flatMap(e=>e.days).find(d=>d.sourceDay.id===item.id)!.sourceDay,item)}}
  const forged=structuredClone(p);forged.projectedTrip.stops[1]!.nights=0;assert.equal((await api()).acceptBuilderOptimization(trip,forged,scope).ok,false);
 });
 test('accepted_proposal_uses_one_existing_session_edit_and_normal_autosave_then_ordinary_edits_keep_order',async()=>{
@@ -76,3 +76,5 @@ test('accepted_proposal_uses_one_existing_session_edit_and_normal_autosave_then_
  for(const edit of [{kind:'budget',budget:'high'},{kind:'dates',startDate:'2026-10-10',endDate:'2026-10-20'},{kind:'nights',intentId:'intent:kyoto',stopId:'kyoto',nights:2},{kind:'origin',place:{name:'Paris',canonicalPlaceId:'place:paris',country:'France',coordinates:[2.35,48.85]}}] satisfies BuilderAcceptedEdit[]){assert.ok(session.accept(edit,session.getSnapshot().inputRevision).ok);assert.deepEqual(session.getSnapshot().trip.brief.intent.route.orderedStopIds,candidate);assert.equal(session.getSnapshot().trip.brief.intent.route.orderAuthority,'manual')}
  }finally{session.dispose()}
 });
+
+test('a proposal cannot retire an authored final day under the unchanged full route guard',async()=>{const trip=fixture();trip.planItems.at(-1)!.notes=['My explicit departure plan'];const bytes=JSON.stringify(trip);assert.equal((await api()).createBuilderOptimizationProposal(trip,scope,candidate,'authored-retirement').kind,'unavailable');assert.equal(JSON.stringify(trip),bytes);});

@@ -6,6 +6,7 @@ import { EasyTTripSaveConflictError } from '../../lib/easyt/trip-continuity.ts';
 import { TripDocumentReadError, requireReadableTripDocument } from '../../lib/easyt/trip-document.ts';
 import { duplicateTripDocument, remapTripStopReferences } from '../../lib/easyt/trip-promotion.ts';
 import { builderDocumentFingerprint } from '../../lib/easyt/trip-builder-document-commit.ts';
+import { builderStructuralSnapshot } from '../../lib/easyt/trip-builder-edit.ts';
 import { prepareBuilderHandlerEdit } from '../../lib/easyt/trip-builder-handler-contract.ts';
 const sql=getEasyTDatabase();
 async function snapshot(){return Promise.all(['easyt_trips','easyt_stops','easyt_legs','easyt_plan_items','easyt_recommendations'].map(async table=>{
@@ -44,6 +45,50 @@ try{
  assert.deepEqual(workWinner.brief.retainedAuthoredContent,historical);
  const workChildStops=await sql`select id,nights from easyt_stops where trip_id=${workSource.id} order by stop_order`;
  assert.deepEqual(workChildStops,workWinner.stops.map(stop=>({id:stop.id,nights:stop.nights})));
+ // Task6: real child replacement for a balanced calendar and same-stop provenance.
+ const calSource=requireReadableTripDocument(duplicateTripDocument({...original,ownerId:null}, {id:'00000000-0000-4000-8000-000000000015',now:'2026-10-07T19:50:00.000Z',nextId:()=>String(++fixtureId)}));
+ const calTokyo=calSource.stops[0].id,calKyoto=calSource.stops[1].id;
+ const surplus=calSource.planItems.filter(day=>day.stopId===calKyoto).at(-1)!;
+ Object.assign(surplus,{notes:['Ticket reminder'],noteDayParts:['morning'],startsAt:'09:00',endsAt:'11:00',bookingUrl:'https://example.invalid/calendar-booking',sourceUrl:'https://example.invalid/source'});
+ calSource.brief.dayNotes={[surplus.dayNumber]:['Bring tickets']};
+ calSource.brief.mapPins=[{id:'calendar:pin',dayNumber:surplus.dayNumber,title:'Meet here',category:'activity',longitude:135,latitude:35}];
+ calSource.brief.itineraryIdeas=[{id:'calendar:google',stopId:calKyoto,dayId:surplus.id,category:'activity',source:'google-place-reference',providerReference:{provider:'google',placeId:'ChIJ-calendar-sql'},userNote:'Keep the reference'}];
+ const calEdit=(trip:typeof calSource,stopId:string,nights:number)=>{const intent=trip.brief.intent.route.destinations.find(intent=>intent.stopIds.includes(stopId))!;const edit=prepareBuilderHandlerEdit(trip,{kind:'nights',intentId:intent.id,stopId,nights},builderDocumentFingerprint(trip));assert.ok(edit.ok);return edit.trip};
+ const balanced=calEdit(calEdit(calSource,calKyoto,2),calTokyo,5);
+ assert.deepEqual(balanced.planItems.map(day=>day.dayNumber),Array.from({length:10},(_,i)=>i+1));
+ const calHistory=structuredClone(balanced.brief.retainedAuthoredContent);
+ assert.deepEqual(calHistory!.entries.find(entry=>entry.sourceKind==='retired_day')!.days[0].sourceDay,surplus);
+ const calPromotion=await promoteTripForOwner('owner-a',balanced);assert.equal(calPromotion.outcome,'promoted');
+ let calOwned=requireReadableTripDocument((await getTripForOwner('owner-a',balanced.id))!);
+ assert.deepEqual(calOwned.brief.retainedAuthoredContent,calHistory);
+ const checkCalendarChildren=async(trip:typeof calSource)=>{
+  const children=await sql`select id,stop_id,day_number,plan_date::text as plan_date from easyt_plan_items where trip_id=${trip.id} order by day_number`;
+  assert.deepEqual(children,trip.planItems.map(day=>({id:day.id,stop_id:day.stopId,day_number:day.dayNumber,plan_date:day.date})));
+  assert.equal(new Set(children.map(row=>row.day_number)).size,children.length);
+  assert.ok(children.every(row=>trip.stops.some(stop=>stop.id===row.stop_id)));
+  assert.equal(children.some(row=>row.id===surplus.id),false,'Retained provenance is not a live child binding');
+  assert.ok((trip.brief.itineraryIdeas??[]).every(idea=>!idea.dayId||trip.planItems.some(day=>day.id===idea.dayId)));
+ };
+ await checkCalendarChildren(calOwned);
+ assert.equal((await promoteTripForOwner('owner-a',balanced)).outcome,'already-canonical');
+ const calBefore=await snapshot();await assert.rejects(saveTripForOwner('owner-b',calOwned));assert.deepEqual(await snapshot(),calBefore);
+ const calFrame=builderStructuralSnapshot(calOwned),ownedTokyo=calOwned.stops[0].id,ownedKyoto=calOwned.stops[1].id;
+ const resized=calEdit(calEdit(calOwned,ownedKyoto,1),ownedTokyo,6);
+ const calSaves=await Promise.allSettled([saveTripForOwner('owner-a',resized),saveTripForOwner('owner-a',{...calOwned,title:'Losing stale calendar'})]);
+ assert.equal(calSaves.filter(result=>result.status==='fulfilled').length,1);assert.ok(calSaves.some(result=>result.status==='rejected'&&result.reason instanceof EasyTTripSaveConflictError));
+ calOwned=requireReadableTripDocument((await getTripForOwner('owner-a',balanced.id))!);
+ // Whichever request won, actual rows must match that winning JSONB exactly.
+ await checkCalendarChildren(calOwned);
+ if(calOwned.stops.find(stop=>stop.id===ownedKyoto)!.nights!==1)calOwned=requireReadableTripDocument(await saveTripForOwner('owner-a',{...resized,updatedAt:calOwned.updatedAt}));
+ await checkCalendarChildren(calOwned);
+ const retainedBeforeUndo=calOwned.brief.retainedAuthoredContent!.entries.length;
+ const undo=prepareBuilderHandlerEdit(calOwned,{kind:'structural-inverse',snapshot:calFrame},builderDocumentFingerprint(calOwned));assert.ok(undo.ok);
+ calOwned=requireReadableTripDocument(await saveTripForOwner('owner-a',undo.trip));await checkCalendarChildren(calOwned);
+ assert.deepEqual(calOwned.planItems.map(day=>[day.id,day.date,day.dayNumber]),calFrame.calendar!.planItems.map(day=>[day.id,day.date,day.dayNumber]));
+ assert.deepEqual(calOwned.brief.retainedAuthoredContent!.entries[0],calHistory!.entries[0]);
+ assert.ok(calOwned.brief.retainedAuthoredContent!.entries.length<=retainedBeforeUndo);
+ const calWinner=await snapshot(),badCalendar=structuredClone(calOwned);badCalendar.planItems[0].date='invalid-calendar-date';
+ await assert.rejects(saveTripForOwner('owner-a',badCalendar));assert.deepEqual(await snapshot(),calWinner);await checkCalendarChildren(calOwned);
  const legacy=legacyRouteFixture();const promoted=await promoteTripForOwner('owner-a',{...legacy,ownerId:null,status:'draft'});
  assert.equal(promoted.outcome,'promoted');assert.equal(promoted.trip.schemaVersion,2);
  const before=await snapshot();const conflicting=await promoteTripForOwner('owner-a',{...legacy,ownerId:null,title:'Unaccepted replacement'});

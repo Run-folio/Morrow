@@ -35,3 +35,5 @@ export const RetainedContent:Story={render:function Retained(){const [trip,setTr
 
 export const DestinationLookupFailure:Story={render:()=> <Controls lookupFailed/>};
 export const SuggestedDates:Story={render:()=> <Controls datesSuggested/>};
+
+export const RetiredDayContent:Story={render:function RetiredDay(){const [trip,setTrip]=useState(()=>{const t=requireReadableTripDocument(canonicalRouteFixture());const day=t.planItems[6];t.brief.retainedAuthoredContent={version:1,entries:[{id:'retired-day-snapshot',sourceKind:'retired_day',sourceStop:t.stops[1],sourceIntentIds:['intent:kyoto'],days:[{sourceDay:{...day,notes:['Keep the ticket reminder'],startsAt:'09:00',bookingUrl:'https://example.invalid/booking'},dayNotes:['Bring the tickets']}],itineraryIdeas:[],mapPins:[]}]};return t});return <TripBuilderRetainedReview trip={trip} language="en" onMove={(selection,target)=>{const r=moveRetainedAuthoredContent(trip,selection,target);if(r.ok)setTrip(r.trip as CanonicalEasyTTrip);return r.ok}} onRemove={selection=>{const r=removeRetainedAuthoredContent(trip,selection);if(r.ok)setTrip(r.trip as CanonicalEasyTTrip);return r.ok}}/>}};

@@ -373,6 +373,8 @@ export type TripChange = {
 
 export type TripBrief = {
   retainedAuthoredContent?: { version: 1; entries: RetainedAuthoredStopContent[] };
+  /** Next calendar-slot generation; Undo/consumption never reuse retired IDs. */
+  builderCalendarGeneration?: number;
   origin: string;
   /** Preview end date awaiting the traveller's explicit duration choice. */
   endDateIsSuggestion?: boolean;
@@ -451,6 +453,8 @@ export type TripRouteReconciliation = {
     reason?: "unavailable" | "invalid-bindings" | "protected-date" }>;
 };
 export type RetainedAuthoredStopContent = {
+  /** Absent in existing version1 removed-stop snapshots. */
+  sourceKind?: "removed_stop" | "retired_day";
   id: string; sourceStop: TripStop; sourceIntentIds: string[];
   days: Array<{ sourceDay: PlanItem; dayNotes?: string[]; customActivities?: string[] }>;
   itineraryIdeas: Array<ItineraryIdea | GooglePlaceReferenceIdea>; mapPins: PlannerMapPin[];

@@ -25,7 +25,7 @@ test("Homepage start-only dates remain an unconfirmed suggestion through Builder
       const body=path==="/api/journey-geocode"&&new URL(request.url()).searchParams.get("place")==="London"?{candidates:[london],result:london}:path.includes("/auth/")?null:path==="/api/journey-capture"?captureJourneyBrief(request.postDataJSON().brief):path==="/api/journey-transfer-resolution"?{legs:request.postDataJSON().legs??[]}:{candidates:[],result:null,places:[]};
       await route.fulfill({status:path.includes("/auth/")||["/api/journey-geocode","/api/journey-discover","/api/journey-transfer-resolution","/api/journey-capture"].includes(path)?200:404,contentType:"application/json",body:JSON.stringify(path.includes("/auth/")||["/api/journey-geocode","/api/journey-discover","/api/journey-transfer-resolution","/api/journey-capture"].includes(path)?body:{error:"Fixture resource not found"})});
     });
-    await page.goto(baseUrl);
+    await page.goto(baseUrl,{waitUntil:"domcontentloaded"});
     const reject = page.getByRole("button", { name: "Reject optional" });
     if (await reject.isVisible()) await reject.click();
     await page.getByRole("tab", { name: "Describe my trip" }).click();
@@ -83,7 +83,7 @@ test("Homepage start plus a stated two-week duration derives the exact end", { s
       const body=path==="/api/journey-geocode"&&new URL(request.url()).searchParams.get("place")==="London"?{candidates:[london],result:london}:path.includes("/auth/")?null:path==="/api/journey-capture"?captureJourneyBrief(request.postDataJSON().brief):path==="/api/journey-transfer-resolution"?{legs:request.postDataJSON().legs??[]}:{candidates:[],result:null,places:[]};
       await route.fulfill({status:path.includes("/auth/")||["/api/journey-geocode","/api/journey-discover","/api/journey-transfer-resolution","/api/journey-capture"].includes(path)?200:404,contentType:"application/json",body:JSON.stringify(path.includes("/auth/")||["/api/journey-geocode","/api/journey-discover","/api/journey-transfer-resolution","/api/journey-capture"].includes(path)?body:{error:"Fixture resource not found"})});
     });
-    await page.goto(baseUrl);
+    await page.goto(baseUrl,{waitUntil:"domcontentloaded"});
     const reject = page.getByRole("button", { name: "Reject optional" });
     if (await reject.isVisible()) await reject.click();
     await page.getByRole("tab", { name: "Describe my trip" }).click();
@@ -123,7 +123,7 @@ test("Homepage complete dates stay authoritative through Builder reload", { skip
       const body=path==="/api/journey-geocode"&&new URL(request.url()).searchParams.get("place")==="London"?{candidates:[london],result:london}:path.includes("/auth/")?null:path==="/api/journey-capture"?captureJourneyBrief(request.postDataJSON().brief):path==="/api/journey-transfer-resolution"?{legs:request.postDataJSON().legs??[]}:{candidates:[],result:null,places:[]};
       await route.fulfill({status:path.includes("/auth/")||["/api/journey-geocode","/api/journey-discover","/api/journey-transfer-resolution","/api/journey-capture"].includes(path)?200:404,contentType:"application/json",body:JSON.stringify(path.includes("/auth/")||["/api/journey-geocode","/api/journey-discover","/api/journey-transfer-resolution","/api/journey-capture"].includes(path)?body:{error:"Fixture resource not found"})});
     });
-    await page.goto(baseUrl);
+    await page.goto(baseUrl,{waitUntil:"domcontentloaded"});
     const reject = page.getByRole("button", { name: "Reject optional" });
     if (await reject.isVisible()) await reject.click();
     await page.getByRole("tab", { name: "Describe my trip" }).click();
