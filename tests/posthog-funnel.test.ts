@@ -36,11 +36,12 @@ test("PostHog initialization is limited to the production analytics environment"
 
 test("Build reports a failed local save before leaving the user on the builder", () => {
   const builder = read("app/journey/new/trip-builder.tsx");
-  const failedRecovery = builder.slice(builder.indexOf("if (!recovery.stored) {", builder.indexOf("const persistGeneratedTrip =")), builder.indexOf("if (usableTrip && !localSaveTrackedRef.current)", builder.indexOf("const persistGeneratedTrip =")));
-  assert.match(failedRecovery, /trackEvent\("trip_save_failed", \{[^}]*save_state: "local"[^}]*\}\)/);
-  assert.doesNotMatch(failedRecovery, /raw_prompt|trip\.title|error\.message/);
-  const cloudConflict = builder.slice(builder.indexOf("if (cloudConflictTrip) {", builder.indexOf("const persistGeneratedTrip =")), builder.indexOf("if (!session?.user) return requestTrip", builder.indexOf("const persistGeneratedTrip =")));
-  assert.match(cloudConflict, /trackEvent\("trip_save_failed", \{[^}]*save_state: "cloud"[^}]*error_type: "conflict"[^}]*\}\)/);
+  const buildSave = builder.slice(builder.indexOf("  const persistGeneratedTrip ="),builder.indexOf("  const settleUnacknowledgedBuild ="));
+  assert.match(buildSave, /trackEvent\("trip_save_failed", \{/);
+  assert.match(buildSave, /save_state: category === "storage" \|\| category === "protected" \? "local" : "cloud"/);
+  assert.match(buildSave, /category === "conflict"/);
+  assert.doesNotMatch(buildSave, /raw_prompt|trip\.title|error\.message/);
+  assert.equal((buildSave.match(/reportSaveFailure\(\)/g)??[]).length,2,"local acceptance and account flush failures own the event; successful/passive saves do not");
 });
 
 test("new funnel steps respect analytics consent independently of affiliate attribution", () => {

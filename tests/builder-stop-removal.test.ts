@@ -27,6 +27,9 @@ function removalFixture(options: { only?: boolean; bookings?: TripBooking[]; upd
     removedPlaceMentionIds: [], completedPlanningAreaMentionIds: [], capturedPlaceSelections: [],
     startDate: document.startDate, endDate: document.endDate, picks: {}, discoveredPlaces: {},
     rememberStructuralChange: () => {},
+    // This fixture deliberately exercises the retained legacy closure path.
+    // The mounted canonical-session removal/reload/Undo path has its own suite.
+    builderEditSessionRef: { current: null },
   };
   for (const name of ["Stops", "DayAllocations", "ManualNightStopIds", "ScheduleLocks", "DecisionSelections", "PendingStopRemoval", "StopRemovalBlocked", "NightEditFeedback", "SelectedRouteStopId", "RoutePreviewStopIds", "ShowStopEditor", "PlaceSelections", "CapturedStructuredBrief", "RemovedPlaceMentionIds", "CompletedPlanningAreaMentionIds", "Picks", "DiscoveredPlaces"]) {
     const key = name[0].toLowerCase() + name.slice(1);

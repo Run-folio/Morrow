@@ -57,7 +57,11 @@ test("hero composes real capture and current handoff owners", () => {
   assert.match(hero, /<EasyTNavigation current="home" landing logoTone="light" deferPrefetch \/>/);
   assert.match(capture, /<MorroviaTripCapture/);
   assert.match(capture, /progressiveDetails/);
-  assert.match(capture, /<JourneyEndpointsEditor/);
+  assert.match(capture, /data-homepage-trip-type><EasyTSegmentedControl/);
+  assert.match(capture, /value: "return_to_start"[\s\S]*value: "one_way"/);
+  assert.match(capture, /data-homepage-origin>[\s\S]*<CanonicalPlaceAutocomplete/);
+  assert.match(capture, /destinationEditor: <HomeDestinationEditor/);
+  assert.doesNotMatch(capture, /<JourneyEndpointsEditor/);
   assert.match(capture, /router\.push\(committed\.href\)/);
   assert.doesNotMatch(hero, /capture-receipt|setSubmitted|Math\.random|Voice\.jsx/);
 });

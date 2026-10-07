@@ -398,7 +398,12 @@ test("Builder keeps fixed plans in the current disclosure and canonical build pa
   assert.match(builder, /onClick=\{addFixedCommitment\}/);
   assert.match(builder, /effectiveIntent\.hardConstraints\.fixedCommitments\.length > 0 && \(!isHomepagePromptHandoff \|\| showTripDetails\)/);
   assert.match(builder, /className=\{styles\.commitmentChips\}[\s\S]*aria-label=\{`\$\{language === "es" \? "Quitar" : "Remove"\} \$\{item\.label\}`\}/);
-  assert.match(builder, /fixedCommitments: current\.hardConstraints\.fixedCommitments\.filter\(\(commitment\) => commitment\.id !== item\.id\)/);
+  assert.match(builder, /onClick=\{\(\) => removeFixedCommitment\(item\.id\)\}/);
+  const removal=builder.slice(builder.indexOf("  const removeFixedCommitment ="),builder.indexOf("  const removeFixedCommitment =")+1300);
+  assert.match(removal, /fixedCommitments\.filter\(item => item\.id !== commitmentId\)/);
+  assert.match(removal, /return updateBuilderConstraints\(\{ fixedCommitments:/);
+  const constraints=builder.slice(builder.indexOf("  const updateBuilderConstraints ="),builder.indexOf("  const removeFixedCommitment ="));
+  assert.match(constraints, /dispatchAcceptedBuilderEdit\(\{\s*kind:\s*"constraints",\s*constraints\s*\}\)/);
   assert.match(builder, /fixedCommitments: projectedFixedCommitments/,
     "the build payload must use the same projected commitment state shown in the Builder");
 });

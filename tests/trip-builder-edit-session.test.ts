@@ -1,5 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { readFileSync } from 'node:fs';
+import ts from 'typescript';
 import { builderRecommendationProjection } from '../lib/easyt/trip-builder-recommendations.ts';
 import { canonicalRouteFixture } from './fixtures/batch14-route-documents.ts';
 import { requireReadableTripDocument } from '../lib/easyt/trip-document.ts';
@@ -15,6 +17,51 @@ import { decideExistingTripUpdate, nextTripUpdatedAt } from '../lib/easyt/trip-c
 import type { CanonicalEasyTTrip } from '../lib/easyt/trip.ts';
 import type { BuilderReconciliationRequest } from '../lib/easyt/trip-builder-edit-session.ts';
 import type { BuilderProjectionResponse } from '../lib/easyt/trip-builder-reconciliation.ts';
+
+// Run the actual Build persistence closure against the real session/storage
+// harness. Only presentation callbacks and the analytics delivery boundary vary.
+function buildPersistence(h: Awaited<ReturnType<typeof harness>>) {
+  const source=readFileSync(new URL('../app/journey/new/trip-builder.tsx',import.meta.url),'utf8');
+  const body=source.slice(source.indexOf('  const persistGeneratedTrip ='),source.indexOf('  const settleUnacknowledgedBuild ='));
+  const events:Array<{event:string;properties:Record<string,unknown>}>=[];
+  const ownerRef={current:h.session.getSnapshot().browserOwnerId};
+  const scope={builderEditSessionRef:{current:h.session},buildInvariant:{canBuildTrip:true},
+    dispatchAcceptedBuilderEdit:(edit:Parameters<typeof h.session.accept>[0])=>h.session.accept(edit,h.session.getSnapshot().inputRevision).ok,
+    recordGeneratedTrip:()=>{},surfaceBuildConflict:()=>{},setCloudSaveError:()=>{},
+    activeBrowserOwnerIdRef:ownerRef,analyticsTripSource:'builder',
+    trackEvent:(event:string,properties:Record<string,unknown>)=>events.push({event,properties})};
+  const script=ts.transpileModule(`${body}\nreturn persistGeneratedTrip;`,{compilerOptions:{target:ts.ScriptTarget.ES2022}}).outputText;
+  const persist=new Function('scope',`with(scope){${script}}`)(scope) as ()=>Promise<CanonicalEasyTTrip|null>;
+  return {persist,events,ownerRef};
+}
+
+test('Build emits one safe local failure event when its real recovery write fails',async()=>{
+  const h=await harness(),view=buildPersistence(h);h.storage.failRecovery=true;
+  try {
+    assert.equal(await view.persist(),null);
+    assert.equal(h.session.getSnapshot().trip.status,'draft');assert.equal(h.writes.length,0);
+    assert.deepEqual(view.events,[{event:'trip_save_failed',properties:{trip_source:'builder',trip_id:h.session.getSnapshot().trip.id,save_state:'local',error_type:'unknown',is_authenticated:true}}]);
+  } finally {h.session.dispose();}
+});
+
+test('Build emits bounded cloud failure events and keeps exact recovery for network and CAS failures',async()=>{
+  for(const category of ['network','conflict'] as const) {
+    const h=await harness(fixture(),new MemoryStorage(),async()=>{throw category==='network'?new TypeError('Private ticket URL https://example.invalid/private'):Object.assign(new Error('Private cloud source'),{name:'EasyTTripSaveConflictError'});});
+    const view=buildPersistence(h);
+    try {
+      assert.equal(await view.persist(),null);assert.equal(h.writes.length,1);assert.ok(h.recovery());
+      assert.deepEqual(view.events,[{event:'trip_save_failed',properties:{trip_source:'builder',trip_id:h.session.getSnapshot().trip.id,save_state:'cloud',error_type:category,is_authenticated:true}}]);
+      assert.equal(JSON.stringify(view.events).includes('Private'),false);
+    } finally {h.session.dispose();}
+  }
+});
+
+test('successful Build and a detached account failure do not emit a save failure',async()=>{
+  const h=await harness(fixture(),new MemoryStorage(),async(trip)=>canonicalTripForOwner('owner-a',trip,nextTripUpdatedAt(trip.updatedAt))),view=buildPersistence(h);
+  try {assert.equal((await view.persist())?.status,'planned');assert.deepEqual(view.events,[]);} finally {h.session.dispose();}
+  const detached=await harness(),other=buildPersistence(detached);detached.storage.failRecovery=true;other.ownerRef.current='owner-b';
+  try {assert.equal(await other.persist(),null);assert.deepEqual(other.events,[]);} finally {detached.session.dispose();}
+});
 
 const path = '../lib/easyt/trip-builder-edit-session.ts';
 const loaded = import(path).catch((e: NodeJS.ErrnoException) => { if (e.code === 'ERR_MODULE_NOT_FOUND') return null; throw e; });

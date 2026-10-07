@@ -4275,10 +4275,22 @@ function TripBuilderDocument() {
   const persistGeneratedTrip = async () => {
     const editor=builderEditSessionRef.current;
     if(editor) {
+      const reportSaveFailure = () => {
+        const snapshot = editor.getSnapshot();
+        if (!snapshot.error || snapshot.browserOwnerId !== activeBrowserOwnerIdRef.current) return;
+        const category = snapshot.error.category;
+        trackEvent("trip_save_failed", {
+          trip_source: analyticsTripSource, trip_id: snapshot.trip.id,
+          save_state: category === "storage" || category === "protected" ? "local" : "cloud",
+          error_type: category === "auth" || category === "network" || category === "conflict" || category === "repository"
+            ? category : category === "protected" ? "conflict" : "unknown",
+          is_authenticated: snapshot.browserOwnerId !== null,
+        });
+      };
       if(!buildInvariant.canBuildTrip) {surfaceBuildConflict();recordGeneratedTrip();return null;}
       recordGeneratedTrip();
-      if(editor.getSnapshot().trip.status!=="planned" && !dispatchAcceptedBuilderEdit({kind:"build-status"})) return null;
-      if(!await editor.flush({promoteOwnerless:true})) return null;
+      if(editor.getSnapshot().trip.status!=="planned" && !dispatchAcceptedBuilderEdit({kind:"build-status"})) {reportSaveFailure();return null;}
+      if(!await editor.flush({promoteOwnerless:true})) {reportSaveFailure();return null;}
       return editor.getSnapshot().trip;
     }
     setCloudSaveError("Wait for this trip to finish opening before building. Its input remains preserved.");
