@@ -417,3 +417,7 @@ export const HomepagePlannerSlots: Story = {
     routeSummary: "Return to London · 2 travellers",
   } } },
 };
+
+export const HomepagePlannerDescribe: Story = {args:{...HomepagePlannerSlots.args,homepageEntry:{...HomepagePlannerSlots.args!.homepageEntry!,mode:"describe"}}};
+export const HomepagePlannerStops390: Story = {...HomepagePlannerSlots,globals:{viewport:{value:"morrovia390",isRotated:false}}};
+export const HomepagePlannerDescribe390: Story = {...HomepagePlannerDescribe,globals:{viewport:{value:"morrovia390",isRotated:false}}};

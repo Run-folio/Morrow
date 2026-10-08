@@ -276,3 +276,50 @@ test('A19 existing explicit finish country is known geography rather than a new 
  },{Istanbul:[{name:'Istanbul',country:'Turkey',canonicalPlaceId:'istanbul',coordinates:[28.9784,41.0082],kind:'city'}]});
  try{await h.view.page.getByRole('button',{name:'Add destination',exact:true}).click();await h.view.page.getByRole('combobox',{name:'Add a stop',exact:true}).fill('Istanbul');await h.view.page.getByRole('option',{name:/Istanbul/}).first().click();await until(h,()=>h.cloud().stops.some(stop=>stop.name==='Istanbul'));assert.equal(await h.view.page.getByRole('group',{name:'Review destination',exact:true}).count(),0);assert.equal(h.cloud().brief.intent.route.journeyEnd.mode,'explicit');assert.deepEqual(h.view.errors,[]);}finally{await h.view.close()}
 });
+
+test('genuine planning-area children are individual occurrence chips, with guarded child removal and retained sibling nights',{skip:!enabled,timeout:30000},async()=>{
+ const h=await fixture(false,trip=>{
+  trip.brief.bookings=[];trip.brief.intent.hardConstraints.fixedCommitments=[];
+  const [a,b,c]=trip.brief.intent.route.destinations;
+  trip.brief.intent.route.destinations=[{...a!,id:'area:japan',kind:'planning_area',sourceText:'Japan',selectedPlace:{name:'Japan',country:'Japan',canonicalPlaceId:'country:japan'},stopIds:[...a!.stopIds,...b!.stopIds]},c!];
+ });try{
+  const before=structuredClone(h.cloud()),top=h.view.page.locator('[data-builder-top-controls]');
+  const removed=before.stops.find(stop=>stop.name==='Tokyo')!,sibling=before.stops.find(stop=>stop.name==='Kyoto')!;
+  const parent=top.locator('[data-destination-intent-id="area:japan"]');
+  assert.equal(await parent.getByRole('group',{name:'Japan',exact:true}).count(),1);
+  assert.equal(await parent.getByRole('button',{name:'Edit Tokyo',exact:true}).count(),1);
+  assert.equal(await parent.getByRole('button',{name:'Edit Kyoto',exact:true}).count(),1);
+  assert.equal(await top.locator('[data-destination-stop-id]').count(),2);
+  await parent.getByRole('button',{name:'Remove Tokyo',exact:true}).click();
+  await h.view.page.getByRole('dialog').getByRole('button',{name:'Remove Tokyo',exact:true}).click();
+  await until(h,()=>!h.cloud().stops.some(stop=>stop.id===removed.id));
+  const kept=h.cloud().stops.find(stop=>stop.id===sibling.id)!;
+  assert.equal(kept.nights,sibling.nights);assert.equal(kept.canonicalPlaceId,sibling.canonicalPlaceId);
+  assert.deepEqual(h.cloud().brief.manualNightStopIds,before.brief.manualNightStopIds);
+  assert.equal(h.cloud().brief.intent.route.orderAuthority,'manual');
+  assert.deepEqual(h.cloud().brief.intent.route.destinations.find(intent=>intent.id==='area:japan')?.stopIds,[sibling.id]);
+  await h.view.page.reload();await h.view.page.locator('[data-builder-top-controls]').waitFor();
+  assert.equal(await h.view.page.getByRole('button',{name:'Edit Kyoto',exact:true}).count(),1);
+  assert.deepEqual(h.view.errors,[]);
+ }finally{await h.view.close()}
+});
+
+test('individually added cities have no inferred country group and Update route remains secondary',{skip:!enabled,timeout:30000},async()=>{
+ const h=await fixture();try{
+  const top=h.view.page.locator('[data-builder-top-controls]');
+  assert.equal(await top.locator('[data-destination-parent-group]').count(),0);
+  const action=top.getByRole('button',{name:'Update route',exact:true});
+  assert.equal(await action.getAttribute('data-route-action'),'optional-optimization');
+  const before=structuredClone(h.cloud());
+  await top.getByRole('button',{name:/Increase travellers/}).click();await until(h,()=>h.cloud().travellers===before.travellers+1);
+  await top.getByRole('combobox',{name:'Budget',exact:true}).selectOption('high');await until(h,()=>h.cloud().brief.budgetBand==='high');
+  assert.deepEqual(h.cloud().brief.intent.route.orderedStopIds,before.brief.intent.route.orderedStopIds);
+  assert.deepEqual(h.cloud().stops,before.stops);assert.ok(h.writes()>=2);
+  await h.view.page.reload();await h.view.page.locator('[data-builder-top-controls]').waitFor();
+  assert.equal(await top.getByRole('combobox',{name:'Budget',exact:true}).inputValue(),'high');
+  const budget=top.getByRole('combobox',{name:'Budget',exact:true});await budget.focus();assert.equal(await budget.evaluate((node:Element)=>document.activeElement===node),true);
+  const quantity=top.getByRole('button',{name:/Increase travellers/});await quantity.focus();await quantity.press('ArrowLeft');await until(h,()=>h.cloud().travellers===before.travellers);
+  assert.deepEqual(h.cloud().brief.intent.route.orderedStopIds,before.brief.intent.route.orderedStopIds);
+  assert.deepEqual(h.view.errors,[]);
+ }finally{await h.view.close()}
+});

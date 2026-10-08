@@ -26,3 +26,32 @@ and disabled styles. Compare Builder date content to the same shared anatomy.
 Review readable side-by-side field pixels before user review. CSS-state fixtures
 are distinct from mounted interaction tests. The separately discussed new
 homepage arrangement remains held until both mockups are settled.
+
+## Approved compact layout, actual pixels received
+
+The three exact approved images were delivered as actual conversation attachments:
+Plan with stops and Describe my trip (2048x704 displayed), Builder top (2048x736).
+All pixels were inspected; earlier Library 403/text-only access history is superseded.
+
+Homepage places the existing trip type at the right of the tabs, with their divider
+ending before it. Plan retains joined origin/destinations; Describe uses the existing
+prompt across the full width and hides only the origin presentation. Its canonical
+origin, raw draft, destination occurrences, endpoint choice and prompt persist in the
+same input snapshot across tabs/reload. An unresolved hidden origin reveals the
+existing Stops editor and focuses it after render, with no handoff/capture/reservation.
+Dates and Personalize keep the already approved common anatomy and responsive stack.
+
+Builder keeps the table/map, moves trip type upper right, retains bounded origin and
+joined destinations, and presents Date/Travellers/Budget with shared planner anatomy.
+Native select and bounded quantity keyboard/change ownership remain in existing
+components. Update route is the outlined shared secondary button and still optional.
+Only genuine planning-area intents create headings over individual child occurrence
+tags. Do not infer grouping from country geography. Child removal uses the current
+stop safety/confirmation flow; parent edit and whole-parent removal remain accessible
+beside its heading to preserve existing guarded operations. These functional affordances
+are a deliberate small addition to the static reference, rather than hidden controls.
+
+Keep current type/token roles and existing hero assets; do not reintroduce removed
+interests/transport controls merely because ImageGen wrote them in placeholder copy.
+No route schema, persistence engine, geography resolver, deployment or hosted data
+change belongs to this layout commit. The separate geography plan remains gated.

@@ -134,3 +134,16 @@ function PlannerFieldPair({ disabled = false }: { disabled?: boolean }) {
 export const PlannerFieldAnatomy: Story = { render: () => <PlannerFieldPair /> };
 export const PlannerFieldDisabled: Story = { render: () => <PlannerFieldPair disabled /> };
 export const PlannerFieldMobile390: Story = { ...PlannerFieldAnatomy, globals: { viewport: { value: "morrovia390", isRotated: false } } };
+
+export const PlannerQuantityAndBudget: Story = {
+  render: function PlannerQuantityBudgetStory() {
+    const [quantity,setQuantity]=useState(2),[budget,setBudget]=useState("mid");
+    return <div style={storyGrid}>
+      <MorroviaQuantitySelector fieldPresentation="planner" label="Travellers" value={quantity} onChange={setQuantity} />
+      <EasyTSelect label="Budget" value={budget} onChange={event=>setBudget(event.target.value)} plannerPresentation={{icon:SlidersHorizontal,valueLabel:({value:"Value",mid:"Mid-range",high:"High"} as Record<string,string>)[budget]}}><option value="value">Value</option><option value="mid">Mid-range</option><option value="high">High</option></EasyTSelect>
+      <MorroviaQuantitySelector fieldPresentation="planner" label="Travellers" value={1} min={1} disabled onChange={()=>undefined} />
+      <EasyTSelect label="Budget unavailable" disabled value="mid" plannerPresentation={{icon:SlidersHorizontal,valueLabel:"Mid-range"}}><option value="mid">Mid-range</option></EasyTSelect>
+    </div>;
+  },
+};
+export const PlannerQuantityAndBudget390: Story = {...PlannerQuantityAndBudget, globals:{viewport:{value:"morrovia390",isRotated:false}}};

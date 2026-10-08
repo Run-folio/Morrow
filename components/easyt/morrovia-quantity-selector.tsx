@@ -2,11 +2,13 @@
 
 import { Minus, Plus, UsersRound } from "lucide-react";
 import { useId, type KeyboardEvent } from "react";
+import { MorroviaPlannerFieldContent, plannerFieldButtonClassName } from "./morrovia-planner-field";
 import styles from "./morrovia-quantity-selector.module.css";
 
 export function MorroviaQuantitySelector({
   className = "",
   compact = false,
+  fieldPresentation,
   disabled = false,
   label,
   locale = "en",
@@ -21,6 +23,7 @@ export function MorroviaQuantitySelector({
   className?: string;
   compact?: boolean;
   disabled?: boolean;
+  fieldPresentation?: "planner";
   label: string;
   locale?: "en" | "es";
   max?: number;
@@ -58,6 +61,14 @@ export function MorroviaQuantitySelector({
       update(max);
     }
   };
+
+  if (fieldPresentation === "planner") return <div className={`${plannerFieldButtonClassName} ${styles.planner} ${className}`} data-disabled={disabled || undefined}>
+    <div className={styles.plannerStepper} role="group" aria-labelledby={labelId} onKeyDown={onKeyDown}>
+      <MorroviaPlannerFieldContent label={label} labelId={labelId} value={<output aria-live="polite" aria-atomic="true">{valueLabel}</output>} icon={UsersRound} showChevron={false} />
+      <button type="button" disabled={disabled || boundedValue <= min} onClick={() => update(boundedValue - 1)} aria-label={decreaseLabel}><Minus aria-hidden="true" /></button>
+      <button type="button" disabled={disabled || boundedValue >= max} onClick={() => update(boundedValue + 1)} aria-label={increaseLabel}><Plus aria-hidden="true" /></button>
+    </div>
+  </div>;
 
   return <div className={`${styles.root} ${compact ? styles.compact : ""} ${className}`}>
     <span data-morrovia-field-label className={styles.label} id={labelId}>{label}</span>

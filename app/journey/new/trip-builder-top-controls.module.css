@@ -1,7 +1,7 @@
 .root { display: grid; gap: 18px; min-width: 0; padding: 18px; border: 1px solid var(--morrovia-line); border-radius: var(--morrovia-radius); background: var(--morrovia-control-surface); color: var(--morrovia-ink); }
-.root > div:first-child { justify-self: start; }
+.typeRow { display: flex; justify-content: flex-end; }
 .context { margin: 0; color: var(--morrovia-muted); font: var(--morrovia-type-fine-print); }
-.details { display: grid; grid-template-columns: minmax(0,1.1fr) minmax(0,1fr) minmax(0,1fr); gap: 14px; align-items: stretch; }
+.details { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 14px; align-items: stretch; }
 .details > * { min-width: 0; }
 .actions { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 12px; }
 .actions > span { padding: 8px 12px; border: 1px solid var(--morrovia-line); border-radius: var(--morrovia-control-radius); background: var(--morrovia-control-surface); font: var(--morrovia-type-control); }
@@ -17,3 +17,16 @@
 .grip { touch-action: none; cursor: grab; }
 .grip[aria-grabbed="true"] { cursor: grabbing; }
 .dropTarget { outline: 2px solid var(--morrovia-focus-ring); outline-offset: 2px; }
+
+.parentGroup { min-width: 0; max-width: 100%; list-style: none; }
+.parentGroup > div { display: grid; gap: 4px; }
+.parentHeading { display: flex; align-items: center; justify-content: center; gap: 2px; border-bottom: 1px solid var(--morrovia-line); color: var(--morrovia-muted); }
+.parentHeading button { color: var(--morrovia-muted); }
+.baseChips { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin: 0; padding: 0; list-style: none; }
+@media(max-width:720px) { .typeRow > div { width: 100%; } }
+
+/* The approved Builder origin is a bounded autocomplete inside the joined fields. */
+.root .origin input { border: 1px solid var(--morrovia-line); }
+.root .origin input:hover { border-color: var(--morrovia-ink-soft); }
+.root .origin input:focus-visible { border-color: var(--morrovia-signal); }
+.root .origin input[aria-invalid="true"] { border-color: var(--morrovia-danger); }

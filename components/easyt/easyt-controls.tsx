@@ -11,6 +11,8 @@ import {
   type TextareaHTMLAttributes,
 } from "react";
 import styles from "./easyt-controls.module.css";
+import { MorroviaPlannerFieldContent, plannerFieldButtonClassName } from "./morrovia-planner-field";
+import plannerFieldStyles from "./morrovia-planner-field.module.css";
 
 type ControlVariant = "primary" | "secondary" | "quiet" | "danger";
 type ControlSize = "small" | "medium" | "large";
@@ -177,10 +179,17 @@ export const EasyTSelect = forwardRef<
     hint?: string;
     error?: string;
     optional?: boolean;
+    plannerPresentation?: { icon: LucideIcon; valueLabel: string };
   }
->(function EasyTSelect({ className = "", fieldClassName, label, labelClassName, hint, error, optional, id: suppliedId, children, ...props }, ref) {
+>(function EasyTSelect({ className = "", fieldClassName, label, labelClassName, hint, error, optional, plannerPresentation, id: suppliedId, children, ...props }, ref) {
   const generatedId = useId();
   const id = suppliedId || generatedId;
+  if (plannerPresentation) return <FieldShell className={fieldClassName} id={id} label={label} labelClassName="sr-only" hint={hint} error={error} optional={optional} required={props.required} disabled={props.disabled}>
+    <span className={`${plannerFieldButtonClassName} ${plannerFieldStyles.selectField}`} data-disabled={props.disabled || undefined}>
+      <span aria-hidden="true"><MorroviaPlannerFieldContent label={label} value={plannerPresentation.valueLabel} icon={plannerPresentation.icon} /></span>
+      <select {...props} ref={ref} id={id} className={`${plannerFieldStyles.nativeSelect} ${className}`} aria-invalid={Boolean(error)} aria-describedby={error || hint ? `${id}-description` : undefined}>{children}</select>
+    </span>
+  </FieldShell>;
   return (
     <FieldShell className={fieldClassName} id={id} label={label} labelClassName={labelClassName} hint={hint} error={error} optional={optional} required={props.required} disabled={props.disabled}>
       <span className={styles.selectWrap}>

@@ -289,9 +289,11 @@
 
 /* The homepage planner composes the existing capture owners. */
 .plannerHeader { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; }
-.plannerHeader .modeTabs { flex: 1; }
-.plannerRoute { display: grid; gap: 8px; margin-block: 12px; }
-.plannerType { justify-self: start; }
+.plannerHeader .modeTabs { flex: 1; min-width: 0; }
+.plannerRoute { display: grid; margin-block: 0; }
+.plannerDescribeFields.plannerDescribeFields { grid-template-columns: minmax(0, 1fr); border: 0; }
+.plannerDescribeFields.plannerDescribeFields > .wideDescribePanel { padding: 0; }
+.plannerType { flex: none; }
 .plannerType button { min-height: 44px; }
 .plannerCard .personalizeTravellers button { min-width: 44px; }
 .plannerUtilities { overflow: hidden; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); border: 1px solid var(--morrovia-line); border-radius: var(--morrovia-control-radius); }

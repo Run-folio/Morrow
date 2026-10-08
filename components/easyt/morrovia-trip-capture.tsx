@@ -280,12 +280,12 @@ export function MorroviaTripCapture({
         <EasyTButton ref={stopsTabRef} className={styles.modeTab} variant="quiet" icon={MapPin} role="tab" id={`${stopsPanelId}-tab`} aria-selected={homepageEntry.mode === "stops"} aria-controls={stopsPanelId} tabIndex={homepageEntry.mode === "stops" ? 0 : -1} disabled={disabled || loading} onKeyDown={onTabKeyDown} onClick={() => homepageEntry.onModeChange("stops")}>{text.planWithStops}</EasyTButton>
         <EasyTButton ref={describeTabRef} className={styles.modeTab} variant="quiet" icon={Sparkles} role="tab" id={`${describePanelId}-tab`} aria-selected={homepageEntry.mode === "describe"} aria-controls={describePanelId} tabIndex={homepageEntry.mode === "describe" ? 0 : -1} disabled={disabled || loading} onKeyDown={onTabKeyDown} onClick={() => homepageEntry.onModeChange("describe")}>{text.describeTrip}</EasyTButton>
       </div>
+      {homepageEntry.planner ? <div className={styles.plannerType}>{homepageEntry.planner.tripTypeControl}</div> : null}
       </div>
       {homepageEntry.planner ? <>
         <div className={styles.plannerRoute}>
-        <div className={styles.plannerType}>{homepageEntry.planner.tripTypeControl}</div>
-        <div className={plannerStyles.fields} data-home-route-fields>
-          {homepageEntry.planner.originEntry}
+        <div className={`${plannerStyles.fields}${homepageEntry.mode === "describe" ? ` ${styles.plannerDescribeFields}` : ""}`} data-home-route-fields>
+          {homepageEntry.mode === "stops" ? homepageEntry.planner.originEntry : null}
           {homepageEntry.mode === "stops" ? <div role="tabpanel" id={stopsPanelId} aria-labelledby={`${stopsPanelId}-tab`}>{homepageEntry.destinationEditor}</div>
             : <div className={styles.wideDescribePanel} role="tabpanel" id={describePanelId} aria-labelledby={`${describePanelId}-tab`}>
               {promptField}<div className={styles.wideDisclosure}><MorroviaContextualDisclosure open={aiDisclosureOpen} onOpenChange={setAiDisclosureOpen} title={text.aiTitle} detail={text.aiDisclosure} linkHref="/journey/privacy#ai-and-speech" linkLabel={text.privacy} triggerLabel={text.aiLabel} /></div>

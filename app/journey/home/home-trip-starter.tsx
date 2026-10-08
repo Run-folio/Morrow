@@ -83,6 +83,12 @@ export default function HomeTripStarter() {
   const { start: startDate, end: endDate } = homepageVisibleDateRange(snapshot);
   const [loading, setLoading] = useState(false);
   const [captureError, setCaptureError] = useState("");
+  const originFocusRequestedRef = useRef(false);
+  useEffect(() => {
+    if (!originFocusRequestedRef.current || snapshot.mode !== "stops" || loading) return;
+    document.querySelector<HTMLInputElement>('#start-building [data-homepage-origin] input')?.focus();
+    originFocusRequestedRef.current = false;
+  }, [snapshot.mode, loading]);
   const [recoveryBlocked, setRecoveryBlocked] = useState(false);
   const [focusEntryId, setFocusEntryId] = useState<string | null>(null);
 
@@ -235,6 +241,14 @@ export default function HomeTripStarter() {
       if (!isCurrent()) return;
       if (issues.length) {
         setCaptureError(issueMessage(issues[0].field));
+        // Reveal the existing origin editor when Describe hides an unresolved raw draft.
+        // Changing the tab retains every input; no capture or reservation has begun.
+        if (issues[0].field === "origin" && submitted.mode === "describe") {
+          originFocusRequestedRef.current = true;
+          updateSnapshot(current => ({ ...current, mode: "stops" }));
+          setCaptureError(issueMessage("origin"));
+          return;
+        }
         const form = document.getElementById("start-building");
         (issues[0].field === "origin" ? form?.querySelector<HTMLInputElement>('[data-homepage-origin] input')
           : issues[0].field === "tripType" ? form?.querySelector<HTMLButtonElement>('[data-homepage-trip-type] button')

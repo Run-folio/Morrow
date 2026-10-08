@@ -73,3 +73,13 @@
   .compact .stepper button { min-width: 44px; min-height: 44px; }
   .compact .stepper { grid-template-columns: 44px minmax(88px, 1fr) 44px; }
 }
+
+/* Planner composition retains the same bounded, keyboard-accessible quantity owner. */
+.planner.planner { cursor: default; }
+.plannerStepper { display: grid; grid-template-columns: minmax(0, 1fr) 44px 44px; align-items: stretch; width: 100%; }
+.plannerStepper button { display: grid; place-items: center; min-width: 44px; min-height: 44px; padding: 0; border: 0; border-left: 1px solid var(--morrovia-line); background: transparent; color: var(--morrovia-action); cursor: pointer; }
+.plannerStepper button svg { width: 20px; height: 20px; }
+.plannerStepper button:hover:not(:disabled) { background: var(--morrovia-lilac); }
+.plannerStepper button:focus-visible { outline: 3px solid var(--morrovia-focus-ring); outline-offset: -3px; }
+.plannerStepper button:disabled { color: var(--morrovia-muted); cursor: not-allowed; }
+.planner[data-disabled] { opacity: .62; background: var(--morrovia-disabled); }

@@ -5159,6 +5159,7 @@ function TripBuilderDocument() {
                     const mention=activePlaceMentions.find(m=>m.mentionId===intent.id);
                     if(intent.kind==="planning_area"||intent.stopIds.length!==1){if(mention){if(completedPlanningAreaMentionIds.includes(mention.mentionId))reopenPlanningArea(mention);else openClarificationSession(mention.mentionId)}return false}return true;
                   }}
+                  onRemoveStop={requestRemoveStop}
                   onRemoveIntent={intent=>{if(intent.stopIds.length===1)requestRemoveStop(intent.stopIds[0]);else if(!intent.stopIds.length)dispatchAcceptedBuilderEdit({kind:"remove-destination",intentId:intent.id});else {
                     const snapshot=mountedBuilder.session.getSnapshot();const stays=snapshot.trip.stops.filter(stop=>intent.stopIds.includes(stop.id));
                     const blocked=stays.find(stop=>stopRemovalSafety(stop.id).blocked);if(blocked){setStopRemovalBlocked({id:blocked.id,name:blocked.name});return}

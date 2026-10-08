@@ -32,8 +32,10 @@ test("Homepage start-only dates remain an unconfirmed suggestion through Builder
     await page.getByRole("textbox", { name: "Start your plan" }).fill("Tokyo and Kyoto");
     await page.getByRole("button",{name:"One way",exact:true}).click();
     await page.getByRole("button",{name:"Return to start",exact:true}).click();
+    await page.getByRole("tab", { name: "Plan with stops" }).click();
     await page.getByRole("combobox",{name:"Start from",exact:true}).fill("London");
     await page.getByRole("option",{name:/^London.*United Kingdom/}).first().click();
+    await page.getByRole("tab", { name: "Describe my trip" }).click();
     await page.getByRole("button", { name: /Travel dates/ }).click();
     const picker = page.getByRole("dialog", { name: /Travel dates/ });
     await picker.getByRole("textbox", { name: "YYYY-MM-DD" }).fill("2026-11-10");
@@ -90,8 +92,10 @@ test("Homepage start plus a stated two-week duration derives the exact end", { s
     await page.getByRole("textbox", { name: "Start your plan" }).fill("Kazakhstan, Uzbekistan, Kyrgyzstan, 2 weeks");
     await page.getByRole("button",{name:"One way",exact:true}).click();
     await page.getByRole("button",{name:"Return to start",exact:true}).click();
+    await page.getByRole("tab", { name: "Plan with stops" }).click();
     await page.getByRole("combobox",{name:"Start from",exact:true}).fill("London");
     await page.getByRole("option",{name:/^London.*United Kingdom/}).first().click();
+    await page.getByRole("tab", { name: "Describe my trip" }).click();
     await page.getByRole("button", { name: /Travel dates/ }).click();
     const picker = page.getByRole("dialog", { name: /Travel dates/ });
     await picker.getByRole("textbox", { name: "YYYY-MM-DD" }).fill("2026-11-10");
@@ -130,8 +134,10 @@ test("Homepage complete dates stay authoritative through Builder reload", { skip
     await page.getByRole("textbox", { name: "Start your plan" }).fill("Tokyo and Kyoto for two weeks");
     await page.getByRole("button",{name:"One way",exact:true}).click();
     await page.getByRole("button",{name:"Return to start",exact:true}).click();
+    await page.getByRole("tab", { name: "Plan with stops" }).click();
     await page.getByRole("combobox",{name:"Start from",exact:true}).fill("London");
     await page.getByRole("option",{name:/^London.*United Kingdom/}).first().click();
+    await page.getByRole("tab", { name: "Describe my trip" }).click();
     await page.getByRole("button", { name: /Travel dates/ }).click();
     const picker = page.getByRole("dialog", { name: /Travel dates/ });
     const typedDate = picker.getByRole("textbox", { name: "YYYY-MM-DD" });

@@ -601,3 +601,19 @@ this presentation without field-specific overrides. Joined homepage groups own
 their outer border and dividers; standalone Builder fields retain the shared
 trigger border. Date parsing, calendar drafts, focus restoration and disclosure
 state stay with the existing interaction components.
+
+### Compact planner controls (Batch 14 approved layout)
+
+Homepage tabs share their header with the trip-type control; Describe presents the
+prompt at full width while the owner snapshot retains the hidden origin. Builder
+keeps the joined origin/destination field, with country headings only for existing
+planning-area parent intents. Child tags retain operational occurrence IDs and use
+the existing stop removal guard; group edit/removal actions remain accessible.
+
+Travel dates and Personalize use `MorroviaPlannerFieldContent`. Builder quantity
+uses its planner composition with the existing bounded stepper; Budget extends
+`EasyTSelect` with `plannerPresentation`, preserving native keyboard selection,
+change and focus ownership. Their icon/label/value anatomy uses the same shared
+field implementation and tokens. Update route uses the shared secondary button.
+Storybook includes planner quantity/budget normal, boundary, disabled and 390px
+examples, alongside capture tabs and actual Builder parent-group examples.
