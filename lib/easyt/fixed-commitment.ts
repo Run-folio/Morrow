@@ -15,6 +15,8 @@ export type FixedCommitmentConstraint = {
   commitmentType?: FixedCommitmentType;
   place?: FixedCommitmentPlace;
   stopId?: string;
+  /** Captured occurrence identity, distinct from the selected geographic place. */
+  sourceMentionId?: string;
   fixedNights?: number;
 };
 
@@ -25,19 +27,28 @@ type CommitmentRouteStop = {
 };
 
 /** Attach durable fixed-place intent to an existing operational route stop.
- * Geographic identity wins; the display name is the compatibility fallback. */
+ * Captured requests require their exact source binding. Legacy geographic
+ * compatibility is allowed only when one operational occurrence matches. */
 export function projectFixedCommitmentsToStops<T extends FixedCommitmentConstraint>(
   commitments: readonly T[],
   stops: readonly CommitmentRouteStop[],
+  sourceBindings?: readonly { id: string; stopIds: readonly string[] }[],
 ): Array<T & { stopId?: string }> {
   const stopIds = new Set(stops.map((stop) => stop.id));
   return commitments.map((commitment) => {
+    if (commitment.sourceMentionId && sourceBindings) {
+      const sources = sourceBindings.filter(source => source.id === commitment.sourceMentionId);
+      const id = sources.length === 1 && sources[0]!.stopIds.length === 1 ? sources[0]!.stopIds[0] : undefined;
+      const valid = id && stopIds.has(id) && (!commitment.stopId || commitment.stopId === id);
+      return { ...commitment, stopId: valid ? id : undefined };
+    }
     if (commitment.stopId && stopIds.has(commitment.stopId)) return { ...commitment };
-    if (!commitment.place?.name) return { ...commitment, stopId: undefined };
-    const matching = stops.find((stop) => Boolean(commitment.place?.canonicalPlaceId)
-      && stop.canonicalPlaceId === commitment.place?.canonicalPlaceId)
-      ?? stops.find((stop) => normalizePlacePhrase(stop.name) === normalizePlacePhrase(commitment.place!.name));
-    return { ...commitment, stopId: matching?.id };
+    if (commitment.sourceMentionId || !commitment.place?.name) return { ...commitment, stopId: undefined };
+    const canonical = commitment.place.canonicalPlaceId
+      ? stops.filter(stop => stop.canonicalPlaceId === commitment.place!.canonicalPlaceId) : [];
+    const matching = canonical.length ? canonical
+      : stops.filter(stop => normalizePlacePhrase(stop.name) === normalizePlacePhrase(commitment.place!.name));
+    return { ...commitment, stopId: matching.length === 1 ? matching[0]!.id : undefined };
   });
 }
 

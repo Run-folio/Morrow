@@ -6,6 +6,7 @@ import {
   reconcileSelfBasePlaceState,
   isNegatedEndpointAt,
   endpointSourceIsNegated,
+  geographicContextMentionIds,
   isTentativeEndpointAt,
   type PlaceIntelligenceResult,
   type PlaceIssue,
@@ -434,7 +435,9 @@ export function extractStructuredTripBrief(
       .map((mention) => ({ value: mention.canonicalName, provenance: placeProvenance(mention) })),
     ...parsed.countries.map((value) => ({ value, provenance: promptExplicit(sourceExcerpt(rawPrompt, value)) })),
   ], (country) => normalize(country.value));
+  const contextIds = geographicContextMentionIds(rawPrompt, placeMentions);
   const resolvedDestinations = placeMentions
+    .filter(mention => !contextIds.has(mention.mentionId))
     .map((mention) => destinationFromMention(mention, rawPrompt, startText, endText, hasExplicitStartMention, hasExplicitEndMention))
     .filter((destination): destination is TripBriefDestination => Boolean(destination));
   const fallbackNames = unique(
@@ -467,6 +470,7 @@ export function extractStructuredTripBrief(
       coordinates: mention.coordinates,
     },
     fixedNights: nights,
+    sourceMentionId: mention.mentionId,
     provenance: promptExplicit(sourceText),
   }));
   const starts = destinations.filter(destination => destination.role === "arrival-gateway");
@@ -550,7 +554,7 @@ export function extractStructuredTripBrief(
     confidence: destinations.length || duration || travellers ? "high" : "low",
     issues: [],
     placeMentions,
-    placeIssues: placeIntelligence.issues,
+    placeIssues: placeIntelligence.issues.filter(issue => !contextIds.has(issue.mentionId)),
     placeSelections: [],
     completedPlanningAreaMentionIds: [],
     removedPlaceMentionIds: [],
@@ -666,6 +670,7 @@ export function mergeStructuredTripBrief(base: StructuredTripBrief, input: Struc
     commitmentType: item.commitmentType,
     place: item.place,
     stopId: item.stopId,
+    ...(item.sourceMentionId ? { sourceMentionId: item.sourceMentionId } : {}),
     fixedNights: item.fixedNights,
     provenance: builderExplicit(),
   }));
@@ -833,15 +838,16 @@ export function routeConstraintsFromStructuredTripBrief(brief: StructuredTripBri
       const explicitStopId = constraint.stopId && (!activeRouteStopIds || activeRouteStopIds.has(constraint.stopId))
         ? constraint.stopId
         : undefined;
-      const matchedStopId = constraint.place ? brief.destinations.find((destination) => destination.id
-        && destination.role !== "arrival-gateway"
-        && destination.role !== "departure-gateway"
-        && destination.role !== "excluded"
+      const candidates = brief.destinations.filter(destination => destination.id
+        && destination.role !== "arrival-gateway" && destination.role !== "departure-gateway" && destination.role !== "excluded"
         && (!activeRouteStopIds || activeRouteStopIds.has(destination.id))
-        && (Boolean(constraint.place?.canonicalPlaceId) && destination.canonicalPlaceId === constraint.place?.canonicalPlaceId
-          || normalize(destination.name) === normalize(constraint.place!.name)))?.id : undefined;
+        && (constraint.sourceMentionId ? destination.placeMentionId === constraint.sourceMentionId
+          : constraint.place && (Boolean(constraint.place.canonicalPlaceId) && destination.canonicalPlaceId === constraint.place.canonicalPlaceId
+            || normalize(destination.name) === normalize(constraint.place.name))));
+      const matchedStopId = candidates.length === 1 ? candidates[0]!.id : undefined;
       return {
         label: constraint.value,
+        ...(constraint.sourceMentionId ? { sourceMentionId: constraint.sourceMentionId } : {}),
         ...(constraint.date ? { date: constraint.date } : {}),
         ...(constraint.commitmentType ? { commitmentType: constraint.commitmentType } : {}),
         ...(constraint.place ? { place: constraint.place } : {}),

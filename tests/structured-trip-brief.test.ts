@@ -81,7 +81,10 @@ test("prompted city night counts remain explicit fixed stay constraints", () => 
     canonicalPlaceId: brief.destinations.find((destination) => destination.name === name)?.canonicalPlaceId,
   }));
   const route = routeConstraintsFromStructuredTripBrief(brief);
-  const fixedCommitments = projectFixedCommitmentsToStops(route.fixedCommitments, stops);
+  const sourceBindings = stops.map(stop => ({
+    id: brief.destinations.find(destination => destination.name === stop.name)!.placeMentionId!, stopIds: [stop.id],
+  }));
+  const fixedCommitments = projectFixedCommitmentsToStops(route.fixedCommitments, stops, sourceBindings);
   const allocation = allocateTripNights({ totalNights: 10, stops, fixedCommitments });
   assert.deepEqual(allocation.allocations, { "stop-0": 3, "stop-1": 3, "stop-2": 1, "stop-3": 3 });
 });

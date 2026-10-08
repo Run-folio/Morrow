@@ -25,6 +25,7 @@ export type FixedTripCommitment = {
   commitmentType?: FixedCommitmentType;
   place?: FixedCommitmentPlace;
   stopId?: string;
+  sourceMentionId?: string;
   fixedNights?: number;
 };
 export type JourneyEndpointPlace = {
@@ -156,12 +157,13 @@ export function tripIntentForTrip(trip: Pick<EasyTTrip, "startDate" | "endDate" 
 export function fixedTripCommitmentsFromStructuredBrief(brief: StructuredTripBrief): FixedTripCommitment[] {
   return brief.hardConstraints.flatMap((constraint) => constraint.type === "fixed-commitment"
     ? [{
-        id: `structured-${constraint.date ?? "open"}-${constraint.value.toLocaleLowerCase().replace(/[^a-z0-9]+/g, "-")}`,
+        id: constraint.sourceMentionId ? `source-night:${constraint.sourceMentionId}` : `structured-${constraint.date ?? "open"}-${constraint.value.toLocaleLowerCase().replace(/[^a-z0-9]+/g, "-")}`,
         label: constraint.value,
         date: constraint.date,
         commitmentType: constraint.commitmentType,
         place: constraint.place,
         stopId: constraint.stopId,
+        ...(constraint.sourceMentionId ? { sourceMentionId: constraint.sourceMentionId } : {}),
         fixedNights: constraint.fixedNights,
       }]
     : []);

@@ -1,3 +1,4 @@
+import { geographicContextMentionIds } from "./place-intelligence.ts";
 import { normalizeJourneyEnd, originPlaceFromBrief } from "./journey-endpoints.ts";
 import type { CanonicalEasyTTrip, DestinationIntent, EasyTTrip, JourneyEndpointPlace, RouteIntent, TripStop } from "./trip.ts";
 import { prepareTripDocumentForWrite, type TripDocumentIssue } from "./trip-document.ts";
@@ -51,7 +52,9 @@ function sourceRequestedNights(prompt: string, mention: Pick<ResolvedPlaceMentio
 export function routeIntentFromHandoff(draft: HomeTripDraft, stops: readonly TripStop[]): RouteIntent {
   const mentions = draft.locationMentions ?? draft.structuredBrief?.placeMentions ?? [];
   const removed = new Set(draft.structuredBrief?.removedPlaceMentionIds ?? []);
-  const sourceMentions = draft.sourceRouteKey ? [] : mentions.filter(mention => !removed.has(mention.mentionId) && mention.role !== "excluded"
+  const contextIds = geographicContextMentionIds(draft.brief ?? draft.structuredBrief?.source?.rawPrompt ?? "", mentions,
+    draft.origin && draft.originCountry ? [{ name: draft.origin, country: draft.originCountry }] : draft.routeIntent?.origin ? [draft.routeIntent.origin] : []);
+  const sourceMentions = draft.sourceRouteKey ? [] : mentions.filter(mention => !removed.has(mention.mentionId) && !contextIds.has(mention.mentionId) && mention.role !== "excluded"
     && mention.role !== "origin" && mention.role !== "fixed_start" && mention.role !== "fixed_end"
     && mention.role !== "anchor" && mention.routability !== "anchor_or_poi" && mention.placeType !== "landmark");
   const selections = draft.structuredBrief?.placeSelections ?? [];

@@ -65,7 +65,7 @@ import { buildCountryDiscovery, updateCountryDiscoveryChoice } from "@/lib/easyt
 import { countryCodeFor } from "@/lib/easyt/country-registry";
 import { findCatalogPlaceById } from "@/lib/easyt/place-catalog";
 import { extractStructuredTripBrief, mergeStructuredTripBrief, routeConstraintsFromStructuredTripBrief, routeScoringPreferencesFromStructuredBrief, structuredTripBriefFromSavedSelections, type StructuredTripBrief } from "@/lib/easyt/structured-trip-brief";
-import { OVERNIGHT_BASE_PLACE_TYPES, PLACE_INTELLIGENCE_PARSER_VERSION, PLACE_INTELLIGENCE_VERSION, appendSelectedPlanningAreaMention, confirmedAttractionVisitSelection, canonicalPlaceFactsMatch, validPlaceCoordinates, canonicalPlaceSuggestionFor, canonicalPlaceSuggestionSuitableAsNearbyBase, canonicalPlaceSuggestionsForQuery, guidedPlanningAreaShapes, guidedPlanningAreaSuggestions, inferAttractionVisitSelections, isOvernightBaseEligible, nearbyBaseAnchorForMention, nearbyBaseSearchPreposition, placeCandidateSuitableAsNearbyBase, placeCandidateWithinPlanningParent, placeMentionSupportsMultipleSelections, placeMentionsNeedingReview, placeResolutionIssuesForMentions, placeSuggestionRequiresBaseSelection, planningAreaSuggestionsWithinParent, rankAttractionVisitTargets, regionalBaseSuggestions, selectPlaceCandidate, selectPlaceSearchSuggestion, type AttractionVisitCandidate, type CanonicalPlaceSuggestion, type GuidedPlanningAreaShape, type GuidedPlanningAreaSuggestion, type NearbyBaseSuggestion, type PlaceIntelligenceResult, type PlaceIssue, type PlaceIssueOption, type PlaceSelection, type PlaceType, type PlanningParentConstraint, type ResolvedPlaceMention } from "@/lib/easyt/place-intelligence";
+import { geographicContextMentionIds, OVERNIGHT_BASE_PLACE_TYPES, PLACE_INTELLIGENCE_PARSER_VERSION, PLACE_INTELLIGENCE_VERSION, appendSelectedPlanningAreaMention, confirmedAttractionVisitSelection, canonicalPlaceFactsMatch, validPlaceCoordinates, canonicalPlaceSuggestionFor, canonicalPlaceSuggestionSuitableAsNearbyBase, canonicalPlaceSuggestionsForQuery, guidedPlanningAreaShapes, guidedPlanningAreaSuggestions, inferAttractionVisitSelections, isOvernightBaseEligible, nearbyBaseAnchorForMention, nearbyBaseSearchPreposition, placeCandidateSuitableAsNearbyBase, placeCandidateWithinPlanningParent, placeMentionSupportsMultipleSelections, placeMentionsNeedingReview, placeResolutionIssuesForMentions, placeSuggestionRequiresBaseSelection, planningAreaSuggestionsWithinParent, rankAttractionVisitTargets, regionalBaseSuggestions, selectPlaceCandidate, selectPlaceSearchSuggestion, type AttractionVisitCandidate, type CanonicalPlaceSuggestion, type GuidedPlanningAreaShape, type GuidedPlanningAreaSuggestion, type NearbyBaseSuggestion, type PlaceIntelligenceResult, type PlaceIssue, type PlaceIssueOption, type PlaceSelection, type PlaceType, type PlanningParentConstraint, type ResolvedPlaceMention } from "@/lib/easyt/place-intelligence";
 import { isDuplicatePlaceIdentity } from "@/lib/easyt/place-autocomplete";
 import { MorroviaTripCapture } from "@/components/easyt/morrovia-trip-capture";
 import { CanonicalPlaceAutocomplete } from "@/components/easyt/canonical-place-autocomplete";
@@ -1717,8 +1717,9 @@ function TripBuilderDocument() {
     () => plannerEndpointForJourneyEnd(tripId, journeyStartPlace, journeyEnd),
     [tripId, journeyStartPlace, journeyEnd],
   );
+  const capturedContextIds = useMemo(() => geographicContextMentionIds(capturedStructuredBrief.source.rawPrompt ?? "", capturedStructuredBrief.placeMentions ?? intakeMentions, journeyStartPlace ? [journeyStartPlace] : []), [capturedStructuredBrief, intakeMentions, journeyStartPlace]);
   const activeCapturedPlaceMentions = useMemo(() => (capturedStructuredBrief.placeMentions ?? intakeMentions)
-    .filter((mention) => !removedPlaceMentionIds.includes(mention.mentionId)), [capturedStructuredBrief.placeMentions, intakeMentions, removedPlaceMentionIds]);
+    .filter((mention) => !removedPlaceMentionIds.includes(mention.mentionId) && !capturedContextIds.has(mention.mentionId)), [capturedStructuredBrief.placeMentions, intakeMentions, removedPlaceMentionIds, capturedContextIds]);
   const effectivePlaceSelections = useMemo(() => inferAttractionVisitSelections(
     activeCapturedPlaceMentions,
     stops.map((stop) => ({
@@ -1733,7 +1734,8 @@ function TripBuilderDocument() {
   const projectedFixedCommitments = useMemo(() => projectFixedCommitmentsToStops(
     effectiveIntent.hardConstraints.fixedCommitments,
     stops,
-  ), [effectiveIntent.hardConstraints.fixedCommitments, stops]);
+    effectiveIntent.route?.destinations,
+  ), [effectiveIntent.hardConstraints.fixedCommitments, effectiveIntent.route?.destinations, stops]);
   const protectedBuilderStopIds = useMemo(() => [...new Set([
     ...scheduleLocks.stopIds, ...Object.keys(scheduleLocks.arrivalDates),
     ...projectedFixedCommitments.flatMap(item => (item.date || item.commitmentType === 'booking') && item.stopId ? [item.stopId] : []),
@@ -1858,10 +1860,11 @@ function TripBuilderDocument() {
     [routeHints, stops],
   );
   const originMissing = originTouched && (!origin.trim() || Boolean(originError));
+  const contextMentionIds = useMemo(() => geographicContextMentionIds(effectiveStructuredBrief.source.rawPrompt ?? "", effectiveStructuredBrief.placeMentions ?? intakeMentions, journeyStartPlace ? [journeyStartPlace] : []), [effectiveStructuredBrief, intakeMentions, journeyStartPlace]);
   const activePlaceMentions = useMemo(() => (effectiveStructuredBrief.placeMentions ?? intakeMentions)
-    .filter((mention) => !(effectiveStructuredBrief.removedPlaceMentionIds ?? []).includes(mention.mentionId)), [effectiveStructuredBrief, intakeMentions]);
+    .filter((mention) => !(effectiveStructuredBrief.removedPlaceMentionIds ?? []).includes(mention.mentionId) && !contextMentionIds.has(mention.mentionId)), [effectiveStructuredBrief, intakeMentions, contextMentionIds]);
   const endpointMentionIds = useMemo(() => new Set(activePlaceMentions.filter(isEndMention).map((mention) => mention.mentionId)), [activePlaceMentions]);
-  const placeIssues = (effectiveStructuredBrief.placeIssues ?? []).filter((issue) => !endpointMentionIds.has(issue.mentionId));
+  const placeIssues = (effectiveStructuredBrief.placeIssues ?? []).filter((issue) => !endpointMentionIds.has(issue.mentionId) && !contextMentionIds.has(issue.mentionId));
   const reviewPlaceMentions = useMemo(() => placeMentionsNeedingReview(activePlaceMentions, placeIssues)
     .filter((mention) => !reviewedRouteStopSatisfiesMention({
       mention, brief: effectiveStructuredBrief, stops, sourceRouteKey,

@@ -1303,6 +1303,51 @@ function roleAt(prompt: string, sourceText: string, start: number, placeType: Pl
   return "preferred";
 }
 
+/** Country apposition supplies geography, not another overnight/base request.
+ * Keep all source mentions; callers exclude only proven context from routing.
+ * Any separate affirmative occurrence or uncertain country remains actionable. */
+export function geographicContextMentionIds(prompt: string, mentions: readonly ResolvedPlaceMention[], endpoints: readonly { name: string; country?: string }[] = []) {
+  const result = new Set<string>();
+  const escape = (text: string) => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  for (const country of mentions) {
+    if (country.placeType !== "country" || country.status !== "resolved" || !country.canonicalPlaceId) continue;
+    const labels = [...new Set([country.sourceText, ...country.sourceTexts, country.canonicalName].filter(Boolean))];
+    const positions = new Map<number, string>();
+    for (const label of labels) for (const match of prompt.matchAll(new RegExp(escape(label), "giu"))) {
+      const at = match.index!;
+      if (/[\p{L}\p{N}]/u.test(prompt[at - 1] ?? "") || /[\p{L}\p{N}]/u.test(prompt[at + match[0].length] ?? "")) continue;
+      positions.set(at, match[0]);
+    }
+    if (!positions.size) continue;
+    const contextual = [...positions].every(([at, label]) => {
+      const prefix = prompt.slice(0, at);
+      const clause = normalizePlacePhrase(prefix.split(/[.;!?\n]/).at(-1) ?? "");
+      if (/(?:do not|dont|never|not)(?: want to)? (?:visit|explore|stay in)$|(?:skip|avoid|exclude)$/.test(clause)) return true;
+      if (endpoints.some(endpoint => endpoint.country && normalizePlacePhrase(endpoint.country) === normalizePlacePhrase(country.canonicalName)
+        && new RegExp(`(?:^|[^\\p{L}\\p{N}])${escape(endpoint.name)}\\s*,\\s*$`, "iu").test(prefix))) return true;
+      return mentions.some(city => {
+        if (city === country || city.placeType === "country" || city.role === "excluded") return false;
+        if (city.status === "resolved" && city.parentCountries.length
+          && !city.parentCountries.some(parent => normalizePlacePhrase(parent) === normalizePlacePhrase(country.canonicalName))) return false;
+        const cityLabels = [...new Set([city.sourceText, ...city.sourceTexts, city.canonicalName].filter(Boolean))];
+        // An explicit source endpoint may itself be an unresolved qualified
+        // phrase (e.g. "San José, Costa Rica"). Its city still needs review.
+        if (["origin", "fixed_start", "fixed_end", "gateway"].includes(city.role)) {
+          for (const cityLabel of cityLabels) {
+            const qualified = new RegExp(`^(.+),\\s*${escape(label)}$`, "iu").exec(cityLabel);
+            if (qualified && new RegExp(`(?:^|[^\\p{L}\\p{N}])${escape(qualified[1]!)}\\s*,\\s*$`, "iu").test(prefix)) return true;
+            if (new RegExp(`(?:^|[^\\p{L}\\p{N}])${escape(cityLabel)}\\s*,\\s*$`, "iu").test(prefix)) return true;
+          }
+        }
+        if (city.status !== "resolved" || !city.parentCountries.some(parent => normalizePlacePhrase(parent) === normalizePlacePhrase(country.canonicalName))) return false;
+        return cityLabels.some(cityLabel => new RegExp(`(?:^|[^\\p{L}\\p{N}])${escape(cityLabel)}\\s*,\\s*$`, "iu").test(prefix));
+      });
+    });
+    if (contextual) result.add(country.mentionId);
+  }
+  return result;
+}
+
 function contextChoice(entries: PlaceCatalogEntry[], promptIds: Set<string>, context: PlaceResolutionContext) {
   if (entries.length <= 1) return entries[0];
   const contextIds = new Set([...promptIds, ...(context.selectedPlaces ?? []).map((place) => place.canonicalPlaceId)]);
