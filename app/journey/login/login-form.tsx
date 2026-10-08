@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import { authClient } from "@/lib/auth-client";
 import { authFormErrorMessage } from "@/lib/easyt/auth-feedback";
 import {
@@ -45,6 +45,8 @@ export default function LoginForm({
   initialError?: string;
 }) {
   const [mode, setMode] = useState<"sign-in" | "sign-up">(initialMode ?? "sign-in");
+  const [handlerReady, setHandlerReady] = useState(false);
+  useEffect(() => { setHandlerReady(true); }, []);
   const [busy, setBusy] = useState(false);
   const [googleBusy, setGoogleBusy] = useState(false);
   const [error, setError] = useState(initialError ?? "");
@@ -56,7 +58,7 @@ export default function LoginForm({
 
   const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (busy || googleBusy) return;
+    if (!handlerReady || busy || googleBusy) return;
     setBusy(true); setError(""); setVerificationFailure(null);
     const data = new FormData(event.currentTarget);
     const submittedEmail = String(data.get("email") || "");
@@ -183,12 +185,13 @@ export default function LoginForm({
     /> : null}
     {resendConfirmed && verificationFailure ? <MorroviaStatusBanner tone="success" title="Verification email sent" detail={`Check ${verificationFailure.email}, including spam.`} /> : null}
     {resendError && verificationFailure ? <p className={styles.error} role="alert">{resendError}</p> : null}
-    <form className={styles.form} onSubmit={submit} aria-busy={busy || undefined}>
+    <form className={styles.form} method="post" action="/journey/login" onSubmit={submit} aria-busy={busy || undefined}>
       {mode === "sign-up" && <EasyTField label="Your name" name="name" autoComplete="name" required placeholder="Your name" />}
       <EasyTField label="Email" name="email" type="email" autoComplete="email" required placeholder="you@example.com" value={email} onChange={(event) => { setEmail(event.target.value); setVerificationFailure(null); }} />
       <EasyTPasswordField label="Password" name="password" minLength={8} autoComplete={mode === "sign-in" ? "current-password" : "new-password"} required placeholder="At least 8 characters" />
       {mode === "sign-in" && <a className={styles.forgotLink} href="/journey/forgot-password">Forgot password?</a>}
-      <EasyTButton className={styles.authSubmit} type="submit" fullWidth loading={busy} disabled={!configured || googleBusy || Boolean(verificationFailure)}>{configured ? mode === "sign-in" ? "Sign in →" : "Create account →" : "Accounts coming online"}</EasyTButton>
+      <EasyTButton className={styles.authSubmit} type="submit" fullWidth loading={busy} disabled={!handlerReady || !configured || googleBusy || Boolean(verificationFailure)}>{configured ? mode === "sign-in" ? "Sign in →" : "Create account →" : "Accounts coming online"}</EasyTButton>
+      <noscript><p className={styles.muted}>Enable JavaScript to sign in securely.</p></noscript>
     </form>
     {backToTripHref ? <a className={styles.tripReturnLink} href={backToTripHref}>← Back to this trip</a> : null}
     <p className={styles.legalLink}>{mode === "sign-up" ? <>By creating an account, you agree to the <a href="/journey/terms">Terms of Use</a> and acknowledge the <a href="/journey/privacy">Privacy Notice</a>.</> : <>Read the <a href="/journey/terms">Terms of Use</a> and how Morrovia handles your data in our <a href="/journey/privacy">Privacy Notice</a>.</>}</p>
