@@ -7,6 +7,29 @@ import {requireReadableTripDocument} from '../lib/easyt/trip-document.ts';
 import {stopEndpoint} from '../lib/easyt/trip-legs.ts';
 import {nextTripUpdatedAt} from '../lib/easyt/trip-continuity.ts';
 const enabled=process.env.MORROVIA_BUILDER_APP_BROWSER_TESTS==='1';
+test('undated stay requests permit deliberate night and order edits while booked stays stay protected',{skip:!enabled,timeout:30000},async()=>{
+  let cloud=requireReadableTripDocument(canonicalTripForOwner('owner-a',requireReadableTripDocument(canonicalRouteFixture())));
+  cloud.brief.intent.hardConstraints.fixedCommitments=cloud.stops.map(stop=>({id:`request:${stop.id}`,label:`${stop.name} ${stop.nights} nights`,stopId:stop.id,fixedNights:stop.nights!}));
+  const view=await renderBuilder({initialTrip:cloud,seedRecovery:false,ownerId:'owner-a',query:`?trip=${cloud.id}`,accountRequest:({method,trip})=>{
+    if(method==='GET')return {status:200,body:{trip:cloud}};
+    cloud={...requireReadableTripDocument(trip),updatedAt:nextTripUpdatedAt(cloud.updatedAt)};return {status:200,body:{trip:cloud}};
+  }});
+  try{
+    await view.page.locator('[data-builder-edit-session="active"]').waitFor();
+    const kyoto=view.page.getByRole('button',{name:/Add one night to Kyoto/});
+    assert.equal(await kyoto.isEnabled(),true,'an undated quantity is not a date or booking lock');
+    assert.equal(await view.page.getByRole('button',{name:/Add one night to Tokyo/}).isDisabled(),true);
+    await kyoto.click();
+    await view.page.getByLabel('Actions for Hiroshima',{exact:true}).click();
+    await view.page.locator('[data-builder-route-workspace]').getByRole('button',{name:'Earlier',exact:true}).last().click();
+    for(let i=0;i<50&&(cloud.stops[1]!.name!=='Hiroshima'||cloud.stops.find(stop=>stop.name==='Kyoto')!.nights!==4);i++)await view.page.waitForTimeout(100);
+    assert.equal(cloud.stops[1]!.name,'Hiroshima');assert.equal(cloud.stops.find(stop=>stop.name==='Kyoto')!.nights,4);
+    assert.equal(cloud.brief.intent.route.orderAuthority,'manual');
+    await view.page.waitForFunction(()=>document.body.textContent?.includes('Saved to your account'));
+    await view.page.reload();await view.page.locator('[data-builder-edit-session="active"]').waitFor();
+    assert.equal(await view.page.getByRole('button',{name:/Add one night to Kyoto; 4 nights/}).count(),1);assert.deepEqual(view.errors,[]);
+  }finally{await view.close()}
+});
 test('A20 mounted removal confirms the same occurrence after held canonical identity ACK', {skip:!enabled,timeout:30000},async()=>{
   let cloud=requireReadableTripDocument(canonicalRouteFixture());
   const original=structuredClone(cloud),writes:typeof cloud[]=[];

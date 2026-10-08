@@ -1669,6 +1669,19 @@ function TripBuilderDocument() {
     effectiveIntent.hardConstraints.fixedCommitments,
     stops,
   ), [effectiveIntent.hardConstraints.fixedCommitments, stops]);
+  const protectedBuilderStopIds = useMemo(() => [...new Set([
+    ...scheduleLocks.stopIds, ...Object.keys(scheduleLocks.arrivalDates),
+    ...projectedFixedCommitments.flatMap(item => (item.date || item.commitmentType === 'booking') && item.stopId ? [item.stopId] : []),
+    ...(canonicalBuilder?.brief.bookings ?? []).flatMap(booking => {
+      const candidates = canonicalBuilder?.stops ?? [];
+      const exact = candidates.find(stop => booking.id === `stay-${stop.id}`);
+      if (exact) return [exact.id];
+      const named = candidates.filter(stop => booking.title.toLocaleLowerCase().includes(stop.name.toLocaleLowerCase()));
+      const dated = named.filter(stop => booking.date && stop.arrivalDate && stop.departureDate && booking.date >= stop.arrivalDate && booking.date < stop.departureDate);
+      return (dated.length ? dated : named).map(stop => stop.id);
+    }),
+  ])], [scheduleLocks, projectedFixedCommitments, canonicalBuilder]);
+  const fixedBuilderChronology = projectedFixedCommitments.some(item => (item.date || item.commitmentType === 'booking') && !item.stopId);
   const effectiveStructuredBrief = useMemo(() => canonicalBuilder?.brief.structuredBrief ?? mergeStructuredTripBrief(capturedStructuredBrief, {
     ...(datesManuallyEdited ? { duration: { value: totalDays, unit: "days" as const, precision: "exact" as const } } : {}),
     destinations: [
@@ -2573,7 +2586,7 @@ function TripBuilderDocument() {
   };
 
   const updateAllocatedDays = (stopId: string, requested: number) => {
-    if (scheduleLocks.stopIds.includes(stopId) || scheduleLocks.arrivalDates[stopId]) return;
+    if (protectedBuilderStopIds.includes(stopId)) return;
     const current = allocation[stopId] ?? 0;
     const next = Math.max(0, Math.min(totalNights, Math.round(requested)));
     if (next === current) return;
@@ -3307,8 +3320,8 @@ function TripBuilderDocument() {
 
   const commitStopOrder = useCallback((proposedIds: readonly string[], source: BuilderOrderSource) => {
     const result = validateBuilderStopOrder(stops, proposedIds, {
-      lockedStopIds: scheduleLocks.stopIds,
-      fixedOrder: Boolean(structuredRouteConstraints.fixedCommitments?.length),
+      lockedStopIds: protectedBuilderStopIds,
+      fixedOrder: fixedBuilderChronology,
     });
     if (!result.ok) return false;
     rememberStructuralChange(source === "route-check" ? "apply_route_order" : "reorder_stop", stops.length);
@@ -3332,7 +3345,7 @@ function TripBuilderDocument() {
     }
     setRoutePreviewStopIds(null);
     return true;
-  }, [routeIntelligence.route.recommendedStopIds, scheduleLocks.stopIds, stops, structuredRouteConstraints.fixedCommitments, origin, journeyEnd, effectiveStructuredBrief, tripBrief, allocation]);
+  }, [routeIntelligence.route.recommendedStopIds, protectedBuilderStopIds, fixedBuilderChronology, stops, origin, journeyEnd, effectiveStructuredBrief, tripBrief, allocation]);
 
   const moveStop = (from: number, to: number) => {
     if (!canMoveStop(from, to)) return;
@@ -5025,7 +5038,7 @@ function TripBuilderDocument() {
               </section>}
               {(hasRouteSkeleton || hasPromptContext || showStopEditor || pendingClarificationIds.length > 0 || inlineStopBaseMention) && <section className={styles.tripUnderstood} aria-label={language === "es" ? "Viaje entendido" : "Trip understood"}>
                 {mountedBuilder ? <TripBuilderTopControls trip={mountedBuilder.snapshot.trip} draft={mountedBuilder.snapshot.draft} language={language}
-                  onReorder={ids=>commitStopOrder(ids,"drag")} fixedOrder={Boolean(structuredRouteConstraints.fixedCommitments?.length)}
+                  onReorder={ids=>commitStopOrder(ids,"drag")} fixedOrder={fixedBuilderChronology}
                   onUpdateRoute={()=>{void requestRouteOptimization();}} updatingRoute={optimizationChecking}
                   disabled={Boolean(mountedBuilder.snapshot.error?.category === "protected")}
                   onType={type=>{
@@ -5393,8 +5406,8 @@ function TripBuilderDocument() {
                 canonicalTrip={activeTripDocument}
                 previewStopIds={routePreviewStopIds}
                 selectedStopId={selectedRouteStopId}
-                lockedStopIds={scheduleLocks.stopIds}
-                fixedOrder={Boolean(structuredRouteConstraints.fixedCommitments?.length)}
+                lockedStopIds={protectedBuilderStopIds}
+                fixedOrder={fixedBuilderChronology}
                 routeCheckProposalStopIds={optimizationProposal&&!optimizationStale?optimizationProposal.projectedTrip.stops.map(stop=>stop.id):currentRouteCheckProposalStopIds}
                 nightStatus={{ total: totalNights, allocated: allocatedNights, complete: allNightsAllocated, language }}
                 onSelectStop={setSelectedRouteStopId}
