@@ -11,6 +11,7 @@ import {
 import { mapRouteLegsFromTrip } from "../lib/easyt/map-spatial-context.ts";
 import {
   resolveCanonicalTransferJourney,
+  resolveTripTransferJourneys,
 } from "../lib/easyt/multimodal-transfer-resolution.ts";
 import {
   canonicalTransferSegments,
@@ -20,6 +21,27 @@ import {
 import { RoadRoutingError, type RoadRouteRequest, type RoadRouteResult, type RoadRoutingProvider } from "../lib/easyt/road-routing.ts";
 import { buildCanonicalTripLegs } from "../lib/easyt/trip-legs.ts";
 import { isEasyTTrip, type EasyTTrip, type TripLeg, type TripStop } from "../lib/easyt/trip.ts";
+import { a17TripFixture } from './fixtures/batch14-a17-trip.ts';
+import { prepareBuilderHandlerEdit } from '../lib/easyt/trip-builder-handler-contract.ts';
+import { builderDocumentFingerprint } from '../lib/easyt/trip-builder-document-commit.ts';
+
+test('trip save preserves the exact pending necessary prefix while the explicit worker can resolve it',async()=>{
+ const initial=a17TripFixture();const removal=prepareBuilderHandlerEdit(initial,{kind:'remove-destination',intentId:'intent:hue'},builderDocumentFingerprint(initial));assert.ok(removal.ok);
+ const prefix=removal.trip;const pending=prefix.legs.filter(leg=>leg.routeMetadata.source==='necessary-reconciliation');assert.ok(pending.length);
+ const provider=new FixtureRoadProvider();const saved=await resolveTripTransferJourneys(prefix,{provider});
+ for(const leg of pending)assert.deepEqual(saved.legs.find(item=>item.id===leg.id),leg);
+ assert.equal(provider.calls.length,0,'saving a pending prefix must not request its provider');
+ const direct=await resolveCanonicalTransferJourney(pending.at(-1)!);assert.notEqual(direct.leg.mode,'unknown','single-leg necessary work remains available');
+ for(const control of ['source-only','pending-only'] as const){
+  const leg=structuredClone(pending.at(-1)!);if(control==='source-only')delete leg.routeMetadata.pending;else leg.routeMetadata.source='morrovia-planner';
+  const result=await resolveTripTransferJourneys({...prefix,legs:[leg]});assert.notEqual(result.legs[0].mode,'unknown',control);
+ }
+ const eligible=structuredClone(pending.at(-1)!);eligible.id='eligible-eighth';eligible.routeMetadata.source='morrovia-planner';delete eligible.routeMetadata.pending;
+ const ninth={...structuredClone(eligible),id:'eligible-ninth'};
+ const ordered=[...Array.from({length:7},(_,index)=>({...structuredClone(pending[0]),id:`held-${index}`})),eligible,ninth];
+ const mixed=await resolveTripTransferJourneys({...prefix,legs:ordered});assert.deepEqual(mixed.legs.map(leg=>leg.id),ordered.map(leg=>leg.id));
+ assert.notEqual(mixed.legs[7].mode,'unknown');assert.deepEqual(mixed.legs[8],ninth,'pending preservation must not compress the first-eight resolution limit');
+});
 
 const checkedAt = "2026-09-01T12:00:00.000Z";
 

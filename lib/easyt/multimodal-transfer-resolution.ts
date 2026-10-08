@@ -791,6 +791,12 @@ export async function resolveTripTransferJourneys(
   trip: EasyTTrip,
   options: { provider?: RoadRoutingProvider; knowledge?: TransferEvidenceProvider } = {},
 ): Promise<EasyTTrip> {
-  const legs = await resolveCanonicalTransferJourneys(trip.legs, options);
+  // A save/load must retain the Builder's safe prefix. Its scoped necessary
+  // worker owns completion; the single-leg/batch engine remains available to it.
+  const legs: TripLeg[] = [];
+  for (const [index, leg] of trip.legs.entries()) {
+    const pendingPrefix = leg.routeMetadata.source === "necessary-reconciliation" && leg.routeMetadata.pending === true;
+    legs.push(index < 8 && !pendingPrefix ? (await resolveCanonicalTransferJourney(leg, options)).leg : leg);
+  }
   return legs.some((leg, index) => leg !== trip.legs[index]) ? { ...trip, legs } : trip;
 }
