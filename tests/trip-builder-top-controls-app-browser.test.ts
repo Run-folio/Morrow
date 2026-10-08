@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import type {Route} from 'playwright';
 import {renderBuilder} from './helpers/builder-render.ts';
 import {a17TripFixture} from './fixtures/batch14-a17-trip.ts';
 import {canonicalRouteFixture} from './fixtures/batch14-route-documents.ts';
@@ -260,4 +261,14 @@ test('A17 mounted actual resolver saves the pending removal and reloads the acti
 test('verified place in known trip geography keeps the existing direct Add selection',{skip:!enabled,timeout:30000},async()=>{
  const h=await fixture(false,undefined,{Osaka:[{name:'Osaka',country:'Japan',canonicalPlaceId:'osaka',coordinates:[135.5023,34.6937],kind:'city'}]});
  try{await h.view.page.getByRole('button',{name:'Add destination',exact:true}).click();await h.view.page.getByRole('combobox',{name:'Add a stop',exact:true}).fill('Osaka');await h.view.page.getByRole('option',{name:/Osaka/}).first().click();await until(h,()=>h.cloud().stops.some(stop=>stop.name==='Osaka'));assert.equal(await h.view.page.getByRole('group',{name:'Review destination',exact:true}).count(),0);assert.equal(h.cloud().stops.filter(stop=>stop.name==='Osaka').length,1);assert.deepEqual(h.view.errors,[]);}finally{await h.view.close()}
+});
+
+test('A19 outdated lookup failure cannot replace the current Add draft feedback',{skip:!enabled,timeout:30000},async()=>{
+ const h=await fixture();let release!:()=>void,started!:()=>void;const held=new Promise<void>(resolve=>release=resolve),requested=new Promise<void>(resolve=>started=resolve);
+ try{
+  const before=structuredClone(h.cloud());await h.view.page.route('**/api/journey-geocode?place=Missing*',async(route:Route)=>{started();await held;await route.fulfill({status:200,contentType:'application/json',body:JSON.stringify({result:null})})});
+  await h.view.page.getByRole('button',{name:'Add destination',exact:true}).click();const input=h.view.page.getByRole('combobox',{name:'Add a stop',exact:true});await input.fill('Missing Place');await input.press('Enter');await requested;
+  await input.fill('Istanbul unfinished');release();await h.view.page.waitForTimeout(200);
+  assert.equal(await h.view.page.getByText(/We couldn't verify “Missing Place”/).count(),0);assert.equal(await input.inputValue(),'Istanbul unfinished');assert.deepEqual(h.cloud(),before);assert.equal(await h.view.page.getByRole('group',{name:'Review destination',exact:true}).count(),0);assert.deepEqual(h.view.errors,[]);
+ }finally{release();await h.view.close()}
 });

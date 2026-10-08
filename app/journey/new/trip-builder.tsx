@@ -732,7 +732,7 @@ function TripBuilderDocument() {
   const [countryAddReview, setCountryAddReview] = useState<{suggestion?:CanonicalPlaceSuggestion;resolved:LocationChoice;name:string;country:string;raw:string;revision:number;tripId:string;ownerId:string|null}|null>(null);
   const countryAddReviewRef=useRef<typeof countryAddReview>(null);
   const addPlaceLookupSequenceRef=useRef(0);
-  const cancelCountryAddReview=()=>{countryAddReviewRef.current=null;setCountryAddReview(null);addPlaceLookupSequenceRef.current++};
+  const cancelCountryAddReview=()=>{countryAddReviewRef.current=null;setCountryAddReview(null);addPlaceLookupSequenceRef.current++;setStopChecking(false)};
   useEffect(()=>{
     const review=countryAddReviewRef.current,snapshot=mountedBuilder?.snapshot;
     if(review&&(!snapshot||snapshot.trip.id!==review.tripId||snapshot.browserOwnerId!==review.ownerId||snapshot.inputRevision!==review.revision)){
@@ -2848,7 +2848,15 @@ function TripBuilderDocument() {
     const targetMention = targetMentionId
       ? (capturedStructuredBrief.placeMentions ?? intakeMentions).find((mention) => mention.mentionId === targetMentionId)
       : undefined;
+    const lookupIsCurrent=()=>{
+      if(targetMentionId||!sourceSnapshot)return true;
+      const current=builderEditSessionRef.current?.getSnapshot();
+      const raw=current?.draft.fields.find(field=>field.binding.kind==="destination-add"&&field.status==="editable")?.raw??"";
+      return Boolean(current&&lookupSequence===addPlaceLookupSequenceRef.current&&current.trip.id===sourceSnapshot.trip.id
+        &&current.browserOwnerId===sourceSnapshot.browserOwnerId&&current.inputRevision===expectedInputRevision&&raw===stopInput);
+    };
     const fail = (message: string) => {
+      if(!lookupIsCurrent())return;
       if (targetMentionId) setBaseSearchErrors((current) => ({ ...current, [targetMentionId]: message }));
       else setStopError(message);
     };
@@ -2893,6 +2901,7 @@ function TripBuilderDocument() {
         const payload = await response.json() as { result?: { canonicalPlaceId?: string; name?: string; country?: string; countryCode?: string; region?: string; providerId?: string; coordinates?: [number, number]; kind?: string; locality?: string } | null };
         return payload.result;
       })();
+      if(!lookupIsCurrent())return;
       if (!resolved?.coordinates || !resolved.country) return fail(language === "es" ? `No pudimos verificar “${value}”. Prueba una ciudad, región o lugar con su país.` : `We couldn't verify “${value}”. Try a city, region or landmark with its country.`);
       const selectedCanonicalPlaceId = canonicalSuggestion?.canonicalPlaceId ?? selectionDraft?.selectedCanonicalPlaceId;
       if (selectedCanonicalPlaceId && !canonicalPlaceFactsMatch(selectedCanonicalPlaceId, { country: resolved.country, coordinates: resolved.coordinates })) {
@@ -2939,9 +2948,7 @@ function TripBuilderDocument() {
       const resolvedName = (canonicalSuggestion?.name ?? resolved.name?.split(",")[0]?.trim()) || value;
       if(!targetMentionId&&sourceSnapshot){
         const current=builderEditSessionRef.current?.getSnapshot();
-        const raw=current?.draft.fields.find(field=>field.binding.kind==="destination-add"&&field.status==="editable")?.raw??"";
-        if(!current||lookupSequence!==addPlaceLookupSequenceRef.current||current.trip.id!==sourceSnapshot.trip.id
-          ||current.browserOwnerId!==sourceSnapshot.browserOwnerId||current.inputRevision!==expectedInputRevision||raw!==stopInput)return;
+        if(!current||!lookupIsCurrent())return;
         if(!validPlaceCoordinates(resolved.coordinates))return fail(ui.unavailable);
         const structured=current.trip.brief.structuredBrief;
         const countries=[...current.trip.stops.map(stop=>stop.country),current.trip.brief.intent.route.origin?.country,
@@ -3057,7 +3064,7 @@ function TripBuilderDocument() {
     } catch {
       fail(ui.unavailable);
     } finally {
-      setStopChecking(false);
+      if(lookupSequence===addPlaceLookupSequenceRef.current)setStopChecking(false);
     }
   };
 
