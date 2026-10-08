@@ -54,14 +54,21 @@ for(const ordering of ['before-ACK','after-ACK'] as const)test(`A17 actual neces
   h.session.dispose();const reload=await harness(state.trip,h.storage);assert.equal(reload.session.getSnapshot().error,null);assert.deepEqual(reload.session.getSnapshot().trip,state.trip);assert.equal(reload.session.getSnapshot().draft.fields[0].raw,' origin draft ');reload.session.dispose();
  }finally{gate.resolve();h.session.dispose()}
 });
-test('A17 newer budget and Undo survive held removal ACK with actual resolver',{todo:'Awaiting explicit extension for the two key-order-sensitive leg guards; see batch14-a17-held-undo-scope-extension.md'},async()=>{
- const initial=requireReadableTripDocument(canonicalTripForOwner('owner-a',a17TripFixture())),gate=deferred<void>();let calls=0;
- const h=await harness(initial,new MemoryStorage(),async trip=>{if(++calls===1)await gate.promise;return jsonbKeys(canonicalTripForOwner('owner-a',await resolveTripTransferJourneys(trip),nextTripUpdatedAt(trip.updatedAt)))});
+test('A17 newer budget and Undo survive held removal ACK with actual resolver',async()=>{
+ const initial=requireReadableTripDocument(canonicalTripForOwner('owner-a',a17TripFixture())),gate=deferred<void>();let calls=0,durable=initial;
+ const h=await harness(initial,new MemoryStorage(),async trip=>{if(++calls===1)await gate.promise;durable=requireReadableTripDocument(jsonbKeys(canonicalTripForOwner('owner-a',await resolveTripTransferJourneys(trip),nextTripUpdatedAt(trip.updatedAt))));return durable});
  try{
   h.session.updateDraft({binding:{kind:'origin'},raw:' preserve me '});const frame=h.session.captureStructuralSnapshot();accept(h,{kind:'remove-destination',intentId:'intent:hue'});await h.run(450);
   accept(h,budget);accept(h,{kind:'structural-inverse',snapshot:frame});await h.run(450);gate.resolve();await h.session.flush();
   const state=h.session.getSnapshot();assert.equal(state.error,null);assert.equal(h.recovery(),null);assert.deepEqual(state.trip.stops.map(stop=>[stop.id,stop.nights]),initial.stops.map(stop=>[stop.id,stop.nights]));
   assert.equal(state.trip.brief.budgetBand,'high');assert.equal(state.draft.fields[0].raw,' preserve me ');assert.deepEqual(state.trip.brief.bookings,initial.brief.bookings);
+  assert.equal(calls,2);assert.equal(h.writes.length,2);assert.equal(state.canonicalSaveState,'cloud');
+  assert.deepEqual(durable.stops.map(stop=>[stop.id,stop.nights]),initial.stops.map(stop=>[stop.id,stop.nights]));
+  assert.equal(durable.brief.budgetBand,'high');assert.equal(durable.brief.intent.route.orderAuthority,'manual');assert.deepEqual(durable.brief.bookings,initial.brief.bookings);
+  const hue=initial.stops.find(stop=>stop.name==='Hue')!;assert.deepEqual(durable.planItems.filter(day=>day.stopId===hue.id).map(day=>day.notes),initial.planItems.filter(day=>day.stopId===hue.id).map(day=>day.notes));
+  h.session.dispose();const reload=await harness(durable,h.storage);
+  try{const restored=reload.session.getSnapshot();assert.equal(restored.error,null);assert.deepEqual(restored.trip,durable);assert.equal(restored.trip.brief.budgetBand,'high');assert.equal(restored.draft.fields[0].raw,' preserve me ');assert.equal(reload.recovery(),null)}finally{reload.session.dispose()}
+
  }finally{gate.resolve();h.session.dispose()}
 });
 for(const tamper of ['owner','route','endpoint','nights','authored-leg'] as const)test(`A17 actual pending save still rejects tampered ${tamper} ACK`,async()=>{

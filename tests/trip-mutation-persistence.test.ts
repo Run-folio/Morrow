@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { createTripMutationPersistenceQueue, mergeTripMutationDocuments } from "../lib/easyt/trip-mutation-persistence.ts";
-import { canonicalRouteFixture } from './fixtures/batch14-route-documents.ts';
+import { canonicalRouteFixture, legacyRouteFixture } from './fixtures/batch14-route-documents.ts';
 import { requireReadableTripDocument } from '../lib/easyt/trip-document.ts';
 import { prepareAcceptedBuilderEdit } from '../lib/easyt/trip-builder-edit.ts';
 import { builderDocumentFingerprint } from '../lib/easyt/trip-builder-document-commit.ts';
@@ -63,6 +63,30 @@ function jsonbReadback<T>(value: T): T {
   if (Array.isArray(value)) return value.map(jsonbReadback) as T;
   if (value && typeof value === 'object') return Object.fromEntries(Object.entries(value).reverse().map(([key, item]) => [key, jsonbReadback(item)])) as T;
   return value;
+}
+
+// Isolate both existing positional-leg conflict guards with a legacy document.
+// Complete leg payloads, future authored metadata and ordered values are retained.
+for(const direction of ['authored-leg','canonical-leg'] as const){
+ test(`leg guard ${direction} accepts reordered JSON fields when the leg values are unchanged`,()=>{
+  const base=legacyRouteFixture();base.legs[0].routeMetadata.futureAuthoredOptions=['train','flight'];
+  const equivalent=jsonbReadback(base),rerouted=structuredClone(base);
+  rerouted.stops=[base.stops[0],base.stops[2],base.stops[1]].map((stop,order)=>({...stop,order}));
+  rerouted.legs[0].toStopId=base.stops[2].id;rerouted.legs[1].fromStopId=base.stops[2].id;rerouted.legs[1].toStopId=base.stops[1].id;
+  const merged=direction==='authored-leg'?mergeTripMutationDocuments(base,equivalent,rerouted):mergeTripMutationDocuments(base,rerouted,equivalent);
+  assert.equal(merged.legs[0].toStopId,base.stops[2].id);assert.deepEqual(merged.legs[0].routeMetadata.futureAuthoredOptions,['train','flight']);
+ });
+ for(const change of ['future-authored-value','ordered-values','endpoint','identity'] as const)test(`leg guard ${direction} retains real ${change} conflict with a changed route pair`,()=>{
+  const base=legacyRouteFixture();base.legs[0].routeMetadata.futureAuthoredOptions=['train','flight'];
+  const edited=jsonbReadback(base),rerouted=structuredClone(base);
+  rerouted.legs[0].toStopId=base.stops[2].id;
+  if(change==='future-authored-value')edited.legs[0].routeMetadata.futureTravellerNote='Changed traveller constraint';
+  if(change==='ordered-values')edited.legs[0].routeMetadata.futureAuthoredOptions=['flight','train'];
+  if(change==='endpoint')edited.legs[0].fromStopId=base.stops[2].id;
+  if(change==='identity')edited.legs[0].id='different-occurrence-leg';
+  const authored=direction==='authored-leg'?edited:rerouted,canonical=direction==='authored-leg'?rerouted:edited;
+  assert.throws(()=>mergeTripMutationDocuments(base,authored,canonical),EasyTTripSaveConflictError);
+ });
 }
 
 test('A17 completed necessary certificate saves after a semantically equivalent JSONB ACK',async()=>{
