@@ -1,8 +1,9 @@
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
-import { ArrowRight, Plus } from "lucide-react";
+import { ArrowRight, Plus, SlidersHorizontal } from "lucide-react";
 import { useState } from "react";
 import { EasyTButton, EasyTField, EasyTSelect, EasyTTextArea } from "./easyt-controls";
 import { MorroviaDatePicker } from "./morrovia-date-picker";
+import { MorroviaPlannerFieldContent, plannerFieldButtonClassName } from "./morrovia-planner-field";
 import { MorroviaQuantitySelector } from "./morrovia-quantity-selector";
 
 const meta = {
@@ -117,3 +118,19 @@ export const ButtonStates: Story = {
     <EasyTButton loading>Pending</EasyTButton>
   </div>,
 };
+
+// The same field anatomy composes existing date and disclosure interactions.
+function PlannerFieldPair({ disabled = false }: { disabled?: boolean }) {
+  const [range, setRange] = useState({ start: "2026-10-15", end: "2026-10-29" });
+  const [expanded, setExpanded] = useState(false);
+  return <div style={storyGrid}>
+    <MorroviaDatePicker fieldPresentation="planner" mode="range" combinedLabel="Travel dates" startLabel="Start date" endLabel="End date" startValue={range.start} endValue={range.end} onChange={setRange} disabled={disabled} />
+    <EasyTButton className={plannerFieldButtonClassName} variant="secondary" disabled={disabled} aria-expanded={expanded} aria-controls="planner-field-preferences" onClick={() => setExpanded(!expanded)}>
+      <MorroviaPlannerFieldContent label="Personalize" value="2 travellers · Mid-range" icon={SlidersHorizontal} />
+    </EasyTButton>
+    {expanded ? <p id="planner-field-preferences">Personalization content belongs to the caller.</p> : null}
+  </div>;
+}
+export const PlannerFieldAnatomy: Story = { render: () => <PlannerFieldPair /> };
+export const PlannerFieldDisabled: Story = { render: () => <PlannerFieldPair disabled /> };
+export const PlannerFieldMobile390: Story = { ...PlannerFieldAnatomy, globals: { viewport: { value: "morrovia390", isRotated: false } } };

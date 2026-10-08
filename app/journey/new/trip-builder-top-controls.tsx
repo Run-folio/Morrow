@@ -70,7 +70,7 @@ export function TripBuilderTopControls({trip,draft,language,disabled=false,onTyp
   </MorroviaDestinationField>{destinationReview}</div></div>
   <span className="sr-only" aria-live="polite">{reorder.draggingId ? `${es?'Moviendo':'Moving'} ${trip.stops.find(stop=>stop.id===reorder.draggingId)?.name} ${es?'a la parada':'to stop'} ${(reorder.previewIds??sourceIds).indexOf(reorder.draggingId)+1}` : ''}</span>
   <div className={styles.details}>
-   <div><MorroviaDatePicker mode="range" locale={language} combinedLabel={es?'Fechas del viaje':'Travel dates'} startLabel={es?'Fecha de inicio':'Start date'} endLabel={es?'Fecha final':'End date'}
+   <div><MorroviaDatePicker fieldPresentation="planner" mode="range" locale={language} combinedLabel={es?'Fechas del viaje':'Travel dates'} startLabel={es?'Fecha de inicio':'Start date'} endLabel={es?'Fecha final':'End date'}
     startValue={trip.startDate} endValue={trip.endDate} disabled={disabled}
     typedDraft={{start:draft.fields.find(f=>f.binding.kind==="date"&&f.binding.field==="startDate"&&f.status==="editable")?.raw??"",end:draft.fields.find(f=>f.binding.kind==="date"&&f.binding.field==="endDate"&&f.status==="editable")?.raw??""}}
     onTypedDraftChange={(boundary,raw)=>onDateInput(boundary==="start"?"startDate":"endDate",raw)} onChange={range=>onDates(range.start,range.end)} />{dateReview}</div>

@@ -13,7 +13,6 @@
 .origin { display: grid; gap: 9px; }
 .root button { min-height: 44px; min-width: 44px; }
 
-.root .details button { min-width: 44px; min-height: 44px; }
 
 .grip { touch-action: none; cursor: grab; }
 .grip[aria-grabbed="true"] { cursor: grabbing; }

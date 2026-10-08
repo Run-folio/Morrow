@@ -305,6 +305,7 @@ Use only components that actually exist:
 | Select | `EasyTSelect` in the same file | `Morrovia/02 Controls/Date, quantity and forms — InputAndSelectStates` |
 | Segmented control | `EasyTSegmentedControl` in the same file | `Morrovia/02 Controls/Buttons, fields and segments — Segmented` |
 | Date picker | `MorroviaDatePicker` in `components/easyt/morrovia-date-picker.tsx` | `Morrovia/02 Controls/Date, quantity and forms` |
+| Planner date/disclosure field anatomy | `MorroviaPlannerFieldContent` and its shared trigger class, composed by `MorroviaDatePicker fieldPresentation="planner"` and `EasyTButton` | `Morrovia/02 Controls/Date, quantity and forms — PlannerFieldAnatomy / PlannerFieldDisabled / PlannerFieldMobile390` |
 | Quantity/traveller selector | `MorroviaQuantitySelector` in `components/easyt/morrovia-quantity-selector.tsx` | `Morrovia/02 Controls/Date, quantity and forms — TravellerStates` |
 | Consequential dialog | `MorroviaConfirmationDialog` in `components/easyt/morrovia-feedback.tsx` | `Morrovia/03 Status & Feedback/Confirmation and recovery` |
 | Task-content modal | `MorroviaContentDialog` in the same file; compose page-owned content inside it | `Morrovia/03 Status & Feedback/Confirmation and recovery — ContentDialogFocusAndRestore` |
@@ -588,3 +589,15 @@ Map intentionally retains its independent 2200px viewport breakout and existing
 mobile sheets; shared TripShell width changes must not constrain that canvas.
 
 The beta Homepage capture and Builder top controls share `morrovia-planner-controls.module.css` for label, input/value and action roles, and joined origin/destination fields. `--morrovia-control-surface` is the white panel/control surface; it does not change the outer Journey page background. Saved transport/interest preferences remain in trip data while beta capture controls are hidden.
+
+### Planner field anatomy
+
+Travel dates and Personalize share one icon/label/value grid and trigger style.
+Labels use the fine-print token at weight 600, mixed case and muted colour;
+secondary values use the supporting-body token at weight 400. Icon placement,
+spacing, hover, expanded, keyboard focus and disabled states come from
+`morrovia-planner-field.module.css`. Both homepage tabs and Builder dates compose
+this presentation without field-specific overrides. Joined homepage groups own
+their outer border and dividers; standalone Builder fields retain the shared
+trigger border. Date parsing, calendar drafts, focus restoration and disclosure
+state stay with the existing interaction components.

@@ -15,12 +15,14 @@ import {
   todayLocalIso,
 } from "@/lib/easyt/local-date";
 import styles from "./morrovia-date-picker.module.css";
+import { MorroviaPlannerFieldContent, plannerFieldButtonClassName } from "./morrovia-planner-field";
 
 type DateBoundary = "start" | "end";
 type PickerSize = "compact" | "default";
 
 type SharedDatePickerProps = {
   className?: string;
+  fieldPresentation?: "planner";
   defaultOpen?: boolean;
   disabled?: boolean;
   locale?: "en" | "es";
@@ -348,7 +350,8 @@ export function MorroviaDatePicker(props: MorroviaDatePickerProps) {
 
   const trigger = (boundary: DateBoundary, label: string, value: string, triggerRef: typeof startTriggerRef, displayValue?: string) => <button
     type="button"
-    className={`${styles.trigger} ${open && activeBoundary === boundary ? styles.triggerOpen : ""}`}
+    className={props.fieldPresentation === "planner" ? plannerFieldButtonClassName : `${styles.trigger} ${open && activeBoundary === boundary ? styles.triggerOpen : ""}`}
+    data-morrovia-planner-trigger={props.fieldPresentation === "planner" ? true : undefined}
     ref={triggerRef}
     aria-expanded={open && activeBoundary === boundary}
     aria-haspopup="dialog"
@@ -356,8 +359,10 @@ export function MorroviaDatePicker(props: MorroviaDatePickerProps) {
     disabled={props.disabled}
     onClick={() => open && activeBoundary === boundary ? close(false) : openFor(boundary)}
   >
-    <span data-morrovia-field-label>{label}</span>
-    <b><CalendarDays aria-hidden="true" /><strong data-morrovia-field-value>{displayValue ?? (formatLocalDate(value, locale) || placeholder)}</strong><ChevronDown aria-hidden="true" /></b>
+    {props.fieldPresentation === "planner" ? <MorroviaPlannerFieldContent label={label} value={displayValue ?? (formatLocalDate(value, locale) || placeholder)} icon={CalendarDays} /> : <>
+      <span data-morrovia-field-label>{label}</span>
+      <b><CalendarDays aria-hidden="true" /><strong data-morrovia-field-value>{displayValue ?? (formatLocalDate(value, locale) || placeholder)}</strong><ChevronDown aria-hidden="true" /></b>
+    </>}
   </button>;
 
   const calendarOverlay = open ? <>

@@ -50,22 +50,10 @@
 .sectionHeading > span,
 .budgetPanel > span { color: var(--morrovia-ink-soft); font: 650 12px/1.2 var(--morrovia-ui); }
 .sectionHeading button { min-height: 30px; padding-inline: 4px; color: var(--morrovia-muted); text-decoration: underline; text-underline-offset: 3px; }
-.wideDatePicker { min-width: 0; height: 68px; max-width: none; border-left: 1px solid var(--morrovia-line); }
-.wideDatePicker > div { height: 100%; }
-.wideDatePicker button[aria-haspopup="dialog"] { height: 68px; min-height: 68px; padding: 9px 14px; border: 0; border-radius: 0; background: transparent; }
-.wideDatePicker button[aria-haspopup="dialog"]:hover:not(:disabled) { background: color-mix(in srgb, var(--morrovia-paper) 55%, transparent); }
-.wideDatePicker button[aria-haspopup="dialog"] > span { font-size: 12px; }
-.wideDatePicker button[aria-haspopup="dialog"] strong { font-size: 14px; }
-.wideDatePicker button[aria-haspopup="dialog"] svg { width: 20px; height: 20px; }
-.personalizeRow { display: grid; min-width: 0; height: 68px; border-left: 1px solid var(--morrovia-line); }
-.personalizeToggle { width: 100%; height: 68px; min-height: 68px; justify-content: flex-start; padding-inline: 14px; border: 0; border-radius: 0 var(--morrovia-control-radius) var(--morrovia-control-radius) 0; background: transparent; }
-.personalizeToggle:hover:not(:disabled) { background: color-mix(in srgb, var(--morrovia-paper) 55%, transparent); }
-.personalizeToggle > svg:first-child { order: 0; width: 20px; height: 20px; color: var(--morrovia-action); }
-.personalizeLabel { display: grid; order: 1; min-width: 0; gap: 2px; text-align: left; }
-.personalizeLabel > span { font: var(--morrovia-type-fine-print); font-weight: 600; color: var(--morrovia-muted); }
-.personalizeLabel small { overflow: hidden; color: var(--morrovia-ink); font: var(--morrovia-type-supporting-body); text-overflow: ellipsis; white-space: nowrap; }
-.personalizeChevron { order: 2; flex: none; width: 14px; height: 14px; margin-left: auto; transition: transform 180ms ease; }
-.personalizeToggle[aria-expanded="true"] .personalizeChevron { transform: rotate(180deg); }
+.utilityCell { display: grid; min-width: 0; min-height: 68px; }
+.wideSegmentGroup > * + .utilityCell { border-left: 1px solid var(--morrovia-line); }
+.wideSegmentGroup .utilityCell :global([data-morrovia-planner-trigger]),
+.plannerUtilities .utilityCell :global([data-morrovia-planner-trigger]) { border: 0; border-radius: 0; }
 .personalizePanel { --homepage-personalize-control-height:50px; display:grid; grid-template-columns:minmax(340px,1.1fr) minmax(180px,.55fr) minmax(250px,.8fr) minmax(0,1.5fr); gap:16px; align-items:start; padding:12px 0 0; border-top:1px solid var(--morrovia-line); animation:revealDetails 180ms ease-out; }
 .personalizeEndpoints { min-width:0; }
 .personalizeEndpoints > div { margin:0; }
@@ -242,7 +230,7 @@
   .wideHomeLayoutPersonalized { grid-template-areas: "controls" "personalize" "action"; }
   .wideSegmentGroup { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
   .wideEntryPanel { grid-column: 1 / -1; }
-  .wideDatePicker { border-top: 1px solid var(--morrovia-line); border-left: 0; }
+  .wideSegmentGroup > .utilityCell { border-top: 1px solid var(--morrovia-line); border-left: 0; }
   .wideUtilitySegments { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); justify-self: stretch; width: 100%; }
   .wideAction button { width: 100%; }
   .personalizePanel { grid-template-columns:1fr 1fr; }
@@ -273,11 +261,8 @@
   .wideSegmentGroup,
   .wideUtilitySegments { grid-template-columns: 1fr; width: 100%; }
   .wideEntryPanel { grid-column: auto; }
-  .wideDatePicker,
-  .personalizeRow { border-top: 1px solid var(--morrovia-line); border-left: 0; }
-  .wideDestinationEditor + .wideDatePicker { margin-top: 14px; }
+  .wideSegmentGroup > .utilityCell { border-top: 1px solid var(--morrovia-line); border-left: 0; }
   .wideHomePersonalize { padding-top: 12px; }
-  .personalizeToggle { border-radius: 0 0 var(--morrovia-control-radius) var(--morrovia-control-radius); }
   .wideAction button { width: 100%; }
 }
 
@@ -288,8 +273,6 @@
   .wideCard { gap: 12px; padding: 14px; }
   .modeTabs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0; }
   .modeTab { min-height: 48px; padding-inline: 6px; font-size: 12px; }
-  .personalizeRow { gap: 4px; }
-  .personalizeRow > span { text-align: left; }
 }
 
 @media (max-width: 340px) {
@@ -311,8 +294,8 @@
 .plannerType { justify-self: start; }
 .plannerType button { min-height: 44px; }
 .plannerCard .personalizeTravellers button { min-width: 44px; }
-.plannerUtilities { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); border: 1px solid var(--morrovia-line); border-radius: var(--morrovia-control-radius); }
-.plannerUtilities .wideDatePicker { border-left: 0; }
+.plannerUtilities { overflow: hidden; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); border: 1px solid var(--morrovia-line); border-radius: var(--morrovia-control-radius); }
+.plannerUtilities > .utilityCell + .utilityCell { border-left: 1px solid var(--morrovia-line); }
 .plannerBottom { display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "controls action" "personalize personalize"; gap: 12px; }
 .plannerUtilities { grid-area: controls; }
 .plannerBottom .personalizePanel { grid-area: personalize; }
@@ -326,5 +309,5 @@
 }
 @media (max-width: 430px) {
   .plannerUtilities { grid-template-columns: minmax(0, 1fr); }
-  .plannerUtilities .personalizeRow { border-left: 0; border-top: 1px solid var(--morrovia-line); }
+  .plannerUtilities > .utilityCell + .utilityCell { border-left: 0; border-top: 1px solid var(--morrovia-line); }
 }

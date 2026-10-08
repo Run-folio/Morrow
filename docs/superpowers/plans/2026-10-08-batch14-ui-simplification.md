@@ -49,3 +49,13 @@ Interface: keep existing interests/onInterestsChange props and captured/stored p
 Mounted flows: 66 passing cases plus the updated retired-day calendar case passing independently (67 current cases); a prior obsolete review assertion timed out and remains in its original log. The final scoped retry/preservation rerun passes 9/9. Broad contracts: 269 pass, 2 inherited assertion failures, 99 opt-in browser skips; the browser group was separately enabled. Both inherited failures reproduce unchanged on exact c1. Typecheck/build/UI audit and Storybook pass. Ten real local production-CSS screenshots at 1440/390 have measured 12px/600/mixed-case labels and 16px inputs/prompt, no page overflow or page errors. Compact label cascade mismatch discovered in the first pixels was corrected; earlier receipts remain.
 
 No new homepage arrangement is included. Shaun's further Describe-without-Start-from/top-right-type proposal is awaiting visual mockup selection; retain canonical origin and the current origin input until that gate is resolved. Independent review and separate publication approval remain pending. Frozen c1 hosted pack is separately on RELEASE HOLD for geography findings (13 reviewed passes, 3 geography failures, 4 geography review cases); it does not qualify this unpublished candidate.
+
+## Approved field-anatomy follow-up
+
+1. Compose a shared label/icon/value presentation and state stylesheet through
+   the existing date picker and Personalize button; keep interaction owners.
+2. Add canonical Storybook normal, disabled and mobile field examples.
+3. Compare production computed styles, state fixtures and side-by-side pixels;
+   run relevant mounted date/top-control/proposal interactions and project checks.
+4. Package a local candidate for review. No push, deployment or new homepage
+   arrangement is included in this correction.

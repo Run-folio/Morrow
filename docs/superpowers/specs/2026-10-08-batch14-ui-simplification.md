@@ -11,3 +11,18 @@ Show chosen bases with their parent intent within Places you want to visit, usin
 Normalize typography by label, value, action and supporting-text roles across both Homepage Plan with stops/Describe and Builder, using existing body/control/fine-print tokens. Use white panels and neutral joined origin/destination boundaries, shared through planner composition styles; preserve shared semantic tokens, table/map, controls, responsive behavior and accessibility. Reuse EasyTButton, MorroviaDestinationField/Tag, date/quantity/budget controls, SaveStatus and the existing real route proposal comparison. No replacement general modal, new sidebar or new primitive.
 
 Verify RED/GREEN mounted user flows, preservation and proposal/staleness guards; real local desktop/mobile pixels and overflow; UI audit/typecheck/build/Storybook as applicable. Independently review the exact new local candidate. No push/deploy/schema/config/credential change/reset/delete in this correction.
+
+## Approved field-anatomy correction
+
+Travel dates and Personalize use the same Personalize label treatment, secondary
+value placement, icon baseline, spacing and state styles. Reuse one shared field
+presentation across both homepage tabs and Builder dates. The shared presentation
+composes the existing date picker and button; it does not change autosave,
+accepted route edits or the deliberate Update route proposal boundary.
+
+Acceptance: compare computed label/value/icon styles and relative baselines at
+1440px and 390px in both homepage tabs; compare normal, hover, focus, expanded
+and disabled styles. Compare Builder date content to the same shared anatomy.
+Review readable side-by-side field pixels before user review. CSS-state fixtures
+are distinct from mounted interaction tests. The separately discussed new
+homepage arrangement remains held until both mockups are settled.

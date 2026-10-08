@@ -9,6 +9,7 @@ import type { TravelProfile } from "@/lib/easyt/travel-profile";
 import { appendVoiceTranscript } from "@/lib/easyt/speech-recognition";
 import { EasyTButton } from "./easyt-controls";
 import { MorroviaDatePicker } from "./morrovia-date-picker";
+import { MorroviaPlannerFieldContent, plannerFieldButtonClassName } from "./morrovia-planner-field";
 import { MorroviaContextualDisclosure, MorroviaBriefNotice } from "./morrovia-feedback";
 import { MorroviaQuantitySelector } from "./morrovia-quantity-selector";
 import { VoiceTripBrief } from "./voice-trip-brief";
@@ -260,9 +261,9 @@ export function MorroviaTripCapture({
     (order[next] === "stops" ? stopsTabRef : describeTabRef).current?.focus();
   };
   const submitAction = <EasyTButton type="submit" size="large" icon={homepageEntry ? Search : undefined} loading={loading} disabled={disabled}>{loading && !homepageEntry ? text.checking : <>{text.continue} <ArrowRight aria-hidden="true" /></>}</EasyTButton>;
-  const homepageDates = homepageEntry ? <MorroviaDatePicker className={styles.wideDatePicker} mode="range" locale={language} combinedLabel={text.travelDates} clearLabel={text.clearDates} startLabel={text.startDate} endLabel={text.endDate} startValue={startDate} endValue={endDate} disabled={disabled || loading} onChange={onDatesChange} onClear={homepageEntry.onDatesClear} /> : null;
-  const homepagePersonalize = homepageEntry ? <div className={styles.personalizeRow}>
-    <EasyTButton className={styles.personalizeToggle} variant="secondary" size="small" disabled={disabled || loading} aria-label={text.personalize} aria-expanded={personalizeOpen} aria-controls={personalizeId} icon={SlidersHorizontal} onClick={() => setPersonalizeOpen((current) => !current)}><span className={styles.personalizeLabel}><span data-morrovia-field-label>{text.personalize}</span><small>{personalizationSummary || text.personalizeSummary}</small></span><ChevronDown className={styles.personalizeChevron} aria-hidden="true" /></EasyTButton>
+  const homepageDates = homepageEntry ? <MorroviaDatePicker className={styles.utilityCell} fieldPresentation="planner" mode="range" locale={language} combinedLabel={text.travelDates} clearLabel={text.clearDates} startLabel={text.startDate} endLabel={text.endDate} startValue={startDate} endValue={endDate} disabled={disabled || loading} onChange={onDatesChange} onClear={homepageEntry.onDatesClear} /> : null;
+  const homepagePersonalize = homepageEntry ? <div className={styles.utilityCell}>
+    <EasyTButton className={plannerFieldButtonClassName} data-morrovia-planner-trigger variant="secondary" disabled={disabled || loading} aria-label={text.personalize} aria-expanded={personalizeOpen} aria-controls={personalizeId} onClick={() => setPersonalizeOpen((current) => !current)}><MorroviaPlannerFieldContent label={text.personalize} value={personalizationSummary || text.personalizeSummary} icon={SlidersHorizontal} /></EasyTButton>
   </div> : null;
   const homepageAction = <div className={styles.wideAction}>{submitAction}</div>;
   const homepageLayoutClass = `${styles.wideHomeLayout}${personalizeOpen ? ` ${styles.wideHomeLayoutPersonalized}` : ""}`;
