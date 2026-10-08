@@ -566,8 +566,21 @@ function plannerTransfer(
 const verifyLiveService = "verify the live service before booking.";
 const verifyLiveTimetable = "verify the live timetable before booking.";
 
+const gyeongbuSources: readonly [KnowledgeSource, KnowledgeSource] = [
+  {id:"visitkorea:gyeongbu-ktx",label:"Korea Tourism Organization — Train guide",kind:"official",url:"https://english.visitkorea.or.kr/svc/contents/contentsView.do?menuSn=470&vcontsId=140656",reviewedAt:"2026-10-08",supports:"Gyeongbu KTX connects Seoul Station and Busan Station; direction corroborated by KORAIL 2026-04-14."},
+  {id:"visitkorea:seoul-busan-station-time",label:"Korea Tourism Organization — Busan guide",kind:"official",url:"https://english.visitkorea.or.kr/svc/contents/contentsView.do?vcontsId=222586",reviewedAt:"2026-10-08",supports:"Indicative Seoul Station to Busan Station KTX time about 3 hours; service-dependent, not a live schedule or door-to-door time."},
+];
+const gyeongbuTransfer = (fromCanonicalId:string,toCanonicalId:string): DestinationTransferKnowledge => ({
+  fromCanonicalId,toCanonicalId,mode:knownKnowledgeFact("train","static",gyeongbuSources),
+  planningMinutes:knownKnowledgeFact(180,"estimated",gyeongbuSources),durationBasis:knownKnowledgeFact("headline","static",gyeongbuSources),
+  realisticRangeMinutes:unknownKnowledgeFact("Only indicative station timing is reviewed; no fastest-service range or live availability."),
+  borderFriction:unknownKnowledgeFact("Domestic corridor; no source-specific border timing."),
+  note:knownKnowledgeFact("Gyeongbu KTX: about 3h station to station, service-dependent. Local access and waiting are separate Morrovia planning allowances; verify the live timetable before booking.","static",gyeongbuSources),
+});
+
 /** Existing planner allowances, moved intact behind the knowledge boundary. */
 export const CURATED_DESTINATION_TRANSFERS: readonly DestinationTransferKnowledge[] = [
+  gyeongbuTransfer("seoul","busan"), gyeongbuTransfer("busan","seoul"),
   plannerTransfer("guatemala-city", "los-angeles", "flight", 480, `Approximate door-to-door flight allowance; ${verifyLiveService}`),
   plannerTransfer("los-angeles", "tokyo", "flight", 840, `Approximate door-to-door trans-Pacific allowance; ${verifyLiveService}`),
   plannerTransfer("tokyo", "hong-kong", "flight", 360, `Approximate door-to-door flight allowance; ${verifyLiveService}`),
@@ -716,6 +729,8 @@ export const CURATED_INTERCITY_RAIL_NETWORKS: readonly IntercityRailNetworkKnowl
 ];
 
 export const CURATED_INTERCITY_RAIL_ENDPOINTS: readonly IntercityRailEndpointKnowledge[] = [
+  {canonicalId:"seoul",name:"Seoul",country:"South Korea",networkIds:[]},
+  {canonicalId:"busan",name:"Busan",country:"South Korea",networkIds:[]},
   { canonicalId: "tashkent", name: "Tashkent", country: "Uzbekistan", networkIds: ["uzbekistan-afrosiyob"] },
   { canonicalId: "samarkand", name: "Samarkand", country: "Uzbekistan", networkIds: ["uzbekistan-afrosiyob"] },
   { canonicalId: "london", name: "London", country: "United Kingdom", networkIds: ["uk-intercity-mainline"] },
@@ -873,16 +888,19 @@ export function createDestinationKnowledgeStore(options: {
   }
 
   const resolveRailEndpoint = (input: DestinationIdentityInput) => {
+    if (normalise(input.country ?? "") === "united-kingdom" && ["city-of-london","greater-london"].includes(normalise(input.name))) {
+      return railEndpointById.get("london");
+    }
     for (const identity of [input.canonicalPlaceId, input.id, input.providerId]) {
       const endpoint = identity ? railEndpointById.get(normalise(identity)) : undefined;
-      if (endpoint) return endpoint;
+      if (endpoint && (!["seoul","busan"].includes(endpoint.canonicalId) || !input.country || ["south-korea","republic-of-korea"].includes(normalise(input.country)))) return endpoint;
     }
     if (input.country) {
       const endpoint = countryScopedIdentity(railEndpointByNameCountry, input);
       if (endpoint) return endpoint;
     }
     const candidates = railEndpointNameCandidates.get(normalise(input.name));
-    return candidates?.length === 1 ? candidates[0] : undefined;
+    return candidates?.length === 1 && (!["seoul","busan"].includes(candidates[0]!.canonicalId) || !input.country || ["south-korea","republic-of-korea"].includes(normalise(input.country))) ? candidates[0] : undefined;
   };
 
   const rawIdentityForTransfer = (input: DestinationIdentityInput) => normalise(
@@ -933,8 +951,16 @@ export function createDestinationKnowledgeStore(options: {
         airGateways: destination?.airGateways ?? unknownFor("Air gateways", input),
       };
     },
-    findTransfer: (from, to) => transferByPair.get(transferKey(rawIdentityForTransfer(from), rawIdentityForTransfer(to)))
-      ?? transferByPair.get(transferKey(identityForTransfer(from), identityForTransfer(to))),
+    findTransfer: (from, to) => {
+      const fact = transferByPair.get(transferKey(rawIdentityForTransfer(from), rawIdentityForTransfer(to)))
+        ?? transferByPair.get(transferKey(identityForTransfer(from), identityForTransfer(to)));
+      if (fact?.mode.sources.some(source => source.id === "visitkorea:gyeongbu-ktx")
+        && [from, to].some(endpoint => endpoint.country
+          ? !["south-korea", "republic-of-korea"].includes(normalise(endpoint.country))
+          : ![endpoint.canonicalPlaceId, endpoint.id, endpoint.providerId]
+            .some(identity => identity && ["seoul", "busan"].includes(normalise(identity))))) return undefined;
+      return fact;
+    },
     findIntercityRailConnection: (from, to, distanceKm) => {
       const fromEndpoint = resolveRailEndpoint(from);
       const toEndpoint = resolveRailEndpoint(to);

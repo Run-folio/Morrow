@@ -75,6 +75,14 @@ const tajikistanHotelEvidence = (id: string, supports: string): KnowledgeSource 
 });
 
 const existingReviewedRows: DiscoveryEvidenceRow[] = [
+  ...visitorRow("berlin", "Germany", ["cities", "culture"],
+    "Germany's capital, with cultural sights and city stays.", "La capital alemana, con visitas culturales y estancias urbanas.",
+    { id:"germany-tourism:berlin",label:"German National Tourist Board",kind:"official",url:"https://www.germany.travel/en/cities-culture/germanys-metropolises-of-millions.html",reviewedAt:"2026-10-08",supports:"Berlin is a German metropolis with cultural offerings." },
+    [{id:"visitberlin:hotels",label:"visitBerlin",kind:"official",url:"https://www.visitberlin.de/en/hotels-berlin",reviewedAt:"2026-10-08",supports:"Official Berlin hotel and hostel listings establish overnight stays, not availability."}]),
+  ...visitorRow("chamonix-mont-blanc", "France", ["nature"],
+    "An Alpine town at the foot of Mont Blanc, with overnight stays.", "Un pueblo alpino al pie del Mont Blanc, con opciones de alojamiento.",
+    {id:"chamonix-tourism:alpine-town",label:"Chamonix-Mont-Blanc Tourism",kind:"official",url:"https://en.chamonix.com/accommodation/hotels",reviewedAt:"2026-10-08",supports:"Tourism office places Chamonix-Mont-Blanc in the Alps at the foot of Mont Blanc."},
+    [{id:"chamonix-tourism:hotels",label:"Chamonix-Mont-Blanc Tourism",kind:"official",url:"https://en.chamonix.com/accommodation/hotels",reviewedAt:"2026-10-08",supports:"Official hotels listed in Chamonix-Mont-Blanc support overnight stays, not live availability."}]),
   ...visitorRow("arusha", "Tanzania", ["safari"],
     "Starting point for nearby national park visits.",
     "Punto de partida para visitar parques nacionales cercanos.",

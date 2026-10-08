@@ -4,6 +4,7 @@ import {
   type DestinationKnowledgeStore,
   type DestinationTransferKnowledge,
   type IntercityRailConnectionEvidence,
+  type KnowledgeFact,
 } from "./destination-knowledge.ts";
 import { estimateFlightPlanningMinutes, haversineKm } from "./planner.ts";
 import { directRoadPlausibilityConflict, resolveCanonicalRoadFallback } from "./road-transfer-resolution.ts";
@@ -35,6 +36,9 @@ export type TransferJourneyCandidate = {
   summaryMode: TripTransferMode;
   segments: TransferSegment[];
   totalDurationMinutes: number;
+  /** Reviewed in-vehicle time when distinct from access/waiting allowances. */
+  headlineMinutes?: number;
+  headlineTiming?: KnowledgeFact<number>;
   distanceKm: number | null;
   confidence: "high" | "medium" | "low";
   provenance: TripLegProvenance;
@@ -221,8 +225,12 @@ function exactTransferCandidate(
   const from = leg.fromEndpoint;
   const to = leg.toEndpoint;
   if (!from || !to || !transfer || transfer.mode.status !== "known" || transfer.planningMinutes.status !== "known") return null;
-  const duration = roundPlanningMinutes(transfer.planningMinutes.value);
   const mode = transfer.mode.value;
+  const stationTime = transfer.durationBasis.value === "headline";
+  const impact = stationTime ? estimateTransferImpact({
+    mode, headlineMinutes: transfer.planningMinutes, international: !sameCountry(from, to),
+  }) : null;
+  const duration = roundPlanningMinutes(impact?.doorToDoor.value?.planningMinutes ?? transfer.planningMinutes.value);
   const exactSegment = segment({
     mode,
     fromEndpoint: from,
@@ -236,6 +244,7 @@ function exactTransferCandidate(
   });
   return candidate({
     id: `exact:${mode}`,
+    ...(stationTime ? { headlineMinutes: transfer.planningMinutes.value, headlineTiming: transfer.planningMinutes } : {}),
     summaryMode: mode,
     segments: [exactSegment],
     totalDurationMinutes: duration,
@@ -639,6 +648,7 @@ function applyCandidate(leg: TripLeg, selected: TransferJourneyCandidate, diagno
     : selected.summaryMode === "train" ? "train" : selected.summaryMode;
   const transferImpact = estimateTransferImpact({
     mode: dominantMode === "walk" || dominantMode === "unknown" ? "road" : dominantMode,
+    headlineMinutes: selected.headlineTiming,
     knownDoorToDoorMinutes: {
       status: "known",
       value: selected.totalDurationMinutes,
@@ -655,7 +665,7 @@ function applyCandidate(leg: TripLeg, selected: TransferJourneyCandidate, diagno
     segments: selected.segments,
     durationMinutes: selected.totalDurationMinutes,
     doorToDoorMinutes: selected.totalDurationMinutes,
-    headlineMinutes: selected.totalDurationMinutes,
+    headlineMinutes: selected.headlineMinutes ?? selected.totalDurationMinutes,
     distanceKm: selected.distanceKm,
     routedDistanceKm: onlySegment?.mode === "road" ? onlySegment.distanceKm : null,
     routeGeometry: onlySegment?.routeGeometry,

@@ -315,7 +315,9 @@ const benchmarkPlaces: PlaceCatalogEntry[] = [
   city("zagreb", "Zagreb", "Croatia"),
   city("hue", "Hue", "Vietnam", ["Huế"]),
   city("amsterdam", "Amsterdam", "Netherlands"),
-  city("berlin", "Berlin", "Germany"),
+  city("berlin", "Berlin", "Germany", [], { coordinates: [13.3951309, 52.5173885], reviewedAt: "2026-10-08" }),
+  // OSM relation104836/Photon settlement identity; tourism office confirms an Alpine stay.
+  town("chamonix-mont-blanc", "Chamonix-Mont-Blanc", "France", ["Chamonix"], { parentRegionId: "alps", coordinates: [6.8700009, 45.9230969], reviewedAt: "2026-10-08" }),
   city("punta-arenas", "Punta Arenas", "Chile"),
   town("el-chalten", "El Chaltén", "Argentina", ["El Chalten"], { parentRegionId: "patagonia" }),
   town("el-calafate", "El Calafate", "Argentina", [], { parentRegionId: "patagonia" }),

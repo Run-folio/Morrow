@@ -16,6 +16,7 @@ export type SupportedTransportChoice = {
   mode: TripTransferMode;
   evidence: string;
   durationMinutes: number;
+  headlineMinutes?: number;
   distanceKm: number | null;
   confidence: "high" | "medium" | "low";
   provenance: TripLegProvenance;
@@ -91,6 +92,11 @@ function supportedCandidateForLeg(leg: TripLeg, value: unknown): SupportedTransp
     ...partial,
     identity: candidateIdentity(partial),
     durationMinutes: Math.round(candidate.totalDurationMinutes),
+    ...(typeof candidate.headlineMinutes === "number"
+      && Number.isFinite(candidate.headlineMinutes)
+      && candidate.headlineMinutes >= 0
+      && candidate.headlineMinutes <= candidate.totalDurationMinutes
+      ? { headlineMinutes: Math.round(candidate.headlineMinutes) } : {}),
     distanceKm: typeof candidate.distanceKm === "number" && Number.isFinite(candidate.distanceKm) ? candidate.distanceKm : null,
     confidence,
     provenance: candidate.provenance as TripLegProvenance,
@@ -146,7 +152,7 @@ export function effectiveTripLeg(trip: EasyTTrip, leg: TripLeg): TripLeg {
     mode: selected.mode,
     segments: selected.segments,
     durationMinutes: selected.durationMinutes,
-    headlineMinutes: selected.durationMinutes,
+    headlineMinutes: selected.headlineMinutes ?? selected.durationMinutes,
     doorToDoorMinutes: selected.durationMinutes,
     distanceKm: selected.distanceKm,
     routedDistanceKm: singleRoad?.distanceKm ?? null,
