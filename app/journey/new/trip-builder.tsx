@@ -65,7 +65,7 @@ import { buildCountryDiscovery, updateCountryDiscoveryChoice } from "@/lib/easyt
 import { countryCodeFor } from "@/lib/easyt/country-registry";
 import { findCatalogPlaceById } from "@/lib/easyt/place-catalog";
 import { extractStructuredTripBrief, mergeStructuredTripBrief, routeConstraintsFromStructuredTripBrief, routeScoringPreferencesFromStructuredBrief, structuredTripBriefFromSavedSelections, type StructuredTripBrief } from "@/lib/easyt/structured-trip-brief";
-import { OVERNIGHT_BASE_PLACE_TYPES, PLACE_INTELLIGENCE_PARSER_VERSION, PLACE_INTELLIGENCE_VERSION, appendSelectedPlanningAreaMention, confirmedAttractionVisitSelection, canonicalPlaceFactsMatch, canonicalPlaceSuggestionFor, canonicalPlaceSuggestionSuitableAsNearbyBase, canonicalPlaceSuggestionsForQuery, guidedPlanningAreaShapes, guidedPlanningAreaSuggestions, inferAttractionVisitSelections, isOvernightBaseEligible, nearbyBaseAnchorForMention, nearbyBaseSearchPreposition, placeCandidateSuitableAsNearbyBase, placeCandidateWithinPlanningParent, placeMentionSupportsMultipleSelections, placeMentionsNeedingReview, placeResolutionIssuesForMentions, placeSuggestionRequiresBaseSelection, planningAreaSuggestionsWithinParent, rankAttractionVisitTargets, regionalBaseSuggestions, selectPlaceCandidate, selectPlaceSearchSuggestion, type AttractionVisitCandidate, type CanonicalPlaceSuggestion, type GuidedPlanningAreaShape, type GuidedPlanningAreaSuggestion, type NearbyBaseSuggestion, type PlaceIntelligenceResult, type PlaceIssue, type PlaceIssueOption, type PlaceSelection, type PlaceType, type PlanningParentConstraint, type ResolvedPlaceMention } from "@/lib/easyt/place-intelligence";
+import { OVERNIGHT_BASE_PLACE_TYPES, PLACE_INTELLIGENCE_PARSER_VERSION, PLACE_INTELLIGENCE_VERSION, appendSelectedPlanningAreaMention, confirmedAttractionVisitSelection, canonicalPlaceFactsMatch, validPlaceCoordinates, canonicalPlaceSuggestionFor, canonicalPlaceSuggestionSuitableAsNearbyBase, canonicalPlaceSuggestionsForQuery, guidedPlanningAreaShapes, guidedPlanningAreaSuggestions, inferAttractionVisitSelections, isOvernightBaseEligible, nearbyBaseAnchorForMention, nearbyBaseSearchPreposition, placeCandidateSuitableAsNearbyBase, placeCandidateWithinPlanningParent, placeMentionSupportsMultipleSelections, placeMentionsNeedingReview, placeResolutionIssuesForMentions, placeSuggestionRequiresBaseSelection, planningAreaSuggestionsWithinParent, rankAttractionVisitTargets, regionalBaseSuggestions, selectPlaceCandidate, selectPlaceSearchSuggestion, type AttractionVisitCandidate, type CanonicalPlaceSuggestion, type GuidedPlanningAreaShape, type GuidedPlanningAreaSuggestion, type NearbyBaseSuggestion, type PlaceIntelligenceResult, type PlaceIssue, type PlaceIssueOption, type PlaceSelection, type PlaceType, type PlanningParentConstraint, type ResolvedPlaceMention } from "@/lib/easyt/place-intelligence";
 import { isDuplicatePlaceIdentity } from "@/lib/easyt/place-autocomplete";
 import { MorroviaTripCapture } from "@/components/easyt/morrovia-trip-capture";
 import { CanonicalPlaceAutocomplete } from "@/components/easyt/canonical-place-autocomplete";
@@ -729,6 +729,16 @@ function TripBuilderDocument() {
   const [stopSearchReadyKey, setStopSearchReadyKey] = useState(0);
   const [stopError, setStopError] = useState("");
   const [stopChecking, setStopChecking] = useState(false);
+  const [countryAddReview, setCountryAddReview] = useState<{suggestion?:CanonicalPlaceSuggestion;resolved:LocationChoice;name:string;country:string;raw:string;revision:number;tripId:string;ownerId:string|null}|null>(null);
+  const countryAddReviewRef=useRef<typeof countryAddReview>(null);
+  const addPlaceLookupSequenceRef=useRef(0);
+  const cancelCountryAddReview=()=>{countryAddReviewRef.current=null;setCountryAddReview(null);addPlaceLookupSequenceRef.current++};
+  useEffect(()=>{
+    const review=countryAddReviewRef.current,snapshot=mountedBuilder?.snapshot;
+    if(review&&(!snapshot||snapshot.trip.id!==review.tripId||snapshot.browserOwnerId!==review.ownerId||snapshot.inputRevision!==review.revision)){
+      countryAddReviewRef.current=null;setCountryAddReview(null);addPlaceLookupSequenceRef.current++;
+    }
+  },[mountedBuilder?.snapshot.trip.id,mountedBuilder?.snapshot.browserOwnerId,mountedBuilder?.snapshot.inputRevision]);
   const [dragId, setDragId] = useState<string | null>(null);
   const [dragTargetId, setDragTargetId] = useState<string | null>(null);
   const [routePreviewStopIds, setRoutePreviewStopIds] = useState<readonly string[] | null>(null);
@@ -2824,8 +2834,16 @@ function TripBuilderDocument() {
     selectionDraft?: PlaceSelectionDraft,
     canonicalSuggestion?: CanonicalPlaceSuggestion,
     discoverySelectionVerified = false,
+    acceptedCountryReview?: NonNullable<typeof countryAddReview>,
   ) => {
-    const expectedInputRevision = builderEditSessionRef.current?.getSnapshot().inputRevision;
+    const sourceSnapshot=builderEditSessionRef.current?.getSnapshot();
+    const expectedInputRevision = sourceSnapshot?.inputRevision;
+    const lookupSequence=++addPlaceLookupSequenceRef.current;
+    if(acceptedCountryReview&&(countryAddReviewRef.current!==acceptedCountryReview||!sourceSnapshot
+      ||sourceSnapshot.trip.id!==acceptedCountryReview.tripId||sourceSnapshot.browserOwnerId!==acceptedCountryReview.ownerId
+      ||sourceSnapshot.inputRevision!==acceptedCountryReview.revision||stopInput!==acceptedCountryReview.raw)){
+      cancelCountryAddReview();setStopError("The trip changed. Choose this place again.");return;
+    }
     const targetMentionId = resolvesMentionId ?? resolvingPlaceMentionId;
     const targetMention = targetMentionId
       ? (capturedStructuredBrief.placeMentions ?? intakeMentions).find((mention) => mention.mentionId === targetMentionId)
@@ -2860,7 +2878,7 @@ function TripBuilderDocument() {
       // country while the traveller is resolving one of those regional bases.
       const routeCountry = countryOverride ?? (!targetMentionId && stops.length && stops.every((stop) => stop.country === stops[0].country) ? stops[0].country : undefined);
       const nearby = stops.at(-1)?.coordinates;
-      const canonicalResolved: LocationChoice | null = canonicalSuggestion?.coordinates ? {
+      const canonicalResolved: LocationChoice | null = acceptedCountryReview?.resolved ?? (canonicalSuggestion?.coordinates ? {
         name: canonicalSuggestion.name,
         country: canonicalSuggestion.country,
         countryCode: countryCodeFor(canonicalSuggestion.country) ?? undefined,
@@ -2869,7 +2887,7 @@ function TripBuilderDocument() {
         kind: canonicalSuggestion.placeType,
         canonicalPlaceId: canonicalSuggestion.canonicalPlaceId,
         providerId: canonicalSuggestion.provenance.find((source) => source.kind === "provider")?.id,
-      } : null;
+      } : null);
       const resolved = canonicalResolved ?? await (async () => {
         const response = await fetch(`/api/journey-geocode?place=${encodeURIComponent(canonicalSuggestion?.name ?? value)}${routeCountry ? `&country=${encodeURIComponent(routeCountry)}` : ""}${nearby ? `&nearLat=${nearby[1]}&nearLon=${nearby[0]}` : ""}`);
         const payload = await response.json() as { result?: { canonicalPlaceId?: string; name?: string; country?: string; countryCode?: string; region?: string; providerId?: string; coordinates?: [number, number]; kind?: string; locality?: string } | null };
@@ -2919,6 +2937,24 @@ function TripBuilderDocument() {
       }
       const resolvedCountry = resolved.country;
       const resolvedName = (canonicalSuggestion?.name ?? resolved.name?.split(",")[0]?.trim()) || value;
+      if(!targetMentionId&&sourceSnapshot){
+        const current=builderEditSessionRef.current?.getSnapshot();
+        const raw=current?.draft.fields.find(field=>field.binding.kind==="destination-add"&&field.status==="editable")?.raw??"";
+        if(!current||lookupSequence!==addPlaceLookupSequenceRef.current||current.trip.id!==sourceSnapshot.trip.id
+          ||current.browserOwnerId!==sourceSnapshot.browserOwnerId||current.inputRevision!==expectedInputRevision||raw!==stopInput)return;
+        if(!validPlaceCoordinates(resolved.coordinates))return fail(ui.unavailable);
+        const structured=current.trip.brief.structuredBrief;
+        const countries=[...current.trip.stops.map(stop=>stop.country),current.trip.brief.intent.route.origin?.country,
+          ...current.trip.brief.intent.route.destinations.map(intent=>intent.selectedPlace?.country),
+          ...(structured?.countries.map(country=>country.value)??[]),
+          ...(structured?.placeMentions?.filter(mention=>mention.role!=="excluded"&&!structured.removedPlaceMentionIds?.includes(mention.mentionId)).flatMap(mention=>mention.parentCountries)??[])];
+        const countryKey=(country:string)=>countryCodeFor(country)??country.trim().toLocaleLowerCase();
+        const knownCountry=countries.some(country=>country&&countryKey(country)===countryKey(resolvedCountry));
+        if(!knownCountry&&!acceptedCountryReview){
+          const review={suggestion:canonicalSuggestion,resolved:resolved as LocationChoice,name:resolvedName,country:resolvedCountry,raw:stopInput,revision:current.inputRevision,tripId:current.trip.id,ownerId:current.browserOwnerId};
+          countryAddReviewRef.current=review;setCountryAddReview(review);return;
+        }
+      }
       // A landmark or planning-area base may already be a route occurrence.
       // Provider and catalogue IDs can differ for the same physical city; use
       // the shared geographic identity check, never display-name deduplication.
@@ -3011,7 +3047,7 @@ function TripBuilderDocument() {
       }
       if(builderEditSessionRef.current && selectedCommands.length && !dispatchAcceptedBuilderEdits(selectedCommands,{expectedInputRevision,acceptedInputs:!targetMentionId?[{binding:{kind:"destination-add"},raw:stopInput}]:undefined})) return fail("This place could not be retained safely. Your trip is preserved.");
       if (!builderEditSessionRef.current) setDecisionSelections((current) => ({ ...current, routeOrder: undefined }));
-      setStopInput(""); setStopError(""); setStopChecking(false);
+      cancelCountryAddReview();setStopInput(""); setStopError(""); setStopChecking(false);
       if (targetMentionId) setShowStopEditor(false);
       else {
         setShowStopEditor(true);
@@ -5017,6 +5053,14 @@ function TripBuilderDocument() {
 
   /* ---------------------------------------------------------- brief wizard */
 
+  const countryAddReviewControl=countryAddReview?<div role="group" aria-label={language==="es"?"Revisar destino":"Review destination"}>
+    <p className={styles.hint}>{countryAddReview.name}, {countryAddReview.country} · {language==="es"?`Añade ${countryAddReview.country} a este viaje`:`Adds ${countryAddReview.country} to this trip`}</p>
+    <div className={styles.topPreferenceChoices}>
+      <EasyTButton size="small" disabled={stopChecking} onClick={()=>{void addStop(countryAddReview.name,countryAddReview.country,undefined,undefined,countryAddReview.suggestion,false,countryAddReview)}}>{language==="es"?"Añadir":"Add"} {countryAddReview.name}</EasyTButton>
+      <EasyTButton size="small" variant="quiet" onClick={cancelCountryAddReview}>{language==="es"?"Cancelar":"Cancel"}</EasyTButton>
+    </div>
+  </div>:null;
+
   return (
     <div data-builder-root="true" data-builder-edit-session={mountedBuilder ? "active" : "hydrating"} data-homepage-handoff={isHomepagePromptHandoff ? "true" : undefined} className={`${styles.shellWide} ${mobilePolish.builder} ${isHomepagePromptHandoff ? styles.homepageHandoff : ""}`}>
       <div className={`${styles.wizardBody} ${!hasRouteSkeleton ? styles.emptyWorkspace : ""} ${entryKind === "fresh" ? styles.freshWorkspace : ""}`}>
@@ -5078,10 +5122,11 @@ function TripBuilderDocument() {
                     disabled={stopChecking || applyingTripBrief}
                     invalid={Boolean(stopError)}
                     describedBy={stopError ? stopErrorId : undefined}
-                    onChange={(value) => { builderEditSessionRef.current?.updateDraft({binding:{kind:"destination-add"},raw:value});setStopInput(value); setStopError(""); }}
+                    onChange={(value) => { cancelCountryAddReview();builderEditSessionRef.current?.updateDraft({binding:{kind:"destination-add"},raw:value});setStopInput(value); setStopError(""); }}
                     onSelect={(suggestion) => { void addStop(suggestion.name, suggestion.country, undefined, undefined, suggestion); }}
                     onSubmitFreeText={() => { void addStop(); }}
                   />
+                  {countryAddReviewControl}
                   {stopChecking ? <p role="status">{ui.checking}</p> : null}
                   {stopError ? <p id={stopErrorId} role="alert" className={styles.hintError}>{stopError}</p> : null}
                 </section>}
@@ -5305,10 +5350,11 @@ function TripBuilderDocument() {
                       invalid={Boolean(stopError)}
                       describedBy={stopError ? stopErrorId : undefined}
                       revealSuggestionsKey={stopSearchReadyKey}
-                      onChange={(value) => { builderEditSessionRef.current?.updateDraft({binding:{kind:"destination-add"},raw:value});setStopInput(value); setStopError(""); }}
+                      onChange={(value) => { cancelCountryAddReview();builderEditSessionRef.current?.updateDraft({binding:{kind:"destination-add"},raw:value});setStopInput(value); setStopError(""); }}
                       onSelect={(suggestion) => { void addStop(suggestion.name, suggestion.country, undefined, undefined, suggestion); }}
                       onSubmitFreeText={() => { void addStop(); }}
                     />
+                    {countryAddReviewControl}
                     {stopChecking ? <small className={styles.hint} role="status">{ui.checking}</small> : null}
                     {stopError ? <small id={stopErrorId} className={styles.hintError} role="alert">{stopError}</small> : null}
                     {!stopInput.trim() && contextualSuggestions.length > 0 && <div className={styles.suggestions}>{contextualSuggestions.map((suggestion) => <button type="button" key={suggestion.canonicalPlaceId} onClick={() => addStop(suggestion.name, suggestion.country, undefined, undefined, suggestion)}><Plus /> {suggestion.label}</button>)}</div>}

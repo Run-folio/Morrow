@@ -1,9 +1,12 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {renderBuilder} from './helpers/builder-render.ts';
+import {a17TripFixture} from './fixtures/batch14-a17-trip.ts';
 import {canonicalRouteFixture} from './fixtures/batch14-route-documents.ts';
 import {requireReadableTripDocument} from '../lib/easyt/trip-document.ts';
 import {canonicalTripForOwner} from '../lib/easyt/trip-promotion.ts';
+import {resolveTripTransferJourneys,resolveCanonicalTransferJourneys} from '../lib/easyt/multimodal-transfer-resolution.ts';
+import type {TripLeg} from '../lib/easyt/trip.ts';
 import {nextTripUpdatedAt} from '../lib/easyt/trip-continuity.ts';
 const enabled=process.env.MORROVIA_BUILDER_APP_BROWSER_TESTS==='1';
 async function fixture(legacy=false,configure?:(trip:ReturnType<typeof requireReadableTripDocument>)=>void,geocodeCandidates:Record<string,unknown[]>={}) {
@@ -209,4 +212,52 @@ test('canonical chip reorder retains a locked occurrence in place when intent or
  const grip=top.getByRole('button',{name:'Reorder Tokyo',exact:true});await grip.focus();await grip.press('Space');await grip.press('ArrowRight');await grip.press('Enter');await h.view.page.waitForTimeout(600);
  assert.equal(h.writes(),0);assert.deepEqual(h.cloud(),before);assert.equal(await top.locator('span.sr-only[aria-live="polite"]').textContent(),'');assert.deepEqual(h.view.errors,[]);
  }finally{await h.view.close()}
+});
+
+test('A19 verified new country is reviewed inline; cancel preserves raw draft and Add accepts once',{skip:!enabled,timeout:30000},async()=>{
+ const h=await fixture(false,trip=>Object.assign(trip,canonicalTripForOwner('owner-a',a17TripFixture())),{Istanbul:[{name:'Istanbul',country:'Turkey',canonicalPlaceId:'istanbul',coordinates:[28.9784,41.0082],kind:'city'}]});
+ try{
+  const before=structuredClone(h.cloud());await h.view.page.getByRole('button',{name:'Add destination',exact:true}).click();const input=h.view.page.getByRole('combobox',{name:'Add a stop',exact:true});
+  await input.fill('Istanbul');await h.view.page.getByRole('option',{name:/Istanbul/}).first().click();
+  await h.view.page.getByText('Istanbul, Turkey · Adds Turkey to this trip',{exact:true}).waitFor();assert.equal(await h.view.page.getByRole('dialog').count(),0);assert.deepEqual(h.cloud(),before);
+  const review=h.view.page.getByRole('group',{name:'Review destination',exact:true});await review.getByRole('button',{name:'Cancel',exact:true}).click();assert.equal(await input.inputValue(),'Istanbul');assert.deepEqual(h.cloud(),before);
+  await input.fill('Istanbul');await input.press('ArrowDown');await h.view.page.getByRole('option',{name:/Istanbul/}).first().click();await review.getByRole('button',{name:'Add Istanbul',exact:true}).click();
+  await until(h,()=>h.cloud().stops.some(stop=>stop.name==='Istanbul'));const saved=h.cloud();assert.equal(saved.stops.filter(stop=>stop.name==='Istanbul').length,1);
+  assert.deepEqual(saved.stops.slice(0,before.stops.length).map(stop=>[stop.id,stop.nights]),before.stops.map(stop=>[stop.id,stop.nights]));assert.equal(saved.brief.intent.route.orderAuthority,before.brief.intent.route.orderAuthority);assert.deepEqual(saved.brief.intent.route.origin,before.brief.intent.route.origin);
+  await h.view.page.reload();await h.view.page.locator('[data-builder-top-controls]').waitFor();assert.equal(h.cloud().stops.filter(stop=>stop.name==='Istanbul').length,1);assert.deepEqual(h.view.errors,[]);
+ }finally{await h.view.close()}
+});
+
+ test('A19 pending country review expires on an accepted trip edit and leaves its raw input editable',{skip:!enabled,timeout:30000},async()=>{
+  const h=await fixture(false,undefined,{Istanbul:[{name:'Istanbul',country:'Turkey',canonicalPlaceId:'istanbul',coordinates:[28.9784,41.0082],kind:'city'}]});
+  try{await h.view.page.getByRole('button',{name:'Add destination',exact:true}).click();const input=h.view.page.getByRole('combobox',{name:'Add a stop',exact:true});await input.fill('Istanbul');await h.view.page.getByRole('option',{name:/Istanbul/}).first().click();await h.view.page.getByRole('button',{name:'Add Istanbul',exact:true}).waitFor();
+   await h.view.page.getByRole('combobox',{name:'Budget',exact:true}).selectOption('high');await until(h,()=>h.cloud().brief.budgetBand==='high');assert.equal(await h.view.page.getByRole('button',{name:'Add Istanbul',exact:true}).count(),0);assert.equal(await input.inputValue(),'Istanbul');assert.equal(h.cloud().stops.some(stop=>stop.name==='Istanbul'),false);assert.deepEqual(h.view.errors,[]);
+  }finally{await h.view.close()}
+ });
+
+test('A17 mounted actual resolver saves the pending removal and reloads the active recovery URL',{skip:!enabled,timeout:30000},async()=>{
+ let cloud=requireReadableTripDocument(canonicalTripForOwner('owner-a',a17TripFixture()));const original=structuredClone(cloud),writes:typeof cloud[]=[];let release!:()=>void;
+ const workerGate=new Promise<void>(resolve=>release=resolve);
+ const view=await renderBuilder({initialTrip:cloud,seedRecovery:false,ownerId:'owner-a',query:`?trip=${cloud.id}&recover=1`,accountRequest:async({method,trip})=>{
+  if(method==='GET')return {status:200,body:{trip:cloud}};const candidate=requireReadableTripDocument(trip);if(candidate.updatedAt!==cloud.updatedAt)return {status:409,body:{trip:cloud,conflictReason:'cloud-changed'}};
+  cloud=requireReadableTripDocument(canonicalTripForOwner('owner-a',await resolveTripTransferJourneys(candidate),nextTripUpdatedAt(cloud.updatedAt)));writes.push(structuredClone(cloud));return {status:200,body:{trip:cloud}};
+ },transferRequest:async({legs})=>{await workerGate;return {status:200,body:{legs:await resolveCanonicalTransferJourneys(legs as TripLeg[])}}}});
+ view.page.setDefaultTimeout(6000);
+ const waitFor=async(predicate:()=>boolean)=>{for(let i=0;i<60&&!predicate();i++)await view.page.waitForTimeout(100);assert.ok(predicate())};
+ try{
+  await view.page.locator('[data-builder-top-controls]').waitFor();await view.page.getByRole('combobox',{name:'Starting from',exact:true}).fill(' origin unfinished ');
+  await view.page.getByRole('button',{name:'Remove Hue',exact:true}).click();await view.page.getByRole('dialog').getByRole('button',{name:'Remove Hue',exact:true}).click();
+  await waitFor(()=>cloud.stops.length===3);assert.ok(writes.some(trip=>trip.legs.some(leg=>leg.routeMetadata.source==='necessary-reconciliation'&&leg.routeMetadata.pending===true)));
+  assert.deepEqual(cloud.stops.map(stop=>stop.nights),[3,4,3]);assert.deepEqual(cloud.brief.bookings,original.brief.bookings);
+  await view.page.waitForFunction(()=>!Object.keys(localStorage).some(key=>key.startsWith('easyt:trip-recovery:v2:')));
+  release();await waitFor(()=>cloud.legs.every(leg=>leg.routeMetadata.pending!==true));await view.page.waitForFunction(()=>!Object.keys(localStorage).some(key=>key.startsWith('easyt:trip-recovery:v2:')));
+  const saved=structuredClone(cloud);await view.page.waitForFunction(()=>document.body.textContent?.includes('Saved to your account'));
+  await view.page.evaluate(()=>{const url=new URL(location.href);url.searchParams.set('recover','1');history.replaceState(null,'',url)});assert.match(view.page.url(),/recover=1/);await view.page.reload();await view.page.locator('[data-builder-top-controls]').waitFor();
+  assert.deepEqual(cloud,saved);assert.equal(await view.page.getByRole('combobox',{name:'Starting from',exact:true}).inputValue(),' origin unfinished ');assert.equal(await view.page.getByRole('button',{name:'Remove Hue',exact:true}).count(),0);assert.deepEqual(view.errors,[]);
+ }finally{release();await view.close()}
+});
+
+test('verified place in known trip geography keeps the existing direct Add selection',{skip:!enabled,timeout:30000},async()=>{
+ const h=await fixture(false,undefined,{Osaka:[{name:'Osaka',country:'Japan',canonicalPlaceId:'osaka',coordinates:[135.5023,34.6937],kind:'city'}]});
+ try{await h.view.page.getByRole('button',{name:'Add destination',exact:true}).click();await h.view.page.getByRole('combobox',{name:'Add a stop',exact:true}).fill('Osaka');await h.view.page.getByRole('option',{name:/Osaka/}).first().click();await until(h,()=>h.cloud().stops.some(stop=>stop.name==='Osaka'));assert.equal(await h.view.page.getByRole('group',{name:'Review destination',exact:true}).count(),0);assert.equal(h.cloud().stops.filter(stop=>stop.name==='Osaka').length,1);assert.deepEqual(h.view.errors,[]);}finally{await h.view.close()}
 });
