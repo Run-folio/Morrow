@@ -1781,3 +1781,8 @@
   .builderRouteActions > div { top: 44px; }
   .builderRouteActions button { min-height: 44px; }
 }
+
+/* Page composition of shared feedback; does not move the route table. */
+.builderReviewActions { display:flex; align-items:center; flex-wrap:wrap; gap:8px; }
+.builderUndoToast { position:fixed; right:16px; bottom:calc(16px + var(--morrovia-mobile-dock-offset)); z-index:var(--morrovia-layer-dock); }
+@media(max-width:430px) { .builderUndoToast { right:12px; left:12px; } }

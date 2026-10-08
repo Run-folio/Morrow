@@ -91,7 +91,7 @@ import { PRODUCT_TOUR_STATE_EVENT } from "@/components/easyt/easyt-product-tour"
 import { EasyTButton, EasyTField, EasyTLinkButton, EasyTSelect } from "@/components/easyt/easyt-controls";
 import { MorroviaDatePicker } from "@/components/easyt/morrovia-date-picker";
 import { MorroviaQuantitySelector } from "@/components/easyt/morrovia-quantity-selector";
-import { MorroviaConfirmationDialog, MorroviaRecoveryFeedback, MorroviaSaveStatus, MorroviaStatusBanner } from "@/components/easyt/morrovia-feedback";
+import { MorroviaBriefNotice, MorroviaContentDialog, MorroviaConfirmationDialog, MorroviaRecoveryFeedback, MorroviaSaveStatus, MorroviaStatusBanner } from "@/components/easyt/morrovia-feedback";
 import ResilientImage from "@/components/easyt/resilient-image";
 import { MorroviaSectionStatus } from "@/components/easyt/morrovia-loading-states";
 import { homepageInputStorageKey, travelProfileStorageKey } from "@/lib/easyt/private-browser-context";
@@ -630,6 +630,7 @@ function TripBuilderDocument() {
   const legacyFocusScheduledRef = useRef(false);
   const requestedPlaceIntentRef = useRef(builderSearchParams.get("placeIntent"));
   const [showTripDetails, setShowTripDetails] = useState(false);
+  const [showBuilderReview, setShowBuilderReview] = useState(false);
   const [detailsCommitBusy, setDetailsCommitBusy] = useState(false);
   const [detailsCommitError, setDetailsCommitError] = useState("");
   const [showStopEditor, setShowStopEditor] = useState(false);
@@ -5069,14 +5070,6 @@ function TripBuilderDocument() {
       <div className={styles.travelStyleHead}><span>{language === "es" ? "TU ESTILO DE VIAJE" : "YOUR TRAVEL STYLE"}</span><a href="/journey/profile">{language === "es" ? "Editar" : "Edit"}</a></div>
       <div className={styles.travelStyleChips}>{travelStyleLabels(travelProfile, language).map(label => <span key={label}>{label}</span>)}</div>
     </section>}
-    <div className={styles.topPreferenceFields}>
-      <EasyTSelect label={language === "es" ? "Ritmo" : "Pace"} value={effectiveIntent.preferences.pace} onChange={event => updateIntentPreferences({pace:event.target.value as TripIntentPace})}>
-        <option value="relaxed">{language === "es" ? "Tranquilo" : "Relaxed"}</option><option value="balanced">{language === "es" ? "Equilibrado" : "Balanced"}</option><option value="packed">{language === "es" ? "Intenso" : "Packed"}</option>
-      </EasyTSelect>
-      <EasyTSelect label={language === "es" ? "Flexibilidad de fechas" : "Date flexibility"} value={effectiveIntent.timing.flexibility} onChange={event => updateTimingFlexibility(event.target.value as "fixed"|"flexible")}>
-        <option value="fixed">{language === "es" ? "Fechas fijas" : "Dates fixed"}</option><option value="flexible">{language === "es" ? "Duración flexible" : "Flexible duration"}</option>
-      </EasyTSelect>
-    </div>
     <fieldset className={styles.topPreferenceChoices}><legend>{language === "es" ? "Preferencias de transporte" : "Transport preferences"}</legend>
       {(["flight","train","drive"] as TripTransportMode[]).map(mode => <EasyTButton variant="secondary" key={mode} aria-pressed={effectiveIntent.preferences.transportModes.includes(mode)} onClick={() => toggleTransportMode(mode)}>{language === "es" ? ({flight:"Vuelos",train:"Tren",drive:"Carretera"}[mode]) : ({flight:"Flights",train:"Rail",drive:"Road"}[mode])}</EasyTButton>)}
       <EasyTButton variant="secondary" aria-pressed={effectiveIntent.hardConstraints.avoidDriving} onClick={toggleAvoidDriving}>{language === "es" ? "Evitar coche" : "Avoid driving"}</EasyTButton>
@@ -5084,16 +5077,11 @@ function TripBuilderDocument() {
     <fieldset className={styles.topPreferenceChoices}><legend>{language === "es" ? "Intereses" : "Interests"}</legend>
       {tripInterestIds.map(interest => <EasyTButton variant="secondary" key={interest} aria-pressed={effectiveIntent.preferences.interests.includes(interest)} onClick={() => toggleInterest(interest)}>{tripInterestLabels[language][interest]}</EasyTButton>)}
     </fieldset>
-    <EasyTField label={language === "es" ? "Evitar (opcional)" : "Avoid (optional)"} value={effectiveIntent.preferences.dislikes.join(", ")} onChange={event => updateIntentPreferences({dislikes:event.target.value.split(",").map(item=>item.trim()).filter(Boolean).slice(0,6)})} placeholder={language === "es" ? "Ej. traslados nocturnos" : "e.g. overnight transfers"}/>
-    <details className={styles.topConstraints}><summary>{language === "es" ? "Planes fijos y paradas opcionales" : "Fixed plans and optional stops"}</summary><div>
-      {stops.length > 0 && <fieldset className={styles.topPreferenceChoices}><legend>{language === "es" ? "Paradas que quieres mantener" : "Stops to keep"}</legend>{stops.map(stop => <EasyTButton variant="secondary" key={stop.id} aria-pressed={!effectiveIntent.hardConstraints.optionalStopIds.includes(stop.id)} onClick={()=>toggleOptionalStop(stop.id)}>{stop.name}</EasyTButton>)}</fieldset>}
-      <div className={styles.topFixedPlan}>
-        <EasyTField label={language === "es" ? "Lugar del plan fijo" : "Fixed plan place"} value={fixedCommitmentLabel} onChange={event=>setFixedCommitmentLabel(event.target.value)} placeholder={language === "es" ? "Ej. Oaxaca" : "e.g. Oaxaca"}/>
-        <MorroviaDatePicker mode="single" size="compact" locale={language} label={language === "es" ? "Fecha fija" : "Fixed date"} value={fixedCommitmentDate} onChange={setFixedCommitmentDate}/>
-        <EasyTButton variant="secondary" icon={Plus} onClick={addFixedCommitment} disabled={!fixedCommitmentLabel.trim()}>{language === "es" ? "Añadir" : "Add"}</EasyTButton>
-      </div>
-      {effectiveIntent.hardConstraints.fixedCommitments.length > 0 && <div className={styles.topPreferenceChoices}>{effectiveIntent.hardConstraints.fixedCommitments.map(item=><span key={item.id}>{item.date ? `${item.date} · ` : ""}{item.label}<EasyTButton variant="quiet" icon={X} iconOnly aria-label={`${language === "es" ? "Quitar" : "Remove"} ${item.label}`} onClick={()=>removeFixedCommitment(item.id)}>{language === "es" ? "Quitar" : "Remove"} {item.label}</EasyTButton></span>)}</div>}
-    </div></details>
+    {(effectiveIntent.hardConstraints.fixedCommitments.length > 0 || effectiveIntent.hardConstraints.optionalStopIds.length > 0) && <details className={styles.topConstraints}>
+      <summary>{language === "es" ? "Condiciones guardadas" : "Saved constraints"}</summary><div>
+      {effectiveIntent.hardConstraints.optionalStopIds.map(id => <span key={id}>{stops.find(stop => stop.id === id)?.name ?? id} · {language === "es" ? "Opcional" : "Optional"}<EasyTButton variant="quiet" onClick={()=>toggleOptionalStop(id)}>{language === "es" ? "Mantener parada" : "Keep stop"}</EasyTButton></span>)}
+      {effectiveIntent.hardConstraints.fixedCommitments.map(item=><span key={item.id}>{item.date ? `${item.date} · ` : ""}{item.label}<EasyTButton variant="quiet" icon={X} iconOnly aria-label={`${language === "es" ? "Quitar" : "Remove"} ${item.label}`} onClick={()=>removeFixedCommitment(item.id)}>{language === "es" ? "Quitar" : "Remove"} {item.label}</EasyTButton></span>)}
+      </div></details>}
   </div>;
 
   /* ---------------------------------------------------------- brief wizard */
@@ -5530,15 +5518,17 @@ function TripBuilderDocument() {
 
           {hasRouteSkeleton && (
             <div id="builder-timing" tabIndex={-1} className={`${styles.stack} ${styles.timeStep}`}>
-              {mountedBuilder && lastStructuralChange?.canonical ? <MorroviaStatusBanner tone="info" title={language === "es" ? "Viaje actualizado" : "Trip updated"}
-                actions={<EasyTButton variant="quiet" size="small" onClick={undoStructuralChange}>{language === "es" ? "Deshacer" : "Undo"}</EasyTButton>} /> : null}
+              {mountedBuilder && lastStructuralChange?.canonical ? <div className={styles.builderUndoToast}><MorroviaBriefNotice variant="toast" title={language === "es" ? "Viaje actualizado" : "Trip updated"}
+                action={<EasyTButton variant="quiet" size="small" onClick={undoStructuralChange}>{language === "es" ? "Deshacer" : "Undo"}</EasyTButton>} /></div> : null}
               {mountedBuilder?.snapshot.draft.fields.filter(field=>field.status==="binding-conflict").map((field,index)=><MorroviaStatusBanner key={JSON.stringify(field.binding)} tone="warning"
                 title={language === "es" ? "Revisa tu entrada guardada" : "Review your saved input"}
                 detail={`${field.raw} — ${language === "es" ? "El viaje cambió mientras se comprobaba esta entrada. Sigue guardada en este dispositivo." : "The trip changed while this input was being checked. It remains saved on this device."}`}
                 actions={<EasyTButton variant="quiet" size="small" onClick={()=>mountedBuilder.session.discardDraft(field.binding)}>{language === "es" ? "Descartar entrada" : "Discard input"}<span className="sr-only"> {index+1}</span></EasyTButton>} />)}
+              <MorroviaContentDialog open={showBuilderReview} ariaLabel={language === "es" ? "Revisar viaje" : "Review trip"} autoFocusSelector="[data-close-builder-review]" onClose={()=>setShowBuilderReview(false)}>
+                <EasyTButton data-close-builder-review variant="quiet" onClick={()=>setShowBuilderReview(false)}>{language === "es" ? "Cerrar revisión" : "Close review"}</EasyTButton>
               {mountedBuilder?.snapshot.pendingUnits.length ? <MorroviaStatusBanner tone="info" title={language === "es" ? "Actualizando los datos del viaje…" : "Updating trip details…"} /> : null}
               {mountedBuilder?.snapshot.conflictUnits.length ? <MorroviaStatusBanner tone="warning" title={language === "es" ? "Revisa las condiciones del viaje" : "Review trip constraints"}
-                detail={language === "es" ? "Los cambios están guardados. Algunas fechas o conexiones necesitan revisión." : "Your edits are saved. Some dates or connections need review."} /> : null}
+                detail={mountedBuilder.snapshot.trip.brief.cascadeStatus?.conflicts.join(" ") || (language === "es" ? "Algunas fechas o conexiones necesitan revisión." : "Some dates or connections need review.")} /> : null}
               {mountedBuilder?.snapshot.failedUnits.map(unit=><MorroviaStatusBanner key={`${unit.kind}:${unit.targetId}`} tone="warning"
                 title={language === "es" ? "No pudimos actualizar esta parte del viaje" : "This part of the trip could not be updated"}
                 actions={<EasyTButton variant="quiet" size="small" onClick={()=>mountedBuilder.session.retryNecessaryUnit(unit)}>{language === "es" ? "Reintentar" : "Try again"}</EasyTButton>} />)}
@@ -5549,6 +5539,7 @@ function TripBuilderDocument() {
               {mountedBuilder ? <TripBuilderRetainedReview trip={mountedBuilder.snapshot.trip} language={language}
                 onMove={(selection,target)=>dispatchAcceptedBuilderEdit({kind:"retained-content-move",selection,target},{expectedInputRevision:mountedBuilder.snapshot.inputRevision})}
                 onRemove={selection=>dispatchAcceptedBuilderEdit({kind:"retained-content-remove",selection},{expectedInputRevision:mountedBuilder.snapshot.inputRevision})}/> : null}
+              </MorroviaContentDialog>
               <TripBuilderRouteWorkspace
                 canonicalTrip={activeTripDocument}
                 previewStopIds={routePreviewStopIds}
@@ -5556,6 +5547,11 @@ function TripBuilderDocument() {
                 lockedStopIds={protectedBuilderStopIds}
                 fixedOrder={fixedBuilderChronology}
                 routeCheckProposalStopIds={optimizationProposal&&!optimizationStale?optimizationProposal.projectedTrip.stops.map(stop=>stop.id):currentRouteCheckProposalStopIds}
+                reviewControl={<div className={styles.builderReviewActions}>
+                  <MorroviaSaveStatus state={mountedBuilder?.snapshot.failedUnits.length ? "error" : mountedBuilder?.snapshot.pendingUnits.length ? "saving" : "saved"}
+                    label={mountedBuilder?.snapshot.failedUnits.length ? (language === "es" ? "Datos sin actualizar" : "Details need retry") : mountedBuilder?.snapshot.conflictUnits.length ? (language === "es" ? "Revisión necesaria" : "Review needed") : mountedBuilder?.snapshot.pendingUnits.length ? (language === "es" ? "Actualizando datos…" : "Updating details…") : (language === "es" ? "Datos actualizados" : "Details up to date")} />
+                  <EasyTButton variant="quiet" size="small" onClick={()=>setShowBuilderReview(true)}>{language === "es" ? "Revisar viaje" : "Review trip"}</EasyTButton>
+                </div>}
                 nightStatus={{ total: totalNights, allocated: allocatedNights, complete: allNightsAllocated, language }}
                 onSelectStop={setSelectedRouteStopId}
                 onPreviewOrder={setRoutePreviewStopIds}

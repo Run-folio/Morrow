@@ -1,7 +1,7 @@
 "use client";
 
 import { AlertTriangle, CheckCircle2, ChevronDown, ChevronUp, GripVertical, Map as MapIcon, MoreHorizontal, Route } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import TripTransportChoiceControl from "@/components/easyt/trip-transport-choice-control";
 import { MorroviaSectionStatus } from "@/components/easyt/morrovia-loading-states";
 import type { JourneyStop } from "@/lib/journey";
@@ -26,6 +26,7 @@ export type TripBuilderRouteWorkspaceProps = {
   fixedOrder: boolean;
   routeCheckProposalStopIds: readonly string[] | null;
   nightStatus: BuilderNightStatus;
+  reviewControl?: ReactNode;
   onSelectStop: (stopId: string) => void;
   onPreviewOrder: (stopIds: readonly string[] | null) => void;
   onCommitOrder: (stopIds: readonly string[], source: BuilderOrderSource) => boolean;
@@ -63,6 +64,7 @@ export function TripBuilderRouteWorkspace({
   fixedOrder,
   routeCheckProposalStopIds,
   nightStatus,
+  reviewControl,
   onSelectStop,
   onPreviewOrder,
   onCommitOrder,
@@ -119,6 +121,7 @@ export function TripBuilderRouteWorkspace({
           </span>
         </h2>
       </div>
+      {reviewControl}
     </header>
 
     <div className={styles.builderRouteGrid}>
