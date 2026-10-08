@@ -10,6 +10,73 @@ import { routeProjectionInputKey } from '../lib/easyt/trip-route-intent.ts';
 import { builderStructuralSnapshot } from '../lib/easyt/trip-builder-edit.ts';
 import { canonicalTripForOwner, remapTripStopReferences } from '../lib/easyt/trip-promotion.ts';
 import { authoredContentKey } from '../lib/easyt/trip-retained-authored-content.ts';
+import { a17TripFixture } from './fixtures/batch14-a17-trip.ts';
+import { resolveTripTransferJourneys } from '../lib/easyt/multimodal-transfer-resolution.ts';
+import { resolveCanonicalTransferJourneys } from '../lib/easyt/multimodal-transfer-resolution.ts';
+import { reconcileBuilderDependencies } from '../lib/easyt/trip-builder-reconciliation.ts';
+
+test('A17 actual save resolver accepts pending removal ACK and retires exact recovery with worker held',async()=>{
+ const initial=requireReadableTripDocument(canonicalTripForOwner('owner-a',a17TripFixture()));
+ const h=await harness(initial,new MemoryStorage(),async trip=>canonicalTripForOwner('owner-a',await resolveTripTransferJourneys(trip),nextTripUpdatedAt(trip.updatedAt)));
+ try{
+  h.session.updateDraft({binding:{kind:'origin'},raw:'  unfinished origin '});
+  accept(h,{kind:'remove-destination',intentId:'intent:hue'});await h.run(450);await h.session.flush();
+  const saved=h.session.getSnapshot();assert.equal(saved.error,null);assert.equal(saved.canonicalSaveState,'cloud');assert.equal(h.recovery(),null);
+  assert.deepEqual(saved.trip.stops.map(stop=>[stop.name,stop.nights]),[['Hanoi',3],['Hoi An',4],['Ho Chi Minh City',3]]);
+  assert.equal(saved.trip.brief.nightAllocation!.totalAvailableNights!-saved.trip.brief.nightAllocation!.totalAllocatedNights!,2);assert.deepEqual(saved.trip.brief.bookings,initial.brief.bookings);assert.equal(saved.draft.fields[0].raw,'  unfinished origin ');
+  assert.equal(saved.trip.brief.retainedAuthoredContent?.entries.some(entry=>entry.sourceStop.name==='Hue'),true);
+ }finally{h.session.dispose()}
+});
+
+function jsonbKeys<T>(value:T):T {
+ if(Array.isArray(value))return value.map(jsonbKeys) as T;
+ return value&&typeof value==='object'?Object.fromEntries(Object.entries(value).reverse().map(([key,item])=>[key,jsonbKeys(item)])) as T:value;
+}
+async function actualWorkerResponse(request:BuilderReconciliationRequest):Promise<BuilderProjectionResponse>{
+ const calculated=reconcileBuilderDependencies(request.trip,request.dispatched).trip;
+ const residual=calculated.brief.cascadeStatus?.routeReconciliation?.residual??[];
+ return {...response(request,'complete'),legs:await resolveCanonicalTransferJourneys(calculated.legs),routeAssessment:calculated.brief.routeAssessment,
+  results:request.dispatched.map(unit=>{const remaining=residual.find(item=>item.kind===unit.kind&&item.targetId===unit.targetId);return unit.kind==='recommendation'||!remaining?{...unit,phase:'complete' as const}:{...unit,phase:remaining.phase==='conflict'?'conflict' as const:'failed' as const,reason:remaining.reason}})};
+}
+for(const ordering of ['before-ACK','after-ACK'] as const)test(`A17 actual necessary worker saves ${ordering} under JSONB ACK and reload`,async()=>{
+ const initial=requireReadableTripDocument(canonicalTripForOwner('owner-a',a17TripFixture())),gate=deferred<void>();let calls=0;
+ const h=await harness(initial,new MemoryStorage(),async trip=>{if(++calls===1)await gate.promise;return jsonbKeys(canonicalTripForOwner('owner-a',await resolveTripTransferJourneys(trip),nextTripUpdatedAt(trip.updatedAt)))});
+ try{
+  h.session.updateDraft({binding:{kind:'origin'},raw:' origin draft '});accept(h,{kind:'remove-destination',intentId:'intent:hue'});await h.run(450);
+  if(ordering==='after-ACK'){gate.resolve();await tick()}
+  await h.run(0);const work=h.projections.at(-1)!;assert.ok(work);work.result.resolve(await actualWorkerResponse(work.request));await tick();await h.run(450);
+  if(ordering==='before-ACK')gate.resolve();await h.session.flush();
+  const state=h.session.getSnapshot();assert.equal(state.error,null);assert.equal(state.canonicalSaveState,'cloud');assert.equal(h.recovery(),null);assert.equal(calls,2);
+  assert.deepEqual(state.trip.stops.map(stop=>[stop.name,stop.nights]),[['Hanoi',3],['Hoi An',4],['Ho Chi Minh City',3]]);
+  assert.equal(state.trip.brief.nightAllocation!.totalAvailableNights!-state.trip.brief.nightAllocation!.totalAllocatedNights!,2);assert.deepEqual(state.trip.brief.bookings,initial.brief.bookings);
+  assert.equal(state.pendingUnits.length,0);assert.equal(state.trip.legs.some(leg=>leg.routeMetadata.pending===true),false);
+  assert.equal(state.trip.brief.intent.route.orderAuthority,'manual');assert.equal(state.draft.fields[0].raw,' origin draft ');
+  h.session.dispose();const reload=await harness(state.trip,h.storage);assert.equal(reload.session.getSnapshot().error,null);assert.deepEqual(reload.session.getSnapshot().trip,state.trip);assert.equal(reload.session.getSnapshot().draft.fields[0].raw,' origin draft ');reload.session.dispose();
+ }finally{gate.resolve();h.session.dispose()}
+});
+test('A17 newer budget and Undo survive held removal ACK with actual resolver',{todo:'Awaiting explicit extension for the two key-order-sensitive leg guards; see batch14-a17-held-undo-scope-extension.md'},async()=>{
+ const initial=requireReadableTripDocument(canonicalTripForOwner('owner-a',a17TripFixture())),gate=deferred<void>();let calls=0;
+ const h=await harness(initial,new MemoryStorage(),async trip=>{if(++calls===1)await gate.promise;return jsonbKeys(canonicalTripForOwner('owner-a',await resolveTripTransferJourneys(trip),nextTripUpdatedAt(trip.updatedAt)))});
+ try{
+  h.session.updateDraft({binding:{kind:'origin'},raw:' preserve me '});const frame=h.session.captureStructuralSnapshot();accept(h,{kind:'remove-destination',intentId:'intent:hue'});await h.run(450);
+  accept(h,budget);accept(h,{kind:'structural-inverse',snapshot:frame});await h.run(450);gate.resolve();await h.session.flush();
+  const state=h.session.getSnapshot();assert.equal(state.error,null);assert.equal(h.recovery(),null);assert.deepEqual(state.trip.stops.map(stop=>[stop.id,stop.nights]),initial.stops.map(stop=>[stop.id,stop.nights]));
+  assert.equal(state.trip.brief.budgetBand,'high');assert.equal(state.draft.fields[0].raw,' preserve me ');assert.deepEqual(state.trip.brief.bookings,initial.brief.bookings);
+ }finally{gate.resolve();h.session.dispose()}
+});
+for(const tamper of ['owner','route','endpoint','nights','authored-leg'] as const)test(`A17 actual pending save still rejects tampered ${tamper} ACK`,async()=>{
+ const initial=requireReadableTripDocument(canonicalTripForOwner('owner-a',a17TripFixture()));
+ const h=await harness(initial,new MemoryStorage(),async trip=>{
+  const ack=requireReadableTripDocument(canonicalTripForOwner('owner-a',await resolveTripTransferJourneys(trip),nextTripUpdatedAt(trip.updatedAt)));
+  if(tamper==='owner')ack.ownerId='owner-b';
+  if(tamper==='route')ack.brief.intent.route.orderedStopIds.reverse();
+  if(tamper==='endpoint')ack.brief.intent.route.origin={...ack.brief.intent.route.origin,name:'Changed origin'};
+  if(tamper==='nights')ack.stops[0].nights=9;
+  if(tamper==='authored-leg')ack.legs.find(leg=>leg.routeMetadata.source==='necessary-reconciliation')!.routeMetadata.travellerNote='Unaccepted replacement';
+  return ack;
+ });
+ try{accept(h,{kind:'remove-destination',intentId:'intent:hue'});await h.run(450);await h.session.flush();assert.equal(h.session.getSnapshot().error?.category,'validation');assert.ok(h.recovery());assert.deepEqual(h.session.getSnapshot().trip.stops.map(stop=>stop.nights),[3,4,3]);}finally{h.session.dispose()}
+});
 import { readBuilderInputDraft, writeBuilderInputDraft, builderInputDraftKey } from '../lib/easyt/trip-builder-input-draft.ts';
 import { saveTripRecoveryToStorage, loadTripRecoveryFromStorage, acknowledgeTripBuildSaveInStorage,
   markTripRecoveryStateInStorage, saveTripRecoveryToEasyT, cacheCanonicalTripToStorage } from '../lib/easyt/storage.ts';
