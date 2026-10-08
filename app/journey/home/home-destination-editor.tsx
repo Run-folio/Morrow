@@ -15,7 +15,9 @@ export function HomeDestinationEditor({ entries, language, disabled = false, foc
   onChange: (entries: HomepageDestinationEntry[]) => void;
 }) {
   const es = language === "es";
-  const [editingId, setEditingId] = useState<string | null>(() => entries.find(entry => !entry.selection)?.id ?? null);
+  // Startup follows restored entries; explicit open/closed state belongs to the traveller.
+  const [requestedEditingId, setEditingId] = useState<string | null | undefined>(undefined);
+  const editingId = requestedEditingId === undefined ? entries.find(entry => !entry.selection)?.id ?? null : requestedEditingId;
   const nodes = useRef(new Map<string, HTMLElement>());
   const addRef = useRef<HTMLButtonElement>(null);
   const latest = useRef({ entries, disabled, onChange });
@@ -39,6 +41,7 @@ export function HomeDestinationEditor({ entries, language, disabled = false, foc
   const replace = (id: string, update: (entry: HomepageDestinationEntry) => HomepageDestinationEntry) => {
     const current = latest.current;
     if (current.disabled || !current.entries.some(entry => entry.id === id)) return;
+    setEditingId(id);
     current.onChange(current.entries.map(entry => entry.id === id ? update(entry) : entry));
   };
   const select = (id: string, selection: CanonicalPlaceSuggestion) => {

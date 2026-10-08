@@ -4,6 +4,7 @@ import {createRequire} from 'node:module';
 import {existsSync,mkdirSync} from 'node:fs';
 import {homedir} from 'node:os';
 import {createPrivacyConsentRecord,PRIVACY_CONSENT_STORAGE_KEY} from '../lib/privacy-consent.ts';
+import {emptyHomepageInput} from './fixtures/homepage-dual-entry.ts';
 const require=createRequire(import.meta.url);
 const runtime=`${homedir()}/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright`;
 const enabled=process.env.MORROVIA_CORE_JOURNEY_BROWSER_TESTS==='1';
@@ -33,4 +34,35 @@ test('homepage route fields share one rounded boundary and type toggles without 
  const artifact=process.env.MORROVIA_BROWSER_ARTIFACT_DIR;if(artifact){mkdirSync(artifact,{recursive:true});for(const width of [1440,390]){await page.setViewportSize({width,height:900});await page.screenshot({path:`${artifact}/homepage-${width}.png`});}}
  assert.deepEqual(errors,[]);
  }finally{await context.close();await browser.close()}
+});
+
+for(const width of [1440,390])test(`populated homepage hard reload keeps selected chips closed without interaction at ${width}px`,{skip:!enabled,timeout:30000},async()=>{
+ const {chromium}=require(existsSync(runtime)?runtime:'playwright') as typeof import('playwright');const browser=await chromium.launch({headless:true});
+ const page=await browser.newPage({viewport:{width,height:1100}}),errors:string[]=[];page.on('pageerror',error=>errors.push(error.message));
+ const key='easyt-private:guest:homepage-input',snapshot=JSON.parse(JSON.stringify({...emptyHomepageInput(),revision:7,
+  entries:['Japan','China'].map((name,index)=>({id:`destination-${index+1}`,text:name,selection:{canonicalPlaceId:`country:${name.toLowerCase()}`,name,label:name,country:name,placeType:'country',routability:'planning_area',provenance:[{id:'fixture',kind:'canonical',label:name,supports:'Synthetic country planning area'}]}})),originInput:'Hong Kong',origin:{state:'selected',value:{name:'Hong Kong',canonicalPlaceId:'hong-kong',country:'Hong Kong',coordinates:[114.1694,22.3193]}},
+  dates:{state:'selected',value:{start:'2026-10-15',end:'2026-10-29'}},tripType:{state:'selected',value:'return_to_start'},journeyEnd:{state:'selected',value:{mode:'same_as_start'}},travellers:{state:'selected',value:2},budget:{state:'selected',value:'mid'}}));
+ try{
+  await page.addInitScript(({key,snapshot,consentKey,consent})=>{if(!localStorage.getItem(key))localStorage.setItem(key,JSON.stringify({snapshot}));localStorage.setItem(consentKey,consent)},
+   {key,snapshot,consentKey:PRIVACY_CONSENT_STORAGE_KEY,consent:JSON.stringify(createPrivacyConsentRecord({analytics:false,affiliateTracking:false},'2026-10-08T12:00:00.000Z'))});
+  await page.route('**/api/**',route=>route.fulfill({status:200,contentType:'application/json',body:JSON.stringify(new URL(route.request().url()).pathname.includes('/auth/')?null:{candidates:[],result:null})}));
+  await page.goto(base,{waitUntil:'domcontentloaded'});
+  for(let load=0;load<2;load++){
+   await page.reload({waitUntil:'domcontentloaded'});
+   await page.waitForFunction(()=>{const input=document.querySelector('[data-homepage-origin] input');return input instanceof HTMLInputElement&&input.value==='Hong Kong'});
+   await page.waitForFunction(()=>{const button=Array.from(document.querySelectorAll('button')).find(button=>button.textContent?.trim()==='Add destination');return button&&!button.disabled});
+   assert.deepEqual(await page.evaluate(key=>JSON.parse(localStorage.getItem(key)!),key),{snapshot});
+   const artifact=process.env.MORROVIA_BROWSER_ARTIFACT_DIR;if(artifact&&load){mkdirSync(artifact,{recursive:true});await page.screenshot({path:`${artifact}/homepage-restored-no-interaction-${width}.png`});}
+   assert.equal(await page.getByRole('combobox',{name:'Destination',exact:true}).count(),0,'restored selected entries must be chips without Escape, blur or Edit');
+   assert.equal(await page.getByRole('button',{name:/^Edit Japan/}).count(),1);assert.equal(await page.getByRole('button',{name:/^Edit China/}).count(),1);
+   assert.equal(await page.getByRole('button',{name:'Add destination',exact:true}).count(),1);
+   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth+1),false);
+  }
+  await page.getByRole('button',{name:/^Edit Japan/}).click();const draft=page.getByRole('combobox',{name:'Destination',exact:true});await draft.fill('  Japan unfinished  ');
+  await page.waitForFunction(key=>JSON.parse(localStorage.getItem(key)!).snapshot.entries[0].text==='  Japan unfinished  ',key);
+  const authored=await page.evaluate(key=>JSON.parse(localStorage.getItem(key)!),key);assert.equal(authored.snapshot.entries[0].selection,null);assert.equal(authored.snapshot.entries[0].id,'destination-1');
+  await page.reload({waitUntil:'domcontentloaded'});await page.waitForFunction(()=>{const input=document.querySelector('[data-homepage-origin] input');return input instanceof HTMLInputElement&&input.value==='Hong Kong'});
+  assert.equal(await draft.inputValue(),'  Japan unfinished  ');assert.deepEqual(await page.evaluate(key=>JSON.parse(localStorage.getItem(key)!),key),authored);
+  assert.deepEqual(errors,[]);
+ }finally{await browser.close()}
 });
