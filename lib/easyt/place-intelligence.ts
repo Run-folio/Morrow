@@ -1309,6 +1309,15 @@ function roleAt(prompt: string, sourceText: string, start: number, placeType: Pl
 export function geographicContextMentionIds(prompt: string, mentions: readonly ResolvedPlaceMention[], endpoints: readonly { name: string; country?: string }[] = []) {
   const result = new Set<string>();
   const escape = (text: string) => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const cities = mentions.filter(mention => mention.placeType !== "country" && mention.role !== "excluded"
+    && !["origin", "fixed_start", "fixed_end", "gateway"].includes(mention.role));
+  const labels = [...new Set(cities.flatMap(city => [city.sourceText, ...city.sourceTexts, city.canonicalName]).filter(Boolean))].sort((a,b)=>b.length-a.length);
+  const cityPattern = labels.map(escape).join("|");
+  const provenCity = (label: string, country: ResolvedPlaceMention) => {
+    const matches = cities.filter(city => [city.sourceText, ...city.sourceTexts, city.canonicalName].some(value => normalizePlacePhrase(value) === normalizePlacePhrase(label)));
+    return matches.length > 0 && matches.every(city => city.status === "resolved" && ["city", "town"].includes(city.placeType)
+      && city.parentCountries.length === 1 && normalizePlacePhrase(city.parentCountries[0]!) === normalizePlacePhrase(country.canonicalName));
+  };
   for (const country of mentions) {
     if (country.placeType !== "country" || country.status !== "resolved" || !country.canonicalPlaceId) continue;
     const labels = [...new Set([country.sourceText, ...country.sourceTexts, country.canonicalName].filter(Boolean))];
@@ -1325,6 +1334,28 @@ export function geographicContextMentionIds(prompt: string, mentions: readonly R
       if (/(?:do not|dont|never|not)(?: want to)? (?:visit|explore|stay in)$|(?:skip|avoid|exclude)$/.test(clause)) return true;
       if (endpoints.some(endpoint => endpoint.country && normalizePlacePhrase(endpoint.country) === normalizePlacePhrase(country.canonicalName)
         && new RegExp(`(?:^|[^\\p{L}\\p{N}])${escape(endpoint.name)}\\s*,\\s*$`, "iu").test(prefix))) return true;
+      if (cityPattern) {
+        // Prove the whole coordinated city list, not just its last city. An
+        // ambiguous/foreign earlier member cannot be hidden by a valid tail.
+        const locative = new RegExp(`(?:^|[^\\p{L}\\p{N}])((?:${cityPattern})(?:\\s*(?:,|\\band\\b)\\s*(?:${cityPattern}))*)\\s+in\\s*$`, "iu").exec(prefix);
+        if (locative && !/(?:,|\band)\s*$/iu.test(prefix.slice(0, locative.index))) {
+          const list = [...locative[1]!.matchAll(new RegExp(cityPattern, "giu"))];
+          if (list.length && list.every(city => provenCity(city[0],country))) return true;
+        }
+        // A duration header scopes a fully specified city budget. Partial
+        // budgets, separate visits and country-night requests stay actionable.
+        const header = /^\s*(\d{1,3})\s+nights?\s+in\s*$/iu.exec(prefix);
+        const suffix = prompt.slice(at + label.length).trim();
+        if (header && suffix.startsWith(":")) {
+          const body = suffix.slice(1).trim().replace(/\.\s*$/, "");
+          const entry = `(?:${cityPattern})\\s+\\d{1,3}(?:\\s+nights?)?`;
+          if (new RegExp(`^${entry}(?:\\s*(?:,|\\band\\b)\\s*${entry})*$`, "iu").test(body)) {
+            const rows = [...body.matchAll(new RegExp(`(${cityPattern})\\s+(\\d{1,3})(?:\\s+nights?)?`, "giu"))];
+            if (rows.length > 1 && rows.every(row => Number(row[2]) > 0 && provenCity(row[1]!,country))
+              && rows.reduce((sum,row)=>sum+Number(row[2]),0) === Number(header[1])) return true;
+          }
+        }
+      }
       return mentions.some(city => {
         if (city === country || city.placeType === "country" || city.role === "excluded") return false;
         if (city.status === "resolved" && city.parentCountries.length

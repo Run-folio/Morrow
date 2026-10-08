@@ -35,6 +35,7 @@ import { readBuilderInputDraft, writeBuilderInputDraft, type BuilderInputBinding
 import { EasyTTripPersistenceError, isTripPersistenceAuthenticationError, tripRecoveryStateForPersistenceError } from "@/lib/easyt/trip-persistence-error";
 import { tripEditorSyncAction, tripSyncRecoveryPath, tripSyncSignInPath } from "@/lib/easyt/trip-continuity";
 import { routeIntentFromHandoff } from "@/lib/easyt/trip-route-intent";
+import { eligibleCountryContextIntentIds, preserveAuthoredCountryContextIntents } from "@/lib/easyt/trip-country-context";
 import { routeIntentForAcceptedBuilderOrder } from "@/lib/easyt/trip-builder-order";
 import { defaultTripIntent, fixedTripCommitmentsFromStructuredBrief, isEasyTTrip, tripFromBuilder, tripIntentForTrip, type EasyTTrip, type FixedTripCommitment, type JourneyEndSelection, type JourneyEndpointPlace, type TripBudgetPreference, type TripDecisionSelections, type TripIntent, type TripIntentPace, type TripLeg, type TripScheduleLocks, type TripStatus, type TripStop, type TripTransportMode } from "@/lib/easyt/trip";
 import { arrivalLoadFromTransfer, assessRouteIntelligence, buildCredibleItinerary, estimateLegForConstraints, routeIntelligenceForPersistence, routeTransferSavingMinutes, travelStayConsequence, usableStopDays, type PlannedDay, type PlannerPlace } from "@/lib/easyt/planner";
@@ -1711,7 +1712,10 @@ function TripBuilderDocument() {
     () => plannerEndpointForJourneyEnd(tripId, journeyStartPlace, journeyEnd),
     [tripId, journeyStartPlace, journeyEnd],
   );
-  const capturedContextIds = useMemo(() => geographicContextMentionIds(capturedStructuredBrief.source.rawPrompt ?? "", capturedStructuredBrief.placeMentions ?? intakeMentions, journeyStartPlace ? [journeyStartPlace] : []), [capturedStructuredBrief, intakeMentions, journeyStartPlace]);
+  const capturedContextIds = useMemo(() => {
+    const ids=geographicContextMentionIds(capturedStructuredBrief.source.rawPrompt ?? "", capturedStructuredBrief.placeMentions ?? intakeMentions, journeyStartPlace ? [journeyStartPlace] : []);
+    return canonicalBuilder ? preserveAuthoredCountryContextIntents(canonicalBuilder,ids) : ids;
+  }, [capturedStructuredBrief, intakeMentions, journeyStartPlace, canonicalBuilder]);
   const activeCapturedPlaceMentions = useMemo(() => (capturedStructuredBrief.placeMentions ?? intakeMentions)
     .filter((mention) => !removedPlaceMentionIds.includes(mention.mentionId) && !capturedContextIds.has(mention.mentionId)), [capturedStructuredBrief.placeMentions, intakeMentions, removedPlaceMentionIds, capturedContextIds]);
   const effectivePlaceSelections = useMemo(() => inferAttractionVisitSelections(
@@ -1854,7 +1858,10 @@ function TripBuilderDocument() {
     [routeHints, stops],
   );
   const originMissing = originTouched && (!origin.trim() || Boolean(originError));
-  const contextMentionIds = useMemo(() => geographicContextMentionIds(effectiveStructuredBrief.source.rawPrompt ?? "", effectiveStructuredBrief.placeMentions ?? intakeMentions, journeyStartPlace ? [journeyStartPlace] : []), [effectiveStructuredBrief, intakeMentions, journeyStartPlace]);
+  const contextMentionIds = useMemo(() => {
+    const ids=geographicContextMentionIds(effectiveStructuredBrief.source.rawPrompt ?? "", effectiveStructuredBrief.placeMentions ?? intakeMentions, journeyStartPlace ? [journeyStartPlace] : []);
+    return canonicalBuilder ? preserveAuthoredCountryContextIntents(canonicalBuilder,ids) : ids;
+  }, [effectiveStructuredBrief, intakeMentions, journeyStartPlace, canonicalBuilder]);
   const activePlaceMentions = useMemo(() => (effectiveStructuredBrief.placeMentions ?? intakeMentions)
     .filter((mention) => !(effectiveStructuredBrief.removedPlaceMentionIds ?? []).includes(mention.mentionId) && !contextMentionIds.has(mention.mentionId)), [effectiveStructuredBrief, intakeMentions, contextMentionIds]);
   const endpointMentionIds = useMemo(() => new Set(activePlaceMentions.filter(isEndMention).map((mention) => mention.mentionId)), [activePlaceMentions]);
@@ -2051,6 +2058,28 @@ function TripBuilderDocument() {
     setClarificationDismissed(true);
     setClarificationOpen(false);
   }, [activeClarificationMention, capturedStructuredBrief.discoveryDraftByMentionId, clarificationOpen, cloudConflictTrip, cloudSaveError, deviceRecoveryBlocked, deviceStorageBlocked, pendingStopRemoval, pendingTopType, pendingTopRemoval, savedFinishReview, productTourOpen, optimizationProposal]);
+
+  // Correct only proven untouched capture-context intents through the normal
+  // revision/owner-scoped queue. Hydration/reads never rewrite saved documents.
+  useEffect(() => {
+    if (!hydrated || sessionPending || !browserContextReady || cloudSaveError || cloudConflictTrip
+      || deviceRecoveryBlocked || deviceStorageBlocked || (clarificationOpen && activeClarificationMention)
+      || pendingStopRemoval || pendingTopType || pendingTopRemoval || savedFinishReview || optimizationProposal
+      || resolvingLocations || productTourOpen) return;
+    const snapshot=builderEditSessionRef.current?.getSnapshot();
+    if(!snapshot || snapshot.browserOwnerId!==activeBrowserOwnerIdRef.current
+      || !canUseHydratedTripScope(hydratedOwnerScopeRef.current,snapshot.browserOwnerId))return;
+    const ids=eligibleCountryContextIntentIds(snapshot.trip).filter(id=>!snapshot.draft.fields.some(field=>
+      (field.binding.kind==="destination"||field.binding.kind==="nights")&&field.binding.intentId===id));
+    if(ids.length && dispatchAcceptedBuilderEdit({kind:"planning-context",mentionIds:ids},{expectedInputRevision:snapshot.inputRevision}) && clarificationOpen) {
+      // Context proof can hide the last country dialog before its accepted
+      // correction. Close only that already absent dialog; active review waits.
+      setClarificationOpen(false);
+    }
+  }, [hydrated, sessionPending, browserContextReady, mountedBuilder, cloudSaveError, cloudConflictTrip,
+    deviceRecoveryBlocked, deviceStorageBlocked, clarificationOpen, activeClarificationMention, pendingStopRemoval,
+    pendingTopType, pendingTopRemoval, savedFinishReview, optimizationProposal, resolvingLocations, productTourOpen]);
+
 
   const openClarificationSession = (preferredMentionId?: string) => {
     if (!pendingClarificationIds.length) return;

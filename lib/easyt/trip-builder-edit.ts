@@ -6,6 +6,7 @@ import { routeIntentForAcceptedBuilderOrder, validateBuilderStopOrder } from "./
 import { buildCanonicalTripLegs, routeEndpointForLeg } from "./trip-legs.ts";
 import { clearTripLegTransportChoice, selectTripLegTransportChoice, supportedTransportChoicesForLeg } from "./transport-mode-choice.ts";
 import { tripInterestIds } from "./trip-interest.ts";
+import { eligibleCountryContextIntentIds } from "./trip-country-context.ts";
 import { structuredTripBriefFromSavedSelections, mergeStructuredTripBrief } from "./structured-trip-brief.ts";
 import { placeMentionSupportsMultipleSelections, placeResolutionIssuesForMentions, type ResolvedPlaceMention, type PlaceSelection } from "./place-intelligence.ts";
 import { DISCOVERY_DRAFT_VERSION, readDiscoveryDraft, type DiscoveryDraft } from "./discovery-draft.ts";
@@ -51,6 +52,7 @@ export type BuilderAcceptedEdit =
   | { kind: "schedule-locks"; locks: NonNullable<CanonicalEasyTTrip["brief"]["scheduleLocks"]> }
   | { kind: "picks"; stopId: string; titles: string[] }
   | { kind: "planning-selection"; selection: PlaceSelection }
+  | { kind: "planning-context"; mentionIds: string[] }
   | { kind: "planning-area"; mentionId: string; action: "complete" | "reopen" | "remove" }
   | { kind: "planning-mention"; mention: ResolvedPlaceMention; action: "add" | "cancel" }
   | { kind: "planning-mention"; mention: ResolvedPlaceMention; action: "replace"; expectedMention: ResolvedPlaceMention }
@@ -348,6 +350,17 @@ export function prepareAcceptedBuilderEdit(current: CanonicalEasyTTrip, edit: Bu
           || edit.choiceIds && (!Array.isArray(edit.choiceIds) || edit.choiceIds.some(id=>!nonempty(id)))) return reject("binding-conflict");
         if(edit.draft)brief.discoveryDraftByMentionId={...brief.discoveryDraftByMentionId,[edit.mentionId]:structuredClone(edit.draft)};
         if(edit.choiceIds)brief.countryDiscoveryChoices={...brief.countryDiscoveryChoices,[edit.mentionId]:[...new Set(edit.choiceIds)]};
+        break;
+      }
+      case "planning-context": {
+        const eligible=new Set(eligibleCountryContextIntentIds(trip)),ids=edit.mentionIds;
+        if(!Array.isArray(ids)||!ids.length||new Set(ids).size!==ids.length||ids.some(id=>!eligible.has(id)))return reject("binding-conflict");
+        const removed=new Set(ids),brief=trip.brief.structuredBrief!;
+        route.destinations=route.destinations.filter(intent=>!removed.has(intent.id));
+        if(route.explicitIntentIds)route.explicitIntentIds=route.explicitIntentIds.filter(id=>!removed.has(id));
+        brief.destinations=brief.destinations.filter(d=>!d.placeMentionId||!removed.has(d.placeMentionId));
+        brief.mustVisit=brief.mustVisit.filter(d=>!d.placeMentionId||!removed.has(d.placeMentionId));
+        brief.placeIssues=brief.placeIssues?.filter(issue=>!removed.has(issue.mentionId));
         break;
       }
       case "planning-mention": {
