@@ -4,7 +4,7 @@ import { canonicalRouteFixture } from './fixtures/batch14-route-documents.ts';
 import { requireReadableTripDocument } from '../lib/easyt/trip-document.ts';
 import { prepareAcceptedBuilderEdit, builderStructuralSnapshot } from '../lib/easyt/trip-builder-edit.ts';
 import { builderDocumentFingerprint } from '../lib/easyt/trip-builder-document-commit.ts';
-import { allRequiredStaysHaveNights } from '../lib/easyt/trip-builder-generated-nights.ts';
+import { allRequiredStaysHaveNights, generatedFlexibleStopIds } from '../lib/easyt/trip-builder-generated-nights.ts';
 import { allocateTripNights } from '../lib/easyt/night-allocation.ts';
 import type { BuilderAcceptedEdit } from '../lib/easyt/trip-builder-edit.ts';
 import type { CanonicalEasyTTrip } from '../lib/easyt/trip.ts';
@@ -30,6 +30,14 @@ test('generated 7/7 stays admit three useful additions within the unchanged budg
  assert.ok(t.brief.intent.route.destinations.every(i=>i.requestedNights===null));
  assert.equal(t.endDate,source.endDate);assert.deepEqual(t.stops.map(s=>s.id),['tokyo','kyoto','a','b','c']);
  assert.ok(t.brief.nightAllocation!.stops.every(s=>s.isManual===false));
+});
+test('blank generated days retain flexible provenance after JSON object key reordering',()=>{
+ const t=fixture();
+ t.planItems=t.stops.map((stop,index)=>({id:`${t.id}-calendar:${stop.id}:${index}`,stopId:stop.id,date:t.startDate,dayNumber:index+1,type:'open',title:`Flexible day in ${stop.name}`,reason:'Plan this day around your preferences.',notes:[],startsAt:null,endsAt:null,bookingUrl:null,latitude:null,longitude:null}));
+ const expected=[...generatedFlexibleStopIds(t)];assert.equal(expected.length,2);
+ t.planItems=t.planItems.map(day=>Object.fromEntries(Object.entries(day).reverse()) as typeof day);
+ assert.deepEqual([...generatedFlexibleStopIds(t)],expected);
+ assert.ok(add(t,'a').stops.every(stop=>(stop.nights??0)>0));
 });
 for(const protection of ['request','manual','unknown','legacy','booked','locked','authored','explicit-zero'])test(`${protection} nights are protected across additions and subsequent additions`,()=>{
  let t=fixture();

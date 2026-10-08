@@ -24,7 +24,11 @@ export function generatedFlexibleStopIds(trip: CanonicalEasyTTrip): Set<string> 
       if (day.stopId !== stop.id) return false;
       const {id,stopId: _stop,date: _date,dayNumber: _number,contextNotes: _generated,...content} = day;
       const blank = {type:'open',title:`Flexible day in ${stop.name}`,reason:'Plan this day around your preferences.',notes:[],startsAt:null,endsAt:null,bookingUrl:null,latitude:null,longitude:null};
-      return !id.startsWith(`${trip.id}-calendar:`) || JSON.stringify(content) !== JSON.stringify(blank)
+      // JSONB may reorder object keys; compare the exact allowed content fields,
+      // retaining protection for any additional/changed authored field.
+      const contentMatches = Object.keys(content).length === Object.keys(blank).length
+        && Object.entries(blank).every(([key, value]) => JSON.stringify((content as Record<string, unknown>)[key]) === JSON.stringify(value));
+      return !id.startsWith(`${trip.id}-calendar:`) || !contentMatches
         || Boolean(trip.brief.dayNotes?.[day.dayNumber]?.length || trip.brief.customActivities?.[day.dayNumber]?.length);
     });
     if (!authored) result.add(stop.id);
