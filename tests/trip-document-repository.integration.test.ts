@@ -5,7 +5,7 @@ import { readFile } from 'node:fs/promises';
 import { randomUUID } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 const configured=Boolean(process.env.MORROVIA_TEST_DATABASE_URL)&&process.env.MORROVIA_TEST_DATABASE_DISPOSABLE==='1';
-for(const resolverMode of ['identity','actual'])test(`actual SQL (${resolverMode} resolver): CAS, protected source versions, promotion and A17 pending work`, {skip:!configured?'MANUAL HOSTED VERIFICATION REQUIRED: actual repository CAS/source-version transaction not executed':false},async()=>{
+for(const resolverMode of ['identity','actual'])test(`actual SQL (${resolverMode} resolver): CAS, protected source versions, promotion${resolverMode==='actual'?' and A17 pending work':''}`, {skip:!configured?'MANUAL HOSTED VERIFICATION REQUIRED: actual repository CAS/source-version transaction not executed':false},async()=>{
  const {default:pg}=await import('pg');const client=new pg.Client({connectionString:process.env.MORROVIA_TEST_DATABASE_URL});
  const schema=`batch14_${randomUUID().replaceAll('-','')}`;await client.connect();
  try{

@@ -37,12 +37,13 @@ try{
   assert.deepEqual(prefix,submitted.legs.filter(leg=>leg.routeMetadata.source==='necessary-reconciliation'&&leg.routeMetadata.pending===true));
   const children=async(trip:typeof ack)=>{
    const [row]=await sql`select document from easyt_trips where id=${trip.id}`;assert.deepEqual(row.document,wire(trip));
-   const stops=await sql`select id,stop_order,name,country,nights,to_char(arrival_date,'YYYY-MM-DD') as arrival_date,to_char(departure_date,'YYYY-MM-DD') as departure_date from easyt_stops where trip_id=${trip.id} order by stop_order`;
-   assert.deepEqual(stops,trip.stops.map(stop=>({id:stop.id,stop_order:stop.order,name:stop.name,country:stop.country,nights:stop.nights,arrival_date:stop.arrivalDate,departure_date:stop.departureDate})));
-   const legs=await sql`select id,from_endpoint_id,to_endpoint_id,mode,provider,route_metadata from easyt_legs where trip_id=${trip.id} order by id`;
-   assert.deepEqual(legs,[...trip.legs].sort((a,b)=>a.id.localeCompare(b.id)).map(leg=>({id:leg.id,from_endpoint_id:leg.fromStopId,to_endpoint_id:leg.toStopId,mode:leg.mode,provider:leg.provider,route_metadata:wire(leg.routeMetadata)})));
-   const days=await sql`select id,stop_id,day_number,to_char(plan_date,'YYYY-MM-DD') as plan_date,notes from easyt_plan_items where trip_id=${trip.id} order by day_number`;
-   assert.deepEqual(days,trip.planItems.map(day=>({id:day.id,stop_id:day.stopId,day_number:day.dayNumber,plan_date:day.date,notes:day.notes})));
+   const stops=await sql`select id,trip_id,stop_order,name,country,latitude,longitude,nights,to_char(arrival_date,'YYYY-MM-DD') as arrival_date,to_char(departure_date,'YYYY-MM-DD') as departure_date from easyt_stops where trip_id=${trip.id} order by stop_order`;
+   assert.deepEqual(stops,trip.stops.map(stop=>({id:stop.id,trip_id:trip.id,stop_order:stop.order,name:stop.name,country:stop.country,latitude:stop.latitude,longitude:stop.longitude,nights:stop.nights,arrival_date:stop.arrivalDate,departure_date:stop.departureDate})));
+   const legs=await sql`select id,trip_id,from_stop_id,to_stop_id,from_endpoint_id,to_endpoint_id,from_endpoint_kind,to_endpoint_kind,mode,distance_km::double precision as distance_km,duration_minutes,provider,route_metadata from easyt_legs where trip_id=${trip.id} order by id`;
+   assert.deepEqual(legs,[...trip.legs].sort((a,b)=>a.id.localeCompare(b.id)).map(leg=>({id:leg.id,trip_id:trip.id,from_stop_id:trip.stops.some(stop=>stop.id===leg.fromStopId)?leg.fromStopId:null,to_stop_id:trip.stops.some(stop=>stop.id===leg.toStopId)?leg.toStopId:null,
+     from_endpoint_id:leg.fromStopId,to_endpoint_id:leg.toStopId,from_endpoint_kind:trip.stops.some(stop=>stop.id===leg.fromStopId)?'stop':'origin',to_endpoint_kind:trip.stops.some(stop=>stop.id===leg.toStopId)?'stop':'end',mode:leg.mode,distance_km:leg.distanceKm,duration_minutes:leg.durationMinutes,provider:leg.provider,route_metadata:wire(leg.routeMetadata)})));
+   const days=await sql`select id,trip_id,stop_id,day_number,to_char(plan_date,'YYYY-MM-DD') as plan_date,item_type,title,reason,notes,starts_at,ends_at,booking_url,latitude,longitude from easyt_plan_items where trip_id=${trip.id} order by day_number`;
+   assert.deepEqual(days,trip.planItems.map(day=>({id:day.id,trip_id:trip.id,stop_id:day.stopId,day_number:day.dayNumber,plan_date:day.date,item_type:day.type,title:day.title,reason:day.reason,notes:day.notes,starts_at:day.startsAt?new Date(day.startsAt):null,ends_at:day.endsAt?new Date(day.endsAt):null,booking_url:day.bookingUrl,latitude:day.latitude,longitude:day.longitude})));
   };
   await children(ack);const readback=requireReadableTripDocument((await getTripForOwner('owner-a',ack.id))!);assert.deepEqual(wire(readback),wire(ack));
   const pendingCopy=requireReadableTripDocument(duplicateTripDocument(submitted,{id:'batch14-a17-pending-promotion',now:submitted.updatedAt,nextId:()=>String(++sequence)}));
