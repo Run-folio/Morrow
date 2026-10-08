@@ -58,7 +58,9 @@ test('real unavailable result survives save and reload then targeted retry succe
   const untouched=structuredClone(h.cloud());await h.view.page.reload();await h.view.page.locator('[data-builder-edit-session="active"]').waitFor();
   assert.equal(failed(h.cloud()).length,3);unavailable=false;
   const target=failed(h.cloud())[0]!.targetId;
-  await h.view.page.getByRole('button',{name:'Try again',exact:true}).first().click();await until(h.view,()=>failed(h.cloud()).length===2&&remaining(h.cloud()).length===2);
+  const targetRow=h.view.page.locator('[data-builder-route-workspace]').getByRole('row').filter({has:h.view.page.getByText(h.cloud().stops.find(stop=>stop.id===target)!.name,{exact:true})});
+  assert.equal(await targetRow.getByRole('button',{name:'Try again',exact:true}).count(),1,'retry belongs to its affected stop row');assert.equal(await h.view.page.getByRole('button',{name:'Review trip',exact:true}).count(),0);
+  await targetRow.getByRole('button',{name:'Try again',exact:true}).click();await until(h.view,()=>failed(h.cloud()).length===2&&remaining(h.cloud()).length===2);
   assert.deepEqual(h.cloud().planItems.filter(d=>d.stopId!==target),untouched.planItems.filter(d=>d.stopId!==target));
   assert.ok(h.cloud().planItems.some(d=>d.stopId===target&&d.contextNotes?.includes('Recovered provider guidance')));
   for(const count of [1,0]){await h.view.page.getByRole('button',{name:'Try again',exact:true}).first().click();await until(h.view,()=>remaining(h.cloud()).length===count)}
@@ -80,7 +82,7 @@ test('failed gateway with pending recommendation group persists exact residual a
  const untilCondition=async(condition:()=>boolean)=>{for(let i=0;i<70&&!condition();i++)await view.page.waitForTimeout(100);assert.ok(condition(),JSON.stringify(residual()))};
  try{
  await view.page.locator('[data-builder-edit-session="active"]').waitFor();phase='edit';
- await view.page.locator('#builder-origin').getByRole('combobox',{name:'Starting from',exact:true}).fill('Paris');await view.page.getByRole('option',{name:/^Paris.*France/}).first().click();
+ await view.page.locator('#builder-origin').getByRole('combobox',{name:'Start from',exact:true}).fill('Paris');await view.page.getByRole('option',{name:/^Paris.*France/}).first().click();
  await untilCondition(()=>residual().some(u=>u.kind==='leg'&&u.phase==='failed'));
  await view.page.getByRole('combobox',{name:'Budget',exact:true}).selectOption('high');
  await untilCondition(()=>cloud.brief.budgetBand==='high'&&residual().filter(u=>u.kind==='recommendation'&&u.phase==='pending').length===3);

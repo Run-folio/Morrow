@@ -110,7 +110,7 @@ test("Tier 1 guest journey keeps three canonical stops and edits through Build a
     }), draftTripId);
   const initialDraft = await recoveryTrip(page, draftTripId);
   assert.equal(initialDraft?.brief.intent?.route?.origin?.canonicalPlaceId, "paris");
-  await page.getByRole("combobox", { name: "Starting from" }).fill("London");
+  await page.getByRole("combobox", { name: "Start from" }).fill("London");
   await page.getByRole("option", { name: /London.*United Kingdom/ }).first().click();
   await page.waitForFunction((id) => Object.keys(localStorage)
     .filter((key) => key.startsWith(`easyt:trip-recovery:v2:guest:${encodeURIComponent(id)}:`))

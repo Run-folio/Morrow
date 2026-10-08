@@ -1786,3 +1786,9 @@
 .builderReviewActions { display:flex; align-items:center; flex-wrap:wrap; gap:8px; }
 .builderUndoToast { position:fixed; right:16px; bottom:calc(16px + var(--morrovia-mobile-dock-offset)); z-index:var(--morrovia-layer-dock); }
 @media(max-width:430px) { .builderUndoToast { right:12px; left:12px; } }
+
+.necessaryReview { display: grid; gap: 4px; color: var(--morrovia-danger); font: var(--morrovia-type-fine-print); }
+.necessaryReview > span { margin: 0; }
+.necessaryReview button { justify-self: start; }
+
+.tripUnderstood:has([data-builder-top-controls]) { overflow: visible; border: 0; background: transparent; }

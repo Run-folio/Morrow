@@ -130,7 +130,7 @@ function FieldShell({ children, className = "", disabled, error, hint, id, label
   const descriptionId = error || hint ? `${id}-description` : undefined;
   return (
     <label className={`${styles.field} ${error ? styles.fieldInvalid : ""} ${disabled ? styles.fieldDisabled : ""} ${className}`} htmlFor={id}>
-      <span className={`${styles.fieldLabel} ${labelClassName}`}>{label}{required ? <b aria-hidden="true"> *</b> : optional ? <small>Optional</small> : null}</span>
+      <span data-morrovia-field-label className={`${styles.fieldLabel} ${labelClassName}`}>{label}{required ? <b aria-hidden="true"> *</b> : optional ? <small>Optional</small> : null}</span>
       {children}
       {error ? (
         <p className={styles.fieldError} id={descriptionId} role="alert">{error}</p>

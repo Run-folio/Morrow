@@ -30,7 +30,6 @@ import { TripBuilderRouteProposal } from "./trip-builder-route-proposal";
 import { acceptBuilderOptimization, calculateBuilderOptimization, type BuilderOptimizationResult } from "@/lib/easyt/trip-builder-route-proposal";
 import { routeProjectionInputKey } from "@/lib/easyt/trip-route-intent";
 import { allRequiredStaysHaveNights } from "@/lib/easyt/trip-builder-generated-nights";
-import { TripBuilderRetainedReview } from "./trip-builder-retained-review";
 import { resolveBuilderRecommendation } from "@/lib/easyt/trip-builder-recommendations";
 import { readBuilderInputDraft, writeBuilderInputDraft, type BuilderInputBinding } from "@/lib/easyt/trip-builder-input-draft";
 import { EasyTTripPersistenceError, isTripPersistenceAuthenticationError, tripRecoveryStateForPersistenceError } from "@/lib/easyt/trip-persistence-error";
@@ -91,7 +90,7 @@ import { PRODUCT_TOUR_STATE_EVENT } from "@/components/easyt/easyt-product-tour"
 import { EasyTButton, EasyTField, EasyTLinkButton, EasyTSelect } from "@/components/easyt/easyt-controls";
 import { MorroviaDatePicker } from "@/components/easyt/morrovia-date-picker";
 import { MorroviaQuantitySelector } from "@/components/easyt/morrovia-quantity-selector";
-import { MorroviaBriefNotice, MorroviaContentDialog, MorroviaConfirmationDialog, MorroviaRecoveryFeedback, MorroviaSaveStatus, MorroviaStatusBanner } from "@/components/easyt/morrovia-feedback";
+import { MorroviaBriefNotice, MorroviaConfirmationDialog, MorroviaRecoveryFeedback, MorroviaSaveStatus, MorroviaStatusBanner } from "@/components/easyt/morrovia-feedback";
 import ResilientImage from "@/components/easyt/resilient-image";
 import { MorroviaSectionStatus } from "@/components/easyt/morrovia-loading-states";
 import { homepageInputStorageKey, travelProfileStorageKey } from "@/lib/easyt/private-browser-context";
@@ -102,7 +101,7 @@ import { routeDestinationPhoto, routeImageCredit } from "@/lib/easyt/route-image
 import { preserveBuilderCanonicalState } from "@/lib/easyt/trip-builder-preservation";
 import { builderDetailsFingerprint, prepareBuilderDocumentCommit } from "@/lib/easyt/trip-builder-document-commit";
 import { currentBuilderRouteProposal, validateBuilderStopOrder } from "@/lib/easyt/trip-builder-order";
-import { normalizeTripInterests, tripInterestIds, tripInterestLabels, type TripInterest } from "@/lib/easyt/trip-interest";
+import { normalizeTripInterests, tripInterestLabels, type TripInterest } from "@/lib/easyt/trip-interest";
 import { savedJourneyFinishChoiceMatches, canonicalJourneyEndpointPlace, isSameCanonicalPlace, journeyEndFromCapturedIntent, journeyEndpointIdentityIsCoherent, journeyEndpointPlaceFromSuggestion, normalizeJourneyEnd, plannerEndpointForJourneyEnd, resolveTypedJourneyEndpoint } from "@/lib/easyt/journey-endpoints";
 import { builderClarificationProgress, builderClarificationRemovalPlan, builderClarificationResumeLabel, orderedBuilderClarificationIds, reviewedRouteStopSatisfiesMention, shouldAutoOpenBuilderClarification, shouldYieldBuilderClarification } from "@/lib/easyt/builder-clarification";
 import { fixedCommitmentDisplayLabel, projectFixedCommitmentsToStops } from "@/lib/easyt/fixed-commitment";
@@ -630,7 +629,6 @@ function TripBuilderDocument() {
   const legacyFocusScheduledRef = useRef(false);
   const requestedPlaceIntentRef = useRef(builderSearchParams.get("placeIntent"));
   const [showTripDetails, setShowTripDetails] = useState(false);
-  const [showBuilderReview, setShowBuilderReview] = useState(false);
   const [detailsCommitBusy, setDetailsCommitBusy] = useState(false);
   const [detailsCommitError, setDetailsCommitError] = useState("");
   const [showStopEditor, setShowStopEditor] = useState(false);
@@ -3504,8 +3502,7 @@ function TripBuilderDocument() {
       const latest=editor.getSnapshot();
       if(!request.isCurrent()||builderEditSessionRef.current!==editor||latest.browserOwnerId!==scope.ownerId||latest.inputRevision!==scope.inputRevision||routeProjectionInputKey(latest.trip)!==inputKey)return;
       setOptimizationResult(result);
-      if(result.kind!=="proposal")setShowBuilderReview(true);
-    }catch{if(request.isCurrent()){setOptimizationResult({kind:"unavailable",reason:"insufficient-data"});setShowBuilderReview(true);}}
+    }catch{if(request.isCurrent()){setOptimizationResult({kind:"unavailable",reason:"insufficient-data"});}}
     finally{if(request.isCurrent())setOptimizationChecking(false);request.finish();}
   };
   const keepOptimizationOrder=()=>{optimizationGateRef.current?.cancel();setOptimizationResult(null);setOptimizationError("");setOptimizationChecking(false);};
@@ -3562,32 +3559,6 @@ function TripBuilderDocument() {
     setTripIntent((current) => ({ ...current, preferences: { ...current.preferences, ...update } }));
   };
 
-  const toggleTransportMode = (mode: TripTransportMode) => {
-    setTransportManuallyEdited(true);
-    if (builderEditSessionRef.current) {
-      const current = builderEditSessionRef.current.getSnapshot().trip.brief.intent.preferences.transportModes;
-      const modes = current.includes(mode) ? current.filter(item => item !== mode) : [...current, mode];
-      dispatchAcceptedBuilderEdit({ kind: "preferences", preferences: { transportModes: modes.length ? modes : [mode] } });
-      return;
-    }
-    setTripIntent((current) => {
-      const modes = current.preferences.transportModes.includes(mode)
-        ? current.preferences.transportModes.filter((item) => item !== mode)
-        : [...current.preferences.transportModes, mode];
-      return { ...current, preferences: { ...current.preferences, transportModes: modes.length ? modes : [mode] } };
-    });
-  };
-
-  const toggleInterest = (interest: TripInterest) => {
-    setInterestsManuallyEdited(true);
-    if (builderEditSessionRef.current) {
-      const current = builderEditSessionRef.current.getSnapshot().trip.brief.intent.preferences.interests;
-      dispatchAcceptedBuilderEdit({ kind: "preferences", preferences: { interests: current.includes(interest) ? current.filter(item => item !== interest) : [...current, interest] } });
-      return;
-    }
-    setTripIntent((current) => ({ ...current, preferences: { ...current.preferences, interests: current.preferences.interests.includes(interest) ? current.preferences.interests.filter((item) => item !== interest) : [...current.preferences.interests, interest] } }));
-  };
-
   const updateBuilderConstraints = (constraints: Partial<Pick<TripIntent["hardConstraints"], "optionalStopIds" | "fixedCommitments" | "avoidDriving">>) => {
     if (builderEditSessionRef.current) return dispatchAcceptedBuilderEdit({ kind: "constraints", constraints });
     setTripIntent(current => ({ ...current, hardConstraints: { ...current.hardConstraints, ...constraints } }));
@@ -3602,11 +3573,6 @@ function TripBuilderDocument() {
     const nextIds = (ids: string[]) => ids.includes(stopId) ? ids.filter(id => id !== stopId) : [...ids, stopId];
     if (builderEditSessionRef.current) return updateBuilderConstraints({ optionalStopIds: nextIds(builderEditSessionRef.current.getSnapshot().trip.brief.intent.hardConstraints.optionalStopIds) });
     setTripIntent(current => ({ ...current, hardConstraints: { ...current.hardConstraints, optionalStopIds: nextIds(current.hardConstraints.optionalStopIds) } }));
-    return true;
-  };
-  const toggleAvoidDriving = () => {
-    if (builderEditSessionRef.current) return updateBuilderConstraints({ avoidDriving: !builderEditSessionRef.current.getSnapshot().trip.brief.intent.hardConstraints.avoidDriving });
-    setTripIntent(current => ({ ...current, hardConstraints: { ...current.hardConstraints, avoidDriving: !current.hardConstraints.avoidDriving } }));
     return true;
   };
   const removeFixedCommitment = (commitmentId: string) => {
@@ -5066,18 +5032,21 @@ function TripBuilderDocument() {
                   </div> : null}
                   {(originError || originMissing) && !inlineOriginPlanningMention && <small id={originErrorId} className={styles.hintError} role="alert">{originError || ui.addOrigin}</small>}
   </>;
+  const necessaryReview = (kinds: Array<"leg"|"schedule"|"recommendation"|"endpoint"|"assessment">, targetId?: string) => mountedBuilder?.snapshot.trip.brief.cascadeStatus?.routeReconciliation?.residual
+    .filter(unit => unit.phase!=="pending" && kinds.includes(unit.kind) && (!targetId || unit.targetId===targetId))
+    .map(unit => <span key={`${unit.kind}:${unit.targetId}`} className={styles.necessaryReview} role="status" onClick={event=>event.stopPropagation()}>
+      <span>{unit.phase==="conflict"
+        ? (mountedBuilder.snapshot.trip.brief.cascadeStatus?.conflicts.join(" ") || (language==="es"?"Revisa las fechas y condiciones guardadas.":"Check the dates and saved commitments."))
+        : unit.kind==="leg" ? (language==="es"?"No pudimos actualizar esta conexión.":"This connection could not be updated.")
+        : unit.kind==="recommendation" ? (language==="es"?"No pudimos actualizar las sugerencias de esta parada.":"Suggestions for this stop could not be updated.")
+        : (language==="es"?"No pudimos actualizar estos datos.":"These details could not be updated.")}</span>
+      {unit.phase==="failed" ? <EasyTButton variant="quiet" size="small" onClick={()=>mountedBuilder.session.retryNecessaryUnit(unit)}>{language==="es"?"Reintentar":"Try again"}</EasyTButton> : null}
+    </span>);
   const topPersonalize = <div className={styles.topPreferences}>
     {hasSavedTravelProfile && <section className={styles.travelStyle}>
       <div className={styles.travelStyleHead}><span>{language === "es" ? "TU ESTILO DE VIAJE" : "YOUR TRAVEL STYLE"}</span><a href="/journey/profile">{language === "es" ? "Editar" : "Edit"}</a></div>
       <div className={styles.travelStyleChips}>{travelStyleLabels(travelProfile, language).map(label => <span key={label}>{label}</span>)}</div>
     </section>}
-    <fieldset className={styles.topPreferenceChoices}><legend>{language === "es" ? "Preferencias de transporte" : "Transport preferences"}</legend>
-      {(["flight","train","drive"] as TripTransportMode[]).map(mode => <EasyTButton variant="secondary" key={mode} aria-pressed={effectiveIntent.preferences.transportModes.includes(mode)} onClick={() => toggleTransportMode(mode)}>{language === "es" ? ({flight:"Vuelos",train:"Tren",drive:"Carretera"}[mode]) : ({flight:"Flights",train:"Rail",drive:"Road"}[mode])}</EasyTButton>)}
-      <EasyTButton variant="secondary" aria-pressed={effectiveIntent.hardConstraints.avoidDriving} onClick={toggleAvoidDriving}>{language === "es" ? "Evitar coche" : "Avoid driving"}</EasyTButton>
-    </fieldset>
-    <fieldset className={styles.topPreferenceChoices}><legend>{language === "es" ? "Intereses" : "Interests"}</legend>
-      {tripInterestIds.map(interest => <EasyTButton variant="secondary" key={interest} aria-pressed={effectiveIntent.preferences.interests.includes(interest)} onClick={() => toggleInterest(interest)}>{tripInterestLabels[language][interest]}</EasyTButton>)}
-    </fieldset>
     {(effectiveIntent.hardConstraints.fixedCommitments.length > 0 || effectiveIntent.hardConstraints.optionalStopIds.length > 0) && <details className={styles.topConstraints}>
       <summary>{language === "es" ? "Condiciones guardadas" : "Saved constraints"}</summary><div>
       {effectiveIntent.hardConstraints.optionalStopIds.map(id => <span key={id}>{stops.find(stop => stop.id === id)?.name ?? id} · {language === "es" ? "Opcional" : "Optional"}<EasyTButton variant="quiet" onClick={()=>toggleOptionalStop(id)}>{language === "es" ? "Mantener parada" : "Keep stop"}</EasyTButton></span>)}
@@ -5201,9 +5170,10 @@ function TripBuilderDocument() {
                     const raw=mountedBuilder.session.getSnapshot().draft.fields.find(f=>f.binding.kind==="destination"&&f.binding.intentId===intent.id)?.raw??suggestion.name;
                     return dispatchAcceptedBuilderEdit({kind:"replace-destination",intentId:intent.id,stopId:intent.stopIds[0],place:journeyEndpointPlaceFromSuggestion(suggestion)},{acceptedInput:{binding:{kind:"destination",intentId:intent.id},raw}});
                   }}
-                  personalize={topPersonalize}
-                  originReview={topOriginReview} destinationReview={activePlaceMentions.filter(mention=>!isOriginMention(mention)&&!isEndMention(mention)&&[...stopResolutionMentions.values()].some(mapped=>mapped.mentionId===mention.mentionId)).map(renderPlaceResolution)}
-                  dateReview={endDateStillSuggested?<div><p className={styles.hint}>{language === "es" ? `Solo has elegido la fecha de inicio. La fecha final y los ${defaultTripIntent().timing.durationDays} días son una sugerencia.` : `Only your start date is set. The end date and ${defaultTripIntent().timing.durationDays}-day length are suggestions.`}</p><EasyTButton variant="secondary" onClick={()=>{if(dispatchAcceptedBuilderEdit({kind:"dates",startDate,endDate}))setEndDateStillSuggested(false)}}>{language==="es"?"Aceptar fechas sugeridas":"Accept suggested dates"}</EasyTButton></div>:null}
+                  personalize={(hasSavedTravelProfile || effectiveIntent.hardConstraints.fixedCommitments.length || effectiveIntent.hardConstraints.optionalStopIds.length) ? topPersonalize : null}
+                  updateRouteFeedback={optimizationResult && optimizationResult.kind!=="proposal" ? <span role="status" className={styles.hint}>{optimizationResult.kind==="unavailable" ? (language==="es"?"No se pudo comprobar la ruta":"Route check unavailable") : (language==="es"?"No se encontró un orden mejor":"No better order found")}</span> : null}
+                  originReview={<>{topOriginReview}{necessaryReview(["endpoint"])}{mountedBuilder.snapshot.trip.legs.filter(leg=>leg.toEndpoint?.kind==="end").map(leg=>necessaryReview(["leg"],leg.id))}</>} destinationReview={activePlaceMentions.filter(mention=>!isOriginMention(mention)&&!isEndMention(mention)&&[...stopResolutionMentions.values()].some(mapped=>mapped.mentionId===mention.mentionId)).map(renderPlaceResolution)}
+                  dateReview={<>{necessaryReview(["schedule","assessment"])}{endDateStillSuggested?<div><p className={styles.hint}>{language === "es" ? `Solo has elegido la fecha de inicio. La fecha final y los ${defaultTripIntent().timing.durationDays} días son una sugerencia.` : `Only your start date is set. The end date and ${defaultTripIntent().timing.durationDays}-day length are suggestions.`}</p><EasyTButton variant="secondary" onClick={()=>{if(dispatchAcceptedBuilderEdit({kind:"dates",startDate,endDate}))setEndDateStillSuggested(false)}}>{language==="es"?"Aceptar fechas sugeridas":"Accept suggested dates"}</EasyTButton></div>:null}</>}
                 /> : <TripBuilderDetailsEditor
                   language={language}
                   startPlace={journeyOrigin}
@@ -5335,7 +5305,7 @@ function TripBuilderDocument() {
                     detail={language === "es" ? "Esta estancia puede pertenecer a otra visita. Revisa su parada antes de quitarla." : "This stay may belong to another visit. Review its stop before removing this one."}
                     actions={<EasyTLinkButton href={stayWorkspaceHref(tripId, stopRemovalBlocked.id)} variant="secondary" size="small">{language === "es" ? "Revisar estancias" : "Review stays"}</EasyTLinkButton>}
                   /> : null}
-                  {resolvedPlanningAreaMentions.length ? <div className={styles.completedAreaSummaries} aria-label={language === "es" ? "Áreas planificadas" : "Shaped planning areas"}>
+                  {!mountedBuilder && resolvedPlanningAreaMentions.length ? <div className={styles.completedAreaSummaries} aria-label={language === "es" ? "Áreas planificadas" : "Shaped planning areas"}>
                     {resolvedPlanningAreaMentions.map((mention) => {
                       const selectedNames = (effectiveStructuredBrief.placeSelections ?? [])
                         .filter((selection) => selection.mentionId === mention.mentionId)
@@ -5502,10 +5472,8 @@ function TripBuilderDocument() {
                       <div><span>{language === "es" ? "RITMO" : "PACE"}</span><div className={styles.intentToggle}>{(["relaxed", "balanced", "packed"] as TripIntentPace[]).map((pace) => <button type="button" key={pace} className={effectiveIntent.preferences.pace === pace ? styles.intentChoiceOn : ""} onClick={() => updateIntentPreferences({ pace })}>{language === "es" ? ({ relaxed: "Tranquilo", balanced: "Equilibrado", packed: "Intenso" }[pace]) : ({ relaxed: "Relaxed", balanced: "Balanced", packed: "Packed" }[pace])}</button>)}</div></div>
                     </div>
                     <div className={styles.intentFieldRow}>
-                      <div><span>{language === "es" ? "TRANSPORTE" : "TRANSPORT"}</span><div className={styles.intentToggle}>{(["flight", "train", "drive"] as TripTransportMode[]).map((mode) => <button type="button" key={mode} className={effectiveIntent.preferences.transportModes.includes(mode) ? styles.intentChoiceOn : ""} onClick={() => toggleTransportMode(mode)}>{language === "es" ? ({ flight: "Preferir vuelos en trayectos largos", train: "Preferir tren cuando sea práctico", drive: "Preferir carretera cuando sea útil" }[mode]) : ({ flight: "Prefer flights for long journeys", train: "Prefer rail when practical", drive: "Prefer road where useful" }[mode])}</button>)}<button type="button" className={effectiveIntent.hardConstraints.avoidDriving ? styles.intentChoiceOn : ""} onClick={toggleAvoidDriving}>{language === "es" ? "Evitar coche" : "Avoid driving"}</button></div></div>
                       <div><span>{language === "es" ? "PRESUPUESTO" : "BUDGET"}</span><div className={styles.intentToggle}>{(["value", "mid", "high"] as const).map((band) => <button type="button" key={band} className={budget === band ? styles.intentChoiceOn : ""} onClick={() => { setBudget(band); setBudgetPreference({ source: "explicit", value: band }); updateIntentPreferences({ budgetSensitivity: band }); }}>{language === "es" ? ({ value: "Ajustado", mid: "Medio", high: "Alto" }[band]) : ({ value: "Value", mid: "Mid", high: "High" }[band])}</button>)}</div></div>
                     </div>
-                    <div className={styles.intentInterestRow}><span>{language === "es" ? "INTERESES" : "INTERESTS"}</span><div>{tripInterestIds.map((interest) => <button type="button" key={interest} className={effectiveIntent.preferences.interests.includes(interest) ? styles.intentChoiceOn : ""} onClick={() => toggleInterest(interest)}>{tripInterestLabels[language][interest]}</button>)}</div></div>
                     <label className={styles.dislikesField}><span>{language === "es" ? "EVITAR (OPCIONAL)" : "AVOID (OPTIONAL)"}</span><input value={effectiveIntent.preferences.dislikes.join(", ")} onChange={(event) => updateIntentPreferences({ dislikes: event.target.value.split(",").map((item) => item.trim()).filter(Boolean).slice(0, 6) })} placeholder={language === "es" ? "Ej. traslados nocturnos, calor extremo" : "e.g. overnight transfers, extreme heat"} /></label>
                   </section>
                 </div>
@@ -5525,24 +5493,6 @@ function TripBuilderDocument() {
                 title={language === "es" ? "Revisa tu entrada guardada" : "Review your saved input"}
                 detail={`${field.raw} — ${language === "es" ? "El viaje cambió mientras se comprobaba esta entrada. Sigue guardada en este dispositivo." : "The trip changed while this input was being checked. It remains saved on this device."}`}
                 actions={<EasyTButton variant="quiet" size="small" onClick={()=>mountedBuilder.session.discardDraft(field.binding)}>{language === "es" ? "Descartar entrada" : "Discard input"}<span className="sr-only"> {index+1}</span></EasyTButton>} />)}
-              <MorroviaContentDialog open={showBuilderReview} ariaLabel={language === "es" ? "Revisar viaje" : "Review trip"} autoFocusSelector="[data-close-builder-review]" onClose={()=>setShowBuilderReview(false)}>
-                <h2>{language === "es" ? "Revisar viaje" : "Review trip"}</h2>
-                {mountedBuilder && !mountedBuilder.snapshot.pendingUnits.length && !mountedBuilder.snapshot.conflictUnits.length && !mountedBuilder.snapshot.failedUnits.length && !mountedBuilder.snapshot.trip.brief.retainedAuthoredContent?.entries.length && !nightEditFeedback && !optimizationResult ? <p>{language === "es" ? "No hay revisiones pendientes." : "No pending reviews."}</p> : null}
-                <EasyTButton data-close-builder-review variant="quiet" onClick={()=>setShowBuilderReview(false)}>{language === "es" ? "Cerrar revisión" : "Close review"}</EasyTButton>
-              {mountedBuilder?.snapshot.pendingUnits.length ? <MorroviaStatusBanner tone="info" title={language === "es" ? "Actualizando los datos del viaje…" : "Updating trip details…"} /> : null}
-              {mountedBuilder?.snapshot.conflictUnits.length ? <MorroviaStatusBanner tone="warning" title={language === "es" ? "Revisa las condiciones del viaje" : "Review trip constraints"}
-                detail={mountedBuilder.snapshot.trip.brief.cascadeStatus?.conflicts.join(" ") || (language === "es" ? "Algunas fechas o conexiones necesitan revisión." : "Some dates or connections need review.")} /> : null}
-              {mountedBuilder?.snapshot.failedUnits.map(unit=><MorroviaStatusBanner key={`${unit.kind}:${unit.targetId}`} tone="warning"
-                title={language === "es" ? "No pudimos actualizar esta parte del viaje" : "This part of the trip could not be updated"}
-                actions={<EasyTButton variant="quiet" size="small" onClick={()=>mountedBuilder.session.retryNecessaryUnit(unit)}>{language === "es" ? "Reintentar" : "Try again"}</EasyTButton>} />)}
-              {nightEditFeedback ? <MorroviaStatusBanner className={styles.nightBalanceNotice} tone={nightEditFeedback.tone} title={nightEditFeedback.title} detail={nightEditFeedback.detail} /> : null}
-              {optimizationResult&&optimizationResult.kind!=="proposal"?<MorroviaStatusBanner tone={optimizationResult.kind==="unavailable"?"warning":"info"}
-                title={optimizationResult.kind==="unavailable"?(language==="es"?"No se pudo comprobar la ruta":"Route check unavailable"):(language==="es"?"No se encontró un orden mejor":"No better order found")}
-                detail={optimizationResult.kind==="unavailable"?(language==="es"?"Tus lugares, fechas y reservas se mantienen. No se ha cambiado el orden.":"Your places, dates and bookings are kept. The order has not changed."):(language==="es"?"Se mantiene el orden actual con tus fechas, reservas y preferencias.":"The current order is kept with your dates, bookings and preferences.")}/>:null}
-              {mountedBuilder ? <TripBuilderRetainedReview trip={mountedBuilder.snapshot.trip} language={language}
-                onMove={(selection,target)=>dispatchAcceptedBuilderEdit({kind:"retained-content-move",selection,target},{expectedInputRevision:mountedBuilder.snapshot.inputRevision})}
-                onRemove={selection=>dispatchAcceptedBuilderEdit({kind:"retained-content-remove",selection},{expectedInputRevision:mountedBuilder.snapshot.inputRevision})}/> : null}
-              </MorroviaContentDialog>
               <TripBuilderRouteWorkspace
                 canonicalTrip={activeTripDocument}
                 previewStopIds={routePreviewStopIds}
@@ -5550,10 +5500,12 @@ function TripBuilderDocument() {
                 lockedStopIds={protectedBuilderStopIds}
                 fixedOrder={fixedBuilderChronology}
                 routeCheckProposalStopIds={optimizationProposal&&!optimizationStale?optimizationProposal.projectedTrip.stops.map(stop=>stop.id):currentRouteCheckProposalStopIds}
+                legReview={legId=>necessaryReview(["leg"],legId)}
+                stopReview={stopId=>necessaryReview(["recommendation"],stopId)}
+                nightReview={nightEditFeedback?.tone==="warning" ? <p role="status" className={styles.hintError}>{nightEditFeedback.title} {nightEditFeedback.detail}</p> : null}
                 reviewControl={<div className={styles.builderReviewActions}>
                   <MorroviaSaveStatus state={mountedBuilder?.snapshot.failedUnits.length ? "error" : mountedBuilder?.snapshot.pendingUnits.length ? "saving" : "saved"}
                     label={mountedBuilder?.snapshot.failedUnits.length ? (language === "es" ? "Datos sin actualizar" : "Details need retry") : mountedBuilder?.snapshot.conflictUnits.length ? (language === "es" ? "Revisión necesaria" : "Review needed") : mountedBuilder?.snapshot.pendingUnits.length ? (language === "es" ? "Actualizando datos…" : "Updating details…") : (language === "es" ? "Datos actualizados" : "Details up to date")} />
-                  <EasyTButton variant="quiet" size="small" onClick={()=>setShowBuilderReview(true)}>{language === "es" ? "Revisar viaje" : "Review trip"}</EasyTButton>
                 </div>}
                 nightStatus={{ total: totalNights, allocated: allocatedNights, complete: allNightsAllocated, language }}
                 onSelectStop={setSelectedRouteStopId}

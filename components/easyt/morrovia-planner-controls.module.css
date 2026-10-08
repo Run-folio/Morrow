@@ -1,0 +1,33 @@
+/* Shared homepage and Builder control roles; other Journey surfaces retain their styling. */
+.planner { color: var(--morrovia-ink); }
+.planner.planner :global([data-morrovia-field-label]), .label {
+  color: var(--morrovia-muted);
+  font: var(--morrovia-type-fine-print);
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
+}
+.planner input:not([type="checkbox"]), .planner select, .planner textarea {
+  font: var(--morrovia-type-body);
+  color: var(--morrovia-ink);
+  background: var(--morrovia-control-surface);
+}
+.planner.planner :global([data-morrovia-field-value]), .planner.planner :global([data-morrovia-field-value]) > strong, .planner.planner :global([data-morrovia-field-value]) > span { font: var(--morrovia-type-body); }
+.planner button { font: var(--morrovia-type-control); }
+.fields {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
+  border: 1px solid var(--morrovia-line);
+  border-radius: var(--morrovia-control-radius);
+  background: var(--morrovia-control-surface);
+}
+.fields > div { display: grid; align-content: start; gap: 9px; min-width: 0; padding: 12px; }
+.fields > div + div { border-left: 1px solid var(--morrovia-line); }
+.fields > div > span { display: block; margin-bottom: 0; color: var(--morrovia-muted); font: var(--morrovia-type-fine-print); font-weight: 600; }
+.fields input { border: 0; min-height: 44px; }
+.fields :global([data-home-destination-field]) { border: 0; padding: 0; background: var(--morrovia-control-surface); }
+.fields button { min-width: 44px; min-height: 44px; }
+@media (max-width: 720px) {
+  .fields { grid-template-columns: minmax(0, 1fr); }
+  .fields > div + div { border-left: 0; border-top: 1px solid var(--morrovia-line); }
+}

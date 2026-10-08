@@ -31,7 +31,7 @@ for(const anotherPending of [false,true])test(`completed country top Edit reopen
   assert.ok(parent);assert.ok(completed.brief.structuredBrief?.completedPlanningAreaMentionIds?.includes(parent.id));
   assert.deepEqual(completed.stops.map(stop=>stop.name),['Marrakech','Fes','Chefchaouen','Bishkek City']);
   if(anotherPending){await addCountry('Kazakhstan');await dialog.getByRole('button',{name:'Close Discovery',exact:true}).click();await dialog.waitFor({state:'detached'});}
-  const top=view.page.locator('[data-builder-top-controls]');await top.getByRole('combobox',{name:'Starting from',exact:true}).fill('Lon partial');
+  const top=view.page.locator('[data-builder-top-controls]');await top.getByRole('combobox',{name:'Start from',exact:true}).fill('Lon partial');
   const before=await readTrip();const key=builderInputDraftKey(null,before.id);
   await view.page.waitForFunction((key:string)=>JSON.parse(localStorage.getItem(key)??'{}').fields?.some((field:{raw:string})=>field.raw==='Lon partial'),key);
   const draft=()=>view.page.evaluate((key:string)=>JSON.parse(localStorage.getItem(key)!).fields,key);
@@ -46,7 +46,7 @@ for(const anotherPending of [false,true])test(`completed country top Edit reopen
   await dialog.getByRole('button',{name:'Close Discovery',exact:true}).click();await dialog.waitFor({state:'detached'});await assertPreserved();
   await top.getByRole('button',{name:'Edit Kyrgyzstan',exact:true}).click();await dialog.getByRole('heading',{name:'Explore places',exact:true}).waitFor();
   await dialog.getByRole('button',{name:'Finish later',exact:true}).click();await dialog.waitFor({state:'detached'});await assertPreserved();
-  await view.page.reload();await top.waitFor();assert.equal(await top.getByRole('combobox',{name:'Starting from',exact:true}).inputValue(),'Lon partial');
+  await view.page.reload();await top.waitFor();assert.equal(await top.getByRole('combobox',{name:'Start from',exact:true}).inputValue(),'Lon partial');
   await top.getByRole('button',{name:'Edit Kyrgyzstan',exact:true}).click();await dialog.getByRole('heading',{name:'Explore places',exact:true}).waitFor();assert.ok((await dialog.innerText()).includes('Kyrgyzstan'));await assertPreserved();assert.deepEqual(view.errors,[]);
  }finally{await view.close()}
 });

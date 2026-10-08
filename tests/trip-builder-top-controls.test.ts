@@ -5,7 +5,8 @@ const source=await readFile(new URL('../app/journey/new/trip-builder.tsx',import
 test('mounted Builder owns the approved top controls and the existing table map',()=>{
  assert.match(source,/<TripBuilderTopControls/);
  assert.match(source,/<TripBuilderRouteWorkspace/);
- assert.match(source,/<TripBuilderRetainedReview/);
+ assert.doesNotMatch(source,/<TripBuilderRetainedReview/);
+ assert.doesNotMatch(source,/showBuilderReview/);
 });
 test('homepage and Builder share destination field presentation',async()=>{
  const home=await readFile(new URL('../app/journey/home/home-destination-editor.tsx',import.meta.url),'utf8');

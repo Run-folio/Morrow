@@ -14,7 +14,7 @@
   padding: 18px;
   border: 1px solid var(--morrovia-line);
   border-radius: calc(var(--morrovia-radius) + 2px);
-  background: var(--morrovia-paper);
+  background: var(--morrovia-control-surface);
   /* morrovia-ui-audit-allow-next-line raw-shadow -- preserve the canonical Homepage prompt's quiet editorial elevation */
   box-shadow: 0 16px 36px color-mix(in srgb, var(--morrovia-ink) 7%, transparent);
 }
@@ -62,8 +62,8 @@
 .personalizeToggle:hover:not(:disabled) { background: color-mix(in srgb, var(--morrovia-paper) 55%, transparent); }
 .personalizeToggle > svg:first-child { order: 0; width: 20px; height: 20px; color: var(--morrovia-action); }
 .personalizeLabel { display: grid; order: 1; min-width: 0; gap: 2px; text-align: left; }
-.personalizeLabel > span { font: 650 12px/1.2 var(--morrovia-ui); }
-.personalizeLabel small { overflow: hidden; color: var(--morrovia-ink); font: 600 14px/1.2 var(--morrovia-ui); text-overflow: ellipsis; white-space: nowrap; }
+.personalizeLabel > span { font: var(--morrovia-type-fine-print); font-weight: 600; color: var(--morrovia-muted); }
+.personalizeLabel small { overflow: hidden; color: var(--morrovia-ink); font: var(--morrovia-type-supporting-body); text-overflow: ellipsis; white-space: nowrap; }
 .personalizeChevron { order: 2; flex: none; width: 14px; height: 14px; margin-left: auto; transition: transform 180ms ease; }
 .personalizeToggle[aria-expanded="true"] .personalizeChevron { transform: rotate(180deg); }
 .personalizePanel { --homepage-personalize-control-height:50px; display:grid; grid-template-columns:minmax(340px,1.1fr) minmax(180px,.55fr) minmax(250px,.8fr) minmax(0,1.5fr); gap:16px; align-items:start; padding:12px 0 0; border-top:1px solid var(--morrovia-line); animation:revealDetails 180ms ease-out; }
@@ -88,7 +88,7 @@
 .wideAction button { position: relative; width: 100%; height: 58px; min-height: 58px; padding-inline: 20px; white-space: nowrap; }
 .wideAction button > svg { width: 18px; height: 18px; }
 .wideAction button[aria-busy="true"] > span:first-child { position: absolute; left: 14px; }
-.wideDestinationEditor { grid-column: 1 / -1; min-width: 0; padding-top: 12px; background: var(--morrovia-paper); animation: revealDetails 180ms ease-out; }
+.wideDestinationEditor { grid-column: 1 / -1; min-width: 0; padding-top: 12px; background: var(--morrovia-control-surface); animation: revealDetails 180ms ease-out; }
 .wideDescribePanel { position: relative; min-width: 0; }
 .wideDescribePanel > .promptField { min-height: 130px; }
 .wideDescribePanel .textareaField textarea { min-height: 100px; resize: vertical; }
@@ -103,14 +103,14 @@
 
 .label {
   color: var(--morrovia-signal);
-  font: 700 10px var(--morrovia-meta);
-  letter-spacing: .14em;
-  text-transform: uppercase;
+  font: var(--morrovia-type-fine-print);
+  font-weight: 600;
 }
 
 .homepageLabel {
   color: var(--morrovia-ink);
-  font: 700 13px/1.2 var(--morrovia-ui);
+  font: var(--morrovia-type-fine-print);
+  font-weight: 600;
   letter-spacing: 0;
   text-transform: none;
 }
@@ -122,7 +122,7 @@
   padding: 14px;
   border: 1px solid var(--morrovia-line);
   border-radius: calc(var(--morrovia-control-radius) + 2px);
-  background: var(--morrovia-paper);
+  background: var(--morrovia-control-surface);
   cursor: text;
   transition: border-color 180ms ease, box-shadow 180ms ease, background-color 180ms ease;
 }
@@ -228,7 +228,7 @@
 .travelStyleHead a:hover { color: var(--morrovia-action-hover); }
 .travelStyleHead a:focus-visible { outline: 3px solid var(--morrovia-focus-ring); outline-offset: 2px; }
 .travelStyleChips { display: flex; flex-wrap: wrap; gap: 6px; }
-.travelStyleChips span { display: inline-flex; align-items: center; min-height: 27px; padding: 5px 9px; border: 1px solid var(--morrovia-line); background: var(--morrovia-paper); color: var(--morrovia-ink-soft); font: 600 11px/1.1 var(--morrovia-ui); }
+.travelStyleChips span { display: inline-flex; align-items: center; min-height: 27px; padding: 5px 9px; border: 1px solid var(--morrovia-line); background: var(--morrovia-control-surface); color: var(--morrovia-ink-soft); font: 600 11px/1.1 var(--morrovia-ui); }
 /* morrovia-ui-audit-allow-next-line raw-radius -- saved travel-style labels retain the canonical Homepage pill silhouette */
 .travelStyleChips span { border-radius: 999px; }
 .action { position: static; flex: 0 0 auto; }
@@ -310,15 +310,6 @@
 .plannerRoute { display: grid; gap: 8px; margin-block: 12px; }
 .plannerType { justify-self: start; }
 .plannerType button { min-height: 44px; }
-.plannerFields { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 2fr); border: 1px solid var(--morrovia-line); border-radius: var(--morrovia-control-radius); background: var(--morrovia-paper); }
-.plannerFields > div { min-width: 0; }
-.plannerFields > div { padding: 12px; }
-.plannerFields > div + div { border-left: 1px solid var(--morrovia-line); }
-.plannerFields > div > span { display: block; margin-bottom: 9px; color: var(--morrovia-muted); font: 600 11px/1.35 var(--morrovia-ui); }
-.plannerFields :global([data-homepage-origin]) input { border: 0; }
-.plannerFields :global([data-home-destination-field]) { border: 0; padding: 0; }
-.plannerFields input { min-height: 44px; }
-.plannerFields button { min-width: 44px; min-height: 44px; }
 .plannerCard .personalizeTravellers button { min-width: 44px; }
 .plannerUtilities { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); border: 1px solid var(--morrovia-line); border-radius: var(--morrovia-control-radius); }
 .plannerUtilities .wideDatePicker { border-left: 0; }
@@ -326,11 +317,9 @@
 .plannerUtilities { grid-area: controls; }
 .plannerBottom .personalizePanel { grid-area: personalize; }
 .plannerSummary { color: var(--morrovia-muted); font: 600 12px/1.4 var(--morrovia-ui); }
-.plannerCard .personalizePanel { grid-template-columns: minmax(180px, .6fr) minmax(250px, .8fr) minmax(0, 1.5fr); }
+.plannerCard .personalizePanel { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
 @media (max-width: 720px) {
   .plannerHeader { align-items: stretch; flex-direction: column; }
-  .plannerFields { grid-template-columns: minmax(0, 1fr); }
-  .plannerFields > div + div { border-left: 0; border-top: 1px solid var(--morrovia-line); }
   .plannerBottom { grid-template-columns: minmax(0, 1fr); grid-template-areas: "controls" "personalize" "action"; }
   .plannerCard .personalizePanel { grid-template-columns: minmax(0, 1fr); }
   .plannerType > div { width: 100%; }

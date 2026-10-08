@@ -63,24 +63,24 @@ test('late saved finish lookup cannot restore an endpoint after dismissal and ac
  release();await h.view.page.waitForTimeout(200);assert.deepEqual(h.cloud(),accepted);assert.equal(await h.view.page.getByRole('dialog').count(),0);assert.deepEqual(h.view.errors,[]);
  }finally{release();await h.view.close()}
 });
-test('top controls have two type choices, unordered chips, one add owner and collapsed Personalize',{skip:!enabled,timeout:30000},async()=>{
+test('top controls have two type choices, unordered chips, one add owner and no optional preference controls',{skip:!enabled,timeout:30000},async()=>{
  const h=await fixture();try{
  const top=h.view.page.locator('[data-builder-top-controls]');assert.equal(await top.getByRole('group',{name:'Trip type',exact:true}).getByRole('button').count(),2);
  assert.equal(await h.view.page.getByRole('button',{name:'Save changes',exact:true}).count(),0);assert.equal(await h.view.page.getByRole('combobox',{name:'Finishing in',exact:true}).count(),0);
  assert.equal(await h.view.page.getByRole('button',{name:'Add destination',exact:true}).count(),1);assert.equal(await h.view.page.getByRole('combobox',{name:'Add a stop',exact:true}).count(),0);
  assert.equal(await top.locator('[data-destination-intent-id]').count(),3);assert.equal(await top.locator('[draggable="true"]').count(),3);
- assert.equal(await top.locator('details[open]').count(),0);await top.locator('summary').first().click();assert.equal(await top.getByRole('combobox',{name:'Pace',exact:true}).count(),0);assert.equal(await top.getByRole('button',{name:'Avoid driving',exact:true}).count(),1);
+ assert.equal(await top.getByText('Personalize',{exact:true}).count(),0);assert.equal(await top.getByRole('combobox',{name:'Pace',exact:true}).count(),0);assert.equal(await top.getByRole('button',{name:'Avoid driving',exact:true}).count(),0);
  assert.equal(await top.getByText('MUST KEEP',{exact:true}).count(),0);assert.equal(await top.getByText('MUST-SEE STOPS',{exact:true}).count(),0);
  assert.equal(await top.getByRole('button',{name:'Update route',exact:true}).isDisabled(),false,'optional proposal action is available');assert.deepEqual(h.view.errors,[]);
  }finally{await h.view.close()}
 });
 test('partial origin and exact intent replacement input survive budget save and reload without changing canonical places',{skip:!enabled,timeout:30000},async()=>{
  const h=await fixture();try{
- const before=structuredClone(h.cloud());const top=h.view.page.locator('[data-builder-top-controls]');await top.getByRole('combobox',{name:'Starting from',exact:true}).fill('Lon partial');
+ const before=structuredClone(h.cloud());const top=h.view.page.locator('[data-builder-top-controls]');await top.getByRole('combobox',{name:'Start from',exact:true}).fill('Lon partial');
  await top.getByRole('button',{name:'Edit Tokyo',exact:true}).click();await top.getByRole('combobox',{name:'Destination',exact:true}).fill('Tok partial');
  await top.getByRole('combobox',{name:'Budget',exact:true}).selectOption('high');await until(h,()=>h.cloud().brief.budgetBand==='high');await h.view.page.waitForFunction(()=>!Object.keys(localStorage).some(key=>key.startsWith('easyt:trip-recovery:v2:')));
  assert.deepEqual(h.cloud().brief.intent.route.origin,before.brief.intent.route.origin);assert.deepEqual(h.cloud().stops,before.stops);
- await h.view.page.reload();await h.view.page.locator('[data-builder-top-controls]').waitFor();assert.equal(await h.view.page.getByRole('combobox',{name:'Starting from',exact:true}).inputValue(),'Lon partial');assert.equal(await h.view.page.getByRole('combobox',{name:'Destination',exact:true}).inputValue(),'Tok partial');assert.deepEqual(h.view.errors,[]);
+ await h.view.page.reload();await h.view.page.locator('[data-builder-top-controls]').waitFor();assert.equal(await h.view.page.getByRole('combobox',{name:'Start from',exact:true}).inputValue(),'Lon partial');assert.equal(await h.view.page.getByRole('combobox',{name:'Destination',exact:true}).inputValue(),'Tok partial');assert.deepEqual(h.view.errors,[]);
  }finally{await h.view.close()}
 });
 test('single Add opens existing flow and its partial input survives reload independently of accepted places',{skip:!enabled,timeout:30000},async()=>{
@@ -97,12 +97,12 @@ test('legacy finish is visible and explicit replacement requires acceptance with
  await h.view.page.getByRole('button',{name:'Return to start',exact:true}).click();await dialog.getByRole('button',{name:'Return to start',exact:true}).click();await until(h,()=>h.cloud().brief.intent.route.journeyEnd.mode==='same_as_start');assert.deepEqual(h.cloud().stops,before);assert.deepEqual(h.view.errors,[]);
  }finally{await h.view.close()}
 });
-test('retained review discloses full day content and deliberate removal consumes only the selected day',{skip:!enabled,timeout:30000},async()=>{
+test('accepted stop removal retains every authored day through reload without a general review interface',{skip:!enabled,timeout:30000},async()=>{
  const h=await fixture();try{
  await h.view.page.getByLabel('Actions for Hiroshima',{exact:true}).click();await h.view.page.locator('[data-builder-route-workspace]').getByRole('button',{name:'Remove stop',exact:true}).last().click();await h.view.page.getByRole('dialog').getByRole('button',{name:'Remove Hiroshima',exact:true}).click();
- await h.view.page.getByRole('button',{name:'Review trip',exact:true}).click();const review=h.view.page.getByRole('region',{name:'Retained trip content',exact:true});assert.equal(await review.locator('details[open]').count(),0);await review.getByText(/Review saved content/).click();await review.locator('details details summary').first().click();await until(h,()=>Boolean(h.cloud().brief.retainedAuthoredContent?.entries.length));const entry=h.cloud().brief.retainedAuthoredContent!.entries[0]!;const day=entry.days[0]!.sourceDay;
- await review.getByRole('heading',{name:day.title,exact:true}).waitFor();assert.match(await review.innerText(),/2026-10-17|2026-10-18/);const count=entry.days.length;
- await review.getByRole('button',{name:`Remove content ${day.title}`,exact:true}).click();await h.view.page.getByRole('dialog').getByRole('button',{name:'Remove selected content',exact:true}).click();await until(h,()=>h.cloud().brief.retainedAuthoredContent?.entries[0]?.days.length===count-1);assert.deepEqual(h.view.errors,[]);
+ await until(h,()=>Boolean(h.cloud().brief.retainedAuthoredContent?.entries.length));const retained=structuredClone(h.cloud().brief.retainedAuthoredContent);
+ assert.equal(await h.view.page.getByRole('button',{name:'Review trip',exact:true}).count(),0);assert.equal(await h.view.page.getByRole('region',{name:'Retained trip content',exact:true}).count(),0);
+ await h.view.page.reload();await h.view.page.locator('[data-builder-top-controls]').waitFor();assert.deepEqual(h.cloud().brief.retainedAuthoredContent,retained);assert.deepEqual(h.view.errors,[]);
  }finally{await h.view.close()}
 });
 
@@ -114,7 +114,7 @@ test('unaccepted typed dates survive preference autosave and reload without chan
  }finally{await h.view.close()}
 });
 
-test('retained day move preserves full content and siblings while fixed date moves remain retained',{skip:!enabled,timeout:30000},async()=>{
+test('retired stop preserves authored activities, bookings and provider references without duplicate review cards',{skip:!enabled,timeout:30000},async()=>{
  const h=await fixture(false,trip=>{
  const target=trip.planItems.find(day=>day.stopId===trip.stops.find(stop=>stop.name==='Tokyo')!.id)!;target.notes=[];target.startsAt=null;target.endsAt=null;target.bookingUrl=null;
  const removed=trip.planItems.filter(day=>day.stopId===trip.stops.find(stop=>stop.name==='Hiroshima')!.id);
@@ -126,17 +126,12 @@ test('retained day move preserves full content and siblings while fixed date mov
  (trip.brief.dayNotes??={})[removed[0]!.dayNumber]=['Authored reminder'];(trip.brief.customActivities??={})[removed[0]!.dayNumber]=['Lunch with friends'];
  });try{
  await h.view.page.getByLabel('Actions for Hiroshima',{exact:true}).click();await h.view.page.locator('[data-builder-route-workspace]').getByRole('button',{name:'Remove stop',exact:true}).last().click();await h.view.page.getByRole('dialog').getByRole('button',{name:'Remove Hiroshima',exact:true}).click();
- await h.view.page.getByRole('button',{name:'Review trip',exact:true}).click();const review=h.view.page.getByRole('region',{name:'Retained trip content',exact:true});await review.getByText(/Review saved content/).click();await review.locator('details details summary').first().click();await until(h,()=>Boolean(h.cloud().brief.retainedAuthoredContent?.entries.length));
- const before=structuredClone(h.cloud().brief.retainedAuthoredContent!.entries[0]!);const source=before.days[0]!;const fixed=before.days[1]!;const target=h.cloud().planItems.find(day=>day.stopId.endsWith('tokyo'))!;
- for(const text of [...source.sourceDay.notes,...source.sourceDay.contextNotes!,...source.dayNotes!,...source.customActivities!])assert.ok((await review.innerText()).includes(text));
- const detail=await review.innerText();for(const text of ['Saved walking tour','Original saved description','90 minutes','45 GBP','ChIJ-retained-reference','Remember this saved place','Saved meeting point'])assert.ok(detail.includes(text));assert.doesNotMatch(detail,/undefined/);assert.equal(await review.getByRole('article').filter({has:h.view.page.getByRole('heading',{name:'Saved meeting point',exact:true})}).getByRole('link',{name:'View saved location',exact:true}).getAttribute('href'),'https://www.google.com/maps/search/?api=1&query=34.3853,132.4553');
- assert.equal(await review.getByRole('link',{name:'Saved booking',exact:true}).getAttribute('href'),fixed.sourceDay.bookingUrl);
- const fixedArticle=review.getByRole('article').filter({has:h.view.page.getByRole('heading',{name:fixed.sourceDay.title,exact:true})});await fixedArticle.getByRole('combobox').selectOption(target.id);await fixedArticle.getByRole('button',{name:'Move content',exact:true}).click();
- await review.getByText('This content remains retained',{exact:true}).waitFor();assert.deepEqual(h.cloud().brief.retainedAuthoredContent!.entries[0],before);
- const movable=review.getByRole('article').filter({has:h.view.page.getByRole('heading',{name:source.sourceDay.title,exact:true})});await movable.getByRole('combobox').selectOption(target.id);await movable.getByRole('button',{name:'Move content',exact:true}).click();
- await until(h,()=>h.cloud().brief.retainedAuthoredContent?.entries[0]?.days.length===before.days.length-1);
- const moved=h.cloud().planItems.find(day=>day.id===target.id)!;assert.deepEqual(moved,{...source.sourceDay,id:target.id,stopId:target.stopId,dayNumber:target.dayNumber,date:target.date,notes:[...source.sourceDay.notes,...source.customActivities!],noteDayParts:[...source.sourceDay.noteDayParts!,null]});assert.deepEqual(h.cloud().brief.dayNotes?.[target.dayNumber],source.dayNotes);assert.deepEqual(h.cloud().brief.customActivities?.[target.dayNumber],source.customActivities);
- assert.deepEqual(h.cloud().brief.retainedAuthoredContent!.entries[0]!.days,before.days.slice(1));assert.deepEqual(h.cloud().brief.retainedAuthoredContent!.entries[0]!.itineraryIdeas,before.itineraryIdeas);assert.deepEqual(h.cloud().brief.retainedAuthoredContent!.entries[0]!.mapPins,before.mapPins);assert.deepEqual(h.view.errors,[]);
+ await until(h,()=>Boolean(h.cloud().brief.retainedAuthoredContent?.entries.length));const retained=structuredClone(h.cloud().brief.retainedAuthoredContent!);const entry=retained.entries[0]!;
+ assert.deepEqual(entry.days[0]!.sourceDay.notes,['Traveller activity','Keep this evening free']);assert.deepEqual(entry.days[0]!.dayNotes,['Authored reminder']);assert.deepEqual(entry.days[0]!.customActivities,['Lunch with friends']);
+ assert.equal(entry.days[1]!.sourceDay.bookingUrl,'https://example.invalid/reservation');assert.equal(entry.days[1]!.sourceDay.startsAt,'09:00');
+ assert.equal(entry.itineraryIdeas.length,2);const provider=entry.itineraryIdeas.find(idea=>idea.source==='live-provider-inventory');assert.ok(provider&&provider.source==='live-provider-inventory');assert.equal(provider.title,'Saved walking tour');assert.equal(provider.providerProductId,'product:fixture');const google=entry.itineraryIdeas.find(idea=>idea.source==='google-place-reference');assert.ok(google&&google.source==='google-place-reference');assert.equal(google.providerReference.placeId,'ChIJ-retained-reference');assert.equal(entry.mapPins[0]!.title,'Saved meeting point');
+ assert.equal(await h.view.page.getByRole('button',{name:'Review trip',exact:true}).count(),0);assert.equal(await h.view.page.getByRole('region',{name:'Retained trip content',exact:true}).count(),0);
+ await h.view.page.reload();await h.view.page.locator('[data-builder-top-controls]').waitFor();assert.deepEqual(h.cloud().brief.retainedAuthoredContent,retained);assert.deepEqual(h.view.errors,[]);
  }finally{await h.view.close()}
 });
 
@@ -247,7 +242,7 @@ test('A17 mounted actual resolver saves the pending removal and reloads the acti
  view.page.setDefaultTimeout(6000);
  const waitFor=async(predicate:()=>boolean)=>{for(let i=0;i<60&&!predicate();i++)await view.page.waitForTimeout(100);assert.ok(predicate())};
  try{
-  await view.page.locator('[data-builder-top-controls]').waitFor();await view.page.getByRole('combobox',{name:'Starting from',exact:true}).fill(' origin unfinished ');
+  await view.page.locator('[data-builder-top-controls]').waitFor();await view.page.getByRole('combobox',{name:'Start from',exact:true}).fill(' origin unfinished ');
   await view.page.getByRole('button',{name:'Remove Hue',exact:true}).click();await view.page.getByRole('dialog').getByRole('button',{name:'Remove Hue',exact:true}).click();
   await waitFor(()=>cloud.stops.length===3);assert.ok(writes.some(trip=>trip.legs.some(leg=>leg.routeMetadata.source==='necessary-reconciliation'&&leg.routeMetadata.pending===true)));
   assert.deepEqual(cloud.stops.map(stop=>stop.nights),[3,4,3]);assert.deepEqual(cloud.brief.bookings,original.brief.bookings);
@@ -255,7 +250,7 @@ test('A17 mounted actual resolver saves the pending removal and reloads the acti
   release();await waitFor(()=>cloud.legs.every(leg=>leg.routeMetadata.pending!==true));await view.page.waitForFunction(()=>!Object.keys(localStorage).some(key=>key.startsWith('easyt:trip-recovery:v2:')));
   const saved=structuredClone(cloud);await view.page.waitForFunction(()=>document.body.textContent?.includes('Saved to your account'));
   await view.page.evaluate(()=>{const url=new URL(location.href);url.searchParams.set('recover','1');history.replaceState(null,'',url)});assert.match(view.page.url(),/recover=1/);await view.page.reload();await view.page.locator('[data-builder-top-controls]').waitFor();
-  assert.deepEqual(cloud,saved);assert.equal(await view.page.getByRole('combobox',{name:'Starting from',exact:true}).inputValue(),' origin unfinished ');assert.equal(await view.page.getByRole('button',{name:'Remove Hue',exact:true}).count(),0);assert.deepEqual(view.errors,[]);
+  assert.deepEqual(cloud,saved);assert.equal(await view.page.getByRole('combobox',{name:'Start from',exact:true}).inputValue(),' origin unfinished ');assert.equal(await view.page.getByRole('button',{name:'Remove Hue',exact:true}).count(),0);assert.deepEqual(view.errors,[]);
  }finally{release();await view.close()}
 });
 

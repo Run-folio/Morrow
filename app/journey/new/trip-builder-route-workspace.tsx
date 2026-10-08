@@ -27,6 +27,9 @@ export type TripBuilderRouteWorkspaceProps = {
   routeCheckProposalStopIds: readonly string[] | null;
   nightStatus: BuilderNightStatus;
   reviewControl?: ReactNode;
+  nightReview?: ReactNode;
+  stopReview?: (stopId: string) => ReactNode;
+  legReview?: (legId: string) => ReactNode;
   onSelectStop: (stopId: string) => void;
   onPreviewOrder: (stopIds: readonly string[] | null) => void;
   onCommitOrder: (stopIds: readonly string[], source: BuilderOrderSource) => boolean;
@@ -65,6 +68,9 @@ export function TripBuilderRouteWorkspace({
   routeCheckProposalStopIds,
   nightStatus,
   reviewControl,
+  nightReview,
+  stopReview,
+  legReview,
   onSelectStop,
   onPreviewOrder,
   onCommitOrder,
@@ -121,6 +127,7 @@ export function TripBuilderRouteWorkspace({
           </span>
         </h2>
       </div>
+      {nightReview}
       {reviewControl}
     </header>
 
@@ -157,7 +164,7 @@ export function TripBuilderRouteWorkspace({
               <button type="button" className={styles.builderRouteGrip} aria-label={`Reorder ${stop.name}, stop ${index + 1}`} disabled={isLocked} {...reorder.gripProps(stop.id)}>
                 <GripVertical aria-hidden="true" />
               </button>
-              <div className={styles.builderRouteIdentity} role="cell"><b>{index + 1}</b><span><strong>{stop.name}</strong><small>{stop.country}</small></span></div>
+              <div className={styles.builderRouteIdentity} role="cell"><b>{index + 1}</b><span><strong>{stop.name}</strong><small>{stop.country}</small>{stopReview?.(stop.id)}</span></div>
               <div className={styles.builderRouteTransfer} role="cell">
                 <Route aria-hidden="true" />
                 <span><strong>{leg ? `${leg.fromEndpoint?.name ? `From ${leg.fromEndpoint.name} · ` : ""}${transferJourneyModeLabel(leg)}` : index === 0 ? "Starts here" : "Transfer to confirm"}</strong><small>{leg ? formatMapDuration(transferMinutes) : "No arrival transfer"}</small>
@@ -169,6 +176,7 @@ export function TripBuilderRouteWorkspace({
                       onChange={(identity) => onTransportChoiceChange(recommendedLeg.id, identity)}
                     />
                   </span> : null}
+                  {recommendedLeg && legReview?.(recommendedLeg.id)}
                 </span>
               </div>
               <div className={styles.builderRouteNights} role="cell">

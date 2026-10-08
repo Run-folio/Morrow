@@ -7,7 +7,7 @@ import styles from './morrovia-destination-field.module.css';
 /** Shared accepted homepage presentation. Callers retain input, identity and focus ownership. */
 export function MorroviaDestinationField({label,children,addAction,status,homepage=false}:{label:string;children:ReactNode;addAction?:ReactNode;status?:ReactNode;homepage?:boolean}) {
  return <section className={styles.root} aria-label={label}>
-  <span className={styles.label}>{label}</span>
+  <span data-morrovia-field-label className={styles.label}>{label}</span>
   <div className={styles.destinationField} data-home-destination-field={homepage?true:undefined}>
    <ul className={styles.entries}>{children}</ul>{addAction}
   </div>

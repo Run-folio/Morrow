@@ -459,8 +459,8 @@ test("manual night edits use canonical rebalance, durable stop intent and shared
     "manual Builder edits must use the canonical night-allocation owner");
   assert.match(builder, /manualStopIds: nextManualStopIds/,
     "the edited stop must become authoritative for the pass");
-  assert.match(builder, /<MorroviaStatusBanner className=\{styles\.nightBalanceNotice\}/,
-    "automatic consequences and unresolved balance must reuse canonical status feedback");
+  assert.match(builder, /nightReview=\{nightEditFeedback\?\.tone==="warning"/,
+    "blocking night feedback belongs beside night allocation; normal accepted edits stay quiet");
   assert.doesNotMatch(builder, /sort\(\(a, b\) => nextAllocation\[b\.id\] - nextAllocation\[a\.id\]\)/,
     "the removed largest-stay donor shortcut must not return");
   assert.match(trip, /manualNightStopIds\?: string\[\]/,
@@ -487,7 +487,7 @@ browserTest("passive validation preserves Starting from focus while typing after
     await view.page.getByRole("combobox", { name: "Add your first place", exact: true }).fill("Tokyo");
     await view.page.getByRole("option").filter({ hasText: "Tokyo" }).first().click();
     await view.page.getByRole("heading", { name: "Nights per stop" }).waitFor();
-    const origin = view.page.getByRole("combobox", { name: "Starting from", exact: true });
+    const origin = view.page.getByRole("combobox", { name: "Start from", exact: true });
     await origin.focus();
     await origin.pressSequentially("London", { delay: 100 });
     assert.equal(await origin.inputValue(), "London");

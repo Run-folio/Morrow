@@ -236,7 +236,7 @@ test('mounted_selected_origin_type_and_dates_autosave_dependencies_without_Save_
  }});
  try{
  await view.page.locator('[data-builder-edit-session="active"]').waitFor();
- const origin=view.page.locator('#builder-origin').getByRole('combobox',{name:'Starting from',exact:true});await origin.fill('Paris');await view.page.getByRole('option',{name:/^Paris.*France/}).first().click({timeout:5000});
+ const origin=view.page.locator('#builder-origin').getByRole('combobox',{name:'Start from',exact:true});await origin.fill('Paris');await view.page.getByRole('option',{name:/^Paris.*France/}).first().click({timeout:5000});
  await view.page.getByRole('button',{name:'Return to start',exact:true}).click();
  await view.page.getByRole('button',{name:/Increase travellers/}).click();
  await view.page.getByRole('button',{name:/Travel dates/}).click();

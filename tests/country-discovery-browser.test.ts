@@ -487,10 +487,10 @@ test('Discovery handoff retains normal Builder controls and persists exercised e
     const snapshot = async (page: typeof normal.page) => {
       const route = page.locator('[data-builder-route-workspace]');
       await route.waitFor();
-      await page.getByRole('combobox', { name: 'Starting from', exact: true }).waitFor({ state: 'visible' });
+      await page.getByRole('combobox', { name: 'Start from', exact: true }).waitFor({ state: 'visible' });
       const base = {
         addStop: await page.getByRole('combobox', { name: 'Add a stop', exact: true }).isVisible(),
-        startingFrom: await page.getByRole('combobox', { name: 'Starting from', exact: true }).isVisible(),
+        startingFrom: await page.getByRole('combobox', { name: 'Start from', exact: true }).isVisible(),
         journeyEnd: await page.getByRole('combobox', { name: 'Ending at', exact: true }).isVisible()
           && await page.getByRole('button', { name: 'Same as start', exact: true }).isVisible(),
         removeStop: await page.getByRole('button', { name: 'Remove Kanazawa', exact: true }).isVisible(),

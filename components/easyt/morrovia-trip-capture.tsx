@@ -1,10 +1,10 @@
 "use client";
 
-import { ArrowRight, CalendarDays, ChevronDown, Heart, MapPin, Plus, Search, SlidersHorizontal, Sparkles, UsersRound } from "lucide-react";
+import { ArrowRight, CalendarDays, ChevronDown, MapPin, Plus, Search, SlidersHorizontal, Sparkles, UsersRound } from "lucide-react";
 import { useEffect, useId, useRef, useState, type FormEvent, type KeyboardEvent, type ReactNode } from "react";
 import type { EasyTLanguage } from "@/lib/easyt/i18n";
 import { journeyCaptureValidationMessage, validateJourneyCaptureSubmission, type JourneyCaptureValidationIssue } from "@/lib/easyt/journey-capture-client";
-import { tripInterestIds, tripInterestLabels, type TripInterest } from "@/lib/easyt/trip-interest";
+import { tripInterestLabels, type TripInterest } from "@/lib/easyt/trip-interest";
 import type { TravelProfile } from "@/lib/easyt/travel-profile";
 import { appendVoiceTranscript } from "@/lib/easyt/speech-recognition";
 import { EasyTButton } from "./easyt-controls";
@@ -13,10 +13,11 @@ import { MorroviaContextualDisclosure, MorroviaBriefNotice } from "./morrovia-fe
 import { MorroviaQuantitySelector } from "./morrovia-quantity-selector";
 import { VoiceTripBrief } from "./voice-trip-brief";
 import styles from "./morrovia-trip-capture.module.css";
+import plannerStyles from "./morrovia-planner-controls.module.css";
 
 const copy = {
   en: {
-    briefLabel: "TELL US ABOUT YOUR TRIP",
+    briefLabel: "Tell us about your trip",
     briefPlaceholder: "Where would you like to go and for how long?\nAny must see places to base the trip around?",
     homepageLabel: "Start your plan",
     homepagePlaceholder: "Where would you like to go, for how long?",
@@ -46,7 +47,7 @@ const copy = {
     datesHeading: "When are you travelling?",
     clear: "Clear",
     personalize: "Personalize",
-    personalizeSummary: "Budget, interests & more",
+    personalizeSummary: "Budget and travellers",
     hidePersonalize: "Hide personalization",
     budget: "Budget",
     budgetValue: "Budget",
@@ -84,7 +85,7 @@ const copy = {
     datesHeading: "¿Cuándo viajas?",
     clear: "Borrar",
     personalize: "Personalizar",
-    personalizeSummary: "Presupuesto, intereses y más",
+    personalizeSummary: "Presupuesto y viajeros",
     hidePersonalize: "Ocultar personalización",
     budget: "Presupuesto",
     budgetValue: "Económico",
@@ -175,7 +176,7 @@ export function MorroviaTripCapture({
   travellers,
   value,
 }: MorroviaTripCaptureProps) {
-  const [attributePanel, setAttributePanel] = useState<"dates" | "travellers" | "interests" | null>(null);
+  const [attributePanel, setAttributePanel] = useState<"dates" | "travellers" | null>(null);
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [personalizeOpen, setPersonalizeOpen] = useState(false);
   const [destinationEditorOpen, setDestinationEditorOpen] = useState(false);
@@ -191,7 +192,6 @@ export function MorroviaTripCapture({
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const text = copy[language];
   const personalizationSummary = [
-    interests.length ? `${interests.length} ${interests.length === 1 ? (language === "es" ? "interés" : "interest") : text.interests.toLowerCase()}` : "",
     homepageEntry?.budget ? text[`budget${homepageEntry.budget === "value" ? "Value" : homepageEntry.budget === "mid" ? "Mid" : "High"}`] : "",
   ].filter(Boolean).join(" · ");
   const promptError = validationIssue ? journeyCaptureValidationMessage(validationIssue, language) : "";
@@ -262,18 +262,17 @@ export function MorroviaTripCapture({
   const submitAction = <EasyTButton type="submit" size="large" icon={homepageEntry ? Search : undefined} loading={loading} disabled={disabled}>{loading && !homepageEntry ? text.checking : <>{text.continue} <ArrowRight aria-hidden="true" /></>}</EasyTButton>;
   const homepageDates = homepageEntry ? <MorroviaDatePicker className={styles.wideDatePicker} mode="range" locale={language} combinedLabel={text.travelDates} clearLabel={text.clearDates} startLabel={text.startDate} endLabel={text.endDate} startValue={startDate} endValue={endDate} disabled={disabled || loading} onChange={onDatesChange} onClear={homepageEntry.onDatesClear} /> : null;
   const homepagePersonalize = homepageEntry ? <div className={styles.personalizeRow}>
-    <EasyTButton className={styles.personalizeToggle} variant="secondary" size="small" disabled={disabled || loading} aria-label={text.personalize} aria-expanded={personalizeOpen} aria-controls={personalizeId} icon={SlidersHorizontal} onClick={() => setPersonalizeOpen((current) => !current)}><span className={styles.personalizeLabel}><span>{text.personalize}</span><small>{personalizationSummary || text.personalizeSummary}</small></span><ChevronDown className={styles.personalizeChevron} aria-hidden="true" /></EasyTButton>
+    <EasyTButton className={styles.personalizeToggle} variant="secondary" size="small" disabled={disabled || loading} aria-label={text.personalize} aria-expanded={personalizeOpen} aria-controls={personalizeId} icon={SlidersHorizontal} onClick={() => setPersonalizeOpen((current) => !current)}><span className={styles.personalizeLabel}><span data-morrovia-field-label>{text.personalize}</span><small>{personalizationSummary || text.personalizeSummary}</small></span><ChevronDown className={styles.personalizeChevron} aria-hidden="true" /></EasyTButton>
   </div> : null;
   const homepageAction = <div className={styles.wideAction}>{submitAction}</div>;
   const homepageLayoutClass = `${styles.wideHomeLayout}${personalizeOpen ? ` ${styles.wideHomeLayoutPersonalized}` : ""}`;
   const homepagePersonalizePanel = homepageEntry && personalizeOpen ? <div className={`${styles.personalizePanel} ${styles.wideHomePersonalize}`} id={personalizeId}>
     {endpointEntry ? <div className={styles.personalizeEndpoints}>{endpointEntry}</div> : null}
     <MorroviaQuantitySelector className={styles.personalizeTravellers} compact label={text.travellers} locale={language} noun={language === "es" ? "viajero" : "traveller"} nounPlural={language === "es" ? "viajeros" : "travellers"} value={travellers} min={1} max={12} disabled={disabled || loading} onChange={onTravellersChange} />
-    <div className={styles.budgetPanel} aria-label={text.budget}><span>{text.budget}</span><div><div className={styles.budgetChoices}>{(["value", "mid", "high"] as const).map((budget) => <EasyTButton variant="secondary" size="small" key={budget} aria-pressed={homepageEntry.budget === budget} disabled={disabled || loading} onClick={() => homepageEntry.onBudgetChange(budget)}>{text[`budget${budget === "value" ? "Value" : budget === "mid" ? "Mid" : "High"}`]}</EasyTButton>)}</div>{homepageEntry.budget ? <EasyTButton className={styles.budgetClear} variant="quiet" size="small" disabled={disabled || loading} onClick={() => homepageEntry.onBudgetChange(null)}>{text.clear}</EasyTButton> : null}</div></div>
-    <div className={styles.interestPanel} aria-label={text.interestLabel}><span>{text.interestLabel}</span><div>{tripInterestIds.map((interest) => <EasyTButton variant="secondary" size="small" key={interest} aria-pressed={interests.includes(interest)} disabled={disabled || loading} onClick={() => onInterestsChange(interests.includes(interest) ? interests.filter((item) => item !== interest) : [...interests, interest])}>{tripInterestLabels[language][interest]}</EasyTButton>)}</div></div>
+    <div className={styles.budgetPanel} aria-label={text.budget}><span data-morrovia-field-label>{text.budget}</span><div><div className={styles.budgetChoices}>{(["value", "mid", "high"] as const).map((budget) => <EasyTButton variant="secondary" size="small" key={budget} aria-pressed={homepageEntry.budget === budget} disabled={disabled || loading} onClick={() => homepageEntry.onBudgetChange(budget)}>{text[`budget${budget === "value" ? "Value" : budget === "mid" ? "Mid" : "High"}`]}</EasyTButton>)}</div>{homepageEntry.budget ? <EasyTButton className={styles.budgetClear} variant="quiet" size="small" disabled={disabled || loading} onClick={() => homepageEntry.onBudgetChange(null)}>{text.clear}</EasyTButton> : null}</div></div>
   </div> : null;
 
-  return <form id={formId} className={`${styles.root}${homepageEntry ? ` ${styles.wideRoot}` : ""}`} onSubmit={submit}>
+  return <form id={formId} className={`${styles.root} ${plannerStyles.planner}${homepageEntry ? ` ${styles.wideRoot}` : ""}`} onSubmit={submit}>
     {homepageEntry ? <div className={`${styles.card} ${styles.wideCard}${homepageEntry.planner ? ` ${styles.plannerCard}` : ""}`}>
       <div className={homepageEntry.planner ? styles.plannerHeader : undefined}>
       <div className={styles.modeTabs} role="tablist" aria-label={language === "es" ? "Cómo empezar el viaje" : "How to start your trip"}>
@@ -284,7 +283,7 @@ export function MorroviaTripCapture({
       {homepageEntry.planner ? <>
         <div className={styles.plannerRoute}>
         <div className={styles.plannerType}>{homepageEntry.planner.tripTypeControl}</div>
-        <div className={styles.plannerFields} data-home-route-fields>
+        <div className={plannerStyles.fields} data-home-route-fields>
           {homepageEntry.planner.originEntry}
           {homepageEntry.mode === "stops" ? <div role="tabpanel" id={stopsPanelId} aria-labelledby={`${stopsPanelId}-tab`}>{homepageEntry.destinationEditor}</div>
             : <div className={styles.wideDescribePanel} role="tabpanel" id={describePanelId} aria-labelledby={`${describePanelId}-tab`}>
@@ -354,7 +353,6 @@ export function MorroviaTripCapture({
         <div className={styles.attributeActions}>
           <EasyTButton variant="secondary" size="small" icon={CalendarDays} aria-expanded={attributePanel === "dates"} onClick={() => setAttributePanel((current) => current === "dates" ? null : "dates")}>{text.dates}</EasyTButton>
           <EasyTButton variant="secondary" size="small" icon={UsersRound} aria-expanded={attributePanel === "travellers"} onClick={() => setAttributePanel((current) => current === "travellers" ? null : "travellers")}>{travellers} {text.travellers.toLowerCase()}</EasyTButton>
-          <EasyTButton variant="secondary" size="small" icon={Heart} aria-expanded={attributePanel === "interests"} onClick={() => setAttributePanel((current) => current === "interests" ? null : "interests")}>{interests.length ? `${interests.length} ${text.interests.toLowerCase()}` : text.interests}</EasyTButton>
         </div>
         {attributePanel === "dates" ? <MorroviaDatePicker
           className={styles.datePicker}
@@ -378,16 +376,6 @@ export function MorroviaTripCapture({
           max={12}
           onChange={onTravellersChange}
         /> : null}
-        {attributePanel === "interests" ? <div className={styles.interestPanel} aria-label={text.interestLabel}>
-          <span>{text.interestLabel}</span>
-          <div>{tripInterestIds.map((interest) => <EasyTButton
-            variant="secondary"
-            size="small"
-            key={interest}
-            aria-pressed={interests.includes(interest)}
-            onClick={() => onInterestsChange(interests.includes(interest) ? interests.filter((item) => item !== interest) : [...interests, interest])}
-          >{tripInterestLabels[language][interest]}</EasyTButton>)}</div>
-        </div> : null}
         </div>
         {progressiveDetails && travelProfile ? <section className={styles.travelStyle} aria-label={text.travelStyle}>
           <div className={styles.travelStyleHead}><span>{text.travelStyle}</span><a href="/journey/profile">{text.edit}</a></div>

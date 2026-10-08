@@ -586,3 +586,5 @@ Itinerary caps the day rail at 270px and context rail at 320px so the selected
 day receives the extra space. Overview caps Trip Health at 420px.
 Map intentionally retains its independent 2200px viewport breakout and existing
 mobile sheets; shared TripShell width changes must not constrain that canvas.
+
+The beta Homepage capture and Builder top controls share `morrovia-planner-controls.module.css` for label, input/value and action roles, and joined origin/destination fields. `--morrovia-control-surface` is the white panel/control surface; it does not change the outer Journey page background. Saved transport/interest preferences remain in trip data while beta capture controls are hidden.

@@ -60,10 +60,10 @@ export function MorroviaQuantitySelector({
   };
 
   return <div className={`${styles.root} ${compact ? styles.compact : ""} ${className}`}>
-    <span className={styles.label} id={labelId}>{label}</span>
+    <span data-morrovia-field-label className={styles.label} id={labelId}>{label}</span>
     <div className={styles.stepper} role="group" aria-labelledby={labelId} onKeyDown={onKeyDown}>
       <button type="button" disabled={disabled || boundedValue <= min} onClick={() => update(boundedValue - 1)} aria-label={decreaseLabel}><Minus aria-hidden="true" /></button>
-      <output className={styles.value} aria-live="polite" aria-atomic="true">
+      <output data-morrovia-field-value className={styles.value} aria-live="polite" aria-atomic="true">
         {showIcon ? <UsersRound aria-hidden="true" /> : null}<strong>{boundedValue}</strong><span>{boundedValue === 1 ? noun : nounPlural}</span>
       </output>
       <button type="button" disabled={disabled || boundedValue >= max} onClick={() => update(boundedValue + 1)} aria-label={increaseLabel}><Plus aria-hidden="true" /></button>

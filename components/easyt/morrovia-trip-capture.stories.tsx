@@ -271,9 +271,9 @@ export const WideHomepageInteraction: Story = {
     if (!personalize) throw new globalThis.Error("Personalize control is missing");
     personalize.click();
     await settle();
-    const culture = Array.from(canvasElement.querySelectorAll<HTMLButtonElement>("button")).find((button) => button.textContent?.trim() === "Culture");
-    if (!culture) throw new globalThis.Error("Culture interest is missing from Personalize");
-    culture.click();
+    const highBudget = Array.from(canvasElement.querySelectorAll<HTMLButtonElement>("button")).find((button) => button.textContent?.trim() === "Luxury");
+    if (!highBudget) throw new globalThis.Error("Budget choice is missing from Personalize");
+    highBudget.click();
     await settle();
     const hide = canvasElement.querySelector<HTMLButtonElement>('button[aria-label="Personalize"][aria-expanded="true"]');
     if (!hide) throw new globalThis.Error("Hide personalization control is missing");
@@ -287,8 +287,8 @@ export const WideHomepageInteraction: Story = {
     reopen.click();
     await settle();
     if (!canvasElement.querySelector(`#${CSS.escape(personalizePanelId)}`)) throw new globalThis.Error("Personalize panel did not reopen");
-    const retainedInterest = Array.from(canvasElement.querySelectorAll<HTMLButtonElement>("button")).find((button) => button.textContent?.trim() === "Culture");
-    if (retainedInterest?.getAttribute("aria-pressed") !== "true") throw new globalThis.Error("Expected retained interest after closing Personalize");
+    const retainedBudget = Array.from(canvasElement.querySelectorAll<HTMLButtonElement>("button")).find((button) => button.textContent?.trim() === "Luxury");
+    if (retainedBudget?.getAttribute("aria-pressed") !== "true") throw new globalThis.Error("Expected retained budget after closing Personalize");
     const retainedDates = canvasElement.textContent?.includes("8–22 Apr 2027");
     if (!retainedDates) throw new globalThis.Error("Expected retained dates after closing Personalize");
   },

@@ -1,0 +1,13 @@
+# Batch14 beta planner simplification
+
+Approved scope: Shaun's “yes please update all” after explicitly rejecting the general Review trip feature, requesting the top form's blue/lavender fill removed, removing optional transport/interest controls, and consolidating selected bases into the main destination editing area. Sole implementer/native execution; no additional implementer. Deployment remains c1ce2bba0abf12f4ebe8a6b479e3e9a0e3f7b910 until separately approved publication.
+
+Remove general Review trip button/modal and retained-content card stack from normal Builder. Keep all retained authored data losslessly. Update route is optional deliberate optimisation: no-proposal/unavailable feedback is small inline by the action; genuine changed-order comparison remains deliberate and requires Apply order. Normal accepted edits autosave and reconcile only necessary dependents. Do not silently change authoritative order.
+
+Remove optional transport and interest controls from Homepage capture, fresh/manual capture and mounted/legacy Builder preferences. Keep dates, travellers and budget. Do not clear stored preferences/instructions/bookings, rewrite routing, fabricate alternative transport or change the schema. Keep actual blocking/retry information at its relevant field/action, without a general review modal/global banner.
+
+Show chosen bases with their parent intent within Places you want to visit, using canonical ordered stop IDs (e.g. South Korea · Busan, Seoul); use the existing parent Edit action to edit its bases. Remove the duplicate detached summary where canonical top controls are present. Preserve parent intent/stay IDs, repeat identities, authoritative order, requested/held nights and existing grouped removal safety.
+
+Normalize typography by label, value, action and supporting-text roles across both Homepage Plan with stops/Describe and Builder, using existing body/control/fine-print tokens. Use white panels and neutral joined origin/destination boundaries, shared through planner composition styles; preserve shared semantic tokens, table/map, controls, responsive behavior and accessibility. Reuse EasyTButton, MorroviaDestinationField/Tag, date/quantity/budget controls, SaveStatus and the existing real route proposal comparison. No replacement general modal, new sidebar or new primitive.
+
+Verify RED/GREEN mounted user flows, preservation and proposal/staleness guards; real local desktop/mobile pixels and overflow; UI audit/typecheck/build/Storybook as applicable. Independently review the exact new local candidate. No push/deploy/schema/config/credential change/reset/delete in this correction.

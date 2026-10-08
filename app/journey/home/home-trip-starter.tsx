@@ -361,7 +361,7 @@ export default function HomeTripStarter() {
         tripTypeControl: <div data-homepage-trip-type><EasyTSegmentedControl ariaLabel={language === "es" ? "Tipo de viaje" : "Trip type"} disabled={sessionPending || recoveryBlocked || loading}
           value={choice.tripType} options={[{ value: "return_to_start", label: language === "es" ? "Volver al inicio" : "Return to start" }, { value: "one_way", label: language === "es" ? "Solo ida" : "One way" }]}
           onChange={type => { if (type !== "unknown_legacy") requestTripType(type); }} /></div>,
-        originEntry: <div data-homepage-origin><span>{language === "es" ? "Sales desde" : "Start from"}</span><CanonicalPlaceAutocomplete
+        originEntry: <div data-homepage-origin><span data-morrovia-field-label>{language === "es" ? "Sales desde" : "Start from"}</span><CanonicalPlaceAutocomplete
           language={language} label={language === "es" ? "Sales desde" : "Start from"} value={originInput}
           placeholder={language === "es" ? "Ciudad o aeropuerto" : "City or airport"} allowedPlaceTypes={["city", "town", "transport_gateway"]}
           requireCoordinates showPlaceType={false} disabled={sessionPending || recoveryBlocked || loading}

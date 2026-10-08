@@ -356,8 +356,8 @@ export function MorroviaDatePicker(props: MorroviaDatePickerProps) {
     disabled={props.disabled}
     onClick={() => open && activeBoundary === boundary ? close(false) : openFor(boundary)}
   >
-    <span>{label}</span>
-    <b><CalendarDays aria-hidden="true" /><strong>{displayValue ?? (formatLocalDate(value, locale) || placeholder)}</strong><ChevronDown aria-hidden="true" /></b>
+    <span data-morrovia-field-label>{label}</span>
+    <b><CalendarDays aria-hidden="true" /><strong data-morrovia-field-value>{displayValue ?? (formatLocalDate(value, locale) || placeholder)}</strong><ChevronDown aria-hidden="true" /></b>
   </button>;
 
   const calendarOverlay = open ? <>
