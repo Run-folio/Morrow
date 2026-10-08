@@ -160,6 +160,10 @@ export function savedJourneyFinishChoiceMatches(end: JourneyEndpointPlace, choic
   if (!validCoordinates(choice.coordinates) || !journeyEndpointIdentityIsCoherent(choice)
     || end.country && end.country.toLocaleLowerCase() !== choice.country?.toLocaleLowerCase()
     || end.canonicalPlaceId && !canonicalPlaceFactsMatch(end.canonicalPlaceId, choice)) return false;
+  const canonicalProvider = verifiedOsmProviderIdentity(choice.canonicalPlaceId);
+  const explicitProvider = verifiedOsmProviderIdentity(choice.providerId);
+  // Strong supported-namespace contradictions win over every alias/name path.
+  if (canonicalProvider && explicitProvider && canonicalProvider !== explicitProvider) return false;
   const sourceCatalog = catalogIdentity(end);
   if (sourceCatalog && !canonicalPlaceFactsMatch(sourceCatalog.canonicalPlaceId, choice)) return false;
   const sourceStays = stops.map(stop => ({ name: stop.name, canonicalPlaceId: stop.canonicalPlaceId, country: stop.country,
@@ -171,8 +175,6 @@ export function savedJourneyFinishChoiceMatches(end: JourneyEndpointPlace, choic
   const candidateCatalog = matchCatalogPlace(choice.name);
   if (sourceCatalog && candidateCatalog?.canonicalPlaceId === sourceCatalog.canonicalPlaceId) return true;
   const candidateProvider = verifiedOsmProviderIdentity(choice.providerId ?? choice.canonicalPlaceId);
-  const canonicalProvider = verifiedOsmProviderIdentity(choice.canonicalPlaceId);
-  if (canonicalProvider && choice.providerId && canonicalProvider !== verifiedOsmProviderIdentity(choice.providerId)) return false;
   if (!candidateProvider) return false;
   const sourceProvider = verifiedOsmProviderIdentity(end.providerId ?? end.canonicalPlaceId);
   if (sourceProvider === candidateProvider && !coordinatesContradict(end, choice, 200)) return true;

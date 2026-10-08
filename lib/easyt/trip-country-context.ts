@@ -13,13 +13,24 @@ export function eligibleCountryContextIntentIds(trip: CanonicalEasyTTrip): strin
       || Object.keys(intent).some(key=>!['id','kind','sourceText','selectedPlace','resolution','requestedNights','routeMembership','stopIds'].includes(key))
       || intent.routeMembership!=='required' || intent.stopIds.length || intent.requestedNights!==null || intent.resolution!=='needs_base'
       || intent.sourceText!==mention.sourceText || intent.selectedPlace?.name!==mention.canonicalName || intent.selectedPlace?.canonicalPlaceId!==mention.canonicalPlaceId
+      || intent.selectedPlace && Object.keys(intent.selectedPlace).some(key=>!['name','canonicalPlaceId','country','providerId','coordinates'].includes(key))
       || intent.selectedPlace?.providerId || intent.selectedPlace?.coordinates
       || mention.provenance.some(p=>p.kind==='builder')
       || brief.placeSelections?.some(s=>s.mentionId===intent.id)
       || brief.completedPlanningAreaMentionIds?.includes(intent.id)
       || brief.countryDiscoveryChoices?.[intent.id]?.length
       || (trip.brief.selectedPlaces[intent.id]??[]).length
-      || brief.destinations.some(d=>d.placeMentionId===intent.id && d.provenance.source!=='prompt'))return false;
+      // Each object removed by planning-context must be proven capture-only.
+      // Unknown nested choice/provenance data and independent must-visit state
+      // cannot be inferred to be untouched from the original prompt.
+      || brief.mustVisit.some(d=>d.placeMentionId===intent.id || d.canonicalPlaceId===mention.canonicalPlaceId)
+      || brief.placeIssues?.some(issue=>issue.mentionId===intent.id)
+      || brief.destinations.some(d=>d.placeMentionId===intent.id && (
+        d.provenance.source!=='prompt' || d.role!=='preferred' || d.priority!=='normal'
+        || d.name!==mention.canonicalName || d.canonicalPlaceId!==mention.canonicalPlaceId
+        || Object.keys(d).some(key=>!['name','canonicalPlaceId','placeMentionId','placeType','resolutionStatus','routability','sourceLabel','parentCountries','parentCanonicalPlaceId','role','priority','provenance'].includes(key))
+        || Object.keys(d.provenance).some(key=>!['source','kind','confidence','sourceText'].includes(key))
+      )))return false;
     const draft=brief.discoveryDraftByMentionId?.[intent.id];
     if(draft && (draft.version!==1 || draft.step!=='places' || Object.keys(draft).some(key=>!['version','step','removedIds','directionId','reviewState','shortlistIds','baseByIntentId','visitBaseByIntentId'].includes(key)) || !Array.isArray(draft.shortlistIds) || !Array.isArray(draft.removedIds) || !draft.baseByIntentId || !draft.visitBaseByIntentId || draft.shortlistIds.length || draft.removedIds.length || draft.directionId
       || Object.keys(draft.baseByIntentId).length || Object.keys(draft.visitBaseByIntentId).length
@@ -46,7 +57,7 @@ export function eligibleCountryContextIntentIds(trip: CanonicalEasyTTrip): strin
       || refers(trip.brief.mapPins??[]) || authoredText(trip.brief.mapPins??[])
       || refers(trip.brief.retainedAuthoredContent??{}) || authoredText(trip.brief.retainedAuthoredContent??{})
       || trip.brief.bookings?.some(b=>refers(b)||[b.title,b.location??'',...(b.notes??[])].some(namesCountry))
-      || trip.planItems.some(item=>item.notes.some(namesCountry))
+      || trip.planItems.some(item=>refers(item)||item.notes.some(namesCountry))
       || Object.values(trip.brief.dayNotes??{}).flat().some(namesCountry)
       || Object.values(trip.brief.customActivities??{}).flat().some(namesCountry))return false;
     return true;

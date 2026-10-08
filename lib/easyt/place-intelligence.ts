@@ -1332,6 +1332,12 @@ export function geographicContextMentionIds(prompt: string, mentions: readonly R
       const prefix = prompt.slice(0, at);
       const clause = normalizePlacePhrase(prefix.split(/[.;!?\n]/).at(-1) ?? "");
       if (/(?:do not|dont|never|not)(?: want to)? (?:visit|explore|stay in)$|(?:skip|avoid|exclude)$/.test(clause)) return true;
+      // A country occurrence with its own stay budget or affirmative role is
+      // traveller intent, even when it also qualifies the preceding cities.
+      const countrySuffix = normalizePlacePhrase(prompt.slice(at + label.length));
+      if (country.role === "required"
+        || /^(?:for )?\d{1,3} (?:nights?|n)(?: |$)/.test(countrySuffix)
+        || /^(?:(?:is|are) )?(?:essential|required|a must|must visit)(?: |$)/.test(countrySuffix)) return false;
       if (endpoints.some(endpoint => endpoint.country && normalizePlacePhrase(endpoint.country) === normalizePlacePhrase(country.canonicalName)
         && new RegExp(`(?:^|[^\\p{L}\\p{N}])${escape(endpoint.name)}\\s*,\\s*$`, "iu").test(prefix))) return true;
       if (cityPattern) {
