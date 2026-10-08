@@ -1,4 +1,13 @@
 import type { RouteIntent } from "./trip.ts";
+
+/** Intent identity remains separate from the occurrence permutation it requests. */
+export function builderChipOccurrenceOrder(route:RouteIntent,intentIds:readonly string[]):string[]|null {
+  if(intentIds.length!==route.destinations.length||new Set(intentIds).size!==intentIds.length)return null;
+  const byId=new Map(route.destinations.map(intent=>[intent.id,intent]));
+  const occurrences:string[]=[];
+  for(const id of intentIds){const intent=byId.get(id);if(!intent||intent.kind!=='overnight_place'||intent.resolution!=='resolved'||intent.stopIds.length!==1)return null;occurrences.push(intent.stopIds[0]);}
+  return occurrences.length===route.orderedStopIds.length&&new Set(occurrences).size===occurrences.length&&occurrences.every(id=>route.orderedStopIds.includes(id))?occurrences:null;
+}
 export type BuilderStopOrderRejection =
   | "same-order"
   | "length-mismatch"

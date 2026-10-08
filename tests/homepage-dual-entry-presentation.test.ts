@@ -57,7 +57,9 @@ test("wide capture keeps one form and one primary submit", () => {
 });
 
 test("Homepage destination intents and expanded details precede its primary action", () => {
-  const planner = captureSource.slice(captureSource.indexOf('<div className={styles.plannerFields}>'), captureSource.indexOf('      </> : <>', captureSource.indexOf('<div className={styles.plannerFields}>')));
+  const plannerStart = captureSource.indexOf('<div className={styles.plannerFields} data-home-route-fields>');
+  assert.ok(plannerStart >= 0, 'the connected route field owner is present');
+  const planner = captureSource.slice(plannerStart, captureSource.indexOf('      </> : <>', plannerStart));
   assert.ok(planner.indexOf("planner.originEntry") < planner.indexOf("homepageEntry.destinationEditor"));
   assert.ok(planner.indexOf("homepageEntry.destinationEditor") < planner.indexOf("{homepageDates}"));
   assert.ok(planner.indexOf("{homepageDates}") < planner.indexOf("{homepagePersonalize}"));

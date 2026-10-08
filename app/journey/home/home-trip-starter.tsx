@@ -7,7 +7,7 @@ import { CanonicalPlaceAutocomplete } from "@/components/easyt/canonical-place-a
 import { EasyTSegmentedControl } from "@/components/easyt/easyt-controls";
 import { MorroviaConfirmationDialog } from "@/components/easyt/morrovia-feedback";
 import { captureJourneyBrief } from "@/lib/easyt/journey-capture";
-import { homepageCapturedRouteEvidence, homepageDescribeSourceKey, homepageRouteChoice, homepageRouteReviewKey, invalidateHomepageRouteReview, type HomepageRouteEvidence } from "@/lib/easyt/home-route-choice";
+import { homepageCapturedRouteEvidence, homepageDescribeSourceKey, homepageRouteChoice, homepageRouteReviewKey, homepageTripTypeRequest, invalidateHomepageRouteReview, type HomepageRouteEvidence } from "@/lib/easyt/home-route-choice";
 import { languageFromStorage, type EasyTLanguage } from "@/lib/easyt/i18n";
 import { trackEvent } from "@/lib/analytics";
 import { markPlanningMilestone, planningAttemptOutcome } from "@/lib/easyt/planning-attempt-performance";
@@ -323,11 +323,9 @@ export default function HomeTripStarter() {
   });
   const requestTripType = (type: HomepageTripType) => {
     const current = snapshotRef.current;
-    const knownEnd = current.journeyEnd.state === "selected" ? current.journeyEnd.value : { mode: "unknown" as const };
-    const evidence = evidenceFor(current) ?? { tripType: knownEnd.mode === "explicit" ? "one_way" as const : knownEnd.mode === "same_as_start" ? "return_to_start" as const : null,
-      journeyEnd: knownEnd, source: "legacy" as const, status: knownEnd.mode === "unknown" ? "unknown" as const : "clear" as const };
-    const next = chosenSnapshot(current, type, evidence);
-    if (homepageRouteChoice(next, evidence).conflict) {
+    const request = homepageTripTypeRequest(current,type,evidenceFor(current));
+    const {snapshot:next,evidence}=request;
+    if (request.conflict) {
       setProposedType({ snapshot: current, evidence: evidence ?? { tripType: null, journeyEnd: current.journeyEnd.state === "selected" ? current.journeyEnd.value : { mode: "unknown" }, source: "legacy", status: "clear" }, type });
     } else updateSnapshot(() => next);
   };

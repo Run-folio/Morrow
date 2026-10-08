@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { needsDestinationConfirmation } from "@/lib/easyt/destination-resolution";
+import { geocodeNearbyContext, needsDestinationConfirmation } from "@/lib/easyt/destination-resolution";
 import { createOpenWorldPlaceProvider, searchOpenWorldNearbyBaseSuggestions, searchOpenWorldTravelCandidates } from "@/lib/easyt/open-world-place.server";
 import { catalogPlaceForProviderIdentity, placeCandidateSuitableAsNearbyBase, placeCandidateWithinPlanningParent, type GeographicBounds, type NearbyBaseAnchor, type NearbyBaseSuggestion, type PlaceProviderCandidate, type PlaceType, type PlanningParentConstraint } from "@/lib/easyt/place-intelligence";
 
@@ -154,9 +154,7 @@ export async function GET(request: NextRequest) {
     : "route-stop";
   const planningParent = planningParentFromRequest(request);
   const nearbyAnchor = request.nextUrl.searchParams.get("nearbyBaseSearch") === "1" ? nearbyAnchorFromRequest(request) : undefined;
-  const nearLat = Number(request.nextUrl.searchParams.get("nearLat"));
-  const nearLon = Number(request.nextUrl.searchParams.get("nearLon"));
-  const nearby = Number.isFinite(nearLat) && Number.isFinite(nearLon) ? [nearLon, nearLat] as [number, number] : undefined;
+  const nearby = geocodeNearbyContext(request.nextUrl.searchParams);
   if (!place || place.length > 140 || (country && country.length > 100)) return NextResponse.json({ result: null }, { status: 400 });
 
   try {

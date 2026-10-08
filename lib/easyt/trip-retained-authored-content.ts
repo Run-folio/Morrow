@@ -94,7 +94,17 @@ export function retainRemovedAuthoredContent(before: EasyTTrip, after: EasyTTrip
     return { ...after, brief: { ...after.brief, retainedAuthoredContent: entries.length ? { version: 1, entries } : undefined } };
 }
 export function retainedAuthoredContentForReview(trip: EasyTTrip) {
-    return structuredClone(trip.brief.retainedAuthoredContent?.entries ?? []);
+    // Suppress only known blank calendar scaffolding; retain all recovery bytes
+    // and treat any unknown/authored field as reviewable.
+    const blankDay=(entry:RetainedAuthoredStopContent,day:RetainedAuthoredStopContent['days'][number])=>{
+      const expected={id:day.sourceDay.id,stopId:entry.sourceStop.id,dayNumber:day.sourceDay.dayNumber,date:day.sourceDay.date,type:'open',title:`Flexible day in ${entry.sourceStop.name}`,reason:'Plan this day around your preferences.',notes:[],startsAt:null,endsAt:null,bookingUrl:null,latitude:null,longitude:null};
+      return day.sourceDay.id.startsWith(`${trip.id}-calendar:`)&&authoredContentKey(day.sourceDay)===authoredContentKey(expected)
+        && !(day.dayNotes?.length||day.customActivities?.length)
+        && Object.keys(day).every(key=>['sourceDay','dayNotes','customActivities'].includes(key));
+    };
+    return structuredClone((trip.brief.retainedAuthoredContent?.entries ?? []).filter(entry=>entry.sourceKind!=='retired_day'
+      ||Object.keys(entry).some(key=>!['id','sourceKind','sourceStop','sourceIntentIds','days','itineraryIdeas','mapPins'].includes(key))||entry.itineraryIdeas.length||entry.mapPins.length
+      ||!entry.days.length||entry.days.some(day=>!blankDay(entry,day))));
 }
 /** Deliberate structural inverse restores only exact occurrence snapshots. */
 export function restoreRetainedAuthoredContent(trip: EasyTTrip, sourceStops: EasyTTrip["stops"]): EasyTTrip {

@@ -1,5 +1,12 @@
 const normalise = (value: string) => value.toLocaleLowerCase().replace(/[’']/g, "").replace(/[^a-z0-9]+/g, " ").trim();
 
+export function geocodeNearbyContext(params: URLSearchParams): [number,number] | undefined {
+  const lat=params.get('nearLat'),lon=params.get('nearLon');
+  if (!lat?.trim() || !lon?.trim()) return undefined;
+  const latitude=Number(lat),longitude=Number(lon);
+  return Number.isFinite(latitude)&&Number.isFinite(longitude)&&Math.abs(latitude)<=90&&Math.abs(longitude)<=180?[longitude,latitude]:undefined;
+}
+
 /** A global name match is not enough to become a routing identity. */
 export function needsDestinationConfirmation(countries: Iterable<string>, hasNearbyContext = false) {
   return new Set([...countries].map(normalise).filter(Boolean)).size > 1 && !hasNearbyContext;

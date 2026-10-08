@@ -86,7 +86,7 @@ import { discoveryProjectionKey } from "@/lib/easyt/discovery-projection-key";
 import { discoveryChoiceEvent, discoveryConfirmedEvent, discoveryDismissedEvent } from "@/lib/easyt/discovery-funnel";
 import { discoveryBaseSuitableForMention, discoveryPlaceWithinMention } from "@/lib/easyt/discovery-content";
 import { PRODUCT_TOUR_STATE_EVENT } from "@/components/easyt/easyt-product-tour";
-import { EasyTButton, EasyTField, EasyTLinkButton } from "@/components/easyt/easyt-controls";
+import { EasyTButton, EasyTField, EasyTLinkButton, EasyTSelect } from "@/components/easyt/easyt-controls";
 import { MorroviaDatePicker } from "@/components/easyt/morrovia-date-picker";
 import { MorroviaQuantitySelector } from "@/components/easyt/morrovia-quantity-selector";
 import { MorroviaConfirmationDialog, MorroviaRecoveryFeedback, MorroviaSaveStatus, MorroviaStatusBanner } from "@/components/easyt/morrovia-feedback";
@@ -4883,56 +4883,37 @@ function TripBuilderDocument() {
                   </div> : null}
                   {(originError || originMissing) && !inlineOriginPlanningMention && <small id={originErrorId} className={styles.hintError} role="alert">{originError || ui.addOrigin}</small>}
   </>;
-  const topPersonalize = <>
-                {hasSavedTravelProfile && <section className={styles.travelStyle}>
-                  <div className={styles.travelStyleHead}><span>{language === "es" ? "TU ESTILO DE VIAJE" : "YOUR TRAVEL STYLE"}</span><a href="/journey/profile">{language === "es" ? "Editar" : "Edit"}</a></div>
-                  <div className={styles.travelStyleChips}>{travelStyleLabels(travelProfile, language).map((label) => <span key={label}>{label}</span>)}</div>
-                </section>}
-                <div className={styles.intentGrid}>
-                  <section className={styles.intentHard}>
-                    <p>{language === "es" ? "DEBE MANTENERSE" : "MUST KEEP"}</p>
-                    <div className={styles.intentFacts}>
-                      <span>{language === "es" ? "Salida" : "Origin"}<b>{origin || (language === "es" ? "Añadir" : "Add")}</b></span>
-                      <span>{language === "es" ? "Ruta" : "Route"}<b>{stops.length ? `${stops.length} ${language === "es" ? "paradas" : "stops"}` : (language === "es" ? "Añadir" : "Add")}</b></span>
-                      <span>{language === "es" ? "Fechas" : "Timing"}<b>{effectiveIntent.timing.flexibility === "fixed" ? (language === "es" ? "Fijas" : "Fixed") : (language === "es" ? "Flexible" : "Flexible")}</b></span>
-                    </div>
-                    {stops.length > 0 && <div className={styles.mustSeeStops}><span>{language === "es" ? "PARADAS IMPRESCINDIBLES" : "MUST-SEE STOPS"}</span><div>{stops.map((stop) => {
-                      const mustSee = !effectiveIntent.hardConstraints.optionalStopIds.includes(stop.id);
-                      return <EasyTButton variant="secondary" key={stop.id} className={mustSee ? styles.intentChoiceOn : ""} onClick={() => toggleOptionalStop(stop.id)}>{mustSee ? "✓ " : ""}{stop.name}{mustSee ? "" : ` · ${language === "es" ? "opcional" : "optional"}`}</EasyTButton>;
-                    })}</div></div>}
-                    <div className={styles.intentToggle} role="group" aria-label={language === "es" ? "Flexibilidad de fechas" : "Date flexibility"}>
-                      <EasyTButton variant="secondary" className={effectiveIntent.timing.flexibility === "fixed" ? styles.intentChoiceOn : ""} onClick={() => updateTimingFlexibility("fixed")}>{language === "es" ? "Fechas fijas" : "Dates fixed"}</EasyTButton>
-                      <EasyTButton variant="secondary" className={effectiveIntent.timing.flexibility === "flexible" ? styles.intentChoiceOn : ""} onClick={() => updateTimingFlexibility("flexible")}>{language === "es" ? "Duración flexible" : "Flexible duration"}</EasyTButton>
-                    </div>
-                    <div className={styles.fixedCommitment}>
-                      <EasyTField label={language === "es" ? "LUGAR DEL PLAN FIJO" : "FIXED PLAN PLACE"} value={fixedCommitmentLabel} onChange={(event) => setFixedCommitmentLabel(event.target.value)} placeholder={language === "es" ? "Ej. Oaxaca" : "e.g. Oaxaca"} />
-                      <MorroviaDatePicker
-                        className={styles.fixedCommitmentDate}
-                        mode="single"
-                        size="compact"
-                        locale={language}
-                        label={language === "es" ? "Fecha fija" : "Fixed date"}
-                        value={fixedCommitmentDate}
-                        onChange={setFixedCommitmentDate}
-                      />
-                      <EasyTButton variant="secondary" onClick={addFixedCommitment} disabled={!fixedCommitmentLabel.trim()}><Plus />{language === "es" ? "Añadir" : "Add"}</EasyTButton>
-                    </div>
-                  </section>
-                  <section className={styles.intentPreferences}>
-                    <p>{language === "es" ? "PREFERENCIAS" : "PREFERENCES"}</p>
-                    <div className={styles.intentFieldRow}>
-                      <div><span>{language === "es" ? "RITMO" : "PACE"}</span><div className={styles.intentToggle}>{(["relaxed", "balanced", "packed"] as TripIntentPace[]).map((pace) => <EasyTButton variant="secondary" key={pace} className={effectiveIntent.preferences.pace === pace ? styles.intentChoiceOn : ""} onClick={() => updateIntentPreferences({ pace })}>{language === "es" ? ({ relaxed: "Tranquilo", balanced: "Equilibrado", packed: "Intenso" }[pace]) : ({ relaxed: "Relaxed", balanced: "Balanced", packed: "Packed" }[pace])}</EasyTButton>)}</div></div>
-                    </div>
-                    <div className={styles.intentFieldRow}>
-                      <div><span>{language === "es" ? "TRANSPORTE" : "TRANSPORT"}</span><div className={styles.intentToggle}>{(["flight", "train", "drive"] as TripTransportMode[]).map((mode) => <EasyTButton variant="secondary" key={mode} className={effectiveIntent.preferences.transportModes.includes(mode) ? styles.intentChoiceOn : ""} onClick={() => toggleTransportMode(mode)}>{language === "es" ? ({ flight: "Preferir vuelos en trayectos largos", train: "Preferir tren cuando sea práctico", drive: "Preferir carretera cuando sea útil" }[mode]) : ({ flight: "Prefer flights for long journeys", train: "Prefer rail when practical", drive: "Prefer road where useful" }[mode])}</EasyTButton>)}<EasyTButton variant="secondary" className={effectiveIntent.hardConstraints.avoidDriving ? styles.intentChoiceOn : ""} onClick={toggleAvoidDriving}>{language === "es" ? "Evitar coche" : "Avoid driving"}</EasyTButton></div></div>
-
-                    </div>
-                    <div className={styles.intentInterestRow}><span>{language === "es" ? "INTERESES" : "INTERESTS"}</span><div>{tripInterestIds.map((interest) => <EasyTButton variant="secondary" key={interest} className={effectiveIntent.preferences.interests.includes(interest) ? styles.intentChoiceOn : ""} onClick={() => toggleInterest(interest)}>{tripInterestLabels[language][interest]}</EasyTButton>)}</div></div>
-                    <EasyTField className={styles.dislikesField} label={language === "es" ? "EVITAR (OPCIONAL)" : "AVOID (OPTIONAL)"} value={effectiveIntent.preferences.dislikes.join(", ")} onChange={(event) => updateIntentPreferences({ dislikes: event.target.value.split(",").map((item) => item.trim()).filter(Boolean).slice(0, 6) })} placeholder={language === "es" ? "Ej. traslados nocturnos, calor extremo" : "e.g. overnight transfers, extreme heat"} />
-                  </section>
-                </div>
-                {effectiveIntent.hardConstraints.fixedCommitments.length > 0 && <div className={styles.commitmentChips}>{effectiveIntent.hardConstraints.fixedCommitments.map(item=><span key={item.id}>{item.date ? `${item.date} · ` : ""}{item.label}<EasyTButton variant="quiet" icon={X} iconOnly aria-label={`${language === "es" ? "Quitar" : "Remove"} ${item.label}`} onClick={()=>removeFixedCommitment(item.id)}>{language === "es" ? "Quitar" : "Remove"} {item.label}</EasyTButton></span>)}</div>}
-  </>;
+  const topPersonalize = <div className={styles.topPreferences}>
+    {hasSavedTravelProfile && <section className={styles.travelStyle}>
+      <div className={styles.travelStyleHead}><span>{language === "es" ? "TU ESTILO DE VIAJE" : "YOUR TRAVEL STYLE"}</span><a href="/journey/profile">{language === "es" ? "Editar" : "Edit"}</a></div>
+      <div className={styles.travelStyleChips}>{travelStyleLabels(travelProfile, language).map(label => <span key={label}>{label}</span>)}</div>
+    </section>}
+    <div className={styles.topPreferenceFields}>
+      <EasyTSelect label={language === "es" ? "Ritmo" : "Pace"} value={effectiveIntent.preferences.pace} onChange={event => updateIntentPreferences({pace:event.target.value as TripIntentPace})}>
+        <option value="relaxed">{language === "es" ? "Tranquilo" : "Relaxed"}</option><option value="balanced">{language === "es" ? "Equilibrado" : "Balanced"}</option><option value="packed">{language === "es" ? "Intenso" : "Packed"}</option>
+      </EasyTSelect>
+      <EasyTSelect label={language === "es" ? "Flexibilidad de fechas" : "Date flexibility"} value={effectiveIntent.timing.flexibility} onChange={event => updateTimingFlexibility(event.target.value as "fixed"|"flexible")}>
+        <option value="fixed">{language === "es" ? "Fechas fijas" : "Dates fixed"}</option><option value="flexible">{language === "es" ? "Duración flexible" : "Flexible duration"}</option>
+      </EasyTSelect>
+    </div>
+    <fieldset className={styles.topPreferenceChoices}><legend>{language === "es" ? "Preferencias de transporte" : "Transport preferences"}</legend>
+      {(["flight","train","drive"] as TripTransportMode[]).map(mode => <EasyTButton variant="secondary" key={mode} aria-pressed={effectiveIntent.preferences.transportModes.includes(mode)} onClick={() => toggleTransportMode(mode)}>{language === "es" ? ({flight:"Vuelos",train:"Tren",drive:"Carretera"}[mode]) : ({flight:"Flights",train:"Rail",drive:"Road"}[mode])}</EasyTButton>)}
+      <EasyTButton variant="secondary" aria-pressed={effectiveIntent.hardConstraints.avoidDriving} onClick={toggleAvoidDriving}>{language === "es" ? "Evitar coche" : "Avoid driving"}</EasyTButton>
+    </fieldset>
+    <fieldset className={styles.topPreferenceChoices}><legend>{language === "es" ? "Intereses" : "Interests"}</legend>
+      {tripInterestIds.map(interest => <EasyTButton variant="secondary" key={interest} aria-pressed={effectiveIntent.preferences.interests.includes(interest)} onClick={() => toggleInterest(interest)}>{tripInterestLabels[language][interest]}</EasyTButton>)}
+    </fieldset>
+    <EasyTField label={language === "es" ? "Evitar (opcional)" : "Avoid (optional)"} value={effectiveIntent.preferences.dislikes.join(", ")} onChange={event => updateIntentPreferences({dislikes:event.target.value.split(",").map(item=>item.trim()).filter(Boolean).slice(0,6)})} placeholder={language === "es" ? "Ej. traslados nocturnos" : "e.g. overnight transfers"}/>
+    <details className={styles.topConstraints}><summary>{language === "es" ? "Planes fijos y paradas opcionales" : "Fixed plans and optional stops"}</summary><div>
+      {stops.length > 0 && <fieldset className={styles.topPreferenceChoices}><legend>{language === "es" ? "Paradas que quieres mantener" : "Stops to keep"}</legend>{stops.map(stop => <EasyTButton variant="secondary" key={stop.id} aria-pressed={!effectiveIntent.hardConstraints.optionalStopIds.includes(stop.id)} onClick={()=>toggleOptionalStop(stop.id)}>{stop.name}</EasyTButton>)}</fieldset>}
+      <div className={styles.topFixedPlan}>
+        <EasyTField label={language === "es" ? "Lugar del plan fijo" : "Fixed plan place"} value={fixedCommitmentLabel} onChange={event=>setFixedCommitmentLabel(event.target.value)} placeholder={language === "es" ? "Ej. Oaxaca" : "e.g. Oaxaca"}/>
+        <MorroviaDatePicker mode="single" size="compact" locale={language} label={language === "es" ? "Fecha fija" : "Fixed date"} value={fixedCommitmentDate} onChange={setFixedCommitmentDate}/>
+        <EasyTButton variant="secondary" icon={Plus} onClick={addFixedCommitment} disabled={!fixedCommitmentLabel.trim()}>{language === "es" ? "Añadir" : "Add"}</EasyTButton>
+      </div>
+      {effectiveIntent.hardConstraints.fixedCommitments.length > 0 && <div className={styles.topPreferenceChoices}>{effectiveIntent.hardConstraints.fixedCommitments.map(item=><span key={item.id}>{item.date ? `${item.date} · ` : ""}{item.label}<EasyTButton variant="quiet" icon={X} iconOnly aria-label={`${language === "es" ? "Quitar" : "Remove"} ${item.label}`} onClick={()=>removeFixedCommitment(item.id)}>{language === "es" ? "Quitar" : "Remove"} {item.label}</EasyTButton></span>)}</div>}
+    </div></details>
+  </div>;
 
   /* ---------------------------------------------------------- brief wizard */
 
@@ -5012,6 +4993,7 @@ function TripBuilderDocument() {
               </section>}
               {(hasRouteSkeleton || hasPromptContext || showStopEditor || pendingClarificationIds.length > 0 || inlineStopBaseMention) && <section className={styles.tripUnderstood} aria-label={language === "es" ? "Viaje entendido" : "Trip understood"}>
                 {mountedBuilder ? <TripBuilderTopControls trip={mountedBuilder.snapshot.trip} draft={mountedBuilder.snapshot.draft} language={language}
+                  onReorder={ids=>commitStopOrder(ids,"drag")} fixedOrder={Boolean(structuredRouteConstraints.fixedCommitments?.length)}
                   onUpdateRoute={()=>{void requestRouteOptimization();}} updatingRoute={optimizationChecking}
                   disabled={Boolean(mountedBuilder.snapshot.error?.category === "protected")}
                   onType={type=>{

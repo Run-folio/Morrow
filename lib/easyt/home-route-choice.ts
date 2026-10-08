@@ -73,6 +73,15 @@ export function invalidateHomepageRouteReview(previous: HomepageInputSnapshot, n
   return editable;
 }
 
+/** A prior toggle is editable input, not independent contrary source evidence. */
+export function homepageTripTypeRequest(current: HomepageInputSnapshot, type: HomepageTripType, captured?: HomepageRouteEvidence) {
+  const knownEnd = current.journeyEnd.state === 'selected' ? current.journeyEnd.value : {mode:'unknown' as const};
+  const evidence = captured ?? {tripType:null,journeyEnd:knownEnd.mode==='explicit'?knownEnd:{mode:'unknown' as const},source:'legacy' as const,status:knownEnd.mode==='explicit'?'clear' as const:'unknown' as const};
+  const snapshot: HomepageInputSnapshot = {...current,tripType:{state:'selected',value:type},journeyEnd:{state:'selected',value:type==='return_to_start'?{mode:'same_as_start'}
+    : evidence.journeyEnd.mode==='explicit'?evidence.journeyEnd:knownEnd.mode==='explicit'?knownEnd:{mode:'unknown'}}};
+  return {snapshot,evidence,conflict:homepageRouteChoice(snapshot,evidence).conflict};
+}
+
 export function homepageRouteChoice(snapshot: HomepageInputSnapshot, evidence?: HomepageRouteEvidence): {
   tripType: RouteIntent["tripType"];
   journeyEnd: JourneyEndSelection;

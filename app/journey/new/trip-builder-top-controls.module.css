@@ -27,3 +27,6 @@
 
 .root .personalize button,.root .personalize input,.root .personalize select { min-height: 44px; }
 .root .personalize button { min-width: 44px; }
+.grip { touch-action: none; cursor: grab; }
+.grip[aria-grabbed="true"] { cursor: grabbing; }
+.dropTarget { outline: 2px solid var(--morrovia-focus-ring); outline-offset: 2px; }

@@ -24,8 +24,9 @@ export function useBuilderStopReorder(options: {
   fixedOrder: boolean;
   onPreview: (ids: readonly string[] | null) => void;
   onCommit: (ids: readonly string[], source: ReorderSource) => boolean;
+  targetAttribute?: 'data-builder-stop-index' | 'data-builder-chip-index';
 }) {
-  const { stopIds, lockedStopIds, fixedOrder, onPreview, onCommit } = options;
+  const { stopIds, lockedStopIds, fixedOrder, onPreview, onCommit, targetAttribute = 'data-builder-stop-index' } = options;
   const [draggingId, setDraggingId] = useState<string | null>(null);
   const [previewIds, setPreviewIds] = useState<readonly string[] | null>(null);
   const gestureRef = useRef<{ movedId: string; fingerprint: string; pointerId: number | null } | null>(null);
@@ -127,8 +128,9 @@ export function useBuilderStopReorder(options: {
     },
     onPointerMove: (event: PointerEvent<HTMLElement>) => {
       if (gestureRef.current?.pointerId !== event.pointerId) return;
-      const target = document.elementFromPoint(event.clientX, event.clientY)?.closest<HTMLElement>("[data-builder-stop-index]");
-      const targetIndex = Number(target?.dataset.builderStopIndex);
+      const target = document.elementFromPoint(event.clientX, event.clientY)?.closest<HTMLElement>(`[${targetAttribute}]`);
+      const rawIndex = target?.getAttribute(targetAttribute);
+      const targetIndex = rawIndex === null || rawIndex === undefined ? NaN : Number(rawIndex);
       if (Number.isInteger(targetIndex)) previewAt(stopId, targetIndex);
     },
     onPointerUp: (event: PointerEvent<HTMLElement>) => {
@@ -140,7 +142,7 @@ export function useBuilderStopReorder(options: {
       // Native mouse drag emits pointercancel after dragstart; only captured touch/pen gestures own this cancellation.
       if (gestureRef.current?.pointerId === event.pointerId) cancel();
     },
-  } as HTMLAttributes<HTMLElement>), [begin, cancel, draggingId, drop, fixedOrder, lockedStopIds, previewAt]);
+  } as HTMLAttributes<HTMLElement>), [begin, cancel, draggingId, drop, fixedOrder, lockedStopIds, previewAt, targetAttribute]);
 
   return { draggingId, previewIds, gripProps, previewAt, previewActiveAt, drop, cancel, moveFromMenu };
 }

@@ -2,14 +2,14 @@
 import {useState} from 'react';
 import {EasyTButton,EasyTSelect} from '@/components/easyt/easyt-controls';
 import {MorroviaConfirmationDialog,MorroviaStatusBanner} from '@/components/easyt/morrovia-feedback';
-import {authoredContentKey,type RetainedContentSelection} from '@/lib/easyt/trip-retained-authored-content';
+import {authoredContentKey,retainedAuthoredContentForReview,type RetainedContentSelection} from '@/lib/easyt/trip-retained-authored-content';
 import {isGooglePlaceReferenceIdea,type CanonicalEasyTTrip} from '@/lib/easyt/trip';
 import styles from './trip-builder-retained-review.module.css';
 export function TripBuilderRetainedReview({trip,language,onMove,onRemove}:{trip:CanonicalEasyTTrip;language:'en'|'es';onMove:(selection:RetainedContentSelection,target:{stopId:string;dayId:string})=>boolean;onRemove:(selection:RetainedContentSelection)=>boolean}){
  const es=language==='es';const [targets,setTargets]=useState<Record<string,string>>({});const [removal,setRemoval]=useState<{selection:RetainedContentSelection;label:string}|null>(null);const [error,setError]=useState(false);
  const dayPart=(part:string)=>es?({morning:'Mañana',midday:'Mediodía',afternoon:'Tarde',evening:'Noche',anytime:'Cualquier hora'}[part]??part):part;
  const location=(longitude:number,latitude:number)=><p><a href={`https://www.google.com/maps/search/?api=1&query=${latitude},${longitude}`} target="_blank" rel="noreferrer">{es?'Ver ubicación guardada':'View saved location'}</a></p>;
- const entries=trip.brief.retainedAuthoredContent?.entries??[];
+ const entries=retainedAuthoredContentForReview(trip);
  if(!entries.length)return null;
  const actions=(selection:RetainedContentSelection,label:string)=>{
   const key=authoredContentKey(selection);const target=trip.planItems.find(day=>day.id===targets[key]);
@@ -18,7 +18,8 @@ export function TripBuilderRetainedReview({trip,language,onMove,onRemove}:{trip:
   </EasyTSelect><EasyTButton variant="secondary" disabled={!target} onClick={()=>{setError(!onMove(selection,{stopId:target!.stopId,dayId:target!.id}))}}>{es?'Mover contenido':'Move content'}</EasyTButton><EasyTButton variant="quiet" onClick={()=>setRemoval({selection,label})}>{es?'Eliminar contenido':'Remove content'}<span className="sr-only"> {label}</span></EasyTButton></div>;
  };
  return <section className={styles.root} aria-label={es?'Contenido conservado':'Retained trip content'}>
-  <MorroviaStatusBanner tone="warning" title={es?'Revisa el contenido conservado':'Review retained trip content'} detail={entries.some(entry=>entry.sourceKind==='retired_day')?(es?'El contenido de las paradas eliminadas o los días retirados sigue guardado.':'Content from removed stops or retired days is still saved.'):(es?'El contenido de las paradas eliminadas sigue guardado.':'Content from removed stops is still saved.')}/>
+  <details className={styles.review}><summary>{es?'Revisar contenido guardado':'Review saved content'} ({entries.length})</summary><div>
+  <p className={styles.notice}>{es?'El contenido afectado por los cambios de ruta sigue guardado.':'Content affected by route changes is still saved.'}</p>
   {error?<MorroviaStatusBanner tone="warning" title={es?'Este contenido sigue conservado':'This content remains retained'} detail={es?'No se pudo aplicar el cambio. Revisa el contenido y el día elegido antes de volver a intentarlo.':'The change could not be applied. Review the content and selected day before trying again.'}/>:null}
   {entries.map(entry=><details key={entry.id} className={styles.entry}><summary>{entry.sourceStop.name} · {entry.sourceStop.country}{entry.sourceKind==='retired_day'?(es?' · Día retirado':' · Retired day'):null}</summary><div>
    {entry.days.map(({sourceDay:day,dayNotes,customActivities})=><article key={day.id}><h3>{day.title}</h3><p>{day.date} · {es?'Día original':'Original day'} {day.dayNumber}{day.startsAt?` · ${day.startsAt}`:''}{day.endsAt?` – ${day.endsAt}`:''}</p><p>{day.reason}</p>
@@ -35,6 +36,7 @@ export function TripBuilderRetainedReview({trip,language,onMove,onRemove}:{trip:
    </article>)}
    {entry.mapPins.map(pin=><article key={pin.id}><h3>{pin.title}</h3><p>{es?'Día original':'Original day'} {pin.dayNumber} · {pin.category}</p>{location(pin.longitude,pin.latitude)}{actions({entryId:entry.id,expectedContentKey:authoredContentKey(entry),pinIds:[pin.id]},pin.title)}</article>)}
   </div></details>)}
+  </div></details>
   <MorroviaConfirmationDialog open={Boolean(removal)} title={es?'¿Eliminar este contenido conservado?':'Remove this retained content?'} detail={removal?.label??''} consequences={[es?'Solo se eliminará el contenido seleccionado.':'Only the selected content will be removed.']} cancelLabel={es?'Conservar contenido':'Keep content'} confirmLabel={es?'Eliminar contenido seleccionado':'Remove selected content'} onCancel={()=>setRemoval(null)} onConfirm={()=>{if(removal)setError(!onRemove(removal.selection));setRemoval(null)}}/>
  </section>;
 }

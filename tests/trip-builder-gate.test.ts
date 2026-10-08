@@ -12,6 +12,7 @@ import { validateBuilderStopOrder } from "../lib/easyt/trip-builder-order.ts";
 import type { EasyTTrip } from "../lib/easyt/trip.ts";
 import { builderBrowserTestsEnabled, renderBuilder } from "./helpers/builder-render.ts";
 import { emptyHomepageInput } from "./fixtures/homepage-dual-entry.ts";
+import { canonicalRouteFixture } from './fixtures/batch14-route-documents.ts';
 
 // These scenarios exercise a populated Builder. The current Homepage handoff
 // requires the submitted projection, owner-scoped receipt and URL token together.
@@ -448,6 +449,24 @@ test("non-critical unresolved traveller intent needs attention without blocking 
     message: "Choose where to stay for Kruger National Park before Morrovia adds it to the route.",
     source: "place-intelligence",
   }]);
+});
+
+test('France attention follows an explicit Paris base selection, never geography alone',()=>{
+ const input=validInput();
+ const doc=canonicalRouteFixture();input.document=doc;
+ const stop=doc.stops[0];Object.assign(stop,{name:'Paris',country:'France',canonicalPlaceId:'paris'});
+ doc.brief.intent!.route!.destinations.push({id:'france-parent',kind:'planning_area',routeMembership:'required',sourceText:'France',selectedPlace:{name:'France',country:'France',canonicalPlaceId:'country:france'},resolution:'unresolved',stopIds:[],requestedNights:2});
+ const issue={code:'region_requires_base' as const,mentionId:'france-parent',sourceText:'France',blocksRoute:true,message:'Choose a base for France.'};
+ input.placeIssues=[issue];
+ doc.brief.structuredBrief=extractStructuredTripBrief('France');
+ assert.equal(canBuildTrip(input).needsAttention.length,1,'a route stop alone does not satisfy the parent');
+ doc.brief.structuredBrief.placeSelections=[{kind:'base',mentionId:issue.mentionId,selectedCanonicalPlaceId:stop.canonicalPlaceId!,selectedName:stop.name,selectedPlaceType:'city',selectedParentCountries:[stop.country],routeStopId:stop.id,provenance:{id:'explicit-base',kind:'builder',label:'Traveller selection',supports:'Traveller explicitly selected this stop as the parent base.'}}];
+ const before=structuredClone(input.document);
+ assert.deepEqual(canBuildTrip(input).needsAttention,[],'already selected live base is not absent from the route');
+ assert.deepEqual(input.document,before,'readiness does not erase source or requested nights');
+ const reloaded=JSON.parse(JSON.stringify(input));assert.deepEqual(canBuildTrip(reloaded).needsAttention,[]);
+ reloaded.document.brief.structuredBrief.placeSelections[0].routeStopId='missing-stop';assert.equal(canBuildTrip(reloaded).needsAttention.length,1);
+ reloaded.document.brief.structuredBrief.placeSelections[0].routeStopId=stop.id;reloaded.document.brief.structuredBrief.placeSelections[0].selectedCanonicalPlaceId='other-paris';assert.equal(canBuildTrip(reloaded).needsAttention.length,1,'a stale place identity does not satisfy France');
 });
 
 test("a conflicting traveller place role remains a hard readiness conflict", () => {

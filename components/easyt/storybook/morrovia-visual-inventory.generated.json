@@ -5240,7 +5240,7 @@
     "observedSpacing": [
       {
         "value": "8px",
-        "count": 576,
+        "count": 579,
         "examples": [
           "app/journey/account.module.css",
           "app/journey/admin/feedback/feedback.module.css",
@@ -5250,7 +5250,7 @@
       },
       {
         "value": "10px",
-        "count": 529,
+        "count": 530,
         "examples": [
           "app/journey/about/about.module.css",
           "app/journey/account.module.css",
@@ -5260,7 +5260,7 @@
       },
       {
         "value": "12px",
-        "count": 513,
+        "count": 518,
         "examples": [
           "app/journey/about/about.module.css",
           "app/journey/account.module.css",
@@ -5270,7 +5270,7 @@
       },
       {
         "value": "14px",
-        "count": 346,
+        "count": 348,
         "examples": [
           "app/journey/about/about.module.css",
           "app/journey/account.module.css",
@@ -7607,7 +7607,7 @@
       },
       {
         "value": "max-width: 620px",
-        "count": 14,
+        "count": 15,
         "examples": [
           "app/journey/account.module.css",
           "app/journey/new/trip-builder-mobile.module.css",

@@ -133,7 +133,15 @@ export function canBuildTrip(input: CanBuildTripInput) {
   }
 
   const blockingPlaceIssues = input.placeIssues?.filter((issue) => issue.blocksRoute) ?? [];
-  const nonCriticalPlaceIssues = blockingPlaceIssues.filter(placeIssueNeedsAttention);
+  const confirmedMentions = new Set((input.document.brief?.structuredBrief?.placeSelections ?? []).filter(selection => {
+    const stop = input.document.stops.find(stop => stop.id === selection.routeStopId);
+    const mention = input.document.brief?.structuredBrief?.placeMentions?.find(mention => mention.mentionId === selection.mentionId);
+    return stop && selection.provenance && (
+      (selection.kind === 'base' || selection.kind === 'ambiguity') && Boolean(selection.selectedCanonicalPlaceId) && stop.canonicalPlaceId === selection.selectedCanonicalPlaceId
+      || selection.kind === 'visit' && mention?.routability === 'anchor_or_poi'
+    );
+  }).map(selection => selection.mentionId));
+  const nonCriticalPlaceIssues = blockingPlaceIssues.filter(placeIssueNeedsAttention).filter(issue=>!confirmedMentions.has(issue.mentionId));
   needsAttention.push(...nonCriticalPlaceIssues.map((issue) => ({
     code: "unresolved-place-intent" as const,
     mentionId: issue.mentionId,

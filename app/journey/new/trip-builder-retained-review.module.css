@@ -1,4 +1,9 @@
 .root { display: grid; gap: 12px; min-width: 0; }
+.review { color: var(--morrovia-ink); }
+.review > summary { min-height: 44px; padding: 12px; cursor: pointer; font: var(--morrovia-type-control); }
+.review > summary:focus-visible { outline: 3px solid var(--morrovia-focus-ring); outline-offset: 2px; }
+.review > div { display: grid; gap: 12px; padding: 12px; }
+.notice { margin: 0; color: var(--morrovia-muted); font: var(--morrovia-type-fine-print); }
 .entry { border: 1px solid var(--morrovia-line); border-radius: var(--morrovia-control-radius); color: var(--morrovia-ink); background: var(--morrovia-paper); }
 .entry summary { min-height: 44px; padding: 14px; font: var(--morrovia-type-control); cursor: pointer; }
 .entry > div { display: grid; gap: 18px; padding: 0 18px 18px; }
