@@ -76,15 +76,16 @@ test("Tier 1 guest journey keeps three canonical stops and edits through Build a
   const pageErrors: string[] = [];
   page.on("pageerror", (error) => pageErrors.push(error.message));
   await page.goto(base, { waitUntil: "domcontentloaded" });
-  await page.getByRole("button", { name: /Where do you want to go/ }).click();
-  const choose = async (index: number, name: string, country: string) => {
-    await page.getByRole("combobox").nth(index).fill(name);
+  await page.getByRole("combobox", { name: "Start from", exact: true }).fill("London");
+  await page.getByRole("option", { name: /London.*United Kingdom/ }).first().click();
+  const choose = async (name: string, country: string) => {
+    await page.getByRole("combobox", { name: "Destination", exact: true }).fill(name);
     await page.getByRole("option", { name: new RegExp(`${name}.*${country}`) }).first().click();
   };
-  await choose(0, "Madrid", "Spain");
-  for (const [index, name, country] of [[1, "Lisbon", "Portugal"], [2, "Porto", "Portugal"]] as const) {
-    await page.getByRole("button", { name: "Add another stop" }).click();
-    await choose(index, name, country);
+  await choose("Madrid", "Spain");
+  for (const [name, country] of [["Lisbon", "Portugal"], ["Porto", "Portugal"]] as const) {
+    await page.getByRole("button", { name: "Add destination", exact: true }).click();
+    await choose(name, country);
   }
   await page.getByRole("button", { name: "Plan my trip" }).first().click();
   await page.waitForURL(/\/journey\/new\?/);
@@ -100,7 +101,14 @@ test("Tier 1 guest journey keeps three canonical stops and edits through Build a
   assert.ok(nights.every((night) => night > 0));
   await page.getByRole("combobox", { name: "Starting from" }).fill("London");
   await page.getByRole("option", { name: /London.*United Kingdom/ }).first().click();
-  await page.getByRole("button", { name: "Save changes" }).click();
+  const draftTripId = new URL(page.url()).searchParams.get("trip");
+  assert.ok(draftTripId);
+  await page.waitForFunction((id) => Object.keys(localStorage)
+    .filter((key) => key.startsWith(`easyt:trip-recovery:v2:guest:${encodeURIComponent(id)}:`))
+    .some((key) => {
+      try { return JSON.parse(localStorage.getItem(key) ?? "null")?.trip?.brief?.intent?.route?.origin?.canonicalPlaceId === "london"; }
+      catch { return false; }
+    }), draftTripId);
   await page.getByRole("button", { name: /Build trip/ }).click();
   await page.waitForURL(/\/journey\/trip-[^/]+\?created=1/, { timeout: 20_000 });
   const tripId = new URL(page.url()).pathname.split("/")[2]!;
