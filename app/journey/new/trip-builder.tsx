@@ -2952,6 +2952,7 @@ function TripBuilderDocument() {
         if(!validPlaceCoordinates(resolved.coordinates))return fail(ui.unavailable);
         const structured=current.trip.brief.structuredBrief;
         const countries=[...current.trip.stops.map(stop=>stop.country),current.trip.brief.intent.route.origin?.country,
+          current.trip.brief.intent.route.journeyEnd.mode==="explicit"?current.trip.brief.intent.route.journeyEnd.place.country:undefined,
           ...current.trip.brief.intent.route.destinations.map(intent=>intent.selectedPlace?.country),
           ...(structured?.countries.map(country=>country.value)??[]),
           ...(structured?.placeMentions?.filter(mention=>mention.role!=="excluded"&&!structured.removedPlaceMentionIds?.includes(mention.mentionId)).flatMap(mention=>mention.parentCountries)??[])];

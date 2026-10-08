@@ -7,6 +7,7 @@ import {canonicalRouteFixture} from './fixtures/batch14-route-documents.ts';
 import {requireReadableTripDocument} from '../lib/easyt/trip-document.ts';
 import {canonicalTripForOwner} from '../lib/easyt/trip-promotion.ts';
 import {resolveTripTransferJourneys,resolveCanonicalTransferJourneys} from '../lib/easyt/multimodal-transfer-resolution.ts';
+import {buildCanonicalTripLegs} from '../lib/easyt/trip-legs.ts';
 import type {TripLeg} from '../lib/easyt/trip.ts';
 import {nextTripUpdatedAt} from '../lib/easyt/trip-continuity.ts';
 const enabled=process.env.MORROVIA_BUILDER_APP_BROWSER_TESTS==='1';
@@ -271,4 +272,12 @@ test('A19 outdated lookup failure cannot replace the current Add draft feedback'
   await input.fill('Istanbul unfinished');release();await h.view.page.waitForTimeout(200);
   assert.equal(await h.view.page.getByText(/We couldn't verify “Missing Place”/).count(),0);assert.equal(await input.inputValue(),'Istanbul unfinished');assert.deepEqual(h.cloud(),before);assert.equal(await h.view.page.getByRole('group',{name:'Review destination',exact:true}).count(),0);assert.deepEqual(h.view.errors,[]);
  }finally{release();await h.view.close()}
+});
+
+test('A19 existing explicit finish country is known geography rather than a new country extension',{skip:!enabled,timeout:30000},async()=>{
+ const h=await fixture(true,trip=>{
+  trip.brief.intent.route.journeyEnd={mode:'explicit',place:{name:'Istanbul',country:'Turkey',canonicalPlaceId:'istanbul',coordinates:[28.9784,41.0082]}};trip.brief.journeyEnd=trip.brief.intent.route.journeyEnd;
+  trip.legs=buildCanonicalTripLegs({tripId:trip.id,origin:{...trip.brief.intent.route.origin!,coordinates:trip.brief.intent.route.origin?.coordinates??null},journeyEnd:trip.brief.intent.route.journeyEnd,stops:trip.stops});
+ },{Istanbul:[{name:'Istanbul',country:'Turkey',canonicalPlaceId:'istanbul',coordinates:[28.9784,41.0082],kind:'city'}]});
+ try{await h.view.page.getByRole('button',{name:'Add destination',exact:true}).click();await h.view.page.getByRole('combobox',{name:'Add a stop',exact:true}).fill('Istanbul');await h.view.page.getByRole('option',{name:/Istanbul/}).first().click();await until(h,()=>h.cloud().stops.some(stop=>stop.name==='Istanbul'));assert.equal(await h.view.page.getByRole('group',{name:'Review destination',exact:true}).count(),0);assert.equal(h.cloud().brief.intent.route.journeyEnd.mode,'explicit');assert.deepEqual(h.view.errors,[]);}finally{await h.view.close()}
 });
