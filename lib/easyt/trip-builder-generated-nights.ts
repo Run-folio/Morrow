@@ -29,7 +29,8 @@ export function generatedFlexibleStopIds(trip: CanonicalEasyTTrip): Set<string> 
       const contentMatches = Object.keys(content).length === Object.keys(blank).length
         && Object.entries(blank).every(([key, value]) => JSON.stringify((content as Record<string, unknown>)[key]) === JSON.stringify(value));
       return !id.startsWith(`${trip.id}-calendar:`) || !contentMatches
-        || Boolean(trip.brief.dayNotes?.[day.dayNumber]?.length || trip.brief.customActivities?.[day.dayNumber]?.length);
+        || Boolean(trip.brief.dayNotes?.[day.dayNumber]?.length || trip.brief.customActivities?.[day.dayNumber]?.length)
+        || Boolean(trip.brief.mapPins?.some(pin => pin.dayNumber === day.dayNumber));
     });
     if (!authored) result.add(stop.id);
   }
