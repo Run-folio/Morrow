@@ -361,3 +361,18 @@ test("provider-enriched capture maps one fixed result through the shared brief b
   assert.equal(capture.structuredBrief.destinations[0]?.canonicalPlaceId, "fixed-gazetteer:area-42");
   assert.equal(capture.structuredBrief.placeIssues?.some((issue) => issue.code === "region_requires_base"), true);
 });
+
+test('tentative finish stays reviewable rather than becoming an explicit endpoint',async()=>{
+ const prompt='Start in Lima, maybe finish in Cusco.';
+ for(const capture of [captureJourneyBrief(prompt),await captureJourneyBriefFromSemanticIntent(prompt,{
+  schemaVersion:SEMANTIC_TRIP_INTENT_SCHEMA_VERSION,rawPromptVersion:SEMANTIC_TRIP_INTENT_RAW_PROMPT_VERSION,
+  origin:{sourceText:'Lima',certainty:'explicit'},journeyEnd:{sourceText:'Cusco',interpretedText:'Cusco',mode:'explicit_place',certainty:'explicit'},
+  duration:{sourceText:null,value:null,unit:null},explicitDateTexts:[],destinationCandidates:[{sourceText:'Cusco',interpretedText:null,role:'route-stop',certainty:'explicit'}],pointsOfInterest:[],transport:{departure:{sourceText:null,mode:null},interStop:{sourceText:null,modes:[]},avoid:[]},pace:{sourceText:null,value:null},interests:[],constraints:[],ambiguities:[],unresolvedMeaningfulText:[]
+ })]){
+  assert.equal(capture.journeyEnd.mode,'unknown');assert.equal(capture.mentions.find(item=>item.canonicalName==='Cusco')?.role,'optional');
+  assert.equal(capture.structuredBrief.hardConstraints.some(item=>item.type==='end-at'),false);
+  const draft=createHomeTripDraft({capture,handoffId:'tentative-finish',datesExplicit:false,startDate:'2026-11-01',endDate:'2026-11-13',travellers:2,travellersExplicit:false,interests:[]});
+  assert.equal(draft.routeIntent?.journeyEnd.mode,'unknown');assert.equal(draft.routeIntent?.destinations.some(item=>item.sourceText==='Cusco'),true);
+ }
+ for(const prompt of ['Start in Lima, finish in Cusco.','Start in Lima, maybe visit Puno, finish in Cusco.','Start in Lima, maybe finish in Cusco. Actually finish in Cusco.'])assert.equal(captureJourneyBrief(prompt).journeyEnd.mode,'explicit',prompt);
+});

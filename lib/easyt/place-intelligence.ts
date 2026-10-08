@@ -1244,6 +1244,21 @@ export function isNegatedEndpointAt(prompt: string, placeStart: number) {
   return Boolean(endpoint && isNegatedIntentPrefix(before.slice(0, endpoint.index)));
 }
 
+/** Tentative language applies to its endpoint action, not an earlier visit. */
+export function isTentativeEndpointAt(prompt: string, placeStart: number) {
+  const before = normalizePlacePhrase(prompt.slice(Math.max(0, placeStart - 80), placeStart).split(/[,.;!?\n]/).at(-1) ?? "");
+  const endpoint = /(?:^| )(?:finish(?:ing)?|end(?:ing)?)(?: the trip)? (?:in|at)$|(?:^| )(?:fly|flying) (?:home |back )?from$|(?:^| )home from$|(?:^| )(?:back|return(?:ing)?) to$/.exec(before);
+  return Boolean(endpoint && /(?:^| )(?:maybe|perhaps|possibly)(?: we)?(?: could| might| will)?$|(?:^| )(?:we )?(?:might|could|may)$|(?:^| )not sure(?: whether| if)?(?: we)?(?: should| will| can)?$/.test(before.slice(0, endpoint.index)));
+}
+
+export function endpointSourceIsTentative(prompt: string, sourceText: string) {
+  const pattern = new RegExp(sourceText.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "giu");
+  const positions = [...prompt.matchAll(pattern)].map(match => match.index!);
+  return positions.some(position => isTentativeEndpointAt(prompt, position))
+    && !positions.some(position => !isTentativeEndpointAt(prompt, position)
+      && roleAt(prompt, sourceText, position, "unknown") === "fixed_end");
+}
+
 /** A negative endpoint occurrence is not a negative visit instruction. A
  * separate affirmative stay remains eligible, including semantic recovery. */
 export function endpointSourceIsNegated(prompt: string, sourceText: string, role?: "origin" | "fixed_end") {
@@ -1269,6 +1284,7 @@ function roleAt(prompt: string, sourceText: string, start: number, placeType: Pl
   const before = normalizePlacePhrase(prompt.slice(Math.max(0, start - 64), start));
   const after = normalizePlacePhrase(rawAfter);
   if (isNegatedEndpointAt(prompt, start)) return "preferred";
+  if (isTentativeEndpointAt(prompt, start)) return "optional";
   if (/(?:do not|dont|not|never)(?: want to)? visit$|(?:skip|exclude|excluding|avoid)$/.test(before)) return "excluded";
   if (/(?:^| )(?:finish|finishing|end|ending)(?: the trip)? (?:in|at)$|fly(?:ing)? (?:home|back)? from$|(?:^| )home from$|(?:fly(?:ing)? )?out of$|(?:back|return(?:ing)?) to$|one way to$/.test(before)) return "fixed_end";
   if (/(?:^| )(?:start|starting|begin|beginning)(?: the trip)?(?: (?:in|at))?$/.test(before)) return "fixed_start";

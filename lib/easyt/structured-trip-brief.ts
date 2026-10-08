@@ -6,6 +6,7 @@ import {
   reconcileSelfBasePlaceState,
   isNegatedEndpointAt,
   endpointSourceIsNegated,
+  isTentativeEndpointAt,
   type PlaceIntelligenceResult,
   type PlaceIssue,
   type PlaceRoutability,
@@ -208,7 +209,7 @@ function explicitGateway(prompt: string, kind: "start" | "end") {
     : /(?:(?:finish|end)(?:ing)?\s+(?:in|at)\s+|(?:fly(?:ing)?\s+)?home\s+from\s+)([^,.:\n;]+?)(?=\s+(?:(?:and|then)\s+)?(?:but|travel|go|continue|head|fly|take|finish|end|home|return)\b|[,.:\n;]|$)/i;
   for (const match of prompt.matchAll(new RegExp(pattern.source, "gi"))) {
     const placeStart = match.index! + match[0].length - match[1].length;
-    if (!isNegatedEndpointAt(prompt, placeStart)) return match[1].trim();
+    if (!isNegatedEndpointAt(prompt, placeStart) && (kind !== "end" || !isTentativeEndpointAt(prompt, placeStart))) return match[1].trim();
   }
   return undefined;
 }

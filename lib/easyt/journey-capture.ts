@@ -2,6 +2,7 @@ import {
   isLeadingPlanningImperativeSourceSpan,
   normalizePlacePhrase,
   endpointSourceIsNegated,
+  endpointSourceIsTentative,
   resolvePlaceMentions,
   resolveExplicitPlaceMentions,
   resolveExplicitPlaceMentionsWithProvider,
@@ -247,7 +248,7 @@ function semanticPlaceMentions(
     const sourceText = safeSpan(intent.journeyEnd.sourceText);
     if (sourceText && !endpointSourceIsNegated(rawBrief, sourceText, "fixed_end")) {
       const lookupText = safeLookupText(intent.journeyEnd.interpretedText, sourceText);
-      inputs.push({ sourceText, role: "fixed_end", travelIntent: "route-stop", ...(lookupText ? { lookupText } : {}) });
+      inputs.push({ sourceText, role: endpointSourceIsTentative(rawBrief, sourceText) ? "optional" : "fixed_end", travelIntent: "route-stop", ...(lookupText ? { lookupText } : {}) });
     }
   }
   for (const destination of intent.destinationCandidates) {

@@ -1,4 +1,4 @@
-import { canonicalPlaceFactsMatch, capturedEndpointConflict, endpointSourceIsNegated, isNegatedEndpointAt, isNegatedIntentPrefix, type CanonicalPlaceSuggestion, type ResolvedPlaceMention } from "./place-intelligence.ts";
+import { canonicalPlaceFactsMatch, capturedEndpointConflict, endpointSourceIsNegated, endpointSourceIsTentative, isNegatedEndpointAt, isTentativeEndpointAt, isNegatedIntentPrefix, type CanonicalPlaceSuggestion, type ResolvedPlaceMention } from "./place-intelligence.ts";
 import { findCatalogPlaceById, matchCatalogPlace, type PlaceCatalogEntry } from "./place-catalog.ts";
 import type { JourneyEndSelection, JourneyEndpointPlace, TripBrief } from "./trip.ts";
 
@@ -209,7 +209,7 @@ export function journeyEndFromCapturedIntent(
   if (/\b(?:do not|don't|dont)\s+know\b.{0,70}\b(?:end|finish|fly home|return)\b|\bnot sure\b.{0,50}\b(?:end|finish|fly home|return)\b/.test(text)) {
     return unknownJourneyEnd();
   }
-  const endpointMentions = mentions.filter(mention => !(mention.role === "fixed_end" && endpointSourceIsNegated(rawBrief, mention.sourceText, "fixed_end"))
+  const endpointMentions = mentions.filter(mention => !(mention.role === "fixed_end" && (endpointSourceIsNegated(rawBrief, mention.sourceText, "fixed_end") || endpointSourceIsTentative(rawBrief, mention.sourceText)))
     && !((mention.role === "origin" || mention.role === "fixed_start") && endpointSourceIsNegated(rawBrief, mention.sourceText, "origin")));
   if (capturedEndpointConflict(endpointMentions)) return unknownJourneyEnd();
 
@@ -227,7 +227,8 @@ export function journeyEndFromCapturedIntent(
   }
   if (fixedEndPlace) return { mode: "explicit", place: fixedEndPlace };
   const explicitEndMatch = [...rawBrief.matchAll(/\b(?:finish|finishing|end|ending)(?: the trip)?\s+(?:(?:in|at)\s+)?([^,.\n;]+?)(?=\s+(?:and|then)\b|[,.;\n]|$)/gi)]
-    .find(match => !isNegatedEndpointAt(rawBrief, match.index! + match[0].length - match[1].length));
+    .find(match => !isNegatedEndpointAt(rawBrief, match.index! + match[0].length - match[1].length)
+      && !isTentativeEndpointAt(rawBrief, match.index! + match[0].length - match[1].length));
   const explicitEndText = explicitEndMatch?.[1]?.trim();
   if (start && explicitEndText && normalise(explicitEndText) === normalise(start.name)) {
     return { mode: "explicit", place: start };
