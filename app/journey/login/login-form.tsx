@@ -170,7 +170,7 @@ export default function LoginForm({
       ]}
     />
     {googleEnabled && <>
-      <EasyTButton className={styles.googleButton} type="button" variant="secondary" fullWidth loading={googleBusy} disabled={!configured || busy} onClick={continueWithGoogle}>
+      <EasyTButton className={styles.googleButton} type="button" variant="secondary" fullWidth loading={googleBusy} disabled={!handlerReady || !configured || busy} onClick={continueWithGoogle}>
         <GoogleMark />
         Continue with Google
       </EasyTButton>
@@ -185,10 +185,10 @@ export default function LoginForm({
     /> : null}
     {resendConfirmed && verificationFailure ? <MorroviaStatusBanner tone="success" title="Verification email sent" detail={`Check ${verificationFailure.email}, including spam.`} /> : null}
     {resendError && verificationFailure ? <p className={styles.error} role="alert">{resendError}</p> : null}
-    <form className={styles.form} method="post" action="/journey/login" onSubmit={submit} aria-busy={busy || undefined}>
-      {mode === "sign-up" && <EasyTField label="Your name" name="name" autoComplete="name" required placeholder="Your name" />}
-      <EasyTField label="Email" name="email" type="email" autoComplete="email" required placeholder="you@example.com" value={email} onChange={(event) => { setEmail(event.target.value); setVerificationFailure(null); }} />
-      <EasyTPasswordField label="Password" name="password" minLength={8} autoComplete={mode === "sign-in" ? "current-password" : "new-password"} required placeholder="At least 8 characters" />
+    <form className={styles.form} method="post" action="/journey/login" onSubmit={submit} aria-busy={!handlerReady || busy || undefined}>
+      {mode === "sign-up" && <EasyTField label="Your name" name="name" disabled={!handlerReady} autoComplete="name" required placeholder="Your name" />}
+      <EasyTField label="Email" name="email" disabled={!handlerReady} type="email" autoComplete="email" required placeholder="you@example.com" value={email} onChange={(event) => { setEmail(event.target.value); setVerificationFailure(null); }} />
+      <EasyTPasswordField label="Password" name="password" disabled={!handlerReady} minLength={8} autoComplete={mode === "sign-in" ? "current-password" : "new-password"} required placeholder="At least 8 characters" />
       {mode === "sign-in" && <a className={styles.forgotLink} href="/journey/forgot-password">Forgot password?</a>}
       <EasyTButton className={styles.authSubmit} type="submit" fullWidth loading={busy} disabled={!handlerReady || !configured || googleBusy || Boolean(verificationFailure)}>{configured ? mode === "sign-in" ? "Sign in →" : "Create account →" : "Accounts coming online"}</EasyTButton>
       <noscript><p className={styles.muted}>Enable JavaScript to sign in securely.</p></noscript>
