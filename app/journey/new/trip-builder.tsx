@@ -3504,7 +3504,8 @@ function TripBuilderDocument() {
       const latest=editor.getSnapshot();
       if(!request.isCurrent()||builderEditSessionRef.current!==editor||latest.browserOwnerId!==scope.ownerId||latest.inputRevision!==scope.inputRevision||routeProjectionInputKey(latest.trip)!==inputKey)return;
       setOptimizationResult(result);
-    }catch{if(request.isCurrent())setOptimizationResult({kind:"unavailable",reason:"insufficient-data"});}
+      if(result.kind!=="proposal")setShowBuilderReview(true);
+    }catch{if(request.isCurrent()){setOptimizationResult({kind:"unavailable",reason:"insufficient-data"});setShowBuilderReview(true);}}
     finally{if(request.isCurrent())setOptimizationChecking(false);request.finish();}
   };
   const keepOptimizationOrder=()=>{optimizationGateRef.current?.cancel();setOptimizationResult(null);setOptimizationError("");setOptimizationChecking(false);};
@@ -5525,6 +5526,8 @@ function TripBuilderDocument() {
                 detail={`${field.raw} — ${language === "es" ? "El viaje cambió mientras se comprobaba esta entrada. Sigue guardada en este dispositivo." : "The trip changed while this input was being checked. It remains saved on this device."}`}
                 actions={<EasyTButton variant="quiet" size="small" onClick={()=>mountedBuilder.session.discardDraft(field.binding)}>{language === "es" ? "Descartar entrada" : "Discard input"}<span className="sr-only"> {index+1}</span></EasyTButton>} />)}
               <MorroviaContentDialog open={showBuilderReview} ariaLabel={language === "es" ? "Revisar viaje" : "Review trip"} autoFocusSelector="[data-close-builder-review]" onClose={()=>setShowBuilderReview(false)}>
+                <h2>{language === "es" ? "Revisar viaje" : "Review trip"}</h2>
+                {mountedBuilder && !mountedBuilder.snapshot.pendingUnits.length && !mountedBuilder.snapshot.conflictUnits.length && !mountedBuilder.snapshot.failedUnits.length && !mountedBuilder.snapshot.trip.brief.retainedAuthoredContent?.entries.length && !nightEditFeedback && !optimizationResult ? <p>{language === "es" ? "No hay revisiones pendientes." : "No pending reviews."}</p> : null}
                 <EasyTButton data-close-builder-review variant="quiet" onClick={()=>setShowBuilderReview(false)}>{language === "es" ? "Cerrar revisión" : "Close review"}</EasyTButton>
               {mountedBuilder?.snapshot.pendingUnits.length ? <MorroviaStatusBanner tone="info" title={language === "es" ? "Actualizando los datos del viaje…" : "Updating trip details…"} /> : null}
               {mountedBuilder?.snapshot.conflictUnits.length ? <MorroviaStatusBanner tone="warning" title={language === "es" ? "Revisa las condiciones del viaje" : "Review trip constraints"}

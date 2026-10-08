@@ -13,5 +13,5 @@ export function builderNightAllocationLabel(status: BuilderNightStatus): string 
       ? `${excess === 1 ? "Sobra" : "Sobran"} ${excess} ${excess === 1 ? "noche" : "noches"}`
       : `${excess} ${excess === 1 ? "night" : "nights"} too many`;
   }
-  return language === "es" ? `${allocated} de ${total} asignadas` : `${allocated} of ${total} allocated`;
+  return language === "es" ? "Hay estancias sin noches" : "Stays need nights";
 }

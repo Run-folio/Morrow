@@ -76,7 +76,7 @@ export function TripBuilderTopControls({trip,draft,language,disabled=false,onTyp
     <option value="value">{es?'Ajustado':'Value'}</option><option value="mid">{es?'Medio':'Mid-range'}</option><option value="high">{es?'Alto':'High'}</option>
    </EasyTSelect>
   </div>
-  <details className={styles.personalize}><summary><SlidersHorizontal aria-hidden="true"/><span><strong>{es?'Personalizar':'Personalize'} <small>({es?'opcional':'optional'})</small></strong><small>{es?'Intereses, ritmo y preferencias':'Interests, pace and preferences'}</small></span><ChevronDown aria-hidden="true"/></summary><div>{personalize}</div></details>
+  <details className={styles.personalize}><summary><SlidersHorizontal aria-hidden="true"/><span><strong>{es?'Personalizar':'Personalize'} <small>({es?'opcional':'optional'})</small></strong><small>{es?'Intereses y transporte':'Interests and transport'}</small></span><ChevronDown aria-hidden="true"/></summary><div>{personalize}</div></details>
   <div className={styles.actions}><span>{days} {es?'días':'days'}</span><EasyTButton icon={ArrowRight} loading={updatingRoute} disabled={disabled||!onUpdateRoute} onClick={onUpdateRoute}>{es?'Actualizar ruta':'Update route'}</EasyTButton></div>
  </section>;
 }

@@ -14,3 +14,8 @@ test("night allocation copy reports the canonical difference in English and Span
   assert.equal(builderNightAllocationLabel({ total: 14, allocated: 14, complete: true, language: "en" }), "All allocated");
   assert.equal(builderNightAllocationLabel({ total: 14, allocated: 14, complete: true, language: "es" }), "Todas asignadas");
 });
+
+test("a matching total with a required empty stay asks for nights",()=>{
+ assert.equal(builderNightAllocationLabel({total:14,allocated:14,complete:false,language:"en"}),"Stays need nights");
+ assert.equal(builderNightAllocationLabel({total:14,allocated:14,complete:false,language:"es"}),"Hay estancias sin noches");
+});
