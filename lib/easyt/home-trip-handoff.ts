@@ -1764,18 +1764,30 @@ export function handoffStopOccurrenceId(
     ?? handoffRouteStopId(mention);
 }
 
+/** Current durable bindings win over the optional initial homepage map. */
+export function handoffCanonicalOccurrenceBindings(route: RouteIntent, fallback: Readonly<Record<string, string>> = {}): Record<string, string> {
+  return { ...fallback, ...Object.fromEntries(route.destinations.flatMap(intent => intent.stopIds.map(id => [id, intent.id]))) };
+}
+
 export function insertHandoffOccurrence<T extends { id: string }>(
   current: readonly T[],
   addition: T,
   mention: Pick<ResolvedPlaceMention, "mentionId" | "order" | "canonicalName">,
   mentions: readonly Pick<ResolvedPlaceMention, "mentionId" | "order" | "canonicalName">[],
   occurrenceMentionIds: Readonly<Record<string, string>>,
+  orderAuthority?: RouteIntent["orderAuthority"],
 ): T[] {
   if (current.some((stop) => stop.id === addition.id)) return [...current];
-  const positioned = mentions.map((item) => ({ id: handoffStopOccurrenceId(item, occurrenceMentionIds), order: item.order }))
+  const positioned = mentions.flatMap(item => {
+    const ids = Object.entries(occurrenceMentionIds).filter(([, mentionId]) => mentionId === item.mentionId).map(([id]) => id);
+    return (ids.length ? ids : [handoffStopOccurrenceId(item, occurrenceMentionIds)]).map(id => ({ id, order: item.order, index: current.findIndex(stop => stop.id === id) }));
+  })
     .filter((item) => current.some((stop) => stop.id === item.id));
-  const preceding = positioned.filter((item) => item.order < mention.order).sort((a, b) => b.order - a.order)[0];
-  const following = positioned.filter((item) => item.order > mention.order).sort((a, b) => a.order - b.order)[0];
+  const preceding = positioned.filter((item) => item.order < mention.order).sort((a, b) => b.order - a.order || b.index - a.index)[0];
+  const following = positioned.filter((item) => item.order > mention.order).sort((a, b) => a.order - b.order || a.index - b.index)[0];
+  if (preceding && following && preceding.index >= following.index && orderAuthority && orderAuthority !== "optimizable") {
+    throw new Error("The route order changed. Review this place's position before adding it.");
+  }
   const index = preceding ? current.findIndex((stop) => stop.id === preceding.id) + 1
     : following ? current.findIndex((stop) => stop.id === following.id) : current.length;
   return [...current.slice(0, index), addition, ...current.slice(index)];

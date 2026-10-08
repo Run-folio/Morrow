@@ -1,0 +1,1899 @@
+{
+  "A12": {
+    "sourceReceipt": "hosted14d-0304dfa/full/A12/1791481597334/choice-before-lakecomo.json",
+    "candidate": "0304dfadc878542c74e64178e755501a5dece49f",
+    "trip": {
+      "schemaVersion": 2,
+      "id": "trip-fixture-a12",
+      "ownerId": null,
+      "title": "City of London to Milan & Venice",
+      "status": "draft",
+      "startDate": "2026-10-08",
+      "endDate": "2026-10-19",
+      "travellers": 2,
+      "currency": "GBP",
+      "brief": {
+        "endDateIsSuggestion": false,
+        "mustDo": "Milan 2 nights, Lake Como 4 nights, Verona 2 nights, Venice 3 nights.",
+        "pace": "slow",
+        "hotelChanges": "few",
+        "budgetBand": "mid",
+        "budgetPreference": {
+          "source": "fallback",
+          "value": "mid"
+        },
+        "selectedPlaces": {},
+        "dayAllocations": {
+          "milan-0": 2,
+          "venice-3": 4
+        },
+        "nightAllocations": {
+          "milan-0": 2,
+          "venice-3": 3
+        },
+        "manualNightStopIds": [],
+        "nightAllocation": {
+          "version": 1,
+          "configVersion": "night-allocation-v2-marginal-depth",
+          "state": "compromised",
+          "totalAvailableNights": 11,
+          "totalAllocatedNights": 5,
+          "allocations": {
+            "milan-0": 2,
+            "venice-3": 3
+          },
+          "stops": [
+            {
+              "stopId": "milan-0",
+              "name": "Milan",
+              "nights": 2,
+              "minimumNights": 1,
+              "idealNights": 2,
+              "targetNights": 2,
+              "minimumSource": "morrovia-default",
+              "idealSource": "morrovia-default",
+              "roles": [],
+              "isAnchor": false,
+              "isRequired": true,
+              "isFixed": true,
+              "isManual": false,
+              "depth": "ordinary",
+              "matchedInterests": [],
+              "transferDayLoss": null,
+              "confidence": {
+                "minimumNights": {
+                  "version": 1,
+                  "state": "estimated",
+                  "level": "low",
+                  "freshness": "unknown",
+                  "scope": "planning-rule",
+                  "sources": [],
+                  "reason": "Minimum stay uses a Morrovia default because no destination-specific fact is known.",
+                  "confirmation": {
+                    "needed": true,
+                    "reason": "Confirm the minimum stay before relying on this stay recommendation."
+                  }
+                },
+                "idealNights": {
+                  "version": 1,
+                  "state": "estimated",
+                  "level": "low",
+                  "freshness": "unknown",
+                  "scope": "planning-rule",
+                  "sources": [],
+                  "reason": "Ideal stay uses a Morrovia default because no destination-specific fact is known.",
+                  "confirmation": {
+                    "needed": true,
+                    "reason": "Confirm the ideal stay before relying on this stay recommendation."
+                  }
+                },
+                "allocation": {
+                  "version": 1,
+                  "state": "structured",
+                  "level": "high",
+                  "freshness": "current",
+                  "scope": "traveller-intent",
+                  "sources": [],
+                  "reason": "The night count is an explicit traveller edit.",
+                  "confirmation": {
+                    "needed": false,
+                    "reason": null
+                  }
+                }
+              },
+              "reasons": [
+                {
+                  "code": "fallback-minimum",
+                  "message": "Milan uses the existing planning fallback because no curated minimum is available."
+                },
+                {
+                  "code": "fallback-ideal",
+                  "message": "Milan keeps fallback ideal-night guidance rather than inventing destination knowledge."
+                },
+                {
+                  "code": "pace",
+                  "message": "balanced pace sets a 2-night target before traveller-authored adjustments."
+                },
+                {
+                  "code": "destination-depth",
+                  "message": "Milan has ordinary stay-depth evidence for marginal night allocation."
+                },
+                {
+                  "code": "required-priority",
+                  "message": "Milan is a required or must-visit stop."
+                },
+                {
+                  "code": "fixed-nights",
+                  "message": "2 nights are fixed and cannot be rebalanced."
+                },
+                {
+                  "code": "diminishing-returns",
+                  "message": "Each additional night in Milan is valued incrementally with bounded diminishing returns."
+                }
+              ]
+            },
+            {
+              "stopId": "venice-3",
+              "name": "Venice",
+              "nights": 3,
+              "minimumNights": 1,
+              "idealNights": 2,
+              "targetNights": 2,
+              "minimumSource": "morrovia-default",
+              "idealSource": "morrovia-default",
+              "roles": [],
+              "isAnchor": false,
+              "isRequired": true,
+              "isFixed": true,
+              "isManual": false,
+              "depth": "ordinary",
+              "matchedInterests": [],
+              "transferDayLoss": null,
+              "confidence": {
+                "minimumNights": {
+                  "version": 1,
+                  "state": "estimated",
+                  "level": "low",
+                  "freshness": "unknown",
+                  "scope": "planning-rule",
+                  "sources": [],
+                  "reason": "Minimum stay uses a Morrovia default because no destination-specific fact is known.",
+                  "confirmation": {
+                    "needed": true,
+                    "reason": "Confirm the minimum stay before relying on this stay recommendation."
+                  }
+                },
+                "idealNights": {
+                  "version": 1,
+                  "state": "estimated",
+                  "level": "low",
+                  "freshness": "unknown",
+                  "scope": "planning-rule",
+                  "sources": [],
+                  "reason": "Ideal stay uses a Morrovia default because no destination-specific fact is known.",
+                  "confirmation": {
+                    "needed": true,
+                    "reason": "Confirm the ideal stay before relying on this stay recommendation."
+                  }
+                },
+                "allocation": {
+                  "version": 1,
+                  "state": "structured",
+                  "level": "high",
+                  "freshness": "current",
+                  "scope": "traveller-intent",
+                  "sources": [],
+                  "reason": "The night count is an explicit traveller edit.",
+                  "confirmation": {
+                    "needed": false,
+                    "reason": null
+                  }
+                }
+              },
+              "reasons": [
+                {
+                  "code": "fallback-minimum",
+                  "message": "Venice uses the existing planning fallback because no curated minimum is available."
+                },
+                {
+                  "code": "fallback-ideal",
+                  "message": "Venice keeps fallback ideal-night guidance rather than inventing destination knowledge."
+                },
+                {
+                  "code": "pace",
+                  "message": "balanced pace sets a 2-night target before traveller-authored adjustments."
+                },
+                {
+                  "code": "destination-depth",
+                  "message": "Venice has ordinary stay-depth evidence for marginal night allocation."
+                },
+                {
+                  "code": "required-priority",
+                  "message": "Venice is a required or must-visit stop."
+                },
+                {
+                  "code": "fixed-nights",
+                  "message": "3 nights are fixed and cannot be rebalanced."
+                },
+                {
+                  "code": "diminishing-returns",
+                  "message": "Each additional night in Venice is valued incrementally with bounded diminishing returns."
+                }
+              ]
+            }
+          ],
+          "conflicts": [
+            {
+              "code": "unallocated-nights",
+              "severity": "warning",
+              "message": "6 nights are left to add because no unlocked destination has a materially stronger marginal claim.",
+              "stopIds": [],
+              "requiredNights": 11,
+              "allocatedNights": 5,
+              "shortfallNights": 6
+            }
+          ],
+          "notices": []
+        },
+        "capturedIntent": {
+          "originalBrief": "Milan 2 nights, Lake Como 4 nights, Verona 2 nights, Venice 3 nights.",
+          "parserVersion": "place-intelligence-v1-deterministic",
+          "regions": [],
+          "routeHints": [],
+          "mentions": [
+            {
+              "sourceText": "Milan",
+              "canonicalName": "Milan",
+              "canonicalPlaceId": "milan",
+              "placeType": "city",
+              "role": "stop",
+              "order": 0,
+              "status": "resolved",
+              "intent": "place",
+              "country": "Italy"
+            },
+            {
+              "sourceText": "Lake Como",
+              "canonicalName": "Lake Como",
+              "placeType": "unknown",
+              "role": "stop",
+              "order": 1,
+              "status": "unresolved",
+              "intent": "place"
+            },
+            {
+              "sourceText": "Verona",
+              "canonicalName": "Verona",
+              "placeType": "unknown",
+              "role": "stop",
+              "order": 2,
+              "status": "unresolved",
+              "intent": "place"
+            },
+            {
+              "sourceText": "Venice",
+              "canonicalName": "Venice",
+              "canonicalPlaceId": "venice",
+              "placeType": "city",
+              "role": "stop",
+              "order": 3,
+              "status": "resolved",
+              "intent": "place",
+              "country": "Italy"
+            }
+          ]
+        },
+        "scheduleLocks": {
+          "stopIds": [],
+          "arrivalDates": {}
+        },
+        "decisionSelections": {
+          "transportByLeg": {}
+        },
+        "intent": {
+          "version": 2,
+          "travellers": 2,
+          "timing": {
+            "flexibility": "flexible",
+            "durationDays": 12
+          },
+          "hardConstraints": {
+            "originRequired": true,
+            "mustSeeStopIds": [
+              "milan-0",
+              "venice-3"
+            ],
+            "optionalStopIds": [],
+            "fixedCommitments": [
+              {
+                "id": "source-night:place-milan-0",
+                "label": "Milan — 2 nights",
+                "place": {
+                  "name": "Milan",
+                  "canonicalPlaceId": "milan",
+                  "country": "Italy"
+                },
+                "stopId": "milan-0",
+                "sourceMentionId": "place-milan-0",
+                "fixedNights": 2
+              },
+              {
+                "id": "source-night:place-venice-0",
+                "label": "Venice — 3 nights",
+                "place": {
+                  "name": "Venice",
+                  "canonicalPlaceId": "venice",
+                  "country": "Italy"
+                },
+                "stopId": "venice-3",
+                "sourceMentionId": "place-venice-0",
+                "fixedNights": 3
+              }
+            ],
+            "avoidDriving": false
+          },
+          "preferences": {
+            "budgetSensitivity": "mid",
+            "transportModes": [
+              "flight",
+              "train"
+            ],
+            "pace": "balanced",
+            "interests": [],
+            "dislikes": []
+          },
+          "route": {
+            "version": 1,
+            "origin": {
+              "name": "City of London",
+              "canonicalPlaceId": "open-world:nominatim:relation:51800",
+              "country": "United Kingdom",
+              "providerId": "open-world:nominatim:relation:51800",
+              "coordinates": [
+                -0.0919983,
+                51.5156177
+              ]
+            },
+            "tripType": "one_way",
+            "journeyEnd": {
+              "mode": "unknown"
+            },
+            "destinations": [
+              {
+                "id": "place-milan-0",
+                "sourceText": "Milan",
+                "kind": "overnight_place",
+                "selectedPlace": {
+                  "name": "Milan",
+                  "canonicalPlaceId": "milan",
+                  "country": "Italy",
+                  "providerId": "nominatim:relation:44915",
+                  "coordinates": [
+                    9.1896346,
+                    45.4641943
+                  ]
+                },
+                "resolution": "resolved",
+                "requestedNights": 2,
+                "routeMembership": "required",
+                "stopIds": [
+                  "milan-0"
+                ]
+              },
+              {
+                "id": "place-unresolved-lake-como-16",
+                "sourceText": "Lake Como",
+                "kind": "overnight_place",
+                "selectedPlace": null,
+                "resolution": "unresolved",
+                "requestedNights": 4,
+                "routeMembership": "required",
+                "stopIds": []
+              },
+              {
+                "id": "place-unresolved-verona-36",
+                "sourceText": "Verona",
+                "kind": "overnight_place",
+                "selectedPlace": null,
+                "resolution": "unresolved",
+                "requestedNights": 2,
+                "routeMembership": "required",
+                "stopIds": []
+              },
+              {
+                "id": "place-venice-0",
+                "sourceText": "Venice",
+                "kind": "overnight_place",
+                "selectedPlace": {
+                  "name": "Venice",
+                  "canonicalPlaceId": "venice",
+                  "country": "Italy",
+                  "providerId": "nominatim:relation:44741",
+                  "coordinates": [
+                    12.3345898,
+                    45.4371908
+                  ]
+                },
+                "resolution": "resolved",
+                "requestedNights": 3,
+                "routeMembership": "required",
+                "stopIds": [
+                  "venice-3"
+                ]
+              }
+            ],
+            "orderAuthority": "optimizable",
+            "explicitIntentIds": null,
+            "orderedStopIds": [
+              "milan-0",
+              "venice-3"
+            ],
+            "projectionInputKey": "{\"destinations\":[{\"id\":\"place-milan-0\",\"kind\":\"overnight_place\",\"requestedNights\":2,\"resolution\":\"resolved\",\"routeMembership\":\"required\",\"selectedPlace\":{\"canonicalPlaceId\":\"milan\",\"coordinates\":[9.1896346,45.4641943],\"providerId\":\"nominatim:relation:44915\"},\"stopIds\":[\"milan-0\"]},{\"id\":\"place-unresolved-lake-como-16\",\"kind\":\"overnight_place\",\"requestedNights\":4,\"resolution\":\"unresolved\",\"routeMembership\":\"required\",\"selectedPlace\":null,\"sourceText\":\"lake como\",\"stopIds\":[]},{\"id\":\"place-unresolved-verona-36\",\"kind\":\"overnight_place\",\"requestedNights\":2,\"resolution\":\"unresolved\",\"routeMembership\":\"required\",\"selectedPlace\":null,\"sourceText\":\"verona\",\"stopIds\":[]},{\"id\":\"place-venice-0\",\"kind\":\"overnight_place\",\"requestedNights\":3,\"resolution\":\"resolved\",\"routeMembership\":\"required\",\"selectedPlace\":{\"canonicalPlaceId\":\"venice\",\"coordinates\":[12.3345898,45.4371908],\"providerId\":\"nominatim:relation:44741\"},\"stopIds\":[\"venice-3\"]}],\"endDate\":\"2026-10-19\",\"explicitIntentIds\":null,\"fixedCommitments\":[{\"fixedNights\":2,\"id\":\"source-night:place-milan-0\",\"place\":{\"canonicalPlaceId\":\"milan\",\"coordinates\":null,\"providerId\":null},\"stopId\":\"milan-0\"},{\"fixedNights\":3,\"id\":\"source-night:place-venice-0\",\"place\":{\"canonicalPlaceId\":\"venice\",\"coordinates\":null,\"providerId\":null},\"stopId\":\"venice-3\"}],\"journeyEnd\":{\"mode\":\"unknown\"},\"orderAuthority\":\"optimizable\",\"orderedStopIds\":[\"milan-0\",\"venice-3\"],\"origin\":{\"canonicalPlaceId\":\"open-world:nominatim:relation:51800\",\"coordinates\":[-0.0919983,51.5156177],\"providerId\":\"open-world:nominatim:relation:51800\"},\"scheduleLocks\":{\"arrivalDates\":{},\"stopIds\":[]},\"startDate\":\"2026-10-08\",\"stops\":[{\"id\":\"milan-0\",\"nights\":2,\"place\":{\"canonicalPlaceId\":\"milan\",\"coordinates\":[9.1896346,45.4641943],\"providerId\":\"nominatim:relation:44915\"}},{\"id\":\"venice-3\",\"nights\":3,\"place\":{\"canonicalPlaceId\":\"venice\",\"coordinates\":[12.3345898,45.4371908],\"providerId\":\"nominatim:relation:44741\"}}],\"transport\":{\"avoidDriving\":false,\"modes\":[\"flight\",\"train\"]},\"tripType\":\"one_way\"}"
+          }
+        },
+        "structuredBrief": {
+          "version": 1,
+          "duration": {
+            "value": 11,
+            "unit": "nights",
+            "precision": "exact",
+            "provenance": {
+              "source": "prompt",
+              "kind": "inferred",
+              "confidence": "high",
+              "sourceText": "Milan 2 nights, Lake Como 4 nights, Verona 2 nights, Venice 3 nights"
+            }
+          },
+          "destinations": [
+            {
+              "name": "City of London",
+              "canonicalPlaceId": "open-world:nominatim:relation:51800",
+              "role": "arrival-gateway",
+              "priority": "required",
+              "provenance": {
+                "source": "builder",
+                "kind": "explicit",
+                "confidence": "high"
+              },
+              "parentCountries": [
+                "United Kingdom"
+              ],
+              "resolutionStatus": "resolved",
+              "routability": "direct_destination"
+            },
+            {
+              "name": "Milan",
+              "canonicalPlaceId": "milan",
+              "placeMentionId": "place-milan-0",
+              "placeType": "city",
+              "resolutionStatus": "resolved",
+              "routability": "direct_destination",
+              "sourceLabel": "Milan",
+              "parentCountries": [
+                "Italy"
+              ],
+              "role": "preferred",
+              "priority": "normal",
+              "provenance": {
+                "source": "builder",
+                "kind": "explicit",
+                "confidence": "high"
+              },
+              "id": "milan-0"
+            },
+            {
+              "name": "Venice",
+              "canonicalPlaceId": "venice",
+              "placeMentionId": "place-venice-0",
+              "placeType": "city",
+              "resolutionStatus": "resolved",
+              "routability": "direct_destination",
+              "sourceLabel": "Venice",
+              "parentCountries": [
+                "Italy"
+              ],
+              "role": "preferred",
+              "priority": "normal",
+              "provenance": {
+                "source": "builder",
+                "kind": "explicit",
+                "confidence": "high"
+              },
+              "id": "venice-3"
+            },
+            {
+              "name": "Lake Como",
+              "placeMentionId": "place-unresolved-lake-como-16",
+              "placeType": "unknown",
+              "resolutionStatus": "unresolved",
+              "routability": "non_routable_reference",
+              "sourceLabel": "Lake Como",
+              "parentCountries": [],
+              "role": "preferred",
+              "priority": "normal",
+              "provenance": {
+                "source": "prompt",
+                "kind": "explicit",
+                "confidence": "low",
+                "sourceText": "Lake Como"
+              }
+            },
+            {
+              "name": "Verona",
+              "placeMentionId": "place-unresolved-verona-36",
+              "placeType": "unknown",
+              "resolutionStatus": "unresolved",
+              "routability": "non_routable_reference",
+              "sourceLabel": "Verona",
+              "parentCountries": [],
+              "role": "preferred",
+              "priority": "normal",
+              "provenance": {
+                "source": "prompt",
+                "kind": "explicit",
+                "confidence": "low",
+                "sourceText": "Verona"
+              }
+            }
+          ],
+          "mustVisit": [
+            {
+              "name": "Milan",
+              "canonicalPlaceId": "milan",
+              "placeMentionId": "place-milan-0",
+              "placeType": "city",
+              "resolutionStatus": "resolved",
+              "routability": "direct_destination",
+              "sourceLabel": "Milan",
+              "parentCountries": [
+                "Italy"
+              ],
+              "role": "preferred",
+              "priority": "normal",
+              "provenance": {
+                "source": "builder",
+                "kind": "explicit",
+                "confidence": "high"
+              },
+              "id": "milan-0"
+            },
+            {
+              "name": "Venice",
+              "canonicalPlaceId": "venice",
+              "placeMentionId": "place-venice-0",
+              "placeType": "city",
+              "resolutionStatus": "resolved",
+              "routability": "direct_destination",
+              "sourceLabel": "Venice",
+              "parentCountries": [
+                "Italy"
+              ],
+              "role": "preferred",
+              "priority": "normal",
+              "provenance": {
+                "source": "builder",
+                "kind": "explicit",
+                "confidence": "high"
+              },
+              "id": "venice-3"
+            }
+          ],
+          "countries": [],
+          "preferredRegions": [],
+          "dates": {},
+          "interests": [],
+          "transportPreferences": [],
+          "accommodationPreferences": [],
+          "hardConstraints": [
+            {
+              "type": "duration",
+              "duration": {
+                "value": 11,
+                "unit": "nights",
+                "precision": "exact",
+                "provenance": {
+                  "source": "prompt",
+                  "kind": "inferred",
+                  "confidence": "high",
+                  "sourceText": "Milan 2 nights, Lake Como 4 nights, Verona 2 nights, Venice 3 nights"
+                }
+              }
+            },
+            {
+              "type": "start-at",
+              "value": "City of London",
+              "provenance": {
+                "source": "builder",
+                "kind": "explicit",
+                "confidence": "high"
+              }
+            },
+            {
+              "type": "must-visit",
+              "value": "Milan",
+              "provenance": {
+                "source": "builder",
+                "kind": "explicit",
+                "confidence": "high"
+              }
+            },
+            {
+              "type": "must-visit",
+              "value": "Venice",
+              "provenance": {
+                "source": "builder",
+                "kind": "explicit",
+                "confidence": "high"
+              }
+            },
+            {
+              "type": "fixed-commitment",
+              "value": "Milan — 2 nights",
+              "place": {
+                "name": "Milan",
+                "canonicalPlaceId": "milan",
+                "country": "Italy"
+              },
+              "stopId": "milan-0",
+              "sourceMentionId": "place-milan-0",
+              "fixedNights": 2,
+              "provenance": {
+                "source": "builder",
+                "kind": "explicit",
+                "confidence": "high"
+              }
+            },
+            {
+              "type": "fixed-commitment",
+              "value": "Venice — 3 nights",
+              "place": {
+                "name": "Venice",
+                "canonicalPlaceId": "venice",
+                "country": "Italy"
+              },
+              "stopId": "venice-3",
+              "sourceMentionId": "place-venice-0",
+              "fixedNights": 3,
+              "provenance": {
+                "source": "builder",
+                "kind": "explicit",
+                "confidence": "high"
+              }
+            }
+          ],
+          "softPreferences": [
+            {
+              "type": "budget",
+              "value": "mid",
+              "provenance": {
+                "source": "morrovia-default",
+                "kind": "default",
+                "confidence": "low"
+              }
+            }
+          ],
+          "source": {
+            "rawPrompt": "Milan 2 nights, Lake Como 4 nights, Verona 2 nights, Venice 3 nights.",
+            "parserVersion": "place-intelligence-v1-deterministic",
+            "inputs": [
+              "prompt",
+              "builder"
+            ]
+          },
+          "confidence": "high",
+          "issues": [],
+          "placeMentions": [
+            {
+              "mentionId": "place-milan-0",
+              "sourceText": "Milan",
+              "sourceTexts": [
+                "Milan"
+              ],
+              "normalizedPhrase": "milan",
+              "canonicalName": "Milan",
+              "canonicalPlaceId": "milan",
+              "aliases": [
+                "Milano",
+                "MXP"
+              ],
+              "placeType": "city",
+              "status": "resolved",
+              "confidence": {
+                "version": 1,
+                "state": "structured",
+                "level": "high",
+                "freshness": "reviewed",
+                "scope": "general-route",
+                "sources": [
+                  {
+                    "id": "morrovia-place-catalog:milan",
+                    "label": "Morrovia curated place catalog",
+                    "kind": "curated",
+                    "supports": "Canonical identity, aliases, type and stable containment for Milan.",
+                    "reviewedAt": "2026-08-23"
+                  }
+                ],
+                "reason": "The phrase matches Morrovia's curated canonical place data.",
+                "confirmation": {
+                  "needed": false,
+                  "reason": null
+                }
+              },
+              "provenance": [
+                {
+                  "id": "morrovia-place-catalog:milan",
+                  "label": "Morrovia curated place catalog",
+                  "kind": "canonical",
+                  "supports": "Canonical identity, aliases, type and stable containment for Milan.",
+                  "reviewedAt": "2026-08-23"
+                },
+                {
+                  "id": "stay-occurrence:place-milan-0",
+                  "label": "Traveller stay occurrence",
+                  "kind": "context",
+                  "supports": "A separate source occurrence has its own explicit stay quantity."
+                }
+              ],
+              "parentCountries": [
+                "Italy"
+              ],
+              "routability": "direct_destination",
+              "directlyRoutable": true,
+              "requiresBaseSelection": false,
+              "isAnchor": false,
+              "role": "preferred",
+              "order": 0,
+              "candidates": []
+            },
+            {
+              "mentionId": "place-unresolved-lake-como-16",
+              "sourceText": "Lake Como",
+              "sourceTexts": [
+                "Lake Como"
+              ],
+              "normalizedPhrase": "lake como",
+              "canonicalName": "Lake Como",
+              "aliases": [],
+              "placeType": "unknown",
+              "status": "unresolved",
+              "confidence": {
+                "version": 1,
+                "state": "unknown",
+                "level": "unknown",
+                "freshness": "unknown",
+                "scope": "unknown",
+                "sources": [],
+                "reason": "Morrovia retained this possible place phrase but could not resolve it.",
+                "confirmation": {
+                  "needed": true,
+                  "reason": "Morrovia retained this possible place phrase but could not resolve it."
+                }
+              },
+              "provenance": [
+                {
+                  "id": "unresolved:lake-como",
+                  "label": "Traveller phrase",
+                  "kind": "unresolved",
+                  "supports": "The exact phrase was retained without claiming a geographic identity."
+                },
+                {
+                  "id": "stay-occurrence:place-unresolved-lake-como-16",
+                  "label": "Traveller stay occurrence",
+                  "kind": "context",
+                  "supports": "A separate source occurrence has its own explicit stay quantity."
+                }
+              ],
+              "parentCountries": [],
+              "routability": "non_routable_reference",
+              "directlyRoutable": false,
+              "requiresBaseSelection": false,
+              "isAnchor": false,
+              "role": "preferred",
+              "order": 1,
+              "candidates": []
+            },
+            {
+              "mentionId": "place-unresolved-verona-36",
+              "sourceText": "Verona",
+              "sourceTexts": [
+                "Verona"
+              ],
+              "normalizedPhrase": "verona",
+              "canonicalName": "Verona",
+              "aliases": [],
+              "placeType": "unknown",
+              "status": "unresolved",
+              "confidence": {
+                "version": 1,
+                "state": "unknown",
+                "level": "unknown",
+                "freshness": "unknown",
+                "scope": "unknown",
+                "sources": [],
+                "reason": "Morrovia retained this possible place phrase but could not resolve it.",
+                "confirmation": {
+                  "needed": true,
+                  "reason": "Morrovia retained this possible place phrase but could not resolve it."
+                }
+              },
+              "provenance": [
+                {
+                  "id": "unresolved:verona",
+                  "label": "Traveller phrase",
+                  "kind": "unresolved",
+                  "supports": "The exact phrase was retained without claiming a geographic identity."
+                },
+                {
+                  "id": "stay-occurrence:place-unresolved-verona-36",
+                  "label": "Traveller stay occurrence",
+                  "kind": "context",
+                  "supports": "A separate source occurrence has its own explicit stay quantity."
+                }
+              ],
+              "parentCountries": [],
+              "routability": "non_routable_reference",
+              "directlyRoutable": false,
+              "requiresBaseSelection": false,
+              "isAnchor": false,
+              "role": "preferred",
+              "order": 2,
+              "candidates": []
+            },
+            {
+              "mentionId": "place-venice-0",
+              "sourceText": "Venice",
+              "sourceTexts": [
+                "Venice"
+              ],
+              "normalizedPhrase": "venice",
+              "canonicalName": "Venice",
+              "canonicalPlaceId": "venice",
+              "aliases": [
+                "Venezia",
+                "Venecia",
+                "VCE"
+              ],
+              "placeType": "city",
+              "status": "resolved",
+              "confidence": {
+                "version": 1,
+                "state": "structured",
+                "level": "high",
+                "freshness": "reviewed",
+                "scope": "general-route",
+                "sources": [
+                  {
+                    "id": "morrovia-place-catalog:venice",
+                    "label": "Morrovia curated place catalog",
+                    "kind": "curated",
+                    "supports": "Canonical identity, aliases, type and stable containment for Venice.",
+                    "reviewedAt": "2026-08-23"
+                  }
+                ],
+                "reason": "The phrase matches Morrovia's curated canonical place data.",
+                "confirmation": {
+                  "needed": false,
+                  "reason": null
+                }
+              },
+              "provenance": [
+                {
+                  "id": "morrovia-place-catalog:venice",
+                  "label": "Morrovia curated place catalog",
+                  "kind": "canonical",
+                  "supports": "Canonical identity, aliases, type and stable containment for Venice.",
+                  "reviewedAt": "2026-08-23"
+                },
+                {
+                  "id": "stay-occurrence:place-venice-0",
+                  "label": "Traveller stay occurrence",
+                  "kind": "context",
+                  "supports": "A separate source occurrence has its own explicit stay quantity."
+                }
+              ],
+              "parentCountries": [
+                "Italy"
+              ],
+              "routability": "direct_destination",
+              "directlyRoutable": true,
+              "requiresBaseSelection": false,
+              "isAnchor": false,
+              "role": "preferred",
+              "order": 3,
+              "candidates": []
+            }
+          ],
+          "placeIssues": [
+            {
+              "code": "unresolved_place",
+              "mentionId": "place-unresolved-lake-como-16",
+              "sourceText": "Lake Como",
+              "reason": "The phrase was preserved but does not yet have a supported geographic identity.",
+              "message": "Confirm Lake Como before Morrovia uses it in the route.",
+              "severity": "error",
+              "blocksRoute": true,
+              "options": [],
+              "provenance": [
+                {
+                  "id": "unresolved:lake-como",
+                  "label": "Traveller phrase",
+                  "kind": "unresolved",
+                  "supports": "The exact phrase was retained without claiming a geographic identity."
+                },
+                {
+                  "id": "stay-occurrence:place-unresolved-lake-como-16",
+                  "label": "Traveller stay occurrence",
+                  "kind": "context",
+                  "supports": "A separate source occurrence has its own explicit stay quantity."
+                }
+              ],
+              "confidence": {
+                "version": 1,
+                "state": "unknown",
+                "level": "unknown",
+                "freshness": "unknown",
+                "scope": "unknown",
+                "sources": [],
+                "reason": "Morrovia retained this possible place phrase but could not resolve it.",
+                "confirmation": {
+                  "needed": true,
+                  "reason": "Morrovia retained this possible place phrase but could not resolve it."
+                }
+              }
+            },
+            {
+              "code": "unresolved_place",
+              "mentionId": "place-unresolved-verona-36",
+              "sourceText": "Verona",
+              "reason": "The phrase was preserved but does not yet have a supported geographic identity.",
+              "message": "Confirm Verona before Morrovia uses it in the route.",
+              "severity": "error",
+              "blocksRoute": true,
+              "options": [],
+              "provenance": [
+                {
+                  "id": "unresolved:verona",
+                  "label": "Traveller phrase",
+                  "kind": "unresolved",
+                  "supports": "The exact phrase was retained without claiming a geographic identity."
+                },
+                {
+                  "id": "stay-occurrence:place-unresolved-verona-36",
+                  "label": "Traveller stay occurrence",
+                  "kind": "context",
+                  "supports": "A separate source occurrence has its own explicit stay quantity."
+                }
+              ],
+              "confidence": {
+                "version": 1,
+                "state": "unknown",
+                "level": "unknown",
+                "freshness": "unknown",
+                "scope": "unknown",
+                "sources": [],
+                "reason": "Morrovia retained this possible place phrase but could not resolve it.",
+                "confirmation": {
+                  "needed": true,
+                  "reason": "Morrovia retained this possible place phrase but could not resolve it."
+                }
+              }
+            }
+          ],
+          "placeSelections": [],
+          "completedPlanningAreaMentionIds": [],
+          "removedPlaceMentionIds": [],
+          "travellers": {
+            "value": 2,
+            "provenance": {
+              "source": "morrovia-default",
+              "kind": "default",
+              "confidence": "low"
+            }
+          },
+          "budget": {
+            "value": "mid",
+            "provenance": {
+              "source": "morrovia-default",
+              "kind": "default",
+              "confidence": "low"
+            }
+          }
+        },
+        "cascadeStatus": {
+          "conflicts": [],
+          "affectedBookingIds": [],
+          "affectedPlanItemCount": 0
+        },
+        "itineraryIdeas": [],
+        "routeAssessment": {
+          "route": {
+            "state": "current-order",
+            "currentStopIds": [
+              "milan-0",
+              "venice-3"
+            ],
+            "recommendedStopIds": [
+              "milan-0",
+              "venice-3"
+            ],
+            "currentTransferMinutes": 510,
+            "recommendedTransferMinutes": 510,
+            "improvementMinutes": 0,
+            "reasons": [
+              "The entered order is held while a fixed date or booking is in the trip."
+            ],
+            "tradeoffs": [
+              "Confirm where each fixed commitment sits before changing the route order."
+            ],
+            "summary": "Your fixed commitments are protected.",
+            "confidence": {
+              "version": 1,
+              "state": "estimated",
+              "level": "medium",
+              "freshness": "unknown",
+              "scope": "general-route",
+              "sources": [
+                {
+                  "id": "planner:transfer-impact-rules-v1",
+                  "label": "Morrovia deterministic transfer-impact rules",
+                  "kind": "curated",
+                  "supports": "Mode-specific access, processing, waiting, arrival and usable-day planning ranges.",
+                  "reviewedAt": "2026-08-23"
+                }
+              ],
+              "reason": "Confidence in the route score based on its weakest material connection evidence.",
+              "confirmation": {
+                "needed": true,
+                "reason": "Confirm exact services and schedules for the traveller's dates before booking."
+              }
+            }
+          },
+          "durations": {
+            "milan-0": {
+              "stopId": "milan-0",
+              "minimumDays": 2,
+              "recommendedDays": 2,
+              "usableDays": 1.5,
+              "arrivalMinutes": 285,
+              "arrivalLoad": "substantial",
+              "reason": "The arrival transfer uses a meaningful part of the day."
+            },
+            "venice-3": {
+              "stopId": "venice-3",
+              "minimumDays": 2,
+              "recommendedDays": 2,
+              "usableDays": 1.5,
+              "arrivalMinutes": 225,
+              "arrivalLoad": "substantial",
+              "reason": "The arrival transfer uses a meaningful part of the day."
+            }
+          },
+          "comfortableDays": 4,
+          "shortfallDays": 0
+        },
+        "origin": "City of London",
+        "originCanonicalPlaceId": "open-world:nominatim:relation:51800",
+        "originProviderId": "open-world:nominatim:relation:51800",
+        "originCountry": "United Kingdom",
+        "originCoordinates": [
+          -0.0919983,
+          51.5156177
+        ],
+        "journeyEnd": {
+          "mode": "unknown"
+        }
+      },
+      "stops": [
+        {
+          "id": "milan-0",
+          "name": "Milan",
+          "country": "Italy",
+          "order": 0,
+          "latitude": 45.4641943,
+          "longitude": 9.1896346,
+          "arrivalDate": "2026-10-08",
+          "departureDate": "2026-10-10",
+          "nights": 2,
+          "canonicalPlaceId": "milan",
+          "providerId": "nominatim:relation:44915"
+        },
+        {
+          "id": "venice-3",
+          "name": "Venice",
+          "country": "Italy",
+          "order": 1,
+          "latitude": 45.4371908,
+          "longitude": 12.3345898,
+          "arrivalDate": "2026-10-10",
+          "departureDate": "2026-10-13",
+          "nights": 3,
+          "canonicalPlaceId": "venice",
+          "providerId": "nominatim:relation:44741"
+        }
+      ],
+      "legs": [
+        {
+          "id": "trip-fixture-a12-leg-1",
+          "fromStopId": "trip-fixture-a12-origin",
+          "toStopId": "milan-0",
+          "fromEndpoint": {
+            "name": "City of London",
+            "canonicalPlaceId": "open-world:nominatim:relation:51800",
+            "country": "United Kingdom",
+            "providerId": "open-world:nominatim:relation:51800",
+            "coordinates": [
+              -0.0919983,
+              51.5156177
+            ],
+            "kind": "origin",
+            "id": "trip-fixture-a12-origin"
+          },
+          "toEndpoint": {
+            "kind": "stop",
+            "id": "milan-0",
+            "name": "Milan",
+            "country": "Italy",
+            "canonicalPlaceId": "milan",
+            "providerId": "nominatim:relation:44915",
+            "coordinates": [
+              9.1896346,
+              45.4641943
+            ]
+          },
+          "classification": "arrival",
+          "mode": "unknown",
+          "distanceKm": 958,
+          "straightLineDistanceKm": 958,
+          "routedDistanceKm": null,
+          "durationMinutes": null,
+          "headlineMinutes": null,
+          "doorToDoorMinutes": null,
+          "usableDayLoss": null,
+          "provider": "Air is plausible, but Morrovia has no direct-service or complete multimodal evidence for this regional cross-border journey.",
+          "provenance": "unknown",
+          "confidence": "unknown",
+          "scheduleNeedsChecking": true,
+          "warnings": [],
+          "routeMetadata": {
+            "planningEstimate": true,
+            "source": "multimodal-resolver",
+            "roadFallbackEligible": false,
+            "gatewayResolutionRequired": false,
+            "label": "City of London → Milan",
+            "routingConfidence": "medium",
+            "transferImpact": {
+              "version": 1,
+              "mode": "flight",
+              "headline": {
+                "status": "known",
+                "value": {
+                  "planningMinutes": 75,
+                  "rangeMinutes": {
+                    "minimum": 60,
+                    "maximum": 105
+                  },
+                  "precision": "estimated-range"
+                },
+                "confidence": "estimated",
+                "sources": [
+                  {
+                    "id": "planner:transfer-impact-rules-v1",
+                    "label": "Morrovia deterministic transfer-impact rules",
+                    "kind": "curated",
+                    "supports": "Mode-specific access, processing, waiting, arrival and usable-day planning ranges.",
+                    "reviewedAt": "2026-08-23"
+                  }
+                ]
+              },
+              "doorToDoor": {
+                "status": "known",
+                "value": {
+                  "planningMinutes": 285,
+                  "rangeMinutes": {
+                    "minimum": 195,
+                    "maximum": 360
+                  },
+                  "precision": "estimated-range"
+                },
+                "confidence": "estimated",
+                "sources": [
+                  {
+                    "id": "planner:transfer-impact-rules-v1",
+                    "label": "Morrovia deterministic transfer-impact rules",
+                    "kind": "curated",
+                    "supports": "Mode-specific access, processing, waiting, arrival and usable-day planning ranges.",
+                    "reviewedAt": "2026-08-23"
+                  }
+                ]
+              },
+              "components": [
+                {
+                  "id": "origin-local",
+                  "label": "Local journey to departure point",
+                  "timing": {
+                    "status": "known",
+                    "value": {
+                      "planningMinutes": 45,
+                      "rangeMinutes": {
+                        "minimum": 30,
+                        "maximum": 60
+                      },
+                      "precision": "estimated-range"
+                    },
+                    "confidence": "estimated",
+                    "sources": [
+                      {
+                        "id": "planner:transfer-impact-rules-v1",
+                        "label": "Morrovia deterministic transfer-impact rules",
+                        "kind": "curated",
+                        "supports": "Mode-specific access, processing, waiting, arrival and usable-day planning ranges.",
+                        "reviewedAt": "2026-08-23"
+                      }
+                    ]
+                  },
+                  "reason": "Mode rule for flight access."
+                },
+                {
+                  "id": "check-in-security",
+                  "label": "Check-in and security",
+                  "timing": {
+                    "status": "known",
+                    "value": {
+                      "planningMinutes": 45,
+                      "rangeMinutes": {
+                        "minimum": 30,
+                        "maximum": 60
+                      },
+                      "precision": "estimated-range"
+                    },
+                    "confidence": "estimated",
+                    "sources": [
+                      {
+                        "id": "planner:transfer-impact-rules-v1",
+                        "label": "Morrovia deterministic transfer-impact rules",
+                        "kind": "curated",
+                        "supports": "Mode-specific access, processing, waiting, arrival and usable-day planning ranges.",
+                        "reviewedAt": "2026-08-23"
+                      }
+                    ]
+                  },
+                  "reason": "Mode rule for flight processing."
+                },
+                {
+                  "id": "waiting-buffer",
+                  "label": "Waiting and departure buffer",
+                  "timing": {
+                    "status": "known",
+                    "value": {
+                      "planningMinutes": 60,
+                      "rangeMinutes": {
+                        "minimum": 45,
+                        "maximum": 75
+                      },
+                      "precision": "estimated-range"
+                    },
+                    "confidence": "estimated",
+                    "sources": [
+                      {
+                        "id": "planner:transfer-impact-rules-v1",
+                        "label": "Morrovia deterministic transfer-impact rules",
+                        "kind": "curated",
+                        "supports": "Mode-specific access, processing, waiting, arrival and usable-day planning ranges.",
+                        "reviewedAt": "2026-08-23"
+                      }
+                    ]
+                  },
+                  "reason": "Mode rule for flight departure reliability."
+                },
+                {
+                  "id": "transport",
+                  "label": "Headline transport",
+                  "timing": {
+                    "status": "known",
+                    "value": {
+                      "planningMinutes": 75,
+                      "rangeMinutes": {
+                        "minimum": 60,
+                        "maximum": 105
+                      },
+                      "precision": "estimated-range"
+                    },
+                    "confidence": "estimated",
+                    "sources": [
+                      {
+                        "id": "planner:transfer-impact-rules-v1",
+                        "label": "Morrovia deterministic transfer-impact rules",
+                        "kind": "curated",
+                        "supports": "Mode-specific access, processing, waiting, arrival and usable-day planning ranges.",
+                        "reviewedAt": "2026-08-23"
+                      }
+                    ]
+                  },
+                  "reason": "In-vehicle or scheduled transport time."
+                },
+                {
+                  "id": "border-immigration",
+                  "label": "Border and immigration",
+                  "timing": {
+                    "status": "unknown",
+                    "value": null,
+                    "confidence": "unknown",
+                    "sources": [],
+                    "reason": "This is cross-border, but no stable border or immigration allowance is curated."
+                  },
+                  "reason": "This is cross-border, but no stable border or immigration allowance is curated."
+                },
+                {
+                  "id": "connection-buffer",
+                  "label": "Connection buffer",
+                  "timing": {
+                    "status": "unknown",
+                    "value": null,
+                    "confidence": "unknown",
+                    "sources": [],
+                    "reason": "The route does not identify whether a timed connection is required."
+                  },
+                  "reason": "The route does not identify whether a timed connection is required."
+                },
+                {
+                  "id": "arrival-local",
+                  "label": "Arrival to accommodation",
+                  "timing": {
+                    "status": "known",
+                    "value": {
+                      "planningMinutes": 45,
+                      "rangeMinutes": {
+                        "minimum": 30,
+                        "maximum": 60
+                      },
+                      "precision": "estimated-range"
+                    },
+                    "confidence": "estimated",
+                    "sources": [
+                      {
+                        "id": "planner:transfer-impact-rules-v1",
+                        "label": "Morrovia deterministic transfer-impact rules",
+                        "kind": "curated",
+                        "supports": "Mode-specific access, processing, waiting, arrival and usable-day planning ranges.",
+                        "reviewedAt": "2026-08-23"
+                      }
+                    ]
+                  },
+                  "reason": "Mode rule for flight arrival access."
+                }
+              ],
+              "usableDayLoss": {
+                "classification": "substantial",
+                "estimatedDayFraction": 0.5,
+                "reason": "The estimated transfer uses a meaningful part of the day."
+              },
+              "occursOvernight": null,
+              "assumptions": [
+                "Mode overheads are broad planning ranges, not live schedule or queue predictions.",
+                "Unknown border or immigration time is excluded from the numeric total and remains visible as a limitation.",
+                "Unknown connection time is excluded from the numeric total and remains visible as a limitation."
+              ],
+              "claimConfidence": {
+                "headline": {
+                  "version": 1,
+                  "state": "estimated",
+                  "level": "medium",
+                  "freshness": "reviewed",
+                  "scope": "planning-rule",
+                  "sources": [
+                    {
+                      "id": "planner:transfer-impact-rules-v1",
+                      "label": "Morrovia deterministic transfer-impact rules",
+                      "kind": "curated",
+                      "supports": "Mode-specific access, processing, waiting, arrival and usable-day planning ranges.",
+                      "reviewedAt": "2026-08-23"
+                    }
+                  ],
+                  "reason": "Confidence in the headline transport duration used for planning.",
+                  "confirmation": {
+                    "needed": true,
+                    "reason": "Confirm the operator's current duration and exact service before booking."
+                  }
+                },
+                "doorToDoor": {
+                  "version": 1,
+                  "state": "estimated",
+                  "level": "medium",
+                  "freshness": "reviewed",
+                  "scope": "planning-rule",
+                  "sources": [
+                    {
+                      "id": "planner:transfer-impact-rules-v1",
+                      "label": "Morrovia deterministic transfer-impact rules",
+                      "kind": "curated",
+                      "supports": "Mode-specific access, processing, waiting, arrival and usable-day planning ranges.",
+                      "reviewedAt": "2026-08-23"
+                    }
+                  ],
+                  "reason": "Confidence in the realistic door-to-door travel-day allowance.",
+                  "confirmation": {
+                    "needed": true,
+                    "reason": "Confirm current access, processing, connection and arrival conditions before booking."
+                  }
+                }
+              }
+            },
+            "planningConfidence": {
+              "availability": {
+                "version": 1,
+                "state": "inferred",
+                "level": "medium",
+                "freshness": "unknown",
+                "scope": "general-route",
+                "sources": [],
+                "reason": "The connection is inferred from existing route geography or planning rules.",
+                "confirmation": {
+                  "needed": true,
+                  "reason": "Confirm that this route operates for the traveller's dates."
+                }
+              },
+              "schedule": {
+                "version": 1,
+                "state": "unknown",
+                "level": "unknown",
+                "freshness": "unknown",
+                "scope": "unknown",
+                "sources": [],
+                "reason": "The general route may be plausible, but no exact schedule has been verified for these dates.",
+                "confirmation": {
+                  "needed": true,
+                  "reason": "The general route may be plausible, but no exact schedule has been verified for these dates."
+                }
+              },
+              "duration": {
+                "version": 1,
+                "state": "estimated",
+                "level": "medium",
+                "freshness": "reviewed",
+                "scope": "planning-rule",
+                "sources": [
+                  {
+                    "id": "planner:transfer-impact-rules-v1",
+                    "label": "Morrovia deterministic transfer-impact rules",
+                    "kind": "curated",
+                    "supports": "Mode-specific access, processing, waiting, arrival and usable-day planning ranges.",
+                    "reviewedAt": "2026-08-23"
+                  }
+                ],
+                "reason": "Confidence in the connection duration used by route planning.",
+                "confirmation": {
+                  "needed": true,
+                  "reason": "Confirm the current operator duration before booking."
+                }
+              },
+              "doorToDoor": {
+                "version": 1,
+                "state": "estimated",
+                "level": "medium",
+                "freshness": "reviewed",
+                "scope": "planning-rule",
+                "sources": [
+                  {
+                    "id": "planner:transfer-impact-rules-v1",
+                    "label": "Morrovia deterministic transfer-impact rules",
+                    "kind": "curated",
+                    "supports": "Mode-specific access, processing, waiting, arrival and usable-day planning ranges.",
+                    "reviewedAt": "2026-08-23"
+                  }
+                ],
+                "reason": "Confidence in the realistic door-to-door travel-day allowance.",
+                "confirmation": {
+                  "needed": true,
+                  "reason": "Confirm current access, processing, connection and arrival conditions before booking."
+                }
+              },
+              "overall": {
+                "version": 1,
+                "state": "estimated",
+                "level": "medium",
+                "freshness": "unknown",
+                "scope": "general-route",
+                "sources": [
+                  {
+                    "id": "planner:transfer-impact-rules-v1",
+                    "label": "Morrovia deterministic transfer-impact rules",
+                    "kind": "curated",
+                    "supports": "Mode-specific access, processing, waiting, arrival and usable-day planning ranges.",
+                    "reviewedAt": "2026-08-23"
+                  }
+                ],
+                "reason": "Confidence in using this connection for route comparison.",
+                "confirmation": {
+                  "needed": true,
+                  "reason": "The general route may be plausible, but no exact schedule has been verified for these dates."
+                }
+              }
+            },
+            "classification": "arrival",
+            "validationWarnings": [],
+            "transportConstraints": {
+              "avoidDriving": false,
+              "excludedModes": [],
+              "preferredModes": [
+                "flight",
+                "train"
+              ]
+            },
+            "multimodalResolution": {
+              "version": 1,
+              "selected": "unresolved",
+              "candidates": [],
+              "rejected": [
+                "No plausible routed road estimate or canonical gateway access was available."
+              ]
+            }
+          }
+        },
+        {
+          "id": "trip-fixture-a12-leg-2",
+          "fromStopId": "milan-0",
+          "toStopId": "venice-3",
+          "fromEndpoint": {
+            "kind": "stop",
+            "id": "milan-0",
+            "name": "Milan",
+            "country": "Italy",
+            "canonicalPlaceId": "milan",
+            "providerId": "nominatim:relation:44915",
+            "coordinates": [
+              9.1896346,
+              45.4641943
+            ]
+          },
+          "toEndpoint": {
+            "kind": "stop",
+            "id": "venice-3",
+            "name": "Venice",
+            "country": "Italy",
+            "canonicalPlaceId": "venice",
+            "providerId": "nominatim:relation:44741",
+            "coordinates": [
+              12.3345898,
+              45.4371908
+            ]
+          },
+          "classification": "intercity",
+          "mode": "unknown",
+          "distanceKm": 245,
+          "straightLineDistanceKm": 245,
+          "routedDistanceKm": null,
+          "durationMinutes": null,
+          "headlineMinutes": null,
+          "doorToDoorMinutes": null,
+          "usableDayLoss": null,
+          "provider": "Rail could be considered for this distance, but Morrovia has no supported service fact for this exact leg.",
+          "provenance": "planning_estimate",
+          "confidence": "unknown",
+          "scheduleNeedsChecking": true,
+          "warnings": [],
+          "routeMetadata": {
+            "planningEstimate": true,
+            "source": "morrovia-planner",
+            "roadFallbackEligible": true,
+            "gatewayResolutionRequired": false,
+            "label": "Milan → Venice",
+            "routingConfidence": "unconfirmed",
+            "planningConfidence": {
+              "availability": {
+                "version": 1,
+                "state": "inferred",
+                "level": "medium",
+                "freshness": "unknown",
+                "scope": "general-route",
+                "sources": [],
+                "reason": "The connection is inferred from existing route geography or planning rules.",
+                "confirmation": {
+                  "needed": true,
+                  "reason": "Confirm that this route operates for the traveller's dates."
+                }
+              },
+              "schedule": {
+                "version": 1,
+                "state": "unknown",
+                "level": "unknown",
+                "freshness": "unknown",
+                "scope": "unknown",
+                "sources": [],
+                "reason": "The general route may be plausible, but no exact schedule has been verified for these dates.",
+                "confirmation": {
+                  "needed": true,
+                  "reason": "The general route may be plausible, but no exact schedule has been verified for these dates."
+                }
+              },
+              "duration": {
+                "version": 1,
+                "state": "estimated",
+                "level": "medium",
+                "freshness": "reviewed",
+                "scope": "planning-rule",
+                "sources": [
+                  {
+                    "id": "planner:transfer-impact-rules-v1",
+                    "label": "Morrovia deterministic transfer-impact rules",
+                    "kind": "curated",
+                    "supports": "Mode-specific access, processing, waiting, arrival and usable-day planning ranges.",
+                    "reviewedAt": "2026-08-23"
+                  }
+                ],
+                "reason": "Confidence in the connection duration used by route planning.",
+                "confirmation": {
+                  "needed": true,
+                  "reason": "Confirm the current operator duration before booking."
+                }
+              },
+              "doorToDoor": {
+                "version": 1,
+                "state": "estimated",
+                "level": "medium",
+                "freshness": "reviewed",
+                "scope": "planning-rule",
+                "sources": [
+                  {
+                    "id": "planner:transfer-impact-rules-v1",
+                    "label": "Morrovia deterministic transfer-impact rules",
+                    "kind": "curated",
+                    "supports": "Mode-specific access, processing, waiting, arrival and usable-day planning ranges.",
+                    "reviewedAt": "2026-08-23"
+                  }
+                ],
+                "reason": "Confidence in the realistic door-to-door travel-day allowance.",
+                "confirmation": {
+                  "needed": true,
+                  "reason": "Confirm current access, processing, connection and arrival conditions before booking."
+                }
+              },
+              "overall": {
+                "version": 1,
+                "state": "estimated",
+                "level": "medium",
+                "freshness": "unknown",
+                "scope": "general-route",
+                "sources": [
+                  {
+                    "id": "planner:transfer-impact-rules-v1",
+                    "label": "Morrovia deterministic transfer-impact rules",
+                    "kind": "curated",
+                    "supports": "Mode-specific access, processing, waiting, arrival and usable-day planning ranges.",
+                    "reviewedAt": "2026-08-23"
+                  }
+                ],
+                "reason": "Confidence in using this connection for route comparison.",
+                "confirmation": {
+                  "needed": true,
+                  "reason": "The general route may be plausible, but no exact schedule has been verified for these dates."
+                }
+              }
+            },
+            "classification": "intercity",
+            "validationWarnings": [],
+            "transportConstraints": {
+              "avoidDriving": false,
+              "excludedModes": [],
+              "preferredModes": [
+                "flight",
+                "train"
+              ]
+            }
+          }
+        }
+      ],
+      "planItems": [
+        {
+          "id": "trip-fixture-a12-day-1-arrive-in-milan",
+          "stopId": "milan-0",
+          "dayNumber": 1,
+          "date": "2026-10-08",
+          "type": "arrival",
+          "title": "Arrive in Milan",
+          "reason": "A protected arrival day gives the route room for the transfer, check-in and a first feel for the place.",
+          "notes": [
+            "City of London → Milan",
+            "Confirm the best connection before booking."
+          ],
+          "contextNotes": [
+            "Check in, walk one nearby area and keep dinner easy"
+          ],
+          "startsAt": null,
+          "endsAt": null,
+          "bookingUrl": null,
+          "latitude": null,
+          "longitude": null,
+          "image": null,
+          "sourceUrl": null
+        },
+        {
+          "id": "trip-fixture-a12-day-2-explore-milan",
+          "stopId": "milan-0",
+          "dayNumber": 2,
+          "date": "2026-10-09",
+          "type": "open",
+          "title": "Explore Milan",
+          "reason": "A deliberately light day in Milan, leaving space to follow what looks good once you are there.",
+          "notes": [],
+          "contextNotes": [
+            "The Biblioteca Ambrosiana is a historic library in Milan, Italy, also housing the Pinacoteca Ambrosiana, the Ambrosian art gallery. Named after Ambrose, the patron saint of Milan, it was founded in 1609 by Cardinal Federico Borromeo, whose agents scoured…",
+            "Keep the rest of the day in the same area."
+          ],
+          "startsAt": null,
+          "endsAt": null,
+          "bookingUrl": null,
+          "latitude": null,
+          "longitude": null,
+          "image": null,
+          "sourceUrl": null
+        },
+        {
+          "id": "trip-fixture-a12-day-3-travel-to-venice",
+          "stopId": "venice-3",
+          "dayNumber": 3,
+          "date": "2026-10-10",
+          "type": "arrival",
+          "title": "Travel to Venice",
+          "reason": "A protected arrival day gives the route room for the transfer, check-in and a first feel for the place.",
+          "notes": [
+            "Milan → Venice",
+            "Confirm the best connection before booking."
+          ],
+          "contextNotes": [
+            "Check in, walk one nearby area and keep dinner easy"
+          ],
+          "startsAt": null,
+          "endsAt": null,
+          "bookingUrl": null,
+          "latitude": null,
+          "longitude": null,
+          "image": null,
+          "sourceUrl": null
+        },
+        {
+          "id": "trip-fixture-a12-day-4-explore-venice",
+          "stopId": "venice-3",
+          "dayNumber": 4,
+          "date": "2026-10-11",
+          "type": "open",
+          "title": "Explore Venice",
+          "reason": "A deliberately light day in Venice, leaving space to follow what looks good once you are there.",
+          "notes": [],
+          "contextNotes": [
+            "The Chiesa di San Benedetto (Church of Saint Benedict) is a Roman Catholic church in Venice, northern Italy. Generally known as San Beneto in the Venetian dialect, the church faces the square named after it, the Campo San Beneto.",
+            "Keep the rest of the day in the same area."
+          ],
+          "startsAt": null,
+          "endsAt": null,
+          "bookingUrl": null,
+          "latitude": null,
+          "longitude": null,
+          "image": null,
+          "sourceUrl": null
+        },
+        {
+          "id": "trip-fixture-a12-day-5-a-slower-venice-day",
+          "stopId": "venice-3",
+          "dayNumber": 5,
+          "date": "2026-10-12",
+          "type": "open",
+          "title": "A slower Venice day",
+          "reason": "A buffer day protects the trip from becoming a chain of transfers and bookings.",
+          "notes": [],
+          "contextNotes": [
+            "The Church of Santissimo Salvatore (Italian: Chiesa del Santissimo Salvatore, lit. 'Church of the Most Holy Saviour'), usually known by its Venetian name of San Salvador, is a church in Venice, northern Italy.",
+            "Keep the rest of the day in the same area."
+          ],
+          "startsAt": null,
+          "endsAt": null,
+          "bookingUrl": null,
+          "latitude": null,
+          "longitude": null,
+          "image": null,
+          "sourceUrl": null
+        },
+        {
+          "id": "trip-fixture-a12-day-6-explore-venice",
+          "stopId": "venice-3",
+          "dayNumber": 6,
+          "date": "2026-10-13",
+          "type": "open",
+          "title": "Explore Venice",
+          "reason": "A deliberately light day in Venice, leaving space to follow what looks good once you are there.",
+          "notes": [],
+          "contextNotes": [
+            "The Ca' d'Oro, or Palazzo Santa Sofia, is a palace on the Grand Canal in Venice, northern Italy. Ca' d'Oro or Cadoro translates to \"House of Gold\" or \"Golden House\" in English because of the gilt and polychrome external decorations that once adorned its walls.",
+            "Keep the rest of the day in the same area."
+          ],
+          "startsAt": null,
+          "endsAt": null,
+          "bookingUrl": null,
+          "latitude": null,
+          "longitude": null,
+          "image": null,
+          "sourceUrl": null
+        }
+      ],
+      "recommendations": [],
+      "createdAt": "2026-10-08T17:46:55.611Z",
+      "updatedAt": "2026-10-08T17:47:00.536Z"
+    },
+    "geocodeCandidates": {
+      "Como": [
+        {
+          "canonicalPlaceId": "open-world:nominatim:relation:46085",
+          "name": "Como",
+          "country": "Italy",
+          "countryCode": "IT",
+          "region": "Lombardy",
+          "accessPlaceName": "Como",
+          "providerId": "nominatim:relation:46085",
+          "providerSourceLabel": "OpenStreetMap Nominatim",
+          "coordinates": [
+            9.0830353,
+            45.8115623
+          ],
+          "bounds": {
+            "south": 45.7587544,
+            "west": 9.0309315,
+            "north": 45.842029,
+            "east": 9.1368711
+          },
+          "kind": "city",
+          "placeType": "city",
+          "locality": "Como",
+          "routability": "direct_destination",
+          "matchQuality": "exact",
+          "rankScore": 167.35096464151206
+        }
+      ],
+      "Verona": [
+        {
+          "canonicalPlaceId": "open-world:nominatim:relation:44830",
+          "name": "Verona",
+          "country": "Italy",
+          "countryCode": "IT",
+          "region": "Veneto",
+          "accessPlaceName": "Verona",
+          "providerId": "nominatim:relation:44830",
+          "providerSourceLabel": "OpenStreetMap Nominatim",
+          "coordinates": [
+            10.9924122,
+            45.4384958
+          ],
+          "bounds": {
+            "south": 45.3494402,
+            "west": 10.8768512,
+            "north": 45.5418375,
+            "east": 11.1239
+          },
+          "kind": "city",
+          "placeType": "city",
+          "locality": "Verona",
+          "routability": "direct_destination",
+          "matchQuality": "exact",
+          "rankScore": 169.06930010851448
+        },
+        {
+          "canonicalPlaceId": "open-world:photon:R:44830",
+          "name": "Verona",
+          "country": "Italy",
+          "countryCode": "IT",
+          "region": "Veneto",
+          "providerId": "photon:R:44830",
+          "providerSourceLabel": "Komoot Photon",
+          "coordinates": [
+            10.9924122,
+            45.4384958
+          ],
+          "kind": "city",
+          "placeType": "city",
+          "locality": "Verona",
+          "routability": "direct_destination",
+          "matchQuality": "exact",
+          "rankScore": 133
+        }
+      ]
+    }
+  }
+}
