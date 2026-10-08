@@ -962,6 +962,8 @@ function TripBuilderDocument() {
       setResolvingLocations(Boolean(lookupMentions.length) && !builderRouteInputIsReady(initialStops));
       const originVersion = originResolutionVersionRef.current;
       const seedById = new Map(initialStops.map((stop) => [stop.id, stop]));
+      const lookupOwnerId = activeBrowserOwnerIdRef.current;
+      const lookupTripId = draft.homepage?.receipt?.tripId ?? tripId;
       // Let the builder render immediately. These requests enrich the
       // route after arrival instead of holding the homepage transition.
       const lookupKey = (mention: CapturedLocation) => `${mention.canonicalName.toLocaleLowerCase()}\u001f${mention.parentCountries.length === 1 ? mention.parentCountries[0]!.toLocaleLowerCase() : ""}`;
@@ -974,12 +976,29 @@ function TripBuilderDocument() {
       }, lookupSession.controller.signal);
       const onOutcome = ({ item: mention, value: choices, status }: {
         item: CapturedLocation; value?: LocationChoice[]; status: "resolved" | "failed" | "timeout";
-      }, dispatchedRevision: number) => {
+      }) => {
           if (!isCurrent() || handoffLookupSessionRef.current !== lookupSession) return;
           const editor=builderEditSessionRef.current;
-          if(editor && editor.getSnapshot().inputRevision!==dispatchedRevision){
-            lookupSession.statuses.set(mention.mentionId,"failed");
-            setHandoffResolutionStatuses(current=>({...current,[mention.mentionId]:"failed"}));return;
+          const snapshot=editor?.getSnapshot();
+          if(activeBrowserOwnerIdRef.current!==lookupOwnerId
+            || (snapshot && (snapshot.browserOwnerId!==lookupOwnerId || snapshot.trip.id!==lookupTripId)))return;
+          if(snapshot) {
+            const trip=snapshot.trip;
+            const prior=trip.brief.structuredBrief?.placeMentions?.find(item=>item.mentionId===mention.mentionId);
+            if(!prior || JSON.stringify(prior)!==JSON.stringify(mention))return;
+            if(isOriginMention(mention)) {
+              if(draft.origin || originResolutionVersionRef.current!==originVersion)return;
+            } else {
+              const intent=trip.brief.intent.route.destinations.find(item=>item.id===mention.mentionId);
+              if(!intent)return;
+              const seedId=handoffStopOccurrenceId(mention,handoffOccurrenceMentionIdsRef.current);
+              const seed=seedById.get(seedId);
+              const oldStop=intent.stopIds.length===1?trip.stops.find(stop=>stop.id===intent.stopIds[0]):undefined;
+              if(seed && oldStop && (oldStop.name!==seed.name || oldStop.canonicalPlaceId!==seed.canonicalPlaceId
+                || oldStop.providerId!==seed.providerId || (seed.coordinates && JSON.stringify([oldStop.longitude,oldStop.latitude])!==JSON.stringify(seed.coordinates))))return;
+              if(seed && !oldStop && (intent.resolution==='resolved' || intent.stopIds.length))return;
+              if(!seed && (intent.resolution==='resolved' || intent.stopIds.length))return;
+            }
           }
           const currentStatus = lookupSession.statuses.get(mention.mentionId);
           if (!handoffOutcomeIsCurrent(mention.mentionId, currentStatus,
@@ -1018,7 +1037,7 @@ function TripBuilderDocument() {
             if(oldStop && seed && (oldStop.name!==seed.name || oldStop.canonicalPlaceId!==seed.canonicalPlaceId || oldStop.providerId!==seed.providerId))return;
             const place={name:mention.canonicalName,coordinates:chosen.coordinates,canonicalPlaceId:mention.canonicalPlaceId??chosen.canonicalPlaceId??(chosen.providerId?`open-world:${chosen.providerId}`:undefined),country:chosen.country,providerId:chosen.providerId};
             const command=isOriginMention(mention)?{kind:"origin" as const,place}:builderPlaceCommand(trip,{stopId,intentId:intent?.id,place});
-            dispatchAcceptedBuilderEdit(command,{expectedInputRevision:dispatchedRevision});return;
+            dispatchAcceptedBuilderEdit(command,{expectedInputRevision:snapshot!.inputRevision});return;
           }
           if (isOriginMention(mention)) {
             if (draft.origin || originResolutionVersionRef.current !== originVersion) return;
@@ -1039,9 +1058,8 @@ function TripBuilderDocument() {
           }
       };
       const runLookups = (items: CapturedLocation[]) => {
-        const dispatchedRevision=builderEditSessionRef.current?.getSnapshot().inputRevision??0;
         return void resolveHandoffIncrementally(items, resolveMention, {
-        signal: lookupSession.controller.signal, onOutcome:outcome=>onOutcome(outcome,dispatchedRevision),
+        signal: lookupSession.controller.signal, onOutcome,
       }).finally(() => {
         if (isCurrent() && handoffLookupSessionRef.current === lookupSession) setResolvingLocations(false);
       });};

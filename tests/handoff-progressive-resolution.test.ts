@@ -3,6 +3,49 @@ import test from "node:test";
 
 import { createHandoffSharedLookup, handoffLookupMentions, handoffOutcomeIsCurrent, handoffRouteStops, handoffStopOccurrenceId, insertHandoffOccurrence, mergeHandoffLocationChoice, resolveHandoffIncrementally, retireHandoffResolutionStatus } from "../lib/easyt/home-trip-handoff.ts";
 import { captureJourneyBrief } from "../lib/easyt/journey-capture.ts";
+import { readFileSync } from 'node:fs';
+import ts from 'typescript';
+import { canonicalRouteFixture } from './fixtures/batch14-route-documents.ts';
+import { requireReadableTripDocument } from '../lib/easyt/trip-document.ts';
+import { builderPlaceCommand, prepareBuilderHandlerEdit } from '../lib/easyt/trip-builder-handler-contract.ts';
+import { builderDocumentFingerprint } from '../lib/easyt/trip-builder-document-commit.ts';
+import { preferredHandoffLocationChoice } from '../lib/easyt/home-trip-handoff.ts';
+
+test('actual intake callback accepts an unchanged sibling after another enrichment advances revision',()=>{
+  const capture=captureJourneyBrief('Tokyo and Kyoto');
+  let trip=requireReadableTripDocument(canonicalRouteFixture()),revision=1;
+  trip.brief.structuredBrief=capture.structuredBrief;
+  const mention=capture.mentions.find(item=>item.canonicalName==='Kyoto')!;
+  trip.brief.intent.route.destinations[1]!.id=mention.mentionId;
+  const lookupSession={statuses:new Map([[mention.mentionId,'pending']]),handled:new Set<string>()};
+  let accepted=0;
+  const scope={lookupSession,handoffLookupSessionRef:{current:lookupSession},isCurrent:()=>true,
+    builderEditSessionRef:{current:{getSnapshot:()=>({trip,inputRevision:revision,browserOwnerId:'owner-a'})}},
+    activeBrowserOwnerIdRef:{current:'owner-a'},lookupOwnerId:'owner-a',lookupTripId:trip.id,
+    removedPlaceMentionIdsRef:{current:[]},placeSelectionsRef:{current:[]},setHandoffResolutionStatuses:()=>{},
+    handoffOutcomeIsCurrent,retireHandoffResolutionStatus,preferredHandoffLocationChoice,
+    isOriginMention:(item:typeof mention)=>item.role==='origin'||item.role==='fixed_start',draft:{},originResolutionVersionRef:{current:0},originVersion:0,
+    seedById:new Map(trip.stops.map(stop=>[stop.id,{...stop,coordinates:[stop.longitude,stop.latitude]}])),handoffOccurrenceMentionIdsRef:{current:{[trip.stops[1]!.id]:mention.mentionId}},handoffStopOccurrenceId,builderPlaceCommand,
+    dispatchAcceptedBuilderEdit:(command:Parameters<typeof prepareBuilderHandlerEdit>[1],options:{expectedInputRevision:number})=>{
+      assert.equal(options.expectedInputRevision,revision);
+      const result=prepareBuilderHandlerEdit(trip,command,builderDocumentFingerprint(trip));assert.ok(result.ok);trip=result.trip;revision++;accepted++;
+    }};
+  const source=readFileSync(new URL('../app/journey/new/trip-builder.tsx',import.meta.url),'utf8');
+  const body=source.slice(source.indexOf('      const onOutcome ='),source.indexOf('      const runLookups ='));
+  const script=ts.transpileModule(`${body}\nreturn onOutcome;`,{compilerOptions:{target:ts.ScriptTarget.ES2022}}).outputText;
+  const outcome=new Function('scope',`with(scope){${script}}`)(scope);
+  outcome({item:mention,value:[{name:'Kyoto',country:'Japan',coordinates:[135.7681,35.0116]}],status:'resolved'},0);
+  assert.equal(accepted,1,'a sibling input revision must not invalidate an unchanged target');
+  const acceptedTrip=structuredClone(trip);
+  const send=()=>{lookupSession.statuses.set(mention.mentionId,'pending');outcome({item:mention,value:[{name:'Kyoto',country:'Japan',coordinates:[135.7681,35.0116]}],status:'resolved'},0)};
+  trip.stops[1]!.longitude=(trip.stops[1]!.longitude??0)+1;send();assert.equal(accepted,1,'a manually replaced target must reject the old result');
+  trip=structuredClone(acceptedTrip);scope.activeBrowserOwnerIdRef.current='owner-b';send();assert.equal(accepted,1,'foreign owner result must be discarded');
+  scope.activeBrowserOwnerIdRef.current='owner-a';trip.id='other-trip';send();assert.equal(accepted,1,'foreign trip result must be discarded');
+  trip=structuredClone(acceptedTrip);
+  trip.brief.intent.route.destinations=trip.brief.intent.route.destinations.filter(item=>item.id!==mention.mentionId);
+  lookupSession.statuses.set(mention.mentionId,'pending');outcome({item:mention,value:[{name:'Kyoto',country:'Japan',coordinates:[135.7681,35.0116]}],status:'resolved'},0);
+  assert.equal(accepted,1,'removed intent must never resurrect');
+});
 
 function deferred<T>() {
   let resolve!: (value: T) => void;
