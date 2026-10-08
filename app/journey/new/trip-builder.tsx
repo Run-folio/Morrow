@@ -16,7 +16,7 @@ import {
 import { useSearchParams } from "next/navigation";
 import dynamic from "next/dynamic";
 import { useCallback, useEffect, useLayoutEffect, useId, useMemo, useRef, useState, type DragEvent as ReactDragEvent } from "react";
-import { acknowledgeTripBuildSave, cacheCanonicalTrip, canUseHydratedTripScope, claimGuestTripRecoveryForOwner, EASYT_BEFORE_NEW_TRIP_EVENT, EASYT_LAST_OWNER_CHANGE_EVENT, EASYT_LAST_OWNER_KEY, EasyTTripAuthError, EasyTTripPromotionConflictError, EasyTTripSaveConflictError, forgetRememberedOwner, loadActiveTrip, loadCurrentDraftRecovery, loadRememberedOwner, loadRequestedTrip, loadTripRecovery, markTripRecoveryState, ownerIdForBrowserRecovery, rememberLastOwner, saveTripRecovery, saveTripRecoveryToEasyT, shouldAllowNewTripNavigation, tripDocumentsCanonicalEquivalent, type TripRecoveryHandle } from "@/lib/easyt/storage";
+import { acknowledgeTripBuildSave, cacheCanonicalTrip, canUseHydratedTripScope, claimGuestTripRecoveryForOwner, EASYT_BEFORE_NEW_TRIP_EVENT, EASYT_LAST_OWNER_CHANGE_EVENT, EASYT_LAST_OWNER_KEY, EasyTTripAuthError, EasyTTripPromotionConflictError, EasyTTripSaveConflictError, forgetRememberedOwner, loadActiveTrip, loadCurrentDraftRecovery, loadRememberedOwner, loadRequestedTrip, loadTripRecovery, markTripRecoveryState, ownerIdForBrowserRecovery, rememberLastOwner, saveTripRecovery, saveTripRecoveryToEasyT, sameRecoveryDocument, shouldAllowNewTripNavigation, tripDocumentsCanonicalEquivalent, type TripRecoveryHandle } from "@/lib/easyt/storage";
 import { canonicalTripStopIdentityMap, tripBuildDocumentsCanonicalEquivalent } from "@/lib/easyt/trip-promotion";
 import { type BuilderAcceptedEdit, type BuilderStructuralSnapshot } from "@/lib/easyt/trip-builder-edit";
 import { builderNightsCommand, builderRemoveCommand, builderPlaceCommand, builderDetailsCommands } from "@/lib/easyt/trip-builder-handler-contract";
@@ -4312,16 +4312,24 @@ function TripBuilderDocument() {
       try {
         const source=hydratedCanonicalTripRef.current?.id===activeTripDocument.id ? hydratedCanonicalTripRef.current : null;
         const candidate=requireReadableTripDocument(source??activeTripDocument);
+        const openedRecovery=source ? recoveryHandleRef.current : null;
+        let persistedRecovery: ReturnType<typeof persistDeviceRecovery> | null = null;
         if (!source) {
-          let recovery=persistDeviceRecovery(candidate);
-          if(receiptAcknowledgementRef.current) { await receiptAcknowledgementRef.current; if(!active)return; recovery=persistDeviceRecovery(candidate); }
-          if(!recovery.stored) return;
+          persistedRecovery=persistDeviceRecovery(candidate);
+          if(receiptAcknowledgementRef.current) { await receiptAcknowledgementRef.current; if(!active)return; persistedRecovery=persistDeviceRecovery(candidate); }
+          if(!persistedRecovery.stored) return;
         }
+        // A guest reconstruction can reuse a durable write with an older timestamp.
+        // Seed that exact document and reject a later or foreign recovery.
         const recovery=loadTripRecovery(candidate.id,activeBrowserOwnerId);
-        if(recovery && JSON.stringify(recovery.trip)!==JSON.stringify(candidate)) {
+        const expectedRecovery=persistedRecovery?.handle ?? openedRecovery;
+        if (expectedRecovery && !recovery || recovery && (recovery.ownerId !== activeBrowserOwnerId
+          || recovery.tripId !== candidate.id || !recovery.writeId || !sameRecoveryDocument(recovery.trip,candidate)
+          || expectedRecovery && (recovery.ownerId !== expectedRecovery.ownerId
+            || recovery.tripId !== expectedRecovery.tripId || recovery.writeId !== expectedRecovery.writeId))) {
           setDeviceRecoveryBlocked(true);setCloudSaveError("Open this device's separate recovery before editing the account trip.");return;
         }
-        if(active) setBuilderSeed({initialTrip:candidate,initialRecovery:recovery,
+        if(active) setBuilderSeed({initialTrip:recovery?.trip ?? candidate,initialRecovery:recovery,
           initialCanonicalTrip:recovery?null:candidate,allowRecoverySync:!source || builderSearchParams.get("recover")==="1"});
       }catch { if(active) {setDeviceStorageBlocked(true);setSaveState("error");setCloudSaveError("This trip could not be opened safely. Its recovery is preserved.");} }
     };
@@ -4898,7 +4906,7 @@ function TripBuilderDocument() {
   const recoverFromSaveError = () => {
     if(builderEditSessionRef.current) {
       if(syncAction==="sign-in")window.location.assign(tripSyncSignInPath(activeTripDocument.id));
-      else if(syncAction==="open-device" || mountedBuilder?.snapshot.historicalRecovery)window.location.assign(tripSyncRecoveryPath(activeTripDocument.id));
+      else if(syncAction==="open-device" || mountedBuilder?.snapshot.historicalRecovery)window.location.assign(tripSyncRecoveryPath(activeTripDocument.id,"builder"));
       else builderEditSessionRef.current.retrySave();
       return;
     }
@@ -4910,7 +4918,7 @@ function TripBuilderDocument() {
       return;
     }
     if (syncAction === "open-device") {
-      window.location.assign(tripSyncRecoveryPath(activeTripDocument.id));
+      window.location.assign(tripSyncRecoveryPath(activeTripDocument.id,"builder"));
       return;
     }
     if (deviceStorageBlocked) {

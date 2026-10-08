@@ -489,7 +489,7 @@ function nextRecoverySavedAt(existing: TripRecoveryRecord | null, requested?: st
   return new Date(Number.isFinite(previous) && previous >= next ? previous + 1 : next).toISOString();
 }
 
-function sameRecoveryDocument(left: EasyTTrip, right: EasyTTrip) {
+export function sameRecoveryDocument(left: EasyTTrip, right: EasyTTrip) {
   left = prepareTripDocumentForWrite(left);
   right = prepareTripDocumentForWrite(right);
   if (JSON.stringify(left) === JSON.stringify(right)) return true;

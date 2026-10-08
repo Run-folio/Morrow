@@ -31,8 +31,9 @@ export function tripSyncAuthError(status: number, message?: string): EasyTTripAu
   return new EasyTTripAuthError(message === "Unauthorized" ? undefined : message);
 }
 
-/** Return through the planner so its exact local document can retry safely. */
-export function tripSyncRecoveryPath(tripId: string) {
+/** Reopen the exact device copy in its caller's editing context. */
+export function tripSyncRecoveryPath(tripId: string, context: "planner" | "builder" = "planner") {
+  if (context === "builder") return `/journey/new?trip=${encodeURIComponent(tripId)}&recover=1`;
   return `/journey/plan?trip=${encodeURIComponent(tripId)}&save=1&recover=1`;
 }
 

@@ -43,6 +43,8 @@ for(const f of fixtures)test(`${f.case} literal Homepage intake, exact occurrenc
   await page.waitForURL(/\/journey\/new\?.*\btrip=/,{waitUntil:'domcontentloaded'});id=new URL(page.url()).searchParams.get('trip')!;assert(id);
   await page.getByText('Saved on this device',{exact:true}).first().waitFor();
   states.initial=await until(t=>t.brief.intent.route.destinations.length>0);assert.equal(originalCaptureRequests,1,'Exactly one original literal capture is submitted');
+  states.acknowledgement=await page.evaluate(()=>({input:JSON.parse(localStorage.getItem('easyt-private:guest:homepage-input')??'null'),handoff:JSON.parse(localStorage.getItem('easyt-home-trip-draft')??'null')}));
+  const receipt=states.acknowledgement.input?.receipt;assert.equal(receipt?.version,1,'The original intake receipt must be durably completed');assert.equal(receipt.ownerId,null);assert.equal(receipt.tripId,id);assert.deepEqual(states.acknowledgement.handoff?.homepage?.receipt,receipt,'Both durable receipt owners must acknowledge the same handoff');assert.equal(states.acknowledgement.handoff.handoffId,receipt.handoffId);
   if(await page.getByText('SKIP WORKSPACE GUIDE',{exact:true}).isVisible().catch(()=>false))await page.getByText('SKIP WORKSPACE GUIDE',{exact:true}).click();
   if(f.case==='A16'){
    await page.locator('[data-builder-route-workspace]').waitFor();const initial=await until(t=>t.stops.length===4);
@@ -57,8 +59,7 @@ for(const f of fixtures)test(`${f.case} literal Homepage intake, exact occurrenc
    states.removed=await until(t=>t.stops.length===3&&!t.stops.some((s:any)=>s.id===first.id));assert.deepEqual(states.removed.stops.map((s:any)=>s.id),beforeIds.slice(1));assert.equal(states.removed.stops.at(-1).nights,2);
   }else{
    assert(!states.initial.brief.intent.route.destinations.some((i:any)=>i.sourceText==='Costa Rica'),'Origin country qualifier must not require a second base');
-   const recovery=page.getByRole('button',{name:'Open device copy',exact:true});await recovery.waitFor({timeout:5000}).catch(()=>{});
-   if(await recovery.isVisible().catch(()=>false)){states.recoveryWarning=await page.locator('body').innerText();await recovery.click();await page.waitForURL(/recover=1/);states.recoveryDestination={url:page.url(),body:await page.locator('body').innerText()};await page.goto(`${base}/journey/new?trip=${id}&recover=1`,{waitUntil:'domcontentloaded'});states.recovered=await until(t=>t.brief.intent.route.destinations.length===2);assert.deepEqual(states.recovered.brief.intent.route.destinations,states.initial.brief.intent.route.destinations);}
+   const normal=await Promise.race([page.getByRole('dialog').last().waitFor().then(()=>true),page.getByRole('button',{name:'Open device copy',exact:true}).waitFor().then(()=>false)]);assert(normal,'Fresh A15 must mount the normal clarification flow without a recovery detour');
    for(const name of ['Granada','León']){
     const source=states.initial.brief.intent.route.destinations.find((i:any)=>i.sourceText===name);assert(source);let dialog=page.getByRole('dialog').last();
     const matches=()=>dialog.evaluate((el,name)=>{const k=el.getAttribute('aria-describedby');return k?document.getElementById(k)?.textContent===name:false;},name);
@@ -72,8 +73,9 @@ for(const f of fixtures)test(`${f.case} literal Homepage intake, exact occurrenc
    assert(states.selected.brief.intent.route.destinations.every((i:any)=>i.requestedNights===null));assert.equal(states.selected.brief.intent.hardConstraints.fixedCommitments.length,0);
    assert.equal(states.selected.stops[1].nights??0,0,'No unspecified León nights may be invented');assert(!await page.getByRole('button',{name:/^Build trip/}).last().isEnabled(),'Positive-night review stays required');
   }
-  await page.goto(`${base}/journey/new?trip=${id}&recover=1`,{waitUntil:'domcontentloaded'});await page.locator('[data-builder-route-workspace]').waitFor();await page.reload({waitUntil:'domcontentloaded'});await page.locator('[data-builder-route-workspace]').waitFor();states.reloaded=await read();
+  if(f.case==='A16')await page.goto(`${base}/journey/new?trip=${id}&recover=1`,{waitUntil:'domcontentloaded'});await page.locator('[data-builder-route-workspace]').waitFor();await page.reload({waitUntil:'domcontentloaded'});await page.locator('[data-builder-route-workspace]').waitFor();states.reloaded=await read();
   const accepted=f.case==='A16'?states.removed:states.selected;assert.deepEqual(states.reloaded.stops.map((s:any)=>[s.id,s.canonicalPlaceId,s.nights]),accepted.stops.map((s:any)=>[s.id,s.canonicalPlaceId,s.nights]));assert.deepEqual(states.reloaded.brief.intent.route.destinations,accepted.brief.intent.route.destinations);assert.deepEqual(errors,[]);
+  assert(!await page.getByRole('button',{name:'Open device copy',exact:true}).isVisible().catch(()=>false),'No false device-copy conflict after accepted edits');
   const dir=process.env.MORROVIA_BROWSER_ARTIFACT_DIR;if(dir){mkdirSync(dir,{recursive:true});writeFileSync(`${dir}/${f.case}.json`,JSON.stringify({case:f.case,source:f.prompt,states,errors},null,2)+'\n');await page.screenshot({path:`${dir}/${f.case}.png`,fullPage:true});}
  }catch(error){const dir=process.env.MORROVIA_BROWSER_ARTIFACT_DIR;if(dir){mkdirSync(dir,{recursive:true});writeFileSync(`${dir}/${f.case}-failure.json`,JSON.stringify({url:page.url(),error:String(error),states,current:await read().catch(()=>null),body:await page.locator('body').innerText().catch(()=>''),errors},null,2)+'\n');await page.screenshot({path:`${dir}/${f.case}-failure.png`,fullPage:true}).catch(()=>{});}throw error;
  }finally{await browser.close();}

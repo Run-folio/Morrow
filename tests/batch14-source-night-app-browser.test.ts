@@ -33,12 +33,15 @@ for(const fixture of fixtures)test(`${fixture.case} actual source clarification 
   const read=()=>page.evaluate(id=>Object.keys(localStorage).filter(k=>k.startsWith('easyt:trip-recovery:v2:guest:')).map(k=>JSON.parse(localStorage.getItem(k)!)).filter(v=>v.tripId===id).sort((a,b)=>b.savedAt.localeCompare(a.savedAt))[0]?.trip,id);
   await page.waitForFunction(({id,sources})=>Object.keys(localStorage).filter(k=>k.startsWith('easyt:trip-recovery:v2:guest:')).map(k=>JSON.parse(localStorage.getItem(k)!)).some(v=>v.tripId===id&&sources.every((name:string)=>v.trip.brief.intent.route.destinations.some((i:any)=>i.sourceText===name))),{id,sources:fixture.selections.map((s:any)=>s.mention.sourceText)});
   const initial=await read();assert(initial);const ids=initial.brief.intent.route.destinations.map((i:any)=>i.id);
+  // Fresh intake opens its first clarification asynchronously. Wait for that
+  // ordinary flow before attempting an action behind its overlay.
+  await page.getByRole('dialog').last().waitFor();
   for(const choice of fixture.selections){
    const source=initial.brief.intent.route.destinations.find((i:any)=>fold(i.sourceText)===fold(choice.mention.sourceText));assert(source);
    let dialog=page.getByRole('dialog').last();const matches=()=>dialog.evaluate((el,name)=>{const key=el.getAttribute('aria-describedby');return key?document.getElementById(key)?.textContent===name:false;},source.sourceText);
-   if(await dialog.isVisible().catch(()=>false)&&!await matches())await dialog.getByRole('button',{name:'Finish later',exact:true}).click();
+   if(await dialog.isVisible().catch(()=>false)&&!await matches()){await dialog.getByRole('button',{name:'Finish later',exact:true}).click();await dialog.waitFor({state:'hidden'});}
    if(!await dialog.isVisible().catch(()=>false))await page.getByRole('button',{name:new RegExp('^Choose place.*'+source.sourceText,'i')}).first().click();
-   await dialog.waitFor();assert(await matches(),'Clarification must target the original source');
+   await dialog.waitFor();await page.waitForFunction(name=>[...document.querySelectorAll('[role=dialog][aria-describedby]')].some(el=>document.getElementById(el.getAttribute('aria-describedby')!)?.textContent===name),source.sourceText);assert(await matches(),'Clarification must target the original source');
    const specific=dialog.getByRole('button').filter({hasText:/Search.*specific|Search for a place/i});if(!await dialog.getByRole('combobox').first().isVisible().catch(()=>false))await specific.first().click();
    await dialog.getByRole('combobox').first().fill(choice.place.name);const option=page.getByRole('option').filter({hasText:choice.place.name}).filter({hasText:choice.place.country});await option.first().click();
    await page.waitForFunction(({id,iid})=>Object.keys(localStorage).filter(k=>k.startsWith('easyt:trip-recovery:v2:guest:')).map(k=>JSON.parse(localStorage.getItem(k)!)).some(v=>v.tripId===id&&v.trip.brief.intent.route.destinations.some((i:any)=>i.id===iid&&i.resolution==='resolved'&&i.stopIds.length)),{id,iid:source.id});
