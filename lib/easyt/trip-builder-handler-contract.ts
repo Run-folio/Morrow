@@ -44,12 +44,14 @@ export function builderRemoveCommand(trip: CanonicalEasyTTrip, stopId: string): 
 export function builderPlaceCommand(trip: CanonicalEasyTTrip, input: {
   stopId: string; place: JourneyEndpointPlace; intentId?: string; beforeStopId?: string;
   requestedNights?: number | null; sourceText?: string;
+  bindSourceNights?: boolean;
 }): BuilderAcceptedEdit | null {
   const mapped = intentForStop(trip, input.stopId);
   const intent = input.intentId ? trip.brief.intent.route.destinations.find(item => item.id === input.intentId) : mapped;
   if (input.intentId && !intent || mapped && intent?.id !== mapped.id) return null;
   if (intent) return { kind: intent.resolution === 'resolved' ? 'replace-destination' : 'resolve-destination',
-    intentId: intent.id, stopId: input.stopId, place: input.place, ...(input.beforeStopId ? { beforeStopId: input.beforeStopId } : {}) };
+    intentId: intent.id, stopId: input.stopId, place: input.place, ...(input.beforeStopId ? { beforeStopId: input.beforeStopId } : {}),
+    ...(input.bindSourceNights ? { bindSourceNights: true } : {}) };
   const stop: TripStop = { id: input.stopId, order: trip.stops.length, name: input.place.name, country: input.place.country ?? '',
     canonicalPlaceId: input.place.canonicalPlaceId, providerId: input.place.providerId,
     longitude: input.place.coordinates?.[0] ?? null, latitude: input.place.coordinates?.[1] ?? null,

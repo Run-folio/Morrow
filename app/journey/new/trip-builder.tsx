@@ -3015,7 +3015,8 @@ function TripBuilderDocument() {
           const placeCommand=builderPlaceCommand(currentTrip, { stopId: id, intentId, beforeStopId: nextCapturedStop, place: {
             name: addedStop.name, country: addedStop.country, canonicalPlaceId: addedStop.canonicalPlaceId,
             providerId: addedStop.providerId, coordinates: addedStop.coordinates,
-          } });
+          }, bindSourceNights: Boolean(intentId && targetMentionId && currentTrip.brief.intent.route.destinations.some(intent =>
+            intent.id === intentId && intent.kind === "overnight_place" && intent.requestedNights !== null)) });
           if(!placeCommand)return fail("This destination binding changed. Review the current trip.");
           selectedCommands.push(placeCommand);
         } else setStops((current) => replaceableRouteStopId
@@ -5838,8 +5839,11 @@ function TripBuilderDocument() {
               const selectedFixedCommitments = fixedTripCommitmentsFromStructuredBrief(nextBrief).filter((commitment) =>
                 commitment.place?.canonicalPlaceId === suggestion.canonicalPlaceId
                 || commitment.place?.name.toLocaleLowerCase() === suggestion.name.toLocaleLowerCase());
-              if (selectedFixedCommitments.length) {
-                const current=builderEditSessionRef.current?.getSnapshot().trip.brief.intent??effectiveIntent;
+              // The canonical resolution command binds captured nights to its
+              // exact source/stop in one accepted result. Legacy state owners
+              // retain their existing projection until canonical hydration.
+              if (!builderEditSessionRef.current && selectedFixedCommitments.length) {
+                const current=effectiveIntent;
                 const fixedCommitments = [...current.hardConstraints.fixedCommitments];
                 for (const commitment of selectedFixedCommitments) {
                   const index = fixedCommitments.findIndex((existing) => existing.place?.canonicalPlaceId === suggestion.canonicalPlaceId
@@ -5851,9 +5855,7 @@ function TripBuilderDocument() {
                     fixedNights: fixedCommitments[index]!.fixedNights ?? commitment.fixedNights,
                   };
                 }
-                if(builderEditSessionRef.current) {
-                  if(!dispatchAcceptedBuilderEdit({kind:"constraints",constraints:{fixedCommitments}}))return;
-                } else setTripIntent({ ...current, hardConstraints: { ...current.hardConstraints, fixedCommitments } });
+                setTripIntent({ ...current, hardConstraints: { ...current.hardConstraints, fixedCommitments } });
               }
               // Explicit search resolves the original phrase and retains its
               // occurrence/night constraints. It is not a new appended stop.

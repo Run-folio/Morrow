@@ -29,6 +29,8 @@ export type BuilderStructuralSnapshot = Pick<CanonicalEasyTTrip, "id" | "ownerId
 };
 type DestinationSelection = {
   intentId: string; stopId: string; place: JourneyEndpointPlace;
+  /** Bind an already captured night request using the selected source occurrence. */
+  bindSourceNights?: boolean;
   /** An explicit/captured occurrence position, never the displayed chip position. */
   beforeStopId?: string; stop?: TripStop;
 };
@@ -87,6 +89,30 @@ function synchronizeAcceptedNightAllocations(trip: CanonicalEasyTTrip) {
 }
 const integer = (value: unknown): value is number => Number.isSafeInteger(value) && Number(value) >= 0;
 const nonempty = (value: unknown): value is string => typeof value === "string" && Boolean(value.trim());
+function bindSourceNightRequest(trip: CanonicalEasyTTrip, intent: DestinationIntent, stopId: string, place: JourneyEndpointPlace) {
+  const brief = trip.brief.structuredBrief;
+  const mentions = brief?.placeMentions?.filter(mention => mention.mentionId === intent.id) ?? [];
+  const destinations = brief?.destinations.filter(destination => destination.placeMentionId === intent.id) ?? [];
+  if (!brief || intent.kind !== "overnight_place" || !integer(intent.requestedNights)
+    || intent.stopIds.length !== 1 || intent.stopIds[0] !== stopId || mentions.length !== 1 || destinations.length !== 1
+    || mentions[0]!.status !== "resolved" || mentions[0]!.canonicalPlaceId !== place.canonicalPlaceId
+    || destinations[0]!.id && destinations[0]!.id !== stopId) return false;
+  const id = `source-night:${intent.id}`;
+  const commitments = trip.brief.intent.hardConstraints.fixedCommitments;
+  const owned = commitments.find(commitment => commitment.id === id);
+  if (owned && (owned.stopId !== stopId || owned.fixedNights !== intent.requestedNights || owned.date || owned.commitmentType)) return false;
+  const linkedRequests = commitments.filter(commitment => commitment.stopId === stopId && commitment.fixedNights !== undefined
+    && !commitment.date && !commitment.commitmentType);
+  if (linkedRequests.some(commitment => commitment.fixedNights !== intent.requestedNights)) return false;
+  if (!owned && !linkedRequests.length) commitments.push({ id, label: `${place.name} — ${intent.requestedNights} nights`, stopId,
+    fixedNights: intent.requestedNights, place: { name: place.name, canonicalPlaceId: place.canonicalPlaceId, country: place.country, coordinates: place.coordinates } });
+  const bound = { ...destinations[0]!, id: stopId, name: place.name, canonicalPlaceId: place.canonicalPlaceId,
+    resolutionStatus: "resolved" as const, placeType: mentions[0]!.placeType, parentCountries: place.country ? [place.country] : destinations[0]!.parentCountries };
+  brief.destinations = brief.destinations.map(destination => destination.placeMentionId === intent.id ? bound : destination);
+  brief.mustVisit = brief.mustVisit.map(destination => destination.placeMentionId === intent.id ? { ...destination, ...bound } : destination);
+  trip.brief.structuredBrief = mergeStructuredTripBrief(brief, { fixedCommitments: commitments });
+  return true;
+}
 function validDate(value: string) {
   return typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value)
     && Number.isFinite(Date.parse(`${value}T00:00:00Z`))
@@ -485,6 +511,8 @@ export function prepareAcceptedBuilderEdit(current: CanonicalEasyTTrip, edit: Bu
         }
         if (intent.kind === "overnight_place") intent.selectedPlace = place;
         intent.resolution = "resolved";
+        if (edit.bindSourceNights !== undefined && typeof edit.bindSourceNights !== "boolean") return reject("invalid-input");
+        if (edit.bindSourceNights && !bindSourceNightRequest(trip, intent, edit.stopId, place)) return reject("binding-conflict");
         break;
       }
       case "order": {
