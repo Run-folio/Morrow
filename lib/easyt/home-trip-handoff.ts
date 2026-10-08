@@ -1,5 +1,5 @@
 import { captureJourneyBrief, type JourneyCaptureResult } from "./journey-capture.ts";
-import { catalogPlaceForProviderIdentity, isOvernightBaseEligible, normalizePlacePhrase, placeResolutionIssuesForMentions, type CanonicalPlaceSuggestion, type GeographicBounds, type PlaceRoutability, type ResolvedPlaceMention } from "./place-intelligence.ts";
+import { catalogPlaceForProviderIdentity, isNegatedEndpointAt, isOvernightBaseEligible, normalizePlacePhrase, placeResolutionIssuesForMentions, type CanonicalPlaceSuggestion, type GeographicBounds, type PlaceRoutability, type ResolvedPlaceMention } from "./place-intelligence.ts";
 import { findCatalogPlaceById } from "./place-catalog.ts";
 import type { EasyTTrip, JourneyEndSelection, JourneyEndpointPlace, RouteIntent, TripBudgetPreference } from "./trip.ts";
 import type { CuratedRouteKnowledge } from "./curated-route-knowledge.ts";
@@ -64,10 +64,58 @@ export function homepageBuilderDateRange(
   };
 }
 
+/** A shared traveller origin makes a bare arrow chain an ordered stay list.
+ * Explicit departure/finish words and prompt-only gateway interpretation retain
+ * their existing meaning. Keep the captured source immutable and occurrence IDs
+ * intact across all projections, including a repeated final arrow occurrence. */
+export function homepageCaptureWithSharedOrigin(snapshot: HomepageInputSnapshot, capture: JourneyCaptureResult): JourneyCaptureResult {
+  if (snapshot.origin.state !== "selected") return capture;
+  const first = capture.mentions[0];
+  if (!first || !["origin", "fixed_start"].includes(first.role)) return capture;
+  const prompt = capture.rawBrief, index = prompt.toLocaleLowerCase().indexOf(first.sourceText.toLocaleLowerCase());
+  if (index < 0 || normalizePlacePhrase(prompt.slice(0, index))
+    || !/^\s*(?:→|->)\s*\S/.test(prompt.slice(index + first.sourceText.length))) return capture;
+  // Capture may merge a later explicit departure into the first occurrence.
+  // Do not erase that evidence merely because the prompt opens with arrows.
+  const explicitDeparture = [...new Set([first.sourceText, ...first.sourceTexts])].some(source => {
+    const pattern = new RegExp(source.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "giu");
+    return [...prompt.matchAll(pattern)].some(match => {
+      const before = normalizePlacePhrase(prompt.slice(Math.max(0, match.index! - 64), match.index));
+      return !isNegatedEndpointAt(prompt, match.index!)
+        && /(?:^| )(?:start|starting|begin|beginning)(?: the trip)?(?: (?:in|at))?$|(?:leaving from|departing from|depart from|from|desde|saliendo de)$/.test(before)
+        && !/(?:fly|flying) (?:home|back) from$|(?:^| )home from$/.test(before);
+    });
+  });
+  if (explicitDeparture) return capture;
+  const demoted = new Set([first.mentionId]);
+  const last = capture.mentions.at(-1);
+  if (last && last !== first && last.role === "fixed_end"
+    && (first.canonicalPlaceId && first.canonicalPlaceId === last.canonicalPlaceId
+      || normalizePlacePhrase(first.sourceText) === normalizePlacePhrase(last.sourceText))) {
+    const lastIndex = prompt.toLocaleLowerCase().lastIndexOf(last.sourceText.toLocaleLowerCase());
+    if (lastIndex > index && /(?:→|->)\s*$/.test(prompt.slice(0, lastIndex))
+      && !normalizePlacePhrase(prompt.slice(lastIndex + last.sourceText.length))) demoted.add(last.mentionId);
+  }
+  const mentions = capture.mentions.map(mention => demoted.has(mention.mentionId) ? { ...mention, role: "preferred" as const } : mention);
+  const sameLabel = (value: string, mention: ResolvedPlaceMention) => [mention.sourceText, mention.canonicalName]
+    .some(label => normalizePlacePhrase(label) === normalizePlacePhrase(value));
+  const structured = {
+    ...capture.structuredBrief,
+    placeMentions: capture.structuredBrief.placeMentions?.map(mention => demoted.has(mention.mentionId) ? { ...mention, role: "preferred" as const } : mention),
+    destinations: capture.structuredBrief.destinations.map(destination => destination.placeMentionId && demoted.has(destination.placeMentionId)
+      ? { ...destination, role: "preferred" as const, priority: "normal" as const } : destination),
+    hardConstraints: capture.structuredBrief.hardConstraints.filter(constraint =>
+      !(constraint.type === "start-at" && sameLabel(constraint.value, first))
+      && !(constraint.type === "end-at" && last && demoted.has(last.mentionId) && sameLabel(constraint.value, last))),
+  };
+  return { ...capture, mentions, structuredBrief: { ...structured, issues: validateStructuredTripBrief(structured) },
+    journeyEnd: last && last !== first && demoted.has(last.mentionId) ? { mode: "unknown" } : capture.journeyEnd };
+}
+
 export function homepageSnapshotForDescribePrompt(snapshot: HomepageInputSnapshot, prompt: string): HomepageInputSnapshot {
   if (snapshot.mode !== "describe" || prompt === snapshot.prompt
     || (snapshot.origin.state !== "selected" && snapshot.journeyEnd.state !== "selected")) return invalidateHomepageRouteReview(snapshot, { ...snapshot, prompt });
-  const mentions = captureJourneyBrief(prompt).mentions;
+  const mentions = homepageCaptureWithSharedOrigin(snapshot, captureJourneyBrief(prompt)).mentions;
   const start = mentions.find((mention) => mention.role === "origin" || mention.role === "fixed_start");
   const end = mentions.find((mention) => mention.role === "fixed_end");
   const differs = (selected: string, mention: ResolvedPlaceMention) =>
@@ -1525,7 +1573,7 @@ export function homepagePreflightIssues(snapshot: HomepageInputSnapshot, evidenc
     });
   }
   if (snapshot.origin.state !== "selected" && snapshot.originInput?.trim()) issues.push({ field: "origin", code: "unresolved" });
-  const observed = evidence ?? (snapshot.mode === "describe" ? homepageCapturedRouteEvidence(snapshot.prompt, captureJourneyBrief(snapshot.prompt)) : undefined);
+  const observed = evidence ?? (snapshot.mode === "describe" ? homepageCapturedRouteEvidence(snapshot.prompt, homepageCaptureWithSharedOrigin(snapshot, captureJourneyBrief(snapshot.prompt))) : undefined);
   const choice = homepageRouteChoice(snapshot, observed);
   if (choice.conflict) issues.push({ field: "tripType", code: observed?.status === "requires_review" ? "unresolved" : "conflict" });
   return issues;
@@ -1538,7 +1586,7 @@ export function projectHomepageInput(input: {
   handoffId: string;
 }): { ok: true; draft: HomeTripDraft } | { ok: false; issues: HomepageInputIssue[] } {
   const { snapshot } = input;
-  const capture = snapshot.mode === "describe" ? input.capture ?? captureJourneyBrief(snapshot.prompt) : undefined;
+  const capture = snapshot.mode === "describe" ? homepageCaptureWithSharedOrigin(snapshot, input.capture ?? captureJourneyBrief(snapshot.prompt)) : undefined;
   const evidence = capture ? homepageCapturedRouteEvidence(snapshot.prompt, capture) : undefined;
   const issues = homepagePreflightIssues(snapshot, evidence);
   if (issues.length) return { ok: false, issues };

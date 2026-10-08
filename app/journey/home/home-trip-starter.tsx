@@ -21,6 +21,7 @@ import {
   homepageHandoffReceiptForOwner,
   homepageReceiptForProjection,
   homepageSemanticInputFingerprint,
+  homepageCaptureWithSharedOrigin,
   homepageSnapshotForDescribePrompt,
   homepageVisibleDateRange,
   homepagePreflightIssues,
@@ -311,7 +312,7 @@ export default function HomeTripStarter() {
     const review = storedInputRef.current.review;
     if (input.mode !== "describe") return undefined;
     if (review?.sourceKey === homepageDescribeSourceKey(input)) return review.evidence;
-    return homepageCapturedRouteEvidence(input.prompt, captureJourneyBrief(input.prompt));
+    return homepageCapturedRouteEvidence(input.prompt, homepageCaptureWithSharedOrigin(input, captureJourneyBrief(input.prompt)));
   };
   const issueMessage = (field: string) => language === "es"
     ? field === "tripType" ? "Revisa cómo termina el viaje. Elige y confirma el tipo de viaje." : field === "origin" ? "Selecciona el lugar de salida de los resultados." : "Revisa los datos del viaje antes de continuar."

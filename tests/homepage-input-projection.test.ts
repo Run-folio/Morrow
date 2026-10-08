@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { captureJourneyBrief } from "../lib/easyt/journey-capture.ts";
-import { homepageBuilderDateRange, homepageSnapshotForDescribePrompt, projectHomepageInput, type HomepageDestinationEntry } from "../lib/easyt/home-trip-handoff.ts";
+import { handoffRouteStops, homepageBuilderDateRange, homepageSnapshotForDescribePrompt, projectHomepageInput, type HomepageDestinationEntry, type HomepageInputSnapshot } from "../lib/easyt/home-trip-handoff.ts";
 import { formatLocalDateRange } from "../lib/easyt/local-date.ts";
 import { findCatalogPlaceById } from "../lib/easyt/place-catalog.ts";
 import type { CanonicalPlaceSuggestion } from "../lib/easyt/place-intelligence.ts";
@@ -30,6 +30,109 @@ function cataloguedEntry(id: string, canonicalPlaceId: string): HomepageDestinat
 
 function projected(snapshot = emptyHomepageInput(), handoffId = "h1") {
   return projectHomepageInput({ snapshot, profile: null, handoffId });
+}
+
+const neutralOrigin = { name: "City of London", canonicalPlaceId: "open-world:nominatim:relation:51800", country: "United Kingdom", coordinates: [-0.0919983, 51.5156177] as [number, number] };
+const arrowPrompt = "Bangkok → Siem Reap → Hội An → Hanoi";
+
+for (const sequence of ["origin then prompt", "prompt then origin"] as const) {
+  test(`shared origin and bare arrow stays survive ${sequence}`, () => {
+    let snapshot: HomepageInputSnapshot = { ...emptyHomepageInput(), mode: "describe" as const, tripType: { state: "selected" as const, value: "one_way" as const } };
+    if (sequence === "origin then prompt") {
+      snapshot = { ...snapshot, origin: { state: "selected", value: neutralOrigin }, originInput: neutralOrigin.name };
+      snapshot = homepageSnapshotForDescribePrompt(snapshot, arrowPrompt);
+    } else {
+      snapshot = homepageSnapshotForDescribePrompt(snapshot, arrowPrompt);
+      snapshot = { ...snapshot, origin: { state: "selected", value: neutralOrigin }, originInput: neutralOrigin.name };
+    }
+    assert.deepEqual(snapshot.origin, { state: "selected", value: neutralOrigin });
+    assert.equal(snapshot.originInput, neutralOrigin.name);
+    const capture = captureJourneyBrief(arrowPrompt), original = structuredClone(capture);
+    const result = projectHomepageInput({ snapshot, capture, profile: null, handoffId: sequence });
+    assert(result.ok);
+    assert.equal(result.draft.origin, neutralOrigin.name);
+    assert.equal(result.draft.routeIntent?.origin?.canonicalPlaceId, neutralOrigin.canonicalPlaceId);
+    assert.deepEqual(result.draft.routeIntent?.destinations.map(d => d.sourceText), ["Bangkok", "Siem Reap", "Hội An", "Hanoi"]);
+    assert.equal(result.draft.routeIntent?.orderAuthority, "explicit");
+    assert.equal(result.draft.journeyEnd?.mode, "unknown");
+    assert.deepEqual(handoffRouteStops(result.draft.locationMentions!, result.draft.journeyEnd).map(s => s.name), ["Bangkok", "Siem Reap", "Hoi An", "Hanoi"]);
+    assert.deepEqual(result.draft.locationMentions?.map(m => m.mentionId), original.mentions.map(m => m.mentionId));
+    assert.deepEqual(capture, original, "Contextual projection must not mutate the captured source");
+  });
+}
+
+test("shared origin keeps both bare-arrow Bangkok occurrences without inventing a return endpoint", () => {
+  const prompt = "Bangkok → Chiang Mai → Bangkok";
+  const snapshot = { ...emptyHomepageInput(), mode: "describe" as const, prompt, origin: { state: "selected" as const, value: neutralOrigin }, originInput: neutralOrigin.name,
+    tripType: { state: "selected" as const, value: "one_way" as const } };
+  const result = projected(snapshot);
+  assert(result.ok);
+  assert.equal(result.draft.journeyEnd?.mode, "unknown");
+  assert.deepEqual(result.draft.routeIntent?.destinations.map(d => d.sourceText), ["Bangkok", "Chiang Mai", "Bangkok"]);
+  assert.equal(new Set(result.draft.routeIntent?.destinations.map(d => d.id)).size, 3);
+  assert.equal(handoffRouteStops(result.draft.locationMentions!, result.draft.journeyEnd).length, 3);
+  assert.equal(result.draft.routeIntent?.orderAuthority, "explicit");
+});
+
+test("prompt-only arrows retain their existing gateway interpretation", () => {
+  const snapshot = { ...emptyHomepageInput(), mode: "describe" as const, prompt: arrowPrompt, tripType: { state: "selected" as const, value: "one_way" as const } };
+  const result = projected(snapshot);
+  assert(result.ok);
+  assert.equal(result.draft.locationMentions?.[0].role, "origin");
+  assert.deepEqual(result.draft.routeIntent?.destinations.map(d => d.sourceText), ["Siem Reap", "Hội An", "Hanoi"]);
+});
+
+test("shared origin retains explicit finish wording in an arrow route", () => {
+  const snapshot = { ...emptyHomepageInput(), mode: "describe" as const, prompt: "Bangkok → Hanoi → finish in Bangkok",
+    origin: { state: "selected" as const, value: neutralOrigin }, originInput: neutralOrigin.name,
+    tripType: { state: "selected" as const, value: "one_way" as const } };
+  const result = projected(snapshot);
+  assert(result.ok);
+  assert.equal(result.draft.journeyEnd?.mode, "explicit");
+  if (result.draft.journeyEnd?.mode === "explicit") assert.equal(result.draft.journeyEnd.place.canonicalPlaceId, "bangkok");
+  assert.deepEqual(result.draft.routeIntent?.destinations.map(d => d.sourceText), ["Bangkok", "Hanoi"]);
+});
+
+test("shared-origin arrow projection retains source-bound nights and commitments", () => {
+  const prompt = `${arrowPrompt}. Siem Reap 2 nights, Hội An 4 nights, Hanoi 3 nights.`;
+  const capture = captureJourneyBrief(prompt);
+  const snapshot = { ...emptyHomepageInput(), mode: "describe" as const, prompt,
+    origin: { state: "selected" as const, value: neutralOrigin }, originInput: neutralOrigin.name,
+    tripType: { state: "selected" as const, value: "one_way" as const } };
+  const result = projectHomepageInput({ snapshot, capture, profile: null, handoffId: "arrow-nights" });
+  assert(result.ok);
+  assert.deepEqual(result.draft.routeIntent?.destinations.map(d => [d.id, d.requestedNights]),
+    capture.mentions.map((mention, index) => [mention.mentionId, [null, 2, 4, 3][index]]));
+  assert.deepEqual(result.draft.structuredBrief?.hardConstraints.filter(c => c.type === "fixed-commitment"),
+    capture.structuredBrief.hardConstraints.filter(c => c.type === "fixed-commitment"));
+  assert.equal(result.draft.routeIntent?.orderAuthority, "explicit");
+  assert.equal(result.draft.routeIntent?.origin?.canonicalPlaceId, neutralOrigin.canonicalPlaceId);
+});
+
+for (const prompt of ["From Madrid to Tokyo for 5 nights", "Start from Sydney then Melbourne and finish in Cairns", "Fly from Bangkok to Hanoi",
+  "Bangkok → Hanoi; start in Bangkok", "Bangkok → Hanoi; fly from Bangkok"]) {
+  test(`explicit endpoint words still retire the prior shared origin: ${prompt}`, () => {
+    const snapshot = { ...emptyHomepageInput(), mode: "describe" as const, origin: { state: "selected" as const, value: neutralOrigin }, originInput: neutralOrigin.name };
+    const edited = homepageSnapshotForDescribePrompt(snapshot, prompt);
+    assert.equal(edited.origin.state, "untouched");
+    assert.equal(edited.originInput, "");
+  });
+}
+
+test("a negated later departure does not turn arrow order into an origin override", () => {
+  const prompt = "Bangkok → Hanoi; do not start in Bangkok";
+  const snapshot = { ...emptyHomepageInput(), mode: "describe" as const,
+    origin: { state: "selected" as const, value: neutralOrigin }, originInput: neutralOrigin.name };
+  assert.deepEqual(homepageSnapshotForDescribePrompt(snapshot, prompt).origin, snapshot.origin);
+});
+
+for (const prompt of ["Do not start in Bangkok; visit Bangkok then Hanoi", "Maybe Bangkok → Hanoi", "Could Bangkok and Hanoi work?"]) {
+  test(`refused or uncertain endpoint does not clear the shared origin: ${prompt}`, () => {
+    const snapshot = { ...emptyHomepageInput(), mode: "describe" as const, origin: { state: "selected" as const, value: neutralOrigin }, originInput: neutralOrigin.name };
+    const edited = homepageSnapshotForDescribePrompt(snapshot, prompt);
+    assert.deepEqual(edited.origin, snapshot.origin);
+    assert.equal(edited.originInput, snapshot.originInput);
+  });
 }
 
 test("stops projection retains selected occurrence IDs and ignores inactive prompt", () => {
