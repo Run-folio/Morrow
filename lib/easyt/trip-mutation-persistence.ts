@@ -1,6 +1,7 @@
 import { prepareTripDocumentForWrite } from "./trip-document.ts";
 import { EasyTTripSaveConflictError } from "./trip-continuity.ts";
-import type { EasyTTrip } from "./trip";
+import type { CanonicalEasyTTrip, EasyTTrip } from "./trip";
+import { mergeBuilderReconciliationDocuments } from './trip-builder-reconciliation.ts';
 import type { TripRecoveryHandle } from "./storage";
 import { canonicalTripRevisionCanReplace } from "./trip-continuity.ts";
 
@@ -102,7 +103,7 @@ function mergeAuthoredDocument(base: unknown, authored: unknown, canonical: unkn
 
 export function mergeTripMutationDocuments(base: EasyTTrip, authored: EasyTTrip, canonical: EasyTTrip) {
   if (!sameTripDocument(base, authored) || !sameTripDocument(base, canonical)) return structuredClone(authored);
-  const merged = mergeAuthoredDocument(base, authored, canonical) as EasyTTrip;
+  let merged = mergeAuthoredDocument(base, authored, canonical) as EasyTTrip;
   // Legacy leg IDs are positional. An authored choice must remain attached
   // to its endpoint pair when another queued edit changes the route.
   for (const baseLeg of base.legs) {
@@ -121,6 +122,10 @@ export function mergeTripMutationDocuments(base: EasyTTrip, authored: EasyTTrip,
     const source = authoredChanged ? authored : canonical;
     merged.stops = structuredClone(source.stops);
     merged.brief.intent = { ...merged.brief.intent!, route: structuredClone(source.brief.intent!.route!) };
+    if (base.schemaVersion === 2 && authored.schemaVersion === 2 && canonical.schemaVersion === 2) {
+      merged = mergeBuilderReconciliationDocuments(base as CanonicalEasyTTrip, authored as CanonicalEasyTTrip,
+        canonical as CanonicalEasyTTrip, merged as CanonicalEasyTTrip);
+    }
     prepareTripDocumentForWrite(merged);
   }
   merged.updatedAt = canonical.updatedAt;

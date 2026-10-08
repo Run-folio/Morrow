@@ -1,7 +1,13 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { createTripMutationPersistenceQueue } from "../lib/easyt/trip-mutation-persistence.ts";
+import { createTripMutationPersistenceQueue, mergeTripMutationDocuments } from "../lib/easyt/trip-mutation-persistence.ts";
+import { canonicalRouteFixture } from './fixtures/batch14-route-documents.ts';
+import { requireReadableTripDocument } from '../lib/easyt/trip-document.ts';
+import { prepareAcceptedBuilderEdit } from '../lib/easyt/trip-builder-edit.ts';
+import { builderDocumentFingerprint } from '../lib/easyt/trip-builder-document-commit.ts';
+import { prepareBuilderNecessaryProjection } from '../lib/easyt/trip-builder-reconciliation.ts';
+import type { CanonicalEasyTTrip } from '../lib/easyt/trip.ts';
 import { EasyTTripSaveConflictError } from "../lib/easyt/trip-continuity.ts";
 import { saveTripRecoveryToEasyT, type TripRecoveryHandle } from "../lib/easyt/storage.ts";
 import type { EasyTTrip } from "../lib/easyt/trip.ts";
@@ -40,6 +46,60 @@ function mapTrip(overrides: Partial<EasyTTrip> = {}): EasyTTrip {
 function handle(writeId: string): TripRecoveryHandle {
   return { ownerId: "owner-a", tripId: "trip-map-mutations", writeId };
 }
+
+function withTravellers(before: CanonicalEasyTTrip, travellers: number) {
+  const edited = prepareAcceptedBuilderEdit(before, { kind: 'travellers', travellers }, builderDocumentFingerprint(before));
+  assert.ok(edited.ok);
+  const projected = prepareBuilderNecessaryProjection(before, edited.trip, edited.scope);
+  assert.ok(projected.ok);
+  return projected.trip;
+}
+
+// JSONB readback can reorder object keys without changing the acknowledged values.
+function jsonbReadback<T>(value: T): T {
+  if (Array.isArray(value)) return value.map(jsonbReadback) as T;
+  if (value && typeof value === 'object') return Object.fromEntries(Object.entries(value).reverse().map(([key, item]) => [key, jsonbReadback(item)])) as T;
+  return value;
+}
+
+test('A08 held equivalent ACK permits the inverse to durably save current dependent work once', async () => {
+  const base = requireReadableTripDocument(canonicalRouteFixture());
+  const a = withTravellers(base, 3);
+  const b = withTravellers(a, 2);
+  let release!: (trip: EasyTTrip) => void;
+  const held = new Promise<EasyTTrip>(resolve => { release = resolve; });
+  const submitted: EasyTTrip[] = [];
+  const queue = createTripMutationPersistenceQueue(async trip => {
+    requireReadableTripDocument(JSON.parse(JSON.stringify(trip)));
+    submitted.push(structuredClone(trip));
+    return submitted.length === 1 ? held : { ...trip, updatedAt: 'revision-3' };
+  });
+  queue.reset(base);
+  const first = queue.enqueue(a, { ...handle('a'), tripId: base.id });
+  const inverse = queue.enqueue(b, { ...handle('b'), tripId: base.id }, a);
+  await Promise.resolve();
+  release(jsonbReadback({ ...a, updatedAt: 'revision-2' }));
+  await first;
+  const saved = await inverse;
+  assert.equal(submitted.length, 2);
+  assert.equal(saved.travellers, 2);
+  assert.equal(submitted[1]!.updatedAt, 'revision-2');
+  assert.deepEqual(saved.brief.cascadeStatus?.routeReconciliation, b.brief.cascadeStatus?.routeReconciliation);
+});
+
+test('dependent-work merge retains completion and terminal evidence for the current inverse basis', () => {
+  const base = requireReadableTripDocument(canonicalRouteFixture());
+  const a = withTravellers(base, 3);
+  const b = withTravellers(a, 2);
+  const units = b.brief.cascadeStatus!.routeReconciliation!.residual;
+  units.shift(); // One B subject completed before A was acknowledged.
+  units[0] = { ...units[0]!, phase: 'failed', reason: 'unavailable' };
+  units[1] = { ...units[1]!, phase: 'conflict', reason: 'protected-date' };
+  const canonical = jsonbReadback({ ...a, title: 'Independent accepted title', updatedAt: 'revision-2' });
+  const merged = requireReadableTripDocument(JSON.parse(JSON.stringify(mergeTripMutationDocuments(a, b, canonical))));
+  assert.equal(merged.title, canonical.title);
+  assert.deepEqual(merged.brief.cascadeStatus?.routeReconciliation, b.brief.cascadeStatus?.routeReconciliation);
+});
 
 test("sequential Map mutations use the preceding account revision without losing authored state", async () => {
   const first = mapTrip({

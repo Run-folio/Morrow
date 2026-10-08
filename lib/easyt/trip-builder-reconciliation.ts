@@ -90,6 +90,35 @@ function install(trip: CanonicalEasyTTrip, residual: Unit[]): CanonicalEasyTTrip
     const { routeReconciliation: _prior, ...status } = trip.brief.cascadeStatus ?? { conflicts: [], affectedBookingIds: [], affectedPlanItemCount: 0 };
     return { ...trip, brief: { ...trip.brief, cascadeStatus: { ...status, ...(residual.length ? { routeReconciliation: { version: 1 as const, inputKey: routeProjectionInputKey(trip), residual: sorted(residual) } } : {}) } } };
 }
+/** Rebase only dependent-work metadata; JSONB key order is not work identity. */
+export function mergeBuilderReconciliationDocuments(base: CanonicalEasyTTrip, authored: CanonicalEasyTTrip,
+    canonical: CanonicalEasyTTrip, merged: CanonicalEasyTTrip): CanonicalEasyTTrip {
+    const bySubject = (trip: CanonicalEasyTTrip) => new Map((trip.brief.cascadeStatus?.routeReconciliation?.residual ?? []).map(unit => [unitId(unit), unit]));
+    const prior = bySubject(base), local = bySubject(authored), acknowledged = bySubject(canonical);
+    const subjects = new Set([...prior.keys(), ...local.keys(), ...acknowledged.keys()]);
+    const residual: Unit[] = [];
+    const equal = (left: Unit | undefined, right: Unit | undefined) => authoredContentKey(left ?? null) === authoredContentKey(right ?? null);
+    for (const subject of subjects) {
+        const old = prior.get(subject), a = local.get(subject), c = acknowledged.get(subject);
+        const example = (a ?? c ?? old)!;
+        const currentBasis = basis(merged, example.kind, example.targetId);
+        if (!currentBasis) continue; // Removed targets have no dependent work.
+        const localChanged = !equal(a, old), canonicalChanged = !equal(c, old);
+        // Absence is completion only on a side with the current dependency inputs.
+        if (!a && old && localChanged && basis(authored, example.kind, example.targetId) === currentBasis) continue;
+        if (!c && old && canonicalChanged && !localChanged && basis(canonical, example.kind, example.targetId) === currentBasis) continue;
+        const localCurrent = a?.basisKey === currentBasis ? a : undefined;
+        const canonicalCurrent = c?.basisKey === currentBasis ? c : undefined;
+        let selected = localCurrent ?? canonicalCurrent;
+        if (localCurrent && canonicalCurrent) {
+            selected = !localChanged ? canonicalCurrent : !canonicalChanged ? localCurrent
+                : localCurrent.phase === 'pending' && canonicalCurrent.phase !== 'pending' ? canonicalCurrent : localCurrent;
+        }
+        // Combined disjoint inputs can invalidate both sides' provider evidence.
+        residual.push(selected ? structuredClone(selected) : { kind: example.kind, targetId: example.targetId, basisKey: currentBasis, phase: 'pending' });
+    }
+    return install(merged, residual);
+}
 /** This synchronous prefix makes an accepted input safe to save before provider work. */
 export function prepareBuilderNecessaryProjection(before: CanonicalEasyTTrip, candidate: CanonicalEasyTTrip, scope: RouteReconciliationScope, consumption?: RetainedContentConsumption): {
     ok: true;
