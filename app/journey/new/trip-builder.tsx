@@ -101,7 +101,7 @@ import { preserveBuilderCanonicalState } from "@/lib/easyt/trip-builder-preserva
 import { builderDetailsFingerprint, prepareBuilderDocumentCommit } from "@/lib/easyt/trip-builder-document-commit";
 import { currentBuilderRouteProposal, validateBuilderStopOrder } from "@/lib/easyt/trip-builder-order";
 import { normalizeTripInterests, tripInterestIds, tripInterestLabels, type TripInterest } from "@/lib/easyt/trip-interest";
-import { canonicalJourneyEndpointPlace, isSameCanonicalPlace, journeyEndFromCapturedIntent, journeyEndpointIdentityIsCoherent, journeyEndpointPlaceFromSuggestion, normalizeJourneyEnd, plannerEndpointForJourneyEnd, resolveTypedJourneyEndpoint } from "@/lib/easyt/journey-endpoints";
+import { savedJourneyFinishChoiceMatches, canonicalJourneyEndpointPlace, isSameCanonicalPlace, journeyEndFromCapturedIntent, journeyEndpointIdentityIsCoherent, journeyEndpointPlaceFromSuggestion, normalizeJourneyEnd, plannerEndpointForJourneyEnd, resolveTypedJourneyEndpoint } from "@/lib/easyt/journey-endpoints";
 import { builderClarificationProgress, builderClarificationRemovalPlan, builderClarificationResumeLabel, orderedBuilderClarificationIds, reviewedRouteStopSatisfiesMention, shouldAutoOpenBuilderClarification, shouldYieldBuilderClarification } from "@/lib/easyt/builder-clarification";
 import { fixedCommitmentDisplayLabel, projectFixedCommitmentsToStops } from "@/lib/easyt/fixed-commitment";
 import { createAbortableEffectScope } from "@/lib/easyt/abortable-effect";
@@ -710,13 +710,7 @@ function TripBuilderDocument() {
       const response=await withProviderTimeout({label:"Saved finish lookup",timeoutMs:7_000,signal:controller.signal,request:signal=>fetch(`/api/journey-geocode?${params}`,{signal})});
       if(!response.ok)throw new Error("Saved finish lookup unavailable");
       const payload=await response.json() as {candidates?:LocationChoice[]};
-      const canonicalFinish=canonicalPlaceSuggestionFor(end.place.name,end.place.country?[end.place.country]:[]);
-      const choices=(payload.candidates??[]).filter(choice=>choice.name.toLocaleLowerCase()===end.place.name.toLocaleLowerCase()
-        && (!end.place.country || choice.country.toLocaleLowerCase()===end.place.country.toLocaleLowerCase())
-        && choice.coordinates?.length===2 && choice.coordinates.every(Number.isFinite)
-        && Math.abs(choice.coordinates[0])<=180 && Math.abs(choice.coordinates[1])<=90
-        && (!end.place.canonicalPlaceId || canonicalPlaceFactsMatch(end.place.canonicalPlaceId,choice))
-        && (!canonicalFinish || canonicalPlaceFactsMatch(canonicalFinish.canonicalPlaceId,choice)));
+      const choices=(payload.candidates??[]).filter(choice=>savedJourneyFinishChoiceMatches(end.place,choice,snapshot.trip.stops));
       if(controller.signal.aborted || savedFinishRequestRef.current!==controller || !savedFinishIsCurrent(review))return;
       setSavedFinishReview({...review,choices,status:choices.length?"ready":"unavailable"});
     }catch {

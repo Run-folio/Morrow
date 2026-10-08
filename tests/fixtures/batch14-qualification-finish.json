@@ -1,0 +1,3401 @@
+{
+  "A20": {
+    "sourceReceipt": "hosted14d-0304dfa/full/A20/1791483103401/01-builder-initial.json",
+    "candidate": "0304dfadc878542c74e64178e755501a5dece49f",
+    "trip": {
+      "schemaVersion": 2,
+      "id": "trip-fixture-a20",
+      "ownerId": null,
+      "title": "City of London to Bangkok & Siem Reap & Hoi An",
+      "status": "draft",
+      "startDate": "2026-10-08",
+      "endDate": "2026-10-14",
+      "travellers": 2,
+      "currency": "GBP",
+      "brief": {
+        "endDateIsSuggestion": false,
+        "mustDo": "Bangkok → Siem Reap → Hội An → Hanoi",
+        "pace": "slow",
+        "hotelChanges": "few",
+        "budgetBand": "mid",
+        "budgetPreference": {
+          "source": "fallback",
+          "value": "mid"
+        },
+        "selectedPlaces": {},
+        "dayAllocations": {
+          "bangkok-0": 1,
+          "siem-reap-1": 3,
+          "hoi-an-2": 2,
+          "hanoi-4": 1
+        },
+        "nightAllocations": {
+          "bangkok-0": 1,
+          "siem-reap-1": 3,
+          "hoi-an-2": 2,
+          "hanoi-4": 0
+        },
+        "manualNightStopIds": [],
+        "nightAllocation": {
+          "version": 1,
+          "configVersion": "night-allocation-v2-marginal-depth",
+          "state": "compromised",
+          "totalAvailableNights": 6,
+          "totalAllocatedNights": 6,
+          "allocations": {
+            "bangkok-0": 1,
+            "siem-reap-1": 3,
+            "hoi-an-2": 2,
+            "hanoi-4": 0
+          },
+          "stops": [
+            {
+              "stopId": "bangkok-0",
+              "name": "Bangkok",
+              "nights": 1,
+              "minimumNights": 1,
+              "idealNights": 2,
+              "targetNights": 2,
+              "minimumSource": "morrovia-default",
+              "idealSource": "morrovia-default",
+              "roles": [],
+              "isAnchor": false,
+              "isRequired": true,
+              "isFixed": false,
+              "isManual": false,
+              "depth": "ordinary",
+              "matchedInterests": [],
+              "transferDayLoss": null,
+              "confidence": {
+                "minimumNights": {
+                  "version": 1,
+                  "state": "estimated",
+                  "level": "low",
+                  "freshness": "unknown",
+                  "scope": "planning-rule",
+                  "sources": [],
+                  "reason": "Minimum stay uses a Morrovia default because no destination-specific fact is known.",
+                  "confirmation": {
+                    "needed": true,
+                    "reason": "Confirm the minimum stay before relying on this stay recommendation."
+                  }
+                },
+                "idealNights": {
+                  "version": 1,
+                  "state": "estimated",
+                  "level": "low",
+                  "freshness": "unknown",
+                  "scope": "planning-rule",
+                  "sources": [],
+                  "reason": "Ideal stay uses a Morrovia default because no destination-specific fact is known.",
+                  "confirmation": {
+                    "needed": true,
+                    "reason": "Confirm the ideal stay before relying on this stay recommendation."
+                  }
+                },
+                "allocation": {
+                  "version": 1,
+                  "state": "structured",
+                  "level": "high",
+                  "freshness": "current",
+                  "scope": "traveller-intent",
+                  "sources": [],
+                  "reason": "The night count is an explicit traveller edit.",
+                  "confirmation": {
+                    "needed": false,
+                    "reason": null
+                  }
+                }
+              },
+              "reasons": [
+                {
+                  "code": "fallback-minimum",
+                  "message": "Bangkok uses the existing planning fallback because no curated minimum is available."
+                },
+                {
+                  "code": "fallback-ideal",
+                  "message": "Bangkok keeps fallback ideal-night guidance rather than inventing destination knowledge."
+                },
+                {
+                  "code": "pace",
+                  "message": "balanced pace sets a 2-night target before traveller-authored adjustments."
+                },
+                {
+                  "code": "destination-depth",
+                  "message": "Bangkok has ordinary stay-depth evidence for marginal night allocation."
+                },
+                {
+                  "code": "required-priority",
+                  "message": "Bangkok is a required or must-visit stop."
+                },
+                {
+                  "code": "diminishing-returns",
+                  "message": "Each additional night in Bangkok is valued incrementally with bounded diminishing returns."
+                }
+              ]
+            },
+            {
+              "stopId": "siem-reap-1",
+              "name": "Siem Reap",
+              "nights": 3,
+              "minimumNights": 3,
+              "idealNights": 4,
+              "targetNights": 4,
+              "minimumSource": "destination-knowledge",
+              "idealSource": "destination-knowledge",
+              "roles": [
+                "anchor"
+              ],
+              "isAnchor": true,
+              "isRequired": true,
+              "isFixed": false,
+              "isManual": false,
+              "depth": "deep",
+              "matchedInterests": [],
+              "transferDayLoss": null,
+              "confidence": {
+                "minimumNights": {
+                  "version": 1,
+                  "state": "structured",
+                  "level": "high",
+                  "freshness": "reviewed",
+                  "scope": "planning-rule",
+                  "sources": [
+                    {
+                      "id": "route-family:vietnam-cambodia",
+                      "label": "Morrovia route family: Vietnam to Angkor, without rushing",
+                      "kind": "curated",
+                      "supports": "Curated destination geography, pacing, route role, experience and planning notes.",
+                      "reviewedAt": "2026-08-08"
+                    }
+                  ],
+                  "reason": "Minimum stay comes from curated destination knowledge.",
+                  "confirmation": {
+                    "needed": false,
+                    "reason": null
+                  }
+                },
+                "idealNights": {
+                  "version": 1,
+                  "state": "estimated",
+                  "level": "medium",
+                  "freshness": "reviewed",
+                  "scope": "planning-rule",
+                  "sources": [
+                    {
+                      "id": "route-family:vietnam-cambodia",
+                      "label": "Morrovia route family: Vietnam to Angkor, without rushing",
+                      "kind": "curated",
+                      "supports": "Curated destination geography, pacing, route role, experience and planning notes.",
+                      "reviewedAt": "2026-08-08"
+                    }
+                  ],
+                  "reason": "Ideal stay comes from curated destination knowledge.",
+                  "confirmation": {
+                    "needed": true,
+                    "reason": "Treat the ideal stay as planning guidance, not a verified booking rule."
+                  }
+                },
+                "allocation": {
+                  "version": 1,
+                  "state": "structured",
+                  "level": "high",
+                  "freshness": "current",
+                  "scope": "traveller-intent",
+                  "sources": [],
+                  "reason": "The night count is an explicit traveller edit.",
+                  "confirmation": {
+                    "needed": false,
+                    "reason": null
+                  }
+                }
+              },
+              "reasons": [
+                {
+                  "code": "destination-minimum",
+                  "message": "Siem Reap uses its curated 3-night minimum."
+                },
+                {
+                  "code": "destination-ideal",
+                  "message": "Siem Reap has a curated 4-night ideal before transfer recovery."
+                },
+                {
+                  "code": "pace",
+                  "message": "balanced pace sets a 4-night target before traveller-authored adjustments."
+                },
+                {
+                  "code": "anchor-priority",
+                  "message": "Siem Reap is treated as a major anchor."
+                },
+                {
+                  "code": "destination-depth",
+                  "message": "Siem Reap has deep stay-depth evidence for marginal night allocation."
+                },
+                {
+                  "code": "required-priority",
+                  "message": "Siem Reap is a required or must-visit stop."
+                },
+                {
+                  "code": "diminishing-returns",
+                  "message": "Each additional night in Siem Reap is valued incrementally with bounded diminishing returns."
+                }
+              ]
+            },
+            {
+              "stopId": "hoi-an-2",
+              "name": "Hoi An",
+              "nights": 2,
+              "minimumNights": 3,
+              "idealNights": 4,
+              "targetNights": 4,
+              "minimumSource": "destination-knowledge",
+              "idealSource": "destination-knowledge",
+              "roles": [
+                "base"
+              ],
+              "isAnchor": false,
+              "isRequired": true,
+              "isFixed": false,
+              "isManual": false,
+              "depth": "substantial",
+              "matchedInterests": [],
+              "transferDayLoss": null,
+              "confidence": {
+                "minimumNights": {
+                  "version": 1,
+                  "state": "structured",
+                  "level": "high",
+                  "freshness": "reviewed",
+                  "scope": "planning-rule",
+                  "sources": [
+                    {
+                      "id": "route-family:vietnam-cambodia",
+                      "label": "Morrovia route family: Vietnam to Angkor, without rushing",
+                      "kind": "curated",
+                      "supports": "Curated destination geography, pacing, route role, experience and planning notes.",
+                      "reviewedAt": "2026-08-08"
+                    },
+                    {
+                      "id": "route-family:thailand-vietnam-cambodia",
+                      "label": "Morrovia route family: Southeast Asia, with room to land",
+                      "kind": "curated",
+                      "supports": "Curated destination geography, pacing, route role, experience and planning notes.",
+                      "reviewedAt": "2026-08-14"
+                    }
+                  ],
+                  "reason": "Minimum stay comes from curated destination knowledge.",
+                  "confirmation": {
+                    "needed": false,
+                    "reason": null
+                  }
+                },
+                "idealNights": {
+                  "version": 1,
+                  "state": "estimated",
+                  "level": "medium",
+                  "freshness": "reviewed",
+                  "scope": "planning-rule",
+                  "sources": [
+                    {
+                      "id": "route-family:vietnam-cambodia",
+                      "label": "Morrovia route family: Vietnam to Angkor, without rushing",
+                      "kind": "curated",
+                      "supports": "Curated destination geography, pacing, route role, experience and planning notes.",
+                      "reviewedAt": "2026-08-08"
+                    },
+                    {
+                      "id": "route-family:thailand-vietnam-cambodia",
+                      "label": "Morrovia route family: Southeast Asia, with room to land",
+                      "kind": "curated",
+                      "supports": "Curated destination geography, pacing, route role, experience and planning notes.",
+                      "reviewedAt": "2026-08-14"
+                    }
+                  ],
+                  "reason": "Ideal stay comes from curated destination knowledge.",
+                  "confirmation": {
+                    "needed": true,
+                    "reason": "Treat the ideal stay as planning guidance, not a verified booking rule."
+                  }
+                },
+                "allocation": {
+                  "version": 1,
+                  "state": "structured",
+                  "level": "high",
+                  "freshness": "current",
+                  "scope": "traveller-intent",
+                  "sources": [],
+                  "reason": "The night count is an explicit traveller edit.",
+                  "confirmation": {
+                    "needed": false,
+                    "reason": null
+                  }
+                }
+              },
+              "reasons": [
+                {
+                  "code": "destination-minimum",
+                  "message": "Hoi An uses its curated 3-night minimum."
+                },
+                {
+                  "code": "destination-ideal",
+                  "message": "Hoi An has a curated 4-night ideal before transfer recovery."
+                },
+                {
+                  "code": "pace",
+                  "message": "balanced pace sets a 4-night target before traveller-authored adjustments."
+                },
+                {
+                  "code": "destination-depth",
+                  "message": "Hoi An has substantial stay-depth evidence for marginal night allocation."
+                },
+                {
+                  "code": "required-priority",
+                  "message": "Hoi An is a required or must-visit stop."
+                },
+                {
+                  "code": "diminishing-returns",
+                  "message": "Each additional night in Hoi An is valued incrementally with bounded diminishing returns."
+                }
+              ]
+            },
+            {
+              "stopId": "hanoi-4",
+              "name": "Hanoi",
+              "nights": 0,
+              "minimumNights": 3,
+              "idealNights": 4,
+              "targetNights": 4,
+              "minimumSource": "destination-knowledge",
+              "idealSource": "destination-knowledge",
+              "roles": [
+                "anchor",
+                "hub"
+              ],
+              "isAnchor": true,
+              "isRequired": true,
+              "isFixed": false,
+              "isManual": false,
+              "depth": "deep",
+              "matchedInterests": [],
+              "transferDayLoss": null,
+              "confidence": {
+                "minimumNights": {
+                  "version": 1,
+                  "state": "structured",
+                  "level": "high",
+                  "freshness": "reviewed",
+                  "scope": "planning-rule",
+                  "sources": [
+                    {
+                      "id": "route-family:vietnam-cambodia",
+                      "label": "Morrovia route family: Vietnam to Angkor, without rushing",
+                      "kind": "curated",
+                      "supports": "Curated destination geography, pacing, route role, experience and planning notes.",
+                      "reviewedAt": "2026-08-08"
+                    }
+                  ],
+                  "reason": "Minimum stay comes from curated destination knowledge.",
+                  "confirmation": {
+                    "needed": false,
+                    "reason": null
+                  }
+                },
+                "idealNights": {
+                  "version": 1,
+                  "state": "estimated",
+                  "level": "medium",
+                  "freshness": "reviewed",
+                  "scope": "planning-rule",
+                  "sources": [
+                    {
+                      "id": "route-family:vietnam-cambodia",
+                      "label": "Morrovia route family: Vietnam to Angkor, without rushing",
+                      "kind": "curated",
+                      "supports": "Curated destination geography, pacing, route role, experience and planning notes.",
+                      "reviewedAt": "2026-08-08"
+                    }
+                  ],
+                  "reason": "Ideal stay comes from curated destination knowledge.",
+                  "confirmation": {
+                    "needed": true,
+                    "reason": "Treat the ideal stay as planning guidance, not a verified booking rule."
+                  }
+                },
+                "allocation": {
+                  "version": 1,
+                  "state": "structured",
+                  "level": "high",
+                  "freshness": "current",
+                  "scope": "traveller-intent",
+                  "sources": [],
+                  "reason": "The night count is an explicit traveller edit.",
+                  "confirmation": {
+                    "needed": false,
+                    "reason": null
+                  }
+                }
+              },
+              "reasons": [
+                {
+                  "code": "destination-minimum",
+                  "message": "Hanoi uses its curated 3-night minimum."
+                },
+                {
+                  "code": "destination-ideal",
+                  "message": "Hanoi has a curated 4-night ideal before transfer recovery."
+                },
+                {
+                  "code": "pace",
+                  "message": "balanced pace sets a 4-night target before traveller-authored adjustments."
+                },
+                {
+                  "code": "anchor-priority",
+                  "message": "Hanoi is treated as a major anchor."
+                },
+                {
+                  "code": "destination-depth",
+                  "message": "Hanoi has deep stay-depth evidence for marginal night allocation."
+                },
+                {
+                  "code": "diminishing-returns",
+                  "message": "Each additional night in Hanoi is valued incrementally with bounded diminishing returns."
+                }
+              ]
+            }
+          ],
+          "conflicts": [
+            {
+              "code": "fixed-below-minimum",
+              "severity": "warning",
+              "message": "Hoi An's fixed 2-night stay is below its 3-night minimum.",
+              "stopIds": [
+                "hoi-an-2"
+              ],
+              "requiredNights": 3,
+              "allocatedNights": 2,
+              "shortfallNights": 1
+            },
+            {
+              "code": "fixed-below-minimum",
+              "severity": "warning",
+              "message": "Hanoi's fixed 0-night stay is below its 3-night minimum.",
+              "stopIds": [
+                "hanoi-4"
+              ],
+              "requiredNights": 3,
+              "allocatedNights": 0,
+              "shortfallNights": 3
+            }
+          ],
+          "notices": []
+        },
+        "capturedIntent": {
+          "originalBrief": "Bangkok → Siem Reap → Hội An → Hanoi",
+          "parserVersion": "place-intelligence-v1-deterministic",
+          "regions": [],
+          "routeHints": [],
+          "mentions": [
+            {
+              "sourceText": "Bangkok",
+              "canonicalName": "Bangkok",
+              "canonicalPlaceId": "bangkok",
+              "placeType": "city",
+              "role": "stop",
+              "order": 0,
+              "status": "resolved",
+              "intent": "place",
+              "country": "Thailand"
+            },
+            {
+              "sourceText": "Siem Reap",
+              "canonicalName": "Siem Reap",
+              "canonicalPlaceId": "siem-reap",
+              "placeType": "city",
+              "role": "stop",
+              "order": 1,
+              "status": "resolved",
+              "intent": "place",
+              "country": "Cambodia"
+            },
+            {
+              "sourceText": "Hội An",
+              "canonicalName": "Hoi An",
+              "canonicalPlaceId": "hoi-an",
+              "placeType": "town",
+              "role": "stop",
+              "order": 2,
+              "status": "resolved",
+              "intent": "place",
+              "country": "Vietnam"
+            },
+            {
+              "sourceText": "Hanoi",
+              "canonicalName": "Hanoi",
+              "canonicalPlaceId": "hanoi",
+              "placeType": "city",
+              "role": "stop",
+              "order": 4,
+              "status": "resolved",
+              "intent": "place",
+              "country": "Vietnam"
+            }
+          ]
+        },
+        "scheduleLocks": {
+          "stopIds": [],
+          "arrivalDates": {}
+        },
+        "decisionSelections": {
+          "transportByLeg": {}
+        },
+        "intent": {
+          "version": 2,
+          "travellers": 2,
+          "timing": {
+            "flexibility": "flexible",
+            "durationDays": 7
+          },
+          "hardConstraints": {
+            "originRequired": true,
+            "mustSeeStopIds": [
+              "bangkok-0",
+              "siem-reap-1",
+              "hoi-an-2"
+            ],
+            "optionalStopIds": [],
+            "fixedCommitments": [],
+            "avoidDriving": false
+          },
+          "preferences": {
+            "budgetSensitivity": "mid",
+            "transportModes": [
+              "flight",
+              "train"
+            ],
+            "pace": "balanced",
+            "interests": [],
+            "dislikes": []
+          },
+          "route": {
+            "version": 1,
+            "origin": {
+              "name": "City of London",
+              "canonicalPlaceId": "open-world:nominatim:relation:51800",
+              "country": "United Kingdom",
+              "providerId": "open-world:nominatim:relation:51800",
+              "coordinates": [
+                -0.0919983,
+                51.5156177
+              ]
+            },
+            "tripType": "one_way",
+            "journeyEnd": {
+              "mode": "explicit",
+              "place": {
+                "name": "Hanoi",
+                "canonicalPlaceId": "hanoi",
+                "country": "Vietnam"
+              }
+            },
+            "destinations": [
+              {
+                "id": "place-bangkok-0",
+                "sourceText": "Bangkok",
+                "kind": "overnight_place",
+                "selectedPlace": {
+                  "name": "Bangkok",
+                  "canonicalPlaceId": "bangkok",
+                  "country": "Thailand",
+                  "providerId": "nominatim:relation:92277",
+                  "coordinates": [
+                    100.4935089,
+                    13.7524938
+                  ]
+                },
+                "resolution": "resolved",
+                "requestedNights": null,
+                "routeMembership": "required",
+                "stopIds": [
+                  "bangkok-0"
+                ]
+              },
+              {
+                "id": "place-siem-reap-0",
+                "sourceText": "Siem Reap",
+                "kind": "overnight_place",
+                "selectedPlace": {
+                  "name": "Siem Reap",
+                  "canonicalPlaceId": "siem-reap",
+                  "coordinates": [
+                    103.8552,
+                    13.3633
+                  ],
+                  "country": "Cambodia"
+                },
+                "resolution": "resolved",
+                "requestedNights": null,
+                "routeMembership": "required",
+                "stopIds": [
+                  "siem-reap-1"
+                ]
+              },
+              {
+                "id": "place-hoi-an-0",
+                "sourceText": "Hội An",
+                "kind": "overnight_place",
+                "selectedPlace": {
+                  "name": "Hoi An",
+                  "canonicalPlaceId": "hoi-an",
+                  "country": "Vietnam",
+                  "providerId": "nominatim:node:110506070",
+                  "coordinates": [
+                    108.3319406,
+                    15.8795863
+                  ]
+                },
+                "resolution": "resolved",
+                "requestedNights": null,
+                "routeMembership": "required",
+                "stopIds": [
+                  "hoi-an-2"
+                ]
+              },
+              {
+                "id": "place-hanoi-0-stay-4",
+                "sourceText": "Hanoi",
+                "kind": "overnight_place",
+                "selectedPlace": {
+                  "name": "Hanoi",
+                  "canonicalPlaceId": "hanoi",
+                  "country": "Vietnam",
+                  "providerId": "nominatim:relation:1903516",
+                  "coordinates": [
+                    105.854041,
+                    21.0283334
+                  ]
+                },
+                "resolution": "resolved",
+                "requestedNights": null,
+                "routeMembership": "required",
+                "stopIds": [
+                  "hanoi-4"
+                ]
+              }
+            ],
+            "orderAuthority": "explicit",
+            "explicitIntentIds": [
+              "place-bangkok-0",
+              "place-siem-reap-0",
+              "place-hoi-an-0",
+              "place-hanoi-0-stay-4"
+            ],
+            "orderedStopIds": [
+              "bangkok-0",
+              "siem-reap-1",
+              "hoi-an-2",
+              "hanoi-4"
+            ],
+            "projectionInputKey": null
+          }
+        },
+        "structuredBrief": {
+          "version": 1,
+          "destinations": [
+            {
+              "name": "City of London",
+              "canonicalPlaceId": "open-world:nominatim:relation:51800",
+              "role": "arrival-gateway",
+              "priority": "required",
+              "provenance": {
+                "source": "builder",
+                "kind": "explicit",
+                "confidence": "high"
+              },
+              "parentCountries": [
+                "United Kingdom"
+              ],
+              "resolutionStatus": "resolved",
+              "routability": "direct_destination"
+            },
+            {
+              "name": "Bangkok",
+              "canonicalPlaceId": "bangkok",
+              "placeMentionId": "place-bangkok-0",
+              "placeType": "city",
+              "resolutionStatus": "resolved",
+              "routability": "direct_destination",
+              "sourceLabel": "Bangkok",
+              "parentCountries": [
+                "Thailand"
+              ],
+              "role": "preferred",
+              "priority": "normal",
+              "provenance": {
+                "source": "builder",
+                "kind": "explicit",
+                "confidence": "high"
+              },
+              "id": "bangkok-0"
+            },
+            {
+              "name": "Siem Reap",
+              "canonicalPlaceId": "siem-reap",
+              "placeMentionId": "place-siem-reap-0",
+              "placeType": "city",
+              "resolutionStatus": "resolved",
+              "routability": "direct_destination",
+              "sourceLabel": "Siem Reap",
+              "parentCountries": [
+                "Cambodia"
+              ],
+              "role": "preferred",
+              "priority": "normal",
+              "provenance": {
+                "source": "builder",
+                "kind": "explicit",
+                "confidence": "high"
+              },
+              "id": "siem-reap-1"
+            },
+            {
+              "name": "Hoi An",
+              "canonicalPlaceId": "hoi-an",
+              "placeMentionId": "place-hoi-an-0",
+              "placeType": "town",
+              "resolutionStatus": "resolved",
+              "routability": "direct_destination",
+              "sourceLabel": "Hội An",
+              "parentCountries": [
+                "Vietnam"
+              ],
+              "role": "preferred",
+              "priority": "normal",
+              "provenance": {
+                "source": "builder",
+                "kind": "explicit",
+                "confidence": "high"
+              },
+              "id": "hoi-an-2"
+            },
+            {
+              "name": "Hanoi",
+              "canonicalPlaceId": "hanoi",
+              "placeMentionId": "place-hanoi-0-stay-4",
+              "placeType": "city",
+              "sourceLabel": "Hanoi",
+              "parentCountries": [
+                "Vietnam"
+              ],
+              "role": "departure-gateway",
+              "priority": "required",
+              "provenance": {
+                "source": "builder",
+                "kind": "explicit",
+                "confidence": "high"
+              }
+            },
+            {
+              "name": "Hanoi",
+              "canonicalPlaceId": "hanoi",
+              "placeMentionId": "place-hanoi-0-stay-4",
+              "placeType": "city",
+              "resolutionStatus": "resolved",
+              "routability": "direct_destination",
+              "sourceLabel": "Hanoi",
+              "parentCountries": [
+                "Vietnam"
+              ],
+              "role": "preferred",
+              "priority": "normal",
+              "provenance": {
+                "source": "prompt",
+                "kind": "explicit",
+                "confidence": "high",
+                "sourceText": "Hanoi"
+              }
+            }
+          ],
+          "mustVisit": [
+            {
+              "name": "Bangkok",
+              "canonicalPlaceId": "bangkok",
+              "placeMentionId": "place-bangkok-0",
+              "placeType": "city",
+              "resolutionStatus": "resolved",
+              "routability": "direct_destination",
+              "sourceLabel": "Bangkok",
+              "parentCountries": [
+                "Thailand"
+              ],
+              "role": "preferred",
+              "priority": "normal",
+              "provenance": {
+                "source": "builder",
+                "kind": "explicit",
+                "confidence": "high"
+              },
+              "id": "bangkok-0"
+            },
+            {
+              "name": "Siem Reap",
+              "canonicalPlaceId": "siem-reap",
+              "placeMentionId": "place-siem-reap-0",
+              "placeType": "city",
+              "resolutionStatus": "resolved",
+              "routability": "direct_destination",
+              "sourceLabel": "Siem Reap",
+              "parentCountries": [
+                "Cambodia"
+              ],
+              "role": "preferred",
+              "priority": "normal",
+              "provenance": {
+                "source": "builder",
+                "kind": "explicit",
+                "confidence": "high"
+              },
+              "id": "siem-reap-1"
+            },
+            {
+              "name": "Hoi An",
+              "canonicalPlaceId": "hoi-an",
+              "placeMentionId": "place-hoi-an-0",
+              "placeType": "town",
+              "resolutionStatus": "resolved",
+              "routability": "direct_destination",
+              "sourceLabel": "Hội An",
+              "parentCountries": [
+                "Vietnam"
+              ],
+              "role": "preferred",
+              "priority": "normal",
+              "provenance": {
+                "source": "builder",
+                "kind": "explicit",
+                "confidence": "high"
+              },
+              "id": "hoi-an-2"
+            }
+          ],
+          "countries": [],
+          "preferredRegions": [],
+          "dates": {},
+          "interests": [],
+          "transportPreferences": [],
+          "accommodationPreferences": [],
+          "hardConstraints": [
+            {
+              "type": "start-at",
+              "value": "City of London",
+              "provenance": {
+                "source": "builder",
+                "kind": "explicit",
+                "confidence": "high"
+              }
+            },
+            {
+              "type": "end-at",
+              "value": "Hanoi",
+              "provenance": {
+                "source": "builder",
+                "kind": "explicit",
+                "confidence": "high"
+              }
+            },
+            {
+              "type": "must-visit",
+              "value": "Bangkok",
+              "provenance": {
+                "source": "builder",
+                "kind": "explicit",
+                "confidence": "high"
+              }
+            },
+            {
+              "type": "must-visit",
+              "value": "Siem Reap",
+              "provenance": {
+                "source": "builder",
+                "kind": "explicit",
+                "confidence": "high"
+              }
+            },
+            {
+              "type": "must-visit",
+              "value": "Hoi An",
+              "provenance": {
+                "source": "builder",
+                "kind": "explicit",
+                "confidence": "high"
+              }
+            }
+          ],
+          "softPreferences": [
+            {
+              "type": "budget",
+              "value": "mid",
+              "provenance": {
+                "source": "morrovia-default",
+                "kind": "default",
+                "confidence": "low"
+              }
+            }
+          ],
+          "source": {
+            "rawPrompt": "Bangkok → Siem Reap → Hội An → Hanoi",
+            "parserVersion": "place-intelligence-v1-deterministic",
+            "inputs": [
+              "prompt",
+              "builder"
+            ]
+          },
+          "confidence": "high",
+          "issues": [],
+          "placeMentions": [
+            {
+              "mentionId": "place-bangkok-0",
+              "sourceText": "Bangkok",
+              "sourceTexts": [
+                "Bangkok"
+              ],
+              "normalizedPhrase": "bangkok",
+              "canonicalName": "Bangkok",
+              "canonicalPlaceId": "bangkok",
+              "aliases": [
+                "BKK"
+              ],
+              "placeType": "city",
+              "status": "resolved",
+              "confidence": {
+                "version": 1,
+                "state": "structured",
+                "level": "high",
+                "freshness": "reviewed",
+                "scope": "general-route",
+                "sources": [
+                  {
+                    "id": "morrovia-place-catalog:bangkok",
+                    "label": "Morrovia curated place catalog",
+                    "kind": "curated",
+                    "supports": "Canonical identity, aliases, type and stable containment for Bangkok.",
+                    "reviewedAt": "2026-08-23"
+                  }
+                ],
+                "reason": "The phrase matches Morrovia's curated canonical place data.",
+                "confirmation": {
+                  "needed": false,
+                  "reason": null
+                }
+              },
+              "provenance": [
+                {
+                  "id": "morrovia-place-catalog:bangkok",
+                  "label": "Morrovia curated place catalog",
+                  "kind": "canonical",
+                  "supports": "Canonical identity, aliases, type and stable containment for Bangkok.",
+                  "reviewedAt": "2026-08-23"
+                }
+              ],
+              "parentCountries": [
+                "Thailand"
+              ],
+              "routability": "direct_destination",
+              "directlyRoutable": true,
+              "requiresBaseSelection": false,
+              "isAnchor": false,
+              "role": "preferred",
+              "order": 0,
+              "candidates": []
+            },
+            {
+              "mentionId": "place-siem-reap-0",
+              "sourceText": "Siem Reap",
+              "sourceTexts": [
+                "Siem Reap"
+              ],
+              "normalizedPhrase": "siem reap",
+              "canonicalName": "Siem Reap",
+              "canonicalPlaceId": "siem-reap",
+              "aliases": [],
+              "placeType": "city",
+              "status": "resolved",
+              "confidence": {
+                "version": 1,
+                "state": "structured",
+                "level": "high",
+                "freshness": "reviewed",
+                "scope": "general-route",
+                "sources": [
+                  {
+                    "id": "morrovia-place-catalog:siem-reap",
+                    "label": "Morrovia curated place catalog",
+                    "kind": "curated",
+                    "supports": "Canonical identity, aliases, type and stable containment for Siem Reap.",
+                    "reviewedAt": "2026-08-23"
+                  }
+                ],
+                "reason": "The phrase matches Morrovia's curated canonical place data.",
+                "confirmation": {
+                  "needed": false,
+                  "reason": null
+                }
+              },
+              "provenance": [
+                {
+                  "id": "morrovia-place-catalog:siem-reap",
+                  "label": "Morrovia curated place catalog",
+                  "kind": "canonical",
+                  "supports": "Canonical identity, aliases, type and stable containment for Siem Reap.",
+                  "reviewedAt": "2026-08-23"
+                }
+              ],
+              "parentCountries": [
+                "Cambodia"
+              ],
+              "coordinates": [
+                103.8552,
+                13.3633
+              ],
+              "routability": "direct_destination",
+              "directlyRoutable": true,
+              "requiresBaseSelection": false,
+              "isAnchor": false,
+              "role": "preferred",
+              "order": 1,
+              "candidates": []
+            },
+            {
+              "mentionId": "place-hoi-an-0",
+              "sourceText": "Hội An",
+              "sourceTexts": [
+                "Hội An"
+              ],
+              "normalizedPhrase": "hoi an",
+              "canonicalName": "Hoi An",
+              "canonicalPlaceId": "hoi-an",
+              "aliases": [
+                "Hội An"
+              ],
+              "placeType": "town",
+              "status": "resolved",
+              "confidence": {
+                "version": 1,
+                "state": "structured",
+                "level": "high",
+                "freshness": "reviewed",
+                "scope": "general-route",
+                "sources": [
+                  {
+                    "id": "morrovia-place-catalog:hoi-an",
+                    "label": "Morrovia curated place catalog",
+                    "kind": "curated",
+                    "supports": "Canonical identity, aliases, type and stable containment for Hoi An.",
+                    "reviewedAt": "2026-08-23"
+                  }
+                ],
+                "reason": "The phrase matches Morrovia's curated canonical place data.",
+                "confirmation": {
+                  "needed": false,
+                  "reason": null
+                }
+              },
+              "provenance": [
+                {
+                  "id": "morrovia-place-catalog:hoi-an",
+                  "label": "Morrovia curated place catalog",
+                  "kind": "canonical",
+                  "supports": "Canonical identity, aliases, type and stable containment for Hoi An.",
+                  "reviewedAt": "2026-08-23"
+                }
+              ],
+              "parentCountries": [
+                "Vietnam"
+              ],
+              "routability": "direct_destination",
+              "directlyRoutable": true,
+              "requiresBaseSelection": false,
+              "isAnchor": false,
+              "role": "preferred",
+              "order": 2,
+              "candidates": []
+            },
+            {
+              "mentionId": "place-hanoi-0-stay-4",
+              "sourceText": "Hanoi",
+              "sourceTexts": [
+                "Hanoi"
+              ],
+              "normalizedPhrase": "hanoi",
+              "canonicalName": "Hanoi",
+              "canonicalPlaceId": "hanoi",
+              "aliases": [
+                "HAN"
+              ],
+              "placeType": "city",
+              "status": "resolved",
+              "confidence": {
+                "version": 1,
+                "state": "structured",
+                "level": "high",
+                "freshness": "reviewed",
+                "scope": "general-route",
+                "sources": [
+                  {
+                    "id": "morrovia-place-catalog:hanoi",
+                    "label": "Morrovia curated place catalog",
+                    "kind": "curated",
+                    "supports": "Canonical identity, aliases, type and stable containment for Hanoi.",
+                    "reviewedAt": "2026-08-23"
+                  }
+                ],
+                "reason": "The phrase matches Morrovia's curated canonical place data.",
+                "confirmation": {
+                  "needed": false,
+                  "reason": null
+                }
+              },
+              "provenance": [
+                {
+                  "id": "morrovia-place-catalog:hanoi",
+                  "label": "Morrovia curated place catalog",
+                  "kind": "canonical",
+                  "supports": "Canonical identity, aliases, type and stable containment for Hanoi.",
+                  "reviewedAt": "2026-08-23"
+                }
+              ],
+              "parentCountries": [
+                "Vietnam"
+              ],
+              "routability": "direct_destination",
+              "directlyRoutable": true,
+              "requiresBaseSelection": false,
+              "isAnchor": false,
+              "role": "preferred",
+              "order": 4,
+              "candidates": []
+            }
+          ],
+          "placeIssues": [],
+          "placeSelections": [],
+          "completedPlanningAreaMentionIds": [],
+          "removedPlaceMentionIds": [],
+          "travellers": {
+            "value": 2,
+            "provenance": {
+              "source": "morrovia-default",
+              "kind": "default",
+              "confidence": "low"
+            }
+          },
+          "budget": {
+            "value": "mid",
+            "provenance": {
+              "source": "morrovia-default",
+              "kind": "default",
+              "confidence": "low"
+            }
+          }
+        },
+        "cascadeStatus": {
+          "conflicts": [],
+          "affectedBookingIds": [],
+          "affectedPlanItemCount": 0,
+          "routeReconciliation": {
+            "version": 1,
+            "inputKey": "{\"destinations\":[{\"id\":\"place-bangkok-0\",\"kind\":\"overnight_place\",\"requestedNights\":null,\"resolution\":\"resolved\",\"routeMembership\":\"required\",\"selectedPlace\":{\"canonicalPlaceId\":\"bangkok\",\"coordinates\":[100.4935089,13.7524938],\"providerId\":\"nominatim:relation:92277\"},\"stopIds\":[\"bangkok-0\"]},{\"id\":\"place-hanoi-0-stay-4\",\"kind\":\"overnight_place\",\"requestedNights\":null,\"resolution\":\"resolved\",\"routeMembership\":\"required\",\"selectedPlace\":{\"canonicalPlaceId\":\"hanoi\",\"coordinates\":[105.854041,21.0283334],\"providerId\":\"nominatim:relation:1903516\"},\"stopIds\":[\"hanoi-4\"]},{\"id\":\"place-hoi-an-0\",\"kind\":\"overnight_place\",\"requestedNights\":null,\"resolution\":\"resolved\",\"routeMembership\":\"required\",\"selectedPlace\":{\"canonicalPlaceId\":\"hoi-an\",\"coordinates\":[108.3319406,15.8795863],\"providerId\":\"nominatim:node:110506070\"},\"stopIds\":[\"hoi-an-2\"]},{\"id\":\"place-siem-reap-0\",\"kind\":\"overnight_place\",\"requestedNights\":null,\"resolution\":\"resolved\",\"routeMembership\":\"required\",\"selectedPlace\":{\"canonicalPlaceId\":\"siem-reap\",\"coordinates\":[103.8552,13.3633],\"providerId\":null},\"stopIds\":[\"siem-reap-1\"]}],\"endDate\":\"2026-10-14\",\"explicitIntentIds\":[\"place-bangkok-0\",\"place-siem-reap-0\",\"place-hoi-an-0\",\"place-hanoi-0-stay-4\"],\"fixedCommitments\":[],\"journeyEnd\":{\"mode\":\"explicit\",\"place\":{\"canonicalPlaceId\":\"hanoi\",\"coordinates\":null,\"providerId\":null}},\"orderAuthority\":\"explicit\",\"orderedStopIds\":[\"bangkok-0\",\"siem-reap-1\",\"hoi-an-2\",\"hanoi-4\"],\"origin\":{\"canonicalPlaceId\":\"open-world:nominatim:relation:51800\",\"coordinates\":[-0.0919983,51.5156177],\"providerId\":\"open-world:nominatim:relation:51800\"},\"scheduleLocks\":{\"arrivalDates\":{},\"stopIds\":[]},\"startDate\":\"2026-10-08\",\"stops\":[{\"id\":\"bangkok-0\",\"nights\":1,\"place\":{\"canonicalPlaceId\":\"bangkok\",\"coordinates\":[100.4935089,13.7524938],\"providerId\":\"nominatim:relation:92277\"}},{\"id\":\"siem-reap-1\",\"nights\":3,\"place\":{\"canonicalPlaceId\":\"siem-reap\",\"coordinates\":[103.8552,13.3633],\"providerId\":null}},{\"id\":\"hoi-an-2\",\"nights\":2,\"place\":{\"canonicalPlaceId\":\"hoi-an\",\"coordinates\":[108.3319406,15.8795863],\"providerId\":\"nominatim:node:110506070\"}},{\"id\":\"hanoi-4\",\"nights\":null,\"place\":{\"canonicalPlaceId\":\"hanoi\",\"coordinates\":[105.854041,21.0283334],\"providerId\":\"nominatim:relation:1903516\"}}],\"transport\":{\"avoidDriving\":false,\"modes\":[\"flight\",\"train\"]},\"tripType\":\"one_way\"}",
+            "residual": [
+              {
+                "kind": "assessment",
+                "targetId": "trip-fixture-a20",
+                "basisKey": "{\"route\":\"{\\\"destinations\\\":[{\\\"id\\\":\\\"place-bangkok-0\\\",\\\"kind\\\":\\\"overnight_place\\\",\\\"requestedNights\\\":null,\\\"resolution\\\":\\\"resolved\\\",\\\"routeMembership\\\":\\\"required\\\",\\\"selectedPlace\\\":{\\\"canonicalPlaceId\\\":\\\"bangkok\\\",\\\"coordinates\\\":[100.4935089,13.7524938],\\\"providerId\\\":\\\"nominatim:relation:92277\\\"},\\\"stopIds\\\":[\\\"bangkok-0\\\"]},{\\\"id\\\":\\\"place-hanoi-0-stay-4\\\",\\\"kind\\\":\\\"overnight_place\\\",\\\"requestedNights\\\":null,\\\"resolution\\\":\\\"resolved\\\",\\\"routeMembership\\\":\\\"required\\\",\\\"selectedPlace\\\":{\\\"canonicalPlaceId\\\":\\\"hanoi\\\",\\\"coordinates\\\":[105.854041,21.0283334],\\\"providerId\\\":\\\"nominatim:relation:1903516\\\"},\\\"stopIds\\\":[\\\"hanoi-4\\\"]},{\\\"id\\\":\\\"place-hoi-an-0\\\",\\\"kind\\\":\\\"overnight_place\\\",\\\"requestedNights\\\":null,\\\"resolution\\\":\\\"resolved\\\",\\\"routeMembership\\\":\\\"required\\\",\\\"selectedPlace\\\":{\\\"canonicalPlaceId\\\":\\\"hoi-an\\\",\\\"coordinates\\\":[108.3319406,15.8795863],\\\"providerId\\\":\\\"nominatim:node:110506070\\\"},\\\"stopIds\\\":[\\\"hoi-an-2\\\"]},{\\\"id\\\":\\\"place-siem-reap-0\\\",\\\"kind\\\":\\\"overnight_place\\\",\\\"requestedNights\\\":null,\\\"resolution\\\":\\\"resolved\\\",\\\"routeMembership\\\":\\\"required\\\",\\\"selectedPlace\\\":{\\\"canonicalPlaceId\\\":\\\"siem-reap\\\",\\\"coordinates\\\":[103.8552,13.3633],\\\"providerId\\\":null},\\\"stopIds\\\":[\\\"siem-reap-1\\\"]}],\\\"endDate\\\":\\\"2026-10-14\\\",\\\"explicitIntentIds\\\":[\\\"place-bangkok-0\\\",\\\"place-siem-reap-0\\\",\\\"place-hoi-an-0\\\",\\\"place-hanoi-0-stay-4\\\"],\\\"fixedCommitments\\\":[],\\\"journeyEnd\\\":{\\\"mode\\\":\\\"explicit\\\",\\\"place\\\":{\\\"canonicalPlaceId\\\":\\\"hanoi\\\",\\\"coordinates\\\":null,\\\"providerId\\\":null}},\\\"orderAuthority\\\":\\\"explicit\\\",\\\"orderedStopIds\\\":[\\\"bangkok-0\\\",\\\"siem-reap-1\\\",\\\"hoi-an-2\\\",\\\"hanoi-4\\\"],\\\"origin\\\":{\\\"canonicalPlaceId\\\":\\\"open-world:nominatim:relation:51800\\\",\\\"coordinates\\\":[-0.0919983,51.5156177],\\\"providerId\\\":\\\"open-world:nominatim:relation:51800\\\"},\\\"scheduleLocks\\\":{\\\"arrivalDates\\\":{},\\\"stopIds\\\":[]},\\\"startDate\\\":\\\"2026-10-08\\\",\\\"stops\\\":[{\\\"id\\\":\\\"bangkok-0\\\",\\\"nights\\\":1,\\\"place\\\":{\\\"canonicalPlaceId\\\":\\\"bangkok\\\",\\\"coordinates\\\":[100.4935089,13.7524938],\\\"providerId\\\":\\\"nominatim:relation:92277\\\"}},{\\\"id\\\":\\\"siem-reap-1\\\",\\\"nights\\\":3,\\\"place\\\":{\\\"canonicalPlaceId\\\":\\\"siem-reap\\\",\\\"coordinates\\\":[103.8552,13.3633],\\\"providerId\\\":null}},{\\\"id\\\":\\\"hoi-an-2\\\",\\\"nights\\\":2,\\\"place\\\":{\\\"canonicalPlaceId\\\":\\\"hoi-an\\\",\\\"coordinates\\\":[108.3319406,15.8795863],\\\"providerId\\\":\\\"nominatim:node:110506070\\\"}},{\\\"id\\\":\\\"hanoi-4\\\",\\\"nights\\\":null,\\\"place\\\":{\\\"canonicalPlaceId\\\":\\\"hanoi\\\",\\\"coordinates\\\":[105.854041,21.0283334],\\\"providerId\\\":\\\"nominatim:relation:1903516\\\"}}],\\\"transport\\\":{\\\"avoidDriving\\\":false,\\\"modes\\\":[\\\"flight\\\",\\\"train\\\"]},\\\"tripType\\\":\\\"one_way\\\"}\",\"schedule\":{\"commitments\":[],\"end\":\"2026-10-14\",\"locks\":{\"arrivalDates\":{},\"stopIds\":[]},\"start\":\"2026-10-08\",\"stops\":[{\"id\":\"bangkok-0\",\"nights\":1},{\"id\":\"siem-reap-1\",\"nights\":3},{\"id\":\"hoi-an-2\",\"nights\":2},{\"id\":\"hanoi-4\",\"nights\":null}]}}",
+                "phase": "conflict",
+                "reason": "invalid-bindings"
+              }
+            ]
+          }
+        },
+        "itineraryIdeas": [],
+        "retainedAuthoredContent": {
+          "version": 1,
+          "entries": [
+            {
+              "id": "retained-day:hoi-an-2:trip-fixture-a20-day-7-a-slower-hoi-an-day:0",
+              "sourceKind": "retired_day",
+              "sourceStop": {
+                "id": "hoi-an-2",
+                "name": "Hoi An",
+                "country": "Vietnam",
+                "order": 2,
+                "latitude": 15.8795863,
+                "longitude": 108.3319406,
+                "arrivalDate": "2026-10-12",
+                "departureDate": "2026-10-14",
+                "nights": 2,
+                "canonicalPlaceId": "hoi-an",
+                "providerId": "nominatim:node:110506070"
+              },
+              "sourceIntentIds": [
+                "place-hoi-an-0"
+              ],
+              "days": [
+                {
+                  "sourceDay": {
+                    "id": "trip-fixture-a20-day-7-a-slower-hoi-an-day",
+                    "stopId": "hoi-an-2",
+                    "dayNumber": 7,
+                    "date": "2026-10-14",
+                    "type": "open",
+                    "title": "A slower Hoi An day",
+                    "reason": "A buffer day protects the trip from becoming a chain of transfers and bookings.",
+                    "notes": [],
+                    "contextNotes": [
+                      "Start later",
+                      "Stay close to your base",
+                      "Keep one meal unplanned"
+                    ],
+                    "startsAt": null,
+                    "endsAt": null,
+                    "bookingUrl": null,
+                    "latitude": null,
+                    "longitude": null,
+                    "image": null,
+                    "sourceUrl": null
+                  }
+                }
+              ],
+              "itineraryIdeas": [],
+              "mapPins": []
+            }
+          ]
+        },
+        "builderCalendarGeneration": 1,
+        "origin": "City of London",
+        "originCanonicalPlaceId": "open-world:nominatim:relation:51800",
+        "originProviderId": "open-world:nominatim:relation:51800",
+        "originCountry": "United Kingdom",
+        "originCoordinates": [
+          -0.0919983,
+          51.5156177
+        ],
+        "journeyEnd": {
+          "mode": "explicit",
+          "place": {
+            "name": "Hanoi",
+            "canonicalPlaceId": "hanoi",
+            "country": "Vietnam"
+          }
+        }
+      },
+      "stops": [
+        {
+          "id": "bangkok-0",
+          "name": "Bangkok",
+          "country": "Thailand",
+          "order": 0,
+          "latitude": 13.7524938,
+          "longitude": 100.4935089,
+          "arrivalDate": "2026-10-08",
+          "departureDate": "2026-10-09",
+          "nights": 1,
+          "canonicalPlaceId": "bangkok",
+          "providerId": "nominatim:relation:92277"
+        },
+        {
+          "id": "siem-reap-1",
+          "name": "Siem Reap",
+          "country": "Cambodia",
+          "canonicalPlaceId": "siem-reap",
+          "order": 1,
+          "latitude": 13.3633,
+          "longitude": 103.8552,
+          "arrivalDate": "2026-10-09",
+          "departureDate": "2026-10-12",
+          "nights": 3
+        },
+        {
+          "id": "hoi-an-2",
+          "name": "Hoi An",
+          "country": "Vietnam",
+          "order": 2,
+          "latitude": 15.8795863,
+          "longitude": 108.3319406,
+          "arrivalDate": "2026-10-12",
+          "departureDate": "2026-10-14",
+          "nights": 2,
+          "canonicalPlaceId": "hoi-an",
+          "providerId": "nominatim:node:110506070"
+        },
+        {
+          "id": "hanoi-4",
+          "order": 3,
+          "name": "Hanoi",
+          "country": "Vietnam",
+          "latitude": 21.0283334,
+          "longitude": 105.854041,
+          "arrivalDate": "2026-10-14",
+          "departureDate": "2026-10-14",
+          "nights": null,
+          "canonicalPlaceId": "hanoi",
+          "providerId": "nominatim:relation:1903516"
+        }
+      ],
+      "legs": [
+        {
+          "id": "trip-fixture-a20-leg-1",
+          "fromStopId": "trip-fixture-a20-origin",
+          "toStopId": "bangkok-0",
+          "fromEndpoint": {
+            "name": "City of London",
+            "canonicalPlaceId": "open-world:nominatim:relation:51800",
+            "country": "United Kingdom",
+            "providerId": "open-world:nominatim:relation:51800",
+            "coordinates": [
+              -0.0919983,
+              51.5156177
+            ],
+            "kind": "origin",
+            "id": "trip-fixture-a20-origin"
+          },
+          "toEndpoint": {
+            "kind": "stop",
+            "id": "bangkok-0",
+            "name": "Bangkok",
+            "country": "Thailand",
+            "canonicalPlaceId": "bangkok",
+            "providerId": "nominatim:relation:92277",
+            "coordinates": [
+              100.4935089,
+              13.7524938
+            ]
+          },
+          "classification": "arrival",
+          "mode": "flight",
+          "distanceKm": 9529,
+          "straightLineDistanceKm": 9529,
+          "routedDistanceKm": null,
+          "durationMinutes": 960,
+          "headlineMinutes": 960,
+          "doorToDoorMinutes": 960,
+          "usableDayLoss": 1,
+          "provider": "Morrovia door-to-door flight planning estimate; a connection may be required, so verify the complete live journey.",
+          "provenance": "planning_estimate",
+          "confidence": "low",
+          "scheduleNeedsChecking": true,
+          "warnings": [],
+          "routeMetadata": {
+            "planningEstimate": true,
+            "source": "multimodal-resolver",
+            "roadFallbackEligible": false,
+            "gatewayResolutionRequired": false,
+            "label": "City of London → Bangkok",
+            "routingConfidence": "medium",
+            "transferImpact": {
+              "version": 1,
+              "mode": "flight",
+              "headline": {
+                "status": "unknown",
+                "value": null,
+                "confidence": "unknown",
+                "sources": [],
+                "reason": "The curated allowance is door-to-door and does not expose headline transport time."
+              },
+              "doorToDoor": {
+                "status": "known",
+                "value": {
+                  "planningMinutes": 960,
+                  "rangeMinutes": {
+                    "minimum": 945,
+                    "maximum": 975
+                  },
+                  "precision": "estimated-range"
+                },
+                "confidence": "estimated",
+                "sources": [
+                  {
+                    "id": "morrovia:multimodal-resolution-v1",
+                    "label": "Morrovia multimodal resolver",
+                    "kind": "curated",
+                    "supports": "Aggregated segment planning duration."
+                  }
+                ]
+              },
+              "components": [
+                {
+                  "id": "origin-local",
+                  "label": "Local journey to departure point",
+                  "timing": {
+                    "status": "unknown",
+                    "value": null,
+                    "confidence": "unknown",
+                    "sources": [],
+                    "reason": "The curated source supports the total allowance but not this individual component."
+                  },
+                  "reason": "The curated source supports the total allowance but not this individual component."
+                },
+                {
+                  "id": "check-in-security",
+                  "label": "Check-in and security",
+                  "timing": {
+                    "status": "unknown",
+                    "value": null,
+                    "confidence": "unknown",
+                    "sources": [],
+                    "reason": "The curated source supports the total allowance but not this individual component."
+                  },
+                  "reason": "The curated source supports the total allowance but not this individual component."
+                },
+                {
+                  "id": "waiting-buffer",
+                  "label": "Waiting and departure buffer",
+                  "timing": {
+                    "status": "unknown",
+                    "value": null,
+                    "confidence": "unknown",
+                    "sources": [],
+                    "reason": "The curated source supports the total allowance but not this individual component."
+                  },
+                  "reason": "The curated source supports the total allowance but not this individual component."
+                },
+                {
+                  "id": "transport",
+                  "label": "Headline transport",
+                  "timing": {
+                    "status": "unknown",
+                    "value": null,
+                    "confidence": "unknown",
+                    "sources": [],
+                    "reason": "The source does not separate in-vehicle time from its door-to-door allowance."
+                  },
+                  "reason": "The source does not separate in-vehicle time from its door-to-door allowance."
+                },
+                {
+                  "id": "border-immigration",
+                  "label": "Border and immigration",
+                  "timing": {
+                    "status": "unknown",
+                    "value": null,
+                    "confidence": "unknown",
+                    "sources": [],
+                    "reason": "The curated source supports the total allowance but not this individual component."
+                  },
+                  "reason": "The curated source supports the total allowance but not this individual component."
+                },
+                {
+                  "id": "connection-buffer",
+                  "label": "Connection buffer",
+                  "timing": {
+                    "status": "unknown",
+                    "value": null,
+                    "confidence": "unknown",
+                    "sources": [],
+                    "reason": "The curated source supports the total allowance but not this individual component."
+                  },
+                  "reason": "The curated source supports the total allowance but not this individual component."
+                },
+                {
+                  "id": "arrival-local",
+                  "label": "Arrival to accommodation",
+                  "timing": {
+                    "status": "unknown",
+                    "value": null,
+                    "confidence": "unknown",
+                    "sources": [],
+                    "reason": "The curated source supports the total allowance but not this individual component."
+                  },
+                  "reason": "The curated source supports the total allowance but not this individual component."
+                }
+              ],
+              "usableDayLoss": {
+                "classification": "full-day-or-more",
+                "estimatedDayFraction": 1,
+                "reason": "The estimated transfer needs a full travel day or more."
+              },
+              "occursOvernight": null,
+              "assumptions": [
+                "The existing curated total is preserved without inventing a component breakdown.",
+                "No defensible minimum/maximum range is currently available for this allowance."
+              ],
+              "claimConfidence": {
+                "headline": {
+                  "version": 1,
+                  "state": "unknown",
+                  "level": "unknown",
+                  "freshness": "unknown",
+                  "scope": "unknown",
+                  "sources": [],
+                  "reason": "The curated allowance is door-to-door and does not expose headline transport time.",
+                  "confirmation": {
+                    "needed": true,
+                    "reason": "The curated allowance is door-to-door and does not expose headline transport time."
+                  }
+                },
+                "doorToDoor": {
+                  "version": 1,
+                  "state": "estimated",
+                  "level": "medium",
+                  "freshness": "unknown",
+                  "scope": "planning-rule",
+                  "sources": [
+                    {
+                      "id": "morrovia:multimodal-resolution-v1",
+                      "label": "Morrovia multimodal resolver",
+                      "kind": "curated",
+                      "supports": "Aggregated segment planning duration."
+                    }
+                  ],
+                  "reason": "Confidence in the realistic door-to-door travel-day allowance.",
+                  "confirmation": {
+                    "needed": true,
+                    "reason": "Confirm current access, processing, connection and arrival conditions before booking."
+                  }
+                }
+              }
+            },
+            "planningConfidence": {
+              "availability": {
+                "version": 1,
+                "state": "inferred",
+                "level": "medium",
+                "freshness": "unknown",
+                "scope": "general-route",
+                "sources": [],
+                "reason": "The connection is inferred from existing route geography or planning rules.",
+                "confirmation": {
+                  "needed": true,
+                  "reason": "Confirm that this route operates for the traveller's dates."
+                }
+              },
+              "schedule": {
+                "version": 1,
+                "state": "unknown",
+                "level": "unknown",
+                "freshness": "unknown",
+                "scope": "unknown",
+                "sources": [],
+                "reason": "The general route may be plausible, but no exact schedule has been verified for these dates.",
+                "confirmation": {
+                  "needed": true,
+                  "reason": "The general route may be plausible, but no exact schedule has been verified for these dates."
+                }
+              },
+              "duration": {
+                "version": 1,
+                "state": "estimated",
+                "level": "medium",
+                "freshness": "reviewed",
+                "scope": "planning-rule",
+                "sources": [
+                  {
+                    "id": "planner:transfer-impact-rules-v1",
+                    "label": "Morrovia deterministic transfer-impact rules",
+                    "kind": "curated",
+                    "supports": "Mode-specific access, processing, waiting, arrival and usable-day planning ranges.",
+                    "reviewedAt": "2026-08-23"
+                  }
+                ],
+                "reason": "Confidence in the connection duration used by route planning.",
+                "confirmation": {
+                  "needed": true,
+                  "reason": "Confirm the current operator duration before booking."
+                }
+              },
+              "doorToDoor": {
+                "version": 1,
+                "state": "estimated",
+                "level": "medium",
+                "freshness": "reviewed",
+                "scope": "planning-rule",
+                "sources": [
+                  {
+                    "id": "planner:transfer-impact-rules-v1",
+                    "label": "Morrovia deterministic transfer-impact rules",
+                    "kind": "curated",
+                    "supports": "Mode-specific access, processing, waiting, arrival and usable-day planning ranges.",
+                    "reviewedAt": "2026-08-23"
+                  }
+                ],
+                "reason": "Confidence in the realistic door-to-door travel-day allowance.",
+                "confirmation": {
+                  "needed": true,
+                  "reason": "Confirm current access, processing, connection and arrival conditions before booking."
+                }
+              },
+              "overall": {
+                "version": 1,
+                "state": "estimated",
+                "level": "medium",
+                "freshness": "unknown",
+                "scope": "general-route",
+                "sources": [
+                  {
+                    "id": "planner:transfer-impact-rules-v1",
+                    "label": "Morrovia deterministic transfer-impact rules",
+                    "kind": "curated",
+                    "supports": "Mode-specific access, processing, waiting, arrival and usable-day planning ranges.",
+                    "reviewedAt": "2026-08-23"
+                  }
+                ],
+                "reason": "Confidence in using this connection for route comparison.",
+                "confirmation": {
+                  "needed": true,
+                  "reason": "The general route may be plausible, but no exact schedule has been verified for these dates."
+                }
+              }
+            },
+            "classification": "arrival",
+            "validationWarnings": [],
+            "transportConstraints": {
+              "avoidDriving": false,
+              "excludedModes": [],
+              "preferredModes": [
+                "flight",
+                "train"
+              ]
+            },
+            "multimodalResolution": {
+              "version": 1,
+              "selected": "flight",
+              "candidates": [
+                {
+                  "id": "flight:legacy-estimate",
+                  "summaryMode": "flight",
+                  "segments": [
+                    {
+                      "mode": "flight",
+                      "fromEndpoint": {
+                        "name": "City of London",
+                        "canonicalPlaceId": "open-world:nominatim:relation:51800",
+                        "country": "United Kingdom",
+                        "providerId": "open-world:nominatim:relation:51800",
+                        "coordinates": [
+                          -0.0919983,
+                          51.5156177
+                        ],
+                        "kind": "origin",
+                        "id": "trip-fixture-a20-origin"
+                      },
+                      "toEndpoint": {
+                        "kind": "stop",
+                        "id": "bangkok-0",
+                        "name": "Bangkok",
+                        "country": "Thailand",
+                        "canonicalPlaceId": "bangkok",
+                        "providerId": "nominatim:relation:92277",
+                        "coordinates": [
+                          100.4935089,
+                          13.7524938
+                        ]
+                      },
+                      "distanceKm": 9529,
+                      "durationMinutes": 960,
+                      "provider": "Morrovia door-to-door flight planning estimate; a connection may be required, so verify the complete live journey.",
+                      "provenance": "planning_estimate",
+                      "confidence": "low",
+                      "scheduleNeedsChecking": true,
+                      "id": "open-world:nominatim:relation:51800:bangkok:flight:0"
+                    }
+                  ],
+                  "totalDurationMinutes": 960,
+                  "distanceKm": 9529,
+                  "confidence": "low",
+                  "provenance": "planning_estimate",
+                  "evidence": "legacy_flight_estimate",
+                  "connectionCount": null,
+                  "reasons": [
+                    "The legacy planner supports a flight estimate and no gateway contradiction is known.",
+                    "This mode matches the traveller's stated transport preference."
+                  ],
+                  "score": 50
+                }
+              ],
+              "rejected": [
+                "No plausible routed road estimate or canonical gateway access was available."
+              ],
+              "selectedCandidateId": "flight:legacy-estimate"
+            }
+          },
+          "segments": [
+            {
+              "mode": "flight",
+              "fromEndpoint": {
+                "name": "City of London",
+                "canonicalPlaceId": "open-world:nominatim:relation:51800",
+                "country": "United Kingdom",
+                "providerId": "open-world:nominatim:relation:51800",
+                "coordinates": [
+                  -0.0919983,
+                  51.5156177
+                ],
+                "kind": "origin",
+                "id": "trip-fixture-a20-origin"
+              },
+              "toEndpoint": {
+                "kind": "stop",
+                "id": "bangkok-0",
+                "name": "Bangkok",
+                "country": "Thailand",
+                "canonicalPlaceId": "bangkok",
+                "providerId": "nominatim:relation:92277",
+                "coordinates": [
+                  100.4935089,
+                  13.7524938
+                ]
+              },
+              "distanceKm": 9529,
+              "durationMinutes": 960,
+              "provider": "Morrovia door-to-door flight planning estimate; a connection may be required, so verify the complete live journey.",
+              "provenance": "planning_estimate",
+              "confidence": "low",
+              "scheduleNeedsChecking": true,
+              "id": "open-world:nominatim:relation:51800:bangkok:flight:0"
+            }
+          ]
+        },
+        {
+          "id": "trip-fixture-a20-leg-2",
+          "fromStopId": "bangkok-0",
+          "toStopId": "siem-reap-1",
+          "fromEndpoint": {
+            "kind": "stop",
+            "id": "bangkok-0",
+            "name": "Bangkok",
+            "country": "Thailand",
+            "canonicalPlaceId": "bangkok",
+            "providerId": "nominatim:relation:92277",
+            "coordinates": [
+              100.4935089,
+              13.7524938
+            ]
+          },
+          "toEndpoint": {
+            "kind": "stop",
+            "id": "siem-reap-1",
+            "name": "Siem Reap",
+            "country": "Cambodia",
+            "canonicalPlaceId": "siem-reap",
+            "coordinates": [
+              103.8552,
+              13.3633
+            ]
+          },
+          "classification": "international",
+          "mode": "unknown",
+          "distanceKm": 366,
+          "straightLineDistanceKm": 366,
+          "routedDistanceKm": null,
+          "durationMinutes": null,
+          "headlineMinutes": null,
+          "doorToDoorMinutes": null,
+          "usableDayLoss": null,
+          "provider": "Air is plausible, but Morrovia has no direct-service or complete multimodal evidence for this regional cross-border journey.",
+          "provenance": "unknown",
+          "confidence": "unknown",
+          "scheduleNeedsChecking": true,
+          "warnings": [],
+          "routeMetadata": {
+            "planningEstimate": true,
+            "source": "multimodal-resolver",
+            "roadFallbackEligible": false,
+            "gatewayResolutionRequired": false,
+            "label": "Bangkok → Siem Reap",
+            "routingConfidence": "medium",
+            "transferImpact": {
+              "version": 1,
+              "mode": "flight",
+              "headline": {
+                "status": "known",
+                "value": {
+                  "planningMinutes": 60,
+                  "rangeMinutes": {
+                    "minimum": 45,
+                    "maximum": 75
+                  },
+                  "precision": "estimated-range"
+                },
+                "confidence": "estimated",
+                "sources": [
+                  {
+                    "id": "planner:transfer-impact-rules-v1",
+                    "label": "Morrovia deterministic transfer-impact rules",
+                    "kind": "curated",
+                    "supports": "Mode-specific access, processing, waiting, arrival and usable-day planning ranges.",
+                    "reviewedAt": "2026-08-23"
+                  }
+                ]
+              },
+              "doorToDoor": {
+                "status": "known",
+                "value": {
+                  "planningMinutes": 255,
+                  "rangeMinutes": {
+                    "minimum": 180,
+                    "maximum": 330
+                  },
+                  "precision": "estimated-range"
+                },
+                "confidence": "estimated",
+                "sources": [
+                  {
+                    "id": "planner:transfer-impact-rules-v1",
+                    "label": "Morrovia deterministic transfer-impact rules",
+                    "kind": "curated",
+                    "supports": "Mode-specific access, processing, waiting, arrival and usable-day planning ranges.",
+                    "reviewedAt": "2026-08-23"
+                  }
+                ]
+              },
+              "components": [
+                {
+                  "id": "origin-local",
+                  "label": "Local journey to departure point",
+                  "timing": {
+                    "status": "known",
+                    "value": {
+                      "planningMinutes": 45,
+                      "rangeMinutes": {
+                        "minimum": 30,
+                        "maximum": 60
+                      },
+                      "precision": "estimated-range"
+                    },
+                    "confidence": "estimated",
+                    "sources": [
+                      {
+                        "id": "planner:transfer-impact-rules-v1",
+                        "label": "Morrovia deterministic transfer-impact rules",
+                        "kind": "curated",
+                        "supports": "Mode-specific access, processing, waiting, arrival and usable-day planning ranges.",
+                        "reviewedAt": "2026-08-23"
+                      }
+                    ]
+                  },
+                  "reason": "Mode rule for flight access."
+                },
+                {
+                  "id": "check-in-security",
+                  "label": "Check-in and security",
+                  "timing": {
+                    "status": "known",
+                    "value": {
+                      "planningMinutes": 45,
+                      "rangeMinutes": {
+                        "minimum": 30,
+                        "maximum": 60
+                      },
+                      "precision": "estimated-range"
+                    },
+                    "confidence": "estimated",
+                    "sources": [
+                      {
+                        "id": "planner:transfer-impact-rules-v1",
+                        "label": "Morrovia deterministic transfer-impact rules",
+                        "kind": "curated",
+                        "supports": "Mode-specific access, processing, waiting, arrival and usable-day planning ranges.",
+                        "reviewedAt": "2026-08-23"
+                      }
+                    ]
+                  },
+                  "reason": "Mode rule for flight processing."
+                },
+                {
+                  "id": "waiting-buffer",
+                  "label": "Waiting and departure buffer",
+                  "timing": {
+                    "status": "known",
+                    "value": {
+                      "planningMinutes": 60,
+                      "rangeMinutes": {
+                        "minimum": 45,
+                        "maximum": 75
+                      },
+                      "precision": "estimated-range"
+                    },
+                    "confidence": "estimated",
+                    "sources": [
+                      {
+                        "id": "planner:transfer-impact-rules-v1",
+                        "label": "Morrovia deterministic transfer-impact rules",
+                        "kind": "curated",
+                        "supports": "Mode-specific access, processing, waiting, arrival and usable-day planning ranges.",
+                        "reviewedAt": "2026-08-23"
+                      }
+                    ]
+                  },
+                  "reason": "Mode rule for flight departure reliability."
+                },
+                {
+                  "id": "transport",
+                  "label": "Headline transport",
+                  "timing": {
+                    "status": "known",
+                    "value": {
+                      "planningMinutes": 60,
+                      "rangeMinutes": {
+                        "minimum": 45,
+                        "maximum": 75
+                      },
+                      "precision": "estimated-range"
+                    },
+                    "confidence": "estimated",
+                    "sources": [
+                      {
+                        "id": "planner:transfer-impact-rules-v1",
+                        "label": "Morrovia deterministic transfer-impact rules",
+                        "kind": "curated",
+                        "supports": "Mode-specific access, processing, waiting, arrival and usable-day planning ranges.",
+                        "reviewedAt": "2026-08-23"
+                      }
+                    ]
+                  },
+                  "reason": "In-vehicle or scheduled transport time."
+                },
+                {
+                  "id": "border-immigration",
+                  "label": "Border and immigration",
+                  "timing": {
+                    "status": "unknown",
+                    "value": null,
+                    "confidence": "unknown",
+                    "sources": [],
+                    "reason": "This is cross-border, but no stable border or immigration allowance is curated."
+                  },
+                  "reason": "This is cross-border, but no stable border or immigration allowance is curated."
+                },
+                {
+                  "id": "connection-buffer",
+                  "label": "Connection buffer",
+                  "timing": {
+                    "status": "unknown",
+                    "value": null,
+                    "confidence": "unknown",
+                    "sources": [],
+                    "reason": "The route does not identify whether a timed connection is required."
+                  },
+                  "reason": "The route does not identify whether a timed connection is required."
+                },
+                {
+                  "id": "arrival-local",
+                  "label": "Arrival to accommodation",
+                  "timing": {
+                    "status": "known",
+                    "value": {
+                      "planningMinutes": 45,
+                      "rangeMinutes": {
+                        "minimum": 30,
+                        "maximum": 60
+                      },
+                      "precision": "estimated-range"
+                    },
+                    "confidence": "estimated",
+                    "sources": [
+                      {
+                        "id": "planner:transfer-impact-rules-v1",
+                        "label": "Morrovia deterministic transfer-impact rules",
+                        "kind": "curated",
+                        "supports": "Mode-specific access, processing, waiting, arrival and usable-day planning ranges.",
+                        "reviewedAt": "2026-08-23"
+                      }
+                    ]
+                  },
+                  "reason": "Mode rule for flight arrival access."
+                }
+              ],
+              "usableDayLoss": {
+                "classification": "substantial",
+                "estimatedDayFraction": 0.5,
+                "reason": "The estimated transfer uses a meaningful part of the day."
+              },
+              "occursOvernight": null,
+              "assumptions": [
+                "Mode overheads are broad planning ranges, not live schedule or queue predictions.",
+                "Unknown border or immigration time is excluded from the numeric total and remains visible as a limitation.",
+                "Unknown connection time is excluded from the numeric total and remains visible as a limitation."
+              ],
+              "claimConfidence": {
+                "headline": {
+                  "version": 1,
+                  "state": "estimated",
+                  "level": "medium",
+                  "freshness": "reviewed",
+                  "scope": "planning-rule",
+                  "sources": [
+                    {
+                      "id": "planner:transfer-impact-rules-v1",
+                      "label": "Morrovia deterministic transfer-impact rules",
+                      "kind": "curated",
+                      "supports": "Mode-specific access, processing, waiting, arrival and usable-day planning ranges.",
+                      "reviewedAt": "2026-08-23"
+                    }
+                  ],
+                  "reason": "Confidence in the headline transport duration used for planning.",
+                  "confirmation": {
+                    "needed": true,
+                    "reason": "Confirm the operator's current duration and exact service before booking."
+                  }
+                },
+                "doorToDoor": {
+                  "version": 1,
+                  "state": "estimated",
+                  "level": "medium",
+                  "freshness": "reviewed",
+                  "scope": "planning-rule",
+                  "sources": [
+                    {
+                      "id": "planner:transfer-impact-rules-v1",
+                      "label": "Morrovia deterministic transfer-impact rules",
+                      "kind": "curated",
+                      "supports": "Mode-specific access, processing, waiting, arrival and usable-day planning ranges.",
+                      "reviewedAt": "2026-08-23"
+                    }
+                  ],
+                  "reason": "Confidence in the realistic door-to-door travel-day allowance.",
+                  "confirmation": {
+                    "needed": true,
+                    "reason": "Confirm current access, processing, connection and arrival conditions before booking."
+                  }
+                }
+              }
+            },
+            "planningConfidence": {
+              "availability": {
+                "version": 1,
+                "state": "inferred",
+                "level": "medium",
+                "freshness": "unknown",
+                "scope": "general-route",
+                "sources": [],
+                "reason": "The connection is inferred from existing route geography or planning rules.",
+                "confirmation": {
+                  "needed": true,
+                  "reason": "Confirm that this route operates for the traveller's dates."
+                }
+              },
+              "schedule": {
+                "version": 1,
+                "state": "unknown",
+                "level": "unknown",
+                "freshness": "unknown",
+                "scope": "unknown",
+                "sources": [],
+                "reason": "The general route may be plausible, but no exact schedule has been verified for these dates.",
+                "confirmation": {
+                  "needed": true,
+                  "reason": "The general route may be plausible, but no exact schedule has been verified for these dates."
+                }
+              },
+              "duration": {
+                "version": 1,
+                "state": "estimated",
+                "level": "medium",
+                "freshness": "reviewed",
+                "scope": "planning-rule",
+                "sources": [
+                  {
+                    "id": "planner:transfer-impact-rules-v1",
+                    "label": "Morrovia deterministic transfer-impact rules",
+                    "kind": "curated",
+                    "supports": "Mode-specific access, processing, waiting, arrival and usable-day planning ranges.",
+                    "reviewedAt": "2026-08-23"
+                  }
+                ],
+                "reason": "Confidence in the connection duration used by route planning.",
+                "confirmation": {
+                  "needed": true,
+                  "reason": "Confirm the current operator duration before booking."
+                }
+              },
+              "doorToDoor": {
+                "version": 1,
+                "state": "estimated",
+                "level": "medium",
+                "freshness": "reviewed",
+                "scope": "planning-rule",
+                "sources": [
+                  {
+                    "id": "planner:transfer-impact-rules-v1",
+                    "label": "Morrovia deterministic transfer-impact rules",
+                    "kind": "curated",
+                    "supports": "Mode-specific access, processing, waiting, arrival and usable-day planning ranges.",
+                    "reviewedAt": "2026-08-23"
+                  }
+                ],
+                "reason": "Confidence in the realistic door-to-door travel-day allowance.",
+                "confirmation": {
+                  "needed": true,
+                  "reason": "Confirm current access, processing, connection and arrival conditions before booking."
+                }
+              },
+              "overall": {
+                "version": 1,
+                "state": "estimated",
+                "level": "medium",
+                "freshness": "unknown",
+                "scope": "general-route",
+                "sources": [
+                  {
+                    "id": "planner:transfer-impact-rules-v1",
+                    "label": "Morrovia deterministic transfer-impact rules",
+                    "kind": "curated",
+                    "supports": "Mode-specific access, processing, waiting, arrival and usable-day planning ranges.",
+                    "reviewedAt": "2026-08-23"
+                  }
+                ],
+                "reason": "Confidence in using this connection for route comparison.",
+                "confirmation": {
+                  "needed": true,
+                  "reason": "The general route may be plausible, but no exact schedule has been verified for these dates."
+                }
+              }
+            },
+            "classification": "international",
+            "validationWarnings": [],
+            "transportConstraints": {
+              "avoidDriving": false,
+              "excludedModes": [],
+              "preferredModes": [
+                "flight",
+                "train"
+              ]
+            },
+            "multimodalResolution": {
+              "version": 1,
+              "selected": "unresolved",
+              "candidates": [],
+              "rejected": [
+                "No plausible routed road estimate or canonical gateway access was available."
+              ]
+            }
+          }
+        },
+        {
+          "id": "trip-fixture-a20-leg-3",
+          "fromStopId": "siem-reap-1",
+          "toStopId": "hoi-an-2",
+          "fromEndpoint": {
+            "kind": "stop",
+            "id": "siem-reap-1",
+            "name": "Siem Reap",
+            "country": "Cambodia",
+            "canonicalPlaceId": "siem-reap",
+            "coordinates": [
+              103.8552,
+              13.3633
+            ]
+          },
+          "toEndpoint": {
+            "kind": "stop",
+            "id": "hoi-an-2",
+            "name": "Hoi An",
+            "country": "Vietnam",
+            "canonicalPlaceId": "hoi-an",
+            "providerId": "nominatim:node:110506070",
+            "coordinates": [
+              108.3319406,
+              15.8795863
+            ]
+          },
+          "classification": "international",
+          "mode": "mixed",
+          "distanceKm": 577,
+          "straightLineDistanceKm": 557,
+          "routedDistanceKm": null,
+          "durationMinutes": 315,
+          "headlineMinutes": 315,
+          "doorToDoorMinutes": 315,
+          "usableDayLoss": 0.75,
+          "provider": "Morrovia multimodal planning estimate; verify each live service before booking.",
+          "provenance": "planning_estimate",
+          "confidence": "medium",
+          "scheduleNeedsChecking": true,
+          "warnings": [],
+          "routeMetadata": {
+            "planningEstimate": true,
+            "source": "multimodal-resolver",
+            "roadFallbackEligible": false,
+            "gatewayResolutionRequired": true,
+            "label": "Siem Reap → Hoi An",
+            "routingConfidence": "medium",
+            "transferImpact": {
+              "version": 1,
+              "mode": "flight",
+              "headline": {
+                "status": "unknown",
+                "value": null,
+                "confidence": "unknown",
+                "sources": [],
+                "reason": "The curated allowance is door-to-door and does not expose headline transport time."
+              },
+              "doorToDoor": {
+                "status": "known",
+                "value": {
+                  "planningMinutes": 315,
+                  "rangeMinutes": {
+                    "minimum": 300,
+                    "maximum": 330
+                  },
+                  "precision": "estimated-range"
+                },
+                "confidence": "estimated",
+                "sources": [
+                  {
+                    "id": "morrovia:multimodal-resolution-v1",
+                    "label": "Morrovia multimodal resolver",
+                    "kind": "curated",
+                    "supports": "Aggregated segment planning duration."
+                  }
+                ]
+              },
+              "components": [
+                {
+                  "id": "origin-local",
+                  "label": "Local journey to departure point",
+                  "timing": {
+                    "status": "unknown",
+                    "value": null,
+                    "confidence": "unknown",
+                    "sources": [],
+                    "reason": "The curated source supports the total allowance but not this individual component."
+                  },
+                  "reason": "The curated source supports the total allowance but not this individual component."
+                },
+                {
+                  "id": "check-in-security",
+                  "label": "Check-in and security",
+                  "timing": {
+                    "status": "unknown",
+                    "value": null,
+                    "confidence": "unknown",
+                    "sources": [],
+                    "reason": "The curated source supports the total allowance but not this individual component."
+                  },
+                  "reason": "The curated source supports the total allowance but not this individual component."
+                },
+                {
+                  "id": "waiting-buffer",
+                  "label": "Waiting and departure buffer",
+                  "timing": {
+                    "status": "unknown",
+                    "value": null,
+                    "confidence": "unknown",
+                    "sources": [],
+                    "reason": "The curated source supports the total allowance but not this individual component."
+                  },
+                  "reason": "The curated source supports the total allowance but not this individual component."
+                },
+                {
+                  "id": "transport",
+                  "label": "Headline transport",
+                  "timing": {
+                    "status": "unknown",
+                    "value": null,
+                    "confidence": "unknown",
+                    "sources": [],
+                    "reason": "The source does not separate in-vehicle time from its door-to-door allowance."
+                  },
+                  "reason": "The source does not separate in-vehicle time from its door-to-door allowance."
+                },
+                {
+                  "id": "border-immigration",
+                  "label": "Border and immigration",
+                  "timing": {
+                    "status": "unknown",
+                    "value": null,
+                    "confidence": "unknown",
+                    "sources": [],
+                    "reason": "The curated source supports the total allowance but not this individual component."
+                  },
+                  "reason": "The curated source supports the total allowance but not this individual component."
+                },
+                {
+                  "id": "connection-buffer",
+                  "label": "Connection buffer",
+                  "timing": {
+                    "status": "unknown",
+                    "value": null,
+                    "confidence": "unknown",
+                    "sources": [],
+                    "reason": "The curated source supports the total allowance but not this individual component."
+                  },
+                  "reason": "The curated source supports the total allowance but not this individual component."
+                },
+                {
+                  "id": "arrival-local",
+                  "label": "Arrival to accommodation",
+                  "timing": {
+                    "status": "unknown",
+                    "value": null,
+                    "confidence": "unknown",
+                    "sources": [],
+                    "reason": "The curated source supports the total allowance but not this individual component."
+                  },
+                  "reason": "The curated source supports the total allowance but not this individual component."
+                }
+              ],
+              "usableDayLoss": {
+                "classification": "most-of-day",
+                "estimatedDayFraction": 0.75,
+                "reason": "The estimated transfer consumes most of a normal travel day."
+              },
+              "occursOvernight": null,
+              "assumptions": [
+                "The existing curated total is preserved without inventing a component breakdown.",
+                "No defensible minimum/maximum range is currently available for this allowance."
+              ],
+              "claimConfidence": {
+                "headline": {
+                  "version": 1,
+                  "state": "unknown",
+                  "level": "unknown",
+                  "freshness": "unknown",
+                  "scope": "unknown",
+                  "sources": [],
+                  "reason": "The curated allowance is door-to-door and does not expose headline transport time.",
+                  "confirmation": {
+                    "needed": true,
+                    "reason": "The curated allowance is door-to-door and does not expose headline transport time."
+                  }
+                },
+                "doorToDoor": {
+                  "version": 1,
+                  "state": "estimated",
+                  "level": "medium",
+                  "freshness": "unknown",
+                  "scope": "planning-rule",
+                  "sources": [
+                    {
+                      "id": "morrovia:multimodal-resolution-v1",
+                      "label": "Morrovia multimodal resolver",
+                      "kind": "curated",
+                      "supports": "Aggregated segment planning duration."
+                    }
+                  ],
+                  "reason": "Confidence in the realistic door-to-door travel-day allowance.",
+                  "confirmation": {
+                    "needed": true,
+                    "reason": "Confirm current access, processing, connection and arrival conditions before booking."
+                  }
+                }
+              }
+            },
+            "planningConfidence": {
+              "availability": {
+                "version": 1,
+                "state": "inferred",
+                "level": "medium",
+                "freshness": "unknown",
+                "scope": "general-route",
+                "sources": [],
+                "reason": "The connection is inferred from existing route geography or planning rules.",
+                "confirmation": {
+                  "needed": true,
+                  "reason": "Confirm that this route operates for the traveller's dates."
+                }
+              },
+              "schedule": {
+                "version": 1,
+                "state": "unknown",
+                "level": "unknown",
+                "freshness": "unknown",
+                "scope": "unknown",
+                "sources": [],
+                "reason": "The general route may be plausible, but no exact schedule has been verified for these dates.",
+                "confirmation": {
+                  "needed": true,
+                  "reason": "The general route may be plausible, but no exact schedule has been verified for these dates."
+                }
+              },
+              "duration": {
+                "version": 1,
+                "state": "estimated",
+                "level": "medium",
+                "freshness": "reviewed",
+                "scope": "planning-rule",
+                "sources": [
+                  {
+                    "id": "planner:transfer-impact-rules-v1",
+                    "label": "Morrovia deterministic transfer-impact rules",
+                    "kind": "curated",
+                    "supports": "Mode-specific access, processing, waiting, arrival and usable-day planning ranges.",
+                    "reviewedAt": "2026-08-23"
+                  }
+                ],
+                "reason": "Confidence in the connection duration used by route planning.",
+                "confirmation": {
+                  "needed": true,
+                  "reason": "Confirm the current operator duration before booking."
+                }
+              },
+              "doorToDoor": {
+                "version": 1,
+                "state": "estimated",
+                "level": "medium",
+                "freshness": "reviewed",
+                "scope": "planning-rule",
+                "sources": [
+                  {
+                    "id": "planner:transfer-impact-rules-v1",
+                    "label": "Morrovia deterministic transfer-impact rules",
+                    "kind": "curated",
+                    "supports": "Mode-specific access, processing, waiting, arrival and usable-day planning ranges.",
+                    "reviewedAt": "2026-08-23"
+                  }
+                ],
+                "reason": "Confidence in the realistic door-to-door travel-day allowance.",
+                "confirmation": {
+                  "needed": true,
+                  "reason": "Confirm current access, processing, connection and arrival conditions before booking."
+                }
+              },
+              "overall": {
+                "version": 1,
+                "state": "estimated",
+                "level": "medium",
+                "freshness": "unknown",
+                "scope": "general-route",
+                "sources": [
+                  {
+                    "id": "planner:transfer-impact-rules-v1",
+                    "label": "Morrovia deterministic transfer-impact rules",
+                    "kind": "curated",
+                    "supports": "Mode-specific access, processing, waiting, arrival and usable-day planning ranges.",
+                    "reviewedAt": "2026-08-23"
+                  }
+                ],
+                "reason": "Confidence in using this connection for route comparison.",
+                "confirmation": {
+                  "needed": true,
+                  "reason": "The general route may be plausible, but no exact schedule has been verified for these dates."
+                }
+              }
+            },
+            "classification": "international",
+            "validationWarnings": [],
+            "transportConstraints": {
+              "avoidDriving": false,
+              "excludedModes": [],
+              "preferredModes": [
+                "flight",
+                "train"
+              ]
+            },
+            "multimodalResolution": {
+              "version": 1,
+              "selected": "mixed",
+              "candidates": [
+                {
+                  "id": "mixed:air-gateway",
+                  "summaryMode": "mixed",
+                  "segments": [
+                    {
+                      "mode": "flight",
+                      "fromEndpoint": {
+                        "kind": "stop",
+                        "id": "siem-reap-1",
+                        "name": "Siem Reap",
+                        "country": "Cambodia",
+                        "canonicalPlaceId": "siem-reap",
+                        "coordinates": [
+                          103.8552,
+                          13.3633
+                        ]
+                      },
+                      "toEndpoint": {
+                        "kind": "gateway",
+                        "id": "gateway:da-nang",
+                        "name": "Da Nang",
+                        "country": "Vietnam",
+                        "canonicalPlaceId": "da-nang",
+                        "coordinates": [
+                          108.2022,
+                          16.0439
+                        ]
+                      },
+                      "distanceKm": 554,
+                      "durationMinutes": 240,
+                      "provider": "Morrovia door-to-door flight planning estimate; verify current flights and connection timing.",
+                      "provenance": "planning_estimate",
+                      "confidence": "medium",
+                      "scheduleNeedsChecking": true,
+                      "id": "siem-reap:da-nang:flight:0"
+                    },
+                    {
+                      "mode": "road",
+                      "fromEndpoint": {
+                        "kind": "gateway",
+                        "id": "gateway:da-nang",
+                        "name": "Da Nang",
+                        "country": "Vietnam",
+                        "canonicalPlaceId": "da-nang",
+                        "coordinates": [
+                          108.2022,
+                          16.0439
+                        ]
+                      },
+                      "toEndpoint": {
+                        "kind": "stop",
+                        "id": "hoi-an-2",
+                        "name": "Hoi An",
+                        "country": "Vietnam",
+                        "canonicalPlaceId": "hoi-an",
+                        "providerId": "nominatim:node:110506070",
+                        "coordinates": [
+                          108.3319406,
+                          15.8795863
+                        ]
+                      },
+                      "distanceKm": 23,
+                      "durationMinutes": 75,
+                      "provider": "Canonical air-gateway access relationship; conservative Morrovia ground-transfer estimate, verify the live service.",
+                      "provenance": "planning_estimate",
+                      "confidence": "medium",
+                      "scheduleNeedsChecking": true,
+                      "id": "da-nang:hoi-an:road:0"
+                    }
+                  ],
+                  "totalDurationMinutes": 315,
+                  "distanceKm": 577,
+                  "confidence": "medium",
+                  "provenance": "planning_estimate",
+                  "evidence": "air_gateway_composition",
+                  "connectionCount": 1,
+                  "reasons": [
+                    "Canonical gateway evidence prevents treating the non-airport destination as the flight endpoint.",
+                    "The reviewed gateway relationship supplies a conservative ground-access fallback because routed evidence is unavailable.",
+                    "This mode matches the traveller's stated transport preference."
+                  ],
+                  "score": 84.5
+                }
+              ],
+              "rejected": [
+                "No plausible routed road estimate or canonical gateway access was available."
+              ],
+              "selectedCandidateId": "mixed:air-gateway"
+            }
+          },
+          "segments": [
+            {
+              "mode": "flight",
+              "fromEndpoint": {
+                "kind": "stop",
+                "id": "siem-reap-1",
+                "name": "Siem Reap",
+                "country": "Cambodia",
+                "canonicalPlaceId": "siem-reap",
+                "coordinates": [
+                  103.8552,
+                  13.3633
+                ]
+              },
+              "toEndpoint": {
+                "kind": "gateway",
+                "id": "gateway:da-nang",
+                "name": "Da Nang",
+                "country": "Vietnam",
+                "canonicalPlaceId": "da-nang",
+                "coordinates": [
+                  108.2022,
+                  16.0439
+                ]
+              },
+              "distanceKm": 554,
+              "durationMinutes": 240,
+              "provider": "Morrovia door-to-door flight planning estimate; verify current flights and connection timing.",
+              "provenance": "planning_estimate",
+              "confidence": "medium",
+              "scheduleNeedsChecking": true,
+              "id": "siem-reap:da-nang:flight:0"
+            },
+            {
+              "mode": "road",
+              "fromEndpoint": {
+                "kind": "gateway",
+                "id": "gateway:da-nang",
+                "name": "Da Nang",
+                "country": "Vietnam",
+                "canonicalPlaceId": "da-nang",
+                "coordinates": [
+                  108.2022,
+                  16.0439
+                ]
+              },
+              "toEndpoint": {
+                "kind": "stop",
+                "id": "hoi-an-2",
+                "name": "Hoi An",
+                "country": "Vietnam",
+                "canonicalPlaceId": "hoi-an",
+                "providerId": "nominatim:node:110506070",
+                "coordinates": [
+                  108.3319406,
+                  15.8795863
+                ]
+              },
+              "distanceKm": 23,
+              "durationMinutes": 75,
+              "provider": "Canonical air-gateway access relationship; conservative Morrovia ground-transfer estimate, verify the live service.",
+              "provenance": "planning_estimate",
+              "confidence": "medium",
+              "scheduleNeedsChecking": true,
+              "id": "da-nang:hoi-an:road:0"
+            }
+          ]
+        },
+        {
+          "id": "trip-fixture-a20-leg:hoi-an-2:hanoi-4",
+          "fromStopId": "hoi-an-2",
+          "toStopId": "hanoi-4",
+          "fromEndpoint": {
+            "kind": "stop",
+            "id": "hoi-an-2",
+            "name": "Hoi An",
+            "country": "Vietnam",
+            "canonicalPlaceId": "hoi-an",
+            "providerId": "nominatim:node:110506070",
+            "coordinates": [
+              108.3319406,
+              15.8795863
+            ]
+          },
+          "toEndpoint": {
+            "kind": "stop",
+            "id": "hanoi-4",
+            "name": "Hanoi",
+            "country": "Vietnam",
+            "canonicalPlaceId": "hanoi",
+            "providerId": "nominatim:relation:1903516",
+            "coordinates": [
+              105.854041,
+              21.0283334
+            ]
+          },
+          "classification": "intercity",
+          "mode": "mixed",
+          "distanceKm": 630,
+          "straightLineDistanceKm": 629,
+          "routedDistanceKm": null,
+          "durationMinutes": 315,
+          "headlineMinutes": 315,
+          "doorToDoorMinutes": 315,
+          "usableDayLoss": 0.75,
+          "provider": "Flying is materially faster for this leg. Morrovia multimodal planning estimate; verify each live service before booking.",
+          "provenance": "planning_estimate",
+          "confidence": "medium",
+          "scheduleNeedsChecking": true,
+          "warnings": [],
+          "routeMetadata": {
+            "planningEstimate": true,
+            "source": "multimodal-resolver",
+            "roadFallbackEligible": false,
+            "gatewayResolutionRequired": true,
+            "label": "Hoi An → Hanoi",
+            "routingConfidence": "medium",
+            "transferImpact": {
+              "version": 1,
+              "mode": "flight",
+              "headline": {
+                "status": "unknown",
+                "value": null,
+                "confidence": "unknown",
+                "sources": [],
+                "reason": "The curated allowance is door-to-door and does not expose headline transport time."
+              },
+              "doorToDoor": {
+                "status": "known",
+                "value": {
+                  "planningMinutes": 315,
+                  "rangeMinutes": {
+                    "minimum": 300,
+                    "maximum": 330
+                  },
+                  "precision": "estimated-range"
+                },
+                "confidence": "estimated",
+                "sources": [
+                  {
+                    "id": "morrovia:multimodal-resolution-v1",
+                    "label": "Morrovia multimodal resolver",
+                    "kind": "curated",
+                    "supports": "Aggregated segment planning duration."
+                  }
+                ]
+              },
+              "components": [
+                {
+                  "id": "origin-local",
+                  "label": "Local journey to departure point",
+                  "timing": {
+                    "status": "unknown",
+                    "value": null,
+                    "confidence": "unknown",
+                    "sources": [],
+                    "reason": "The curated source supports the total allowance but not this individual component."
+                  },
+                  "reason": "The curated source supports the total allowance but not this individual component."
+                },
+                {
+                  "id": "check-in-security",
+                  "label": "Check-in and security",
+                  "timing": {
+                    "status": "unknown",
+                    "value": null,
+                    "confidence": "unknown",
+                    "sources": [],
+                    "reason": "The curated source supports the total allowance but not this individual component."
+                  },
+                  "reason": "The curated source supports the total allowance but not this individual component."
+                },
+                {
+                  "id": "waiting-buffer",
+                  "label": "Waiting and departure buffer",
+                  "timing": {
+                    "status": "unknown",
+                    "value": null,
+                    "confidence": "unknown",
+                    "sources": [],
+                    "reason": "The curated source supports the total allowance but not this individual component."
+                  },
+                  "reason": "The curated source supports the total allowance but not this individual component."
+                },
+                {
+                  "id": "transport",
+                  "label": "Headline transport",
+                  "timing": {
+                    "status": "unknown",
+                    "value": null,
+                    "confidence": "unknown",
+                    "sources": [],
+                    "reason": "The source does not separate in-vehicle time from its door-to-door allowance."
+                  },
+                  "reason": "The source does not separate in-vehicle time from its door-to-door allowance."
+                },
+                {
+                  "id": "border-immigration",
+                  "label": "Border and immigration",
+                  "timing": {
+                    "status": "unknown",
+                    "value": null,
+                    "confidence": "unknown",
+                    "sources": [],
+                    "reason": "The curated source supports the total allowance but not this individual component."
+                  },
+                  "reason": "The curated source supports the total allowance but not this individual component."
+                },
+                {
+                  "id": "connection-buffer",
+                  "label": "Connection buffer",
+                  "timing": {
+                    "status": "unknown",
+                    "value": null,
+                    "confidence": "unknown",
+                    "sources": [],
+                    "reason": "The curated source supports the total allowance but not this individual component."
+                  },
+                  "reason": "The curated source supports the total allowance but not this individual component."
+                },
+                {
+                  "id": "arrival-local",
+                  "label": "Arrival to accommodation",
+                  "timing": {
+                    "status": "unknown",
+                    "value": null,
+                    "confidence": "unknown",
+                    "sources": [],
+                    "reason": "The curated source supports the total allowance but not this individual component."
+                  },
+                  "reason": "The curated source supports the total allowance but not this individual component."
+                }
+              ],
+              "usableDayLoss": {
+                "classification": "most-of-day",
+                "estimatedDayFraction": 0.75,
+                "reason": "The estimated transfer consumes most of a normal travel day."
+              },
+              "occursOvernight": null,
+              "assumptions": [
+                "The existing curated total is preserved without inventing a component breakdown.",
+                "No defensible minimum/maximum range is currently available for this allowance."
+              ],
+              "claimConfidence": {
+                "headline": {
+                  "version": 1,
+                  "state": "unknown",
+                  "level": "unknown",
+                  "freshness": "unknown",
+                  "scope": "unknown",
+                  "sources": [],
+                  "reason": "The curated allowance is door-to-door and does not expose headline transport time.",
+                  "confirmation": {
+                    "needed": true,
+                    "reason": "The curated allowance is door-to-door and does not expose headline transport time."
+                  }
+                },
+                "doorToDoor": {
+                  "version": 1,
+                  "state": "estimated",
+                  "level": "medium",
+                  "freshness": "unknown",
+                  "scope": "planning-rule",
+                  "sources": [
+                    {
+                      "id": "morrovia:multimodal-resolution-v1",
+                      "label": "Morrovia multimodal resolver",
+                      "kind": "curated",
+                      "supports": "Aggregated segment planning duration."
+                    }
+                  ],
+                  "reason": "Confidence in the realistic door-to-door travel-day allowance.",
+                  "confirmation": {
+                    "needed": true,
+                    "reason": "Confirm current access, processing, connection and arrival conditions before booking."
+                  }
+                }
+              }
+            },
+            "planningConfidence": {
+              "availability": {
+                "version": 1,
+                "state": "structured",
+                "level": "high",
+                "freshness": "reviewed",
+                "scope": "general-route",
+                "sources": [
+                  {
+                    "id": "morrovia:reviewed-intercity-rail-networks-v1",
+                    "label": "Morrovia reviewed intercity rail network evidence",
+                    "kind": "curated",
+                    "supports": "Planning-level strong intercity rail viability and generalized door-to-door duration estimates; live services still require timetable verification.",
+                    "reviewedAt": "2026-09-01"
+                  }
+                ],
+                "reason": "Curated connection knowledge supports the general transport mode.",
+                "confirmation": {
+                  "needed": true,
+                  "reason": "Confirm that this service operates on the traveller's dates."
+                }
+              },
+              "schedule": {
+                "version": 1,
+                "state": "unknown",
+                "level": "unknown",
+                "freshness": "unknown",
+                "scope": "unknown",
+                "sources": [],
+                "reason": "The general route may be plausible, but no exact schedule has been verified for these dates.",
+                "confirmation": {
+                  "needed": true,
+                  "reason": "The general route may be plausible, but no exact schedule has been verified for these dates."
+                }
+              },
+              "duration": {
+                "version": 1,
+                "state": "estimated",
+                "level": "medium",
+                "freshness": "reviewed",
+                "scope": "planning-rule",
+                "sources": [
+                  {
+                    "id": "morrovia:reviewed-intercity-rail-networks-v1",
+                    "label": "Morrovia reviewed intercity rail network evidence",
+                    "kind": "curated",
+                    "supports": "Planning-level strong intercity rail viability and generalized door-to-door duration estimates; live services still require timetable verification.",
+                    "reviewedAt": "2026-09-01"
+                  }
+                ],
+                "reason": "Confidence in the connection duration used by route planning.",
+                "confirmation": {
+                  "needed": true,
+                  "reason": "Confirm the current operator duration before booking."
+                }
+              },
+              "doorToDoor": {
+                "version": 1,
+                "state": "estimated",
+                "level": "medium",
+                "freshness": "reviewed",
+                "scope": "planning-rule",
+                "sources": [
+                  {
+                    "id": "morrovia:reviewed-intercity-rail-networks-v1",
+                    "label": "Morrovia reviewed intercity rail network evidence",
+                    "kind": "curated",
+                    "supports": "Planning-level strong intercity rail viability and generalized door-to-door duration estimates; live services still require timetable verification.",
+                    "reviewedAt": "2026-09-01"
+                  }
+                ],
+                "reason": "Confidence in the realistic door-to-door travel-day allowance.",
+                "confirmation": {
+                  "needed": true,
+                  "reason": "Confirm current access, processing, connection and arrival conditions before booking."
+                }
+              },
+              "overall": {
+                "version": 1,
+                "state": "estimated",
+                "level": "medium",
+                "freshness": "reviewed",
+                "scope": "general-route",
+                "sources": [
+                  {
+                    "id": "morrovia:reviewed-intercity-rail-networks-v1",
+                    "label": "Morrovia reviewed intercity rail network evidence",
+                    "kind": "curated",
+                    "supports": "Planning-level strong intercity rail viability and generalized door-to-door duration estimates; live services still require timetable verification.",
+                    "reviewedAt": "2026-09-01"
+                  }
+                ],
+                "reason": "Confidence in using this connection for route comparison.",
+                "confirmation": {
+                  "needed": true,
+                  "reason": "The general route may be plausible, but no exact schedule has been verified for these dates."
+                }
+              }
+            },
+            "classification": "intercity",
+            "validationWarnings": [],
+            "transportConstraints": {
+              "avoidDriving": false,
+              "excludedModes": [],
+              "preferredModes": [
+                "flight",
+                "train"
+              ]
+            },
+            "multimodalResolution": {
+              "version": 1,
+              "selected": "mixed",
+              "candidates": [
+                {
+                  "id": "mixed:air-gateway",
+                  "summaryMode": "mixed",
+                  "segments": [
+                    {
+                      "mode": "road",
+                      "fromEndpoint": {
+                        "kind": "stop",
+                        "id": "hoi-an-2",
+                        "name": "Hoi An",
+                        "country": "Vietnam",
+                        "canonicalPlaceId": "hoi-an",
+                        "providerId": "nominatim:node:110506070",
+                        "coordinates": [
+                          108.3319406,
+                          15.8795863
+                        ]
+                      },
+                      "toEndpoint": {
+                        "kind": "gateway",
+                        "id": "gateway:da-nang",
+                        "name": "Da Nang",
+                        "country": "Vietnam",
+                        "canonicalPlaceId": "da-nang",
+                        "coordinates": [
+                          108.2022,
+                          16.0439
+                        ]
+                      },
+                      "distanceKm": 23,
+                      "durationMinutes": 75,
+                      "provider": "Canonical air-gateway access relationship; conservative Morrovia ground-transfer estimate, verify the live service.",
+                      "provenance": "planning_estimate",
+                      "confidence": "medium",
+                      "scheduleNeedsChecking": true,
+                      "id": "hoi-an:da-nang:road:0"
+                    },
+                    {
+                      "mode": "flight",
+                      "fromEndpoint": {
+                        "kind": "gateway",
+                        "id": "gateway:da-nang",
+                        "name": "Da Nang",
+                        "country": "Vietnam",
+                        "canonicalPlaceId": "da-nang",
+                        "coordinates": [
+                          108.2022,
+                          16.0439
+                        ]
+                      },
+                      "toEndpoint": {
+                        "kind": "stop",
+                        "id": "hanoi-4",
+                        "name": "Hanoi",
+                        "country": "Vietnam",
+                        "canonicalPlaceId": "hanoi",
+                        "providerId": "nominatim:relation:1903516",
+                        "coordinates": [
+                          105.854041,
+                          21.0283334
+                        ]
+                      },
+                      "distanceKm": 607,
+                      "durationMinutes": 240,
+                      "provider": "Morrovia door-to-door flight planning estimate; verify current flights and connection timing.",
+                      "provenance": "planning_estimate",
+                      "confidence": "medium",
+                      "scheduleNeedsChecking": true,
+                      "id": "da-nang:hanoi:flight:1"
+                    }
+                  ],
+                  "totalDurationMinutes": 315,
+                  "distanceKm": 630,
+                  "confidence": "medium",
+                  "provenance": "planning_estimate",
+                  "evidence": "air_gateway_composition",
+                  "connectionCount": 1,
+                  "reasons": [
+                    "Canonical gateway evidence prevents treating the non-airport destination as the flight endpoint.",
+                    "The reviewed gateway relationship supplies a conservative ground-access fallback because routed evidence is unavailable.",
+                    "This mode matches the traveller's stated transport preference."
+                  ],
+                  "score": 84.5
+                },
+                {
+                  "id": "rail:network:vietnam-north-south-intercity",
+                  "summaryMode": "mixed",
+                  "segments": [
+                    {
+                      "mode": "road",
+                      "fromEndpoint": {
+                        "kind": "stop",
+                        "id": "hoi-an-2",
+                        "name": "Hoi An",
+                        "country": "Vietnam",
+                        "canonicalPlaceId": "hoi-an",
+                        "providerId": "nominatim:node:110506070",
+                        "coordinates": [
+                          108.3319406,
+                          15.8795863
+                        ]
+                      },
+                      "toEndpoint": {
+                        "kind": "gateway",
+                        "id": "gateway:da-nang",
+                        "name": "Da Nang",
+                        "country": "Vietnam",
+                        "canonicalPlaceId": "da-nang",
+                        "coordinates": [
+                          108.2022,
+                          16.0439
+                        ]
+                      },
+                      "distanceKm": 23,
+                      "durationMinutes": 45,
+                      "provider": "Reviewed rail-gateway access; Morrovia planning allowance, verify the live ground connection.",
+                      "provenance": "planning_estimate",
+                      "confidence": "medium",
+                      "scheduleNeedsChecking": true,
+                      "id": "hoi-an:da-nang:road:0"
+                    },
+                    {
+                      "mode": "train",
+                      "fromEndpoint": {
+                        "kind": "gateway",
+                        "id": "gateway:da-nang",
+                        "name": "Da Nang",
+                        "country": "Vietnam",
+                        "canonicalPlaceId": "da-nang",
+                        "coordinates": [
+                          108.2022,
+                          16.0439
+                        ]
+                      },
+                      "toEndpoint": {
+                        "kind": "stop",
+                        "id": "hanoi-4",
+                        "name": "Hanoi",
+                        "country": "Vietnam",
+                        "canonicalPlaceId": "hanoi",
+                        "providerId": "nominatim:relation:1903516",
+                        "coordinates": [
+                          105.854041,
+                          21.0283334
+                        ]
+                      },
+                      "distanceKm": 607,
+                      "durationMinutes": 705,
+                      "provider": "Vietnam north-south intercity rail network; Morrovia planning estimate, verify the live timetable.",
+                      "provenance": "planning_estimate",
+                      "confidence": "medium",
+                      "scheduleNeedsChecking": true,
+                      "id": "da-nang:hanoi:train:1"
+                    }
+                  ],
+                  "totalDurationMinutes": 750,
+                  "distanceKm": 630,
+                  "confidence": "medium",
+                  "provenance": "planning_estimate",
+                  "evidence": "intercity_rail_network",
+                  "connectionCount": 1,
+                  "reasons": [
+                    "Both canonical endpoints share reviewed strong intercity evidence on the Vietnam north-south intercity rail network.",
+                    "Evidence: Morrovia reviewed intercity rail network evidence.",
+                    "Rail avoids airport and driving friction for this intercity distance.",
+                    "This mode matches the traveller's stated transport preference."
+                  ],
+                  "score": 76
+                }
+              ],
+              "rejected": [
+                "No plausible routed road estimate or canonical gateway access was available."
+              ],
+              "selectedCandidateId": "mixed:air-gateway"
+            }
+          },
+          "segments": [
+            {
+              "mode": "road",
+              "fromEndpoint": {
+                "kind": "stop",
+                "id": "hoi-an-2",
+                "name": "Hoi An",
+                "country": "Vietnam",
+                "canonicalPlaceId": "hoi-an",
+                "providerId": "nominatim:node:110506070",
+                "coordinates": [
+                  108.3319406,
+                  15.8795863
+                ]
+              },
+              "toEndpoint": {
+                "kind": "gateway",
+                "id": "gateway:da-nang",
+                "name": "Da Nang",
+                "country": "Vietnam",
+                "canonicalPlaceId": "da-nang",
+                "coordinates": [
+                  108.2022,
+                  16.0439
+                ]
+              },
+              "distanceKm": 23,
+              "durationMinutes": 75,
+              "provider": "Canonical air-gateway access relationship; conservative Morrovia ground-transfer estimate, verify the live service.",
+              "provenance": "planning_estimate",
+              "confidence": "medium",
+              "scheduleNeedsChecking": true,
+              "id": "hoi-an:da-nang:road:0"
+            },
+            {
+              "mode": "flight",
+              "fromEndpoint": {
+                "kind": "gateway",
+                "id": "gateway:da-nang",
+                "name": "Da Nang",
+                "country": "Vietnam",
+                "canonicalPlaceId": "da-nang",
+                "coordinates": [
+                  108.2022,
+                  16.0439
+                ]
+              },
+              "toEndpoint": {
+                "kind": "stop",
+                "id": "hanoi-4",
+                "name": "Hanoi",
+                "country": "Vietnam",
+                "canonicalPlaceId": "hanoi",
+                "providerId": "nominatim:relation:1903516",
+                "coordinates": [
+                  105.854041,
+                  21.0283334
+                ]
+              },
+              "distanceKm": 607,
+              "durationMinutes": 240,
+              "provider": "Morrovia door-to-door flight planning estimate; verify current flights and connection timing.",
+              "provenance": "planning_estimate",
+              "confidence": "medium",
+              "scheduleNeedsChecking": true,
+              "id": "da-nang:hanoi:flight:1"
+            }
+          ]
+        }
+      ],
+      "planItems": [
+        {
+          "id": "trip-fixture-a20-day-1-arrive-in-bangkok",
+          "stopId": "bangkok-0",
+          "dayNumber": 1,
+          "date": "2026-10-08",
+          "type": "arrival",
+          "title": "Arrive in Bangkok",
+          "reason": "A protected arrival day gives the route room for the transfer, check-in and a first feel for the place.",
+          "notes": [
+            "City of London → Bangkok",
+            "Confirm the best connection before booking."
+          ],
+          "contextNotes": [
+            "Check in, walk one nearby area and keep dinner easy"
+          ],
+          "startsAt": null,
+          "endsAt": null,
+          "bookingUrl": null,
+          "latitude": null,
+          "longitude": null,
+          "image": null,
+          "sourceUrl": null
+        },
+        {
+          "id": "trip-fixture-a20-day-2-travel-to-siem-reap",
+          "stopId": "siem-reap-1",
+          "dayNumber": 2,
+          "date": "2026-10-09",
+          "type": "arrival",
+          "title": "Travel to Siem Reap",
+          "reason": "A protected arrival day gives the route room for the transfer, check-in and a first feel for the place.",
+          "notes": [
+            "Bangkok → Siem Reap",
+            "Confirm the best connection before booking."
+          ],
+          "contextNotes": [
+            "Check in, walk one nearby area and keep dinner easy"
+          ],
+          "startsAt": null,
+          "endsAt": null,
+          "bookingUrl": null,
+          "latitude": 13.3633,
+          "longitude": 103.8552,
+          "image": null,
+          "sourceUrl": null
+        },
+        {
+          "id": "trip-fixture-a20-day-3-explore-siem-reap",
+          "stopId": "siem-reap-1",
+          "dayNumber": 3,
+          "date": "2026-10-10",
+          "type": "open",
+          "title": "Explore Siem Reap",
+          "reason": "A deliberately light day in Siem Reap, leaving space to follow what looks good once you are there.",
+          "notes": [],
+          "contextNotes": [
+            "Choose one walkable neighbourhood",
+            "Add one real place once you have local context",
+            "Leave the evening for a nearby meal"
+          ],
+          "startsAt": null,
+          "endsAt": null,
+          "bookingUrl": null,
+          "latitude": 13.3633,
+          "longitude": 103.8552,
+          "image": null,
+          "sourceUrl": null
+        },
+        {
+          "id": "trip-fixture-a20-day-4-a-slower-siem-reap-day",
+          "stopId": "siem-reap-1",
+          "dayNumber": 4,
+          "date": "2026-10-11",
+          "type": "open",
+          "title": "A slower Siem Reap day",
+          "reason": "A buffer day protects the trip from becoming a chain of transfers and bookings.",
+          "notes": [],
+          "contextNotes": [
+            "Start later",
+            "Stay close to your base",
+            "Keep one meal unplanned"
+          ],
+          "startsAt": null,
+          "endsAt": null,
+          "bookingUrl": null,
+          "latitude": 13.3633,
+          "longitude": 103.8552,
+          "image": null,
+          "sourceUrl": null
+        },
+        {
+          "id": "trip-fixture-a20-day-5-travel-to-hoi-an",
+          "stopId": "hoi-an-2",
+          "dayNumber": 5,
+          "date": "2026-10-12",
+          "type": "arrival",
+          "title": "Travel to Hoi An",
+          "reason": "A protected arrival day gives the route room for the transfer, check-in and a first feel for the place.",
+          "notes": [
+            "Siem Reap → Hoi An",
+            "Confirm the best connection before booking."
+          ],
+          "contextNotes": [
+            "Check in, walk one nearby area and keep dinner easy"
+          ],
+          "startsAt": null,
+          "endsAt": null,
+          "bookingUrl": null,
+          "latitude": null,
+          "longitude": null,
+          "image": null,
+          "sourceUrl": null
+        },
+        {
+          "id": "trip-fixture-a20-day-6-explore-hoi-an",
+          "stopId": "hoi-an-2",
+          "dayNumber": 6,
+          "date": "2026-10-13",
+          "type": "open",
+          "title": "Explore Hoi An",
+          "reason": "A deliberately light day in Hoi An, leaving space to follow what looks good once you are there.",
+          "notes": [],
+          "contextNotes": [
+            "The Museum of Trade Ceramics is located in Hoi An, central Vietnam. It is a museum showcasing the origins and history of the town and the region in the context of historic trade and relationships with foreign nations such as China, India, Japan, the…",
+            "Keep the rest of the day in the same area."
+          ],
+          "startsAt": null,
+          "endsAt": null,
+          "bookingUrl": null,
+          "latitude": null,
+          "longitude": null,
+          "image": null,
+          "sourceUrl": null
+        },
+        {
+          "id": "trip-fixture-a20-calendar:hanoi-4:0:0",
+          "stopId": "hanoi-4",
+          "date": "2026-10-14",
+          "dayNumber": 7,
+          "type": "open",
+          "title": "Flexible day in Hanoi",
+          "reason": "Plan this day around your preferences.",
+          "notes": [],
+          "startsAt": null,
+          "endsAt": null,
+          "bookingUrl": null,
+          "latitude": null,
+          "longitude": null,
+          "contextNotes": [
+            "Check in, walk one nearby area and keep dinner easy"
+          ]
+        }
+      ],
+      "recommendations": [],
+      "createdAt": "2026-10-08T18:12:02.225Z",
+      "updatedAt": "2026-10-08T18:12:06.481Z"
+    },
+    "geocodeCandidates": {
+      "Hanoi": [
+        {
+          "canonicalPlaceId": "open-world:nominatim:relation:1903516",
+          "name": "Hà Nội",
+          "country": "Vietnam",
+          "countryCode": "VN",
+          "accessPlaceName": "Hà Nội",
+          "providerId": "nominatim:relation:1903516",
+          "providerSourceLabel": "OpenStreetMap Nominatim",
+          "coordinates": [
+            105.854041,
+            21.0283334
+          ],
+          "bounds": {
+            "south": 20.5645154,
+            "west": 105.2889615,
+            "north": 21.3854176,
+            "east": 106.0200407
+          },
+          "kind": "city",
+          "placeType": "city",
+          "locality": "Hà Nội",
+          "routability": "direct_destination",
+          "matchQuality": "exact",
+          "rankScore": 388.66174026725133
+        }
+      ]
+    }
+  }
+}

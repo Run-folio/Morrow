@@ -1,6 +1,6 @@
 import { canonicalPlaceFactsMatch, capturedEndpointConflict, endpointSourceIsNegated, endpointSourceIsTentative, isNegatedEndpointAt, isTentativeEndpointAt, isNegatedIntentPrefix, type CanonicalPlaceSuggestion, type ResolvedPlaceMention } from "./place-intelligence.ts";
 import { findCatalogPlaceById, matchCatalogPlace, type PlaceCatalogEntry } from "./place-catalog.ts";
-import type { JourneyEndSelection, JourneyEndpointPlace, TripBrief } from "./trip.ts";
+import type { JourneyEndSelection, JourneyEndpointPlace, TripBrief, TripStop } from "./trip.ts";
 
 const normalise = (value: string | undefined) => value?.normalize("NFKD").replace(/[\u0300-\u036f]/g, "").toLocaleLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "") ?? "";
 
@@ -137,6 +137,10 @@ function stableOsmIdentity(providerId: string | undefined) {
   return type && rawId && /^\d+$/.test(rawId) ? `${type}:${rawId}` : undefined;
 }
 
+function verifiedOsmProviderIdentity(value: string | undefined) {
+  return value && /^(?:open-world:)?(?:nominatim|photon):/i.test(value) ? stableOsmIdentity(value) : undefined;
+}
+
 function countriesContradict(left: JourneyEndpointPlace, right: JourneyEndpointPlace) {
   return Boolean(left.country && right.country && normalise(left.country) !== normalise(right.country));
 }
@@ -149,6 +153,35 @@ function coordinatesContradict(left: JourneyEndpointPlace, right: JourneyEndpoin
 function catalogIdentity(place: JourneyEndpointPlace): PlaceCatalogEntry | undefined {
   return (place.canonicalPlaceId ? findCatalogPlaceById(place.canonicalPlaceId) : undefined)
     ?? matchCatalogPlace(place.name);
+}
+
+/** A legacy finish keeps its source identity; a provider spelling needs proof. */
+export function savedJourneyFinishChoiceMatches(end: JourneyEndpointPlace, choice: JourneyEndpointCandidate, stops: readonly TripStop[]) {
+  if (!validCoordinates(choice.coordinates) || !journeyEndpointIdentityIsCoherent(choice)
+    || end.country && end.country.toLocaleLowerCase() !== choice.country?.toLocaleLowerCase()
+    || end.canonicalPlaceId && !canonicalPlaceFactsMatch(end.canonicalPlaceId, choice)) return false;
+  const sourceCatalog = catalogIdentity(end);
+  if (sourceCatalog && !canonicalPlaceFactsMatch(sourceCatalog.canonicalPlaceId, choice)) return false;
+  const sourceStays = stops.map(stop => ({ name: stop.name, canonicalPlaceId: stop.canonicalPlaceId, country: stop.country,
+    providerId: stop.providerId, ...(stop.longitude !== null && stop.latitude !== null ? { coordinates: [stop.longitude, stop.latitude] as [number,number] } : {}) }))
+    .filter(place => isSameCanonicalPlace(end,place) && !countriesContradict(end,place) && validCoordinates(place.coordinates));
+  if (sourceStays.length && !sourceStays.some(place => !coordinatesContradict(place,choice,200))) return false;
+  if (choice.name.toLocaleLowerCase() === end.name.toLocaleLowerCase()) return true;
+  if (!["city", "town", "transport_gateway"].includes(choice.placeType ?? choice.kind ?? "")) return false;
+  const candidateCatalog = matchCatalogPlace(choice.name);
+  if (sourceCatalog && candidateCatalog?.canonicalPlaceId === sourceCatalog.canonicalPlaceId) return true;
+  const candidateProvider = verifiedOsmProviderIdentity(choice.providerId ?? choice.canonicalPlaceId);
+  const canonicalProvider = verifiedOsmProviderIdentity(choice.canonicalPlaceId);
+  if (canonicalProvider && choice.providerId && canonicalProvider !== verifiedOsmProviderIdentity(choice.providerId)) return false;
+  if (!candidateProvider) return false;
+  const sourceProvider = verifiedOsmProviderIdentity(end.providerId ?? end.canonicalPlaceId);
+  if (sourceProvider === candidateProvider && !coordinatesContradict(end, choice, 200)) return true;
+  // An already verified stay bridges catalog and OSM namespaces. Sharing a
+  // country/name alone never proves that an unfamiliar spelling is the finish.
+  return sourceStays.some(place => {
+    return verifiedOsmProviderIdentity(place.providerId ?? place.canonicalPlaceId) === candidateProvider
+      && !countriesContradict(place, choice) && !coordinatesContradict(place, choice, 200);
+  });
 }
 
 /**
