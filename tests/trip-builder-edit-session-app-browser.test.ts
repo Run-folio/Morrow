@@ -30,8 +30,13 @@ test('undated stay requests permit deliberate night and order edits while booked
     assert.equal(await view.page.getByRole('button',{name:/Add one night to Kyoto; 4 nights/}).count(),1);assert.deepEqual(view.errors,[]);
   }finally{await view.close()}
 });
-test('A20 mounted removal confirms the same occurrence after held canonical identity ACK', {skip:!enabled,timeout:30000},async()=>{
+for(const repeated of [false,true])test(`A20 mounted removal confirms the same occurrence after held canonical identity ACK${repeated?' with a same-name sibling':''}`, {skip:!enabled,timeout:30000},async()=>{
   let cloud=requireReadableTripDocument(canonicalRouteFixture());
+  if(repeated){
+    const sibling=cloud.stops[1]!,target=cloud.stops[2]!;
+    sibling.name=target.name;sibling.canonicalPlaceId=target.canonicalPlaceId;sibling.latitude=target.latitude;sibling.longitude=target.longitude;
+    const intent=cloud.brief.intent.route.destinations[1]!;intent.sourceText=target.name;intent.selectedPlace={...intent.selectedPlace!,name:target.name,canonicalPlaceId:target.canonicalPlaceId};
+  }
   const original=structuredClone(cloud),writes:typeof cloud[]=[];
   let release!:()=>void;const held=new Promise<void>(resolve=>{release=resolve});
   const view=await renderBuilder({initialTrip:cloud,seedRecovery:false,ownerId:'owner-a',query:`?trip=${cloud.id}`,accountRequest:async({method,trip})=>{
@@ -45,19 +50,20 @@ test('A20 mounted removal confirms the same occurrence after held canonical iden
     await view.page.locator('[data-builder-edit-session="active"]').waitFor();
     await view.page.getByRole('combobox',{name:'Budget',exact:true}).selectOption('high');
     for(let i=0;i<50&&!writes.length;i++)await view.page.waitForTimeout(100);assert.equal(writes.length,1);
-    await view.page.getByLabel('Actions for Hiroshima',{exact:true}).click();
+    await view.page.getByLabel('Actions for Hiroshima',{exact:true}).last().click();
     await view.page.locator('[data-builder-route-workspace]').getByRole('button',{name:'Remove stop',exact:true}).last().click();
     await view.page.getByRole('dialog').waitFor();release();
     await view.page.waitForFunction(()=>document.querySelector('[data-builder-stop-id="batch14-trip-stop-hiroshima"]'));
     await view.page.getByRole('dialog').getByRole('button',{name:'Remove Hiroshima',exact:true}).click();
     for(let i=0;i<50&&cloud.stops.length!==2;i++)await view.page.waitForTimeout(100);
     assert.equal(cloud.stops.length,2,'pending removal must follow the acknowledged occurrence ID');
-    assert.ok(cloud.stops.every(stop=>stop.canonicalPlaceId!=='place:hiroshima'));
+    assert.equal(cloud.stops.filter(stop=>stop.canonicalPlaceId==='place:hiroshima').length,repeated?1:0);
+    if(repeated)assert.equal(cloud.stops[1]!.id,'batch14-trip-stop-kyoto','stable sibling identity must survive');
     assert.equal(cloud.brief.retainedAuthoredContent?.entries[0]?.sourceStop.canonicalPlaceId,'place:hiroshima');
     assert.deepEqual(cloud.brief.bookings,original.brief.bookings);
     await view.page.waitForFunction(()=>document.body.textContent?.includes('Saved to your account'));
     await view.page.reload();await view.page.locator('[data-builder-edit-session="active"]').waitFor();
-    assert.equal(await view.page.getByLabel('Actions for Hiroshima',{exact:true}).count(),0);assert.deepEqual(view.errors,[]);
+    assert.equal(await view.page.getByLabel('Actions for Hiroshima',{exact:true}).count(),repeated?1:0);assert.deepEqual(view.errors,[]);
   }finally{release();await view.close()}
 });
 test('mounted_Build_promotes_exact_guest_recovery_then_uses_owned_CAS_and_navigation', {skip:!enabled,timeout:30000},async()=>{

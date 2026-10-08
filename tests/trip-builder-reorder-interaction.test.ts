@@ -60,6 +60,7 @@ browserTest("keyboard and menu reorder the same canonical route exactly once", a
   const view = await renderBuilder({ query: "?inspire=morocco-rail" });
   try {
     view.page.setDefaultTimeout(3_000);
+    await view.page.locator('[data-builder-edit-session="active"]').waitFor();
     const routeNames = async () => view.page.locator("[data-builder-stop-index]").evaluateAll((rows: Element[]) => rows.map((row) => row.querySelector('[role="cell"] strong')?.textContent ?? ""));
     const initial = await routeNames();
     const first = initial[0];
@@ -82,6 +83,7 @@ browserTest("native pointer drag commits the occurrence selected at dragstart", 
   const view = await renderBuilder({ query: "?inspire=morocco-rail" });
   try {
     view.page.setDefaultTimeout(3_000);
+    await view.page.locator('[data-builder-edit-session="active"]').waitFor();
     const rows = view.page.locator("[data-builder-stop-index]");
     const names = async () => rows.evaluateAll((items: Element[]) => items.map((row) => row.querySelector('[role="cell"] strong')?.textContent ?? ""));
     const initial = await names();
@@ -108,23 +110,25 @@ browserTest("native pointer drag commits the occurrence selected at dragstart", 
   } finally { await view.close(); }
 });
 
-browserTest("homepage stop pills reorder first, middle and last occurrences", async () => {
+browserTest("canonical destination chips reorder first, middle and last occurrences", async () => {
   const view = await renderBuilder({ query: "?inspire=morocco-rail" });
   try {
     view.page.setDefaultTimeout(3_000);
-    const pills = view.page.locator('[role="listitem"][draggable="true"]');
-    const names = () => pills.evaluateAll((items: Element[]) => items.map((item) => item.querySelector("span")?.textContent ?? ""));
+    await view.page.locator('[data-builder-edit-session="active"]').waitFor();
+    const pills = view.page.locator('[role="listitem"][draggable="true"], [data-builder-chip-index]');
+    const names = () => pills.evaluateAll((items: Element[]) => items.map((item) => item.querySelector('button[aria-label^="Edit "]')?.getAttribute('aria-label')?.slice(5) ?? item.querySelector("span")?.textContent ?? ""));
     const initial = await names();
     assert.equal(initial.length, 3);
     const drag = (sourceIndex: number, targetIndex: number) => view.page.evaluate(({ sourceIndex, targetIndex }: { sourceIndex: number; targetIndex: number }) => {
-      const items = document.querySelectorAll<HTMLElement>('[role="listitem"][draggable="true"]');
-      const source = items[sourceIndex];
+      const items = document.querySelectorAll<HTMLElement>('[role="listitem"][draggable="true"], [data-builder-chip-index]');
+      const sourceItem = items[sourceIndex];
+      const source = sourceItem?.draggable ? sourceItem : sourceItem?.querySelector<HTMLElement>('[draggable="true"]');
       const target = items[targetIndex];
       if (!source || !target) throw new Error("Expected draggable source and target stop pills");
       const transfer = new DataTransfer();
       source.dispatchEvent(new DragEvent("dragstart", { bubbles: true, cancelable: true, dataTransfer: transfer }));
-      const accepted = !target.dispatchEvent(new DragEvent("dragenter", { bubbles: true, cancelable: true, dataTransfer: transfer }));
-      target.dispatchEvent(new DragEvent("dragover", { bubbles: true, cancelable: true, dataTransfer: transfer }));
+      target.dispatchEvent(new DragEvent("dragenter", { bubbles: true, cancelable: true, dataTransfer: transfer }));
+      const accepted = !target.dispatchEvent(new DragEvent("dragover", { bubbles: true, cancelable: true, dataTransfer: transfer }));
       target.dispatchEvent(new DragEvent("drop", { bubbles: true, cancelable: true, dataTransfer: transfer }));
       source.dispatchEvent(new DragEvent("dragend", { bubbles: true, dataTransfer: transfer }));
       return accepted;
