@@ -7,6 +7,9 @@ import { requireReadableTripDocument } from '../lib/easyt/trip-document.ts';
 import { prepareAcceptedBuilderEdit } from '../lib/easyt/trip-builder-edit.ts';
 import { builderDocumentFingerprint } from '../lib/easyt/trip-builder-document-commit.ts';
 import { prepareBuilderNecessaryProjection } from '../lib/easyt/trip-builder-reconciliation.ts';
+import { reconcileBuilderDependencies } from '../lib/easyt/trip-builder-reconciliation.ts';
+import { a17TripFixture } from './fixtures/batch14-a17-trip.ts';
+import { prepareBuilderHandlerEdit } from '../lib/easyt/trip-builder-handler-contract.ts';
 import type { CanonicalEasyTTrip } from '../lib/easyt/trip.ts';
 import { EasyTTripSaveConflictError } from "../lib/easyt/trip-continuity.ts";
 import { saveTripRecoveryToEasyT, type TripRecoveryHandle } from "../lib/easyt/storage.ts";
@@ -61,6 +64,22 @@ function jsonbReadback<T>(value: T): T {
   if (value && typeof value === 'object') return Object.fromEntries(Object.entries(value).reverse().map(([key, item]) => [key, jsonbReadback(item)])) as T;
   return value;
 }
+
+test('A17 completed necessary certificate saves after a semantically equivalent JSONB ACK',async()=>{
+ const base=a17TripFixture(),removal=prepareBuilderHandlerEdit(base,{kind:'remove-destination',intentId:'intent:hue'},builderDocumentFingerprint(base));assert.ok(removal.ok);
+ const a=removal.trip,b=requireReadableTripDocument(reconcileBuilderDependencies(a,a.brief.cascadeStatus!.routeReconciliation!.residual).trip);
+ assert.deepEqual(b.brief.intent.route.orderedStopIds,a.brief.intent.route.orderedStopIds);assert.notEqual(b.brief.intent.route.projectionInputKey,a.brief.intent.route.projectionInputKey);
+ let release!:(trip:EasyTTrip)=>void;const held=new Promise<EasyTTrip>(resolve=>{release=resolve}),submitted:EasyTTrip[]=[];
+ const queue=createTripMutationPersistenceQueue(async trip=>{submitted.push(trip);return submitted.length===1?held:{...trip,updatedAt:'completed-revision'}});queue.reset(base);
+ const first=queue.enqueue(a,{ownerId:a.ownerId,tripId:a.id,writeId:'a17-A'});await Promise.resolve();
+ const second=queue.enqueue(b,{ownerId:b.ownerId,tripId:b.id,writeId:'a17-B'},a);release(jsonbReadback({...a,updatedAt:'ack-revision'}));await first;const saved=await second;
+ assert.equal(submitted.length,2);assert.equal(submitted[1].updatedAt,'ack-revision');assert.equal(saved.brief.intent!.route!.projectionInputKey,b.brief.intent.route.projectionInputKey);
+ assert.deepEqual(saved.stops.map(stop=>stop.nights),[3,4,3]);
+ const concurrent=structuredClone(a);concurrent.brief.intent.route.origin={name:'Paris',country:'France',canonicalPlaceId:'paris',coordinates:[2.35,48.85]};
+ assert.throws(()=>mergeTripMutationDocuments(a,b,concurrent),EasyTTripSaveConflictError,'actual origin changes still conflict atomically');
+ const changedOrder=structuredClone(a);changedOrder.stops.reverse().forEach((stop,index)=>stop.order=index);changedOrder.brief.intent.route.orderedStopIds=changedOrder.stops.map(stop=>stop.id);
+ assert.throws(()=>mergeTripMutationDocuments(a,b,changedOrder),EasyTTripSaveConflictError,'array order is authoritative');
+});
 
 test('A08 held equivalent ACK permits the inverse to durably save current dependent work once', async () => {
   const base = requireReadableTripDocument(canonicalRouteFixture());

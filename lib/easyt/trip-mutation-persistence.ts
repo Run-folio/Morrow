@@ -2,6 +2,7 @@ import { prepareTripDocumentForWrite } from "./trip-document.ts";
 import { EasyTTripSaveConflictError } from "./trip-continuity.ts";
 import type { CanonicalEasyTTrip, EasyTTrip } from "./trip";
 import { mergeBuilderReconciliationDocuments } from './trip-builder-reconciliation.ts';
+import { authoredContentKey } from './trip-retained-authored-content.ts';
 import type { TripRecoveryHandle } from "./storage";
 import { canonicalTripRevisionCanReplace } from "./trip-continuity.ts";
 
@@ -116,9 +117,9 @@ export function mergeTripMutationDocuments(base: EasyTTrip, authored: EasyTTrip,
   }
   if (base.brief.intent?.route && authored.brief.intent?.route && canonical.brief.intent?.route) {
     const unit = (trip: EasyTTrip) => ({ stops: trip.stops, route: trip.brief.intent!.route! });
-    const authoredChanged = !jsonEqual(unit(base), unit(authored));
-    const canonicalChanged = !jsonEqual(unit(base), unit(canonical));
-    if (authoredChanged && canonicalChanged && !jsonEqual(unit(authored), unit(canonical))) throw new EasyTTripSaveConflictError("Concurrent route edits need review. The recovery copy has been preserved.", canonical, "cloud-changed");
+    const authoredChanged = authoredContentKey(unit(base)) !== authoredContentKey(unit(authored));
+    const canonicalChanged = authoredContentKey(unit(base)) !== authoredContentKey(unit(canonical));
+    if (authoredChanged && canonicalChanged && authoredContentKey(unit(authored)) !== authoredContentKey(unit(canonical))) throw new EasyTTripSaveConflictError("Concurrent route edits need review. The recovery copy has been preserved.", canonical, "cloud-changed");
     const source = authoredChanged ? authored : canonical;
     merged.stops = structuredClone(source.stops);
     merged.brief.intent = { ...merged.brief.intent!, route: structuredClone(source.brief.intent!.route!) };
