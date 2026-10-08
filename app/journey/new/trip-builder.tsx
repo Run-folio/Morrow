@@ -17,7 +17,7 @@ import { useSearchParams } from "next/navigation";
 import dynamic from "next/dynamic";
 import { useCallback, useEffect, useLayoutEffect, useId, useMemo, useRef, useState, type DragEvent as ReactDragEvent } from "react";
 import { acknowledgeTripBuildSave, cacheCanonicalTrip, canUseHydratedTripScope, claimGuestTripRecoveryForOwner, EASYT_BEFORE_NEW_TRIP_EVENT, EASYT_LAST_OWNER_CHANGE_EVENT, EASYT_LAST_OWNER_KEY, EasyTTripAuthError, EasyTTripPromotionConflictError, EasyTTripSaveConflictError, forgetRememberedOwner, loadActiveTrip, loadCurrentDraftRecovery, loadRememberedOwner, loadRequestedTrip, loadTripRecovery, markTripRecoveryState, ownerIdForBrowserRecovery, rememberLastOwner, saveTripRecovery, saveTripRecoveryToEasyT, shouldAllowNewTripNavigation, tripDocumentsCanonicalEquivalent, type TripRecoveryHandle } from "@/lib/easyt/storage";
-import { tripBuildDocumentsCanonicalEquivalent } from "@/lib/easyt/trip-promotion";
+import { canonicalTripStopIdentityMap, tripBuildDocumentsCanonicalEquivalent } from "@/lib/easyt/trip-promotion";
 import { type BuilderAcceptedEdit, type BuilderStructuralSnapshot } from "@/lib/easyt/trip-builder-edit";
 import { builderNightsCommand, builderRemoveCommand, builderPlaceCommand, builderDetailsCommands } from "@/lib/easyt/trip-builder-handler-contract";
 import type { BuilderEditSession, BuilderEditSessionOptions, BuilderReconciliationRequest } from "@/lib/easyt/trip-builder-edit-session";
@@ -800,7 +800,8 @@ function TripBuilderDocument() {
   const [tripBriefCaptureError, setTripBriefCaptureError] = useState("");
   const [buildRequested, setBuildRequested] = useState(false);
   const [openingTrip, setOpeningTrip] = useState(false);
-  const [pendingStopRemoval, setPendingStopRemoval] = useState<{ id: string; name: string; plannedDays: number; savedIdeas: number; nights: number; hasStay: boolean; hasBookings: boolean } | null>(null);
+  const [pendingStopRemoval, setPendingStopRemoval] = useState<{ id: string; name: string; plannedDays: number; savedIdeas: number; nights: number; hasStay: boolean; hasBookings: boolean;
+    binding?: { ownerId: string | null; tripId: string; intentId: string; canonicalStopId: string; placeKey: string }; error?: string } | null>(null);
   const [stopRemovalBlocked, setStopRemovalBlocked] = useState<{ id: string; name: string } | null>(null);
 
   const timingWarningRef = useRef<HTMLElement>(null);
@@ -2511,7 +2512,38 @@ function TripBuilderDocument() {
       removeStop(stopId);
       return;
     }
-    setPendingStopRemoval({ id: stopId, name: stop.name, plannedDays, savedIdeas, nights: allocation[stopId] ?? 0, hasStay: safety.hasStay, hasBookings: safety.hasBookings });
+    const destination = canonicalBuilder?.brief.intent.route.destinations.find(intent => intent.stopIds.includes(stopId));
+    setPendingStopRemoval({ id: stopId, name: stop.name, plannedDays, savedIdeas, nights: allocation[stopId] ?? 0, hasStay: safety.hasStay, hasBookings: safety.hasBookings,
+      ...(canonicalBuilder && destination ? { binding: { ownerId: activeBrowserOwnerIdRef.current, tripId: canonicalBuilder.id, intentId: destination.id,
+        canonicalStopId: canonicalTripStopIdentityMap(canonicalBuilder).get(stopId)!, placeKey: JSON.stringify([stop.canonicalPlaceId, stop.providerId, stop.name, stop.country]) } } : {}) });
+  };
+
+  const confirmStopRemoval = () => {
+    if (!pendingStopRemoval) return;
+    const pending = pendingStopRemoval, binding = pending.binding;
+    const current = builderEditSessionRef.current?.getSnapshot().trip;
+    const destination = binding && current?.brief.intent.route.destinations.find(intent => intent.id === binding.intentId);
+    const targetId = stops.some(stop => stop.id === pending.id) ? pending.id : binding?.canonicalStopId;
+    const stop = stops.find(item => item.id === targetId);
+    if (!stop || binding && (!current || current.id !== binding.tripId || activeBrowserOwnerIdRef.current !== binding.ownerId
+      || !destination?.stopIds.includes(stop.id) || JSON.stringify([stop.canonicalPlaceId, stop.providerId, stop.name, stop.country]) !== binding.placeKey)) {
+      setPendingStopRemoval({ ...pending, error: language === "es" ? "Esta parada ha cambiado. Cierra esta revisión y selecciónala de nuevo." : "This stop changed. Close this review and choose it again." });
+      return;
+    }
+    const safety = stopRemovalSafety(stop.id);
+    if (scheduleLocks.stopIds.includes(stop.id) || safety.blocked) {
+      setPendingStopRemoval({ ...pending, error: language === "es" ? "Esta parada está protegida. Revisa sus fechas y reservas." : "This stop is protected. Review its dates and bookings." });
+      return;
+    }
+    const reviewed = { name: stop.name, plannedDays: activeTripDocument.planItems.filter(item => item.stopId === stop.id).length,
+      savedIdeas: activeTripDocument.brief.itineraryIdeas?.filter(idea => idea.stopId === stop.id).length ?? 0,
+      nights: allocation[stop.id] ?? 0, hasStay: safety.hasStay, hasBookings: safety.hasBookings };
+    if (Object.entries(reviewed).some(([key, value]) => pending[key as keyof typeof reviewed] !== value)) {
+      setPendingStopRemoval({ ...pending, ...reviewed, id: stop.id, error: language === "es" ? "El plan ha cambiado. Revisa las consecuencias actualizadas antes de confirmar." : "The plan changed. Review the updated consequences before confirming." });
+      return;
+    }
+    removeStop(stop.id);
+    setPendingStopRemoval(null); setEditingRouteStopId(null);
   };
 
   const updateTravelRange = (requestedStart: string, requestedEnd: string) => {
@@ -6084,6 +6116,7 @@ function TripBuilderDocument() {
         onCancel={()=>setPendingTopType(null)} onConfirm={()=>{if(pendingTopType)dispatchAcceptedBuilderEdit({kind:"type",tripType:pendingTopType.type,acceptEndpointReplacement:true},{expectedInputRevision:pendingTopType.revision});setPendingTopType(null)}}/>
       <MorroviaConfirmationDialog
         open={Boolean(pendingStopRemoval)}
+        error={pendingStopRemoval?.error}
         title={pendingStopRemoval ? `${language === "es" ? "¿Quitar" : "Remove"} ${pendingStopRemoval.name} ${language === "es" ? "y su plan" : "and its plan"}?` : "Remove this stop?"}
         detail={language === "es" ? "Revisa el contenido asociado antes de quitar esta parada." : "Review the associated content before removing this stop."}
         consequences={pendingStopRemoval ? [
@@ -6097,12 +6130,7 @@ function TripBuilderDocument() {
         cancelLabel={language === "es" ? "Conservar parada" : "Keep stop"}
         confirmLabel={pendingStopRemoval ? `${language === "es" ? "Quitar" : "Remove"} ${pendingStopRemoval.name}` : (language === "es" ? "Quitar parada" : "Remove stop")}
         onCancel={() => setPendingStopRemoval(null)}
-        onConfirm={() => {
-          if (!pendingStopRemoval) return;
-          removeStop(pendingStopRemoval.id);
-          setPendingStopRemoval(null);
-          setEditingRouteStopId(null);
-        }}
+        onConfirm={confirmStopRemoval}
       />
     </div>
   );

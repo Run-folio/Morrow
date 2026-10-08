@@ -7,6 +7,36 @@ import {requireReadableTripDocument} from '../lib/easyt/trip-document.ts';
 import {stopEndpoint} from '../lib/easyt/trip-legs.ts';
 import {nextTripUpdatedAt} from '../lib/easyt/trip-continuity.ts';
 const enabled=process.env.MORROVIA_BUILDER_APP_BROWSER_TESTS==='1';
+test('A20 mounted removal confirms the same occurrence after held canonical identity ACK', {skip:!enabled,timeout:30000},async()=>{
+  let cloud=requireReadableTripDocument(canonicalRouteFixture());
+  const original=structuredClone(cloud),writes:typeof cloud[]=[];
+  let release!:()=>void;const held=new Promise<void>(resolve=>{release=resolve});
+  const view=await renderBuilder({initialTrip:cloud,seedRecovery:false,ownerId:'owner-a',query:`?trip=${cloud.id}`,accountRequest:async({method,trip})=>{
+    if(method==='GET')return {status:200,body:{trip:cloud}};
+    const candidate=requireReadableTripDocument(trip);writes.push(candidate);
+    if(writes.length===1)await held;
+    cloud=requireReadableTripDocument(canonicalTripForOwner('owner-a',candidate,nextTripUpdatedAt(cloud.updatedAt)));
+    return {status:200,body:{trip:cloud}};
+  }});
+  try{
+    await view.page.locator('[data-builder-edit-session="active"]').waitFor();
+    await view.page.getByRole('combobox',{name:'Budget',exact:true}).selectOption('high');
+    for(let i=0;i<50&&!writes.length;i++)await view.page.waitForTimeout(100);assert.equal(writes.length,1);
+    await view.page.getByLabel('Actions for Hiroshima',{exact:true}).click();
+    await view.page.locator('[data-builder-route-workspace]').getByRole('button',{name:'Remove stop',exact:true}).last().click();
+    await view.page.getByRole('dialog').waitFor();release();
+    await view.page.waitForFunction(()=>document.querySelector('[data-builder-stop-id="batch14-trip-stop-hiroshima"]'));
+    await view.page.getByRole('dialog').getByRole('button',{name:'Remove Hiroshima',exact:true}).click();
+    for(let i=0;i<50&&cloud.stops.length!==2;i++)await view.page.waitForTimeout(100);
+    assert.equal(cloud.stops.length,2,'pending removal must follow the acknowledged occurrence ID');
+    assert.ok(cloud.stops.every(stop=>stop.canonicalPlaceId!=='place:hiroshima'));
+    assert.equal(cloud.brief.retainedAuthoredContent?.entries[0]?.sourceStop.canonicalPlaceId,'place:hiroshima');
+    assert.deepEqual(cloud.brief.bookings,original.brief.bookings);
+    await view.page.waitForFunction(()=>document.body.textContent?.includes('Saved to your account'));
+    await view.page.reload();await view.page.locator('[data-builder-edit-session="active"]').waitFor();
+    assert.equal(await view.page.getByLabel('Actions for Hiroshima',{exact:true}).count(),0);assert.deepEqual(view.errors,[]);
+  }finally{release();await view.close()}
+});
 test('mounted_Build_promotes_exact_guest_recovery_then_uses_owned_CAS_and_navigation', {skip:!enabled,timeout:30000},async()=>{
   const initial=requireReadableTripDocument(canonicalRouteFixture());initial.ownerId=null;
   const first=initial.stops[0]!;const origin={name:first.name,country:first.country,canonicalPlaceId:first.canonicalPlaceId,coordinates:[first.longitude!,first.latitude!] as [number,number]};
