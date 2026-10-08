@@ -12,6 +12,7 @@ import { DISCOVERY_DRAFT_VERSION, readDiscoveryDraft, type DiscoveryDraft } from
 import type { BudgetBand, CanonicalEasyTTrip, DestinationIntent, JourneyEndpointPlace, RouteIntent, TripStop, TripIntent } from "./trip.ts";
 
 import type { RouteReconciliationScope } from "./trip.ts";
+import { rebalanceTripNights, calendarDayAllocationsFromNights, tripNightsBetween } from './night-allocation.ts';
 export type { RouteReconciliationScope } from "./trip.ts";
 export type BuilderStructuralSnapshot = Pick<CanonicalEasyTTrip, "id" | "ownerId" | "stops" | "startDate" | "endDate"> & {
   calendar?: BuilderCalendarSnapshot;
@@ -64,6 +65,26 @@ export type BuilderAcceptedEditResult =
   | { ok: false; reason: Rejection };
 
 const budgets = new Set(["value", "mid", "high"]);
+
+/** Rebuild existing allocation projections without assigning any released/held night. */
+function synchronizeAcceptedNightAllocations(trip: CanonicalEasyTTrip) {
+  const allocations = Object.fromEntries(trip.stops.map(stop => [stop.id, stop.nights ?? 0]));
+  const manual = new Set(trip.brief.manualNightStopIds ?? []);
+  const locked = new Set(trip.brief.scheduleLocks?.stopIds ?? []);
+  const commitments = trip.brief.intent.hardConstraints.fixedCommitments.filter(item => item.stopId && trip.stops.some(stop => stop.id === item.stopId));
+  const result = rebalanceTripNights({ totalNights: tripNightsBetween(trip.startDate, trip.endDate),
+    stops: trip.stops.map(stop => ({ ...stop, required: trip.brief.intent.hardConstraints.mustSeeStopIds.includes(stop.id),
+      fixedNights: locked.has(stop.id) || trip.brief.scheduleLocks?.arrivalDates[stop.id] ? stop.nights ?? 0 : undefined })),
+    pace: trip.brief.intent.preferences.pace, interests: trip.brief.intent.preferences.interests,
+    fixedCommitments: commitments, currentAllocations: allocations, manualStopIds: trip.stops.map(stop => stop.id) }).nightAllocation;
+  // Freezing canonical values for projection is not a new traveller edit or booking.
+  result.stops = result.stops.map(stop => ({ ...stop, isManual: manual.has(stop.stopId),
+    isFixed: locked.has(stop.stopId) || Boolean(trip.brief.scheduleLocks?.arrivalDates[stop.stopId]) || commitments.some(item => item.stopId === stop.stopId && item.fixedNights !== undefined),
+    reasons: stop.reasons.filter(reason => reason.code !== 'manual-nights' || manual.has(stop.stopId)) }));
+  trip.brief.nightAllocations = allocations;
+  trip.brief.dayAllocations = calendarDayAllocationsFromNights(trip.stops.map(stop => stop.id), allocations);
+  trip.brief.nightAllocation = result;
+}
 const integer = (value: unknown): value is number => Number.isSafeInteger(value) && Number(value) >= 0;
 const nonempty = (value: unknown): value is string => typeof value === "string" && Boolean(value.trim());
 function validDate(value: string) {
@@ -235,6 +256,10 @@ export function prepareAcceptedBuilderEdit(current: CanonicalEasyTTrip, edit: Bu
         trip.startDate = edit.startDate; trip.endDate = edit.endDate;
         trip.brief.intent.timing = { flexibility: "fixed", durationDays: Math.round((Date.parse(edit.endDate) - Date.parse(edit.startDate)) / 86_400_000) + 1 };
         trip.brief.endDateIsSuggestion = false;
+        if (trip.brief.structuredBrief) trip.brief.structuredBrief = mergeStructuredTripBrief(trip.brief.structuredBrief, {
+          duration: { value: trip.brief.intent.timing.durationDays, unit: 'days', precision: 'exact' },
+          dates: { start: trip.startDate, end: trip.endDate, fixed: true },
+        });
         break;
       }
       case "preferences": {
@@ -377,6 +402,12 @@ export function prepareAcceptedBuilderEdit(current: CanonicalEasyTTrip, edit: Bu
         if (intent.kind === "overnight_place") intent.requestedNights = edit.nights;
         trip.brief.nightAllocations = { ...trip.brief.nightAllocations, [stop.id]: edit.nights };
         trip.brief.manualNightStopIds = [...new Set([...(trip.brief.manualNightStopIds ?? []), stop.id])];
+        // A stay request is editable; a dated/booking commitment retains its original protection.
+        trip.brief.intent.hardConstraints.fixedCommitments = trip.brief.intent.hardConstraints.fixedCommitments.map(item => item.stopId === stop.id && !item.date && item.commitmentType !== 'booking'
+          ? { ...item, fixedNights: edit.nights } : item);
+        if (trip.brief.structuredBrief) trip.brief.structuredBrief.hardConstraints = trip.brief.structuredBrief.hardConstraints.map(item => item.type === 'fixed-commitment'
+          && item.stopId === stop.id && !item.date && item.commitmentType !== 'booking' ? { ...item, fixedNights: edit.nights,
+            provenance: { ...item.provenance, source: 'builder', kind: 'explicit', confidence: 'high' } } : item);
         break;
       }
       case "add-destination": {
@@ -411,8 +442,10 @@ export function prepareAcceptedBuilderEdit(current: CanonicalEasyTTrip, edit: Bu
         trip.brief.manualNightStopIds = trip.brief.manualNightStopIds?.filter(id => !removed.has(id));
         trip.brief.intent.hardConstraints.mustSeeStopIds = trip.brief.intent.hardConstraints.mustSeeStopIds.filter(id => !removed.has(id));
         trip.brief.intent.hardConstraints.optionalStopIds = trip.brief.intent.hardConstraints.optionalStopIds.filter(id => !removed.has(id));
+        trip.brief.intent.hardConstraints.fixedCommitments = trip.brief.intent.hardConstraints.fixedCommitments.filter(item => !item.stopId || !removed.has(item.stopId) || item.date || item.commitmentType === 'booking');
         const structured = trip.brief.structuredBrief;
         if (structured) {
+          structured.hardConstraints = structured.hardConstraints.filter(item => item.type !== 'fixed-commitment' || !item.stopId || !removed.has(item.stopId) || item.date || item.commitmentType === 'booking');
           const removedSelections = structured.placeSelections?.filter(selection => selection.routeStopId && removed.has(selection.routeStopId)) ?? [];
           structured.placeSelections = structured.placeSelections?.filter(selection => !selection.routeStopId || !removed.has(selection.routeStopId));
           structured.destinations = structured.destinations.filter(destination => !destination.id || !removed.has(destination.id));
@@ -510,6 +543,7 @@ export function prepareAcceptedBuilderEdit(current: CanonicalEasyTTrip, edit: Bu
       default: return reject("invalid-input");
     }
     route.orderedStopIds = trip.stops.map(stop => stop.id);
+    if (['dates', 'nights', 'add-destination', 'remove-destination', 'resolve-destination', 'replace-destination', 'structural-inverse'].includes(edit.kind)) synchronizeAcceptedNightAllocations(trip);
     route.projectionInputKey = current.brief.intent.route.projectionInputKey;
     trip = projectCanonicalRouteEndpoints(trip);
     const checked = prepareBuilderDocumentCommit({ current, proposed: trip, expectedFingerprint, validate: () => true });

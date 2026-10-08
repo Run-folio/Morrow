@@ -6,6 +6,8 @@ import { builderDocumentFingerprint } from "../lib/easyt/trip-builder-document-c
 import type { CanonicalEasyTTrip } from "../lib/easyt/trip.ts";
 import { stopEndpoint } from "../lib/easyt/trip-legs.ts";
 import { supportedTransportChoicesForLeg } from "../lib/easyt/transport-mode-choice.ts";
+import { allocateTripNights, type NightAllocationConflict } from '../lib/easyt/night-allocation.ts';
+import { structuredTripBriefFromSavedSelections } from '../lib/easyt/structured-trip-brief.ts';
 
 // Lazy loading lets every named contract fail explicitly at the RED checkpoint.
 // Once the module exists, these tests exercise its real edits, not a fallback.
@@ -41,6 +43,49 @@ function checkCanonical(trip: CanonicalEasyTTrip) {
   assert.deepEqual(trip.brief.journeyEnd, projected.brief.journeyEnd);
   assert.deepEqual(trip.brief.intent.route.orderedStopIds, trip.stops.map(stop => stop.id));
 }
+
+test('accepted date extension updates current structured duration and allocation budget without filling gaps', async () => {
+  const api=await edits(),trip=fixture();
+  trip.brief.structuredBrief=structuredTripBriefFromSavedSelections({duration:{value:10,unit:'days'}});
+  trip.brief.structuredBrief.source.rawPrompt='Original ten day journey';
+  trip.brief.nightAllocation=allocateTripNights({totalNights:9,stops:trip.stops.map(stop=>({...stop,manualNights:stop.nights!}))});
+  const before=structuredClone(trip),result=api.prepareAcceptedBuilderEdit(trip,{kind:'dates',startDate:trip.startDate,endDate:'2026-10-20'},builderDocumentFingerprint(trip));
+  assert.ok(result.ok);
+  assert.equal(result.trip.brief.structuredBrief?.duration?.value,11);
+  assert.equal(result.trip.brief.structuredBrief?.source.rawPrompt,before.brief.structuredBrief!.source.rawPrompt);
+  assert.equal(result.trip.brief.nightAllocation?.totalAvailableNights,10);
+  assert.equal(result.trip.brief.nightAllocation?.totalAllocatedNights,9);
+  assert.deepEqual(result.trip.stops,before.stops);assert.deepEqual(result.trip.brief.bookings,before.brief.bookings);
+  assert.ok(result.trip.brief.nightAllocation?.conflicts.some((item:NightAllocationConflict)=>item.code==='unallocated-nights'));
+});
+
+test('deliberate night edit replaces stale allocation record and its undated request constraint', async () => {
+  const api=await edits(),trip=fixture();
+  trip.brief.nightAllocation=allocateTripNights({totalNights:9,stops:[]});
+  trip.brief.intent.hardConstraints.fixedCommitments=[{id:'request:kyoto',label:'Kyoto 3 nights',stopId:'kyoto',fixedNights:3}];
+  const result=api.prepareAcceptedBuilderEdit(trip,{kind:'nights',stopId:'kyoto',intentId:'intent:kyoto',nights:4},builderDocumentFingerprint(trip));
+  assert.ok(result.ok);
+  assert.equal(result.trip.brief.intent.hardConstraints.fixedCommitments[0].fixedNights,4);
+  assert.equal(result.trip.brief.nightAllocation?.conflicts.some((item:NightAllocationConflict)=>item.code==='no-stops'),false);
+  assert.equal(result.trip.brief.nightAllocation?.totalAllocatedNights,10);
+  assert.deepEqual(result.trip.brief.nightAllocation?.allocations,result.trip.brief.nightAllocations);
+});
+
+test('held request resolution installs its allocation once and removal releases it without redistribution', async () => {
+  const api=await edits(),trip=fixture();
+  trip.stops=trip.stops.slice(0,2);trip.brief.intent.route.orderedStopIds=trip.stops.map(stop=>stop.id);
+  const unresolved=trip.brief.intent.route.destinations[2]!;
+  unresolved.stopIds=[];unresolved.resolution='unresolved';unresolved.selectedPlace=null;
+  trip.brief.nightAllocations={tokyo:4,kyoto:3};
+  trip.brief.nightAllocation=allocateTripNights({totalNights:9,stops:[]});
+  const result=api.prepareAcceptedBuilderEdit(trip,{kind:'resolve-destination',intentId:unresolved.id,stopId:'resolved-h',place:{name:'Hiroshima',canonicalPlaceId:'place:hiroshima',country:'Japan',coordinates:[132.4553,34.3853]}},builderDocumentFingerprint(trip));
+  assert.ok(result.ok);
+  assert.equal(result.trip.brief.nightAllocations?.['resolved-h'],2);
+  assert.equal(result.trip.brief.nightAllocation?.totalAllocatedNights,9);
+  const removed=api.prepareAcceptedBuilderEdit(result.trip,{kind:'remove-destination',intentId:unresolved.id},builderDocumentFingerprint(result.trip));assert.ok(removed.ok);
+  assert.deepEqual(removed.trip.brief.nightAllocations,{tokyo:4,kyoto:3});
+  assert.equal(removed.trip.brief.nightAllocation?.totalAllocatedNights,7);
+});
 
 test("same_name_repeated_stop_edits_by_intent_and_stop_id", async () => {
   const api = await edits();
