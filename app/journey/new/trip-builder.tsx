@@ -110,6 +110,7 @@ import { hasUsefulRouteSkeleton } from "./trip-builder-entry";
 import { markPlanningMilestone, planningAttemptOutcome, planningContentIsActionable, planningRequiredInterpretationIsComplete } from "@/lib/easyt/planning-attempt-performance";
 import { durableBuilderRecoveryUrl } from "@/lib/easyt/builder-durable-url";
 import { clearTripLegTransportChoice, selectTripLegTransportChoice } from "@/lib/easyt/transport-mode-choice";
+import { authoredContentKey } from "@/lib/easyt/trip-retained-authored-content";
 
 const TripItineraryWorkspace = dynamic(() => import("@/components/easyt/trip-itinerary-workspace"), {
   ssr: false,
@@ -985,7 +986,7 @@ function TripBuilderDocument() {
           if(snapshot) {
             const trip=snapshot.trip;
             const prior=trip.brief.structuredBrief?.placeMentions?.find(item=>item.mentionId===mention.mentionId);
-            if(!prior || JSON.stringify(prior)!==JSON.stringify(mention))return;
+            if(!prior || authoredContentKey(prior)!==authoredContentKey(mention))return;
             if(isOriginMention(mention)) {
               if(draft.origin || originResolutionVersionRef.current!==originVersion)return;
             } else {
@@ -1029,7 +1030,7 @@ function TripBuilderDocument() {
           if(editor) {
             const trip=editor.getSnapshot().trip;
             const prior=trip.brief.structuredBrief?.placeMentions?.find(item=>item.mentionId===mention.mentionId);
-            if(!prior || JSON.stringify(prior)!==JSON.stringify(mention))return;
+            if(!prior || authoredContentKey(prior)!==authoredContentKey(mention))return;
             if(isOriginMention(mention) && (draft.origin || originResolutionVersionRef.current!==originVersion))return;
             const intent=trip.brief.intent.route.destinations.find(item=>item.id===mention.mentionId);
             const stopId=intent?.stopIds.length===1?intent.stopIds[0]!:handoffStopOccurrenceId(mention,handoffOccurrenceMentionIdsRef.current);

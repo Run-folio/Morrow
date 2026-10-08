@@ -10,12 +10,14 @@ import { requireReadableTripDocument } from '../lib/easyt/trip-document.ts';
 import { builderPlaceCommand, prepareBuilderHandlerEdit } from '../lib/easyt/trip-builder-handler-contract.ts';
 import { builderDocumentFingerprint } from '../lib/easyt/trip-builder-document-commit.ts';
 import { preferredHandoffLocationChoice } from '../lib/easyt/home-trip-handoff.ts';
+import { authoredContentKey } from '../lib/easyt/trip-retained-authored-content.ts';
 
 test('actual intake callback accepts an unchanged sibling after another enrichment advances revision',()=>{
   const capture=captureJourneyBrief('Tokyo and Kyoto');
   let trip=requireReadableTripDocument(canonicalRouteFixture()),revision=1;
   trip.brief.structuredBrief=capture.structuredBrief;
   const mention=capture.mentions.find(item=>item.canonicalName==='Kyoto')!;
+  trip.brief.structuredBrief!.placeMentions=trip.brief.structuredBrief!.placeMentions!.map(item=>Object.fromEntries(Object.entries(item).reverse()) as typeof item);
   trip.brief.intent.route.destinations[1]!.id=mention.mentionId;
   const lookupSession={statuses:new Map([[mention.mentionId,'pending']]),handled:new Set<string>()};
   let accepted=0;
@@ -23,7 +25,7 @@ test('actual intake callback accepts an unchanged sibling after another enrichme
     builderEditSessionRef:{current:{getSnapshot:()=>({trip,inputRevision:revision,browserOwnerId:'owner-a'})}},
     activeBrowserOwnerIdRef:{current:'owner-a'},lookupOwnerId:'owner-a',lookupTripId:trip.id,
     removedPlaceMentionIdsRef:{current:[]},placeSelectionsRef:{current:[]},setHandoffResolutionStatuses:()=>{},
-    handoffOutcomeIsCurrent,retireHandoffResolutionStatus,preferredHandoffLocationChoice,
+    handoffOutcomeIsCurrent,retireHandoffResolutionStatus,preferredHandoffLocationChoice,authoredContentKey,
     isOriginMention:(item:typeof mention)=>item.role==='origin'||item.role==='fixed_start',draft:{},originResolutionVersionRef:{current:0},originVersion:0,
     seedById:new Map(trip.stops.map(stop=>[stop.id,{...stop,coordinates:[stop.longitude,stop.latitude]}])),handoffOccurrenceMentionIdsRef:{current:{[trip.stops[1]!.id]:mention.mentionId}},handoffStopOccurrenceId,builderPlaceCommand,
     dispatchAcceptedBuilderEdit:(command:Parameters<typeof prepareBuilderHandlerEdit>[1],options:{expectedInputRevision:number})=>{
