@@ -689,6 +689,42 @@ function TripBuilderDocument() {
   const [topAddOpen,setTopAddOpen]=useState(false);
   const topAddVisible=topAddOpen||Boolean(mountedBuilder?.snapshot.draft.fields.some(f=>f.binding.kind==="destination-add"&&f.raw));
   const [pendingTopType,setPendingTopType]=useState<{type:"return_to_start"|"one_way";revision:number;name:string}|null>(null);
+  const savedFinishRequestRef=useRef<AbortController|null>(null);
+  const [savedFinishReview,setSavedFinishReview]=useState<{ownerId:string|null;tripId:string;endKey:string;name:string;choices:LocationChoice[];status:"loading"|"ready"|"unavailable"}|null>(null);
+  const savedFinishIsCurrent=(review:NonNullable<typeof savedFinishReview>)=>{
+    const snapshot=builderEditSessionRef.current?.getSnapshot();
+    return snapshot && snapshot.browserOwnerId===review.ownerId && activeBrowserOwnerIdRef.current===review.ownerId
+      && snapshot.trip.id===review.tripId && authoredContentKey(snapshot.trip.brief.intent.route.journeyEnd)===review.endKey ? snapshot : null;
+  };
+  const dismissSavedFinish=()=>{savedFinishRequestRef.current?.abort();savedFinishRequestRef.current=null;setSavedFinishReview(null)};
+  const confirmSavedFinish=async()=>{
+    const snapshot=builderEditSessionRef.current?.getSnapshot();
+    const end=snapshot?.trip.brief.intent.route.journeyEnd;
+    if(!snapshot || end?.mode!=="explicit" || end.place.coordinates)return;
+    savedFinishRequestRef.current?.abort();
+    const controller=new AbortController();savedFinishRequestRef.current=controller;
+    const review={ownerId:snapshot.browserOwnerId,tripId:snapshot.trip.id,endKey:authoredContentKey(end),name:end.place.name,choices:[] as LocationChoice[],status:"loading" as const};
+    setSavedFinishReview(review);
+    try {
+      const params=new URLSearchParams({place:end.place.name,candidates:"1"});if(end.place.country)params.set("country",end.place.country);
+      const response=await withProviderTimeout({label:"Saved finish lookup",timeoutMs:7_000,signal:controller.signal,request:signal=>fetch(`/api/journey-geocode?${params}`,{signal})});
+      if(!response.ok)throw new Error("Saved finish lookup unavailable");
+      const payload=await response.json() as {candidates?:LocationChoice[]};
+      const canonicalFinish=canonicalPlaceSuggestionFor(end.place.name,end.place.country?[end.place.country]:[]);
+      const choices=(payload.candidates??[]).filter(choice=>choice.name.toLocaleLowerCase()===end.place.name.toLocaleLowerCase()
+        && (!end.place.country || choice.country.toLocaleLowerCase()===end.place.country.toLocaleLowerCase())
+        && choice.coordinates?.length===2 && choice.coordinates.every(Number.isFinite)
+        && Math.abs(choice.coordinates[0])<=180 && Math.abs(choice.coordinates[1])<=90
+        && (!end.place.canonicalPlaceId || canonicalPlaceFactsMatch(end.place.canonicalPlaceId,choice))
+        && (!canonicalFinish || canonicalPlaceFactsMatch(canonicalFinish.canonicalPlaceId,choice)));
+      if(controller.signal.aborted || savedFinishRequestRef.current!==controller || !savedFinishIsCurrent(review))return;
+      setSavedFinishReview({...review,choices,status:choices.length?"ready":"unavailable"});
+    }catch {
+      if(!controller.signal.aborted && savedFinishRequestRef.current===controller && savedFinishIsCurrent(review))setSavedFinishReview({...review,status:"unavailable"});
+    }
+  };
+  useEffect(()=>()=>{savedFinishRequestRef.current?.abort()},[]);
+  useEffect(()=>{if(savedFinishReview&&!savedFinishIsCurrent(savedFinishReview))dismissSavedFinish()},[savedFinishReview,mountedBuilder?.snapshot.trip,mountedBuilder?.snapshot.browserOwnerId,activeBrowserOwnerId]);
   const [pendingTopRemoval,setPendingTopRemoval]=useState<{intentId:string;revision:number;name:string;stays:string[];nights:number}|null>(null);
   const [stopSearchReadyKey, setStopSearchReadyKey] = useState(0);
   const [stopError, setStopError] = useState("");
@@ -1978,7 +2014,7 @@ function TripBuilderDocument() {
       alreadyOpened: clarificationAutoOpened,
       explicitlyDismissed: clarificationDismissed,
       competingModal: competingModal || productTourOpen,
-      recoveryBlocked: Boolean(cloudSaveError || cloudConflictTrip || deviceRecoveryBlocked || deviceStorageBlocked || pendingStopRemoval || pendingTopType || pendingTopRemoval),
+      recoveryBlocked: Boolean(cloudSaveError || cloudConflictTrip || deviceRecoveryBlocked || deviceStorageBlocked || pendingStopRemoval || pendingTopType || pendingTopRemoval || savedFinishReview),
     })) return;
     const requestedIndex = requestedPlaceIntentId
       ? pendingClarificationIds.indexOf(requestedPlaceIntentId)
@@ -1988,7 +2024,7 @@ function TripBuilderDocument() {
     requestedPlaceIntentRef.current = null;
     setClarificationAutoOpened(true);
     setClarificationOpen(true);
-  }, [arrivedFromHomepage, clarificationAutoOpened, clarificationDismissed, cloudConflictTrip, cloudSaveError, deviceRecoveryBlocked, deviceStorageBlocked, hydrated, pendingClarificationIds, pendingStopRemoval, pendingTopType, pendingTopRemoval, productTourOpen, resolvingLocations, resumedQuerylessDraft]);
+  }, [arrivedFromHomepage, clarificationAutoOpened, clarificationDismissed, cloudConflictTrip, cloudSaveError, deviceRecoveryBlocked, deviceStorageBlocked, hydrated, pendingClarificationIds, pendingStopRemoval, pendingTopType, pendingTopRemoval, savedFinishReview, productTourOpen, resolvingLocations, resumedQuerylessDraft]);
 
   useEffect(() => {
     if (clarificationOpen || !restoreClarificationResumeFocusRef.current) return;
@@ -2002,12 +2038,12 @@ function TripBuilderDocument() {
       discoveryDraftOpen: Boolean(activeClarificationMention
         && capturedStructuredBrief.discoveryDraftByMentionId?.[activeClarificationMention.mentionId]?.version === 1),
       saveBlocked: Boolean(cloudSaveError || deviceRecoveryBlocked || deviceStorageBlocked),
-      competingModal: Boolean(productTourOpen || cloudConflictTrip || pendingStopRemoval || pendingTopType || pendingTopRemoval || optimizationProposal),
+      competingModal: Boolean(productTourOpen || cloudConflictTrip || pendingStopRemoval || pendingTopType || pendingTopRemoval || optimizationProposal || savedFinishReview),
     });
     if (!clarificationMustYield) return;
     setClarificationDismissed(true);
     setClarificationOpen(false);
-  }, [activeClarificationMention, capturedStructuredBrief.discoveryDraftByMentionId, clarificationOpen, cloudConflictTrip, cloudSaveError, deviceRecoveryBlocked, deviceStorageBlocked, pendingStopRemoval, pendingTopType, pendingTopRemoval, productTourOpen, optimizationProposal]);
+  }, [activeClarificationMention, capturedStructuredBrief.discoveryDraftByMentionId, clarificationOpen, cloudConflictTrip, cloudSaveError, deviceRecoveryBlocked, deviceStorageBlocked, pendingStopRemoval, pendingTopType, pendingTopRemoval, savedFinishReview, productTourOpen, optimizationProposal]);
 
   const openClarificationSession = (preferredMentionId?: string) => {
     if (!pendingClarificationIds.length) return;
@@ -5057,6 +5093,7 @@ function TripBuilderDocument() {
               </section>}
               {(hasRouteSkeleton || hasPromptContext || showStopEditor || pendingClarificationIds.length > 0 || inlineStopBaseMention) && <section className={styles.tripUnderstood} aria-label={language === "es" ? "Viaje entendido" : "Trip understood"}>
                 {mountedBuilder ? <TripBuilderTopControls trip={mountedBuilder.snapshot.trip} draft={mountedBuilder.snapshot.draft} language={language}
+                  onConfirmSavedFinish={()=>{void confirmSavedFinish()}}
                   onReorder={ids=>commitStopOrder(ids,"drag")} fixedOrder={fixedBuilderChronology}
                   onUpdateRoute={()=>{void requestRouteOptimization();}} updatingRoute={optimizationChecking}
                   disabled={Boolean(mountedBuilder.snapshot.error?.category === "protected")}
@@ -6141,6 +6178,18 @@ function TripBuilderDocument() {
         cancelLabel={language==="es"?"Conservar destino":"Keep destination"} confirmLabel={language==="es"?"Quitar destino":"Remove destination"} onCancel={()=>setPendingTopRemoval(null)}
         onConfirm={()=>{if(pendingTopRemoval){const snapshot=builderEditSessionRef.current?.getSnapshot();if(snapshot?.inputRevision===pendingTopRemoval.revision)rememberStructuralChange("remove_destination",pendingTopRemoval.stays.length);
           if(dispatchAcceptedBuilderEdit({kind:"remove-destination",intentId:pendingTopRemoval.intentId},{expectedInputRevision:pendingTopRemoval.revision})){setRoutePreviewStopIds(null);setSelectedRouteStopId(null);setNightEditFeedback(null)}}setPendingTopRemoval(null)}}/>
+      <BuilderClarificationDialog open={Boolean(savedFinishReview)} language={language} itemKey={`saved-finish:${savedFinishReview?.endKey??""}`} progress={language==="es"?"Final guardado":"Saved finish"}
+        title={language==="es"?"Confirmar final guardado":"Confirm saved finish"}
+        description={savedFinishReview?.name??""} finishLaterLabel={language==="es"?"Más tarde":"Finish later"} onDismiss={dismissSavedFinish}
+        suggestionsStatus={savedFinishReview?.status==="loading"?(language==="es"?"Buscando el lugar…":"Looking up the place…"):savedFinishReview?.status==="unavailable"?(language==="es"?"No pudimos confirmar este lugar. Cierra e inténtalo de nuevo.":"We couldn't confirm this place. Close and try again."):undefined}
+        choices={savedFinishReview?.choices.map((choice,index)=>({id:String(index),label:choice.name,detail:choice.country}))??[]}
+        onChoose={choice=>{
+          if(!savedFinishReview)return;
+          const snapshot=savedFinishIsCurrent(savedFinishReview),place=savedFinishReview.choices[Number(choice.id)];
+          const end=snapshot?.trip.brief.intent.route.journeyEnd;
+          if(!snapshot || end?.mode!=="explicit" || !place){dismissSavedFinish();return}
+          if(dispatchAcceptedBuilderEdit({kind:"legacy-end",place:{...end.place,coordinates:place.coordinates,country:place.country,providerId:place.providerId}},{expectedInputRevision:snapshot.inputRevision}))dismissSavedFinish();
+        }}/>
       <MorroviaConfirmationDialog open={Boolean(pendingTopType)} title={language==="es"?"¿Volver al punto de salida?":"Return to the starting point?"}
         detail={`${language==="es"?"Final guardado":"Saved finish"}: ${pendingTopType?.name??""}`}
         consequences={[language==="es"?"Se reemplazará el final guardado. Las estancias existentes seguirán en la ruta.":"The saved finish will be replaced. Existing stays will remain in the route."]}

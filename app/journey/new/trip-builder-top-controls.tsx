@@ -15,13 +15,13 @@ import { useBuilderStopReorder } from './use-builder-stop-reorder';
 
 type Type= 'return_to_start'|'one_way';
 const noChipPreview=()=>{};
-export function TripBuilderTopControls({trip,draft,language,disabled=false,onType,onOriginInput,onOriginSelect,onOriginClear,onDates,onDateInput,onTravellers,onBudget,onAdd,onEditIntent,onRemoveIntent,onIntentInput,onIntentSelect,personalize,originReview,destinationReview,dateReview,onUpdateRoute,updatingRoute=false,onReorder,fixedOrder=false}:{
+export function TripBuilderTopControls({trip,draft,language,disabled=false,onType,onOriginInput,onOriginSelect,onOriginClear,onDates,onDateInput,onTravellers,onBudget,onAdd,onEditIntent,onRemoveIntent,onIntentInput,onIntentSelect,personalize,originReview,destinationReview,dateReview,onUpdateRoute,updatingRoute=false,onReorder,fixedOrder=false,onConfirmSavedFinish}:{
  trip:CanonicalEasyTTrip;draft:BuilderInputDraft;language:'en'|'es';disabled?:boolean;
  onType:(type:Type)=>void;onOriginInput:(raw:string)=>void;onOriginSelect:(place:CanonicalPlaceSuggestion)=>void;onOriginClear:()=>void;
  onDates:(start:string,end:string)=>void;onDateInput:(field:"startDate"|"endDate",raw:string)=>void;onTravellers:(n:number)=>void;onBudget:(budget:CanonicalEasyTTrip['brief']['budgetBand'])=>void;
  onAdd:()=>void;onEditIntent:(intent:DestinationIntent)=>boolean;onRemoveIntent:(intent:DestinationIntent)=>void;
  onIntentInput:(id:string,raw:string)=>void;onIntentSelect:(intent:DestinationIntent,place:CanonicalPlaceSuggestion)=>boolean;
- personalize:ReactNode;originReview?:ReactNode;destinationReview?:ReactNode;dateReview?:ReactNode;onUpdateRoute?:()=>void;updatingRoute?:boolean;onReorder?:(ids:readonly string[])=>boolean;fixedOrder?:boolean;
+ personalize:ReactNode;originReview?:ReactNode;destinationReview?:ReactNode;dateReview?:ReactNode;onUpdateRoute?:()=>void;updatingRoute?:boolean;onReorder?:(ids:readonly string[])=>boolean;fixedOrder?:boolean;onConfirmSavedFinish?:()=>void;
 }) {
  const es=language==='es';const route=trip.brief.intent.route;
  const [editingId,setEditingId]=useState<string|null>(()=>draft.fields.find(f=>f.binding.kind==='destination'&&f.status==='editable')?.binding.kind==='destination' ? (draft.fields.find(f=>f.binding.kind==='destination'&&f.status==='editable')!.binding as {intentId:string}).intentId:null);
@@ -38,7 +38,7 @@ export function TripBuilderTopControls({trip,draft,language,disabled=false,onTyp
  return <section className={styles.root} aria-label={es?'Detalles del viaje':'Journey details'} data-builder-top-controls>
   <EasyTSegmentedControl<Type|"unknown_legacy"> ariaLabel={es?'Tipo de viaje':'Trip type'} value={route.tripType} onChange={type=>{if(type!=='unknown_legacy')onType(type)}} disabled={disabled}
     options={[{value:'return_to_start',label:es?'Volver al inicio':'Return to start'},{value:'one_way',label:es?'Solo ida':'One way'}]} />
-  {route.tripType==='unknown_legacy'?<p className={styles.context}>{es?'El final de este viaje guardado no está confirmado.':'This saved trip’s ending is unconfirmed.'}</p>:route.journeyEnd.mode==='explicit'?<p className={styles.context}>{es?'Final guardado':'Saved finish'}: <strong>{route.journeyEnd.place.name}</strong></p>:null}
+  {route.tripType==='unknown_legacy'?<p className={styles.context}>{es?'El final de este viaje guardado no está confirmado.':'This saved trip’s ending is unconfirmed.'}</p>:route.journeyEnd.mode==='explicit'?<p className={styles.context}>{es?'Final guardado':'Saved finish'}: <strong>{route.journeyEnd.place.name}</strong>{!route.journeyEnd.place.coordinates&&onConfirmSavedFinish?<EasyTButton variant="quiet" size="small" disabled={disabled} onClick={onConfirmSavedFinish}>{es?'Confirmar final guardado':'Confirm saved finish'}</EasyTButton>:null}</p>:null}
   <div id="builder-origin" className={styles.origin}><span className={styles.label}>{es?"Salida desde":"Starting from"}</span><CanonicalPlaceAutocomplete language={language} label={es?'Salida desde':'Starting from'} placeholder={es?'Ciudad o lugar de salida':'City or departure place'} value={originField?.raw??route.origin?.name??''}
     disabled={disabled} requireCoordinates showPlaceType={false}
     onChange={onOriginInput} onSelect={onOriginSelect} onClear={onOriginClear} /></div>

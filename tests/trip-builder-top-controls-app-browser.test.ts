@@ -6,18 +6,58 @@ import {requireReadableTripDocument} from '../lib/easyt/trip-document.ts';
 import {canonicalTripForOwner} from '../lib/easyt/trip-promotion.ts';
 import {nextTripUpdatedAt} from '../lib/easyt/trip-continuity.ts';
 const enabled=process.env.MORROVIA_BUILDER_APP_BROWSER_TESTS==='1';
-async function fixture(legacy=false,configure?:(trip:ReturnType<typeof requireReadableTripDocument>)=>void) {
+async function fixture(legacy=false,configure?:(trip:ReturnType<typeof requireReadableTripDocument>)=>void,geocodeCandidates:Record<string,unknown[]>={}) {
  let cloud=requireReadableTripDocument(canonicalTripForOwner('owner-a',requireReadableTripDocument(canonicalRouteFixture())));
  if(legacy){cloud.brief.intent.route.journeyEnd={mode:'explicit',place:{name:'Hiroshima',country:'Japan',canonicalPlaceId:'place:hiroshima'}};cloud.brief.journeyEnd=cloud.brief.intent.route.journeyEnd}
  configure?.(cloud);
  let writes=0;
- const view=await renderBuilder({initialTrip:cloud,seedRecovery:false,ownerId:'owner-a',query:`?trip=${cloud.id}`,accountRequest:({method,trip})=>{
+ const view=await renderBuilder({initialTrip:cloud,seedRecovery:false,ownerId:'owner-a',query:`?trip=${cloud.id}`,geocodeCandidates,accountRequest:({method,trip})=>{
  if(method==='GET')return {status:200,body:{trip:cloud}};const next=requireReadableTripDocument(trip);
  if(next.updatedAt!==cloud.updatedAt)return {status:409,body:{trip:cloud,conflictReason:'cloud-changed'}};
  writes++;cloud={...next,updatedAt:nextTripUpdatedAt(cloud.updatedAt)};return {status:200,body:{trip:cloud}};
  }});view.page.setDefaultTimeout(5000);await view.page.locator('[data-builder-top-controls]').waitFor();return {view,cloud:()=>cloud,writes:()=>writes};
 }
 async function until(h:Awaited<ReturnType<typeof fixture>>,condition:()=>boolean){for(let i=0;i<50;i++){if(condition())return;await h.view.page.waitForTimeout(100)}assert.ok(condition())}
+test('unresolved saved finish is confirmed deliberately without adding a stay or changing authoritative order',{skip:!enabled,timeout:30000},async()=>{
+ const h=await fixture(true,trip=>{trip.brief.intent.route.journeyEnd={mode:'explicit',place:{name:'Osaka',country:'Japan',canonicalPlaceId:'place:osaka'}};trip.brief.journeyEnd=trip.brief.intent.route.journeyEnd},
+ {Osaka:[{name:'Osaka',country:'Japan',canonicalPlaceId:'osaka',coordinates:[135.5023,34.6937]}]});
+ try{
+ const before=structuredClone(h.cloud());await h.view.page.getByRole('button',{name:'Confirm saved finish',exact:true}).click();
+ const dialog=h.view.page.getByRole('dialog');await dialog.getByRole('button',{name:/Osaka/}).waitFor();
+ assert.equal(h.writes(),0,'provider result must await traveller choice');
+ await dialog.getByRole('button',{name:'Finish later',exact:true}).click();assert.deepEqual(h.cloud(),before);
+ await h.view.page.getByRole('button',{name:'Confirm saved finish',exact:true}).click();await dialog.getByRole('button',{name:/Osaka/}).click();
+ await until(h,()=>{const end=h.cloud().brief.intent.route.journeyEnd;return end.mode==='explicit'&&Boolean(end.place.coordinates)});
+ assert.deepEqual(h.cloud().stops,before.stops);assert.deepEqual(h.cloud().brief.intent.route.orderedStopIds,before.brief.intent.route.orderedStopIds);
+ assert.equal(h.cloud().brief.intent.route.orderAuthority,before.brief.intent.route.orderAuthority);
+ const end=h.cloud().brief.intent.route.journeyEnd;assert.equal(end.mode==='explicit'&&end.place.canonicalPlaceId,'place:osaka');
+ const finishLeg=h.cloud().legs.find(leg=>leg.toEndpoint?.kind==='end');assert.ok(finishLeg,'accepted finish must update its dependent gateway leg');assert.deepEqual(finishLeg.toEndpoint?.coordinates,[135.5023,34.6937]);
+ await h.view.page.reload();await h.view.page.locator('[data-builder-top-controls]').waitFor();assert.equal(await h.view.page.getByRole('button',{name:'Confirm saved finish',exact:true}).count(),0);
+ assert.deepEqual(h.view.errors,[]);
+ }finally{await h.view.close()}
+});
+test('saved finish rejects mismatched names and invalid coordinates without saving',{skip:!enabled,timeout:30000},async()=>{
+ const h=await fixture(true,trip=>{trip.brief.intent.route.journeyEnd={mode:'explicit',place:{name:'Osaka',country:'Japan',canonicalPlaceId:'place:osaka'}};trip.brief.journeyEnd=trip.brief.intent.route.journeyEnd},
+ {Osaka:[{name:'Tokyo',country:'Japan',coordinates:[139.6917,35.6895]},{name:'Osaka',country:'Japan',coordinates:[999,99]}]});
+ try{
+ const before=structuredClone(h.cloud());await h.view.page.getByRole('button',{name:'Confirm saved finish',exact:true}).click();
+ await h.view.page.getByRole('dialog').getByText("We couldn't confirm this place. Close and try again.",{exact:true}).waitFor();
+ assert.equal(await h.view.page.getByRole('dialog').getByRole('button',{name:/Osaka|Tokyo/}).count(),0);assert.equal(h.writes(),0);assert.deepEqual(h.cloud(),before);
+ assert.deepEqual(h.view.errors,[]);
+ }finally{await h.view.close()}
+});
+test('late saved finish lookup cannot restore an endpoint after dismissal and accepted type change',{skip:!enabled,timeout:30000},async()=>{
+ const h=await fixture(true,trip=>{trip.brief.intent.route.journeyEnd={mode:'explicit',place:{name:'Osaka',country:'Japan',canonicalPlaceId:'place:osaka'}};trip.brief.journeyEnd=trip.brief.intent.route.journeyEnd});
+ let release!:()=>void;const held=new Promise<void>(resolve=>{release=resolve});let requested=false;
+ try{
+ await h.view.page.route('**/api/journey-geocode?*',async (route:{fulfill:(response:{status:number;contentType:string;body:string})=>Promise<void>})=>{requested=true;await held;await route.fulfill({status:200,contentType:'application/json',body:JSON.stringify({candidates:[{name:'Osaka',country:'Japan',coordinates:[135.5023,34.6937]}]})}).catch(()=>{})});
+ await h.view.page.getByRole('button',{name:'Confirm saved finish',exact:true}).click();await until(h,()=>requested);
+ await h.view.page.getByRole('dialog').getByRole('button',{name:'Finish later',exact:true}).click();
+ await h.view.page.getByRole('button',{name:'Return to start',exact:true}).click();await h.view.page.getByRole('dialog').getByRole('button',{name:'Return to start',exact:true}).click();
+ await until(h,()=>h.cloud().brief.intent.route.journeyEnd.mode==='same_as_start');const accepted=structuredClone(h.cloud());
+ release();await h.view.page.waitForTimeout(200);assert.deepEqual(h.cloud(),accepted);assert.equal(await h.view.page.getByRole('dialog').count(),0);assert.deepEqual(h.view.errors,[]);
+ }finally{release();await h.view.close()}
+});
 test('top controls have two type choices, unordered chips, one add owner and collapsed Personalize',{skip:!enabled,timeout:30000},async()=>{
  const h=await fixture();try{
  const top=h.view.page.locator('[data-builder-top-controls]');assert.equal(await top.getByRole('group',{name:'Trip type',exact:true}).getByRole('button').count(),2);
@@ -113,7 +153,7 @@ test('unknown legacy ending keeps both type options unselected until a deliberat
 });
 
 test('chip keyboard reorder establishes manual authority, autosaves and survives reload',{skip:!enabled,timeout:30000},async()=>{
- const h=await fixture();try{
+ const h=await fixture(false,trip=>{trip.brief.bookings=[]});try{
  const before=structuredClone(h.cloud());const top=h.view.page.locator('[data-builder-top-controls]');
  const grip=top.getByRole('button',{name:'Reorder Tokyo',exact:true});await grip.focus();await grip.press('Space');await grip.press('ArrowRight');assert.equal(await top.locator('span.sr-only[aria-live="polite"]').textContent(),'Moving Tokyo to stop 2');await grip.press('Enter');
  const expected=[before.stops[1]!.id,before.stops[0]!.id,before.stops[2]!.id];await until(h,()=>h.cloud().brief.intent.route.orderedStopIds[0]===expected[0]);assert.equal(h.cloud().brief.intent.route.orderAuthority,'manual');assert.deepEqual(h.cloud().brief.intent.route.orderedStopIds,expected);
