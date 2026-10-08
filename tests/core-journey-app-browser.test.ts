@@ -26,6 +26,7 @@ const places = {
   Lisbon: { canonicalPlaceId: "lisbon", name: "Lisbon", country: "Portugal", countryCode: "PT", coordinates: [-9.1393, 38.7223] },
   Porto: { canonicalPlaceId: "porto", name: "Porto", country: "Portugal", countryCode: "PT", coordinates: [-8.6291, 41.1579] },
   London: { canonicalPlaceId: "london", name: "London", country: "United Kingdom", countryCode: "GB", coordinates: [-0.1278, 51.5074] },
+  Paris: { canonicalPlaceId: "paris", name: "Paris", country: "France", countryCode: "FR", coordinates: [2.3522, 48.8566] },
   Agra: { canonicalPlaceId: "agra", name: "Agra", country: "India", countryCode: "IN", coordinates: [78.0081, 27.1767] },
 } as const;
 
@@ -69,15 +70,15 @@ async function recoveryTrip(page: Page, tripId: string) {
     return records.map((key) => {
       try { return JSON.parse(localStorage.getItem(key) ?? "null")?.trip; } catch { return null; }
     }).find((trip) => trip?.id === id) ?? null;
-  }, tripId) as Promise<{ id: string; stops: Array<{ id: string; name: string; canonicalPlaceId?: string; nights?: number }>; planItems: Array<{ dayNumber: number; stopId: string; notes: string[] }>; brief: { dayNotes?: Record<number, string[]> } } | null>;
+  }, tripId) as Promise<{ id: string; stops: Array<{ id: string; name: string; canonicalPlaceId?: string; nights?: number }>; planItems: Array<{ dayNumber: number; stopId: string; notes: string[] }>; brief: { dayNotes?: Record<number, string[]>; intent?: { route?: { origin?: { canonicalPlaceId?: string } } } } } | null>;
 }
 
 test("Tier 1 guest journey keeps three canonical stops and edits through Build and recovery", { skip: !enabled, timeout: 180_000 }, async () => withEvidence("guest-core-journey", async (page) => {
   const pageErrors: string[] = [];
   page.on("pageerror", (error) => pageErrors.push(error.message));
   await page.goto(base, { waitUntil: "domcontentloaded" });
-  await page.getByRole("combobox", { name: "Start from", exact: true }).fill("London");
-  await page.getByRole("option", { name: /London.*United Kingdom/ }).first().click();
+  await page.getByRole("combobox", { name: "Start from", exact: true }).fill("Paris");
+  await page.getByRole("option", { name: /Paris.*France/ }).first().click();
   const choose = async (name: string, country: string) => {
     await page.getByRole("combobox", { name: "Destination", exact: true }).fill(name);
     await page.getByRole("option", { name: new RegExp(`${name}.*${country}`) }).first().click();
@@ -99,10 +100,18 @@ test("Tier 1 guest journey keeps three canonical stops and edits through Build a
   const nights = await rows.evaluateAll((items) => items.map((row) => Number(row.querySelector('[aria-label^="Add one night"]')?.getAttribute("aria-label")?.match(/; (\d+) nights/)?.[1])));
   assert.equal(nights.length, 3);
   assert.ok(nights.every((night) => night > 0));
-  await page.getByRole("combobox", { name: "Starting from" }).fill("London");
-  await page.getByRole("option", { name: /London.*United Kingdom/ }).first().click();
   const draftTripId = new URL(page.url()).searchParams.get("trip");
   assert.ok(draftTripId);
+  await page.waitForFunction((id) => Object.keys(localStorage)
+    .filter((key) => key.startsWith(`easyt:trip-recovery:v2:guest:${encodeURIComponent(id)}:`))
+    .some((key) => {
+      try { return JSON.parse(localStorage.getItem(key) ?? "null")?.trip?.brief?.intent?.route?.origin?.canonicalPlaceId === "paris"; }
+      catch { return false; }
+    }), draftTripId);
+  const initialDraft = await recoveryTrip(page, draftTripId);
+  assert.equal(initialDraft?.brief.intent?.route?.origin?.canonicalPlaceId, "paris");
+  await page.getByRole("combobox", { name: "Starting from" }).fill("London");
+  await page.getByRole("option", { name: /London.*United Kingdom/ }).first().click();
   await page.waitForFunction((id) => Object.keys(localStorage)
     .filter((key) => key.startsWith(`easyt:trip-recovery:v2:guest:${encodeURIComponent(id)}:`))
     .some((key) => {
@@ -115,6 +124,7 @@ test("Tier 1 guest journey keeps three canonical stops and edits through Build a
   await page.getByRole("region", { name: "Trip overview" }).waitFor({ state: "visible", timeout: 20_000 });
   const built = await recoveryTrip(page, tripId);
   assert.ok(built, "Build leaves a recoverable guest trip on this device");
+  assert.equal(built.brief.intent?.route?.origin?.canonicalPlaceId, "london", "Build preserves the accepted Builder origin edit");
   assert.deepEqual(built.stops.map((stop) => stop.canonicalPlaceId), ["madrid", "lisbon", "porto"]);
   assert.deepEqual(built.stops.map((stop) => stop.nights), nights);
   assert.equal(built.stops.some((stop) => stop.name === "London"), false);
@@ -136,6 +146,7 @@ test("Tier 1 guest journey keeps three canonical stops and edits through Build a
   await page.locator("section[aria-label='Day 1 planner']").waitFor();
   const recovered = await recoveryTrip(page, tripId);
   assert.ok(recovered);
+  assert.equal(recovered.brief.intent?.route?.origin?.canonicalPlaceId, "london", "Hard reload recovers the edited origin");
   const firstDay = recovered.planItems.find((day) => day.dayNumber === 1);
   assert.ok(firstDay);
   assert.equal(firstDay.notes.filter((note) => note === "Morning walk fixture").length, 1);
