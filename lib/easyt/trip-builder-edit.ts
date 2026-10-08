@@ -1,3 +1,4 @@
+import { generatedFlexibleStopIds, allocateGeneratedBuilderNights } from "./trip-builder-generated-nights.ts";
 import { restoreRetainedAuthoredContent, restoreBuilderCalendarSnapshot, captureBuilderCalendarSnapshot, type BuilderCalendarSnapshot, moveRetainedAuthoredContent, removeRetainedAuthoredContent, type RetainedContentSelection, type RetainedContentConsumption } from "./trip-retained-authored-content.ts";
 import { builderDocumentFingerprint, prepareBuilderDocumentCommit } from "./trip-builder-document-commit.ts";
 import { projectCanonicalRouteEndpoints, readTripDocument } from "./trip-document.ts";
@@ -19,6 +20,7 @@ export type BuilderStructuralSnapshot = Pick<CanonicalEasyTTrip, "id" | "ownerId
   calendar?: BuilderCalendarSnapshot;
   route: RouteIntent;
   nightAllocations: CanonicalEasyTTrip["brief"]["nightAllocations"];
+  nightAllocation?: CanonicalEasyTTrip["brief"]["nightAllocation"];
   dayAllocations: CanonicalEasyTTrip["brief"]["dayAllocations"];
   manualNightStopIds: CanonicalEasyTTrip["brief"]["manualNightStopIds"];
   selectedPlaces: CanonicalEasyTTrip["brief"]["selectedPlaces"];
@@ -71,7 +73,7 @@ export type BuilderAcceptedEditResult =
 const budgets = new Set(["value", "mid", "high"]);
 
 /** Rebuild existing allocation projections without assigning any released/held night. */
-function synchronizeAcceptedNightAllocations(trip: CanonicalEasyTTrip) {
+function synchronizeAcceptedNightAllocations(trip: CanonicalEasyTTrip, flexible: Set<string>) {
   const allocations = Object.fromEntries(trip.stops.map(stop => [stop.id, stop.nights ?? 0]));
   const manual = new Set(trip.brief.manualNightStopIds ?? []);
   const locked = new Set(trip.brief.scheduleLocks?.stopIds ?? []);
@@ -82,7 +84,7 @@ function synchronizeAcceptedNightAllocations(trip: CanonicalEasyTTrip) {
     pace: trip.brief.intent.preferences.pace, interests: trip.brief.intent.preferences.interests,
     fixedCommitments: commitments, currentAllocations: allocations, manualStopIds: trip.stops.map(stop => stop.id) }).nightAllocation;
   // Freezing canonical values for projection is not a new traveller edit or booking.
-  result.stops = result.stops.map(stop => ({ ...stop, isManual: manual.has(stop.stopId),
+  result.stops = result.stops.map(stop => ({ ...stop, isManual: manual.has(stop.stopId) ? true : flexible.has(stop.stopId) ? false : undefined,
     isFixed: locked.has(stop.stopId) || Boolean(trip.brief.scheduleLocks?.arrivalDates[stop.stopId]) || commitments.some(item => item.stopId === stop.stopId && item.fixedNights !== undefined),
     reasons: stop.reasons.filter(reason => reason.code !== 'manual-nights' || manual.has(stop.stopId)) }));
   trip.brief.nightAllocations = allocations;
@@ -163,7 +165,7 @@ function insertStop(trip: CanonicalEasyTTrip, stop: TripStop, beforeStopId?: str
 export function builderStructuralSnapshot(trip: CanonicalEasyTTrip): BuilderStructuralSnapshot {
   return structuredClone({ id: trip.id, ownerId: trip.ownerId, stops: trip.stops, startDate: trip.startDate, endDate: trip.endDate,
     calendar: captureBuilderCalendarSnapshot(trip),
-    route: trip.brief.intent.route, nightAllocations: trip.brief.nightAllocations, dayAllocations: trip.brief.dayAllocations,
+    route: trip.brief.intent.route, nightAllocations: trip.brief.nightAllocations, nightAllocation: trip.brief.nightAllocation, dayAllocations: trip.brief.dayAllocations,
     manualNightStopIds: trip.brief.manualNightStopIds, selectedPlaces: trip.brief.selectedPlaces,
     scheduleLocks: trip.brief.scheduleLocks, hardConstraints: trip.brief.intent.hardConstraints, timing: trip.brief.intent.timing,
     ...(trip.brief.structuredBrief ? { structuredRouting: { destinations: trip.brief.structuredBrief.destinations,
@@ -570,7 +572,7 @@ export function prepareAcceptedBuilderEdit(current: CanonicalEasyTTrip, edit: Bu
         if(edit.restoreDates) { trip.startDate=s.startDate;trip.endDate=s.endDate;trip.brief.intent.timing=structuredClone(s.timing); }
         // Structural stop/order Undo owns membership, requests and authority, not later endpoint/date edits.
         trip.brief.intent.route = { ...structuredClone(s.route), origin: route.origin, tripType: route.tripType, journeyEnd: route.journeyEnd };
-        for (const key of ["nightAllocations", "dayAllocations", "manualNightStopIds", "selectedPlaces", "scheduleLocks"] as const) {
+        for (const key of ["nightAllocations", "nightAllocation", "dayAllocations", "manualNightStopIds", "selectedPlaces", "scheduleLocks"] as const) {
           Object.assign(trip.brief, { [key]: structuredClone(s[key]) });
         }
         trip.brief.intent.hardConstraints = { ...trip.brief.intent.hardConstraints,
@@ -583,8 +585,19 @@ export function prepareAcceptedBuilderEdit(current: CanonicalEasyTTrip, edit: Bu
       }
       default: return reject("invalid-input");
     }
+    const flexible = generatedFlexibleStopIds(edit.kind === 'structural-inverse' ? trip : current);
+    for (const stop of trip.stops) {
+      const old = current.stops.find(s => s.id === stop.id);
+      const intent = route.destinations.find(i => i.stopIds.includes(stop.id));
+      // Only an accepted new, unrequested stay may gain fresh generated provenance.
+      if (!old && stop.nights === null && intent?.requestedNights === null
+        && ['add-destination','resolve-destination'].includes(edit.kind)) flexible.add(stop.id);
+      if (edit.kind === 'nights' && edit.stopId === stop.id) flexible.delete(stop.id);
+    }
+    const increases = edit.kind === 'nights' && edit.nights > (current.stops.find(s=>s.id===edit.stopId)?.nights??0);
+    if (edit.kind === 'add-destination' || edit.kind === 'resolve-destination' || increases) allocateGeneratedBuilderNights(trip,flexible);
     route.orderedStopIds = trip.stops.map(stop => stop.id);
-    if (['dates', 'nights', 'add-destination', 'remove-destination', 'resolve-destination', 'replace-destination', 'structural-inverse'].includes(edit.kind)) synchronizeAcceptedNightAllocations(trip);
+    if (['dates', 'nights', 'add-destination', 'remove-destination', 'resolve-destination', 'replace-destination', 'structural-inverse'].includes(edit.kind)) synchronizeAcceptedNightAllocations(trip, flexible);
     route.projectionInputKey = current.brief.intent.route.projectionInputKey;
     trip = projectCanonicalRouteEndpoints(trip);
     const checked = prepareBuilderDocumentCommit({ current, proposed: trip, expectedFingerprint, validate: () => true });

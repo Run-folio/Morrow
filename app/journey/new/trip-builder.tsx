@@ -29,6 +29,7 @@ import { TripBuilderTopControls } from "./trip-builder-top-controls";
 import { TripBuilderRouteProposal } from "./trip-builder-route-proposal";
 import { acceptBuilderOptimization, calculateBuilderOptimization, type BuilderOptimizationResult } from "@/lib/easyt/trip-builder-route-proposal";
 import { routeProjectionInputKey } from "@/lib/easyt/trip-route-intent";
+import { allRequiredStaysHaveNights } from "@/lib/easyt/trip-builder-generated-nights";
 import { TripBuilderRetainedReview } from "./trip-builder-retained-review";
 import { resolveBuilderRecommendation } from "@/lib/easyt/trip-builder-recommendations";
 import { readBuilderInputDraft, writeBuilderInputDraft, type BuilderInputBinding } from "@/lib/easyt/trip-builder-input-draft";
@@ -2415,7 +2416,8 @@ function TripBuilderDocument() {
     || compressedStops.length >= Math.max(3, Math.ceil(stops.length / 2))
   );
   const allocatedNights = Object.values(allocation).reduce((sum, nights) => sum + nights, 0);
-  const allNightsAllocated = stops.length > 0 && allocatedNights === totalNights;
+  const allNightsAllocated = stops.length > 0 && allocatedNights === totalNights
+    && (canonicalBuilder ? allRequiredStaysHaveNights(canonicalBuilder) : stops.every(stop => (allocation[stop.id] ?? 0) > 0));
   const travelConsequenceIssues = stops.flatMap((stop) => {
     const duration = routeIntelligence.durations[stop.id];
     const arrivalLoad = canonicalArrivalLoad(builderCanonicalLegs.find((leg) => leg.toStopId === stop.id));
