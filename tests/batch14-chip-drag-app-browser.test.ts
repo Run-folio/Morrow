@@ -15,6 +15,8 @@ for(const width of [1440,390])test(`real mouse chip drag preserves occurrence id
  const trip=requireReadableTripDocument(canonicalRouteFixture());trip.ownerId=null;
  trip.stops[2]={...trip.stops[2],name:trip.stops[0].name,country:trip.stops[0].country,canonicalPlaceId:trip.stops[0].canonicalPlaceId,latitude:trip.stops[0].latitude,longitude:trip.stops[0].longitude};
  trip.brief.intent.route.destinations[2].selectedPlace={...trip.brief.intent.route.destinations[0].selectedPlace!};
+ trip.brief.intent.route.orderAuthority='optimizable';
+ [trip.brief.intent.route.destinations[1],trip.brief.intent.route.destinations[2]]=[trip.brief.intent.route.destinations[2],trip.brief.intent.route.destinations[1]];
  trip.planItems[0].notes=['Keep this authored activity'];
  try{
  await page.addInitScript(({key,value})=>localStorage.setItem(key,value),{key:PRIVACY_CONSENT_STORAGE_KEY,value:JSON.stringify(createPrivacyConsentRecord({analytics:false,affiliateTracking:false},'2026-10-08T12:00:00.000Z'))});
@@ -23,7 +25,7 @@ for(const width of [1440,390])test(`real mouse chip drag preserves occurrence id
  await page.addInitScript(value=>{localStorage.setItem(`easyt:trip-recovery:v2:guest:${encodeURIComponent(value.id)}:chip-fixture`,JSON.stringify({version:2,ownerId:null,tripId:value.id,trip:value,state:'pending',writeId:'chip-fixture',savedAt:'2026-10-08T12:00:00.000Z'}));},trip);
  await page.goto(`${base}/journey/new?trip=${trip.id}&recover=1`,{waitUntil:'domcontentloaded'});const top=page.locator('[data-builder-top-controls]');await top.waitFor();
  if(await page.getByRole('button',{name:'Reject optional',exact:true}).count())await page.getByRole('button',{name:'Reject optional',exact:true}).click();
- const chips=top.locator('[data-destination-intent-id]'),initial=trip.brief.intent.route.destinations.map(i=>i.id);
+ const chips=top.locator('[data-destination-intent-id]'),initial=trip.brief.intent.route.orderedStopIds.map(stopId=>trip.brief.intent.route.destinations.find(intent=>intent.stopIds[0]===stopId)!.id);
  assert.deepEqual(await chips.evaluateAll(nodes=>nodes.map(n=>n.getAttribute('data-destination-intent-id'))),initial);
  await chips.nth(2).scrollIntoViewIfNeeded();const source=await chips.nth(2).locator('[draggable="true"]').boundingBox(),target=await chips.nth(1).boundingBox();assert.ok(source&&target);
  await page.mouse.move(source.x+source.width/2,source.y+source.height/2);await page.mouse.down();for(let step=1;step<=12;step++){await page.mouse.move(source.x+source.width/2+(target.x+target.width/2-source.x-source.width/2)*step/12,source.y+source.height/2+(target.y+target.height/2-source.y-source.height/2)*step/12);await page.waitForTimeout(50)}await page.mouse.up();

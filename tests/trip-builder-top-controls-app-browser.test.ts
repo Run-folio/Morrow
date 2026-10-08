@@ -10,11 +10,12 @@ async function fixture(legacy=false,configure?:(trip:ReturnType<typeof requireRe
  let cloud=requireReadableTripDocument(canonicalTripForOwner('owner-a',requireReadableTripDocument(canonicalRouteFixture())));
  if(legacy){cloud.brief.intent.route.journeyEnd={mode:'explicit',place:{name:'Hiroshima',country:'Japan',canonicalPlaceId:'place:hiroshima'}};cloud.brief.journeyEnd=cloud.brief.intent.route.journeyEnd}
  configure?.(cloud);
+ let writes=0;
  const view=await renderBuilder({initialTrip:cloud,seedRecovery:false,ownerId:'owner-a',query:`?trip=${cloud.id}`,accountRequest:({method,trip})=>{
  if(method==='GET')return {status:200,body:{trip:cloud}};const next=requireReadableTripDocument(trip);
  if(next.updatedAt!==cloud.updatedAt)return {status:409,body:{trip:cloud,conflictReason:'cloud-changed'}};
- cloud={...next,updatedAt:nextTripUpdatedAt(cloud.updatedAt)};return {status:200,body:{trip:cloud}};
- }});view.page.setDefaultTimeout(5000);await view.page.locator('[data-builder-top-controls]').waitFor();return {view,cloud:()=>cloud};
+ writes++;cloud={...next,updatedAt:nextTripUpdatedAt(cloud.updatedAt)};return {status:200,body:{trip:cloud}};
+ }});view.page.setDefaultTimeout(5000);await view.page.locator('[data-builder-top-controls]').waitFor();return {view,cloud:()=>cloud,writes:()=>writes};
 }
 async function until(h:Awaited<ReturnType<typeof fixture>>,condition:()=>boolean){for(let i=0;i<50;i++){if(condition())return;await h.view.page.waitForTimeout(100)}assert.ok(condition())}
 test('top controls have two type choices, unordered chips, one add owner and collapsed Personalize',{skip:!enabled,timeout:30000},async()=>{
@@ -125,5 +126,47 @@ test('unresolved or shared parent chips keep reorder in the occurrence table',{s
  const h=await fixture(false,trip=>{trip.brief.intent.route.destinations[0]!.kind='planning_area'});try{
  assert.equal(await h.view.page.locator('[data-builder-top-controls] [draggable="true"]').count(),0);
  assert.ok(await h.view.page.locator('[data-builder-route-workspace] [draggable="true"]').count()>0);assert.deepEqual(h.view.errors,[]);
+ }finally{await h.view.close()}
+});
+
+for(const authority of ['optimizable','legacy_preserved','explicit','manual'] as const)for(const repeated of [false,true])test(`chip gesture uses canonical occurrence order for ${authority}${repeated?' with repeated places':''}`,{skip:!enabled,timeout:30000},async()=>{
+ const h=await fixture(false,trip=>{
+  const route=trip.brief.intent.route;route.orderAuthority=authority;
+  route.explicitIntentIds=authority==='explicit'?route.destinations.map(intent=>intent.id):null;
+  if(repeated){
+   Object.assign(trip.stops[2],{name:trip.stops[0].name,country:trip.stops[0].country,canonicalPlaceId:trip.stops[0].canonicalPlaceId,latitude:trip.stops[0].latitude,longitude:trip.stops[0].longitude});
+   route.destinations[2].selectedPlace={...route.destinations[0].selectedPlace!};
+  }
+  [route.destinations[1],route.destinations[2]]=[route.destinations[2],route.destinations[1]];
+ });try{
+ const before=structuredClone(h.cloud()),route=before.brief.intent.route;
+ const top=h.view.page.locator('[data-builder-top-controls]'),chips=top.locator('[data-destination-intent-id]');
+ const visibleIds=await chips.evaluateAll((nodes:Element[])=>nodes.map(node=>node.getAttribute('data-destination-intent-id')!));
+ const requestedIntentIds=[visibleIds[0],visibleIds[2],visibleIds[1]];
+ const requestedStopIds=requestedIntentIds.map(id=>route.destinations.find(intent=>intent.id===id)!.stopIds[0]);
+ const grip=chips.nth(1).locator('[draggable="true"]');await grip.focus();await grip.press('Space');await grip.press('ArrowRight');await grip.press('Enter');
+ for(let i=0;i<50&&h.cloud().brief.intent.route.orderAuthority!=='manual';i++)await h.view.page.waitForTimeout(100);
+ assert.equal(h.cloud().brief.intent.route.orderAuthority,'manual',`visible gesture must be accepted; writes=${h.writes()}, chips=${visibleIds.join(',')}`);
+ await until(h,()=>h.writes()>0&&h.cloud().brief.intent.route.orderedStopIds.join('|')===requestedStopIds.join('|'));
+ assert.deepEqual(visibleIds,route.orderedStopIds.map(stopId=>route.destinations.find(intent=>intent.stopIds[0]===stopId)!.id),'initial chips project canonical order without changing intent source order');
+ assert.deepEqual(h.cloud().brief.intent.route.destinations,route.destinations);
+ assert.deepEqual(h.cloud().stops.map(stop=>[stop.id,stop.nights]).sort(),before.stops.map(stop=>[stop.id,stop.nights]).sort());
+ const savedDays=new Map(h.cloud().planItems.map(day=>[day.id,day]));for(const day of before.planItems){const saved=savedDays.get(day.id);if(saved){assert.deepEqual(saved.notes,day.notes);assert.equal(saved.bookingUrl,day.bookingUrl)}else{const retained=h.cloud().brief.retainedAuthoredContent?.entries.flatMap(entry=>entry.days).find(item=>item.sourceDay.id===day.id);assert.deepEqual(retained?.sourceDay,day,'a day retired by the existing calendar projection retains its complete payload')}}
+ const accepted=structuredClone(h.cloud());await h.view.page.waitForFunction(()=>!Object.keys(localStorage).some(key=>key.startsWith('easyt:trip-recovery:v2:')));
+ await h.view.page.reload();await top.waitFor();assert.deepEqual(await chips.evaluateAll((nodes:Element[])=>nodes.map(node=>node.getAttribute('data-destination-intent-id'))),requestedIntentIds);
+ assert.equal(h.cloud().brief.intent.route.orderAuthority,'manual');assert.deepEqual(h.cloud().brief.intent.route.orderedStopIds,requestedStopIds);assert.deepEqual(h.cloud().brief.intent.route.destinations,route.destinations);assert.deepEqual(h.cloud().stops,accepted.stops);
+ assert.deepEqual(h.view.errors,[]);
+ }finally{await h.view.close()}
+});
+
+test('canonical chip reorder retains a locked occurrence in place when intent order differs',{skip:!enabled,timeout:30000},async()=>{
+ const h=await fixture(false,trip=>{
+  const route=trip.brief.intent.route;route.orderAuthority='optimizable';[route.destinations[1],route.destinations[2]]=[route.destinations[2],route.destinations[1]];
+  trip.brief.scheduleLocks={stopIds:[trip.stops[1].id],arrivalDates:{}};
+ });try{
+ const before=structuredClone(h.cloud()),top=h.view.page.locator('[data-builder-top-controls]');
+ assert.equal(await top.getByRole('button',{name:'Reorder Kyoto',exact:true}).isDisabled(),true);
+ const grip=top.getByRole('button',{name:'Reorder Tokyo',exact:true});await grip.focus();await grip.press('Space');await grip.press('ArrowRight');await grip.press('Enter');await h.view.page.waitForTimeout(600);
+ assert.equal(h.writes(),0);assert.deepEqual(h.cloud(),before);assert.equal(await top.locator('span.sr-only[aria-live="polite"]').textContent(),'');assert.deepEqual(h.view.errors,[]);
  }finally{await h.view.close()}
 });
