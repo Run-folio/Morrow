@@ -1336,7 +1336,7 @@ export function geographicContextMentionIds(prompt: string, mentions: readonly R
       // traveller intent, even when it also qualifies the preceding cities.
       const countrySuffix = normalizePlacePhrase(prompt.slice(at + label.length));
       if (country.role === "required"
-        || /^(?:for )?\d{1,3} (?:nights?|n)(?: |$)/.test(countrySuffix)
+        || /^\s*(?:for\s+)?[:—-]?\s*\d{1,3}\s*(?:nights?\b|n\b)/i.test(prompt.slice(at + label.length))
         || /^(?:(?:is|are) )?(?:essential|required|a must|must visit)(?: |$)/.test(countrySuffix)) return false;
       if (endpoints.some(endpoint => endpoint.country && normalizePlacePhrase(endpoint.country) === normalizePlacePhrase(country.canonicalName)
         && new RegExp(`(?:^|[^\\p{L}\\p{N}])${escape(endpoint.name)}\\s*,\\s*$`, "iu").test(prefix))) return true;
