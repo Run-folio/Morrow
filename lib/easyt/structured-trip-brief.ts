@@ -213,17 +213,33 @@ function explicitGateway(prompt: string, kind: "start" | "end") {
   return undefined;
 }
 
-function durationFromPrompt(prompt: string, fallbackDays?: number): TripBriefDuration | undefined {
+function durationFromPrompt(prompt: string, fallbackDays?: number, mentions: readonly ResolvedPlaceMention[] = []): TripBriefDuration | undefined {
   const text = normalize(prompt);
-  const nights = text.match(/\b(\d{1,3})\s+nights?\b/);
   const approximate = /\b(about|around|roughly|approximately|approx\.?|probably|more or less)\b/.test(text);
-  if (nights) return { value: Number(nights[1]), unit: "nights", precision: approximate ? "approximate" : "exact", provenance: promptExplicit(nights[0]) };
-  if (!fallbackDays) return undefined;
-  return { value: fallbackDays, unit: "days", precision: approximate ? "approximate" : "exact", provenance: promptExplicit(sourceExcerpt(prompt, `${fallbackDays}`)) };
+  const stays = new Map<number, { nights: number; sourceText: string; excluded: boolean }>();
+  const bareNightContext = /\b\d+\s*(?:nights?\b|n\b)/i.test(prompt);
+  for (const mention of mentions) for (const source of new Set([mention.sourceText, ...mention.sourceTexts])) {
+    const pattern = new RegExp(source.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'giu');
+    for (const match of prompt.matchAll(pattern)) {
+      const end = match.index! + match[0].length;
+      if (match.index! > 0 && /[\p{L}\p{N}]/u.test(prompt[match.index! - 1])) continue;
+      const suffix = prompt.slice(end);
+      const request = /^\s*[:—-]?\s*(\d{1,3})\s*(?:nights?\b|n\b)/i.exec(suffix)
+        ?? (bareNightContext ? /^\s*[:—-]?\s*(\d{1,3})(?=\s*(?:[,;.:→]|->|\band\b|\bthen\b|$))/i.exec(suffix) : null);
+      if (request) stays.set(end + request[0].indexOf(request[1]), { nights: Number(request[1]), sourceText: match[0] + request[0], excluded: mention.role === 'excluded' });
+    }
+  }
+  const total = [...prompt.matchAll(/\b(\d{1,3})\s*(?:nights?\b|n\b)/gi)].find(match => !stays.has(match.index!));
+  if (total) return { value: Number(total[1]), unit: 'nights', precision: approximate ? 'approximate' : 'exact', provenance: promptExplicit(total[0]) };
+  if (fallbackDays) return { value: fallbackDays, unit: 'days', precision: approximate ? 'approximate' : 'exact', provenance: promptExplicit(sourceExcerpt(prompt, `${fallbackDays}`)) };
+  const attached = [...stays.values()].filter(stay => !stay.excluded);
+  if (attached.length) return { value: attached.reduce((sum, stay) => sum + stay.nights, 0), unit: 'nights', precision: 'exact',
+    provenance: { source: 'prompt', kind: 'inferred', confidence: 'high', sourceText: attached.map(stay => stay.sourceText).join(', ') } };
+  return undefined;
 }
 
 function explicitStayNightCommitments(prompt: string, mentions: readonly ResolvedPlaceMention[]) {
-  if (durationFromPrompt(prompt)?.unit !== "nights") return [];
+  const bareNightContext = /\b\d+\s*(?:nights?\b|n\b)/i.test(prompt);
   const bySourceText = new Map<string, { sourceText: string; mentions: ResolvedPlaceMention[] }>();
   for (const mention of mentions) {
     if (mention.role === "excluded" || mention.status === "ambiguous" || mention.status === "unresolved"
@@ -232,7 +248,7 @@ function explicitStayNightCommitments(prompt: string, mentions: readonly Resolve
     for (const sourceText of sourceTexts) {
       const key = normalize(sourceText);
       const group = bySourceText.get(key) ?? { sourceText, mentions: [] };
-      group.mentions.push(mention);
+      if (!group.mentions.some(item => item.mentionId === mention.mentionId)) group.mentions.push(mention);
       bySourceText.set(key, group);
     }
   }
@@ -248,12 +264,15 @@ function explicitStayNightCommitments(prompt: string, mentions: readonly Resolve
       const after = prompt[index + match[0].length];
       if ((before && /[\p{L}\p{N}]/u.test(before)) || (after && /[\p{L}\p{N}]/u.test(after))) continue;
       const suffix = prompt.slice(index + match[0].length);
-      const stay = /^\s+(\d{1,2})(?:\s+nights?)?(?=\s*(?:[,;.:]|\band\b|$))/i.exec(suffix);
+      const stay = /^\s*[:—-]?\s*(\d{1,3})\s*(?:nights?\b|n\b)/i.exec(suffix)
+        ?? (bareNightContext ? /^\s*[:—-]?\s*(\d{1,3})(?=\s*(?:[,;.:→]|->|\band\b|\bthen\b|$))/i.exec(suffix) : null);
       occurrences.push(stay ? { nights: Number(stay[1]), sourceText: `${match[0]} ${stay[1]}${/\s+nights?\b/i.test(stay[0]) ? " nights" : ""}` } : {});
     }
     const orderedMentions = group.mentions.sort((left, right) => left.order - right.order);
-    for (let index = 0; index < Math.min(occurrences.length, orderedMentions.length); index += 1) {
-      const occurrence = occurrences[index]!;
+    const quantified = occurrences.filter(occurrence => occurrence.nights !== undefined);
+    const boundOccurrences = quantified.length === orderedMentions.length ? quantified : occurrences;
+    for (let index = 0; index < Math.min(boundOccurrences.length, orderedMentions.length); index += 1) {
+      const occurrence = boundOccurrences[index]!;
       if (occurrence.nights === undefined) continue;
       commitments.push({ mention: orderedMentions[index]!, nights: occurrence.nights, sourceText: occurrence.sourceText ?? group.sourceText });
     }
@@ -407,7 +426,7 @@ export function extractStructuredTripBrief(
   const endText = explicitGateway(rawPrompt, "end");
   const hasExplicitStartMention = placeMentions.some((mention) => mention.role === "origin" || mention.role === "fixed_start");
   const hasExplicitEndMention = placeMentions.some((mention) => mention.role === "fixed_end");
-  const duration = durationFromPrompt(rawPrompt, parsed.durationDays);
+  const duration = durationFromPrompt(rawPrompt, parsed.durationDays, placeMentions);
   const countries = unique([
     ...placeMentions
       .filter((mention) => mention.placeType === "country" && mention.status !== "ambiguous" && mention.status !== "unresolved")

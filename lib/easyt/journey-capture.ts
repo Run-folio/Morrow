@@ -292,7 +292,9 @@ function semanticPlaceMentions(
     const safeDeterministicSource = safeSpan(mention.sourceText);
     if (!safeDeterministicSource) continue;
     const normalized = mention.normalizedPhrase;
+    const sourceOccurrenceId = mention.provenance.some(source => source.id.startsWith('stay-occurrence:')) ? mention.mentionId : undefined;
     const sameRoleExisting = inputs.find((input) => semanticJourneyRole(input.role) === semanticJourneyRole(mention.role)
+      && (!sourceOccurrenceId || !input.sourceOccurrenceId)
       && (sameRawPlaceSpan(input.sourceText, mention.sourceText)
         || (input.lookupText && sameRawPlaceSpan(input.lookupText, mention.sourceText))));
     // Explicit visit language is a deterministic role fact. Preserve it when a
@@ -305,6 +307,7 @@ function semanticPlaceMentions(
       : undefined;
     const existing = sameRoleExisting ?? explicitVisitExisting;
     if (existing) {
+      if (sourceOccurrenceId) existing.sourceOccurrenceId = sourceOccurrenceId;
       if (["origin", "fixed_start"].includes(mention.role) && !["origin", "fixed_start"].includes(existing.role)) existing.role = "origin";
       if (["fixed_end", "excluded"].includes(mention.role)) existing.role = mention.role;
       if (["required", "optional"].includes(mention.role)) existing.role = mention.role;
@@ -315,16 +318,18 @@ function semanticPlaceMentions(
     }
     if (normalized) inputs.push({
       sourceText: safeDeterministicSource,
+      ...(sourceOccurrenceId ? { sourceOccurrenceId } : {}),
       role: mention.role,
       travelIntent: mention.role === "anchor" ? "anchor" : "route-stop",
     });
   }
   return inputs
     .filter((input, index, all) => all.findIndex((candidate) => mentionSourceKey(candidate.sourceText) === mentionSourceKey(input.sourceText)
-      && semanticJourneyRole(candidate.role) === semanticJourneyRole(input.role)) === index)
+      && semanticJourneyRole(candidate.role) === semanticJourneyRole(input.role) && candidate.sourceOccurrenceId === input.sourceOccurrenceId) === index)
     .sort((left, right) => {
       const deterministicOrderFor = (input: ExplicitPlaceMention) => deterministicMentions.find((mention) => (
-        semanticJourneyRole(mention.role) === semanticJourneyRole(input.role)
+        (!input.sourceOccurrenceId || input.sourceOccurrenceId === mention.mentionId)
+        && semanticJourneyRole(mention.role) === semanticJourneyRole(input.role)
         && [mention.sourceText, ...mention.sourceTexts].some((sourceText) => sameRawPlaceSpan(sourceText, input.sourceText))
       ))?.order;
       const leftOrder = deterministicOrderFor(left);

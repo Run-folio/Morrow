@@ -16,6 +16,46 @@ import { EXPECTED_MIXED_GEOGRAPHY, MIXED_CENTRAL_AMERICA_PROMPT } from "./fixtur
 
 const CENTRAL_PROMPT = "3 weeks through Patagonia, Tierra del Fuego and Easter Island. We like nature, prefer a relaxed pace and do not want to drive.";
 
+test('per-stay quantities derive the whole duration while broad and unresolved intent stays held',()=>{
+  for(const [prompt,nights]of [
+    ['Athens 3 nights, then Crete 7 nights, then Santorini 3 nights.',13],
+    ['Milan 2 nights, Lake Como 4 nights, Verona 2 nights, Venice 3 nights.',11],
+    ['Sydney 3 nights, Uluru 3 nights, Melbourne 4 nights.',10],
+    ['Hanoi 4 nights, Hội An 4, Ho Chi Minh City 3. In Hanoi I want to visit the Temple of Literature and Presidential Palace.',11],
+    ['Hanoi 3n → Hue 2n → Hội An 4n → Ho Chi Minh City 3n.',12],
+    ['Rome 3n → Florence 3n → Venice 3n.',9],
+  ] as const){const capture=captureJourneyBrief(prompt);assert.equal(capture.durationDays,nights+1,prompt);assert.equal(capture.structuredBrief.duration?.value,nights);}
+  assert.equal(captureJourneyBrief('20 nights: Rome 3 nights, Florence 3 nights.').durationDays,21,'explicit whole-trip budget wins');
+  assert.equal(captureJourneyBrief('12 days: Rome 3 nights, Florence 3 nights.').durationDays,12,'a whole-trip day budget also wins');
+});
+
+test('explicit night-bound repeated Bangkok stays survive capture and handoff as distinct occurrences',()=>{
+  const capture=captureJourneyBrief('Bangkok 2n → Chiang Mai 4n → Krabi 3n → Bangkok 1n.');
+  assert.equal(capture.durationDays,11);
+  const stops=handoffRouteStops(capture.mentions,capture.journeyEnd);
+  assert.deepEqual(stops.map(stop=>stop.name),['Bangkok','Chiang Mai','Krabi','Bangkok']);
+  assert.equal(new Set(stops.map(stop=>stop.id)).size,4);
+  assert.equal(stops[0]!.canonicalPlaceId,stops[3]!.canonicalPlaceId);
+  const draft=createHomeTripDraft({capture,handoffId:'repeat-source',datesExplicit:false,startDate:'2026-11-01',endDate:'2026-11-11',travellers:2,travellersExplicit:false,interests:[]});
+  assert.deepEqual(draft.routeIntent?.destinations.map(intent=>intent.requestedNights),[2,4,3,1]);
+  assert.equal(draft.routeIntent?.orderAuthority,'explicit');
+});
+
+test('semantic inventory recovers both night-bound Bangkok spans even when the model lists one city',async()=>{
+  const prompt='Bangkok 2n → Chiang Mai 4n → Krabi 3n → Bangkok 1n.';
+  const intent:SemanticTripIntent={schemaVersion:SEMANTIC_TRIP_INTENT_SCHEMA_VERSION,rawPromptVersion:SEMANTIC_TRIP_INTENT_RAW_PROMPT_VERSION,
+    origin:{sourceText:null,certainty:null},journeyEnd:{sourceText:null,interpretedText:null,mode:'unknown',certainty:null},duration:{sourceText:null,value:null,unit:null},explicitDateTexts:[],
+    destinationCandidates:['Bangkok','Chiang Mai','Krabi'].map(sourceText=>({sourceText,interpretedText:null,role:'route-stop',certainty:'explicit'})),pointsOfInterest:[],
+    transport:{departure:{sourceText:null,mode:null},interStop:{sourceText:null,modes:[]},avoid:[]},pace:{sourceText:null,value:null},interests:[],constraints:[],ambiguities:[],unresolvedMeaningfulText:[]};
+  for(const provider of [undefined,{id:'fixture',label:'Fixture',lookup:async()=>[]}]){
+    const capture=await captureJourneyBriefFromSemanticIntent(prompt,intent,provider);
+    const draft=createHomeTripDraft({capture,handoffId:'semantic-repeat',datesExplicit:false,startDate:'2026-11-01',endDate:'2026-11-11',travellers:2,travellersExplicit:false,interests:[]});
+    assert.equal(capture.durationDays,11);
+    assert.deepEqual(draft.routeIntent?.destinations.map(item=>item.requestedNights),[2,4,3,1]);
+    assert.equal(new Set(draft.routeIntent?.destinations.map(item=>item.id)).size,4);
+  }
+});
+
 test("capture binds a contrastive fly-in gateway to Lima without losing Sacred Valley intent", () => {
   const prompt = "Fly into Lima but spend the trip in the Sacred Valley";
   const capture = captureJourneyBrief(prompt);

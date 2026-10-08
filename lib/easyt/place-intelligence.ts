@@ -331,6 +331,8 @@ export type PlaceResolutionContext = {
 export type ExplicitPlaceMention = {
   sourceText: string;
   role: PlaceMentionRole;
+  /** Source inventory identity for an explicitly quantity-bound occurrence. */
+  sourceOccurrenceId?: string;
   /** Optional semantic interpretation used only as a provider lookup phrase.
    * The provider must still establish the canonical geographic identity. */
   lookupText?: string;
@@ -2085,6 +2087,14 @@ function buildDeterministicMentions(prompt: string, context: PlaceResolutionCont
   // endpoint into an endpoint or an invented stay. Other occurrences survive.
   const sorted = resolved.filter(mention => !isNegatedEndpointAt(prompt, mention._start))
     .sort((left, right) => left._start - right._start || right._end - left._end);
+  const nightContext = /\b\d+\s*(?:nights?\b|n\b)/i.test(prompt);
+  for (const mention of sorted) {
+    const suffix = prompt.slice(mention._end);
+    const quantity = /^\s*[:—-]?\s*\d{1,3}\s*(?:nights?\b|n\b)/i.test(suffix)
+      || nightContext && /^\s*[:—-]?\s*\d{1,3}(?=\s*(?:[,;.:→]|->|\band\b|\bthen\b|$))/i.test(suffix);
+    if (quantity && mention.role !== 'excluded') mention.provenance.push({ id: `stay-occurrence:${mention._start}`, label: 'Traveller stay occurrence', kind: 'context', supports: 'A separate source occurrence has its own explicit stay quantity.' });
+  }
+  const boundStay = (mention: ResolvedPlaceMention) => mention.provenance.some(source => source.id.startsWith('stay-occurrence:'));
   // In an explicit arrow itinerary, a repeated first/last identity is route
   // structure: depart here and return here. Do not hand the final endpoint to
   // Builder as another overnight stop. Ordinary prose still requires explicit
@@ -2094,7 +2104,7 @@ function buildDeterministicMentions(prompt: string, context: PlaceResolutionCont
     const last = sorted.at(-1)!;
     const sameIdentity = Boolean(first.canonicalPlaceId && first.canonicalPlaceId === last.canonicalPlaceId)
       || normalizePlacePhrase(first.sourceText) === normalizePlacePhrase(last.sourceText);
-    if (sameIdentity && ["origin", "fixed_start"].includes(first.role) && last.role === "preferred") {
+    if (sameIdentity && ["origin", "fixed_start"].includes(first.role) && last.role === "preferred" && !boundStay(last)) {
       last.role = "fixed_end";
       last._roles.push("fixed_end");
     }
@@ -2103,7 +2113,8 @@ function buildDeterministicMentions(prompt: string, context: PlaceResolutionCont
   for (const mention of sorted) {
     const existing = mention.canonicalPlaceId
       ? deduped.find((item) => item.canonicalPlaceId === mention.canonicalPlaceId
-        && placeMentionJourneyRole(item.role) === placeMentionJourneyRole(mention.role))
+        && placeMentionJourneyRole(item.role) === placeMentionJourneyRole(mention.role)
+        && !(boundStay(item) && boundStay(mention) && item._start !== mention._start))
       : undefined;
     if (!existing) {
       deduped.push(mention);
@@ -2190,7 +2201,8 @@ export function resolveExplicitPlaceMentions(
     if (!matched) return unresolvedExplicitMention(input, order);
     return {
       ...matched,
-      mentionId: matched.order === order ? matched.mentionId : `${matched.mentionId}-${placeMentionJourneyRole(input.role)}-${order}`,
+      mentionId: input.sourceOccurrenceId ?? (matched.order === order ? matched.mentionId : `${matched.mentionId}-${placeMentionJourneyRole(input.role)}-${order}`),
+      provenance: [...matched.provenance, ...(input.sourceOccurrenceId ? [{ id: `stay-occurrence:${input.sourceOccurrenceId}`, label: 'Traveller stay occurrence', kind: 'context' as const, supports: 'A separate source occurrence has its own explicit stay quantity.' }] : [])],
       sourceText: input.sourceText,
       sourceTexts: [input.sourceText],
       normalizedPhrase: normalized,
@@ -2666,7 +2678,8 @@ function deduplicateProviderMentions(mentions: ResolvedPlaceMention[]) {
   for (const mention of mentions) {
     const existingIndex = mention.canonicalPlaceId
       ? deduplicated.findIndex((item) => item.canonicalPlaceId === mention.canonicalPlaceId
-        && placeMentionJourneyRole(item.role) === placeMentionJourneyRole(mention.role))
+        && placeMentionJourneyRole(item.role) === placeMentionJourneyRole(mention.role)
+        && !(item.mentionId !== mention.mentionId && item.provenance.some(source => source.id.startsWith('stay-occurrence:')) && mention.provenance.some(source => source.id.startsWith('stay-occurrence:'))))
       : -1;
     if (existingIndex < 0) {
       deduplicated.push({ ...mention, sourceTexts: [...mention.sourceTexts], provenance: [...mention.provenance] });
