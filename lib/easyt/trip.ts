@@ -124,13 +124,14 @@ export function tripIntentForTrip(trip: Pick<EasyTTrip, "startDate" | "endDate" 
     travellers: Math.max(1, Math.min(12, Math.round(saved.travellers || fallback.travellers))),
     timing: { ...fallback.timing, ...saved.timing, durationDays },
     hardConstraints: { ...fallback.hardConstraints, ...saved.hardConstraints, mustSeeStopIds: saved.hardConstraints?.mustSeeStopIds ?? fallback.hardConstraints.mustSeeStopIds, optionalStopIds: saved.hardConstraints?.optionalStopIds ?? [], fixedCommitments: saved.hardConstraints?.fixedCommitments ?? [] },
-    preferences: { ...fallback.preferences, ...saved.preferences, transportModes: saved.preferences?.transportModes?.length ? saved.preferences.transportModes : fallback.preferences.transportModes, interests: normalizeTripInterests(saved.preferences?.interests), dislikes: saved.preferences?.dislikes ?? [] },
+    preferences: { ...fallback.preferences, ...saved.preferences, transportModes: saved.version === 2 ? saved.preferences?.transportModes ?? fallback.preferences.transportModes : saved.preferences?.transportModes?.length ? saved.preferences.transportModes : fallback.preferences.transportModes, interests: normalizeTripInterests(saved.preferences?.interests), dislikes: saved.preferences?.dislikes ?? [] },
   };
   const savedJourneyEnd = trip.brief.journeyEnd ?? compatible.journeyEnd;
   if (compatible.version === 2) delete compatible.journeyEnd;
   else if (savedJourneyEnd !== undefined) compatible.journeyEnd = normalizeJourneyEnd(savedJourneyEnd);
   const structured = trip.brief.structuredBrief;
-  if (!structured) return compatible;
+  // The accepted v2 document owns current decisions; capture remains source evidence.
+  if (compatible.version === 2 || !structured) return compatible;
   const routePreferences = routePreferencesFromStructuredBrief(structured);
   const fixedCommitments = fixedTripCommitmentsFromStructuredBrief(structured);
   return {

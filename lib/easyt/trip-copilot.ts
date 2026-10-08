@@ -135,10 +135,12 @@ const finiteOrNull = (value: number | null) => typeof value === "number" && Numb
 
 function hardConstraintLabels(trip: EasyTTrip) {
   const structured = trip.brief.structuredBrief;
-  if (!structured) {
+  if (!structured || trip.brief.intent?.version === 2) {
+    const intent = tripIntentForTrip(trip);
     return [
-      ...(trip.brief.intent?.hardConstraints.avoidDriving ? ["no driving"] : []),
-      ...(trip.brief.intent?.hardConstraints.fixedCommitments ?? []).map((item) => cleanText(`fixed commitment: ${item.label}${item.date ? ` on ${item.date}` : ""}`, 220)),
+      ...(intent.hardConstraints.avoidDriving ? ["no driving"] : []),
+      ...(structured?.hardConstraints ?? []).filter(item => item.type !== "no-driving" && item.type !== "fixed-commitment").map(item => cleanText(`${item.type}: ${"value" in item ? item.value : item.duration.value}`, 220)),
+      ...(intent.hardConstraints.fixedCommitments ?? []).map((item) => cleanText(`fixed commitment: ${item.label}${item.date ? ` on ${item.date}` : ""}`, 220)),
     ];
   }
   return structured.hardConstraints.slice(0, 20).map((constraint) => {
@@ -154,7 +156,8 @@ function hardConstraintLabels(trip: EasyTTrip) {
 
 function preferenceProjection(trip: EasyTTrip): TripCopilotProjection["trip"]["preferences"] {
   const structured = trip.brief.structuredBrief;
-  const canonicalInterests = tripIntentForTrip(trip).preferences.interests;
+  const canonicalIntent = tripIntentForTrip(trip);
+  const canonicalInterests = canonicalIntent.preferences.interests;
   const preference = trip.brief.budgetPreference;
   const projectedBudget = preference
     ? preference.source === "cleared" || preference.source === "fallback"
@@ -164,10 +167,10 @@ function preferenceProjection(trip: EasyTTrip): TripCopilotProjection["trip"]["p
       ? structured.budget?.value ?? null
       : trip.brief.intent?.preferences.budgetSensitivity ?? trip.brief.budgetBand;
   if (structured) return {
-    pace: structured.pace?.value ?? null,
+    pace: trip.brief.intent?.version === 2 ? canonicalIntent.preferences.pace : structured.pace?.value ?? null,
     budget: projectedBudget,
     interests: canonicalInterests,
-    transport: structured.transportPreferences.map((item) => item.value).slice(0, 10),
+    transport: trip.brief.intent?.version === 2 ? canonicalIntent.preferences.transportModes.slice(0, 10) : structured.transportPreferences.map((item) => item.value).slice(0, 10),
     accommodation: structured.accommodationPreferences.map((item) => cleanText(item.value)).slice(0, 10),
     hardConstraints: hardConstraintLabels(trip),
   };

@@ -233,7 +233,7 @@ export function CanonicalPlaceAutocomplete({
     .filter((suggestion) => !excludeCanonicalIds.includes(suggestion.canonicalPlaceId))
     .filter((suggestion) => !requireCoordinates || Boolean(suggestion.coordinates))
     .filter((suggestion, index, all) => all.findIndex((candidate) => candidate.canonicalPlaceId === suggestion.canonicalPlaceId) === index)
-    .slice(0, 8), searchIntent), [catalogSuggestions, excludeCanonicalIds, providerSuggestions, requireCoordinates, searchIntent]);
+    , searchIntent, deferredValue).slice(0, 8), [catalogSuggestions, excludeCanonicalIds, providerSuggestions, requireCoordinates, searchIntent, deferredValue]);
   const searching = value !== deferredValue || providerSearching;
   const choose = (suggestion: CanonicalPlaceSuggestion) => {
     onSelect(suggestion);

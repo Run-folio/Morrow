@@ -1,3 +1,5 @@
+import { findCatalogPlaceById, normalizeCatalogPhrase } from "./place-catalog.ts";
+
 export type PlaceAutocompleteKeyResult = {
   activeIndex: number;
   choose: boolean;
@@ -12,8 +14,8 @@ export type PlaceAutocompleteIdentity = {
 
 /** Keep the provider's relevance order, but make an exact same-name route
  * endpoint the first choice when an administrative area shares its label. */
-export function prioritizeRouteStopSuggestions<T extends { name: string; placeType?: string; routability?: string }>(
-  suggestions: readonly T[], intent: "route-stop" | "planning-area" | "anchor" | "unknown",
+export function prioritizeRouteStopSuggestions<T extends { name: string; canonicalPlaceId?: string; placeType?: string; routability?: string }>(
+  suggestions: readonly T[], intent: "route-stop" | "planning-area" | "anchor" | "unknown", query?: string,
 ): T[] {
   if (intent !== "route-stop") return [...suggestions];
   const result = [...suggestions];
@@ -26,7 +28,17 @@ export function prioritizeRouteStopSuggestions<T extends { name: string; placeTy
       Number(right.routability === "direct_destination") - Number(left.routability === "direct_destination"));
     slots.forEach((index, offset) => { result[index] = ordered[offset]!; });
   }
-  return result;
+  // A whole-query country is a planning intent even in the route-stop field.
+  // Require its catalog identity/type and exact name or curated alias; qualified
+  // locality queries deliberately keep the provider/endpoint relevance order.
+  const phrase = normalizeCatalogPhrase(query ?? "");
+  const exactCountry = (item: T) => {
+    if (!phrase || item.placeType !== "country" || !item.canonicalPlaceId) return false;
+    const entry = findCatalogPlaceById(item.canonicalPlaceId);
+    return entry?.placeType === "country"
+      && [entry.canonicalName, ...entry.aliases].some(label => normalizeCatalogPhrase(label) === phrase);
+  };
+  return [...result.filter(exactCountry), ...result.filter(item => !exactCountry(item))];
 }
 
 /** Treat canonical identity as authoritative. Display text is only a fallback
