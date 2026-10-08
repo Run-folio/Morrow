@@ -11,7 +11,7 @@ export async function resolve(specifier,context,nextResolve){
   if(local.replace(/\.ts$/,'')===path.join(root,'lib/easyt/owner'))return {url:fixtures,shortCircuit:true};
   if(local.replace(/\.ts$/,'')===path.join(root,'lib/easyt/database'))return {url:process.env.BATCH14_DATABASE_MODE==='disposable'?pathToFileURL(path.join(root,'tests/helpers/batch14-repository-db.ts')).href:fixtures,shortCircuit:true};
   if(process.env.BATCH14_API_MOCK==='1'&&local.replace(/\.ts$/,'')===path.join(root,'lib/easyt/repository'))return {url:fixtures,shortCircuit:true};
-  if(local.replace(/\.ts$/,'')===path.join(root,'lib/easyt/multimodal-transfer-resolution.server'))return {url:'data:text/javascript,export async function resolveTripTransferJourneys(trip){return trip;}',shortCircuit:true};
+  if(local.replace(/\.ts$/,'')===path.join(root,'lib/easyt/multimodal-transfer-resolution.server'))return {url:process.env.BATCH14_RESOLVER_MODE==='actual'?pathToFileURL(path.join(root,'lib/easyt/multimodal-transfer-resolution.ts')).href:'data:text/javascript,export async function resolveTripTransferJourneys(trip){return trip;}',shortCircuit:true};
   for(const candidate of [local,local+'.ts',local+'.tsx',path.join(local,'index.ts')]){
    try{await access(candidate);return {url:pathToFileURL(candidate).href,shortCircuit:true};}catch{}
   }

@@ -5,6 +5,11 @@ import { promoteTripForOwner, saveTripForOwner, getTripForOwner, archiveTripForO
 import { EasyTTripSaveConflictError } from '../../lib/easyt/trip-continuity.ts';
 import { TripDocumentReadError, requireReadableTripDocument } from '../../lib/easyt/trip-document.ts';
 import { duplicateTripDocument, remapTripStopReferences } from '../../lib/easyt/trip-promotion.ts';
+import { a17TripFixture } from '../fixtures/batch14-a17-trip.ts';
+import { tripBuildDocumentsCanonicalEquivalent } from '../../lib/easyt/trip-promotion.ts';
+import { reconcileBuilderDependencies } from '../../lib/easyt/trip-builder-reconciliation.ts';
+import { resolveCanonicalTransferJourneys } from '../../lib/easyt/multimodal-transfer-resolution.ts';
+import { routeProjectionInputKey } from '../../lib/easyt/trip-route-intent.ts';
 import { builderDocumentFingerprint } from '../../lib/easyt/trip-builder-document-commit.ts';
 import { builderStructuralSnapshot } from '../../lib/easyt/trip-builder-edit.ts';
 import { prepareBuilderHandlerEdit } from '../../lib/easyt/trip-builder-handler-contract.ts';
@@ -16,6 +21,41 @@ async function snapshot(){return Promise.all(['easyt_trips','easyt_stops','easyt
 }));}
 try{
  await sql`insert into easyt_users(id,email) values ('owner-a','batch14-a@example.invalid'),('owner-b','batch14-b@example.invalid')`;
+
+ if(process.env.BATCH14_RESOLVER_MODE==='actual'){
+  let sequence=0;const source=requireReadableTripDocument(duplicateTripDocument(a17TripFixture(),{id:'batch14-a17-sql',now:'2026-10-08T10:00:00.000Z',nextId:()=>String(++sequence)}));
+  const original=await promoteTripForOwner('owner-a',source);assert.equal(original.outcome,'promoted');
+  const owned=requireReadableTripDocument(original.trip),hue=owned.brief.intent.route.destinations.find(intent=>intent.sourceText==='Hue')!;
+  const removal=prepareBuilderHandlerEdit(owned,{kind:'remove-destination',intentId:hue.id},builderDocumentFingerprint(owned));assert.ok(removal.ok);
+  const submitted=removal.trip,ack=requireReadableTripDocument(await saveTripForOwner('owner-a',submitted));
+  assert.equal(tripBuildDocumentsCanonicalEquivalent(submitted,ack,'owner-a'),true);
+  assert.deepEqual(ack.stops.map(stop=>stop.nights),[3,4,3]);assert.equal(ack.brief.nightAllocation!.totalAvailableNights!-ack.brief.nightAllocation!.totalAllocatedNights!,2);
+  assert.deepEqual(ack.brief.bookings,owned.brief.bookings);assert.ok(ack.brief.retainedAuthoredContent?.entries.some(entry=>entry.sourceStop.name==='Hue'));
+  const prefix=ack.legs.filter(leg=>leg.routeMetadata.source==='necessary-reconciliation'&&leg.routeMetadata.pending===true);assert.ok(prefix.length>0);assert.equal(prefix.length,submitted.legs.filter(leg=>leg.routeMetadata.source==='necessary-reconciliation'&&leg.routeMetadata.pending===true).length);
+  assert.deepEqual(prefix,submitted.legs.filter(leg=>leg.routeMetadata.source==='necessary-reconciliation'&&leg.routeMetadata.pending===true));
+  const children=async(trip:typeof ack)=>{
+   const [row]=await sql`select document from easyt_trips where id=${trip.id}`;assert.deepEqual(row.document,trip);
+   const stops=await sql`select id,stop_order,name,country,nights,to_char(arrival_date,'YYYY-MM-DD') as arrival_date,to_char(departure_date,'YYYY-MM-DD') as departure_date from easyt_stops where trip_id=${trip.id} order by stop_order`;
+   assert.deepEqual(stops,trip.stops.map(stop=>({id:stop.id,stop_order:stop.order,name:stop.name,country:stop.country,nights:stop.nights,arrival_date:stop.arrivalDate,departure_date:stop.departureDate})));
+   const legs=await sql`select id,from_endpoint_id,to_endpoint_id,mode,provider,route_metadata from easyt_legs where trip_id=${trip.id} order by id`;
+   assert.deepEqual(legs,[...trip.legs].sort((a,b)=>a.id.localeCompare(b.id)).map(leg=>({id:leg.id,from_endpoint_id:leg.fromStopId,to_endpoint_id:leg.toStopId,mode:leg.mode,provider:leg.provider,route_metadata:leg.routeMetadata})));
+   const days=await sql`select id,stop_id,day_number,to_char(plan_date,'YYYY-MM-DD') as plan_date,notes from easyt_plan_items where trip_id=${trip.id} order by day_number`;
+   assert.deepEqual(days,trip.planItems.map(day=>({id:day.id,stop_id:day.stopId,day_number:day.dayNumber,plan_date:day.date,notes:day.notes})));
+  };
+  await children(ack);const readback=requireReadableTripDocument((await getTripForOwner('owner-a',ack.id))!);assert.deepEqual(readback,ack);
+  const pendingCopy=requireReadableTripDocument(duplicateTripDocument(submitted,{id:'batch14-a17-pending-promotion',now:submitted.updatedAt,nextId:()=>String(++sequence)}));
+  const promoted=await promoteTripForOwner('owner-a',pendingCopy);assert.equal(promoted.outcome,'promoted');assert.equal(tripBuildDocumentsCanonicalEquivalent(pendingCopy,promoted.trip,'owner-a'),true);
+  assert.deepEqual(promoted.trip.brief.cascadeStatus,pendingCopy.brief.cascadeStatus,'Targets were already remapped by duplicate');
+  await children(requireReadableTripDocument(promoted.trip));assert.deepEqual(await getTripForOwner('owner-a',pendingCopy.id),promoted.trip);
+  assert.equal((await promoteTripForOwner('owner-a',pendingCopy)).outcome,'already-canonical');
+  const before=await snapshot();await assert.rejects(saveTripForOwner('owner-b',ack));assert.deepEqual(await snapshot(),before);
+  const completed=reconcileBuilderDependencies(ack,ack.brief.cascadeStatus!.routeReconciliation!.residual).trip;
+  completed.legs=await resolveCanonicalTransferJourneys(completed.legs);assert.equal(completed.legs.some(leg=>leg.routeMetadata.pending===true),false);
+  assert.equal(completed.brief.intent.route.projectionInputKey,routeProjectionInputKey(completed));
+  const done=requireReadableTripDocument(await saveTripForOwner('owner-a',completed));assert.equal(tripBuildDocumentsCanonicalEquivalent(completed,done,'owner-a'),true);await children(done);assert.deepEqual(await getTripForOwner('owner-a',done.id),done);
+  const protectedRows=await snapshot(),bad=structuredClone(done);bad.planItems[0].date='invalid-date';await assert.rejects(saveTripForOwner('owner-a',bad));assert.deepEqual(await snapshot(),protectedRows);
+  console.log('A17 actual pure resolver: pending save/ACK/readback, promotion/retry, completed worker, exact JSONB/stop/leg/day rows, foreign owner and rollback PASS');
+ }
  // Candidate-specific live work + retained provenance through the actual promotion/CAS transaction.
  const original=requireReadableTripDocument(canonicalRouteFixture());let fixtureId=0;
  const workCopy=requireReadableTripDocument(duplicateTripDocument(original,{id:'batch14-live-work',now:original.updatedAt,nextId:()=>String(++fixtureId)}));
