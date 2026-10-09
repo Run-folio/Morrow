@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { overviewStopImage } from "../lib/easyt/trip-overview-imagery.ts";
+import { overviewStopImage, tripCoverImage } from "../lib/easyt/trip-overview-imagery.ts";
 import { routeDestinationPhoto } from "../lib/easyt/route-images.ts";
 import type { EasyTTrip, TripStop } from "../lib/easyt/trip.ts";
 
@@ -107,4 +107,54 @@ test("reviewed Seoul destination photo is reused even when stored in route hero 
  const stop={...delhi,id:'stop-seoul',name:'Seoul',country:'South Korea',canonicalPlaceId:'seoul'};
  const photo=overviewStopImage(tripFor(stop),stop);assert.ok(photo?.src);assert.match(photo!.sourceUrl??'',/Seoul/);assert.ok(photo!.licenseUrl);
  assert.equal(overviewStopImage(tripFor({...stop,country:'Unrelated country',canonicalPlaceId:undefined}),{...stop,country:'Unrelated country',canonicalPlaceId:undefined}),null);
+});
+
+test("trip cover selects the first destination occurrence, excluding endpoint and later-stop images", () => {
+  const first = { ...delhi, id: "first", order: 0 };
+  const later = { ...delhi, id: "later", name: "Kyoto", country: "Japan", order: 1 };
+  const trip = tripFor(first);
+  trip.brief.origin = "Los Angeles";
+  trip.brief.journeyEnd = { mode: "explicit", place: { name: "Seoul", country: "South Korea" } };
+  trip.stops = [later, first];
+  trip.planItems = [
+    { ...trip.planItems[0]!, id: "origin-day", stopId: `${trip.id}-origin`, image: "/journey/los-angeles.jpg" },
+    { ...trip.planItems[0]!, id: "later-day", stopId: later.id, image: "/journey/immersive/place-kyoto-1536.webp" },
+    { ...trip.planItems[0]!, id: "first-day", stopId: first.id, image: null },
+    { ...trip.planItems[0]!, id: "end-day", stopId: `${trip.id}-end`, image: "/journey/immersive/route-south-korea-1536.webp" },
+  ];
+  const before = JSON.stringify(trip);
+  assert.deepEqual(tripCoverImage(trip), overviewStopImage(trip, first));
+  assert.equal(JSON.stringify(trip), before, "cover selection cannot mutate the trip");
+});
+
+test("trip cover keeps an uncovered first destination neutral instead of borrowing a later photo", () => {
+  const first = { ...delhi, name: "Example Uncovered Base", country: "Example Country" };
+  const trip = tripFor(first);
+  trip.stops.push({ ...delhi, id: "later", order: 1 });
+  assert.equal(tripCoverImage(trip), null);
+  assert.equal(tripCoverImage({ ...trip, stops: [], planItems: [] }), null);
+});
+
+test("trip cover preserves the first occurrence's persisted image and attribution", () => {
+  const trip = tripFor(delhi, "https://example.test/first-destination.jpg");
+  assert.deepEqual(tripCoverImage(trip), overviewStopImage(trip, delhi));
+  assert.equal(tripCoverImage(trip)?.sourceUrl, "https://example.test/source");
+});
+
+test("trip cover follows accepted route order and repeated-stop occurrence IDs", () => {
+  const first = { ...delhi, id: "first-delhi", order: 0 };
+  const repeat = { ...delhi, id: "second-delhi", order: 1 };
+  const trip = tripFor(first, "https://example.test/first.jpg");
+  trip.stops = [repeat, first];
+  trip.planItems.unshift({ ...trip.planItems[0]!, id: "repeat-day", stopId: repeat.id, image: "https://example.test/repeat.jpg" });
+  assert.equal(tripCoverImage(trip)?.src, "https://example.test/first.jpg");
+  const reordered = { ...trip, stops: [{ ...first, order: 1 }, { ...repeat, order: 0 }] };
+  assert.equal(tripCoverImage(reordered)?.src, "https://example.test/repeat.jpg");
+  assert.equal(tripCoverImage(JSON.parse(JSON.stringify(reordered)))?.src, "https://example.test/repeat.jpg");
+});
+
+test("a real first overnight destination matching the origin remains eligible", () => {
+  const trip = tripFor(delhi);
+  trip.brief.origin = delhi.name;
+  assert.deepEqual(tripCoverImage(trip), overviewStopImage(trip, delhi));
 });

@@ -49,9 +49,6 @@
   border-radius: 13px;
   background: var(--morrovia-tint);
 }
-.desktopTripImage { display: contents; }
-.mobileTripImage { display: none; }
-.mobilePhotoSources { display: none; }
 
 .tripImage img {
   position: absolute;
@@ -66,36 +63,11 @@
   inset: 0;
   display: grid;
   place-content: center;
-  gap: 8px;
-  padding: 16px;
   background:
     radial-gradient(circle at 72% 24%, color-mix(in srgb, var(--morrovia-signal) 18%, transparent), transparent 24%),
     linear-gradient(145deg, var(--morrovia-tint), var(--morrovia-lilac));
   color: var(--morrovia-ink);
   text-align: center;
-}
-
-.tripImageFallback span {
-  display: grid;
-  width: 42px;
-  height: 42px;
-  margin: 0 auto;
-  place-items: center;
-  border-radius: 50%;
-  background: var(--morrovia-action);
-  color: #fff;
-  font-weight: 800;
-}
-
-.tripImageFallback small {
-  display: -webkit-box;
-  overflow: hidden;
-  color: var(--morrovia-ink-soft);
-  font-size: 11px;
-  font-weight: 650;
-  line-height: 1.35;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
 }
 
 .tripIdentity {
@@ -394,15 +366,9 @@
     grid-row: 1 / 3;
     border-radius: 9px;
   }
-  .desktopTripImage { display: none; }
-  .mobileTripImage { display: contents; }
-  .mobilePhotoSources { display: block; color: var(--morrovia-ink-soft); font: var(--morrovia-type-fine-print); }
-  .mobilePhotoSources summary { display: flex; align-items: center; width: fit-content; min-height: 44px; cursor: pointer; }
-  .mobilePhotoSources > div { display: flex; flex-wrap: wrap; gap: 4px 12px; padding: 4px 0; }
-  .mobilePhotoSources a { color: var(--morrovia-action); }
-
-  .tripImageFallback small {
-    display: none;
+  .tripImage .coverPhotoCredit[data-placement] {
+    right: 0;
+    bottom: 0;
   }
 
   .tripIdentity h1 {
@@ -462,12 +428,6 @@
     width: 44px;
     height: 44px;
     border-radius: calc(var(--morrovia-control-radius) - 2px);
-  }
-
-  .tripImageFallback span {
-    width: 36px;
-    height: 36px;
-    font-size: 12px;
   }
 
   .tripIdentity h1 {

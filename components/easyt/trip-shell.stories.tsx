@@ -160,6 +160,48 @@ export const LongTitleAndMissingImage: Story = {
   },
 };
 
+const coverTrip: EasyTTrip = {
+  ...trip,
+  id: "storybook-first-destination-cover",
+  ownerId: null,
+  title: "Japan and South Korea",
+  brief: { ...trip.brief, origin: "Los Angeles", customTitle: "Japan and South Korea" },
+  stops: [
+    { ...trip.stops[0]!, id: "seoul", name: "Seoul", country: "South Korea", order: 1, latitude: 37.566, longitude: 126.9784 },
+    { ...trip.stops[0]!, id: "kanazawa", name: "Kanazawa", country: "Japan", order: 0, latitude: 36.5944, longitude: 136.6256 },
+  ],
+  legs: [],
+  planItems: [
+    { ...trip.planItems[0]!, id: "origin-day", stopId: "storybook-first-destination-cover-origin", image: "/journey/los-angeles.jpg" },
+    { ...trip.planItems[0]!, id: "seoul-day", stopId: "seoul", image: "/journey/immersive/route-south-korea-1536.webp" },
+  ],
+};
+
+export const FirstDestinationCover: Story = {
+  args: {
+    trip: coverTrip,
+    cacheTrip: false,
+    orientationAutoStart: false,
+    children: <TripWorkspacePlaceholder title="Overview" description="The cover depicts the first destination, Kanazawa, rather than the origin or a later photographed stop." />,
+  },
+};
+
+export const MissingFirstDestinationCover: Story = {
+  ...FirstDestinationCover,
+  args: {
+    ...FirstDestinationCover.args,
+    trip: { ...coverTrip, stops: coverTrip.stops.map(stop => stop.id === "kanazawa" ? { ...stop, name: "Example Uncovered Base", country: "Example Country" } : stop) },
+  },
+};
+
+export const FailedFirstDestinationCover: Story = {
+  ...FirstDestinationCover,
+  args: {
+    ...FirstDestinationCover.args,
+    trip: { ...coverTrip, planItems: [...coverTrip.planItems, { ...trip.planItems[0]!, id: "failed-first-day", stopId: "kanazawa", image: "/journey/example-missing-cover.jpg", sourceUrl: "https://example.test/first-destination-photo" }] },
+  },
+};
+
 export const GeneratedOneCountry: Story = {
   args: {
     trip: { ...trip, brief: { ...trip.brief, customTitle: null } },

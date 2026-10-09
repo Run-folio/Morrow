@@ -95,3 +95,9 @@ export function overviewStopImage(trip: EasyTTrip, stop: TripStop): OverviewPlac
     sourceLabel: local.sourceLabel ?? "Photo source",
   } : null;
 }
+
+/** The whole-trip cover depicts its first overnight occurrence, never an endpoint or a later stop. */
+export function tripCoverImage(trip: EasyTTrip): OverviewPlaceImage | null {
+  const firstDestination = [...trip.stops].sort((left, right) => left.order - right.order)[0];
+  return firstDestination ? overviewStopImage(trip, firstDestination) : null;
+}

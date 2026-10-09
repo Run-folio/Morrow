@@ -20,7 +20,6 @@ import {
   loadRememberedOwner,
 } from "@/lib/easyt/storage";
 import { isEasyTTrip, type EasyTTrip } from "@/lib/easyt/trip";
-import { describePhotoAttribution } from "@/lib/easyt/photo-attribution";
 import ResilientImage from "@/components/easyt/resilient-image";
 import { journeyReauthenticationPath, tripConflictResolutionActions } from "@/lib/easyt/trip-continuity";
 import { ownerBoundaryState } from "@/lib/easyt/private-browser-context";
@@ -35,7 +34,8 @@ import { tripRouteDisplayLabel } from "@/lib/easyt/trip-legs";
 import { importedLegacyRepairContextAllows, repairEligibleSpreadsheetV1Trip } from "@/lib/easyt/imported-trip-hydration";
 import { personalRouteHref } from "@/lib/easyt/personal-route";
 import { overnightAccommodationStops } from "@/lib/easyt/accommodation";
-import type { OverviewPlaceImage } from "@/lib/easyt/trip-overview-imagery";
+import { tripCoverImage } from "@/lib/easyt/trip-overview-imagery";
+import MorroviaPhotoCredit from "./morrovia-photo-credit";
 import { useTripMutationPersistence, type TripMutationPersistence } from "./use-trip-mutation-persistence";
 import styles from "./trip-shell.module.css";
 
@@ -57,10 +57,7 @@ export function useOptionalTripShellMutation() {
   return useContext(TripShellMutationContext);
 }
 
-export function TripShellIdentityAndActions({ mobilePhoto }: { mobilePhoto: OverviewPlaceImage | null }) {
-  const photoAttribution = mobilePhoto?.sourceUrl && mobilePhoto.sourceLabel
-    ? describePhotoAttribution({ credit: mobilePhoto.sourceLabel, authorHref: mobilePhoto.authorUrl, sourceHref: mobilePhoto.sourceUrl, licenseHref: mobilePhoto.licenseUrl })
-    : null;
+export function TripShellIdentityAndActions() {
   const mutation = useTripShellMutation();
   const trip = mutation.trip;
   const routeLabel = tripRouteDisplayLabel(trip);
@@ -100,16 +97,6 @@ export function TripShellIdentityAndActions({ mobilePhoto }: { mobilePhoto: Over
         <div><dt><MapPin aria-hidden="true" /><span className={styles.srOnly}>Overnight places</span></dt><dd>{overnightPlaceCount} {overnightPlaceCount === 1 ? "overnight place" : "overnight places"}</dd></div>
         <div><dt><Route aria-hidden="true" /><span className={styles.srOnly}>Transfers</span></dt><dd>{mutation.trip.legs.length} {mutation.trip.legs.length === 1 ? "transfer" : "transfers"}</dd></div>
       </dl>
-      {mobilePhoto?.sourceUrl && photoAttribution ? <details className={styles.mobilePhotoSources}>
-        <summary>Trip photo source</summary>
-        <div>{photoAttribution.kind === "unsplash" ? <>
-          <a href={photoAttribution.photographerHref} target="_blank" rel="noopener noreferrer">Photo by {photoAttribution.photographer}</a>
-          <a href={photoAttribution.sourceHref} target="_blank" rel="noopener noreferrer">Unsplash</a>
-        </> : <a href={photoAttribution.sourceHref} target="_blank" rel="noopener noreferrer">{photoAttribution.credit}</a>}
-          {photoAttribution.licenseHref ? <a href={photoAttribution.licenseHref} target="_blank" rel="noopener noreferrer">Licence</a> : null}
-          {mobilePhoto.fullCreditUrl ? <a href={mobilePhoto.fullCreditUrl}>Full credits</a> : null}
-        </div>
-      </details> : null}
     </div>
     <div className={styles.headerActions}>
       {trip.ownerId && mutation.saveState !== "idle" ? <MorroviaSaveStatus state={mutation.saveState} /> : null}
@@ -501,23 +488,17 @@ export function TripOverviewEntryBoundary() {
   return null;
 }
 
-export function TripShellImage({
-  src,
-  mobilePhoto,
-  alt,
-  routeLabel,
-  stopCount,
-}: {
-  src: string | null;
-  mobilePhoto?: OverviewPlaceImage | null;
-  alt: string;
-  routeLabel: string;
-  stopCount: number;
-}) {
+export function TripShellImage() {
+  const { trip } = useTripShellMutation();
+  const photo = tripCoverImage(trip);
+  const [displayedSrc, setDisplayedSrc] = useState<string | null>(null);
+  const onDisplayState = useCallback((displayed: boolean) => {
+    setDisplayedSrc(displayed ? photo?.src ?? null : null);
+  }, [photo?.src]);
   return (
     <div className={styles.tripImage}>
-      <span className={styles.desktopTripImage}><ResilientImage src={src} alt={alt} fallback={<div className={styles.tripImageFallback} role="img" aria-label={`${routeLabel} trip image unavailable`}><span>{stopCount || 1}</span><small>{routeLabel}</small></div>} /></span>
-      <span className={styles.mobileTripImage}><ResilientImage src={mobilePhoto?.src} alt={mobilePhoto?.alt ?? alt} fallback={<div className={styles.tripImageFallback} role="img" aria-label={`${routeLabel} trip image unavailable`}><span>{stopCount || 1}</span><small>{routeLabel}</small></div>} /></span>
+      <ResilientImage src={photo?.src} alt={photo?.alt ?? ""} onDisplayState={onDisplayState} fallback={<div className={styles.tripImageFallback} role="img" aria-label={`${tripDisplayTitle(trip)} trip image unavailable`} />} />
+      {photo?.sourceLabel && displayedSrc === photo.src ? <MorroviaPhotoCredit className={styles.coverPhotoCredit} size="compact" placement="bottom-right" ownership={photo.provenance === "reviewed-morrovia-first-party" ? "morrovia" : "unknown"} credit={photo.sourceLabel} photoLabel={photo.alt} authorLabel={photo.author} authorHref={photo.authorUrl} sourceLabel={photo.sourceUrl ? "Source" : undefined} sourceHref={photo.sourceUrl} licenseLabel={photo.license} licenseHref={photo.licenseUrl} fullCreditHref={photo.fullCreditUrl} /> : null}
     </div>
   );
 }

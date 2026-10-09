@@ -8,14 +8,27 @@ const css = readFileSync("components/easyt/trip-shell.module.css", "utf8");
 const resolver = readFileSync("components/easyt/trip-shell-resolver.tsx", "utf8");
 
 test("shared shell keeps one action and navigation owner with valid mobile imagery", () => {
-  assert.match(shell, /<TripShellIdentityAndActions mobilePhoto=\{sharedPhoto\}\s*\/>/);
+  assert.match(shell, /<TripShellIdentityAndActions\s*\/>/);
+  assert.match(shell, /<TripShellImage\s*\/>/);
   assert.match(shell, /<TripShellNavigation tripId=\{trip\.id\}/);
   assert.doesNotMatch(shell, /itineraryPresentationImages/);
-  assert.match(shell, /routeImageCredit|overviewStopImage/);
+  assert.match(client, /const \{ trip \} = useTripShellMutation\(\);[\s\S]*const photo = tripCoverImage\(trip\)/);
   assert.match(client, /personalRouteHref\(trip\.id\)/);
   assert.match(client, /tripBuilderHref\(trip\.id, trip\.ownerId\)/);
   assert.match(client, /<WorkspaceOrientationLauncher onRenameTrip=\{openRename\}/);
   assert.match(client, /aria-current=\{active \? "page" : undefined\}/);
+});
+
+test("whole-trip cover has one responsive image owner, visible-image attribution and a neutral fallback", () => {
+  const imageOwner = client.slice(client.indexOf("export function TripShellImage"));
+  assert.equal((imageOwner.match(/<ResilientImage\s/g) ?? []).length, 1);
+  assert.doesNotMatch(imageOwner, /stopCount|routeLabel|<small>|mobilePhoto/);
+  assert.match(imageOwner, /role="img" aria-label=\{`\$\{tripDisplayTitle\(trip\)\} trip image unavailable`\}/);
+  assert.match(imageOwner, /displayedSrc === photo\.src \? <MorroviaPhotoCredit/);
+  assert.match(imageOwner, /licenseHref=\{photo\.licenseUrl\}/);
+  assert.match(imageOwner, /fullCreditHref=\{photo\.fullCreditUrl\}/);
+  assert.match(client, /<h1 id="trip-shell-title">\{tripDisplayTitle\(mutation\.trip\)\}/);
+  assert.match(client, /<p className=\{styles\.routeSummary\}>\{routeLabel\}/);
 });
 
 test("ordinary device promotion is one shared shell row while recovery remains prominent", () => {

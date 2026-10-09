@@ -183,7 +183,7 @@
     "rawColors": [
       {
         "value": "#fff",
-        "count": 508,
+        "count": 507,
         "examples": [
           "app/journey/account.module.css",
           "app/journey/admin/feedback/feedback.module.css",
@@ -5244,7 +5244,7 @@
     "observedSpacing": [
       {
         "value": "8px",
-        "count": 580,
+        "count": 579,
         "examples": [
           "app/journey/account.module.css",
           "app/journey/admin/feedback/feedback.module.css",
@@ -5264,7 +5264,7 @@
       },
       {
         "value": "12px",
-        "count": 514,
+        "count": 513,
         "examples": [
           "app/journey/about/about.module.css",
           "app/journey/account.module.css",
@@ -5314,7 +5314,7 @@
       },
       {
         "value": "16px",
-        "count": 286,
+        "count": 285,
         "examples": [
           "app/journey/about/about.module.css",
           "app/journey/account.module.css",
@@ -5324,7 +5324,7 @@
       },
       {
         "value": "4px",
-        "count": 258,
+        "count": 256,
         "examples": [
           "app/journey/about/about.module.css",
           "app/journey/account.module.css",
@@ -6071,7 +6071,7 @@
       },
       {
         "value": "50%",
-        "count": 92,
+        "count": 91,
         "examples": [
           "app/journey/account.module.css",
           "app/journey/easyt-navigation.module.css",
@@ -7964,9 +7964,9 @@
       "native-confirm": 0,
       "legacy-ui-import": 0,
       "deprecated-ui-owner": 0,
-      "raw-color": 1885,
+      "raw-color": 1884,
       "large-accent-surface": 0,
-      "raw-radius": 552,
+      "raw-radius": 551,
       "raw-shadow": 167,
       "raw-font-family": 0,
       "page-local-font-role": 0,
