@@ -1,3 +1,4 @@
+import {referenceGeographicAcceptanceMatches} from './place-reference.ts';
 import { captureJourneyBrief, type JourneyCaptureResult } from "./journey-capture.ts";
 import { catalogPlaceForProviderIdentity, isNegatedEndpointAt, isOvernightBaseEligible, normalizePlacePhrase, placeResolutionIssuesForMentions, type CanonicalPlaceSuggestion, type GeographicBounds, type PlaceRoutability, type ResolvedPlaceMention } from "./place-intelligence.ts";
 import { findCatalogPlaceById } from "./place-catalog.ts";
@@ -1584,7 +1585,13 @@ export function homepagePreflightIssues(snapshot: HomepageInputSnapshot, evidenc
   if (snapshot.mode === "stops") {
     if (!snapshot.entries.length) issues.push({ field: "destinations", code: "required" });
     snapshot.entries.forEach((entry) => {
-      if (!entry.selection) issues.push({ field: "destinations", code: "unresolved", entryId: entry.id });
+      const selection=entry.selection;
+      const providerId=selection?.provenance.find(source=>source.kind==='provider')?.id;
+      const reference=selection?.canonicalPlaceId.startsWith('reference:')||providerId?.startsWith('reference:');
+      if (!selection || !referenceGeographicAcceptanceMatches({...selection,providerId})
+        || reference&&!acceptedGeographicPlace({...selection,providerId},{...selection,providerId,routability:selection.routability??'direct_destination'})) {
+        issues.push({ field: "destinations", code: "unresolved", entryId: entry.id });
+      }
     });
   }
   if (snapshot.origin.state !== "selected" && snapshot.originInput?.trim()) issues.push({ field: "origin", code: "unresolved" });

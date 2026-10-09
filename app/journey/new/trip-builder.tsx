@@ -3642,6 +3642,7 @@ function TripBuilderDocument() {
       return false;
     }
     const selection = journeyEndpointPlaceFromSuggestion(suggestion);
+    if(!selection){setOriginError(ui.verifyOrigin);return false;}
     const resolutionVersion = originResolutionVersionRef.current + 1;
     if (builderEditSessionRef.current) {
       const state = builderEditSessionRef.current.getSnapshot();
@@ -3691,6 +3692,7 @@ function TripBuilderDocument() {
   };
 
   const selectJourneyEndSuggestion = (suggestion: CanonicalPlaceSuggestion) => {
+    const place=journeyEndpointPlaceFromSuggestion(suggestion);if(!place)return;
     journeyEndResolutionVersionRef.current += 1;
     setJourneyEndTouched(true);
     setJourneyEndInput(suggestion.name);
@@ -3698,7 +3700,7 @@ function TripBuilderDocument() {
     setJourneyEndResolutionAttempted(true);
     setJourneyEnd({
       mode: "explicit",
-      place: journeyEndpointPlaceFromSuggestion(suggestion),
+      place,
     });
   };
 
@@ -3735,7 +3737,8 @@ function TripBuilderDocument() {
       const selection:PlaceSelection={mentionId:mention.mentionId,kind:"base",selectedCanonicalPlaceId:suggestion.canonicalPlaceId,
         selectedName:suggestion.name,selectedPlaceType:suggestion.placeType,selectedParentCountries:[suggestion.country],
         provenance:suggestion.provenance[0]??{id:`builder-origin-base:${mention.mentionId}:${suggestion.canonicalPlaceId}`,label:"Traveller builder selection",kind:"builder",supports:"Selected the departure point within this area."}};
-      if(!dispatchAcceptedBuilderEdits([{kind:"origin",place:journeyEndpointPlaceFromSuggestion(suggestion)},{kind:"planning-selection",selection}])) return false;
+      const place=journeyEndpointPlaceFromSuggestion(suggestion);if(!place)return false;
+      if(!dispatchAcceptedBuilderEdits([{kind:"origin",place},{kind:"planning-selection",selection}])) return false;
       setOriginPlanningMentionId(null);originBeforePlanningClarificationRef.current=null;setTransientPlanningMentionId(null);
       setBaseSearchInputs(current=>({...current,[mention.mentionId]:""}));setBaseSearchErrors(current=>({...current,[mention.mentionId]:""}));return true;
     }
@@ -5213,7 +5216,8 @@ function TripBuilderDocument() {
                   onIntentSelect={(intent,suggestion)=>{
                     if(placeSuggestionRequiresBaseSelection(suggestion)){setStopError(language==="es"?"Elige una ciudad o una base para esta parada.":"Choose a city or overnight base for this stop.");return false}
                     const raw=mountedBuilder.session.getSnapshot().draft.fields.find(f=>f.binding.kind==="destination"&&f.binding.intentId===intent.id)?.raw??suggestion.name;
-                    return dispatchAcceptedBuilderEdit({kind:"replace-destination",intentId:intent.id,stopId:intent.stopIds[0],place:journeyEndpointPlaceFromSuggestion(suggestion)},{acceptedInput:{binding:{kind:"destination",intentId:intent.id},raw}});
+                    const place=journeyEndpointPlaceFromSuggestion(suggestion);if(!place)return false;
+                    return dispatchAcceptedBuilderEdit({kind:"replace-destination",intentId:intent.id,stopId:intent.stopIds[0],place},{acceptedInput:{binding:{kind:"destination",intentId:intent.id},raw}});
                   }}
                   personalize={(hasSavedTravelProfile || effectiveIntent.hardConstraints.fixedCommitments.length || effectiveIntent.hardConstraints.optionalStopIds.length) ? topPersonalize : null}
                   updateRouteFeedback={optimizationResult && optimizationResult.kind!=="proposal" ? <span role="status" className={styles.hint}>{optimizationResult.kind==="unavailable" ? (language==="es"?"No se pudo comprobar la ruta":"Route check unavailable") : (language==="es"?"No se encontró un orden mejor":"No better order found")}</span> : null}
@@ -5245,20 +5249,20 @@ function TripBuilderDocument() {
                     showHeading={false}
                     onStartChange={(value) => {builderEditSessionRef.current?.updateDraft({binding:{kind:"origin"},raw:value});setDetailsDraft((current) => ({ ...current, journeyOrigin: { name: value } }));}}
                     onStartSelect={(suggestion) => {
+                      const place=journeyEndpointPlaceFromSuggestion(suggestion);if(!place)return;
                       const editor=builderEditSessionRef.current;
-                      if(editor){const field=editor.getSnapshot().draft.fields.find(field=>field.binding.kind==="origin");dispatchAcceptedBuilderEdit({kind:"origin",place:journeyEndpointPlaceFromSuggestion(suggestion)},{acceptedInput:{binding:{kind:"origin"},raw:field?.raw??suggestion.name}});}
-                      else setDetailsDraft((current) => ({ ...current, journeyOrigin: journeyEndpointPlaceFromSuggestion(suggestion) }));
+                      if(editor){const field=editor.getSnapshot().draft.fields.find(field=>field.binding.kind==="origin");dispatchAcceptedBuilderEdit({kind:"origin",place},{acceptedInput:{binding:{kind:"origin"},raw:field?.raw??suggestion.name}});}
+                      else setDetailsDraft((current) => ({ ...current, journeyOrigin: place }));
                     }}
                     onEndChange={(value) => setDetailsDraft((current) => ({
                       ...current,
                       journeyEndInput: value,
                       journeyEnd: value.trim() ? { mode: "explicit", place: { name: value.trim() } } : { mode: "unknown" },
                     }))}
-                    onEndSelect={(suggestion) => setDetailsDraft((current) => ({
-                      ...current,
-                      journeyEndInput: suggestion.name,
-                      journeyEnd: { mode: "explicit", place: journeyEndpointPlaceFromSuggestion(suggestion) },
-                    }))}
+                    onEndSelect={(suggestion) => {
+                      const place=journeyEndpointPlaceFromSuggestion(suggestion);if(!place)return;
+                      setDetailsDraft((current) => ({...current,journeyEndInput:suggestion.name,journeyEnd:{mode:"explicit",place}}));
+                    }}
                     onEndModeChange={(mode) => {if(builderEditSessionRef.current) chooseJourneyEndMode(mode);else setDetailsDraft((current) => ({ ...current, journeyEndInput: "", journeyEnd: { mode } }));}}
                   />
                   {activePlaceMentions.filter((mention) => isOriginMention(mention) || isEndMention(mention)).map(renderPlaceResolution)}

@@ -143,10 +143,10 @@ export function NewTripStarter({ ownerId, language, travelProfile, onSubmit }: {
       language={language} startValue={startInput} endValue={endInput} endSelection={journeyEnd}
       showHeading={false} showHint={false}
       onStartChange={(value) => { setStartInput(value); update((current) => ({ ...current, origin: { state: "cleared" } })); }}
-      onStartSelect={(suggestion) => { setStartInput(suggestion.name); update((current) => ({ ...current, origin: { state: "selected", value: journeyEndpointPlaceFromSuggestion(suggestion) } })); }}
+      onStartSelect={(suggestion) => { const place=journeyEndpointPlaceFromSuggestion(suggestion);if(!place)return;setStartInput(suggestion.name); update((current) => ({ ...current, origin: { state: "selected", value: place } })); }}
       onEndChange={(value) => { setEndInput(value); update((current) => ({ ...current, journeyEnd: value.trim()
         ? { state: "selected", value: { mode: "explicit", place: { name: value.trim() } } } : { state: "cleared" } })); }}
-      onEndSelect={(suggestion) => { setEndInput(suggestion.name); update((current) => ({ ...current, journeyEnd: { state: "selected", value: { mode: "explicit", place: journeyEndpointPlaceFromSuggestion(suggestion) } } })); }}
+      onEndSelect={(suggestion) => { const place=journeyEndpointPlaceFromSuggestion(suggestion);if(!place)return;setEndInput(suggestion.name); update((current) => ({ ...current, journeyEnd: { state: "selected", value: { mode: "explicit", place } } })); }}
       onEndModeChange={(mode) => { setEndInput(""); update((current) => ({ ...current, journeyEnd: { state: "selected", value: { mode } } })); }}
     />}
     startDate={startDate} endDate={endDate}

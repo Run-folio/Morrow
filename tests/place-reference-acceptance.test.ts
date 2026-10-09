@@ -63,6 +63,6 @@ test('compiled generated catalog choices carry evidence through manual endpoint 
  const seed=referenceCountrySeeds('FJ')[0];
  for(const suggestion of [canonicalPlaceSuggestionForId(seed.canonicalPlaceId),canonicalPlaceSuggestionsForQuery(seed.canonicalName,['Fiji']).find(s=>s.canonicalPlaceId===seed.canonicalPlaceId)]){
   assert.ok(suggestion);assert.equal(suggestion.referenceSnapshotId,REFERENCE_SNAPSHOT_ID);
-  const endpoint=journeyEndpointPlaceFromSuggestion(suggestion);assert.ok(endpoint.geographicBinding);assert.equal(geographicallyReady(endpoint,'endpoint'),true);
+  const endpoint=journeyEndpointPlaceFromSuggestion(suggestion);assert.ok(endpoint);assert.ok(endpoint.geographicBinding);assert.equal(geographicallyReady(endpoint,'endpoint'),true);
  }
 });

@@ -1,3 +1,4 @@
+import {referenceGeographicAcceptanceMatches} from './place-reference.ts';
 import { canonicalPlaceFactsMatch, capturedEndpointConflict, endpointSourceIsNegated, endpointSourceIsTentative, isNegatedEndpointAt, isTentativeEndpointAt, isNegatedIntentPrefix, type CanonicalPlaceSuggestion, type ResolvedPlaceMention } from "./place-intelligence.ts";
 import { findCatalogPlaceById, matchCatalogPlace, type PlaceCatalogEntry } from "./place-catalog.ts";
 import type { JourneyEndSelection, JourneyEndpointPlace, TripBrief, TripStop } from "./trip.ts";
@@ -11,7 +12,10 @@ export type JourneyEndpointCandidate = JourneyEndpointPlace & {
   kind?: string;
   matchQuality?: string;
   rankScore?: number;
+  referenceSnapshotId?:string;
 };
+
+const isReferenceEndpointCandidate=(candidate:JourneyEndpointPlace)=>Boolean(candidate.providerId?.startsWith('reference:')||candidate.canonicalPlaceId?.startsWith('reference:'));
 
 /** Auto-accept only an exact, routable identity with a unique or materially
  * stronger canonical result. Closely ranked same-name candidates remain
@@ -22,9 +26,10 @@ export function resolveTypedJourneyEndpoint(
 ): { status: "resolved"; place: JourneyEndpointPlace } | { status: "ambiguous" | "unresolved" } {
   const query = normalise(input);
   if (!query) return { status: "unresolved" };
-  const routable = candidates.filter((candidate) => candidate.routability === "direct_destination"
+  const routable = candidates.filter(referenceGeographicAcceptanceMatches).filter((candidate) => candidate.routability === "direct_destination"
     && validCoordinates(candidate.coordinates)
-    && ["city", "town", "transport_gateway"].includes(candidate.placeType ?? candidate.kind ?? ""));
+    && ["city", "town", "transport_gateway"].includes(candidate.placeType ?? candidate.kind ?? "")
+    && (!isReferenceEndpointCandidate(candidate)||Boolean(acceptedGeographicPlace(candidate,candidate,'endpoint'))));
   const exact = routable.filter((candidate) => normalise(candidate.name) === query);
   const identities = exact.filter((candidate, index, all) => all.findIndex((item) => {
     if (candidate.canonicalPlaceId && item.canonicalPlaceId) return candidate.canonicalPlaceId === item.canonicalPlaceId;
@@ -33,11 +38,19 @@ export function resolveTypedJourneyEndpoint(
       && normalise(candidate.country) === normalise(item.country)
       && candidate.coordinates?.every((coordinate, coordinateIndex) => coordinate === item.coordinates?.[coordinateIndex]);
   }) === index);
-  const acceptedPlace = (candidate: JourneyEndpointCandidate) => canonicalJourneyEndpointPlace(acceptedGeographicPlace(candidate, candidate, 'endpoint') ?? candidate);
-  if (identities.length === 1) return { status: "resolved", place: acceptedPlace(identities[0]!) };
+  const acceptedPlace = (candidate: JourneyEndpointCandidate) => {
+    const accepted=acceptedGeographicPlace(candidate,candidate,'endpoint');
+    if(!accepted&&isReferenceEndpointCandidate(candidate))return undefined;
+    return canonicalJourneyEndpointPlace(accepted??candidate);
+  };
+  if (identities.length === 1) {
+    const place=acceptedPlace(identities[0]!);
+    return place?{status:'resolved',place}:{status:'unresolved'};
+  }
   const ranked = identities.filter((candidate) => Number.isFinite(candidate.rankScore)).sort((left, right) => (right.rankScore ?? 0) - (left.rankScore ?? 0));
   if (ranked.length > 1 && (ranked[0]!.rankScore ?? 0) - (ranked[1]!.rankScore ?? 0) >= 12) {
-    return { status: "resolved", place: acceptedPlace(ranked[0]!) };
+    const place=acceptedPlace(ranked[0]!);
+    return place?{status:'resolved',place}:{status:'unresolved'};
   }
   return { status: routable.length ? "ambiguous" : "unresolved" };
 }
@@ -63,7 +76,9 @@ export function canonicalJourneyEndpointPlace(place: JourneyEndpointPlace): Jour
   };
 }
 
-export function journeyEndpointPlaceFromSuggestion(suggestion: CanonicalPlaceSuggestion): JourneyEndpointPlace {
+export function journeyEndpointPlaceFromSuggestion(suggestion: CanonicalPlaceSuggestion): JourneyEndpointPlace | undefined {
+  const providerId=suggestion.provenance.find((source) => source.kind === "provider")?.id;
+  if(!referenceGeographicAcceptanceMatches({...suggestion,providerId}))return undefined;
   const place=canonicalJourneyEndpointPlace({
     name: suggestion.name,
     canonicalPlaceId: suggestion.canonicalPlaceId,
@@ -71,7 +86,8 @@ export function journeyEndpointPlaceFromSuggestion(suggestion: CanonicalPlaceSug
     providerId: suggestion.provenance.find((source) => source.kind === "provider")?.id,
     coordinates: suggestion.coordinates,
   });
-  return acceptedGeographicPlace(place,{...suggestion,providerId:place.providerId},'endpoint')??place;
+  const accepted=acceptedGeographicPlace(place,{...suggestion,providerId:place.providerId},'endpoint');
+  return accepted??(isReferenceEndpointCandidate(place)?undefined:place);
 }
 
 /** Known catalogue identities must agree with their country and coordinates.

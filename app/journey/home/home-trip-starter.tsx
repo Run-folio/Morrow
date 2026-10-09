@@ -381,7 +381,7 @@ export default function HomeTripStarter() {
           requireCoordinates showPlaceType={false} disabled={sessionPending || recoveryBlocked || loading}
           onChange={value => updateSnapshot(current => ({ ...current, originInput: value, origin: { state: "cleared" } }))}
           onClear={() => updateSnapshot(current => ({ ...current, originInput: "", origin: { state: "cleared" } }))}
-          onSelect={suggestion => updateSnapshot(current => ({ ...current, originInput: suggestion.label, origin: { state: "selected", value: journeyEndpointPlaceFromSuggestion(suggestion) } }))} /></div>,
+          onSelect={suggestion => {const place=journeyEndpointPlaceFromSuggestion(suggestion);if(place)updateSnapshot(current => ({ ...current, originInput: suggestion.label, origin: { state: "selected", value: place } }));}} /></div>,
         routeSummary: <span>{[summary, `${travellers} ${language === "es" ? "viajeros" : "travellers"}`, snapshot.budget.state === "selected" ? ({ value: language === "es" ? "Económico" : "Value", mid: language === "es" ? "Gama media" : "Mid-range", high: language === "es" ? "Lujo" : "Luxury" })[snapshot.budget.value] : ""].filter(Boolean).join(" · ")}</span>,
       },
       mode: snapshot.mode,

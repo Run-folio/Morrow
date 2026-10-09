@@ -165,6 +165,7 @@ test("endpoint replacement drops every stale East Asian identity field", () => {
     provenance: [{ id: "nominatim:cancun", label: "Global place provider", kind: "provider", supports: "Selected place" }],
   };
   const replacement = journeyEndpointPlaceFromSuggestion(suggestion);
+  assert.ok(replacement);
   assert.notDeepEqual(replacement, stale);
   assert.deepEqual(replacement, { ...cancun, providerId: "nominatim:cancun" });
   assert.equal(journeyEndpointIdentityIsCoherent(replacement), true);
