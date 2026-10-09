@@ -1049,8 +1049,7 @@ function TripBuilderDocument() {
               const seedId=handoffStopOccurrenceId(mention,handoffOccurrenceMentionIdsRef.current);
               const seed=seedById.get(seedId);
               const oldStop=intent.stopIds.length===1?trip.stops.find(stop=>stop.id===intent.stopIds[0]):undefined;
-              if(seed && oldStop && (oldStop.name!==seed.name || oldStop.canonicalPlaceId!==seed.canonicalPlaceId
-                || oldStop.providerId!==seed.providerId || (seed.coordinates && JSON.stringify([oldStop.longitude,oldStop.latitude])!==JSON.stringify(seed.coordinates))))return;
+              if(seed && oldStop && savedTargetKey(stopGeographicPlace(oldStop))!==savedTargetKey(seed))return;
               if(seed && !oldStop && (intent.resolution==='resolved' || intent.stopIds.length))return;
               if(!seed && (intent.resolution==='resolved' || intent.stopIds.length))return;
             }
@@ -1088,7 +1087,7 @@ function TripBuilderDocument() {
             const intent=trip.brief.intent.route.destinations.find(item=>item.id===mention.mentionId);
             const stopId=intent?.stopIds.length===1?intent.stopIds[0]!:handoffStopOccurrenceId(mention,handoffOccurrenceMentionIdsRef.current);
             const oldStop=trip.stops.find(stop=>stop.id===stopId),seed=seedById.get(stopId);
-            if(oldStop && seed && (oldStop.name!==seed.name || oldStop.canonicalPlaceId!==seed.canonicalPlaceId || oldStop.providerId!==seed.providerId))return;
+            if(oldStop && seed && savedTargetKey(stopGeographicPlace(oldStop))!==savedTargetKey(seed))return;
             const place=acceptedGeographicPlace({name:mention.canonicalName,coordinates:chosen.coordinates,canonicalPlaceId:mention.canonicalPlaceId??chosen.canonicalPlaceId??(chosen.providerId?`open-world:${chosen.providerId}`:undefined),country:chosen.country,providerId:chosen.providerId},chosen,isOriginMention(mention)?'endpoint':'stop');
             if(!place)return;
             const command=isOriginMention(mention)?{kind:"origin" as const,place}:builderPlaceCommand(trip,{stopId,intentId:intent?.id,place});
@@ -1108,8 +1107,7 @@ function TripBuilderDocument() {
             const stopId = handoffStopOccurrenceId(mention, handoffOccurrenceMentionIdsRef.current);
             const seed = seedById.get(stopId);
             setStops((current) => current.some((stop) => stop.id === stopId
-              && stop.name === seed?.name && stop.canonicalPlaceId === seed?.canonicalPlaceId
-              && stop.providerId === seed?.providerId)
+              && seed && savedTargetKey(stop) === savedTargetKey(seed))
               ? mergeHandoffLocationChoice(current, mention, chosen, stopId) : current);
           }
       };

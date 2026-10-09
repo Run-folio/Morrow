@@ -576,7 +576,7 @@ export function JourneyMapPlannerWorkspace({
       : customBrief
         ? makeCustomJourney(customBrief)
         : ({ title: march2027Journey.title, dateRange: march2027Journey.dateRange, stops: march2027Journey.stops, legs: march2027Journey.legs, calendar: journeyCalendar });
-    return customBrief ? { ...base, stops: base.stops.map((stop) => ({ ...stop, coordinates: resolvedCoordinates[stop.id] ?? stop.coordinates, description: placeMedia[stop.id]?.description ?? stop.description })) } : base;
+    return customBrief ? { ...base, stops: base.stops.map((stop) => ({ ...stop, coordinates: customTrip ? stop.coordinates : resolvedCoordinates[stop.id] ?? stop.coordinates, description: placeMedia[stop.id]?.description ?? stop.description })) } : base;
   }, [customBrief, customTrip, resolvedCoordinates, placeMedia]);
   const isCustomJourney = Boolean(customBrief);
   // The persisted EasyT trip is the canonical planner document. The legacy
@@ -2655,7 +2655,8 @@ export function JourneyMapPlannerWorkspace({
   }, [customBrief, customTrip]);
 
   useEffect(() => {
-    if (!customBrief) return;
+    // Canonical locations require accepted entity evidence, including after reload.
+    if (!customBrief || customTrip) return;
     const places = (customTrip ? makeEasyTJourney(customTrip) : makeCustomJourney(customBrief)).stops;
     if (!places.length) return;
     let active = true;

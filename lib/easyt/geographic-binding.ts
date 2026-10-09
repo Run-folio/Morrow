@@ -98,7 +98,7 @@ export function guardTripRoutingGeometry<T extends EasyTTrip>(trip:T):T {
   distanceKm:null,straightLineDistanceKm:null,routedDistanceKm:null,durationMinutes:null,headlineMinutes:null,doorToDoorMinutes:null,usableDayLoss:null,
   fromEndpoint:leg.fromEndpoint?{...leg.fromEndpoint,coordinates:ready.get(leg.fromStopId)?leg.fromEndpoint.coordinates:null}:undefined,
   toEndpoint:leg.toEndpoint?{...leg.toEndpoint,coordinates:ready.get(leg.toStopId)?leg.toEndpoint.coordinates:null}:undefined,
-  segments:undefined,routeMetadata:{source:'unverified-geography'},provider:'Confirm the affected location to assess this connection.',scheduleNeedsChecking:true};
+  roadEstimate:undefined,routeGeometry:undefined,segments:undefined,routeMetadata:{source:'unverified-geography'},provider:'Confirm the affected location to assess this connection.',scheduleNeedsChecking:true};
  const projectedOrigin=origin&& !ready.get(`${trip.id}-origin`)?{...origin,coordinates:undefined}:origin;
  const projectedEnd=end?.mode==='explicit'&&!ready.get(`${trip.id}-end`)?{...end,place:{...end.place,coordinates:undefined}}:end;
  return {...trip,brief:{...trip.brief,originCoordinates:ready.get(`${trip.id}-origin`)?trip.brief.originCoordinates:null,

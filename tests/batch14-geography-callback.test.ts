@@ -13,16 +13,16 @@ import {builderPlaceCommand,prepareBuilderHandlerEdit} from '../lib/easyt/trip-b
 import {builderDocumentFingerprint} from '../lib/easyt/trip-builder-document-commit.ts';
 import {authoredContentKey} from '../lib/easyt/trip-retained-authored-content.ts';
 
-import {acceptedGeographicPlace} from '../lib/easyt/geographic-binding.ts';
+import {acceptedGeographicPlace,geographicInputKey,stopGeographicPlace} from '../lib/easyt/geographic-binding.ts';
 
 // Replays the actual Builder callback; synthetic owner/document, frozen candidates.
 const fixtures=JSON.parse(readFileSync(new URL('./fixtures/batch14-city-region-candidates.json',import.meta.url),'utf8'));
 const lima=fixtures[0],region=lima.choices.find((c:any)=>c.placeType==='region');
-function actualCallbackHarness(){
+function actualCallbackHarness(initialCoordinates?:[number,number]){
  const require=createRequire(new URL('../package.json',import.meta.url)),ts=require('typescript');
  let trip=requireReadableTripDocument(canonicalRouteFixture()),revision=1,accepted=0;
  const mention=structuredClone(lima.mention),id=trip.stops[0].id;
- trip.stops[0]={...trip.stops[0],name:'Lima',country:'Peru',canonicalPlaceId:'lima',latitude:null,longitude:null};
+ trip.stops[0]={...trip.stops[0],name:'Lima',country:'Peru',canonicalPlaceId:'lima',providerId:lima.expected.providerId,latitude:initialCoordinates?.[1]??null,longitude:initialCoordinates?.[0]??null};
  trip.brief.intent.route.destinations[0]={...trip.brief.intent.route.destinations[0],id:mention.mentionId,sourceText:'Lima',selectedPlace:{name:'Lima',country:'Peru',canonicalPlaceId:'lima'},requestedNights:trip.stops[0].nights};
  trip.brief.intent.route.orderAuthority='manual';
  trip.brief.structuredBrief={...captureJourneyBrief('Lima').structuredBrief,placeMentions:[mention]};
@@ -31,11 +31,13 @@ function actualCallbackHarness(){
   builderEditSessionRef:{current:{getSnapshot:()=>({trip,inputRevision:revision,browserOwnerId:'owner-a'})}},
   activeBrowserOwnerIdRef:{current:'owner-a'},lookupOwnerId:'owner-a',lookupTripId:trip.id,
   removedPlaceMentionIdsRef:{current:[]},placeSelectionsRef:{current:[]},setHandoffResolutionStatuses:()=>{},
-  setLocationChoices:(fn:any)=>{choices=fn(choices)},handoffOutcomeIsCurrent,retireHandoffResolutionStatus,preferredHandoffLocationChoice,acceptedGeographicPlace,authoredContentKey,
+  setLocationChoices:(fn:any)=>{choices=fn(choices)},handoffOutcomeIsCurrent,retireHandoffResolutionStatus,preferredHandoffLocationChoice,acceptedGeographicPlace,authoredContentKey,geographicInputKey,stopGeographicPlace,
   isOriginMention:(m:any)=>m.role==='origin'||m.role==='fixed_start',draft:{},originResolutionVersionRef:{current:0},originVersion:0,
-  seedById:new Map(trip.stops.map(s=>[s.id,{...s,coordinates:[s.longitude,s.latitude]}])),handoffOccurrenceMentionIdsRef:{current:{[id]:mention.mentionId}},handoffStopOccurrenceId,builderPlaceCommand,
+  seedById:new Map(trip.stops.map(s=>[s.id,stopGeographicPlace(s)])),handoffOccurrenceMentionIdsRef:{current:{[id]:mention.mentionId}},handoffStopOccurrenceId,builderPlaceCommand,
   dispatchAcceptedBuilderEdit:(command:any,options:any)=>{assert.equal(options.expectedInputRevision,revision);const result=prepareBuilderHandlerEdit(trip,command,builderDocumentFingerprint(trip));assert.ok(result.ok);if(result.ok)trip=result.trip;revision++;accepted++;}};
  const source=readFileSync(new URL('../app/journey/new/trip-builder.tsx',import.meta.url),'utf8');
+ const key=source.slice(source.indexOf('  const savedTargetKey='),source.indexOf('  const savedFinishIsCurrent='));
+ scope.savedTargetKey=new Function('scope',`with(scope){${ts.transpileModule(`${key}\nreturn savedTargetKey;`,{compilerOptions:{target:ts.ScriptTarget.ES2022}}).outputText}}`)(scope);
  const body=source.slice(source.indexOf('      const onOutcome ='),source.indexOf('      const runLookups ='));
  const script=ts.transpileModule(`${body}\nreturn onOutcome;`,{compilerOptions:{target:ts.ScriptTarget.ES2022}}).outputText;
  const callback=new Function('scope',`with(scope){${script}}`)(scope);
@@ -59,4 +61,27 @@ test('actual callback discards a foreign-owner response',()=>{
 test('actual callback rejects a held result after a newer geometry-only edit with unchanged city identity',()=>{
  const h=actualCallbackHarness();h.changeCoordinates([-77.0306,-12.046]);const newer=structuredClone(h.trip());h.send(lima.choices);
  assert.equal(h.accepted(),0);assert.deepEqual(h.trip(),newer);
+});
+
+test('missing-coordinate seed cannot overwrite a newer confirmed same-identity provider point',()=>{
+ const h=actualCallbackHarness();assert.equal(h.scope.seedById.get(h.trip().stops[0].id).coordinates,undefined);
+ const place=acceptedGeographicPlace(stopGeographicPlace(h.trip().stops[0]),{...lima.expected,coordinates:[-77.025,-12.04]});assert.ok(place);
+ h.scope.dispatchAcceptedBuilderEdit(builderPlaceCommand(h.trip(),{stopId:h.trip().stops[0].id,intentId:h.mention.mentionId,place:place!}),{expectedInputRevision:1});
+ const confirmed=structuredClone(h.trip());h.send(lima.choices);
+ assert.equal(h.accepted(),1,'held callback must not apply a second edit');assert.deepEqual(h.trip(),confirmed);
+});
+
+test('evidence-only confirmation invalidates held initial lookup with identical point and provider',()=>{
+ const h=actualCallbackHarness(lima.expected.coordinates);
+ const place=acceptedGeographicPlace(stopGeographicPlace(h.trip().stops[0]),lima.expected);assert.ok(place);
+ h.scope.dispatchAcceptedBuilderEdit(builderPlaceCommand(h.trip(),{stopId:h.trip().stops[0].id,intentId:h.mention.mentionId,place:place!}),{expectedInputRevision:1});
+ const confirmed=structuredClone(h.trip());h.send(lima.choices);
+ assert.equal(h.accepted(),1,'evidence changed even though identity and point did not');assert.deepEqual(h.trip(),confirmed);
+});
+
+test('unchanged target still accepts held compatible lookup after a sibling budget edit',()=>{
+ const h=actualCallbackHarness();h.scope.dispatchAcceptedBuilderEdit({kind:'budget',budget:'high'},{expectedInputRevision:1});
+ h.send(lima.choices);assert.equal(h.accepted(),2);assert.equal(h.trip().brief.budgetBand,'high');
+ assert.deepEqual([h.trip().stops[0].longitude,h.trip().stops[0].latitude],lima.expected.coordinates);
+ assert.deepEqual(h.trip().stops.map(s=>[s.id,s.nights]),h.before.stops.map(s=>[s.id,s.nights]));
 });
