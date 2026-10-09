@@ -483,20 +483,34 @@ for (const [width,type] of [[1440,'return_to_start'],[390,'one_way']] as const) 
  assert.equal(await page.getByRole('button',{name:'Calendar',exact:true}).getAttribute('aria-pressed'),'true');
 
 },width));
-for (const width of [1440,390]) test(`actual Japan multi-add ${width}px accepts Kyoto, Takayama and Hiroshima together and survives reload`,{skip:!enabled,timeout:60000},async()=>withEvidence(`japan-multi-${width}`,async(page,context)=>{
+for (const [area,names] of [['Japan',['Kyoto','Takayama','Hiroshima']],['South Korea',['Seoul','Busan']],['Africa',['Marrakech','Fes','Chefchaouen']]] as const) for (const width of [1440,390]) test(`actual ${area} only multi-add ${width}px completes Discovery, Build and reload`,{skip:!enabled,timeout:60000},async()=>withEvidence(`single-area-${area.replaceAll(' ','-')}-${width}`,async(page,context)=>{
  await context.unroute('**/api/journey-geocode?*');await page.goto(base,{waitUntil:'domcontentloaded'});
  await page.getByRole('combobox',{name:'Start from',exact:true}).fill('LAX');await page.getByRole('option',{name:/Los Angeles International Airport.*United States/}).click();
  await page.getByRole('button',{name:/Travel dates/}).first().click();await page.getByRole('dialog').locator('[data-date="2026-10-14"]').click();await page.getByRole('dialog').locator('[data-date="2026-10-28"]').click();
- await page.getByRole('combobox',{name:'Destination',exact:true}).fill('Japan');await page.getByRole('option',{name:/^Japan/}).first().click();
- await page.getByRole('button',{name:'Plan my trip',exact:true}).first().click();const dialog=page.getByRole('dialog');await dialog.getByRole('heading',{name:'Explore places',exact:true}).waitFor({timeout:20000});
+ await page.getByRole('combobox',{name:'Destination',exact:true}).fill(area);await page.getByRole('option',{name:new RegExp('^'+area)}).first().click();
+ await page.getByRole('button',{name:'Plan my trip',exact:true}).first().click();const dialog=page.getByRole('dialog');await dialog.getByRole('heading',{name:/^(Explore places|Choose a direction)$/}).waitFor({timeout:20000});
  const id=new URL(page.url()).searchParams.get('trip')!;
- for(const name of ['Kyoto','Takayama','Hiroshima'])await dialog.getByRole('button',{name:`Add to shortlist: ${name}`,exact:true}).click();
- await dialog.getByRole('button',{name:'Add 3 places',exact:true}).click();await dialog.waitFor({state:'hidden'});
- const trip=(await recoveryTrip(page,id))!;assert.ok(trip);assert.equal(trip.stops.length,3);assert.deepEqual(new Set(trip.stops.map(stop=>stop.name)),new Set(['Kyoto','Takayama','Hiroshima']));
+ assert.equal(await page.getByRole('button',{name:/^Build trip/}).evaluateAll(buttons=>buttons.some(button=>!(button as HTMLButtonElement).disabled)),false,'an unresolved area without an accepted base has no enabled Build control');
+ if(await dialog.locator('[data-discovery-step="directions"]').count())await dialog.getByRole('button',{name:/Morocco/}).click();
+ for(const name of names)await dialog.getByRole('button',{name:`Add to shortlist: ${name}`,exact:true}).click();
+ await dialog.getByRole('button',{name:`Add ${names.length} places`,exact:true}).click();await dialog.waitFor({state:'hidden'});
+ const trip=(await recoveryTrip(page,id))!;assert.ok(trip);assert.equal(trip.stops.length,names.length);assert.deepEqual(new Set(trip.stops.map(stop=>stop.name)),new Set(names));
  assert.ok(trip.stops.every(stop=>stop.nights!>0&&geographicallyReady(stopGeographicPlace(stop))));assert.equal(trip.stops.reduce((sum,stop)=>sum+stop.nights!,0),14);
- assert.equal(await page.getByRole('button',{name:'Remove Japan',exact:true}).count(),0);
- await page.screenshot({path:`${artifacts}/japan-multi-${width}-builder.png`,fullPage:true});
+ assert.equal(await page.getByRole('button',{name:`Remove ${area}`,exact:true}).count(),0);
+ await page.screenshot({path:`${artifacts}/single-area-${area.replaceAll(' ','-')}-${width}-builder.png`,fullPage:true});
  await page.reload({waitUntil:'domcontentloaded'});await page.locator('[data-builder-top-controls]').waitFor();assert.deepEqual((await recoveryTrip(page,id))!.stops,trip.stops);
+ const build=page.getByRole('button',{name:/^Build trip/});
+ assert.equal(await build.isDisabled(),false,'completed Discovery must supersede the original no-base intake blocker');
+ await build.click();await page.waitForURL(/journey\/trip-[^/]+\?created=1/,{timeout:25000});
+ const builtId=new URL(page.url()).pathname.split('/')[2]!;await page.getByRole('region',{name:'Trip overview',exact:true}).waitFor();
+ const built=(await recoveryTrip(page,builtId))!;assert.equal(built.status,'planned');
+ assert.deepEqual(built.stops.map(stop=>[stop.id,stop.canonicalPlaceId,stop.nights]),trip.stops.map(stop=>[stop.id,stop.canonicalPlaceId,stop.nights]));
+ await page.reload({waitUntil:'domcontentloaded'});await page.getByRole('region',{name:'Trip overview',exact:true}).waitFor();
+ assert.deepEqual((await recoveryTrip(page,builtId))!.stops,built.stops);
+ await page.goto(`${base}/journey/${builtId}/itinerary`,{waitUntil:'domcontentloaded'});await page.getByRole('region',{name:'Trip itinerary',exact:true}).waitFor();
+ assert.equal(await page.getByRole('button',{name:'Calendar',exact:true}).getAttribute('aria-pressed'),'true');
+ await page.reload({waitUntil:'domcontentloaded'});await page.getByRole('region',{name:'Trip itinerary',exact:true}).waitFor();
+ assert.deepEqual((await recoveryTrip(page,builtId))!.stops,built.stops);
 },width));
 test('fresh Return default and disabled selected trip types retain readable production styling',{skip:!enabled,timeout:30000},async()=>withEvidence('disabled-trip-type',async(page)=>{
  await page.goto(base,{waitUntil:'domcontentloaded'});

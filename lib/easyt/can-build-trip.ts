@@ -163,7 +163,21 @@ export function canBuildTrip(input: CanBuildTripInput) {
     message: issue.message,
     source: "place-intelligence" as const,
   })));
-  const hardBlockingPlaceIssues = blockingPlaceIssues.filter((issue) => !placeIssueNeedsAttention(issue));
+  // This issue describes intake-time absence, not a permanent property of a
+  // country/region mention. Only a current, verified overnight occurrence can
+  // supersede it; removed/stale selections and input-only geometry cannot.
+  const hasCurrentVerifiedBase = blockingPlaceIssues.some(issue => issue.code === "missing_routable_destination")
+    && input.document.stops.some(stop => {
+      const active = input.stops.find(candidate => candidate.id === stop.id);
+      return geographicallyReady(stopGeographicPlace(stop)) && active
+        && active.name.trim() === stop.name.trim() && active.country?.trim() === stop.country?.trim()
+        && (!active.canonicalPlaceId || active.canonicalPlaceId === stop.canonicalPlaceId)
+        && (!active.coordinates || active.coordinates[0] === stop.longitude && active.coordinates[1] === stop.latitude)
+        && (!route || route.orderedStopIds.includes(stop.id) && route.destinations.some(intent =>
+          (intent.kind === "overnight_place" || intent.kind === "planning_area") && intent.stopIds.includes(stop.id)));
+    });
+  const hardBlockingPlaceIssues = blockingPlaceIssues.filter(issue => !placeIssueNeedsAttention(issue)
+    && !(issue.code === "missing_routable_destination" && hasCurrentVerifiedBase));
   if (input.placeReviewPending || hardBlockingPlaceIssues.length) {
     conflicts.push(conflict({
       code: "place-review-required",
