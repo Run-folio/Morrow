@@ -38,7 +38,7 @@ export function HomeDestinationEditor({ entries, language, disabled = false, foc
     focusTarget.current = null;
     const node = nodes.current.get(id);
     (node?.querySelector<HTMLInputElement>('input[role="combobox"]') ?? node?.querySelector<HTMLButtonElement>("button") ?? addRef.current)?.focus();
-  }, [entries, editingId, disabled]);
+  }, [entries, editingId, disabled, focusEntryId, focusRequestKey]);
   const replace = (id: string, update: (entry: HomepageDestinationEntry) => HomepageDestinationEntry) => {
     const current = latest.current;
     if (current.disabled || !current.entries.some(entry => entry.id === id)) return;

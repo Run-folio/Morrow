@@ -155,6 +155,17 @@ test('unconfirmed destination focuses its editor and preserves a confirmed airpo
  assert.equal(new URL(page.url()).pathname,'/');
 }));
 
+test('unconfirmed origin recovers focus and raw intent after primary-action validation', {skip:!enabled,timeout:60_000},async()=>withEvidence('origin-error-focus',async(page,context)=>{
+ await context.unroute('**/api/journey-geocode?*');await page.goto(base,{waitUntil:'domcontentloaded'});
+ await page.getByRole('combobox',{name:'Start from',exact:true}).fill('Springfield');
+ await page.getByRole('combobox',{name:'Destination',exact:true}).fill('Madrid');await page.getByRole('option',{name:/Madrid.*Spain/}).first().click();
+ await page.getByRole('button',{name:'Plan my trip'}).first().click();await page.getByText('Select your starting place from the results.',{exact:true}).waitFor();
+ await page.waitForFunction(()=>document.activeElement?.getAttribute('aria-label')==='Start from');
+ const stored=await page.evaluate(()=>JSON.parse(localStorage.getItem('easyt-private:guest:homepage-input')??'null'));
+ assert.equal(stored.snapshot.originInput,'Springfield');assert.equal(stored.snapshot.origin.state,'cleared');assert.equal(stored.receipt,undefined);
+ assert.equal(new URL(page.url()).pathname,'/');
+}));
+
 test('maintained airport origin survives actual submit, manual Builder change, Build and reload', {skip:!enabled,timeout:120_000},async()=>withEvidence('airport-origin-build-reload',async(page,context)=>{
  await context.unroute('**/api/journey-geocode?*');
  await page.goto(base,{waitUntil:'domcontentloaded'});

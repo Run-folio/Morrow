@@ -84,11 +84,12 @@ export default function HomeTripStarter() {
   const [loading, setLoading] = useState(false);
   const [captureError, setCaptureError] = useState("");
   const originFocusRequestedRef = useRef(false);
+  const [originFocusRequestKey, setOriginFocusRequestKey] = useState(0);
   useEffect(() => {
     if (!originFocusRequestedRef.current || snapshot.mode !== "stops" || loading) return;
     document.querySelector<HTMLInputElement>('#start-building [data-homepage-origin] input')?.focus();
     originFocusRequestedRef.current = false;
-  }, [snapshot.mode, loading]);
+  }, [snapshot.mode, loading, originFocusRequestKey]);
   const [recoveryBlocked, setRecoveryBlocked] = useState(false);
   const [focusEntryId, setFocusEntryId] = useState<string | null>(null);
   const [focusRequestKey, setFocusRequestKey] = useState(0);
@@ -249,15 +250,17 @@ export default function HomeTripStarter() {
         }
         // Reveal the existing origin editor when Describe hides an unresolved raw draft.
         // Changing the tab retains every input; no capture or reservation has begun.
-        if (issues[0].field === "origin" && submitted.mode === "describe") {
+        if (issues[0].field === "origin") {
           originFocusRequestedRef.current = true;
-          updateSnapshot(current => ({ ...current, mode: "stops" }));
-          setCaptureError(issueMessage("origin"));
+          setOriginFocusRequestKey(current => current + 1);
+          if (submitted.mode === "describe") {
+            updateSnapshot(current => ({ ...current, mode: "stops" }));
+            setCaptureError(issueMessage("origin"));
+          }
           return;
         }
         const form = document.getElementById("start-building");
-        (issues[0].field === "origin" ? form?.querySelector<HTMLInputElement>('[data-homepage-origin] input')
-          : issues[0].field === "tripType" ? form?.querySelector<HTMLButtonElement>('[data-homepage-trip-type] button')
+        (issues[0].field === "tripType" ? form?.querySelector<HTMLButtonElement>('[data-homepage-trip-type] button')
           : form?.querySelector<HTMLInputElement>('input[role="combobox"], textarea'))?.focus();
         return;
       }
