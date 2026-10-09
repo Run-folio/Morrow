@@ -49,11 +49,15 @@ test('validated exact airport-code evidence outranks catalogue substring choices
 
 async function actualHandler(){
  const require=createRequire(import.meta.url);
- const b=await build({stdin:{contents:"export {GET} from './app/api/journey-geocode/route';",resolveDir:process.cwd(),loader:'ts'},bundle:true,write:false,platform:'node',format:'cjs',external:['next/server'],logLevel:'silent'});
+ const b=await build({stdin:{contents:"export {GET} from './app/api/journey-geocode/route';",resolveDir:process.cwd(),loader:'ts'},bundle:true,write:false,platform:'node',format:'cjs',external:['next/server'],logLevel:'silent',plugins:[{name:'explicit-captured-compatibility-provider',setup(b){
+  b.onLoad({filter:/app\/api\/journey-geocode\/route\.ts$/},async({path})=>({loader:'ts',contents:readFileSync(path,'utf8')
+    .replace('import { NextRequest, NextResponse }',`import {searchNominatimTravelCandidates} from '@/lib/easyt/nominatim-place.server';\nimport {searchPhotonTravelCandidates} from '@/lib/easyt/photon-place.server';\nimport { NextRequest, NextResponse }`)
+    .replace(/createOpenWorldPlaceProvider\(\{searchMode:[^}]+\}\)/,`createOpenWorldPlaceProvider({sources:[{id:'nominatim',label:'OpenStreetMap Nominatim',search:searchNominatimTravelCandidates},{id:'photon',label:'Komoot Photon',search:searchPhotonTravelCandidates}]})`)}));
+ }}]});
  const module={exports:{} as any};new Function('require','module','exports',b.outputFiles[0].text)(require,module,module.exports);
  return {GET:module.exports.GET,NextRequest:require('next/server').NextRequest};
 }
-test('actual geocode response ranks live-captured namedetails IATA airport first without changing identity or coordinates',async()=>{
+test('explicit compatibility-provider API ranks live-captured namedetails IATA airport first without changing identity or coordinates',async()=>{
  const {GET,NextRequest}=await actualHandler(),original=globalThis.fetch;
  const queries:string[]=[];
  globalThis.fetch=(async(input:any)=>{const key=String(input),row=captured.responses.find((r:any)=>r.url===key);assert.ok(row,`captured live query ${key}`);queries.push(key);return new Response(JSON.stringify(row.body),{status:row.status});}) as typeof fetch;
@@ -65,7 +69,7 @@ test('actual geocode response ranks live-captured namedetails IATA airport first
  }finally{globalThis.fetch=original;}
 });
 
-test('actual geocode response with ambiguous or invalid provider IATA never exports code priority',async()=>{
+test('explicit compatibility-provider API with ambiguous or invalid provider IATA never exports code priority',async()=>{
  const airport=captured.responses.find((r:any)=>new URL(r.url).searchParams.get('q')==='GUA airport').body[0];
  for(const namedetails of [{...airport.namedetails,iata:'GUA/XXX'},{...airport.namedetails,iata:'XXX'}]){
   const {GET,NextRequest}=await actualHandler(),original=globalThis.fetch;

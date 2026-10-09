@@ -91,11 +91,13 @@ export async function searchPhotonTravelCandidates(
   phrase: string,
   context: PlaceResolutionContext = {},
   fetchImpl: typeof fetch = fetch,
+  options: {signal?:AbortSignal} = {},
 ): Promise<PhotonTravelCandidate[]> {
   const params = new URLSearchParams({ q: phrase, limit: "8", lang: "en" });
   const response = await fetchImpl(`https://photon.komoot.io/api/?${params}`, {
     headers: { "User-Agent": "Morrovia trip planner/1.0 (https://morrovia.com)" },
     next: { revalidate: 60 * 60 * 24 * 30 },
+    signal: options.signal ?? AbortSignal.timeout(3500),
   });
   if (!response.ok) return [];
   const features = (await response.json() as PhotonResponse).features ?? [];

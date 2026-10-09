@@ -1,6 +1,4 @@
-import {
-  searchNominatimTravelCandidates,
-} from "./nominatim-place.server.ts";
+import {searchReferencePlaces,referenceSnapshotId} from './place-reference.server.ts';
 import { searchPhotonTravelCandidates } from "./photon-place.server.ts";
 import { searchOpenStreetMapNearbySettlements } from "./openstreetmap-nearby-place.server.ts";
 import { resolvePlaceDisplayName } from "./place-display-name.ts";
@@ -56,7 +54,7 @@ function validatedCandidate(candidate: PlaceProviderCandidate): PlaceProviderCan
     const longitudeInside = west <= east ? longitude >= west && longitude <= east : longitude >= west || longitude <= east;
     if (!validBounds || latitude < south || latitude > north || !longitudeInside) return undefined;
   }
-  const display = !/\p{Script=Latin}/u.test(candidate.canonicalName)
+  const display = !candidate.providerId.startsWith('reference:') && !/\p{Script=Latin}/u.test(candidate.canonicalName)
     ? resolvePlaceDisplayName({
         defaultName: candidate.canonicalName,
         alternativeNames: candidate.aliases,
@@ -97,17 +95,12 @@ function cacheKey(phrase: string, context: PlaceResolutionContext) {
   });
 }
 
-function defaultSources(fetchImpl?: typeof fetch): OpenWorldPlaceSource[] {
+function defaultSources(fetchImpl?: typeof fetch, timeoutMs=3500): OpenWorldPlaceSource[] {
   return [
-    {
-      id: "nominatim",
-      label: "OpenStreetMap Nominatim",
-      search: (phrase, context) => searchNominatimTravelCandidates(phrase, context, fetchImpl),
-    },
     {
       id: "photon",
       label: "Komoot Photon",
-      search: (phrase, context) => searchPhotonTravelCandidates(phrase, context, fetchImpl),
+      search: (phrase, context) => searchPhotonTravelCandidates(phrase, context, fetchImpl, {signal:AbortSignal.timeout(timeoutMs)}),
     },
     {
       id: "openstreetmap-overpass",
@@ -245,6 +238,7 @@ function rankCanonicalCandidates(
  * The bounded cache retains compact canonical facts only—never prompts, model
  * output, or raw provider responses. */
 export function createOpenWorldPlaceProvider(options: {
+  searchMode?: 'reference-only' | 'reference-with-photon';
   sources?: OpenWorldPlaceSource[];
   fetchImpl?: typeof fetch;
   cache?: OpenWorldCandidateCache;
@@ -252,7 +246,7 @@ export function createOpenWorldPlaceProvider(options: {
   maxCacheEntries?: number;
   sourceTimeoutMs?: number;
 } = {}): PlaceIntelligenceProvider {
-  const sources = options.sources ?? defaultSources(options.fetchImpl);
+  const sources = options.sources ?? defaultSources(options.fetchImpl, Math.max(1,Math.min(options.sourceTimeoutMs??3500,3500)));
   const cache = options.cache ?? sharedCandidateCache;
   const cacheTtlMs = Math.max(1, options.cacheTtlMs ?? 86_400_000);
   const maxCacheEntries = Math.max(1, options.maxCacheEntries ?? 500);
@@ -264,7 +258,9 @@ export function createOpenWorldPlaceProvider(options: {
     timeoutMs: 4_500,
     async lookup(phrase, context) {
       const request = providerLookupRequest(phrase, context);
-      const key = cacheKey(phrase, request.context);
+      const local=options.sources?[]:searchReferencePlaces(request.phrase,request.context);
+      if(!options.sources&&(options.searchMode==='reference-only'||local.some(c=>c.matchQuality==='exact')))return local;
+      const key = (options.sources?'':referenceSnapshotId()+':') + cacheKey(phrase, request.context);
       const cached = cache.get(key);
       if (cached?.expiresAt && cached.expiresAt > Date.now()) {
         const validated = cloneCandidates(cached.candidates);
@@ -298,7 +294,7 @@ export function createOpenWorldPlaceProvider(options: {
         .filter((candidate, index, all) => all.findIndex((other) => other.providerId === candidate.providerId) === index)
         .sort(compareCanonicalCandidateEvidence)
         .filter((candidate, index, all) => !all.slice(0, index).some((prior) => sameCanonicalFact(prior, candidate)));
-      const candidates = rankCanonicalCandidates(deduplicated, request.context);
+      const candidates = rankCanonicalCandidates([...local,...deduplicated], request.context).slice(0,12);
       // A provider outage or a transient empty response must not poison later
       // capture/search attempts. Cache only positive canonical facts.
       if (candidates.length > 0) {

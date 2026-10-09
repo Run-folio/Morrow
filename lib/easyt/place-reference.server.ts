@@ -4,6 +4,8 @@ import {createHash} from 'node:crypto';
 import {countryFor, countryCodeFor} from './country-registry.ts';
 import {referenceRecordKey, referenceKnownCodeKind, type ReferencePlaceRecord, type ReferenceSnapshotManifest} from './place-reference.ts';
 import type {PlaceProviderCandidate, PlaceResolutionContext} from './place-intelligence.ts';
+import {PLACE_CATALOG,findCatalogPlaceById} from './place-catalog.ts';
+import {discoveryPlaceForId} from './discovery-content.ts';
 
 type Tuple = [string,string,string,number,number,string,number|string,string[]|string,boolean,string];
 type Prefix = {offset:number;count:number};
@@ -55,3 +57,22 @@ export function searchReferencePlaces(query:string,context:PlaceResolutionContex
  return matches.sort((a,b)=>b.score-a.score||Number(b.r.countryCode===countryCodeFor(context.countryNames?.[0]))-Number(a.r.countryCode===countryCodeFor(context.countryNames?.[0]))||Number(a.r.sourceId)-Number(b.r.sourceId)).slice(0,limit).map(({r,score})=>candidate(r,score));
 }
 export const referenceSnapshotId=()=>data().manifest.snapshotId;
+
+/** Country proof comes from an exact trusted source tuple, never from reverse geocoding. */
+export function trustedLocalActivityCentre(input:{destination:string;requestedCountryCode:string;coordinates:readonly [number,number];canonicalPlaceId?:string;providerId?:string}){
+ const code=countryCodeFor(input.requestedCountryCode);if(!code||!input.coordinates.every(Number.isFinite))return null;
+ const same=(name:string,country:string,point:readonly number[]|undefined)=>normalized(input.destination)===normalized(name)&&countryCodeFor(country)===code&&point?.length===2&&point.every((v,i)=>v===input.coordinates[i]);
+ const catalogRecord=(id:string)=>{
+  const e=findCatalogPlaceById(id);if(!e||e.captureMode==='explicit-only'||e.parentCountries.length!==1)return null;
+  const point=e.coordinates??discoveryPlaceForId(id)?.coordinates;
+  if(!same(e.canonicalName,e.parentCountries[0],point)||(input.providerId&&input.providerId!==e.provenance.id))return null;
+  return {canonicalPlaceId:id,source:'catalog' as const,sourceRecordKey:e.provenance.id,countryCode:code,coordinates:[...point!] as [number,number]};
+ };
+ const referenceRecord=(id:string)=>{const r=referencePlaceById(id);if(!r||r.status!=='active'||!same(r.canonicalName,r.countryCode,r.coordinates)||(input.providerId&&input.providerId!==r.providerId))return null;
+  return {canonicalPlaceId:id,source:'reference' as const,sourceRecordKey:r.providerId,countryCode:code,coordinates:[...r.coordinates] as [number,number]};};
+ if(input.canonicalPlaceId)return input.canonicalPlaceId.startsWith('reference:')?referenceRecord(input.canonicalPlaceId):catalogRecord(input.canonicalPlaceId);
+ const catalog=PLACE_CATALOG.filter(e=>e.captureMode!=='explicit-only').flatMap(e=>{const r=catalogRecord(e.canonicalPlaceId);return r?[r]:[];});
+ // Existing authored exact identities retain ownership; reference results never rewrite them.
+ if(catalog.length)return catalog.length===1?catalog[0]:null;
+ const references=searchReferencePlaces(input.destination,{explicitCountryNames:[code]}).flatMap(c=>{const r=referenceRecord(c.canonicalPlaceId!);return r?[r]:[];});return references.length===1?references[0]:null;
+}

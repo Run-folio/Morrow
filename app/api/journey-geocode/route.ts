@@ -151,6 +151,9 @@ function responseNearbyCandidate(candidate: NearbyBaseSuggestion) {
 }
 
 export async function GET(request: NextRequest) {
+  const mode=request.nextUrl.searchParams.get('mode');
+  if(mode!==null&&mode!=='autocomplete'&&mode!=='resolve')return NextResponse.json({result:null},{status:400});
+  if(mode==='autocomplete'&&request.nextUrl.searchParams.get('nearbyBases')==='1')return NextResponse.json({candidates:[],status:'explicit-nearby-search-required'});
   if (request.nextUrl.searchParams.get("nearbyBases") === "1") {
     const anchor = nearbyAnchorFromRequest(request);
     if (!anchor) return NextResponse.json({ candidates: [], status: "invalid-anchor" }, { status: 400 });
@@ -177,7 +180,7 @@ export async function GET(request: NextRequest) {
     const candidates = (await searchOpenWorldTravelCandidates(place, {
       travelIntent,
       ...(country ? { countryNames: [country], explicitCountryNames: [country] } : {}),
-    }, createOpenWorldPlaceProvider()))
+    }, createOpenWorldPlaceProvider({searchMode:mode==='autocomplete'?'reference-only':'reference-with-photon'})))
       .filter(validReferenceCandidate)
       .filter((candidate) => !country || matchesCountry(candidate.parentCountries?.[0], country))
       .filter((candidate) => !planningParent || placeCandidateWithinPlanningParent(candidate, planningParent))

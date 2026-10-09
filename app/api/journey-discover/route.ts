@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import {trustedLocalActivityCentre} from "@/lib/easyt/place-reference.server";
 import { isWithinDestinationRadius } from "@/lib/easyt/destination-resolution";
 import { conciseExploreDescription, exploreDiscoveryCategory, trustedExploreImage } from "@/lib/easyt/explore";
 import { discoveryVisitorRelevance } from "@/lib/easyt/discovery-quality";
@@ -10,8 +11,6 @@ type WikiPage = {
   thumbnail?: { source?: string };
   coordinates?: Array<{ lat?: number; lon?: number }>;
 };
-
-type GeocodeCountry = { address?: { country?: string } };
 
 const WIKIPEDIA_DISCOVERY_TIMEOUT_MS = 6_000;
 
@@ -39,34 +38,19 @@ function suggestedVisitLength(title: string, extract: string) {
   return 0.5;
 }
 
-async function isWithinRequestedCountry(latitude: number, longitude: number, country?: string) {
-  if (!country) return true;
-  try {
-    const params = new URLSearchParams({ format: "jsonv2", lat: String(latitude), lon: String(longitude), zoom: "3", addressdetails: "1", "accept-language": "en" });
-    const response = await fetch(`https://nominatim.openstreetmap.org/reverse?${params}`, { headers: { "User-Agent": "Morrovia place discovery" }, next: { revalidate: 60 * 60 * 24 * 30 }, signal: AbortSignal.timeout(4000) });
-    if (!response.ok) return false;
-    const result = await response.json() as GeocodeCountry;
-    return result.address?.country?.toLocaleLowerCase() === country.toLocaleLowerCase();
-  } catch {
-    // Never add a recommendation if its country cannot be verified.
-    return false;
-  }
-}
-
 export async function GET(request: NextRequest) {
   const destination = request.nextUrl.searchParams.get("destination")?.trim();
   const country = request.nextUrl.searchParams.get("country")?.trim();
-  const latitude = Number(request.nextUrl.searchParams.get("lat"));
-  const longitude = Number(request.nextUrl.searchParams.get("lon"));
+  const rawLat=request.nextUrl.searchParams.get('lat'),rawLon=request.nextUrl.searchParams.get('lon');
+  const latitude = rawLat?.trim()?Number(rawLat):NaN;
+  const longitude = rawLon?.trim()?Number(rawLon):NaN;
   if (!destination || destination.length > 120 || !Number.isFinite(latitude) || !Number.isFinite(longitude)) {
     return NextResponse.json({ places: [] }, { status: 400 });
   }
 
   try {
-    // Country verification depends only on the requested search centre, not on
-    // Wikipedia's result payload. Start both bounded requests together so a
-    // trustworthy shortlist never pays their latency serially.
-    const countryVerification = isWithinRequestedCountry(latitude, longitude, country);
+    const centre=trustedLocalActivityCentre({destination,requestedCountryCode:country??'',coordinates:[longitude,latitude],canonicalPlaceId:request.nextUrl.searchParams.get('canonicalPlaceId')??undefined,providerId:request.nextUrl.searchParams.get('providerId')??undefined});
+    if(!centre)return NextResponse.json({places:[]});
     const params = new URLSearchParams({
       action: "query",
       format: "json",
@@ -94,10 +78,6 @@ export async function GET(request: NextRequest) {
     if (!response.ok) throw new Error("Wikipedia lookup failed");
     const data = await response.json() as { query?: { pages?: Record<string, WikiPage> } };
     const seen = new Set<string>();
-    // Verify the search centre itself before considering its nearby results.
-    // A 10 km Wikimedia geosearch is local, so this prevents an entire wrong-
-    // country result set without making a reverse-geocode request per result.
-    if (!(await countryVerification)) return NextResponse.json({ places: [] });
     const places = Object.values(data.query?.pages ?? {})
       .filter((page) => {
         const coordinate = page.coordinates?.[0];

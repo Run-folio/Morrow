@@ -138,7 +138,7 @@ export function CanonicalPlaceAutocomplete({
       const country = parentConstraint?.parentCountries.length === 1
         ? parentConstraint.parentCountries[0]
         : referenceKnownCodeKind(query)==='iata'?undefined:contextCountries?.length === 1 ? contextCountries[0] : undefined;
-      const params = new URLSearchParams({ place: query, candidates: "1" });
+      const params = new URLSearchParams({ place: query, candidates: "1",mode:'autocomplete' });
       params.set("intent", searchIntent);
       if (country) params.set("country", country);
       if (parentConstraint) {
