@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { ArrowRight, GripVertical, Plus, SlidersHorizontal, X } from 'lucide-react';
+import { ArrowRight, GripVertical, Plus, SlidersHorizontal } from 'lucide-react';
 import { EasyTButton, EasyTSelect, EasyTSegmentedControl } from '@/components/easyt/easyt-controls';
 import { CanonicalPlaceAutocomplete } from '@/components/easyt/canonical-place-autocomplete';
 import { MorroviaDatePicker } from '@/components/easyt/morrovia-date-picker';
@@ -55,7 +55,6 @@ export function TripBuilderTopControls({trip,draft,language,disabled=false,onTyp
       const bases=route.orderedStopIds.filter(id=>intent.stopIds.includes(id)).map(id=>trip.stops.find(stop=>stop.id===id)).filter((stop):stop is CanonicalEasyTTrip['stops'][number]=>Boolean(stop));
       if(intent.kind==='planning_area' && bases.length) return <li key={intent.id} className={styles.parentGroup} data-destination-intent-id={intent.id} data-destination-parent-group ref={node=>{if(node)nodes.current.set(intent.id,node);else nodes.current.delete(intent.id)}}>
         <div role="group" aria-label={label}>
-          <div className={styles.parentHeading}><EasyTButton variant="quiet" size="small" disabled={disabled} aria-label={`${es?'Editar':'Edit'} ${label}`} onClick={()=>onEditIntent(intent)}>{label}</EasyTButton><EasyTButton icon={X} iconOnly variant="quiet" size="small" disabled={disabled||bases.some(stop=>trip.brief.scheduleLocks?.stopIds.includes(stop.id))} aria-label={`${es?'Quitar':'Remove'} ${label}`} onClick={()=>onRemoveIntent(intent)}>{es?'Quitar':'Remove'} {label}</EasyTButton></div>
           <ul className={styles.baseChips}>{bases.map(stop=><MorroviaDestinationTag key={stop.id} id={`${intent.id}:${stop.id}`} stopId={stop.id} label={stop.name} disabled={disabled} removeDisabled={!onRemoveStop||trip.brief.scheduleLocks?.stopIds.includes(stop.id)}
             editLabel={`${es?'Editar':'Edit'} ${stop.name}`} removeLabel={`${es?'Quitar':'Remove'} ${stop.name}`}
             onEdit={()=>onEditIntent(intent)} onRemove={()=>onRemoveStop?.(stop.id)} />)}</ul>

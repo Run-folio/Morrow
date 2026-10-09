@@ -11,6 +11,7 @@ import {
   itineraryDayForRecommendation,
   itineraryWorkspaceHref,
   initialMapCameraMode,
+  initialItineraryWorkspaceView,
   mapWorkspaceHref,
   mapWorkspaceReturnHref,
   isTripMapPathname,
@@ -263,3 +264,9 @@ test("query-only deep-link changes retain one workspace analytics visit key", ()
   assert.equal(workspaceViewFromPathname("/journey/trip-real/stay?stop=cusco", trip.id), "stay");
   assert.equal(workspaceViewFromPathname("/journey/trip-real/prep", trip.id), "overview");
 });
+
+ test("itinerary starts in Calendar while explicit views and valid day links retain their orientation", () => {
+ for (const query of ["", "day=99", "day=3junk", "itineraryView=unknown"]) assert.equal(initialItineraryWorkspaceView(trip, new URLSearchParams(query)), "calendar");
+ for (const query of ["day=2", "itineraryDay=3", "itineraryView=days", "day=2&itineraryView=days"]) assert.equal(initialItineraryWorkspaceView(trip, new URLSearchParams(query)), "days");
+ assert.equal(initialItineraryWorkspaceView(trip, new URLSearchParams("day=2&itineraryView=calendar")), "calendar");
+ });

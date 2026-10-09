@@ -32,6 +32,12 @@
   transform: translateY(-1px);
 }
 
+/* Pressed-state foreground and surface must change together. Cross-fading
+   primary and secondary choices briefly makes selected text disappear. */
+.control[aria-pressed] {
+  transition: transform 180ms ease, box-shadow 180ms ease;
+}
+
 .control:focus-visible,
 .fieldControl:focus-visible,
 .segment:focus-visible {
@@ -42,10 +48,10 @@
 .control:disabled,
 .control[aria-disabled="true"],
 .disabled {
-  opacity: 0.62;
+  opacity: 1;
   border-color: var(--morrovia-line);
   background: var(--morrovia-disabled);
-  color: var(--morrovia-muted);
+  color: var(--morrovia-ink-soft);
   cursor: not-allowed;
   transform: none;
 }
@@ -285,10 +291,7 @@
   color: var(--morrovia-ink-soft);
   font: 700 13px/1 var(--morrovia-ui);
   cursor: pointer;
-  transition:
-    background-color 180ms ease,
-    color 180ms ease,
-    box-shadow 180ms ease;
+  transition: box-shadow 180ms ease;
 }
 
 .segment:hover {
@@ -358,4 +361,5 @@
   .spinner { animation: none; }
 }
 
-.segment:disabled { opacity: 0.62; background: var(--morrovia-disabled); cursor: not-allowed; }
+.segment:disabled { opacity: 1; background: var(--morrovia-disabled); color: var(--morrovia-ink-soft); cursor: not-allowed; }
+.segmentActive:disabled { background: var(--morrovia-action); color: var(--morrovia-control-surface); }

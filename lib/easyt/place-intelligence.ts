@@ -490,6 +490,7 @@ export type PlaceIntelligenceProvider = {
 };
 
 export type RegionalBaseSuggestion = {
+  referenceSnapshotId?: string;
   mentionId?: string;
   regionCanonicalPlaceId: string;
   canonicalPlaceId: string;

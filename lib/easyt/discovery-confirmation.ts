@@ -1,4 +1,5 @@
 import { findCatalogPlaceById } from "./place-catalog.ts";
+import {acceptedGeographicPlace} from './geographic-binding.ts';
 import { canonicalPlaceFactsMatch, canonicalPlaceSuggestionForId, canonicalPlaceSuggestionSuitableAsNearbyBase, isOvernightBaseEligible, nearbyBaseAnchorForMention, placeCandidateWithinPlanningParent, placeSuggestionRequiresBaseSelection, type CanonicalPlaceSuggestion, type ResolvedPlaceMention } from "./place-intelligence.ts";
 import { discoveryPlaceForId, discoveryPlaceWithinMention } from "./discovery-content.ts";
 import type { DiscoveryPlace } from "./discovery-content.ts";
@@ -28,7 +29,10 @@ export function discoveryDirectStopSuggestion(place: DiscoveryPlace): CanonicalP
   if(!suggestion||place.name!==catalog.canonicalName||place.placeType!==catalog.placeType||!catalog.parentCountries.includes(place.country))return null;
   const trusted= suggestion.coordinates ?? discoveryPlaceForId(place.id)?.coordinates;
   if(!trusted||trusted.length!==2||!trusted.every(Number.isFinite)||!place.coordinates?.every((v,i)=>v===trusted[i]))return null;
-  return {...suggestion,coordinates:[...trusted] as [number,number]};
+  const ready={...suggestion,coordinates:[...trusted] as [number,number]};
+  const owner={name:ready.name,country:ready.country,canonicalPlaceId:ready.canonicalPlaceId,coordinates:ready.coordinates,
+    providerId:ready.provenance.find(source=>source.kind==='provider')?.id};
+  return acceptedGeographicPlace(owner,{...owner,placeType:ready.placeType,routability:ready.routability,referenceSnapshotId:ready.referenceSnapshotId}) ? ready : null;
 }
 
 /** The primary grid is a stop picker; evidence that supports browsing alone is not an Add path. */

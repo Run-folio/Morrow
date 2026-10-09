@@ -3,7 +3,7 @@ import { countryNameFor } from "./country-registry.ts";
 import type { EstimatedLeg, PlannerStop } from "./planner.ts";
 import {
   analyzeRouteCountryContinuity,
-  classifyCountryContinuity,
+  createCountryContinuityClassifier,
   type CountryContinuityAssessment,
   type CountryContinuityConstraintProof,
   type RouteCountryContinuity,
@@ -564,13 +564,9 @@ export function scoreRouteCandidates(input: ScoreRouteCandidatesInput): RouteCan
   }
 
   const facts = input.candidates.map((candidate) => candidateFacts(input, candidate, config));
-  const viableContinuities = facts.map((item) => item.continuity);
+  const classify = createCountryContinuityClassifier(facts.map((item) => item.continuity));
   for (const item of facts) {
-    const assessments = classifyCountryContinuity({
-      route: item.continuity,
-      viableAlternatives: viableContinuities,
-      proofs: input.countryContinuityProofs,
-    });
+    const assessments = classify(item.continuity, input.countryContinuityProofs);
     item.metrics.countryContinuityAssessments = assessments;
     item.metrics.observedAvoidableCountryReentryCount = assessments.reduce((total, assessment) => total + avoidableReentries(assessment), 0);
     item.metrics.provenConstraintDrivenCountryCodes = assessments

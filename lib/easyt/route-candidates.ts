@@ -333,7 +333,13 @@ export function generateRouteCandidates(input: {
     if (!sameOrder(seeds[0]?.stops ?? [], original)) seeds.unshift({ stops: original, source: "existing" });
   }
 
-  const deduplicated = seeds.filter((seed, index, all) => all.findIndex((item) => orderKey(item.stops) === orderKey(seed.stops)) === index);
+  const seenOrders = new Set<string>();
+  const deduplicated = seeds.filter(seed => {
+    const key = orderKey(seed.stops);
+    if (seenOrders.has(key)) return false;
+    seenOrders.add(key);
+    return true;
+  });
   const constraintIssues: RouteConstraintIssue[] = [];
   const countryBlockRejections: CountryBlockRejection[] = [];
   const originalContinuity = analyzeRouteCountryContinuity(original);

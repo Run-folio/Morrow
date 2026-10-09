@@ -208,15 +208,57 @@ export function classifyCountryContinuity(input: {
   viableAlternatives: readonly RouteCountryContinuity[];
   proofs?: readonly CountryContinuityConstraintProof[];
 }): CountryContinuityAssessment[] {
+  return classifyWithObservedBlocks(input.route, input.proofs, countryCode => {
+    const lower = input.viableAlternatives.filter(alternative => respectsCountryContinuityBarriers(input.route, alternative)
+      && (alternative.reentriesByCountry[countryCode] ?? 0) < (input.route.reentriesByCountry[countryCode] ?? 0));
+    return lower.length ? Math.min(...lower.map(alternative => alternative.blocksByCountry[countryCode] ?? 0)) : undefined;
+  });
+}
+
+/** One scoring evaluation owns this snapshot. No mutable route is cached
+ * globally; country barriers and the scan's exact evidence stay intact. */
+export function createCountryContinuityClassifier(alternatives: readonly RouteCountryContinuity[]) {
+  const key = (route: RouteCountryContinuity) => route.knownStopCount === 0 ? 'no-known-country'
+    : JSON.stringify([route.unknownCountryStopIds, stopIdsByKnownSpan(route).map(ids => [...ids].sort())]);
+  const groups = new Map<string, RouteCountryContinuity[]>();
+  for (const route of alternatives) {
+    const groupKey = key(route);
+    const group = groups.get(groupKey) ?? [];
+    group.push(route);
+    groups.set(groupKey, group);
+  }
+  const index = new Map<string, Map<string, Map<number, number>>>();
+  for (const [groupKey, routes] of groups) {
+    const countries = new Set(routes.flatMap(route => Object.keys(route.blocksByCountry)));
+    const countryIndex = new Map<string, Map<number, number>>();
+    for (const country of countries) {
+      const counts = new Map<number, number>();
+      for (const route of routes) {
+        const reentries = route.reentriesByCountry[country] ?? 0, blocks = route.blocksByCountry[country] ?? 0;
+        counts.set(reentries, Math.min(counts.get(reentries) ?? Infinity, blocks));
+      }
+      countryIndex.set(country, counts);
+    }
+    index.set(groupKey, countryIndex);
+  }
+  return (route: RouteCountryContinuity, proofs?: readonly CountryContinuityConstraintProof[]) => {
+    const group = index.get(key(route));
+    return classifyWithObservedBlocks(route, proofs, country => {
+      if (!group) return undefined;
+      const counts = group.get(country) ?? new Map([[0, 0]]);
+      const lower = [...counts].filter(([reentries]) => reentries < (route.reentriesByCountry[country] ?? 0));
+      return lower.length ? Math.min(...lower.map(([, blocks]) => blocks)) : undefined;
+    });
+  };
+}
+
+function classifyWithObservedBlocks(route: RouteCountryContinuity, proofs: readonly CountryContinuityConstraintProof[] | undefined,
+  observed: (country: string) => number | undefined): CountryContinuityAssessment[] {
+  const input = {route, proofs};
   return input.route.repeatedCountryCodes.map((countryCode) => {
     const currentBlocks = input.route.blocksByCountry[countryCode] ?? 0;
     const currentReentries = input.route.reentriesByCountry[countryCode] ?? 0;
-    const lowerAlternatives = input.viableAlternatives.filter((alternative) =>
-      respectsCountryContinuityBarriers(input.route, alternative)
-      && (alternative.reentriesByCountry[countryCode] ?? 0) < currentReentries);
-    const observedLowerBlockCount = lowerAlternatives.length
-      ? Math.min(...lowerAlternatives.map((alternative) => alternative.blocksByCountry[countryCode] ?? 0))
-      : undefined;
+    const observedLowerBlockCount = observed(countryCode);
     const repeatedSpans = repeatedSpanIndexes(input.route, countryCode);
     const affectedBlocks = input.route.blocks.filter((block) =>
       block.countryCode === countryCode && repeatedSpans.has(block.spanIndex));

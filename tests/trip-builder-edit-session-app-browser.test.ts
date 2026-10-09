@@ -1,11 +1,22 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {renderBuilder} from './helpers/builder-render.ts';
-import {canonicalRouteFixture} from './fixtures/batch14-route-documents.ts';
+import {canonicalRouteFixture as legacyCanonicalRouteFixture} from './fixtures/batch14-route-documents.ts';
 import {canonicalTripForOwner} from '../lib/easyt/trip-promotion.ts';
 import {requireReadableTripDocument} from '../lib/easyt/trip-document.ts';
 import {stopEndpoint} from '../lib/easyt/trip-legs.ts';
 import {nextTripUpdatedAt} from '../lib/easyt/trip-continuity.ts';
+import {acceptedGeographicPlace,stopGeographicPlace} from '../lib/easyt/geographic-binding.ts';
+// These persistence fixtures model deliberately confirmed settlements. Keep
+// the shared legacy fixture unverified for the geographic migration tests.
+function canonicalRouteFixture() {
+ const trip=requireReadableTripDocument(legacyCanonicalRouteFixture());
+ const origin={...trip.brief.intent.route.origin!,country:'United Kingdom',coordinates:[-.1276,51.5072] as [number,number],providerId:'fixture:confirmed-origin'};
+ trip.brief.intent.route.origin=acceptedGeographicPlace(origin,{...origin,placeType:'city',routability:'direct_destination'},'endpoint')!;
+ trip.brief.originCoordinates=origin.coordinates;trip.brief.originCountry=origin.country;
+ for(const stop of trip.stops){const place={...stopGeographicPlace(stop),providerId:`fixture:confirmed-${stop.id}`};const verified=acceptedGeographicPlace(place,{...place,placeType:'city',routability:'direct_destination'});assert.ok(verified);stop.providerId=verified.providerId;stop.geographicBinding=verified.geographicBinding;}
+ return trip;
+}
 const enabled=process.env.MORROVIA_BUILDER_APP_BROWSER_TESTS==='1';
 test('undated stay requests permit deliberate night and order edits while booked stays stay protected',{skip:!enabled,timeout:30000},async()=>{
   let cloud=requireReadableTripDocument(canonicalTripForOwner('owner-a',requireReadableTripDocument(canonicalRouteFixture())));
@@ -68,7 +79,7 @@ for(const repeated of [false,true])test(`A20 mounted removal confirms the same o
 });
 test('mounted_Build_promotes_exact_guest_recovery_then_uses_owned_CAS_and_navigation', {skip:!enabled,timeout:30000},async()=>{
   const initial=requireReadableTripDocument(canonicalRouteFixture());initial.ownerId=null;
-  const first=initial.stops[0]!;const origin={name:first.name,country:first.country,canonicalPlaceId:first.canonicalPlaceId,coordinates:[first.longitude!,first.latitude!] as [number,number]};
+  const first=initial.stops[0]!;const origin={name:first.name,country:first.country,canonicalPlaceId:first.canonicalPlaceId,coordinates:[first.longitude!,first.latitude!] as [number,number],providerId:first.providerId,geographicBinding:first.geographicBinding};
   initial.brief.intent.route.origin=origin;initial.brief.origin=origin.name;initial.brief.originCanonicalPlaceId=origin.canonicalPlaceId;initial.brief.originCountry=origin.country;initial.brief.originCoordinates=origin.coordinates;
   initial.brief.intent.hardConstraints.avoidDriving=false;initial.brief.intent.preferences.transportModes=['flight','train','drive'];
   let cloud:typeof initial|null=null;const writes:{method:string;path:string;trip:typeof initial}[]=[];
@@ -243,7 +254,7 @@ test('mounted_selected_origin_type_and_dates_autosave_dependencies_without_Save_
  const dateDialog=view.page.getByRole('dialog');await dateDialog.locator('input').fill('2026-10-10');await dateDialog.locator('input').press('Enter');await dateDialog.locator('input').fill('2026-10-20');await dateDialog.locator('input').press('Enter');
  for(let i=0;i<50&&(cloud.endDate!=='2026-10-20'||cloud.brief.intent.route.tripType!=='return_to_start');i++)await view.page.waitForTimeout(100);
  assert.equal(cloud.brief.origin,'Paris');assert.equal(cloud.brief.intent.route.tripType,'return_to_start');assert.equal(cloud.endDate,'2026-10-20');assert.equal(cloud.travellers,3);assert.deepEqual(cloud.brief.intent.route.orderedStopIds,originalOrder);
- assert.ok(cloud.legs.some(leg=>leg.fromEndpoint?.kind==='origin'&&leg.fromEndpoint.canonicalPlaceId==='paris'));assert.ok(cloud.legs.some(leg=>leg.toEndpoint?.kind==='end'&&leg.toEndpoint.canonicalPlaceId==='paris'));
+ assert.ok(cloud.legs.some(leg=>leg.fromEndpoint?.kind==='origin'&&leg.fromEndpoint.name==='Paris'));assert.ok(cloud.legs.some(leg=>leg.toEndpoint?.kind==='end'&&leg.toEndpoint.canonicalPlaceId===cloud.brief.intent.route.origin?.canonicalPlaceId));
  await view.page.reload();await view.page.locator('[data-builder-edit-session="active"]').waitFor();assert.deepEqual(view.errors,[]);
  }finally{await view.close()}
 });

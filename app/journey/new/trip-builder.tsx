@@ -33,6 +33,7 @@ import { TripBuilderRouteProposal } from "./trip-builder-route-proposal";
 import { acceptBuilderOptimization, calculateBuilderOptimization, type BuilderOptimizationResult } from "@/lib/easyt/trip-builder-route-proposal";
 import { routeProjectionInputKey } from "@/lib/easyt/trip-route-intent";
 import { allRequiredStaysHaveNights } from "@/lib/easyt/trip-builder-generated-nights";
+import { projectBuilderCalendar } from "@/lib/easyt/trip-builder-calendar";
 import { resolveBuilderRecommendation } from "@/lib/easyt/trip-builder-recommendations";
 import { readBuilderInputDraft, writeBuilderInputDraft, type BuilderInputBinding } from "@/lib/easyt/trip-builder-input-draft";
 import { EasyTTripPersistenceError, isTripPersistenceAuthenticationError, tripRecoveryStateForPersistenceError } from "@/lib/easyt/trip-persistence-error";
@@ -2197,7 +2198,7 @@ function TripBuilderDocument() {
     window.setTimeout(() => document.getElementById(`builder-${target}`)?.scrollIntoView({ behavior: "smooth", block: "center" }), 80);
   };
 
-  const routeIntelligence = useMemo(() => assessRouteIntelligence({
+  const routeIntelligenceInput: Parameters<typeof assessRouteIntelligence>[0] = {
     origin: { name: origin.trim(), coordinates: canonicalBuilder?validatedPlaceCoordinates(canonicalBuilder.brief.intent.route.origin,'endpoint')??undefined:originCoordinates },
     end: routeJourneyEnd && canonicalBuilder ? { ...routeJourneyEnd,
       coordinates: validatedPlaceCoordinates(resolvedJourneyEndPlace(journeyStartPlace, journeyEnd), 'endpoint') ?? undefined } : routeJourneyEnd,
@@ -2218,7 +2219,10 @@ function TripBuilderDocument() {
       avoidFlights: structuredScoringPreferences.avoidFlights,
       interests: effectiveIntent.preferences.interests,
     },
-  }), [canonicalBuilder, journeyStartPlace, journeyEnd, origin, originCoordinates, routeJourneyEnd, stops, effectivePicks, totalDays, effectiveIntent, projectedFixedCommitments, structuredRouteConstraints, structuredScoringPreferences]);
+  };
+  // Discovery drafts and save receipts do not change the route assessment.
+  // Compare its complete semantic input rather than document object identity.
+  const routeIntelligence = useMemo(() => assessRouteIntelligence(routeIntelligenceInput), [JSON.stringify(routeIntelligenceInput)]);
   const routeKey = stops.map((stop) => stop.id).join("|");
   const routeRecommendationVisible = routeIntelligence.route.state === "recommendation" && keptRouteKey !== routeKey;
   const currentRouteCheckProposalStopIds = currentBuilderRouteProposal(
@@ -2709,8 +2713,10 @@ function TripBuilderDocument() {
 
   const updateAllocatedDays = (stopId: string, requested: number) => {
     if (protectedBuilderStopIds.includes(stopId)) return;
-    const current = allocation[stopId] ?? 0;
-    const next = Math.max(0, Math.min(totalNights, Math.round(requested)));
+    const live = builderEditSessionRef.current?.getSnapshot().trip;
+    const current = live ? live.stops.find(stop => stop.id === stopId)?.nights ?? 0 : allocation[stopId] ?? 0;
+    const budget = live ? tripNightsBetween(live.startDate, live.endDate) : totalNights;
+    const next = Math.max(0, Math.min(budget, Math.round(requested)));
     if (next === current) return;
     if (builderEditSessionRef.current) {
       rememberStructuralChange("change_nights", 1);
@@ -2733,6 +2739,12 @@ function TripBuilderDocument() {
     setManualNightStopIds(rebalanced.manualStopIds);
     setDayAllocations(nextAllocation);
     setNightEditFeedback(nightRebalanceFeedback(rebalanced, language));
+  };
+
+  const adjustAllocatedDays = (stopId: string, delta: number) => {
+    const live = builderEditSessionRef.current?.getSnapshot().trip;
+    const current = live ? live.stops.find(stop => stop.id === stopId)?.nights ?? 0 : allocation[stopId] ?? 0;
+    updateAllocatedDays(stopId, current + delta);
   };
 
   const beginRouteEdit = (stopId: string) => {
@@ -3268,6 +3280,7 @@ function TripBuilderDocument() {
     suggestion: GuidedPlanningAreaSuggestion,
     discoverySelectionVerified = false,
   ) => addStop(suggestion.name, suggestion.country, mention.mentionId, undefined, {
+    referenceSnapshotId: suggestion.referenceSnapshotId,
     canonicalPlaceId: suggestion.canonicalPlaceId,
     name: suggestion.name,
     label: `${suggestion.name}, ${suggestion.country}`,
@@ -3881,7 +3894,10 @@ function TripBuilderDocument() {
       nightAllocations: allocation,
       manualNightStopIds,
       nightAllocation,
-      draft,
+      // New routes use the canonical flexible calendar. Recommendations are
+      // generated context, not authored day protection. Saved documents and
+      // reviewed templates keep their existing day owner.
+      draft: sourceRouteKey || hydratedCanonicalTripRef.current?.id === tripId ? draft : [],
       placeDetails: discoveredPlaces,
       originCoordinates,
       createdAt,
@@ -3917,7 +3933,8 @@ function TripBuilderDocument() {
       decisionSelections,
     });
     const hydratedCanonical = hydratedCanonicalTripRef.current?.id === built.id ? hydratedCanonicalTripRef.current : null;
-    const reconciled = preserveBuilderCanonicalState(hydratedCanonical, { ...built, ownerId: tripOwnerId, legs: builderCanonicalLegs });
+    let reconciled = preserveBuilderCanonicalState(hydratedCanonical, { ...built, ownerId: tripOwnerId, legs: builderCanonicalLegs });
+    if (!hydratedCanonical && !sourceRouteKey) reconciled = projectBuilderCalendar(reconciled, reconciled).trip;
     return tripOwnerId && tripUpdatedAt ? { ...reconciled, updatedAt: tripUpdatedAt } : reconciled;
   }, [canonicalBuilder, tripId, tripOwnerId, tripStatus, tripUpdatedAt, sourceRouteKey, currentCuratedRoute, origin, originCanonicalPlaceId, originCountry, originProviderId, journeyEnd, stops, startDate, endDate, effectivePicks, tripBrief, budget, budgetPreference, calendarDayAllocations, allocation, manualNightStopIds, nightAllocation, draft, discoveredPlaces, originCoordinates, createdAt, intakeMentions, activePlaceMentions, routeHints, routeIntelligence, effectiveIntent, projectedFixedCommitments, effectiveStructuredBrief, scheduleLocks, decisionSelections, builderCanonicalLegs]);
 
@@ -4724,10 +4741,11 @@ function TripBuilderDocument() {
     catch { return null; } })() : null, [discoveryProjectionIdentity]);
   const discoveryEventKind = discoveryEntry.kind === "skip" || discoveryEntry.kind === "legacy-recovery"
     ? "clarification" : discoveryEntry.kind;
-  const canonicalDiscoveryReview = activeClarificationMention && discoveryDraft && discoveryProjection
+  const canonicalDiscoveryReview = useMemo(() => !discoveryCommitting && activeClarificationMention && discoveryDraft && discoveryProjection
     ? buildDiscoveryReview({ mention: activeClarificationMention, draft: discoveryDraft, projection: discoveryProjection,
       trip: activeTripDocument, currentValidation: finalPlanValidation,
-      constraints: { ...structuredRouteConstraints, fixedCommitments: projectedFixedCommitments } }) : undefined;
+      constraints: { ...structuredRouteConstraints, fixedCommitments: projectedFixedCommitments } }) : undefined,
+    [discoveryCommitting, activeClarificationMention, JSON.stringify(discoveryDraft), discoveryProjection, activeTripDocument, finalPlanValidation, structuredRouteConstraints, projectedFixedCommitments]);
   const addDiscoverySearchSelection = (suggestion: CanonicalPlaceSuggestion, outsideAccepted: boolean) => {
     if (!activeClarificationMention || !discoveryDraft || !discoverySearchStopSuggestion(suggestion)) return;
     const mentionId = activeClarificationMention.mentionId;
@@ -5575,6 +5593,7 @@ function TripBuilderDocument() {
                 onPreviewOrder={setRoutePreviewStopIds}
                 onCommitOrder={commitStopOrder}
                 onEditNights={updateAllocatedDays}
+                onAdjustNights={adjustAllocatedDays}
                 onRemoveStop={requestRemoveStop}
                 onTransportChoiceChange={(legId, identity) => {
                   if (builderEditSessionRef.current) { dispatchAcceptedBuilderEdit({ kind: "transport", legId, identity }); return; }
@@ -5622,7 +5641,7 @@ function TripBuilderDocument() {
                         <div className={styles.routeStopName}><b>{index + 1}</b><span><strong>{stop.name}</strong></span></div>
                       </div>
                       <div className={styles.routeTransferSummary} role="cell"><TransferIcon aria-hidden="true" /><span><strong className={styles.transferContext}>{transferContext}</strong>{leg && !transferIsUnknown && <span className={`${styles.transferDurationLine} ${styles.transferTiming}`}><small>{durationLabel(transferMinutes)}{includesFlight && transferMinutes !== null ? " total" : ""}</small>{includesFlight && transferMinutes !== null && <span className={styles.transferDurationHelp}><button type="button" aria-label={language === "es" ? "El total estimado puerta a puerta incluye el traslado al aeropuerto, facturación y seguridad, espera, vuelo, frontera o conexión cuando se conoce, y el traslado hasta tu alojamiento. Morrovia usa este total para calcular el tiempo aprovechable." : "The estimated door-to-door total includes airport access, check-in and security, departure buffer, flight time, border or connection time where known, and transfer to your stay. Morrovia uses this total to calculate usable time."}><Info aria-hidden="true" /></button><span className={styles.transferDurationTooltip} role="tooltip" aria-hidden="true">{language === "es" ? "Total estimado puerta a puerta: acceso al aeropuerto, facturación y seguridad, espera, vuelo, frontera o conexión cuando se conoce y traslado hasta tu alojamiento. Se usa para calcular el tiempo aprovechable." : "Estimated door-to-door total: airport access, check-in and security, departure buffer, flight time, border or connection time where known, and transfer to your stay. Used to calculate usable time."}</span></span>}</span>}</span></div>
-                      <div className={styles.nightsControl} role="cell"><span className={styles.mobileFieldLabel}>{language === "es" ? "Noches" : "Nights"}</span><button type="button" aria-label={`Remove one night from ${stop.name}; ${days} nights currently`} disabled={days <= 0 || locked} onClick={() => updateAllocatedDays(stop.id, days - 1)}>−</button><strong aria-label={`${days} nights`}>{days}</strong><button type="button" aria-label={`Add one night to ${stop.name}; ${days} nights currently`} disabled={days >= totalNights || locked} onClick={() => updateAllocatedDays(stop.id, days + 1)}>+</button></div>
+                      <div className={styles.nightsControl} role="cell"><span className={styles.mobileFieldLabel}>{language === "es" ? "Noches" : "Nights"}</span><button type="button" aria-label={`Remove one night from ${stop.name}; ${days} nights currently`} disabled={days <= 0 || locked} onClick={() => adjustAllocatedDays(stop.id, -1)}>−</button><strong aria-label={`${days} nights`}>{days}</strong><button type="button" aria-label={`Add one night to ${stop.name}; ${days} nights currently`} disabled={days >= totalNights || locked} onClick={() => adjustAllocatedDays(stop.id, 1)}>+</button></div>
                       <div className={`${styles.usableTime} ${compressed ? styles.usableTimeWarning : ""}`} role="cell"><span className={styles.mobileFieldLabel}>{language === "es" ? "Tiempo útil" : "Usable time"}</span><strong>{usableDays === null ? (language === "es" ? "Por confirmar" : "To confirm") : `~${usableDays} ${usableDays === 1 ? "day" : "days"}`}</strong>{compressed && <AlertTriangle aria-label="Compressed stop" />}</div>
                     </div>;
                   })}
@@ -5718,6 +5737,8 @@ function TripBuilderDocument() {
           };
           void (async () => {
             try {
+              // Paint the existing progress state before canonical acceptance.
+              await new Promise<void>(resolve => window.requestAnimationFrame(() => window.setTimeout(resolve, 0)));
               const result = await commitDiscoveryReview(review, {
                 currentTrip: () => discoveryOwnersRef.current.trip,
                 addBase: async choice => {

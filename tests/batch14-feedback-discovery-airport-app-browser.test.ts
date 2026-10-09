@@ -55,7 +55,7 @@ for (const width of [390, 1440]) test(`actual Belize Discovery at ${width}px ren
   const h = await mountSavedTrip(); const { page } = h.view;
   try {
     await page.setViewportSize({ width, height: 900 });
-    await page.getByRole('button', { name: 'Edit Belize', exact: true }).click();
+    await page.getByRole('button', { name: 'Edit Caye Caulker', exact: true }).click();
     const dialog = page.getByRole('dialog').last();
     await dialog.getByRole('heading', { name: 'Belize City', exact: true }).waitFor();
     assert.equal(await dialog.locator('[data-discovery-card="true"]').count(), 4);
@@ -108,7 +108,7 @@ async function actualGuaPayload(iata?: string) {
 
 test('actual API response from live-captured GUA provider bodies reaches the mounted origin chooser and survives accepted autosave/reload', { skip: !enabled, timeout: 35000 }, async () => {
   const payload = await actualGuaPayload();
-  assert.equal(payload.candidates[0].providerId, 'nominatim:relation:17228072');
+  assert.match(payload.candidates[0].providerId, /^reference:ourairports:4644@/);
   const h = await mountSavedTrip({ GUA: payload.candidates }); const { page } = h.view;
   try {
     const origin = page.getByRole('combobox', { name: 'Start from', exact: true });
@@ -121,7 +121,7 @@ test('actual API response from live-captured GUA provider bodies reaches the mou
     await page.getByText('Saved to your account', { exact: true }).waitFor();
     const saved = structuredClone(h.cloud());
     assert.equal(saved.brief.intent.route.origin?.canonicalPlaceId, payload.candidates[0].canonicalPlaceId);
-    assert.deepEqual(saved.brief.intent.route.origin?.coordinates, [-90.5271541, 14.5832025]);
+    assert.deepEqual(saved.brief.intent.route.origin?.coordinates, payload.candidates[0].coordinates);
     assert.deepEqual(saved.stops, h.initial.stops);
     assert.equal(saved.brief.intent.route.orderAuthority, h.initial.brief.intent.route.orderAuthority);
     assert.deepEqual(saved.brief.intent.route.journeyEnd, h.initial.brief.intent.route.journeyEnd);
@@ -132,7 +132,8 @@ test('actual API response from live-captured GUA provider bodies reaches the mou
 
 for (const iata of ['GUA/XXX', 'XXX']) test(`actual provider response with ${iata} cannot gain code priority or silently change the mounted origin`, { skip: !enabled, timeout: 30000 }, async () => {
   const payload = await actualGuaPayload(iata);
-  assert.ok(payload.candidates.every((candidate: any) => !candidate.matchedAirportCode));
+  assert.equal(payload.candidates[0].matchedAirportCode, 'GUA', 'maintained exact GUA wins independently of malformed external code metadata');
+  assert.ok(payload.candidates.filter((candidate: any) => candidate.providerId?.startsWith('nominatim:')).every((candidate: any) => !candidate.matchedAirportCode));
   const h = await mountSavedTrip({ GUA: payload.candidates });
   try {
     const { page } = h.view;
@@ -141,7 +142,7 @@ for (const iata of ['GUA/XXX', 'XXX']) test(`actual provider response with ${iat
     await page.getByRole('combobox', { name: 'Start from', exact: true }).fill('GUA');
     await response;
     await page.waitForTimeout(100);
-    assert.doesNotMatch(await page.getByRole('option').first().innerText(), /La Aurora/);
+    assert.match(await page.getByRole('option').first().innerText(), /La Aurora/, 'the maintained GUA identity retains priority');
     assert.deepEqual(h.cloud().brief.intent.route.origin, h.initial.brief.intent.route.origin);
     assert.deepEqual(h.cloud().stops, h.initial.stops);
     assert.deepEqual(h.view.errors, []);

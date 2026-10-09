@@ -133,10 +133,12 @@ export const NarrowScreen: Story = {
 };
 
 export const DisabledSegments: Story = {
-  render: () => <EasyTSegmentedControl ariaLabel="Disabled trip type" disabled value="return" options={[{ value: "return", label: "Return to start" }, { value: "one_way", label: "One way" }]} onChange={() => { throw new Error("Disabled segments must be inert"); }} />,
+  render: () => <div style={{display:'grid',gap:12}}>{['return','one_way'].map(value=><EasyTSegmentedControl key={value} ariaLabel={`Disabled trip type: ${value}`} disabled value={value} options={[{ value: "return", label: "Return to start" }, { value: "one_way", label: "One way" }]} onChange={() => { throw new Error("Disabled segments must be inert"); }} />)}</div>,
   play: async ({ canvasElement }) => {
     for (const button of canvasElement.querySelectorAll<HTMLButtonElement>("button")) {
       if (!button.disabled) throw new Error("Disabled segment is interactive");
+      const style=getComputedStyle(button);
+      if (button.getAttribute('aria-pressed')==='true' && style.color===style.backgroundColor) throw new Error('Selected disabled text is invisible');
       button.click();
       button.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
     }

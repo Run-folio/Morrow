@@ -8,7 +8,7 @@ import type { BrowserContext, Page } from "playwright";
 import { createPrivacyConsentRecord, PRIVACY_CONSENT_STORAGE_KEY } from "../lib/privacy-consent.ts";
 import { geographicallyReady, stopGeographicPlace } from "../lib/easyt/geographic-binding.ts";
 import { REFERENCE_SNAPSHOT_ID } from "../lib/easyt/place-reference.ts";
-import type { EasyTTrip, JourneyEndpointPlace } from "../lib/easyt/trip.ts";
+import type { EasyTTrip, JourneyEndpointPlace, DestinationIntent } from "../lib/easyt/trip.ts";
 import { canonicalRouteFixture } from "./fixtures/batch14-route-documents.ts";
 import { requireReadableTripDocument, prepareTripDocumentForWrite } from "../lib/easyt/trip-document.ts";
 import { acceptedGeographicPlace } from "../lib/easyt/geographic-binding.ts";
@@ -101,14 +101,17 @@ async function installDeterministicBoundaries(context: BrowserContext) {
   await context.route("https://**/*", (route) => route.abort());
 }
 
-async function withEvidence(name: string, run: (page: Page, context: BrowserContext) => Promise<void>) {
+async function withEvidence(name: string, run: (page: Page, context: BrowserContext) => Promise<void>, width = 390) {
   const browser = await chromium.launch({ headless: true, ...(process.env.MORROVIA_BROWSER_CHANNEL ? { channel: process.env.MORROVIA_BROWSER_CHANNEL } : {}) });
-  const context = await browser.newContext({ viewport: { width: 390, height: 844 } });
+  const context = await browser.newContext({ viewport: { width, height: 1000 } });
   const page = await context.newPage();
+  const pageErrors: string[] = [];
+  page.on("pageerror", error => pageErrors.push(error.message));
   await context.tracing.start({ screenshots: true, snapshots: true, sources: true });
   try {
     await installDeterministicBoundaries(context);
     await run(page, context);
+    assert.deepEqual(pageErrors, [], "guest journey has no unhandled page errors");
     await context.tracing.stop();
   } catch (error) {
     mkdirSync(artifacts, { recursive: true });
@@ -307,6 +310,8 @@ test("Tier 1 guest journey keeps three canonical stops and edits through Build a
   await page.getByRole("region", { name: "Trip itinerary" }).waitFor();
   await page.getByText("SKIP WORKSPACE GUIDE").click({ timeout: 2_000 }).catch(() => {});
   const planner = page.locator("section[aria-label='Day 1 planner']");
+  assert.equal(await page.getByRole("button", { name: "Calendar", exact: true }).getAttribute("aria-pressed"), "true");
+  await page.getByRole("button", { name: "Open full day", exact: true }).click();
   await planner.waitFor();
   await planner.getByRole("button", { name: /Add plan to .* morning/i }).click();
   const dialog = page.getByRole("dialog", { name: /Add to morning on Day 1/i });
@@ -388,4 +393,120 @@ test("Tier 1 Discovery resolves a landmark as a visit with a canonical overnight
   assert.deepEqual(discovered.stops.map((stop) => stop.canonicalPlaceId), ["agra"]);
   assert.equal(discovered.stops.some((stop) => stop.name === "Taj Mahal"), false);
   assert.equal(discovered.brief.structuredBrief?.placeSelections?.filter((selection) => selection.kind === "visit" && selection.mentionId === "place-taj-mahal-0" && selection.routeStopId === discovered.stops[0]?.id).length, 1);
+}));
+for (const [width,type] of [[1440,'return_to_start'],[390,'one_way']] as const) test(`actual multi-area Discovery ${width}px ${type} stays responsive, allocates generated nights and survives rapid edits and reload`,{skip:!enabled,timeout:90000},async()=>withEvidence(`multi-area-${width}`,async(page,context)=>{
+ await context.unroute('**/api/journey-geocode?*');
+ await page.addInitScript(()=>{
+  const tasks:Array<{start:number;duration:number}>=[];(window as unknown as {__routeTasks:typeof tasks}).__routeTasks=tasks;
+  new PerformanceObserver(list=>tasks.push(...list.getEntries().map(entry=>({start:entry.startTime,duration:entry.duration})))).observe({type:'longtask',buffered:true});
+ });
+ await page.goto(base,{waitUntil:'domcontentloaded'});
+ await page.getByRole('combobox',{name:'Start from',exact:true}).fill('LAX');
+ await page.getByRole('option',{name:/Los Angeles International Airport.*United States/}).click();
+ if(type==='one_way')await page.getByRole('button',{name:'One way',exact:true}).click();
+ await page.getByRole('button',{name:/Travel dates/}).first().click();
+ await page.getByRole('dialog').locator('[data-date="2026-10-14"]').click();await page.getByRole('dialog').locator('[data-date="2026-10-28"]').click();
+ for(const name of ['Tokyo','South Korea','Africa']){
+  await page.getByRole('combobox',{name:'Destination',exact:true}).fill(name);
+  await page.getByRole('option',{name:new RegExp('^'+name)}).first().click();
+  if(name!=='Africa')await page.getByRole('button',{name:'Add destination',exact:true}).click();
+ }
+ await page.getByRole('button',{name:'Plan my trip',exact:true}).first().click();
+ await page.getByRole('dialog').getByRole('heading',{name:'Explore places',exact:true}).waitFor({timeout:20000});
+ const id=new URL(page.url()).searchParams.get('trip')!;assert.ok(id);
+ const timings:Array<{area:string;acceptMs:number}>=[];
+ for(const [area,names] of [['South Korea',['Seoul','Busan']],['Africa',['Marrakech','Fes','Chefchaouen']]] as const){
+  const dialog=page.getByRole('dialog');await dialog.getByText(area,{exact:true}).first().waitFor();
+  if(await dialog.locator('[data-discovery-step="directions"]').count())await dialog.getByRole('button',{name:/Morocco/}).click();
+  for(const name of names){
+   const button=dialog.getByRole('button',{name:`Add to shortlist: ${name}`,exact:true});
+   const started=Date.now();await button.click();
+   const selected=dialog.getByRole('button',{name:`Remove from shortlist: ${name}`,exact:true});await selected.waitFor();
+   assert.ok(Date.now()-started<1500,`${name} selection responds within 1.5 seconds`);
+   assert.equal(await selected.getAttribute('aria-pressed'),'true');
+   for(const state of ['default','hover','focus']){
+    if(state==='hover')await selected.hover();if(state==='focus')await selected.focus();
+    const style=await selected.evaluate(button=>({color:getComputedStyle(button).color,background:getComputedStyle(button).backgroundColor,transition:getComputedStyle(button).transitionProperty}));
+    const luminance=(color:string)=>color.match(/\d+(?:\.\d+)?/g)!.slice(0,3).map(Number).map(v=>{const channel=v/255;return channel<=.04045?channel/12.92:((channel+.055)/1.055)**2.4}).reduce((sum,v,index)=>sum+v*[.2126,.7152,.0722][index],0);
+    const [bright,dark]=[luminance(style.color),luminance(style.background)].sort((a,b)=>b-a);
+    assert.ok((bright+.05)/(dark+.05)>=4.5,`${name} ${state} selected text meets 4.5:1 contrast`);
+    assert.ok(!style.transition.includes('color'),`${name} selected foreground and background change atomically`);
+   }
+  }
+  const started=Date.now();await dialog.getByRole('button',{name:`Add ${names.length} places`,exact:true}).click();
+  await page.waitForFunction(area=>!document.querySelector('[role="dialog"]')?.textContent?.includes(area),area,{timeout:15000});
+  timings.push({area,acceptMs:Date.now()-started});assert.ok(Date.now()-started<2500,`${area} multi-add responds within 2.5 seconds`);
+ }
+ let trip=await recoveryTrip(page,id);assert.ok(trip);
+ assert.equal(trip.brief.intent?.route?.tripType,type);assert.equal(trip.stops.length,6);
+ assert.equal(trip.stops.reduce((sum,stop)=>sum+(stop.nights??0),0),14);assert.ok(trip.stops.every(stop=>(stop.nights??0)>0));
+ assert.deepEqual(trip.brief.manualNightStopIds,[]);
+ for(const area of ['South Korea','Africa']){
+  const intent:DestinationIntent=trip.brief.intent!.route!.destinations.find(item=>item.sourceText===area)!;
+  assert.equal(intent.resolution,'resolved');assert.ok(trip.brief.structuredBrief?.completedPlanningAreaMentionIds?.includes(intent.id));
+  assert.equal(await page.getByRole('button',{name:`Remove ${area}`,exact:true}).count(),0);
+  assert.equal(await page.getByRole('button',{name:`Edit ${area}`,exact:true}).count(),0);
+ }
+ const target=trip.stops.find(stop=>stop.name==='Seoul')!,initial=target.nights!;
+ const editStart=await page.evaluate(()=>performance.now());
+ // Two genuine button activations in one event turn expose stale-render arithmetic.
+ await page.getByRole('button',{name:/Add one night to Seoul/}).evaluate(button=>{(button as HTMLButtonElement).click();(button as HTMLButtonElement).click();});
+ await page.waitForFunction(({id,nights})=>Object.keys(localStorage).filter(key=>key.startsWith(`easyt:trip-recovery:v2:guest:${encodeURIComponent(id)}:`)).some(key=>JSON.parse(localStorage.getItem(key)??'null')?.trip?.stops?.find((stop:{name:string})=>stop.name==='Seoul')?.nights===nights),{id,nights:initial+2});
+ await page.getByRole('button',{name:/Remove one night from Seoul/}).evaluate(button=>{(button as HTMLButtonElement).click();(button as HTMLButtonElement).click();});
+ await page.waitForFunction(({id,nights})=>Object.keys(localStorage).filter(key=>key.startsWith(`easyt:trip-recovery:v2:guest:${encodeURIComponent(id)}:`)).some(key=>JSON.parse(localStorage.getItem(key)??'null')?.trip?.stops?.find((stop:{name:string})=>stop.name==='Seoul')?.nights===nights),{id,nights:initial});
+ trip=await recoveryTrip(page,id);assert.ok(trip);assert.equal(trip.stops.find(stop=>stop.id===target.id)!.nights,initial);
+ assert.deepEqual(trip.brief.manualNightStopIds,[target.id]);assert.equal(trip.brief.intent!.route!.tripType,type);
+ const tasks=await page.evaluate(start=>(window as unknown as {__routeTasks:Array<{start:number;duration:number}>}).__routeTasks.filter(task=>task.start>=start),editStart);
+ assert.ok(tasks.every(task=>task.duration<1000),'rapid night edits have no one-second main-thread freeze');
+ mkdirSync(artifacts,{recursive:true});writeFileSync(`${artifacts}/multi-area-${width}-timing.json`,JSON.stringify({width,type,timings,nightTasks:tasks},null,2));
+ await page.screenshot({path:`${artifacts}/multi-area-${width}-builder.png`,fullPage:true});
+ const before=trip;await page.reload({waitUntil:'domcontentloaded'});await page.locator('[data-builder-top-controls]').waitFor();
+ trip=await recoveryTrip(page,id);assert.ok(trip);assert.deepEqual(trip.stops.map(stop=>[stop.id,stop.canonicalPlaceId,stop.nights]),before.stops.map(stop=>[stop.id,stop.canonicalPlaceId,stop.nights]));
+ assert.equal(trip.brief.intent!.route!.tripType,type);assert.deepEqual(trip.brief.structuredBrief!.completedPlanningAreaMentionIds,before.brief.structuredBrief!.completedPlanningAreaMentionIds);
+ await page.getByRole('button',{name:type==='one_way'?'Return to start':'One way',exact:true}).click();
+ await page.reload({waitUntil:'domcontentloaded'});await page.locator('[data-builder-top-controls]').waitFor();
+ assert.equal((await recoveryTrip(page,id))!.brief.intent!.route!.tripType,type==='one_way'?'return_to_start':'one_way');
+ // Existing saved workspace URLs own orientation; no new browser preference.
+ await page.goto(`${base}/journey/${id}/itinerary`,{waitUntil:'domcontentloaded'});
+ await page.getByRole('region',{name:'Trip itinerary',exact:true}).waitFor();
+ await page.getByRole('button',{name:'Calendar',exact:true}).waitFor();
+ assert.equal(await page.getByRole('button',{name:'Calendar',exact:true}).getAttribute('aria-pressed'),'true');
+ await page.screenshot({path:`${artifacts}/multi-area-${width}-calendar.png`,fullPage:true});
+ await page.getByRole('button',{name:'Open full day',exact:true}).click();
+ assert.equal(new URL(page.url()).searchParams.get('itineraryView'),'days');
+ await page.reload({waitUntil:'domcontentloaded'});
+ await page.getByRole('button',{name:'Day by day',exact:true}).waitFor();
+ assert.equal(await page.getByRole('button',{name:'Day by day',exact:true}).getAttribute('aria-pressed'),'true');
+ await page.goto(`${base}/journey/${id}/itinerary?day=2`,{waitUntil:'domcontentloaded'});
+ await page.locator('section[aria-label="Day 2 planner"]').waitFor();
+ await page.getByRole('button',{name:'Calendar',exact:true}).click();await page.reload({waitUntil:'domcontentloaded'});
+ assert.equal(await page.getByRole('button',{name:'Calendar',exact:true}).getAttribute('aria-pressed'),'true');
+
+},width));
+for (const width of [1440,390]) test(`actual Japan multi-add ${width}px accepts Kyoto, Takayama and Hiroshima together and survives reload`,{skip:!enabled,timeout:60000},async()=>withEvidence(`japan-multi-${width}`,async(page,context)=>{
+ await context.unroute('**/api/journey-geocode?*');await page.goto(base,{waitUntil:'domcontentloaded'});
+ await page.getByRole('combobox',{name:'Start from',exact:true}).fill('LAX');await page.getByRole('option',{name:/Los Angeles International Airport.*United States/}).click();
+ await page.getByRole('button',{name:/Travel dates/}).first().click();await page.getByRole('dialog').locator('[data-date="2026-10-14"]').click();await page.getByRole('dialog').locator('[data-date="2026-10-28"]').click();
+ await page.getByRole('combobox',{name:'Destination',exact:true}).fill('Japan');await page.getByRole('option',{name:/^Japan/}).first().click();
+ await page.getByRole('button',{name:'Plan my trip',exact:true}).first().click();const dialog=page.getByRole('dialog');await dialog.getByRole('heading',{name:'Explore places',exact:true}).waitFor({timeout:20000});
+ const id=new URL(page.url()).searchParams.get('trip')!;
+ for(const name of ['Kyoto','Takayama','Hiroshima'])await dialog.getByRole('button',{name:`Add to shortlist: ${name}`,exact:true}).click();
+ await dialog.getByRole('button',{name:'Add 3 places',exact:true}).click();await dialog.waitFor({state:'hidden'});
+ const trip=(await recoveryTrip(page,id))!;assert.ok(trip);assert.equal(trip.stops.length,3);assert.deepEqual(new Set(trip.stops.map(stop=>stop.name)),new Set(['Kyoto','Takayama','Hiroshima']));
+ assert.ok(trip.stops.every(stop=>stop.nights!>0&&geographicallyReady(stopGeographicPlace(stop))));assert.equal(trip.stops.reduce((sum,stop)=>sum+stop.nights!,0),14);
+ assert.equal(await page.getByRole('button',{name:'Remove Japan',exact:true}).count(),0);
+ await page.screenshot({path:`${artifacts}/japan-multi-${width}-builder.png`,fullPage:true});
+ await page.reload({waitUntil:'domcontentloaded'});await page.locator('[data-builder-top-controls]').waitFor();assert.deepEqual((await recoveryTrip(page,id))!.stops,trip.stops);
+},width));
+test('fresh Return default and disabled selected trip types retain readable production styling',{skip:!enabled,timeout:30000},async()=>withEvidence('disabled-trip-type',async(page)=>{
+ await page.goto(base,{waitUntil:'domcontentloaded'});
+ const selected=page.getByRole('button',{name:'Return to start',exact:true});await selected.waitFor();assert.equal(await selected.getAttribute('aria-pressed'),'true');
+ for(const name of ['Return to start','One way']){
+  const button=page.getByRole('button',{name,exact:true});if(name==='One way')await button.click();
+  const style=await button.evaluate(element=>{(element as HTMLButtonElement).disabled=true;const s=getComputedStyle(element);return {color:s.color,background:s.backgroundColor,opacity:s.opacity}});
+  const luminance=(color:string)=>color.match(/\d+(?:\.\d+)?/g)!.slice(0,3).map(Number).map(v=>{const channel=v/255;return channel<=.04045?channel/12.92:((channel+.055)/1.055)**2.4}).reduce((sum,v,index)=>sum+v*[.2126,.7152,.0722][index],0);
+  const [bright,dark]=[luminance(style.color),luminance(style.background)].sort((a,b)=>b-a);assert.ok((bright+.05)/(dark+.05)>=4.5,name);assert.equal(style.opacity,'1');
+  mkdirSync(artifacts,{recursive:true});await page.screenshot({path:`${artifacts}/disabled-${name.replaceAll(' ','-')}.png`});
+  await button.evaluate(element=>{(element as HTMLButtonElement).disabled=false});
+ }
 }));

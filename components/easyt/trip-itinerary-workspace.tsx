@@ -56,7 +56,7 @@ import { affiliateProviderLabel, getCurrentPartnerAction, omioBookingActionForLe
 import { removeStayBooking, stayBookingForStop } from "@/lib/easyt/accommodation";
 import { routeEndpointForLeg } from "@/lib/easyt/trip-legs";
 import { transferJourneyModeLabel, transferJourneySegmentSummary } from "@/lib/easyt/transfer-journey";
-import { exploreWorkspaceHref, firstItineraryDayForStop, itineraryWorkspaceHref, mapWorkspaceHref, parseItineraryWorkspaceTarget, stayWorkspaceHref, transportWorkspaceHref } from "@/lib/easyt/trip-workspace-links";
+import { exploreWorkspaceHref, firstItineraryDayForStop, itineraryWorkspaceHref, mapWorkspaceHref, initialItineraryWorkspaceView, parseItineraryWorkspaceTarget, stayWorkspaceHref, transportWorkspaceHref } from "@/lib/easyt/trip-workspace-links";
 import { itineraryPresentationImages } from "@/lib/easyt/itinerary-presentation-images";
 import { itineraryRouteTrackStops } from "@/lib/easyt/itinerary-route-track";
 import { mapResultHandoffForExploreResult, mapResultSelectionId, mapResultSelectionIdForIdea } from "@/lib/easyt/map-result-selection";
@@ -530,7 +530,7 @@ export default function TripItineraryWorkspace({
     [workingTrip.planItems],
   );
   const [selectedIndex, updateSelectedIndex] = useState(() => Math.max(0, days.findIndex((day) => day.dayNumber === selectedDayNumber)));
-  const [workspaceView, updateWorkspaceView] = useState<"days" | "calendar">("days");
+  const [workspaceView, updateWorkspaceView] = useState<"days" | "calendar">(presentation === "shell" ? "calendar" : "days");
   const writeOrientation = (dayIndex: number, view: "days" | "calendar") => {
     const day = days[dayIndex];
     if (!day || presentation !== "shell") return;
@@ -600,7 +600,7 @@ export default function TripItineraryWorkspace({
       const target = parseItineraryWorkspaceTarget(workingTrip, params);
       const requested = days.findIndex((day) => day.dayNumber === target.dayNumber);
       updateSelectedIndex(requested >= 0 ? requested : Math.max(0, days.findIndex((day) => day.dayNumber === selectedDayNumber)));
-      updateWorkspaceView(params.get("itineraryView") === "calendar" ? "calendar" : "days");
+      updateWorkspaceView(initialItineraryWorkspaceView(workingTrip, params));
     };
     restoreOrientation();
     window.addEventListener("popstate", restoreOrientation);

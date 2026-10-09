@@ -2,6 +2,7 @@ import {referenceGeographicAcceptanceMatches} from './place-reference.ts';
 import {findCatalogPlaceById,normalizeCatalogPhrase} from './place-catalog.ts';
 import {canonicalPlaceFactsMatch,validPlaceCoordinates,type GeographicBounds} from './place-intelligence.ts';
 import {routeFamilies} from './route-catalog.ts';
+import {adaptedDiscoveryPlaces} from './discovery-evidence-adapter.ts';
 import type {EasyTTrip,GeographicBinding,JourneyEndpointPlace,TripStop} from './trip.ts';
 
 type Role='stop'|'endpoint';
@@ -21,7 +22,16 @@ export function stopGeographicPlace(stop:TripStop):JourneyEndpointPlace {
 }
 function catalogPoint(place:JourneyEndpointPlace,role:Role) {
  const catalog=place.canonicalPlaceId?findCatalogPlaceById(place.canonicalPlaceId):undefined;
- const points=catalog?[...(catalog.coordinates?[catalog.coordinates]:[]),...routeFamilies.filter(route=>route.confidence!=='needs-review').flatMap(route=>route.stops.filter(stop=>
+ // The compiled Discovery adapter already validates canonical identity,
+ // containment, settlement type and reviewed source provenance. Its exact
+ // point is geographic evidence; route feasibility confidence stays separate.
+ // Never trust geometry copied from an arbitrary caller's Discovery payload.
+ const discoveryPoints=catalog?adaptedDiscoveryPlaces().filter(entry=>entry.id===catalog.canonicalPlaceId
+  &&normalized(entry.name)===normalized(catalog.canonicalName)
+  &&entry.placeType===catalog.placeType
+  &&catalog.parentCountries.some(country=>normalized(country)===normalized(entry.country)))
+  .map(entry=>entry.coordinates):[];
+ const points=catalog?[...(catalog.coordinates?[catalog.coordinates]:[]),...discoveryPoints,...routeFamilies.filter(route=>route.confidence!=='needs-review').flatMap(route=>route.stops.filter(stop=>
   [catalog.canonicalName,...catalog.aliases].some(name=>normalized(name)===normalized(stop.name))
   &&catalog.parentCountries.some(country=>normalized(country)===normalized(stop.country))).map(stop=>stop.coordinates))]:[];
  return catalog&&!place.providerId&&validPlaceCoordinates(place.coordinates)

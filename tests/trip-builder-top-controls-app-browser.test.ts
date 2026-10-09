@@ -144,12 +144,13 @@ test('retired stop preserves authored activities, bookings and provider referenc
  }finally{await h.view.close()}
 });
 
-test('removing a parent destination confirms its mapped stays and Undo restores their exact content',{skip:!enabled,timeout:30000},async()=>{
+test('resolved planning areas expose individual stay removal and Undo restores exact content',{skip:!enabled,timeout:30000},async()=>{
  const h=await fixture(false,trip=>{const route=trip.brief.intent.route;const [a,b,c]=route.destinations;route.destinations=[{...a!,id:'intent:japan',sourceText:'Japan',kind:'planning_area',selectedPlace:{name:'Japan',country:'Japan',canonicalPlaceId:'country:japan'},stopIds:[...a!.stopIds,...b!.stopIds],requestedNights:(a!.requestedNights??0)+(b!.requestedNights??0)},c!]});try{
  await h.view.page.getByRole('combobox',{name:'Budget',exact:true}).selectOption('high');await until(h,()=>h.cloud().brief.budgetBand==='high'&&h.cloud().planItems.every(day=>Boolean(day.contextNotes?.length)));
- const before=structuredClone(h.cloud());await h.view.page.getByRole('button',{name:'Remove Japan',exact:true}).click();const dialog=h.view.page.getByRole('dialog');await dialog.getByRole('heading',{name:'Remove Japan and its stays?',exact:true}).waitFor();assert.match(await dialog.innerText(),/Tokyo[\s\S]*Kyoto/);
- await dialog.getByRole('button',{name:'Keep destination',exact:true}).click();assert.deepEqual(h.cloud(),before);
- await h.view.page.getByRole('button',{name:'Remove Japan',exact:true}).click();await dialog.getByRole('button',{name:'Remove destination',exact:true}).click();await until(h,()=>h.cloud().stops.length===1);assert.equal(h.cloud().stops[0]!.name,'Hiroshima');assert.equal(h.cloud().brief.retainedAuthoredContent?.entries.length,2);
+ const before=structuredClone(h.cloud());assert.equal(await h.view.page.getByRole('button',{name:'Remove Japan',exact:true}).count(),0);
+ await h.view.page.getByRole('button',{name:'Remove Tokyo',exact:true}).click();const dialog=h.view.page.getByRole('dialog');
+ await dialog.getByRole('button',{name:'Keep stop',exact:true}).click();assert.deepEqual(h.cloud(),before);
+ await h.view.page.getByRole('button',{name:'Remove Tokyo',exact:true}).click();await dialog.getByRole('button',{name:'Remove Tokyo',exact:true}).click();await until(h,()=>h.cloud().stops.length===2);assert.equal(h.cloud().brief.retainedAuthoredContent?.entries.length,1);
  await h.view.page.getByRole('button',{name:'Undo',exact:true}).click();await until(h,()=>h.cloud().stops.length===3);assert.deepEqual(h.cloud().stops,before.stops);assert.deepEqual(h.cloud().planItems,before.planItems);assert.deepEqual(h.cloud().brief.intent.route.destinations,before.brief.intent.route.destinations);assert.deepEqual(h.view.errors,[]);
  }finally{await h.view.close()}
 });
@@ -225,7 +226,7 @@ test('A19 verified new country is reviewed inline; cancel preserves raw draft an
  try{
   const before=structuredClone(h.cloud());await h.view.page.getByRole('button',{name:'Add destination',exact:true}).click();const input=h.view.page.getByRole('combobox',{name:'Add a stop',exact:true});
   await input.fill('Istanbul');await h.view.page.getByRole('option',{name:/Istanbul/}).first().click();
-  await h.view.page.getByText('Istanbul, Turkey · Adds Turkey to this trip',{exact:true}).waitFor();assert.equal(await h.view.page.getByRole('dialog').count(),0);assert.deepEqual(h.cloud(),before);
+  await h.view.page.getByText(/^Istanbul, (Turkey|Türkiye) · Adds (Turkey|Türkiye) to this trip$/).waitFor();assert.equal(await h.view.page.getByRole('dialog').count(),0);assert.deepEqual(h.cloud(),before);
   const review=h.view.page.getByRole('group',{name:'Review destination',exact:true});await review.getByRole('button',{name:'Cancel',exact:true}).click();assert.equal(await input.inputValue(),'Istanbul');assert.deepEqual(h.cloud(),before);
   await input.fill('Istanbul');await input.press('ArrowDown');await h.view.page.getByRole('option',{name:/Istanbul/}).first().click();await review.getByRole('button',{name:'Add Istanbul',exact:true}).click();
   await until(h,()=>h.cloud().stops.some(stop=>stop.name==='Istanbul'));const saved=h.cloud();assert.equal(saved.stops.filter(stop=>stop.name==='Istanbul').length,1);
@@ -296,6 +297,8 @@ test('genuine planning-area children are individual occurrence chips, with guard
   const removed=before.stops.find(stop=>stop.name==='Tokyo')!,sibling=before.stops.find(stop=>stop.name==='Kyoto')!;
   const parent=top.locator('[data-destination-intent-id="area:japan"]');
   assert.equal(await parent.getByRole('group',{name:'Japan',exact:true}).count(),1);
+  assert.equal(await parent.getByRole('button',{name:'Remove Japan',exact:true}).count(),0);
+  assert.equal(await parent.getByRole('button',{name:'Edit Japan',exact:true}).count(),0);
   assert.equal(await parent.getByRole('button',{name:'Edit Tokyo',exact:true}).count(),1);
   assert.equal(await parent.getByRole('button',{name:'Edit Kyoto',exact:true}).count(),1);
   assert.equal(await top.locator('[data-destination-stop-id]').count(),2);

@@ -188,7 +188,7 @@ export function parseMapWorkspaceTarget(trip: WorkspaceTrip, query: QueryReader)
   const mode = requestedMode && mapModes.has(requestedMode as MapWorkspaceMode)
     ? requestedMode as MapWorkspaceMode
     : "plan";
-  const rawDay = query.get("day") ?? "";
+  const rawDay = query.get("day") ?? query.get("itineraryDay") ?? "";
   const requestedDayNumber = /^\d+$/.test(rawDay) ? Number.parseInt(rawDay, 10) : Number.NaN;
   const requestedDay = Number.isInteger(requestedDayNumber)
     ? orderedDays(trip).find((day) => day.dayNumber === requestedDayNumber && day.stopId === stopId)
@@ -281,12 +281,21 @@ export function initialMapCameraMode(trip: Pick<WorkspaceTrip, "stops">, query: 
 
 export function parseItineraryWorkspaceTarget(trip: Pick<WorkspaceTrip, "planItems">, query: QueryReader) {
   const days = orderedDays(trip);
-  const rawDay = query.get("day") ?? "";
+  const rawDay = query.get("day") ?? query.get("itineraryDay") ?? "";
   const requested = /^\d+$/.test(rawDay) ? Number.parseInt(rawDay, 10) : Number.NaN;
   const dayNumber = Number.isInteger(requested) && days.some((day) => day.dayNumber === requested)
     ? requested
     : days[0]?.dayNumber ?? null;
   return { dayNumber };
+}
+
+/** First visits show the route calendar; explicit views and valid day links win. */
+export function initialItineraryWorkspaceView(trip: Pick<WorkspaceTrip, "planItems">, query: QueryReader): "days" | "calendar" {
+  const view = query.get("itineraryView");
+  if (view === "days" || view === "calendar") return view;
+  const rawDay = query.get("day") ?? query.get("itineraryDay") ?? "";
+  const requested = /^\d+$/.test(rawDay) ? Number.parseInt(rawDay, 10) : Number.NaN;
+  return trip.planItems.some(day => day.dayNumber === requested) ? "days" : "calendar";
 }
 
 export function firstItineraryDayForStop(trip: Pick<WorkspaceTrip, "planItems">, stopId: string) {

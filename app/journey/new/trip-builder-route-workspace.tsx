@@ -35,6 +35,7 @@ export type TripBuilderRouteWorkspaceProps = {
   onPreviewOrder: (stopIds: readonly string[] | null) => void;
   onCommitOrder: (stopIds: readonly string[], source: BuilderOrderSource) => boolean;
   onEditNights: (stopId: string, nights: number) => void;
+  onAdjustNights?: (stopId: string, delta: number) => void;
   onRemoveStop: (stopId: string) => void;
   onTransportChoiceChange: (legId: string, identity: string | null) => void;
 };
@@ -76,6 +77,7 @@ export function TripBuilderRouteWorkspace({
   onPreviewOrder,
   onCommitOrder,
   onEditNights,
+  onAdjustNights,
   onRemoveStop,
   onTransportChoiceChange,
 }: TripBuilderRouteWorkspaceProps) {
@@ -184,10 +186,10 @@ export function TripBuilderRouteWorkspace({
               <div className={styles.builderRouteNights} role="cell">
                 <span className={styles.mobileFieldLabel}>Nights</span>
                 {/* morrovia-ui-audit-allow-next-line native-control -- This compact stepper button is part of a labelled nights field and cannot use the shared action-button dimensions. */}
-                <button type="button" aria-label={`Remove one night from ${stop.name}; ${stop.nights ?? 0} nights currently`} disabled={locked.has(stop.id) || (stop.nights ?? 0) <= 0} onClick={(event) => { event.stopPropagation(); onEditNights(stop.id, (stop.nights ?? 0) - 1); }}>−</button>
+                <button type="button" aria-label={`Remove one night from ${stop.name}; ${stop.nights ?? 0} nights currently`} disabled={locked.has(stop.id) || (stop.nights ?? 0) <= 0} onClick={(event) => { event.stopPropagation(); if (onAdjustNights) onAdjustNights(stop.id, -1); else onEditNights(stop.id, (stop.nights ?? 0) - 1); }}>−</button>
                 <strong>{stop.nights ?? 0}</strong>
                 {/* morrovia-ui-audit-allow-next-line native-control -- This compact stepper button is part of a labelled nights field and cannot use the shared action-button dimensions. */}
-                <button type="button" aria-label={`Add one night to ${stop.name}; ${stop.nights ?? 0} nights currently`} disabled={locked.has(stop.id)} onClick={(event) => { event.stopPropagation(); onEditNights(stop.id, (stop.nights ?? 0) + 1); }}>+</button>
+                <button type="button" aria-label={`Add one night to ${stop.name}; ${stop.nights ?? 0} nights currently`} disabled={locked.has(stop.id)} onClick={(event) => { event.stopPropagation(); if (onAdjustNights) onAdjustNights(stop.id, 1); else onEditNights(stop.id, (stop.nights ?? 0) + 1); }}>+</button>
               </div>
               <div className={styles.builderRouteUsable} role="cell">
                 <span className={styles.mobileFieldLabel}>Usable time</span>

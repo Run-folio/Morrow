@@ -20,8 +20,6 @@
 
 .parentGroup { min-width: 0; max-width: 100%; list-style: none; }
 .parentGroup > div { display: grid; gap: 4px; }
-.parentHeading { display: flex; align-items: center; justify-content: center; gap: 2px; border-bottom: 1px solid var(--morrovia-line); color: var(--morrovia-muted); }
-.parentHeading button { color: var(--morrovia-muted); }
 .baseChips { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin: 0; padding: 0; list-style: none; }
 @media(max-width:720px) { .typeRow > div { width: 100%; } }
 
