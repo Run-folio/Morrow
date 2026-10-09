@@ -89,7 +89,7 @@ test('homepage route-card delivery uses stable bounded Cloudinary variants witho
  assert.ok(variants[1].width >= 2 * 220, 'desktop 2x coverage exceeds the 220px card slot');
  assert.ok(variants.every(variant => variant.width < 1000), 'card delivery never sends original multi-thousand-pixel dimensions');
  assert.ok(variants.every(variant => variant.src.includes('/image/upload/f_auto,q_auto,c_limit,w_')));
- assert.ok(variants.every(variant => variant.src.includes('/v1746632023/namibia_vwfyeb.jpg')));
+ assert.ok(variants.every(variant => variant.src.includes('/v1791559749/namibia_vwfyeb.jpg')));
  assert.deepEqual(homepageRouteCardCloudinaryVariants(source), variants, 'repeat renders reuse the exact same URL set');
  assert.throws(() => homepageRouteCardCloudinaryVariants('https://res.cloudinary.com/another-account/image/upload/photo.jpg'));
 });
