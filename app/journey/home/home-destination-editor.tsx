@@ -23,6 +23,7 @@ export function HomeDestinationEditor({ entries, language, disabled = false, foc
   const latest = useRef({ entries, disabled, onChange });
   latest.current = { entries, disabled, onChange };
   const focusTarget = useRef<string | null>(null);
+  const focusEditorPending = useRef(false);
   const externalFocus = useRef<string | null>(null);
   useEffect(() => {
     const request = `${focusEntryId}:${focusRequestKey}`;
@@ -30,12 +31,15 @@ export function HomeDestinationEditor({ entries, language, disabled = false, foc
       externalFocus.current = request;
       setEditingId(focusEntryId);
       focusTarget.current = focusEntryId;
+      focusEditorPending.current = true;
     }
   }, [focusEntryId, focusRequestKey]);
   useEffect(() => {
     if (!focusTarget.current || disabled) return;
     const id = focusTarget.current;
+    if (focusEditorPending.current && editingId !== id) return;
     focusTarget.current = null;
+    focusEditorPending.current = false;
     const node = nodes.current.get(id);
     (node?.querySelector<HTMLInputElement>('input[role="combobox"]') ?? node?.querySelector<HTMLButtonElement>("button") ?? addRef.current)?.focus();
   }, [entries, editingId, disabled, focusEntryId, focusRequestKey]);
