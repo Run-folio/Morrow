@@ -6,6 +6,7 @@ import { reconcileCuratedRouteKnowledge, type CuratedRouteKnowledge } from "./cu
 import { mergeStructuredTripBrief, routeConstraintsFromStructuredTripBrief, routePreferencesFromStructuredBrief, type StructuredTripBrief } from "./structured-trip-brief.ts";
 import { buildCanonicalTripLegs } from "./trip-legs.ts";
 import { normalizeJourneyEnd } from "./journey-endpoints.ts";
+import { geographicInputKey } from './geographic-binding.ts';
 import { normalizeTripInterests, type TripInterest } from "./trip-interest.ts";
 import type { FixedCommitmentPlace, FixedCommitmentType } from "./fixed-commitment.ts";
 
@@ -34,6 +35,18 @@ export type JourneyEndpointPlace = {
   country?: string;
   providerId?: string;
   coordinates?: [number, number];
+  geographicBinding?: GeographicBinding;
+};
+/** Accepted entity semantics bound to the authoritative owner's current input. */
+export type GeographicBinding = {
+  version: 1;
+  source: "catalog" | "provider";
+  canonicalPlaceId?: string;
+  providerId?: string;
+  placeType: string;
+  country: string;
+  routability: string;
+  inputKey: string;
 };
 export type JourneyEndSelection =
   | { mode: "unknown" }
@@ -180,6 +193,7 @@ export type TripStop = {
   countryCode?: string;
   region?: string;
   providerId?: string;
+  geographicBinding?: GeographicBinding;
   latitude: number | null;
   longitude: number | null;
   arrivalDate: string | null;
@@ -254,6 +268,7 @@ export type CanonicalRouteEndpoint = {
   country?: string;
   canonicalPlaceId?: string;
   providerId?: string;
+  geographicBinding?: GeographicBinding;
   coordinates: [number, number] | null;
 };
 
@@ -610,7 +625,7 @@ export type BuilderTripInput = {
   originCountry?: string;
   originProviderId?: string;
   journeyEnd?: JourneyEndSelection;
-  stops: Array<{ id: string; name: string; country: string; canonicalPlaceId?: string; countryCode?: string; region?: string; providerId?: string; coordinates?: [number, number]; intent?: "place" | "landmark"; locality?: string }>;
+  stops: Array<{ id: string; name: string; country: string; canonicalPlaceId?: string; countryCode?: string; region?: string; providerId?: string; geographicBinding?:GeographicBinding; coordinates?: [number, number]; intent?: "place" | "landmark"; locality?: string }>;
   startDate: string;
   endDate: string;
   endDateIsSuggestion?: boolean;
@@ -692,6 +707,7 @@ export function tripFromBuilder(input: BuilderTripInput): CanonicalEasyTTrip {
       countryCode: stop.countryCode,
       region: stop.region,
       providerId: stop.providerId,
+      ...(stop.geographicBinding===undefined?{}:{geographicBinding:stop.geographicBinding}),
       order,
       latitude: stop.coordinates?.[1] ?? null,
       longitude: stop.coordinates?.[0] ?? null,
@@ -731,6 +747,16 @@ export function tripFromBuilder(input: BuilderTripInput): CanonicalEasyTTrip {
     };
   });
 
+  const origin: JourneyEndpointPlace | null = input.origin.trim() ? {
+    name: input.origin,
+    ...(input.originCanonicalPlaceId !== undefined ? { canonicalPlaceId: input.originCanonicalPlaceId } : {}),
+    ...(input.originCountry !== undefined ? { country: input.originCountry } : {}),
+    ...(input.originProviderId !== undefined ? { providerId: input.originProviderId } : {}),
+    ...(input.originCoordinates !== undefined ? { coordinates: input.originCoordinates } : {}),
+  } : null;
+  if (origin && priorRoute?.origin?.geographicBinding !== undefined && geographicInputKey(origin) === geographicInputKey(priorRoute.origin)) {
+    origin.geographicBinding = structuredClone(priorRoute.origin.geographicBinding);
+  }
   const trip: EasyTTrip = {
     schemaVersion: EASYT_TRIP_SCHEMA_VERSION,
     id: input.id,
@@ -776,6 +802,7 @@ export function tripFromBuilder(input: BuilderTripInput): CanonicalEasyTTrip {
         country: input.originCountry,
         canonicalPlaceId: input.originCanonicalPlaceId,
         providerId: input.originProviderId,
+        ...(origin?.geographicBinding === undefined ? {} : { geographicBinding: origin.geographicBinding }),
         coordinates: input.originCoordinates ?? null,
       },
       journeyEnd: canonicalIntent.journeyEnd,
@@ -788,13 +815,6 @@ export function tripFromBuilder(input: BuilderTripInput): CanonicalEasyTTrip {
     createdAt: input.createdAt ?? now,
     updatedAt: now,
   };
-  const origin: JourneyEndpointPlace | null = input.origin.trim() ? {
-    name: input.origin,
-    ...(input.originCanonicalPlaceId !== undefined ? { canonicalPlaceId: input.originCanonicalPlaceId } : {}),
-    ...(input.originCountry !== undefined ? { country: input.originCountry } : {}),
-    ...(input.originProviderId !== undefined ? { providerId: input.originProviderId } : {}),
-    ...(input.originCoordinates !== undefined ? { coordinates: input.originCoordinates } : {}),
-  } : null;
   const journeyEnd = normalizeJourneyEnd(suppliedJourneyEnd);
   const route = routeIntentFromHandoff({
     ...input, brief: input.mustDo, structuredBrief: canonicalStructuredBrief,

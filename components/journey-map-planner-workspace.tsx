@@ -50,6 +50,8 @@ import { authClient } from "@/lib/auth-client";
 import { googlePlaceReferenceIdeas, isGooglePlaceReferenceIdea, tripIntentForTrip, type EasyTTrip, type GooglePlaceReference, type GooglePlaceReferenceIdea, type ItineraryDayPart, type ItineraryIdea, type PlannerMapPin, type PlannerPinCategory } from "@/lib/easyt/trip";
 import { tripDisplayTitle } from "@/lib/easyt/trip-display";
 import { estimateLeg } from "@/lib/easyt/planner";
+import {guardTripRoutingGeometry,stopGeographicPlace,validatedPlaceCoordinates,validatedActivityCoordinates} from '@/lib/easyt/geographic-binding';
+import {originPlaceFromBrief} from '@/lib/easyt/journey-endpoints';
 import { replanTripAfterDayOrder } from "@/lib/easyt/trip-replan";
 import { applyRecommendation, recommendationImpact, reviewTrip, tripHealthSummary, undoRecommendation } from "@/lib/easyt/review";
 import { accommodationProgress, removeMappedStayForStop, selectMappedStayForStop, stayBookingForStop } from "@/lib/easyt/accommodation";
@@ -62,7 +64,7 @@ import { conciseMapDescription, formatMapDuration, mapRouteLegsFromTrip, type Ma
 import type { MorroviaMapInsets, MorroviaMapSurface } from "@/lib/easyt/map-surface-policy";
 import { isEnrichedReview, type EnrichedPlace, type EnrichedReview, type PlaceEnrichmentCategory } from "@/lib/easyt/place-enrichment";
 import { decodeGooglePhotoAttributions, safeGooglePhotoSourceUrl, type GooglePlacePhotoAttribution } from "@/lib/easyt/google-place-photo";
-import { canonicalMapStopCoordinates, GOOGLE_MAP_RENDERER_ENABLED, googleCanvasEligible, type GoogleTripMapApi } from "@/lib/easyt/google-trip-map-adapter";
+import { GOOGLE_MAP_RENDERER_ENABLED, googleCanvasEligible, type GoogleTripMapApi } from "@/lib/easyt/google-trip-map-adapter";
 import { startGoogleMapAvailabilityProbe } from "@/lib/easyt/google-map-availability";
 import { googleCanvasPlacesForMapResults } from "@/lib/easyt/google-map-result-projection";
 import { createLatestGoogleDetailRequest } from "@/lib/easyt/google-place-details-client";
@@ -146,7 +148,7 @@ function customBriefFromEasyT(trip: EasyTTrip): CustomBrief {
       id: stop.id,
       name: stop.name,
       country: stop.country,
-      coordinates: stop.longitude !== null && stop.latitude !== null ? [stop.longitude, stop.latitude] : undefined,
+      coordinates: validatedPlaceCoordinates(stopGeographicPlace(stop))??undefined,
       kind: "place",
     })),
     startDate: trip.startDate,
@@ -265,13 +267,14 @@ function makeCustomJourney(brief: CustomBrief) {
  * editorial dataset; only `/journey/plan` enters this path.
  */
 export function makeEasyTJourney(trip: EasyTTrip) {
+  const routingTrip=guardTripRoutingGeometry(trip);
   const dateFacts = deriveTripDateFacts(trip);
   const origin: JourneyStop = {
     id: `${trip.id}-origin`,
     city: trip.brief.origin,
     country: trip.brief.origin,
     date: customDate(trip.startDate, 0),
-    coordinates: trip.brief.originCoordinates ?? customCoordinate(trip.brief.origin, trip.brief.origin),
+    coordinates: validatedPlaceCoordinates(originPlaceFromBrief(trip.brief),'endpoint'),
     theme: "transit",
     marker: "plane",
     description: "Your starting point. Travel days stay visible as part of the plan.",
@@ -290,15 +293,13 @@ export function makeEasyTJourney(trip: EasyTTrip) {
     const city = isMappedPlace ? item.title : (base?.name ?? item.title);
     const country = base?.country ?? city;
     const stopId = `${trip.id}-day-${item.dayNumber}`;
-    const coordinates: [number, number] | null = item.longitude !== null && item.latitude !== null
-      ? [item.longitude, item.latitude]
-      : base?.longitude !== null && base?.longitude !== undefined && base.latitude !== null
-        ? [base.longitude, base.latitude]
-        : customCoordinate(city, "");
+    const coordinates: [number, number] | null = isMappedPlace && item.longitude !== null && item.latitude !== null
+      ? validatedActivityCoordinates(base, [item.longitude, item.latitude])
+      : base ? validatedPlaceCoordinates(stopGeographicPlace(base)) : null;
     const previousItem = orderedItems[index - 1];
     const previousBase = previousItem ? stopById.get(previousItem.stopId) : undefined;
     const movedBase = index === 0 || previousBase?.id !== base?.id;
-    const relatedLeg = movedBase ? incomingLegForPlanItem(trip, item) : null;
+    const relatedLeg = movedBase ? incomingLegForPlanItem(routingTrip, item) : null;
     const minutes = relatedLeg?.durationMinutes ?? null;
     const distanceKm = relatedLeg?.distanceKm ?? null;
     const travel = movedBase ? {
@@ -628,11 +629,8 @@ export function JourneyMapPlannerWorkspace({
   const googlePlacesAvailable = enrichmentAvailable === true;
   const googleCanvasPending = GOOGLE_MAP_RENDERER_ENABLED && Boolean(expandedReturnHref && authenticatedOwnerId && enrichmentAvailable === null && !storyState?.googleFixture);
   const googleDiscoveryCategory: PlaceEnrichmentCategory | null = shapeDayTab === "plan" ? null : shapeDayTab;
-  const selectedBaseCoordinates: [number, number] | null = selectedTripStop?.longitude !== null
-    && selectedTripStop?.longitude !== undefined
-    && selectedTripStop.latitude !== null
-    ? [selectedTripStop.longitude, selectedTripStop.latitude]
-    : selected.coordinates;
+  const selectedBaseCoordinates: [number, number] | null = selectedTripStop
+    ? validatedPlaceCoordinates(stopGeographicPlace(selectedTripStop)) : selected.coordinates;
   const googleScopeKey = selectedTripStop && googleDiscoveryCategory
     ? googleDiscoveryScopeKey(selectedTripStop.id, googleDiscoveryCategory, selectedBaseCoordinates)
     : null;
@@ -737,8 +735,9 @@ export function JourneyMapPlannerWorkspace({
       }).catch(() => { if (!controller.signal.aborted) trackEvent("map_google_request", { operation: "photo", outcome: "failure", failure_kind: "provider" }); });
     return () => { controller.abort(); if (objectUrl) URL.revokeObjectURL(objectUrl); };
   }, [googlePlacesAvailable, selectedGoogleDetail, selectedGooglePlaceId, googleMediaRequestedPlaceId]);
-  const selectedRecommendedLeg = customTrip && selectedPlanItem ? incomingLegForPlanItem(customTrip, selectedPlanItem) ?? undefined : undefined;
-  const selectedLeg = customTrip && selectedRecommendedLeg ? effectiveTripLeg(customTrip, selectedRecommendedLeg) : undefined;
+  const routingTrip=customTrip?guardTripRoutingGeometry(customTrip):null;
+  const selectedRecommendedLeg = routingTrip && selectedPlanItem ? incomingLegForPlanItem(routingTrip, selectedPlanItem) ?? undefined : undefined;
+  const selectedLeg = routingTrip && selectedRecommendedLeg ? effectiveTripLeg(routingTrip, selectedRecommendedLeg) : undefined;
   const selectedCanonicalTravel = customTrip && selectedLeg ? {
     mode: (selectedLeg.mode === "train" ? "rail" : selectedLeg.mode === "walk" ? "road" : selectedLeg.mode) as JourneyLeg["mode"],
     from: routeEndpointForLeg(customTrip, selectedLeg, "from")?.name,
@@ -859,7 +858,7 @@ export function JourneyMapPlannerWorkspace({
       city: origin.name,
       country: origin.country ?? "Journey origin",
       date: "From",
-      coordinates: origin.coordinates,
+      coordinates: validatedPlaceCoordinates({...origin,coordinates:origin.coordinates??undefined},'endpoint'),
       theme: "transit",
       marker: "plane",
       description: `The canonical journey origin. Nights are allocated only to the destinations that follow.`,
@@ -873,10 +872,7 @@ export function JourneyMapPlannerWorkspace({
           .filter((item) => item.stopId === stop.id)
           .sort((left, right) => left.dayNumber - right.dayNumber)[0];
         const mappedStop = firstItem ? journey.stops.find((item) => item.id === `${customTrip.id}-day-${firstItem.dayNumber}`) : undefined;
-        const coordinates = canonicalMapStopCoordinates(
-          stop.longitude !== null && stop.latitude !== null ? [stop.longitude, stop.latitude] : null,
-          mappedStop?.coordinates,
-        );
+        const coordinates = validatedPlaceCoordinates(stopGeographicPlace(stop));
         return mappedStop
           ? { ...mappedStop, id: stop.id, coordinates }
           : {
@@ -893,7 +889,7 @@ export function JourneyMapPlannerWorkspace({
             };
       })];
   }, [customTrip, journey.stops]);
-  const canonicalMapLegs = useMemo(() => customTrip ? mapRouteLegsFromTrip(tripWithEffectiveTransportChoices(customTrip)) : [], [customTrip]);
+  const canonicalMapLegs = useMemo(() => customTrip ? mapRouteLegsFromTrip(tripWithEffectiveTransportChoices(guardTripRoutingGeometry(customTrip))) : [], [customTrip]);
   const canonicalDestinationCards = useMemo(() => customTrip?.stops.map((stop) => {
     const items = customTrip.planItems.filter((item) => item.stopId === stop.id).sort((left, right) => left.dayNumber - right.dayNumber);
     const first = items[0];
@@ -1013,9 +1009,8 @@ export function JourneyMapPlannerWorkspace({
   const selectedDestinationMedia = placeMedia[selectedDestinationMediaKey];
   const selectedDestinationDescription = conciseMapDescription(selectedDestinationMedia?.description);
   const selectedDestinationImage = selectedDestinationMedia?.image ?? selectedMapStopFirstItem?.image ?? undefined;
-  const selectedDestinationCoordinates: [number, number] | null = selectedTripStop?.longitude !== null && selectedTripStop?.longitude !== undefined && selectedTripStop.latitude !== null
-    ? [selectedTripStop.longitude, selectedTripStop.latitude]
-    : selected.coordinates;
+  const selectedDestinationCoordinates: [number, number] | null = selectedTripStop
+    ? validatedPlaceCoordinates(stopGeographicPlace(selectedTripStop)) : selected.coordinates;
   const selectedDestinationMapsUrl = selectedDestinationCoordinates
     ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${selectedDestinationCoordinates[1]},${selectedDestinationCoordinates[0]}`)}`
     : null;

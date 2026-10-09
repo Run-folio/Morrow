@@ -1,4 +1,6 @@
 import { readTripDocument } from "./trip-document.ts";
+import { geographicallyReady, stopGeographicPlace } from './geographic-binding.ts';
+import { originPlaceFromBrief } from './journey-endpoints.ts';
 import { routeOrderReviewIssue } from "./trip-route-intent.ts";
 import type { NightAllocationResult } from "./night-allocation.ts";
 import type { PlaceIssue } from "./place-intelligence.ts";
@@ -11,6 +13,7 @@ import type { EasyTTrip, JourneyEndSelection } from "./trip.ts";
 export type BuildTripConflictCode =
   | "origin-required"
   | "origin-unverified"
+  | "geography-unverified"
   | "end-unverified"
   | "route-empty"
   | "route-input-invalid"
@@ -102,9 +105,9 @@ export function placeIssueNeedsAttention(
 }
 
 /**
- * The single release invariant for advancing into Time and for treating a
- * generated TripDocument as saveable/navigable. Callers may inspect `stage`
- * to gate progress without pretending the later itinerary already exists.
+ * Builder progression and final Build assessment. Canonical draft validity
+ * and persistence are separate: geography verification cannot block autosave.
+ * Callers inspect `stage` without pretending the later itinerary already exists.
  */
 export function canBuildTrip(input: CanBuildTripInput) {
   const conflicts: BuildTripConflict[] = [];
@@ -128,6 +131,17 @@ export function canBuildTrip(input: CanBuildTripInput) {
     conflicts.push(conflict({ code: "end-unverified", stage: "places", message: "Choose the ending place from the suggestions, or select Not sure yet.", source: "builder" }));
   }
   if (!input.stops.length) conflicts.push(conflict({ code: "route-empty", stage: "places", message: "Add at least one destination before building the trip.", source: "builder" }));
+  const unverified=input.document.stops.filter(stop=>!geographicallyReady(stopGeographicPlace(stop)));
+  if(unverified.length)conflicts.push(conflict({code:'geography-unverified',stage:'itinerary',source:'place-intelligence',
+    message:`Confirm the location of ${unverified.map(stop=>stop.name).join(', ')} before building the trip.`,stopIds:unverified.map(stop=>stop.id)}));
+  const brief = input.document.brief;
+  const route=brief?.intent?.route;
+  const canonicalOrigin = brief ? originPlaceFromBrief(brief) : null;
+  const canonicalEnd = route?.journeyEnd ?? brief?.journeyEnd;
+  if(canonicalOrigin&&!geographicallyReady(canonicalOrigin,'endpoint')&&!conflicts.some(item=>item.code==='origin-unverified'))
+    conflicts.push(conflict({code:'origin-unverified',stage:'itinerary',source:'place-intelligence',message:'Confirm the departure location before building the trip.'}));
+  if(canonicalEnd?.mode==='explicit'&&!geographicallyReady(canonicalEnd.place,'endpoint')&&!conflicts.some(item=>item.code==='end-unverified'))
+    conflicts.push(conflict({code:'end-unverified',stage:'itinerary',source:'place-intelligence',message:'Confirm the saved finish location before building the trip.'}));
   if (input.stops.length && !builderRouteInputIsReady(input.stops)) {
     conflicts.push(conflict({ code: "route-input-invalid", stage: "places", message: "Confirm every route destination before continuing.", stopIds, source: "builder" }));
   }

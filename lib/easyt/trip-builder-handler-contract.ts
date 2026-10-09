@@ -54,6 +54,7 @@ export function builderPlaceCommand(trip: CanonicalEasyTTrip, input: {
     ...(input.bindSourceNights ? { bindSourceNights: true } : {}) };
   const stop: TripStop = { id: input.stopId, order: trip.stops.length, name: input.place.name, country: input.place.country ?? '',
     canonicalPlaceId: input.place.canonicalPlaceId, providerId: input.place.providerId,
+    ...(input.place.geographicBinding === undefined ? {} : { geographicBinding: input.place.geographicBinding }),
     longitude: input.place.coordinates?.[0] ?? null, latitude: input.place.coordinates?.[1] ?? null,
     arrivalDate: null, departureDate: null, nights: input.requestedNights ?? null };
   return { kind: 'add-destination', intent: { id: `builder-intent:${input.stopId}`, sourceText: input.sourceText ?? input.place.name,

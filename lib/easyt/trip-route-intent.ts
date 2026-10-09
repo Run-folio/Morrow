@@ -1,4 +1,5 @@
 import { geographicContextMentionIds } from "./place-intelligence.ts";
+import { geographicDependency } from './geographic-binding.ts';
 import { normalizeJourneyEnd, originPlaceFromBrief } from "./journey-endpoints.ts";
 import type { CanonicalEasyTTrip, DestinationIntent, EasyTTrip, JourneyEndpointPlace, RouteIntent, TripStop } from "./trip.ts";
 import { prepareTripDocumentForWrite, type TripDocumentIssue } from "./trip-document.ts";
@@ -162,6 +163,7 @@ function nonnegativeInteger(value: unknown): value is number {
 export function placeForRouteStop(stop: TripStop): JourneyEndpointPlace {
   return {
     name: stop.name,
+    ...(stop.geographicBinding===undefined?{}:{geographicBinding:stop.geographicBinding}),
     ...(stop.canonicalPlaceId ? { canonicalPlaceId: stop.canonicalPlaceId } : {}),
     ...(stop.providerId ? { providerId: stop.providerId } : {}),
     ...(stop.country ? { country: stop.country } : {}),
@@ -240,9 +242,10 @@ export function routeIntentFromLegacyTrip(trip: EasyTTrip): RouteIntent {
   };
 }
 
-function placeDependency(place: JourneyEndpointPlace | null) {
+function placeDependency(place: JourneyEndpointPlace | null, role: 'stop' | 'endpoint' = 'stop') {
   if (!place) return null;
   return { canonicalPlaceId: place.canonicalPlaceId ?? null, providerId: place.providerId ?? null,
+    ...geographicDependency(place, role),
     coordinates: place.coordinates ?? null,
     // An unverified endpoint's typed place remains semantic input, not display copy.
     ...(place.canonicalPlaceId || place.providerId || place.coordinates ? {} : { sourceText: place.name.trim().toLocaleLowerCase(), country: place.country ?? null }) };
@@ -258,8 +261,8 @@ function stableValue(value: unknown): unknown {
 export function routeProjectionInputKey(trip: EasyTTrip): string {
   const route = trip.brief.intent?.route ?? routeIntentFromLegacyTrip(trip);
   return JSON.stringify(stableValue({
-    origin: placeDependency(route.origin), tripType: route.tripType,
-    journeyEnd: route.journeyEnd.mode === "explicit" ? { mode: "explicit", place: placeDependency(route.journeyEnd.place) } : route.journeyEnd,
+    origin: placeDependency(route.origin, 'endpoint'), tripType: route.tripType,
+    journeyEnd: route.journeyEnd.mode === "explicit" ? { mode: "explicit", place: placeDependency(route.journeyEnd.place, 'endpoint') } : route.journeyEnd,
     destinations: [...route.destinations].sort((a, b) => a.id.localeCompare(b.id)).map(intent => ({
       id: intent.id, kind: intent.kind, selectedPlace: placeDependency(intent.selectedPlace),
       ...(intent.selectedPlace?.canonicalPlaceId || intent.selectedPlace?.providerId || intent.selectedPlace?.coordinates ? {} : { sourceText: intent.sourceText.trim().toLocaleLowerCase() }),

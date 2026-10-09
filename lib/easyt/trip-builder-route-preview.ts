@@ -28,6 +28,7 @@ export function buildBuilderRoutePreview(
       country: origin.country,
       canonicalPlaceId: origin.canonicalPlaceId,
       providerId: origin.providerId,
+      ...(origin.geographicBinding === undefined ? {} : { geographicBinding: origin.geographicBinding }),
       coordinates: origin.coordinates ?? null,
     },
     journeyEnd: canonical.brief.journeyEnd,

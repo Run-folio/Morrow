@@ -10,11 +10,20 @@ import {resolveTripTransferJourneys,resolveCanonicalTransferJourneys} from '../l
 import {buildCanonicalTripLegs} from '../lib/easyt/trip-legs.ts';
 import type {TripLeg} from '../lib/easyt/trip.ts';
 import {nextTripUpdatedAt} from '../lib/easyt/trip-continuity.ts';
+import {acceptedGeographicPlace,stopGeographicPlace} from '../lib/easyt/geographic-binding.ts';
 const enabled=process.env.MORROVIA_BUILDER_APP_BROWSER_TESTS==='1';
+function confirmSyntheticLocations(cloud:ReturnType<typeof requireReadableTripDocument>) {
+ const origin={name:cloud.brief.origin,country:cloud.brief.originCountry??'United Kingdom',canonicalPlaceId:cloud.brief.intent.route.origin?.canonicalPlaceId,
+   providerId:'fixture:confirmed-origin',coordinates:cloud.brief.originCoordinates??[-.1276,51.5072] as [number,number]};
+ cloud.brief.intent.route.origin=acceptedGeographicPlace(origin,{...origin,placeType:'city',routability:'direct_destination'},'endpoint')!;
+ for(const stop of cloud.stops){const place={...stopGeographicPlace(stop),providerId:`fixture:confirmed-${stop.id}`};const verified=acceptedGeographicPlace(place,{...place,placeType:'city',routability:'direct_destination'});if(verified){stop.providerId=verified.providerId;stop.geographicBinding=verified.geographicBinding;}}
+}
 async function fixture(legacy=false,configure?:(trip:ReturnType<typeof requireReadableTripDocument>)=>void,geocodeCandidates:Record<string,unknown[]>={}) {
  let cloud=requireReadableTripDocument(canonicalTripForOwner('owner-a',requireReadableTripDocument(canonicalRouteFixture())));
  if(legacy){cloud.brief.intent.route.journeyEnd={mode:'explicit',place:{name:'Hiroshima',country:'Japan',canonicalPlaceId:'place:hiroshima'}};cloud.brief.journeyEnd=cloud.brief.intent.route.journeyEnd}
  configure?.(cloud);
+ // These controls exercise already-confirmed synthetic locations; legacy finish tests stay unverified.
+ confirmSyntheticLocations(cloud);
  let writes=0;
  const view=await renderBuilder({initialTrip:cloud,seedRecovery:false,ownerId:'owner-a',query:`?trip=${cloud.id}`,geocodeCandidates,accountRequest:({method,trip})=>{
  if(method==='GET')return {status:200,body:{trip:cloud}};const next=requireReadableTripDocument(trip);
@@ -25,7 +34,7 @@ async function fixture(legacy=false,configure?:(trip:ReturnType<typeof requireRe
 async function until(h:Awaited<ReturnType<typeof fixture>>,condition:()=>boolean){for(let i=0;i<50;i++){if(condition())return;await h.view.page.waitForTimeout(100)}assert.ok(condition())}
 test('unresolved saved finish is confirmed deliberately without adding a stay or changing authoritative order',{skip:!enabled,timeout:30000},async()=>{
  const h=await fixture(true,trip=>{trip.brief.intent.route.journeyEnd={mode:'explicit',place:{name:'Osaka',country:'Japan',canonicalPlaceId:'place:osaka'}};trip.brief.journeyEnd=trip.brief.intent.route.journeyEnd},
- {Osaka:[{name:'Osaka',country:'Japan',canonicalPlaceId:'osaka',coordinates:[135.5023,34.6937]}]});
+ {Osaka:[{name:'Osaka',country:'Japan',canonicalPlaceId:'osaka',providerId:'fixture:osaka',placeType:'city',routability:'direct_destination',coordinates:[135.5023,34.6937]}]});
  try{
  const before=structuredClone(h.cloud());await h.view.page.getByRole('button',{name:'Confirm saved finish',exact:true}).click();
  const dialog=h.view.page.getByRole('dialog');await dialog.getByRole('button',{name:/Osaka/}).waitFor();
@@ -233,7 +242,7 @@ test('A19 verified new country is reviewed inline; cancel preserves raw draft an
  });
 
 test('A17 mounted actual resolver saves the pending removal and reloads the active recovery URL',{skip:!enabled,timeout:30000},async()=>{
- let cloud=requireReadableTripDocument(canonicalTripForOwner('owner-a',a17TripFixture()));const original=structuredClone(cloud),writes:typeof cloud[]=[];let release!:()=>void;
+ let cloud=requireReadableTripDocument(canonicalTripForOwner('owner-a',a17TripFixture()));confirmSyntheticLocations(cloud);const original=structuredClone(cloud),writes:typeof cloud[]=[];let release!:()=>void;
  const workerGate=new Promise<void>(resolve=>release=resolve);
  const view=await renderBuilder({initialTrip:cloud,seedRecovery:false,ownerId:'owner-a',query:`?trip=${cloud.id}&recover=1`,accountRequest:async({method,trip})=>{
   if(method==='GET')return {status:200,body:{trip:cloud}};const candidate=requireReadableTripDocument(trip);if(candidate.updatedAt!==cloud.updatedAt)return {status:409,body:{trip:cloud,conflictReason:'cloud-changed'}};

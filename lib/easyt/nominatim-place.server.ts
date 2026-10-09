@@ -78,6 +78,11 @@ function taxonomy(
   const linkedPlace = `${result.extratags?.linked_place ?? ""} ${result.extratags?.place ?? ""}`.toLocaleLowerCase();
   const routeStop = context.travelIntent === "route-stop";
 
+  if (/\badministrative\b/.test(kind) && !/\b(?:country|continent)\b/.test(addressType)
+    && !/\b(?:city|town|village|hamlet|municipality)\b/.test(linkedPlace)) {
+    return { placeType:"region", routability:"planning_area", reason:"administrative boundary has no settlement linkage" };
+  }
+
   if (/\b(?:city|town|village|hamlet|municipality|suburb|neighbourhood)\b/.test(addressType)) {
     const placeType = /\bcity\b/.test(addressType) ? "city" : "town";
     return { placeType, routability: "direct_destination", reason: `provider locality (${addressType}) is directly routable` };

@@ -169,7 +169,8 @@ function document(stopIds = ["tokyo", "kyoto"], planStopIds = ["tokyo", "kyoto",
   return {
     startDate: "2026-10-01",
     endDate: "2026-10-03",
-    stops: stopIds.map((id) => ({ id })),
+    stops: stopIds.map((id) => ({ id, name: id === 'tokyo' ? 'Tokyo' : 'Kyoto', country: 'Japan', canonicalPlaceId: id,
+      longitude: id === 'tokyo' ? 139.6917 : 135.7681, latitude: id === 'tokyo' ? 35.6895 : 35.0116 })),
     planItems: planStopIds.map((stopId, index) => ({ stopId, dayNumber: index + 1, date: `2026-10-0${index + 1}` })),
   } as Pick<EasyTTrip, "stops" | "planItems" | "startDate" | "endDate">;
 }
@@ -406,7 +407,7 @@ test("a viable itinerary is not rejected across the exploratory duration range",
     input.document = {
       startDate,
       endDate,
-      stops: [{ id: "tokyo" }, { id: "kyoto" }],
+      stops: document().stops,
       planItems: Array.from({ length: durationDays }, (_, index) => ({
         stopId: index === 0 ? "tokyo" : "kyoto",
         dayNumber: index + 1,

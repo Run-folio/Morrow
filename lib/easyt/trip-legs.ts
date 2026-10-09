@@ -11,6 +11,7 @@ import type {
 } from "./trip.ts";
 import { originPlaceFromBrief, resolvedJourneyEndPlace, sameJourneyPlace } from "./journey-endpoints.ts";
 import { destinationKnowledge } from "./destination-knowledge.ts";
+import { geographicallyReady } from './geographic-binding.ts';
 
 const normaliseIdentity = (value: string | undefined) => value?.normalize("NFKD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "") ?? "";
 
@@ -28,14 +29,12 @@ function validCoordinates(value: [number, number] | null | undefined): value is 
 }
 
 export function originEndpointForTrip(trip: Pick<EasyTTrip, "id" | "brief">): CanonicalRouteEndpoint {
-  const coordinates = validCoordinates(trip.brief.originCoordinates) ? trip.brief.originCoordinates : null;
+  const place=originPlaceFromBrief(trip.brief);
+  const coordinates = validCoordinates(place.coordinates) ? place.coordinates : null;
   return {
     kind: "origin",
     id: tripOriginEndpointId(trip.id),
-    name: trip.brief.origin,
-    country: trip.brief.originCountry,
-    canonicalPlaceId: trip.brief.originCanonicalPlaceId,
-    providerId: trip.brief.originProviderId,
+    ...place,
     coordinates,
   };
 }
@@ -51,6 +50,7 @@ export function stopEndpoint(stop: TripStop): CanonicalRouteEndpoint {
     country: stop.country,
     canonicalPlaceId: stop.canonicalPlaceId,
     providerId: stop.providerId,
+    ...(stop.geographicBinding===undefined?{}:{geographicBinding:stop.geographicBinding}),
     coordinates: validCoordinates(coordinates) ? coordinates : null,
   };
 }
@@ -65,6 +65,7 @@ export function endEndpointForTrip(trip: Pick<EasyTTrip, "id" | "brief">): Canon
     country: place.country,
     canonicalPlaceId: place.canonicalPlaceId,
     providerId: place.providerId,
+    ...(place.geographicBinding===undefined?{}:{geographicBinding:place.geographicBinding}),
     coordinates: validCoordinates(place.coordinates) ? place.coordinates : null,
   };
 }
@@ -236,6 +237,7 @@ export function buildCanonicalTripLegs(input: BuildCanonicalTripLegsInput): Trip
     canonicalPlaceId: origin.canonicalPlaceId,
     providerId: origin.providerId,
     coordinates: origin.coordinates ?? undefined,
+    ...(origin.geographicBinding===undefined?{}:{geographicBinding:origin.geographicBinding}),
   }, input.journeyEnd);
   const end: CanonicalRouteEndpoint | null = endPlace ? {
     kind: "end",
@@ -244,6 +246,7 @@ export function buildCanonicalTripLegs(input: BuildCanonicalTripLegsInput): Trip
     country: endPlace.country,
     canonicalPlaceId: endPlace.canonicalPlaceId,
     providerId: endPlace.providerId,
+    ...(endPlace.geographicBinding===undefined?{}:{geographicBinding:endPlace.geographicBinding}),
     coordinates: validCoordinates(endPlace.coordinates) ? endPlace.coordinates : null,
   } : null;
   const endpoints = deduplicateAdjacentRouteEndpoints([
@@ -254,6 +257,13 @@ export function buildCanonicalTripLegs(input: BuildCanonicalTripLegsInput): Trip
   if (endpoints.length < 2) return [];
   return endpoints.slice(1).map((to, index) => {
     const from = endpoints[index];
+    const ready=(endpoint:CanonicalRouteEndpoint)=>geographicallyReady({...endpoint,coordinates:endpoint.coordinates??undefined},endpoint.kind==='stop'?'stop':'endpoint');
+    if(!ready(from)||!ready(to))return {
+      id:`${input.tripId}-leg-${index+1}`,fromStopId:from.id,toStopId:to.id,fromEndpoint:from,toEndpoint:to,
+      classification:classificationFor(from,to,null),mode:'unknown' as const,distanceKm:null,straightLineDistanceKm:null,routedDistanceKm:null,
+      durationMinutes:null,headlineMinutes:null,doorToDoorMinutes:null,usableDayLoss:null,provider:'Confirm the affected location to assess this connection.',
+      provenance:'unknown' as const,confidence:'unknown' as const,scheduleNeedsChecking:true,warnings:['Confirm compatible, validated coordinates before assessing this connection.'],routeMetadata:{source:'unverified-geography'},
+    };
     const directDistance = validCoordinates(from.coordinates) && validCoordinates(to.coordinates)
       ? haversineKm(from.coordinates ?? undefined, to.coordinates ?? undefined)
       : null;

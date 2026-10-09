@@ -1,4 +1,5 @@
 import { generatedFlexibleStopIds, allocateGeneratedBuilderNights } from "./trip-builder-generated-nights.ts";
+import { geographicDependency, geographicInputKey, geographicallyReady } from './geographic-binding.ts';
 import { restoreRetainedAuthoredContent, restoreBuilderCalendarSnapshot, captureBuilderCalendarSnapshot, type BuilderCalendarSnapshot, moveRetainedAuthoredContent, removeRetainedAuthoredContent, type RetainedContentSelection, type RetainedContentConsumption } from "./trip-retained-authored-content.ts";
 import { builderDocumentFingerprint, prepareBuilderDocumentCommit } from "./trip-builder-document-commit.ts";
 import { projectCanonicalRouteEndpoints, readTripDocument } from "./trip-document.ts";
@@ -122,9 +123,11 @@ function validDate(value: string) {
     && Number.isFinite(Date.parse(`${value}T00:00:00Z`))
     && new Date(`${value}T00:00:00Z`).toISOString().slice(0, 10) === value;
 }
-function validPlace(place: JourneyEndpointPlace) {
+function validPlace(place: JourneyEndpointPlace, role: 'stop' | 'endpoint' = 'stop') {
   if (!place || !nonempty(place.name)) return false;
   if ([place.canonicalPlaceId, place.country, place.providerId].some(value => value !== undefined && !nonempty(value))) return false;
+  // Preserve legacy/future drafts; reject an incoming record claiming known but incompatible evidence.
+  if (place.geographicBinding?.version === 1 && !geographicallyReady(place, role)) return false;
   return place.coordinates === undefined
     ? Boolean(place.canonicalPlaceId || place.providerId)
     : Array.isArray(place.coordinates) && place.coordinates.length === 2 && journeyEndpointIdentityIsCoherent(place);
@@ -138,22 +141,31 @@ function sameVerifiedPlace(left: JourneyEndpointPlace, right: JourneyEndpointPla
 }
 function selectedPlaceForExisting(before: JourneyEndpointPlace | null, place: JourneyEndpointPlace) {
   if (!before || !sameVerifiedPlace(before, place)) return selectedPlace(place);
-  return selectedPlace({ ...before, ...Object.fromEntries(Object.entries(place).filter(([, value]) => value !== undefined)) });
+  const merged={ ...before, ...Object.fromEntries(Object.entries(place).filter(([, value]) => value !== undefined)) };
+  if(place.geographicBinding===undefined&&geographicInputKey(merged)!==geographicInputKey(before))delete merged.geographicBinding;
+  return selectedPlace(merged);
 }
-function placeEvidence(place: { name: string; canonicalPlaceId?: string; providerId?: string; country?: string; coordinates?: readonly number[] | null } | null) {
+function placeEvidence(place: { name: string; canonicalPlaceId?: string; providerId?: string; country?: string; coordinates?: readonly number[] | null; geographicBinding?:JourneyEndpointPlace['geographicBinding'] } | null, includeBinding=true) {
   if (!place) return null;
   return { canonicalPlaceId: place.canonicalPlaceId ?? null, providerId: place.providerId ?? null, coordinates: place.coordinates ?? null,
+    ...(includeBinding?geographicDependency({...place,coordinates:place.coordinates as [number,number]|undefined}):{}),
     ...(!place.canonicalPlaceId && !place.providerId ? { name: place.name, country: place.country } : {}) };
+}
+function schedulePlaceIdentity(place: JourneyEndpointPlace | null) {
+  if (!place) return null;
+  return place.canonicalPlaceId ? { canonicalPlaceId: place.canonicalPlaceId }
+    : place.providerId ? { providerId: place.providerId } : { name: place.name, country: place.country };
 }
 function placeForStop(stop: TripStop): JourneyEndpointPlace {
   return { name: stop.name, country: stop.country, canonicalPlaceId: stop.canonicalPlaceId, providerId: stop.providerId,
+    ...(stop.geographicBinding===undefined?{}:{geographicBinding:stop.geographicBinding}),
     ...(Number.isFinite(stop.latitude) && Number.isFinite(stop.longitude) ? { coordinates: [stop.longitude!, stop.latitude!] } : {}) };
 }
 function setStopPlace(stop: TripStop, place: JourneyEndpointPlace): TripStop {
   place = selectedPlaceForExisting(placeForStop(stop), place);
-  const { canonicalPlaceId: _id, providerId: _provider, ...rest } = stop;
+  const { canonicalPlaceId: _id, providerId: _provider, geographicBinding:_binding, ...rest } = stop;
   return { ...rest, name: place.name, country: place.country ?? "", canonicalPlaceId: place.canonicalPlaceId,
-    providerId: place.providerId, latitude: place.coordinates?.[1] ?? null, longitude: place.coordinates?.[0] ?? null };
+    providerId: place.providerId, ...(place.geographicBinding===undefined?{}:{geographicBinding:place.geographicBinding}), latitude: place.coordinates?.[1] ?? null, longitude: place.coordinates?.[0] ?? null };
 }
 function insertStop(trip: CanonicalEasyTTrip, stop: TripStop, beforeStopId?: string) {
   const index = beforeStopId === undefined ? trip.stops.length : trip.stops.findIndex(item => item.id === beforeStopId);
@@ -180,15 +192,21 @@ function dependencies(before: CanonicalEasyTTrip, after: CanonicalEasyTTrip, edi
   const scope: RouteReconciliationScope = { legIds: [], scheduleStopIds: [], recommendationStopIds: [], endpointChanged: false, routeAssessment: false };
   const oldRoute = before.brief.intent.route;
   const route = after.brief.intent.route;
-  const endpointDependency = (r: RouteIntent) => [placeEvidence(r.origin), r.tripType,
-    r.journeyEnd.mode === "explicit" ? { mode: "explicit", place: placeEvidence(r.journeyEnd.place) } : r.journeyEnd];
+  const endpointDependency = (r: RouteIntent, includeBinding=true) => [placeEvidence(r.origin,includeBinding), r.tripType,
+    r.journeyEnd.mode === "explicit" ? { mode: "explicit", place: placeEvidence(r.journeyEnd.place,includeBinding) } : r.journeyEnd];
   scope.endpointChanged = JSON.stringify(endpointDependency(oldRoute)) !== JSON.stringify(endpointDependency(route));
+  const endpointScheduleIdentity = (r: RouteIntent) => [schedulePlaceIdentity(r.origin), r.tripType,
+    r.journeyEnd.mode === 'explicit' ? { mode: 'explicit', place: schedulePlaceIdentity(r.journeyEnd.place) } : r.journeyEnd];
+  const endpointInputChanged=JSON.stringify(endpointScheduleIdentity(oldRoute))!==JSON.stringify(endpointScheduleIdentity(route));
   const changed = new Set<string>();
+  const scheduleChanged = new Set<string>();
   for (const stop of [...before.stops, ...after.stops]) {
     const prior = before.stops.find(item => item.id === stop.id);
     const next = after.stops.find(item => item.id === stop.id);
     if (!prior || !next || prior.order !== next.order || prior.nights !== next.nights
       || JSON.stringify(placeEvidence(placeForStop(prior))) !== JSON.stringify(placeEvidence(placeForStop(next)))) changed.add(stop.id);
+    if (!prior || !next || prior.order !== next.order || prior.nights !== next.nights
+      || JSON.stringify(schedulePlaceIdentity(placeForStop(prior))) !== JSON.stringify(schedulePlaceIdentity(placeForStop(next)))) scheduleChanged.add(stop.id);
   }
   const dates = before.startDate !== after.startDate || before.endDate !== after.endDate
     || JSON.stringify([before.brief.scheduleLocks, before.brief.intent.hardConstraints.fixedCommitments, before.brief.intent.timing.flexibility])
@@ -204,8 +222,8 @@ function dependencies(before: CanonicalEasyTTrip, after: CanonicalEasyTTrip, edi
   const intentChanged = JSON.stringify(intents(oldRoute)) !== JSON.stringify(intents(route));
   if (changed.size || dates || scope.endpointChanged || transportPreferences || edit.kind === "transport") {
     scope.routeAssessment = true;
-    const indices = [...before.stops, ...after.stops].filter(stop => changed.has(stop.id)).map(stop => stop.order);
-    const first = dates || scope.endpointChanged || transportPreferences ? 0 : Math.min(...indices);
+    const indices = [...before.stops, ...after.stops].filter(stop => scheduleChanged.has(stop.id)).map(stop => stop.order);
+    const first = dates || endpointInputChanged || transportPreferences ? 0 : Math.min(...indices);
     scope.scheduleStopIds = after.stops.filter(stop => stop.order >= first).map(stop => stop.id);
     if (edit.kind === "transport") {
       const leg = before.legs.find(item => item.id === edit.legId)!;
@@ -250,7 +268,7 @@ export function prepareAcceptedBuilderEdit(current: CanonicalEasyTTrip, edit: Bu
   try {
     switch (edit.kind) {
       case "origin": {
-        if (edit.place !== null && !validPlace(edit.place)) return reject("invalid-input");
+        if (edit.place !== null && !validPlace(edit.place, 'endpoint')) return reject("invalid-input");
         route.origin = edit.place === null ? null : selectedPlaceForExisting(route.origin, edit.place);
         break;
       }
@@ -265,7 +283,7 @@ export function prepareAcceptedBuilderEdit(current: CanonicalEasyTTrip, edit: Bu
       case "legacy-end": {
         // Compatibility editing owns only a finish already present in a legacy document.
         if (route.journeyEnd.mode !== "explicit") return reject("endpoint-conflict");
-        if (!validPlace(edit.place)) return reject("invalid-input");
+        if (!validPlace(edit.place, 'endpoint')) return reject("invalid-input");
         route.journeyEnd = { mode: "explicit", place: selectedPlaceForExisting(route.journeyEnd.place, edit.place) };
         break;
       }

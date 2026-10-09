@@ -60,7 +60,9 @@ test("typed Start and End resolve to the same canonical endpoint state without a
     assert.equal(resolvedStart.status, "resolved", `${start} start`);
     assert.equal(resolvedEnd.status, "resolved", `${end} end`);
     if (resolvedStart.status !== "resolved" || resolvedEnd.status !== "resolved") continue;
-    assert.deepEqual(resolvedStart.place, {
+    const { geographicBinding, ...identity } = resolvedStart.place;
+    assert.equal(geographicBinding?.source, 'provider');
+    assert.deepEqual(identity, {
       name: endpointCandidates[start].name,
       canonicalPlaceId: endpointCandidates[start].canonicalPlaceId,
       country: endpointCandidates[start].country,
@@ -83,7 +85,12 @@ test("typed endpoint resolution fails closed for same-name candidates and unreso
 test("typed endpoint resolution accepts a materially stronger canonical candidate", () => {
   const parisFrance = { ...endpointCandidates.Paris, rankScore: 175 };
   const parisTexas = { name: "Paris", country: "United States", canonicalPlaceId: "paris-texas", providerId: "provider:paris-texas", coordinates: [-95.55, 33.66] as [number, number], placeType: "town", routability: "direct_destination", matchQuality: "exact", rankScore: 153 };
-  assert.deepEqual(resolveTypedJourneyEndpoint("Paris", [parisFrance, parisTexas]), {
+  const result = resolveTypedJourneyEndpoint("Paris", [parisFrance, parisTexas]);
+  assert.equal(result.status, 'resolved');
+  if (result.status !== 'resolved') return;
+  assert.equal(result.place.geographicBinding?.placeType, 'city');
+  const { geographicBinding: _binding, ...place } = result.place;
+  assert.deepEqual({ ...result, place }, {
     status: "resolved",
     place: {
       name: "Paris", country: "France", canonicalPlaceId: "paris", providerId: "provider:paris", coordinates: [2.3522, 48.8566],
@@ -194,7 +201,7 @@ function validBuildInput(journeyEnd: JourneyEndSelection = { mode: "unknown" }):
     document: {
       startDate: "2026-10-01",
       endDate: "2026-10-03",
-      stops: [{ id: "tokyo" }, { id: "kyoto" }],
+      stops: japanStops.slice(0, 2).map(stop => ({ ...stop, longitude: stop.coordinates![0], latitude: stop.coordinates![1] })),
       planItems: ["tokyo", "kyoto", "kyoto"].map((stopId, index) => ({ stopId, dayNumber: index + 1, date: `2026-10-0${index + 1}` })),
     } as CanBuildTripInput["document"],
   };

@@ -4,6 +4,10 @@ import test from "node:test";
 import { mapRouteLegsFromTrip } from "../lib/easyt/map-spatial-context.ts";
 import { buildCanonicalTripLegs, canonicalLegIntegrityIssues, canonicalRouteEndpoints } from "../lib/easyt/trip-legs.ts";
 import type { EasyTTrip, TripStop } from "../lib/easyt/trip.ts";
+import {acceptedGeographicPlace} from '../lib/easyt/geographic-binding.ts';
+
+const verifiedPlace = (place: {name:string;country:string;canonicalPlaceId?:string;coordinates:[number,number]}) =>
+  acceptedGeographicPlace({...place,providerId:`fixture:${place.name}`},{...place,providerId:`fixture:${place.name}`,placeType:'city',routability:'direct_destination'},'endpoint')!;
 
 const stop = (id: string, order: number, name: string, country: string, coordinates?: [number, number]): TripStop => ({
   id,
@@ -11,6 +15,7 @@ const stop = (id: string, order: number, name: string, country: string, coordina
   name,
   country,
   canonicalPlaceId: id,
+  ...(coordinates ? { providerId: `fixture:${name}`, geographicBinding: verifiedPlace({name,country,canonicalPlaceId:id,coordinates})?.geographicBinding } : {}),
   latitude: coordinates?.[1] ?? null,
   longitude: coordinates?.[0] ?? null,
   arrivalDate: null,
@@ -30,7 +35,7 @@ const acceptanceStops = [
 test("London is a first-class route endpoint without becoming an overnight stop", () => {
   const legs = buildCanonicalTripLegs({
     tripId: "acceptance",
-    origin: { name: "London", country: "United Kingdom", canonicalPlaceId: "london", coordinates: [-0.1276, 51.5072] },
+    origin: { ...verifiedPlace({ name: "London", country: "United Kingdom", canonicalPlaceId: "london", coordinates: [-0.1276, 51.5072] }), coordinates: [-0.1276, 51.5072] },
     stops: acceptanceStops,
     constraints: { transportModes: ["train", "drive"] },
   });
@@ -60,7 +65,7 @@ test("overland preference does not invent an unsupported cross-border service", 
   const to = stop("belize-city", 1, "Belize City", "Belize", [-88.1962, 17.5046]);
   const legs = buildCanonicalTripLegs({
     tripId: "overland",
-    origin: { name: "Antigua Guatemala", country: "Guatemala", canonicalPlaceId: "antigua-guatemala", coordinates: [-90.7343, 14.5586] },
+    origin: { ...verifiedPlace({ name: "Antigua Guatemala", country: "Guatemala", canonicalPlaceId: "antigua-guatemala", coordinates: [-90.7343, 14.5586] }), coordinates: [-90.7343, 14.5586] },
     stops: [from, to],
     constraints: { transportModes: ["train", "drive"] },
   });
@@ -74,7 +79,7 @@ test("overland preference does not invent an unsupported cross-border service", 
 test("local movement is local only at genuinely local distance", () => {
   const legs = buildCanonicalTripLegs({
     tripId: "local",
-    origin: { name: "London", country: "United Kingdom", coordinates: [-0.1276, 51.5072] },
+    origin: { ...verifiedPlace({ name: "London", country: "United Kingdom", coordinates: [-0.1276, 51.5072] }), coordinates: [-0.1276, 51.5072] },
     stops: [
       stop("rome", 0, "Rome", "Italy", [12.4964, 41.9028]),
       // Use a genuinely local same-country place. Vatican City carries its own

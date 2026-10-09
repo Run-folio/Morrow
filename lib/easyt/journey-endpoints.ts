@@ -1,6 +1,7 @@
 import { canonicalPlaceFactsMatch, capturedEndpointConflict, endpointSourceIsNegated, endpointSourceIsTentative, isNegatedEndpointAt, isTentativeEndpointAt, isNegatedIntentPrefix, type CanonicalPlaceSuggestion, type ResolvedPlaceMention } from "./place-intelligence.ts";
 import { findCatalogPlaceById, matchCatalogPlace, type PlaceCatalogEntry } from "./place-catalog.ts";
 import type { JourneyEndSelection, JourneyEndpointPlace, TripBrief, TripStop } from "./trip.ts";
+import { acceptedGeographicPlace } from './geographic-binding.ts';
 
 const normalise = (value: string | undefined) => value?.normalize("NFKD").replace(/[\u0300-\u036f]/g, "").toLocaleLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "") ?? "";
 
@@ -32,10 +33,11 @@ export function resolveTypedJourneyEndpoint(
       && normalise(candidate.country) === normalise(item.country)
       && candidate.coordinates?.every((coordinate, coordinateIndex) => coordinate === item.coordinates?.[coordinateIndex]);
   }) === index);
-  if (identities.length === 1) return { status: "resolved", place: canonicalJourneyEndpointPlace(identities[0]!) };
+  const acceptedPlace = (candidate: JourneyEndpointCandidate) => canonicalJourneyEndpointPlace(acceptedGeographicPlace(candidate, candidate, 'endpoint') ?? candidate);
+  if (identities.length === 1) return { status: "resolved", place: acceptedPlace(identities[0]!) };
   const ranked = identities.filter((candidate) => Number.isFinite(candidate.rankScore)).sort((left, right) => (right.rankScore ?? 0) - (left.rankScore ?? 0));
   if (ranked.length > 1 && (ranked[0]!.rankScore ?? 0) - (ranked[1]!.rankScore ?? 0) >= 12) {
-    return { status: "resolved", place: canonicalJourneyEndpointPlace(ranked[0]!) };
+    return { status: "resolved", place: acceptedPlace(ranked[0]!) };
   }
   return { status: routable.length ? "ambiguous" : "unresolved" };
 }
@@ -57,17 +59,19 @@ export function canonicalJourneyEndpointPlace(place: JourneyEndpointPlace): Jour
     country: place.country,
     providerId: place.providerId,
     coordinates: validCoordinates(place.coordinates) ? [...place.coordinates] as [number, number] : undefined,
+    ...(place.geographicBinding===undefined?{}:{geographicBinding:structuredClone(place.geographicBinding)}),
   };
 }
 
 export function journeyEndpointPlaceFromSuggestion(suggestion: CanonicalPlaceSuggestion): JourneyEndpointPlace {
-  return canonicalJourneyEndpointPlace({
+  const place=canonicalJourneyEndpointPlace({
     name: suggestion.name,
     canonicalPlaceId: suggestion.canonicalPlaceId,
     country: suggestion.country,
     providerId: suggestion.provenance.find((source) => source.kind === "provider")?.id,
     coordinates: suggestion.coordinates,
   });
+  return acceptedGeographicPlace(place,{...suggestion,providerId:place.providerId},'endpoint')??place;
 }
 
 /** Known catalogue identities must agree with their country and coordinates.
@@ -91,11 +95,13 @@ export function normalizeJourneyEnd(value: JourneyEndSelection | null | undefine
       country: value.place.country,
       providerId: value.place.providerId,
       coordinates: value.place.coordinates,
+      ...(value.place.geographicBinding===undefined?{}:{geographicBinding:value.place.geographicBinding}),
     }),
   };
 }
 
-export function originPlaceFromBrief(brief: Pick<TripBrief, "origin" | "originCoordinates" | "originCanonicalPlaceId" | "originCountry" | "originProviderId">): JourneyEndpointPlace {
+export function originPlaceFromBrief(brief: Pick<TripBrief, "origin" | "originCoordinates" | "originCanonicalPlaceId" | "originCountry" | "originProviderId"> & Partial<Pick<TripBrief,"intent">>): JourneyEndpointPlace {
+  if(brief.intent?.route?.origin)return canonicalJourneyEndpointPlace(brief.intent.route.origin);
   return canonicalJourneyEndpointPlace({
     name: brief.origin,
     canonicalPlaceId: brief.originCanonicalPlaceId,

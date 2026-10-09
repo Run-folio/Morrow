@@ -1,0 +1,483 @@
+[
+  {
+    "case": "A05",
+    "name": "Lima",
+    "source": "hosted14d-c1ce2bb/full/A05/1791497694842/result.json",
+    "mention": {
+      "mentionId": "place-lima-0",
+      "sourceText": "Lima",
+      "sourceTexts": [
+        "Lima"
+      ],
+      "normalizedPhrase": "lima",
+      "canonicalName": "Lima",
+      "canonicalPlaceId": "lima",
+      "aliases": [
+        "LIM"
+      ],
+      "placeType": "city",
+      "status": "resolved",
+      "confidence": {
+        "version": 1,
+        "state": "structured",
+        "level": "high",
+        "freshness": "reviewed",
+        "scope": "general-route",
+        "sources": [
+          {
+            "id": "morrovia-place-catalog:lima",
+            "label": "Morrovia curated place catalog",
+            "kind": "curated",
+            "supports": "Canonical identity, aliases, type and stable containment for Lima.",
+            "reviewedAt": "2026-08-23"
+          }
+        ],
+        "reason": "The phrase matches Morrovia's curated canonical place data.",
+        "confirmation": {
+          "needed": false,
+          "reason": null
+        }
+      },
+      "provenance": [
+        {
+          "id": "morrovia-place-catalog:lima",
+          "label": "Morrovia curated place catalog",
+          "kind": "canonical",
+          "supports": "Canonical identity, aliases, type and stable containment for Lima.",
+          "reviewedAt": "2026-08-23"
+        },
+        {
+          "id": "stay-occurrence:place-lima-0",
+          "label": "Traveller stay occurrence",
+          "kind": "context",
+          "supports": "A separate source occurrence has its own explicit stay quantity."
+        }
+      ],
+      "parentCountries": [
+        "Peru"
+      ],
+      "routability": "direct_destination",
+      "directlyRoutable": true,
+      "requiresBaseSelection": false,
+      "isAnchor": false,
+      "role": "preferred",
+      "order": 0,
+      "candidates": []
+    },
+    "choices": [
+      {
+        "canonicalPlaceId": "open-world:nominatim:relation:1944659",
+        "name": "Lima",
+        "country": "Peru",
+        "countryCode": "PE",
+        "region": "Lima",
+        "providerId": "nominatim:relation:1944659",
+        "providerSourceLabel": "OpenStreetMap Nominatim",
+        "coordinates": [
+          -76.2850579,
+          -12.2001093
+        ],
+        "bounds": {
+          "south": -13.3241714,
+          "west": -77.8863105,
+          "north": -10.2741856,
+          "east": -75.5075
+        },
+        "kind": "region",
+        "placeType": "region",
+        "routability": "planning_area",
+        "matchQuality": "exact",
+        "rankScore": 402.2093361806186
+      },
+      {
+        "canonicalPlaceId": "lima",
+        "name": "Lima",
+        "country": "Peru",
+        "countryCode": "PE",
+        "region": "Lima",
+        "accessPlaceName": "Lima",
+        "providerId": "nominatim:node:4289361265",
+        "providerSourceLabel": "OpenStreetMap Nominatim",
+        "coordinates": [
+          -77.0305912,
+          -12.0459808
+        ],
+        "bounds": {
+          "south": -12.2059808,
+          "west": -77.1905912,
+          "north": -11.8859808,
+          "east": -76.8705912
+        },
+        "kind": "city",
+        "placeType": "city",
+        "locality": "Lima",
+        "routability": "direct_destination",
+        "matchQuality": "exact",
+        "rankScore": 379.70501905147364
+      },
+      {
+        "canonicalPlaceId": "open-world:nominatim:relation:1944670",
+        "name": "Province of Lima",
+        "country": "Peru",
+        "countryCode": "PE",
+        "region": "Lima",
+        "providerId": "nominatim:relation:1944670",
+        "providerSourceLabel": "OpenStreetMap Nominatim",
+        "coordinates": [
+          -76.8330796,
+          -12.0002116
+        ],
+        "bounds": {
+          "south": -12.5199316,
+          "west": -77.1992129,
+          "north": -11.5724356,
+          "east": -76.6208244
+        },
+        "kind": "region",
+        "placeType": "region",
+        "routability": "planning_area",
+        "matchQuality": "exact",
+        "rankScore": 310.6142368313093
+      }
+    ],
+    "expected": {
+      "canonicalPlaceId": "lima",
+      "name": "Lima",
+      "country": "Peru",
+      "countryCode": "PE",
+      "region": "Lima",
+      "accessPlaceName": "Lima",
+      "providerId": "nominatim:node:4289361265",
+      "providerSourceLabel": "OpenStreetMap Nominatim",
+      "coordinates": [
+        -77.0305912,
+        -12.0459808
+      ],
+      "bounds": {
+        "south": -12.2059808,
+        "west": -77.1905912,
+        "north": -11.8859808,
+        "east": -76.8705912
+      },
+      "kind": "city",
+      "placeType": "city",
+      "locality": "Lima",
+      "routability": "direct_destination",
+      "matchQuality": "exact",
+      "rankScore": 379.70501905147364
+    }
+  },
+  {
+    "case": "A05",
+    "name": "Cusco",
+    "source": "hosted14d-c1ce2bb/full/A05/1791497694842/result.json",
+    "mention": {
+      "mentionId": "place-cusco-0",
+      "sourceText": "Cusco",
+      "sourceTexts": [
+        "Cusco"
+      ],
+      "normalizedPhrase": "cusco",
+      "canonicalName": "Cusco",
+      "canonicalPlaceId": "cusco",
+      "aliases": [
+        "Cuzco",
+        "CUZ"
+      ],
+      "placeType": "city",
+      "status": "resolved",
+      "confidence": {
+        "version": 1,
+        "state": "structured",
+        "level": "high",
+        "freshness": "reviewed",
+        "scope": "general-route",
+        "sources": [
+          {
+            "id": "morrovia-place-catalog:cusco",
+            "label": "Morrovia curated place catalog",
+            "kind": "curated",
+            "supports": "Canonical identity, aliases, type and stable containment for Cusco.",
+            "reviewedAt": "2026-08-23"
+          }
+        ],
+        "reason": "The phrase matches Morrovia's curated canonical place data.",
+        "confirmation": {
+          "needed": false,
+          "reason": null
+        }
+      },
+      "provenance": [
+        {
+          "id": "morrovia-place-catalog:cusco",
+          "label": "Morrovia curated place catalog",
+          "kind": "canonical",
+          "supports": "Canonical identity, aliases, type and stable containment for Cusco.",
+          "reviewedAt": "2026-08-23"
+        },
+        {
+          "id": "stay-occurrence:place-cusco-0",
+          "label": "Traveller stay occurrence",
+          "kind": "context",
+          "supports": "A separate source occurrence has its own explicit stay quantity."
+        }
+      ],
+      "parentCountries": [
+        "Peru"
+      ],
+      "routability": "direct_destination",
+      "directlyRoutable": true,
+      "requiresBaseSelection": false,
+      "isAnchor": false,
+      "role": "preferred",
+      "order": 2,
+      "candidates": []
+    },
+    "choices": [
+      {
+        "canonicalPlaceId": "open-world:nominatim:relation:1923695",
+        "name": "Cusco",
+        "country": "Peru",
+        "countryCode": "PE",
+        "region": "Cusco",
+        "providerId": "nominatim:relation:1923695",
+        "providerSourceLabel": "OpenStreetMap Nominatim",
+        "coordinates": [
+          -72.5,
+          -12.5
+        ],
+        "bounds": {
+          "south": -15.4582882,
+          "west": -73.9811021,
+          "north": -11.18335,
+          "east": -70.345072
+        },
+        "kind": "region",
+        "placeType": "region",
+        "routability": "planning_area",
+        "matchQuality": "exact",
+        "rankScore": 401.68049312229857
+      },
+      {
+        "canonicalPlaceId": "cusco",
+        "name": "Cuzco",
+        "country": "Peru",
+        "countryCode": "PE",
+        "region": "Cusco",
+        "accessPlaceName": "Cuzco",
+        "providerId": "nominatim:node:59115290",
+        "providerSourceLabel": "OpenStreetMap Nominatim",
+        "coordinates": [
+          -71.9785356,
+          -13.5170887
+        ],
+        "bounds": {
+          "south": -13.6770887,
+          "west": -72.1385356,
+          "north": -13.3570887,
+          "east": -71.8185356
+        },
+        "kind": "city",
+        "placeType": "city",
+        "locality": "Cuzco",
+        "routability": "direct_destination",
+        "matchQuality": "exact",
+        "rankScore": 375.90132070463574
+      },
+      {
+        "canonicalPlaceId": "open-world:nominatim:relation:1923702",
+        "name": "Province of Cusco",
+        "country": "Peru",
+        "countryCode": "PE",
+        "region": "Cusco",
+        "providerId": "nominatim:relation:1923702",
+        "providerSourceLabel": "OpenStreetMap Nominatim",
+        "coordinates": [
+          -71.9906371,
+          -13.5542811
+        ],
+        "bounds": {
+          "south": -13.6491856,
+          "west": -72.1680025,
+          "north": -13.4294961,
+          "east": -71.804626
+        },
+        "kind": "region",
+        "placeType": "region",
+        "routability": "planning_area",
+        "matchQuality": "exact",
+        "rankScore": 308.31838731411426
+      }
+    ],
+    "expected": {
+      "canonicalPlaceId": "cusco",
+      "name": "Cuzco",
+      "country": "Peru",
+      "countryCode": "PE",
+      "region": "Cusco",
+      "accessPlaceName": "Cuzco",
+      "providerId": "nominatim:node:59115290",
+      "providerSourceLabel": "OpenStreetMap Nominatim",
+      "coordinates": [
+        -71.9785356,
+        -13.5170887
+      ],
+      "bounds": {
+        "south": -13.6770887,
+        "west": -72.1385356,
+        "north": -13.3570887,
+        "east": -71.8185356
+      },
+      "kind": "city",
+      "placeType": "city",
+      "locality": "Cuzco",
+      "routability": "direct_destination",
+      "matchQuality": "exact",
+      "rankScore": 375.90132070463574
+    }
+  },
+  {
+    "case": "A09",
+    "name": "La Paz",
+    "source": "hosted14d-c1ce2bb/full/A09/1791497970340/result.json",
+    "mention": {
+      "mentionId": "place-la-paz-0",
+      "sourceText": "La Paz",
+      "sourceTexts": [
+        "La Paz"
+      ],
+      "normalizedPhrase": "la paz",
+      "canonicalName": "La Paz",
+      "canonicalPlaceId": "la-paz",
+      "aliases": [
+        "LPB"
+      ],
+      "placeType": "city",
+      "status": "resolved",
+      "confidence": {
+        "version": 1,
+        "state": "structured",
+        "level": "high",
+        "freshness": "reviewed",
+        "scope": "general-route",
+        "sources": [
+          {
+            "id": "morrovia-place-catalog:la-paz",
+            "label": "Morrovia curated place catalog",
+            "kind": "curated",
+            "supports": "Canonical identity, aliases, type and stable containment for La Paz.",
+            "reviewedAt": "2026-08-23"
+          }
+        ],
+        "reason": "The phrase matches Morrovia's curated canonical place data.",
+        "confirmation": {
+          "needed": false,
+          "reason": null
+        }
+      },
+      "provenance": [
+        {
+          "id": "morrovia-place-catalog:la-paz",
+          "label": "Morrovia curated place catalog",
+          "kind": "canonical",
+          "supports": "Canonical identity, aliases, type and stable containment for La Paz.",
+          "reviewedAt": "2026-08-23"
+        },
+        {
+          "id": "stay-occurrence:place-la-paz-0",
+          "label": "Traveller stay occurrence",
+          "kind": "context",
+          "supports": "A separate source occurrence has its own explicit stay quantity."
+        }
+      ],
+      "parentCountries": [
+        "Bolivia"
+      ],
+      "routability": "direct_destination",
+      "directlyRoutable": true,
+      "requiresBaseSelection": false,
+      "isAnchor": false,
+      "role": "preferred",
+      "order": 2,
+      "candidates": []
+    },
+    "choices": [
+      {
+        "canonicalPlaceId": "open-world:nominatim:relation:400473",
+        "name": "La Paz",
+        "country": "Bolivia",
+        "countryCode": "BO",
+        "region": "La Paz",
+        "providerId": "nominatim:relation:400473",
+        "providerSourceLabel": "OpenStreetMap Nominatim",
+        "coordinates": [
+          -68.333333,
+          -15
+        ],
+        "bounds": {
+          "south": -18.0442164,
+          "west": -69.6450073,
+          "north": -11.8477782,
+          "east": -66.7323533
+        },
+        "kind": "region",
+        "placeType": "region",
+        "routability": "planning_area",
+        "matchQuality": "exact",
+        "rankScore": 402.1561818049874
+      },
+      {
+        "canonicalPlaceId": "la-paz",
+        "name": "La Paz",
+        "country": "Bolivia",
+        "countryCode": "BO",
+        "region": "La Paz",
+        "accessPlaceName": "La Paz",
+        "providerId": "nominatim:relation:4499870",
+        "providerSourceLabel": "OpenStreetMap Nominatim",
+        "coordinates": [
+          -68.1336229,
+          -16.4955455
+        ],
+        "bounds": {
+          "south": -16.5923149,
+          "west": -68.2458469,
+          "north": -15.7586421,
+          "east": -67.6237089
+        },
+        "kind": "city",
+        "placeType": "city",
+        "locality": "La Paz",
+        "routability": "direct_destination",
+        "matchQuality": "exact",
+        "rankScore": 387.31907514130836
+      }
+    ],
+    "expected": {
+      "canonicalPlaceId": "la-paz",
+      "name": "La Paz",
+      "country": "Bolivia",
+      "countryCode": "BO",
+      "region": "La Paz",
+      "accessPlaceName": "La Paz",
+      "providerId": "nominatim:relation:4499870",
+      "providerSourceLabel": "OpenStreetMap Nominatim",
+      "coordinates": [
+        -68.1336229,
+        -16.4955455
+      ],
+      "bounds": {
+        "south": -16.5923149,
+        "west": -68.2458469,
+        "north": -15.7586421,
+        "east": -67.6237089
+      },
+      "kind": "city",
+      "placeType": "city",
+      "locality": "La Paz",
+      "routability": "direct_destination",
+      "matchQuality": "exact",
+      "rankScore": 387.31907514130836
+    }
+  }
+]

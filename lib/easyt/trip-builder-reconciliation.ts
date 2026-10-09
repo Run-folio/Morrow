@@ -1,4 +1,5 @@
 import { selectedTransportChoiceForLeg, effectiveTripLeg } from "./transport-mode-choice.ts";
+import { geographicDependency, stopGeographicPlace, guardTripRoutingGeometry } from './geographic-binding.ts';
 import { assessRouteIntelligence, routeIntelligenceForPersistence } from "./planner.ts";
 import { plannerEndpointForJourneyEnd, originPlaceFromBrief } from "./journey-endpoints.ts";
 import type { CanonicalEasyTTrip, RouteReconciliationScope, TripLeg, TripRouteReconciliation } from './trip.ts';
@@ -30,7 +31,7 @@ export type BuilderProjectionResponse = {
 };
 const unitId = (u: Pick<Unit, 'kind' | 'targetId'>) => `${u.kind}:${u.targetId}`;
 const pair = (leg: TripLeg) => authoredContentKey([leg.fromStopId, leg.toStopId]);
-const place = (value: ReturnType<typeof routeEndpointForLeg>) => value ? { id: value.id, canonicalPlaceId: value.canonicalPlaceId, providerId: value.providerId, coordinates: value.coordinates, ...(!value.canonicalPlaceId && !value.providerId ? { name: value.name, country: value.country } : {}) } : null;
+const place = (value: ReturnType<typeof routeEndpointForLeg>) => value ? { id: value.id, canonicalPlaceId: value.canonicalPlaceId, providerId: value.providerId, coordinates: value.coordinates, ...geographicDependency({...value,coordinates:value.coordinates??undefined},value.kind==='stop'?'stop':'endpoint'), ...(!value.canonicalPlaceId && !value.providerId ? { name: value.name, country: value.country } : {}) } : null;
 /** A saved candidate is authoritative only while its full endpoint evidence still matches. */
 function selectedChoiceHasCurrentEvidence(trip: CanonicalEasyTTrip, leg: TripLeg): boolean {
     const selected = selectedTransportChoiceForLeg(trip, leg);
@@ -56,7 +57,7 @@ function basis(trip: CanonicalEasyTTrip, kind: Unit['kind'], targetId: string): 
         return trip.stops.some(s => s.id === targetId) ? authoredContentKey(schedule) : null;
     if (kind === 'recommendation') {
         const stop = trip.stops.find(s => s.id === targetId);
-        return stop ? authoredContentKey({ stop: { id: stop.id, canonicalPlaceId: stop.canonicalPlaceId, coordinates: [stop.longitude, stop.latitude], nights: stop.nights }, preferences: trip.brief.intent.preferences, travellers: trip.travellers, budget: trip.brief.budgetBand }) : null;
+        return stop ? authoredContentKey({ stop: { id: stop.id, canonicalPlaceId: stop.canonicalPlaceId, coordinates: [stop.longitude, stop.latitude], nights: stop.nights, ...geographicDependency(stopGeographicPlace(stop)) }, preferences: trip.brief.intent.preferences, travellers: trip.travellers, budget: trip.brief.budgetBand }) : null;
     }
     if (targetId !== trip.id)
         return null;
@@ -324,10 +325,11 @@ export function reconcileBuilderDependencies(current: CanonicalEasyTTrip, pendin
         }
         else {
             if (dispatched.kind === "assessment") {
+                const routingTrip = guardTripRoutingGeometry(trip);
                 trip.brief.routeAssessment = routeIntelligenceForPersistence(assessRouteIntelligence({
-                    origin: { name: trip.brief.origin, coordinates: trip.brief.originCoordinates },
-                    end: plannerEndpointForJourneyEnd(trip.id, originPlaceFromBrief(trip.brief), trip.brief.journeyEnd),
-                    stops: trip.stops.map(stop => ({ id: stop.id, name: stop.name, country: stop.country, canonicalPlaceId: stop.canonicalPlaceId,
+                    origin: { name: trip.brief.origin, coordinates: originPlaceFromBrief(routingTrip.brief).coordinates },
+                    end: plannerEndpointForJourneyEnd(trip.id, originPlaceFromBrief(routingTrip.brief), routingTrip.brief.journeyEnd),
+                    stops: routingTrip.stops.map(stop => ({ id: stop.id, name: stop.name, country: stop.country, canonicalPlaceId: stop.canonicalPlaceId,
                         coordinates: stop.longitude !== null && stop.latitude !== null ? [stop.longitude, stop.latitude] as [
                             number,
                             number

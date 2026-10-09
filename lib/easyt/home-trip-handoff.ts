@@ -1,7 +1,7 @@
 import { captureJourneyBrief, type JourneyCaptureResult } from "./journey-capture.ts";
 import { catalogPlaceForProviderIdentity, isNegatedEndpointAt, isOvernightBaseEligible, normalizePlacePhrase, placeResolutionIssuesForMentions, type CanonicalPlaceSuggestion, type GeographicBounds, type PlaceRoutability, type ResolvedPlaceMention } from "./place-intelligence.ts";
 import { findCatalogPlaceById } from "./place-catalog.ts";
-import type { EasyTTrip, JourneyEndSelection, JourneyEndpointPlace, RouteIntent, TripBudgetPreference } from "./trip.ts";
+import type { EasyTTrip, GeographicBinding, JourneyEndSelection, JourneyEndpointPlace, RouteIntent, TripBudgetPreference } from "./trip.ts";
 import type { CuratedRouteKnowledge } from "./curated-route-knowledge.ts";
 import { normalizeTripInterests, tripInterestIds, type TripInterest } from "./trip-interest.ts";
 import { canonicalJourneyEndpointPlace, normalizeJourneyEnd, originPlaceFromBrief, resolvedJourneyEndPlace, sameJourneyPlace } from "./journey-endpoints.ts";
@@ -12,6 +12,7 @@ import { homepageInputStorageKey } from "./private-browser-context.ts";
 import { addLocalDays } from "./local-date.ts";
 import { routeIntentFromHandoff } from "./trip-route-intent.ts";
 import { homepageCapturedRouteEvidence, homepageDescribeSourceKey, homepageRouteChoice, homepageRouteReviewKey, invalidateHomepageRouteReview, type HomepageRouteEvidence } from "./home-route-choice.ts";
+import { acceptedGeographicPlace, geographicCandidateMatches, geographicallyReady } from './geographic-binding.ts';
 
 export const HOME_TRIP_DRAFT_KEY = "easyt-home-trip-draft";
 
@@ -210,7 +211,7 @@ export type HomeTripDraft = {
   originProviderId?: string;
   journeyEnd?: JourneyEndSelection;
   destination?: { id: string; name: string; country: string; canonicalPlaceId?: string; providerId?: string; coordinates?: [number, number] };
-  destinations?: Array<{ id: string; name: string; country: string; canonicalPlaceId?: string; providerId?: string; coordinates?: [number, number] }>;
+  destinations?: Array<{ id: string; name: string; country: string; canonicalPlaceId?: string; providerId?: string; geographicBinding?: GeographicBinding; coordinates?: [number, number] }>;
   locationMentions?: ResolvedPlaceMention[];
   routeHints?: string[];
   regions?: string[];
@@ -1128,6 +1129,7 @@ export type HandoffRouteStop = {
   countryCode?: string;
   region?: string;
   providerId?: string;
+  geographicBinding?: JourneyEndpointPlace['geographicBinding'];
   coordinates?: [number, number];
   intent?: "place" | "landmark";
   locality?: string;
@@ -1200,7 +1202,7 @@ export function mergeHandoffLocationChoice(
   choice?: HandoffLocationChoice,
   occurrenceId?: string,
 ): HandoffRouteStop[] {
-  if (!choice) return stops;
+  if (!choice || !geographicCandidateMatches({name:mention.canonicalName,canonicalPlaceId:mention.canonicalPlaceId,country:mention.parentCountries[0],aliases:mention.aliases,bounds:mention.bounds},choice)) return stops;
   const stopId = occurrenceId ?? handoffRouteStopId(mention);
   return stops.map((stop) => stop.id !== stopId ? stop : {
     ...stop,
@@ -1210,6 +1212,7 @@ export function mergeHandoffLocationChoice(
     providerId: choice.providerId,
     coordinates: choice.coordinates,
     locality: choice.locality,
+    geographicBinding: acceptedGeographicPlace({name:stop.name,canonicalPlaceId:stop.canonicalPlaceId,country:choice.country,coordinates:choice.coordinates,providerId:choice.providerId},choice)?.geographicBinding,
   });
 }
 
@@ -1219,14 +1222,23 @@ export function preferredHandoffLocationChoice(
   mention: ResolvedPlaceMention,
   choices: HandoffLocationChoice[],
 ): HandoffLocationChoice | undefined {
-  if (mention.coordinates && mention.parentCountries.length === 1) {
+  const role=mention.role==='origin'||mention.role==='fixed_start'||mention.role==='fixed_end'?'endpoint':'stop';
+  const expected={name:mention.canonicalName,canonicalPlaceId:mention.canonicalPlaceId,country:mention.parentCountries.length===1?mention.parentCountries[0]:undefined,aliases:mention.aliases,bounds:mention.bounds};
+  if (mention.coordinates && mention.parentCountries.length === 1 && geographicallyReady({...expected,coordinates:mention.coordinates},role)
+    && mention.provenance.some(source=>source.kind==='canonical'||source.kind==='curated_alias')) {
     return {
       name: mention.canonicalName,
       country: mention.parentCountries[0],
       coordinates: mention.coordinates,
+      canonicalPlaceId:mention.canonicalPlaceId,
+      placeType:mention.placeType,
+      routability:mention.routability,
     };
   }
-  return choices[0];
+  const compatible=choices.filter(choice=>geographicCandidateMatches(expected,choice,role));
+  const distinct=compatible.filter((choice,index,all)=>all.findIndex(other=>
+    (choice.providerId&&other.providerId?choice.providerId===other.providerId:choice.canonicalPlaceId&&choice.canonicalPlaceId===other.canonicalPlaceId))===index);
+  return distinct.length===1?distinct[0]:undefined;
 }
 
 export function createHomeTripDraft(input: {
@@ -1243,7 +1255,7 @@ export function createHomeTripDraft(input: {
   journeyEnd?: JourneyEndSelection;
 }): HomeTripDraft {
   const origin = input.origin ? canonicalJourneyEndpointPlace(input.origin) : undefined;
-  return withCanonicalHandoffRouteIntent({
+  const draft = withCanonicalHandoffRouteIntent({
     handoffId: input.handoffId,
     locationMentions: input.capture.mentions,
     routeHints: input.capture.routeHints,
@@ -1269,6 +1281,7 @@ export function createHomeTripDraft(input: {
     interestsExplicit: input.interestsExplicit ?? input.interests.length > 0,
     brief: input.capture.rawBrief,
   });
+  return origin ? { ...draft, routeIntent: { ...draft.routeIntent!, origin } } : draft;
 }
 
 function withCanonicalHandoffRouteIntent(draft: HomeTripDraft): HomeTripDraft {
@@ -1466,6 +1479,7 @@ function withHomepageChoices(
   const datesExplicit = Boolean(selectedDates?.start && selectedDates?.end);
   const origin = snapshot.origin.state === "selected" ? canonicalJourneyEndpointPlace(snapshot.origin.value)
     : snapshot.origin.state === "cleared" ? undefined
+      : draft.routeIntent?.origin ? canonicalJourneyEndpointPlace(draft.routeIntent.origin)
       : draft.origin ? canonicalJourneyEndpointPlace({
         name: draft.origin,
         coordinates: draft.originCoordinates,
@@ -1609,13 +1623,15 @@ export function projectHomepageInput(input: {
       const structuredBrief = homepageStructuredBrief(mentions);
       return {
         handoffId: input.handoffId,
-        destinations: mentions.filter((mention) => mention.directlyRoutable).map((mention) => ({
-          id: mention.mentionId.replace("homepage-entry:", ""),
-          name: mention.canonicalName,
-          country: mention.parentCountries[0] ?? "",
-          canonicalPlaceId: mention.canonicalPlaceId,
-          coordinates: mention.coordinates,
-        })),
+        destinations: mentions.filter((mention) => mention.directlyRoutable).map((mention) => {
+          const id = mention.mentionId.replace("homepage-entry:", "");
+          const selection = snapshot.entries.find(entry => entry.id === id)?.selection;
+          const place = { name: mention.canonicalName, country: mention.parentCountries[0] ?? "",
+            canonicalPlaceId: mention.canonicalPlaceId, coordinates: mention.coordinates,
+            providerId: selection?.provenance.find(source => source.kind === "provider")?.id };
+          const accepted = selection ? acceptedGeographicPlace(place, { ...selection, routability: mention.routability, providerId: place.providerId }) : undefined;
+          return { id, ...place, ...(accepted?.geographicBinding ? { geographicBinding: accepted.geographicBinding } : {}) };
+        }),
         locationMentions: mentions,
         structuredBrief,
         interests: [],
@@ -1647,8 +1663,10 @@ export function projectHomepageInput(input: {
   const projected = withHomepageChoices(draft, snapshot, input.profile, capture);
   const choice = homepageRouteChoice(snapshot, evidence);
   const canonical = withCanonicalHandoffRouteIntent(projected);
-  const origin = projected.origin ? canonicalJourneyEndpointPlace({ name: projected.origin, canonicalPlaceId: projected.originCanonicalPlaceId,
-    country: projected.originCountry, providerId: projected.originProviderId, coordinates: projected.originCoordinates }) : null;
+  const origin = snapshot.origin.state === "selected" ? canonicalJourneyEndpointPlace(snapshot.origin.value)
+    : snapshot.origin.state === "cleared" ? null
+    : canonical.routeIntent?.origin ?? (projected.origin ? canonicalJourneyEndpointPlace({ name: projected.origin, canonicalPlaceId: projected.originCanonicalPlaceId,
+    country: projected.originCountry, providerId: projected.originProviderId, coordinates: projected.originCoordinates }) : null);
   return {
     ok: true,
     draft: {

@@ -15,6 +15,7 @@ import { effectiveTripLeg, tripWithEffectiveTransportChoices } from "@/lib/easyt
 import styles from "./trip-builder.module.css";
 import { useBuilderStopReorder } from "./use-builder-stop-reorder";
 import { builderNightAllocationLabel, type BuilderNightStatus } from "./builder-night-allocation-label";
+import {guardTripRoutingGeometry,stopGeographicPlace,validatedPlaceCoordinates} from '@/lib/easyt/geographic-binding';
 
 export type BuilderOrderSource = "drag" | "move-menu" | "route-check";
 
@@ -44,7 +45,7 @@ function mapStop(stop: EasyTTrip["stops"][number]): JourneyStop {
     city: stop.name,
     country: stop.country,
     date: [stop.arrivalDate, stop.departureDate].filter(Boolean).join(" – "),
-    coordinates: stop.longitude === null || stop.latitude === null ? null : [stop.longitude, stop.latitude],
+    coordinates: validatedPlaceCoordinates(stopGeographicPlace(stop)),
     theme: "city",
     marker: "town",
     description: `${stop.nights ?? 0} ${(stop.nights ?? 0) === 1 ? "night" : "nights"}`,
@@ -93,12 +94,13 @@ export function TripBuilderRouteWorkspace({
   }, []);
   const preview = previewStopIds ? buildBuilderRoutePreview(canonicalTrip, previewStopIds) : null;
   const recommendedTrip = preview?.ok ? preview.trip : canonicalTrip;
-  const presentedTrip = tripWithEffectiveTransportChoices(recommendedTrip);
+  const routingTrip=guardTripRoutingGeometry(recommendedTrip);
+  const presentedTrip = tripWithEffectiveTransportChoices(routingTrip);
   const mapStops = useMemo(() => presentedTrip.stops.map(mapStop), [presentedTrip.stops]);
   const destinationCards = useMemo(() => builderDestinationCards(presentedTrip), [presentedTrip]);
   const mapLegs = useMemo(() => mapRouteLegsFromTrip(presentedTrip), [presentedTrip]);
   const routeCheckProposal = useMemo(() => routeCheckProposalStopIds ? buildBuilderRoutePreview(canonicalTrip, routeCheckProposalStopIds) : null, [canonicalTrip, routeCheckProposalStopIds]);
-  const comparisonLegs = useMemo(() => routeCheckProposal?.ok ? mapRouteLegsFromTrip(routeCheckProposal.trip) : [], [routeCheckProposal]);
+  const comparisonLegs = useMemo(() => routeCheckProposal?.ok ? mapRouteLegsFromTrip(guardTripRoutingGeometry(routeCheckProposal.trip)) : [], [routeCheckProposal]);
   const locked = useMemo(() => new Set(lockedStopIds), [lockedStopIds]);
   const stopIds = useMemo(() => canonicalTrip.stops.map((stop) => stop.id), [canonicalTrip.stops]);
   const reorder = useBuilderStopReorder({
@@ -138,8 +140,8 @@ export function TripBuilderRouteWorkspace({
         </div>
         <div role="rowgroup">
           {presentedTrip.stops.map((stop, index) => {
-            const recommendedLeg = recommendedTrip.legs.find((candidate) => candidate.toStopId === stop.id) ?? null;
-            const leg = recommendedLeg ? effectiveTripLeg(recommendedTrip, recommendedLeg) : null;
+            const recommendedLeg = routingTrip.legs.find((candidate) => candidate.toStopId === stop.id) ?? null;
+            const leg = recommendedLeg ? effectiveTripLeg(routingTrip, recommendedLeg) : null;
             const transferMinutes = leg?.doorToDoorMinutes ?? leg?.durationMinutes ?? null;
             const usableDays = usableTime(stop.nights ?? 0, transferMinutes);
             const isLocked = fixedOrder || locked.has(stop.id);

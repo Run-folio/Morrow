@@ -30,6 +30,7 @@ export function builderDocumentFingerprint(trip: EasyTTrip): string {
       countryCode: stop.countryCode,
       region: stop.region,
       providerId: stop.providerId,
+      ...(stop.geographicBinding===undefined?{}:{geographicBinding:stop.geographicBinding}),
       latitude: stop.latitude,
       longitude: stop.longitude,
       nights: stop.nights,

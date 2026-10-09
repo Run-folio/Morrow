@@ -63,6 +63,8 @@ import { validateFinalPlan } from "@/lib/easyt/plan-validator";
 import { transferImpactFromMetadata } from "@/lib/easyt/transfer-impact";
 import { createDestinationKnowledgeStore, destinationKnowledge } from "@/lib/easyt/destination-knowledge";
 import { buildCountryDiscovery, updateCountryDiscoveryChoice } from "@/lib/easyt/country-discovery";
+import type {CanonicalEasyTTrip} from '@/lib/easyt/trip';
+import { acceptedGeographicPlace, geographicCandidateMatches, geographicInputKey, geographicallyReady, stopGeographicPlace, validatedPlaceCoordinates, guardTripRoutingGeometry } from '@/lib/easyt/geographic-binding';
 import { countryCodeFor } from "@/lib/easyt/country-registry";
 import { findCatalogPlaceById } from "@/lib/easyt/place-catalog";
 import { extractStructuredTripBrief, mergeStructuredTripBrief, routeConstraintsFromStructuredTripBrief, routeScoringPreferencesFromStructuredBrief, structuredTripBriefFromSavedSelections, type StructuredTripBrief } from "@/lib/easyt/structured-trip-brief";
@@ -102,7 +104,7 @@ import { preserveBuilderCanonicalState } from "@/lib/easyt/trip-builder-preserva
 import { builderDetailsFingerprint, prepareBuilderDocumentCommit } from "@/lib/easyt/trip-builder-document-commit";
 import { currentBuilderRouteProposal, validateBuilderStopOrder } from "@/lib/easyt/trip-builder-order";
 import { normalizeTripInterests, tripInterestLabels, type TripInterest } from "@/lib/easyt/trip-interest";
-import { savedJourneyFinishChoiceMatches, canonicalJourneyEndpointPlace, isSameCanonicalPlace, journeyEndFromCapturedIntent, journeyEndpointIdentityIsCoherent, journeyEndpointPlaceFromSuggestion, normalizeJourneyEnd, plannerEndpointForJourneyEnd, resolveTypedJourneyEndpoint } from "@/lib/easyt/journey-endpoints";
+import { resolvedJourneyEndPlace, canonicalJourneyEndpointPlace, isSameCanonicalPlace, journeyEndFromCapturedIntent, journeyEndpointIdentityIsCoherent, journeyEndpointPlaceFromSuggestion, normalizeJourneyEnd, plannerEndpointForJourneyEnd, resolveTypedJourneyEndpoint } from "@/lib/easyt/journey-endpoints";
 import { builderClarificationProgress, builderClarificationRemovalPlan, builderClarificationResumeLabel, orderedBuilderClarificationIds, reviewedRouteStopSatisfiesMention, shouldAutoOpenBuilderClarification, shouldYieldBuilderClarification } from "@/lib/easyt/builder-clarification";
 import { fixedCommitmentDisplayLabel, projectFixedCommitmentsToStops } from "@/lib/easyt/fixed-commitment";
 import { createAbortableEffectScope } from "@/lib/easyt/abortable-effect";
@@ -121,7 +123,7 @@ const TripItineraryWorkspace = dynamic(() => import("@/components/easyt/trip-iti
 /* ---------------------------------------------------------------- data */
 
 export type Place = PlannerPlace;
-export type Stop = { id: string; name: string; country: string; canonicalPlaceId?: string; countryCode?: string; region?: string; providerId?: string; coordinates?: [number, number]; intent?: "place" | "landmark"; locality?: string };
+export type Stop = { id: string; name: string; country: string; canonicalPlaceId?: string; countryCode?: string; region?: string; providerId?: string; geographicBinding?:JourneyEndpointPlace['geographicBinding']; coordinates?: [number, number]; intent?: "place" | "landmark"; locality?: string };
 type StructuralSnapshot = { canonical?: BuilderStructuralSnapshot; stops: Stop[]; allocations: Record<string, number>; manualNightStopIds: string[]; startDate: string; endDate: string; locks: TripScheduleLocks; placeSelections: PlaceSelection[]; completedPlanningAreaMentionIds: string[]; removedPlaceMentionIds: string[]; countryDiscoveryChoices?: Record<string, string[]>; discoveryDraftByMentionId?: StructuredTripBrief["discoveryDraftByMentionId"]; capturedPlaceSelections?: PlaceSelection[]; capturedDestinations: StructuredTripBrief["destinations"]; capturedMustVisit: StructuredTripBrief["mustVisit"]; summary: string };
 type NightEditFeedback = { title: string; detail?: string; tone: "info" | "warning" };
 type CapturedLocation = ResolvedPlaceMention;
@@ -467,7 +469,9 @@ async function reconcileAcceptedBuilderRequest(request: BuilderReconciliationReq
   const recommendationProjections: NonNullable<BuilderProjectionResponse["recommendationProjections"]> = [];
   await Promise.all(results.filter(result => result.kind === "recommendation").map(async result => {
     try {
-      const projection = await resolveBuilderRecommendation(request.trip, result.targetId, signal);
+      const target=request.trip.stops.find(stop=>stop.id===result.targetId);
+      if(!target||!geographicallyReady(stopGeographicPlace(target)))throw new Error('Location needs confirmation');
+      const projection = await resolveBuilderRecommendation(guardTripRoutingGeometry(request.trip), result.targetId, signal);
       recommendationProjections.push(projection);
       result.phase = "complete";
       delete result.reason;
@@ -477,17 +481,19 @@ async function reconcileAcceptedBuilderRequest(request: BuilderReconciliationReq
     }
   }));
   let legs = calculated.legs.filter(leg => request.dispatched.some(unit => unit.kind === "leg" && unit.targetId === leg.id));
-  if (legs.length) {
+  const qualifiedLegs=legs.filter(leg=>leg.routeMetadata.source!=='unverified-geography');
+  for(const result of results)if(result.kind==='leg'&&legs.some(leg=>leg.id===result.targetId&&leg.routeMetadata.source==='unverified-geography')){result.phase='failed';result.reason='unavailable'}
+  if (qualifiedLegs.length) {
     try {
       const response = await fetch("/api/journey-transfer-resolution", { method: "POST", headers: {"Content-Type":"application/json"},
-        body: JSON.stringify({legs}), cache: "no-store", signal });
+        body: JSON.stringify({legs:qualifiedLegs}), cache: "no-store", signal });
       if (!response.ok) throw new Error("Transfer assessment unavailable");
       const payload = await response.json() as {legs?: TripLeg[]};
-      if (!Array.isArray(payload.legs) || payload.legs.length !== legs.length) throw new Error("Invalid transfer assessment");
-      legs = payload.legs;
+      if (!Array.isArray(payload.legs) || payload.legs.length !== qualifiedLegs.length) throw new Error("Invalid transfer assessment");
+      legs = legs.map(leg=>payload.legs!.find(result=>result.id===leg.id)??leg);
     } catch (error) {
       if (signal.aborted) throw error;
-      for (const result of results) if (result.kind === "leg") { result.phase="failed";result.reason="unavailable"; }
+      for (const result of results) if (result.kind === "leg"&&qualifiedLegs.some(leg=>leg.id===result.targetId)) { result.phase="failed";result.reason="unavailable"; }
     }
   }
   if (signal.aborted) throw new DOMException("Builder input changed", "AbortError");
@@ -680,7 +686,7 @@ function TripBuilderDocument() {
     touched: boolean;
   } | null>(null);
   const [initialStops, setStops] = useState<Stop[]>([]);
-  const stops = canonicalBuilder ? (canonicalBuilder.stops.map(stop => ({id:stop.id,name:stop.name,country:stop.country,canonicalPlaceId:stop.canonicalPlaceId,countryCode:stop.countryCode,region:stop.region,providerId:stop.providerId,coordinates:stop.longitude !== null && stop.latitude !== null ? [stop.longitude,stop.latitude] as [number,number] : undefined}))) : initialStops;
+  const stops = canonicalBuilder ? (canonicalBuilder.stops.map(stop => ({id:stop.id,name:stop.name,country:stop.country,canonicalPlaceId:stop.canonicalPlaceId,countryCode:stop.countryCode,region:stop.region,providerId:stop.providerId,geographicBinding:stop.geographicBinding,coordinates:stop.longitude !== null && stop.latitude !== null ? [stop.longitude,stop.latitude] as [number,number] : undefined}))) : initialStops;
   const hasRouteSkeleton = hasUsefulRouteSkeleton(stops);
   const [routeHints, setRouteHints] = useState<string[]>([]);
   const [sourceRouteKey, setSourceRouteKey] = useState<string | undefined>();
@@ -691,33 +697,40 @@ function TripBuilderDocument() {
   const topAddVisible=topAddOpen||Boolean(mountedBuilder?.snapshot.draft.fields.some(f=>f.binding.kind==="destination-add"&&f.raw));
   const [pendingTopType,setPendingTopType]=useState<{type:"return_to_start"|"one_way";revision:number;name:string}|null>(null);
   const savedFinishRequestRef=useRef<AbortController|null>(null);
-  const [savedFinishReview,setSavedFinishReview]=useState<{ownerId:string|null;tripId:string;endKey:string;name:string;choices:LocationChoice[];status:"loading"|"ready"|"unavailable"}|null>(null);
+  const [savedFinishReview,setSavedFinishReview]=useState<{ownerId:string|null;tripId:string;targetId:string;endKey:string;name:string;choices:LocationChoice[];status:"loading"|"ready"|"unavailable"}|null>(null);
+  const savedTargetPlace=(trip:CanonicalEasyTTrip,targetId:string)=>targetId==='origin'?trip.brief.intent.route.origin:
+    targetId==='end'?(trip.brief.intent.route.journeyEnd.mode==='explicit'?trip.brief.intent.route.journeyEnd.place:null):
+    trip.stops.find(stop=>stop.id===targetId)?stopGeographicPlace(trip.stops.find(stop=>stop.id===targetId)!):null;
+  const savedTargetKey=(place:JourneyEndpointPlace)=>authoredContentKey([geographicInputKey(place),place.geographicBinding??null]);
   const savedFinishIsCurrent=(review:NonNullable<typeof savedFinishReview>)=>{
     const snapshot=builderEditSessionRef.current?.getSnapshot();
     return snapshot && snapshot.browserOwnerId===review.ownerId && activeBrowserOwnerIdRef.current===review.ownerId
-      && snapshot.trip.id===review.tripId && authoredContentKey(snapshot.trip.brief.intent.route.journeyEnd)===review.endKey ? snapshot : null;
+      && snapshot.trip.id===review.tripId && savedTargetPlace(snapshot.trip,review.targetId)
+      && savedTargetKey(savedTargetPlace(snapshot.trip,review.targetId)!)===review.endKey ? snapshot : null;
   };
   const dismissSavedFinish=()=>{savedFinishRequestRef.current?.abort();savedFinishRequestRef.current=null;setSavedFinishReview(null)};
-  const confirmSavedFinish=async()=>{
+  const confirmSavedLocation=async(targetId:string)=>{
     const snapshot=builderEditSessionRef.current?.getSnapshot();
-    const end=snapshot?.trip.brief.intent.route.journeyEnd;
-    if(!snapshot || end?.mode!=="explicit" || end.place.coordinates)return;
+    const place=snapshot?savedTargetPlace(snapshot.trip,targetId):null;
+    const role=targetId==='origin'||targetId==='end'?'endpoint':'stop';
+    if(!snapshot || !place || geographicallyReady(place,role))return;
     savedFinishRequestRef.current?.abort();
     const controller=new AbortController();savedFinishRequestRef.current=controller;
-    const review={ownerId:snapshot.browserOwnerId,tripId:snapshot.trip.id,endKey:authoredContentKey(end),name:end.place.name,choices:[] as LocationChoice[],status:"loading" as const};
+    const review={ownerId:snapshot.browserOwnerId,tripId:snapshot.trip.id,targetId,endKey:savedTargetKey(place),name:place.name,choices:[] as LocationChoice[],status:"loading" as const};
     setSavedFinishReview(review);
     try {
-      const params=new URLSearchParams({place:end.place.name,candidates:"1"});if(end.place.country)params.set("country",end.place.country);
-      const response=await withProviderTimeout({label:"Saved finish lookup",timeoutMs:7_000,signal:controller.signal,request:signal=>fetch(`/api/journey-geocode?${params}`,{signal})});
+      const params=new URLSearchParams({place:place.name,candidates:"1"});if(place.country)params.set("country",place.country);
+      const response=await withProviderTimeout({label:"Saved location lookup",timeoutMs:8_000,signal:controller.signal,request:signal=>fetch(`/api/journey-geocode?${params}`,{signal})});
       if(!response.ok)throw new Error("Saved finish lookup unavailable");
       const payload=await response.json() as {candidates?:LocationChoice[]};
-      const choices=(payload.candidates??[]).filter(choice=>savedJourneyFinishChoiceMatches(end.place,choice,snapshot.trip.stops));
+      const choices=(payload.candidates??[]).filter(choice=>geographicCandidateMatches(place,choice,role));
       if(controller.signal.aborted || savedFinishRequestRef.current!==controller || !savedFinishIsCurrent(review))return;
       setSavedFinishReview({...review,choices,status:choices.length?"ready":"unavailable"});
     }catch {
       if(!controller.signal.aborted && savedFinishRequestRef.current===controller && savedFinishIsCurrent(review))setSavedFinishReview({...review,status:"unavailable"});
     }
   };
+  const confirmSavedFinish=()=>confirmSavedLocation('end');
   useEffect(()=>()=>{savedFinishRequestRef.current?.abort()},[]);
   useEffect(()=>{if(savedFinishReview&&!savedFinishIsCurrent(savedFinishReview))dismissSavedFinish()},[savedFinishReview,mountedBuilder?.snapshot.trip,mountedBuilder?.snapshot.browserOwnerId,activeBrowserOwnerId]);
   const [pendingTopRemoval,setPendingTopRemoval]=useState<{intentId:string;revision:number;name:string;stays:string[];nights:number}|null>(null);
@@ -912,7 +925,7 @@ function TripBuilderDocument() {
     setSourceRouteKey(draft.sourceRouteKey);
     setCuratedRoute(draft.curatedRoute);
     if (draft.decisionSelections) setDecisionSelections(draft.decisionSelections);
-    if (draft.origin) replaceJourneyOrigin({
+    if (draft.origin) replaceJourneyOrigin(draft.routeIntent?.origin ?? {
       name: draft.origin,
       coordinates: draft.originCoordinates,
       canonicalPlaceId: draft.originCanonicalPlaceId,
@@ -1057,8 +1070,8 @@ function TripBuilderDocument() {
             return;
           }
           const candidates = choices ?? [];
-          const needsConfirmation = mention.status === "unresolved" || !candidates.length
-            || new Set(candidates.map((choice) => choice.country.toLocaleLowerCase())).size > 1;
+          const chosen = preferredHandoffLocationChoice(mention, candidates);
+          const needsConfirmation = mention.status === "unresolved" || !chosen;
           const nextStatus = needsConfirmation ? "needs-confirmation" : "resolved";
           lookupSession.statuses.set(mention.mentionId, nextStatus);
           setHandoffResolutionStatuses((current) => ({ ...current, [mention.mentionId]: nextStatus }));
@@ -1066,7 +1079,6 @@ function TripBuilderDocument() {
             setLocationChoices((current) => [...current.filter(({ mention: prior }) => prior.mentionId !== mention.mentionId), { mention, choices: candidates }]);
             return;
           }
-          const chosen = preferredHandoffLocationChoice(mention, candidates);
           if (!chosen) return;
           if(editor) {
             const trip=editor.getSnapshot().trip;
@@ -1077,19 +1089,21 @@ function TripBuilderDocument() {
             const stopId=intent?.stopIds.length===1?intent.stopIds[0]!:handoffStopOccurrenceId(mention,handoffOccurrenceMentionIdsRef.current);
             const oldStop=trip.stops.find(stop=>stop.id===stopId),seed=seedById.get(stopId);
             if(oldStop && seed && (oldStop.name!==seed.name || oldStop.canonicalPlaceId!==seed.canonicalPlaceId || oldStop.providerId!==seed.providerId))return;
-            const place={name:mention.canonicalName,coordinates:chosen.coordinates,canonicalPlaceId:mention.canonicalPlaceId??chosen.canonicalPlaceId??(chosen.providerId?`open-world:${chosen.providerId}`:undefined),country:chosen.country,providerId:chosen.providerId};
+            const place=acceptedGeographicPlace({name:mention.canonicalName,coordinates:chosen.coordinates,canonicalPlaceId:mention.canonicalPlaceId??chosen.canonicalPlaceId??(chosen.providerId?`open-world:${chosen.providerId}`:undefined),country:chosen.country,providerId:chosen.providerId},chosen,isOriginMention(mention)?'endpoint':'stop');
+            if(!place)return;
             const command=isOriginMention(mention)?{kind:"origin" as const,place}:builderPlaceCommand(trip,{stopId,intentId:intent?.id,place});
             dispatchAcceptedBuilderEdit(command,{expectedInputRevision:snapshot!.inputRevision});return;
           }
           if (isOriginMention(mention)) {
             if (draft.origin || originResolutionVersionRef.current !== originVersion) return;
-            replaceJourneyOrigin({
+            const place = acceptedGeographicPlace({
               name: mention.canonicalName,
               coordinates: chosen.coordinates,
               canonicalPlaceId: mention.canonicalPlaceId ?? chosen.canonicalPlaceId ?? (chosen.providerId ? `open-world:${chosen.providerId}` : undefined),
               country: chosen.country,
               providerId: chosen.providerId,
-            });
+            }, chosen, 'endpoint');
+            if (place) replaceJourneyOrigin(place);
           } else {
             const stopId = handoffStopOccurrenceId(mention, handoffOccurrenceMentionIdsRef.current);
             const seed = seedById.get(stopId);
@@ -1702,12 +1716,13 @@ function TripBuilderDocument() {
     preferences: { ...tripIntent.preferences, budgetSensitivity: budget },
   }), [canonicalBuilder, tripIntent, journeyEnd, totalDays, origin, stops, budget]);
   const journeyStartPlace = useMemo<JourneyEndpointPlace>(() => ({
+    ...journeyOrigin,
     name: origin.trim(),
     canonicalPlaceId: originCanonicalPlaceId,
     country: originCountry,
     providerId: originProviderId,
     coordinates: originCoordinates,
-  }), [origin, originCanonicalPlaceId, originCountry, originProviderId, originCoordinates]);
+  }), [journeyOrigin, origin, originCanonicalPlaceId, originCountry, originProviderId, originCoordinates]);
   const routeJourneyEnd = useMemo(
     () => plannerEndpointForJourneyEnd(tripId, journeyStartPlace, journeyEnd),
     [tripId, journeyStartPlace, journeyEnd],
@@ -2171,9 +2186,10 @@ function TripBuilderDocument() {
   };
 
   const routeIntelligence = useMemo(() => assessRouteIntelligence({
-    origin: { name: origin.trim(), coordinates: originCoordinates },
-    end: routeJourneyEnd,
-    stops,
+    origin: { name: origin.trim(), coordinates: canonicalBuilder?validatedPlaceCoordinates(canonicalBuilder.brief.intent.route.origin,'endpoint')??undefined:originCoordinates },
+    end: routeJourneyEnd && canonicalBuilder ? { ...routeJourneyEnd,
+      coordinates: validatedPlaceCoordinates(resolvedJourneyEndPlace(journeyStartPlace, journeyEnd), 'endpoint') ?? undefined } : routeJourneyEnd,
+    stops:canonicalBuilder?stops.map(stop=>({...stop,coordinates:validatedPlaceCoordinates(stop)??undefined})):stops,
     picks: effectivePicks,
     availableDays: totalDays,
     constraints: {
@@ -2190,7 +2206,7 @@ function TripBuilderDocument() {
       avoidFlights: structuredScoringPreferences.avoidFlights,
       interests: effectiveIntent.preferences.interests,
     },
-  }), [origin, originCoordinates, routeJourneyEnd, stops, effectivePicks, totalDays, effectiveIntent, projectedFixedCommitments, structuredRouteConstraints, structuredScoringPreferences]);
+  }), [canonicalBuilder, journeyStartPlace, journeyEnd, origin, originCoordinates, routeJourneyEnd, stops, effectivePicks, totalDays, effectiveIntent, projectedFixedCommitments, structuredRouteConstraints, structuredScoringPreferences]);
   const routeKey = stops.map((stop) => stop.id).join("|");
   const routeRecommendationVisible = routeIntelligence.route.state === "recommendation" && keptRouteKey !== routeKey;
   const currentRouteCheckProposalStopIds = currentBuilderRouteProposal(
@@ -2255,6 +2271,7 @@ function TripBuilderDocument() {
       country: originCountry,
       canonicalPlaceId: originCanonicalPlaceId,
       providerId: originProviderId,
+      ...(journeyOrigin.geographicBinding===undefined?{}:{geographicBinding:journeyOrigin.geographicBinding}),
       coordinates: originCoordinates ?? null,
     },
     journeyEnd,
@@ -2265,6 +2282,7 @@ function TripBuilderDocument() {
       country: stop.country,
       canonicalPlaceId: stop.canonicalPlaceId,
       providerId: stop.providerId,
+      ...(stop.geographicBinding===undefined?{}:{geographicBinding:stop.geographicBinding}),
       latitude: stop.coordinates?.[1] ?? null,
       longitude: stop.coordinates?.[0] ?? null,
       arrivalDate: null,
@@ -2273,7 +2291,7 @@ function TripBuilderDocument() {
     } satisfies TripStop)),
     constraints: structuredRouteConstraints,
     curatedRoute: currentCuratedRoute,
-  }), [tripId, origin, originCountry, originCanonicalPlaceId, originProviderId, originCoordinates, journeyEnd, stops, structuredRouteConstraints, currentCuratedRoute]);
+  }), [tripId, journeyOrigin, origin, originCountry, originCanonicalPlaceId, originProviderId, originCoordinates, journeyEnd, stops, structuredRouteConstraints, currentCuratedRoute]);
   const transferResolutionKey = useMemo(() => JSON.stringify(baselineBuilderCanonicalLegs.map((leg) => ({
     id: leg.id,
     mode: leg.mode,
@@ -2920,6 +2938,7 @@ function TripBuilderDocument() {
         region: canonicalSuggestion.region,
         coordinates: canonicalSuggestion.coordinates,
         kind: canonicalSuggestion.placeType,
+        placeType:canonicalSuggestion.placeType,routability:canonicalSuggestion.routability??'direct_destination',
         canonicalPlaceId: canonicalSuggestion.canonicalPlaceId,
         providerId: canonicalSuggestion.provenance.find((source) => source.kind === "provider")?.id,
       } : null);
@@ -3029,6 +3048,10 @@ function TripBuilderDocument() {
         coordinates: resolved.coordinates,
         locality: resolved.locality,
       };
+      const acceptedPlace=acceptedGeographicPlace({name:addedStop.name,country:addedStop.country,canonicalPlaceId:addedStop.canonicalPlaceId,providerId:addedStop.providerId,coordinates:addedStop.coordinates},
+        {...resolved,name:resolvedName,placeType:canonicalSuggestion?.placeType??resolved.kind,routability:canonicalSuggestion?.routability??('routability' in resolved?resolved.routability as string:undefined)});
+      if(!acceptedPlace)return fail(language==='es'?'Elige una ciudad o población verificada.':'Choose a verified city or town.');
+      addedStop.geographicBinding=acceptedPlace.geographicBinding;
       const selectedCommands: BuilderAcceptedEdit[] = [];
       if (!existingBase) {
         rememberStructuralChange(replaceableRouteStopId ? "change_regional_base" : "add_stop", 1);
@@ -3042,6 +3065,7 @@ function TripBuilderDocument() {
           const placeCommand=builderPlaceCommand(currentTrip, { stopId: id, intentId, beforeStopId: nextCapturedStop, place: {
             name: addedStop.name, country: addedStop.country, canonicalPlaceId: addedStop.canonicalPlaceId,
             providerId: addedStop.providerId, coordinates: addedStop.coordinates,
+            geographicBinding:addedStop.geographicBinding,
           }, bindSourceNights: Boolean(intentId && targetMentionId && currentTrip.brief.intent.route.destinations.some(intent =>
             intent.id === intentId && intent.kind === "overnight_place" && intent.requestedNights !== null)) });
           if(!placeCommand)return fail("This destination binding changed. Review the current trip.");
@@ -3308,7 +3332,8 @@ function TripBuilderDocument() {
   const chooseProviderClarification = (mention: CapturedLocation, choice: LocationChoice) => {
     if(builderEditSessionRef.current) {
       const trip=builderEditSessionRef.current.getSnapshot().trip;
-      const place={name:choice.name,country:choice.country,canonicalPlaceId:choice.canonicalPlaceId??(choice.providerId?`open-world:${choice.providerId}`:undefined),providerId:choice.providerId,coordinates:choice.coordinates};
+      const place=acceptedGeographicPlace({name:choice.name,country:choice.country,canonicalPlaceId:choice.canonicalPlaceId??(choice.providerId?`open-world:${choice.providerId}`:undefined),providerId:choice.providerId,coordinates:choice.coordinates},choice,isOriginMention(mention)?'endpoint':'stop');
+      if(!place)return;
       const intent=trip.brief.intent.route.destinations.find(i=>i.id===mention.mentionId);
       const id=intent?.stopIds.length===1?intent.stopIds[0]!:handoffStopOccurrenceId(mention,handoffOccurrenceMentionIdsRef.current);
       const command=isOriginMention(mention)?{kind:"origin" as const,place}:builderPlaceCommand(trip,{stopId:id,intentId:intent?.id,place});
@@ -3495,6 +3520,11 @@ function TripBuilderDocument() {
   const requestRouteOptimization=async()=>{
     const editor=builderEditSessionRef.current;if(!editor)return;
     const source=editor.getSnapshot();const scope={ownerId:source.browserOwnerId,tripId:source.trip.id,inputRevision:source.inputRevision};
+    const end = source.trip.brief.intent.route.journeyEnd;
+    if(source.trip.stops.some(stop=>!geographicallyReady(stopGeographicPlace(stop)))||!geographicallyReady(source.trip.brief.intent.route.origin,'endpoint')
+      || end.mode === 'explicit' && !geographicallyReady(end.place, 'endpoint')){
+      setOptimizationResult({kind:'unavailable',reason:'insufficient-data'});return;
+    }
     const inputKey=routeProjectionInputKey(source.trip),request=optimizationGateRef.current!.begin();
     setOptimizationChecking(true);setOptimizationResult(null);setOptimizationError("");
     try{
@@ -3633,7 +3663,8 @@ function TripBuilderDocument() {
         setOriginError(ui.verifyOrigin);
         return false;
       }
-      const enriched = { ...selection, coordinates: payload.result.coordinates, providerId: payload.result.providerId };
+      const enriched = acceptedGeographicPlace(selection,payload.result,'endpoint');
+      if(!enriched){setOriginError(ui.verifyOrigin);return false;}
       if (builderEditSessionRef.current) {
         return dispatchAcceptedBuilderEdit({ kind: "origin", place: enriched }, { expectedInputRevision: enrichmentRevision });
       }
@@ -4148,6 +4179,7 @@ function TripBuilderDocument() {
     // resolution alone cannot certify that optional enrichment is complete.
   }, [hydrated, pendingInterpretation, hasRouteSkeleton, stops.length, clarificationOpen, activeClarificationMention, deviceRecoveryBlocked, deviceStorageBlocked, cloudConflictTrip, handoffResolutionStatuses, resolvingLocations, buildInvariant.canBuildTrip]);
   const gateConflict = buildInvariant.firstConflict;
+  const geographyGateConflict = ['geography-unverified', 'origin-unverified', 'end-unverified'].includes(gateConflict?.code ?? '');
   const gate = gateConflict?.code === "itinerary-stop-uncovered"
     ? (language === "es" ? "No pudimos incluir todas las paradas en el itinerario. Revisa tu ruta e inténtalo de nuevo." : "We couldn't include every stop in the itinerary. Review your route and try again.")
     : gateConflict?.message ?? "";
@@ -4961,6 +4993,15 @@ function TripBuilderDocument() {
       </EasyTButton> : null}
     </div>;
   };
+  const renderSavedLocationReview=(targetId:string)=>{
+    const trip=mountedBuilder?.snapshot.trip;
+    const place=trip?savedTargetPlace(trip,targetId):null;
+    if(!place||geographicallyReady(place,targetId==='origin'||targetId==='end'?'endpoint':'stop'))return null;
+    return <div className={styles.inlinePlaceResolution} onClick={event=>event.stopPropagation()}>
+      <span role="status">{language==='es'?`Confirma la ubicación de ${place.name}.`:`Confirm the location of ${place.name}.`}</span>
+      <EasyTButton variant="quiet" size="small" onClick={()=>{void confirmSavedLocation(targetId)}}>{language==='es'?'Elegir lugar':'Choose place'}<span className="sr-only"> {place.name}</span></EasyTButton>
+    </div>;
+  };
 
   if (!hydrated || ownerScopeMismatch || (hydratedCanonicalTripRef.current?.id === tripId && !mountedBuilder && !tripUnavailable && !deviceRecoveryBlocked && !deviceStorageBlocked)) {
     return <div data-builder-root="true" data-builder-edit-session={mountedBuilder ? "active" : "hydrating"} className={`${styles.shellWide} ${mobilePolish.builder}`} aria-busy="true"><div className={styles.locationResolution} role="status">Checking the current account before opening this trip…</div></div>;
@@ -5174,7 +5215,7 @@ function TripBuilderDocument() {
                   }}
                   personalize={(hasSavedTravelProfile || effectiveIntent.hardConstraints.fixedCommitments.length || effectiveIntent.hardConstraints.optionalStopIds.length) ? topPersonalize : null}
                   updateRouteFeedback={optimizationResult && optimizationResult.kind!=="proposal" ? <span role="status" className={styles.hint}>{optimizationResult.kind==="unavailable" ? (language==="es"?"No se pudo comprobar la ruta":"Route check unavailable") : (language==="es"?"No se encontró un orden mejor":"No better order found")}</span> : null}
-                  originReview={<>{topOriginReview}{necessaryReview(["endpoint"])}{mountedBuilder.snapshot.trip.legs.filter(leg=>leg.toEndpoint?.kind==="end").map(leg=>necessaryReview(["leg"],leg.id))}</>} destinationReview={activePlaceMentions.filter(mention=>!isOriginMention(mention)&&!isEndMention(mention)&&[...stopResolutionMentions.values()].some(mapped=>mapped.mentionId===mention.mentionId)).map(renderPlaceResolution)}
+                  originReview={<>{topOriginReview}{renderSavedLocationReview('origin')}{renderSavedLocationReview('end')}{necessaryReview(["endpoint"])}{mountedBuilder.snapshot.trip.legs.filter(leg=>leg.toEndpoint?.kind==="end").map(leg=>necessaryReview(["leg"],leg.id))}</>} destinationReview={activePlaceMentions.filter(mention=>!isOriginMention(mention)&&!isEndMention(mention)&&[...stopResolutionMentions.values()].some(mapped=>mapped.mentionId===mention.mentionId)).map(renderPlaceResolution)}
                   dateReview={<>{necessaryReview(["schedule","assessment"])}{endDateStillSuggested?<div><p className={styles.hint}>{language === "es" ? `Solo has elegido la fecha de inicio. La fecha final y los ${defaultTripIntent().timing.durationDays} días son una sugerencia.` : `Only your start date is set. The end date and ${defaultTripIntent().timing.durationDays}-day length are suggestions.`}</p><EasyTButton variant="secondary" onClick={()=>{if(dispatchAcceptedBuilderEdit({kind:"dates",startDate,endDate}))setEndDateStillSuggested(false)}}>{language==="es"?"Aceptar fechas sugeridas":"Accept suggested dates"}</EasyTButton></div>:null}</>}
                 /> : <TripBuilderDetailsEditor
                   language={language}
@@ -5503,7 +5544,7 @@ function TripBuilderDocument() {
                 fixedOrder={fixedBuilderChronology}
                 routeCheckProposalStopIds={optimizationProposal&&!optimizationStale?optimizationProposal.projectedTrip.stops.map(stop=>stop.id):currentRouteCheckProposalStopIds}
                 legReview={legId=>necessaryReview(["leg"],legId)}
-                stopReview={stopId=>necessaryReview(["recommendation"],stopId)}
+                stopReview={stopId=><>{necessaryReview(["recommendation"],stopId)}{renderSavedLocationReview(stopId)}</>}
                 nightReview={nightEditFeedback?.tone==="warning" ? <p role="status" className={styles.hintError}>{nightEditFeedback.title} {nightEditFeedback.detail}</p> : null}
                 reviewControl={<div className={styles.builderReviewActions}>
                   <MorroviaSaveStatus state={mountedBuilder?.snapshot.failedUnits.length ? "error" : mountedBuilder?.snapshot.pendingUnits.length ? "saving" : "saved"}
@@ -5580,7 +5621,7 @@ function TripBuilderDocument() {
                   })() : null}
                 </div>
               </section>}
-              {showRouteStatus && <section ref={timingWarningRef} tabIndex={gateConflict ? -1 : undefined} className={`${styles.timingWarning} ${gateConflict ? styles.timingWarningBlocking : highlyCompressedTrip || longJourneyIssue?.consequence.level === "strong" ? styles.timingWarningStrong : ""}`} role={gateConflict ? "alert" : "status"} aria-labelledby="timing-warning-title">
+              {showRouteStatus && !geographyGateConflict && <section ref={timingWarningRef} tabIndex={gateConflict ? -1 : undefined} className={`${styles.timingWarning} ${gateConflict ? styles.timingWarningBlocking : highlyCompressedTrip || longJourneyIssue?.consequence.level === "strong" ? styles.timingWarningStrong : ""}`} role={gateConflict ? "alert" : "status"} aria-labelledby="timing-warning-title">
                 <button type="button" className={styles.disclosureHead} aria-expanded={timingWarningOpen} aria-controls="timing-warning-content" onClick={() => setTimingWarningOpen((current) => !current)}>
                   <AlertTriangle aria-hidden="true" /><span><strong id="timing-warning-title"><span className="sr-only">{gateConflict ? (language === "es" ? "Bloqueo: " : "Blocking: ") : highlyCompressedTrip || longJourneyIssue?.consequence.level === "strong" ? (language === "es" ? "Advertencia importante: " : "Strong caution: ") : routeRecommendationVisible && !showTimingWarning ? (language === "es" ? "Sugerencia: " : "Suggestion: ") : (language === "es" ? "Aviso: " : "Caution: ")}</span>{timingWarningTitle}</strong></span><ChevronRight aria-hidden="true" />
                 </button>
@@ -6223,17 +6264,22 @@ function TripBuilderDocument() {
         cancelLabel={language==="es"?"Conservar destino":"Keep destination"} confirmLabel={language==="es"?"Quitar destino":"Remove destination"} onCancel={()=>setPendingTopRemoval(null)}
         onConfirm={()=>{if(pendingTopRemoval){const snapshot=builderEditSessionRef.current?.getSnapshot();if(snapshot?.inputRevision===pendingTopRemoval.revision)rememberStructuralChange("remove_destination",pendingTopRemoval.stays.length);
           if(dispatchAcceptedBuilderEdit({kind:"remove-destination",intentId:pendingTopRemoval.intentId},{expectedInputRevision:pendingTopRemoval.revision})){setRoutePreviewStopIds(null);setSelectedRouteStopId(null);setNightEditFeedback(null)}}setPendingTopRemoval(null)}}/>
-      <BuilderClarificationDialog open={Boolean(savedFinishReview)} language={language} itemKey={`saved-finish:${savedFinishReview?.endKey??""}`} progress={language==="es"?"Final guardado":"Saved finish"}
-        title={language==="es"?"Confirmar final guardado":"Confirm saved finish"}
+      <BuilderClarificationDialog open={Boolean(savedFinishReview)} language={language} itemKey={`saved-finish:${savedFinishReview?.endKey??""}`} progress={savedFinishReview?.targetId==='end'?(language==="es"?"Final guardado":"Saved finish"):(language==="es"?"Ubicación guardada":"Saved location")}
+        title={savedFinishReview?.targetId==='end'?(language==="es"?"Confirmar final guardado":"Confirm saved finish"):(language==="es"?"Confirmar ubicación":"Confirm location")}
         description={savedFinishReview?.name??""} finishLaterLabel={language==="es"?"Más tarde":"Finish later"} onDismiss={dismissSavedFinish}
         suggestionsStatus={savedFinishReview?.status==="loading"?(language==="es"?"Buscando el lugar…":"Looking up the place…"):savedFinishReview?.status==="unavailable"?(language==="es"?"No pudimos confirmar este lugar. Cierra e inténtalo de nuevo.":"We couldn't confirm this place. Close and try again."):undefined}
         choices={savedFinishReview?.choices.map((choice,index)=>({id:String(index),label:choice.name,detail:choice.country}))??[]}
         onChoose={choice=>{
           if(!savedFinishReview)return;
           const snapshot=savedFinishIsCurrent(savedFinishReview),place=savedFinishReview.choices[Number(choice.id)];
-          const end=snapshot?.trip.brief.intent.route.journeyEnd;
-          if(!snapshot || end?.mode!=="explicit" || !place){dismissSavedFinish();return}
-          if(dispatchAcceptedBuilderEdit({kind:"legacy-end",place:{...end.place,coordinates:place.coordinates,country:place.country,providerId:place.providerId}},{expectedInputRevision:snapshot.inputRevision}))dismissSavedFinish();
+          const target=snapshot?savedTargetPlace(snapshot.trip,savedFinishReview.targetId):null;
+          if(!snapshot || !target || !place){dismissSavedFinish();return}
+          const role=savedFinishReview.targetId==='origin'||savedFinishReview.targetId==='end'?'endpoint':'stop';
+          const accepted=acceptedGeographicPlace(target,place,role);if(!accepted)return;
+          const command=savedFinishReview.targetId==='end'?{kind:'legacy-end' as const,place:accepted}:
+            savedFinishReview.targetId==='origin'?{kind:'origin' as const,place:accepted}:
+            builderPlaceCommand(snapshot.trip,{stopId:savedFinishReview.targetId,place:accepted});
+          if(command&&dispatchAcceptedBuilderEdit(command,{expectedInputRevision:snapshot.inputRevision}))dismissSavedFinish();
         }}/>
       <MorroviaConfirmationDialog open={Boolean(pendingTopType)} title={language==="es"?"¿Volver al punto de salida?":"Return to the starting point?"}
         detail={`${language==="es"?"Final guardado":"Saved finish"}: ${pendingTopType?.name??""}`}

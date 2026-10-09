@@ -191,6 +191,23 @@ test("coextensive administrative boundary becomes a locality only for route-stop
   assert.equal(broad[0]?.routability, "planning_area");
 });
 
+test('synthetic San Pedro administrative identity cannot become an overnight town through addresstype alone', async () => {
+  // Current OSM boundary/node tags inform this control; the historical raw response was not captured.
+  const boundary = { ...raw('San Pedro de Atacama', 1574063, 'Chile', 'city', { lat: '-23.3545489', lon: '-67.9026571', adminLevel: 8 }),
+    osm_type: 'relation', type: 'administrative', category: 'boundary' };
+  const town = raw('San Pedro de Atacama', 214212256, 'Chile', 'town', { lat: '-22.910832', lon: '-68.2001376' });
+  const fetcher = fixtureFetch({ 'San Pedro de Atacama': { freeform: [boundary, town] } });
+  const candidates = await searchNominatimTravelCandidates('San Pedro de Atacama', { travelIntent: 'route-stop' }, fetcher);
+  assert.equal(candidates.find(candidate => candidate.providerId === 'relation:1574063')?.placeType, 'region');
+  assert.equal(candidates.find(candidate => candidate.providerId === 'relation:1574063')?.routability, 'planning_area');
+  assert.equal(candidates.find(candidate => candidate.providerId === 'node:214212256')?.placeType, 'town');
+  assert.equal(candidates.find(candidate => candidate.providerId === 'node:214212256')?.routability, 'direct_destination');
+  const linked = await searchNominatimTravelCandidates('San Pedro de Atacama', { travelIntent: 'route-stop' },
+    fixtureFetch({ 'San Pedro de Atacama': { freeform: [{ ...boundary, extratags: { linked_place: 'town', admin_level: '8' } }] } }));
+  assert.ok(['city', 'town'].includes(linked[0]?.placeType ?? ''));
+  assert.equal(linked[0]?.routability, 'direct_destination');
+});
+
 test("structured locality candidate outranks an exact administrative lookalike in a city list", async () => {
   const direct = await searchNominatimTravelCandidates("Oaxaca", { travelIntent: "route-stop" }, fetchFixture);
   const broad = await searchNominatimTravelCandidates("Oaxaca", { travelIntent: "planning-area" }, fetchFixture);

@@ -1,0 +1,978 @@
+{
+  "sourceSha": "e2152fd",
+  "trip": {
+    "schemaVersion": 2,
+    "id": "batch14-trip",
+    "ownerId": "owner-a",
+    "title": "Tokyo, Kyoto and Hiroshima",
+    "status": "draft",
+    "startDate": "2026-10-10",
+    "endDate": "2026-10-25",
+    "travellers": 2,
+    "currency": "GBP",
+    "brief": {
+      "mustDo": "Food, neighbourhoods and history",
+      "pace": "slow",
+      "hotelChanges": "few",
+      "budgetBand": "mid",
+      "selectedPlaces": {},
+      "nightAllocations": {
+        "tokyo": 4,
+        "kyoto": 3,
+        "hiroshima": 2
+      },
+      "intent": {
+        "version": 2,
+        "travellers": 2,
+        "timing": {
+          "flexibility": "fixed",
+          "durationDays": 16
+        },
+        "hardConstraints": {
+          "originRequired": true,
+          "mustSeeStopIds": [
+            "kyoto"
+          ],
+          "optionalStopIds": [
+            "hiroshima"
+          ],
+          "fixedCommitments": [],
+          "avoidDriving": true
+        },
+        "preferences": {
+          "budgetSensitivity": "mid",
+          "transportModes": [
+            "flight",
+            "train"
+          ],
+          "pace": "relaxed",
+          "interests": [
+            "food",
+            "culture"
+          ],
+          "dislikes": [
+            "frequent hotel changes"
+          ]
+        },
+        "route": {
+          "version": 1,
+          "origin": {
+            "name": "London",
+            "canonicalPlaceId": "place:london"
+          },
+          "tripType": "one_way",
+          "journeyEnd": {
+            "mode": "unknown"
+          },
+          "orderAuthority": "manual",
+          "explicitIntentIds": null,
+          "orderedStopIds": [
+            "tokyo",
+            "kyoto",
+            "hiroshima"
+          ],
+          "projectionInputKey": null,
+          "destinations": [
+            {
+              "id": "intent:tokyo",
+              "sourceText": "Tokyo",
+              "kind": "overnight_place",
+              "selectedPlace": {
+                "name": "Tokyo",
+                "country": "Japan",
+                "canonicalPlaceId": "place:tokyo",
+                "providerId": "nominatim:node:legacy-tokyo",
+                "coordinates": [
+                  139.6503,
+                  35.6762
+                ]
+              },
+              "resolution": "resolved",
+              "requestedNights": 4,
+              "routeMembership": "required",
+              "stopIds": [
+                "tokyo"
+              ]
+            },
+            {
+              "id": "intent:kyoto",
+              "sourceText": "Kyoto",
+              "kind": "overnight_place",
+              "selectedPlace": {
+                "name": "Kyoto",
+                "canonicalPlaceId": "place:kyoto",
+                "country": "Japan"
+              },
+              "resolution": "resolved",
+              "requestedNights": 3,
+              "routeMembership": "required",
+              "stopIds": [
+                "kyoto"
+              ]
+            },
+            {
+              "id": "intent:hiroshima",
+              "sourceText": "Hiroshima",
+              "kind": "overnight_place",
+              "selectedPlace": {
+                "name": "Hiroshima",
+                "canonicalPlaceId": "place:hiroshima",
+                "country": "Japan"
+              },
+              "resolution": "resolved",
+              "requestedNights": 2,
+              "routeMembership": "required",
+              "stopIds": [
+                "hiroshima"
+              ]
+            }
+          ]
+        }
+      },
+      "bookings": [
+        {
+          "id": "stay-tokyo",
+          "type": "stay",
+          "title": "Tokyo stay",
+          "date": "2026-10-10",
+          "confirmation": "PRIVATE-CONFIRMATION",
+          "url": "https://private.invalid/booking"
+        }
+      ],
+      "checklist": [
+        {
+          "id": "passport",
+          "label": "Check passport validity",
+          "complete": true
+        },
+        {
+          "id": "insurance",
+          "label": "Arrange travel insurance",
+          "complete": false
+        }
+      ],
+      "manualNightStopIds": [
+        "kyoto"
+      ],
+      "endDateIsSuggestion": false,
+      "dayAllocations": {
+        "tokyo": 4,
+        "kyoto": 3,
+        "hiroshima": 3
+      },
+      "nightAllocation": {
+        "version": 1,
+        "configVersion": "night-allocation-v2-marginal-depth",
+        "state": "compromised",
+        "totalAvailableNights": 15,
+        "totalAllocatedNights": 9,
+        "allocations": {
+          "tokyo": 4,
+          "kyoto": 3,
+          "hiroshima": 2
+        },
+        "stops": [
+          {
+            "stopId": "tokyo",
+            "name": "Tokyo",
+            "nights": 4,
+            "minimumNights": 3,
+            "idealNights": 4,
+            "targetNights": 4,
+            "minimumSource": "destination-knowledge",
+            "idealSource": "destination-knowledge",
+            "roles": [
+              "anchor",
+              "hub"
+            ],
+            "isAnchor": true,
+            "isRequired": true,
+            "isFixed": false,
+            "depth": "deep",
+            "matchedInterests": [
+              "food",
+              "culture"
+            ],
+            "transferDayLoss": null,
+            "confidence": {
+              "minimumNights": {
+                "version": 1,
+                "state": "structured",
+                "level": "high",
+                "freshness": "reviewed",
+                "scope": "planning-rule",
+                "sources": [
+                  {
+                    "id": "route-family:japan-slow",
+                    "label": "Morrovia route family: Japan, one good day at a time",
+                    "kind": "curated",
+                    "supports": "Curated destination geography, pacing, route role, experience and planning notes.",
+                    "reviewedAt": "2026-08-08"
+                  }
+                ],
+                "reason": "Minimum stay comes from curated destination knowledge.",
+                "confirmation": {
+                  "needed": false,
+                  "reason": null
+                }
+              },
+              "idealNights": {
+                "version": 1,
+                "state": "estimated",
+                "level": "medium",
+                "freshness": "reviewed",
+                "scope": "planning-rule",
+                "sources": [
+                  {
+                    "id": "route-family:japan-slow",
+                    "label": "Morrovia route family: Japan, one good day at a time",
+                    "kind": "curated",
+                    "supports": "Curated destination geography, pacing, route role, experience and planning notes.",
+                    "reviewedAt": "2026-08-08"
+                  }
+                ],
+                "reason": "Ideal stay comes from curated destination knowledge.",
+                "confirmation": {
+                  "needed": true,
+                  "reason": "Treat the ideal stay as planning guidance, not a verified booking rule."
+                }
+              },
+              "allocation": {
+                "version": 1,
+                "state": "structured",
+                "level": "high",
+                "freshness": "current",
+                "scope": "traveller-intent",
+                "sources": [],
+                "reason": "The night count is an explicit traveller edit.",
+                "confirmation": {
+                  "needed": false,
+                  "reason": null
+                }
+              }
+            },
+            "reasons": [
+              {
+                "code": "destination-minimum",
+                "message": "Tokyo uses its curated 3-night minimum."
+              },
+              {
+                "code": "destination-ideal",
+                "message": "Tokyo has a curated 4-night ideal before transfer recovery."
+              },
+              {
+                "code": "pace",
+                "message": "relaxed pace sets a 4-night target before traveller-authored adjustments."
+              },
+              {
+                "code": "anchor-priority",
+                "message": "Tokyo is treated as a major anchor."
+              },
+              {
+                "code": "destination-depth",
+                "message": "Tokyo has deep stay-depth evidence for marginal night allocation."
+              },
+              {
+                "code": "interest-fit",
+                "message": "Tokyo has evidenced food + culture fit for this trip."
+              },
+              {
+                "code": "diminishing-returns",
+                "message": "Each additional night in Tokyo is valued incrementally with bounded diminishing returns."
+              }
+            ]
+          },
+          {
+            "stopId": "kyoto",
+            "name": "Kyoto",
+            "nights": 3,
+            "minimumNights": 3,
+            "idealNights": 4,
+            "targetNights": 4,
+            "minimumSource": "destination-knowledge",
+            "idealSource": "destination-knowledge",
+            "roles": [
+              "anchor"
+            ],
+            "isAnchor": true,
+            "isRequired": true,
+            "isFixed": false,
+            "isManual": true,
+            "depth": "deep",
+            "matchedInterests": [
+              "food",
+              "culture"
+            ],
+            "transferDayLoss": null,
+            "confidence": {
+              "minimumNights": {
+                "version": 1,
+                "state": "structured",
+                "level": "high",
+                "freshness": "reviewed",
+                "scope": "planning-rule",
+                "sources": [
+                  {
+                    "id": "route-family:japan-slow",
+                    "label": "Morrovia route family: Japan, one good day at a time",
+                    "kind": "curated",
+                    "supports": "Curated destination geography, pacing, route role, experience and planning notes.",
+                    "reviewedAt": "2026-08-08"
+                  }
+                ],
+                "reason": "Minimum stay comes from curated destination knowledge.",
+                "confirmation": {
+                  "needed": false,
+                  "reason": null
+                }
+              },
+              "idealNights": {
+                "version": 1,
+                "state": "estimated",
+                "level": "medium",
+                "freshness": "reviewed",
+                "scope": "planning-rule",
+                "sources": [
+                  {
+                    "id": "route-family:japan-slow",
+                    "label": "Morrovia route family: Japan, one good day at a time",
+                    "kind": "curated",
+                    "supports": "Curated destination geography, pacing, route role, experience and planning notes.",
+                    "reviewedAt": "2026-08-08"
+                  }
+                ],
+                "reason": "Ideal stay comes from curated destination knowledge.",
+                "confirmation": {
+                  "needed": true,
+                  "reason": "Treat the ideal stay as planning guidance, not a verified booking rule."
+                }
+              },
+              "allocation": {
+                "version": 1,
+                "state": "structured",
+                "level": "high",
+                "freshness": "current",
+                "scope": "traveller-intent",
+                "sources": [],
+                "reason": "The night count is an explicit traveller edit.",
+                "confirmation": {
+                  "needed": false,
+                  "reason": null
+                }
+              }
+            },
+            "reasons": [
+              {
+                "code": "destination-minimum",
+                "message": "Kyoto uses its curated 3-night minimum."
+              },
+              {
+                "code": "destination-ideal",
+                "message": "Kyoto has a curated 4-night ideal before transfer recovery."
+              },
+              {
+                "code": "pace",
+                "message": "relaxed pace sets a 4-night target before traveller-authored adjustments."
+              },
+              {
+                "code": "anchor-priority",
+                "message": "Kyoto is treated as a major anchor."
+              },
+              {
+                "code": "destination-depth",
+                "message": "Kyoto has deep stay-depth evidence for marginal night allocation."
+              },
+              {
+                "code": "required-priority",
+                "message": "Kyoto is a required or must-visit stop."
+              },
+              {
+                "code": "interest-fit",
+                "message": "Kyoto has evidenced food + culture fit for this trip."
+              },
+              {
+                "code": "manual-nights",
+                "message": "3 nights are fixed by the traveller's explicit edit."
+              },
+              {
+                "code": "diminishing-returns",
+                "message": "Each additional night in Kyoto is valued incrementally with bounded diminishing returns."
+              }
+            ]
+          },
+          {
+            "stopId": "hiroshima",
+            "name": "Hiroshima",
+            "nights": 2,
+            "minimumNights": 2,
+            "idealNights": 3,
+            "targetNights": 3,
+            "minimumSource": "destination-knowledge",
+            "idealSource": "destination-knowledge",
+            "roles": [
+              "anchor"
+            ],
+            "isAnchor": true,
+            "isRequired": true,
+            "isFixed": false,
+            "depth": "deep",
+            "matchedInterests": [
+              "food",
+              "culture"
+            ],
+            "transferDayLoss": null,
+            "confidence": {
+              "minimumNights": {
+                "version": 1,
+                "state": "structured",
+                "level": "high",
+                "freshness": "reviewed",
+                "scope": "planning-rule",
+                "sources": [
+                  {
+                    "id": "route-family:japan-slow",
+                    "label": "Morrovia route family: Japan, one good day at a time",
+                    "kind": "curated",
+                    "supports": "Curated destination geography, pacing, route role, experience and planning notes.",
+                    "reviewedAt": "2026-08-08"
+                  }
+                ],
+                "reason": "Minimum stay comes from curated destination knowledge.",
+                "confirmation": {
+                  "needed": false,
+                  "reason": null
+                }
+              },
+              "idealNights": {
+                "version": 1,
+                "state": "estimated",
+                "level": "medium",
+                "freshness": "reviewed",
+                "scope": "planning-rule",
+                "sources": [
+                  {
+                    "id": "route-family:japan-slow",
+                    "label": "Morrovia route family: Japan, one good day at a time",
+                    "kind": "curated",
+                    "supports": "Curated destination geography, pacing, route role, experience and planning notes.",
+                    "reviewedAt": "2026-08-08"
+                  }
+                ],
+                "reason": "Ideal stay comes from curated destination knowledge.",
+                "confirmation": {
+                  "needed": true,
+                  "reason": "Treat the ideal stay as planning guidance, not a verified booking rule."
+                }
+              },
+              "allocation": {
+                "version": 1,
+                "state": "structured",
+                "level": "high",
+                "freshness": "current",
+                "scope": "traveller-intent",
+                "sources": [],
+                "reason": "The night count is an explicit traveller edit.",
+                "confirmation": {
+                  "needed": false,
+                  "reason": null
+                }
+              }
+            },
+            "reasons": [
+              {
+                "code": "destination-minimum",
+                "message": "Hiroshima uses its curated 2-night minimum."
+              },
+              {
+                "code": "destination-ideal",
+                "message": "Hiroshima has a curated 3-night ideal before transfer recovery."
+              },
+              {
+                "code": "pace",
+                "message": "relaxed pace sets a 3-night target before traveller-authored adjustments."
+              },
+              {
+                "code": "anchor-priority",
+                "message": "Hiroshima is treated as a major anchor."
+              },
+              {
+                "code": "destination-depth",
+                "message": "Hiroshima has deep stay-depth evidence for marginal night allocation."
+              },
+              {
+                "code": "interest-fit",
+                "message": "Hiroshima has evidenced food + culture fit for this trip."
+              },
+              {
+                "code": "diminishing-returns",
+                "message": "Each additional night in Hiroshima is valued incrementally with bounded diminishing returns."
+              }
+            ]
+          }
+        ],
+        "conflicts": [
+          {
+            "code": "unallocated-nights",
+            "severity": "warning",
+            "message": "6 nights are left to add because no unlocked destination has a materially stronger marginal claim.",
+            "stopIds": [],
+            "requiredNights": 15,
+            "allocatedNights": 9,
+            "shortfallNights": 6
+          }
+        ],
+        "notices": []
+      },
+      "scheduleLocks": {
+        "stopIds": [],
+        "arrivalDates": {}
+      },
+      "cascadeStatus": {
+        "conflicts": [],
+        "affectedBookingIds": [],
+        "affectedPlanItemCount": 0,
+        "routeReconciliation": {
+          "version": 1,
+          "inputKey": "{\"destinations\":[{\"id\":\"intent:hiroshima\",\"kind\":\"overnight_place\",\"requestedNights\":2,\"resolution\":\"resolved\",\"routeMembership\":\"required\",\"selectedPlace\":{\"canonicalPlaceId\":\"place:hiroshima\",\"coordinates\":null,\"providerId\":null},\"stopIds\":[\"hiroshima\"]},{\"id\":\"intent:kyoto\",\"kind\":\"overnight_place\",\"requestedNights\":3,\"resolution\":\"resolved\",\"routeMembership\":\"required\",\"selectedPlace\":{\"canonicalPlaceId\":\"place:kyoto\",\"coordinates\":null,\"providerId\":null},\"stopIds\":[\"kyoto\"]},{\"id\":\"intent:tokyo\",\"kind\":\"overnight_place\",\"requestedNights\":4,\"resolution\":\"resolved\",\"routeMembership\":\"required\",\"selectedPlace\":{\"canonicalPlaceId\":\"place:tokyo\",\"coordinates\":[139.6503,35.6762],\"providerId\":\"nominatim:node:legacy-tokyo\"},\"stopIds\":[\"tokyo\"]}],\"endDate\":\"2026-10-25\",\"explicitIntentIds\":null,\"fixedCommitments\":[],\"journeyEnd\":{\"mode\":\"unknown\"},\"orderAuthority\":\"manual\",\"orderedStopIds\":[\"tokyo\",\"kyoto\",\"hiroshima\"],\"origin\":{\"canonicalPlaceId\":\"place:london\",\"coordinates\":null,\"providerId\":null},\"scheduleLocks\":{\"arrivalDates\":{},\"stopIds\":[]},\"startDate\":\"2026-10-10\",\"stops\":[{\"id\":\"tokyo\",\"nights\":4,\"place\":{\"canonicalPlaceId\":\"place:tokyo\",\"coordinates\":[139.6503,35.6762],\"providerId\":\"nominatim:node:legacy-tokyo\"}},{\"id\":\"kyoto\",\"nights\":3,\"place\":{\"canonicalPlaceId\":\"place:kyoto\",\"coordinates\":[135.7681,35.0116],\"providerId\":null}},{\"id\":\"hiroshima\",\"nights\":2,\"place\":{\"canonicalPlaceId\":\"place:hiroshima\",\"coordinates\":[132.4553,34.3853],\"providerId\":null}}],\"transport\":{\"avoidDriving\":true,\"modes\":[\"flight\",\"train\"]},\"tripType\":\"one_way\"}",
+          "residual": [
+            {
+              "kind": "assessment",
+              "targetId": "batch14-trip",
+              "basisKey": "{\"route\":\"{\\\"destinations\\\":[{\\\"id\\\":\\\"intent:hiroshima\\\",\\\"kind\\\":\\\"overnight_place\\\",\\\"requestedNights\\\":2,\\\"resolution\\\":\\\"resolved\\\",\\\"routeMembership\\\":\\\"required\\\",\\\"selectedPlace\\\":{\\\"canonicalPlaceId\\\":\\\"place:hiroshima\\\",\\\"coordinates\\\":null,\\\"providerId\\\":null},\\\"stopIds\\\":[\\\"hiroshima\\\"]},{\\\"id\\\":\\\"intent:kyoto\\\",\\\"kind\\\":\\\"overnight_place\\\",\\\"requestedNights\\\":3,\\\"resolution\\\":\\\"resolved\\\",\\\"routeMembership\\\":\\\"required\\\",\\\"selectedPlace\\\":{\\\"canonicalPlaceId\\\":\\\"place:kyoto\\\",\\\"coordinates\\\":null,\\\"providerId\\\":null},\\\"stopIds\\\":[\\\"kyoto\\\"]},{\\\"id\\\":\\\"intent:tokyo\\\",\\\"kind\\\":\\\"overnight_place\\\",\\\"requestedNights\\\":4,\\\"resolution\\\":\\\"resolved\\\",\\\"routeMembership\\\":\\\"required\\\",\\\"selectedPlace\\\":{\\\"canonicalPlaceId\\\":\\\"place:tokyo\\\",\\\"coordinates\\\":[139.6503,35.6762],\\\"providerId\\\":\\\"nominatim:node:legacy-tokyo\\\"},\\\"stopIds\\\":[\\\"tokyo\\\"]}],\\\"endDate\\\":\\\"2026-10-25\\\",\\\"explicitIntentIds\\\":null,\\\"fixedCommitments\\\":[],\\\"journeyEnd\\\":{\\\"mode\\\":\\\"unknown\\\"},\\\"orderAuthority\\\":\\\"manual\\\",\\\"orderedStopIds\\\":[\\\"tokyo\\\",\\\"kyoto\\\",\\\"hiroshima\\\"],\\\"origin\\\":{\\\"canonicalPlaceId\\\":\\\"place:london\\\",\\\"coordinates\\\":null,\\\"providerId\\\":null},\\\"scheduleLocks\\\":{\\\"arrivalDates\\\":{},\\\"stopIds\\\":[]},\\\"startDate\\\":\\\"2026-10-10\\\",\\\"stops\\\":[{\\\"id\\\":\\\"tokyo\\\",\\\"nights\\\":4,\\\"place\\\":{\\\"canonicalPlaceId\\\":\\\"place:tokyo\\\",\\\"coordinates\\\":[139.6503,35.6762],\\\"providerId\\\":\\\"nominatim:node:legacy-tokyo\\\"}},{\\\"id\\\":\\\"kyoto\\\",\\\"nights\\\":3,\\\"place\\\":{\\\"canonicalPlaceId\\\":\\\"place:kyoto\\\",\\\"coordinates\\\":[135.7681,35.0116],\\\"providerId\\\":null}},{\\\"id\\\":\\\"hiroshima\\\",\\\"nights\\\":2,\\\"place\\\":{\\\"canonicalPlaceId\\\":\\\"place:hiroshima\\\",\\\"coordinates\\\":[132.4553,34.3853],\\\"providerId\\\":null}}],\\\"transport\\\":{\\\"avoidDriving\\\":true,\\\"modes\\\":[\\\"flight\\\",\\\"train\\\"]},\\\"tripType\\\":\\\"one_way\\\"}\",\"schedule\":{\"bookings\":[{\"date\":\"2026-10-10\",\"id\":\"stay-tokyo\",\"type\":\"stay\"}],\"commitments\":[],\"end\":\"2026-10-25\",\"locks\":{\"arrivalDates\":{},\"stopIds\":[]},\"start\":\"2026-10-10\",\"stops\":[{\"id\":\"tokyo\",\"nights\":4},{\"id\":\"kyoto\",\"nights\":3},{\"id\":\"hiroshima\",\"nights\":2}]}}",
+              "phase": "pending"
+            },
+            {
+              "kind": "leg",
+              "targetId": "batch14-trip-leg:batch14-trip-origin:tokyo",
+              "basisKey": "{\"avoidDriving\":true,\"choice\":null,\"dates\":[\"2026-10-10\",\"2026-10-25\"],\"from\":{\"canonicalPlaceId\":\"place:london\",\"coordinates\":null,\"id\":\"batch14-trip-origin\"},\"modes\":[\"flight\",\"train\"],\"timing\":[{\"arrival\":\"2026-10-10\",\"id\":\"tokyo\"}],\"to\":{\"canonicalPlaceId\":\"place:tokyo\",\"coordinates\":[139.6503,35.6762],\"id\":\"tokyo\",\"providerId\":\"nominatim:node:legacy-tokyo\"}}",
+              "phase": "failed",
+              "reason": "unavailable"
+            },
+            {
+              "kind": "leg",
+              "targetId": "kyoto-hiroshima",
+              "basisKey": "{\"avoidDriving\":true,\"choice\":null,\"dates\":[\"2026-10-10\",\"2026-10-25\"],\"from\":{\"canonicalPlaceId\":\"place:kyoto\",\"coordinates\":[135.7681,35.0116],\"id\":\"kyoto\"},\"modes\":[\"flight\",\"train\"],\"timing\":[{\"arrival\":\"2026-10-14\",\"departure\":\"2026-10-17\",\"id\":\"kyoto\"},{\"arrival\":\"2026-10-17\",\"id\":\"hiroshima\"}],\"to\":{\"canonicalPlaceId\":\"place:hiroshima\",\"coordinates\":[132.4553,34.3853],\"id\":\"hiroshima\"}}",
+              "phase": "failed",
+              "reason": "unavailable"
+            },
+            {
+              "kind": "leg",
+              "targetId": "tokyo-kyoto",
+              "basisKey": "{\"avoidDriving\":true,\"choice\":null,\"dates\":[\"2026-10-10\",\"2026-10-25\"],\"from\":{\"canonicalPlaceId\":\"place:tokyo\",\"coordinates\":[139.6503,35.6762],\"id\":\"tokyo\",\"providerId\":\"nominatim:node:legacy-tokyo\"},\"modes\":[\"flight\",\"train\"],\"timing\":[{\"arrival\":\"2026-10-10\",\"departure\":\"2026-10-14\",\"id\":\"tokyo\"},{\"arrival\":\"2026-10-14\",\"id\":\"kyoto\"}],\"to\":{\"canonicalPlaceId\":\"place:kyoto\",\"coordinates\":[135.7681,35.0116],\"id\":\"kyoto\"}}",
+              "phase": "failed",
+              "reason": "unavailable"
+            },
+            {
+              "kind": "recommendation",
+              "targetId": "hiroshima",
+              "basisKey": "{\"budget\":\"mid\",\"preferences\":{\"budgetSensitivity\":\"mid\",\"dislikes\":[\"frequent hotel changes\"],\"interests\":[\"food\",\"culture\"],\"pace\":\"relaxed\",\"transportModes\":[\"flight\",\"train\"]},\"stop\":{\"canonicalPlaceId\":\"place:hiroshima\",\"coordinates\":[132.4553,34.3853],\"id\":\"hiroshima\",\"nights\":2},\"travellers\":2}",
+              "phase": "pending"
+            },
+            {
+              "kind": "recommendation",
+              "targetId": "kyoto",
+              "basisKey": "{\"budget\":\"mid\",\"preferences\":{\"budgetSensitivity\":\"mid\",\"dislikes\":[\"frequent hotel changes\"],\"interests\":[\"food\",\"culture\"],\"pace\":\"relaxed\",\"transportModes\":[\"flight\",\"train\"]},\"stop\":{\"canonicalPlaceId\":\"place:kyoto\",\"coordinates\":[135.7681,35.0116],\"id\":\"kyoto\",\"nights\":3},\"travellers\":2}",
+              "phase": "pending"
+            },
+            {
+              "kind": "recommendation",
+              "targetId": "tokyo",
+              "basisKey": "{\"budget\":\"mid\",\"preferences\":{\"budgetSensitivity\":\"mid\",\"dislikes\":[\"frequent hotel changes\"],\"interests\":[\"food\",\"culture\"],\"pace\":\"relaxed\",\"transportModes\":[\"flight\",\"train\"]},\"stop\":{\"canonicalPlaceId\":\"place:tokyo\",\"coordinates\":[139.6503,35.6762],\"id\":\"tokyo\",\"nights\":4},\"travellers\":2}",
+              "phase": "pending"
+            },
+            {
+              "kind": "schedule",
+              "targetId": "hiroshima",
+              "basisKey": "{\"bookings\":[{\"date\":\"2026-10-10\",\"id\":\"stay-tokyo\",\"type\":\"stay\"}],\"commitments\":[],\"end\":\"2026-10-25\",\"locks\":{\"arrivalDates\":{},\"stopIds\":[]},\"start\":\"2026-10-10\",\"stops\":[{\"id\":\"tokyo\",\"nights\":4},{\"id\":\"kyoto\",\"nights\":3},{\"id\":\"hiroshima\",\"nights\":2}]}",
+              "phase": "pending"
+            },
+            {
+              "kind": "schedule",
+              "targetId": "kyoto",
+              "basisKey": "{\"bookings\":[{\"date\":\"2026-10-10\",\"id\":\"stay-tokyo\",\"type\":\"stay\"}],\"commitments\":[],\"end\":\"2026-10-25\",\"locks\":{\"arrivalDates\":{},\"stopIds\":[]},\"start\":\"2026-10-10\",\"stops\":[{\"id\":\"tokyo\",\"nights\":4},{\"id\":\"kyoto\",\"nights\":3},{\"id\":\"hiroshima\",\"nights\":2}]}",
+              "phase": "pending"
+            },
+            {
+              "kind": "schedule",
+              "targetId": "tokyo",
+              "basisKey": "{\"bookings\":[{\"date\":\"2026-10-10\",\"id\":\"stay-tokyo\",\"type\":\"stay\"}],\"commitments\":[],\"end\":\"2026-10-25\",\"locks\":{\"arrivalDates\":{},\"stopIds\":[]},\"start\":\"2026-10-10\",\"stops\":[{\"id\":\"tokyo\",\"nights\":4},{\"id\":\"kyoto\",\"nights\":3},{\"id\":\"hiroshima\",\"nights\":2}]}",
+              "phase": "pending"
+            }
+          ]
+        }
+      },
+      "itineraryIdeas": [],
+      "origin": "London",
+      "originCanonicalPlaceId": "place:london",
+      "journeyEnd": {
+        "mode": "unknown"
+      }
+    },
+    "stops": [
+      {
+        "id": "tokyo",
+        "order": 0,
+        "name": "Tokyo",
+        "country": "Japan",
+        "canonicalPlaceId": "place:tokyo",
+        "latitude": 35.6762,
+        "longitude": 139.6503,
+        "arrivalDate": "2026-10-10",
+        "departureDate": "2026-10-14",
+        "nights": 4,
+        "providerId": "nominatim:node:legacy-tokyo"
+      },
+      {
+        "id": "kyoto",
+        "order": 1,
+        "name": "Kyoto",
+        "country": "Japan",
+        "canonicalPlaceId": "place:kyoto",
+        "latitude": 35.0116,
+        "longitude": 135.7681,
+        "arrivalDate": "2026-10-14",
+        "departureDate": "2026-10-17",
+        "nights": 3
+      },
+      {
+        "id": "hiroshima",
+        "order": 2,
+        "name": "Hiroshima",
+        "country": "Japan",
+        "canonicalPlaceId": "place:hiroshima",
+        "latitude": 34.3853,
+        "longitude": 132.4553,
+        "arrivalDate": "2026-10-17",
+        "departureDate": "2026-10-19",
+        "nights": 2
+      }
+    ],
+    "legs": [
+      {
+        "id": "batch14-trip-leg:batch14-trip-origin:tokyo",
+        "fromStopId": "batch14-trip-origin",
+        "toStopId": "tokyo",
+        "fromEndpoint": {
+          "name": "London",
+          "canonicalPlaceId": "place:london",
+          "coordinates": null,
+          "kind": "origin",
+          "id": "batch14-trip-origin"
+        },
+        "toEndpoint": {
+          "kind": "stop",
+          "id": "tokyo",
+          "name": "Tokyo",
+          "country": "Japan",
+          "canonicalPlaceId": "place:tokyo",
+          "providerId": "nominatim:node:legacy-tokyo",
+          "coordinates": [
+            139.6503,
+            35.6762
+          ]
+        },
+        "classification": "arrival",
+        "mode": "unknown",
+        "distanceKm": null,
+        "straightLineDistanceKm": null,
+        "routedDistanceKm": null,
+        "durationMinutes": null,
+        "headlineMinutes": null,
+        "doorToDoorMinutes": null,
+        "usableDayLoss": null,
+        "provider": "Travel options need an updated assessment.",
+        "provenance": "unknown",
+        "confidence": "unknown",
+        "scheduleNeedsChecking": true,
+        "warnings": [],
+        "routeMetadata": {
+          "source": "necessary-reconciliation",
+          "pending": true
+        }
+      },
+      {
+        "id": "tokyo-kyoto",
+        "fromStopId": "tokyo",
+        "toStopId": "kyoto",
+        "fromEndpoint": {
+          "kind": "stop",
+          "id": "tokyo",
+          "name": "Tokyo",
+          "country": "Japan",
+          "canonicalPlaceId": "place:tokyo",
+          "providerId": "nominatim:node:legacy-tokyo",
+          "coordinates": [
+            139.6503,
+            35.6762
+          ]
+        },
+        "toEndpoint": {
+          "kind": "stop",
+          "id": "kyoto",
+          "name": "Kyoto",
+          "country": "Japan",
+          "canonicalPlaceId": "place:kyoto",
+          "coordinates": [
+            135.7681,
+            35.0116
+          ]
+        },
+        "classification": "intercity",
+        "mode": "unknown",
+        "distanceKm": 360,
+        "straightLineDistanceKm": 360,
+        "routedDistanceKm": null,
+        "durationMinutes": null,
+        "headlineMinutes": null,
+        "doorToDoorMinutes": null,
+        "usableDayLoss": null,
+        "provider": "Travel options need an updated assessment.",
+        "provenance": "unknown",
+        "confidence": "unknown",
+        "scheduleNeedsChecking": true,
+        "warnings": [],
+        "routeMetadata": {
+          "source": "necessary-reconciliation",
+          "pending": true
+        }
+      },
+      {
+        "id": "kyoto-hiroshima",
+        "fromStopId": "kyoto",
+        "toStopId": "hiroshima",
+        "fromEndpoint": {
+          "kind": "stop",
+          "id": "kyoto",
+          "name": "Kyoto",
+          "country": "Japan",
+          "canonicalPlaceId": "place:kyoto",
+          "coordinates": [
+            135.7681,
+            35.0116
+          ]
+        },
+        "toEndpoint": {
+          "kind": "stop",
+          "id": "hiroshima",
+          "name": "Hiroshima",
+          "country": "Japan",
+          "canonicalPlaceId": "place:hiroshima",
+          "coordinates": [
+            132.4553,
+            34.3853
+          ]
+        },
+        "classification": "intercity",
+        "mode": "unknown",
+        "distanceKm": 311,
+        "straightLineDistanceKm": 311,
+        "routedDistanceKm": null,
+        "durationMinutes": null,
+        "headlineMinutes": null,
+        "doorToDoorMinutes": null,
+        "usableDayLoss": null,
+        "provider": "Travel options need an updated assessment.",
+        "provenance": "unknown",
+        "confidence": "unknown",
+        "scheduleNeedsChecking": true,
+        "warnings": [],
+        "routeMetadata": {
+          "source": "necessary-reconciliation",
+          "pending": true
+        }
+      }
+    ],
+    "planItems": [
+      {
+        "id": "japan-day-1",
+        "stopId": "tokyo",
+        "dayNumber": 1,
+        "date": "2026-10-10",
+        "type": "arrival",
+        "title": "Arrive in Tokyo",
+        "reason": "A deterministic Morrovia itinerary day.",
+        "notes": [
+          "One main area",
+          "Unscheduled evening"
+        ],
+        "startsAt": null,
+        "endsAt": null,
+        "bookingUrl": null,
+        "latitude": null,
+        "longitude": null
+      },
+      {
+        "id": "japan-day-2",
+        "stopId": "tokyo",
+        "dayNumber": 2,
+        "date": "2026-10-11",
+        "type": "activity",
+        "title": "Neighbourhoods of west Tokyo",
+        "reason": "A deterministic Morrovia itinerary day.",
+        "notes": [
+          "One main area",
+          "Unscheduled evening"
+        ],
+        "startsAt": null,
+        "endsAt": null,
+        "bookingUrl": null,
+        "latitude": null,
+        "longitude": null
+      },
+      {
+        "id": "japan-day-3",
+        "stopId": "tokyo",
+        "dayNumber": 3,
+        "date": "2026-10-12",
+        "type": "activity",
+        "title": "Old Tokyo and food",
+        "reason": "A deterministic Morrovia itinerary day.",
+        "notes": [
+          "One main area",
+          "Unscheduled evening"
+        ],
+        "startsAt": null,
+        "endsAt": null,
+        "bookingUrl": null,
+        "latitude": null,
+        "longitude": null
+      },
+      {
+        "id": "japan-day-4",
+        "stopId": "tokyo",
+        "dayNumber": 4,
+        "date": "2026-10-13",
+        "type": "open",
+        "title": "Flexible Tokyo day",
+        "reason": "A deterministic Morrovia itinerary day.",
+        "notes": [
+          "One main area",
+          "Unscheduled evening"
+        ],
+        "startsAt": null,
+        "endsAt": null,
+        "bookingUrl": null,
+        "latitude": null,
+        "longitude": null
+      },
+      {
+        "id": "japan-day-5",
+        "stopId": "kyoto",
+        "dayNumber": 5,
+        "date": "2026-10-14",
+        "type": "transport",
+        "title": "Train to Kyoto",
+        "reason": "A deterministic Morrovia itinerary day.",
+        "notes": [
+          "Keep the arrival evening flexible"
+        ],
+        "startsAt": null,
+        "endsAt": null,
+        "bookingUrl": null,
+        "latitude": null,
+        "longitude": null
+      },
+      {
+        "id": "japan-day-6",
+        "stopId": "kyoto",
+        "dayNumber": 6,
+        "date": "2026-10-15",
+        "type": "activity",
+        "title": "Eastern Kyoto",
+        "reason": "A deterministic Morrovia itinerary day.",
+        "notes": [
+          "One main area",
+          "Unscheduled evening"
+        ],
+        "startsAt": null,
+        "endsAt": null,
+        "bookingUrl": null,
+        "latitude": null,
+        "longitude": null
+      },
+      {
+        "id": "japan-day-7",
+        "stopId": "kyoto",
+        "dayNumber": 7,
+        "date": "2026-10-16",
+        "type": "activity",
+        "title": "Western Kyoto",
+        "reason": "A deterministic Morrovia itinerary day.",
+        "notes": [
+          "One main area",
+          "Unscheduled evening"
+        ],
+        "startsAt": null,
+        "endsAt": null,
+        "bookingUrl": null,
+        "latitude": null,
+        "longitude": null
+      },
+      {
+        "id": "japan-day-8",
+        "stopId": "hiroshima",
+        "dayNumber": 8,
+        "date": "2026-10-17",
+        "type": "transport",
+        "title": "Train to Hiroshima",
+        "reason": "A deterministic Morrovia itinerary day.",
+        "notes": [
+          "Keep the arrival evening flexible"
+        ],
+        "startsAt": null,
+        "endsAt": null,
+        "bookingUrl": null,
+        "latitude": null,
+        "longitude": null
+      },
+      {
+        "id": "japan-day-9",
+        "stopId": "hiroshima",
+        "dayNumber": 9,
+        "date": "2026-10-18",
+        "type": "activity",
+        "title": "Hiroshima and Miyajima",
+        "reason": "A deterministic Morrovia itinerary day.",
+        "notes": [
+          "One main area",
+          "Unscheduled evening"
+        ],
+        "startsAt": null,
+        "endsAt": null,
+        "bookingUrl": null,
+        "latitude": null,
+        "longitude": null
+      },
+      {
+        "id": "japan-day-10",
+        "stopId": "hiroshima",
+        "dayNumber": 10,
+        "date": "2026-10-19",
+        "type": "open",
+        "title": "Departure day",
+        "reason": "A deterministic Morrovia itinerary day.",
+        "notes": [
+          "One main area",
+          "Unscheduled evening"
+        ],
+        "startsAt": null,
+        "endsAt": null,
+        "bookingUrl": null,
+        "latitude": null,
+        "longitude": null
+      }
+    ],
+    "recommendations": [],
+    "changeHistory": [
+      {
+        "id": "private-change",
+        "recommendationId": "private-recommendation",
+        "action": "apply",
+        "summary": "PRIVATE CHANGE HISTORY",
+        "changedAt": "2026-08-01T00:00:00.000Z"
+      }
+    ],
+    "createdAt": "2026-08-01T00:00:00.000Z",
+    "updatedAt": "2026-08-01T00:00:00.000Z"
+  }
+}
