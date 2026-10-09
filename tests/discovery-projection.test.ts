@@ -93,12 +93,12 @@ test("Tajikistan is smaller and a two-place country has no fabricated directions
   const fourPlaceFixture = projectDiscovery({ mention: mention("Tajikistan"), draft: createDiscoveryDraft(), context,
     evidence: { places: ["t1", "t2", "t3", "t4"].map(id => fixturePlace(id, "Tajikistan", "Tajikistan")), directions: [] } });
   assert.equal(fourPlaceFixture.places.length, 4);
-  assert.equal(fourPlaceFixture.visiblePlaceIds.length, 4);
+  assert.equal(fourPlaceFixture.visiblePlaceIds.length, 0, 'unowned fixture identities cannot consume selectable stop slots');
   const sparse = projectDiscovery({ mention: fixtureMention("Sparse Country", "country"), draft: createDiscoveryDraft(), context,
     evidence: { places: [fixturePlace("sparse-a", "Sparse Country", "Sparse Country"), fixturePlace("sparse-b", "Sparse Country", "Sparse Country")], directions: [] } });
   assert.equal(sparse.places.length, 2);
   assert.deepEqual(sparse.directions, []);
-  assert.equal(sparse.visiblePlaceIds.length, 2);
+  assert.equal(sparse.visiblePlaceIds.length, 0, 'unowned fixture identities are retained as evidence, not stop choices');
 });
 
 test("Africa's supported directions do not choose a country or add stops", () => {
@@ -156,5 +156,5 @@ test("invalid fixture rows have explicit rejection reasons and stable ID ties", 
     evidence: { places: [valid[0]!, invalid, valid[1]!], directions: [] } });
   assert.deepEqual(result.places.map(place => place.id), ["a", "z"]);
   assert.deepEqual(result.rejected, [{ id: "route-base:fake", reason: "noncanonical-id" }]);
-  assert.deepEqual(result.counts, { source: 3, eligible: 2, ranked: 2, displayed: 2 });
+  assert.deepEqual(result.counts, { source: 3, eligible: 2, ranked: 2, displayed: 0 });
 });

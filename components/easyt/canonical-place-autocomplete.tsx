@@ -16,6 +16,7 @@ import { createAbortableEffectScope } from "@/lib/easyt/abortable-effect";
 import {referenceKnownCodeKind} from '@/lib/easyt/place-reference';
 import type { EasyTLanguage } from "@/lib/easyt/i18n";
 import { EasyTButton } from "./easyt-controls";
+import {MorroviaPlaceDataCredit} from './morrovia-place-data-credit';
 import styles from "./canonical-place-autocomplete.module.css";
 
 const placeTypeLabel = (type: PlaceType, language: EasyTLanguage) => (language === "es" ? {
@@ -308,6 +309,11 @@ export function CanonicalPlaceAutocomplete({
         onMouseDown={(event) => event.preventDefault()}
         onClick={() => choose(suggestion)}
       ><MapPin aria-hidden="true" /><span><b>{suggestion.name}</b><small>{suggestion.region ? `${suggestion.region} · ` : ""}{suggestion.country}{showPlaceType ? ` · ${placeTypeLabel(suggestion.placeType, language)}` : ""}</small></span></button>)) : providerFailed ? <div className={styles.failure} role="alert"><p>{resolvedFailureMessage}</p><EasyTButton variant="secondary" size="small" onMouseDown={(event) => event.preventDefault()} onClick={() => setRetryNonce((current) => current + 1)}>{language === "es" ? "Reintentar" : "Retry"}</EasyTButton></div> : <p role="status">{resolvedEmptyMessage}</p>}
+      <MorroviaPlaceDataCredit language={language} sources={[
+        ...(suggestions.some(s=>s.provenance.some(p=>p.id.startsWith('reference:geonames:')))?['geonames' as const]:[]),
+        ...(suggestions.some(s=>s.provenance.some(p=>p.id.startsWith('reference:ourairports:')))?['ourairports' as const]:[]),
+        ...(suggestions.some(s=>s.provenance.some(p=>/^(photon:|nominatim:|openstreetmap:)/.test(p.id)))?['openstreetmap' as const]:[]),
+      ]}/>
     </div> : null}
   </div>;
 }

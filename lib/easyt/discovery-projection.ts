@@ -1,4 +1,5 @@
-import { discoveryPlacesForMention, isCatalogIdentityChoice, type DiscoveryPlace } from "./discovery-content.ts";
+import { discoveryPlacesForMention, neutralCountryIdentityChoicesForMention, isCatalogIdentityChoice, type DiscoveryPlace } from "./discovery-content.ts";
+import {discoverySelectablePlaces} from './discovery-confirmation.ts';
 import { discoveryDirectionsForPlaces, type DiscoveryDirection } from "./discovery-directions.ts";
 import type { DiscoveryDraft } from "./discovery-draft.ts";
 import type { ResolvedPlaceMention } from "./place-intelligence.ts";
@@ -43,6 +44,7 @@ function rejectionReason(place: DiscoveryPlace): string | null {
 }
 
 function rankPlaces(places: DiscoveryPlace[], context: DiscoveryProjectionContext, anchorId?: string): DiscoveryPlace[] {
+  if(places.every(p=>p.identityOnly))return [...places];
   const remaining = [...places];
   const ranked: DiscoveryPlace[] = [];
   const groupCounts = new Map<string, number>();
@@ -69,7 +71,7 @@ export function projectDiscovery(input: {
   const source = evidence?.places ?? discoveryPlacesForMention(mention);
   const rejected: DiscoveryProjection["rejected"] = [];
   const seen = new Set<string>();
-  const eligible = source.filter(place => {
+  let eligible = source.filter(place => {
     const reason = (place.identityOnly
       ? isCatalogIdentityChoice(place, mention) ? null : "invalid-catalog-identity"
       : rejectionReason(place)) ?? (seen.has(place.id) ? "duplicate-id" : null);
@@ -80,6 +82,9 @@ export function projectDiscovery(input: {
     seen.add(place.id);
     return true;
   });
+  if(!evidence && mention.placeType==='country'&&!discoverySelectablePlaces(eligible).length){
+    eligible=neutralCountryIdentityChoicesForMention(mention).filter(p=>isCatalogIdentityChoice(p,mention));
+  }
   const places = rankPlaces(eligible, context, mention.canonicalPlaceId);
   const eligibleById = new Map(places.map(place => [place.id, place]));
   const candidateDirections = evidence?.directions ?? discoveryDirectionsForPlaces(places, mention);
@@ -89,6 +94,7 @@ export function projectDiscovery(input: {
   });
   const selectedDirection = directions.find(direction => direction.id === draft.directionId);
   const visiblePlaceIds = places
+    .filter(place=>mention.placeType!=='country'||discoverySelectablePlaces([place]).length>0)
     .filter(place => !selectedDirection || selectedDirection.placeIds.includes(place.id))
     .slice(0, 6).map(place => place.id);
   // Unknown duration permits a single tentative base, never a fit claim.

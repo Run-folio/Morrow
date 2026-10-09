@@ -58,6 +58,10 @@ const selectedDraft = { ...placesDraft, shortlistIds: australiaStops.slice(0, 2)
 
 export const AustraliaDirections: Story = { args: { entry: countryEntry, mention: australiaMention, projection: australia, draft: initial } };
 export const AustraliaPlaces: Story = { args: { entry: countryEntry, mention: australiaMention, projection: australia, draft: placesDraft } };
+export const FijiNeutralSourceChoices:Story={args:{entry:{kind:'country',step:'places'},mention:mention('Fiji'),projection:projection('Fiji'),draft:placesDraft,note:'Verified settlement identities with GeoNames attribution; no travel recommendation or stay advice.'}};
+export const FijiNeutralSpanish:Story={args:{...FijiNeutralSourceChoices.args,language:'es'}};
+export const UnitedStatesNeutralChoices:Story={args:{entry:{kind:'country',step:'places'},mention:mention('United States'),projection:projection('United States'),draft:placesDraft}};
+export const AntarcticaSourceException:Story={args:{entry:{kind:'country',step:'places'},mention:mention('Antarctica'),projection:projection('Antarctica'),draft:placesDraft,note:'No eligible settlement in the pinned thresholded extract; this does not imply no inhabitants.'}};
 export const BelizeNeutralChoices: Story = {
   args: { entry: { kind: "country", step: "places" }, mention: mention("Belize"), projection: projection("Belize"),
     draft: placesDraft, existingPlaceIds: ["caye-caulker"],

@@ -1,6 +1,6 @@
 import { findCatalogPlaceById } from "./place-catalog.ts";
-import { canonicalPlaceFactsMatch, canonicalPlaceSuggestionFor, canonicalPlaceSuggestionSuitableAsNearbyBase, isOvernightBaseEligible, nearbyBaseAnchorForMention, placeCandidateWithinPlanningParent, placeSuggestionRequiresBaseSelection, type CanonicalPlaceSuggestion, type ResolvedPlaceMention } from "./place-intelligence.ts";
-import { discoveryPlaceWithinMention } from "./discovery-content.ts";
+import { canonicalPlaceFactsMatch, canonicalPlaceSuggestionForId, canonicalPlaceSuggestionSuitableAsNearbyBase, isOvernightBaseEligible, nearbyBaseAnchorForMention, placeCandidateWithinPlanningParent, placeSuggestionRequiresBaseSelection, type CanonicalPlaceSuggestion, type ResolvedPlaceMention } from "./place-intelligence.ts";
+import { discoveryPlaceForId, discoveryPlaceWithinMention } from "./discovery-content.ts";
 import type { DiscoveryPlace } from "./discovery-content.ts";
 import type { DiscoveryProjection } from "./discovery-projection.ts";
 import type { DiscoveryDraft } from "./discovery-draft.ts";
@@ -24,8 +24,11 @@ export function discoveryDirectStopSuggestion(place: DiscoveryPlace): CanonicalP
   if (!["city", "town"].includes(place.placeType)) return null;
   const catalog = findCatalogPlaceById(place.id);
   if (!catalog || catalog.routability !== "direct_destination") return null;
-  const suggestion = canonicalPlaceSuggestionFor(catalog.canonicalName, [...catalog.parentCountries]);
-  return suggestion?.canonicalPlaceId === place.id ? suggestion : null;
+  const suggestion = canonicalPlaceSuggestionForId(place.id);
+  if(!suggestion||place.name!==catalog.canonicalName||place.placeType!==catalog.placeType||!catalog.parentCountries.includes(place.country))return null;
+  const trusted= suggestion.coordinates ?? discoveryPlaceForId(place.id)?.coordinates;
+  if(!trusted||trusted.length!==2||!trusted.every(Number.isFinite)||!place.coordinates?.every((v,i)=>v===trusted[i]))return null;
+  return {...suggestion,coordinates:[...trusted] as [number,number]};
 }
 
 /** The primary grid is a stop picker; evidence that supports browsing alone is not an Add path. */

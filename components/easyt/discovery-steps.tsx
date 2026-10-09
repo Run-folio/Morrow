@@ -16,6 +16,7 @@ import { EasyTButton } from "./easyt-controls";
 import { MorroviaStatusBanner } from "./morrovia-feedback";
 import { MorroviaSectionStatus } from "./morrovia-loading-states";
 import MorroviaPhotoCredit from "./morrovia-photo-credit";
+import {MorroviaPlaceDataCredit} from './morrovia-place-data-credit';
 import styles from "./discovery-modal.module.css";
 
 type Props = {
@@ -228,6 +229,7 @@ export function DiscoverySteps({ entry, mention, projection, draft, language, ex
         {allPlaces.length > visible.length ? <EasyTButton variant="secondary" className={styles.more} onClick={() => setVisibleCount(count => count + 6)}>
           {copy.actions.showMore} ({allPlaces.length - visible.length})</EasyTButton> : null}
         {search ? <div className={styles.search}>{search}</div> : null}
+        {allPlaces.some(p=>p.id.startsWith('reference:geonames:'))?<MorroviaPlaceDataCredit sources={['geonames']} language={language}/>:null}
       </div>
       <aside className={styles.sideRail}>
       <div id={mapRegionId} ref={mapPanelRef} className={styles.mapPanel} hidden={!wantsMap || mapUnavailable || !allPlaces.length}>
