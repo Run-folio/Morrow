@@ -1,0 +1,81 @@
+{
+  "version": 1,
+  "generatorVersion": "1",
+  "snapshotId": "f03397b961e8196b4fa1",
+  "generatedAt": "2026-10-09T13:19:03.302301+00:00",
+  "sources": [
+    {
+      "id": "ourairports",
+      "url": "https://davidmegginson.github.io/ourairports-data/airports.csv",
+      "sha256": "0673f846680d703dd4ff81b6c1f557ddf09eb73df164c3ea98623fdd72545333",
+      "license": "Public domain",
+      "licenseUrl": "https://ourairports.com/data/",
+      "acquiredAt": "2026-10-09T13:19:03.302301+00:00"
+    },
+    {
+      "id": "geonames",
+      "url": "https://download.geonames.org/export/dump/cities500.zip",
+      "sha256": "82cb084ebe3917c80958496b82ef61c6b20fee16cdaabedc10cffe9aaac3fae8",
+      "archiveSha256": "4022ba76d34abbcd7c7b32597a6f968f51edfa4fb262bf04f15c109624ae3db2",
+      "license": "CC BY 4.0",
+      "licenseUrl": "https://creativecommons.org/licenses/by/4.0/",
+      "acquiredAt": "2026-10-09T13:19:03.302301+00:00"
+    }
+  ],
+  "files": [
+    {
+      "path": "airports.json",
+      "sha256": "047110cac3f35ad2b41a47c9ffb31bfdfdf65090c540d4937f2c0054f88f435d",
+      "records": 11290,
+      "bytes": 1216759
+    },
+    {
+      "path": "settlements.json",
+      "sha256": "97e4fd172165955c0439d1b02446740dffb262f2beccb0df5408799a8e85039c",
+      "records": 224601,
+      "bytes": 26056056
+    },
+    {
+      "path": "country-seeds.json",
+      "sha256": "0a9c2d1c47ba4f2ee027e160675fbac2d845718a1da57ced16bbfb49f1987124",
+      "records": 250,
+      "bytes": 1079343
+    },
+    {
+      "path": "code-kinds.json",
+      "sha256": "47c1c973fcc7308aac930d1f4b5ef1b030042ef5fe3a18b2a6a69bd50b4d551c",
+      "records": 2,
+      "bytes": 53739
+    },
+    {
+      "path": "retired-seeds.json",
+      "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+      "records": 0,
+      "bytes": 3
+    },
+    {
+      "path": "crosswalk.json",
+      "sha256": "a5a32c6688688797fe2b42da52e6872636562a1021c3e1233594cefa4170876d",
+      "records": 2,
+      "bytes": 28
+    },
+    {
+      "path": "coverage.json",
+      "sha256": "4f693d690e0724e37218a3b1f6a2a466698e73e758d7ea3937f20bd165547481",
+      "records": 6,
+      "bytes": 38175
+    },
+    {
+      "path": "settlement-prefixes.json",
+      "sha256": "262f0ba32c4392cec6f7bedeff5af081afba8566eb67eef33f49a38bc584cb37",
+      "records": 24093,
+      "bytes": 907160
+    },
+    {
+      "path": "settlement-prefixes.bin",
+      "sha256": "41b0cf1512a024212efec4ba27cefc679130415ec4c08bbe865dc9ed5fa53582",
+      "records": 861793,
+      "bytes": 3447172
+    }
+  ]
+}
