@@ -171,9 +171,15 @@ export async function searchNominatimTravelCandidates(
   const freeformResults = await fetchResults(freeform, fetchImpl);
   const responses: Array<{ mode: "freeform" | "city"; results: NominatimResult[] }> = [{ mode: "freeform", results: freeformResults }];
   const airportCode = /^[a-z]{3}$/i.test(phrase.trim()) ? phrase.trim().toUpperCase() : undefined;
-  const matchesAirportCode = (result: NominatimResult) => Boolean(airportCode
-    && /\b(?:airport|aerodrome)\b/i.test(`${result.type ?? ""} ${result.addresstype ?? ""}`)
-    && result.extratags?.iata?.trim().toUpperCase() === airportCode);
+  const matchesAirportCode = (result: NominatimResult) => {
+    const codes = [result.extratags?.iata, result.namedetails?.iata].filter(value => value !== undefined);
+    // Either provider field can hold IATA. Conflicting or malformed tags do
+    // not establish an exact code, even when one happens to match.
+    return Boolean(airportCode
+      && /\b(?:airport|aerodrome)\b/i.test(`${result.type ?? ""} ${result.addresstype ?? ""}`)
+      && codes.length && codes.every(value => typeof value === "string"
+        && /^[A-Z]{3}$/.test(value.trim().toUpperCase()) && value.trim().toUpperCase() === airportCode));
+  };
   if (airportCode && !freeformResults.some(matchesAirportCode)) {
     responses.push({ mode: "freeform", results: await fetchResults(new URLSearchParams({ q: `${airportCode} airport`, ...common }), fetchImpl) });
   }
@@ -266,6 +272,7 @@ export async function searchNominatimTravelCandidates(
         coordinates: [longitude, latitude],
         routability: facts.routability,
         matchQuality: quality,
+        ...(codeMatch ? { matchedAirportCode: airportCode } : {}),
         rankScore: score,
         ...(geographicSignificance ? { geographicSignificance } : {}),
         ...(typeof result.importance === "number" ? { providerImportance: result.importance } : {}),
@@ -316,6 +323,7 @@ export async function searchNominatimPlaceCandidates(
     coordinates: candidate.coordinates,
     routability: candidate.routability,
     matchQuality: candidate.matchQuality,
+    matchedAirportCode: candidate.matchedAirportCode,
     rankScore: candidate.rankScore,
     geographicSignificance: candidate.geographicSignificance,
     providerImportance: candidate.providerImportance,

@@ -96,7 +96,7 @@ export function CanonicalPlaceAutocomplete({
   const deferredValue = useDeferredValue(value);
   const [open, setOpen] = useState(false);
   const [activeIndex, setActiveIndex] = useState(-1);
-  const [providerSuggestions, setProviderSuggestions] = useState<CanonicalPlaceSuggestion[]>([]);
+  const [providerSuggestions, setProviderSuggestions] = useState<(CanonicalPlaceSuggestion & { matchedAirportCode?: string })[]>([]);
   const [providerSearching, setProviderSearching] = useState(false);
   const [providerFailed, setProviderFailed] = useState(false);
   const [retryNonce, setRetryNonce] = useState(0);
@@ -172,6 +172,7 @@ export function CanonicalPlaceAutocomplete({
             accessPlaceName?: string;
             providerId?: string;
             providerSourceLabel?: string;
+            matchedAirportCode?: string;
             coordinates: [number, number];
             bounds?: CanonicalPlaceSuggestion["bounds"];
             placeType?: PlaceType;
@@ -195,6 +196,7 @@ export function CanonicalPlaceAutocomplete({
             return {
               canonicalPlaceId,
               name: candidate.name,
+              matchedAirportCode: candidate.matchedAirportCode,
               label: `${candidate.name}${candidate.region ? ` · ${candidate.region}` : ""}, ${candidate.country}`,
               country: candidate.country,
               region: candidate.region,

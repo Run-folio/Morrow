@@ -57,6 +57,7 @@ function responseCandidate(candidate: PlaceProviderCandidate) {
     routability: candidate.routability,
     matchQuality: candidate.matchQuality,
     rankScore: candidate.rankScore,
+    matchedAirportCode: candidate.matchedAirportCode,
   };
 }
 

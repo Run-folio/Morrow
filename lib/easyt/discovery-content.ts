@@ -17,6 +17,8 @@ export type DiscoveryEvidenceRow = {
   imageKey: string | null;
 };
 export type DiscoveryPlace = {
+  /** Neutral catalogue identity, with no visitor recommendation or stay claim. */
+  identityOnly?: true;
   id: string;
   name: string;
   country: string;
@@ -259,11 +261,41 @@ export function discoveryPlacesForMention(mention: DiscoveryMention): DiscoveryP
   // expands global coverage only where no curated row owns the ID. An invalid
   // curated row fails closed instead of falling through to weaker evidence.
   const places = [...curated, ...adaptedDiscoveryPlaces().filter(place => !curatedIndex.rows.has(place.id))] as DiscoveryPlace[];
-  if (anchor.placeType === "country") return places.filter(place => place.country === anchor.canonicalName);
+  if (anchor.placeType === "country") {
+    const reviewed = places.filter(place => place.country === anchor.canonicalName);
+    if (reviewed.length) return reviewed;
+    // An empty editorial collection must not hide usable, explicitly selectable
+    // city identities. This fallback makes no relevance, route or stay claim.
+    return PLACE_CATALOG.filter(place => ["city", "town"].includes(place.placeType)
+      && place.routability === "direct_destination" && place.parentCountries.length === 1
+      && place.parentCountries[0] === anchor.canonicalName && place.coordinates)
+      .map(place => ({ id: place.canonicalPlaceId, name: place.canonicalName,
+        country: anchor.canonicalName, group: anchor.canonicalName, groupIds: [], tags: [],
+        placeType: place.placeType, coordinates: place.coordinates!, identityOnly: true as const,
+        relevance: { en: "", es: "", sources: [] }, stayEvidence: [], accessEvidence: [],
+        actionability: "browse-only" as const, imageKey: null }));
+  }
   if (anchor.placeType === "continent" || anchor.placeType === "macro_region") {
     return places.filter(place => anchor.parentCountries.includes(place.country));
   }
   return places.filter(place => isWithin(place.id, anchor.canonicalPlaceId)
     || ((anchor.placeType === "landmark" || anchor.placeType === "natural_area")
       && discoveryBaseSuitableForMention(place, mention)));
+}
+
+/** The identity-only flag cannot bypass catalogue identity or evidence checks. */
+export function isCatalogIdentityChoice(place: DiscoveryPlace, mention: DiscoveryMention): boolean {
+  const anchor = mention.canonicalPlaceId ? findCatalogPlaceById(mention.canonicalPlaceId) : null;
+  const catalog = findCatalogPlaceById(place.id);
+  return Boolean(anchor?.placeType === "country" && mention.placeType === "country" && catalog
+    && ["city", "town"].includes(catalog.placeType) && catalog.routability === "direct_destination"
+    && catalog.parentCountries.length === 1 && catalog.parentCountries[0] === anchor.canonicalName
+    && place.name === catalog.canonicalName && place.placeType === catalog.placeType
+    && place.country === anchor.canonicalName && place.group === anchor.canonicalName
+    && catalog.coordinates && place.coordinates?.length === 2
+    && place.coordinates.every((value, index) => Number.isFinite(value) && value === catalog.coordinates![index])
+    && Math.abs(place.coordinates[0]) <= 180 && Math.abs(place.coordinates[1]) <= 90
+    && !place.groupIds.length && !place.tags.length && place.imageKey === null
+    && !place.relevance.en && !place.relevance.es && !place.relevance.sources.length
+    && !place.stayEvidence.length && !place.accessEvidence.length && place.actionability === "browse-only");
 }

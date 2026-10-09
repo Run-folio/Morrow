@@ -1,4 +1,4 @@
-import { discoveryPlacesForMention, type DiscoveryPlace } from "./discovery-content.ts";
+import { discoveryPlacesForMention, isCatalogIdentityChoice, type DiscoveryPlace } from "./discovery-content.ts";
 import { discoveryDirectionsForPlaces, type DiscoveryDirection } from "./discovery-directions.ts";
 import type { DiscoveryDraft } from "./discovery-draft.ts";
 import type { ResolvedPlaceMention } from "./place-intelligence.ts";
@@ -10,7 +10,7 @@ export type DiscoveryProjectionContext = {
 };
 
 export type DiscoveryProjection = {
-  /** Full evidenced collection, ordered for browsing. */
+  /** Reviewed places or neutral catalogue identities, ordered for browsing. */
   places: DiscoveryPlace[];
   directions: DiscoveryDirection[];
   visiblePlaceIds: string[];
@@ -70,7 +70,9 @@ export function projectDiscovery(input: {
   const rejected: DiscoveryProjection["rejected"] = [];
   const seen = new Set<string>();
   const eligible = source.filter(place => {
-    const reason = rejectionReason(place) ?? (seen.has(place.id) ? "duplicate-id" : null);
+    const reason = (place.identityOnly
+      ? isCatalogIdentityChoice(place, mention) ? null : "invalid-catalog-identity"
+      : rejectionReason(place)) ?? (seen.has(place.id) ? "duplicate-id" : null);
     if (reason) {
       rejected.push({ id: place.id, reason });
       return false;

@@ -1,0 +1,559 @@
+{
+  "source": "Actual public provider GET capture, 2026-10-09T05:41:03Z, frozen 954204a read-only qualification",
+  "responses": [
+    {
+      "url": "https://nominatim.openstreetmap.org/search?q=GUA&format=jsonv2&limit=8&addressdetails=1&extratags=1&namedetails=1&dedupe=1&accept-language=en",
+      "status": 200,
+      "body": [
+        {
+          "place_id": 313032619,
+          "licence": "Data © OpenStreetMap contributors, ODbL 1.0. http://osm.org/copyright",
+          "osm_type": "relation",
+          "osm_id": 2340909,
+          "lat": "20.9876996",
+          "lon": "-101.0000000",
+          "category": "boundary",
+          "type": "administrative",
+          "place_rank": 8,
+          "importance": 0.6548652918220202,
+          "addresstype": "state",
+          "name": "Guanajuato",
+          "display_name": "Guanajuato, Mexico",
+          "address": {
+            "state": "Guanajuato",
+            "ISO3166-2-lvl4": "MX-GUA",
+            "country": "Mexico",
+            "country_code": "mx"
+          },
+          "extratags": {
+            "place": "state",
+            "gns:dsg": "ADM1",
+            "gns:uni": "-2347415",
+            "wikidata": "Q46475",
+            "wikipedia": "es:Guanajuato",
+            "population": "6166934",
+            "linked_place": "state",
+            "population:date": "2020",
+            "admin_level": "4"
+          },
+          "namedetails": {
+            "ref": "GUA",
+            "name": "Guanajuato",
+            "name:en": "Guanajuato",
+            "name:es": "Guanajuato",
+            "name:ja": "グアナファト州",
+            "name:pl": "Guanajuato",
+            "name:ru": "Гуанахуато",
+            "name:uk": "Ґуанахуато",
+            "name:zh": "瓜纳华托州",
+            "ISO3166-2": "MX-GUA",
+            "_place_ref": "GTO",
+            "short_name": "Gto.",
+            "name:eo": "Gvanaĥuato",
+            "name:hu": "Guanajuato"
+          },
+          "boundingbox": [
+            "19.9127502",
+            "21.8394167",
+            "-102.0972846",
+            "-99.6713026"
+          ]
+        },
+        {
+          "place_id": 309025260,
+          "licence": "Data © OpenStreetMap contributors, ODbL 1.0. http://osm.org/copyright",
+          "osm_type": "relation",
+          "osm_id": 1385038,
+          "lat": "2.5000086",
+          "lon": "-69.0000086",
+          "category": "boundary",
+          "type": "administrative",
+          "place_rank": 8,
+          "importance": 0.49310485071894505,
+          "addresstype": "state",
+          "name": "Guainía",
+          "display_name": "Guainía, RAP Amazonía, Colombia",
+          "address": {
+            "state": "Guainía",
+            "ISO3166-2-lvl4": "CO-GUA",
+            "region": "RAP Amazonía",
+            "country": "Colombia",
+            "country_code": "co"
+          },
+          "extratags": {
+            "clcfile": "MunicipiosDepartamentos/ADM_Departamentos.shp",
+            "gns:dsg": "ADM1",
+            "gns:uni": "567947",
+            "wikidata": "Q238645",
+            "wikipedia": "es:Guainía",
+            "population": "43314",
+            "state_code": "GUA",
+            "linked_place": "state",
+            "state_capital": "Inirida",
+            "DANE:departamento": "94",
+            "admin_level": "4"
+          },
+          "namedetails": {
+            "ref": "GUA",
+            "name": "Guainía",
+            "name:es": "Guainía",
+            "name:ja": "グアイニア県",
+            "ISO3166-2": "CO-GUA",
+            "name:eo": "Gvajnio",
+            "_place_name:es": "Guainía",
+            "name:ru": "Гуаинья"
+          },
+          "boundingbox": [
+            "1.1652642",
+            "4.0467853",
+            "-70.9424924",
+            "-66.8511118"
+          ]
+        },
+        {
+          "place_id": 300941671,
+          "licence": "Data © OpenStreetMap contributors, ODbL 1.0. http://osm.org/copyright",
+          "osm_type": "relation",
+          "osm_id": 1401835,
+          "lat": "16.2528827",
+          "lon": "-61.5686855",
+          "category": "boundary",
+          "type": "administrative",
+          "place_rank": 6,
+          "importance": 0.6898660252462875,
+          "addresstype": "state",
+          "name": "Guadeloupe",
+          "display_name": "Guadeloupe, France",
+          "address": {
+            "state": "Guadeloupe",
+            "ISO3166-2-lvl3": "FR-971",
+            "country": "France",
+            "country_code": "fr"
+          },
+          "extratags": {
+            "flag": "http://upload.wikimedia.org/wikipedia/commons/c/c3/Flag_of_France.svg",
+            "length": "100 km",
+            "website": "https://www.cr-guadeloupe.fr/",
+            "currency": "EUR",
+            "timezone": "America/Guadeloupe",
+            "wikidata": "Q17012",
+            "wikipedia": "fr:Guadeloupe",
+            "population": "404635",
+            "border_type": "territorial",
+            "description": "France, départements et régions d'outre-mer, territoires régis par l’article 73 de la Constitution",
+            "geonames:id": "3579143",
+            "capital_city": "Basse-Terre",
+            "linked_place": "state",
+            "ref:FR:SIREN": "229710017",
+            "description:en": "French overseas region and departement",
+            "ISO3166-1:alpha2": "GP",
+            "ISO3166-1:alpha3": "GLP",
+            "ISO3166-1:numeric": "312",
+            "country_code_fips": "GP",
+            "admin_level": "3"
+          },
+          "namedetails": {
+            "name": "Guadeloupe",
+            "name:ak": "Guwadelup",
+            "name:am": "ጉዋደሉፕ",
+            "name:ar": "غوادلوب",
+            "name:az": "Qvadelupa",
+            "name:be": "Гвадэлупа",
+            "name:bg": "Гваделупа",
+            "name:bm": "Gwadelup",
+            "name:bn": "গুয়াদেলৌপ",
+            "name:br": "Gwadeloup",
+            "name:bs": "Gvadelupe",
+            "name:ca": "Guadalupe",
+            "name:da": "Guadeloupe",
+            "name:de": "Guadeloupe",
+            "name:dz": "གོ་ཌེ་ལུ་པེ",
+            "name:ee": "Guadelupe",
+            "name:el": "Γουαδελούπη",
+            "name:en": "Guadeloupe",
+            "name:eo": "Gvadelupo",
+            "name:es": "Guadalupe",
+            "name:eu": "Guadalupe",
+            "name:fa": "گوادلوپ",
+            "name:ff": "Gwaadalup",
+            "name:fi": "Guadeloupe",
+            "name:fr": "Guadeloupe",
+            "name:fy": "Guadelûp",
+            "name:ga": "Guadalúip",
+            "name:gd": "Guadalup",
+            "name:gl": "Guadalupe",
+            "name:gu": "ગ્વાડેલોપ",
+            "name:ha": "Gwadaluf",
+            "name:he": "גוואדלופ",
+            "name:hi": "ग्वाडेलोप",
+            "name:hr": "Gvadalupa",
+            "name:hu": "Guadeloupe",
+            "name:hy": "Գվադելուպա",
+            "name:is": "Gvadelúpeyjar",
+            "name:it": "Guadalupa",
+            "name:ja": "グアドループ",
+            "name:ka": "გვადელუპე",
+            "name:ki": "Gwadelupe",
+            "name:km": "ហ្គោដឺឡុប",
+            "name:kn": "ಗುಡೆಲೋಪ್",
+            "name:ko": "과들루프",
+            "name:ks": "گَواڑیلوپ",
+            "name:la": "Guadalupa",
+            "name:lg": "Gwadalupe",
+            "name:ln": "Gwadɛlupɛ",
+            "name:lo": "ກວດເດລູບ",
+            "name:lt": "Gvadelupa",
+            "name:lv": "Gvadelupa",
+            "name:mg": "Goadelopy",
+            "name:mk": "Гвадалупе",
+            "name:ml": "ഗുവാഡെലോപ്",
+            "name:mn": "Гуаделупе",
+            "name:mr": "ग्वाडेलोउपे",
+            "name:mt": "Gwadelupe",
+            "name:nb": "Guadeloupe",
+            "name:ne": "ग्वाडेलुप",
+            "name:nl": "Guadeloupe",
+            "name:or": "ଗୌଡେଲୌପେ",
+            "name:pl": "Gwadelupa",
+            "name:pt": "Guadalupe",
+            "name:rn": "Gwadelupe",
+            "name:ro": "Guadelupa",
+            "name:ru": "Гваделупа",
+            "name:sg": "Guadelûpu",
+            "name:si": "ග්වෝඩලෝප්",
+            "name:sl": "Gvadalupa",
+            "name:sq": "Guadalupa",
+            "name:sr": "Гвадалупа",
+            "name:sv": "Guadeloupe",
+            "name:sw": "Gwadelupe",
+            "name:ta": "க்வாதேலோப்",
+            "name:te": "గ్వాడేలోప్",
+            "name:th": "กวาเดอลูป",
+            "name:ti": "ጉዋደሉፕ",
+            "name:to": "Kuatalupe",
+            "name:tr": "Guadalupe",
+            "name:uk": "Ґваделупа",
+            "name:ur": "گواڈیلوپ",
+            "name:vi": "Guadeloupe",
+            "name:yo": "Gadelope",
+            "name:zh": "瓜德罗普",
+            "name:zu": "i-Guadeloupe",
+            "int_name": "Guadeloupe",
+            "name:ast": "Guadalupe",
+            "name:chr": "ᏩᏓᎷᏇ",
+            "name:fur": "Guadalupe",
+            "name:gcf": "Gwadloup",
+            "name:kab": "Gwadalupi",
+            "name:ksh": "Juadelupp",
+            "ISO3166-2": "FR-971",
+            "official_name": "Région de la Guadeloupe",
+            "name:ht": "Gwadloup",
+            "_place_name:uk": "Гваделупа",
+            "_place_name:yo": "Orílẹ́ède Gadelope",
+            "official_name:cs": "Region Guadeloupe",
+            "short_name": "gp"
+          },
+          "boundingbox": [
+            "15.6444110",
+            "16.7140000",
+            "-62.0180390",
+            "-60.7919656"
+          ]
+        }
+      ]
+    },
+    {
+      "url": "https://photon.komoot.io/api/?q=GUA&limit=8&lang=en",
+      "status": 200,
+      "body": {
+        "type": "FeatureCollection",
+        "features": [
+          {
+            "type": "Feature",
+            "properties": {
+              "osm_type": "R",
+              "osm_id": 1521463,
+              "osm_key": "place",
+              "osm_value": "country",
+              "type": "country",
+              "name": "Guatemala",
+              "country": "Guatemala",
+              "countrycode": "GT",
+              "extra": {
+                "admin_level": "2"
+              },
+              "extent": [
+                -92.3648725,
+                17.8165947,
+                -88.2134425,
+                13.563429
+              ]
+            },
+            "geometry": {
+              "type": "Point",
+              "coordinates": [
+                -90.345759,
+                15.5855545
+              ]
+            }
+          },
+          {
+            "type": "Feature",
+            "properties": {
+              "osm_type": "R",
+              "osm_id": 306001,
+              "osm_key": "place",
+              "osm_value": "state",
+              "type": "state",
+              "name": "Guam",
+              "country": "United States",
+              "countrycode": "US",
+              "extra": {
+                "admin_level": "4"
+              },
+              "extent": [
+                144.563426,
+                13.706179,
+                145.009167,
+                13.182335
+              ]
+            },
+            "geometry": {
+              "type": "Point",
+              "coordinates": [
+                144.7651677,
+                13.4499943
+              ]
+            }
+          },
+          {
+            "type": "Feature",
+            "properties": {
+              "osm_type": "R",
+              "osm_id": 911844,
+              "osm_key": "place",
+              "osm_value": "state",
+              "type": "state",
+              "name": "Guangdong Province",
+              "country": "China",
+              "countrycode": "CN",
+              "extra": {
+                "admin_level": "4"
+              },
+              "extent": [
+                109.3917274,
+                25.5200005,
+                117.531995,
+                20.1198055
+              ]
+            },
+            "geometry": {
+              "type": "Point",
+              "coordinates": [
+                113.1982688,
+                23.1357694
+              ]
+            }
+          },
+          {
+            "type": "Feature",
+            "properties": {
+              "osm_type": "R",
+              "osm_id": 3287346,
+              "osm_key": "place",
+              "osm_value": "city",
+              "type": "city",
+              "name": "Guangzhou",
+              "state": "Guangdong Province",
+              "country": "China",
+              "countrycode": "CN",
+              "extra": {
+                "admin_level": "5"
+              },
+              "extent": [
+                112.9523727,
+                23.9356989,
+                114.055299,
+                22.5607978
+              ]
+            },
+            "geometry": {
+              "type": "Point",
+              "coordinates": [
+                113.2589581,
+                23.1288429
+              ]
+            }
+          },
+          {
+            "type": "Feature",
+            "properties": {
+              "osm_type": "R",
+              "osm_id": 1401835,
+              "osm_key": "place",
+              "osm_value": "state",
+              "type": "state",
+              "name": "Guadeloupe",
+              "country": "France",
+              "countrycode": "FR",
+              "extra": {
+                "admin_level": "3"
+              },
+              "extent": [
+                -62.018039,
+                16.714,
+                -60.7919656,
+                15.644411
+              ]
+            },
+            "geometry": {
+              "type": "Point",
+              "coordinates": [
+                -61.5686855,
+                16.2528827
+              ]
+            }
+          },
+          {
+            "type": "Feature",
+            "properties": {
+              "osm_type": "R",
+              "osm_id": 2562137,
+              "osm_key": "place",
+              "osm_value": "state",
+              "type": "state",
+              "name": "Guadeloupe",
+              "country": "France",
+              "countrycode": "FR",
+              "extra": {
+                "admin_level": "4"
+              },
+              "extent": [
+                -61.809764,
+                16.5144801,
+                -61.0013039,
+                15.8319758
+              ]
+            },
+            "geometry": {
+              "type": "Point",
+              "coordinates": [
+                -61.5686855,
+                16.2528827
+              ]
+            }
+          },
+          {
+            "type": "Feature",
+            "properties": {
+              "osm_type": "R",
+              "osm_id": 286342,
+              "osm_key": "place",
+              "osm_value": "state",
+              "type": "state",
+              "name": "Guangxi Zhuang Autonomous Region",
+              "country": "China",
+              "countrycode": "CN",
+              "extra": {
+                "admin_level": "4"
+              },
+              "extent": [
+                104.4482386,
+                26.3878717,
+                112.0564063,
+                20.8141478
+              ]
+            },
+            "geometry": {
+              "type": "Point",
+              "coordinates": [
+                109.0,
+                24.0
+              ]
+            }
+          },
+          {
+            "type": "Feature",
+            "properties": {
+              "osm_type": "N",
+              "osm_id": 1663173902,
+              "osm_key": "place",
+              "osm_value": "city",
+              "type": "city",
+              "name": "Guadalajara",
+              "county": "Guadalajara",
+              "state": "Jalisco",
+              "country": "Mexico",
+              "postcode": "44450",
+              "countrycode": "MX"
+            },
+            "geometry": {
+              "type": "Point",
+              "coordinates": [
+                -103.338396,
+                20.6720375
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "url": "https://nominatim.openstreetmap.org/search?q=GUA+airport&format=jsonv2&limit=8&addressdetails=1&extratags=1&namedetails=1&dedupe=1&accept-language=en",
+      "status": 200,
+      "body": [
+        {
+          "place_id": 310301962,
+          "licence": "Data © OpenStreetMap contributors, ODbL 1.0. http://osm.org/copyright",
+          "osm_type": "relation",
+          "osm_id": 17228072,
+          "lat": "14.5832025",
+          "lon": "-90.5271541",
+          "category": "aeroway",
+          "type": "aerodrome",
+          "place_rank": 30,
+          "importance": 0.47077298976827575,
+          "addresstype": "aeroway",
+          "name": "La Aurora International Airport",
+          "display_name": "La Aurora International Airport, 24 Calle, Coloña La Cañada, Zone 14, Guatemala City, Guatemala Department, 01014, Guatemala",
+          "address": {
+            "aeroway": "La Aurora International Airport",
+            "road": "24 Calle",
+            "residential": "Coloña La Cañada",
+            "quarter": "Zone 14",
+            "city": "Guatemala City",
+            "state": "Guatemala Department",
+            "ISO3166-2-lvl4": "GT-01",
+            "postcode": "01014",
+            "country": "Guatemala",
+            "country_code": "gt"
+          },
+          "extratags": {
+            "ele": "1509",
+            "wikidata": "Q765608",
+            "wikipedia": "es:Aeropuerto Internacional La Aurora",
+            "passengers": "2216915",
+            "aerodrome:type": "international",
+            "internet_access": "yes",
+            "internet_access:fee": "no"
+          },
+          "namedetails": {
+            "iata": "GUA",
+            "icao": "MGGT",
+            "name": "Aeropuerto Internacional La Aurora",
+            "name:de": "Flughafen Guatemala-Stadt",
+            "name:en": "La Aurora International Airport",
+            "name:es": "Aeropuerto Internacional La Aurora",
+            "alt_name": "La Aurora"
+          },
+          "boundingbox": [
+            "14.5695865",
+            "14.5978923",
+            "-90.5343282",
+            "-90.5213101"
+          ]
+        }
+      ]
+    }
+  ]
+}

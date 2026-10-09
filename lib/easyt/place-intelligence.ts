@@ -360,6 +360,8 @@ export type PlaceProviderCandidate = {
   /** Safe, provider-independent ranking evidence. Raw provider payloads never
    * cross the boundary. */
   matchQuality?: "exact" | "alias" | "partial";
+  /** Exact, nonconflicting provider IATA evidence for this search query. */
+  matchedAirportCode?: string;
   rankScore?: number;
   /** Provider-normalized evidence that an exact result is a recognised
    * sovereign or first-order geography, rather than merely any admin record. */

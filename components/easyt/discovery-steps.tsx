@@ -63,6 +63,7 @@ const PlaceCard = memo(function PlaceCard({ place, draft, mention, entry, langua
   const location = mention.placeType === "country" && mention.canonicalName === place.country
     ? type : `${type} · ${place.country}`;
   const focusPlace = () => onHighlight(place.id);
+  const reason = renderDiscoveryReason(language, place);
   return <article ref={element => registerCard(place.id, element)} tabIndex={0} className={styles.placeCard} data-discovery-card="true"
     data-selected={selected || baseSelected} data-highlighted={highlighted} data-actionability={place.actionability}
     aria-label={`${place.name}, ${role}`} onFocus={(event) => { if (event.target === event.currentTarget) focusPlace(); }} onClick={focusPlace}
@@ -71,7 +72,7 @@ const PlaceCard = memo(function PlaceCard({ place, draft, mention, entry, langua
     <div className={styles.cardContent}>
       <div className={styles.cardMeta}><span>{location}</span>{existing ? <span className={styles.existing}>{copy.roles.existing}</span> : null}</div>
       <h4>{place.name}</h4>
-      <p>{renderDiscoveryReason(language, place)}</p>
+      {reason ? <p>{reason}</p> : null}
       <div className={styles.role}><MapPin aria-hidden="true" /><span>{role}</span></div>
       <div className={styles.cardActions}>
         {isBaseStep ? actions.includes("choose-base") ? <EasyTButton variant={baseSelected ? "secondary" : "primary"} size="small" icon={baseSelected ? Check : Plus}

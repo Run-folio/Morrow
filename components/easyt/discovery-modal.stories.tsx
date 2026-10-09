@@ -58,6 +58,19 @@ const selectedDraft = { ...placesDraft, shortlistIds: australiaStops.slice(0, 2)
 
 export const AustraliaDirections: Story = { args: { entry: countryEntry, mention: australiaMention, projection: australia, draft: initial } };
 export const AustraliaPlaces: Story = { args: { entry: countryEntry, mention: australiaMention, projection: australia, draft: placesDraft } };
+export const BelizeNeutralChoices: Story = {
+  args: { entry: { kind: "country", step: "places" }, mention: mention("Belize"), projection: projection("Belize"),
+    draft: placesDraft, existingPlaceIds: ["caye-caulker"],
+    note: "Canonical city identities only; no reviewed visitor recommendation, photo or stay advice is asserted." },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(canvas.getByRole("heading", { name: "Belize City" })).toBeVisible();
+    await expect(canvasElement.querySelectorAll('[data-discovery-card="true"]')).toHaveLength(4);
+    await expect(canvasElement.querySelectorAll('[data-discovery-card="true"][data-selected="true"]')).toHaveLength(0);
+    await userEvent.click(canvas.getByRole("button", { name: "Add to shortlist: Belize City" }));
+    await expect(canvas.getByRole("button", { name: "Add 1 place" })).toBeEnabled();
+  },
+};
 export const MeasuredFirstCard: Story = { args: { ...AustraliaPlaces.args },
   play: async ({ canvasElement }) => {
     await expect(within(canvasElement).getByRole("heading", { name: "Airlie Beach" })).toBeVisible();
