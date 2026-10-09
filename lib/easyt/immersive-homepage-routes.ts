@@ -136,8 +136,8 @@ export function immersiveHomepageRoutes(): ImmersiveRoute[] {
 }
 
 /** Reuses the existing server selection algorithm; serialized into client props. */
-export function initialImmersiveRouteIndex(routes: readonly ImmersiveRoute[], random = Math.random) {
-  const cards = homepageEligibleRouteCards().filter((card) => routes.some((route) => route.key === card.routeKey));
+export function initialImmersiveRouteIndex(routes: readonly ImmersiveRoute[], random = Math.random, eligibleCards = homepageEligibleRouteCards()) {
+  const cards = eligibleCards.filter((card) => routes.some((route) => route.key === card.routeKey));
   const chosen = selectHomepageRouteCards(cards, 1, random)[0];
   return Math.max(0, routes.findIndex((route) => route.key === chosen?.routeKey));
 }

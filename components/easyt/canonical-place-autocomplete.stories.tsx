@@ -17,3 +17,13 @@ const nonscheduledFixture=async()=>{const original=globalThis.fetch;globalThis.f
 export const NonScheduledAirport:Story={args:{value:'MJR'},beforeEach:nonscheduledFixture};
 export const NonScheduledAirportSpanish:Story={...NonScheduledAirport,args:{value:'MJR',language:'es'}};
 export const NonScheduledAirportMobile:Story={...NonScheduledAirport,globals:{viewport:{value:'morrovia390',isRotated:false}}};
+
+export const BroadPlanningArea:Story={...MetropolitanCity,args:{value:'Europe',label:'Destination',placeholder:'City, country or region',includeNonRoutable:true}};
+const sameNamePoints:[string,[number,number]][]=[['1790630',[108.92861,34.25833]],['1790631',[111.05,28.46667]],['1790633',[112.28844,24.92056]],['2053185',[122.23481,40.92265]],['8527333',[129.60862,44.57568]]];
+export const SameCountryNamesakes:Story={args:{value:'Xi’an',label:'Destination'},beforeEach:async()=>{
+ const original=globalThis.fetch;
+ const candidates=sameNamePoints.map(([id,coordinates])=>({canonicalPlaceId:`reference:geonames:${id}`,providerId:`reference:geonames:${id}@${REFERENCE_SNAPSHOT_ID}:CN:city:${coordinates.join(':')}`,referenceSnapshotId:REFERENCE_SNAPSHOT_ID,name:'Xi’an',country:'China',placeType:'city',routability:'direct_destination',coordinates}));
+ globalThis.fetch=(async(input,init)=>String(input).startsWith('/api/journey-geocode?')?new Response(JSON.stringify({candidates})):original(input,init)) as typeof fetch;
+ return ()=>{globalThis.fetch=original;};
+}};
+export const SameCountryNamesakesMobile:Story={...SameCountryNamesakes,globals:{viewport:{value:'morrovia390',isRotated:false}}};

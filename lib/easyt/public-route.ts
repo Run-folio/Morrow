@@ -1,4 +1,5 @@
 import { checkPublicRouteRelease } from "./public-route-release.ts";
+import { cache } from 'react';
 import { captureJourneyBrief } from "./journey-capture.ts";
 import { createDestinationKnowledgeStore } from "./destination-knowledge.ts";
 import { allocateTripNights, calendarDayAllocationsFromNights } from "./night-allocation.ts";
@@ -361,7 +362,14 @@ function planDraftFor(route: RouteFamily, detail: Omit<PublicRouteDetail, "planD
   };
 }
 
+const requestPublicRouteDetail = cache(buildPublicRouteDetail);
 export function publicRouteDetailFor(inputSlug: string): PublicRouteDetail | null {
+  // Reuse compiled public content within one server render. Each consumer
+  // still owns its returned draft; traveller documents never enter this cache.
+  return structuredClone(requestPublicRouteDetail(canonicalPublicRouteSlug(inputSlug)));
+}
+
+function buildPublicRouteDetail(inputSlug: string): PublicRouteDetail | null {
   const key = canonicalPublicRouteSlug(inputSlug);
   const route = routeFamilyByKey[key];
   const seed = inspirationByKey[key];

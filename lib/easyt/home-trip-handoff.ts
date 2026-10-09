@@ -1332,6 +1332,11 @@ function homepageEntryMention(entry: HomepageDestinationEntry, order: number): R
     }],
   } : originalSelection;
   const routability = homepageEntryRoutability(selection);
+  const selectedCatalogPlace = findCatalogPlaceById(selection.canonicalPlaceId);
+  const parentCountries = selectedCatalogPlace?.placeType === selection.placeType
+    && normalizePlacePhrase(selectedCatalogPlace.canonicalName) === normalizePlacePhrase(selection.name)
+    && ["planning_area", "needs_base_selection", "anchor_or_poi"].includes(selectedCatalogPlace.routability)
+    ? [...selectedCatalogPlace.parentCountries] : selection.country ? [selection.country] : [];
   const provenance = [...selection.provenance, {
     id: `homepage-entry:${entry.id}`,
     label: "Homepage destination selection",
@@ -1359,7 +1364,7 @@ function homepageEntryMention(entry: HomepageDestinationEntry, order: number): R
     status: "resolved",
     confidence,
     provenance,
-    parentCountries: selection.country ? [selection.country] : [],
+    parentCountries,
     parentRegionId: selection.region,
     accessPlaceName: selection.accessPlaceName,
     bounds: selection.bounds,
@@ -1375,7 +1380,7 @@ function homepageEntryMention(entry: HomepageDestinationEntry, order: number): R
       canonicalName: selection.name,
       aliases: [],
       placeType: selection.placeType,
-      parentCountries: selection.country ? [selection.country] : [],
+      parentCountries: [...parentCountries],
       parentRegionId: selection.region,
       accessPlaceName: selection.accessPlaceName,
       bounds: selection.bounds,

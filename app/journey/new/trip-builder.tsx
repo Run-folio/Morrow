@@ -107,7 +107,7 @@ import { preserveBuilderCanonicalState } from "@/lib/easyt/trip-builder-preserva
 import { builderDetailsFingerprint, prepareBuilderDocumentCommit } from "@/lib/easyt/trip-builder-document-commit";
 import { currentBuilderRouteProposal, validateBuilderStopOrder } from "@/lib/easyt/trip-builder-order";
 import { normalizeTripInterests, tripInterestLabels, type TripInterest } from "@/lib/easyt/trip-interest";
-import { resolvedJourneyEndPlace, canonicalJourneyEndpointPlace, isSameCanonicalPlace, journeyEndFromCapturedIntent, journeyEndpointIdentityIsCoherent, journeyEndpointPlaceFromSuggestion, normalizeJourneyEnd, plannerEndpointForJourneyEnd, resolveTypedJourneyEndpoint } from "@/lib/easyt/journey-endpoints";
+import { resolvedJourneyEndPlace, canonicalJourneyEndpointPlace, originPlaceFromBrief, isSameCanonicalPlace, journeyEndFromCapturedIntent, journeyEndpointIdentityIsCoherent, journeyEndpointPlaceFromSuggestion, normalizeJourneyEnd, plannerEndpointForJourneyEnd, resolveTypedJourneyEndpoint } from "@/lib/easyt/journey-endpoints";
 import { builderClarificationProgress, builderClarificationRemovalPlan, builderClarificationResumeLabel, orderedBuilderClarificationIds, reviewedRouteStopSatisfiesMention, shouldAutoOpenBuilderClarification, shouldYieldBuilderClarification } from "@/lib/easyt/builder-clarification";
 import { fixedCommitmentDisplayLabel, projectFixedCommitmentsToStops } from "@/lib/easyt/fixed-commitment";
 import { createAbortableEffectScope } from "@/lib/easyt/abortable-effect";
@@ -552,6 +552,7 @@ function TripBuilderDocument() {
     statuses: Map<string, "pending" | "resolved" | "needs-confirmation" | "failed">;
     handled: Set<string>;
     retry?: (mentionId: string) => void;
+    replayPending?: () => void;
   } | null>(null);
   const [pendingInterpretation, setPendingInterpretation] = useState<{ receipt: PendingIntakeReceipt; fromHomepage: boolean } | null>(null);
   const [pendingInterpretationRetry, setPendingInterpretationRetry] = useState(0);
@@ -562,6 +563,7 @@ function TripBuilderDocument() {
   const activeBrowserOwnerIdRef = useRef(activeBrowserOwnerId);
   activeBrowserOwnerIdRef.current = activeBrowserOwnerId;
   const [builderSeed, setBuilderSeed] = useState<Pick<BuilderEditSessionOptions, "initialTrip" | "initialRecovery" | "initialCanonicalTrip" | "allowRecoverySync"> | null>(null);
+  const builderSeedPendingRef = useRef(false);
   const mountedBuilder = useBuilderEditSession(builderSeed && builderSeed.initialTrip.id && hydratedOwnerScopeRef.current === activeBrowserOwnerId ? {
     ...builderSeed,
     getOwnerId: () => activeBrowserOwnerIdRef.current,
@@ -597,6 +599,7 @@ function TripBuilderDocument() {
     recoveryHandleRef.current=mountedBuilder.snapshot.recovery;
     hydratedCanonicalTripRef.current=mountedBuilder.snapshot.trip;
     if(mountedBuilder.snapshot.canonicalSaveState==="cloud")lastAcknowledgedCanonicalRef.current=mountedBuilder.snapshot.trip;
+    handoffLookupSessionRef.current?.replayPending?.();
   },[mountedBuilder?.snapshot]);
   const [language, setLanguage] = useState<EasyTLanguage>("en");
   const copy = easytCopy[language].builder;
@@ -1006,6 +1009,7 @@ function TripBuilderDocument() {
       statuses: new Map<string, "pending" | "resolved" | "needs-confirmation" | "failed">(),
       handled: new Set<string>(),
       retry: undefined as ((mentionId: string) => void) | undefined,
+      replayPending: undefined as (() => void) | undefined,
     };
     handoffLookupSessionRef.current = lookupSession;
     setLocationChoices([]);
@@ -1022,6 +1026,8 @@ function TripBuilderDocument() {
       const seedById = new Map(initialStops.map((stop) => [stop.id, stop]));
       const lookupOwnerId = activeBrowserOwnerIdRef.current;
       const lookupTripId = draft.homepage?.receipt?.tripId ?? tripId;
+      const intakeSelectionKeys = new Set((homeStructuredBrief.placeSelections ?? []).map(authoredContentKey));
+      const pendingHandoffOutcomes: Array<{item:CapturedLocation;value?:LocationChoice[];status:"resolved"|"failed"|"timeout"}> = [];
       // Let the builder render immediately. These requests enrich the
       // route after arrival instead of holding the homepage transition.
       const lookupKey = (mention: CapturedLocation) => `${mention.canonicalName.toLocaleLowerCase()}\u001f${mention.parentCountries.length === 1 ? mention.parentCountries[0]!.toLocaleLowerCase() : ""}`;
@@ -1040,6 +1046,12 @@ function TripBuilderDocument() {
           const snapshot=editor?.getSnapshot();
           if(activeBrowserOwnerIdRef.current!==lookupOwnerId
             || (snapshot && (snapshot.browserOwnerId!==lookupOwnerId || snapshot.trip.id!==lookupTripId)))return;
+          // Once the canonical document is reserved, raw React state cannot
+          // advance it. Replay through the edit owner when mounting completes.
+          if (!editor && builderSeedPendingRef.current) {
+            pendingHandoffOutcomes.push({item:mention,value:choices,status});
+            return;
+          }
           if(snapshot) {
             const trip=snapshot.trip;
             const prior=trip.brief.structuredBrief?.placeMentions?.find(item=>item.mentionId===mention.mentionId);
@@ -1059,7 +1071,8 @@ function TripBuilderDocument() {
           }
           const currentStatus = lookupSession.statuses.get(mention.mentionId);
           if (!handoffOutcomeIsCurrent(mention.mentionId, currentStatus,
-            removedPlaceMentionIdsRef.current, [...lookupSession.handled, ...placeSelectionsRef.current.map((selection) => selection.mentionId)])) {
+            removedPlaceMentionIdsRef.current, [...lookupSession.handled, ...placeSelectionsRef.current
+              .filter(selection => !intakeSelectionKeys.has(authoredContentKey(selection))).map(selection => selection.mentionId)])) {
             if (currentStatus === "pending") {
               lookupSession.statuses.delete(mention.mentionId);
               setHandoffResolutionStatuses((current) => retireHandoffResolutionStatus(current, mention.mentionId));
@@ -1113,6 +1126,9 @@ function TripBuilderDocument() {
               && seed && savedTargetKey(stop) === savedTargetKey(seed))
               ? mergeHandoffLocationChoice(current, mention, chosen, stopId) : current);
           }
+      };
+      lookupSession.replayPending = () => {
+        for (const outcome of pendingHandoffOutcomes.splice(0)) onOutcome(outcome);
       };
       const runLookups = (items: CapturedLocation[]) => {
         return void resolveHandoffIncrementally(items, resolveMention, {
@@ -1183,20 +1199,14 @@ function TripBuilderDocument() {
     setTripStatus(saved.status);
     setCreatedAt(saved.createdAt);
     setTripUpdatedAt(saved.updatedAt);
-    replaceJourneyOrigin({
-      name: saved.brief.origin,
-      coordinates: saved.brief.originCoordinates,
-      canonicalPlaceId: saved.brief.originCanonicalPlaceId,
-      country: saved.brief.originCountry,
-      providerId: saved.brief.originProviderId,
-    });
+    replaceJourneyOrigin(originPlaceFromBrief(saved.brief));
     setTripBrief(saved.brief.mustDo);
     const savedJourneyEnd = normalizeJourneyEnd(saved.brief.journeyEnd);
     setJourneyEnd(savedJourneyEnd);
     setJourneyEndInput(savedJourneyEnd.mode === "explicit" ? savedJourneyEnd.place.name : "");
     setSourceRouteKey(saved.brief.sourceRouteKey);
     setCuratedRoute(saved.brief.curatedRoute);
-    setStops(saved.stops.map(({ id, name, country, canonicalPlaceId, countryCode, region, providerId, longitude, latitude }) => ({ id, name, country, canonicalPlaceId, countryCode, region, providerId, coordinates: longitude !== null && latitude !== null ? [longitude, latitude] : undefined })));
+    setStops(saved.stops.map(({ id, name, country, canonicalPlaceId, countryCode, region, providerId, longitude, latitude, geographicBinding }) => ({ id, name, country, canonicalPlaceId, countryCode, region, providerId, coordinates: longitude !== null && latitude !== null ? [longitude, latitude] : undefined, ...(geographicBinding===undefined?{}:{geographicBinding:structuredClone(geographicBinding)}) })));
     setStartDate(saved.startDate);
     setEndDate(saved.endDate);
     setEndDateStillSuggested(saved.brief.endDateIsSuggestion === true);
@@ -1283,6 +1293,7 @@ function TripBuilderDocument() {
     const previousOwnerScope = hydratedOwnerScopeRef.current;
     hydratedOwnerScopeRef.current = undefined;
     setBuilderSeed(null);
+    builderSeedPendingRef.current = false;
     pendingNewTripReceiptRef.current = null;
     receiptAcknowledgementRef.current = null;
     pendingInterpretationRef.current = null;
@@ -4359,8 +4370,11 @@ function TripBuilderDocument() {
             || recovery.tripId !== expectedRecovery.tripId || recovery.writeId !== expectedRecovery.writeId))) {
           setDeviceRecoveryBlocked(true);setCloudSaveError("Open this device's separate recovery before editing the account trip.");return;
         }
-        if(active) setBuilderSeed({initialTrip:recovery?.trip ?? candidate,initialRecovery:recovery,
-          initialCanonicalTrip:recovery?null:candidate,allowRecoverySync:!source || builderSearchParams.get("recover")==="1"});
+        if(active) {
+          builderSeedPendingRef.current = true;
+          setBuilderSeed({initialTrip:recovery?.trip ?? candidate,initialRecovery:recovery,
+            initialCanonicalTrip:recovery?null:candidate,allowRecoverySync:!source || builderSearchParams.get("recover")==="1"});
+        }
       }catch { if(active) {setDeviceStorageBlocked(true);setSaveState("error");setCloudSaveError("This trip could not be opened safely. Its recovery is preserved.");} }
     };
     void start();return()=>{active=false};

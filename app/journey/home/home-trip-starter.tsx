@@ -241,6 +241,11 @@ export default function HomeTripStarter() {
       if (!isCurrent()) return;
       if (issues.length) {
         setCaptureError(issueMessage(issues[0].field));
+        if (issues[0].field === "destinations") {
+          const entryId = issues[0].entryId ?? submitted.entries.find(entry => !entry.selection)?.id;
+          if (entryId) setFocusEntryId(entryId);
+          return;
+        }
         // Reveal the existing origin editor when Describe hides an unresolved raw draft.
         // Changing the tab retains every input; no capture or reservation has begun.
         if (issues[0].field === "origin" && submitted.mode === "describe") {
@@ -329,8 +334,8 @@ export default function HomeTripStarter() {
     return homepageCapturedRouteEvidence(input.prompt, homepageCaptureWithSharedOrigin(input, captureJourneyBrief(input.prompt)));
   };
   const issueMessage = (field: string) => language === "es"
-    ? field === "tripType" ? "Revisa cómo termina el viaje. Elige y confirma el tipo de viaje." : field === "origin" ? "Selecciona el lugar de salida de los resultados." : "Revisa los datos del viaje antes de continuar."
-    : field === "tripType" ? "Review how your trip ends. Choose and confirm the trip type." : field === "origin" ? "Select your starting place from the results." : "Review your trip details before continuing.";
+    ? field === "tripType" ? "Revisa cómo termina el viaje. Elige y confirma el tipo de viaje." : field === "origin" ? "Selecciona el lugar de salida de los resultados." : field === "destinations" ? "Selecciona cada destino de los resultados." : "Revisa los datos del viaje antes de continuar."
+    : field === "tripType" ? "Review how your trip ends. Choose and confirm the trip type." : field === "origin" ? "Select your starting place from the results." : field === "destinations" ? "Select each destination from the results." : "Review your trip details before continuing.";
   const chosenSnapshot = (current: HomepageInputSnapshot, type: HomepageTripType, evidence?: HomepageRouteEvidence): HomepageInputSnapshot => ({
     ...current, tripType: { state: "selected", value: type }, journeyEnd: { state: "selected", value: type === "return_to_start" ? { mode: "same_as_start" }
       : evidence?.journeyEnd.mode === "explicit" ? evidence.journeyEnd
@@ -378,7 +383,7 @@ export default function HomeTripStarter() {
         originEntry: <div data-homepage-origin><span data-morrovia-field-label>{language === "es" ? "Sales desde" : "Start from"}</span><CanonicalPlaceAutocomplete
           language={language} label={language === "es" ? "Sales desde" : "Start from"} value={originInput}
           placeholder={language === "es" ? "Ciudad o aeropuerto" : "City or airport"} allowedPlaceTypes={["city", "town", "transport_gateway"]}
-          requireCoordinates showPlaceType={false} disabled={sessionPending || recoveryBlocked || loading}
+          requireCoordinates disabled={sessionPending || recoveryBlocked || loading}
           onChange={value => updateSnapshot(current => ({ ...current, originInput: value, origin: { state: "cleared" } }))}
           onClear={() => updateSnapshot(current => ({ ...current, originInput: "", origin: { state: "cleared" } }))}
           onSelect={suggestion => {const place=journeyEndpointPlaceFromSuggestion(suggestion);if(place)updateSnapshot(current => ({ ...current, originInput: suggestion.label, origin: { state: "selected", value: place } }));}} /></div>,

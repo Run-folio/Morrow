@@ -5,9 +5,9 @@ import { japanTrip } from "./transport-mode-choice-browser.test.ts";
 
 function twoLegTrip() {
   const trip = japanTrip();
-  trip.stops.push({ id: "osaka", order: 2, name: "Osaka", country: "Japan", latitude: 34.6937, longitude: 135.5023, arrivalDate: "2027-04-08", departureDate: "2027-04-10", nights: 2 });
-  const from = { kind: "stop" as const, id: "kyoto", name: "Kyoto", country: "Japan", coordinates: [135.7681, 35.0116] as [number, number] };
-  const to = { kind: "stop" as const, id: "osaka", name: "Osaka", country: "Japan", coordinates: [135.5023, 34.6937] as [number, number] };
+  trip.stops.push({ id: "osaka", canonicalPlaceId: "osaka", order: 2, name: "Osaka", country: "Japan", latitude: 34.6937, longitude: 135.5023, arrivalDate: "2027-04-08", departureDate: "2027-04-10", nights: 2 });
+  const from = { kind: "stop" as const, id: "kyoto", canonicalPlaceId: "kyoto", name: "Kyoto", country: "Japan", coordinates: [135.7681, 35.0116] as [number, number] };
+  const to = { kind: "stop" as const, id: "osaka", canonicalPlaceId: "osaka", name: "Osaka", country: "Japan", coordinates: [135.5023, 34.6937] as [number, number] };
   trip.legs.push({
     id: "trip-japan-choice-leg-2", fromStopId: "kyoto", toStopId: "osaka", fromEndpoint: from, toEndpoint: to,
     classification: "intercity", mode: "train", distanceKm: 56, durationMinutes: 45, doorToDoorMinutes: 45, headlineMinutes: 45,

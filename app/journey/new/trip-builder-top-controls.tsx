@@ -42,7 +42,7 @@ export function TripBuilderTopControls({trip,draft,language,disabled=false,onTyp
     options={[{value:'return_to_start',label:es?'Volver al inicio':'Return to start'},{value:'one_way',label:es?'Solo ida':'One way'}]} /></div>
   {route.tripType==='unknown_legacy'?<p className={styles.context}>{es?'El final de este viaje guardado no está confirmado.':'This saved trip’s ending is unconfirmed.'}</p>:route.journeyEnd.mode==='explicit'?<p className={styles.context}>{es?'Final guardado':'Saved finish'}: <strong>{route.journeyEnd.place.name}</strong>{!route.journeyEnd.place.coordinates&&onConfirmSavedFinish?<EasyTButton variant="quiet" size="small" disabled={disabled} onClick={onConfirmSavedFinish}>{es?'Confirmar final guardado':'Confirm saved finish'}</EasyTButton>:null}</p>:null}
   <div className={plannerStyles.fields}><div id="builder-origin" className={styles.origin}><span data-morrovia-field-label className={plannerStyles.label}>{es?"Salida desde":"Start from"}</span><CanonicalPlaceAutocomplete language={language} label={es?'Salida desde':'Start from'} placeholder={es?'Ciudad o lugar de salida':'City or departure place'} value={originField?.raw??route.origin?.name??''}
-    disabled={disabled} requireCoordinates showPlaceType={false}
+    disabled={disabled} requireCoordinates
     onChange={onOriginInput} onSelect={onOriginSelect} onClear={onOriginClear} />
   {originReview}</div><div>
   <MorroviaDestinationField label={es?'Lugares que quieres visitar':'Places you want to visit'}

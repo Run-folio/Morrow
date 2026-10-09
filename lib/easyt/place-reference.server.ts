@@ -9,6 +9,8 @@ import {discoveryPlaceForId} from './discovery-content.ts';
 
 type Tuple = [string,string,string,number,number,string,number|string,string[]|string,boolean,string];
 type Prefix = {offset:number;count:number};
+export type ReferenceSearchMatch={id:string;score:number;population?:number;canonicalExact?:boolean};
+export function compareReferenceSearchMatches(a:ReferenceSearchMatch,b:ReferenceSearchMatch){return b.score-a.score||Number(Boolean(b.canonicalExact))-Number(Boolean(a.canonicalExact))||(b.population??0)-(a.population??0)||Number(a.id)-Number(b.id);}
 const normalized=(name:string)=>name.normalize('NFKD').replace(/[\u0300-\u036f]/g,'').replace(/[’']/g,'').toLowerCase().replace(/[^\p{L}\p{N}]+/gu,' ').trim().replace(/\s+/g,' ');
 let loaded: ReturnType<typeof load> | undefined;
 function load(){
@@ -56,16 +58,16 @@ export function searchReferencePlaces(query:string,context:PlaceResolutionContex
  const limit=Math.min(12,Math.max(1,options.limit??12)),exact=referenceKnownCodeKind(query)==='metro'?[]:(d.codes.get(code)??[]).filter(allowed);
  // A collision is offered as explicit alternatives; never invent a unique code assignment.
  if(exact.length)return exact.map(r=>candidate(r,1200,code)).sort((a,b)=>a.providerId.localeCompare(b.providerId)).slice(0,limit);
- const matches:{id:string;offset?:number;airport?:ReferencePlaceRecord;score:number}[]=[];
+ const matches:(ReferenceSearchMatch&{offset?:number;airport?:ReferencePlaceRecord})[]=[];
  const score=(names:string[])=>names.includes(q)?1000:names.some(n=>n.startsWith(q))?700:names.some(n=>n.split(' ').some(w=>w.startsWith(q)))?500:0;
  const contextual=(country:string)=>country===countryCodeFor(context.countryNames?.[0])?1:0;
- const insert=(item:typeof matches[number])=>{matches.push(item);matches.sort((a,b)=>b.score-a.score||Number(a.id)-Number(b.id));if(matches.length>limit)matches.pop();};
- for(const r of d.airports){if(!allowed(r))continue;const s=score(d.airportNames.get(r.canonicalPlaceId)!);if(s&&(r.scheduledService||s===1000))insert({id:r.sourceId,airport:r,score:s+contextual(r.countryCode)});}
+ const insert=(item:typeof matches[number])=>{matches.push(item);matches.sort(compareReferenceSearchMatches);if(matches.length>limit)matches.pop();};
+ for(const r of d.airports){if(!allowed(r))continue;const names=d.airportNames.get(r.canonicalPlaceId)!;const s=score(names);if(s&&(r.scheduledService||s===1000))insert({id:r.sourceId,airport:r,score:s+contextual(r.countryCode),canonicalExact:names[0]===q});}
  const prefix=d.prefixes[q.slice(0,2)];
  if(prefix)for(let i=0;i<prefix.count;i++){const offset=d.prefixOffsets.readUInt32LE(prefix.offset+i*4),t=settlementTupleAt(offset);
   if(context.explicitCountryNames?.length&&!context.explicitCountryNames.some(c=>countryCodeFor(c)===t[2]))continue;
   const type=t[5]==='PPL'?'town':'city';if(context.explicitPlaceTypes?.length&&!context.explicitPlaceTypes.includes(type))continue;
-  const s=score([t[1],...(t[7] as string[])].map(normalized));if(s)insert({id:t[0],offset,score:s+contextual(t[2])});}
+  const names=[t[1],...(t[7] as string[])].map(normalized);const s=score(names);if(s)insert({id:t[0],offset,score:s+contextual(t[2]),population:t[6] as number,canonicalExact:names[0]===q});}
  return matches.map(m=>candidate(m.airport??settlementAt(m.offset!),m.score));
 }
 export const referenceSnapshotId=()=>data().manifest.snapshotId;

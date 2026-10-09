@@ -810,7 +810,7 @@ export function canonicalPlaceSuggestionsForQuery(
   for (const entry of PLACE_CATALOG) {
       if(referenceSeedRetired(entry.canonicalPlaceId))continue;
       if(referenceKnownCodeKind(query)==='iata'&&['city','town'].includes(entry.placeType))continue;
-      if ((!includeNonRoutable && entry.routability !== "direct_destination") || entry.parentCountries.length !== 1) continue;
+      if (!includeNonRoutable && (entry.routability !== "direct_destination" || entry.parentCountries.length !== 1)) continue;
       const labels = [entry.canonicalName, ...entry.aliases].map((label) => ({ label, normalized: normalizePlacePhrase(label) }));
       const exact = labels.some(({ normalized }) => normalized === normalizedQuery);
       const prefix = labels.some(({ normalized }) => normalized.startsWith(normalizedQuery));
@@ -820,7 +820,7 @@ export function canonicalPlaceSuggestionsForQuery(
       const contextual = entry.parentCountries.some((country) => context.has(normalizePlacePhrase(country)));
       const score = (exact ? 0 : prefix ? 10 : wordPrefix ? 20 : 30) - (contextual ? 3 : 0);
       const source = sourceFromCatalog(entry, labels.find(({ normalized }) => normalized === normalizedQuery)?.label ?? entry.canonicalName);
-      const country = entry.parentCountries[0]!;
+      const country = entry.parentCountries.length === 1 ? entry.parentCountries[0]! : "";
       const region = displayRegion(entry.parentRegionId);
       ranked.push({
         score,
@@ -828,7 +828,7 @@ export function canonicalPlaceSuggestionsForQuery(
           canonicalPlaceId: entry.canonicalPlaceId,
           referenceSnapshotId:entry.referenceProviderId?REFERENCE_SNAPSHOT_ID:undefined,
           name: entry.canonicalName,
-          label: `${entry.canonicalName}${region ? ` · ${region}` : ""}, ${country}`,
+          label: `${entry.canonicalName}${region ? ` · ${region}` : ""}${country ? `, ${country}` : ""}`,
           country,
           region,
           placeType: entry.placeType,

@@ -23,11 +23,13 @@ export function actualCallbackHarness(initialCoordinates?:[number,number], initi
  trip.brief.intent.route.destinations[0]={...trip.brief.intent.route.destinations[0],id:mention.mentionId,sourceText:'Lima',selectedPlace:{name:'Lima',country:'Peru',canonicalPlaceId:initialCanonicalPlaceId},requestedNights:trip.stops[0].nights};
  trip.brief.intent.route.orderAuthority='manual';
  trip.brief.structuredBrief={...captureJourneyBrief('Lima').structuredBrief,placeMentions:[mention]};
- const lookupSession={statuses:new Map([[mention.mentionId,'pending']]),handled:new Set<string>()};let choices:any[]=[];
+ const lookupSession:{statuses:Map<string,string>;handled:Set<string>;replayPending?:()=>void}={statuses:new Map([[mention.mentionId,'pending']]),handled:new Set<string>()};let choices:any[]=[];
  const scope:any={lookupSession,handoffLookupSessionRef:{current:lookupSession},isCurrent:()=>true,
   builderEditSessionRef:{current:{getSnapshot:()=>({trip,inputRevision:revision,browserOwnerId:'owner-a'})}},
   activeBrowserOwnerIdRef:{current:'owner-a'},lookupOwnerId:'owner-a',lookupTripId:trip.id,
   removedPlaceMentionIdsRef:{current:[]},placeSelectionsRef:{current:[]},setHandoffResolutionStatuses:()=>{},
+  intakeSelectionKeys:new Set<string>(),
+  builderSeedPendingRef:{current:false},pendingHandoffOutcomes:[],
   setLocationChoices:(fn:any)=>{choices=fn(choices)},mergeHandoffLocationChoice,handoffOutcomeIsCurrent,retireHandoffResolutionStatus,preferredHandoffLocationChoice,referenceGeographicAcceptanceMatches,acceptedGeographicPlace,authoredContentKey,geographicInputKey,stopGeographicPlace,
   isOriginMention:(m:any)=>m.role==='origin'||m.role==='fixed_start',draft:{},originResolutionVersionRef:{current:0},originVersion:0,
   seedById:new Map(trip.stops.map(s=>[s.id,stopGeographicPlace(s)])),handoffOccurrenceMentionIdsRef:{current:{[id]:mention.mentionId}},handoffStopOccurrenceId,builderPlaceCommand,
@@ -51,6 +53,14 @@ export function actualCallbackHarness(initialCoordinates?:[number,number], initi
   changePlace:(place:Partial<JourneyEndpointPlace>)=>changePlace({...stopGeographicPlace(trip.stops[0]),...place}),
   changeCoordinates:(coordinates:[number,number])=>changePlace({name:'Lima',canonicalPlaceId:'lima',country:'Peru',coordinates}),
   send:(cs:any[])=>callback({item:mention,value:cs,status:'resolved'},0),
+  sendDuringCanonicalMount:(cs:any[])=>{
+   const editor=scope.builderEditSessionRef.current;let temporaryUpdates=0;
+   scope.builderSeedPendingRef.current=true;scope.builderEditSessionRef.current=null;
+   scope.setStops=()=>{temporaryUpdates++};
+   callback({item:mention,value:cs,status:'resolved'},0);
+   scope.builderEditSessionRef.current=editor;return temporaryUpdates;
+  },
+  replayPending:()=>lookupSession.replayPending?.(),
   sendBeforeCanonical:(cs:any[])=>{
    // Replay the same production callback before the canonical owner exists,
    // with the real handoff merge and a fixture implementation of React's setter.

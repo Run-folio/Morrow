@@ -1,11 +1,20 @@
 import assert from "node:assert/strict";
-import { mkdirSync } from "node:fs";
+import { mkdirSync, writeFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { existsSync } from "node:fs";
 import { homedir } from "node:os";
 import test from "node:test";
 import type { BrowserContext, Page } from "playwright";
 import { createPrivacyConsentRecord, PRIVACY_CONSENT_STORAGE_KEY } from "../lib/privacy-consent.ts";
+import { geographicallyReady, stopGeographicPlace } from "../lib/easyt/geographic-binding.ts";
+import { REFERENCE_SNAPSHOT_ID } from "../lib/easyt/place-reference.ts";
+import type { EasyTTrip, JourneyEndpointPlace } from "../lib/easyt/trip.ts";
+import { canonicalRouteFixture } from "./fixtures/batch14-route-documents.ts";
+import { requireReadableTripDocument, prepareTripDocumentForWrite } from "../lib/easyt/trip-document.ts";
+import { acceptedGeographicPlace } from "../lib/easyt/geographic-binding.ts";
+import { prepareBuilderHandlerEdit } from "../lib/easyt/trip-builder-handler-contract.ts";
+import { builderDocumentFingerprint } from "../lib/easyt/trip-builder-document-commit.ts";
+import {findCatalogPlaceById} from '../lib/easyt/place-catalog.ts';
 
 const require = createRequire(import.meta.url);
 const bundled = `${homedir()}/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright`;
@@ -30,6 +39,53 @@ const places = {
   Agra: { canonicalPlaceId: "agra", name: "Agra", country: "India", countryCode: "IN", coordinates: [78.0081, 27.1767] },
 } as const;
 
+// Coordinate-required origin selection uses these maintained city identities.
+// Legacy destination identities in this journey remain separately authoritative.
+const origins = {
+  Paris: { name: "Paris", country: "France", countryCode: "FR", canonicalPlaceId: "reference:geonames:2988507", coordinates: [2.3488, 48.85341] },
+  London: { name: "London", country: "United Kingdom", countryCode: "GB", canonicalPlaceId: "reference:geonames:2643743", coordinates: [-0.12574, 51.50853] },
+} as const;
+
+function assertOrigin(place: JourneyEndpointPlace | null | undefined, expected: typeof origins[keyof typeof origins]) {
+  assert.ok(place);
+  assert.deepEqual({ name: place.name, country: place.country, canonicalPlaceId: place.canonicalPlaceId, coordinates: place.coordinates },
+    { name: expected.name, country: expected.country, canonicalPlaceId: expected.canonicalPlaceId, coordinates: [...expected.coordinates] });
+  const sourceId = expected.canonicalPlaceId.split(":")[2];
+  assert.equal(place.providerId, `reference:geonames:${sourceId}@${REFERENCE_SNAPSHOT_ID}:${expected.countryCode}:city:${expected.coordinates.join(":")}`);
+  assert.equal(place.geographicBinding?.canonicalPlaceId, expected.canonicalPlaceId);
+  assert.equal(place.geographicBinding?.country, expected.country);
+  assert.equal(geographicallyReady(place, "endpoint"), true, "selected origin owns valid current geography");
+}
+
+function assertDestinationGeography(trip: EasyTTrip) {
+  assert.deepEqual(trip.stops.map(stop => ({ id: stop.canonicalPlaceId, country: stop.country, coordinates: [stop.longitude, stop.latitude] })),
+    [places.Madrid, places.Lisbon, places.Porto].map(place => ({ id: place.canonicalPlaceId, country: place.country, coordinates: [...place.coordinates] })));
+  for (const stop of trip.stops) assert.equal(geographicallyReady(stopGeographicPlace(stop)), true);
+  assert.deepEqual(trip.brief.intent?.route?.destinations.map(intent => [intent.selectedPlace?.canonicalPlaceId, intent.selectedPlace?.country, intent.kind]),
+    [["madrid", "Spain", "overnight_place"], ["lisbon", "Portugal", "overnight_place"], ["porto", "Portugal", "overnight_place"]]);
+  assert.equal(trip.brief.intent?.route?.tripType, "return_to_start");
+  assert.equal(trip.brief.intent?.route?.journeyEnd.mode, "same_as_start");
+}
+
+test("legacy saved Paris origin retains its own identity, point, route order and nights", () => {
+  const original = requireReadableTripDocument(canonicalRouteFixture());
+  const candidate = { ...places.Paris, coordinates: [...places.Paris.coordinates] as [number, number],
+    providerId: "core-fixture:paris", placeType: "city", routability: "direct_destination" };
+  const place = acceptedGeographicPlace({ name: candidate.name, canonicalPlaceId: candidate.canonicalPlaceId,
+    country: candidate.country, providerId: candidate.providerId, coordinates: candidate.coordinates }, candidate, "endpoint");
+  assert.ok(place);
+  const edit = prepareBuilderHandlerEdit(original, { kind: "origin", place }, builderDocumentFingerprint(original));
+  assert.ok(edit.ok);
+  if (!edit.ok) return;
+  const saved = prepareTripDocumentForWrite(edit.trip);
+  const reloaded = requireReadableTripDocument(JSON.parse(JSON.stringify(saved)));
+  assert.deepEqual(reloaded.brief.intent.route.origin, place);
+  assert.equal(reloaded.brief.intent.route.origin?.canonicalPlaceId, "paris", "historical identities are not replaced by current reference aliases");
+  assert.equal(geographicallyReady(reloaded.brief.intent.route.origin, "endpoint"), true);
+  assert.deepEqual(reloaded.stops.map(stop => [stop.id, stop.canonicalPlaceId, stop.nights]), original.stops.map(stop => [stop.id, stop.canonicalPlaceId, stop.nights]));
+  assert.deepEqual(reloaded.brief.intent.route.orderedStopIds, original.brief.intent.route.orderedStopIds);
+});
+
 async function installDeterministicBoundaries(context: BrowserContext) {
   await context.addInitScript(({ key, value }: { key: string; value: string }) => {
     if (!localStorage.getItem(key)) localStorage.setItem(key, value);
@@ -40,8 +96,9 @@ async function installDeterministicBoundaries(context: BrowserContext) {
     const candidate = match ? { ...match, providerId: `core-fixture:${match.canonicalPlaceId}`, providerSourceLabel: "Core journey fixture", kind: "city", placeType: "city", routability: "direct_destination", matchQuality: "exact", rankScore: 200 } : null;
     await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ candidates: candidate ? [candidate] : [] }) });
   });
+  // No external media/providers are needed for this local deterministic journey.
   // The bundled fallback style still mounts the real MapLibre canvas and markers.
-  await context.route("https://tiles.openfreemap.org/**", (route) => route.abort());
+  await context.route("https://**/*", (route) => route.abort());
 }
 
 async function withEvidence(name: string, run: (page: Page, context: BrowserContext) => Promise<void>) {
@@ -55,6 +112,12 @@ async function withEvidence(name: string, run: (page: Page, context: BrowserCont
     await context.tracing.stop();
   } catch (error) {
     mkdirSync(artifacts, { recursive: true });
+    // Fresh local guest context only: retain canonical/recovery evidence, not
+    // cookies or arbitrary browser storage, when an end-to-end assertion fails.
+    const guestEvidence = await page.evaluate(() => Object.fromEntries(Object.keys(localStorage)
+      .filter(key => key.startsWith("easyt:trip-recovery:v2:guest:") || key === "easyt-private:guest:homepage-input")
+      .map(key => [key, JSON.parse(localStorage.getItem(key) ?? "null")]))).catch(() => null);
+    if (guestEvidence) writeFileSync(`${artifacts}/${name}-guest-recovery.json`, JSON.stringify(guestEvidence, null, 2));
     await page.screenshot({ path: `${artifacts}/${name}.png`, fullPage: true }).catch(() => {});
     await context.tracing.stop({ path: `${artifacts}/${name}.zip` }).catch(() => {});
     throw error;
@@ -70,8 +133,97 @@ async function recoveryTrip(page: Page, tripId: string) {
     return records.map((key) => {
       try { return JSON.parse(localStorage.getItem(key) ?? "null")?.trip; } catch { return null; }
     }).find((trip) => trip?.id === id) ?? null;
-  }, tripId) as Promise<{ id: string; stops: Array<{ id: string; name: string; canonicalPlaceId?: string; nights?: number }>; planItems: Array<{ dayNumber: number; stopId: string; notes: string[] }>; brief: { dayNotes?: Record<number, string[]>; intent?: { route?: { origin?: { canonicalPlaceId?: string } } } } } | null>;
+  }, tripId) as Promise<EasyTTrip | null>;
 }
+
+test('unconfirmed destination focuses its editor and preserves a confirmed airport origin', {skip:!enabled,timeout:60_000},async()=>withEvidence('destination-error-focus',async(page,context)=>{
+ await context.unroute('**/api/journey-geocode?*');
+ await page.goto(base,{waitUntil:'domcontentloaded'});
+ await page.getByRole('combobox',{name:'Start from',exact:true}).fill('LAX');
+ await page.getByRole('option',{name:/Los Angeles International Airport.*United States/}).click();
+ await page.getByRole('combobox',{name:'Destination',exact:true}).fill('Asia');
+ await page.getByRole('button',{name:'Plan my trip'}).first().click();
+ await page.getByText('Select each destination from the results.',{exact:true}).waitFor();
+ await page.waitForFunction(()=>document.activeElement?.getAttribute('aria-label')==='Destination');
+ const stored=await page.evaluate(()=>JSON.parse(localStorage.getItem('easyt-private:guest:homepage-input')??'null'));
+ assert.equal(stored.snapshot.origin.value.canonicalPlaceId,'reference:ourairports:3632');
+ assert.equal(geographicallyReady(stored.snapshot.origin.value,'endpoint'),true);
+ assert.equal(stored.snapshot.entries[0].text,'Asia');assert.equal(stored.snapshot.entries[0].selection,null);
+ assert.equal(new URL(page.url()).pathname,'/');
+}));
+
+test('maintained airport origin survives actual submit, manual Builder change, Build and reload', {skip:!enabled,timeout:120_000},async()=>withEvidence('airport-origin-build-reload',async(page,context)=>{
+ await context.unroute('**/api/journey-geocode?*');
+ await page.goto(base,{waitUntil:'domcontentloaded'});
+ await page.getByRole('combobox',{name:'Start from',exact:true}).fill('LAX');
+ await page.getByRole('option',{name:/Los Angeles International Airport.*United States/}).click();
+ await page.getByRole('combobox',{name:'Destination',exact:true}).fill('Madrid');
+ await page.getByRole('option',{name:/Madrid.*Spain/}).first().click();
+ await page.getByRole('button',{name:'Plan my trip'}).first().click();await page.waitForURL(/journey\/new\?/);
+ await page.locator('[data-builder-route-workspace]').waitFor();
+ const draftId=new URL(page.url()).searchParams.get('trip')!;
+ await page.waitForFunction(id=>Object.keys(localStorage).filter(k=>k.startsWith(`easyt:trip-recovery:v2:guest:${encodeURIComponent(id)}:`)).some(k=>JSON.parse(localStorage.getItem(k)??'null')?.trip?.brief?.intent?.route?.origin?.canonicalPlaceId==='reference:ourairports:3632'),draftId);
+ assert.equal(geographicallyReady((await recoveryTrip(page,draftId))?.brief.intent?.route?.origin,'endpoint'),true);
+ await page.getByRole('combobox',{name:'Start from',exact:true}).fill('GUA');
+ await page.getByRole('option',{name:/La Aurora International Airport.*Guatemala/}).click();
+ await page.waitForFunction(id=>Object.keys(localStorage).filter(k=>k.startsWith(`easyt:trip-recovery:v2:guest:${encodeURIComponent(id)}:`)).some(k=>JSON.parse(localStorage.getItem(k)??'null')?.trip?.brief?.intent?.route?.origin?.canonicalPlaceId==='reference:ourairports:4644'),draftId);
+ const changed=(await recoveryTrip(page,draftId))!.brief.intent!.route!.origin!;
+ assert.equal(changed.country,'Guatemala');assert.deepEqual(changed.coordinates,[-90.527515,14.582896]);assert.equal(changed.geographicBinding?.placeType,'transport_gateway');assert.equal(geographicallyReady(changed,'endpoint'),true);
+ await page.getByRole('button',{name:/Build trip/}).click();await page.waitForURL(/journey\/trip-[^/]+\?created=1/,{timeout:25_000});
+ const tripId=new URL(page.url()).pathname.split('/')[2]!;await page.getByRole('region',{name:'Trip overview'}).waitFor();
+ assert.deepEqual((await recoveryTrip(page,tripId))!.brief.intent!.route!.origin,changed);
+ await page.reload({waitUntil:'domcontentloaded'});await page.getByRole('region',{name:'Trip overview'}).waitFor();
+ assert.deepEqual((await recoveryTrip(page,tripId))!.brief.intent!.route!.origin,changed);
+}));
+
+test('distinct same-country origin choices show geography and preserve mouse and keyboard selections', {skip:!enabled,timeout:90_000},async()=>withEvidence('same-country-choices',async(page,context)=>{
+ await context.unroute('**/api/journey-geocode?*');await page.goto(base,{waitUntil:'domcontentloaded'});
+ const input=page.getByRole('combobox',{name:'Start from',exact:true});
+ const response=page.waitForResponse(r=>r.url().includes('/api/journey-geocode?')&&new URL(r.url()).searchParams.get('place')==='Xi’an');
+ await input.fill('Xi’an');const payload=await (await response).json();
+ const expected=payload.candidates.filter((p:any)=>p.name==='Xi’an');assert.equal(expected.length,5);
+ const options=page.getByRole('option',{name:/^Xi’an.*China/});await options.first().waitFor();assert.equal(await options.count(),5);
+ const labels=await options.allTextContents();assert.equal(new Set(labels).size,5);assert.ok(labels.every(label=>label.includes('°')&&label.includes('City')));
+ await options.first().click();
+ const selected=async()=>page.evaluate(()=>JSON.parse(localStorage.getItem('easyt-private:guest:homepage-input')??'null')?.snapshot.origin.value);
+ const first=await selected();assert.equal(first.canonicalPlaceId,expected[0].canonicalPlaceId);assert.deepEqual(first.coordinates,expected[0].coordinates);assert.equal(geographicallyReady(first,'endpoint'),true);
+ await input.fill('Xi’an');await options.first().waitFor();await input.press('ArrowDown');await input.press('ArrowDown');await input.press('ArrowDown');await input.press('Enter');
+ const keyboard=await selected();assert.equal(keyboard.canonicalPlaceId,expected[2].canonicalPlaceId);assert.deepEqual(keyboard.coordinates,expected[2].coordinates);assert.equal(geographicallyReady(keyboard,'endpoint'),true);
+}));
+
+test('unseen multi-country destination choices survive actual Plan submission as unresolved areas', {skip:!enabled,timeout:90_000},async()=>withEvidence('multi-country-intake',async(page,context)=>{
+ await context.unroute('**/api/journey-geocode?*');await page.goto(base,{waitUntil:'domcontentloaded'});
+ await page.getByRole('combobox',{name:'Start from',exact:true}).fill('LHR');await page.getByRole('option',{name:/London Heathrow Airport.*United Kingdom/}).click();
+ for(const [index,name] of ['Southeast Asia','Patagonia','Alps','Madrid'].entries()){
+  if(index)await page.getByRole('button',{name:'Add destination',exact:true}).click();
+  await page.getByRole('combobox',{name:'Destination',exact:true}).fill(name);
+  await page.getByRole('option',{name:new RegExp(`^${name}`)}).first().click();
+ }
+ await page.getByRole('button',{name:'Plan my trip'}).first().click();await page.waitForURL(/journey\/new\?/);
+ const id=new URL(page.url()).searchParams.get('trip')!;
+ await page.waitForFunction(id=>Object.keys(localStorage).filter(k=>k.startsWith(`easyt:trip-recovery:v2:guest:${encodeURIComponent(id)}:`)).some(k=>JSON.parse(localStorage.getItem(k)??'null')?.trip?.brief?.intent?.route?.destinations?.length===4),id);
+ const trip=(await recoveryTrip(page,id))!;
+ const expected=['southeast-asia','patagonia','alps'];
+ assert.deepEqual(trip.brief.intent!.route!.destinations.slice(0,3).map(p=>[p.selectedPlace?.canonicalPlaceId,p.kind,p.stopIds]),expected.map(p=>[p,'planning_area',[]]));
+ assert.deepEqual(trip.stops.map(p=>p.name),['Madrid'],'no physical centroid or substitute base is introduced');
+ for(const area of expected){const mention=trip.brief.structuredBrief!.placeMentions!.find(m=>m.canonicalPlaceId===area)!;assert.deepEqual(mention.parentCountries,findCatalogPlaceById(area)!.parentCountries);assert.equal(mention.directlyRoutable,false);}
+}));
+
+test('selected nonseed origin survives Describe submit, Build and reload', {skip:!enabled,timeout:120_000},async()=>withEvidence('describe-origin-intake',async(page,context)=>{
+ await context.unroute('**/api/journey-geocode?*');await page.goto(base,{waitUntil:'domcontentloaded'});
+ await page.getByRole('combobox',{name:'Start from',exact:true}).fill('Gubbio');await page.getByRole('option',{name:/Gubbio.*Italy/}).first().click();
+ const selected=await page.evaluate(()=>JSON.parse(localStorage.getItem('easyt-private:guest:homepage-input')??'null').snapshot.origin.value);
+ assert.equal(selected.canonicalPlaceId,'reference:geonames:3175687');assert.equal(geographicallyReady(selected,'endpoint'),true);
+ await page.getByRole('tab',{name:'Describe my trip',exact:true}).click();await page.getByRole('textbox',{name:'Start your plan'}).fill('Visit Madrid and Lisbon for 10 days');
+ await page.getByRole('button',{name:'Plan my trip'}).first().click();await page.waitForURL(/journey\/new\?/);
+ const id=new URL(page.url()).searchParams.get('trip')!;
+ await page.locator('[data-builder-route-workspace]').waitFor({timeout:30_000});
+ await page.waitForFunction(id=>Object.keys(localStorage).filter(k=>k.startsWith(`easyt:trip-recovery:v2:guest:${encodeURIComponent(id)}:`)).some(k=>JSON.parse(localStorage.getItem(k)??'null')?.trip?.brief?.intent?.route?.origin?.canonicalPlaceId==='reference:geonames:3175687'),id);
+ assert.deepEqual((await recoveryTrip(page,id))!.brief.intent!.route!.origin,selected);
+ await page.getByRole('button',{name:/Build trip/}).click();await page.waitForURL(/journey\/trip-[^/]+\?created=1/,{timeout:30_000});
+ const builtId=new URL(page.url()).pathname.split('/')[2]!;await page.getByRole('region',{name:'Trip overview'}).waitFor();
+ await page.reload({waitUntil:'domcontentloaded'});await page.getByRole('region',{name:'Trip overview'}).waitFor();assert.deepEqual((await recoveryTrip(page,builtId))!.brief.intent!.route!.origin,selected);
+}));
 
 test("Tier 1 guest journey keeps three canonical stops and edits through Build and recovery", { skip: !enabled, timeout: 180_000 }, async () => withEvidence("guest-core-journey", async (page) => {
   const pageErrors: string[] = [];
@@ -93,6 +245,7 @@ test("Tier 1 guest journey keeps three canonical stops and edits through Build a
   const homepage = await page.evaluate(() => JSON.parse(localStorage.getItem("easyt-private:guest:homepage-input") ?? "null"));
   assert.deepEqual(homepage.snapshot.entries.map((entry: { selection: { canonicalPlaceId: string } }) => entry.selection.canonicalPlaceId), ["madrid", "lisbon", "porto"]);
   assert.equal(homepage.receipt.version, 1);
+  assertOrigin(homepage.snapshot.origin.value, origins.Paris);
   const builder = page.locator("[data-builder-route-workspace]");
   await builder.waitFor({ state: "visible", timeout: 20_000 });
   const rows = builder.locator("[data-builder-stop-index]");
@@ -105,17 +258,18 @@ test("Tier 1 guest journey keeps three canonical stops and edits through Build a
   await page.waitForFunction((id) => Object.keys(localStorage)
     .filter((key) => key.startsWith(`easyt:trip-recovery:v2:guest:${encodeURIComponent(id)}:`))
     .some((key) => {
-      try { return JSON.parse(localStorage.getItem(key) ?? "null")?.trip?.brief?.intent?.route?.origin?.canonicalPlaceId === "paris"; }
+      try { return JSON.parse(localStorage.getItem(key) ?? "null")?.trip?.brief?.intent?.route?.origin?.canonicalPlaceId === "reference:geonames:2988507"; }
       catch { return false; }
     }), draftTripId);
   const initialDraft = await recoveryTrip(page, draftTripId);
-  assert.equal(initialDraft?.brief.intent?.route?.origin?.canonicalPlaceId, "paris");
+  assertOrigin(initialDraft?.brief.intent?.route?.origin, origins.Paris);
+  assert.equal(initialDraft?.brief.intent?.route?.tripType, "return_to_start");
   await page.getByRole("combobox", { name: "Start from" }).fill("London");
   await page.getByRole("option", { name: /London.*United Kingdom/ }).first().click();
   await page.waitForFunction((id) => Object.keys(localStorage)
     .filter((key) => key.startsWith(`easyt:trip-recovery:v2:guest:${encodeURIComponent(id)}:`))
     .some((key) => {
-      try { return JSON.parse(localStorage.getItem(key) ?? "null")?.trip?.brief?.intent?.route?.origin?.canonicalPlaceId === "london"; }
+      try { return JSON.parse(localStorage.getItem(key) ?? "null")?.trip?.brief?.intent?.route?.origin?.canonicalPlaceId === "reference:geonames:2643743"; }
       catch { return false; }
     }), draftTripId);
   await page.getByRole("button", { name: /Build trip/ }).click();
@@ -124,7 +278,8 @@ test("Tier 1 guest journey keeps three canonical stops and edits through Build a
   await page.getByRole("region", { name: "Trip overview" }).waitFor({ state: "visible", timeout: 20_000 });
   const built = await recoveryTrip(page, tripId);
   assert.ok(built, "Build leaves a recoverable guest trip on this device");
-  assert.equal(built.brief.intent?.route?.origin?.canonicalPlaceId, "london", "Build preserves the accepted Builder origin edit");
+  assertOrigin(built.brief.intent?.route?.origin, origins.London);
+  assertDestinationGeography(built);
   assert.deepEqual(built.stops.map((stop) => stop.canonicalPlaceId), ["madrid", "lisbon", "porto"]);
   assert.deepEqual(built.stops.map((stop) => stop.nights), nights);
   assert.equal(built.stops.some((stop) => stop.name === "London"), false);
@@ -146,7 +301,8 @@ test("Tier 1 guest journey keeps three canonical stops and edits through Build a
   await page.locator("section[aria-label='Day 1 planner']").waitFor();
   const recovered = await recoveryTrip(page, tripId);
   assert.ok(recovered);
-  assert.equal(recovered.brief.intent?.route?.origin?.canonicalPlaceId, "london", "Hard reload recovers the edited origin");
+  assertOrigin(recovered.brief.intent?.route?.origin, origins.London);
+  assertDestinationGeography(recovered);
   const firstDay = recovered.planItems.find((day) => day.dayNumber === 1);
   assert.ok(firstDay);
   assert.equal(firstDay.notes.filter((note) => note === "Morning walk fixture").length, 1);

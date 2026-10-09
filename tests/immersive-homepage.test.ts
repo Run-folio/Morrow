@@ -17,7 +17,7 @@ test("canonical homepage renders the immersive composition without runtime selec
   const layout = readFileSync(new URL("../app/journey/layout.tsx", import.meta.url), "utf8");
   assert.match(root, /<MorroviaHomepage \/>/);
   assert.match(page, /<ImmersiveHome routes=\{journeys\}/);
-  assert.match(page, /initialIndex=\{initialImmersiveRouteIndex\(journeys\)\}/);
+  assert.match(page, /initialIndex=\{initialImmersiveRouteIndex\(journeys, Math.random, eligibleCards\)\}/);
   assert.match(legacy, /permanentRedirect\("\/"\)/);
   assert.doesNotMatch(page, /process\.env|immersiveHomepageEnabled|HomeBenefits|InspirationExplorer/);
   assert.doesNotMatch(loading, /process\.env|immersiveHomepageEnabled/);
@@ -28,7 +28,7 @@ test("canonical homepage renders the immersive composition without runtime selec
 test("server-selected route index hydrates without client rerandomisation", () => {
   const page = readFileSync(new URL("../components/easyt/morrovia-homepage.tsx", import.meta.url), "utf8");
   const client = readFileSync(new URL("../app/journey/home/immersive/immersive-home.tsx", import.meta.url), "utf8");
-  assert.match(page, /initialIndex=\{initialImmersiveRouteIndex\(journeys\)\}/);
+  assert.match(page, /initialIndex=\{initialImmersiveRouteIndex\(journeys, Math.random, eligibleCards\)\}/);
   assert.match(client, /useState\(initialIndex\)/);
   assert.doesNotMatch(client, /Math\.random/);
 });

@@ -81,7 +81,7 @@ export function HomeDestinationEditor({ entries, language, disabled = false, foc
         if(event.key==="Enter")event.preventDefault();
         if(event.key==="Escape"){event.preventDefault();focusTarget.current=entry.id;setEditingId(null)}
       }}><CanonicalPlaceAutocomplete language={language} label={es ? "Destino" : "Destination"} value={entry.text}
-        placeholder={es ? "Ciudad, país o región" : "City, country or region"} disabled={disabled}
+        placeholder={es ? "Ciudad, país o región" : "City, country or region"} disabled={disabled} includeNonRoutable
         onChange={value=>replace(entry.id,current=>({...current,text:value,selection:null}))}
         onClear={()=>replace(entry.id,current=>({...current,text:"",selection:null}))}
         onSelect={suggestion=>select(entry.id,suggestion)} /></div> : undefined} />)}
