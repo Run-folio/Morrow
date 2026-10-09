@@ -7620,6 +7620,16 @@
         ]
       },
       {
+        "value": "max-width: 900px",
+        "count": 14,
+        "examples": [
+          "app/journey/account.module.css",
+          "app/journey/home/home.module.css",
+          "app/journey/home/immersive/product-demo.module.css",
+          "app/journey/new/trip-builder.module.css"
+        ]
+      },
+      {
         "value": "max-width: 680px",
         "count": 13,
         "examples": [
@@ -7627,16 +7637,6 @@
           "app/journey/journey.module.css",
           "app/journey/plan-map-docks.module.css",
           "app/journey/plan-mobile-layout.module.css"
-        ]
-      },
-      {
-        "value": "max-width: 900px",
-        "count": 13,
-        "examples": [
-          "app/journey/account.module.css",
-          "app/journey/home/home.module.css",
-          "app/journey/home/immersive/product-demo.module.css",
-          "app/journey/new/trip-builder.module.css"
         ]
       },
       {

@@ -1,5 +1,6 @@
 "use client";
 
+import Link from 'next/link';
 import { Map as MapIcon } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { EasyTLinkButton } from './easyt-controls';
@@ -8,7 +9,8 @@ import styles from './morrovia-map-preview.module.css';
 
 /** Shared preview chrome. Each workspace supplies its existing map projection
  * and context-preserving full-map destination. */
-export function MorroviaMapPreview({ title, href, children, size = 'standard', className = '', language = 'en' }: {
+export function MorroviaMapPreview({ title, href, children, size = 'standard', className = '', language = 'en', wholePreviewLink = false }: {
+  wholePreviewLink?: boolean;
   title: string;
   href: string;
   children?: ReactNode;
@@ -20,6 +22,7 @@ export function MorroviaMapPreview({ title, href, children, size = 'standard', c
     <h3>{title}</h3>
     <div className={styles.frame}>
       {children ?? <div className={styles.empty}><MorroviaSectionStatus compact state="success" title={language === 'es' ? 'Aún no hay lugares en el mapa' : 'No mapped places yet'} detail={language === 'es' ? 'Añade un lugar para verlo aquí.' : 'Add a place to see it here.'} /></div>}
+      {wholePreviewLink ? <Link href={href} className={styles.frameLink} aria-label={`${language === 'es' ? 'Abrir' : 'Open'} ${title}`} /> : null}
     </div>
     <EasyTLinkButton href={href} icon={MapIcon} variant="quiet" size="small" fullWidth>{language === 'es' ? 'Ver mapa' : 'View map'}</EasyTLinkButton>
   </section>;

@@ -506,3 +506,6 @@
     font-size: 13px;
   }
 }
+
+.deviceSaveToast{position:fixed;z-index:var(--morrovia-layer-dock);right:24px;bottom:calc(24px + var(--morrovia-mobile-dock-offset, 0px));max-width:calc(100vw - 24px)}
+@media(max-width:900px){.deviceSaveToast{right:12px;bottom:calc(106px + env(safe-area-inset-bottom))}}

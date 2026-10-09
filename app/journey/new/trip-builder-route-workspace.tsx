@@ -240,7 +240,7 @@ export function TripBuilderRouteWorkspace({
             draftPinCoordinates={null}
             pinPlacementMode={false}
             overviewMode
-            surface={{ variant: "embedded", interaction: "selection-only" }}
+            surface={{ variant: "embedded", interaction: "pan-zoom" }}
             cameraSafeEdge={54}
             onMapPinDrop={() => undefined}
             onPlannerPinSelect={() => undefined}

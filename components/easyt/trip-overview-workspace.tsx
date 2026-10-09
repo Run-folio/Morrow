@@ -385,7 +385,7 @@ export default function TripOverviewWorkspace({
               <EasyTLinkButton href={itineraryWorkspaceHref(trip.id)} size="small" variant="quiet">View detailed itinerary<ChevronRight aria-hidden="true" /></EasyTLinkButton>
             </aside> : null}
             </div>
-            {overviewMapStops.filter((stop) => stop.coordinates).length > 1 ? <MorroviaMapPreview className={styles.routeMapPreview} title="Journey map" size="large" href={mapWorkspaceHref(trip.id, null, "plan", null, null, null, tripWorkspaceHref(trip.id))}>
+            {overviewMapStops.filter((stop) => stop.coordinates).length > 1 ? <MorroviaMapPreview className={styles.routeMapPreview} title="Journey map" size="large" wholePreviewLink href={mapWorkspaceHref(trip.id, null, "plan", null, null, null, tripWorkspaceHref(trip.id))}>
               <DeferredJourneyPlannerMap stops={overviewMapStops} legs={overviewMapLegs} selectedId="" plannerPins={[]} focusCoordinates={null} draftPinCoordinates={null} pinPlacementMode={false} overviewMode surface={{ variant: "preview" }} cameraSafeEdge={34} onMapPinDrop={() => undefined} onPlannerPinSelect={() => undefined} onSelect={() => undefined} />
             </MorroviaMapPreview> : null}
           </div>

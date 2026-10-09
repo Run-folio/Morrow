@@ -114,11 +114,11 @@ for(const width of [320,360,390,430])test(`homepage fresh Return and persisted O
 for(const width of [320,360,390,430,1440])test(`itinerary viewport default preserves explicit view and day links ${width}px`,{skip:!enabled,timeout:60000},()=>evidence(`view-${width}`,width,async page=>{
  const trip=await seedTrip(page),url=`${base}/journey/${trip.id}/itinerary?recovery=1`;
  await page.goto(url,{waitUntil:'domcontentloaded'});await page.getByRole('region',{name:'Trip itinerary',exact:true}).waitFor();
- const expected=width<=700?'Day by day':'Calendar';await page.waitForFunction(name=>[...document.querySelectorAll('button')].some(b=>b.textContent===name&&b.getAttribute('aria-pressed')==='true'),expected,{timeout:5000});
+ const expected='Day by day';await page.waitForFunction(name=>[...document.querySelectorAll('button')].some(b=>b.textContent===name&&b.getAttribute('aria-pressed')==='true'),expected,{timeout:5000});
  await screenshot(page,`itinerary-default-${width}`);
  await page.setViewportSize({width:width<=700?1440:390,height:900});assert.equal(await page.getByRole('button',{name:expected,exact:true}).getAttribute('aria-pressed'),'true','resize keeps current view');
  await page.setViewportSize({width,height:900});
- await page.getByRole('button',{name:expected==='Calendar'?'Day by day':'Calendar',exact:true}).click();const chosen=expected==='Calendar'?'Day by day':'Calendar';
+ await page.getByRole('button',{name:'Calendar',exact:true}).click();const chosen='Calendar';
  await page.reload({waitUntil:'domcontentloaded'});await page.waitForFunction(name=>[...document.querySelectorAll('button')].some(b=>b.textContent===name&&b.getAttribute('aria-pressed')==='true'),chosen);
  await screenshot(page,`itinerary-explicit-${width}`);
  await page.goto(url+'&day=2',{waitUntil:'domcontentloaded'});await page.locator('section[aria-label="Day 2 planner"]').waitFor();assert.equal(await page.getByRole('button',{name:'Day by day',exact:true}).getAttribute('aria-pressed'),'true');

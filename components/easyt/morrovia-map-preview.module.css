@@ -12,3 +12,9 @@
 .frame :global(.planner-map__pin span){transform:rotate(45deg)}
 .frame :global(.planner-map__pin.is-active),.frame :global(.planner-map__pin:focus-visible){outline:3px solid var(--morrovia-focus-ring);outline-offset:2px}
 @media(max-width:720px){.frame,.large .frame{height:220px}}
+
+.frameLink{position:absolute;inset:0;z-index:3;cursor:pointer;border-radius:var(--morrovia-control-radius)}
+.frameLink:focus-visible{outline:3px solid var(--morrovia-focus-ring);outline-offset:-3px}
+
+/* Native credits remain operable above the full-frame navigation link. */
+.frame:has(.frameLink) :global(.maplibregl-ctrl-bottom-right){z-index:4}

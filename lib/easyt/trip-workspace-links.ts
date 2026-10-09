@@ -289,8 +289,8 @@ export function parseItineraryWorkspaceTarget(trip: Pick<WorkspaceTrip, "planIte
   return { dayNumber };
 }
 
-/** First visits use the viewport default; explicit views and valid day links win. */
-export function initialItineraryWorkspaceView(trip: Pick<WorkspaceTrip, "planItems">, query: QueryReader, defaultView: "days" | "calendar" = "calendar"): "days" | "calendar" {
+/** First visits use Days by default; explicit views and valid day links win. */
+export function initialItineraryWorkspaceView(trip: Pick<WorkspaceTrip, "planItems">, query: QueryReader, defaultView: "days" | "calendar" = "days"): "days" | "calendar" {
   const view = query.get("itineraryView");
   if (view === "days" || view === "calendar") return view;
   const rawDay = query.get("day") ?? query.get("itineraryDay") ?? "";

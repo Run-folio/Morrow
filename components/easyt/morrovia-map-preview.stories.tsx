@@ -16,7 +16,7 @@ function PreviewStory({context,deferred=false}: {context:'journey'|'stay'|'day'|
   const dayContext=itineraryDayMapContext(trip,trip.planItems[1],null);
   const returnTo=context==='stay'?stayWorkspaceHref(trip.id,'cusco'):context==='day'?itineraryWorkspaceHref(trip.id,2):tripWorkspaceHref(trip.id);
   const MapContent=deferred?DeferredJourneyPlannerMap:JourneyPlannerMap;
-  return <MorroviaMapPreview title={context==='stay'?'Stay map':context==='day'?'Day map':'Journey map'} size={context==='journey'?'large':'standard'} href={mapWorkspaceHref(trip.id,context==='journey'?null:'cusco',context==='stay'?'stay':'plan',context==='day'?2:null,null,null,returnTo)}>
+  return <MorroviaMapPreview wholePreviewLink={context==='journey'} title={context==='stay'?'Stay map':context==='day'?'Day map':'Journey map'} size={context==='journey'?'large':'standard'} href={mapWorkspaceHref(trip.id,context==='journey'?null:'cusco',context==='stay'?'stay':'plan',context==='day'?2:null,null,null,returnTo)}>
    {context==='empty'?undefined:<MapContent stops={context==='journey'?stops:dayContext.stops} legs={context==='journey'?mapRouteLegsFromTrip(trip):dayContext.legs} selectedId={selected} plannerPins={dayContext.pins} focusCoordinates={context==='journey'?null:dayContext.focusCoordinates} draftPinCoordinates={null} pinPlacementMode={false} overviewMode={context==='journey'} surface={context==='journey'?{variant:'preview'}:{variant:'embedded',interaction:'selection-only'}} onMapPinDrop={()=>{}} onPlannerPinSelect={()=>{}} onSelect={setSelected} />}
   </MorroviaMapPreview>;
 }

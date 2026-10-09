@@ -19,10 +19,12 @@ import { trackEvent } from "@/lib/analytics";
 import { tripSyncRecoveryPath } from "@/lib/easyt/trip-continuity";
 import { tripSaveSignInHref } from "@/lib/easyt/trip-workspace-links";
 import { EasyTButton, EasyTLinkButton } from "./easyt-controls";
-import { MorroviaStatusBanner } from "./morrovia-feedback";
+import { MorroviaBriefNotice, MorroviaStatusBanner } from "./morrovia-feedback";
 import { MorroviaSectionStatus } from "./morrovia-loading-states";
 import TripShell from "./trip-shell";
 import styles from "./trip-shell.module.css";
+
+const deviceNoticesShown = new Set<string>();
 
 type Resolution =
   | { status: "loading"; identity: string }
@@ -47,6 +49,7 @@ export default function TripShellResolver({
   currentResolutionIdentityRef.current = resolutionIdentity;
   const requestGenerationRef = useRef(0);
   const [resolution, setResolution] = useState<Resolution>({ status: "loading", identity: resolutionIdentity });
+  const [deviceNoticeTripId, setDeviceNoticeTripId] = useState<string | null>(null);
   const [syncIssue, setSyncIssue] = useState<"failed" | "conflict" | "auth" | null>(null);
   const [syncComplete, setSyncComplete] = useState(false);
   const [syncing, setSyncing] = useState(false);
@@ -123,6 +126,16 @@ export default function TripShellResolver({
     void resolveAndPromote();
   }, [resolveAndPromote]);
 
+  useEffect(() => {
+    if (ownerId || resolution.status !== "found" || resolution.identity !== resolutionIdentity) return;
+    const key = `morrovia:device-save-notice:${encodeURIComponent(tripId)}`;
+    if (deviceNoticesShown.has(key)) return;
+    try { if (window.sessionStorage.getItem(key)) return; } catch { /* In-memory guard still prevents repeats. */ }
+    deviceNoticesShown.add(key);
+    try { window.sessionStorage.setItem(key,"1"); } catch { /* Device recovery remains the durable owner. */ }
+    setDeviceNoticeTripId(tripId);
+  }, [ownerId, resolution.status, resolution.identity, resolutionIdentity, tripId]);
+
   if (resolution.identity !== resolutionIdentity || resolution.status === "loading") {
     return <section className={styles.resolving}>
       <MorroviaSectionStatus title="Opening your route" detail="Loading the trip saved on this device before its workspace opens." />
@@ -139,6 +152,9 @@ export default function TripShellResolver({
       detail={syncIssue === "auth" ? "Your session ended, but this trip remains saved on this device." : syncIssue === "conflict" ? "Morrovia kept the existing cloud copy and did not remove this device’s copy." : "Your trip is still safe on this device. Check your connection and try again."}
       actions={syncIssue === "failed" ? <EasyTButton size="small" variant="secondary" onClick={() => void resolveAndPromote()} loading={syncing}>Try again</EasyTButton> : syncIssue === "auth" ? <EasyTLinkButton size="small" variant="secondary" href={tripSaveSignInHref(tripId)}>Sign in again</EasyTLinkButton> : <EasyTLinkButton size="small" variant="secondary" href={tripSyncRecoveryPath(tripId)}>Open device copy</EasyTLinkButton>}
     /> : null}
-    <TripShell trip={resolution.trip} cacheTrip={showingCanonicalConflict} workspaceGuideVersionSeen={workspaceGuideVersionSeen} deviceOnlyNotice={!ownerId ? <MorroviaStatusBanner title="Saved on this device" detail="Keep this trip and continue planning on another device." actions={<EasyTLinkButton size="small" variant="secondary" href={tripSaveSignInHref(tripId)}>Save this trip</EasyTLinkButton>} /> : undefined}>{children}</TripShell>
+    <TripShell trip={resolution.trip} cacheTrip={showingCanonicalConflict} workspaceGuideVersionSeen={workspaceGuideVersionSeen} deviceOnlyNotice={!ownerId ? <>
+      <EasyTLinkButton size="small" variant="quiet" href={tripSaveSignInHref(tripId)}>Sign up to keep this route across devices</EasyTLinkButton>
+      {deviceNoticeTripId === tripId ? <MorroviaBriefNotice key={tripId} className={styles.deviceSaveToast} variant="toast" title="Saved on this device" autoDismissMs={6000} onDismiss={() => setDeviceNoticeTripId(null)} /> : null}
+    </> : undefined}>{children}</TripShell>
   </div>;
 }

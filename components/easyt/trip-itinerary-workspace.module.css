@@ -1953,11 +1953,11 @@
 .dayPanel { min-width: 0; padding: 20px; container-type: inline-size; }
 .dayHeader h2 { font-size: clamp(30px, 3vw, 44px); }
 .dayList { max-height: 70svh; }
-.calendarWorkspace { display: grid; grid-template-columns: minmax(0, 1fr) 320px; }
+.calendarWorkspace { display: grid; grid-template-columns: minmax(0, 1fr) minmax(260px, 300px); grid-template-rows: max-content max-content max-content minmax(0, 1fr); }
 .calendarWorkspace .rail { display: none; }
 .calendarWorkspace .calendarView { grid-column: 1; padding: 16px; min-width: 0; }
-.calendarWorkspace .dayPanel { grid-column: 2; border-left: 1px solid var(--morrovia-line); }
-.calendarWorkspace .contextRail { grid-column: 1 / -1; grid-row: auto; border-top: 1px solid var(--morrovia-line); }
+.calendarWorkspace .dayPanel { grid-column: 1; border-top: 1px solid var(--morrovia-line); }
+.calendarWorkspace .contextRail { grid-column: 2; grid-row: 3 / span 2; }
 .calendarDaySelect { min-height: 100px; padding: 10px; }
 .calendarDaySelect time, .calendarDaySelect small, .calendarDaySelect em { font: var(--morrovia-type-fine-print); }
 .calendarItem strong { font: 700 13px/1.35 var(--morrovia-ui); }
@@ -2016,6 +2016,7 @@
 @media (max-width: 1099px) {
   .calendarWorkspace { grid-template-columns: minmax(0, 1fr); }
   .calendarWorkspace .dayPanel { grid-column: 1; border-left: 0; border-top: 1px solid var(--morrovia-line); }
+  .calendarWorkspace .contextRail { grid-column: 1; grid-row: auto; }
 }
 @media (max-width: 900px) {
   .workspaceToolbar { gap: 12px; }

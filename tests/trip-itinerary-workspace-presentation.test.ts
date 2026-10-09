@@ -203,14 +203,16 @@ test("mobile composition keeps the plan before Saved Ideas and secondary discove
   assert.match(itinerary, /<nav className=\{styles\.rail\} aria-label=\{copy\.dayByDay\}/);
 });
 
-test("Calendar uses a compact selected-day summary and only mounts the context rail for unique detail capability", () => {
+test("Calendar keeps its compact summary alongside the shared day context rail", () => {
   const summaryStart = itinerary.indexOf("function CalendarSelectedDaySummary");
   const summaryEnd = itinerary.indexOf("function calendarScheduleLabel", summaryStart);
   const summary = itinerary.slice(summaryStart, summaryEnd);
   assert.match(itinerary, /<CalendarSelectedDaySummary/);
   assert.match(itinerary, /workspaceView === "days" && dayComposition \? <div[\s\S]*<RichItineraryDayPlanner/);
-  assert.match(itinerary, /const hasContextRail = workspaceView === "days" \|\| hasSelectedDetail/);
-  assert.match(itinerary, /workspaceView === "days" \? <div className=\{styles\.contextRailBody\}/);
+  assert.doesNotMatch(itinerary, /hasContextRail/);
+  assert.match(itinerary, /<aside className=\{`\$\{styles\.contextRail\}/);
+  assert.match(itinerary, /<div className=\{styles\.contextRailBody\}/);
+  assert.doesNotMatch(itinerary, /workspaceView === "days" \? <div className=\{styles\.contextRailBody\}/);
   assert.match(itinerary, /stayWorkspaceHref\(tripId, composition\.tonight\.stopId\)/);
   assert.doesNotMatch(itinerary, /<DestinationAccommodationModule/);
   assert.doesNotMatch(summary, /displayDayDate|day\.stop\?\.name/, "the selected-day header already owns date and destination");

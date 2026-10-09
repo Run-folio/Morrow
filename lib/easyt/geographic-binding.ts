@@ -118,3 +118,10 @@ export function guardTripRoutingGeometry<T extends EasyTTrip>(trip:T):T {
   ...(projectedEnd?{journeyEnd:projectedEnd}:{}),...(route?{intent:{...trip.brief.intent!,route:{...route,origin:projectedOrigin,journeyEnd:projectedEnd??route.journeyEnd}}}:{})},
   stops:trip.stops.map(stop=>ready.get(stop.id)?stop:{...stop,longitude:null,latitude:null}),legs:trip.legs.map(mask)};
 }
+
+/** Intake absence is superseded only by a current verified occurrence in the canonical projection. */
+export function isCurrentVerifiedRouteBase(trip:Pick<EasyTTrip,'stops'> & Partial<Pick<EasyTTrip,'brief'>>,stop:TripStop) {
+ const route=trip.brief?.intent?.route;
+ return geographicallyReady(stopGeographicPlace(stop)) && (!route || route.orderedStopIds.includes(stop.id)
+  && route.destinations.some(intent=>(intent.kind==='overnight_place'||intent.kind==='planning_area')&&intent.stopIds.includes(stop.id)));
+}

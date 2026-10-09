@@ -1,5 +1,5 @@
 import { readTripDocument } from "./trip-document.ts";
-import { geographicallyReady, stopGeographicPlace } from './geographic-binding.ts';
+import { geographicallyReady, isCurrentVerifiedRouteBase, stopGeographicPlace } from './geographic-binding.ts';
 import { originPlaceFromBrief } from './journey-endpoints.ts';
 import { routeOrderReviewIssue } from "./trip-route-intent.ts";
 import type { NightAllocationResult } from "./night-allocation.ts";
@@ -169,12 +169,10 @@ export function canBuildTrip(input: CanBuildTripInput) {
   const hasCurrentVerifiedBase = blockingPlaceIssues.some(issue => issue.code === "missing_routable_destination")
     && input.document.stops.some(stop => {
       const active = input.stops.find(candidate => candidate.id === stop.id);
-      return geographicallyReady(stopGeographicPlace(stop)) && active
+      return isCurrentVerifiedRouteBase(input.document, stop) && active
         && active.name.trim() === stop.name.trim() && active.country?.trim() === stop.country?.trim()
         && (!active.canonicalPlaceId || active.canonicalPlaceId === stop.canonicalPlaceId)
-        && (!active.coordinates || active.coordinates[0] === stop.longitude && active.coordinates[1] === stop.latitude)
-        && (!route || route.orderedStopIds.includes(stop.id) && route.destinations.some(intent =>
-          (intent.kind === "overnight_place" || intent.kind === "planning_area") && intent.stopIds.includes(stop.id)));
+        && (!active.coordinates || active.coordinates[0] === stop.longitude && active.coordinates[1] === stop.latitude);
     });
   const hardBlockingPlaceIssues = blockingPlaceIssues.filter(issue => !placeIssueNeedsAttention(issue)
     && !(issue.code === "missing_routable_destination" && hasCurrentVerifiedBase));

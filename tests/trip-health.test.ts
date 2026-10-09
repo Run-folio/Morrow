@@ -498,3 +498,16 @@ test("Trip Health readiness follows place issue route blocking without blocking 
   assert.equal(tripHealth(optional).isReady, true);
   assert.equal(tripHealth(optional).issues.some((item) => item.rule === "place-intelligence-unresolved-place-optional-region"), true);
 });
+
+// Intake absence may be superseded only by an attached, currently verified base.
+test("current verified canonical base supersedes intake missing-base issue in downstream review", () => {
+ const trip=retainPlaceIssues(baseTrip(),[placeIssue({code:'missing_routable_destination',severity:'error',blocksRoute:true,mentionId:'region',sourceText:'Japan',reason:'Add or choose at least one concrete base before Morrovia builds the route.'}),placeIssue({code:'unresolved_place',severity:'error',blocksRoute:true,mentionId:'other',sourceText:'Unknown base',reason:'Confirm Unknown base.'})]);
+ trip.stops[0]={...trip.stops[0]!,name:'Madrid',country:'Spain',canonicalPlaceId:'madrid',longitude:-3.7038,latitude:40.4168};
+ assert.equal(reviewTrip(trip).some(r=>r.rule.includes('missing-routable-destination')),false);
+ assert.equal(reviewTrip(trip).some(r=>r.rule.includes('unresolved-place')),true);
+ const invalid=structuredClone(trip);invalid.stops[0]!.longitude=0;assert.equal(reviewTrip(invalid).some(r=>r.rule.includes('missing-routable-destination')),true);
+ const canonical=structuredClone(trip);canonical.brief.intent={...canonical.brief.intent!,version:2,route:{version:1,origin:null,tripType:'one_way',journeyEnd:{mode:'unknown'},orderAuthority:'manual',explicitIntentIds:null,orderedStopIds:[],projectionInputKey:null,destinations:[]}};
+ assert.equal(reviewTrip(canonical).some(r=>r.rule.includes('missing-routable-destination')),true,'a verified orphan cannot supersede intake absence');
+ canonical.brief.intent!.route!.orderedStopIds=[canonical.stops[0]!.id];canonical.brief.intent!.route!.destinations=[{id:'base',sourceText:'Madrid',kind:'overnight_place',resolution:'resolved',selectedPlace:{name:'Madrid',country:'Spain',canonicalPlaceId:'madrid'},requestedNights:2,routeMembership:'required',stopIds:[canonical.stops[0]!.id]}];
+ assert.equal(reviewTrip(canonical).some(r=>r.rule.includes('missing-routable-destination')),false);
+});

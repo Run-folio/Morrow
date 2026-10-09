@@ -102,3 +102,9 @@ test("canonical aliases still resolve the reviewed image and its provenance", ()
   assert.equal(image?.sourceUrl, reviewed?.sourceUrl);
   assert.equal(image?.licenseUrl, reviewed?.licenseUrl);
 });
+
+test("reviewed Seoul destination photo is reused even when stored in route hero inventory",()=>{
+ const stop={...delhi,id:'stop-seoul',name:'Seoul',country:'South Korea',canonicalPlaceId:'seoul'};
+ const photo=overviewStopImage(tripFor(stop),stop);assert.ok(photo?.src);assert.match(photo!.sourceUrl??'',/Seoul/);assert.ok(photo!.licenseUrl);
+ assert.equal(overviewStopImage(tripFor({...stop,country:'Unrelated country',canonicalPlaceId:undefined}),{...stop,country:'Unrelated country',canonicalPlaceId:undefined}),null);
+});

@@ -10,6 +10,7 @@ import { deriveItineraryCoverage, deriveTripDateFacts, incomingLegForPlanItem, o
 import { isoDateKey, parseIsoDate } from "./trip-lifecycle.ts";
 import { canonicalLegIntegrityIssues, routeEndpointForLeg } from "./trip-legs.ts";
 import { placeIssueRepresentsUnresolvedIntent } from "./unresolved-place-intent.ts";
+import { isCurrentVerifiedRouteBase } from './geographic-binding.ts';
 import { tripWithEffectiveTransportChoices } from "./transport-mode-choice.ts";
 
 const recommendation = (
@@ -598,7 +599,9 @@ export function reviewTrip(trip: EasyTTrip): TripRecommendation[] {
       proposedChange: null,
     }, results.length));
   });
+  const hasCurrentVerifiedBase = trip.stops.some(stop => isCurrentVerifiedRouteBase(trip,stop));
   [...(trip.brief.structuredBrief?.placeIssues ?? [])]
+    .filter(issue => issue.code !== "missing_routable_destination" || !hasCurrentVerifiedBase)
     .sort((left, right) => {
       const leftKey = `${left.code}:${left.mentionId}`;
       const rightKey = `${right.code}:${right.mentionId}`;
@@ -642,7 +645,8 @@ export function tripHealth(trip: EasyTTrip): TripHealth {
   const cautionCount = openIssues.filter((item) => item.severity === "warning").length;
   const hasUnresolvedTransport = openIssues.some((item) => item.rule === "destination-identity" || item.rule === "route-integrity" || item.rule === "missing-transport-decision" || item.rule === "missing-logistics" || item.rule === "connection-confidence");
   const hasUnknownStayDuration = openIssues.some((item) => item.rule === "stay-duration-confidence");
-  const hasUnresolvedPlaceIntent = (trip.brief.structuredBrief?.placeIssues ?? []).some((issue) => issue.blocksRoute);
+  const hasUnresolvedPlaceIntent = (trip.brief.structuredBrief?.placeIssues ?? []).some((issue) => issue.blocksRoute
+    && !(issue.code === "missing_routable_destination" && trip.stops.some(stop => isCurrentVerifiedRouteBase(trip,stop))));
   const hasCompleteItinerary = deriveItineraryCoverage(trip).state === "complete";
   const hasValidDates = deriveTripDateFacts(trip).state === "valid";
   const isReady = blockingCount === 0 && !hasUnresolvedTransport && !hasUnknownStayDuration && !hasUnresolvedPlaceIntent && hasCompleteItinerary && hasValidDates;

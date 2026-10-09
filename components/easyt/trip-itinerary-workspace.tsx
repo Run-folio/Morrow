@@ -530,7 +530,7 @@ export default function TripItineraryWorkspace({
     [workingTrip.planItems],
   );
   const [selectedIndex, updateSelectedIndex] = useState(() => Math.max(0, days.findIndex((day) => day.dayNumber === selectedDayNumber)));
-  const [workspaceView, updateWorkspaceView] = useState<"days" | "calendar">(presentation === "shell" ? "calendar" : "days");
+  const [workspaceView, updateWorkspaceView] = useState<"days" | "calendar">("days");
   const writeOrientation = (dayIndex: number, view: "days" | "calendar") => {
     const day = days[dayIndex];
     if (!day || presentation !== "shell") return;
@@ -600,8 +600,7 @@ export default function TripItineraryWorkspace({
       const target = parseItineraryWorkspaceTarget(workingTrip, params);
       const requested = days.findIndex((day) => day.dayNumber === target.dayNumber);
       updateSelectedIndex(requested >= 0 ? requested : Math.max(0, days.findIndex((day) => day.dayNumber === selectedDayNumber)));
-      updateWorkspaceView(initialItineraryWorkspaceView(workingTrip, params,
-        window.matchMedia('(max-width: 700px)').matches ? "days" : "calendar"));
+      updateWorkspaceView(initialItineraryWorkspaceView(workingTrip, params));
     };
     restoreOrientation();
     window.addEventListener("popstate", restoreOrientation);
@@ -960,8 +959,6 @@ export default function TripItineraryWorkspace({
     }
     return null;
   })();
-  const hasSelectedDetail = Boolean(selectedDetail || selectedTransportAgenda || selectedBooking);
-  const hasContextRail = workspaceView === "days" || hasSelectedDetail;
   const selectedCalendarDay = calendarWeeks.flatMap((week) => week.days).find((day) => day?.id === active.id) ?? null;
 
   const openAddFlow = (noteIndex: number, kind: AddFlow["kind"] = "activity", dayPart?: ItineraryDayPart) => {
@@ -1318,7 +1315,7 @@ export default function TripItineraryWorkspace({
   const todayIndex = days.findIndex((day) => day.date === todayDate);
 
   return (
-    <section className={`${styles.workspace} ${workspaceView === "calendar" ? styles.calendarWorkspace : ""} ${hasContextRail ? "" : styles.workspaceWithoutContext}`} aria-label="Trip itinerary">
+    <section className={`${styles.workspace} ${workspaceView === "calendar" ? styles.calendarWorkspace : ""}`} aria-label="Trip itinerary">
       <header ref={itineraryDaysOrientationTarget} className={styles.workspaceToolbar}>
         <div><h2>{workspaceView === "calendar" ? copy.calendar : copy.dayByDay}</h2><p>{displayDate(days[0]!.date, language, true)} – {displayDate(days[days.length - 1]!.date, language)} · {days.length} {copy.dayCount}</p></div>
         <div className={styles.dateNavigation}>
@@ -1577,7 +1574,7 @@ export default function TripItineraryWorkspace({
         {presentation === "shell" && workspaceView === "days" ? <ContextualFeedbackSlot workspace="itinerary" entryKey={`itinerary:${active.id}:days`} hasContent={Boolean(dayComposition && (itineraryDayParts.some((part) => dayComposition.planned[part].length > 0) || dayComposition.unslotted.length > 0))} blocked={Boolean(addFlow || editingActivity || removeTarget || moveFlow || plannerDrag || draggedActivity || openMenuId || openSavedPickerId || selectedItemId || selectedRecommendation || plannerError || mutation.saveState === "saving" || mutation.saveState === "error")} /> : null}
       </div>
 
-      {hasContextRail ? <aside className={`${styles.contextRail} ${selectedDetail || selectedTransportAgenda || selectedBooking ? styles.contextRailDetail : ""}`} aria-label={selectedDetail || selectedTransportAgenda || selectedBooking ? "Selected itinerary item details" : "Selected day planning context"}>
+      <aside className={`${styles.contextRail} ${selectedDetail || selectedTransportAgenda || selectedBooking ? styles.contextRailDetail : ""}`} aria-label={selectedDetail || selectedTransportAgenda || selectedBooking ? "Selected itinerary item details" : "Selected day planning context"}>
         {selectedTransportAgenda ? <ItineraryLogisticsDetail
           trip={workingTrip}
           agenda={selectedTransportAgenda}
@@ -1643,7 +1640,8 @@ export default function TripItineraryWorkspace({
             if (changed) { closeSelectedDetail(); setNotice("Stay removed"); }
           } : undefined}
         /> : null}
-        {workspaceView === "days" ? <div className={styles.contextRailBody} hidden={Boolean(selectedDetail || selectedTransportAgenda || selectedBooking)}>
+        <div className={styles.contextRailBody} hidden={Boolean(selectedDetail || selectedTransportAgenda || selectedBooking)}>
+        <div className={styles.contextSection}><EasyTButton icon={CirclePlus} variant="secondary" size="small" fullWidth onClick={() => openAddFlow(0, "activity", "morning")}>{language === "es" ? "Añadir actividad" : "Add activity"}</EasyTButton></div>
         {embeddedMapContext && (embeddedMapContext.stops.length || embeddedMapContext.pins.length) ? <MorroviaMapPreview title={copy.dayMap} href={mapPlanHref} language={language}>
             {!selectedDetail ? <DeferredJourneyPlannerMap
               stops={embeddedMapContext.stops}
@@ -1812,8 +1810,8 @@ export default function TripItineraryWorkspace({
             return photo?.sourceUrl ? <li key={stop.id}><span>{stop.name}:</span> <a href={photo.sourceUrl} target="_blank" rel="noreferrer">{photo.sourceLabel ?? photo.alt}</a>{photo.licenseUrl ? <> · <a href={photo.licenseUrl} target="_blank" rel="noreferrer">{copy.licence}</a></> : null}{photo.fullCreditUrl && photo.fullCreditUrl !== photo.sourceUrl ? <> · <a href={photo.fullCreditUrl} target="_blank" rel="noreferrer">Full credits</a></> : null}</li> : null;
           })}</ul>
         </details> : null}
-        </div> : null}
-      </aside> : null}
+        </div>
+      </aside>
 
       <MorroviaFormDialog
         open={Boolean(moveFlow)}

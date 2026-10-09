@@ -532,8 +532,8 @@ for (const [width,type] of [[1440,'return_to_start'],[390,'one_way']] as const) 
  await page.goto(`${base}/journey/${id}/itinerary`,{waitUntil:'domcontentloaded'});
  await page.getByRole('region',{name:'Trip itinerary',exact:true}).waitFor();
  await page.getByRole('button',{name:'Calendar',exact:true}).waitFor();
- assert.equal(await page.getByRole('button',{name:width<=700?'Day by day':'Calendar',exact:true}).getAttribute('aria-pressed'),'true');
- if(width<=700)await page.getByRole('button',{name:'Calendar',exact:true}).click();
+ assert.equal(await page.getByRole('button',{name:'Day by day',exact:true}).getAttribute('aria-pressed'),'true');
+ await page.getByRole('button',{name:'Calendar',exact:true}).click();
  await page.screenshot({path:`${artifacts}/multi-area-${width}-calendar.png`,fullPage:true});
  await page.getByRole('button',{name:'Open full day',exact:true}).click();
  assert.equal(new URL(page.url()).searchParams.get('itineraryView'),'days');
@@ -571,7 +571,7 @@ for (const [area,names] of [['Japan',['Kyoto','Takayama','Hiroshima']],['South K
  await page.reload({waitUntil:'domcontentloaded'});await page.getByRole('region',{name:'Trip overview',exact:true}).waitFor();
  assert.deepEqual((await recoveryTrip(page,builtId))!.stops,built.stops);
  await page.goto(`${base}/journey/${builtId}/itinerary`,{waitUntil:'domcontentloaded'});await page.getByRole('region',{name:'Trip itinerary',exact:true}).waitFor();
- assert.equal(await page.getByRole('button',{name:width<=700?'Day by day':'Calendar',exact:true}).getAttribute('aria-pressed'),'true');
+ assert.equal(await page.getByRole('button',{name:'Day by day',exact:true}).getAttribute('aria-pressed'),'true');
  await page.reload({waitUntil:'domcontentloaded'});await page.getByRole('region',{name:'Trip itinerary',exact:true}).waitFor();
  assert.deepEqual((await recoveryTrip(page,builtId))!.stops,built.stops);
 },width));

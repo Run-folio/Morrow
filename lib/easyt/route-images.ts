@@ -63,8 +63,9 @@ export const routeImages: Record<string, string> = {
 };
 
 /** Licensed canonical destination photographs shared by homepage and detail. */
-export function routeDestinationPhoto(place: string, country: string) {
-  return destinationPhotos.find(image => image.place === place && image.country === country) ?? null;
+export function routeDestinationPhoto(place: string, country: string): RoutePhotoRecord | null {
+  return destinationPhotos.find(image => image.place === place && image.country === country)
+    ?? routeImageInventory.find(image => image.place === place && image.country === country) ?? null;
 }
 
 /** Licensed route-level photograph, used when destination coverage is incomplete. */
