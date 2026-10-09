@@ -145,6 +145,9 @@ test('unconfirmed destination focuses its editor and preserves a confirmed airpo
  await page.getByRole('button',{name:'Plan my trip'}).first().click();
  await page.getByText('Select each destination from the results.',{exact:true}).waitFor();
  await page.waitForFunction(()=>document.activeElement?.getAttribute('aria-label')==='Destination');
+ await page.getByRole('combobox',{name:'Start from',exact:true}).focus();
+ await page.getByRole('button',{name:'Plan my trip'}).first().click();
+ await page.waitForFunction(()=>document.activeElement?.getAttribute('aria-label')==='Destination');
  const stored=await page.evaluate(()=>JSON.parse(localStorage.getItem('easyt-private:guest:homepage-input')??'null'));
  assert.equal(stored.snapshot.origin.value.canonicalPlaceId,'reference:ourairports:3632');
  assert.equal(geographicallyReady(stored.snapshot.origin.value,'endpoint'),true);
@@ -185,9 +188,11 @@ test('distinct same-country origin choices show geography and preserve mouse and
  const options=page.getByRole('option',{name:/^Xi’an.*China/});await options.first().waitFor();assert.equal(await options.count(),5);
  const labels=await options.allTextContents();assert.equal(new Set(labels).size,5);assert.ok(labels.every(label=>label.includes('°')&&label.includes('City')));
  await options.first().click();
+ await page.waitForFunction(id=>JSON.parse(localStorage.getItem('easyt-private:guest:homepage-input')??'null')?.snapshot?.origin?.value?.canonicalPlaceId===id,expected[0].canonicalPlaceId);
  const selected=async()=>page.evaluate(()=>JSON.parse(localStorage.getItem('easyt-private:guest:homepage-input')??'null')?.snapshot.origin.value);
  const first=await selected();assert.equal(first.canonicalPlaceId,expected[0].canonicalPlaceId);assert.deepEqual(first.coordinates,expected[0].coordinates);assert.equal(geographicallyReady(first,'endpoint'),true);
  await input.fill('Xi’an');await options.first().waitFor();await input.press('ArrowDown');await input.press('ArrowDown');await input.press('ArrowDown');await input.press('Enter');
+ await page.waitForFunction(id=>JSON.parse(localStorage.getItem('easyt-private:guest:homepage-input')??'null')?.snapshot?.origin?.value?.canonicalPlaceId===id,expected[2].canonicalPlaceId);
  const keyboard=await selected();assert.equal(keyboard.canonicalPlaceId,expected[2].canonicalPlaceId);assert.deepEqual(keyboard.coordinates,expected[2].coordinates);assert.equal(geographicallyReady(keyboard,'endpoint'),true);
 }));
 
@@ -200,6 +205,7 @@ test('unseen multi-country destination choices survive actual Plan submission as
   await page.getByRole('option',{name:new RegExp(`^${name}`)}).first().click();
  }
  await page.getByRole('button',{name:'Plan my trip'}).first().click();await page.waitForURL(/journey\/new\?/);
+ await page.waitForURL(url=>url.pathname==='/journey/new'&&Boolean(url.searchParams.get('trip')));
  const id=new URL(page.url()).searchParams.get('trip')!;
  await page.waitForFunction(id=>Object.keys(localStorage).filter(k=>k.startsWith(`easyt:trip-recovery:v2:guest:${encodeURIComponent(id)}:`)).some(k=>JSON.parse(localStorage.getItem(k)??'null')?.trip?.brief?.intent?.route?.destinations?.length===4),id);
  const trip=(await recoveryTrip(page,id))!;
@@ -212,10 +218,12 @@ test('unseen multi-country destination choices survive actual Plan submission as
 test('selected nonseed origin survives Describe submit, Build and reload', {skip:!enabled,timeout:120_000},async()=>withEvidence('describe-origin-intake',async(page,context)=>{
  await context.unroute('**/api/journey-geocode?*');await page.goto(base,{waitUntil:'domcontentloaded'});
  await page.getByRole('combobox',{name:'Start from',exact:true}).fill('Gubbio');await page.getByRole('option',{name:/Gubbio.*Italy/}).first().click();
+ await page.waitForFunction(()=>JSON.parse(localStorage.getItem('easyt-private:guest:homepage-input')??'null')?.snapshot?.origin?.value?.canonicalPlaceId==='reference:geonames:3175687');
  const selected=await page.evaluate(()=>JSON.parse(localStorage.getItem('easyt-private:guest:homepage-input')??'null').snapshot.origin.value);
  assert.equal(selected.canonicalPlaceId,'reference:geonames:3175687');assert.equal(geographicallyReady(selected,'endpoint'),true);
  await page.getByRole('tab',{name:'Describe my trip',exact:true}).click();await page.getByRole('textbox',{name:'Start your plan'}).fill('Visit Madrid and Lisbon for 10 days');
  await page.getByRole('button',{name:'Plan my trip'}).first().click();await page.waitForURL(/journey\/new\?/);
+ await page.waitForURL(url=>url.pathname==='/journey/new'&&Boolean(url.searchParams.get('trip')));
  const id=new URL(page.url()).searchParams.get('trip')!;
  await page.locator('[data-builder-route-workspace]').waitFor({timeout:30_000});
  await page.waitForFunction(id=>Object.keys(localStorage).filter(k=>k.startsWith(`easyt:trip-recovery:v2:guest:${encodeURIComponent(id)}:`)).some(k=>JSON.parse(localStorage.getItem(k)??'null')?.trip?.brief?.intent?.route?.origin?.canonicalPlaceId==='reference:geonames:3175687'),id);

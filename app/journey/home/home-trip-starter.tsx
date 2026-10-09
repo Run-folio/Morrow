@@ -91,6 +91,7 @@ export default function HomeTripStarter() {
   }, [snapshot.mode, loading]);
   const [recoveryBlocked, setRecoveryBlocked] = useState(false);
   const [focusEntryId, setFocusEntryId] = useState<string | null>(null);
+  const [focusRequestKey, setFocusRequestKey] = useState(0);
 
   const cancelSubmission = () => {
     submissionGenerationRef.current += 1;
@@ -243,7 +244,7 @@ export default function HomeTripStarter() {
         setCaptureError(issueMessage(issues[0].field));
         if (issues[0].field === "destinations") {
           const entryId = issues[0].entryId ?? submitted.entries.find(entry => !entry.selection)?.id;
-          if (entryId) setFocusEntryId(entryId);
+          if (entryId) { setFocusEntryId(entryId); setFocusRequestKey(current => current + 1); }
           return;
         }
         // Reveal the existing origin editor when Describe hides an unresolved raw draft.
@@ -395,7 +396,7 @@ export default function HomeTripStarter() {
       destinationEditor: <HomeDestinationEditor
         entries={snapshot.entries} language={language} disabled={loading || sessionPending || recoveryBlocked}
         createEntry={() => ({ id: `destination-${destinationIdRef.current++}`, text: "", selection: null })}
-        focusEntryId={focusEntryId}
+        focusEntryId={focusEntryId} focusRequestKey={focusRequestKey}
         onChange={(entries: HomepageDestinationEntry[]) => updateSnapshot((current) => ({ ...current, entries }))}
       />,
       budget: snapshot.budget.state === "selected" ? snapshot.budget.value : null,

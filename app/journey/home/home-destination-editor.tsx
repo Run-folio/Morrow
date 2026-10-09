@@ -9,9 +9,9 @@ import { homepageDestinationAddTarget, removeHomepageDestination, type HomepageD
 import { isOvernightBaseEligible, type CanonicalPlaceSuggestion } from "@/lib/easyt/place-intelligence";
 import { MorroviaDestinationField, MorroviaDestinationTag, destinationAddClassName } from "@/components/easyt/morrovia-destination-field";
 
-export function HomeDestinationEditor({ entries, language, disabled = false, focusEntryId, createEntry, onChange }: {
+export function HomeDestinationEditor({ entries, language, disabled = false, focusEntryId, focusRequestKey = 0, createEntry, onChange }: {
   entries: HomepageDestinationEntry[]; language: EasyTLanguage; disabled?: boolean;
-  focusEntryId?: string | null; createEntry?: () => HomepageDestinationEntry;
+  focusEntryId?: string | null; focusRequestKey?: number; createEntry?: () => HomepageDestinationEntry;
   onChange: (entries: HomepageDestinationEntry[]) => void;
 }) {
   const es = language === "es";
@@ -25,19 +25,20 @@ export function HomeDestinationEditor({ entries, language, disabled = false, foc
   const focusTarget = useRef<string | null>(null);
   const externalFocus = useRef<string | null>(null);
   useEffect(() => {
-    if (focusEntryId && focusEntryId !== externalFocus.current) {
-      externalFocus.current = focusEntryId;
+    const request = `${focusEntryId}:${focusRequestKey}`;
+    if (focusEntryId && request !== externalFocus.current) {
+      externalFocus.current = request;
       setEditingId(focusEntryId);
       focusTarget.current = focusEntryId;
     }
-  }, [focusEntryId]);
+  }, [focusEntryId, focusRequestKey]);
   useEffect(() => {
-    if (!focusTarget.current) return;
+    if (!focusTarget.current || disabled) return;
     const id = focusTarget.current;
     focusTarget.current = null;
     const node = nodes.current.get(id);
     (node?.querySelector<HTMLInputElement>('input[role="combobox"]') ?? node?.querySelector<HTMLButtonElement>("button") ?? addRef.current)?.focus();
-  }, [entries, editingId]);
+  }, [entries, editingId, disabled]);
   const replace = (id: string, update: (entry: HomepageDestinationEntry) => HomepageDestinationEntry) => {
     const current = latest.current;
     if (current.disabled || !current.entries.some(entry => entry.id === id)) return;
