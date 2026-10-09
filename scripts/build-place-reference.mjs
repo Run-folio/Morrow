@@ -186,8 +186,12 @@ export async function buildReferenceSnapshot({ airports, settlements, sourceMani
     const prefixes = new Map();
     let byteOffset = 2;
     const lines = [];
+    const lengths = Buffer.alloc(activeSettlements.length * 2);
     for (const r of activeSettlements) {
         const line = JSON.stringify(pack(r));
+        const length = Buffer.byteLength(line) + 2;
+        if (length > 65535) throw new Error('Settlement record exceeds compact index range');
+        lengths.writeUInt16LE(length, lines.length * 2);
         lines.push(line);
         const keys = new Set([r.canonicalName, ...r.aliases].flatMap(name => { const n = normalize(name); return [n, ...n.split(' ')].filter(word => word.length >= 2).map(word => word.slice(0, 2)); }));
         for (const key of keys) {
@@ -207,7 +211,7 @@ export async function buildReferenceSnapshot({ airports, settlements, sourceMani
     const binary = Buffer.alloc(offsets.length * 4);
     offsets.forEach((value, index) => binary.writeUInt32LE(value, index * 4));
     const files = Object.entries(payloads).map(([path, data]) => ({ path, body: path === 'settlements.json' ? settlementBody : JSON.stringify(data) + '\n', records: Array.isArray(data) ? data.length : Object.keys(data).length }));
-    files.push({ path: 'settlement-prefixes.json', body: JSON.stringify(directory) + '\n', records: Object.keys(directory).length }, { path: 'settlement-prefixes.bin', body: binary, records: offsets.length });
+    files.push({ path: 'settlement-prefixes.json', body: JSON.stringify(directory) + '\n', records: Object.keys(directory).length }, { path: 'settlement-prefixes.bin', body: binary, records: offsets.length }, {path:'settlement-lengths.bin',body:lengths,records:activeSettlements.length});
     const total = files.reduce((n, f) => n + Buffer.byteLength(f.body), 0);
     if (total > 32 * 1024 * 1024)
         throw new Error(`Reference file budget exceeded: ${total}`);

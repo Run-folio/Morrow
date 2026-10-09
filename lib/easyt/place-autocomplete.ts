@@ -14,7 +14,7 @@ export type PlaceAutocompleteIdentity = {
 
 /** Keep the provider's relevance order, but make an exact same-name route
  * endpoint the first choice when an administrative area shares its label. */
-export function prioritizeRouteStopSuggestions<T extends { name: string; canonicalPlaceId?: string; placeType?: string; routability?: string; matchedAirportCode?: string }>(
+export function prioritizeRouteStopSuggestions<T extends { name: string; canonicalPlaceId?: string; placeType?: string; routability?: string; matchedAirportCode?: string; matchedIcaoCode?: string }>(
   suggestions: readonly T[], intent: "route-stop" | "planning-area" | "anchor" | "unknown", query?: string,
 ): T[] {
   if (intent !== "route-stop") return [...suggestions];
@@ -40,9 +40,9 @@ export function prioritizeRouteStopSuggestions<T extends { name: string; canonic
   };
   // Catalogue substring matches are useful while provider search runs, but
   // cannot displace a gateway with validated exact IATA evidence on arrival.
-  const exactAirport = (item: T) => /^[a-z]{3}$/i.test((query ?? "").trim())
-    && item.placeType === "transport_gateway" && item.routability === "direct_destination"
-    && item.matchedAirportCode === (query ?? "").trim().toUpperCase();
+  const code=(query??'').trim().toUpperCase();
+  const exactAirport = (item:T)=>item.placeType==='transport_gateway'&&item.routability==='direct_destination'
+    && ((/^[A-Z]{3}$/.test(code)&&item.matchedAirportCode===code)||(/^[A-Z]{4}$/.test(code)&&item.matchedIcaoCode===code));
   return [...result.filter(exactAirport), ...result.filter(item => !exactAirport(item) && exactCountry(item)),
     ...result.filter(item => !exactAirport(item) && !exactCountry(item))];
 }

@@ -16,6 +16,7 @@ import {
 } from "./planning-confidence.ts";
 import { destinationKnowledge } from "./destination-knowledge.ts";
 import { routeFamilies, routeFamilyByKey, type RouteFamily } from "./route-catalog.ts";
+import {referenceKnownCodeKind,referenceSeedRetired} from './place-reference.ts';
 
 export const PLACE_INTELLIGENCE_VERSION = 1 as const;
 export const PLACE_INTELLIGENCE_PARSER_VERSION = "place-intelligence-v1-deterministic";
@@ -340,6 +341,7 @@ export type ExplicitPlaceMention = {
 };
 
 export type PlaceProviderCandidate = {
+  canonicalPlaceId?: string;
   providerId: string;
   providerSourceId?: string;
   providerSourceLabel?: string;
@@ -362,6 +364,7 @@ export type PlaceProviderCandidate = {
   matchQuality?: "exact" | "alias" | "partial";
   /** Exact, nonconflicting provider IATA evidence for this search query. */
   matchedAirportCode?: string;
+  matchedIcaoCode?: string;
   rankScore?: number;
   /** Provider-normalized evidence that an exact result is a recognised
    * sovereign or first-order geography, rather than merely any admin record. */
@@ -680,7 +683,7 @@ function sourceFromCatalog(entry: PlaceCatalogEntry, alias: string): PlaceProven
   return {
     id: entry.provenance.id,
     label: entry.provenance.label,
-    kind: canonicalAlias ? "canonical" : "curated_alias",
+    kind: entry.referenceProviderId ? "provider" : canonicalAlias ? "canonical" : "curated_alias",
     supports: entry.provenance.supports,
     reviewedAt: entry.provenance.reviewedAt,
   };
@@ -753,7 +756,7 @@ export function canonicalPlaceSuggestionFor(
   contextCountries: string[] = [],
 ): CanonicalPlaceSuggestion | null {
   const direct = findCatalogPlacesByPhrase(phrase).filter((entry) =>
-    entry.routability === "direct_destination" && entry.parentCountries.length === 1);
+    entry.routability === "direct_destination" && entry.parentCountries.length === 1 && !referenceSeedRetired(entry.canonicalPlaceId));
   const context = new Set(contextCountries.map(normalizePlacePhrase));
   const contextual = direct.filter((entry) => entry.parentCountries.some((country) => context.has(normalizePlacePhrase(country))));
   const entry = contextual.length === 1 ? contextual[0] : direct.length === 1 ? direct[0] : undefined;
@@ -781,6 +784,13 @@ export function canonicalPlaceSuggestionFor(
  * prompt capture. Results are route-ready identities, never display strings
  * that need to be interpreted again after selection.
  */
+export function canonicalPlaceSuggestionForId(id:string):CanonicalPlaceSuggestion|null{
+  const entry=findCatalogPlaceById(id);
+  if(!entry||referenceSeedRetired(id)||entry.routability!=='direct_destination'||entry.parentCountries.length!==1)return null;
+  const country=entry.parentCountries[0]!,region=displayRegion(entry.parentRegionId);
+  return {canonicalPlaceId:id,name:entry.canonicalName,label:`${entry.canonicalName}${region?` · ${region}`:''}, ${country}`,country,region,placeType:entry.placeType,coordinates:entry.coordinates?[...entry.coordinates]:undefined,provenance:[sourceFromCatalog(entry,entry.canonicalName)]};
+}
+
 export function canonicalPlaceSuggestionsForQuery(
   query: string,
   contextCountries: string[] = [],
@@ -792,6 +802,8 @@ export function canonicalPlaceSuggestionsForQuery(
   const context = new Set(contextCountries.map(normalizePlacePhrase));
   const ranked: Array<{ score: number; suggestion: CanonicalPlaceSuggestion }> = [];
   for (const entry of PLACE_CATALOG) {
+      if(referenceSeedRetired(entry.canonicalPlaceId))continue;
+      if(referenceKnownCodeKind(query)==='iata'&&['city','town'].includes(entry.placeType))continue;
       if ((!includeNonRoutable && entry.routability !== "direct_destination") || entry.parentCountries.length !== 1) continue;
       const labels = [entry.canonicalName, ...entry.aliases].map((label) => ({ label, normalized: normalizePlacePhrase(label) }));
       const exact = labels.some(({ normalized }) => normalized === normalizedQuery);

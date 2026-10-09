@@ -7,6 +7,7 @@ const buildContext = process.env.CONTEXT ?? process.env.VERCEL_ENV ?? "";
 
 const nextConfig: NextConfig = {
   distDir,
+  outputFileTracingIncludes: {'/api/journey-geocode':['./data/place-reference/**/*'],'/api/journey-discover':['./data/place-reference/**/*']},
   // Netlify exposes Git metadata while building, but not as read-only Function
   // runtime variables. Embed only these non-sensitive provenance values so a
   // deployed server route can identify the artifact actually serving traffic.

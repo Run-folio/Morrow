@@ -1,4 +1,6 @@
 import { STAMP_COUNTRIES_BY_REGION, STAMP_REGIONS } from "./stamps.ts";
+import {countries as travelJurisdictions, countryCodeFor} from './country-registry.ts';
+import {REFERENCE_COUNTRY_SEEDS, REFERENCE_RETIRED_SEEDS, referenceSeedRetired} from './place-reference.ts';
 
 /**
  * Small, deterministic place and alias catalog used at the place-intelligence
@@ -42,12 +44,14 @@ export type PlaceCatalogEntry = {
   parentRegionId?: string;
   coordinates?: readonly [number, number];
   ambiguityGroup?: string;
+  captureMode?: 'explicit-only';
+  referenceProviderId?: string;
   provenance: {
     id: string;
     label: string;
     kind: "curated" | "canonical";
     supports: string;
-    reviewedAt: string;
+    reviewedAt?: string;
   };
 };
 
@@ -457,11 +461,15 @@ const registryCountries = STAMP_REGIONS.flatMap((region) => STAMP_COUNTRIES_BY_R
   .filter((countryEntry) => !explicitPlaces.some((entry) => entry.placeType === "country"
     && entry.canonicalName.toLocaleLowerCase() === countryEntry.name.toLocaleLowerCase()))
   .map((countryEntry) => country(countryEntry.id, countryEntry.name));
+const jurisdictionCountries=travelJurisdictions.filter(c=>![...explicitPlaces,...registryCountries].some(e=>e.placeType==='country'&&countryCodeFor(e.canonicalName)===c.code))
+  .map(c=>country(`jurisdiction-${c.code.toLowerCase()}`,c.name,c.aliases));
 
 export const PLACE_CATALOG: readonly PlaceCatalogEntry[] = Object.freeze([
   ...continents,
   ...explicitPlaces,
   ...registryCountries,
+  ...jurisdictionCountries,
+  ...REFERENCE_COUNTRY_SEEDS,
 ]);
 
 function normalizedWithMap(value: string) {
@@ -498,14 +506,17 @@ export function normalizeCatalogPhrase(value: string) {
 }
 
 const catalogById = new Map(PLACE_CATALOG.map((entry) => [entry.canonicalPlaceId, entry]));
+for(const entry of REFERENCE_RETIRED_SEEDS)catalogById.set(entry.canonicalPlaceId,entry);
 
 export function findCatalogPlaceById(canonicalPlaceId: string) {
   return catalogById.get(canonicalPlaceId);
 }
 
 export function findCatalogPlacesByPhrase(phrase: string) {
-  const matchesFor = (normalizedPhrase: string) => PLACE_CATALOG.filter((entry) => [entry.canonicalName, ...entry.aliases]
-    .some((label) => normalizeCatalogPhrase(label) === normalizedPhrase));
+  const matchesFor = (normalizedPhrase: string) => {
+    const entries=PLACE_CATALOG.filter(entry=>!referenceSeedRetired(entry.canonicalPlaceId)&&[entry.canonicalName,...entry.aliases].some(label=>normalizeCatalogPhrase(label)===normalizedPhrase));
+    const authored=entries.filter(entry=>entry.captureMode!=='explicit-only');return authored.length?authored:entries;
+  };
   const exactPhrase = normalizeCatalogPhrase(phrase);
   if (!exactPhrase) return [];
   const exactMatches = matchesFor(exactPhrase);
@@ -545,6 +556,7 @@ export function findCatalogMatches(value: string): PlaceCatalogMatch[] {
   const grouped = new Map<string, { start: number; end: number; normalizedPhrase: string; entries: PlaceCatalogEntry[] }>();
 
   for (const entry of PLACE_CATALOG) {
+    if(entry.captureMode==='explicit-only'||referenceSeedRetired(entry.canonicalPlaceId))continue;
     for (const label of [entry.canonicalName, ...entry.aliases]) {
       const phrase = normalizeCatalogPhrase(label);
       if (!phrase) continue;

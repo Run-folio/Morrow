@@ -76,6 +76,12 @@
       "sha256": "41b0cf1512a024212efec4ba27cefc679130415ec4c08bbe865dc9ed5fa53582",
       "records": 861793,
       "bytes": 3447172
+    },
+    {
+      "path": "settlement-lengths.bin",
+      "sha256": "97f816049e03827e5ffe6c1c01710dcfb6366696c4f9cddf7a5a3bf8b181b5cc",
+      "records": 224601,
+      "bytes": 449202
     }
   ]
 }

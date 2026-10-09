@@ -48,3 +48,9 @@ test('bad source checksum leaves the previous snapshot byte-identical',async()=>
  await assert.rejects(()=>buildReferenceSnapshot({airports:join(dir,'airports.csv'),settlements:join(dir,'cities500.txt'),output:join(dir,'out'),sourceManifest:{acquiredAt:first.manifest.generatedAt,sources:first.manifest.sources.map(s=>({...s,sha256:'wrong'}))}}),/checksum/);
  assert.equal(await readFile(join(dir,'out','manifest.json'),'utf8'),before);
 }));
+
+test('compact length index preserves ordered exact-ID tuple offsets',async()=>fixture(async dir=>{
+ await build(dir,csv([airport()]),[settlement(10),settlement(20)].join('\n')+'\n');
+ const lengths=await readFile(join(dir,'out','settlement-lengths.bin'));const body=await readFile(join(dir,'out','settlements.json'));
+ assert.equal(lengths.length,4);let offset=2;for(let i=0;i<2;i++){assert.equal(JSON.parse(body.subarray(offset,body.indexOf(10,offset)).toString().replace(/,$/,'')).at(0),String((i+1)*10));offset+=lengths.readUInt16LE(i*2);}
+}));

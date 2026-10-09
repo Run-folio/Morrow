@@ -1,4 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
+import {referencePlaceById,referenceSnapshotId} from '@/lib/easyt/place-reference.server';
+import {referenceSelectionMatches} from '@/lib/easyt/place-reference';
+import {countryCodeFor} from '@/lib/easyt/country-registry';
 import { geocodeNearbyContext, needsDestinationConfirmation } from "@/lib/easyt/destination-resolution";
 import { createOpenWorldPlaceProvider, searchOpenWorldNearbyBaseSuggestions, searchOpenWorldTravelCandidates } from "@/lib/easyt/open-world-place.server";
 import { catalogPlaceForProviderIdentity, placeCandidateSuitableAsNearbyBase, placeCandidateWithinPlanningParent, type GeographicBounds, type NearbyBaseAnchor, type NearbyBaseSuggestion, type PlaceProviderCandidate, type PlaceType, type PlanningParentConstraint } from "@/lib/easyt/place-intelligence";
@@ -8,6 +11,7 @@ function normalise(value: string) {
 }
 
 function matchesCountry(returnedCountry: string | undefined, requestedCountry: string) {
+  const code=countryCodeFor(returnedCountry);if(code&&code===countryCodeFor(requestedCountry))return true;
   const returned = normalise(returnedCountry ?? "");
   const requested = normalise(requestedCountry);
   const aliases: Record<string, string[]> = {
@@ -34,14 +38,14 @@ function distanceFrom(nearby: [number, number] | undefined, candidate: PlaceProv
 
 function responseCandidate(candidate: PlaceProviderCandidate) {
   const country = candidate.parentCountries?.[0] ?? "";
-  const catalogPlace = catalogPlaceForProviderIdentity({
+  const catalogPlace = candidate.providerId.startsWith('reference:')?undefined:catalogPlaceForProviderIdentity({
     canonicalName: candidate.canonicalName,
     placeType: candidate.placeType,
     parentCountries: candidate.parentCountries ?? [],
     coordinates: candidate.coordinates,
   });
   return {
-    canonicalPlaceId: catalogPlace?.canonicalPlaceId ?? `open-world:${candidate.providerId}`,
+    canonicalPlaceId: candidate.providerId.startsWith('reference:')?candidate.canonicalPlaceId:catalogPlace?.canonicalPlaceId ?? `open-world:${candidate.providerId}`,
     name: candidate.canonicalName,
     country,
     countryCode: "countryCode" in candidate && typeof candidate.countryCode === "string" ? candidate.countryCode : undefined,
@@ -58,7 +62,18 @@ function responseCandidate(candidate: PlaceProviderCandidate) {
     matchQuality: candidate.matchQuality,
     rankScore: candidate.rankScore,
     matchedAirportCode: candidate.matchedAirportCode,
+    matchedIcaoCode: candidate.matchedIcaoCode,
+    referenceSnapshotId: candidate.providerId.startsWith('reference:')?referenceSnapshotId():undefined,
   };
+}
+
+function validReferenceCandidate(candidate:PlaceProviderCandidate){
+  if(!candidate.providerId.startsWith('reference:'))return true;
+  const record=referencePlaceById(candidate.canonicalPlaceId??'');
+  return Boolean(record&&candidate.coordinates&&candidate.canonicalName===record.canonicalName
+    &&referenceSelectionMatches({canonicalPlaceId:candidate.canonicalPlaceId!,providerId:candidate.providerId,country:candidate.parentCountries?.[0]??'',placeType:candidate.placeType,coordinates:candidate.coordinates},record,referenceSnapshotId())
+    &&(!candidate.matchedAirportCode||candidate.matchedAirportCode===record.iataCode)
+    &&(!candidate.matchedIcaoCode||candidate.matchedIcaoCode===record.icaoCode));
 }
 
 const planningParentTypes = new Set<PlaceType>(["continent", "country", "macro_region", "region", "sub_region", "island", "archipelago", "natural_area", "coast", "mountain_range", "valley", "travel_corridor"]);
@@ -163,6 +178,7 @@ export async function GET(request: NextRequest) {
       travelIntent,
       ...(country ? { countryNames: [country], explicitCountryNames: [country] } : {}),
     }, createOpenWorldPlaceProvider()))
+      .filter(validReferenceCandidate)
       .filter((candidate) => !country || matchesCountry(candidate.parentCountries?.[0], country))
       .filter((candidate) => !planningParent || placeCandidateWithinPlanningParent(candidate, planningParent))
       .filter((candidate) => !nearbyAnchor || Boolean(placeCandidateSuitableAsNearbyBase(nearbyAnchor, candidate)))

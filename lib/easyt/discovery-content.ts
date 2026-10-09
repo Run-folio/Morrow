@@ -266,10 +266,11 @@ export function discoveryPlacesForMention(mention: DiscoveryMention): DiscoveryP
     if (reviewed.length) return reviewed;
     // An empty editorial collection must not hide usable, explicitly selectable
     // city identities. This fallback makes no relevance, route or stay claim.
-    return PLACE_CATALOG.filter(place => ["city", "town"].includes(place.placeType)
+    const identities=PLACE_CATALOG.filter(place => ["city", "town"].includes(place.placeType)
       && place.routability === "direct_destination" && place.parentCountries.length === 1
-      && place.parentCountries[0] === anchor.canonicalName && place.coordinates)
-      .map(place => ({ id: place.canonicalPlaceId, name: place.canonicalName,
+      && place.parentCountries[0] === anchor.canonicalName && place.coordinates);
+    const authored=identities.filter(place=>place.captureMode!=='explicit-only');
+    return (authored.length?authored:identities).map(place => ({ id: place.canonicalPlaceId, name: place.canonicalName,
         country: anchor.canonicalName, group: anchor.canonicalName, groupIds: [], tags: [],
         placeType: place.placeType, coordinates: place.coordinates!, identityOnly: true as const,
         relevance: { en: "", es: "", sources: [] }, stayEvidence: [], accessEvidence: [],

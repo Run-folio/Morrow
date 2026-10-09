@@ -13,6 +13,7 @@ import {
 } from "@/lib/easyt/place-intelligence";
 import { placeAutocompleteKeyAction, prioritizeRouteStopSuggestions } from "@/lib/easyt/place-autocomplete";
 import { createAbortableEffectScope } from "@/lib/easyt/abortable-effect";
+import {referenceKnownCodeKind} from '@/lib/easyt/place-reference';
 import type { EasyTLanguage } from "@/lib/easyt/i18n";
 import { EasyTButton } from "./easyt-controls";
 import styles from "./canonical-place-autocomplete.module.css";
@@ -96,7 +97,7 @@ export function CanonicalPlaceAutocomplete({
   const deferredValue = useDeferredValue(value);
   const [open, setOpen] = useState(false);
   const [activeIndex, setActiveIndex] = useState(-1);
-  const [providerSuggestions, setProviderSuggestions] = useState<(CanonicalPlaceSuggestion & { matchedAirportCode?: string })[]>([]);
+  const [providerSuggestions, setProviderSuggestions] = useState<(CanonicalPlaceSuggestion & { matchedAirportCode?: string;matchedIcaoCode?:string })[]>([]);
   const [providerSearching, setProviderSearching] = useState(false);
   const [providerFailed, setProviderFailed] = useState(false);
   const [retryNonce, setRetryNonce] = useState(0);
@@ -135,7 +136,7 @@ export function CanonicalPlaceAutocomplete({
       });
       const country = parentConstraint?.parentCountries.length === 1
         ? parentConstraint.parentCountries[0]
-        : contextCountries?.length === 1 ? contextCountries[0] : undefined;
+        : referenceKnownCodeKind(query)==='iata'?undefined:contextCountries?.length === 1 ? contextCountries[0] : undefined;
       const params = new URLSearchParams({ place: query, candidates: "1" });
       params.set("intent", searchIntent);
       if (country) params.set("country", country);
@@ -173,6 +174,7 @@ export function CanonicalPlaceAutocomplete({
             providerId?: string;
             providerSourceLabel?: string;
             matchedAirportCode?: string;
+            matchedIcaoCode?: string;
             coordinates: [number, number];
             bounds?: CanonicalPlaceSuggestion["bounds"];
             placeType?: PlaceType;
@@ -197,6 +199,7 @@ export function CanonicalPlaceAutocomplete({
               canonicalPlaceId,
               name: candidate.name,
               matchedAirportCode: candidate.matchedAirportCode,
+              matchedIcaoCode: candidate.matchedIcaoCode,
               label: `${candidate.name}${candidate.region ? ` · ${candidate.region}` : ""}, ${candidate.country}`,
               country: candidate.country,
               region: candidate.region,
@@ -205,7 +208,7 @@ export function CanonicalPlaceAutocomplete({
               coordinates: candidate.coordinates,
               bounds: candidate.bounds,
               routability: candidate.routability,
-              provenance: [{ id: canonicalPlaceId, label: candidate.providerSourceLabel ?? "Global place provider", kind: "provider" as const, supports: "Global place-search candidate selected by the traveller." }],
+              provenance: [{ id: candidate.providerId??canonicalPlaceId, label: candidate.providerSourceLabel ?? "Global place provider", kind: "provider" as const, supports: "Global place-search candidate selected by the traveller." }],
             };
           }).filter((suggestion) => !allowedPlaceTypes?.length || allowedPlaceTypes.includes(suggestion.placeType))
             .filter((suggestion) => !nearbyAnchor || Boolean(placeCandidateSuitableAsNearbyBase(nearbyAnchor, {
