@@ -42,3 +42,13 @@ test("never rewrites a booking while flagging a date outside the trip", () => {
   assert.equal(result.trip.brief.bookings?.[0].date, "2026-09-08");
   assert.deepEqual(result.status.affectedBookingIds, ["stay"]);
 });
+
+test("an extra overnight reports its departure beyond the trip end instead of comparing identical dates", () => {
+  const source = trip();
+  source.startDate = "2026-10-14"; source.endDate = "2026-10-28";
+  source.stops = [7, 7, 1].map((nights, order) => ({ ...source.stops[0], id: `stop-${order}`, order, nights }));
+  source.brief.nightAllocations = Object.fromEntries(source.stops.map(stop => [stop.id, stop.nights!]));
+  source.planItems = [];
+  const result = cascadeTripSchedule(source);
+  assert.match(result.status.conflicts[0]!, /2026-10-29.*2026-10-28/);
+});

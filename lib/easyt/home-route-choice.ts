@@ -82,6 +82,14 @@ export function homepageTripTypeRequest(current: HomepageInputSnapshot, type: Ho
   return {snapshot,evidence,conflict:homepageRouteChoice(snapshot,evidence).conflict};
 }
 
+/** Only fresh Builder capture calls this. Saved/legacy intent uses its own hydration path. */
+export function newTripCapturedJourneyEnd(prompt: string, captured?: JourneyEndSelection): JourneyEndSelection {
+  const end = normalizeJourneyEnd(captured);
+  if (end.mode !== "unknown") return end;
+  const evidence = homepageCapturedRouteEvidence(prompt, { journeyEnd: end });
+  return evidence.tripType === "one_way" || evidence.status === "requires_review" ? end : { mode: "same_as_start" };
+}
+
 export function homepageRouteChoice(snapshot: HomepageInputSnapshot, evidence?: HomepageRouteEvidence): {
   tripType: RouteIntent["tripType"];
   journeyEnd: JourneyEndSelection;
@@ -111,6 +119,6 @@ export function homepageRouteChoice(snapshot: HomepageInputSnapshot, evidence?: 
     source: "selected", conflict };
   if (knownEnd.mode !== "unknown") return { tripType: knownEnd.mode === "explicit" ? "one_way" : "return_to_start", journeyEnd: knownEnd, source: "legacy", conflict };
   if (observed.status === "clear" && observed.tripType) return { tripType: observed.tripType, journeyEnd: observed.journeyEnd, source: "capture", conflict };
-  if (snapshot.mode === "stops" && snapshot.tripType?.state === "untouched" && !conflict) return { tripType: "return_to_start", journeyEnd: { mode: "same_as_start" }, source: "default", conflict };
+  if (snapshot.tripType?.state === "untouched" && snapshot.journeyEnd.state === "untouched" && !conflict) return { tripType: "return_to_start", journeyEnd: { mode: "same_as_start" }, source: "default", conflict };
   return { tripType: "unknown_legacy", journeyEnd: { mode: "unknown" }, source: "legacy", conflict };
 }

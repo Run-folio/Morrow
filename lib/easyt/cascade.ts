@@ -39,7 +39,7 @@ export function cascadeTripSchedule(trip: EasyTTrip): CascadedTrip {
 
   const endExclusive = nightNative ? trip.endDate : addDays(trip.endDate, 1);
   if (cursor > endExclusive) {
-    conflicts.push(`The route now runs through ${addDays(cursor, -1)}, beyond the trip end of ${trip.endDate}.`);
+    conflicts.push(`The route now ${nightNative ? "departs on" : "runs through"} ${nightNative ? cursor : addDays(cursor, -1)}, beyond the trip end of ${trip.endDate}.`);
   }
 
   const arrivalByStop = new Map(stops.map((stop) => [stop.id, stop.arrivalDate]));

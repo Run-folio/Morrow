@@ -76,3 +76,21 @@ test('structural Undo restores generated counts/provenance and stale source cann
 });
 
 test('matching total is not completion when a required stay has no nights',()=>{const t=fixture();t.stops[0]!.nights=14;t.stops[1]!.nights=0;assert.equal(allRequiredStaysHaveNights(t),false);t.stops[1]!.nights=1;assert.equal(allRequiredStaysHaveNights(t),true);});
+
+test('accepted date shortening rebalances only proven generated stays to the new night budget',()=>{
+ const t=fixture();const next=edit(t,{kind:'dates',startDate:t.startDate,endDate:'2026-10-21'});
+ assert.equal(next.stops.reduce((sum,stop)=>sum+(stop.nights??0),0),11);
+ assert.deepEqual(next.stops.map(stop=>stop.id),t.stops.map(stop=>stop.id));
+ assert.deepEqual(next.brief.manualNightStopIds,[]);
+ assert.equal(next.brief.nightAllocation!.state,'allocated');
+});
+
+test('adding a further base to an already resolved planning area keeps generated stays within the budget',()=>{
+ const t=fixture();const [a,b]=t.brief.intent.route.destinations;
+ t.brief.intent.route.destinations=[{...a!,id:'area:japan',kind:'planning_area',selectedPlace:{name:'Japan',country:'Japan',canonicalPlaceId:'japan'},stopIds:[...a!.stopIds,...b!.stopIds],requestedNights:null}];
+ const next=edit(t,{kind:'replace-destination',intentId:'area:japan',stopId:'hiroshima',place:{name:'Hiroshima',country:'Japan',canonicalPlaceId:'place:hiroshima',coordinates:[132.46,34.39]}});
+ assert.equal(next.stops.reduce((sum,stop)=>sum+(stop.nights??0),0),14);
+ assert.ok(next.stops.every(stop=>(stop.nights??0)>0));
+ assert.deepEqual(next.brief.intent.route.destinations[0]!.stopIds,['tokyo','kyoto','hiroshima']);
+ assert.deepEqual(next.brief.manualNightStopIds,[]);
+});

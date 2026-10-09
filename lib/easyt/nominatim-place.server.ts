@@ -165,6 +165,13 @@ export async function searchNominatimTravelCandidates(
   const freeform = new URLSearchParams({ q: phrase, ...common });
   const freeformResults = await fetchResults(freeform, fetchImpl);
   const responses: Array<{ mode: "freeform" | "city"; results: NominatimResult[] }> = [{ mode: "freeform", results: freeformResults }];
+  const airportCode = /^[a-z]{3}$/i.test(phrase.trim()) ? phrase.trim().toUpperCase() : undefined;
+  const matchesAirportCode = (result: NominatimResult) => Boolean(airportCode
+    && /\b(?:airport|aerodrome)\b/i.test(`${result.type ?? ""} ${result.addresstype ?? ""}`)
+    && result.extratags?.iata?.trim().toUpperCase() === airportCode);
+  if (airportCode && !freeformResults.some(matchesAirportCode)) {
+    responses.push({ mode: "freeform", results: await fetchResults(new URLSearchParams({ q: `${airportCode} airport`, ...common }), fetchImpl) });
+  }
   const contextCountries = [...new Set((context.countryNames ?? []).map((country) => country.trim()).filter(Boolean))];
   const contextualCountry = contextCountries.length === 1 ? contextCountries[0] : undefined;
   const hasContextCountryResult = contextualCountry && freeformResults.some((result) => normalize(result.address?.country ?? "") === normalize(contextualCountry));
@@ -194,7 +201,8 @@ export async function searchNominatimTravelCandidates(
       const providerId = result.osm_type && result.osm_id ? `${result.osm_type}:${result.osm_id}` : "";
       const facts = taxonomy(result, context);
       if (!providerId || !providerName || (!country && facts.placeType !== "continent") || !Number.isFinite(latitude) || !Number.isFinite(longitude)) continue;
-      const providerAliases = Object.values(result.namedetails ?? {}).filter((value) => value && normalize(value) !== normalize(providerName));
+      const codeMatch = matchesAirportCode(result);
+      const providerAliases = [...Object.values(result.namedetails ?? {}), ...(codeMatch ? [airportCode!] : [])].filter((value) => value && normalize(value) !== normalize(providerName));
       const providerDisplay = resolveOsmPlaceDisplayName({ ...result.extratags, ...result.namedetails, name: providerName }, "en");
       const providerQuality = matchQuality(providerDisplay?.name ?? providerName, phrase, mode, providerAliases);
       const mayUseQueryAsLatinFallback = providerRank === 0
@@ -221,6 +229,7 @@ export async function searchNominatimTravelCandidates(
         administrativeLevel,
       });
       const score = (quality === "exact" ? 80 : quality === "alias" ? 55 : 20)
+        + (codeMatch ? 100 : 0)
         + travelScore(facts.placeType, facts.routability, context)
         + contextScore(result, context)
         + Math.max(0, Math.min(30, (result.importance ?? 0) * 30))

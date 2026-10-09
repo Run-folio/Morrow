@@ -94,6 +94,15 @@ test("sparse country knowledge remains a search fallback and does not invent rec
   assert.deepEqual(result.selectedIds, []);
 });
 
+test("Belize exposes catalog places as neutral choices without recommending stays or preselecting them", () => {
+  const result = buildCountryDiscovery(mention("Belize"), { totalNights: 14, existingPlaceIds: ["caye-caulker"] });
+  assert.deepEqual(result.candidates.map(item => item.placeId).sort(), ["belize-city", "caye-caulker", "san-ignacio-belize", "san-pedro-belize"].sort());
+  assert.deepEqual(result.selectedIds, []);
+  assert.ok(result.candidates.filter(item => !item.alreadyInTrip).every(item => item.neutralChoice && item.recommendationReason.kind === "supported-within" && !item.stayGuidance && !item.recommendationStayGuidance));
+  assert.deepEqual(buildCountryDiscovery(mention("Belize"), { explicitChoiceIds: ["belize-city"] }).selectedIds, ["belize-city"]);
+  assert.deepEqual(buildCountryDiscovery(mention("Belize"), { explicitChoiceIds: [] }).selectedIds, []);
+});
+
 test("a broad region never recommends a place merely because it shares a country", () => {
   const patagonia = buildCountryDiscovery(mention("Patagonia"), { totalNights: 14, interests: ["nature"] });
   assert.ok(!patagonia.candidates.some((candidate) => candidate.name === "Buenos Aires"));

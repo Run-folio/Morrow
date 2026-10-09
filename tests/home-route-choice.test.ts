@@ -34,6 +34,29 @@ test("selected endpointless One way becomes canonical One way, never unknown leg
   assert.deepEqual(result.draft.journeyEnd, { mode: "unknown" });
 });
 
+test("fresh Describe without an ending defaults to Return without declaring traveller intent", () => {
+  const snapshot = describe("Tokyo and Kyoto for two weeks");
+  const result = project(snapshot);
+  assert.ok(result.ok);
+  assert.equal(result.draft.routeIntent?.tripType, "return_to_start");
+  assert.deepEqual(result.draft.journeyEnd, { mode: "same_as_start" });
+  assert.equal(snapshot.tripType.state, "untouched");
+});
+
+test("a saved unconfirmed ending remains unknown even when its type was untouched", async () => {
+  const snapshot = { ...describe("Tokyo and Kyoto"), journeyEnd: { state: "selected" as const, value: { mode: "unknown" as const } } };
+  const result = (await choices()).homepageRouteChoice(snapshot);
+  assert.equal(result.tripType, "unknown_legacy");
+});
+
+test("new Builder capture defaults only absent ending intent and retains explicit One way and endpoints", async () => {
+  const api = await choices();
+  assert.deepEqual(api.newTripCapturedJourneyEnd("Tokyo and Kyoto", { mode: "unknown" }), { mode: "same_as_start" });
+  assert.deepEqual(api.newTripCapturedJourneyEnd("A one-way trip through Tokyo and Kyoto", { mode: "unknown" }), { mode: "unknown" });
+  const end = { mode: "explicit" as const, place: { name: "Osaka", canonicalPlaceId: "osaka" } };
+  assert.deepEqual(JSON.parse(JSON.stringify(api.newTripCapturedJourneyEnd("Tokyo then Osaka", end))), end);
+});
+
 test("missing and cleared trip type retain known legacy endings and repeated finish stays", () => {
   for (const end of [{ mode: "unknown" }, { mode: "same_as_start" }, { mode: "explicit", place: { name: "Rome", canonicalPlaceId: "rome" } }] as const) {
     for (const tripType of [undefined, { state: "cleared" as const }]) {

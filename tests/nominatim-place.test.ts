@@ -3,6 +3,25 @@ import test from "node:test";
 import { createNominatimPlaceProvider, searchNominatimTravelCandidates } from "../lib/easyt/nominatim-place.server.ts";
 import { resolveExplicitPlaceMentionsWithProvider } from "../lib/easyt/place-intelligence.ts";
 
+test("airport-code search prefers the provider's exact airport code over substring towns", async () => {
+  const queries: string[] = [];
+  const fetchAirport = (async (input: string | URL | Request) => {
+    const q = new URL(String(input)).searchParams.get("q") ?? "";
+    queries.push(q);
+    const airports = q === "GUA airport" ? [
+      { name: "Wrong Airport", osm_type: "way", osm_id: 999, type: "aerodrome", category: "aeroway", addresstype: "aerodrome", lat: "14.58", lon: "-90.53", extratags: { iata: "XXX" }, address: { country: "Guatemala" } },
+      { name: "La Aurora International Airport", osm_type: "way", osm_id: 998, type: "aerodrome", category: "aeroway", addresstype: "aerodrome", lat: "14.58", lon: "-90.53", extratags: { iata: "GUA" }, address: { country: "Guatemala" } },
+    ] : [raw("Antigua Guatemala", 997, "Guatemala", "town", { importance: 0.9 })];
+    return new Response(JSON.stringify(airports));
+  }) as typeof fetch;
+  const candidates = await searchNominatimTravelCandidates("GUA", { travelIntent: "route-stop" }, fetchAirport);
+  assert.equal(candidates[0]?.canonicalName, "La Aurora International Airport");
+  assert.equal(candidates[0]?.placeType, "transport_gateway");
+  assert.ok(candidates[0]?.aliases?.includes("GUA"));
+  assert.ok(!candidates.some(candidate => candidate.providerId === "way:999"));
+  assert.equal(queries.filter(query => query === "GUA airport").length, 1);
+});
+
 type FixtureResult = Record<string, unknown>;
 
 function raw(

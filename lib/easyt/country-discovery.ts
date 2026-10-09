@@ -26,6 +26,8 @@ export type CountryDiscoveryCandidate = GuidedPlanningAreaSuggestion & {
   recommendationStayGuidance?: CountryDiscoveryStayGuidance;
   recommendationProvenance: Array<{ id: string; label: string; url?: string; supports: string }>;
   score: number;
+  /** Identity-only catalogue choices are available for deliberate selection. */
+  neutralChoice?: boolean;
 };
 
 export type CountryDiscoveryContext = {
@@ -92,14 +94,14 @@ export function buildCountryDiscovery(mention: ResolvedPlaceMention, context: Co
     const sourceStop = routeStopFor(suggestion.name, suggestion.country);
     // The place catalogue owns identity and containment, not visitor appeal.
     // It cannot alone make a place a recommendation.
-    if (!sourceStop && knowledge?.roles.status !== "known") return [];
-    const minimumNights = knowledge
+    const neutralChoice = knowledge ? knowledge.roles.status !== "known" : !sourceStop;
+    const minimumNights = neutralChoice ? undefined : knowledge
       ? knowledge.minimumNights.status === "known" ? knowledge.minimumNights.value : undefined
       : sourceStop?.minimumNights;
-    const idealNights = knowledge
+    const idealNights = neutralChoice ? undefined : knowledge
       ? knowledge.idealNights.status === "known" ? knowledge.idealNights.value : undefined
       : sourceStop?.recommendedNights;
-    const tags = knowledge?.experienceTags.status === "known" ? knowledge.experienceTags.value : [];
+    const tags = !neutralChoice && knowledge?.experienceTags.status === "known" ? knowledge.experienceTags.value : [];
     const matchedInterest = tags.find((tag) => interests.has(tag.toLocaleLowerCase()));
     const role = knowledge?.roles.status === "known" ? knowledge.roles.value : [];
     const timeMismatch = nights !== undefined && minimumNights !== undefined && minimumNights > nights;
@@ -108,7 +110,9 @@ export function buildCountryDiscovery(mention: ResolvedPlaceMention, context: Co
       + (matchedInterest ? COUNTRY_DISCOVERY_WEIGHTS.interest : 0)
       + (suggestion.anchorMatched ? COUNTRY_DISCOVERY_WEIGHTS.countryAnchor : 0)
       - (timeMismatch ? COUNTRY_DISCOVERY_WEIGHTS.timeMismatch : 0);
-    const recommendationReason: CountryDiscoveryRecommendationReason = matchedInterest
+    const recommendationReason: CountryDiscoveryRecommendationReason = neutralChoice
+      ? { kind: "supported-within", parentName: mention.canonicalName }
+      : matchedInterest
       ? { kind: "interest-match", interest: matchedInterest }
       : suggestion.anchorMatched
         ? { kind: "named-place-country-match" }
@@ -133,7 +137,7 @@ export function buildCountryDiscovery(mention: ResolvedPlaceMention, context: Co
     const recommendationProvenance = knowledge?.roles.status === "known"
       ? knowledge.roles.sources.map(({ id, label, url, supports }) => ({ id, label, url, supports }))
       : suggestion.provenance.map(({ id, label, supports }) => ({ id, label, supports }));
-    return [{ ...suggestion, placeId: suggestion.canonicalPlaceId, countryCode, alreadyInTrip: existing.has(suggestion.canonicalPlaceId), reason, recommendationReason, stayGuidance, recommendationStayGuidance, recommendationProvenance, score }];
+    return [{ ...suggestion, ...(neutralChoice ? { neutralChoice: true } : {}), placeId: suggestion.canonicalPlaceId, countryCode, alreadyInTrip: existing.has(suggestion.canonicalPlaceId), reason, recommendationReason, stayGuidance, recommendationStayGuidance, recommendationProvenance, score }];
   }).sort((a, b) => b.score - a.score || a.name.localeCompare(b.name));
 
   const existingWithinParent = [...existing].map((id) => findCatalogPlaceById(id)).filter((place): place is NonNullable<typeof place> => Boolean(place
@@ -157,7 +161,7 @@ export function buildCountryDiscovery(mention: ResolvedPlaceMention, context: Co
       : known ? 2 : sourceStop?.minimumNights ?? 2);
   }, Math.max(0, existingWithinParent.length - 1));
   for (const candidate of candidates) {
-    if (candidate.alreadyInTrip || candidate.score <= 0 || defaultIds.length + existingWithinParent.length >= maxDefault) continue;
+    if (candidate.neutralChoice || candidate.alreadyInTrip || candidate.score <= 0 || defaultIds.length + existingWithinParent.length >= maxDefault) continue;
     // A route family establishes this place's appeal, not a viable connection
     // to another family's country. A continent-scale draft starts in one
     // country; the traveller may explicitly add others.

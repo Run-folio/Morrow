@@ -53,7 +53,7 @@ import { routePlannerPayload } from "@/lib/easyt/public-route-handoff";
 import { defaultTravelProfile, travelProfileFromUnknown, tripInterestsWithProfileDefaults, type TravelProfile } from "@/lib/easyt/travel-profile";
 import { firstTripWorkspaceHref, mapWorkspaceHref, stayWorkspaceHref, tripWorkspaceHref } from "@/lib/easyt/trip-workspace-links";
 import { createLatestJourneyCaptureRequestGate, journeyCaptureFailureMessage, requestJourneyCapture } from "@/lib/easyt/journey-capture-client";
-import { homepageCapturedRouteEvidence, homepageDescribeSourceKey } from "@/lib/easyt/home-route-choice";
+import { homepageCapturedRouteEvidence, homepageDescribeSourceKey, newTripCapturedJourneyEnd } from "@/lib/easyt/home-route-choice";
 import { HOME_TRIP_DRAFT_KEY, retainPendingIntakeReview, acknowledgePendingIntakeReceipt, createHandoffSharedLookup, discardPendingIntakeForEdit, handoffLookupMentions, handoffOutcomeIsCurrent, handoffStopOccurrenceId, homepageBuilderDateRange, homepageHandoffMatchesTrip, homepageHandoffReceiptForOwner, homepageReceiptForProjection, insertHandoffOccurrence, handoffCanonicalOccurrenceBindings, persistEditableHomepageInput, pendingReceiptStillCurrent, projectHomepageInput, readHomepageInput, pendingIntakeReceiptForOwner, pendingHomepageHandoffForOwner, reserveDirectDescribeIntake, retireHandoffResolutionStatus, homeTripDraftInterestsWereExplicit, homeTripDraftTimingFlexibility, initialHandoffRouteStops, mergeHandoffLocationChoice, preferredHandoffLocationChoice, removeHomeTripDraftIfDurable, resolveHandoffIncrementally, routableHandoffMentions, tripInterestsFromHomeDraft, type HandoffLocationChoice, type HomeTripDraft, type HomepageInputSnapshot, type PendingHomeTripHandoff, type PendingIntakeReceipt } from "@/lib/easyt/home-trip-handoff";
 import { resolveNewTripEntryState, type NewTripEntryState } from "./new-trip-entry-state";
 import { NewTripStarter } from "./new-trip-starter";
@@ -662,7 +662,7 @@ function TripBuilderDocument() {
   };
   const [originTouched, setOriginTouched] = useState(false);
   const [originError, setOriginError] = useState("");
-  const [initialJourneyEnd, setJourneyEnd] = useState<JourneyEndSelection>({ mode: "unknown" });
+  const [initialJourneyEnd, setJourneyEnd] = useState<JourneyEndSelection>({ mode: "same_as_start" });
   const journeyEnd = canonicalBuilder ? (canonicalBuilder.brief.intent.route.journeyEnd) : initialJourneyEnd;
   const [journeyEndInput, setJourneyEndInput] = useState("");
   const [journeyEndTouched, setJourneyEndTouched] = useState(false);
@@ -3365,7 +3365,7 @@ function TripBuilderDocument() {
       .map((preference) => preference.value)
       .filter((mode): mode is TripTransportMode => mode === "flight" || mode === "train" || mode === "drive");
     const capturedInterests = normalizeTripInterests(capture.structuredBrief.interests.map((interest) => interest.value));
-    const capturedJourneyEnd = normalizeJourneyEnd(capture.journeyEnd);
+    const capturedJourneyEnd = newTripCapturedJourneyEnd(brief, capture.journeyEnd);
     if (!journeyEndTouched) {
       setJourneyEnd(capturedJourneyEnd);
       setJourneyEndInput(capturedJourneyEnd.mode === "explicit" ? capturedJourneyEnd.place.name : "");
@@ -5034,6 +5034,7 @@ function TripBuilderDocument() {
   </>;
   const necessaryReview = (kinds: Array<"leg"|"schedule"|"recommendation"|"endpoint"|"assessment">, targetId?: string) => mountedBuilder?.snapshot.trip.brief.cascadeStatus?.routeReconciliation?.residual
     .filter(unit => unit.phase!=="pending" && kinds.includes(unit.kind) && (!targetId || unit.targetId===targetId))
+    .filter((unit, index, units) => unit.phase!=="conflict" || !units.slice(0, index).some(previous => previous.phase==="conflict"))
     .map(unit => <span key={`${unit.kind}:${unit.targetId}`} className={styles.necessaryReview} role="status" onClick={event=>event.stopPropagation()}>
       <span>{unit.phase==="conflict"
         ? (mountedBuilder.snapshot.trip.brief.cascadeStatus?.conflicts.join(" ") || (language==="es"?"Revisa las fechas y condiciones guardadas.":"Check the dates and saved commitments."))
