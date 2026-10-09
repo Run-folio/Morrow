@@ -9,6 +9,8 @@ import { extractStructuredTripBrief } from "../lib/easyt/structured-trip-brief.t
 import { homepageSubmissionFingerprint, projectHomepageInput } from "../lib/easyt/home-trip-handoff.ts";
 import { emptyHomepageInput, selectedEntry } from "./fixtures/homepage-dual-entry.ts";
 import { findCatalogPlaceById } from "../lib/easyt/place-catalog.ts";
+import { actualCallbackHarness, lima } from "./helpers/builder-handoff-callback.ts";
+import { acceptedGeographicPlace, stopGeographicPlace } from "../lib/easyt/geographic-binding.ts";
 
 const browserTest = (name: string, run: () => Promise<void>) => test(name, { skip: !builderBrowserTestsEnabled }, run);
 
@@ -259,9 +261,91 @@ test("versioned homepage hydration reserves identity before replay and keeps one
   assert.match(builder, /handoffStopOccurrenceId\(mention, handoffOccurrenceMentionIdsRef\.current\)/,
     "each place lookup must retain its originating occurrence identity");
   assert.match(builder, /mergeHandoffLocationChoice\(current, mention, chosen, stopId\)/);
-  assert.match(builder, /stop\.name === seed\?\.name && stop\.canonicalPlaceId === seed\?\.canonicalPlaceId/,
-    "a late provider result must not overwrite an edited stop");
   assert.equal((builder.match(/function TripBuilderDocument\(/g) ?? []).length, 1);
+});
+
+test("homepage lookup cannot overwrite a newer point when its seed had no coordinates", () => {
+  const h = actualCallbackHarness();
+  const seed = h.scope.seedById.get(h.before.stops[0].id);
+  assert.equal(seed.coordinates, undefined);
+  const point: [number, number] = [-77.025, -12.04];
+  h.changeCoordinates(point);
+  const newer = structuredClone(h.trip());
+  assert.equal(newer.stops[0].name, seed.name);
+  assert.equal(newer.stops[0].canonicalPlaceId, seed.canonicalPlaceId);
+  assert.equal(newer.stops[0].geographicBinding, undefined, "coordinate presence must matter independently of evidence");
+  h.send(lima.choices);
+  assert.equal(h.accepted(), 0, "a held provider response must not apply another edit");
+  assert.deepEqual(h.trip(), newer, "newer point, evidence, occurrence IDs, nights and manual authority remain intact");
+});
+
+for (const [field, place] of [
+  ["name", { name: "Lima revised" }],
+  ["country", { country: "Chile" }],
+  ["canonical identity", { canonicalPlaceId: "open-world:replacement-lima" }],
+  ["provider identity", { providerId: "replacement-provider" }],
+] as const) test(`homepage lookup preserves a later authoritative ${field} change`, () => {
+  // A provider-only identity can accept a country correction. The catalogue
+  // Lima identity correctly refuses a contradictory country before this guard.
+  const h = actualCallbackHarness(lima.expected.coordinates, field === "country" ? "open-world:fixture-lima" : "lima");
+  h.changePlace(place);
+  const newer = structuredClone(h.trip());
+  h.send(lima.choices);
+  assert.equal(h.accepted(), 0);
+  assert.deepEqual(h.trip(), newer, "stale enrichment cannot rewrite the changed target or its sibling state");
+});
+
+test("homepage lookup cannot overwrite newer evidence at an identical identity, provider and point", () => {
+  const h = actualCallbackHarness(lima.expected.coordinates);
+  const seed = h.scope.seedById.get(h.before.stops[0].id);
+  assert.equal(seed.geographicBinding, undefined);
+  const confirmed = acceptedGeographicPlace(stopGeographicPlace(h.trip().stops[0]), lima.expected);
+  assert.ok(confirmed?.geographicBinding);
+  h.changePlace(confirmed);
+  const newer = structuredClone(h.trip());
+  const target = stopGeographicPlace(newer.stops[0]);
+  assert.equal(target.name, seed.name); assert.equal(target.country, seed.country);
+  assert.equal(target.canonicalPlaceId, seed.canonicalPlaceId); assert.equal(target.providerId, seed.providerId);
+  assert.deepEqual(target.coordinates, seed.coordinates);
+  h.send(lima.choices);
+  assert.equal(h.accepted(), 0, "evidence alone changes the authoritative target");
+  assert.deepEqual(h.trip(), newer);
+});
+
+test("homepage target guard allows an unchanged target after an unrelated accepted budget edit", () => {
+  const h = actualCallbackHarness();
+  h.scope.dispatchAcceptedBuilderEdit({ kind: "budget", budget: "high" }, { expectedInputRevision: 1 });
+  h.send(lima.choices);
+  assert.equal(h.accepted(), 2, "both sibling edit and compatible enrichment must be accepted");
+  assert.equal(h.trip().brief.budgetBand, "high");
+  assert.deepEqual([h.trip().stops[0].longitude, h.trip().stops[0].latitude], lima.expected.coordinates);
+  assert.deepEqual(h.trip().stops.map(stop => [stop.id, stop.nights]), h.before.stops.map(stop => [stop.id, stop.nights]));
+  assert.deepEqual(h.trip().brief.intent.route.orderedStopIds, h.before.brief.intent.route.orderedStopIds);
+  assert.equal(h.trip().brief.intent.route.orderAuthority, "manual");
+});
+
+test("before canonical hydration, homepage lookup preserves a newer point from an absent-coordinate seed", () => {
+  const h = actualCallbackHarness();
+  h.changeCoordinates([-77.025, -12.04]);
+  const result = h.sendBeforeCanonical(lima.choices);
+  assert.deepEqual(result.after, result.before, "the pre-canonical setter must preserve the newer target too");
+});
+
+test("before canonical hydration, identical-point newer evidence invalidates the held homepage lookup", () => {
+  const h = actualCallbackHarness(lima.expected.coordinates);
+  const confirmed = acceptedGeographicPlace(stopGeographicPlace(h.trip().stops[0]), lima.expected);
+  assert.ok(confirmed?.geographicBinding);
+  h.changePlace(confirmed);
+  const result = h.sendBeforeCanonical(lima.choices);
+  assert.deepEqual(result.after, result.before);
+});
+
+test("before canonical hydration, an unchanged target still accepts compatible homepage enrichment", () => {
+  const h = actualCallbackHarness();
+  const result = h.sendBeforeCanonical(lima.choices);
+  assert.equal(result.before[0].coordinates, undefined);
+  assert.deepEqual(result.after[0].coordinates, lima.expected.coordinates);
+  assert.deepEqual(result.after.map(stop => [stop.id, stop.nights]), result.before.map(stop => [stop.id, stop.nights]));
 });
 
 test("a fatal initial map failure leaves the route workspace usable", () => {
