@@ -11,3 +11,9 @@ const localFixture=async()=>{const original=globalThis.fetch;globalThis.fetch=(a
 export const AirportCode:Story={beforeEach:localFixture};
 export const MetropolitanCity:Story={args:{value:'NYC'},beforeEach:async()=>{const original=globalThis.fetch;globalThis.fetch=(async(input,init)=>String(input).startsWith('/api/journey-geocode?')?new Response('{"candidates":[]}'):original(input,init)) as typeof fetch;return ()=>{globalThis.fetch=original;};}};
 export const AirportMobile:Story={...AirportCode,globals:{viewport:{value:'morrovia390',isRotated:false}}};
+
+const nonscheduled={canonicalPlaceId:'reference:ourairports:24',name:'Miramar Airport',country:'Argentina',placeType:'transport_gateway',routability:'direct_destination',coordinates:[-57.8697,-38.2271],providerId:`reference:ourairports:24@${REFERENCE_SNAPSHOT_ID}:AR:transport_gateway:-57.8697:-38.2271`,providerSourceLabel:'OurAirports',matchedAirportCode:'MJR',referenceSnapshotId:REFERENCE_SNAPSHOT_ID,scheduledService:false};
+const nonscheduledFixture=async()=>{const original=globalThis.fetch;globalThis.fetch=(async(input,init)=>String(input).startsWith('/api/journey-geocode?')?new Response(JSON.stringify({candidates:[nonscheduled]}),{headers:{'Content-Type':'application/json'}}):original(input,init)) as typeof fetch;return ()=>{globalThis.fetch=original;};};
+export const NonScheduledAirport:Story={args:{value:'MJR'},beforeEach:nonscheduledFixture};
+export const NonScheduledAirportSpanish:Story={...NonScheduledAirport,args:{value:'MJR',language:'es'}};
+export const NonScheduledAirportMobile:Story={...NonScheduledAirport,globals:{viewport:{value:'morrovia390',isRotated:false}}};

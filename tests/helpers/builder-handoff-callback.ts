@@ -1,3 +1,4 @@
+import {referenceGeographicAcceptanceMatches} from '../../lib/easyt/place-reference.ts';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {createRequire} from 'node:module';
@@ -27,7 +28,7 @@ export function actualCallbackHarness(initialCoordinates?:[number,number], initi
   builderEditSessionRef:{current:{getSnapshot:()=>({trip,inputRevision:revision,browserOwnerId:'owner-a'})}},
   activeBrowserOwnerIdRef:{current:'owner-a'},lookupOwnerId:'owner-a',lookupTripId:trip.id,
   removedPlaceMentionIdsRef:{current:[]},placeSelectionsRef:{current:[]},setHandoffResolutionStatuses:()=>{},
-  setLocationChoices:(fn:any)=>{choices=fn(choices)},mergeHandoffLocationChoice,handoffOutcomeIsCurrent,retireHandoffResolutionStatus,preferredHandoffLocationChoice,acceptedGeographicPlace,authoredContentKey,geographicInputKey,stopGeographicPlace,
+  setLocationChoices:(fn:any)=>{choices=fn(choices)},mergeHandoffLocationChoice,handoffOutcomeIsCurrent,retireHandoffResolutionStatus,preferredHandoffLocationChoice,referenceGeographicAcceptanceMatches,acceptedGeographicPlace,authoredContentKey,geographicInputKey,stopGeographicPlace,
   isOriginMention:(m:any)=>m.role==='origin'||m.role==='fixed_start',draft:{},originResolutionVersionRef:{current:0},originVersion:0,
   seedById:new Map(trip.stops.map(s=>[s.id,stopGeographicPlace(s)])),handoffOccurrenceMentionIdsRef:{current:{[id]:mention.mentionId}},handoffStopOccurrenceId,builderPlaceCommand,
   dispatchAcceptedBuilderEdit:(command:any,options:any)=>{assert.equal(options.expectedInputRevision,revision);const result=prepareBuilderHandlerEdit(trip,command,builderDocumentFingerprint(trip));assert.ok(result.ok);if(result.ok)trip=result.trip;revision++;accepted++;}};

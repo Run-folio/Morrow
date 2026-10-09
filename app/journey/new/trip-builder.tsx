@@ -1,5 +1,8 @@
 "use client";
 
+import {referenceGeographicAcceptanceMatches} from '@/lib/easyt/place-reference';
+
+
 /**
  * EasyT — new trip builder (v2 flow: Where → When → Places → Time → Draft)
  * Self-contained client component. Drop in at app/journey/new/trip-builder.tsx
@@ -1068,7 +1071,7 @@ function TripBuilderDocument() {
             setHandoffResolutionStatuses((current) => ({ ...current, [mention.mentionId]: "failed" }));
             return;
           }
-          const candidates = choices ?? [];
+          const candidates = (choices ?? []).filter(referenceGeographicAcceptanceMatches);
           const chosen = preferredHandoffLocationChoice(mention, candidates);
           const needsConfirmation = mention.status === "unresolved" || !chosen;
           const nextStatus = needsConfirmation ? "needs-confirmation" : "resolved";
@@ -2939,6 +2942,7 @@ function TripBuilderDocument() {
         placeType:canonicalSuggestion.placeType,routability:canonicalSuggestion.routability??'direct_destination',
         canonicalPlaceId: canonicalSuggestion.canonicalPlaceId,
         providerId: canonicalSuggestion.provenance.find((source) => source.kind === "provider")?.id,
+        referenceSnapshotId:canonicalSuggestion.referenceSnapshotId,
       } : null);
       const resolved = canonicalResolved ?? await (async () => {
         const response = await fetch(`/api/journey-geocode?place=${encodeURIComponent(canonicalSuggestion?.name ?? value)}${routeCountry ? `&country=${encodeURIComponent(routeCountry)}` : ""}${nearby ? `&nearLat=${nearby[1]}&nearLon=${nearby[0]}` : ""}`);

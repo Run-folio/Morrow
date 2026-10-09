@@ -13,7 +13,7 @@ import {
 } from "@/lib/easyt/place-intelligence";
 import { placeAutocompleteKeyAction, prioritizeRouteStopSuggestions } from "@/lib/easyt/place-autocomplete";
 import { createAbortableEffectScope } from "@/lib/easyt/abortable-effect";
-import {referenceKnownCodeKind,referenceResponseCompatible} from '@/lib/easyt/place-reference';
+import {referenceKnownCodeKind,referenceGeographicAcceptanceMatches} from '@/lib/easyt/place-reference';
 import type { EasyTLanguage } from "@/lib/easyt/i18n";
 import { EasyTButton } from "./easyt-controls";
 import {MorroviaPlaceDataCredit} from './morrovia-place-data-credit';
@@ -177,6 +177,7 @@ export function CanonicalPlaceAutocomplete({
             providerSourceLabel?: string;
             matchedAirportCode?: string;
             matchedIcaoCode?: string;
+            scheduledService?:boolean;
             coordinates: [number, number];
             bounds?: CanonicalPlaceSuggestion["bounds"];
             placeType?: PlaceType;
@@ -185,7 +186,7 @@ export function CanonicalPlaceAutocomplete({
           }> }>;
         })
         .then((payload) => {
-          const nextSuggestions = (payload.candidates ?? []).filter(referenceResponseCompatible).map((candidate) => {
+          const nextSuggestions = (payload.candidates ?? []).filter(referenceGeographicAcceptanceMatches).map((candidate) => {
             const kind = (candidate.kind ?? "").toLocaleLowerCase();
             const placeType = candidate.placeType ?? (/continent/.test(kind) ? "continent" as const
               : /country/.test(kind) ? "country" as const
@@ -199,9 +200,11 @@ export function CanonicalPlaceAutocomplete({
             const canonicalPlaceId = candidate.canonicalPlaceId ?? (candidate.providerId ? `open-world:${candidate.providerId}` : `provider:${candidate.country}:${candidate.name}`);
             return {
               canonicalPlaceId,
+              referenceSnapshotId:candidate.referenceSnapshotId,
               name: candidate.name,
               matchedAirportCode: candidate.matchedAirportCode,
               matchedIcaoCode: candidate.matchedIcaoCode,
+              scheduledService:candidate.scheduledService,
               label: `${candidate.name}${candidate.region ? ` · ${candidate.region}` : ""}, ${candidate.country}`,
               country: candidate.country,
               region: candidate.region,
@@ -309,7 +312,7 @@ export function CanonicalPlaceAutocomplete({
         className={index === activeIndex ? styles.optionOn : undefined}
         onMouseDown={(event) => event.preventDefault()}
         onClick={() => choose(suggestion)}
-      ><MapPin aria-hidden="true" /><span><b>{suggestion.name}</b><small>{suggestion.region ? `${suggestion.region} · ` : ""}{suggestion.country}{showPlaceType ? ` · ${placeTypeLabel(suggestion.placeType, language)}` : ""}</small></span></button>)) : providerFailed ? <div className={styles.failure} role="alert"><p>{resolvedFailureMessage}</p><EasyTButton variant="secondary" size="small" onMouseDown={(event) => event.preventDefault()} onClick={() => setRetryNonce((current) => current + 1)}>{language === "es" ? "Reintentar" : "Retry"}</EasyTButton></div> : <p role="status">{resolvedEmptyMessage}</p>}
+      ><MapPin aria-hidden="true" /><span><b>{suggestion.name}</b><small>{suggestion.region ? `${suggestion.region} · ` : ""}{suggestion.country}{showPlaceType ? ` · ${placeTypeLabel(suggestion.placeType, language)}` : ""}</small>{suggestion.scheduledService===false ? <small>{language==="es"?"No consta servicio regular de pasajeros":"No scheduled passenger service recorded"}</small>:null}</span></button>)) : providerFailed ? <div className={styles.failure} role="alert"><p>{resolvedFailureMessage}</p><EasyTButton variant="secondary" size="small" onMouseDown={(event) => event.preventDefault()} onClick={() => setRetryNonce((current) => current + 1)}>{language === "es" ? "Reintentar" : "Retry"}</EasyTButton></div> : <p role="status">{resolvedEmptyMessage}</p>}
       <MorroviaPlaceDataCredit language={language} sources={[
         ...(suggestions.some(s=>s.provenance.some(p=>p.id.startsWith('reference:geonames:')))?['geonames' as const]:[]),
         ...(suggestions.some(s=>s.provenance.some(p=>p.id.startsWith('reference:ourairports:')))?['ourairports' as const]:[]),

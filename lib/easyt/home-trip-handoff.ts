@@ -1110,6 +1110,7 @@ export type HandoffLocationChoice = {
   countryCode?: string;
   region?: string;
   providerId?: string;
+  referenceSnapshotId?:string;
   providerSourceLabel?: string;
   coordinates: [number, number];
   bounds?: GeographicBounds;

@@ -366,6 +366,7 @@ export type PlaceProviderCandidate = {
   /** Exact, nonconflicting provider IATA evidence for this search query. */
   matchedAirportCode?: string;
   matchedIcaoCode?: string;
+  scheduledService?:boolean;
   rankScore?: number;
   /** Provider-normalized evidence that an exact result is a recognised
    * sovereign or first-order geography, rather than merely any admin record. */
@@ -540,6 +541,8 @@ export function placeMentionSupportsMultipleSelections(
 
 export type CanonicalPlaceSuggestion = {
   canonicalPlaceId: string;
+  referenceSnapshotId?:string;
+  scheduledService?:boolean;
   name: string;
   label: string;
   country: string;
@@ -770,11 +773,13 @@ export function canonicalPlaceSuggestionFor(
   const region = displayRegion(entry.parentRegionId);
   return {
     canonicalPlaceId: entry.canonicalPlaceId,
+    referenceSnapshotId:entry.referenceProviderId?REFERENCE_SNAPSHOT_ID:undefined,
     name: entry.canonicalName,
     label: `${entry.canonicalName}${region ? ` · ${region}` : ""}, ${country}`,
     country,
     region,
     placeType: entry.placeType,
+    routability:entry.routability,
     coordinates: entry.coordinates ? [...entry.coordinates] as [number, number] : undefined,
     provenance: [source],
   };
@@ -789,7 +794,7 @@ export function canonicalPlaceSuggestionForId(id:string):CanonicalPlaceSuggestio
   const entry=findCatalogPlaceById(id);
   if(!entry||referenceSeedRetired(id)||entry.routability!=='direct_destination'||entry.parentCountries.length!==1)return null;
   const country=entry.parentCountries[0]!,region=displayRegion(entry.parentRegionId);
-  return {canonicalPlaceId:id,name:entry.canonicalName,label:`${entry.canonicalName}${region?` · ${region}`:''}, ${country}`,country,region,placeType:entry.placeType,coordinates:entry.coordinates?[...entry.coordinates]:undefined,provenance:[sourceFromCatalog(entry,entry.canonicalName)]};
+  return {referenceSnapshotId:entry.referenceProviderId?REFERENCE_SNAPSHOT_ID:undefined,canonicalPlaceId:id,name:entry.canonicalName,label:`${entry.canonicalName}${region?` · ${region}`:''}, ${country}`,country,region,placeType:entry.placeType,routability:entry.routability,coordinates:entry.coordinates?[...entry.coordinates]:undefined,provenance:[sourceFromCatalog(entry,entry.canonicalName)]};
 }
 
 export function canonicalPlaceSuggestionsForQuery(
@@ -821,11 +826,13 @@ export function canonicalPlaceSuggestionsForQuery(
         score,
         suggestion: {
           canonicalPlaceId: entry.canonicalPlaceId,
+          referenceSnapshotId:entry.referenceProviderId?REFERENCE_SNAPSHOT_ID:undefined,
           name: entry.canonicalName,
           label: `${entry.canonicalName}${region ? ` · ${region}` : ""}, ${country}`,
           country,
           region,
           placeType: entry.placeType,
+          routability:entry.routability,
           coordinates: entry.coordinates ? [...entry.coordinates] as [number, number] : undefined,
           provenance: [source],
         } satisfies CanonicalPlaceSuggestion,

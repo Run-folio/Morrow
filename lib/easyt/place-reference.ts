@@ -78,3 +78,19 @@ export function referenceResponseCompatible(candidate:{providerId?:string;refere
  if(!candidate.providerId?.startsWith('reference:'))return true;
  return candidate.referenceSnapshotId===REFERENCE_SNAPSHOT_ID&&candidate.providerId.split('@')[1]?.split(':')[0]===REFERENCE_SNAPSHOT_ID;
 }
+
+/** Validate new reference evidence without loading the world dataset into the browser.
+ * Historical saved bindings deliberately do not use this acceptance gate. */
+export function referenceGeographicAcceptanceMatches(candidate: {
+ canonicalPlaceId?:string;providerId?:string;referenceSnapshotId?:string;
+ country?:string;placeType?:string;kind?:string;coordinates?:readonly number[];
+}) {
+ const referenceId=candidate.canonicalPlaceId?.startsWith('reference:');
+ if(!referenceId&&!candidate.providerId?.startsWith('reference:'))return true;
+ if(!referenceResponseCompatible(candidate))return false;
+ const identity=/^reference:(ourairports|geonames):([1-9][0-9]*)$/.exec(candidate.canonicalPlaceId??'');
+ const type=candidate.placeType??candidate.kind,point=candidate.coordinates,iso=countryCodeFor(candidate.country);
+ if(!identity||!iso||!Array.isArray(point)||point.length!==2||!point.every(Number.isFinite)||Math.abs(point[0])>180||Math.abs(point[1])>90)return false;
+ if(identity[1]==='ourairports'?type!=='transport_gateway':type!=='city'&&type!=='town')return false;
+ return candidate.providerId===referenceRecordKey({source:identity[1] as ReferencePlaceRecord['source'],sourceId:identity[2],countryCode:iso,placeType:type as ReferencePlaceRecord['placeType'],coordinates:[point[0],point[1]]},REFERENCE_SNAPSHOT_ID);
+}

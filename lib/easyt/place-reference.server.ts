@@ -47,7 +47,7 @@ export function referencePlaceById(id:string):ReferencePlaceRecord|undefined{
  while(left<=right){const mid=(left+right)>>>1,r=settlementAt(d.offsets[mid]),value=Number(r.sourceId);if(value===wanted)return r;if(value<wanted)left=mid+1;else right=mid-1;}return undefined;
 }
 function candidate(r:ReferencePlaceRecord,score:number,code?:string):PlaceProviderCandidate{
- return {canonicalPlaceId:r.canonicalPlaceId,providerId:r.providerId,providerSourceId:r.source,providerSourceLabel:r.source==='geonames'?'GeoNames · filtered and adapted':`OurAirports${r.scheduledService?'':' · no scheduled passenger service recorded'}`,canonicalName:r.canonicalName,aliases:[...r.aliases],placeType:r.placeType,parentCountries:[countryFor(r.countryCode)!.name],coordinates:[...r.coordinates],routability:'direct_destination',matchQuality:score>=900?'exact':'partial',rankScore:score,...(code===r.iataCode?{matchedAirportCode:code}:{}),...(code===r.icaoCode?{matchedIcaoCode:code}:{}),...(r.source==='geonames'?{settlementKind:r.placeType as 'city'|'town',settlementPopulation:r.population}:{})};
+ return {canonicalPlaceId:r.canonicalPlaceId,providerId:r.providerId,providerSourceId:r.source,providerSourceLabel:r.source==='geonames'?'GeoNames · filtered and adapted':`OurAirports${r.scheduledService?'':' · no scheduled passenger service recorded'}`,canonicalName:r.canonicalName,aliases:[...r.aliases],placeType:r.placeType,parentCountries:[countryFor(r.countryCode)!.name],coordinates:[...r.coordinates],routability:'direct_destination',matchQuality:score>=900?'exact':'partial',rankScore:score,...(code===r.iataCode?{matchedAirportCode:code}:{}),...(code===r.icaoCode?{matchedIcaoCode:code}:{}),...(r.source==='ourairports'?{scheduledService:r.scheduledService}:{}),...(r.source==='geonames'?{settlementKind:r.placeType as 'city'|'town',settlementPopulation:r.population}:{})};
 }
 export function searchReferencePlaces(query:string,context:PlaceResolutionContext={},options:{limit?:number}={}):PlaceProviderCandidate[]{
  const q=normalized(query);if(q.length<2)return [];
@@ -60,7 +60,7 @@ export function searchReferencePlaces(query:string,context:PlaceResolutionContex
  const score=(names:string[])=>names.includes(q)?1000:names.some(n=>n.startsWith(q))?700:names.some(n=>n.split(' ').some(w=>w.startsWith(q)))?500:0;
  const contextual=(country:string)=>country===countryCodeFor(context.countryNames?.[0])?1:0;
  const insert=(item:typeof matches[number])=>{matches.push(item);matches.sort((a,b)=>b.score-a.score||Number(a.id)-Number(b.id));if(matches.length>limit)matches.pop();};
- for(const r of d.airports){if(!r.scheduledService||!allowed(r))continue;const s=score(d.airportNames.get(r.canonicalPlaceId)!);if(s)insert({id:r.sourceId,airport:r,score:s+contextual(r.countryCode)});}
+ for(const r of d.airports){if(!allowed(r))continue;const s=score(d.airportNames.get(r.canonicalPlaceId)!);if(s&&(r.scheduledService||s===1000))insert({id:r.sourceId,airport:r,score:s+contextual(r.countryCode)});}
  const prefix=d.prefixes[q.slice(0,2)];
  if(prefix)for(let i=0;i<prefix.count;i++){const offset=d.prefixOffsets.readUInt32LE(prefix.offset+i*4),t=settlementTupleAt(offset);
   if(context.explicitCountryNames?.length&&!context.explicitCountryNames.some(c=>countryCodeFor(c)===t[2]))continue;

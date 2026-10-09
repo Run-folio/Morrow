@@ -63,6 +63,7 @@ function responseCandidate(candidate: PlaceProviderCandidate) {
     rankScore: candidate.rankScore,
     matchedAirportCode: candidate.matchedAirportCode,
     matchedIcaoCode: candidate.matchedIcaoCode,
+    scheduledService:candidate.scheduledService,
     referenceSnapshotId: candidate.providerId.startsWith('reference:')?referenceSnapshotId():undefined,
   };
 }
@@ -192,7 +193,10 @@ export async function GET(request: NextRequest) {
     }
 
     const countries = candidates.map((candidate) => candidate.parentCountries?.[0] ?? "");
-    const selected = !country && needsDestinationConfirmation(countries, Boolean(nearby)) ? undefined : candidates[0];
+    const exactCode=place.trim().toUpperCase();
+    const exactCodeIdentities=new Set(candidates.filter(candidate=>candidate.matchedAirportCode===exactCode||candidate.matchedIcaoCode===exactCode)
+      .map(candidate=>candidate.canonicalPlaceId??candidate.providerId.split('@')[0]));
+    const selected = exactCodeIdentities.size>1 || !country && needsDestinationConfirmation(countries, Boolean(nearby)) ? undefined : candidates[0];
     // Free-text stops and origins must be actual route endpoints. Broad areas
     // remain available as clarification candidates, not fake centroid stops.
     if (!selected || selected.routability !== "direct_destination") return NextResponse.json({ result: null });

@@ -1,10 +1,11 @@
+import {referenceGeographicAcceptanceMatches} from './place-reference.ts';
 import {findCatalogPlaceById,normalizeCatalogPhrase} from './place-catalog.ts';
 import {canonicalPlaceFactsMatch,validPlaceCoordinates,type GeographicBounds} from './place-intelligence.ts';
 import {routeFamilies} from './route-catalog.ts';
 import type {EasyTTrip,GeographicBinding,JourneyEndpointPlace,TripStop} from './trip.ts';
 
 type Role='stop'|'endpoint';
-type Candidate=JourneyEndpointPlace & {placeType?:string;kind?:string;routability?:string;bounds?:GeographicBounds};
+type Candidate=JourneyEndpointPlace & {placeType?:string;kind?:string;routability?:string;bounds?:GeographicBounds;referenceSnapshotId?:string};
 const normalized=(value:string|undefined)=>normalizeCatalogPhrase(value??'');
 const allowed=(type:string,routability:string,role:Role)=>routability==='direct_destination'
  && (type==='city'||type==='town'||role==='endpoint'&&type==='transport_gateway');
@@ -31,6 +32,8 @@ function catalogPoint(place:JourneyEndpointPlace,role:Role) {
 }
 /** Semantic compatibility precedes any binding. A same-country region is insufficient. */
 export function geographicCandidateMatches(expected:JourneyEndpointPlace & {aliases?:string[];bounds?:GeographicBounds},candidate:Candidate,role:Role='stop') {
+ if(!referenceGeographicAcceptanceMatches(candidate))return false;
+ if(expected.canonicalPlaceId?.startsWith('reference:')&&expected.canonicalPlaceId!==candidate.canonicalPlaceId)return false;
  const type=candidate.placeType??candidate.kind??'';
  const curatedIsland=type==='island'&&candidate.routability==='direct_destination'
   &&Boolean(catalogPoint({...expected,country:candidate.country,coordinates:candidate.coordinates,providerId:candidate.providerId},role));

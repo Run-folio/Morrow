@@ -24,5 +24,7 @@ test('closed airports are excluded and non-scheduled gateways are explicit choic
  if(closed)assert.ok(searchReferencePlaces(closed[6],{}).every(c=>c.providerId.split('@')[0]!==`reference:ourairports:${closed[0]}`));
  const unscheduled=rows.find((r:any[])=>r[5]!=='closed_airport'&&!r[8]&&r[6]);assert.ok(unscheduled);
  const choice=searchReferencePlaces(unscheduled[6],{}).find(c=>c.providerId.split('@')[0]===`reference:ourairports:${unscheduled[0]}`);assert.ok(choice);assert.match(choice.providerSourceLabel!,/no scheduled passenger service/i);
- assert.ok(searchReferencePlaces(unscheduled[1],{}).every(c=>c.providerId!==choice.providerId));
+ assert.ok(searchReferencePlaces(unscheduled[1],{}).some(c=>c.providerId===choice.providerId));
+ assert.ok(searchReferencePlaces(unscheduled[1].slice(0,-2),{}).every(c=>c.providerId!==choice.providerId));
+ assert.equal(choice.scheduledService,false);
 });
