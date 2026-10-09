@@ -600,7 +600,8 @@ export default function TripItineraryWorkspace({
       const target = parseItineraryWorkspaceTarget(workingTrip, params);
       const requested = days.findIndex((day) => day.dayNumber === target.dayNumber);
       updateSelectedIndex(requested >= 0 ? requested : Math.max(0, days.findIndex((day) => day.dayNumber === selectedDayNumber)));
-      updateWorkspaceView(initialItineraryWorkspaceView(workingTrip, params));
+      updateWorkspaceView(initialItineraryWorkspaceView(workingTrip, params,
+        window.matchMedia('(max-width: 700px)').matches ? "days" : "calendar"));
     };
     restoreOrientation();
     window.addEventListener("popstate", restoreOrientation);

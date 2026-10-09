@@ -289,13 +289,13 @@ export function parseItineraryWorkspaceTarget(trip: Pick<WorkspaceTrip, "planIte
   return { dayNumber };
 }
 
-/** First visits show the route calendar; explicit views and valid day links win. */
-export function initialItineraryWorkspaceView(trip: Pick<WorkspaceTrip, "planItems">, query: QueryReader): "days" | "calendar" {
+/** First visits use the viewport default; explicit views and valid day links win. */
+export function initialItineraryWorkspaceView(trip: Pick<WorkspaceTrip, "planItems">, query: QueryReader, defaultView: "days" | "calendar" = "calendar"): "days" | "calendar" {
   const view = query.get("itineraryView");
   if (view === "days" || view === "calendar") return view;
   const rawDay = query.get("day") ?? query.get("itineraryDay") ?? "";
   const requested = /^\d+$/.test(rawDay) ? Number.parseInt(rawDay, 10) : Number.NaN;
-  return trip.planItems.some(day => day.dayNumber === requested) ? "days" : "calendar";
+  return trip.planItems.some(day => day.dayNumber === requested) ? "days" : defaultView;
 }
 
 export function firstItineraryDayForStop(trip: Pick<WorkspaceTrip, "planItems">, stopId: string) {

@@ -3,8 +3,9 @@ import type { Meta, StoryObj } from "@storybook/react";
 import { tourTripFixture } from "@/components/easyt/storybook/tour-trip.fixture";
 import type { EasyTTrip } from "@/lib/easyt/trip";
 import { TripBuilderRouteWorkspace } from "./trip-builder-route-workspace";
+import styles from "./trip-builder.module.css";
 
-function AllocationStory({ initialNights, language }: { initialNights: number[]; language: "en" | "es" }) {
+function AllocationStory({ initialNights, language, totalNights = 7 }: { initialNights: number[]; language: "en" | "es"; totalNights?: number }) {
   const [trip, setTrip] = useState<EasyTTrip>(() => ({
     ...tourTripFixture,
     stops: tourTripFixture.stops.map((stop, index) => ({ ...stop, nights: initialNights[index] ?? stop.nights })),
@@ -18,7 +19,7 @@ function AllocationStory({ initialNights, language }: { initialNights: number[];
     lockedStopIds={[]}
     fixedOrder={false}
     routeCheckProposalStopIds={null}
-    nightStatus={{ total: 7, allocated, complete: allocated === 7, language }}
+    nightStatus={{ total: totalNights, allocated, complete: allocated === totalNights, language }}
     onSelectStop={setSelectedStopId}
     onPreviewOrder={() => {}}
     onCommitOrder={() => false}
@@ -28,7 +29,7 @@ function AllocationStory({ initialNights, language }: { initialNights: number[];
   />;
 }
 
-const meta = { title: "Morrovia/05 Product Patterns/Builder route allocation", component: AllocationStory, parameters: { layout: "fullscreen" }, decorators: [(Story) => <main style={{ width: "calc(100vw - 16px)" }}><Story /></main>], args: { initialNights: [1, 2, 2], language: "en" } } satisfies Meta<typeof AllocationStory>;
+const meta = { title: "Morrovia/05 Product Patterns/Builder route allocation", component: AllocationStory, parameters: { layout: "fullscreen" }, decorators: [(Story) => <main className={styles.shellWide} style={{ width: "calc(100vw - 16px)" }}><Story /></main>], args: { initialNights: [1, 2, 2], language: "en" } } satisfies Meta<typeof AllocationStory>;
 export default meta;
 type Story = StoryObj<typeof meta>;
 
@@ -36,3 +37,5 @@ export const TwoNightsLeft: Story = {};
 export const OneNightTooMany: Story = { args: { initialNights: [4, 2, 2] } };
 export const AllAllocated: Story = { args: { initialNights: [3, 2, 2] } };
 export const UnaNocheSobra: Story = { args: { initialNights: [4, 2, 2], language: "es" } };
+
+export const MobileLargeNightValues: Story = { args: { initialNights: [78, 3, 3], totalNights: 84 }, globals: { viewport: { value: "morrovia390", isRotated: false } } };

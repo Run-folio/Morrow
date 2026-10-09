@@ -270,3 +270,10 @@ test("query-only deep-link changes retain one workspace analytics visit key", ()
  for (const query of ["day=2", "itineraryDay=3", "itineraryView=days", "day=2&itineraryView=days"]) assert.equal(initialItineraryWorkspaceView(trip, new URLSearchParams(query)), "days");
  assert.equal(initialItineraryWorkspaceView(trip, new URLSearchParams("day=2&itineraryView=calendar")), "calendar");
  });
+
+
+test("mobile itinerary defaults to Days without replacing explicit views or valid day links", () => {
+ for (const query of ["", "day=99", "day=3junk", "itineraryView=unknown"]) assert.equal(initialItineraryWorkspaceView(trip, new URLSearchParams(query), "days"), "days");
+ for (const query of ["itineraryView=calendar", "day=2&itineraryView=calendar"]) assert.equal(initialItineraryWorkspaceView(trip, new URLSearchParams(query), "days"), "calendar");
+ for (const query of ["day=2", "itineraryDay=3", "itineraryView=days"]) assert.equal(initialItineraryWorkspaceView(trip, new URLSearchParams(query), "calendar"), "days");
+});

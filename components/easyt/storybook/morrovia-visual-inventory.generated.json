@@ -5244,7 +5244,7 @@
     "observedSpacing": [
       {
         "value": "8px",
-        "count": 579,
+        "count": 580,
         "examples": [
           "app/journey/account.module.css",
           "app/journey/admin/feedback/feedback.module.css",
@@ -7552,7 +7552,7 @@
       },
       {
         "value": "max-width: 520px",
-        "count": 36,
+        "count": 37,
         "examples": [
           "app/journey/account.module.css",
           "app/journey/dashboard/dashboard.module.css",
@@ -7601,7 +7601,7 @@
       },
       {
         "value": "max-width: 430px",
-        "count": 16,
+        "count": 15,
         "examples": [
           "app/journey/help/help.module.css",
           "app/journey/home/immersive/product-demo.module.css",

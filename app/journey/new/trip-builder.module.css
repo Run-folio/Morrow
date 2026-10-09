@@ -1694,7 +1694,8 @@
    truth can scroll completely clear, including the device safe area. */
 @media (max-width: 520px) {
   .shellWide {
-    --morrovia-builder-action-height: 82px;
+    --morrovia-builder-action-min-height: 82px;
+    --morrovia-builder-action-height: var(--morrovia-builder-action-min-height);
     padding-bottom: calc(var(--morrovia-builder-action-height) + 16px);
   }
 
@@ -1704,7 +1705,7 @@
     right: 12px;
     bottom: calc(var(--morrovia-mobile-dock-offset) + 8px);
     left: 12px;
-    min-height: var(--morrovia-builder-action-height);
+    min-height: var(--morrovia-builder-action-min-height);
     padding: 10px 12px;
     border: 1px solid var(--line);
     border-radius: var(--morrovia-radius);
@@ -1769,12 +1770,14 @@
 @media (max-width: 700px) {
   .builderRouteRow {
     grid-template-columns: 44px minmax(0, 1fr) auto 44px;
-    grid-template-areas: "grip identity identity actions" "transfer transfer nights nights" "usable usable nights nights";
+    grid-template-areas: "grip identity identity actions" "transfer transfer transfer transfer" "nights nights nights nights" "usable usable usable usable";
     padding-inline: 9px;
   }
-  .builderRouteIdentity strong { white-space: normal; overflow: visible; }
-  .builderRouteUsable { justify-self: start; }
+  .builderRouteIdentity strong { white-space: normal; overflow: visible; overflow-wrap: anywhere; }
+  .builderRouteIdentity button { max-width: 100%; white-space: normal; overflow-wrap: anywhere; }
+  .builderRouteUsable { justify-self: start; min-width: 0; flex-wrap: wrap; }
   .builderRouteGrip { width: 44px; height: 44px; }
+  .builderRouteNights { grid-template-columns: 44px minmax(2ch, max-content) 44px; gap: 8px; }
   .builderRouteNights button { width: 44px; height: 44px; }
   .builderRouteActions { position: relative; grid-area: actions; inset: auto; align-self: start; }
   .builderRouteActions summary { width: 44px; height: 44px; }
@@ -1785,7 +1788,9 @@
 /* Page composition of shared feedback; does not move the route table. */
 .builderReviewActions { display:flex; align-items:center; flex-wrap:wrap; gap:8px; }
 .builderUndoToast { position:fixed; right:16px; bottom:calc(16px + var(--morrovia-mobile-dock-offset)); z-index:var(--morrovia-layer-dock); }
-@media(max-width:430px) { .builderUndoToast { right:12px; left:12px; } }
+@media(max-width:520px) {
+  .builderUndoToast { right:12px; left:12px; bottom:calc(var(--morrovia-builder-action-height, 82px) + 24px + var(--morrovia-mobile-dock-offset)); }
+}
 
 .necessaryReview { display: grid; gap: 4px; color: var(--morrovia-danger); font: var(--morrovia-type-fine-print); }
 .necessaryReview > span { margin: 0; }

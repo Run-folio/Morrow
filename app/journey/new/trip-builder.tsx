@@ -826,6 +826,8 @@ function TripBuilderDocument() {
   const [initialDecisionSelections, setDecisionSelections] = useState<TripDecisionSelections>({ transportByLeg: {} });
   const decisionSelections = canonicalBuilder ? (canonicalBuilder.brief.decisionSelections ?? {transportByLeg:{}}) : initialDecisionSelections;
   const [lastStructuralChange, setLastStructuralChange] = useState<StructuralSnapshot | null>(null);
+  const [structuralNoticeVersion, setStructuralNoticeVersion] = useState(0);
+  const builderActionRef = useRef<HTMLDivElement | null>(null);
 
   const [initialStartDate, setStartDate] = useState(today);
   const startDate = canonicalBuilder ? (canonicalBuilder.startDate) : initialStartDate;
@@ -2524,6 +2526,7 @@ function TripBuilderDocument() {
   const routeNightDifference = routeNights - totalNights;
 
   const rememberStructuralChange = (summary: string, affectedStopCount: number) => {
+    setStructuralNoticeVersion(version => version + 1);
     setLastStructuralChange({ ...(builderEditSessionRef.current ? { canonical: builderEditSessionRef.current.captureStructuralSnapshot() } : {}), stops, allocations: dayAllocations, manualNightStopIds, startDate, endDate, locks: scheduleLocks, placeSelections, completedPlanningAreaMentionIds, removedPlaceMentionIds, countryDiscoveryChoices: capturedStructuredBrief.countryDiscoveryChoices, discoveryDraftByMentionId: capturedStructuredBrief.discoveryDraftByMentionId, capturedPlaceSelections: capturedStructuredBrief.placeSelections, capturedDestinations: capturedStructuredBrief.destinations, capturedMustVisit: capturedStructuredBrief.mustVisit, summary });
     trackEvent("trip_refined", { change_type: summary, affected_stop_count: affectedStopCount });
   };
@@ -4778,6 +4781,22 @@ function TripBuilderDocument() {
   useLayoutEffect(() => {
     discoveryOwnersRef.current = { trip: activeTripDocument, addGuidedPlanningPlace, confirmAttractionVisit, persistDeviceRecovery, applyRouteOrder: applyDiscoveryRouteOrder };
   });
+  // Keep transient feedback and scrollable content above the actual action
+  // height, including wrapping/error copy and text zoom. Never dismiss save errors.
+  useLayoutEffect(() => {
+    const action = builderActionRef.current;
+    const root = action?.closest<HTMLElement>('[data-builder-root]');
+    if (!action || !root) return;
+    const measure = () => {
+      if (window.matchMedia('(max-width: 520px)').matches) root.style.setProperty('--morrovia-builder-action-height', `${Math.ceil(action.getBoundingClientRect().height)}px`);
+      else root.style.removeProperty('--morrovia-builder-action-height');
+    };
+    const observer = new ResizeObserver(measure);
+    observer.observe(action);
+    window.addEventListener('resize', measure);
+    measure();
+    return () => { observer.disconnect(); window.removeEventListener('resize', measure); root.style.removeProperty('--morrovia-builder-action-height'); };
+  }, [hasRouteSkeleton, hydrated, mountedBuilder?.session]);
   const renderedDiscoveryEntry: DiscoveryEntry = !discoveryProjection && discoveryEntry.kind !== "skip" && discoveryEntry.kind !== "legacy-recovery"
     ? { kind: "legacy-recovery", step: "places", mentionId: activeClarificationMention?.mentionId, reason: "technical-failure" }
     : discoveryEntry;
@@ -5568,7 +5587,7 @@ function TripBuilderDocument() {
 
           {hasRouteSkeleton && (
             <div id="builder-timing" tabIndex={-1} className={`${styles.stack} ${styles.timeStep}`}>
-              {mountedBuilder && lastStructuralChange?.canonical ? <div className={styles.builderUndoToast}><MorroviaBriefNotice variant="toast" title={language === "es" ? "Viaje actualizado" : "Trip updated"}
+              {mountedBuilder && lastStructuralChange?.canonical ? <div className={styles.builderUndoToast}><MorroviaBriefNotice key={structuralNoticeVersion} variant="toast" autoDismissMs={6000} autoDismissWithAction onDismiss={() => setLastStructuralChange(null)} title={language === "es" ? "Viaje actualizado" : "Trip updated"}
                 action={<EasyTButton variant="quiet" size="small" onClick={undoStructuralChange}>{language === "es" ? "Deshacer" : "Undo"}</EasyTButton>} /></div> : null}
               {mountedBuilder?.snapshot.draft.fields.filter(field=>field.status==="binding-conflict").map((field,index)=><MorroviaStatusBanner key={JSON.stringify(field.binding)} tone="warning"
                 title={language === "es" ? "Revisa tu entrada guardada" : "Review your saved input"}
@@ -6261,7 +6280,7 @@ function TripBuilderDocument() {
             : (language === "es" ? "Tus últimos cambios siguen seguros en este dispositivo." : "Your latest edits are still safe on this device.")}
         actions={<EasyTButton variant="secondary" onClick={recoverFromSaveError}>{recoveryActionLabel}</EasyTButton>}
       /></div> : null}
-      {hasRouteSkeleton && <div className={styles.wizardFoot}>
+      {hasRouteSkeleton && <div ref={builderActionRef} className={styles.wizardFoot}>
         <div className={styles.footRight}>
           {endDateStillSuggested && <small className={styles.gate}>{language === "es" ? "Confirma las fechas arriba" : "Confirm trip dates above"}</small>}
           {gate && gateConflict?.code !== "itinerary-stop-uncovered" && <small className={styles.gate}>{gate}</small>}
