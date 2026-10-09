@@ -512,10 +512,41 @@ export function findCatalogPlaceById(canonicalPlaceId: string) {
   return catalogById.get(canonicalPlaceId);
 }
 
+// Cache only deployment-owned catalog labels, never traveller input. The
+// frozen catalog already owns the ID index above; phrase lookups can reuse
+// the same immutable records without folding every label on every query.
+const normalizedLabels = new WeakMap<PlaceCatalogEntry, readonly { label: string; phrase: string }[]>();
+function labelsFor(entry: PlaceCatalogEntry) {
+  let labels = normalizedLabels.get(entry);
+  if (!labels) {
+    labels = [entry.canonicalName, ...entry.aliases].map(label => ({ label, phrase: normalizeCatalogPhrase(label) }));
+    normalizedLabels.set(entry, labels);
+  }
+  return labels;
+}
+
+let phrasesByLabel: Map<string, PlaceCatalogEntry[]> | undefined;
+function phraseIndex() {
+  if (!phrasesByLabel) {
+    phrasesByLabel = new Map();
+    for (const entry of PLACE_CATALOG) {
+      if (referenceSeedRetired(entry.canonicalPlaceId)) continue;
+      for (const phrase of new Set(labelsFor(entry).map(label => label.phrase))) {
+        if (!phrase) continue;
+        const entries = phrasesByLabel.get(phrase) ?? [];
+        entries.push(entry);
+        phrasesByLabel.set(phrase, entries);
+      }
+    }
+  }
+  return phrasesByLabel;
+}
+
 export function findCatalogPlacesByPhrase(phrase: string) {
   const matchesFor = (normalizedPhrase: string) => {
-    const entries=PLACE_CATALOG.filter(entry=>!referenceSeedRetired(entry.canonicalPlaceId)&&[entry.canonicalName,...entry.aliases].some(label=>normalizeCatalogPhrase(label)===normalizedPhrase));
-    const authored=entries.filter(entry=>entry.captureMode!=='explicit-only');return authored.length?authored:entries;
+    const entries = phraseIndex().get(normalizedPhrase) ?? [];
+    const authored = entries.filter(entry => entry.captureMode !== 'explicit-only');
+    return authored.length ? authored : [...entries];
   };
   const exactPhrase = normalizeCatalogPhrase(phrase);
   if (!exactPhrase) return [];
@@ -557,8 +588,7 @@ export function findCatalogMatches(value: string): PlaceCatalogMatch[] {
 
   for (const entry of PLACE_CATALOG) {
     if(entry.captureMode==='explicit-only'||referenceSeedRetired(entry.canonicalPlaceId))continue;
-    for (const label of [entry.canonicalName, ...entry.aliases]) {
-      const phrase = normalizeCatalogPhrase(label);
+    for (const { label, phrase } of labelsFor(entry)) {
       if (!phrase) continue;
       let offset = 0;
       while (offset <= normalized.text.length - phrase.length) {
