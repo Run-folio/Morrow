@@ -1,4 +1,4 @@
-import {readFileSync} from 'node:fs';
+import {readFileSync,openSync,readSync,fstatSync,closeSync} from 'node:fs';
 import {resolve} from 'node:path';
 import {createHash} from 'node:crypto';
 import {countryFor, countryCodeFor} from './country-registry.ts';
@@ -20,11 +20,17 @@ function load(){
  const airportById=new Map(airports.map(r=>[r.canonicalPlaceId,r]));
  const codes=new Map<string,ReferencePlaceRecord[]>();
  for(const r of airports)for(const code of [r.iataCode,r.icaoCode])if(code){const values=codes.get(code)??[];values.push(r);codes.set(code,values);}
- const settlements=read('settlements.json'), prefixOffsets=read('settlement-prefixes.bin');
+ const settlementFile=manifest.files.find(f=>f.path==='settlements.json');
+ const settlementFd=openSync(resolve(root,'settlements.json'),'r'),hash=createHash('sha256'),chunk=Buffer.allocUnsafe(64*1024);
+ try{if(!settlementFile||fstatSync(settlementFd).size!==settlementFile.bytes)throw new Error('Settlement file size mismatch');let position=0,count;while((count=readSync(settlementFd,chunk,0,chunk.length,position))>0){hash.update(chunk.subarray(0,count));position+=count;}if(hash.digest('hex')!==settlementFile.sha256)throw new Error('Settlement integrity failure');}catch(error){closeSync(settlementFd);throw error;}
+ try {
+ const prefixOffsets=read('settlement-prefixes.bin');
  const prefixes=JSON.parse(read('settlement-prefixes.json').toString()) as Record<string,Prefix>;
  const lengths=read('settlement-lengths.bin'), offsets=new Uint32Array(lengths.length/2);
  let offset=2;for(let i=0;i<offsets.length;i++){offsets[i]=offset;offset+=lengths.readUInt16LE(i*2);}
- return {manifest,airports,airportById,codes,settlements,prefixOffsets,prefixes,offsets};
+ const airportNames=new Map(airports.map(r=>[r.canonicalPlaceId,[r.canonicalName,...r.aliases].map(normalized)]));
+ return {manifest,airports,airportNames,airportById,codes,settlementFd,recordBuffer:Buffer.allocUnsafe(65535),prefixOffsets,prefixes,offsets,lengths};
+ } catch(error) { closeSync(settlementFd); throw error; }
 }
 const data=()=>loaded??(loaded=load());
 function decode(t:Tuple,source:ReferencePlaceRecord['source'],snapshotId:string):ReferencePlaceRecord{
@@ -32,7 +38,8 @@ function decode(t:Tuple,source:ReferencePlaceRecord['source'],snapshotId:string)
  const r:ReferencePlaceRecord={source,sourceId:t[0],canonicalPlaceId:`reference:${source}:${t[0]}`,providerId:'',canonicalName:t[1],countryCode:t[2],coordinates:[t[3],t[4]],placeType:airport?'transport_gateway':t[5]==='PPL'?'town':'city',aliases:airport?[]:t[7] as string[],status:airport&&t[5]==='closed_airport'?'closed':'active',...(airport?{airportType:t[5],iataCode:t[6] as string||undefined,icaoCode:t[7] as string||undefined,scheduledService:t[8],municipality:t[9]}:{featureCode:t[5],population:t[6] as number})};
  r.providerId=referenceRecordKey(r,snapshotId);return r;
 }
-function settlementAt(offset:number){const d=data();const end=d.settlements.indexOf(10,offset);return decode(JSON.parse(d.settlements.subarray(offset,end).toString().replace(/,$/,'')),'geonames',d.manifest.snapshotId);}
+function settlementTupleAt(offset:number):Tuple{const d=data();let left=0,right=d.offsets.length-1;while(left<=right){const mid=(left+right)>>>1,value=d.offsets[mid];if(value===offset){const length=d.lengths.readUInt16LE(mid*2)-2;const count=readSync(d.settlementFd,d.recordBuffer,0,length,offset);if(count!==length)throw new Error('Truncated settlement record');return JSON.parse(d.recordBuffer.toString('utf8',0,length));}if(value<offset)left=mid+1;else right=mid-1;}throw new Error('Invalid settlement index offset');}
+function settlementAt(offset:number){return decode(settlementTupleAt(offset),'geonames',data().manifest.snapshotId);}
 export function referencePlaceById(id:string):ReferencePlaceRecord|undefined{
  const d=data();if(id.startsWith('reference:ourairports:'))return d.airportById.get(id);
  const match=/^reference:geonames:(\d+)$/.exec(id);if(!match)return undefined;
@@ -49,12 +56,17 @@ export function searchReferencePlaces(query:string,context:PlaceResolutionContex
  const limit=Math.min(12,Math.max(1,options.limit??12)),exact=referenceKnownCodeKind(query)==='metro'?[]:(d.codes.get(code)??[]).filter(allowed);
  // A collision is offered as explicit alternatives; never invent a unique code assignment.
  if(exact.length)return exact.map(r=>candidate(r,1200,code)).sort((a,b)=>a.providerId.localeCompare(b.providerId)).slice(0,limit);
- const matches:{r:ReferencePlaceRecord;score:number}[]=[];
- const score=(r:ReferencePlaceRecord)=>{const names=[r.canonicalName,...r.aliases].map(normalized);return names.includes(q)?1000:names.some(n=>n.startsWith(q))?700:names.some(n=>n.split(' ').some(w=>w.startsWith(q)))?500:0;};
- for(const r of d.airports){if(!r.scheduledService||!allowed(r))continue;const s=score(r);if(s)matches.push({r,score:s});}
+ const matches:{id:string;offset?:number;airport?:ReferencePlaceRecord;score:number}[]=[];
+ const score=(names:string[])=>names.includes(q)?1000:names.some(n=>n.startsWith(q))?700:names.some(n=>n.split(' ').some(w=>w.startsWith(q)))?500:0;
+ const contextual=(country:string)=>country===countryCodeFor(context.countryNames?.[0])?1:0;
+ const insert=(item:typeof matches[number])=>{matches.push(item);matches.sort((a,b)=>b.score-a.score||Number(a.id)-Number(b.id));if(matches.length>limit)matches.pop();};
+ for(const r of d.airports){if(!r.scheduledService||!allowed(r))continue;const s=score(d.airportNames.get(r.canonicalPlaceId)!);if(s)insert({id:r.sourceId,airport:r,score:s+contextual(r.countryCode)});}
  const prefix=d.prefixes[q.slice(0,2)];
- if(prefix)for(let i=0;i<prefix.count;i++){const r=settlementAt(d.prefixOffsets.readUInt32LE(prefix.offset+i*4));if(!allowed(r))continue;const s=score(r);if(s)matches.push({r,score:s});}
- return matches.sort((a,b)=>b.score-a.score||Number(b.r.countryCode===countryCodeFor(context.countryNames?.[0]))-Number(a.r.countryCode===countryCodeFor(context.countryNames?.[0]))||Number(a.r.sourceId)-Number(b.r.sourceId)).slice(0,limit).map(({r,score})=>candidate(r,score));
+ if(prefix)for(let i=0;i<prefix.count;i++){const offset=d.prefixOffsets.readUInt32LE(prefix.offset+i*4),t=settlementTupleAt(offset);
+  if(context.explicitCountryNames?.length&&!context.explicitCountryNames.some(c=>countryCodeFor(c)===t[2]))continue;
+  const type=t[5]==='PPL'?'town':'city';if(context.explicitPlaceTypes?.length&&!context.explicitPlaceTypes.includes(type))continue;
+  const s=score([t[1],...(t[7] as string[])].map(normalized));if(s)insert({id:t[0],offset,score:s+contextual(t[2])});}
+ return matches.map(m=>candidate(m.airport??settlementAt(m.offset!),m.score));
 }
 export const referenceSnapshotId=()=>data().manifest.snapshotId;
 

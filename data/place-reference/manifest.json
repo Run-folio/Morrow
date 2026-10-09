@@ -1,7 +1,7 @@
 {
   "version": 1,
-  "generatorVersion": "1",
-  "snapshotId": "f03397b961e8196b4fa1",
+  "generatorVersion": "2",
+  "snapshotId": "5b64880f570cf12a0fd0",
   "generatedAt": "2026-10-09T13:19:03.302301+00:00",
   "sources": [
     {
@@ -31,21 +31,21 @@
     },
     {
       "path": "settlements.json",
-      "sha256": "97e4fd172165955c0439d1b02446740dffb262f2beccb0df5408799a8e85039c",
+      "sha256": "089c98b75021c49c94fd4c0e5f5aec408b3254b4cbda1a1093d3a84fdeac35a2",
       "records": 224601,
-      "bytes": 26056056
+      "bytes": 26047384
     },
     {
       "path": "country-seeds.json",
-      "sha256": "0a9c2d1c47ba4f2ee027e160675fbac2d845718a1da57ced16bbfb49f1987124",
+      "sha256": "8bb1d81591b0b9938366f2225dc4e498b1d7c637e42e925a459c8d9a8c169d6b",
       "records": 250,
       "bytes": 1079343
     },
     {
       "path": "code-kinds.json",
-      "sha256": "47c1c973fcc7308aac930d1f4b5ef1b030042ef5fe3a18b2a6a69bd50b4d551c",
-      "records": 2,
-      "bytes": 53739
+      "sha256": "cd61e961c9ffb1bec17df69e56f7d4f471704ac7fb7be981385f5e10f24c3e8c",
+      "records": 3,
+      "bytes": 124644
     },
     {
       "path": "retired-seeds.json",
@@ -67,19 +67,19 @@
     },
     {
       "path": "settlement-prefixes.json",
-      "sha256": "262f0ba32c4392cec6f7bedeff5af081afba8566eb67eef33f49a38bc584cb37",
-      "records": 24093,
-      "bytes": 907160
+      "sha256": "0e9e7de091bd5a095602035e9b21930b46b3b3726138f2365f10328bae101b2b",
+      "records": 24080,
+      "bytes": 906704
     },
     {
       "path": "settlement-prefixes.bin",
-      "sha256": "41b0cf1512a024212efec4ba27cefc679130415ec4c08bbe865dc9ed5fa53582",
-      "records": 861793,
-      "bytes": 3447172
+      "sha256": "89c89c393702b70a81ec41e6a8f4a2b17fd107f042b35936c82fef794ef22093",
+      "records": 848653,
+      "bytes": 3394612
     },
     {
       "path": "settlement-lengths.bin",
-      "sha256": "97f816049e03827e5ffe6c1c01710dcfb6366696c4f9cddf7a5a3bf8b181b5cc",
+      "sha256": "032050240247f74624bffa2946d6882016e826e0bf2cdba326be8fab979c8961",
       "records": 224601,
       "bytes": 449202
     }

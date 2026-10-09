@@ -16,7 +16,8 @@ import {
 } from "./planning-confidence.ts";
 import { destinationKnowledge } from "./destination-knowledge.ts";
 import { routeFamilies, routeFamilyByKey, type RouteFamily } from "./route-catalog.ts";
-import {referenceKnownCodeKind,referenceSeedRetired} from './place-reference.ts';
+import {REFERENCE_SNAPSHOT_ID,referenceRecordKey,referenceKnownCodeKind,referenceSeedRetired} from './place-reference.ts';
+import {countryCodeFor} from './country-registry.ts';
 
 export const PLACE_INTELLIGENCE_VERSION = 1 as const;
 export const PLACE_INTELLIGENCE_PARSER_VERSION = "place-intelligence-v1-deterministic";
@@ -1470,6 +1471,7 @@ function unresolvedCandidates(prompt: string, occupied: Array<{ start: number; e
     || candidates.some((candidate) => candidate.start < end && candidate.end > start);
   const fuzzyMatchFor = (normalized: string, minimumCanonicalLength = 7) => {
     const fuzzyEntries = PLACE_CATALOG.filter((entry) => {
+      if(entry.captureMode==='explicit-only')return false;
       const canonical = normalizePlacePhrase(entry.canonicalName);
       return canonical.length >= minimumCanonicalLength && levenshtein(normalized, canonical) === 1;
     });
@@ -1727,6 +1729,7 @@ export function guidedPlanningAreaSuggestions(
   });
 
   const canonicalOptions = PLACE_CATALOG.flatMap((entry): Array<GuidedPlanningAreaSuggestion & { score: number }> => {
+    if(entry.captureMode==='explicit-only')return [];
     if (!entry.coordinates || !["city", "town", "transport_gateway"].includes(entry.placeType)) return [];
     const countries = entry.parentCountries.map(normalizePlacePhrase);
     const contained = mention.placeType === "country"
@@ -2330,6 +2333,22 @@ export function resolveExplicitPlaceMentions(
   };
 }
 
+/** Source identity is durable; the versioned provider key remains evidence for
+ * the selected tuple. Other providers keep their existing namespaced IDs. */
+function maintainedReferenceCandidateId(candidate: PlaceProviderCandidate) {
+  const source = candidate.providerSourceId;
+  if (source !== 'geonames' && source !== 'ourairports') return undefined;
+  const id = candidate.canonicalPlaceId;
+  const match = id?.match(/^reference:(geonames|ourairports):([1-9][0-9]*)$/);
+  const countryCode = countryCodeFor(candidate.parentCountries?.[0] ?? '');
+  if (!match || match[1] !== source || !countryCode || !validPlaceCoordinates(candidate.coordinates)) return undefined;
+  const placeType = candidate.placeType;
+  if (placeType !== 'city' && placeType !== 'town' && placeType !== 'transport_gateway') return undefined;
+  if (source === 'ourairports' ? placeType !== 'transport_gateway' : placeType === 'transport_gateway') return undefined;
+  const key = referenceRecordKey({source, sourceId: match[2], countryCode, placeType, coordinates: candidate.coordinates}, REFERENCE_SNAPSHOT_ID);
+  return candidate.providerId === key ? id : undefined;
+}
+
 function providerCandidate(
   candidate: PlaceProviderCandidate,
   provider: PlaceIntelligenceProvider,
@@ -2343,7 +2362,7 @@ function providerCandidate(
       : "Provider result mapped into Morrovia's compact place taxonomy; no arbitrary provider payload is retained.",
   };
   return {
-    canonicalPlaceId: `${provider.id}:${candidate.providerId}`,
+    canonicalPlaceId: maintainedReferenceCandidateId(candidate) ?? `${provider.id}:${candidate.providerId}`,
     canonicalName: candidate.canonicalName,
     aliases: [...(candidate.aliases ?? [])],
     placeType: candidate.placeType,
@@ -2682,6 +2701,7 @@ function providerCandidatesFromUnknown(value: unknown): PlaceProviderCandidate[]
       : undefined;
     return [{
       providerId,
+      ...(typeof record.canonicalPlaceId === "string" && /^reference:(geonames|ourairports):[1-9][0-9]*$/.test(record.canonicalPlaceId) ? { canonicalPlaceId: record.canonicalPlaceId } : {}),
       canonicalName,
       placeType,
       ...(aliases ? { aliases } : {}),

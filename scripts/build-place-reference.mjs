@@ -8,7 +8,7 @@ const sha = value => createHash('sha256').update(value).digest('hex');
 const allowedFeatures = new Set(['PPL', 'PPLA', 'PPLA2', 'PPLA3', 'PPLA4', 'PPLC', 'PPLCD', 'PPLG']);
 const allowedAirports = new Set(['large_airport', 'medium_airport', 'small_airport', 'seaplane_base', 'closed_airport']);
 const jurisdictions = new Map(countries.map(c => [c.code, c]));
-const normalize = s => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLocaleLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ').trim();
+const normalize = s => s.normalize('NFKD').replace(/[\u0300-\u036f]/g, '').replace(/[’']/g,'').toLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ').trim();
 const validPoint = p => p.every(Number.isFinite) && Math.abs(p[0]) <= 180 && Math.abs(p[1]) <= 90;
 const point = (lon, lat) => lon.trim() && lat.trim() && validPoint([Number(lon), Number(lat)]) ? [Number(lon), Number(lat)] : null;
 async function digestFile(path) { const h = createHash('sha256'); for await (const chunk of createReadStream(path))
@@ -71,7 +71,7 @@ export async function buildReferenceSnapshot({ airports, settlements, sourceMani
         if (!source?.url || !source.license || !source.licenseUrl || source.sha256 !== await digestFile(path))
             throw new Error(`Invalid source manifest/checksum: ${id}`);
     }
-    const snapshotId = sha(JSON.stringify({ policy: 'morrovia-reference-v1-aliases8', sources: sourceManifest.sources.map(s => [s.id, s.sha256]) })).slice(0, 20);
+    const snapshotId = sha(JSON.stringify({ policy: 'morrovia-reference-v2-aliases8-normalized-codes', sources: sourceManifest.sources.map(s => [s.id, s.sha256]) })).slice(0, 20);
     const coverage = Object.fromEntries(countries.map(c => [c.code, { name: c.name, preFilterByFeature: {}, eligible: 0, rejected: 0 }]));
     const rejected = {}, samples = [], aRecords = [], gRecords = [], seen = new Set();
     const reject = (reason, id) => { rejected[reason] = (rejected[reason] ?? 0) + 1; if (samples.length < 100)
@@ -87,8 +87,9 @@ export async function buildReferenceSnapshot({ airports, settlements, sourceMani
             continue;
         }
         const r = Object.fromEntries(header.map((h, i) => [h, row[i] ?? '']));
-        if (!r.id?.trim())
+        if (Object.values(r).every(value=>!value.trim()))
             continue;
+        if (!/^[1-9]\d*$/.test(r.id)||!Number.isSafeInteger(Number(r.id))) throw new Error('Invalid airport source id');
         const id = `ourairports:${r.id}`;
         if (seen.has(id))
             throw new Error(`Duplicate source id ${id}`);
@@ -120,6 +121,7 @@ export async function buildReferenceSnapshot({ airports, settlements, sourceMani
         if (f.length < 19)
             throw new Error('Malformed GeoNames row');
         const [id, name, ascii, alternates, lat, lon, cls, feature, country] = f;
+        if (!/^[1-9]\d*$/.test(id)||!Number.isSafeInteger(Number(id))) throw new Error('Invalid settlement source id');
         const sid = `geonames:${id}`;
         if (seen.has(sid))
             throw new Error(`Duplicate source id ${sid}`);
@@ -181,7 +183,7 @@ export async function buildReferenceSnapshot({ airports, settlements, sourceMani
         for (const code of [r.iataCode, r.icaoCode].filter(Boolean))
             (collisions[code] ??= []).push(r.canonicalPlaceId);
     const duplicateCodes = Object.fromEntries(Object.entries(collisions).filter(([, ids]) => ids.length > 1));
-    const payloads = { 'airports.json': aRecords.map(pack), 'settlements.json': gRecords.filter(r => r.status === 'active').map(pack), 'country-seeds.json': countrySeeds, 'code-kinds.json': { iata: [...new Set(aRecords.filter(r => r.status === 'active').map(r => r.iataCode).filter(Boolean))].sort(), metro: ['NYC', 'SEL'] }, 'retired-seeds.json': retiredSeeds.sort((a, b) => a.canonicalPlaceId.localeCompare(b.canonicalPlaceId)), 'crosswalk.json': { version: 1, mappings: [] }, 'coverage.json': { jurisdictions: coverage, rejected, samples, duplicateCodes, quarantined, exceptions: countries.filter(c => !countrySeeds[c.code].length).map(c => ({ code: c.code, ...coverage[c.code], reason: coverage[c.code].eligible ? 'quarantined-only-review-required' : 'no-eligible-source-settlement', extract: 'cities500 thresholded; no eligible row is not proof of no inhabitants' })) } };
+    const payloads = { 'airports.json': aRecords.map(pack), 'settlements.json': gRecords.filter(r => r.status === 'active').map(pack), 'country-seeds.json': countrySeeds, 'code-kinds.json': { icao: [...new Set(aRecords.filter(r=>r.status==='active').map(r=>r.icaoCode).filter(Boolean))].sort(), iata: [...new Set(aRecords.filter(r => r.status === 'active').map(r => r.iataCode).filter(Boolean))].sort(), metro: ['NYC', 'SEL'] }, 'retired-seeds.json': retiredSeeds.sort((a, b) => a.canonicalPlaceId.localeCompare(b.canonicalPlaceId)), 'crosswalk.json': { version: 1, mappings: [] }, 'coverage.json': { jurisdictions: coverage, rejected, samples, duplicateCodes, quarantined, exceptions: countries.filter(c => !countrySeeds[c.code].length).map(c => ({ code: c.code, ...coverage[c.code], reason: coverage[c.code].eligible ? 'quarantined-only-review-required' : 'no-eligible-source-settlement', extract: 'cities500 thresholded; no eligible row is not proof of no inhabitants' })) } };
     const activeSettlements = gRecords.filter(r => r.status === 'active');
     const prefixes = new Map();
     let byteOffset = 2;
@@ -215,7 +217,7 @@ export async function buildReferenceSnapshot({ airports, settlements, sourceMani
     const total = files.reduce((n, f) => n + Buffer.byteLength(f.body), 0);
     if (total > 32 * 1024 * 1024)
         throw new Error(`Reference file budget exceeded: ${total}`);
-    const manifest = { version: 1, generatorVersion: '1', snapshotId, generatedAt: sourceManifest.acquiredAt, sources: sourceManifest.sources.map(s => ({ ...s, acquiredAt: s.acquiredAt ?? sourceManifest.acquiredAt })), files: files.map(f => ({ path: f.path, sha256: sha(f.body), records: f.records, bytes: Buffer.byteLength(f.body) })) };
+    const manifest = { version: 1, generatorVersion: '2', snapshotId, generatedAt: sourceManifest.acquiredAt, sources: sourceManifest.sources.map(s => ({ ...s, acquiredAt: s.acquiredAt ?? sourceManifest.acquiredAt })), files: files.map(f => ({ path: f.path, sha256: sha(f.body), records: f.records, bytes: Buffer.byteLength(f.body) })) };
     const candidate = `${output}.candidate-${process.pid}`;
     await mkdir(candidate, { recursive: true });
     try {

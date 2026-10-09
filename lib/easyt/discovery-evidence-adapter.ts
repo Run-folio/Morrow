@@ -38,6 +38,7 @@ const browseOnlyRouteCopy: Readonly<Record<string, string>> = {
 
 const catalogByPhrase = new Map<string, PlaceCatalogEntry[]>();
 for (const place of PLACE_CATALOG) {
+  if(place.captureMode==='explicit-only')continue;
   for (const phrase of [place.canonicalName, ...place.aliases]) {
     const key = normalized(phrase);
     catalogByPhrase.set(key, [...(catalogByPhrase.get(key) ?? []), place]);

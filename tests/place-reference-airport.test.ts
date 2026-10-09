@@ -12,6 +12,7 @@ test('IATA and ICAO resolve physical gateways with separate source-validated fla
   if(r.icaoCode){const icao=searchReferencePlaces(r.icaoCode,{}).find(c=>c.providerId===first.providerId)!;assert.equal(icao.matchedIcaoCode,r.icaoCode);assert.equal(icao.matchedAirportCode,undefined);}
  }
  assert.equal(referenceKnownCodeKind('nyc'),'metro');assert.equal(referenceKnownCodeKind('SEL'),'metro');
+ assert.equal(referenceKnownCodeKind(' mggt '),'icao');
  for(const code of ['NYC','SEL','QQQQ','L-H-R'])assert.ok(searchReferencePlaces(code,{}).every(c=>!c.matchedAirportCode&&!c.matchedIcaoCode));
  assert.ok(searchReferencePlaces('LHR',{explicitCountryNames:['France']}).every(c=>!c.matchedAirportCode));
 });

@@ -264,14 +264,11 @@ test("restaurant fallback sources and stay base sources are bounded parallel wor
   assert.match(route, /AbortSignal\.timeout\(7000\)/);
 });
 
-test("activity discovery starts country verification before awaiting Wikipedia", () => {
-  const route = source("app/api/journey-discover/route.ts");
-  const verificationStart = route.indexOf("const countryVerification = isWithinRequestedCountry");
-  const wikipediaAwait = route.indexOf("const response = await fetch(`https://en.wikipedia.org");
-  const verificationAwait = route.indexOf("if (!(await countryVerification))");
-  assert.ok(verificationStart > 0 && wikipediaAwait > verificationStart && verificationAwait > wikipediaAwait);
-  assert.match(route, /next: \{ revalidate: 60 \* 60 \* 24 \* 7 \}/);
-  assert.match(route, /next: \{ revalidate: 60 \* 60 \* 24 \* 30 \}/);
+test("activity discovery verifies an exact local centre before fetching Wikipedia", () => {
+  const discover = readFileSync(new URL("../app/api/journey-discover/route.ts", import.meta.url), "utf8");
+  assert.ok(discover.indexOf('const centre=trustedLocalActivityCentre(') < discover.indexOf('const response = await fetch('));
+  assert.match(discover, /if \(!centre\) return NextResponse\.json\(\{ places: \[\] \}\)/);
+  assert.doesNotMatch(discover, /nominatim\.openstreetmap|countryVerification|\/reverse/);
 });
 
 test("recommendation timing telemetry excludes trip content, coordinates, prices and URLs", () => {

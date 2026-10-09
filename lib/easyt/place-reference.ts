@@ -1,6 +1,7 @@
 import seeds from '../../data/place-reference/country-seeds.json' with { type: 'json' };
 import codes from '../../data/place-reference/code-kinds.json' with { type: 'json' };
 import retired from '../../data/place-reference/retired-seeds.json' with { type: 'json' };
+import manifest from '../../data/place-reference/manifest.json' with {type:'json'};
 import { countryCodeFor } from './country-registry.ts';
 import type { PlaceCatalogEntry } from './place-catalog.ts';
 export type ReferencePlaceRecord = {
@@ -66,8 +67,14 @@ export function referenceSelectionMatches(candidate: {
 export const REFERENCE_COUNTRY_SEEDS = Object.values(seeds).flat() as unknown as readonly PlaceCatalogEntry[];
 export const REFERENCE_RETIRED_SEEDS = retired as unknown as readonly PlaceCatalogEntry[];
 const seedCountries = seeds as unknown as Record<string, readonly PlaceCatalogEntry[]>;
-const iata = new Set(codes.iata), metro = new Set(codes.metro);
+const iata = new Set(codes.iata), icao = new Set(codes.icao), metro = new Set(codes.metro);
 const retiredIds = new Set(REFERENCE_RETIRED_SEEDS.map(seed => seed.canonicalPlaceId));
 export const referenceCountrySeeds = (code: string) => seedCountries[code.toUpperCase()] ?? [];
 export const referenceSeedRetired = (id: string) => retiredIds.has(id);
-export function referenceKnownCodeKind(query: string): 'iata' | 'metro' | undefined { const code = query.trim().toUpperCase(); return metro.has(code) ? 'metro' : iata.has(code) ? 'iata' : undefined; }
+export function referenceKnownCodeKind(query: string): 'iata' | 'icao' | 'metro' | undefined { const code = query.trim().toUpperCase(); return metro.has(code) ? 'metro' : iata.has(code) ? 'iata' : icao.has(code) ? 'icao' : undefined; }
+export const REFERENCE_SNAPSHOT_ID=manifest.snapshotId;
+/** An old browser can keep saved facts but cannot accept new evidence from a different snapshot. */
+export function referenceResponseCompatible(candidate:{providerId?:string;referenceSnapshotId?:string}){
+ if(!candidate.providerId?.startsWith('reference:'))return true;
+ return candidate.referenceSnapshotId===REFERENCE_SNAPSHOT_ID&&candidate.providerId.split('@')[1]?.split(':')[0]===REFERENCE_SNAPSHOT_ID;
+}

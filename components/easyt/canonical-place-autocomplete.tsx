@@ -13,7 +13,7 @@ import {
 } from "@/lib/easyt/place-intelligence";
 import { placeAutocompleteKeyAction, prioritizeRouteStopSuggestions } from "@/lib/easyt/place-autocomplete";
 import { createAbortableEffectScope } from "@/lib/easyt/abortable-effect";
-import {referenceKnownCodeKind} from '@/lib/easyt/place-reference';
+import {referenceKnownCodeKind,referenceResponseCompatible} from '@/lib/easyt/place-reference';
 import type { EasyTLanguage } from "@/lib/easyt/i18n";
 import { EasyTButton } from "./easyt-controls";
 import {MorroviaPlaceDataCredit} from './morrovia-place-data-credit';
@@ -137,7 +137,7 @@ export function CanonicalPlaceAutocomplete({
       });
       const country = parentConstraint?.parentCountries.length === 1
         ? parentConstraint.parentCountries[0]
-        : referenceKnownCodeKind(query)==='iata'?undefined:contextCountries?.length === 1 ? contextCountries[0] : undefined;
+        : ['iata','icao'].includes(referenceKnownCodeKind(query)??'')?undefined:contextCountries?.length === 1 ? contextCountries[0] : undefined;
       const params = new URLSearchParams({ place: query, candidates: "1",mode:'autocomplete' });
       params.set("intent", searchIntent);
       if (country) params.set("country", country);
@@ -173,6 +173,7 @@ export function CanonicalPlaceAutocomplete({
             region?: string;
             accessPlaceName?: string;
             providerId?: string;
+            referenceSnapshotId?: string;
             providerSourceLabel?: string;
             matchedAirportCode?: string;
             matchedIcaoCode?: string;
@@ -184,7 +185,7 @@ export function CanonicalPlaceAutocomplete({
           }> }>;
         })
         .then((payload) => {
-          const nextSuggestions = (payload.candidates ?? []).map((candidate) => {
+          const nextSuggestions = (payload.candidates ?? []).filter(referenceResponseCompatible).map((candidate) => {
             const kind = (candidate.kind ?? "").toLocaleLowerCase();
             const placeType = candidate.placeType ?? (/continent/.test(kind) ? "continent" as const
               : /country/.test(kind) ? "country" as const

@@ -50,7 +50,7 @@ export async function GET(request: NextRequest) {
 
   try {
     const centre=trustedLocalActivityCentre({destination,requestedCountryCode:country??'',coordinates:[longitude,latitude],canonicalPlaceId:request.nextUrl.searchParams.get('canonicalPlaceId')??undefined,providerId:request.nextUrl.searchParams.get('providerId')??undefined});
-    if(!centre)return NextResponse.json({places:[]});
+    if (!centre) return NextResponse.json({ places: [] });
     const params = new URLSearchParams({
       action: "query",
       format: "json",

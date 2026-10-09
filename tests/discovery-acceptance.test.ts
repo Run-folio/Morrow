@@ -183,7 +183,7 @@ test('a second existing region surfaces only canonical contained reviewed childr
 for (const [name, kind, count, recommendationCount] of [
   ['Tajikistan', 'country', 3, 1], ['Africa', 'continent', 15, 0],
   ['Taj Mahal', 'landmark', 1, 1], ['Kruger National Park', 'natural-area', 0, 0],
-  ['Lake Atitlán', 'natural-area', 1, 1], ['Philippines', 'country', 4, 1], ['Eritrea', 'country', 0, 0],
+  ['Lake Atitlán', 'natural-area', 1, 1], ['Philippines', 'country', 4, 1], ['Eritrea', 'country', 8, 0],
 ] as const) test(`${name}: adaptive entry retains original intent at evidenced depth`, () => {
   const { entry, mention, draft, projection } = entryAndProjection(name);
   assert.equal(entry.kind, kind);

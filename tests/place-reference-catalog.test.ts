@@ -8,6 +8,7 @@ test('generated explicit seeds confirm exact IDs and never become automatic pros
  const seed=referenceCountrySeeds('FJ')[0];assert.ok(PLACE_CATALOG.some(p=>p.canonicalPlaceId===seed.canonicalPlaceId));
  const choice=intelligence.canonicalPlaceSuggestionForId(seed.canonicalPlaceId);assert.ok(choice);assert.deepEqual(choice.coordinates,seed.coordinates);assert.equal(choice.provenance[0].id,seed.referenceProviderId);assert.equal(choice.provenance[0].kind,'provider');
  assert.ok(findCatalogMatches(`Please visit ${seed.canonicalName}`).every(m=>m.entries.every(e=>e.canonicalPlaceId!==seed.canonicalPlaceId)));
+ assert.ok(intelligence.resolvePlaceMentions('7 days from Hong Kong to Chengdu and Zhangjiajie').mentions.some(m=>m.canonicalPlaceId==='hong-kong'&&m.placeType==='city'));
 });
 test('known IATA pending lists suppress legacy city aliases and ICAO sorts exact gateway first',()=>{
  assert.equal(referenceKnownCodeKind('lhr'),'iata');assert.ok(intelligence.canonicalPlaceSuggestionsForQuery('LHR',[],8,true).every(c=>c.placeType!=='city'));

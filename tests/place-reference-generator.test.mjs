@@ -24,6 +24,16 @@ test('unknown eligible jurisdiction and duplicate source IDs block activation; b
  await assert.rejects(()=>build(dir,csv([airport()]),settlement(1,'PPLC','ZZ')),/unmapped.*jurisdiction/i);
  await assert.rejects(()=>build(dir,csv([airport(),airport()]),settlement(1)),/duplicate.*id/i);
 }));
+test('malformed stable source IDs cannot activate an unreachable or duplicate sorted identity',async()=>fixture(async dir=>{
+ await assert.rejects(()=>build(dir,csv([airport('not-an-id')])),/source id/i);
+ await assert.rejects(()=>build(dir,csv([airport()]),settlement('not-an-id')),/source id/i);
+}));
+test('name/type/jurisdiction changes and deletion quarantine published seed facts and retain historical IDs',async()=>fixture(async dir=>{
+ await build(dir);const previous=join(dir,'previous');await (await import('node:fs/promises')).cp(join(dir,'out'),previous,{recursive:true});
+ for(const input of [settlement(10,'PPLCD','PF',{1:'Renamed capital'}),settlement(10,'PPL','PF'),settlement(10,'PPLCD','HK'),'']){
+  const updated=await build(dir,csv([airport()]),input,previous);assert.ok(updated.retiredSeeds.some(s=>s.canonicalPlaceId==='reference:geonames:10'&&s.canonicalName==='Fixture capital'&&s.parentCountries[0]==='French Polynesia'));assert.ok(Object.values(updated.countrySeeds).flat().every(s=>s.canonicalPlaceId!=='reference:geonames:10'));
+ }
+}));
 test('output digests reproduce and coordinate-changing refresh quarantines published seeds without historical replacement',async()=>fixture(async dir=>{
  const first=await build(dir);const bytes=await readFile(join(dir,'out','country-seeds.json'),'utf8');
  const second=await build(dir);assert.equal(first.manifest.snapshotId,second.manifest.snapshotId);assert.equal(bytes,await readFile(join(dir,'out','country-seeds.json'),'utf8'));
@@ -48,9 +58,21 @@ test('bad source checksum leaves the previous snapshot byte-identical',async()=>
  await assert.rejects(()=>buildReferenceSnapshot({airports:join(dir,'airports.csv'),settlements:join(dir,'cities500.txt'),output:join(dir,'out'),sourceManifest:{acquiredAt:first.manifest.generatedAt,sources:first.manifest.sources.map(s=>({...s,sha256:'wrong'}))}}),/checksum/);
  assert.equal(await readFile(join(dir,'out','manifest.json'),'utf8'),before);
 }));
+test('source growth beyond deployed file budget blocks replacement without truncating eligible entities',async()=>fixture(async dir=>{
+ await build(dir);const before=await readFile(join(dir,'out','manifest.json'),'utf8');
+ const aliases=Array.from({length:8},(_,i)=>`Alternate${i} `+'x'.repeat(68)).join(',');
+ const grown=Array.from({length:48000},(_,i)=>settlement(i+1,'PPL','PF',{3:aliases})).join('\n')+'\n';
+ await assert.rejects(()=>build(dir,csv([airport()]),grown),/budget exceeded/i);
+ assert.equal(await readFile(join(dir,'out','manifest.json'),'utf8'),before);
+}));
 
 test('compact length index preserves ordered exact-ID tuple offsets',async()=>fixture(async dir=>{
  await build(dir,csv([airport()]),[settlement(10),settlement(20)].join('\n')+'\n');
  const lengths=await readFile(join(dir,'out','settlement-lengths.bin'));const body=await readFile(join(dir,'out','settlements.json'));
  assert.equal(lengths.length,4);let offset=2;for(let i=0;i<2;i++){assert.equal(JSON.parse(body.subarray(offset,body.indexOf(10,offset)).toString().replace(/,$/,'')).at(0),String((i+1)*10));offset+=lengths.readUInt16LE(i*2);}
+}));
+test('prefix normalization matches literal apostrophe and compatibility-character searches',async()=>fixture(async dir=>{
+ await build(dir,csv([airport()]),settlement(10,'PPL','PF',{1:'L’Isle',2:'L’Isle',3:''})+'\n');
+ const prefixes=JSON.parse(await readFile(join(dir,'out','settlement-prefixes.json'),'utf8'));assert.equal(prefixes.li.count,1);
+ const codes=JSON.parse(await readFile(join(dir,'out','code-kinds.json'),'utf8'));assert.ok(codes.icao.includes('MGGT'));
 }));

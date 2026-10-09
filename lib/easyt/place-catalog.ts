@@ -462,7 +462,7 @@ const registryCountries = STAMP_REGIONS.flatMap((region) => STAMP_COUNTRIES_BY_R
     && entry.canonicalName.toLocaleLowerCase() === countryEntry.name.toLocaleLowerCase()))
   .map((countryEntry) => country(countryEntry.id, countryEntry.name));
 const jurisdictionCountries=travelJurisdictions.filter(c=>![...explicitPlaces,...registryCountries].some(e=>e.placeType==='country'&&countryCodeFor(e.canonicalName)===c.code))
-  .map(c=>country(`jurisdiction-${c.code.toLowerCase()}`,c.name,c.aliases));
+  .map(c=>({...country(`jurisdiction-${c.code.toLowerCase()}`,c.name,c.aliases),captureMode:'explicit-only' as const}));
 
 export const PLACE_CATALOG: readonly PlaceCatalogEntry[] = Object.freeze([
   ...continents,
