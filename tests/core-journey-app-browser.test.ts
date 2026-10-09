@@ -86,6 +86,36 @@ test("legacy saved Paris origin retains its own identity, point, route order and
   assert.deepEqual(reloaded.brief.intent.route.orderedStopIds, original.brief.intent.route.orderedStopIds);
 });
 
+/** Measure accepted DOM feedback in the page, excluding Playwright round trips,
+ * tracing and its post-click navigation wait. Budgets remain product budgets. */
+async function armBrowserInteractionTiming(page: Page, condition: { trigger: string; selected?: string; leavingArea?: string }) {
+  await page.evaluate(condition => {
+    const record: { start: number | null; end: number | null } = { start: null, end: null };
+    (window as unknown as { __coreInteractionTiming: typeof record }).__coreInteractionTiming = record;
+    const ready = () => condition.selected
+      ? [...document.querySelectorAll('button')].some(button => button.getAttribute('aria-label') === condition.selected && button.getAttribute('aria-pressed') === 'true')
+      : !document.querySelector('[role="dialog"]')?.textContent?.includes(condition.leavingArea!);
+    if (ready()) throw new Error('Interaction feedback must not be ready before the measured click');
+    const observer = new MutationObserver(() => {
+      if (record.start !== null && ready()) { record.end = performance.now(); observer.disconnect(); }
+    });
+    observer.observe(document.body, { subtree: true, attributes: true, childList: true, characterData: true });
+    const onClick = (event: MouseEvent) => {
+      const button = event.target instanceof Element ? event.target.closest('button') : null;
+      if ((button?.getAttribute('aria-label') ?? button?.textContent?.trim()) !== condition.trigger) return;
+      record.start = performance.now(); document.removeEventListener('click', onClick, true);
+    };
+    document.addEventListener('click', onClick, true);
+  }, condition);
+}
+async function browserInteractionElapsed(page: Page) {
+  await page.waitForFunction(() => (window as unknown as { __coreInteractionTiming?: { end: number | null } }).__coreInteractionTiming?.end != null, undefined, { timeout: 15000 });
+  return page.evaluate(() => {
+    const record = (window as unknown as { __coreInteractionTiming: { start: number; end: number } }).__coreInteractionTiming;
+    return record.end - record.start;
+  });
+}
+
 async function installDeterministicBoundaries(context: BrowserContext) {
   await context.addInitScript(({ key, value }: { key: string; value: string }) => {
     if (!localStorage.getItem(key)) localStorage.setItem(key, value);
@@ -414,15 +444,18 @@ for (const [width,type] of [[1440,'return_to_start'],[390,'one_way']] as const) 
  await page.getByRole('button',{name:'Plan my trip',exact:true}).first().click();
  await page.getByRole('dialog').getByRole('heading',{name:'Explore places',exact:true}).waitFor({timeout:20000});
  const id=new URL(page.url()).searchParams.get('trip')!;assert.ok(id);
- const timings:Array<{area:string;acceptMs:number}>=[];
+ const timings:Array<{area:string;acceptMs:number;driverMs:number}>=[];
+ const selections:Array<{area:string;place:string;visibleMs:number;driverMs:number}>=[];
  for(const [area,names] of [['South Korea',['Seoul','Busan']],['Africa',['Marrakech','Fes','Chefchaouen']]] as const){
   const dialog=page.getByRole('dialog');await dialog.getByText(area,{exact:true}).first().waitFor();
   if(await dialog.locator('[data-discovery-step="directions"]').count())await dialog.getByRole('button',{name:/Morocco/}).click();
   for(const name of names){
    const button=dialog.getByRole('button',{name:`Add to shortlist: ${name}`,exact:true});
+   await armBrowserInteractionTiming(page,{trigger:`Add to shortlist: ${name}`,selected:`Remove from shortlist: ${name}`});
    const started=Date.now();await button.click();
    const selected=dialog.getByRole('button',{name:`Remove from shortlist: ${name}`,exact:true});await selected.waitFor();
-   assert.ok(Date.now()-started<1500,`${name} selection responds within 1.5 seconds`);
+   const driverMs=Date.now()-started,visibleMs=await browserInteractionElapsed(page);selections.push({area,place:name,visibleMs,driverMs});
+   assert.ok(visibleMs<1500,`${name} selection responds within 1.5 seconds (${visibleMs.toFixed(1)}ms browser, ${driverMs}ms driver)`);
    assert.equal(await selected.getAttribute('aria-pressed'),'true');
    for(const state of ['default','hover','focus']){
     if(state==='hover')await selected.hover();if(state==='focus')await selected.focus();
@@ -433,9 +466,11 @@ for (const [width,type] of [[1440,'return_to_start'],[390,'one_way']] as const) 
     assert.ok(!style.transition.includes('color'),`${name} selected foreground and background change atomically`);
    }
   }
+  await armBrowserInteractionTiming(page,{trigger:`Add ${names.length} places`,leavingArea:area});
   const started=Date.now();await dialog.getByRole('button',{name:`Add ${names.length} places`,exact:true}).click();
   await page.waitForFunction(area=>!document.querySelector('[role="dialog"]')?.textContent?.includes(area),area,{timeout:15000});
-  timings.push({area,acceptMs:Date.now()-started});assert.ok(Date.now()-started<2500,`${area} multi-add responds within 2.5 seconds`);
+  const driverMs=Date.now()-started,acceptMs=await browserInteractionElapsed(page);timings.push({area,acceptMs,driverMs});
+  assert.ok(acceptMs<2500,`${area} multi-add responds within 2.5 seconds (${acceptMs.toFixed(1)}ms browser, ${driverMs}ms driver)`);
  }
  let trip=await recoveryTrip(page,id);assert.ok(trip);
  assert.equal(trip.brief.intent?.route?.tripType,type);assert.equal(trip.stops.length,6);
@@ -458,7 +493,7 @@ for (const [width,type] of [[1440,'return_to_start'],[390,'one_way']] as const) 
  assert.deepEqual(trip.brief.manualNightStopIds,[target.id]);assert.equal(trip.brief.intent!.route!.tripType,type);
  const tasks=await page.evaluate(start=>(window as unknown as {__routeTasks:Array<{start:number;duration:number}>}).__routeTasks.filter(task=>task.start>=start),editStart);
  assert.ok(tasks.every(task=>task.duration<1000),'rapid night edits have no one-second main-thread freeze');
- mkdirSync(artifacts,{recursive:true});writeFileSync(`${artifacts}/multi-area-${width}-timing.json`,JSON.stringify({width,type,timings,nightTasks:tasks},null,2));
+ mkdirSync(artifacts,{recursive:true});writeFileSync(`${artifacts}/multi-area-${width}-timing.json`,JSON.stringify({width,type,timings,selections,nightTasks:tasks},null,2));
  await page.screenshot({path:`${artifacts}/multi-area-${width}-builder.png`,fullPage:true});
  const before=trip;await page.reload({waitUntil:'domcontentloaded'});await page.locator('[data-builder-top-controls]').waitFor();
  trip=await recoveryTrip(page,id);assert.ok(trip);assert.deepEqual(trip.stops.map(stop=>[stop.id,stop.canonicalPlaceId,stop.nights]),before.stops.map(stop=>[stop.id,stop.canonicalPlaceId,stop.nights]));
@@ -522,5 +557,26 @@ test('fresh Return default and disabled selected trip types retain readable prod
   const [bright,dark]=[luminance(style.color),luminance(style.background)].sort((a,b)=>b-a);assert.ok((bright+.05)/(dark+.05)>=4.5,name);assert.equal(style.opacity,'1');
   mkdirSync(artifacts,{recursive:true});await page.screenshot({path:`${artifacts}/disabled-${name.replaceAll(' ','-')}.png`});
   await button.evaluate(element=>{(element as HTMLButtonElement).disabled=false});
+ }
+}));
+
+// These controls validate the performance gate itself. Delayed automation must
+// not fail a responsive page, and actual slow feedback must still fail budgets.
+test('browser interaction timing excludes delayed automation after responsive feedback',{skip:!enabled,timeout:30000},async()=>withEvidence('timing-driver-overhead',async page=>{
+ await page.setContent(`<button aria-label="Add to shortlist: Fixture" aria-pressed="false" onclick="setTimeout(()=>{this.setAttribute('aria-label','Remove from shortlist: Fixture');this.setAttribute('aria-pressed','true')},30)">Fixture</button>`);
+ await armBrowserInteractionTiming(page,{trigger:'Add to shortlist: Fixture',selected:'Remove from shortlist: Fixture'});
+ const started=Date.now();await page.getByRole('button',{name:'Add to shortlist: Fixture',exact:true}).click();
+ await page.waitForTimeout(1750);const visibleMs=await browserInteractionElapsed(page);
+ assert.ok(Date.now()-started>=1750,'old driver-inclusive timer would fail the 1.5 second budget');
+ assert.ok(visibleMs>=20&&visibleMs<1500,'browser records actual responsive feedback despite later driver delay');
+}));
+test('browser interaction timing preserves rejection of genuinely slow selection and acceptance',{skip:!enabled,timeout:30000},async()=>withEvidence('timing-slow-feedback',async page=>{
+ for(const [kind,budget,delay] of [['selection',1500,1600],['acceptance',2500,2600]] as const){
+  const condition=kind==='selection'?{trigger:'Add to shortlist: Slow',selected:'Remove from shortlist: Slow'}:{trigger:'Add 3 places',leavingArea:'Africa'};
+  await page.setContent(kind==='selection'
+   ?`<button aria-label="Add to shortlist: Slow" aria-pressed="false" onclick="setTimeout(()=>{this.setAttribute('aria-label','Remove from shortlist: Slow');this.setAttribute('aria-pressed','true')},${delay})">Slow</button>`
+   :`<div role="dialog">Africa <button onclick="setTimeout(()=>this.parentElement.remove(),${delay})">Add 3 places</button></div>`);
+  await armBrowserInteractionTiming(page,condition);await page.getByRole('button',{name:condition.trigger,exact:true}).click();
+  const visibleMs=await browserInteractionElapsed(page);assert.ok(visibleMs>=budget,`${kind} delayed feedback still exceeds the unchanged ${budget}ms limit`);
  }
 }));
