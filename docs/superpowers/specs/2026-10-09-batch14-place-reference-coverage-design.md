@@ -1,0 +1,83 @@
+# Batch14 maintained place-reference coverage design
+
+Status: **proposed for independent review; no implementation started**. Base: accepted `73a3a0cbe19592b1b0d045434a62eb43a9b995e7`. Shaun authorised the combined local work after a sound bounded plan: “Yes let's do it all together and make this super robust for users.” Publication, paid services, credentials and new database/security permissions remain separate gates. Execution stays with the existing implementer.
+
+## Job and measured problem
+
+A traveller should be able to select a physical airport from its code, explore verified settlements after selecting a country, and keep planning when external search is unavailable. Recognising a country or guessing a city alias does not complete that job.
+
+The exact-base audit found 197 local country identities out of 250 registered jurisdictions, selectable country Discovery in only 41/197, 156 empty recognised countries, 53 missing country planning identities, and 52/126 selectable confirmations still needing online coordinates. The US collection contains only a reviewed landmark, preventing the existing neutral fallback. The local catalogue's 43 uppercase three-letter aliases are mainly cities plus USA, not a comprehensive airport list. Public Nominatim currently receives autocomplete prefixes, contrary to its policy.
+
+Evidence: `/Users/shaun/Documents/Codex/2026-10-06/task-2/batch14-coverage-73a3a0c-report.md`, corresponding full country/airport matrices and receipt. This design makes no claim that new dataset contents or global counts have already been verified.
+
+## Approach and alternatives
+
+**Choose versioned local reference files and the existing place/provider/Discovery contracts.** A small generated country-choice catalogue serves existing client Discovery; larger airport/settlement search indexes stay server-side. Curated geography and content remain authoritative. Use the already integrated Photon only for explicit unresolved searches/reverse country checks; autocomplete is local-only. No SQL schema, paid provider, search service or routing rewrite.
+
+A curated-country expansion is smaller initially but recreates the measured gaps and handwritten airport aliases. A new hosted gazetteer/database service can scale further but adds permissions, operations and cost that are unnecessary to establish this baseline. Neither is selected.
+
+This changes reference-data inputs and the existing search boundary; it does not change the canonical route writer, itinerary engine, autosave semantics or compact Builder layout.
+
+## Source acquisition and activation
+
+- OurAirports `airports.csv`: retain persistent integer ID, name, IATA/ICAO code, point, ISO jurisdiction, municipality, type and scheduled-service state. Do not treat municipality as the airport's physical point. Current public-domain terms and nightly updates: [data](https://ourairports.com/data/), [fields](https://ourairports.com/help/data-dictionary.html).
+- GeoNames `cities500.zip`: populated settlements/admin seats, names, IDs, WGS84 point, jurisdiction, admin codes, population and modification date. Read aliases from its existing name/alternate-name columns for V1; no 195 MB alternateNames import. Eligible feature codes: PPL, PPLA, PPLA2, PPLA3, PPLA4, PPLC and PPLG; reject historic/abandoned/facility/section entities. Population affects a neutral browsing order only. [Extract and CC BY 4.0 terms](https://download.geonames.org/export/dump/readme.txt).
+- Acquire the two public source files only after plan review. Generator consumes explicit local paths plus source URL/acquisition date/checksum; no build-time or runtime download. Stream CSV/TSV, validate schemas, record rejected rows and source coverage, and generate deterministic sorted output. Source download/parse failure keeps the previous snapshot intact.
+- Commit compact outputs, manifest, licence notices, source checksums and activation report together. Raw archives stay outside the repository. The manifest records source publication date where provided, acquisition date separately, generator version, record counts, rejected counts, file digests and licence URLs. Do not fabricate a per-record review date or label the dataset tourism-reviewed.
+- First activation is reviewed as code/data. Later refresh is an explicit maintainer command producing a diff; no cron, automatic production activation or provider crawling. Review additions/deletions, code collisions, jurisdiction/type/point changes and coverage regressions before replacing the snapshot.
+
+## Identity and exact geography
+
+Use stable source IDs, not codes, names, population rank or array positions: `reference:ourairports:<id>` and `reference:geonames:<id>`. Preserve every existing catalogue canonical ID. An explicit crosswalk may map a reference settlement to an existing ID only after checking name/aliases, jurisdiction, type and geometry; name alone is insufficient. Ambiguous mappings stay separate or quarantined. Never overwrite an existing curated point, bounds, type, country or recommendation.
+
+Each reference candidate carries a versioned source record key in existing provider/provenance fields. At new selection/commit, validate ID, source snapshot, type, jurisdiction and the **exact source longitude/latitude tuple**. Never take a city's identity and an airport's point, or a selected settlement's ID and another same-name settlement's point. Missing/null/NaN/out-of-range points fail. This check supplements, rather than relies on, the existing 200 km catalogue compatibility tolerance. Keep the actual held-response guards and accepted `GeographicBinding` v1 input key protections.
+
+The compact Discovery seeds are catalogue entries with source provenance and `captureMode: explicit-only`. They participate in identity lookup, manual search and explicit selection, but do not introduce thousands of automatic prose matches. Country identities can still be captured through the existing country pathway. Broader server matches return normal provider candidates and require traveller selection/normal disambiguation.
+
+Saved trips retain their accepted point, IDs, provider/binding, nights and authored content. Refresh does not hydrate or resave them. Published compact seed identity facts stay available for historical reads after removal from new-choice indexes. Point/type/jurisdiction changes for published seed or crosswalk entries are quarantined until a separately reviewed compatible refresh can prove old bindings remain valid; no silent replacement. Deletion/closure prevents a new choice and retains a compact tombstone for historical identity. Do not silently remap a deleted ID to the nearest place. Alias/status updates do not rewrite accepted routes.
+
+## Airport and metropolitan codes
+
+An exact known IATA code, case-insensitive after trim, returns its eligible physical airport before city substrings. Support exact ICAO codes from the reference as well. Keep the existing `matchedAirportCode` meaning for IATA; add `matchedIcaoCode` for ICAO rather than putting four letters into the IATA flag. Both priority flags require code-type-specific reference validation.
+
+Metropolitan aliases such as NYC and SEL remain city-area choices unless a separately evidenced metro-to-airport relationship exists. V1 does not invent such relationships from municipality or keywords. Existing LHR/CDG/NRT/ICN city aliases remain compatible with legacy saved/capture documents; new explicit airport search shows the physical gateway first. Returning results never replaces an already selected city or endpoint automatically. A compact generated known-IATA-code set prevents a legacy city alias being offered as the only immediate result while the physical-airport lookup is pending. NYC/SEL keep their metro classification. Show the existing search/loading state until the exact code choices are available; never commit the legacy city as an airport. Full airport identity/coordinate records stay server-side. Existing prompt extraction is retained; this scope guarantees code-aware explicit search/selection and does not claim every legacy prose alias becomes an airport.
+
+Unknown codes, ordinary three-letter words and malformed codes receive no exact-code priority. Conflicting/duplicate IATA assignments yield explicit choices, not an automatic winner. Closed airports are excluded from new choices; airports without scheduled service are labelled and offered only on exact code/name intent, never presented as a suggested commercial flight gateway. Include current large/medium/small/seaplane airports; balloonports/heliports require separate eligibility and remain excluded in V1. Invalid or jurisdiction-unmapped records are quarantined. No claim of official IATA completeness or flight availability follows from these community reference files.
+
+Airports are `transport_gateway` endpoints, not accommodation stops. The existing city/town eligibility gate stays intact. An airport can help the traveller identify a gateway, but no airport hotel nights or automatic nearest-city substitution are introduced.
+
+## Country/jurisdiction coverage and Discovery
+
+Use the existing **250-entry jurisdiction registry (249 ISO alpha-2 plus XK)** for planner country identities, retaining jurisdiction distinctions such as HK/PF rather than collapsing them into a sovereign parent. Preserve legacy IDs for the 197 existing countries. Add missing country identities with stable ISO-based IDs; same-name city/country choices remain distinguishable by type. Georgia ambiguity is preserved; explicit country selection works.
+
+Generate at most **eight** neutral eligible settlement choices per jurisdiction: capital/admin seat first, then population descending, stable source ID as tie-breaker. These are selectable identities, not “best places”, overnight suitability, visa/safety advice or tourism recommendations. There are no fabricated photos, relevance paragraphs, attraction tags, stay/access evidence, ideal/minimum nights or route directions. All eligible settlements remain searchable in the server index; the eight are an initial browsing set, not a complete country itinerary.
+
+Validate every jurisdiction as either `choices-available` or `no-eligible-source-settlement`. Each zero-choice exception must list inspected source counts/rejection reasons and be independently reviewed. Missing jurisdiction mapping, omitted eligible records or quarantined-only collections are implementation/data failures, not acceptable empty-state exceptions. No promise that uninhabited/seasonal/facility-only territories offer overnight bases. All 197 current country identities must become selectable wherever the source contains an eligible settlement.
+
+Existing valid reviewed city/town collections keep their entries, order, claims and recommendations. Add neutral choices only when projection/selection leaves **zero** eligible direct settlements, including the US landmark-only obstruction. Do not bypass an invalid reviewed row using a weaker copy of the same ID. Fix the final visible-card selection boundary so nonselectable landmarks cannot consume all visible slots.
+
+Where a reviewed card lacks a local catalogue point, attach coordinates only through a reviewed ID-specific source crosswalk or the existing verified route-evidence binding; confirmation by canonical ID must match the displayed place. If identity cannot be safely bound, retain unresolved confirmation/recovery; do not guess. The same existing shared confirmation gate governs visible Add and durable commit.
+
+## Request behaviour and offline operation
+
+`/api/journey-geocode` gains explicit `mode=autocomplete`; that mode uses only local catalogue/reference data and makes **zero external requests**. The existing 220 ms UI debounce, stale-result guard, selection UI and keyboard behaviour remain. `/api/journey-geocode` resolve mode and prompt enrichment use local reference first; at most one bounded Photon request follows when local identity evidence is insufficient. Existing explicit nearby-base Overpass logic is retained, with no country/town enumeration.
+
+Remove public Nominatim from default search sources, not merely from the client URL. There is no Nominatim code fallback on the autocomplete or resolution request. Retain the standalone Nominatim adapter for fixture/compatibility tests; it is not activated by the default provider. Replace the separate `/api/journey-discover` public reverse-country check with bounded Photon reverse evidence; compare ISO jurisdiction, reject absent/conflicting/invalid results and retain its existing fail-closed activity behaviour. Do not infer country from a nearest settlement.
+
+Local exact code/settlement/country choices work with external fetch disabled. Unknown searches remain editable and unresolved on provider failure. Reject stale responses after identity, country, point presence, binding or owner/revision changes. Return a local candidate when Photon fails; never convert an outage into a guessed point or an empty overwrite of accepted input.
+
+The public Nominatim policy forbids autocomplete/systematic lists and limits application-wide traffic to one request/second; no public Nominatim call remains in the default production flows touched here. [Policy](https://operations.osmfoundation.org/policies/nominatim/). Photon explicitly supports typeahead but its public demo has fair-use limits and no availability guarantee; this plan sends it only bounded completed unresolved lookups, not prefixes. [Photon terms](https://photon.komoot.io/). No new self-hosting, account, credential or paid endpoint is enabled.
+
+## Compact UI, provenance and budgets
+
+Reuse `CanonicalPlaceAutocomplete`, `DiscoverySteps`, `EasyTButton`, `MorroviaStatusBanner`, existing modal/source patterns, current Journey tokens and EN/ES translations. Builder table, map, top controls and dates/advanced fields remain. One shared place-data credit line supplies visible GeoNames attribution/link and, when Photon data is used, OpenStreetMap credit; expose source/version details through existing source disclosure patterns. Do not reuse a photo licence label for settlement data. Cover neutral country choices, airport vs metro and empty exceptions in existing Storybook surfaces.
+
+Budgets are proposed release constraints to measure, not claimed measurements: no airport identity/coordinate records or full server index in any client bundle; the compact known-code classification set is allowed; at most 2,000 generated initial settlement entries; incremental compressed client JavaScript **≤150 KiB**; compact deployed reference files **≤32 MiB uncompressed total**; warm reference search **p95 ≤100 ms** over 1,000 representative queries; first reference load **≤1 second** and incremental process RSS **≤96 MiB** on the documented test machine; API returns at most **12** candidates, never a country-wide payload. No per-keystroke full index parsing. Use lazy process-local load, prebuilt prefix/code indexes, existing bounded candidate cache and bounded output. A failed budget blocks activation; do not silently drop jurisdictions or inflate these limits. Any budget change goes back to independent review.
+
+## Traveller invariants and acceptance
+
+Normal accepted edits autosave and reconcile their necessary dependent legs/dates/endpoints. Update route is an optional broader optimisation proposal, never save/reconciliation. It cannot override explicit/manual order without acceptance. Only an accepted geographic change invalidates its affected legs/map/recommendation dependencies; dataset availability, search responses and refresh reports do not invalidate or resave an existing trip.
+
+No migration of legacy unknown endings, nights, repeated occurrence IDs, commitments, itinerary items, authored text or accepted geography. Unknown source facts remain unknown. No schema changes, provider secrets, analytics of raw prompts, staging/production publication, QA-account resets or document deletion.
+
+Release evidence must include full 250-jurisdiction production projection/EN/ES render and confirmation matrix, source exception report, real dataset airport/code matrix plus negatives, zero-Nominatim request spies, offline/outage/stale callback controls, saved/reload preservation across a simulated refresh, measured budgets and exact base/candidate SHA. Existing accepted GUA/Belize/geography controls remain green. The all20 hosted regression pack runs only after separately approved publication on a verified hosted SHA; do not relabel local tests as hosted signoff.
