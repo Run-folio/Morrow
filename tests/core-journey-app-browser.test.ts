@@ -86,26 +86,51 @@ test("legacy saved Paris origin retains its own identity, point, route order and
   assert.deepEqual(reloaded.brief.intent.route.orderedStopIds, original.brief.intent.route.orderedStopIds);
 });
 
-/** Measure accepted DOM feedback in the page, excluding Playwright round trips,
- * tracing and its post-click navigation wait. Budgets remain product budgets. */
+/** Measure native activation through visible feedback across two animation frames
+ * (a paint opportunity), excluding driver round trips and post-click waits.
+ * Retain page-side blocking before click and after DOM mutation in the budget. */
 async function armBrowserInteractionTiming(page: Page, condition: { trigger: string; selected?: string; leavingArea?: string }) {
   await page.evaluate(condition => {
     const record: { start: number | null; end: number | null } = { start: null, end: null };
     (window as unknown as { __coreInteractionTiming: typeof record }).__coreInteractionTiming = record;
-    const ready = () => condition.selected
-      ? [...document.querySelectorAll('button')].some(button => button.getAttribute('aria-label') === condition.selected && button.getAttribute('aria-pressed') === 'true')
-      : !document.querySelector('[role="dialog"]')?.textContent?.includes(condition.leavingArea!);
-    if (ready()) throw new Error('Interaction feedback must not be ready before the measured click');
-    const observer = new MutationObserver(() => {
-      if (record.start !== null && ready()) { record.end = performance.now(); observer.disconnect(); }
-    });
-    observer.observe(document.body, { subtree: true, attributes: true, childList: true, characterData: true });
-    const onClick = (event: MouseEvent) => {
-      const button = event.target instanceof Element ? event.target.closest('button') : null;
-      if ((button?.getAttribute('aria-label') ?? button?.textContent?.trim()) !== condition.trigger) return;
-      record.start = performance.now(); document.removeEventListener('click', onClick, true);
+    const trigger = [...document.querySelectorAll('button')].find(button =>
+      (button.getAttribute('aria-label') ?? button.textContent?.trim()) === condition.trigger);
+    if (!trigger) throw new Error('Measured interaction trigger is missing');
+    const visible = (element: Element | null): boolean => element instanceof HTMLElement && element.isConnected
+      && element.checkVisibility({ checkOpacity: true, checkVisibilityCSS: true })
+      && element.getClientRects().length > 0 && element.getBoundingClientRect().width > 0 && element.getBoundingClientRect().height > 0;
+    const ready = () => {
+      if (condition.selected) return visible(trigger) && trigger.getAttribute('aria-label') === condition.selected
+        && trigger.getAttribute('aria-pressed') === 'true';
+      const dialogs = [...document.querySelectorAll('[role="dialog"]')];
+      if (dialogs.some(dialog => dialog.textContent?.includes(condition.leavingArea!))) return false;
+      // Acceptance exposes the next Discovery dialog or the Builder controls.
+      return dialogs.length ? dialogs.some(visible) : visible(document.querySelector('[data-builder-top-controls]'));
     };
-    document.addEventListener('click', onClick, true);
+    if (ready()) throw new Error('Interaction feedback must not be ready before activation');
+    let clicked = false, readyFrame = false;
+    const frame = () => {
+      const feedbackReady = clicked && ready();
+      if (feedbackReady && readyFrame) {
+        record.end = performance.now();
+        for (const type of ['pointerdown', 'mousedown', 'keydown', 'click']) document.removeEventListener(type, onInput, true);
+        return;
+      }
+      readyFrame = feedbackReady;
+      requestAnimationFrame(frame);
+    };
+    const onInput = (event: Event) => {
+      if (!(event.target instanceof Element) || event.target.closest('button') !== trigger) return;
+      if (event instanceof KeyboardEvent && !['Enter', ' ', 'Spacebar'].includes(event.key)) return;
+      if (event instanceof MouseEvent && event.button !== 0) return;
+      if (record.start === null) {
+        // Modern browsers use the performance timeline; retain an epoch fallback.
+        record.start = event.timeStamp > performance.timeOrigin ? event.timeStamp - performance.timeOrigin : event.timeStamp;
+        requestAnimationFrame(frame);
+      }
+      if (event.type === 'click') clicked = true;
+    };
+    for (const type of ['pointerdown', 'mousedown', 'keydown', 'click']) document.addEventListener(type, onInput, true);
   }, condition);
 }
 async function browserInteractionElapsed(page: Page) {
@@ -575,8 +600,53 @@ test('browser interaction timing preserves rejection of genuinely slow selection
   const condition=kind==='selection'?{trigger:'Add to shortlist: Slow',selected:'Remove from shortlist: Slow'}:{trigger:'Add 3 places',leavingArea:'Africa'};
   await page.setContent(kind==='selection'
    ?`<button aria-label="Add to shortlist: Slow" aria-pressed="false" onclick="setTimeout(()=>{this.setAttribute('aria-label','Remove from shortlist: Slow');this.setAttribute('aria-pressed','true')},${delay})">Slow</button>`
-   :`<div role="dialog">Africa <button onclick="setTimeout(()=>this.parentElement.remove(),${delay})">Add 3 places</button></div>`);
+   :`<section data-builder-top-controls>Accepted route</section><div role="dialog">Africa <button onclick="setTimeout(()=>this.parentElement.remove(),${delay})">Add 3 places</button></div>`);
   await armBrowserInteractionTiming(page,condition);await page.getByRole('button',{name:condition.trigger,exact:true}).click();
   const visibleMs=await browserInteractionElapsed(page);assert.ok(visibleMs>=budget,`${kind} delayed feedback still exceeds the unchanged ${budget}ms limit`);
+ }
+}));
+
+for(const kind of ['selection','acceptance'] as const)for(const variant of ['hidden-feedback','post-mutation-microtask','pre-click-mousedown','post-ready-frame'] as const)
+test(`visible interaction timing rejects ${kind} ${variant}`,{skip:!enabled,timeout:30000},async()=>withEvidence(`timing-${kind}-${variant}`,async page=>{
+ const budget=kind==='selection'?1500:2500,delay=budget+200;
+ await page.setContent(kind==='selection'
+  ?'<button aria-label="Add to shortlist: Adversary" aria-pressed="false">Adversary</button>'
+  :'<section data-builder-top-controls>Accepted route</section><div role="dialog">Africa <button>Add 3 places</button></div>');
+ await page.evaluate(({kind,variant,delay})=>{
+  const state:{tasks:Array<{start:number;duration:number}>;input:number|null;click:number|null;visible:number|null}={tasks:[],input:null,click:null,visible:null};
+  (window as unknown as {__timingAdversary:typeof state}).__timingAdversary=state;
+  new PerformanceObserver(list=>state.tasks.push(...list.getEntries().map(entry=>({start:entry.startTime,duration:entry.duration})))).observe({type:'longtask'});
+  const button=document.querySelector('button')!,feedback=kind==='selection'?button:document.querySelector<HTMLElement>('[data-builder-top-controls]')!;
+  const freeze=()=>{const start=performance.now();while(performance.now()-start<delay){/* Deliberate page-side adversary, not driver delay. */}};
+  button.addEventListener('pointerdown',event=>{state.input=event.timeStamp},{capture:true});
+  if(variant==='pre-click-mousedown')button.addEventListener('mousedown',freeze);
+  button.addEventListener('click',()=>{
+   state.click=performance.now();
+   if(kind==='selection'){button.setAttribute('aria-label','Remove from shortlist: Adversary');button.setAttribute('aria-pressed','true');}
+   else button.parentElement!.remove();
+   if(variant==='hidden-feedback'){feedback.style.visibility='hidden';setTimeout(()=>{feedback.style.visibility='visible';state.visible=performance.now();},delay);}
+   if(variant==='post-mutation-microtask')queueMicrotask(freeze);
+   if(variant==='post-ready-frame')requestAnimationFrame(freeze);
+  });
+ },{kind,variant,delay});
+ const condition=kind==='selection'?{trigger:'Add to shortlist: Adversary',selected:'Remove from shortlist: Adversary'}:{trigger:'Add 3 places',leavingArea:'Africa'};
+ await armBrowserInteractionTiming(page,condition);await page.getByRole('button',{name:condition.trigger,exact:true}).click();
+ const elapsed=await browserInteractionElapsed(page);await page.waitForTimeout(50);
+ const state=await page.evaluate(()=>(window as unknown as {__timingAdversary:{tasks:Array<{start:number;duration:number}>;input:number|null;click:number|null;visible:number|null}}).__timingAdversary);
+ mkdirSync(artifacts,{recursive:true});writeFileSync(`${artifacts}/timing-${kind}-${variant}.json`,JSON.stringify({kind,variant,budget,delay,elapsed,wouldPassBudget:elapsed<budget,...state},null,2));
+ assert.ok(elapsed>=budget,`${kind} ${variant}: ${elapsed.toFixed(1)}ms must reject the unchanged ${budget}ms budget`);
+ if(variant!=='hidden-feedback')assert.ok(state.tasks.some(task=>task.duration>=budget),'the deliberate page freeze is recorded as a long task');
+}));
+
+
+test('browser interaction timing supports keyboard and programmatic activation',{skip:!enabled,timeout:30000},async()=>withEvidence('timing-activation',async page=>{
+ for(const activation of ['Enter','Space','programmatic'] as const){
+  await page.setContent(`<button aria-label="Add to shortlist: Activation" aria-pressed="false" onclick="this.setAttribute('aria-label','Remove from shortlist: Activation');this.setAttribute('aria-pressed','true')">Activation</button>`);
+  await armBrowserInteractionTiming(page,{trigger:'Add to shortlist: Activation',selected:'Remove from shortlist: Activation'});
+  const button=page.getByRole('button',{name:'Add to shortlist: Activation',exact:true});
+  if(activation==='programmatic')await button.evaluate(element=>(element as HTMLButtonElement).click());
+  else{await button.focus();await page.keyboard.press(activation);}
+  const elapsed=await browserInteractionElapsed(page);
+  assert.ok(elapsed>=0&&elapsed<1500,`${activation} records responsive visible feedback`);
  }
 }));
