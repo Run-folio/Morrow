@@ -91,7 +91,8 @@ export function tripRecoveryIsAwaitingCanonicalSave(recovery: TripRecoveryRecord
     && expectedCanonicalSaveRecoveries.has(recoveryHandleKey(recovery));
 }
 
-function expectCanonicalSave(handle: TripRecoveryHandle) {
+/** Register an existing durable write when its authenticated save begins. */
+export function expectCanonicalSave(handle: TripRecoveryHandle) {
   expectedCanonicalSaveRecoveries.add(recoveryHandleKey(handle));
 }
 

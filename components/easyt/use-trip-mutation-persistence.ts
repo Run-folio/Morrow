@@ -8,6 +8,7 @@ import {
   EasyTTripAuthError,
   EasyTTripPromotionConflictError,
   EasyTTripSaveConflictError,
+  expectCanonicalSave,
   loadCachedTrip,
   loadTripRecovery,
   markTripRecoveryState,
@@ -272,6 +273,7 @@ export function useTripMutationPersistence(initialTrip: EasyTTrip, enabled: bool
       return;
     }
     setSaveState("saving");
+    expectCanonicalSave(recovery);
     const pendingSave = queueRef.current!.enqueue(current, recovery);
     pendingSavesRef.current.add(pendingSave);
     void pendingSave
@@ -391,6 +393,7 @@ export function useTripMutationPersistence(initialTrip: EasyTTrip, enabled: bool
     adoptCanonicalTrip,
     adoptDeviceTrip,
     conflictTrip,
+    currentRecoveryWrite: recoveryHandleRef.current,
     error,
     failure,
     hasPendingSaves,
