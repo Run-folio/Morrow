@@ -158,3 +158,12 @@ test("a real first overnight destination matching the origin remains eligible", 
   trip.brief.origin = delhi.name;
   assert.deepEqual(tripCoverImage(trip), overviewStopImage(trip, delhi));
 });
+
+test("broken first-destination persisted imagery recovers to its own reviewed image without saving or borrowing another city", () => {
+  const trip = tripFor(delhi, "https://example.test/broken.jpg");
+  const before = JSON.stringify(trip);
+  const reviewed = routeDestinationPhoto(delhi.name, delhi.country)!;
+  assert.equal(tripCoverImage(trip, new Set(["https://example.test/broken.jpg"]))?.src, reviewed.variants.at(-1)?.src);
+  assert.equal(tripCoverImage(trip, new Set(["https://example.test/broken.jpg", reviewed.variants.at(-1)!.src])), null);
+  assert.equal(JSON.stringify(trip), before);
+});

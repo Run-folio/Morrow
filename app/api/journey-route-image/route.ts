@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
+import { lookupWikimediaDestinationPhotos } from "@/lib/easyt/wikimedia-destination-photo.server";
+import { scorePublishedRouteImageCandidate } from "@/lib/easyt/published-route-image-pipeline";
 
 type UnsplashPhoto = {
   id?: string;
@@ -7,6 +9,10 @@ type UnsplashPhoto = {
   urls?: { regular?: string };
   links?: { download_location?: string };
   user?: { name?: string; links?: { html?: string } };
+  width?: number;
+  height?: number;
+  location?: { city?: string; country?: string; name?: string };
+  tags?: Array<{ title?: string }>;
 };
 
 const responseHeaders = {
@@ -62,7 +68,16 @@ function retryAfterHeader(value: string | null) {
 export async function GET(request: NextRequest) {
   const query = request.nextUrl.searchParams.get("query")?.trim().slice(0, 180);
   if (!query) return NextResponse.json({ image: null, configured: Boolean(process.env.UNSPLASH_ACCESS_KEY), reason: "missing-query" }, { status: 400 });
+  const placeName = request.nextUrl.searchParams.get("place")?.trim();
+  const country = request.nextUrl.searchParams.get("country")?.trim();
+  const lon = request.nextUrl.searchParams.get("lon"), lat = request.nextUrl.searchParams.get("lat");
+  if ((placeName !== undefined || country !== undefined) && (!placeName || placeName.length > 140 || !country || country.length > 100 || ((lon !== null || lat !== null) && (lon === null || lat === null || !lon.trim() || !lat.trim() || !Number.isFinite(Number(lon)) || !Number.isFinite(Number(lat)) || Math.abs(Number(lon)) > 180 || Math.abs(Number(lat)) > 90)))) return NextResponse.json({ image: null, reason: "invalid-place" }, { status: 400, headers: { "Cache-Control": "no-store" } });
+  const place = placeName && country ? { name: placeName, country, ...(lon !== null && lat !== null ? { coordinates: [Number(lon), Number(lat)] as [number, number] } : {}) } : undefined;
+  const excludedSources = request.nextUrl.searchParams.getAll("exclude").filter(src => src.length <= 2048).slice(0, 3);
+  const wikimedia = place ? await lookupWikimediaDestinationPhotos(place, { excludedSources }) : null;
+  if (wikimedia?.status === "resolved") return NextResponse.json({ image: wikimedia.candidates[0], candidates: wikimedia.candidates, configured: true }, { headers: { "Cache-Control": "no-store" } });
   const accessKey = process.env.UNSPLASH_ACCESS_KEY?.trim();
+  if (!accessKey && wikimedia) return NextResponse.json({ image: null, candidates: [], configured: true, reason: wikimedia.status === "no-result" ? "no-result" : "provider-unavailable" }, { status: wikimedia.status === "no-result" ? 200 : 502, headers: { "Cache-Control": "no-store" } });
   if (!accessKey) return NextResponse.json(
     { image: null, configured: false, reason: "missing-access-key" },
     { headers: { "Cache-Control": "no-store" } },
@@ -95,6 +110,8 @@ export async function GET(request: NextRequest) {
       const src = photo.urls?.regular;
       const sourceUrl = withUnsplashReferral(photo.user?.links?.html);
       if (!photo.id || !src || !sourceUrl || !photo.user?.name) return [];
+      if (excludedSources.includes(src)) return [];
+      if (place && !scorePublishedRouteImageCandidate({ key: "destination", ...place, coordinates: place.coordinates ?? [0, 0], routeKeys: [], siblingNames: [], attachedLandmarks: [] }, { provider: "unsplash", id: photo.id, src, sourceUrl, author: photo.user.name, license: "Unsplash License", licenseUrl: "https://unsplash.com/license", width: photo.width ?? 0, height: photo.height ?? 0, alt: photo.alt_description, description: photo.description, location: photo.location, tags: photo.tags?.flatMap(tag => tag.title ? [tag.title] : []) }).accepted) return [];
       return [{
         id: photo.id,
         src,
@@ -102,13 +119,14 @@ export async function GET(request: NextRequest) {
         sourceUrl,
         sourceLabel: `Photo by ${photo.user.name} on Unsplash`,
         downloadLocation: photo.links?.download_location,
+        ...(place ? { provider: "unsplash" as const, author: photo.user.name, authorUrl: sourceUrl, license: "Unsplash License", licenseUrl: "https://unsplash.com/license" } : {}),
       }];
     });
     const photo = candidates[0];
-    if (!photo) return NextResponse.json({ image: null, candidates: [], configured: true, reason: "no-result" }, { headers: { "Cache-Control": "no-store" } });
+    if (!photo) return NextResponse.json({ image: null, candidates: [], configured: true, reason: wikimedia?.status === "unavailable" ? "provider-unavailable" : "no-result" }, { status: wikimedia?.status === "unavailable" ? 502 : 200, headers: { "Cache-Control": "no-store" } });
     return NextResponse.json(
       { image: photo, candidates, configured: true, query },
-      { headers: responseHeaders },
+      { headers: place ? { "Cache-Control": "no-store" } : responseHeaders },
     );
   } catch {
     return NextResponse.json(

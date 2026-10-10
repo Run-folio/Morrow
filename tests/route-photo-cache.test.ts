@@ -4,11 +4,18 @@ import test from "node:test";
 import {
   canonicalPlacePhotoCacheKey,
   findRoutePhotos,
+  discardFailedRoutePhoto,
   readRoutePhotoSelection,
   resolveRoutePhotoCandidates,
   routePhotoFromUnknown,
   saveRoutePhotoSelection,
 } from "../lib/easyt/route-photo-cache.ts";
+
+test("Wikimedia cache round-trips full rights and rejects missing licence metadata", () => {
+  const photo = { src: "https://upload.wikimedia.org/photo.jpg", sourceUrl: "https://commons.wikimedia.org/wiki/File:Photo.jpg", sourceLabel: "Author · CC BY 4.0", provider: "wikimedia" as const, author: "Author", authorUrl: "https://commons.wikimedia.org/wiki/User:Author", license: "CC BY 4.0", licenseUrl: "https://creativecommons.org/licenses/by/4.0/" };
+  assert.deepEqual(routePhotoFromUnknown(photo), photo);
+  assert.equal(routePhotoFromUnknown({ ...photo, licenseUrl: undefined }), null);
+});
 
 const validPhoto = {
   id: "photo-1",
@@ -71,6 +78,38 @@ class MemoryStorage implements Storage {
   removeItem(key: string) { this.#values.delete(key); }
   setItem(key: string, value: string) { this.#values.set(key, value); }
 }
+
+test("failed positive recovery targets only its identity and never erases a newer choice", async () => {
+  const storage = new MemoryStorage(), key = "failed-positive-recovery";
+  saveRoutePhotoSelection(key, { kind: "photo", photo: validPhoto }, storage);
+  saveRoutePhotoSelection("unrelated-image", { kind: "photo", photo: validPhoto }, storage);
+  discardFailedRoutePhoto(key, validPhoto.src, storage);
+  assert.equal(readRoutePhotoSelection(key, storage), null);
+  assert.ok(readRoutePhotoSelection("unrelated-image", storage));
+  let selected: unknown;
+  const recovered = { ...validPhoto, src: "https://images.example.test/recovered.jpg" };
+  await resolveRoutePhotoCandidates([{ cacheKey: key, occurrenceIds: ["first", "repeat"], queries: ["destination"], excludedSources: [validPhoto.src] }], (_, value) => { selected = value; }, {
+    storage, trackPhoto: () => undefined, findPhotos: async (_, __, ___, excluded) => {
+      assert.ok(excluded?.includes(validPhoto.src));return { candidates: [validPhoto, recovered], configured: true, status: "resolved" };
+    },
+  });
+  assert.deepEqual(selected, { kind: "photo", photo: recovered });
+  discardFailedRoutePhoto(key, validPhoto.src, storage);
+  assert.deepEqual(readRoutePhotoSelection(key, storage), selected);
+});
+
+test("a failed old in-flight URL cannot overwrite a recovered cache selection", async () => {
+  const storage = new MemoryStorage(), key = "old-inflight-failed-recovery";
+  let release!: () => void;const pending = new Promise<void>(resolve => { release = resolve; });
+  const candidate = { cacheKey: key, occurrenceIds: ["first"], queries: ["destination"] };
+  let oldCommits = 0;
+  const old = resolveRoutePhotoCandidates([candidate], () => { oldCommits++; }, { storage, trackPhoto: () => undefined, findPhotos: async () => { await pending;return { candidates: [validPhoto], configured: true, status: "resolved" }; } });
+  discardFailedRoutePhoto(key, validPhoto.src, storage);
+  const recovered = { ...validPhoto, src: "https://images.example.test/newer-recovery.jpg" };
+  await resolveRoutePhotoCandidates([{ ...candidate, excludedSources: [validPhoto.src] }], () => {}, { storage, trackPhoto: () => undefined, findPhotos: async () => ({ candidates: [recovered], configured: true, status: "resolved" }) });
+  release();await old;assert.equal(oldCommits, 0);
+  assert.deepEqual(readRoutePhotoSelection(key, storage), { kind: "photo", photo: recovered });
+});
 
 test("canonical place cache identity does not depend on route position or display spelling", () => {
   const first = canonicalPlacePhotoCacheKey({

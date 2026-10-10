@@ -12,7 +12,7 @@ test("shared shell keeps one action and navigation owner with valid mobile image
   assert.match(shell, /<TripShellImage\s*\/>/);
   assert.match(shell, /<TripShellNavigation tripId=\{trip\.id\}/);
   assert.doesNotMatch(shell, /itineraryPresentationImages/);
-  assert.match(client, /const \{ trip \} = useTripShellMutation\(\);[\s\S]*const photo = tripCoverImage\(trip\)/);
+  assert.match(client, /const \{ trip \} = useTripShellMutation\(\);[\s\S]*tripCoverImage\(trip, new Set\(excluded\)\)/);
   assert.match(client, /personalRouteHref\(trip\.id\)/);
   assert.match(client, /tripBuilderHref\(trip\.id, trip\.ownerId\)/);
   assert.match(client, /<WorkspaceOrientationLauncher onRenameTrip=\{openRename\}/);

@@ -15,7 +15,7 @@ import {
   Sparkles,
   type LucideIcon,
 } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { accommodationProgress, stayBookingForStop } from "@/lib/easyt/accommodation";
 import { tripHealth } from "@/lib/easyt/review";
 import { formatTripDuration, formatTripNights } from "@/lib/easyt/trip-facts";
@@ -51,8 +51,8 @@ import { useWorkspaceOrientationReady, useWorkspaceOrientationTarget } from "./w
 import { sameJourneyPlace } from "@/lib/easyt/journey-endpoints";
 import { personalRouteHref } from "@/lib/easyt/personal-route";
 import TripExplicitPlans from "./trip-explicit-plans";
-import { overviewPlaceImage, overviewStopImage, type OverviewPlaceImage } from "@/lib/easyt/trip-overview-imagery";
-import { canonicalPlacePhotoCacheKey, resolveRoutePhotoCandidates, type RoutePhotoCandidate } from "@/lib/easyt/route-photo-cache";
+import { overviewPlaceImage, overviewStopImage, resolvedOverviewPhoto, type OverviewPlaceImage } from "@/lib/easyt/trip-overview-imagery";
+import { canonicalPlacePhotoCacheKey, discardFailedRoutePhoto, resolveRoutePhotoCandidates, type RoutePhotoCandidate } from "@/lib/easyt/route-photo-cache";
 import MorroviaPhotoCredit from "./morrovia-photo-credit";
 import { useTripShellMutation } from "./trip-shell-client";
 import { ContextualFeedbackSlot } from "./contextual-feedback-controller";
@@ -109,15 +109,16 @@ function conciseTransferLabel(leg: EasyTTrip["legs"][number] | null | undefined)
   return leg.mode === "flight" ? `${duration} by air` : `${duration} transfer`;
 }
 
-export function OverviewStepMedia({ image, name, meta, number, href }: { image: OverviewPlaceImage | null; name: string; meta: string; number: number; href: string }) {
-  const [imageDisplayed, setImageDisplayed] = useState(false);
+export function OverviewStepMedia({ image, name, meta, number, href, onImageError }: { image: OverviewPlaceImage | null; name: string; meta: string; number: number; href: string; onImageError?: (src: string) => void }) {
+  const [displayedSrc, setDisplayedSrc] = useState<string | null>(null);
+  const onDisplayState = useCallback((displayed: boolean) => setDisplayedSrc(displayed ? image?.src ?? null : null), [image?.src]);
   return <article>
       <div className={styles.stopNumber}>{number}</div>
       <div className={styles.stopPhoto}>
         <Link href={href} className={styles.stopImageLink} aria-label={`${name} · ${meta}`}>
-          <ResilientImage src={image?.src} alt={image?.alt ?? ""} onDisplayState={setImageDisplayed} fallback={<div className={styles.stopFallback}><MapPin aria-hidden="true" /></div>} />
+          <ResilientImage key={image?.src ?? "no-photo"} src={image?.src} alt={image?.alt ?? ""} onDisplayState={onDisplayState} onError={() => { if (image) onImageError?.(image.src); }} fallback={<div className={styles.stopFallback}><MapPin aria-hidden="true" /></div>} />
         </Link>
-        {image?.sourceLabel && imageDisplayed ? <MorroviaPhotoCredit size="compact" ownership={image.provenance === "reviewed-morrovia-first-party" ? "morrovia" : "unknown"} placement="bottom-right" credit={image.sourceLabel} photoLabel={image.alt} authorLabel={image.author} authorHref={image.authorUrl} sourceLabel={image.sourceUrl ? "Source" : undefined} sourceHref={image.sourceUrl} licenseLabel={image.license} licenseHref={image.licenseUrl} fullCreditHref={image.fullCreditUrl} /> : null}
+        {image?.sourceLabel && displayedSrc === image.src ? <MorroviaPhotoCredit size="compact" ownership={image.provenance === "reviewed-morrovia-first-party" ? "morrovia" : "unknown"} placement="bottom-right" credit={image.sourceLabel} photoLabel={image.alt} authorLabel={image.author} authorHref={image.authorUrl} sourceLabel={image.sourceUrl ? "Source" : undefined} sourceHref={image.sourceUrl} licenseLabel={image.license} licenseHref={image.licenseUrl} fullCreditHref={image.fullCreditUrl} /> : null}
       </div>
       <Link href={href} className={styles.stopOverlay}><h3>{name}</h3><span>{meta}</span></Link>
     </article>;
@@ -144,6 +145,7 @@ export default function TripOverviewWorkspace({
     return () => window.removeEventListener(EASYT_LANGUAGE_CHANGE_EVENT, update);
   }, [suppliedLanguage]);
   const [resolvedPlaceImages, setResolvedPlaceImages] = useState<Record<string, OverviewPlaceImage>>({});
+  const [failedImages, setFailedImages] = useState<Record<string, string[]>>({});
   const prepReadiness = useTripPrepReadiness({
     trip,
     language,
@@ -201,20 +203,46 @@ export default function TripOverviewWorkspace({
   }));
   const originLongitude = origin.coordinates?.[0] ?? null;
   const originLatitude = origin.coordinates?.[1] ?? null;
+  const imageCacheKeysByOccurrence = useMemo(() => Object.fromEntries([
+    [origin.id, canonicalPlacePhotoCacheKey({
+      name: origin.name,
+      country: origin.country,
+      canonicalPlaceId: origin.canonicalPlaceId,
+      providerId: origin.providerId,
+      coordinates: origin.coordinates,
+    })],
+    ...orderedStops.map((stop) => [stop.id, canonicalPlacePhotoCacheKey({
+      name: stop.name,
+      country: stop.country,
+      canonicalPlaceId: stop.canonicalPlaceId,
+      providerId: stop.providerId,
+      coordinates: stop.longitude !== null && stop.latitude !== null ? [stop.longitude, stop.latitude] : undefined,
+    })]),
+    ...(journeyEnd ? [[journeyEnd.id, canonicalPlacePhotoCacheKey({
+      name: journeyEnd.name,
+      country: journeyEnd.country,
+      canonicalPlaceId: journeyEnd.canonicalPlaceId,
+      providerId: journeyEnd.providerId,
+      coordinates: journeyEnd.coordinates,
+    })]] : []),
+  ]), [journeyEnd, orderedStops, origin]);
   const initialPlaceImages = useMemo(() => {
     const images: Record<string, OverviewPlaceImage> = {};
-    const originImage = overviewPlaceImage(origin);
+    const originFailures = failedImages[imageCacheKeysByOccurrence[origin.id]] ?? [];
+    const originImage = originFailures.length >= 3 ? null : overviewPlaceImage(origin, new Set(originFailures));
     if (originImage) images[origin.id] = originImage;
     orderedStops.forEach((stop) => {
-      const image = overviewStopImage(trip, stop);
+      const failures = failedImages[imageCacheKeysByOccurrence[stop.id]] ?? [];
+      const image = failures.length >= 3 ? null : overviewStopImage(trip, stop, new Set(failures));
       if (image) images[stop.id] = image;
     });
     if (journeyEnd) {
-      const endImage = overviewPlaceImage(journeyEnd);
+      const failures = failedImages[imageCacheKeysByOccurrence[journeyEnd.id]] ?? [];
+      const endImage = failures.length >= 3 ? null : overviewPlaceImage(journeyEnd, new Set(failures));
       if (endImage) images[journeyEnd.id] = endImage;
     }
     return images;
-  }, [journeyEnd, orderedStops, origin, trip]);
+  }, [journeyEnd, orderedStops, origin, trip, failedImages, imageCacheKeysByOccurrence]);
   const overviewMapStops = useMemo<JourneyStop[]>(() => [{
     id: origin.id,
     city: origin.name,
@@ -239,29 +267,6 @@ export default function TripOverviewWorkspace({
     aiPrompt: `What should I prioritise in ${stop.name}?`,
   }))], [orderedStops, origin.country, origin.id, origin.name, originLatitude, originLongitude]);
   const overviewMapLegs = useMemo(() => mapRouteLegsFromTrip(trip), [trip.brief, trip.id, trip.legs, trip.stops]);
-  const imageCacheKeysByOccurrence = useMemo(() => Object.fromEntries([
-    [origin.id, canonicalPlacePhotoCacheKey({
-      name: origin.name,
-      country: origin.country,
-      canonicalPlaceId: origin.canonicalPlaceId,
-      providerId: origin.providerId,
-      coordinates: origin.coordinates,
-    })],
-    ...orderedStops.map((stop) => [stop.id, canonicalPlacePhotoCacheKey({
-      name: stop.name,
-      country: stop.country,
-      canonicalPlaceId: stop.canonicalPlaceId,
-      providerId: stop.providerId,
-      coordinates: stop.longitude !== null && stop.latitude !== null ? [stop.longitude, stop.latitude] : undefined,
-    })]),
-    ...(journeyEnd ? [[journeyEnd.id, canonicalPlacePhotoCacheKey({
-      name: journeyEnd.name,
-      country: journeyEnd.country,
-      canonicalPlaceId: journeyEnd.canonicalPlaceId,
-      providerId: journeyEnd.providerId,
-      coordinates: journeyEnd.coordinates,
-    })]] : []),
-  ]), [journeyEnd, orderedStops, origin]);
   const imageResolutionCandidates = useMemo(() => {
     const unresolved = [
       {
@@ -290,23 +295,26 @@ export default function TripOverviewWorkspace({
         providerId: journeyEnd.providerId,
         coordinates: journeyEnd.coordinates,
       }] : []),
-    ].filter((candidate) => !initialPlaceImages[candidate.id]);
+    ].filter((candidate) => !initialPlaceImages[candidate.id] && (failedImages[imageCacheKeysByOccurrence[candidate.id]]?.length ?? 0) < 3);
     const grouped = new globalThis.Map<string, RoutePhotoCandidate>();
     unresolved.forEach((candidate) => {
       const cacheKey = imageCacheKeysByOccurrence[candidate.id];
       const existing = grouped.get(cacheKey);
       if (existing) {
         existing.occurrenceIds.push(candidate.id);
+        existing.excludedSources = [...new Set([...(existing.excludedSources ?? []), ...(failedImages[cacheKey] ?? [])])];
         return;
       }
       grouped.set(cacheKey, {
         cacheKey,
         occurrenceIds: [candidate.id],
         queries: [`${candidate.name} ${candidate.country} travel`, `${candidate.name} ${candidate.country} landmark`],
+        place: candidate,
+        excludedSources: failedImages[cacheKey] ?? [],
       });
     });
     return [...grouped.values()];
-  }, [imageCacheKeysByOccurrence, initialPlaceImages, journeyEnd, journeyEndIsLastStop, orderedStops, origin]);
+  }, [imageCacheKeysByOccurrence, initialPlaceImages, journeyEnd, journeyEndIsLastStop, orderedStops, origin, failedImages]);
 
   useEffect(() => {
     if (!imageResolutionCandidates.length) return;
@@ -316,17 +324,19 @@ export default function TripOverviewWorkspace({
       setResolvedPlaceImages((current) => {
         const next = { ...current };
         // A late lookup may fill an empty canonical identity, but never replaces known truth.
-        if (!next[candidate.cacheKey]) next[candidate.cacheKey] = {
-          src: selection.photo.src,
-          alt: selection.photo.alt ?? "Destination view",
-          sourceUrl: selection.photo.sourceUrl,
-          sourceLabel: selection.photo.sourceLabel,
-        };
+        if (!next[candidate.cacheKey]) next[candidate.cacheKey] = resolvedOverviewPhoto(selection.photo);
         return next;
       });
     }, { signal: controller.signal });
     return () => controller.abort();
   }, [imageResolutionCandidates, initialPlaceImages]);
+
+  const recoverImage = (occurrenceId: string, src: string) => {
+    const cacheKey = imageCacheKeysByOccurrence[occurrenceId];
+    discardFailedRoutePhoto(cacheKey, src);
+    setFailedImages(current => ({ ...current, [cacheKey]: [...new Set([...(current[cacheKey] ?? []), src])] }));
+    setResolvedPlaceImages(current => { if (current[cacheKey]?.src !== src) return current; const next = { ...current }; delete next[cacheKey]; return next; });
+  };
 
   const openTravellerDetails = () => {
     setTravellerDetailsOpen(true);
@@ -371,7 +381,7 @@ export default function TripOverviewWorkspace({
                   }),
                   ...(journeyEnd && !journeyEndIsLastStop ? [{ id: journeyEnd.id, name: journeyEnd.name, image: initialPlaceImages[journeyEnd.id] ?? resolvedPlaceImages[imageCacheKeysByOccurrence[journeyEnd.id]], meta: "Journey end", href: routeIssueHref(trip.id), transfer: null }] : []),
                 ].map((step, index, steps) => <li key={step.id} className={styles.routeStep}>
-                  <OverviewStepMedia image={step.image} name={step.name} meta={step.meta} number={index + 1} href={step.href} />
+                  <OverviewStepMedia image={step.image} name={step.name} meta={step.meta} number={index + 1} href={step.href} onImageError={(src) => recoverImage(step.id, src)} />
                   {step.transfer ? <div className={styles.transfer}><ArrowRight aria-hidden="true" /><span>{step.transfer}</span></div> : <div className={styles.transferSpacer} aria-hidden="true" />}
                   {index < steps.length - 1 ? <ChevronRight className={styles.routeDirection} aria-hidden="true" /> : null}
                 </li>)}

@@ -1,10 +1,11 @@
-import { mediaImagesFor } from "./itinerary-media.ts";
+import { mediaImagesForExactDestination } from "./itinerary-media.ts";
 import { curatedStopFor } from "./curated-route-knowledge.ts";
 import { findCatalogPlaceById, findCatalogPlacesByPhrase } from "./place-catalog.ts";
 import { routeFamilyByKey } from "./route-catalog.ts";
 import { routeDestinationPhoto, routeImageCredit, type RoutePhotoRecord } from "./route-images.ts";
 import { routeStopPhoto } from "./route-stop-photography.ts";
 import type { EasyTTrip, TripStop } from "./trip.ts";
+import type { CachedRoutePhoto } from "./route-photo-cache.ts";
 
 export type OverviewPlaceImage = {
   src: string;
@@ -18,6 +19,11 @@ export type OverviewPlaceImage = {
   fullCreditUrl?: string;
   provenance?: "reviewed-provider" | "reviewed-morrovia-first-party";
 };
+
+export function resolvedOverviewPhoto(photo: CachedRoutePhoto): OverviewPlaceImage {
+  return { src: photo.src, alt: photo.alt ?? "Destination view", sourceUrl: photo.sourceUrl, sourceLabel: photo.sourceLabel,
+    author: photo.author, authorUrl: photo.authorUrl, license: photo.license, licenseUrl: photo.licenseUrl };
+}
 
 function reviewedPhotoImage(photo: RoutePhotoRecord | null): OverviewPlaceImage | null {
   const src = photo?.variants.at(-1)?.src;
@@ -47,17 +53,19 @@ function canonicalPlace(place: { name: string; country?: string; canonicalPlaceI
 }
 
 /** Deterministic, render-time image truth for a canonical destination. */
-export function overviewPlaceImage(place: { name: string; country?: string; canonicalPlaceId?: string }): OverviewPlaceImage | null {
+export function overviewPlaceImage(place: { name: string; country?: string; canonicalPlaceId?: string }, unavailableSources: ReadonlySet<string> = new Set()): OverviewPlaceImage | null {
   const canonical = canonicalPlace(place);
-  return reviewedPhotoImage(routeDestinationPhoto(canonical.name, canonical.country));
+  const reviewed = reviewedPhotoImage(routeDestinationPhoto(canonical.name, canonical.country));
+  if (reviewed && !unavailableSources.has(reviewed.src)) return reviewed;
+  return null;
 }
 
 /** Persisted trip truth wins, followed by reviewed route/destination imagery and a stable local fallback. */
-export function overviewStopImage(trip: EasyTTrip, stop: TripStop): OverviewPlaceImage | null {
+export function overviewStopImage(trip: EasyTTrip, stop: TripStop, unavailableSources: ReadonlySet<string> = new Set()): OverviewPlaceImage | null {
   const days = [...trip.planItems]
     .sort((left, right) => left.dayNumber - right.dayNumber)
     .filter((item) => item.stopId === stop.id);
-  const imagedDay = days.find((item) => Boolean(item.image));
+  const imagedDay = days.find((item) => Boolean(item.image) && !unavailableSources.has(item.image!));
   if (imagedDay?.image) {
     const credit = routeImageCredit(imagedDay.image);
     return {
@@ -83,11 +91,12 @@ export function overviewStopImage(trip: EasyTTrip, stop: TripStop): OverviewPlac
   });
   const reviewed = route ? routeStopPhoto(route, canonical) : routeDestinationPhoto(canonical.name, canonical.country);
   const reviewedImage = reviewedPhotoImage(reviewed);
-  if (reviewedImage) return reviewedImage;
+  if (reviewedImage && !unavailableSources.has(reviewedImage.src)) return reviewedImage;
 
   const day = days[0];
   if (!day) return null;
-  const local = mediaImagesFor(canonical.name)[0];
+  const catalog = findCatalogPlacesByPhrase(canonical.name).find(entry => entry.parentCountries.includes(canonical.country));
+  const local = catalog ? mediaImagesForExactDestination(canonical.name).find(image => !unavailableSources.has(image.src)) : null;
   return local ? {
     src: local.src,
     alt: local.alt,
@@ -97,7 +106,7 @@ export function overviewStopImage(trip: EasyTTrip, stop: TripStop): OverviewPlac
 }
 
 /** The whole-trip cover depicts its first overnight occurrence, never an endpoint or a later stop. */
-export function tripCoverImage(trip: EasyTTrip): OverviewPlaceImage | null {
+export function tripCoverImage(trip: EasyTTrip, unavailableSources: ReadonlySet<string> = new Set()): OverviewPlaceImage | null {
   const firstDestination = [...trip.stops].sort((left, right) => left.order - right.order)[0];
-  return firstDestination ? overviewStopImage(trip, firstDestination) : null;
+  return firstDestination ? overviewStopImage(trip, firstDestination, unavailableSources) : null;
 }

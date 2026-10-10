@@ -590,6 +590,14 @@ accessible fallback without repeating the stop count or route; trip identity
 stays beside it. `MorroviaPhotoCredit` discloses attribution only for the loaded
 cover, retaining its standard 44px target in the compact mobile tile. First,
 missing and failed destination specimens live in `Morrovia/04 Structure/Trip shell`.
+Overview and the cover retain reviewed imagery first. Failed URLs retire only
+that destination identity's photo selection; saved trip content stays intact.
+Uncovered destinations use contextual Wikimedia Commons metadata with source,
+author, licence and geography checks before the optional configured Unsplash
+fallback. Failed requests are retryable, with at most three failed image URLs
+per identity per render and no durable negative photo cache. Credits follow the
+image that actually loaded. Open-day question marks are omitted beside day-rail
+dates; day navigation and activity status treatments retain their owners.
 Itinerary caps the day rail at 270px and context rail at 320px so the selected
 day receives the extra space. Overview caps Trip Health at 420px.
 Map intentionally retains its independent 2200px viewport breakout and existing

@@ -34,7 +34,8 @@ import { tripRouteDisplayLabel } from "@/lib/easyt/trip-legs";
 import { importedLegacyRepairContextAllows, repairEligibleSpreadsheetV1Trip } from "@/lib/easyt/imported-trip-hydration";
 import { personalRouteHref } from "@/lib/easyt/personal-route";
 import { overnightAccommodationStops } from "@/lib/easyt/accommodation";
-import { tripCoverImage } from "@/lib/easyt/trip-overview-imagery";
+import { tripCoverImage, resolvedOverviewPhoto, type OverviewPlaceImage } from "@/lib/easyt/trip-overview-imagery";
+import { canonicalPlacePhotoCacheKey, discardFailedRoutePhoto, resolveRoutePhotoCandidates } from "@/lib/easyt/route-photo-cache";
 import MorroviaPhotoCredit from "./morrovia-photo-credit";
 import { useTripMutationPersistence, type TripMutationPersistence } from "./use-trip-mutation-persistence";
 import styles from "./trip-shell.module.css";
@@ -490,14 +491,36 @@ export function TripOverviewEntryBoundary() {
 
 export function TripShellImage() {
   const { trip } = useTripShellMutation();
-  const photo = tripCoverImage(trip);
+  const first = [...trip.stops].sort((left, right) => left.order - right.order)[0];
+  const place = first ? { name: first.name, country: first.country, canonicalPlaceId: first.canonicalPlaceId, providerId: first.providerId,
+    coordinates: first.longitude !== null && first.latitude !== null ? [first.longitude, first.latitude] as [number, number] : undefined } : null;
+  const cacheKey = place ? canonicalPlacePhotoCacheKey(place) : "";
+  const [failedImages, setFailedImages] = useState<Record<string, string[]>>({});
+  const [resolvedImages, setResolvedImages] = useState<Record<string, OverviewPlaceImage>>({});
+  const excluded = failedImages[cacheKey] ?? [];
+  const photo = excluded.length >= 3 ? null : tripCoverImage(trip, new Set(excluded)) ?? (excluded.includes(resolvedImages[cacheKey]?.src) ? null : resolvedImages[cacheKey]) ?? null;
+  const name = place?.name ?? "", country = place?.country ?? "", coordinateKey = JSON.stringify(place?.coordinates), excludedKey = JSON.stringify(excluded);
+  useEffect(() => {
+    if (photo || !name || !country || excluded.length >= 3) return;
+    const controller = new AbortController();
+    void resolveRoutePhotoCandidates([{ cacheKey, occurrenceIds: [cacheKey], queries: [`${name} ${country} travel`], place: { name, country, coordinates: JSON.parse(coordinateKey ?? "null") }, excludedSources: JSON.parse(excludedKey) }], (_candidate, selection) => {
+      if (selection.kind === "photo") setResolvedImages(current => ({ ...current, [cacheKey]: resolvedOverviewPhoto(selection.photo) }));
+    }, { signal: controller.signal });
+    return () => controller.abort();
+  }, [cacheKey, name, country, coordinateKey, excludedKey, photo?.src]);
+  const recoverImage = () => {
+    if (!photo) return;
+    discardFailedRoutePhoto(cacheKey, photo.src);
+    setFailedImages(current => ({ ...current, [cacheKey]: [...new Set([...(current[cacheKey] ?? []), photo.src])] }));
+    setResolvedImages(current => { if (current[cacheKey]?.src !== photo.src) return current; const next = { ...current }; delete next[cacheKey]; return next; });
+  };
   const [displayedSrc, setDisplayedSrc] = useState<string | null>(null);
   const onDisplayState = useCallback((displayed: boolean) => {
     setDisplayedSrc(displayed ? photo?.src ?? null : null);
   }, [photo?.src]);
   return (
     <div className={styles.tripImage}>
-      <ResilientImage src={photo?.src} alt={photo?.alt ?? ""} onDisplayState={onDisplayState} fallback={<div className={styles.tripImageFallback} role="img" aria-label={`${tripDisplayTitle(trip)} trip image unavailable`} />} />
+      <ResilientImage key={photo?.src ?? "no-photo"} src={photo?.src} alt={photo?.alt ?? ""} onDisplayState={onDisplayState} onError={recoverImage} fallback={<div className={styles.tripImageFallback} role="img" aria-label={`${tripDisplayTitle(trip)} trip image unavailable`} />} />
       {photo?.sourceLabel && displayedSrc === photo.src ? <MorroviaPhotoCredit className={styles.coverPhotoCredit} size="compact" placement="bottom-right" ownership={photo.provenance === "reviewed-morrovia-first-party" ? "morrovia" : "unknown"} credit={photo.sourceLabel} photoLabel={photo.alt} authorLabel={photo.author} authorHref={photo.authorUrl} sourceLabel={photo.sourceUrl ? "Source" : undefined} sourceHref={photo.sourceUrl} licenseLabel={photo.license} licenseHref={photo.licenseUrl} fullCreditHref={photo.fullCreditUrl} /> : null}
     </div>
   );

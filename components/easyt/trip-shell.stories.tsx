@@ -202,6 +202,14 @@ export const FailedFirstDestinationCover: Story = {
   },
 };
 
+export const UncoveredDestinationCover: Story = {
+  ...FirstDestinationCover,
+  args: {
+    ...FirstDestinationCover.args,
+    trip: { ...coverTrip, stops: coverTrip.stops.map(stop => stop.id === "kanazawa" ? { ...stop, id: "bangkok", canonicalPlaceId: "reference:geonames:1609350", name: "Bangkok", country: "Thailand", latitude: 13.75398, longitude: 100.50144 } : stop) },
+  },
+};
+
 export const GeneratedOneCountry: Story = {
   args: {
     trip: { ...trip, brief: { ...trip.brief, customTitle: null } },
