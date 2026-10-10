@@ -563,7 +563,20 @@ export function scoreRouteCandidates(input: ScoreRouteCandidatesInput): RouteCan
     };
   }
 
-  const facts = input.candidates.map((candidate) => candidateFacts(input, candidate, config));
+  // The candidate list revisits the same directed connections across route
+  // orders. Reuse those estimates within this scoring pass only.
+  const legCache = new WeakMap<RouteOrigin | PlannerStop, WeakMap<PlannerStop, EstimatedLeg>>();
+  const estimateLeg: LegEstimator = (from, to) => {
+    let destinations = legCache.get(from);
+    if (!destinations) { destinations = new WeakMap(); legCache.set(from, destinations); }
+    const cached = destinations.get(to);
+    if (cached) return cached;
+    const estimated = input.estimateLeg(from, to);
+    destinations.set(to, estimated);
+    return estimated;
+  };
+  const scoringInput = { ...input, estimateLeg };
+  const facts = input.candidates.map((candidate) => candidateFacts(scoringInput, candidate, config));
   const classify = createCountryContinuityClassifier(facts.map((item) => item.continuity));
   for (const item of facts) {
     const assessments = classify(item.continuity, input.countryContinuityProofs);

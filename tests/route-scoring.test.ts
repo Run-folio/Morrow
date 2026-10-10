@@ -53,6 +53,18 @@ const geographicEstimator = (from: { coordinates?: [number, number] }, to: Plann
   return leg("train", distanceKm, distanceKm);
 };
 
+test("six-stop scoring reuses directed leg estimates across route orders", () => {
+  const stops = Array.from({ length: 6 }, (_, index) => stop(`stop-${index}`, index));
+  const candidates = generateRouteCandidates({ origin, stops, estimateLeg: geographicEstimator }).candidates;
+  let calls = 0;
+  const result = scoreRouteCandidates({ origin, candidates, estimateLeg: (from, to) => {
+    calls++;
+    return geographicEstimator(from, to);
+  } });
+  assert.equal(result.rankedCandidates.length, 720);
+  assert.ok(calls <= 42, `expected at most 42 distinct directed pairs, received ${calls}`);
+});
+
 function pairEstimator(pairs: Record<string, EstimatedLeg>, fallback = leg("train", 0, 0)) {
   return (from: { name: string }, to: PlannerStop) => pairs[`${from.name}|${to.name}`] ?? fallback;
 }

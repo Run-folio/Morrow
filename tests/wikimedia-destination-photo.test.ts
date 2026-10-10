@@ -91,6 +91,22 @@ test("same-name cities use coordinates to reject the wrong region", async () => 
   assert.equal(result.status, "resolved");
   assert.deepEqual(result.candidates.map(photo => photo.id), [matching.title]);
 });
+test('same-name settlements within one province require image GPS even when text names the province', async () => {
+  const selected = { name: 'Shenzhen', country: 'China', region: 'Guangdong',
+    administrativeHierarchy: ['Guangdong', 'Maoming Shi'], requiresPhotoCoordinates: true,
+    coordinates: [111.11793, 22.1823] as [number, number] };
+  const noGps = { ...page(), title: 'File:Shenzhen Guangdong skyline.jpg', imageinfo: [{ ...page().imageinfo[0],
+    extmetadata: { ...page().imageinfo[0]!.extmetadata,
+      ImageDescription: { value: 'Shenzhen Guangdong China skyline' },
+      GPSLongitude: undefined, GPSLatitude: undefined } }] };
+  const result = await lookupWikimediaDestinationPhotos(selected, { fetcher: async () => Response.json({ query: { pages: { '1': noGps } } }) });
+  assert.equal(result.status, 'no-result');
+  const nearby = { ...noGps, imageinfo: [{ ...noGps.imageinfo[0], extmetadata: {
+    ...noGps.imageinfo[0]!.extmetadata, GPSLongitude: { value: '111.11793' }, GPSLatitude: { value: '22.1823' },
+  } }] };
+  const accepted = await lookupWikimediaDestinationPhotos(selected, { fetcher: async () => Response.json({ query: { pages: { '1': nearby } } }) });
+  assert.equal(accepted.status, 'resolved');
+});
 test("a non-city destination searches for landscape and retains exact-place evidence", async () => {
   const place = { name: "Big Bear Lake", country: "United States", region: "California", placeType: "town", coordinates: [-116.9114, 34.2439] as [number, number] };
   const photo = { ...page({ extmetadata: { ...page().imageinfo[0]!.extmetadata,

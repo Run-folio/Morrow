@@ -129,7 +129,7 @@ const TripItineraryWorkspace = dynamic(() => import("@/components/easyt/trip-iti
 /* ---------------------------------------------------------------- data */
 
 export type Place = PlannerPlace;
-export type Stop = { id: string; name: string; country: string; canonicalPlaceId?: string; countryCode?: string; region?: string; providerId?: string; geographicBinding?:JourneyEndpointPlace['geographicBinding']; coordinates?: [number, number]; intent?: "place" | "landmark"; locality?: string };
+export type Stop = { id: string; name: string; country: string; canonicalPlaceId?: string; countryCode?: string; region?: string; administrativeHierarchy?: string[]; providerId?: string; geographicBinding?:JourneyEndpointPlace['geographicBinding']; coordinates?: [number, number]; intent?: "place" | "landmark"; locality?: string };
 type StructuralSnapshot = { canonical?: BuilderStructuralSnapshot; stops: Stop[]; allocations: Record<string, number>; manualNightStopIds: string[]; startDate: string; endDate: string; locks: TripScheduleLocks; placeSelections: PlaceSelection[]; completedPlanningAreaMentionIds: string[]; removedPlaceMentionIds: string[]; countryDiscoveryChoices?: Record<string, string[]>; discoveryDraftByMentionId?: StructuredTripBrief["discoveryDraftByMentionId"]; capturedPlaceSelections?: PlaceSelection[]; capturedDestinations: StructuredTripBrief["destinations"]; capturedMustVisit: StructuredTripBrief["mustVisit"]; summary: string };
 type NightEditFeedback = { title: string; detail?: string; tone: "info" | "warning" };
 type CapturedLocation = ResolvedPlaceMention;
@@ -696,7 +696,7 @@ function TripBuilderDocument() {
     touched: boolean;
   } | null>(null);
   const [initialStops, setStops] = useState<Stop[]>([]);
-  const stops = canonicalBuilder ? (canonicalBuilder.stops.map(stop => ({id:stop.id,name:stop.name,country:stop.country,canonicalPlaceId:stop.canonicalPlaceId,countryCode:stop.countryCode,region:stop.region,providerId:stop.providerId,geographicBinding:stop.geographicBinding,coordinates:stop.longitude !== null && stop.latitude !== null ? [stop.longitude,stop.latitude] as [number,number] : undefined}))) : initialStops;
+  const stops = canonicalBuilder ? (canonicalBuilder.stops.map(stop => ({id:stop.id,name:stop.name,country:stop.country,canonicalPlaceId:stop.canonicalPlaceId,countryCode:stop.countryCode,region:stop.region,administrativeHierarchy:stop.administrativeHierarchy,providerId:stop.providerId,geographicBinding:stop.geographicBinding,coordinates:stop.longitude !== null && stop.latitude !== null ? [stop.longitude,stop.latitude] as [number,number] : undefined}))) : initialStops;
   const hasRouteSkeleton = hasUsefulRouteSkeleton(stops);
   const [routeHints, setRouteHints] = useState<string[]>([]);
   const [sourceRouteKey, setSourceRouteKey] = useState<string | undefined>();
@@ -2991,6 +2991,7 @@ function TripBuilderDocument() {
         country: canonicalSuggestion.country,
         countryCode: countryCodeFor(canonicalSuggestion.country) ?? undefined,
         region: canonicalSuggestion.region,
+        administrativeHierarchy: canonicalSuggestion.administrativeHierarchy,
         coordinates: canonicalSuggestion.coordinates,
         kind: canonicalSuggestion.placeType,
         placeType:canonicalSuggestion.placeType,routability:canonicalSuggestion.routability??'direct_destination',
@@ -3000,7 +3001,7 @@ function TripBuilderDocument() {
       } : null);
       const resolved = canonicalResolved ?? await (async () => {
         const response = await fetch(`/api/journey-geocode?place=${encodeURIComponent(canonicalSuggestion?.name ?? value)}${routeCountry ? `&country=${encodeURIComponent(routeCountry)}` : ""}${nearby ? `&nearLat=${nearby[1]}&nearLon=${nearby[0]}` : ""}`);
-        const payload = await response.json() as { result?: { canonicalPlaceId?: string; name?: string; country?: string; countryCode?: string; region?: string; providerId?: string; coordinates?: [number, number]; kind?: string; locality?: string } | null };
+        const payload = await response.json() as { result?: { canonicalPlaceId?: string; name?: string; country?: string; countryCode?: string; region?: string; administrativeHierarchy?: string[]; providerId?: string; coordinates?: [number, number]; kind?: string; locality?: string } | null };
         return payload.result;
       })();
       if(!lookupIsCurrent())return;
@@ -3120,6 +3121,7 @@ function TripBuilderDocument() {
         canonicalPlaceId: selectedCanonicalPlaceId ?? resolved.canonicalPlaceId ?? (resolved.providerId ? `open-world:${resolved.providerId}` : undefined),
         countryCode: resolved.countryCode,
         region: canonicalSuggestion?.region ?? resolved.region,
+        ...((canonicalSuggestion?.administrativeHierarchy ?? resolved.administrativeHierarchy)?.length ? { administrativeHierarchy: [...(canonicalSuggestion?.administrativeHierarchy ?? resolved.administrativeHierarchy)!] } : {}),
         providerId: resolved.providerId,
         coordinates: resolved.coordinates,
         locality: resolved.locality,
@@ -3156,6 +3158,7 @@ function TripBuilderDocument() {
           const nextCapturedStop = capturedPosition?.[capturedPosition.findIndex(stop => stop.id === id) + 1]?.id;
           const placeCommand=builderPlaceCommand(currentTrip, { stopId: id, intentId, beforeStopId: nextCapturedStop, place: {
             name: addedStop.name, country: addedStop.country, canonicalPlaceId: addedStop.canonicalPlaceId,
+            region: addedStop.region, administrativeHierarchy: addedStop.administrativeHierarchy,
             providerId: addedStop.providerId, coordinates: addedStop.coordinates,
             geographicBinding:addedStop.geographicBinding,
           }, bindSourceNights: Boolean(intentId && targetMentionId && currentTrip.brief.intent.route.destinations.some(intent =>
@@ -3369,6 +3372,7 @@ function TripBuilderDocument() {
     // Only catalogue hierarchy may assert sub-region containment. The dialog
     // parent is context, never independent evidence of a child's location.
     region: findCatalogPlaceById(suggestion.canonicalPlaceId)?.parentRegionId,
+    administrativeHierarchy: suggestion.administrativeHierarchy,
     placeType: suggestion.placeType,
     coordinates: suggestion.coordinates,
     routability: "direct_destination",
@@ -3445,7 +3449,7 @@ function TripBuilderDocument() {
       const canonicalPlaceId = choice.canonicalPlaceId ?? (choice.providerId ? `open-world:${choice.providerId}` : undefined);
       if (!canonicalPlaceId || !choice.coordinates || !choice.country || (choice.placeType !== "city" && choice.placeType !== "town")) return;
       const suggestion: CanonicalPlaceSuggestion = { canonicalPlaceId, name: choice.name, label: `${choice.name}, ${choice.country}`,
-        country: choice.country, region: choice.region, placeType: choice.placeType, coordinates: choice.coordinates, routability: "direct_destination",
+        country: choice.country, region: choice.region, administrativeHierarchy: choice.administrativeHierarchy, placeType: choice.placeType, coordinates: choice.coordinates, routability: "direct_destination",
         ...(choice.referenceSnapshotId ? { referenceSnapshotId: choice.referenceSnapshotId } : {}),
         provenance: choice.providerId ? [{ id: choice.providerId, label: "Settlement geography", kind: "provider", supports: "Traveller-selected settlement." }] : [] };
       const accepted = isOriginMention(mention) ? await selectOriginBase(mention, suggestion)
@@ -3494,7 +3498,7 @@ function TripBuilderDocument() {
         setLocationChoices((current) => current.filter((item) => item.mention.mentionId !== mention.mentionId));
         return;
       }
-      const place=acceptedGeographicPlace({name:choice.name,country:choice.country,canonicalPlaceId:choice.canonicalPlaceId??(choice.providerId?`open-world:${choice.providerId}`:undefined),providerId:choice.providerId,coordinates:choice.coordinates},choice,isOriginMention(mention)?'endpoint':'stop');
+      const place=acceptedGeographicPlace({name:choice.name,country:choice.country,region:choice.region,administrativeHierarchy:choice.administrativeHierarchy,canonicalPlaceId:choice.canonicalPlaceId??(choice.providerId?`open-world:${choice.providerId}`:undefined),providerId:choice.providerId,coordinates:choice.coordinates},choice,isOriginMention(mention)?'endpoint':'stop');
       if(!place)return;
       const intent=trip.brief.intent.route.destinations.find(i=>i.id===mention.mentionId);
       const id=intent?.stopIds.length===1?intent.stopIds[0]!:handoffStopOccurrenceId(mention,handoffOccurrenceMentionIdsRef.current);
@@ -3529,6 +3533,8 @@ function TripBuilderDocument() {
         // its canonical identity must not inherit the old mention's ID.
         canonicalPlaceId: choice.canonicalPlaceId ?? (choice.providerId ? `open-world:${choice.providerId}` : undefined),
         country: choice.country,
+        region: choice.region,
+        administrativeHierarchy: choice.administrativeHierarchy,
         providerId: choice.providerId,
       });
     } else {
@@ -3541,6 +3547,7 @@ function TripBuilderDocument() {
           canonicalPlaceId,
           countryCode: choice.countryCode,
           region: choice.region,
+          administrativeHierarchy: choice.administrativeHierarchy,
           providerId: choice.providerId,
           coordinates: choice.coordinates,
           intent: "place",

@@ -33,6 +33,8 @@ export type JourneyEndpointPlace = {
   name: string;
   canonicalPlaceId?: string;
   country?: string;
+  region?: string;
+  administrativeHierarchy?: string[];
   providerId?: string;
   coordinates?: [number, number];
   geographicBinding?: GeographicBinding;
@@ -192,6 +194,8 @@ export type TripStop = {
   canonicalPlaceId?: string;
   countryCode?: string;
   region?: string;
+  /** Verified administrative names retained with the selected settlement. */
+  administrativeHierarchy?: string[];
   providerId?: string;
   geographicBinding?: GeographicBinding;
   latitude: number | null;
@@ -625,7 +629,7 @@ export type BuilderTripInput = {
   originCountry?: string;
   originProviderId?: string;
   journeyEnd?: JourneyEndSelection;
-  stops: Array<{ id: string; name: string; country: string; canonicalPlaceId?: string; countryCode?: string; region?: string; providerId?: string; geographicBinding?:GeographicBinding; coordinates?: [number, number]; intent?: "place" | "landmark"; locality?: string }>;
+  stops: Array<{ id: string; name: string; country: string; canonicalPlaceId?: string; countryCode?: string; region?: string; administrativeHierarchy?: string[]; providerId?: string; geographicBinding?:GeographicBinding; coordinates?: [number, number]; intent?: "place" | "landmark"; locality?: string }>;
   startDate: string;
   endDate: string;
   endDateIsSuggestion?: boolean;
@@ -706,6 +710,7 @@ export function tripFromBuilder(input: BuilderTripInput): CanonicalEasyTTrip {
       canonicalPlaceId: stop.canonicalPlaceId,
       countryCode: stop.countryCode,
       region: stop.region,
+      ...(stop.administrativeHierarchy?.length ? { administrativeHierarchy: [...stop.administrativeHierarchy] } : {}),
       providerId: stop.providerId,
       ...(stop.geographicBinding===undefined?{}:{geographicBinding:stop.geographicBinding}),
       order,

@@ -19,6 +19,18 @@ const estimatedLeg = (from: { coordinates?: [number, number] }, to: PlannerStop)
   return { mode: "train", distanceKm, durationMinutes: distanceKm, label: "Test connection", note: "Planning estimate.", confidence: "medium" };
 };
 
+test('six-stop review estimates each directed leg once while preserving every route order', () => {
+  const stops = Array.from({ length: 6 }, (_, index) => stop(`stop-${index}`, index));
+  let calls = 0;
+  const result = generateRouteCandidates({ origin, stops, estimateLeg: (from, to) => {
+    calls++;
+    return estimatedLeg(from, to);
+  } });
+  assert.equal(result.candidates.length, 720);
+  assert.ok(calls <= 42, `expected at most 42 distinct directed pairs, received ${calls}`);
+  assert.equal(result.candidates.find(candidate => candidate.metadata.matchesOriginalOrder)?.metadata.estimatedTransferMinutes, 600);
+});
+
 test("every candidate preserves fixed start and end", () => {
   const stops = [stop("bangkok", 0), stop("siem-reap", 1), stop("phnom-penh", 2), stop("hcmc", 3)];
   const result = generateRouteCandidates({ origin, stops, constraints: { fixedStartStopId: "bangkok", fixedEndStopId: "hcmc" }, estimateLeg: estimatedLeg });

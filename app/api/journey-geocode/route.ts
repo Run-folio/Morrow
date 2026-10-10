@@ -52,6 +52,7 @@ function responseCandidate(candidate: PlaceProviderCandidate) {
     country,
     countryCode: "countryCode" in candidate && typeof candidate.countryCode === "string" ? candidate.countryCode : undefined,
     region: candidate.parentRegionId,
+    administrativeHierarchy: candidate.administrativeHierarchy,
     accessPlaceName: candidate.accessPlaceName,
     providerId: candidate.providerId,
     providerSourceLabel: candidate.providerSourceLabel,

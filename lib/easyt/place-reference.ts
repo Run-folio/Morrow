@@ -23,6 +23,8 @@ export type ReferencePlaceRecord = {
     scheduledService?: boolean;
     population?: number;
     featureCode?: string;
+    adminCodes?: readonly string[];
+    photoRequiresCoordinates?: boolean;
     airportType?: string;
     municipality?: string;
 };

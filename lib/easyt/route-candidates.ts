@@ -312,6 +312,19 @@ export function generateRouteCandidates(input: {
   constraints?: RoutePlanningConstraints;
   estimateLeg: LegEstimator;
 }): RouteCandidateGeneration {
+  // Exhaustive six-stop reviews revisit the same directed legs thousands of
+  // times. One generation has fixed endpoint objects and constraints, so reuse
+  // each estimate without changing candidate order or transport evidence.
+  const legCache = new WeakMap<RouteOrigin | PlannerStop, WeakMap<PlannerStop, EstimatedLeg>>();
+  const estimateLeg: LegEstimator = (from, to) => {
+    let destinations = legCache.get(from);
+    if (!destinations) { destinations = new WeakMap(); legCache.set(from, destinations); }
+    const cached = destinations.get(to);
+    if (cached) return cached;
+    const estimated = input.estimateLeg(from, to);
+    destinations.set(to, estimated);
+    return estimated;
+  };
   const strategy = input.stops.length <= EXHAUSTIVE_FLEXIBLE_STOP_LIMIT ? "exhaustive" : "bounded";
   const globalIssues = globalConstraintIssues(input.stops, input.constraints);
   if (globalIssues.length) {
@@ -329,7 +342,7 @@ export function generateRouteCandidates(input: {
       return { stops, source: sameOrder(stops, original) ? "existing" as const : "permutation" as const };
     });
   } else {
-    seeds = boundedSeeds(input.origin, flexible, start, end, input.estimateLeg);
+    seeds = boundedSeeds(input.origin, flexible, start, end, estimateLeg);
     if (!sameOrder(seeds[0]?.stops ?? [], original)) seeds.unshift({ stops: original, source: "existing" });
   }
 
@@ -346,7 +359,7 @@ export function generateRouteCandidates(input: {
   const viable = deduplicated.flatMap((seed) => {
     const candidateContinuity = analyzeRouteCountryContinuity(seed.stops);
     if (!respectsCountryContinuityBarriers(originalContinuity, candidateContinuity)) return [];
-    const issues = candidateIssues(input.origin, seed.stops, input.constraints, input.estimateLeg, input.end);
+    const issues = candidateIssues(input.origin, seed.stops, input.constraints, estimateLeg, input.end);
     issues.forEach((issue) => {
       const key = `${issue.code}:${issue.stopIds.join("|")}`;
       if (!constraintIssues.some((item) => `${item.code}:${item.stopIds.join("|")}` === key)) constraintIssues.push(issue);
@@ -368,7 +381,7 @@ export function generateRouteCandidates(input: {
       }
       return [];
     }
-    const estimate = routeEstimate(input.origin, seed.stops, input.estimateLeg, input.end);
+    const estimate = routeEstimate(input.origin, seed.stops, estimateLeg, input.end);
     return [{
       stops: seed.stops,
       source: seed.source,

@@ -4,6 +4,7 @@ import {mkdtemp,writeFile,readFile,rm} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {createHash} from 'node:crypto';
+import {gunzipSync} from 'node:zlib';
 import {buildReferenceSnapshot} from '../scripts/build-place-reference.mjs';
 const header='id,ident,type,name,latitude_deg,longitude_deg,iso_country,municipality,scheduled_service,gps_code,iata_code,icao_code\n';
 const airport=(id=1,extra={})=>({id,ident:'MGGT',type:'medium_airport',name:'Fixture "airport", terminal\nNorth',latitude_deg:14.5,longitude_deg:-90.5,iso_country:'GT',municipality:'Fixture City',scheduled_service:'yes',gps_code:'MGGT',iata_code:'GUA',icao_code:'MGGT',...extra});
@@ -50,7 +51,7 @@ test('out-of-universe airports without usable codes are not eligible and cannot 
  await assert.rejects(()=>build(dir,csv([airport(1,{iso_country:'XP'})])),/unmapped.*jurisdiction/i);
 }));
 test('prefix index offsets decode the original exact settlement tuple without retaining parsed world records',async()=>fixture(async dir=>{
- await build(dir);const prefixes=JSON.parse(await readFile(join(dir,'out','settlement-prefixes.json'),'utf8'));const index=await readFile(join(dir,'out','settlement-prefixes.bin'));const data=await readFile(join(dir,'out','settlements.json'));const {offset,count}=prefixes.fi;assert.ok(count);const start=index.readUInt32LE(offset);const end=data.indexOf(10,start);const tuple=JSON.parse(data.subarray(start,end).toString('utf8').replace(/,$/,''));assert.equal(tuple[0],'10');assert.equal(tuple[1],'Fixture capital');assert.deepEqual(tuple.slice(3,5),[-149.5,-17.5]);
+ await build(dir);const prefixes=JSON.parse(gunzipSync(await readFile(join(dir,'out','settlement-prefixes.json.gz'))).toString());const index=await readFile(join(dir,'out','settlement-prefixes.bin'));const data=await readFile(join(dir,'out','settlements.json'));const {offset,count}=prefixes.fi;assert.ok(count);const start=index.readUInt32LE(offset);const end=data.indexOf(10,start);const tuple=JSON.parse(data.subarray(start,end).toString('utf8').replace(/,$/,''));assert.equal(tuple[0],'10');assert.equal(tuple[1],'Fixture capital');assert.deepEqual(tuple.slice(3,5),[-149.5,-17.5]);
 }));
 
 test('bad source checksum leaves the previous snapshot byte-identical',async()=>fixture(async dir=>{
@@ -73,6 +74,23 @@ test('compact length index preserves ordered exact-ID tuple offsets',async()=>fi
 }));
 test('prefix normalization matches literal apostrophe and compatibility-character searches',async()=>fixture(async dir=>{
  await build(dir,csv([airport()]),settlement(10,'PPL','PF',{1:'L’Isle',2:'L’Isle',3:''})+'\n');
- const prefixes=JSON.parse(await readFile(join(dir,'out','settlement-prefixes.json'),'utf8'));assert.equal(prefixes.li.count,1);
+ const prefixes=JSON.parse(gunzipSync(await readFile(join(dir,'out','settlement-prefixes.json.gz'))).toString());assert.equal(prefixes.li.count,1);
  const codes=JSON.parse(await readFile(join(dir,'out','code-kinds.json'),'utf8'));assert.ok(codes.icao.includes('MGGT'));
+}));
+test('same-name records retain checksum-pinned administrative codes and verified names without changing identity tuples',async()=>fixture(async dir=>{
+ const air=csv([airport()]);const geo=[settlement(10,'PPL','CN',{1:'Xi’an',8:'CN',10:'26',11:'6101'}),settlement(11,'PPL','CN',{1:'Xi’an',8:'CN',10:'26',11:'6102'})].join('\n')+'\n';
+ const airports=join(dir,'airports.csv'),settlements=join(dir,'cities500.txt'),admin1=join(dir,'admin1.txt'),admin2=join(dir,'admin2.txt');
+ const a1='CN.26\tShaanxi\tShaanxi\t1\n';
+ const a2='CN.26.6101\tXi’an Shi\tXi’an Shi\t3\nCN.26.6102\tOther Shi\tOther Shi\t4\n';
+ await Promise.all([[airports,air],[settlements,geo],[admin1,a1],[admin2,a2]].map(([path,value])=>writeFile(path,value)));
+ const digest=value=>createHash('sha256').update(value).digest('hex');
+ const sources=[['ourairports',air],['geonames',geo],['geonames-admin1',a1],['geonames-admin2',a2]].map(([id,value])=>({id,url:`https://example.test/${id}`,sha256:digest(value),license:id==='ourairports'?'Public domain':'CC BY 4.0',licenseUrl:'https://creativecommons.org/licenses/by/4.0/'}));
+ const result=await buildReferenceSnapshot({airports,settlements,admin1,admin2,output:join(dir,'out'),sourceManifest:{acquiredAt:'2026-10-10T00:00:00Z',sources}});
+ const context=JSON.parse(gunzipSync(await readFile(join(dir,'out','admin-context.json.gz'))).toString());
+ const tuples=JSON.parse(await readFile(join(dir,'out','settlements.json'),'utf8'));
+ assert.deepEqual(tuples.map(row=>[row[0],...row[10].slice(0,2)]),[['10','26','6101'],['11','26','6102']]);
+ assert.equal(context.admin1['CN.26'],'Shaanxi');assert.equal(context.admin2['CN.26.6102'],'Other Shi');
+ assert.equal(result.settlements[0].canonicalPlaceId,'reference:geonames:10');
+ assert.equal(result.settlements[0].coordinates[0],-149.5);
+ await assert.rejects(()=>buildReferenceSnapshot({airports,settlements,admin1,admin2,output:join(dir,'out'),sourceManifest:{acquiredAt:'2026-10-10T00:00:00Z',sources:sources.map(s=>s.id==='geonames-admin2'?{...s,sha256:'wrong'}:s)}}),/checksum/);
 }));

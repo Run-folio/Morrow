@@ -14,7 +14,7 @@ export type CachedRoutePhoto = {
   licenseUrl?: string;
 };
 
-export type DestinationPhotoPlace = { name: string; country: string; region?: string; placeType?: string; canonicalPlaceId?: string; providerId?: string; coordinates?: readonly [number, number] | null };
+export type DestinationPhotoPlace = { name: string; country: string; region?: string; administrativeHierarchy?: readonly string[]; requiresPhotoCoordinates?: boolean; placeType?: string; canonicalPlaceId?: string; providerId?: string; coordinates?: readonly [number, number] | null };
 
 export type CachedRoutePhotoSelection =
   | { kind: "photo"; photo: CachedRoutePhoto }
@@ -45,7 +45,7 @@ function excludedPhoto(excluded: readonly string[], photo: CachedRoutePhoto) {
 
 // Candidate rules changed: old positives may contain transit imagery or a
 // route-wide duplicate. Re-evaluate them without touching saved trip content.
-const prefix = "morrovia:route-photo:v2:";
+const prefix = "morrovia:route-photo:v4:";
 const inFlightSelections = new Map<string, Promise<CachedRoutePhotoSelection | null>>();
 const failedSources = new Map<string, Set<string>>();
 
@@ -59,18 +59,24 @@ export function canonicalPlacePhotoCacheKey(place: {
   providerId?: string;
   name: string;
   country?: string;
+  region?: string;
+  administrativeHierarchy?: readonly string[];
+  placeType?: string;
   coordinates?: readonly [number, number] | null;
 }) {
   const canonicalPlaceId = normalizedIdentityPart(place.canonicalPlaceId);
-  if (canonicalPlaceId) return `destination:canonical:${encodeURIComponent(canonicalPlaceId)}`;
   const providerId = normalizedIdentityPart(place.providerId);
-  if (providerId) return `destination:provider:${encodeURIComponent(providerId)}`;
   const name = normalizedIdentityPart(place.name);
   const country = normalizedIdentityPart(place.country);
   const coordinates = place.coordinates?.every(Number.isFinite)
     ? place.coordinates.map((value) => value.toFixed(4)).join(",")
     : "";
-  return `destination:name:${encodeURIComponent(`${name}|${country}|${coordinates}`)}`;
+  const context = [name, country, normalizedIdentityPart(place.region),
+    ...(place.administrativeHierarchy ?? []).map(normalizedIdentityPart),
+    normalizedIdentityPart(place.placeType), coordinates].join("|");
+  if (canonicalPlaceId) return `destination:canonical:${encodeURIComponent(`${canonicalPlaceId}|${context}`)}`;
+  if (providerId) return `destination:provider:${encodeURIComponent(`${providerId}|${context}`)}`;
+  return `destination:name:${encodeURIComponent(context)}`;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -173,6 +179,9 @@ export async function findRoutePhotos(queries: string[], signal?: AbortSignal, p
       if (place) {
         params.set("place", place.name); params.set("country", place.country);
         if (place.region) params.set("region", place.region);
+        if (place.administrativeHierarchy?.[1]) params.set("district", place.administrativeHierarchy[1]);
+        if (place.canonicalPlaceId) params.set("canonicalPlaceId", place.canonicalPlaceId);
+        if (place.providerId) params.set("providerId", place.providerId);
         if (place.placeType) params.set("placeType", place.placeType);
         if (place.coordinates) { params.set("lon", String(place.coordinates[0])); params.set("lat", String(place.coordinates[1])); }
         excludedSources.slice(0, 18).forEach(src => params.append("exclude", src));

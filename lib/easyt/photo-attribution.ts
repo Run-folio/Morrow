@@ -75,7 +75,7 @@ export function isWikimediaCommonsImageUrl(value: string): boolean {
   try {
     const url = new URL(value);
     return url.protocol === "https:" && (
-      url.hostname === "upload.wikimedia.org" ||
+      (url.hostname === "upload.wikimedia.org" && url.pathname.startsWith("/wikipedia/commons/")) ||
       (url.hostname === "thumb.wikimedia.org" && url.pathname.startsWith("/wikipedia/commons/thumb/"))
     );
   } catch { return false; }

@@ -47,6 +47,7 @@ function destinationPhoto(page: unknown, place: DestinationPhotoPlace, excludedS
   const latitude = value("GPSLatitude") ? Number(value("GPSLatitude")) : NaN;
   const coordinates: [number, number] | undefined = Number.isFinite(longitude) && Number.isFinite(latitude) &&
     Math.abs(longitude) <= 180 && Math.abs(latitude) <= 90 ? [longitude, latitude] : undefined;
+  if (place.requiresPhotoCoordinates && (!place.coordinates || !coordinates)) return [];
   if (place.coordinates && coordinates && placeDistanceKm([...place.coordinates], coordinates) > 50) return [];
   const region = normalizeImageGeography(place.region?.trim() ?? "");
   const regionEvidence = normalizeImageGeography(`${page.title} ${text(value("ImageDescription"))} ${text(value("ObjectName"))}`);

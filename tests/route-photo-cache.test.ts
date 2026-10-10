@@ -13,9 +13,9 @@ import {
 } from "../lib/easyt/route-photo-cache.ts";
 
 test('different destination identities do not reuse one Commons asset, but repeat occurrences share it',async()=>{
- const first={...validPhoto,id:'File:Shared.jpg',provider:'wikimedia' as const,src:'https://upload.wikimedia.org/shared-800.jpg',sourceUrl:'https://commons.wikimedia.org/wiki/File:Shared.jpg',author:'A',license:'CC BY 4.0',licenseUrl:'https://creativecommons.org/licenses/by/4.0/'};
- const resized={...first,src:'https://upload.wikimedia.org/shared-1200.jpg'};
- const alternate={...first,id:'File:Alternate.jpg',src:'https://upload.wikimedia.org/alternate.jpg',sourceUrl:'https://commons.wikimedia.org/wiki/File:Alternate.jpg'};
+ const first={...validPhoto,id:'File:Shared.jpg',provider:'wikimedia' as const,src:'https://upload.wikimedia.org/wikipedia/commons/a/ab/shared-800.jpg',sourceUrl:'https://commons.wikimedia.org/wiki/File:Shared.jpg',author:'A',license:'CC BY 4.0',licenseUrl:'https://creativecommons.org/licenses/by/4.0/'};
+ const resized={...first,src:'https://upload.wikimedia.org/wikipedia/commons/a/ab/shared-1200.jpg'};
+ const alternate={...first,id:'File:Alternate.jpg',src:'https://upload.wikimedia.org/wikipedia/commons/a/ab/alternate.jpg',sourceUrl:'https://commons.wikimedia.org/wiki/File:Alternate.jpg'};
  const selected=new Map<string,string>();
  await resolveDistinctRoutePhotoCandidates([
   {cacheKey:'manila',occurrenceIds:['start','return'],queries:['Manila']},
@@ -34,12 +34,13 @@ test('different destination identities do not reuse one Commons asset, but repea
 });
 
 test("Wikimedia cache round-trips full rights and rejects missing licence metadata", () => {
-  const photo = { src: "https://upload.wikimedia.org/photo.jpg", sourceUrl: "https://commons.wikimedia.org/wiki/File:Photo.jpg", sourceLabel: "Author · CC BY 4.0", provider: "wikimedia" as const, author: "Author", authorUrl: "https://commons.wikimedia.org/wiki/User:Author", license: "CC BY 4.0", licenseUrl: "https://creativecommons.org/licenses/by/4.0/" };
+  const photo = { src: "https://upload.wikimedia.org/wikipedia/commons/a/ab/photo.jpg", sourceUrl: "https://commons.wikimedia.org/wiki/File:Photo.jpg", sourceLabel: "Author · CC BY 4.0", provider: "wikimedia" as const, author: "Author", authorUrl: "https://commons.wikimedia.org/wiki/User:Author", license: "CC BY 4.0", licenseUrl: "https://creativecommons.org/licenses/by/4.0/" };
   assert.deepEqual(routePhotoFromUnknown(photo), photo);
   assert.equal(routePhotoFromUnknown({ ...photo, licenseUrl: undefined }), null);
   const thumbnail = "https://thumb.wikimedia.org/wikipedia/commons/thumb/a/ab/Photo.jpg/1200px-Photo.jpg";
   assert.equal(routePhotoFromUnknown({ ...photo, src: thumbnail })?.src, thumbnail);
   assert.equal(routePhotoFromUnknown({ ...photo, src: "https://thumb.wikimedia.org/other/Photo.jpg" }), null);
+  assert.equal(routePhotoFromUnknown({ ...photo, src: "https://upload.wikimedia.org/wikipedia/en/a/ab/Photo.jpg" }), null);
 });
 
 const validPhoto = {
@@ -98,6 +99,23 @@ test("place lookup passes disambiguating region and type in its single API reque
   assert.equal(result.status, "no-result");
   assert.equal(calls, 1);
 });
+test('a selected district and stable canonical identity reach the photo endpoint', async (context) => {
+  const originalFetch = globalThis.fetch;
+  context.after(() => { globalThis.fetch = originalFetch; });
+  globalThis.fetch = async input => {
+    const params = new URL(String(input), 'http://localhost').searchParams;
+    assert.equal(params.get('place'), 'Shenzhen');
+    assert.equal(params.get('region'), 'Guangdong');
+    assert.equal(params.get('district'), 'Maoming Shi');
+    assert.equal(params.get('canonicalPlaceId'), 'reference:geonames:1795566');
+    assert.equal(params.get('lon'), '111.11793');
+    return Response.json({ image: null, candidates: [], configured: true, reason: 'no-result' });
+  };
+  const result = await findRoutePhotos(['Shenzhen China travel'], undefined, { name: 'Shenzhen', country: 'China',
+    region: 'Guangdong', administrativeHierarchy: ['Guangdong', 'Maoming Shi'],
+    canonicalPlaceId: 'reference:geonames:1795566', coordinates: [111.11793, 22.1823] });
+  assert.equal(result.status, 'no-result');
+});
 
 test("route photo lookup settles unavailable after malformed provider responses", async (context) => {
   const originalFetch = globalThis.fetch;
@@ -155,7 +173,7 @@ test("a failed old in-flight URL cannot overwrite a recovered cache selection", 
   assert.deepEqual(readRoutePhotoSelection(key, storage), { kind: "photo", photo: recovered });
 });
 
-test("canonical place cache identity does not depend on route position or display spelling", () => {
+test("photo cache keeps repeat visits together and separates changed selection context", () => {
   const first = canonicalPlacePhotoCacheKey({
     canonicalPlaceId: "geo:123",
     name: "Marrakech",
@@ -164,11 +182,15 @@ test("canonical place cache identity does not depend on route position or displa
   });
   const repeated = canonicalPlacePhotoCacheKey({
     canonicalPlaceId: " GEO:123 ",
-    name: "Marrakesh",
+    name: "Marrakech",
     country: "Morocco",
-    coordinates: [-8.01, 31.64],
+    coordinates: [-8.008, 31.63],
   });
   assert.equal(first, repeated);
+  assert.notEqual(first, canonicalPlacePhotoCacheKey({ canonicalPlaceId: "geo:123", name: "Marrakech",
+    country: "Morocco", region: "Different region", coordinates: [-8.008, 31.63] }));
+  assert.notEqual(first, canonicalPlacePhotoCacheKey({ canonicalPlaceId: "geo:123", name: "Marrakech",
+    country: "Morocco", coordinates: [-8.01, 31.64] }));
   assert.equal(
     canonicalPlacePhotoCacheKey({ name: "  Almaty ", country: "KAZAKHSTAN" }),
     canonicalPlacePhotoCacheKey({ name: "almaty", country: "kazakhstan" }),
@@ -178,14 +200,20 @@ test("canonical place cache identity does not depend on route position or displa
 test("the shared cache retains valid imagery but ignores and evicts persisted empty choices", () => {
   const storage = new MemoryStorage();
   saveRoutePhotoSelection("place:one", { kind: "photo", photo: validPhoto }, storage);
-  storage.setItem("morrovia:route-photo:v2:place:two", JSON.stringify({ kind: "empty" }));
+  storage.setItem("morrovia:route-photo:v4:place:two", JSON.stringify({ kind: "empty" }));
 
   assert.deepEqual(readRoutePhotoSelection("place:one", storage), { kind: "photo", photo: validPhoto });
   assert.equal(readRoutePhotoSelection("place:two", storage), null);
-  assert.equal(storage.getItem("morrovia:route-photo:v2:place:two"), null);
+  assert.equal(storage.getItem("morrovia:route-photo:v4:place:two"), null);
 
   saveRoutePhotoSelection("place:two", { kind: "empty" }, storage);
-  assert.equal(storage.getItem("morrovia:route-photo:v2:place:two"), null);
+  assert.equal(storage.getItem("morrovia:route-photo:v3:place:two"), null);
+});
+
+test('a previously cached place photo is revalidated after district safeguards change', () => {
+  const storage = new MemoryStorage();
+  storage.setItem('morrovia:route-photo:v2:district-place', JSON.stringify({ kind: 'photo', photo: validPhoto }));
+  assert.equal(readRoutePhotoSelection('district-place', storage), null);
 });
 
 test("candidate resolution commits successful siblings without waiting for a failed batch", async () => {
@@ -351,7 +379,7 @@ test("navigation retires the stale consumer without aborting the shared cache ow
 });
 
 test("Wikimedia browser positives require the same reusable licence and matching URL as provider selections", () => {
-  const photo = { src: "https://upload.wikimedia.org/photo.jpg", sourceUrl: "https://commons.wikimedia.org/wiki/File:Photo.jpg",
+  const photo = { src: "https://upload.wikimedia.org/wikipedia/commons/a/ab/photo.jpg", sourceUrl: "https://commons.wikimedia.org/wiki/File:Photo.jpg",
     sourceLabel: "Author · Licence", provider: "wikimedia", author: "Author" };
   for (const [license, licenseUrl] of [
     ["CC BY-NC 4.0", "https://creativecommons.org/licenses/by-nc/4.0/"],

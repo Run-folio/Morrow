@@ -1,9 +1,9 @@
 {
   "version": 1,
   "generatorVersion": "island-geography-v1",
-  "snapshotId": "ce1f21a152ab",
-  "generatedAt": "2026-10-10T13:33:30.922Z",
-  "referenceSnapshotId": "5b64880f570cf12a0fd0",
+  "snapshotId": "2aca69a1f810",
+  "generatedAt": "2026-10-10T18:26:55.439Z",
+  "referenceSnapshotId": "699b595afdba9be6994e",
   "attribution": "© OpenStreetMap contributors; physical polygons and derived containment under ODbL1.0. Settlement facts retain GeoNames CC BY4.0.",
   "licenseURL": "https://www.openstreetmap.org/copyright",
   "coverage": {
@@ -13,7 +13,7 @@
     "baseBindings": 192
   },
   "budgets": {
-    "compressedBytes": 1215240,
+    "compressedBytes": 1215241,
     "inflatedBytes": 6394450,
     "maximumCompressedBytes": 2097152,
     "maximumInflatedBytes": 8388608
@@ -51,13 +51,13 @@
     },
     {
       "path": "base-bindings.json.gz",
-      "sha256": "c3df2340b3e9f9eabba8727a718c5204f963b9c4193d05ea3424fa89159d2c8b",
-      "bytes": 4213,
+      "sha256": "8759201b2c1b53f7a7c8af4d35922af2518e3d6756cec7d576097a18a9ff1df6",
+      "bytes": 4214,
       "inflatedBytes": 27075
     },
     {
       "path": "index.json",
-      "sha256": "6f63f10e55934fb8001631704bd393f012efd47d9f3dd959ab7121b40ef567e4",
+      "sha256": "17d646292f73d7ee59a5335cc3a8524fc1d585700d8bcdd495175cf6592f1b96",
       "bytes": 1180,
       "inflatedBytes": 1180
     }

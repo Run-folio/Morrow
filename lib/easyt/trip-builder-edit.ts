@@ -157,7 +157,8 @@ function schedulePlaceIdentity(place: JourneyEndpointPlace | null) {
     : place.providerId ? { providerId: place.providerId } : { name: place.name, country: place.country };
 }
 function placeForStop(stop: TripStop): JourneyEndpointPlace {
-  return { name: stop.name, country: stop.country, canonicalPlaceId: stop.canonicalPlaceId, providerId: stop.providerId,
+  return { name: stop.name, country: stop.country, region: stop.region, administrativeHierarchy: stop.administrativeHierarchy,
+    canonicalPlaceId: stop.canonicalPlaceId, providerId: stop.providerId,
     ...(stop.geographicBinding===undefined?{}:{geographicBinding:stop.geographicBinding}),
     ...(Number.isFinite(stop.latitude) && Number.isFinite(stop.longitude) ? { coordinates: [stop.longitude!, stop.latitude!] } : {}) };
 }
@@ -165,6 +166,7 @@ function setStopPlace(stop: TripStop, place: JourneyEndpointPlace): TripStop {
   place = selectedPlaceForExisting(placeForStop(stop), place);
   const { canonicalPlaceId: _id, providerId: _provider, geographicBinding:_binding, ...rest } = stop;
   return { ...rest, name: place.name, country: place.country ?? "", canonicalPlaceId: place.canonicalPlaceId,
+    region: place.region, administrativeHierarchy: place.administrativeHierarchy,
     providerId: place.providerId, ...(place.geographicBinding===undefined?{}:{geographicBinding:place.geographicBinding}), latitude: place.coordinates?.[1] ?? null, longitude: place.coordinates?.[0] ?? null };
 }
 function insertStop(trip: CanonicalEasyTTrip, stop: TripStop, beforeStopId?: string) {

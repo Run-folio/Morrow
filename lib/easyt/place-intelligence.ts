@@ -356,6 +356,7 @@ export type PlaceProviderCandidate = {
   settlementPopulation?: number;
   parentCountries?: string[];
   parentRegionId?: string;
+  administrativeHierarchy?: string[];
   accessPlaceName?: string;
   bounds?: GeographicBounds;
   coordinates?: [number, number];
@@ -497,6 +498,7 @@ export type RegionalBaseSuggestion = {
   name: string;
   country: string;
   region?: string;
+  administrativeHierarchy?: string[];
   placeType: PlaceType;
   coordinates: [number, number];
   reason: string;
@@ -548,6 +550,7 @@ export type CanonicalPlaceSuggestion = {
   label: string;
   country: string;
   region?: string;
+  administrativeHierarchy?: string[];
   accessPlaceName?: string;
   placeType: PlaceType;
   coordinates?: [number, number];
@@ -2707,6 +2710,9 @@ function providerCandidatesFromUnknown(value: unknown): PlaceProviderCandidate[]
     if (!providerId || !canonicalName || !placeType) return [];
     const aliases = Array.isArray(record.aliases) ? record.aliases.filter((value): value is string => typeof value === "string" && Boolean(value.trim())).map((value) => value.trim()) : undefined;
     const parentCountries = Array.isArray(record.parentCountries) ? record.parentCountries.filter((value): value is string => typeof value === "string" && Boolean(value.trim())).map((value) => value.trim()) : undefined;
+    const administrativeHierarchy = Array.isArray(record.administrativeHierarchy) && record.administrativeHierarchy.length <= 4
+      && record.administrativeHierarchy.every((value) => typeof value === "string" && Boolean(value.trim()) && value.trim().length <= 100)
+      ? record.administrativeHierarchy.map((value: string) => value.trim()) : undefined;
     const rawCoordinates = record.coordinates;
     if (rawCoordinates !== undefined && !validPlaceCoordinates(rawCoordinates)) return [];
     const coordinates = validPlaceCoordinates(rawCoordinates) ? [...rawCoordinates] as [number, number] : undefined;
@@ -2721,6 +2727,7 @@ function providerCandidatesFromUnknown(value: unknown): PlaceProviderCandidate[]
       ...(aliases ? { aliases } : {}),
       ...(parentCountries ? { parentCountries } : {}),
       ...(typeof record.parentRegionId === "string" && record.parentRegionId.trim() ? { parentRegionId: record.parentRegionId.trim() } : {}),
+      ...(administrativeHierarchy?.length ? { administrativeHierarchy } : {}),
       ...(typeof record.accessPlaceName === "string" && record.accessPlaceName.trim() ? { accessPlaceName: record.accessPlaceName.trim().slice(0, 160) } : {}),
       ...(typeof record.providerSourceId === "string" && record.providerSourceId.trim() ? { providerSourceId: record.providerSourceId.trim().slice(0, 80) } : {}),
       ...(typeof record.providerSourceLabel === "string" && record.providerSourceLabel.trim() ? { providerSourceLabel: record.providerSourceLabel.trim().slice(0, 120) } : {}),

@@ -1,25 +1,41 @@
 {
   "version": 1,
   "generatorVersion": "2",
-  "snapshotId": "5b64880f570cf12a0fd0",
-  "generatedAt": "2026-10-09T13:19:03.302301+00:00",
+  "snapshotId": "699b595afdba9be6994e",
+  "generatedAt": "2026-10-10T18:14:14.429Z",
   "sources": [
     {
       "id": "ourairports",
       "url": "https://davidmegginson.github.io/ourairports-data/airports.csv",
-      "sha256": "0673f846680d703dd4ff81b6c1f557ddf09eb73df164c3ea98623fdd72545333",
+      "sha256": "79dd7db7228a12199839aa6acbc2dc1f1e50a4604f14d7f60dceb6983de91906",
       "license": "Public domain",
       "licenseUrl": "https://ourairports.com/data/",
-      "acquiredAt": "2026-10-09T13:19:03.302301+00:00"
+      "acquiredAt": "2026-10-10T18:14:14.429Z"
     },
     {
       "id": "geonames",
       "url": "https://download.geonames.org/export/dump/cities500.zip",
-      "sha256": "82cb084ebe3917c80958496b82ef61c6b20fee16cdaabedc10cffe9aaac3fae8",
-      "archiveSha256": "4022ba76d34abbcd7c7b32597a6f968f51edfa4fb262bf04f15c109624ae3db2",
+      "sha256": "018cbe64039fada26c9b01817b6611cc3456f124f7924459988b33160677ff65",
       "license": "CC BY 4.0",
       "licenseUrl": "https://creativecommons.org/licenses/by/4.0/",
-      "acquiredAt": "2026-10-09T13:19:03.302301+00:00"
+      "archiveSha256": "b62dde97a05f61af34e71bb58647bb4327ff65fcbf31d4643e66bf51118b5854",
+      "acquiredAt": "2026-10-10T18:14:14.429Z"
+    },
+    {
+      "id": "geonames-admin1",
+      "url": "https://download.geonames.org/export/dump/admin1CodesASCII.txt",
+      "sha256": "1da92a6323a5fec3176f3f743bf4cf4040fd56a876da55e46fbca23c863aa60a",
+      "license": "CC BY 4.0",
+      "licenseUrl": "https://creativecommons.org/licenses/by/4.0/",
+      "acquiredAt": "2026-10-10T18:14:14.429Z"
+    },
+    {
+      "id": "geonames-admin2",
+      "url": "https://download.geonames.org/export/dump/admin2Codes.txt",
+      "sha256": "e1b500f4f0e13b3119ff15df84ce3c28982e899bb4183ee033f802a280c377d3",
+      "license": "CC BY 4.0",
+      "licenseUrl": "https://creativecommons.org/licenses/by/4.0/",
+      "acquiredAt": "2026-10-10T18:14:14.429Z"
     }
   ],
   "files": [
@@ -31,13 +47,13 @@
     },
     {
       "path": "settlements.json",
-      "sha256": "089c98b75021c49c94fd4c0e5f5aec408b3254b4cbda1a1093d3a84fdeac35a2",
-      "records": 224601,
-      "bytes": 26047384
+      "sha256": "4c078a46eef9d91e000ca39b302ccdc67219f05f32c6fd9e7a378f509a28044b",
+      "records": 224603,
+      "bytes": 26807965
     },
     {
       "path": "country-seeds.json",
-      "sha256": "8bb1d81591b0b9938366f2225dc4e498b1d7c637e42e925a459c8d9a8c169d6b",
+      "sha256": "6b98e5b24986e0e1ba239dbc80989ec69604cbc9509060e9e062d75ddc6d35ce",
       "records": 250,
       "bytes": 1079343
     },
@@ -61,27 +77,33 @@
     },
     {
       "path": "coverage.json",
-      "sha256": "4f693d690e0724e37218a3b1f6a2a466698e73e758d7ea3937f20bd165547481",
+      "sha256": "7088c7e8ebe7d9884dc5a848209d318c19b43b8deae4fa95403851346e65e1c4",
       "records": 6,
       "bytes": 38175
     },
     {
-      "path": "settlement-prefixes.json",
-      "sha256": "0e9e7de091bd5a095602035e9b21930b46b3b3726138f2365f10328bae101b2b",
-      "records": 24080,
-      "bytes": 906704
+      "path": "settlement-prefixes.json.gz",
+      "sha256": "35f16a5736d743a6103c8d0259ae341424873fc648faaae9f8658f928052f145",
+      "records": 24079,
+      "bytes": 162549
     },
     {
       "path": "settlement-prefixes.bin",
-      "sha256": "89c89c393702b70a81ec41e6a8f4a2b17fd107f042b35936c82fef794ef22093",
-      "records": 848653,
-      "bytes": 3394612
+      "sha256": "5057ab8e7c6805ef2420ee85592f9f55520591a68f28403e4a5cfc6a08813ece",
+      "records": 848667,
+      "bytes": 3394668
     },
     {
       "path": "settlement-lengths.bin",
-      "sha256": "032050240247f74624bffa2946d6882016e826e0bf2cdba326be8fab979c8961",
-      "records": 224601,
-      "bytes": 449202
+      "sha256": "bcd6dd0fe80e3bb964ba4b5a8e4679c1a254fbe71e382f5d45b2acd1ca831865",
+      "records": 224603,
+      "bytes": 449206
+    },
+    {
+      "path": "admin-context.json.gz",
+      "sha256": "a2119d5924e1049526e7072825e508a6a27345e8576ddc8926597cda636973e3",
+      "records": 40742,
+      "bytes": 45556
     }
   ]
 }

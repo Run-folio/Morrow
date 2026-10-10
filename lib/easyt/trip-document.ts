@@ -143,7 +143,9 @@ export function readTripDocument(value: unknown): TripDocumentReadResult {
   const stopIds = new Set<string>();
   for (const [index, stop] of value.stops.entries()) {
     if (!object(stop) || typeof stop.id !== "string" || !stop.id || stopIds.has(stop.id) || typeof stop.name !== "string" || typeof stop.country !== "string" || (!Number.isInteger(stop.order) || Number(stop.order) < 0 || (index > 0 && Number(stop.order) <= Number(value.stops[index - 1]?.order)))
-      || !(stop.nights == null || (typeof stop.nights === "number" && Number.isInteger(stop.nights) && stop.nights >= 0))) return invalid("stops");
+      || !(stop.nights == null || (typeof stop.nights === "number" && Number.isInteger(stop.nights) && stop.nights >= 0))
+      || (stop.administrativeHierarchy !== undefined && (!strings(stop.administrativeHierarchy)
+        || stop.administrativeHierarchy.length > 4 || stop.administrativeHierarchy.some(name => !name.trim() || name.length > 100)))) return invalid("stops");
     stopIds.add(stop.id);
   }
   if (value.legs.some(leg => !object(leg) || typeof leg.id !== "string" || typeof leg.fromStopId !== "string" || typeof leg.toStopId !== "string" || !object(leg.routeMetadata))) return invalid("legs");

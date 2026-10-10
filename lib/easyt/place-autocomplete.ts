@@ -19,7 +19,7 @@ export type PlaceAutocompleteIdentity = {
   placeType?: string;
 };
 
-type SuggestionLocation = PlaceAutocompleteIdentity & {country?:string;region?:string;coordinates?:readonly number[]};
+type SuggestionLocation = PlaceAutocompleteIdentity & {country?:string;region?:string;administrativeHierarchy?:readonly string[];coordinates?:readonly number[]};
 export function mergeEquivalentPlaceSuggestions<T extends SuggestionLocation>(suggestions:readonly T[]):T[]{
  const unique=suggestions.filter((item,index,all)=>!item.canonicalPlaceId||all.findIndex(other=>other.canonicalPlaceId===item.canonicalPlaceId)===index);
  // A source projection can duplicate an authored city at its published
@@ -54,10 +54,15 @@ export function mergeEquivalentPlaceSuggestions<T extends SuggestionLocation>(su
 export function placeSuggestionLocationDetail(item:SuggestionLocation, suggestions:readonly SuggestionLocation[]){
  const nameKey=(name:string)=>normalizeCatalogPhrase(name.normalize('NFKD').replace(/['’]/g,''));
  const sameLabel=suggestions.filter(other=>nameKey(other.name)===nameKey(item.name)
-   && other.country===item.country&&other.region===item.region&&other.placeType===item.placeType);
- // When the source has no verified administrative area, number the choices
- // and expose their real map points separately. Coordinates are not a useful
- // place label for a traveller.
+   && other.country===item.country&&other.placeType===item.placeType);
+ const hierarchy=item.administrativeHierarchy?.filter(Boolean)??(item.region?[item.region]:[]);
+ for(let depth=1;depth<=hierarchy.length;depth++){
+  const key=hierarchy.slice(0,depth).join('|');
+  if(sameLabel.filter(other=>(other.administrativeHierarchy?.filter(Boolean)??(other.region?[other.region]:[])).slice(0,depth).join('|')===key).length===1)
+   return [...hierarchy.slice(0,depth).reverse(),item.country].filter(Boolean).join(' · ');
+ }
+ // Source names may still collide within an administrative hierarchy. Preserve
+ // distinct identities and offer the existing map link instead of inventing one.
  const context=sameLabel.length>1 ? `Location ${sameLabel.findIndex(other=>other===item)+1} of ${sameLabel.length}` : undefined;
  return [item.region,item.country,context].filter(Boolean).join(' · ');
 }

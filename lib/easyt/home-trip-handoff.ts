@@ -1110,6 +1110,7 @@ export type HandoffLocationChoice = {
   country: string;
   countryCode?: string;
   region?: string;
+  administrativeHierarchy?: string[];
   providerId?: string;
   referenceSnapshotId?:string;
   providerSourceLabel?: string;
@@ -1130,6 +1131,7 @@ export type HandoffRouteStop = {
   canonicalPlaceId?: string;
   countryCode?: string;
   region?: string;
+  administrativeHierarchy?: string[];
   providerId?: string;
   geographicBinding?: JourneyEndpointPlace['geographicBinding'];
   coordinates?: [number, number];
@@ -1211,6 +1213,7 @@ export function mergeHandoffLocationChoice(
     country: mention.parentCountries.length === 1 ? mention.parentCountries[0] : choice.country,
     countryCode: choice.countryCode,
     region: choice.region,
+    administrativeHierarchy: choice.administrativeHierarchy?.length ? [...choice.administrativeHierarchy] : undefined,
     providerId: choice.providerId,
     coordinates: choice.coordinates,
     locality: choice.locality,

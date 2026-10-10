@@ -1,0 +1,11 @@
+.flag, .neutral {
+  display: flex;
+  width: 100%;
+  height: 100%;
+  align-items: center;
+  justify-content: center;
+  background: var(--morrovia-paper);
+}
+.flag { flex-direction: column; gap: 4px; color: var(--morrovia-ink); }
+.symbol { font-size: 38px; line-height: 1; }
+.name { font: var(--morrovia-type-fine-print); text-align: center; }

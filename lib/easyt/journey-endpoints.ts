@@ -70,6 +70,8 @@ export function canonicalJourneyEndpointPlace(place: JourneyEndpointPlace): Jour
     name: place.name.trim(),
     canonicalPlaceId: place.canonicalPlaceId,
     country: place.country,
+    region: place.region,
+    administrativeHierarchy: place.administrativeHierarchy?.length ? [...place.administrativeHierarchy] : undefined,
     providerId: place.providerId,
     coordinates: validCoordinates(place.coordinates) ? [...place.coordinates] as [number, number] : undefined,
     ...(place.geographicBinding===undefined?{}:{geographicBinding:structuredClone(place.geographicBinding)}),
@@ -83,6 +85,8 @@ export function journeyEndpointPlaceFromSuggestion(suggestion: CanonicalPlaceSug
     name: suggestion.name,
     canonicalPlaceId: suggestion.canonicalPlaceId,
     country: suggestion.country,
+    region: suggestion.region,
+    administrativeHierarchy: suggestion.administrativeHierarchy,
     providerId: suggestion.provenance.find((source) => source.kind === "provider")?.id,
     coordinates: suggestion.coordinates,
   });

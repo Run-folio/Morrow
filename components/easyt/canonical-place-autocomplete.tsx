@@ -172,6 +172,7 @@ export function CanonicalPlaceAutocomplete({
             name: string;
             country: string;
             region?: string;
+            administrativeHierarchy?: string[];
             accessPlaceName?: string;
             providerId?: string;
             referenceSnapshotId?: string;
@@ -210,6 +211,7 @@ export function CanonicalPlaceAutocomplete({
               label: `${candidate.name}${candidate.region ? ` · ${candidate.region}` : ""}, ${candidate.country}`,
               country: candidate.country,
               region: candidate.region,
+              administrativeHierarchy: candidate.administrativeHierarchy,
               accessPlaceName: candidate.accessPlaceName,
               placeType,
               coordinates: candidate.coordinates,
