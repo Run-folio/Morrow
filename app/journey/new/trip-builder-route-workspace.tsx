@@ -15,6 +15,7 @@ import { effectiveTripLeg, tripWithEffectiveTransportChoices } from "@/lib/easyt
 import styles from "./trip-builder.module.css";
 import { useBuilderStopReorder } from "./use-builder-stop-reorder";
 import { builderNightAllocationLabel, type BuilderNightStatus } from "./builder-night-allocation-label";
+import { tripNightsBetween } from "@/lib/easyt/night-allocation";
 import {guardTripRoutingGeometry,stopGeographicPlace,validatedPlaceCoordinates} from '@/lib/easyt/geographic-binding';
 
 export type BuilderOrderSource = "drag" | "move-menu" | "route-check";
@@ -189,7 +190,7 @@ export function TripBuilderRouteWorkspace({
                 <button type="button" aria-label={`Remove one night from ${stop.name}; ${stop.nights ?? 0} nights currently`} disabled={locked.has(stop.id) || (stop.nights ?? 0) <= 0} onClick={(event) => { event.stopPropagation(); if (onAdjustNights) onAdjustNights(stop.id, -1); else onEditNights(stop.id, (stop.nights ?? 0) - 1); }}>−</button>
                 <strong>{stop.nights ?? 0}</strong>
                 {/* morrovia-ui-audit-allow-next-line native-control -- This compact stepper button is part of a labelled nights field and cannot use the shared action-button dimensions. */}
-                <button type="button" aria-label={`Add one night to ${stop.name}; ${stop.nights ?? 0} nights currently`} disabled={locked.has(stop.id)} onClick={(event) => { event.stopPropagation(); if (onAdjustNights) onAdjustNights(stop.id, 1); else onEditNights(stop.id, (stop.nights ?? 0) + 1); }}>+</button>
+                <button type="button" aria-label={`Add one night to ${stop.name}; ${stop.nights ?? 0} nights currently`} disabled={locked.has(stop.id) || (stop.nights ?? 0) >= tripNightsBetween(canonicalTrip.startDate, canonicalTrip.endDate)} onClick={(event) => { event.stopPropagation(); if (onAdjustNights) onAdjustNights(stop.id, 1); else onEditNights(stop.id, (stop.nights ?? 0) + 1); }}>+</button>
               </div>
               <div className={styles.builderRouteUsable} role="cell">
                 <span className={styles.mobileFieldLabel}>Usable time</span>

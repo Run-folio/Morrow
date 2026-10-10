@@ -343,6 +343,8 @@ test('choosing a covered island from a namesake prompt keeps its seven-night bas
  const withBase=(await recoveryTrip(page,id))!;
  assert.equal(withBase.brief.intent!.route!.destinations.find(item=>item.id===original.id)?.requestedNights,7);
  assert.equal(withBase.stops[0]?.canonicalPlaceId,'reference:geonames:2511174');
+ assert.equal(await page.getByRole('button',{name:/^Add one night to Santa Cruz de Tenerife;/}).isEnabled(),false,
+  'A fully allocated single-stop trip cannot accept an eighth night without changing dates');
 },1440));
 
 test('pending Cusco source confirmation distinguishes real cities and Builds with every original stay', {skip:!enabled,timeout:120_000},async()=>withEvidence('cusco-confirm-build',async(page,context)=>{
