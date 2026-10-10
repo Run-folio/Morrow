@@ -33,6 +33,6 @@ test("actual handler keeps unsupported geography/rights neutral and failures ret
 test("actual handler uses configured Unsplash only after Wikimedia and preserves query-only compatibility",async()=>{
   const calls:string[]=[];const get=handler(async url=>{calls.push(String(url));return new Response(JSON.stringify(String(url).includes("commons.wikimedia")?{query:{pages:{}}}:{results:[{id:"photo-id",urls:{regular:"https://images.unsplash.com/photo-id"},user:{name:"Author",links:{html:"https://unsplash.com/@author"}},width:1600,height:900,description:"Bangkok Thailand old town street",location:{city:"Bangkok",country:"Thailand"}}]}));},"fixture-access-key");
   const result=await(await get({query:"Bangkok Thailand travel",place:"Bangkok",country:"Thailand"})).json();
-  assert.equal(result.image.provider,"unsplash");assert.equal(calls.length,2);assert.match(calls[0]!,/commons.wikimedia/);assert.match(calls[1]!,/api.unsplash/);
+  assert.equal(result.image.provider,"unsplash");assert.equal(calls.length,3);assert.match(calls[0]!,/commons.wikimedia/);assert.match(calls[1]!,/commons.wikimedia/);assert.match(calls[2]!,/api.unsplash/);
   const legacy=handler(async()=>{throw new Error("no key should not fetch");});assert.equal((await(await legacy({query:"legacy query"})).json()).reason,"missing-access-key");
 });

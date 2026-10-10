@@ -27,6 +27,84 @@ test("contextual Wikimedia lookup requires complete rights and returns attribute
   assert.match(result.candidates[0]?.sourceUrl??"",/commons.wikimedia.org\/wiki\/File:/);
   assert.match(result.candidates[0]?.licenseUrl??"",/creativecommons/);
 });
+test("Commons thumbnail host retains a licensed destination photo", async () => {
+  const thumbnail = "https://thumb.wikimedia.org/wikipedia/commons/thumb/a/ab/Chiang_Mai.jpg/1200px-Chiang_Mai.jpg";
+  const result = await lookupWikimediaDestinationPhotos(place, { fetcher: fetcher([page({ thumburl: thumbnail })]) });
+  assert.equal(result.status, "resolved");
+  assert.equal(result.candidates[0]?.src, thumbnail);
+  assert.equal(result.candidates[0]?.license, "CC BY-SA 4.0");
+});
+test("Commons search rank decides the first accepted photo, not numeric page IDs", async () => {
+  const lower = { ...page(), index: 2, title: "File:Chiang Mai lower-ranked street.jpg" };
+  const higher = { ...page(), index: 1, title: "File:Chiang Mai higher-ranked street.jpg" };
+  const result = await lookupWikimediaDestinationPhotos(place, { fetcher: fetcher([lower, higher]) });
+  assert.deepEqual(result.candidates.map(photo => photo.id), [higher.title, lower.title]);
+});
+test("a broad country miss retries one region-aware photo query without weakening geography", async () => {
+  const denver = { name: "Denver", country: "United States", region: "Colorado", placeType: "city", coordinates: [-104.9903, 39.7392] as [number, number] };
+  const photo = { ...page({
+    thumburl: "https://thumb.wikimedia.org/wikipedia/commons/thumb/a/ab/Denver.jpg/1200px-Denver.jpg",
+    extmetadata: { ...page().imageinfo[0]!.extmetadata,
+      ImageDescription: { value: "Denver, Colorado skyline" },
+      GPSLongitude: { value: "-104.99" }, GPSLatitude: { value: "39.74" } },
+  }), title: "File:Denver, Colorado skyline.jpg" };
+  const queries: string[] = [];
+  const result = await lookupWikimediaDestinationPhotos(denver, { fetcher: async (url) => {
+    const query = new URL(String(url)).searchParams.get("gsrsearch") ?? "";
+    queries.push(query);
+    return Response.json({ query: { pages: query.includes("Colorado") ? { "1": photo } : {} } });
+  } });
+  assert.equal(result.status, "resolved");
+  assert.equal(result.candidates[0]?.id, photo.title);
+  assert.equal(queries.length, 2);
+  assert.match(queries[1]!, /Denver.*Colorado.*skyline/);
+});
+test("same-name cities use coordinates to reject the wrong region", async () => {
+  const portland = { name: "Portland", country: "United States", region: "Oregon", placeType: "city", coordinates: [-122.6765, 45.5231] as [number, number] };
+  const matching = { ...page({ extmetadata: { ...page().imageinfo[0]!.extmetadata,
+    ImageDescription: { value: "Portland waterfront skyline" }, GPSLongitude: { value: "-122.6765" }, GPSLatitude: { value: "45.5231" } } }), title: "File:Portland waterfront skyline.jpg" };
+  const wrong = { ...matching, title: "File:Portland Maine waterfront skyline.jpg", imageinfo: [{ ...matching.imageinfo[0],
+    extmetadata: { ...matching.imageinfo[0]!.extmetadata, GPSLongitude: { value: "-70.2553" }, GPSLatitude: { value: "43.6591" } } }] };
+  const wrongWithoutGps = { ...wrong, imageinfo: [{ ...wrong.imageinfo[0], extmetadata: {
+    ...wrong.imageinfo[0]!.extmetadata, GPSLongitude: undefined, GPSLatitude: undefined,
+    Country: { value: "United States" }, ImageDescription: { value: "Portland, Maine waterfront skyline" },
+  } }] };
+  assert.equal((await lookupWikimediaDestinationPhotos(portland, { fetcher: async () => Response.json({ query: { pages: { "1": wrongWithoutGps } } }) })).status, "no-result");
+  const matchingWithoutGps = { ...wrongWithoutGps, title: "File:Portland Oregon waterfront skyline.jpg", imageinfo: [{
+    ...wrongWithoutGps.imageinfo[0], extmetadata: { ...wrongWithoutGps.imageinfo[0]!.extmetadata,
+      ImageDescription: { value: "Portland, Oregon waterfront skyline" } },
+  }] };
+  assert.equal((await lookupWikimediaDestinationPhotos(portland, { fetcher: async () => Response.json({ query: { pages: { "1": matchingWithoutGps } } }) })).status, "resolved");
+  const result = await lookupWikimediaDestinationPhotos(portland, { fetcher: async () => Response.json({ query: { pages: { "1": wrong, "2": matching } } }) });
+  assert.equal(result.status, "resolved");
+  assert.deepEqual(result.candidates.map(photo => photo.id), [matching.title]);
+});
+test("a non-city destination searches for landscape and retains exact-place evidence", async () => {
+  const place = { name: "Big Bear Lake", country: "United States", region: "California", placeType: "town", coordinates: [-116.9114, 34.2439] as [number, number] };
+  const photo = { ...page({ extmetadata: { ...page().imageinfo[0]!.extmetadata,
+    ImageDescription: { value: "Big Bear Lake landscape in California" },
+    GPSLongitude: { value: "-116.9114" }, GPSLatitude: { value: "34.2439" } } }),
+    title: "File:Big Bear Lake landscape.jpg" };
+  const queries: string[] = [];
+  const result = await lookupWikimediaDestinationPhotos(place, { fetcher: async (url) => {
+    const query = new URL(String(url)).searchParams.get("gsrsearch") ?? "";
+    queries.push(query);
+    return Response.json({ query: { pages: query.includes("landscape") ? { "1": photo } : {} } });
+  } });
+  assert.equal(result.status, "resolved");
+  assert.deepEqual(result.candidates.map(candidate => candidate.id), [photo.title]);
+  assert.match(queries[1]!, /Big Bear Lake.*California.*landscape/);
+});
+
+test("accented place names still match their provider spelling", async () => {
+  const munich = { name: "München", country: "Germany", coordinates: [11.582, 48.135] as [number, number] };
+  const result = await lookupWikimediaDestinationPhotos(munich, { fetcher: async () => Response.json({ query: { pages: { "1": {
+    ...page({ extmetadata: { ...page().imageinfo[0]!.extmetadata,
+      ImageDescription: { value: "Munchen city skyline" }, GPSLongitude: { value: "11.582" }, GPSLatitude: { value: "48.135" } } }),
+    title: "File:Munchen city skyline.jpg",
+  } } } }) });
+  assert.equal(result.status, "resolved");
+});
 test("wrong geography, ambiguous/non-photographic assets and incomplete rights stay neutral", async () => {
   for(const candidate of [page({extmetadata:{}}),page({mime:"image/svg+xml"}),page({url:"https://example.test/wrong.jpg"}),
     {...page({extmetadata:{...page().imageinfo[0]!.extmetadata,ImageDescription:{value:"Bangkok Thailand skyline"}}}),title:"File:Bangkok Thailand skyline.jpg"},

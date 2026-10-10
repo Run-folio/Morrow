@@ -15,6 +15,9 @@ test("Wikimedia cache round-trips full rights and rejects missing licence metada
   const photo = { src: "https://upload.wikimedia.org/photo.jpg", sourceUrl: "https://commons.wikimedia.org/wiki/File:Photo.jpg", sourceLabel: "Author · CC BY 4.0", provider: "wikimedia" as const, author: "Author", authorUrl: "https://commons.wikimedia.org/wiki/User:Author", license: "CC BY 4.0", licenseUrl: "https://creativecommons.org/licenses/by/4.0/" };
   assert.deepEqual(routePhotoFromUnknown(photo), photo);
   assert.equal(routePhotoFromUnknown({ ...photo, licenseUrl: undefined }), null);
+  const thumbnail = "https://thumb.wikimedia.org/wikipedia/commons/thumb/a/ab/Photo.jpg/1200px-Photo.jpg";
+  assert.equal(routePhotoFromUnknown({ ...photo, src: thumbnail })?.src, thumbnail);
+  assert.equal(routePhotoFromUnknown({ ...photo, src: "https://thumb.wikimedia.org/other/Photo.jpg" }), null);
 });
 
 const validPhoto = {
@@ -53,6 +56,25 @@ test("route photo lookup survives one failed query and filters malformed candida
   const result = await findRoutePhotos(["first query", "second query"]);
   assert.equal(calls, 2);
   assert.deepEqual(result, { candidates: [validPhoto], configured: true, status: "resolved" });
+});
+
+test("place lookup passes disambiguating region and type in its single API request", async (context) => {
+  const originalFetch = globalThis.fetch;
+  context.after(() => { globalThis.fetch = originalFetch; });
+  let calls = 0;
+  globalThis.fetch = async (input) => {
+    calls++;
+    const url = new URL(String(input), "http://localhost");
+    assert.equal(url.searchParams.get("place"), "Portland");
+    assert.equal(url.searchParams.get("country"), "United States");
+    assert.equal(url.searchParams.get("region"), "Oregon");
+    assert.equal(url.searchParams.get("placeType"), "city");
+    return Response.json({ image: null, candidates: [], configured: true, reason: "no-result" });
+  };
+  const result = await findRoutePhotos(["Portland United States travel", "Portland landmark"], undefined,
+    { name: "Portland", country: "United States", region: "Oregon", placeType: "city", coordinates: [-122.6765, 45.5231] });
+  assert.equal(result.status, "no-result");
+  assert.equal(calls, 1);
 });
 
 test("route photo lookup settles unavailable after malformed provider responses", async (context) => {

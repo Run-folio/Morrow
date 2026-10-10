@@ -522,22 +522,22 @@ export function TripOverviewEntryBoundary() {
 export function TripShellImage() {
   const { trip } = useTripShellMutation();
   const first = [...trip.stops].sort((left, right) => left.order - right.order)[0];
-  const place = first ? { name: first.name, country: first.country, canonicalPlaceId: first.canonicalPlaceId, providerId: first.providerId,
+  const place = first ? { name: first.name, country: first.country, region: first.region, placeType: first.geographicBinding?.placeType, canonicalPlaceId: first.canonicalPlaceId, providerId: first.providerId,
     coordinates: first.longitude !== null && first.latitude !== null ? [first.longitude, first.latitude] as [number, number] : undefined } : null;
   const cacheKey = place ? canonicalPlacePhotoCacheKey(place) : "";
   const [failedImages, setFailedImages] = useState<Record<string, string[]>>({});
   const [resolvedImages, setResolvedImages] = useState<Record<string, OverviewPlaceImage>>({});
   const excluded = failedImages[cacheKey] ?? [];
   const photo = excluded.length >= 3 ? null : tripCoverImage(trip, new Set(excluded)) ?? (excluded.includes(resolvedImages[cacheKey]?.src) ? null : resolvedImages[cacheKey]) ?? null;
-  const name = place?.name ?? "", country = place?.country ?? "", coordinateKey = JSON.stringify(place?.coordinates), excludedKey = JSON.stringify(excluded);
+  const name = place?.name ?? "", country = place?.country ?? "", region = place?.region, placeType = place?.placeType, coordinateKey = JSON.stringify(place?.coordinates), excludedKey = JSON.stringify(excluded);
   useEffect(() => {
     if (photo || !name || !country || excluded.length >= 3) return;
     const controller = new AbortController();
-    void resolveRoutePhotoCandidates([{ cacheKey, occurrenceIds: [cacheKey], queries: [`${name} ${country} travel`], place: { name, country, coordinates: JSON.parse(coordinateKey ?? "null") }, excludedSources: JSON.parse(excludedKey) }], (_candidate, selection) => {
+    void resolveRoutePhotoCandidates([{ cacheKey, occurrenceIds: [cacheKey], queries: [`${name} ${country} travel`], place: { name, country, region, placeType, coordinates: JSON.parse(coordinateKey ?? "null") }, excludedSources: JSON.parse(excludedKey) }], (_candidate, selection) => {
       if (selection.kind === "photo") setResolvedImages(current => ({ ...current, [cacheKey]: resolvedOverviewPhoto(selection.photo) }));
     }, { signal: controller.signal });
     return () => controller.abort();
-  }, [cacheKey, name, country, coordinateKey, excludedKey, photo?.src]);
+  }, [cacheKey, name, country, region, placeType, coordinateKey, excludedKey, photo?.src]);
   const recoverImage = () => {
     if (!photo) return;
     discardFailedRoutePhoto(cacheKey, photo.src);

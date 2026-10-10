@@ -17,9 +17,9 @@ type UnsplashPhoto = {
 
 const responseHeaders = {
   "Cache-Control": "public, s-maxage=604800, stale-while-revalidate=2592000",
-  // Netlify's durable cache does not vary custom API responses by arbitrary
-  // query parameters unless they are named explicitly.
-  "Netlify-Vary": "query=query",
+  // Generic positives must have a different CDN key from a place-scoped lookup.
+  // Netlify otherwise serves an unvalidated generic result before this route runs.
+  "Netlify-Vary": "query=query|place|country|region|placeType|lon|lat|exclude",
 };
 
 function withUnsplashReferral(url?: string) {
@@ -70,9 +70,11 @@ export async function GET(request: NextRequest) {
   if (!query) return NextResponse.json({ image: null, configured: Boolean(process.env.UNSPLASH_ACCESS_KEY), reason: "missing-query" }, { status: 400 });
   const placeName = request.nextUrl.searchParams.get("place")?.trim();
   const country = request.nextUrl.searchParams.get("country")?.trim();
+  const region = request.nextUrl.searchParams.get("region")?.trim();
+  const placeType = request.nextUrl.searchParams.get("placeType")?.trim();
   const lon = request.nextUrl.searchParams.get("lon"), lat = request.nextUrl.searchParams.get("lat");
-  if ((placeName !== undefined || country !== undefined) && (!placeName || placeName.length > 140 || !country || country.length > 100 || ((lon !== null || lat !== null) && (lon === null || lat === null || !lon.trim() || !lat.trim() || !Number.isFinite(Number(lon)) || !Number.isFinite(Number(lat)) || Math.abs(Number(lon)) > 180 || Math.abs(Number(lat)) > 90)))) return NextResponse.json({ image: null, reason: "invalid-place" }, { status: 400, headers: { "Cache-Control": "no-store" } });
-  const place = placeName && country ? { name: placeName, country, ...(lon !== null && lat !== null ? { coordinates: [Number(lon), Number(lat)] as [number, number] } : {}) } : undefined;
+  if ((placeName !== undefined || country !== undefined) && (!placeName || placeName.length > 140 || !country || country.length > 100 || (region && region.length > 100) || (placeType && placeType.length > 40) || ((lon !== null || lat !== null) && (lon === null || lat === null || !lon.trim() || !lat.trim() || !Number.isFinite(Number(lon)) || !Number.isFinite(Number(lat)) || Math.abs(Number(lon)) > 180 || Math.abs(Number(lat)) > 90)))) return NextResponse.json({ image: null, reason: "invalid-place" }, { status: 400, headers: { "Cache-Control": "no-store" } });
+  const place = placeName && country ? { name: placeName, country, ...(region ? { region } : {}), ...(placeType ? { placeType } : {}), ...(lon !== null && lat !== null ? { coordinates: [Number(lon), Number(lat)] as [number, number] } : {}) } : undefined;
   const excludedSources = request.nextUrl.searchParams.getAll("exclude").filter(src => src.length <= 2048).slice(0, 3);
   const wikimedia = place ? await lookupWikimediaDestinationPhotos(place, { excludedSources }) : null;
   if (wikimedia?.status === "resolved") return NextResponse.json({ image: wikimedia.candidates[0], candidates: wikimedia.candidates, configured: true }, { headers: { "Cache-Control": "no-store" } });

@@ -1,4 +1,4 @@
-import { isReusableWikimediaLicense } from "./photo-attribution.ts";
+import { isReusableWikimediaLicense, isWikimediaCommonsImageUrl } from "./photo-attribution.ts";
 
 export type CachedRoutePhoto = {
   id?: string;
@@ -14,7 +14,7 @@ export type CachedRoutePhoto = {
   licenseUrl?: string;
 };
 
-export type DestinationPhotoPlace = { name: string; country: string; canonicalPlaceId?: string; providerId?: string; coordinates?: readonly [number, number] | null };
+export type DestinationPhotoPlace = { name: string; country: string; region?: string; placeType?: string; canonicalPlaceId?: string; providerId?: string; coordinates?: readonly [number, number] | null };
 
 export type CachedRoutePhotoSelection =
   | { kind: "photo"; photo: CachedRoutePhoto }
@@ -95,7 +95,7 @@ export function routePhotoFromUnknown(value: unknown): CachedRoutePhoto | null {
   if (photo.provider === "wikimedia" && (!photo.author || !photo.license || !photo.licenseUrl)) return null;
   if (photo.provider === "wikimedia") {
     const asset = new URL(photo.src), source = new URL(photo.sourceUrl);
-    if (asset.protocol !== "https:" || asset.hostname !== "upload.wikimedia.org" || source.protocol !== "https:" || source.hostname !== "commons.wikimedia.org" || !source.pathname.startsWith("/wiki/File:") || !isReusableWikimediaLicense(photo.license!, photo.licenseUrl!)) return null;
+    if (!isWikimediaCommonsImageUrl(asset.href) || source.protocol !== "https:" || source.hostname !== "commons.wikimedia.org" || !source.pathname.startsWith("/wiki/File:") || !isReusableWikimediaLicense(photo.license!, photo.licenseUrl!)) return null;
   }
   return photo;
 }
@@ -161,6 +161,8 @@ export async function findRoutePhotos(queries: string[], signal?: AbortSignal, p
       const params = new URLSearchParams({ query });
       if (place) {
         params.set("place", place.name); params.set("country", place.country);
+        if (place.region) params.set("region", place.region);
+        if (place.placeType) params.set("placeType", place.placeType);
         if (place.coordinates) { params.set("lon", String(place.coordinates[0])); params.set("lat", String(place.coordinates[1])); }
         excludedSources.slice(0, 3).forEach(src => params.append("exclude", src));
       }

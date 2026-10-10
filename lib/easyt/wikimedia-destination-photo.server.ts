@@ -1,6 +1,6 @@
-import { scorePublishedRouteImageCandidate, type PublishedRouteImageCandidate } from "./published-route-image-pipeline.ts";
+import { normalizeImageGeography, scorePublishedRouteImageCandidate, type PublishedRouteImageCandidate } from "./published-route-image-pipeline.ts";
 import { placeDistanceKm } from "./local-place-geography.ts";
-import { isReusableWikimediaLicense } from "./photo-attribution.ts";
+import { isReusableWikimediaLicense, isWikimediaCommonsImageUrl } from "./photo-attribution.ts";
 import { withProviderTimeout } from "./provider-timeout.ts";
 import type { CachedRoutePhoto, DestinationPhotoPlace, RoutePhotoLookup } from "./route-photo-cache.ts";
 
@@ -31,7 +31,10 @@ function destinationPhoto(page: unknown, place: DestinationPhotoPlace, excludedS
     const entry = metadata[field];
     return isRecord(entry) && typeof entry.value === "string" ? entry.value : undefined;
   };
-  const src = httpsUrl(info.thumburl ?? info.url, "upload.wikimedia.org");
+  const thumbnail = httpsUrl(info.thumburl);
+  const original = httpsUrl(info.url);
+  const src = thumbnail && isWikimediaCommonsImageUrl(thumbnail) ? thumbnail
+    : original && isWikimediaCommonsImageUrl(original) ? original : undefined;
   const sourceUrl = httpsUrl(info.descriptionurl, "commons.wikimedia.org");
   const author = text(value("Artist") || value("Credit"));
   const license = text(value("LicenseShortName"));
@@ -45,6 +48,10 @@ function destinationPhoto(page: unknown, place: DestinationPhotoPlace, excludedS
   const coordinates: [number, number] | undefined = Number.isFinite(longitude) && Number.isFinite(latitude) &&
     Math.abs(longitude) <= 180 && Math.abs(latitude) <= 90 ? [longitude, latitude] : undefined;
   if (place.coordinates && coordinates && placeDistanceKm([...place.coordinates], coordinates) > 50) return [];
+  const region = normalizeImageGeography(place.region?.trim() ?? "");
+  const regionEvidence = normalizeImageGeography(`${page.title} ${text(value("ImageDescription"))} ${text(value("ObjectName"))}`);
+  const nearbyCoordinates = Boolean(place.coordinates && coordinates && placeDistanceKm([...place.coordinates], coordinates) <= 50);
+  if (region && !nearbyCoordinates && (region.length < 4 || !` ${regionEvidence} `.includes(` ${region} `))) return [];
   const candidate: PublishedRouteImageCandidate = {
     provider: "wikimedia", id: page.title, src, sourceUrl, author, license, licenseUrl, width: info.width, height: info.height,
     alt: text(value("ImageDescription")), description: `${page.title} ${text(value("ImageDescription"))} ${text(value("ObjectName"))}`,
@@ -65,22 +72,35 @@ export async function lookupWikimediaDestinationPhotos(place: DestinationPhotoPl
 } = {}): Promise<RoutePhotoLookup> {
   if (!place.name.trim() || !place.country.trim()) return { candidates: [], configured: true, status: "no-result" };
   try {
+    const name = place.name.replaceAll('"', "");
+    const geography = (place.region?.trim() || place.country).replaceAll('"', "");
+    const subject = place.placeType === "city" ? "skyline" : "landscape";
+    const searches = [`"${name}" ${place.country}`, `"${name}" ${geography} ${subject} filetype:bitmap`];
     const result = await withProviderTimeout({
       label: "Wikimedia destination photography", timeoutMs: options.timeoutMs ?? 6000,
       request: async signal => {
-        const params = new URLSearchParams({ action: "query", format: "json", generator: "search",
-          gsrsearch: `"${place.name.replaceAll('"', '')}" ${place.country}`, gsrnamespace: "6", gsrlimit: "12",
-          prop: "imageinfo", iiprop: "url|size|mime|extmetadata", iiurlwidth: "1200" });
-        const response = await (options.fetcher ?? fetch)(`https://commons.wikimedia.org/w/api.php?${params}`, {
-          cache: "no-store", headers: { "Api-User-Agent": "MorroviaDestinationPhotos/1.0 (https://morrovia.com)" }, signal,
-        });
-        return { ok: response.ok, payload: response.ok ? await response.json() as unknown : null };
+        for (const search of searches) {
+          const params = new URLSearchParams({ action: "query", format: "json", generator: "search",
+            gsrsearch: search, gsrnamespace: "6", gsrlimit: "12",
+            prop: "imageinfo", iiprop: "url|size|mime|extmetadata", iiurlwidth: "1200" });
+          const response = await (options.fetcher ?? fetch)(`https://commons.wikimedia.org/w/api.php?${params}`, {
+            cache: "no-store", headers: { "Api-User-Agent": "MorroviaDestinationPhotos/1.0 (https://morrovia.com)" }, signal,
+          });
+          if (!response.ok) return { ok: false, candidates: [] as CachedRoutePhoto[] };
+          const payload: unknown = await response.json();
+          if (!isRecord(payload) || payload.error) return { ok: false, candidates: [] as CachedRoutePhoto[] };
+          const query = isRecord(payload.query) ? payload.query : {};
+          const pages = isRecord(query.pages) ? query.pages : {};
+          const searchIndex = (page: unknown) => isRecord(page) && typeof page.index === "number" && Number.isInteger(page.index)
+            ? page.index : Number.MAX_SAFE_INTEGER;
+          const candidates = Object.values(pages).sort((a, b) => searchIndex(a) - searchIndex(b))
+            .flatMap(page => destinationPhoto(page, place, options.excludedSources ?? []));
+          if (candidates.length) return { ok: true, candidates };
+        }
+        return { ok: true, candidates: [] as CachedRoutePhoto[] };
       },
     });
-    if (!result.ok || !isRecord(result.payload) || result.payload.error) return { candidates: [], configured: true, status: "unavailable" };
-    const query = isRecord(result.payload.query) ? result.payload.query : {};
-    const pages = isRecord(query.pages) ? query.pages : {};
-    const candidates = Object.values(pages).flatMap(page => destinationPhoto(page, place, options.excludedSources ?? []));
-    return { candidates, configured: true, status: candidates.length ? "resolved" : "no-result" };
+    if (!result.ok) return { candidates: [], configured: true, status: "unavailable" };
+    return { candidates: result.candidates, configured: true, status: result.candidates.length ? "resolved" : "no-result" };
   } catch { return { candidates: [], configured: true, status: "unavailable" }; }
 }

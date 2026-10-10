@@ -78,6 +78,7 @@ test("incidental subjects and non-image media fail even when their geography is 
     ["File:Tulum_swimming.jpg", "A woman in a bikini in Split, Croatia"],
     ["File:Travel_in_Split.webm", "Travel in Split, Croatia"],
     ["File:Split_watercolor.jpg", "Watercolor artwork of Split, Croatia"],
+    ["File:Split_postcard.jpg", "Vintage postcard of Split, Croatia waterfront"],
   ]) assert.equal(scorePublishedRouteImageCandidate(split, candidate({ id, alt, description: alt })).accepted, false, id);
 });
 

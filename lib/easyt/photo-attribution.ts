@@ -69,3 +69,14 @@ export function isReusableWikimediaLicense(license: string, licenseUrl: string):
     return /^Public domain$/i.test(license.trim()) && /^\/publicdomain\/(?:zero|mark)\/1\.0\/?$/.test(url.pathname);
   } catch { return false; }
 }
+
+/** Commons serves resized photographs from its separate thumbnail host. */
+export function isWikimediaCommonsImageUrl(value: string): boolean {
+  try {
+    const url = new URL(value);
+    return url.protocol === "https:" && (
+      url.hostname === "upload.wikimedia.org" ||
+      (url.hostname === "thumb.wikimedia.org" && url.pathname.startsWith("/wikipedia/commons/thumb/"))
+    );
+  } catch { return false; }
+}

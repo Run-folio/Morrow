@@ -94,7 +94,7 @@ export function scorePublishedRouteImageCandidate(stop: PublishedRouteImageStop,
   const nearbyCoordinates = coordinateDistance !== null && coordinateDistance <= 150;
   const conflictingCoordinates = coordinateDistance !== null && coordinateDistance > 500;
   const sibling = stop.siblingNames.find((name) => normalizeImageGeography(name) !== normalizeImageGeography(stop.name) && mentions(text, name));
-  const nonPhotographic = /\b(map|diagram|screenshot|logo|graphic|illustration|video|webm|svg|tiff|painting|drawing|engraving|watercolor|artwork)\b/.test(`${text} ${normalizeImageGeography(candidate.id)} ${normalizeImageGeography(candidate.sourceUrl)}`);
+  const nonPhotographic = /\b(map|diagram|screenshot|logo|graphic|illustration|video|webm|svg|tiff|painting|drawing|engraving|watercolor|artwork|postcard)\b/.test(`${text} ${normalizeImageGeography(candidate.id)} ${normalizeImageGeography(candidate.sourceUrl)}`);
   const incidentalSubject = /\b(portrait|close up|selfie|bikini|animal|bird|curassow|tanager|heron|dog|cat|cow|cattle|artifact|sarcophagus|wheel hub|ski jumping|seller)\b/.test(text);
   const editorialSubject = /\b(city|town|village|street|square|architecture|palace|temple|church|cathedral|mosque|skyline|landscape|mountain|coast|beach|lake|waterfront|harbour|harbor|river|bridge|historic|panorama|view|plaza|agora|old town|waterfall|volcano|desert|island|bay|garden|park)\b/.test(text);
   const landscape = candidate.width > candidate.height;
