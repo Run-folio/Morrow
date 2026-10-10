@@ -73,7 +73,7 @@ import { countryCodeFor } from "@/lib/easyt/country-registry";
 import { findCatalogPlaceById } from "@/lib/easyt/place-catalog";
 import { extractStructuredTripBrief, mergeStructuredTripBrief, routeConstraintsFromStructuredTripBrief, routeScoringPreferencesFromStructuredBrief, structuredTripBriefFromSavedSelections, type StructuredTripBrief } from "@/lib/easyt/structured-trip-brief";
 import { geographicContextMentionIds, OVERNIGHT_BASE_PLACE_TYPES, PLACE_INTELLIGENCE_PARSER_VERSION, PLACE_INTELLIGENCE_VERSION, appendSelectedPlanningAreaMention, confirmedAttractionVisitSelection, canonicalPlaceFactsMatch, validPlaceCoordinates, canonicalPlaceSuggestionFor, canonicalPlaceSuggestionSuitableAsNearbyBase, canonicalPlaceSuggestionsForQuery, guidedPlanningAreaShapes, guidedPlanningAreaSuggestions, inferAttractionVisitSelections, isOvernightBaseEligible, nearbyBaseAnchorForMention, nearbyBaseSearchPreposition, placeCandidateSuitableAsNearbyBase, placeCandidateWithinPlanningParent, placeMentionSupportsMultipleSelections, placeMentionsNeedingReview, placeResolutionIssuesForMentions, placeSuggestionRequiresBaseSelection, planningAreaSuggestionsWithinParent, rankAttractionVisitTargets, regionalBaseSuggestions, selectPlaceCandidate, selectPlaceSearchSuggestion, type AttractionVisitCandidate, type CanonicalPlaceSuggestion, type GuidedPlanningAreaShape, type GuidedPlanningAreaSuggestion, type NearbyBaseSuggestion, type PlaceIntelligenceResult, type PlaceIssue, type PlaceIssueOption, type PlaceSelection, type PlaceType, type PlanningParentConstraint, type ResolvedPlaceMention } from "@/lib/easyt/place-intelligence";
-import { isDuplicatePlaceIdentity } from "@/lib/easyt/place-autocomplete";
+import { isDuplicatePlaceIdentity, placeSuggestionLocationDetail } from "@/lib/easyt/place-autocomplete";
 import { MorroviaTripCapture } from "@/components/easyt/morrovia-trip-capture";
 import { CanonicalPlaceAutocomplete } from "@/components/easyt/canonical-place-autocomplete";
 import { JourneyEndpointsEditor } from "@/components/easyt/journey-endpoints-editor";
@@ -2113,6 +2113,13 @@ function TripBuilderDocument() {
 
   const openClarificationSession = (preferredMentionId?: string) => {
     if (!pendingClarificationIds.length) return;
+    const trip=builderEditSessionRef.current?.getSnapshot().trip;
+    const intent=trip?.brief.intent.route.destinations.find(item=>item.id===(preferredMentionId??pendingClarificationIds[0]));
+    const stop=intent?.kind==='overnight_place'&&intent.stopIds.length===1
+      ?trip?.stops.find(item=>item.id===intent.stopIds[0]):undefined;
+    // A canonical city can still await geographic confirmation. Discovery
+    // skips cities already in the route, so use the saved occurrence chooser.
+    if(stop&&!geographicallyReady(stopGeographicPlace(stop))){void confirmSavedLocation(stop.id);return;}
     setClarificationSessionIds(pendingClarificationIds);
     setClarificationIndex(Math.max(0, preferredMentionId ? pendingClarificationIds.indexOf(preferredMentionId) : 0));
     setClarificationAutoOpened(true);
@@ -4903,7 +4910,7 @@ function TripBuilderDocument() {
     ? activeProviderClarification.choices.map((choice, index) => ({
       id: `provider:${choice.providerId ?? index}`,
       label: `${choice.name}, ${choice.country}`,
-      detail: choice.region,
+      detail: placeSuggestionLocationDetail(choice, activeProviderClarification.choices),
     }))
     : [
       ...(!clarificationUsesNearbyBases ? clarificationIssue?.options.map((option) => ({
@@ -6328,7 +6335,7 @@ function TripBuilderDocument() {
         title={savedFinishReview?.targetId==='end'?(language==="es"?"Confirmar final guardado":"Confirm saved finish"):(language==="es"?"Confirmar ubicación":"Confirm location")}
         description={savedFinishReview?.name??""} finishLaterLabel={language==="es"?"Más tarde":"Finish later"} onDismiss={dismissSavedFinish}
         suggestionsStatus={savedFinishReview?.status==="loading"?(language==="es"?"Buscando el lugar…":"Looking up the place…"):savedFinishReview?.status==="unavailable"?(language==="es"?"No pudimos confirmar este lugar. Cierra e inténtalo de nuevo.":"We couldn't confirm this place. Close and try again."):undefined}
-        choices={savedFinishReview?.choices.map((choice,index)=>({id:String(index),label:choice.name,detail:choice.country}))??[]}
+        choices={savedFinishReview?.choices.map((choice,index)=>({id:String(index),label:choice.name,detail:placeSuggestionLocationDetail(choice,savedFinishReview.choices)}))??[]}
         onChoose={choice=>{
           if(!savedFinishReview)return;
           const snapshot=savedFinishIsCurrent(savedFinishReview),place=savedFinishReview.choices[Number(choice.id)];
@@ -6339,7 +6346,17 @@ function TripBuilderDocument() {
           const command=savedFinishReview.targetId==='end'?{kind:'legacy-end' as const,place:accepted}:
             savedFinishReview.targetId==='origin'?{kind:'origin' as const,place:accepted}:
             builderPlaceCommand(snapshot.trip,{stopId:savedFinishReview.targetId,place:accepted});
-          if(command&&dispatchAcceptedBuilderEdit(command,{expectedInputRevision:snapshot.inputRevision}))dismissSavedFinish();
+          if(command&&dispatchAcceptedBuilderEdit(command,{expectedInputRevision:snapshot.inputRevision})){
+            const intent=snapshot.trip.brief.intent.route.destinations.find(item=>item.kind==='overnight_place'
+              &&item.stopIds.length===1&&item.stopIds[0]===savedFinishReview.targetId);
+            if(intent){
+              handoffLookupSessionRef.current?.handled.add(intent.id);
+              handoffLookupSessionRef.current?.statuses.set(intent.id,'resolved');
+              setHandoffResolutionStatuses(current=>({...current,[intent.id]:'resolved'}));
+              setLocationChoices(current=>current.filter(item=>item.mention.mentionId!==intent.id));
+            }
+            dismissSavedFinish();
+          }
         }}/>
       <MorroviaConfirmationDialog open={Boolean(pendingTopType)} title={language==="es"?"¿Volver al punto de salida?":"Return to the starting point?"}
         detail={`${language==="es"?"Final guardado":"Saved finish"}: ${pendingTopType?.name??""}`}

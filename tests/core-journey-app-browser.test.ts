@@ -302,6 +302,42 @@ test('selected nonseed origin survives Describe submit, Build and reload', {skip
  await page.reload({waitUntil:'domcontentloaded'});await page.getByRole('region',{name:'Trip overview'}).waitFor();assert.deepEqual((await recoveryTrip(page,builtId))!.brief.intent!.route!.origin,selected);
 }));
 
+test('pending Cusco source confirmation distinguishes real cities and Builds with every original stay', {skip:!enabled,timeout:120_000},async()=>withEvidence('cusco-confirm-build',async(page,context)=>{
+ await context.unroute('**/api/journey-geocode?*');await page.goto(base,{waitUntil:'domcontentloaded'});
+ await page.getByRole('combobox',{name:'Start from',exact:true}).fill('LHR');
+ await page.getByRole('option',{name:/London Heathrow Airport.*United Kingdom/}).click();
+ await page.getByRole('tab',{name:'Describe my trip',exact:true}).click();
+ await page.getByRole('textbox',{name:'Start your plan'}).fill('12 nights: Lima 2, Arequipa 3, Cusco 5, Ollantaytambo 2.');
+ await page.getByRole('button',{name:'Plan my trip'}).first().click();
+ await page.waitForURL(url=>url.pathname==='/journey/new'&&Boolean(url.searchParams.get('trip')));
+ const id=new URL(page.url()).searchParams.get('trip')!;
+ await page.locator('[data-builder-route-workspace]').waitFor();
+ const later=page.getByRole('dialog').getByRole('button',{name:'Finish later',exact:true});
+ if(await later.isVisible())await later.click();
+ await page.getByRole('button',{name:'Choose place Cusco',exact:true}).first().click();
+ const dialog=page.getByRole('dialog').filter({has:page.getByRole('heading',{name:'Confirm location',exact:true})});
+ const intended=dialog.getByRole('button',{name:/Cusco.*Peru.*13\.53188.*71\.96701/});
+ const other=dialog.getByRole('button',{name:/Cusco.*Peru.*7\.25556.*76\.47555/});
+ await intended.waitFor();await other.waitFor();
+ const before=(await recoveryTrip(page,id))!;assert.deepEqual(before.stops.map(stop=>stop.nights),[2,3,5,2]);
+ await intended.click();await dialog.waitFor({state:'detached'});
+ await page.waitForFunction(id=>Object.keys(localStorage).filter(k=>k.startsWith(`easyt:trip-recovery:v2:guest:${encodeURIComponent(id)}:`)).some(k=>JSON.parse(localStorage.getItem(k)??'null')?.trip?.stops?.find((s:{name:string})=>s.name==='Cusco')?.geographicBinding?.providerId?.includes('geonames:3941584')),id);
+ const confirmed=(await recoveryTrip(page,id))!;
+ assert.deepEqual(confirmed.stops.map(stop=>[stop.id,stop.nights]),before.stops.map(stop=>[stop.id,stop.nights]));
+ assert.deepEqual(confirmed.brief.intent!.route!.orderedStopIds,before.brief.intent!.route!.orderedStopIds);
+ assert.equal(await page.getByRole('button',{name:'Choose place Cusco',exact:true}).count(),0);
+ await page.getByRole('button',{name:/Build trip/}).click();
+ await page.waitForURL(/journey\/trip-[^/]+\?created=1/,{timeout:30_000});
+ const builtId=new URL(page.url()).pathname.split('/')[2]!;await page.getByRole('region',{name:'Trip overview'}).waitFor();
+ const built=(await recoveryTrip(page,builtId))!;
+ assert.deepEqual(built.stops.map(stop=>[stop.name,stop.nights]),[['Lima',2],['Arequipa',3],['Cusco',5],['Ollantaytambo',2]]);
+ const cusco=built.stops.find(stop=>stop.name==='Cusco')!;assert.deepEqual([cusco.longitude,cusco.latitude],[-71.96701,-13.53188]);
+ assert.equal(geographicallyReady(stopGeographicPlace(cusco)),true);
+ await page.reload({waitUntil:'domcontentloaded'});await page.getByRole('region',{name:'Trip overview'}).waitFor();
+ assert.deepEqual((await recoveryTrip(page,builtId))!.stops,built.stops);
+ mkdirSync(artifacts,{recursive:true});writeFileSync(`${artifacts}/cusco-confirm-build-result.json`,JSON.stringify({status:'PASS',sourceIntent:confirmed.brief.intent!.route!.destinations.find(item=>item.sourceText==='Cusco'),builtStops:built.stops},null,2));
+}));
+
 test("Tier 1 guest journey keeps three canonical stops and edits through Build and recovery", { skip: !enabled, timeout: 180_000 }, async () => withEvidence("guest-core-journey", async (page) => {
   const pageErrors: string[] = [];
   page.on("pageerror", (error) => pageErrors.push(error.message));
@@ -394,9 +430,20 @@ test("Tier 1 guest journey keeps three canonical stops and edits through Build a
   await map.waitFor({ timeout: 20_000 });
   await map.locator("canvas.maplibregl-canvas").waitFor();
   await map.locator(".planner-map__stop").first().waitFor();
-  const marker = map.locator(".planner-map__stop").first();
-  const before = await marker.boundingBox();
-  const canvas = await map.locator("canvas.maplibregl-canvas").boundingBox();
+  // Async card enrichment rebuilds marker nodes. Read both live elements in
+  // one browser turn, retrying only the transient absent/zero-size state.
+  const boxes = await page.waitForFunction(() => {
+    const map = document.querySelector('.planner-map');
+    const marker = map?.querySelector('.planner-map__stop');
+    const canvas = map?.querySelector('canvas.maplibregl-canvas');
+    if (!marker?.isConnected || !canvas?.isConnected) return null;
+    const before = marker.getBoundingClientRect(), surface = canvas.getBoundingClientRect();
+    return before.width > 0 && before.height > 0 && surface.width > 0 && surface.height > 0
+      ? { before: before.toJSON(), canvas: surface.toJSON() } : null;
+  }, undefined, { timeout: 5_000 });
+  const measured = await boxes.jsonValue();
+  assert.ok(measured);
+  const { before, canvas } = measured;
   assert.ok(before && canvas);
   await page.mouse.move(canvas.x + canvas.width / 2, canvas.y + canvas.height / 2);
   await page.mouse.down();

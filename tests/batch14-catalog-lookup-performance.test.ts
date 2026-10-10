@@ -13,6 +13,21 @@ function scanOracle(value:string){
 }
 const ids=(rows:readonly {canonicalPlaceId:string}[])=>rows.map(row=>row.canonicalPlaceId);
 
+test('phrase normalization preserves character folding for every catalog label and ASCII separator',()=>{
+ const original=(value:string)=>{
+  let text='';
+  for(const sourceCharacter of value)for(const character of sourceCharacter.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLocaleLowerCase())
+   text+=/^[\p{L}\p{N}]$/u.test(character)?character:' ';
+  return text.replace(/ +/g,' ').trim();
+ };
+ for(const label of PLACE_CATALOG.flatMap(entry=>[entry.canonicalName,...entry.aliases]))assert.equal(normalizeCatalogPhrase(label),original(label));
+ for(let code=0;code<128;code++){
+  const value=`  LIMA${String.fromCharCode(code)}Cusco  `;
+  assert.equal(normalizeCatalogPhrase(value),original(value));
+ }
+ for(const value of ['ΣΟΣ','İIıi','São Paulo','東京','Cafe\u0301','🗺️Lima → Cusco','𐐀𐐨'])assert.equal(normalizeCatalogPhrase(value),original(value));
+});
+
 test('exact lookup agrees with a full catalog scan for every name, alias, article and mixed-case label',()=>{
  const phrases=new Set(eligible.flatMap(entry=>[entry.canonicalName,...entry.aliases]));
  for(const phrase of phrases)for(const query of [phrase,phrase.toUpperCase(),`the ${phrase}`])assert.deepEqual(ids(findCatalogPlacesByPhrase(query)),ids(scanOracle(query)),query);

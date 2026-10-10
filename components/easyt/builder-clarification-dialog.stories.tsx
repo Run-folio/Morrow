@@ -6,6 +6,7 @@ import { countryDiscoveryCandidatePresentation } from "@/lib/easyt/i18n";
 import { routeDestinationPhoto, routeImageCredit } from "@/lib/easyt/route-images";
 import { useState, type ComponentProps } from "react";
 import { BuilderClarificationDialog, BuilderClarificationResume } from "./builder-clarification-dialog";
+import { placeSuggestionLocationDetail } from "@/lib/easyt/place-autocomplete";
 
 const noop = () => undefined;
 const bulgariaSearch = {
@@ -52,6 +53,19 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 export const BroadAreaStep1Of4: Story = {};
+
+const cuscoChoices = [
+  { name: "Cusco", country: "Peru", placeType: "city", coordinates: [-71.96701, -13.53188] },
+  { name: "Cusco", country: "Peru", placeType: "city", coordinates: [-76.47555, -7.25556] },
+];
+export const SameCountryCityConfirmation: Story = {
+  args: {
+    itemKey: "saved-cusco", progress: "Saved location", title: "Confirm location", description: "Cusco",
+    suggestions: [], search: undefined, choices: cuscoChoices.map((choice, index) => ({
+      id: String(index), label: choice.name, detail: placeSuggestionLocationDetail(choice, cuscoChoices),
+    })), onChoose: noop, onDone: undefined, onRemoveItem: undefined, onAddSuggestion: undefined,
+  },
+};
 
 function CountryDiscoveryFixture(args: ComponentProps<typeof BuilderClarificationDialog> & { noNights?: boolean; country?: string }) {
   const country = args.country ?? "Tajikistan";

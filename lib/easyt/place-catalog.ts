@@ -502,6 +502,11 @@ function normalizedWithMap(value: string) {
 }
 
 export function normalizeCatalogPhrase(value: string) {
+  // ASCII labels need neither per-code-point folding nor source offsets.
+  // Keep the mapped Unicode path for context-sensitive character semantics.
+  if (/^[\x00-\x7f]*$/.test(value)) {
+    return value.toLocaleLowerCase().replace(/[^\p{L}\p{N}]+/gu, " ").trim();
+  }
   return normalizedWithMap(value).text;
 }
 
