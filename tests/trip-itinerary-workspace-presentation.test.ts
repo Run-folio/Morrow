@@ -13,6 +13,17 @@ const detailStyles = readFileSync(new URL("../components/easyt/itinerary-item-de
 const refinement = readFileSync(new URL("../components/journey-itinerary-refinement.tsx", import.meta.url), "utf8");
 const mapWorkspace = readFileSync(new URL("../components/journey-map-planner-workspace.tsx", import.meta.url), "utf8");
 
+test("date metadata omits only the open-day question mark while preserving day navigation and item status", () => {
+  const rail = itinerary.slice(itinerary.indexOf('{days.map((day, dayIndex)'), itinerary.indexOf('className={styles.dayPanel}'));
+  assert.match(rail, /<time dateTime=\{day\.date\}/);
+  assert.match(rail, /day\.type !== "open" \? <DayIcon aria-hidden="true" \/> : null/);
+  assert.match(rail, /role="tab"/);
+  assert.match(rail, /aria-selected=\{dayIndex === index\}/);
+  assert.match(rail, /event\.key === "Home".*event\.key === "End"/);
+  assert.match(itinerary, /if \(type === "open"\) return CircleHelp/);
+  assert.match(itinerary, /open: "Open plan"/);
+});
+
 test("Itinerary map handoffs preserve the selected day as the return destination", () => {
   assert.match(itinerary, /const mapReturnHref = itineraryWorkspaceHref\(workingTrip\.id, active\.dayNumber\)/);
   assert.match(itinerary, /mapResultHandoffForExploreResult\(selectedRecommendation, selectedRecommendationMapSelectionId, selectedRecommendationMapDayNumber\),\s*mapReturnHref/);

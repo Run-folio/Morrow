@@ -1393,7 +1393,7 @@ export default function TripItineraryWorkspace({
             >
               <b>{pad(day.dayNumber)}</b>
               <span><strong>{dayStop?.name ?? day.title}</strong><small>{day.title}</small></span>
-              <span className={styles.dayMeta}><time dateTime={day.date}>{displayDate(day.date, language, true)}</time><DayIcon aria-hidden="true" /></span>
+              <span className={styles.dayMeta}><time dateTime={day.date}>{displayDate(day.date, language, true)}</time>{day.type !== "open" ? <DayIcon aria-hidden="true" /> : null}</span>
             </button>;
           })}
         </div>
