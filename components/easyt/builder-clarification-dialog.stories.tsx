@@ -281,6 +281,25 @@ export const GenuineAmbiguity: Story = {
   },
 };
 
+export const ProviderNamesakesWithSearch: Story = {
+  args: {
+    ...GenuineAmbiguity.args,
+    itemKey: "provider-namesakes-with-search",
+    title: "Which place did you mean?",
+    choices: [
+      { id: "settlement", label: "Same-name place, Morocco", detail: "Town · Drâa-Tafilalet · Morocco" },
+      { id: "landmark", label: "Same-name place, Morocco", detail: "Landmark · Drâa-Tafilalet · Morocco" },
+    ],
+    search: { ...bulgariaSearch, label: "Search for a place", placeholder: "Search for a city or town", contextCountries: undefined, parentConstraint: undefined },
+    removeLabel: "Remove place from trip",
+  },
+  play: async ({ canvasElement }) => {
+    if (!canvasElement.querySelector('[role="combobox"]')) throw new Error("Provider choices must retain the existing traveller search.");
+    const choices = Array.from(canvasElement.querySelectorAll("button")).filter((button) => button.textContent?.includes("Same-name place"));
+    if (choices.length !== 2 || choices[0]?.textContent === choices[1]?.textContent) throw new Error("Town and landmark must stay visibly distinct.");
+  },
+};
+
 export const AmbiguityResolvedToBroadCountry: Story = {
   args: {
     itemKey: "georgia-country-shaping",

@@ -88,3 +88,27 @@ for(const change of ['trip','owner','revision','source'] as const)test(`a pendin
  snapshot={trip:changed,browserOwnerId:change==='owner'?'owner-b':'owner-a',inputRevision:change==='revision'?2:1};
  resolve({json:async()=>({result:{name:'Selected base',get country(){mutations++;return 'Japan';},coordinates:[139,35]}})});await pending;assert.equal(mutations,0);
 });
+
+
+test('provider namesake choices keep the existing traveller search available',()=>{
+ const start=source.indexOf('  const clarificationNeedsSearch =');const code=source.slice(start,source.indexOf('  const clarificationIsFinal =',start));
+ const actual=expression(`(()=>{${code};return clarificationNeedsSearch;})()`,{activeClarificationMention:{status:'unresolved',placeType:'unknown',requiresBaseSelection:false,routability:'non_routable_reference'},clarificationIsAmbiguity:true,clarificationSupportsMultiple:false});
+ assert.equal(actual,true,'Foreign namesakes must not trap an unresolved source without its existing search');
+});
+
+test('provider town and landmark choices expose distinct visible place types',()=>{
+ const start=source.indexOf('  const clarificationChoices:');const code=source.slice(start,source.indexOf('  const clarificationIsAmbiguity =',start));
+ const town={name:'Merzouga',country:'Morocco',region:'Drâa-Tafilalet',providerId:'photon:N:3901504169',placeType:'town',coordinates:[-4.0140878,31.0999166]};
+ const landmark={...town,providerId:'photon:N:9963716517',placeType:'landmark',coordinates:[-4.0079333,31.1000399]};
+ const actual=expression(`(()=>{${code};return clarificationChoices;})()`,{activeProviderClarification:{choices:[town,landmark]},placeSuggestionLocationDetail:(choice:any)=>[choice.region,choice.country].join(' · '),placeTypeLabel:(type:string)=>type==='town'?'Town':'Landmark'});
+ assert.notEqual(actual[0].detail,actual[1].detail,'A real overnight town and landmark must have distinguishable traveller-visible details');assert.match(actual[0].detail,/Town/);assert.match(actual[1].detail,/Landmark/);
+});
+
+test('unresolved identity search has no invented planning parent while a known island retains strict scope',()=>{
+ const start=source.indexOf('        search={clarificationNeedsSearch');const code=source.slice(start,source.indexOf('        doneLabel=',start));
+ const expr=code.match(/parentConstraint: (.*),\n/)![1]!;
+ const parent={canonicalName:'Santorini',placeType:'island',parentCountries:['Greece']};
+ const base={clarificationUsesNearbyBases:false,clarificationIsAmbiguity:true,planningParentForMention:()=>parent};
+ assert.equal(expression(expr,{...base,activeClarificationMention:{placeType:'unknown'}}),undefined,'An unresolved phrase is not a verified geographic boundary');
+ assert.deepEqual(expression(expr,{...base,activeClarificationMention:{placeType:'island'}}),parent,'Known Santorini must keep its independent containment check');
+});

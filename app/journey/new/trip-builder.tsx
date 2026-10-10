@@ -4963,7 +4963,7 @@ function TripBuilderDocument() {
     ? activeProviderClarification.choices.map((choice, index) => ({
       id: `provider:${choice.providerId ?? index}`,
       label: `${choice.name}, ${choice.country}`,
-      detail: placeSuggestionLocationDetail(choice, activeProviderClarification.choices),
+      detail: [placeTypeLabel(choice.placeType as CapturedLocation["placeType"]) ?? placeTypeLabel("unknown"), placeSuggestionLocationDetail(choice, activeProviderClarification.choices)].filter(Boolean).join(" · "),
     }))
     : [
       ...(!clarificationUsesNearbyBases ? clarificationIssue?.options.map((option) => ({
@@ -5002,8 +5002,9 @@ function TripBuilderDocument() {
       ? language === "es" ? `¿Dónde te gustaría alojarte para visitar ${clarificationParentName}?` : `Where would you like to stay for ${clarificationParentName}?`
       : language === "es" ? `¿Dónde te gustaría alojarte alrededor de ${clarificationParentName}?` : `Where would you like to stay around ${clarificationParentName}?`
     : undefined;
-  const clarificationNeedsSearch = Boolean(activeClarificationMention && !clarificationIsAmbiguity && (
-    clarificationSupportsMultiple
+  const clarificationNeedsSearch = Boolean(activeClarificationMention && (
+    clarificationIsAmbiguity
+    || clarificationSupportsMultiple
     || activeClarificationMention.requiresBaseSelection
     || activeClarificationMention.routability === "planning_area"
     || activeClarificationMention.routability === "anchor_or_poi"
@@ -6162,24 +6163,32 @@ function TripBuilderDocument() {
         routeShapes={clarificationRouteShapes}
         applyingShapeId={applyingAreaShapeId}
         search={clarificationNeedsSearch && activeClarificationMention ? {
-          label: clarificationUsesNearbyBases
+          label: clarificationIsAmbiguity && activeClarificationMention.placeType === "unknown"
+            ? language === "es" ? "Buscar un lugar" : "Search for a place"
+            : clarificationUsesNearbyBases
             ? language === "es" ? "¿Tienes otro lugar en mente?" : "Have somewhere else in mind?"
             : language === "es" ? `Buscar dentro de ${clarificationParentName}` : `Search within ${clarificationParentName}`,
           value: baseSearchInputs[activeClarificationMention.mentionId] ?? "",
-          placeholder: clarificationUsesNearbyBases
+          placeholder: clarificationIsAmbiguity && activeClarificationMention.placeType === "unknown"
+            ? language === "es" ? "Buscar una ciudad o pueblo" : "Search for a city or town"
+            : clarificationUsesNearbyBases
             ? language === "es"
               ? `${activeClarificationMention.placeType === "landmark" ? "Buscar cerca de" : "Buscar alrededor de"} ${clarificationParentName}`
               : `Search ${nearbyBaseSearchPreposition({ placeType: activeClarificationMention.placeType })} ${clarificationParentName}`
             : language === "es" ? `Buscar dentro de ${clarificationParentName}` : `Search within ${clarificationParentName}`,
           contextCountries: activeClarificationMention.parentCountries,
-          parentConstraint: clarificationUsesNearbyBases ? undefined : planningParentForMention(activeClarificationMention),
+          parentConstraint: clarificationUsesNearbyBases || (clarificationIsAmbiguity && activeClarificationMention.placeType === "unknown") ? undefined : planningParentForMention(activeClarificationMention),
           nearbyAnchor: clarificationUsesNearbyBases ? activeNearbyBaseAnchor : undefined,
           allowedPlaceTypes: [...OVERNIGHT_BASE_PLACE_TYPES],
           error: baseSearchErrors[activeClarificationMention.mentionId],
-          emptyMessage: clarificationUsesNearbyBases
+          emptyMessage: clarificationIsAmbiguity && activeClarificationMention.placeType === "unknown"
+            ? language === "es" ? "No encontramos una ciudad o pueblo coincidente. Prueba otra ortografía." : "No matching city or town found. Try another spelling."
+            : clarificationUsesNearbyBases
             ? language === "es" ? `No encontramos una población cercana verificada. Prueba otro nombre cerca de ${clarificationParentName}.` : `No verified nearby settlement found. Try another place near ${clarificationParentName}.`
             : language === "es" ? `No encontramos lugares coincidentes en ${clarificationParentName}. Prueba otra ortografía o lugar dentro de esta geografía.` : `No matching places found in ${clarificationParentName}. Try another spelling or place within this geography.`,
-          failureMessage: clarificationUsesNearbyBases
+          failureMessage: clarificationIsAmbiguity && activeClarificationMention.placeType === "unknown"
+            ? ui.unavailable
+            : clarificationUsesNearbyBases
             ? language === "es" ? `No pudimos buscar cerca de ${clarificationParentName}. Se conserva tu intención original.` : `We couldn't search near ${clarificationParentName}. Your original intent is preserved.`
             : language === "es" ? `No pudimos buscar dentro de ${clarificationParentName}. Inténtalo de nuevo.` : `We couldn't search within ${clarificationParentName}. Try again.`,
           onChange: (value) => {
@@ -6190,7 +6199,15 @@ function TripBuilderDocument() {
             if (clarificationDiscovery) updateDiscoveryPlanningState((current) => ({ ...current,
               countryDiscoveryChoices: { ...current.countryDiscoveryChoices, [activeClarificationMention.mentionId]: clarificationDiscovery.selectedIds },
             }));
-            void addStop(suggestion.name, suggestion.country, activeClarificationMention.mentionId, undefined, suggestion);
+            void addStop(suggestion.name, suggestion.country, activeClarificationMention.mentionId, undefined, suggestion).then((added) => {
+              if (!added || !activeProviderClarification) return;
+              const mentionId = activeClarificationMention.mentionId;
+              handoffLookupSessionRef.current?.handled.add(mentionId);
+              handoffLookupSessionRef.current?.statuses.set(mentionId, "resolved");
+              setHandoffResolutionStatuses((current) => ({ ...current, [mentionId]: "resolved" }));
+              setLocationChoices((current) => current.filter((item) => item.mention.mentionId !== mentionId));
+              advanceClarificationSession();
+            });
           },
         } : undefined}
         doneLabel={!clarificationIsAmbiguity && activeClarificationMention
