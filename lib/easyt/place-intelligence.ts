@@ -3117,13 +3117,61 @@ export function selectPlaceSearchSuggestion(
       sources: [{ id: source.id, label: source.label, kind: "traveller", supports: source.supports }],
       reason: "The traveller explicitly selected this geographic identity from canonical search.",
     }),
-    provenance: [source, ...suggestion.provenance],
+    provenance: [source, ...suggestion.provenance, ...mention.provenance.filter((item) => item.kind === "context")],
   }, {
     sourceText: mention.sourceText,
     sourceTexts: mention.sourceTexts,
     order: mention.order,
     role: mention.role,
     mentionId: mention.mentionId,
+  });
+  const mentions = result.mentions.map((item) => item.mentionId === mentionId ? selected : item);
+  return { ...result, mentions, issues: resultIssuesForMentions(mentions) };
+}
+
+/** Confirm a provider-backed area without turning its identity point into an
+ * overnight stop. The original mention remains the owner of its stay request. */
+export function selectBroadPlaceSearchSuggestion(
+  result: PlaceIntelligenceResult,
+  mentionId: string,
+  suggestion: CanonicalPlaceSuggestion,
+): PlaceIntelligenceResult {
+  const mention = result.mentions.find((item) => item.mentionId === mentionId);
+  const coordinates = suggestion.coordinates;
+  if (!mention || !suggestion.canonicalPlaceId || !suggestion.name.trim() || !suggestion.country.trim()
+    || !coordinates || !validPlaceCoordinates(coordinates)
+    || !planningAreaPlaceTypes.has(suggestion.placeType)
+    || !["needs_base_selection", "planning_area"].includes(suggestion.routability ?? "")
+    || !canonicalPlaceFactsMatch(suggestion.canonicalPlaceId, { country: suggestion.country, coordinates })) return result;
+  const source: PlaceProvenance = {
+    id: `builder:${mentionId}:${suggestion.canonicalPlaceId}`,
+    label: "Traveller builder selection",
+    kind: "builder",
+    supports: "The traveller confirmed this planning area and will choose a separate overnight base.",
+  };
+  const selected = candidateToMention({
+    canonicalPlaceId: suggestion.canonicalPlaceId,
+    canonicalName: suggestion.name,
+    aliases: [],
+    placeType: suggestion.placeType,
+    parentCountries: [suggestion.country],
+    parentRegionId: suggestion.region,
+    bounds: suggestion.bounds,
+    coordinates,
+    routability: suggestion.routability!,
+    confidence: createPlanningConfidence({
+      state: "structured", level: "high", freshness: "current", scope: "traveller-intent",
+      sources: [{ id: source.id, label: source.label, kind: "traveller", supports: source.supports }],
+      reason: "The traveller explicitly confirmed this planning area.",
+    }),
+    provenance: [source, ...suggestion.provenance, ...mention.provenance.filter((item) => item.kind === "context")],
+  }, {
+    sourceText: mention.sourceText,
+    sourceTexts: mention.sourceTexts,
+    order: mention.order,
+    role: mention.role,
+    mentionId,
+    status: "partially_resolved",
   });
   const mentions = result.mentions.map((item) => item.mentionId === mentionId ? selected : item);
   return { ...result, mentions, issues: resultIssuesForMentions(mentions) };

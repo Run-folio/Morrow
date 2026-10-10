@@ -72,7 +72,7 @@ import { acceptedGeographicPlace, geographicCandidateMatches, geographicInputKey
 import { countryCodeFor } from "@/lib/easyt/country-registry";
 import { findCatalogPlaceById } from "@/lib/easyt/place-catalog";
 import { extractStructuredTripBrief, mergeStructuredTripBrief, routeConstraintsFromStructuredTripBrief, routeScoringPreferencesFromStructuredBrief, structuredTripBriefFromSavedSelections, type StructuredTripBrief } from "@/lib/easyt/structured-trip-brief";
-import { geographicContextMentionIds, OVERNIGHT_BASE_PLACE_TYPES, PLACE_INTELLIGENCE_PARSER_VERSION, PLACE_INTELLIGENCE_VERSION, appendSelectedPlanningAreaMention, confirmedAttractionVisitSelection, canonicalPlaceFactsMatch, validPlaceCoordinates, canonicalPlaceSuggestionFor, canonicalPlaceSuggestionSuitableAsNearbyBase, canonicalPlaceSuggestionsForQuery, guidedPlanningAreaShapes, guidedPlanningAreaSuggestions, inferAttractionVisitSelections, isOvernightBaseEligible, nearbyBaseAnchorForMention, nearbyBaseSearchPreposition, placeCandidateSuitableAsNearbyBase, placeCandidateWithinPlanningParent, placeMentionSupportsMultipleSelections, placeMentionsNeedingReview, placeResolutionIssuesForMentions, placeSuggestionRequiresBaseSelection, planningAreaSuggestionsWithinParent, rankAttractionVisitTargets, regionalBaseSuggestions, selectPlaceCandidate, selectPlaceSearchSuggestion, type AttractionVisitCandidate, type CanonicalPlaceSuggestion, type GuidedPlanningAreaShape, type GuidedPlanningAreaSuggestion, type NearbyBaseSuggestion, type PlaceIntelligenceResult, type PlaceIssue, type PlaceIssueOption, type PlaceSelection, type PlaceType, type PlanningParentConstraint, type ResolvedPlaceMention } from "@/lib/easyt/place-intelligence";
+import { geographicContextMentionIds, OVERNIGHT_BASE_PLACE_TYPES, PLACE_INTELLIGENCE_PARSER_VERSION, PLACE_INTELLIGENCE_VERSION, appendSelectedPlanningAreaMention, confirmedAttractionVisitSelection, canonicalPlaceFactsMatch, validPlaceCoordinates, canonicalPlaceSuggestionFor, canonicalPlaceSuggestionSuitableAsNearbyBase, canonicalPlaceSuggestionsForQuery, guidedPlanningAreaShapes, guidedPlanningAreaSuggestions, inferAttractionVisitSelections, isOvernightBaseEligible, nearbyBaseAnchorForMention, nearbyBaseSearchPreposition, placeCandidateSuitableAsNearbyBase, placeCandidateWithinPlanningParent, placeMentionSupportsMultipleSelections, placeMentionsNeedingReview, placeResolutionIssuesForMentions, placeSuggestionRequiresBaseSelection, planningAreaSuggestionsWithinParent, rankAttractionVisitTargets, regionalBaseSuggestions, selectBroadPlaceSearchSuggestion, selectPlaceCandidate, selectPlaceSearchSuggestion, type AttractionVisitCandidate, type CanonicalPlaceSuggestion, type GuidedPlanningAreaShape, type GuidedPlanningAreaSuggestion, type NearbyBaseSuggestion, type PlaceIntelligenceResult, type PlaceIssue, type PlaceIssueOption, type PlaceSelection, type PlaceType, type PlanningParentConstraint, type ResolvedPlaceMention } from "@/lib/easyt/place-intelligence";
 import { isDuplicatePlaceIdentity, placeSuggestionLocationDetail } from "@/lib/easyt/place-autocomplete";
 import { requiresPhysicalIslandVerification } from "@/lib/easyt/island-geography";
 import { verifyPhysicalIslandSuggestion } from "@/lib/easyt/destination-resolution";
@@ -3459,6 +3459,38 @@ function TripBuilderDocument() {
         || activeBrowserOwnerIdRef.current!==providerClarificationScope.ownerId
         || snapshot.inputRevision!==providerClarificationScope.revision
         || mention.mentionId!==providerClarificationScope.mentionId)return;
+      if (!isOriginMention(mention) && (choice.routability === "needs_base_selection" || choice.routability === "planning_area")) {
+        const structured = trip.brief.structuredBrief;
+        const sourceMention = structured?.placeMentions?.find((item) => item.mentionId === mention.mentionId);
+        if (!structured || !sourceMention || !choice.canonicalPlaceId || !choice.placeType) return;
+        const result: PlaceIntelligenceResult = {
+          version: PLACE_INTELLIGENCE_VERSION,
+          parserVersion: PLACE_INTELLIGENCE_PARSER_VERSION,
+          sequenceKind: "unordered",
+          mentions: structured.placeMentions ?? [],
+          issues: structured.placeIssues ?? [],
+        };
+        const selectedResult = selectBroadPlaceSearchSuggestion(result, mention.mentionId, {
+          canonicalPlaceId: choice.canonicalPlaceId,
+          name: choice.name,
+          label: `${choice.name}, ${choice.country}`,
+          country: choice.country,
+          region: choice.region,
+          placeType: choice.placeType as PlaceType,
+          coordinates: choice.coordinates,
+          bounds: choice.bounds,
+          routability: choice.routability,
+          provenance: choice.providerId ? [{ id: choice.providerId, label: choice.providerSourceLabel ?? "Place provider", kind: "provider", supports: "Traveller-confirmed planning area identity." }] : [],
+        });
+        const selected = selectedResult.mentions.find((item) => item.mentionId === mention.mentionId);
+        if (!selected?.canonicalPlaceId || selected.status !== "partially_resolved"
+          || !dispatchAcceptedBuilderEdit({ kind: "planning-mention", action: "replace", mention: selected, expectedMention: sourceMention }, { expectedInputRevision: providerClarificationScope.revision })) return;
+        handoffLookupSessionRef.current?.handled.add(mention.mentionId);
+        setCapturedStructuredBrief((current) => ({ ...current, placeMentions: current.placeMentions?.map((item) => item.mentionId === mention.mentionId ? selected : item) ?? [selected], placeIssues: selectedResult.issues }));
+        setIntakeMentions((current) => current.map((item) => item.mentionId === mention.mentionId ? selected : item));
+        setLocationChoices((current) => current.filter((item) => item.mention.mentionId !== mention.mentionId));
+        return;
+      }
       const place=acceptedGeographicPlace({name:choice.name,country:choice.country,canonicalPlaceId:choice.canonicalPlaceId??(choice.providerId?`open-world:${choice.providerId}`:undefined),providerId:choice.providerId,coordinates:choice.coordinates},choice,isOriginMention(mention)?'endpoint':'stop');
       if(!place)return;
       const intent=trip.brief.intent.route.destinations.find(i=>i.id===mention.mentionId);

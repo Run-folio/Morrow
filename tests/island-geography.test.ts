@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { searchReferencePlaces } from '../lib/easyt/place-reference.server.ts';
 import { normalizePhysicalIslandBaseCandidates } from '../lib/easyt/openstreetmap-island-containment.server.ts';
-import type { PlanningParentConstraint } from '../lib/easyt/place-intelligence.ts';
+import { resolvePlaceMentions, selectBroadPlaceSearchSuggestion, type PlanningParentConstraint } from '../lib/easyt/place-intelligence.ts';
 import { mkdtempSync, cpSync, rmSync, readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -51,6 +51,31 @@ test('explicit Spain selects the Tenerife island while preserving the need for a
   assert.equal(brief.mentions[0]?.placeType, 'island');
   assert.equal(brief.mentions[0]?.parentCountries[0], 'Spain');
   assert.equal(brief.mentions[0]?.requiresBaseSelection, true);
+});
+
+test('choosing a provider island retains the source occurrence and asks for a verified town', () => {
+  const result = resolvePlaceMentions('Tenerife 7 nights.');
+  const prior = result.mentions.find(mention => mention.sourceText === 'Tenerife')!;
+  const choice = selectBroadPlaceSearchSuggestion(result, prior.mentionId, {
+    canonicalPlaceId: 'open-world:island-snapshot:relation:2108882', name: 'Tenerife', label: 'Tenerife, Spain',
+    country: 'Spain', region: 'Canary Islands', placeType: 'island', coordinates: [-16.6214471, 28.2935785],
+    routability: 'needs_base_selection', provenance: [{ id: 'island-snapshot:relation:2108882', label: 'Captured island identity', kind: 'provider', supports: 'Source-backed island identity' }],
+  });
+  const selected = choice.mentions.find(mention => mention.mentionId === prior.mentionId)!;
+  assert.equal(selected.sourceText, prior.sourceText);
+  assert.equal(selected.status, 'partially_resolved');
+  assert.equal(selected.placeType, 'island');
+  assert.deepEqual(selected.parentCountries, ['Spain']);
+  assert.equal(selected.requiresBaseSelection, true);
+  assert.equal(selected.directlyRoutable, false);
+  const repeated = resolvePlaceMentions('Tenerife 3 nights, Tenerife 4 nights.');
+  const first = repeated.mentions.find(mention => mention.sourceText === 'Tenerife')!;
+  assert.equal(repeated.mentions.length, 2);
+  const selectedRepeated = selectBroadPlaceSearchSuggestion(repeated, first.mentionId, {
+    canonicalPlaceId: 'open-world:island-snapshot:relation:2108882', name: 'Tenerife', label: 'Tenerife, Spain',
+    country: 'Spain', placeType: 'island', coordinates: [-16.6214471, 28.2935785], routability: 'needs_base_selection', provenance: [],
+  });
+  assert(selectedRepeated.mentions.find(mention => mention.mentionId === first.mentionId)?.provenance.some(item => item.id.startsWith('stay-occurrence:')));
 });
 
 test('the partially covered Canary group is a source-backed planning choice, not a settlement', async () => {

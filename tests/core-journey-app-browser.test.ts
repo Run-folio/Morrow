@@ -302,6 +302,49 @@ test('selected nonseed origin survives Describe submit, Build and reload', {skip
  await page.reload({waitUntil:'domcontentloaded'});await page.getByRole('region',{name:'Trip overview'}).waitFor();assert.deepEqual((await recoveryTrip(page,builtId))!.brief.intent!.route!.origin,selected);
 }));
 
+test('choosing a covered island from a namesake prompt keeps its seven-night base request', {skip:!enabled,timeout:120_000},async()=>withEvidence('tenerife-area-choice',async(page,context)=>{
+ await context.unroute('**/api/journey-geocode?*');await page.goto(base,{waitUntil:'domcontentloaded'});
+ await page.getByRole('combobox',{name:'Start from',exact:true}).fill('LHR');
+ await page.getByRole('option',{name:/London Heathrow Airport.*United Kingdom/}).click();
+ await page.getByRole('button',{name:'One way',exact:true}).click();
+ await page.getByRole('tab',{name:'Describe my trip',exact:true}).click();
+ await page.getByRole('textbox',{name:'Start your plan'}).fill('Tenerife 7 nights.');
+ await page.getByRole('button',{name:'Plan my trip'}).first().click();
+ await page.waitForURL(url=>url.pathname==='/journey/new'&&Boolean(url.searchParams.get('trip')));
+ const id=new URL(page.url()).searchParams.get('trip')!;
+ const dialog=page.getByRole('dialog').last();
+ const islandChoice=dialog.getByRole('button',{name:/Tenerife, Spain.*Island/});
+ await islandChoice.waitFor();
+ assert(await dialog.getByRole('button',{name:/Tenerife, Colombia.*City/}).isVisible());
+ const before=(await recoveryTrip(page,id))!;
+ const original=before.brief.intent!.route!.destinations.find(item=>item.sourceText==='Tenerife')!;
+ assert.equal(original.requestedNights,7);
+ assert.deepEqual(original.stopIds,[]);
+ await islandChoice.click();
+ await page.waitForFunction(id=>Object.keys(localStorage).filter(k=>k.startsWith(`easyt:trip-recovery:v2:guest:${encodeURIComponent(id)}:`)).some(k=>{
+  const mention=JSON.parse(localStorage.getItem(k)??'null')?.trip?.brief?.structuredBrief?.placeMentions?.find((item:{sourceText:string})=>item.sourceText==='Tenerife');
+  return mention?.placeType==='island'&&mention?.status==='partially_resolved';
+ }),id);
+ const selected=(await recoveryTrip(page,id))!;
+ const mention=selected.brief.structuredBrief!.placeMentions!.find(item=>item.mentionId===original.id)!;
+ assert.equal(mention.canonicalPlaceId,'open-world:island-snapshot:relation:2108882');
+ assert.equal(mention.requiresBaseSelection,true);
+ assert.deepEqual(selected.stops,[]);
+ assert.equal(selected.brief.intent!.route!.destinations.find(item=>item.id===original.id)?.requestedNights,7);
+ const baseDialog=page.getByRole('dialog').last();
+ await baseDialog.getByRole('combobox').first().fill('Santa Cruz de Tenerife');
+ await baseDialog.getByRole('option',{name:/Santa Cruz de Tenerife.*Spain/}).first().click();
+ const done=baseDialog.getByRole('button',{name:/Add places|Add to trip|Finish shaping route/}).last();
+ if(await done.isEnabled())await done.click();
+ await page.waitForFunction(id=>Object.keys(localStorage).filter(k=>k.startsWith(`easyt:trip-recovery:v2:guest:${encodeURIComponent(id)}:`)).some(k=>{
+  const trip=JSON.parse(localStorage.getItem(k)??'null')?.trip;
+  return trip?.stops?.some((stop:{name:string;nights:number})=>stop.name==='Santa Cruz de Tenerife'&&stop.nights===7);
+ }),id);
+ const withBase=(await recoveryTrip(page,id))!;
+ assert.equal(withBase.brief.intent!.route!.destinations.find(item=>item.id===original.id)?.requestedNights,7);
+ assert.equal(withBase.stops[0]?.canonicalPlaceId,'reference:geonames:2511174');
+},1440));
+
 test('pending Cusco source confirmation distinguishes real cities and Builds with every original stay', {skip:!enabled,timeout:120_000},async()=>withEvidence('cusco-confirm-build',async(page,context)=>{
  await context.unroute('**/api/journey-geocode?*');await page.goto(base,{waitUntil:'domcontentloaded'});
  await page.getByRole('combobox',{name:'Start from',exact:true}).fill('LHR');
