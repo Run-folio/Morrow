@@ -3116,6 +3116,22 @@ function TripBuilderDocument() {
           const currentTrip = builderEditSessionRef.current.getSnapshot().trip;
           const intentId = targetMentionId && currentTrip.brief.intent.route.destinations.some(intent => intent.id === targetMentionId)
             ? targetMentionId : undefined;
+          // Search resolves this exact pending source in the same accepted batch
+          // as its occurrence and night request. A planning-area base keeps its
+          // original area identity and still requires independent containment.
+          const sourceIntent = currentTrip.brief.intent.route.destinations.find(intent => intent.id === intentId);
+          const sourceMention = currentTrip.brief.structuredBrief?.placeMentions?.find(mention => mention.mentionId === intentId);
+          if (sourceIntent?.kind === "overnight_place" && sourceMention && sourceMention.status !== "resolved" && canonicalSuggestion) {
+            const selectedResult = selectPlaceSearchSuggestion({
+              version: PLACE_INTELLIGENCE_VERSION, parserVersion: PLACE_INTELLIGENCE_PARSER_VERSION, sequenceKind: "unordered",
+              mentions: currentTrip.brief.structuredBrief!.placeMentions!, issues: currentTrip.brief.structuredBrief!.placeIssues ?? [],
+            }, sourceMention.mentionId, canonicalSuggestion);
+            const selectedMention = selectedResult.mentions.find(mention => mention.mentionId === sourceMention.mentionId);
+            if (!selectedMention || selectedMention.status !== "resolved" || selectedMention.canonicalPlaceId !== addedStop.canonicalPlaceId)
+              return fail("This place could not be confirmed for its original source. Your trip is preserved.");
+            selectedCommands.push({ kind: "planning-mention", action: "replace", expectedMention: sourceMention,
+              mention: selectedMention });
+          }
           const capturedPosition = targetMention ? insertHandoffOccurrence(stops, addedStop, targetMention, capturedStructuredBrief.placeMentions ?? intakeMentions, handoffCanonicalOccurrenceBindings(currentTrip.brief.intent.route, handoffOccurrenceMentionIdsRef.current), currentTrip.brief.intent.route.orderAuthority) : null;
           const nextCapturedStop = capturedPosition?.[capturedPosition.findIndex(stop => stop.id === id) + 1]?.id;
           const placeCommand=builderPlaceCommand(currentTrip, { stopId: id, intentId, beforeStopId: nextCapturedStop, place: {

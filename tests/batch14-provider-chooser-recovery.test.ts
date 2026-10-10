@@ -4,8 +4,9 @@ import {readFileSync} from 'node:fs';
 import ts from 'typescript';
 import {canonicalRouteFixture} from './fixtures/batch14-route-documents.ts';
 import {requireReadableTripDocument} from '../lib/easyt/trip-document.ts';
-import {builderPlaceCommand,prepareBuilderHandlerEdit} from '../lib/easyt/trip-builder-handler-contract.ts';
+import {builderPlaceCommand,prepareBuilderHandlerEdit,prepareBuilderHandlerEdits} from '../lib/easyt/trip-builder-handler-contract.ts';
 import {builderDocumentFingerprint} from '../lib/easyt/trip-builder-document-commit.ts';
+import {selectPlaceSearchSuggestion,PLACE_INTELLIGENCE_VERSION,PLACE_INTELLIGENCE_PARSER_VERSION} from '../lib/easyt/place-intelligence.ts';
 import {acceptedGeographicPlace} from '../lib/easyt/geographic-binding.ts';
 import {retireHandoffResolutionStatus,handoffOutcomeIsCurrent,insertHandoffOccurrence,handoffCanonicalOccurrenceBindings} from '../lib/easyt/home-trip-handoff.ts';
 const source=readFileSync(new URL('../app/journey/new/trip-builder.tsx',import.meta.url),'utf8');
@@ -111,4 +112,30 @@ test('unresolved identity search has no invented planning parent while a known i
  const base={clarificationUsesNearbyBases:false,clarificationIsAmbiguity:true,planningParentForMention:()=>parent};
  assert.equal(expression(expr,{...base,activeClarificationMention:{placeType:'unknown'}}),undefined,'An unresolved phrase is not a verified geographic boundary');
  assert.deepEqual(expression(expr,{...base,activeClarificationMention:{placeType:'island'}}),parent,'Known Santorini must keep its independent containment check');
+});
+
+// Exercise the mounted targeted-search command construction through real acceptance,
+// rather than pre-confirming the mention as the older domain fixtures did.
+for (const caseId of ['A06','A09']) test(`targeted search atomically confirms ${caseId}'s unresolved source before binding its captured nights`,()=>{
+ const fixtures=JSON.parse(readFileSync(new URL('./fixtures/batch14-source-night-resolution.json',import.meta.url),'utf8'));
+ const fixture=fixtures.find((f:any)=>f.case===caseId),choice=fixture.selections[0];
+ const trip=requireReadableTripDocument(structuredClone(fixture.trip));
+ const targetMention=trip.brief.structuredBrief!.placeMentions!.find(m=>m.mentionId===choice.intentId)!;
+ assert.equal(targetMention.status,'unresolved');
+ const addedStop={id:choice.stopId,...choice.place};
+ const canonicalSuggestion={canonicalPlaceId:choice.place.canonicalPlaceId,name:choice.place.name,country:choice.place.country,coordinates:choice.place.coordinates,placeType:choice.mention.placeType,routability:'direct_destination',provenance:choice.mention.provenance};
+ const start=source.indexOf('          const currentTrip = builderEditSessionRef.current.getSnapshot().trip;',source.indexOf('  const addStop = async ('));
+ const end=source.indexOf('          selectedCommands.push(placeCommand);',start)+'          selectedCommands.push(placeCommand);'.length;
+ const commands:any[]=[];
+ expression(`(()=>{${source.slice(start,end)}})()`,{builderEditSessionRef:{current:{getSnapshot:()=>({trip})}},targetMentionId:choice.intentId,targetMention,canonicalSuggestion,addedStop,id:choice.stopId,stops:trip.stops,capturedStructuredBrief:trip.brief.structuredBrief,intakeMentions:trip.brief.structuredBrief!.placeMentions,handoffOccurrenceMentionIdsRef:{current:new Set()},insertHandoffOccurrence,handoffCanonicalOccurrenceBindings,builderPlaceCommand,selectedCommands:commands,selectPlaceSearchSuggestion,PLACE_INTELLIGENCE_VERSION,PLACE_INTELLIGENCE_PARSER_VERSION,fail:(message:string)=>assert.fail(message)});
+ commands.push({kind:'planning-selection',selection:choice.selection});
+ const result=prepareBuilderHandlerEdits(trip,commands,builderDocumentFingerprint(trip));
+ assert(result.ok,JSON.stringify(result));
+ const after=result.trip,intent=after.brief.intent.route.destinations.find(i=>i.id===choice.intentId)!;
+ assert.equal(intent.requestedNights,choice.nights);assert.deepEqual(intent.stopIds,[choice.stopId]);
+ assert.equal(after.stops.find(s=>s.id===choice.stopId)!.nights,choice.nights);
+ const confirmed=after.brief.structuredBrief!.placeMentions!.find(m=>m.mentionId===choice.intentId)!;
+ assert.equal(confirmed.sourceText,targetMention.sourceText);assert.deepEqual(confirmed.sourceTexts,targetMention.sourceTexts);assert.equal(confirmed.order,targetMention.order);
+ assert.equal(after.brief.intent.route.orderAuthority,trip.brief.intent.route.orderAuthority);
+ assert.deepEqual(after.brief.intent.route.destinations.filter(i=>i.id!==choice.intentId).map(i=>[i.id,i.requestedNights,i.stopIds]),trip.brief.intent.route.destinations.filter(i=>i.id!==choice.intentId).map(i=>[i.id,i.requestedNights,i.stopIds]));
 });
