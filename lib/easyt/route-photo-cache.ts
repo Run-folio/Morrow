@@ -1,3 +1,5 @@
+import { isReusableWikimediaLicense } from "./photo-attribution.ts";
+
 export type CachedRoutePhoto = {
   id?: string;
   src: string;
@@ -92,8 +94,8 @@ export function routePhotoFromUnknown(value: unknown): CachedRoutePhoto | null {
   for (const field of ["authorUrl", "licenseUrl"] as const) { const url = webUrl(value[field]); if (url) photo[field] = url; }
   if (photo.provider === "wikimedia" && (!photo.author || !photo.license || !photo.licenseUrl)) return null;
   if (photo.provider === "wikimedia") {
-    const asset = new URL(photo.src), source = new URL(photo.sourceUrl), license = new URL(photo.licenseUrl!);
-    if (asset.protocol !== "https:" || asset.hostname !== "upload.wikimedia.org" || source.protocol !== "https:" || source.hostname !== "commons.wikimedia.org" || !source.pathname.startsWith("/wiki/File:") || license.protocol !== "https:" || !["creativecommons.org", "www.creativecommons.org"].includes(license.hostname)) return null;
+    const asset = new URL(photo.src), source = new URL(photo.sourceUrl);
+    if (asset.protocol !== "https:" || asset.hostname !== "upload.wikimedia.org" || source.protocol !== "https:" || source.hostname !== "commons.wikimedia.org" || !source.pathname.startsWith("/wiki/File:") || !isReusableWikimediaLicense(photo.license!, photo.licenseUrl!)) return null;
   }
   return photo;
 }

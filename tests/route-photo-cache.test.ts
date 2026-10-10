@@ -305,3 +305,22 @@ test("navigation retires the stale consumer without aborting the shared cache ow
   });
   assert.deepEqual(nextVisit, { kind: "photo", photo: validPhoto });
 });
+
+test("Wikimedia browser positives require the same reusable licence and matching URL as provider selections", () => {
+  const photo = { src: "https://upload.wikimedia.org/photo.jpg", sourceUrl: "https://commons.wikimedia.org/wiki/File:Photo.jpg",
+    sourceLabel: "Author · Licence", provider: "wikimedia", author: "Author" };
+  for (const [license, licenseUrl] of [
+    ["CC BY-NC 4.0", "https://creativecommons.org/licenses/by-nc/4.0/"],
+    ["CC BY-ND 4.0", "https://creativecommons.org/licenses/by-nd/4.0/"],
+    ["CC BY-SA 4.0", "https://creativecommons.org/licenses/by/4.0/"],
+    ["CC BY 4.0", "https://creativecommons.org/licenses/by/3.0/"],
+    ["CC BY 99.0", "https://creativecommons.org/licenses/by/99.0/"],
+    ["CC0", "https://creativecommons.org/publicdomain/mark/1.0/"],
+  ]) assert.equal(routePhotoFromUnknown({ ...photo, license, licenseUrl }), null);
+  for (const [license, licenseUrl] of [
+    ["CC BY-SA 4.0", "https://creativecommons.org/licenses/by-sa/4.0/"],
+    ["CC BY 3.0", "https://creativecommons.org/licenses/by/3.0/"],
+    ["CC0 1.0", "https://creativecommons.org/publicdomain/zero/1.0/"],
+    ["Public domain", "https://creativecommons.org/publicdomain/mark/1.0/"],
+  ]) assert.ok(routePhotoFromUnknown({ ...photo, license, licenseUrl }));
+});

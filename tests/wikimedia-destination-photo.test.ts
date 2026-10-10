@@ -54,3 +54,39 @@ test("requested query words never become synthetic geographic evidence for an un
   const unrelated={...page({extmetadata:{Artist:{value:"Author"},LicenseShortName:{value:"CC BY 4.0"},LicenseUrl:{value:"https://creativecommons.org/licenses/by/4.0/"}}}),title:"File:Unrelated old town street.jpg"};
   assert.equal((await lookupWikimediaDestinationPhotos(place,{fetcher:fetcher([unrelated])})).status,"no-result");
 });
+
+test("wrong-type provider siblings cannot discard a valid attributed destination photo", async () => {
+  const metadata = page().imageinfo[0]!.extmetadata;
+  const malformed = [
+    { ...page(), title: 42 },
+    { ...page(), imageinfo: {} },
+    page({ extmetadata: { ...metadata, Artist: { value: 42 } } }),
+    page({ extmetadata: { ...metadata, LicenseShortName: { value: {} } } }),
+    page({ extmetadata: { ...metadata, LicenseUrl: { value: 42 } } }),
+    page({ extmetadata: { ...metadata, Artist: null } }),
+    page({ extmetadata: [] }),
+    page({ width: "1600" }),
+    page({ descriptionurl: 42 }),
+  ];
+  for (const sibling of malformed) {
+    const result = await lookupWikimediaDestinationPhotos(place, { fetcher: fetcher([sibling, page()]) });
+    assert.equal(result.status, "resolved");
+    assert.equal(result.candidates.length, 1);
+    assert.equal(result.candidates[0]?.author, "Example author");
+    assert.equal(result.candidates[0]?.license, "CC BY-SA 4.0");
+  }
+});
+
+test("Commons provider selections share reusable rights validation with cached positives", async () => {
+  const metadata = page().imageinfo[0]!.extmetadata;
+  for (const [license, licenseUrl, expected] of [
+    ["CC BY-NC 4.0", "https://creativecommons.org/licenses/by-nc/4.0/", "no-result"],
+    ["CC BY-ND 4.0", "https://creativecommons.org/licenses/by-nd/4.0/", "no-result"],
+    ["CC BY 99.0", "https://creativecommons.org/licenses/by/99.0/", "no-result"],
+    ["CC0 1.0", "https://creativecommons.org/publicdomain/zero/1.0/", "resolved"],
+    ["Public domain", "https://creativecommons.org/publicdomain/mark/1.0/", "resolved"],
+  ]) {
+    const candidate = page({ extmetadata: { ...metadata, LicenseShortName: { value: license }, LicenseUrl: { value: licenseUrl } } });
+    assert.equal((await lookupWikimediaDestinationPhotos(place, { fetcher: fetcher([candidate]) })).status, expected);
+  }
+});

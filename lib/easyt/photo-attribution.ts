@@ -56,3 +56,16 @@ export function describePhotoAttribution(input: PhotoAttributionInput): PhotoAtt
     licenseHref: validWebUrl(input.licenseHref) ? input.licenseHref : null,
   };
 }
+
+/** Runtime Commons selections require reusable rights and a matching official licence URL. */
+export function isReusableWikimediaLicense(license: string, licenseUrl: string): boolean {
+  try {
+    const url = new URL(licenseUrl);
+    if (url.protocol !== "https:" || !["creativecommons.org", "www.creativecommons.org"].includes(url.hostname)) return false;
+    const cc = /^CC (BY(?:-SA)?) (1\.0|2\.0|2\.5|3\.0|4\.0)$/i.exec(license.trim());
+    if (cc) return url.pathname === `/licenses/${cc[1]!.toLowerCase()}/${cc[2]}/` ||
+      url.pathname === `/licenses/${cc[1]!.toLowerCase()}/${cc[2]}`;
+    if (/^CC ?0(?: 1\.0)?$/i.test(license.trim())) return /^\/publicdomain\/zero\/1\.0\/?$/.test(url.pathname);
+    return /^Public domain$/i.test(license.trim()) && /^\/publicdomain\/(?:zero|mark)\/1\.0\/?$/.test(url.pathname);
+  } catch { return false; }
+}
