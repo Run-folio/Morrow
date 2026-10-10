@@ -175,6 +175,7 @@ export function CanonicalPlaceAutocomplete({
             providerId?: string;
             referenceSnapshotId?: string;
             providerSourceLabel?: string;
+            normalizationReason?: string;
             matchedAirportCode?: string;
             matchedIcaoCode?: string;
             scheduledService?:boolean;
@@ -213,7 +214,7 @@ export function CanonicalPlaceAutocomplete({
               coordinates: candidate.coordinates,
               bounds: candidate.bounds,
               routability: candidate.routability,
-              provenance: [{ id: candidate.providerId??canonicalPlaceId, label: candidate.providerSourceLabel ?? "Global place provider", kind: "provider" as const, supports: "Global place-search candidate selected by the traveller." }],
+              provenance: [{ id: candidate.providerId??canonicalPlaceId, label: candidate.providerSourceLabel ?? "Global place provider", kind: "provider" as const, supports: candidate.normalizationReason ?? "Global place-search candidate selected by the traveller." }],
             };
           }).filter((suggestion) => !allowedPlaceTypes?.length || allowedPlaceTypes.includes(suggestion.placeType))
             .filter((suggestion) => !nearbyAnchor || Boolean(placeCandidateSuitableAsNearbyBase(nearbyAnchor, {

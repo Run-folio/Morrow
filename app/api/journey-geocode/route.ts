@@ -4,6 +4,7 @@ import {referenceSelectionMatches} from '@/lib/easyt/place-reference';
 import {countryCodeFor} from '@/lib/easyt/country-registry';
 import { geocodeNearbyContext, needsDestinationConfirmation } from "@/lib/easyt/destination-resolution";
 import { createOpenWorldPlaceProvider, searchOpenWorldNearbyBaseSuggestions, searchOpenWorldTravelCandidates } from "@/lib/easyt/open-world-place.server";
+import { normalizePhysicalIslandBaseCandidates } from "@/lib/easyt/openstreetmap-island-containment.server";
 import { catalogPlaceForProviderIdentity, placeCandidateSuitableAsNearbyBase, placeCandidateWithinPlanningParent, type GeographicBounds, type NearbyBaseAnchor, type NearbyBaseSuggestion, type PlaceProviderCandidate, type PlaceType, type PlanningParentConstraint } from "@/lib/easyt/place-intelligence";
 
 function normalise(value: string) {
@@ -53,6 +54,7 @@ function responseCandidate(candidate: PlaceProviderCandidate) {
     accessPlaceName: candidate.accessPlaceName,
     providerId: candidate.providerId,
     providerSourceLabel: candidate.providerSourceLabel,
+    normalizationReason: candidate.normalizationReason,
     coordinates: candidate.coordinates,
     bounds: candidate.bounds,
     kind: candidate.placeType,
@@ -178,12 +180,17 @@ export async function GET(request: NextRequest) {
   if (!place || place.length > 140 || (country && country.length > 100)) return NextResponse.json({ result: null }, { status: 400 });
 
   try {
-    const candidates = (await searchOpenWorldTravelCandidates(place, {
+    const availableCandidates = (await searchOpenWorldTravelCandidates(place, {
       travelIntent,
       ...(country ? { countryNames: [country], explicitCountryNames: [country] } : {}),
     }, createOpenWorldPlaceProvider({searchMode:mode==='autocomplete'?'reference-only':'reference-with-photon'})))
       .filter(validReferenceCandidate)
-      .filter((candidate) => !country || matchesCountry(candidate.parentCountries?.[0], country))
+      .filter((candidate) => !country || matchesCountry(candidate.parentCountries?.[0], country));
+    // An island's administrative label or rectangle is not physical
+    // containment. Normalize only independently checked settlement points.
+    const candidates = (planningParent?.placeType === 'island'
+      ? await normalizePhysicalIslandBaseCandidates(availableCandidates, planningParent, { signal: request.signal })
+      : availableCandidates)
       .filter((candidate) => !planningParent || placeCandidateWithinPlanningParent(candidate, planningParent))
       .filter((candidate) => !nearbyAnchor || Boolean(placeCandidateSuitableAsNearbyBase(nearbyAnchor, candidate)))
       .sort((left, right) => (right.rankScore ?? 0) - (left.rankScore ?? 0) || distanceFrom(nearby, left) - distanceFrom(nearby, right));

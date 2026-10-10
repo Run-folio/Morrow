@@ -74,6 +74,7 @@ import { findCatalogPlaceById } from "@/lib/easyt/place-catalog";
 import { extractStructuredTripBrief, mergeStructuredTripBrief, routeConstraintsFromStructuredTripBrief, routeScoringPreferencesFromStructuredBrief, structuredTripBriefFromSavedSelections, type StructuredTripBrief } from "@/lib/easyt/structured-trip-brief";
 import { geographicContextMentionIds, OVERNIGHT_BASE_PLACE_TYPES, PLACE_INTELLIGENCE_PARSER_VERSION, PLACE_INTELLIGENCE_VERSION, appendSelectedPlanningAreaMention, confirmedAttractionVisitSelection, canonicalPlaceFactsMatch, validPlaceCoordinates, canonicalPlaceSuggestionFor, canonicalPlaceSuggestionSuitableAsNearbyBase, canonicalPlaceSuggestionsForQuery, guidedPlanningAreaShapes, guidedPlanningAreaSuggestions, inferAttractionVisitSelections, isOvernightBaseEligible, nearbyBaseAnchorForMention, nearbyBaseSearchPreposition, placeCandidateSuitableAsNearbyBase, placeCandidateWithinPlanningParent, placeMentionSupportsMultipleSelections, placeMentionsNeedingReview, placeResolutionIssuesForMentions, placeSuggestionRequiresBaseSelection, planningAreaSuggestionsWithinParent, rankAttractionVisitTargets, regionalBaseSuggestions, selectPlaceCandidate, selectPlaceSearchSuggestion, type AttractionVisitCandidate, type CanonicalPlaceSuggestion, type GuidedPlanningAreaShape, type GuidedPlanningAreaSuggestion, type NearbyBaseSuggestion, type PlaceIntelligenceResult, type PlaceIssue, type PlaceIssueOption, type PlaceSelection, type PlaceType, type PlanningParentConstraint, type ResolvedPlaceMention } from "@/lib/easyt/place-intelligence";
 import { isDuplicatePlaceIdentity, placeSuggestionLocationDetail } from "@/lib/easyt/place-autocomplete";
+import { verifyPhysicalIslandSuggestion } from "@/lib/easyt/destination-resolution";
 import { MorroviaTripCapture } from "@/components/easyt/morrovia-trip-capture";
 import { CanonicalPlaceAutocomplete } from "@/components/easyt/canonical-place-autocomplete";
 import { JourneyEndpointsEditor } from "@/components/easyt/journey-endpoints-editor";
@@ -3007,9 +3008,10 @@ function TripBuilderDocument() {
           : `The location returned for “${value}” does not match Morrovia's canonical identity. Review it before adding.`);
       }
       const targetUsesNearbyBase = Boolean(targetMention
+        && targetMention.placeType !== "island"
         && targetMention.routability !== "direct_destination"
         && ["landmark", "natural_area", "island", "archipelago", "coast", "mountain_range", "valley", "travel_corridor"].includes(targetMention.placeType));
-      const targetNearbyAnchor = targetMention ? nearbyBaseAnchorForMention(targetMention) : undefined;
+      const targetNearbyAnchor = targetMention && targetMention.placeType !== "island" ? nearbyBaseAnchorForMention(targetMention) : undefined;
       if (targetUsesNearbyBase && !targetNearbyAnchor) {
         return fail(language === "es"
           ? `Morrovia no tiene datos de ubicación suficientemente fiables para verificar una base cerca de ${placeDisplayName(targetMention!)}. Se conserva tu intención original.`
@@ -3024,6 +3026,20 @@ function TripBuilderDocument() {
         coordinates: resolved.coordinates,
         routability: "direct_destination" as const,
       };
+      if (targetMention?.placeType === "island") {
+        const verified = await verifyPhysicalIslandSuggestion(planningParentForMention(targetMention), canonicalSuggestion ?? {
+          canonicalPlaceId: resolved.canonicalPlaceId ?? (resolved.providerId ? `open-world:${resolved.providerId}` : ""),
+          name: resolvedCandidate.canonicalName, label: `${resolvedCandidate.canonicalName}, ${resolved.country}`, country: resolved.country,
+          placeType: resolvedCandidate.placeType, coordinates: resolved.coordinates, routability: "direct_destination",
+          provenance: resolved.providerId ? [{ id: resolved.providerId, label: "Settlement geography", kind: "provider", supports: "Traveller-selected settlement." }] : [],
+        });
+        if (!lookupIsCurrent()) return;
+        if (!verified) return fail(language === "es"
+          ? `No pudimos verificar esta base dentro de ${placeDisplayName(targetMention)}. Se conserva tu intención original.`
+          : `We couldn't independently verify this base inside ${placeDisplayName(targetMention)}. Your original intent is preserved.`);
+        canonicalSuggestion = verified;
+        resolvedCandidate.parentRegionId = verified.region;
+      }
       if (targetNearbyAnchor && !placeCandidateSuitableAsNearbyBase(targetNearbyAnchor, resolvedCandidate)) {
         const preposition = nearbyBaseSearchPreposition(targetNearbyAnchor);
         return fail(language === "es"
@@ -3161,7 +3177,7 @@ function TripBuilderDocument() {
           selectedPlaceType: selectionDraft?.selectedPlaceType ?? canonicalSuggestion?.placeType ?? (/city/.test(resolved.kind ?? "") ? "city" : "town"),
           selectedParentCountries: selectionDraft?.selectedParentCountries ?? [resolvedCountry],
           routeStopId: id,
-          provenance: selectionDraft?.provenance ?? canonicalSuggestion?.provenance[0] ?? { id: `builder:${targetMentionId}:${id}`, label: "Traveller builder selection", kind: "builder", supports: "The traveller explicitly added this route base." },
+          provenance: (targetMention?.placeType === "island" ? canonicalSuggestion?.provenance[0] : selectionDraft?.provenance) ?? canonicalSuggestion?.provenance[0] ?? { id: `builder:${targetMentionId}:${id}`, label: "Traveller builder selection", kind: "builder", supports: "The traveller explicitly added this route base." },
           ...(targetMention?.routability === "anchor_or_poi" ? { relationshipType: "visit-from-base" as const } : {}),
         };
         if (builderEditSessionRef.current) selectedCommands.push({kind:"planning-selection",selection:nextSelection});
@@ -3196,6 +3212,18 @@ function TripBuilderDocument() {
   };
 
   const addSupportedBase = (issue: PlaceIssue, option: PlaceIssueOption) => {
+    const source = activeCapturedPlaceMentions.find(mention => mention.mentionId === issue.mentionId);
+    if (source?.placeType === "island") {
+      if (!option.country || !option.coordinates || !option.canonicalPlaceId) return;
+      const suggestion: CanonicalPlaceSuggestion = {
+        canonicalPlaceId: option.canonicalPlaceId, name: option.label, label: `${option.label}, ${option.country}`, country: option.country,
+        placeType: option.placeType, coordinates: option.coordinates, routability: "direct_destination", provenance: option.provenance,
+      };
+      if (isOriginMention(source)) void selectOriginBase(source, suggestion);
+      else void addStop(option.label, option.country, issue.mentionId, { kind: "base", selectedCanonicalPlaceId: option.canonicalPlaceId,
+        selectedName: option.label, selectedPlaceType: option.placeType, selectedParentCountries: [option.country], provenance: option.provenance[0]! }, suggestion);
+      return;
+    }
     if (!option.country || !option.coordinates) {
       setResolvingPlaceMentionId(issue.mentionId);
       setShowStopEditor(true);
@@ -3404,7 +3432,25 @@ function TripBuilderDocument() {
     }
   };
 
-  const chooseProviderClarification = (mention: CapturedLocation, choice: LocationChoice) => {
+  const chooseProviderClarification = async (mention: CapturedLocation, choice: LocationChoice) => {
+    if (mention.placeType === "island") {
+      const snapshot = builderEditSessionRef.current?.getSnapshot();
+      if (!snapshot || !providerClarificationScope || snapshot.trip.id !== providerClarificationScope.tripId
+        || snapshot.browserOwnerId !== providerClarificationScope.ownerId || activeBrowserOwnerIdRef.current !== providerClarificationScope.ownerId
+        || snapshot.inputRevision !== providerClarificationScope.revision || mention.mentionId !== providerClarificationScope.mentionId) return;
+      const canonicalPlaceId = choice.canonicalPlaceId ?? (choice.providerId ? `open-world:${choice.providerId}` : undefined);
+      if (!canonicalPlaceId || !choice.coordinates || !choice.country || (choice.placeType !== "city" && choice.placeType !== "town")) return;
+      const suggestion: CanonicalPlaceSuggestion = { canonicalPlaceId, name: choice.name, label: `${choice.name}, ${choice.country}`,
+        country: choice.country, region: choice.region, placeType: choice.placeType, coordinates: choice.coordinates, routability: "direct_destination",
+        ...(choice.referenceSnapshotId ? { referenceSnapshotId: choice.referenceSnapshotId } : {}),
+        provenance: choice.providerId ? [{ id: choice.providerId, label: "Settlement geography", kind: "provider", supports: "Traveller-selected settlement." }] : [] };
+      const accepted = isOriginMention(mention) ? await selectOriginBase(mention, suggestion)
+        : await addStop(choice.name, choice.country, mention.mentionId, undefined, suggestion);
+      if (!accepted) return;
+      setLocationChoices(current => current.filter(item => item.mention.mentionId !== mention.mentionId));
+      advanceClarificationSession();
+      return;
+    }
     if(builderEditSessionRef.current) {
       const snapshot=builderEditSessionRef.current.getSnapshot(),trip=snapshot.trip;
       if(!providerClarificationScope || snapshot.trip.id!==providerClarificationScope.tripId
@@ -3814,6 +3860,20 @@ function TripBuilderDocument() {
   };
 
   const selectOriginBase = async (mention: CapturedLocation, suggestion: CanonicalPlaceSuggestion) => {
+    const snapshot = builderEditSessionRef.current?.getSnapshot();
+    if (mention.placeType === "island") {
+      if (!snapshot) return false;
+      const version = ++originResolutionVersionRef.current;
+      const verified = await verifyPhysicalIslandSuggestion(planningParentForMention(mention), suggestion);
+      const current = builderEditSessionRef.current?.getSnapshot();
+      if (!current || originResolutionVersionRef.current !== version || current.trip.id !== snapshot.trip.id
+        || current.browserOwnerId !== snapshot.browserOwnerId || activeBrowserOwnerIdRef.current !== snapshot.browserOwnerId
+        || current.inputRevision !== snapshot.inputRevision || !current.trip.brief.structuredBrief?.placeMentions?.some(source => source.mentionId === mention.mentionId)) return false;
+      if (!verified) { setBaseSearchErrors(errors => ({ ...errors, [mention.mentionId]: language === "es"
+        ? `No pudimos verificar esta base dentro de ${placeDisplayName(mention)}. Se conserva tu intención original.`
+        : `We couldn't independently verify this base inside ${placeDisplayName(mention)}. Your original intent is preserved.` })); return false; }
+      suggestion = verified;
+    }
     if (placeSuggestionRequiresBaseSelection(suggestion) || !placeCandidateWithinPlanningParent({
       canonicalName: suggestion.name,
       placeType: suggestion.placeType,
@@ -3834,7 +3894,7 @@ function TripBuilderDocument() {
         selectedName:suggestion.name,selectedPlaceType:suggestion.placeType,selectedParentCountries:[suggestion.country],
         provenance:suggestion.provenance[0]??{id:`builder-origin-base:${mention.mentionId}:${suggestion.canonicalPlaceId}`,label:"Traveller builder selection",kind:"builder",supports:"Selected the departure point within this area."}};
       const place=journeyEndpointPlaceFromSuggestion(suggestion);if(!place)return false;
-      if(!dispatchAcceptedBuilderEdits([{kind:"origin",place},{kind:"planning-selection",selection}])) return false;
+      if(!dispatchAcceptedBuilderEdits([{kind:"origin",place},{kind:"planning-selection",selection}], { expectedInputRevision: mention.placeType === "island" ? snapshot?.inputRevision : undefined })) return false;
       setOriginPlanningMentionId(null);originBeforePlanningClarificationRef.current=null;setTransientPlanningMentionId(null);
       setBaseSearchInputs(current=>({...current,[mention.mentionId]:""}));setBaseSearchErrors(current=>({...current,[mention.mentionId]:""}));return true;
     }
@@ -4729,6 +4789,7 @@ function TripBuilderDocument() {
     independentStopIds: clarificationIndependentStopIds,
   }) : null;
   const clarificationUsesNearbyBases = Boolean(activeClarificationMention
+    && activeClarificationMention.placeType !== "island"
     && activeClarificationMention.routability !== "direct_destination"
     && ["landmark", "natural_area", "island", "archipelago", "coast", "mountain_range", "valley", "travel_corridor"].includes(activeClarificationMention.placeType));
   const clarificationDiscovery = activeClarificationMention && clarificationSupportsMultiple
@@ -6332,7 +6393,7 @@ function TripBuilderDocument() {
           if (activeProviderClarification) {
             const providerIndex = clarificationChoices.findIndex((item) => item.id === choice.id);
             const providerChoice = activeProviderClarification.choices[providerIndex];
-            if (providerChoice) chooseProviderClarification(activeProviderClarification.mention, providerChoice);
+            if (providerChoice) void chooseProviderClarification(activeProviderClarification.mention, providerChoice);
             return;
           }
           if (!activeClarificationMention) return;
