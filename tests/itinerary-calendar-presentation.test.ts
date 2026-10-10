@@ -73,7 +73,7 @@ test("Calendar keeps day cards selectable while removing redundant empty-card an
   assert.match(calendar, /hasCalendarArrivalEvent\(day\)/);
   assert.match(calendar, /<time dateTime=\{day\.day\.date\}>/);
   assert.match(calendar, /aria-pressed=\{selectedDayId === day\.id\}/);
-  assert.match(itinerary, /<EasyTButton variant="secondary" size="small" onClick=\{onOpenDay\}>Open full day<\/EasyTButton>/);
+  assert.match(itinerary, /<EasyTButton variant="secondary" size="small" onClick=\{\(\) => setWorkspaceView\("days"\)\}>Open full day<\/EasyTButton>/);
 });
 
 test("Calendar places the existing photo-credit control below its side image", () => {

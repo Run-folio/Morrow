@@ -5244,7 +5244,7 @@
     "observedSpacing": [
       {
         "value": "8px",
-        "count": 579,
+        "count": 577,
         "examples": [
           "app/journey/account.module.css",
           "app/journey/admin/feedback/feedback.module.css",
@@ -5264,7 +5264,7 @@
       },
       {
         "value": "12px",
-        "count": 513,
+        "count": 511,
         "examples": [
           "app/journey/about/about.module.css",
           "app/journey/account.module.css",
@@ -5324,7 +5324,7 @@
       },
       {
         "value": "4px",
-        "count": 256,
+        "count": 255,
         "examples": [
           "app/journey/about/about.module.css",
           "app/journey/account.module.css",
@@ -5384,7 +5384,7 @@
       },
       {
         "value": "2px",
-        "count": 151,
+        "count": 150,
         "examples": [
           "app/journey/account.module.css",
           "app/journey/dashboard/dashboard.module.css",
@@ -7689,6 +7689,16 @@
         ]
       },
       {
+        "value": "max-width: 540px",
+        "count": 8,
+        "examples": [
+          "app/journey/home/immersive/product-demo.module.css",
+          "components/easyt/morrovia-feedback.module.css",
+          "components/easyt/rich-itinerary-day-planner.module.css",
+          "components/easyt/trip-itinerary-workspace.module.css"
+        ]
+      },
+      {
         "value": "max-width: 820px",
         "count": 8,
         "examples": [
@@ -7706,16 +7716,6 @@
           "app/journey/new/trip-builder.module.css",
           "app/journey/plan-map-docks.module.css",
           "app/journey/stamped/stamped.module.css"
-        ]
-      },
-      {
-        "value": "max-width: 540px",
-        "count": 7,
-        "examples": [
-          "app/journey/home/immersive/product-demo.module.css",
-          "components/easyt/morrovia-feedback.module.css",
-          "components/easyt/rich-itinerary-day-planner.module.css",
-          "components/easyt/trip-itinerary-workspace.module.css"
         ]
       },
       {

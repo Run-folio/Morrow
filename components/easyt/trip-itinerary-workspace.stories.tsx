@@ -852,6 +852,11 @@ export const Calendar: Story = {
   args: { trip },
   play: async ({ canvasElement }) => {
     [...canvasElement.querySelectorAll<HTMLButtonElement>("button")].find((button) => button.textContent?.trim() === "Calendar")?.click();
+    await new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
+    const calendar = canvasElement.querySelector('#itinerary-calendar');
+    const selectedHeading = calendar?.parentElement?.querySelector('header');
+    if (!calendar || !selectedHeading || !(selectedHeading.compareDocumentPosition(calendar) & Node.DOCUMENT_POSITION_FOLLOWING)) throw new Error('Calendar precedes selected day context');
+    if (canvasElement.querySelector('[aria-label^="Selected day summary"]')) throw new Error('Calendar duplicates its day items below the grid');
   },
 };
 export const CalendarAttributedPhoto: Story = {

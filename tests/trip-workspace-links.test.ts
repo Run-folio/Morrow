@@ -100,6 +100,15 @@ test("a generated guest trip opens before auth and an explicit save returns to t
   assert.equal(new URLSearchParams(signIn.split("?", 2)[1]).get("next"), `${arrival}&saved=1`);
 });
 
+test("the explicit Overview sign-up link requests sign-up and retains the exact guest return target",()=>{
+ const id='trip-guest with spaces',href=tripSaveSignInHref(id,'sign-up');
+ const query=new URL(href,'https://morrovia.test').searchParams;
+ assert.equal(query.get('mode'),'sign-up');assert.equal(query.get('next'),`${firstTripWorkspaceHref(id)}&saved=1`);
+ const resolver=readFileSync('components/easyt/trip-shell-resolver.tsx','utf8');
+ assert.match(resolver,/href=\{tripSaveSignInHref\(tripId, "sign-up"\)\}>Sign up to keep this route across devices/);
+ assert.match(resolver,/href=\{tripSaveSignInHref\(tripId\)\}>Sign in again/);
+});
+
 test("Builder re-entry keeps device recovery explicit only for guest trips", () => {
   assert.equal(
     tripBuilderHref("trip-guest with spaces", null),

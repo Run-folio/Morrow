@@ -214,11 +214,9 @@ test("mobile composition keeps the plan before Saved Ideas and secondary discove
   assert.match(itinerary, /<nav className=\{styles\.rail\} aria-label=\{copy\.dayByDay\}/);
 });
 
-test("Calendar keeps its compact summary alongside the shared day context rail", () => {
-  const summaryStart = itinerary.indexOf("function CalendarSelectedDaySummary");
-  const summaryEnd = itinerary.indexOf("function calendarScheduleLabel", summaryStart);
-  const summary = itinerary.slice(summaryStart, summaryEnd);
-  assert.match(itinerary, /<CalendarSelectedDaySummary/);
+test("Calendar keeps its items in day cards alongside the shared day context rail", () => {
+  assert.doesNotMatch(itinerary, /CalendarSelectedDaySummary/);
+  assert.match(itinerary, /onClick=\{\(\) => setWorkspaceView\("days"\)\}>Open full day/);
   assert.match(itinerary, /workspaceView === "days" && dayComposition \? <div[\s\S]*<RichItineraryDayPlanner/);
   assert.doesNotMatch(itinerary, /hasContextRail/);
   assert.match(itinerary, /<aside className=\{`\$\{styles\.contextRail\}/);
@@ -226,7 +224,15 @@ test("Calendar keeps its compact summary alongside the shared day context rail",
   assert.doesNotMatch(itinerary, /workspaceView === "days" \? <div className=\{styles\.contextRailBody\}/);
   assert.match(itinerary, /stayWorkspaceHref\(tripId, composition\.tonight\.stopId\)/);
   assert.doesNotMatch(itinerary, /<DestinationAccommodationModule/);
-  assert.doesNotMatch(summary, /displayDayDate|day\.stop\?\.name/, "the selected-day header already owns date and destination");
+  assert.match(itinerary, /day\.tonight\.state === "not-organised" && day\.tonight\.stopId/);
+  assert.match(itinerary, /stayWorkspaceHref\(tripId, day\.tonight\.stopId\)/);
+});
+
+test('Calendar places the existing selected-day heading and date before its week grid',()=>{
+ const header=itinerary.indexOf('<header className={styles.dayHeader}');
+ const calendar=itinerary.indexOf('<ItineraryCalendar');
+ assert(header>=0&&calendar>header);
+ assert(itinerary.indexOf('>Open full day</EasyTButton>')>calendar);
 });
 
 test("scheduled cards open one reusable detail owner without introducing another persistence model", () => {

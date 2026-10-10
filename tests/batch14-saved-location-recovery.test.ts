@@ -34,7 +34,7 @@ function harness({stale=false,reject=false,parent=false}={}){
   dispatchAcceptedBuilderEdit:(command:Parameters<typeof prepareBuilderHandlerEdit>[1])=>{if(reject)return false;const result=prepareBuilderHandlerEdit(trip,command,builderDocumentFingerprint(trip));assert.ok(result.ok);if(result.ok)trip=result.trip;return true;},
   dismissSavedFinish:()=>{dismissed=true;},handoffLookupSessionRef:{current:lookup},retireHandoffResolutionStatus,
   setLocationChoices:(update:any)=>{pending=update(pending);},setHandoffResolutionStatuses:(update:any)=>{statuses=update(statuses);},
-  pendingClarificationIds:[intent.id,other],builderEditSessionRef:{current:{getSnapshot:()=>({trip,inputRevision:1})}},geographicallyReady,stopGeographicPlace,
+  pendingClarificationIds:[intent.id,other],activePlaceMentions:[{mentionId:intent.id}],builderEditSessionRef:{current:{getSnapshot:()=>({trip,inputRevision:1})}},geographicallyReady,stopGeographicPlace,
   confirmSavedLocation:(targetId:string)=>{opened=targetId;},setClarificationSessionIds:()=>{},setClarificationIndex:()=>{},setClarificationAutoOpened:()=>{},setClarificationDismissed:()=>{},setClarificationOpen:()=>{},
  };
  const section=source.indexOf('<BuilderClarificationDialog open={Boolean(savedFinishReview)}');

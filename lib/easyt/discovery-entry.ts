@@ -35,17 +35,18 @@ export function discoveryEntryForBrief(
   brief: StructuredTripBrief,
   actionablePlaceIds: readonly string[],
   preferredMentionId?: string,
+  actionableMentionIds?: readonly string[],
 ): DiscoveryEntry {
   const mentions = (brief.placeMentions ?? []).filter(mention => !(brief.removedPlaceMentionIds ?? []).includes(mention.mentionId));
   const target = preferredMentionId ? mentions.find(mention => mention.mentionId === preferredMentionId) : undefined;
-  if (target?.status === "resolved" && target.routability === "direct_destination"
-    && target.canonicalPlaceId && actionablePlaceIds.includes(target.canonicalPlaceId))
+  const actionable = (mention: ResolvedPlaceMention) => mention.status === "resolved" && mention.routability === "direct_destination"
+    && Boolean(mention.canonicalPlaceId && actionablePlaceIds.includes(mention.canonicalPlaceId))
+    && (actionableMentionIds === undefined || actionableMentionIds.includes(mention.mentionId));
+  if (target && actionable(target))
     return { kind: "skip", step: "review", mentionId: target.mentionId, reason: "actionable-route" };
-  const directAndActionable = mentions.length > 0 && mentions.every(mention =>
-    mention.status === "resolved" && mention.routability === "direct_destination"
-      && Boolean(mention.canonicalPlaceId && actionablePlaceIds.includes(mention.canonicalPlaceId)));
+  const directAndActionable = mentions.length > 0 && mentions.every(actionable);
   if (directAndActionable) return { kind: "skip", step: "review", reason: "actionable-route" };
-  const mention = target ?? mentions.find(item => item.routability !== "direct_destination" || item.status !== "resolved");
+  const mention = target ?? mentions.find(item => !actionable(item));
   if (!mention) return { kind: "skip", step: "review", reason: "actionable-route" };
   const read = readDiscoveryDraft(brief, mention.mentionId);
   if (read.status === "unsupported-version") return { kind: "legacy-recovery", step: "places", mentionId: mention.mentionId, reason: "unsupported-version" };

@@ -55,9 +55,9 @@ export function firstTripWorkspaceHref(tripId: string) {
 }
 
 /** A guest explicitly opts into account promotion after seeing the local trip. */
-export function tripSaveSignInHref(tripId: string) {
+export function tripSaveSignInHref(tripId: string, mode: 'sign-in' | 'sign-up' = 'sign-in') {
   const returnHref = `${firstTripWorkspaceHref(tripId)}&saved=1`;
-  return `/journey/login?next=${encodeURIComponent(returnHref)}`;
+  return `/journey/login?${mode === 'sign-up' ? 'mode=sign-up&' : ''}next=${encodeURIComponent(returnHref)}`;
 }
 
 export function isFirstTripWorkspaceArrival(search: string) {

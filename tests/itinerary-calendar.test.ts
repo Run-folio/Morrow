@@ -4,6 +4,19 @@ import test from "node:test";
 import { hasCalendarArrivalEvent, itineraryCalendarDays, itineraryCalendarNightBands, itineraryCalendarWeeks } from "../lib/easyt/itinerary-calendar.ts";
 import type { EasyTTrip, PlanItem, TripLeg } from "../lib/easyt/trip.ts";
 
+test('calendar overnight projection distinguishes recorded stays, missing records, unknown dates and departure days',()=>{
+ const trip=representativeTrip();const stop=trip.stops[0]!;
+ trip.brief.bookings=[];
+ const ownDays=itineraryCalendarDays(trip).filter(day=>day.stop?.id===stop.id);
+ assert(ownDays.some(day=>day.tonight.state==='not-organised'&&day.tonight.stopId===stop.id));
+ trip.brief.bookings=[{id:'recorded-stay',type:'stay',title:'Recorded stay',date:stop.arrivalDate!,endDate:stop.departureDate!,confirmation:null,url:null}];
+ assert(itineraryCalendarDays(trip).filter(day=>day.stop?.id===stop.id&&day.day.date<stop.departureDate!).every(day=>day.tonight.booking?.id==='recorded-stay'));
+ const last=trip.stops.at(-1)!;trip.planItems.push(day('departure',last.id,6,last.departureDate!,'Departure','transport'));
+ assert(itineraryCalendarDays(trip).at(-1)?.tonight.state==='no-overnight');
+ stop.arrivalDate=null;stop.departureDate=null;trip.brief.bookings=[];
+ assert(itineraryCalendarDays(trip).filter(day=>day.stop?.id===stop.id).every(day=>day.tonight.state==='unknown'));
+});
+
 const day = (id: string, stopId: string, dayNumber: number, date: string, title: string, type: PlanItem["type"] = "activity"): PlanItem => ({
   id,
   stopId,

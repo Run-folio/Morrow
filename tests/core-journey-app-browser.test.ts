@@ -313,7 +313,7 @@ test('pending Cusco source confirmation distinguishes real cities and Builds wit
  const id=new URL(page.url()).searchParams.get('trip')!;
  await page.locator('[data-builder-route-workspace]').waitFor();
  const later=page.getByRole('dialog').getByRole('button',{name:'Finish later',exact:true});
- if(await later.isVisible())await later.click();
+ if(await later.waitFor({timeout:5000}).then(()=>true).catch(()=>false))await later.click();
  await page.getByRole('button',{name:'Choose place Cusco',exact:true}).first().click();
  const dialog=page.getByRole('dialog').filter({has:page.getByRole('heading',{name:'Confirm location',exact:true})});
  const intended=dialog.getByRole('button',{name:/Cusco.*Peru.*13\.53188.*71\.96701/});
@@ -337,6 +337,33 @@ test('pending Cusco source confirmation distinguishes real cities and Builds wit
  assert.deepEqual((await recoveryTrip(page,builtId))!.stops,built.stops);
  mkdirSync(artifacts,{recursive:true});writeFileSync(`${artifacts}/cusco-confirm-build-result.json`,JSON.stringify({status:'PASS',sourceIntent:confirmed.brief.intent!.route!.destinations.find(item=>item.sourceText==='Cusco'),builtStops:built.stops},null,2));
 }));
+
+test('recorded source town choices remain reachable with empty autocomplete and retain original nights through Build', {skip:!enabled,timeout:120_000},async()=>withEvidence('provider-town-build',async(page,context)=>{
+ await context.unroute('**/api/journey-geocode?*');
+ const towns=[{name:'Aït Benhaddou',country:'Morocco',canonicalPlaceId:'open-world:photon:N:365060850',providerId:'photon:N:365060850',coordinates:[-7.1309706,31.0451536],placeType:'town',kind:'town',routability:'direct_destination',matchQuality:'exact',rankScore:298},
+ {name:'Merzouga',country:'Morocco',canonicalPlaceId:'open-world:photon:N:3901504169',providerId:'photon:N:3901504169',coordinates:[-4.0140878,31.0999166],placeType:'town',kind:'town',routability:'direct_destination',matchQuality:'exact',rankScore:298}];
+ await context.route('**/api/journey-geocode?*',async route=>{
+  const params=new URL(route.request().url()).searchParams,q=(params.get('place')??'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
+  const town=towns.find(t=>q===t.name.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase());if(!town)return route.fallback();
+  const candidates=params.get('mode')==='autocomplete'?[]:[town,{...town,canonicalPlaceId:town.canonicalPlaceId+'-landmark',providerId:town.providerId+'-landmark',placeType:'landmark',kind:'landmark',routability:'anchor_or_poi'}];
+  await route.fulfill({status:200,contentType:'application/json',body:JSON.stringify({candidates})});
+ });
+ await page.goto(base,{waitUntil:'domcontentloaded'});await page.getByRole('combobox',{name:'Start from',exact:true}).fill('LHR');await page.getByRole('option',{name:/London Heathrow Airport.*United Kingdom/}).click();
+ await page.getByRole('button',{name:'One way',exact:true}).click();await page.getByRole('tab',{name:'Describe my trip',exact:true}).click();await page.getByRole('textbox',{name:'Start your plan'}).fill('10 nights: Marrakech 3, Aït Benhaddou 1, Merzouga 2, Fes 4.');await page.getByRole('button',{name:'Plan my trip'}).first().click();
+ await page.waitForURL(url=>url.pathname==='/journey/new'&&Boolean(url.searchParams.get('trip')));const id=new URL(page.url()).searchParams.get('trip')!;await page.locator('[data-builder-route-workspace]').waitFor();
+ const before=(await recoveryTrip(page,id))!;const sourceIds=before.brief.intent!.route!.destinations.filter(i=>towns.some(t=>i.sourceText===t.name)).map(i=>[i.id,i.requestedNights]);
+ for(const town of towns){let dialog=page.getByRole('dialog').last();const choice=dialog.getByRole('button',{name:new RegExp('^'+town.name+', Morocco')});if(!await choice.isVisible().catch(()=>false)){const later=dialog.getByRole('button',{name:'Finish later',exact:true});if(await later.isVisible().catch(()=>false))await later.click();await page.getByRole('button',{name:'Choose place '+town.name,exact:true}).first().click();dialog=page.getByRole('dialog').last();}await dialog.getByRole('button',{name:new RegExp('^'+town.name+', Morocco')}).first().click();}
+ await page.waitForFunction(id=>Object.keys(localStorage).filter(k=>k.startsWith(`easyt:trip-recovery:v2:guest:${encodeURIComponent(id)}:`)).some(k=>JSON.parse(localStorage.getItem(k)??'null')?.trip?.stops?.length===4),id);
+ const confirmed=(await recoveryTrip(page,id))!;assert.deepEqual(confirmed.stops.map(s=>[s.name,s.nights]),[['Marrakech',3],['Aït Benhaddou',1],['Merzouga',2],['Fes',4]]);assert.deepEqual(confirmed.brief.intent!.route!.destinations.filter(i=>sourceIds.some(([id])=>id===i.id)).map(i=>[i.id,i.requestedNights]),sourceIds);
+ await page.getByRole('button',{name:/Build trip/}).click();await page.waitForURL(/journey\/trip-[^/]+\?created=1/,{timeout:30_000});const builtId=new URL(page.url()).pathname.split('/')[2]!;await page.getByRole('region',{name:'Trip overview'}).waitFor();const built=(await recoveryTrip(page,builtId))!;assert.deepEqual(built.stops.map(s=>[s.name,s.nights]),confirmed.stops.map(s=>[s.name,s.nights]));await page.reload({waitUntil:'domcontentloaded'});await page.getByRole('region',{name:'Trip overview'}).waitFor();assert.deepEqual((await recoveryTrip(page,builtId))!.stops,built.stops);
+ await page.getByRole('link',{name:'Sign up to keep this route across devices',exact:true}).click();
+ await page.getByRole('textbox',{name:'Your name',exact:true}).waitFor();
+ const authURL=new URL(page.url());assert.equal(authURL.searchParams.get('mode'),'sign-up');assert.equal(authURL.searchParams.get('next'),`/journey/${builtId}?created=1&saved=1`);
+ assert.deepEqual((await recoveryTrip(page,builtId))!.stops,built.stops);
+ await page.goBack({waitUntil:'domcontentloaded'});await page.getByRole('region',{name:'Trip overview'}).waitFor();assert.deepEqual((await recoveryTrip(page,builtId))!.stops,built.stops);
+ await page.getByRole('link',{name:'Sign up to keep this route across devices',exact:true}).click();await page.getByRole('textbox',{name:'Your name',exact:true}).waitFor();
+ await page.getByRole('link',{name:'← Back to this trip',exact:true}).click();await page.getByRole('region',{name:'Trip overview'}).waitFor();assert.deepEqual((await recoveryTrip(page,builtId))!.stops,built.stops);
+},1440));
 
 test("Tier 1 guest journey keeps three canonical stops and edits through Build and recovery", { skip: !enabled, timeout: 180_000 }, async () => withEvidence("guest-core-journey", async (page) => {
   const pageErrors: string[] = [];
@@ -581,6 +608,13 @@ for (const [width,type] of [[1440,'return_to_start'],[390,'one_way']] as const) 
  await page.getByRole('button',{name:'Calendar',exact:true}).waitFor();
  assert.equal(await page.getByRole('button',{name:'Day by day',exact:true}).getAttribute('aria-pressed'),'true');
  await page.getByRole('button',{name:'Calendar',exact:true}).click();
+ const calendar=page.locator('#itinerary-calendar');
+ const dayHeader=calendar.locator('..').locator('header').first();
+ const headingBox=await dayHeader.boundingBox(),calendarBox=await calendar.boundingBox();assert(headingBox&&calendarBox&&headingBox.y+headingBox.height<=calendarBox.y);
+ assert.equal(await page.locator('[aria-label^="Selected day summary"]').count(),0);
+ const stayLinks=calendar.getByRole('link',{name:/Find a stay/});assert(await stayLinks.count()>0);
+ const targetURL=new URL((await stayLinks.first().getAttribute('href'))!,base);assert.equal(targetURL.pathname,`/journey/${id}/stay`);assert(targetURL.searchParams.get('stop'));
+ assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>window.innerWidth),false);
  await page.screenshot({path:`${artifacts}/multi-area-${width}-calendar.png`,fullPage:true});
  await page.getByRole('button',{name:'Open full day',exact:true}).click();
  assert.equal(new URL(page.url()).searchParams.get('itineraryView'),'days');

@@ -430,7 +430,7 @@ export function placeCandidateWithinPlanningParent(
   const candidateRegion = normalizePlacePhrase(candidate.parentRegionId ?? "");
   const namedAdministrativeParent = Boolean(candidateRegion && (
     candidateRegion === parentName
-    || candidateRegion === normalizePlacePhrase(parent.parentRegionId ?? "")
+    || candidateRegion === normalizePlacePhrase(parent.canonicalPlaceId ?? "")
   ));
   if (namedAdministrativeParent) return true;
   if (!candidate.coordinates || !parent.bounds) return false;

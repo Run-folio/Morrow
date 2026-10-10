@@ -721,6 +721,10 @@ function TripBuilderDocument() {
     const place=snapshot?savedTargetPlace(snapshot.trip,targetId):null;
     const role=targetId==='origin'||targetId==='end'?'endpoint':'stop';
     if(!snapshot || !place || geographicallyReady(place,role))return;
+    const area=role==='stop'?snapshot.trip.brief.intent.route.destinations.find(intent=>intent.kind==='planning_area'
+      && intent.stopIds.length===1&&intent.stopIds[0]===targetId
+      && !snapshot.trip.brief.structuredBrief?.placeSelections?.some(selection=>selection.mentionId===intent.id&&selection.kind==='base')):undefined;
+    if(area){openClarificationSession(area.id);return;}
     savedFinishRequestRef.current?.abort();
     const controller=new AbortController();savedFinishRequestRef.current=controller;
     const review={ownerId:snapshot.browserOwnerId,tripId:snapshot.trip.id,targetId,endKey:savedTargetKey(place),name:place.name,choices:[] as LocationChoice[],status:"loading" as const};
@@ -1926,6 +1930,10 @@ function TripBuilderDocument() {
   const activeProviderClarification = activeClarificationId
     ? locationChoices.find(({ mention }) => mention.mentionId === activeClarificationId)
     : undefined;
+  const providerClarificationScope = activeProviderClarification && mountedBuilder ? {
+    tripId: mountedBuilder.snapshot.trip.id, ownerId: mountedBuilder.snapshot.browserOwnerId,
+    revision: mountedBuilder.snapshot.inputRevision, mentionId: activeProviderClarification.mention.mentionId,
+  } : null;
   const activeClarificationMention = activeClarificationId
     ? activePlaceMentions.find((mention) => mention.mentionId === activeClarificationId)
     : undefined;
@@ -2112,16 +2120,19 @@ function TripBuilderDocument() {
 
 
   const openClarificationSession = (preferredMentionId?: string) => {
-    if (!pendingClarificationIds.length) return;
     const trip=builderEditSessionRef.current?.getSnapshot().trip;
-    const intent=trip?.brief.intent.route.destinations.find(item=>item.id===(preferredMentionId??pendingClarificationIds[0]));
+    const targeted=preferredMentionId&&trip?.brief.intent.route.destinations.find(item=>item.id===preferredMentionId);
+    const ids=targeted&&activePlaceMentions.some(mention=>mention.mentionId===preferredMentionId)
+      &&!pendingClarificationIds.includes(preferredMentionId!)?[preferredMentionId!,...pendingClarificationIds]:pendingClarificationIds;
+    if(!ids.length)return;
+    const intent=trip?.brief.intent.route.destinations.find(item=>item.id===(preferredMentionId??ids[0]));
     const stop=intent?.kind==='overnight_place'&&intent.stopIds.length===1
       ?trip?.stops.find(item=>item.id===intent.stopIds[0]):undefined;
     // A canonical city can still await geographic confirmation. Discovery
     // skips cities already in the route, so use the saved occurrence chooser.
     if(stop&&!geographicallyReady(stopGeographicPlace(stop))){void confirmSavedLocation(stop.id);return;}
-    setClarificationSessionIds(pendingClarificationIds);
-    setClarificationIndex(Math.max(0, preferredMentionId ? pendingClarificationIds.indexOf(preferredMentionId) : 0));
+    setClarificationSessionIds(ids);
+    setClarificationIndex(Math.max(0, preferredMentionId ? ids.indexOf(preferredMentionId) : 0));
     setClarificationAutoOpened(true);
     setClarificationDismissed(false);
     setClarificationOpen(true);
@@ -2928,8 +2939,13 @@ function TripBuilderDocument() {
       ? (capturedStructuredBrief.placeMentions ?? intakeMentions).find((mention) => mention.mentionId === targetMentionId)
       : undefined;
     const lookupIsCurrent=()=>{
-      if(targetMentionId||!sourceSnapshot)return true;
+      if(!sourceSnapshot)return true;
       const current=builderEditSessionRef.current?.getSnapshot();
+      if(!current||lookupSequence!==addPlaceLookupSequenceRef.current||current.trip.id!==sourceSnapshot.trip.id
+        ||current.browserOwnerId!==sourceSnapshot.browserOwnerId||activeBrowserOwnerIdRef.current!==sourceSnapshot.browserOwnerId
+        ||current.inputRevision!==expectedInputRevision)return false;
+      if(targetMentionId)return current.trip.brief.intent.route.destinations.some(intent=>intent.id===targetMentionId)
+        ||Boolean(current.trip.brief.structuredBrief?.placeMentions?.some(mention=>mention.mentionId===targetMentionId));
       const raw=current?.draft.fields.find(field=>field.binding.kind==="destination-add"&&field.status==="editable")?.raw??"";
       return Boolean(current&&lookupSequence===addPlaceLookupSequenceRef.current&&current.trip.id===sourceSnapshot.trip.id
         &&current.browserOwnerId===sourceSnapshot.browserOwnerId&&current.inputRevision===expectedInputRevision&&raw===stopInput);
@@ -3047,7 +3063,12 @@ function TripBuilderDocument() {
       // A landmark or planning-area base may already be a route occurrence.
       // Provider and catalogue IDs can differ for the same physical city; use
       // the shared geographic identity check, never display-name deduplication.
-      const existingBaseMatches = targetMention && targetMention.routability !== "direct_destination"
+      const boundAreaIntent = sourceSnapshot?.trip.brief.intent.route.destinations.find(intent=>intent.id===targetMentionId&&intent.kind==='planning_area');
+      const unverifiedAreaOccurrence = boundAreaIntent?.stopIds.length===1
+        ?sourceSnapshot?.trip.stops.find(stop=>stop.id===boundAreaIntent.stopIds[0]&&!geographicallyReady(stopGeographicPlace(stop))):undefined;
+      if(unverifiedAreaOccurrence && sourceSnapshot!.trip.brief.intent.route.destinations.some(intent=>intent.id!==targetMentionId&&intent.stopIds.includes(unverifiedAreaOccurrence.id)))
+        return fail('This stay belongs to more than one source. Review its current binding.');
+      const existingBaseMatches = !unverifiedAreaOccurrence && targetMention && targetMention.routability !== "direct_destination"
         ? stops.filter((stop) => isSameCanonicalPlace(stop, {
           name: resolvedName, country: resolvedCountry,
           canonicalPlaceId: selectedCanonicalPlaceId ?? resolved.canonicalPlaceId,
@@ -3062,10 +3083,10 @@ function TripBuilderDocument() {
       const existingTargetSelection = targetMentionId && !multiPlacePlanningMention
         ? placeSelections.find((selection) => selection.mentionId === targetMentionId && (selection.kind === "base" || selection.kind === "visit"))
         : undefined;
-      const replaceableRouteStopId = existingTargetSelection?.routeStopId
+      const replaceableRouteStopId = unverifiedAreaOccurrence?.id ?? (existingTargetSelection?.routeStopId
         && !placeSelections.some((selection) => selection.mentionId !== targetMentionId && selection.routeStopId === existingTargetSelection.routeStopId)
         ? existingTargetSelection.routeStopId
-        : undefined;
+        : undefined);
       const unresolvedCapturedOccurrence = Boolean(targetMention && capturedStructuredBrief.destinations.some((destination) =>
         destination.placeMentionId === targetMentionId && !destination.canonicalPlaceId));
       const capturedOccurrenceId = unresolvedCapturedOccurrence && targetMention
@@ -3131,16 +3152,18 @@ function TripBuilderDocument() {
         else setPlaceSelections((current) => [nextSelection, ...current.filter((selection) => multiPlacePlanningMention
           ? selection.mentionId !== targetMentionId || (selection.selectedCanonicalPlaceId !== nextSelection.selectedCanonicalPlaceId && selection.routeStopId !== nextSelection.routeStopId)
           : selection.mentionId !== targetMentionId)]);
-        setResolvingPlaceMentionId(null);
-        setTransientPlanningMentionId((current) => current === targetMentionId ? null : current);
-        setBaseSearchInputs((current) => ({ ...current, [targetMentionId]: "" }));
-        setBaseSearchErrors((current) => ({ ...current, [targetMentionId]: "" }));
       } else {
         const restoredMention = capturedStructuredBrief.placeMentions?.find((mention) => [mention.canonicalName, mention.sourceText, ...mention.aliases]
           .some((label) => label.toLocaleLowerCase() === resolvedName.toLocaleLowerCase() || label.toLocaleLowerCase() === value.toLocaleLowerCase()));
         if (restoredMention) setRemovedPlaceMentionIds((current) => current.filter((mentionId) => mentionId !== restoredMention.mentionId));
       }
       if(builderEditSessionRef.current && selectedCommands.length && !dispatchAcceptedBuilderEdits(selectedCommands,{expectedInputRevision,acceptedInputs:!targetMentionId?[{binding:{kind:"destination-add"},raw:stopInput}]:undefined})) return fail("This place could not be retained safely. Your trip is preserved.");
+      if(targetMentionId){
+        setResolvingPlaceMentionId(null);
+        setTransientPlanningMentionId(current=>current===targetMentionId?null:current);
+        setBaseSearchInputs(current=>({...current,[targetMentionId]:''}));
+        setBaseSearchErrors(current=>({...current,[targetMentionId]:''}));
+      }
       if (!builderEditSessionRef.current) setDecisionSelections((current) => ({ ...current, routeOrder: undefined }));
       cancelCountryAddReview();setStopInput(""); setStopError(""); setStopChecking(false);
       if (targetMentionId) setShowStopEditor(false);
@@ -3367,14 +3390,37 @@ function TripBuilderDocument() {
 
   const chooseProviderClarification = (mention: CapturedLocation, choice: LocationChoice) => {
     if(builderEditSessionRef.current) {
-      const trip=builderEditSessionRef.current.getSnapshot().trip;
+      const snapshot=builderEditSessionRef.current.getSnapshot(),trip=snapshot.trip;
+      if(!providerClarificationScope || snapshot.trip.id!==providerClarificationScope.tripId
+        || snapshot.browserOwnerId!==providerClarificationScope.ownerId
+        || activeBrowserOwnerIdRef.current!==providerClarificationScope.ownerId
+        || snapshot.inputRevision!==providerClarificationScope.revision
+        || mention.mentionId!==providerClarificationScope.mentionId)return;
       const place=acceptedGeographicPlace({name:choice.name,country:choice.country,canonicalPlaceId:choice.canonicalPlaceId??(choice.providerId?`open-world:${choice.providerId}`:undefined),providerId:choice.providerId,coordinates:choice.coordinates},choice,isOriginMention(mention)?'endpoint':'stop');
       if(!place)return;
       const intent=trip.brief.intent.route.destinations.find(i=>i.id===mention.mentionId);
       const id=intent?.stopIds.length===1?intent.stopIds[0]!:handoffStopOccurrenceId(mention,handoffOccurrenceMentionIdsRef.current);
-      const command=isOriginMention(mention)?{kind:"origin" as const,place}:builderPlaceCommand(trip,{stopId:id,intentId:intent?.id,place});
-      if(!dispatchAcceptedBuilderEdit(command))return;
-      handoffLookupSessionRef.current?.handled.add(mention.mentionId);setLocationChoices(current=>current.filter(item=>item.mention.mentionId!==mention.mentionId));advanceClarificationSession();return;
+      let beforeStopId:string|undefined;
+      if(!isOriginMention(mention)&&!trip.stops.some(stop=>stop.id===id)){
+        try{
+          const positioned=insertHandoffOccurrence(trip.stops.map(stop=>({id:stop.id})),{id},mention,
+            trip.brief.structuredBrief?.placeMentions??intakeMentions,handoffCanonicalOccurrenceBindings(trip.brief.intent.route,handoffOccurrenceMentionIdsRef.current),trip.brief.intent.route.orderAuthority);
+          beforeStopId=positioned[positioned.findIndex(stop=>stop.id===id)+1]?.id;
+        }catch{setBaseSearchErrors(current=>({...current,[mention.mentionId]:'The route order changed. Review this place’s position.'}));return;}
+      }
+      const command=isOriginMention(mention)?{kind:"origin" as const,place}:builderPlaceCommand(trip,{stopId:id,intentId:intent?.id,place,beforeStopId});
+      if(!command)return;
+      const commands:BuilderAcceptedEdit[]=[command];
+      if(!isOriginMention(mention)&&intent&&place.canonicalPlaceId)commands.push({kind:'planning-selection',selection:{
+        mentionId:mention.mentionId,kind:'ambiguity',selectedCanonicalPlaceId:place.canonicalPlaceId,
+        selectedName:place.name,selectedPlaceType:choice.placeType==='city'?'city':'town',selectedParentCountries:[choice.country],routeStopId:id,
+        provenance:{id:`builder:${mention.mentionId}:${id}`,label:'Traveller provider selection',kind:'builder',supports:'The traveller explicitly confirmed this geographic identity.'},
+      }});
+      if(!dispatchAcceptedBuilderEdits(commands,{expectedInputRevision:providerClarificationScope.revision}))return;
+      handoffLookupSessionRef.current?.handled.add(mention.mentionId);
+      handoffLookupSessionRef.current?.statuses.set(mention.mentionId,'resolved');
+      setHandoffResolutionStatuses(current=>({...current,[mention.mentionId]:'resolved'}));
+      setLocationChoices(current=>current.filter(item=>item.mention.mentionId!==mention.mentionId));advanceClarificationSession();return;
     }
     handoffLookupSessionRef.current?.handled.add(mention.mentionId);
     if (isOriginMention(mention)) {
@@ -4732,7 +4778,10 @@ function TripBuilderDocument() {
   const activeCountryEnrichment = countryEnrichment.key === countryEnrichmentKey ? countryEnrichment : null;
   const discoveryEntry: DiscoveryEntry = activeClarificationMention
     ? discoveryEntryForBrief({ ...effectiveStructuredBrief, placeMentions: activePlaceMentions },
-      stops.flatMap((stop) => stop.canonicalPlaceId ? [stop.canonicalPlaceId] : []), activeClarificationMention.mentionId)
+      stops.flatMap((stop) => stop.canonicalPlaceId && geographicallyReady(stop) ? [stop.canonicalPlaceId] : []), activeClarificationMention.mentionId,
+      canonicalBuilder?.brief.intent.route.destinations.filter(intent=>intent.resolution==='resolved' && intent.stopIds.length>0
+        && (intent.kind==='overnight_place'||selectedMentionIds.has(intent.id))
+        && intent.stopIds.every(id=>{const stop=canonicalBuilder.stops.find(stop=>stop.id===id);return stop&&geographicallyReady(stopGeographicPlace(stop));})).map(intent=>intent.id))
     : { kind: "legacy-recovery", step: "places", reason: "technical-failure" };
   const discoveryRead = activeClarificationMention
     ? readDiscoveryDraft(capturedStructuredBrief, activeClarificationMention.mentionId) : null;
@@ -4804,7 +4853,11 @@ function TripBuilderDocument() {
     measure();
     return () => { observer.disconnect(); window.removeEventListener('resize', measure); root.style.removeProperty('--morrovia-builder-action-height'); };
   }, [hasRouteSkeleton, hydrated, mountedBuilder?.session]);
-  const renderedDiscoveryEntry: DiscoveryEntry = !discoveryProjection && discoveryEntry.kind !== "skip" && discoveryEntry.kind !== "legacy-recovery"
+  // Existing source-owned identity choices must remain reachable even when
+  // editorial Discovery has no suggestions for the requested place.
+  const renderedDiscoveryEntry: DiscoveryEntry = activeProviderClarification
+    ? { kind: "legacy-recovery", step: "places", mentionId: activeProviderClarification.mention.mentionId, reason: "unresolved-identity" }
+    : !discoveryProjection && discoveryEntry.kind !== "skip" && discoveryEntry.kind !== "legacy-recovery"
     ? { kind: "legacy-recovery", step: "places", mentionId: activeClarificationMention?.mentionId, reason: "technical-failure" }
     : discoveryEntry;
   useEffect(() => {

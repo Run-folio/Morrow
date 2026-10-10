@@ -153,7 +153,7 @@ export default function TripShellResolver({
       actions={syncIssue === "failed" ? <EasyTButton size="small" variant="secondary" onClick={() => void resolveAndPromote()} loading={syncing}>Try again</EasyTButton> : syncIssue === "auth" ? <EasyTLinkButton size="small" variant="secondary" href={tripSaveSignInHref(tripId)}>Sign in again</EasyTLinkButton> : <EasyTLinkButton size="small" variant="secondary" href={tripSyncRecoveryPath(tripId)}>Open device copy</EasyTLinkButton>}
     /> : null}
     <TripShell trip={resolution.trip} cacheTrip={showingCanonicalConflict} workspaceGuideVersionSeen={workspaceGuideVersionSeen} deviceOnlyNotice={!ownerId ? <>
-      <EasyTLinkButton size="small" variant="quiet" href={tripSaveSignInHref(tripId)}>Sign up to keep this route across devices</EasyTLinkButton>
+      <EasyTLinkButton size="small" variant="quiet" href={tripSaveSignInHref(tripId, "sign-up")}>Sign up to keep this route across devices</EasyTLinkButton>
       {deviceNoticeTripId === tripId ? <MorroviaBriefNotice key={tripId} className={styles.deviceSaveToast} variant="toast" title="Saved on this device" autoDismissMs={6000} onDismiss={() => setDeviceNoticeTripId(null)} /> : null}
     </> : undefined}>{children}</TripShell>
   </div>;

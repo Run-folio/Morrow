@@ -157,7 +157,7 @@ export default function LoginForm({
   return <section className={styles.authPanel}>
     <p className={styles.eyebrow}>Morrovia account</p>
     <h2>{backToTripHref ? "Save this trip." : mode === "sign-in" ? "Welcome back." : "Start travelling."}</h2>
-    <p className={styles.muted}>{backToTripHref ? "Sign in to keep this exact trip and continue planning on another device." : mode === "sign-in" ? "Open your saved plans and pick up where you left off." : "Save your first plan and keep every trip in one place."}</p>
+    <p className={styles.muted}>{backToTripHref ? "Keep this exact trip and continue planning on another device." : mode === "sign-in" ? "Open your saved plans and pick up where you left off." : "Save your first plan and keep every trip in one place."}</p>
     {(!configured || showSetupNotice) && <p className={styles.setupNotice}>Accounts are being connected to the live site. The Tokyo Marathon+ prototype and trip builder are still available.</p>}
     <EasyTSegmentedControl
       ariaLabel="Account action"

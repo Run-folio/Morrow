@@ -1,4 +1,4 @@
-import { composeItineraryDay, itineraryDayParts, type ComposedItineraryActivity, type ComposedItineraryTransfer } from "./itinerary-day-composition.ts";
+import { composeItineraryDay, itineraryDayParts, type ComposedItineraryActivity, type ComposedItineraryTransfer, type ComposedItineraryTonight } from "./itinerary-day-composition.ts";
 import { itineraryTransportAgenda, type ItineraryTransportAgendaLeg } from "./itinerary-transport-agenda.ts";
 import type { EasyTTrip, ItineraryDayPart, PlanItem, TripBooking, TripStop } from "./trip.ts";
 import { isFullDayActivity } from "./itinerary-schedule-awareness.ts";
@@ -19,6 +19,7 @@ export type ItineraryCalendarDay = {
   id: string;
   day: PlanItem;
   stop: TripStop | null;
+  tonight: ComposedItineraryTonight;
   items: ItineraryCalendarItem[];
   /** Unscheduled legacy context is retained for review, never promoted to an event. */
   contextNotes: ComposedItineraryActivity[];
@@ -139,6 +140,7 @@ export function itineraryCalendarDays(trip: EasyTTrip): ItineraryCalendarDay[] {
         id: day.id,
         day,
         stop: composition.stop,
+        tonight: composition.tonight,
         items: [...transfers, ...activityItems, ...accommodation, ...datedBookings],
         contextNotes: activities.filter((activity) => activity.source === "day-note"),
         arrival: day.type === "arrival" || composition.transfers.some((transfer) => transfer.direction === "arriving"),
