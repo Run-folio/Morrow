@@ -52,7 +52,7 @@ import { sameJourneyPlace } from "@/lib/easyt/journey-endpoints";
 import { personalRouteHref } from "@/lib/easyt/personal-route";
 import TripExplicitPlans from "./trip-explicit-plans";
 import { overviewPlaceImage, overviewStopImage, resolvedOverviewPhoto, type OverviewPlaceImage } from "@/lib/easyt/trip-overview-imagery";
-import { canonicalPlacePhotoCacheKey, discardFailedRoutePhoto, resolveRoutePhotoCandidates, type RoutePhotoCandidate } from "@/lib/easyt/route-photo-cache";
+import { canonicalPlacePhotoCacheKey, discardFailedRoutePhoto, resolveDistinctRoutePhotoCandidates, type RoutePhotoCandidate } from "@/lib/easyt/route-photo-cache";
 import MorroviaPhotoCredit from "./morrovia-photo-credit";
 import { useTripShellMutation } from "./trip-shell-client";
 import { ContextualFeedbackSlot } from "./contextual-feedback-controller";
@@ -145,6 +145,7 @@ export default function TripOverviewWorkspace({
     return () => window.removeEventListener(EASYT_LANGUAGE_CHANGE_EVENT, update);
   }, [suppliedLanguage]);
   const [resolvedPlaceImages, setResolvedPlaceImages] = useState<Record<string, OverviewPlaceImage>>({});
+  const resolvedImagesRef = useRef<Record<string, OverviewPlaceImage>>({});
   const [failedImages, setFailedImages] = useState<Record<string, string[]>>({});
   const prepReadiness = useTripPrepReadiness({
     trip,
@@ -299,7 +300,8 @@ export default function TripOverviewWorkspace({
         providerId: journeyEnd.providerId,
         coordinates: journeyEnd.coordinates,
       }] : []),
-    ].filter((candidate) => !initialPlaceImages[candidate.id] && (failedImages[imageCacheKeysByOccurrence[candidate.id]]?.length ?? 0) < 3);
+    ].filter((candidate) => !initialPlaceImages[candidate.id] && !resolvedImagesRef.current[imageCacheKeysByOccurrence[candidate.id]]
+      && (failedImages[imageCacheKeysByOccurrence[candidate.id]]?.length ?? 0) < 3);
     const grouped = new globalThis.Map<string, RoutePhotoCandidate>();
     unresolved.forEach((candidate) => {
       const cacheKey = imageCacheKeysByOccurrence[candidate.id];
@@ -323,23 +325,24 @@ export default function TripOverviewWorkspace({
   useEffect(() => {
     if (!imageResolutionCandidates.length) return;
     const controller = new AbortController();
-    void resolveRoutePhotoCandidates(imageResolutionCandidates, (candidate, selection) => {
+    void resolveDistinctRoutePhotoCandidates(imageResolutionCandidates, (candidate, selection) => {
       if (selection.kind !== "photo") return;
-      setResolvedPlaceImages((current) => {
-        const next = { ...current };
-        // A late lookup may fill an empty canonical identity, but never replaces known truth.
-        if (!next[candidate.cacheKey]) next[candidate.cacheKey] = resolvedOverviewPhoto(selection.photo);
-        return next;
-      });
-    }, { signal: controller.signal });
+      // A late lookup may fill an empty canonical identity, but never replaces known truth.
+      if (!resolvedImagesRef.current[candidate.cacheKey]) {
+        resolvedImagesRef.current[candidate.cacheKey] = resolvedOverviewPhoto(selection.photo);
+        setResolvedPlaceImages({ ...resolvedImagesRef.current });
+      }
+    }, { signal: controller.signal, reservedSources: [...Object.values(initialPlaceImages),
+      ...Object.entries(resolvedImagesRef.current).filter(([key]) => Object.values(imageCacheKeysByOccurrence).includes(key)).map(([,photo]) => photo)]
+      .flatMap(photo => [photo.src, ...(photo.sourceUrl?.startsWith('https://commons.wikimedia.org/wiki/File:') ? [photo.sourceUrl] : [])]) });
     return () => controller.abort();
-  }, [imageResolutionCandidates, initialPlaceImages]);
+  }, [imageResolutionCandidates, initialPlaceImages, imageCacheKeysByOccurrence]);
 
   const recoverImage = (occurrenceId: string, src: string) => {
     const cacheKey = imageCacheKeysByOccurrence[occurrenceId];
     discardFailedRoutePhoto(cacheKey, src);
     setFailedImages(current => ({ ...current, [cacheKey]: [...new Set([...(current[cacheKey] ?? []), src])] }));
-    setResolvedPlaceImages(current => { if (current[cacheKey]?.src !== src) return current; const next = { ...current }; delete next[cacheKey]; return next; });
+    setResolvedPlaceImages(current => { if (current[cacheKey]?.src !== src) return current; const next = { ...current }; delete next[cacheKey]; delete resolvedImagesRef.current[cacheKey]; return next; });
   };
 
   const openTravellerDetails = () => {

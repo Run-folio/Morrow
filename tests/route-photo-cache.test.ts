@@ -7,9 +7,31 @@ import {
   discardFailedRoutePhoto,
   readRoutePhotoSelection,
   resolveRoutePhotoCandidates,
+  resolveDistinctRoutePhotoCandidates,
   routePhotoFromUnknown,
   saveRoutePhotoSelection,
 } from "../lib/easyt/route-photo-cache.ts";
+
+test('different destination identities do not reuse one Commons asset, but repeat occurrences share it',async()=>{
+ const first={...validPhoto,id:'File:Shared.jpg',provider:'wikimedia' as const,src:'https://upload.wikimedia.org/shared-800.jpg',sourceUrl:'https://commons.wikimedia.org/wiki/File:Shared.jpg',author:'A',license:'CC BY 4.0',licenseUrl:'https://creativecommons.org/licenses/by/4.0/'};
+ const resized={...first,src:'https://upload.wikimedia.org/shared-1200.jpg'};
+ const alternate={...first,id:'File:Alternate.jpg',src:'https://upload.wikimedia.org/alternate.jpg',sourceUrl:'https://commons.wikimedia.org/wiki/File:Alternate.jpg'};
+ const selected=new Map<string,string>();
+ await resolveDistinctRoutePhotoCandidates([
+  {cacheKey:'manila',occurrenceIds:['start','return'],queries:['Manila']},
+  {cacheKey:'cebu',occurrenceIds:['cebu'],queries:['Cebu']},
+ ],(candidate,selection)=>{if(selection.kind==='photo')candidate.occurrenceIds.forEach(id=>selected.set(id,selection.photo.id!));},{storage:null,trackPhoto:()=>undefined,
+  findPhotos:async(_queries,_signal,_place,excluded)=>({candidates:[first,resized,alternate].filter(photo=>!excluded?.includes(photo.sourceUrl)),configured:true,status:'resolved'})});
+ assert.equal(selected.get('start'),'File:Shared.jpg');
+ assert.equal(selected.get('return'),'File:Shared.jpg');
+ assert.equal(selected.get('cebu'),'File:Alternate.jpg');
+ const editedSelections:string[]=[];
+ await resolveDistinctRoutePhotoCandidates([{cacheKey:'coron',occurrenceIds:['new-stop'],queries:['Coron']}],
+  (_candidate,selection)=>{if(selection.kind==='photo')editedSelections.push(selection.photo.id!);},
+  {storage:null,trackPhoto:()=>undefined,reservedSources:[first.src,first.sourceUrl],
+   findPhotos:async(_queries,_signal,_place,excluded)=>({candidates:[resized,alternate].filter(photo=>!excluded?.includes(photo.sourceUrl)),configured:true,status:'resolved'})});
+ assert.deepEqual(editedSelections,['File:Alternate.jpg'],'trip edits reserve already displayed destination assets');
+});
 
 test("Wikimedia cache round-trips full rights and rejects missing licence metadata", () => {
   const photo = { src: "https://upload.wikimedia.org/photo.jpg", sourceUrl: "https://commons.wikimedia.org/wiki/File:Photo.jpg", sourceLabel: "Author · CC BY 4.0", provider: "wikimedia" as const, author: "Author", authorUrl: "https://commons.wikimedia.org/wiki/User:Author", license: "CC BY 4.0", licenseUrl: "https://creativecommons.org/licenses/by/4.0/" };
@@ -156,14 +178,14 @@ test("canonical place cache identity does not depend on route position or displa
 test("the shared cache retains valid imagery but ignores and evicts persisted empty choices", () => {
   const storage = new MemoryStorage();
   saveRoutePhotoSelection("place:one", { kind: "photo", photo: validPhoto }, storage);
-  storage.setItem("morrovia:route-photo:place:two", JSON.stringify({ kind: "empty" }));
+  storage.setItem("morrovia:route-photo:v2:place:two", JSON.stringify({ kind: "empty" }));
 
   assert.deepEqual(readRoutePhotoSelection("place:one", storage), { kind: "photo", photo: validPhoto });
   assert.equal(readRoutePhotoSelection("place:two", storage), null);
-  assert.equal(storage.getItem("morrovia:route-photo:place:two"), null);
+  assert.equal(storage.getItem("morrovia:route-photo:v2:place:two"), null);
 
   saveRoutePhotoSelection("place:two", { kind: "empty" }, storage);
-  assert.equal(storage.getItem("morrovia:route-photo:place:two"), null);
+  assert.equal(storage.getItem("morrovia:route-photo:v2:place:two"), null);
 });
 
 test("candidate resolution commits successful siblings without waiting for a failed batch", async () => {

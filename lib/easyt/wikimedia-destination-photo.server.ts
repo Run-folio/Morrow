@@ -60,7 +60,7 @@ function destinationPhoto(page: unknown, place: DestinationPhotoPlace, excludedS
   };
   if (!scorePublishedRouteImageCandidate({ key: "destination", name: place.name, country: place.country,
     coordinates: place.coordinates ? [...place.coordinates] : [0, 0], routeKeys: [], siblingNames: [], attachedLandmarks: [] }, candidate).accepted ||
-    excludedSources.includes(src)) return [];
+    (excludedSources.includes(src) || excludedSources.includes(sourceUrl))) return [];
   const authorUrl = httpsUrl(value("Artist")?.match(/href=["']([^"']+)/)?.[1]);
   return [{ id: candidate.id, provider: "wikimedia", src, alt: candidate.alt || `${place.name}, ${place.country}`,
     sourceUrl, sourceLabel: `${author} · ${license}`, author, ...(authorUrl ? { authorUrl } : {}), license, licenseUrl }];

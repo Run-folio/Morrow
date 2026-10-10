@@ -34,7 +34,18 @@ export type RoutePhotoCandidate = {
   excludedSources?: string[];
 };
 
-const prefix = "morrovia:route-photo:";
+/** Stable provider asset identity across thumbnail sizes and trip occurrences. */
+export function routePhotoAssetIdentity(photo: CachedRoutePhoto) {
+  return photo.id ? `${photo.provider ?? 'photo'}:${photo.id}` : photo.provider === 'wikimedia' ? photo.sourceUrl : photo.src;
+}
+function excludedPhoto(excluded: readonly string[], photo: CachedRoutePhoto) {
+  return excluded.includes(photo.src) || excluded.includes(routePhotoAssetIdentity(photo))
+    || (photo.provider === 'wikimedia' && excluded.includes(photo.sourceUrl));
+}
+
+// Candidate rules changed: old positives may contain transit imagery or a
+// route-wide duplicate. Re-evaluate them without touching saved trip content.
+const prefix = "morrovia:route-photo:v2:";
 const inFlightSelections = new Map<string, Promise<CachedRoutePhotoSelection | null>>();
 const failedSources = new Map<string, Set<string>>();
 
@@ -164,7 +175,7 @@ export async function findRoutePhotos(queries: string[], signal?: AbortSignal, p
         if (place.region) params.set("region", place.region);
         if (place.placeType) params.set("placeType", place.placeType);
         if (place.coordinates) { params.set("lon", String(place.coordinates[0])); params.set("lat", String(place.coordinates[1])); }
-        excludedSources.slice(0, 3).forEach(src => params.append("exclude", src));
+        excludedSources.slice(0, 18).forEach(src => params.append("exclude", src));
       }
       const response = await fetch(`/api/journey-route-image?${params}`, { signal: signal ?? AbortSignal.timeout(15_000) });
       const value: unknown = await response.json();
@@ -173,8 +184,8 @@ export async function findRoutePhotos(queries: string[], signal?: AbortSignal, p
       const candidates = Array.isArray(payload?.candidates)
         ? payload.candidates.map(routePhotoFromUnknown).filter((photo): photo is CachedRoutePhoto => Boolean(photo))
         : [];
-      const usable = candidates.filter(photo => !excludedSources.includes(photo.src));
-      const primary = image && !excludedSources.includes(image.src) ? image : usable[0];
+      const usable = candidates.filter(photo => !excludedPhoto(excludedSources,photo));
+      const primary = image && !excludedPhoto(excludedSources,image) ? image : usable[0];
       if (response.ok && primary) return { candidates: usable.length ? usable : [primary], configured: true, status: "resolved" } satisfies RoutePhotoLookup;
       if (response.ok && payload?.reason === "no-result") sawNoResult = true;
       else sawUnavailable = true;
@@ -221,13 +232,13 @@ export async function resolveRoutePhotoCandidates(
   await Promise.allSettled(candidates.map(async (candidate) => {
     const excluded = [...new Set([...(candidate.excludedSources ?? []), ...(failedSources.get(candidate.cacheKey) ?? [])])];
     const cached = readRoutePhotoSelection(candidate.cacheKey, storage);
-    const usableCache = cached?.kind === "photo" && excluded.includes(cached.photo.src) ? null : cached;
+    const usableCache = cached?.kind === "photo" && excludedPhoto(excluded,cached.photo) ? null : cached;
     const requestKey = `${candidate.cacheKey}|${JSON.stringify(excluded)}`;
     let request = usableCache ? Promise.resolve(usableCache) : inFlightSelections.get(requestKey);
     if (!request) {
       request = (async (): Promise<CachedRoutePhotoSelection | null> => {
         const result = await findPhotos(candidate.queries, undefined, candidate.place, excluded);
-        const photo = result.candidates.find(photo => !excluded.includes(photo.src) && !failedSources.get(candidate.cacheKey)?.has(photo.src));
+        const photo = result.candidates.find(photo => !excludedPhoto(excluded,photo) && !failedSources.get(candidate.cacheKey)?.has(photo.src));
         if (photo) {
           const selection = { kind: "photo", photo } as const;
           saveRoutePhotoSelection(candidate.cacheKey, selection, storage);
@@ -246,5 +257,37 @@ export async function resolveRoutePhotoCandidates(
     }
     const selection = await request;
     if (selection && !options.signal?.aborted && (selection.kind !== "photo" || !failedSources.get(candidate.cacheKey)?.has(selection.photo.src))) onSelection(candidate, selection);
+  }));
+}
+
+/** Resolve cards independently, then retry an asset claimed by another place.
+ * Repeated occurrences of the same place are already grouped by cache key. */
+export async function resolveDistinctRoutePhotoCandidates(
+  candidates: readonly RoutePhotoCandidate[],
+  onSelection: (candidate: RoutePhotoCandidate, selection: CachedRoutePhotoSelection) => void,
+  options: Parameters<typeof resolveRoutePhotoCandidates>[2] & { reservedSources?: readonly string[] } = {},
+) {
+  const used = new Set(options.reservedSources ?? []);
+  await Promise.allSettled(candidates.map(async candidate => {
+    const rejected = new Set(candidate.excludedSources ?? []);
+    for (let attempt = 0; attempt <= candidates.length; attempt++) {
+      if (options.signal?.aborted) return;
+      const received: { value: CachedRoutePhotoSelection | null } = { value: null };
+      await resolveRoutePhotoCandidates([{ ...candidate, excludedSources: [...new Set([...rejected, ...used])] }], (_, result) => { received.value = result; }, options);
+      const selection = received.value;
+      if (!selection || options.signal?.aborted) return;
+      if (selection.kind === 'empty') { onSelection(candidate, selection); return; }
+      const photo = selection.photo;
+      const identity = routePhotoAssetIdentity(photo);
+      if (used.has(identity) || used.has(photo.src) || (photo.provider === 'wikimedia' && used.has(photo.sourceUrl))) {
+        rejected.add(identity); rejected.add(photo.src);
+        if (photo.provider === 'wikimedia') rejected.add(photo.sourceUrl);
+        continue;
+      }
+      used.add(identity); used.add(photo.src);
+      if (photo.provider === 'wikimedia') used.add(photo.sourceUrl);
+      onSelection(candidate, selection);
+      return;
+    }
   }));
 }

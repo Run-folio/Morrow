@@ -124,7 +124,7 @@ test("Before You Go reuses canonical preparation tasks and actions without a sec
 test("route storytelling resolves imagery, stays image-led and links to the canonical Map", () => {
   assert.match(source, /tripRouteDisplayEndpoints\(trip\)/);
   assert.match(source, /overviewStopImage\(trip, stop, new Set\(failures\)\)/);
-  assert.match(source, /resolveRoutePhotoCandidates\(imageResolutionCandidates/);
+  assert.match(source, /resolveDistinctRoutePhotoCandidates\(imageResolutionCandidates/);
   assert.match(source, /const imageCacheKeysByOccurrence = useMemo/);
   assert.match(source, /canonicalPlacePhotoCacheKey\(\{/);
   assert.doesNotMatch(source, /\/api\/journey-place\?/);

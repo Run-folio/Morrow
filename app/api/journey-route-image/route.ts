@@ -75,7 +75,7 @@ export async function GET(request: NextRequest) {
   const lon = request.nextUrl.searchParams.get("lon"), lat = request.nextUrl.searchParams.get("lat");
   if ((placeName !== undefined || country !== undefined) && (!placeName || placeName.length > 140 || !country || country.length > 100 || (region && region.length > 100) || (placeType && placeType.length > 40) || ((lon !== null || lat !== null) && (lon === null || lat === null || !lon.trim() || !lat.trim() || !Number.isFinite(Number(lon)) || !Number.isFinite(Number(lat)) || Math.abs(Number(lon)) > 180 || Math.abs(Number(lat)) > 90)))) return NextResponse.json({ image: null, reason: "invalid-place" }, { status: 400, headers: { "Cache-Control": "no-store" } });
   const place = placeName && country ? { name: placeName, country, ...(region ? { region } : {}), ...(placeType ? { placeType } : {}), ...(lon !== null && lat !== null ? { coordinates: [Number(lon), Number(lat)] as [number, number] } : {}) } : undefined;
-  const excludedSources = request.nextUrl.searchParams.getAll("exclude").filter(src => src.length <= 2048).slice(0, 3);
+  const excludedSources = request.nextUrl.searchParams.getAll("exclude").filter(src => src.length <= 2048).slice(0, 18);
   const wikimedia = place ? await lookupWikimediaDestinationPhotos(place, { excludedSources }) : null;
   if (wikimedia?.status === "resolved") return NextResponse.json({ image: wikimedia.candidates[0], candidates: wikimedia.candidates, configured: true }, { headers: { "Cache-Control": "no-store" } });
   const accessKey = process.env.UNSPLASH_ACCESS_KEY?.trim();
@@ -112,7 +112,7 @@ export async function GET(request: NextRequest) {
       const src = photo.urls?.regular;
       const sourceUrl = withUnsplashReferral(photo.user?.links?.html);
       if (!photo.id || !src || !sourceUrl || !photo.user?.name) return [];
-      if (excludedSources.includes(src)) return [];
+      if (excludedSources.includes(src) || excludedSources.includes(`unsplash:${photo.id}`)) return [];
       if (place && !scorePublishedRouteImageCandidate({ key: "destination", ...place, coordinates: place.coordinates ?? [0, 0], routeKeys: [], siblingNames: [], attachedLandmarks: [] }, { provider: "unsplash", id: photo.id, src, sourceUrl, author: photo.user.name, license: "Unsplash License", licenseUrl: "https://unsplash.com/license", width: photo.width ?? 0, height: photo.height ?? 0, alt: photo.alt_description, description: photo.description, location: photo.location, tags: photo.tags?.flatMap(tag => tag.title ? [tag.title] : []) }).accepted) return [];
       return [{
         id: photo.id,

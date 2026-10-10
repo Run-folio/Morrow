@@ -11,7 +11,7 @@ import {
   type PlaceType,
   type PlanningParentConstraint,
 } from "@/lib/easyt/place-intelligence";
-import { placeAutocompleteKeyAction, prioritizeRouteStopSuggestions, mergeEquivalentPlaceSuggestions, placeSuggestionLocationDetail } from "@/lib/easyt/place-autocomplete";
+import { placeAutocompleteKeyAction, prioritizeRouteStopSuggestions, mergeEquivalentPlaceSuggestions, placeSuggestionLocationDetail, placeSuggestionMapUrl } from "@/lib/easyt/place-autocomplete";
 import { createAbortableEffectScope } from "@/lib/easyt/abortable-effect";
 import {referenceKnownCodeKind,referenceGeographicAcceptanceMatches} from '@/lib/easyt/place-reference';
 import type { EasyTLanguage } from "@/lib/easyt/i18n";
@@ -103,6 +103,7 @@ export function CanonicalPlaceAutocomplete({
   const [providerFailed, setProviderFailed] = useState(false);
   const [retryNonce, setRetryNonce] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
+  const rootRef = useRef<HTMLDivElement>(null);
   const allowedTypeKey = (allowedPlaceTypes ?? []).join("|");
   const parentConstraintKey = JSON.stringify(parentConstraint ?? null);
   const nearbyAnchorKey = JSON.stringify(nearbyAnchor ?? null);
@@ -257,8 +258,18 @@ export function CanonicalPlaceAutocomplete({
     inputRef.current?.focus();
     setOpen(true);
   }, [revealSuggestionsKey]);
+  const mapChoice = activeIndex >= 0 ? suggestions[activeIndex] : suggestions.find(suggestion => placeSuggestionMapUrl(suggestion,suggestions));
+  const mapHref = mapChoice ? placeSuggestionMapUrl(mapChoice,suggestions) : null;
 
-  return <div className={`${styles.root} ${onClear && value ? styles.hasClear : ""}`}>
+  return <div ref={rootRef} className={`${styles.root} ${onClear && value ? styles.hasClear : ""}`}
+    onBlur={(event) => {
+      if (event.currentTarget.contains(event.relatedTarget)) return;
+      window.setTimeout(() => {
+        if (rootRef.current?.contains(document.activeElement)) return;
+        setOpen(false);
+        if (submitFreeTextOnBlur) onSubmitFreeText?.();
+      }, 100);
+    }}>
     {/* morrovia-ui-audit-allow-next-line native-control -- The shared ARIA combobox owns active-descendant, listbox and free-text keyboard behaviour that EasyTField does not expose. */}
     <input
       ref={inputRef}
@@ -276,11 +287,6 @@ export function CanonicalPlaceAutocomplete({
       aria-invalid={invalid || undefined}
       aria-describedby={describedBy}
       onFocus={() => setOpen(true)}
-      onBlur={() => window.setTimeout(() => {
-        if (document.activeElement === inputRef.current) return;
-        setOpen(false);
-        if (submitFreeTextOnBlur) onSubmitFreeText?.();
-      }, 100)}
       onChange={(event) => { onChange(event.target.value); setOpen(true); setActiveIndex(-1); }}
       onKeyDown={(event) => {
         const result = placeAutocompleteKeyAction(event.key, activeIndex, suggestions.length);
@@ -301,7 +307,8 @@ export function CanonicalPlaceAutocomplete({
       onMouseDown={(event) => event.preventDefault()}
       onClick={() => { onClear(); setOpen(false); setActiveIndex(-1); }}
     >{clearLabel ?? `Clear ${label}`}</EasyTButton> : null}
-    {open && value.trim().length >= 2 ? <div id={listId} role="listbox" className={`${styles.menu} ${menuPlacement === "inline" ? styles.menuInline : ""}`}>
+    {open && value.trim().length >= 2 ? <div className={`${styles.menu} ${menuPlacement === "inline" ? styles.menuInline : ""}`}>
+      <div id={listId} role="listbox" className={styles.optionsList}>
       {searching && !suggestions.length ? <p role="status">{language === "es" ? "Buscando lugares…" : "Searching places…"}</p> : suggestions.length ? suggestions.map((suggestion, index) => (
         /* morrovia-ui-audit-allow-next-line native-control -- Listbox options require role=option and aria-selected semantics rather than the standard action-button contract. */
         <button
@@ -314,6 +321,8 @@ export function CanonicalPlaceAutocomplete({
         onMouseDown={(event) => event.preventDefault()}
         onClick={() => choose(suggestion)}
       ><MapPin aria-hidden="true" /><span><b>{suggestion.name}</b><small>{[placeSuggestionLocationDetail(suggestion,suggestions),showPlaceType ? placeTypeLabel(suggestion.placeType,language):null].filter(Boolean).join(' · ')}</small>{suggestion.scheduledService===false ? <small>{language==="es"?"No consta servicio regular de pasajeros":"No scheduled passenger service recorded"}</small>:null}</span></button>)) : providerFailed ? <div className={styles.failure} role="alert"><p>{resolvedFailureMessage}</p><EasyTButton variant="secondary" size="small" onMouseDown={(event) => event.preventDefault()} onClick={() => setRetryNonce((current) => current + 1)}>{language === "es" ? "Reintentar" : "Retry"}</EasyTButton></div> : <p role="status">{resolvedEmptyMessage}</p>}
+      </div>
+      {mapChoice && mapHref ? <a className={styles.mapChoice} href={mapHref} target="_blank" rel="noopener noreferrer" aria-label={`${language === "es" ? "Ver en mapa" : "View on map"}: ${mapChoice.name}, ${placeSuggestionLocationDetail(mapChoice,suggestions)}`}>{language === "es" ? `Ver ${placeSuggestionLocationDetail(mapChoice,suggestions)} en el mapa` : `View ${placeSuggestionLocationDetail(mapChoice,suggestions)} on map`}</a> : null}
       <MorroviaPlaceDataCredit language={language} sources={[
         ...(suggestions.some(s=>s.provenance.some(p=>p.id.startsWith('reference:geonames:')))?['geonames' as const]:[]),
         ...(suggestions.some(s=>s.provenance.some(p=>p.id.startsWith('reference:ourairports:')))?['ourairports' as const]:[]),

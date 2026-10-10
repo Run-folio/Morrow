@@ -9,6 +9,7 @@ import {
 import { estimateTransferImpact } from "./transfer-impact.ts";
 import type { EasyTTrip, RoadEstimateReference, TripLeg } from "./trip.ts";
 import { findCatalogPlaceById, matchCatalogPlace } from "./place-catalog.ts";
+import { landConnectionEvidence } from "./land-connection.ts";
 
 export type RoadFallbackSkipReason =
   | "already_resolved"
@@ -85,6 +86,7 @@ export function directRoadPlausibilityConflict(leg: TripLeg): RoadFallbackSkipRe
   if (!from || !to) return null;
   if (endpointRequiresNonRoadCrossing(from) || endpointRequiresNonRoadCrossing(to)) return "land_separation";
   if (!validCoordinates(from.coordinates) || !validCoordinates(to.coordinates)) return null;
+  if (landConnectionEvidence(from.coordinates, to.coordinates) === "separate-land") return "land_separation";
   const straightLineDistanceKm = haversineKm(from.coordinates, to.coordinates);
   if (straightLineDistanceKm !== null && straightLineDistanceKm > MAX_STRAIGHT_LINE_ROAD_KM) return "distance_out_of_scope";
   if (straightLineDistanceKm !== null
@@ -137,6 +139,9 @@ export async function resolveCanonicalRoadFallback(
   // a generic car profile. Without explicit ferry/multimodal evidence that is
   // not enough to tell travellers an island crossing is a direct road leg.
   if (directRoadPlausibilityConflict(leg) === "land_separation") {
+    return { leg, outcome: "unchanged", reason: "land_separation" };
+  }
+  if (landConnectionEvidence(from.coordinates, to.coordinates) !== "same-land") {
     return { leg, outcome: "unchanged", reason: "land_separation" };
   }
   const straightLineDistanceKm = haversineKm(from.coordinates, to.coordinates);

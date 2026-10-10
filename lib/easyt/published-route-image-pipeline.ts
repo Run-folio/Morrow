@@ -96,6 +96,8 @@ export function scorePublishedRouteImageCandidate(stop: PublishedRouteImageStop,
   const sibling = stop.siblingNames.find((name) => normalizeImageGeography(name) !== normalizeImageGeography(stop.name) && mentions(text, name));
   const nonPhotographic = /\b(map|diagram|screenshot|logo|graphic|illustration|video|webm|svg|tiff|painting|drawing|engraving|watercolor|artwork|postcard)\b/.test(`${text} ${normalizeImageGeography(candidate.id)} ${normalizeImageGeography(candidate.sourceUrl)}`);
   const incidentalSubject = /\b(portrait|close up|selfie|bikini|animal|bird|curassow|tanager|heron|dog|cat|cow|cattle|artifact|sarcophagus|wheel hub|ski jumping|seller)\b/.test(text);
+  const transitSubject = /\b(ferry|ship|vessel|boat|bus|aircraft|airplane|plane|train|cruise ship)\b/.test(text)
+    && /\b(from|to|between|aboard|on board)\b/.test(text);
   const editorialSubject = /\b(city|town|village|street|square|architecture|palace|temple|church|cathedral|mosque|skyline|landscape|mountain|coast|beach|lake|waterfront|harbour|harbor|river|bridge|historic|panorama|view|plaza|agora|old town|waterfall|volcano|desert|island|bay|garden|park)\b/.test(text);
   const landscape = candidate.width > candidate.height;
 
@@ -117,6 +119,7 @@ export function scorePublishedRouteImageCandidate(stop: PublishedRouteImageStop,
   if (sibling && !exactPlace) { score -= 100; concerns.push(`different route stop named: ${sibling}`); }
   if (nonPhotographic) { score -= 100; concerns.push("non-photographic subject metadata"); }
   if (incidentalSubject) { score -= 50; concerns.push("metadata centres an incidental subject rather than the destination"); }
+  if (transitSubject) { score -= 50; concerns.push("metadata centres a transit vehicle rather than the destination"); }
 
   const bounded = Math.max(0, Math.min(100, score));
   return { score: bounded, accepted: bounded >= 80 && concerns.length === 0, evidence, concerns };

@@ -40,6 +40,18 @@ test("Commons search rank decides the first accepted photo, not numeric page IDs
   const result = await lookupWikimediaDestinationPhotos(place, { fetcher: fetcher([lower, higher]) });
   assert.deepEqual(result.candidates.map(photo => photo.id), [higher.title, lower.title]);
 });
+test('a route transit ferry does not stop the scenic follow-up search',async()=>{
+ const manila={name:'Manila',country:'Philippines',placeType:'city',coordinates:[120.9842,14.5995] as [number,number]};
+ const ferry={...page({extmetadata:{...page().imageinfo[0]!.extmetadata,ImageDescription:{value:'Philippines 1981, ferry from Cebu City to Manila harbour'},GPSLongitude:{value:'120.9842'},GPSLatitude:{value:'14.5995'}}}),title:'File:Philippines-1981-44 hg.jpg'};
+ const skyline={...page({extmetadata:{...page().imageinfo[0]!.extmetadata,ImageDescription:{value:'Manila Philippines city skyline'},GPSLongitude:{value:'120.9842'},GPSLatitude:{value:'14.5995'}}}),title:'File:Manila city skyline.jpg'};
+ const queries:string[]=[];
+ const result=await lookupWikimediaDestinationPhotos(manila,{fetcher:async url=>{
+  const query=new URL(String(url)).searchParams.get('gsrsearch')??'';queries.push(query);
+  return Response.json({query:{pages:{'1':query.includes('skyline')?skyline:ferry}}});
+ }});
+ assert.equal(queries.length,2);
+ assert.equal(result.candidates[0]?.id,skyline.title);
+});
 test("a broad country miss retries one region-aware photo query without weakening geography", async () => {
   const denver = { name: "Denver", country: "United States", region: "Colorado", placeType: "city", coordinates: [-104.9903, 39.7392] as [number, number] };
   const photo = { ...page({

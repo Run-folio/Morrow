@@ -37,6 +37,7 @@ import {
   fixedGatewayCountryContinuityProofs,
 } from "./route-country-continuity.ts";
 import { canonicalPlaceFactsMatch } from "./place-intelligence.ts";
+import { landConnectionEvidence } from "./land-connection.ts";
 import type { FixedCommitmentConstraint } from "./fixed-commitment.ts";
 
 export type PlannerPlace = {
@@ -422,6 +423,13 @@ export function estimateLegForConstraints(
       estimated.distanceKm,
       "Curated endpoint facts make a generic road-only connection unsupported, but they do not establish a direct ferry service.",
     );
+  }
+  const genericLandTransfer = estimated.note === "Local transfer estimate; verify the route from your accommodation."
+    || estimated.note === "A planning estimate; compare rail and road schedules before booking.";
+  if (genericLandTransfer && (estimated.mode === "road" || estimated.mode === "train") && from.coordinates && to.coordinates
+    && landConnectionEvidence(from.coordinates, to.coordinates) !== "same-land") {
+    return unknownTransportLeg(from, to, estimated.distanceKm,
+      "A continuous land connection is not established for this pair; a generic road or rail transfer is unsupported.");
   }
   return estimated;
 }

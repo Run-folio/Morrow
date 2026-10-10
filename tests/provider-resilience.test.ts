@@ -72,7 +72,7 @@ test("changing client queries cancel or retire stale responses and retry preserv
   assert.match(refinement, /return \(\) => \{ active = false; controller\.abort\(\); \}/);
   assert.match(itinerary, /scope\.commit\(\(\) =>/);
   assert.match(itinerary, /scope\.isCancellation\(caught\)/);
-  assert.match(overview, /resolveRoutePhotoCandidates\(imageResolutionCandidates/);
+  assert.match(overview, /resolveDistinctRoutePhotoCandidates\(imageResolutionCandidates/);
   assert.match(overview, /return \(\) => controller\.abort\(\)/);
   assert.match(map, /if \(!active\) return;[\s\S]*setPlaceMedia/);
 });

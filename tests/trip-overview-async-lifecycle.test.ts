@@ -52,13 +52,14 @@ test("a genuine provider failure is not classified as cancellation and can selec
 
 test("Overview effects use semantic dependencies and abort stale shared-cache resolution", () => {
   const source = readFileSync("components/easyt/trip-overview-workspace.tsx", "utf8");
-  assert.match(source, /resolveRoutePhotoCandidates\(imageResolutionCandidates/);
-  assert.match(source, /\{ signal: controller\.signal \}/);
-  assert.match(source, /if \(!next\[candidate\.cacheKey\]\)/);
+  assert.match(source, /resolveDistinctRoutePhotoCandidates\(imageResolutionCandidates/);
+  assert.match(source, /\{ signal: controller\.signal, reservedSources:/);
+  assert.match(source, /if \(!resolvedImagesRef\.current\[candidate\.cacheKey\]\)/);
+  assert.match(source, /Object\.entries\(resolvedImagesRef\.current\)\.filter\(\(\[key\]\) => Object\.values\(imageCacheKeysByOccurrence\)\.includes\(key\)\)/);
   assert.match(source, /resolvedPlaceImages\[imageCacheKeysByOccurrence\[stop\.id\]\]/);
   assert.doesNotMatch(source, /representativeStay|setRepresentativeStay/);
   assert.match(source, /return \(\) => controller\.abort\(\)/);
-  assert.match(source, /\}, \[imageResolutionCandidates, initialPlaceImages\]\);/);
+  assert.match(source, /\}, \[imageResolutionCandidates, initialPlaceImages, imageCacheKeysByOccurrence\]\);/);
 });
 
 test("each Map owner removes only its captured instance and ignores stale lifecycle callbacks", () => {

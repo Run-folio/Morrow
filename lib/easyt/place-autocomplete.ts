@@ -1,5 +1,12 @@
 import { findCatalogPlaceById, normalizeCatalogPhrase } from "./place-catalog.ts";
 
+// Reviewed equivalence: the catalog point and GeoNames settlement describe
+// Manila city centre at different survey precision. Never infer this from
+// name or proximity for arbitrary settlements.
+const reviewedCrossSourceIdentities: Readonly<Record<string,string>> = {
+  manila: 'reference:geonames:1701668',
+};
+
 export type PlaceAutocompleteKeyResult = {
   activeIndex: number;
   choose: boolean;
@@ -22,6 +29,11 @@ export function mergeEquivalentPlaceSuggestions<T extends SuggestionLocation>(su
    ? findCatalogPlaceById(item.canonicalPlaceId) : undefined;
  const equivalent=(legacy:T,reference:T)=>{
   const entry=authored(legacy);
+  if(entry && reviewedCrossSourceIdentities[entry.canonicalPlaceId]===reference.canonicalPlaceId
+    && entry.placeType===reference.placeType && legacy.placeType===reference.placeType
+    && entry.canonicalName===reference.name && legacy.name===reference.name
+    && entry.parentCountries.length===1 && entry.parentCountries[0]===reference.country && legacy.country===reference.country)
+    return true;
   if(!entry?.coordinates||!reference.canonicalPlaceId?.startsWith('reference:geonames:')||!reference.coordinates
     ||!['city','town'].includes(entry.placeType)||entry.placeType!==reference.placeType||entry.placeType!==legacy.placeType||entry.parentCountries.length!==1
     ||entry.parentCountries[0]!==reference.country||legacy.country!==reference.country
@@ -43,12 +55,19 @@ export function placeSuggestionLocationDetail(item:SuggestionLocation, suggestio
  const nameKey=(name:string)=>normalizeCatalogPhrase(name.normalize('NFKD').replace(/['’]/g,''));
  const sameLabel=suggestions.filter(other=>nameKey(other.name)===nameKey(item.name)
    && other.country===item.country&&other.region===item.region&&other.placeType===item.placeType);
- // The installed settlement extract has no administrative-region names.
- // Use its real point to distinguish unresolved same-country namesakes;
- // never invent a province or collapse their separate identities.
- const point=sameLabel.length>1&&item.coordinates?.length===2
-   ? `${Math.abs(item.coordinates[1]).toFixed(5)}° ${item.coordinates[1]<0?'S':'N'}, ${Math.abs(item.coordinates[0]).toFixed(5)}° ${item.coordinates[0]<0?'W':'E'}` : undefined;
- return [item.region,item.country,point].filter(Boolean).join(' · ');
+ // When the source has no verified administrative area, number the choices
+ // and expose their real map points separately. Coordinates are not a useful
+ // place label for a traveller.
+ const context=sameLabel.length>1 ? `Location ${sameLabel.findIndex(other=>other===item)+1} of ${sameLabel.length}` : undefined;
+ return [item.region,item.country,context].filter(Boolean).join(' · ');
+}
+
+export function placeSuggestionMapUrl(item:SuggestionLocation, suggestions:readonly SuggestionLocation[]) {
+ const duplicates=suggestions.filter(other=>normalizeCatalogPhrase(other.name)===normalizeCatalogPhrase(item.name)
+   && other.country===item.country&&other.region===item.region&&other.placeType===item.placeType);
+ if(duplicates.length<2 || !item.coordinates || !Number.isFinite(item.coordinates[0]) || !Number.isFinite(item.coordinates[1]))return null;
+ const [lon,lat]=item.coordinates;
+ return `https://www.openstreetmap.org/?mlat=${encodeURIComponent(String(lat))}&mlon=${encodeURIComponent(String(lon))}#map=12/${encodeURIComponent(String(lat))}/${encodeURIComponent(String(lon))}`;
 }
 
 /** Keep the provider's relevance order, but make an exact same-name route

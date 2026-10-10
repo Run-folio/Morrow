@@ -16,7 +16,7 @@ const stop = (
   longitude: number,
   country = "Testland",
   name = id,
-): PlannerStop => ({ id, name, country, coordinates: [longitude, 0] });
+): PlannerStop => ({ id, name, country, coordinates: [longitude + 12.5, 42.5] });
 
 test("hard no-driving prevents a heuristic road leg before scoring", () => {
   const from = stop("a", 0);

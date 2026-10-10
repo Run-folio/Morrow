@@ -27,3 +27,9 @@ export const SameCountryNamesakes:Story={args:{value:'Xi’an',label:'Destinatio
  return ()=>{globalThis.fetch=original;};
 }};
 export const SameCountryNamesakesMobile:Story={...SameCountryNamesakes,globals:{viewport:{value:'morrovia390',isRotated:false}}};
+export const VerifiedCityIdentity:Story={args:{value:'Manila',label:'Destination'},beforeEach:async()=>{
+ const original=globalThis.fetch;
+ const candidate={canonicalPlaceId:'reference:geonames:1701668',providerId:`reference:geonames:1701668@${REFERENCE_SNAPSHOT_ID}:PH:city:120.9822:14.6042`,referenceSnapshotId:REFERENCE_SNAPSHOT_ID,name:'Manila',country:'Philippines',placeType:'city',routability:'direct_destination',coordinates:[120.9822,14.6042]};
+ globalThis.fetch=(async(input,init)=>String(input).startsWith('/api/journey-geocode?')?new Response(JSON.stringify({candidates:[candidate]})):original(input,init)) as typeof fetch;
+ return ()=>{globalThis.fetch=original;};
+}};
