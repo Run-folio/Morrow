@@ -36,3 +36,4 @@
 - The requested Ketapang–Gilimanuk and Copenhagen–Malmö source-backed crossing fixtures are not present. The existing Coron–Cuyo, Denpasar–Surabaya and Rome–Venice guards pass, but do not establish the missing crossing evidence.
 - The benchmark baseline failures mean broad transport acceptance is not complete. Independent source and product review should decide which frozen cases require bounded evidence versus explicit unknown states.
 - Hosted verification and Shaun’s acceptance must use one exact reviewed candidate before any main or production action. No deployment is authorized by this checkpoint.
+- During shutdown, the local Next server logged repeated `Could not find the module .../transport/page.tsx#default in the React Client Manifest` errors. The transport browser suite mounts its fixture directly, so its nine passes do not resolve this route-level runtime error. Investigate on the exact candidate before hosted acceptance.
