@@ -5523,7 +5523,7 @@ function TripBuilderDocument() {
                     <label className={styles.stopEditorLabel} htmlFor={stopInputId}>{copy.addStop}</label>
                     <CanonicalPlaceAutocomplete
                       id={stopInputId}
-                      requireCoordinates
+                      includeNonRoutable
                       label={copy.addStop}
                       value={stopInput}
                       placeholder={copy.destinationPlaceholder}
