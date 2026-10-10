@@ -125,6 +125,12 @@ test("sign-in recovery returns to the exact planner document and requests one re
   assert.equal(tripSyncSignInPath(id), `/journey/login?next=${encodeURIComponent(target)}`);
 });
 
+test("modern recovery selects Builder while legacy recovery retains its planner context", () => {
+  const id = "trip-recovery with spaces";
+  assert.equal(tripSyncRecoveryPath(id, "builder"), "/journey/new?trip=trip-recovery%20with%20spaces&recover=1");
+  assert.equal(tripSyncRecoveryPath(id, "planner"), "/journey/plan?trip=trip-recovery%20with%20spaces&save=1&recover=1");
+});
+
 test("the trip workspace waits for authenticated saved intent, then uses the recovery-aware persistence path", () => {
   const resolver = readFileSync(new URL("../components/easyt/trip-shell-resolver.tsx", import.meta.url), "utf8");
   assert.match(
@@ -135,4 +141,5 @@ test("the trip workspace waits for authenticated saved intent, then uses the rec
   assert.match(resolver, /saveTripRecoveryToEasyT\(localTrip, recovery\)/);
   assert.doesNotMatch(resolver, /promoteTripToEasyT\(localTrip\)/);
   assert.doesNotMatch(resolver, /setTimeout\(/, "auth readiness must be state-driven, not delay-driven");
+  assert.match(resolver, /href=\{tripSyncRecoveryPath\(tripId, "builder"\)\}>Open device copy/);
 });

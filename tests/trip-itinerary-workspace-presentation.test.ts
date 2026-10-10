@@ -115,7 +115,7 @@ test("Map attraction Add schedules the canonical activity instead of only toggli
 test("device-copy recovery is calm, explicit, and links to the protected review path", () => {
   assert.match(itinerary, /You have newer changes on this device/);
   assert.match(itinerary, /Both versions remain protected while you review the device changes/);
-  assert.match(itinerary, /tripSyncRecoveryPath\(workingTrip\.id\)/);
+  assert.match(itinerary, /tripSyncRecoveryPath\(workingTrip\.id, "builder"\)/);
   assert.match(itinerary, />Review device changes<\/EasyTLinkButton>/);
 });
 

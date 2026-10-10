@@ -78,10 +78,10 @@ export function conflictHasCloudCopy(reason: TripSaveConflictReason | "cloud-new
 }
 
 /** Shared conflict actions keep the cloud and device destinations distinct. */
-export function tripConflictResolutionActions(tripId: string) {
+export function tripConflictResolutionActions(tripId: string, context: "planner" | "builder" = "planner") {
   return {
     cloudHref: `/journey/${encodeURIComponent(tripId)}`,
-    deviceHref: tripSyncRecoveryPath(tripId),
+    deviceHref: tripSyncRecoveryPath(tripId, context),
     openCloudLabel: "Open cloud copy",
     openDeviceLabel: "Open device copy",
     discardDeviceLabel: "Discard device copy",

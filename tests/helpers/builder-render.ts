@@ -19,7 +19,7 @@ async function builderBundle() {
     stdin: {
       contents: `import React from 'react'; import {createRoot} from 'react-dom/client'; import Builder from './app/journey/new/trip-builder'; import Importer from './app/journey/new/import/spreadsheet-import-client'; import Overview from './components/easyt/trip-overview-workspace'; import Transport from './components/easyt/trip-transport-workspace'; import Itinerary from './components/easyt/trip-itinerary-workspace'; import {loadLocalTripFromStorage} from './lib/easyt/storage'; import TripShell from './components/easyt/trip-shell'; import {useTripShellTrip} from './components/easyt/trip-shell-client';
       function WorkspaceFromShell(){const trip=useTripShellTrip();return location.pathname.endsWith('/transport')?React.createElement(Transport,{trip}):location.pathname.endsWith('/itinerary')?React.createElement(Itinerary,{trip}):React.createElement(Overview,{trip,initialPrepActions:[],initialPrepReadinessCards:[],initialPrepProviderStatus:'available'});}
-      function App(){if(location.pathname.endsWith('/import'))return React.createElement(Importer);if(location.pathname!=='/journey/new'){const tripId=decodeURIComponent(location.pathname.split('/')[2]??'');const trip=loadLocalTripFromStorage(localStorage,tripId,window.__BUILDER_TEST_OWNER__??null);return trip?React.createElement(TripShell,{trip,cacheTrip:false,orientationAutoStart:false},React.createElement(WorkspaceFromShell)):React.createElement('p',null,'Trip unavailable');}return React.createElement(Builder);}
+      function App(){if(location.pathname.endsWith('/import'))return React.createElement(Importer);if(location.pathname!=='/journey/new'){const tripId=decodeURIComponent(location.pathname.split('/')[2]??'');const trip=window.__BUILDER_TEST_CANONICAL_TRIP__??loadLocalTripFromStorage(localStorage,tripId,window.__BUILDER_TEST_OWNER__??null);return trip?React.createElement(TripShell,{trip,cacheTrip:Boolean(window.__BUILDER_TEST_CANONICAL_TRIP__),orientationAutoStart:false},React.createElement(WorkspaceFromShell)):React.createElement('p',null,'Trip unavailable');}return React.createElement(Builder);}
       createRoot(document.getElementById('root')).render(React.createElement(App));`,
       resolveDir: fileURLToPath(new URL("../../", import.meta.url)), loader: "tsx",
     },
@@ -61,6 +61,7 @@ export async function renderBuilder({
   ownerId,
   accountRequest,
   seedRecovery = true,
+  shellCanonicalTrip,
   discoveryRequest,
   transferRequest,
 }: {
@@ -82,6 +83,7 @@ export async function renderBuilder({
   language?: "en" | "es";
   ownerId?: string;
   seedRecovery?: boolean;
+  shellCanonicalTrip?: { id: string; ownerId: string | null } & Record<string, unknown>;
   accountRequest?: (input:{method:string;path:string;trip:unknown}) => Promise<{status:number;body:unknown}> | {status:number;body:unknown};
   transferRequest?: (input:{legs:unknown[]}) => Promise<{status:number;body:unknown}> | {status:number;body:unknown};
   discoveryRequest?: (destination:string,context:{cacheControl:string|undefined}) => Promise<{status:number;body:unknown}> | {status:number;body:unknown};
@@ -191,6 +193,7 @@ export async function renderBuilder({
     key: homepageInputStorageKey(storedInput.snapshot.ownerId), value: storedInput,
   });
   if (language) await page.addInitScript((value: "en" | "es") => localStorage.setItem("easyt-language", value), language);
+  if (shellCanonicalTrip) await page.addInitScript((value: unknown) => { (window as Window & { __BUILDER_TEST_CANONICAL_TRIP__?: unknown }).__BUILDER_TEST_CANONICAL_TRIP__ = value; }, shellCanonicalTrip);
   if (receiptLockDelayMs) await page.addInitScript((delay: number) => {
     const original = navigator.locks.request.bind(navigator.locks);
     navigator.locks.request = ((...args: Parameters<typeof original>) => {

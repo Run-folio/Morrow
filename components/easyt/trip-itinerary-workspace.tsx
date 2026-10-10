@@ -1425,7 +1425,7 @@ export default function TripItineraryWorkspace({
           title={mutation.failure === "conflict" ? "This trip changed on another device" : mutation.failure === "auth" ? "Sign in to finish saving" : mutation.failure === "recovery" ? "You have newer changes on this device" : "Couldn’t save to your account"}
           detail={mutation.error}
           safety={mutation.failure === "recovery" ? "Both versions remain protected while you review the device changes." : "The account copy was not overwritten. Any durable device edit remains in Morrovia recovery."}
-          actions={mutation.failure === "recovery" ? <EasyTLinkButton href={tripSyncRecoveryPath(workingTrip.id)} size="small" variant="secondary">Review device changes</EasyTLinkButton> : undefined}
+          actions={mutation.failure === "recovery" ? <EasyTLinkButton href={tripSyncRecoveryPath(workingTrip.id, "builder")} size="small" variant="secondary">Review device changes</EasyTLinkButton> : undefined}
         /></div> : null}
         {plannerError ? <div className={styles.recoveryFeedback}><MorroviaRecoveryFeedback
           title="Couldn’t move this activity"

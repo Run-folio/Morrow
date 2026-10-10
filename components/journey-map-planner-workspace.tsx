@@ -2327,7 +2327,7 @@ export function JourneyMapPlannerWorkspace({
 
   const openDeviceRecovery = useCallback(() => {
     if (!customTrip) return;
-    router.push(tripSyncRecoveryPath(customTrip.id));
+    router.push(tripSyncRecoveryPath(customTrip.id, "builder"));
   }, [customTrip, router]);
   const syncAction = tripEditorSyncAction({
     hasCloudConflict: Boolean(cloudConflictTrip),
