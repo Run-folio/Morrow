@@ -1,4 +1,5 @@
 import {searchReferencePlaces,referenceSnapshotId} from './place-reference.server.ts';
+import { searchBundledIslandIdentityCandidates } from './island-geography.server.ts';
 import { searchPhotonTravelCandidates } from "./photon-place.server.ts";
 import { searchOpenStreetMapNearbySettlements } from "./openstreetmap-nearby-place.server.ts";
 import { resolvePlaceDisplayName } from "./place-display-name.ts";
@@ -258,8 +259,11 @@ export function createOpenWorldPlaceProvider(options: {
     timeoutMs: 4_500,
     async lookup(phrase, context) {
       const request = providerLookupRequest(phrase, context);
-      const local=options.sources?[]:searchReferencePlaces(request.phrase,request.context);
-      if(!options.sources&&(options.searchMode==='reference-only'||local.some(c=>c.matchQuality==='exact')))return local;
+      const reference=options.sources?[]:searchReferencePlaces(request.phrase,request.context);
+      const islandIdentities=options.sources?[]:searchBundledIslandIdentityCandidates(request.phrase, request.context.explicitCountryNames ?? [], request.context.explicitPlaceTypes ?? []);
+      const local=[...reference,...islandIdentities];
+      if(!options.sources&&(options.searchMode==='reference-only'||local.some(c=>c.matchQuality==='exact')))
+        return islandIdentities.length ? rankCanonicalCandidates(local, request.context) : local;
       const key = (options.sources?'':referenceSnapshotId()+':') + cacheKey(phrase, request.context);
       const cached = cache.get(key);
       if (cached?.expiresAt && cached.expiresAt > Date.now()) {

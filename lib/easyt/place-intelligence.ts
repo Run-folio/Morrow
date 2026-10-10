@@ -2580,6 +2580,12 @@ function decisiveProviderCandidate(
     && ((candidate as PlaceResolutionCandidate & { matchQuality?: PlaceProviderCandidate["matchQuality"] }).matchQuality ?? "exact") === "exact"
     && ((candidate as PlaceResolutionCandidate & { rankScore?: number }).rankScore ?? 0) >= 120);
   const exactCountriesOrContinents = recognizedExactGeographies.filter((candidate) => candidate.placeType === "country" || candidate.placeType === "continent");
+  // A literal island identity and a same-name settlement in another country
+  // describe different trips. Route-stop wording alone cannot choose one.
+  const crossCountryIslandNamesake = exactBroadGeographies.some((geography) => geography.placeType === "island"
+    && exactSameNameRoutes.some((route) => !route.parentCountries.some((country) => geography.parentCountries
+      .some((parentCountry) => normalizePlacePhrase(parentCountry) === normalizePlacePhrase(country)))));
+  if (crossCountryIslandNamesake) return undefined;
   // For an unqualified route stop, one strong exact city is better evidence
   // than its same-name first-order administrative parent. Explicit geographic
   // wording still selects the broader entity, and sovereign names retain the

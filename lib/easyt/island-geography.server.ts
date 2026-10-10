@@ -1,10 +1,11 @@
 import acceptedManifest from '../../data/place-reference/islands/manifest.json' with { type: 'json' };
+import bundledIndex from '../../data/place-reference/islands/index.json' with { type: 'json' };
 import { readFileSync, statSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { gunzipSync } from 'node:zlib';
 import { coveredIslandParent, type IslandGeographyIndex, type IslandGroupIndexEntry } from './island-geography.ts';
 import { islandDigest, compileIslandSource, validateIslandGroup, type IslandSourceRecord, type IslandGroupSource, type CompiledIslandSource } from './island-geography-source.ts';
-import { physicalContains, validIslandPoint } from './physical-island-geometry.ts';
+import { normalizeIslandName, physicalContains, validIslandPoint } from './physical-island-geometry.ts';
 import { isOvernightBaseEligible, type PlaceProviderCandidate, type PlanningParentConstraint } from './place-intelligence.ts';
 import { countryCodeFor } from './country-registry.ts';
 import { referenceSnapshotId } from './place-reference.server.ts';
@@ -67,6 +68,49 @@ export function createIslandGeographyReader(root = resolve(process.cwd(), 'data/
     const value = { source, compiled }; records.set(id, value); return value;
   }
   return {
+    identities(phrase: string, explicitCountries: string[] = [], explicitPlaceTypes: string[] = []): PlaceProviderCandidate[] {
+      const normalized = normalizeIslandName(phrase);
+      const known = [...bundledIndex.islands, ...bundledIndex.groups];
+      if (!normalized || !known.some(entry => entry.aliases.some(alias => normalizeIslandName(alias) === normalized))) return [];
+      const allowed = explicitCountries.map(countryCodeFor).filter((code): code is string => Boolean(code));
+      if (explicitCountries.length > 0 && allowed.length === 0) return [];
+      const acceptedEntries = [...loadIndex().islands, ...loadIndex().groups]
+        .filter(entry => entry.aliases.some(alias => normalizeIslandName(alias) === normalized)
+          && (explicitCountries.length === 0 || allowed.includes(entry.countryCode))
+          && (explicitPlaceTypes.length === 0 || explicitPlaceTypes.includes('memberIslandIds' in entry ? 'archipelago' : 'island')));
+      return acceptedEntries.map(entry => {
+        const isGroup = 'memberIslandIds' in entry;
+        let identityPoint: [number, number]; let state: string | undefined; let checkedAt: string; let country: string;
+        if (isGroup) {
+          groups ??= read('groups.json.gz') as IslandGroupSource[];
+          const group = groups.find(candidate => candidate.id === entry.id);
+          if (!group) throw new Error('Covered island group is missing');
+          group.memberIslandIds.forEach(record);
+          const identity = validateIslandGroup(group, records);
+          if (identity.id !== entry.identityId || JSON.stringify(group.memberIslandIds) !== JSON.stringify(entry.memberIslandIds)) throw new Error('Island group/index mismatch');
+          identityPoint = identity.point; state = identity.state; checkedAt = group.checkedAt; country = group.country;
+        } else {
+          const member = record(entry.id);
+          identityPoint = member.compiled.identityPoint; state = member.compiled.state;
+          checkedAt = member.source.identity.checkedAt; country = member.source.country;
+        }
+        return {
+          providerId: `island-snapshot:${entry.identityId}`,
+          canonicalName: entry.name,
+          aliases: entry.aliases,
+          placeType: isGroup ? 'archipelago' : 'island',
+          parentCountries: [country],
+          parentRegionId: state,
+          coordinates: identityPoint,
+          routability: 'needs_base_selection',
+          matchQuality: 'exact',
+          rankScore: 1000,
+          providerSourceId: 'island-snapshot',
+          providerSourceLabel: 'Captured island identity',
+          normalizationReason: `Source-backed ${isGroup ? 'partial archipelago' : 'island'} identity; snapshot=${manifest!.snapshotId}; checked=${checkedAt.slice(0, 10)}; overnight base still needs physical verification`,
+        };
+      });
+    },
     normalize(candidates: PlaceProviderCandidate[], parent: PlanningParentConstraint): PlaceProviderCandidate[] | undefined {
       if (!coveredIslandParent(parent)) return undefined;
       const entry = coveredIslandParent(parent, loadIndex()); if (!entry) return undefined;
@@ -99,3 +143,4 @@ export function createIslandGeographyReader(root = resolve(process.cwd(), 'data/
 
 const accepted = createIslandGeographyReader();
 export const normalizeBundledIslandCandidates = (candidates: PlaceProviderCandidate[], parent: PlanningParentConstraint) => accepted.normalize(candidates, parent);
+export const searchBundledIslandIdentityCandidates = (phrase: string, explicitCountries: string[] = [], explicitPlaceTypes: string[] = []) => accepted.identities(phrase, explicitCountries, explicitPlaceTypes);

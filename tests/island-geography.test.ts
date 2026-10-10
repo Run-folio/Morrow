@@ -14,6 +14,8 @@ import { buildIslandGeography } from '../scripts/build-island-geography.ts';
 import { requiresPhysicalIslandVerification } from '../lib/easyt/island-geography.ts';
 import { islandDigest } from '../lib/easyt/island-geography-source.ts';
 import { verifyPhysicalIslandSuggestion } from '../lib/easyt/destination-resolution.ts';
+import { createOpenWorldPlaceProvider } from '../lib/easyt/open-world-place.server.ts';
+import { captureJourneyBriefWithProvider } from '../lib/easyt/journey-capture.ts';
 
 const source = (id: string): IslandSourceRecord => JSON.parse(gunzipSync(readFileSync(`data/place-reference/islands/${id}.json.gz`)).toString());
 
@@ -21,6 +23,49 @@ const offline: typeof fetch = async () => { throw new Error('Boundary provider u
 const settlement = (name: string, country: string) => searchReferencePlaces(name, { explicitCountryNames: [country] })
   .find(candidate => ['city', 'town'].includes(candidate.placeType))!;
 const island = (name: string, country: string): PlanningParentConstraint => ({ canonicalName: name, placeType: 'island', parentCountries: [country] });
+
+test('an exact covered island remains a visible Spain choice beside a same-name town abroad', async () => {
+  const provider = createOpenWorldPlaceProvider({ cache: new Map(), searchMode: 'reference-only', fetchImpl: offline });
+  const choices = await provider.lookup('Tenerife', { travelIntent: 'route-stop' });
+  assert(choices.some(candidate => candidate.canonicalName === 'Tenerife' && candidate.parentCountries?.[0] === 'Spain'
+    && candidate.placeType === 'island' && candidate.routability === 'needs_base_selection'
+    && candidate.providerId.endsWith('relation:2108882')));
+  assert(choices.some(candidate => candidate.canonicalName === 'Tenerife' && candidate.parentCountries?.[0] === 'Colombia'
+    && candidate.placeType === 'city'));
+  assert(!choices.some(candidate => candidate.placeType === 'island' && candidate.parentCountries?.[0] === 'Colombia'));
+  assert((await provider.lookup('Tenerife', { travelIntent: 'route-stop', countryNames: ['Greece'] }))
+    .some(candidate => candidate.placeType === 'island' && candidate.parentCountries?.[0] === 'Spain'));
+});
+
+test('an unqualified Tenerife trip keeps the distinct island and Colombian city ambiguous', async () => {
+  const provider = createOpenWorldPlaceProvider({ cache: new Map(), searchMode: 'reference-only', fetchImpl: offline });
+  const brief = await captureJourneyBriefWithProvider('Tenerife 7 nights.', provider);
+  assert.equal(brief.mentions[0]?.status, 'ambiguous');
+  assert.equal(brief.mentions[0]?.canonicalPlaceId, undefined);
+  assert(brief.mentions[0]?.candidates?.some(candidate => candidate.placeType === 'island' && candidate.parentCountries?.[0] === 'Spain'));
+});
+
+test('explicit Spain selects the Tenerife island while preserving the need for a real base', async () => {
+  const provider = createOpenWorldPlaceProvider({ cache: new Map(), searchMode: 'reference-only', fetchImpl: offline });
+  const brief = await captureJourneyBriefWithProvider('Tenerife, Spain for 7 nights.', provider);
+  assert.equal(brief.mentions[0]?.placeType, 'island');
+  assert.equal(brief.mentions[0]?.parentCountries[0], 'Spain');
+  assert.equal(brief.mentions[0]?.requiresBaseSelection, true);
+});
+
+test('the partially covered Canary group is a source-backed planning choice, not a settlement', async () => {
+  const provider = createOpenWorldPlaceProvider({ cache: new Map(), searchMode: 'reference-only', fetchImpl: offline });
+  const choices = await provider.lookup('Canary Islands', { travelIntent: 'route-stop' });
+  assert(choices.some(candidate => candidate.canonicalName === 'Canary Islands' && candidate.parentCountries?.[0] === 'Spain'
+    && candidate.placeType === 'archipelago' && candidate.routability === 'needs_base_selection'
+    && candidate.providerId.endsWith('relation:5392189')));
+  assert(!(await provider.lookup('Tenerife', { travelIntent: 'route-stop', explicitCountryNames: ['Colombia'] }))
+    .some(candidate => candidate.placeType === 'island'));
+  assert(!(await provider.lookup('Tenerife', { travelIntent: 'route-stop', explicitCountryNames: ['Atlantis'] }))
+    .some(candidate => candidate.placeType === 'island'));
+  assert(!(await provider.lookup('Tenerife', { travelIntent: 'route-stop', explicitPlaceTypes: ['city'] }))
+    .some(candidate => candidate.placeType === 'island'));
+});
 
 for (const [name, base, country] of [['Santorini', 'Fira', 'Greece'], ['Crete', 'Chania', 'Greece'], ['Tenerife', 'Santa Cruz de Tenerife', 'Spain'], ['Gran Canaria', 'Las Palmas', 'Spain']]) {
   test(`covered ${name} verifies its unchanged real town while every boundary provider is unavailable`, async () => {
