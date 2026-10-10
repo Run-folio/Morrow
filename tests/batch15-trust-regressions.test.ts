@@ -22,6 +22,8 @@ test('generic road estimate requires positive same-land evidence',()=>{
  assert.equal(estimateLegForConstraints({name:'Denpasar',country:'Indonesia',coordinates:[115.1889,-8.4095]},
   {id:'surabaya',name:'Surabaya',country:'Indonesia',coordinates:[112.7521,-7.2575]}).mode,'unknown');
  assert.equal(estimateLegForConstraints({name:'Rome',country:'Italy',coordinates:[12.4964,41.9028]},{id:'tivoli',name:'Tivoli',country:'Italy',coordinates:[12.7989,41.9609]}).mode,'road');
+ assert.equal(estimateLegForConstraints({name:'Rome',country:'Italy',coordinates:[12.4964,41.9028]},{id:'venice',name:'Venice',country:'Italy',coordinates:[12.3155,45.4408]}).mode,'train','the Venice rail crossing remains available');
+ assert.equal(estimateLegForConstraints({name:'Venice',country:'Italy',coordinates:[12.3155,45.4408]},{id:'milan',name:'Milan',country:'Italy',coordinates:[9.19,45.4642]}).mode,'train');
 });
 
 test('known catalog/source Manila identity is one choice, unresolved namesakes use human-readable context',()=>{
