@@ -55,25 +55,28 @@ test("Calendar selection resolves canonical IDs in place, with an explicit full-
   assert.match(itinerary, /`stay:\$\{item\.booking\.id\}`/);
   assert.match(itinerary, /`leg-\$\{item\.agenda\.leg\.id\}`/);
   assert.match(itinerary, /`booking:\$\{item\.booking\.id\}`/);
-  assert.match(itinerary, /setWorkspaceView\("days"\)/);
+  assert.match(itinerary, /onChange=\{setWorkspaceView\}/);
   assert.match(itinerary, /data-selected=\{selectedDayId === day\.id/);
   assert.match(itinerary, /aria-pressed=\{selectedDayId === day\.id\}/);
   assert.match(itinerary, /calendarItemRequestRef\.current = itemId/);
-  assert.match(itinerary, /Open full day/);
+  assert.match(itinerary, /Back to calendar/);
+  assert.match(itinerary, /weeks=\{calendarWeeks\}/);
+  assert.doesNotMatch(itinerary, /weeks=\{calendarWeeks\.filter/);
   assert.match(itinerary, /searchParams\.set\("day", String\(day\.dayNumber\)\)/);
   assert.match(itinerary, /parseItineraryWorkspaceTarget\(workingTrip, params\)/);
   assert.match(itinerary, /window\.addEventListener\("popstate", restoreOrientation\)/);
-  assert.match(itinerary, /items\.slice\(0, 4\)/);
+  assert.match(itinerary, /previewItems\.slice\(0, 4\)/);
 });
 
 test("Calendar keeps day cards selectable while removing redundant empty-card and weekday copy", () => {
   const calendar = itinerary.slice(itinerary.indexOf("function ItineraryCalendar("), itinerary.indexOf("function CalendarItemButton("));
-  assert.doesNotMatch(calendar, /calendarWeekdays|calendarWeekdayLabels|calendarEmptyDay|copy\.noCalendarPlans/);
+  assert.doesNotMatch(calendar, /calendarEmptyDay|copy\.noCalendarPlans/);
+  assert.match(calendar, /calendarWeekdayLabels/);
   assert.match(calendar, /day\.day\.type === "open" && day\.items\.length === 0/);
   assert.match(calendar, /hasCalendarArrivalEvent\(day\)/);
   assert.match(calendar, /<time dateTime=\{day\.day\.date\}>/);
   assert.match(calendar, /aria-pressed=\{selectedDayId === day\.id\}/);
-  assert.match(itinerary, /<EasyTButton variant="secondary" size="small" onClick=\{\(\) => setWorkspaceView\("days"\)\}>Open full day<\/EasyTButton>/);
+  assert.match(itinerary, /styles\.backToCalendar/);
 });
 
 test("Calendar places the existing photo-credit control below its side image", () => {
@@ -112,8 +115,8 @@ test("continuous and representative Calendar stories cover all required widths",
     assert.match(stories, new RegExp(`export const ${story}`));
   }
   assert.match(styles, /\.calendarGrid \{[\s\S]*grid-template-columns: repeat\(7, minmax\(0, 1fr\)\)/);
-  assert.match(styles, /@media \(max-width: 900px\)[\s\S]*\.calendarGrid \{ grid-template-columns: repeat\(2, minmax\(0, 1fr\)\)/);
-  assert.match(styles, /@media \(max-width: 540px\)[\s\S]*\.calendarGrid \{ grid-template-columns: minmax\(0, 1fr\)/);
+  assert.match(styles, /@media \(max-width: 900px\)[\s\S]*\.calendarGrid \{ grid-template-columns: repeat\(7, minmax\(0, 1fr\)\)/);
+  assert.match(styles, /@media \(max-width: 540px\)[\s\S]*\.calendarGrid \{ grid-template-columns: repeat\(7, minmax\(0, 1fr\)\)/);
   assert.match(styles, /\.calendarItems \.calendarItem \{[\s\S]*min-height: 44px/);
   assert.match(styles, /--morrovia-mobile-dock-offset/);
 });

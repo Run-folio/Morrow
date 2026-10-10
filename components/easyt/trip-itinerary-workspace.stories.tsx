@@ -776,7 +776,13 @@ export const ClickAddAutomaticallyPlaced: Story = {
   play: async ({ canvasElement }) => {
     const add = [...canvasElement.querySelectorAll<HTMLButtonElement>("button")]
       .find((button) => button.textContent?.includes("Add to Day"));
-    add?.click();
+    if (!add) throw new Error("Missing Add to Day action");
+    const card = add.closest('[data-itinerary-suggestion-id]');
+    const title = card?.querySelector('strong')?.textContent;
+    if (!title) throw new Error("Missing suggestion title");
+    add.click();
+    await new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
+    if ([...canvasElement.querySelectorAll('[data-itinerary-activity-id] strong')].filter(node => node.textContent === title).length !== 1) throw new Error("Add must create exactly one canonical planned activity");
   },
 };
 
@@ -849,14 +855,28 @@ export const TravelDay: Story = {
 };
 
 export const Calendar: Story = {
+  parameters: { nextjs: { appDirectory: true, navigation: { pathname: `/journey/${trip.id}/itinerary` } } },
   args: { trip },
-  play: async ({ canvasElement }) => {
-    [...canvasElement.querySelectorAll<HTMLButtonElement>("button")].find((button) => button.textContent?.trim() === "Calendar")?.click();
+  play: async ({ canvasElement, args }) => {
+    const switchButton = [...canvasElement.querySelectorAll<HTMLButtonElement>("button")].find((button) => button.textContent?.trim() === "Calendar");
+    if (!switchButton) throw new Error("Missing Calendar view control");
+    switchButton.click();
     await new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
+    const requestedDay = args.trip.planItems.find(day => day.dayNumber === args.selectedDayNumber);
+    if (requestedDay) {
+      const select = canvasElement.querySelector<HTMLSelectElement>('select');
+      if (!select) throw new Error('Missing canonical day selector');
+      select.value = requestedDay.id;
+      select.dispatchEvent(new Event('change', { bubbles: true }));
+      await new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
+    }
     const calendar = canvasElement.querySelector('#itinerary-calendar');
-    const selectedHeading = calendar?.parentElement?.querySelector('header');
-    if (!calendar || !selectedHeading || !(selectedHeading.compareDocumentPosition(calendar) & Node.DOCUMENT_POSITION_FOLLOWING)) throw new Error('Calendar precedes selected day context');
-    if (canvasElement.querySelector('[aria-label^="Selected day summary"]')) throw new Error('Calendar duplicates its day items below the grid');
+    if (!calendar) throw new Error('Missing full-trip calendar');
+    const days = canvasElement.querySelectorAll('article[class*="calendarDay"]');
+    const selector = canvasElement.querySelector<HTMLSelectElement>('select');
+    if (!selector || days.length !== selector.options.length) throw new Error('Calendar must expose every canonical trip day');
+    if (canvasElement.querySelectorAll('[aria-label^="Day "][aria-label$=" planner"]').length !== 1) throw new Error('Expected one selected-day planner');
+
   },
 };
 export const CalendarAttributedPhoto: Story = {
@@ -911,7 +931,27 @@ export const CalendarActivityDrag: Story = {
     ...RichDayPlannerIntegrated.args,
     trip: { ...RichDayPlannerIntegrated.args!.trip!, id: "storybook-itinerary-calendar-activity-drag" },
   },
-  play: Calendar.play,
+  play: async (context) => {
+    await Calendar.play?.(context);
+    const { canvasElement } = context;
+    const settle = () => new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
+    const source = canvasElement.querySelector<HTMLElement>('#itinerary-calendar button[draggable="true"]');
+    if (!source) throw new Error('Missing draggable calendar activity');
+    const title = source.querySelector('strong')?.textContent;
+    const sourceDay = source.closest('article');
+    const target = [...canvasElement.querySelectorAll<HTMLElement>('#itinerary-calendar article')].find(day => day !== sourceDay && day.querySelector('strong')?.textContent === sourceDay?.querySelector('strong')?.textContent);
+    if (!title || !target) throw new Error('Missing same-occurrence drop target');
+    const transfer = new DataTransfer();
+    source.dispatchEvent(new DragEvent('dragstart', { bubbles: true, dataTransfer: transfer }));
+    await settle();
+    target.dispatchEvent(new DragEvent('dragover', { bubbles: true, cancelable: true, dataTransfer: transfer }));
+    target.dispatchEvent(new DragEvent('drop', { bubbles: true, dataTransfer: transfer }));
+    await settle();
+    if (sourceDay?.textContent?.includes(title)) throw new Error('Dropped activity remained in source day');
+    if (!target.textContent?.includes(title)) throw new Error('Dropped activity missing from target day');
+    const matching = [...canvasElement.querySelectorAll('#itinerary-calendar button strong')].filter(node => node.textContent === title);
+    if (matching.length !== 1) throw new Error('Drop duplicated or lost the activity');
+  },
 };
 export const CalendarMobile320: Story = { ...Calendar, globals: { viewport: { value: "morrovia320", isRotated: false } } };
 export const CalendarMobile390: Story = { ...Calendar, globals: { viewport: { value: "morrovia390", isRotated: false } } };
@@ -939,7 +979,7 @@ export const SharedDayCalendarOrientation: Story = {
     switchView("Calendar");
     await settle();
     if (select.value !== "day-3" || !canvasElement.querySelector('[data-selected="true"]')) throw new Error("Calendar lost selected canonical day");
-    switchView("Open full day");
+    switchView("Day by day");
     await settle();
     if (select.value !== "day-3") throw new Error("Full day lost Calendar context");
     if (canvasElement.querySelectorAll('[aria-label="Day 3 planner"]').length !== 1) throw new Error("Expected one canonical planner");
@@ -1247,3 +1287,72 @@ export const AcceptanceTablet768: Story = { ...AcceptancePlannedMexicoStayPhoto,
 export const AcceptanceDesktop1024: Story = { ...AcceptancePlannedMexicoStayPhoto, globals: { viewport: { value: "morrovia1024", isRotated: false } } };
 export const AcceptanceDesktop1440: Story = { ...AcceptancePlannedMexicoStayPhoto, globals: { viewport: { value: "morrovia1440", isRotated: false } } };
 export const AcceptanceSpanish: Story = { ...AcceptancePlannedMexicoStayPhoto, args: { ...AcceptancePlannedMexicoStayPhoto.args, language: "es" } };
+
+
+/** Calendar fixtures use the existing canonical activity identity and trip document. */
+export const CalendarDenseTwelveActivities: Story = {
+  ...Calendar,
+  parameters: itineraryStoryRoute("storybook-calendar-dense-twelve"),
+  args: {
+    trip: {
+      ...trip, id: "storybook-calendar-dense-twelve",
+      brief: { ...trip.brief, customActivities: { 2: Array.from({ length: 12 }, (_, index) => `Planned activity ${index + 1}`) } },
+      planItems: trip.planItems.map(item => item.dayNumber === 2 ? { ...item, notes: Array.from({ length: 12 }, (_, index) => `Planned activity ${index + 1}`), noteDayParts: Array.from({ length: 12 }, () => "morning" as const) } : item),
+    }, selectedDayNumber: 2,
+  },
+  play: async context => {
+    await Calendar.play?.(context);
+    const { canvasElement } = context;
+    const selected = canvasElement.querySelector('#itinerary-calendar [data-selected="true"]');
+    if (!selected?.textContent?.includes('+8 more')) throw new Error('Dense calendar must show four previews and eight remaining activities');
+    if (canvasElement.querySelectorAll('[data-itinerary-activity-id]').length !== 12) throw new Error('All twelve activities must remain accessible in selected day');
+  },
+};
+
+export const CalendarMultipleStays: Story = {
+  ...Calendar,
+  parameters: itineraryStoryRoute("storybook-calendar-multiple-stays"),
+  args: { trip: { ...trip, id: "storybook-calendar-multiple-stays", brief: { ...trip.brief, bookings: [...trip.brief.bookings!, { id: "second-cusco-stay", type: "stay", title: "Second saved Cusco stay", date: "2026-08-21", confirmation: null, url: null }] } } },
+  play: async context => {
+    await Calendar.play?.(context);
+    const { canvasElement } = context;
+    if (!canvasElement.querySelector('[class*="dayPanel"]')?.textContent?.includes('Cusco stay')) throw new Error('Primary stay missing');
+    if (!canvasElement.querySelector('[class*="contextRail"]')?.textContent?.includes('Second saved Cusco stay')) throw new Error('Additional dated stay missing');
+  },
+};
+
+export const CalendarImageFallbacks: Story = {
+  ...Calendar,
+  parameters: itineraryStoryRoute("storybook-calendar-image-fallbacks"),
+  args: {
+    ...RichDayPlannerIntegrated.args,
+    trip: {
+      ...RichDayPlannerIntegrated.args!.trip!, id: "storybook-calendar-image-fallbacks",
+      brief: { ...RichDayPlannerIntegrated.args!.trip!.brief, itineraryIdeas: [
+        ...RichDayPlannerIntegrated.args!.trip!.brief.itineraryIdeas!.map((idea, index) => ({ ...idea, image: index === 0 ? undefined : "/missing-calendar-activity-image.png" })),
+        { id: "calendar-loaded-image", stopId: "cusco", placeId: "calendar-loaded-image", title: "Loaded activity image fixture", category: "activity", source: "destination-highlight", reasons: ["destination-significance"], dayId: "day-2", dayPart: "afternoon", image: "/journey/peru-sacred-valley-route.jpg" },
+      ] },
+    },
+  },
+};
+export const CalendarImageFallbacksMobile390: Story = { ...CalendarImageFallbacks, globals: { viewport: { value: "morrovia390", isRotated: false } } };
+
+export const CalendarAddOutcome: Story = {
+  ...Calendar,
+  parameters: itineraryStoryRoute("storybook-calendar-add-outcome"),
+  args: { trip: { ...trip, id: "storybook-calendar-add-outcome" } },
+  play: async context => {
+    await Calendar.play?.(context);
+    const { canvasElement } = context;
+    const card = canvasElement.querySelector<HTMLElement>('[data-itinerary-suggestion-id]');
+    const title = card?.querySelector('strong')?.textContent;
+    const add = [...(card?.querySelectorAll<HTMLButtonElement>('button') ?? [])].find(button => button.textContent?.includes('Add to Day'));
+    if (!add || !title) throw new Error('Missing calendar Add fixture');
+    add.click();
+    await new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
+    const planned = [...canvasElement.querySelectorAll('[data-itinerary-activity-id] strong')].filter(node => node.textContent === title);
+    if (planned.length !== 1) throw new Error('Calendar Add must create exactly one activity in the selected day');
+    const previews = [...canvasElement.querySelectorAll('#itinerary-calendar [data-selected="true"] button strong')].filter(node => node.textContent === title);
+    if (previews.length !== 1) throw new Error('Calendar Add did not update its canonical day preview');
+  },
+};

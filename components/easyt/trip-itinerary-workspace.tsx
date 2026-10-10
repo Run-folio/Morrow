@@ -845,7 +845,7 @@ export default function TripItineraryWorkspace({
     const bookingId = transportAgenda.find((item) => item.leg.id === leg.id)?.booking?.id;
     return bookingId ? [bookingId] : [];
   }));
-  const otherDayBookings = dayBookings.filter((booking) => booking.type !== "stay" && !representedTransportBookingIds.has(booking.id));
+  const otherDayBookings = dayBookings.filter((booking) => (booking.type !== "stay" || (workspaceView === "calendar" && booking.id !== stayBooking?.id)) && !representedTransportBookingIds.has(booking.id));
   const selectedBooking = selectedItemId?.startsWith("booking:")
     ? (workingTrip.brief.bookings ?? []).find((booking) => booking.id === selectedItemId.slice("booking:".length)) ?? null
     : null;
@@ -1313,6 +1313,62 @@ export default function TripItineraryWorkspace({
   const todayDate = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
   const todayIndex = days.findIndex((day) => day.date === todayDate);
 
+  const activityIdeas = (
+        <details ref={itinerarySuggestionsOrientationTarget} id={`${tabIdPrefix}-ideas`} className={`${styles.contextSection} ${styles.ideasSection}`} open>
+          <summary><span>{copy.suggestions}</span><Lightbulb aria-hidden="true" /></summary>
+          {recommendations.length ? <div className={styles.contextList}>{recommendations.map((recommendation) => <article className={styles.suggestionCard} key={recommendation.id}><Lightbulb aria-hidden="true" /><div><strong>{recommendation.message}</strong><p>{recommendation.evidence}</p></div></article>)}</div> : null}
+          <ItineraryDaySuggestions
+            key={`${workingTrip.id}-${active.id}`}
+            trip={workingTrip}
+            day={active}
+            stop={stop}
+            copy={copy}
+            language={language}
+            initialPlaces={initialSuggestions?.[active.dayNumber]}
+            initialActivityInventory={initialActivityInventory?.[active.dayNumber]}
+            experienceAction={stop ? experienceAction : null}
+            previewLimit={3}
+            addPart={addFlow?.dayNumber === active.dayNumber && addFlow.kind === "activity" ? addFlow.dayPart ?? null : null}
+            addDraft={addDraft}
+            addError={addError}
+            onAddDraftChange={(value) => { setAddDraft(value); setAddError(""); }}
+            onAddCancel={() => { setAddFlow(null); setAddDraft(""); setAddError(""); }}
+            onAddSubmit={submitAddFlow}
+            isPending={(placeId) => mutation.isPending(`itinerary-suggestion-${active.stopId}-${placeId}`)}
+            onSave={(idea) => {
+              const accepted = mutation.mutateTrip((current) => saveItineraryIdea(current, idea), `itinerary-suggestion-${idea.stopId}-${idea.placeId}`);
+              if (accepted) setNotice("Idea saved");
+              return accepted;
+            }}
+            onSchedule={scheduleIdea}
+            onRemove={(idea) => removeSuggestion(idea.placeId, idea.id)}
+            onOpenDetail={(result, origin) => {
+              selectedItemOriginRef.current = origin;
+              setSelectedItemId(null);
+              setSelectedRecommendation(result);
+            }}
+            selectedResultId={selectedRecommendation?.identity ?? null}
+            onSelectedDetailRefresh={(result) => setSelectedRecommendation((current) => current?.identity === result.identity ? result : current)}
+            draggingIdeaId={plannerDrag?.kind === "suggestion" ? plannerDrag.idea.id : null}
+            onDragStart={nativePlannerDrag ? (idea, event) => {
+              event.dataTransfer.effectAllowed = "copyMove";
+              event.dataTransfer.setData("text/plain", idea.id);
+              beginPlannerDrag({ kind: "suggestion", idea });
+            } : undefined}
+            onDragEnd={nativePlannerDrag ? clearPlannerDrag : undefined}
+            onInteractionReset={clearPlannerDrag}
+          />
+          <EasyTLinkButton
+            className={styles.contextAction}
+            href={exploreWorkspaceHref(workingTrip.id, active.stopId, active.dayNumber)}
+            icon={Sparkles}
+            size="small"
+            variant="quiet"
+            fullWidth
+          >See more ideas in Explore</EasyTLinkButton>
+        </details>
+  );
+
   return (
     <section className={`${styles.workspace} ${workspaceView === "calendar" ? styles.calendarWorkspace : ""}`} aria-label="Trip itinerary">
       <header ref={itineraryDaysOrientationTarget} className={styles.workspaceToolbar}>
@@ -1376,31 +1432,10 @@ export default function TripItineraryWorkspace({
           })}
         </div>
       </nav> : null}
-      <div
-        className={styles.dayPanel}
-        role={workspaceView === "days" ? "tabpanel" : "region"}
-        id={`${tabIdPrefix}-days-panel`}
-        aria-labelledby={workspaceView === "days" ? `${tabIdPrefix}-tab-${index}` : undefined}
-        aria-label={workspaceView === "calendar" ? `${copy.day} ${active.dayNumber}: ${stop?.name ?? active.title}` : undefined}
-      >
-        <header className={styles.dayHeader} data-photo={Boolean(dayHero)}>
-          {dayHero ? <div className={styles.dayHeaderMedia}>
-            <img className={styles.dayHeaderPhoto} src={dayHero.src} alt={dayHero.alt} onLoad={() => setDayHeroDisplayed(true)} onError={() => setDayHeroDisplayed(false)} />
-            {workspaceView === "days" ? dayHeroCredit : null}
-          </div> : null}
-          <div className={styles.dayHeaderContent}>
-            <p><span>{copy.day} {pad(active.dayNumber)}</span><i aria-hidden="true">·</i><time dateTime={active.date}>{displayDayDate(active.date, language)}</time></p>
-            <h2>{stop?.name ?? active.title}</h2>
-            {normalized(active.title) !== normalized(stop?.name ?? "") && normalized(active.title) !== normalized(`Explore ${stop?.name ?? ""}`)
-              ? <span className={styles.dayRole}>{active.title}</span> : null}
-          </div>
-        </header>
-        {workspaceView === "calendar" ? dayHeroCredit : null}
-
-      {workspaceView === "calendar" ? <ItineraryCalendar
+      {workspaceView === "calendar" ? <div className={styles.calendarMain}><ItineraryCalendar
         tripId={workingTrip.id}
-        onOpenDay={day => { setSelectedIndex(days.findIndex(candidate => candidate.id === day.id)); setWorkspaceView("days"); }}
-        weeks={calendarWeeks.filter((week) => week.days.some((day) => day?.id === active.id))}
+        onOpenDay={day => { setSelectedIndex(days.findIndex(candidate => candidate.id === day.id)); window.requestAnimationFrame(() => document.getElementById(`${tabIdPrefix}-days-panel`)?.focus()); }}
+        weeks={calendarWeeks}
         selectedDayId={active.id}
         copy={copy}
         language={language}
@@ -1419,7 +1454,29 @@ export default function TripItineraryWorkspace({
         if (day.id !== active.id) { calendarItemRequestRef.current = itemId; setSelectedIndex(days.findIndex((candidate) => candidate.id === day.id)); return; }
         setSelectedRecommendation(null);
         setSelectedItemId(itemId);
-      }} /> : null}
+      }} /><div className={styles.calendarIdeas}>{activityIdeas}</div></div> : null}
+      <div
+        className={styles.dayPanel}
+        role={workspaceView === "days" ? "tabpanel" : "region"}
+        id={`${tabIdPrefix}-days-panel`}
+        tabIndex={workspaceView === "calendar" ? -1 : undefined}
+        aria-labelledby={workspaceView === "days" ? `${tabIdPrefix}-tab-${index}` : undefined}
+        aria-label={workspaceView === "calendar" ? `${copy.day} ${active.dayNumber}: ${stop?.name ?? active.title}` : undefined}
+      >
+        <header className={styles.dayHeader} data-photo={Boolean(dayHero)}>
+          {dayHero ? <div className={styles.dayHeaderMedia}>
+            <img className={styles.dayHeaderPhoto} src={dayHero.src} alt={dayHero.alt} onLoad={() => setDayHeroDisplayed(true)} onError={() => setDayHeroDisplayed(false)} />
+            {workspaceView === "days" ? dayHeroCredit : null}
+          </div> : null}
+          <div className={styles.dayHeaderContent}>
+            <p><span>{copy.day} {pad(active.dayNumber)}</span><i aria-hidden="true">·</i><time dateTime={active.date}>{displayDayDate(active.date, language)}</time></p>
+            <h2>{stop?.name ?? active.title}</h2>
+            {normalized(active.title) !== normalized(stop?.name ?? "") && normalized(active.title) !== normalized(`Explore ${stop?.name ?? ""}`)
+              ? <span className={styles.dayRole}>{active.title}</span> : null}
+          </div>
+        </header>
+        {workspaceView === "calendar" ? dayHeroCredit : null}
+
 
         {mutation.saveState === "error" ? <div className={styles.recoveryFeedback}><MorroviaRecoveryFeedback
           title={mutation.failure === "conflict" ? "This trip changed on another device" : mutation.failure === "auth" ? "Sign in to finish saving" : mutation.failure === "recovery" ? "You have newer changes on this device" : "Couldn’t save to your account"}
@@ -1443,7 +1500,7 @@ export default function TripItineraryWorkspace({
           onDismiss={() => { setNotice(null); setUndoReceipt(null); }}
         /></div> : null}
 
-        {workspaceView === "days" && dayComposition ? <SelectedDayStayContext
+        {dayComposition ? <SelectedDayStayContext
           composition={dayComposition}
           tripId={workingTrip.id}
           onSelect={stayBooking ? (trigger) => {
@@ -1452,9 +1509,9 @@ export default function TripItineraryWorkspace({
           } : undefined}
         /> : null}
 
-        {workspaceView === "calendar" ? <EasyTButton variant="secondary" size="small" onClick={() => setWorkspaceView("days")}>Open full day</EasyTButton> : null}
+        {workspaceView === "calendar" ? <EasyTButton className={styles.backToCalendar} variant="quiet" size="small" onClick={() => { const calendar = document.getElementById("itinerary-calendar"); calendar?.scrollIntoView({ block: "start" }); calendar?.querySelector<HTMLButtonElement>('[aria-pressed="true"]')?.focus(); }}>{language === "es" ? "Volver al calendario" : "Back to calendar"}</EasyTButton> : null}
 
-        {workspaceView === "days" && dayComposition ? <div ref={itineraryPlannerOrientationTarget} className={styles.details} aria-busy={dayPending || undefined}>
+        {dayComposition ? <div ref={itineraryPlannerOrientationTarget} className={styles.details} aria-busy={dayPending || undefined}>
           <RichItineraryDayPlanner
             composition={dayComposition}
             ideasHref={mapIdeasHref}
@@ -1470,15 +1527,15 @@ export default function TripItineraryWorkspace({
             onDayPartChange={changeActivityDayPart}
             onMoveActivity={moveComposedActivity}
             onMoveToDay={(activity, trigger) => openMoveFlow(activity, active.id, trigger)}
-            dragActive={workspaceView === "days" && Boolean(plannerDrag)}
+            dragActive={Boolean(plannerDrag)}
             draggedActivityId={plannerDrag?.kind === "activity" ? plannerDrag.activity.id : null}
-            onActivityDragStart={nativePlannerDrag && workspaceView === "days" ? (activity, event) => {
+            onActivityDragStart={nativePlannerDrag ? (activity, event) => {
               event.dataTransfer.effectAllowed = "move";
               event.dataTransfer.setData("text/plain", activity.id);
               beginPlannerDrag({ kind: "activity", activity, sourceDayId: active.id, sourceStopId: active.stopId });
             } : undefined}
-            onActivityDragEnd={nativePlannerDrag && workspaceView === "days" ? clearPlannerDrag : undefined}
-            onActivityDrop={workspaceView === "days" ? dropPlannerItem : undefined}
+            onActivityDragEnd={nativePlannerDrag ? clearPlannerDrag : undefined}
+            onActivityDrop={dropPlannerItem}
             selectedActivityId={selectedActivity?.id ?? null}
             onActivitySelect={(activity, trigger) => {
               selectedItemOriginRef.current = trigger;
@@ -1671,59 +1728,7 @@ export default function TripItineraryWorkspace({
           </div>
         </details> : null}
 
-        <details ref={itinerarySuggestionsOrientationTarget} id={`${tabIdPrefix}-ideas`} className={`${styles.contextSection} ${styles.ideasSection}`} open>
-          <summary><span>{copy.suggestions}</span><Lightbulb aria-hidden="true" /></summary>
-          {recommendations.length ? <div className={styles.contextList}>{recommendations.map((recommendation) => <article className={styles.suggestionCard} key={recommendation.id}><Lightbulb aria-hidden="true" /><div><strong>{recommendation.message}</strong><p>{recommendation.evidence}</p></div></article>)}</div> : null}
-          <ItineraryDaySuggestions
-            key={`${workingTrip.id}-${active.id}`}
-            trip={workingTrip}
-            day={active}
-            stop={stop}
-            copy={copy}
-            language={language}
-            initialPlaces={initialSuggestions?.[active.dayNumber]}
-            initialActivityInventory={initialActivityInventory?.[active.dayNumber]}
-            experienceAction={stop ? experienceAction : null}
-            previewLimit={3}
-            addPart={addFlow?.dayNumber === active.dayNumber && addFlow.kind === "activity" ? addFlow.dayPart ?? null : null}
-            addDraft={addDraft}
-            addError={addError}
-            onAddDraftChange={(value) => { setAddDraft(value); setAddError(""); }}
-            onAddCancel={() => { setAddFlow(null); setAddDraft(""); setAddError(""); }}
-            onAddSubmit={submitAddFlow}
-            isPending={(placeId) => mutation.isPending(`itinerary-suggestion-${active.stopId}-${placeId}`)}
-            onSave={(idea) => {
-              const accepted = mutation.mutateTrip((current) => saveItineraryIdea(current, idea), `itinerary-suggestion-${idea.stopId}-${idea.placeId}`);
-              if (accepted) setNotice("Idea saved");
-              return accepted;
-            }}
-            onSchedule={scheduleIdea}
-            onRemove={(idea) => removeSuggestion(idea.placeId, idea.id)}
-            onOpenDetail={(result, origin) => {
-              selectedItemOriginRef.current = origin;
-              setSelectedItemId(null);
-              setSelectedRecommendation(result);
-            }}
-            selectedResultId={selectedRecommendation?.identity ?? null}
-            onSelectedDetailRefresh={(result) => setSelectedRecommendation((current) => current?.identity === result.identity ? result : current)}
-            draggingIdeaId={plannerDrag?.kind === "suggestion" ? plannerDrag.idea.id : null}
-            onDragStart={nativePlannerDrag ? (idea, event) => {
-              event.dataTransfer.effectAllowed = "copyMove";
-              event.dataTransfer.setData("text/plain", idea.id);
-              beginPlannerDrag({ kind: "suggestion", idea });
-            } : undefined}
-            onDragEnd={nativePlannerDrag ? clearPlannerDrag : undefined}
-            onInteractionReset={clearPlannerDrag}
-          />
-          <EasyTLinkButton
-            className={styles.contextAction}
-            href={exploreWorkspaceHref(workingTrip.id, active.stopId, active.dayNumber)}
-            icon={Sparkles}
-            size="small"
-            variant="quiet"
-            fullWidth
-          >See more ideas in Explore</EasyTLinkButton>
-        </details>
+{workspaceView === "days" ? activityIdeas : null}
 
         <TripExplicitPlans
           trip={workingTrip}
@@ -1990,8 +1995,11 @@ function ItineraryCalendar({ tripId, onOpenDay, weeks, selectedDayId, copy, lang
       <div className={styles.calendarBands} aria-label="Overnight destinations">
         {itineraryCalendarNightBands(week).map((band) => <div key={`${band.stop.id}-${band.start}`} style={{ gridColumn: `${band.start + 1} / span ${band.span}` }}><BedDouble aria-hidden="true" /><b>{band.stop.order + 1}</b><span>{band.stop.name} · {band.span} {language === "es" ? (band.span === 1 ? "noche" : "noches") : (band.span === 1 ? "night" : "nights")}{band.continued ? (language === "es" ? " · continúa" : " · continued") : ""}</span></div>)}
       </div>
+      {week.startDate ? <div className={styles.calendarWeekdayLabels} aria-hidden="true">{(language === "es" ? ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"] : ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]).map(label => <span key={label}>{label}</span>)}</div> : null}
       <div className={styles.calendarGrid}>
-        {week.days.map((day, dayIndex) => day ? <article
+        {week.days.map((day, dayIndex) => {
+          const previewItems = day?.items.filter(item => item.kind !== "accommodation") ?? [];
+          return day ? <article
           className={styles.calendarDay}
           data-selected={selectedDayId === day.id || undefined}
           data-drop-eligible={Boolean(dragItem && (dragItem.kind === "suggestion" ? dragItem.idea.stopId : dragItem.sourceStopId) === day.day.stopId) || undefined}
@@ -2010,18 +2018,21 @@ function ItineraryCalendar({ tripId, onOpenDay, weeks, selectedDayId, copy, lang
           >
             <span><time dateTime={day.day.date}>{displayDayDate(day.day.date, language)}</time><i>{pad(day.day.dayNumber)}</i></span>
             <strong>{day.stop?.name ?? day.day.title}</strong>
+            <span className={styles.calendarCompactDate}>{formatIsoDate(day.day.date, language, { day: "numeric" }) ?? pad(day.day.dayNumber)}</span>
+            <span className={styles.calendarCompactCount}>{day.items.length} {language === "es" ? (day.items.length === 1 ? "plan" : "planes") : (day.items.length === 1 ? "plan" : "plans")}</span>
             {day.day.type === "arrival" || (day.day.type === "open" && day.items.length === 0) ? null : <small>{planItemLabel(day.day.type, language)}</small>}
             {day.departure || (day.arrival && !hasCalendarArrivalEvent(day)) ? <em>{[day.arrival && !hasCalendarArrivalEvent(day) ? copy.arrival : null, day.departure ? copy.departure : null].filter(Boolean).join(" · ")}</em> : null}
           </EasyTButton>
-          {day.items.length ? <ul className={styles.calendarItems}>
-            {day.items.slice(0, 4).map((item) => <li key={item.id}><CalendarItemButton item={item} day={day} copy={copy} language={language} draggable={nativeDrag && item.kind === "activity" && item.activity.dayPartEditable && !item.activity.booking} dragging={dragItem?.kind === "activity" && dragItem.activity.id === (item.kind === "activity" ? item.activity.id : null)} onDragStart={onDragStart} onDragEnd={onDragEnd} onSelect={onSelect} /></li>)}
-            {day.items.length > 4 ? <li><EasyTButton size="small" variant="quiet" onClick={() => onOpenDay(day)} aria-label={`Show all ${day.items.length} items for Day ${day.day.dayNumber}`}>+{day.items.length - 4} more</EasyTButton></li> : null}
+          {previewItems.length ? <ul className={styles.calendarItems}>
+            {previewItems.slice(0, 4).map((item) => <li key={item.id}><CalendarItemButton item={item} day={day} copy={copy} language={language} draggable={nativeDrag && item.kind === "activity" && item.activity.dayPartEditable && !item.activity.booking} dragging={dragItem?.kind === "activity" && dragItem.activity.id === (item.kind === "activity" ? item.activity.id : null)} onDragStart={onDragStart} onDragEnd={onDragEnd} onSelect={onSelect} /></li>)}
+            {previewItems.length > 4 ? <li><EasyTButton size="small" variant="quiet" onClick={() => onOpenDay(day)} aria-label={`Show all ${previewItems.length} items for Day ${day.day.dayNumber}`}>+{previewItems.length - 4} more</EasyTButton></li> : null}
           </ul> : null}
+          {day.items.filter(item => item.kind === "accommodation").map(item => <div className={styles.calendarStay} key={item.id}><CalendarItemButton item={item} day={day} copy={copy} language={language} draggable={false} dragging={false} onDragStart={onDragStart} onDragEnd={onDragEnd} onSelect={onSelect} /></div>)}
           {day.tonight.state === "not-organised" && day.tonight.stopId ? <div className={styles.calendarMissingStay}>
             <span>{language === "es" ? "Sin alojamiento añadido" : "No stay added"}</span>
             <EasyTLinkButton href={stayWorkspaceHref(tripId, day.tonight.stopId)} size="small" variant="quiet" aria-label={`${language === "es" ? "Buscar alojamiento" : "Find a stay"} · ${day.tonight.destination}`}>{language === "es" ? "Buscar alojamiento" : "Find a stay"}</EasyTLinkButton>
           </div> : null}
-        </article> : <span className={styles.calendarBlank} aria-hidden="true" key={`${week.id}-${dayIndex}`} />)}
+        </article> : <span className={styles.calendarBlank} aria-hidden="true" key={`${week.id}-${dayIndex}`} />; })}
       </div>
     </section>)}
   </div>;
@@ -2061,7 +2072,7 @@ function CalendarItemButton({ item, day, copy, language, draggable, dragging, on
   }
   return <EasyTButton className={`${styles.calendarItem} ${dragging ? styles.calendarItemDragging : ""}`} variant="quiet" aria-label={`${title}, ${meta}`} draggable={draggable} onDragStart={draggable && item.kind === "activity" ? (event) => onDragStart(day, item.activity, event) : undefined} onDragEnd={draggable ? onDragEnd : undefined} onClick={(event) => onSelect(day, item, event.currentTarget)}>
     <Icon aria-hidden="true" />
-    <span>{item.kind === "activity" && item.activity.image ? <ResilientImage className={styles.calendarThumbnail} src={item.activity.image} alt="" fallback={null} /> : null}<strong>{title}</strong><small>{meta}</small></span>
+    <span><strong>{title}</strong><small>{meta}</small></span>
     <ChevronRight aria-hidden="true" />
   </EasyTButton>;
 }

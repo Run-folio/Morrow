@@ -1,0 +1,40 @@
+(node:90446) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/shaun/Documents/Codex/2026-10-10/task-4/Morrovia-batch15/tests/storybook-visual-system.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/shaun/Documents/Codex/2026-10-10/task-4/Morrovia-batch15/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✖ every current story is grouped under the stable Morrovia hierarchy (13.1065ms)
+✔ the visual foundations and audit stories keep every required catalogue surface (0.927583ms)
+✔ the typography foundation distinguishes readable prose from compact metadata (0.434458ms)
+✔ every audit record names ownership, consumers, differences, coverage and review status (0.275708ms)
+✔ the compact canonical ownership map covers every recurring product family (0.444708ms)
+✔ the generated visual inventory is deterministic, grouped and wired into Storybook (1.853375ms)
+✔ major responsive patterns expose the agreed Storybook review widths (1.890792ms)
+✔ every unified map owner exposes the exact responsive QA matrix and risk states (3.211958ms)
+✔ design-system documentation makes Storybook the living visual reference without authorising broad migration (1.049042ms)
+ℹ tests 9
+ℹ suites 0
+ℹ pass 8
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 146.937
+
+✖ failing tests:
+
+test at tests/storybook-visual-system.test.ts:20:1
+✖ every current story is grouped under the stable Morrovia hierarchy (13.1065ms)
+  AssertionError [ERR_ASSERTION]: /Users/shaun/Documents/Codex/2026-10-10/task-4/Morrovia-batch15/app/journey/new/trip-builder-route-proposal.stories.tsx
+      at TestContext.<anonymous> (file:///Users/shaun/Documents/Codex/2026-10-10/task-4/Morrovia-batch15/tests/storybook-visual-system.test.ts:25:12)
+      at Test.runInAsyncScope (node:async_hooks:228:14)
+      at Test.run (node:internal/test_runner/test:1118:25)
+      at Test.start (node:internal/test_runner/test:1015:17)
+      at startSubtestAfterBootstrap (node:internal/test_runner/harness:358:17)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: `import type {Meta,StoryObj} from '@storybook/nextjs-vite';\nimport {useState} from 'react';\nimport {TripBuilderRouteProposal} from './trip-builder-route-proposal';\nimport {EasyTButton} from '@/components/easyt/easyt-controls';\nimport {canonicalRouteFixture} from '../../../tests/fixtures/batch14-route-documents';\nimport {requireReadableTripDocument} from '@/lib/easyt/trip-document';\nimport {createBuilderOptimizationProposal} from '@/lib/easyt/trip-builder-route-proposal';\nconst meta={title:'Morrovia/05 Product Patterns/Builder route proposal',parameters:{layout:'padded'}} satisfies Meta;\nexport default meta;type Story=StoryObj<typeof meta>;\nfunction Proposal({stale=false,es=false,repeated=false}:{stale?:boolean;es?:boolean;repeated?:boolean}){\n const [open,setOpen]=useState(false);const trip=requireReadableTripDocument(canonicalRouteFixture());trip.brief.bookings=[];\n if(repeated){Object.assign(trip.stops[2]!,{name:'Tokyo',canonicalPlaceId:trip.stops[0]!.canonicalPlaceId,longitude:trip.stops[0]!.longitude,latitude:trip.stops[0]!.latitude});Object.assign(trip.brief.intent.route.destinations[2]!,{sourceText:'Tokyo',selectedPlace:structuredClone(trip.brief.intent.route.destinations[0]!.selectedPlace)})}\n const result=createBuilderOptimizationProposal(trip,{ownerId:trip.ownerId,tripId:trip.id,inputRevision:0},['tokyo','hiroshima','kyoto'],'story');\n return <main className="morrovia-editorial-page"><EasyTButton onClick={()=>setOpen(true)}>{es?'Actualizar ruta':'Update route'}</EasyTButton><TripBuilderRouteProposal current={trip} proposal={open&&result.kind==='proposal'?result.proposal:null} language={es?'es':'en'} stale={stale} onKeep={()=>setOpen(false)} onAccept={()=>setOpen(false)}/></main>;\n}\nexport const ProposedOrder:Story={render:()=> <Proposal/>};\nexport const NewerEdit:Story={render:()=> <Proposal stale/>};\nexport const RepeatedStopsSpanish:Story={render:()=> <Proposal es repeated/>,parameters:{viewport:{defaultViewport:'mobile1'}}};\n`,
+    expected: /title:\s*"Morrovia\/(?:01 Foundations|02 Controls|03 Status & Feedback|04 Structure|05 Product Patterns|06 Audit)/,
+    operator: 'match',
+    diff: 'simple'
+  }
