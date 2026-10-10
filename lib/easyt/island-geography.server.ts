@@ -1,3 +1,4 @@
+import acceptedManifest from '../../data/place-reference/islands/manifest.json' with { type: 'json' };
 import { readFileSync, statSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { gunzipSync } from 'node:zlib';
@@ -38,6 +39,9 @@ export function createIslandGeographyReader(root = resolve(process.cwd(), 'data/
       || candidate.files.some(f => !Number.isSafeInteger(f.bytes) || f.bytes < 1 || !Number.isSafeInteger(f.inflatedBytes) || f.inflatedBytes < 1)
       || candidate.files.reduce((n, f) => n + f.bytes, 0) > 2 * 1024 * 1024
       || candidate.files.reduce((n, f) => n + f.inflatedBytes, 0) > 8 * 1024 * 1024) throw new Error('Invalid island snapshot manifest');
+    // Pin the reviewed snapshot in the build; a rewritten file plus its own
+    // checksums is not an accepted refresh. Candidate activation requires a rebuild.
+    if (JSON.stringify(candidate) !== JSON.stringify(acceptedManifest)) throw new Error('Island snapshot differs from accepted manifest');
     manifest = candidate;
     const parsed = read('index.json') as IslandGeographyIndex;
     if (parsed.version !== 1 || parsed.snapshotId !== manifest.snapshotId || !Array.isArray(parsed.islands) || !Array.isArray(parsed.groups)
@@ -64,6 +68,7 @@ export function createIslandGeographyReader(root = resolve(process.cwd(), 'data/
   }
   return {
     normalize(candidates: PlaceProviderCandidate[], parent: PlanningParentConstraint): PlaceProviderCandidate[] | undefined {
+      if (!coveredIslandParent(parent)) return undefined;
       const entry = coveredIslandParent(parent, loadIndex()); if (!entry) return undefined;
       let ids: string[] = [entry.id];
       if (parent.placeType === 'archipelago') {
@@ -81,7 +86,8 @@ export function createIslandGeographyReader(root = resolve(process.cwd(), 'data/
         const member = physical.find(r => physicalContains(r.compiled.geometry, point)); if (!member) return [];
         if (candidate.providerId.startsWith('reference:')) {
           const binding = bindings!.get(candidate.providerId.split('@')[0]!);
-          if (!binding || binding[1] !== candidate.providerId || binding[2] !== point[0] || binding[3] !== point[1]
+          if (!binding || binding[0] !== candidate.canonicalPlaceId || binding[1] !== candidate.providerId
+            || binding[1].split(':').at(-3) !== candidate.placeType || binding[2] !== point[0] || binding[3] !== point[1]
             || binding[4] !== entry.countryCode || !binding[5].includes(member.source.id)) return [];
         }
         const proof = `Physical island verified: OSM ${member.compiled.sourceGeometryId}; snapshot=${manifest!.snapshotId}; checked=${member.compiled.checkedAt.slice(0, 10)}; point=${point.join(',')}; country=${entry.countryCode}; result=strict-inside/outside-holes; timestamp=${member.compiled.geometry.timestamp}; identity=${member.compiled.identityId}`;

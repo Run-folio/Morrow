@@ -317,7 +317,7 @@ export function CanonicalPlaceAutocomplete({
       <MorroviaPlaceDataCredit language={language} sources={[
         ...(suggestions.some(s=>s.provenance.some(p=>p.id.startsWith('reference:geonames:')))?['geonames' as const]:[]),
         ...(suggestions.some(s=>s.provenance.some(p=>p.id.startsWith('reference:ourairports:')))?['ourairports' as const]:[]),
-        ...(suggestions.some(s=>s.provenance.some(p=>/^(photon:|nominatim:|openstreetmap:)/.test(p.id)))?['openstreetmap' as const]:[]),
+        ...(suggestions.some(s=>s.provenance.some(p=>/^(photon:|nominatim:|openstreetmap:)/.test(p.id)||p.supports.startsWith('Physical island verified: OSM ')))?['openstreetmap' as const]:[]),
       ]}/>
     </div> : null}
   </div>;

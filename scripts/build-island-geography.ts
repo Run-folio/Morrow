@@ -2,8 +2,9 @@ import { readFile, mkdir, writeFile, rename, rm, stat } from 'node:fs/promises';
 import { resolve, dirname } from 'node:path';
 import { gzipSync } from 'node:zlib';
 import { fileURLToPath } from 'node:url';
+import { countryCodeFor } from '../lib/easyt/country-registry.ts';
 import { compileIslandSource, validateIslandGroup, islandDigest, type IslandSourcePack } from '../lib/easyt/island-geography-source.ts';
-import { physicalContains } from '../lib/easyt/physical-island-geometry.ts';
+import { normalizeIslandName, physicalContains } from '../lib/easyt/physical-island-geometry.ts';
 import { referencePlaceById, referenceSnapshotId } from '../lib/easyt/place-reference.server.ts';
 
 /** Offline candidate import. Never fetches data or modifies an accepted
@@ -17,6 +18,18 @@ export async function buildIslandGeography(pack: IslandSourcePack, output: strin
   if (records.size !== pack.records.length) throw new Error('Duplicate island records');
   const groupIdentities = pack.groups.map(group => validateIslandGroup(group, records));
   if (new Set([...records.keys(), ...pack.groups.map(g => g.id)]).size !== records.size + pack.groups.length) throw new Error('Duplicate island/group keys');
+  const sourceIdentities = new Set<string>(); const aliases = new Set<string>();
+  const checkIdentity = (identity: string, country: string, type: string, names: string[]) => {
+    if (sourceIdentities.has(identity)) throw new Error('Duplicate island source identity');
+    sourceIdentities.add(identity);
+    for (const name of new Set(names.map(normalizeIslandName))) {
+      const key = `${country}:${type}:${name}`;
+      if (aliases.has(key)) throw new Error('Conflicting island alias');
+      aliases.add(key);
+    }
+  };
+  for (const { compiled } of records.values()) checkIdentity(compiled.identityId, compiled.countryCode, 'island', compiled.aliases);
+  pack.groups.forEach((group, i) => checkIdentity(groupIdentities[i]!.id, countryCodeFor(group.country)!, 'archipelago', [group.name]));
   const bindings: Array<[string, string, number, number, string, string[]]> = [];
   const rows = JSON.parse(await readFile(resolve(process.cwd(), 'data/place-reference/settlements.json'), 'utf8')) as Array<[string, string, string, number, number]>;
   const scopes = [...records].map(([id, { compiled }]) => ({ id, compiled,

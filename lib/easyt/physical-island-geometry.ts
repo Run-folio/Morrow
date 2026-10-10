@@ -124,7 +124,7 @@ export function physicalCoastlineGeometry(raw: unknown, identityPoint: Point, de
   }
   const ends = new Map<string, number[]>(); const key = (point: Point) => point.join(',');
   ways.forEach((way, index) => { for (const p of [way.points[0]!, way.points.at(-1)!]) ends.set(key(p), [...(ends.get(key(p)) ?? []), index]); });
-  const remaining = new Set(ways.map((_, i) => i)); const selected: Array<PhysicalIslandGeometry & { wayIds: number[] }> = [];
+  const remaining = new Set(ways.map((_, i) => i)); const selected: Array<PhysicalIslandGeometry & { wayIds: number[] }> = []; const allRings: Ring[] = [];
   while (remaining.size) {
     const queue = [remaining.values().next().value!]; const component: number[] = [];
     while (queue.length) {
@@ -132,7 +132,8 @@ export function physicalCoastlineGeometry(raw: unknown, identityPoint: Point, de
       const way = ways[index]!; for (const point of [way.points[0]!, way.points.at(-1)!]) queue.push(...ends.get(key(point))!);
     }
     const rings = closedRings(component.map(i => ways[i]!.points));
-    if (!rings || !validTopology(rings, deadline) || Date.now() > deadline) return null;
+    if (!rings || Date.now() > deadline) return null;
+    allRings.push(...rings);
     const containing = rings.filter(r => inside(identityPoint, r) === 1);
     if (containing.length) {
       // A physical island record covers one uniquely identified closed land
@@ -140,6 +141,12 @@ export function physicalCoastlineGeometry(raw: unknown, identityPoint: Point, de
       if (rings.length !== 1 || containing.length !== 1) return null;
       selected.push({ outer: rings, inner: [], timestamp, wayIds: component.map(i => ways[i]!.id).sort((a, b) => a - b) });
     }
+  }
+  // Separate endpoint-connected components may still cross or touch in the
+  // middle of an edge. Apply the same exact bounded sweep jointly.
+  if (!validTopology(allRings, deadline)) return null;
+  for (let i = 0; i < allRings.length; i++) for (let j = i + 1; j < allRings.length; j++) {
+    if (Date.now() > deadline || inside(allRings[i]![0]!, allRings[j]!) >= 0 || inside(allRings[j]![0]!, allRings[i]!) >= 0) return null;
   }
   return selected.length === 1 ? selected[0]! : null;
 }

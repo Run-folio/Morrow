@@ -2,13 +2,13 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import {readFileSync} from 'node:fs';
 import {searchReferencePlaces} from '../lib/easyt/place-reference.server.ts';
-import {normalizePhysicalIslandBaseCandidates} from '../lib/easyt/openstreetmap-island-containment.server.ts';
+import {normalizeLivePhysicalIslandBaseCandidates} from '../lib/easyt/openstreetmap-island-containment.server.ts';
 import type {PlaceProviderCandidate,PlanningParentConstraint} from '../lib/easyt/place-intelligence.ts';
 const raw=JSON.parse(readFileSync(new URL('./fixtures/batch14-physical-island-geography.json',import.meta.url),'utf8'));
 const fira=searchReferencePlaces('Fira',{explicitCountryNames:['Greece']}).find(c=>c.canonicalPlaceId==='reference:geonames:252920')!;
 const parent:PlanningParentConstraint={canonicalPlaceId:'santorini',canonicalName:'Santorini',placeType:'island',parentCountries:['Greece']};
 function fixture(photon=raw.photon.body,geometry=raw.overpass.body):typeof fetch{return async(input,init)=>{const url=String(input);if(url.startsWith('https://photon.komoot.io/api/'))return Response.json(photon);assert(['https://overpass-api.de/api/interpreter','https://overpass.kumi.systems/api/interpreter'].includes(url));assert.equal(init?.method,'POST');assert.match(String(init?.body),/453964/);return Response.json(geometry);};}
-async function resolve(candidates:PlaceProviderCandidate[]= [fira],p=parent,fetchImpl=fixture()){return normalizePhysicalIslandBaseCandidates(candidates,p,{fetchImpl});}
+async function resolve(candidates:PlaceProviderCandidate[]= [fira],p=parent,fetchImpl=fixture()){return normalizeLivePhysicalIslandBaseCandidates(candidates,p,{fetchImpl});}
 test('recorded physical island polygon confirms the unchanged real reference settlement with exact provenance',async()=>{const before=structuredClone(fira);const [c]=await resolve();assert(c);assert.equal(c.canonicalPlaceId,fira.canonicalPlaceId);assert.equal(c.providerId,fira.providerId);assert.deepEqual(c.coordinates,fira.coordinates);assert.equal(c.parentRegionId,'Santorini');assert.match(c.normalizationReason!,/relation:453964/);assert.match(c.normalizationReason!,/2026-10-10T03:55:36Z/);assert.match(c.normalizationReason!,/25\.43087/);assert.deepEqual(fira,before);});
 test('sibling island and water inside the parent bounding rectangle are rejected without bounds fallback',async()=>{for(const coordinates of [[25.3361087,36.4339362],[25.36,36.4]] as [number,number][])assert.deepEqual(await resolve([{...fira,coordinates,parentRegionId:'Santorini'}],{...parent,bounds:{south:36.3321735,west:25.3538553,north:36.482206,east:25.4878919}}),[]);});
 test('city on a different country, airport, area, missing point and non-routable candidates cannot become bases',async()=>{for(const c of [{...fira,parentCountries:['Italy']},{...fira,placeType:'transport_gateway' as const},{...fira,placeType:'island' as const},{...fira,coordinates:undefined},{...fira,routability:'planning_area' as const}])assert.deepEqual(await resolve([c]),[]);});

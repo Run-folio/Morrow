@@ -3,14 +3,16 @@ import test from 'node:test';
 import { searchReferencePlaces } from '../lib/easyt/place-reference.server.ts';
 import { normalizePhysicalIslandBaseCandidates } from '../lib/easyt/openstreetmap-island-containment.server.ts';
 import type { PlanningParentConstraint } from '../lib/easyt/place-intelligence.ts';
-import { mkdtempSync, cpSync, rmSync, readFileSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, cpSync, rmSync, readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { gunzipSync } from 'node:zlib';
+import { gunzipSync, gzipSync } from 'node:zlib';
 import { createIslandGeographyReader } from '../lib/easyt/island-geography.server.ts';
-import { compileIslandSource, type IslandSourceRecord } from '../lib/easyt/island-geography-source.ts';
+import { compileIslandSource, validateIslandGroup, type IslandSourceRecord } from '../lib/easyt/island-geography-source.ts';
 import { physicalCoastlineGeometry, physicalContains } from '../lib/easyt/physical-island-geometry.ts';
 import { buildIslandGeography } from '../scripts/build-island-geography.ts';
+import { requiresPhysicalIslandVerification } from '../lib/easyt/island-geography.ts';
+import { islandDigest } from '../lib/easyt/island-geography-source.ts';
 import { verifyPhysicalIslandSuggestion } from '../lib/easyt/destination-resolution.ts';
 
 const source = (id: string): IslandSourceRecord => JSON.parse(gunzipSync(readFileSync(`data/place-reference/islands/${id}.json.gz`)).toString());
@@ -81,10 +83,15 @@ test('actual bundled physical land rejects water and exact boundary without a bo
 test('a named island identity cannot retag political geometry or patch an open coastline', () => {
   const political = source('santorini'); const body = political.geometry.body as any;
   body.elements[0].tags.boundary = 'political'; body.elements[0].tags.type = 'boundary';
+  political.geometry.bodySHA256 = islandDigest(JSON.stringify(body));
   assert.throws(() => compileIslandSource(political), /Unverified/);
   const open = source('tenerife'); const identity = compileIslandSource(open);
   const coastline = physicalCoastlineGeometry(open.geometry.body, identity.identityPoint, Date.now() + 10_000)!;
   (open.geometry.body as any).elements = (open.geometry.body as any).elements.filter((way: any) => way.id !== coastline.wayIds[0]);
+  // Synthetic structural corruption is separately certified here so the test
+  // reaches topology rather than failing the source-digest check first.
+  open.geometry.bodySHA256 = islandDigest(JSON.stringify(open.geometry.body));
+  delete open.geometry.originalResponseBody; delete open.geometry.originalResponseSHA256;
   assert.throws(() => compileIslandSource(open), /Unverified/);
 });
 
@@ -105,4 +112,91 @@ test('a covered archipelago base cannot be accepted from a local suggestion befo
     provenance: [{ id: base.providerId, kind: 'provider', label: 'GeoNames', supports: 'Town identity only' }] },
     { fetchImpl: async () => { calls++; return Response.json({ candidates: [] }); } });
   assert.equal(result, null); assert.equal(calls, 1);
+});
+
+
+test('reference physical proof binds canonical identity as well as provider and point', () => {
+  const real = settlement('Fira', 'Greece');
+  assert.deepEqual(createIslandGeographyReader().normalize([{ ...real, canonicalPlaceId: 'reference:geonames:999999' }], island('Santorini', 'Greece')), []);
+});
+
+test('self-consistent rewritten source and manifest cannot replace the accepted snapshot', () => {
+  const directory = mkdtempSync(join(tmpdir(), 'morrovia-island-untrusted-'));
+  try {
+    cpSync('data/place-reference/islands', directory, { recursive: true });
+    const changed = source('santorini'); changed.identity.checkedAt = '2026-10-11T00:00:00Z';
+    const inflated = Buffer.from(JSON.stringify(changed)); const bytes = gzipSync(inflated);
+    writeFileSync(join(directory, 'santorini.json.gz'), bytes);
+    const manifest = JSON.parse(readFileSync(join(directory, 'manifest.json'), 'utf8'));
+    Object.assign(manifest.files.find((f: any) => f.path === 'santorini.json.gz'), { sha256: islandDigest(bytes), bytes: bytes.length, inflatedBytes: inflated.length });
+    writeFileSync(join(directory, 'manifest.json'), JSON.stringify(manifest));
+    assert.throws(() => createIslandGeographyReader(directory).normalize([settlement('Fira', 'Greece')], island('Santorini', 'Greece')), /accepted manifest/);
+  } finally { rmSync(directory, { recursive: true, force: true }); }
+});
+
+test('absent bundled assets never block an uncovered parent but fail closed for covered geography', () => {
+  const directory = mkdtempSync(join(tmpdir(), 'morrovia-island-absent-'));
+  try {
+    const reader = createIslandGeographyReader(directory);
+    assert.equal(reader.normalize([settlement('Fira', 'Greece')], island('Uncovered Island', 'Greece')), undefined);
+    assert.throws(() => reader.normalize([settlement('Fira', 'Greece')], island('Santorini', 'Greece')));
+  } finally { rmSync(directory, { recursive: true, force: true }); }
+});
+
+test('covered group with a conflicting source ID requests server verification without crashing the client', () => {
+  assert.equal(requiresPhysicalIslandVerification({ canonicalName: 'Canary Islands', placeType: 'archipelago', parentCountries: ['Spain'], canonicalPlaceId: 'open-world:photon:R:453964' }), true);
+});
+
+
+test('a reference town cannot retain physical proof after its stored settlement type changes', () => {
+  const real = settlement('Fira', 'Greece'); assert.equal(real.placeType, 'city');
+  assert.deepEqual(createIslandGeographyReader().normalize([{ ...real, placeType: 'town' }], island('Santorini', 'Greece')), []);
+});
+
+test('uncovered archipelago preserves its previous acceptance behavior without a physical coverage claim', async () => {
+  const parent: PlanningParentConstraint = { canonicalName: 'Unknown Islands', placeType: 'archipelago', parentCountries: ['Greece'] };
+  const base = settlement('Fira', 'Greece');
+  const selected = { canonicalPlaceId: base.canonicalPlaceId!, name: base.canonicalName, label: base.canonicalName, country: 'Greece', placeType: base.placeType, coordinates: base.coordinates, provenance: [] };
+  assert.equal(requiresPhysicalIslandVerification(parent), false);
+  assert.equal(await verifyPhysicalIslandSuggestion(parent, selected, { fetchImpl: offline }), selected);
+  assert.deepEqual(await normalizePhysicalIslandBaseCandidates([base], parent, { fetchImpl: offline }), [base]);
+});
+
+
+for (const shape of ['crossing', 'touching', 'nested'] as const) test(`separate closed coastline components reject ${shape} geometry before selecting an identity`, () => {
+  const first = [[-2,-2],[1,-2],[1,2],[-2,2],[-2,-2]];
+  const second = shape === 'crossing' ? [[0,-1],[2,-1],[2,1],[0,1],[0,-1]] : shape === 'touching' ? [[1,-1],[2,-1],[2,1],[1,1],[1,-1]] : [[0,-1],[0.5,-1],[0.5,1],[0,1],[0,-1]];
+  const body = { osm3s: { timestamp_osm_base: '2026-10-10T12:00:00Z' }, elements: [first, second].map((ring, index) => ({ type: 'way', id: index + 1, tags: { natural: 'coastline' }, geometry: ring.map(([lon,lat]) => ({lon,lat})) })) };
+  assert.equal(physicalCoastlineGeometry(body, [-1,0], Date.now() + 1000), null);
+});
+
+test('Canary state labels cannot establish membership without captured official supporting evidence', () => {
+  const group = JSON.parse(gunzipSync(readFileSync('data/place-reference/islands/groups.json.gz')).toString())[0];
+  delete group.membership;
+  const records = new Map(['tenerife','gran-canaria'].map(id => { const captured = source(id); return [id, { source: captured, compiled: compileIslandSource(captured) }] as const; }));
+  assert.throws(() => validateIslandGroup(group, records), /membership evidence/);
+});
+
+test('a retained original-byte digest cannot contradict the captured source response', () => {
+  const captured = source('tenerife'); captured.geometry.originalResponseSHA256 = '0'.repeat(64);
+  assert.throws(() => compileIslandSource(captured), /source.*digest/i);
+});
+
+
+test('refresh rejects duplicate source identities and aliases under different internal keys before publishing', async () => {
+  const directory = mkdtempSync(join(tmpdir(), 'morrovia-island-duplicate-')); const output = join(directory, 'candidate');
+  try {
+    const first = source('santorini'); const duplicate = structuredClone(first); duplicate.id = 'santorini-copy';
+    await assert.rejects(buildIslandGeography({ version: 1, records: [first, duplicate], groups: [] }, output), /Duplicate island source identity|Conflicting island alias/);
+    assert.equal(existsSync(output), false);
+  } finally { rmSync(directory, { recursive: true, force: true }); }
+});
+
+
+for (const contradiction of ['member', 'group'] as const) test(`official membership rejects a contradictory ${contradiction} even with internally consistent content digests`, () => {
+  const group = JSON.parse(gunzipSync(readFileSync('data/place-reference/islands/groups.json.gz')).toString())[0];
+  group.membership.body = contradiction === 'member' ? group.membership.body.replace(/Tenerife/g, 'Unrelated Island') : group.membership.body.replace(/The Canary Islands/g, 'Unrelated Group');
+  group.membership.bodySHA256 = islandDigest(JSON.stringify(group.membership.body)); group.membership.originalResponseSHA256 = islandDigest(group.membership.body);
+  const records = new Map(['tenerife','gran-canaria'].map(id => { const captured = source(id); return [id, { source: captured, compiled: compileIslandSource(captured) }] as const; }));
+  assert.throws(() => validateIslandGroup(group, records), /Unverified island-to-archipelago membership|Contradictory official membership/);
 });

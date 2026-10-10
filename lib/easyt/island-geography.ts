@@ -25,5 +25,5 @@ export function coveredIslandParent(parent: PlanningParentConstraint, index: Isl
 }
 
 export function requiresPhysicalIslandVerification(parent: PlanningParentConstraint) {
-  return parent.placeType === 'island' || parent.placeType === 'archipelago' && Boolean(coveredIslandParent(parent));
+  return parent.placeType === 'island' || parent.placeType === 'archipelago' && Boolean(coveredIslandParent({ ...parent, canonicalPlaceId: undefined }));
 }

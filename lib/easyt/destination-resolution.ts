@@ -1,3 +1,4 @@
+import { requiresPhysicalIslandVerification } from './island-geography.ts';
 import { countryCodeFor } from './country-registry.ts';
 import { isOvernightBaseEligible, validPlaceCoordinates, type CanonicalPlaceSuggestion, type PlanningParentConstraint } from './place-intelligence.ts';
 
@@ -7,9 +8,9 @@ const normalise = (value: string) => value.toLocaleLowerCase().replace(/[’']/g
  * the existing server's physical-polygon guard. Never substitute its point
  * or identity for the traveller's selected settlement. */
 export async function verifyPhysicalIslandSuggestion(parent: PlanningParentConstraint, suggestion: CanonicalPlaceSuggestion, options: { fetchImpl?: typeof fetch; signal?: AbortSignal } = {}): Promise<CanonicalPlaceSuggestion | null> {
-  if (parent.placeType !== 'island') return suggestion;
+  if (!requiresPhysicalIslandVerification(parent)) return suggestion;
   if (!validPlaceCoordinates(suggestion.coordinates) || !isOvernightBaseEligible({ placeType: suggestion.placeType, routability: suggestion.routability ?? 'direct_destination' })) return null;
-  const params = new URLSearchParams({ place: suggestion.name, country: suggestion.country, candidates: '1', parentName: parent.canonicalName, parentType: 'island' });
+  const params = new URLSearchParams({ place: suggestion.name, country: suggestion.country, candidates: '1', parentName: parent.canonicalName, parentType: parent.placeType });
   if (parent.canonicalPlaceId) params.set('parentId', parent.canonicalPlaceId);
   parent.parentCountries.forEach(country => params.append('parentCountry', country));
   try {
