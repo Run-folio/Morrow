@@ -16,7 +16,7 @@ export function generatedFlexibleStopIds(trip: CanonicalEasyTTrip): Set<string> 
     if (proof?.isManual !== false || proof.isFixed !== false || proof.nights !== stop.nights
       || trip.brief.nightAllocation?.allocations?.[stop.id] !== stop.nights || manual.has(stop.id)
       || locks?.stopIds.includes(stop.id)
-      || trip.brief.intent.route.destinations.some(i => i.stopIds.includes(stop.id) && i.requestedNights !== null)
+      || trip.brief.intent.route.destinations.some(i => i.stopIds.includes(stop.id) && i.requestedNights !== null && i.kind !== 'planning_area')
       || trip.brief.intent.hardConstraints.fixedCommitments.some(c => c.stopId === stop.id)
       || trip.brief.selectedPlaces[stop.id]?.length
       || trip.brief.itineraryIdeas?.some(i => i.stopId === stop.id)) continue;
@@ -41,6 +41,24 @@ export function generatedFlexibleStopIds(trip: CanonicalEasyTTrip): Set<string> 
  * budgets. This is part of the single accepted candidate, never a manual edit. */
 export function allocateGeneratedBuilderNights(trip: CanonicalEasyTTrip, flexible: Set<string>) {
   if (!flexible.size) return;
+  const remaining = new Set(flexible);
+  // A broad source request belongs to its selected member bases. Allocate its
+  // budget within that group before distributing the rest of the trip, while
+  // leaving authored and locked member nights untouched.
+  for (const intent of trip.brief.intent.route.destinations) {
+    if (intent.kind !== 'planning_area' || intent.requestedNights === null) continue;
+    const members = trip.stops.filter(stop => intent.stopIds.includes(stop.id));
+    if (!members.some(stop => remaining.has(stop.id))) continue;
+    const allocation = allocateTripNights({ totalNights: intent.requestedNights,
+      stops: members.map(stop => ({ ...stop, required: true,
+        fixedNights: remaining.has(stop.id) ? undefined : stop.nights ?? 0 })),
+      pace: trip.brief.intent.preferences.pace, interests: trip.brief.intent.preferences.interests });
+    if (!allocation.allocations) continue;
+    for (const stop of members) if (remaining.has(stop.id)) {
+      stop.nights = allocation.allocations[stop.id] ?? 0;
+      remaining.delete(stop.id);
+    }
+  }
   const held = trip.brief.intent.route.destinations.reduce((sum, intent) => {
     if (intent.requestedNights === null) return sum;
     const bound = trip.stops.filter(s => intent.stopIds.includes(s.id)).reduce((n,s)=>n+(s.nights??0),0);
@@ -51,10 +69,10 @@ export function allocateGeneratedBuilderNights(trip: CanonicalEasyTTrip, flexibl
   const allocation = allocateTripNights({totalNights:budget,
     stops:trip.stops.map(stop=>({...stop,
       required: !trip.brief.intent.hardConstraints.optionalStopIds.includes(stop.id),
-      fixedNights:flexible.has(stop.id)?undefined:stop.nights??0})),
+      fixedNights:remaining.has(stop.id)?undefined:stop.nights??0})),
     pace:trip.brief.intent.preferences.pace,interests:trip.brief.intent.preferences.interests});
   if (!allocation.allocations) return;
-  for (const stop of trip.stops) if (flexible.has(stop.id)) stop.nights = allocation.allocations[stop.id] ?? 0;
+  for (const stop of trip.stops) if (remaining.has(stop.id)) stop.nights = allocation.allocations[stop.id] ?? 0;
 }
 
 export function allRequiredStaysHaveNights(trip: CanonicalEasyTTrip): boolean {

@@ -347,6 +347,31 @@ test('choosing a covered island from a namesake prompt keeps its seven-night bas
   'A fully allocated single-stop trip cannot accept an eighth night without changing dates');
 },1440));
 
+test('Canary archipelago search accepts a physically verified member base without an outside warning', {skip:!enabled,timeout:120_000},async()=>withEvidence('canary-member-base',async(page,context)=>{
+ await context.unroute('**/api/journey-geocode?*');await page.goto(base,{waitUntil:'domcontentloaded'});
+ await page.getByRole('combobox',{name:'Start from',exact:true}).fill('LHR');
+ await page.getByRole('option',{name:/London Heathrow Airport.*United Kingdom/}).click();
+ await page.getByRole('button',{name:'One way',exact:true}).click();
+ await page.getByRole('tab',{name:'Describe my trip',exact:true}).click();
+ await page.getByRole('textbox',{name:'Start your plan'}).fill('Canary Islands 7 nights.');
+ await page.getByRole('button',{name:'Plan my trip'}).first().click();
+ await page.waitForURL(url=>url.pathname==='/journey/new'&&Boolean(url.searchParams.get('trip')));
+ const id=new URL(page.url()).searchParams.get('trip')!;
+ const dialog=page.getByRole('dialog').last();
+ await dialog.getByRole('combobox',{name:/Search for somewhere specific/}).fill('Santa Cruz de Tenerife');
+ await dialog.getByRole('option',{name:/Santa Cruz de Tenerife.*Spain/}).first().click();
+ await dialog.getByRole('button',{name:/Add 1 place/}).waitFor();
+ assert.equal(await dialog.getByText(/Santa Cruz de Tenerife is outside Canary Islands/).count(),0);
+ await dialog.getByRole('button',{name:/Add 1 place/}).click();
+ await page.waitForFunction(id=>Object.keys(localStorage).filter(k=>k.startsWith(`easyt:trip-recovery:v2:guest:${encodeURIComponent(id)}:`)).some(k=>{
+  const trip=JSON.parse(localStorage.getItem(k)??'null')?.trip;
+  return trip?.stops?.some((stop:{name:string;nights:number})=>stop.name==='Santa Cruz de Tenerife'&&stop.nights===7);
+ }),id);
+ const trip=(await recoveryTrip(page,id))!;
+ assert.equal(trip.brief.intent!.route!.destinations[0]?.requestedNights,7);
+ assert.equal(trip.stops[0]?.canonicalPlaceId,'reference:geonames:2511174');
+},1440));
+
 test('pending Cusco source confirmation distinguishes real cities and Builds with every original stay', {skip:!enabled,timeout:120_000},async()=>withEvidence('cusco-confirm-build',async(page,context)=>{
  await context.unroute('**/api/journey-geocode?*');await page.goto(base,{waitUntil:'domcontentloaded'});
  await page.getByRole('combobox',{name:'Start from',exact:true}).fill('LHR');

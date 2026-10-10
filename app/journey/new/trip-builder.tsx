@@ -668,6 +668,7 @@ function TripBuilderDocument() {
   const [outsideDiscoveryChoice, setOutsideDiscoveryChoice] = useState<{ mentionId: string; suggestion: CanonicalPlaceSuggestion } | null>(null);
   const [pendingDiscoveryBase, setPendingDiscoveryBase] = useState<{ mentionId: string; area: CanonicalPlaceSuggestion } | null>(null);
   const [searchedAreaBases, setSearchedAreaBases] = useState<NearbyBaseDiscoveryState | null>(null);
+  const discoverySearchVersionRef = useRef(0);
   const [originPlanningMentionId, setOriginPlanningMentionId] = useState<string | null>(null);
   const [transientPlanningMentionId, setTransientPlanningMentionId] = useState<string | null>(null);
   const originResolutionVersionRef = useRef(0);
@@ -2141,12 +2142,14 @@ function TripBuilderDocument() {
   };
 
   const dismissClarificationSession = () => {
+    discoverySearchVersionRef.current += 1;
     restoreClarificationResumeFocusRef.current = true;
     setClarificationDismissed(true);
     setClarificationOpen(false);
   };
 
   const advanceClarificationSession = () => {
+    discoverySearchVersionRef.current += 1;
     if (clarificationIndex < clarificationSessionIds.length - 1) {
       setClarificationIndex((current) => current + 1);
       return;
@@ -4910,6 +4913,10 @@ function TripBuilderDocument() {
     catch { return null; } })() : null, [discoveryProjectionIdentity]);
   const discoveryEventKind = discoveryEntry.kind === "skip" || discoveryEntry.kind === "legacy-recovery"
     ? "clarification" : discoveryEntry.kind;
+  const activeDiscoveryRef = useRef({ open: clarificationOpen, mentionId: activeClarificationMention?.mentionId });
+  useLayoutEffect(() => {
+    activeDiscoveryRef.current = { open: clarificationOpen, mentionId: activeClarificationMention?.mentionId };
+  }, [clarificationOpen, activeClarificationMention?.mentionId]);
   const canonicalDiscoveryReview = useMemo(() => !discoveryCommitting && activeClarificationMention && discoveryDraft && discoveryProjection
     ? buildDiscoveryReview({ mention: activeClarificationMention, draft: discoveryDraft, projection: discoveryProjection,
       trip: activeTripDocument, currentValidation: finalPlanValidation,
@@ -6058,6 +6065,7 @@ function TripBuilderDocument() {
           value: baseSearchInputs[activeClarificationMention.mentionId] ?? "",
           error: baseSearchErrors[activeClarificationMention.mentionId],
           onChange: (value) => {
+            discoverySearchVersionRef.current += 1;
             setBaseSearchInputs((current) => ({ ...current, [activeClarificationMention.mentionId]: value }));
             setBaseSearchErrors((current) => ({ ...current, [activeClarificationMention.mentionId]: "" }));
             setOutsideDiscoveryChoice(null);
@@ -6144,6 +6152,28 @@ function TripBuilderDocument() {
                 setBaseSearchErrors(current => ({ ...current, [activeClarificationMention.mentionId]: language === "es"
                   ? `${suggestion.name} necesita una ciudad o población como base antes de añadirla como parada. Tus lugares elegidos siguen guardados.`
                   : `${suggestion.name} needs a city or town as a base before it can be added as a stop. Your selected places remain saved.` }));
+                return;
+              }
+              if (requiresPhysicalIslandVerification(activeClarificationMention)) {
+                const mention = activeClarificationMention;
+                const snapshot = builderEditSessionRef.current?.getSnapshot();
+                if (!snapshot) return;
+                const searchVersion = ++discoverySearchVersionRef.current;
+                void verifyPhysicalIslandSuggestion(planningParentForMention(mention), suggestion).then((verified) => {
+                  const current = builderEditSessionRef.current?.getSnapshot();
+                  if (!current || discoverySearchVersionRef.current !== searchVersion
+                    || !activeDiscoveryRef.current.open || activeDiscoveryRef.current.mentionId !== mention.mentionId
+                    || current.trip.id !== snapshot.trip.id || current.browserOwnerId !== snapshot.browserOwnerId
+                    || activeBrowserOwnerIdRef.current !== snapshot.browserOwnerId || current.inputRevision !== snapshot.inputRevision
+                    || !current.trip.brief.structuredBrief?.placeMentions?.some(source => source.mentionId === mention.mentionId)) return;
+                  if (!verified) {
+                    setBaseSearchErrors(errors => ({ ...errors, [mention.mentionId]: language === "es"
+                      ? `No pudimos verificar ${suggestion.name} dentro de ${placeDisplayName(mention)}. Tu idea original sigue guardada.`
+                      : `We couldn't verify ${suggestion.name} inside ${placeDisplayName(mention)}. Your original idea is saved.` }));
+                    return;
+                  }
+                  addDiscoverySearchSelection(verified, false);
+                });
                 return;
               }
               if (discoverySearchOutsideMention(suggestion, activeClarificationMention)) {

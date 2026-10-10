@@ -94,3 +94,21 @@ test('adding a further base to an already resolved planning area keeps generated
  assert.deepEqual(next.brief.intent.route.destinations[0]!.stopIds,['tokyo','kyoto','hiroshima']);
  assert.deepEqual(next.brief.manualNightStopIds,[]);
 });
+
+test('a requested planning-area budget is shared only by its generated member bases',()=>{
+ const t=fixture();
+ const area=t.brief.intent.route.destinations[0]!;
+ area.kind='planning_area';area.selectedPlace={name:'Japan',country:'Japan',canonicalPlaceId:'japan'};
+ area.requestedNights=7;
+ const next=edit(t,{kind:'replace-destination',intentId:area.id,stopId:'hiroshima',place:{name:'Hiroshima',country:'Japan',canonicalPlaceId:'place:hiroshima',coordinates:[132.46,34.39]}});
+ const members=next.stops.filter(stop=>next.brief.intent.route.destinations[0]!.stopIds.includes(stop.id));
+ assert.equal(members.reduce((sum,stop)=>sum+(stop.nights??0),0),7);
+ assert.ok(members.every(stop=>(stop.nights??0)>0));
+ assert.equal(next.stops.find(stop=>stop.id==='kyoto')?.nights,7);
+ assert.equal(next.stops.reduce((sum,stop)=>sum+(stop.nights??0),0),14);
+ assert.deepEqual(next.brief.manualNightStopIds,[]);
+ const reduced=edit(next,{kind:'remove-destination',intentId:area.id,stopId:'hiroshima'});
+ assert.equal(reduced.stops.find(stop=>stop.id==='tokyo')?.nights,7);
+ assert.equal(reduced.stops.find(stop=>stop.id==='kyoto')?.nights,7);
+ assert.equal(reduced.brief.intent.route.destinations[0]?.requestedNights,7);
+});

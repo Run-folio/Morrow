@@ -607,14 +607,19 @@ export function prepareAcceptedBuilderEdit(current: CanonicalEasyTTrip, edit: Bu
     for (const stop of trip.stops) {
       const old = current.stops.find(s => s.id === stop.id);
       const intent = route.destinations.find(i => i.stopIds.includes(stop.id));
-      // Only an accepted new, unrequested stay may gain fresh generated provenance.
-      if (!old && stop.nights === null && intent?.requestedNights === null
+      // New unrequested stays and member bases under a requested planning area
+      // can gain generated provenance; exact overnight requests remain fixed.
+      if (!old && stop.nights === null && (intent?.requestedNights === null || intent?.kind === 'planning_area')
         && ['add-destination','resolve-destination','replace-destination'].includes(edit.kind)) flexible.add(stop.id);
       if (edit.kind === 'nights' && edit.stopId === stop.id) flexible.delete(stop.id);
     }
     const increases = edit.kind === 'nights' && edit.nights > (current.stops.find(s=>s.id===edit.stopId)?.nights??0);
     const addsPlanningBase = edit.kind === 'replace-destination' && trip.stops.some(stop => !current.stops.some(old => old.id === stop.id));
-    if (edit.kind === 'dates' || edit.kind === 'add-destination' || edit.kind === 'resolve-destination' || addsPlanningBase || increases) allocateGeneratedBuilderNights(trip,flexible);
+    const removesRequestedPlanningBase = edit.kind === 'remove-destination' && Boolean(edit.stopId
+      && current.brief.intent.route.destinations.some(intent => intent.id === edit.intentId && intent.kind === 'planning_area'
+        && intent.requestedNights !== null && intent.stopIds.length > 1 && intent.stopIds.includes(edit.stopId!)));
+    if (edit.kind === 'dates' || edit.kind === 'add-destination' || edit.kind === 'resolve-destination'
+      || addsPlanningBase || removesRequestedPlanningBase || increases) allocateGeneratedBuilderNights(trip,flexible);
     route.orderedStopIds = trip.stops.map(stop => stop.id);
     if (['dates', 'nights', 'add-destination', 'remove-destination', 'resolve-destination', 'replace-destination', 'structural-inverse'].includes(edit.kind)) synchronizeAcceptedNightAllocations(trip, flexible);
     route.projectionInputKey = current.brief.intent.route.projectionInputKey;
