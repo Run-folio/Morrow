@@ -1,0 +1,65 @@
+{
+  "version": 1,
+  "generatorVersion": "island-geography-v1",
+  "snapshotId": "d408a3e1343d",
+  "generatedAt": "2026-10-10T12:28:26.108Z",
+  "referenceSnapshotId": "5b64880f570cf12a0fd0",
+  "attribution": "© OpenStreetMap contributors; physical polygons and derived containment under ODbL1.0. Settlement facts retain GeoNames CC BY4.0.",
+  "licenseURL": "https://www.openstreetmap.org/copyright",
+  "coverage": {
+    "islands": 4,
+    "groups": 1,
+    "groupCoverage": "partial",
+    "baseBindings": 192
+  },
+  "budgets": {
+    "compressedBytes": 780337,
+    "inflatedBytes": 3712485,
+    "maximumCompressedBytes": 2097152,
+    "maximumInflatedBytes": 8388608
+  },
+  "files": [
+    {
+      "path": "santorini.json.gz",
+      "sha256": "9a5f3d5b84cda06ff3c96448c17199275db54f1892b271ba1777df966a359d3b",
+      "bytes": 20321,
+      "inflatedBytes": 91859
+    },
+    {
+      "path": "crete.json.gz",
+      "sha256": "fc7038697e9e3ecdf645b937c9fffb9fdf94cbb570700a70d868edb2a4db46a3",
+      "bytes": 373265,
+      "inflatedBytes": 1834420
+    },
+    {
+      "path": "tenerife.json.gz",
+      "sha256": "6d91b9883f3af823197867b3141587cdd6d88d78519c49a30069d9070c182cb9",
+      "bytes": 277175,
+      "inflatedBytes": 1282722
+    },
+    {
+      "path": "gran-canaria.json.gz",
+      "sha256": "dda9f38e5716fe1569891a6b8fa986fc6562b0cff60ce641754e80bfd76f0cf0",
+      "bytes": 103368,
+      "inflatedBytes": 471962
+    },
+    {
+      "path": "groups.json.gz",
+      "sha256": "9930f77381b2476d22a398d819f58f482ae0aa449521bbd0cd1a99dcbd8bfa79",
+      "bytes": 815,
+      "inflatedBytes": 3267
+    },
+    {
+      "path": "base-bindings.json.gz",
+      "sha256": "c3df2340b3e9f9eabba8727a718c5204f963b9c4193d05ea3424fa89159d2c8b",
+      "bytes": 4213,
+      "inflatedBytes": 27075
+    },
+    {
+      "path": "index.json",
+      "sha256": "89efb523b4d28d8bc4d8d3ba5725910dbeabd9efcdbd82a7c3d9ab2d88380553",
+      "bytes": 1180,
+      "inflatedBytes": 1180
+    }
+  ]
+}

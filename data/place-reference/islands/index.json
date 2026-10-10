@@ -1,0 +1,62 @@
+{
+  "version": 1,
+  "snapshotId": "d408a3e1343d",
+  "islands": [
+    {
+      "id": "santorini",
+      "name": "Santorini",
+      "countryCode": "GR",
+      "aliases": [
+        "Santorini",
+        "Santorini"
+      ],
+      "identityId": "relation:453964"
+    },
+    {
+      "id": "crete",
+      "name": "Crete",
+      "countryCode": "GR",
+      "aliases": [
+        "Crete",
+        "Crete"
+      ],
+      "identityId": "relation:453129"
+    },
+    {
+      "id": "tenerife",
+      "name": "Tenerife",
+      "countryCode": "ES",
+      "aliases": [
+        "Tenerife",
+        "Tenerife"
+      ],
+      "identityId": "relation:2108882"
+    },
+    {
+      "id": "gran-canaria",
+      "name": "Gran Canaria",
+      "countryCode": "ES",
+      "aliases": [
+        "Gran Canaria",
+        "Gran Canaria"
+      ],
+      "identityId": "relation:2214683"
+    }
+  ],
+  "groups": [
+    {
+      "id": "canary-islands",
+      "name": "Canary Islands",
+      "countryCode": "ES",
+      "aliases": [
+        "Canary Islands"
+      ],
+      "identityId": "relation:5392189",
+      "memberIslandIds": [
+        "tenerife",
+        "gran-canaria"
+      ],
+      "coverage": "partial"
+    }
+  ]
+}

@@ -1,0 +1,24 @@
+# Reviewed island geography subset
+
+This separate versioned subset supports Santorini, Crete, Tenerife and Gran Canaria. Canary Islands is a **partly covered archipelago**, with Tenerife and Gran Canaria as its two covered members. Other islands, mainland Spain, offshore water and sibling-island towns cannot qualify through these records. This is not global coverage.
+
+The compressed records retain independently acquired public source bodies, source URLs/queries, exact identities, check dates and source publication timestamps. Manifest checksums protect those captures and192 derived GeoNames town-to-island relationships. The normalizer keeps the original settlement ID/provider/point. It does not replace a town with an island centroid. Existing GeoNames reference data and its manifest remain unchanged.
+
+Santorini and Crete use physical OSM multipolygons. Tenerife and Gran Canaria use complete independently tagged physical coastlines and the unique closed land component containing the exact named island identity point. Their political/maritime identity relations do **not** supply the land geometry. Polygon holes, boundary exclusion, closure and topology checks remain strict. No path is patched, approximated, simplified or inferred from proximity. Canary member relationships retain exact Photon country/state and a checked official membership citation, independently of physical town containment.
+
+## Explicit offline refresh
+
+1. Acquire fresh bounded public source responses independently of traveller requests. Preserve exact URL/query, original response SHA256 where available, source timestamp and actual acquisition/check date. A failed request cannot replace a capture. Do not advance a check date merely by reusing old source data.
+2. Prepare a `version:1` source pack containing `records` and `groups`. Each island record contains `id`, `name`, `country`, `geometryKind` (`island-relation` or `coastline`), and `identity`/`geometry` evidence (`url`, `checkedAt`, `body`, optional `query` and `originalResponseSHA256`). Identity evidence is a bounded Photon response; geometry evidence is a bounded Overpass response. A group additionally names its covered member IDs, exact archipelago identity evidence, HTTPS official membership citation, checked date and `coverage:'partial'`. Official membership citations require human source review; a URL alone does not certify point containment.
+3. Run `node --experimental-strip-types scripts/build-island-geography.ts SOURCE_PACK.json NEW_CANDIDATE_DIRECTORY`. The command performs no network requests and refuses to overwrite any existing output. It checks exact source identities, countries, strict complete geometry, named group membership and installed reference facts before atomically publishing a candidate directory.
+4. Review source/data/coverage differences and test the candidate. Only after review replace this accepted version through a normal Git change/deployment. Do not update running trips, schedule an external job or acquire provider credentials as part of refresh.
+
+Suggested review cadence: monthly and on a reported geographic error. Old checked dates remain visible provenance; an outage or elapsed date does not switch a covered record back to user-blocking live requests. Unknown individual islands retain the existing bounded live source path. Covered-but-corrupt data fails closed with the existing recoverable API error, rather than pretending to be uncovered.
+
+Separate bounds:2MiB compressed/deployed,8MiB inflated,128MiB incremental cold-load RSS,2seconds first covered-parent load,500ms warm lookup. Audit this subset and total deployed geographic data separately; do not change the existing32MiB reference-manifest budget to accommodate it. The server loads covered records lazily, validates source integrity and topology once and memoizes immutable geometry.
+
+## Source availability and licenses
+
+© [OpenStreetMap contributors](https://www.openstreetmap.org/copyright). The bundled source captures, physical polygon transformations and derived containment relationships are available here under [ODbL1.0](https://opendatacommons.org/licenses/odbl/1-0/). Sources include Photon and Overpass's public OSM data. The manifest and per-record evidence identify exact URLs/queries/objects, digests and dates. Coastline sources retain all captured ways; only the verified named land component is used, without invented joins or administrative geometry.
+
+Settlement facts retain [GeoNames CC BY4.0](https://creativecommons.org/licenses/by/4.0/) attribution and the existing `../LICENSES.md` terms. Derived binding records associate unchanged exact reference facts with verified OSM polygons; they do not assert travel suitability or an accommodation recommendation.
