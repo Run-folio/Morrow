@@ -255,7 +255,7 @@ test('distinct same-country origin choices show geography and preserve mouse and
  await input.fill('Xi’an');const payload=await (await response).json();
  const expected=payload.candidates.filter((p:any)=>p.name==='Xi’an');assert.equal(expected.length,5);
  const options=page.getByRole('option',{name:/^Xi’an.*China/});await options.first().waitFor();assert.equal(await options.count(),5);
- const labels=await options.allTextContents();assert.equal(new Set(labels).size,5);assert.ok(labels.every(label=>label.includes('°')&&label.includes('City')));
+ const labels=await options.allTextContents();assert.equal(new Set(labels).size,5);assert.ok(labels.every((label,index)=>label.includes(`Location ${index+1} of 5`)&&label.includes('City')));
  await options.first().click();
  await page.waitForFunction(id=>JSON.parse(localStorage.getItem('easyt-private:guest:homepage-input')??'null')?.snapshot?.origin?.value?.canonicalPlaceId===id,expected[0].canonicalPlaceId);
  const selected=async()=>page.evaluate(()=>JSON.parse(localStorage.getItem('easyt-private:guest:homepage-input')??'null')?.snapshot.origin.value);
@@ -386,8 +386,8 @@ test('pending Cusco source confirmation distinguishes real cities and Builds wit
  if(await later.waitFor({timeout:5000}).then(()=>true).catch(()=>false))await later.click();
  await page.getByRole('button',{name:'Choose place Cusco',exact:true}).first().click();
  const dialog=page.getByRole('dialog').filter({has:page.getByRole('heading',{name:'Confirm location',exact:true})});
- const intended=dialog.getByRole('button',{name:/Cusco.*Peru.*13\.53188.*71\.96701/});
- const other=dialog.getByRole('button',{name:/Cusco.*Peru.*7\.25556.*76\.47555/});
+ const intended=dialog.getByRole('button',{name:/Cusco.*Peru.*Location 1 of 2/});
+ const other=dialog.getByRole('button',{name:/Cusco.*Peru.*Location 2 of 2/});
  await intended.waitFor();await other.waitFor();
  const before=(await recoveryTrip(page,id))!;assert.deepEqual(before.stops.map(stop=>stop.nights),[2,3,5,2]);
  await intended.click();await dialog.waitFor({state:'detached'});
