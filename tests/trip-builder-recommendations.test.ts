@@ -52,3 +52,35 @@ test('aborted discovery cannot return a projection even if a provider ignores ca
  const original=globalThis.fetch;const trip=fixture();const controller=new AbortController();
  try{globalThis.fetch=async()=>{controller.abort();return Response.json({places:[place]})};await assert.rejects(resolveBuilderRecommendation(trip,trip.stops[0]!.id,controller.signal),{name:'AbortError'})}finally{globalThis.fetch=original}
 });
+test('recommendation discovery forwards selected identity pins without changing saved geography',async()=>{
+ const original=globalThis.fetch;const trip=fixture();const stop=trip.stops[0]!;
+ stop.canonicalPlaceId='reference:tokyo';stop.providerId='geonames:1850147';
+ const before=structuredClone(trip);let requestUrl='';
+ try {
+  globalThis.fetch=async input=>{requestUrl=String(input);return Response.json({places:[]})};
+  await resolveBuilderRecommendation(trip,stop.id,new AbortController().signal);
+  const params=new URL(requestUrl,'http://localhost').searchParams;
+  assert.equal(params.get('canonicalPlaceId'),stop.canonicalPlaceId);
+  assert.equal(params.get('providerId'),stop.providerId);
+  assert.equal(params.get('lat'),String(stop.latitude));assert.equal(params.get('lon'),String(stop.longitude));
+  assert.deepEqual(trip,before);
+  delete stop.canonicalPlaceId;delete stop.providerId;
+  await resolveBuilderRecommendation(trip,stop.id,new AbortController().signal);
+  const legacyParams=new URL(requestUrl,'http://localhost').searchParams;
+  assert.equal(legacyParams.has('canonicalPlaceId'),false);assert.equal(legacyParams.has('providerId'),false);
+ }finally{globalThis.fetch=original}
+});
+test('a typed incomplete discovery assessment cannot complete recommendation prose, including HTTP 200 empty',async()=>{
+ const original=globalThis.fetch;const trip=fixture();const stop=trip.stops[0]!;const before=structuredClone(trip);
+ try {
+  for(const retrieval of ['blocked','unavailable','checking','not-attempted']) {
+   for(const places of [[],[place]]) {
+    globalThis.fetch=async()=>Response.json({places,assessment:{retrieval,evidence:'insufficient',reason:'identity_required',retryable:false}});
+    await assert.rejects(resolveBuilderRecommendation(trip,stop.id,new AbortController().signal));
+    assert.deepEqual(trip,before);
+   }
+  }
+  globalThis.fetch=async()=>Response.json({places:[],assessment:{retrieval:'completed',evidence:'insufficient',reason:'successful_empty',retryable:false}});
+  assert.deepEqual(await resolveBuilderRecommendation(trip,stop.id,new AbortController().signal),builderRecommendationProjection(trip,stop.id,[]));
+ }finally{globalThis.fetch=original}
+});

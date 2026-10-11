@@ -1,4 +1,5 @@
 import { buildCredibleItinerary, type PlannerPlace } from './planner.ts';
+import { planningEvidenceFromResponse } from './planning-evidence-presentation.ts';
 import type { CanonicalEasyTTrip } from './trip.ts';
 
 /** Only generated prose is owned here. Activity rows, bookings and day bindings remain authored. */
@@ -44,10 +45,14 @@ export async function resolveBuilderRecommendation(trip: CanonicalEasyTTrip, sto
     const stop = trip.stops.find(stop => stop.id === stopId);
     if (!stop || stop.latitude === null || stop.longitude === null) throw new Error('Recommendation location unavailable');
     const params = new URLSearchParams({ destination: stop.name, country: stop.country, lat: String(stop.latitude), lon: String(stop.longitude) });
+    if (stop.canonicalPlaceId) params.set('canonicalPlaceId', stop.canonicalPlaceId);
+    if (stop.providerId) params.set('providerId', stop.providerId);
     const response = await fetch(`/api/journey-discover?${params}`, { cache: 'no-store', signal: AbortSignal.any([signal, AbortSignal.timeout(10000)]) });
     if (!response.ok) throw new Error('Recommendation provider unavailable');
-    const payload = await response.json() as { places?: unknown; unavailable?: boolean };
+    const payload = await response.json() as { places?: unknown; unavailable?: boolean; assessment?: unknown };
     if (signal.aborted) throw new DOMException('Builder input changed', 'AbortError');
+    const assessment = planningEvidenceFromResponse(payload);
+    if (assessment && assessment.retrieval !== 'completed') throw new Error('Recommendation result unavailable');
     if (payload.unavailable || !Array.isArray(payload.places) || !payload.places.every(validPlace)) throw new Error('Recommendation result unavailable');
     // An available empty shortlist is a real result. PlannerPlace.cost is visit duration, not money.
     return builderRecommendationProjection(trip, stopId, payload.places);
