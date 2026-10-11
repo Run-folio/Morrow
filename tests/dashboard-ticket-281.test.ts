@@ -3,7 +3,8 @@ import { readFileSync } from "node:fs";
 import test from "node:test";
 
 import { dashboardLibraryTrips } from "../lib/easyt/dashboard-library.ts";
-import { dashboardTripPhoto, dashboardTripPhotosForCards } from "../lib/easyt/dashboard-trip-image.ts";
+import { dashboardTripPhoto, dashboardTripPhotosForCards, dashboardTripCoverPlace } from "../lib/easyt/dashboard-trip-image.ts";
+import { countryFor } from "../lib/easyt/country-registry.ts";
 import { routeImageCredit } from "../lib/easyt/route-images.ts";
 import { nextTripUpdatedAt } from "../lib/easyt/trip-continuity.ts";
 import type { EasyTTrip, TripStatus } from "../lib/easyt/trip.ts";
@@ -103,7 +104,7 @@ test("idea route sketches do not mount a live map in ordinary cards", () => {
   assert.doesNotMatch(card, /TripRoutePreview/);
 });
 
-test("visible cards diversify valid destination photos and keep the selected photo credit", () => {
+test("visible cards keep first-destination covers distinct and retain selected photo rights", () => {
   const tokyoA = { ...trip("tokyo-a"), stops: [stop("Tokyo", "Japan", 0), stop("Kyoto", "Japan", 1)] };
   const tokyoB = { ...trip("tokyo-b"), stops: [stop("Tokyo", "Japan", 0), stop("Takayama", "Japan", 1)] };
   const londonA = { ...trip("london-a"), stops: [stop("London", "United Kingdom", 0), stop("Paris", "France", 1)] };
@@ -112,11 +113,20 @@ test("visible cards diversify valid destination photos and keep the selected pho
   const cards = [tokyoA, tokyoB, londonA, londonB, londonC];
   assert.equal(dashboardTripPhoto(tokyoA)?.src, dashboardTripPhoto(tokyoB)?.src);
   const result = dashboardTripPhotosForCards(cards);
-  const sources = cards.map((card) => result.get(card.id)?.src);
+  const sources = [...result.values()].map(photo => photo.src);
   assert.equal(new Set(sources).size, sources.length);
   assert.deepEqual(result, dashboardTripPhotosForCards(cards));
+  assert.ok(result.has(tokyoA.id));
+  assert.equal(result.has(tokyoB.id),false,'a duplicate first-place asset waits for a live alternative rather than using Takayama');
   for (const card of cards) {
     const selected = result.get(card.id);
+    if (!selected) {
+      const place=dashboardTripCoverPlace(card);
+      assert.equal(place?.name,card.stops[0]!.name,'unresolved cover still belongs to its first destination');
+      assert.ok(countryFor(place?.country)?.flag,'verified country retains a flag while a distinct photo is unresolved');
+      continue;
+    }
+    assert.equal(selected.place,card.stops[0]!.name,'diversity never substitutes a later destination');
     assert.ok(selected?.creditHref);
     assert.ok(selected?.licenseHref);
     assert.equal(selected.creditHref, routeImageCredit(selected.src)?.sourceUrl);
@@ -124,13 +134,17 @@ test("visible cards diversify valid destination photos and keep the selected pho
   }
 });
 
-test("single-photo and unphotographed trips keep valid fallbacks across lifecycle states", () => {
+test("single-photo duplicates remain unresolved with first-country fallback across lifecycle states", () => {
   const one = { ...trip("one", "planned"), stops: [stop("Tokyo", "Japan", 0)] };
   const two = { ...trip("two", "archived"), stops: [stop("Tokyo", "Japan", 0)] };
   const idea = { ...trip("idea", "draft"), stops: [stop("Tokyo", "Japan", 0)] };
   const none = { ...trip("none", "planned"), stops: [stop("Unknown", "Nowhere", 0)] };
   const result = dashboardTripPhotosForCards([one, two, idea, none]);
-  assert.equal(result.get(one.id)?.src, result.get(two.id)?.src);
+  assert.ok(result.get(one.id)?.src);
+  assert.equal(result.get(two.id),undefined,'archived duplicate seeks an alternate instead of reusing the same asset');
+  assert.equal(dashboardTripCoverPlace(two)?.name,'Tokyo');
+  assert.equal(countryFor(dashboardTripCoverPlace(two)?.country)?.flag,'🇯🇵');
   assert.equal(result.get(idea.id), undefined);
   assert.equal(result.get(none.id), undefined);
+  assert.equal(countryFor(dashboardTripCoverPlace(none)?.country),null,'unknown country has no fabricated flag');
 });

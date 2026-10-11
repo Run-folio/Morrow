@@ -23,6 +23,8 @@ import { EasyTButton, EasyTField, EasyTLinkButton, EasyTSelect, EasyTSegmentedCo
 import { MorroviaBriefNotice, MorroviaConfirmationDialog, MorroviaStatusBanner } from "@/components/easyt/morrovia-feedback";
 import ResilientImage from "@/components/easyt/resilient-image";
 import MorroviaPhotoCredit from "@/components/easyt/morrovia-photo-credit";
+import CountryVisualFallback, { CountryIllustrationLabel } from "@/components/easyt/country-visual-fallback";
+import { useDashboardTripPhotos } from "@/components/easyt/use-dashboard-trip-photos";
 import { JourneyPlannerMap } from "@/components/journey-planner-map";
 import type { JourneyStop } from "@/lib/journey";
 import {
@@ -52,7 +54,7 @@ import { accommodationProgress } from "@/lib/easyt/accommodation";
 import { mapRouteLegsFromTrip } from "@/lib/easyt/map-spatial-context";
 import { routeDestinationPhoto } from "@/lib/easyt/route-images";
 import { dashboardLibraryTrips, type DashboardLibraryView, type DashboardSortMode } from "@/lib/easyt/dashboard-library";
-import { dashboardTripPhoto, dashboardTripPhotosForCards, featuredDashboardTripPhoto, type DashboardTripPhoto } from "@/lib/easyt/dashboard-trip-image";
+import { dashboardTripPhoto, dashboardTripCoverPlace, type DashboardTripPhoto } from "@/lib/easyt/dashboard-trip-image";
 import accountStyles from "../account.module.css";
 import styles from "./dashboard.module.css";
 
@@ -278,12 +280,13 @@ export default function DashboardClient({ trips, stamps, ownerId }: { trips: Eas
   const upcomingTrips = useMemo(() => secondaryTrips.filter((trip) => trip.status === "planned"), [secondaryTrips]);
   const ideaTrips = useMemo(() => secondaryTrips.filter((trip) => trip.status === "draft"), [secondaryTrips]);
   const pastTrips = useMemo(() => secondaryTrips.filter((trip) => trip.status === "archived"), [secondaryTrips]);
-  const featuredPhoto = featuredTrip ? featuredDashboardTripPhoto(featuredTrip) : null;
+  const coverTrips = useMemo(() => [
+    ...(featuredTrip ? [featuredTrip] : []),
+    ...(sort === "updated" ? secondaryTrips : [...upcomingTrips, ...ideaTrips, ...pastTrips]),
+  ], [featuredTrip, sort, secondaryTrips, upcomingTrips, ideaTrips, pastTrips]);
+  const { photos: cardPhotos, markFailed: markCoverFailed } = useDashboardTripPhotos(coverTrips);
+  const featuredPhoto = featuredTrip ? cardPhotos.get(featuredTrip.id) : null;
   useEffect(() => setFeaturedImageDisplayed(false), [featuredPhoto?.src]);
-  const cardPhotos = useMemo(() => dashboardTripPhotosForCards(
-    sort === "updated" ? secondaryTrips : [...upcomingTrips, ...ideaTrips, ...pastTrips],
-    featuredPhoto ? [featuredPhoto.src] : [],
-  ), [sort, secondaryTrips, upcomingTrips, ideaTrips, pastTrips, featuredPhoto?.src]);
 
   const runAction = async (id: string, action: "archive" | "restore" | "duplicate") => {
     if (actionInFlightRef.current) return;
@@ -453,13 +456,15 @@ export default function DashboardClient({ trips, stamps, ownerId }: { trips: Eas
       </> : null}
       {featuredTrip ? (
         <article className={styles.currentJourney} aria-labelledby="current-journey-title">
-          <div className={styles.currentMedia}>
+          <div className={`${styles.currentMedia} ${!featuredPhoto?.src ? styles.currentMediaNeutral : ""}`}>
             <ResilientImage
               src={featuredPhoto?.src}
               alt={featuredPhoto?.alt ?? ""}
               onDisplayState={setFeaturedImageDisplayed}
-              fallback={<div className={styles.currentMediaFallback}><Globe2 aria-hidden="true" /><span>{routeLabel(featuredTrip, copy.routeWaiting)}</span></div>}
+              onError={() => { if (featuredTrip && featuredPhoto) markCoverFailed(featuredTrip, featuredPhoto.src); }}
+              fallback={<div className={styles.currentMediaFallback}><CountryVisualFallback country={dashboardTripCoverPlace(featuredTrip)?.country} /></div>}
             />
+            {featuredPhoto?.scope === "country" && featuredImageDisplayed ? <CountryIllustrationLabel country={featuredPhoto.country} /> : null}
             <div className={styles.currentIdentity}>
               <p className={styles.eyebrow}>{isSpanish ? "Tu viaje actual" : "Your current journey"}</p>
               <h2 id="current-journey-title"><span>{featuredTitle?.direct}</span>{featuredTitle?.expressive ? <em>{featuredTitle.expressive}</em> : null}</h2>
@@ -535,10 +540,10 @@ export default function DashboardClient({ trips, stamps, ownerId }: { trips: Eas
         </div>
 
         <div id="dashboard-trip-grid" className={styles.tripSections}>
-          {sort === "updated" ? <RecentlyUpdatedTrips trips={secondaryTrips} cardPhotos={cardPhotos} recoveryIssues={recoveryIssues} language={language} copy={copy} working={working} workingAction={workingAction} onAction={runAction} onGift={openGift} onRemove={(trip) => { setDeleteError(""); setPendingDelete(trip); }} /> : <>
-            <JourneySection kind="upcoming" trips={upcomingTrips} cardPhotos={cardPhotos} recoveryIssues={recoveryIssues} language={language} copy={copy} working={working} workingAction={workingAction} onAction={runAction} onGift={openGift} onRemove={(trip) => { setDeleteError(""); setPendingDelete(trip); }} />
-            <JourneySection kind="idea" trips={ideaTrips} cardPhotos={cardPhotos} recoveryIssues={recoveryIssues} language={language} copy={copy} working={working} workingAction={workingAction} onAction={runAction} onGift={openGift} onRemove={(trip) => { setDeleteError(""); setPendingDelete(trip); }} />
-            <JourneySection kind="past" trips={pastTrips} cardPhotos={cardPhotos} recoveryIssues={recoveryIssues} language={language} copy={copy} working={working} workingAction={workingAction} onAction={runAction} onGift={openGift} onRemove={(trip) => { setDeleteError(""); setPendingDelete(trip); }} />
+          {sort === "updated" ? <RecentlyUpdatedTrips trips={secondaryTrips} cardPhotos={cardPhotos} recoveryIssues={recoveryIssues} language={language} copy={copy} working={working} workingAction={workingAction} onAction={runAction} onGift={openGift} onPhotoError={markCoverFailed} onRemove={(trip) => { setDeleteError(""); setPendingDelete(trip); }} /> : <>
+            <JourneySection kind="upcoming" trips={upcomingTrips} cardPhotos={cardPhotos} recoveryIssues={recoveryIssues} language={language} copy={copy} working={working} workingAction={workingAction} onAction={runAction} onGift={openGift} onPhotoError={markCoverFailed} onRemove={(trip) => { setDeleteError(""); setPendingDelete(trip); }} />
+            <JourneySection kind="idea" trips={ideaTrips} cardPhotos={cardPhotos} recoveryIssues={recoveryIssues} language={language} copy={copy} working={working} workingAction={workingAction} onAction={runAction} onGift={openGift} onPhotoError={markCoverFailed} onRemove={(trip) => { setDeleteError(""); setPendingDelete(trip); }} />
+            <JourneySection kind="past" trips={pastTrips} cardPhotos={cardPhotos} recoveryIssues={recoveryIssues} language={language} copy={copy} working={working} workingAction={workingAction} onAction={runAction} onGift={openGift} onPhotoError={markCoverFailed} onRemove={(trip) => { setDeleteError(""); setPendingDelete(trip); }} />
           </>}
           {!secondaryTrips.length && (Boolean(query) || view !== "all") ? (
             <div className={styles.emptyState}>
@@ -628,21 +633,22 @@ type JourneyCardActions = {
   workingAction: "archive" | "restore" | "duplicate" | "delete" | null;
   onAction: (id: string, action: "archive" | "restore" | "duplicate") => void;
   onGift: (trip: EasyTTrip) => void;
+  onPhotoError: (trip: EasyTTrip, src: string) => void;
   onRemove: (trip: EasyTTrip) => void;
 };
 
-function RecentlyUpdatedTrips({ trips, cardPhotos, language, copy, recoveryIssues, working, workingAction, onAction, onGift, onRemove }: JourneyCardActions & { trips: EasyTTrip[] }) {
+function RecentlyUpdatedTrips({ trips, cardPhotos, language, copy, recoveryIssues, working, workingAction, onAction, onGift, onPhotoError, onRemove }: JourneyCardActions & { trips: EasyTTrip[] }) {
   if (!trips.length) return null;
-  const cardProps = { language, copy, recoveryIssues, workingAction, onAction, onGift, onRemove };
+  const cardProps = { language, copy, recoveryIssues, workingAction, onAction, onGift, onPhotoError, onRemove };
   return <section className={`${styles.journeySection} ${styles.recentSection}`} aria-labelledby="recent-journeys-title">
     <h2 id="recent-journeys-title" className={styles.srOnly}>{language === "es" ? "Viajes actualizados recientemente" : "Recently updated trips"}</h2>
     <div className={styles.sectionGrid} data-count={Math.min(trips.length, 4)}>
-      {trips.map((trip) => <TripCard key={trip.id} trip={trip} photo={cardPhotos.get(trip.id)} {...cardProps} working={working === trip.id} />)}
+      {trips.map((trip) => <TripCard key={trip.id} trip={trip} photo={cardPhotos.get(trip.id) ?? null} {...cardProps} working={working === trip.id} />)}
     </div>
   </section>;
 }
 
-function JourneySection({ kind, trips, cardPhotos, language, copy, recoveryIssues, working, workingAction, onAction, onGift, onRemove }: JourneyCardActions & {
+function JourneySection({ kind, trips, cardPhotos, language, copy, recoveryIssues, working, workingAction, onAction, onGift, onPhotoError, onRemove }: JourneyCardActions & {
   kind: "upcoming" | "idea" | "past";
   trips: EasyTTrip[];
 }) {
@@ -655,7 +661,7 @@ function JourneySection({ kind, trips, cardPhotos, language, copy, recoveryIssue
   } as const;
   const visibleTrips = kind === "past" ? trips.slice(0, 3) : trips;
   const olderTrips = kind === "past" ? trips.slice(3) : [];
-  const cardProps = { language, copy, recoveryIssues, workingAction, onAction, onGift, onRemove };
+  const cardProps = { language, copy, recoveryIssues, workingAction, onAction, onGift, onPhotoError, onRemove };
   return <section className={`${styles.journeySection} ${styles[`${kind}Section`]}`} aria-labelledby={`${kind}-journeys-title`}>
     <header className={styles.sectionHeading}>
       <h2 id={`${kind}-journeys-title`}><span>{headings[kind][0]}</span><em>{headings[kind][1]}</em></h2>
@@ -666,12 +672,12 @@ function JourneySection({ kind, trips, cardPhotos, language, copy, recoveryIssue
           : (isSpanish ? "Lugares vividos, guardados para otra vez." : "Places lived, kept close for another time.")}</p>
     </header>
     <div className={styles.sectionGrid} data-count={Math.min(visibleTrips.length, 4)}>
-      {visibleTrips.map((trip) => <TripCard key={trip.id} kind={kind} trip={trip} photo={cardPhotos.get(trip.id)} {...cardProps} working={working === trip.id} />)}
+      {visibleTrips.map((trip) => <TripCard key={trip.id} kind={kind} trip={trip} photo={cardPhotos.get(trip.id) ?? null} {...cardProps} working={working === trip.id} />)}
     </div>
     {olderTrips.length ? <details className={styles.olderJourneys}>
       <summary>{isSpanish ? `Ver ${olderTrips.length} viajes anteriores` : `Show ${olderTrips.length} older ${olderTrips.length === 1 ? "journey" : "journeys"}`}<ArrowRight aria-hidden="true" /></summary>
       <div className={styles.sectionGrid} data-count={Math.min(olderTrips.length, 4)}>
-        {olderTrips.map((trip) => <TripCard key={trip.id} kind="past" trip={trip} photo={cardPhotos.get(trip.id)} {...cardProps} working={working === trip.id} />)}
+        {olderTrips.map((trip) => <TripCard key={trip.id} kind="past" trip={trip} photo={cardPhotos.get(trip.id) ?? null} {...cardProps} working={working === trip.id} />)}
       </div>
     </details> : null}
   </section>;
@@ -704,10 +710,10 @@ function TripActionsMenu({ trip, language, copy, working, workingAction, onActio
       </details>;
 }
 
-export function TripCard({ kind, trip, photo: selectedPhoto, language, copy, recoveryIssues, working, workingAction, onAction, onGift, onRemove }: {
+export function TripCard({ kind, trip, photo: selectedPhoto, language, copy, recoveryIssues, working, workingAction, onAction, onGift, onPhotoError, onRemove }: {
   kind?: "upcoming" | "idea" | "past";
   trip: EasyTTrip;
-  photo?: DashboardTripPhoto;
+  photo?: DashboardTripPhoto | null;
   language: EasyTLanguage;
   copy: DashboardTripCopy;
   recoveryIssues: Record<string, DashboardRecoveryIssue>;
@@ -715,13 +721,14 @@ export function TripCard({ kind, trip, photo: selectedPhoto, language, copy, rec
   workingAction: "archive" | "restore" | "duplicate" | "delete" | null;
   onAction: (id: string, action: "archive" | "restore" | "duplicate") => void;
   onGift: (trip: EasyTTrip) => void;
+  onPhotoError: (trip: EasyTTrip, src: string) => void;
   onRemove: (trip: EasyTTrip) => void;
 }) {
   const [imageDisplayed, setImageDisplayed] = useState(false);
   useEffect(() => setImageDisplayed(false), [selectedPhoto?.src]);
   const resolvedKind = kind ?? (trip.status === "draft" ? "idea" : trip.status === "archived" ? "past" : "upcoming");
   const title = tripDisplayTitle(trip);
-  const photo = selectedPhoto ?? dashboardTripPhoto(trip);
+  const photo = selectedPhoto === undefined ? dashboardTripPhoto(trip) : selectedPhoto;
   const stays = accommodationProgress(trip);
   const stayLabel = stays.stops.length ? `${stays.sortedCount} of ${stays.stops.length} stays sorted` : "Overnight stays to confirm";
   const primaryHref = resolvedKind === "idea" ? `/journey/new?trip=${encodeURIComponent(trip.id)}` : tripWorkspaceHref(trip.id);
@@ -734,8 +741,9 @@ export function TripCard({ kind, trip, photo: selectedPhoto, language, copy, rec
   return <article className={`${styles.tripCard} ${resolvedKind === "past" ? styles.pastCard : ""} ${working ? styles.working : ""}`} aria-busy={working || undefined}>
     <div className={styles.cardMediaFrame}>
       <Link className={styles.cardMedia} href={primaryHref} onClick={() => resolvedKind === "idea" ? trackEvent("trip_edit_started", { trip_id: trip.id, source: "dashboard" }) : trackTripReopened(trip)} tabIndex={working ? -1 : undefined} aria-disabled={working || undefined}>
-        {resolvedKind === "idea" ? <div className={styles.routePreviewFallback} aria-label={`${title} ${language === "es" ? "boceto de ruta" : "route sketch"}`}><MapPin aria-hidden="true" /><span>{routeLabel(trip, copy.routeWaiting)}</span></div> : <ResilientImage src={photo?.src} alt={photo?.alt ?? ""} onDisplayState={setImageDisplayed} fallback={<div className={styles.tripImageFallback}><Globe2 aria-hidden="true" /><span>{routeLabel(trip, copy.routeWaiting)}</span></div>} />}
+        {resolvedKind === "idea" ? <div className={styles.routePreviewFallback} aria-label={`${title} ${language === "es" ? "boceto de ruta" : "route sketch"}`}><MapPin aria-hidden="true" /><span>{routeLabel(trip, copy.routeWaiting)}</span></div> : <ResilientImage src={photo?.src} alt={photo?.alt ?? ""} onDisplayState={setImageDisplayed} onError={() => { if (photo) onPhotoError(trip, photo.src); }} fallback={<CountryVisualFallback country={dashboardTripCoverPlace(trip)?.country} />} />}
       </Link>
+      {resolvedKind !== "idea" && photo?.scope === "country" && imageDisplayed ? <CountryIllustrationLabel country={photo.country} /> : null}
       {resolvedKind !== "idea" && photo?.creditLabel && imageDisplayed ? <MorroviaPhotoCredit size="compact" ownership={photo.provenance === "reviewed-morrovia-first-party" ? "morrovia" : "third-party"} placement="bottom-right" photoLabel={photo.alt} credit={photo.creditLabel} authorHref={photo.authorHref} sourceHref={photo.creditHref} licenseHref={photo.licenseHref} fullCreditHref={photo.fullCreditHref} /> : null}
     </div>
     <div className={styles.cardBody}>

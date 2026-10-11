@@ -200,11 +200,11 @@ test("photo cache keeps repeat visits together and separates changed selection c
 test("the shared cache retains valid imagery but ignores and evicts persisted empty choices", () => {
   const storage = new MemoryStorage();
   saveRoutePhotoSelection("place:one", { kind: "photo", photo: validPhoto }, storage);
-  storage.setItem("morrovia:route-photo:v5:place:two", JSON.stringify({ kind: "empty" }));
+  storage.setItem("morrovia:route-photo:v6:place:two", JSON.stringify({ kind: "empty" }));
 
   assert.deepEqual(readRoutePhotoSelection("place:one", storage), { kind: "photo", photo: validPhoto });
   assert.equal(readRoutePhotoSelection("place:two", storage), null);
-  assert.equal(storage.getItem("morrovia:route-photo:v5:place:two"), null);
+  assert.equal(storage.getItem("morrovia:route-photo:v6:place:two"), null);
 
   saveRoutePhotoSelection("place:two", { kind: "empty" }, storage);
   assert.equal(storage.getItem("morrovia:route-photo:v3:place:two"), null);
@@ -404,4 +404,24 @@ test("Wikimedia browser positives require the same reusable licence and matching
     ["CC0 1.0", "https://creativecommons.org/publicdomain/zero/1.0/"],
     ["Public domain", "https://creativecommons.org/publicdomain/mark/1.0/"],
   ]) assert.ok(routePhotoFromUnknown({ ...photo, license, licenseUrl }));
+});
+
+
+test("provider assets retain identity across encoded Commons names and Unsplash image sizes", async () => {
+  const { routePhotoAssetIdentity } = await import("../lib/easyt/route-photo-cache.ts");
+  const base={src:"https://images.unsplash.com/photo-example?w=1536",sourceUrl:"https://unsplash.com/photos/scenery-55rZeNdxr-8",sourceLabel:"Author"};
+  assert.equal(routePhotoAssetIdentity({...base,provider:"unsplash",id:"inventory-key"}), routePhotoAssetIdentity({...base,provider:"unsplash",id:"55rZeNdxr-8",src:"https://images.unsplash.com/photo-example?w=1200",sourceUrl:"https://unsplash.com/@author"}));
+  assert.equal(routePhotoAssetIdentity({...base,provider:"wikimedia",id:"File:A different title.jpg",sourceUrl:"https://commons.wikimedia.org/wiki/File:City_view.jpg"}),routePhotoAssetIdentity({...base,provider:"wikimedia",sourceUrl:"https://commons.wikimedia.org/wiki/File:City%20view.jpg?uselang=en"}));
+});
+
+
+test("an unavailable browser storage getter cannot prevent photo lookup", async () => {
+  const previous = Object.getOwnPropertyDescriptor(globalThis, "window");
+  Object.defineProperty(globalThis, "window", {configurable:true,value:Object.defineProperty({},"localStorage",{get(){throw new Error("storage denied");}})});
+  try {
+    const { resolveRoutePhotoCandidates } = await import("../lib/easyt/route-photo-cache.ts");
+    let selected=false;
+    await resolveRoutePhotoCandidates([{cacheKey:"getter-denied",occurrenceIds:["a"],queries:["a"]}],()=>{selected=true;},{findPhotos:async()=>({configured:true,status:"no-result",candidates:[]})});
+    assert.equal(selected,true);
+  } finally { if(previous)Object.defineProperty(globalThis,"window",previous);else Reflect.deleteProperty(globalThis,"window"); }
 });

@@ -1,3 +1,5 @@
+import { isRepresentativeDestinationScene } from "./photo-subject.ts";
+
 export type PublishedRouteImageStop = {
   key: string;
   name: string;
@@ -28,6 +30,8 @@ export type PublishedRouteImageCandidate = {
   location?: { city?: string | null; country?: string | null; name?: string | null };
   coordinates?: [number, number];
   tags?: string[];
+  /** Administrative/file context may establish country, never photographed subject. */
+  geographicContext?: string;
 };
 
 export type PublishedRouteImageScore = {
@@ -99,6 +103,7 @@ export function scorePublishedRouteImageCandidate(stop: PublishedRouteImageStop,
     candidate.location?.city,
     candidate.location?.country,
     candidate.location?.name,
+    candidate.geographicContext,
     ...(candidate.tags ?? []),
   ].filter(Boolean).join(" "));
   // Camera/provider location can describe where a photo was taken, not its subject.
@@ -135,6 +140,7 @@ export function scorePublishedRouteImageCandidate(stop: PublishedRouteImageStop,
   if (subjectContext && !mentions(subjectText, subjectContext)) concerns.push("photographed subject is not identified in the selected administrative context");
   if (!landscape) concerns.push("provider asset is not landscape-oriented");
   if (!editorialSubject) concerns.push("metadata does not describe a destination-suitable scene");
+  if (!isRepresentativeDestinationScene([candidate.alt, candidate.description].filter(Boolean).join(" "))) concerns.push("caption describes an incidental park or bench rather than representative destination scenery");
   // A park/location keyword can describe the setting of an incidental subject.
   // Country illustrations need explicit wider geographic scenery evidence.
   if (stop.placeType === "country" && !/\b(city|town|village|street|square|architecture|palace|temple|church|cathedral|mosque|skyline|landscape|mountain|coast|beach|lake|waterfront|harbour|harbor|river|bridge|panorama|plaza|agora|waterfall|volcano|desert|island|bay|cliffs)\b/.test(subjectText)) concerns.push("country illustration does not identify a geographic scene");

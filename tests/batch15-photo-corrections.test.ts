@@ -96,3 +96,13 @@ test('verified short administrative names retain exact region evidence and rejec
  page.imageinfo[0]!.extmetadata.ImageDescription.value='Panaji Goan India waterfront skyline';
  assert.equal((await lookupWikimediaDestinationPhotos(place,{fetcher})).status,'no-result');
 });
+
+
+test('Commons filenames naming an administrative parent cannot override a conflicting pictured settlement', async () => {
+ const place={name:'Santa Cruz de Tenerife',country:'Spain',coordinates:[-16.25462,28.46824] as [number,number]};
+ const page={title:'File:San Andres y Sauces, La Palma (Santa Cruz de Tenerife, Spain).jpg',imageinfo:[{url:photo.src,descriptionurl:photo.sourceUrl,mime:'image/jpeg',width:1600,height:900,extmetadata:{Artist:{value:photo.author},LicenseShortName:{value:photo.license},LicenseUrl:{value:photo.licenseUrl},ImageDescription:{value:'View from Puntallana to road LP-1 in San Andres y Sauces, La Palma, Spain'}}}]};
+ const lookup=async()=>Response.json({query:{pages:{'1':page}}});
+ assert.equal((await lookupWikimediaDestinationPhotos(place,{fetcher:lookup})).status,'no-result');
+ page.imageinfo[0]!.extmetadata.ImageDescription.value='Santa Cruz de Tenerife Spain coastal skyline';
+ assert.equal((await lookupWikimediaDestinationPhotos(place,{fetcher:lookup})).status,'resolved');
+});

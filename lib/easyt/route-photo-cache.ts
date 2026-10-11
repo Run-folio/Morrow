@@ -39,8 +39,20 @@ export type RoutePhotoCandidate = {
 
 /** Stable provider asset identity across thumbnail sizes and trip occurrences. */
 export function routePhotoAssetIdentity(photo: CachedRoutePhoto) {
-  return photo.id ? `${photo.provider ?? 'photo'}:${photo.id}` : photo.provider === 'wikimedia' ? photo.sourceUrl : photo.src;
+  try {
+    const source = new URL(photo.sourceUrl);
+    if (source.hostname === "commons.wikimedia.org" && source.pathname.startsWith("/wiki/File:")) {
+      return `wikimedia:${decodeURIComponent(source.pathname.slice("/wiki/".length)).replace(/_/g, " ")}`;
+    }
+    if (source.hostname === "unsplash.com" && source.pathname.startsWith("/photos/")) {
+      const slug = decodeURIComponent(source.pathname.split("/").filter(Boolean).at(-1) ?? "");
+      const id = slug.match(/([A-Za-z0-9_-]{11})$/)?.[1] ?? slug;
+      return `unsplash:${id}`;
+    }
+  } catch { /* Invalid source pages cannot override a provider asset ID. */ }
+  return photo.id ? `${photo.provider ?? "photo"}:${photo.id}` : photo.src;
 }
+
 function excludedPhoto(excluded: readonly string[], photo: CachedRoutePhoto) {
   return excluded.includes(photo.src) || excluded.includes(routePhotoAssetIdentity(photo))
     || (photo.provider === 'wikimedia' && excluded.includes(photo.sourceUrl));
@@ -48,7 +60,7 @@ function excludedPhoto(excluded: readonly string[], photo: CachedRoutePhoto) {
 
 // Candidate rules changed: old positives may contain transit imagery or a
 // route-wide duplicate. Re-evaluate them without touching saved trip content.
-const prefix = "morrovia:route-photo:v5:";
+const prefix = "morrovia:route-photo:v6:";
 const inFlightSelections = new Map<string, Promise<CachedRoutePhotoSelection | null>>();
 const inFlightConsumers = new Map<string, Set<{ signal?: AbortSignal }>>();
 type SelectionRequestOwner = { order: number; consumers: Set<{ signal?: AbortSignal }> };
@@ -140,7 +152,8 @@ export function discardFailedRoutePhoto(cacheKey: string, src: string, storage: 
 }
 
 function browserStorage() {
-  return typeof window === "undefined" ? null : window.localStorage;
+  try { return typeof window === "undefined" ? null : window.localStorage; }
+  catch { return null; }
 }
 
 export function readRoutePhotoSelection(routeKey: string, storage: Storage | null = browserStorage()): CachedRoutePhotoSelection | null {

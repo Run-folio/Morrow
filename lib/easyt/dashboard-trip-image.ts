@@ -1,4 +1,7 @@
-import { routeDestinationPhoto, routeImageCredit } from "./route-images.ts";
+import { routeDestinationPhoto, routePhotoForSource, type RoutePhotoRecord } from "./route-images.ts";
+import { countryFor } from "./country-registry.ts";
+import { canonicalPlacePhotoCacheKey, routePhotoAssetIdentity, type CachedRoutePhoto, type DestinationPhotoPlace, type RoutePhotoCandidate } from "./route-photo-cache.ts";
+import { isRepresentativeDestinationScene } from "./photo-subject.ts";
 import type { EasyTTrip } from "./trip.ts";
 
 export type DashboardTripPhoto = {
@@ -10,97 +13,111 @@ export type DashboardTripPhoto = {
   licenseHref: string | null;
   fullCreditHref: string | null;
   place: string | null;
+  scope?: "country";
+  country?: string;
+  id?: string;
+  provider?: "wikimedia" | "unsplash";
   provenance?: "reviewed-provider" | "reviewed-morrovia-first-party";
 };
 
-function storedTripPhoto(trip: EasyTTrip): DashboardTripPhoto | null {
-  const src = trip.planItems.find((item) => item.image)?.image ?? null;
-  if (!src) return null;
-  const credit = routeImageCredit(src);
-  // Plan items can contain maps and provider thumbnails. Dashboard cards only
-  // admit photography from Morrovia's reviewed route inventory.
-  if (!credit) return null;
+/** A cover depicts the first overnight destination, never the journey origin. */
+export function dashboardTripCoverPlace(trip: EasyTTrip): DestinationPhotoPlace | null {
+  const stop = [...trip.stops].sort((a, b) => a.order - b.order)[0];
+  if (!stop) return null;
   return {
-    src,
-    alt: credit.alt,
-    authorHref: credit.authorUrl ?? null,
-    creditHref: credit.sourceUrl,
-    creditLabel: credit.sourceLabel,
-    licenseHref: credit.licenseUrl,
-    fullCreditHref: credit.fullCreditUrl,
-    place: null,
-    provenance: credit.provenance,
+    name: stop.name, country: countryFor(stop.country)?.name ?? stop.country,
+    canonicalPlaceId: stop.canonicalPlaceId, providerId: stop.providerId,
+    region: stop.region, administrativeHierarchy: stop.administrativeHierarchy,
+    placeType: stop.geographicBinding?.placeType,
+    coordinates: stop.longitude !== null && stop.latitude !== null && Number.isFinite(stop.longitude) && Number.isFinite(stop.latitude)
+      ? [stop.longitude, stop.latitude] : undefined,
   };
 }
 
-export function canonicalDashboardTripPhotos(trip: EasyTTrip): DashboardTripPhoto[] {
-  return [...trip.stops]
-    .sort((left, right) => left.order - right.order)
-    .flatMap((stop) => {
-      const photo = routeDestinationPhoto(stop.name, stop.country);
-      const src = photo?.variants.at(-1)?.src;
-      if (!photo || !src) return [];
-      return [{
-        src,
-        alt: photo.alt,
-        authorHref: photo.authorUrl ?? null,
-        creditHref: photo.sourceUrl,
-        creditLabel: `${photo.author} · ${photo.license}`,
-        licenseHref: photo.licenseUrl,
-        fullCreditHref: `/journey/immersive/credits.html#${photo.key}`,
-        place: photo.place,
-        provenance: photo.provenance,
-      }];
-    });
+/** Each cover can seek an alternate asset without overwriting another trip's choice. */
+export function dashboardTripCoverCandidate(trip: EasyTTrip, excludedSources: readonly string[] = []): RoutePhotoCandidate | null {
+  const place = dashboardTripCoverPlace(trip);
+  return place ? {
+    cacheKey: `dashboard-cover:v1:${encodeURIComponent(trip.id)}:${canonicalPlacePhotoCacheKey(place)}`,
+    occurrenceIds: [trip.id], place,
+    queries: [`${place.name} ${place.country} skyline`, `${place.name} ${place.country} landscape`],
+    excludedSources: [...excludedSources],
+  } : null;
 }
 
+export function dashboardPhotoFromResolved(photo: CachedRoutePhoto, place?: DestinationPhotoPlace): DashboardTripPhoto {
+  return {
+    src: photo.src, alt: photo.alt ?? `${place?.name ?? 'Destination'} view`,
+    id: photo.id, provider: photo.provider, scope: photo.scope,
+    country: countryFor(photo.country ?? place?.country)?.name ?? photo.country ?? place?.country,
+    authorHref: photo.authorUrl ?? null, creditHref: photo.sourceUrl,
+    creditLabel: photo.sourceLabel, licenseHref: photo.licenseUrl ?? null, fullCreditHref: null,
+    place: photo.scope === 'country' ? null : place?.name ?? null,
+  };
+}
+
+const normalized = (text: string) => text.normalize('NFKC').trim().toLocaleLowerCase('en').replace(/\s+/g, ' ');
+function reviewedForFirstPlace(trip: EasyTTrip, record: RoutePhotoRecord | null) {
+  const place = dashboardTripCoverPlace(trip);
+  // The current inventory proves only legacy place/country associations. It
+  // contains no exact canonical, administrative or coordinate bindings, so a
+  // selected modern identity needs the live pipeline's independent evidence.
+  if (place && (place.canonicalPlaceId || place.providerId || place.region
+    || place.administrativeHierarchy?.length || place.coordinates)) return false;
+  return Boolean(place && record && normalized(record.place) === normalized(place.name)
+    && normalized(countryFor(record.country)?.name ?? record.country) === normalized(place.country)
+    && record.author && record.license && record.licenseUrl && record.sourceUrl
+    && isRepresentativeDestinationScene(record.alt));
+}
+function fromRecord(photo: RoutePhotoRecord, src = photo.variants.at(-1)?.src): DashboardTripPhoto | null {
+  if (!src) return null;
+  const commons = photo.sourceUrl.includes('commons.wikimedia.org/wiki/File:');
+  const unsplash = photo.sourceUrl.includes('unsplash.com/photos/');
+  const sourceAsset = unsplash ? new URL(photo.sourceUrl).pathname.split('/').filter(Boolean).at(-1)?.slice(-11) : undefined;
+  return {
+    src, alt: photo.alt, id: commons ? decodeURIComponent(new URL(photo.sourceUrl).pathname.slice('/wiki/'.length)) : sourceAsset ?? photo.key,
+    provider: commons ? 'wikimedia' : unsplash ? 'unsplash' : undefined,
+    country: countryFor(photo.country)?.name ?? photo.country,
+    authorHref: photo.authorUrl ?? null, creditHref: photo.sourceUrl,
+    creditLabel: `${photo.author} · ${photo.license}`, licenseHref: photo.licenseUrl,
+    fullCreditHref: `/journey/immersive/credits.html#${photo.key}`, place: photo.place, provenance: photo.provenance,
+  };
+}
+function storedTripPhoto(trip: EasyTTrip): DashboardTripPhoto | null {
+  const first = [...trip.stops].sort((a, b) => a.order - b.order)[0];
+  for (const item of trip.planItems) {
+    if (!first || item.stopId !== first.id || !item.image) continue;
+    const record = routePhotoForSource(item.image);
+    if (reviewedForFirstPlace(trip, record)) return fromRecord(record!, item.image);
+  }
+  return null;
+}
+export function canonicalDashboardTripPhotos(trip: EasyTTrip): DashboardTripPhoto[] {
+  const place = dashboardTripCoverPlace(trip);
+  const record = place ? routeDestinationPhoto(place.name, place.country) : null;
+  const photo = reviewedForFirstPlace(trip, record) ? fromRecord(record!) : null;
+  return photo ? [photo] : [];
+}
 export function dashboardTripPhoto(trip: EasyTTrip): DashboardTripPhoto | null {
   return storedTripPhoto(trip) ?? canonicalDashboardTripPhotos(trip)[0] ?? null;
 }
 
-/** Presentation-only choices for the cards currently rendered, in display order. */
+/** Provider source pages identify assets across different thumbnail sizes. */
+export function dashboardPhotoAssetIdentity(photo: DashboardTripPhoto) {
+  return routePhotoAssetIdentity({ id: photo.id, provider: photo.provider, src: photo.src,
+    sourceUrl: photo.creditHref ?? photo.src, sourceLabel: photo.creditLabel ?? '' });
+}
 export function dashboardTripPhotosForCards(trips: readonly EasyTTrip[], reservedSources: readonly string[] = []): Map<string, DashboardTripPhoto> {
-  const selected = new Map<string, DashboardTripPhoto>();
-  const used = new Set(reservedSources);
-  const candidates = trips.filter((trip) => trip.status !== "draft").map((trip) => {
-    const assigned = storedTripPhoto(trip);
-    const photos = assigned ? [assigned] : canonicalDashboardTripPhotos(trip);
-    return { trip, photos: photos.filter((photo, index) => photos.findIndex((candidate) => candidate.src === photo.src) === index) };
-  });
-
-  // Fixed choices claim their image first, so a flexible earlier card can move
-  // to another valid destination instead of duplicating a later fixed card.
-  for (const { trip, photos } of candidates.filter(({ photos }) => photos.length === 1)) {
-    selected.set(trip.id, photos[0]!);
-    used.add(photos[0]!.src);
-  }
-  const flexible = candidates.filter(({ photos }) => photos.length > 1);
-  const ownerBySource = new Map<string, string>();
-  const choices = new Map(flexible.map(({ trip, photos }) => [trip.id, photos]));
-  const assign = (tripId: string, visited: Set<string>): boolean => {
-    for (const photo of choices.get(tripId) ?? []) {
-      if (visited.has(photo.src) || used.has(photo.src)) continue;
-      visited.add(photo.src);
-      const owner = ownerBySource.get(photo.src);
-      if (owner && !assign(owner, visited)) continue;
-      const previous = selected.get(tripId)?.src;
-      if (previous && previous !== photo.src) ownerBySource.delete(previous);
-      ownerBySource.set(photo.src, tripId);
-      selected.set(tripId, photo);
-      return true;
-    }
-    return false;
-  };
-  for (const { trip } of flexible) assign(trip.id, new Set());
-  for (const { trip, photos } of flexible) {
-    if (!selected.has(trip.id)) selected.set(trip.id, photos[0]!);
+  const selected = new Map<string, DashboardTripPhoto>(), used = new Set(reservedSources);
+  for (const trip of trips) {
+    if (trip.status === 'draft') continue;
+    const candidates = [storedTripPhoto(trip), ...canonicalDashboardTripPhotos(trip)].filter((photo): photo is DashboardTripPhoto => Boolean(photo));
+    const photo = candidates.find(photo => !used.has(photo.src) && !used.has(photo.creditHref ?? '') && !used.has(dashboardPhotoAssetIdentity(photo)));
+    if (!photo) continue;
+    selected.set(trip.id, photo); used.add(photo.src); used.add(dashboardPhotoAssetIdentity(photo));
   }
   return selected;
 }
-
 export function featuredDashboardTripPhoto(trip: EasyTTrip): DashboardTripPhoto | null {
-  const stored = storedTripPhoto(trip);
-  const canonical = canonicalDashboardTripPhotos(trip);
-  const japanAlternate = canonical.find((photo) => photo.place === "Takayama");
-  return japanAlternate ?? stored ?? canonical[0] ?? null;
+  return dashboardTripPhoto(trip);
 }

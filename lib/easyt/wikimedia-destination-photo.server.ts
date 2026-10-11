@@ -56,7 +56,8 @@ function destinationPhoto(page: unknown, place: DestinationPhotoPlace, excludedS
   if (region && !` ${regionEvidence} `.includes(` ${region} `)) return [];
   const candidate: PublishedRouteImageCandidate = {
     provider: "wikimedia", id: page.title, src, sourceUrl, author, license, licenseUrl, width: info.width, height: info.height,
-    alt: text(value("ImageDescription")), description: `${page.title} ${text(value("ImageDescription"))} ${text(value("ObjectName"))}`,
+    alt: text(value("ImageDescription")), description: text(value("ImageDescription")) || `${page.title} ${text(value("ObjectName"))}`,
+    geographicContext: `${page.title} ${text(value("ObjectName"))}`,
     ...(place.coordinates && coordinates ? { coordinates } : {}),
     ...(value("Country") ? { location: { country: text(value("Country")) } } : {}),
   };

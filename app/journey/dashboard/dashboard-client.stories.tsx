@@ -152,7 +152,7 @@ const populatedStamps = [
 ];
 const cardCopy = { routeWaiting: "Route to confirm", edit: "Edit trip", restore: "Restore", archive: "Archive", duplicate: "Duplicate", gift: "Share", delete: "Delete" };
 
-const renderCardGrid = () => <div className={styles.sectionGrid}>{[upcomingAntigua, upcomingBalkans].map((trip) => <TripCard key={trip.id} kind="upcoming" trip={trip} language="en" copy={cardCopy} recoveryIssues={{}} working={false} workingAction={null} onAction={() => undefined} onGift={() => undefined} onRemove={() => undefined} />)}</div>;
+const renderCardGrid = () => <div className={styles.sectionGrid}>{[upcomingAntigua, upcomingBalkans].map((trip) => <TripCard key={trip.id} kind="upcoming" trip={trip} language="en" copy={cardCopy} recoveryIssues={{}} working={false} workingAction={null} onAction={() => undefined} onGift={() => undefined} onPhotoError={() => undefined} onRemove={() => undefined} />)}</div>;
 
 const sharedOriginTrips = [
   storyTrip({ id: "tokyo-shared-1", title: "Tokyo to Kyoto", status: "planned", startDate: "2027-03-01", endDate: "2027-03-12", stops: [{ name: "Tokyo", country: "Japan", latitude: 35.6762, longitude: 139.6503, nights: 5 }, { name: "Kyoto", country: "Japan", latitude: 35.0116, longitude: 135.7681, nights: 6 }] }),
@@ -239,3 +239,22 @@ export const SharedOriginsAndLifecycleMobile430: Story = { render: renderSharedO
 export const UpcomingCardsTablet768: Story = { render: renderCardGrid, globals: { viewport: { value: "morrovia768", isRotated: false } } };
 export const UpcomingCardsMobile390: Story = { render: renderCardGrid, globals: { viewport: { value: "morrovia390", isRotated: false } } };
 export const ClickableCardKeyboardFocus: Story = { render: renderCardGrid, play: async ({ canvasElement }) => { canvasElement.querySelector<HTMLAnchorElement>("article a")?.focus(); } };
+
+const coverAcceptanceTrips = [
+  storyTrip({ id: "cover-milan", title: "London to Milan & Venice", status: "planned", startDate: "2027-05-01", endDate: "2027-05-12", stops: [
+    { name: "Milan", country: "Italy", longitude: 9.18951, latitude: 45.46427, nights: 3 },
+    { name: "Como", country: "Italy", longitude: 9.0854, latitude: 45.8081, nights: 2 },
+    { name: "Verona", country: "Italy", longitude: 10.9916, latitude: 45.4384, nights: 2 },
+    { name: "Venice", country: "Italy", longitude: 12.3155, latitude: 45.4408, nights: 4 },
+  ] }),
+  storyTrip({ id: "cover-athens", title: "London to Athens & Santorini", status: "planned", startDate: "2027-05-10", endDate: "2027-05-23", stops: [
+    { name: "Athens", country: "Greece", longitude: 23.72784, latitude: 37.98376, nights: 4 },
+    { name: "Chaniá", country: "Greece", longitude: 24.0181, latitude: 35.5138, nights: 4 },
+    { name: "Firá", country: "Greece", longitude: 25.4313, latitude: 36.4211, nights: 5 },
+  ] }),
+  storyTrip({ id: "cover-tenerife", title: "London to Santa Cruz de Tenerife", status: "planned", startDate: "2027-05-10", endDate: "2027-05-17", stops: [
+    { name: "Santa Cruz de Tenerife", country: "Spain", longitude: -16.25462, latitude: 28.46824, nights: 7 },
+  ] }),
+];
+export const FirstDestinationCoverFallbacks: Story = { args: { trips: coverAcceptanceTrips } };
+export const FirstDestinationCoverFallbacksMobile390: Story = { args: { trips: coverAcceptanceTrips }, globals: { viewport: { value: "morrovia390", isRotated: false } } };
