@@ -4502,7 +4502,7 @@ function TripBuilderDocument() {
         ...(rejected ? { failureReason: snapshot.error?.category === "protected" ? "protected-recovery" as const : "unknown" as const } : {})};
     }
     const ownerId = activeBrowserOwnerId;
-    reportPersistenceOutcome("builder-entry", {stored:false, scopeMatches:canUseHydratedTripScope(hydratedOwnerScopeRef.current, ownerId) && (!trip.ownerId || trip.ownerId === ownerId), receiptPresent:Boolean(pendingNewTripReceiptRef.current)});
+    reportPersistenceOutcome("builder-entry", {stored:false, phase:"probe", writeAttempted:false, scopeMatches:canUseHydratedTripScope(hydratedOwnerScopeRef.current, ownerId) && (!trip.ownerId || trip.ownerId === ownerId), receiptPresent:Boolean(pendingNewTripReceiptRef.current)});
     if (!canUseHydratedTripScope(hydratedOwnerScopeRef.current, ownerId)
       || (trip.ownerId && trip.ownerId !== ownerId)) {
       return {
@@ -4510,6 +4510,8 @@ function TripBuilderDocument() {
         handle: { ownerId, tripId: trip.id, writeId: `scope-mismatch-${Date.now()}` },
         blockedByExistingRecovery: true,
         failureReason: "scope-mismatch" as const,
+        writeAttempted: false,
+        failureBoundary: "entry-scope" as const,
       };
     }
     const currentHandle = recoveryHandleRef.current;
@@ -4543,7 +4545,8 @@ function TripBuilderDocument() {
             if (pendingNewTripReceiptRef.current !== pendingReceipt
               || !canUseHydratedTripScope(hydratedOwnerScopeRef.current, ownerId)) return false;
             if (!result.ok) {
-              const incomplete = { ...recovery, stored: false, failureReason: "receipt-incomplete" as const, acknowledgement:result.reason };
+              const incomplete = { ...recovery, stored: false, failureReason: "receipt-incomplete" as const, acknowledgement:result.reason,
+                writeAttempted:result.writeAttempted, readbackConfirmed:result.readbackConfirmed, failureBoundary:result.failureBoundary ?? "receipt-ack" as const };
               reportPersistenceOutcome("intake-ack", incomplete);
               setDevicePersistenceOutcome("receipt-incomplete");
               setDeviceRecoveryDurable(recovery.recoveryDurable === true);

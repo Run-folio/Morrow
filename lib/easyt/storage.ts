@@ -1,5 +1,5 @@
 import { requireReadableTripDocument, prepareTripDocumentForWrite, TripDocumentReadError } from "./trip-document.ts";
-import { recoveryPersistenceOutcome, reportPersistenceOutcome, type PersistenceOutcome } from "./persistence-outcome.ts";
+import { recoveryPersistenceOutcome, reportPersistenceOutcome, type PersistenceOutcome, type PersistenceFailureBoundary } from "./persistence-outcome.ts";
 import { legacyItineraryIdeas } from "./trip.ts";
 import { tripIntentForTrip, type EasyTTrip } from "./trip.ts";
 import { normalizeLegacyGeneratedDayContext } from "./itinerary-generated-context.ts";
@@ -79,6 +79,9 @@ export type TripRecoveryWriteResult = {
   nativeFailure?: "quota" | "security" | "unavailable" | "unknown";
   recoveryDurable?: boolean;
   outcome?: PersistenceOutcome;
+  writeAttempted?: boolean;
+  readbackConfirmed?: boolean;
+  failureBoundary?: PersistenceFailureBoundary;
 };
 
 const expectedCanonicalSaveRecoveries = new Set<string>();
@@ -767,7 +770,7 @@ function writeTripRecoveryToStorage(
   const ownerId = options.ownerId === undefined ? trip.ownerId : options.ownerId;
   const writeId = options.writeId ?? generatedWriteId();
   const handle = { ownerId, tripId: trip.id, writeId };
-  if (!recoveryScopeAcceptsTrip(ownerId, trip)) return { stored: false, handle, blockedByExistingRecovery: true, failureReason: "scope-mismatch" };
+  if (!recoveryScopeAcceptsTrip(ownerId, trip)) return { stored: false, handle, blockedByExistingRecovery: true, failureReason: "scope-mismatch", writeAttempted: false, failureBoundary: "entry-scope" };
   const existing = loadTripRecoveryFromStorage(storage, trip.id, ownerId);
   if (existing) {
     // A render/autosave of the same durable document is not a new edit. Build
@@ -777,7 +780,7 @@ function writeTripRecoveryToStorage(
     if (sameRecoveryDocument(existing.trip, trip)) {
       setCurrentTripInStorage(storage, ownerId, trip.id, [tripRecoveryStorageKey(ownerId, trip.id)]);
       const pointerAcknowledged = loadCurrentTripIdFromStorage(storage, ownerId) === trip.id;
-      return { stored: true, handle: existing, blockedByExistingRecovery: false, pointerAcknowledged,
+      return { stored: true, handle: existing, blockedByExistingRecovery: false, pointerAcknowledged, writeAttempted: true,
         ...(!pointerAcknowledged ? { failureReason: "pointer-incomplete" as const } : {}) };
     }
     const expected = options.replace;
@@ -788,7 +791,7 @@ function writeTripRecoveryToStorage(
       // Any different document must prove it was opened from this exact
       // recovery before replacing it; a canonical cloud view never has that
       // handle.
-      return { stored: false, handle: existing, blockedByExistingRecovery: true, failureReason: "protected-recovery" };
+      return { stored: false, handle: existing, blockedByExistingRecovery: true, failureReason: "protected-recovery", writeAttempted: false, failureBoundary: "protected-recovery" };
     }
   }
   const record: TripRecoveryRecord = {
@@ -812,7 +815,10 @@ function writeTripRecoveryToStorage(
     const name = typeof error === "object" && error !== null && "name" in error ? error.name : undefined;
     nativeFailure = isQuotaError(error) ? "quota" : name === "SecurityError" ? "security" : name === "InvalidStateError" ? "unavailable" : "unknown";
   });
-  const stored = written && safeGet(storage, recoveryKey) === bytes;
+  // A quota retry that succeeds is no longer a rejected native write.
+  if (written) nativeFailure = undefined;
+  const readbackConfirmed = written ? safeGet(storage, recoveryKey) === bytes : undefined;
+  const stored = written && readbackConfirmed === true;
   let pointerAcknowledged = false;
   if (stored) {
     setCurrentTripInStorage(storage, ownerId, trip.id, [recoveryKey]);
@@ -822,7 +828,9 @@ function writeTripRecoveryToStorage(
       if (replacedKey && replacedKey !== recoveryKey) safeRemove(storage, replacedKey);
     }
   }
-  return { stored, handle, blockedByExistingRecovery: false, pointerAcknowledged,
+  return { stored, handle, blockedByExistingRecovery: false, pointerAcknowledged, writeAttempted: true,
+    ...(readbackConfirmed !== undefined ? { readbackConfirmed } : {}),
+    ...(!stored ? { failureBoundary: written ? "recovery-readback" as const : "recovery-write" as const } : {}),
     ...(!stored ? { failureReason: nativeFailure ? "device-unavailable" as const : "unknown" as const, ...(nativeFailure ? { nativeFailure } : {}) }
       : !pointerAcknowledged ? { failureReason: "pointer-incomplete" as const } : {}) };
 }
@@ -1297,6 +1305,8 @@ export function saveTripRecovery(
     handle: { ownerId, tripId: trip.id, writeId: generatedWriteId() },
     blockedByExistingRecovery: false,
     failureReason: "device-unavailable" as const,
+    writeAttempted: false,
+    failureBoundary: "unknown" as const,
   };
   if (!storage) { reportPersistenceOutcome("device-recovery", fallback); return { ...fallback, outcome: "unknown" as const }; }
   const result = saveTripRecoveryToStorage(storage, trip, options);

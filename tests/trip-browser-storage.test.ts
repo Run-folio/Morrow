@@ -1480,6 +1480,38 @@ test("quota recovery writes evict the oldest clean cache but never another recov
   assert.equal(loadTripRecoveryFromStorage(storage, target.id, "owner-a")?.trip.id, target.id);
 });
 
+test("a recovered quota attempt does not mask a later unconfirmed recovery readback", () => {
+  const storage = new MemoryBrowserStorage();
+  const trip = browserTrip({ title: "Prior accepted edit" });
+  const prior = saveTripRecoveryToStorage(storage, trip, { writeId: "before-readback" });
+  assert.equal(prior.stored, true);
+  const priorKey = tripRecoveryStorageKey("owner-a", trip.id, "before-readback");
+  const before = storage.peek(priorKey);
+  const clean = browserTrip({ id: "expendable-cache" });
+  cacheCanonicalTripToStorage(storage, clean);
+  const cacheKey = tripCacheStorageKey("owner-a", clean.id);
+  const targetKey = tripRecoveryStorageKey("owner-a", trip.id, "unconfirmed-after-quota");
+  let attempts = 0;
+  storage.quotaOnSet = key => {
+    if (key !== targetKey) return false;
+    attempts++;
+    return storage.peek(cacheKey) !== null;
+  };
+  const nativeGet = storage.getItem.bind(storage);
+  storage.getItem = key => key === targetKey ? null : nativeGet(key);
+  const result = saveTripRecoveryToStorage(storage, { ...trip, title: "Unconfirmed edit" }, { replace: prior.handle, writeId: "unconfirmed-after-quota" });
+  assert.equal(attempts, 2);
+  assert.notEqual(storage.peek(targetKey), null);
+  assert.equal(storage.peek(priorKey), before);
+  assert.equal(result.stored, false);
+  assert.equal(result.writeAttempted, true);
+  assert.equal(result.readbackConfirmed, false);
+  assert.equal(result.failureBoundary, "recovery-readback");
+  assert.equal(result.nativeFailure, undefined);
+  assert.equal(result.failureReason, "unknown");
+  assert.equal(result.outcome, "unknown");
+});
+
 test("quota exhaustion reports failure after clean eviction and leaves the prior recovery intact", () => {
   const storage = new MemoryBrowserStorage();
   const trip = browserTrip({ id: "trip-quota-failure", title: "Previously safe edit" });

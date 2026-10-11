@@ -1,5 +1,6 @@
 /** Shared device/entry truth. Account ACK is emitted only by the exact canonical acknowledgement boundary. */
 export type PersistenceOutcome = "device-confirmed" | "native-write-failed" | "protected-conflict" | "receipt-incomplete" | "pointer-incomplete" | "unknown" | "account-acknowledged";
+export type PersistenceFailureBoundary = "entry-scope" | "protected-recovery" | "recovery-write" | "recovery-readback" | "receipt-ack" | "receipt-readback" | "pointer-ack" | "unknown";
 export type RecoveryPersistenceEvidence = {
   stored: boolean;
   blockedByExistingRecovery?: boolean;
@@ -10,6 +11,10 @@ export type RecoveryPersistenceEvidence = {
   acknowledgement?: "pending" | "stale" | "storage" | "preservation" | "accepted";
   scopeMatches?: boolean;
   receiptPresent?: boolean;
+  phase?: "probe" | "result";
+  writeAttempted?: boolean;
+  readbackConfirmed?: boolean;
+  failureBoundary?: PersistenceFailureBoundary;
 };
 export function recoveryPersistenceOutcome(result: RecoveryPersistenceEvidence): Exclude<PersistenceOutcome, "account-acknowledged"> {
   if (result.failureReason === "scope-mismatch" || result.blockedByExistingRecovery) return "protected-conflict";
@@ -24,8 +29,19 @@ export type PersistenceStage = "homepage-input" | "homepage-intake" | "homepage-
 let sequence = 0;
 /** Local event only: no identifiers, payloads, messages, tokens, storage values or remote telemetry. */
 export function reportPersistenceOutcome(stage: PersistenceStage, result: RecoveryPersistenceEvidence) {
+  const phase = result.phase === "probe" ? "probe" : "result";
+  const outcome = recoveryPersistenceOutcome(result);
+  const suppliedBoundary = ["entry-scope", "protected-recovery", "recovery-write", "recovery-readback", "receipt-ack", "receipt-readback", "pointer-ack", "unknown"].includes(result.failureBoundary ?? "") ? result.failureBoundary : undefined;
+  const failureBoundary = phase === "probe" || outcome === "device-confirmed" ? null
+    : suppliedBoundary ?? (result.failureReason === "scope-mismatch" ? "entry-scope"
+      : result.blockedByExistingRecovery ? "protected-recovery"
+        : outcome === "pointer-incomplete" ? "pointer-ack"
+          : outcome === "receipt-incomplete" ? "receipt-ack"
+            : outcome === "native-write-failed" ? "recovery-write" : "unknown");
   const detail = {
-    version: 1, sequence: ++sequence, stage, outcome: recoveryPersistenceOutcome(result),
+    version: 1, sequence: ++sequence, stage, phase, outcome, failureBoundary,
+    writeAttempted: typeof result.writeAttempted === "boolean" ? result.writeAttempted : null,
+    readbackConfirmed: typeof result.readbackConfirmed === "boolean" ? result.readbackConfirmed : null,
     deviceCopyVerified: result.recoveryDurable === true || result.stored === true,
     pointerAcknowledged: result.pointerAcknowledged === true,
     nativeFailure: result.nativeFailure === "quota" || result.nativeFailure === "security" || result.nativeFailure === "unavailable" ? result.nativeFailure : result.nativeFailure ? "unknown" : null,

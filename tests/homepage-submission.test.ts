@@ -336,10 +336,35 @@ test("acknowledgement rolls back both receipt slots if the second write fails", 
   storage.failSetAt = storage.writes + 2;
   const result = await handoffTransitions.acknowledgePendingIntakeReceipt({ storage, pending,
     completed: stored.receipt, draft, fromHomepage: true, lock: testLock });
-  assert.deepEqual(result, { ok: false, reason: "storage" });
+  assert.deepEqual(result, { ok: false, reason: "storage", writeAttempted: true, failureBoundary: "receipt-ack" });
   assert.equal(storage.getItem(inputKey), beforeInput);
   assert.equal(storage.getItem(HOME_TRIP_DRAFT_KEY), beforeEnvelope);
 });
+
+for (const boundary of ["input", "envelope"] as const) {
+  test(`a thrown ${boundary} receipt readback reports the failed read boundary and restores both slots`, async () => {
+    const storage = new MemoryStorage();
+    const { stored, draft } = acceptedHandoff();
+    const pending = createPendingIntakeReceipt(stored.snapshot, { handoffId: stored.receipt.handoffId, tripId: stored.receipt.tripId });
+    const inputKey = homepageInputStorageKey("owner-a");
+    const beforeInput = JSON.stringify({ snapshot: stored.snapshot, receipt: pending });
+    const beforeEnvelope = JSON.stringify({ version: 2, phase: "pending-interpretation", receipt: pending });
+    storage.setItem(inputKey, beforeInput);
+    storage.setItem(HOME_TRIP_DRAFT_KEY, beforeEnvelope);
+    const originalGet = storage.getItem.bind(storage);
+    const targetKey = boundary === "input" ? inputKey : HOME_TRIP_DRAFT_KEY;
+    const priorBytes = boundary === "input" ? beforeInput : beforeEnvelope;
+    storage.getItem = key => {
+      if (key === targetKey && storage.values.get(key) !== priorBytes) throw new DOMException("synthetic private detail", "SecurityError");
+      return originalGet(key);
+    };
+    const result = await handoffTransitions.acknowledgePendingIntakeReceipt({ storage, pending,
+      completed: stored.receipt, draft, fromHomepage: true, lock: testLock });
+    assert.deepEqual(result, { ok: false, reason: "storage", writeAttempted: true, failureBoundary: "receipt-readback" });
+    assert.equal(storage.values.get(inputKey), beforeInput);
+    assert.equal(storage.values.get(HOME_TRIP_DRAFT_KEY), beforeEnvelope);
+  });
+}
 
 test("unavailable owner lock fails closed before an intake edit", async () => {
   const storage = new MemoryStorage();

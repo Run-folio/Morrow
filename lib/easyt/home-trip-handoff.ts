@@ -14,6 +14,7 @@ import { addLocalDays } from "./local-date.ts";
 import { routeIntentFromHandoff } from "./trip-route-intent.ts";
 import { homepageCapturedRouteEvidence, homepageDescribeSourceKey, homepageRouteChoice, homepageRouteReviewKey, invalidateHomepageRouteReview, type HomepageRouteEvidence } from "./home-route-choice.ts";
 import { acceptedGeographicPlace, geographicCandidateMatches, geographicallyReady } from './geographic-binding.ts';
+import type { PersistenceFailureBoundary } from './persistence-outcome.ts';
 
 export const HOME_TRIP_DRAFT_KEY = "easyt-home-trip-draft";
 
@@ -1048,7 +1049,7 @@ export async function acknowledgePendingIntakeReceipt(input: {
   fromHomepage: boolean;
   isCurrent?: () => boolean;
   lock?: <T>(key: string, run: () => Promise<T>) => Promise<T>;
-}): Promise<{ ok: true } | { ok: false; reason: "stale" | "storage" }> {
+}): Promise<({ ok: true } | { ok: false; reason: "stale" | "storage" }) & { writeAttempted?: boolean; readbackConfirmed?: boolean; failureBoundary?: PersistenceFailureBoundary }> {
   try {
     return await withHomepageReceiptLock(input.completed.ownerId, input.lock, async () => {
       if (input.isCurrent && !input.isCurrent()) return { ok: false as const, reason: "stale" as const };
@@ -1081,12 +1082,22 @@ export async function acknowledgePendingIntakeReceipt(input: {
       const serialized = JSON.stringify({ snapshot: stored.snapshot, receipt: completed,
         ...(keepReview ? { review: stored.review } : {}) });
       const completedEnvelope = JSON.stringify(input.draft);
+      let writeAttempted = false;
+      let readbackConfirmed: boolean | undefined;
+      let failureBoundary: PersistenceFailureBoundary = "receipt-ack";
       try {
+        writeAttempted = true;
         input.storage.setItem(key, serialized);
-        if (input.storage.getItem(key) !== serialized) throw new Error("Receipt acknowledgement was not durable");
+        failureBoundary = "receipt-readback";
+        readbackConfirmed = input.storage.getItem(key) === serialized;
+        if (!readbackConfirmed) throw new Error("Receipt acknowledgement was not durable");
         if (pending && input.fromHomepage) {
+          readbackConfirmed = undefined;
+          failureBoundary = "receipt-ack";
           input.storage.setItem(HOME_TRIP_DRAFT_KEY, completedEnvelope);
-          if (input.storage.getItem(HOME_TRIP_DRAFT_KEY) !== completedEnvelope) throw new Error("Handoff acknowledgement was not durable");
+          failureBoundary = "receipt-readback";
+          readbackConfirmed = input.storage.getItem(HOME_TRIP_DRAFT_KEY) === completedEnvelope;
+          if (!readbackConfirmed) throw new Error("Handoff acknowledgement was not durable");
         }
         return { ok: true as const };
       } catch {
@@ -1098,7 +1109,9 @@ export async function acknowledgePendingIntakeReceipt(input: {
             else input.storage.setItem(HOME_TRIP_DRAFT_KEY, priorEnvelope);
           }
         } catch { /* Preserve the failure. */ }
-        return { ok: false as const, reason: "storage" as const };
+        return { ok: false as const, reason: "storage" as const, writeAttempted,
+          ...(readbackConfirmed !== undefined ? { readbackConfirmed } : {}),
+          failureBoundary };
       }
     });
   } catch { return { ok: false, reason: "storage" }; }
