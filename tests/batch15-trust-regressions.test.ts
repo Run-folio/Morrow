@@ -26,9 +26,10 @@ test('generic road estimate requires positive same-land evidence',()=>{
  assert.equal(estimateLegForConstraints({name:'Venice',country:'Italy',coordinates:[12.3155,45.4408]},{id:'milan',name:'Milan',country:'Italy',coordinates:[9.19,45.4642]}).mode,'train');
 });
 
-test('known catalog/source Manila identity is one choice, unresolved namesakes use human-readable context',()=>{
+test('unproven catalog/source Manila identities remain separate, unresolved namesakes use human-readable context',()=>{
  const manila=canonicalPlaceSuggestionsForQuery('Manila').filter(p=>p.name==='Manila'&&p.country==='Philippines'&&p.placeType==='city');
- assert.equal(mergeEquivalentPlaceSuggestions(manila).length,1);
+ assert.equal(manila.length,2);
+ assert.deepEqual(mergeEquivalentPlaceSuggestions(manila),manila);
  const distinct=[{name:'Springfield',country:'United States',region:'Illinois',placeType:'city',canonicalPlaceId:'a',coordinates:[-89.65,39.78]},
  {name:'Springfield',country:'United States',region:'Massachusetts',placeType:'city',canonicalPlaceId:'b',coordinates:[-72.59,42.10]}];
  assert.deepEqual(distinct.map(p=>placeSuggestionLocationDetail(p,distinct)),['Illinois · United States','Massachusetts · United States']);

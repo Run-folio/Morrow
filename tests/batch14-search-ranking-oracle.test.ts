@@ -11,7 +11,7 @@ const settlements=JSON.parse(readFileSync(new URL('../data/place-reference/settl
 const airports=JSON.parse(readFileSync(new URL('../data/place-reference/airports.json',import.meta.url),'utf8')) as Row[];
 const pool=[...settlements.map(r=>({r,source:'geonames',names:[r[1],...(r[7] as string[])].map(normalize)})),...airports.filter(r=>r[5]!=='closed_airport').map(r=>({r,source:'ourairports',names:[normalize(r[1])]}))];
 
-test('every display-equivalent authored/source pair is globally unique in the full installed settlement pool',()=>{
+test('the empty reviewed crosswalk preserves every authored/source pair in the full settlement pool',()=>{
  const byName=new Map<string,Row[]>();for(const row of settlements){const key=normalize(row[1]);const group=byName.get(key)??[];group.push(row);byName.set(key,group);}
  let pairs=0;
  for(const entry of PLACE_CATALOG.filter(e=>!e.canonicalPlaceId.startsWith('reference:')&&['city','town'].includes(e.placeType)&&e.coordinates&&e.parentCountries.length===1)){
@@ -22,7 +22,7 @@ test('every display-equivalent authored/source pair is globally unique in the fu
   assert.equal(mergeEquivalentPlaceSuggestions([authored,...sources]).length,1+sources.length-equivalent.length);
   pairs+=equivalent.length;
  }
- assert.ok(pairs>=1,'qualify every source-fact equivalence actually present; do not invent crosswalks where authored and source points differ');
+ assert.equal(pairs,0,'no source-fact match is a reviewed equivalence mapping');
  console.info(`Globally unique authored/source display pairs: ${pairs}`);
 });
 

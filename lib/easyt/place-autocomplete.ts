@@ -1,12 +1,5 @@
 import { findCatalogPlaceById, normalizeCatalogPhrase } from "./place-catalog.ts";
 
-// Reviewed equivalence: the catalog point and GeoNames settlement describe
-// Manila city centre at different survey precision. Never infer this from
-// name or proximity for arbitrary settlements.
-const reviewedCrossSourceIdentities: Readonly<Record<string,string>> = {
-  manila: 'reference:geonames:1701668',
-};
-
 export type PlaceAutocompleteKeyResult = {
   activeIndex: number;
   choose: boolean;
@@ -19,37 +12,26 @@ export type PlaceAutocompleteIdentity = {
   placeType?: string;
 };
 
-type SuggestionLocation = PlaceAutocompleteIdentity & {country?:string;region?:string;administrativeHierarchy?:readonly string[];coordinates?:readonly number[]};
+type SuggestionLocation = PlaceAutocompleteIdentity & {country?:string;region?:string;administrativeHierarchy?:readonly string[];coordinates?:readonly number[];providerId?:string;referenceSnapshotId?:string;providerSourceId?:string;featureCode?:string;provenance?:readonly {id:string}[]};
 export function mergeEquivalentPlaceSuggestions<T extends SuggestionLocation>(suggestions:readonly T[]):T[]{
- const unique=suggestions.filter((item,index,all)=>!item.canonicalPlaceId||all.findIndex(other=>other.canonicalPlaceId===item.canonicalPlaceId)===index);
- // A source projection can duplicate an authored city at its published
- // coordinate precision. Require a unique cross-source match of all facts;
- // no inferred equivalence of two provider identities or nearby namesakes.
- const authored=(item:T)=>item.canonicalPlaceId&&!item.canonicalPlaceId.startsWith('reference:')
-   ? findCatalogPlaceById(item.canonicalPlaceId) : undefined;
- const equivalent=(legacy:T,reference:T)=>{
-  const entry=authored(legacy);
-  if(entry && reviewedCrossSourceIdentities[entry.canonicalPlaceId]===reference.canonicalPlaceId
-    && entry.placeType===reference.placeType && legacy.placeType===reference.placeType
-    && entry.canonicalName===reference.name && legacy.name===reference.name
-    && entry.parentCountries.length===1 && entry.parentCountries[0]===reference.country && legacy.country===reference.country)
-    return true;
-  if(!entry?.coordinates||!reference.canonicalPlaceId?.startsWith('reference:geonames:')||!reference.coordinates
-    ||!['city','town'].includes(entry.placeType)||entry.placeType!==reference.placeType||entry.placeType!==legacy.placeType||entry.parentCountries.length!==1
-    ||entry.parentCountries[0]!==reference.country||legacy.country!==reference.country
-    ||normalizeCatalogPhrase(entry.canonicalName)!==normalizeCatalogPhrase(reference.name)
-    ||normalizeCatalogPhrase(entry.canonicalName)!==normalizeCatalogPhrase(legacy.name))return false;
-  return entry.coordinates.every((coordinate,i)=>{
-    const decimals=String(coordinate).split('.')[1]?.length??0;
-    return decimals>=4&&coordinate===Number(reference.coordinates![i].toFixed(decimals))
-      &&coordinate===legacy.coordinates?.[i];
-  });
- };
- return unique.filter(item=>{
-  if(!item.canonicalPlaceId?.startsWith('reference:geonames:'))return true;
-  const matches=unique.filter(other=>equivalent(other,item));
-  return matches.length!==1||unique.filter(other=>equivalent(matches[0]!,other)).length!==1;
- });
+ // The pinned crosswalk has no reviewed mappings. Different canonical IDs
+ // remain selectable even when their names and complete geographic facts match.
+ // Restoring cross-source suppression requires a reviewed mapping plus exact
+ // validation of BOTH published source tuples, never an ID/name/point heuristic.
+ const sameArray=(left:readonly unknown[]|undefined,right:readonly unknown[]|undefined)=>
+  left===undefined||right===undefined ? left===right
+   : left.length===right.length&&left.every((value,index)=>value===right[index]);
+ const validPoint=(point:readonly number[]|undefined)=>point===undefined
+  ||point.length===2&&point.every(Number.isFinite)&&Math.abs(point[0]!)<=180&&Math.abs(point[1]!)<=90;
+ const sameSuggestionTuple=(left:T,right:T)=>left.canonicalPlaceId===right.canonicalPlaceId
+  &&left.name===right.name&&left.country===right.country&&left.placeType===right.placeType
+  &&left.region===right.region&&sameArray(left.administrativeHierarchy,right.administrativeHierarchy)
+  &&validPoint(left.coordinates)&&validPoint(right.coordinates)&&sameArray(left.coordinates,right.coordinates)
+  &&left.providerId===right.providerId&&left.referenceSnapshotId===right.referenceSnapshotId
+  &&left.providerSourceId===right.providerSourceId&&left.featureCode===right.featureCode
+  &&sameArray(left.provenance?.map(source=>source.id),right.provenance?.map(source=>source.id));
+ return suggestions.filter((item,index,all)=>!item.canonicalPlaceId||!validPoint(item.coordinates)
+  ||all.findIndex(other=>sameSuggestionTuple(other,item))===index);
 }
 export function placeSuggestionLocationDetail(item:SuggestionLocation, suggestions:readonly SuggestionLocation[]){
  const nameKey=(name:string)=>normalizeCatalogPhrase(name.normalize('NFKD').replace(/['’]/g,''));
@@ -63,7 +45,14 @@ export function placeSuggestionLocationDetail(item:SuggestionLocation, suggestio
  }
  // Source names may still collide within an administrative hierarchy. Preserve
  // distinct identities and offer the existing map link instead of inventing one.
- return [...hierarchy.slice().reverse(),item.country,sameLabel.length>1 ? 'Location to confirm' : undefined].filter(Boolean).join(' · ');
+ const entry=item.canonicalPlaceId?findCatalogPlaceById(item.canonicalPlaceId):undefined;
+ const publishedSource=entry&&entry.canonicalName===item.name&&entry.placeType===item.placeType
+  &&entry.parentCountries.length===1&&entry.parentCountries[0]===item.country
+  &&entry.coordinates?.length===2&&item.coordinates?.length===2
+  &&entry.coordinates.every((coordinate,index)=>coordinate===item.coordinates![index])
+  ? entry.provenance.label : undefined;
+ return [...hierarchy.slice().reverse(),item.country,sameLabel.length>1?publishedSource:undefined,
+  sameLabel.length>1 ? 'Location to confirm' : undefined].filter(Boolean).join(' · ');
 }
 
 export function placeSuggestionMapUrl(item:SuggestionLocation, suggestions:readonly SuggestionLocation[]) {

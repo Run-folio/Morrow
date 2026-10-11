@@ -29,10 +29,10 @@ test('actual pre-editor canonical restoration preserves the saved origin and sto
  assert.equal(JSON.stringify(saved),before,'read projection does not rewrite the authoritative document');
 });
 
-test('cross-source published facts collapse without merging distinct same-name identities',()=>{
+test('cross-source published facts remain distinct without reviewed equivalence evidence',()=>{
  const la=canonicalPlaceSuggestionsForQuery('Los Angeles');
  const merged=mergeEquivalentPlaceSuggestions(la);
- assert.equal(merged.filter(p=>p.country==='United States'&&p.name==='Los Angeles').length,1);
+ assert.deepEqual(merged,la,'equal points alone do not establish a reviewed crosswalk');
  assert.equal(merged[0]?.canonicalPlaceId,'los-angeles','display dedup does not rewrite existing authored identity');
  const candidates=searchReferencePlaces('Xi’an').filter(p=>p.canonicalName==='Xi’an').map(p=>({canonicalPlaceId:p.canonicalPlaceId!,name:p.canonicalName,country:p.parentCountries![0]!,placeType:p.placeType,coordinates:p.coordinates,region:p.parentRegionId,administrativeHierarchy:p.administrativeHierarchy}));
  const distinct=mergeEquivalentPlaceSuggestions(candidates);
@@ -46,7 +46,7 @@ test('cross-source published facts collapse without merging distinct same-name i
  for(const entry of ['tokyo','rome','madrid'].map(findCatalogPlaceById).filter(e=>e?.coordinates)){
   const authored={canonicalPlaceId:entry!.canonicalPlaceId,name:entry!.canonicalName,country:entry!.parentCountries[0]!,placeType:entry!.placeType,coordinates:entry!.coordinates};
   const source={...authored,canonicalPlaceId:'reference:geonames:999999999'};
-  assert.equal(mergeEquivalentPlaceSuggestions([authored,source]).length,1,entry!.canonicalName);
+  assert.equal(mergeEquivalentPlaceSuggestions([authored,source]).length,2,'fabricated source IDs cannot establish equivalence: '+entry!.canonicalName);
   assert.equal(mergeEquivalentPlaceSuggestions([source,{...source,canonicalPlaceId:'reference:geonames:888888888'}]).length,2,'provider-provider identities remain separate');
  }
 });
