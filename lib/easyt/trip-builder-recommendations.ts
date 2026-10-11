@@ -58,8 +58,9 @@ export function currentBuilderDiscoveredPlaces(stops: BuilderDiscoveryStop[], ca
 
 /** Shared discovery adapter for the preview and canonical recommendation worker. */
 export async function loadBuilderDiscoveryPlaces(stop: BuilderDiscoveryStop, signal: AbortSignal): Promise<PlannerPlace[]> {
-    if (!stop.coordinates) throw new Error('Recommendation location unavailable');
-    const params = new URLSearchParams({ destination: stop.name, country: stop.country, lat: String(stop.coordinates[1]), lon: String(stop.coordinates[0]) });
+    if (!stop.coordinates && !stop.canonicalPlaceId) throw new Error('Recommendation location unavailable');
+    const params = new URLSearchParams({ destination: stop.name, country: stop.country });
+    if (stop.coordinates) { params.set('lat', String(stop.coordinates[1])); params.set('lon', String(stop.coordinates[0])); }
     if (stop.canonicalPlaceId) params.set('canonicalPlaceId', stop.canonicalPlaceId);
     if (stop.providerId) params.set('providerId', stop.providerId);
     const response = await fetch(`/api/journey-discover?${params}`, { cache: 'no-store', signal: AbortSignal.any([signal, AbortSignal.timeout(10000)]) });

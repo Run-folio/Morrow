@@ -27,6 +27,12 @@ test('Builder preview forwards selected pins without fabricating identity or mut
     const legacyParams = new URL(url, 'http://localhost').searchParams;
     assert.equal(legacyParams.has('canonicalPlaceId'), false);
     assert.equal(legacyParams.has('providerId'), false);
+    const { coordinates, ...pinnedWithoutCallerPoint } = stop;
+    await load(pinnedWithoutCallerPoint, new AbortController().signal);
+    const pinnedParams = new URL(url, 'http://localhost').searchParams;
+    assert.equal(pinnedParams.get('canonicalPlaceId'), stop.canonicalPlaceId);
+    assert.equal(pinnedParams.get('providerId'), stop.providerId);
+    assert.equal(pinnedParams.has('lat'), false); assert.equal(pinnedParams.has('lon'), false);
   } finally { globalThis.fetch = original; }
 });
 

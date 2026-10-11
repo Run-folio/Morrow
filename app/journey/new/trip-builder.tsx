@@ -1706,7 +1706,7 @@ function TripBuilderDocument() {
   useEffect(() => {
     const scope = createAbortableEffectScope("Builder preview discovery");
     stops.forEach((stop) => {
-      if (!stop.coordinates) return;
+      if (!stop.coordinates && !stop.canonicalPlaceId) return;
       const key = builderDiscoveryInputKey({ ownerId: activeBrowserOwnerId, tripId }, stop);
       if (previewDiscovery[stop.id]?.key === key) return;
       void loadBuilderDiscoveryPlaces(stop, scope.signal)
