@@ -7,8 +7,8 @@ import { conciseExploreDescription, exploreDiscoveryCategory, trustedExploreImag
 import { discoveryVisitorRelevance } from "@/lib/easyt/discovery-quality";
 
 type WikiPage = {
-  pageid?: number;
-  title?: string;
+  pageid: number;
+  title: string;
   extract?: string;
   thumbnail?: { source?: string };
   coordinates?: Array<{ lat?: number; lon?: number }>;
@@ -32,9 +32,9 @@ function discoveryPages(value: unknown): WikiPage[] {
   const pages = Object.values(pageMap);
   for (const page of pages) {
     if (!record(page)
-      || (page.title !== undefined && typeof page.title !== 'string')
+      || typeof page.title !== 'string' || !page.title.trim()
       || (page.extract !== undefined && typeof page.extract !== 'string')
-      || (page.pageid !== undefined && (typeof page.pageid !== 'number' || !Number.isFinite(page.pageid)))
+      || typeof page.pageid !== 'number' || !Number.isSafeInteger(page.pageid) || page.pageid < 1
       || (page.thumbnail !== undefined && (!record(page.thumbnail) || (page.thumbnail.source !== undefined && typeof page.thumbnail.source !== 'string')))
       || (page.coordinates !== undefined && (!Array.isArray(page.coordinates) || page.coordinates.some(point =>
         !record(point) || typeof point.lon !== 'number' || !Number.isFinite(point.lon) || Math.abs(point.lon) > 180

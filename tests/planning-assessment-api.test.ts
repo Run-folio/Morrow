@@ -3,7 +3,7 @@ import test from 'node:test';
 import {build} from 'esbuild';
 import {resolve} from 'node:path';
 import {readFileSync} from 'node:fs';
-import {searchReferencePlaces} from '../lib/easyt/place-reference.server.ts';
+import {referencePlaceById,searchReferencePlaces} from '../lib/easyt/place-reference.server.ts';
 import {PLACE_CATALOG} from '../lib/easyt/place-catalog.ts';
 
 const fixture=()=>((globalThis as any).__phase1Api);
@@ -54,6 +54,30 @@ test('an existing catalog owner with its explicitly pinned reference selection r
  assert.equal(new URL(fixture().requests[0]).searchParams.get('ggscoord'),'35.6895|139.69171');
  assert.equal(url.searchParams.get('canonicalPlaceId'),'tokyo');
 });
+for(const [owner,name,country,id,lat,lon] of [
+ ['cusco','Cusco','Peru','reference:geonames:3697554','-13.5319','-71.9675'],
+ ['boston','Boston','United States','reference:geonames:5109797','42.3601','-71.0589'],
+] as const)test(`catalog ${owner} rejects the independently reproduced same-country namesake before discovery`,async t=>{
+ const other=referencePlaceById(id)!;assert.ok(other);
+ setup(t,{organic:()=>Response.json({query:{pages:{101:{pageid:101,title:`${name} local museum`,extract:'A major museum and visitor gallery with regional exhibitions.',coordinates:[{lon:other.coordinates[0],lat:other.coordinates[1]}]}}}})});
+ const url=discovery(name,country,owner,other.providerId);url.searchParams.set('lat',lat);url.searchParams.set('lon',lon);const before=url.toString();
+ const response=await api.discover.GET({nextUrl:url});const body=await response.json();
+ assert.equal(fixture().requests.length,0,'Unrelated source pin must not start organic lookup');
+ assert.equal(response.status,200);assert.equal(body.assessment?.retrieval,'blocked');assert.equal(body.assessment?.reason,'identity_required');
+ assert.equal(body.counts,undefined);assert.deepEqual(body.places,[]);assert.equal(url.toString(),before);
+});
+for(const [owner,name,country] of [
+ ['cusco','Cusco','Peru'],['boston','Boston','United States'],['hanoi','Hanoi','Vietnam'],['udaipur','Udaipur','India'],['faro','Faro','Portugal'],
+] as const)test(`unmapped catalog ${owner} cannot infer reference equivalence from name, country or caller point`,async t=>{
+ setup(t);const sources=searchReferencePlaces(name,{explicitCountryNames:[country]}).filter(c=>c.canonicalName===name&&['city','town'].includes(c.placeType));assert.ok(sources.length);
+ for(const source of sources){
+  const url=discovery(name,country,owner,source.providerId);url.searchParams.set('lat',String(source.coordinates![1]));url.searchParams.set('lon',String(source.coordinates![0]));const before=url.toString();
+  const body=await (await api.discover.GET({nextUrl:url})).json();
+  assert.equal(body.assessment?.retrieval,'blocked',source.canonicalPlaceId);assert.equal(body.assessment?.reason,'identity_required');
+  assert.equal(body.counts,undefined);assert.deepEqual(body.places,[]);assert.equal(url.toString(),before);
+ }
+ assert.equal(fixture().requests.length,0);
+});
 for(const [name,country,point] of [['Cusco','Peru','-13.53188|-71.96701'],['Nairobi','Kenya','-1.28333|36.81667']] as const)
  test(`trusted ${name} discovery is sourced from its pinned identity, without arbitrary caller coordinates`,async t=>{
   setup(t);const c=selected(name,country),url=discovery(name,country,c.canonicalPlaceId!,c.providerId!);url.searchParams.delete('lat');url.searchParams.delete('lon');
@@ -93,7 +117,7 @@ test('gateway and planning-area pins cannot become activity destinations or sile
  assert.equal(fixture().requests.length,0);
 });
 test('discovery reports admissions before the unchanged ten-item presentation cap',async t=>{
- setup(t,{organic:()=>Response.json({query:{pages:Object.fromEntries(Array.from({length:12},(_,i)=>[i,{pageid:i,title:`Tokyo Museum ${i}`,extract:'A major museum and visitor gallery.',coordinates:[{lon:139.69171,lat:35.6895}]}]))}})});
+ setup(t,{organic:()=>Response.json({query:{pages:Object.fromEntries(Array.from({length:12},(_,i)=>[i+1,{pageid:i+1,title:`Tokyo Museum ${i}`,extract:'A major museum and visitor gallery.',coordinates:[{lon:139.69171,lat:35.6895}]}]))}})});
  const body=await (await (await api.discover).GET({nextUrl:discovery()})).json();
  assert.equal(body.places.length,10);assert.deepEqual(body.counts,{raw:12,admitted:12,returned:10});
 });
@@ -111,11 +135,24 @@ test('organic admitted-empty retains raw count separately from successful empty'
 for(const [label,payload] of [
  ['invalid query scalar',{query:'broken'}],['null query',{query:null}],['query array',{query:[]}],
  ['array page',{query:{pages:{1:[]}}}],['wrong title type',{query:{pages:{1:{title:5}}}}],
+ ['missing required title',{query:{pages:{1:{pageid:1}}}}],
+ ['empty required title',{query:{pages:{1:{pageid:1,title:''}}}}],
+ ['blank required title',{query:{pages:{1:{pageid:1,title:'  '}}}}],
+ ['missing required page ID',{query:{pages:{1:{title:'Tokyo Museum',extract:'A major museum and visitor gallery.',coordinates:[{lon:139.69171,lat:35.6895}]}}}}],
+ ['zero required page ID',{query:{pages:{1:{pageid:0,title:'Tokyo Museum'}}}}],
+ ['negative required page ID',{query:{pages:{1:{pageid:-1,title:'Tokyo Museum'}}}}],
+ ['fractional required page ID',{query:{pages:{1:{pageid:1.5,title:'Tokyo Museum'}}}}],
  ['unrecognized payload',{}],
 ] as const)test(`organic ${label} is unavailable malformed evidence, never zero inventory`,async t=>{
  setup(t,{organic:()=>Response.json(payload)});const body=await (await (await api.discover).GET({nextUrl:discovery()})).json();
  assert.equal(body.unavailable,true);assert.equal(body.assessment?.reason,'malformed_response');
  assert.equal(body.assessment?.retrieval,'unavailable');assert.equal(body.assessment?.retryable,true);assert.equal(body.counts,undefined);
+});
+test('organic valid page identity without optional enrichment remains a completed filtered result',async t=>{
+ setup(t,{organic:()=>Response.json({query:{pages:{1:{pageid:1,title:'Tokyo Museum'}}}})});
+ const body=await (await api.discover.GET({nextUrl:discovery()})).json();
+ assert.equal(body.unavailable,undefined);assert.equal(body.assessment?.retrieval,'completed');assert.equal(body.assessment?.reason,'filtered_empty');
+ assert.deepEqual(body.counts,{raw:1,admitted:0,returned:0});
 });
 test('MediaWiki batchcomplete with no query is a valid successful empty response',async t=>{
  setup(t,{organic:()=>Response.json({batchcomplete:''})});const body=await (await (await api.discover).GET({nextUrl:discovery()})).json();
