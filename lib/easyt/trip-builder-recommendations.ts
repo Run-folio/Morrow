@@ -40,11 +40,26 @@ function validPlace(value: unknown): value is PlannerPlace {
             && place.coordinates.every(Number.isFinite) && Math.abs(place.coordinates[0]) <= 180 && Math.abs(place.coordinates[1]) <= 90));
 }
 
-/** Existing discovery provider, bounded by the session lifetime and a request timeout. */
-export async function resolveBuilderRecommendation(trip: CanonicalEasyTTrip, stopId: string, signal: AbortSignal): Promise<BuilderRecommendationProjection> {
-    const stop = trip.stops.find(stop => stop.id === stopId);
-    if (!stop || stop.latitude === null || stop.longitude === null) throw new Error('Recommendation location unavailable');
-    const params = new URLSearchParams({ destination: stop.name, country: stop.country, lat: String(stop.latitude), lon: String(stop.longitude) });
+type BuilderDiscoveryStop = { id: string; name: string; country: string; canonicalPlaceId?: string; providerId?: string; coordinates?: [number, number] };
+type BuilderDiscoveryScope = { ownerId: string | null; tripId: string };
+export type BuilderDiscoveryCache = Record<string, { key: string; places: PlannerPlace[] }>;
+
+/** Preview results belong to the exact selected identity and mounted document. */
+export function builderDiscoveryInputKey(scope: BuilderDiscoveryScope, stop: BuilderDiscoveryStop): string {
+    return JSON.stringify([scope.ownerId, scope.tripId, stop.id, stop.name, stop.country, stop.canonicalPlaceId, stop.providerId, stop.coordinates]);
+}
+
+export function currentBuilderDiscoveredPlaces(stops: BuilderDiscoveryStop[], cache: BuilderDiscoveryCache, scope: BuilderDiscoveryScope): Record<string, PlannerPlace[]> {
+    return Object.fromEntries(stops.flatMap(stop => {
+        const result = cache[stop.id];
+        return result?.key === builderDiscoveryInputKey(scope, stop) ? [[stop.id, result.places]] : [];
+    }));
+}
+
+/** Shared discovery adapter for the preview and canonical recommendation worker. */
+export async function loadBuilderDiscoveryPlaces(stop: BuilderDiscoveryStop, signal: AbortSignal): Promise<PlannerPlace[]> {
+    if (!stop.coordinates) throw new Error('Recommendation location unavailable');
+    const params = new URLSearchParams({ destination: stop.name, country: stop.country, lat: String(stop.coordinates[1]), lon: String(stop.coordinates[0]) });
     if (stop.canonicalPlaceId) params.set('canonicalPlaceId', stop.canonicalPlaceId);
     if (stop.providerId) params.set('providerId', stop.providerId);
     const response = await fetch(`/api/journey-discover?${params}`, { cache: 'no-store', signal: AbortSignal.any([signal, AbortSignal.timeout(10000)]) });
@@ -52,6 +67,14 @@ export async function resolveBuilderRecommendation(trip: CanonicalEasyTTrip, sto
     const payload = await response.json() as { places?: unknown; unavailable?: boolean; assessment?: unknown };
     if (signal.aborted) throw new DOMException('Builder input changed', 'AbortError');
     if (planningLaneResponseStatus(payload, true) !== 'ready' || !Array.isArray(payload.places) || !payload.places.every(validPlace)) throw new Error('Recommendation result unavailable');
+    return payload.places;
+}
+
+/** Existing discovery provider, bounded by the session lifetime and a request timeout. */
+export async function resolveBuilderRecommendation(trip: CanonicalEasyTTrip, stopId: string, signal: AbortSignal): Promise<BuilderRecommendationProjection> {
+    const stop = trip.stops.find(stop => stop.id === stopId);
+    if (!stop || stop.latitude === null || stop.longitude === null) throw new Error('Recommendation location unavailable');
+    const places = await loadBuilderDiscoveryPlaces({ ...stop, coordinates: [stop.longitude, stop.latitude] }, signal);
     // An available empty shortlist is a real result. PlannerPlace.cost is visit duration, not money.
-    return builderRecommendationProjection(trip, stopId, payload.places);
+    return builderRecommendationProjection(trip, stopId, places);
 }

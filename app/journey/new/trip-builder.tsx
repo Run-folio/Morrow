@@ -40,7 +40,7 @@ import { acceptBuilderOptimization, calculateBuilderOptimization, type BuilderOp
 import { routeProjectionInputKey } from "@/lib/easyt/trip-route-intent";
 import { allRequiredStaysHaveNights } from "@/lib/easyt/trip-builder-generated-nights";
 import { projectBuilderCalendar } from "@/lib/easyt/trip-builder-calendar";
-import { resolveBuilderRecommendation } from "@/lib/easyt/trip-builder-recommendations";
+import { resolveBuilderRecommendation, loadBuilderDiscoveryPlaces, builderDiscoveryInputKey, currentBuilderDiscoveredPlaces, type BuilderDiscoveryCache } from "@/lib/easyt/trip-builder-recommendations";
 import { readBuilderInputDraft, writeBuilderInputDraft, type BuilderInputBinding } from "@/lib/easyt/trip-builder-input-draft";
 import { EasyTTripPersistenceError, isTripPersistenceAuthenticationError, tripRecoveryStateForPersistenceError } from "@/lib/easyt/trip-persistence-error";
 import { tripEditorSyncAction, tripSyncRecoveryPath, tripSyncSignInPath } from "@/lib/easyt/trip-continuity";
@@ -864,8 +864,9 @@ function TripBuilderDocument() {
   const [initialManualNightStopIds, setManualNightStopIds] = useState<string[]>([]);
   const manualNightStopIds = canonicalBuilder ? (canonicalBuilder.brief.manualNightStopIds ?? []) : initialManualNightStopIds;
   const [nightEditFeedback, setNightEditFeedback] = useState<NightEditFeedback | null>(null);
-  const [discoveredPlaces, setDiscoveredPlaces] = useState<Record<string, Place[]>>({});
-  const [discovering, setDiscovering] = useState<Record<string, boolean>>({});
+  const [previewDiscovery, setPreviewDiscovery] = useState<BuilderDiscoveryCache>({});
+  const previewDiscoveryKey = JSON.stringify(stops.map(stop => builderDiscoveryInputKey({ ownerId: activeBrowserOwnerId, tripId }, stop)));
+  const discoveredPlaces = useMemo(() => currentBuilderDiscoveredPlaces(stops, previewDiscovery, { ownerId: activeBrowserOwnerId, tripId }), [stops, previewDiscovery, activeBrowserOwnerId, tripId]);
 
   const [initialBudget, setBudget] = useState<"value" | "mid" | "high">("value");
   const budget = canonicalBuilder ? (canonicalBuilder.brief.budgetBand) : initialBudget;
@@ -1703,17 +1704,18 @@ function TripBuilderDocument() {
   })(); };
 
   useEffect(() => {
+    const scope = createAbortableEffectScope("Builder preview discovery");
     stops.forEach((stop) => {
-      if (!stop.coordinates || discoveredPlaces[stop.id] || discovering[stop.id]) return;
-      setDiscovering((current) => ({ ...current, [stop.id]: true }));
-      const [lon, lat] = stop.coordinates;
-      fetch(`/api/journey-discover?destination=${encodeURIComponent(stop.name)}&country=${encodeURIComponent(stop.country)}&lat=${lat}&lon=${lon}`)
-        .then((response) => response.json())
-        .then((payload: { places?: Place[] }) => setDiscoveredPlaces((current) => ({ ...current, [stop.id]: payload.places ?? [] })))
-        .catch(() => setDiscoveredPlaces((current) => ({ ...current, [stop.id]: [] })))
-        .finally(() => setDiscovering((current) => ({ ...current, [stop.id]: false })));
+      if (!stop.coordinates) return;
+      const key = builderDiscoveryInputKey({ ownerId: activeBrowserOwnerId, tripId }, stop);
+      if (previewDiscovery[stop.id]?.key === key) return;
+      void loadBuilderDiscoveryPlaces(stop, scope.signal)
+        .then(places => scope.commit(() => setPreviewDiscovery(current => ({ ...current, [stop.id]: { key, places } }))))
+        // Failure/incomplete feedback supplies no new place facts or empty result.
+        .catch(() => undefined);
     });
-  }, [stops, discoveredPlaces, discovering]);
+    return () => scope.dispose();
+  }, [previewDiscoveryKey]);
 
   useEffect(() => {
     if (session?.user?.id && tripOwnerId && session.user.id !== tripOwnerId) {
