@@ -2115,3 +2115,38 @@
   .workspaceToolbar .subviewBar { justify-self: stretch; }
   .workspaceToolbar .subviewBar > div { width: 100%; }
 }
+
+/* The same mounted day content adapts between a panel and a native modal. */
+.calendarDaySheet[data-dialog-presentation="inline"],
+.calendarSheetContent { display: contents; }
+.calendarSheetHeader { display: none; }
+.calendarDaySheet[data-dialog-presentation="modal"] {
+  position: fixed; inset: auto 0 0; margin: 0 auto; box-sizing: border-box;
+  width: min(100%, 760px); max-width: 100%;
+  max-height: calc(100svh - var(--morrovia-sticky-content-offset));
+  overflow: auto; overscroll-behavior: contain;
+  padding: 0 0 calc(16px + env(safe-area-inset-bottom));
+  border: 1px solid var(--morrovia-line);
+  border-radius: var(--morrovia-radius) var(--morrovia-radius) 0 0;
+  background: var(--morrovia-control-surface); color: var(--morrovia-ink);
+  box-shadow: var(--morrovia-shadow-overlay);
+}
+.calendarDaySheet:not([open])[data-dialog-presentation="modal"] { display: none; }
+.calendarDaySheet::backdrop { background: var(--morrovia-overlay); }
+.calendarDaySheet[data-dialog-presentation="modal"] .calendarSheetContent { display: block; }
+.calendarDaySheet[data-dialog-presentation="modal"] .calendarSheetHeader {
+  display: flex; align-items: start; gap: 12px; justify-content: space-between;
+  position: sticky; top: 0; z-index: 2; padding: 16px;
+  background: var(--morrovia-control-surface); border-bottom: 1px solid var(--morrovia-line);
+}
+.calendarSheetHeader h2 { margin: 0; font: 600 22px/1.2 var(--morrovia-display); overflow-wrap: anywhere; }
+.calendarSheetHeader button { flex: none; }
+.calendarDaySheet[data-dialog-presentation="modal"] .dayPanel,
+.calendarDaySheet[data-dialog-presentation="modal"] .contextRail { border-left: 0; min-width: 0; }
+.calendarDaySheet[data-dialog-presentation="modal"] .calendarEmbeddedDetail { position: static; width: auto; max-height: none; padding: 16px; }
+.calendarDaySelect { scroll-margin-top: var(--morrovia-sticky-content-offset); }
+
+.calendarDaySheet [hidden] { display: none; }
+
+.calendarDaySheet[data-dialog-presentation="modal"] .contextRail { position: relative; z-index: 0; }
+.calendarSheetActions { display: grid; gap: 8px; flex: none; }

@@ -1,0 +1,24 @@
+(node:21251) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/shaun/Documents/Codex/2026-10-10/task-7/Morrovia-calendar/tests/itinerary-calendar-full-trip-browser.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/shaun/Documents/Codex/2026-10-10/task-7/Morrovia-calendar/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ Calendar exposes every day and keeps seven weekday columns at all review widths (7249.276166ms)
+✔ Dense Calendar opens all twelve activities and exposes multiple saved stays (1832.5485ms)
+✔ Calendar thumbnails load or fall back to category icons without changing slot size (1939.749625ms)
+✔ Calendar Add and completed drag update one canonical item, while cancelled drag preserves it (1584.337416ms)
+✔ Calendar Move dialog matches drag and cancelling preserves source (2221.744ms)
+✔ Touch Calendar opens a day sheet and returns keyboard focus to the overview (1610.978334ms)
+✔ Mobile day sheet traps focus and uses existing image-first planner (2097.559958ms)
+✔ Mobile day sheet opens explicitly, stays closed on restore, and returns an unobscured selected date (6746.133292ms)
+✔ Mobile day sheet preserves Add drafts through child-modal resize and commits only confirmation (7110.434ms)
+✔ Mobile item details, Move and Remove Escape keep the day and canonical activities (2880.514208ms)
+✔ Mobile busy day and multiple stays remain accessible inside the scrolling sheet (2397.413125ms)
+✔ Desktop detail adapts across both breakpoints and returns to the same mobile day (2091.479ms)
+ℹ tests 12
+ℹ suites 0
+ℹ pass 12
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 39977.905125

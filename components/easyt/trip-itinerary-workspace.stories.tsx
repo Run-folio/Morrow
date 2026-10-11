@@ -691,7 +691,7 @@ export const ContextualAddPanel: Story = {
     if (!add) throw new Error("Afternoon Add must be available");
     add.click();
     await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
-    const dialog = canvasElement.querySelector<HTMLDialogElement>("dialog[open]");
+    const dialog = canvasElement.querySelector<HTMLDialogElement>("dialog:modal");
     if (!dialog?.textContent?.includes("Add a plan") || !dialog.textContent.includes("Add your own")) throw new Error("Contextual Add panel must open with discovery and manual entry");
   },
 };

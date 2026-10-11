@@ -363,6 +363,8 @@ export function MorroviaContentDialog({
   className = styles.dialog,
   onClose,
   open,
+  inline = false,
+  onReturnFocus,
 }: {
   ariaLabel: string;
   autoFocusSelector: string;
@@ -370,32 +372,58 @@ export function MorroviaContentDialog({
   className?: string;
   onClose: () => void;
   open: boolean;
+  /** Keep one mounted content owner when adapting a panel to a modal. */
+  inline?: boolean;
+  onReturnFocus?: () => void;
 }) {
   const dialogRef = useRef<HTMLDialogElement>(null);
   const returnFocusRef = useRef<HTMLElement | null>(null);
+  const modalRef = useRef(false);
+  const returnHandlerRef = useRef(onReturnFocus);
+  returnHandlerRef.current = onReturnFocus;
 
   useEffect(() => {
     const dialog = dialogRef.current;
     if (!dialog) return;
-    if (open && !dialog.open) {
-      returnFocusRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
-      dialog.showModal();
-      // A later frame can move focus after the user has started typing in another field.
-      dialog.querySelector<HTMLElement>(autoFocusSelector)?.focus();
-    } else if (!open && dialog.open) {
-      dialog.close();
-      window.requestAnimationFrame(() => returnFocusRef.current?.focus());
+    if (inline) {
+      if (modalRef.current) dialog.close();
+      modalRef.current = false;
+      dialog.open = true;
+      return;
     }
-  }, [autoFocusSelector, open]);
+    if (open && !modalRef.current) {
+      returnFocusRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+      // Adapting an already-visible panel must keep its existing child modal on top.
+      const childModals = dialog.open ? [...document.querySelectorAll<HTMLDialogElement>("dialog:modal")].filter(child => child !== dialog) : [];
+      const childFocus = childModals.length && document.activeElement instanceof HTMLElement ? document.activeElement : null;
+      childModals.forEach(child => child.close());
+      if (dialog.open) dialog.close();
+      dialog.showModal();
+      modalRef.current = true;
+      childModals.forEach(child => child.showModal());
+      if (childFocus) childFocus.focus({ preventScroll: true });
+      else dialog.querySelector<HTMLElement>(autoFocusSelector)?.focus({ preventScroll: true });
+    } else if (!open && dialog.open) {
+      const wasModal = modalRef.current;
+      dialog.close();
+      modalRef.current = false;
+      if (wasModal) window.requestAnimationFrame(() => {
+        if (returnHandlerRef.current) returnHandlerRef.current();
+        else returnFocusRef.current?.focus();
+      });
+    }
+  }, [autoFocusSelector, inline, open]);
 
   return <dialog
     ref={dialogRef}
     className={className}
     aria-label={ariaLabel}
-    onCancel={(event) => { event.preventDefault(); onClose(); }}
+    role={inline ? "region" : undefined}
+    data-dialog-presentation={inline ? "inline" : "modal"}
+    onCancel={(event) => { if (event.target !== event.currentTarget) return; event.preventDefault(); onClose(); }}
     onClick={(event) => { if (event.target === event.currentTarget) onClose(); }}
     onKeyDown={(event) => {
-      if (event.key !== "Tab") return;
+      if (inline || (event.target as HTMLElement).closest("dialog") !== event.currentTarget || event.key !== "Tab") return;
       const focusable = [...event.currentTarget.querySelectorAll<HTMLElement>('a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])')]
         .filter((element) => element.getClientRects().length > 0);
       const first = focusable[0];

@@ -530,6 +530,11 @@ export default function TripItineraryWorkspace({
     [workingTrip.planItems],
   );
   const [selectedIndex, updateSelectedIndex] = useState(() => Math.max(0, days.findIndex((day) => day.dayNumber === selectedDayNumber)));
+  const [calendarSheetRequested, setCalendarSheetRequested] = useState(false);
+  const [calendarCompact, setCalendarCompact] = useState(false);
+  const calendarReturnScrollRef = useRef(0);
+  const calendarSurfaceRef = useRef<HTMLDivElement>(null);
+  const [calendarChildModal, setCalendarChildModal] = useState(false);
   const [workspaceView, updateWorkspaceView] = useState<"days" | "calendar">("days");
   const writeOrientation = (dayIndex: number, view: "days" | "calendar") => {
     const day = days[dayIndex];
@@ -550,6 +555,20 @@ export default function TripItineraryWorkspace({
     updateWorkspaceView(view);
     writeOrientation(selectedIndex, view);
   };
+  useEffect(() => {
+    const query = window.matchMedia("(max-width: 1099px)");
+    const update = () => { if (query.matches) calendarReturnScrollRef.current = window.scrollY; setCalendarCompact(query.matches); };
+    update();
+    query.addEventListener("change", update);
+    return () => query.removeEventListener("change", update);
+  }, []);
+  useEffect(() => {
+    const observer = new MutationObserver(() => {
+      setCalendarChildModal(Boolean(calendarSurfaceRef.current?.querySelector('dialog[open]')));
+    });
+    if (calendarSurfaceRef.current) observer.observe(calendarSurfaceRef.current, { subtree: true, attributes: true, attributeFilter: ["open"] });
+    return () => observer.disconnect();
+  }, []);
   const [remoteImages, setRemoteImages] = useState<Record<string, JourneyImage>>({});
   const [dayHeroDisplayed, setDayHeroDisplayed] = useState(false);
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
@@ -578,6 +597,20 @@ export default function TripItineraryWorkspace({
   }, []);
   const [undoReceipt, setUndoReceipt] = useState<ItineraryItemUndoReceipt | null>(null);
   const [moveFlow, setMoveFlow] = useState<MoveFlow | null>(null);
+  const calendarHasChildFlow = calendarChildModal || Boolean(moveFlow || removeTarget);
+  const calendarModalActive = workspaceView === "calendar" && (
+    calendarCompact && (calendarSheetRequested || calendarHasChildFlow || Boolean(selectedItemId || selectedRecommendation))
+    || calendarSheetRequested && calendarHasChildFlow
+  );
+  useEffect(() => {
+    if (calendarCompact && calendarModalActive && !calendarSheetRequested) setCalendarSheetRequested(true);
+  }, [calendarCompact, calendarModalActive, calendarSheetRequested]);
+  useEffect(() => {
+    if (!calendarModalActive) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => { document.body.style.overflow = previousOverflow; };
+  }, [calendarModalActive]);
   const [moveError, setMoveError] = useState("");
   const moveOriginRef = useRef<HTMLElement | null>(null);
   const [railNoteDraft, setRailNoteDraft] = useState("");
@@ -1313,20 +1346,33 @@ export default function TripItineraryWorkspace({
   const todayDate = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
   const todayIndex = days.findIndex((day) => day.date === todayDate);
 
+  const returnToCalendar = () => {
+    window.scrollTo({ top: calendarReturnScrollRef.current, behavior: "instant" });
+    const selectedDay = document.querySelector<HTMLButtonElement>('#itinerary-calendar button[aria-pressed="true"]');
+    selectedDay?.focus({ preventScroll: true });
+    if (!selectedDay) return;
+    const rect = selectedDay.getBoundingClientRect();
+    const offset = parseFloat(getComputedStyle(selectedDay).scrollMarginTop) || 74;
+    if (rect.top < offset) window.scrollBy({ top: rect.top - offset, behavior: "instant" });
+    else if (rect.bottom > window.innerHeight) window.scrollBy({ top: rect.bottom - window.innerHeight, behavior: "instant" });
+  };
+  const closeCalendarSheet = () => { setCalendarSheetRequested(false); setSelectedItemId(null); setSelectedRecommendation(null); };
   const focusCalendarDayDetails = (dayId: string) => {
-    const inlineDetails = window.matchMedia("(max-width: 1099px)").matches;
+    if (window.matchMedia("(max-width: 1099px)").matches) {
+      calendarReturnScrollRef.current = window.scrollY;
+      setCalendarSheetRequested(true);
+      return;
+    }
     window.requestAnimationFrame(() => {
       const panel = document.getElementById(`${tabIdPrefix}-days-panel`);
-      // A later selection or orientation change must not focus stale day content.
-      if (panel?.dataset.calendarDayId !== dayId) return;
-      panel.focus({ preventScroll: inlineDetails });
-      if (inlineDetails) panel.scrollIntoView({
-        block: "start",
-        // Discrete focus navigation stays immediate, including reduced-motion mode.
-        behavior: "instant",
-      });
+      if (panel?.dataset.calendarDayId === dayId) panel.focus();
     });
   };
+
+  useEffect(() => {
+    if (!calendarModalActive || !(selectedItemId || selectedRecommendation)) return;
+    calendarSurfaceRef.current?.querySelector<HTMLButtonElement>("[data-calendar-item-back]")?.focus({ preventScroll: true });
+  }, [calendarModalActive, selectedItemId, selectedRecommendation]);
 
   const activityIdeas = (
         <details ref={itinerarySuggestionsOrientationTarget} id={`${tabIdPrefix}-ideas`} className={`${styles.contextSection} ${styles.ideasSection}`} open>
@@ -1471,8 +1517,26 @@ export default function TripItineraryWorkspace({
         setSelectedRecommendation(null);
         setSelectedItemId(itemId);
       }} /> : null}
+      <MorroviaContentDialog
+        ariaLabel={`${copy.day} ${active.dayNumber}: ${stop?.name ?? active.title}`}
+        autoFocusSelector="[data-calendar-sheet-heading]"
+        className={styles.calendarDaySheet}
+        open={calendarModalActive}
+        inline={workspaceView !== "calendar" || !calendarCompact && !calendarModalActive}
+        onClose={() => { if (selectedItemId || selectedRecommendation) closeSelectedDetail(); else closeCalendarSheet(); }}
+        onReturnFocus={returnToCalendar}
+      >
+      <div ref={calendarSurfaceRef} className={styles.calendarSheetContent}>
+      <header className={styles.calendarSheetHeader}>
+        <h2 data-calendar-sheet-heading tabIndex={-1}>{copy.day} {active.dayNumber} · {displayDayDate(active.date, language)} · {stop?.name ?? active.title}</h2>
+        <div className={styles.calendarSheetActions}>
+        {calendarModalActive && (selectedDetail || selectedTransportAgenda || selectedBooking) ? <EasyTButton data-calendar-item-back size="small" variant="secondary" onClick={closeSelectedDetail}>Back to day</EasyTButton> : null}
+        <EasyTButton icon={X} variant="quiet" aria-label="Close day details" onClick={closeCalendarSheet}>Close</EasyTButton>
+        </div>
+      </header>
       <div
         className={styles.dayPanel}
+        hidden={calendarModalActive && Boolean(selectedDetail || selectedTransportAgenda || selectedBooking)}
         role={workspaceView === "days" ? "tabpanel" : "region"}
         id={`${tabIdPrefix}-days-panel`}
         tabIndex={workspaceView === "calendar" ? -1 : undefined}
@@ -1526,7 +1590,7 @@ export default function TripItineraryWorkspace({
           } : undefined}
         /> : null}
 
-        {workspaceView === "calendar" ? <EasyTButton className={styles.backToCalendar} variant="quiet" size="small" onClick={() => { const calendar = document.getElementById("itinerary-calendar"); const selectedDay = calendar?.querySelector<HTMLButtonElement>('[aria-pressed="true"]'); selectedDay?.focus({ preventScroll: true }); (selectedDay ?? calendar)?.scrollIntoView({ block: "nearest", behavior: "instant" }); }}>{language === "es" ? "Volver al calendario" : "Back to calendar"}</EasyTButton> : null}
+
 
         {dayComposition ? <div ref={itineraryPlannerOrientationTarget} className={styles.details} aria-busy={dayPending || undefined}>
           <RichItineraryDayPlanner
@@ -1638,20 +1702,23 @@ export default function TripItineraryWorkspace({
         {presentation === "shell" && workspaceView === "days" ? <ContextualFeedbackSlot workspace="itinerary" entryKey={`itinerary:${active.id}:days`} hasContent={Boolean(dayComposition && (itineraryDayParts.some((part) => dayComposition.planned[part].length > 0) || dayComposition.unslotted.length > 0))} blocked={Boolean(addFlow || editingActivity || removeTarget || moveFlow || plannerDrag || draggedActivity || openMenuId || openSavedPickerId || selectedItemId || selectedRecommendation || plannerError || mutation.saveState === "saving" || mutation.saveState === "error")} /> : null}
       </div>
 
-      {workspaceView === "calendar" ? <div className={styles.calendarIdeas}>{activityIdeas}</div> : null}
+      {workspaceView === "calendar" ? <div className={styles.calendarIdeas} hidden={calendarModalActive && Boolean(selectedDetail || selectedTransportAgenda || selectedBooking)}>{activityIdeas}</div> : null}
 
       <aside className={`${styles.contextRail} ${selectedDetail || selectedTransportAgenda || selectedBooking ? styles.contextRailDetail : ""}`} aria-label={selectedDetail || selectedTransportAgenda || selectedBooking ? "Selected itinerary item details" : "Selected day planning context"}>
         {selectedTransportAgenda ? <ItineraryLogisticsDetail
+          embedded={calendarModalActive}
           trip={workingTrip}
           agenda={selectedTransportAgenda}
           language={language}
           onClose={closeSelectedDetail}
         /> : selectedBooking ? <ItineraryLogisticsDetail
+          embedded={calendarModalActive}
           trip={workingTrip}
           booking={selectedBooking}
           language={language}
           onClose={closeSelectedDetail}
         /> : selectedDetail ? <ItineraryItemDetail
+          embedded={calendarModalActive}
           detail={selectedDetail}
           mapHref={selectedRecommendation ? selectedRecommendationMapHref : selectedItemMapHref}
           pending={selectedRecommendation ? mutation.isPending(`itinerary-suggestion-${selectedRecommendation.stopId}-${selectedRecommendation.idea.placeId}`) : selectedActivity ? mutation.isPending(`itinerary-activity-day-part-${selectedActivity.id}`) : stayBooking ? mutation.isPending(`itinerary-stay-${stop?.id}`) : false}
@@ -1826,6 +1893,9 @@ export default function TripItineraryWorkspace({
         </details> : null}
         </div>
       </aside>
+
+      </div>
+      </MorroviaContentDialog>
 
       <MorroviaFormDialog
         open={Boolean(moveFlow)}
@@ -2840,8 +2910,9 @@ function BookingCard({ booking, copy, selected, onSelect }: { booking: TripBooki
   return <article className={`${styles.bookingCard} ${selected ? styles.bookingCardSelected : ""}`}><Icon aria-hidden="true" /><EasyTButton className={styles.bookingCardSelect} variant="quiet" aria-pressed={selected} onClick={(event) => onSelect(event.currentTarget)}><span><strong>{booking.title}</strong><small>{state}{booking.confirmation ? ` · ${booking.confirmation}` : ""}{booking.date ? ` · ${booking.date}` : ""}</small></span></EasyTButton>{booking.confirmation ? <CheckCircle2 aria-hidden="true" /> : booking.url ? <a href={booking.url} target="_blank" rel="noopener noreferrer" aria-label={`${copy.bookingLink}: ${booking.title}`}><ExternalLink aria-hidden="true" /></a> : null}</article>;
 }
 
-function ItineraryLogisticsDetail({ trip, agenda = null, booking = null, language, onClose }: {
+function ItineraryLogisticsDetail({ trip, agenda = null, booking = null, language, onClose, embedded = false }: {
   trip: EasyTTrip;
+  embedded?: boolean;
   agenda?: ItineraryTransportAgendaLeg | null;
   booking?: TripBooking | null;
   language: "en" | "es";
@@ -2867,6 +2938,7 @@ function ItineraryLogisticsDetail({ trip, agenda = null, booking = null, languag
   const partnerAction = agenda ? omioBookingActionForLeg(trip, agenda.leg) : null;
 
   useEffect(() => {
+    if (embedded) return;
     const mobile = window.matchMedia("(max-width: 900px)").matches;
     setMobileSheet(mobile);
     const previousOverflow = document.body.style.overflow;
@@ -2888,11 +2960,11 @@ function ItineraryLogisticsDetail({ trip, agenda = null, booking = null, languag
       document.removeEventListener("keydown", onKeyDown);
       if (mobile) document.body.style.overflow = previousOverflow;
     };
-  }, [onClose, title]);
+  }, [embedded, onClose, title]);
 
   return <>
-    <EasyTButton className={styles.logisticsDetailScrim} iconOnly variant="quiet" aria-label={`${copy.cancel}: ${title}`} onClick={onClose}>{copy.cancel}</EasyTButton>
-    <section ref={shellRef} className={styles.logisticsDetail} role={mobileSheet ? "dialog" : "region"} aria-modal={mobileSheet || undefined} aria-label={`${copy.details}: ${title}`}>
+    {!embedded ? <EasyTButton className={styles.logisticsDetailScrim} iconOnly variant="quiet" aria-label={`${copy.cancel}: ${title}`} onClick={onClose}>{copy.cancel}</EasyTButton> : null}
+    <section ref={shellRef} className={`${styles.logisticsDetail} ${embedded ? styles.calendarEmbeddedDetail : ""}`} role={!embedded && mobileSheet ? "dialog" : "region"} aria-modal={!embedded && mobileSheet || undefined} aria-label={`${copy.details}: ${title}`}>
       <EasyTButton ref={closeRef} className={styles.logisticsDetailClose} icon={X} iconOnly variant="secondary" aria-label={`${copy.cancel}: ${title}`} onClick={onClose}>{copy.cancel}</EasyTButton>
       <header>
         <span>{agenda ? copy.transfer : copy.booking}</span>

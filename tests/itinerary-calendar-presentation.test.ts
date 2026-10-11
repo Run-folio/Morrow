@@ -59,7 +59,7 @@ test("Calendar selection resolves canonical IDs in place, with an explicit full-
   assert.match(itinerary, /data-selected=\{selectedDayId === day\.id/);
   assert.match(itinerary, /aria-pressed=\{selectedDayId === day\.id\}/);
   assert.match(itinerary, /calendarItemRequestRef\.current = itemId/);
-  assert.match(itinerary, /Back to calendar/);
+  assert.match(itinerary, /onReturnFocus=\{returnToCalendar\}/);
   assert.match(itinerary, /weeks=\{calendarWeeks\}/);
   assert.doesNotMatch(itinerary, /weeks=\{calendarWeeks\.filter/);
   assert.match(itinerary, /searchParams\.set\("day", String\(day\.dayNumber\)\)/);
@@ -76,7 +76,8 @@ test("Calendar keeps day cards selectable while removing redundant empty-card an
   assert.match(calendar, /hasCalendarArrivalEvent\(day\)/);
   assert.match(calendar, /<time dateTime=\{day\.day\.date\}>/);
   assert.match(calendar, /aria-pressed=\{selectedDayId === day\.id\}/);
-  assert.match(itinerary, /styles\.backToCalendar/);
+  assert.match(itinerary, /className=\{styles\.calendarDaySheet\}/);
+  assert.match(itinerary, /aria-label="Close day details"/);
 });
 
 test("Calendar places the existing photo-credit control below its side image", () => {

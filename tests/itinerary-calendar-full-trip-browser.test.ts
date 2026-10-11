@@ -88,6 +88,7 @@ test("Calendar thumbnails load or fall back to category icons without changing s
     for (const width of [390, 1440]) {
       await page.setViewportSize({ width, height: 1000 });
       await page.goto(story('calendar-image-fallbacks'));
+      if (width < 1100) await page.locator(calendarDays).nth(1).locator('button').first().click();
       const rows = page.locator('[data-itinerary-activity-id]');
       await rows.nth(2).waitFor();
       const loaded = page.locator('[data-itinerary-activity-id="calendar-loaded-image"] img');
@@ -142,7 +143,7 @@ test("Calendar Move dialog matches drag and cancelling preserves source", { skip
     await page.locator(calendarDays).first().locator('button').first().click();
     await page.locator('[data-itinerary-activity-id]').getByRole('button', { name: 'Walk San Blas before dinner', exact: true }).click();
     await page.getByRole('button', { name: 'Move to…', exact: true }).click();
-    const dialog = page.locator('dialog[open]');
+    const dialog = page.locator('dialog:modal');
     await dialog.getByRole('button', { name: 'Cancel', exact: true }).click();
     assert.match(await page.locator(calendarDays).first().innerText(), /Walk San Blas before dinner/);
     await page.locator('[data-itinerary-activity-id]').getByRole('button', { name: 'Walk San Blas before dinner', exact: true }).click();
@@ -155,92 +156,183 @@ test("Calendar Move dialog matches drag and cancelling preserves source", { skip
   } finally { await browser.close(); }
 });
 
-test("Touch Calendar selects an inline day and returns keyboard focus to the overview", { skip: !url, timeout: 60_000 }, async () => {
+test("Touch Calendar opens a day sheet and returns keyboard focus to the overview", { skip: !url, timeout: 60_000 }, async () => {
   const browser = await chromium.launch({ channel: process.env.MORROVIA_BROWSER_CHANNEL ?? "chrome", headless: true });
   try {
     const page = await browser.newPage({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
     await page.goto(story('calendar-image-fallbacks'));
-    await page.locator('[data-itinerary-activity-id]').nth(2).waitFor();
+    await page.locator(calendarDays).nth(2).waitFor();
     await page.locator(calendarDays).nth(2).locator('button').first().tap();
     assert.equal(await page.locator('header select').first().inputValue(), 'day-3');
-    await page.getByRole('button', { name: 'Back to calendar', exact: true }).tap();
+    await page.getByRole('button', { name: 'Close day details', exact: true }).tap();
     assert.equal(await page.locator('#itinerary-calendar [aria-pressed="true"]').first().evaluate((el: HTMLElement) => el === document.activeElement), true);
     assert.equal(await page.locator('#itinerary-calendar button[draggable="true"]').count(), 0);
     await capture(page, 'calendar-touch-390');
   } finally { await browser.close(); }
 });
 
-test("Long-trip mobile selection navigates to details for touch and keyboard with reduced motion", { skip: !url, timeout: 90_000 }, async () => {
+test("Mobile day sheet traps focus and uses existing image-first planner", { skip: !url, timeout: 60_000 }, async () => {
   const browser = await chromium.launch({ channel: process.env.MORROVIA_BROWSER_CHANNEL ?? "chrome", headless: true });
   try {
-    for (const width of [320, 390]) {
-      for (const reducedMotion of ['no-preference', 'reduce']) {
-        const page = await browser.newPage({ viewport: { width, height: 844 }, isMobile: true, hasTouch: true, reducedMotion });
-        await page.goto(story('calendar-long-trip-65-days'));
-        await page.locator(calendarDays).nth(64).waitFor();
-        const day2 = page.locator(calendarDays).nth(1).locator('button').first();
-        const expectedDay = await page.locator('header select').first().locator('option').nth(1).getAttribute('value');
-        if (reducedMotion === 'reduce') {
-          await day2.focus();
-          await day2.press('Enter');
-        } else await day2.tap();
-        assert.equal(await page.locator('header select').first().inputValue(), expectedDay);
-        await page.waitForFunction(() => {
-          const panel = document.querySelector<HTMLElement>('[class*="dayPanel"]');
-          const top = panel?.getBoundingClientRect().top ?? -1;
-          return panel === document.activeElement && top >= -1 && top < 400;
-        }, undefined, { timeout: 4_000 });
-        assert.equal(await page.locator('[class*="dayPanel"]').evaluate((el: HTMLElement) => el === document.activeElement), true);
-        await page.getByRole('button', { name: 'Back to calendar', exact: true }).tap();
-        assert.equal(await day2.evaluate((el: HTMLElement) => el === document.activeElement), true);
-        const cellTop = await day2.evaluate((el: HTMLElement) => el.getBoundingClientRect().top);
-        assert.ok(cellTop >= -1 && cellTop < 844, 'Back must return the selected cell to the viewport (allowing integer-scroll subpixel rounding)');
-        await capture(page, `calendar-long-mobile-navigation-${width}-${reducedMotion}`);
-        await page.close();
-      }
+    const page = await browser.newPage({ viewport: { width: 390, height: 844 }, reducedMotion: 'reduce' });
+    await page.goto(story('calendar-image-fallbacks'));
+    await page.locator(calendarDays).nth(1).locator('button').first().click();
+    const sheet = page.locator('dialog[class*="calendarDaySheet"]');
+    await sheet.locator('[data-calendar-sheet-heading]').waitFor();
+    assert.equal(await sheet.evaluate((el: HTMLElement) => el.contains(document.activeElement)), true);
+    assert.equal(await page.locator('[aria-label$=" planner"]').count(), 1);
+    await capture(page, "calendar-mobile-sheet-top-390");
+    for (let i = 0; i < 40; i++) {
+      await page.keyboard.press('Tab');
+      assert.equal(await sheet.evaluate((el: HTMLElement) => el.contains(document.activeElement)), true);
     }
-    const desktop = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
-    await desktop.goto(story('calendar-long-trip-65-days'));
-    await desktop.locator(calendarDays).nth(64).waitFor();
-    const desktopDay2 = desktop.locator(calendarDays).nth(1).locator('button').first();
-    await desktopDay2.click();
-    assert.equal(await desktopDay2.evaluate((el: HTMLElement) => el === document.activeElement), true, 'desktop cell selection must retain its existing focus behavior');
+    const surface = await sheet.evaluate((el: HTMLElement) => ({scroll: el.scrollHeight > el.clientHeight, locked: document.body.style.overflow}));
+    assert.equal(surface.scroll, true);
+    assert.equal(surface.locked, 'hidden');
+    await sheet.locator('[data-itinerary-activity-id="calendar-loaded-image"] img').waitFor();
+    await capture(page, 'calendar-mobile-sheet-images-390');
+    await page.getByRole('button', { name: 'Close day details', exact: true }).click();
+    assert.equal(await page.locator('#itinerary-calendar [aria-pressed="true"]').first().evaluate((el: HTMLElement) => el === document.activeElement), true);
   } finally { await browser.close(); }
 });
 
-test("Mobile forward tab and reading order follows calendar, day details, ideas, then map", { skip: !url, timeout: 60_000 }, async () => {
+test("Mobile day sheet opens explicitly, stays closed on restore, and returns an unobscured selected date", { skip: !url, timeout: 90_000 }, async () => {
   const browser = await chromium.launch({ channel: process.env.MORROVIA_BROWSER_CHANNEL ?? "chrome", headless: true });
   try {
-    const page = await browser.newPage({ viewport: { width: 390, height: 844 } });
-    await page.goto(story('calendar-image-fallbacks'));
-    await page.locator('[data-itinerary-activity-id]').nth(2).waitFor();
-    await page.locator(calendarDays).last().locator('button').first().focus();
-    await page.keyboard.press('Tab');
-    assert.equal(await page.locator('[class*="dayPanel"]').evaluate((el: HTMLElement) => el.contains(document.activeElement)), true, 'forward Tab must enter the visible selected-day details before ideas');
-    const visited: string[] = [];
-    let reachedIdeas = false;
-    for (let index = 0; index < 50; index += 1) {
-      const focused = await page.evaluate(() => {
-        const active = document.activeElement as HTMLElement;
-        return { label: active.getAttribute('aria-label') ?? active.textContent ?? '', inIdeas: Boolean(active.closest('[class*="calendarIdeas"]')) };
+    for (const width of [320, 390, 899, 900, 901, 1099]) {
+      const page = await browser.newPage({ viewport: { width, height: 844 } });
+      await page.goto(story('calendar-long-trip-65-days'));
+      await page.locator(calendarDays).nth(64).waitFor();
+      const sheet = page.locator('dialog[class*="calendarDaySheet"]');
+      assert.equal(await sheet.evaluate((el: HTMLDialogElement) => el.open), false, 'restore is passive');
+      await page.locator('header select').first().selectOption('day-3');
+      assert.equal(await sheet.evaluate((el: HTMLDialogElement) => el.open), false, 'date navigation is passive');
+      const cell = page.locator(calendarDays).nth(1).locator('button').first();
+      await cell.focus();
+      await cell.press(width === 320 ? 'Space' : 'Enter');
+      await sheet.waitFor({ state: 'visible' });
+      assert.equal(await sheet.evaluate((el: HTMLDialogElement) => el.matches(':modal') && el.contains(document.activeElement)), true);
+      assert.match(await sheet.innerText(), /Day 2/i);
+      assert.equal(await page.locator('[aria-label$=" planner"]').count(), 1);
+      await page.keyboard.press('Escape');
+      await page.waitForFunction(() => !document.querySelector<HTMLDialogElement>('dialog[class*="calendarDaySheet"]')?.open);
+      await page.waitForFunction(() => {
+        const cell = document.querySelector<HTMLElement>('#itinerary-calendar button[aria-pressed="true"]');
+        if (!cell || document.activeElement !== cell) return false;
+        const r = cell.getBoundingClientRect();
+        const offset = parseFloat(getComputedStyle(document.querySelector('.journey-design') ?? document.documentElement).getPropertyValue('--morrovia-navigation-height')) || 60;
+        const hit = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+        return r.top >= offset && r.bottom <= innerHeight && Boolean(hit && cell.contains(hit));
       });
-      if (focused.inIdeas) { reachedIdeas = true; break; }
-      visited.push(focused.label.trim());
-      await page.keyboard.press('Tab');
+      await capture(page, `calendar-sheet-return-${width}`);
+      await page.close();
     }
-    assert.equal(reachedIdeas, true);
-    assert.ok(visited.some(label => label === 'Open Stay'));
-    assert.ok(visited.some(label => label === 'Back to calendar'));
-    assert.ok(visited.some(label => label.includes('Qorikancha')));
-    const ordered = await page.evaluate(() => {
-      const calendar = document.querySelector('#itinerary-calendar')!;
-      const details = document.querySelector('[class*="dayPanel"]')!;
-      const ideas = document.querySelector('[class*="calendarIdeas"]')!;
-      const context = document.querySelector('[class*="contextRail"]')!;
-      return [calendar, details, ideas].map((node, index) => Boolean(node.compareDocumentPosition([details, ideas, context][index]) & Node.DOCUMENT_POSITION_FOLLOWING));
-    });
-    assert.deepEqual(ordered, [true, true, true], 'screen-reader DOM order must match the approved visual order');
-    assert.equal(await page.locator('[class*="calendarIdeas"]').count(), 1);
-    assert.equal(await page.locator('[aria-label$=" planner"]').count(), 1);
+  } finally { await browser.close(); }
+});
+
+test("Mobile day sheet preserves Add drafts through child-modal resize and commits only confirmation", { skip: !url, timeout: 90_000 }, async () => {
+  const browser = await chromium.launch({ channel: process.env.MORROVIA_BROWSER_CHANNEL ?? "chrome", headless: true });
+  try {
+    const page = await browser.newPage({ viewport: { width: 1440, height: 844 } });
+    await page.goto(story('calendar-image-fallbacks'));
+    await page.locator(calendarDays).nth(1).locator('button').first().click();
+    const sheet = page.locator('dialog[class*="calendarDaySheet"]');
+    const before = await page.locator('[data-itinerary-activity-id]').evaluateAll((nodes: HTMLElement[]) => nodes.map(n => n.dataset.itineraryActivityId));
+    await sheet.getByRole('button', { name: /^Add plan to .*morning$/ }).first().click();
+    const add = page.locator('dialog[class*="contextualAddDialog"]');
+    await add.getByLabel('Add your own', { exact: true }).fill('Preserved mobile draft');
+    for (const width of [899, 900, 901, 1099, 1100, 1101, 390]) {
+      await page.setViewportSize({ width, height: 844 });
+      assert.equal(await add.getByLabel('Add your own', { exact: true }).inputValue(), 'Preserved mobile draft');
+      assert.equal(await add.evaluate((el: HTMLDialogElement) => el.matches(':modal')), true);
+      await page.waitForFunction(() => document.querySelector('dialog[class*="contextualAddDialog"]')?.contains(document.activeElement));
+      assert.equal(await page.locator('[aria-label$=" planner"]').count(), 1);
+    }
+    await page.keyboard.press('Escape');
+    await page.waitForFunction(() => !document.querySelector<HTMLDialogElement>('dialog[class*="contextualAddDialog"]')?.open);
+    assert.equal(await sheet.evaluate((el: HTMLDialogElement) => el.matches(':modal')), true, 'child Escape must keep day sheet open');
+    assert.deepEqual(await page.locator('[data-itinerary-activity-id]').evaluateAll((nodes: HTMLElement[]) => nodes.map(n => n.dataset.itineraryActivityId)), before);
+    await sheet.getByRole('button', { name: /^Add plan to .*morning$/ }).first().click();
+    await add.getByLabel('Add your own', { exact: true }).fill('Confirmed mobile plan');
+    await add.getByRole('button', { name: 'Add to Morning', exact: true }).click();
+    await sheet.getByRole('button', { name: 'Confirmed mobile plan', exact: true }).waitFor();
+    assert.equal(await page.locator('[data-itinerary-activity-id]').count(), before.length + 1);
+    await sheet.getByRole('button', { name: 'Close day details', exact: true }).click();
+    await page.getByRole('button', { name: 'Day by day', exact: true }).click();
+    assert.equal(await page.locator('[data-itinerary-activity-id]').getByRole('button', { name: 'Confirmed mobile plan', exact: true }).count(), 1);
+  } finally { await browser.close(); }
+});
+
+test("Mobile item details, Move and Remove Escape keep the day and canonical activities", { skip: !url, timeout: 90_000 }, async () => {
+  const browser = await chromium.launch({ channel: process.env.MORROVIA_BROWSER_CHANNEL ?? "chrome", headless: true });
+  try {
+    const page = await browser.newPage({ viewport: { width: 320, height: 844 } });
+    await page.goto(story('calendar-image-fallbacks'));
+    await page.locator(calendarDays).first().locator('button').first().click();
+    const sheet = page.locator('dialog[class*="calendarDaySheet"]');
+    const activity = sheet.getByRole('button', { name: 'Walk San Blas before dinner', exact: true });
+    await activity.click();
+    const before = await sheet.locator('[data-itinerary-activity-id]').count();
+    await page.keyboard.press('Escape');
+    assert.equal(await sheet.evaluate((el: HTMLDialogElement) => el.matches(':modal')), true);
+    await activity.click();
+    await sheet.getByRole('button', { name: 'Move to…', exact: true }).click();
+    await page.locator('dialog:modal').last().waitFor();
+    await page.keyboard.press('Escape');
+    assert.equal(await sheet.evaluate((el: HTMLDialogElement) => el.matches(':modal')), true);
+    await activity.click();
+    await sheet.getByRole('button', { name: 'Remove', exact: true }).click();
+    await page.keyboard.press('Escape');
+    assert.equal(await sheet.evaluate((el: HTMLDialogElement) => el.matches(':modal')), true);
+    assert.equal(await sheet.locator('[data-itinerary-activity-id]').count(), before);
+    for (const name of ['Close day details', 'Back to day']) {
+      assert.equal(await sheet.getByRole('button', { name, exact: true }).evaluate((el: HTMLElement) => {
+        const r = el.getBoundingClientRect();
+        const hit = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+        return r.top >= 0 && r.bottom < innerHeight && Boolean(hit && el.contains(hit));
+      }), true, `${name} must remain unobscured after child dismissal`);
+    }
+    await capture(page, 'calendar-mobile-sheet-item-320');
+  } finally { await browser.close(); }
+});
+
+test("Mobile busy day and multiple stays remain accessible inside the scrolling sheet", { skip: !url, timeout: 60_000 }, async () => {
+  const browser = await chromium.launch({ channel: process.env.MORROVIA_BROWSER_CHANNEL ?? "chrome", headless: true });
+  try {
+    const page = await browser.newPage({ viewport: { width: 320, height: 844 } });
+    await page.goto(story('calendar-dense-twelve-activities'));
+    await page.locator(calendarDays).nth(1).locator('button').first().click();
+    const sheet = page.locator('dialog[class*="calendarDaySheet"]');
+    assert.equal(await sheet.locator('[data-itinerary-activity-id]').count(), 12);
+    await sheet.locator('[data-itinerary-activity-id]').last().scrollIntoViewIfNeeded();
+    assert.equal(await sheet.evaluate((el: HTMLElement) => el.scrollTop > 0 && el.scrollHeight > el.clientHeight), true);
+    await capture(page, 'calendar-mobile-sheet-dense-320');
+    await page.goto(story('calendar-multiple-stays'));
+    await page.locator(calendarDays).first().locator('button').first().click();
+    await sheet.getByText('Second saved Cusco stay', { exact: true }).scrollIntoViewIfNeeded();
+    assert.match(await sheet.locator('[class*="dayPanel"]').innerText(), /Cusco stay/);
+    await capture(page, 'calendar-mobile-sheet-stays-320');
+  } finally { await browser.close(); }
+});
+
+test("Desktop detail adapts across both breakpoints and returns to the same mobile day", { skip: !url, timeout: 60_000 }, async () => {
+  const browser = await chromium.launch({ channel: process.env.MORROVIA_BROWSER_CHANNEL ?? "chrome", headless: true });
+  try {
+    const page = await browser.newPage({ viewport: { width: 1440, height: 844 } });
+    await page.goto(story('calendar-image-fallbacks'));
+    await page.locator(calendarDays).first().locator('button').first().click();
+    const sheet = page.locator('dialog[class*="calendarDaySheet"]');
+    await sheet.getByRole('button', { name: 'Walk San Blas before dinner', exact: true }).click();
+    for (const width of [1101, 1100, 1099, 901, 900, 899, 390]) {
+      await page.setViewportSize({ width, height: 844 });
+      await page.waitForFunction((compact: boolean) => document.querySelector<HTMLDialogElement>('dialog[class*="calendarDaySheet"]')?.matches(':modal') === compact, width < 1100);
+      assert.equal(await page.locator('[aria-label$=" planner"]').count(), 1);
+      assert.equal(await page.locator('header select').first().inputValue(), 'day-1');
+    }
+    await page.keyboard.press('Escape');
+    assert.equal(await sheet.evaluate((el: HTMLDialogElement) => el.matches(':modal')), true);
+    await sheet.getByRole('button', { name: 'Walk San Blas before dinner', exact: true }).waitFor();
+    await page.keyboard.press('Escape');
+    await page.waitForFunction(() => !document.querySelector<HTMLDialogElement>('dialog[class*="calendarDaySheet"]')?.open);
   } finally { await browser.close(); }
 });
