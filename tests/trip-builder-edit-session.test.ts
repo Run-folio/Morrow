@@ -1,3 +1,4 @@
+import {geographicallyReady,stopGeographicPlace} from '../lib/easyt/geographic-binding.ts';
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { readFileSync } from 'node:fs';
@@ -10,13 +11,13 @@ import { routeProjectionInputKey } from '../lib/easyt/trip-route-intent.ts';
 import { builderStructuralSnapshot } from '../lib/easyt/trip-builder-edit.ts';
 import { canonicalTripForOwner, remapTripStopReferences } from '../lib/easyt/trip-promotion.ts';
 import { authoredContentKey } from '../lib/easyt/trip-retained-authored-content.ts';
-import { a17TripFixture } from './fixtures/batch14-a17-trip.ts';
+import { a17TripFixture, qualifiedA17TripFixture } from './fixtures/batch14-a17-trip.ts';
 import { resolveTripTransferJourneys } from '../lib/easyt/multimodal-transfer-resolution.ts';
 import { resolveCanonicalTransferJourneys } from '../lib/easyt/multimodal-transfer-resolution.ts';
 import { reconcileBuilderDependencies } from '../lib/easyt/trip-builder-reconciliation.ts';
 
 test('A17 actual save resolver accepts pending removal ACK and retires exact recovery with worker held',async()=>{
- const initial=requireReadableTripDocument(canonicalTripForOwner('owner-a',a17TripFixture()));
+ const initial=requireReadableTripDocument(canonicalTripForOwner('owner-a',await qualifiedA17TripFixture()));
  const h=await harness(initial,new MemoryStorage(),async trip=>canonicalTripForOwner('owner-a',await resolveTripTransferJourneys(trip),nextTripUpdatedAt(trip.updatedAt)));
  try{
   h.session.updateDraft({binding:{kind:'origin'},raw:'  unfinished origin '});
@@ -35,11 +36,13 @@ function jsonbKeys<T>(value:T):T {
 async function actualWorkerResponse(request:BuilderReconciliationRequest):Promise<BuilderProjectionResponse>{
  const calculated=reconcileBuilderDependencies(request.trip,request.dispatched).trip;
  const residual=calculated.brief.cascadeStatus?.routeReconciliation?.residual??[];
- return {...response(request,'complete'),legs:await resolveCanonicalTransferJourneys(calculated.legs),routeAssessment:calculated.brief.routeAssessment,
-  results:request.dispatched.map(unit=>{const remaining=residual.find(item=>item.kind===unit.kind&&item.targetId===unit.targetId);return unit.kind==='recommendation'||!remaining?{...unit,phase:'complete' as const}:{...unit,phase:remaining.phase==='conflict'?'conflict' as const:'failed' as const,reason:remaining.reason}})};
+ const qualified=calculated.legs.filter(leg=>leg.routeMetadata.source!=='unverified-geography');
+ const resolved=await resolveCanonicalTransferJourneys(qualified);
+ return {...response(request,'complete'),legs:calculated.legs.map(leg=>resolved.find(result=>result.id===leg.id)??leg),routeAssessment:calculated.brief.routeAssessment,
+  results:request.dispatched.map(unit=>{if(unit.kind==='recommendation'&&!geographicallyReady(stopGeographicPlace(calculated.stops.find(stop=>stop.id===unit.targetId)!)))return{...unit,phase:'failed' as const,reason:'unavailable' as const};if(unit.kind==='leg'&&calculated.legs.some(leg=>leg.id===unit.targetId&&leg.routeMetadata.source==='unverified-geography'))return{...unit,phase:'failed' as const,reason:'unavailable' as const};const remaining=residual.find(item=>item.kind===unit.kind&&item.targetId===unit.targetId);return unit.kind==='recommendation'||!remaining?{...unit,phase:'complete' as const}:{...unit,phase:remaining.phase==='conflict'?'conflict' as const:'failed' as const,reason:remaining.reason}})};
 }
 for(const ordering of ['before-ACK','after-ACK'] as const)test(`A17 actual necessary worker saves ${ordering} under JSONB ACK and reload`,async()=>{
- const initial=requireReadableTripDocument(canonicalTripForOwner('owner-a',a17TripFixture())),gate=deferred<void>();let calls=0;
+ const initial=requireReadableTripDocument(canonicalTripForOwner('owner-a',await qualifiedA17TripFixture())),gate=deferred<void>();let calls=0;
  const h=await harness(initial,new MemoryStorage(),async trip=>{if(++calls===1)await gate.promise;return jsonbKeys(canonicalTripForOwner('owner-a',await resolveTripTransferJourneys(trip),nextTripUpdatedAt(trip.updatedAt)))});
  try{
   h.session.updateDraft({binding:{kind:'origin'},raw:' origin draft '});accept(h,{kind:'remove-destination',intentId:'intent:hue'});await h.run(450);
@@ -55,7 +58,7 @@ for(const ordering of ['before-ACK','after-ACK'] as const)test(`A17 actual neces
  }finally{gate.resolve();h.session.dispose()}
 });
 test('A17 newer budget and Undo survive held removal ACK with actual resolver',async()=>{
- const initial=requireReadableTripDocument(canonicalTripForOwner('owner-a',a17TripFixture())),gate=deferred<void>();let calls=0,durable=initial;
+ const initial=requireReadableTripDocument(canonicalTripForOwner('owner-a',await qualifiedA17TripFixture())),gate=deferred<void>();let calls=0,durable=initial;
  const h=await harness(initial,new MemoryStorage(),async trip=>{if(++calls===1)await gate.promise;durable=requireReadableTripDocument(jsonbKeys(canonicalTripForOwner('owner-a',await resolveTripTransferJourneys(trip),nextTripUpdatedAt(trip.updatedAt))));return durable});
  try{
   h.session.updateDraft({binding:{kind:'origin'},raw:' preserve me '});const frame=h.session.captureStructuralSnapshot();accept(h,{kind:'remove-destination',intentId:'intent:hue'});await h.run(450);
@@ -702,5 +705,19 @@ test('stale edit and expired owner cannot publish or consume a retained Undo fra
   h.rotate('owner-b');assert.equal(h.session.retainStructuralSnapshot(frame,accepted.acceptedRevision),false);
   assert.equal(h.session.accept({kind:'structural-inverse',snapshot:frame},accepted.inputRevision).ok,false);
   assert.deepEqual(h.session.getSnapshot().trip,accepted.trip);
+ }finally{h.session.dispose()}
+});
+
+test('A17 unqualified worker reports unavailable while accepted account intent remains acknowledged',async()=>{
+ const initial=requireReadableTripDocument(canonicalTripForOwner('owner-a',a17TripFixture()));
+ const h=await harness(initial,new MemoryStorage(),async trip=>canonicalTripForOwner('owner-a',await resolveTripTransferJourneys(trip),nextTripUpdatedAt(trip.updatedAt)));
+ try{
+  accept(h,{kind:'remove-destination',intentId:'intent:hue'});await h.run(450);await h.session.flush();
+  await h.run(0);const work=h.projections.at(-1)!;assert.ok(work);
+  const response=await actualWorkerResponse(work.request);assert(response.results.some(unit=>unit.kind==='leg'&&unit.phase==='failed'&&unit.reason==='unavailable'));
+  work.result.resolve(response);await tick();await h.run(450);await h.session.flush();
+  const state=h.session.getSnapshot();assert.equal(state.error,null);assert.equal(state.canonicalSaveState,'cloud');assert.equal(h.recovery(),null);
+  assert(state.failedUnits.some(unit=>unit.kind==='leg'));assert.equal(state.trip.stops.some(stop=>stop.name==='Hue'),false);
+  assert.equal(h.writes.length,2);assert.deepEqual(state.trip.planItems.filter(day=>day.stopId===state.trip.stops[0].id).map(day=>day.notes),initial.planItems.filter(day=>day.stopId===initial.stops[0].id).map(day=>day.notes));
  }finally{h.session.dispose()}
 });

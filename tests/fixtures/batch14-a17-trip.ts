@@ -1,3 +1,5 @@
+import assert from 'node:assert/strict';
+import {geographicallyReady,stopGeographicPlace,transferEndpointGeographicallyReady} from '../../lib/easyt/geographic-binding.ts';
 import { canonicalRouteFixture } from './batch14-route-documents.ts';
 import { requireReadableTripDocument } from '../../lib/easyt/trip-document.ts';
 import { buildCanonicalTripLegs } from '../../lib/easyt/trip-legs.ts';
@@ -26,5 +28,25 @@ export function a17TripFixture() {
  day=1;trip.planItems=trip.stops.flatMap(stop=>Array.from({length:stop.nights!},()=>{const current=day++;return {id:`a17-day-${current}`,stopId:stop.id,dayNumber:current,date:date(current),type:'activity',title:`${stop.name} day`,reason:'Fixture day',notes:stop.id==='hue'?['Traveller Hue note']:[],startsAt:null,endsAt:null,bookingUrl:null,latitude:null,longitude:null} as PlanItem}));
  trip.planItems.push({...trip.planItems.at(-1)!,id:'a17-day-13',dayNumber:13,date:date(13),type:'transport',title:'Departure'});
  trip.recommendations=[];trip.brief.intent.route.projectionInputKey=routeProjectionInputKey(trip);
+ return requireReadableTripDocument(trip);
+}
+
+/** Separate explicit accepted-geography success fixture; no historical migration. */
+export async function qualifiedA17TripFixture() {
+ const {selectedTransferPlace}=await import('./accepted-transfer-place.ts');
+ const trip=a17TripFixture();
+ const origin=selectedTransferPlace('London','United Kingdom','reference:geonames:2643743','endpoint');
+ trip.brief.intent.route.origin=origin;
+ Object.assign(trip.brief,{origin:origin.name,originCountry:origin.country,originCanonicalPlaceId:origin.canonicalPlaceId,originProviderId:origin.providerId,originCoordinates:origin.coordinates});
+ const ids=['reference:geonames:1581130','reference:geonames:1580240','reference:geonames:1580541','reference:geonames:1566083'];
+ for(const [index,stop] of trip.stops.entries()){
+  const place=selectedTransferPlace(stop.name,'Vietnam',ids[index],'stop');
+  Object.assign(stop,{canonicalPlaceId:place.canonicalPlaceId,providerId:place.providerId,longitude:place.coordinates![0],latitude:place.coordinates![1],geographicBinding:place.geographicBinding});
+  trip.brief.intent.route.destinations.find(intent=>intent.stopIds.includes(stop.id))!.selectedPlace=place;
+ }
+ trip.legs=buildCanonicalTripLegs({tripId:trip.id,origin:{...origin,coordinates:origin.coordinates!},journeyEnd:trip.brief.intent.route.journeyEnd,stops:trip.stops});
+ trip.brief.intent.route.projectionInputKey=routeProjectionInputKey(trip);
+ assert(trip.stops.every(stop=>geographicallyReady(stopGeographicPlace(stop))));
+ assert(trip.legs.every(leg=>transferEndpointGeographicallyReady(leg.fromEndpoint)&&transferEndpointGeographicallyReady(leg.toEndpoint)));
  return requireReadableTripDocument(trip);
 }

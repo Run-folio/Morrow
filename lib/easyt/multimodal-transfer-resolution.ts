@@ -902,7 +902,11 @@ export async function resolveTripTransferJourneys(
   const legs: TripLeg[] = [];
   for (const [index, leg] of trip.legs.entries()) {
     const pendingPrefix = leg.routeMetadata.source === "necessary-reconciliation" && leg.routeMetadata.pending === true;
-    legs.push(index < 8 && !pendingPrefix ? (await resolveCanonicalTransferJourney(leg, options)).leg : leg);
+    // Save/load owns the canonical document, not the provider-only geography
+    // mask. Unqualified identity remains saveable without authorizing inference.
+    const geographicReady = transferEndpointGeographicallyReady(leg.fromEndpoint)
+      && transferEndpointGeographicallyReady(leg.toEndpoint);
+    legs.push(index < 8 && !pendingPrefix && geographicReady ? (await resolveCanonicalTransferJourney(leg, options)).leg : leg);
   }
   return legs.some((leg, index) => leg !== trip.legs[index]) ? { ...trip, legs } : trip;
 }
