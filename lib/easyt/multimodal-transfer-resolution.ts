@@ -816,10 +816,21 @@ export async function resolveCanonicalTransferJourney(
       && (excludedModes.has(leg.mode) || leg.segments?.some((segment) => excludedModes.has(segment.mode)));
     if (gatewayContradictsDirectFlight || unsupportedPlannerRoad || unsupportedPlannerFlight || excludedGeneratedMode) {
       const unresolvedMetadata = { ...leg.routeMetadata };
-      if (excludedGeneratedMode) delete unresolvedMetadata.surfaceCrossingEvidence;
+      if (excludedGeneratedMode) {
+        delete unresolvedMetadata.surfaceCrossingEvidence;
+        delete unresolvedMetadata.transferImpact;
+        delete unresolvedMetadata.roadRouting;
+        delete unresolvedMetadata.routingConfidence;
+      }
       return {
         leg: attachRoadEstimate({
           ...leg,
+          ...(excludedGeneratedMode ? {
+            distanceKm: null,
+            routedDistanceKm: null,
+            straightLineDistanceKm: null,
+            roadEstimate: undefined,
+          } : {}),
           mode: "unknown",
           durationMinutes: null,
           headlineMinutes: null,
@@ -838,7 +849,7 @@ export async function resolveCanonicalTransferJourney(
           routeGeometry: undefined,
           segments: undefined,
           routeMetadata: { ...unresolvedMetadata, source: "multimodal-resolver", multimodalResolution: diagnostic },
-        }, roadEstimate),
+        }, excludedGeneratedMode ? undefined : roadEstimate),
         outcome: "unresolved",
         diagnostic,
       };

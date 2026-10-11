@@ -47,7 +47,7 @@ test('local photo credit follows successful load, error fallback and a recovered
     './resilient-image': { default: ResilientImage },
   }).JourneyLocalPlacePhotoMedia;
   const mediaFrame = frame();
-  let imageFrame = frame(), imageKey: unknown, image: any, children: any[];
+  let imageFrame = frame(), imageKey: unknown, image: any, children: any[] = [];
   let errors = 0;
   const props = { place: { name: 'Fixture hotel', mapsUrl: 'https://example.test/map' }, photo: { src: '/good.png', attributions: [{ displayName: 'Fixture photographer', uri: 'https://example.test/source' }] }, fallback: 'Neutral fallback', onError: () => errors++ };
   const run = (component: any, owner: Frame, props: any) => {
