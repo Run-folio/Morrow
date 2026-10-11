@@ -1,5 +1,5 @@
 import { buildCredibleItinerary, type PlannerPlace } from './planner.ts';
-import { planningEvidenceFromResponse } from './planning-evidence-presentation.ts';
+import { planningLaneResponseStatus } from './planning-evidence-presentation.ts';
 import type { CanonicalEasyTTrip } from './trip.ts';
 
 /** Only generated prose is owned here. Activity rows, bookings and day bindings remain authored. */
@@ -51,9 +51,7 @@ export async function resolveBuilderRecommendation(trip: CanonicalEasyTTrip, sto
     if (!response.ok) throw new Error('Recommendation provider unavailable');
     const payload = await response.json() as { places?: unknown; unavailable?: boolean; assessment?: unknown };
     if (signal.aborted) throw new DOMException('Builder input changed', 'AbortError');
-    const assessment = planningEvidenceFromResponse(payload);
-    if (assessment && assessment.retrieval !== 'completed') throw new Error('Recommendation result unavailable');
-    if (payload.unavailable || !Array.isArray(payload.places) || !payload.places.every(validPlace)) throw new Error('Recommendation result unavailable');
+    if (planningLaneResponseStatus(payload, true) !== 'ready' || !Array.isArray(payload.places) || !payload.places.every(validPlace)) throw new Error('Recommendation result unavailable');
     // An available empty shortlist is a real result. PlannerPlace.cost is visit duration, not money.
     return builderRecommendationProjection(trip, stopId, payload.places);
 }

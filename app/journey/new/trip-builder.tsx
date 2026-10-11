@@ -2,7 +2,7 @@
 
 import { transportAssessmentSummary } from "@/lib/easyt/itinerary-transport-agenda";
 import type { TransferAssessment } from '@/lib/easyt/planning-evidence-state';
-import { transferAssessmentForLeg } from '@/lib/easyt/planning-evidence-presentation';
+import { currentBuilderTransferAssessments, transferAssessmentForLeg } from '@/lib/easyt/planning-evidence-presentation';
 
 import { builderStructuralFeedback } from "@/lib/easyt/trip-builder-structural-feedback";
 
@@ -2363,6 +2363,7 @@ function TripBuilderDocument() {
     gatewayResolutionRequired: leg.routeMetadata.gatewayResolutionRequired,
   }))), [baselineBuilderCanonicalLegs]);
   const [resolvedBuilderLegs, setResolvedBuilderLegs] = useState<{ key: string; legs: TripLeg[]; assessments?: TransferAssessment[] } | null>(null);
+  const activeBuilderTransferAssessments = currentBuilderTransferAssessments(mountedBuilder?.snapshot.transferAssessments, resolvedBuilderLegs, transferResolutionKey);
   useEffect(() => {
     if (canonicalBuilder) return;
     const hasCandidate = baselineBuilderCanonicalLegs.some((leg) => leg.routeMetadata.source === "morrovia-planner"
@@ -5814,7 +5815,7 @@ function TripBuilderDocument() {
                 actions={<EasyTButton variant="quiet" size="small" onClick={()=>mountedBuilder.session.discardDraft(field.binding)}>{language === "es" ? "Descartar entrada" : "Discard input"}<span className="sr-only"> {index+1}</span></EasyTButton>} />)}
               <TripBuilderRouteWorkspace
                 canonicalTrip={activeTripDocument}
-                transferAssessments={mountedBuilder?.snapshot.transferAssessments ?? (resolvedBuilderLegs?.key === transferResolutionKey ? resolvedBuilderLegs.assessments : undefined)}
+                transferAssessments={activeBuilderTransferAssessments}
                 previewStopIds={routePreviewStopIds}
                 selectedStopId={selectedRouteStopId}
                 lockedStopIds={protectedBuilderStopIds}
@@ -5824,7 +5825,7 @@ function TripBuilderDocument() {
                 stopReview={stopId=><>{necessaryReview(["recommendation"],stopId)}{renderSavedLocationReview(stopId)}</>}
                 nightReview={nightEditFeedback?.tone==="warning" ? <p role="status" className={styles.hintError}>{nightEditFeedback.title} {nightEditFeedback.detail}</p> : null}
                 reviewControl={<div className={styles.builderReviewActions}>
-                  <MorroviaSaveStatus {...transportAssessmentSummary(activeTripDocument, language, mountedBuilder?.snapshot.transferAssessments)} />
+                  <MorroviaSaveStatus {...transportAssessmentSummary(activeTripDocument, language, activeBuilderTransferAssessments)} />
                 </div>}
                 nightStatus={{ total: totalNights, allocated: allocatedNights, complete: allNightsAllocated, language }}
                 onSelectStop={setSelectedRouteStopId}

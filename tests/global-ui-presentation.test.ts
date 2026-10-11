@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { readFileSync } from 'node:fs';
 import { canonicalPlaceSuggestionsForQuery } from '../lib/easyt/place-intelligence.ts';
 import { mergeEquivalentPlaceSuggestions, placeSuggestionLocationDetail } from '../lib/easyt/place-autocomplete.ts';
 import * as transport from '../lib/easyt/itinerary-transport-agenda.ts';
@@ -74,4 +75,16 @@ test('coverage respects accepted geography and recorded reconciliation phases', 
   trip.brief.cascadeStatus.routeReconciliation!.residual = [];
   assert.equal(transport.transportAssessmentSummary(trip, 'en').state, 'device');
   assert.doesNotMatch(transport.transportAssessmentSummary(trip, 'en').label, /Checking 2/);
+});
+
+test('noncanonical Builder rows and coverage use the same current assessment feedback', () => {
+  const source = readFileSync(new URL('../app/journey/new/trip-builder.tsx', import.meta.url), 'utf8');
+  assert.match(source, /transferAssessments=\{activeBuilderTransferAssessments\}/);
+  assert.match(source, /transportAssessmentSummary\(activeTripDocument, language, activeBuilderTransferAssessments\)/);
+  const trip = canonicalRouteFixture();
+  trip.stops = trip.stops.map(stop => { const place = adaptedDiscoveryPlaces().find(place => place.id === stop.id)!; return { ...stop, canonicalPlaceId: place.id, longitude: place.coordinates[0], latitude: place.coordinates[1] }; });
+  trip.legs = trip.legs.slice(0, 2).map(leg => ({ ...leg, mode: 'train', provenance: 'canonical_schedule', durationMinutes: 120, routeMetadata: {} }));
+  const feedback = trip.legs.map(leg => ({ legId: leg.id, state: { retrieval: 'unavailable', evidence: 'insufficient', retryable: false } as const }));
+  assert.deepEqual(trip.legs.map(leg => transport.transportAssessmentState(trip, leg, feedback.find(item => item.legId === leg.id)?.state)), ['blocked', 'blocked']);
+  assert.match(transport.transportAssessmentSummary(trip, 'en', feedback).label, /0 of 2 transfers · 2 could not be checked/);
 });

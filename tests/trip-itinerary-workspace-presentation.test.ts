@@ -401,10 +401,11 @@ test("day placement menus escape the scroll owner through a viewport-positioned 
   assert.match(styles, /\.dayPickerPortal \{[\s\S]*position: fixed;[\s\S]*z-index: 80;/);
 });
 
-test("an unavailable Suggestions lane is compact, resets active drag, and retries without overlap", () => {
+test("an unavailable or incomplete Suggestions lane is compact, resets active drag, and retries without overlap", () => {
   const stories = readFileSync(new URL("../components/easyt/trip-itinerary-workspace.stories.tsx", import.meta.url), "utf8");
   assert.match(itinerary, /const interactionResetRef = useRef\(onInteractionReset\)/);
-  assert.match(itinerary, /if \(unavailable\) interactionResetRef\.current\(\);\s*\}, \[unavailable\]\);/);
+  assert.match(itinerary, /const unsettled = unavailable \|\| incomplete;/);
+  assert.match(itinerary, /if \(unsettled\) interactionResetRef\.current\(\);\s*\}, \[unsettled\]\);/);
   assert.match(itinerary, /<MorroviaSectionStatus compact state="error"/);
   assert.match(itinerary, /const retrySuggestions = \(\) => \{ onInteractionReset\(\); setRetryVersion/);
   assert.match(itinerary, /onRetry=\{canRetry \? retrySuggestions : undefined\}/, 'Explicit nonretryable outcomes do not offer blind retries');

@@ -75,6 +75,98 @@ test('Retry repeats only the retryable lane and keeps a blocked guest lane disti
   } finally { await browser.close(); }
 });
 
+test('Both activity lanes distinguish settled incomplete assessments and a legacy commercial unavailable marker from empty success', { skip: !url, timeout: 90_000 }, async () => {
+  const browser = await chromium.launch({ channel: 'chrome', headless: true });
+  try {
+    const complete = { retrieval: 'completed', evidence: 'insufficient', reason: 'successful_empty', retryable: false };
+    for (const [index, [lane, retrieval]] of [['organic', 'checking'], ['organic', 'not-attempted'], ['commercial', 'checking'], ['commercial', 'not-attempted'], ['commercial', 'legacy-unavailable']].entries()) {
+      const width = index % 2 ? 1440 : 390;
+      const page = await browser.newPage({ viewport: { width, height: 900 } });
+      await page.route('**/*', route => route.request().url().startsWith(url + '/') ? route.continue() : route.abort());
+      const response = (target: string) => ({ assessment: target === lane && retrieval !== 'legacy-unavailable' ? { retrieval, evidence: 'insufficient', retryable: false } : complete, ...(target === lane && retrieval === 'legacy-unavailable' ? { unavailable: true } : {}) });
+      await page.route('**/api/journey-discover?*', route => route.fulfill({ json: { places: [], ...response('organic') } }));
+      await page.route('**/api/journey-activity-inventory', route => route.fulfill({ json: { activities: [], ...response('commercial') } }));
+      await page.goto(story('suggestion-states-cusco'));
+      await page.getByRole('button', { name: /^Add plan to .*morning$/ }).first().click();
+      const dialog = page.getByRole('dialog', { name: /Add to Morning/ });
+      await page.waitForLoadState('networkidle');
+      const text = await dialog.innerText();
+      assert.doesNotMatch(text, /No matching ideas yet|No local ideas were found|Finding ideas/);
+      assert.match(text, retrieval === 'legacy-unavailable' ? /Suggestions are unavailable/ : /Suggestions are not ready yet/);
+      if (retrieval !== 'legacy-unavailable') {
+        assert.match(text, retrieval === 'checking' ? /search has not finished/ : /have not been checked/);
+        assert.equal(await dialog.getByRole('button', { name: 'Try suggestions again', exact: true }).count(), 0);
+      }
+      assert.equal(await dialog.locator('[aria-busy="true"]').count(), 0, 'the HTTP request has settled; do not create an indefinite loading state');
+      assert.equal(await dialog.getByLabel('Add your own', { exact: true }).count(), 1);
+      await capture(page, `activity-${lane}-${retrieval}-${width}`);
+      await page.close();
+    }
+  } finally { await browser.close(); }
+});
+
+test('Repeated incomplete activity responses retain useful ideas and reopening does not claim empty or blindly retry', { skip: !url, timeout: 60_000 }, async () => {
+  const { browser, page } = await open('suggestion-states-cusco', 390);
+  try {
+    let requests = 0;
+    const museum = { id: 'cusco-museum', title: 'Museo Inka', area: 'Cusco', type: 'Museum', tags: ['Culture'], description: 'A major visitor museum for Inca history.', coordinates: [-71.979, -13.516], qualityScore: 18 };
+    await page.route('**/api/journey-discover?*', route => {
+      const attempt = ++requests;
+      return route.fulfill({ json: attempt === 1 ? { places: [museum] } : { places: [], assessment: { retrieval: attempt === 2 ? 'checking' : 'not-attempted', evidence: 'insufficient', retryable: attempt === 2 } } });
+    });
+    await page.route('**/api/journey-activity-inventory', route => route.fulfill({ status: requests < 2 ? 503 : 200, json: { activities: [] } }));
+    await page.reload();
+    await page.getByRole('button', { name: /^Add plan to .*morning$/ }).first().click();
+    const dialog = page.getByRole('dialog', { name: /Add to Morning/ });
+    await dialog.getByText('Museo Inka', { exact: true }).waitFor();
+    await dialog.getByRole('button', { name: 'Try suggestions again', exact: true }).click();
+    await dialog.getByText(/search has not finished/).waitFor();
+    assert.equal(await dialog.getByText('Museo Inka', { exact: true }).count(), 1);
+    await dialog.getByRole('button', { name: 'Try suggestions again', exact: true }).click();
+    await dialog.getByText(/have not been checked/).waitFor();
+    assert.equal(await dialog.getByText('Museo Inka', { exact: true }).count(), 1);
+    assert.equal(await dialog.getByRole('button', { name: 'Try suggestions again', exact: true }).count(), 0);
+    assert.doesNotMatch(await dialog.innerText(), /No matching ideas yet|Finding ideas/);
+    await dialog.getByRole('button', { name: 'Close Add panel', exact: true }).click();
+    await page.getByRole('button', { name: /^Add plan to .*morning$/ }).first().click();
+    await dialog.getByText(/have not been checked/).waitFor();
+    assert.equal(requests, 3, 'reopening cannot blindly restart a settled nonretryable assessment');
+    assert.equal(await dialog.getByText('Museo Inka', { exact: true }).count(), 1);
+    await capture(page, 'activity-incomplete-retained-reopened-390');
+  } finally { await browser.close(); }
+});
+
+test('An interrupted previous-day incomplete response cannot overwrite the current day and reopened Add state', { skip: !url, timeout: 60_000 }, async () => {
+  const { browser, page } = await open('suggestion-live-days');
+  let release: (() => void) | undefined;
+  try {
+    const held = new Promise<void>(resolve => { release = resolve; });
+    let calls = 0;
+    await page.route('**/api/journey-discover?*', async route => {
+      const previous = ++calls === 1;
+      if (previous) await held;
+      try { await route.fulfill({ json: { places: [], assessment: { retrieval: previous ? 'checking' : 'not-attempted', evidence: 'insufficient', retryable: false } } }); } catch { /* The previous day request was cancelled. */ }
+    });
+    await page.route('**/api/journey-activity-inventory', route => route.fulfill({ json: { activities: [] } }));
+    const requested = page.waitForRequest(request => request.url().includes('journey-discover'));
+    await page.reload();
+    await requested;
+    await page.locator('header select').first().selectOption('day-2');
+    await page.getByText(/have not been checked/).first().waitFor();
+    release?.();
+    await page.waitForTimeout(100);
+    await page.getByRole('button', { name: /^Add plan to .*morning$/ }).first().click();
+    const dialog = page.getByRole('dialog', { name: /Add to Morning/ });
+    await dialog.getByText(/have not been checked/).waitFor();
+    assert.doesNotMatch(await dialog.innerText(), /search has not finished|No matching ideas yet|Finding ideas/);
+    await dialog.getByRole('button', { name: 'Close Add panel', exact: true }).click();
+    await page.getByRole('button', { name: /^Add plan to .*morning$/ }).first().click();
+    await dialog.getByText(/have not been checked/).waitFor();
+    assert.equal(await page.locator('header select').first().inputValue(), 'day-2');
+    await capture(page, 'activity-incomplete-interrupted-day-1440');
+  } finally { release?.(); await browser.close(); }
+});
+
 test('Calendar ideas occupy the independently scrolling sidebar beside all three weeks', { skip: !url, timeout: 60_000 }, async () => {
   const { browser, page } = await open('calendar-sidebar-ideas');
   try {
