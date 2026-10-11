@@ -5,12 +5,15 @@ import {renderBuilder} from './helpers/builder-render.ts';
 import {loadLocalTripFromStorage} from '../lib/easyt/storage.ts';
 import {requireReadableTripDocument} from '../lib/easyt/trip-document.ts';
 import {canonicalTripForOwner} from '../lib/easyt/trip-promotion.ts';
+import {acceptedA12OccurrenceTrip} from './fixtures/batch14-accepted-occurrence.ts';
+import {geographicallyReady,stopGeographicPlace} from '../lib/easyt/geographic-binding.ts';
+import {originPlaceFromBrief} from '../lib/easyt/journey-endpoints.ts';
 import {nextTripUpdatedAt} from '../lib/easyt/trip-continuity.ts';
 const enabled=process.env.MORROVIA_BUILDER_APP_BROWSER_TESTS==='1';
 const fixtures=JSON.parse(readFileSync(new URL('./fixtures/batch14-qualification-occurrence.json',import.meta.url),'utf8'));
 const fold=(v:string)=>v.normalize('NFD').replace(/\p{M}/gu,'').toLowerCase().replace(/[^a-z0-9]/g,'');
-for(const mode of ['fresh','reload','promoted'] as const)test(`A12 mounted successive Como then Verona clarification retains source positions and nights: ${mode}`,{skip:!enabled,timeout:30000},async()=>{
- const source=requireReadableTripDocument(structuredClone(fixtures.A12.trip));let cloud=mode==='promoted'?requireReadableTripDocument(canonicalTripForOwner('owner-a',source)):source;const initial=structuredClone(cloud),id=initial.id;
+for(const {mode,currentInputs} of [{mode:'fresh',currentInputs:true},{mode:'reload',currentInputs:true},{mode:'promoted',currentInputs:true},{mode:'fresh',currentInputs:false}] as const)test(currentInputs?`A12 mounted successive Como then Verona clarification retains source positions and nights: ${mode}`:'A12 historical unverified provider points remain blocked after ordinary clarification and reload',{skip:!enabled,timeout:30000},async()=>{
+ const source=currentInputs?acceptedA12OccurrenceTrip(fixtures.A12.trip):requireReadableTripDocument(structuredClone(fixtures.A12.trip));let cloud=mode==='promoted'?requireReadableTripDocument(canonicalTripForOwner('owner-a',source)):source;const initial=structuredClone(cloud),id=initial.id;
  const view=await renderBuilder({initialTrip:initial,query:`?trip=${id}${mode==='promoted'?'':'&recover=1'}`,geocodeCandidates:fixtures.A12.geocodeCandidates,...(mode==='promoted'?{seedRecovery:false,ownerId:'owner-a',accountRequest:({method,trip}:{method:string;trip:unknown})=>{
   if(method==='GET')return {status:200,body:{trip:cloud}};const next=requireReadableTripDocument(trip);assert.equal(next.updatedAt,cloud.updatedAt);cloud=requireReadableTripDocument(canonicalTripForOwner('owner-a',next,nextTripUpdatedAt(cloud.updatedAt)));return {status:200,body:{trip:cloud}};
  }}:{})});
@@ -48,7 +51,19 @@ for(const mode of ['fresh','reload','promoted'] as const)test(`A12 mounted succe
   assert.equal(resolved.stops[1].id,como.id);assert.equal(resolved.brief.intent.route.orderAuthority,initial.brief.intent.route.orderAuthority);
   for(const [source,nights] of [['Lake Como',4],['Verona',2]] as const){const i=resolved.brief.intent.route.destinations.find(d=>d.sourceText===source);assert(i,'Accepted source intent must exist: '+source);assert.equal(i.requestedNights,nights);assert(resolved.brief.intent.hardConstraints.fixedCommitments.some(c=>c.stopId===i.stopIds[0]&&c.fixedNights===nights));}
   if(await view.page.getByRole('dialog').last().isVisible().catch(()=>false))await view.page.getByRole('dialog').last().getByRole('button',{name:'Finish later',exact:true}).click();
-  const build=view.page.getByRole('button',{name:/^Build trip/}).last();assert(await build.isEnabled(),'Complete bound A12 route must be buildable');await build.click();await view.page.waitForURL(/\/journey\/trip-[^/]+\?created=1/);await view.page.getByRole('region',{name:'Trip overview',exact:true}).waitFor();
+  const build=view.page.getByRole('button',{name:/^Build trip/}).last();
+  if(!currentInputs){
+   const signature=resolved.stops.map(s=>[s.id,s.canonicalPlaceId,s.nights]);
+   assert.equal(await build.isEnabled(),false,'Resolving siblings cannot silently qualify old provider points');
+   assert.match(await build.locator('..').innerText(),/Confirm the location of Milan, Venice before building/);
+   assert.deepEqual(resolved.stops.filter(s=>!geographicallyReady(stopGeographicPlace(s))).map(s=>s.name),['Milan','Venice']);
+   assert.equal(geographicallyReady(originPlaceFromBrief(resolved.brief),'endpoint'),false);
+   await view.page.reload();await view.page.locator('[data-builder-edit-session="active"]').waitFor();
+   assert.equal(await build.isEnabled(),false);
+   assert.deepEqual((await read()).stops.map(s=>[s.id,s.canonicalPlaceId,s.nights]),signature);
+   assert.deepEqual(view.errors,[]);return;
+  }
+  assert(await build.isEnabled(),'Complete bound A12 route must be buildable');await build.click();await view.page.waitForURL(/\/journey\/trip-[^/]+\?created=1/);await view.page.getByRole('region',{name:'Trip overview',exact:true}).waitFor();
   const built=await read(),signature=built.stops.map(s=>[s.id,s.canonicalPlaceId,s.nights]);assert.deepEqual(built.stops.map(s=>s.nights),[2,4,2,3]);assert.deepEqual(built.stops.map(s=>fold(s.name)),['milan','como','verona','venice']);
   await view.page.goto(`${new URL(view.page.url()).origin}/journey/new?trip=${id}&recover=1`);await view.page.locator('[data-builder-edit-session="active"]').waitFor();await view.page.reload();await view.page.locator('[data-builder-edit-session="active"]').waitFor();assert.deepEqual((await read()).stops.map(s=>[s.id,s.canonicalPlaceId,s.nights]),signature);
   for(const suffix of ['', '/itinerary']){await view.page.goto(`${new URL(view.page.url()).origin}/journey/${id}${suffix}`);await view.page.getByRole('region',{name:suffix?'Trip itinerary':'Trip overview',exact:true}).waitFor();assert.deepEqual((await read()).stops.map(s=>[s.id,s.canonicalPlaceId,s.nights]),signature);}
