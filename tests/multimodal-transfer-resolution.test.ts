@@ -1,3 +1,5 @@
+import { geographicallyReady } from "../lib/easyt/geographic-binding.ts";
+import { directRoadPlausibilityConflict } from "../lib/easyt/road-transfer-resolution.ts";
 import { selectedTransferPlace } from './fixtures/accepted-transfer-place.ts';
 import assert from "node:assert/strict";
 import test from "node:test";
@@ -168,14 +170,25 @@ test("a normal direct-air journey remains flight", async () => {
 });
 
 test("a short land journey selects routed road when driving is preferred", async () => {
-  const from = stop("short-a", 0, "Short A", "Testland", [0, 0]);
-  const to = stop("short-b", 1, "Short B", "Testland", [0.25, 0]);
+  const selectedStop = (id: string, order: number, name: string, referenceId: string) => {
+    const place = selectedTransferPlace(name, "Peru", referenceId, "stop");
+    return { ...stop(id, order, place.name, "Peru", place.coordinates), canonicalPlaceId: place.canonicalPlaceId, providerId: place.providerId, geographicBinding: place.geographicBinding };
+  };
+  const from = selectedStop("ica-short", 0, "Ica", "reference:geonames:3938527");
+  const to = { ...stop("huacachina", 1, "Huacachina", "Peru", [-75.7642, -14.0875]) };
   const provider = new FixtureRoadProvider((input) => roadResult(input, 32, 45));
   const leg = baseline(from, to);
   leg.routeMetadata.transportConstraints = { preferredModes: ["road"] };
   const resolved = await resolveCanonicalTransferJourney(leg, { provider });
   assert.equal(resolved.leg.mode, "road");
   assert.equal(resolved.leg.durationMinutes, 45);
+  assert.equal(provider.calls.length, 1);
+  for (const endpoint of [leg.fromEndpoint, leg.toEndpoint]) {
+    assert.ok(endpoint);
+    assert.equal(geographicallyReady({ ...endpoint, coordinates: endpoint.coordinates ?? undefined }, "stop"), true);
+  }
+  assert.deepEqual(provider.calls[0].origin.coordinates, leg.fromEndpoint!.coordinates);
+  assert.deepEqual(provider.calls[0].destination.coordinates, leg.toEndpoint!.coordinates);
 });
 
 test("catalogued island endpoints cannot become direct road legs without crossing evidence", async () => {
@@ -187,7 +200,13 @@ test("catalogued island endpoints cannot become direct road legs without crossin
   for (const resolved of [mainlandToIsland, islandToMainland, islandToIsland]) {
     assert.equal(resolved.leg.mode, "unknown");
     assert.equal(resolved.leg.durationMinutes, null);
-    assert.match(resolved.leg.provider ?? "", /plausible road route could not be established/i);
+    assert.equal(resolved.outcome, "unresolved");
+    assert.equal(resolved.diagnostic.selected, "unresolved");
+    assert.equal(resolved.diagnostic.candidates.length, 0);
+    assert.equal(resolved.leg.routeGeometry, undefined);
+    assert.equal(resolved.leg.roadEstimate, undefined);
+    assert.equal(resolved.leg.segments, undefined);
+    assert.equal(directRoadPlausibilityConflict(resolved.leg), "land_separation");
   }
   assert.equal(provider.calls.length, 0, "semantic land separation should reject the car-only candidate before provider work");
 });
@@ -288,4 +307,42 @@ test("an unsupported planner flight records the resolver-owned unresolved normal
   assert.equal(resolved.leg.durationMinutes, null);
   assert.equal(resolved.leg.routeMetadata.source, "unverified-geography");
   assert.equal(resolved.diagnostic.selected,'unresolved');
+});
+
+test("historical fictional short land endpoints remain unresolved without provider calls", async () => {
+  const leg = baseline(stop("short-a", 0, "Short A", "Testland", [0, 0]), stop("short-b", 1, "Short B", "Testland", [0.25, 0]));
+  leg.routeMetadata.transportConstraints = { preferredModes: ["road"] };
+  const provider = new FixtureRoadProvider((input) => roadResult(input, 32, 45));
+  const resolved = await resolveCanonicalTransferJourney(leg, { provider });
+  assert.equal(resolved.outcome, "unresolved");
+  assert.equal(resolved.leg.mode, "unknown");
+  assert.equal(resolved.leg.durationMinutes, null);
+  assert.equal(provider.calls.length, 0);
+});
+
+test("selected island geography reaches crossing rejection in every historical direction", async () => {
+  const selectedStop = (id: string, order: number, name: string, referenceId: string) => {
+    const place = selectedTransferPlace(name, "Greece", referenceId, "stop");
+    return { ...stop(id, order, place.name, "Greece", place.coordinates), canonicalPlaceId: place.canonicalPlaceId, providerId: place.providerId, geographicBinding: place.geographicBinding };
+  };
+  const mainland = selectedStop("athens", 0, "Athens", "reference:geonames:264371");
+  const island = selectedStop("naxos", 1, "Naxos", "reference:geonames:256632");
+  const otherIsland = selectedStop("paros", 1, "Paros", "reference:geonames:255721");
+  for (const [from, to] of [[mainland, island], [island, mainland], [island, otherIsland]]) {
+    const leg = baseline(from!, to!);
+    for (const endpoint of [leg.fromEndpoint, leg.toEndpoint]) {
+      assert.ok(endpoint);
+      assert.equal(geographicallyReady({ ...endpoint, coordinates: endpoint.coordinates ?? undefined }, "stop"), true);
+    }
+    assert.equal(directRoadPlausibilityConflict(leg), "land_separation");
+    const provider = new FixtureRoadProvider(input => roadResult(input, 175, 210));
+    const result = await resolveCanonicalTransferJourney(leg, { provider });
+    assert.equal(result.outcome, "unresolved");
+    assert.equal(result.leg.mode, "unknown");
+    assert.equal(result.leg.durationMinutes, null);
+    assert.equal(result.diagnostic.candidates.length, 0);
+    assert.equal(result.leg.routeGeometry, undefined);
+    assert.equal(result.leg.roadEstimate, undefined);
+    assert.equal(provider.calls.length, 0);
+  }
 });
