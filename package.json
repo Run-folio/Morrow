@@ -7,7 +7,7 @@
     "images:published-routes:review": "node --experimental-strip-types scripts/render-published-route-image-review.ts",
     "test:published-route-images": "node --experimental-strip-types --test tests/published-route-image-pipeline.test.ts tests/published-route-image-coverage.test.ts tests/route-editorial-imagery.test.ts tests/route-visual-readiness.test.ts",
     "dev": "NEXT_DIST_DIR=.next-dev next dev",
-    "build": "next build && node scripts/check-client-reference-manifests.mjs",
+    "build": "node --experimental-strip-types scripts/build-physical-land-refinement.ts --check && next build && node scripts/check-client-reference-manifests.mjs",
     "build:check": "NEXT_DIST_DIR=.next-check npm run build",
     "email:preview": "node --experimental-strip-types scripts/render-email-previews.ts",
     "test:email": "node --experimental-strip-types --test tests/email-system.test.ts tests/contact-form.test.ts tests/private-session-boundary.test.ts",

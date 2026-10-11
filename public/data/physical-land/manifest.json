@@ -1,0 +1,21 @@
+{
+  "version": 1,
+  "rawSHA256": "71208588ceb405f3431b4faffc99a19cdaa97ab9bf09054ccd29547135b7ade7",
+  "outputSHA256": "0c83d8b9d3f2aeecf7507cf76afd33168e1bd9a59157db539431718c0b9a235a",
+  "outputBytes": 152525,
+  "capturedAt": "2026-10-11T02:29:18.684912+00:00",
+  "componentKeys": [
+    "osm:relation:11105712:component:way:13366615"
+  ],
+  "licence": "ODbL-1.0",
+  "classification": "Derivative Database",
+  "attribution": "© OpenStreetMap contributors",
+  "dataSharing": "/data/physical-land/NOTICE.txt",
+  "simplification": "none",
+  "coarseBase": {
+    "file": "natural-earth-base.json",
+    "sha256": "599074e6e357c515f59d3db57e92e8c32ea3179060a89da1fe477904b68fccfa",
+    "source": "Natural Earth via world-atlas2.0.2",
+    "licence": "public domain"
+  }
+}

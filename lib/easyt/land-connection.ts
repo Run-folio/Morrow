@@ -1,4 +1,5 @@
 import polygons from '../../data/land-connection-10m.json' with { type: 'json' };
+import {refineUnprovenLandConnection,physicalLandComponentForPair} from './physical-land-refinement.ts';
 
 // Simplified Natural Earth 1:10m land polygons. Their island identities survive
 // simplification. A shore point may be snapped only when one landmass is clearly
@@ -42,7 +43,13 @@ function landmassIndex(point:readonly [number,number]) {
  return shoreDistanceKm(point,polygons[nearby[0]!]![0]!)<=5 ? nearby[0]! : -1;
 }
 
-export function landConnectionEvidence(from: readonly [number,number],to:readonly [number,number]):'same-land'|'separate-land'|'unproven'{
+export function coarseLandConnectionEvidence(from: readonly [number,number],to:readonly [number,number]):'same-land'|'separate-land'|'unproven'{
  const a=landmassIndex(from),b=landmassIndex(to);
  return a<0||b<0?'unproven':a===b?'same-land':'separate-land';
+}
+export function landConnectionEvidence(from:readonly [number,number],to:readonly [number,number]){
+ return refineUnprovenLandConnection(coarseLandConnectionEvidence(from,to),from,to);
+}
+export function landConnectionRefinement(from:readonly [number,number],to:readonly [number,number]){
+ return physicalLandComponentForPair(coarseLandConnectionEvidence(from,to),from,to);
 }

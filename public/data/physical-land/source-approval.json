@@ -1,0 +1,197 @@
+{
+  "version": 1,
+  "sourceURL": "https://api.openstreetmap.org/api/0.6/relation/11105712/full.json",
+  "rawSHA256": "71208588ceb405f3431b4faffc99a19cdaa97ab9bf09054ccd29547135b7ade7",
+  "relationId": 11105712,
+  "relationVersion": 10,
+  "relationTimestamp": "2024-08-14T10:37:34Z",
+  "memberVersions": [
+    {
+      "id": 383962339,
+      "role": "outer",
+      "version": 2
+    },
+    {
+      "id": 273240614,
+      "role": "outer",
+      "version": 24
+    },
+    {
+      "id": 965407080,
+      "role": "outer",
+      "version": 3
+    },
+    {
+      "id": 496072692,
+      "role": "outer",
+      "version": 1
+    },
+    {
+      "id": 273240615,
+      "role": "outer",
+      "version": 2
+    },
+    {
+      "id": 13366617,
+      "role": "outer",
+      "version": 14
+    },
+    {
+      "id": 13366615,
+      "role": "outer",
+      "version": 21
+    },
+    {
+      "id": 965407084,
+      "role": "outer",
+      "version": 1
+    },
+    {
+      "id": 691552708,
+      "role": "outer",
+      "version": 2
+    },
+    {
+      "id": 116593692,
+      "role": "outer",
+      "version": 27
+    },
+    {
+      "id": 116593704,
+      "role": "outer",
+      "version": 14
+    },
+    {
+      "id": 116593696,
+      "role": "outer",
+      "version": 16
+    },
+    {
+      "id": 965407081,
+      "role": "outer",
+      "version": 1
+    },
+    {
+      "id": 965407082,
+      "role": "outer",
+      "version": 3
+    },
+    {
+      "id": 13366707,
+      "role": "outer",
+      "version": 52
+    },
+    {
+      "id": 691552704,
+      "role": "outer",
+      "version": 1
+    },
+    {
+      "id": 691552705,
+      "role": "outer",
+      "version": 1
+    },
+    {
+      "id": 691552712,
+      "role": "outer",
+      "version": 4
+    },
+    {
+      "id": 965407083,
+      "role": "outer",
+      "version": 1
+    },
+    {
+      "id": 13366685,
+      "role": "outer",
+      "version": 19
+    },
+    {
+      "id": 496072693,
+      "role": "outer",
+      "version": 5
+    },
+    {
+      "id": 13366645,
+      "role": "outer",
+      "version": 17
+    },
+    {
+      "id": 691552700,
+      "role": "outer",
+      "version": 1
+    },
+    {
+      "id": 691552701,
+      "role": "outer",
+      "version": 1
+    },
+    {
+      "id": 691552709,
+      "role": "outer",
+      "version": 1
+    },
+    {
+      "id": 691552710,
+      "role": "outer",
+      "version": 1
+    },
+    {
+      "id": 383962383,
+      "role": "outer",
+      "version": 5
+    },
+    {
+      "id": 691552702,
+      "role": "outer",
+      "version": 2
+    },
+    {
+      "id": 691552703,
+      "role": "outer",
+      "version": 3
+    },
+    {
+      "id": 383962349,
+      "role": "outer",
+      "version": 8
+    },
+    {
+      "id": 383962406,
+      "role": "outer",
+      "version": 3
+    },
+    {
+      "id": 496076009,
+      "role": "outer",
+      "version": 3
+    },
+    {
+      "id": 383962364,
+      "role": "outer",
+      "version": 11
+    },
+    {
+      "id": 383962345,
+      "role": "outer",
+      "version": 3
+    },
+    {
+      "id": 383962388,
+      "role": "outer",
+      "version": 6
+    }
+  ],
+  "nodeVersionsSHA256": "02dac31a636396ea5993f61e07b23b9c7744828724c0a97177eaa6f5c2adc96f",
+  "rawBytes": 1153170,
+  "licence": "ODbL-1.0",
+  "classification": "Derivative Database; the complete derived physical-component layer is offered under ODbL-1.0",
+  "attribution": "© OpenStreetMap contributors",
+  "sharingBaseURL": "/data/physical-land/",
+  "simplification": "none",
+  "captureStartedAt": "2026-10-11T02:29:17.433148+00:00",
+  "capturedAt": "2026-10-11T02:29:18.684912+00:00",
+  "sourceHTTPDate": "Sun, 11 Oct 2026 02:29:18 GMT",
+  "previousDiagnosticRawSHA256": "836afcf85cacc770c0f1521293811f51fcd190d16618ce99c53e6359bee0e464",
+  "recaptureChange": "Only top-level OSM generator string changed; all elements, versions, tags, memberships and coordinates identical"
+}

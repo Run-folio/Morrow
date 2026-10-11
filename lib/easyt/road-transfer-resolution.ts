@@ -9,7 +9,8 @@ import {
 import { estimateTransferImpact } from "./transfer-impact.ts";
 import type { EasyTTrip, RoadEstimateReference, TripLeg } from "./trip.ts";
 import { findCatalogPlaceById, matchCatalogPlace } from "./place-catalog.ts";
-import { landConnectionEvidence } from "./land-connection.ts";
+import { landConnectionEvidence,landConnectionRefinement } from "./land-connection.ts";
+import {PHYSICAL_LAND_ATTRIBUTION,PHYSICAL_LAND_DATA_URL} from './physical-land-refinement.ts';
 import { findSurfaceCrossing } from "./surface-crossing-evidence.ts";
 import { guardTransferRoutingGeography, preservedTransferFacts } from "./geographic-binding.ts";
 
@@ -180,9 +181,12 @@ export async function resolveCanonicalRoadFallback(
     international,
     connectionCount: 0,
   });
+  const refinement=landConnectionRefinement(from.coordinates,to.coordinates);
+  const attribution=refinement?`${result.attribution}; physical land geography: ${PHYSICAL_LAND_ATTRIBUTION}; data ${PHYSICAL_LAND_DATA_URL}`:result.attribution;
   const estimateWarnings = [
     "Road estimate only; no passenger service or private-driver availability is confirmed.",
     ...(fixedLink ? [`Crossing evidence: ${fixedLink.source.label} (${fixedLink.source.url}).`] : []),
+    ...(refinement?[`Land geography: ${PHYSICAL_LAND_ATTRIBUTION}; source and derived data ${PHYSICAL_LAND_DATA_URL}.`]:[]),
     ...(international ? ["Border crossing eligibility, waits and stops are not included in this road estimate."] : ["Stops and road conditions are not included unless the routing source states otherwise."]),
   ];
   const estimate: RoadEstimateReference = {
@@ -194,7 +198,7 @@ export async function resolveCanonicalRoadFallback(
     durationMinutes: result.durationMinutes,
     confidence: result.confidence,
     routeGeometry: result.routeGeometry,
-    attribution: result.attribution,
+    attribution,
     warnings: estimateWarnings,
   };
   const resolved: TripLeg = {
@@ -227,7 +231,7 @@ export async function resolveCanonicalRoadFallback(
         profile: result.profile,
         provenance: result.provenance,
         checkedAt: result.providerCheckedAt,
-        attribution: result.attribution,
+        attribution,
       },
     },
   };

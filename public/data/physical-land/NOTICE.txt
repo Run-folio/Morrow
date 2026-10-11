@@ -1,0 +1,43 @@
+Morrovia physical-land geography data
+
+© OpenStreetMap contributors. OpenStreetMap data and the derived physical-land
+component database are offered under Open Data Commons Open Database License
+1.0 (ODbL): https://opendatacommons.org/licenses/odbl/1-0/
+Copyright and attribution: https://www.openstreetmap.org/copyright
+
+Classification and complete data-sharing offer
+This physical-land refinement is a Derivative Database, not merely a Produced
+Work or an unlicensed factual whitelist. Its complete derivative is freely
+available at /data/physical-land/components.json. The underlying pinned OSM
+extract is /data/physical-land/unguja-osm-full.json. Version and provenance
+records are /data/physical-land/source-approval.json and manifest.json.
+
+The combined physical-land data used with this refinement is also offered
+under ODbL1.0. The complete unchanged coarse base is available at
+/data/physical-land/natural-earth-base.json. Natural Earth data remains public
+domain in its own right: https://www.naturalearthdata.com/about/terms-of-use/
+It is distributed via world-atlas2.0.2 (ISC package licence). The ODbL offer
+covers the derived component layer and its combination, without taking away
+Natural Earth's underlying public-domain permissions. Existing GeoNames and
+OurAirports endpoint data are not modified or incorporated into this layer;
+they retain their own source, attribution and licence metadata.
+
+Anyone receiving this application can obtain these data files without signing
+in, payment, credentials or a provider API call. They are ordinary public static
+files served by the application. They include the complete source and complete
+derivative used here, rather than just an offer to supply them on request.
+Attribution and this data-sharing location are included in road-reference
+warnings and attribution when the refinement permits a provider result.
+
+Source: https://api.openstreetmap.org/api/0.6/relation/11105712/full.json
+Relation11105712, version10, physical island Unguja. Every outer member is
+independently tagged natural=coastline. Administrative/maritime polygons and
+nested dependencies are not accepted. Raw hashes, capture timestamps, relation
+and member versions/roles and node-version digest are in source-approval.json.
+No snapping or simplification. Separate outer shells receive separate stable
+component keys. Output hash is in manifest.json.
+
+Regeneration is offline: node --experimental-strip-types
+scripts/build-physical-land-refinement.ts. No runtime OSM requests.
+Same-component land continuity permits bounded road assessment only; it does
+not establish road access, service availability, traffic conditions or duration.
