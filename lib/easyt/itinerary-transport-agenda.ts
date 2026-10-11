@@ -16,7 +16,9 @@ export function transportAssessmentState(trip: EasyTTrip, leg: TripLeg, assessme
   if (assessment?.retrieval === 'checking') return 'pending';
   if (assessment?.retrieval === 'blocked' || assessment?.retrieval === 'unavailable') return assessment.retryable ? 'failed' : 'blocked';
   if (unit?.phase === "failed") return "failed";
-  if (assessment && (assessment.retrieval !== 'completed' || !['verified', 'conditional'].includes(assessment.evidence))) return 'unknown';
+  // A preserved leg retains its prior qualified evidence without a new lookup.
+  const preservedEvidence = assessment?.retrieval === 'not-attempted' && assessment.reason === undefined;
+  if (assessment && (assessment.retrieval !== 'completed' && !preservedEvidence || !['verified', 'conditional'].includes(assessment.evidence))) return 'unknown';
   // The resolver can settle successfully with unknown evidence. Its HTTP result
   // does not expose swallowed provider failures; do not infer a failure here.
   return leg.mode !== "unknown" && ["provider", "canonical_schedule", "routing_engine", "planning_estimate"].includes(leg.provenance ?? "") ? "supported" : "unknown";

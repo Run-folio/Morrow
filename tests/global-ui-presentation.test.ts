@@ -6,6 +6,8 @@ import { mergeEquivalentPlaceSuggestions, placeSuggestionLocationDetail } from '
 import * as transport from '../lib/easyt/itinerary-transport-agenda.ts';
 import { adaptedDiscoveryPlaces } from '../lib/easyt/discovery-evidence-adapter.ts';
 import { canonicalRouteFixture } from './fixtures/batch14-route-documents.ts';
+import { assessCanonicalTransferJourneys } from '../lib/easyt/multimodal-transfer-resolution.ts';
+import { buildCanonicalTripLegs } from '../lib/easyt/trip-legs.ts';
 
 test('traveller place rows keep verified geography without source jargon or unresolved metadata', () => {
   const osaka = canonicalPlaceSuggestionsForQuery('Osaka')[0]!;
@@ -87,4 +89,33 @@ test('noncanonical Builder rows and coverage use the same current assessment fee
   const feedback = trip.legs.map(leg => ({ legId: leg.id, state: { retrieval: 'unavailable', evidence: 'insufficient', retryable: false } as const }));
   assert.deepEqual(trip.legs.map(leg => transport.transportAssessmentState(trip, leg, feedback.find(item => item.legId === leg.id)?.state)), ['blocked', 'blocked']);
   assert.match(transport.transportAssessmentSummary(trip, 'en', feedback).label, /0 of 2 transfers · 2 could not be checked/);
+});
+
+test('a preserved usable transfer retains its existing support while not-attempted unknowns stay unknown', async () => {
+  const trip = canonicalRouteFixture();
+  trip.stops = ['seoul', 'busan'].map((id, order) => {
+    const place = adaptedDiscoveryPlaces().find(place => place.id === id)!;
+    return { id, order, name: place.name, country: place.country, canonicalPlaceId: place.id, longitude: place.coordinates[0], latitude: place.coordinates[1], nights: 3, arrivalDate: null, departureDate: null };
+  });
+  trip.legs = buildCanonicalTripLegs({ tripId: trip.id, stops: trip.stops, origin: { name: '', coordinates: null }, journeyEnd: { mode: 'unknown' } }).filter(leg => leg.fromStopId === 'seoul');
+  assert.equal(trip.legs.length, 1);
+  const before = structuredClone(trip);
+  let providerCalls = 0;
+  const response = await assessCanonicalTransferJourneys(trip.legs, { provider: { provider: 'openrouteservice', async route() { providerCalls++; throw new Error('Unexpected provider work'); } } });
+  const feedback = response.assessments;
+  assert.equal(providerCalls, 0);
+  assert.ok(feedback.every(item => item.state.retrieval === 'not-attempted' && item.state.evidence === 'conditional'));
+  assert.deepEqual(response.legs, trip.legs);
+  assert.match(transport.transportAssessmentSummary(trip, 'en', feedback).label, /1 of 1 transfers/);
+  assert.equal(transport.transportAssessmentState(trip, trip.legs[0]!, feedback[0]!.state), 'supported');
+  for (const state of [
+    { retrieval: 'not-attempted', evidence: 'insufficient', reason: 'batch_limit', retryable: false },
+    { retrieval: 'not-attempted', evidence: 'conditional', reason: 'batch_limit', retryable: false },
+    { retrieval: 'checking', evidence: 'conditional', retryable: false },
+  ] as const) assert.notEqual(transport.transportAssessmentState(trip, trip.legs[0]!, state), 'supported');
+  const unknown = { ...trip.legs[0]!, mode: 'unknown' as const, provenance: 'unknown' as const, durationMinutes: null };
+  assert.equal(transport.transportAssessmentState(trip, unknown, feedback[0]!.state), 'unknown');
+  assert.deepEqual(trip, before);
+  const changed = structuredClone(trip); changed.stops[1]!.latitude! += 0.0001;
+  assert.match(transport.transportAssessmentSummary(changed, 'en', feedback).label, /0 of 1 transfers/);
 });
