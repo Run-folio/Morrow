@@ -509,7 +509,8 @@ test("Tier 1 guest journey keeps three canonical stops and edits through Build a
   assert.equal(await page.getByRole("button", { name: "Day by day", exact: true }).getAttribute("aria-pressed"), "true");
   await page.getByRole("button", { name: "Calendar", exact: true }).click();
   assert.equal(await page.getByRole("button", { name: "Calendar", exact: true }).getAttribute("aria-pressed"), "true");
-  await page.getByRole("button", { name: "Open full day", exact: true }).click();
+  await page.locator('#itinerary-calendar article[class*="calendarDay"]').first().locator("button").first().click();
+  await page.getByRole("button", { name: "Close day details", exact: true }).waitFor();
   await planner.waitFor();
   await planner.getByRole("button", { name: /Add plan to .* morning/i }).click();
   const dialog = page.getByRole("dialog", { name: /Add to morning on Day 1/i });
@@ -519,6 +520,8 @@ test("Tier 1 guest journey keeps three canonical stops and edits through Build a
   await page.getByRole("textbox", { name: "Add day note" }).fill("Remember train tickets fixture");
   await page.getByRole("button", { name: "Add note", exact: true }).click();
   await page.getByText("Remember train tickets fixture", { exact: true }).waitFor();
+  await page.getByRole("button", { name: "Close day details", exact: true }).click();
+  await page.getByRole("button", { name: "Day by day", exact: true }).click();
   await page.reload({ waitUntil: "domcontentloaded" });
   await page.locator("section[aria-label='Day 1 planner']").waitFor();
   const recovered = await recoveryTrip(page, tripId);
@@ -690,11 +693,16 @@ for (const [width,type] of [[1440,'return_to_start'],[390,'one_way']] as const) 
  const dayHeader=calendar.locator('..').locator('header').first();
  const headingBox=await dayHeader.boundingBox(),calendarBox=await calendar.boundingBox();assert(headingBox&&calendarBox&&headingBox.y+headingBox.height<=calendarBox.y);
  assert.equal(await page.locator('[aria-label^="Selected day summary"]').count(),0);
- const stayLinks=calendar.getByRole('link',{name:/Find a stay/});assert(await stayLinks.count()>0);
+ await calendar.locator('article[class*="calendarDay"]').first().locator('button').first().click();
+ const dayDetails=page.locator('[data-calendar-day-id]');await dayDetails.waitFor({state:'visible'});
+ const stayLinks=dayDetails.getByRole('link',{name:'Plan stay',exact:true});assert.equal(await stayLinks.count(),1,'the selected no-stay day exposes its accommodation action in day details');
  const targetURL=new URL((await stayLinks.first().getAttribute('href'))!,base);assert.equal(targetURL.pathname,`/journey/${id}/stay`);assert(targetURL.searchParams.get('stop'));
  assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>window.innerWidth),false);
  await page.screenshot({path:`${artifacts}/multi-area-${width}-calendar.png`,fullPage:true});
- await page.getByRole('button',{name:'Open full day',exact:true}).click();
+ await stayLinks.first().click();await page.waitForURL(url=>url.pathname===targetURL.pathname&&url.searchParams.get('stop')===targetURL.searchParams.get('stop'));
+ await page.goBack({waitUntil:'domcontentloaded'});await page.getByRole('button',{name:'Calendar',exact:true}).waitFor();
+ assert.equal(await page.getByRole('button',{name:'Calendar',exact:true}).getAttribute('aria-pressed'),'true');
+ await page.getByRole('button',{name:'Day by day',exact:true}).click();
  assert.equal(new URL(page.url()).searchParams.get('itineraryView'),'days');
  await page.reload({waitUntil:'domcontentloaded'});
  await page.getByRole('button',{name:'Day by day',exact:true}).waitFor();

@@ -37,8 +37,15 @@ test('trip save preserves the exact pending necessary prefix while the explicit 
  const direct=await resolveCanonicalTransferJourney(pending.at(-1)!);assert.equal(direct.outcome,'unresolved','the worker assesses the raw fixture without promoting unverified geography');assert.equal(direct.leg.mode,'unknown');
  for(const control of ['source-only','pending-only'] as const){
   const leg=structuredClone(pending.at(-1)!);if(control==='source-only')delete leg.routeMetadata.pending;else leg.routeMetadata.source='morrovia-planner';
-  const result=await resolveTripTransferJourneys({...prefix,legs:[leg]});assert.equal(result.legs[0].mode,'unknown',control);assert.equal(result.legs[0].routeMetadata.source,'unverified-geography');
+  const result=await resolveTripTransferJourneys({...prefix,legs:[leg]},{provider});assert.deepEqual(result.legs[0],leg,`${control}: saving preserves the exact unqualified canonical leg`);
+  assert.equal(provider.calls.length,0,`${control}: unqualified saves authorize no provider call`);
+  const worker=await resolveCanonicalTransferJourney(leg,{provider});assert.equal(worker.outcome,'unresolved');assert.equal(worker.leg.routeMetadata.source,'unverified-geography');
+  assert.equal(provider.calls.length,0,`${control}: the direct worker still rejects unqualified geography`);
  }
+ const qualified=baseline(huacachina,lima);qualified.routeMetadata.transportConstraints={preferredModes:['road']};
+ const qualifiedProvider=new FixtureRoadProvider();const qualifiedSave=await resolveTripTransferJourneys({...prefix,legs:[qualified]},{provider:qualifiedProvider});
+ assert.equal(qualifiedProvider.calls.length,1,'qualified saves still resolve their provider-backed transfer');
+ assert.equal(qualifiedSave.legs[0].mode,'road');assert.equal(qualifiedSave.legs[0].durationMinutes,255);assert.equal(qualifiedSave.legs[0].distanceKm,305);
  const eligible=structuredClone(baseline(laPaz,lima));eligible.id='eligible-eighth';eligible.routeMetadata.source='morrovia-planner';delete eligible.routeMetadata.pending;
  const ninth={...structuredClone(eligible),id:'eligible-ninth'};
  const ordered=[...Array.from({length:7},(_,index)=>({...structuredClone(pending[0]),id:`held-${index}`})),eligible,ninth];
