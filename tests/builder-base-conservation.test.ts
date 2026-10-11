@@ -164,7 +164,7 @@ test("a deliberate Tokyo return keeps both occurrences covered by their own days
   const london = referencePlaceById("reference:geonames:2643743");
   assert.ok(london);
   const originCandidate = { name: london.canonicalName, country: "United Kingdom",
-    canonicalPlaceId: london.canonicalPlaceId, providerId: london.providerId, coordinates: london.coordinates,
+    canonicalPlaceId: london.canonicalPlaceId, providerId: london.providerId, coordinates: [...london.coordinates] as [number, number],
     placeType: london.placeType, routability: "direct_destination", referenceSnapshotId: referenceSnapshotId() };
   const origin = acceptedGeographicPlace(originCandidate, originCandidate, "endpoint");
   assert.ok(origin);
