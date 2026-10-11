@@ -7877,6 +7877,13 @@
         ]
       },
       {
+        "value": "min-width: 1100px",
+        "count": 1,
+        "examples": [
+          "components/easyt/trip-itinerary-workspace.module.css"
+        ]
+      },
+      {
         "value": "min-width: 1101px",
         "count": 1,
         "examples": [

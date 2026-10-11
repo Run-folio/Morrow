@@ -20,7 +20,10 @@ test("the center timeline exposes direct add, edit, remove, reorder, and local s
 test("semantic dayparts are primary while the unnumbered detailed editor stays available", () => {
   assert.match(workspace, /<RichItineraryDayPlanner/);
   assert.match(workspace, /workspaceView === "days" && reorderableEditorNotes > 1 \? <details key=\{active\.id\} className=\{styles\.sequenceEditor\}>/);
-  assert.match(workspace, /addComposerDayPart=/);
+  assert.match(workspace, /addPart=\{addFlow\?\.dayNumber === active\.dayNumber && addFlow\.kind === "activity" \? addFlow\.dayPart \?\? null : null\}/);
+  assert.match(workspace, /onAddOpen=\{\(dayPart\) => openAddFlow\(active\.notes\.length, "activity", dayPart\)\}/);
+  assert.match(workspace, /addItineraryActivityWithUndo\(current, addFlow\.dayNumber, addFlow\.noteIndex, addDraft, addFlow\.dayPart\)/);
+  assert.match(workspace, /onAddSubmit=\{submitAddFlow\}/);
   assert.match(workspace, /onMoveActivity=\{moveComposedActivity\}/);
   assert.doesNotMatch(workspace, /pad\(sequence\)/);
 });

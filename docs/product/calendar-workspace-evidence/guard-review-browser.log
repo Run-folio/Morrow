@@ -1,0 +1,26 @@
+(node:38900) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/shaun/Documents/Codex/2026-10-10/task-7/Morrovia-calendar/tests/itinerary-calendar-full-trip-browser.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/shaun/Documents/Codex/2026-10-10/task-7/Morrovia-calendar/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ Calendar exposes every day and keeps seven weekday columns at all review widths (5836.063916ms)
+✔ Dense Calendar opens all twelve activities and exposes multiple saved stays (1680.998875ms)
+✔ Calendar thumbnails load or fall back to category icons without changing slot size (1667.762542ms)
+✔ Calendar Add and completed drag update one canonical item, while cancelled drag preserves it (1442.821958ms)
+✔ Calendar Move dialog matches drag and cancelling preserves source (2357.497792ms)
+✔ Touch Calendar opens a day sheet and returns keyboard focus to the overview (1639.872042ms)
+✔ Mobile day sheet traps focus and uses existing image-first planner (1888.606542ms)
+✔ Mobile day sheet opens explicitly, stays closed on restore, and returns an unobscured selected date (6103.118833ms)
+✔ Mobile day sheet preserves Add drafts through child-modal resize and commits only confirmation (6819.441208ms)
+✔ Mobile item details, Move and Remove Escape keep the day and canonical activities (1451.803125ms)
+✔ Mobile busy day and multiple stays remain accessible inside the scrolling sheet (1540.15725ms)
+✔ Desktop detail adapts across both breakpoints and returns to the same mobile day (1468.831917ms)
+✔ Rendered Day by day and Calendar preserve identity, ordering and one canonical planner (1896.634666ms)
+✔ Desktop detail planner completes native drag and cancels outside-drop without lost or duplicate activities (2332.818208ms)
+ℹ tests 14
+ℹ suites 0
+ℹ pass 14
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 38322.546459

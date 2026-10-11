@@ -120,7 +120,7 @@ test("device-copy recovery is calm, explicit, and links to the protected review 
 });
 
 test("the contextual rail renders canonical map, booking, recommendation, and note data", () => {
-  assert.match(itinerary, /<JourneyPlannerMap/);
+  assert.match(itinerary, /<DeferredJourneyPlannerMap/);
   assert.match(itinerary, /surface=\{\{ variant: "embedded", interaction: "selection-only" \}\}/);
   assert.match(itinerary, /itineraryDayMapContext\(workingTrip, active, null\)/);
   assert.match(itinerary, /itineraryDayMapSelection\(dayMapContext, active, mapSelectionItemId\)/);
@@ -194,12 +194,12 @@ test("tablet and mobile retain the one horizontal day scroller", () => {
 });
 
 test("mobile composition keeps the plan before Saved Ideas and secondary discovery", () => {
-  const dayPanel = itinerary.indexOf("className={styles.dayPanel}");
-  const planner = itinerary.indexOf("<RichItineraryDayPlanner", dayPanel);
-  const contextRail = itinerary.indexOf("styles.contextRail");
-  const suggestions = itinerary.indexOf("<ItineraryDaySuggestions", contextRail);
-  assert.ok(dayPanel < planner && planner < contextRail, "the production DOM owns one planner before contextual discovery");
-  assert.ok(contextRail < suggestions, "suggestions remain inside the secondary context rail");
+  // Rendered order in both views is asserted by the calendar browser acceptance suite.
+  const planner = itinerary.indexOf("<RichItineraryDayPlanner");
+  assert.equal((itinerary.match(/<RichItineraryDayPlanner/g) ?? []).length, 1);
+  assert.equal((itinerary.match(/<ItineraryDaySuggestions/g) ?? []).length, 1);
+  assert.match(itinerary, /workspaceView === "days" \? activityIdeas : null/);
+  assert.match(itinerary, /className=\{styles\.calendarIdeas\}[^>]*>\{activityIdeas\}/);
 
   const singleColumn = styles.slice(styles.indexOf("@media (max-width: 900px)"), styles.indexOf("@media (max-width: 540px)"));
   assert.match(singleColumn, /\.contextRail \{[\s\S]*grid-column: 1;[\s\S]*grid-row: auto;/);
@@ -216,11 +216,17 @@ test("mobile composition keeps the plan before Saved Ideas and secondary discove
 
 test("Calendar keeps its items in day cards alongside the shared day context rail", () => {
   assert.doesNotMatch(itinerary, /CalendarSelectedDaySummary/);
-  assert.match(itinerary, /onClick=\{\(\) => setWorkspaceView\("days"\)\}>Open full day/);
-  assert.match(itinerary, /workspaceView === "days" && dayComposition \? <div[\s\S]*<RichItineraryDayPlanner/);
+  assert.match(itinerary, /weeks=\{calendarWeeks\}/);
+  assert.doesNotMatch(itinerary, /weeks=\{calendarWeeks\.filter/);
+  assert.equal((itinerary.match(/<RichItineraryDayPlanner/g) ?? []).length, 1);
+  assert.match(itinerary, /dayComposition \? <div[^>]*>[\s\S]*<RichItineraryDayPlanner/);
+  assert.match(itinerary, /className=\{styles\.calendarDaySheet\}/);
+  assert.match(itinerary, /open=\{calendarModalActive\}/);
+  assert.match(itinerary, /inline=\{workspaceView !== "calendar" \|\| !calendarCompact && !calendarModalActive\}/);
+  assert.match(styles, /\.calendarWorkspace \.dayPanel \{[^}]*grid-column: 2/);
   assert.doesNotMatch(itinerary, /hasContextRail/);
   assert.match(itinerary, /<aside className=\{`\$\{styles\.contextRail\}/);
-  assert.match(itinerary, /<div className=\{styles\.contextRailBody\}/);
+  assert.match(itinerary, /<div className=\{styles\.contextRailBody\} hidden=\{Boolean\(selectedDetail \|\| selectedTransportAgenda \|\| selectedBooking\)\}/);
   assert.doesNotMatch(itinerary, /workspaceView === "days" \? <div className=\{styles\.contextRailBody\}/);
   assert.match(itinerary, /stayWorkspaceHref\(tripId, composition\.tonight\.stopId\)/);
   assert.doesNotMatch(itinerary, /<DestinationAccommodationModule/);
@@ -228,11 +234,17 @@ test("Calendar keeps its items in day cards alongside the shared day context rai
   assert.match(itinerary, /stayWorkspaceHref\(tripId, day\.tonight\.stopId\)/);
 });
 
-test('Calendar places the existing selected-day heading and date before its week grid',()=>{
- const header=itinerary.indexOf('<header className={styles.dayHeader}');
- const calendar=itinerary.indexOf('<ItineraryCalendar');
- assert(header>=0&&calendar>header);
- assert(itinerary.indexOf('>Open full day</EasyTButton>')>calendar);
+test("Calendar preserves trip title, date and timeline while naming selected-day details", () => {
+  const shell = readFileSync(new URL("../components/easyt/trip-shell-client.tsx", import.meta.url), "utf8");
+  assert.match(shell, /<h1 id="trip-shell-title">\{tripDisplayTitle\(mutation\.trip\)\}/);
+  assert.match(shell, /dateFacts\.rangeLabel/);
+  assert.match(itinerary, /className=\{styles\.workspaceToolbar\}/);
+  assert.match(itinerary, /displayDate\(days\[0\]!\.date, language, true\)/);
+  assert.match(itinerary, /displayDate\(days\[days\.length - 1\]!\.date, language\)/);
+  assert.match(itinerary, /<JourneyRouteStopTrack[\s\S]*stops=\{destinations\}/);
+  assert.match(itinerary, /ariaLabel=\{`\$\{copy\.day\} \$\{active\.dayNumber\}: \$\{stop\?\.name \?\? active\.title\}`\}/);
+  assert.match(itinerary, /data-calendar-sheet-heading tabIndex=\{-1\}/);
+  assert.match(itinerary, /role=\{workspaceView === "days" \? "tabpanel" : "region"\}/);
 });
 
 test("scheduled cards open one reusable detail owner without introducing another persistence model", () => {
@@ -255,7 +267,10 @@ test("activity, restaurant, and accommodation detail stay truthful and omit abse
   assert.match(detail, /detail\.summary \?/);
   assert.match(detail, /detail\.duration \?/);
   assert.match(detail, /detail\.price \?/);
-  assert.match(detail, /detail\.practical\?\.length \?/);
+  assert.match(detail, /const practicalFacts = mapSelectionPresentation/);
+  assert.match(detail, /: detail\.practical;/);
+  assert.match(detail, /practicalFacts\?\.length \?/);
+  assert.match(detail, /practicalFacts\.map/);
   assert.match(itinerary, /itineraryStayPresentation\(composition\.tonight\)/);
 });
 
@@ -365,13 +380,15 @@ test("planner drag ownership survives native pointer timing and is cleared at wo
   assert.match(itinerary, /onInteractionReset=\{clearPlannerDrag\}/);
   assert.match(itinerary, /scheduleItineraryIdeaAtPositionWithUndo\(current, dragged\.idea, active\.id, dayPart, insertionIndex\)/);
   assert.match(itinerary, /window\.matchMedia\("\(hover: hover\) and \(pointer: fine\)"\)/);
-  assert.match(itinerary, /onActivityDragStart=\{nativePlannerDrag && workspaceView === "days" \? \(activity, event\) => \{/,
-    "Day by day keeps native drag only for fine pointers");
-  assert.match(itinerary, /onActivityDragEnd=\{nativePlannerDrag && workspaceView === "days" \? clearPlannerDrag : undefined\}/,
-    "Calendar's narrow side panel must not expose a misleading pointer-drag handle");
-  assert.match(itinerary, /dragActive=\{workspaceView === "days" && Boolean\(plannerDrag\)\}/);
-  assert.match(itinerary, /onActivityDrop=\{workspaceView === "days" \? dropPlannerItem : undefined\}/,
-    "Calendar's narrow side panel must not expose a second drop target");
+  assert.match(itinerary, /onActivityDragStart=\{nativePlannerDrag \? \(activity, event\) => \{/);
+  assert.match(itinerary, /onActivityDragEnd=\{nativePlannerDrag \? clearPlannerDrag : undefined\}/);
+  assert.match(itinerary, /dragActive=\{Boolean\(plannerDrag\)\}/);
+  assert.match(itinerary, /onActivityDrop=\{dropPlannerItem\}/);
+  assert.match(itinerary, /const dragged = plannerDragRef\.current \?\? plannerDrag;\s*if \(!dragged\) return;\s*clearPlannerDrag\(\);/);
+  assert.match(itinerary, /placeItineraryActivity\(current, active\.id, dragged\.activity\.id, dayPart, insertionIndex\)/);
+  assert.match(itinerary, /beginPlannerDrag\(\{ kind: "activity", activity, sourceDayId: active\.id, sourceStopId: active\.stopId \}\)/);
+  // Native completed/cancelled detail-planner drags are verified in browser acceptance.
+
 });
 
 test("day placement menus escape the scroll owner through a viewport-positioned portal", () => {

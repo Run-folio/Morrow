@@ -336,3 +336,93 @@ test("Desktop detail adapts across both breakpoints and returns to the same mobi
     await page.waitForFunction(() => !document.querySelector<HTMLDialogElement>('dialog[class*="calendarDaySheet"]')?.open);
   } finally { await browser.close(); }
 });
+
+test("Rendered Day by day and Calendar preserve identity, ordering and one canonical planner", { skip: !url, timeout: 60_000 }, async () => {
+  const browser = await chromium.launch({ channel: process.env.MORROVIA_BROWSER_CHANNEL ?? "chrome", headless: true });
+  try {
+    for (const width of [390, 1440]) {
+      const page = await browser.newPage({ viewport: { width, height: 1000 } });
+      await page.goto(story('calendar-image-fallbacks'));
+      await page.locator(calendarDays).nth(1).waitFor();
+      const title = await page.locator('#trip-shell-title').innerText();
+      const range = await page.locator('[class*="workspaceToolbar"] > div > p').first().innerText();
+      const timeline = await page.locator('[class*="destinationTrack"]').textContent();
+      assert.ok(title.trim().length > 0 && range.includes('2026') && timeline?.includes('Cusco'));
+
+      await page.getByRole('button', { name: 'Day by day', exact: true }).click();
+      const daysIds = await page.locator('[data-itinerary-activity-id]').evaluateAll((nodes: HTMLElement[]) => nodes.map(n => n.dataset.itineraryActivityId));
+      for (const view of ['days', 'calendar']) {
+        if (view === 'calendar') {
+          await page.getByRole('button', { name: 'Calendar', exact: true }).click();
+          if (width < 1100) await page.locator(calendarDays).nth(1).locator('button').first().click();
+        }
+        assert.equal(await page.locator('[aria-label$=" planner"]').count(), 1);
+        assert.deepEqual(await page.locator('[data-itinerary-activity-id]').evaluateAll((nodes: HTMLElement[]) => nodes.map(n => n.dataset.itineraryActivityId)), daysIds);
+        assert.equal(await page.locator('#trip-shell-title').innerText(), title);
+        assert.equal(await page.locator('[class*="workspaceToolbar"] > div > p').first().innerText(), range);
+        assert.equal(await page.locator('[class*="destinationTrack"]').textContent(), timeline);
+        const order = await page.evaluate((calendar: boolean) => {
+          const planner = document.querySelector('[aria-label$=" planner"]')!;
+          const ideas = document.querySelector('details[id$="-ideas"]')!;
+          const context = document.querySelector('[class*="contextRail"]')!;
+          const follows = (a: Element, b: Element) => Boolean(a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING);
+          return { plannerBeforeIdeas: follows(planner, ideas), plannerBeforeContext: follows(planner, context), contextOwnership: calendar ? follows(ideas, context) : context.contains(ideas) };
+        }, view === 'calendar');
+        assert.deepEqual(order, { plannerBeforeIdeas: true, plannerBeforeContext: true, contextOwnership: true });
+        if (view === 'calendar') {
+          assert.match(await page.locator('[class*="dayPanel"]').getAttribute('aria-label') ?? '', /Day 2: Cusco/);
+          if (width < 1100) await page.getByRole('heading', { name: /Day 2.*Cusco/ }).waitFor();
+          else assert.equal(await page.locator('[class*="dayPanel"]').evaluate((el: HTMLElement) => el.getBoundingClientRect().left > innerWidth / 2), true);
+        }
+      }
+      await page.close();
+    }
+  } finally { await browser.close(); }
+});
+
+test("Desktop detail planner completes native drag and cancels outside-drop without lost or duplicate activities", { skip: !url, timeout: 60_000 }, async () => {
+  const browser = await chromium.launch({ channel: process.env.MORROVIA_BROWSER_CHANNEL ?? "chrome", headless: true });
+  try {
+    const page = await browser.newPage({ viewport: { width: 1440, height: 1600 } });
+    await page.goto(story('calendar-image-fallbacks'));
+    const panel = page.locator('[class*="dayPanel"]');
+    const handle = panel.locator('[data-itinerary-drag-handle="calendar-loaded-image"]');
+    await handle.waitFor();
+    assert.equal(await page.evaluate(() => matchMedia('(hover: hover) and (pointer: fine)').matches), true);
+    assert.equal(await handle.getAttribute('draggable'), 'true');
+    // Keep source and destination unobscured in one viewport; other acceptance tests retain 1440x1000.
+    await page.evaluate(() => {
+      const recording = window as unknown as { calendarNativeDragEvents: string[] };
+      recording.calendarNativeDragEvents = [];
+      for (const type of ['dragstart', 'drop', 'dragend']) document.addEventListener(type, () => recording.calendarNativeDragEvents.push(type), true);
+    });
+    const before = await panel.locator('[data-itinerary-activity-id]').evaluateAll((nodes: HTMLElement[]) => nodes.map(n => n.dataset.itineraryActivityId));
+    const beforePlacement = await panel.locator('[data-itinerary-activity-id]').evaluateAll((nodes: HTMLElement[]) => nodes.map(n => [n.dataset.itineraryActivityId, n.closest('[data-day-part]')?.getAttribute('data-day-part')]));
+    // Actual browser pointer drag from the right-hand planner handle to a non-drop surface.
+    await handle.dragTo(page.locator('[class*="workspaceToolbar"] h2'));
+    const cancelledEvents = await page.evaluate(() => (window as unknown as { calendarNativeDragEvents: string[] }).calendarNativeDragEvents);
+    assert.deepEqual(cancelledEvents, ['dragstart', 'dragend'], 'cancel must initiate and end a real native drag without a drop');
+    assert.deepEqual(await panel.locator('[data-itinerary-activity-id]').evaluateAll((nodes: HTMLElement[]) => nodes.map(n => [n.dataset.itineraryActivityId, n.closest('[data-day-part]')?.getAttribute('data-day-part')])), beforePlacement);
+    assert.equal(await panel.locator('[data-drop-zone="ready"]').count(), 0, 'cancelled native drag must clear ownership and all ready targets');
+    // Actual browser pointer drag into the planner morning lane; no synthetic drop events.
+    await handle.dragTo(panel.locator('section[data-day-part="morning"] h3'));
+    await panel.locator('section[data-day-part="morning"] [data-itinerary-activity-id="calendar-loaded-image"]').waitFor();
+    const completedEvents: string[] = await page.evaluate(() => (window as unknown as { calendarNativeDragEvents: string[] }).calendarNativeDragEvents);
+    assert.equal(completedEvents.filter(type => type === 'dragstart').length, 2);
+    assert.equal(completedEvents.filter(type => type === 'drop').length, 1);
+    assert.equal(await panel.locator('section[data-day-part="afternoon"] [data-itinerary-activity-id="calendar-loaded-image"]').count(), 0);
+    const after = await panel.locator('[data-itinerary-activity-id]').evaluateAll((nodes: HTMLElement[]) => nodes.map(n => n.dataset.itineraryActivityId));
+    assert.deepEqual([...after].sort(), [...before].sort(), 'complete drag preserves every canonical ID exactly once');
+    assert.equal(new Set(after).size, after.length);
+    assert.equal(await page.locator('#itinerary-calendar button strong').filter({ hasText: /^Loaded activity image fixture$/ }).count(), 1);
+    assert.equal(await panel.locator('[data-drop-zone="ready"]').count(), 0);
+    await capture(page, 'calendar-detail-native-drag-1440');
+    await page.getByRole('button', { name: 'Day by day', exact: true }).click();
+    assert.equal(await page.locator('section[data-day-part="morning"] [data-itinerary-activity-id="calendar-loaded-image"]').count(), 1);
+    assert.deepEqual((await page.locator('[data-itinerary-activity-id]').evaluateAll((nodes: HTMLElement[]) => nodes.map(n => n.dataset.itineraryActivityId))).sort(), [...before].sort());
+    const mobile = await browser.newPage({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
+    await mobile.goto(story('calendar-image-fallbacks'));
+    await mobile.locator(calendarDays).nth(1).locator('button').first().tap();
+    assert.equal(await mobile.locator('[data-itinerary-drag-handle]').count(), 0, 'coarse-pointer sheet uses accessible placement controls');
+  } finally { await browser.close(); }
+});
