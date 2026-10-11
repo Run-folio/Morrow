@@ -134,7 +134,7 @@ export function scorePublishedRouteImageCandidate(stop: PublishedRouteImageStop,
   if (!editorialSubject) concerns.push("metadata does not describe a destination-suitable scene");
   // A park/location keyword can describe the setting of an incidental subject.
   // Country illustrations need explicit wider geographic scenery evidence.
-  if (stop.placeType === "country" && !/\b(skyline|landscape|mountain|coast|beach|lake|waterfront|harbour|harbor|river|bridge|panorama|waterfall|volcano|desert|island|bay|cliffs)\b/.test(subjectText)) concerns.push("country illustration does not identify a geographic scene");
+  if (stop.placeType === "country" && !/\b(city|town|village|street|square|architecture|palace|temple|church|cathedral|mosque|skyline|landscape|mountain|coast|beach|lake|waterfront|harbour|harbor|river|bridge|panorama|plaza|agora|waterfall|volcano|desert|island|bay|cliffs)\b/.test(subjectText)) concerns.push("country illustration does not identify a geographic scene");
   if (conflictingCountry) { score -= 100; concerns.push(`conflicting provider country: ${locationCountry}`); }
   if (conflictingCoordinates) { score -= 100; concerns.push(`provider coordinates are ${Math.round(coordinateDistance!)} km from the canonical stop`); }
   if (sibling && !exactPlace) { score -= 100; concerns.push(`different route stop named: ${sibling}`); }
