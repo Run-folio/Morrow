@@ -29,7 +29,7 @@ export type BuilderEditSessionSnapshot = {
   pendingUnits: Unit[]; failedUnits: Unit[]; conflictUnits: Unit[];
   transferAssessments: TransferAssessment[];
   historicalRecovery: boolean; browserOwnerId: string | null;
-  recovery: TripRecoveryHandle | null; error: { category: TripRecoveryState | 'storage' | 'protected'; message: string; deviceOutcome?: PersistenceOutcome } | null;
+  recovery: TripRecoveryHandle | null; error: { category: TripRecoveryState | 'storage' | 'protected'; message: string; deviceOutcome?: PersistenceOutcome; rejectedEditMessage?: string } | null;
 };
 export type BuilderEditSessionOptions = {
   initialTrip: EasyTTrip; initialRecovery?: TripRecoveryRecord | null; initialCanonicalTrip?: EasyTTrip | null;
@@ -127,7 +127,11 @@ export function createBuilderEditSession(options: BuilderEditSessionOptions) {
     cancelCloud = options.schedule(() => { cancelCloud = null; cloudDue = true; startSave(); }, 450);
   }
   function saveFailure(category: NonNullable<BuilderEditSessionSnapshot['error']>['category'], message: string, deviceOutcome?: PersistenceOutcome) {
-    error = { category, message, ...(deviceOutcome ? { deviceOutcome } : {}) }; canonicalSaveState = 'error'; publish();
+    const retainedOutcome = deviceOutcome ?? error?.deviceOutcome;
+    const rejectedEditMessage = deviceOutcome ? message : error?.rejectedEditMessage;
+    error = { category, message: rejectedEditMessage && !deviceOutcome ? `${message} ${rejectedEditMessage}` : message,
+      ...(retainedOutcome ? { deviceOutcome:retainedOutcome, rejectedEditMessage } : {}) };
+    canonicalSaveState = 'error'; publish();
   }
   function storeCanonical(candidate: CanonicalEasyTTrip, authoredFrom: CanonicalEasyTTrip): boolean {
     if (!active() || draftProtected) return false;
@@ -153,7 +157,7 @@ export function createBuilderEditSession(options: BuilderEditSessionOptions) {
     pending = { trip: structuredClone(trip), localTrip: structuredClone(trip), handle: structuredClone(recovery), acceptedRevision,
       authoredFrom: lastEnqueuedTrip ?? authoredFrom };
     canonicalSaveState = 'local';
-    if (!paused) error = null;
+    if (!paused && !error?.deviceOutcome) error = null;
     return true;
   }
   function writeDraft(): boolean {
@@ -218,7 +222,7 @@ export function createBuilderEditSession(options: BuilderEditSessionOptions) {
         if (acknowledgement.outcome !== 'acknowledged') throw new Error('Promotion recovery acknowledgement needs attention');
         trip = canonical; recovery = null; pending = null; failedJob = null;
         draft = nextDraft; inputRevision = nextDraft.inputRevision; draftNeedsWrite = false;
-        canonicalSaveState = 'cloud'; error = null; promoting = false; historicalRecovery = false;
+        canonicalSaveState = 'cloud'; if (!error?.deviceOutcome) error = null; promoting = false; historicalRecovery = false;
         reportExactAccountAcknowledgement();
         if (isPromotion) promotionIdentity = submittedIds;
         else if (promotionIdentity) promotionIdentity = new Map([...promotionIdentity].map(([source,current])=>[source,submittedIds.get(current) ?? current]));
@@ -235,7 +239,7 @@ export function createBuilderEditSession(options: BuilderEditSessionOptions) {
       if (isCurrent) {
         if (acknowledgement.outcome !== 'acknowledged') throw new Error('A different device recovery still requires attention');
         trip = requireReadableTripDocument(canonical); recovery = null; failedJob = null;
-        canonicalSaveState = 'cloud'; if (!draftNeedsWrite) error = null;
+        canonicalSaveState = 'cloud'; if (!draftNeedsWrite && !error?.deviceOutcome) error = null;
         reportExactAccountAcknowledgement();
       } else if (!paused) canonicalSaveState = 'local';
       publish();
@@ -316,6 +320,10 @@ export function createBuilderEditSession(options: BuilderEditSessionOptions) {
     const candidate = source === trip ? prepared.trip : requireReadableTripDocument(remapTripStopReferences({...prepared.trip,ownerId},inverseIds!,prepared.trip));
     const before = structuredClone(trip);
     if (!storeCanonical(candidate, before)) return { ok: false as const, reason: 'storage' as const };
+    // Only this deliberate accepted edit can retire a rejected-edit warning.
+    // An older account ACK, projection or input-draft write cannot do so.
+    if (!paused) error = null;
+    else if (error?.deviceOutcome) error = {category:pauseReason ?? 'unknown',message:'This change is saved on this device. Account sync needs attention.'};
     assessmentFeedback = null; // An accepted edit starts a new request scope; feedback is never a saved fact.
     // A caller can consume only the exact raw field it deliberately accepted. Unrelated bytes remain independent.
     for (const input of acceptedInputs ?? []) {
@@ -347,7 +355,7 @@ export function createBuilderEditSession(options: BuilderEditSessionOptions) {
       const next = updateBuilderInputDraft(draft, trip, patch.binding, patch.raw, ownerId);
       if (next.inputRevision === draft.inputRevision) return !draftNeedsWrite;
       draft = next; inputRevision = draft.inputRevision;
-      const stored = writeDraft(); if (stored && error?.category === 'storage' && !paused) error = null;
+      const stored = writeDraft(); if (stored && error?.category === 'storage' && !error.deviceOutcome && !paused) error = null;
       scheduleWork(); publish(); return stored;
     },
     accept(edit: BuilderAcceptedEdit, expectedInputRevision: number, acceptedInput?: { binding: BuilderInputBinding; raw: string }) {

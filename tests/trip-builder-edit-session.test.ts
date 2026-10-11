@@ -700,6 +700,52 @@ test('an unaccepted edit cannot become a successful retry without deliberate rea
  assert.equal(h.session.getSnapshot().error,null);
  }finally{h.session.dispose()}
 });
+test('an older exact account ACK and draft write cannot clear a later rejected-edit warning',async()=>{
+ const h=await harness();try{
+ accept(h,budget);await h.run(450);h.storage.failRecovery=true;
+ assert.equal(h.session.accept({...budget,budget:'mid'},h.session.getSnapshot().inputRevision).ok,false);
+ h.storage.failRecovery=false;await h.ack(0);
+ assert.equal(h.session.getSnapshot().trip.brief.budgetBand,'high');
+ assert.equal(h.session.getSnapshot().error?.deviceOutcome,'native-write-failed');
+ assert.equal(h.session.getSnapshot().saveState,'error');
+ h.session.updateDraft({binding:{kind:'origin'},raw:'unfinished source'});
+ assert.equal(h.session.getSnapshot().error?.deviceOutcome,'native-write-failed');
+ assert.equal(h.session.retrySave(),false);
+ assert.equal(h.session.accept({...budget,budget:'mid'},h.session.getSnapshot().inputRevision).ok,true);
+ assert.equal(h.session.getSnapshot().error,null);
+ }finally{h.session.dispose()}
+});
+
+test('background reconciliation cannot acknowledge a rejected traveller edit',async()=>{
+ const h=await harness();try{
+ accept(h,origin);await h.run(0);const work=h.projections.at(-1)!;assert.ok(work);
+ h.storage.failRecovery=true;
+ assert.equal(h.session.accept(budget,h.session.getSnapshot().inputRevision).ok,false);
+ h.storage.failRecovery=false;work.result.resolve(response(work.request));await tick();
+ assert.equal(h.session.getSnapshot().error?.deviceOutcome,'native-write-failed');
+ assert.equal(h.session.getSnapshot().saveState,'error');
+ assert.notEqual(h.session.getSnapshot().trip.brief.budgetBand,'high');
+ }finally{h.session.dispose()}
+});
+
+test('older account failure and raw-write failure retain rejection until deliberate accepted reapplication',async()=>{
+ const h=await harness();try{
+ accept(h,budget);await h.run(450);h.storage.failRecovery=true;
+ assert.equal(h.session.accept({...budget,budget:'mid'},h.session.getSnapshot().inputRevision).ok,false);
+ h.storage.failRecovery=false;h.writes[0].result.reject(new TypeError('synthetic network failure'));await tick();
+ assert.equal(h.session.getSnapshot().error?.deviceOutcome,'native-write-failed');
+ assert.equal(h.session.retrySave(),false);
+ h.storage.failDraft=true;h.session.updateDraft({binding:{kind:'origin'},raw:'unsaved raw input'});
+ assert.equal(h.session.getSnapshot().error?.deviceOutcome,'native-write-failed');
+ assert.equal(h.session.retrySave(),false);
+ h.storage.failDraft=false;
+ assert.equal(h.session.accept({...budget,budget:'mid'},h.session.getSnapshot().inputRevision).ok,true);
+ assert.equal(h.session.getSnapshot().error?.deviceOutcome,undefined,'the accepted change is no longer rejected');
+ assert.equal(h.session.getSnapshot().error?.category,'network','account pause remains explicit');
+ assert.equal(h.session.getSnapshot().trip.brief.budgetBand,'mid');
+ assert.equal(h.session.getSnapshot().saveState,'error');
+ }finally{h.session.dispose()}
+});
 test('competing recovery is classified protected and never written to account',async()=>{
  const h=await harness();try{accept(h,budget);const other=structuredClone(h.session.getSnapshot().trip);other.brief.budgetBand='value';
  const retained=h.recovery()!;saveTripRecoveryToStorage(h.storage,other,{ownerId:other.ownerId,replace:retained});const before=h.recovery();

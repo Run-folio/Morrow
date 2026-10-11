@@ -654,6 +654,7 @@ function TripBuilderDocument() {
   const [deviceStorageBlocked, setDeviceStorageBlocked] = useState(false);
   const [deviceRecoveryBlocked, setDeviceRecoveryBlocked] = useState(false);
   const [devicePersistenceOutcome, setDevicePersistenceOutcome] = useState<PersistenceOutcome | null>(null);
+  const [deviceRecoveryDurable, setDeviceRecoveryDurable] = useState(false);
   const legacyFocusRef = useRef<"summary" | "timing" | null>(null);
   const legacyFocusScheduledRef = useRef(false);
   const requestedPlaceIntentRef = useRef(builderSearchParams.get("placeIntent"));
@@ -4545,6 +4546,7 @@ function TripBuilderDocument() {
               const incomplete = { ...recovery, stored: false, failureReason: "receipt-incomplete" as const, acknowledgement:result.reason };
               reportPersistenceOutcome("intake-ack", incomplete);
               setDevicePersistenceOutcome("receipt-incomplete");
+              setDeviceRecoveryDurable(recovery.recoveryDurable === true);
               setDeviceStorageBlocked(true);
               setSaveState("error");
               setCloudSaveError(recoveryFailureMessage(incomplete, language));
@@ -4555,6 +4557,7 @@ function TripBuilderDocument() {
             if (durableUrl) window.history.replaceState(window.history.state, "", durableUrl);
             setDeviceStorageBlocked(false);
             setDevicePersistenceOutcome("device-confirmed");
+            setDeviceRecoveryDurable(true);
             reportPersistenceOutcome("intake-ack", recovery);
             setCloudSaveError("");
             setSaveState("local");
@@ -4638,6 +4641,7 @@ function TripBuilderDocument() {
       }
       setDeviceRecoveryBlocked(recovery.blockedByExistingRecovery);
       setDevicePersistenceOutcome(recoveryPersistenceOutcome(recovery));
+      setDeviceRecoveryDurable(recovery.recoveryDurable === true || recovery.stored);
       reportPersistenceOutcome("homepage-preservation", recovery);
       setDeviceStorageBlocked(!recovery.stored && !recovery.blockedByExistingRecovery);
       if (shouldAllowNewTripNavigation(recovery)) {
@@ -4680,6 +4684,7 @@ function TripBuilderDocument() {
       if (arrivedFromHomepage) void removeHomeTripDraftIfDurable(window.localStorage, homeDraftRef.current, activeTripDocument, recovery.stored, resolvingLocations);
       setDeviceRecoveryBlocked(recovery.blockedByExistingRecovery);
       setDevicePersistenceOutcome(recoveryPersistenceOutcome(recovery));
+      setDeviceRecoveryDurable(recovery.recoveryDurable === true || recovery.stored);
       reportPersistenceOutcome("builder-entry", recovery);
       setDeviceStorageBlocked(!recovery.stored && !recovery.blockedByExistingRecovery);
       setSaveState(recovery.stored ? "local" : "error");
@@ -5198,7 +5203,9 @@ function TripBuilderDocument() {
       : saveState === "error"
         ? "error"
         : "saving";
-  const visibleSaveLabel = language === "es"
+  const visibleSaveLabel = deviceRecoveryDurable && (devicePersistenceOutcome === "receipt-incomplete" || devicePersistenceOutcome === "pointer-incomplete")
+    ? (language === "es" ? "Copia del dispositivo guardada; revisa la apertura" : "Device copy saved; opening needs checking")
+    : language === "es"
     ? saveState === "device-saving"
       ? "Guardando cambios en este dispositivo…"
       : saveState === "cloud-saving"
@@ -5227,7 +5234,7 @@ function TripBuilderDocument() {
               : "Changes not synced to your account";
   const recoverFromSaveError = () => {
     if(builderEditSessionRef.current) {
-      if (mountedBuilder?.snapshot.error?.deviceOutcome && mountedBuilder.snapshot.error.deviceOutcome !== "protected-conflict") {
+      if (mountedBuilder?.snapshot.error?.deviceOutcome && !["sign-in", "open-device", "reload-cloud"].includes(syncAction)) {
         openSummaryEditor("stops");
         return;
       }
@@ -5251,6 +5258,7 @@ function TripBuilderDocument() {
       const recovery = persistDeviceRecovery(activeTripDocument);
       setDeviceRecoveryBlocked(recovery.blockedByExistingRecovery);
       setDevicePersistenceOutcome(recoveryPersistenceOutcome(recovery));
+      setDeviceRecoveryDurable(recovery.recoveryDurable === true || recovery.stored);
       reportPersistenceOutcome("builder-entry", recovery);
       setDeviceStorageBlocked(!recovery.stored && !recovery.blockedByExistingRecovery);
       if (recovery.stored) { setCloudSaveError(""); setSaveState("local"); }
@@ -5263,7 +5271,7 @@ function TripBuilderDocument() {
     }
     openBuiltTrip();
   };
-  const recoveryActionLabel = mountedBuilder?.snapshot.error?.deviceOutcome && mountedBuilder.snapshot.error.deviceOutcome !== "protected-conflict"
+  const recoveryActionLabel = mountedBuilder?.snapshot.error?.deviceOutcome && !["sign-in", "open-device", "reload-cloud"].includes(syncAction)
     ? (language === "es" ? "Revisar e intentar de nuevo" : "Review and try again")
     : syncAction === "reload-cloud"
     ? (language === "es" ? "Abrir copia en la nube" : "Open cloud copy")

@@ -103,6 +103,7 @@ test("a durable premade copy with an unacknowledged pointer reports incomplete e
     const page = await context.newPage();
     await page.goto(`${base}/journey/new?inspire=balkans-overland`);
     await page.getByText("Trip opening not confirmed",{exact:true}).waitFor({timeout:10000});
+    assert.equal(await page.getByText("Device copy saved; opening needs checking",{exact:true}).count(),1);
     const before = await recoveries(page);
     assert.equal(before.length,1,"the exact recovery remains durable while pointer confirmation fails");
     assert.equal(await page.getByText("Saved on this device",{exact:true}).count(),0);
