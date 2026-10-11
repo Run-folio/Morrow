@@ -169,3 +169,78 @@ test("Touch Calendar selects an inline day and returns keyboard focus to the ove
     await capture(page, 'calendar-touch-390');
   } finally { await browser.close(); }
 });
+
+test("Long-trip mobile selection navigates to details for touch and keyboard with reduced motion", { skip: !url, timeout: 90_000 }, async () => {
+  const browser = await chromium.launch({ channel: process.env.MORROVIA_BROWSER_CHANNEL ?? "chrome", headless: true });
+  try {
+    for (const width of [320, 390]) {
+      for (const reducedMotion of ['no-preference', 'reduce']) {
+        const page = await browser.newPage({ viewport: { width, height: 844 }, isMobile: true, hasTouch: true, reducedMotion });
+        await page.goto(story('calendar-long-trip-65-days'));
+        await page.locator(calendarDays).nth(64).waitFor();
+        const day2 = page.locator(calendarDays).nth(1).locator('button').first();
+        const expectedDay = await page.locator('header select').first().locator('option').nth(1).getAttribute('value');
+        if (reducedMotion === 'reduce') {
+          await day2.focus();
+          await day2.press('Enter');
+        } else await day2.tap();
+        assert.equal(await page.locator('header select').first().inputValue(), expectedDay);
+        await page.waitForFunction(() => {
+          const panel = document.querySelector<HTMLElement>('[class*="dayPanel"]');
+          const top = panel?.getBoundingClientRect().top ?? -1;
+          return panel === document.activeElement && top >= -1 && top < 400;
+        }, undefined, { timeout: 4_000 });
+        assert.equal(await page.locator('[class*="dayPanel"]').evaluate((el: HTMLElement) => el === document.activeElement), true);
+        await page.getByRole('button', { name: 'Back to calendar', exact: true }).tap();
+        assert.equal(await day2.evaluate((el: HTMLElement) => el === document.activeElement), true);
+        const cellTop = await day2.evaluate((el: HTMLElement) => el.getBoundingClientRect().top);
+        assert.ok(cellTop >= -1 && cellTop < 844, 'Back must return the selected cell to the viewport (allowing integer-scroll subpixel rounding)');
+        await capture(page, `calendar-long-mobile-navigation-${width}-${reducedMotion}`);
+        await page.close();
+      }
+    }
+    const desktop = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
+    await desktop.goto(story('calendar-long-trip-65-days'));
+    await desktop.locator(calendarDays).nth(64).waitFor();
+    const desktopDay2 = desktop.locator(calendarDays).nth(1).locator('button').first();
+    await desktopDay2.click();
+    assert.equal(await desktopDay2.evaluate((el: HTMLElement) => el === document.activeElement), true, 'desktop cell selection must retain its existing focus behavior');
+  } finally { await browser.close(); }
+});
+
+test("Mobile forward tab and reading order follows calendar, day details, ideas, then map", { skip: !url, timeout: 60_000 }, async () => {
+  const browser = await chromium.launch({ channel: process.env.MORROVIA_BROWSER_CHANNEL ?? "chrome", headless: true });
+  try {
+    const page = await browser.newPage({ viewport: { width: 390, height: 844 } });
+    await page.goto(story('calendar-image-fallbacks'));
+    await page.locator('[data-itinerary-activity-id]').nth(2).waitFor();
+    await page.locator(calendarDays).last().locator('button').first().focus();
+    await page.keyboard.press('Tab');
+    assert.equal(await page.locator('[class*="dayPanel"]').evaluate((el: HTMLElement) => el.contains(document.activeElement)), true, 'forward Tab must enter the visible selected-day details before ideas');
+    const visited: string[] = [];
+    let reachedIdeas = false;
+    for (let index = 0; index < 50; index += 1) {
+      const focused = await page.evaluate(() => {
+        const active = document.activeElement as HTMLElement;
+        return { label: active.getAttribute('aria-label') ?? active.textContent ?? '', inIdeas: Boolean(active.closest('[class*="calendarIdeas"]')) };
+      });
+      if (focused.inIdeas) { reachedIdeas = true; break; }
+      visited.push(focused.label.trim());
+      await page.keyboard.press('Tab');
+    }
+    assert.equal(reachedIdeas, true);
+    assert.ok(visited.some(label => label === 'Open Stay'));
+    assert.ok(visited.some(label => label === 'Back to calendar'));
+    assert.ok(visited.some(label => label.includes('Qorikancha')));
+    const ordered = await page.evaluate(() => {
+      const calendar = document.querySelector('#itinerary-calendar')!;
+      const details = document.querySelector('[class*="dayPanel"]')!;
+      const ideas = document.querySelector('[class*="calendarIdeas"]')!;
+      const context = document.querySelector('[class*="contextRail"]')!;
+      return [calendar, details, ideas].map((node, index) => Boolean(node.compareDocumentPosition([details, ideas, context][index]) & Node.DOCUMENT_POSITION_FOLLOWING));
+    });
+    assert.deepEqual(ordered, [true, true, true], 'screen-reader DOM order must match the approved visual order');
+    assert.equal(await page.locator('[class*="calendarIdeas"]').count(), 1);
+    assert.equal(await page.locator('[aria-label$=" planner"]').count(), 1);
+  } finally { await browser.close(); }
+});

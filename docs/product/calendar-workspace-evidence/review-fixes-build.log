@@ -5,7 +5,7 @@
    ▲ Next.js 15.5.21
 
    Creating an optimized production build ...
- ✓ Compiled successfully in 13.7s
+ ✓ Compiled successfully in 30.7s
    Linting and checking validity of types ...
    Collecting page data ...
    Generating static pages (0/49) ...
@@ -77,7 +77,7 @@ Route (app)                                                                     
 ├ ○ /journey                                                                       347 B        1.59 MB
 ├ ƒ /journey/[tripId]                                                            29.1 kB         920 kB
 ├ ƒ /journey/[tripId]/explore                                                    15.3 kB         930 kB
-├ ƒ /journey/[tripId]/itinerary                                                  55.6 kB         979 kB
+├ ƒ /journey/[tripId]/itinerary                                                  55.7 kB         979 kB
 ├ ƒ /journey/[tripId]/map                                                        9.28 kB        1.61 MB
 ├ ƒ /journey/[tripId]/prep                                                         268 B         104 kB
 ├ ƒ /journey/[tripId]/stay                                                       10.8 kB        1.49 MB

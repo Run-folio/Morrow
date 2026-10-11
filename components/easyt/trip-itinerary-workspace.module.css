@@ -1954,8 +1954,7 @@
 .dayHeader h2 { font-size: clamp(30px, 3vw, 44px); }
 .dayList { max-height: 70svh; }
 .calendarWorkspace { display: grid; grid-template-columns: minmax(0, 1fr) minmax(300px, 380px); grid-template-rows: max-content max-content max-content max-content; }
-.calendarMain { grid-column: 1; grid-row: 3 / span 2; min-width: 0; }
-.calendarIdeas { padding: 16px; border-top: 1px solid var(--morrovia-line); }
+.calendarIdeas { grid-column: 1; grid-row: 5; min-width: 0; padding: 16px; border-top: 1px solid var(--morrovia-line); }
 .calendarIdeas .discoveryList { display: flex; overflow-x: auto; gap: 12px; padding-bottom: 8px; }
 .calendarIdeas .discoveryCard { flex: 0 0 260px; }
 .calendarWeekdayLabels { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 8px; text-align: center; color: var(--morrovia-ink-soft); font: var(--morrovia-type-fine-print); margin-bottom: 8px; }
@@ -1968,7 +1967,7 @@
 .calendarIdeas .discoveryActions { grid-column: 1 / -1; }
 .calendarWorkspace .rail { display: none; }
 .calendarWorkspace .destinationTrack { display: block; }
-.calendarWorkspace .calendarView { grid-column: 1; padding: 16px; min-width: 0; }
+.calendarWorkspace .calendarView { grid-column: 1; grid-row: 3 / span 2; padding: 16px; min-width: 0; }
 .calendarWorkspace .dayPanel { grid-column: 2; grid-row: 3; border-left: 1px solid var(--morrovia-line); }
 .calendarWorkspace .contextRail { grid-column: 2; grid-row: 4; }
 .calendarDaySelect { min-height: 100px; padding: 10px; }
@@ -2010,7 +2009,6 @@
 .mobileSavedIdeas { order: 6; }
 @media (max-width: 1099px) {
   .calendarWorkspace { grid-template-columns: minmax(0, 1fr); }
-  .calendarMain { display: contents; }
   .calendarWorkspace .calendarView { grid-row: 3; }
   .calendarWorkspace .dayPanel { grid-row: 4; }
   .calendarIdeas { grid-column: 1; grid-row: 5; }

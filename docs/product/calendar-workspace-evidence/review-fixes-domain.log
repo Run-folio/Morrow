@@ -1,0 +1,95 @@
+(node:4743) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/shaun/Documents/Codex/2026-10-10/task-7/Morrovia-calendar/tests/itinerary-calendar-presentation.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/shaun/Documents/Codex/2026-10-10/task-7/Morrovia-calendar/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ mobile day orientation stays compact and scrolls its own rail (0.846542ms)
+✔ matched populated acceptance route uses the trip's real Itinerary path (0.296959ms)
+✔ 320px saved-stay copy wraps inside its existing card and does not widen the page (1.145791ms)
+✔ Calendar stays a pure projection while delegating planning interactions to its canonical parent (0.400583ms)
+✔ Calendar selection resolves canonical IDs in place, with an explicit full-day switch (0.326ms)
+✔ Calendar keeps day cards selectable while removing redundant empty-card and weekday copy (0.163791ms)
+✔ Calendar places the existing photo-credit control below its side image (0.128667ms)
+✔ Calendar exposes canonical Move, item-scoped Undo, and transport or booking detail owners (0.272792ms)
+✔ Calendar exposes truthful temporal and item semantics without relying on colour (0.269167ms)
+✔ continuous and representative Calendar stories cover all required widths (0.955792ms)
+✔ mixed timing workspace acceptance includes a saved exact time and an untimed item (0.2045ms)
+✔ Spanish acceptance renders the production workspace with Spanish copy (0.297416ms)
+✔ restored rail and occurrence navigation have explicit responsive Storybook states (0.245958ms)
+✔ production-backed acceptance stories cover the ten day-view states and five widths (1.622625ms)
+✔ logistics-only acceptance includes a canonical saved stay and no invented activity (0.335958ms)
+✔ no-photography acceptance does not show unrelated suggestion fixtures (0.231667ms)
+(node:4744) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/shaun/Documents/Codex/2026-10-10/task-7/Morrovia-calendar/tests/itinerary-calendar.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/shaun/Documents/Codex/2026-10-10/task-7/Morrovia-calendar/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ calendar overnight projection distinguishes recorded stays, missing records, unknown dates and departure days (5.5865ms)
+✔ projects canonical days and repeated destinations by stable IDs without mutating the trip (0.700292ms)
+✔ night bands preserve repeated occurrence IDs and exclude departure nights (0.66925ms)
+✔ legacy day context is retained outside events while identical authored text remains planned (0.432542ms)
+✔ night bands mark continuation over a Monday boundary without adding nights (0.210958ms)
+✔ projects each canonical transfer once with truthful booked and unknown state (0.180542ms)
+✔ a real arriving transfer suppresses only its duplicate generic Arrival label (5.735ms)
+✔ keeps a canonical final departure visible on the last owned day without inventing a new day (0.7495ms)
+✔ preserves day parts, explicit times, full-day duration and time-not-set semantics (0.407ms)
+✔ projects accommodation and dated bookings without duplicating a transport booking (0.379459ms)
+✔ keeps a continuous week projection across month boundaries (0.329375ms)
+✔ represents every canonical day in a five-week month-crossing trip without pagination (1.017166ms)
+✔ keeps every day reachable in a 65-day trip across month boundaries (1.8585ms)
+(node:4745) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/shaun/Documents/Codex/2026-10-10/task-7/Morrovia-calendar/tests/itinerary-day-composition.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/shaun/Documents/Codex/2026-10-10/task-7/Morrovia-calendar/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ generated Botanical Garden description remains day context through persistence, not an activity (19.193542ms)
+✔ older generated Botanical Garden prose remains context after reload without hiding authored notes (4.282416ms)
+✔ an inter-stop transfer belongs to its destination day, never the preceding sightseeing day (3.128583ms)
+✔ optional canonical dayPart supports every broad period and clear without changing day identity (0.884625ms)
+✔ unscheduled, scheduled-unslotted, and scheduled-slotted remain distinct canonical states (0.37225ms)
+✔ day composition groups explicit periods and leaves legacy untimed rows truthfully unslotted (1.061ms)
+✔ legacy fallback is balanced and monotonic for one, two, three, four, and many items (0.409375ms)
+✔ an unambiguous authored activity can be slotted, moved to midday, and cleared without inventing a time (0.667125ms)
+✔ authored note dayparts survive planner reconciliation on the same canonical stop (0.928708ms)
+✔ arrival, departure, unknown timing, and overnight stay context remain truthful with no fake exact times (0.452667ms)
+✔ specific-day period intent survives JSON reload, a day move, stop reorder, and canonical owner promotion (6.456167ms)
+✔ add to day, assign afternoon, save, and device reload retains the same stable item and period (0.416833ms)
+✔ night reduction remaps to a surviving same-stop day, fails closed to saved when none survives, and stop removal leaves no orphan (0.239542ms)
+✔ trip duplication remaps the scheduled day identity while preserving dayPart (0.316125ms)
+✔ automatic Add to Day chooses a deterministic suitable available period without inventing a time (0.217667ms)
+✔ a full-day provider activity cannot be dragged into one time-of-day slot (0.234875ms)
+✔ slot, extended and full-day ideas enforce one duration model at the mutation boundary (0.149333ms)
+✔ the hosted-equivalent eleven-hour activity remains day-level after JSON reload (0.15975ms)
+✔ suggestion metadata and stable identity survive scheduling and JSON reload (0.140458ms)
+✔ presentation dedupes exact provider identity and never promotes description into the title (0.090042ms)
+✔ canonical drag placement reorders within a period and moves between periods without duplication (0.546417ms)
+✔ canonical drag placement appends into an occupied period without replacing its items (0.265542ms)
+✔ dragging a provider suggestion into an occupied period inserts exactly once and preserves its evidence (0.50425ms)
+✔ saved ideas remain unscheduled until the canonical schedule action is used (0.088042ms)
+✔ a failed durable write leaves the original suggestion and itinerary unchanged (0.252125ms)
+(node:4746) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/shaun/Documents/Codex/2026-10-10/task-7/Morrovia-calendar/tests/itinerary-workspace-mutations.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/shaun/Documents/Codex/2026-10-10/task-7/Morrovia-calendar/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ legacy unowned PlanItem prose stays canonical while authored day notes use the Notes owner (14.623625ms)
+✔ Itinerary adds an activity at the requested canonical position and adds a day note without inventing time (0.35075ms)
+✔ Itinerary edits, reorders, and removes only unambiguous authored activities (0.568042ms)
+✔ explicit dayparts stay aligned through add, reorder, remove, and recovery reload (2.884833ms)
+✔ authored activity move and undo survive reload without inventing a clock time (2.129417ms)
+✔ removal undo restores only the authored activity, position and daypart after reload (0.913083ms)
+✔ booking, mapped-place, generated, duplicate, and stale-location rows remain protected (0.34875ms)
+✔ add/remove survives navigation and reload through the canonical recovery document while selection stays valid (2.911792ms)
+✔ a failed account mutation leaves the canonical account trip unchanged (0.747375ms)
+✔ Itinerary keeps stale revisions fail-closed through the shared CAS path (20.869416ms)
+✔ multiple rapid Itinerary edits serialize and retain both authored changes (1.206041ms)
+✔ immediate Add then Undo persists the pre-Add document after a slow first acknowledgement (0.85525ms)
+✔ Undo after the Add acknowledgement persists the original activity state (0.544ms)
+✔ the first Add acknowledgement keeps a newer pending Undo recovery until its own save (6.270791ms)
+✔ immediate Remove then Undo restores the authored activity in the account document (0.889542ms)
+✔ a queued unrelated field edit survives an immediate Itinerary Undo (1.208583ms)
+✔ an external canonical change still rejects a queued Itinerary Undo (1.037208ms)
+ℹ tests 71
+ℹ suites 0
+ℹ pass 71
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 582.979584

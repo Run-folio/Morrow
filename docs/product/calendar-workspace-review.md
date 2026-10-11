@@ -53,3 +53,11 @@ Validation used only synthetic Storybook trip IDs. Earlier development-server an
 - This review report and its synthetic local evidence/logs.
 
 Shared production dependencies (`RichItineraryDayPlanner`, activity identity/image component, TripShell, route track, controls, map preview, calendar projection, mutation/persistence hook) were reused without edits. Some existing Storybook TripShell navigation mocks highlight Overview even while rendering the itinerary fixture; production navigation owners were not changed.
+
+## Independent review follow-up
+
+Both reported mobile regressions were reproduced against the original committed static Storybook build (two failing tests). Calendar selection now focuses and immediately scrolls to the matching inline day details below 1100px; desktop day-cell selection keeps focus on its cell. A pending focus request checks the rendered day ID before acting. Back to calendar focuses and immediately reveals the selected cell, including reduced-motion mode.
+
+The DOM now contains calendar, selected-day details, ideas and contextual map in that order, with one planner and one ideas owner. Mobile CSS follows that reading order. Shared mutation/save owners remain unchanged. Committed evidence logs were normalized to remove trailing whitespace and extra EOF blank lines; the full diff from frozen candidate329 passes whitespace checking.
+
+Follow-up validation: 71 focused tests pass; all 8 browser acceptance tests pass with no skips, including touch/keyboard selection at 320/390px with both motion preferences, desktop focus preservation, and forward Tab from the final calendar cell through day controls before ideas. Typecheck, production build:check and static Storybook build pass. Final desktop/mobile pixels were inspected. The same unrelated strict UI audit baseline failure remains; no unrelated audit or story-title guard was changed. Follow-up logs are saved in the committed evidence directory with the review-fixes prefix.

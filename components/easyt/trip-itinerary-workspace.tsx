@@ -1313,6 +1313,21 @@ export default function TripItineraryWorkspace({
   const todayDate = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
   const todayIndex = days.findIndex((day) => day.date === todayDate);
 
+  const focusCalendarDayDetails = (dayId: string) => {
+    const inlineDetails = window.matchMedia("(max-width: 1099px)").matches;
+    window.requestAnimationFrame(() => {
+      const panel = document.getElementById(`${tabIdPrefix}-days-panel`);
+      // A later selection or orientation change must not focus stale day content.
+      if (panel?.dataset.calendarDayId !== dayId) return;
+      panel.focus({ preventScroll: inlineDetails });
+      if (inlineDetails) panel.scrollIntoView({
+        block: "start",
+        // Discrete focus navigation stays immediate, including reduced-motion mode.
+        behavior: "instant",
+      });
+    });
+  };
+
   const activityIdeas = (
         <details ref={itinerarySuggestionsOrientationTarget} id={`${tabIdPrefix}-ideas`} className={`${styles.contextSection} ${styles.ideasSection}`} open>
           <summary><span>{copy.suggestions}</span><Lightbulb aria-hidden="true" /></summary>
@@ -1432,9 +1447,9 @@ export default function TripItineraryWorkspace({
           })}
         </div>
       </nav> : null}
-      {workspaceView === "calendar" ? <div className={styles.calendarMain}><ItineraryCalendar
+      {workspaceView === "calendar" ? <ItineraryCalendar
         tripId={workingTrip.id}
-        onOpenDay={day => { setSelectedIndex(days.findIndex(candidate => candidate.id === day.id)); window.requestAnimationFrame(() => document.getElementById(`${tabIdPrefix}-days-panel`)?.focus()); }}
+        onOpenDay={day => { setSelectedIndex(days.findIndex(candidate => candidate.id === day.id)); focusCalendarDayDetails(day.id); }}
         weeks={calendarWeeks}
         selectedDayId={active.id}
         copy={copy}
@@ -1451,15 +1466,17 @@ export default function TripItineraryWorkspace({
         onSelect={(day, item, origin) => {
         const itemId = item?.kind === "activity" ? item.activity.id : item?.kind === "accommodation" ? `stay:${item.booking.id}` : item?.kind === "transfer" ? `leg-${item.agenda.leg.id}` : item?.kind === "booking" ? `booking:${item.booking.id}` : null;
         selectedItemOriginRef.current = origin ?? null;
+        if (window.matchMedia("(max-width: 1099px)").matches) focusCalendarDayDetails(day.id);
         if (day.id !== active.id) { calendarItemRequestRef.current = itemId; setSelectedIndex(days.findIndex((candidate) => candidate.id === day.id)); return; }
         setSelectedRecommendation(null);
         setSelectedItemId(itemId);
-      }} /><div className={styles.calendarIdeas}>{activityIdeas}</div></div> : null}
+      }} /> : null}
       <div
         className={styles.dayPanel}
         role={workspaceView === "days" ? "tabpanel" : "region"}
         id={`${tabIdPrefix}-days-panel`}
         tabIndex={workspaceView === "calendar" ? -1 : undefined}
+        data-calendar-day-id={workspaceView === "calendar" ? active.id : undefined}
         aria-labelledby={workspaceView === "days" ? `${tabIdPrefix}-tab-${index}` : undefined}
         aria-label={workspaceView === "calendar" ? `${copy.day} ${active.dayNumber}: ${stop?.name ?? active.title}` : undefined}
       >
@@ -1509,7 +1526,7 @@ export default function TripItineraryWorkspace({
           } : undefined}
         /> : null}
 
-        {workspaceView === "calendar" ? <EasyTButton className={styles.backToCalendar} variant="quiet" size="small" onClick={() => { const calendar = document.getElementById("itinerary-calendar"); calendar?.scrollIntoView({ block: "start" }); calendar?.querySelector<HTMLButtonElement>('[aria-pressed="true"]')?.focus(); }}>{language === "es" ? "Volver al calendario" : "Back to calendar"}</EasyTButton> : null}
+        {workspaceView === "calendar" ? <EasyTButton className={styles.backToCalendar} variant="quiet" size="small" onClick={() => { const calendar = document.getElementById("itinerary-calendar"); const selectedDay = calendar?.querySelector<HTMLButtonElement>('[aria-pressed="true"]'); selectedDay?.focus({ preventScroll: true }); (selectedDay ?? calendar)?.scrollIntoView({ block: "nearest", behavior: "instant" }); }}>{language === "es" ? "Volver al calendario" : "Back to calendar"}</EasyTButton> : null}
 
         {dayComposition ? <div ref={itineraryPlannerOrientationTarget} className={styles.details} aria-busy={dayPending || undefined}>
           <RichItineraryDayPlanner
@@ -1620,6 +1637,8 @@ export default function TripItineraryWorkspace({
         </details> : null}
         {presentation === "shell" && workspaceView === "days" ? <ContextualFeedbackSlot workspace="itinerary" entryKey={`itinerary:${active.id}:days`} hasContent={Boolean(dayComposition && (itineraryDayParts.some((part) => dayComposition.planned[part].length > 0) || dayComposition.unslotted.length > 0))} blocked={Boolean(addFlow || editingActivity || removeTarget || moveFlow || plannerDrag || draggedActivity || openMenuId || openSavedPickerId || selectedItemId || selectedRecommendation || plannerError || mutation.saveState === "saving" || mutation.saveState === "error")} /> : null}
       </div>
+
+      {workspaceView === "calendar" ? <div className={styles.calendarIdeas}>{activityIdeas}</div> : null}
 
       <aside className={`${styles.contextRail} ${selectedDetail || selectedTransportAgenda || selectedBooking ? styles.contextRailDetail : ""}`} aria-label={selectedDetail || selectedTransportAgenda || selectedBooking ? "Selected itinerary item details" : "Selected day planning context"}>
         {selectedTransportAgenda ? <ItineraryLogisticsDetail
