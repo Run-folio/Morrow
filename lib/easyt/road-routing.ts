@@ -1,4 +1,5 @@
 import { withProviderTimeout } from "./provider-timeout.ts";
+import type {PlanningCacheOutcome} from './planning-evidence-state.ts';
 
 export type RoadRoutingFailureCategory =
   | "configuration"
@@ -12,12 +13,14 @@ export type RoadRoutingFailureCategory =
 export class RoadRoutingError extends Error {
   readonly category: RoadRoutingFailureCategory;
   readonly status?: number;
+  readonly cacheOutcome?: PlanningCacheOutcome;
 
-  constructor(category: RoadRoutingFailureCategory, options: { status?: number } = {}) {
+  constructor(category: RoadRoutingFailureCategory, options: { status?: number; cacheOutcome?: PlanningCacheOutcome } = {}) {
     super("Road routing is unavailable.");
     this.name = "RoadRoutingError";
     this.category = category;
     this.status = options.status;
+    this.cacheOutcome = options.cacheOutcome;
   }
 }
 
@@ -45,6 +48,7 @@ export type RoadRouteResult = {
 export interface RoadRoutingProvider {
   readonly provider: RoadRouteResult["provider"];
   route(input: RoadRouteRequest): Promise<RoadRouteResult>;
+  routeWithDiagnostics?(input: RoadRouteRequest): Promise<{result: RoadRouteResult; cacheOutcome: PlanningCacheOutcome}>;
 }
 
 type Environment = Record<string, string | undefined>;
@@ -192,16 +196,26 @@ export class OpenRouteServiceRoadRoutingProvider implements RoadRoutingProvider 
   }
 
   async route(input: RoadRouteRequest): Promise<RoadRouteResult> {
+    return (await this.routeWithDiagnostics(input)).result;
+  }
+
+  async routeWithDiagnostics(input: RoadRouteRequest): Promise<{result: RoadRouteResult; cacheOutcome: PlanningCacheOutcome}> {
     const profile = input.profile ?? "driving-car";
     if (!validCoordinate(input.origin.coordinates) || !validCoordinate(input.destination.coordinates)) {
       throw new RoadRoutingError("malformed");
     }
     const key = this.cacheKey(input, profile);
     const cached = this.cache.get(key);
-    if (cached && cached.expiresAt > this.now()) return cloneResult(cached.result);
+    if (cached && cached.expiresAt > this.now()) return {result: cloneResult(cached.result), cacheOutcome: 'hit'};
     if (cached) this.cache.delete(key);
     const pending = this.inFlight.get(key);
-    if (pending) return cloneResult(await pending);
+    if (pending) {
+      try {return {result: cloneResult(await pending), cacheOutcome: 'coalesced'};}
+      catch (error) {
+        if (error instanceof RoadRoutingError) throw new RoadRoutingError(error.category, {status: error.status, cacheOutcome: 'coalesced'});
+        throw error;
+      }
+    }
 
     const providerRequest = (async () => {
       let payload: unknown;
@@ -245,7 +259,10 @@ export class OpenRouteServiceRoadRoutingProvider implements RoadRoutingProvider 
 
     this.inFlight.set(key, providerRequest);
     try {
-      return cloneResult(await providerRequest);
+      return {result: cloneResult(await providerRequest), cacheOutcome: 'miss'};
+    } catch (error) {
+      if (error instanceof RoadRoutingError) throw new RoadRoutingError(error.category, {status: error.status, cacheOutcome: 'miss'});
+      throw error;
     } finally {
       if (this.inFlight.get(key) === providerRequest) this.inFlight.delete(key);
     }

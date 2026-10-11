@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import {trustedLocalActivityCentre} from "@/lib/easyt/place-reference.server";
+import {trustedLocalActivityCentre,trustedPinnedActivityCentre} from "@/lib/easyt/place-reference.server";
+import type {PlanningEvidenceState,PlanningFailureReason} from '@/lib/easyt/planning-evidence-state';
+import {providerFailureAssessment} from '@/lib/easyt/planning-provider-assessment';
 import { isWithinDestinationRadius } from "@/lib/easyt/destination-resolution";
 import { conciseExploreDescription, exploreDiscoveryCategory, trustedExploreImage } from "@/lib/easyt/explore";
 import { discoveryVisitorRelevance } from "@/lib/easyt/discovery-quality";
@@ -39,18 +41,31 @@ function suggestedVisitLength(title: string, extract: string) {
 }
 
 export async function GET(request: NextRequest) {
+  const started=performance.now();
+  let providerAttempted=false;
+  const blocked=(reason:PlanningFailureReason,status=200)=>{
+    const assessment:PlanningEvidenceState={retrieval:'blocked',evidence:'unqualified',reason,retryable:false,
+      checkedAt:new Date().toISOString(),sourceCount:0,diagnostics:{attemptedSources:[],elapsedMs:performance.now()-started,cacheOutcome:'not-used',stage:'identity'}};
+    return NextResponse.json({places:[],assessment},{status,headers:{'cache-control':'no-store'}});
+  };
   const destination = request.nextUrl.searchParams.get("destination")?.trim();
   const country = request.nextUrl.searchParams.get("country")?.trim();
+  const canonicalPlaceId=request.nextUrl.searchParams.get('canonicalPlaceId')?.trim();
+  const providerId=request.nextUrl.searchParams.get('providerId')?.trim();
   const rawLat=request.nextUrl.searchParams.get('lat'),rawLon=request.nextUrl.searchParams.get('lon');
-  const latitude = rawLat?.trim()?Number(rawLat):NaN;
-  const longitude = rawLon?.trim()?Number(rawLon):NaN;
-  if (!destination || destination.length > 120 || !Number.isFinite(latitude) || !Number.isFinite(longitude)) {
-    return NextResponse.json({ places: [] }, { status: 400 });
-  }
+  const callerLatitude = rawLat?.trim()?Number(rawLat):NaN;
+  const callerLongitude = rawLon?.trim()?Number(rawLon):NaN;
+  if (!destination || destination.length > 120 || (country?.length??0)>80 || (canonicalPlaceId?.length??0)>160 || (providerId?.length??0)>512) return blocked('invalid_input',400);
 
   try {
-    const centre=trustedLocalActivityCentre({destination,requestedCountryCode:country??'',coordinates:[longitude,latitude],canonicalPlaceId:request.nextUrl.searchParams.get('canonicalPlaceId')??undefined,providerId:request.nextUrl.searchParams.get('providerId')??undefined});
-    if (!centre) return NextResponse.json({ places: [] });
+    // A pinned identity selects its own trusted source point. Saved/caller
+    // coordinates are neither rewritten nor treated as approximate proof.
+    const centre=canonicalPlaceId||providerId
+      ? canonicalPlaceId?trustedPinnedActivityCentre({destination,requestedCountryCode:country??'',canonicalPlaceId,providerId}):null
+      : Number.isFinite(callerLatitude)&&Number.isFinite(callerLongitude)
+        ? trustedLocalActivityCentre({destination,requestedCountryCode:country??'',coordinates:[callerLongitude,callerLatitude]}) : null;
+    if (!centre) return blocked('identity_required');
+    const [longitude,latitude]=centre.coordinates;
     const params = new URLSearchParams({
       action: "query",
       format: "json",
@@ -70,15 +85,23 @@ export async function GET(request: NextRequest) {
       colimit: "max",
       origin: "*",
     });
+    providerAttempted=true;
     const response = await fetch(`https://en.wikipedia.org/w/api.php?${params}`, {
       headers: { "User-Agent": "Morrovia journey planner/1.0 (https://morrovia.com)" },
       next: { revalidate: 60 * 60 * 24 * 7 },
       signal: AbortSignal.timeout(WIKIPEDIA_DISCOVERY_TIMEOUT_MS),
     });
-    if (!response.ok) throw new Error("Wikipedia lookup failed");
+    if (!response.ok) {
+      const assessment=providerFailureAssessment(response.status===401||response.status===403?'authentication':'unavailable','organic-discovery',performance.now()-started);
+      return NextResponse.json({places:[],unavailable:true,assessment},{headers:{'cache-control':'no-store'}});
+    }
     const data = await response.json() as { query?: { pages?: Record<string, WikiPage> } };
+    if(!data||typeof data!=='object'||Array.isArray(data)||'error' in data
+      ||(data.query?.pages!==undefined&&(!data.query.pages||typeof data.query.pages!=='object'||Array.isArray(data.query.pages))))throw new SyntaxError('Invalid discovery response');
+    const pages=Object.values(data.query?.pages??{});
+    if(pages.some(page=>!page||typeof page!=='object'))throw new SyntaxError('Invalid discovery pages');
     const seen = new Set<string>();
-    const places = Object.values(data.query?.pages ?? {})
+    const admitted = pages
       .filter((page) => {
         const coordinate = page.coordinates?.[0];
         const key = page.title?.toLowerCase() ?? "";
@@ -106,8 +129,8 @@ export async function GET(request: NextRequest) {
           qualityScore: visitorValue(page),
           kind: "activity",
         }).eligible;
-      })
-      .sort((a, b) => visitorValue(b) - visitorValue(a))
+      });
+    const places = admitted.sort((a, b) => visitorValue(b) - visitorValue(a))
       .slice(0, 10)
       .map((page, index) => {
         const coordinate = page.coordinates![0];
@@ -127,11 +150,15 @@ export async function GET(request: NextRequest) {
           coordinates: [coordinate.lon, coordinate.lat] as [number, number],
         };
       });
-    return NextResponse.json({ places });
+    const assessment:PlanningEvidenceState={retrieval:'completed',evidence:places.length?'conditional':'insufficient',retryable:false,
+      ...(!places.length?{reason:pages.length?'filtered_empty' as const:'successful_empty' as const}:{}),
+      checkedAt:new Date().toISOString(),sourceCount:places.length,diagnostics:{attemptedSources:['organic-discovery'],elapsedMs:performance.now()-started,cacheOutcome:'unknown',stage:'evidence'}};
+    return NextResponse.json({ places,assessment,counts:{raw:pages.length,admitted:admitted.length,returned:places.length} },{headers:{'cache-control':'no-store'}});
   } catch (error) {
     console.error("Journey discovery failed.", {
       errorName: error instanceof Error ? error.name : "UnknownError",
     });
-    return NextResponse.json({ places: [], unavailable: true });
+    const category=!providerAttempted?'configuration':error instanceof Error&&(error.name==='TimeoutError'||error.name==='AbortError')?'timeout':error instanceof SyntaxError?'malformed':'unavailable';
+    return NextResponse.json({ places: [], unavailable: true,assessment:providerFailureAssessment(category,'organic-discovery',performance.now()-started) },{headers:{'cache-control':'no-store'}});
   }
 }

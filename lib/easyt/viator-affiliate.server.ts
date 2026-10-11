@@ -2,6 +2,7 @@ import "server-only";
 
 import { withProviderTimeout } from "./provider-timeout.ts";
 import type { ActivityInventoryItem } from "./activity-inventory.ts";
+import type {PlanningCacheOutcome,PlanningResultCounts} from './planning-evidence-state.ts';
 import {
   normalizeViatorDestinationTaxonomy,
   resolveViatorDestinationFromTaxonomy,
@@ -45,7 +46,7 @@ type Environment = Record<string, string | undefined>;
 type FetchLike = typeof fetch;
 type ViatorDestinationContext = ActivityDestinationIdentity & { providerDestinationId: string; providerDestinationName?: string; resolution?: ViatorDestinationResolution };
 type ViatorDestinationResolver = (destination: ActivityDestinationIdentity) => ViatorDestinationContext | undefined | Promise<ViatorDestinationContext | undefined>;
-export type ViatorActivityCache = Map<string, { expiresAt: number; activities: ActivityInventoryItem[] }>;
+export type ViatorActivityCache = Map<string, { expiresAt: number; activities: ActivityInventoryItem[]; counts?: PlanningResultCounts }>;
 export type ViatorTaxonomyCache = Map<string, { expiresAt: number; taxonomy: ViatorDestinationTaxonomy }>;
 export type ViatorDestinationResolutionCache = Map<string, { expiresAt: number; destination: ViatorDestinationContext }>;
 
@@ -326,6 +327,10 @@ export class ViatorAffiliateClient {
   }
 
   async searchActivities(input: ViatorProductSearchInput): Promise<ActivityInventoryItem[]> {
+    return (await this.searchActivitiesWithDiagnostics(input)).activities;
+  }
+
+  async searchActivitiesWithDiagnostics(input: ViatorProductSearchInput): Promise<{activities: ActivityInventoryItem[]; counts?: PlanningResultCounts; cacheOutcome: PlanningCacheOutcome}> {
     const start = pageInteger(input.start, 1);
     const count = pageInteger(input.count, VIATOR_DEFAULT_PAGE_COUNT, VIATOR_MAX_PAGE_COUNT);
     const locale = normalizedLocale(input.locale);
@@ -334,7 +339,7 @@ export class ViatorAffiliateClient {
     if (!destination) throw new ViatorAffiliateError("configuration", "Viator destination mapping is unavailable.");
     const cacheKey = JSON.stringify({ environment: this.configuration.environment, destination: destination.canonicalPlaceId, providerDestination: destination.providerDestinationId, locale, currency, start, count });
     const cached = this.cache.get(cacheKey);
-    if (cached && cached.expiresAt > this.now()) return cloneActivities(cached.activities);
+    if (cached && cached.expiresAt > this.now()) return {activities:cloneActivities(cached.activities),...(cached.counts?{counts:{...cached.counts}}:{}),cacheOutcome:'hit'};
     if (cached) this.cache.delete(cacheKey);
 
     const payload = await this.providerJson(`${this.configuration.apiBaseUrl}/products/search`, "Viator product search", {
@@ -344,8 +349,9 @@ export class ViatorAffiliateClient {
     });
 
     const activities = normalizeViatorProducts(payload, destination, new Date(this.now()).toISOString());
-    this.cache.set(cacheKey, { expiresAt: this.now() + this.cacheTtlMs, activities: cloneActivities(activities) });
+    const counts={raw:(payload as {products:unknown[]}).products.length,admitted:activities.length,returned:activities.length};
+    this.cache.set(cacheKey, { expiresAt: this.now() + this.cacheTtlMs, activities: cloneActivities(activities),counts });
     while (this.cache.size > this.maxCacheEntries) this.cache.delete(this.cache.keys().next().value!);
-    return cloneActivities(activities);
+    return {activities:cloneActivities(activities),counts,cacheOutcome:'miss'};
   }
 }

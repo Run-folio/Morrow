@@ -12,6 +12,8 @@ import { acceptedGeographicPlace, guardTransferRoutingGeography, preservedTransf
 import { findCatalogPlaceById } from "./place-catalog.ts";
 import { REFERENCE_SNAPSHOT_ID } from "./place-reference.ts";
 import type { RoadRoutingProvider } from "./road-routing.ts";
+import type {PlanningEvidenceState,TransferAssessment} from './planning-evidence-state.ts';
+import {providerFailureAssessment} from './planning-provider-assessment.ts';
 import { estimateTransferImpact } from "./transfer-impact.ts";
 import { findSurfaceCrossing } from "./surface-crossing-evidence.ts";
 import { reconcileLegacyTransportLeg } from "./transport-leg-compatibility.ts";
@@ -67,7 +69,10 @@ export type MultimodalResolutionResult = {
   leg: TripLeg;
   outcome: "resolved" | "preserved" | "unresolved";
   diagnostic: TransferResolutionDiagnostic;
+  assessment: PlanningEvidenceState;
 };
+type CoreResolutionResult = Omit<MultimodalResolutionResult, 'assessment'>;
+type RoadAssessmentObserver = (state: PlanningEvidenceState) => void;
 
 /** Provider-neutral evidence boundary; future timetable adapters normalize into this contract. */
 export type TransferEvidenceProvider = Pick<DestinationKnowledgeStore, "findTransfer" | "findIntercityRailConnection" | "forTransferResolution">;
@@ -345,7 +350,7 @@ function railCandidate(
   });
 }
 
-async function roadCandidate(leg: TripLeg, provider?: RoadRoutingProvider): Promise<{ candidate: TransferJourneyCandidate; estimate: RoadEstimateReference } | null> {
+async function roadCandidate(leg: TripLeg, provider?: RoadRoutingProvider, onAssessment?: RoadAssessmentObserver): Promise<{ candidate: TransferJourneyCandidate; estimate: RoadEstimateReference } | null> {
   const routed = leg.mode === "road" && leg.durationMinutes !== null && leg.provenance === "routing_engine"
     ? { leg, outcome: "resolved" as const, estimate: leg.roadEstimate }
     : await resolveCanonicalRoadFallback({
@@ -353,7 +358,7 @@ async function roadCandidate(leg: TripLeg, provider?: RoadRoutingProvider): Prom
         mode: "unknown",
         durationMinutes: null,
         routeMetadata: { ...leg.routeMetadata, source: "morrovia-planner", roadFallbackEligible: true, decisionOption: undefined },
-      }, { provider, allowCrossBorderEstimate: true });
+      }, { provider, allowCrossBorderEstimate: true, onAssessment });
   const existing = routed.leg;
   if (existing.mode !== "road" || existing.durationMinutes === null || !routed.estimate) return null;
   const roadSegment = segmentFromLeg(existing);
@@ -442,6 +447,7 @@ async function routeGatewayAccess(
   from: CanonicalRouteEndpoint,
   to: CanonicalRouteEndpoint,
   provider?: RoadRoutingProvider,
+  onAssessment?: RoadAssessmentObserver,
 ): Promise<TransferSegment | null> {
   const temporary: TripLeg = {
     id: `gateway-road:${endpointIdentity(from)}:${endpointIdentity(to)}`,
@@ -455,7 +461,7 @@ async function routeGatewayAccess(
     provider: null,
     routeMetadata: { source: "morrovia-planner", roadFallbackEligible: true },
   };
-  const resolved = await resolveCanonicalRoadFallback(temporary, { provider });
+  const resolved = await resolveCanonicalRoadFallback(temporary, { provider, onAssessment });
   if (resolved.leg.mode === "road") return segmentFromLeg(resolved.leg);
   return inferredGatewayAccessSegment(from, to);
 }
@@ -465,6 +471,7 @@ async function mixedGatewayCandidate(
   fromKnowledge: ReturnType<TransferEvidenceProvider["forTransferResolution"]>,
   toKnowledge: ReturnType<TransferEvidenceProvider["forTransferResolution"]>,
   provider?: RoadRoutingProvider,
+  onAssessment?: RoadAssessmentObserver,
 ): Promise<TransferJourneyCandidate | null> {
   const from = leg.fromEndpoint;
   const to = leg.toEndpoint;
@@ -480,9 +487,9 @@ async function mixedGatewayCandidate(
   if (!transferEndpointGeographicallyReady(flightFrom) || !transferEndpointGeographicallyReady(flightTo)) return null;
   const flightDistance = haversineKm(flightFrom.coordinates ?? undefined, flightTo.coordinates ?? undefined);
   if (flightDistance === null || flightDistance < 80) return null;
-  const originAccess = originGateway ? await routeGatewayAccess(from, flightFrom, provider) : null;
+  const originAccess = originGateway ? await routeGatewayAccess(from, flightFrom, provider, onAssessment) : null;
   if (originGateway && !originAccess) return null;
-  const destinationAccess = destinationGateway ? await routeGatewayAccess(flightTo, to, provider) : null;
+  const destinationAccess = destinationGateway ? await routeGatewayAccess(flightTo, to, provider, onAssessment) : null;
   if (destinationGateway && !destinationAccess) return null;
 
   // The gateway relationship establishes air feasibility. Reapplying the
@@ -523,7 +530,7 @@ async function mixedGatewayCandidate(
 }
 
 /** Surface topology can be supported while sailing timing remains unknown. */
-async function boundedFerryJourney(leg: TripLeg, provider?: RoadRoutingProvider): Promise<TripLeg | null> {
+async function boundedFerryJourney(leg: TripLeg, provider?: RoadRoutingProvider, onAssessment?: RoadAssessmentObserver): Promise<TripLeg | null> {
   const from = leg.fromEndpoint, to = leg.toEndpoint;
   if (!from || !to) return null;
   const crossing = findSurfaceCrossing(from, to, "ferry");
@@ -543,7 +550,7 @@ async function boundedFerryJourney(leg: TripLeg, provider?: RoadRoutingProvider)
       routeMetadata: { source: "morrovia-planner", roadFallbackEligible: true,
         transportConstraints: leg.routeMetadata.transportConstraints },
     };
-    const routed = await resolveCanonicalRoadFallback(temporary, { provider });
+    const routed = await resolveCanonicalRoadFallback(temporary, { provider, onAssessment });
     // Named ports have no verified physical point yet. Retain the explicit
     // access component without claiming geometry, a routed service or time.
     return segmentFromLeg(routed.leg.mode === "road" ? routed.leg : {
@@ -760,6 +767,34 @@ export async function resolveCanonicalTransferJourney(
   leg: TripLeg,
   options: { provider?: RoadRoutingProvider; knowledge?: TransferEvidenceProvider } = {},
 ): Promise<MultimodalResolutionResult> {
+  const started = performance.now();
+  const roads: PlanningEvidenceState[] = [];
+  const result = await resolveTransferJourney(leg, {...options, onRoadAssessment: state => roads.push(state)});
+  const unqualified = result.leg.routeMetadata.source === 'unverified-geography';
+  const preserved = result.outcome === 'preserved';
+  const selected = result.diagnostic.candidates.find(candidate => candidate.id === result.diagnostic.selectedCandidateId);
+  const weakPairEvidence = selected && ['legacy_flight_estimate','direct_air_connectivity','direct_rail_connectivity','air_gateway_composition'].includes(selected.evidence);
+  const evidence = unqualified ? 'unqualified' : result.outcome === 'unresolved' || result.leg.mode === 'unknown' || weakPairEvidence ? 'insufficient' : 'conditional';
+  const failed = roads.find(state => state.retrieval === 'unavailable');
+  const noRoute = roads.find(state => state.reason === 'no_route');
+  const assessment: PlanningEvidenceState = {
+    retrieval: unqualified ? 'blocked' : preserved ? 'not-attempted' : failed ? 'unavailable' : 'completed', evidence,
+    ...(unqualified ? {reason: 'identity_required' as const} : failed ? {reason: failed.reason} :
+      result.leg.mode === 'unknown' ? {reason: noRoute ? 'no_route' as const : 'missing_evidence' as const} : {}),
+    retryable: !unqualified && !preserved && Boolean(failed?.retryable), checkedAt: new Date().toISOString(),
+    ...(evidence === 'unqualified' || result.leg.mode === 'unknown' ? {sourceCount: 0} : {}),
+    diagnostics: {attemptedSources: unqualified || preserved ? [] : ['local-knowledge', ...(roads.some(state => state.diagnostics?.attemptedSources.includes('road-provider')) ? ['road-provider' as const] : [])],
+      elapsedMs: Math.max(0, performance.now() - started),
+      cacheOutcome: roads.find(state => state.diagnostics?.cacheOutcome !== 'not-used')?.diagnostics?.cacheOutcome ?? 'not-used',
+      stage: unqualified ? 'identity' : failed?.diagnostics?.stage ?? 'evidence'},
+  };
+  return {...result, assessment};
+}
+
+async function resolveTransferJourney(
+  leg: TripLeg,
+  options: {provider?: RoadRoutingProvider; knowledge?: TransferEvidenceProvider; onRoadAssessment?: RoadAssessmentObserver},
+): Promise<CoreResolutionResult> {
   if (preservedTransferFacts(leg)) return {leg,outcome:'preserved',diagnostic:{version:1,selected:'preserved',candidates:[],rejected:[]}};
   const geographicProjection = guardTransferRoutingGeography(leg);
   if (geographicProjection !== leg) return { leg: geographicProjection, outcome: "unresolved", diagnostic: {
@@ -786,7 +821,7 @@ export async function resolveCanonicalTransferJourney(
   const railNetworkEvidence = railDistanceKm === null ? undefined : knowledge.findIntercityRailConnection(from, to, railDistanceKm);
   const rail = excludedModes.has("train") ? null : railCandidate(leg, fromKnowledge, toKnowledge, railNetworkEvidence);
   const directFlight = excludedModes.has("flight") ? null : directFlightCandidate(leg, fromKnowledge, toKnowledge);
-  const mixed = excludedModes.has("flight") || excludedModes.has("road") ? null : await mixedGatewayCandidate(leg, fromKnowledge, toKnowledge, options.provider);
+  const mixed = excludedModes.has("flight") || excludedModes.has("road") ? null : await mixedGatewayCandidate(leg, fromKnowledge, toKnowledge, options.provider, options.onRoadAssessment);
   const canonicalGatewayAccess = excludedModes.has("road") ? null : gatewayAccessCandidate(leg, fromKnowledge, toKnowledge);
   const candidates = [exact, rail, mixed, directFlight]
     .filter((item): item is TransferJourneyCandidate => Boolean(item))
@@ -802,7 +837,7 @@ export async function resolveCanonicalTransferJourney(
   if (!excludedModes.has("road") && !credibleLowChangeRailDominatesRoad) {
     // A complete gateway composition has already routed its ground access;
     // avoid a second, unrelated origin-to-destination driving request.
-    const road = mixed ? null : await roadCandidate(leg, options.provider);
+    const road = mixed ? null : await roadCandidate(leg, options.provider, options.onRoadAssessment);
     roadEstimate = road?.estimate;
     // A driving route alone does not establish a cross-border passenger
     // connection. Preserve the existing reference-only policy unless driving
@@ -821,7 +856,7 @@ export async function resolveCanonicalTransferJourney(
   diagnostic.candidates = rankedCandidates.slice(0, MULTIMODAL_SELECTION_RULES.maximumCandidates);
   const selected = rankedCandidates[0];
   if (!selected) {
-    const ferry = excludedModes.has("ferry") || excludedModes.has("road") ? null : await boundedFerryJourney(leg, options.provider);
+    const ferry = excludedModes.has("ferry") || excludedModes.has("road") ? null : await boundedFerryJourney(leg, options.provider, options.onRoadAssessment);
     if (ferry) {
       diagnostic.selected = "mixed";
       diagnostic.rejected.push("The reviewed crossing has no verified sailing duration; total journey timing remains unknown.");
@@ -891,6 +926,31 @@ export async function resolveCanonicalTransferJourneys(
     output.push(index < maximum ? (await resolveCanonicalTransferJourney(leg, options)).leg : leg);
   }
   return output;
+}
+
+/** Additive API projection: keep every leg and isolate failed assessment units.
+ * Existing save/load callers continue to receive only canonical legs. */
+export async function assessCanonicalTransferJourneys(
+  legs: readonly TripLeg[],
+  options: {provider?: RoadRoutingProvider; knowledge?: TransferEvidenceProvider; maxLegs?: number} = {},
+): Promise<{legs: TripLeg[]; assessments: TransferAssessment[]}> {
+  const maximum = Math.max(0, Math.min(8, options.maxLegs ?? 8));
+  const output: TripLeg[] = [], assessments: TransferAssessment[] = [];
+  for (const [index, leg] of legs.entries()) {
+    if (index >= maximum) {
+      output.push(leg); assessments.push({legId: leg.id, state: {retrieval: 'not-attempted', evidence: 'insufficient', reason: 'batch_limit', retryable: false}});
+      continue;
+    }
+    const started = performance.now();
+    try {
+      const result = await resolveCanonicalTransferJourney(leg, options);
+      output.push(result.leg); assessments.push({legId: leg.id, state: result.assessment});
+    } catch {
+      output.push(leg);
+      assessments.push({legId: leg.id, state: providerFailureAssessment('unavailable', 'local-knowledge', performance.now() - started, 'not-used')});
+    }
+  }
+  return {legs: output, assessments};
 }
 
 export async function resolveTripTransferJourneys(

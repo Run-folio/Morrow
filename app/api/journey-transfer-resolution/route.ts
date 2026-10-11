@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-import { resolveCanonicalTransferJourneys } from "@/lib/easyt/multimodal-transfer-resolution.server";
+import { assessCanonicalTransferJourneys } from "@/lib/easyt/multimodal-transfer-resolution.server";
 import type { TripLeg } from "@/lib/easyt/trip";
 
 export const dynamic = "force-dynamic";
@@ -43,11 +43,11 @@ export async function POST(request: Request) {
     const legs = body && typeof body === "object" && Array.isArray((body as { legs?: unknown }).legs)
       ? (body as { legs: unknown[] }).legs
       : null;
-    if (!legs || legs.length > 8 || !legs.every(isCanonicalLeg)) {
+    if (!legs || legs.length > 8 || !legs.every(isCanonicalLeg) || new Set(legs.map(leg => leg.id)).size !== legs.length) {
       return NextResponse.json({ error: "Invalid canonical transfer resolution request." }, { status: 400 });
     }
     return NextResponse.json(
-      { legs: await resolveCanonicalTransferJourneys(legs) },
+      await assessCanonicalTransferJourneys(legs),
       { headers: { "cache-control": "no-store" } },
     );
   } catch {

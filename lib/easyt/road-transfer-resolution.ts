@@ -5,7 +5,10 @@ import {
   type RoadRouteRequest,
   type RoadRouteResult,
   type RoadRoutingProvider,
+  type RoadRoutingFailureCategory,
 } from "./road-routing.ts";
+import type {PlanningCacheOutcome,PlanningEvidenceState} from './planning-evidence-state.ts';
+import {providerFailureAssessment} from './planning-provider-assessment.ts';
 import { estimateTransferImpact } from "./transfer-impact.ts";
 import type { EasyTTrip, RoadEstimateReference, TripLeg } from "./trip.ts";
 import { findCatalogPlaceById, matchCatalogPlace } from "./place-catalog.ts";
@@ -33,7 +36,9 @@ export type RoadFallbackResolution = {
   outcome: "resolved" | "unchanged";
   reason?: RoadFallbackSkipReason;
   estimate?: RoadEstimateReference;
+  assessment?: PlanningEvidenceState;
 };
+type RoadFallbackObservation = RoadFallbackResolution & {providerFailure?: RoadRoutingFailureCategory; providerAttempted?: boolean; cacheOutcome?: PlanningCacheOutcome};
 
 const MAX_STRAIGHT_LINE_ROAD_KM = 1_200;
 const MAX_ROUTED_ROAD_KM = 1_800;
@@ -124,8 +129,28 @@ function routeIsPlausible(result: RoadRouteResult, straightLineDistanceKm: numbe
 
 export async function resolveCanonicalRoadFallback(
   leg: TripLeg,
-  options: { provider?: RoadRoutingProvider; allowCrossBorderEstimate?: boolean } = {},
+  options: { provider?: RoadRoutingProvider; allowCrossBorderEstimate?: boolean; onAssessment?: (state: PlanningEvidenceState) => void } = {},
 ): Promise<RoadFallbackResolution> {
+  const started = performance.now();
+  const result = await resolveRoadFallback(leg, options);
+  const elapsedMs = Math.max(0, performance.now() - started);
+  const blocked = ['unverified_geography','missing_coordinates','missing_country'].includes(result.reason ?? '');
+  const assessment: PlanningEvidenceState = result.providerFailure
+    ? providerFailureAssessment(result.providerFailure, 'road-provider', elapsedMs, result.cacheOutcome ?? (result.providerAttempted ? 'unknown' : 'not-used'))
+    : {retrieval: blocked ? 'blocked' : 'completed', evidence: blocked ? 'unqualified' : result.outcome === 'resolved' ? 'conditional' : 'insufficient',
+      ...(blocked ? {reason: 'identity_required' as const} : result.outcome === 'unchanged' ? {reason: 'missing_evidence' as const} : {}), retryable: false,
+      checkedAt: new Date().toISOString(), diagnostics: {attemptedSources: result.providerAttempted ? ['road-provider'] : [], elapsedMs,
+        cacheOutcome: result.cacheOutcome ?? (result.providerAttempted ? 'unknown' : 'not-used'), stage: blocked ? 'identity' : 'evidence'}};
+  if (result.providerAttempted) assessment.diagnostics!.attemptedSources = ['road-provider'];
+  options.onAssessment?.(assessment);
+  // Observation fields never enter TripLeg or its persisted route metadata.
+  const {providerFailure: _failure, providerAttempted: _attempted, cacheOutcome: _cache, ...resolution} = result;
+  return {...resolution, assessment};
+}
+
+async function resolveRoadFallback(
+  leg: TripLeg, options: {provider?: RoadRoutingProvider; allowCrossBorderEstimate?: boolean},
+): Promise<RoadFallbackObservation> {
   if (preservedTransferFacts(leg)) return {leg,outcome:'unchanged',reason:'explicit_or_unsupported_source'};
   const geographicProjection = guardTransferRoutingGeography(leg);
   if (geographicProjection !== leg) return { leg: geographicProjection, outcome: "unchanged", reason: "unverified_geography" };
@@ -158,7 +183,7 @@ export async function resolveCanonicalRoadFallback(
   if (straightLineDistanceKm === null || straightLineDistanceKm < 1) return { leg, outcome: "unchanged", reason: "same_place" };
   if (straightLineDistanceKm > MAX_STRAIGHT_LINE_ROAD_KM) return { leg, outcome: "unchanged", reason: "distance_out_of_scope" };
   const provider = options.provider ?? null;
-  if (!provider) return { leg, outcome: "unchanged", reason: "provider_failure" };
+  if (!provider) return { leg, outcome: "unchanged", reason: "provider_failure", providerFailure: 'configuration', providerAttempted: false };
 
   const request: RoadRouteRequest = {
     origin: { canonicalIdentity: endpointIdentity(from), coordinates: from.coordinates },
@@ -166,12 +191,18 @@ export async function resolveCanonicalRoadFallback(
     profile: "driving-car",
   };
   let result: RoadRouteResult;
+  let cacheOutcome: PlanningCacheOutcome = 'unknown';
   try {
-    result = await provider.route(request);
+    if (provider.routeWithDiagnostics) {
+      const observed = await provider.routeWithDiagnostics(request);
+      result = observed.result; cacheOutcome = observed.cacheOutcome;
+    } else result = await provider.route(request);
   } catch (error) {
-    return { leg, outcome: "unchanged", reason: error instanceof RoadRoutingError && error.category === "no_route" ? "provider_no_route" : "provider_failure" };
+    return { leg, outcome: "unchanged", reason: error instanceof RoadRoutingError && error.category === "no_route" ? "provider_no_route" : "provider_failure",
+      providerFailure: error instanceof RoadRoutingError ? error.category : 'unavailable', providerAttempted: true,
+      cacheOutcome: error instanceof RoadRoutingError ? error.cacheOutcome : undefined };
   }
-  if (!routeIsPlausible(result, straightLineDistanceKm)) return { leg, outcome: "unchanged", reason: "implausible_route" };
+  if (!routeIsPlausible(result, straightLineDistanceKm)) return { leg, outcome: "unchanged", reason: "implausible_route", providerFailure: 'malformed', providerAttempted: true, cacheOutcome };
 
   const durationFact = knownKnowledgeFact(result.durationMinutes, "estimated", ROAD_ROUTING_SOURCE);
   const transferImpact = estimateTransferImpact({
@@ -235,7 +266,7 @@ export async function resolveCanonicalRoadFallback(
       },
     },
   };
-  return { leg: resolved, outcome: "resolved", estimate };
+  return { leg: resolved, outcome: "resolved", estimate, providerAttempted: true, cacheOutcome };
 }
 
 export async function resolveCanonicalRoadFallbacks(

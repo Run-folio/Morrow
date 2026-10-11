@@ -8,6 +8,7 @@ import {referenceRecordKey, referenceKnownCodeKind, type ReferencePlaceRecord, t
 import type {PlaceProviderCandidate, PlaceResolutionContext} from './place-intelligence.ts';
 import {PLACE_CATALOG,findCatalogPlaceById} from './place-catalog.ts';
 import {discoveryPlaceForId} from './discovery-content.ts';
+import {acceptedGeographicPlace} from './geographic-binding.ts';
 
 type Tuple = [string,string,string,number,number,string,number|string,string[]|string,boolean,string,string[]?,boolean?];
 type AdminContext = {admin1:Record<string,string>;admin2:Record<string,string>};
@@ -98,6 +99,42 @@ export function searchReferencePlaces(query:string,context:PlaceResolutionContex
  return matches.map(m=>candidate(m.airport??settlementAt(m.offset!),m.score));
 }
 export const referenceSnapshotId=()=>data().manifest.snapshotId;
+
+/** Discovery projection from a pinned source identity. Caller coordinates are
+ * not identity evidence and never rewrite saved trip facts. No name-only search,
+ * proximity equivalence, alias substitution or implicit cross-source fallback. */
+export function trustedPinnedActivityCentre(input:{destination:string;requestedCountryCode:string;canonicalPlaceId:string;providerId?:string}) {
+ const code=countryCodeFor(input.requestedCountryCode);if(!code)return null;
+ if(input.canonicalPlaceId.startsWith('reference:')) {
+  const record=referencePlaceById(input.canonicalPlaceId);
+  if(!record||record.status!=='active'||!['city','town'].includes(record.placeType)
+   ||normalized(record.canonicalName)!==normalized(input.destination)||record.countryCode!==code
+   ||!input.providerId||input.providerId!==record.providerId)return null;
+  return {canonicalPlaceId:record.canonicalPlaceId,source:'reference' as const,sourceRecordKey:record.providerId,countryCode:code,coordinates:[...record.coordinates] as [number,number]};
+ }
+ const record=findCatalogPlaceById(input.canonicalPlaceId);
+ if(!record||record.captureMode==='explicit-only'||record.routability!=='direct_destination'
+  ||!['city','town','island'].includes(record.placeType)||record.parentCountries.length!==1
+  ||normalized(record.canonicalName)!==normalized(input.destination)||countryCodeFor(record.parentCountries[0])!==code)return null;
+ if(input.providerId?.startsWith('reference:')) {
+  // An existing catalog owner may retain an explicitly selected reference pin.
+  // Revalidate that exact pin through normal acceptance; never search or infer
+  // a replacement source from name, coordinates or proximity.
+  const sourceId=/^(reference:geonames:[1-9][0-9]*)@/.exec(input.providerId)?.[1];
+  const source=sourceId?referencePlaceById(sourceId):undefined;
+  if(!source||source.providerId!==input.providerId||normalized(source.canonicalName)!==normalized(record.canonicalName)
+   ||source.countryCode!==code||!['city','town'].includes(source.placeType))return null;
+  const country=countryFor(code)!.name;
+  const accepted=acceptedGeographicPlace({name:record.canonicalName,country,canonicalPlaceId:record.canonicalPlaceId},
+   {name:source.canonicalName,country,canonicalPlaceId:source.canonicalPlaceId,providerId:source.providerId,
+    coordinates:[...source.coordinates],placeType:source.placeType,routability:'direct_destination',referenceSnapshotId:referenceSnapshotId()},'stop');
+  return accepted?{canonicalPlaceId:record.canonicalPlaceId,source:'reference' as const,sourceRecordKey:source.providerId,countryCode:code,coordinates:[...source.coordinates] as [number,number]}:null;
+ }
+ if(input.providerId&&input.providerId!==record.provenance.id)return null;
+ const point=record.coordinates??discoveryPlaceForId(record.canonicalPlaceId)?.coordinates;
+ if(!point||!point.every(Number.isFinite))return null;
+ return {canonicalPlaceId:record.canonicalPlaceId,source:'catalog' as const,sourceRecordKey:record.provenance.id,countryCode:code,coordinates:[...point] as [number,number]};
+}
 
 /** Country proof comes from an exact trusted source tuple, never from reverse geocoding. */
 export function trustedLocalActivityCentre(input:{destination:string;requestedCountryCode:string;coordinates:readonly [number,number];canonicalPlaceId?:string;providerId?:string}){

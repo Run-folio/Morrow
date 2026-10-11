@@ -1,0 +1,828 @@
+{
+  "provenance": "Neutral diagnostic fixtures from deployed 1c06dba; Japan accepted reference endpoints and frozen partial ferry control. Not personal trip data or evidence of current service.",
+  "sourceBase": "1c06dba5aa8f81d7a036429589673d35c019ab8e",
+  "referenceSnapshot": "699b595afdba9be6994e",
+  "japanLegs": [
+    {
+      "id": "control:0-leg-1",
+      "fromStopId": "control:0-origin",
+      "toStopId": "0-stop",
+      "fromEndpoint": {
+        "name": "Tokyo",
+        "country": "Japan",
+        "canonicalPlaceId": "reference:geonames:1850147",
+        "coordinates": [
+          139.69171,
+          35.6895
+        ],
+        "providerId": "reference:geonames:1850147@699b595afdba9be6994e:JP:city:139.69171:35.6895",
+        "geographicBinding": {
+          "version": 1,
+          "source": "provider",
+          "canonicalPlaceId": "reference:geonames:1850147",
+          "providerId": "reference:geonames:1850147@699b595afdba9be6994e:JP:city:139.69171:35.6895",
+          "placeType": "city",
+          "country": "Japan",
+          "routability": "direct_destination",
+          "inputKey": "[\"reference:geonames:1850147\",\"reference:geonames:1850147@699b595afdba9be6994e:JP:city:139.69171:35.6895\",\"tokyo\",\"japan\",[139.69171,35.6895]]"
+        },
+        "kind": "origin",
+        "id": "control:0-origin"
+      },
+      "toEndpoint": {
+        "kind": "stop",
+        "id": "0-stop",
+        "name": "Nagoya",
+        "country": "Japan",
+        "canonicalPlaceId": "reference:geonames:1856057",
+        "providerId": "reference:geonames:1856057@699b595afdba9be6994e:JP:city:136.90641:35.18147",
+        "geographicBinding": {
+          "version": 1,
+          "source": "provider",
+          "canonicalPlaceId": "reference:geonames:1856057",
+          "providerId": "reference:geonames:1856057@699b595afdba9be6994e:JP:city:136.90641:35.18147",
+          "placeType": "city",
+          "country": "Japan",
+          "routability": "direct_destination",
+          "inputKey": "[\"reference:geonames:1856057\",\"reference:geonames:1856057@699b595afdba9be6994e:JP:city:136.90641:35.18147\",\"nagoya\",\"japan\",[136.90641,35.18147]]"
+        },
+        "coordinates": [
+          136.90641,
+          35.18147
+        ]
+      },
+      "classification": "arrival",
+      "mode": "unknown",
+      "distanceKm": 259,
+      "straightLineDistanceKm": 259,
+      "routedDistanceKm": null,
+      "durationMinutes": null,
+      "headlineMinutes": null,
+      "doorToDoorMinutes": null,
+      "usableDayLoss": null,
+      "provider": "Rail could be considered for this distance, but Morrovia has no supported service fact for this exact leg.",
+      "provenance": "planning_estimate",
+      "confidence": "unknown",
+      "scheduleNeedsChecking": true,
+      "warnings": [],
+      "routeMetadata": {
+        "planningEstimate": true,
+        "source": "morrovia-planner",
+        "roadFallbackEligible": true,
+        "gatewayResolutionRequired": false,
+        "label": "Tokyo \u2192 Nagoya",
+        "routingConfidence": "unconfirmed",
+        "planningConfidence": {
+          "availability": {
+            "version": 1,
+            "state": "inferred",
+            "level": "medium",
+            "freshness": "unknown",
+            "scope": "general-route",
+            "sources": [],
+            "reason": "The connection is inferred from existing route geography or planning rules.",
+            "confirmation": {
+              "needed": true,
+              "reason": "Confirm that this route operates for the traveller's dates."
+            }
+          },
+          "schedule": {
+            "version": 1,
+            "state": "unknown",
+            "level": "unknown",
+            "freshness": "unknown",
+            "scope": "unknown",
+            "sources": [],
+            "reason": "The general route may be plausible, but no exact schedule has been verified for these dates.",
+            "confirmation": {
+              "needed": true,
+              "reason": "The general route may be plausible, but no exact schedule has been verified for these dates."
+            }
+          },
+          "duration": {
+            "version": 1,
+            "state": "estimated",
+            "level": "medium",
+            "freshness": "reviewed",
+            "scope": "planning-rule",
+            "sources": [
+              {
+                "id": "planner:transfer-impact-rules-v1",
+                "label": "Morrovia deterministic transfer-impact rules",
+                "kind": "curated",
+                "supports": "Mode-specific access, processing, waiting, arrival and usable-day planning ranges.",
+                "reviewedAt": "2026-08-23"
+              }
+            ],
+            "reason": "Confidence in the connection duration used by route planning.",
+            "confirmation": {
+              "needed": true,
+              "reason": "Confirm the current operator duration before booking."
+            }
+          },
+          "doorToDoor": {
+            "version": 1,
+            "state": "estimated",
+            "level": "medium",
+            "freshness": "reviewed",
+            "scope": "planning-rule",
+            "sources": [
+              {
+                "id": "planner:transfer-impact-rules-v1",
+                "label": "Morrovia deterministic transfer-impact rules",
+                "kind": "curated",
+                "supports": "Mode-specific access, processing, waiting, arrival and usable-day planning ranges.",
+                "reviewedAt": "2026-08-23"
+              }
+            ],
+            "reason": "Confidence in the realistic door-to-door travel-day allowance.",
+            "confirmation": {
+              "needed": true,
+              "reason": "Confirm current access, processing, connection and arrival conditions before booking."
+            }
+          },
+          "overall": {
+            "version": 1,
+            "state": "estimated",
+            "level": "medium",
+            "freshness": "unknown",
+            "scope": "general-route",
+            "sources": [
+              {
+                "id": "planner:transfer-impact-rules-v1",
+                "label": "Morrovia deterministic transfer-impact rules",
+                "kind": "curated",
+                "supports": "Mode-specific access, processing, waiting, arrival and usable-day planning ranges.",
+                "reviewedAt": "2026-08-23"
+              }
+            ],
+            "reason": "Confidence in using this connection for route comparison.",
+            "confirmation": {
+              "needed": true,
+              "reason": "The general route may be plausible, but no exact schedule has been verified for these dates."
+            }
+          }
+        },
+        "classification": "arrival",
+        "validationWarnings": [],
+        "transportConstraints": {
+          "avoidDriving": false,
+          "excludedModes": [],
+          "preferredModes": []
+        }
+      }
+    },
+    {
+      "id": "control:1-leg-1",
+      "fromStopId": "control:1-origin",
+      "toStopId": "1-stop",
+      "fromEndpoint": {
+        "name": "Nagoya",
+        "country": "Japan",
+        "canonicalPlaceId": "reference:geonames:1856057",
+        "coordinates": [
+          136.90641,
+          35.18147
+        ],
+        "providerId": "reference:geonames:1856057@699b595afdba9be6994e:JP:city:136.90641:35.18147",
+        "geographicBinding": {
+          "version": 1,
+          "source": "provider",
+          "canonicalPlaceId": "reference:geonames:1856057",
+          "providerId": "reference:geonames:1856057@699b595afdba9be6994e:JP:city:136.90641:35.18147",
+          "placeType": "city",
+          "country": "Japan",
+          "routability": "direct_destination",
+          "inputKey": "[\"reference:geonames:1856057\",\"reference:geonames:1856057@699b595afdba9be6994e:JP:city:136.90641:35.18147\",\"nagoya\",\"japan\",[136.90641,35.18147]]"
+        },
+        "kind": "origin",
+        "id": "control:1-origin"
+      },
+      "toEndpoint": {
+        "kind": "stop",
+        "id": "1-stop",
+        "name": "Nikk\u014d",
+        "country": "Japan",
+        "canonicalPlaceId": "reference:geonames:1855395",
+        "providerId": "reference:geonames:1855395@699b595afdba9be6994e:JP:city:139.61667:36.75",
+        "geographicBinding": {
+          "version": 1,
+          "source": "provider",
+          "canonicalPlaceId": "reference:geonames:1855395",
+          "providerId": "reference:geonames:1855395@699b595afdba9be6994e:JP:city:139.61667:36.75",
+          "placeType": "city",
+          "country": "Japan",
+          "routability": "direct_destination",
+          "inputKey": "[\"reference:geonames:1855395\",\"reference:geonames:1855395@699b595afdba9be6994e:JP:city:139.61667:36.75\",\"nikko\",\"japan\",[139.61667,36.75]]"
+        },
+        "coordinates": [
+          139.61667,
+          36.75
+        ]
+      },
+      "classification": "arrival",
+      "mode": "unknown",
+      "distanceKm": 300,
+      "straightLineDistanceKm": 300,
+      "routedDistanceKm": null,
+      "durationMinutes": null,
+      "headlineMinutes": null,
+      "doorToDoorMinutes": null,
+      "usableDayLoss": null,
+      "provider": "Rail could be considered for this distance, but Morrovia has no supported service fact for this exact leg.",
+      "provenance": "planning_estimate",
+      "confidence": "unknown",
+      "scheduleNeedsChecking": true,
+      "warnings": [],
+      "routeMetadata": {
+        "planningEstimate": true,
+        "source": "morrovia-planner",
+        "roadFallbackEligible": true,
+        "gatewayResolutionRequired": false,
+        "label": "Nagoya \u2192 Nikk\u014d",
+        "routingConfidence": "unconfirmed",
+        "planningConfidence": {
+          "availability": {
+            "version": 1,
+            "state": "inferred",
+            "level": "medium",
+            "freshness": "unknown",
+            "scope": "general-route",
+            "sources": [],
+            "reason": "The connection is inferred from existing route geography or planning rules.",
+            "confirmation": {
+              "needed": true,
+              "reason": "Confirm that this route operates for the traveller's dates."
+            }
+          },
+          "schedule": {
+            "version": 1,
+            "state": "unknown",
+            "level": "unknown",
+            "freshness": "unknown",
+            "scope": "unknown",
+            "sources": [],
+            "reason": "The general route may be plausible, but no exact schedule has been verified for these dates.",
+            "confirmation": {
+              "needed": true,
+              "reason": "The general route may be plausible, but no exact schedule has been verified for these dates."
+            }
+          },
+          "duration": {
+            "version": 1,
+            "state": "estimated",
+            "level": "medium",
+            "freshness": "reviewed",
+            "scope": "planning-rule",
+            "sources": [
+              {
+                "id": "planner:transfer-impact-rules-v1",
+                "label": "Morrovia deterministic transfer-impact rules",
+                "kind": "curated",
+                "supports": "Mode-specific access, processing, waiting, arrival and usable-day planning ranges.",
+                "reviewedAt": "2026-08-23"
+              }
+            ],
+            "reason": "Confidence in the connection duration used by route planning.",
+            "confirmation": {
+              "needed": true,
+              "reason": "Confirm the current operator duration before booking."
+            }
+          },
+          "doorToDoor": {
+            "version": 1,
+            "state": "estimated",
+            "level": "medium",
+            "freshness": "reviewed",
+            "scope": "planning-rule",
+            "sources": [
+              {
+                "id": "planner:transfer-impact-rules-v1",
+                "label": "Morrovia deterministic transfer-impact rules",
+                "kind": "curated",
+                "supports": "Mode-specific access, processing, waiting, arrival and usable-day planning ranges.",
+                "reviewedAt": "2026-08-23"
+              }
+            ],
+            "reason": "Confidence in the realistic door-to-door travel-day allowance.",
+            "confirmation": {
+              "needed": true,
+              "reason": "Confirm current access, processing, connection and arrival conditions before booking."
+            }
+          },
+          "overall": {
+            "version": 1,
+            "state": "estimated",
+            "level": "medium",
+            "freshness": "unknown",
+            "scope": "general-route",
+            "sources": [
+              {
+                "id": "planner:transfer-impact-rules-v1",
+                "label": "Morrovia deterministic transfer-impact rules",
+                "kind": "curated",
+                "supports": "Mode-specific access, processing, waiting, arrival and usable-day planning ranges.",
+                "reviewedAt": "2026-08-23"
+              }
+            ],
+            "reason": "Confidence in using this connection for route comparison.",
+            "confirmation": {
+              "needed": true,
+              "reason": "The general route may be plausible, but no exact schedule has been verified for these dates."
+            }
+          }
+        },
+        "classification": "arrival",
+        "validationWarnings": [],
+        "transportConstraints": {
+          "avoidDriving": false,
+          "excludedModes": [],
+          "preferredModes": []
+        }
+      }
+    },
+    {
+      "id": "control:2-leg-1",
+      "fromStopId": "control:2-origin",
+      "toStopId": "2-stop",
+      "fromEndpoint": {
+        "name": "Nikk\u014d",
+        "country": "Japan",
+        "canonicalPlaceId": "reference:geonames:1855395",
+        "coordinates": [
+          139.61667,
+          36.75
+        ],
+        "providerId": "reference:geonames:1855395@699b595afdba9be6994e:JP:city:139.61667:36.75",
+        "geographicBinding": {
+          "version": 1,
+          "source": "provider",
+          "canonicalPlaceId": "reference:geonames:1855395",
+          "providerId": "reference:geonames:1855395@699b595afdba9be6994e:JP:city:139.61667:36.75",
+          "placeType": "city",
+          "country": "Japan",
+          "routability": "direct_destination",
+          "inputKey": "[\"reference:geonames:1855395\",\"reference:geonames:1855395@699b595afdba9be6994e:JP:city:139.61667:36.75\",\"nikko\",\"japan\",[139.61667,36.75]]"
+        },
+        "kind": "origin",
+        "id": "control:2-origin"
+      },
+      "toEndpoint": {
+        "kind": "stop",
+        "id": "2-stop",
+        "name": "Takayama",
+        "country": "Japan",
+        "canonicalPlaceId": "reference:geonames:1850892",
+        "providerId": "reference:geonames:1850892@699b595afdba9be6994e:JP:city:137.25:36.13333",
+        "geographicBinding": {
+          "version": 1,
+          "source": "provider",
+          "canonicalPlaceId": "reference:geonames:1850892",
+          "providerId": "reference:geonames:1850892@699b595afdba9be6994e:JP:city:137.25:36.13333",
+          "placeType": "city",
+          "country": "Japan",
+          "routability": "direct_destination",
+          "inputKey": "[\"reference:geonames:1850892\",\"reference:geonames:1850892@699b595afdba9be6994e:JP:city:137.25:36.13333\",\"takayama\",\"japan\",[137.25,36.13333]]"
+        },
+        "coordinates": [
+          137.25,
+          36.13333
+        ]
+      },
+      "classification": "arrival",
+      "mode": "unknown",
+      "distanceKm": 223,
+      "straightLineDistanceKm": 223,
+      "routedDistanceKm": null,
+      "durationMinutes": null,
+      "headlineMinutes": null,
+      "doorToDoorMinutes": null,
+      "usableDayLoss": null,
+      "provider": "Rail could be considered for this distance, but Morrovia has no supported service fact for this exact leg.",
+      "provenance": "planning_estimate",
+      "confidence": "unknown",
+      "scheduleNeedsChecking": true,
+      "warnings": [],
+      "routeMetadata": {
+        "planningEstimate": true,
+        "source": "morrovia-planner",
+        "roadFallbackEligible": true,
+        "gatewayResolutionRequired": false,
+        "label": "Nikk\u014d \u2192 Takayama",
+        "routingConfidence": "unconfirmed",
+        "planningConfidence": {
+          "availability": {
+            "version": 1,
+            "state": "inferred",
+            "level": "medium",
+            "freshness": "unknown",
+            "scope": "general-route",
+            "sources": [],
+            "reason": "The connection is inferred from existing route geography or planning rules.",
+            "confirmation": {
+              "needed": true,
+              "reason": "Confirm that this route operates for the traveller's dates."
+            }
+          },
+          "schedule": {
+            "version": 1,
+            "state": "unknown",
+            "level": "unknown",
+            "freshness": "unknown",
+            "scope": "unknown",
+            "sources": [],
+            "reason": "The general route may be plausible, but no exact schedule has been verified for these dates.",
+            "confirmation": {
+              "needed": true,
+              "reason": "The general route may be plausible, but no exact schedule has been verified for these dates."
+            }
+          },
+          "duration": {
+            "version": 1,
+            "state": "estimated",
+            "level": "medium",
+            "freshness": "reviewed",
+            "scope": "planning-rule",
+            "sources": [
+              {
+                "id": "planner:transfer-impact-rules-v1",
+                "label": "Morrovia deterministic transfer-impact rules",
+                "kind": "curated",
+                "supports": "Mode-specific access, processing, waiting, arrival and usable-day planning ranges.",
+                "reviewedAt": "2026-08-23"
+              }
+            ],
+            "reason": "Confidence in the connection duration used by route planning.",
+            "confirmation": {
+              "needed": true,
+              "reason": "Confirm the current operator duration before booking."
+            }
+          },
+          "doorToDoor": {
+            "version": 1,
+            "state": "estimated",
+            "level": "medium",
+            "freshness": "reviewed",
+            "scope": "planning-rule",
+            "sources": [
+              {
+                "id": "planner:transfer-impact-rules-v1",
+                "label": "Morrovia deterministic transfer-impact rules",
+                "kind": "curated",
+                "supports": "Mode-specific access, processing, waiting, arrival and usable-day planning ranges.",
+                "reviewedAt": "2026-08-23"
+              }
+            ],
+            "reason": "Confidence in the realistic door-to-door travel-day allowance.",
+            "confirmation": {
+              "needed": true,
+              "reason": "Confirm current access, processing, connection and arrival conditions before booking."
+            }
+          },
+          "overall": {
+            "version": 1,
+            "state": "estimated",
+            "level": "medium",
+            "freshness": "unknown",
+            "scope": "general-route",
+            "sources": [
+              {
+                "id": "planner:transfer-impact-rules-v1",
+                "label": "Morrovia deterministic transfer-impact rules",
+                "kind": "curated",
+                "supports": "Mode-specific access, processing, waiting, arrival and usable-day planning ranges.",
+                "reviewedAt": "2026-08-23"
+              }
+            ],
+            "reason": "Confidence in using this connection for route comparison.",
+            "confirmation": {
+              "needed": true,
+              "reason": "The general route may be plausible, but no exact schedule has been verified for these dates."
+            }
+          }
+        },
+        "classification": "arrival",
+        "validationWarnings": [],
+        "transportConstraints": {
+          "avoidDriving": false,
+          "excludedModes": [],
+          "preferredModes": []
+        }
+      }
+    },
+    {
+      "id": "control:3-leg-1",
+      "fromStopId": "control:3-origin",
+      "toStopId": "3-stop",
+      "fromEndpoint": {
+        "name": "Takayama",
+        "country": "Japan",
+        "canonicalPlaceId": "reference:geonames:1850892",
+        "coordinates": [
+          137.25,
+          36.13333
+        ],
+        "providerId": "reference:geonames:1850892@699b595afdba9be6994e:JP:city:137.25:36.13333",
+        "geographicBinding": {
+          "version": 1,
+          "source": "provider",
+          "canonicalPlaceId": "reference:geonames:1850892",
+          "providerId": "reference:geonames:1850892@699b595afdba9be6994e:JP:city:137.25:36.13333",
+          "placeType": "city",
+          "country": "Japan",
+          "routability": "direct_destination",
+          "inputKey": "[\"reference:geonames:1850892\",\"reference:geonames:1850892@699b595afdba9be6994e:JP:city:137.25:36.13333\",\"takayama\",\"japan\",[137.25,36.13333]]"
+        },
+        "kind": "origin",
+        "id": "control:3-origin"
+      },
+      "toEndpoint": {
+        "kind": "stop",
+        "id": "3-stop",
+        "name": "Osaka",
+        "country": "Japan",
+        "canonicalPlaceId": "reference:geonames:1853909",
+        "providerId": "reference:geonames:1853909@699b595afdba9be6994e:JP:city:135.50107:34.69379",
+        "geographicBinding": {
+          "version": 1,
+          "source": "provider",
+          "canonicalPlaceId": "reference:geonames:1853909",
+          "providerId": "reference:geonames:1853909@699b595afdba9be6994e:JP:city:135.50107:34.69379",
+          "placeType": "city",
+          "country": "Japan",
+          "routability": "direct_destination",
+          "inputKey": "[\"reference:geonames:1853909\",\"reference:geonames:1853909@699b595afdba9be6994e:JP:city:135.50107:34.69379\",\"osaka\",\"japan\",[135.50107,34.69379]]"
+        },
+        "coordinates": [
+          135.50107,
+          34.69379
+        ]
+      },
+      "classification": "arrival",
+      "mode": "unknown",
+      "distanceKm": 225,
+      "straightLineDistanceKm": 225,
+      "routedDistanceKm": null,
+      "durationMinutes": null,
+      "headlineMinutes": null,
+      "doorToDoorMinutes": null,
+      "usableDayLoss": null,
+      "provider": "Rail could be considered for this distance, but Morrovia has no supported service fact for this exact leg.",
+      "provenance": "planning_estimate",
+      "confidence": "unknown",
+      "scheduleNeedsChecking": true,
+      "warnings": [],
+      "routeMetadata": {
+        "planningEstimate": true,
+        "source": "morrovia-planner",
+        "roadFallbackEligible": true,
+        "gatewayResolutionRequired": false,
+        "label": "Takayama \u2192 Osaka",
+        "routingConfidence": "unconfirmed",
+        "planningConfidence": {
+          "availability": {
+            "version": 1,
+            "state": "inferred",
+            "level": "medium",
+            "freshness": "unknown",
+            "scope": "general-route",
+            "sources": [],
+            "reason": "The connection is inferred from existing route geography or planning rules.",
+            "confirmation": {
+              "needed": true,
+              "reason": "Confirm that this route operates for the traveller's dates."
+            }
+          },
+          "schedule": {
+            "version": 1,
+            "state": "unknown",
+            "level": "unknown",
+            "freshness": "unknown",
+            "scope": "unknown",
+            "sources": [],
+            "reason": "The general route may be plausible, but no exact schedule has been verified for these dates.",
+            "confirmation": {
+              "needed": true,
+              "reason": "The general route may be plausible, but no exact schedule has been verified for these dates."
+            }
+          },
+          "duration": {
+            "version": 1,
+            "state": "estimated",
+            "level": "medium",
+            "freshness": "reviewed",
+            "scope": "planning-rule",
+            "sources": [
+              {
+                "id": "planner:transfer-impact-rules-v1",
+                "label": "Morrovia deterministic transfer-impact rules",
+                "kind": "curated",
+                "supports": "Mode-specific access, processing, waiting, arrival and usable-day planning ranges.",
+                "reviewedAt": "2026-08-23"
+              }
+            ],
+            "reason": "Confidence in the connection duration used by route planning.",
+            "confirmation": {
+              "needed": true,
+              "reason": "Confirm the current operator duration before booking."
+            }
+          },
+          "doorToDoor": {
+            "version": 1,
+            "state": "estimated",
+            "level": "medium",
+            "freshness": "reviewed",
+            "scope": "planning-rule",
+            "sources": [
+              {
+                "id": "planner:transfer-impact-rules-v1",
+                "label": "Morrovia deterministic transfer-impact rules",
+                "kind": "curated",
+                "supports": "Mode-specific access, processing, waiting, arrival and usable-day planning ranges.",
+                "reviewedAt": "2026-08-23"
+              }
+            ],
+            "reason": "Confidence in the realistic door-to-door travel-day allowance.",
+            "confirmation": {
+              "needed": true,
+              "reason": "Confirm current access, processing, connection and arrival conditions before booking."
+            }
+          },
+          "overall": {
+            "version": 1,
+            "state": "estimated",
+            "level": "medium",
+            "freshness": "unknown",
+            "scope": "general-route",
+            "sources": [
+              {
+                "id": "planner:transfer-impact-rules-v1",
+                "label": "Morrovia deterministic transfer-impact rules",
+                "kind": "curated",
+                "supports": "Mode-specific access, processing, waiting, arrival and usable-day planning ranges.",
+                "reviewedAt": "2026-08-23"
+              }
+            ],
+            "reason": "Confidence in using this connection for route comparison.",
+            "confirmation": {
+              "needed": true,
+              "reason": "The general route may be plausible, but no exact schedule has been verified for these dates."
+            }
+          }
+        },
+        "classification": "arrival",
+        "validationWarnings": [],
+        "transportConstraints": {
+          "avoidDriving": false,
+          "excludedModes": [],
+          "preferredModes": []
+        }
+      }
+    }
+  ],
+  "partialFerryInput": {
+    "id": "phase1:islands-ferries-02-leg-3",
+    "fromStopId": "islands-ferries-02-stop-2",
+    "toStopId": "islands-ferries-02-stop-3",
+    "fromEndpoint": {
+      "kind": "stop",
+      "id": "islands-ferries-02-stop-2",
+      "name": "Surabaya",
+      "country": "Indonesia",
+      "canonicalPlaceId": "reference:geonames:1625822",
+      "providerId": "reference:geonames:1625822@699b595afdba9be6994e:ID:city:112.75083:-7.24917",
+      "geographicBinding": {
+        "version": 1,
+        "source": "provider",
+        "canonicalPlaceId": "reference:geonames:1625822",
+        "providerId": "reference:geonames:1625822@699b595afdba9be6994e:ID:city:112.75083:-7.24917",
+        "placeType": "city",
+        "country": "Indonesia",
+        "routability": "direct_destination",
+        "inputKey": "[\"reference:geonames:1625822\",\"reference:geonames:1625822@699b595afdba9be6994e:ID:city:112.75083:-7.24917\",\"surabaya\",\"indonesia\",[112.75083,-7.24917]]"
+      },
+      "coordinates": [
+        112.75083,
+        -7.24917
+      ]
+    },
+    "toEndpoint": {
+      "kind": "stop",
+      "id": "islands-ferries-02-stop-3",
+      "name": "Denpasar",
+      "country": "Indonesia",
+      "canonicalPlaceId": "reference:geonames:1645528",
+      "providerId": "reference:geonames:1645528@699b595afdba9be6994e:ID:city:115.21667:-8.65",
+      "geographicBinding": {
+        "version": 1,
+        "source": "provider",
+        "canonicalPlaceId": "reference:geonames:1645528",
+        "providerId": "reference:geonames:1645528@699b595afdba9be6994e:ID:city:115.21667:-8.65",
+        "placeType": "city",
+        "country": "Indonesia",
+        "routability": "direct_destination",
+        "inputKey": "[\"reference:geonames:1645528\",\"reference:geonames:1645528@699b595afdba9be6994e:ID:city:115.21667:-8.65\",\"denpasar\",\"indonesia\",[115.21667,-8.65]]"
+      },
+      "coordinates": [
+        115.21667,
+        -8.65
+      ]
+    },
+    "classification": "intercity",
+    "mode": "unknown",
+    "distanceKm": 313,
+    "straightLineDistanceKm": 313,
+    "routedDistanceKm": null,
+    "durationMinutes": null,
+    "headlineMinutes": null,
+    "doorToDoorMinutes": null,
+    "usableDayLoss": null,
+    "provider": "A continuous land connection is not established for this pair; a generic road or rail transfer is unsupported. Confirm a compliant transport mode and current service before booking.",
+    "provenance": "planning_estimate",
+    "confidence": "unknown",
+    "scheduleNeedsChecking": true,
+    "warnings": [],
+    "routeMetadata": {
+      "planningEstimate": true,
+      "source": "morrovia-planner",
+      "roadFallbackEligible": false,
+      "gatewayResolutionRequired": false,
+      "label": "Surabaya \u2192 Denpasar",
+      "routingConfidence": "unconfirmed",
+      "planningConfidence": {
+        "availability": {
+          "version": 1,
+          "state": "unknown",
+          "level": "unknown",
+          "freshness": "unknown",
+          "scope": "unknown",
+          "sources": [],
+          "reason": "Connection availability has not been confirmed.",
+          "confirmation": {
+            "needed": true,
+            "reason": "Connection availability has not been confirmed."
+          }
+        },
+        "schedule": {
+          "version": 1,
+          "state": "unknown",
+          "level": "unknown",
+          "freshness": "unknown",
+          "scope": "unknown",
+          "sources": [],
+          "reason": "The general route may be plausible, but no exact schedule has been verified for these dates.",
+          "confirmation": {
+            "needed": true,
+            "reason": "The general route may be plausible, but no exact schedule has been verified for these dates."
+          }
+        },
+        "duration": {
+          "version": 1,
+          "state": "unknown",
+          "level": "unknown",
+          "freshness": "unknown",
+          "scope": "unknown",
+          "sources": [],
+          "reason": "No supported duration is available for this connection.",
+          "confirmation": {
+            "needed": true,
+            "reason": "No supported duration is available for this connection."
+          }
+        },
+        "doorToDoor": {
+          "version": 1,
+          "state": "unknown",
+          "level": "unknown",
+          "freshness": "unknown",
+          "scope": "unknown",
+          "sources": [],
+          "reason": "No supported duration is available for this connection.",
+          "confirmation": {
+            "needed": true,
+            "reason": "No supported duration is available for this connection."
+          }
+        },
+        "overall": {
+          "version": 1,
+          "state": "unknown",
+          "level": "unknown",
+          "freshness": "unknown",
+          "scope": "unknown",
+          "sources": [],
+          "reason": "Confidence in using this connection for route comparison.",
+          "confirmation": {
+            "needed": true,
+            "reason": "The general route may be plausible, but no exact schedule has been verified for these dates."
+          }
+        }
+      },
+      "classification": "intercity",
+      "validationWarnings": [],
+      "transportConstraints": {
+        "avoidDriving": false,
+        "excludedModes": [],
+        "preferredModes": []
+      }
+    }
+  }
+}

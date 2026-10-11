@@ -8,6 +8,7 @@ import {
 import {
   resolveCanonicalTransferJourneys as resolveJourneys,
   resolveTripTransferJourneys as resolveTrip,
+  assessCanonicalTransferJourneys as assessJourneys,
 } from "./multimodal-transfer-resolution.ts";
 import type { EasyTTrip, TripLeg } from "./trip.ts";
 
@@ -26,6 +27,13 @@ export async function resolveCanonicalTransferJourneys(
   options: { provider?: RoadRoutingProvider; maxLegs?: number } = {},
 ) {
   return resolveJourneys(legs, { ...options, provider: configuredRoadProvider(options.provider) });
+}
+
+export async function assessCanonicalTransferJourneys(
+  legs: readonly TripLeg[],
+  options: {provider?: RoadRoutingProvider; maxLegs?: number} = {},
+) {
+  return assessJourneys(legs, {...options, provider: configuredRoadProvider(options.provider)});
 }
 
 export async function resolveTripTransferJourneys(
