@@ -7,6 +7,8 @@ import { calendarDayAllocationsFromNights } from "../lib/easyt/night-allocation.
 import { buildCredibleItinerary } from "../lib/easyt/planner.ts";
 import { tripFromBuilder } from "../lib/easyt/trip.ts";
 import { isSameCanonicalPlace } from "../lib/easyt/journey-endpoints.ts";
+import { acceptedGeographicPlace } from "../lib/easyt/geographic-binding.ts";
+import { referencePlaceById, referenceSnapshotId } from "../lib/easyt/place-reference.server.ts";
 import { builderBrowserTestsEnabled, renderBuilder } from "./helpers/builder-render.ts";
 
 test("a provider base attaches Taj Mahal to the existing Agra occurrence", { skip: !builderBrowserTestsEnabled }, async () => {
@@ -159,22 +161,41 @@ test("a deliberate Tokyo return keeps both occurrences covered by their own days
     { id: "tokyo-return", name: "Tokyo", country: "Japan", canonicalPlaceId: "tokyo", coordinates: [139.6917, 35.6895] as [number, number] },
   ];
   const allocations = { "tokyo-first": 1, kyoto: 1, "tokyo-return": 1 };
+  const london = referencePlaceById("reference:geonames:2643743");
+  assert.ok(london);
+  const originCandidate = { name: london.canonicalName, country: "United Kingdom",
+    canonicalPlaceId: london.canonicalPlaceId, providerId: london.providerId, coordinates: london.coordinates,
+    placeType: london.placeType, routability: "direct_destination", referenceSnapshotId: referenceSnapshotId() };
+  const origin = acceptedGeographicPlace(originCandidate, originCandidate, "endpoint");
+  assert.ok(origin);
   const draft = buildCredibleItinerary({ origin: "London", stops, startDate: "2026-10-01",
     allocations: calendarDayAllocationsFromNights(stops.map((stop) => stop.id), allocations), picks: {}, places: {} });
-  const trip = tripFromBuilder({ id: "tokyo-return-trip", origin: "London", originCoordinates: [-0.1276, 51.5072],
+  const trip = tripFromBuilder({ id: "tokyo-return-trip", origin: origin.name, originCoordinates: origin.coordinates,
+    originCountry: origin.country, originCanonicalPlaceId: origin.canonicalPlaceId, originProviderId: origin.providerId,
     stops, startDate: "2026-10-01", endDate: "2026-10-04", picks: {}, mustDo: "Tokyo, Kyoto, Tokyo",
     pace: "slow", hotels: "few", budget: "mid", nightAllocations: allocations, draft });
-  assert.deepEqual(trip.planItems.map((item) => item.stopId), ["tokyo-first", "kyoto", "tokyo-return", "tokyo-return"]);
+  trip.brief.intent.route.origin = origin;
+  const reloaded = JSON.parse(JSON.stringify(trip)) as typeof trip;
+  assert.deepEqual(reloaded.stops.map(stop => [stop.id, stop.nights]), [["tokyo-first", 1], ["kyoto", 1], ["tokyo-return", 1]]);
+  assert.deepEqual(reloaded.planItems.map((item) => item.stopId), ["tokyo-first", "kyoto", "tokyo-return", "tokyo-return"]);
   const nightAllocation = { version: 1 as const, configVersion: "test", state: "allocated" as const,
     totalAvailableNights: 3, totalAllocatedNights: 3, allocations, stops: [], conflicts: [], notices: [] };
-  const gate = canBuildTrip({ origin: "London", originCoordinates: [-0.1276, 51.5072], stops,
+  const gate = canBuildTrip({ origin: origin.name, originCoordinates: origin.coordinates, stops,
     startDate: "2026-10-01", endDate: "2026-10-04", durationDays: 4, nightAllocation, allocations,
-    document: trip });
+    document: reloaded });
   assert.equal(gate.canBuildTrip, true);
-  const missingFirstOccurrence = { ...trip, planItems: trip.planItems.filter((item) => item.stopId !== "tokyo-first") };
-  const invalid = canBuildTrip({ origin: "London", originCoordinates: [-0.1276, 51.5072], stops,
+  const missingFirstOccurrence = { ...reloaded, planItems: reloaded.planItems.filter((item) => item.stopId !== "tokyo-first") };
+  const invalid = canBuildTrip({ origin: origin.name, originCoordinates: origin.coordinates, stops,
     startDate: "2026-10-01", endDate: "2026-10-04", durationDays: 4, nightAllocation, allocations,
     document: missingFirstOccurrence });
   assert.equal(invalid.canBuildTrip, false);
   assert.equal(invalid.conflicts.some((item) => item.code === "itinerary-stop-uncovered"), true);
+  // Geography remains a separate gate; conservation cannot qualify a raw point.
+  const unverified = structuredClone(reloaded);
+  unverified.brief.intent.route.origin = { name: "London", coordinates: [-0.1276, 51.5072] };
+  const unverifiedGate = canBuildTrip({ origin: "London", originCoordinates: [-0.1276, 51.5072], stops,
+    startDate: "2026-10-01", endDate: "2026-10-04", durationDays: 4, nightAllocation, allocations, document: unverified });
+  assert.equal(unverifiedGate.canBuildTrip, false);
+  assert.equal(unverifiedGate.conflicts.some(item => item.code === "origin-unverified"), true);
+  assert.equal(unverifiedGate.conflicts.some(item => item.code === "itinerary-stop-uncovered"), false);
 });
