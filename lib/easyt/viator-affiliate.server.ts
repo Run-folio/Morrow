@@ -17,17 +17,19 @@ export type { ActivityInventoryItem } from "./activity-inventory.ts";
 export { viatorTaxonomyCachePolicy };
 
 export type ViatorApiEnvironment = "sandbox" | "production";
-export type ViatorFailureCategory = "configuration" | "authentication" | "rate_limited" | "timeout" | "unavailable" | "malformed";
+export type ViatorFailureCategory = "configuration" | "identity" | "authentication" | "rate_limited" | "timeout" | "unavailable" | "malformed";
 
 export class ViatorAffiliateError extends Error {
   readonly category: ViatorFailureCategory;
   readonly status?: number;
+  readonly lookupAttempted?: boolean;
 
-  constructor(category: ViatorFailureCategory, message = "Viator activities are unavailable.", options: { status?: number } = {}) {
+  constructor(category: ViatorFailureCategory, message = "Viator activities are unavailable.", options: { status?: number; lookupAttempted?: boolean } = {}) {
     super(message);
     this.name = "ViatorAffiliateError";
     this.category = category;
     this.status = options.status;
+    this.lookupAttempted = options.lookupAttempted;
   }
 }
 
@@ -331,12 +333,15 @@ export class ViatorAffiliateClient {
   }
 
   async searchActivitiesWithDiagnostics(input: ViatorProductSearchInput): Promise<{activities: ActivityInventoryItem[]; counts?: PlanningResultCounts; cacheOutcome: PlanningCacheOutcome}> {
+    if (!input.destination.canonicalPlaceId.trim() || !input.destination.name.trim()) {
+      throw new ViatorAffiliateError('identity', undefined, {lookupAttempted: false});
+    }
     const start = pageInteger(input.start, 1);
     const count = pageInteger(input.count, VIATOR_DEFAULT_PAGE_COUNT, VIATOR_MAX_PAGE_COUNT);
     const locale = normalizedLocale(input.locale);
     const currency = normalizedCurrency(input.currency);
     const destination = await this.resolveDestination(input.destination);
-    if (!destination) throw new ViatorAffiliateError("configuration", "Viator destination mapping is unavailable.");
+    if (!destination) throw new ViatorAffiliateError('identity', 'Viator destination identity is unresolved.', {lookupAttempted: true});
     const cacheKey = JSON.stringify({ environment: this.configuration.environment, destination: destination.canonicalPlaceId, providerDestination: destination.providerDestinationId, locale, currency, start, count });
     const cached = this.cache.get(cacheKey);
     if (cached && cached.expiresAt > this.now()) return {activities:cloneActivities(cached.activities),...(cached.counts?{counts:{...cached.counts}}:{}),cacheOutcome:'hit'};

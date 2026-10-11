@@ -14,6 +14,37 @@ type WikiPage = {
   coordinates?: Array<{ lat?: number; lon?: number }>;
 };
 
+function record(value: unknown): value is Record<string, unknown> {
+  return Boolean(value && typeof value === 'object' && !Array.isArray(value));
+}
+
+function discoveryPages(value: unknown): WikiPage[] {
+  if (!record(value) || 'error' in value) throw new SyntaxError('Invalid discovery response');
+  if (value.query !== undefined && !record(value.query)) throw new SyntaxError('Invalid discovery query');
+  const pageMap = record(value.query) ? value.query.pages : undefined;
+  if (pageMap === undefined) {
+    // This request uses the default JSON format. A completed empty generator
+    // may omit query entirely; an arbitrary object is not an empty inventory.
+    if (value.batchcomplete === '' || value.batchcomplete === true) return [];
+    throw new SyntaxError('Missing discovery pages');
+  }
+  if (!record(pageMap)) throw new SyntaxError('Invalid discovery pages');
+  const pages = Object.values(pageMap);
+  for (const page of pages) {
+    if (!record(page)
+      || (page.title !== undefined && typeof page.title !== 'string')
+      || (page.extract !== undefined && typeof page.extract !== 'string')
+      || (page.pageid !== undefined && (typeof page.pageid !== 'number' || !Number.isFinite(page.pageid)))
+      || (page.thumbnail !== undefined && (!record(page.thumbnail) || (page.thumbnail.source !== undefined && typeof page.thumbnail.source !== 'string')))
+      || (page.coordinates !== undefined && (!Array.isArray(page.coordinates) || page.coordinates.some(point =>
+        !record(point) || typeof point.lon !== 'number' || !Number.isFinite(point.lon) || Math.abs(point.lon) > 180
+        || typeof point.lat !== 'number' || !Number.isFinite(point.lat) || Math.abs(point.lat) > 90)))) {
+      throw new SyntaxError('Invalid discovery page');
+    }
+  }
+  return pages as WikiPage[];
+}
+
 const WIKIPEDIA_DISCOVERY_TIMEOUT_MS = 6_000;
 
 const irrelevant = /^(tourism|tourist attraction|visitor cent(?:er|re)|tourist gateway|tourist information|list of|travel|tour operator|tourism in|geography of|history of|economy of|line \d+|metro line|bus line|culture of|architecture of)/i;
@@ -95,11 +126,7 @@ export async function GET(request: NextRequest) {
       const assessment=providerFailureAssessment(response.status===401||response.status===403?'authentication':'unavailable','organic-discovery',performance.now()-started);
       return NextResponse.json({places:[],unavailable:true,assessment},{headers:{'cache-control':'no-store'}});
     }
-    const data = await response.json() as { query?: { pages?: Record<string, WikiPage> } };
-    if(!data||typeof data!=='object'||Array.isArray(data)||'error' in data
-      ||(data.query?.pages!==undefined&&(!data.query.pages||typeof data.query.pages!=='object'||Array.isArray(data.query.pages))))throw new SyntaxError('Invalid discovery response');
-    const pages=Object.values(data.query?.pages??{});
-    if(pages.some(page=>!page||typeof page!=='object'))throw new SyntaxError('Invalid discovery pages');
+    const pages = discoveryPages(await response.json());
     const seen = new Set<string>();
     const admitted = pages
       .filter((page) => {

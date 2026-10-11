@@ -20,7 +20,7 @@ async function handler(path:string) {
    path==='owner'?`export async function requireEasyTOwner(){if(globalThis.__phase1Api.guest)throw new Error('Unauthorized');return 'disposable-owner';}`:
    path==='reference'?`import * as real from ${JSON.stringify(realReference)};export const trustedLocalActivityCentre=real.trustedLocalActivityCentre;export function trustedPinnedActivityCentre(input){if(globalThis.__phase1Api.identityUnavailable)throw new Error('Private reference storage failure');return real.trustedPinnedActivityCentre(input);}`:
    path==='road'?`import {RoadRoutingError} from ${JSON.stringify(realRoad)};export {RoadRoutingError};export class OpenRouteServiceRoadRoutingProvider {constructor(){if(globalThis.__phase1Api.configurationMissing)throw new RoadRoutingError('configuration');}provider='openrouteservice';async route(){globalThis.__phase1Api.providerCalls++;throw new RoadRoutingError(globalThis.__phase1Api.roadFailure??'timeout');}}`:
-   `import {ViatorAffiliateClient as Real,ViatorAffiliateError} from ${JSON.stringify(realViator)};export {ViatorAffiliateError};export class ViatorAffiliateClient extends Real {constructor(){if(globalThis.__phase1Api.configurationMissing)throw new ViatorAffiliateError('configuration');super({environment:'sandbox',apiBaseUrl:'https://api.sandbox.viator.com/partner',apiKey:'synthetic-placeholder'}, {cache:new Map(),resolveDestination:destination=>({...destination,providerDestinationId:'123'}),request:globalThis.__phase1Api.request});}}`}));
+   `import {ViatorAffiliateClient as Real,ViatorAffiliateError} from ${JSON.stringify(realViator)};export {ViatorAffiliateError};export class ViatorAffiliateClient extends Real {constructor(){if(globalThis.__phase1Api.configurationMissing)throw new ViatorAffiliateError('configuration');super({environment:'sandbox',apiBaseUrl:'https://api.sandbox.viator.com/partner',apiKey:'synthetic-placeholder'}, {cache:new Map(),taxonomyCache:new Map(),destinationResolutionCache:new Map(),...(!globalThis.__phase1Api.realTaxonomy?{resolveDestination:destination=>({...destination,providerDestinationId:'123'})}:{}),request:globalThis.__phase1Api.request});}}`}));
  }}]});
  return import(`data:text/javascript;base64,${Buffer.from(bundled.outputFiles[0].text).toString('base64')}`);
 }
@@ -108,6 +108,19 @@ test('organic admitted-empty retains raw count separately from successful empty'
  const body=await (await (await api.discover).GET({nextUrl:discovery()})).json();
  assert.deepEqual(body.counts,{raw:1,admitted:0,returned:0});assert.equal(body.assessment?.reason,'filtered_empty');
 });
+for(const [label,payload] of [
+ ['invalid query scalar',{query:'broken'}],['null query',{query:null}],['query array',{query:[]}],
+ ['array page',{query:{pages:{1:[]}}}],['wrong title type',{query:{pages:{1:{title:5}}}}],
+ ['unrecognized payload',{}],
+] as const)test(`organic ${label} is unavailable malformed evidence, never zero inventory`,async t=>{
+ setup(t,{organic:()=>Response.json(payload)});const body=await (await (await api.discover).GET({nextUrl:discovery()})).json();
+ assert.equal(body.unavailable,true);assert.equal(body.assessment?.reason,'malformed_response');
+ assert.equal(body.assessment?.retrieval,'unavailable');assert.equal(body.assessment?.retryable,true);assert.equal(body.counts,undefined);
+});
+test('MediaWiki batchcomplete with no query is a valid successful empty response',async t=>{
+ setup(t,{organic:()=>Response.json({batchcomplete:''})});const body=await (await (await api.discover).GET({nextUrl:discovery()})).json();
+ assert.equal(body.assessment?.reason,'successful_empty');assert.deepEqual(body.counts,{raw:0,admitted:0,returned:0});
+});
 test('local identity-source failure does not claim a Wikipedia request',async t=>{
  setup(t,{identityUnavailable:true});const body=await (await (await api.discover).GET({nextUrl:discovery()})).json();
  assert.equal(body.unavailable,true);assert.equal(body.assessment?.reason,'configuration_unavailable');
@@ -141,6 +154,14 @@ test('commercial transient failure, cached empty and expired cache remain distin
  now+=101;const expired=await client.searchActivitiesWithDiagnostics({destination:inventoryBody.destination,count:4});
  assert.equal(expired.cacheOutcome,'miss');assert.equal(calls,3);
 });
+test('invalid commercial identity fails before lookup and is not described as attempted inventory',async()=>{
+ const {ViatorAffiliateClient}=await handler('lib/easyt/viator-affiliate.server.ts');let calls=0;
+ const client=new ViatorAffiliateClient({environment:'sandbox',apiBaseUrl:'https://api.sandbox.viator.com/partner',apiKey:'synthetic-placeholder'},
+  {cache:new Map(),request:async()=>{calls++;return Response.json({products:[]});}});
+ await assert.rejects(client.searchActivitiesWithDiagnostics({destination:{canonicalPlaceId:'',name:'Tokyo',country:'Japan'}}),
+  (error:any)=>error.category==='identity'&&error.lookupAttempted===false);
+ assert.equal(calls,0);
+});
 test('controlled authenticated four-product success reports retrieval/admission counts without UI filtering',async t=>{
  let calls=0;setup(t,{request:async(_url:any,init:any)=>{calls++;assert.equal(JSON.parse(init.body).pagination.count,4);return Response.json({products:['A','B','C','D'].map(product)});}});
  const response=await (await api.inventory).POST(inventoryRequest());const body=await response.json();
@@ -159,6 +180,28 @@ test('commercial missing canonical identity is400 input status, independent of a
  setup(t,{request:async()=>{assert.fail('invalid identity cannot call provider');}});
  const response=await (await api.inventory).POST(inventoryRequest({destination:{name:'Tokyo',country:'Japan'}}));const body=await response.json();
  assert.equal(response.status,400);assert.equal(body.assessment?.retrieval,'blocked');assert.equal(body.assessment?.reason,'identity_required');assert.equal(body.counts,undefined);
+});
+for(const [label,destination,taxonomy] of [
+ ['conflicting coordinates',{...inventoryBody.destination,coordinates:{latitude:-33.8688,longitude:151.2093}},[
+  {destinationId:16,name:'Japan',type:'COUNTRY',lookupId:'16'},
+  {destinationId:334,name:'Tokyo',type:'CITY',parentDestinationId:16,lookupId:'16.334',center:{latitude:35.6895,longitude:139.6917}},
+ ]],
+ ['unsupported destination',{canonicalPlaceId:'neutral-unsupported',name:'Unmapped locality',country:'Japan'},[
+  {destinationId:16,name:'Japan',type:'COUNTRY',lookupId:'16'},
+  {destinationId:334,name:'Tokyo',type:'CITY',parentDestinationId:16,lookupId:'16.334'},
+ ]],
+ ['ambiguous namesake',{canonicalPlaceId:'neutral-springfield',name:'Springfield',country:'United States',placeType:'city'},[
+  {destinationId:77,name:'United States',type:'COUNTRY',lookupId:'77'},
+  {destinationId:930,name:'Springfield',type:'CITY',parentDestinationId:77,lookupId:'77.930'},
+  {destinationId:931,name:'Springfield',type:'CITY',parentDestinationId:77,lookupId:'77.931'},
+ ]],
+] as const)test(`real commercial taxonomy ${label} blocks identity without calling product search`,async t=>{
+ const requests:string[]=[];setup(t,{realTaxonomy:true,request:async(url:any)=>{requests.push(String(url));return Response.json({destinations:taxonomy});}});
+ const response=await (await api.inventory).POST(inventoryRequest({destination,workspace:'itinerary'}));const body=await response.json();
+ assert.equal(response.status,400);assert.equal(body.assessment?.retrieval,'blocked');assert.equal(body.assessment?.reason,'identity_required');
+ assert.equal(body.assessment?.retryable,false);assert.equal(body.counts,undefined);
+ assert.deepEqual(body.assessment?.diagnostics.attemptedSources,['commercial-inventory']);
+ assert.equal(requests.length,1);assert.ok(requests[0].endsWith('/destinations'));
 });
 for(const [label,status,reason,retryable] of [['provider503',503,'provider_error',true],['provider401',401,'auth_required',false],['malformed',200,'malformed_response',true]] as const)
  test(`commercial ${label} remains503 with controlled failure metadata`,async t=>{

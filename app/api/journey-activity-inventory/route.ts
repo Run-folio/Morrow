@@ -73,9 +73,11 @@ export async function POST(request: Request) {
   } catch (error) {
     if (error instanceof Error && error.message === "Unauthorized") return blocked('auth_required',401);
     if(error instanceof SyntaxError)return blocked('invalid_input',400);
-    // Inventory enrichment is optional. Provider categories remain server-side
-    // and the UI receives one calm, provider-neutral unavailable response.
-    return NextResponse.json({activities:[],assessment:providerFailureAssessment(error instanceof ViatorAffiliateError?error.category:'unavailable','commercial-inventory',performance.now()-started)},
-      {status:503,headers:{'cache-control':'no-store'}});
+    const assessment=providerFailureAssessment(error instanceof ViatorAffiliateError?error.category:'unavailable','commercial-inventory',performance.now()-started);
+    if(error instanceof ViatorAffiliateError&&error.lookupAttempted===false)assessment.diagnostics!.attemptedSources=[];
+    // A completed taxonomy lookup can require identity confirmation without
+    // establishing stock or indicating missing provider configuration.
+    return NextResponse.json({activities:[],assessment},
+      {status:assessment.retrieval==='blocked'?400:503,headers:{'cache-control':'no-store'}});
   }
 }

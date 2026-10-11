@@ -283,7 +283,7 @@ test("taxonomy errors and ambiguous destinations are not cached as provider trut
   });
   const springfield = { canonicalPlaceId: "springfield", name: "Springfield", country: "United States", placeType: "city" };
   await assert.rejects(client.searchActivities({ destination: springfield }), (error: unknown) => error instanceof ViatorAffiliateError && error.category === "malformed");
-  await assert.rejects(client.searchActivities({ destination: springfield }), (error: unknown) => error instanceof ViatorAffiliateError && error.category === "configuration");
+  await assert.rejects(client.searchActivities({ destination: springfield }), (error: unknown) => error instanceof ViatorAffiliateError && error.category === "identity" && error.lookupAttempted === true);
   assert.equal(requests, 2, "the malformed taxonomy is retried, while ambiguity never triggers product search");
   assert.equal(destinationResolutionCache.size, 0);
 });

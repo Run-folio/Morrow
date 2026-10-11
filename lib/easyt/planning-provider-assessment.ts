@@ -4,13 +4,14 @@ import type {PlanningCacheOutcome,PlanningEvidenceState,PlanningSourceCategory} 
 export function providerFailureAssessment(category: string, source: PlanningSourceCategory,
   elapsedMs: number, cacheOutcome: PlanningCacheOutcome = 'unknown'): PlanningEvidenceState {
   const reason = category === 'configuration' ? 'configuration_unavailable'
+    : category === 'identity' ? 'identity_required'
     : category === 'authentication' ? 'auth_required'
     : category === 'timeout' ? 'timeout'
     : category === 'malformed' ? 'malformed_response'
     : category === 'no_route' ? 'no_route' : 'provider_error';
-  return {retrieval: reason === 'no_route' ? 'completed' : 'unavailable', evidence: 'insufficient', reason,
+  return {retrieval: reason === 'identity_required' ? 'blocked' : reason === 'no_route' ? 'completed' : 'unavailable', evidence: reason === 'identity_required' ? 'unqualified' : 'insufficient', reason,
     retryable: reason === 'timeout' || reason === 'provider_error' || reason === 'malformed_response',
     checkedAt: new Date().toISOString(),
     diagnostics: {attemptedSources: category === 'configuration' ? [] : [source], elapsedMs, cacheOutcome,
-      stage: category === 'configuration' ? 'configuration' : category === 'malformed' ? 'normalization' : 'provider'}};
+      stage: category === 'configuration' ? 'configuration' : category === 'identity' ? 'identity' : category === 'malformed' ? 'normalization' : 'provider'}};
 }
