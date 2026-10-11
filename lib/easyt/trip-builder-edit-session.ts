@@ -13,6 +13,8 @@ import { canonicalTripStopIdentityMap, remapTripStopReferences, tripBuildDocumen
 import { type TripRecoveryHandle, type TripRecoveryRecord,
   type TripRecoveryState, type TripRecoveryWriteResult, type TripBuildSaveAcknowledgement } from './storage.ts';
 import { EasyTTripPersistenceError, tripRecoveryStateForPersistenceError } from './trip-persistence-error.ts';
+import type { TransferAssessment } from './planning-evidence-state.ts';
+import { transferAssessmentForLeg } from './planning-evidence-presentation.ts';
 
 type Unit = TripRouteReconciliation['residual'][number];
 export type BuilderReconciliationRequest = {
@@ -24,6 +26,7 @@ export type BuilderEditSessionSnapshot = {
   saveState: BuilderSessionSaveState; canonicalSaveState: BuilderSessionSaveState;
   projectionState: 'legacy-unverified' | 'pending' | 'current' | 'provisional' | 'failed' | 'conflict';
   pendingUnits: Unit[]; failedUnits: Unit[]; conflictUnits: Unit[];
+  transferAssessments: TransferAssessment[];
   historicalRecovery: boolean; browserOwnerId: string | null;
   recovery: TripRecoveryHandle | null; error: { category: TripRecoveryState | 'storage' | 'protected'; message: string } | null;
 };
@@ -83,6 +86,7 @@ export function createBuilderEditSession(options: BuilderEditSessionOptions) {
   let lastEnqueuedTrip: CanonicalEasyTTrip | undefined;
   let cloudDue = false, cancelCloud: (() => void) | null = null, cancelWork: (() => void) | null = null;
   let work: BuilderReconciliationRequest | null = null, requestSequence = 0;
+  let assessmentFeedback: { inputKey: string; assessments: TransferAssessment[] } | null = null;
   let workAbort: AbortController | null = null;
   const listeners = new Set<() => void>();
   const active = () => !disposed && options.getOwnerId() === ownerId;
@@ -111,7 +115,9 @@ export function createBuilderEditSession(options: BuilderEditSessionOptions) {
       : status === 'current' ? 'current' : status === 'provisional' ? 'provisional' : status === 'pending' ? 'pending' : 'legacy-unverified';
     snapshot = freeze(structuredClone({ trip, draft, inputRevision, acceptedRevision, canonicalSaveState,
       saveState: error ? 'error' : draft.fields.length && canonicalSaveState === 'cloud' ? 'local' : canonicalSaveState,
-      projectionState, pendingUnits, failedUnits, conflictUnits, historicalRecovery, browserOwnerId: ownerId, recovery, error }));
+      projectionState, pendingUnits, failedUnits, conflictUnits,
+      transferAssessments: assessmentFeedback?.inputKey === routeProjectionInputKey(trip) ? assessmentFeedback.assessments : [],
+      historicalRecovery, browserOwnerId: ownerId, recovery, error }));
     listeners.forEach(listener => listener());
   }
   function scheduleCloud() {
@@ -259,6 +265,8 @@ export function createBuilderEditSession(options: BuilderEditSessionOptions) {
     if (!dispatched.length) return;
     const request: BuilderReconciliationRequest = { trip: structuredClone(trip), scope: { ownerId: trip.ownerId, tripId, inputRevision },
       inputKey: routeProjectionInputKey(trip), requestId: `${tripId}:${inputRevision}:${++requestSequence}:${options.now()}`, dispatched };
+    if (assessmentFeedback?.inputKey === request.inputKey) assessmentFeedback = { inputKey: request.inputKey, assessments: assessmentFeedback.assessments.filter(item => !dispatched.some(unit => unit.kind === 'leg' && unit.targetId === item.legId)) };
+    else assessmentFeedback = null;
     work = request;
     const controller = new AbortController(); workAbort = controller;
     let continued = false;
@@ -267,9 +275,13 @@ export function createBuilderEditSession(options: BuilderEditSessionOptions) {
       if (!active() || work !== request || inputRevision !== request.scope.inputRevision) return;
       const merged = mergeBuilderProjectionResponse(trip, response, request);
       if (!merged.ok) return;
+      const assessments = request.dispatched.filter(unit => unit.kind === 'leg' && response.legs.some(leg => leg.id === unit.targetId))
+        .flatMap(unit => { const state = transferAssessmentForLeg(response.assessments, unit.targetId); return state ? [{ legId: unit.targetId, state }] : []; });
       const before = structuredClone(trip);
       if (exact(before, merged.trip)) return;
       if (!storeCanonical(merged.trip, before)) return;
+      const retained = assessmentFeedback?.inputKey === request.inputKey ? assessmentFeedback.assessments.filter(item => !request.dispatched.some(unit => unit.kind === 'leg' && unit.targetId === item.legId)) : [];
+      assessmentFeedback = { inputKey: request.inputKey, assessments: [...retained, ...assessments] };
       continued = true;
       draft = rebindBuilderInputDraft(draft, trip, ownerId);
       if (writeDraft()) scheduleCloud();
@@ -300,6 +312,7 @@ export function createBuilderEditSession(options: BuilderEditSessionOptions) {
     const candidate = source === trip ? prepared.trip : requireReadableTripDocument(remapTripStopReferences({...prepared.trip,ownerId},inverseIds!,prepared.trip));
     const before = structuredClone(trip);
     if (!storeCanonical(candidate, before)) return { ok: false as const, reason: 'storage' as const };
+    assessmentFeedback = null; // An accepted edit starts a new request scope; feedback is never a saved fact.
     // A caller can consume only the exact raw field it deliberately accepted. Unrelated bytes remain independent.
     for (const input of acceptedInputs ?? []) {
       draft = consumeBuilderInputDraft(draft, input.binding, draft.inputRevision, input.raw);

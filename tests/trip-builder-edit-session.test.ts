@@ -244,6 +244,36 @@ test('owner_rotation_discards_old_feedback_and_projection_response', async () =>
   assert.deepEqual(h.session.getSnapshot().trip, before.trip); assert.ok(h.recovery());
   assert.equal(await h.session.flush(), false); h.session.dispose();
 });
+test('typed transfer assessments stay request-local and follow the existing owner/input/request gates', async () => {
+  const h = await harness(); accept(h, origin); await h.run(0);
+  const first = h.projections[0]!;
+  const assessment = { legId: first.request.trip.legs[0]!.id, state: { retrieval: 'unavailable', evidence: 'insufficient', reason: 'timeout', retryable: true } } as const;
+  first.result.resolve({ ...response(first.request), assessments: [assessment] }); await tick();
+  assert.deepEqual(h.session.getSnapshot().transferAssessments, [assessment]);
+  assert.equal(JSON.stringify(h.recovery()?.trip).includes('assessments'), false);
+  assert.equal(JSON.stringify(h.session.getSnapshot().trip).includes('timeout'), false);
+  accept(h, { kind: 'nights', intentId: 'intent:tokyo', stopId: 'tokyo', nights: 4 }); await h.run(0);
+  const next = h.projections.at(-1)!;
+  assert.deepEqual(h.session.getSnapshot().transferAssessments, [], 'changed route inputs invalidate old assessment feedback');
+  h.rotate('other-owner');
+  next.result.resolve({ ...response(next.request), assessments: [assessment] }); await tick();
+  assert.deepEqual(h.session.getSnapshot().transferAssessments, [], 'an expired owner cannot install assessment feedback');
+  h.session.dispose();
+});
+test('a legacy retry response cannot inherit an earlier typed provider diagnosis', async () => {
+  const h = await harness(); accept(h, origin); await h.run(0);
+  try {
+    const first = h.projections[0]!;
+    const legId = first.request.trip.legs[0]!.id;
+    first.result.resolve({ ...response(first.request), assessments: [{ legId, state: { retrieval: 'unavailable', evidence: 'insufficient', reason: 'timeout', retryable: true } }] }); await tick();
+    const unit = h.session.getSnapshot().failedUnits.find(unit => unit.kind === 'leg' && unit.targetId === legId)!;
+    assert.equal(h.session.retryNecessaryUnit(unit), true); await h.run(0);
+    const retry = h.projections.at(-1)!;
+    retry.result.resolve(response(retry.request)); await tick();
+    assert.deepEqual(h.session.getSnapshot().transferAssessments, [], 'no provider subtype is inferred when the new response omits it');
+    assert.ok(h.session.getSnapshot().failedUnits.some(unit => unit.kind === 'leg' && unit.targetId === legId));
+  } finally { h.session.dispose(); }
+});
 test('failed_storage_keeps_draft_and_last_valid_trip', async () => {
   const h = await harness(); h.session.updateDraft({ binding: { kind: 'origin' }, raw: 'Par' });
   const before = h.session.getSnapshot().trip; h.storage.failRecovery = true;

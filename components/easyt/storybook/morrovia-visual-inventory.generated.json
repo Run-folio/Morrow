@@ -5264,7 +5264,7 @@
       },
       {
         "value": "12px",
-        "count": 513,
+        "count": 515,
         "examples": [
           "app/journey/about/about.module.css",
           "app/journey/account.module.css",
@@ -5304,7 +5304,7 @@
       },
       {
         "value": "16px",
-        "count": 288,
+        "count": 290,
         "examples": [
           "app/journey/about/about.module.css",
           "app/journey/account.module.css",
@@ -5324,7 +5324,7 @@
       },
       {
         "value": "4px",
-        "count": 257,
+        "count": 258,
         "examples": [
           "app/journey/about/about.module.css",
           "app/journey/account.module.css",
@@ -7820,6 +7820,13 @@
         ]
       },
       {
+        "value": "min-width: 1100px",
+        "count": 2,
+        "examples": [
+          "components/easyt/trip-itinerary-workspace.module.css"
+        ]
+      },
+      {
         "value": "min-width: 761px",
         "count": 2,
         "examples": [
@@ -7874,13 +7881,6 @@
         "count": 1,
         "examples": [
           "components/easyt/morrovia-loading-states.stories.module.css"
-        ]
-      },
-      {
-        "value": "min-width: 1100px",
-        "count": 1,
-        "examples": [
-          "components/easyt/trip-itinerary-workspace.module.css"
         ]
       },
       {

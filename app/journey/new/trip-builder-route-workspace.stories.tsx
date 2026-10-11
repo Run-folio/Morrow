@@ -4,6 +4,11 @@ import { tourTripFixture } from "@/components/easyt/storybook/tour-trip.fixture"
 import type { EasyTTrip } from "@/lib/easyt/trip";
 import { TripBuilderRouteWorkspace } from "./trip-builder-route-workspace";
 import styles from "./trip-builder.module.css";
+import { EasyTButton } from "@/components/easyt/easyt-controls";
+import { adaptedDiscoveryPlaces } from "@/lib/easyt/discovery-evidence-adapter";
+import { MorroviaSaveStatus } from "@/components/easyt/morrovia-feedback";
+import { transportAssessmentSummary } from "@/lib/easyt/itinerary-transport-agenda";
+import type { PlanningEvidenceState } from '@/lib/easyt/planning-evidence-state';
 
 function AllocationStory({ initialNights, language, totalNights = 7, singleStop = false }: { initialNights: number[]; language: "en" | "es"; totalNights?: number; singleStop?: boolean }) {
   const [trip, setTrip] = useState<EasyTTrip>(() => ({
@@ -42,3 +47,30 @@ export const SingleStopFullyAllocated: Story = { args: { initialNights: [7], sin
 export const UnaNocheSobra: Story = { args: { initialNights: [4, 2, 2], language: "es" } };
 
 export const MobileLargeNightValues: Story = { args: { initialNights: [78, 3, 3], totalNights: 84 }, globals: { viewport: { value: "morrovia390", isRotated: false } } };
+
+function TransportAssessmentStory({ phase }: { phase: "unknown" | "pending" | "failed" | "supported" | 'blocked' | 'timeout' | 'no-route' | 'not-attempted' }) {
+  const stops = ["tokyo", "kyoto", "hiroshima"].map((id, index) => {
+    const place = adaptedDiscoveryPlaces().find(place => place.id === id)!;
+    return { ...tourTripFixture.stops[index]!, id, order: index, canonicalPlaceId: id, name: place.name, country: place.country, longitude: place.coordinates[0], latitude: place.coordinates[1], geographicBinding: undefined, providerId: undefined };
+  });
+  const legs = stops.slice(1).map((stop, index) => ({ ...tourTripFixture.legs[index]!, id: `assessment-${index}`, fromStopId: stops[index]!.id, toStopId: stop.id, fromEndpoint: undefined, toEndpoint: undefined, mode: phase === "supported" ? "train" as const : "unknown" as const, provenance: phase === "supported" ? "canonical_schedule" as const : "unknown" as const, durationMinutes: phase === "supported" ? 120 : null, doorToDoorMinutes: null, routeMetadata: {} }));
+  const trip: EasyTTrip = { ...tourTripFixture, stops, legs, brief: { ...tourTripFixture.brief, cascadeStatus: { conflicts: [], affectedBookingIds: [], affectedPlanItemCount: 0, routeReconciliation: { version: 1, inputKey: "fixture", residual: phase === "pending" || phase === "failed" ? legs.map(leg => ({ kind: "leg", targetId: leg.id, basisKey: "fixture", phase, reason: "unavailable" })) : [] } } } };
+  const state: PlanningEvidenceState | undefined = phase === 'blocked' ? { retrieval: 'unavailable', evidence: 'insufficient', reason: 'configuration_unavailable', retryable: false }
+    : phase === 'timeout' ? { retrieval: 'unavailable', evidence: 'insufficient', reason: 'timeout', retryable: true }
+    : phase === 'no-route' ? { retrieval: 'completed', evidence: 'insufficient', reason: 'no_route', retryable: false }
+    : phase === 'not-attempted' ? { retrieval: 'not-attempted', evidence: 'insufficient', retryable: false } : undefined;
+  const assessments = state ? legs.map(leg => ({ legId: leg.id, state })) : undefined;
+  return <TripBuilderRouteWorkspace canonicalTrip={trip} transferAssessments={assessments} previewStopIds={null} selectedStopId={null} lockedStopIds={[]} fixedOrder={false} routeCheckProposalStopIds={null}
+    nightStatus={{ total: 7, allocated: 7, complete: true, language: "en" }}
+    reviewControl={<MorroviaSaveStatus {...transportAssessmentSummary(trip, "en", assessments)} />}
+    legReview={phase === "failed" || state?.retryable ? () => <span role="status">Could not check this connection. <EasyTButton size="small" variant="quiet">Try again</EasyTButton></span> : undefined}
+    onSelectStop={() => {}} onPreviewOrder={() => {}} onCommitOrder={() => false} onEditNights={() => {}} onRemoveStop={() => {}} onTransportChoiceChange={() => {}} />;
+}
+export const TransportSettledUnknown: Story = { render: () => <TransportAssessmentStory phase="unknown" /> };
+export const TransportPending: Story = { render: () => <TransportAssessmentStory phase="pending" /> };
+export const TransportFailed: Story = { render: () => <TransportAssessmentStory phase="failed" /> };
+export const TransportSupported: Story = { render: () => <TransportAssessmentStory phase="supported" /> };
+export const TransportBlocked: Story = { render: () => <TransportAssessmentStory phase="blocked" /> };
+export const TransportTimeout: Story = { render: () => <TransportAssessmentStory phase="timeout" /> };
+export const TransportNoRoute: Story = { render: () => <TransportAssessmentStory phase="no-route" /> };
+export const TransportNotAttempted: Story = { render: () => <TransportAssessmentStory phase="not-attempted" /> };

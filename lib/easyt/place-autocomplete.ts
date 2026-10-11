@@ -43,16 +43,9 @@ export function placeSuggestionLocationDetail(item:SuggestionLocation, suggestio
   if(sameLabel.filter(other=>(other.administrativeHierarchy?.filter(Boolean)??(other.region?[other.region]:[])).slice(0,depth).join('|')===key).length===1)
    return [...hierarchy.slice(0,depth).reverse(),item.country].filter(Boolean).join(' · ');
  }
- // Source names may still collide within an administrative hierarchy. Preserve
- // distinct identities and offer the existing map link instead of inventing one.
- const entry=item.canonicalPlaceId?findCatalogPlaceById(item.canonicalPlaceId):undefined;
- const publishedSource=entry&&entry.canonicalName===item.name&&entry.placeType===item.placeType
-  &&entry.parentCountries.length===1&&entry.parentCountries[0]===item.country
-  &&entry.coordinates?.length===2&&item.coordinates?.length===2
-  &&entry.coordinates.every((coordinate,index)=>coordinate===item.coordinates![index])
-  ? entry.provenance.label : undefined;
- return [...hierarchy.slice().reverse(),item.country,sameLabel.length>1?publishedSource:undefined,
-  sameLabel.length>1 ? 'Location to confirm' : undefined].filter(Boolean).join(' · ');
+ // Keep distinct identities and the existing map link when verified geography
+ // cannot disambiguate further. Source attribution belongs to the credit owner.
+ return [...hierarchy.slice().reverse(),item.country].filter(Boolean).join(' · ');
 }
 
 export function placeSuggestionMapUrl(item:SuggestionLocation, suggestions:readonly SuggestionLocation[]) {

@@ -1,5 +1,8 @@
 "use client";
 
+import { transportAssessmentState } from "@/lib/easyt/itinerary-transport-agenda";
+import { transferAssessmentForLeg, transportEvidenceMessage } from '@/lib/easyt/planning-evidence-presentation';
+
 import { AlertTriangle, CheckCircle2, ChevronDown, ChevronUp, GripVertical, Map as MapIcon, MoreHorizontal, Route } from "lucide-react";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import TripTransportChoiceControl from "@/components/easyt/trip-transport-choice-control";
@@ -22,6 +25,7 @@ export type BuilderOrderSource = "drag" | "move-menu" | "route-check";
 
 export type TripBuilderRouteWorkspaceProps = {
   canonicalTrip: EasyTTrip;
+  transferAssessments?: readonly import('@/lib/easyt/planning-evidence-state').TransferAssessment[];
   previewStopIds: readonly string[] | null;
   selectedStopId: string | null;
   lockedStopIds: readonly string[];
@@ -64,6 +68,7 @@ function usableTime(nights: number, transferMinutes: number | null) {
 
 export function TripBuilderRouteWorkspace({
   canonicalTrip,
+  transferAssessments,
   previewStopIds,
   selectedStopId,
   lockedStopIds,
@@ -145,6 +150,8 @@ export function TripBuilderRouteWorkspace({
           {presentedTrip.stops.map((stop, index) => {
             const recommendedLeg = routingTrip.legs.find((candidate) => candidate.toStopId === stop.id) ?? null;
             const leg = recommendedLeg ? effectiveTripLeg(routingTrip, recommendedLeg) : null;
+            const evidence = leg && !preview?.ok ? transferAssessmentForLeg(transferAssessments, leg.id) : undefined;
+            const assessment = leg ? transportAssessmentState(canonicalTrip, leg, evidence) : null;
             const transferMinutes = leg?.doorToDoorMinutes ?? leg?.durationMinutes ?? null;
             const usableDays = usableTime(stop.nights ?? 0, transferMinutes);
             const isLocked = fixedOrder || locked.has(stop.id);
@@ -172,7 +179,8 @@ export function TripBuilderRouteWorkspace({
               <div className={styles.builderRouteIdentity} role="cell"><b>{index + 1}</b><span><strong>{stop.name}</strong><small>{stop.country}</small>{stopReview?.(stop.id)}</span></div>
               <div className={styles.builderRouteTransfer} role="cell">
                 <Route aria-hidden="true" />
-                <span><strong>{leg ? `${leg.fromEndpoint?.name ? `From ${leg.fromEndpoint.name} · ` : ""}${transferJourneyModeLabel(leg)}` : index === 0 ? "Starts here" : "Transfer to confirm"}</strong><small>{leg ? formatMapDuration(transferMinutes) : "No arrival transfer"}</small>
+                <span><strong>{leg ? `${leg.fromEndpoint?.name ? `From ${leg.fromEndpoint.name} · ` : ""}${assessment === "pending" ? "Checking transport options…" : assessment === "failed" || assessment === 'blocked' ? "Transport check unavailable" : transferJourneyModeLabel(leg)}` : index === 0 ? "Starts here" : "Transfer to confirm"}</strong><small>{assessment === "pending" ? "This connection is being assessed." : evidence && (assessment === 'failed' || assessment === 'blocked') ? transportEvidenceMessage(evidence, 'en') : assessment === "failed" ? "Try checking this connection again." : leg ? formatMapDuration(transferMinutes) : "No arrival transfer"}</small>
+                  {assessment === "unknown" ? <small>Transport needs checking.</small> : null}
                   {leg?.mode === "unknown" && leg.roadEstimate ? <small>{formatRoadEstimateReference(leg.roadEstimate)}</small> : null}
                   {recommendedLeg && !preview?.ok ? <span onClick={(event) => event.stopPropagation()}>
                     <TripTransportChoiceControl

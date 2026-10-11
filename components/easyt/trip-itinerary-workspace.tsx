@@ -105,6 +105,9 @@ import { MorroviaPartnerPromotion } from "@/components/easyt/partner-promotion";
 import TripExplicitPlans from "@/components/easyt/trip-explicit-plans";
 import { removeExplicitVisitIntent, removeFixedCommitment, scheduleExplicitVisitIntent } from "@/lib/easyt/trip-explicit-plans";
 import type { ActivityInventoryItem } from "@/lib/easyt/activity-inventory";
+import type { PlanningEvidenceState, PlanningResultCounts } from '@/lib/easyt/planning-evidence-state';
+import { planningEvidenceFromResponse, planningLaneMessage } from '@/lib/easyt/planning-evidence-presentation';
+import { tripSyncSignInPath } from '@/lib/easyt/trip-continuity';
 import { dedupeExploreResults, exploreResultForActivity, exploreResultForIdea, exploreResultForLocalPlace, exploreResultForPlace, type ExploreLocalPlace, type ExploreResult } from "@/lib/easyt/explore";
 import { discoveryCategoryMatches } from "@/lib/easyt/discovery-taxonomy";
 import { rankItineraryRecommendations } from "@/lib/easyt/itinerary-recommendations";
@@ -564,7 +567,7 @@ export default function TripItineraryWorkspace({
   }, []);
   useEffect(() => {
     const observer = new MutationObserver(() => {
-      setCalendarChildModal(Boolean(calendarSurfaceRef.current?.querySelector('dialog[open]')));
+      setCalendarChildModal(Boolean(calendarSurfaceRef.current?.querySelector('dialog:modal')));
     });
     if (calendarSurfaceRef.current) observer.observe(calendarSurfaceRef.current, { subtree: true, attributes: true, attributeFilter: ["open"] });
     return () => observer.disconnect();
@@ -606,17 +609,31 @@ export default function TripItineraryWorkspace({
     if (calendarCompact && calendarModalActive && !calendarSheetRequested) setCalendarSheetRequested(true);
   }, [calendarCompact, calendarModalActive, calendarSheetRequested]);
   useEffect(() => {
-    if (!calendarModalActive) return;
+    if (!calendarModalActive && !(workspaceView === "calendar" && (selectedItemId || selectedRecommendation))) return;
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     return () => { document.body.style.overflow = previousOverflow; };
-  }, [calendarModalActive]);
+  }, [calendarModalActive, workspaceView, selectedItemId, selectedRecommendation]);
   const [moveError, setMoveError] = useState("");
   const moveOriginRef = useRef<HTMLElement | null>(null);
   const [railNoteDraft, setRailNoteDraft] = useState("");
   const [railNoteError, setRailNoteError] = useState("");
   const noteInputRef = useRef<HTMLInputElement>(null);
   const selectedItemOriginRef = useRef<HTMLButtonElement | null>(null);
+  const detailScrollRef = useRef<{ page: number; surface: HTMLElement | null; top: number } | null>(null);
+  const detailPointerScrollRef = useRef<{ page: number; surface: HTMLElement | null; top: number; origin: HTMLButtonElement; at: number } | null>(null);
+  const detailWasOpenRef = useRef(false);
+  useLayoutEffect(() => {
+    const open = workspaceView === "calendar" && Boolean(selectedItemId || selectedRecommendation);
+    if (open && !detailWasOpenRef.current) {
+      const surface = calendarSurfaceRef.current?.closest<HTMLElement>("dialog") ?? null;
+      const pointer = detailPointerScrollRef.current;
+      detailScrollRef.current = pointer && pointer.origin === selectedItemOriginRef.current && performance.now() - pointer.at < 1000
+        ? pointer : { page: window.scrollY, surface, top: surface?.scrollTop ?? 0 };
+      detailPointerScrollRef.current = null;
+    }
+    detailWasOpenRef.current = open;
+  }, [workspaceView, selectedItemId, selectedRecommendation]);
   const calendarItemRequestRef = useRef<string | null>(null);
   const selectedDayRequestRef = useRef({ tripId: workingTrip.id, dayNumber: selectedDayNumber });
   const tabIdPrefix = useId().replaceAll(":", "");
@@ -642,9 +659,17 @@ export default function TripItineraryWorkspace({
   const closeSelectedDetail = useCallback(() => {
     setSelectedItemId(null);
     setSelectedRecommendation(null);
-    const origin = selectedItemOriginRef.current;
+    const origin = selectedItemOriginRef.current ?? calendarSurfaceRef.current?.querySelector<HTMLElement>("[data-calendar-day-id]");
     selectedItemOriginRef.current = null;
-    window.requestAnimationFrame(() => origin?.focus());
+    window.requestAnimationFrame(() => {
+      origin?.focus({ preventScroll: true });
+      const previous = detailScrollRef.current;
+      if (previous) {
+        previous.surface?.scrollTo({ top: previous.top, behavior: "instant" });
+        window.scrollTo({ top: previous.page, behavior: "instant" });
+        detailScrollRef.current = null;
+      }
+    });
   }, []);
 
   useEffect(() => {
@@ -1354,7 +1379,7 @@ export default function TripItineraryWorkspace({
     const rect = selectedDay.getBoundingClientRect();
     const offset = parseFloat(getComputedStyle(selectedDay).scrollMarginTop) || 74;
     if (rect.top < offset) window.scrollBy({ top: rect.top - offset, behavior: "instant" });
-    else if (rect.bottom > window.innerHeight) window.scrollBy({ top: rect.bottom - window.innerHeight, behavior: "instant" });
+    else if (rect.bottom > window.innerHeight - 8) window.scrollBy({ top: Math.ceil(rect.bottom - window.innerHeight + 8), behavior: "instant" });
   };
   const closeCalendarSheet = () => { setCalendarSheetRequested(false); setSelectedItemId(null); setSelectedRecommendation(null); };
   const focusCalendarDayDetails = (dayId: string) => {
@@ -1369,10 +1394,16 @@ export default function TripItineraryWorkspace({
     });
   };
 
-  useEffect(() => {
-    if (!calendarModalActive || !(selectedItemId || selectedRecommendation)) return;
-    calendarSurfaceRef.current?.querySelector<HTMLButtonElement>("[data-calendar-item-back]")?.focus({ preventScroll: true });
-  }, [calendarModalActive, selectedItemId, selectedRecommendation]);
+  const openCalendarIdeas = () => {
+    calendarReturnScrollRef.current = window.scrollY;
+    if (window.matchMedia("(max-width: 1099px)").matches) setCalendarSheetRequested(true);
+    window.requestAnimationFrame(() => {
+      const ideas = document.getElementById(`${tabIdPrefix}-ideas`);
+      if (ideas instanceof HTMLDetailsElement) ideas.open = true;
+      ideas?.scrollIntoView({ block: "start" });
+      ideas?.querySelector("summary")?.focus({ preventScroll: true });
+    });
+  };
 
   const activityIdeas = (
         <details ref={itinerarySuggestionsOrientationTarget} id={`${tabIdPrefix}-ideas`} className={`${styles.contextSection} ${styles.ideasSection}`} open>
@@ -1443,6 +1474,7 @@ export default function TripItineraryWorkspace({
           <EasyTButton icon={ChevronRight} iconOnly size="small" variant="secondary" disabled={workspaceView === "calendar" ? currentWeekIndex === calendarWeeks.length - 1 : index === days.length - 1} onClick={() => navigatePeriod(1)}>{workspaceView === "calendar" ? copy.nextWeek : copy.nextDay}</EasyTButton>
         </div>
         <ItinerarySubviewSwitch value={workspaceView} onChange={setWorkspaceView} copy={copy} />
+        {workspaceView === "calendar" ? <EasyTButton className={styles.calendarIdeasButton} icon={Lightbulb} size="small" variant="secondary" onClick={openCalendarIdeas}>{language === "es" ? `Ideas para el día ${active.dayNumber}` : `Ideas for Day ${active.dayNumber}`}</EasyTButton> : null}
       </header>
       <div className={styles.destinationTrack}>
         <JourneyRouteStopTrack
@@ -1526,17 +1558,22 @@ export default function TripItineraryWorkspace({
         onClose={() => { if (selectedItemId || selectedRecommendation) closeSelectedDetail(); else closeCalendarSheet(); }}
         onReturnFocus={returnToCalendar}
       >
-      <div ref={calendarSurfaceRef} className={styles.calendarSheetContent}>
+      <div ref={calendarSurfaceRef} className={styles.calendarSheetContent} onPointerDownCapture={(event) => {
+        if (workspaceView !== "calendar" || selectedItemId || selectedRecommendation) return;
+        const origin = event.target instanceof Element ? event.target.closest("button") : null;
+        if (!origin) return;
+        const surface = calendarSurfaceRef.current?.closest<HTMLElement>("dialog") ?? null;
+        // Capture before native button focus can scroll the sidebar or page.
+        detailPointerScrollRef.current = { origin, page: window.scrollY, surface, top: surface?.scrollTop ?? 0, at: performance.now() };
+      }}>
       <header className={styles.calendarSheetHeader}>
         <h2 data-calendar-sheet-heading tabIndex={-1}>{copy.day} {active.dayNumber} · {displayDayDate(active.date, language)} · {stop?.name ?? active.title}</h2>
         <div className={styles.calendarSheetActions}>
-        {calendarModalActive && (selectedDetail || selectedTransportAgenda || selectedBooking) ? <EasyTButton data-calendar-item-back size="small" variant="secondary" onClick={closeSelectedDetail}>Back to day</EasyTButton> : null}
         <EasyTButton icon={X} variant="quiet" aria-label="Close day details" onClick={closeCalendarSheet}>Close</EasyTButton>
         </div>
       </header>
       <div
         className={styles.dayPanel}
-        hidden={calendarModalActive && Boolean(selectedDetail || selectedTransportAgenda || selectedBooking)}
         role={workspaceView === "days" ? "tabpanel" : "region"}
         id={`${tabIdPrefix}-days-panel`}
         tabIndex={workspaceView === "calendar" ? -1 : undefined}
@@ -1702,23 +1739,35 @@ export default function TripItineraryWorkspace({
         {presentation === "shell" && workspaceView === "days" ? <ContextualFeedbackSlot workspace="itinerary" entryKey={`itinerary:${active.id}:days`} hasContent={Boolean(dayComposition && (itineraryDayParts.some((part) => dayComposition.planned[part].length > 0) || dayComposition.unslotted.length > 0))} blocked={Boolean(addFlow || editingActivity || removeTarget || moveFlow || plannerDrag || draggedActivity || openMenuId || openSavedPickerId || selectedItemId || selectedRecommendation || plannerError || mutation.saveState === "saving" || mutation.saveState === "error")} /> : null}
       </div>
 
-      {workspaceView === "calendar" ? <div className={styles.calendarIdeas} hidden={calendarModalActive && Boolean(selectedDetail || selectedTransportAgenda || selectedBooking)}>{activityIdeas}</div> : null}
-
-      <aside className={`${styles.contextRail} ${selectedDetail || selectedTransportAgenda || selectedBooking ? styles.contextRailDetail : ""}`} aria-label={selectedDetail || selectedTransportAgenda || selectedBooking ? "Selected itinerary item details" : "Selected day planning context"}>
+      <aside className={`${styles.contextRail} ${workspaceView === "days" && (selectedDetail || selectedTransportAgenda || selectedBooking) ? styles.contextRailDetail : ""}`} aria-label={selectedDetail || selectedTransportAgenda || selectedBooking ? "Selected itinerary item details" : "Selected day planning context"}>
+        <MorroviaContentDialog
+          className={styles.calendarItemDialog}
+          ariaLabel={language === "es" ? "Detalles del elemento del calendario" : "Calendar item details"}
+          autoFocusSelector="[data-calendar-item-back]"
+          open={workspaceView === "calendar" && Boolean(selectedDetail || selectedTransportAgenda || selectedBooking)}
+          inline={workspaceView !== "calendar"}
+          onClose={closeSelectedDetail}
+          onReturnFocus={() => selectedItemOriginRef.current?.focus({ preventScroll: true })}
+        >
+        {workspaceView === "calendar" ? <header className={styles.calendarItemHeader}>
+          <EasyTButton data-calendar-item-back size="small" variant="secondary" icon={ChevronLeft} onClick={closeSelectedDetail}>{language === "es" ? "Volver al día" : "Back to day"}</EasyTButton>
+          <EasyTButton size="small" variant="quiet" icon={X} onClick={closeSelectedDetail}>{language === "es" ? "Cerrar" : "Close"}</EasyTButton>
+        </header> : null}
+        <div className={styles.calendarItemBody}>
         {selectedTransportAgenda ? <ItineraryLogisticsDetail
-          embedded={calendarModalActive}
+          embedded={workspaceView === "calendar"}
           trip={workingTrip}
           agenda={selectedTransportAgenda}
           language={language}
           onClose={closeSelectedDetail}
         /> : selectedBooking ? <ItineraryLogisticsDetail
-          embedded={calendarModalActive}
+          embedded={workspaceView === "calendar"}
           trip={workingTrip}
           booking={selectedBooking}
           language={language}
           onClose={closeSelectedDetail}
         /> : selectedDetail ? <ItineraryItemDetail
-          embedded={calendarModalActive}
+          embedded={workspaceView === "calendar"}
           detail={selectedDetail}
           mapHref={selectedRecommendation ? selectedRecommendationMapHref : selectedItemMapHref}
           pending={selectedRecommendation ? mutation.isPending(`itinerary-suggestion-${selectedRecommendation.stopId}-${selectedRecommendation.idea.placeId}`) : selectedActivity ? mutation.isPending(`itinerary-activity-day-part-${selectedActivity.id}`) : stayBooking ? mutation.isPending(`itinerary-stay-${stop?.id}`) : false}
@@ -1773,7 +1822,10 @@ export default function TripItineraryWorkspace({
             if (changed) { closeSelectedDetail(); setNotice("Stay removed"); }
           } : undefined}
         /> : null}
-        <div className={styles.contextRailBody} hidden={Boolean(selectedDetail || selectedTransportAgenda || selectedBooking)}>
+        </div>
+        </MorroviaContentDialog>
+        <div className={styles.contextRailBody} hidden={workspaceView === "days" && Boolean(selectedDetail || selectedTransportAgenda || selectedBooking)}>
+        {workspaceView === "calendar" ? activityIdeas : null}
         <div className={styles.contextSection}><EasyTButton icon={CirclePlus} variant="secondary" size="small" fullWidth onClick={() => openAddFlow(0, "activity", "morning")}>{language === "es" ? "Añadir actividad" : "Add activity"}</EasyTButton></div>
         {embeddedMapContext && (embeddedMapContext.stops.length || embeddedMapContext.pins.length) ? <MorroviaMapPreview title={copy.dayMap} href={mapPlanHref} language={language}>
             {!selectedDetail ? <DeferredJourneyPlannerMap
@@ -2206,7 +2258,13 @@ function ItineraryDaySuggestions({ trip, day, stop, copy, language, initialPlace
   const [organicStatus, setOrganicStatus] = useState<"idle" | "loading" | "ready" | "error">(initialPlaces ? "ready" : "idle");
   const [inventory, setInventory] = useState<ActivityInventoryItem[]>(initialActivityInventory ?? []);
   const [commercialStatus, setCommercialStatus] = useState<"idle" | "loading" | "ready" | "error">(initialActivityInventory ? "ready" : "idle");
+  const [organicAssessment, setOrganicAssessment] = useState<PlanningEvidenceState>();
+  const [commercialAssessment, setCommercialAssessment] = useState<PlanningEvidenceState>();
+  const [organicCounts, setOrganicCounts] = useState<PlanningResultCounts>();
+  const [commercialCounts, setCommercialCounts] = useState<PlanningResultCounts>();
   const [retryVersion, setRetryVersion] = useState(0);
+  const organicScopeRef = useRef("");
+  const commercialScopeRef = useRef("");
   const [error, setError] = useState("");
   const [openPickerId, setOpenPickerId] = useState<string | null>(null);
   const [localPlaces, setLocalPlaces] = useState<ExploreLocalPlace[]>([]);
@@ -2276,7 +2334,12 @@ function ItineraryDaySuggestions({ trip, day, stop, copy, language, initialPlace
     }
     const scope = createAbortableEffectScope(`Itinerary suggestions for day ${day.dayNumber}`);
     const startedAt = performance.now();
-    setPlaces([]);
+    const scopeKey = JSON.stringify([stop.id, stop.canonicalPlaceId, stop.providerId, stop.name, stop.country, stop.latitude, stop.longitude]);
+    if (organicScopeRef.current === scopeKey && organicStatus === 'error' && organicAssessment?.retryable === false) return;
+    if (organicScopeRef.current !== scopeKey) setPlaces([]);
+    organicScopeRef.current = scopeKey;
+    setOrganicAssessment(undefined);
+    setOrganicCounts(undefined);
     setError("");
     setOrganicStatus("loading");
     void fetch(`/api/journey-discover?${new URLSearchParams({
@@ -2284,15 +2347,25 @@ function ItineraryDaySuggestions({ trip, day, stop, copy, language, initialPlace
       country: stop.country,
       lat: String(stop.latitude),
       lon: String(stop.longitude),
+      ...(stop.canonicalPlaceId ? { canonicalPlaceId: stop.canonicalPlaceId } : {}),
+      ...(stop.providerId ? { providerId: stop.providerId } : {}),
     })}`, { signal: scope.signal })
       .then(async (response) => {
-        if (!response.ok) throw new Error(copy.suggestionsUnavailable);
-        return response.json() as Promise<{ places?: ItineraryDiscoveryPlace[] }>;
+        const payload = await response.json() as { places?: ItineraryDiscoveryPlace[]; unavailable?: boolean; assessment?: PlanningEvidenceState; counts?: PlanningResultCounts };
+        return { payload, ok: response.ok };
       })
-      .then((payload) => {
+      .then(({ payload, ok }) => {
+        const assessment = planningEvidenceFromResponse(payload);
         scope.commit(() => {
+          setOrganicAssessment(assessment);
+          if (!ok || payload.unavailable || assessment?.retrieval === 'unavailable' || assessment?.retrieval === 'blocked') {
+            setOrganicStatus('error');
+            trackEvent('recommendation_performance', { surface: 'itinerary', recommendation_kind: 'activity', lane: 'core', milestone: 'lane_ready', duration_ms: recommendationDurationMs(startedAt, performance.now()), result_count: 0, outcome: 'unavailable' });
+            return;
+          }
           const nextPlaces = payload.places ?? [];
           setPlaces(nextPlaces);
+          setOrganicCounts(payload.counts);
           setOrganicStatus("ready");
           const properties = { surface: "itinerary" as const, recommendation_kind: "activity" as const, lane: "core" as const, duration_ms: recommendationDurationMs(startedAt, performance.now()), result_count: nextPlaces.length, outcome: nextPlaces.length ? "ready" as const : "empty" as const };
           if (nextPlaces.length) trackEvent("recommendation_performance", { ...properties, milestone: "first_useful" });
@@ -2302,13 +2375,12 @@ function ItineraryDaySuggestions({ trip, day, stop, copy, language, initialPlace
       .catch((caught: unknown) => {
         if (scope.isCancellation(caught)) return;
         scope.commit(() => {
-          setPlaces([]);
           setOrganicStatus("error");
           trackEvent("recommendation_performance", { surface: "itinerary", recommendation_kind: "activity", lane: "core", milestone: "lane_ready", duration_ms: recommendationDurationMs(startedAt, performance.now()), result_count: 0, outcome: "unavailable" });
         });
       });
     return () => scope.dispose();
-  }, [copy.suggestionsUnavailable, initialPlaces, retryVersion, stop?.country, stop?.id, stop?.latitude, stop?.longitude, stop?.name]);
+  }, [copy.suggestionsUnavailable, initialPlaces, retryVersion, stop?.country, stop?.canonicalPlaceId, stop?.providerId, stop?.id, stop?.latitude, stop?.longitude, stop?.name]);
 
   useEffect(() => {
     if (initialActivityInventory) {
@@ -2324,12 +2396,19 @@ function ItineraryDaySuggestions({ trip, day, stop, copy, language, initialPlace
     const scope = createAbortableEffectScope(`Itinerary experiences for day ${day.dayNumber}`);
     const startedAt = performance.now();
     const placeMention = trip.brief.structuredBrief?.placeMentions?.find((mention) => mention.canonicalPlaceId === stop.canonicalPlaceId);
+    const scopeKey = JSON.stringify([stop.id, stop.canonicalPlaceId, stop.providerId, stop.name, stop.country, stop.countryCode, stop.region, stop.latitude, stop.longitude, trip.currency, placeMention]);
+    if (commercialScopeRef.current === scopeKey && commercialStatus === 'error' && commercialAssessment?.retryable === false) return;
+    if (commercialScopeRef.current !== scopeKey) setInventory([]);
+    commercialScopeRef.current = scopeKey;
+    setCommercialAssessment(undefined);
+    setCommercialCounts(undefined);
     setCommercialStatus("loading");
     void fetch("/api/journey-activity-inventory", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ destination: {
         canonicalPlaceId: stop.canonicalPlaceId,
+        ...(stop.providerId ? { providerId: stop.providerId } : {}),
         name: stop.name,
         country: stop.country,
         countryCode: stop.countryCode,
@@ -2340,11 +2419,19 @@ function ItineraryDaySuggestions({ trip, day, stop, copy, language, initialPlace
       }, currency: trip.currency }),
       signal: scope.signal,
     }).then(async (response) => {
-      if (!response.ok) throw new Error("Activity inventory unavailable");
-      return response.json() as Promise<{ activities?: ActivityInventoryItem[] }>;
-    }).then((payload) => scope.commit(() => {
+      const payload = await response.json() as { activities?: ActivityInventoryItem[]; assessment?: PlanningEvidenceState; counts?: PlanningResultCounts };
+      return { payload, ok: response.ok };
+    }).then(({ payload, ok }) => scope.commit(() => {
+      const assessment = planningEvidenceFromResponse(payload);
+      setCommercialAssessment(assessment);
+      if (!ok || assessment?.retrieval === 'unavailable' || assessment?.retrieval === 'blocked') {
+        setCommercialStatus('error');
+        trackEvent('recommendation_performance', { surface: 'itinerary', recommendation_kind: 'activity', lane: 'commercial', milestone: 'lane_ready', duration_ms: recommendationDurationMs(startedAt, performance.now()), result_count: 0, outcome: 'unavailable' });
+        return;
+      }
       const items = payload.activities ?? [];
       setInventory(items);
+      setCommercialCounts(payload.counts);
       setCommercialStatus("ready");
       const properties = { surface: "itinerary" as const, recommendation_kind: "activity" as const, lane: "commercial" as const, duration_ms: recommendationDurationMs(startedAt, performance.now()), result_count: items.length, outcome: items.length ? "ready" as const : "empty" as const };
       if (items.length) trackEvent("recommendation_performance", { ...properties, milestone: "first_useful" });
@@ -2352,13 +2439,12 @@ function ItineraryDaySuggestions({ trip, day, stop, copy, language, initialPlace
     })).catch((caught: unknown) => {
       if (scope.isCancellation(caught)) return;
       scope.commit(() => {
-        setInventory([]);
         setCommercialStatus("error");
         trackEvent("recommendation_performance", { surface: "itinerary", recommendation_kind: "activity", lane: "commercial", milestone: "lane_ready", duration_ms: recommendationDurationMs(startedAt, performance.now()), result_count: 0, outcome: "unavailable" });
       });
     });
     return () => scope.dispose();
-  }, [day.dayNumber, initialActivityInventory, retryVersion, stop?.canonicalPlaceId, stop?.country, stop?.countryCode, stop?.id, stop?.latitude, stop?.longitude, stop?.name, stop?.region, trip.brief.structuredBrief?.placeMentions, trip.currency]);
+  }, [day.dayNumber, initialActivityInventory, retryVersion, stop?.canonicalPlaceId, stop?.providerId, stop?.country, stop?.countryCode, stop?.id, stop?.latitude, stop?.longitude, stop?.name, stop?.region, trip.brief.structuredBrief?.placeMentions, trip.currency]);
 
   const results = useMemo(() => {
     if (!stop) return [];
@@ -2391,7 +2477,26 @@ function ItineraryDaySuggestions({ trip, day, stop, copy, language, initialPlace
     if (current) onSelectedDetailRefresh(current);
   }, [onSelectedDetailRefresh, results, selectedResultId]);
   const loading = organicStatus === "loading" || commercialStatus === "loading";
-  const unavailable = !results.length && (organicStatus === "error" || commercialStatus === "error");
+  const unavailable = organicStatus === "error" || commercialStatus === "error";
+  const failedAssessments = [organicStatus === 'error' ? organicAssessment : undefined, commercialStatus === 'error' ? commercialAssessment : undefined].filter((state): state is PlanningEvidenceState => Boolean(state));
+  const canRetry = (organicStatus === 'error' && organicAssessment?.retryable !== false) || (commercialStatus === 'error' && commercialAssessment?.retryable !== false);
+  const needsSignIn = commercialStatus === 'error' && commercialAssessment?.reason === 'auth_required';
+  const filteredAtAdmission = [organicCounts, commercialCounts].some(counts => counts && counts.raw > 0 && counts.returned === 0);
+  const retrySuggestions = () => { onInteractionReset(); setRetryVersion(current => current + 1); };
+  const unavailableStatus = <><MorroviaSectionStatus compact state="error" title={copy.suggestionsUnavailable}
+    detail={[...new Set(failedAssessments.map(state => planningLaneMessage(state, language))), results.length ? language === 'es' ? 'Se conservan las ideas disponibles.' : 'Available ideas are kept.' : language === 'es' ? 'Puedes añadir tu propio plan.' : 'You can still add your own plan.'].join(' ')}
+    retryLabel={language === "es" ? "Volver a buscar sugerencias" : "Try suggestions again"} onRetry={canRetry ? retrySuggestions : undefined} />
+    {needsSignIn ? <EasyTButton variant="secondary" size="small" onClick={() => window.location.assign(tripSyncSignInPath(trip.id))}>{language === 'es' ? 'Iniciar sesión' : 'Sign in'}</EasyTButton> : null}</>;
+  const availableForAdd = stop ? dedupeExploreResults([...results, ...localPlaces.map(place => exploreResultForLocalPlace(stop, place))]).filter(result => ideaStateForPlace(trip, stop.id, result.idea.placeId).state !== "planned") : [];
+  const missingDestination = !stop || !stop.canonicalPlaceId || stop.latitude === null || stop.longitude === null;
+  const emptyAddMessage = missingDestination && !availableForAdd.length
+    ? language === "es" ? "Confirma el destino de este día para buscar ideas. Puedes añadir tu propio plan." : "Confirm this day’s destination to find ideas. You can still add your own plan."
+    : availableForAdd.length && addPart && !availableForAdd.some(result => activityAllowsDayPart(result.idea.providerMetadata?.duration, addPart))
+      ? language === "es" ? `No hay ideas que encajen en ${itineraryDayPartLabels[language][addPart]}. Estas experiencias necesitan más tiempo; añádelas a nivel de día desde Sugerencias o Explore.` : `No ideas fit ${itineraryDayPartLabels[language][addPart]}. These experiences need more time; add them at day level from Suggestions or Explore.`
+      : availableForAdd.length ? language === "es" ? "Ninguna idea coincide con estos filtros. Prueba otra categoría o borra la búsqueda." : "No ideas match these filters. Try another category or clear your search."
+      : results.length ? language === "es" ? "Estas ideas ya están en tu itinerario. Puedes añadir tu propio plan." : "These ideas are already in your itinerary. You can still add your own plan."
+      : places.length || inventory.length || filteredAtAdmission ? language === "es" ? "Las ideas encontradas no coinciden con este día. Prueba Explore o añade tu propio plan." : "The returned ideas do not match this day. Try Explore or add your own plan."
+      : addLabels.empty;
   useEffect(() => {
     if (unavailable) interactionResetRef.current();
   }, [unavailable]);
@@ -2417,7 +2522,9 @@ function ItineraryDaySuggestions({ trip, day, stop, copy, language, initialPlace
       </div>
       <div className={styles.contextualAddResults} aria-live="polite">
         {!addResults.length && (loading || (addCategory === "food" && foodStatus === "loading")) ? <MorroviaSectionStatus compact title={addLabels.finding} detail={addLabels.findingDetail} /> : null}
-        {!addResults.length && !(loading || (addCategory === "food" && foodStatus === "loading")) ? <p>{addCategory === "food" && foodStatus === "error" ? addLabels.foodError : addLabels.empty}</p> : null}
+        {unavailable && !loading ? unavailableStatus : null}
+        {addCategory === "food" && foodStatus === "error" ? <p>{addLabels.foodError}</p> : null}
+        {!addResults.length && !unavailable && (addCategory !== "food" || foodStatus !== "error") && !(loading || (addCategory === "food" && foodStatus === "loading")) ? <p>{emptyAddMessage}</p> : null}
         {addResults.slice(0, addQuery ? 12 : addCategory === "for-you" ? 3 : 6).map((result) => {
           const state = stop ? ideaStateForPlace(trip, stop.id, result.idea.placeId) : null;
           const pending = isPending(result.idea.placeId);
@@ -2458,8 +2565,8 @@ function ItineraryDaySuggestions({ trip, day, stop, copy, language, initialPlace
     </div>
   </MorroviaContentDialog>;
   if (!results.length && loading) return <><div className={styles.suggestionStatus}><MorroviaSectionStatus title={copy.suggestionsLoading} detail={copy.suggestionsLoadingDetail} /></div>{contextualDialog}</>;
-  if (unavailable) return <><div className={styles.suggestionStatus}><MorroviaSectionStatus compact state="error" title={copy.suggestionsUnavailable} detail="Your saved day is unchanged." retryLabel="Try suggestions again" onRetry={() => { onInteractionReset(); setRetryVersion((current) => current + 1); }} /></div>{experienceFallback}{contextualDialog}</>;
-  if (!results.length) return <><p className={styles.suggestionEmpty}>{copy.noNewSuggestions}</p>{experienceFallback}{contextualDialog}</>;
+  if (!results.length && unavailable) return <><div className={styles.suggestionStatus}>{unavailableStatus}</div>{experienceFallback}{contextualDialog}</>;
+  if (!results.length) return <><p className={styles.suggestionEmpty}>{missingDestination ? emptyAddMessage : places.length || inventory.length || filteredAtAdmission ? (language === "es" ? "Las ideas encontradas no coinciden con este día o ya están planificadas." : "The returned ideas do not match this day or are already planned.") : (language === "es" ? "No se encontraron ideas locales para este día." : "No local ideas were found for this day.")}</p>{experienceFallback}{contextualDialog}</>;
   return <><section className={styles.discoveryGroup} aria-label={`Useful ideas for Day ${day.dayNumber}`}>
     <h4>Shortlist for {stop?.name}</h4>
     <div className={styles.discoveryList}>{displayedResults.map((result) => {
@@ -2495,7 +2602,7 @@ function ItineraryDaySuggestions({ trip, day, stop, copy, language, initialPlace
         onDragEnd={onDragEnd}
       />;
     })}</div>
-    {loading ? <p className={styles.suggestionProgress} role="status">More ideas are still loading…</p> : null}
+    {loading ? <p className={styles.suggestionProgress} role="status">{language === "es" ? "Se están buscando más ideas…" : "More ideas are still loading…"}</p> : unavailable ? unavailableStatus : null}
     {error ? <p className={styles.suggestionError} role="alert">{error}</p> : null}
   </section>{experienceFallback}{contextualDialog}</>;
 }

@@ -26,6 +26,8 @@ export type BuilderProjectionResponse = {
     dispatched: Unit[];
     results: Result[];
     legs: TripLeg[];
+    /** Request-local UI feedback; mergeBuilderProjectionResponse never stores it. */
+    assessments?: import('./planning-evidence-state.ts').TransferAssessment[];
     recommendationProjections?: BuilderRecommendationProjection[];
     routeAssessment?: CanonicalEasyTTrip["brief"]["routeAssessment"];
 };

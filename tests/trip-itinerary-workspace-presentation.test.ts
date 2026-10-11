@@ -199,7 +199,8 @@ test("mobile composition keeps the plan before Saved Ideas and secondary discove
   assert.equal((itinerary.match(/<RichItineraryDayPlanner/g) ?? []).length, 1);
   assert.equal((itinerary.match(/<ItineraryDaySuggestions/g) ?? []).length, 1);
   assert.match(itinerary, /workspaceView === "days" \? activityIdeas : null/);
-  assert.match(itinerary, /className=\{styles\.calendarIdeas\}[^>]*>\{activityIdeas\}/);
+  assert.match(itinerary, /<div className=\{styles\.contextRailBody\}[^>]*>\s*\{workspaceView === "calendar" \? activityIdeas : null\}/, 'Calendar ideas belong to the shared sidebar context');
+  assert.doesNotMatch(itinerary, /className=\{styles\.calendarIdeas\}/, 'Calendar ideas are not appended below all weeks');
 
   const singleColumn = styles.slice(styles.indexOf("@media (max-width: 900px)"), styles.indexOf("@media (max-width: 540px)"));
   assert.match(singleColumn, /\.contextRail \{[\s\S]*grid-column: 1;[\s\S]*grid-row: auto;/);
@@ -226,7 +227,7 @@ test("Calendar keeps its items in day cards alongside the shared day context rai
   assert.match(styles, /\.calendarWorkspace \.dayPanel \{[^}]*grid-column: 2/);
   assert.doesNotMatch(itinerary, /hasContextRail/);
   assert.match(itinerary, /<aside className=\{`\$\{styles\.contextRail\}/);
-  assert.match(itinerary, /<div className=\{styles\.contextRailBody\} hidden=\{Boolean\(selectedDetail \|\| selectedTransportAgenda \|\| selectedBooking\)\}/);
+  assert.match(itinerary, /<div className=\{styles\.contextRailBody\} hidden=\{workspaceView === "days" && Boolean\(selectedDetail \|\| selectedTransportAgenda \|\| selectedBooking\)\}/, 'Calendar overlays preserve the underlying sidebar');
   assert.doesNotMatch(itinerary, /workspaceView === "days" \? <div className=\{styles\.contextRailBody\}/);
   assert.match(itinerary, /stayWorkspaceHref\(tripId, composition\.tonight\.stopId\)/);
   assert.doesNotMatch(itinerary, /<DestinationAccommodationModule/);
@@ -252,7 +253,9 @@ test("scheduled cards open one reusable detail owner without introducing another
   assert.match(itinerary, /selectedDetail \? <ItineraryItemDetail/);
   assert.match(itinerary, /onActivitySelect=\{\(activity, trigger\)/);
   assert.match(itinerary, /selectedItemOriginRef\.current = trigger/);
-  assert.match(itinerary, /window\.requestAnimationFrame\(\(\) => origin\?\.focus\(\)\)/);
+  assert.match(itinerary, /window\.requestAnimationFrame\(\(\) => \{\s*origin\?\.focus\(\{ preventScroll: true \}\)/);
+  assert.match(itinerary, /previous\.surface\?\.scrollTo\(\{ top: previous\.top/);
+  assert.match(itinerary, /window\.scrollTo\(\{ top: previous\.page/);
   assert.match(detail, /role=\{embedded \? undefined : "dialog"\}/);
   assert.match(detail, /event\.key === "Escape"/);
   assert.match(detail, /document\.body\.style\.overflow = "hidden"/);
@@ -403,7 +406,8 @@ test("an unavailable Suggestions lane is compact, resets active drag, and retrie
   assert.match(itinerary, /const interactionResetRef = useRef\(onInteractionReset\)/);
   assert.match(itinerary, /if \(unavailable\) interactionResetRef\.current\(\);\s*\}, \[unavailable\]\);/);
   assert.match(itinerary, /<MorroviaSectionStatus compact state="error"/);
-  assert.match(itinerary, /onRetry=\{\(\) => \{ onInteractionReset\(\); setRetryVersion/);
+  assert.match(itinerary, /const retrySuggestions = \(\) => \{ onInteractionReset\(\); setRetryVersion/);
+  assert.match(itinerary, /onRetry=\{canRetry \? retrySuggestions : undefined\}/, 'Explicit nonretryable outcomes do not offer blind retries');
   assert.match(stories, /export const NativeDragAfterSuggestionsFailure/);
 });
 

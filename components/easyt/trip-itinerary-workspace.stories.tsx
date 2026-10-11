@@ -1356,3 +1356,42 @@ export const CalendarAddOutcome: Story = {
     if (previews.length !== 1) throw new Error('Calendar Add did not update its canonical day preview');
   },
 };
+
+/** Global UI state regressions use the actual workspace and endpoint boundary. */
+export const CalendarSidebarIdeas: Story = {
+  ...Calendar,
+  args: { trip: { ...longTrip19, title: 'A 19-day journey through Peru' }, selectedDayNumber: 1,
+    initialSuggestions: Object.fromEntries(longTrip19.planItems.map(day => [day.dayNumber, interestSuggestionPool])),
+    initialActivityInventory: Object.fromEntries(longTrip19.planItems.map(day => [day.dayNumber, []])) },
+};
+const suggestionStateTrip = (name: string, country: string, canonicalPlaceId: string, latitude: number, longitude: number): EasyTTrip => ({
+  ...trip, id: `storybook-suggestion-state-${canonicalPlaceId}`, title: `Ideas for ${name}`, recommendations: [],
+  stops: [{ ...trip.stops[0]!, name, country, canonicalPlaceId, latitude, longitude }],
+  planItems: [{ ...trip.planItems[0]!, type: 'activity', title: name, notes: [], image: null }], legs: [],
+  brief: { ...trip.brief, customActivities: {}, selectedPlaces: {}, bookings: [], mapPins: [], dayNotes: {} },
+});
+export const SuggestionStatesTokyo: Story = { args: { initialSuggestions: undefined, initialActivityInventory: undefined, trip: suggestionStateTrip('Tokyo', 'Japan', 'tokyo', 35.6895, 139.6917) } };
+export const SuggestionStatesCusco: Story = { args: { initialSuggestions: undefined, initialActivityInventory: undefined, trip: suggestionStateTrip('Cusco', 'Peru', 'cusco', -13.532, -71.967) } };
+export const SuggestionStatesRome: Story = { args: { initialSuggestions: undefined, initialActivityInventory: undefined, trip: suggestionStateTrip('Rome', 'Italy', 'rome', 41.9028, 12.4964) } };
+export const SuggestionStatesNairobi: Story = { args: { initialSuggestions: undefined, initialActivityInventory: undefined, trip: suggestionStateTrip('Nairobi', 'Kenya', 'nairobi', -1.2921, 36.8219) } };
+export const SuggestionDurationFiltered: Story = { args: { trip, initialSuggestions: { 1: [] }, initialActivityInventory: { 1: extendedCommercialInventory } } };
+
+export const CalendarLongEventDetail: Story = {
+  args: {
+    trip: { ...trip, brief: { ...trip.brief, itineraryIdeas: [{
+      id: "long-calendar-idea", stopId: "cusco", placeId: "cusco-long-detail", title: "Historic district walk", category: "activity", coordinates: [-71.979, -13.516],
+      source: "personalised-recommendation", reasons: [], dayId: "day-1", dayPart: "morning", area: "Cusco", placeType: "Museum",
+      description: Array.from({ length: 24 }, (_, index) => `Visitor information ${index + 1}. Explore the historic centre at your own pace, check opening times with the venue, and keep time for breaks between the museum and the nearby streets.`).join("\n\n"),
+    }] } }, selectedDayNumber: 1,
+    initialSuggestions: { 1: [] }, initialActivityInventory: { 1: [] },
+  },
+  play: async ({ canvasElement }) => {
+    const calendar = [...canvasElement.querySelectorAll<HTMLButtonElement>("button")].find(button => button.textContent === "Calendar");
+    calendar?.click();
+  },
+};
+
+export const SuggestionLiveDays: Story = { args: {
+  trip: { ...trip, stops: trip.stops.map(stop => ({ ...stop, canonicalPlaceId: stop.id })) }, selectedDayNumber: 1,
+  initialSuggestions: undefined, initialActivityInventory: undefined,
+} };

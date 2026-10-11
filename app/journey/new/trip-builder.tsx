@@ -1,5 +1,9 @@
 "use client";
 
+import { transportAssessmentSummary } from "@/lib/easyt/itinerary-transport-agenda";
+import type { TransferAssessment } from '@/lib/easyt/planning-evidence-state';
+import { transferAssessmentForLeg } from '@/lib/easyt/planning-evidence-presentation';
+
 import { builderStructuralFeedback } from "@/lib/easyt/trip-builder-structural-feedback";
 
 import {referenceGeographicAcceptanceMatches} from '@/lib/easyt/place-reference';
@@ -489,6 +493,7 @@ async function reconcileAcceptedBuilderRequest(request: BuilderReconciliationReq
     }
   }));
   let legs = calculated.legs.filter(leg => request.dispatched.some(unit => unit.kind === "leg" && unit.targetId === leg.id));
+  let assessments: TransferAssessment[] | undefined;
   const qualifiedLegs=legs.filter(leg=>leg.routeMetadata.source!=='unverified-geography');
   for(const result of results)if(result.kind==='leg'&&legs.some(leg=>leg.id===result.targetId&&leg.routeMetadata.source==='unverified-geography')){result.phase='failed';result.reason='unavailable'}
   if (qualifiedLegs.length) {
@@ -496,9 +501,14 @@ async function reconcileAcceptedBuilderRequest(request: BuilderReconciliationReq
       const response = await fetch("/api/journey-transfer-resolution", { method: "POST", headers: {"Content-Type":"application/json"},
         body: JSON.stringify({legs:qualifiedLegs}), cache: "no-store", signal });
       if (!response.ok) throw new Error("Transfer assessment unavailable");
-      const payload = await response.json() as {legs?: TripLeg[]};
+      const payload = await response.json() as {legs?: TripLeg[]; assessments?: TransferAssessment[]};
       if (!Array.isArray(payload.legs) || payload.legs.length !== qualifiedLegs.length) throw new Error("Invalid transfer assessment");
       legs = legs.map(leg=>payload.legs!.find(result=>result.id===leg.id)??leg);
+      assessments = qualifiedLegs.flatMap(leg => { const state = transferAssessmentForLeg(payload.assessments, leg.id); return state ? [{ legId: leg.id, state }] : []; });
+      for (const result of results) if (result.kind === 'leg') {
+        const state = transferAssessmentForLeg(assessments, result.targetId);
+        if (state?.retrieval === 'unavailable' || state?.retrieval === 'blocked') { result.phase = 'failed'; result.reason = 'unavailable'; }
+      }
     } catch (error) {
       if (signal.aborted) throw error;
       for (const result of results) if (result.kind === "leg"&&qualifiedLegs.some(leg=>leg.id===result.targetId)) { result.phase="failed";result.reason="unavailable"; }
@@ -506,7 +516,7 @@ async function reconcileAcceptedBuilderRequest(request: BuilderReconciliationReq
   }
   if (signal.aborted) throw new DOMException("Builder input changed", "AbortError");
   return {scope:request.scope,inputKey:request.inputKey,requestId:request.requestId,dispatched:request.dispatched,results,legs,
-    routeAssessment:calculated.brief.routeAssessment,recommendationProjections};
+    routeAssessment:calculated.brief.routeAssessment,recommendationProjections,assessments};
 }
 
 function TripBuilderDocument() {
@@ -2352,7 +2362,7 @@ function TripBuilderDocument() {
     roadFallbackEligible: leg.routeMetadata.roadFallbackEligible,
     gatewayResolutionRequired: leg.routeMetadata.gatewayResolutionRequired,
   }))), [baselineBuilderCanonicalLegs]);
-  const [resolvedBuilderLegs, setResolvedBuilderLegs] = useState<{ key: string; legs: TripLeg[] } | null>(null);
+  const [resolvedBuilderLegs, setResolvedBuilderLegs] = useState<{ key: string; legs: TripLeg[]; assessments?: TransferAssessment[] } | null>(null);
   useEffect(() => {
     if (canonicalBuilder) return;
     const hasCandidate = baselineBuilderCanonicalLegs.some((leg) => leg.routeMetadata.source === "morrovia-planner"
@@ -2370,10 +2380,10 @@ function TripBuilderDocument() {
       body: JSON.stringify({ legs: baselineBuilderCanonicalLegs }),
     }).then(async (response) => {
       if (!response.ok) return null;
-      const payload = await response.json() as { legs?: TripLeg[] };
-      return Array.isArray(payload.legs) && payload.legs.length === baselineBuilderCanonicalLegs.length ? payload.legs : null;
-    }).then((legs) => {
-      if (legs && !controller.signal.aborted) setResolvedBuilderLegs({ key: transferResolutionKey, legs });
+      const payload = await response.json() as { legs?: TripLeg[]; assessments?: TransferAssessment[] };
+      return Array.isArray(payload.legs) && payload.legs.length === baselineBuilderCanonicalLegs.length ? { legs: payload.legs, assessments: payload.assessments } : null;
+    }).then((result) => {
+      if (result && !controller.signal.aborted) setResolvedBuilderLegs({ key: transferResolutionKey, ...result });
     }).catch(() => undefined);
     return () => controller.abort();
   }, [canonicalBuilder, baselineBuilderCanonicalLegs, transferResolutionKey]);
@@ -5344,10 +5354,10 @@ function TripBuilderDocument() {
     .map(unit => <span key={`${unit.kind}:${unit.targetId}`} className={styles.necessaryReview} role="status" onClick={event=>event.stopPropagation()}>
       <span>{unit.phase==="conflict"
         ? (mountedBuilder.snapshot.trip.brief.cascadeStatus?.conflicts.join(" ") || (language==="es"?"Revisa las fechas y condiciones guardadas.":"Check the dates and saved commitments."))
-        : unit.kind==="leg" ? (language==="es"?"No pudimos actualizar esta conexión.":"This connection could not be updated.")
+        : unit.kind==="leg" ? (language==="es"?"No pudimos comprobar el transporte ahora.":"Transport could not be checked right now.")
         : unit.kind==="recommendation" ? (language==="es"?"No pudimos actualizar las sugerencias de esta parada.":"Suggestions for this stop could not be updated.")
         : (language==="es"?"No pudimos actualizar estos datos.":"These details could not be updated.")}</span>
-      {unit.phase==="failed" ? <EasyTButton variant="quiet" size="small" onClick={()=>mountedBuilder.session.retryNecessaryUnit(unit)}>{language==="es"?"Reintentar":"Try again"}</EasyTButton> : null}
+      {unit.phase==="failed" && (unit.kind !== 'leg' || transferAssessmentForLeg(mountedBuilder.snapshot.transferAssessments, unit.targetId)?.retryable !== false) ? <EasyTButton variant="quiet" size="small" onClick={()=>mountedBuilder.session.retryNecessaryUnit(unit)}>{language==="es"?"Reintentar":"Try again"}</EasyTButton> : null}
     </span>);
   const topPersonalize = <div className={styles.topPreferences}>
     {hasSavedTravelProfile && <section className={styles.travelStyle}>
@@ -5804,6 +5814,7 @@ function TripBuilderDocument() {
                 actions={<EasyTButton variant="quiet" size="small" onClick={()=>mountedBuilder.session.discardDraft(field.binding)}>{language === "es" ? "Descartar entrada" : "Discard input"}<span className="sr-only"> {index+1}</span></EasyTButton>} />)}
               <TripBuilderRouteWorkspace
                 canonicalTrip={activeTripDocument}
+                transferAssessments={mountedBuilder?.snapshot.transferAssessments ?? (resolvedBuilderLegs?.key === transferResolutionKey ? resolvedBuilderLegs.assessments : undefined)}
                 previewStopIds={routePreviewStopIds}
                 selectedStopId={selectedRouteStopId}
                 lockedStopIds={protectedBuilderStopIds}
@@ -5813,8 +5824,7 @@ function TripBuilderDocument() {
                 stopReview={stopId=><>{necessaryReview(["recommendation"],stopId)}{renderSavedLocationReview(stopId)}</>}
                 nightReview={nightEditFeedback?.tone==="warning" ? <p role="status" className={styles.hintError}>{nightEditFeedback.title} {nightEditFeedback.detail}</p> : null}
                 reviewControl={<div className={styles.builderReviewActions}>
-                  <MorroviaSaveStatus state={mountedBuilder?.snapshot.failedUnits.length ? "error" : mountedBuilder?.snapshot.pendingUnits.length ? "saving" : "saved"}
-                    label={mountedBuilder?.snapshot.failedUnits.length ? (language === "es" ? "Datos sin actualizar" : "Details need retry") : mountedBuilder?.snapshot.conflictUnits.length ? (language === "es" ? "Revisión necesaria" : "Review needed") : mountedBuilder?.snapshot.pendingUnits.length ? (language === "es" ? "Actualizando datos…" : "Updating details…") : (language === "es" ? "Datos actualizados" : "Details up to date")} />
+                  <MorroviaSaveStatus {...transportAssessmentSummary(activeTripDocument, language, mountedBuilder?.snapshot.transferAssessments)} />
                 </div>}
                 nightStatus={{ total: totalNights, allocated: allocatedNights, complete: allNightsAllocated, language }}
                 onSelectStop={setSelectedRouteStopId}

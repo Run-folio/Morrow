@@ -1954,17 +1954,11 @@
 .dayHeader h2 { font-size: clamp(30px, 3vw, 44px); }
 .dayList { max-height: 70svh; }
 .calendarWorkspace { display: grid; grid-template-columns: minmax(0, 1fr) minmax(300px, 380px); grid-template-rows: max-content max-content max-content max-content; }
-.calendarIdeas { grid-column: 1; grid-row: 5; min-width: 0; padding: 16px; border-top: 1px solid var(--morrovia-line); }
-.calendarIdeas .discoveryList { display: flex; overflow-x: auto; gap: 12px; padding-bottom: 8px; }
-.calendarIdeas .discoveryCard { flex: 0 0 260px; }
 .calendarWeekdayLabels { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 8px; text-align: center; color: var(--morrovia-ink-soft); font: var(--morrovia-type-fine-print); margin-bottom: 8px; }
 .calendarDaySelect .calendarCompactCount, .calendarDaySelect .calendarCompactDate, .backToCalendar { display: none; }
 .calendarStay { margin-top: 8px; border-top: 1px solid var(--morrovia-line); }
 .calendarStay .calendarItem { width: 100%; min-width: 0; display: grid; grid-template-columns: 16px minmax(0, 1fr); gap: 6px; padding: 8px; white-space: normal; }
 .calendarStay .calendarItem > svg:last-child { display: none; }
-.calendarIdeas .discoveryCard { display: grid; grid-template-columns: 72px minmax(0, 1fr); gap: 8px; padding: 8px; }
-.calendarIdeas .discoveryMedia { height: 72px; }
-.calendarIdeas .discoveryActions { grid-column: 1 / -1; }
 .calendarWorkspace .rail { display: none; }
 .calendarWorkspace .destinationTrack { display: block; }
 .calendarWorkspace .calendarView { grid-column: 1; grid-row: 3 / span 2; padding: 16px; min-width: 0; }
@@ -2076,6 +2070,9 @@
 }
 
 @media (max-width: 540px) {
+  .calendarIdeasButton { grid-column: 1 / -1; }
+  .calendarItemDialog[data-dialog-presentation="modal"] { width: calc(100vw - 16px); max-height: calc(100svh - 16px); }
+  .calendarItemHeader { padding: 8px 12px; }
   .notice {
     position: fixed;
     z-index: var(--morrovia-layer-dock);
@@ -2155,3 +2152,42 @@
   .calendarWorkspace .dayPanel [data-itinerary-drag-handle] { display: inline-flex; }
   .calendarWorkspace .dayPanel [data-itinerary-activity-id] { grid-template-columns: minmax(0, 1fr) auto auto; }
 }
+
+/* Keep the selected day and its ideas beside the calendar, with their own scroll. */
+@media (min-width: 1100px) {
+  .calendarWorkspace .calendarDaySheet[data-dialog-presentation="inline"] {
+    display: block; grid-column: 2; grid-row: 3 / span 2;
+    position: sticky; top: var(--morrovia-sticky-content-offset); align-self: start;
+    max-height: calc(100svh - var(--morrovia-sticky-content-offset) - 16px);
+    margin: 0; padding: 0; overflow-y: auto; overscroll-behavior: contain;
+    border: 0; border-left: 1px solid var(--morrovia-line);
+    background: var(--morrovia-control-surface); color: var(--morrovia-ink);
+  }
+  .calendarWorkspace .calendarSheetContent { display: block; }
+  .calendarWorkspace .dayPanel, .calendarWorkspace .contextRail { border-left: 0; }
+}
+.calendarIdeasButton { justify-self: start; }
+.calendarItemDialog[data-dialog-presentation="inline"],
+.calendarItemDialog[data-dialog-presentation="inline"] .calendarItemBody { display: contents; }
+.calendarItemDialog[data-dialog-presentation="modal"] {
+  width: min(680px, calc(100vw - 24px)); max-width: calc(100vw - 16px); max-height: calc(100svh - 24px);
+  margin: auto; padding: 0; overflow: hidden;
+  border: 1px solid var(--morrovia-line); border-radius: var(--morrovia-control-radius);
+  background: var(--morrovia-control-surface); color: var(--morrovia-ink);
+  box-shadow: var(--morrovia-shadow-overlay);
+}
+.calendarItemDialog[data-dialog-presentation="modal"][open] { display: flex; flex-direction: column; }
+.calendarItemDialog::backdrop { background: var(--morrovia-overlay); }
+.calendarItemHeader {
+  display: flex; justify-content: space-between; gap: 12px; flex: none; padding: 12px 16px;
+  border-bottom: 1px solid var(--morrovia-line); background: var(--morrovia-control-surface);
+}
+.calendarItemBody { min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
+.calendarItemDialog .calendarEmbeddedDetail { position: static; width: auto; max-height: none; padding: 16px; }
+.calendarItemDialog .logisticsDetailClose { display: none; }
+
+.calendarWorkspace .ideasSection .discoveryCard { display: grid; grid-template-columns: 72px minmax(0, 1fr); gap: 8px; padding: 8px; }
+.calendarWorkspace .ideasSection .discoveryMedia { height: 72px; }
+.calendarWorkspace .ideasSection .discoveryActions { grid-column: 1 / -1; }
+.calendarItemDialog[data-dialog-presentation="modal"] .calendarItemBody { padding: 16px; }
+.calendarItemDialog[data-dialog-presentation="modal"] .calendarEmbeddedDetail { padding: 0; }

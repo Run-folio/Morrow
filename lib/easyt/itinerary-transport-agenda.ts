@@ -2,6 +2,54 @@ import { transportBookingForLeg } from "./booking-readiness.ts";
 import { routeEndpointForLeg } from "./trip-legs.ts";
 import type { CanonicalRouteEndpoint, EasyTTrip, TripBooking, TripLeg } from "./trip.ts";
 import { effectiveTripLeg } from "./transport-mode-choice.ts";
+import { guardTripRoutingGeometry } from "./geographic-binding.ts";
+import type { PlanningEvidenceState, TransferAssessment } from './planning-evidence-state.ts';
+import { transferAssessmentForLeg } from './planning-evidence-presentation.ts';
+
+export type TransportAssessmentState = "pending" | "failed" | "blocked" | "review" | "supported" | "unknown";
+
+/** An unresolved result is settled unless the current reconciliation owns a pending unit. */
+export function transportAssessmentState(trip: EasyTTrip, leg: TripLeg, assessment?: PlanningEvidenceState): TransportAssessmentState {
+  const unit = trip.brief.cascadeStatus?.routeReconciliation?.residual.find(unit => unit.kind === "leg" && unit.targetId === leg.id);
+  if (unit?.phase === "conflict") return "review";
+  if (unit?.phase === "pending") return "pending";
+  if (assessment?.retrieval === 'checking') return 'pending';
+  if (assessment?.retrieval === 'blocked' || assessment?.retrieval === 'unavailable') return assessment.retryable ? 'failed' : 'blocked';
+  if (unit?.phase === "failed") return "failed";
+  if (assessment && (assessment.retrieval !== 'completed' || !['verified', 'conditional'].includes(assessment.evidence))) return 'unknown';
+  // The resolver can settle successfully with unknown evidence. Its HTTP result
+  // does not expose swallowed provider failures; do not infer a failure here.
+  return leg.mode !== "unknown" && ["provider", "canonical_schedule", "routing_engine", "planning_estimate"].includes(leg.provenance ?? "") ? "supported" : "unknown";
+}
+
+export function transportAssessmentSummary(trip: EasyTTrip, language: "en" | "es", assessments?: readonly TransferAssessment[]) {
+  const projected = guardTripRoutingGeometry(trip);
+  const states = projected.legs.map(leg => transportAssessmentState(trip, effectiveTripLeg(projected, leg), transferAssessmentForLeg(assessments, leg.id)));
+  const count = (state: TransportAssessmentState) => states.filter(value => value === state).length;
+  const supported = count("supported");
+  const pending = count("pending");
+  const failed = count("failed");
+  const blocked = count("blocked");
+  const unknown = count("unknown");
+  const review = count("review");
+  const residual = trip.brief.cascadeStatus?.routeReconciliation?.residual ?? [];
+  const coverage = language === "es"
+    ? `Transporte encontrado para ${supported} de ${states.length} traslados`
+    : `Transport found for ${supported} of ${states.length} transfers`;
+  const details = [
+    unknown ? language === "es" ? `${unknown} por comprobar` : `${unknown} need checking` : null,
+    failed + blocked ? language === "es" ? `${failed + blocked} no se pudieron comprobar` : `${failed + blocked} could not be checked` : null,
+    pending ? language === "es" ? `Comprobando ${pending}…` : `Checking ${pending}…` : null,
+    review ? language === "es" ? `${review} por revisar` : `${review} need review` : null,
+  ].filter(Boolean);
+  const label = states.length ? [coverage, ...details].join(" · ")
+    : language === "es" ? "Sin traslados que comprobar" : "No transfers to check";
+  if (residual.some(unit => unit.phase === "conflict")) return { state: "device" as const, label: `${language === "es" ? "Revisión necesaria" : "Review needed"} · ${label}` };
+  if (pending) return { state: "saving" as const, label };
+  if (failed || blocked || residual.some(unit => unit.phase === "failed")) return { state: "error" as const, label };
+  if (residual.some(unit => unit.phase === "pending")) return { state: "saving" as const, label: `${language === "es" ? "Actualizando datos…" : "Updating details…"} · ${label}` };
+  return { state: unknown || review ? "device" as const : "saved" as const, label };
+}
 
 export type ItineraryTransportAgendaStatus = "booked" | "available" | "confirm";
 export type TransportJourneyKnowledge = "known" | "partial" | "unknown";

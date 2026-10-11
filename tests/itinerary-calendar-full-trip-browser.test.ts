@@ -285,14 +285,19 @@ test("Mobile item details, Move and Remove Escape keep the day and canonical act
     await page.keyboard.press('Escape');
     assert.equal(await sheet.evaluate((el: HTMLDialogElement) => el.matches(':modal')), true);
     assert.equal(await sheet.locator('[data-itinerary-activity-id]').count(), before);
-    for (const name of ['Close day details', 'Back to day']) {
-      assert.equal(await sheet.getByRole('button', { name, exact: true }).evaluate((el: HTMLElement) => {
+    const detail = sheet.locator('dialog[class*="calendarItemDialog"]');
+    assert.equal(await detail.evaluate((el: HTMLDialogElement) => el.matches(':modal')), true, 'Remove dismissal returns to the item overlay');
+    for (const name of ['Close', 'Back to day']) {
+      assert.equal(await detail.getByRole('button', { name, exact: true }).evaluate((el: HTMLElement) => {
         const r = el.getBoundingClientRect();
         const hit = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
         return r.top >= 0 && r.bottom < innerHeight && Boolean(hit && el.contains(hit));
       }), true, `${name} must remain unobscured after child dismissal`);
     }
     await capture(page, 'calendar-mobile-sheet-item-320');
+    await detail.getByRole('button', { name: 'Back to day', exact: true }).click();
+    assert.equal(await sheet.evaluate((el: HTMLDialogElement) => el.matches(':modal')), true);
+    assert.equal(await activity.evaluate((el: HTMLElement) => document.activeElement === el), true);
   } finally { await browser.close(); }
 });
 
@@ -366,7 +371,7 @@ test("Rendered Day by day and Calendar preserve identity, ordering and one canon
           const ideas = document.querySelector('details[id$="-ideas"]')!;
           const context = document.querySelector('[class*="contextRail"]')!;
           const follows = (a: Element, b: Element) => Boolean(a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING);
-          return { plannerBeforeIdeas: follows(planner, ideas), plannerBeforeContext: follows(planner, context), contextOwnership: calendar ? follows(ideas, context) : context.contains(ideas) };
+          return { plannerBeforeIdeas: follows(planner, ideas), plannerBeforeContext: follows(planner, context), contextOwnership: context.contains(ideas) };
         }, view === 'calendar');
         assert.deepEqual(order, { plannerBeforeIdeas: true, plannerBeforeContext: true, contextOwnership: true });
         if (view === 'calendar') {
