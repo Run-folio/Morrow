@@ -40,6 +40,7 @@ import { journeyEndpointPlaceFromSuggestion } from "@/lib/easyt/journey-endpoint
 import { beginNewTripNavigation } from "@/lib/easyt/storage";
 import { loadRequestedTrip, loadTripRecovery } from "@/lib/easyt/storage";
 import { HomeDestinationEditor } from "./home-destination-editor";
+import { reportPersistenceOutcome } from "@/lib/easyt/persistence-outcome";
 
 function generatedId(prefix: string) {
   try { return `${prefix}-${crypto.randomUUID()}`; }
@@ -105,7 +106,10 @@ export default function HomeTripStarter() {
       .then((result) => {
         if (snapshotRef.current.ownerId !== next.ownerId || snapshotRef.current.revision !== next.revision) return;
         if (result.ok) storedInputRef.current = result.stored;
-        else if (result.reason !== "stale") setCaptureError(language === "es" ? "No pudimos guardar esta entrada en este dispositivo." : "We couldn't save this trip input on this device.");
+        else if (result.reason !== "stale") {
+          reportPersistenceOutcome("homepage-input", {stored:false, acknowledgement: result.reason === "storage" ? "storage" : "stale"});
+          setCaptureError(language === "es" ? "No pudimos guardar esta entrada en este dispositivo." : "We couldn't save this trip input on this device.");
+        }
       });
   };
   const updateSnapshot = (update: (current: HomepageInputSnapshot) => HomepageInputSnapshot, reviewedEvidence?: HomepageRouteEvidence) => {
@@ -201,17 +205,38 @@ export default function HomeTripStarter() {
         ? storedInputRef.current.receipt : undefined;
       if (unchangedReceipt) {
         markPlanningMilestone(unchangedReceipt.handoffId, "submit", submittedAt);
-        const existingTrip = loadTripRecovery(unchangedReceipt.tripId, submittedOwner)?.trip
+        const existingRecovery = loadTripRecovery(unchangedReceipt.tripId, submittedOwner);
+        const existingTrip = existingRecovery?.trip
           ?? await loadRequestedTrip(unchangedReceipt.tripId, submittedOwner);
         if (!isCurrent()) return;
         if (existingTrip) {
+          // Re-read the exact scoped receipt after the asynchronous lookup.
+          // A competing tab or changed form cannot redeem this stale action.
+          let currentResumeInput: StoredHomepageInput | null = null;
+          try { currentResumeInput = readHomepageInput(JSON.parse(window.localStorage.getItem(homepageInputStorageKey(submittedOwner)) ?? "null"), submittedOwner); }
+          catch { /* Unreadable receipt cannot grant resume. */ }
+          const currentReceipt = currentResumeInput?.receipt;
+          if (!currentResumeInput || currentReceipt?.version !== 1
+            || !homepageCompletedReceiptIsUnchanged(currentResumeInput)
+            || homepageSemanticInputFingerprint(currentResumeInput.snapshot) !== homepageSemanticInputFingerprint(submitted)
+            || currentReceipt.handoffId !== unchangedReceipt.handoffId || currentReceipt.tripId !== unchangedReceipt.tripId
+            || currentReceipt.inputFingerprint !== unchangedReceipt.inputFingerprint
+            || currentReceipt.semanticInputFingerprint !== unchangedReceipt.semanticInputFingerprint) {
+            reportPersistenceOutcome("homepage-resume", {stored:false, acknowledgement:"stale", receiptPresent:Boolean(currentReceipt)});
+            setCaptureError(language === "es" ? "No pudimos recuperar este viaje. Revisa Mis viajes." : "We couldn't recover this trip. Check My Trips.");
+            return;
+          }
           if (!beginNewTripNavigation(submittedOwner, window)) {
+            reportPersistenceOutcome("homepage-preservation", {stored:false, receiptPresent:true});
             setCaptureError(language === "es" ? "No pudimos conservar tu trabajo actual. Inténtalo de nuevo." : "We couldn't preserve your current work. Try again.");
             return;
           }
           navigationStarted = true;
+          reportPersistenceOutcome("homepage-resume", {stored:Boolean(existingRecovery), receiptPresent:true, scopeMatches:true});
           markPlanningMilestone(unchangedReceipt.handoffId, "durable-intake");
-          router.push(`/journey/new?trip=${encodeURIComponent(unchangedReceipt.tripId)}`);
+          // Only a validated receipt and this owner's readable recovery grant
+          // device resume. A cloud-only trip keeps its authenticated entry path.
+          router.push(`/journey/new?trip=${encodeURIComponent(unchangedReceipt.tripId)}${existingRecovery ? "&recover=1" : ""}`);
           return;
         }
         let pendingDraft = null;
@@ -272,6 +297,7 @@ export default function HomeTripStarter() {
         });
         if (!isCurrent()) return;
         if (!committed.ok) {
+          reportPersistenceOutcome(committed.reason === "preservation" ? "homepage-preservation" : "homepage-intake", {stored:false, acknowledgement:committed.reason});
           setCaptureError(language === "es" ? "No pudimos conservar tu trabajo actual. Inténtalo de nuevo." : "We couldn't preserve your current work. Try again.");
           trackEvent("trip_generation_failed", { trip_source: "homepage", error_type: "unknown", is_authenticated: Boolean(submittedOwner) });
           return;
@@ -310,6 +336,7 @@ export default function HomeTripStarter() {
       });
       if (!isCurrent()) return;
       if (!committed.ok) {
+        reportPersistenceOutcome(committed.reason === "preservation" ? "homepage-preservation" : "homepage-intake", {stored:false, acknowledgement:committed.reason});
         planningAttemptOutcome(receipt.handoffId, "error");
         setCaptureError(language === "es" ? "No pudimos conservar tu trabajo actual. Inténtalo de nuevo." : "We couldn't preserve your current work. Try again.");
         trackEvent("trip_generation_failed", { trip_source: "homepage", error_type: "unknown", is_authenticated: Boolean(submittedOwner) });
@@ -321,6 +348,7 @@ export default function HomeTripStarter() {
       router.push(committed.href);
     } catch {
       if (!isCurrent()) return;
+      reportPersistenceOutcome("homepage-intake", {stored:false});
       setCaptureError(language === "es" ? "No pudimos conservar tu trabajo actual. Inténtalo de nuevo." : "We couldn't preserve your current work. Try again.");
       trackEvent("trip_generation_failed", { trip_source: "homepage", error_type: "unknown", is_authenticated: Boolean(submittedOwner) });
     } finally {

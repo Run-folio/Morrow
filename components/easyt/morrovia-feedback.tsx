@@ -189,6 +189,7 @@ export function MorroviaBriefNotice({
   detail,
   onDismiss,
   title,
+  tone = "success",
   variant = "default",
 }: {
   action?: ReactNode;
@@ -198,6 +199,7 @@ export function MorroviaBriefNotice({
   detail?: string;
   onDismiss?: () => void;
   title: string;
+  tone?: "success" | "danger";
   variant?: "default" | "toast";
 }) {
   const timerRef = useRef<number | null>(null);
@@ -247,15 +249,16 @@ export function MorroviaBriefNotice({
     <div
       className={`${styles.briefNotice} ${className}`}
       data-variant={variant}
-      role="status"
-      aria-live="polite"
+      data-tone={tone}
+      role={tone === "danger" ? "alert" : "status"}
+      aria-live={tone === "danger" ? "assertive" : "polite"}
       aria-atomic="true"
       onMouseEnter={() => { hoveringRef.current = true; pauseTimer(); }}
       onMouseLeave={() => { hoveringRef.current = false; resumeTimer(); }}
       onFocusCapture={() => { focusedRef.current = true; pauseTimer(); }}
       onBlurCapture={resumeAfterFocus}
     >
-      <Check aria-hidden="true" />
+      {tone === "danger" ? <AlertCircle aria-hidden="true" /> : <Check aria-hidden="true" />}
       <div><strong>{title}</strong>{detail ? <span>{detail}</span> : null}</div>
       {action}
       {onDismiss ? <button className={styles.dismiss} type="button" onClick={onDismiss} aria-label={`Dismiss ${title}`}><X aria-hidden="true" /></button> : null}

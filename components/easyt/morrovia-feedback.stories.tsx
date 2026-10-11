@@ -233,6 +233,8 @@ export const TripSaveFailedDeviceSafe: Story = { render: () => <TripSaveContext 
 export const CurrentSaveFailure: Story = TripSaveFailedDeviceSafe;
 export const NightsChangedInline: Story = { render: () => <NightsContext /> };
 export const BriefTripDuplicatedNotice: Story = { render: () => <BriefNoticeContext /> };
+export const BriefPreservationError: Story = { render: () => <PrototypeChrome><MorroviaBriefNotice tone="danger" title="We couldn't preserve your current work. Try again." /></PrototypeChrome> };
+export const BriefPreservationErrorMobile390: Story = { ...BriefPreservationError, globals: { viewport: { value: "morrovia390", isRotated: false } } };
 export const HarmlessAutoDismissNotice: Story = { render: () => <AutoDismissNoticeContext /> };
 export const ItineraryUndoNotice: Story = { render: () => <UndoNoticeContext /> };
 export const ItineraryUndoNoticeMobile390: Story = { ...ItineraryUndoNotice, globals: { viewport: { value: "morrovia390", isRotated: false } } };

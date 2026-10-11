@@ -1,4 +1,5 @@
 import { requireReadableTripDocument, prepareTripDocumentForWrite, TripDocumentReadError } from "./trip-document.ts";
+import { recoveryPersistenceOutcome, reportPersistenceOutcome, type PersistenceOutcome } from "./persistence-outcome.ts";
 import { legacyItineraryIdeas } from "./trip.ts";
 import { tripIntentForTrip, type EasyTTrip } from "./trip.ts";
 import { normalizeLegacyGeneratedDayContext } from "./itinerary-generated-context.ts";
@@ -72,7 +73,12 @@ export type TripRecoveryWriteResult = {
   stored: boolean;
   handle: TripRecoveryHandle;
   blockedByExistingRecovery: boolean;
-  failureReason?: "device-unavailable" | "protected-recovery" | "unknown";
+  failureReason?: "device-unavailable" | "protected-recovery" | "scope-mismatch" | "receipt-incomplete" | "pointer-incomplete" | "unknown";
+  /** Recovery acceptance and the navigation pointer are distinct acknowledgements. */
+  pointerAcknowledged?: boolean;
+  nativeFailure?: "quota" | "security" | "unavailable" | "unknown";
+  recoveryDurable?: boolean;
+  outcome?: PersistenceOutcome;
 };
 
 const expectedCanonicalSaveRecoveries = new Set<string>();
@@ -233,11 +239,12 @@ function cacheTimestamp(storage: EasyTBrowserStorage, key: string) {
 }
 
 /** Recovery writes may evict expendable clean cache entries, never recovery. */
-function safeSet(storage: EasyTBrowserStorage, key: string, value: string, protectedKeys: string[] = []) {
+function safeSet(storage: EasyTBrowserStorage, key: string, value: string, protectedKeys: string[] = [], onFailure?: (error: unknown) => void) {
   try {
     storage.setItem(key, value);
     return true;
   } catch (error) {
+    onFailure?.(error);
     if (!isQuotaError(error)) return false;
   }
 
@@ -252,6 +259,7 @@ function safeSet(storage: EasyTBrowserStorage, key: string, value: string, prote
       storage.setItem(key, value);
       return true;
     } catch (error) {
+      onFailure?.(error);
       if (!isQuotaError(error)) return false;
     }
   }
@@ -759,7 +767,7 @@ function writeTripRecoveryToStorage(
   const ownerId = options.ownerId === undefined ? trip.ownerId : options.ownerId;
   const writeId = options.writeId ?? generatedWriteId();
   const handle = { ownerId, tripId: trip.id, writeId };
-  if (!recoveryScopeAcceptsTrip(ownerId, trip)) return { stored: false, handle, blockedByExistingRecovery: false, failureReason: "unknown" };
+  if (!recoveryScopeAcceptsTrip(ownerId, trip)) return { stored: false, handle, blockedByExistingRecovery: true, failureReason: "scope-mismatch" };
   const existing = loadTripRecoveryFromStorage(storage, trip.id, ownerId);
   if (existing) {
     // A render/autosave of the same durable document is not a new edit. Build
@@ -768,7 +776,9 @@ function writeTripRecoveryToStorage(
     // into a false stale-write result.
     if (sameRecoveryDocument(existing.trip, trip)) {
       setCurrentTripInStorage(storage, ownerId, trip.id, [tripRecoveryStorageKey(ownerId, trip.id)]);
-      return { stored: true, handle: existing, blockedByExistingRecovery: false };
+      const pointerAcknowledged = loadCurrentTripIdFromStorage(storage, ownerId) === trip.id;
+      return { stored: true, handle: existing, blockedByExistingRecovery: false, pointerAcknowledged,
+        ...(!pointerAcknowledged ? { failureReason: "pointer-incomplete" as const } : {}) };
     }
     const expected = options.replace;
     const replacingExactWrite = expected?.ownerId === ownerId
@@ -796,15 +806,25 @@ function writeTripRecoveryToStorage(
   // touch only the exact write it was given, even if another tab writes in the
   // middle of the operation.
   const recoveryKey = tripRecoveryStorageKey(ownerId, trip.id, writeId);
-  const stored = safeSet(storage, recoveryKey, JSON.stringify(record));
+  let nativeFailure: TripRecoveryWriteResult["nativeFailure"];
+  const bytes = JSON.stringify(record);
+  const written = safeSet(storage, recoveryKey, bytes, [], error => {
+    const name = typeof error === "object" && error !== null && "name" in error ? error.name : undefined;
+    nativeFailure = isQuotaError(error) ? "quota" : name === "SecurityError" ? "security" : name === "InvalidStateError" ? "unavailable" : "unknown";
+  });
+  const stored = written && safeGet(storage, recoveryKey) === bytes;
+  let pointerAcknowledged = false;
   if (stored) {
     setCurrentTripInStorage(storage, ownerId, trip.id, [recoveryKey]);
-    if (existing && options.replace) {
+    pointerAcknowledged = loadCurrentTripIdFromStorage(storage, ownerId) === trip.id;
+    if (pointerAcknowledged && existing && options.replace) {
       const replacedKey = recoveryRecordKey(storage, options.replace);
       if (replacedKey && replacedKey !== recoveryKey) safeRemove(storage, replacedKey);
     }
   }
-  return { stored, handle, blockedByExistingRecovery: false, ...(!stored ? { failureReason: "device-unavailable" as const } : {}) };
+  return { stored, handle, blockedByExistingRecovery: false, pointerAcknowledged,
+    ...(!stored ? { failureReason: nativeFailure ? "device-unavailable" as const : "unknown" as const, ...(nativeFailure ? { nativeFailure } : {}) }
+      : !pointerAcknowledged ? { failureReason: "pointer-incomplete" as const } : {}) };
 }
 
 export function saveTripRecoveryToStorage(
@@ -820,7 +840,8 @@ export function saveTripRecoveryToStorage(
 ): TripRecoveryWriteResult {
   const ownerId = options.ownerId === undefined ? trip.ownerId : options.ownerId;
   migrateLegacyTripFromStorage(storage, ownerId);
-  return writeTripRecoveryToStorage(storage, normalizeLegacyGeneratedDayContext(trip), options);
+  const result = writeTripRecoveryToStorage(storage, normalizeLegacyGeneratedDayContext(trip), options);
+  return { ...result, recoveryDurable: result.stored, outcome: recoveryPersistenceOutcome(result) };
 }
 
 function writeCanonicalTripCacheToStorage(
@@ -1277,8 +1298,9 @@ export function saveTripRecovery(
     blockedByExistingRecovery: false,
     failureReason: "device-unavailable" as const,
   };
-  if (!storage) return fallback;
+  if (!storage) { reportPersistenceOutcome("device-recovery", fallback); return { ...fallback, outcome: "unknown" as const }; }
   const result = saveTripRecoveryToStorage(storage, trip, options);
+  reportPersistenceOutcome("device-recovery", result);
   if (result.stored) {
     // Register before the synchronous same-document event. TripShell can then
     // distinguish this exact safe write from an unrelated recovery record.

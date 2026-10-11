@@ -688,6 +688,18 @@ test('device-write refusal has storage category and preserves exact recovery wit
  assert.match(h.session.getSnapshot().error!.message,/could not be saved on this device/);assert.deepEqual(h.recovery(),before);assert.equal(h.writes.length,0);
  }finally{h.session.dispose()}
 });
+test('an unaccepted edit cannot become a successful retry without deliberate reapplication',async()=>{
+ const h=await harness();try{accept(h,budget);const before=h.session.getSnapshot();h.storage.failRecovery=true;
+ assert.equal(h.session.accept({...budget,budget:'mid'},before.inputRevision).ok,false);
+ assert.equal(h.session.getSnapshot().error?.deviceOutcome,'native-write-failed');
+ h.storage.failRecovery=false;
+ assert.equal(h.session.retrySave(),false,'there is no retained candidate to replay');
+ assert.equal(h.session.getSnapshot().saveState,'error');
+ assert.deepEqual(h.session.getSnapshot().trip,before.trip);assert.equal(h.writes.length,0);
+ assert.equal(h.session.accept({...budget,budget:'mid'},h.session.getSnapshot().inputRevision).ok,true);
+ assert.equal(h.session.getSnapshot().error,null);
+ }finally{h.session.dispose()}
+});
 test('competing recovery is classified protected and never written to account',async()=>{
  const h=await harness();try{accept(h,budget);const other=structuredClone(h.session.getSnapshot().trip);other.brief.budgetBand='value';
  const retained=h.recovery()!;saveTripRecoveryToStorage(h.storage,other,{ownerId:other.ownerId,replace:retained});const before=h.recovery();

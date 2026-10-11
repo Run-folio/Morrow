@@ -402,6 +402,6 @@ export function MorroviaTripCapture({
         </div>
       </div>
     </div>}
-    {error ? homepageEntry?.planner ? <MorroviaBriefNotice title={error} /> : <p className={styles.error} role="alert">{error}</p> : null}
+    {error ? homepageEntry?.planner ? <MorroviaBriefNotice tone="danger" title={error} /> : <p className={styles.error} role="alert">{error}</p> : null}
   </form>;
 }

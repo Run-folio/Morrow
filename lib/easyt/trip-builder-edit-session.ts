@@ -15,6 +15,7 @@ import { type TripRecoveryHandle, type TripRecoveryRecord,
 import { EasyTTripPersistenceError, tripRecoveryStateForPersistenceError } from './trip-persistence-error.ts';
 import type { TransferAssessment } from './planning-evidence-state.ts';
 import { transferAssessmentForLeg } from './planning-evidence-presentation.ts';
+import { recoveryPersistenceOutcome, reportPersistenceOutcome, reportExactAccountAcknowledgement, type PersistenceOutcome } from './persistence-outcome.ts';
 
 type Unit = TripRouteReconciliation['residual'][number];
 export type BuilderReconciliationRequest = {
@@ -28,7 +29,7 @@ export type BuilderEditSessionSnapshot = {
   pendingUnits: Unit[]; failedUnits: Unit[]; conflictUnits: Unit[];
   transferAssessments: TransferAssessment[];
   historicalRecovery: boolean; browserOwnerId: string | null;
-  recovery: TripRecoveryHandle | null; error: { category: TripRecoveryState | 'storage' | 'protected'; message: string } | null;
+  recovery: TripRecoveryHandle | null; error: { category: TripRecoveryState | 'storage' | 'protected'; message: string; deviceOutcome?: PersistenceOutcome } | null;
 };
 export type BuilderEditSessionOptions = {
   initialTrip: EasyTTrip; initialRecovery?: TripRecoveryRecord | null; initialCanonicalTrip?: EasyTTrip | null;
@@ -125,8 +126,8 @@ export function createBuilderEditSession(options: BuilderEditSessionOptions) {
     if (!active() || paused || draftNeedsWrite || !pending || ownerId === null || trip.ownerId === null && !promoting) return;
     cancelCloud = options.schedule(() => { cancelCloud = null; cloudDue = true; startSave(); }, 450);
   }
-  function saveFailure(category: NonNullable<BuilderEditSessionSnapshot['error']>['category'], message: string) {
-    error = { category, message }; canonicalSaveState = 'error'; publish();
+  function saveFailure(category: NonNullable<BuilderEditSessionSnapshot['error']>['category'], message: string, deviceOutcome?: PersistenceOutcome) {
+    error = { category, message, ...(deviceOutcome ? { deviceOutcome } : {}) }; canonicalSaveState = 'error'; publish();
   }
   function storeCanonical(candidate: CanonicalEasyTTrip, authoredFrom: CanonicalEasyTTrip): boolean {
     if (!active() || draftProtected) return false;
@@ -135,15 +136,16 @@ export function createBuilderEditSession(options: BuilderEditSessionOptions) {
     const accountSavePending = ownerId !== null && !paused && !historicalRecovery
       && (candidate.ownerId !== null || promoting);
     try { result = options.saveRecovery(candidate, { ownerId, ...(recovery ? { replace: recovery } : {}), accountSavePending, state: pauseReason ?? 'pending' }); }
-    catch { saveFailure('unknown', 'This edit could not be accepted. Your current trip remains preserved.'); return false; }
+    catch { reportPersistenceOutcome('builder-edit', {stored:false}); saveFailure('unknown', 'This edit could not be accepted. Your current trip remains unchanged.', 'unknown'); return false; }
+    reportPersistenceOutcome('builder-edit', result);
     if (!result.stored || result.handle.ownerId !== ownerId || result.handle.tripId !== tripId) {
       const scopeMatches = result.handle.ownerId === ownerId && result.handle.tripId === tripId;
       if (scopeMatches && result.blockedByExistingRecovery) {
-        saveFailure('protected', 'Another device recovery is protected. Reopen it before editing.');
+        saveFailure('protected', 'Another device recovery is protected. Reopen it before editing.', 'protected-conflict');
       } else if (scopeMatches && result.failureReason === 'device-unavailable') {
-        saveFailure('storage', 'This edit could not be saved on this device. Your current trip remains preserved.');
+        saveFailure('storage', 'This edit could not be saved on this device. Your current trip remains unchanged.', recoveryPersistenceOutcome(result));
       } else {
-        saveFailure('unknown', 'This edit could not be accepted. Your current trip remains preserved.');
+        saveFailure('unknown', 'This edit could not be accepted. Your current trip remains unchanged.', 'unknown');
       }
       return false;
     }
@@ -217,6 +219,7 @@ export function createBuilderEditSession(options: BuilderEditSessionOptions) {
         trip = canonical; recovery = null; pending = null; failedJob = null;
         draft = nextDraft; inputRevision = nextDraft.inputRevision; draftNeedsWrite = false;
         canonicalSaveState = 'cloud'; error = null; promoting = false; historicalRecovery = false;
+        reportExactAccountAcknowledgement();
         if (isPromotion) promotionIdentity = submittedIds;
         else if (promotionIdentity) promotionIdentity = new Map([...promotionIdentity].map(([source,current])=>[source,submittedIds.get(current) ?? current]));
         if (undoFrame) undoFrame.stopIds = new Map([...undoFrame.stopIds].map(([source,current]) => [source,submittedIds.get(current) ?? current]));
@@ -233,6 +236,7 @@ export function createBuilderEditSession(options: BuilderEditSessionOptions) {
         if (acknowledgement.outcome !== 'acknowledged') throw new Error('A different device recovery still requires attention');
         trip = requireReadableTripDocument(canonical); recovery = null; failedJob = null;
         canonicalSaveState = 'cloud'; if (!draftNeedsWrite) error = null;
+        reportExactAccountAcknowledgement();
       } else if (!paused) canonicalSaveState = 'local';
       publish();
     }).catch(cause => {
@@ -363,6 +367,9 @@ export function createBuilderEditSession(options: BuilderEditSessionOptions) {
       draft=rebindBuilderInputDraft(draft,trip,ownerId);if(writeDraft())scheduleCloud();scheduleWork();publish();return true;
     },
     retrySave() {
+      // An unaccepted edit has no retained candidate. Clearing its error would
+      // pretend retry saved it; the traveller must review and reapply the edit.
+      if (error?.deviceOutcome) return false;
       if (!active() || historicalRecovery || draftProtected || pauseReason === 'conflict' || pauseReason === 'auth'
         || pauseReason === 'validation' || error?.category === 'protected') return false;
       if (draftNeedsWrite && !writeDraft()) return false;

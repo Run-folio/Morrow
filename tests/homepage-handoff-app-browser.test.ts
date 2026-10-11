@@ -18,6 +18,84 @@ async function stubLocalApis(page: { route: (url: string, handler: (route: Brows
   await page.route("**/api/journey-geocode?**", route => route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ candidates: [], result: null }) }));
 }
 
+test("unchanged homepage resume keeps the exact guest recovery through reload and refuses a copied link", { skip: !enabled, timeout: 90_000 }, async () => {
+  const browser = await chromium.launch({ channel: process.env.MORROVIA_BROWSER_CHANNEL ?? "chrome", headless: true });
+  const context = await browser.newContext();
+  const copied = await browser.newContext();
+  try {
+    const page = await context.newPage();
+    // All persistence/provider endpoints are fixtures; no account or provider call escapes.
+    const isolate = async (target: typeof page) => {
+      await target.route("**/api/**", (route: BrowserRoute) => route.fulfill({ status: 401, contentType: "application/json", body: "{}" }));
+      await stubLocalApis(target);
+    };
+    await isolate(page);
+    await page.goto(baseUrl);
+    await page.getByRole("combobox", { name: "Destination", exact: true }).fill("Madrid");
+    await page.getByRole("option", { name: /Madrid.*Spain/ }).first().click();
+    await page.getByRole("button", { name: "Add destination" }).click();
+    await page.getByRole("combobox", { name: "Destination", exact: true }).fill("Lisbon");
+    await page.getByRole("option", { name: /Lisbon.*Portugal/ }).first().click();
+    await page.locator("#start-building").getByRole("button", { name: "Plan my trip", exact: true }).click();
+    await page.waitForURL(/\btrip=.*recover=1/);
+    await page.getByText("Saved on this device", { exact: true }).first().waitFor();
+    const tripId = new URL(page.url()).searchParams.get("trip");
+    const read = () => page.evaluate((id: string) => Object.keys(localStorage)
+      .filter(key => key.startsWith(`easyt:trip-recovery:v2:guest:${encodeURIComponent(id)}:`))
+      .map(key => JSON.parse(localStorage.getItem(key)!)), tripId);
+    const before = await read();
+    assert.equal(before.length, 1);
+    await page.reload();
+    await page.getByText("Saved on this device", { exact: true }).first().waitFor();
+    await page.goto(baseUrl);
+    await page.locator("#start-building").getByRole("button", { name: "Plan my trip", exact: true }).click();
+    await page.waitForURL(/\/journey\/new\?/);
+    assert.equal(new URL(page.url()).searchParams.get("recover"), "1", "owned receipt resume must retain recovery entry");
+    assert.equal(new URL(page.url()).searchParams.get("trip"), tripId);
+    await page.getByText("Saved on this device", { exact: true }).first().waitFor();
+    await page.reload();
+    await page.getByText("Saved on this device", { exact: true }).first().waitFor();
+    const after = await read();
+    assert.equal(after.length, 1, "resuming must not clone a second document");
+    assert.equal(after[0].tripId, before[0].tripId);
+    assert.equal(after[0].ownerId, before[0].ownerId);
+    assert.deepEqual(after[0].trip.stops, before[0].trip.stops);
+    assert.deepEqual(after[0].trip.planItems, before[0].trip.planItems);
+    assert.deepEqual(after[0].trip.brief.intent, before[0].trip.brief.intent);
+    const other = await copied.newPage();
+    await isolate(other);
+    await other.goto(`${baseUrl}/journey/new?trip=${encodeURIComponent(tripId!)}&recover=1`);
+    await other.getByText(/This trip is not available to the current browser account/).waitFor();
+    assert.equal(await other.locator('[data-builder-edit-session="active"]').count(), 0);
+  } finally { await context.close(); await copied.close(); await browser.close(); }
+});
+
+test("a homepage preservation error announces failure without a success icon", { skip: !enabled, timeout: 40_000 }, async () => {
+  const browser = await chromium.launch({ channel: process.env.MORROVIA_BROWSER_CHANNEL ?? "chrome", headless: true });
+  const context = await browser.newContext({ viewport: { width: 390, height: 844 } });
+  try {
+    const page = await context.newPage();
+    await page.route("**/api/**", (route: BrowserRoute) => route.fulfill({ status: 401, contentType: "application/json", body: "{}" }));
+    await stubLocalApis(page);
+    await page.goto(baseUrl);
+    await page.evaluate(() => {
+      const set = Storage.prototype.setItem;
+      Storage.prototype.setItem = function(key, value) {
+        if (key === "easyt-private:guest:homepage-input") throw new DOMException("synthetic", "SecurityError");
+        return set.call(this, key, value);
+      };
+    });
+    await page.getByRole("combobox", { name: "Destination", exact: true }).fill("Madrid");
+    await page.getByRole("option", { name: /Madrid.*Spain/ }).first().click();
+    await page.getByText("We couldn't save this trip input on this device.", { exact: true }).waitFor();
+    const notice = page.getByRole("alert").filter({ hasText: "We couldn't save this trip input" });
+    assert.equal(await notice.count(), 1);
+    assert.equal(await notice.locator("svg.lucide-check").count(), 0);
+    assert.equal(await notice.locator("svg.lucide-circle-alert").count(), 1);
+    assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth + 1), false);
+  } finally { await context.close(); await browser.close(); }
+});
+
 test("a fresh guest can start another Describe trip after a durable unrelated trip", { skip: !enabled, timeout: 90_000 }, async () => {
   const browser = await chromium.launch({ channel: process.env.MORROVIA_BROWSER_CHANNEL ?? "chrome", headless: true });
   const context = await browser.newContext();

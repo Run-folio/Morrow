@@ -137,6 +137,59 @@ class MemoryBrowserStorage implements EasyTBrowserStorage {
   }
 }
 
+test("a refused current-pointer acknowledgement is reported separately and preserves the prior recovery", () => {
+  const storage = new MemoryBrowserStorage();
+  const prior = browserTrip();
+  const accepted = saveTripRecoveryToStorage(storage, prior, { writeId: "prior-pointer" });
+  const priorKey = tripRecoveryStorageKey(prior.ownerId, prior.id, accepted.handle.writeId);
+  const priorBytes = storage.peek(priorKey);
+  storage.removeItem(currentTripStorageKey(prior.ownerId));
+  const set = storage.setItem.bind(storage);
+  storage.setItem = (key, value) => { if (key === currentTripStorageKey(prior.ownerId)) throw new DOMException("synthetic", "SecurityError"); set(key, value); };
+  const rejected = saveTripRecoveryToStorage(storage, { ...prior, travellers: 3 }, { replace: accepted.handle, writeId: "candidate-pointer" });
+  assert.equal(rejected.stored, true, "the immutable recovery was durably written; entry acknowledgement is separate");
+  assert.equal(rejected.pointerAcknowledged, false);
+  assert.equal(rejected.outcome, "pointer-incomplete");
+  assert.equal(rejected.failureReason, "pointer-incomplete");
+  assert.equal(storage.peek(priorKey), priorBytes, "the earlier accepted recovery must survive");
+});
+
+test("scope refusal is protected rather than a native storage denial", () => {
+  const storage = new MemoryBrowserStorage();
+  const result = saveTripRecoveryToStorage(storage, browserTrip(), { ownerId: "owner-b" });
+  assert.equal(result.failureReason, "scope-mismatch");
+  assert.equal(result.outcome, "protected-conflict");
+  assert.equal(result.blockedByExistingRecovery, true);
+  assert.equal(storage.length, 0);
+});
+
+test("a silent recovery write is not acknowledged and preserves the accepted document", () => {
+  const storage = new MemoryBrowserStorage();
+  const prior = browserTrip();
+  const accepted = saveTripRecoveryToStorage(storage, prior, { writeId: "before-silent" });
+  const priorKey = tripRecoveryStorageKey(prior.ownerId, prior.id, accepted.handle.writeId);
+  const before = storage.peek(priorKey);
+  const set = storage.setItem.bind(storage);
+  storage.setItem = (key, value) => { if (key.endsWith(":silent")) return; set(key, value); };
+  const rejected = saveTripRecoveryToStorage(storage, { ...prior, travellers: 3 }, { replace: accepted.handle, writeId: "silent" });
+  assert.equal(rejected.stored, false);
+  assert.equal(rejected.failureReason, "unknown");
+  assert.equal(rejected.outcome, "unknown");
+  assert.equal(storage.peek(priorKey), before);
+});
+
+for (const [name, category] of [["QuotaExceededError", "quota"], ["SecurityError", "security"], ["InvalidStateError", "unavailable"], ["UnclassifiedError", "unknown"]]) {
+  test(`native ${name} preserves its category without fabricating accepted recovery`, () => {
+    const storage = new MemoryBrowserStorage();
+    storage.setItem = () => { throw new DOMException("synthetic private detail", name); };
+    const result = saveTripRecoveryToStorage(storage, browserTrip());
+    assert.equal(result.stored, false);
+    assert.equal(result.nativeFailure, category);
+    assert.equal(result.outcome, "native-write-failed");
+    assert.equal(storage.length, 0);
+  });
+}
+
 test("a committed first Builder save accepts a later provider-only recovery without manufacturing divergence", () => {
   const storage = new MemoryBrowserStorage();
   const reviewed = browserTrip({

@@ -106,6 +106,8 @@
 }
 
 .briefNotice > svg { width: 19px; color: color-mix(in srgb, var(--morrovia-success) 76%, var(--morrovia-ink)); }
+.briefNotice[data-tone="danger"] { border-color: color-mix(in srgb, var(--morrovia-danger) 32%, var(--morrovia-line)); background: var(--morrovia-danger-soft); }
+.briefNotice[data-tone="danger"] > svg { color: var(--morrovia-danger); }
 .briefNotice > div { display: grid; gap: 2px; min-width: 0; }
 .briefNotice strong { font: var(--morrovia-type-control); }
 .briefNotice span { color: var(--morrovia-ink-soft); font: var(--morrovia-type-fine-print); }

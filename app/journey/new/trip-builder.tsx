@@ -124,6 +124,7 @@ import { withProviderTimeout } from "@/lib/easyt/provider-timeout";
 import { hasUsefulRouteSkeleton } from "./trip-builder-entry";
 import { markPlanningMilestone, planningAttemptOutcome, planningContentIsActionable, planningRequiredInterpretationIsComplete } from "@/lib/easyt/planning-attempt-performance";
 import { durableBuilderRecoveryUrl } from "@/lib/easyt/builder-durable-url";
+import { recoveryFailureMessage, recoveryPersistenceOutcome, reportPersistenceOutcome, type PersistenceOutcome } from "@/lib/easyt/persistence-outcome";
 import { clearTripLegTransportChoice, selectTripLegTransportChoice } from "@/lib/easyt/transport-mode-choice";
 import { authoredContentKey } from "@/lib/easyt/trip-retained-authored-content";
 
@@ -652,6 +653,7 @@ function TripBuilderDocument() {
   const cloudAuthInterrupted=mountedBuilder?mountedBuilder.snapshot.error?.category==="auth":initialCloudAuthInterrupted;
   const [deviceStorageBlocked, setDeviceStorageBlocked] = useState(false);
   const [deviceRecoveryBlocked, setDeviceRecoveryBlocked] = useState(false);
+  const [devicePersistenceOutcome, setDevicePersistenceOutcome] = useState<PersistenceOutcome | null>(null);
   const legacyFocusRef = useRef<"summary" | "timing" | null>(null);
   const legacyFocusScheduledRef = useRef(false);
   const requestedPlaceIntentRef = useRef(builderSearchParams.get("placeIntent"));
@@ -4493,16 +4495,20 @@ function TripBuilderDocument() {
     const editor = builderEditSessionRef.current;
     if (editor) {
       const snapshot=editor.getSnapshot();
-      return {stored:!["storage","protected"].includes(snapshot.error?.category??""),
-        handle:snapshot.recovery??{ownerId:snapshot.browserOwnerId,tripId:snapshot.trip.id,writeId:"acknowledged-canonical"},blockedByExistingRecovery:snapshot.error?.category==="protected"};
+      const rejected = Boolean(snapshot.error?.deviceOutcome) || ["storage","protected"].includes(snapshot.error?.category??"");
+      return {stored:!rejected,
+        handle:snapshot.recovery??{ownerId:snapshot.browserOwnerId,tripId:snapshot.trip.id,writeId:"acknowledged-canonical"},blockedByExistingRecovery:snapshot.error?.category==="protected",
+        ...(rejected ? { failureReason: snapshot.error?.category === "protected" ? "protected-recovery" as const : "unknown" as const } : {})};
     }
     const ownerId = activeBrowserOwnerId;
+    reportPersistenceOutcome("builder-entry", {stored:false, scopeMatches:canUseHydratedTripScope(hydratedOwnerScopeRef.current, ownerId) && (!trip.ownerId || trip.ownerId === ownerId), receiptPresent:Boolean(pendingNewTripReceiptRef.current)});
     if (!canUseHydratedTripScope(hydratedOwnerScopeRef.current, ownerId)
       || (trip.ownerId && trip.ownerId !== ownerId)) {
       return {
         stored: false,
         handle: { ownerId, tripId: trip.id, writeId: `scope-mismatch-${Date.now()}` },
         blockedByExistingRecovery: true,
+        failureReason: "scope-mismatch" as const,
       };
     }
     const currentHandle = recoveryHandleRef.current;
@@ -4513,12 +4519,16 @@ function TripBuilderDocument() {
       ownerId,
       replace: replacement ?? undefined,
     });
+    if (recovery.stored && recovery.pointerAcknowledged === false) {
+      recoveryHandleRef.current = recovery.handle;
+      return { ...recovery, stored: false, failureReason: "pointer-incomplete" as const };
+    }
     if (recovery.stored) {
       recoveryHandleRef.current = recovery.handle;
       const pendingReceipt = pendingNewTripReceiptRef.current;
       if (pendingReceipt && pendingReceipt.receipt.tripId === trip.id
         && pendingReceipt.snapshot.ownerId === ownerId) {
-        if (!homepageHandoffMatchesTrip(pendingReceipt.draft, trip)) return { ...recovery, stored: false };
+        if (!homepageHandoffMatchesTrip(pendingReceipt.draft, trip)) return { ...recovery, stored: false, failureReason: "receipt-incomplete" as const };
         if (!receiptAcknowledgementRef.current) {
           let acknowledgement: Promise<boolean>;
           acknowledgement = acknowledgePendingIntakeReceipt({
@@ -4532,14 +4542,20 @@ function TripBuilderDocument() {
             if (pendingNewTripReceiptRef.current !== pendingReceipt
               || !canUseHydratedTripScope(hydratedOwnerScopeRef.current, ownerId)) return false;
             if (!result.ok) {
+              const incomplete = { ...recovery, stored: false, failureReason: "receipt-incomplete" as const, acknowledgement:result.reason };
+              reportPersistenceOutcome("intake-ack", incomplete);
+              setDevicePersistenceOutcome("receipt-incomplete");
               setDeviceStorageBlocked(true);
               setSaveState("error");
+              setCloudSaveError(recoveryFailureMessage(incomplete, language));
               return false;
             }
             pendingNewTripReceiptRef.current = null;
             const durableUrl = durableBuilderRecoveryUrl(window.location.href, trip.id);
             if (durableUrl) window.history.replaceState(window.history.state, "", durableUrl);
             setDeviceStorageBlocked(false);
+            setDevicePersistenceOutcome("device-confirmed");
+            reportPersistenceOutcome("intake-ack", recovery);
             setCloudSaveError("");
             setSaveState("local");
             return true;
@@ -4551,7 +4567,7 @@ function TripBuilderDocument() {
         // The canonical recovery is synchronous, but its receipt/envelope
         // transition is serialized. Do not claim handoff completion until it
         // has acknowledged this exact still-current token.
-        return { ...recovery, stored: false };
+        return { ...recovery, stored: false, failureReason: "receipt-incomplete" as const };
       }
       const durableUrl = durableBuilderRecoveryUrl(window.location.href, trip.id);
       if (durableUrl) window.history.replaceState(window.history.state, "", durableUrl);
@@ -4568,10 +4584,11 @@ function TripBuilderDocument() {
     const currentUrl = new URL(window.location.href);
     if (recovery.stored && trip.status === "draft" && !currentUrl.searchParams.has("trip")) {
       const currentDraft = loadCurrentDraftRecovery(ownerId);
-      return { ...recovery, stored: currentDraft?.tripId === trip.id && currentDraft.writeId === recovery.handle.writeId };
+      const pointerAcknowledged = currentDraft?.tripId === trip.id && currentDraft.writeId === recovery.handle.writeId;
+      return { ...recovery, stored: pointerAcknowledged, ...(!pointerAcknowledged ? { failureReason: "pointer-incomplete" as const } : {}) };
     }
     return recovery;
-  }, [activeBrowserOwnerId]);
+  }, [activeBrowserOwnerId, language]);
 
   useEffect(() => {
     if (builderSeed || !hydrated || pendingInterpretation || resolvingLocations || tripUnavailable
@@ -4604,7 +4621,7 @@ function TripBuilderDocument() {
           setBuilderSeed({initialTrip:recovery?.trip ?? candidate,initialRecovery:recovery,
             initialCanonicalTrip:recovery?null:candidate,allowRecoverySync:!source || builderSearchParams.get("recover")==="1"});
         }
-      }catch { if(active) {setDeviceStorageBlocked(true);setSaveState("error");setCloudSaveError("This trip could not be opened safely. Its recovery is preserved.");} }
+      }catch { if(active) {reportPersistenceOutcome("builder-entry",{stored:false});setDevicePersistenceOutcome("unknown");setDeviceStorageBlocked(true);setSaveState("error");setCloudSaveError(language === "es" ? "No pudimos abrir este viaje de forma segura. Mantén esta pestaña abierta." : "This trip could not be opened safely. Keep this tab open.");} }
     };
     void start();return()=>{active=false};
   },[builderSeed,hydrated,pendingInterpretation,resolvingLocations,tripUnavailable,activeBrowserOwnerId,activeTripDocument,persistDeviceRecovery]);
@@ -4620,6 +4637,8 @@ function TripBuilderDocument() {
         return;
       }
       setDeviceRecoveryBlocked(recovery.blockedByExistingRecovery);
+      setDevicePersistenceOutcome(recoveryPersistenceOutcome(recovery));
+      reportPersistenceOutcome("homepage-preservation", recovery);
       setDeviceStorageBlocked(!recovery.stored && !recovery.blockedByExistingRecovery);
       if (shouldAllowNewTripNavigation(recovery)) {
         setSaveState("local");
@@ -4660,16 +4679,12 @@ function TripBuilderDocument() {
       }
       if (arrivedFromHomepage) void removeHomeTripDraftIfDurable(window.localStorage, homeDraftRef.current, activeTripDocument, recovery.stored, resolvingLocations);
       setDeviceRecoveryBlocked(recovery.blockedByExistingRecovery);
+      setDevicePersistenceOutcome(recoveryPersistenceOutcome(recovery));
+      reportPersistenceOutcome("builder-entry", recovery);
       setDeviceStorageBlocked(!recovery.stored && !recovery.blockedByExistingRecovery);
       setSaveState(recovery.stored ? "local" : "error");
       if (!recovery.stored && !cloudConflictTrip) {
-        setCloudSaveError(recovery.blockedByExistingRecovery
-          ? (language === "es"
-            ? "Ya hay cambios de este dispositivo que deben resolverse antes de editar la copia en la nube."
-            : "This device already has separate edits. Open that device copy to continue or resolve it explicitly.")
-          : (language === "es"
-            ? "El navegador bloqueó el almacenamiento. Mantén esta pestaña abierta antes de salir."
-            : "Browser storage is blocked. Keep this tab open before leaving."));
+        setCloudSaveError(recoveryFailureMessage(recovery, language));
       } else if (!cloudConflictTrip && (deviceStorageBlocked || deviceRecoveryBlocked)) {
         setCloudSaveError("");
       }
@@ -5192,7 +5207,9 @@ function TripBuilderDocument() {
           ? "Guardado en tu cuenta"
           : saveState === "local"
             ? "Guardado en este dispositivo"
-            : deviceStorageBlocked || deviceRecoveryBlocked
+            : mountedBuilder?.snapshot.error?.deviceOutcome
+              ? "Cambio no guardado"
+            : deviceStorageBlocked || deviceRecoveryBlocked || mountedBuilder?.snapshot.error?.category === "storage"
               ? "Los cambios solo están en esta pestaña"
               : "Cambios no sincronizados con tu cuenta"
     : saveState === "device-saving"
@@ -5203,11 +5220,17 @@ function TripBuilderDocument() {
           ? "Saved to your account"
           : saveState === "local"
             ? "Saved on this device"
-            : deviceStorageBlocked || deviceRecoveryBlocked
+            : mountedBuilder?.snapshot.error?.deviceOutcome
+              ? "Change not saved"
+            : deviceStorageBlocked || deviceRecoveryBlocked || mountedBuilder?.snapshot.error?.category === "storage"
               ? "Changes are only in this tab"
               : "Changes not synced to your account";
   const recoverFromSaveError = () => {
     if(builderEditSessionRef.current) {
+      if (mountedBuilder?.snapshot.error?.deviceOutcome && mountedBuilder.snapshot.error.deviceOutcome !== "protected-conflict") {
+        openSummaryEditor("stops");
+        return;
+      }
       if(syncAction==="sign-in")window.location.assign(tripSyncSignInPath(activeTripDocument.id,"builder"));
       else if(syncAction==="open-device" || mountedBuilder?.snapshot.historicalRecovery)window.location.assign(tripSyncRecoveryPath(activeTripDocument.id,"builder"));
       else builderEditSessionRef.current.retrySave();
@@ -5227,8 +5250,11 @@ function TripBuilderDocument() {
     if (deviceStorageBlocked) {
       const recovery = persistDeviceRecovery(activeTripDocument);
       setDeviceRecoveryBlocked(recovery.blockedByExistingRecovery);
+      setDevicePersistenceOutcome(recoveryPersistenceOutcome(recovery));
+      reportPersistenceOutcome("builder-entry", recovery);
       setDeviceStorageBlocked(!recovery.stored && !recovery.blockedByExistingRecovery);
       if (recovery.stored) { setCloudSaveError(""); setSaveState("local"); }
+      else if (!receiptAcknowledgementRef.current) setCloudSaveError(recoveryFailureMessage(recovery, language));
       return;
     }
     if (syncAction === "sign-in") {
@@ -5237,7 +5263,9 @@ function TripBuilderDocument() {
     }
     openBuiltTrip();
   };
-  const recoveryActionLabel = syncAction === "reload-cloud"
+  const recoveryActionLabel = mountedBuilder?.snapshot.error?.deviceOutcome && mountedBuilder.snapshot.error.deviceOutcome !== "protected-conflict"
+    ? (language === "es" ? "Revisar e intentar de nuevo" : "Review and try again")
+    : syncAction === "reload-cloud"
     ? (language === "es" ? "Abrir copia en la nube" : "Open cloud copy")
     : syncAction === "open-device"
       ? (language === "es" ? "Abrir copia del dispositivo" : "Open device copy")
@@ -6526,7 +6554,11 @@ function TripBuilderDocument() {
       /> : null}
 
       {cloudSaveError ? <div className={styles.recoveryFeedback}><MorroviaRecoveryFeedback
-        title={deviceStorageBlocked || deviceRecoveryBlocked
+        title={mountedBuilder?.snapshot.error?.deviceOutcome
+          ? (language === "es" ? "Cambio no guardado" : "Change not saved")
+          : devicePersistenceOutcome === "receipt-incomplete" || devicePersistenceOutcome === "pointer-incomplete"
+            ? (language === "es" ? "Apertura del viaje no confirmada" : "Trip opening not confirmed")
+          : deviceStorageBlocked || deviceRecoveryBlocked || mountedBuilder?.snapshot.error?.category === "storage"
           ? (language === "es" ? "Los cambios solo están en esta pestaña" : "Changes are only in this tab")
           : cloudConflictTrip
             ? (language === "es" ? "Este viaje tiene versiones separadas" : "This trip has separate versions")
@@ -6534,7 +6566,11 @@ function TripBuilderDocument() {
               ? (language === "es" ? "Inicia sesión para terminar de guardar" : "Sign in to finish saving")
               : (language === "es" ? "No se pudo guardar en tu cuenta" : "Couldn't save to your account")}
         detail={cloudSaveError}
-        safety={deviceStorageBlocked || deviceRecoveryBlocked
+        safety={mountedBuilder?.snapshot.error?.deviceOutcome
+          ? (language === "es" ? "Este cambio no se aplicó. Revísalo y vuelve a aplicarlo; mantén esta pestaña abierta." : "This change was not applied. Review and reapply it; keep this tab open.")
+          : devicePersistenceOutcome === "receipt-incomplete" || devicePersistenceOutcome === "pointer-incomplete"
+            ? (language === "es" ? "Mantén esta pestaña abierta hasta que se confirme la apertura de este viaje." : "Keep this tab open until opening this trip is confirmed.")
+          : deviceStorageBlocked || deviceRecoveryBlocked || mountedBuilder?.snapshot.error?.category === "storage"
           ? (language === "es" ? "Mantén esta pestaña abierta hasta que Morrovia pueda guardar una copia de recuperación." : "Keep this tab open until Morrovia can store a recovery copy.")
           : cloudConflictTrip
             ? (language === "es" ? "Tus cambios del dispositivo siguen conservados y no sustituyeron la copia de la cuenta." : "Your device edits remain preserved and did not replace the account copy.")
