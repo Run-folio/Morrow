@@ -69,3 +69,26 @@ No default `npm test` script exists. Controller explicitly owns aggregate qualif
 - Accepted frozen controls remain source-parseable and semantically eligible, but no unproved static canonical bindings were added. Existing inventory still supports only its verified legacy contexts.
 - Controller must record captured-pixel before/after/credit results and complete aggregate qualification plus independent review before product acceptance. Hosted verification remains **MANUAL HOSTED VERIFICATION REQUIRED** under the separate final hosted gate.
 - No provider credentials, provider additions, deployment, production pushes, source snapshot regeneration or frozen evidence modifications. Original untracked node_modules symlink and controller brief/task state remain untouched. Commit contains only the listed scoped source/tests/report paths.
+
+## Round1 correction after controller qualification
+
+Controller qualification at `e972d7ea878516a219e6a1152d57da5eefaf120b` found typecheck/build errors and one outdated exact-context expectation (219 focused tests,218pass/1fail). Independent review identified a real gateway-selection gap: Commons repeats the same caption in alt and description, so removing the canonical airport name once left a second airport keyword that could qualify an unrelated beach/landscape. Original controller logs are preserved as `typecheck-e972d7e.log`, `build-e972d7e.log`, and `focused-e972d7e.log` in the external evidence directory.
+
+Corrections:
+
+- Keep the asset-identity contract restricted to fields used by normalization while explicitly admitting the existing optional `sourceLabel` on literal callers. Scorer candidates without a label and legacy cache/dashboard callers now typecheck. No caller rewrites, broad index signatures, null widening, casts or suppression directives.
+- In the three existing async cache test fixtures, convert nullable provider descriptions to `undefined`, matching the production adapter's cached-description contract. CachedRoutePhoto remains `description?: string`; provider descriptions remain nullable.
+- Update the complete Shenzhen reference-context assertion to include verified derived `canonicalName: 'Shenzhen'` and `placeType: 'city'`. The pinned record was directly inspected; country, exact point, admin hierarchy, coordinate guard and requiresPhotoCoordinates checks remain asserted. No safeguards weakened.
+- Remove every normalized canonical airport-name occurrence before gateway scenery checks, including duplicate alt/description/tag mentions. Added a failing regression using the actual live Commons shape: beach and coastal-panorama captions repeated in alt+description and canonical airport tags are rejected; a duplicated terminal-architecture caption succeeds. This changes the generic gateway predicate, with no destination-specific rendering exception.
+
+TDD: the new live-shape gateway regression and old exact-context expectation were observed failing in `task1-batch15-round1-red.log` before source correction. After fixing the code and verifying the pinned fixture type, the focused command below passed96tests/8files, zero failures:
+
+```sh
+node --experimental-strip-types --test tests/systemic-photo-selection.test.ts tests/batch15-admin-context.test.ts tests/batch15-photo-corrections.test.ts tests/dashboard-cover-corrections.test.ts tests/journey-route-image-handler.test.ts tests/wikimedia-destination-photo.test.ts tests/route-photo-cache.test.ts tests/route-photo-api-cache.test.ts
+npm run typecheck
+git diff --check
+```
+
+Typecheck completed with exit0 (twice); final targeted tests and diff check passed. Logs are copied as `task1-batch15-round1-focused.log` and `task1-batch15-round1-typecheck.log`. Round1 fixes modify only `lib/easyt/route-photo-cache.ts`, `lib/easyt/published-route-image-pipeline.ts`, `tests/batch15-photo-corrections.test.ts`, `tests/batch15-admin-context.test.ts`, `tests/systemic-photo-selection.test.ts`, and this report. Controller-owned generated `next-env.d.ts` is deliberately unstaged and untouched by implementation.
+
+Controller separately reports `pixel replay-e972d7e` PASS: captured actual Milan/Santa Cruz/labelled-country-Cuyo photos retained, six rejected captured covers fall back to flags, credit frames equal image bounds at390/519/520/521/1440,44px targets, and all three credit source/licence dialogs/links per width. This is captured-pixel replay of frozen assets, not new upstream-provider or hosted qualification. Controller owns remaining build/core/transport/aggregate checks and final independent review. Unsplash target validation and the visual-quality limitations listed above remain unchanged.

@@ -175,7 +175,9 @@ export function scorePublishedRouteImageCandidate(stop: PublishedRouteImageStop,
     || /\b(?:photographed|captured|taken)(?: in)? (?:18|19)\d{2}\b/.test(subjectText)
     || /\b(archival|archive|historic photograph|historical photograph|vintage photograph)\b/.test(subjectText);
   if (settlement && sunsetOnly) suitabilityConcerns.push("settlement cover describes sunset/water/sky without a legible civic scene");
-  const gatewayScene = subjectText.replace(normalizeImageGeography(stop.name), "");
+  // Providers may repeat the same canonical name in alt, description and tags.
+  // Every such mention is identity evidence, never independent scene evidence.
+  const gatewayScene = subjectText.replaceAll(normalizeImageGeography(stop.name), "");
   if (stop.placeType === "transport_gateway" && !/\b(airport|airfield|terminal|runway|aerial)\b/.test(gatewayScene)) suitabilityConcerns.push("gateway cover does not identify airport scenery");
   if (archivalCapture) evidence.push("explicit archival capture metadata; ranking preference only");
   const coverScore = (civicScene ? 30 : widerScene ? 10 : 0) - (archivalCapture ? 20 : 0) - (sunsetOnly ? 20 : 0);

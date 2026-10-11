@@ -92,7 +92,7 @@ test('homepage handoff enrichment keeps the chosen district on its stop occurren
 test('an older saved stop without district still recovers exact photo geography from stable identity', () => {
   const older = { canonicalPlaceId: 'reference:geonames:1795566', name: 'Shenzhen', country: 'China',
     coordinates: [111.11793, 22.1823] as [number, number] };
-  assert.deepEqual(referencePhotoPlaceContext(older), { valid: true, region: 'Guangdong',
+  assert.deepEqual(referencePhotoPlaceContext(older), { valid: true, canonicalName: 'Shenzhen', placeType: 'city', region: 'Guangdong',
     administrativeHierarchy: ['Guangdong', 'Maoming Shi'], requiresPhotoCoordinates: true });
   assert.deepEqual(referencePhotoPlaceContext({ ...older, coordinates: [114.0683, 22.54554] }), { valid: false });
 });

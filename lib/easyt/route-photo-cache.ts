@@ -44,7 +44,7 @@ export type RoutePhotoCandidate = {
 };
 
 /** Stable provider asset identity across thumbnail sizes and trip occurrences. */
-export function routePhotoAssetIdentity(photo: Pick<CachedRoutePhoto, "sourceUrl" | "id" | "provider" | "src">) {
+export function routePhotoAssetIdentity(photo: Pick<CachedRoutePhoto, "sourceUrl" | "id" | "provider" | "src"> & Partial<Pick<CachedRoutePhoto, "sourceLabel">>) {
   try {
     const source = new URL(photo.sourceUrl);
     if (source.hostname === "commons.wikimedia.org" && source.pathname.startsWith("/wiki/File:")) {

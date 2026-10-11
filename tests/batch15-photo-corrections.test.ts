@@ -30,7 +30,7 @@ test('shared photo assignment follows route order regardless of provider complet
   const selected:Record<string,string>={};
   await resolveDistinctRoutePhotoCandidates(['first','second'].map(cacheKey=>({cacheKey:`order-${slow}-${cacheKey}`,queries:[cacheKey],occurrenceIds:[cacheKey]})),(candidate,result)=>{if(result.kind==='photo')selected[candidate.queries[0]!]=result.photo.id!;},{storage:null,trackPhoto:()=>{},findPhotos:async(queries,_signal,_place,excluded)=>{
    if(queries[0]===slow)await new Promise(resolve=>setTimeout(resolve,20));
-   return {configured:true,status:'resolved',candidates:[{...photo,alt:photo.alt??undefined,sourceLabel:'Example · CC BY 4.0'},{...photo,alt:photo.alt??undefined,id:'File:Alternate.jpg',src:photo.src.replace('Example','Alternate'),sourceUrl:photo.sourceUrl.replace('Example','Alternate'),sourceLabel:'Example · CC BY 4.0'}].filter(p=>!excluded?.includes(p.sourceUrl))};
+   return {configured:true,status:'resolved',candidates:[{...photo,alt:photo.alt??undefined,description:photo.description??undefined,sourceLabel:'Example · CC BY 4.0'},{...photo,alt:photo.alt??undefined,description:photo.description??undefined,id:'File:Alternate.jpg',src:photo.src.replace('Example','Alternate'),sourceUrl:photo.sourceUrl.replace('Example','Alternate'),sourceLabel:'Example · CC BY 4.0'}].filter(p=>!excluded?.includes(p.sourceUrl))};
   }});
   return selected;
  }
@@ -64,7 +64,7 @@ test('a slow unrelated destination lookup does not block ready photo callbacks',
  let release!:()=>void;const slow=new Promise<void>(resolve=>{release=resolve;});const selected:string[]=[];
  const task=resolveDistinctRoutePhotoCandidates(['slow','fast'].map(cacheKey=>({cacheKey:'independent-'+cacheKey,queries:[cacheKey],occurrenceIds:[cacheKey]})),(candidate,result)=>{if(result.kind==='photo')selected.push(candidate.queries[0]!);},{storage:null,trackPhoto:()=>{},findPhotos:async queries=>{
   if(queries[0]==='slow')await slow;
-  return {configured:true,status:'resolved',candidates:[{...photo,alt:photo.alt??undefined,id:'File:'+queries[0]+'.jpg',sourceUrl:photo.sourceUrl.replace('Example',queries[0]!),src:photo.src.replace('Example',queries[0]!),sourceLabel:'Example · CC BY 4.0'}]};
+  return {configured:true,status:'resolved',candidates:[{...photo,alt:photo.alt??undefined,description:photo.description??undefined,id:'File:'+queries[0]+'.jpg',sourceUrl:photo.sourceUrl.replace('Example',queries[0]!),src:photo.src.replace('Example',queries[0]!),sourceLabel:'Example · CC BY 4.0'}]};
  }});
  await new Promise(resolve=>setTimeout(resolve,0));const ready=[...selected];release();await task;
  assert.deepEqual(ready,['fast']);assert.deepEqual(selected,['fast','slow']);

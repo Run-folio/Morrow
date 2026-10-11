@@ -103,3 +103,16 @@ test('recorded pixel exclusions are editorial suitability decisions without fals
  const candidate={...photo('Manila Philippines skyline'),sourceUrl:'https://commons.wikimedia.org/wiki/File:Sunset,_Manila,_Philippines.jpg'};
  const scored=scorePublishedRouteImageCandidate(stop,candidate);assert.equal(scored.eligible,true);assert.equal(scored.accepted,false);assert.deepEqual(scored.concerns,[]);assert.ok(scored.suitabilityConcerns.some(reason=>reason.includes('editorial review')));assert.equal(chooseEditoriallyReviewedCandidate([{candidate,...scored}],candidate.id),null);
 });
+
+test('live Commons duplicated gateway captions cannot use canonical airport names as scenery proof',async()=>{
+ const gateway={...stop,name:'London Gatwick Airport',country:'United Kingdom',placeType:'transport_gateway',coordinates:[-0.185739,51.148744] as [number,number]};
+ for(const description of ['London Gatwick Airport United Kingdom beach landscape','London Gatwick Airport United Kingdom coastal panorama']){
+  const candidate={...photo(description),alt:description,tags:['London Gatwick Airport']};
+  assert.equal(scorePublishedRouteImageCandidate(gateway,candidate).accepted,false,description);
+  const result=await lookupWikimediaDestinationPhotos(gateway,{fetcher:async()=>Response.json({query:{pages:{1:page(description,'Gateway')}}})});
+  assert.equal(result.status,'no-result');assert.deepEqual(result.candidates,[]);assert.equal(result.diagnostics?.eligible,1);assert.equal(result.diagnostics?.suitable,0);
+ }
+ const description='London Gatwick Airport United Kingdom terminal architecture';
+ const result=await lookupWikimediaDestinationPhotos(gateway,{fetcher:async()=>Response.json({query:{pages:{1:page(description,'Gateway')}}})});
+ assert.equal(result.status,'resolved');assert.equal(result.candidates[0]?.id,'File:Gateway.jpg');
+});
