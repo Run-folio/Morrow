@@ -1,3 +1,4 @@
+import { isEditoriallyExcludedPhoto } from "./photo-editorial-exclusions.ts";
 import { countryFor } from "./country-registry.ts";
 import { isReusableWikimediaLicense, isWikimediaCommonsImageUrl } from "./photo-attribution.ts";
 
@@ -60,7 +61,7 @@ function excludedPhoto(excluded: readonly string[], photo: CachedRoutePhoto) {
 
 // Candidate rules changed: old positives may contain transit imagery or a
 // route-wide duplicate. Re-evaluate them without touching saved trip content.
-const prefix = "morrovia:route-photo:v6:";
+const prefix = "morrovia:route-photo:v7:";
 const inFlightSelections = new Map<string, Promise<CachedRoutePhotoSelection | null>>();
 const inFlightConsumers = new Map<string, Set<{ signal?: AbortSignal }>>();
 type SelectionRequestOwner = { order: number; consumers: Set<{ signal?: AbortSignal }> };
@@ -121,7 +122,7 @@ export function routePhotoFromUnknown(value: unknown): CachedRoutePhoto | null {
   const src = webUrl(value.src);
   const sourceUrl = webUrl(value.sourceUrl);
   const sourceLabel = typeof value.sourceLabel === "string" ? value.sourceLabel.trim() : "";
-  if (!src || !sourceUrl || !sourceLabel) return null;
+  if (!src || !sourceUrl || !sourceLabel || isEditoriallyExcludedPhoto(sourceUrl)) return null;
 
   const photo: CachedRoutePhoto = { src, sourceUrl, sourceLabel };
   if (value.scope === "country") {

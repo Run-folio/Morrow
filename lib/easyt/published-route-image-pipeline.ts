@@ -1,3 +1,4 @@
+import { isEditoriallyExcludedPhoto } from "./photo-editorial-exclusions.ts";
 import { isRepresentativeDestinationScene } from "./photo-subject.ts";
 
 export type PublishedRouteImageStop = {
@@ -140,7 +141,7 @@ export function scorePublishedRouteImageCandidate(stop: PublishedRouteImageStop,
   if (subjectContext && !mentions(subjectText, subjectContext)) concerns.push("photographed subject is not identified in the selected administrative context");
   if (!landscape) concerns.push("provider asset is not landscape-oriented");
   if (!editorialSubject) concerns.push("metadata does not describe a destination-suitable scene");
-  if (!isRepresentativeDestinationScene([candidate.alt, candidate.description].filter(Boolean).join(" "))) concerns.push("caption describes an incidental park or bench rather than representative destination scenery");
+  if (captions.some(caption => !isRepresentativeDestinationScene(caption))) concerns.push("caption describes an incidental park or bench rather than representative destination scenery");
   // A park/location keyword can describe the setting of an incidental subject.
   // Country illustrations need explicit wider geographic scenery evidence.
   if (stop.placeType === "country" && !/\b(city|town|village|street|square|architecture|palace|temple|church|cathedral|mosque|skyline|landscape|mountain|coast|beach|lake|waterfront|harbour|harbor|river|bridge|panorama|plaza|agora|waterfall|volcano|desert|island|bay|cliffs)\b/.test(subjectText)) concerns.push("country illustration does not identify a geographic scene");
@@ -150,6 +151,8 @@ export function scorePublishedRouteImageCandidate(stop: PublishedRouteImageStop,
   if (nonPhotographic) { score -= 100; concerns.push("non-photographic subject metadata"); }
   if (incidentalSubject) { score -= 50; concerns.push("metadata centres an incidental subject rather than the destination"); }
   if (transitSubject) { score -= 50; concerns.push("metadata centres a transit vehicle rather than the destination"); }
+
+  if (isEditoriallyExcludedPhoto(candidate.sourceUrl)) concerns.push("provider asset excluded by verified editorial review");
 
   const bounded = Math.max(0, Math.min(100, score));
   return { score: bounded, accepted: bounded >= 80 && concerns.length === 0, evidence, concerns };
@@ -183,7 +186,7 @@ export function chooseEditoriallyReviewedCandidate(
   const reviewed = ranked.find((item) => item.candidate.id === providerAssetId) ?? null;
   if (!reviewed || unavailableSources.has(reviewed.candidate.sourceUrl)) return null;
   const hasHardSafetyConflict = reviewed.concerns.some((concern) => (
-    /conflicting provider country|provider coordinates are|different route stop named|non-photographic/.test(concern)
+    /conflicting provider country|provider coordinates are|different route stop named|non-photographic|excluded by verified editorial review/.test(concern)
   ));
   return hasHardSafetyConflict ? null : reviewed;
 }

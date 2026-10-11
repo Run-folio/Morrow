@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { scorePublishedRouteImageCandidate, type PublishedRouteImageCandidate } from '../lib/easyt/published-route-image-pipeline.ts';
+import { chooseEditoriallyReviewedCandidate, scorePublishedRouteImageCandidate, type PublishedRouteImageCandidate } from '../lib/easyt/published-route-image-pipeline.ts';
 import { lookupWikimediaDestinationPhotos } from '../lib/easyt/wikimedia-destination-photo.server.ts';
 import { resolveDistinctRoutePhotoCandidates } from '../lib/easyt/route-photo-cache.ts';
 import { placeSuggestionLocationDetail } from '../lib/easyt/place-autocomplete.ts';
@@ -105,4 +105,26 @@ test('Commons filenames naming an administrative parent cannot override a confli
  assert.equal((await lookupWikimediaDestinationPhotos(place,{fetcher:lookup})).status,'no-result');
  page.imageinfo[0]!.extmetadata.ImageDescription.value='Santa Cruz de Tenerife Spain coastal skyline';
  assert.equal((await lookupWikimediaDestinationPhotos(place,{fetcher:lookup})).status,'resolved');
+});
+
+
+test('an independent event-centred caption cannot borrow a scenic exemption from another claim',()=>{
+ const selected={...stop,name:'Milan',country:'Italy'};
+ const scene='Milan Italy skyline with distant cathedral';
+ const event='Protesters rally outside the Milan cathedral, Italy';
+ for(const [alt,description] of [[scene,event],[event,scene]]) assert.equal(scorePublishedRouteImageCandidate(selected,{...photo,alt,description}).accepted,false);
+ assert.equal(scorePublishedRouteImageCandidate(selected,{...photo,alt:scene,description:'Milan Italy skyline with distant protesters in the background'}).accepted,true);
+});
+
+test('the verified blurred Commons asset is excluded across widths without excluding other night scenery',async()=>{
+ const {routePhotoFromUnknown}=await import('../lib/easyt/route-photo-cache.ts');
+ const title='Athens,_Greece_Skyline_at_Night_(5986575817).jpg';
+ for(const file of [title,title.replaceAll('_',' ')]) {
+  const rejected={...photo,id:'File:'+file,alt:'Athens Greece skyline at night',sourceLabel:'Erik Drost · CC BY 2.0',sourceUrl:'https://commons.wikimedia.org/wiki/File:'+encodeURIComponent(file),src:'https://upload.wikimedia.org/wikipedia/commons/thumb/a/ab/'+title+'/800px-'+title};
+  const score=scorePublishedRouteImageCandidate({...stop,name:'Athens',country:'Greece'},rejected);
+  assert.equal(score.accepted,false);
+  assert.equal(chooseEditoriallyReviewedCandidate([{candidate:rejected,...score}],rejected.id),null,'positive editorial override cannot restore a rejected quality asset');
+  assert.equal(routePhotoFromUnknown(rejected),null,'stored/provider result must not restore a reviewed exclusion');
+ }
+ assert.equal(scorePublishedRouteImageCandidate({...stop,name:'Athens',country:'Greece'},{...photo,alt:'Athens Greece skyline at night'}).accepted,true);
 });

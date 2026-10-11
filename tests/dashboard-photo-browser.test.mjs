@@ -60,3 +60,22 @@ test("a failed cover retry preserves another visible cover's ownership without b
   });
   try{await view.page.goto(view.url);await view.page.waitForFunction(()=>document.querySelectorAll('[data-src]').length===2&&[...document.querySelectorAll('[data-src]')].every(n=>n.dataset.src));phase=1;await view.page.getByRole("button",{name:"Fail A"}).click();await view.page.waitForTimeout(150);assert.equal(await view.page.locator('[data-cover="A"]').getAttribute("data-src"),"");assert.equal(await view.page.locator('[data-cover="B"]').getAttribute("data-src"),b.src);assert.equal(bCalls,1);}finally{await view.close();}
 });
+
+
+test("cover failures are bounded per canonical identity and a changed destination receives fresh lookups",{skip:!enabled,timeout:30000},async()=>{
+ const contents=`import React,{useState} from 'react';import {createRoot} from 'react-dom/client';import {useDashboardTripPhotos} from './components/easyt/use-dashboard-trip-photos';
+ function App(){const [name,setName]=useState('Athens');const trip={id:'same-trip',status:'planned',stops:[{id:'same-stop',order:0,name,country:name==='Athens'?'Greece':'Italy',canonicalPlaceId:name==='Athens'?'reference:geonames:264371':'reference:geonames:3173435',longitude:null,latitude:null}],planItems:[]};const {photos,markFailed}=useDashboardTripPhotos([trip]);return <div data-src={photos.get(trip.id)?.src??''}><button onClick={()=>markFailed(trip,photos.get(trip.id).src)}>Fail</button><button onClick={()=>setName(name==='Athens'?'Milan':'Athens')}>Change</button></div>};createRoot(document.getElementById('root')).render(<App/>);`;
+ const view=await harness(contents),calls={Athens:0,Milan:0};const athens=[0,1,2,3].map(i=>fixturePhoto('RetryAthens'+i,'Greece')),milan=fixturePhoto('RetryMilan','Italy');
+ await view.page.route('**/api/journey-route-image?**',async route=>{
+  const params=new URL(route.request().url()).searchParams,name=params.get('place'),excluded=params.getAll('exclude');calls[name]++;
+  const candidates=(name==='Athens'?athens:[milan]).filter(p=>!excluded.includes(p.src)&&!excluded.includes(p.sourceUrl)&&!excluded.includes('wikimedia:'+p.id));await route.fulfill({json:{configured:true,image:candidates[0]??null,candidates}});
+ });
+ try {
+  await view.page.goto(view.url);
+  for(let i=0;i<3;i++){await view.page.waitForFunction(id=>document.querySelector('[data-src]')?.dataset.src?.includes(id),'RetryAthens'+i);await view.page.getByRole('button',{name:'Fail',exact:true}).click();}
+  await view.page.waitForFunction(()=>document.querySelector('[data-src]')?.dataset.src==='');assert.equal(calls.Athens,3);
+  await view.page.getByRole('button',{name:'Change',exact:true}).click();
+  await view.page.waitForFunction(()=>document.querySelector('[data-src]')?.dataset.src?.includes('RetryMilan'),{},{timeout:3000});assert.equal(calls.Milan,1);
+  await view.page.getByRole('button',{name:'Change',exact:true}).click();await view.page.waitForFunction(()=>document.querySelector('[data-src]')?.dataset.src==='');assert.equal(calls.Athens,3,'returning to failed identity retains its bounded budget');
+ } finally {await view.close();}
+});

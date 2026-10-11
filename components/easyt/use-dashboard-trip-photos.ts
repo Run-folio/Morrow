@@ -14,14 +14,15 @@ export function useDashboardTripPhotos(trips: readonly EasyTTrip[]) {
     const photos = dashboardTripPhotosForCards(trips);
     for (const trip of trips) {
       const photo = photos.get(trip.id);
-      if (photo && failed[trip.id]?.includes(photo.src)) photos.delete(trip.id);
+      const key = dashboardTripCoverCandidate(trip)?.cacheKey;
+      if (photo && key && failed[key]?.includes(photo.src)) photos.delete(trip.id);
     }
     return photos;
   }, [trips, failed]);
   const candidates = useMemo(() => trips.flatMap(trip => {
-    if (trip.status === "draft" || initial.has(trip.id) || (failed[trip.id]?.length ?? 0) >= 3) return [];
-    const candidate = dashboardTripCoverCandidate(trip, failed[trip.id]);
-    return candidate ? [candidate] : [];
+    const identity = dashboardTripCoverCandidate(trip);
+    if (!identity || trip.status === "draft" || initial.has(trip.id) || (failed[identity.cacheKey]?.length ?? 0) >= 3) return [];
+    return [{ ...identity, excludedSources: failed[identity.cacheKey] ?? [] }];
   }), [trips, initial, failed]);
 
   useEffect(() => {
@@ -50,7 +51,7 @@ export function useDashboardTripPhotos(trips: readonly EasyTTrip[]) {
     for (const candidate of candidates) {
       const photo = resolved[candidate.cacheKey];
       const tripId = candidate.occurrenceIds[0];
-      if (photo && tripId && !failed[tripId]?.includes(photo.src)) next.set(tripId, photo);
+      if (photo && tripId && !failed[candidate.cacheKey]?.includes(photo.src)) next.set(tripId, photo);
     }
     return next;
   }, [initial, candidates, resolved, failed]);
@@ -59,8 +60,8 @@ export function useDashboardTripPhotos(trips: readonly EasyTTrip[]) {
     if (candidate) {
       discardFailedRoutePhoto(candidate.cacheKey, src);
       if (resolvedRef.current[candidate.cacheKey]?.src === src) delete resolvedRef.current[candidate.cacheKey];
+      setFailed(current => ({ ...current, [candidate.cacheKey]: [...new Set([...(current[candidate.cacheKey] ?? []), src])] }));
     }
-    setFailed(current => ({ ...current, [trip.id]: [...new Set([...(current[trip.id] ?? []), src])] }));
   }, []);
   return { photos, markFailed };
 }

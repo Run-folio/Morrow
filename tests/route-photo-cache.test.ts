@@ -200,11 +200,11 @@ test("photo cache keeps repeat visits together and separates changed selection c
 test("the shared cache retains valid imagery but ignores and evicts persisted empty choices", () => {
   const storage = new MemoryStorage();
   saveRoutePhotoSelection("place:one", { kind: "photo", photo: validPhoto }, storage);
-  storage.setItem("morrovia:route-photo:v6:place:two", JSON.stringify({ kind: "empty" }));
+  storage.setItem("morrovia:route-photo:v7:place:two", JSON.stringify({ kind: "empty" }));
 
   assert.deepEqual(readRoutePhotoSelection("place:one", storage), { kind: "photo", photo: validPhoto });
   assert.equal(readRoutePhotoSelection("place:two", storage), null);
-  assert.equal(storage.getItem("morrovia:route-photo:v6:place:two"), null);
+  assert.equal(storage.getItem("morrovia:route-photo:v7:place:two"), null);
 
   saveRoutePhotoSelection("place:two", { kind: "empty" }, storage);
   assert.equal(storage.getItem("morrovia:route-photo:v3:place:two"), null);
