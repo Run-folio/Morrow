@@ -5171,7 +5171,7 @@ function TripBuilderDocument() {
               : "Changes not synced to your account";
   const recoverFromSaveError = () => {
     if(builderEditSessionRef.current) {
-      if(syncAction==="sign-in")window.location.assign(tripSyncSignInPath(activeTripDocument.id));
+      if(syncAction==="sign-in")window.location.assign(tripSyncSignInPath(activeTripDocument.id,"builder"));
       else if(syncAction==="open-device" || mountedBuilder?.snapshot.historicalRecovery)window.location.assign(tripSyncRecoveryPath(activeTripDocument.id,"builder"));
       else builderEditSessionRef.current.retrySave();
       return;
@@ -5195,7 +5195,7 @@ function TripBuilderDocument() {
       return;
     }
     if (syncAction === "sign-in") {
-      window.location.assign(tripSyncSignInPath(activeTripDocument.id));
+      window.location.assign(tripSyncSignInPath(activeTripDocument.id,"builder"));
       return;
     }
     openBuiltTrip();

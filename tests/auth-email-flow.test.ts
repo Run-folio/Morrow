@@ -123,8 +123,8 @@ test("auth UI owns truthful check-email, loading and shared password controls", 
   assert.match(login, /const submittedEmail[\s\S]*setEmail\(submittedEmail\.trim\(\)\)[\s\S]*submitEmailSignUp/);
   assert.match(login, /verification-delivery-error[\s\S]*setEmail\(result\.email\)[\s\S]*setVerificationFailure/);
   assert.match(login, /else \{[\s\S]*setEmail\(destination\);[\s\S]*setResendError/);
-  assert.match(login, /aria-busy=\{busy \|\| undefined\}/);
-  assert.match(login, /disabled=\{!configured \|\| googleBusy \|\| Boolean\(verificationFailure\)\}/);
+  assert.match(login, /aria-busy=\{!handlerReady \|\| busy \|\| undefined\}/);
+  assert.match(login, /disabled=\{!handlerReady \|\| !configured \|\| googleBusy \|\| Boolean\(verificationFailure\)\}/);
   assert.match(login, /EasyTPasswordField/);
   assert.match(reset, /EasyTPasswordField/);
   assert.match(controls, /type="button"/);

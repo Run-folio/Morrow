@@ -17,12 +17,24 @@ function storyFilesBelow(path: string): string[] {
   });
 }
 
+const storyHierarchy = /title:\s*(["'])Morrovia\/(?:01 Foundations|02 Controls|03 Status & Feedback|04 Structure|05 Product Patterns|06 Audit)(?:\/[^"'\r\n]+)?\1/;
+
+test("hierarchy accepts matching quotes and rejects invalid categories", () => {
+ for (const quote of ['"', "'"]) assert.match(`title: ${quote}Morrovia/05 Product Patterns/Trip${quote}`, storyHierarchy);
+ for (const source of [
+  'title: "Morrovia/07 Other/Trip"',
+  'title: "Morrovia/05 Product PatternsExtra/Trip"',
+  `title: "Morrovia/05 Product Patterns/Trip'`,
+  'title: "EasyT/05 Product Patterns/Trip"',
+ ]) assert.doesNotMatch(source, storyHierarchy);
+});
+
 test("every current story is grouped under the stable Morrovia hierarchy", () => {
   const files = [...storyFilesBelow("app"), ...storyFilesBelow("components")];
   assert.ok(files.length >= 20);
   for (const file of files) {
     const source = readFileSync(file, "utf8");
-    assert.match(source, /title:\s*"Morrovia\/(?:01 Foundations|02 Controls|03 Status & Feedback|04 Structure|05 Product Patterns|06 Audit)/, file);
+    assert.match(source, storyHierarchy, file);
   }
 });
 

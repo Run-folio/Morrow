@@ -143,3 +143,12 @@ test("the trip workspace waits for authenticated saved intent, then uses the rec
   assert.doesNotMatch(resolver, /setTimeout\(/, "auth readiness must be state-driven, not delay-driven");
   assert.match(resolver, /href=\{tripSyncRecoveryPath\(tripId, "builder"\)\}>Open device copy/);
 });
+
+test("Builder reauthentication returns to Builder while legacy callers retain planner recovery", () => {
+ const id="trip / encoded";
+ const target=tripSyncRecoveryPath(id,"builder");
+ assert.equal(tripSyncSignInPath(id,"builder"), `/journey/login?next=${encodeURIComponent(target)}`);
+ assert.equal(tripSyncSignInPath(id),tripSyncSignInPath(id,"planner"));
+ const source=readFileSync("app/journey/new/trip-builder.tsx","utf8");
+ assert.equal(source.match(/tripSyncSignInPath\(activeTripDocument.id,"builder"\)/g)?.length,2);
+});

@@ -37,8 +37,8 @@ export function tripSyncRecoveryPath(tripId: string, context: "planner" | "build
   return `/journey/plan?trip=${encodeURIComponent(tripId)}&save=1&recover=1`;
 }
 
-export function tripSyncSignInPath(tripId: string) {
-  return `/journey/login?next=${encodeURIComponent(tripSyncRecoveryPath(tripId))}`;
+export function tripSyncSignInPath(tripId: string, context: "planner" | "builder" = "planner") {
+  return `/journey/login?next=${encodeURIComponent(tripSyncRecoveryPath(tripId, context))}`;
 }
 
 export function safeJourneyReturnTarget(target: string | null | undefined) {
