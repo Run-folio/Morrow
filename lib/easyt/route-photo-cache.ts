@@ -16,6 +16,10 @@ export type CachedRoutePhoto = {
   authorUrl?: string;
   license?: string;
   licenseUrl?: string;
+  width?: number;
+  height?: number;
+  description?: string;
+  captureDate?: string;
 };
 
 export type DestinationPhotoPlace = { name: string; country: string; region?: string; administrativeHierarchy?: readonly string[]; requiresPhotoCoordinates?: boolean; placeType?: string; canonicalPlaceId?: string; providerId?: string; coordinates?: readonly [number, number] | null };
@@ -27,6 +31,7 @@ export type CachedRoutePhotoSelection =
 export type RoutePhotoLookup = {
   candidates: CachedRoutePhoto[];
   configured: boolean;
+  diagnostics?: { queries: number; inspected: number; eligible: number; suitable: number; rejections: Record<string, number> };
   status: "resolved" | "no-result" | "unavailable";
 };
 
@@ -39,7 +44,7 @@ export type RoutePhotoCandidate = {
 };
 
 /** Stable provider asset identity across thumbnail sizes and trip occurrences. */
-export function routePhotoAssetIdentity(photo: CachedRoutePhoto) {
+export function routePhotoAssetIdentity(photo: Pick<CachedRoutePhoto, "sourceUrl" | "id" | "provider" | "src">) {
   try {
     const source = new URL(photo.sourceUrl);
     if (source.hostname === "commons.wikimedia.org" && source.pathname.startsWith("/wiki/File:")) {
@@ -59,9 +64,9 @@ function excludedPhoto(excluded: readonly string[], photo: CachedRoutePhoto) {
     || (photo.provider === 'wikimedia' && excluded.includes(photo.sourceUrl));
 }
 
-// Candidate rules changed: old positives may contain transit imagery or a
-// route-wide duplicate. Re-evaluate them without touching saved trip content.
-const prefix = "morrovia:route-photo:v7:";
+// Candidate rules changed: old positives predate representative-cover ranking
+// and the captured-pixel editorial decisions. Re-evaluate them without touching saved trip content.
+const prefix = "morrovia:route-photo:v8:";
 const inFlightSelections = new Map<string, Promise<CachedRoutePhotoSelection | null>>();
 const inFlightConsumers = new Map<string, Set<{ signal?: AbortSignal }>>();
 type SelectionRequestOwner = { order: number; consumers: Set<{ signal?: AbortSignal }> };
@@ -142,6 +147,8 @@ export function routePhotoFromUnknown(value: unknown): CachedRoutePhoto | null {
     const asset = new URL(photo.src), source = new URL(photo.sourceUrl);
     if (!isWikimediaCommonsImageUrl(asset.href) || source.protocol !== "https:" || source.hostname !== "commons.wikimedia.org" || !source.pathname.startsWith("/wiki/File:") || !isReusableWikimediaLicense(photo.license!, photo.licenseUrl!)) return null;
   }
+  for (const field of ["width", "height"] as const) if (typeof value[field] === "number" && Number.isFinite(value[field]) && value[field] > 0) photo[field] = value[field];
+  for (const field of ["description", "captureDate"] as const) if (typeof value[field] === "string" && value[field].trim()) photo[field] = value[field].trim().slice(0, 2000);
   return photo;
 }
 

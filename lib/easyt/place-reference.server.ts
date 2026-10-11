@@ -2,6 +2,7 @@ import {readFileSync,openSync,readSync,fstatSync,closeSync} from 'node:fs';
 import {resolve} from 'node:path';
 import {createHash} from 'node:crypto';
 import {gunzipSync} from 'node:zlib';
+import {reviewedPhotoNameSupplement} from './place-photo-aliases.server.ts';
 import {countryFor, countryCodeFor} from './country-registry.ts';
 import {referenceRecordKey, referenceKnownCodeKind, type ReferencePlaceRecord, type ReferenceSnapshotManifest} from './place-reference.ts';
 import type {PlaceProviderCandidate, PlaceResolutionContext} from './place-intelligence.ts';
@@ -57,13 +58,18 @@ export function referencePlaceById(id:string):ReferencePlaceRecord|undefined{
 export function referencePhotoPlaceContext(input:{canonicalPlaceId?:string;name:string;country:string;coordinates?:readonly [number,number]|null}){
  if(!input.canonicalPlaceId?.startsWith('reference:'))return null;
  const record=referencePlaceById(input.canonicalPlaceId);
- if(!record||record.status!=='active'||record.canonicalName!==input.name||record.countryCode!==countryCodeFor(input.country)
+ const supplement=reviewedPhotoNameSupplement;
+ const supplementMatches=record&&record.canonicalPlaceId===supplement.canonicalPlaceId&&record.canonicalName===supplement.canonicalName
+  &&record.countryCode===supplement.countryCode&&record.placeType===supplement.placeType&&record.iataCode===supplement.iataCode&&record.icaoCode===supplement.icaoCode
+  &&record.coordinates.every((value,index)=>value===supplement.coordinates[index]);
+ const names=record?[record.canonicalName,...record.aliases,...(record.source==='ourairports'?[record.iataCode,record.icaoCode].filter((name):name is string=>Boolean(name)):[]),...(supplementMatches?supplement.aliases:[])]:[];
+ if(!record||record.status!=='active'||!names.some(name=>normalized(name)===normalized(input.name))||record.countryCode!==countryCodeFor(input.country)
    ||!input.coordinates||!input.coordinates.every((value,index)=>Number.isFinite(value)&&value===record.coordinates[index]))
   return {valid:false as const};
  const admin=record.adminCodes;
  const region=admin&&data().adminContext.admin1[`${record.countryCode}.${admin[0]}`];
  const district=admin&&data().adminContext.admin2[`${record.countryCode}.${admin[0]}.${admin[1]}`];
- return {valid:true as const,...(region?{region}:{}),administrativeHierarchy:[region,district].filter((name):name is string=>Boolean(name)),
+ return {valid:true as const,canonicalName:record.canonicalName,placeType:record.placeType,...(region?{region}:{}),administrativeHierarchy:[region,district].filter((name):name is string=>Boolean(name)),
   requiresPhotoCoordinates:record.photoRequiresCoordinates===true};
 }
 function candidate(r:ReferencePlaceRecord,score:number,code?:string):PlaceProviderCandidate{

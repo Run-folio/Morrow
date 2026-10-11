@@ -34,11 +34,11 @@ test("Commons thumbnail host retains a licensed destination photo", async () => 
   assert.equal(result.candidates[0]?.src, thumbnail);
   assert.equal(result.candidates[0]?.license, "CC BY-SA 4.0");
 });
-test("Commons search rank decides the first accepted photo, not numeric page IDs", async () => {
+test("Commons ranking is deterministic across provider order and deduplicates shared source pages", async () => {
   const lower = { ...page(), index: 2, title: "File:Chiang Mai lower-ranked street.jpg" };
   const higher = { ...page(), index: 1, title: "File:Chiang Mai higher-ranked street.jpg" };
   const result = await lookupWikimediaDestinationPhotos(place, { fetcher: fetcher([lower, higher]) });
-  assert.deepEqual(result.candidates.map(photo => photo.id), [higher.title, lower.title]);
+  assert.deepEqual(result.candidates.map(photo => photo.id), [higher.title]);
 });
 test('a route transit ferry does not stop the scenic follow-up search',async()=>{
  const manila={name:'Manila',country:'Philippines',placeType:'city',coordinates:[120.9842,14.5995] as [number,number]};

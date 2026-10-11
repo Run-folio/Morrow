@@ -457,20 +457,22 @@ export default function DashboardClient({ trips, stamps, ownerId }: { trips: Eas
       {featuredTrip ? (
         <article className={styles.currentJourney} aria-labelledby="current-journey-title">
           <div className={`${styles.currentMedia} ${!featuredPhoto?.src ? styles.currentMediaNeutral : ""}`}>
-            <ResilientImage
-              src={featuredPhoto?.src}
-              alt={featuredPhoto?.alt ?? ""}
-              onDisplayState={setFeaturedImageDisplayed}
-              onError={() => { if (featuredTrip && featuredPhoto) markCoverFailed(featuredTrip, featuredPhoto.src); }}
-              fallback={<div className={styles.currentMediaFallback}><CountryVisualFallback country={dashboardTripCoverPlace(featuredTrip)?.country} /></div>}
-            />
-            {featuredPhoto?.scope === "country" && featuredImageDisplayed ? <CountryIllustrationLabel country={featuredPhoto.country} /> : null}
+            <div className={`${styles.cardMediaFrame} ${styles.currentPhotoFrame}`}>
+              <ResilientImage
+                src={featuredPhoto?.src}
+                alt={featuredPhoto?.alt ?? ""}
+                onDisplayState={setFeaturedImageDisplayed}
+                onError={() => { if (featuredTrip && featuredPhoto) markCoverFailed(featuredTrip, featuredPhoto.src); }}
+                fallback={<div className={styles.currentMediaFallback}><CountryVisualFallback country={dashboardTripCoverPlace(featuredTrip)?.country} /></div>}
+              />
+              {featuredPhoto?.scope === "country" && featuredImageDisplayed ? <CountryIllustrationLabel country={featuredPhoto.country} /> : null}
+              {featuredPhoto?.creditLabel && featuredImageDisplayed ? <MorroviaPhotoCredit ownership={featuredPhoto.provenance === "reviewed-morrovia-first-party" ? "morrovia" : "third-party"} photoLabel={featuredPhoto.alt} credit={featuredPhoto.creditLabel} authorHref={featuredPhoto.authorHref} sourceHref={featuredPhoto.creditHref} licenseHref={featuredPhoto.licenseHref} fullCreditHref={featuredPhoto.fullCreditHref} /> : null}
+            </div>
             <div className={styles.currentIdentity}>
               <p className={styles.eyebrow}>{isSpanish ? "Tu viaje actual" : "Your current journey"}</p>
               <h2 id="current-journey-title"><span>{featuredTitle?.direct}</span>{featuredTitle?.expressive ? <em>{featuredTitle.expressive}</em> : null}</h2>
               <p>{routeLabel(featuredTrip, copy.routeWaiting)}</p>
             </div>
-            {featuredPhoto?.creditLabel && featuredImageDisplayed ? <MorroviaPhotoCredit ownership={featuredPhoto.provenance === "reviewed-morrovia-first-party" ? "morrovia" : "third-party"} photoLabel={featuredPhoto.alt} credit={featuredPhoto.creditLabel} authorHref={featuredPhoto.authorHref} sourceHref={featuredPhoto.creditHref} licenseHref={featuredPhoto.licenseHref} fullCreditHref={featuredPhoto.fullCreditHref} /> : null}
           </div>
           <div className={styles.currentDetails}>
             {featuredRecoveryIssue ? <MorroviaStatusBanner className={styles.featuredRecoveryNotice} tone="warning"

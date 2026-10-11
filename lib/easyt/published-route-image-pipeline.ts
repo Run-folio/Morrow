@@ -1,4 +1,6 @@
 import { isEditoriallyExcludedPhoto } from "./photo-editorial-exclusions.ts";
+import { isReusableWikimediaLicense } from "./photo-attribution.ts";
+import { routePhotoAssetIdentity } from "./route-photo-cache.ts";
 import { isRepresentativeDestinationScene } from "./photo-subject.ts";
 
 export type PublishedRouteImageStop = {
@@ -33,11 +35,16 @@ export type PublishedRouteImageCandidate = {
   tags?: string[];
   /** Administrative/file context may establish country, never photographed subject. */
   geographicContext?: string;
+  /** Provider capture date, never upload date. No visual-quality claim. */
+  captureDate?: string;
 };
 
 export type PublishedRouteImageScore = {
   score: number;
   accepted: boolean;
+  eligible: boolean;
+  coverScore: number;
+  suitabilityConcerns: string[];
   evidence: string[];
   concerns: string[];
 };
@@ -84,7 +91,7 @@ function describesTransitSubject(caption: string) {
   const text = normalizeImageGeography(subjectCaption || caption);
   const vehicle = /\b(ferr(?:y|ies)|ships?|vessels?|boats?|buses?|aircraft|airplanes?|planes?|trains?|cruise ships?)\b/.exec(text);
   if (!vehicle) return false;
-  const scene = /\b(skyline|landscape|coast|beach|lake|waterfront|harbour|harbor|river|bridge|panorama|bay)\b/.exec(text);
+  const scene = /\b(skyline|landscape|street|streets|square|architecture|coast|beach|lake|waterfront|harbour|harbor|river|bridge|panorama|bay)\b/.exec(text);
   // Require an explicit relationship to the primary scene, rather than treating
   // any place/harbour keyword anywhere in a vehicle caption as an exemption.
   return !(scene && scene.index < vehicle.index
@@ -123,7 +130,7 @@ export function scorePublishedRouteImageCandidate(stop: PublishedRouteImageStop,
   const incidentalSubject = /\b(portrait|close up|selfie|bikini|animal|bird|curassow|tanager|heron|dog|cat|cow|cattle|artifact|sarcophagus|wheel hub|ski jumping|seller)\b/.test(text);
   const captions = [candidate.alt, candidate.description].filter((value): value is string => Boolean(value));
   const transitSubject = captions.some(describesTransitSubject);
-  const editorialSubject = /\b(city|town|village|street|square|architecture|palace|temple|church|cathedral|mosque|skyline|landscape|mountain|coast|beach|lake|waterfront|harbour|harbor|river|bridge|historic|panorama|view|plaza|agora|old town|waterfall|volcano|desert|island|bay|garden|park)\b/.test(text);
+  const editorialSubject = /\b(airport|airfield|terminal|runway|city|town|village|street|square|architecture|palace|temple|church|cathedral|mosque|skyline|landscape|mountain|coast|beach|lake|waterfront|harbour|harbor|river|bridge|historic|panorama|view|plaza|agora|old town|waterfall|volcano|desert|island|bay|garden|park)\b/.test(text);
   const landscape = candidate.width > candidate.height;
 
   let score = 0;
@@ -152,10 +159,28 @@ export function scorePublishedRouteImageCandidate(stop: PublishedRouteImageStop,
   if (incidentalSubject) { score -= 50; concerns.push("metadata centres an incidental subject rather than the destination"); }
   if (transitSubject) { score -= 50; concerns.push("metadata centres a transit vehicle rather than the destination"); }
 
-  if (isEditoriallyExcludedPhoto(candidate.sourceUrl)) concerns.push("provider asset excluded by verified editorial review");
-
+  if (!candidate.author?.trim() || !candidate.license?.trim() || !candidate.licenseUrl?.trim()
+    || (candidate.provider === "wikimedia" && !isReusableWikimediaLicense(candidate.license, candidate.licenseUrl))) concerns.push("missing or incompatible reusable photo rights");
   const bounded = Math.max(0, Math.min(100, score));
-  return { score: bounded, accepted: bounded >= 80 && concerns.length === 0, evidence, concerns };
+  const eligible = bounded >= 80 && concerns.length === 0;
+  const suitabilityConcerns: string[] = [];
+  if (isEditoriallyExcludedPhoto(candidate.sourceUrl)) suitabilityConcerns.push("provider asset excluded by verified editorial review");
+  // This ranks factual scene/date evidence, not sharpness, exposure or watermark absence.
+  const settlement = ["city", "town", "village"].includes(stop.placeType ?? "");
+  const civicScene = /\b(cityscape|skyline|architecture|street|streets|square|palace|temple|church|cathedral|mosque|bridge|monument|landmark|plaza|agora|old town)\b/.test(subjectText);
+  const widerScene = /\b(panorama|landscape|coast|beach|lake|waterfront|harbour|harbor|river|island|bay)\b/.test(subjectText);
+  const explicitWiderScene = /\b(panorama|landscape|coast|beach|waterfront|harbour|harbor|river|lake)\b/.test(subjectText);
+  const sunsetOnly = /\b(sunset|sun setting|water|sky)\b/.test(subjectText) && !civicScene && !explicitWiderScene;
+  const archivalCapture = /\b(?:18|19)\d{2}\b/.test(candidate.captureDate ?? "")
+    || /\b(?:photographed|captured|taken)(?: in)? (?:18|19)\d{2}\b/.test(subjectText)
+    || /\b(archival|archive|historic photograph|historical photograph|vintage photograph)\b/.test(subjectText);
+  if (settlement && sunsetOnly) suitabilityConcerns.push("settlement cover describes sunset/water/sky without a legible civic scene");
+  const gatewayScene = subjectText.replace(normalizeImageGeography(stop.name), "");
+  if (stop.placeType === "transport_gateway" && !/\b(airport|airfield|terminal|runway|aerial)\b/.test(gatewayScene)) suitabilityConcerns.push("gateway cover does not identify airport scenery");
+  if (archivalCapture) evidence.push("explicit archival capture metadata; ranking preference only");
+  const coverScore = (civicScene ? 30 : widerScene ? 10 : 0) - (archivalCapture ? 20 : 0) - (sunsetOnly ? 20 : 0);
+  return { score: bounded, eligible, coverScore, suitabilityConcerns,
+    accepted: eligible && suitabilityConcerns.length === 0, evidence, concerns };
 }
 
 export function reviewedPhotoMatchesStop(stop: Pick<PublishedRouteImageStop, "name" | "country" | "attachedLandmarks">, photo: { place: string; country: string }) {
@@ -173,7 +198,9 @@ export function choosePublishedRouteImageCandidate(
   unavailableSources: ReadonlySet<string> = new Set(),
 ) {
   const ranked = candidates.map((candidate) => ({ candidate, ...scorePublishedRouteImageCandidate(stop, candidate) }))
-    .sort((left, right) => right.score - left.score || left.candidate.id.localeCompare(right.candidate.id));
+    .sort((left, right) => Number(right.accepted) - Number(left.accepted) || right.coverScore - left.coverScore
+      || right.score - left.score || left.candidate.id.localeCompare(right.candidate.id) || left.candidate.src.localeCompare(right.candidate.src))
+    .filter((item, index, sorted) => sorted.findIndex(other => routePhotoAssetIdentity(other.candidate) === routePhotoAssetIdentity(item.candidate)) === index);
   const selected = ranked.find((item) => item.accepted && !unavailableSources.has(item.candidate.sourceUrl)) ?? null;
   return { selected, ranked };
 }
@@ -185,8 +212,8 @@ export function chooseEditoriallyReviewedCandidate(
 ) {
   const reviewed = ranked.find((item) => item.candidate.id === providerAssetId) ?? null;
   if (!reviewed || unavailableSources.has(reviewed.candidate.sourceUrl)) return null;
-  const hasHardSafetyConflict = reviewed.concerns.some((concern) => (
-    /conflicting provider country|provider coordinates are|different route stop named|non-photographic|excluded by verified editorial review/.test(concern)
+  const hasHardSafetyConflict = [...reviewed.concerns, ...reviewed.suitabilityConcerns].some((concern) => (
+    /conflicting provider country|provider coordinates are|different route stop named|non-photographic|excluded by verified editorial review|missing or incompatible reusable photo rights|no exact place or reviewed landmark|metadata centres|caption describes an incidental/.test(concern)
   ));
   return hasHardSafetyConflict ? null : reviewed;
 }
