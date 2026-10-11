@@ -11,8 +11,10 @@ import type { EasyTTrip, RoadEstimateReference, TripLeg } from "./trip.ts";
 import { findCatalogPlaceById, matchCatalogPlace } from "./place-catalog.ts";
 import { landConnectionEvidence } from "./land-connection.ts";
 import { findSurfaceCrossing } from "./surface-crossing-evidence.ts";
+import { guardTransferRoutingGeography } from "./geographic-binding.ts";
 
 export type RoadFallbackSkipReason =
+  | "unverified_geography"
   | "already_resolved"
   | "explicit_or_unsupported_source"
   | "missing_coordinates"
@@ -123,6 +125,8 @@ export async function resolveCanonicalRoadFallback(
   leg: TripLeg,
   options: { provider?: RoadRoutingProvider; allowCrossBorderEstimate?: boolean } = {},
 ): Promise<RoadFallbackResolution> {
+  const geographicProjection = guardTransferRoutingGeography(leg);
+  if (geographicProjection !== leg) return { leg: geographicProjection, outcome: "unchanged", reason: "unverified_geography" };
   if (leg.mode !== "unknown" || leg.durationMinutes !== null) return { leg, outcome: "unchanged", reason: "already_resolved" };
   if (!roadFallbackEligible(leg)) return { leg, outcome: "unchanged", reason: "explicit_or_unsupported_source" };
   const from = leg.fromEndpoint;

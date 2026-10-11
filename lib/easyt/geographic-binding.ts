@@ -3,7 +3,7 @@ import {findCatalogPlaceById,normalizeCatalogPhrase} from './place-catalog.ts';
 import {canonicalPlaceFactsMatch,validPlaceCoordinates,type GeographicBounds} from './place-intelligence.ts';
 import {routeFamilies} from './route-catalog.ts';
 import {adaptedDiscoveryPlaces} from './discovery-evidence-adapter.ts';
-import type {EasyTTrip,GeographicBinding,JourneyEndpointPlace,TripStop} from './trip.ts';
+import type {CanonicalRouteEndpoint,EasyTTrip,GeographicBinding,JourneyEndpointPlace,TripLeg,TripStop} from './trip.ts';
 
 type Role='stop'|'endpoint';
 type Candidate=JourneyEndpointPlace & {placeType?:string;kind?:string;routability?:string;bounds?:GeographicBounds;referenceSnapshotId?:string};
@@ -89,6 +89,24 @@ export function geographicallyReady(place:JourneyEndpointPlace|null|undefined,ro
  return !catalog||catalogAllowed(catalog.placeType,catalog.routability,role)&&canonicalPlaceFactsMatch(catalog.canonicalPlaceId,place);
 }
 export const validatedPlaceCoordinates=(place:JourneyEndpointPlace|null|undefined,role:Role='stop')=>geographicallyReady(place,role)?place!.coordinates!:null;
+
+export function transferEndpointGeographicallyReady(endpoint:CanonicalRouteEndpoint|null|undefined) {
+ return Boolean(endpoint&&geographicallyReady({...endpoint,coordinates:endpoint.coordinates??undefined},endpoint.kind==='stop'?'stop':'endpoint'));
+}
+
+/** Routing projection only: raw saved identity never authorizes provider consumption. */
+export function guardTransferRoutingGeography(leg:TripLeg):TripLeg {
+ const fromReady=transferEndpointGeographicallyReady(leg.fromEndpoint),toReady=transferEndpointGeographicallyReady(leg.toEndpoint);
+ if(fromReady&&toReady)return leg;
+ const metadata={...leg.routeMetadata};
+ for(const key of ['transferImpact','roadRouting','routingConfidence','surfaceCrossingEvidence','multimodalResolution'])delete metadata[key];
+ return {...leg,mode:'unknown',confidence:'unknown',provenance:'unknown',distanceKm:null,straightLineDistanceKm:null,routedDistanceKm:null,
+  durationMinutes:null,headlineMinutes:null,doorToDoorMinutes:null,usableDayLoss:null,roadEstimate:undefined,routeGeometry:undefined,segments:undefined,
+  fromEndpoint:leg.fromEndpoint?{...leg.fromEndpoint,coordinates:fromReady?leg.fromEndpoint.coordinates:null}:undefined,
+  toEndpoint:leg.toEndpoint?{...leg.toEndpoint,coordinates:toReady?leg.toEndpoint.coordinates:null}:undefined,
+  routeMetadata:{...metadata,source:'unverified-geography',roadFallbackEligible:false},scheduleNeedsChecking:true,
+  provider:'Confirm compatible, validated coordinates before assessing this connection.'};
+}
 /** A generated activity can inherit its base point. That fallback cannot qualify an unverified base. */
 export function validatedActivityCoordinates(base:TripStop|undefined,coordinates:[number,number]|null) {
  if(!coordinates||!validPlaceCoordinates(coordinates))return null;

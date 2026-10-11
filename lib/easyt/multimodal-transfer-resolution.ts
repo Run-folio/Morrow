@@ -8,6 +8,7 @@ import {
 } from "./destination-knowledge.ts";
 import { estimateFlightPlanningMinutes, haversineKm } from "./planner.ts";
 import { directRoadPlausibilityConflict, resolveCanonicalRoadFallback } from "./road-transfer-resolution.ts";
+import { guardTransferRoutingGeography, transferEndpointGeographicallyReady } from "./geographic-binding.ts";
 import type { RoadRoutingProvider } from "./road-routing.ts";
 import { estimateTransferImpact } from "./transfer-impact.ts";
 import { findSurfaceCrossing } from "./surface-crossing-evidence.ts";
@@ -131,6 +132,7 @@ function inferredGatewayAccessSegment(
   from: CanonicalRouteEndpoint,
   to: CanonicalRouteEndpoint,
 ): TransferSegment | null {
+  if (!transferEndpointGeographicallyReady(from) || !transferEndpointGeographicallyReady(to)) return null;
   const distanceKm = haversineKm(from.coordinates ?? undefined, to.coordinates ?? undefined);
   if (distanceKm === null || distanceKm < 1 || distanceKm > 700) return null;
   return segment({
@@ -288,6 +290,7 @@ function railCandidate(
   );
   const railFrom = networkEvidence?.fromAccessGateway ? gatewayEndpoint(networkEvidence.fromAccessGateway) : from;
   const railTo = networkEvidence?.toAccessGateway ? gatewayEndpoint(networkEvidence.toAccessGateway) : to;
+  if (!transferEndpointGeographicallyReady(railFrom) || !transferEndpointGeographicallyReady(railTo)) return null;
   const originAccess = networkEvidence?.fromAccessGateway
     ? reviewedRailAccessSegment(from, railFrom, networkEvidence.fromAccessGateway.planningMinutes, 0)
     : null;
@@ -463,6 +466,7 @@ async function mixedGatewayCandidate(
 
   const flightFrom = originGateway ? gatewayEndpoint(originGateway) : from;
   const flightTo = destinationGateway ? gatewayEndpoint(destinationGateway) : to;
+  if (!transferEndpointGeographicallyReady(flightFrom) || !transferEndpointGeographicallyReady(flightTo)) return null;
   const flightDistance = haversineKm(flightFrom.coordinates ?? undefined, flightTo.coordinates ?? undefined);
   if (flightDistance === null || flightDistance < 80) return null;
   const originAccess = originGateway ? await routeGatewayAccess(from, flightFrom, provider) : null;
@@ -745,6 +749,10 @@ export async function resolveCanonicalTransferJourney(
   leg: TripLeg,
   options: { provider?: RoadRoutingProvider; knowledge?: TransferEvidenceProvider } = {},
 ): Promise<MultimodalResolutionResult> {
+  const geographicProjection = guardTransferRoutingGeography(leg);
+  if (geographicProjection !== leg) return { leg: geographicProjection, outcome: "unresolved", diagnostic: {
+    version: 1, selected: "unresolved", candidates: [], rejected: ["Canonical endpoint geography is unverified."],
+  } };
   leg = reconcileLegacyTransportLeg(leg);
   const diagnostic: TransferResolutionDiagnostic = { version: 1, selected: "unresolved", candidates: [], rejected: [] };
   if (shouldPreserve(leg)) {
