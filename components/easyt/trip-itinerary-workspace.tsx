@@ -106,7 +106,7 @@ import TripExplicitPlans from "@/components/easyt/trip-explicit-plans";
 import { removeExplicitVisitIntent, removeFixedCommitment, scheduleExplicitVisitIntent } from "@/lib/easyt/trip-explicit-plans";
 import type { ActivityInventoryItem } from "@/lib/easyt/activity-inventory";
 import type { PlanningEvidenceState, PlanningResultCounts } from '@/lib/easyt/planning-evidence-state';
-import { planningEvidenceFromResponse, planningLaneMessage } from '@/lib/easyt/planning-evidence-presentation';
+import { planningEvidenceFromResponse, planningLaneMessage, planningRequiresSignIn } from '@/lib/easyt/planning-evidence-presentation';
 import { tripSyncSignInPath } from '@/lib/easyt/trip-continuity';
 import { dedupeExploreResults, exploreResultForActivity, exploreResultForIdea, exploreResultForLocalPlace, exploreResultForPlace, type ExploreLocalPlace, type ExploreResult } from "@/lib/easyt/explore";
 import { discoveryCategoryMatches } from "@/lib/easyt/discovery-taxonomy";
@@ -2480,7 +2480,7 @@ function ItineraryDaySuggestions({ trip, day, stop, copy, language, initialPlace
   const unavailable = organicStatus === "error" || commercialStatus === "error";
   const failedAssessments = [organicStatus === 'error' ? organicAssessment : undefined, commercialStatus === 'error' ? commercialAssessment : undefined].filter((state): state is PlanningEvidenceState => Boolean(state));
   const canRetry = (organicStatus === 'error' && organicAssessment?.retryable !== false) || (commercialStatus === 'error' && commercialAssessment?.retryable !== false);
-  const needsSignIn = commercialStatus === 'error' && commercialAssessment?.reason === 'auth_required';
+  const needsSignIn = commercialStatus === 'error' && planningRequiresSignIn(commercialAssessment);
   const filteredAtAdmission = [organicCounts, commercialCounts].some(counts => counts && counts.raw > 0 && counts.returned === 0);
   const retrySuggestions = () => { onInteractionReset(); setRetryVersion(current => current + 1); };
   const unavailableStatus = <><MorroviaSectionStatus compact state="error" title={copy.suggestionsUnavailable}

@@ -25,7 +25,7 @@ async function open(name: string, width = 1440) {
 test('Add consumes explicit guest, identity, configuration and admission outcomes without claiming empty stock', { skip: !url, timeout: 90_000 }, async () => {
   const browser = await chromium.launch({ channel: 'chrome', headless: true });
   try {
-    for (const [index, reason] of ['auth_required', 'identity_required', 'configuration_unavailable', 'filtered_empty'].entries()) {
+    for (const [index, reason] of ['auth_required', 'identity_required', 'configuration_unavailable', 'filtered_empty', 'provider-auth-required'].entries()) {
       const width = index % 2 ? 1440 : 390;
       const page = await browser.newPage({ viewport: { width, height: 900 } });
       const complete = { retrieval: 'completed', evidence: 'conditional', retryable: false };
@@ -34,11 +34,11 @@ test('Add consumes explicit guest, identity, configuration and admission outcome
         sentIdentity = new URL(route.request().url()).searchParams.get('canonicalPlaceId') === 'tokyo';
         return route.fulfill({ json: { places: [], assessment: reason === 'identity_required' ? { retrieval: 'blocked', evidence: 'unqualified', reason, retryable: false } : { ...complete, reason: 'successful_empty' }, counts: { raw: 0, admitted: 0, returned: 0 } } });
       });
-      await page.route('**/api/journey-activity-inventory', route => route.fulfill({ status: reason === 'auth_required' ? 401 : reason === 'configuration_unavailable' ? 503 : 200, json: { activities: [], assessment: reason === 'identity_required' ? { ...complete, reason: 'successful_empty' } : { retrieval: reason === 'filtered_empty' ? 'completed' : reason === 'auth_required' ? 'blocked' : 'unavailable', evidence: 'insufficient', reason, retryable: false }, ...(reason === 'filtered_empty' ? { counts: { raw: 4, admitted: 0, returned: 0 } } : {}) } }));
+      await page.route('**/api/journey-activity-inventory', route => route.fulfill({ status: reason === 'auth_required' ? 401 : reason === 'configuration_unavailable' || reason === 'provider-auth-required' ? 503 : 200, json: { activities: [], assessment: reason === 'identity_required' ? { ...complete, reason: 'successful_empty' } : { retrieval: reason === 'filtered_empty' ? 'completed' : reason === 'auth_required' ? 'blocked' : 'unavailable', evidence: 'insufficient', reason: reason === 'provider-auth-required' ? 'auth_required' : reason, retryable: false, ...(reason === 'provider-auth-required' ? { diagnostics: { attemptedSources: ['commercial-inventory'], elapsedMs: 2, cacheOutcome: 'not-used', stage: 'provider' } } : {}) }, ...(reason === 'filtered_empty' ? { counts: { raw: 4, admitted: 0, returned: 0 } } : {}) } }));
       await page.goto(story('suggestion-states-tokyo'));
       await page.getByRole('button', { name: /^Add plan to .*morning$/ }).first().click();
       const dialog = page.getByRole('dialog', { name: /Add to Morning/ });
-      const expected = reason === 'auth_required' ? /Sign in to see bookable experiences/ : reason === 'identity_required' ? /Confirm the destination/ : reason === 'configuration_unavailable' ? /These suggestions are unavailable/ : /returned ideas do not match/;
+      const expected = reason === 'auth_required' ? /Sign in to see bookable experiences/ : reason === 'identity_required' ? /Confirm the destination/ : reason === 'configuration_unavailable' ? /These suggestions are unavailable/ : reason === 'provider-auth-required' ? /Bookable experiences are unavailable/ : /returned ideas do not match/;
       await dialog.getByText(expected).first().waitFor();
       assert.equal(sentIdentity, true, 'request carries the stored pinned identity; no coordinate substitution');
       assert.equal(await dialog.getByRole('button', { name: 'Try suggestions again' }).count(), 0);

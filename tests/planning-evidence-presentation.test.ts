@@ -13,6 +13,9 @@ test('only the explicit additive contract supplies failure reasons and retryabil
   assert.deepEqual(planningEvidenceFromResponse({ assessment: timeout }), timeout);
   assert.match(planningLaneMessage(timeout, 'en'), /timed out/i);
   assert.match(planningLaneMessage(state({ retrieval: 'blocked', reason: 'auth_required' }), 'en'), /sign in/i);
+  const providerAuth = state({ retrieval: 'unavailable', reason: 'auth_required', diagnostics: { attemptedSources: ['commercial-inventory'], elapsedMs: 3, cacheOutcome: 'not-used', stage: 'provider' } });
+  assert.doesNotMatch(planningLaneMessage(providerAuth, 'en'), /sign in/i, 'customer authentication cannot repair upstream provider credentials');
+  assert.match(planningLaneMessage(providerAuth, 'en'), /bookable experiences.*unavailable/i);
   assert.match(planningLaneMessage(state({ retrieval: 'blocked', reason: 'identity_required' }), 'en'), /confirm.*destination/i);
   assert.match(planningLaneMessage(state({ retrieval: 'unavailable', reason: 'configuration_unavailable' }), 'en'), /unavailable/i);
   assert.doesNotMatch(planningLaneMessage(state({ retrieval: 'unavailable', reason: 'configuration_unavailable' }), 'en'), /timeout|provider|configuration/i);

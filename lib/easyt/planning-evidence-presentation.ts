@@ -17,10 +17,16 @@ export function transferAssessmentForLeg(assessments: unknown, legId: string): P
   return matches.length === 1 ? planningEvidenceFromResponse({ assessment: matches[0].state }) : undefined;
 }
 
+export function planningRequiresSignIn(state: PlanningEvidenceState | undefined): boolean {
+  return state?.reason === 'auth_required' && state.retrieval === 'blocked' && state.diagnostics?.stage !== 'provider';
+}
+
 /** Reasons are deliberate user actions or outcome explanations, never diagnostic jargon. */
 export function planningLaneMessage(state: PlanningEvidenceState, language: 'en' | 'es'): string {
   switch (state.reason) {
-    case 'auth_required': return language === 'es' ? 'Inicia sesión para ver experiencias reservables. Las ideas locales siguen disponibles.' : 'Sign in to see bookable experiences. Local ideas remain available.';
+    case 'auth_required': return planningRequiresSignIn(state)
+      ? language === 'es' ? 'Inicia sesión para ver experiencias reservables. Las ideas locales siguen disponibles.' : 'Sign in to see bookable experiences. Local ideas remain available.'
+      : language === 'es' ? 'Las experiencias reservables no están disponibles ahora.' : 'Bookable experiences are unavailable right now.';
     case 'identity_required': case 'invalid_input': return language === 'es' ? 'Confirma el destino para buscar ideas.' : 'Confirm the destination to find ideas.';
     case 'timeout': return language === 'es' ? 'La búsqueda tardó demasiado. Puedes volver a intentarlo.' : 'The search timed out. You can try again.';
     case 'filtered_empty': return language === 'es' ? 'Las ideas encontradas no coinciden con este destino.' : 'The returned ideas do not match this destination.';
