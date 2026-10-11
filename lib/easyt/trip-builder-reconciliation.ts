@@ -118,6 +118,10 @@ export function mergeBuilderReconciliationDocuments(base: CanonicalEasyTTrip, au
         // Combined disjoint inputs can invalidate both sides' provider evidence.
         residual.push(selected ? structuredClone(selected) : { kind: example.kind, targetId: example.targetId, basisKey: currentBasis, phase: 'pending' });
     }
+    // An ordinary queued edit with no dependent work must not gain metadata
+    // absent from its already-stored recovery document. Keep explicit status
+    // and all reconciliation work on the existing installation path.
+    if (subjects.size === 0 && merged.brief.cascadeStatus === undefined) return merged;
     return install(merged, residual);
 }
 /** This synchronous prefix makes an accepted input safe to save before provider work. */
