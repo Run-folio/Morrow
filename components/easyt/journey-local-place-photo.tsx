@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, type ReactEventHandler, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useState, type ReactEventHandler, type ReactNode } from "react";
 import type { JourneyLocalPlace } from "@/lib/easyt/local-place";
 import { decodeGooglePhotoAttributions, type GooglePlacePhotoAttribution } from "@/lib/easyt/google-place-photo";
 import MorroviaPhotoCredit from "./morrovia-photo-credit";
@@ -83,11 +83,13 @@ export function JourneyLocalPlacePhotoMedia({
   onError?: ReactEventHandler<HTMLImageElement>;
 }) {
   const src = place.image ?? photo?.src;
+  const [displayedSrc, setDisplayedSrc] = useState<string | null>(null);
+  const onDisplayState = useCallback((displayed: boolean) => setDisplayedSrc(displayed ? src ?? null : null), [src]);
   const credit = photo?.attributions.map((item) => item.displayName).join(" · ") ?? "";
   const sourceHref = photo?.attributions.find((item) => item.uri)?.uri ?? place.mapsUrl;
   return <>
-    <ResilientImage src={src} alt={src ? `${place.name} ${subject}` : ""} fallback={fallback} loading="lazy" decoding="async" onError={onError} />
-    {src && credit ? <MorroviaPhotoCredit credit={credit} photoLabel={place.name} sourceHref={sourceHref} /> : null}
+    <ResilientImage key={src ?? "no-photo"} src={src} alt={src ? `${place.name} ${subject}` : ""} fallback={fallback} loading="lazy" decoding="async" onDisplayState={onDisplayState} onError={onError} />
+    {src && displayedSrc === src && credit ? <MorroviaPhotoCredit credit={credit} photoLabel={place.name} sourceHref={sourceHref} /> : null}
   </>;
 }
 

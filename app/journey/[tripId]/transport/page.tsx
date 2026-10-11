@@ -1,9 +1,6 @@
-"use client";
+import TripTransportWorkspacePage from "@/components/easyt/trip-transport-workspace-page";
 
-import TripTransportWorkspace from "@/components/easyt/trip-transport-workspace";
-import { TripWorkspaceCommit, useTripShellTrip } from "@/components/easyt/trip-shell-client";
-
-export default function TripTransportWorkspacePage() {
-  const trip = useTripShellTrip();
-  return <TripWorkspaceCommit view="transport"><TripTransportWorkspace trip={trip} /></TripWorkspaceCommit>;
+// Keep the client boundary explicit; build:check verifies its RSC manifest entry.
+export default function TripTransportPage() {
+  return <TripTransportWorkspacePage />;
 }

@@ -50,6 +50,13 @@ function excludedPhoto(excluded: readonly string[], photo: CachedRoutePhoto) {
 // route-wide duplicate. Re-evaluate them without touching saved trip content.
 const prefix = "morrovia:route-photo:v5:";
 const inFlightSelections = new Map<string, Promise<CachedRoutePhotoSelection | null>>();
+const inFlightConsumers = new Map<string, Set<{ signal?: AbortSignal }>>();
+type SelectionRequestOwner = { order: number; consumers: Set<{ signal?: AbortSignal }> };
+// Keep completed ownership only until overlapping lookups settle. A cancelled
+// newer lookup cannot block a live rejoin, or undo an already newer selection.
+const selectionRequestGroups = new Map<string, {
+  nextOrder: number; committedOrder: number; pending: Set<SelectionRequestOwner>;
+}>();
 const failedSources = new Map<string, Set<string>>();
 
 function normalizedIdentityPart(value: string | undefined) {
@@ -247,31 +254,51 @@ export async function resolveRoutePhotoCandidates(
   const findPhotos = options.findPhotos ?? findRoutePhotos;
   const trackPhoto = options.trackPhoto ?? trackRoutePhoto;
   await Promise.allSettled(candidates.map(async (candidate) => {
+    if (options.signal?.aborted) return;
     const excluded = [...new Set([...(candidate.excludedSources ?? []), ...(failedSources.get(candidate.cacheKey) ?? [])])];
     const cached = readRoutePhotoSelection(candidate.cacheKey, storage);
     const usableCache = cached?.kind === "photo" && excludedPhoto(excluded,cached.photo) ? null : cached;
     const requestKey = `${candidate.cacheKey}|${JSON.stringify(excluded)}`;
     let request = usableCache ? Promise.resolve(usableCache) : inFlightSelections.get(requestKey);
     if (!request) {
+      const consumers = new Set<{ signal?: AbortSignal }>();
+      inFlightConsumers.set(requestKey, consumers);
+      const group = selectionRequestGroups.get(candidate.cacheKey)
+        ?? { nextOrder: 0, committedOrder: 0, pending: new Set<SelectionRequestOwner>() };
+      selectionRequestGroups.set(candidate.cacheKey, group);
+      const owner = { order: ++group.nextOrder, consumers };
+      group.pending.add(owner);
       request = (async (): Promise<CachedRoutePhotoSelection | null> => {
         const result = await findPhotos(candidate.queries, undefined, candidate.place, excluded);
+        const latestLive = [...group.pending].filter(pending =>
+          [...pending.consumers].some(consumer => !consumer.signal?.aborted))
+          .sort((left, right) => right.order - left.order)[0];
+        if (latestLive !== owner || owner.order < group.committedOrder) return null;
         const photo = result.candidates.find(photo => !excludedPhoto(excluded,photo) && !failedSources.get(candidate.cacheKey)?.has(photo.src));
         if (photo) {
+          group.committedOrder = owner.order;
           const selection = { kind: "photo", photo } as const;
           saveRoutePhotoSelection(candidate.cacheKey, selection, storage);
           trackPhoto(photo);
           return selection;
         }
         if (result.status === "no-result") {
+          group.committedOrder = owner.order;
           return { kind: "empty" } as const;
         }
         return null;
       })();
       inFlightSelections.set(requestKey, request);
       void request.finally(() => {
-        if (inFlightSelections.get(requestKey) === request) inFlightSelections.delete(requestKey);
+        if (inFlightSelections.get(requestKey) === request) {
+          inFlightSelections.delete(requestKey);
+          inFlightConsumers.delete(requestKey);
+        }
+        group.pending.delete(owner);
+        if (!group.pending.size && selectionRequestGroups.get(candidate.cacheKey) === group) selectionRequestGroups.delete(candidate.cacheKey);
       }).catch(() => undefined);
     }
+    inFlightConsumers.get(requestKey)?.add({ signal: options.signal });
     const selection = await request;
     if (selection && !options.signal?.aborted && (selection.kind !== "photo" || !failedSources.get(candidate.cacheKey)?.has(selection.photo.src))) onSelection(candidate, selection);
   }));

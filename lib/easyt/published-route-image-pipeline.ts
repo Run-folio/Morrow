@@ -73,7 +73,10 @@ function distanceKm(from: [number, number], to: [number, number]) {
 
 /** Vehicle-centred captions are different from a place scene with background traffic. */
 function describesTransitSubject(caption: string) {
-  const text = normalizeImageGeography(caption);
+  // Commons prefixes descriptions with an asset filename. Its indexing words
+  // are not the caption's grammatical subject (for example, "boats.jpg").
+  const subjectCaption = caption.replace(/^File:.*?\.(?:jpe?g|png|webp|gif)\b\s*/i, "").trim();
+  const text = normalizeImageGeography(subjectCaption || caption);
   const vehicle = /\b(ferr(?:y|ies)|ships?|vessels?|boats?|buses?|aircraft|airplanes?|planes?|trains?|cruise ships?)\b/.exec(text);
   if (!vehicle) return false;
   const scene = /\b(skyline|landscape|coast|beach|lake|waterfront|harbour|harbor|river|bridge|panorama|bay)\b/.exec(text);

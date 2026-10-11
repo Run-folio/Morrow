@@ -53,7 +53,7 @@ function destinationPhoto(page: unknown, place: DestinationPhotoPlace, excludedS
   const region = normalizeImageGeography(hierarchy.at(-1) || place.region?.trim() || "");
   const regionEvidence = normalizeImageGeography(`${page.title} ${text(value("ImageDescription"))} ${text(value("ObjectName"))}`);
   // GPS constrains location; it cannot identify a namesake in the selected district.
-  if (region && (region.length < 4 || !` ${regionEvidence} `.includes(` ${region} `))) return [];
+  if (region && !` ${regionEvidence} `.includes(` ${region} `)) return [];
   const candidate: PublishedRouteImageCandidate = {
     provider: "wikimedia", id: page.title, src, sourceUrl, author, license, licenseUrl, width: info.width, height: info.height,
     alt: text(value("ImageDescription")), description: `${page.title} ${text(value("ImageDescription"))} ${text(value("ObjectName"))}`,

@@ -79,3 +79,20 @@ test('untimed ferry components discard stale saved whole-leg estimates and retai
  assert.equal(result.leg.distanceKm,null);assert.equal(result.leg.routedDistanceKm,null);assert.equal(result.leg.usableDayLoss,null);assert.equal(result.leg.routeGeometry,undefined);assert.equal(result.leg.roadEstimate,undefined);assert.equal(result.leg.routeMetadata.transferImpact,undefined);assert.equal(result.leg.routeMetadata.roadRouting,undefined);assert.equal(result.leg.routeMetadata.routingConfidence,undefined);assert.equal(result.leg.straightLineDistanceKm,null);
  assert.deepEqual(result.leg.routeMetadata.transportConstraints,before.routeMetadata.transportConstraints);assert.equal(result.leg.routeMetadata.travellerContext,'retained');assert.deepEqual(input,before);
 });
+test('resolving a saved generated crossing again removes newly forbidden transport without changing traveller intent',async()=>{
+ const original=leg('Banyuwangi','Indonesia',[114.369,-8.219],'Lovina','Indonesia',[115.025,-8.158]);
+ const first=await resolveCanonicalTransferJourney(original);
+ assert.equal(first.leg.mode,'mixed');assert.deepEqual(first.leg.segments?.map(s=>s.mode),['road','ferry','road']);
+ for(const rules of [{excludedModes:['ferry'],preferredModes:['train']},{excludedModes:['road'],preferredModes:['train']},{avoidDriving:true,preferredModes:['train']}]){
+  const saved=JSON.parse(JSON.stringify(first.leg)) as TripLeg;
+  saved.routeMetadata.transportConstraints=rules;saved.routeMetadata.travellerContext='preserved';
+  const before=structuredClone(saved);const second=await resolveCanonicalTransferJourney(saved);
+  assert.equal(second.leg.mode,'unknown');assert.equal(second.outcome,'unresolved');assert.equal(second.leg.segments,undefined);
+  assert.equal(second.leg.durationMinutes,null);assert.equal(second.leg.doorToDoorMinutes,null);assert.equal(second.leg.headlineMinutes,null);assert.equal(second.leg.routeGeometry,undefined);
+  assert.equal(second.leg.routeMetadata.surfaceCrossingEvidence,undefined);
+  assert.deepEqual(second.leg.routeMetadata.transportConstraints,rules);assert.equal(second.leg.routeMetadata.travellerContext,'preserved');
+  assert.deepEqual(second.leg.fromEndpoint,saved.fromEndpoint);assert.deepEqual(second.leg.toEndpoint,saved.toEndpoint);assert.deepEqual(saved,before);
+ }
+ const repeated=await resolveCanonicalTransferJourney(JSON.parse(JSON.stringify(first.leg)) as TripLeg);
+ assert.deepEqual(repeated.leg.segments,first.leg.segments,'unchanged traveller rules retain the supported topology');
+});

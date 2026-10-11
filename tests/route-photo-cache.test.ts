@@ -363,14 +363,23 @@ test("navigation retires the stale consumer without aborting the shared cache ow
   });
 
   controller.abort();
+  let currentVisit: unknown;
+  const activeVisit = resolveRoutePhotoCandidates([
+    { occurrenceIds: ["visit-two"], cacheKey: "shared-in-flight", queries: ["shared"] },
+  ], (_candidate, selection) => { currentVisit = selection; }, {
+    storage,
+    trackPhoto: () => undefined,
+    findPhotos: async () => { throw new Error("active navigation must reuse the pending shared lookup"); },
+  });
   release();
-  await firstVisit;
+  await Promise.all([firstVisit, activeVisit]);
   assert.equal(staleCommits, 0);
+  assert.deepEqual(currentVisit, { kind: "photo", photo: validPhoto });
   assert.deepEqual(readRoutePhotoSelection("shared-in-flight", storage), { kind: "photo", photo: validPhoto });
 
   let nextVisit: unknown;
   await resolveRoutePhotoCandidates([
-    { occurrenceIds: ["visit-two"], cacheKey: "shared-in-flight", queries: ["shared"] },
+    { occurrenceIds: ["visit-three"], cacheKey: "shared-in-flight", queries: ["shared"] },
   ], (_candidate, selection) => { nextVisit = selection; }, {
     storage,
     findPhotos: async () => { throw new Error("completed shared lookup must be cached"); },

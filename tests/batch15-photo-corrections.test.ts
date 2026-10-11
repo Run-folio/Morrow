@@ -75,3 +75,24 @@ test('country illustrations require a geographic scene rather than an incidental
  assert.equal(scorePublishedRouteImageCandidate(country,{...photo,alt:'Common pigeon at Waterlow Park, London, United Kingdom',description:'Common pigeon at Waterlow Park, London, United Kingdom'}).accepted,false);
  assert.equal(scorePublishedRouteImageCandidate(country,{...photo,alt:'United Kingdom coastal landscape and limestone cliffs'}).accepted,true);
 });
+
+test('Commons filename prefixes do not turn a described waterfront into a vehicle portrait',()=>{
+ const caption='Manila Philippines waterfront skyline with small boats moored in the harbor';
+ const plain=scorePublishedRouteImageCandidate(stop,{...photo,alt:caption,description:caption});
+ const prefixed=scorePublishedRouteImageCandidate(stop,{...photo,id:'File:Manila boats.jpg',alt:caption,description:`File:Manila boats.jpg ${caption}`});
+ assert.equal(plain.accepted,true);
+ assert.deepEqual(prefixed,plain);
+ assert.equal(scorePublishedRouteImageCandidate(stop,{...photo,alt:'Manila Philippines ferry in harbor',description:'File:Manila skyline.jpg Manila Philippines ferry in harbor'}).accepted,false);
+ assert.equal(scorePublishedRouteImageCandidate(stop,{...photo,alt:'',description:'File:Manila Philippines ferry waterfront.jpg'}).accepted,false,'filename-only transit evidence must not disappear');
+});
+
+test('verified short administrative names retain exact region evidence and reject namesakes',async()=>{
+ const place={name:'Panaji',country:'India',region:'Goa',coordinates:[73.8278,15.4909] as [number,number]};
+ const page={title:'File:Panaji waterfront.jpg',imageinfo:[{url:photo.src,descriptionurl:photo.sourceUrl,mime:'image/jpeg',width:1600,height:900,extmetadata:{Artist:{value:photo.author},LicenseShortName:{value:photo.license},LicenseUrl:{value:photo.licenseUrl},ImageDescription:{value:'Panaji Goa India waterfront skyline'},GPSLongitude:{value:'73.8278'},GPSLatitude:{value:'15.4909'}}}]};
+ const fetcher=async()=>Response.json({query:{pages:{'1':page}}});
+ assert.equal((await lookupWikimediaDestinationPhotos(place,{fetcher})).status,'resolved');
+ page.imageinfo[0]!.extmetadata.ImageDescription.value='Panaji India waterfront skyline';
+ assert.equal((await lookupWikimediaDestinationPhotos(place,{fetcher})).status,'no-result');
+ page.imageinfo[0]!.extmetadata.ImageDescription.value='Panaji Goan India waterfront skyline';
+ assert.equal((await lookupWikimediaDestinationPhotos(place,{fetcher})).status,'no-result');
+});

@@ -562,7 +562,7 @@ function shouldPreserve(leg: TripLeg) {
   if (metadata.source === "spreadsheet-import-unconfirmed" && leg.mode === "unknown" && metadata.roadFallbackEligible === false) return true;
   if (metadata.source === "curated-route" || metadata.source === "traveller-authored" || metadata.source === "imported-booking") return true;
   const { excludedModes } = transportRules(leg);
-  if (metadata.source === "morrovia-planner"
+  if ((metadata.source === "morrovia-planner" || metadata.source === "multimodal-resolver")
     && (excludedModes.has(leg.mode) || leg.segments?.some((segment) => excludedModes.has(segment.mode)))) return false;
   if (leg.mode !== "unknown" && metadata.source === undefined) return true;
   if (leg.mode === "train" || leg.mode === "ferry" || leg.mode === "walk" || leg.mode === "mixed") {
@@ -812,9 +812,11 @@ export async function resolveCanonicalTransferJourney(
       && (fromKnowledge.airGateways.status === "known" || toKnowledge.airGateways.status === "known");
     const unsupportedPlannerRoad = leg.mode === "road" && source === "morrovia-planner";
     const unsupportedPlannerFlight = leg.mode === "flight" && source === "morrovia-planner" && !directFlight;
-    const excludedPlannerMode = source === "morrovia-planner"
+    const excludedGeneratedMode = (source === "morrovia-planner" || source === "multimodal-resolver")
       && (excludedModes.has(leg.mode) || leg.segments?.some((segment) => excludedModes.has(segment.mode)));
-    if (gatewayContradictsDirectFlight || unsupportedPlannerRoad || unsupportedPlannerFlight || excludedPlannerMode) {
+    if (gatewayContradictsDirectFlight || unsupportedPlannerRoad || unsupportedPlannerFlight || excludedGeneratedMode) {
+      const unresolvedMetadata = { ...leg.routeMetadata };
+      if (excludedGeneratedMode) delete unresolvedMetadata.surfaceCrossingEvidence;
       return {
         leg: attachRoadEstimate({
           ...leg,
@@ -825,7 +827,7 @@ export async function resolveCanonicalTransferJourney(
           usableDayLoss: null,
           provider: gatewayContradictsDirectFlight
             ? "A flight gateway is known, but its ground access could not be resolved."
-            : excludedPlannerMode
+            : excludedGeneratedMode
               ? "The inferred transport mode conflicts with a hard traveller constraint, and no supported compliant alternative is known."
               : unsupportedPlannerFlight
               ? "Air is plausible, but Morrovia has no direct-service or complete multimodal evidence for this regional cross-border journey."
@@ -835,7 +837,7 @@ export async function resolveCanonicalTransferJourney(
           scheduleNeedsChecking: true,
           routeGeometry: undefined,
           segments: undefined,
-          routeMetadata: { ...leg.routeMetadata, source: "multimodal-resolver", multimodalResolution: diagnostic },
+          routeMetadata: { ...unresolvedMetadata, source: "multimodal-resolver", multimodalResolution: diagnostic },
         }, roadEstimate),
         outcome: "unresolved",
         diagnostic,

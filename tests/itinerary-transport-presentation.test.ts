@@ -9,11 +9,15 @@ const projection = readFileSync(new URL("../lib/easyt/itinerary-transport-agenda
 const stories = readFileSync(new URL("../components/easyt/trip-transport-workspace.stories.tsx", import.meta.url), "utf8");
 const shell = readFileSync(new URL("../components/easyt/trip-shell-client.tsx", import.meta.url), "utf8");
 const route = readFileSync(new URL("../app/journey/[tripId]/transport/page.tsx", import.meta.url), "utf8");
+const transportPage = readFileSync(new URL("../components/easyt/trip-transport-workspace-page.tsx", import.meta.url), "utf8");
 
 test("Transport is first-class while Itinerary exposes Day by day and Calendar", () => {
   assert.match(shell, /label: "Transport"[\s\S]*suffix: "\/transport"/);
-  assert.match(route, /useTripShellTrip\(\)/);
-  assert.match(route, /<TripTransportWorkspace trip=\{trip\}/);
+  assert.match(route, /<TripTransportWorkspacePage\s*\/>/);
+  assert.doesNotMatch(route, /"use client"/);
+  assert.match(transportPage, /"use client"/);
+  assert.match(transportPage, /useTripShellTrip\(\)/);
+  assert.match(transportPage, /<TripWorkspaceCommit view="transport"><TripTransportWorkspace trip=\{trip\}/);
   assert.match(itinerary, /useState<"days" \| "calendar">\("days"\)/);
   assert.match(itinerary, /\{ value: "days", label: copy\.dayByDay \}/);
   assert.match(itinerary, /\{ value: "calendar", label: copy\.calendar \}/);
