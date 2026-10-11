@@ -156,3 +156,19 @@ test("verified seed mutation requires exactly one updated Better Auth row", asyn
     });
   }
 });
+
+
+test("staging Unsplash access requires an explicit mode and staging credential declaration", () => {
+  for (const mode of ["unsplash-only", "openai-and-unsplash"]) {
+    const environment = { MORROVIA_STAGING_PROVIDER_MODE: mode, UNSPLASH_ACCESS_KEY: "synthetic", ...(mode === "openai-and-unsplash" ? { OPENAI_API_KEY: "synthetic" } : {}) };
+    assert.throws(() => validateStagingProviderPolicy(environment), /MORROVIA_STAGING_UNSPLASH_CREDENTIAL_ENVIRONMENT must be exactly staging/);
+    const scoped = { ...environment, MORROVIA_STAGING_UNSPLASH_CREDENTIAL_ENVIRONMENT: "staging" };
+    assert.equal(validateStagingProviderPolicy(scoped), mode);
+    assert.throws(() => validateStagingProviderPolicy({ ...scoped, GOOGLE_PLACES_API_KEY: "synthetic" }), /GOOGLE_PLACES_API_KEY must be unset/);
+    assert.throws(() => validateStagingProviderPolicy({ ...scoped, UNSPLASH_ACCESS_KEY: "" }), /UNSPLASH_ACCESS_KEY is required/);
+    assert.throws(() => validateStagingProviderPolicy({ ...scoped, MORROVIA_STAGING_UNSPLASH_CREDENTIAL_ENVIRONMENT: "production" }), /must be exactly staging/);
+  }
+  assert.throws(() => validateStagingProviderPolicy({ MORROVIA_STAGING_PROVIDER_MODE: "disabled", UNSPLASH_ACCESS_KEY: "synthetic" }), /UNSPLASH_ACCESS_KEY must be unset/);
+  assert.throws(() => validateStagingProviderPolicy({ MORROVIA_STAGING_PROVIDER_MODE: "openai-only", OPENAI_API_KEY: "synthetic", UNSPLASH_ACCESS_KEY: "synthetic" }), /UNSPLASH_ACCESS_KEY must be unset/);
+  assert.throws(() => validateStagingProviderPolicy({ MORROVIA_STAGING_PROVIDER_MODE: "unsplash-only", UNSPLASH_ACCESS_KEY: "synthetic", MORROVIA_STAGING_UNSPLASH_CREDENTIAL_ENVIRONMENT: "staging", OPENAI_API_KEY: "synthetic" }), /OPENAI_API_KEY must be unset/);
+});

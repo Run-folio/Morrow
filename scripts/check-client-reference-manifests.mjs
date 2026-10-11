@@ -5,7 +5,7 @@ import vm from "node:vm";
 // Next can compile successfully while omitting a client boundary from its RSC
 // manifest. Check the production page boundaries before accepting an artifact.
 const root = fs.realpathSync(process.argv[2] ?? process.cwd());
-const dist = process.argv[3] ?? ".next-check";
+const dist = process.argv[3] ?? process.env.NEXT_DIST_DIR ?? ".next";
 const failures = [];
 let boundariesChecked = 0;
 const isClient = source => /^\s*["']use client["'];/.test(source);

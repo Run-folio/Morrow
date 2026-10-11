@@ -28,6 +28,13 @@ Better Auth secret, or a production provider credential.
    admin, affiliate, research, mapping, and analytics provider secrets unset.
    Set `MORROVIA_STAGING_PROVIDER_MODE=openai-only` and configure the
    server-only `OPENAI_API_KEY` for the Luna co-pilot acceptance scenarios.
+   For the approved photo acceptance scenarios, use `openai-and-unsplash`
+   (or `unsplash-only` when co-pilot access is disabled). Configure a dedicated
+   staging `UNSPLASH_ACCESS_KEY` and declare
+   `MORROVIA_STAGING_UNSPLASH_CREDENTIAL_ENVIRONMENT=staging` only after
+   confirming its scope. Key presence alone does not prove isolation; this
+   declaration records operator confirmation, not automatic credential validation.
+   All other provider restrictions remain in place.
    Set `NEXT_PUBLIC_ANALYTICS_ENVIRONMENT=preview`.
 5. Deploy, confirm `/api/health` returns the exact intended SHA in
    `deployment.commit` (a `200` response alone is insufficient), then run the
@@ -40,7 +47,7 @@ Better Auth secret, or a production provider credential.
    The command fails closed unless the URL is non-production, all auth URLs
    agree, the database is named `morrovia_staging*`, the database itself says
    `app.morrovia_environment=staging`, required tables exist, and the configured
-   provider policy is either fully disabled or explicitly OpenAI-only.
+   provider policy explicitly allows only the selected OpenAI/Unsplash providers.
 
 ## Disposable test data
 
@@ -78,7 +85,7 @@ the following to the persistence browser matrix and Smoke/Core gate tickets:
 - Account A: `test-user-a@morrovia-staging.test` (password from staging secret manager)
 - Account B: `test-user-b@morrovia-staging.test` (password from staging secret manager)
 - Evidence: saved preflight and seed JSON, including the staging host and
-   database name and explicit `openai-only` provider policy—never a connection
+   database name and explicit selected provider policy—never a connection
    string, API key, or password.
 - Reset command: the three-command sequence above.
 

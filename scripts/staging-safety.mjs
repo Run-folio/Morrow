@@ -72,14 +72,25 @@ function sameOrigin(left, right) {
 /** @param {Record<string, string | undefined>} environment */
 export function validateStagingProviderPolicy(environment = process.env) {
   const providerMode = environment.MORROVIA_STAGING_PROVIDER_MODE?.trim();
-  if (providerMode !== "disabled" && providerMode !== "openai-only") {
-    throw new Error("Refusing to run: staging provider mode must be disabled or openai-only.");
+  const allowedKeys = {
+    disabled: [],
+    "openai-only": ["OPENAI_API_KEY"],
+    "unsplash-only": ["UNSPLASH_ACCESS_KEY"],
+    "openai-and-unsplash": ["OPENAI_API_KEY", "UNSPLASH_ACCESS_KEY"],
+  };
+  if (!Object.hasOwn(allowedKeys, providerMode)) {
+    throw new Error("Refusing to run: staging provider mode must be disabled, openai-only, unsplash-only or openai-and-unsplash.");
   }
-  if (providerMode === "openai-only" && !environment.OPENAI_API_KEY?.trim()) {
-    throw new Error("OPENAI_API_KEY is required in staging openai-only mode.");
+  const enabledKeys = allowedKeys[providerMode];
+  for (const key of enabledKeys) {
+    if (!environment[key]?.trim()) throw new Error(`${key} is required in staging ${providerMode} mode.`);
+  }
+  if (enabledKeys.includes("UNSPLASH_ACCESS_KEY")
+    && environment.MORROVIA_STAGING_UNSPLASH_CREDENTIAL_ENVIRONMENT !== "staging") {
+    throw new Error("MORROVIA_STAGING_UNSPLASH_CREDENTIAL_ENVIRONMENT must be exactly staging; confirm a dedicated staging credential before enabling Unsplash.");
   }
   for (const key of STAGING_PROVIDER_KEYS) {
-    if (providerMode === "openai-only" && key === "OPENAI_API_KEY") continue;
+    if (enabledKeys.includes(key)) continue;
     if (environment[key]?.trim()) throw new Error(`${key} must be unset in staging ${providerMode} mode.`);
   }
   return providerMode;
