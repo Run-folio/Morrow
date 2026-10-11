@@ -10,6 +10,7 @@ import { estimateTransferImpact } from "./transfer-impact.ts";
 import type { EasyTTrip, RoadEstimateReference, TripLeg } from "./trip.ts";
 import { findCatalogPlaceById, matchCatalogPlace } from "./place-catalog.ts";
 import { landConnectionEvidence } from "./land-connection.ts";
+import { findSurfaceCrossing } from "./surface-crossing-evidence.ts";
 
 export type RoadFallbackSkipReason =
   | "already_resolved"
@@ -86,7 +87,8 @@ export function directRoadPlausibilityConflict(leg: TripLeg): RoadFallbackSkipRe
   if (!from || !to) return null;
   if (endpointRequiresNonRoadCrossing(from) || endpointRequiresNonRoadCrossing(to)) return "land_separation";
   if (!validCoordinates(from.coordinates) || !validCoordinates(to.coordinates)) return null;
-  if (landConnectionEvidence(from.coordinates, to.coordinates) === "separate-land") return "land_separation";
+  if (landConnectionEvidence(from.coordinates, to.coordinates) === "separate-land"
+    && !findSurfaceCrossing(from, to, "road")) return "land_separation";
   const straightLineDistanceKm = haversineKm(from.coordinates, to.coordinates);
   if (straightLineDistanceKm !== null && straightLineDistanceKm > MAX_STRAIGHT_LINE_ROAD_KM) return "distance_out_of_scope";
   if (straightLineDistanceKm !== null
@@ -131,6 +133,7 @@ export async function resolveCanonicalRoadFallback(
   if (!from.country?.trim() || !to.country?.trim()) {
     return { leg, outcome: "unchanged", reason: "missing_country" };
   }
+  const fixedLink = findSurfaceCrossing(from, to, "road");
   const international = normalizedIdentity(from.country) !== normalizedIdentity(to.country);
   if (international && !options.allowCrossBorderEstimate) {
     return { leg, outcome: "unchanged", reason: "cross_border" };
@@ -141,7 +144,8 @@ export async function resolveCanonicalRoadFallback(
   if (directRoadPlausibilityConflict(leg) === "land_separation") {
     return { leg, outcome: "unchanged", reason: "land_separation" };
   }
-  if (landConnectionEvidence(from.coordinates, to.coordinates) !== "same-land") {
+  if (landConnectionEvidence(from.coordinates, to.coordinates) !== "same-land"
+    && !findSurfaceCrossing(from, to, "road")) {
     return { leg, outcome: "unchanged", reason: "land_separation" };
   }
   const straightLineDistanceKm = haversineKm(from.coordinates, to.coordinates);
@@ -173,6 +177,7 @@ export async function resolveCanonicalRoadFallback(
   });
   const estimateWarnings = [
     "Road estimate only; no passenger service or private-driver availability is confirmed.",
+    ...(fixedLink ? [`Crossing evidence: ${fixedLink.source.label} (${fixedLink.source.url}).`] : []),
     ...(international ? ["Border crossing eligibility, waits and stops are not included in this road estimate."] : ["Stops and road conditions are not included unless the routing source states otherwise."]),
   ];
   const estimate: RoadEstimateReference = {
@@ -206,6 +211,7 @@ export async function resolveCanonicalRoadFallback(
     routeMetadata: {
       ...leg.routeMetadata,
       planningEstimate: true,
+      ...(fixedLink ? { surfaceCrossingEvidence: { id: fixedLink.id, ...fixedLink.source } } : {}),
       source: "road-routing-provider",
       roadFallbackEligible: false,
       transferImpact,

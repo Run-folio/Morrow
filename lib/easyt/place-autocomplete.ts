@@ -63,8 +63,7 @@ export function placeSuggestionLocationDetail(item:SuggestionLocation, suggestio
  }
  // Source names may still collide within an administrative hierarchy. Preserve
  // distinct identities and offer the existing map link instead of inventing one.
- const context=sameLabel.length>1 ? `Location ${sameLabel.findIndex(other=>other===item)+1} of ${sameLabel.length}` : undefined;
- return [item.region,item.country,context].filter(Boolean).join(' · ');
+ return [...hierarchy.slice().reverse(),item.country,sameLabel.length>1 ? 'Location to confirm' : undefined].filter(Boolean).join(' · ');
 }
 
 export function placeSuggestionMapUrl(item:SuggestionLocation, suggestions:readonly SuggestionLocation[]) {

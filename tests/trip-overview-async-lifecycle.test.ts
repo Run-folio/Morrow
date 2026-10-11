@@ -54,7 +54,7 @@ test("Overview effects use semantic dependencies and abort stale shared-cache re
   const source = readFileSync("components/easyt/trip-overview-workspace.tsx", "utf8");
   assert.match(source, /resolveDistinctRoutePhotoCandidates\(imageResolutionCandidates/);
   assert.match(source, /\{ signal: controller\.signal, reservedSources:/);
-  assert.match(source, /if \(!resolvedImagesRef\.current\[candidate\.cacheKey\]\)/);
+  assert.match(source, /if \(selection\.kind === "empty"\) delete resolvedImagesRef\.current\[candidate\.cacheKey\]/);
   assert.match(source, /Object\.entries\(resolvedImagesRef\.current\)\.filter\(\(\[key\]\) => Object\.values\(imageCacheKeysByOccurrence\)\.includes\(key\)\)/);
   assert.match(source, /resolvedPlaceImages\[imageCacheKeysByOccurrence\[stop\.id\]\]/);
   assert.doesNotMatch(source, /representativeStay|setRepresentativeStay/);

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { lookupWikimediaDestinationPhotos } from "@/lib/easyt/wikimedia-destination-photo.server";
 import { referencePhotoPlaceContext } from "@/lib/easyt/place-reference.server";
+import { countryFor } from "@/lib/easyt/country-registry";
 import type { DestinationPhotoPlace } from "@/lib/easyt/route-photo-cache";
 import { scorePublishedRouteImageCandidate } from "@/lib/easyt/published-route-image-pipeline";
 
@@ -67,7 +68,7 @@ function retryAfterHeader(value: string | null) {
   return Number.isFinite(date) && value.endsWith(" GMT") ? new Date(date).toUTCString() : null;
 }
 
-export async function GET(request: NextRequest) {
+async function destinationGET(request: NextRequest) {
   const query = request.nextUrl.searchParams.get("query")?.trim().slice(0, 180);
   if (!query) return NextResponse.json({ image: null, configured: Boolean(process.env.UNSPLASH_ACCESS_KEY), reason: "missing-query" }, { status: 400 });
   const placeName = request.nextUrl.searchParams.get("place")?.trim();
@@ -128,7 +129,7 @@ export async function GET(request: NextRequest) {
       const sourceUrl = withUnsplashReferral(photo.user?.links?.html);
       if (!photo.id || !src || !sourceUrl || !photo.user?.name) return [];
       if (excludedSources.includes(src) || excludedSources.includes(`unsplash:${photo.id}`)) return [];
-      if (place && !scorePublishedRouteImageCandidate({ key: "destination", ...place, coordinates: place.coordinates ? [...place.coordinates] : [0, 0], routeKeys: [], siblingNames: [], attachedLandmarks: [] }, { provider: "unsplash", id: photo.id, src, sourceUrl, author: photo.user.name, license: "Unsplash License", licenseUrl: "https://unsplash.com/license", width: photo.width ?? 0, height: photo.height ?? 0, alt: photo.alt_description, description: photo.description, location: photo.location, tags: photo.tags?.flatMap(tag => tag.title ? [tag.title] : []) }).accepted) return [];
+      if (place && !scorePublishedRouteImageCandidate({ key: "destination", ...place, subjectContext: place.administrativeHierarchy?.length ? place.administrativeHierarchy : place.region ? [place.region] : [], coordinates: place.coordinates ? [...place.coordinates] : [0, 0], routeKeys: [], siblingNames: [], attachedLandmarks: [] }, { provider: "unsplash", id: photo.id, src, sourceUrl, author: photo.user.name, license: "Unsplash License", licenseUrl: "https://unsplash.com/license", width: photo.width ?? 0, height: photo.height ?? 0, alt: photo.alt_description, description: photo.description, location: photo.location, tags: photo.tags?.flatMap(tag => tag.title ? [tag.title] : []) }).accepted) return [];
       return [{
         id: photo.id,
         src,
@@ -151,6 +152,33 @@ export async function GET(request: NextRequest) {
       { status: 502, headers: { "Cache-Control": "no-store" } },
     );
   }
+}
+
+/** Country illustrations retain their own geography and never impersonate a destination. */
+export async function GET(request: NextRequest) {
+  const destination = await destinationGET(request);
+  const body = await destination.clone().json();
+  const country = countryFor(request.nextUrl.searchParams.get("country"));
+  if (body.image || destination.status === 400 || !country || !request.nextUrl.searchParams.get("place")) return destination;
+  const nextUrl = new URL(request.nextUrl);
+  // Country context has no city identity, administrative district or camera point.
+  for (const key of ["region", "district", "canonicalPlaceId", "providerId", "lon", "lat"]) nextUrl.searchParams.delete(key);
+  nextUrl.searchParams.set("place", country.name);
+  nextUrl.searchParams.set("country", country.name);
+  nextUrl.searchParams.set("placeType", "country");
+  nextUrl.searchParams.set("query", `${country.name} landscape`);
+  const illustrative = await destinationGET({ ...request, nextUrl } as NextRequest);
+  const fallback = await illustrative.clone().json();
+  if (!fallback.image) {
+    // A completed empty search must not disguise an earlier provider outage.
+    return destination.ok && !illustrative.ok ? illustrative : destination;
+  }
+  const candidates = (fallback.candidates ?? [fallback.image]).map((photo: Record<string, unknown>) => ({
+    ...photo, scope: "country", country: country.name,
+    alt: `Illustrative ${country.name} imagery: ${photo.alt || "country landscape"}`,
+  }));
+  return NextResponse.json({ ...fallback, image: candidates[0], candidates,
+    destinationStatus: body.reason ?? "no-result" }, { headers: { "Cache-Control": "no-store" } });
 }
 
 export async function POST(request: NextRequest) {

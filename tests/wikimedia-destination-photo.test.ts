@@ -74,7 +74,7 @@ test("a broad country miss retries one region-aware photo query without weakenin
 test("same-name cities use coordinates to reject the wrong region", async () => {
   const portland = { name: "Portland", country: "United States", region: "Oregon", placeType: "city", coordinates: [-122.6765, 45.5231] as [number, number] };
   const matching = { ...page({ extmetadata: { ...page().imageinfo[0]!.extmetadata,
-    ImageDescription: { value: "Portland waterfront skyline" }, GPSLongitude: { value: "-122.6765" }, GPSLatitude: { value: "45.5231" } } }), title: "File:Portland waterfront skyline.jpg" };
+    ImageDescription: { value: "Portland Oregon waterfront skyline" }, GPSLongitude: { value: "-122.6765" }, GPSLatitude: { value: "45.5231" } } }), title: "File:Portland Oregon waterfront skyline.jpg" };
   const wrong = { ...matching, title: "File:Portland Maine waterfront skyline.jpg", imageinfo: [{ ...matching.imageinfo[0],
     extmetadata: { ...matching.imageinfo[0]!.extmetadata, GPSLongitude: { value: "-70.2553" }, GPSLatitude: { value: "43.6591" } } }] };
   const wrongWithoutGps = { ...wrong, imageinfo: [{ ...wrong.imageinfo[0], extmetadata: {
@@ -103,6 +103,7 @@ test('same-name settlements within one province require image GPS even when text
   assert.equal(result.status, 'no-result');
   const nearby = { ...noGps, imageinfo: [{ ...noGps.imageinfo[0], extmetadata: {
     ...noGps.imageinfo[0]!.extmetadata, GPSLongitude: { value: '111.11793' }, GPSLatitude: { value: '22.1823' },
+    ImageDescription: { value: 'Shenzhen Maoming Shi Guangdong China skyline' },
   } }] };
   const accepted = await lookupWikimediaDestinationPhotos(selected, { fetcher: async () => Response.json({ query: { pages: { '1': nearby } } }) });
   assert.equal(accepted.status, 'resolved');

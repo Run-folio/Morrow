@@ -1,6 +1,9 @@
+import { countryFor } from "./country-registry.ts";
 import { isReusableWikimediaLicense, isWikimediaCommonsImageUrl } from "./photo-attribution.ts";
 
 export type CachedRoutePhoto = {
+  scope?: "country";
+  country?: string;
   id?: string;
   src: string;
   alt?: string;
@@ -45,7 +48,7 @@ function excludedPhoto(excluded: readonly string[], photo: CachedRoutePhoto) {
 
 // Candidate rules changed: old positives may contain transit imagery or a
 // route-wide duplicate. Re-evaluate them without touching saved trip content.
-const prefix = "morrovia:route-photo:v4:";
+const prefix = "morrovia:route-photo:v5:";
 const inFlightSelections = new Map<string, Promise<CachedRoutePhotoSelection | null>>();
 const failedSources = new Map<string, Set<string>>();
 
@@ -102,6 +105,11 @@ export function routePhotoFromUnknown(value: unknown): CachedRoutePhoto | null {
   if (!src || !sourceUrl || !sourceLabel) return null;
 
   const photo: CachedRoutePhoto = { src, sourceUrl, sourceLabel };
+  if (value.scope === "country") {
+    const country = typeof value.country === "string" ? countryFor(value.country) : null;
+    if (!country) return null;
+    photo.scope = "country"; photo.country = country.name;
+  }
   if (typeof value.id === "string" && value.id.trim()) photo.id = value.id.trim();
   if (typeof value.alt === "string" && value.alt.trim()) photo.alt = value.alt.trim();
   const downloadLocation = webUrl(value.downloadLocation);
@@ -186,7 +194,7 @@ export async function findRoutePhotos(queries: string[], signal?: AbortSignal, p
         if (place.coordinates) { params.set("lon", String(place.coordinates[0])); params.set("lat", String(place.coordinates[1])); }
         excludedSources.slice(0, 18).forEach(src => params.append("exclude", src));
       }
-      const response = await fetch(`/api/journey-route-image?${params}`, { signal: signal ?? AbortSignal.timeout(15_000) });
+      const response = await fetch(`/api/journey-route-image?${params}`, { signal: signal ?? AbortSignal.timeout(30_000) });
       const value: unknown = await response.json();
       const payload = isRecord(value) ? value : null;
       const image = routePhotoFromUnknown(payload?.image);
@@ -269,34 +277,57 @@ export async function resolveRoutePhotoCandidates(
   }));
 }
 
-/** Resolve cards independently, then retry an asset claimed by another place.
- * Repeated occurrences of the same place are already grouped by cache key. */
+/** Fetch independently. Earlier route identities win a shared asset regardless
+ * of completion order; only the displaced selection is retried. Reserved
+ * (already displayed) images and repeat visits keep their existing ownership. */
 export async function resolveDistinctRoutePhotoCandidates(
   candidates: readonly RoutePhotoCandidate[],
   onSelection: (candidate: RoutePhotoCandidate, selection: CachedRoutePhotoSelection) => void,
   options: Parameters<typeof resolveRoutePhotoCandidates>[2] & { reservedSources?: readonly string[] } = {},
 ) {
-  const used = new Set(options.reservedSources ?? []);
-  await Promise.allSettled(candidates.map(async candidate => {
-    const rejected = new Set(candidate.excludedSources ?? []);
-    for (let attempt = 0; attempt <= candidates.length; attempt++) {
-      if (options.signal?.aborted) return;
+  const reserved = new Set(options.reservedSources ?? []);
+  const owners = new Map<string, number>();
+  const states = candidates.map(() => ({ version: 0, attempts: 0, rejected: new Set<string>(), photo: null as CachedRoutePhoto | null }));
+  const keys = (photo: CachedRoutePhoto) => [routePhotoAssetIdentity(photo), photo.src,
+    ...(photo.provider === "wikimedia" ? [photo.sourceUrl] : [])];
+  const storage = options.storage === undefined ? browserStorage() : options.storage;
+  const release = (index: number) => {
+    const state = states[index]!;
+    if (!state.photo) return;
+    for (const key of keys(state.photo)) if (owners.get(key) === index) owners.delete(key);
+    state.photo = null;
+    try { storage?.removeItem(`${prefix}${candidates[index]!.cacheKey}`); } catch { /* Imagery is non-blocking. */ }
+    if (!options.signal?.aborted) onSelection(candidates[index]!, { kind: "empty" });
+  };
+  const resolve = async (index: number): Promise<void> => {
+    const candidate = candidates[index]!, state = states[index]!;
+    const version = ++state.version;
+    while (state.attempts++ <= candidates.length) {
+      if (options.signal?.aborted || version !== state.version) return;
+      const excluded = [...new Set([...(candidate.excludedSources ?? []), ...reserved, ...state.rejected,
+        ...[...owners].filter(([, owner]) => owner < index).map(([key]) => key)])];
       const received: { value: CachedRoutePhotoSelection | null } = { value: null };
-      await resolveRoutePhotoCandidates([{ ...candidate, excludedSources: [...new Set([...rejected, ...used])] }], (_, result) => { received.value = result; }, options);
+      await resolveRoutePhotoCandidates([{ ...candidate, excludedSources: excluded }], (_, result) => { received.value = result; }, options);
+      if (options.signal?.aborted || version !== state.version) return;
       const selection = received.value;
-      if (!selection || options.signal?.aborted) return;
-      if (selection.kind === 'empty') { onSelection(candidate, selection); return; }
-      const photo = selection.photo;
-      const identity = routePhotoAssetIdentity(photo);
-      if (used.has(identity) || used.has(photo.src) || (photo.provider === 'wikimedia' && used.has(photo.sourceUrl))) {
-        rejected.add(identity); rejected.add(photo.src);
-        if (photo.provider === 'wikimedia') rejected.add(photo.sourceUrl);
-        continue;
+      if (!selection) return;
+      if (selection.kind === "empty") { release(index); onSelection(candidate, selection); return; }
+      const photoKeys = keys(selection.photo);
+      const earlier = photoKeys.some(key => reserved.has(key) || (owners.has(key) && owners.get(key)! < index));
+      if (earlier) { photoKeys.forEach(key => state.rejected.add(key)); continue; }
+      const displaced = [...new Set(photoKeys.flatMap(key => owners.has(key) && owners.get(key)! > index ? [owners.get(key)!] : []))];
+      for (const other of displaced) {
+        photoKeys.forEach(key => states[other]!.rejected.add(key));
+        release(other);
       }
-      used.add(identity); used.add(photo.src);
-      if (photo.provider === 'wikimedia') used.add(photo.sourceUrl);
+      state.photo = selection.photo;
+      photoKeys.forEach(key => owners.set(key, index));
       onSelection(candidate, selection);
+      // A ready unrelated destination never waits for this collision recovery.
+      await Promise.allSettled(displaced.map(resolve));
       return;
     }
-  }));
+    release(index);
+  };
+  await Promise.allSettled(candidates.map((_, index) => resolve(index)));
 }

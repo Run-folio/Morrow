@@ -97,7 +97,7 @@ test("a suitable Unsplash image retains the seven-day positive response cache", 
   const body = await response.json();
   assert.equal(body.image.id, "photo-1");
   assert.equal(response.headers.get("Cache-Control"), "public, s-maxage=604800, stale-while-revalidate=2592000");
-  assert.equal(response.headers.get("Netlify-Vary"), "query=query|place|country|region|placeType|lon|lat|exclude");
+  assert.equal(response.headers.get("Netlify-Vary"), "query=query|place|country|region|district|canonicalPlaceId|providerId|placeType|lon|lat|exclude");
 });
 
 test("failed Unsplash responses expose bounded diagnostics without leaking credentials or caching a miss", async (context) => {

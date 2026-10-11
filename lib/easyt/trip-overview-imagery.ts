@@ -8,6 +8,8 @@ import type { EasyTTrip, TripStop } from "./trip.ts";
 import type { CachedRoutePhoto } from "./route-photo-cache.ts";
 
 export type OverviewPlaceImage = {
+  scope?: "country";
+  country?: string;
   src: string;
   alt: string;
   author?: string;
@@ -21,7 +23,7 @@ export type OverviewPlaceImage = {
 };
 
 export function resolvedOverviewPhoto(photo: CachedRoutePhoto): OverviewPlaceImage {
-  return { src: photo.src, alt: photo.alt ?? "Destination view", sourceUrl: photo.sourceUrl, sourceLabel: photo.sourceLabel,
+  return { scope: photo.scope, country: photo.country, src: photo.src, alt: photo.alt ?? "Destination view", sourceUrl: photo.sourceUrl, sourceLabel: photo.sourceLabel,
     author: photo.author, authorUrl: photo.authorUrl, license: photo.license, licenseUrl: photo.licenseUrl };
 }
 

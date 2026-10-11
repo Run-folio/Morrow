@@ -34,7 +34,7 @@ test('cross-source published facts collapse without merging distinct same-name i
  const merged=mergeEquivalentPlaceSuggestions(la);
  assert.equal(merged.filter(p=>p.country==='United States'&&p.name==='Los Angeles').length,1);
  assert.equal(merged[0]?.canonicalPlaceId,'los-angeles','display dedup does not rewrite existing authored identity');
- const candidates=searchReferencePlaces('Xi’an').filter(p=>p.canonicalName==='Xi’an').map(p=>({canonicalPlaceId:p.canonicalPlaceId!,name:p.canonicalName,country:p.parentCountries![0]!,placeType:p.placeType,coordinates:p.coordinates}));
+ const candidates=searchReferencePlaces('Xi’an').filter(p=>p.canonicalName==='Xi’an').map(p=>({canonicalPlaceId:p.canonicalPlaceId!,name:p.canonicalName,country:p.parentCountries![0]!,placeType:p.placeType,coordinates:p.coordinates,region:p.parentRegionId,administrativeHierarchy:p.administrativeHierarchy}));
  const distinct=mergeEquivalentPlaceSuggestions(candidates);
  assert.equal(distinct.length,5,'same-name settlements at different points remain explicit choices');
  assert.equal(new Set(distinct.map(p=>placeSuggestionLocationDetail(p,distinct))).size,5);

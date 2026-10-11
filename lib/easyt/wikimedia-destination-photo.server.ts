@@ -49,17 +49,18 @@ function destinationPhoto(page: unknown, place: DestinationPhotoPlace, excludedS
     Math.abs(longitude) <= 180 && Math.abs(latitude) <= 90 ? [longitude, latitude] : undefined;
   if (place.requiresPhotoCoordinates && (!place.coordinates || !coordinates)) return [];
   if (place.coordinates && coordinates && placeDistanceKm([...place.coordinates], coordinates) > 50) return [];
-  const region = normalizeImageGeography(place.region?.trim() ?? "");
+  const hierarchy = place.administrativeHierarchy?.filter(Boolean) ?? [];
+  const region = normalizeImageGeography(hierarchy.at(-1) || place.region?.trim() || "");
   const regionEvidence = normalizeImageGeography(`${page.title} ${text(value("ImageDescription"))} ${text(value("ObjectName"))}`);
-  const nearbyCoordinates = Boolean(place.coordinates && coordinates && placeDistanceKm([...place.coordinates], coordinates) <= 50);
-  if (region && !nearbyCoordinates && (region.length < 4 || !` ${regionEvidence} `.includes(` ${region} `))) return [];
+  // GPS constrains location; it cannot identify a namesake in the selected district.
+  if (region && (region.length < 4 || !` ${regionEvidence} `.includes(` ${region} `))) return [];
   const candidate: PublishedRouteImageCandidate = {
     provider: "wikimedia", id: page.title, src, sourceUrl, author, license, licenseUrl, width: info.width, height: info.height,
     alt: text(value("ImageDescription")), description: `${page.title} ${text(value("ImageDescription"))} ${text(value("ObjectName"))}`,
     ...(place.coordinates && coordinates ? { coordinates } : {}),
     ...(value("Country") ? { location: { country: text(value("Country")) } } : {}),
   };
-  if (!scorePublishedRouteImageCandidate({ key: "destination", name: place.name, country: place.country,
+  if (!scorePublishedRouteImageCandidate({ key: "destination", name: place.name, country: place.country, placeType: place.placeType,
     coordinates: place.coordinates ? [...place.coordinates] : [0, 0], routeKeys: [], siblingNames: [], attachedLandmarks: [] }, candidate).accepted ||
     (excludedSources.includes(src) || excludedSources.includes(sourceUrl))) return [];
   const authorUrl = httpsUrl(value("Artist")?.match(/href=["']([^"']+)/)?.[1]);

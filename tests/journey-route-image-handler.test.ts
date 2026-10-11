@@ -6,11 +6,13 @@ import { lookupWikimediaDestinationPhotos } from "../lib/easyt/wikimedia-destina
 import { referencePhotoPlaceContext } from "../lib/easyt/place-reference.server.ts";
 import { scorePublishedRouteImageCandidate } from "../lib/easyt/published-route-image-pipeline.ts";
 
+import { countryFor } from "../lib/easyt/country-registry.ts";
+
 const routeSource=readFileSync("app/api/journey-route-image/route.ts","utf8");
 function handler(fetcher:typeof fetch, key?:string){
   const code=ts.transpileModule(routeSource.replace(/^import .*;\n/gm,""),{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.CommonJS}}).outputText;
   const exports:Record<string,Function>={};
-  new Function("exports","NextResponse","lookupWikimediaDestinationPhotos","referencePhotoPlaceContext","scorePublishedRouteImageCandidate","fetch","process",code)(exports,{json:(body:unknown,init?:ResponseInit)=>new Response(JSON.stringify(body),init)},(place:Parameters<typeof lookupWikimediaDestinationPhotos>[0],options:Parameters<typeof lookupWikimediaDestinationPhotos>[1])=>lookupWikimediaDestinationPhotos(place,{...options,fetcher}),referencePhotoPlaceContext,scorePublishedRouteImageCandidate,fetcher,{env:{UNSPLASH_ACCESS_KEY:key}});
+  new Function("exports","NextResponse","lookupWikimediaDestinationPhotos","referencePhotoPlaceContext","scorePublishedRouteImageCandidate","countryFor","fetch","process",code)(exports,{json:(body:unknown,init?:ResponseInit)=>new Response(JSON.stringify(body),init)},(place:Parameters<typeof lookupWikimediaDestinationPhotos>[0],options:Parameters<typeof lookupWikimediaDestinationPhotos>[1])=>lookupWikimediaDestinationPhotos(place,{...options,fetcher}),referencePhotoPlaceContext,scorePublishedRouteImageCandidate,countryFor,fetcher,{env:{UNSPLASH_ACCESS_KEY:key}});
   return (params:Record<string,string>)=>exports.GET!({nextUrl:new URL(`http://localhost/api/journey-route-image?${new URLSearchParams(params)}`)}) as Promise<Response>;
 }
 function commons(name:string,country:string){return {query:{pages:{1:{title:`File:${name} ${country} old town street.jpg`,imageinfo:[{url:"https://upload.wikimedia.org/wikipedia/commons/a/ab/photo.jpg",descriptionurl:"https://commons.wikimedia.org/wiki/File:Photo.jpg",width:1600,height:900,mime:"image/jpeg",extmetadata:{Artist:{value:"Example author"},LicenseShortName:{value:"CC BY 4.0"},LicenseUrl:{value:"https://creativecommons.org/licenses/by/4.0/"},ImageDescription:{value:`${name} ${country} old town street`}}}]}}}};}
@@ -40,7 +42,10 @@ test('older saved same-province settlement rejects a no-GPS Commons image using 
     region: 'Guangdong', canonicalPlaceId: 'reference:geonames:1795566',
     lon: '111.11793', lat: '22.1823' });
   assert.equal(response.status, 200);
-  assert.equal((await response.json()).reason, 'no-result');
+  const recovered = await response.json();
+  assert.equal(recovered.destinationStatus, 'no-result');
+  assert.equal(recovered.image.scope, 'country');
+  assert.equal(recovered.image.country, 'China');
   const mismatched = await get({ query: 'Shenzhen China travel', place: 'Shenzhen', country: 'China',
     region: 'Guangdong', district: 'Shenzhen', canonicalPlaceId: 'reference:geonames:1795566',
     lon: '111.11793', lat: '22.1823' });
@@ -51,4 +56,17 @@ test("actual handler uses configured Unsplash only after Wikimedia and preserves
   const result=await(await get({query:"Bangkok Thailand travel",place:"Bangkok",country:"Thailand"})).json();
   assert.equal(result.image.provider,"unsplash");assert.equal(calls.length,3);assert.match(calls[0]!,/commons.wikimedia/);assert.match(calls[1]!,/commons.wikimedia/);assert.match(calls[2]!,/api.unsplash/);
   const legacy=handler(async()=>{throw new Error("no key should not fetch");});assert.equal((await(await legacy({query:"legacy query"})).json()).reason,"missing-access-key");
+});
+
+test('country fallback is licensed and explicitly illustrative after a failed destination search',async()=>{
+ const calls:string[]=[];
+ const get=handler(async url=>{
+  const search=new URL(String(url)).searchParams.get('gsrsearch')??'';calls.push(search);
+  return Response.json(search.includes('"Philippines"')?commons('Philippines','Philippines'):{query:{pages:{}}});
+ });
+ const response=await get({query:'Cuyo Philippines travel',place:'Cuyo',country:'Philippines'});
+ const result=await response.json();assert.equal(response.status,200);
+ assert.ok(result.image, 'a suitable country photograph must follow the empty destination search');assert.equal(result.image.scope,'country');assert.equal(result.image.country,'Philippines');
+ assert.match(result.image.alt,/Illustrative.*Philippines/);assert.equal(result.image.license,'CC BY 4.0');
+ assert.ok(calls[0]?.includes('"Cuyo"'));assert.ok(calls.some(q=>q.includes('"Philippines"')));
 });

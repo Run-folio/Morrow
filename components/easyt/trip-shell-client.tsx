@@ -37,7 +37,7 @@ import { personalRouteHref } from "@/lib/easyt/personal-route";
 import { overnightAccommodationStops } from "@/lib/easyt/accommodation";
 import { tripCoverImage, resolvedOverviewPhoto, type OverviewPlaceImage } from "@/lib/easyt/trip-overview-imagery";
 import { canonicalPlacePhotoCacheKey, discardFailedRoutePhoto, resolveRoutePhotoCandidates } from "@/lib/easyt/route-photo-cache";
-import CountryVisualFallback from "./country-visual-fallback";
+import CountryVisualFallback, { CountryIllustrationLabel } from "./country-visual-fallback";
 import MorroviaPhotoCredit from "./morrovia-photo-credit";
 import { useTripMutationPersistence, type TripMutationPersistence } from "./use-trip-mutation-persistence";
 import styles from "./trip-shell.module.css";
@@ -552,6 +552,7 @@ export function TripShellImage() {
   return (
     <div className={styles.tripImage}>
       <ResilientImage key={photo?.src ?? "no-photo"} src={photo?.src} alt={photo?.alt ?? ""} onDisplayState={onDisplayState} onError={recoverImage} fallback={<CountryVisualFallback country={country} />} />
+      {photo?.scope === "country" && displayedSrc === photo.src ? <CountryIllustrationLabel country={photo.country} /> : null}
       {photo?.sourceLabel && displayedSrc === photo.src ? <MorroviaPhotoCredit className={styles.coverPhotoCredit} size="compact" placement="bottom-right" ownership={photo.provenance === "reviewed-morrovia-first-party" ? "morrovia" : "unknown"} credit={photo.sourceLabel} photoLabel={photo.alt} authorLabel={photo.author} authorHref={photo.authorUrl} sourceLabel={photo.sourceUrl ? "Source" : undefined} sourceHref={photo.sourceUrl} licenseLabel={photo.license} licenseHref={photo.licenseUrl} fullCreditHref={photo.fullCreditUrl} /> : null}
     </div>
   );

@@ -10,3 +10,9 @@ export default function CountryVisualFallback({ country }: { country?: string | 
     <span className={styles.name}>{verified.name}</span>
   </div>;
 }
+
+/** Always visible when the displayed photograph depicts the country rather than the stop. */
+export function CountryIllustrationLabel({ country }: { country?: string }) {
+  const verified = countryFor(country);
+  return verified ? <span className={styles.illustration}>Illustrative · {verified.name}</span> : null;
+}

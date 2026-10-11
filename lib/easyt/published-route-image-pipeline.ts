@@ -3,6 +3,8 @@ export type PublishedRouteImageStop = {
   name: string;
   country: string;
   region?: string;
+  placeType?: string;
+  subjectContext?: readonly string[];
   coordinates: [number, number];
   routeKeys: string[];
   siblingNames: string[];
@@ -69,6 +71,18 @@ function distanceKm(from: [number, number], to: [number, number]) {
   return 6371 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
+/** Vehicle-centred captions are different from a place scene with background traffic. */
+function describesTransitSubject(caption: string) {
+  const text = normalizeImageGeography(caption);
+  const vehicle = /\b(ferr(?:y|ies)|ships?|vessels?|boats?|buses?|aircraft|airplanes?|planes?|trains?|cruise ships?)\b/.exec(text);
+  if (!vehicle) return false;
+  const scene = /\b(skyline|landscape|coast|beach|lake|waterfront|harbour|harbor|river|bridge|panorama|bay)\b/.exec(text);
+  // Require an explicit relationship to the primary scene, rather than treating
+  // any place/harbour keyword anywhere in a vehicle caption as an exemption.
+  return !(scene && scene.index < vehicle.index
+    && /\b(with|including|background|distant|small|moored|passing)\b/.test(text.slice(scene.index, vehicle.index)));
+}
+
 export function publishedRouteStopKey(name: string, country: string) {
   return `${normalizeImageGeography(name)}|${normalizedCountry(country)}`;
 }
@@ -84,8 +98,10 @@ export function scorePublishedRouteImageCandidate(stop: PublishedRouteImageStop,
     candidate.location?.name,
     ...(candidate.tags ?? []),
   ].filter(Boolean).join(" "));
-  const exactPlace = mentions(text, stop.name);
-  const attachedLandmark = stop.attachedLandmarks.find((name) => mentions(text, name));
+  // Camera/provider location can describe where a photo was taken, not its subject.
+  const subjectText = normalizeImageGeography([candidate.alt, candidate.description, ...(candidate.tags ?? [])].filter(Boolean).join(" "));
+  const exactPlace = mentions(subjectText, stop.name);
+  const attachedLandmark = stop.attachedLandmarks.find((name) => mentions(subjectText, name));
   const textCountryMatch = mentions(text, stop.country);
   const locationCountry = candidate.location?.country?.trim();
   const locationCountryMatch = Boolean(locationCountry && normalizedCountry(locationCountry) === normalizedCountry(stop.country));
@@ -96,8 +112,8 @@ export function scorePublishedRouteImageCandidate(stop: PublishedRouteImageStop,
   const sibling = stop.siblingNames.find((name) => normalizeImageGeography(name) !== normalizeImageGeography(stop.name) && mentions(text, name));
   const nonPhotographic = /\b(map|diagram|screenshot|logo|graphic|illustration|video|webm|svg|tiff|painting|drawing|engraving|watercolor|artwork|postcard)\b/.test(`${text} ${normalizeImageGeography(candidate.id)} ${normalizeImageGeography(candidate.sourceUrl)}`);
   const incidentalSubject = /\b(portrait|close up|selfie|bikini|animal|bird|curassow|tanager|heron|dog|cat|cow|cattle|artifact|sarcophagus|wheel hub|ski jumping|seller)\b/.test(text);
-  const transitSubject = /\b(ferry|ship|vessel|boat|bus|aircraft|airplane|plane|train|cruise ship)\b/.test(text)
-    && /\b(from|to|between|aboard|on board)\b/.test(text);
+  const captions = [candidate.alt, candidate.description].filter((value): value is string => Boolean(value));
+  const transitSubject = captions.some(describesTransitSubject);
   const editorialSubject = /\b(city|town|village|street|square|architecture|palace|temple|church|cathedral|mosque|skyline|landscape|mountain|coast|beach|lake|waterfront|harbour|harbor|river|bridge|historic|panorama|view|plaza|agora|old town|waterfall|volcano|desert|island|bay|garden|park)\b/.test(text);
   const landscape = candidate.width > candidate.height;
 
@@ -112,8 +128,13 @@ export function scorePublishedRouteImageCandidate(stop: PublishedRouteImageStop,
 
   if (!exactPlace && !attachedLandmark) concerns.push("no exact place or reviewed landmark evidence");
   if (!locationCountryMatch && !textCountryMatch && !nearbyCoordinates) concerns.push("country or coordinate proximity is not confirmed by provider metadata");
+  const subjectContext = stop.subjectContext?.filter(Boolean).at(-1);
+  if (subjectContext && !mentions(subjectText, subjectContext)) concerns.push("photographed subject is not identified in the selected administrative context");
   if (!landscape) concerns.push("provider asset is not landscape-oriented");
   if (!editorialSubject) concerns.push("metadata does not describe a destination-suitable scene");
+  // A park/location keyword can describe the setting of an incidental subject.
+  // Country illustrations need explicit wider geographic scenery evidence.
+  if (stop.placeType === "country" && !/\b(skyline|landscape|mountain|coast|beach|lake|waterfront|harbour|harbor|river|bridge|panorama|waterfall|volcano|desert|island|bay|cliffs)\b/.test(subjectText)) concerns.push("country illustration does not identify a geographic scene");
   if (conflictingCountry) { score -= 100; concerns.push(`conflicting provider country: ${locationCountry}`); }
   if (conflictingCoordinates) { score -= 100; concerns.push(`provider coordinates are ${Math.round(coordinateDistance!)} km from the canonical stop`); }
   if (sibling && !exactPlace) { score -= 100; concerns.push(`different route stop named: ${sibling}`); }

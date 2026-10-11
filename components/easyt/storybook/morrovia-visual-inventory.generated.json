@@ -183,7 +183,7 @@
     "rawColors": [
       {
         "value": "#fff",
-        "count": 507,
+        "count": 506,
         "examples": [
           "app/journey/account.module.css",
           "app/journey/admin/feedback/feedback.module.css",
@@ -5324,7 +5324,7 @@
       },
       {
         "value": "4px",
-        "count": 256,
+        "count": 257,
         "examples": [
           "app/journey/about/about.module.css",
           "app/journey/account.module.css",
@@ -7964,7 +7964,7 @@
       "native-confirm": 0,
       "legacy-ui-import": 0,
       "deprecated-ui-owner": 0,
-      "raw-color": 1884,
+      "raw-color": 1883,
       "large-accent-surface": 0,
       "raw-radius": 551,
       "raw-shadow": 167,

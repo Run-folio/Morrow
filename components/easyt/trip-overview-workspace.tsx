@@ -54,7 +54,7 @@ import TripExplicitPlans from "./trip-explicit-plans";
 import { overviewPlaceImage, overviewStopImage, resolvedOverviewPhoto, type OverviewPlaceImage } from "@/lib/easyt/trip-overview-imagery";
 import { canonicalPlacePhotoCacheKey, discardFailedRoutePhoto, resolveDistinctRoutePhotoCandidates, type RoutePhotoCandidate } from "@/lib/easyt/route-photo-cache";
 import MorroviaPhotoCredit from "./morrovia-photo-credit";
-import CountryVisualFallback from "./country-visual-fallback";
+import CountryVisualFallback, { CountryIllustrationLabel } from "./country-visual-fallback";
 import { useTripShellMutation } from "./trip-shell-client";
 import { ContextualFeedbackSlot } from "./contextual-feedback-controller";
 import {
@@ -119,7 +119,8 @@ export function OverviewStepMedia({ image, name, country, meta, number, href, on
         <Link href={href} className={styles.stopImageLink} aria-label={`${name} · ${meta}`}>
           <ResilientImage key={image?.src ?? "no-photo"} src={image?.src} alt={image?.alt ?? ""} onDisplayState={onDisplayState} onError={() => { if (image) onImageError?.(image.src); }} fallback={<CountryVisualFallback country={country} />} />
         </Link>
-        {image?.sourceLabel && displayedSrc === image.src ? <MorroviaPhotoCredit size="compact" ownership={image.provenance === "reviewed-morrovia-first-party" ? "morrovia" : "unknown"} placement="bottom-right" credit={image.sourceLabel} photoLabel={image.alt} authorLabel={image.author} authorHref={image.authorUrl} sourceLabel={image.sourceUrl ? "Source" : undefined} sourceHref={image.sourceUrl} licenseLabel={image.license} licenseHref={image.licenseUrl} fullCreditHref={image.fullCreditUrl} /> : null}
+        {image?.scope === "country" && displayedSrc === image.src ? <CountryIllustrationLabel country={image.country} /> : null}
+      {image?.sourceLabel && displayedSrc === image.src ? <MorroviaPhotoCredit size="compact" ownership={image.provenance === "reviewed-morrovia-first-party" ? "morrovia" : "unknown"} placement="bottom-right" credit={image.sourceLabel} photoLabel={image.alt} authorLabel={image.author} authorHref={image.authorUrl} sourceLabel={image.sourceUrl ? "Source" : undefined} sourceHref={image.sourceUrl} licenseLabel={image.license} licenseHref={image.licenseUrl} fullCreditHref={image.fullCreditUrl} /> : null}
       </div>
       <Link href={href} className={styles.stopOverlay}><h3>{name}</h3><span>{meta}</span></Link>
     </article>;
@@ -333,12 +334,11 @@ export default function TripOverviewWorkspace({
     if (!imageResolutionCandidates.length) return;
     const controller = new AbortController();
     void resolveDistinctRoutePhotoCandidates(imageResolutionCandidates, (candidate, selection) => {
-      if (selection.kind !== "photo") return;
-      // A late lookup may fill an empty canonical identity, but never replaces known truth.
-      if (!resolvedImagesRef.current[candidate.cacheKey]) {
-        resolvedImagesRef.current[candidate.cacheKey] = resolvedOverviewPhoto(selection.photo);
-        setResolvedPlaceImages({ ...resolvedImagesRef.current });
-      }
+      // The resolver may retract a newly displayed shared asset when an earlier
+      // route identity finishes. Pre-existing imagery remains reserved.
+      if (selection.kind === "empty") delete resolvedImagesRef.current[candidate.cacheKey];
+      else resolvedImagesRef.current[candidate.cacheKey] = resolvedOverviewPhoto(selection.photo);
+      setResolvedPlaceImages({ ...resolvedImagesRef.current });
     }, { signal: controller.signal, reservedSources: [...Object.values(initialPlaceImages),
       ...Object.entries(resolvedImagesRef.current).filter(([key]) => Object.values(imageCacheKeysByOccurrence).includes(key)).map(([,photo]) => photo)]
       .flatMap(photo => [photo.src, ...(photo.sourceUrl?.startsWith('https://commons.wikimedia.org/wiki/File:') ? [photo.sourceUrl] : [])]) });

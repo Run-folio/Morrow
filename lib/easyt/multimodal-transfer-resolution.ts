@@ -10,6 +10,7 @@ import { estimateFlightPlanningMinutes, haversineKm } from "./planner.ts";
 import { directRoadPlausibilityConflict, resolveCanonicalRoadFallback } from "./road-transfer-resolution.ts";
 import type { RoadRoutingProvider } from "./road-routing.ts";
 import { estimateTransferImpact } from "./transfer-impact.ts";
+import { findSurfaceCrossing } from "./surface-crossing-evidence.ts";
 import { reconcileLegacyTransportLeg } from "./transport-leg-compatibility.ts";
 import type {
   CanonicalRouteEndpoint,
@@ -506,6 +507,55 @@ async function mixedGatewayCandidate(
   });
 }
 
+/** Surface topology can be supported while sailing timing remains unknown. */
+async function boundedFerryJourney(leg: TripLeg, provider?: RoadRoutingProvider): Promise<TripLeg | null> {
+  const from = leg.fromEndpoint, to = leg.toEndpoint;
+  if (!from || !to) return null;
+  const crossing = findSurfaceCrossing(from, to, "ferry");
+  if (!crossing) return null;
+  const endpoint = (side: typeof crossing.origin): CanonicalRouteEndpoint => ({
+    kind: "gateway", id: `crossing:${crossing.id}:${side.name}`, canonicalPlaceId: `crossing:${crossing.id}:${side.name}`,
+    name: side.name, country: side.country, coordinates: side.coordinates,
+  });
+  const portFrom = endpoint(crossing.origin), portTo = endpoint(crossing.destination);
+  const access = async (a: CanonicalRouteEndpoint, b: CanonicalRouteEndpoint, index: number) => {
+    // Access is a new evidence unit, not a projection of saved whole-leg
+    // timing or geometry. Only traveller constraints carry into its resolver.
+    const temporary: TripLeg = {
+      id: `${leg.id}:crossing-access:${index}`, fromStopId: a.id, toStopId: b.id,
+      fromEndpoint: a, toEndpoint: b, mode: "unknown", durationMinutes: null,
+      distanceKm: haversineKm(a.coordinates ?? undefined, b.coordinates ?? undefined), provider: null,
+      routeMetadata: { source: "morrovia-planner", roadFallbackEligible: true,
+        transportConstraints: leg.routeMetadata.transportConstraints },
+    };
+    const routed = await resolveCanonicalRoadFallback(temporary, { provider });
+    // Named ports have no verified physical point yet. Retain the explicit
+    // access component without claiming geometry, a routed service or time.
+    return segmentFromLeg(routed.leg.mode === "road" ? routed.leg : {
+      ...temporary, mode: "road", distanceKm: haversineKm(a.coordinates ?? undefined, b.coordinates ?? undefined),
+      provider: "Ground access to the reviewed ferry port needs route and timing checks.", confidence: "unknown", provenance: "unknown",
+    }, index)!;
+  };
+  const segments = [await access(from, portFrom, 0), segment({ mode: "ferry", fromEndpoint: portFrom, toEndpoint: portTo,
+    distanceKm: haversineKm(portFrom.coordinates ?? undefined, portTo.coordinates ?? undefined), durationMinutes: null,
+    provider: `${crossing.source.label} (${crossing.source.url}); verify the sailing and crossing time.`,
+    confidence: "medium", provenance: "planning_estimate", scheduleNeedsChecking: true,
+  }, 1), await access(portTo, to, 2)];
+  const retainedMetadata = { ...leg.routeMetadata };
+  delete retainedMetadata.transferImpact;
+  delete retainedMetadata.roadRouting;
+  delete retainedMetadata.routingConfidence;
+  return { ...leg, mode: "mixed", segments, durationMinutes: null, headlineMinutes: null, doorToDoorMinutes: null,
+    usableDayLoss: null, distanceKm: null, straightLineDistanceKm: null, routedDistanceKm: null,
+    routeGeometry: undefined, roadEstimate: undefined,
+    provider: `${crossing.source.label}; road access and sailing timing need checking.`, confidence: "medium",
+    provenance: "planning_estimate", scheduleNeedsChecking: true,
+    warnings: ["Ferry service timing and port access must be checked before booking."],
+    routeMetadata: { ...retainedMetadata, source: "multimodal-resolver", planningEstimate: true, roadFallbackEligible: false,
+      surfaceCrossingEvidence: { id: crossing.id, ...crossing.source } },
+  };
+}
+
 function shouldPreserve(leg: TripLeg) {
   const metadata = leg.routeMetadata as { source?: unknown; routingConfidence?: unknown; roadFallbackEligible?: unknown; decisionOption?: unknown; userConfirmed?: unknown; confirmed?: unknown };
   if (metadata.decisionOption !== undefined || metadata.userConfirmed === true || metadata.confirmed === true) return true;
@@ -734,7 +784,14 @@ export async function resolveCanonicalTransferJourney(
     // avoid a second, unrelated origin-to-destination driving request.
     const road = mixed ? null : await roadCandidate(leg, options.provider);
     roadEstimate = road?.estimate;
-    if (road && travellerPrefersRoad) candidates.push(road.candidate);
+    // A driving route alone does not establish a cross-border passenger
+    // connection. Preserve the existing reference-only policy unless driving
+    // was explicitly preferred or a reviewed fixed link backs this pair.
+    if (road && (sameCountry(from, to) || travellerPrefersRoad || findSurfaceCrossing(from, to, "road"))) {
+      candidates.push(road.candidate);
+    } else if (road) {
+      diagnostic.rejected.push("Cross-border driving evidence is retained as a road reference; no passenger connection is established.");
+    }
     if (canonicalGatewayAccess) candidates.push(canonicalGatewayAccess);
     if (!road && !canonicalGatewayAccess) diagnostic.rejected.push("No plausible routed road estimate or canonical gateway access was available.");
   } else if (credibleLowChangeRailDominatesRoad) {
@@ -744,6 +801,12 @@ export async function resolveCanonicalTransferJourney(
   diagnostic.candidates = rankedCandidates.slice(0, MULTIMODAL_SELECTION_RULES.maximumCandidates);
   const selected = rankedCandidates[0];
   if (!selected) {
+    const ferry = excludedModes.has("ferry") || excludedModes.has("road") ? null : await boundedFerryJourney(leg, options.provider);
+    if (ferry) {
+      diagnostic.selected = "mixed";
+      diagnostic.rejected.push("The reviewed crossing has no verified sailing duration; total journey timing remains unknown.");
+      return { leg: { ...ferry, routeMetadata: { ...ferry.routeMetadata, multimodalResolution: diagnostic } }, outcome: "unresolved", diagnostic };
+    }
     const source = leg.routeMetadata.source;
     const gatewayContradictsDirectFlight = leg.mode === "flight"
       && (fromKnowledge.airGateways.status === "known" || toKnowledge.airGateways.status === "known");

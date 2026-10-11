@@ -26,7 +26,7 @@ test('every display-equivalent authored/source pair is globally unique in the fu
  console.info(`Globally unique authored/source display pairs: ${pairs}`);
 });
 
-test('all source same-country settlement collision groups retain identities and distinct truthful labels',()=>{
+test('all source same-country settlement collision groups retain identities and truthfully mark unavailable administrative detail',()=>{
  const groups=new Map<string,Row[]>();
  for(const row of settlements){const key=`${normalize(row[1])}:${row[2]}:${row[5]==='PPL'?'town':'city'}`;const group=groups.get(key)??[];group.push(row);groups.set(key,group);}
  let checked=0;
@@ -34,7 +34,10 @@ test('all source same-country settlement collision groups retain identities and 
   if(rows.length<2)continue;
   const choices=rows.map(r=>({canonicalPlaceId:`reference:geonames:${r[0]}`,name:r[1],country:r[2],placeType:r[5]==='PPL'?'town':'city',coordinates:[r[3],r[4]]}));
   const actual=mergeEquivalentPlaceSuggestions(choices);assert.equal(actual.length,rows.length);
-  assert.equal(new Set(actual.map(p=>placeSuggestionLocationDetail(p,actual))).size,rows.length,choices[0]!.name);checked++;
+  for (const choice of actual) { const detail=placeSuggestionLocationDetail(choice,actual);
+    assert.match(detail,/Location to confirm/);assert.doesNotMatch(detail,/Location \d|\d of \d/);
+    assert.ok(detail.includes(choice.country));assert.ok(!detail.includes(String(choice.coordinates[0])));
+  } checked++;
  }
  assert.ok(checked>10_000,'enumerate every collision group from the installed source, not a selected example list');
 });

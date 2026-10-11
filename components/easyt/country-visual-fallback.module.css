@@ -7,5 +7,21 @@
   background: var(--morrovia-paper);
 }
 .flag { flex-direction: column; gap: 4px; color: var(--morrovia-ink); }
-.symbol { font-size: 38px; line-height: 1; }
-.name { font: var(--morrovia-type-fine-print); text-align: center; }
+.flag .symbol { font-size: 38px; line-height: 1; color: var(--morrovia-ink); }
+.flag .name { font: var(--morrovia-type-fine-print); text-align: center; color: var(--morrovia-ink); }
+
+.illustration {
+  position: absolute;
+  top: 8px;
+  left: 41px;
+  right: 8px;
+  width: fit-content;
+  max-width: calc(100% - 49px);
+  padding: 4px;
+  border-radius: var(--morrovia-control-radius);
+  color: var(--morrovia-paper);
+  background: var(--morrovia-photo-ink);
+  font: var(--morrovia-type-fine-print);
+  overflow-wrap: anywhere;
+  pointer-events: none;
+}
