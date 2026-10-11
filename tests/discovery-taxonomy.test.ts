@@ -59,5 +59,5 @@ test("organic day trips are spatially bounded, destination-safe and independent 
 test("Outdoors remains organic while commercial tour inventory stays category-scoped", () => {
   const inventory = readFileSync("components/easyt/live-activity-inventory.tsx", "utf8");
   assert.match(inventory, /usesCommercialInventory = discoveryCategory !== "outdoors"/);
-  assert.match(inventory, /if \(!usesCommercialInventory\) \{ setItems\(\[\]\); setStatus\("ready"\); return; \}/);
+  assert.match(inventory, /if \(!usesCommercialInventory\) \{ setItems\(\[\]\); setStatus\("ready"\);[\s\S]*?return; \}/);
 });

@@ -1,7 +1,7 @@
 "use client";
 
 import { CheckCircle2, Clock3, MapPin, Star } from "lucide-react";
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { affiliateDisclosure, MorroviaAffiliateLink } from "./affiliate-link";
 import { EasyTButton } from "./easyt-controls";
 import { MorroviaSectionStatus } from "./morrovia-loading-states";
@@ -14,6 +14,9 @@ import { ideaStateForPlace } from "@/lib/easyt/itinerary-ideas";
 import { tripIntentForTrip, type EasyTTrip, type ItineraryIdea, type PlanItem, type TripStop } from "@/lib/easyt/trip";
 import { discoveryCategoryMatches, type DiscoveryCategory } from "@/lib/easyt/discovery-taxonomy";
 import { activityDurationLabel as faithfulActivityDurationLabel } from "@/lib/easyt/itinerary-schedule-awareness";
+import { planningEvidenceFromResponse, planningLaneMessage, planningLaneResponseStatus, planningRequiresSignIn } from "@/lib/easyt/planning-evidence-presentation";
+import type { PlanningEvidenceState } from "@/lib/easyt/planning-evidence-state";
+import { tripSyncSignInPath } from "@/lib/easyt/trip-continuity";
 import styles from "./live-activity-inventory.module.css";
 
 type LiveActivityInventoryProps = {
@@ -43,25 +46,32 @@ function priceLabel(price: ActivityInventoryItem["price"]) {
 
 export default function LiveActivityInventory({ trip, stop, day, placement, workspace, fallback = null, onSave, onSchedule, onRemove, isPending = () => false, initialItems, discoveryCategory = "for-you" }: LiveActivityInventoryProps) {
   const [items, setItems] = useState<ActivityInventoryItem[]>(initialItems ?? []);
-  const [status, setStatus] = useState<"loading" | "ready" | "unavailable">(initialItems ? "ready" : "loading");
+  const [status, setStatus] = useState<"loading" | "ready" | "error" | "incomplete">(initialItems ? "ready" : "loading");
+  const [assessment, setAssessment] = useState<PlanningEvidenceState>();
+  const [retryVersion, setRetryVersion] = useState(0);
+  const requestScopeRef = useRef<string | null>(null);
   const [visibleCount, setVisibleCount] = useState(workspace === "map" ? 6 : 4);
   const interests = tripIntentForTrip(trip).preferences.interests;
   const placeMention = trip.brief.structuredBrief?.placeMentions?.find((mention) => mention.canonicalPlaceId === stop.canonicalPlaceId);
   const usesCommercialInventory = discoveryCategory !== "outdoors";
 
   useEffect(() => {
-    if (!usesCommercialInventory) { setItems([]); setStatus("ready"); return; }
-    if (initialItems) { setItems(initialItems); setStatus("ready"); return; }
-    if (!stop.canonicalPlaceId) { setItems([]); setStatus("unavailable"); return; }
+    if (!usesCommercialInventory) { setItems([]); setStatus("ready"); setAssessment(undefined); requestScopeRef.current = null; return; }
+    if (initialItems) { setItems(initialItems); setStatus("ready"); setAssessment(undefined); requestScopeRef.current = null; return; }
+    const scopeKey = JSON.stringify([trip.id, trip.ownerId, stop.id, stop.canonicalPlaceId, stop.providerId, stop.name, stop.country, stop.countryCode, stop.region, stop.latitude, stop.longitude, trip.currency, placeMention?.aliases, placeMention?.placeType]);
+    if (requestScopeRef.current !== scopeKey) setItems([]);
+    requestScopeRef.current = scopeKey;
+    if (!stop.canonicalPlaceId) { setStatus("error"); setAssessment({ retrieval: "blocked", evidence: "unqualified", reason: "identity_required", retryable: false }); return; }
     const scope = createAbortableEffectScope(`Live activity inventory for ${stop.id}`);
     const startedAt = performance.now();
-    setItems([]);
+    setAssessment(undefined);
     setStatus("loading");
     void fetch("/api/journey-activity-inventory", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ workspace, destination: {
         canonicalPlaceId: stop.canonicalPlaceId,
+        ...(stop.providerId ? { providerId: stop.providerId } : {}),
         name: stop.name,
         country: stop.country,
         countryCode: stop.countryCode,
@@ -72,13 +82,19 @@ export default function LiveActivityInventory({ trip, stop, day, placement, work
       }, currency: trip.currency }),
       signal: scope.signal,
     }).then(async (response) => {
-      if (!response.ok) throw new Error("Activity inventory unavailable");
-      return response.json() as Promise<{ activities?: ActivityInventoryItem[] }>;
-    }).then((payload) => {
+      const payload = await response.json() as { activities?: ActivityInventoryItem[]; unavailable?: boolean; assessment?: PlanningEvidenceState };
+      return { payload, ok: response.ok };
+    }).then(({ payload, ok }) => {
       scope.commit(() => {
+        setAssessment(planningEvidenceFromResponse(payload));
+        const responseStatus = planningLaneResponseStatus(payload, ok);
+        setStatus(responseStatus);
+        if (responseStatus !== "ready") {
+          trackEvent("recommendation_performance", { surface: workspace, recommendation_kind: "activity", lane: "commercial", milestone: "lane_ready", duration_ms: recommendationDurationMs(startedAt, performance.now()), result_count: 0, outcome: "unavailable" });
+          return;
+        }
         const activities = payload.activities ?? [];
         setItems(activities);
-        setStatus(activities.length ? "ready" : "unavailable");
         const properties = { surface: workspace, recommendation_kind: "activity" as const, lane: "commercial" as const, duration_ms: recommendationDurationMs(startedAt, performance.now()), result_count: activities.length, outcome: activities.length ? "ready" as const : "empty" as const };
         if (activities.length) trackEvent("recommendation_performance", { ...properties, milestone: "first_useful" });
         trackEvent("recommendation_performance", { ...properties, milestone: "lane_ready" });
@@ -86,13 +102,12 @@ export default function LiveActivityInventory({ trip, stop, day, placement, work
     }).catch((error: unknown) => {
       if (scope.isCancellation(error)) return;
       scope.commit(() => {
-        setItems([]);
-        setStatus("unavailable");
+        setStatus("error");
         trackEvent("recommendation_performance", { surface: workspace, recommendation_kind: "activity", lane: "commercial", milestone: "lane_ready", duration_ms: recommendationDurationMs(startedAt, performance.now()), result_count: 0, outcome: "unavailable" });
       });
     });
     return () => scope.dispose();
-  }, [initialItems, placeMention?.aliases, placeMention?.placeType, stop.canonicalPlaceId, stop.country, stop.countryCode, stop.id, stop.latitude, stop.longitude, stop.name, stop.region, trip.currency, usesCommercialInventory, workspace]);
+  }, [initialItems, retryVersion, placeMention?.aliases, placeMention?.placeType, stop.canonicalPlaceId, stop.providerId, stop.country, stop.countryCode, stop.id, stop.latitude, stop.longitude, stop.name, stop.region, trip.id, trip.ownerId, trip.currency, usesCommercialInventory, workspace]);
 
   const ranked = useMemo(
     () => rankActivityInventory(items, interests).filter((item) => discoveryCategoryMatches({
@@ -104,10 +119,16 @@ export default function LiveActivityInventory({ trip, stop, day, placement, work
     [discoveryCategory, interests, items],
   );
   const visible = useMemo(() => ranked.slice(0, visibleCount), [ranked, visibleCount]);
-  if (status === "loading") return <section className={styles.group} aria-label="Live experiences"><MorroviaSectionStatus title="Finding experiences" detail={`Checking current options around ${stop.name}.`} /></section>;
-  if (!ranked.length) return <>{discoveryCategory === "for-you" || discoveryCategory === "tours" ? fallback : null}</>;
+  if (status === "loading" && !ranked.length) return <section className={styles.group} aria-label="Live experiences"><MorroviaSectionStatus title="Finding experiences" detail={`Checking current options around ${stop.name}.`} /></section>;
+  const unsettled = status === "error" || status === "incomplete";
+  const feedback = unsettled ? <><MorroviaSectionStatus compact state="error" title={status === "incomplete" ? "Experiences are not ready yet" : "Experiences are unavailable"}
+    detail={assessment ? planningLaneMessage(assessment, "en") : "Bookable experiences are unavailable right now."}
+    onRetry={status === "error" && assessment?.retryable !== false || status === "incomplete" && assessment?.retryable === true ? () => setRetryVersion(current => current + 1) : undefined} />
+    {planningRequiresSignIn(assessment) ? <EasyTButton variant="secondary" size="small" onClick={() => window.location.assign(tripSyncSignInPath(trip.id))}>Sign in</EasyTButton> : null}</> : null;
+  if (!ranked.length) return <>{feedback}{discoveryCategory === "for-you" || discoveryCategory === "tours" ? fallback : null}</>;
 
   return <section className={styles.group} aria-label="Live experiences">
+    {feedback}
     <div className={styles.list}>{visible.map((item) => {
       const identity = activityInventoryIdentity(item);
       const idea = itineraryIdeaForActivityInventory(stop.id, item, interests);

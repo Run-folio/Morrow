@@ -17,6 +17,8 @@ import type { ActivityInventoryItem } from "@/lib/easyt/activity-inventory";
 import type { ItineraryIdea } from "@/lib/easyt/trip";
 import { recommendationDurationMs } from "@/lib/easyt/recommendation-performance";
 import { discoveryVisitorRelevance } from "@/lib/easyt/discovery-quality";
+import { planningEvidenceFromResponse, planningLaneMessage, planningLaneResponseStatus } from "@/lib/easyt/planning-evidence-presentation";
+import type { PlanningEvidenceState } from "@/lib/easyt/planning-evidence-state";
 import styles from "./journey-itinerary-refinement.module.css";
 
 export type JourneyItineraryDiscoveryResult = { id: string; title: string; area: string; type: string; tags: string[]; description: string; image?: string; coordinates: [number, number]; qualityScore?: number; distanceKm?: number };
@@ -24,7 +26,8 @@ export type JourneyItineraryDiscoveryResult = { id: string; title: string; area:
 export function JourneyItineraryRefinement({ trip, stop, day, selectedPlaceId, onPlaceSelect, onPlacesChange, onSelectionChange, onSaveInventoryIdea, onScheduleInventoryIdea, onRemoveInventoryIdea, compact = false, activityAction, initialActivityInventory }: { trip: EasyTTrip; stop?: TripStop; day?: PlanItem; selectedPlaceId?: string | null; onPlaceSelect?: (place: JourneyItineraryDiscoveryResult) => void; onPlacesChange?: (places: JourneyItineraryDiscoveryResult[]) => void; onSelectionChange: (stopId: string, place: JourneyItineraryDiscoveryResult | string, selected: boolean) => void; onSaveInventoryIdea?: (idea: ItineraryIdea) => boolean; onScheduleInventoryIdea?: (idea: ItineraryIdea) => boolean; onRemoveInventoryIdea?: (idea: ItineraryIdea) => boolean; compact?: boolean; activityAction?: ResolvedAffiliateAction | null; initialActivityInventory?: ActivityInventoryItem[] }) {
   const [places, setPlaces] = useState<JourneyItineraryDiscoveryResult[]>([]);
   const [loading, setLoading] = useState(false);
-  const [searchUnavailable, setSearchUnavailable] = useState(false);
+  const [searchStatus, setSearchStatus] = useState<"ready" | "error" | "incomplete">("ready");
+  const [assessment, setAssessment] = useState<PlanningEvidenceState>();
   const [searchVersion, setSearchVersion] = useState(0);
   const loadedDiscoveryKeyRef = useRef<string | null>(null);
   const filter = "for-you" as const;
@@ -48,22 +51,37 @@ export function JourneyItineraryRefinement({ trip, stop, day, selectedPlaceId, o
   }, [onPlacesChange, visible]);
 
   useEffect(() => {
-    if (!stop || stop.latitude === null || stop.longitude === null) return;
+    if (!stop) { setPlaces([]); setLoading(false); setSearchStatus("ready"); setAssessment(undefined); loadedDiscoveryKeyRef.current = null; return; }
+    const discoveryKey = JSON.stringify([trip.id, trip.ownerId, stop.id, stop.canonicalPlaceId, stop.providerId, stop.name, stop.country, stop.latitude, stop.longitude]);
+    if (loadedDiscoveryKeyRef.current !== discoveryKey) setPlaces([]);
+    loadedDiscoveryKeyRef.current = discoveryKey;
+    if (!stop.canonicalPlaceId && (stop.latitude === null || stop.longitude === null)) {
+      setLoading(false); setSearchStatus("error"); setAssessment({ retrieval: "blocked", evidence: "unqualified", reason: "identity_required", retryable: false }); return;
+    }
     let active = true;
     const controller = new AbortController();
     const startedAt = performance.now();
-    const discoveryKey = `${stop.id}:${filter}`;
-    const retryingCurrentStop = searchVersion > 0 && loadedDiscoveryKeyRef.current === discoveryKey;
     setLoading(true);
-    setSearchUnavailable(false);
-    if (!retryingCurrentStop) setPlaces([]);
+    setSearchStatus("ready");
+    setAssessment(undefined);
     const endpoint = "/api/journey-discover";
-    void fetch(`${endpoint}?${new URLSearchParams({ destination: stop.name, country: stop.country, canonicalPlaceId: stop.canonicalPlaceId ?? stop.id, region: stop.region ?? "", lat: String(stop.latitude), lon: String(stop.longitude) })}`, { signal: controller.signal })
+    void fetch(`${endpoint}?${new URLSearchParams({ destination: stop.name, country: stop.country,
+      ...(stop.canonicalPlaceId ? { canonicalPlaceId: stop.canonicalPlaceId } : {}),
+      ...(stop.providerId ? { providerId: stop.providerId } : {}),
+      ...(stop.latitude !== null && stop.longitude !== null ? { lat: String(stop.latitude), lon: String(stop.longitude) } : {}),
+    })}`, { signal: controller.signal })
       .then(async (response) => {
-        if (!response.ok) throw new Error("Attraction discovery unavailable");
-        return response.json() as Promise<{ places?: JourneyItineraryDiscoveryResult[] }>;
+        const payload = await response.json() as { places?: JourneyItineraryDiscoveryResult[]; unavailable?: boolean; assessment?: PlanningEvidenceState };
+        return { payload, ok: response.ok };
       })
-      .then((payload) => { if (active) {
+      .then(({ payload, ok }) => { if (active) {
+        setAssessment(planningEvidenceFromResponse(payload));
+        const responseStatus = planningLaneResponseStatus(payload, ok);
+        setSearchStatus(responseStatus);
+        if (responseStatus !== "ready") {
+          trackEvent("recommendation_performance", { surface: "map", recommendation_kind: "activity", lane: "core", milestone: "lane_ready", duration_ms: recommendationDurationMs(startedAt, performance.now()), result_count: 0, outcome: "unavailable" });
+          return;
+        }
         const routeStops = new Set(trip.stops.map((routeStop) => `${routeStop.name.trim().toLocaleLowerCase()}|${routeStop.country.trim().toLocaleLowerCase()}`));
         const nextPlaces = (payload.places ?? []).filter((place) => !routeStops.has(`${place.title.trim().toLocaleLowerCase()}|${stop.country.trim().toLocaleLowerCase()}`));
         setPlaces(nextPlaces);
@@ -74,13 +92,12 @@ export function JourneyItineraryRefinement({ trip, stop, day, selectedPlaceId, o
       } })
       .catch((error: unknown) => {
         if (!active || (error as { name?: string })?.name === "AbortError") return;
-        if (!retryingCurrentStop) setPlaces([]);
-        setSearchUnavailable(true);
+        setSearchStatus("error");
         trackEvent("recommendation_performance", { surface: "map", recommendation_kind: "activity", lane: "core", milestone: "lane_ready", duration_ms: recommendationDurationMs(startedAt, performance.now()), result_count: 0, outcome: "unavailable" });
       })
       .finally(() => { if (active) setLoading(false); });
     return () => { active = false; controller.abort(); };
-  }, [filter, searchVersion, stop?.canonicalPlaceId, stop?.country, stop?.id, stop?.latitude, stop?.longitude, stop?.name, stop?.region]);
+  }, [filter, searchVersion, stop?.canonicalPlaceId, stop?.providerId, stop?.country, stop?.id, stop?.latitude, stop?.longitude, stop?.name, stop?.region, trip.id, trip.ownerId]);
 
   useEffect(() => {
     if (!stop) return;
@@ -100,7 +117,7 @@ export function JourneyItineraryRefinement({ trip, stop, day, selectedPlaceId, o
     {selected.length ? <div className={styles.selected}><small>IN YOUR TRIP</small><div>{selected.map((title) => <span key={title}>{title}<button type="button" onClick={() => { onSelectionChange(stop.id, title, false); trackEvent("attraction_removed", { trip_id: trip.id, stop_id: stop.id }); }} aria-label={`Remove ${title}`}><X /></button></span>)}</div></div> : null}
     {loading ? <MorroviaSectionStatus title="Finding places nearby" detail="Keeping this day and your selected places in place while mapped attractions load." /> : null}
     {loading && !places.length ? <div className={styles.loadingSkeletons} aria-hidden="true"><MorroviaSkeleton height={54} radius="card" /><MorroviaSkeleton height={54} radius="card" /></div> : null}
-    {!loading && searchUnavailable ? <MorroviaSectionStatus state="error" title="Attractions are unavailable" detail="Your day and existing selections are unchanged. Try the provider again when you’re ready." retryLabel="Try places again" onRetry={() => setSearchVersion((current) => current + 1)} /> : null}
+    {!loading && searchStatus !== "ready" ? <MorroviaSectionStatus state="error" title={searchStatus === "incomplete" ? "Places are not ready yet" : "Attractions are unavailable"} detail={assessment ? planningLaneMessage(assessment, "en") : "Your day and existing selections are unchanged."} retryLabel="Try places again" onRetry={searchStatus === "error" && assessment?.retryable !== false || searchStatus === "incomplete" && assessment?.retryable === true ? () => setSearchVersion((current) => current + 1) : undefined} /> : null}
     {visible.length ? <div className={styles.places}>{visible.map((place) => {
       const scheduledIdea = (legacyItineraryIdeas(trip.brief.itineraryIdeas)).find((idea) => idea.stopId === stop.id && idea.placeId === place.id && Boolean(idea.dayId));
       const isSelected = selected.includes(place.title) || Boolean(scheduledIdea);
@@ -108,7 +125,7 @@ export function JourneyItineraryRefinement({ trip, stop, day, selectedPlaceId, o
       const scheduledDay = scheduledIdea?.dayId ? trip.planItems.find((item) => item.id === scheduledIdea.dayId)?.dayNumber : day?.dayNumber;
       const mapSelected = selectedPlaceId === place.id;
       return <article key={place.id} className={mapSelected ? styles.placeSelected : ""}><ResilientImage className={styles.placeImage} src={place.image} alt="" fallback={<span className={styles.placeImageFallback} aria-hidden="true"><MapPin /></span>} /><EasyTButton variant="quiet" size="small" className={styles.placeSelect} aria-pressed={mapSelected} onClick={() => onPlaceSelect?.(place)}><strong>{place.title}</strong>{place.description ? <p>{place.description}</p> : null}</EasyTButton><button type="button" aria-pressed={isSelected} onClick={() => { onPlaceSelect?.(place); onSelectionChange(stop.id, place, !isSelected); trackEvent(isSelected ? "attraction_removed" : "attraction_selected", { trip_id: trip.id, stop_id: stop.id, day_number: day?.dayNumber }); }}>{isSelected ? <>{scheduledDay ? `Added to Day ${scheduledDay}${scheduledPart ? ` · ${scheduledPart}` : ""}` : "Added to a day"} <X /></> : <><Plus /> {day ? `Add to Day ${day.dayNumber}` : "Add to a day"}</>}</button></article>;
-    })}</div> : !loading && !searchUnavailable ? <p className={styles.state}>No places are available for this stop yet.</p> : null}
+    })}</div> : !loading && searchStatus === "ready" ? <p className={styles.state}>No places are available for this stop yet.</p> : null}
     {rankedPlaces.length > visible.length ? <EasyTButton variant="secondary" size="small" className={styles.showMore} onClick={() => setVisibleCount((count) => Math.min(rankedPlaces.length, count + 6))}>Show more places</EasyTButton> : null}
     {day && onSaveInventoryIdea && onScheduleInventoryIdea ? <LiveActivityInventory
       trip={trip}

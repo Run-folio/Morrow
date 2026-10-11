@@ -138,6 +138,8 @@ export function exploreDiscoveryRequestKey(trip: EasyTTrip) {
   const interests = tripIntentForTrip(trip).preferences.interests;
   const mentions = trip.brief.structuredBrief?.placeMentions ?? [];
   return JSON.stringify({
+    tripId: trip.id,
+    ownerId: trip.ownerId,
     currency: trip.currency,
     interests,
     stops: [...trip.stops]
@@ -145,6 +147,7 @@ export function exploreDiscoveryRequestKey(trip: EasyTTrip) {
       .map((stop) => ({
         id: stop.id,
         canonicalPlaceId: stop.canonicalPlaceId,
+        providerId: stop.providerId,
         name: stop.name,
         country: stop.country,
         countryCode: stop.countryCode,

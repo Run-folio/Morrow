@@ -46,6 +46,9 @@ import {
 } from "@/lib/easyt/explore";
 import { createAbortableEffectScope } from "@/lib/easyt/abortable-effect";
 import { recommendationDurationMs } from "@/lib/easyt/recommendation-performance";
+import { planningEvidenceFromResponse, planningLaneMessage, planningLaneResponseStatus, planningRequiresSignIn } from "@/lib/easyt/planning-evidence-presentation";
+import type { PlanningEvidenceState } from "@/lib/easyt/planning-evidence-state";
+import { tripSyncSignInPath } from "@/lib/easyt/trip-continuity";
 import type { ItineraryDiscoveryPlace } from "@/lib/easyt/itinerary-day-context";
 import type { JourneyLocalPlace } from "@/lib/easyt/local-place";
 import { recommendationDetailForExploreResult } from "@/lib/easyt/recommendation-detail";
@@ -78,9 +81,9 @@ export type TripExploreWorkspaceProps = {
   requestedDayNumber?: number | null;
 };
 
-type DiscoveryPayload = { places?: ItineraryDiscoveryPlace[]; unavailable?: boolean };
+type DiscoveryPayload = { places?: ItineraryDiscoveryPlace[]; unavailable?: boolean; assessment?: PlanningEvidenceState };
 type LocalPayload = { places?: ExploreLocalPlace[]; unavailable?: boolean };
-type ActivityPayload = { activities?: ActivityInventoryItem[] };
+type ActivityPayload = { activities?: ActivityInventoryItem[]; unavailable?: boolean; assessment?: PlanningEvidenceState };
 
 const categoryIcons: Record<ExplorePrimaryCategory, typeof Sparkles> = {
   "for-you": Sparkles,
@@ -98,6 +101,7 @@ function providerRequestBody(trip: EasyTTrip, stop: TripStop) {
   return {
     destination: {
       canonicalPlaceId: stop.canonicalPlaceId,
+      ...(stop.providerId ? { providerId: stop.providerId } : {}),
       name: stop.name,
       country: stop.country,
       countryCode: stop.countryCode,
@@ -112,18 +116,22 @@ function providerRequestBody(trip: EasyTTrip, stop: TripStop) {
   };
 }
 
-async function loadMappedPlaces(trip: EasyTTrip, stop: TripStop, signal: AbortSignal) {
-  if (stop.latitude === null || stop.longitude === null) return [];
+async function loadMappedPlaces(trip: EasyTTrip, stop: TripStop, signal: AbortSignal, onAssessment: (assessment?: PlanningEvidenceState) => void) {
+  if (!stop.canonicalPlaceId && (stop.latitude === null || stop.longitude === null)) {
+    onAssessment({ retrieval: "blocked", evidence: "unqualified", reason: "identity_required", retryable: false });
+    throw new Error("Mapped discovery requires a destination");
+  }
   const query = new URLSearchParams({
     destination: stop.name,
     country: stop.country,
-    lat: String(stop.latitude),
-    lon: String(stop.longitude),
+    ...(stop.canonicalPlaceId ? { canonicalPlaceId: stop.canonicalPlaceId } : {}),
+    ...(stop.providerId ? { providerId: stop.providerId } : {}),
+    ...(stop.latitude !== null && stop.longitude !== null ? { lat: String(stop.latitude), lon: String(stop.longitude) } : {}),
   });
   const response = await fetch(`/api/journey-discover?${query}`, { signal });
-  if (!response.ok) throw new Error("Mapped discovery unavailable");
   const payload = await response.json() as DiscoveryPayload;
-  if (payload.unavailable) throw new Error("Mapped discovery unavailable");
+  onAssessment(planningEvidenceFromResponse(payload));
+  if (planningLaneResponseStatus(payload, response.ok) !== "ready") throw new Error("Mapped discovery unavailable");
   const interests = tripIntentForTrip(trip).preferences.interests;
   return (payload.places ?? []).map((place) => exploreResultForPlace(stop, place, interests));
 }
@@ -183,16 +191,20 @@ async function loadRestaurants(stop: TripStop, signal: AbortSignal) {
   return (payload.places ?? []).map((place) => exploreResultForLocalPlace(stop, place));
 }
 
-async function loadTours(trip: EasyTTrip, stop: TripStop, signal: AbortSignal) {
-  if (!stop.canonicalPlaceId) return [];
+async function loadTours(trip: EasyTTrip, stop: TripStop, signal: AbortSignal, onAssessment: (assessment?: PlanningEvidenceState) => void) {
+  if (!stop.canonicalPlaceId) {
+    onAssessment({ retrieval: "blocked", evidence: "unqualified", reason: "identity_required", retryable: false });
+    throw new Error("Tour inventory requires a destination");
+  }
   const response = await fetch("/api/journey-activity-inventory", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(providerRequestBody(trip, stop)),
     signal,
   });
-  if (!response.ok) throw new Error("Tour inventory unavailable");
   const payload = await response.json() as ActivityPayload;
+  onAssessment(planningEvidenceFromResponse(payload));
+  if (planningLaneResponseStatus(payload, response.ok) !== "ready") throw new Error("Tour inventory unavailable");
   return (payload.activities ?? []).map((item) => exploreResultForActivity(stop, item, trip));
 }
 
@@ -226,6 +238,10 @@ export default function TripExploreWorkspace({
   const [commercialStatus, setCommercialStatus] = useState<ExploreDiscoveryLaneStatus>(initialResults
     ? initialProviderState
     : initialPlan.tours ? "loading" : "idle");
+  const [organicAssessment, setOrganicAssessment] = useState<PlanningEvidenceState>();
+  const [commercialAssessment, setCommercialAssessment] = useState<PlanningEvidenceState>();
+  const [retryVersion, setRetryVersion] = useState(0);
+  const requestScopeRef = useRef<string | null>(null);
   const [selectedResultId, setSelectedResultId] = useState<string | null>(initialSelectedResultId ?? null);
   const [selectedDayByResult, setSelectedDayByResult] = useState<Record<string, number>>({});
   const [notice, setNotice] = useState<string | null>(null);
@@ -322,29 +338,38 @@ export default function TripExploreWorkspace({
       }
       if (snapshot.pendingCount === 0) trackEvent("recommendation_performance", { ...properties, milestone: "lane_ready" });
     };
-    setOrganicResults([]);
-    setCommercialResults([]);
+    const scopeKey = JSON.stringify([category, destinationId, discoveryRequestKey]);
+    const sameScope = requestScopeRef.current === scopeKey;
+    const skipOrganic = sameScope && organicAssessment?.retrieval !== "completed" && organicAssessment?.retryable === false;
+    const skipCommercial = sameScope && commercialAssessment?.retrieval !== "completed" && commercialAssessment?.retryable === false;
+    if (!sameScope) {
+      setOrganicResults([]);
+      setCommercialResults([]);
+    }
+    requestScopeRef.current = scopeKey;
+    if (!skipOrganic) setOrganicAssessment(undefined);
+    if (!skipCommercial) setCommercialAssessment(undefined);
     const organicRequests = scopedStops.flatMap((stop) => [
-      ...(plan.mapped ? [() => loadMappedPlaces(discoveryTrip, stop, scope.signal)] : []),
+      ...(plan.mapped ? [() => loadMappedPlaces(discoveryTrip, stop, scope.signal, assessment => scope.commit(() => setOrganicAssessment(assessment)))] : []),
       ...(plan.dayTrips ? [() => loadDayTrips(discoveryTrip, stop, scope.signal)] : []),
       ...(plan.restaurants ? [() => loadRestaurants(stop, scope.signal)] : []),
       ...(plan.outdoors ? [() => loadOutdoors(discoveryTrip, stop, scope.signal)] : []),
     ]);
     const commercialRequests = scopedStops.flatMap((stop) => plan.tours
-      ? [() => loadTours(discoveryTrip, stop, scope.signal)]
+      ? [() => loadTours(discoveryTrip, stop, scope.signal, assessment => scope.commit(() => setCommercialAssessment(assessment)))]
       : []);
-    void streamExploreDiscoveryLane(organicRequests, (snapshot) => scope.commit(() => {
-      setOrganicResults(snapshot.results);
+    if (!skipOrganic) void streamExploreDiscoveryLane(organicRequests, (snapshot) => scope.commit(() => {
+      setOrganicResults(current => snapshot.results.length ? snapshot.results : snapshot.pendingCount || snapshot.failedCount ? current : []);
       setOrganicStatus(snapshot.status);
       if (organicRequests.length) reportSnapshot("core", snapshot);
     }));
-    void streamExploreDiscoveryLane(commercialRequests, (snapshot) => scope.commit(() => {
-      setCommercialResults(snapshot.results);
+    if (!skipCommercial) void streamExploreDiscoveryLane(commercialRequests, (snapshot) => scope.commit(() => {
+      setCommercialResults(current => snapshot.results.length ? snapshot.results : snapshot.pendingCount || snapshot.failedCount ? current : []);
       setCommercialStatus(snapshot.status);
       if (commercialRequests.length) reportSnapshot("commercial", snapshot);
     }));
     return () => scope.dispose();
-  }, [category, destinationId, discoveryRequestKey, initialResults]);
+  }, [category, destinationId, discoveryRequestKey, initialResults, retryVersion]);
 
   useEffect(() => {
     if (selectedResultId && !results.some((result) => result.identity === selectedResultId)) closeDetail();
@@ -395,7 +420,16 @@ export default function TripExploreWorkspace({
     ...(activeSourcePlan.mapped || activeSourcePlan.dayTrips || activeSourcePlan.restaurants || activeSourcePlan.outdoors ? [organicStatus] : []),
     ...(activeSourcePlan.tours ? [commercialStatus] : []),
   ];
-  const resultsPresentation = exploreResultsPresentation(visibleResults.length, relevantStatuses);
+  const relevantAssessments = [
+    ...(activeSourcePlan.mapped && organicAssessment && organicAssessment.retrieval !== "completed" ? [organicAssessment] : []),
+    ...(activeSourcePlan.tours && commercialAssessment && commercialAssessment.retrieval !== "completed" ? [commercialAssessment] : []),
+  ];
+  const resultsPresentation = !visibleResults.length && relevantAssessments.length && !relevantStatuses.includes("loading")
+    ? "unavailable" : exploreResultsPresentation(visibleResults.length, relevantStatuses);
+  const incomplete = relevantAssessments.some(state => state.retrieval === "checking" || state.retrieval === "not-attempted");
+  const canRetry = (organicStatus === "degraded" || organicAssessment && organicAssessment.retrieval !== "completed") && organicAssessment?.retryable !== false
+    || (commercialStatus === "degraded" || commercialAssessment && commercialAssessment.retrieval !== "completed") && commercialAssessment?.retryable !== false;
+  const needsSignIn = activeSourcePlan.tours && commercialStatus === "degraded" && planningRequiresSignIn(commercialAssessment);
 
   return <section className={styles.workspace} aria-label="Explore recommendations">
     {notice || mutation.error ? <div className={styles.feedbackRow}>
@@ -446,11 +480,12 @@ export default function TripExploreWorkspace({
         <MorroviaSectionStatus title="Finding ideas for this trip" detail={`Looking around ${destinationLabel}.`} />
         <div aria-hidden="true"><MorroviaSkeleton height={330} radius="card" /><MorroviaSkeleton height={330} radius="card" /><MorroviaSkeleton height={330} radius="card" /></div>
       </div> : null}
-      {resultsPresentation === "unavailable" ? <MorroviaSectionStatus
+      {resultsPresentation === "unavailable" ? <><MorroviaSectionStatus
         state="error"
-        title="We couldn’t load ideas right now"
-        detail="Try another category or come back shortly. Your trip and saved ideas are unchanged."
-      /> : null}
+        title={incomplete ? "Ideas are not ready yet" : "We couldn’t load ideas right now"}
+        detail={relevantAssessments.length ? [...new Set(relevantAssessments.map(state => planningLaneMessage(state, "en")))].join(" ") : "Your trip and saved ideas are unchanged."}
+        onRetry={canRetry ? () => setRetryVersion(current => current + 1) : undefined}
+      />{needsSignIn ? <EasyTButton variant="secondary" size="small" onClick={() => window.location.assign(tripSyncSignInPath(workingTrip.id))}>Sign in</EasyTButton> : null}</> : null}
       {resultsPresentation === "empty" ? <section className={styles.empty} aria-live="polite"><strong>No {exploreCategoryLabels[category].toLocaleLowerCase()} ideas found</strong><p>Try For you or another category for {destinationLabel}.</p></section> : null}
 
       {visibleResults.length ? <div className={styles.grid} id="explore-results">
