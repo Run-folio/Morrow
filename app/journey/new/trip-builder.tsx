@@ -1,5 +1,7 @@
 "use client";
 
+import { builderStructuralFeedback } from "@/lib/easyt/trip-builder-structural-feedback";
+
 import {referenceGeographicAcceptanceMatches} from '@/lib/easyt/place-reference';
 
 
@@ -130,7 +132,7 @@ const TripItineraryWorkspace = dynamic(() => import("@/components/easyt/trip-iti
 
 export type Place = PlannerPlace;
 export type Stop = { id: string; name: string; country: string; canonicalPlaceId?: string; countryCode?: string; region?: string; administrativeHierarchy?: string[]; providerId?: string; geographicBinding?:JourneyEndpointPlace['geographicBinding']; coordinates?: [number, number]; intent?: "place" | "landmark"; locality?: string };
-type StructuralSnapshot = { canonical?: BuilderStructuralSnapshot; stops: Stop[]; allocations: Record<string, number>; manualNightStopIds: string[]; startDate: string; endDate: string; locks: TripScheduleLocks; placeSelections: PlaceSelection[]; completedPlanningAreaMentionIds: string[]; removedPlaceMentionIds: string[]; countryDiscoveryChoices?: Record<string, string[]>; discoveryDraftByMentionId?: StructuredTripBrief["discoveryDraftByMentionId"]; capturedPlaceSelections?: PlaceSelection[]; capturedDestinations: StructuredTripBrief["destinations"]; capturedMustVisit: StructuredTripBrief["mustVisit"]; summary: string };
+type StructuralSnapshot = { canonical?: BuilderStructuralSnapshot; canonicalSession?: BuilderEditSession; acceptedRevision?: number; stops: Stop[]; allocations: Record<string, number>; manualNightStopIds: string[]; startDate: string; endDate: string; locks: TripScheduleLocks; placeSelections: PlaceSelection[]; completedPlanningAreaMentionIds: string[]; removedPlaceMentionIds: string[]; countryDiscoveryChoices?: Record<string, string[]>; discoveryDraftByMentionId?: StructuredTripBrief["discoveryDraftByMentionId"]; capturedPlaceSelections?: PlaceSelection[]; capturedDestinations: StructuredTripBrief["destinations"]; capturedMustVisit: StructuredTripBrief["mustVisit"]; summary: string };
 type NightEditFeedback = { title: string; detail?: string; tone: "info" | "warning" };
 type CapturedLocation = ResolvedPlaceMention;
 type LocationChoice = HandoffLocationChoice;
@@ -1260,12 +1262,19 @@ function TripBuilderDocument() {
     const editor = builderEditSessionRef.current;
     if (!editor) return false;
     if (!edits.length) return true;
+    // Derive structural feedback at the shared acceptance boundary, never stage
+    // a success notice in a handler that may subsequently reject or return early.
+    const summary = builderStructuralFeedback(edits)?.summary;
+    const frame = summary ? captureStructuralChange(summary, editor.captureStructuralSnapshot(false)) : null;
     const result = editor.acceptBatch(edits, options?.expectedInputRevision ?? editor.getSnapshot().inputRevision, options?.acceptedInputs);
     if (!result.ok) {
       setCloudSaveError(result.reason === "stale-source"
         ? "The trip changed while this edit was being checked. Review the latest trip and try again."
         : "This edit could not be accepted safely. Your current trip and input remain preserved.");
       return false;
+    }
+    if (frame && editor.retainStructuralSnapshot(frame.canonical!, editor.getSnapshot().acceptedRevision)) {
+      publishStructuralChange({ ...frame, canonicalSession: editor, acceptedRevision: editor.getSnapshot().acceptedRevision });
     }
     applyAcceptedBuilderDocument(result.trip);
     setCloudSaveError("");
@@ -2548,16 +2557,31 @@ function TripBuilderDocument() {
   const routeNights = stops.reduce((total, stop) => total + (routeAllocation[stop.id] ?? 0), 0);
   const routeNightDifference = routeNights - totalNights;
 
-  const rememberStructuralChange = (summary: string, affectedStopCount: number) => {
+  const captureStructuralChange = (summary: string, canonical?: BuilderStructuralSnapshot): StructuralSnapshot => ({
+    ...(canonical ? { canonical } : {}), stops, allocations: dayAllocations, manualNightStopIds, startDate, endDate, locks: scheduleLocks,
+    placeSelections, completedPlanningAreaMentionIds, removedPlaceMentionIds, countryDiscoveryChoices: capturedStructuredBrief.countryDiscoveryChoices,
+    discoveryDraftByMentionId: capturedStructuredBrief.discoveryDraftByMentionId, capturedPlaceSelections: capturedStructuredBrief.placeSelections,
+    capturedDestinations: capturedStructuredBrief.destinations, capturedMustVisit: capturedStructuredBrief.mustVisit, summary,
+  });
+  const publishStructuralChange = (frame: StructuralSnapshot, affectedStopCount = frame.stops.length) => {
     setStructuralNoticeVersion(version => version + 1);
-    setLastStructuralChange({ ...(builderEditSessionRef.current ? { canonical: builderEditSessionRef.current.captureStructuralSnapshot() } : {}), stops, allocations: dayAllocations, manualNightStopIds, startDate, endDate, locks: scheduleLocks, placeSelections, completedPlanningAreaMentionIds, removedPlaceMentionIds, countryDiscoveryChoices: capturedStructuredBrief.countryDiscoveryChoices, discoveryDraftByMentionId: capturedStructuredBrief.discoveryDraftByMentionId, capturedPlaceSelections: capturedStructuredBrief.placeSelections, capturedDestinations: capturedStructuredBrief.destinations, capturedMustVisit: capturedStructuredBrief.mustVisit, summary });
-    trackEvent("trip_refined", { change_type: summary, affected_stop_count: affectedStopCount });
+    setLastStructuralChange(frame);
+    trackEvent("trip_refined", { change_type: frame.summary, affected_stop_count: affectedStopCount });
   };
+  const rememberStructuralChange = (summary: string, affectedStopCount: number) => {
+    // Legacy local state has no canonical acceptance dispatcher.
+    if (builderEditSessionRef.current) return;
+    publishStructuralChange(captureStructuralChange(summary), affectedStopCount);
+  };
+  const structuralFeedbackIsCurrent = Boolean(lastStructuralChange?.canonicalSession
+    && lastStructuralChange.canonicalSession === builderEditSessionRef.current
+    && mountedBuilder?.snapshot.browserOwnerId === activeBrowserOwnerId
+    && (lastStructuralChange.acceptedRevision ?? Infinity) <= mountedBuilder.snapshot.acceptedRevision);
 
   const undoStructuralChange = () => {
     if (!lastStructuralChange) return;
     if (builderEditSessionRef.current) {
-      if (lastStructuralChange.canonical && dispatchAcceptedBuilderEdit({ kind: "structural-inverse", snapshot: lastStructuralChange.canonical, restoreDates: lastStructuralChange.summary === "change_trip_dates" })) {
+      if (structuralFeedbackIsCurrent && lastStructuralChange.canonical && dispatchAcceptedBuilderEdit({ kind: "structural-inverse", snapshot: lastStructuralChange.canonical, restoreDates: lastStructuralChange.summary === "change_trip_dates" })) {
         setNightEditFeedback(null); setLastStructuralChange(null);
       }
       return;
@@ -5772,7 +5796,7 @@ function TripBuilderDocument() {
 
           {hasRouteSkeleton && (
             <div id="builder-timing" tabIndex={-1} className={`${styles.stack} ${styles.timeStep}`}>
-              {mountedBuilder && lastStructuralChange?.canonical ? <div className={styles.builderUndoToast}><MorroviaBriefNotice key={structuralNoticeVersion} variant="toast" autoDismissMs={6000} autoDismissWithAction onDismiss={() => setLastStructuralChange(null)} title={language === "es" ? "Viaje actualizado" : "Trip updated"}
+              {mountedBuilder && structuralFeedbackIsCurrent && lastStructuralChange?.canonical ? <div className={styles.builderUndoToast}><MorroviaBriefNotice key={structuralNoticeVersion} variant="toast" autoDismissMs={6000} autoDismissWithAction onDismiss={() => setLastStructuralChange(current => current === lastStructuralChange ? null : current)} title={language === "es" ? "Viaje actualizado" : "Trip updated"}
                 action={<EasyTButton variant="quiet" size="small" onClick={undoStructuralChange}>{language === "es" ? "Deshacer" : "Undo"}</EasyTButton>} /></div> : null}
               {mountedBuilder?.snapshot.draft.fields.filter(field=>field.status==="binding-conflict").map((field,index)=><MorroviaStatusBanner key={JSON.stringify(field.binding)} tone="warning"
                 title={language === "es" ? "Revisa tu entrada guardada" : "Review your saved input"}

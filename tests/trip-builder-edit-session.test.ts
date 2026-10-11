@@ -160,7 +160,7 @@ function fixture() {
   const trip = requireReadableTripDocument(normalizeLegacyGeneratedDayContext(canonicalRouteFixture()));
   trip.brief.intent.route.projectionInputKey = routeProjectionInputKey(trip); return trip;
 }
-async function harness(initialTrip = fixture(), storage = new MemoryStorage(), persist?: typeof saveTripRecoveryToEasyT, scopeOwnerId = initialTrip.ownerId) {
+async function harness(initialTrip = fixture(), storage = new MemoryStorage(), persist?: typeof saveTripRecoveryToEasyT, scopeOwnerId = initialTrip.ownerId, saveRecoveryOverride?: import('../lib/easyt/trip-builder-edit-session.ts').BuilderEditSessionOptions['saveRecovery']) {
   const timers: { callback: () => void; delay: number; active: boolean }[] = [];
   const recoveryWrites: { accountSavePending: boolean }[] = [];
   const writes: { trip: CanonicalEasyTTrip; handle: { ownerId: string | null; tripId: string; writeId: string }; result: ReturnType<typeof deferred<CanonicalEasyTTrip>> }[] = [];
@@ -170,7 +170,7 @@ async function harness(initialTrip = fixture(), storage = new MemoryStorage(), p
   const session = (await api()).createBuilderEditSession({ initialTrip, initialRecovery: recovery,
     getOwnerId: () => owner, readDraft: (trip, browserOwner) => readBuilderInputDraft(storage, trip, browserOwner),
     writeDraft: (trip, draft, browserOwner) => writeBuilderInputDraft(storage, trip, draft, browserOwner),
-    saveRecovery: (trip, options) => { recoveryWrites.push({ accountSavePending: options.accountSavePending }); return saveTripRecoveryToStorage(storage, trip, options); },
+    saveRecovery: (trip, options) => { recoveryWrites.push({ accountSavePending: options.accountSavePending }); return saveRecoveryOverride ? saveRecoveryOverride(trip, options) : saveTripRecoveryToStorage(storage, trip, options); },
     acknowledgeRecovery: (reviewed, canonical, handle) => acknowledgeTripBuildSaveInStorage(storage, reviewed, canonical, handle),
     markRecoveryState: (handle, state) => markTripRecoveryStateInStorage(storage, handle, state),
     persistAccount: async (trip, handle) => {
@@ -646,4 +646,61 @@ test('captured_Undo_frame_restores_a_stop_removed_before_first_promotion_without
   assert.ok(h.session.getSnapshot().trip.stops.some(stop=>stop.id==='batch14-trip-stop-hiroshima'));
   assert.ok(h.session.getSnapshot().trip.planItems.some(day=>day.stopId==='batch14-trip-stop-hiroshima'));
   assert.equal(h.recovery(),null); h.session.dispose();
+});
+
+test('device-write refusal has storage category and preserves exact recovery without account writes',async()=>{
+ const h=await harness();try{accept(h,budget);const before=h.recovery();h.storage.failRecovery=true;
+ const result=h.session.accept({...budget,budget:'mid'},h.session.getSnapshot().inputRevision);
+ assert.equal(result.ok,false);assert.equal(h.session.getSnapshot().error?.category,'storage');
+ assert.match(h.session.getSnapshot().error!.message,/could not be saved on this device/);assert.deepEqual(h.recovery(),before);assert.equal(h.writes.length,0);
+ }finally{h.session.dispose()}
+});
+test('competing recovery is classified protected and never written to account',async()=>{
+ const h=await harness();try{accept(h,budget);const other=structuredClone(h.session.getSnapshot().trip);other.brief.budgetBand='value';
+ const retained=h.recovery()!;saveTripRecoveryToStorage(h.storage,other,{ownerId:other.ownerId,replace:retained});const before=h.recovery();
+ assert.equal(h.session.accept({...budget,budget:'mid'},h.session.getSnapshot().inputRevision).ok,false);
+ assert.equal(h.session.getSnapshot().error?.category,'protected');assert.deepEqual(h.recovery(),before);assert.equal(h.writes.length,0);
+ }finally{h.session.dispose()}
+});
+
+for(const failure of ['unclassified','throws','wrong-owner'] as const)test(`honest unknown recovery refusal: ${failure}`,async()=>{
+ const h=await harness(fixture(),new MemoryStorage(),undefined,fixture().ownerId,(trip,options)=>{
+  if(failure==='throws')throw new Error('unclassified fixture');
+  return {stored:failure==='wrong-owner',handle:{ownerId:failure==='wrong-owner'?'foreign-owner':options.ownerId,tripId:trip.id,writeId:'unknown'},blockedByExistingRecovery:false};
+ });try{
+  const before=h.session.getSnapshot();assert.equal(h.session.accept(budget,before.inputRevision).ok,false);
+  const after=h.session.getSnapshot();assert.equal(after.error?.category,'unknown');assert.match(after.error!.message,/could not be accepted/);
+  assert.equal(after.acceptedRevision,before.acceptedRevision);assert.deepEqual(after.trip,before.trip);assert.equal(h.writes.length,0);
+ }finally{h.session.dispose()}
+});
+test('unretained capture and stale/foreign frame publication cannot replace the accepted Undo frame',async()=>{
+ const h=await harness();try{
+  const frame=h.session.captureStructuralSnapshot(false);assert.equal(Object.isFrozen(frame),true);assert.equal(Object.isFrozen(frame.stops),true);
+  accept(h,budget);const revision=h.session.getSnapshot().acceptedRevision;
+  assert.equal(h.session.retainStructuralSnapshot(frame,revision),true);
+  assert.equal(h.session.retainStructuralSnapshot({...frame,id:'foreign-trip'},revision),false);
+  assert.equal(h.session.retainStructuralSnapshot(frame,revision-1),false);
+  h.session.captureStructuralSnapshot(false);h.storage.failRecovery=true;
+  assert.equal(h.session.accept({...budget,budget:'mid'},h.session.getSnapshot().inputRevision).ok,false);
+  h.storage.failRecovery=false;assert.equal(h.session.accept({kind:'structural-inverse',snapshot:frame},h.session.getSnapshot().inputRevision).ok,true);
+ }finally{h.session.dispose()}
+});
+test('missing continuation handle rejects a different protected recovery without account writes',async()=>{
+ const h=await harness();try{
+  const competing=structuredClone(h.session.getSnapshot().trip);competing.travellers=8;
+  saveTripRecoveryToStorage(h.storage,competing,{ownerId:competing.ownerId});const before=h.recovery();
+  assert.equal(h.session.accept(budget,h.session.getSnapshot().inputRevision).ok,false);
+  assert.equal(h.session.getSnapshot().error?.category,'protected');assert.deepEqual(h.recovery(),before);assert.equal(h.writes.length,0);
+ }finally{h.session.dispose()}
+});
+test('stale edit and expired owner cannot publish or consume a retained Undo frame',async()=>{
+ const h=await harness();try{
+  const frame=h.session.captureStructuralSnapshot(false),initial=h.session.getSnapshot();accept(h,budget);
+  const accepted=h.session.getSnapshot();assert.equal(h.session.retainStructuralSnapshot(frame,accepted.acceptedRevision),true);
+  assert.deepEqual(h.session.accept({...budget,budget:'mid'},initial.inputRevision),{ok:false,reason:'stale-source'});
+  assert.equal(h.session.getSnapshot().acceptedRevision,accepted.acceptedRevision);
+  h.rotate('owner-b');assert.equal(h.session.retainStructuralSnapshot(frame,accepted.acceptedRevision),false);
+  assert.equal(h.session.accept({kind:'structural-inverse',snapshot:frame},accepted.inputRevision).ok,false);
+  assert.deepEqual(h.session.getSnapshot().trip,accepted.trip);
+ }finally{h.session.dispose()}
 });

@@ -72,6 +72,7 @@ export type TripRecoveryWriteResult = {
   stored: boolean;
   handle: TripRecoveryHandle;
   blockedByExistingRecovery: boolean;
+  failureReason?: "device-unavailable" | "protected-recovery" | "unknown";
 };
 
 const expectedCanonicalSaveRecoveries = new Set<string>();
@@ -758,7 +759,7 @@ function writeTripRecoveryToStorage(
   const ownerId = options.ownerId === undefined ? trip.ownerId : options.ownerId;
   const writeId = options.writeId ?? generatedWriteId();
   const handle = { ownerId, tripId: trip.id, writeId };
-  if (!recoveryScopeAcceptsTrip(ownerId, trip)) return { stored: false, handle, blockedByExistingRecovery: false };
+  if (!recoveryScopeAcceptsTrip(ownerId, trip)) return { stored: false, handle, blockedByExistingRecovery: false, failureReason: "unknown" };
   const existing = loadTripRecoveryFromStorage(storage, trip.id, ownerId);
   if (existing) {
     // A render/autosave of the same durable document is not a new edit. Build
@@ -777,7 +778,7 @@ function writeTripRecoveryToStorage(
       // Any different document must prove it was opened from this exact
       // recovery before replacing it; a canonical cloud view never has that
       // handle.
-      return { stored: false, handle: existing, blockedByExistingRecovery: true };
+      return { stored: false, handle: existing, blockedByExistingRecovery: true, failureReason: "protected-recovery" };
     }
   }
   const record: TripRecoveryRecord = {
@@ -803,7 +804,7 @@ function writeTripRecoveryToStorage(
       if (replacedKey && replacedKey !== recoveryKey) safeRemove(storage, replacedKey);
     }
   }
-  return { stored, handle, blockedByExistingRecovery: false };
+  return { stored, handle, blockedByExistingRecovery: false, ...(!stored ? { failureReason: "device-unavailable" as const } : {}) };
 }
 
 export function saveTripRecoveryToStorage(
@@ -1274,6 +1275,7 @@ export function saveTripRecovery(
     stored: false,
     handle: { ownerId, tripId: trip.id, writeId: generatedWriteId() },
     blockedByExistingRecovery: false,
+    failureReason: "device-unavailable" as const,
   };
   if (!storage) return fallback;
   const result = saveTripRecoveryToStorage(storage, trip, options);

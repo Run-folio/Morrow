@@ -129,9 +129,17 @@ export function createBuilderEditSession(options: BuilderEditSessionOptions) {
     const accountSavePending = ownerId !== null && !paused && !historicalRecovery
       && (candidate.ownerId !== null || promoting);
     try { result = options.saveRecovery(candidate, { ownerId, ...(recovery ? { replace: recovery } : {}), accountSavePending, state: pauseReason ?? 'pending' }); }
-    catch { saveFailure('storage', 'The accepted edit could not be saved on this device.'); return false; }
+    catch { saveFailure('unknown', 'This edit could not be accepted. Your current trip remains preserved.'); return false; }
     if (!result.stored || result.handle.ownerId !== ownerId || result.handle.tripId !== tripId) {
-      saveFailure('storage', 'The accepted edit could not safely replace this device recovery.'); return false;
+      const scopeMatches = result.handle.ownerId === ownerId && result.handle.tripId === tripId;
+      if (scopeMatches && result.blockedByExistingRecovery) {
+        saveFailure('protected', 'Another device recovery is protected. Reopen it before editing.');
+      } else if (scopeMatches && result.failureReason === 'device-unavailable') {
+        saveFailure('storage', 'This edit could not be saved on this device. Your current trip remains preserved.');
+      } else {
+        saveFailure('unknown', 'This edit could not be accepted. Your current trip remains preserved.');
+      }
+      return false;
     }
     recovery = result.handle; trip = candidate; acceptedRevision++;
     pending = { trip: structuredClone(trip), localTrip: structuredClone(trip), handle: structuredClone(recovery), acceptedRevision,
@@ -306,10 +314,15 @@ export function createBuilderEditSession(options: BuilderEditSessionOptions) {
   if (pending && !paused && !error) scheduleCloud();
   return {
     getSnapshot: () => snapshot,
-    captureStructuralSnapshot() {
-      const captured = builderStructuralSnapshot(trip);
-      undoFrame = {snapshot:captured,stopIds:new Map(trip.stops.map(stop=>[stop.id,stop.id]))};
+    captureStructuralSnapshot(retain = true) {
+      const captured = freeze(builderStructuralSnapshot(trip));
+      if (retain) undoFrame = {snapshot:captured,stopIds:new Map(trip.stops.map(stop=>[stop.id,stop.id]))};
       return captured;
+    },
+    retainStructuralSnapshot(captured: BuilderStructuralSnapshot, revision: number) {
+      if (!active() || acceptedRevision !== revision || captured.id !== tripId || captured.ownerId !== trip.ownerId) return false;
+      undoFrame = {snapshot:captured,stopIds:new Map(captured.stops.map(stop=>[stop.id,stop.id]))};
+      return true;
     },
     subscribe(listener: () => void) { listeners.add(listener); return () => { listeners.delete(listener); }; },
     updateDraft(patch: { binding: BuilderInputBinding; raw: string }) {
