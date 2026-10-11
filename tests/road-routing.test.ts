@@ -199,7 +199,7 @@ test("missing coordinates skip the provider and safely remain unresolved", async
   };
   const provider = new FixtureProvider(routedResult);
   const resolved = await resolveCanonicalRoadFallback(leg, { provider });
-  assert.equal(resolved.reason, "missing_coordinates");
+  assert.equal(resolved.reason, "unverified_geography");
   assert.equal(resolved.leg.mode, "unknown");
   assert.equal(provider.calls.length, 0);
 });

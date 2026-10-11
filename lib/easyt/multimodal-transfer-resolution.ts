@@ -8,7 +8,9 @@ import {
 } from "./destination-knowledge.ts";
 import { estimateFlightPlanningMinutes, haversineKm } from "./planner.ts";
 import { directRoadPlausibilityConflict, resolveCanonicalRoadFallback } from "./road-transfer-resolution.ts";
-import { guardTransferRoutingGeography, transferEndpointGeographicallyReady } from "./geographic-binding.ts";
+import { acceptedGeographicPlace, guardTransferRoutingGeography, preservedTransferFacts, transferEndpointGeographicallyReady } from "./geographic-binding.ts";
+import { findCatalogPlaceById } from "./place-catalog.ts";
+import { REFERENCE_SNAPSHOT_ID } from "./place-reference.ts";
 import type { RoadRoutingProvider } from "./road-routing.ts";
 import { estimateTransferImpact } from "./transfer-impact.ts";
 import { findSurfaceCrossing } from "./surface-crossing-evidence.ts";
@@ -110,13 +112,22 @@ function endpointIdentity(endpoint: CanonicalRouteEndpoint) {
 }
 
 function gatewayEndpoint(gateway: DestinationAirGateway): CanonicalRouteEndpoint {
+  // A reviewed gateway relationship can explicitly reference an existing
+  // geographic record. Resolve that record through normal acceptance, never
+  // infer identity from coordinate proximity or stamp a readiness flag.
+  const reference=gateway.geographicPlaceId?findCatalogPlaceById(gateway.geographicPlaceId):undefined;
+  const selected=reference?.coordinates&&reference.referenceProviderId?acceptedGeographicPlace({name:gateway.name,country:gateway.country,canonicalPlaceId:gateway.canonicalId},
+    {name:reference.canonicalName,country:gateway.country,canonicalPlaceId:reference.canonicalPlaceId,providerId:reference.referenceProviderId,coordinates:[...reference.coordinates],
+      placeType:reference.placeType,routability:reference.routability,referenceSnapshotId:REFERENCE_SNAPSHOT_ID},'endpoint'):undefined;
   return {
     kind: "gateway",
     id: `gateway:${gateway.canonicalId}`,
     name: gateway.name,
     country: gateway.country,
     canonicalPlaceId: gateway.canonicalId,
-    coordinates: gateway.coordinates,
+    coordinates: selected?.coordinates ?? gateway.coordinates,
+    ...(selected?.providerId??gateway.providerId?{providerId:selected?.providerId??gateway.providerId}:{}),
+    ...(selected?.geographicBinding??gateway.geographicBinding?{geographicBinding:structuredClone(selected?.geographicBinding??gateway.geographicBinding)}:{}),
   };
 }
 
@@ -749,6 +760,7 @@ export async function resolveCanonicalTransferJourney(
   leg: TripLeg,
   options: { provider?: RoadRoutingProvider; knowledge?: TransferEvidenceProvider } = {},
 ): Promise<MultimodalResolutionResult> {
+  if (preservedTransferFacts(leg)) return {leg,outcome:'preserved',diagnostic:{version:1,selected:'preserved',candidates:[],rejected:[]}};
   const geographicProjection = guardTransferRoutingGeography(leg);
   if (geographicProjection !== leg) return { leg: geographicProjection, outcome: "unresolved", diagnostic: {
     version: 1, selected: "unresolved", candidates: [], rejected: ["Canonical endpoint geography is unverified."],

@@ -65,6 +65,10 @@ export type DestinationAirGateway = {
   name: string;
   country: string;
   coordinates: [number, number];
+  /** Explicit existing geographic record for this reviewed gateway identity. */
+  geographicPlaceId?: string;
+  providerId?: string;
+  geographicBinding?: import('./trip.ts').GeographicBinding;
   /** P0B currently supports provider-routed road access to an air gateway. */
   accessMode: "road";
 };
@@ -133,6 +137,9 @@ export type IntercityRailEndpointKnowledge = {
     country: string;
     coordinates: [number, number];
     accessMode: "road";
+    geographicPlaceId?: string;
+    providerId?: string;
+    geographicBinding?: import('./trip.ts').GeographicBinding;
     planningMinutes: number;
   };
 };
@@ -445,7 +452,7 @@ export const CURATED_DESTINATION_KNOWLEDGE: readonly DestinationKnowledge[] = [
     canonicalId: "hoi-an", name: "Hoi An", aliases: ["seed-hoi-an"], country: "Vietnam", region: "asia",
     coordinates: [108.338, 15.88], roles: ["base"], minimumNights: 3, idealNights: 4,
     connectivity: [{ mode: "air", reach: "national", access: "nearby-gateway", note: "Flight access is planned via Da Nang and needs a ground-transfer allowance." }],
-    airGateways: [{ canonicalId: "da-nang", name: "Da Nang", country: "Vietnam", coordinates: [108.2022, 16.0439], accessMode: "road" }],
+    airGateways: [{ canonicalId: "da-nang", name: "Da Nang", country: "Vietnam", coordinates: [108.2022, 16.0439], geographicPlaceId:"reference:geonames:1583992", accessMode: "road" }],
     experienceTags: ["food", "culture", "nature"],
     arrivalConsiderations: ["Flight access is via Da Nang, so arrival planning must include the onward ground transfer."],
     seasonalityNotes: ["Monsoon patterns vary by coast and region; Vietnam should not be treated as one weather season."],
@@ -771,7 +778,7 @@ export const CURATED_INTERCITY_RAIL_ENDPOINTS: readonly IntercityRailEndpointKno
   { canonicalId: "ninh-binh", name: "Ninh Binh", country: "Vietnam", networkIds: ["vietnam-north-south-intercity"] },
   { canonicalId: "hue", name: "Hue", country: "Vietnam", networkIds: ["vietnam-north-south-intercity"] },
   { canonicalId: "da-nang", name: "Da Nang", country: "Vietnam", networkIds: ["vietnam-north-south-intercity"] },
-  { canonicalId: "hoi-an", name: "Hoi An", country: "Vietnam", networkIds: ["vietnam-north-south-intercity"], accessGateway: { canonicalId: "da-nang", name: "Da Nang", country: "Vietnam", coordinates: [108.2022, 16.0439], accessMode: "road", planningMinutes: 45 } },
+  { canonicalId: "hoi-an", name: "Hoi An", country: "Vietnam", networkIds: ["vietnam-north-south-intercity"], accessGateway: { canonicalId: "da-nang", name: "Da Nang", country: "Vietnam", coordinates: [108.2022, 16.0439], geographicPlaceId:"reference:geonames:1583992", accessMode: "road", planningMinutes: 45 } },
   { canonicalId: "ho-chi-minh-city", name: "Ho Chi Minh City", country: "Vietnam", networkIds: ["vietnam-north-south-intercity"] },
 ];
 

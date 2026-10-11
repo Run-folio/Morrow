@@ -94,6 +94,13 @@ export function transferEndpointGeographicallyReady(endpoint:CanonicalRouteEndpo
  return Boolean(endpoint&&geographicallyReady({...endpoint,coordinates:endpoint.coordinates??undefined},endpoint.kind==='stop'?'stop':'endpoint'));
 }
 
+/** Preserve saved facts without treating them as permission to infer a new route. */
+export function preservedTransferFacts(leg:TripLeg) {
+ const metadata=leg.routeMetadata;
+ return metadata.userConfirmed===true||metadata.confirmed===true||metadata.decisionOption!==undefined
+  ||['traveller-authored','imported-booking','curated-route'].includes(String(metadata.source));
+}
+
 /** Routing projection only: raw saved identity never authorizes provider consumption. */
 export function guardTransferRoutingGeography(leg:TripLeg):TripLeg {
  const fromReady=transferEndpointGeographicallyReady(leg.fromEndpoint),toReady=transferEndpointGeographicallyReady(leg.toEndpoint);

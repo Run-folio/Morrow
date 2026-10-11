@@ -1,3 +1,4 @@
+import { selectedTransferPlace } from './fixtures/accepted-transfer-place.ts';
 import assert from "node:assert/strict";
 import test from "node:test";
 
@@ -31,12 +32,12 @@ test('trip save preserves the exact pending necessary prefix while the explicit 
  const provider=new FixtureRoadProvider();const saved=await resolveTripTransferJourneys(prefix,{provider});
  for(const leg of pending)assert.deepEqual(saved.legs.find(item=>item.id===leg.id),leg);
  assert.equal(provider.calls.length,0,'saving a pending prefix must not request its provider');
- const direct=await resolveCanonicalTransferJourney(pending.at(-1)!);assert.notEqual(direct.leg.mode,'unknown','single-leg necessary work remains available');
+ const direct=await resolveCanonicalTransferJourney(pending.at(-1)!);assert.equal(direct.outcome,'unresolved','the worker assesses the raw fixture without promoting unverified geography');assert.equal(direct.leg.mode,'unknown');
  for(const control of ['source-only','pending-only'] as const){
   const leg=structuredClone(pending.at(-1)!);if(control==='source-only')delete leg.routeMetadata.pending;else leg.routeMetadata.source='morrovia-planner';
-  const result=await resolveTripTransferJourneys({...prefix,legs:[leg]});assert.notEqual(result.legs[0].mode,'unknown',control);
+  const result=await resolveTripTransferJourneys({...prefix,legs:[leg]});assert.equal(result.legs[0].mode,'unknown',control);assert.equal(result.legs[0].routeMetadata.source,'unverified-geography');
  }
- const eligible=structuredClone(pending.at(-1)!);eligible.id='eligible-eighth';eligible.routeMetadata.source='morrovia-planner';delete eligible.routeMetadata.pending;
+ const eligible=structuredClone(baseline(laPaz,lima));eligible.id='eligible-eighth';eligible.routeMetadata.source='morrovia-planner';delete eligible.routeMetadata.pending;
  const ninth={...structuredClone(eligible),id:'eligible-ninth'};
  const ordered=[...Array.from({length:7},(_,index)=>({...structuredClone(pending[0]),id:`held-${index}`})),eligible,ninth];
  const mixed=await resolveTripTransferJourneys({...prefix,legs:ordered});assert.deepEqual(mixed.legs.map(leg=>leg.id),ordered.map(leg=>leg.id));
@@ -61,7 +62,7 @@ const stop = (id: string, order: number, name: string, country: string, coordina
 function baseline(from: TripStop, to: TripStop, tripId = `${from.id}-${to.id}`) {
   return buildCanonicalTripLegs({
     tripId,
-    origin: { name: from.name, country: from.country, canonicalPlaceId: from.canonicalPlaceId, coordinates: from.longitude !== null && from.latitude !== null ? [from.longitude, from.latitude] : null },
+    origin: { name: from.name, country: from.country, canonicalPlaceId: from.canonicalPlaceId, providerId:from.providerId,geographicBinding:from.geographicBinding, coordinates: from.longitude !== null && from.latitude !== null ? [from.longitude, from.latitude] : null },
     stops: [to],
   })[0];
 }
@@ -94,7 +95,7 @@ class FixtureRoadProvider implements RoadRoutingProvider {
   }
 }
 
-const huacachina = stop("huacachina", 0, "Huacachina", "Peru", [-75.768, -14.088]);
+const huacachina = stop("huacachina", 0, "Huacachina", "Peru", [-75.7642, -14.0875]);
 const lima = stop("lima", 1, "Lima", "Peru", [-77.0428, -12.0464]);
 const hiroshima = stop("hiroshima", 0, "Hiroshima", "Japan", [132.4553, 34.3853]);
 const kyoto = stop("kyoto", 1, "Kyoto", "Japan", [135.7681, 35.0116]);
@@ -194,8 +195,8 @@ test("catalogued island endpoints cannot become direct road legs without crossin
 test("exact supported ferry evidence can resolve without inventing a service", async () => {
   const source: KnowledgeSource = { id: "test:ferry", label: "Test ferry evidence", kind: "curated", supports: "Exact fixture ferry." };
   const transfer: DestinationTransferKnowledge = {
-    fromCanonicalId: "island-a",
-    toCanonicalId: "island-b",
+    fromCanonicalId: "reference:geonames:1716834",
+    toCanonicalId: "reference:geonames:1716397",
     mode: knownKnowledgeFact("ferry", "static", source),
     planningMinutes: knownKnowledgeFact(120, "estimated", source),
     durationBasis: knownKnowledgeFact("door-to-door", "static", source),
@@ -206,16 +207,24 @@ test("exact supported ferry evidence can resolve without inventing a service", a
   const knowledge = createDestinationKnowledgeStore({
     destinations: [],
     destinationOverrides: [
-      { canonicalId: "island-a", name: "Island A" },
-      { canonicalId: "island-b", name: "Island B" },
+      { canonicalId: "reference:geonames:1716834", name: "Coron" },
+      { canonicalId: "reference:geonames:1716397", name: "Cuyo" },
     ],
     transfers: [transfer],
   });
-  const islandA = stop("island-a", 0, "Island A", "Archipelago", [0, 0]);
-  const islandB = stop("island-b", 1, "Island B", "Archipelago", [0.5, 0]);
+  const a=selectedTransferPlace('Coron','Philippines','reference:geonames:1716834','endpoint'),b=selectedTransferPlace('Cuyo','Philippines','reference:geonames:1716397','stop');
+  const islandA={...stop(a.canonicalPlaceId!,0,a.name,a.country!,a.coordinates!),providerId:a.providerId,geographicBinding:a.geographicBinding};
+  const islandB={...stop(b.canonicalPlaceId!,1,b.name,b.country!,b.coordinates!),providerId:b.providerId,geographicBinding:b.geographicBinding};
   const resolved = await resolveCanonicalTransferJourney(baseline(islandA, islandB), { knowledge });
   assert.equal(resolved.leg.mode, "ferry");
   assert.equal(resolved.leg.durationMinutes, 120);
+});
+test('test-only ferry facts cannot qualify invented island geography',async()=>{
+  const a=stop('island-a',0,'Island A','Archipelago',[0,0]),b=stop('island-b',1,'Island B','Archipelago',[0.5,0]);
+  const source:KnowledgeSource={id:'test:raw-islands',label:'Synthetic transfer fact',kind:'curated',supports:'A transport fixture is not endpoint evidence.'};
+  const knowledge=createDestinationKnowledgeStore({destinations:[],destinationOverrides:[{canonicalId:'island-a',name:'Island A'},{canonicalId:'island-b',name:'Island B'}],transfers:[{fromCanonicalId:'island-a',toCanonicalId:'island-b',mode:knownKnowledgeFact('ferry','static',source),planningMinutes:knownKnowledgeFact(120,'estimated',source),durationBasis:knownKnowledgeFact('door-to-door','static',source),realisticRangeMinutes:unknownKnowledgeFact('fixture'),borderFriction:unknownKnowledgeFact('fixture'),note:unknownKnowledgeFact('fixture')}]});
+  const provider=new FixtureRoadProvider();const result=await resolveCanonicalTransferJourney(baseline(a,b),{knowledge,provider});
+  assert.equal(result.leg.mode,'unknown');assert.equal(result.leg.durationMinutes,null);assert.equal(result.leg.segments,undefined);assert.equal(provider.calls.length,0);
 });
 
 test("island/no-route stays unresolved while reviewed gateway access survives an unavailable provider", async () => {
@@ -277,6 +286,6 @@ test("an unsupported planner flight records the resolver-owned unresolved normal
   assert.equal(resolved.outcome, "unresolved");
   assert.equal(resolved.leg.mode, "unknown");
   assert.equal(resolved.leg.durationMinutes, null);
-  assert.equal(resolved.leg.routeMetadata.source, "multimodal-resolver");
-  assert.equal((resolved.leg.routeMetadata.multimodalResolution as { version?: number }).version, 1);
+  assert.equal(resolved.leg.routeMetadata.source, "unverified-geography");
+  assert.equal(resolved.diagnostic.selected,'unresolved');
 });

@@ -1,46 +1,56 @@
-# Transport readiness guard review
+# Transport readiness correction — follow-up review
 
-Base: 7e85caba9a818f13cb1c88503a76dbfdb15c5f51. Local isolated branch codex/transport-readiness-guard. No deployment or push.
+Base: `7e85caba9a818f13cb1c88503a76dbfdb15c5f51`. Supersedes the blocked `ae909695` review. Isolated local branch `codex/transport-readiness-guard`; no push or deployment. Author/photo checkout untouched. Original five benchmark definitions/expectations and accepted-reference controls are byte-unchanged.
 
-Shared geographic policy gates canonical multimodal resolution and direct road fallback before evidence/provider use, including source-rewritten and stale-binding legs. Unready endpoints yield a non-mutating unknown projection with null inferred metrics and no geometry, segments or road reference. Canonical gateway air/rail/access candidates also need ready gateway points. Verified geography still relies on existing connectivity, land, fixed-link and provider plausibility rules; no service facts or durations were added.
+## Current behavior and source correction
 
-Entry points inspected: API journey-transfer-resolution POST -> multimodal server batch/trip wrappers -> core single/batch/trip resolution; direct road single/batch/trip and server wrappers; ordinary road candidates, gateway access, ferry-port access. All provider calls in these canonical paths pass direct road fallback's shared guard. Low-level coordinate provider adapters are unchanged. Named ferry ports remain untimed source-backed components with unknown geometry; no endpoint binding is invented. Authored/saved input is not mutated by guard projection.
+Canonical single/batch/trip multimodal resolution and direct road fallback require shared `geographicallyReady` evidence before new candidate/provider work. Unready inferred input yields unknown/null duration and no inferred geometry, segments or road reference. Source rewriting cannot promote readiness. Saved authored/imported/curated facts and explicit confirmed/decision selections are preserved before inference gating, unchanged and with zero provider calls; they cannot authorize new routing. The existing display-only `guardTripRoutingGeometry` remains separate from persistence.
 
-New tests: canonical construction -> JSON serialization -> resolution, either/both unready, stale binding and source rewrite, direct fallback, verified mainland road, verified sourced crossing controls both directions, and unverified derived gateway. Red on exact base: 6 fail/3 pass. Final new regression lane: 9 pass/0 fail. Typecheck passed; git diff --check passed. No UI changes or heavy build/browser run.
+`gatewayEndpoint` previously discarded provider ID/binding because gateway types omitted those fields. It now carries actual accepted provenance through construction and JSON serialization. The existing Hoi An→Da Nang city gateway relationship explicitly links to the already bundled GeoNames city record `reference:geonames:1583992`: Da Nang, Vietnam, `[108.22083,16.06778]`, provider key `reference:geonames:1583992@699b595afdba9be6994e:VN:city:108.22083:16.06778`. `acceptedGeographicPlace` validates that exact record/name/country through the normal reference acceptance path; no binding is stamped, no name/proximity search guesses a gateway, and no airport/service identity is inferred from this city. Invalid or missing record/binding stays unverified. Both air and reviewed rail city-access uses retain this provenance. The historical approximate gateway coordinate does not authorize routing.
 
-Compatibility lane (bounded relevant files): baseline 48 tests,37 pass,11 fail; candidate plus new tests/accepted-reference controls 61 tests,36 pass,25 fail at recorded run. The later gateway regression adds one passing test to that set; no full-suite pass claimed. Original five benchmark definitions/expectations remain untouched and unresolved. Existing tests whose raw fixtures lack accepted geography cannot qualify routing; the new sourced mainland/bridge/ferry controls independently remain green.
+Existing connectivity/land/fixed-link/provider-plausibility rules still decide transport. Geography alone adds no service, fare or duration. Named physical ferry ports remain unknown points and untimed source-backed components. Sourced settlement scope records and verified mainland/bridge positives pass.
 
-Hoi An accepted destination control now stays unknown because its derived Da Nang gateway point does not satisfy existing geographic acceptance. Do not restore timing by manufacturing a binding or changing the original Hoi An benchmark. This needs reviewed gateway point/provenance or a separately approved evidence contract; it is an explicit coverage blocker. Rome-Venice remains missing canonical rail coverage, not a resolver downgrade.
+Entry inventory: journey-transfer-resolution API → server multimodal batch/trip wrappers → core single/batch/trip; journey-road-routes API → road server wrappers → direct road single/batch/trip; road candidates, gateway access and ferry-port access all delegate provider consumption to direct fallback. Air/rail/inferred-access gateway candidates check accepted geographic points. Coordinate-only provider adapters are unchanged. Pending necessary-reconciliation prefixes, entries outside existing maxLegs and no-provider server returns are preserved by existing wrappers; they do not consume providers and are not claimed to be normalized here.
 
-## Pre-existing failures
+## Exact triage of all 14 additional failures
 
-- La Paz to Huacachina composes flight to Lima plus provider-routed ground access
-- a short land journey selects routed road when driving is preferred
-- catalogued island endpoints cannot become direct road legs without crossing evidence
-- Huacachina to Lima resolves from unknown to one canonical road leg
-- a second land-connected pair resolves when the provider succeeds
-- a legacy planner-owned unsupported-rail leg can be healed without touching authored unknowns
-- a cross-water no-route response retains the honest unresolved fallback
-- implausible and cross-border results are rejected conservatively
-- road routing is skipped when either endpoint country is unknown
-- the deterministic benchmark is repeatable and matches the reviewed final baseline
-- final engine defects are cleared while knowledge gaps and appropriate unknowns stay explicit
+| Failure | Caller/actual contract and evidence | Correction/status |
+|---|---|---|
+| new hard exclusions discard structured impact and distances from saved generated transport | Multimodal resolver; old Rome/Venice name-only endpoints had no accepted geography. Exclusion/derived-metric clearing needs valid endpoints to test its own stage. | Test explicitly selects actual GeoNames Rome 3169070 and Venice 3164603 through normal acceptance. Retains all exclusion, stale impact/distance and input-preservation assertions. PASS. No canonical rail coverage claim. |
+| a mainland road candidate is selectable without a driving preference | Road candidate→direct fallback; raw Puebla/Oaxaca coordinates had no IDs/bindings. | Explicit existing Puebla 3521081 `[-98.20723,19.04778]`, Oaxaca 3522507 `[-96.72544,17.06025]` selections, with real provider keys/bindings, then same deterministic road fixture. PASS; not live road proof. |
+| Java–Bali reuses an explicit ferry component without inventing timing | Bounded ferry composition; old Banyuwangi/Lovina points were name-only guesses. | Select exact existing Banyuwangi 1650077 `[114.35755,-8.2325]`, Lovina 8051286 `[115.03999,-8.14927]`. Existing ASDP topology, reverse checks and null times retained. PASS. |
+| hard exclusions prevent ferry composition and missing access evidence stays untimed | Same bounded composition with road/ferry exclusions. | Same explicit selections; port geometry/timing remains unknown, hard constraints retained. PASS. |
+| untimed ferry components discard stale saved whole-leg estimates and retain traveller rules | Same composer; must distinguish supported topology from old inferred totals. | Same explicit selections; no stale totals/impact/geometry reused, traveller rules/input unchanged. PASS. |
+| resolving a saved generated crossing again removes newly forbidden transport without changing traveller intent | Generated component re-resolution after JSON round-trip. | Same explicit selections before generating first crossing; exclusions and byte-preserved endpoints/rules assertions retained. PASS. |
+| accepted reference control Tokyo → Hoi An retains mixed transport | Legitimate accepted terminal input lost gateway identity/provenance in `gatewayEndpoint`. | Genuine production correction above; original positive control and expectation unchanged. PASS. New selected-gateway propagation/serialization regression failed before correction and passes now. |
+| trip save preserves exact pending necessary prefix while explicit worker can resolve it | Trip wrapper preserves pending prefixes; A17 test ancestor uses raw unaccepted coordinates. Single worker may assess those but cannot promise non-unknown mode. | Pending save byte equality and zero provider calls retained. Raw worker/source-only/pending-only controls now explicitly remain unverified/unknown. First-eight limit still tested with an independently verified La Paz→Lima eligible leg, while ninth is unchanged. PASS. No production prefix exception changed. |
+| Huacachina to Lima selects routed road when traveller prefers driving | Canonical construction→road candidate; old Huacachina `[-75.768,-14.088]` differs from bundled reviewed `[-75.7642,-14.0875]`. | Positive uses exact existing adapter point (same canonical identity/name); original approximate point retained as new zero-call unknown negative. PASS. |
+| exact supported ferry evidence can resolve without inventing service | Invented Island A/B/Archipelago endpoints cannot become ready merely because injected transport knowledge says ferry. | Positive now uses actual selected Coron 1716834/Cuyo 1716397 geographic records with clearly synthetic test-only transfer knowledge (not real service qualification). Separate original invented-island + injected-ferry negative asserts unknown/null/zero calls. PASS. |
+| island/no-route stays unresolved while reviewed gateway access survives unavailable provider | Invented islands remain negative; valid La Paz→Huacachina gateway positive was blocked by same stale Huacachina test point. | Island negatives unchanged; source-backed Huacachina point correction restores existing Lima gateway relationship. PASS. |
+| explicit confirmed transport preserved / legacy readable | Actual saved authored contract; inference guard before preservation was a genuine regression and repository read/save/promotion consumed its output. | Production preservation now precedes inference guard at both core resolver entry points. Raw unverified authored/imported/curated and confirmed 300-minute legs remain exactly unchanged, zero provider calls; source flags separately tested. PASS. |
+| unsupported planner flight records resolver-owned unresolved normalization | Synthetic Regional A/B, Country A/B, `[0,0]`→`[4,0]` has no accepted geography; cannot qualify a later connectivity normalization stage. | Retains unknown/null result and now asserts earlier unverified-geography source/unresolved diagnostic. No fixture binding fabricated. PASS. |
+| missing coordinates skip provider and safely unresolved | Direct fallback; missing coordinates are also unverified geography. | Only stage-reason expectation changes from missing_coordinates to unverified_geography; unknown and zero-call assertions retained. PASS. |
 
-## Additional readiness-contract failures
+The explicit selection helper requires a named pinned actual reference ID and runs `acceptedGeographicPlace`; it never globally binds fixtures. The new negatives retain malformed/stale/source-rewritten/raw coordinates and injected transport-without-geography cases. Five original benchmarks were neither replaced by these positives nor reclassified as accepted.
 
-- new hard exclusions discard structured impact and distances from saved generated transport
-- a mainland road candidate is selectable without a driving preference
-- Java–Bali reuses an explicit ferry component without inventing timing
-- hard exclusions prevent ferry composition and missing access evidence stays untimed
-- untimed ferry components discard stale saved whole-leg estimates and retain traveller rules
-- resolving a saved generated crossing again removes newly forbidden transport without changing traveller intent
-- accepted reference control Tokyo → Hoi An retains mixed transport
-- trip save preserves the exact pending necessary prefix while the explicit worker can resolve it
-- Huacachina to Lima selects routed road when the traveller prefers driving
-- exact supported ferry evidence can resolve without inventing a service
-- island/no-route stays unresolved while reviewed gateway access survives an unavailable provider
-- explicit confirmed transport is preserved and legacy persisted legs remain readable
-- an unsupported planner flight records the resolver-owned unresolved normalization
-- missing coordinates skip the provider and safely remain unresolved
+## Validation and inherited failures
 
-Logs and prior exact-input classification are in task-10/qa-baseline/readiness-*.log and transport-7e85cab.md. This correction is ready for independent source review; compatibility/data gates remain open.
+- Focused acceptance: 66 tests, 66 pass, zero fail/skip. Includes transfer-geographic-readiness, original batch15-transfer-canonical-controls, bounded-crossings, legacy compatibility and trip-builder reconciliation.
+- Wider bounded compatibility: 101 tests, 91 pass, 10 fail, zero skip. No new failure names compared with exact base.
+- Typecheck and git diff --check pass. No browser/full build/threshold relaxation.
+- Red evidence: initial shared guard six negatives fail on exact base; source gateway propagation and authored-preservation tests separately failed before their corrections. Logs are under task-10/qa-baseline/readiness-* and gateway-propagation-red.log.
+
+The original 11 inherited names remain classified separately. `La Paz to Huacachina composes flight to Lima plus provider-routed ground access` now passes after the documented sourced Huacachina fixture-point correction. Ten remain OPEN, not waived:
+
+1. `a short land journey selects routed road when driving is preferred` — invented Testland/Short A/B endpoint facts and raw points do not prove geography; original was already red.
+2. `catalogued island endpoints cannot become direct road legs without crossing evidence` — remains safe unknown/zero calls; raw/stale island fixture and old downstream provider-message assertion fail. Identity/wording contract remains open.
+3. `Huacachina to Lima resolves from unknown to one canonical road leg` — independent road-routing file still uses stale raw point/eligibility fixture; canonical source evidence gap precedes provider. Not changed in this bounded 14-case reconciliation.
+4. `a second land-connected pair resolves when provider succeeds` — original direct-fallback eligibility/geographic fixture gap remains.
+5. `a legacy planner-owned unsupported-rail leg can be healed without touching authored unknowns` — original raw geography/eligibility stage mismatch remains; no new rail fact supplied.
+6. `a cross-water no-route response retains honest unresolved fallback` — original stage-reason assertion remains red; safe unknown retained.
+7. `implausible and cross-border results rejected conservatively` — original unready direct-road fixtures fail earlier than provider plausibility; no thresholds changed.
+8. `road routing skipped when either endpoint country unknown` — safe zero-call geography rejection precedes old missing-country reason; original baseline also red.
+9. `deterministic benchmark repeatable and matches reviewed final baseline` — original aggregate assertion red; five unresolved originals unchanged, and unsafe raw road controls no longer bypass acceptance.
+10. `final engine defects cleared while knowledge gaps and appropriate unknowns explicit` — same unresolved original aggregate contract, not qualification or waiver.
+
+Rome–Venice remains missing canonical rail coverage, not a supported option downgraded by resolution. Full combined candidate and hosted acceptance remain separate gates. This report supersedes ae909695's blanket preservation bug and gateway coverage blocker; independent review must use the new commit.

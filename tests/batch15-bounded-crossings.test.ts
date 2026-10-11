@@ -1,3 +1,4 @@
+import { selectTransferLegEndpoints } from './fixtures/accepted-transfer-place.ts';
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {resolveCanonicalTransferJourney} from '../lib/easyt/multimodal-transfer-resolution.ts';
@@ -12,7 +13,7 @@ import {estimateTransferImpact,transferImpactFromMetadata} from '../lib/easyt/tr
 const leg=(name:string,country:string,point:[number,number],toName:string,toCountry:string,toPoint:[number,number]):TripLeg=>({id:'test',fromStopId:'from',toStopId:'to',fromEndpoint:{id:'from',kind:'origin',name,country,coordinates:point},toEndpoint:{id:'to',kind:'stop',name:toName,country:toCountry,coordinates:toPoint},mode:'unknown',distanceKm:null,durationMinutes:null,provider:null,routeMetadata:{source:'morrovia-planner',roadFallbackEligible:true}});
 const provider:RoadRoutingProvider={provider:'openrouteservice',async route(input){return {mode:'road',distanceKm:input.origin.coordinates[0]>12?45:55,durationMinutes:60,confidence:'medium',provenance:'routed',provider:'openrouteservice',providerCheckedAt:'2026-10-10',profile:'driving-car',routeGeometry:[input.origin.coordinates,input.destination.coordinates],attribution:'Test routing evidence'};}};
 test('new hard exclusions discard structured impact and distances from saved generated transport',async()=>{
- const input=leg('Rome','Italy',[12.4964,41.9028],'Venice','Italy',[12.3155,45.4408]);
+ const input=selectTransferLegEndpoints(leg('Rome','Italy',[12.4964,41.9028],'Venice','Italy',[12.3155,45.4408]),'reference:geonames:3169070','reference:geonames:3164603');
  input.mode='train';input.durationMinutes=180;input.headlineMinutes=180;input.doorToDoorMinutes=180;input.usableDayLoss=0.25;
  input.distanceKm=530;input.routedDistanceKm=530;input.straightLineDistanceKm=394;input.routeGeometry=[[12.4964,41.9028],[12.3155,45.4408]];
  input.roadEstimate={provider:'openrouteservice',profile:'driving-car',provenance:'routed',checkedAt:'2026-10-10',distanceKm:530,durationMinutes:300,confidence:'medium',routeGeometry:input.routeGeometry,attribution:'Previous routing estimate',warnings:[]};
@@ -31,7 +32,7 @@ test('new hard exclusions discard structured impact and distances from saved gen
  assert.deepEqual(result.leg.fromEndpoint,before.fromEndpoint);assert.deepEqual(result.leg.toEndpoint,before.toEndpoint);assert.deepEqual(input,before);
 });
 test('a mainland road candidate is selectable without a driving preference',async()=>{
- const result=await resolveCanonicalTransferJourney(leg('Puebla','Mexico',[-98.2063,19.0414],'Oaxaca','Mexico',[-96.7266,17.0732]),{provider:{...provider,async route(input){return {...await provider.route(input),distanceKm:340,durationMinutes:270};}}});
+ const result=await resolveCanonicalTransferJourney(selectTransferLegEndpoints(leg('Puebla','Mexico',[-98.2063,19.0414],'Oaxaca','Mexico',[-96.7266,17.0732]),'reference:geonames:3521081','reference:geonames:3522507'),{provider:{...provider,async route(input){return {...await provider.route(input),distanceKm:340,durationMinutes:270};}}});
  assert.equal(result.leg.mode,'road');assert.equal(result.leg.provenance,'routing_engine');
 });
 test('reviewed fixed link permits routed Copenhagen–Malmö road in both directions',async()=>{
@@ -47,7 +48,7 @@ test('reviewed fixed link permits routed Copenhagen–Malmö road in both direct
 test('Java–Bali reuses an explicit ferry component without inventing timing',async()=>{
  for(const reverse of [false,true]){
  const java:['Banyuwangi','Indonesia',[number,number]]=['Banyuwangi','Indonesia',[114.369, -8.219]],bali:['Lovina','Indonesia',[number,number]]=['Lovina','Indonesia',[115.025,-8.158]];
- const [a,b]=reverse?[bali,java]:[java,bali];const result=await resolveCanonicalTransferJourney(leg(a[0],a[1],a[2],b[0],b[1],b[2]),{provider});
+ const [a,b]=reverse?[bali,java]:[java,bali];const result=await resolveCanonicalTransferJourney(selectTransferLegEndpoints(leg(a[0],a[1],a[2],b[0],b[1],b[2]),reverse?'reference:geonames:8051286':'reference:geonames:1650077',reverse?'reference:geonames:1650077':'reference:geonames:8051286'),{provider});
  assert.equal(result.leg.mode,'mixed');assert.deepEqual(result.leg.segments?.map(s=>s.mode),['road','ferry','road']);
  const ferry=result.leg.segments![1];assert.equal(ferry.durationMinutes,null);assert.equal(result.leg.durationMinutes,null);assert.match(ferry.provider??'',/asdp.id/);
  assert.deepEqual([ferry.fromEndpoint.name,ferry.toEndpoint.name],reverse?['Gilimanuk ferry port','Ketapang ferry port']:['Ketapang ferry port','Gilimanuk ferry port']);
@@ -60,7 +61,7 @@ test('crossing evidence never establishes unrelated road or ferry services',asyn
  }
 });
 test('hard exclusions prevent ferry composition and missing access evidence stays untimed',async()=>{
- const input=leg('Banyuwangi','Indonesia',[114.369,-8.219],'Lovina','Indonesia',[115.025,-8.158]);
+ const input=selectTransferLegEndpoints(leg('Banyuwangi','Indonesia',[114.369,-8.219],'Lovina','Indonesia',[115.025,-8.158]),'reference:geonames:1650077','reference:geonames:8051286');
  for(const excludedModes of [['road'],['ferry']]){
   const constrained={...input,routeMetadata:{...input.routeMetadata,transportConstraints:{excludedModes}}};
   assert.equal((await resolveCanonicalTransferJourney(constrained)).leg.mode,'unknown');
@@ -84,7 +85,7 @@ test('crossing scope points exactly match the existing reference snapshot and ph
  }
 });
 test('untimed ferry components discard stale saved whole-leg estimates and retain traveller rules',async()=>{
- const input=leg('Banyuwangi','Indonesia',[114.369,-8.219],'Lovina','Indonesia',[115.025,-8.158]);
+ const input=selectTransferLegEndpoints(leg('Banyuwangi','Indonesia',[114.369,-8.219],'Lovina','Indonesia',[115.025,-8.158]),'reference:geonames:1650077','reference:geonames:8051286');
  input.doorToDoorMinutes=120;input.headlineMinutes=90;input.routedDistanceKm=80;input.distanceKm=80;input.straightLineDistanceKm=70;input.usableDayLoss=0.25;
  input.routeGeometry=[[1,2],[3,4]];
  input.roadEstimate={provider:'openrouteservice',profile:'driving-car',provenance:'routed',checkedAt:'2026-10-10',distanceKm:80,durationMinutes:120,confidence:'medium',routeGeometry:[[1,2],[3,4]],attribution:'Stale prior journey',warnings:[]};
@@ -101,7 +102,7 @@ test('untimed ferry components discard stale saved whole-leg estimates and retai
  assert.deepEqual(result.leg.routeMetadata.transportConstraints,before.routeMetadata.transportConstraints);assert.equal(result.leg.routeMetadata.travellerContext,'retained');assert.deepEqual(input,before);
 });
 test('resolving a saved generated crossing again removes newly forbidden transport without changing traveller intent',async()=>{
- const original=leg('Banyuwangi','Indonesia',[114.369,-8.219],'Lovina','Indonesia',[115.025,-8.158]);
+ const original=selectTransferLegEndpoints(leg('Banyuwangi','Indonesia',[114.369,-8.219],'Lovina','Indonesia',[115.025,-8.158]),'reference:geonames:1650077','reference:geonames:8051286');
  const first=await resolveCanonicalTransferJourney(original);
  assert.equal(first.leg.mode,'mixed');assert.deepEqual(first.leg.segments?.map(s=>s.mode),['road','ferry','road']);
  for(const rules of [{excludedModes:['ferry'],preferredModes:['train']},{excludedModes:['road'],preferredModes:['train']},{avoidDriving:true,preferredModes:['train']}]){
