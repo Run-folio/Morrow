@@ -2,7 +2,7 @@
 
 import { ArrowUpRight, BedDouble, MapPin, RotateCcw, Utensils } from "lucide-react";
 import Link from "next/link";
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type Dispatch, type ReactNode, type SetStateAction } from "react";
 import type { JourneyRestaurant, RestaurantMeal } from "@/lib/journey";
 import { finderMoments, recommendNearbyPlace, type FinderMoment } from "@/lib/easyt/recommendations";
 import { defaultTravelProfile, travelProfileFromUnknown, type TravelProfile } from "@/lib/easyt/travel-profile";
@@ -91,9 +91,38 @@ type JourneyLocalFinderProps = {
   onPreviewPlace?: (place: JourneyLocalPlace | null) => void;
   onPlacesChange?: (places: JourneyLocalPlace[]) => void;
   onRestaurantSelect?: (restaurant?: JourneyRestaurant, meal?: RestaurantMeal) => void;
-  onSavePlace?: (place: JourneyLocalPlace, kind: "restaurant" | "stay", replaced?: JourneyLocalPlace) => boolean | void | Promise<boolean | void>;
-  onRemovePlace?: (place: JourneyLocalPlace, kind: "restaurant" | "stay") => boolean | void | Promise<boolean | void>;
+  onSavePlace?: (place: JourneyLocalPlace, kind: "restaurant" | "stay", replaced?: JourneyLocalPlace) => boolean | Promise<boolean>;
+  onRemovePlace?: (place: JourneyLocalPlace, kind: "restaurant" | "stay") => boolean | Promise<boolean>;
 };
+
+function useLocalFinderIntentSetter<T>(setState: Dispatch<SetStateAction<T>>, value: T, revisionRef: { current: number }) {
+  const latest = useRef(value);
+  latest.current = value;
+  return useCallback((next: SetStateAction<T>) => {
+    // Retire pending completions immediately; React retains functional ordering.
+    if (typeof next === "function") revisionRef.current += 1;
+    else {
+      if (!Object.is(latest.current, next)) revisionRef.current += 1;
+      latest.current = next;
+    }
+    setState(next);
+  }, [revisionRef, setState]);
+}
+
+function useLocalFinderActionScope(identity: string, mountedRef: { current: boolean }, revisionRef: { current: number }, lifetimeRef: { current: number }) {
+  const current = useRef({ identity });
+  if (current.current.identity !== identity) current.current = { identity };
+  const renderScope = current.current, revision = revisionRef.current;
+  useEffect(() => {
+    mountedRef.current = true;
+    lifetimeRef.current += 1;
+    return () => { mountedRef.current = false; lifetimeRef.current += 1; };
+  }, [lifetimeRef, mountedRef]);
+  return useCallback(() => {
+    const lifetime = lifetimeRef.current;
+    return () => mountedRef.current && current.current === renderScope && revisionRef.current === revision && lifetimeRef.current === lifetime;
+  }, [lifetimeRef, mountedRef, renderScope, revision, revisionRef]);
+}
 
 export function JourneyLocalFinder({ ownerId, tripId, stopId, canonicalPlaceId, kind, city, country, locale = "en", dayId, dayNumber, coordinates, interests, staySearch, selectedPlaceId, previewedPlaceId, savedPlaceIds, initialState, candidateLimit = 4, progressiveDisplay = false, autoSelectFirst = true, analyticsSurface = "map", mapPresentation, render, onPlaceSelect, onViewOnMap, onPreviewPlace, onPlacesChange, onRestaurantSelect, onSavePlace, onRemovePlace }: JourneyLocalFinderProps) {
   const longitude = coordinates[0];
@@ -103,18 +132,29 @@ export function JourneyLocalFinder({ ownerId, tripId, stopId, canonicalPlaceId, 
   const initialCorePlaces = (initialState?.corePlaces ?? cachedBasePayload?.places ?? []).filter((place) => mapPresentation !== "maplibre" || place.provider !== "google-places");
   const { data: session } = authClient.useSession();
   const contextOwnerId = session?.user?.id ?? ownerId ?? null;
+  const finderIntentRevisionRef = useRef(0);
+  const actionVersionRef = useRef(0);
+  const actionLifetimeRef = useRef(0);
+  const mountedRef = useRef(true);
+  const pendingActionRef = useRef<{ version: number; isCurrent: () => boolean } | null>(null);
   // These defaults are the existing “Show best matches” choice. Keeping them
   // selected makes the finder useful immediately; the same controls remain
   // available as optional refinements below.
-  const [meal, setMeal] = useState<RestaurantMeal | undefined>("dinner");
-  const [pace, setPace] = useState<MealPace | undefined>("relaxed");
-  const [mood, setMood] = useState<MealMood | undefined>("local");
-  const [moment, setMoment] = useState<FinderMoment | undefined>("now");
+  const [meal, setMealState] = useState<RestaurantMeal | undefined>("dinner");
+  const setMeal = useLocalFinderIntentSetter(setMealState, meal, finderIntentRevisionRef);
+  const [pace, setPaceState] = useState<MealPace | undefined>("relaxed");
+  const setPace = useLocalFinderIntentSetter(setPaceState, pace, finderIntentRevisionRef);
+  const [mood, setMoodState] = useState<MealMood | undefined>("local");
+  const setMood = useLocalFinderIntentSetter(setMoodState, mood, finderIntentRevisionRef);
+  const [moment, setMomentState] = useState<FinderMoment | undefined>("now");
+  const setMoment = useLocalFinderIntentSetter(setMomentState, moment, finderIntentRevisionRef);
   const [profile, setProfile] = useState<TravelProfile>(defaultTravelProfile);
   const [corePlaces, setCorePlaces] = useState<JourneyLocalPlace[]>(initialCorePlaces);
   const [commercialPlaces, setCommercialPlaces] = useState<JourneyLocalPlace[]>(initialState?.commercialPlaces ?? []);
-  const [chosen, setChosen] = useState<JourneyLocalPlace | null>(null);
-  const [saved, setSaved] = useState<JourneyLocalPlace | null>(null);
+  const [chosen, setChosenState] = useState<JourneyLocalPlace | null>(null);
+  const setChosen = useLocalFinderIntentSetter(setChosenState, chosen, finderIntentRevisionRef);
+  const [saved, setSavedState] = useState<JourneyLocalPlace | null>(null);
+  const setSaved = useLocalFinderIntentSetter(setSavedState, saved, finderIntentRevisionRef);
   const [loading, setLoading] = useState(initialState?.coreLoading ?? (!initialState && initialCorePlaces.length === 0));
   const [searchUnavailable, setSearchUnavailable] = useState(initialState?.coreUnavailable ?? false);
   const [searchVersion, setSearchVersion] = useState(0);
@@ -128,6 +168,10 @@ export function JourneyLocalFinder({ ownerId, tripId, stopId, canonicalPlaceId, 
   const firstUsefulPerformanceRef = useRef("");
   const storageKey = `journey:local-${kind}:v3`;
   const canonicalSavedState = savedPlaceIds !== undefined;
+  const actionScope = JSON.stringify([ownerId, contextOwnerId, tripId, stopId, dayId, kind, canonicalPlaceId, selectedPlaceId,
+    city, country, longitude, latitude, locale, staySearch?.checkIn, staySearch?.checkOut, staySearch?.adults, staySearch?.rooms,
+    staySearch?.currency, staySearch?.bookerCountry, chosen?.id, saved?.id, meal, pace, mood, moment]);
+  const captureFinderActionScope = useLocalFinderActionScope(actionScope, mountedRef, finderIntentRevisionRef, actionLifetimeRef);
   const label = kind === "restaurant" ? "Restaurant finder" : "Stay finder";
   const Icon = kind === "restaurant" ? Utensils : BedDouble;
   const isReady = kind === "restaurant" ? Boolean(meal && pace && mood) : true;
@@ -372,46 +416,50 @@ export function JourneyLocalFinder({ ownerId, tripId, stopId, canonicalPlaceId, 
     });
   }, [chosen, city, country, dayId, kind, staySearch?.adults, staySearch?.checkIn, staySearch?.checkOut, stopId]);
 
-  const actionScope = JSON.stringify([ownerId, tripId, stopId, dayId, kind]);
-  const actionScopeRef = useRef(actionScope);
-  actionScopeRef.current = actionScope;
-  const actionVersionRef = useRef(0);
-  const mountedRef = useRef(true);
-  useEffect(() => { mountedRef.current = true; return () => { mountedRef.current = false; }; }, []);
-
   const save = async () => {
-    if (!chosen) return;
+    const isCurrent = captureFinderActionScope();
+    if (!chosen || !isCurrent() || pendingActionRef.current?.isCurrent()) return;
     // A stop has one canonical stay booking, but restaurants are additive.
     // Keep the last saved restaurant as local UI context without turning it
     // into a request to remove an earlier canonical restaurant.
     const replaced = kind === "stay" && saved && saved.id !== chosen.id ? saved : undefined;
-    const version = ++actionVersionRef.current;
-    const accepted = await onSavePlace?.(chosen, kind, replaced ?? undefined);
-    if (accepted === false || !mountedRef.current || actionScopeRef.current !== actionScope || actionVersionRef.current !== version) return;
-    if (!canonicalSavedState) setSaved(chosen);
-    reportedSaveRef.current = `${kind}:${dayId}:${chosen.id}`;
-    if (!canonicalSavedState) {
-      try { window.localStorage.setItem(storageKey, JSON.stringify({ ...JSON.parse(window.localStorage.getItem(storageKey) ?? "{}"), [dayId]: chosen })); } catch { /* no-op */ }
-    }
+    const action = { version: ++actionVersionRef.current, isCurrent };
+    pendingActionRef.current = action;
+    try {
+      const accepted = onSavePlace ? await onSavePlace(chosen, kind, replaced ?? undefined) : true;
+      if (accepted !== true || !isCurrent() || actionVersionRef.current !== action.version) return;
+      if (!canonicalSavedState) setSaved(chosen);
+      reportedSaveRef.current = `${kind}:${dayId}:${chosen.id}`;
+      if (!canonicalSavedState) {
+        try { window.localStorage.setItem(storageKey, JSON.stringify({ ...JSON.parse(window.localStorage.getItem(storageKey) ?? "{}"), [dayId]: chosen })); } catch { /* no-op */ }
+      }
+    } catch { /* A rejected save keeps the current selection and filters. */ }
+    finally { if (pendingActionRef.current === action) pendingActionRef.current = null; }
   };
   const reset = async () => {
+    const isCurrent = captureFinderActionScope();
+    if (!isCurrent() || pendingActionRef.current?.isCurrent()) return;
     const target = canonicalSavedState && chosen && savedPlaceIds?.includes(chosen.id) ? chosen : saved;
-    const version = ++actionVersionRef.current;
-    const accepted = target ? await onRemovePlace?.(target, kind) : true;
-    if (accepted === false || !mountedRef.current || actionScopeRef.current !== actionScope || actionVersionRef.current !== version) return;
-    setSaved(null);
-    setChosen(null);
-    setMeal("dinner");
-    setPace("relaxed");
-    setMood("local");
-    setMoment("now");
-    if (!canonicalSavedState) {
-      try {
-        const store = JSON.parse(window.localStorage.getItem(storageKey) ?? "{}") as Record<string, JourneyLocalPlace>;
-        delete store[dayId];
-        window.localStorage.setItem(storageKey, JSON.stringify(store));
-      } catch { /* The in-memory finder state is still cleared. */ }
-    }
+    const action = { version: ++actionVersionRef.current, isCurrent };
+    pendingActionRef.current = action;
+    try {
+      const accepted = target && onRemovePlace ? await onRemovePlace(target, kind) : true;
+      if (accepted !== true || !isCurrent() || actionVersionRef.current !== action.version) return;
+      setSaved(null);
+      setChosen(null);
+      setMeal("dinner");
+      setPace("relaxed");
+      setMood("local");
+      setMoment("now");
+      if (!canonicalSavedState) {
+        try {
+          const store = JSON.parse(window.localStorage.getItem(storageKey) ?? "{}") as Record<string, JourneyLocalPlace>;
+          delete store[dayId];
+          window.localStorage.setItem(storageKey, JSON.stringify(store));
+        } catch { /* The in-memory finder state is still cleared. */ }
+      }
+    } catch { /* A rejected removal keeps the current selection and filters. */ }
+    finally { if (pendingActionRef.current === action) pendingActionRef.current = null; }
   };
 
   if (render) {

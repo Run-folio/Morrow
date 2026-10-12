@@ -64,37 +64,75 @@ export function useOptionalTripShellMutation() {
 export function TripShellIdentityAndActions() {
   const mutation = useTripShellMutation();
   const trip = mutation.trip;
+  const pathname = usePathname();
   const routeLabel = tripRouteDisplayLabel(trip);
   const dateFacts = deriveTripDateFacts({ startDate: trip.startDate, endDate: trip.endDate });
   const duration = dateFacts.durationDays;
   const overnightPlaceCount = overnightAccommodationStops(trip).length;
   const status = trip.status === "planned" ? "Planned" : trip.status === "archived" ? "Archived" : "Planning";
   const editHref = tripBuilderHref(trip.id, trip.ownerId);
-  const [renameOpen, setRenameOpen] = useState(false);
-  const [draft, setDraft] = useState("");
-  const [validationError, setValidationError] = useState("");
   const renameRequestRef = useRef(0);
-  const renameScopeRef = useRef("");
-  renameScopeRef.current = JSON.stringify([trip.id, trip.ownerId]);
-  useEffect(() => () => { renameRequestRef.current += 1; }, []);
+  const renameIdentity = JSON.stringify([trip.id, trip.ownerId, pathname]);
+  const renameScopeRef = useRef({ identity: renameIdentity });
+  const renameMountedRef = useRef(true);
+  const renameMountGenerationRef = useRef(0);
+  const renamePendingRef = useRef<{ scope: object; operation: object } | null>(null);
+  if (renameScopeRef.current.identity !== renameIdentity) {
+    renameScopeRef.current = { identity: renameIdentity };
+    renameRequestRef.current += 1;
+    renamePendingRef.current = null;
+  }
+  const renderScope = renameScopeRef.current;
+  const renameIntentRef = useRef({ scope: renderScope, session: {}, open: false, draft: "", error: "" });
+  if (renameIntentRef.current.scope !== renderScope) renameIntentRef.current = { scope: renderScope, session: {}, open: false, draft: "", error: "" };
+  const [renameState, setRenameState] = useState(() => renameIntentRef.current);
+  const [renamePending, setRenamePending] = useState<object | null>(null);
+  const visibleRename = renameState.scope === renderScope ? renameState : renameIntentRef.current;
+  const { open: renameOpen, draft, error: validationError, session: renderSession } = visibleRename;
+  useEffect(() => {
+    renameMountedRef.current = true;
+    return () => { renameMountedRef.current = false; renameMountGenerationRef.current += 1; renameRequestRef.current += 1; renamePendingRef.current = null; };
+  }, []);
   useWorkspaceOrientationBlocker(renameOpen);
+  const scopeIsCurrent = () => renameMountedRef.current && renameScopeRef.current === renderScope
+    && mutation.trip.id === trip.id && mutation.trip.ownerId === trip.ownerId;
+  const sessionIsCurrent = () => scopeIsCurrent() && renameIntentRef.current.session === renderSession && renameIntentRef.current.open;
+  const updateRenameIntent = (next: typeof renameIntentRef.current) => { renameIntentRef.current = next; setRenameState(next); };
 
   const openRename = () => {
-    setDraft(tripCustomTitle(mutation.trip) ?? "");
-    setValidationError("");
-    setRenameOpen(true);
+    if (!scopeIsCurrent() || renameIntentRef.current.open) return;
+    renameRequestRef.current += 1;
+    updateRenameIntent({ scope: renderScope, session: {}, open: true, draft: tripCustomTitle(mutation.trip) ?? "", error: "" });
   };
   const saveRename = async () => {
+    if (!sessionIsCurrent() || renamePendingRef.current?.scope === renderScope) return false;
     const request = ++renameRequestRef.current;
-    const scope = renameScopeRef.current;
-    const normalizedTitle = draft.trim().replace(/\s+/g, " ");
+    const mountGeneration = renameMountGenerationRef.current;
+    const normalizedTitle = renameIntentRef.current.draft.trim().replace(/\s+/g, " ");
+    const isCurrent = () => sessionIsCurrent() && request === renameRequestRef.current && mountGeneration === renameMountGenerationRef.current;
     if (Array.from(normalizedTitle).length > 80) {
-      setValidationError("Use 80 characters or fewer.");
-      return;
+      updateRenameIntent({ ...renameIntentRef.current, error: "Use 80 characters or fewer." });
+      return false;
     }
-    const changed = await mutation.mutateTrip((current) => renameTripIdentity(current, normalizedTitle), "trip-title");
-    if (request !== renameRequestRef.current || scope !== renameScopeRef.current) return;
-    if (changed || normalizedTitle === (tripCustomTitle(mutation.trip) ?? "")) setRenameOpen(false);
+    if (isCurrent() && normalizedTitle === (tripCustomTitle(mutation.trip) ?? "")) {
+      updateRenameIntent({ ...renameIntentRef.current, open: false });
+      return true;
+    }
+    const operation = {};
+    renamePendingRef.current = { scope: renderScope, operation }; setRenamePending(operation);
+    try {
+      const changed = await mutation.mutateTrip((current) => isCurrent() && current.id === trip.id && current.ownerId === trip.ownerId
+        ? renameTripIdentity(current, normalizedTitle) : current, "trip-title");
+      if (changed !== true || !isCurrent()) return false;
+      updateRenameIntent({ ...renameIntentRef.current, open: false });
+      return true;
+    } catch { return false; }
+    finally {
+      if (renamePendingRef.current?.operation === operation) {
+        renamePendingRef.current = null;
+        if (renameMountedRef.current) setRenamePending(null);
+      }
+    }
   };
 
   return <>
@@ -122,15 +160,19 @@ export function TripShellIdentityAndActions() {
       detail="Leave blank to use the destination-based name."
       submitLabel="Save name"
       error={validationError || mutation.error || undefined}
-      submitting={mutation.isPending("trip-title")}
-      onCancel={() => { renameRequestRef.current += 1; setRenameOpen(false); }}
+      submitting={renamePendingRef.current?.scope === renderScope && renamePendingRef.current.operation === renamePending || mutation.isPending("trip-title")}
+      onCancel={() => { if (sessionIsCurrent()) { renameRequestRef.current += 1; updateRenameIntent({ ...renameIntentRef.current, open: false }); } }}
       onSubmit={() => void saveRename()}
     >
       <EasyTField
         data-dialog-autofocus="true"
         label="Trip name"
         value={draft}
-        onChange={(event) => { setDraft(event.target.value); setValidationError(""); }}
+        onChange={(event) => {
+          if (!sessionIsCurrent()) return;
+          if (event.target.value !== renameIntentRef.current.draft) renameRequestRef.current += 1;
+          updateRenameIntent({ ...renameIntentRef.current, draft: event.target.value, error: "" });
+        }}
         hint={`${Array.from(draft.trim()).length}/80 characters · optional`}
         autoComplete="off"
       />

@@ -122,7 +122,7 @@ test("16 Done completes the current parent then advances", () => {
 });
 
 test("17 Back changes only the local dialog index and preserves choices", () => {
-  assert.match(builder, /onBack=\{clarificationIndex > 0 \? \(\) => setClarificationIndex/);
+  assert.match(builder, /onBack=\{clarificationIndex > 0 \? \(\) => \{ discoverySearchVersionRef\.current \+= 1; setClarificationIndex/);
   const backLine = builder.match(/onBack=\{[^\n]+/)?.[0] ?? "";
   assert.doesNotMatch(backLine, /setPlaceSelections|setStops|setCompletedPlanningAreaMentionIds/);
 });

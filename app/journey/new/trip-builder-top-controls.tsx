@@ -26,15 +26,44 @@ export function TripBuilderTopControls({trip,draft,language,disabled=false,onTyp
  personalize?:ReactNode;updateRouteFeedback?:ReactNode;originReview?:ReactNode;destinationReview?:ReactNode;dateReview?:ReactNode;onUpdateRoute?:()=>void;updatingRoute?:boolean;onReorder?:(ids:readonly string[])=>boolean|Promise<boolean>;fixedOrder?:boolean;onConfirmSavedFinish?:()=>void;
 }) {
  const es=language==='es';const route=trip.brief.intent.route;
- const [editingId,setEditingId]=useState<string|null>(()=>draft.fields.find(f=>f.binding.kind==='destination'&&f.status==='editable')?.binding.kind==='destination' ? (draft.fields.find(f=>f.binding.kind==='destination'&&f.status==='editable')!.binding as {intentId:string}).intentId:null);
+ const identity=JSON.stringify([trip.id,trip.ownerId,draft.tripId,draft.ownerId]);
+ const scopeRef=useRef({identity,disabled});const editorTokenRef=useRef<object>({});const mountedRef=useRef(true);
+ const mountGenerationRef=useRef(0);
  const nodes=useRef(new Map<string,HTMLLIElement>());const focusId=useRef<string|null>(null);
+ if(scopeRef.current.identity!==identity){scopeRef.current={identity,disabled};editorTokenRef.current={};focusId.current=null;nodes.current.clear()}
+ scopeRef.current.disabled=disabled;const renderScope=scopeRef.current;const renderEditorToken=editorTokenRef.current;
+ const [editing,setEditing]=useState(()=>({scope:renderScope,id:draft.fields.find(f=>f.binding.kind==='destination'&&f.status==='editable')?.binding.kind==='destination' ? (draft.fields.find(f=>f.binding.kind==='destination'&&f.status==='editable')!.binding as {intentId:string}).intentId:null}));
+ const editingId=editing.scope===renderScope?editing.id:null;const editingIdRef=useRef(editingId);editingIdRef.current=editingId;
+ const pendingRef=useRef(new Map<string,{scope:object;operation:object}>());const [,setPendingVersion]=useState(0);
+ useEffect(()=>{mountedRef.current=true;return()=>{mountedRef.current=false;mountGenerationRef.current+=1;pendingRef.current.clear();focusId.current=null}},[]);
+ const isIntentPending=(id:string)=>pendingRef.current.get(id)?.scope===renderScope;
+ const scopeIsCurrent=()=>mountedRef.current&&scopeRef.current===renderScope&&!scopeRef.current.disabled;
+ const changeEditor=(id:string|null)=>{editorTokenRef.current={};editingIdRef.current=id;setEditing({scope:renderScope,id})};
+ const performIntentAction=async(intent:DestinationIntent,token:object,invoke:()=>boolean|Promise<boolean>,nextEditingId:string|null)=>{
+   const mountGeneration=mountGenerationRef.current;
+   const isCurrent=()=>scopeIsCurrent()&&mountGenerationRef.current===mountGeneration&&editorTokenRef.current===token;
+   if(!isCurrent()||isIntentPending(intent.id))return false;
+   const operation={};pendingRef.current.set(intent.id,{scope:renderScope,operation});setPendingVersion(value=>value+1);
+   try{if(await invoke()!==true||!isCurrent())return false;focusId.current=intent.id;changeEditor(nextEditingId);return true}
+   catch{return false}
+   finally{if(pendingRef.current.get(intent.id)?.operation===operation)pendingRef.current.delete(intent.id);if(mountedRef.current)setPendingVersion(value=>value+1)}
+ };
+ const openIntent=(intent:DestinationIntent)=>{
+   if(!scopeIsCurrent()||isIntentPending(intent.id))return Promise.resolve(false);
+   const token={};editorTokenRef.current=token;
+   return performIntentAction(intent,token,()=>onEditIntent(intent),intent.id);
+ };
+ const selectIntent=(intent:DestinationIntent,place:CanonicalPlaceSuggestion)=>{
+   if(!scopeIsCurrent()||editingIdRef.current!==intent.id||editorTokenRef.current!==renderEditorToken)return Promise.resolve(false);
+   return performIntentAction(intent,renderEditorToken,()=>onIntentSelect(intent,place),null);
+ };
  const chipOccurrences=builderChipOccurrenceOrder(route,route.destinations.map(intent=>intent.id));
  const canReorder=Boolean(chipOccurrences&&onReorder&&!disabled&&!fixedOrder&&!editingId);
  const sourceIds=chipOccurrences?route.orderedStopIds:[];
  const reorder=useBuilderStopReorder({stopIds:sourceIds,lockedStopIds:trip.brief.scheduleLocks?.stopIds??[],fixedOrder:!canReorder,onPreview:noChipPreview,onCommit:ids=>onReorder?.(ids)??false,targetAttribute:'data-builder-chip-index'});
  // Stable drop targets avoid moving the native drag source under the pointer.
  const displayedIntents=chipOccurrences?sourceIds.map(id=>route.destinations.find(intent=>intent.stopIds[0]===id)!):route.destinations;
- useEffect(()=>{if(focusId.current){const node=nodes.current.get(focusId.current);(node?.querySelector<HTMLInputElement>('input[role="combobox"]')??node?.querySelector<HTMLButtonElement>('button'))?.focus();focusId.current=null}},[editingId,trip]);
+ useEffect(()=>{if(mountedRef.current&&scopeRef.current===renderScope&&focusId.current){const node=nodes.current.get(focusId.current);(node?.querySelector<HTMLInputElement>('input[role="combobox"]')??node?.querySelector<HTMLButtonElement>('button'))?.focus();focusId.current=null}},[editingId,trip,renderScope]);
  const originField=draft.fields.find(f=>f.binding.kind==='origin'&&f.status==='editable');
  const days=Math.round((Date.parse(trip.endDate)-Date.parse(trip.startDate))/86400000)+1;
  return <section className={`${styles.root} ${plannerStyles.planner}`} aria-label={es?'Detalles del viaje':'Journey details'} data-builder-top-controls>
@@ -55,23 +84,23 @@ export function TripBuilderTopControls({trip,draft,language,disabled=false,onTyp
       const bases=route.orderedStopIds.filter(id=>intent.stopIds.includes(id)).map(id=>trip.stops.find(stop=>stop.id===id)).filter((stop):stop is CanonicalEasyTTrip['stops'][number]=>Boolean(stop));
       if(intent.kind==='planning_area' && bases.length) return <li key={intent.id} className={styles.parentGroup} data-destination-intent-id={intent.id} data-destination-parent-group ref={node=>{if(node)nodes.current.set(intent.id,node);else nodes.current.delete(intent.id)}}>
         <div role="group" aria-label={label}>
-          <ul className={styles.baseChips}>{bases.map(stop=><MorroviaDestinationTag key={stop.id} id={`${intent.id}:${stop.id}`} stopId={stop.id} label={stop.name} disabled={disabled} removeDisabled={!onRemoveStop||trip.brief.scheduleLocks?.stopIds.includes(stop.id)}
+          <ul className={styles.baseChips}>{bases.map(stop=><MorroviaDestinationTag key={stop.id} id={`${intent.id}:${stop.id}`} stopId={stop.id} label={stop.name} disabled={disabled||isIntentPending(intent.id)} removeDisabled={!onRemoveStop||trip.brief.scheduleLocks?.stopIds.includes(stop.id)}
             editLabel={`${es?'Editar':'Edit'} ${stop.name}`} removeLabel={`${es?'Quitar':'Remove'} ${stop.name}`}
-            onEdit={()=>onEditIntent(intent)} onRemove={()=>onRemoveStop?.(stop.id)} />)}</ul>
+            onEdit={()=>openIntent(intent)} onRemove={()=>onRemoveStop?.(stop.id)} />)}</ul>
         </div>
       </li>;
       const repeated=route.destinations.filter(other=>(other.selectedPlace?.name??other.sourceText)===label).length>1;
       const reorderLabel=`${es?'Reordenar':'Reorder'} ${label}${repeated?`, ${es?'parada':'stop'} ${route.orderedStopIds.indexOf(intent.stopIds[0])+1}`:''}`;
       return <MorroviaDestinationTag key={intent.id} id={intent.id} ref={node=>{if(node)nodes.current.set(intent.id,node);else nodes.current.delete(intent.id)}}
-        label={label} disabled={disabled} removeDisabled={intent.stopIds.some(id=>trip.brief.scheduleLocks?.stopIds.includes(id))}
+        label={label} disabled={disabled||isIntentPending(intent.id)} removeDisabled={intent.stopIds.some(id=>trip.brief.scheduleLocks?.stopIds.includes(id))}
         reorderGrip={canReorder?<EasyTButton variant="quiet" icon={GripVertical} iconOnly className={`${styles.grip} ${reorder.previewIds?.[index]===reorder.draggingId?styles.dropTarget:''}`} disabled={trip.brief.scheduleLocks?.stopIds.includes(intent.stopIds[0])} aria-label={reorderLabel} {...reorder.gripProps(intent.stopIds[0])}>{reorderLabel}</EasyTButton>:undefined}
         reorderProps={canReorder?{'data-builder-chip-index':index,onDragOver:event=>{event.preventDefault();reorder.previewActiveAt(index)},onDrop:event=>{event.preventDefault();reorder.drop()}}:undefined}
         editLabel={`${es?'Editar':'Edit'} ${label}`} removeLabel={`${es?'Quitar':'Remove'} ${label}`}
-        onEdit={async ()=>{if(await onEditIntent(intent)){focusId.current=intent.id;setEditingId(intent.id)}}} onRemove={()=>onRemoveIntent(intent)}
-        editor={editingId===intent.id?<div onKeyDown={event=>{if(event.key==='Escape'){event.preventDefault();focusId.current=intent.id;setEditingId(null)}}}>
+        onEdit={()=>openIntent(intent)} onRemove={()=>onRemoveIntent(intent)}
+        editor={editingId===intent.id?<div onKeyDown={event=>{if(event.key==='Escape'&&scopeIsCurrent()&&editingIdRef.current===intent.id&&editorTokenRef.current===renderEditorToken){event.preventDefault();focusId.current=intent.id;changeEditor(null)}}}>
           <CanonicalPlaceAutocomplete autoFocus language={language} label={es?'Destino':'Destination'} placeholder={es?'Ciudad o lugar':'City or place'} value={field?.status==='editable'?field.raw:label}
-            disabled={disabled||field?.status==='binding-conflict'} requireCoordinates searchIntent="route-stop"
-            onChange={raw=>onIntentInput(intent.id,raw)} onSelect={async place=>{if(await onIntentSelect(intent,place)){focusId.current=intent.id;setEditingId(null)}}} />
+            disabled={disabled||isIntentPending(intent.id)||field?.status==='binding-conflict'} requireCoordinates searchIntent="route-stop"
+            onChange={raw=>{if(scopeIsCurrent()&&editingIdRef.current===intent.id&&editorTokenRef.current===renderEditorToken&&!isIntentPending(intent.id)){changeEditor(intent.id);onIntentInput(intent.id,raw)}}} onSelect={place=>selectIntent(intent,place)} />
         </div>:undefined} />;
     })}
   </MorroviaDestinationField>{destinationReview}</div></div>

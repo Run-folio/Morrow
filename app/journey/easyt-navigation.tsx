@@ -23,6 +23,7 @@ import MorroviaBrandLogo from "@/components/morrovia-brand-logo";
 import EasyTProductTour from "@/components/easyt/easyt-product-tour";
 import { EASYT_LANGUAGE_CHANGE_EVENT, easytCopy, establishSessionLanguage, type EasyTLanguage } from "@/lib/easyt/i18n";
 import styles from "./easyt-navigation.module.css";
+import { useNewTripNavigationScope } from "./use-new-trip-navigation-scope";
 
 type EasyTNavigationProps = {
   current?: "home" | "prototype" | "trips" | "stamped" | "new" | "login" | "profile" | "privacy" | "admin" | "passport" | "routes" | "about" | "help";
@@ -54,6 +55,7 @@ export default function EasyTNavigation({
     : session?.user
       ? { id: session.user.id, name: session.user.name, email: session.user.email }
       : undefined;
+  const newTripNavigation = useNewTripNavigationScope(() => activeAccount?.id ?? storageOwnerId ?? null, `new:${current ?? ""}`);
 
   useLayoutEffect(() => {
     const updateLanguage = (event: Event) => setLanguage((event as CustomEvent<EasyTLanguage>).detail);
@@ -127,16 +129,20 @@ export default function EasyTNavigation({
     }
   };
 
-  const beginNewTrip = (event: ReactMouseEvent<HTMLAnchorElement>) => {
-    const preserved = beginNewTripNavigation(activeAccount?.id ?? storageOwnerId ?? null, window);
+  const beginNewTrip = async (event: ReactMouseEvent<HTMLAnchorElement>) => {
+    if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || event.button !== 0) return;
     event.preventDefault();
-    if (!preserved) {
-      return;
+    const request = newTripNavigation.start();
+    if (!request) return;
+    try {
+      if (await beginNewTripNavigation(request.ownerId, window, request.isCurrent) !== true || !request.isCurrent()) return;
+      // A hard navigation creates fresh Builder state, including offline shells.
+      window.location.assign("/journey/new");
+    } catch {
+      // Preservation refusal leaves the current document and controls available.
+    } finally {
+      request.finish();
     }
-    // New trip is a document boundary even when this link is clicked from an
-    // already-queryless builder. A hard navigation guarantees fresh client
-    // state, and the public service-worker shell still supports it offline.
-    window.location.assign("/journey/new");
   };
 
   const labels = easytCopy[language].nav;

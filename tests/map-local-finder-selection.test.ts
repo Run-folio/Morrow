@@ -79,7 +79,8 @@ test("the finder remains mounted while selection drives the existing marker and 
   assert.match(workspace, /const showDayPlanner = Boolean\(hasCanonicalPlanner && selected\.coordinates && mapMode === "detail" && !selectedPlannerPin && !selectedRouteLeg\)/);
   assert.doesNotMatch(workspace, /const showDayPlanner = Boolean\([^\n]*!selectedLocalPlace/);
   assert.match(workspace, /onPlaceSelect=\{selectLocalPlace\} onViewOnMap=\{focusLocalPlace\}/);
-  assert.match(workspace, /const \[selectedMapResult, setSelectedMapResult\] = useState<MapResultPlace \| null>/);
+  assert.match(workspace, /const \[selectedMapResult, setSelectedMapResultState\] = useState<MapResultPlace \| null>/);
+  assert.match(workspace, /const setSelectedMapResult = useMapPlannerIntentSetter\(setSelectedMapResultState, selectedMapResult, plannerActionRevisionRef\)/);
   assert.match(workspace, /const selectedLocalPlace = selectedMapResult && mapResults\.some\(\(result\) => result\.selectionId === selectedMapResult\.selectionId\)/);
   assert.match(workspace, /selectedMapResult=\{selectedLocalPlace\}/);
   assert.match(workspace, /mapResults=\{mapResults\}/);

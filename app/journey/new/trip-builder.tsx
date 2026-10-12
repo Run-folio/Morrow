@@ -689,8 +689,18 @@ function TripBuilderDocument() {
   const originProviderId = journeyOrigin.providerId;
   const [initialTripBrief, setTripBrief] = useState("");
   const tripBrief = canonicalBuilder ? (canonicalBuilder.brief.mustDo) : initialTripBrief;
-  const [baseSearchInputs, setBaseSearchInputs] = useState<Record<string, string>>({});
-  const [baseSearchErrors, setBaseSearchErrors] = useState<Record<string, string>>({});
+  const [baseSearchInputs, setBaseSearchInputsState] = useState<Record<string, string>>({});
+  const [baseSearchErrors, setBaseSearchErrorsState] = useState<Record<string, string>>({});
+  const planningBaseSearchIntentVersionRef = useRef(0);
+  const planningBaseSearchUserIntentVersionRef = useRef(0);
+  const setBaseSearchInputs = (update: Record<string, string> | ((current: Record<string, string>) => Record<string, string>)) => {
+    planningBaseSearchIntentVersionRef.current += 1;
+    setBaseSearchInputsState(update);
+  };
+  const setBaseSearchErrors = (update: Record<string, string> | ((current: Record<string, string>) => Record<string, string>)) => {
+    planningBaseSearchIntentVersionRef.current += 1;
+    setBaseSearchErrorsState(update);
+  };
   const [outsideDiscoveryChoice, setOutsideDiscoveryChoice] = useState<{ mentionId: string; suggestion: CanonicalPlaceSuggestion } | null>(null);
   const [pendingDiscoveryBase, setPendingDiscoveryBase] = useState<{ mentionId: string; area: CanonicalPlaceSuggestion } | null>(null);
   const [searchedAreaBases, setSearchedAreaBases] = useState<NearbyBaseDiscoveryState | null>(null);
@@ -852,8 +862,30 @@ function TripBuilderDocument() {
   const [paceManuallyEdited, setPaceManuallyEdited] = useState(false);
   const [transportManuallyEdited, setTransportManuallyEdited] = useState(false);
   const [interestsManuallyEdited, setInterestsManuallyEdited] = useState(false);
-  const [fixedCommitmentLabel, setFixedCommitmentLabel] = useState("");
-  const [fixedCommitmentDate, setFixedCommitmentDate] = useState("");
+  const [fixedCommitmentLabel, setFixedCommitmentLabelState] = useState("");
+  const [fixedCommitmentDate, setFixedCommitmentDateState] = useState("");
+  const fixedCommitmentInputRef = useRef({ label: fixedCommitmentLabel, date: fixedCommitmentDate,
+    ownerId: activeBrowserOwnerId, tripId, editor: builderEditSessionRef.current, generation: 0 });
+  const fixedCommitmentSubmissionRef = useRef<object | null>(null);
+  const syncFixedCommitmentInputScope = () => {
+    const previous = fixedCommitmentInputRef.current;
+    if (previous.label !== fixedCommitmentLabel || previous.date !== fixedCommitmentDate
+      || previous.ownerId !== activeBrowserOwnerId || previous.tripId !== tripId || previous.editor !== builderEditSessionRef.current) {
+      fixedCommitmentInputRef.current = { label: fixedCommitmentLabel, date: fixedCommitmentDate,
+        ownerId: activeBrowserOwnerId, tripId, editor: builderEditSessionRef.current, generation: previous.generation + 1 };
+    }
+  };
+  syncFixedCommitmentInputScope();
+  const setFixedCommitmentLabel = (label: string) => {
+    const previous = fixedCommitmentInputRef.current;
+    if (previous.label !== label) fixedCommitmentInputRef.current = { ...previous, label, generation: previous.generation + 1 };
+    setFixedCommitmentLabelState(label);
+  };
+  const setFixedCommitmentDate = (date: string) => {
+    const previous = fixedCommitmentInputRef.current;
+    if (previous.date !== date) fixedCommitmentInputRef.current = { ...previous, date, generation: previous.generation + 1 };
+    setFixedCommitmentDateState(date);
+  };
   const [initialScheduleLocks, setScheduleLocks] = useState<TripScheduleLocks>({ stopIds: [], arrivalDates: {} });
   const scheduleLocks = canonicalBuilder ? (canonicalBuilder.brief.scheduleLocks ?? {stopIds:[],arrivalDates:{}}) : initialScheduleLocks;
   const [initialDecisionSelections, setDecisionSelections] = useState<TripDecisionSelections>({ transportByLeg: {} });
@@ -2212,6 +2244,7 @@ function TripBuilderDocument() {
 
 
   const openClarificationSession = (preferredMentionId?: string) => {
+    discoverySearchVersionRef.current += 1;
     const trip=builderEditSessionRef.current?.getSnapshot().trip;
     const targeted=preferredMentionId&&trip?.brief.intent.route.destinations.find(item=>item.id===preferredMentionId);
     const ids=targeted&&activePlaceMentions.some(mention=>mention.mentionId===preferredMentionId)
@@ -2998,34 +3031,93 @@ function TripBuilderDocument() {
     return appended.mention;
   };
 
-  const cancelTransientPlanningClarification = async (mentionId: string) => {
-    if (mentionId === transientPlanningMentionId) {
-      const mention=capturedStructuredBrief.placeMentions?.find(item=>item.mentionId===mentionId);
-      if(builderEditSessionRef.current) {
-        if(!mention)return;
-        const intent=builderEditSessionRef.current.getSnapshot().trip.brief.intent.route.destinations.find(intent=>intent.id===mentionId);
-        if(intent?.stopIds.length)return;
-        const edits:BuilderAcceptedEdit[]=[...(intent?[{kind:"remove-destination" as const,intentId:intent.id}]:[]),{kind:"planning-mention",mention,action:"cancel"}];
-        if(!await dispatchAcceptedBuilderEdits(edits))return;
-      }
-      handoffLookupSessionRef.current?.handled.add(mentionId);
-      setCapturedStructuredBrief((current) => {
-        const mentions = (current.placeMentions ?? []).filter((mention) => mention.mentionId !== mentionId);
-        return {
-          ...current,
-          placeMentions: mentions,
-          placeIssues: placeResolutionIssuesForMentions(mentions),
-          placeSelections: (current.placeSelections ?? []).filter((selection) => selection.mentionId !== mentionId),
-        };
-      });
-      setIntakeMentions((current) => current.filter((mention) => mention.mentionId !== mentionId));
-      setPlaceSelections((current) => current.filter((selection) => selection.mentionId !== mentionId));
-      setCompletedPlanningAreaMentionIds((current) => current.filter((id) => id !== mentionId));
-      setRemovedPlaceMentionIds((current) => current.filter((id) => id !== mentionId));
-      setTransientPlanningMentionId(null);
+  const planningClarificationCancelScopeRef = useRef({ ownerId: activeBrowserOwnerId, tripId, tripOwnerId,
+    editor: builderEditSessionRef.current, generation: 0, values: [] as readonly unknown[] });
+  const planningClarificationCancelPendingRef = useRef<object | null>(null);
+  const syncPlanningClarificationCancelScope = () => {
+    const values = [originPlanningMentionId, resolvingPlaceMentionId, transientPlanningMentionId, showStopEditor,
+      stopInput, stopError, origin, originTouched, originError, originResolutionVersionRef.current,
+      originBeforePlanningClarificationRef.current, baseSearchInputs, baseSearchErrors];
+    const previous = planningClarificationCancelScopeRef.current;
+    if (previous.ownerId !== activeBrowserOwnerId || previous.tripId !== tripId || previous.tripOwnerId !== tripOwnerId
+      || previous.editor !== builderEditSessionRef.current || values.some((value, index) => value !== previous.values[index])) {
+      planningClarificationCancelScopeRef.current = { ownerId: activeBrowserOwnerId, tripId, tripOwnerId,
+        editor: builderEditSessionRef.current, generation: previous.generation + 1, values };
     }
-    setBaseSearchInputs((current) => { const next = { ...current }; delete next[mentionId]; return next; });
-    setBaseSearchErrors((current) => { const next = { ...current }; delete next[mentionId]; return next; });
+  };
+  syncPlanningClarificationCancelScope();
+
+  const cancelTransientPlanningClarification = async (mentionId: string, target: "origin" | "stop"): Promise<boolean> => {
+    const scope = planningClarificationCancelScopeRef.current;
+    const editor = builderEditSessionRef.current;
+    const source = editor?.getSnapshot();
+    const ownerId = activeBrowserOwnerIdRef.current;
+    const previousOrigin = originBeforePlanningClarificationRef.current;
+    const originVersion = originResolutionVersionRef.current;
+    const baseSearchVersion = planningBaseSearchIntentVersionRef.current;
+    const isTransientClarification = mentionId === transientPlanningMentionId;
+    if (!builderMountedRef.current || planningClarificationCancelPendingRef.current
+      || scope.ownerId !== ownerId || scope.tripId !== tripId || scope.tripOwnerId !== tripOwnerId || scope.editor !== editor
+      || (target === "origin" ? originPlanningMentionId : resolvingPlaceMentionId) !== mentionId
+      || (source && (source.browserOwnerId !== ownerId || source.trip.id !== tripId || source.trip.ownerId !== tripOwnerId))) return false;
+    const token = {};
+    planningClarificationCancelPendingRef.current = token;
+    const isCurrent = () => builderMountedRef.current && planningClarificationCancelPendingRef.current === token
+      && planningClarificationCancelScopeRef.current === scope && builderEditSessionRef.current === editor
+      && activeBrowserOwnerIdRef.current === ownerId && originBeforePlanningClarificationRef.current === previousOrigin
+      && originResolutionVersionRef.current === originVersion && planningBaseSearchIntentVersionRef.current === baseSearchVersion;
+    try {
+      if (isTransientClarification) {
+        const mention = capturedStructuredBrief.placeMentions?.find(item => item.mentionId === mentionId);
+        if (!mention) return false;
+        if (editor && source) {
+          const intent = source.trip.brief.intent.route.destinations.find(intent => intent.id === mentionId);
+          if (intent?.stopIds.length) return false;
+          const edits: BuilderAcceptedEdit[] = [...(intent ? [{ kind: "remove-destination" as const, intentId: intent.id }] : []),
+            { kind: "planning-mention", mention, action: "cancel" }];
+          if (await dispatchAcceptedBuilderEdits(edits, { expectedInputRevision: source.inputRevision }) !== true || !isCurrent()) return false;
+          const latest = editor.getSnapshot();
+          if (latest.browserOwnerId !== source.browserOwnerId || latest.trip.id !== source.trip.id
+            || latest.trip.ownerId !== source.trip.ownerId || latest.inputRevision !== source.inputRevision + 1) return false;
+        }
+        if (!isCurrent()) return false;
+        handoffLookupSessionRef.current?.handled.add(mentionId);
+        setCapturedStructuredBrief((current) => {
+          const mentions = (current.placeMentions ?? []).filter((mention) => mention.mentionId !== mentionId);
+          return {
+            ...current,
+            placeMentions: mentions,
+            placeIssues: placeResolutionIssuesForMentions(mentions),
+            placeSelections: (current.placeSelections ?? []).filter((selection) => selection.mentionId !== mentionId),
+          };
+        });
+        setIntakeMentions((current) => current.filter((mention) => mention.mentionId !== mentionId));
+        setPlaceSelections((current) => current.filter((selection) => selection.mentionId !== mentionId));
+        setCompletedPlanningAreaMentionIds((current) => current.filter((id) => id !== mentionId));
+        setRemovedPlaceMentionIds((current) => current.filter((id) => id !== mentionId));
+        setTransientPlanningMentionId(null);
+      }
+      setBaseSearchInputs((current) => { const next = { ...current }; delete next[mentionId]; return next; });
+      setBaseSearchErrors((current) => { const next = { ...current }; delete next[mentionId]; return next; });
+      if (target === "origin") {
+        setOriginPlanningMentionId(null);
+        if (isTransientClarification) {
+          replaceJourneyOrigin(previousOrigin ?? { name: "" });
+          setOriginTouched(previousOrigin?.touched ?? false);
+          originBeforePlanningClarificationRef.current = null;
+        }
+      } else {
+        setShowStopEditor(false);
+        setResolvingPlaceMentionId(null);
+        setStopInput("");
+        setStopError("");
+      }
+      return true;
+    } catch {
+      return false;
+    } finally {
+      if (planningClarificationCancelPendingRef.current === token) planningClarificationCancelPendingRef.current = null;
+    }
   };
 
   const addStop = async (
@@ -3036,7 +3128,9 @@ function TripBuilderDocument() {
     canonicalSuggestion?: CanonicalPlaceSuggestion,
     discoverySelectionVerified = false,
     acceptedCountryReview?: NonNullable<typeof countryAddReview>,
+    callerIsCurrent?: () => boolean,
   ) => {
+    if (callerIsCurrent?.() === false) return;
     const sourceSnapshot=builderEditSessionRef.current?.getSnapshot();
     const expectedInputRevision = sourceSnapshot?.inputRevision;
     const lookupSequence=++addPlaceLookupSequenceRef.current;
@@ -3050,6 +3144,7 @@ function TripBuilderDocument() {
       ? (capturedStructuredBrief.placeMentions ?? intakeMentions).find((mention) => mention.mentionId === targetMentionId)
       : undefined;
     const lookupIsCurrent=()=>{
+      if (callerIsCurrent?.() === false) return false;
       if(!sourceSnapshot)return true;
       const current=builderEditSessionRef.current?.getSnapshot();
       if(!current||lookupSequence!==addPlaceLookupSequenceRef.current||current.trip.id!==sourceSnapshot.trip.id
@@ -3303,6 +3398,7 @@ function TripBuilderDocument() {
         if (restoredMention) setRemovedPlaceMentionIds((current) => current.filter((mentionId) => mentionId !== restoredMention.mentionId));
       }
       if(builderEditSessionRef.current && selectedCommands.length && !await dispatchAcceptedBuilderEdits(selectedCommands,{expectedInputRevision,acceptedInputs:!targetMentionId?[{binding:{kind:"destination-add"},raw:stopInput}]:undefined})) return fail("This place could not be retained safely. Your trip is preserved.");
+      if (callerIsCurrent?.() === false) return;
       if(targetMentionId){
         setResolvingPlaceMentionId(null);
         setTransientPlanningMentionId(current=>current===targetMentionId?null:current);
@@ -3320,7 +3416,7 @@ function TripBuilderDocument() {
     } catch {
       fail(ui.unavailable);
     } finally {
-      if(lookupSequence===addPlaceLookupSequenceRef.current)setStopChecking(false);
+      if(lookupSequence===addPlaceLookupSequenceRef.current && callerIsCurrent?.() !== false)setStopChecking(false);
     }
   };
 
@@ -3399,7 +3495,42 @@ function TripBuilderDocument() {
     setDecisionSelections((current) => ({ ...current, routeOrder: undefined }));
   };
 
-  const completePlanningArea = async (mention: CapturedLocation, committedNow = false) => {
+  const planningAreaViewKey = JSON.stringify([activeBrowserOwnerId, tripId, clarificationOpen,
+    clarificationSessionIds, clarificationIndex, clarificationDismissed]);
+  const planningAreaViewRef = useRef({ key: planningAreaViewKey, editor: builderEditSessionRef.current, generation: 0 });
+  if (planningAreaViewRef.current.key !== planningAreaViewKey || planningAreaViewRef.current.editor !== builderEditSessionRef.current) {
+    planningAreaViewRef.current = { key: planningAreaViewKey, editor: builderEditSessionRef.current, generation: planningAreaViewRef.current.generation + 1 };
+  }
+  const planningAreaPendingRef = useRef(new Map<string, object>());
+  const planningAreaInputKey = JSON.stringify([baseSearchInputs, baseSearchErrors, origin, stopInput,
+    resolvingPlaceMentionId, showStopEditor, originPlanningMentionId]);
+  const planningAreaInputRef = useRef({ key: planningAreaInputKey, generation: 0 });
+  if (planningAreaInputRef.current.key !== planningAreaInputKey) {
+    planningAreaInputRef.current = { key: planningAreaInputKey, generation: planningAreaInputRef.current.generation + 1 };
+  }
+  useEffect(() => () => { planningAreaViewRef.current.generation += 1; planningAreaPendingRef.current.clear(); }, []);
+  const capturePlanningAreaView = () => {
+    const generation = planningAreaViewRef.current.generation, editor = builderEditSessionRef.current;
+    const ownerId = activeBrowserOwnerIdRef.current, documentId = builderCurrentDocumentRef.current?.id;
+    const searchVersion = discoverySearchVersionRef.current;
+    return () => builderMountedRef.current && planningAreaViewRef.current.generation === generation
+      && builderEditSessionRef.current === editor && activeBrowserOwnerIdRef.current === ownerId
+      && builderCurrentDocumentRef.current?.id === documentId && discoverySearchVersionRef.current === searchVersion;
+  };
+  const beginPlanningAreaAction = (mentionId: string, callerIsCurrent?: () => boolean) => {
+    const viewIsCurrent = capturePlanningAreaView(), inputGeneration = planningAreaInputRef.current.generation;
+    const baseSearchVersion = planningBaseSearchIntentVersionRef.current;
+    if (!viewIsCurrent() || callerIsCurrent?.() === false || planningAreaPendingRef.current.has(mentionId)) return null;
+    const token = {}; planningAreaPendingRef.current.set(mentionId, token);
+    return { isCurrent: () => viewIsCurrent() && planningAreaInputRef.current.generation === inputGeneration
+      && planningBaseSearchIntentVersionRef.current === baseSearchVersion
+      && planningAreaPendingRef.current.get(mentionId) === token && callerIsCurrent?.() !== false,
+      finish: () => { if (planningAreaPendingRef.current.get(mentionId) === token) planningAreaPendingRef.current.delete(mentionId); } };
+  };
+
+  const completePlanningArea = async (mention: CapturedLocation, committedNow = false, callerIsCurrent?: () => boolean): Promise<boolean> => {
+    const request = beginPlanningAreaAction(mention.mentionId, callerIsCurrent); if (!request) return false;
+    try {
     if (!committedNow && !placeSelections.some((selection) => selection.mentionId === mention.mentionId && selection.routeStopId)) {
       setBaseSearchErrors((current) => ({
         ...current,
@@ -3407,34 +3538,38 @@ function TripBuilderDocument() {
           ? `Elige al menos un lugar en ${placeDisplayName(mention)}.`
           : `Choose at least one place in ${placeDisplayName(mention)}.`,
       }));
-      return;
+      return false;
     }
-    if(builderEditSessionRef.current) { if(!await dispatchAcceptedBuilderEdit({kind:"planning-area",mentionId:mention.mentionId,action:"complete"})) return; }
+    if(builderEditSessionRef.current) { if(await dispatchAcceptedBuilderEdit({kind:"planning-area",mentionId:mention.mentionId,action:"complete"}) !== true || !request.isCurrent()) return false; }
     else setCompletedPlanningAreaMentionIds((current) => [...new Set([...current, mention.mentionId])]);
     setResolvingPlaceMentionId((current) => current === mention.mentionId ? null : current);
     setTransientPlanningMentionId((current) => current === mention.mentionId ? null : current);
     setBaseSearchInputs((current) => ({ ...current, [mention.mentionId]: "" }));
     setBaseSearchErrors((current) => ({ ...current, [mention.mentionId]: "" }));
     setShowStopEditor(false);
+    return true;
+    } catch { return false; } finally { request.finish(); }
   };
 
   const removePlanningArea = async (
     mention: CapturedLocation,
     plan: ReturnType<typeof builderClarificationRemovalPlan>,
   ) => {
-    if (!plan.ownershipKnown) return;
+    if (!plan.ownershipKnown) return false;
+    const request = beginPlanningAreaAction(mention.mentionId); if (!request) return false;
+    try {
     handoffLookupSessionRef.current?.handled.add(mention.mentionId);
     const removableStopIds = new Set(plan.removableStopIds);
     rememberStructuralChange("remove_requested_place", Math.max(1, removableStopIds.size));
     if(builderEditSessionRef.current) {
       const trip=builderEditSessionRef.current.getSnapshot().trip;
       const commands:BuilderAcceptedEdit[]= [...removableStopIds].map(id=>builderRemoveCommand(trip,id)).filter((edit):edit is BuilderAcceptedEdit=>edit!==null);
-      if(commands.length !== removableStopIds.size) return;
+      if(commands.length !== removableStopIds.size) return false;
       const parent=trip.brief.intent.route.destinations.find(intent=>intent.id===mention.mentionId);
       if(parent && !parent.stopIds.length) commands.push({kind:"remove-destination",intentId:parent.id});
       commands.push({kind:"planning-area",mentionId:mention.mentionId,action:"remove"});
-      if(await dispatchAcceptedBuilderEdits(commands)) {setTransientPlanningMentionId(null);advanceClarificationSession();}
-      return;
+      if(await dispatchAcceptedBuilderEdits(commands) !== true || !request.isCurrent()) return false;
+      setTransientPlanningMentionId(null);advanceClarificationSession();return true;
     }
     setPlaceSelections((current) => current.filter((selection) => selection.mentionId !== mention.mentionId));
     setCompletedPlanningAreaMentionIds((current) => current.filter((id) => id !== mention.mentionId));
@@ -3451,10 +3586,14 @@ function TripBuilderDocument() {
     }
     setTransientPlanningMentionId((current) => current === mention.mentionId ? null : current);
     advanceClarificationSession();
+    return true;
+    } catch { return false; } finally { request.finish(); }
   };
 
   const reopenPlanningArea = async (mention: CapturedLocation) => {
-    if(builderEditSessionRef.current && !await dispatchAcceptedBuilderEdit({kind:"planning-area",mentionId:mention.mentionId,action:"reopen"})) return;
+    const request = beginPlanningAreaAction(mention.mentionId); if (!request) return false;
+    try {
+    if(builderEditSessionRef.current && (await dispatchAcceptedBuilderEdit({kind:"planning-area",mentionId:mention.mentionId,action:"reopen"}) !== true || !request.isCurrent())) return false;
     setCompletedPlanningAreaMentionIds((current) => current.filter((mentionId) => mentionId !== mention.mentionId));
     setResolvingPlaceMentionId(null);
     setBaseSearchInputs((current) => ({ ...current, [mention.mentionId]: "" }));
@@ -3463,12 +3602,15 @@ function TripBuilderDocument() {
     setClarificationAutoOpened(true);
     setClarificationDismissed(false);
     setClarificationOpen(true);
+    return true;
+    } catch { return false; } finally { request.finish(); }
   };
 
   const addGuidedPlanningPlace = async (
     mention: CapturedLocation,
     suggestion: GuidedPlanningAreaSuggestion,
     discoverySelectionVerified = false,
+    callerIsCurrent?: () => boolean,
   ) => await addStop(suggestion.name, suggestion.country, mention.mentionId, undefined, {
     referenceSnapshotId: suggestion.referenceSnapshotId,
     canonicalPlaceId: suggestion.canonicalPlaceId,
@@ -3483,7 +3625,7 @@ function TripBuilderDocument() {
     coordinates: suggestion.coordinates,
     routability: "direct_destination",
     provenance: suggestion.provenance,
-  }, discoverySelectionVerified);
+  }, discoverySelectionVerified, undefined, callerIsCurrent);
 
   const applyGuidedPlanningShape = async (
     mention: CapturedLocation,
@@ -3904,13 +4046,20 @@ function TripBuilderDocument() {
     return true;
   };
   const addFixedCommitment = async () => {
-    const label = fixedCommitmentLabel.trim();
-    if (!label) return;
+    if (!builderMountedRef.current || fixedCommitmentSubmissionRef.current) return false;
+    const input = fixedCommitmentInputRef.current, label = input.label.trim();
+    if (!label) return false;
+    const editor = builderEditSessionRef.current, source = editor?.getSnapshot(), token = {};
+    if (source && (source.browserOwnerId !== input.ownerId || source.trip.id !== input.tripId)) return false;
+    fixedCommitmentSubmissionRef.current = token;
+    const isCurrent = () => builderMountedRef.current && fixedCommitmentSubmissionRef.current === token
+      && fixedCommitmentInputRef.current.generation === input.generation
+      && activeBrowserOwnerIdRef.current === input.ownerId && builderEditSessionRef.current === editor;
     const suggestion = canonicalPlaceSuggestionFor(label);
     const commitment: FixedTripCommitment = {
       id: `fixed-${Date.now()}`,
       label,
-      date: fixedCommitmentDate || undefined,
+      date: input.date || undefined,
       commitmentType: "fixed-date",
       place: suggestion ? {
         name: suggestion.name,
@@ -3919,12 +4068,24 @@ function TripBuilderDocument() {
         coordinates: suggestion.coordinates,
       } : { name: label },
     };
-    if (builderEditSessionRef.current) {
-      const currentIntent = builderEditSessionRef.current.getSnapshot().trip.brief.intent;
-      if (!await updateBuilderConstraints({ fixedCommitments: [...currentIntent.hardConstraints.fixedCommitments, commitment] })) return;
-    } else setTripIntent(current => ({ ...current, hardConstraints: { ...current.hardConstraints, fixedCommitments: [...current.hardConstraints.fixedCommitments, commitment] } }));
-    setFixedCommitmentLabel("");
-    setFixedCommitmentDate("");
+    try {
+      if (editor && source) {
+        if (await updateBuilderConstraints({ fixedCommitments: [...source.trip.brief.intent.hardConstraints.fixedCommitments, commitment] }) !== true
+          || !isCurrent()) return false;
+        const latest = editor.getSnapshot();
+        if (latest.browserOwnerId !== input.ownerId || latest.trip.id !== input.tripId || latest.inputRevision !== source.inputRevision + 1) return false;
+      } else setTripIntent(current => ({ ...current, hardConstraints: { ...current.hardConstraints, fixedCommitments: [...current.hardConstraints.fixedCommitments, commitment] } }));
+      if (!isCurrent()) return false;
+      setFixedCommitmentLabel("");
+      setFixedCommitmentDate("");
+      return true;
+    } catch {
+      if (isCurrent()) setCloudSaveError(language === "es" ? "No pudimos guardar este plan fijo. Tus datos siguen disponibles."
+        : "This fixed plan could not be saved. Your input remains available.");
+      return false;
+    } finally {
+      if (fixedCommitmentSubmissionRef.current === token) fixedCommitmentSubmissionRef.current = null;
+    }
   };
 
   const selectOriginSuggestion = async (suggestion: CanonicalPlaceSuggestion) => {
@@ -4650,17 +4811,23 @@ function TripBuilderDocument() {
   },[builderSeed,hydrated,pendingInterpretation,resolvingLocations,tripUnavailable,activeBrowserOwnerId,activeTripDocument,persistDeviceRecovery]);
 
   useEffect(() => {
+    let active = true;
     const preserveBeforeNewTrip = (event: Event) => {
-      if (!hydrated || (!origin.trim() && !tripBrief.trim() && !stops.length)) return;
+      if (!active || !hydrated || (!origin.trim() && !tripBrief.trim() && !stops.length)) return;
+      const sourceHref = window.location.href;
       deferNewTripNavigation(event, (async () => {
         const recovery = await persistDeviceRecovery(activeTripDocument,"preservation");
-        if (!builderMountedRef.current || activeBrowserOwnerIdRef.current !== activeBrowserOwnerId) return false;
+        if (!active || !builderMountedRef.current || activeBrowserOwnerIdRef.current !== activeBrowserOwnerId) return false;
         setDeviceRecoveryBlocked(recovery.blockedByExistingRecovery);
         setDevicePersistenceOutcome(recoveryPersistenceOutcome(recovery));
         setDeviceRecoveryDurable(recovery.recoveryDurable === true || recovery.stored);
         reportPersistenceOutcome("homepage-preservation", recovery);
         setDeviceStorageBlocked(!recovery.stored && !recovery.blockedByExistingRecovery);
-        if (shouldAllowNewTripNavigation(recovery)) {setSaveState("local");return true;}
+        if (shouldAllowNewTripNavigation(recovery) === true && recovery.pointerAcknowledged !== false && recovery.receiptAcknowledged !== false
+          && recovery.handle.tripId === activeTripDocument.id && recovery.handle.ownerId === activeBrowserOwnerId) {
+          setSaveState("local");
+          return { accepted: true as const, recoveryNavigation: { sourceHref, tripId: activeTripDocument.id } };
+        }
         setSaveState("error");
         setCloudSaveError(recovery.blockedByExistingRecovery
           ? (language === "es" ? "Resuelve primero la copia de recuperación de este dispositivo antes de empezar otro viaje." : "Open or resolve this device's recovery copy before starting another trip.")
@@ -4669,7 +4836,7 @@ function TripBuilderDocument() {
       })());
     };
     window.addEventListener(EASYT_BEFORE_NEW_TRIP_EVENT, preserveBeforeNewTrip);
-    return () => window.removeEventListener(EASYT_BEFORE_NEW_TRIP_EVENT, preserveBeforeNewTrip);
+    return () => { active = false; window.removeEventListener(EASYT_BEFORE_NEW_TRIP_EVENT, preserveBeforeNewTrip); };
   }, [activeTripDocument, hydrated, language, origin, persistDeviceRecovery, stops.length, tripBrief]);
 
   useEffect(() => {
@@ -5378,19 +5545,11 @@ function TripBuilderDocument() {
                         showPlaceType={false}
                         invalid={Boolean(baseSearchErrors[inlineOriginPlanningMention.mentionId])}
                         describedBy={baseSearchErrors[inlineOriginPlanningMention.mentionId] ? `${originErrorId}-base` : undefined}
-                        onChange={(value) => { setBaseSearchInputs((current) => ({ ...current, [inlineOriginPlanningMention.mentionId]: value })); setBaseSearchErrors((current) => ({ ...current, [inlineOriginPlanningMention.mentionId]: "" })); }}
+                        onChange={(value) => { planningBaseSearchUserIntentVersionRef.current += 1; setBaseSearchInputs((current) => ({ ...current, [inlineOriginPlanningMention.mentionId]: value })); setBaseSearchErrors((current) => ({ ...current, [inlineOriginPlanningMention.mentionId]: "" })); }}
                         onSelect={async (suggestion) => { void selectOriginBase(inlineOriginPlanningMention, suggestion); }}
                       />
                       <EasyTButton variant="secondary" onClick={async () => {
-                        const isTransientClarification = inlineOriginPlanningMention.mentionId === transientPlanningMentionId;
-                        await cancelTransientPlanningClarification(inlineOriginPlanningMention.mentionId);
-                        setOriginPlanningMentionId(null);
-                        if (isTransientClarification) {
-                          const previousOrigin = originBeforePlanningClarificationRef.current;
-                          replaceJourneyOrigin(previousOrigin ?? { name: "" });
-                          setOriginTouched(previousOrigin?.touched ?? false);
-                          originBeforePlanningClarificationRef.current = null;
-                        }
+                        return await cancelTransientPlanningClarification(inlineOriginPlanningMention.mentionId, "origin");
                       }}>{language === "es" ? "Cancelar" : "Cancel"}</EasyTButton>
                     </div>
                     {baseSearchErrors[inlineOriginPlanningMention.mentionId] ? <p id={`${originErrorId}-base`} className={styles.baseSelectorError} role="alert">{baseSearchErrors[inlineOriginPlanningMention.mentionId]}</p> : null}
@@ -5604,19 +5763,11 @@ function TripBuilderDocument() {
                         showPlaceType={false}
                         invalid={Boolean(baseSearchErrors[inlineOriginPlanningMention.mentionId])}
                         describedBy={baseSearchErrors[inlineOriginPlanningMention.mentionId] ? `${originErrorId}-base` : undefined}
-                        onChange={(value) => { setBaseSearchInputs((current) => ({ ...current, [inlineOriginPlanningMention.mentionId]: value })); setBaseSearchErrors((current) => ({ ...current, [inlineOriginPlanningMention.mentionId]: "" })); }}
+                        onChange={(value) => { planningBaseSearchUserIntentVersionRef.current += 1; setBaseSearchInputs((current) => ({ ...current, [inlineOriginPlanningMention.mentionId]: value })); setBaseSearchErrors((current) => ({ ...current, [inlineOriginPlanningMention.mentionId]: "" })); }}
                         onSelect={async (suggestion) => { void selectOriginBase(inlineOriginPlanningMention, suggestion); }}
                       />
                       <button type="button" onClick={async () => {
-                        const isTransientClarification = inlineOriginPlanningMention.mentionId === transientPlanningMentionId;
-                        await cancelTransientPlanningClarification(inlineOriginPlanningMention.mentionId);
-                        setOriginPlanningMentionId(null);
-                        if (isTransientClarification) {
-                          const previousOrigin = originBeforePlanningClarificationRef.current;
-                          replaceJourneyOrigin(previousOrigin ?? { name: "" });
-                          setOriginTouched(previousOrigin?.touched ?? false);
-                          originBeforePlanningClarificationRef.current = null;
-                        }
+                        return await cancelTransientPlanningClarification(inlineOriginPlanningMention.mentionId, "origin");
                       }}>{language === "es" ? "Cancelar" : "Cancel"}</button>
                     </div>
                     {baseSearchErrors[inlineOriginPlanningMention.mentionId] ? <p id={`${originErrorId}-base`} className={styles.baseSelectorError} role="alert">{baseSearchErrors[inlineOriginPlanningMention.mentionId]}</p> : null}
@@ -5703,10 +5854,10 @@ function TripBuilderDocument() {
                         describedBy={baseSearchErrors[inlineStopBaseMention.mentionId] ? `${stopErrorId}-base` : undefined}
                         emptyMessage={language === "es" ? `No encontramos lugares coincidentes en ${placeDisplayName(inlineStopBaseMention)}.` : `No matching places found in ${placeDisplayName(inlineStopBaseMention)}.`}
                         failureMessage={language === "es" ? `No pudimos buscar dentro de ${placeDisplayName(inlineStopBaseMention)}. Inténtalo de nuevo.` : `We couldn't search within ${placeDisplayName(inlineStopBaseMention)}. Try again.`}
-                        onChange={(value) => { setBaseSearchInputs((current) => ({ ...current, [inlineStopBaseMention.mentionId]: value })); setBaseSearchErrors((current) => ({ ...current, [inlineStopBaseMention.mentionId]: "" })); }}
+                        onChange={(value) => { planningBaseSearchUserIntentVersionRef.current += 1; setBaseSearchInputs((current) => ({ ...current, [inlineStopBaseMention.mentionId]: value })); setBaseSearchErrors((current) => ({ ...current, [inlineStopBaseMention.mentionId]: "" })); }}
                         onSelect={async (suggestion) => { void addStop(suggestion.name, suggestion.country, inlineStopBaseMention.mentionId, undefined, suggestion); }}
                       />
-                      <button type="button" onClick={async () => { await cancelTransientPlanningClarification(inlineStopBaseMention.mentionId); setShowStopEditor(false); setResolvingPlaceMentionId(null); setStopInput(""); setStopError(""); }}>{language === "es" ? "Cancelar" : "Cancel"}</button>
+                      <button type="button" onClick={async () => { return await cancelTransientPlanningClarification(inlineStopBaseMention.mentionId, "stop"); }}>{language === "es" ? "Cancelar" : "Cancel"}</button>
                     </div>
                     {baseSearchErrors[inlineStopBaseMention.mentionId] ? <p id={`${stopErrorId}-base`} className={styles.baseSelectorError} role="alert">{baseSearchErrors[inlineStopBaseMention.mentionId]}</p> : null}
                   </div> : <>
@@ -5778,7 +5929,7 @@ function TripBuilderDocument() {
                           showPlaceType={false}
                           emptyMessage={language === "es" ? `No encontramos lugares coincidentes en ${placeDisplayName(mention)}.` : `No matching places found in ${placeDisplayName(mention)}.`}
                           failureMessage={language === "es" ? `No pudimos buscar dentro de ${placeDisplayName(mention)}. Inténtalo de nuevo.` : `We couldn't search within ${placeDisplayName(mention)}. Try again.`}
-                          onChange={(value) => { setBaseSearchInputs((current) => ({ ...current, [mention.mentionId]: value })); setBaseSearchErrors((current) => ({ ...current, [mention.mentionId]: "" })); }}
+                          onChange={(value) => { planningBaseSearchUserIntentVersionRef.current += 1; setBaseSearchInputs((current) => ({ ...current, [mention.mentionId]: value })); setBaseSearchErrors((current) => ({ ...current, [mention.mentionId]: "" })); }}
                           onSelect={async (suggestion) => { void addStop(suggestion.name, suggestion.country, mention.mentionId, undefined, suggestion); }}
                         />
                         {baseSearchErrors[mention.mentionId] ? <p className={styles.baseSelectorError} role="alert">{baseSearchErrors[mention.mentionId]}</p> : null}
@@ -5998,20 +6149,27 @@ function TripBuilderDocument() {
             } };
           });
         }}
-        onConfirm={() => {
+        onConfirm={async () => {
           const review = canonicalDiscoveryReview;
           if (discoveryCommitRef.current || !review?.canConfirm) return;
+          const viewIsCurrent = capturePlanningAreaView(), userInputVersion = planningBaseSearchUserIntentVersionRef.current;
+          const confirmIsCurrent = () => viewIsCurrent() && planningBaseSearchUserIntentVersionRef.current === userInputVersion;
+          if (!confirmIsCurrent()) return;
           discoveryCommitRef.current = true;
           setDiscoveryCommitting(true);
           const mention = activeClarificationMention;
           const checkpoint = async () => {
+            if (!confirmIsCurrent()) return false;
             const owners = discoveryOwnersRef.current;
             let recovery = await owners.persistDeviceRecovery(owners.trip);
+            if (!confirmIsCurrent()) return false;
             if (!recovery.stored && receiptAcknowledgementRef.current) {
               const acknowledged = await receiptAcknowledgementRef.current;
+              if (!confirmIsCurrent()) return false;
               const current = discoveryOwnersRef.current;
               if (acknowledged && current.trip.id === owners.trip.id) {
                 recovery = await current.persistDeviceRecovery(current.trip);
+                if (!confirmIsCurrent()) return false;
               }
             }
             setDeviceRecoveryBlocked(recovery.blockedByExistingRecovery);
@@ -6022,13 +6180,14 @@ function TripBuilderDocument() {
               : "These choices could not be saved. Retry before closing.");
             return recovery.stored;
           };
-          void (async () => {
             try {
               // Paint the existing progress state before canonical acceptance.
               await new Promise<void>(resolve => window.requestAnimationFrame(() => window.setTimeout(resolve, 0)));
+              if (!confirmIsCurrent()) return;
               const result = await commitDiscoveryReview(review, {
                 currentTrip: () => discoveryOwnersRef.current.trip,
                 addBase: async choice => {
+                  if (!confirmIsCurrent()) return false;
                   const suggestion = choice.suggestion;
                   const reviewedPlace = discoveryProjection.places.find(place => place.id === choice.id);
                   const coordinates = suggestion.coordinates ?? reviewedPlace?.coordinates;
@@ -6041,8 +6200,8 @@ function TripBuilderDocument() {
                     reason: discoveryDraft.searchSelections?.some(item => item.canonicalPlaceId === choice.id)
                       ? "Traveller selected this canonical place in search." : "Traveller confirmed this reviewed place.",
                     anchorMatched: false,
-                  }, true);
-                  if (!added) return false;
+                  }, true, confirmIsCurrent);
+                  if (!added || !confirmIsCurrent()) return false;
                   const ownerHasChoice = () => {
                     const current = discoveryOwnersRef.current.trip;
                     return current.stops.some(stop => stop.canonicalPlaceId === choice.id)
@@ -6055,11 +6214,14 @@ function TripBuilderDocument() {
                   // before the confirmation owner validates and checkpoints it.
                   for (let frame = 0; frame < 8 && !ownerHasChoice(); frame++) {
                     await new Promise<void>(resolve => window.requestAnimationFrame(() => resolve()));
+                    if (!confirmIsCurrent()) return false;
                   }
                   return ownerHasChoice();
                 },
                 linkVisit: async (visit, stopId) => {
+                  if (!confirmIsCurrent()) return false;
                   await discoveryOwnersRef.current.confirmAttractionVisit(mention, visit.proposal, stopId);
+                  if (!confirmIsCurrent()) return false;
                   const ownerHasVisit = () => discoveryOwnersRef.current.trip.brief.structuredBrief?.placeSelections?.some(selection =>
                     selection.mentionId === visit.intentId && selection.kind === "visit" && selection.routeStopId === stopId
                     && selection.provenance.id === `builder-attraction-visit:${visit.intentId}:${stopId}`) ?? false;
@@ -6068,31 +6230,36 @@ function TripBuilderDocument() {
                   // up before the commit owner validates the visit checkpoint.
                   for (let frame = 0; frame < 8 && !ownerHasVisit(); frame++) {
                     await new Promise<void>(resolve => window.requestAnimationFrame(() => resolve()));
+                    if (!confirmIsCurrent()) return false;
                   }
                   return ownerHasVisit();
                 },
                 applyRouteOrder: async orderedIds => {
+                  if (!confirmIsCurrent()) return false;
                   const current = discoveryOwnersRef.current.trip;
                   const stopIds = orderedIds.map(id => id.startsWith("discovery:")
                     ? current.stops.find(stop => stop.canonicalPlaceId === id.slice("discovery:".length))?.id
                     : id).filter((id): id is string => Boolean(id));
                   if (stopIds.length !== current.stops.length || new Set(stopIds).size !== current.stops.length) return false;
-                  return discoveryOwnersRef.current.applyRouteOrder(stopIds);
+                  const applied = await discoveryOwnersRef.current.applyRouteOrder(stopIds);
+                  return applied === true && confirmIsCurrent();
                 },
                 persist: checkpoint,
                 completeMention: async () => {
+                  if (!confirmIsCurrent()) return false;
                   const editor = builderEditSessionRef.current;
                   const confirmedDraft = reduceDiscoveryDraft(discoveryDraft, {type:"mark-confirmed"});
                   if (editor) {
                     if (!await dispatchAcceptedBuilderEdits([{kind:"planning-area",action:"complete",mentionId:mention.mentionId},
-                      {kind:"discovery-state",mentionId:mention.mentionId,draft:confirmedDraft}])) return false;
+                      {kind:"discovery-state",mentionId:mention.mentionId,draft:confirmedDraft}]) || !confirmIsCurrent()) return false;
                   } else flushSync(() => {
                     setCompletedPlanningAreaMentionIds(current => [...new Set([...current,mention.mentionId])]);
                     setCapturedStructuredBrief(current => ({...current,discoveryDraftByMentionId:{...current.discoveryDraftByMentionId,[mention.mentionId]:confirmedDraft}}));
                   });
                   await new Promise<void>(resolve => window.requestAnimationFrame(() => resolve()));
+                  if (!confirmIsCurrent()) return false;
                   const stored = await checkpoint();
-                  if (!stored) {
+                  if (!stored && confirmIsCurrent()) {
                     if (editor && builderEditSessionRef.current === editor) await dispatchAcceptedBuilderEdits([
                       {kind:"planning-area",action:"reopen",mentionId:mention.mentionId},
                       {kind:"discovery-state",mentionId:mention.mentionId,draft:discoveryDraft}]);
@@ -6104,6 +6271,7 @@ function TripBuilderDocument() {
                   return stored;
                 },
               });
+              if (!confirmIsCurrent()) return;
               if (!result.ok) {
                 const names = result.committedIds.map(id => discoveryProjection.places.find(place => place.id === id)?.name
                   ?? discoveryDraft.searchSelections?.find(item => item.canonicalPlaceId === id)?.name ?? mention.canonicalName).join(", ");
@@ -6112,20 +6280,20 @@ function TripBuilderDocument() {
                   : `${names ? `Saved: ${names}. ` : ""}Some choices still need confirmation. Retry; saved choices will be reused.` }));
                 return;
               }
-              setCloudSaveError("");
-              const completion = discoveryConfirmedEvent(result.ok, discoveryEventKind, discoveryDraft.shortlistIds.length);
-              if (completion) trackEvent("discovery_confirmed", completion);
               // Discovery has committed canonical route bases. Return to the
               // existing Builder editing surface instead of retaining its
               // compact, desktop-hidden handoff summary state.
-              await completePlanningArea(mention, true);
+              if (await completePlanningArea(mention, true, confirmIsCurrent) !== true || !confirmIsCurrent()) return;
+              setCloudSaveError("");
+              const completion = discoveryConfirmedEvent(result.ok, discoveryEventKind, discoveryDraft.shortlistIds.length);
+              if (completion) trackEvent("discovery_confirmed", completion);
               setShowStopEditor(true);
               advanceClarificationSession();
-            } finally {
+            } catch { /* Preserve the current choices when any acceptance is rejected. */ }
+            finally {
               discoveryCommitRef.current = false;
-              setDiscoveryCommitting(false);
+              if (builderMountedRef.current) setDiscoveryCommitting(false);
             }
-          })();
         }}
         onClose={async (action) => {
           if (discoveryCommitRef.current) return;
@@ -6195,6 +6363,7 @@ function TripBuilderDocument() {
           error: baseSearchErrors[activeClarificationMention.mentionId],
           onChange: (value) => {
             discoverySearchVersionRef.current += 1;
+            planningBaseSearchUserIntentVersionRef.current += 1;
             setBaseSearchInputs((current) => ({ ...current, [activeClarificationMention.mentionId]: value }));
             setBaseSearchErrors((current) => ({ ...current, [activeClarificationMention.mentionId]: "" }));
             setOutsideDiscoveryChoice(null);
@@ -6358,7 +6527,7 @@ function TripBuilderDocument() {
           candidates: searchedAreaBases?.mentionId === activeClarificationMention.mentionId ? searchedAreaBases.suggestions : [],
           status: searchedAreaBases?.mentionId === activeClarificationMention.mentionId ? searchedAreaBases.status : "loading",
           value: baseSearchInputs[activeClarificationMention.mentionId] ?? "",
-          onChange: value => { setBaseSearchInputs(current => ({ ...current, [activeClarificationMention.mentionId]: value }));
+          onChange: value => { planningBaseSearchUserIntentVersionRef.current += 1; setBaseSearchInputs(current => ({ ...current, [activeClarificationMention.mentionId]: value }));
             setBaseSearchErrors(current => ({ ...current, [activeClarificationMention.mentionId]: "" })); },
           onSelect: async suggestion => {
             if (!discoveryBaseForSearchedArea(pendingDiscoveryBase.area, suggestion)) {
@@ -6461,6 +6630,7 @@ function TripBuilderDocument() {
             ? language === "es" ? `No pudimos buscar cerca de ${clarificationParentName}. Se conserva tu intención original.` : `We couldn't search near ${clarificationParentName}. Your original intent is preserved.`
             : language === "es" ? `No pudimos buscar dentro de ${clarificationParentName}. Inténtalo de nuevo.` : `We couldn't search within ${clarificationParentName}. Try again.`,
           onChange: (value) => {
+            planningBaseSearchUserIntentVersionRef.current += 1;
             setBaseSearchInputs((current) => ({ ...current, [activeClarificationMention.mentionId]: value }));
             setBaseSearchErrors((current) => ({ ...current, [activeClarificationMention.mentionId]: "" }));
           },
@@ -6492,34 +6662,37 @@ function TripBuilderDocument() {
           ? language === "es" ? `Quitar ${clarificationParentName} del viaje` : `Remove ${clarificationParentName} from trip`
           : undefined}
         onDismiss={dismissClarificationSession}
-        onBack={clarificationIndex > 0 ? () => setClarificationIndex((current) => Math.max(0, current - 1)) : undefined}
+        onBack={clarificationIndex > 0 ? () => { discoverySearchVersionRef.current += 1; setClarificationIndex((current) => Math.max(0, current - 1)); } : undefined}
         onDone={async () => {
           if (!activeClarificationMention || (!clarificationSelected.length && !clarificationDiscovery?.selectedIds.length)) return;
+          if (discoveryCommitRef.current) return;
+          const viewIsCurrent = capturePlanningAreaView(), userInputVersion = planningBaseSearchUserIntentVersionRef.current;
+          const isCurrent = () => viewIsCurrent() && planningBaseSearchUserIntentVersionRef.current === userInputVersion;
+          if (!isCurrent()) return;
+          const mention = activeClarificationMention;
+          discoveryCommitRef.current = true;
+          setDiscoveryCommitting(true);
+          try {
           if (clarificationDiscovery?.selectedIds.length) {
-            if (discoveryCommitRef.current) return;
-            discoveryCommitRef.current = true;
-            setDiscoveryCommitting(true);
-            void (async () => {
-              try {
                 let committed = 0;
                 for (const id of clarificationDiscovery.selectedIds) {
+                  if (!isCurrent()) return;
                   const candidate = clarificationDiscovery.candidates.find((item) => item.placeId === id);
                   if (!candidate) continue;
-                  const added = await addGuidedPlanningPlace(activeClarificationMention, candidate);
-                  if (!added) return;
+                  const added = await addGuidedPlanningPlace(mention, candidate, false, isCurrent);
+                  if (!added || !isCurrent()) return;
                   committed += 1;
                 }
-                await completePlanningArea(activeClarificationMention, committed > 0);
+                if (await completePlanningArea(mention, committed > 0, isCurrent) !== true || !isCurrent()) return;
                 advanceClarificationSession();
-              } finally {
-                discoveryCommitRef.current = false;
-                setDiscoveryCommitting(false);
-              }
-            })();
             return;
           }
-          if (clarificationSupportsMultiple || clarificationUsesNearbyBases) await completePlanningArea(activeClarificationMention);
+          if ((clarificationSupportsMultiple || clarificationUsesNearbyBases)
+            && await completePlanningArea(mention, false, isCurrent) !== true) return;
+          if (!isCurrent()) return;
           advanceClarificationSession();
+          } catch { /* Rejected work keeps this clarification and its input open. */ }
+          finally { discoveryCommitRef.current = false; if (builderMountedRef.current) setDiscoveryCommitting(false); }
         }}
         onRemoveItem={activeClarificationMention && activeClarificationRemovalPlan?.ownershipKnown
           ? async () => await removePlanningArea(activeClarificationMention, activeClarificationRemovalPlan)

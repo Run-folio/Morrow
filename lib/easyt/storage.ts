@@ -146,28 +146,56 @@ export function beginNewTripNavigationInStorage(
   return clearCurrentTripInStorage(storage, ownerId);
 }
 
-export async function beginNewTripNavigation(ownerId:string|null,target?:Pick<EventTarget,"dispatchEvent">) {
+export type NewTripNavigationRecoveryAcknowledgement = {sourceHref:string;tripId:string};
+export type NewTripNavigationPreservation = boolean | {accepted:true;recoveryNavigation:NewTripNavigationRecoveryAcknowledgement};
+
+export async function beginNewTripNavigation(ownerId:string|null,target?:Pick<EventTarget,"dispatchEvent">,
+  isCurrent?:(acknowledgements?:readonly NewTripNavigationRecoveryAcknowledgement[])=>boolean) {
+  // Preserve the caller/owner boundary across the listener await, rather
+  // than starting a fresh authority epoch after preservation has finished.
+  let acknowledgements:readonly NewTripNavigationRecoveryAcknowledgement[]=[];
+  const guard=browserRecoveryGuard(()=>!isCurrent||isCurrent(acknowledgements)===true);
   const eventTarget=target??(typeof window!=="undefined"?window:null);if(!eventTarget)return false;
-  if(!await requestNewTripNavigationAsync(eventTarget))return false;
+  if(!guard())return false;
+  const preservation=await collectNewTripNavigationPreservation(eventTarget);
+  if(!preservation.accepted)return false;
+  acknowledgements=preservation.acknowledgements;
+  if(!guard())return false;
   try {
-    const cleared=await (await browserTripPersistence(ownerId)).clearCurrent();
+    const cleared=await (await browserTripPersistence(ownerId,guard)).clearCurrent();
+    if(!guard())return false;
     if(cleared)dispatchTripStorageChange({kind:"current-cleared",ownerId,tripId:null});
     return cleared;
   }catch{return false;}
 }
 
-export function deferNewTripNavigation(event:Event,preservation:Promise<boolean>) {
-  const detail=(event as CustomEvent<{waitUntil?:(pending:Promise<boolean>)=>void}>).detail;
+export function deferNewTripNavigation(event:Event,preservation:Promise<NewTripNavigationPreservation>) {
+  const detail=(event as CustomEvent<{waitUntil?:(pending:Promise<NewTripNavigationPreservation>)=>void}>).detail;
   if(typeof detail?.waitUntil==='function')detail.waitUntil(preservation);
   else {event.preventDefault();void preservation.catch(()=>false);}
 }
 export async function requestNewTripNavigationAsync(target:Pick<EventTarget,"dispatchEvent">) {
-  const pending:Promise<boolean>[]=[];
+  return (await collectNewTripNavigationPreservation(target)).accepted;
+}
+async function collectNewTripNavigationPreservation(target:Pick<EventTarget,"dispatchEvent">) {
+  const pending:Promise<NewTripNavigationPreservation>[]=[];
+  const refused={accepted:false,acknowledgements:[] as NewTripNavigationRecoveryAcknowledgement[]};
   try {
-    const detail={waitUntil:(preservation:Promise<boolean>)=>{pending.push(Promise.resolve(preservation).catch(()=>false));}};
+    const detail={waitUntil:(preservation:Promise<NewTripNavigationPreservation>)=>{pending.push(Promise.resolve(preservation).catch(()=>false));}};
     const accepted=target.dispatchEvent(new CustomEvent(EASYT_BEFORE_NEW_TRIP_EVENT,{cancelable:true,detail}));
-    return accepted&&(await Promise.all(pending)).every(value=>value===true);
-  }catch{return false;}
+    if(!accepted)return refused;
+    const acknowledgements:NewTripNavigationRecoveryAcknowledgement[]=[],bySource=new Map<string,string>();
+    for(const value of await Promise.all(pending)) {
+      if(value===true)continue;
+      if(!value||typeof value!=="object"||value.accepted!==true)return refused;
+      const ack=value.recoveryNavigation;
+      if(!ack||typeof ack.sourceHref!=="string"||!ack.sourceHref||typeof ack.tripId!=="string"||!ack.tripId.trim())return refused;
+      if(bySource.has(ack.sourceHref)&&bySource.get(ack.sourceHref)!==ack.tripId)return refused;
+      bySource.set(ack.sourceHref,ack.tripId);
+      acknowledgements.push({sourceHref:ack.sourceHref,tripId:ack.tripId});
+    }
+    return {accepted:true,acknowledgements};
+  }catch{return refused;}
 }
 
 type TripCacheRecord = {

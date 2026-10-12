@@ -96,6 +96,65 @@ function titleCase(value: string) {
   return value ? `${value[0]!.toUpperCase()}${value.slice(1)}` : value;
 }
 
+function exploreActionSourceKey(result: ExploreResult) {
+  // An accepted save may update the day binding before its continuation renders feedback.
+  const { dayId: _dayId, dayPart: _dayPart, ...source } = result.idea;
+  return JSON.stringify([result.identity, result.stopId, result.sourceId, result.kind,
+    result.title, result.provider, result.providerProductId, result.providerUrl, source]);
+}
+
+function useExploreActionScope(identity: string, results: readonly ExploreResult[]) {
+  const mountedRef = useRef(true);
+  const mountGenerationRef = useRef(0);
+  const intentVersionRef = useRef(0);
+  const scopeRef = useRef({ identity, sources: new Map<string, { key: string }>() });
+  if (scopeRef.current.identity !== identity) scopeRef.current = { identity, sources: new Map() };
+  const renderScope = scopeRef.current;
+  const replaceSources = useCallback((next: readonly ExploreResult[]) => {
+    const sources = scopeRef.current.sources;
+    const sourceKeys = new Map(next.map(result => [result.identity, exploreActionSourceKey(result)]));
+    for (const [id, source] of sources) {
+      if (sourceKeys.get(id) !== source.key) sources.delete(id);
+    }
+    for (const [id, key] of sourceKeys) {
+      if (!sources.has(id)) sources.set(id, { key });
+    }
+  }, []);
+  replaceSources(results);
+  const retireIntent = useCallback(() => { intentVersionRef.current += 1; }, []);
+  const renderIntentVersion = intentVersionRef.current;
+  const renderedSources = new Map(renderScope.sources);
+  const pendingRef = useRef(new Map<object, object>());
+  const [pending, setPending] = useState<Set<object>>(() => new Set());
+  useEffect(() => {
+    mountedRef.current = true;
+    setPending(current => current.size ? new Set() : current);
+    return () => { mountedRef.current = false; mountGenerationRef.current += 1; pendingRef.current.clear(); };
+  }, []);
+  const beginAction = (result: ExploreResult) => {
+    const mountGeneration = mountGenerationRef.current;
+    const source = renderedSources.get(result.identity);
+    const isCurrent = () => mountedRef.current && scopeRef.current === renderScope
+      && mountGenerationRef.current === mountGeneration && intentVersionRef.current === renderIntentVersion
+      && renderScope.sources.get(result.identity) === source;
+    if (!source || source.key !== exploreActionSourceKey(result) || !isCurrent() || pendingRef.current.has(source)) return null;
+    const operation = {};
+    pendingRef.current.set(source, operation);
+    setPending(new Set(pendingRef.current.keys()));
+    return {
+      isCurrent,
+      finish: () => {
+        if (pendingRef.current.get(source) === operation) pendingRef.current.delete(source);
+        if (mountedRef.current) setPending(new Set(pendingRef.current.keys()));
+      },
+    };
+  };
+  return { beginAction, retireIntent, replaceSources, isPending: (result: ExploreResult) => {
+    const source = renderedSources.get(result.identity);
+    return Boolean(source && pending.has(source));
+  } };
+}
+
 function providerRequestBody(trip: EasyTTrip, stop: TripStop) {
   const mention = trip.brief.structuredBrief?.placeMentions?.find((item) => item.canonicalPlaceId === stop.canonicalPlaceId);
   return {
@@ -262,6 +321,37 @@ export default function TripExploreWorkspace({
     () => destinationId ? filterExploreResults(workingTrip, results, destinationId, category) : [],
     [category, destinationId, results, workingTrip],
   );
+  const actions = useExploreActionScope(JSON.stringify([
+    workingTrip.id, workingTrip.ownerId, discoveryRequestKey, destinationId, category,
+    selectedResultId, selectedDayByResult, requestedDayNumber,
+    workingTrip.planItems.map(day => [day.id, day.stopId, day.dayNumber, day.date]),
+  ]), results);
+  const uiIntentRef = useRef({ destinationId, category, selectedResultId, selectedDayByResult });
+  uiIntentRef.current = { destinationId, category, selectedResultId, selectedDayByResult };
+  const retireActionIntent = useCallback((changes: Partial<typeof uiIntentRef.current>) => {
+    const next = { ...uiIntentRef.current, ...changes };
+    if (JSON.stringify(next) !== JSON.stringify(uiIntentRef.current)) actions.retireIntent();
+    uiIntentRef.current = next;
+  }, [actions.retireIntent]);
+  const laneResultsRef = useRef({ organicResults, commercialResults, persistedResults });
+  laneResultsRef.current = { organicResults, commercialResults, persistedResults };
+  const replaceOrganicResults = (next: ExploreResult[]) => {
+    laneResultsRef.current.organicResults = next;
+    actions.replaceSources(projectExploreResults(next, laneResultsRef.current.commercialResults, laneResultsRef.current.persistedResults));
+    setOrganicResults(next);
+  };
+  const replaceCommercialResults = (next: ExploreResult[]) => {
+    laneResultsRef.current.commercialResults = next;
+    actions.replaceSources(projectExploreResults(laneResultsRef.current.organicResults, next, laneResultsRef.current.persistedResults));
+    setCommercialResults(next);
+  };
+  const isResultPending = (result: ExploreResult) => actions.isPending(result)
+    || mutation.isPending(`explore-save-${result.identity}`)
+    || mutation.isPending(`explore-schedule-${result.identity}`)
+    || mutation.isPending(`explore-remove-${result.identity}`);
+  const currentActionTrip = (current: EasyTTrip, result: ExploreResult) => current.id === workingTrip.id
+    && current.ownerId === workingTrip.ownerId && exploreDiscoveryRequestKey(current) === discoveryRequestKey
+    && JSON.stringify(exploreResultState(current, result).idea) === JSON.stringify(exploreResultState(workingTrip, result).idea);
   const restaurantPhotoPlaces = useMemo<JourneyLocalPlace[]>(() => visibleResults.flatMap((result) => {
     if (result.kind !== "restaurant" || !result.coordinates || !result.providerUrl
       || (result.provider !== "google-places" && result.provider !== "openstreetmap")) return [];
@@ -299,15 +389,17 @@ export default function TripExploreWorkspace({
   );
 
   useEffect(() => {
+    retireActionIntent({ destinationId: resolveExploreDestinationId(destinations, uiIntentRef.current.destinationId) });
     setDestinationId((current) => resolveExploreDestinationId(destinations, current));
-  }, [destinations]);
+  }, [destinations, retireActionIntent]);
 
   const closeDetail = useCallback(() => {
+    retireActionIntent({ selectedResultId: null });
     setSelectedResultId(null);
     const origin = selectedOriginRef.current;
     selectedOriginRef.current = null;
     window.requestAnimationFrame(() => origin?.focus());
-  }, []);
+  }, [retireActionIntent]);
 
   useEffect(() => {
     if (initialResults) return;
@@ -343,8 +435,8 @@ export default function TripExploreWorkspace({
     const skipOrganic = sameScope && organicAssessment?.retrieval !== "completed" && organicAssessment?.retryable === false;
     const skipCommercial = sameScope && commercialAssessment?.retrieval !== "completed" && commercialAssessment?.retryable === false;
     if (!sameScope) {
-      setOrganicResults([]);
-      setCommercialResults([]);
+      replaceOrganicResults([]);
+      replaceCommercialResults([]);
     }
     requestScopeRef.current = scopeKey;
     if (!skipOrganic) setOrganicAssessment(undefined);
@@ -359,12 +451,12 @@ export default function TripExploreWorkspace({
       ? [() => loadTours(discoveryTrip, stop, scope.signal, assessment => scope.commit(() => setCommercialAssessment(assessment)))]
       : []);
     if (!skipOrganic) void streamExploreDiscoveryLane(organicRequests, (snapshot) => scope.commit(() => {
-      setOrganicResults(current => snapshot.results.length ? snapshot.results : snapshot.pendingCount || snapshot.failedCount ? current : []);
+      replaceOrganicResults(snapshot.results.length ? snapshot.results : snapshot.pendingCount || snapshot.failedCount ? laneResultsRef.current.organicResults : []);
       setOrganicStatus(snapshot.status);
       if (organicRequests.length) reportSnapshot("core", snapshot);
     }));
     if (!skipCommercial) void streamExploreDiscoveryLane(commercialRequests, (snapshot) => scope.commit(() => {
-      setCommercialResults(current => snapshot.results.length ? snapshot.results : snapshot.pendingCount || snapshot.failedCount ? current : []);
+      replaceCommercialResults(snapshot.results.length ? snapshot.results : snapshot.pendingCount || snapshot.failedCount ? laneResultsRef.current.commercialResults : []);
       setCommercialStatus(snapshot.status);
       if (commercialRequests.length) reportSnapshot("commercial", snapshot);
     }));
@@ -376,43 +468,72 @@ export default function TripExploreWorkspace({
   }, [closeDetail, results, selectedResultId]);
 
   const openDetail = (result: ExploreResult, origin: HTMLButtonElement) => {
+    retireActionIntent({ selectedResultId: result.identity });
     selectedOriginRef.current = origin;
     setSelectedResultId(result.identity);
     trackEvent("explore_result_opened", { trip_id: workingTrip.id, stop_id: result.stopId, result_kind: result.kind });
   };
 
-  const saveResult = (result: ExploreResult) => {
-    const changed = mutation.mutateTrip((current) => saveItineraryIdea(current, result.idea), `explore-save-${result.identity}`);
-    if (!changed) return;
-    setNotice(`${result.title} saved for later.`);
-    trackEvent("explore_saved_for_later", { trip_id: workingTrip.id, stop_id: result.stopId, result_kind: result.kind });
+  const saveResult = async (source: ExploreResult) => {
+    const result = structuredClone(source);
+    const action = actions.beginAction(result);
+    if (!action) return false;
+    try {
+      const changed = await mutation.mutateTrip((current) => action.isCurrent() && currentActionTrip(current, result)
+        ? saveItineraryIdea(current, result.idea) : current, `explore-save-${result.identity}`);
+      if (changed !== true || !action.isCurrent()) return false;
+      setNotice(`${result.title} saved for later.`);
+      trackEvent("explore_saved_for_later", { trip_id: workingTrip.id, stop_id: result.stopId, result_kind: result.kind });
+      return true;
+    } catch { return false; }
+    finally { action.finish(); }
   };
 
-  const scheduleResult = (result: ExploreResult) => {
+  const scheduleResult = async (source: ExploreResult) => {
+    const result = structuredClone(source);
     const chosenDay = selectedDayByResult[result.identity] ?? requestedDayNumber;
     const target = exploreScheduleTarget(workingTrip, result, chosenDay);
-    if (!target) return;
+    if (!target) return false;
+    const action = actions.beginAction(result);
+    if (!action) return false;
     let newItem = false;
-    const changed = mutation.mutateTrip(
-      (current) => {
-        const next = scheduleItineraryIdea(current, result.idea, target.day.id, target.dayPart);
-        newItem = newlyScheduledItineraryIdea(current, next, result.idea);
-        return next;
-      },
-      `explore-schedule-${result.identity}`,
-    );
-    if (!changed) return;
-    setNotice(`${result.title} added to Day ${target.day.dayNumber}.`);
-    if (newItem) {
-      trackEvent("itinerary_item_added", { trip_id: workingTrip.id, stop_id: result.stopId, source: itineraryAddSourceForIdea(result.idea), item_kind: result.idea.category });
-      trackEvent("explore_added_to_day", { trip_id: workingTrip.id, stop_id: result.stopId, day_number: target.day.dayNumber, result_kind: result.kind });
-    }
+    try {
+      const changed = await mutation.mutateTrip(
+        (current) => {
+          if (!action.isCurrent() || !currentActionTrip(current, result)) return current;
+          const currentTarget = exploreScheduleTarget(current, result, chosenDay);
+          if (!currentTarget || currentTarget.day.id !== target.day.id || currentTarget.dayPart !== target.dayPart
+            || currentTarget.day.dayNumber !== target.day.dayNumber || currentTarget.day.date !== target.day.date
+            || currentTarget.day.stopId !== target.day.stopId) return current;
+          const next = scheduleItineraryIdea(current, result.idea, target.day.id, target.dayPart);
+          newItem = newlyScheduledItineraryIdea(current, next, result.idea);
+          return next;
+        },
+        `explore-schedule-${result.identity}`,
+      );
+      if (changed !== true || !action.isCurrent()) return false;
+      setNotice(`${result.title} added to Day ${target.day.dayNumber}.`);
+      if (newItem) {
+        trackEvent("itinerary_item_added", { trip_id: workingTrip.id, stop_id: result.stopId, source: itineraryAddSourceForIdea(result.idea), item_kind: result.idea.category });
+        trackEvent("explore_added_to_day", { trip_id: workingTrip.id, stop_id: result.stopId, day_number: target.day.dayNumber, result_kind: result.kind });
+      }
+      return true;
+    } catch { return false; }
+    finally { action.finish(); }
   };
 
-  const removeResult = (result: ExploreResult) => {
+  const removeResult = async (source: ExploreResult) => {
+    const result = structuredClone(source);
     const state = exploreResultState(workingTrip, result);
-    if (state.state === "available") return;
-    mutation.mutateTrip((current) => removeItineraryIdea(current, state.idea.id), `explore-remove-${result.identity}`);
+    if (state.state === "available") return false;
+    const action = actions.beginAction(result);
+    if (!action) return false;
+    try {
+      const changed = await mutation.mutateTrip((current) => action.isCurrent() && currentActionTrip(current, result)
+        ? removeItineraryIdea(current, state.idea.id) : current, `explore-remove-${result.identity}`);
+      return changed === true && action.isCurrent();
+    } catch { return false; }
+    finally { action.finish(); }
   };
 
   const destinationLabel = activeDestination?.label ?? "your trip";
@@ -444,6 +565,7 @@ export default function TripExploreWorkspace({
         presentation="integrated"
         surface="standalone"
         onSelectStop={(next) => {
+          retireActionIntent({ destinationId: next, selectedResultId: null });
           setDestinationId(next);
           setSelectedResultId(null);
           trackEvent("explore_destination_changed", { trip_id: workingTrip.id, destination_scope: "stop" });
@@ -463,6 +585,7 @@ export default function TripExploreWorkspace({
             variant={selected ? "primary" : "secondary"}
             aria-pressed={selected}
             onClick={() => {
+              retireActionIntent({ category: item, selectedResultId: null });
               setCategory(item);
               setSelectedResultId(null);
               trackEvent("explore_category_changed", { trip_id: workingTrip.id, category: item });
@@ -494,7 +617,7 @@ export default function TripExploreWorkspace({
           const chosenDay = selectedDayByResult[result.identity] ?? requestedDayNumber;
           const target = exploreScheduleTarget(workingTrip, result, chosenDay);
           const dayChoices = validIdeaDays(workingTrip, result.stopId);
-          const pending = mutation.isPending(`explore-save-${result.identity}`) || mutation.isPending(`explore-schedule-${result.identity}`);
+          const pending = isResultPending(result);
           const photoPlace = restaurantPhotoPlaceById.get(result.identity);
           const photo = restaurantPhotos[result.identity];
           const restaurantMedia = result.image ?? photo?.src;
@@ -596,19 +719,24 @@ export default function TripExploreWorkspace({
           })}
           omitEmptyMedia
           mapHref={mapHref}
-          pending={mutation.isPending(`explore-save-${selectedResult.identity}`) || mutation.isPending(`explore-schedule-${selectedResult.identity}`)}
+          pending={isResultPending(selectedResult)}
           onClose={closeDetail}
           primaryActions={<>
             {state.state !== "planned" && !target && dayChoices.length > 1 ? <EasyTSelect
               label="Choose a day"
+              disabled={isResultPending(selectedResult)}
               value={selectedDayByResult[selectedResult.identity] ?? ""}
-              onChange={(event) => setSelectedDayByResult((current) => ({ ...current, [selectedResult.identity]: Number(event.target.value) }))}
+              onChange={(event) => {
+                const next = { ...uiIntentRef.current.selectedDayByResult, [selectedResult.identity]: Number(event.target.value) };
+                retireActionIntent({ selectedDayByResult: next });
+                setSelectedDayByResult(next);
+              }}
             >
               <option value="" disabled>Select a day</option>
               {dayChoices.map((day) => <option key={day.id} value={day.dayNumber}>Day {day.dayNumber} · {day.title}</option>)}
             </EasyTSelect> : null}
-            {state.state !== "planned" && target ? <EasyTButton icon={CalendarPlus} fullWidth onClick={() => scheduleResult(selectedResult)}>Add to Day {target.day.dayNumber}</EasyTButton> : null}
-            {state.state === "available" ? <EasyTButton icon={Bookmark} variant="secondary" onClick={() => saveResult(selectedResult)}>Save for later</EasyTButton> : null}
+            {state.state !== "planned" && target ? <EasyTButton icon={CalendarPlus} fullWidth disabled={isResultPending(selectedResult)} onClick={() => scheduleResult(selectedResult)}>Add to Day {target.day.dayNumber}</EasyTButton> : null}
+            {state.state === "available" ? <EasyTButton icon={Bookmark} variant="secondary" disabled={isResultPending(selectedResult)} onClick={() => saveResult(selectedResult)}>Save for later</EasyTButton> : null}
             {state.state === "planned" ? <EasyTLinkButton icon={CalendarPlus} variant="secondary" href={itineraryWorkspaceHref(workingTrip.id, state.day.dayNumber)}>View in itinerary</EasyTLinkButton> : null}
             {selectedResult.provider === "viator" && selectedResult.providerUrl ? <MorroviaAffiliateLink
               action={{ provider: "viator", category: "activities", href: selectedResult.providerUrl, cta: "View tickets", affiliate: true }}
@@ -625,6 +753,7 @@ export default function TripExploreWorkspace({
           <h3>{titleCase(opportunity.dayPart)} in {opportunity.stop.name}</h3>
           <p>You’ve got space on Day {opportunity.day.dayNumber}.</p>
           <EasyTButton variant="secondary" fullWidth onClick={() => {
+            retireActionIntent({ destinationId: opportunity.stop.id, category: "for-you" });
             setDestinationId(opportunity.stop.id);
             setCategory("for-you");
             document.getElementById("explore-results")?.scrollIntoView({ behavior: "smooth", block: "start" });
