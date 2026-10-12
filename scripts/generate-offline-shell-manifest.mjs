@@ -1,0 +1,55 @@
+import { createHash } from 'node:crypto';
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { MORROVIA_OFFLINE_READER_FLOOR } from '../lib/easyt/offline-reader-floor.ts';
+
+// HTML omits lazy chunks. Only public build files, never user/API responses.
+export function writeOfflineShellManifest(root, dist = '.next') {
+  const buildRoot = path.join(root, dist);
+  const buildId = fs.readFileSync(path.join(buildRoot, 'BUILD_ID'), 'utf8').trim();
+  if (!/^[A-Za-z0-9_-]{1,100}$/.test(buildId)) throw new Error('Invalid offline build identity');
+  const serverFiles = JSON.parse(fs.readFileSync(path.join(buildRoot, 'required-server-files.json'), 'utf8'));
+  const buildCommit = serverFiles.config?.env?.MORROVIA_BUILD_COMMIT;
+  if (typeof buildCommit !== 'string' || (buildCommit !== '' && !/^[a-f0-9]{40}$/i.test(buildCommit))) throw new Error('Invalid offline commit identity');
+  const assets = [];
+  const add = (url, file) => {
+    if (!/^\/[A-Za-z0-9_./-]+$/.test(url) || url.includes('..')) throw new Error('Unsafe offline asset path');
+    const stat = fs.lstatSync(file);
+    if (!stat.isFile() || stat.isSymbolicLink()) throw new Error('Offline asset must be a regular build file');
+    assets.push({ url, sha256: createHash('sha256').update(fs.readFileSync(file)).digest('hex') });
+  };
+  const staticRoot = path.join(buildRoot, 'static');
+  const walk = dir => {
+    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+      const file = path.join(dir, entry.name);
+      if (entry.isDirectory()) walk(file);
+      else add('/_next/static/' + path.relative(staticRoot, file).split(path.sep).join('/'), file);
+    }
+  };
+  walk(staticRoot);
+  if (!assets.length) throw new Error('Offline client graph is empty');
+  for (const url of ['/easyt-icon.svg', '/maplibre/maplibre-gl-worker.mjs']) add(url, path.join(root, 'public', url.slice(1)));
+  assets.sort((a, b) => a.url.localeCompare(b.url, 'en'));
+  const assetUrls = new Set(assets.map(asset => asset.url));
+  for (const route of ['journey/new', 'journey/plan']) {
+    const html = fs.readFileSync(path.join(buildRoot, 'server/app', route + '.html'), 'utf8');
+    if (!html.includes(`name="morrovia-offline-reader" content="${MORROVIA_OFFLINE_READER_FLOOR}"`)
+      || !html.includes(`name="morrovia-build-commit" content="${buildCommit}"`)) throw new Error('Offline shell reader/build marker missing: ' + route);
+    for (const match of html.matchAll(/\/_next\/static\/[^"'\\\s<]+/g)) {
+      const url = new URL(match[0].replaceAll('&amp;', '&'), 'https://isolated.invalid');
+      if (!assetUrls.has(url.pathname)) throw new Error('Offline shell dependency missing: ' + url.pathname);
+    }
+  }
+  const manifest = { version: 1, readerFloor: MORROVIA_OFFLINE_READER_FLOOR, buildId, buildCommit, assets };
+  manifest.artifactId = createHash('sha256').update(JSON.stringify(manifest)).digest('hex');
+  const output = 'self.MORROVIA_OFFLINE_SHELL = Object.freeze(' + JSON.stringify(manifest) + ');\n';
+  fs.writeFileSync(path.join(root, 'public/easyt-offline-manifest.js'), output);
+  if (process.env.STATIC_EXPORT === '1') fs.writeFileSync(path.join(root, 'out/easyt-offline-manifest.js'), output);
+  return manifest;
+}
+
+if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  const manifest = writeOfflineShellManifest(process.cwd(), process.env.NEXT_DIST_DIR ?? '.next');
+  console.log(JSON.stringify({ readerFloor: manifest.readerFloor, buildId: manifest.buildId, buildCommit: manifest.buildCommit, assets: manifest.assets.length }));
+}

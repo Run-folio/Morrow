@@ -10,6 +10,7 @@ output/
 dist/
 storybook-static/
 .email-previews/
+public/easyt-offline-manifest.js
 tmp/
 .env*
 !.env.staging.example

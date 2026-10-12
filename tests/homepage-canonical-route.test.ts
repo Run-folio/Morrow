@@ -45,7 +45,7 @@ test("home navigation, install metadata, and indexing use the canonical root", (
   assert.match(manifest, /scope: "\/"/);
   assert.match(register, /scope: "\/"/);
   assert.match(worker, /PUBLIC_SHELL = \[\s*"\/"/);
-  assert.match(worker, /cache\.match\("\/"\)/);
+  assert.match(worker, /offlineDocument\("\/"\)/);
 });
 
 test("existing journey product route owners remain available", () => {

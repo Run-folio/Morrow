@@ -1,6 +1,7 @@
 import { requireReadableTripDocument, TripDocumentReadError } from "../lib/easyt/trip-document.ts";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
+import { createHash, webcrypto } from "node:crypto";
 import test from "node:test";
 import { runInNewContext } from "node:vm";
 
@@ -1665,134 +1666,63 @@ test("cross-tab storage matching is scoped to exact owner and trip keys", () => 
 test("service worker advances public documents online and reopens the planner shell offline", async () => {
   const source = readFileSync(new URL("../public/easyt-sw.js", import.meta.url), "utf8");
   const listeners = new Map<string, (event: unknown) => void>();
-  const plannerShell = '<!doctype html><div>offline planner shell</div><link rel="stylesheet" href="/_next/static/css/planner.css"><script src="/_next/static/chunks/planner.js"></script>';
-  const cachedResponses = new Map([
-    ["/", '<!doctype html><script src="/_next/static/chunks/home.js"></script>'],
-    ["/journey/plan", plannerShell],
-  ]);
-  const previousCachedResponses = new Map([
-    ["/_next/static/chunks/previous-client.js", "old client dependency"],
-  ]);
-  const addedAssets: string[] = [];
-  const deletedCaches: string[] = [];
-  const cachedWrites: Array<{ key: string; body: string }> = [];
-  let skipWaitingCalls = 0;
-  let networkResponse: Response | null = null;
+  const floor = "idb-recovery-v1", commit = "a".repeat(40);
+  const shell = (body: string) => `<!doctype html><meta name="morrovia-offline-reader" content="${floor}"><meta name="morrovia-build-commit" content="${commit}"><script src="/_next/static/chunks/planner.js"></script><div>${body}</div>`;
+  const plannerShell = shell("offline planner shell");
+  const asset = { url: "/_next/static/chunks/planner.js", sha256: createHash("sha256").update("planner dependency").digest("hex") };
+  const identity = { version: 1, readerFloor: floor, buildId: "fixture-build", buildCommit: commit, assets: [asset] };
+  const manifest = { ...identity, artifactId: createHash("sha256").update(JSON.stringify(identity)).digest("hex") };
+  const cacheName = `easyt-public-shell-${floor}-${manifest.artifactId}`;
+  const previous = new Map([["/_next/static/chunks/previous-client.js", new Response("old client dependency")]]);
+  const rows = new Map<string, Response>();
+  const deletedCaches: string[] = [], cachedWrites: string[] = [];
+  let skipWaitingCalls = 0, claimed = 0, installing = true, networkResponse: Response | null = null;
+  const key = (request: string | { url: string }) => new URL(typeof request === "string" ? request : request.url, "https://morrovia.test").pathname;
   const cache = {
-    addAll: async () => undefined,
-    add: async (asset: string) => { addedAssets.push(asset); },
-    match: async (request: string | { url: string }, options?: { ignoreSearch?: boolean }) => {
-      const raw = typeof request === "string" ? request : request.url;
-      const parsed = raw.startsWith("http") ? new URL(raw) : null;
-      const key = parsed
-        ? `${parsed.pathname}${options?.ignoreSearch ? "" : parsed.search}`
-        : raw;
-      const body = cachedResponses.get(key);
-      return body === undefined ? undefined : new Response(body, { status: 200 });
-    },
-    put: async (request: string | { url: string }, response: Response) => {
-      const raw = typeof request === "string" ? request : request.url;
-      cachedWrites.push({ key: raw, body: await response.text() });
-    },
-  };
-  const serviceWorkerGlobal = {
-    location: { origin: "https://morrovia.test" },
-    clients: { claim: () => undefined },
-    skipWaiting: () => { skipWaitingCalls += 1; },
-    addEventListener: (type: string, listener: (event: unknown) => void) => listeners.set(type, listener),
+    match: async (request: string | { url: string }) => rows.get(key(request))?.clone(),
+    delete: async (request: string | { url: string }) => rows.delete(key(request)),
+    put: async (request: string | { url: string }, response: Response) => { cachedWrites.push(key(request)); rows.set(key(request), response.clone()); },
   };
   runInNewContext(source, {
-    self: serviceWorkerGlobal,
-    caches: {
-      open: async () => cache,
-      match: async (request: string | { url: string }) => {
-        const current = await cache.match(request);
-        if (current) return current;
-        const raw = typeof request === "string" ? request : request.url;
-        const key = raw.startsWith("http") ? new URL(raw).pathname : raw;
-        const previous = previousCachedResponses.get(key);
-        return previous === undefined ? undefined : new Response(previous, { status: 200 });
-      },
-      keys: async () => ["easyt-public-shell-v5", "easyt-public-shell-v6", "analytics-unrelated-cache"],
-      delete: async (key: string) => { deletedCaches.push(key); return true; },
-    },
-    fetch: async () => {
+    self: { location: { origin: "https://morrovia.test" }, MORROVIA_OFFLINE_SHELL: manifest,
+      clients: { claim: () => { claimed++; } }, skipWaiting: () => { skipWaitingCalls++; },
+      addEventListener: (name: string, listener: (event: unknown) => void) => listeners.set(name, listener) },
+    importScripts: () => undefined,
+    caches: { open: async (name: string) => { assert.equal(name, cacheName); return cache; },
+      match: async (request: string | { url: string }) => previous.get(key(request))?.clone(),
+      keys: async () => ["easyt-public-shell-v5", "easyt-public-shell-v6", "easyt-public-shell-v7"],
+      delete: async (name: string) => { deletedCaches.push(name); return true; } },
+    fetch: async (request: string | { url: string }, options?: { credentials?: string }) => {
+      if (installing) {
+        assert.equal(options?.credentials, "omit");
+        if (key(request) === asset.url) return new Response("planner dependency");
+        return new Response(key(request) === "/journey/plan" ? plannerShell : shell(key(request)), { headers: { "content-type": "text/html" } });
+      }
       if (networkResponse) return networkResponse.clone();
       throw new TypeError("network unavailable");
-    },
-    URL,
-    Response,
-    Promise,
+    }, URL, Response, Request, Promise, TextEncoder, Uint8Array, crypto: webcrypto,
   });
-
-  let installPromise: Promise<unknown> | null = null;
-  const installHandler = listeners.get("install");
-  assert.ok(installHandler);
-  installHandler({ waitUntil: (promise: Promise<unknown>) => { installPromise = promise; } });
-  assert.ok(installPromise);
-  await installPromise;
-  assert.equal(skipWaitingCalls, 1, "the network-first worker must take over from the cache-first release");
-  assert.deepEqual(addedAssets.sort(), [
-    "/_next/static/chunks/home.js",
-    "/_next/static/chunks/planner.js",
-    "/_next/static/css/planner.css",
-  ]);
-
-  let activatePromise: Promise<unknown> | null = null;
-  const activateHandler = listeners.get("activate");
-  assert.ok(activateHandler);
-  activateHandler({ waitUntil: (promise: Promise<unknown>) => { activatePromise = promise; } });
-  assert.ok(activatePromise);
-  await activatePromise;
-  assert.deepEqual(deletedCaches, ["easyt-public-shell-v5"], "activation retains one previous hashed graph for already-open clients");
-
-  let responsePromise: Promise<Response> | null = null;
-  const handler = listeners.get("fetch");
-  assert.ok(handler);
-  networkResponse = new Response("<!doctype html><div>current deployment shell</div>", { status: 200 });
-  handler({
-    request: {
-      method: "GET",
-      mode: "navigate",
-      url: "https://morrovia.test/journey/new",
-    },
-    respondWith: (response: Promise<Response> | Response) => {
-      responsePromise = Promise.resolve(response);
-    },
-  });
-  assert.ok(responsePromise, "public shell navigation must be handled online");
-  const currentResponse = await (responsePromise as Promise<Response>);
-  assert.equal(await currentResponse.text(), "<!doctype html><div>current deployment shell</div>");
-  assert.deepEqual(cachedWrites, [{ key: "/journey/new", body: "<!doctype html><div>current deployment shell</div>" }]);
-
+  const lifecycle = async (name: string) => {
+    let work: Promise<unknown> | undefined;
+    listeners.get(name)!({ waitUntil: (value: Promise<unknown>) => { work = value; } });
+    assert.ok(work); await work;
+  };
+  await lifecycle("install"); assert.equal(skipWaitingCalls, 1);
+  assert.ok(rows.has(asset.url)); assert.ok(rows.has("/__morrovia_offline_ready__"));
+  await lifecycle("activate"); assert.equal(claimed, 1);
+  assert.deepEqual(deletedCaches, [], "activation preserves every old graph");
+  installing = false; cachedWrites.length = 0;
+  const request = async (path: string, mode = "navigate") => {
+    let work: Promise<Response> | undefined;
+    listeners.get("fetch")!({ request: { url: "https://morrovia.test" + path, method: "GET", mode },
+      respondWith: (value: Promise<Response>) => { work = value; } });
+    assert.ok(work); return work;
+  };
+  const current = shell("current deployment shell");
+  networkResponse = new Response(current, { headers: { "content-type": "text/html" } });
+  assert.equal(await (await request("/journey/new")).text(), current);
+  assert.deepEqual(cachedWrites, [], "online navigation never overwrites the credential-free snapshot");
   networkResponse = null;
-  responsePromise = null;
-  handler({
-    request: {
-      method: "GET",
-      mode: "navigate",
-      url: "https://morrovia.test/journey/plan?trip=trip-offline",
-    },
-    respondWith: (response: Promise<Response> | Response) => {
-      responsePromise = Promise.resolve(response);
-    },
-  });
-
-  assert.ok(responsePromise, "query-based planner navigation must be handled while offline");
-  const response = await (responsePromise as Promise<Response>);
-  assert.equal(await response.text(), plannerShell);
-
-  responsePromise = null;
-  handler({
-    request: {
-      method: "GET",
-      mode: "no-cors",
-      url: "https://morrovia.test/_next/static/chunks/previous-client.js",
-    },
-    respondWith: (staticResponse: Promise<Response> | Response) => {
-      responsePromise = Promise.resolve(staticResponse);
-    },
-  });
-  assert.ok(responsePromise, "an already-open old client must retain its immediately previous hashed dependency graph");
-  assert.equal(await (await (responsePromise as Promise<Response>)).text(), "old client dependency");
+  assert.equal(await (await request("/journey/plan?trip=trip-offline")).text(), plannerShell);
+  assert.equal(await (await request("/_next/static/chunks/previous-client.js", "no-cors")).text(), "old client dependency");
 });

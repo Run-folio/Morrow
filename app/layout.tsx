@@ -3,6 +3,7 @@ import { Analytics } from "@/components/analytics";
 import { EasyTPwaRegister } from "@/components/easyt-pwa-register";
 import OptionalAffiliateTracking from "@/components/optional-affiliate-tracking";
 import PrivacyConsent from "@/components/privacy-consent";
+import { MORROVIA_OFFLINE_READER_FLOOR } from "@/lib/easyt/offline-reader-floor";
 import "maplibre-gl/dist/maplibre-gl.css";
 import "./globals.css";
 
@@ -28,6 +29,10 @@ export const metadata: Metadata = {
   },
   verification: {
     google: process.env.GOOGLE_SITE_VERIFICATION,
+  },
+  other: {
+    "morrovia-offline-reader": MORROVIA_OFFLINE_READER_FLOOR,
+    "morrovia-build-commit": process.env.MORROVIA_BUILD_COMMIT ?? "",
   },
   icons: {
     icon: "/brand/morrovia-mark-512.png",
