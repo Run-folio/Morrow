@@ -10,6 +10,8 @@ import { requireReadableTripDocument } from '../lib/easyt/trip-document.ts';
 import { builderPlaceCommand, prepareBuilderHandlerEdit } from '../lib/easyt/trip-builder-handler-contract.ts';
 import { builderDocumentFingerprint } from '../lib/easyt/trip-builder-document-commit.ts';
 import { preferredHandoffLocationChoice } from '../lib/easyt/home-trip-handoff.ts';
+import { acceptedGeographicPlace, geographicInputKey, stopGeographicPlace } from '../lib/easyt/geographic-binding.ts';
+import { referenceGeographicAcceptanceMatches } from '../lib/easyt/place-reference.ts';
 import { authoredContentKey } from '../lib/easyt/trip-retained-authored-content.ts';
 
 test('actual intake callback accepts an unchanged sibling after another enrichment advances revision',async()=>{
@@ -25,10 +27,11 @@ test('actual intake callback accepts an unchanged sibling after another enrichme
     builderEditSessionRef:{current:{getSnapshot:()=>({trip,inputRevision:revision,browserOwnerId:'owner-a'})}},
     activeBrowserOwnerIdRef:{current:'owner-a'},lookupOwnerId:'owner-a',lookupTripId:trip.id,
     removedPlaceMentionIdsRef:{current:[]},placeSelectionsRef:{current:[]},setHandoffResolutionStatuses:()=>{},
-    handoffOutcomeIsCurrent,retireHandoffResolutionStatus,preferredHandoffLocationChoice,authoredContentKey,
+    handoffOutcomeIsCurrent,retireHandoffResolutionStatus,preferredHandoffLocationChoice,authoredContentKey,acceptedGeographicPlace,stopGeographicPlace,referenceGeographicAcceptanceMatches,
+    savedTargetKey:(place:Parameters<typeof geographicInputKey>[0])=>authoredContentKey([geographicInputKey(place),place.geographicBinding??null]),pendingHandoffOutcomes:[],
     isOriginMention:(item:typeof mention)=>item.role==='origin'||item.role==='fixed_start',draft:{},originResolutionVersionRef:{current:0},originVersion:0,
     seedById:new Map(trip.stops.map(stop=>[stop.id,{...stop,coordinates:[stop.longitude,stop.latitude]}])),handoffOccurrenceMentionIdsRef:{current:{[trip.stops[1]!.id]:mention.mentionId}},handoffStopOccurrenceId,builderPlaceCommand,
-    dispatchAcceptedBuilderEdit:(command:Parameters<typeof prepareBuilderHandlerEdit>[1],options:{expectedInputRevision:number})=>{
+    dispatchAcceptedBuilderEdit:async(command:Parameters<typeof prepareBuilderHandlerEdit>[1],options:{expectedInputRevision:number})=>{
       assert.equal(options.expectedInputRevision,revision);
       const result=prepareBuilderHandlerEdit(trip,command,builderDocumentFingerprint(trip));assert.ok(result.ok);trip=result.trip;revision++;accepted++;
     }};
@@ -36,16 +39,16 @@ test('actual intake callback accepts an unchanged sibling after another enrichme
   const body=source.slice(source.indexOf('      const onOutcome ='),source.indexOf('      const runLookups ='));
   const script=ts.transpileModule(`${body}\nreturn onOutcome;`,{compilerOptions:{target:ts.ScriptTarget.ES2022}}).outputText;
   const outcome=new Function('scope',`with(scope){${script}}`)(scope);
-  await outcome({item:mention,value:[{name:'Kyoto',country:'Japan',coordinates:[135.7681,35.0116]}],status:'resolved'},0);
+  await outcome({item:mention,value:[{name:'Kyoto',country:'Japan',coordinates:[135.7681,35.0116],providerId:'provider-kyoto',placeType:'city',routability:'direct_destination'}],status:'resolved'},0);
   assert.equal(accepted,1,'a sibling input revision must not invalidate an unchanged target');
   const acceptedTrip=structuredClone(trip);
-  const send=async()=>{lookupSession.statuses.set(mention.mentionId,'pending');await outcome({item:mention,value:[{name:'Kyoto',country:'Japan',coordinates:[135.7681,35.0116]}],status:'resolved'},0)};
+  const send=async()=>{lookupSession.statuses.set(mention.mentionId,'pending');await outcome({item:mention,value:[{name:'Kyoto',country:'Japan',coordinates:[135.7681,35.0116],providerId:'provider-kyoto',placeType:'city',routability:'direct_destination'}],status:'resolved'},0)};
   trip.stops[1]!.longitude=(trip.stops[1]!.longitude??0)+1;await send();assert.equal(accepted,1,'a manually replaced target must reject the old result');
   trip=structuredClone(acceptedTrip);scope.activeBrowserOwnerIdRef.current='owner-b';await send();assert.equal(accepted,1,'foreign owner result must be discarded');
   scope.activeBrowserOwnerIdRef.current='owner-a';trip.id='other-trip';await send();assert.equal(accepted,1,'foreign trip result must be discarded');
   trip=structuredClone(acceptedTrip);
   trip.brief.intent.route.destinations=trip.brief.intent.route.destinations.filter(item=>item.id!==mention.mentionId);
-  lookupSession.statuses.set(mention.mentionId,'pending');await outcome({item:mention,value:[{name:'Kyoto',country:'Japan',coordinates:[135.7681,35.0116]}],status:'resolved'},0);
+  lookupSession.statuses.set(mention.mentionId,'pending');await outcome({item:mention,value:[{name:'Kyoto',country:'Japan',coordinates:[135.7681,35.0116],providerId:'provider-kyoto',placeType:'city',routability:'direct_destination'}],status:'resolved'},0);
   assert.equal(accepted,1,'removed intent must never resurrect');
 });
 
@@ -148,12 +151,15 @@ test("late coordinate enrichment keeps current user order and separate Tokyo occ
     { id: "tokyo-first", name: "Tokyo", country: "Japan", canonicalPlaceId: "tokyo" },
   ];
   const enriched = mergeHandoffLocationChoice(reordered, mention, {
-    name: "Tokyo namesake", country: "Japan", coordinates: [139.6917, 35.6895], providerId: "provider-tokyo",
+    name: "Tokyo", country: "Japan", coordinates: [139.6917, 35.6895], providerId: "provider-tokyo", placeType: "city", routability: "direct_destination",
   }, "tokyo-last");
   assert.deepEqual(enriched.map((stop) => stop.id), ["tokyo-last", "kyoto", "tokyo-first"]);
   assert.deepEqual(enriched.map((stop) => stop.name), ["Tokyo", "Kyoto", "Tokyo"]);
   assert.equal(enriched[0]?.providerId, "provider-tokyo");
   assert.equal(enriched[2]?.providerId, undefined);
+  assert.deepEqual(mergeHandoffLocationChoice(reordered, mention, {
+    name: "Tokyo namesake", country: "Japan", coordinates: [139.6917, 35.6895], providerId: "provider-tokyo-namesake", placeType: "city", routability: "direct_destination",
+  }, "tokyo-last"), reordered, "a namesake must not authorize coordinate enrichment");
 });
 
 test("late provider outcomes cannot restore a handled or removed occurrence", () => {

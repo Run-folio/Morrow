@@ -4,6 +4,8 @@ import type { RecoveryEntryScope, RecoveryEntryWrite, RecoveryEntryEnvelope } fr
 import { createRecoveryEntryStore, prepareEntryWrite } from './durable-entry-store.ts';
 import {sameEntryHandle} from './durable-entry-protocol.ts';
 import { recoveryErrorReason } from './durable-recovery-error.ts';
+import {createRecoveryDomainStore} from './durable-recovery-store.ts';
+import {readRecoveryClaimBarrier,readOwnerRecoveryClaimBarrier} from './recovery-domain-claim.ts';
 
 export type TwoStoreEntryRead = { kind: 'ready'; raw: string | null; envelope: RecoveryEntryEnvelope | null; legacyRaw: string | null }
   | { kind: 'protected' | 'unavailable'; reason: string };
@@ -23,6 +25,16 @@ export function createTwoStoreEntryPersistence(storage: EasyTBrowserStorage, dri
     const domain = await entries.read(scope);
     if (domain.kind !== 'ready') return { kind: domain.kind === 'protected-conflict' || domain.kind === 'failure' && ['schema', 'corrupt'].includes(domain.reason)
       ? 'protected' : 'unavailable', reason: domain.kind === 'verified' ? 'unknown' : domain.reason };
+    if(scope.kind==='builder-input'&&scope.tripId!==null) {
+      const canonical=await createRecoveryDomainStore(driver,{ownerId:scope.ownerId,isCurrent:active}).read(scope.tripId);
+      if(canonical.kind!=='ready')return {kind:'protected',reason:'claim-canonical-unknown'};
+      const claim=await readRecoveryClaimBarrier(driver,storage,{ownerId:scope.ownerId,isCurrent:active},scope.tripId,canonical.envelope);if(claim.kind!=='ready')return claim;
+    }else if(scope.kind==='homepage') {
+      const claim=await readOwnerRecoveryClaimBarrier(driver,storage,{ownerId:scope.ownerId,isCurrent:active});if(claim.kind!=='ready')return claim;
+    }
+    const current=await entries.read(scope);
+    if(current.kind!=='ready')return {kind:'unavailable',reason:'entry-readback-unknown'};
+    if(!active()||JSON.stringify(current.envelope)!==JSON.stringify(domain.envelope))return {kind:'protected',reason:'entry-changed'};
     try {
       const legacyRaw = storage.getItem(key);
       if (!active()) return { kind: 'protected', reason: 'operation-changed' };

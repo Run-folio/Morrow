@@ -31,7 +31,7 @@ export function TripBuilderTopControls({trip,draft,language,disabled=false,onTyp
  const chipOccurrences=builderChipOccurrenceOrder(route,route.destinations.map(intent=>intent.id));
  const canReorder=Boolean(chipOccurrences&&onReorder&&!disabled&&!fixedOrder&&!editingId);
  const sourceIds=chipOccurrences?route.orderedStopIds:[];
- const reorder=useBuilderStopReorder({stopIds:sourceIds,lockedStopIds:trip.brief.scheduleLocks?.stopIds??[],fixedOrder:!canReorder,onPreview:noChipPreview,onCommit:ids=>{const result=onReorder?.(ids);if(result instanceof Promise){void result;return false;}return Boolean(result)},targetAttribute:'data-builder-chip-index'});
+ const reorder=useBuilderStopReorder({stopIds:sourceIds,lockedStopIds:trip.brief.scheduleLocks?.stopIds??[],fixedOrder:!canReorder,onPreview:noChipPreview,onCommit:ids=>onReorder?.(ids)??false,targetAttribute:'data-builder-chip-index'});
  // Stable drop targets avoid moving the native drag source under the pointer.
  const displayedIntents=chipOccurrences?sourceIds.map(id=>route.destinations.find(intent=>intent.stopIds[0]===id)!):route.destinations;
  useEffect(()=>{if(focusId.current){const node=nodes.current.get(focusId.current);(node?.querySelector<HTMLInputElement>('input[role="combobox"]')??node?.querySelector<HTMLButtonElement>('button'))?.focus();focusId.current=null}},[editingId,trip]);

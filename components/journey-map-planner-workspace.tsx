@@ -18,7 +18,7 @@ import { PlanWorkspace } from "@/components/journey-plan-workspace";
 import { JourneyPlannerStrip } from "@/components/journey-planner-strip";
 import { JourneyWeather } from "@/components/journey-weather";
 import EasyTTripCopilot from "@/components/easyt/easyt-trip-copilot";
-import { MorroviaRecoveryFeedback, MorroviaSaveStatus } from "@/components/easyt/morrovia-feedback";
+import { MorroviaRecoveryFeedback, MorroviaSaveStatus, MorroviaStatusBanner } from "@/components/easyt/morrovia-feedback";
 import { MorroviaSectionStatus } from "@/components/easyt/morrovia-loading-states";
 import { EasyTButton, EasyTSelect } from "@/components/easyt/easyt-controls";
 import ItineraryItemDetail from "@/components/easyt/itinerary-item-detail";

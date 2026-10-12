@@ -27,7 +27,8 @@ import { browserTripPersistence, browserRecoveryDriver, browserRecoveryStorage, 
 import { createDurableBuilderInputPersistence } from './builder-input-persistence.ts';
 import type { BuilderInputDraft } from './trip-builder-input-draft.ts';
 import {prepareIntakeAcknowledgement,type RecoveryIntakeAcknowledgement} from './homepage-persistence.ts';
-import {RECOVERY_DOMAIN_OVERFLOW_ENABLED,RECOVERY_DOMAIN_ACCOUNT_OVERFLOW_QUALIFIED} from './recovery-domain-policy.ts';
+import {RECOVERY_DOMAIN_OVERFLOW_ENABLED,RECOVERY_DOMAIN_ACCOUNT_OVERFLOW_QUALIFIED,RECOVERY_DOMAIN_CLAIM_ENABLED} from './recovery-domain-policy.ts';
+import {createRecoveryClaimCoordinator} from './recovery-domain-claim.ts';
 export { BrowserRecoveryReadError } from './browser-recovery-persistence.ts';
 
 export { EasyTTripSaveConflictError } from "./trip-continuity.ts";
@@ -1365,19 +1366,24 @@ export function claimGuestTripRecoveryForOwnerInStorage(
 
 /** Claim is explicit to the signed-in recovery flow; account-wide readers never inspect guest records. */
 export async function claimGuestTripRecoveryForOwner(tripId:string,ownerId:string) {
+  const guard=browserRecoveryGuard();
   const storage=browserStorage();if(!storage)return null;
   try {
-    const guestBroker=await browserTripPersistence(null),ownerBroker=await browserTripPersistence(ownerId);
+    const guestBroker=await browserTripPersistence(null,guard),ownerBroker=await browserTripPersistence(ownerId,guard);
     const guest=await guestBroker.read(tripId),owned=await ownerBroker.read(tripId);
     if(guest.kind==='missing')return null;
     const fallback={stored:false,handle:{ownerId,tripId,writeId:guest.kind==='found'?guest.recovery?.writeId??generatedWriteId():generatedWriteId()},blockedByExistingRecovery:true,guestResolved:false};
-    if(guest.kind!=='found'||owned.kind==='protected'||owned.kind==='unavailable'||guest.domain?.envelope||owned.kind==='found'&&owned.domain?.envelope)return fallback;
-    const result=await ownerBroker.native(tripId,()=>claimGuestTripRecoveryForOwnerInStorage(storage,tripId,ownerId));
-    if(result.kind!=='done')return fallback;
-    const after=await guestBroker.read(tripId);if(after.kind==='protected'||after.kind==='unavailable'||after.kind==='found'&&after.domain?.envelope)return fallback;
-    const claimed=result.value;
-    if(claimed?.stored){dispatchTripStorageChange({kind:'recovery',ownerId,tripId});if(claimed.guestResolved)dispatchTripStorageChange({kind:'resolved',ownerId:null,tripId});}
-    return claimed;
+    if(guest.kind!=='found'||owned.kind==='protected'||owned.kind==='unavailable')return fallback;
+    if(guest.domain?.envelope||owned.kind==='found'&&owned.domain?.envelope) {
+      const result=await createRecoveryClaimCoordinator(storage,await browserRecoveryDriver(),{
+        ownerId,isCurrent:guard,enabled:RECOVERY_DOMAIN_CLAIM_ENABLED}).claim(tripId);
+      if(result.kind!=='verified')return {...fallback,claimHeldReason:result.reason};
+      dispatchTripStorageChange({kind:'recovery',ownerId,tripId});
+      return {stored:true,handle:result.handle,blockedByExistingRecovery:false,guestResolved:false};
+    }
+    // The historical two-step native claim retires source bytes and cannot
+    // prove the full metadata transfer. This eligibility path stays held.
+    return {...fallback,claimHeldReason:'native-guest-claim-unqualified',failureReason:'receipt-incomplete' as const,outcome:'receipt-incomplete' as const};
   }catch{return {stored:false,handle:{ownerId,tripId,writeId:generatedWriteId()},blockedByExistingRecovery:true,guestResolved:false};}
 }
 
@@ -1389,7 +1395,10 @@ export async function saveTripRecovery(trip:EasyTTrip,options:{ownerId?:string|n
   const frozen={state:options.state,replace:options.replace?structuredClone(options.replace):undefined,canonicalBase:options.canonicalBase?structuredClone(options.canonicalBase):undefined,
     draft:options.draft?structuredClone(options.draft):undefined,intake:options.intake?structuredClone(options.intake):undefined,newTripOrClone:options.newTripOrClone===true,accountSavePending:options.accountSavePending===true};
   try {
-    const storage=browserRecoveryStorage(),driver=await browserRecoveryDriver();
+    let storage:EasyTBrowserStorage;
+    try {storage=browserRecoveryStorage();}
+    catch(error){reportQaPersistenceBoundary('recovery-preparation','recovery-storage-access',{accepted:false,writeAttempted:false});throw error;}
+    const driver=await browserRecoveryDriver();
     const entries:import('./durable-entry-protocol.ts').RecoveryEntryWrite[]=[];
     const entry:import('./durable-recovery-domain.ts').RecoveryEnvelope['entry']={pointer:{version:1,backend:'indexeddb',ownerId,tripId:candidate.id,writeId},input:null,receipt:null};
     if(frozen.draft){
@@ -1426,8 +1435,7 @@ export function saveActiveTrip(trip: EasyTTrip) {
 export async function markTripRecoveryState(handle:TripRecoveryHandle,state:TripRecoveryState,conflictReason?:TripRecoveryConflictReason) {
   const storage=browserStorage();if(!storage){finishExpectedCanonicalSave(handle);return false;}
   try {
-    const guarded=await (await browserTripPersistence(handle.ownerId)).native(handle.tripId,()=>markTripRecoveryStateInStorage(storage,handle,state,conflictReason));
-    const marked=guarded.kind==='done'&&guarded.value,finished=finishExpectedCanonicalSave(handle);
+    const marked=await (await browserTripPersistence(handle.ownerId)).mark(handle,state,conflictReason),finished=finishExpectedCanonicalSave(handle);
     if(marked||finished)dispatchTripStorageChange({kind:'recovery',ownerId:handle.ownerId,tripId:handle.tripId});return marked;
   }catch{finishExpectedCanonicalSave(handle);return false;}
 }
@@ -1477,8 +1485,7 @@ export async function resolveCanonicalEquivalentTripRecovery(canonicalTrip:EasyT
 export async function discardTripRecovery(handle:TripRecoveryHandle,confirmed:boolean) {
   const storage=browserStorage();if(!storage||!confirmed)return false;
   try {
-    const guarded=await (await browserTripPersistence(handle.ownerId)).native(handle.tripId,()=>discardTripRecoveryInStorage(storage,handle,confirmed));
-    const discarded=guarded.kind==='done'&&guarded.value;
+    const discarded=await (await browserTripPersistence(handle.ownerId)).discard(handle,confirmed);
     if(discarded){finishExpectedCanonicalSave(handle);dispatchTripStorageChange({kind:'resolved',ownerId:handle.ownerId,tripId:handle.tripId});}return discarded;
   }catch{return false;}
 }

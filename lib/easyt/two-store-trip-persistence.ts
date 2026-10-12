@@ -1,5 +1,5 @@
 import type { EasyTTrip } from './trip.ts';
-import { loadCachedTripFromStorage, saveTripRecoveryToStorage, acknowledgeTripBuildSaveInStorage, tripRecoveryStorageKey, tripCacheStorageKey, currentTripStorageKey, EASYT_ACTIVE_TRIP_KEY,
+import { loadCachedTripFromStorage, saveTripRecoveryToStorage, acknowledgeTripBuildSaveInStorage, markTripRecoveryStateInStorage,discardTripRecoveryInStorage,tripRecoveryStorageKey, tripCacheStorageKey, currentTripStorageKey, EASYT_ACTIVE_TRIP_KEY,
   type TripBuildSaveAcknowledgement, type EasyTBrowserStorage, type TripRecoveryHandle, type TripRecoveryRecord, type TripRecoveryWriteResult } from './storage.ts';
 import { decodeRawRecovery, decodeRecoveryEnvelope, decodeRecoverySource, decodeDomainCurrent, sameDomainHandle, type NativeRecoveryPointer, type RecoveryDomainDriver, type RecoveryEnvelope, type RecoveryReadResult, type RecoveryHandle } from './durable-recovery-domain.ts';
 import { tripBuildDocumentsCanonicalEquivalent } from './trip-promotion.ts';
@@ -13,6 +13,8 @@ import { builderInputDraftKey, readBuilderInputDraft } from './trip-builder-inpu
 import { requireReadableTripDocument } from './trip-document.ts';
 import {createDurableHomepagePersistence,decodeHomepageBundle} from './homepage-persistence.ts';
 import type {PreparedEntryWrite} from './durable-entry-store.ts';
+import {createRecoveryLifecycle} from './recovery-domain-lifecycle.ts';
+import {readRecoveryClaimBarrier,readOwnerRecoveryClaimBarrier,recoveryClaimTripIds} from './recovery-domain-claim.ts';
 
 export type TwoStoreRead = { kind: 'found'; trip: EasyTTrip; recovery: TripRecoveryRecord | null; domain: Extract<RecoveryReadResult, { kind: 'ready' }> | null }
   | { kind: 'missing'; currentCleared?: true } | { kind: 'protected'; reason: string } | { kind: 'unavailable'; reason: string };
@@ -24,6 +26,7 @@ export function createTwoStoreTripPersistence(storage: EasyTBrowserStorage, driv
   const ownerId = context.ownerId, isCurrent = context.isCurrent;
   const active = () => { try { return isCurrent() === true; } catch { return false; } };
   const domain = createRecoveryDomainStore(driver, { ownerId, isCurrent: active });
+  const lifecycle=createRecoveryLifecycle(driver,{ownerId,isCurrent:active});
   const scope = (tripId: string) => ({ ownerId, tripId });
   const nativeSources = (tripId: string) => {
     const base = tripRecoveryStorageKey(ownerId, tripId);
@@ -50,11 +53,16 @@ export function createTwoStoreTripPersistence(storage: EasyTBrowserStorage, driv
     const result = await domain.read(tripId);
     if (!active()) return { kind: 'protected' as const, reason: 'operation-changed' };
     if (result.kind !== 'ready') return { kind: result.kind === 'protected-conflict' || result.reason === 'schema' || result.reason === 'corrupt' ? 'protected' as const : 'unavailable' as const, reason: result.reason };
+    const claim=await readRecoveryClaimBarrier(driver,storage,{ownerId,isCurrent:active},tripId,result.envelope);
+    if(claim.kind!=='ready')return claim;
     try {
       const legacy = nativeSources(tripId), resolved = resolveRecoveryProvenance({ scope: scope(tripId), legacy: { kind: 'ready', copies: legacy }, domain: result });
       if (resolved.kind === 'not-ready') return { kind: 'unavailable' as const, reason: 'unknown' };
       if (resolved.kind === 'protected-conflict') return { kind: 'protected' as const, reason: resolved.reason ?? 'unknown' };
-      return { kind: 'resolved' as const, resolved, legacy, domain: result };
+      const metadata=result.envelope?await lifecycle.read(result.envelope):await lifecycle.absent(tripId);
+      if(metadata.kind!=='ready')return metadata;
+      if(!active()||JSON.stringify(nativeSources(tripId))!==JSON.stringify(legacy))return {kind:'protected' as const,reason:'native-changed'};
+      return { kind: 'resolved' as const, resolved, legacy, domain: result,lifecycle:'lifecycle' in metadata?metadata.lifecycle:null };
     } catch { return { kind: 'unavailable' as const, reason: 'native-read-unknown' }; }
   };
   const refused = (tripId: string, writeId: string, protectedRecovery: boolean, reason: TripRecoveryWriteResult['failureReason'] = protectedRecovery ? 'protected-recovery' : 'unknown'): TripRecoveryWriteResult => ({
@@ -69,9 +77,49 @@ export function createTwoStoreTripPersistence(storage: EasyTBrowserStorage, driv
     if (!value || value.version !== 2 || value.ownerId !== ownerId || typeof value.tripId !== 'string' || !value.tripId.trim()) throw new Error('Invalid current pointer');
     return { raw, tripId: value.tripId as string };
   };
+  const readNativeCache=(tripId:string):TwoStoreRead=>{
+    let raw:string|null;
+    try{const key=tripCacheStorageKey(ownerId,tripId);raw=storage.getItem(key);
+      if(raw!==storage.getItem(key)||!active())return {kind:'protected',reason:'cache-changed'};
+    }catch{return {kind:'unavailable',reason:'cache-read-unknown'};}
+    if(raw===null)return {kind:'missing'};
+    try{
+      const frozen:EasyTBrowserStorage={getItem:()=>raw,key:()=>null,length:0,setItem:()=>{throw new Error('Read-only cache codec')},removeItem:()=>{throw new Error('Read-only cache codec')}};
+      const trip=loadCachedTripFromStorage(frozen,tripId,ownerId);
+      return trip?{kind:'found',trip,recovery:null,domain:null}:{kind:'protected',reason:'cache-document'};
+    }catch{return {kind:'protected',reason:'cache-document'};}
+  };
   const digest = async (raw: string) => Array.from(new Uint8Array(await globalThis.crypto.subtle.digest('SHA-256', new TextEncoder().encode(raw))), value => value.toString(16).padStart(2, '0')).join('');
   return {
+    async mark(input:TripRecoveryHandle,state:TripRecoveryRecord['state'],reason?:TripRecoveryRecord['conflictReason']){
+      const handle={...input};if(handle.ownerId!==ownerId||!active())return false;
+      const before=await inspect(handle.tripId);if(before.kind!=='resolved')return false;
+      if(!before.domain.envelope) {
+        if(handle.backend==='indexeddb')return false;
+        const result=await this.native(handle.tripId,()=>markTripRecoveryStateInStorage(storage,handle,state,reason));return result.kind==='done'&&result.value;
+      }
+      if(handle.backend!=='indexeddb'||before.domain.acknowledgement||!sameDomainHandle(domainHandle(handle),before.domain.envelope.handle))return false;
+      const guard=()=>{try{return active()&&JSON.stringify(nativeSources(handle.tripId))===JSON.stringify(before.legacy)}catch{return false}};
+      if(!await createRecoveryLifecycle(driver,{ownerId,isCurrent:guard}).write(before.domain.envelope,{state,conflictReason:reason}))return false;
+      const after=await inspect(handle.tripId);return active()&&after.kind==='resolved'&&after.lifecycle?.state===state
+        &&sameDomainHandle(after.lifecycle.handle,domainHandle(handle));
+    },
+    async discard(input:TripRecoveryHandle,confirmed:boolean){
+      const handle={...input};if(!confirmed||handle.ownerId!==ownerId||!active())return false;
+      const before=await inspect(handle.tripId);if(before.kind!=='resolved')return false;
+      if(!before.domain.envelope) {
+        if(handle.backend==='indexeddb')return false;
+        const result=await this.native(handle.tripId,()=>discardTripRecoveryInStorage(storage,handle,true));return result.kind==='done'&&result.value;
+      }
+      if(handle.backend!=='indexeddb'||!sameDomainHandle(domainHandle(handle),before.domain.envelope.handle))return false;
+      let pointer:string|null;try{pointer=nativePointer().raw}catch{return false}
+      const guard=()=>{try{return active()&&nativePointer().raw===pointer&&JSON.stringify(nativeSources(handle.tripId))===JSON.stringify(before.legacy)}catch{return false}};
+      if(!await createRecoveryLifecycle(driver,{ownerId,isCurrent:guard}).write(before.domain.envelope,{discard:true},pointer))return false;
+      const after=await inspect(handle.tripId);return active()&&after.kind==='resolved'&&after.lifecycle?.disposition==='discarded'
+        &&sameDomainHandle(after.lifecycle.handle,domainHandle(handle));
+    },
     async current(): Promise<TwoStoreRead> {
+      const claims=await readOwnerRecoveryClaimBarrier(driver,storage,{ownerId,isCurrent:active});if(claims.kind!=='ready')return claims;
       const current = await domain.current();
       if (current.kind !== 'ready') return { kind: current.kind === 'protected-conflict' || ['schema', 'corrupt'].includes(current.reason) ? 'protected' : 'unavailable', reason: current.reason };
       try {
@@ -127,6 +175,8 @@ export function createTwoStoreTripPersistence(storage: EasyTBrowserStorage, driv
       if (listed.kind !== 'ready') return { kind: listed.kind === 'protected-conflict' || ['schema', 'corrupt'].includes(listed.reason) ? 'protected' : 'unavailable', reason: listed.reason };
       try {
         const ids = new Set(listed.recoveries.map(row => row.envelope.handle.tripId));
+        const claims=await recoveryClaimTripIds(driver,ownerId);if(claims.kind!=='ready')return claims;
+        for(const id of claims.tripIds)ids.add(id);
         const prefix = tripRecoveryStorageKey(ownerId, 'prefix').slice(0, -'prefix'.length);
         for (let i = 0; i < storage.length; i++) {
           const key = storage.key(i); if (key?.startsWith(prefix)) ids.add(decodeURIComponent(key.slice(prefix.length).split(':')[0]));
@@ -142,8 +192,7 @@ export function createTwoStoreTripPersistence(storage: EasyTBrowserStorage, driv
     async cached(tripId: string): Promise<TwoStoreRead> {
       const state = await inspect(tripId); if(state.kind !== 'resolved') return state;
       if(state.domain.acknowledgement) return {kind:'found',trip:prepareTripDocumentForWrite(JSON.parse(state.domain.acknowledgement.canonicalRaw)),recovery:null,domain:state.domain};
-      try { const trip=loadCachedTripFromStorage(storage,tripId,ownerId);return trip?{kind:'found',trip,recovery:null,domain:null}:{kind:'missing'}; }
-      catch { return {kind:'protected',reason:'cache-document'}; }
+      return readNativeCache(tripId);
     },
     /** Every updated low-level native mutation must pass this readiness barrier. */
     async native<T>(tripId: string, operation: () => T): Promise<{kind:'done';value:T}|{kind:'protected'|'unavailable';reason:string}> {
@@ -204,17 +253,19 @@ export function createTwoStoreTripPersistence(storage: EasyTBrowserStorage, driv
         const record = decodeRawRecovery(state.domain.envelope.rawRecovery, scope(tripId));
         if (record.kind !== 'readable') return { kind: 'protected', reason: record.kind };
         if (state.domain.acknowledgement) return { kind: 'found', trip: prepareTripDocumentForWrite(JSON.parse(state.domain.acknowledgement.canonicalRaw)), recovery: null, domain: state.domain };
-        return { kind: 'found', trip: record.value.trip, recovery: { ...record.value, backend: 'indexeddb' }, domain: state.domain };
+        if(state.lifecycle?.disposition==='discarded') {
+          const cached=readNativeCache(tripId);
+          return cached.kind==='found'?{...cached,domain:state.domain}:cached;
+        }
+        return { kind: 'found', trip: record.value.trip, recovery: { ...record.value, backend: 'indexeddb',
+          ...(state.lifecycle?{state:state.lifecycle.state,conflictReason:state.lifecycle.conflictReason??undefined}:{}) }, domain: state.domain };
       }
       if (state.resolved.kind === 'local-storage' && state.resolved.source) {
         const record = decodeRecoverySource(state.resolved.source, scope(tripId));
         if (record.kind !== 'readable') return { kind: 'protected', reason: record.kind };
         return { kind: 'found', trip: record.value.trip, recovery: { ...record.value, backend: undefined }, domain: null };
       }
-      try {
-        const cached = loadCachedTripFromStorage(storage, tripId, ownerId);
-        return cached ? { kind: 'found', trip: cached, recovery: null, domain: null } : { kind: 'missing' };
-      } catch { return { kind: 'protected', reason: 'cache-document' }; }
+      return readNativeCache(tripId);
     },
     async save(inputTrip: EasyTTrip, options: TwoStoreSaveOptions = {}): Promise<TripRecoveryWriteResult> {
       const writeId = options.writeId ?? globalThis.crypto.randomUUID(), tripId = inputTrip.id;
@@ -224,6 +275,8 @@ export function createTwoStoreTripPersistence(storage: EasyTBrowserStorage, driv
       catch { return refused(tripId, writeId, true, 'scope-mismatch'); }
       if (!active() || trip.ownerId !== null && trip.ownerId !== ownerId || ownerId === null && trip.ownerId !== null) return refused(tripId, writeId, true, 'scope-mismatch');
       const state = await inspect(tripId); if (state.kind !== 'resolved') return refused(tripId, writeId, state.kind === 'protected');
+      if(state.lifecycle?.disposition==='discarded'&&!(state.domain.acknowledgement&&options.canonicalBase
+        &&JSON.stringify(prepareTripDocumentForWrite(options.canonicalBase))===JSON.stringify(prepareTripDocumentForWrite(JSON.parse(state.domain.acknowledgement.canonicalRaw)))))return refused(tripId,writeId,true);
       const requiredEntries:PreparedEntryWrite[]=[];
       for(const input of options.entries??[]) {
         const prepared=prepareEntryWrite(input,ownerId);
@@ -326,8 +379,10 @@ export function createTwoStoreTripPersistence(storage: EasyTBrowserStorage, driv
       const handle: RecoveryHandle = { version: 1, backend: 'indexeddb', ownerId, tripId, writeId };
       const record: TripRecoveryRecord = { version: 2, ownerId, tripId, writeId, trip, state: options.state ?? 'pending', savedAt: options.now ?? new Date().toISOString() };
       const entry = options.entry ?? existing?.entry ?? { pointer: handle, input: null, receipt: null };
+      if(options.entry?.claim&&JSON.stringify(options.entry.claim)!==JSON.stringify(existing?.entry.claim))return refused(tripId,writeId,true,'scope-mismatch');
       const candidate: RecoveryEnvelope = { version: 1, handle, parent: existing?.handle ?? null, rawRecovery: JSON.stringify(record),
-        legacySources: state.legacy, entry: { ...structuredClone(entry), pointer: handle, nativePointerRaw } };
+        legacySources: state.legacy, entry: { ...structuredClone(entry), pointer: handle, nativePointerRaw,
+          ...(existing?.entry.claim?{claim:structuredClone(existing.entry.claim)}:{}) } };
       const committed = await domain.commit({ raw: JSON.stringify(candidate), expectedHead: candidate.parent,
         admission: existing ? 'existing-domain' : 'native-setter-quota', entries: options.entries });
       if (committed.kind !== 'verified') return { ...refused(tripId, writeId, committed.kind === 'protected-conflict'),

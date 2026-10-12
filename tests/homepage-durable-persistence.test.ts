@@ -9,10 +9,17 @@ import {MemoryRecoveryDriver} from './helpers/durable-recovery-driver.ts';
 /** Fault model only; no native browser capacity/durability or live user state. */
 class NativeHomeModel {
   values=new Map<string,string>();failKey:string|null=null;failure='QuotaExceededError';writeCount=0;
+  get length(){return this.values.size;}key(i:number){return [...this.values.keys()][i]??null;}
   getItem(key:string){return this.values.get(key)??null;}
   setItem(key:string,raw:string){this.writeCount++;if(key===this.failKey)throw new DOMException('Synthetic only',this.failure);this.values.set(key,raw);}
   removeItem(key:string){this.values.delete(key);}
 }
+test('native claim enumeration failure remains unknown and never authorizes a Home write',async()=>{
+  const ls=new NativeHomeModel(),driver=new MemoryRecoveryDriver();ls.key=()=>{throw new DOMException('Synthetic only','SecurityError')};
+  ls.values.set('unrelated','retained');
+  const result=await createDurableHomepagePersistence(ls,driver,context()).write(JSON.stringify(bundle()),{allowInitialOverflow:true});
+  assert.equal(result.kind,'unavailable');assert.equal(ls.writeCount,0);assert.equal(driver.generations.size,0);
+});
 const context=(active=()=>true)=>({ownerId:null,isCurrent:active,overflowEnabled:true,accountOverflowQualified:false});
 function bundle(prompt=' Tokyo → Kyoto  ',handoffId='handoff-a') {
   const snapshot={...emptyHomepageInput(),mode:'describe' as const,prompt};

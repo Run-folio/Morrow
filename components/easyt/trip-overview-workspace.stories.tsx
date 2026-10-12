@@ -1,5 +1,6 @@
-import { useState, type ReactNode } from "react";
-import { loadTripRecovery } from "@/lib/easyt/storage";
+import { useEffect, useRef, useState, type ReactNode } from "react";
+import { loadTripRecovery, subscribeToTripStorage } from "@/lib/easyt/storage";
+import { MorroviaSectionStatus } from "./morrovia-loading-states";
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
 import { affiliatePartners, type BookingReadinessAction } from "@/lib/easyt/booking-readiness";
 import type { EasyTTrip, PlanItem } from "@/lib/easyt/trip";
@@ -189,8 +190,36 @@ const prepReadinessCards: ReadinessCard[] = [{
 function OverviewStoryFrame({ trip, restoreSavedFixture, children }: { trip: EasyTTrip; restoreSavedFixture: boolean; children: (trip: EasyTTrip) => ReactNode }) {
   // Production device-trip entry loads its canonical document before mounting the shell.
   // This opt-in fixture does the same so a browser reload exercises the real recovery store.
-  const [initialTrip] = useState(() => restoreSavedFixture && typeof window !== "undefined" ? loadTripRecovery(trip.id, trip.ownerId)?.trip ?? trip : trip);
-  return children(initialTrip);
+  const identity = JSON.stringify([trip.ownerId, trip.id]);
+  const identityRef = useRef(identity);
+  identityRef.current = identity;
+  const sourceRevisionRef = useRef(0);
+  const [readVersion, setReadVersion] = useState(0);
+  const [restored, setRestored] = useState<{ identity: string; trip: EasyTTrip } | null>(null);
+  const [readFailed, setReadFailed] = useState(false);
+  useEffect(() => {
+    if (!restoreSavedFixture) return;
+    return subscribeToTripStorage(trip.ownerId, trip.id, () => {
+      sourceRevisionRef.current += 1;
+      setReadVersion((version) => version + 1);
+    });
+  }, [restoreSavedFixture, trip.id, trip.ownerId]);
+  useEffect(() => {
+    if (!restoreSavedFixture) return;
+    let active = true;
+    const revision = sourceRevisionRef.current;
+    const isCurrent = () => active && identityRef.current === identity && sourceRevisionRef.current === revision;
+    setRestored(null);
+    setReadFailed(false);
+    void loadTripRecovery(trip.id, trip.ownerId).then((recovery) => {
+      if (isCurrent()) setRestored({ identity, trip: recovery?.trip ?? trip });
+    }).catch(() => { if (isCurrent()) setReadFailed(true); });
+    return () => { active = false; };
+  }, [identity, readVersion, restoreSavedFixture, trip]);
+  if (!restoreSavedFixture) return children(trip);
+  if (readFailed) return <MorroviaSectionStatus state="error" title="Device fixture could not be checked" detail="Retry the storage check before opening the fixture." onRetry={() => setReadVersion((version) => version + 1)} />;
+  if (!restored || restored.identity !== identity) return <MorroviaSectionStatus title="Opening the trip fixture" detail="Checking this exact device copy before mounting the workspace." />;
+  return children(restored.trip);
 }
 
 const meta = {

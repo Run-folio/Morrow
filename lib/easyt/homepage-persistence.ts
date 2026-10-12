@@ -13,6 +13,7 @@ import {RECOVERY_DOMAIN_OVERFLOW_ENABLED,RECOVERY_DOMAIN_ACCOUNT_OVERFLOW_QUALIF
 import {withPersistencePreparation,reportPersistenceOutcome,type PersistenceStage} from './persistence-outcome.ts';
 import {prepareEntryWrite} from './durable-entry-store.ts';
 import type {EasyTTrip} from './trip.ts';
+import {readOwnerRecoveryClaimBarrier} from './recovery-domain-claim.ts';
 export type HomepageStorage = Pick<Storage,'getItem'|'setItem'|'removeItem'>;
 export type HomepageBundle = {version:1;inputRaw:string|null;draftRaw:string|null};
 export type DurableHomepageState = {kind:'ready';storedInput:StoredHomepageInput|null;draft:unknown|null;inputRaw:string|null;draftRaw:string|null;
@@ -53,6 +54,10 @@ export function createDurableHomepagePersistence(storage:HomepageStorage,driver:
     if(!active())return {kind:'protected',reason:'operation-changed'};
     const result=await entries.read(scope);
     if(result.kind!=='ready')return {kind:result.kind==='protected-conflict'||result.kind==='failure'&&['schema','corrupt'].includes(result.reason)?'protected':'unavailable',reason:result.kind==='verified'?'unknown':result.reason};
+    const claim=await readOwnerRecoveryClaimBarrier(driver,storage,{ownerId,isCurrent:active});if(claim.kind!=='ready')return claim;
+    const current=await entries.read(scope);
+    if(current.kind!=='ready')return {kind:'unavailable',reason:'entry-readback-unknown'};
+    if(!active()||JSON.stringify(current.envelope)!==JSON.stringify(result.envelope))return {kind:'protected',reason:'entry-changed'};
     try {
       const legacyRaw=nativeRaw(),envelope=result.envelope;
       if(!active())return {kind:'protected',reason:'operation-changed'};

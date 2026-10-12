@@ -23,7 +23,7 @@ export function useBuilderStopReorder(options: {
   lockedStopIds: readonly string[];
   fixedOrder: boolean;
   onPreview: (ids: readonly string[] | null) => void;
-  onCommit: (ids: readonly string[], source: ReorderSource) => boolean;
+  onCommit: (ids: readonly string[], source: ReorderSource) => boolean | Promise<boolean>;
   targetAttribute?: 'data-builder-stop-index' | 'data-builder-chip-index';
 }) {
   const { stopIds, lockedStopIds, fixedOrder, onPreview, onCommit, targetAttribute = 'data-builder-stop-index' } = options;

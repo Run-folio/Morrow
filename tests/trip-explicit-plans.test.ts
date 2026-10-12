@@ -100,7 +100,9 @@ test("overview and itinerary share one explicit-plan component and existing pers
   const component = readFileSync(new URL("../components/easyt/trip-explicit-plans.tsx", import.meta.url), "utf8");
   assert.match(overview, /<TripExplicitPlans trip=\{trip\} variant="overview"/);
   assert.match(itinerary, /<TripExplicitPlans/);
-  assert.match(itinerary, /mutation\.mutateTrip\(\(current\) => scheduleExplicitVisitIntent/);
+  assert.match(itinerary, /const changed = await mutateCurrentTrip\(\(current\) => scheduleExplicitVisitIntent[\s\S]*if \(!isCurrent\(\)\) return false;/);
+  assert.match(component, /const changed = await \(target\.kind === "visit"/);
+  assert.match(component, /if \(!isCurrent\(\)\) return;[\s\S]*if \(changed === true\) setRemoveTarget\(null\)/);
   assert.match(component, /You asked to visit this/);
   assert.match(component, /Add to day/);
   assert.match(component, /Fixed plan · protected/);

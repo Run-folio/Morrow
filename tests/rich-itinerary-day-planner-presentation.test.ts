@@ -81,10 +81,11 @@ test("native drag uses a canonical pointer source while preserving every canonic
   assert.match(workspace, /beginPlannerDrag\(\{ kind: "activity", activity, sourceDayId: active\.id, sourceStopId: active\.stopId \}\)/);
   assert.match(component, /onMoveToDay/);
   assert.match(workspace, /plannerDragRef\.current = dragged/);
-  assert.match(workspace, /const dropPlannerItem = \(dayPart: ItineraryDayPart, insertionIndex: number\)/);
+  assert.match(workspace, /const dropPlannerItem = async \(dayPart: ItineraryDayPart, insertionIndex: number\)/);
   assert.match(workspace, /const dragged = plannerDragRef\.current \?\? plannerDrag/);
   assert.match(workspace, /placeItineraryActivity\(current, active\.id, dragged\.activity\.id, dayPart, insertionIndex\)/);
   assert.match(workspace, /mutation\.mutateTrip/);
+  assert.match(workspace, /const accepted = await mutateCurrentTrip[\s\S]*if \(!isCurrent\(\)\) return false;/);
 });
 
 test("whole, empty, populated, and insertion drop targets retain native acceptance semantics", () => {

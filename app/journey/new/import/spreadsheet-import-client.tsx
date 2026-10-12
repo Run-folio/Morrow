@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { ArrowLeft, FileSpreadsheet, Upload } from "lucide-react";
 import { useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
-import { EasyTButton, EasyTSelect, EasyTSegmentedControl, EasyTTextArea } from "@/components/easyt/easyt-controls";
+import { EasyTButton, EasyTLinkButton, EasyTSelect, EasyTSegmentedControl, EasyTTextArea } from "@/components/easyt/easyt-controls";
 import { MorroviaRecoveryFeedback, MorroviaStatusBanner } from "@/components/easyt/morrovia-feedback";
 import { authClient } from "@/lib/auth-client";
 import {
@@ -20,9 +20,9 @@ import {
   type SpreadsheetTable,
 } from "@/lib/easyt/spreadsheet-import";
 import { parseSpreadsheetWorkbook } from "@/lib/easyt/spreadsheet-import-file";
-import { cacheCanonicalTrip, loadTripRecovery, saveTripRecovery, saveTripRecoveryToEasyT } from "@/lib/easyt/storage";
+import { acknowledgeTripBuildSave, BrowserRecoveryReadError, loadTripRecovery, saveTripRecovery, saveTripRecoveryToEasyT, subscribeToTripStorage } from "@/lib/easyt/storage";
 import { pendingSpreadsheetImportForRetry, type PendingSpreadsheetImportSubmission } from "@/lib/easyt/spreadsheet-import-submission";
-import { tripBuildDocumentsCanonicalEquivalent } from "@/lib/easyt/trip-promotion";
+import { tripSyncRecoveryPath } from "@/lib/easyt/trip-continuity";
 import { firstTripWorkspaceHref } from "@/lib/easyt/trip-workspace-links";
 import { SpreadsheetImportReview, type SpreadsheetImportPlaceCandidate } from "./spreadsheet-import-review";
 import styles from "./spreadsheet-import.module.css";
@@ -45,7 +45,19 @@ async function placeResponse(name: string, country: string) {
 
 export default function SpreadsheetImportClient() {
   const { data: session, isPending: sessionPending } = authClient.useSession();
+  const visibleOwnerId = session?.user?.id ?? null;
+  const ownerScope = JSON.stringify([visibleOwnerId, sessionPending]);
+  const ownerScopeRef = useRef(ownerScope);
+  ownerScopeRef.current = ownerScope;
+  const mountedRef = useRef(true);
+  const confirmationVersionRef = useRef(0);
+  const inputVersionRef = useRef(0);
+  const fileReadVersionRef = useRef(0);
+  const originRequestVersionRef = useRef(0);
+  const recoverySourceRevisionRef = useRef(0);
   const [inputMode, setInputMode] = useState<"file" | "paste">("file");
+  const inputModeRef = useRef(inputMode);
+  inputModeRef.current = inputMode;
   const [pasteValue, setPasteValue] = useState("");
   const [sheets, setSheets] = useState<SpreadsheetTable[]>([]);
   const [sheetIndex, setSheetIndex] = useState(0);
@@ -61,13 +73,54 @@ export default function SpreadsheetImportClient() {
   const [originError, setOriginError] = useState("");
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState("");
+  const [accountSaveWarning, setAccountSaveWarning] = useState<{ tripId: string; ownerId: string | null; accountAcknowledged: boolean; detail: string; protectedRecovery: boolean } | null>(null);
   const confirmingRef = useRef(false);
   const pendingSubmissionRef = useRef<PendingSpreadsheetImportSubmission | null>(null);
 
   const table = sheets[sheetIndex] ?? null;
   const proposal = useMemo<SpreadsheetImportProposal | null>(() => table ? buildSpreadsheetImportProposal(table, mappings) : null, [mappings, table]);
+  const reviewedInputKey = proposal && resolvedOrigin
+    ? JSON.stringify({ proposal, origin: resolvedOrigin, places: proposal.stops.map((stop) => resolvedPlaces[stop.id]) })
+    : null;
+  const reviewedInputKeyRef = useRef(reviewedInputKey);
+  reviewedInputKeyRef.current = reviewedInputKey;
+  useEffect(() => { mountedRef.current = true; return () => { mountedRef.current = false; }; }, []);
+  useEffect(() => subscribeToTripStorage(visibleOwnerId, "", () => { recoverySourceRevisionRef.current += 1; }), [visibleOwnerId]);
+  useEffect(() => {
+    confirmationVersionRef.current += 1;
+    inputVersionRef.current += 1;
+    fileReadVersionRef.current += 1;
+    originRequestVersionRef.current += 1;
+    confirmingRef.current = false;
+    setSaving(false);
+    setReading(false);
+    setSaveError("");
+    setAccountSaveWarning(null);
+  }, [ownerScope]);
+
+  const changeInputMode = (next: "file" | "paste") => {
+    if (next === inputModeRef.current) return;
+    inputVersionRef.current += 1;
+    fileReadVersionRef.current += 1;
+    originRequestVersionRef.current += 1;
+    inputModeRef.current = next;
+    setInputMode(next);
+    setReading(false);
+    setInputError("");
+  };
+
+  const editPastedSource = (value: string) => {
+    inputVersionRef.current += 1;
+    fileReadVersionRef.current += 1;
+    originRequestVersionRef.current += 1;
+    setPasteValue(value);
+    setReading(false);
+    setInputError("");
+  };
 
   const selectTable = (nextSheets: SpreadsheetTable[], nextIndex = 0) => {
+    inputVersionRef.current += 1;
+    originRequestVersionRef.current += 1;
     const nextTable = nextSheets[nextIndex];
     setSheets(nextSheets);
     setSheetIndex(nextIndex);
@@ -82,6 +135,8 @@ export default function SpreadsheetImportClient() {
   };
 
   const chooseSheet = (index: number) => {
+    inputVersionRef.current += 1;
+    originRequestVersionRef.current += 1;
     setSheetIndex(index);
     setMappings(spreadsheetColumnMappings(sheets[index].headers));
     setOriginValue("");
@@ -94,20 +149,34 @@ export default function SpreadsheetImportClient() {
 
   const readFile = async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
-    if (!file) return;
+    if (!file || inputModeRef.current !== "file") return;
+    const version = ++inputVersionRef.current;
+    const requestVersion = ++fileReadVersionRef.current;
+    const isCurrent = () => mountedRef.current && ownerScopeRef.current === ownerScope
+      && inputVersionRef.current === version && fileReadVersionRef.current === requestVersion && inputModeRef.current === "file";
     setReading(true);
     setInputError("");
     try {
       if (file.size > SPREADSHEET_IMPORT_LIMITS.fileBytes) throw new Error("The file is larger than the 5 MB V1 limit.");
       const extension = file.name.toLocaleLowerCase().split(".").at(-1);
-      if (extension === "csv") selectTable([parseDelimitedText(await file.text(), file.name)]);
-      else if (extension === "xlsx") selectTable(parseSpreadsheetWorkbook(await file.arrayBuffer(), file.name).sheets);
+      if (extension === "csv") {
+        const text = await file.text();
+        if (!isCurrent()) return;
+        selectTable([parseDelimitedText(text, file.name)]);
+      } else if (extension === "xlsx") {
+        const buffer = await file.arrayBuffer();
+        if (!isCurrent()) return;
+        selectTable(parseSpreadsheetWorkbook(buffer, file.name).sheets);
+      }
       else throw new Error("Choose a CSV or XLSX file. Older XLS and macro-enabled XLSM files are not supported in V1.");
     } catch (error) {
+      if (!isCurrent()) return;
       setInputError(error instanceof Error ? error.message : "Morrovia could not read this spreadsheet.");
     } finally {
-      setReading(false);
-      event.target.value = "";
+      if (mountedRef.current && ownerScopeRef.current === ownerScope && fileReadVersionRef.current === requestVersion) {
+        setReading(false);
+        event.target.value = "";
+      }
     }
   };
 
@@ -118,6 +187,8 @@ export default function SpreadsheetImportClient() {
   };
 
   const updateMapping = (columnIndex: number, value: string) => {
+    inputVersionRef.current += 1;
+    originRequestVersionRef.current += 1;
     const field = value === "ignore" ? null : value as SpreadsheetImportField;
     setMappings((current) => current.map((mapping) => {
       if (mapping.index === columnIndex) return { ...mapping, field, state: field ? "mapped" : "ignored", suggestions: field ? [field] : [] };
@@ -137,10 +208,13 @@ export default function SpreadsheetImportClient() {
   useEffect(() => {
     if (!proposal?.origin || resolvedOrigin || originValue.trim() !== proposal.origin.trim()) return;
     let cancelled = false;
+    const requestVersion = ++originRequestVersionRef.current;
+    const isCurrent = () => !cancelled && mountedRef.current && ownerScopeRef.current === ownerScope
+      && originRequestVersionRef.current === requestVersion;
     const resolve = async () => {
       try {
         const response = await placeResponse(proposal.origin!, "");
-        if (cancelled) return;
+        if (!isCurrent()) return;
         if (response.result) {
           setResolvedOrigin(response.result);
         } else {
@@ -148,12 +222,12 @@ export default function SpreadsheetImportClient() {
           setOriginError(response.candidates.length ? "Choose the intended place." : "Morrovia could not verify this starting point. Check the spelling and try again.");
         }
       } catch {
-        if (!cancelled) setOriginError("Place checking is temporarily unavailable. Your spreadsheet remains in this browser.");
+        if (isCurrent()) setOriginError("Place checking is temporarily unavailable. Your spreadsheet remains in this browser.");
       }
     };
     void resolve();
     return () => { cancelled = true; };
-  }, [proposal?.sourceName, proposal?.origin, originValue, resolvedOrigin]);
+  }, [ownerScope, table, mappings, proposal?.sourceName, proposal?.origin, originValue, resolvedOrigin]);
 
   useEffect(() => {
     if (!proposal?.stops.length) return;
@@ -164,7 +238,7 @@ export default function SpreadsheetImportClient() {
         try { return { stop, ...(await placeResponse(stop.name, stop.country)) }; }
         catch { return { stop, result: null, candidates: [] as PlaceCandidate[] }; }
       }));
-      if (cancelled) return;
+      if (cancelled || !mountedRef.current || ownerScopeRef.current !== ownerScope) return;
       const nextResolved: Record<string, ResolvedImportPlace> = {};
       const nextOptions: Record<string, PlaceCandidate[]> = {};
       for (const { stop, result, candidates } of results) {
@@ -177,24 +251,34 @@ export default function SpreadsheetImportClient() {
     };
     void resolve();
     return () => { cancelled = true; };
-  }, [proposal?.sourceName, proposal?.stops.map((stop) => `${stop.id}:${stop.name}:${stop.country}`).join("|")]);
+  }, [ownerScope, table, mappings, proposal?.sourceName, proposal?.stops.map((stop) => `${stop.id}:${stop.name}:${stop.country}`).join("|")]);
 
   const resolveOrigin = async () => {
     if (!originValue.trim()) { setOriginError("Add the city or airport where the trip starts."); return; }
+    const inputVersion = inputVersionRef.current;
+    const requestVersion = ++originRequestVersionRef.current;
+    const isCurrent = () => mountedRef.current && ownerScopeRef.current === ownerScope
+      && inputVersionRef.current === inputVersion && originRequestVersionRef.current === requestVersion;
     setOriginError("");
     setOriginOptions([]);
     try {
       const response = await placeResponse(originValue.trim(), "");
+      if (!isCurrent()) return;
       if (response.result) { setResolvedOrigin(response.result); setOriginValue(response.result.name); return; }
       setResolvedOrigin(null);
       setOriginOptions(response.candidates);
       setOriginError(response.candidates.length ? "Choose the intended place." : "Morrovia could not verify this starting point. Check the spelling and try again.");
     } catch {
+      if (!isCurrent()) return;
       setOriginError("Place checking is temporarily unavailable. Your spreadsheet remains in this browser.");
     }
   };
 
   const reset = () => {
+    fileReadVersionRef.current += 1;
+    setReading(false);
+    inputVersionRef.current += 1;
+    originRequestVersionRef.current += 1;
     setSheets([]);
     setMappings([]);
     setPasteValue("");
@@ -208,21 +292,26 @@ export default function SpreadsheetImportClient() {
   };
 
   const allPlacesResolved = Boolean(proposal?.stops.length) && proposal!.stops.every((stop) => resolvedPlaces[stop.id]);
-  const canConfirm = Boolean(proposal?.canConfirmStructure && resolvedOrigin && allPlacesResolved && !resolvingPlaces && !sessionPending);
+  const canConfirm = Boolean(proposal?.canConfirmStructure && resolvedOrigin && allPlacesResolved && !resolvingPlaces && !sessionPending && !accountSaveWarning);
 
   const confirm = async () => {
-    if (!proposal || !resolvedOrigin || !canConfirm || saving || confirmingRef.current) return;
+    if (!proposal || !resolvedOrigin || !reviewedInputKey || !canConfirm || saving || confirmingRef.current) return;
+    const ownerId = visibleOwnerId;
+    const sourceRevision = recoverySourceRevisionRef.current;
+    const inputVersion = inputVersionRef.current;
+    const version = ++confirmationVersionRef.current;
+    const isCurrent = () => mountedRef.current && ownerScopeRef.current === ownerScope
+      && reviewedInputKeyRef.current === reviewedInputKey && inputVersionRef.current === inputVersion
+      && confirmationVersionRef.current === version;
     confirmingRef.current = true;
     setSaving(true);
     setSaveError("");
     try {
-      const ownerId = session?.user?.id ?? null;
-      const reviewedInputKey = JSON.stringify({ proposal, origin: resolvedOrigin, places: proposal.stops.map((stop) => resolvedPlaces[stop.id]) });
-      let pending = pendingSpreadsheetImportForRetry(pendingSubmissionRef.current, {
-        reviewedInputKey,
-        ownerId,
-        recovery: pendingSubmissionRef.current ? loadTripRecovery(pendingSubmissionRef.current.trip.id, ownerId) : null,
-      });
+      const previous = pendingSubmissionRef.current;
+      const recovery = previous ? await loadTripRecovery(previous.trip.id, ownerId) : null;
+      if (!isCurrent()) return;
+      if (recoverySourceRevisionRef.current !== sourceRevision) throw new Error("The device copy changed while it was being checked. Review it before retrying this import.");
+      let pending = pendingSpreadsheetImportForRetry(previous, { reviewedInputKey, ownerId, recovery });
       if (!pending) {
         const trip = canonicalTripFromSpreadsheetProposal({
           id: `trip-${crypto.randomUUID()}`,
@@ -230,32 +319,49 @@ export default function SpreadsheetImportClient() {
           origin: resolvedOrigin,
           places: proposal.stops.map((stop) => resolvedPlaces[stop.id]),
         });
-        const recovery = saveTripRecovery(trip, { ownerId });
-        if (!recovery.stored) throw new Error(recovery.blockedByExistingRecovery
+        const preserved = await saveTripRecovery(trip, { ownerId, newTripOrClone: true, isCurrent, accountSavePending: Boolean(ownerId) });
+        if (!isCurrent()) return;
+        if (!preserved.stored) throw new Error(preserved.blockedByExistingRecovery
           ? "A different recovery copy already exists on this device. Open or resolve it before importing another trip."
-          : "This browser could not preserve the reviewed trip. Keep this page open and check private-browsing or storage settings.");
+          : "This browser could not preserve the reviewed trip. Keep this page open and try again when device storage is available.");
         if (!ownerId) {
+          if (preserved.pointerAcknowledged === false) {
+            setAccountSaveWarning({ tripId: trip.id, ownerId: null, accountAcknowledged: false, protectedRecovery: false, detail: "This trip is saved on the device. Opening it automatically could not be confirmed; use Open saved trip to continue." });
+            return;
+          }
           window.location.assign(firstTripWorkspaceHref(trip.id));
           return;
         }
-        pending = { reviewedInputKey, ownerId, trip, handle: recovery.handle };
+        pending = { reviewedInputKey, ownerId, trip, handle: preserved.handle };
         pendingSubmissionRef.current = pending;
       }
-      const saved = await saveTripRecoveryToEasyT(pending.trip, pending.handle);
-      if (saved.id !== pending.trip.id || saved.ownerId !== ownerId || !tripBuildDocumentsCanonicalEquivalent(pending.trip, saved, ownerId)) {
-        throw new Error("The account save did not match the trip you reviewed. The reviewed copy remains recoverable on this device.");
+      const outgoing = structuredClone(pending.trip);
+      const saved = await saveTripRecoveryToEasyT(outgoing, pending.handle);
+      const acknowledged = await acknowledgeTripBuildSave(outgoing, saved, pending.handle, { isCurrent });
+      if (!isCurrent()) return;
+      if (!acknowledged.accountAcknowledged) throw new Error("The account save did not confirm the trip you reviewed. The reviewed copy remains recoverable on this device.");
+      pendingSubmissionRef.current = null;
+      const protectedRecovery = acknowledged.outcome === "device-newer" || acknowledged.deviceOutcome === "protected-conflict";
+      if (protectedRecovery || !acknowledged.cacheStored) {
+        setAccountSaveWarning({ tripId: saved.id, ownerId: saved.ownerId!, accountAcknowledged: true, protectedRecovery, detail: protectedRecovery
+          ? "Your account trip is saved. A separate device copy still needs review before you continue."
+          : "Your account trip is saved. This browser could not update its device copy. Open the account trip to continue." });
+        return;
       }
-      const cached = cacheCanonicalTrip(saved, pending.handle);
-      if (!cached.stored || !cached.recoveryResolved) throw new Error("The trip reached your account, but this browser could not acknowledge the save. Keep this page open and retry.");
       window.location.assign(firstTripWorkspaceHref(saved.id));
     } catch (error) {
-      setSaveError(error instanceof Error ? error.message : "Morrovia could not save this trip. The reviewed information has not been silently changed.");
-      setSaving(false);
-      confirmingRef.current = false;
+      if (!isCurrent()) return;
+      setSaveError(error instanceof BrowserRecoveryReadError
+        ? "The device copy could not be confirmed. Keep this page open and retry before importing another trip."
+        : error instanceof Error ? error.message : "Morrovia could not save this trip. The reviewed information has not been silently changed.");
+    } finally {
+      if (confirmationVersionRef.current === version) confirmingRef.current = false;
+      if (mountedRef.current && ownerScopeRef.current === ownerScope && confirmationVersionRef.current === version) setSaving(false);
     }
   };
 
   return <div className={styles.boundary}>
+    {accountSaveWarning && accountSaveWarning.ownerId === visibleOwnerId ? <MorroviaStatusBanner tone="warning" title={accountSaveWarning.accountAcknowledged ? "Saved to your account" : "Saved on this device"} detail={accountSaveWarning.detail} actions={<EasyTLinkButton href={accountSaveWarning.protectedRecovery ? tripSyncRecoveryPath(accountSaveWarning.tripId) : firstTripWorkspaceHref(accountSaveWarning.tripId)}>{accountSaveWarning.protectedRecovery ? "Review device copy" : "Open saved trip"}</EasyTLinkButton>} /> : null}
     <Link className={styles.back} href="/journey/new"><ArrowLeft aria-hidden="true" /> Back to trip creation</Link>
     {!table ? <header className={styles.hero}>
       <p>IMPORT EXISTING TRIP</p>
@@ -268,7 +374,7 @@ export default function SpreadsheetImportClient() {
         <div><span>STEP 1</span><h2 id="import-source-title">Choose your source</h2><p>CSV, XLSX, or a copied spreadsheet table.</p></div>
         <FileSpreadsheet aria-hidden="true" />
       </div>
-      <EasyTSegmentedControl ariaLabel="Import source" value={inputMode} onChange={setInputMode} options={[{ value: "file", label: "Upload file", controls: "import-file" }, { value: "paste", label: "Paste table", controls: "import-paste" }]} />
+      <EasyTSegmentedControl ariaLabel="Import source" value={inputMode} onChange={changeInputMode} options={[{ value: "file", label: "Upload file", controls: "import-file" }, { value: "paste", label: "Paste table", controls: "import-paste" }]} />
       {inputMode === "file" ? <div id="import-file" className={styles.filePanel}>
         <Upload aria-hidden="true" />
         <div><strong>Choose a CSV or XLSX file</strong><span>Up to 5 MB, 1,000 rows and 60 columns. XLS, XLSM and merged multi-sheet imports are not supported.</span></div>
@@ -277,7 +383,7 @@ export default function SpreadsheetImportClient() {
           <input type="file" accept=".csv,text/csv,.xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" disabled={reading} onChange={readFile} />
         </label>
       </div> : <div id="import-paste" className={styles.pastePanel}>
-        <EasyTTextArea label="Spreadsheet rows" value={pasteValue} onChange={(event) => setPasteValue(event.target.value)} rows={9} placeholder={"Destination\tArrival date\tDeparture date\nTokyo\t2027-04-02\t2027-04-06"} hint="Include the header row. Tabs, commas and semicolons are supported." />
+        <EasyTTextArea label="Spreadsheet rows" value={pasteValue} onChange={(event) => editPastedSource(event.target.value)} rows={9} placeholder={"Destination\tArrival date\tDeparture date\nTokyo\t2027-04-02\t2027-04-06"} hint="Include the header row. Tabs, commas and semicolons are supported." />
         <EasyTButton icon={FileSpreadsheet} onClick={parsePaste} disabled={!pasteValue.trim()}>Review pasted table</EasyTButton>
       </div>}
       {inputError ? <MorroviaRecoveryFeedback title="We could not read that source" detail={inputError} safety="No trip was created and the original file was not stored." /> : null}
@@ -304,10 +410,10 @@ export default function SpreadsheetImportClient() {
         canConfirm={canConfirm}
         onReset={reset}
         onUpdateMapping={updateMapping}
-        onOriginValueChange={(value) => { setOriginValue(value); setResolvedOrigin(null); setOriginOptions([]); setOriginError(""); }}
+        onOriginValueChange={(value) => { inputVersionRef.current += 1; originRequestVersionRef.current += 1; setOriginValue(value); setResolvedOrigin(null); setOriginOptions([]); setOriginError(""); }}
         onResolveOrigin={() => void resolveOrigin()}
-        onSelectOrigin={(option) => { setResolvedOrigin(option); setOriginValue(option.name); setOriginError(""); }}
-        onSelectPlace={(stopId, option) => setResolvedPlaces((current) => ({ ...current, [stopId]: placeFromCandidate(stopId, option) }))}
+        onSelectOrigin={(option) => { inputVersionRef.current += 1; originRequestVersionRef.current += 1; setResolvedOrigin(option); setOriginValue(option.name); setOriginError(""); }}
+        onSelectPlace={(stopId, option) => { inputVersionRef.current += 1; setResolvedPlaces((current) => ({ ...current, [stopId]: placeFromCandidate(stopId, option) })); }}
         onConfirm={() => void confirm()}
       /> : null}
     </>}

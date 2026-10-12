@@ -62,6 +62,15 @@ function StayFinderSurface({
   onSelectStop: (stopId: string) => void;
 }) {
   const mutation = useTripShellMutation();
+  const actionScopeRef = useRef({ identity: "", revision: 0 });
+  const actionIdentity = JSON.stringify([workingTrip.ownerId, workingTrip.id, context.stop.id]);
+  if (actionScopeRef.current.identity !== actionIdentity) actionScopeRef.current = { identity: actionIdentity, revision: actionScopeRef.current.revision + 1 };
+  const mountedRef = useRef(true);
+  useEffect(() => { mountedRef.current = true; return () => { mountedRef.current = false; }; }, []);
+  const captureActionScope = () => {
+    const scope = actionScopeRef.current;
+    return () => mountedRef.current && actionScopeRef.current === scope;
+  };
   const photos = useJourneyLocalPlacePhotos(finder.candidates, { allowGooglePlaceLookup: false });
   const [unavailablePhotoSources, setUnavailablePhotoSources] = useState<Record<string, string>>({});
   const booking = stayBookingForStop(workingTrip, context.stop);
@@ -114,24 +123,28 @@ function StayFinderSurface({
     });
   };
 
-  const chooseStay = (place: JourneyLocalPlace) => {
-    const changed = mutation.mutateTrip(
+  const chooseStay = async (place: JourneyLocalPlace) => {
+    const isCurrent = captureActionScope();
+    const changed = await mutation.mutateTrip(
       (current) => selectMappedStayForStop(current, context.stop.id, place),
       `stay-select-${context.stop.id}-${place.id}`,
       "stay-select",
     );
+    if (!isCurrent()) return;
     if (changed) {
       setNotice(`${place.name} chosen for ${context.stop.name}.`);
       trackEvent("stay_chosen", { trip_id: workingTrip.id, stop_id: context.stop.id, source: "stay_workspace" });
     }
   };
 
-  const removeStay = () => {
+  const removeStay = async () => {
     if (!selected) return;
-    const changed = mutation.mutateTrip(
+    const isCurrent = captureActionScope();
+    const changed = await mutation.mutateTrip(
       (current) => removeMappedStayForStop(current, context.stop.id, selected),
       `stay-remove-${context.stop.id}-${selected.id}`,
     );
+    if (!isCurrent()) return;
     if (!changed) return;
     setNotice(`${selected.name} removed. ${context.stop.name} needs a stay again.`);
   };

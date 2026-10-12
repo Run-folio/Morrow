@@ -75,6 +75,7 @@ export function createRecoveryDomainStore(driver: RecoveryDomainDriver, context:
       const preparedEntries: PreparedEntryWrite[] = [], seenEntries = new Set<string>();
       for (const entry of input.entries ?? []) {
         const prepared = prepareEntryWrite(entry, ownerId); if (prepared.kind !== 'prepared') return prepared;
+        if(prepared.scope.kind==='recovery-lifecycle'||prepared.scope.kind==='recovery-claim')return conflict('admission');
         const key = entryHeadKey(prepared.scope);
         if (seenEntries.has(key) || prepared.scope.kind === 'builder-input' && prepared.scope.tripId !== candidate.handle.tripId) return conflict('scope');
         const requiredRaw = prepared.scope.kind === 'builder-input' ? candidate.entry.input?.raw ?? null : candidate.entry.receipt?.raw ?? null;
@@ -86,6 +87,9 @@ export function createRecoveryDomainStore(driver: RecoveryDomainDriver, context:
         const committed = await driver.run<RecoveryCommitResult | { kind: 'committed' }>(scope, candidate.handle.writeId, 'readwrite', state => {
           if (!active()) return { value: conflict('operation-changed', 'not-committed') };
           const existing = stateHead(state, scope); if (existing.kind !== 'valid') return { value: existing };
+          // Only the dedicated paired transaction may introduce a claim.
+          // Later generic edits must retain that exact ancestry pointer.
+          if(JSON.stringify(candidate.entry.claim)!==JSON.stringify(existing.envelope?.entry.claim))return {value:conflict('admission','not-committed')};
           const entryWrites: RecoveryEntryMutation[] = [];
           for (const [index, entry] of preparedEntries.entries()) {
             const decision = decideEntryWrite(entry, state.entries[index]); if (decision.kind !== 'write') return { value: decision };

@@ -155,6 +155,18 @@ type MoveFlow = {
   targetDayPart: ItineraryDayPart | null;
 };
 
+/** A completion may affect only the mounted owner, document and editor input it began in. */
+function useItineraryActionScope(identity: string) {
+  const scopeRef = useRef({ identity, revision: 0 });
+  if (scopeRef.current.identity !== identity) scopeRef.current = { identity, revision: scopeRef.current.revision + 1 };
+  const mountedRef = useRef(true);
+  useEffect(() => { mountedRef.current = true; return () => { mountedRef.current = false; }; }, []);
+  return useCallback(() => {
+    const scope = scopeRef.current;
+    return () => mountedRef.current && scopeRef.current === scope;
+  }, []);
+}
+
 const itineraryDayPartLabels: Record<"en" | "es", Record<ItineraryDayPart, string>> = {
   en: { morning: "Morning", midday: "Midday", afternoon: "Afternoon", evening: "Evening" },
   es: { morning: "Mañana", midday: "Mediodía", afternoon: "Tarde", evening: "Noche" },
@@ -641,6 +653,16 @@ export default function TripItineraryWorkspace({
   const copy = useMemo(() => itineraryCopy(language), [language]);
   const calendarWeeks = useMemo(() => itineraryCalendarWeeks(workingTrip), [workingTrip]);
   const activeDayId = days[Math.min(selectedIndex, Math.max(0, days.length - 1))]?.id ?? null;
+  const captureActionScope = useItineraryActionScope(JSON.stringify([
+    workingTrip.ownerId, workingTrip.id, activeDayId, workspaceView,
+    addFlow, addDraft, editingActivity, editDraft, removeTarget, moveFlow, undoReceipt, railNoteDraft,
+  ]));
+  const mutateCurrentTrip = async (...args: Parameters<typeof mutation.mutateTrip>) => {
+    const isCurrent = captureActionScope();
+    const [update, key, feedbackAction] = args;
+    const accepted = await mutation.mutateTrip((current) => isCurrent() ? update(current) : current, key, feedbackAction).catch(() => false);
+    return accepted && isCurrent();
+  };
   const presentationImages = useMemo(() => itineraryPresentationImages(workingTrip), [workingTrip]);
   const destinations = useMemo(() => itineraryRouteTrackStops(workingTrip, activeDayId, presentationImages.stopById, language), [workingTrip, activeDayId, presentationImages, language]);
   useEffect(() => {
@@ -1027,11 +1049,12 @@ export default function TripItineraryWorkspace({
     setOpenMenuId(null);
   };
 
-  const submitAddFlow = () => {
+  const submitAddFlow = async () => {
+    const isCurrent = captureActionScope();
     if (!addFlow) return;
     let mutationReason = "";
     let receipt: ItineraryItemUndoReceipt | null = null;
-    const accepted = mutation.mutateTrip((current) => {
+    const accepted = await mutateCurrentTrip((current) => {
       if (addFlow.kind === "activity") {
         const result = addItineraryActivityWithUndo(current, addFlow.dayNumber, addFlow.noteIndex, addDraft, addFlow.dayPart);
         mutationReason = result.reason ?? "";
@@ -1042,6 +1065,7 @@ export default function TripItineraryWorkspace({
       mutationReason = result.reason ?? "";
       return result.trip;
     }, `itinerary-day-${addFlow.dayNumber}`, addFlow.kind === "activity" ? "activity-add" : undefined);
+    if (!isCurrent()) return false;
     if (!accepted) {
       setAddError(mutationReason || "This change could not be stored safely.");
       return;
@@ -1054,18 +1078,20 @@ export default function TripItineraryWorkspace({
     setAddError("");
   };
 
-  const submitRailNote = () => {
+  const submitRailNote = async () => {
+    const isCurrent = captureActionScope();
     if (!railNoteDraft.trim()) {
       setRailNoteError("Add a note before saving.");
       noteInputRef.current?.focus();
       return;
     }
     let mutationReason = "";
-    const accepted = mutation.mutateTrip((current) => {
+    const accepted = await mutateCurrentTrip((current) => {
       const result = addItineraryDayNote(current, active.dayNumber, railNoteDraft);
       mutationReason = result.reason ?? "";
       return result.trip;
     }, `itinerary-day-${active.dayNumber}`);
+    if (!isCurrent()) return false;
     if (!accepted) {
       setRailNoteError(mutationReason || "This note could not be stored safely.");
       return;
@@ -1075,11 +1101,12 @@ export default function TripItineraryWorkspace({
     setNotice(copy.noteAdded);
   };
 
-  const scheduleIdea = (idea: ItineraryIdea, dayId: string, requestedPart?: ItineraryDayPart | null) => {
+  const scheduleIdea = async (idea: ItineraryIdea, dayId: string, requestedPart?: ItineraryDayPart | null) => {
+    const isCurrent = captureActionScope();
     let scheduledPart: ItineraryDayPart | null = requestedPart ?? null;
     let receipt: ItineraryItemUndoReceipt | null = null;
     let newItem = false;
-    const accepted = mutation.mutateTrip((current) => {
+    const accepted = await mutateCurrentTrip((current) => {
       const preferredPart = requestedPart === undefined
         ? activityDayPartFit(idea.providerMetadata?.duration) === "slot"
           ? preferredItineraryDayPart(current, dayId, idea.category)
@@ -1091,6 +1118,7 @@ export default function TripItineraryWorkspace({
       newItem = newlyScheduledItineraryIdea(current, result.trip, idea);
       return result.trip;
     }, `itinerary-suggestion-${idea.stopId}-${idea.placeId}`, "idea-schedule");
+    if (!isCurrent()) return false;
     if (!accepted) return false;
     setUndoReceipt(receipt);
     const target = workingTrip.planItems.find((day) => day.id === dayId);
@@ -1112,7 +1140,8 @@ export default function TripItineraryWorkspace({
     setPlannerDrag(null);
   };
 
-  const dropPlannerItem = (dayPart: ItineraryDayPart, insertionIndex: number) => {
+  const dropPlannerItem = async (dayPart: ItineraryDayPart, insertionIndex: number) => {
+    const isCurrent = captureActionScope();
     const dragged = plannerDragRef.current ?? plannerDrag;
     if (!dragged) return;
     clearPlannerDrag();
@@ -1121,13 +1150,14 @@ export default function TripItineraryWorkspace({
       let mutationReason = "";
       let receipt: ItineraryItemUndoReceipt | null = null;
       let newItem = false;
-      const accepted = mutation.mutateTrip((current) => {
+      const accepted = await mutateCurrentTrip((current) => {
         const result = scheduleItineraryIdeaAtPositionWithUndo(current, dragged.idea, active.id, dayPart, insertionIndex);
         mutationReason = result.reason ?? "";
         receipt = result.undo ?? null;
         newItem = newlyScheduledItineraryIdea(current, result.trip, dragged.idea);
         return result.trip;
       }, `itinerary-suggestion-${dragged.idea.stopId}-${dragged.idea.placeId}`);
+      if (!isCurrent()) return false;
       if (accepted) {
         setUndoReceipt(receipt);
         setNotice(addedToDayNotice(language, active.dayNumber, dayPart));
@@ -1140,18 +1170,20 @@ export default function TripItineraryWorkspace({
       return;
     }
     let mutationReason = "";
-    const accepted = mutation.mutateTrip((current) => {
+    const accepted = await mutateCurrentTrip((current) => {
       const result = placeItineraryActivity(current, active.id, dragged.activity.id, dayPart, insertionIndex);
       mutationReason = result.reason ?? "";
       return result.trip;
     }, `itinerary-activity-place-${dragged.activity.id}`);
+    if (!isCurrent()) return false;
     if (accepted) setNotice(`${dragged.activity.title} moved to ${dayPart[0]!.toUpperCase()}${dayPart.slice(1)}`);
     else if (mutationReason && !mutationReason.includes("already")) setPlannerError(mutationReason);
   };
 
-  const changeActivityDayPart = (activity: ComposedItineraryActivity, dayPart: ItineraryDayPart | null) => {
+  const changeActivityDayPart = async (activity: ComposedItineraryActivity, dayPart: ItineraryDayPart | null) => {
+    const isCurrent = captureActionScope();
     let mutationReason = "";
-    const accepted = mutation.mutateTrip((current) => {
+    const accepted = await mutateCurrentTrip((current) => {
       if (activity.source === "itinerary-idea") {
         if (!activityAllowsDayPart(activity.providerMetadata?.duration, dayPart)) {
           mutationReason = "This activity needs most of the day and cannot fit in one part of the day.";
@@ -1168,11 +1200,13 @@ export default function TripItineraryWorkspace({
       mutationReason = result.reason ?? "";
       return result.trip;
     }, `itinerary-activity-day-part-${activity.id}`);
+    if (!isCurrent()) return false;
     if (accepted) setNotice(dayPart ? `Moved to ${dayPart}` : "Time of day cleared");
     else if (mutationReason) setEditError(mutationReason);
   };
 
-  const moveComposedActivity = (activity: ComposedItineraryActivity, direction: "earlier" | "later") => {
+  const moveComposedActivity = async (activity: ComposedItineraryActivity, direction: "earlier" | "later") => {
+    const isCurrent = captureActionScope();
     if (!dayComposition || activity.noteIndex === null || activity.dayPart === null) return;
     const peers = dayComposition.planned[activity.dayPart];
     const indexInPart = peers.findIndex((candidate) => candidate.id === activity.id);
@@ -1180,7 +1214,7 @@ export default function TripItineraryWorkspace({
     if (!neighbour || neighbour.noteIndex === null) return;
     const targetNoteIndex = direction === "earlier" ? neighbour.noteIndex : neighbour.noteIndex + 1;
     let mutationReason = "";
-    const accepted = mutation.mutateTrip((current) => {
+    const accepted = await mutateCurrentTrip((current) => {
       const result = activity.source === "itinerary-idea"
         ? moveItineraryIdeaActivity(current, activity.id, targetNoteIndex)
         : moveItineraryActivity(current, {
@@ -1191,12 +1225,15 @@ export default function TripItineraryWorkspace({
       mutationReason = result.reason ?? "";
       return result.trip;
     }, `itinerary-activity-order-${activity.id}`);
+    if (!isCurrent()) return false;
     if (accepted) setNotice(copy.activityMoved);
     else if (mutationReason && !mutationReason.includes("already in that position")) setEditError(mutationReason);
   };
 
-  const removeSuggestion = (placeId: string, ideaId: string) => {
-    const accepted = mutation.mutateTrip((current) => removeItineraryIdea(current, ideaId), `itinerary-suggestion-${active.stopId}-${placeId}`);
+  const removeSuggestion = async (placeId: string, ideaId: string) => {
+    const isCurrent = captureActionScope();
+    const accepted = await mutateCurrentTrip((current) => removeItineraryIdea(current, ideaId), `itinerary-suggestion-${active.stopId}-${placeId}`);
+    if (!isCurrent()) return false;
     if (!accepted) return false;
     setNotice("Removed from itinerary");
     return true;
@@ -1210,14 +1247,16 @@ export default function TripItineraryWorkspace({
     setOpenMenuId(null);
   };
 
-  const saveActivityEdit = () => {
+  const saveActivityEdit = async () => {
+    const isCurrent = captureActionScope();
     if (!editingActivity) return;
     let mutationReason = "";
-    const accepted = mutation.mutateTrip((current) => {
+    const accepted = await mutateCurrentTrip((current) => {
       const result = renameItineraryActivity(current, editingActivity, editDraft);
       mutationReason = result.reason ?? "";
       return result.trip;
     }, `itinerary-day-${editingActivity.dayNumber}`);
+    if (!isCurrent()) return false;
     if (!accepted) {
       setEditError(mutationReason || "This change could not be stored safely.");
       return;
@@ -1229,16 +1268,18 @@ export default function TripItineraryWorkspace({
     setNotice(copy.activityUpdated);
   };
 
-  const confirmRemoveActivity = () => {
+  const confirmRemoveActivity = async () => {
+    const isCurrent = captureActionScope();
     if (!removeTarget) return;
     let mutationReason = "";
     let receipt: ItineraryItemUndoReceipt | null = null;
-    const accepted = mutation.mutateTrip((current) => {
+    const accepted = await mutateCurrentTrip((current) => {
       const result = removeItineraryActivityWithUndo(current, removeTarget);
       mutationReason = result.reason ?? "";
       receipt = result.undo ?? null;
       return result.trip;
     }, `itinerary-day-${removeTarget.dayNumber}`);
+    if (!isCurrent()) return false;
     if (!accepted) {
       setRemoveError(mutationReason || "This item could not be removed safely.");
       return;
@@ -1250,13 +1291,15 @@ export default function TripItineraryWorkspace({
     setNotice(copy.activityRemoved);
   };
 
-  const moveActivityTo = (target: ActivityTarget, targetNoteIndex: number) => {
+  const moveActivityTo = async (target: ActivityTarget, targetNoteIndex: number) => {
+    const isCurrent = captureActionScope();
     let mutationReason = "";
-    const accepted = mutation.mutateTrip((current) => {
+    const accepted = await mutateCurrentTrip((current) => {
       const result = moveItineraryActivity(current, target, targetNoteIndex);
       mutationReason = result.reason ?? "";
       return result.trip;
     }, `itinerary-day-${target.dayNumber}`);
+    if (!isCurrent()) return false;
     setDraggedActivity(null);
     setOpenMenuId(null);
     if (!accepted) {
@@ -1284,6 +1327,7 @@ export default function TripItineraryWorkspace({
   };
 
   const closeMoveFlow = () => {
+    if (moveFlow && mutation.isPending(`itinerary-activity-move-${moveFlow.activity.id}`)) return;
     const origin = moveOriginRef.current;
     setMoveFlow(null);
     setMoveError("");
@@ -1294,20 +1338,22 @@ export default function TripItineraryWorkspace({
     });
   };
 
-  const moveCanonicalActivity = (
+  const moveCanonicalActivity = async (
     activity: ComposedItineraryActivity,
     sourceDayId: string,
     targetDayId: string,
     targetDayPart: ItineraryDayPart | null,
   ) => {
+    const isCurrent = captureActionScope();
     let mutationReason = "";
     let receipt: ItineraryItemUndoReceipt | null = null;
-    const accepted = mutation.mutateTrip((current) => {
+    const accepted = await mutateCurrentTrip((current) => {
       const result = moveItineraryActivityAcrossDays(current, sourceDayId, activity.id, targetDayId, targetDayPart);
       mutationReason = result.reason ?? "";
       receipt = result.undo ?? null;
       return result.trip;
     }, `itinerary-activity-move-${activity.id}`, "activity-move");
+    if (!isCurrent()) return false;
     if (!accepted) {
       setMoveError(mutationReason || copy.moveFailed);
       setPlannerError(mutationReason || copy.moveFailed);
@@ -1321,23 +1367,25 @@ export default function TripItineraryWorkspace({
     return true;
   };
 
-  const submitMoveFlow = () => {
+  const submitMoveFlow = async () => {
     if (!moveFlow) return;
-    if (moveCanonicalActivity(moveFlow.activity, moveFlow.sourceDayId, moveFlow.targetDayId, moveFlow.targetDayPart)) {
+    if (await moveCanonicalActivity(moveFlow.activity, moveFlow.sourceDayId, moveFlow.targetDayId, moveFlow.targetDayPart)) {
       setMoveFlow(null);
       setMoveError("");
       moveOriginRef.current = null;
     }
   };
 
-  const undoLastItemAction = () => {
+  const undoLastItemAction = async () => {
+    const isCurrent = captureActionScope();
     if (!undoReceipt) return;
     let mutationReason = "";
-    const accepted = mutation.mutateTrip((current) => {
+    const accepted = await mutateCurrentTrip((current) => {
       const result = undoItineraryItemAction(current, undoReceipt);
       mutationReason = result.reason ?? "";
       return result.trip;
     }, "itinerary-item-undo");
+    if (!isCurrent()) return false;
     if (!accepted) {
       setPlannerError(mutationReason || "This item changed after the action and was not undone.");
       return;
@@ -1423,12 +1471,15 @@ export default function TripItineraryWorkspace({
             addPart={addFlow?.dayNumber === active.dayNumber && addFlow.kind === "activity" ? addFlow.dayPart ?? null : null}
             addDraft={addDraft}
             addError={addError}
+            addPending={dayPending}
             onAddDraftChange={(value) => { setAddDraft(value); setAddError(""); }}
             onAddCancel={() => { setAddFlow(null); setAddDraft(""); setAddError(""); }}
             onAddSubmit={submitAddFlow}
             isPending={(placeId) => mutation.isPending(`itinerary-suggestion-${active.stopId}-${placeId}`)}
-            onSave={(idea) => {
-              const accepted = mutation.mutateTrip((current) => saveItineraryIdea(current, idea), `itinerary-suggestion-${idea.stopId}-${idea.placeId}`);
+            onSave={async (idea) => {
+              const isCurrent = captureActionScope();
+              const accepted = await mutateCurrentTrip((current) => saveItineraryIdea(current, idea), `itinerary-suggestion-${idea.stopId}-${idea.placeId}`);
+              if (!isCurrent()) return false;
               if (accepted) setNotice("Idea saved");
               return accepted;
             }}
@@ -1614,7 +1665,7 @@ export default function TripItineraryWorkspace({
           variant="toast"
           autoDismissMs={undoReceipt ? 5000 : 3200}
           autoDismissWithAction
-          action={undoReceipt ? <EasyTButton size="small" variant="quiet" onClick={undoLastItemAction}>{copy.undoActivityAction}</EasyTButton> : undefined}
+          action={undoReceipt ? <EasyTButton size="small" variant="quiet" loading={mutation.isPending("itinerary-item-undo")} onClick={undoLastItemAction}>{copy.undoActivityAction}</EasyTButton> : undefined}
           onDismiss={() => { setNotice(null); setUndoReceipt(null); }}
         /></div> : null}
 
@@ -1780,8 +1831,10 @@ export default function TripItineraryWorkspace({
             >Add to Day {active.dayNumber}</EasyTButton> : null}
             {selectedRecommendationState.state === "available" ? <EasyTButton
               variant="secondary"
-              onClick={() => {
-                const accepted = mutation.mutateTrip((current) => saveItineraryIdea(current, selectedRecommendation.idea), `itinerary-suggestion-${selectedRecommendation.stopId}-${selectedRecommendation.idea.placeId}`);
+              onClick={async () => {
+                const isCurrent = captureActionScope();
+                const accepted = await mutateCurrentTrip((current) => saveItineraryIdea(current, selectedRecommendation.idea), `itinerary-suggestion-${selectedRecommendation.stopId}-${selectedRecommendation.idea.placeId}`);
+                if (!isCurrent()) return false;
                 if (accepted) setNotice("Idea saved");
               }}
             >Save for later</EasyTButton> : null}
@@ -1804,12 +1857,16 @@ export default function TripItineraryWorkspace({
             window.location.assign(stayWorkspaceHref(workingTrip.id, stop.id));
           } : undefined}
           manageLabel="Manage stay"
-          onRemove={selectedRecommendation && selectedRecommendationState?.state !== "available" ? () => {
-            const accepted = mutation.mutateTrip((current) => removeItineraryIdea(current, selectedRecommendationState!.idea.id), `itinerary-suggestion-${selectedRecommendation.stopId}-${selectedRecommendation.idea.placeId}`);
+          onRemove={selectedRecommendation && selectedRecommendationState?.state !== "available" ? async () => {
+            const isCurrent = captureActionScope();
+            const accepted = await mutateCurrentTrip((current) => removeItineraryIdea(current, selectedRecommendationState!.idea.id), `itinerary-suggestion-${selectedRecommendation.stopId}-${selectedRecommendation.idea.placeId}`);
+            if (!isCurrent()) return false;
             if (accepted) { closeSelectedDetail(); setNotice("Removed from itinerary"); }
-          } : selectedActivity ? () => {
+          } : selectedActivity ? async () => {
+            const isCurrent = captureActionScope();
             if ((selectedActivity.source === "itinerary-idea" && selectedActivity.placeId) || selectedActivity.source === "google-place-reference") {
-              const accepted = mutation.mutateTrip((current) => removeItineraryIdea(current, selectedActivity.id), `itinerary-idea-remove-${selectedActivity.id}`);
+              const accepted = await mutateCurrentTrip((current) => removeItineraryIdea(current, selectedActivity.id), `itinerary-idea-remove-${selectedActivity.id}`);
+              if (!isCurrent()) return false;
               if (accepted) { closeSelectedDetail(); setNotice(copy.activityRemoved); }
               return;
             }
@@ -1817,8 +1874,10 @@ export default function TripItineraryWorkspace({
               setRemoveTarget({ dayNumber: active.dayNumber, noteIndex: selectedActivity.noteIndex, title: selectedActivity.title });
               setRemoveError("");
             }
-          } : stayBooking && stop ? () => {
-            const changed = mutation.mutateTrip((current) => removeStayBooking(current, stop.id), `itinerary-stay-${stop.id}`);
+          } : stayBooking && stop ? async () => {
+            const isCurrent = captureActionScope();
+            const changed = await mutateCurrentTrip((current) => removeStayBooking(current, stop.id), `itinerary-stay-${stop.id}`);
+            if (!isCurrent()) return false;
             if (changed) { closeSelectedDetail(); setNotice("Stay removed"); }
           } : undefined}
         /> : null}
@@ -1872,19 +1931,25 @@ export default function TripItineraryWorkspace({
           trip={workingTrip}
           variant="itinerary"
           pending={(key) => mutation.isPending(key)}
-          onSchedule={(mentionId, dayId) => {
+          onSchedule={async (mentionId, dayId) => {
+            const isCurrent = captureActionScope();
             const key = `explicit-visit-${mentionId}`;
-            const changed = mutation.mutateTrip((current) => scheduleExplicitVisitIntent(current, mentionId, dayId), key);
+            const changed = await mutateCurrentTrip((current) => scheduleExplicitVisitIntent(current, mentionId, dayId), key);
+            if (!isCurrent()) return false;
             if (changed) setNotice("Requested visit added to the itinerary");
             return changed;
           }}
-          onRemoveVisit={(mentionId) => {
-            const changed = mutation.mutateTrip((current) => removeExplicitVisitIntent(current, mentionId), `explicit-visit-remove-${mentionId}`);
+          onRemoveVisit={async (mentionId) => {
+            const isCurrent = captureActionScope();
+            const changed = await mutateCurrentTrip((current) => removeExplicitVisitIntent(current, mentionId), `explicit-visit-remove-${mentionId}`);
+            if (!isCurrent()) return false;
             if (changed) setNotice("Requested visit removed");
             return changed;
           }}
-          onRemoveCommitment={(commitmentId) => {
-            const changed = mutation.mutateTrip((current) => removeFixedCommitment(current, commitmentId), `fixed-commitment-remove-${commitmentId}`);
+          onRemoveCommitment={async (commitmentId) => {
+            const isCurrent = captureActionScope();
+            const changed = await mutateCurrentTrip((current) => removeFixedCommitment(current, commitmentId), `fixed-commitment-remove-${commitmentId}`);
+            if (!isCurrent()) return false;
             if (changed) setNotice("Fixed commitment removed");
             return changed;
           }}
@@ -1901,7 +1966,7 @@ export default function TripItineraryWorkspace({
             pending={(idea) => mutation.isPending(`itinerary-suggestion-${idea.stopId}-${idea.placeId}`)}
             onPickerOpenChange={(ideaId, open) => setOpenSavedPickerId(open ? ideaId : null)}
             onSchedule={scheduleIdea}
-            onRemove={(idea) => mutation.mutateTrip((current) => removeItineraryIdea(current, idea.id), `itinerary-idea-remove-${idea.id}`)}
+            onRemove={async (idea) => await mutateCurrentTrip((current) => removeItineraryIdea(current, idea.id), `itinerary-idea-remove-${idea.id}`)}
             onOpenDetail={(idea, origin) => {
               const result = exploreResultForIdea(workingTrip, idea);
               if (!result) return;
@@ -1956,6 +2021,7 @@ export default function TripItineraryWorkspace({
         detail={copy.moveActivityDetail}
         submitLabel={copy.moveActivity}
         error={moveError || undefined}
+        submitting={Boolean(moveFlow && mutation.isPending(`itinerary-activity-move-${moveFlow.activity.id}`))}
         onCancel={closeMoveFlow}
         onSubmit={submitMoveFlow}
       >
@@ -1987,7 +2053,11 @@ export default function TripItineraryWorkspace({
         cancelLabel={copy.keepActivity}
         confirmLabel={copy.removeActivity}
         error={removeError || undefined}
-        onCancel={() => { setRemoveTarget(null); setRemoveError(""); }}
+        confirming={Boolean(removeTarget && mutation.isPending(`itinerary-day-${removeTarget.dayNumber}`))}
+        onCancel={() => {
+          if (removeTarget && mutation.isPending(`itinerary-day-${removeTarget.dayNumber}`)) return;
+          setRemoveTarget(null); setRemoveError("");
+        }}
         onConfirm={confirmRemoveActivity}
       />
     </section>
@@ -2022,8 +2092,8 @@ function SavedIdeasSection({
   selectedIdeaId: string | null;
   pending: (idea: ItineraryIdea) => boolean;
   onPickerOpenChange: (ideaId: string, open: boolean) => void;
-  onSchedule: (idea: ItineraryIdea, dayId: string, dayPart?: ItineraryDayPart | null) => boolean;
-  onRemove: (idea: ItineraryIdea) => boolean;
+  onSchedule: (idea: ItineraryIdea, dayId: string, dayPart?: ItineraryDayPart | null) => boolean | Promise<boolean>;
+  onRemove: (idea: ItineraryIdea) => boolean | Promise<boolean>;
   onOpenDetail: (idea: ItineraryIdea, origin: HTMLButtonElement) => void;
   draggingIdeaId?: string | null;
   onDragStart?: (idea: ItineraryIdea, event: DragEvent<HTMLElement>) => void;
@@ -2050,6 +2120,7 @@ function SavedIdeasSection({
         </EasyTButton>
         <div className={styles.savedIdeaActions}>
           {preferredDay ? <ItineraryDayPicker
+            scopeKey={JSON.stringify([trip.ownerId, trip.id, idea.id])}
             placeTitle={idea.title}
             language={language}
             options={options}
@@ -2226,7 +2297,7 @@ function OmioTransportAction({ action, trip, leg }: { action: ResolvedAffiliateA
   </div>;
 }
 
-function ItineraryDaySuggestions({ trip, day, stop, copy, language, initialPlaces, initialActivityInventory, experienceAction, previewLimit, addPart, addDraft, addError, onAddDraftChange, onAddCancel, onAddSubmit, isPending, onSave, onSchedule, onRemove, onOpenDetail, selectedResultId, onSelectedDetailRefresh, draggingIdeaId, onDragStart, onDragEnd, onInteractionReset }: {
+function ItineraryDaySuggestions({ trip, day, stop, copy, language, initialPlaces, initialActivityInventory, experienceAction, previewLimit, addPart, addDraft, addError, addPending, onAddDraftChange, onAddCancel, onAddSubmit, isPending, onSave, onSchedule, onRemove, onOpenDetail, selectedResultId, onSelectedDetailRefresh, draggingIdeaId, onDragStart, onDragEnd, onInteractionReset }: {
   trip: EasyTTrip;
   day: PlanItem;
   stop: TripStop | null;
@@ -2239,13 +2310,14 @@ function ItineraryDaySuggestions({ trip, day, stop, copy, language, initialPlace
   addPart: ItineraryDayPart | null;
   addDraft: string;
   addError: string;
+  addPending: boolean;
   onAddDraftChange: (value: string) => void;
   onAddCancel: () => void;
   onAddSubmit: () => void;
   isPending: (placeId: string) => boolean;
-  onSave: (idea: ItineraryIdea) => boolean;
-  onSchedule: (idea: ItineraryIdea, dayId: string, dayPart?: ItineraryDayPart | null) => boolean;
-  onRemove: (idea: ItineraryIdea) => boolean;
+  onSave: (idea: ItineraryIdea) => boolean | Promise<boolean>;
+  onSchedule: (idea: ItineraryIdea, dayId: string, dayPart?: ItineraryDayPart | null) => boolean | Promise<boolean>;
+  onRemove: (idea: ItineraryIdea) => boolean | Promise<boolean>;
   onOpenDetail: (result: ExploreResult, origin: HTMLButtonElement) => void;
   selectedResultId: string | null;
   onSelectedDetailRefresh: (result: ExploreResult) => void;
@@ -2255,6 +2327,7 @@ function ItineraryDaySuggestions({ trip, day, stop, copy, language, initialPlace
   onInteractionReset: () => void;
 }) {
   const [places, setPlaces] = useState<ItineraryDiscoveryPlace[]>(initialPlaces ?? []);
+  const captureSuggestionScope = useItineraryActionScope(JSON.stringify([trip.ownerId, trip.id, day.id, addPart, addDraft]));
   const [organicStatus, setOrganicStatus] = useState<"idle" | "loading" | "ready" | "error" | "incomplete">(initialPlaces ? "ready" : "idle");
   const [inventory, setInventory] = useState<ActivityInventoryItem[]>(initialActivityInventory ?? []);
   const [commercialStatus, setCommercialStatus] = useState<"idle" | "loading" | "ready" | "error" | "incomplete">(initialActivityInventory ? "ready" : "idle");
@@ -2546,9 +2619,12 @@ function ItineraryDaySuggestions({ trip, day, stop, copy, language, initialPlace
                     ? `Añadir ${result.title} a ${itineraryDayPartLabels[language][addPart]} del día ${day.dayNumber}`
                     : `Add ${result.title} to ${itineraryDayPartLabels[language][addPart]} on Day ${day.dayNumber}`
                   : `${addLabels.add} ${result.title}`}
-                onClick={() => {
+                onClick={async () => {
                 if (!addPart) return;
-                if (onSchedule(result.idea, day.id, addPart)) onAddCancel();
+                const isCurrent = captureSuggestionScope();
+                const accepted = await onSchedule(result.idea, day.id, addPart);
+                if (!isCurrent()) return;
+                if (accepted) onAddCancel();
                 else setAddResultError(addLabels.addError);
               }}>{pending ? addLabels.add + "…" : addLabels.add}</EasyTButton>
               {state?.state === "available" ? <EasyTButton
@@ -2556,7 +2632,11 @@ function ItineraryDaySuggestions({ trip, day, stop, copy, language, initialPlace
                 variant="quiet"
                 disabled={pending}
                 aria-label={language === "es" ? `Guardar ${result.title} para después` : `Save ${result.title} for later`}
-                onClick={() => { if (!onSave(result.idea)) setAddResultError(addLabels.saveError); }}
+                onClick={async () => {
+                  const isCurrent = captureSuggestionScope();
+                  const accepted = await onSave(result.idea);
+                  if (isCurrent() && !accepted) setAddResultError(addLabels.saveError);
+                }}
               >{addLabels.save}</EasyTButton> : state?.state === "saved" ? <span>{addLabels.saved}</span> : null}
             </div>
           </article>;
@@ -2565,7 +2645,7 @@ function ItineraryDaySuggestions({ trip, day, stop, copy, language, initialPlace
       {addResultError ? <p className={styles.suggestionError} role="alert">{addResultError}</p> : null}
       <form className={styles.contextualAddManual} onSubmit={(event) => { event.preventDefault(); onAddSubmit(); }}>
         <EasyTField label={addLabels.own} value={addDraft} error={addError || undefined} onChange={(event) => onAddDraftChange(event.target.value)} />
-        <EasyTButton type="submit" size="small" disabled={!addDraft.trim()}>{language === "es" ? "Añadir a" : "Add to"} {addPart ? itineraryDayPartLabels[language][addPart] : copy.day}</EasyTButton>
+        <EasyTButton type="submit" size="small" disabled={!addDraft.trim()} loading={addPending}>{language === "es" ? "Añadir a" : "Add to"} {addPart ? itineraryDayPartLabels[language][addPart] : copy.day}</EasyTButton>
       </form>
     </div>
   </MorroviaContentDialog>;
@@ -2584,6 +2664,7 @@ function ItineraryDaySuggestions({ trip, day, stop, copy, language, initialPlace
         key={result.identity}
         result={result}
         tripId={trip.id}
+        scopeKey={JSON.stringify([trip.ownerId, trip.id, day.id, result.identity])}
         language={language}
         options={options}
         preferredDayId={day.id}
@@ -2594,14 +2675,26 @@ function ItineraryDaySuggestions({ trip, day, stop, copy, language, initialPlace
         dragging={draggingIdeaId === idea.id}
         pickerOpen={openPickerId === result.identity}
         onPickerOpenChange={(open) => setOpenPickerId(open ? result.identity : null)}
-        onSave={() => { setError(""); if (!onSave(idea)) setError("This idea could not be stored safely."); }}
-        onSchedule={(dayId, dayPart) => {
+        onSave={async () => {
+          const isCurrent = captureSuggestionScope();
           setError("");
-          const accepted = onSchedule(idea, dayId, dayPart);
+          const accepted = await onSave(idea);
+          if (isCurrent() && !accepted) setError("This idea could not be stored safely.");
+        }}
+        onSchedule={async (dayId, dayPart) => {
+          const isCurrent = captureSuggestionScope();
+          setError("");
+          const accepted = await onSchedule(idea, dayId, dayPart);
+          if (!isCurrent()) return false;
           if (!accepted) setError("This activity could not be added safely.");
           return accepted;
         }}
-        onRemove={state.idea ? () => { setError(""); if (!onRemove(state.idea!)) setError("This activity could not be removed safely."); } : undefined}
+        onRemove={state.idea ? async () => {
+          const isCurrent = captureSuggestionScope();
+          setError("");
+          const accepted = await onRemove(state.idea!);
+          if (isCurrent() && !accepted) setError("This activity could not be removed safely.");
+        } : undefined}
         onOpenDetail={(origin) => onOpenDetail(result, origin)}
         onDragStart={onDragStart ? (event) => onDragStart(idea, event) : undefined}
         onDragEnd={onDragEnd}
@@ -2621,9 +2714,10 @@ function CompactExperienceHandoff({ action, tripId, stopId }: { action: Resolved
   </section>;
 }
 
-function ItineraryRankedSuggestionCard({ result, tripId, language, options, preferredDayId, preferredDayPart, allowsDayPart, state, pending, dragging, pickerOpen, onPickerOpenChange, onSave, onSchedule, onRemove, onOpenDetail, onDragStart, onDragEnd }: {
+function ItineraryRankedSuggestionCard({ result, tripId, scopeKey, language, options, preferredDayId, preferredDayPart, allowsDayPart, state, pending, dragging, pickerOpen, onPickerOpenChange, onSave, onSchedule, onRemove, onOpenDetail, onDragStart, onDragEnd }: {
   result: ExploreResult;
   tripId: string;
+  scopeKey: string;
   language: "en" | "es";
   options: ItineraryIdeaDayOption[];
   preferredDayId: string;
@@ -2635,7 +2729,7 @@ function ItineraryRankedSuggestionCard({ result, tripId, language, options, pref
   pickerOpen: boolean;
   onPickerOpenChange: (open: boolean) => void;
   onSave: () => void;
-  onSchedule: (dayId: string, dayPart?: ItineraryDayPart | null) => boolean;
+  onSchedule: (dayId: string, dayPart?: ItineraryDayPart | null) => boolean | Promise<boolean>;
   onRemove?: () => void;
   onOpenDetail: (origin: HTMLButtonElement) => void;
   onDragStart?: (event: DragEvent<HTMLElement>) => void;
@@ -2659,7 +2753,7 @@ function ItineraryRankedSuggestionCard({ result, tripId, language, options, pref
       <EasyTButton size="small" variant="quiet" aria-label={`Open details for ${result.title}`} onClick={(event) => onOpenDetail(event.currentTarget)}>Details</EasyTButton>
       {draggable ? <span className={styles.dragHint}><GripVertical aria-hidden="true" />Drag into the day</span> : null}
       {state.state === "planned" ? <span className={styles.plannedState}><CheckCircle2 aria-hidden="true" />Added to Day {state.day.dayNumber}</span> : null}
-      {preferredDay ? <ItineraryDayPicker placeTitle={result.title} language={language} options={options} preferredDayId={preferredDayId} preferredDayPart={preferredDayPart} allowsDayPart={allowsDayPart} currentDayId={currentDayId} currentDayPart={state.state === "planned" ? state.idea.dayPart ?? null : null} label={actionLabel} open={pickerOpen} pending={pending} onOpenChange={onPickerOpenChange} onDefault={() => state.state === "planned" ? false : onSchedule(preferredDay.id)} onChoose={(dayId, dayPart) => onSchedule(dayId, dayPart)} /> : null}
+      {preferredDay ? <ItineraryDayPicker scopeKey={scopeKey} placeTitle={result.title} language={language} options={options} preferredDayId={preferredDayId} preferredDayPart={preferredDayPart} allowsDayPart={allowsDayPart} currentDayId={currentDayId} currentDayPart={state.state === "planned" ? state.idea.dayPart ?? null : null} label={actionLabel} open={pickerOpen} pending={pending} onOpenChange={onPickerOpenChange} onDefault={() => state.state === "planned" ? false : onSchedule(preferredDay.id)} onChoose={(dayId, dayPart) => onSchedule(dayId, dayPart)} /> : null}
       {state.state === "available" ? <EasyTButton size="small" variant="quiet" disabled={pending} onClick={onSave}>{pending ? "Saving…" : "Save"}</EasyTButton> : state.state === "saved" ? <span className={styles.savedIdeaState}>Saved for later</span> : onRemove ? <EasyTButton size="small" variant="quiet" disabled={pending} onClick={onRemove}>Remove</EasyTButton> : null}
       {action ? <><MorroviaAffiliateLink action={action} context={{ placement: "itinerary_day_experiences", tripId, stopId: result.stopId, workspaceView: "itinerary" }} variant="quiet" /><MorroviaAffiliateDisclosure className={styles.commercialDisclosure} provider="viator" /></> : null}
     </div>
@@ -2668,7 +2762,8 @@ function ItineraryRankedSuggestionCard({ result, tripId, language, options, pref
 
 type DiscoveryIdeaState = ReturnType<typeof ideaStateForPlace>;
 
-function ItineraryDayPicker({ placeTitle, language, options, preferredDayId, preferredDayPart, allowsDayPart, currentDayId, currentDayPart, label, open, pending, onOpenChange, onDefault, onChoose }: {
+function ItineraryDayPicker({ scopeKey, placeTitle, language, options, preferredDayId, preferredDayPart, allowsDayPart, currentDayId, currentDayPart, label, open, pending, onOpenChange, onDefault, onChoose }: {
+  scopeKey: string;
   placeTitle: string;
   language: "en" | "es";
   options: ItineraryIdeaDayOption[];
@@ -2681,13 +2776,18 @@ function ItineraryDayPicker({ placeTitle, language, options, preferredDayId, pre
   open: boolean;
   pending: boolean;
   onOpenChange: (open: boolean) => void;
-  onDefault: () => boolean;
-  onChoose: (dayId: string, dayPart: ItineraryDayPart | null) => boolean;
+  onDefault: () => boolean | Promise<boolean>;
+  onChoose: (dayId: string, dayPart: ItineraryDayPart | null) => boolean | Promise<boolean>;
 }) {
   const menuId = useId();
   const triggerRef = useRef<HTMLButtonElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
   const [menuPosition, setMenuPosition] = useState<CSSProperties>({});
+  const [choosing, setChoosing] = useState(false);
+  const pendingChoiceRef = useRef(false);
+  const pickerMountedRef = useRef(true);
+  const capturePickerScope = useItineraryActionScope(JSON.stringify([scopeKey, placeTitle, open]));
+  useEffect(() => { pickerMountedRef.current = true; return () => { pickerMountedRef.current = false; }; }, []);
 
   const close = (restoreFocus: boolean) => {
     onOpenChange(false);
@@ -2734,6 +2834,28 @@ function ItineraryDayPicker({ placeTitle, language, options, preferredDayId, pre
     };
   }, [open]);
 
+  const performChoice = async (action: () => boolean | Promise<boolean>, closeOnSuccess: boolean) => {
+    if (pending || pendingChoiceRef.current) return false;
+    const isCurrent = capturePickerScope();
+    pendingChoiceRef.current = true;
+    setChoosing(true);
+    try {
+      const accepted = await action();
+      if (!isCurrent()) return false;
+      if (accepted && closeOnSuccess) close(true);
+      return accepted;
+    } catch { return false; }
+    finally {
+      pendingChoiceRef.current = false;
+      if (pickerMountedRef.current) setChoosing(false);
+    }
+  };
+
+  const chooseDay = async (dayId: string, dayPart: ItineraryDayPart | null, current: boolean) => {
+    if (current) { close(true); return; }
+    await performChoice(() => onChoose(dayId, dayPart), true);
+  };
+
   const moveFocus = (event: ReactKeyboardEvent<HTMLDivElement>, direction: 1 | -1) => {
     const items = [...(menuRef.current?.querySelectorAll<HTMLButtonElement>("[role='menuitem']") ?? [])];
     const index = Math.max(0, items.indexOf(document.activeElement as HTMLButtonElement));
@@ -2770,10 +2892,9 @@ function ItineraryDayPicker({ placeTitle, language, options, preferredDayId, pre
           className={styles.dayPickerOption}
           size="small"
           variant="quiet"
+          disabled={pending || choosing}
           aria-current={current ? "true" : undefined}
-          onClick={() => {
-            if (current || onChoose(day.id, dayPart)) close(true);
-          }}
+          onClick={() => void chooseDay(day.id, dayPart, current)}
         >
           <span><strong>Day {day.dayNumber}{dayPart ? ` · ${itineraryDayPartLabels[language][dayPart]}` : " · Day level"}</strong><small>{displayDayDate(day.date, language)} · {day.title} · {itemCount} {itemCount === 1 ? "item" : "items"}</small></span>
           {current ? <em>Current</em> : day.id === preferredDayId && dayPart === preferredDayPart ? <em>Suggested</em> : protectedDay && dayKind ? <em>{dayKind}</em> : null}
@@ -2788,8 +2909,9 @@ function ItineraryDayPicker({ placeTitle, language, options, preferredDayId, pre
         size="small"
         variant="secondary"
         icon={currentDayId ? CheckCircle2 : CirclePlus}
-        disabled={pending || Boolean(currentDayId)}
-        onClick={onDefault}
+        disabled={pending || choosing || Boolean(currentDayId)}
+        loading={choosing}
+        onClick={() => void performChoice(onDefault, false)}
       >{label}</EasyTButton>
       <EasyTButton
       ref={triggerRef}
@@ -2798,7 +2920,7 @@ function ItineraryDayPicker({ placeTitle, language, options, preferredDayId, pre
       iconOnly
       size="small"
       variant="secondary"
-      disabled={pending}
+      disabled={pending || choosing}
       aria-expanded={open}
       aria-haspopup="menu"
       aria-controls={open ? menuId : undefined}

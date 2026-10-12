@@ -2,7 +2,8 @@ import { readTripDocument } from './trip-document.ts';
 import { tripRecoveryStorageKey, EASYT_ACTIVE_TRIP_KEY } from './storage.ts';
 import { tripBuildDocumentsCanonicalEquivalent } from './trip-promotion.ts';
 import type { TripRecoveryRecord } from './storage.ts';
-import type { RecoveryEntryRequest, RecoveryEntryState, RecoveryEntryMutation, RecoveryEntryScope } from './durable-entry-protocol.ts';
+import { decodeEntryEnvelope, decodeEntryHead, entryHeadKey, isEntryScope, sameEntryScope,
+  type RecoveryEntryRequest, type RecoveryEntryState, type RecoveryEntryMutation, type RecoveryEntryScope } from './durable-entry-protocol.ts';
 
 /** Recovery-domain protocol. No implicit browser access. */
 export type RecoveryScope = { ownerId: string | null; tripId: string };
@@ -25,6 +26,8 @@ export type RecoveryEnvelope = {
     receipt: (RecoveryScope & { operationId: string; raw: string }) | null;
     /** Exact older native navigation observed at admission; no locator write is required. */
     nativePointerRaw?: string | null;
+    /** Paired local claim proof; never a credential or an account ACK. */
+    claim?: { source: RecoveryHandle; claimId: string };
   };
 };
 export type RecoveryFailureReason = 'quota' | 'security' | 'unavailable' | 'blocked' | 'abort' | 'schema' | 'corrupt' | 'readback' | 'unknown';
@@ -39,14 +42,22 @@ export type RecoveryListResult = RecoveryFailure | RecoveryConflict | { kind: 'r
 
 export type RecoveryDomainState = { headRaw: unknown; headGenerationRaw: unknown; generationRaw: unknown; acknowledgementRaw: unknown; currentRaw: unknown; entries: RecoveryEntryState[] };
 export type RecoveryDomainDecision<T> = { value: T; headRaw?: string; generationRaw?: string; acknowledgementRaw?: string; currentRaw?: string; entryWrites?: RecoveryEntryMutation[] };
+/** Explicit guest-to-owner exception. Generic run/runEntry remain same-owner. */
+export type RecoveryClaimRequest = { sourceHandle: RecoveryHandle; targetHandle: RecoveryHandle;
+  sourceEntries: RecoveryEntryRequest[]; targetEntries: RecoveryEntryRequest[] };
+export type RecoveryClaimState = { source: RecoveryDomainState; target: RecoveryDomainState };
+export type RecoveryClaimDecision<T> = { value: T; targetGenerationRaw?: string; targetHeadRaw?: string; targetCurrentRaw?: string;
+  sourceEntryWrites?: RecoveryEntryMutation[]; targetEntryWrites?: RecoveryEntryMutation[] };
 /** `run` must serialize readwrite transactions for a scope, atomically commit
  * every returned mutation, use add-only generations/ACKs, and resolve only
  * after completion. Decision callbacks are synchronous, never awaited. */
 export interface RecoveryDomainDriver {
   run<T>(scope: RecoveryScope, writeId: string | null, mode: 'readonly' | 'readwrite', decide: (state: RecoveryDomainState) => RecoveryDomainDecision<T>, entries?: RecoveryEntryRequest[]): Promise<T>;
   runEntry<T>(scope: RecoveryEntryScope, writeId: string | null, mode: 'readonly' | 'readwrite', decide: (state: RecoveryEntryState) => { value: T; mutation?: RecoveryEntryMutation }): Promise<T>;
+  runClaim?<T>(request: RecoveryClaimRequest, mode: 'readonly' | 'readwrite', decide: (state: RecoveryClaimState) => RecoveryClaimDecision<T>): Promise<T>;
   readCurrent(ownerId: string | null): Promise<unknown>;
   listHeads(ownerId: string | null): Promise<{ key: string; raw: unknown }[]>;
+  listClaimHeads?(ownerId: string | null): Promise<{ key: string; raw: unknown }[]>;
   close?(): void;
 }
 
@@ -68,8 +79,84 @@ export function isDomainHandle(value: unknown): value is RecoveryHandle {
   return isRecoveryScope(value) && record(value) && keys(value, ['version', 'backend', 'ownerId', 'tripId', 'writeId'])
     && value.version === 1 && value.backend === 'indexeddb' && text(value.writeId);
 }
+/** Snapshot before any await; reject requests outside the two fixed scopes. */
+export function snapshotRecoveryClaimRequest(request: RecoveryClaimRequest): RecoveryClaimRequest {
+  if (!record(request) || !keys(request, ['sourceHandle', 'targetHandle', 'sourceEntries', 'targetEntries'])
+    || !isDomainHandle(request.sourceHandle) || !isDomainHandle(request.targetHandle)
+    || request.sourceHandle.ownerId !== null || !text(request.targetHandle.ownerId)
+    || request.sourceHandle.tripId !== request.targetHandle.tripId) throw new TypeError('Invalid claim scopes');
+  const entries = (rows: RecoveryEntryRequest[], scope: RecoveryScope) => {
+    if (!Array.isArray(rows)) throw new TypeError('Invalid claim entries');
+    const seen = new Set<string>();
+    return rows.map(row => {
+      if (!record(row) || !keys(row, ['scope', 'writeId']) || !isEntryScope(row.scope)
+        || !keys(row.scope, ['ownerId', 'kind', 'tripId']) || row.scope.ownerId !== scope.ownerId
+        || !['homepage', 'builder-input', 'recovery-lifecycle', 'recovery-claim'].includes(row.scope.kind)
+        || (row.scope.kind === 'homepage' ? row.scope.tripId !== null : row.scope.tripId !== scope.tripId)
+        || !(row.writeId === null || text(row.writeId))) throw new TypeError('Unbound claim entry');
+      const key = entryHeadKey(row.scope);
+      if (seen.has(key)) throw new TypeError('Duplicate claim entry'); seen.add(key);
+      return { scope: { ...row.scope }, writeId: row.writeId };
+    });
+  };
+  return { sourceHandle: { ...request.sourceHandle }, targetHandle: { ...request.targetHandle },
+    sourceEntries: entries(request.sourceEntries, request.sourceHandle), targetEntries: entries(request.targetEntries, request.targetHandle) };
+}
+/** Driver boundary only: the coordinator owns lifecycle/native-byte/parent CAS
+ * and payload meaning. All mutations are validated before any request is queued. */
+export function assertRecoveryClaimDecision(request: RecoveryClaimRequest, mode: 'readonly' | 'readwrite', decision: unknown): asserts decision is RecoveryClaimDecision<unknown> {
+  if (!record(decision) || 'then' in decision || !('value' in decision)
+    || Object.keys(decision).some(key => !['value', 'targetGenerationRaw', 'targetHeadRaw', 'targetCurrentRaw', 'sourceEntryWrites', 'targetEntryWrites'].includes(key))) throw new TypeError('Invalid claim decision');
+  const canonicalCount = ['targetGenerationRaw', 'targetHeadRaw', 'targetCurrentRaw'].filter(key => decision[key] !== undefined).length;
+  if (canonicalCount !== 0 && canonicalCount !== 3) throw new TypeError('Incomplete target claim generation');
+  const mutations = (value: unknown, requested: RecoveryEntryRequest[], source: boolean): RecoveryEntryMutation[] => {
+    if (value === undefined) return [];
+    if (!Array.isArray(value)) throw new TypeError('Invalid claim mutations');
+    const seen = new Set<string>();
+    return value.map(row => {
+      if (!record(row) || !keys(row, ['scope', 'writeId', 'raw', 'headRaw']) || !isEntryScope(row.scope) || !text(row.writeId)
+        || typeof row.raw !== 'string' || typeof row.headRaw !== 'string'
+        || row.scope.kind === 'recovery-lifecycle' || source && row.scope.kind !== 'recovery-claim'
+        || !requested.some(item => sameEntryScope(item.scope, row.scope as RecoveryEntryScope) && item.writeId === row.writeId)) throw new TypeError('Unbound claim mutation');
+      const key = entryHeadKey(row.scope);
+      if (seen.has(key)) throw new TypeError('Duplicate claim mutation'); seen.add(key);
+      const head = decodeEntryHead(row.headRaw, row.scope), envelope = decodeEntryEnvelope(row.raw, row.scope);
+      if (head.kind !== 'readable' || !head.value || head.value.writeId !== row.writeId
+        || envelope.kind !== 'readable' || envelope.value.handle.writeId !== row.writeId) throw new TypeError('Mismatched claim entry identity');
+      return row as RecoveryEntryMutation;
+    });
+  };
+  const source = mutations(decision.sourceEntryWrites, request.sourceEntries, true), target = mutations(decision.targetEntryWrites, request.targetEntries, false);
+  if (mode !== 'readwrite' && (canonicalCount || source.length || target.length)) throw new TypeError('Readonly claim mutation');
+  if (canonicalCount) {
+    const generation = decodeRecoveryEnvelope(decision.targetGenerationRaw, request.targetHandle);
+    const head = decodeDomainHead(decision.targetHeadRaw, request.targetHandle), current = decodeDomainHead(decision.targetCurrentRaw, request.targetHandle);
+    if (generation.kind !== 'readable' || !sameDomainHandle(generation.value.handle, request.targetHandle)
+      || head.kind !== 'readable' || !sameDomainHandle(head.value, request.targetHandle)
+      || current.kind !== 'readable' || !sameDomainHandle(current.value, request.targetHandle)
+      || source.length !== 1 || !target.some(row => row.scope.kind === 'recovery-claim')) throw new TypeError('Unbound target claim generation');
+  } else if (source.length || target.some(row => row.scope.kind !== 'recovery-claim')) throw new TypeError('Reservation may only append a target claim fence');
+}
 export type DecodeFailure = { kind: 'scope' | 'schema' | 'corrupt' };
 export type DomainDecode<T> = DecodeFailure | { kind: 'readable'; value: T };
+/** Enumerating a pending fence must not require a canonical head. Malformed
+ * rows in this owner's claim namespace fail closed; other namespaces are ignored. */
+export function decodeClaimHeadRow(key: unknown, raw: unknown, ownerId: string | null): DomainDecode<{ key: string; raw: unknown } | null> {
+  if (!owner(ownerId)) return { kind: 'scope' };
+  if (typeof key !== 'string') return { kind: 'schema' };
+  let tuple: unknown;
+  try { tuple = JSON.parse(key); }
+  catch {
+    const prefix = JSON.stringify(['entry', ownerId, 'recovery-claim']).slice(0,-1);
+    return key.startsWith(prefix) ? { kind: 'schema' } : { kind: 'readable', value: null };
+  }
+  if (!Array.isArray(tuple) || tuple[0] !== 'entry' || tuple[1] !== ownerId || tuple[2] !== 'recovery-claim') return { kind: 'readable', value: null };
+  if (tuple.length !== 4 || !text(tuple[3])) return { kind: 'schema' };
+  const head = decodeEntryHead(raw, { ownerId, kind: 'recovery-claim', tripId: tuple[3] });
+  if(key!==entryHeadKey({ownerId,kind:'recovery-claim',tripId:tuple[3]}))return {kind:'schema'};
+  if (head.kind !== 'readable') return head;
+  return head.value ? { kind: 'readable', value: { key, raw } } : { kind: 'corrupt' };
+}
 export function decodeDomainHead(raw: unknown, scope: RecoveryScope): DomainDecode<RecoveryHandle | null> {
   if (raw === undefined) return { kind: 'readable', value: null };
   try {
@@ -145,10 +232,15 @@ export function decodeRecoveryEnvelope(raw: unknown, scope: RecoveryScope): Doma
     if (value.version !== 1) return { kind: 'schema' };
     if (!keys(value, ['version', 'handle', 'parent', 'rawRecovery', 'legacySources', 'entry']) || !isDomainHandle(value.handle)
       || !(value.parent === null || isDomainHandle(value.parent)) || !Array.isArray(value.legacySources)
-      || !record(value.entry) || !keys(value.entry, ['pointer', 'input', 'receipt', ...('nativePointerRaw' in value.entry ? ['nativePointerRaw'] : [])])
+      || !record(value.entry) || !keys(value.entry, ['pointer', 'input', 'receipt', ...('nativePointerRaw' in value.entry ? ['nativePointerRaw'] : []), ...('claim' in value.entry ? ['claim'] : [])])
       || 'nativePointerRaw' in value.entry && value.entry.nativePointerRaw !== null && typeof value.entry.nativePointerRaw !== 'string'
       || !isDomainHandle(value.entry.pointer)) return { kind: 'corrupt' };
     const handle = value.handle;
+    if ('claim' in value.entry) {
+      const claim = value.entry.claim;
+      if (!record(claim) || !keys(claim, ['source', 'claimId']) || !isDomainHandle(claim.source)
+        || claim.source.ownerId !== null || claim.source.tripId !== handle.tripId || handle.ownerId === null || !text(claim.claimId)) return { kind: 'scope' };
+    }
     if (!sameRecoveryScope(handle, scope) || !sameDomainHandle(handle, value.entry.pointer)
       || value.parent !== null && (!sameRecoveryScope(value.parent as RecoveryHandle, scope) || (value.parent as RecoveryHandle).writeId === handle.writeId)) return { kind: 'scope' };
     const recovery = decodeRawRecovery(value.rawRecovery, scope); if (recovery.kind !== 'readable') return recovery;

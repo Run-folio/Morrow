@@ -20,7 +20,7 @@ export function prepareEntryWrite(input: RecoveryEntryWrite, ownerId: string | n
   if (input.admission !== 'native-setter-quota' && !(input.admission === 'existing-domain' && expected !== null)) return conflict('admission');
   return { kind: 'prepared', scope, envelope: decoded.value, raw: input.raw, expected };
 }
-function entryHead(state: RecoveryEntryState, scope: RecoveryEntryScope) {
+export function entryHead(state: RecoveryEntryState, scope: RecoveryEntryScope) {
   const head = decodeEntryHead(state.headRaw, scope); if (head.kind !== 'readable') return invalid(head.kind);
   if (head.value === null) return state.headGenerationRaw === undefined ? { kind: 'valid' as const, handle: null, envelope: null } : failure('corrupt');
   const envelope = decodeEntryEnvelope(state.headGenerationRaw, scope); if (envelope.kind !== 'readable') return invalid(envelope.kind);
@@ -60,6 +60,7 @@ export function createRecoveryEntryStore(driver: RecoveryDomainDriver, context: 
     async commit(input: RecoveryEntryWrite): Promise<RecoveryEntryResult> {
       if (!active()) return conflict('operation-changed'); const prepared = prepareEntryWrite(input, ownerId);
       if (prepared.kind !== 'prepared') return prepared;
+      if(prepared.scope.kind==='recovery-lifecycle'||prepared.scope.kind==='recovery-claim')return conflict('admission');
       try {
         const result = await driver.runEntry<RecoveryEntryResult | { kind: 'committed' }>(prepared.scope, prepared.envelope.handle.writeId, 'readwrite', state => {
           if (!active()) return { value: conflict('operation-changed', 'not-committed') };

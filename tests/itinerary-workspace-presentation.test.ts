@@ -46,11 +46,12 @@ test("truthful item status never infers confirmation or per-item time from prese
 });
 
 test("Itinerary uses Map's recovery, queue, CAS, and canonical cache pipeline", () => {
-  assert.match(persistence, /saveTripRecovery\(next, \{[\s\S]*ownerId,[\s\S]*replace: replacement,[\s\S]*accountSavePending: Boolean\(sessionOwnerId\)/);
-  assert.match(persistence, /createTripMutationPersistenceQueue\(saveTripRecoveryToEasyT\)/);
-  assert.match(persistence, /queueRef\.current!?\.enqueue\(next, recovery\.handle, current\)/);
+  assert.match(persistence, /await saveTripRecovery\(next, \{[\s\S]*ownerId: current\.ownerId,[\s\S]*replace: replacement,[\s\S]*accountSavePending: Boolean\(accountOwnerId\),[\s\S]*canonicalBase: current, isCurrent/);
+  assert.match(persistence, /createTripMutationPersistenceQueue\(async \(outgoing, recovery\) =>/);
+  assert.match(persistence, /enqueueAccountSave\(next, recovery\.handle, scope, current\)/);
   assert.match(persistence, /markTripRecoveryState/);
-  assert.match(persistence, /cacheCanonicalTrip\(saved, recovery\)/);
+  assert.match(persistence, /const saved = await saveTripRecoveryToEasyT\(outgoing, recovery\);[\s\S]*await acknowledgeTripBuildSave\(submitted, saved, recovery, \{ isCurrent:/);
+  assert.match(workspace, /await mutation\.mutateTrip\(\(current\) => isCurrent\(\) \? update\(current\) : current/);
   assert.match(persistence, /EasyTTripSaveConflictError/);
   assert.doesNotMatch(workspace, /useState\(trip\)/);
 });

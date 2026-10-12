@@ -29,7 +29,7 @@ type LiveActivityInventoryProps = {
   onSave: (idea: ItineraryIdea) => boolean | Promise<boolean>;
   onSchedule: (idea: ItineraryIdea) => boolean | Promise<boolean>;
   onRemove?: (idea: ItineraryIdea) => boolean | Promise<boolean>;
-  isPending?: (idea: ItineraryIdea) => boolean | Promise<boolean>;
+  isPending?: (idea: ItineraryIdea) => boolean;
   initialItems?: ActivityInventoryItem[];
   discoveryCategory?: Exclude<DiscoveryCategory, "food">;
 };
@@ -46,8 +46,6 @@ function priceLabel(price: ActivityInventoryItem["price"]) {
 
 export default function LiveActivityInventory({ trip, stop, day, placement, workspace, fallback = null, onSave, onSchedule, onRemove, isPending = () => false, initialItems, discoveryCategory = "for-you" }: LiveActivityInventoryProps) {
   const actionScope = JSON.stringify([trip.ownerId, trip.id, stop.id, day.id]);
-  const actionScopeRef = useRef(actionScope);
-  actionScopeRef.current = actionScope;
   const mountedRef = useRef(true);
   const pendingActionKeysRef = useRef(new Set<string>());
   const [pendingActions, setPendingActions] = useState<Set<string>>(new Set());
@@ -57,9 +55,12 @@ export default function LiveActivityInventory({ trip, stop, day, placement, work
     if (pendingActionKeysRef.current.has(key)) return;
     pendingActionKeysRef.current.add(key);
     setPendingActions((current) => new Set(current).add(key));
-    try { await action(idea); } finally {
+    try { await action(idea); } catch {
+      // The shared mutation owner reports failure; the current trip supplies
+      // the saved/planned state, so a rejected action claims no acceptance.
+    } finally {
       pendingActionKeysRef.current.delete(key);
-      if (mountedRef.current && actionScopeRef.current === actionScope) setPendingActions((current) => {
+      if (mountedRef.current) setPendingActions((current) => {
         const next = new Set(current); next.delete(key); return next;
       });
     }
