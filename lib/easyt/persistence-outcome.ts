@@ -27,6 +27,52 @@ export function recoveryPersistenceOutcome(result: RecoveryPersistenceEvidence):
 
 export type PersistenceStage = "homepage-input" | "homepage-intake" | "homepage-preservation" | "homepage-resume" | "device-recovery" | "intake-ack" | "builder-entry" | "builder-edit" | "account-ack";
 let sequence = 0;
+const qaStages = new Set(["homepage-input", "homepage-intake", "homepage-preservation", "homepage-resume", "device-recovery", "intake-ack", "builder-entry", "builder-edit", "account-ack"]);
+const qaOutcomes = new Set(["device-confirmed", "native-write-failed", "protected-conflict", "receipt-incomplete", "pointer-incomplete", "unknown", "account-acknowledged"]);
+const qaBoundaries = new Set(["entry-scope", "protected-recovery", "recovery-write", "recovery-readback", "receipt-ack", "receipt-readback", "pointer-ack", "unknown"]);
+const qaAcknowledgements = new Set(["pending", "stale", "storage", "preservation", "accepted"]);
+const qaBoolean = (value: unknown) => typeof value === "boolean" ? value : null;
+const qaCategory = (value: unknown, allowed: Set<string>, fallback: string | null) => typeof value === "string" && allowed.has(value) ? value : fallback;
+
+/** QA console only. Closed schema; no storage, network, identifiers or raw errors. */
+function reportQaConsole(detail: Record<string, unknown>, evidence?: RecoveryPersistenceEvidence) {
+  try {
+    if (process.env.MORROVIA_QA_PERSISTENCE_DIAGNOSTICS !== "1" || typeof window === "undefined"
+      || window.location.origin !== "https://staging.morrovia.com") return;
+    const params = new URLSearchParams(window.location.search);
+    const common = {
+      version: 1, kind: detail.kind === "ready" ? "ready" : "outcome",
+      sequence: typeof detail.sequence === "number" && Number.isSafeInteger(detail.sequence) && detail.sequence >= 0 ? detail.sequence : null,
+      buildMatch: true,
+      queryKeys: { trip: params.has("trip"), recover: params.has("recover"), homeDraft: params.has("homeDraft"), handoff: params.has("handoff"), inspire: params.has("inspire") },
+      // These are not supplied at the existing emitters. Do not guess them or
+      // inspect session/profile/storage to fill the capture contract.
+      sessionClass: "unknown", browserContextClass: "unknown",
+    };
+    const packet = detail.kind === "ready" ? common : {
+      ...common,
+      stage: qaCategory(detail.stage, qaStages, "unknown"),
+      phase: detail.phase === "probe" ? "probe" : "result",
+      outcome: qaCategory(detail.outcome, qaOutcomes, "unknown"),
+      failureBoundary: qaCategory(detail.failureBoundary, qaBoundaries, null),
+      writeAttempted: qaBoolean(evidence?.writeAttempted), writeAccepted: null,
+      readbackConfirmed: qaBoolean(evidence?.readbackConfirmed),
+      deviceCopyVerified: qaBoolean(evidence?.recoveryDurable) ?? (evidence?.stored === true ? true : null),
+      pointerAcknowledged: qaBoolean(evidence?.pointerAcknowledged),
+      nativeFailure: detail.nativeFailure === "quota" || detail.nativeFailure === "security" || detail.nativeFailure === "unavailable" || detail.nativeFailure === "unknown" ? detail.nativeFailure : null,
+      acknowledgement: qaCategory(detail.acknowledgement, qaAcknowledgements, null),
+      scopeMatches: qaBoolean(evidence?.scopeMatches), receiptPresent: qaBoolean(evidence?.receiptPresent),
+      receiptAcknowledged: null, accountQueueEntered: null, httpStatusClass: null,
+      accountAcknowledged: detail.stage === "account-ack" && detail.outcome === "account-acknowledged" ? true : null,
+    };
+    console.info("[morrovia-persistence-qa] " + JSON.stringify(packet));
+  } catch { /* Diagnostic capture cannot change dispatch, saving or recovery. */ }
+}
+
+// Each fresh client document emits a ready delimiter before any submission.
+// Sequence remains document-local; the observer must prove navigation capture.
+reportQaConsole({ kind: "ready", sequence: 0 });
+
 /** Local event only: no identifiers, payloads, messages, tokens, storage values or remote telemetry. */
 export function reportPersistenceOutcome(stage: PersistenceStage, result: RecoveryPersistenceEvidence) {
   const phase = result.phase === "probe" ? "probe" : "result";
@@ -49,6 +95,7 @@ export function reportPersistenceOutcome(stage: PersistenceStage, result: Recove
     scopeMatches: typeof result.scopeMatches === "boolean" ? result.scopeMatches : null,
     receiptPresent: typeof result.receiptPresent === "boolean" ? result.receiptPresent : null,
   };
+  reportQaConsole(detail, result);
   if (typeof window !== "undefined" && typeof window.dispatchEvent === "function" && typeof CustomEvent !== "undefined") window.dispatchEvent(new CustomEvent("morrovia-persistence-outcome", { detail }));
   return detail;
 }
@@ -56,6 +103,7 @@ export function reportPersistenceOutcome(stage: PersistenceStage, result: Recove
 /** Call only after exact canonical ownership/content and recovery ACK checks succeed. */
 export function reportExactAccountAcknowledgement() {
   const detail = { version: 1, sequence: ++sequence, stage: "account-ack", outcome: "account-acknowledged" };
+  reportQaConsole(detail);
   if (typeof window !== "undefined" && typeof window.dispatchEvent === "function" && typeof CustomEvent !== "undefined") window.dispatchEvent(new CustomEvent("morrovia-persistence-outcome", { detail }));
 }
 

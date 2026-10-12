@@ -4,6 +4,11 @@ const staticExport = process.env.STATIC_EXPORT === "1";
 const distDir = process.env.NEXT_DIST_DIR ?? ".next";
 const buildCommit = process.env.COMMIT_REF ?? process.env.VERCEL_GIT_COMMIT_SHA ?? "";
 const buildContext = process.env.CONTEXT ?? process.env.VERCEL_ENV ?? "";
+// Opt in for one reviewed QA artifact. Only the derived flag reaches the client;
+// the console sink also requires the exact HTTPS staging origin.
+const qaPersistenceDiagnostics = process.env.MORROVIA_QA_PERSISTENCE_DIAGNOSTICS === "1"
+  && /^[a-f0-9]{40}$/i.test(buildCommit)
+  && process.env.MORROVIA_QA_EXPECTED_COMMIT === buildCommit;
 
 const nextConfig: NextConfig = {
   distDir,
@@ -14,6 +19,7 @@ const nextConfig: NextConfig = {
   env: {
     MORROVIA_BUILD_COMMIT: buildCommit,
     MORROVIA_BUILD_CONTEXT: buildContext,
+    MORROVIA_QA_PERSISTENCE_DIAGNOSTICS: qaPersistenceDiagnostics ? "1" : "0",
   },
   ...(staticExport ? { output: "export" as const } : {}),
   async redirects() {
