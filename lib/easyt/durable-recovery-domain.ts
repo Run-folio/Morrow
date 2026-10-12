@@ -211,13 +211,19 @@ export function decodeLegacySource(value: unknown, scope: RecoveryScope): Domain
     return source.kind === 'readable' ? { kind: 'readable', value: { key: value.key, raw: value.raw } } : source;
   }
   const recovery = decodeRawRecovery(value.raw, scope); if (recovery.kind !== 'readable') return recovery;
+  // A retained prospective native claim is non-authorizing even if its
+  // separate IndexedDB fence disappeared or appeared after an earlier scan.
+  if('localClaimId' in recovery.value)return {kind:'scope'};
   const base = tripRecoveryStorageKey(scope.ownerId, scope.tripId);
   if (value.key !== base && value.key !== tripRecoveryStorageKey(scope.ownerId, scope.tripId, recovery.value.writeId)) return { kind: 'scope' };
   return { kind: 'readable', value: { key: value.key, raw: value.raw } };
 }
 /** The retained v1 body is addressed explicitly and never rewritten during read. */
 export function decodeRecoverySource(source: LegacyRecoverySource, scope: RecoveryScope): DomainDecode<TripRecoveryRecord> {
-  if (source.key !== EASYT_ACTIVE_TRIP_KEY) return decodeRawRecovery(source.raw, scope);
+  if (source.key !== EASYT_ACTIVE_TRIP_KEY) {
+    const decoded=decodeRawRecovery(source.raw,scope);
+    return decoded.kind==='readable'&&'localClaimId' in decoded.value?{kind:'scope'}:decoded;
+  }
   try {
     const decoded = readTripDocument(JSON.parse(source.raw));
     if (decoded.kind !== 'readable') return { kind: decoded.kind === 'unsupported' ? 'schema' : 'corrupt' };

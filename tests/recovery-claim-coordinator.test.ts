@@ -241,3 +241,10 @@ test('native claim marker introduced during an absent proof read cannot become a
     if(first&&scope.ownerId==='owner-a'&&scope.kind==='recovery-claim'&&mode==='readonly') {first=false;assert.equal((await claim.claim(source.handle.tripId)).kind,'held');}return value;};
   const result=await createTwoStoreTripPersistence(storage,driver,ctx()).read(source.handle.tripId);assert.equal(result.kind,'protected');assert.equal(storage.attempts,1);
 });
+test('native claim introduced in the caller continuation gap is rejected at the accepted native source boundary',async()=>{
+  const {storage,source,claim}=await fixture(true);storage.failure=null;assert.equal((await claim.claim(source.handle.tripId)).kind,'held');
+  const [candidate]=[...storage.values];assert.ok(candidate);storage.values.clear();let observations=0,introduced=false;
+  Object.defineProperty(storage,'length',{get(){if(++observations===8)queueMicrotask(()=>{storage.values.set(candidate[0],candidate[1]);introduced=true});return storage.values.size;}});
+  const result=await createTwoStoreTripPersistence(storage,new MemoryRecoveryDriver(),ctx()).read(source.handle.tripId);
+  assert.equal(introduced,true);assert.equal(result.kind,'protected');assert.equal(storage.values.get(candidate[0]),candidate[1]);
+});
