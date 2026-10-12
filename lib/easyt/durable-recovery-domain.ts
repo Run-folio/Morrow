@@ -2,6 +2,7 @@ import { readTripDocument } from './trip-document.ts';
 import { tripRecoveryStorageKey } from './storage.ts';
 import { tripBuildDocumentsCanonicalEquivalent } from './trip-promotion.ts';
 import type { TripRecoveryRecord } from './storage.ts';
+import type { RecoveryEntryRequest, RecoveryEntryState, RecoveryEntryMutation, RecoveryEntryScope } from './durable-entry-protocol.ts';
 
 /** Recovery-domain protocol. No implicit browser access. */
 export type RecoveryScope = { ownerId: string | null; tripId: string };
@@ -31,13 +32,14 @@ export type RecoveryReadResult = RecoveryFailure | RecoveryConflict | { kind: 'r
 export type RecoveryAckResult = RecoveryFailure | RecoveryConflict | { kind: 'journaled'; handle: RecoveryHandle; headMatches: boolean; accountAckMatchesCandidate: true };
 export type RecoveryListResult = RecoveryFailure | RecoveryConflict | { kind: 'ready'; recoveries: { envelope: RecoveryEnvelope; acknowledgement: TrustedAccountAck | null }[] };
 
-export type RecoveryDomainState = { headRaw: unknown; headGenerationRaw: unknown; generationRaw: unknown; acknowledgementRaw: unknown; currentRaw: unknown };
-export type RecoveryDomainDecision<T> = { value: T; headRaw?: string; generationRaw?: string; acknowledgementRaw?: string; currentRaw?: string };
+export type RecoveryDomainState = { headRaw: unknown; headGenerationRaw: unknown; generationRaw: unknown; acknowledgementRaw: unknown; currentRaw: unknown; entries: RecoveryEntryState[] };
+export type RecoveryDomainDecision<T> = { value: T; headRaw?: string; generationRaw?: string; acknowledgementRaw?: string; currentRaw?: string; entryWrites?: RecoveryEntryMutation[] };
 /** `run` must serialize readwrite transactions for a scope, atomically commit
  * every returned mutation, use add-only generations/ACKs, and resolve only
  * after completion. Decision callbacks are synchronous, never awaited. */
 export interface RecoveryDomainDriver {
-  run<T>(scope: RecoveryScope, writeId: string | null, mode: 'readonly' | 'readwrite', decide: (state: RecoveryDomainState) => RecoveryDomainDecision<T>): Promise<T>;
+  run<T>(scope: RecoveryScope, writeId: string | null, mode: 'readonly' | 'readwrite', decide: (state: RecoveryDomainState) => RecoveryDomainDecision<T>, entries?: RecoveryEntryRequest[]): Promise<T>;
+  runEntry<T>(scope: RecoveryEntryScope, writeId: string | null, mode: 'readonly' | 'readwrite', decide: (state: RecoveryEntryState) => { value: T; mutation?: RecoveryEntryMutation }): Promise<T>;
   readCurrent(ownerId: string | null): Promise<unknown>;
   listHeads(ownerId: string | null): Promise<{ key: string; raw: unknown }[]>;
   close?(): void;

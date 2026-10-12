@@ -1,6 +1,7 @@
 import { decodeDomainHead, recoveryScopeKey, recoveryGenerationKey, recoveryCurrentKey, recoveryOwnerPrefix, type RecoveryDomainDriver,
   type RecoveryDomainState, type RecoveryDomainDecision, type RecoveryScope } from './durable-recovery-domain.ts';
 import { RecoveryDomainError, recoveryErrorReason } from './durable-recovery-error.ts';
+import { decodeEntryHead, entryHeadKey, entryGenerationKey, isEntryScope, sameEntryScope, type RecoveryEntryRequest, type RecoveryEntryScope, type RecoveryEntryState, type RecoveryEntryMutation } from './durable-entry-protocol.ts';
 
 const STORES = ['generations', 'heads', 'acknowledgements'];
 const DATABASE_NAME = 'morrovia-recovery-domain-v1';
@@ -55,6 +56,81 @@ export async function openIndexedDbRecoveryDriver(factory: IDBFactory | undefine
       try { start(tx, value => { ready = true; result = value; }, abort); } catch (error) { abort(error); }
     });
   };
+  const runCore = <T,>(scope: RecoveryScope | null, ownerId: string | null, writeId: string | null, mode: 'readonly' | 'readwrite', decide: (state: RecoveryDomainState) => RecoveryDomainDecision<T>, requested: RecoveryEntryRequest[]): Promise<T> => {
+    if (closed) return Promise.reject(new RecoveryDomainError('unavailable', 'not-started'));
+    const entries = requested.map(item => ({ scope: { ...item.scope }, writeId: item.writeId }));
+    if (entries.some(item => !isEntryScope(item.scope) || item.scope.ownerId !== ownerId)) return Promise.reject(new RecoveryDomainError('security', 'not-started'));
+    return new Promise<T>((resolve, reject) => {
+      let tx: IDBTransaction;
+      try { tx = db.transaction(STORES, mode, mode === 'readwrite' ? { durability: 'strict' } : {}); }
+      catch (error) { reject(new RecoveryDomainError(recoveryErrorReason(error), 'not-started')); return; }
+      let settled = false, decision: RecoveryDomainDecision<T> | undefined, caught: unknown;
+      const fail = (error: unknown) => { if (!settled) { settled = true; clearTimeout(timer); reject(error); } };
+      const abort = (error: unknown) => { caught ??= error; try { tx.abort(); } catch { fail(new RecoveryDomainError(recoveryErrorReason(caught), 'unconfirmed')); } };
+      const timer = setTimeout(() => abort(new RecoveryDomainError('unavailable', 'unconfirmed')), timeoutMs);
+      tx.onabort = () => fail(new RecoveryDomainError(recoveryErrorReason(caught ?? tx.error ?? new DOMException('Aborted', 'AbortError')), 'not-committed'));
+      tx.onerror = () => { caught ??= tx.error; };
+      tx.oncomplete = () => {
+        if (settled) return;
+        if (!decision) { fail(new RecoveryDomainError('unknown', 'unconfirmed')); return; }
+        settled = true; clearTimeout(timer); resolve(decision.value);
+      };
+      if (mode === 'readwrite' && tx.durability !== 'strict') { abort(new RecoveryDomainError('unavailable', 'not-committed')); return; }
+      const state: RecoveryDomainState = { headRaw: undefined, headGenerationRaw: undefined, generationRaw: undefined, acknowledgementRaw: undefined, currentRaw: undefined,
+        entries: entries.map(() => ({ headRaw: undefined, headGenerationRaw: undefined, generationRaw: undefined })) };
+      let pending = 0;
+      const observe = (request: IDBRequest) => { request.onerror = () => { caught ??= request.error; }; };
+      const finishReads = () => {
+        if (pending || decision || settled) return;
+        try {
+          decision = decide(state);
+          if (decision && typeof decision === 'object' && 'then' in decision) throw new TypeError('Async transaction decision');
+          const writes = decision.headRaw !== undefined || decision.generationRaw !== undefined || decision.acknowledgementRaw !== undefined || decision.currentRaw !== undefined || Boolean(decision.entryWrites?.length);
+          if (mode !== 'readwrite' && writes) throw new TypeError('Readonly transaction mutation');
+          if (decision.generationRaw !== undefined || decision.acknowledgementRaw !== undefined) {
+            if (writeId === null || scope === null) throw new TypeError('Missing immutable write identity');
+            const key = recoveryGenerationKey(scope, writeId);
+            if (decision.generationRaw !== undefined) observe(tx.objectStore('generations').add(decision.generationRaw, key));
+            if (decision.acknowledgementRaw !== undefined) observe(tx.objectStore('acknowledgements').add(decision.acknowledgementRaw, key));
+          }
+          if (decision.headRaw !== undefined) {
+            if (scope === null) throw new TypeError('Missing recovery scope');
+            observe(tx.objectStore('heads').put(decision.headRaw, recoveryScopeKey(scope)));
+          }
+          if (decision.currentRaw !== undefined) observe(tx.objectStore('heads').put(decision.currentRaw, recoveryCurrentKey(ownerId)));
+          for (const entry of decision.entryWrites ?? []) {
+            if (!isEntryScope(entry.scope) || entry.scope.ownerId !== ownerId || !entries.some(item => sameEntryScope(item.scope, entry.scope) && item.writeId === entry.writeId)) throw new TypeError('Unbound entry mutation');
+            observe(tx.objectStore('generations').add(entry.raw, entryGenerationKey(entry.scope, entry.writeId)));
+            observe(tx.objectStore('heads').put(entry.headRaw, entryHeadKey(entry.scope)));
+          }
+        } catch (error) { abort(error); }
+      };
+      const read = (store: string, key: string, receive: (raw: unknown) => void) => {
+        pending++; const request = tx.objectStore(store).get(key); observe(request);
+        request.onsuccess = () => { try { receive(request.result); pending--; finishReads(); } catch (error) { abort(error); } };
+      };
+      try {
+        read('heads', recoveryCurrentKey(ownerId), raw => { state.currentRaw = raw; });
+        if (scope) read('heads', recoveryScopeKey(scope), headRaw => {
+          state.headRaw = headRaw;
+          const decoded = decodeDomainHead(headRaw, scope), head = decoded.kind === 'readable' ? decoded.value : null;
+          const selected = writeId ?? head?.writeId;
+          if (selected) {
+            read('generations', recoveryGenerationKey(scope, selected), raw => { state.generationRaw = raw; if (head?.writeId === selected) state.headGenerationRaw = raw; });
+            read('acknowledgements', recoveryGenerationKey(scope, selected), raw => { state.acknowledgementRaw = raw; });
+          }
+          if (head && head.writeId !== selected) read('generations', recoveryGenerationKey(scope, head.writeId), raw => { state.headGenerationRaw = raw; });
+        });
+        entries.forEach((item, index) => read('heads', entryHeadKey(item.scope), headRaw => {
+          const row = state.entries[index]; row.headRaw = headRaw;
+          const decoded = decodeEntryHead(headRaw, item.scope), head = decoded.kind === 'readable' ? decoded.value : null;
+          const selected = item.writeId ?? head?.writeId;
+          if (selected) read('generations', entryGenerationKey(item.scope, selected), raw => { row.generationRaw = raw; if (head?.writeId === selected) row.headGenerationRaw = raw; });
+          if (head && head.writeId !== selected) read('generations', entryGenerationKey(item.scope, head.writeId), raw => { row.headGenerationRaw = raw; });
+        }));
+      } catch (error) { abort(error); }
+    });
+  };
   return {
     close,
     readCurrent(ownerId) {
@@ -72,73 +148,25 @@ export async function openIndexedDbRecoveryDriver(factory: IDBFactory | undefine
           try {
             const cursor = request.result; if (!cursor) { done(rows); return; }
             if (typeof cursor.key !== 'string') throw new RecoveryDomainError('schema');
-            if (cursor.key.startsWith(prefix)) rows.push({ key: cursor.key, raw: cursor.value });
+            if (cursor.key.startsWith(prefix)) {
+              const parts: unknown = JSON.parse(cursor.key);
+              if (!Array.isArray(parts)) throw new RecoveryDomainError('schema');
+              if (parts.length === 2) rows.push({ key: cursor.key, raw: cursor.value });
+              else if (parts.length !== 4 || parts[0] !== 'entry') throw new RecoveryDomainError('schema');
+            }
             cursor.continue();
           } catch (error) { abort(error); }
         };
       });
     },
-    run<T>(scope: RecoveryScope, writeId: string | null, mode: 'readonly' | 'readwrite', decide: (state: RecoveryDomainState) => RecoveryDomainDecision<T>): Promise<T> {
-      if (closed) return Promise.reject(new RecoveryDomainError('unavailable', 'not-started'));
-      return new Promise<T>((resolve, reject) => {
-        let tx: IDBTransaction;
-        try { tx = db.transaction(STORES, mode, mode === 'readwrite' ? { durability: 'strict' } : {}); }
-        catch (error) { reject(new RecoveryDomainError(recoveryErrorReason(error), 'not-started')); return; }
-        let settled = false, decision: RecoveryDomainDecision<T> | undefined, caught: unknown;
-        const fail = (error: unknown) => { if (!settled) { settled = true; clearTimeout(timer); reject(error); } };
-        const abort = (error: unknown) => { caught ??= error; try { tx.abort(); } catch { fail(new RecoveryDomainError(recoveryErrorReason(caught), 'unconfirmed')); } };
-        const timer = setTimeout(() => abort(new RecoveryDomainError('unavailable', 'unconfirmed')), timeoutMs);
-        tx.onabort = () => fail(new RecoveryDomainError(recoveryErrorReason(caught ?? tx.error ?? new DOMException('Aborted', 'AbortError')), 'not-committed'));
-        tx.onerror = () => { caught ??= tx.error; };
-        tx.oncomplete = () => {
-          if (settled) return;
-          if (!decision) { fail(new RecoveryDomainError('unknown', 'unconfirmed')); return; }
-          settled = true; clearTimeout(timer); resolve(decision.value);
-        };
-        if (mode === 'readwrite' && tx.durability !== 'strict') { abort(new RecoveryDomainError('unavailable', 'not-committed')); return; }
-        const state: RecoveryDomainState = { headRaw: undefined, headGenerationRaw: undefined, generationRaw: undefined, acknowledgementRaw: undefined, currentRaw: undefined };
-        let pending = 0;
-        const finishReads = () => {
-          if (pending || decision || settled) return;
-          try {
-            decision = decide(state);
-            if (decision && typeof decision === 'object' && 'then' in decision) throw new TypeError('Async transaction decision');
-            const writes = decision.headRaw !== undefined || decision.generationRaw !== undefined || decision.acknowledgementRaw !== undefined || decision.currentRaw !== undefined;
-            if (mode !== 'readwrite' && writes) throw new TypeError('Readonly transaction mutation');
-            if (decision.generationRaw !== undefined || decision.acknowledgementRaw !== undefined) {
-              if (writeId === null) throw new TypeError('Missing immutable write identity');
-              const key = recoveryGenerationKey(scope, writeId);
-              if (decision.generationRaw !== undefined) observe(tx.objectStore('generations').add(decision.generationRaw, key));
-              if (decision.acknowledgementRaw !== undefined) observe(tx.objectStore('acknowledgements').add(decision.acknowledgementRaw, key));
-            }
-            if (decision.headRaw !== undefined) observe(tx.objectStore('heads').put(decision.headRaw, recoveryScopeKey(scope)));
-            if (decision.currentRaw !== undefined) observe(tx.objectStore('heads').put(decision.currentRaw, recoveryCurrentKey(scope.ownerId)));
-          } catch (error) { abort(error); }
-        };
-        const observe = (request: IDBRequest) => { request.onerror = () => { caught ??= request.error; }; };
-        const read = (store: string, key: string, receive: (raw: unknown) => void) => {
-          pending++;
-          const request = tx.objectStore(store).get(key); observe(request);
-          request.onsuccess = () => {
-            try { receive(request.result); pending--; finishReads(); }
-            catch (error) { abort(error); }
-          };
-        };
-        try {
-          read('heads', recoveryScopeKey(scope), headRaw => {
-            state.headRaw = headRaw;
-            read('heads', recoveryCurrentKey(scope.ownerId), raw => { state.currentRaw = raw; });
-            const decoded = decodeDomainHead(headRaw, scope);
-            const head = decoded.kind === 'readable' ? decoded.value : null;
-            const selected = writeId ?? head?.writeId;
-            if (selected) {
-              read('generations', recoveryGenerationKey(scope, selected), raw => { state.generationRaw = raw; if (head?.writeId === selected) state.headGenerationRaw = raw; });
-              read('acknowledgements', recoveryGenerationKey(scope, selected), raw => { state.acknowledgementRaw = raw; });
-            }
-            if (head && head.writeId !== selected) read('generations', recoveryGenerationKey(scope, head.writeId), raw => { state.headGenerationRaw = raw; });
-          });
-        } catch (error) { abort(error); }
-      });
+    run<T>(scope: RecoveryScope, writeId: string | null, mode: 'readonly' | 'readwrite', decide: (state: RecoveryDomainState) => RecoveryDomainDecision<T>, entries: RecoveryEntryRequest[] = []): Promise<T> {
+      return runCore({ ...scope }, scope.ownerId, writeId, mode, decide, entries);
     },
+    runEntry<T>(scope: RecoveryEntryScope, writeId: string | null, mode: 'readonly' | 'readwrite', decide: (state: RecoveryEntryState) => { value: T; mutation?: RecoveryEntryMutation }): Promise<T> {
+      return runCore(null, scope.ownerId, null, mode, state => {
+        const result = decide(state.entries[0]);
+        return { value: result.value, ...(result.mutation ? { entryWrites: [result.mutation] } : {}) };
+      }, [{ scope: { ...scope }, writeId }]);
+    }
   };
 }

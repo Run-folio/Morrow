@@ -3,10 +3,39 @@ import test from 'node:test';
 import { createRecoveryDomainStore, openIndexedDbRecoveryDriver } from '../lib/easyt/durable-recovery-store.ts';
 import { IndexedDbModel } from './helpers/recovery-indexeddb-model.ts';
 import { envelope, rawEnvelope, canonicalAck } from './helpers/durable-recovery-fixture.ts';
+import { createRecoveryEntryStore } from '../lib/easyt/durable-entry-store.ts';
+import type { RecoveryEntryEnvelope, RecoveryEntryWrite } from '../lib/easyt/durable-entry-protocol.ts';
 
 const context = { ownerId: 'owner-a', isCurrent: () => true };
 const write = (value = envelope()) => ({ raw: rawEnvelope(value), expectedHead: value.parent, admission: 'native-setter-quota' as const });
 const turn = () => new Promise<void>(resolve => setImmediate(resolve));
+const inputEntry = (value = envelope()): RecoveryEntryEnvelope => ({ version: 1,
+  handle: { version: 1, backend: 'indexeddb-entry', kind: 'builder-input', ownerId: value.handle.ownerId, tripId: value.handle.tripId, writeId: 'input-1' },
+  parent: null, raw: value.entry.input!.raw, legacyRaw: null, retainedPreviousRaw: null });
+const entryWrite = (value = inputEntry()): RecoveryEntryWrite => ({ raw: JSON.stringify(value), expectedHead: value.parent, admission: 'native-setter-quota' });
+
+test('native entry adapter preserves typed input independently of a canonical trip and enumerates only recovery heads', async () => {
+  const model = new IndexedDbModel(), driver = await openIndexedDbRecoveryDriver(model.factory());
+  const entry = inputEntry(), store = createRecoveryEntryStore(driver, context);
+  assert.equal((await store.commit(entryWrite(entry))).kind, 'verified');
+  const reopened = await store.read(entry.handle); if (reopened.kind !== 'ready') assert.fail(reopened.kind);
+  assert.deepEqual(reopened.envelope, entry); assert.deepEqual(await driver.listHeads(context.ownerId), []); driver.close?.();
+});
+
+test('canonical recovery and required input metadata commit and verify in one native transaction', async () => {
+  const model = new IndexedDbModel(), driver = await openIndexedDbRecoveryDriver(model.factory()), value = envelope();
+  const result = await createRecoveryDomainStore(driver, context).commit({ ...write(value), entries: [entryWrite(inputEntry(value))] });
+  assert.equal(result.kind, 'verified'); const entry = await createRecoveryEntryStore(driver, context).read(inputEntry(value).handle);
+  if (entry.kind !== 'ready') assert.fail(entry.kind); assert.equal(entry.envelope?.raw, value.entry.input!.raw); driver.close?.();
+});
+
+test('required entry quota aborts already queued canonical generation and pointer writes', async () => {
+  const model = new IndexedDbModel(), driver = await openIndexedDbRecoveryDriver(model.factory()), before = structuredClone(model.data), value = envelope();
+  model.failAddKeyPrefix = '["entry",';
+  const result = await createRecoveryDomainStore(driver, context).commit({ ...write(value), entries: [entryWrite(inputEntry(value))] });
+  assert.equal(result.kind, 'failure'); if (result.kind === 'failure') assert.equal(result.reason, 'quota');
+  assert.deepEqual(model.data, before); driver.close?.();
+});
 
 test('native adapter waits for transaction complete, then independently reads back every entry byte', async () => {
   const model = new IndexedDbModel(); model.holdCompletion = true;

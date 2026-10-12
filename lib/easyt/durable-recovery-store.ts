@@ -7,6 +7,8 @@ export type * from './durable-recovery-domain.ts';
 export { openIndexedDbRecoveryDriver } from './durable-recovery-indexeddb.ts';
 import { RecoveryDomainError, recoveryErrorReason } from './durable-recovery-error.ts';
 export { RecoveryDomainError, recoveryErrorReason } from './durable-recovery-error.ts';
+import { entryHeadKey, type RecoveryEntryWrite, type RecoveryEntryMutation } from './durable-entry-protocol.ts';
+import { prepareEntryWrite, decideEntryWrite, verifyEntryWrite, type PreparedEntryWrite } from './durable-entry-store.ts';
 const failure = (reason: RecoveryFailureReason, commitStatus: CommitStatus = 'not-started'): RecoveryFailure => ({ kind: 'failure', reason, commitStatus });
 const conflict = (reason: RecoveryConflict['reason'], commitStatus: CommitStatus = 'not-started'): RecoveryConflict => ({ kind: 'protected-conflict', reason, commitStatus });
 const decodeFailure = (decoded: DecodeFailure, status: CommitStatus) => decoded.kind === 'scope' ? conflict('scope', status) : failure(decoded.kind, status);
@@ -57,9 +59,9 @@ export function createRecoveryDomainStore(driver: RecoveryDomainDriver, context:
         return active() ? read : conflict('operation-changed');
       } catch (error) { return failure(recoveryErrorReason(error)); }
     },
-    async commit(input: { raw: string; expectedHead: RecoveryHandle | null; admission: 'native-setter-quota' }): Promise<RecoveryCommitResult> {
+    async commit(input: { raw: string; expectedHead: RecoveryHandle | null; admission: 'native-setter-quota' | 'existing-domain'; entries?: RecoveryEntryWrite[] }): Promise<RecoveryCommitResult> {
       if (!active()) return conflict('operation-changed');
-      if (input.admission !== 'native-setter-quota') return conflict('admission');
+      if (input.admission !== 'native-setter-quota' && !(input.admission === 'existing-domain' && input.expectedHead !== null)) return conflict('admission');
       let parsed: unknown; try { parsed = JSON.parse(input.raw); } catch { return failure('corrupt'); }
       if (!parsed || typeof parsed !== 'object' || !('handle' in parsed) || !isDomainHandle(parsed.handle)) return failure('corrupt');
       const scope = scopeFor(parsed.handle.tripId), decoded = decodeRecoveryEnvelope(input.raw, scope);
@@ -67,18 +69,34 @@ export function createRecoveryDomainStore(driver: RecoveryDomainDriver, context:
       const candidate = decoded.value, raw = input.raw;
       const expected = input.expectedHead === null ? null : isDomainHandle(input.expectedHead) ? { ...input.expectedHead } : undefined;
       if (expected === undefined || expected && !sameRecoveryScope(expected, scope) || !sameDomainHandle(candidate.parent, expected)) return conflict('scope');
+      if (input.entries !== undefined && !Array.isArray(input.entries)) return failure('corrupt');
+      const preparedEntries: PreparedEntryWrite[] = [], seenEntries = new Set<string>();
+      for (const entry of input.entries ?? []) {
+        const prepared = prepareEntryWrite(entry, ownerId); if (prepared.kind !== 'prepared') return prepared;
+        const key = entryHeadKey(prepared.scope);
+        if (seenEntries.has(key) || prepared.scope.kind === 'builder-input' && prepared.scope.tripId !== candidate.handle.tripId) return conflict('scope');
+        const requiredRaw = prepared.scope.kind === 'builder-input' ? candidate.entry.input?.raw ?? null : candidate.entry.receipt?.raw ?? null;
+        if (requiredRaw !== prepared.envelope.raw) return conflict('scope');
+        seenEntries.add(key); preparedEntries.push(prepared);
+      }
+      const entryRequests = preparedEntries.map(entry => ({ scope: entry.scope, writeId: entry.envelope.handle.writeId }));
       try {
         const committed = await driver.run<RecoveryCommitResult | { kind: 'committed' }>(scope, candidate.handle.writeId, 'readwrite', state => {
           if (!active()) return { value: conflict('operation-changed', 'not-committed') };
           const existing = stateHead(state, scope); if (existing.kind !== 'valid') return { value: existing };
+          const entryWrites: RecoveryEntryMutation[] = [];
+          for (const [index, entry] of preparedEntries.entries()) {
+            const decision = decideEntryWrite(entry, state.entries[index]); if (decision.kind !== 'write') return { value: decision };
+            if (decision.mutation) entryWrites.push(decision.mutation);
+          }
           if (state.generationRaw !== undefined) {
             if (state.generationRaw !== raw) return { value: conflict('immutable-collision', 'not-committed') };
             if (!sameDomainHandle(existing.head, candidate.handle)) return { value: conflict('head-changed', 'not-committed') };
-            return { value: { kind: 'committed' } };
+            return { value: { kind: 'committed' }, entryWrites };
           }
           if (!sameDomainHandle(existing.head, expected)) return { value: conflict('head-changed', 'not-committed') };
-          return { value: { kind: 'committed' }, generationRaw: raw, headRaw: JSON.stringify(candidate.handle), currentRaw: JSON.stringify(candidate.handle) };
-        });
+          return { value: { kind: 'committed' }, generationRaw: raw, headRaw: JSON.stringify(candidate.handle), currentRaw: JSON.stringify(candidate.handle), entryWrites };
+        }, entryRequests);
         if (committed.kind !== 'committed') return committed;
       } catch (error) {
         return failure(recoveryErrorReason(error), error instanceof RecoveryDomainError ? error.commitStatus : 'unconfirmed');
@@ -91,8 +109,11 @@ export function createRecoveryDomainStore(driver: RecoveryDomainDriver, context:
           if (!sameDomainHandle(head.head, candidate.handle)) return { value: conflict('head-changed', 'committed') };
           const pointer = decodeDomainCurrent(state.currentRaw, ownerId);
           if (pointer.kind !== 'readable' || !sameDomainHandle(pointer.value, candidate.handle)) return { value: conflict('head-changed', 'committed') };
+          for (const [index, entry] of preparedEntries.entries()) {
+            const refused = verifyEntryWrite(entry, state.entries[index]); if (refused) return { value: refused };
+          }
           return { value: { kind: 'verified', handle: candidate.handle, raw, commitStatus: 'committed' } };
-        });
+        }, entryRequests);
         return active() ? verified : conflict('operation-changed', 'committed');
       } catch (error) { return { ...failure('readback', 'committed'), cause: recoveryErrorReason(error) }; }
     },

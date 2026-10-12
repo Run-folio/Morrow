@@ -58,7 +58,7 @@ class TransactionModel {
     const values = this.staged.get(name); if (!values) throw new DOMException('Missing store', 'NotFoundError');
     const mutate = (value: unknown, key: string, immutable: boolean) => {
       if (this.mode !== 'readwrite') throw new DOMException('Readonly', 'ReadOnlyError');
-      const failure = this.factory.failAddStore === name ? new DOMException('Synthetic quota', 'QuotaExceededError')
+      const failure = this.factory.failAddStore === name || immutable && this.factory.failAddKeyPrefix && key.startsWith(this.factory.failAddKeyPrefix) ? new DOMException('Synthetic quota', 'QuotaExceededError')
         : immutable && values.has(key) ? new DOMException('Duplicate', 'ConstraintError') : undefined;
       return this.request(() => { values.set(key, value); return key; }, failure);
     };
@@ -84,6 +84,7 @@ export class IndexedDbModel {
   holdCompletion = false;
   pendingCompletion: (() => void) | null = null;
   failAddStore: string | null = null;
+  failAddKeyPrefix: string | null = null;
   openMode: 'success' | 'blocked' | 'future' | 'new' = 'success';
   closed = 0; upgradeAborts = 0; createdStores = 0;
   versionChange: (() => void) | null = null;
