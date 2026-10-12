@@ -17,6 +17,8 @@ function fixture() {
   put('.next-test/server/app/journey/new.html', html); put('.next-test/server/app/journey/plan.html', html);
   put('.next-test/static/chunks/main.js', 'synthetic main');
   put('.next-test/static/chunks/lazy-map.js', 'synthetic lazy');
+  put('.next-test/static/chunks/app/journey/[tripId]/page.js', 'synthetic dynamic route');
+  put('.next-test/static/chunks/app/api/auth/[...all]/route.js', 'synthetic catchall');
   put('.next-test/static/media/font.woff2', 'synthetic font');
   put('public/maplibre/maplibre-gl-worker.mjs', 'synthetic worker');
   put('public/easyt-icon.svg', '<svg/>');
@@ -28,7 +30,7 @@ test('build manifest includes lazy chunks/fonts/public worker with exact byte ha
   try {
     const result = writeOfflineShellManifest(f.root, '.next-test');
     assert.equal(result.readerFloor, 'idb-recovery-v1'); assert.equal(result.buildId, 'synthetic-build'); assert.equal(result.buildCommit, commit);
-    assert.deepEqual(result.assets.map(row => row.url), ['/easyt-icon.svg', '/maplibre/maplibre-gl-worker.mjs', '/_next/static/chunks/lazy-map.js', '/_next/static/chunks/main.js', '/_next/static/media/font.woff2'].sort());
+    assert.deepEqual(new Set(result.assets.map(row => row.url)), new Set(['/easyt-icon.svg', '/maplibre/maplibre-gl-worker.mjs', '/_next/static/chunks/lazy-map.js', '/_next/static/chunks/main.js', '/_next/static/media/font.woff2', '/_next/static/chunks/app/journey/%5BtripId%5D/page.js', '/_next/static/chunks/app/api/auth/%5B...all%5D/route.js']));
     assert.equal(result.assets.find(row => row.url.endsWith('lazy-map.js')).sha256, createHash('sha256').update('synthetic lazy').digest('hex'));
     const context = { self: {} }; runInNewContext(readFileSync(path.join(f.root, 'public/easyt-offline-manifest.js'), 'utf8'), context);
     assert.equal(JSON.stringify(context.self.MORROVIA_OFFLINE_SHELL), JSON.stringify(result));
@@ -47,3 +49,12 @@ for (const reason of ['reader marker missing', 'commit mismatch', 'missing direc
     } finally { f.close(); }
   });
 }
+
+test('compiled HTML cannot hide traversal through URL normalization', async () => {
+  const { writeOfflineShellManifest } = await import(script); const f = fixture();
+  try {
+    rmSync(path.join(f.root, '.next-test/static/chunks/app'), { recursive: true });
+    f.put('.next-test/server/app/journey/new.html', html.replace('chunks/main.js', 'chunks/../chunks/main.js'));
+    assert.throws(() => writeOfflineShellManifest(f.root, '.next-test'), /Unsafe offline HTML dependency/);
+  } finally { f.close(); }
+});

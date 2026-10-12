@@ -5,6 +5,15 @@ import { fileURLToPath } from 'node:url';
 import { MORROVIA_OFFLINE_READER_FLOOR } from '../lib/easyt/offline-reader-floor.ts';
 
 // HTML omits lazy chunks. Only public build files, never user/API responses.
+function canonicalAssetPath(pathname) {
+  try {
+    if (!pathname.startsWith('/') || pathname.includes('//')) return null;
+    const segments = pathname.slice(1).split('/').map(segment => decodeURIComponent(segment));
+    if (segments.some(segment => !segment || segment === '.' || segment === '..' || segment.includes('/') || segment.includes('\\') || segment.includes('%'))) return null;
+    return '/' + segments.map(segment => encodeURIComponent(segment)).join('/');
+  } catch { return null; }
+}
+
 export function writeOfflineShellManifest(root, dist = '.next') {
   const buildRoot = path.join(root, dist);
   const buildId = fs.readFileSync(path.join(buildRoot, 'BUILD_ID'), 'utf8').trim();
@@ -14,7 +23,7 @@ export function writeOfflineShellManifest(root, dist = '.next') {
   if (typeof buildCommit !== 'string' || (buildCommit !== '' && !/^[a-f0-9]{40}$/i.test(buildCommit))) throw new Error('Invalid offline commit identity');
   const assets = [];
   const add = (url, file) => {
-    if (!/^\/[A-Za-z0-9_./-]+$/.test(url) || url.includes('..')) throw new Error('Unsafe offline asset path');
+    if (canonicalAssetPath(url) !== url) throw new Error('Unsafe offline asset path');
     const stat = fs.lstatSync(file);
     if (!stat.isFile() || stat.isSymbolicLink()) throw new Error('Offline asset must be a regular build file');
     assets.push({ url, sha256: createHash('sha256').update(fs.readFileSync(file)).digest('hex') });
@@ -24,7 +33,7 @@ export function writeOfflineShellManifest(root, dist = '.next') {
     for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
       const file = path.join(dir, entry.name);
       if (entry.isDirectory()) walk(file);
-      else add('/_next/static/' + path.relative(staticRoot, file).split(path.sep).join('/'), file);
+      else add('/_next/static/' + path.relative(staticRoot, file).split(path.sep).map(segment => encodeURIComponent(segment)).join('/'), file);
     }
   };
   walk(staticRoot);
@@ -37,8 +46,9 @@ export function writeOfflineShellManifest(root, dist = '.next') {
     if (!html.includes(`name="morrovia-offline-reader" content="${MORROVIA_OFFLINE_READER_FLOOR}"`)
       || !html.includes(`name="morrovia-build-commit" content="${buildCommit}"`)) throw new Error('Offline shell reader/build marker missing: ' + route);
     for (const match of html.matchAll(/\/_next\/static\/[^"'\\\s<]+/g)) {
-      const url = new URL(match[0].replaceAll('&amp;', '&'), 'https://isolated.invalid');
-      if (!assetUrls.has(url.pathname)) throw new Error('Offline shell dependency missing: ' + url.pathname);
+      const url = canonicalAssetPath(match[0].replaceAll('&amp;', '&').split(/[?#]/)[0]);
+      if (!url) throw new Error('Unsafe offline HTML dependency');
+      if (!assetUrls.has(url)) throw new Error('Offline shell dependency missing: ' + url);
     }
   }
   const manifest = { version: 1, readerFloor: MORROVIA_OFFLINE_READER_FLOOR, buildId, buildCommit, assets };

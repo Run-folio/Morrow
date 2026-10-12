@@ -239,3 +239,24 @@ test('a failed changed graph with the same build id cannot mutate the accepted g
   const original = model({ seed: [...replacement.stores] });
   assert.equal(await (await original.request('/journey/new?trip=synthetic')).text(), shell('/journey/new'));
 });
+
+test('encoded dynamic/catchall chunks install and match raw and encoded request spelling', async () => {
+  const urls = ['/_next/static/chunks/app/journey/%5BtripId%5D/page.js', '/_next/static/chunks/app/api/auth/%5B...all%5D/route.js'];
+  const dynamicAssets = urls.map(url => ({ url, sha256: createHash('sha256').update('synthetic dynamic').digest('hex') }));
+  const identity = { version: 1, readerFloor: floor, buildId: build, buildCommit: commit, assets: [...manifest.assets, ...dynamicAssets] };
+  const next = { ...identity, artifactId: createHash('sha256').update(JSON.stringify(identity)).digest('hex') };
+  const m = await installed({ manifestValue: next, network: path => urls.includes(path) ? new Response('synthetic dynamic') : online(path) });
+  const offline = model({ seed: [...m.stores], manifestValue: next });
+  for (const url of urls) {
+    assert.equal(await (await offline.request(url, 'no-cors')).text(), 'synthetic dynamic');
+    assert.equal(await (await offline.request(decodeURIComponent(url), 'no-cors')).text(), 'synthetic dynamic');
+  }
+});
+
+test('manifest URL traversal, encoded separators and malformed encodings are refused', async () => {
+  for (const url of ['/_next/static/../private.js', '/_next/static/%2E%2E/private.js', '/_next/static/%252E%252E/private.js', '/_next/static/a%2Fb.js', '/_next/static/a%252Fb.js', '/_next/static/a%5Cb.js', '/_next/static/%ZZ.js']) {
+    const identity = { version: 1, readerFloor: floor, buildId: build, buildCommit: commit, assets: [{ url, sha256: 'a'.repeat(64) }] };
+    const next = { ...identity, artifactId: createHash('sha256').update(JSON.stringify(identity)).digest('hex') };
+    const m = model({ network: online, manifestValue: next }); await assert.rejects(m.lifecycle('install')); assert.equal(m.skipped, 0);
+  }
+});

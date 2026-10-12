@@ -15,6 +15,15 @@ const PUBLIC_SHELL = [
 ];
 const DOCUMENTS = PUBLIC_SHELL.filter((path) => path !== "/easyt-icon.svg");
 
+function canonicalAssetPath(pathname) {
+  try {
+    if (!pathname.startsWith("/") || pathname.includes("//")) return null;
+    const segments = pathname.slice(1).split("/").map((segment) => decodeURIComponent(segment));
+    if (segments.some((segment) => !segment || segment === "." || segment === ".." || segment.includes("/") || segment.includes("\\") || segment.includes("%"))) return null;
+    return "/" + segments.map((segment) => encodeURIComponent(segment)).join("/");
+  } catch { return null; }
+}
+
 function validManifest() {
   return MANIFEST?.version === 1 && MANIFEST.readerFloor === READER_FLOOR
     && /^[A-Za-z0-9_-]{1,100}$/.test(MANIFEST.buildId)
@@ -25,7 +34,7 @@ function validManifest() {
     && /^[a-f0-9]{64}$/.test(MANIFEST.artifactId)
     && new Set(MANIFEST.assets.map((asset) => asset.url)).size === MANIFEST.assets.length
     && MANIFEST.assets.every((asset) => typeof asset.url === "string"
-      && /^\/[A-Za-z0-9_./-]+$/.test(asset.url) && !asset.url.includes("..")
+      && canonicalAssetPath(asset.url) === asset.url
       && (asset.url.startsWith("/_next/static/") || asset.url === "/easyt-icon.svg" || asset.url === "/maplibre/maplibre-gl-worker.mjs")
       && /^[a-f0-9]{64}$/.test(asset.sha256));
 }
@@ -57,7 +66,7 @@ async function readerDocument(response, exactBuild) {
   if (meta(html, "morrovia-build-commit") !== MANIFEST.buildCommit) return false;
   const urls = new Set(MANIFEST.assets.map((asset) => asset.url));
   return [...html.matchAll(/\/_next\/static\/[^"'\\\s<]+/g)].every((match) =>
-    urls.has(new URL(match[0].replaceAll("&amp;", "&"), self.location.origin).pathname));
+    urls.has(canonicalAssetPath(match[0].replaceAll("&amp;", "&").split(/[?#]/)[0])));
 }
 
 async function exactAsset(response, asset) {
@@ -141,11 +150,12 @@ self.addEventListener("fetch", (event) => {
     return;
   }
   if (url.search) return;
-  const asset = validManifest() ? MANIFEST.assets.find((entry) => entry.url === url.pathname) : null;
+  const canonicalPath = canonicalAssetPath(url.pathname);
+  const asset = validManifest() ? MANIFEST.assets.find((entry) => entry.url === canonicalPath) : null;
   if (asset || url.pathname.startsWith("/_next/static/")) {
     event.respondWith((async () => {
       const cache = await caches.open(CACHE_NAME);
-      const current = await cache.match(request);
+      const current = await cache.match(asset ? asset.url : request);
       if (current && (!asset || await exactAsset(current, asset))) return current;
       // Prior immutable assets remain available; this global lookup is never
       // used for documents.
@@ -154,7 +164,7 @@ self.addEventListener("fetch", (event) => {
       const response = await fetch(request);
       if (asset) {
         if (!(await exactAsset(response, asset))) return Response.error();
-        await cache.put(request, response.clone());
+        await cache.put(asset.url, response.clone());
       }
       return response;
     })());
