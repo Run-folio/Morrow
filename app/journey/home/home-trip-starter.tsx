@@ -5,7 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import { MorroviaTripCapture } from "@/components/easyt/morrovia-trip-capture";
 import { CanonicalPlaceAutocomplete } from "@/components/easyt/canonical-place-autocomplete";
 import { EasyTSegmentedControl } from "@/components/easyt/easyt-controls";
-import { MorroviaConfirmationDialog } from "@/components/easyt/morrovia-feedback";
+import { MorroviaConfirmationDialog, MorroviaRecoveryFeedback } from "@/components/easyt/morrovia-feedback";
 import { captureJourneyBrief } from "@/lib/easyt/journey-capture";
 import { homepageCapturedRouteEvidence, homepageDescribeSourceKey, homepageRouteChoice, homepageRouteReviewKey, homepageTripTypeRequest, invalidateHomepageRouteReview, type HomepageRouteEvidence } from "@/lib/easyt/home-route-choice";
 import { languageFromStorage, type EasyTLanguage } from "@/lib/easyt/i18n";
@@ -13,10 +13,9 @@ import { trackEvent } from "@/lib/analytics";
 import { markPlanningMilestone, planningAttemptOutcome } from "@/lib/easyt/planning-attempt-performance";
 import { authClient } from "@/lib/auth-client";
 import { travelProfileFromUnknown, tripInterestsWithProfileDefaults, type TravelProfile } from "@/lib/easyt/travel-profile";
-import { homepageInputStorageKey, travelProfileStorageKey } from "@/lib/easyt/private-browser-context";
+import { travelProfileStorageKey } from "@/lib/easyt/private-browser-context";
 import {
   commitHomepageHandoff,
-  HOME_TRIP_DRAFT_KEY,
   homepageCompletedReceiptIsUnchanged,
   homepageHandoffReceiptForOwner,
   homepageReceiptForProjection,
@@ -29,16 +28,17 @@ import {
   persistEditableHomepageInput,
   projectHomepageInput,
   reservePendingDescribeHandoff,
-  readHomepageInput,
   reusableHomepageReceipt,
   type HomepageDestinationEntry,
   type HomepageInputSnapshot,
   type StoredHomepageInput,
+  type HomeTripDraft,
 } from "@/lib/easyt/home-trip-handoff";
 import type { TripInterest } from "@/lib/easyt/trip-interest";
 import { journeyEndpointPlaceFromSuggestion } from "@/lib/easyt/journey-endpoints";
-import { beginNewTripNavigation } from "@/lib/easyt/storage";
+import { beginNewTripNavigation, requestNewTripNavigationAsync } from "@/lib/easyt/storage";
 import { loadRequestedTrip, loadTripRecovery } from "@/lib/easyt/storage";
+import { readDurableHomepageState } from "@/lib/easyt/homepage-persistence";
 import { HomeDestinationEditor } from "./home-destination-editor";
 import { reportPersistenceOutcome } from "@/lib/easyt/persistence-outcome";
 
@@ -70,6 +70,19 @@ export default function HomeTripStarter() {
   const router = useRouter();
   const { data: session, isPending: sessionPending } = authClient.useSession();
   const ownerId = session?.user?.id ?? null;
+  const ownerIdRef = useRef(ownerId);
+  ownerIdRef.current = ownerId;
+  const sessionPendingRef = useRef(sessionPending);
+  sessionPendingRef.current = sessionPending;
+  const mountedRef = useRef(false);
+  const homepageReadyRef = useRef(false);
+  const homepageEditedRef = useRef(false);
+  const [recoveryReadAttempt, setRecoveryReadAttempt] = useState(0);
+  const retryRecoveryRead = () => setRecoveryReadAttempt(current => current + 1);
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => { mountedRef.current = false; homepageReadyRef.current = false; };
+  }, []);
   const promptStartedRef = useRef(false);
   const submissionGenerationRef = useRef(0);
   const submitInFlightRef = useRef(false);
@@ -91,7 +104,7 @@ export default function HomeTripStarter() {
     document.querySelector<HTMLInputElement>('#start-building [data-homepage-origin] input')?.focus();
     originFocusRequestedRef.current = false;
   }, [snapshot.mode, loading, originFocusRequestKey]);
-  const [recoveryBlocked, setRecoveryBlocked] = useState(false);
+  const [recoveryBlocked, setRecoveryBlocked] = useState(true);
   const [focusEntryId, setFocusEntryId] = useState<string | null>(null);
   const [focusRequestKey, setFocusRequestKey] = useState(0);
 
@@ -101,23 +114,32 @@ export default function HomeTripStarter() {
     setLoading(false);
   };
   const persistSnapshot = (next: HomepageInputSnapshot) => {
-    void persistEditableHomepageInput({ storage: window.localStorage, snapshot: next, preserveCompletedReceipt: true,
-      isCurrent: () => snapshotRef.current.ownerId === next.ownerId && snapshotRef.current.revision === next.revision })
-      .then((result) => {
-        if (snapshotRef.current.ownerId !== next.ownerId || snapshotRef.current.revision !== next.revision) return;
+    const isCurrent = () => mountedRef.current && homepageReadyRef.current && !sessionPendingRef.current
+      && ownerIdRef.current === next.ownerId && snapshotRef.current.ownerId === next.ownerId
+      && snapshotRef.current.revision === next.revision;
+    const failed = () => {
+      if (!isCurrent()) return;
+      setCaptureError(language === "es" ? "No pudimos guardar esta entrada en este dispositivo." : "We couldn't save this trip input on this device.");
+    };
+    void (async () => {
+      try {
+        const result = await persistEditableHomepageInput({ storage: window.localStorage, snapshot: next, preserveCompletedReceipt: true, isCurrent });
+        if (!isCurrent()) return;
         if (result.ok) storedInputRef.current = result.stored;
         else if (result.reason !== "stale") {
           reportPersistenceOutcome("homepage-input", {stored:false, acknowledgement: result.reason === "storage" ? "storage" : "stale"});
-          setCaptureError(language === "es" ? "No pudimos guardar esta entrada en este dispositivo." : "We couldn't save this trip input on this device.");
+          failed();
         }
-      });
+      } catch { failed(); }
+    })();
   };
   const updateSnapshot = (update: (current: HomepageInputSnapshot) => HomepageInputSnapshot, reviewedEvidence?: HomepageRouteEvidence) => {
-    if (recoveryBlocked) return;
+    if (recoveryBlocked || !homepageReadyRef.current || sessionPendingRef.current || ownerIdRef.current !== snapshotRef.current.ownerId) return;
     cancelSubmission();
     let next = { ...invalidateHomepageRouteReview(snapshotRef.current, update(snapshotRef.current)), revision: snapshotRef.current.revision + 1 };
     if (reviewedEvidence && next.tripType?.state === "selected") next = { ...next, routeReview: { version: 1, acceptedTripType: next.tripType.value, reviewedInputKey: homepageRouteReviewKey(next, reviewedEvidence) } };
     snapshotRef.current = next;
+    homepageEditedRef.current = true;
     setSnapshot(next);
     setCaptureError("");
     persistSnapshot(next);
@@ -131,41 +153,47 @@ export default function HomeTripStarter() {
   }, []);
 
   useEffect(() => {
-    if (sessionPending) return;
+    let active = true;
+    homepageReadyRef.current = false;
+    setRecoveryBlocked(true);
+    if (sessionPending) return () => { active = false; };
     cancelSubmission();
-    let next = emptySnapshot(ownerId);
-    setRecoveryBlocked(false);
     setCaptureError("");
-    try {
-      const raw = JSON.parse(window.localStorage.getItem(homepageInputStorageKey(ownerId)) ?? "null");
-      const stored = readHomepageInput(raw, ownerId);
-      if (stored) {
-        next = stored.snapshot;
-        storedInputRef.current = stored;
-      } else {
-        const recoverable = readHomepageInput({ snapshot: raw?.snapshot }, ownerId);
-        if (recoverable) next = recoverable.snapshot;
-        storedInputRef.current = { snapshot: next };
-        if (raw !== null) {
-          setRecoveryBlocked(true);
-          setCaptureError(language === "es" ? "No pudimos recuperar esta entrada. La copia guardada sigue en este dispositivo." : "We couldn't restore this trip input. Your saved recovery copy is still on this device.");
-        }
+    // Do not show another owner's input while that scope is being inspected.
+    if (snapshotRef.current.ownerId !== ownerId) {
+      const scoped = emptySnapshot(ownerId);
+      snapshotRef.current = scoped;
+      storedInputRef.current = { snapshot: scoped };
+      homepageEditedRef.current = false;
+      setSnapshot(scoped);
+    }
+    setTravelProfile(null);
+    setProposedType(null);
+    const isCurrent = () => active && mountedRef.current && !sessionPendingRef.current && ownerIdRef.current === ownerId;
+    const hydrate = async () => {
+      const state = await readDurableHomepageState(ownerId, isCurrent);
+      if (!isCurrent()) return;
+      if (state.kind !== "ready") {
+        setCaptureError(language === "es" ? "No pudimos recuperar esta entrada. Conserva esta pestaña abierta e inténtalo de nuevo." : "We couldn't restore this trip input. Keep this tab open and try again.");
+        return;
       }
+      const next = homepageEditedRef.current && snapshotRef.current.ownerId === ownerId
+        ? snapshotRef.current : state.storedInput?.snapshot ?? emptySnapshot(ownerId);
+      storedInputRef.current = state.storedInput ?? { snapshot: next };
       try {
         const savedProfile = JSON.parse(window.localStorage.getItem(travelProfileStorageKey(ownerId)) ?? "null");
         setTravelProfile(ownerId ? travelProfileFromUnknown(savedProfile) : null);
       } catch { setTravelProfile(null); }
-    } catch {
-      storedInputRef.current = { snapshot: next };
-      setTravelProfile(null);
-      setRecoveryBlocked(true);
-      setCaptureError(language === "es" ? "No pudimos recuperar esta entrada. La copia guardada sigue en este dispositivo." : "We couldn't restore this trip input. Your saved recovery copy is still on this device.");
-    }
-    destinationIdRef.current = nextDestinationNumber(next.entries);
-    snapshotRef.current = next;
-    setSnapshot(next);
-    setProposedType(null);
-  }, [ownerId, sessionPending]);
+      if (!isCurrent()) return;
+      destinationIdRef.current = nextDestinationNumber(next.entries);
+      snapshotRef.current = next;
+      setSnapshot(next);
+      homepageReadyRef.current = true;
+      setRecoveryBlocked(false);
+    };
+    void hydrate();
+    return () => { active = false; homepageReadyRef.current = false; };
+  }, [ownerId, sessionPending, recoveryReadAttempt]);
 
   const markPromptStarted = (inputMethod: "text" | "voice", value: string) => {
     if (promptStartedRef.current || value.trim().length < 3) return;
@@ -174,7 +202,7 @@ export default function HomeTripStarter() {
   };
 
   const submit = async () => {
-    if (recoveryBlocked) return;
+    if (recoveryBlocked || !homepageReadyRef.current || sessionPendingRef.current || ownerIdRef.current !== snapshotRef.current.ownerId) return;
     if (submitInFlightRef.current) return;
     submitInFlightRef.current = true;
     const submittedAt = performance.now();
@@ -182,7 +210,8 @@ export default function HomeTripStarter() {
     const submittedRevision = submitted.revision;
     const submittedOwner = submitted.ownerId;
     const generation = ++submissionGenerationRef.current;
-    const isCurrent = () => submissionGenerationRef.current === generation
+    const isCurrent = () => mountedRef.current && homepageReadyRef.current && !sessionPendingRef.current
+      && ownerIdRef.current === submittedOwner && submissionGenerationRef.current === generation
       && snapshotRef.current.revision === submittedRevision
       && snapshotRef.current.ownerId === submittedOwner;
     trackEvent("trip_generation_started", {
@@ -194,27 +223,36 @@ export default function HomeTripStarter() {
     setCaptureError("");
     let navigationStarted = false;
     try {
-      let latestStored: StoredHomepageInput | null = null;
-      try { latestStored = readHomepageInput(JSON.parse(window.localStorage.getItem(homepageInputStorageKey(submittedOwner)) ?? "null"), submittedOwner); }
-      catch { /* The staged handoff still validates and reports storage failure. */ }
+      const latestState = await readDurableHomepageState(submittedOwner, isCurrent);
+      if (!isCurrent()) return;
+      if (latestState.kind !== "ready") {
+        homepageReadyRef.current = false;
+        setRecoveryBlocked(true);
+        setCaptureError(language === "es" ? "No pudimos recuperar esta entrada. Conserva esta pestaña abierta e inténtalo de nuevo." : "We couldn't restore this trip input. Keep this tab open and try again.");
+        submitInFlightRef.current = false;
+        setLoading(false);
+        return;
+      }
+      const latestStored = latestState.storedInput;
       const sameStoredMeaning = latestStored
         && homepageSemanticInputFingerprint(latestStored.snapshot) === homepageSemanticInputFingerprint(submitted);
       if (sameStoredMeaning && latestStored) storedInputRef.current = latestStored;
-      const unchangedReceipt = storedInputRef.current.receipt?.version === 1
-        && homepageCompletedReceiptIsUnchanged({ snapshot: submitted, receipt: storedInputRef.current.receipt })
-        ? storedInputRef.current.receipt : undefined;
+      const unchangedReceipt = latestStored?.receipt?.version === 1
+        && homepageCompletedReceiptIsUnchanged({ snapshot: submitted, receipt: latestStored.receipt })
+        ? latestStored.receipt : undefined;
       if (unchangedReceipt) {
         markPlanningMilestone(unchangedReceipt.handoffId, "submit", submittedAt);
-        const existingRecovery = loadTripRecovery(unchangedReceipt.tripId, submittedOwner);
+        const existingRecovery = await loadTripRecovery(unchangedReceipt.tripId, submittedOwner);
+        if (!isCurrent()) return;
         const existingTrip = existingRecovery?.trip
           ?? await loadRequestedTrip(unchangedReceipt.tripId, submittedOwner);
         if (!isCurrent()) return;
         if (existingTrip) {
           // Re-read the exact scoped receipt after the asynchronous lookup.
           // A competing tab or changed form cannot redeem this stale action.
-          let currentResumeInput: StoredHomepageInput | null = null;
-          try { currentResumeInput = readHomepageInput(JSON.parse(window.localStorage.getItem(homepageInputStorageKey(submittedOwner)) ?? "null"), submittedOwner); }
-          catch { /* Unreadable receipt cannot grant resume. */ }
+          const resumeState = await readDurableHomepageState(submittedOwner, isCurrent);
+          if (!isCurrent()) return;
+          const currentResumeInput = resumeState.kind === "ready" ? resumeState.storedInput : null;
           const currentReceipt = currentResumeInput?.receipt;
           if (!currentResumeInput || currentReceipt?.version !== 1
             || !homepageCompletedReceiptIsUnchanged(currentResumeInput)
@@ -226,9 +264,19 @@ export default function HomeTripStarter() {
             setCaptureError(language === "es" ? "No pudimos recuperar este viaje. Revisa Mis viajes." : "We couldn't recover this trip. Check My Trips.");
             return;
           }
-          if (!beginNewTripNavigation(submittedOwner, window)) {
+          const preserved = await beginNewTripNavigation(submittedOwner, window);
+          if (!isCurrent()) return;
+          if (!preserved) {
             reportPersistenceOutcome("homepage-preservation", {stored:false, receiptPresent:true});
             setCaptureError(language === "es" ? "No pudimos conservar tu trabajo actual. Inténtalo de nuevo." : "We couldn't preserve your current work. Try again.");
+            return;
+          }
+          const resumeAfterPreservation = await readDurableHomepageState(submittedOwner, isCurrent);
+          if (!isCurrent()) return;
+          if (resumeAfterPreservation.kind !== "ready" || resumeState.kind !== "ready"
+            || resumeAfterPreservation.inputRaw !== resumeState.inputRaw) {
+            reportPersistenceOutcome("homepage-resume", {stored:false, acknowledgement:"stale", receiptPresent:true});
+            setCaptureError(language === "es" ? "No pudimos recuperar este viaje. Revisa Mis viajes." : "We couldn't recover this trip. Check My Trips.");
             return;
           }
           navigationStarted = true;
@@ -239,16 +287,18 @@ export default function HomeTripStarter() {
           router.push(`/journey/new?trip=${encodeURIComponent(unchangedReceipt.tripId)}${existingRecovery ? "&recover=1" : ""}`);
           return;
         }
-        let pendingDraft = null;
-        try { pendingDraft = JSON.parse(window.localStorage.getItem(HOME_TRIP_DRAFT_KEY) ?? "null"); } catch { /* fail closed */ }
+        const pendingState = await readDurableHomepageState(submittedOwner, isCurrent);
+        if (!isCurrent()) return;
+        // The durable reader has validated this versioned draft's scope and codec.
+        const pendingDraft = pendingState.kind === "ready" ? pendingState.draft as HomeTripDraft | null : null;
         const pendingReceipt = pendingDraft && homepageHandoffReceiptForOwner(pendingDraft, submittedOwner);
-        if (pendingReceipt?.handoffId === unchangedReceipt.handoffId
+        if (pendingDraft && pendingReceipt?.handoffId === unchangedReceipt.handoffId
           && pendingReceipt.tripId === unchangedReceipt.tripId
           && pendingReceipt.inputFingerprint === unchangedReceipt.inputFingerprint
           && pendingReceipt.semanticInputFingerprint === unchangedReceipt.semanticInputFingerprint) {
           const committed = await commitHomepageHandoff({
             storage: window.localStorage, stored: storedInputRef.current, draft: pendingDraft, isCurrent,
-            preserveAndBegin: () => beginNewTripNavigation(submittedOwner, window),
+            preserveAndBegin: () => requestNewTripNavigationAsync(window),
           });
           if (!isCurrent()) return;
           if (committed.ok) {
@@ -293,7 +343,7 @@ export default function HomeTripStarter() {
         const committed = await reservePendingDescribeHandoff({
           storage: window.localStorage, snapshot: submitted, isCurrent,
           createIds: () => ({ handoffId: generatedId("handoff"), tripId: generatedId("trip") }),
-          preserveAndBegin: () => beginNewTripNavigation(submittedOwner, window),
+          preserveAndBegin: () => requestNewTripNavigationAsync(window),
         });
         if (!isCurrent()) return;
         if (!committed.ok) {
@@ -332,7 +382,7 @@ export default function HomeTripStarter() {
       if (!isCurrent()) return;
       const committed = await commitHomepageHandoff({
         storage: window.localStorage, stored, draft, isCurrent,
-        preserveAndBegin: () => beginNewTripNavigation(submittedOwner, window),
+        preserveAndBegin: () => requestNewTripNavigationAsync(window),
       });
       if (!isCurrent()) return;
       if (!committed.ok) {
@@ -400,6 +450,9 @@ export default function HomeTripStarter() {
   const travellers = snapshot.travellers.state === "selected" ? snapshot.travellers.value : 2;
 
   return <>
+  {recoveryBlocked && captureError ? <MorroviaRecoveryFeedback title={captureError}
+    safety={language === "es" ? "Conserva esta pestaña abierta mientras revisamos tu entrada guardada." : "Keep this tab open while we check your saved input."}
+    onRetry={retryRecoveryRead} retryLabel={language === "es" ? "Reintentar recuperación" : "Try recovery again"} /> : null}
   <MorroviaTripCapture
     formId="start-building" progressiveDetails disabled={sessionPending || recoveryBlocked} language={language} value={snapshot.prompt}
     onValueChange={(prompt) => {
@@ -441,7 +494,7 @@ export default function HomeTripStarter() {
     onTravellersChange={(value) => updateSnapshot((current) => ({ ...current, travellers: { state: "selected", value } }))}
     interests={interests}
     onInterestsChange={(value: TripInterest[]) => updateSnapshot((current) => ({ ...current, interests: { state: "selected", value } }))}
-    travelProfile={travelProfile} onSubmit={submit} loading={loading} error={captureError}
+    travelProfile={travelProfile} onSubmit={submit} loading={loading} error={recoveryBlocked ? "" : captureError}
   />
   <MorroviaConfirmationDialog open={Boolean(proposedType)} onCancel={() => setProposedType(null)} onConfirm={acceptTripType}
     title={language === "es" ? "¿Confirmar el tipo de viaje?" : "Confirm trip type?"}

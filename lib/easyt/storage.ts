@@ -22,6 +22,14 @@ import {
   type TripPersistenceOperation,
 } from "./trip-persistence-error.ts";
 
+import { browserTripPersistence, browserRecoveryDriver, browserRecoveryStorage, browserRecoveryGuard,
+  BrowserRecoveryReadError, broadcastRecoveryChange, invalidateBrowserRecoveryScope } from './browser-recovery-persistence.ts';
+import { createDurableBuilderInputPersistence } from './builder-input-persistence.ts';
+import type { BuilderInputDraft } from './trip-builder-input-draft.ts';
+import {prepareIntakeAcknowledgement,type RecoveryIntakeAcknowledgement} from './homepage-persistence.ts';
+import {RECOVERY_DOMAIN_OVERFLOW_ENABLED,RECOVERY_DOMAIN_ACCOUNT_OVERFLOW_QUALIFIED} from './recovery-domain-policy.ts';
+export { BrowserRecoveryReadError } from './browser-recovery-persistence.ts';
+
 export { EasyTTripSaveConflictError } from "./trip-continuity.ts";
 export { EasyTTripAuthError } from "./trip-continuity.ts";
 
@@ -78,7 +86,10 @@ export type TripRecoveryWriteResult = {
   failureReason?: "device-unavailable" | "protected-recovery" | "scope-mismatch" | "receipt-incomplete" | "pointer-incomplete" | "unknown";
   /** Recovery acceptance and the navigation pointer are distinct acknowledgements. */
   pointerAcknowledged?: boolean;
+  receiptAcknowledged?: boolean;
   nativeFailure?: "quota" | "security" | "unavailable" | "unknown";
+  /** Transaction retention alone does not prove independent recovery readback. */
+  recoveryCommitted?: boolean;
   recoveryDurable?: boolean;
   outcome?: PersistenceOutcome;
   writeAttempted?: boolean;
@@ -134,21 +145,28 @@ export function beginNewTripNavigationInStorage(
   return clearCurrentTripInStorage(storage, ownerId);
 }
 
-export function beginNewTripNavigation(
-  ownerId: string | null,
-  target?: Pick<EventTarget, "dispatchEvent">,
-) {
-  const eventTarget = target ?? (typeof window !== "undefined" ? window : null);
-  if (!eventTarget) return false;
-  const storage = browserStorage();
-  if (storage) {
-    const cleared = beginNewTripNavigationInStorage(storage, ownerId, eventTarget);
-    if (!cleared) return false;
-    dispatchTripStorageChange({ kind: "current-cleared", ownerId, tripId: null });
-  } else if (!requestNewTripNavigation(eventTarget)) {
-    return false;
-  }
-  return true;
+export async function beginNewTripNavigation(ownerId:string|null,target?:Pick<EventTarget,"dispatchEvent">) {
+  const eventTarget=target??(typeof window!=="undefined"?window:null);if(!eventTarget)return false;
+  if(!await requestNewTripNavigationAsync(eventTarget))return false;
+  try {
+    const cleared=await (await browserTripPersistence(ownerId)).clearCurrent();
+    if(cleared)dispatchTripStorageChange({kind:"current-cleared",ownerId,tripId:null});
+    return cleared;
+  }catch{return false;}
+}
+
+export function deferNewTripNavigation(event:Event,preservation:Promise<boolean>) {
+  const detail=(event as CustomEvent<{waitUntil?:(pending:Promise<boolean>)=>void}>).detail;
+  if(typeof detail?.waitUntil==='function')detail.waitUntil(preservation);
+  else {event.preventDefault();void preservation.catch(()=>false);}
+}
+export async function requestNewTripNavigationAsync(target:Pick<EventTarget,"dispatchEvent">) {
+  const pending:Promise<boolean>[]=[];
+  try {
+    const detail={waitUntil:(preservation:Promise<boolean>)=>{pending.push(Promise.resolve(preservation).catch(()=>false));}};
+    const accepted=target.dispatchEvent(new CustomEvent(EASYT_BEFORE_NEW_TRIP_EVENT,{cancelable:true,detail}));
+    return accepted&&(await Promise.all(pending)).every(value=>value===true);
+  }catch{return false;}
 }
 
 type TripCacheRecord = {
@@ -775,6 +793,8 @@ function writeTripRecoveryToStorage(
     writeId?: string;
     now?: string;
     replace?: TripRecoveryHandle;
+    /** The async broker retires a predecessor only after all required metadata verifies. */
+    deferRetirement?: boolean;
   } = {},
 ): TripRecoveryWriteResult {
   try { trip = prepareTripDocumentForWrite(trip); }
@@ -858,7 +878,7 @@ function writeTripRecoveryToStorage(
   if (stored) {
     setCurrentTripInStorage(storage, ownerId, trip.id, [recoveryKey]);
     pointerAcknowledged = loadCurrentTripIdFromStorage(storage, ownerId) === trip.id;
-    if (pointerAcknowledged && existing && options.replace) {
+    if (pointerAcknowledged && existing && options.replace && !options.deferRetirement) {
       const replacedKey = recoveryRecordKey(storage, options.replace);
       if (replacedKey && replacedKey !== recoveryKey) safeRemove(storage, replacedKey);
     }
@@ -879,6 +899,7 @@ export function saveTripRecoveryToStorage(
     writeId?: string;
     now?: string;
     replace?: TripRecoveryHandle;
+    deferRetirement?: boolean;
   } = {},
 ): TripRecoveryWriteResult {
   const ownerId = options.ownerId === undefined ? trip.ownerId : options.ownerId;
@@ -956,6 +977,10 @@ export function cacheCanonicalTripWithRecoveryToStorage(
 export type TripBuildSaveAcknowledgement = {
   outcome: "acknowledged" | "device-newer" | "invalid-canonical" | "storage-failed";
   remainingRecovery: TripRecoveryRecord | null;
+  /** Exact trusted account response remains true when optional cache persistence fails. */
+  accountAcknowledged?: boolean;
+  cacheStored?: boolean;
+  deviceOutcome?: PersistenceOutcome;
 };
 
 /**
@@ -1183,6 +1208,7 @@ export function loadActiveTripFromStorage(storage: EasyTBrowserStorage, ownerId:
 function dispatchTripStorageChange(detail: TripStorageChange, trip?: EasyTTrip) {
   if (typeof window === "undefined") return;
   try {
+    broadcastRecoveryChange(detail);
     window.dispatchEvent(new CustomEvent(EASYT_TRIP_STORAGE_CHANGE_EVENT, { detail }));
     if (detail.kind === "recovery" && trip) {
       window.dispatchEvent(new CustomEvent(EASYT_ACTIVE_TRIP_CHANGE_EVENT, { detail: trip }));
@@ -1197,6 +1223,7 @@ export function tripStorageEventMatches(
   ownerId: string | null,
   tripId: string,
 ) {
+  if(tripId==='')return key===currentTripStorageKey(ownerId)||Boolean(key?.startsWith(tripRecoveryStorageKey(ownerId,'')))||Boolean(key?.startsWith(tripCacheStorageKey(ownerId,'')));
   const recoveryKey = tripRecoveryStorageKey(ownerId, tripId);
   return key === recoveryKey
     || Boolean(key?.startsWith(`${recoveryKey}:`))
@@ -1212,7 +1239,7 @@ export function subscribeToTripStorage(
   if (typeof window === "undefined") return () => undefined;
   const onSameDocument = (event: Event) => {
     const detail = (event as CustomEvent<TripStorageChange>).detail;
-    if (detail?.ownerId === ownerId && (detail.tripId === tripId || detail.tripId === null)) listener(detail);
+    if (detail?.ownerId === ownerId && (tripId==='' || detail.tripId === tripId || detail.tripId === null)) listener(detail);
   };
   const onOtherDocument = (event: StorageEvent) => {
     if (tripStorageEventMatches(event.key, ownerId, tripId)) {
@@ -1227,13 +1254,22 @@ export function subscribeToTripStorage(
   };
 }
 
-export function loadActiveTrip(ownerId: string | null = null): EasyTTrip | null {
-  const storage = browserStorage();
-  return storage ? loadActiveTripFromStorage(storage, ownerId) : null;
+export async function loadActiveTrip(ownerId:string|null=null):Promise<EasyTTrip|null> {
+  if(typeof window==='undefined')return null;
+  const broker=await browserTripPersistence(ownerId),current=await broker.current();
+  if(current.kind==='protected'||current.kind==='unavailable')throw new BrowserRecoveryReadError(current.kind,current.reason);
+  if(current.kind==='found')return current.trip;
+  if(current.currentCleared)return null;
+  const listed=await broker.list();if(listed.kind!=='ready')throw new BrowserRecoveryReadError(listed.kind,listed.reason);
+  if(listed.recoveries.some(record=>record.backend==='indexeddb'))throw new BrowserRecoveryReadError('protected','current-unconfirmed');
+  const legacy=loadActiveTripFromStorage(browserRecoveryStorage(),ownerId);
+  return legacy?loadLocalTrip(legacy.id,ownerId):null;
 }
 
 export function rememberLastOwner(ownerId: string) {
   const storage = browserStorage();
+  const prior=storage?loadRememberedOwnerFromStorage(storage):null;
+  if(prior!==ownerId)invalidateBrowserRecoveryScope();
   const remembered = storage ? rememberLastOwnerInStorage(storage, ownerId) : false;
   if (remembered && typeof window !== "undefined") window.dispatchEvent(new Event(EASYT_LAST_OWNER_CHANGE_EVENT));
   return remembered;
@@ -1246,45 +1282,60 @@ export function loadRememberedOwner() {
 
 export function forgetRememberedOwner() {
   const storage = browserStorage();
+  invalidateBrowserRecoveryScope();
   const forgotten = storage ? forgetRememberedOwnerInStorage(storage) : false;
   if (forgotten && typeof window !== "undefined") window.dispatchEvent(new Event(EASYT_LAST_OWNER_CHANGE_EVENT));
   return forgotten;
 }
 
-export function loadTripRecovery(tripId: string, ownerId: string | null) {
-  const storage = browserStorage();
-  return storage ? loadTripRecoveryFromStorage(storage, tripId, ownerId) : null;
+export async function loadTripRecovery(tripId:string,ownerId:string|null):Promise<TripRecoveryRecord|null> {
+  if(typeof window==='undefined')return null;
+  const read=await (await browserTripPersistence(ownerId)).read(tripId);
+  if(read.kind==='protected'||read.kind==='unavailable')throw new BrowserRecoveryReadError(read.kind,read.reason);
+  return read.kind==='found'?read.recovery:null;
 }
 
 /** Read only the last acknowledged cloud document for this owner and trip. */
-export function loadCachedTrip(tripId: string, ownerId: string | null) {
-  const storage = browserStorage();
-  return storage ? loadCachedTripFromStorage(storage, tripId, ownerId) : null;
+export async function loadCachedTrip(tripId:string,ownerId:string|null):Promise<EasyTTrip|null> {
+  if(typeof window==='undefined')return null;
+  const read=await (await browserTripPersistence(ownerId)).cached(tripId);
+  if(read.kind==='protected'||read.kind==='unavailable')throw new BrowserRecoveryReadError(read.kind,read.reason);
+  return read.kind==='found'?read.trip:null;
 }
 
-export function loadLocalTrip(
-  tripId: string,
-  ownerId: string | null,
-  options: { recoveryOnly?: boolean } = {},
-) {
-  const storage = browserStorage();
-  return storage ? loadLocalTripFromStorage(storage, tripId, ownerId, options) : null;
+export async function loadLocalTrip(tripId:string,ownerId:string|null,options:{recoveryOnly?:boolean}={}):Promise<EasyTTrip|null> {
+  if(typeof window==='undefined')return null;
+  const read=await (await browserTripPersistence(ownerId)).read(tripId);
+  if(read.kind==='protected'||read.kind==='unavailable')throw new BrowserRecoveryReadError(read.kind,read.reason);
+  return read.kind==='found'&&(!options.recoveryOnly||read.recovery)?read.trip:null;
 }
 
-export function loadCurrentTripRecovery(ownerId: string | null) {
-  const storage = browserStorage();
-  return storage ? loadCurrentTripRecoveryFromStorage(storage, ownerId) : null;
+export async function loadCurrentTripRecovery(ownerId:string|null):Promise<TripRecoveryRecord|null> {
+  if(typeof window==='undefined')return null;
+  const broker=await browserTripPersistence(ownerId),read=await broker.current();
+  if(read.kind==='protected'||read.kind==='unavailable')throw new BrowserRecoveryReadError(read.kind,read.reason);
+  if(read.kind==='found')return read.recovery;
+  if(read.currentCleared)return null;
+  const listed=await broker.list();if(listed.kind!=='ready')throw new BrowserRecoveryReadError(listed.kind,listed.reason);
+  if(listed.recoveries.length>1)throw new BrowserRecoveryReadError('protected','current-unconfirmed');
+  if(listed.recoveries.length===1)return listed.recoveries[0];
+  const old=loadCurrentTripRecoveryFromStorage(browserRecoveryStorage(),ownerId);
+  return old?loadTripRecovery(old.tripId,ownerId):null;
 }
 
-export function loadCurrentDraftRecovery(ownerId: string | null) {
-  const storage = browserStorage();
-  return storage ? loadCurrentDraftRecoveryFromStorage(storage, ownerId) : null;
+export async function loadCurrentDraftRecovery(ownerId:string|null):Promise<TripRecoveryRecord|null> {
+  if(typeof window==='undefined')return null;
+  const read=await (await browserTripPersistence(ownerId)).current();
+  if(read.kind==='protected'||read.kind==='unavailable')throw new BrowserRecoveryReadError(read.kind,read.reason);
+  return read.kind==='found'&&read.recovery?.trip.status==='draft'?read.recovery:null;
 }
 
 /** List every newest trip-scoped recovery for this exact owner. */
-export function listTripRecoveries(ownerId: string | null) {
-  const storage = browserStorage();
-  return storage ? listTripRecoveriesFromStorage(storage, ownerId) : [];
+export async function listTripRecoveries(ownerId:string|null):Promise<TripRecoveryRecord[]> {
+  if(typeof window==='undefined')return [];
+  const read=await (await browserTripPersistence(ownerId)).list();
+  if(read.kind!=='ready')throw new BrowserRecoveryReadError(read.kind,read.reason);
+  return read.recoveries;
 }
 
 export function claimGuestTripRecoveryForOwnerInStorage(
@@ -1313,47 +1364,58 @@ export function claimGuestTripRecoveryForOwnerInStorage(
 }
 
 /** Claim is explicit to the signed-in recovery flow; account-wide readers never inspect guest records. */
-export function claimGuestTripRecoveryForOwner(tripId: string, ownerId: string) {
-  const storage = browserStorage();
-  if (!storage) return null;
-  const claimed = claimGuestTripRecoveryForOwnerInStorage(storage, tripId, ownerId);
-  if (claimed?.stored) {
-    dispatchTripStorageChange({ kind: "recovery", ownerId, tripId });
-    if (claimed.guestResolved) dispatchTripStorageChange({ kind: "resolved", ownerId: null, tripId });
-  }
-  return claimed;
+export async function claimGuestTripRecoveryForOwner(tripId:string,ownerId:string) {
+  const storage=browserStorage();if(!storage)return null;
+  try {
+    const guestBroker=await browserTripPersistence(null),ownerBroker=await browserTripPersistence(ownerId);
+    const guest=await guestBroker.read(tripId),owned=await ownerBroker.read(tripId);
+    if(guest.kind==='missing')return null;
+    const fallback={stored:false,handle:{ownerId,tripId,writeId:guest.kind==='found'?guest.recovery?.writeId??generatedWriteId():generatedWriteId()},blockedByExistingRecovery:true,guestResolved:false};
+    if(guest.kind!=='found'||owned.kind==='protected'||owned.kind==='unavailable'||guest.domain?.envelope||owned.kind==='found'&&owned.domain?.envelope)return fallback;
+    const result=await ownerBroker.native(tripId,()=>claimGuestTripRecoveryForOwnerInStorage(storage,tripId,ownerId));
+    if(result.kind!=='done')return fallback;
+    const after=await guestBroker.read(tripId);if(after.kind==='protected'||after.kind==='unavailable'||after.kind==='found'&&after.domain?.envelope)return fallback;
+    const claimed=result.value;
+    if(claimed?.stored){dispatchTripStorageChange({kind:'recovery',ownerId,tripId});if(claimed.guestResolved)dispatchTripStorageChange({kind:'resolved',ownerId:null,tripId});}
+    return claimed;
+  }catch{return {stored:false,handle:{ownerId,tripId,writeId:generatedWriteId()},blockedByExistingRecovery:true,guestResolved:false};}
 }
 
-export function saveTripRecovery(
-  trip: EasyTTrip,
-  options: {
-    ownerId?: string | null;
-    state?: TripRecoveryState;
-    replace?: TripRecoveryHandle;
-    accountSavePending?: boolean;
-  } = {},
-): TripRecoveryWriteResult {
-  const storage = browserStorage();
-  const ownerId = options.ownerId === undefined ? trip.ownerId : options.ownerId;
-  const fallback = {
-    stored: false,
-    handle: { ownerId, tripId: trip.id, writeId: generatedWriteId() },
-    blockedByExistingRecovery: false,
-    failureReason: "device-unavailable" as const,
-    writeAttempted: false,
-    failureBoundary: "unknown" as const,
-  };
-  if (!storage) { reportQaPersistenceBoundary("recovery-preparation", "recovery-storage-access", {accepted:false,writeAttempted:false}); reportPersistenceOutcome("device-recovery", fallback); return { ...fallback, outcome: "unknown" as const }; }
-  reportQaPersistenceBoundary("recovery-preparation", "recovery-storage-access", {accepted:true,writeAttempted:false});
-  const result = saveTripRecoveryToStorage(storage, trip, options);
-  reportPersistenceOutcome("device-recovery", result);
-  if (result.stored) {
-    // Register before the synchronous same-document event. TripShell can then
-    // distinguish this exact safe write from an unrelated recovery record.
-    if (options.accountSavePending) expectCanonicalSave(result.handle);
-    dispatchTripStorageChange({ kind: "recovery", ownerId: result.handle.ownerId, tripId: trip.id }, trip);
+export async function saveTripRecovery(trip:EasyTTrip,options:{ownerId?:string|null;state?:TripRecoveryState;replace?:TripRecoveryHandle;accountSavePending?:boolean;
+  isCurrent?:()=>boolean;newTripOrClone?:boolean;canonicalBase?:EasyTTrip;draft?:BuilderInputDraft;intake?:RecoveryIntakeAcknowledgement;}={}):Promise<TripRecoveryWriteResult> {
+  const candidate=prepareTripDocumentForWrite(structuredClone(trip)),ownerId=options.ownerId===undefined?candidate.ownerId:options.ownerId;
+  const guard=browserRecoveryGuard(options.isCurrent),writeId=generatedWriteId();
+  const fallback:TripRecoveryWriteResult={stored:false,handle:{ownerId,tripId:candidate.id,writeId},blockedByExistingRecovery:false,failureReason:'unknown',writeAttempted:false,outcome:'unknown'};
+  const frozen={state:options.state,replace:options.replace?structuredClone(options.replace):undefined,canonicalBase:options.canonicalBase?structuredClone(options.canonicalBase):undefined,
+    draft:options.draft?structuredClone(options.draft):undefined,intake:options.intake?structuredClone(options.intake):undefined,newTripOrClone:options.newTripOrClone===true,accountSavePending:options.accountSavePending===true};
+  try {
+    const storage=browserRecoveryStorage(),driver=await browserRecoveryDriver();
+    const entries:import('./durable-entry-protocol.ts').RecoveryEntryWrite[]=[];
+    const entry:import('./durable-recovery-domain.ts').RecoveryEnvelope['entry']={pointer:{version:1,backend:'indexeddb',ownerId,tripId:candidate.id,writeId},input:null,receipt:null};
+    if(frozen.draft){
+      const input=createDurableBuilderInputPersistence(storage,driver,{trip:requireReadableTripDocument(candidate),ownerId,isCurrent:guard,
+        overflowEnabled:RECOVERY_DOMAIN_OVERFLOW_ENABLED,accountOverflowQualified:RECOVERY_DOMAIN_ACCOUNT_OVERFLOW_QUALIFIED});
+      const prepared=await input.prepare(frozen.draft,writeId+':input');
+      if(!prepared.ok)return {...fallback,blockedByExistingRecovery:prepared.reason==='protected',failureReason:prepared.reason==='protected'?'protected-recovery':'unknown',outcome:prepared.reason==='protected'?'protected-conflict':'unknown'};
+      entries.push(prepared.entry);entry.input=prepared.input;
+    }
+    if(frozen.intake){
+      const prepared=await prepareIntakeAcknowledgement(storage,driver,{ownerId,isCurrent:guard,overflowEnabled:RECOVERY_DOMAIN_OVERFLOW_ENABLED,
+        accountOverflowQualified:RECOVERY_DOMAIN_ACCOUNT_OVERFLOW_QUALIFIED},frozen.intake,candidate,writeId+':intake');
+      if(!prepared.ok)return {...fallback,blockedByExistingRecovery:prepared.reason==='protected',failureReason:prepared.reason==='protected'?'protected-recovery':'unknown',outcome:prepared.reason==='protected'?'protected-conflict':'unknown'};
+      entries.push(prepared.entry);entry.receipt=prepared.receipt;
+    }
+    const result=await (await browserTripPersistence(ownerId,guard)).save(candidate,{...frozen,writeId,...(entries.length?{entries,entry}:{})});
+    reportPersistenceOutcome('device-recovery',result);
+    if(result.stored&&guard()){
+      if(frozen.accountSavePending)expectCanonicalSave(result.handle);
+      dispatchTripStorageChange({kind:'recovery',ownerId:result.handle.ownerId,tripId:candidate.id},candidate);
+    }
+    return guard()?result:{...result,stored:false,outcome:'unknown',failureReason:'unknown'};
+  }catch(error){
+    const result=error instanceof BrowserRecoveryReadError&&error.kind==='protected'?{...fallback,blockedByExistingRecovery:true,failureReason:'protected-recovery' as const,outcome:'protected-conflict' as const}:fallback;
+    reportPersistenceOutcome('device-recovery',result);return result;
   }
-  return result;
 }
 
 /** @deprecated Use saveTripRecovery for local edits and cacheCanonicalTrip for cloud data. */
@@ -1361,100 +1423,64 @@ export function saveActiveTrip(trip: EasyTTrip) {
   return saveTripRecovery(trip);
 }
 
-export function markTripRecoveryState(handle: TripRecoveryHandle, state: TripRecoveryState, conflictReason?: TripRecoveryConflictReason) {
-  const storage = browserStorage();
-  if (!storage) {
+export async function markTripRecoveryState(handle:TripRecoveryHandle,state:TripRecoveryState,conflictReason?:TripRecoveryConflictReason) {
+  const storage=browserStorage();if(!storage){finishExpectedCanonicalSave(handle);return false;}
+  try {
+    const guarded=await (await browserTripPersistence(handle.ownerId)).native(handle.tripId,()=>markTripRecoveryStateInStorage(storage,handle,state,conflictReason));
+    const marked=guarded.kind==='done'&&guarded.value,finished=finishExpectedCanonicalSave(handle);
+    if(marked||finished)dispatchTripStorageChange({kind:'recovery',ownerId:handle.ownerId,tripId:handle.tripId});return marked;
+  }catch{finishExpectedCanonicalSave(handle);return false;}
+}
+
+export async function reconcileTripCloudMutation(ownerId:string,tripId:string,mutation:TripCloudMutation,canonicalTrip?:EasyTTrip) {
+  const storage=browserStorage(),fallback={cacheUpdated:false,recoveryQuarantined:false};if(!storage)return fallback;
+  try {
+    const guarded=await (await browserTripPersistence(ownerId)).native(tripId,()=>reconcileTripCloudMutationInStorage(storage,ownerId,tripId,mutation,canonicalTrip));
+    if(guarded.kind!=='done')return fallback;const result=guarded.value;
+    if(result.cacheUpdated)dispatchTripStorageChange({kind:'cache',ownerId,tripId});
+    if(result.recoveryQuarantined)dispatchTripStorageChange({kind:'recovery',ownerId,tripId});return result;
+  }catch{return fallback;}
+}
+
+export async function cacheCanonicalTrip(trip:EasyTTrip,resolvedRecovery?:TripRecoveryHandle) {
+  const storage=browserStorage(),fallback={stored:false,recoveryResolved:false};if(!storage)return fallback;
+  try {
+    const canonical=prepareTripDocumentForWrite(structuredClone(trip));
+    const guarded=await (await browserTripPersistence(canonical.ownerId)).native(canonical.id,()=>cacheCanonicalTripWithRecoveryToStorage(storage,canonical,resolvedRecovery));
+    if(resolvedRecovery)finishExpectedCanonicalSave(resolvedRecovery);
+    if(guarded.kind!=='done')return fallback;const result=guarded.value;
+    if(result.stored)dispatchTripStorageChange({kind:'cache',ownerId:canonical.ownerId,tripId:canonical.id});
+    if(result.recoveryResolved&&resolvedRecovery)dispatchTripStorageChange({kind:'resolved',ownerId:resolvedRecovery.ownerId,tripId:resolvedRecovery.tripId});return result;
+  }catch{return fallback;}
+}
+
+export async function acknowledgeTripBuildSave(reviewedTrip:EasyTTrip,canonicalTrip:EasyTTrip,submittedRecovery:TripRecoveryHandle,context?:{isCurrent:()=>boolean}):Promise<TripBuildSaveAcknowledgement> {
+  const reviewed=prepareTripDocumentForWrite(structuredClone(reviewedTrip)),canonical=prepareTripDocumentForWrite(structuredClone(canonicalTrip)),handle={...submittedRecovery};
+  try {
+    const result=await (await browserTripPersistence(handle.ownerId,context?.isCurrent)).acknowledge(reviewed,canonical,handle);
     finishExpectedCanonicalSave(handle);
-    return false;
-  }
-  const marked = markTripRecoveryStateInStorage(storage, handle, state, conflictReason);
-  const expectationFinished = finishExpectedCanonicalSave(handle);
-  if (marked || expectationFinished) dispatchTripStorageChange({ kind: "recovery", ownerId: handle.ownerId, tripId: handle.tripId });
-  return marked;
+    if(result.accountAcknowledged)dispatchTripStorageChange({kind:result.outcome==='acknowledged'?'resolved':'recovery',ownerId:handle.ownerId,tripId:handle.tripId});
+    return result;
+  }catch{return {outcome:'storage-failed',remainingRecovery:null,accountAcknowledged:canonical.ownerId===handle.ownerId&&canonical.id===handle.tripId&&tripBuildDocumentsCanonicalEquivalent(reviewed,canonical,handle.ownerId),cacheStored:false,deviceOutcome:'unknown'};}
 }
 
-export function reconcileTripCloudMutation(ownerId: string, tripId: string, mutation: TripCloudMutation, canonicalTrip?: EasyTTrip) {
-  const storage = browserStorage();
-  if (!storage) return { cacheUpdated: false, recoveryQuarantined: false };
-  const result = reconcileTripCloudMutationInStorage(storage, ownerId, tripId, mutation, canonicalTrip);
-  if (result.cacheUpdated) dispatchTripStorageChange({ kind: "cache", ownerId, tripId });
-  else if (mutation === "delete") dispatchTripStorageChange({ kind: "current-cleared", ownerId, tripId });
-  if (result.recoveryQuarantined) dispatchTripStorageChange({ kind: "recovery", ownerId, tripId });
-  return result;
+export async function resolveCanonicalEquivalentTripRecovery(canonicalTrip:EasyTTrip,recovery:TripRecoveryRecord) {
+  const storage=browserStorage(),fallback={equivalent:tripRecoveryMatchesCanonical(recovery,canonicalTrip),stored:false,recoveryResolved:false};if(!storage)return fallback;
+  try {
+    const guarded=await (await browserTripPersistence(recovery.ownerId)).native(recovery.tripId,()=>resolveCanonicalEquivalentTripRecoveryInStorage(storage,canonicalTrip,recovery));
+    if(guarded.kind!=='done')return fallback;const result=guarded.value;
+    if(result.stored)dispatchTripStorageChange({kind:'cache',ownerId:canonicalTrip.ownerId,tripId:canonicalTrip.id});
+    if(result.recoveryResolved)dispatchTripStorageChange({kind:'resolved',ownerId:recovery.ownerId,tripId:recovery.tripId});return result;
+  }catch{return fallback;}
 }
 
-export function cacheCanonicalTrip(trip: EasyTTrip, resolvedRecovery?: TripRecoveryHandle) {
-  const storage = browserStorage();
-  if (!storage) {
-    if (resolvedRecovery) finishExpectedCanonicalSave(resolvedRecovery);
-    return { stored: false, recoveryResolved: false };
-  }
-  const recoveryBeforeCache = resolvedRecovery
-    ?? loadTripRecoveryFromStorage(storage, trip.id, trip.ownerId)
-    ?? undefined;
-  const { stored, recoveryResolved } = cacheCanonicalTripWithRecoveryToStorage(storage, trip, resolvedRecovery);
-  const expectationFinished = resolvedRecovery
-    ? finishExpectedCanonicalSave(resolvedRecovery)
-    : false;
-  if (stored) dispatchTripStorageChange({ kind: "cache", ownerId: trip.ownerId, tripId: trip.id });
-  else if (expectationFinished) dispatchTripStorageChange({ kind: "recovery", ownerId: resolvedRecovery!.ownerId, tripId: resolvedRecovery!.tripId });
-  if (recoveryResolved && recoveryBeforeCache) {
-    dispatchTripStorageChange({ kind: "resolved", ownerId: recoveryBeforeCache.ownerId, tripId: recoveryBeforeCache.tripId });
-  }
-  return { stored, recoveryResolved };
-}
-
-export function acknowledgeTripBuildSave(
-  reviewedTrip: EasyTTrip,
-  canonicalTrip: EasyTTrip,
-  submittedRecovery: TripRecoveryHandle,
-): TripBuildSaveAcknowledgement {
-  if (canonicalTrip.id !== submittedRecovery.tripId
-    || canonicalTrip.ownerId !== submittedRecovery.ownerId
-    || !tripBuildDocumentsCanonicalEquivalent(
-      reviewedTrip,
-      canonicalTrip,
-      submittedRecovery.ownerId,
-    )) {
-    return {
-      outcome: "invalid-canonical",
-      remainingRecovery: loadTripRecovery(
-        submittedRecovery.tripId,
-        submittedRecovery.ownerId,
-      ),
-    };
-  }
-
-  const cached = cacheCanonicalTrip(canonicalTrip, submittedRecovery);
-  const remainingRecovery = loadTripRecovery(canonicalTrip.id, canonicalTrip.ownerId);
-  if (!cached.stored) return { outcome: "storage-failed", remainingRecovery };
-  return {
-    outcome: remainingRecovery ? "device-newer" : "acknowledged",
-    remainingRecovery,
-  };
-}
-
-export function resolveCanonicalEquivalentTripRecovery(
-  canonicalTrip: EasyTTrip,
-  recovery: TripRecoveryRecord,
-) {
-  const storage = browserStorage();
-  if (!storage) return { equivalent: tripRecoveryMatchesCanonical(recovery, canonicalTrip), stored: false, recoveryResolved: false };
-  const result = resolveCanonicalEquivalentTripRecoveryInStorage(storage, canonicalTrip, recovery);
-  if (result.stored) dispatchTripStorageChange({ kind: "cache", ownerId: canonicalTrip.ownerId, tripId: canonicalTrip.id });
-  if (result.recoveryResolved) {
-    dispatchTripStorageChange({ kind: "resolved", ownerId: recovery.ownerId, tripId: recovery.tripId });
-  }
-  return result;
-}
-
-export function discardTripRecovery(handle: TripRecoveryHandle, confirmed: boolean) {
-  const storage = browserStorage();
-  if (!storage) return false;
-  const discarded = discardTripRecoveryInStorage(storage, handle, confirmed);
-  if (discarded) dispatchTripStorageChange({ kind: "resolved", ownerId: handle.ownerId, tripId: handle.tripId });
-  if (discarded) finishExpectedCanonicalSave(handle);
-  return discarded;
+export async function discardTripRecovery(handle:TripRecoveryHandle,confirmed:boolean) {
+  const storage=browserStorage();if(!storage||!confirmed)return false;
+  try {
+    const guarded=await (await browserTripPersistence(handle.ownerId)).native(handle.tripId,()=>discardTripRecoveryInStorage(storage,handle,confirmed));
+    const discarded=guarded.kind==='done'&&guarded.value;
+    if(discarded){finishExpectedCanonicalSave(handle);dispatchTripStorageChange({kind:'resolved',ownerId:handle.ownerId,tripId:handle.tripId});}return discarded;
+  }catch{return false;}
 }
 
 /**
@@ -1647,7 +1673,7 @@ async function loadTripFromEasyTResult(tripId: string): Promise<TripCloudLoadRes
   if (payload.trip.id !== tripId) throw new TripDocumentReadError("invalid_trip_document");
   // A verified API response is safe to keep for an offline reopen. This clean
   // cache write never touches a pending recovery for the same owner and trip.
-  cacheCanonicalTrip(payload.trip);
+  await cacheCanonicalTrip(payload.trip);
   return { kind: "found", trip: normalizeLegacyGeneratedDayContext(payload.trip) };
 }
 
@@ -1658,7 +1684,7 @@ export async function loadTripFromEasyT(tripId: string): Promise<EasyTTrip | nul
   // Every authoritative cloud load crosses the same reconciliation boundary.
   // This retires an equivalent/stale baseline snapshot before a workspace can
   // mistake it for unsynced work, while unique local edits remain preserved.
-  cacheCanonicalTrip(result.trip);
+  await cacheCanonicalTrip(result.trip);
   return result.trip;
 }
 
@@ -1680,9 +1706,7 @@ export async function loadRequestedTrip(tripId: string, ownerId: string | null =
   }
 
   const storage = browserStorage();
-  return storage
-    ? loadLocalTripFromStorage(storage, tripId, ownerId)
-    : null;
+  return storage ? await loadLocalTrip(tripId,ownerId) : null;
 }
 
 /** @deprecated New Map Plans read the canonical EasyT document directly. */
@@ -1723,10 +1747,6 @@ export function saveJourneyPlanBridge(trip: EasyTTrip) {
 }
 
 /** Start a different view without deleting any clean or pending document. */
-export function clearActiveTrip(ownerId: string | null = null) {
-  const storage = browserStorage();
-  if (!storage) return false;
-  const cleared = clearCurrentTripInStorage(storage, ownerId);
-  if (cleared) dispatchTripStorageChange({ kind: "current-cleared", ownerId, tripId: null });
-  return cleared;
+export async function clearActiveTrip(ownerId:string|null=null) {
+  try {const cleared=await (await browserTripPersistence(ownerId)).clearCurrent();if(cleared)dispatchTripStorageChange({kind:'current-cleared',ownerId,tripId:null});return cleared;}catch{return false;}
 }

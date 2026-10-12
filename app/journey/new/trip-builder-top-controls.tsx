@@ -20,10 +20,10 @@ export function TripBuilderTopControls({trip,draft,language,disabled=false,onTyp
  trip:CanonicalEasyTTrip;draft:BuilderInputDraft;language:'en'|'es';disabled?:boolean;
  onType:(type:Type)=>void;onOriginInput:(raw:string)=>void;onOriginSelect:(place:CanonicalPlaceSuggestion)=>void;onOriginClear:()=>void;
  onDates:(start:string,end:string)=>void;onDateInput:(field:"startDate"|"endDate",raw:string)=>void;onTravellers:(n:number)=>void;onBudget:(budget:CanonicalEasyTTrip['brief']['budgetBand'])=>void;
- onAdd:()=>void;onEditIntent:(intent:DestinationIntent)=>boolean;onRemoveIntent:(intent:DestinationIntent)=>void;
+ onAdd:()=>void;onEditIntent:(intent:DestinationIntent)=>boolean|Promise<boolean>;onRemoveIntent:(intent:DestinationIntent)=>void;
  onRemoveStop?:(stopId:string)=>void;
- onIntentInput:(id:string,raw:string)=>void;onIntentSelect:(intent:DestinationIntent,place:CanonicalPlaceSuggestion)=>boolean;
- personalize?:ReactNode;updateRouteFeedback?:ReactNode;originReview?:ReactNode;destinationReview?:ReactNode;dateReview?:ReactNode;onUpdateRoute?:()=>void;updatingRoute?:boolean;onReorder?:(ids:readonly string[])=>boolean;fixedOrder?:boolean;onConfirmSavedFinish?:()=>void;
+ onIntentInput:(id:string,raw:string)=>void;onIntentSelect:(intent:DestinationIntent,place:CanonicalPlaceSuggestion)=>boolean|Promise<boolean>;
+ personalize?:ReactNode;updateRouteFeedback?:ReactNode;originReview?:ReactNode;destinationReview?:ReactNode;dateReview?:ReactNode;onUpdateRoute?:()=>void;updatingRoute?:boolean;onReorder?:(ids:readonly string[])=>boolean|Promise<boolean>;fixedOrder?:boolean;onConfirmSavedFinish?:()=>void;
 }) {
  const es=language==='es';const route=trip.brief.intent.route;
  const [editingId,setEditingId]=useState<string|null>(()=>draft.fields.find(f=>f.binding.kind==='destination'&&f.status==='editable')?.binding.kind==='destination' ? (draft.fields.find(f=>f.binding.kind==='destination'&&f.status==='editable')!.binding as {intentId:string}).intentId:null);
@@ -31,7 +31,7 @@ export function TripBuilderTopControls({trip,draft,language,disabled=false,onTyp
  const chipOccurrences=builderChipOccurrenceOrder(route,route.destinations.map(intent=>intent.id));
  const canReorder=Boolean(chipOccurrences&&onReorder&&!disabled&&!fixedOrder&&!editingId);
  const sourceIds=chipOccurrences?route.orderedStopIds:[];
- const reorder=useBuilderStopReorder({stopIds:sourceIds,lockedStopIds:trip.brief.scheduleLocks?.stopIds??[],fixedOrder:!canReorder,onPreview:noChipPreview,onCommit:ids=>Boolean(onReorder?.(ids)),targetAttribute:'data-builder-chip-index'});
+ const reorder=useBuilderStopReorder({stopIds:sourceIds,lockedStopIds:trip.brief.scheduleLocks?.stopIds??[],fixedOrder:!canReorder,onPreview:noChipPreview,onCommit:ids=>{const result=onReorder?.(ids);if(result instanceof Promise){void result;return false;}return Boolean(result)},targetAttribute:'data-builder-chip-index'});
  // Stable drop targets avoid moving the native drag source under the pointer.
  const displayedIntents=chipOccurrences?sourceIds.map(id=>route.destinations.find(intent=>intent.stopIds[0]===id)!):route.destinations;
  useEffect(()=>{if(focusId.current){const node=nodes.current.get(focusId.current);(node?.querySelector<HTMLInputElement>('input[role="combobox"]')??node?.querySelector<HTMLButtonElement>('button'))?.focus();focusId.current=null}},[editingId,trip]);
@@ -67,11 +67,11 @@ export function TripBuilderTopControls({trip,draft,language,disabled=false,onTyp
         reorderGrip={canReorder?<EasyTButton variant="quiet" icon={GripVertical} iconOnly className={`${styles.grip} ${reorder.previewIds?.[index]===reorder.draggingId?styles.dropTarget:''}`} disabled={trip.brief.scheduleLocks?.stopIds.includes(intent.stopIds[0])} aria-label={reorderLabel} {...reorder.gripProps(intent.stopIds[0])}>{reorderLabel}</EasyTButton>:undefined}
         reorderProps={canReorder?{'data-builder-chip-index':index,onDragOver:event=>{event.preventDefault();reorder.previewActiveAt(index)},onDrop:event=>{event.preventDefault();reorder.drop()}}:undefined}
         editLabel={`${es?'Editar':'Edit'} ${label}`} removeLabel={`${es?'Quitar':'Remove'} ${label}`}
-        onEdit={()=>{if(onEditIntent(intent)){focusId.current=intent.id;setEditingId(intent.id)}}} onRemove={()=>onRemoveIntent(intent)}
+        onEdit={async ()=>{if(await onEditIntent(intent)){focusId.current=intent.id;setEditingId(intent.id)}}} onRemove={()=>onRemoveIntent(intent)}
         editor={editingId===intent.id?<div onKeyDown={event=>{if(event.key==='Escape'){event.preventDefault();focusId.current=intent.id;setEditingId(null)}}}>
           <CanonicalPlaceAutocomplete autoFocus language={language} label={es?'Destino':'Destination'} placeholder={es?'Ciudad o lugar':'City or place'} value={field?.status==='editable'?field.raw:label}
             disabled={disabled||field?.status==='binding-conflict'} requireCoordinates searchIntent="route-stop"
-            onChange={raw=>onIntentInput(intent.id,raw)} onSelect={place=>{if(onIntentSelect(intent,place)){focusId.current=intent.id;setEditingId(null)}}} />
+            onChange={raw=>onIntentInput(intent.id,raw)} onSelect={async place=>{if(await onIntentSelect(intent,place)){focusId.current=intent.id;setEditingId(null)}}} />
         </div>:undefined} />;
     })}
   </MorroviaDestinationField>{destinationReview}</div></div>

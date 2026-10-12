@@ -7,6 +7,7 @@ import { createContext, useCallback, useContext, useEffect, useRef, useState, ty
 import { authClient } from "@/lib/auth-client";
 import { trackEvent } from "@/lib/analytics";
 import {
+  BrowserRecoveryReadError,
   cacheCanonicalTrip,
   classifyTripRecovery,
   discardTripRecovery,
@@ -72,6 +73,10 @@ export function TripShellIdentityAndActions() {
   const [renameOpen, setRenameOpen] = useState(false);
   const [draft, setDraft] = useState("");
   const [validationError, setValidationError] = useState("");
+  const renameRequestRef = useRef(0);
+  const renameScopeRef = useRef("");
+  renameScopeRef.current = JSON.stringify([trip.id, trip.ownerId]);
+  useEffect(() => () => { renameRequestRef.current += 1; }, []);
   useWorkspaceOrientationBlocker(renameOpen);
 
   const openRename = () => {
@@ -79,13 +84,16 @@ export function TripShellIdentityAndActions() {
     setValidationError("");
     setRenameOpen(true);
   };
-  const saveRename = () => {
+  const saveRename = async () => {
+    const request = ++renameRequestRef.current;
+    const scope = renameScopeRef.current;
     const normalizedTitle = draft.trim().replace(/\s+/g, " ");
     if (Array.from(normalizedTitle).length > 80) {
       setValidationError("Use 80 characters or fewer.");
       return;
     }
-    const changed = mutation.mutateTrip((current) => renameTripIdentity(current, normalizedTitle), "trip-title");
+    const changed = await mutation.mutateTrip((current) => renameTripIdentity(current, normalizedTitle), "trip-title");
+    if (request !== renameRequestRef.current || scope !== renameScopeRef.current) return;
     if (changed || normalizedTitle === (tripCustomTitle(mutation.trip) ?? "")) setRenameOpen(false);
   };
 
@@ -114,8 +122,9 @@ export function TripShellIdentityAndActions() {
       detail="Leave blank to use the destination-based name."
       submitLabel="Save name"
       error={validationError || mutation.error || undefined}
-      onCancel={() => setRenameOpen(false)}
-      onSubmit={saveRename}
+      submitting={mutation.isPending("trip-title")}
+      onCancel={() => { renameRequestRef.current += 1; setRenameOpen(false); }}
+      onSubmit={() => void saveRename()}
     >
       <EasyTField
         data-dialog-autofocus="true"
@@ -140,6 +149,17 @@ export function TripShellTripProvider({ trip, children, cacheTrip = true }: { tr
   const [deviceRecovery, setDeviceRecovery] = useState<TripRecoveryRecord | null>(null);
   const [discardFailed, setDiscardFailed] = useState(false);
   const [discardTarget, setDiscardTarget] = useState<TripRecoveryRecord | null>(null);
+  const [discarding, setDiscarding] = useState(false);
+  const [deviceStorageIssue, setDeviceStorageIssue] = useState<"protected" | "unavailable" | null>(null);
+  const providerScopeRef = useRef("");
+  providerScopeRef.current = JSON.stringify([trip.id, trip.ownerId, session?.user?.id ?? null, cacheTrip]);
+  const providerMountedRef = useRef(true);
+  const discardGenerationRef = useRef(0);
+  const discardInFlightRef = useRef(false);
+  useEffect(() => {
+    providerMountedRef.current = true;
+    return () => { providerMountedRef.current = false; discardGenerationRef.current += 1; };
+  }, []);
   const trackedWorkspaceVisitRef = useRef<string | null>(null);
   const legacyRepairAttemptedRef = useRef(new Set<string>());
   const conflictActions = tripConflictResolutionActions(trip.id, "builder");
@@ -176,7 +196,7 @@ export function TripShellTripProvider({ trip, children, cacheTrip = true }: { tr
         previouslyAuthenticatedOwnerId: authenticatedOwnerRef.current,
       })
     : "current";
-  useWorkspaceOrientationBlocker(ownerBoundary !== "current" || Boolean(visibleDeviceRecovery) || Boolean(discardTarget));
+  useWorkspaceOrientationBlocker(ownerBoundary !== "current" || !mutation.recoveryReady || Boolean(deviceStorageIssue) || Boolean(visibleDeviceRecovery) || Boolean(discardTarget));
 
   useEffect(() => {
     if (ownerBoundary === "mismatch") window.location.reload();
@@ -200,19 +220,19 @@ export function TripShellTripProvider({ trip, children, cacheTrip = true }: { tr
       visibleDeviceRecovery: Boolean(visibleDeviceRecovery),
     })) return;
     legacyRepairAttemptedRef.current.add(identity);
-    mutation.mutateTrip(repairEligibleSpreadsheetV1Trip, "import-legacy-hydration-v1");
+    void mutation.mutateTrip(repairEligibleSpreadsheetV1Trip, "import-legacy-hydration-v1");
   }, [cacheTrip, mutation.trip, mutation.recoveryClassifiedFor, mutation.hasPendingSaves, mutation.historicalRecovery, mutation.saveState, mutation.mutateTrip, ownerBoundary, session?.user?.id, sessionPending, visibleDeviceRecovery]);
 
   useEffect(() => {
     // A server-resolved deep link is canonical for this owner. Refresh the
     // clean offline cache without replacing a pending recovery document.
-    if (cacheTrip) cacheCanonicalTrip(trip);
+    if (cacheTrip) void cacheCanonicalTrip(trip).catch(() => undefined);
   }, [cacheTrip, trip]);
 
   useEffect(() => {
     const onActiveTripChange = (event: Event) => {
       const next = (event as CustomEvent<unknown>).detail;
-      if (!cacheTrip && isEasyTTrip(next)) mutation.adoptDeviceTrip(next);
+      if (!cacheTrip && isEasyTTrip(next)) void mutation.adoptDeviceTrip(next);
     };
     window.addEventListener(EASYT_ACTIVE_TRIP_CHANGE_EVENT, onActiveTripChange);
     return () => window.removeEventListener(EASYT_ACTIVE_TRIP_CHANGE_EVENT, onActiveTripChange);
@@ -222,34 +242,53 @@ export function TripShellTripProvider({ trip, children, cacheTrip = true }: { tr
     if (!cacheTrip) {
       setDeviceRecovery(null);
       setDiscardFailed(false);
+      setDeviceStorageIssue(null);
       return;
     }
+    let cancelled = false;
+    let generation = 0;
+    const scope = providerScopeRef.current;
     setDiscardFailed(false);
-    const refreshRecovery = () => {
-      const recovery = loadTripRecovery(trip.id, trip.ownerId);
-      const reconciliation = recovery
-        ? resolveCanonicalEquivalentTripRecovery(trip, recovery)
-        : null;
-      const remainingRecovery = reconciliation?.recoveryResolved
-        ? loadTripRecovery(trip.id, trip.ownerId)
-        : recovery;
-      setDeviceRecovery(remainingRecovery);
-      if (!remainingRecovery) setDiscardFailed(false);
+    const refreshRecovery = async () => {
+      const request = ++generation;
+      const isCurrent = () => !cancelled && providerMountedRef.current
+        && providerScopeRef.current === scope && request === generation;
+      try {
+        const recovery = await loadTripRecovery(trip.id, trip.ownerId);
+        if (!isCurrent()) return undefined;
+        const reconciliation = recovery ? await resolveCanonicalEquivalentTripRecovery(trip, recovery) : null;
+        if (!isCurrent()) return undefined;
+        const remainingRecovery = reconciliation?.recoveryResolved ? await loadTripRecovery(trip.id, trip.ownerId) : recovery;
+        if (!isCurrent()) return undefined;
+        setDeviceRecovery(remainingRecovery);
+        setDeviceStorageIssue(null);
+        if (!remainingRecovery) setDiscardFailed(false);
+        return { recovery: remainingRecovery, isCurrent };
+      } catch (error) {
+        if (isCurrent()) setDeviceStorageIssue(error instanceof BrowserRecoveryReadError ? error.kind : "unavailable");
+        return undefined;
+      }
     };
-    refreshRecovery();
-    return subscribeToTripStorage(trip.ownerId, trip.id, (change) => {
-      refreshRecovery();
-      if (loadTripRecovery(trip.id, trip.ownerId)) return;
+    void refreshRecovery();
+    const unsubscribe = subscribeToTripStorage(trip.ownerId, trip.id, (change) => {
+      void (async () => {
+      const refreshed = await refreshRecovery();
+      if (!refreshed || refreshed.recovery || !refreshed.isCurrent()) return;
       // This provider owns authenticated mutations. Its queue adopts its own
       // acknowledgement in order; resetting it from the synchronous cache
       // event could sever later edits already queued behind that save.
       if (mutation.hasPendingSaves()) return;
       if (change.kind !== "cache" && !(change.kind === "resolved" && mutation.historicalRecovery && !mutation.conflictTrip)) return;
-      const cached = loadCachedTrip(trip.id, trip.ownerId);
+      const cached = await loadCachedTrip(trip.id, trip.ownerId);
+      if (!refreshed.isCurrent() || mutation.hasPendingSaves()) return;
       if (cached?.id === trip.id && cached.ownerId === trip.ownerId) {
-        mutation.adoptCanonicalTrip(cached);
+        await mutation.adoptCanonicalTrip(cached);
       }
+      })().catch((error) => {
+        if (!cancelled && providerScopeRef.current === scope) setDeviceStorageIssue(error instanceof BrowserRecoveryReadError ? error.kind : "unavailable");
+      });
     });
+    return () => { cancelled = true; generation += 1; unsubscribe(); };
   }, [cacheTrip, mutation.adoptCanonicalTrip, mutation.hasPendingSaves, mutation.historicalRecovery, mutation.conflictTrip, trip]);
 
   useEffect(() => {
@@ -273,8 +312,14 @@ export function TripShellTripProvider({ trip, children, cacheTrip = true }: { tr
     }
   }, [pathname, trip.id, trip.stops.length]);
 
-  const discardDeviceCopy = () => {
+  const discardDeviceCopy = async () => {
     if (!discardTarget || discardTarget.tripId !== trip.id || discardTarget.ownerId !== trip.ownerId) return;
+    if (discardInFlightRef.current || ownerBoundary !== "current") return;
+    const target = discardTarget;
+    const scope = providerScopeRef.current;
+    const generation = ++discardGenerationRef.current;
+    const isCurrent = () => providerMountedRef.current && providerScopeRef.current === scope
+      && generation === discardGenerationRef.current;
     if (mutation.hasPendingSaves()) {
       setDiscardFailed(true);
       return;
@@ -283,7 +328,11 @@ export function TripShellTripProvider({ trip, children, cacheTrip = true }: { tr
     const discardingFailedCurrentWrite = currentSaveFailed && !mutation.conflictTrip
       && currentWrite?.ownerId === discardTarget.ownerId
       && currentWrite.tripId === discardTarget.tripId && currentWrite.writeId === discardTarget.writeId;
-    const canonicalBase = discardingFailedCurrentWrite ? loadCachedTrip(trip.id, trip.ownerId) : null;
+    discardInFlightRef.current = true;
+    setDiscarding(true);
+    try {
+    const canonicalBase = discardingFailedCurrentWrite ? await loadCachedTrip(trip.id, trip.ownerId) : null;
+    if (!isCurrent()) return;
     // Keep the durable failed edit if this mounted editor cannot safely return
     // to its acknowledged account body after discard.
     if (discardingFailedCurrentWrite && (!canonicalBase
@@ -291,9 +340,12 @@ export function TripShellTripProvider({ trip, children, cacheTrip = true }: { tr
       setDiscardFailed(true);
       return;
     }
-    const discarded = discardTripRecovery(discardTarget, true);
+    if (mutation.hasPendingSaves()) { setDiscardFailed(true); return; }
+    const discarded = await discardTripRecovery(target, true);
+    if (!isCurrent()) return;
     if (discarded) {
-      const remaining = loadTripRecovery(trip.id, trip.ownerId);
+      const remaining = await loadTripRecovery(trip.id, trip.ownerId);
+      if (!isCurrent()) return;
       setDeviceRecovery(remaining);
       // Failed current writes retain an optimistic body. After discarding that
       // exact reviewed write, return to the account document before any later
@@ -302,15 +354,26 @@ export function TripShellTripProvider({ trip, children, cacheTrip = true }: { tr
       // the historical barrier so its later resolution cannot revive this body.
       if (!mutation.hasPendingSaves() && !mutation.conflictTrip
         && discardingFailedCurrentWrite && canonicalBase) {
-        mutation.adoptCanonicalTrip(canonicalBase);
+        await mutation.adoptCanonicalTrip(canonicalBase);
+        if (!isCurrent()) return;
       }
       setDiscardFailed(false);
       setDiscardTarget(null);
       return;
     }
-    const remaining = loadTripRecovery(trip.id, trip.ownerId);
+    const remaining = await loadTripRecovery(trip.id, trip.ownerId);
+    if (!isCurrent()) return;
     if (remaining) setDeviceRecovery(remaining);
     setDiscardFailed(true);
+    } catch (error) {
+      if (isCurrent()) {
+        setDiscardFailed(true);
+        setDeviceStorageIssue(error instanceof BrowserRecoveryReadError ? error.kind : "unavailable");
+      }
+    } finally {
+      discardInFlightRef.current = false;
+      if (providerMountedRef.current) setDiscarding(false);
+    }
   };
 
   if (ownerBoundary === "mismatch") {
@@ -324,6 +387,12 @@ export function TripShellTripProvider({ trip, children, cacheTrip = true }: { tr
           <MorroviaStatusBanner tone="danger" title="Your session ended" detail="This trip remains visible and unchanged. Sign in before editing or syncing it." actions={<EasyTLinkButton size="small" href={journeyReauthenticationPath(returnTarget)}>Sign in and return here</EasyTLinkButton>} />
         </div>
       ) : null}
+      {deviceStorageIssue ? <div className={styles.content}>
+        <MorroviaStatusBanner tone="warning"
+          title={deviceStorageIssue === "protected" ? "Device changes need review" : "Device storage unavailable"}
+          detail={deviceStorageIssue === "protected" ? "Separate device copies remain protected. Review them before editing this trip." : "Device changes could not be checked. Open this trip again before editing."}
+        />
+      </div> : null}
       {visibleDeviceRecovery ? (
         <div className={styles.content}>
           <MorroviaStatusBanner tone={discardFailed ? "danger" : "warning"} title={currentSaveFailed ? "Device edits kept safe" : `${tripDisplayTitle(trip)} has device changes to review`} detail={discardFailed
@@ -345,9 +414,10 @@ export function TripShellTripProvider({ trip, children, cacheTrip = true }: { tr
         ]}
         cancelLabel="Keep device edits"
         confirmLabel="Discard device edits"
+        confirming={discarding}
         error={discardFailed ? "The reviewed device copy could not be removed. Your remaining device edits are intact." : undefined}
-        onCancel={() => { setDiscardTarget(null); setDiscardFailed(false); }}
-        onConfirm={discardDeviceCopy}
+        onCancel={() => { if (discarding) return; discardGenerationRef.current += 1; setDiscardTarget(null); setDiscardFailed(false); }}
+        onConfirm={() => void discardDeviceCopy()}
       />
       <TripShellTripContext.Provider value={visibleActiveTrip}>{children}</TripShellTripContext.Provider>
     </>

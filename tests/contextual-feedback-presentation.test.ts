@@ -30,7 +30,8 @@ test("only four reviewed call sites opt in and acknowledgement follows the exact
   const persistence = readFileSync(new URL("../components/easyt/use-trip-mutation-persistence.ts", import.meta.url), "utf8");
   const itinerary = readFileSync(new URL("../components/easyt/trip-itinerary-workspace.tsx", import.meta.url), "utf8");
   const stay = readFileSync(new URL("../components/easyt/trip-stay-workspace.tsx", import.meta.url), "utf8");
-  assert.match(persistence, /if \(!cacheSavedTrip\(saved, recovery\.handle\)\) return;[\s\S]*setLastAcknowledgedMutation/);
+  assert.match(persistence, /await acknowledgeTripBuildSave\(submitted, saved, recovery, \{ isCurrent:/);
+  assert.match(persistence, /if \(!await cacheSavedTrip\(saved, recovery, scope\)\) return saved;[\s\S]*if \(!scopeIsCurrent\(scope\)\) return saved;[\s\S]*setLastAcknowledgedMutation/);
   for (const action of ["activity-add", "idea-schedule", "activity-move"]) assert.match(itinerary, new RegExp(`"${action}"`));
   assert.match(stay, /"stay-select"/);
   assert.doesNotMatch(readFileSync(new URL("../components/easyt/trip-overview-workspace.tsx", import.meta.url), "utf8"), /"activity-add"|"idea-schedule"|"activity-move"|"stay-select"/);
@@ -77,6 +78,6 @@ test("qualified entry survives async hydration and dismissal cannot be undone by
 test("reviewed action metadata survives an intervening queued mutation until canonical acknowledgement", () => {
   const persistence = readFileSync(new URL("../components/easyt/use-trip-mutation-persistence.ts", import.meta.url), "utf8");
   assert.match(persistence, /pendingMeaningfulFeedbackRef/);
-  assert.match(persistence, /if \(!cacheSavedTrip\(saved, recovery\.handle\)\) return;/);
-  assert.match(persistence, /pendingMeaningfulFeedbackRef\.current\?\.originWriteId === recovery\.handle\.writeId/);
+  assert.match(persistence, /if \(!await cacheSavedTrip\(saved, recovery, scope\)\) return saved;/);
+  assert.match(persistence, /pendingMeaningfulFeedbackRef\.current\?\.originWriteId === recovery\.writeId/);
 });

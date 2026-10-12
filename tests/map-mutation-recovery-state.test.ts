@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { IndexedDbModel } from './helpers/recovery-indexeddb-model.ts';
 
 import { createTripMutationPersistenceQueue } from "../lib/easyt/trip-mutation-persistence.ts";
 import {
@@ -62,22 +63,31 @@ function mapTrip(overrides: Partial<EasyTTrip> = {}): EasyTTrip {
 
 function installBrowser(storage: MemoryBrowserStorage) {
   const descriptor = Object.getOwnPropertyDescriptor(globalThis, "window");
-  const target = new EventTarget() as EventTarget & { localStorage: MemoryBrowserStorage };
+  const channelDescriptor = Object.getOwnPropertyDescriptor(globalThis, 'BroadcastChannel');
+  const target = new EventTarget() as EventTarget & { localStorage: MemoryBrowserStorage; indexedDB: IDBFactory };
   target.localStorage = storage;
+  target.indexedDB = new IndexedDbModel().factory();
   Object.defineProperty(globalThis, "window", { configurable: true, value: target });
+  Object.defineProperty(globalThis, 'BroadcastChannel', { configurable: true, value: undefined });
   return () => {
     if (descriptor) Object.defineProperty(globalThis, "window", descriptor);
     else Reflect.deleteProperty(globalThis, "window");
+    if (channelDescriptor) Object.defineProperty(globalThis, 'BroadcastChannel', channelDescriptor);
+    else Reflect.deleteProperty(globalThis, 'BroadcastChannel');
   };
 }
 
 function observeRecoveryWarning(trip: EasyTTrip) {
   const warningStates: boolean[] = [];
+  const pending = new Set<Promise<void>>();
   const unsubscribe = subscribeToTripStorage(trip.ownerId, trip.id, () => {
-    const recovery = loadTripRecovery(trip.id, trip.ownerId);
-    warningStates.push(Boolean(recovery && !tripRecoveryIsAwaitingCanonicalSave(recovery)));
+    const observation = loadTripRecovery(trip.id, trip.ownerId).then(recovery => {
+      warningStates.push(Boolean(recovery && !tripRecoveryIsAwaitingCanonicalSave(recovery)));
+    });
+    pending.add(observation);
+    void observation.finally(() => pending.delete(observation));
   });
-  return { warningStates, unsubscribe };
+  return { warningStates, unsubscribe, flush: async () => { while (pending.size) await Promise.all([...pending]); } };
 }
 
 test("a delayed successful authenticated Map save never presents its exact safe recovery as a conflict", async (t) => {
@@ -93,14 +103,15 @@ test("a delayed successful authenticated Map save never presents its exact safe 
   const delayedSave = new Promise<EasyTTrip>((resolve) => { releaseSave = resolve; });
   const queue = createTripMutationPersistenceQueue(async () => delayedSave);
   queue.reset(base);
-  const recovery = saveTripRecovery(edited, { ownerId: "owner-a", accountSavePending: true });
+  const recovery = await saveTripRecovery(edited, { ownerId: "owner-a", accountSavePending: true });
   assert.equal(recovery.stored, true);
-  assert.ok(loadTripRecovery(base.id, "owner-a"), "device-safe write exists before the account ACK");
-  assert.equal(tripRecoveryIsAwaitingCanonicalSave(loadTripRecovery(base.id, "owner-a")!), true);
+  assert.ok(await loadTripRecovery(base.id, "owner-a"), "device-safe write exists before the account ACK");
+  assert.equal(tripRecoveryIsAwaitingCanonicalSave((await loadTripRecovery(base.id, "owner-a"))!), true);
+  await observed.flush();
   assert.deepEqual(observed.warningStates, [false]);
 
-  const saving = queue.enqueue(edited, recovery.handle).then((saved) => {
-    cacheCanonicalTrip(saved, recovery.handle);
+  const saving = queue.enqueue(edited, recovery.handle).then(async (saved) => {
+    await cacheCanonicalTrip(saved, recovery.handle);
     return saved;
   });
   await Promise.resolve();
@@ -109,8 +120,9 @@ test("a delayed successful authenticated Map save never presents its exact safe 
   releaseSave?.({ ...edited, updatedAt: "revision-2" });
   const saved = await saving;
   assert.equal(saved.updatedAt, "revision-2");
-  assert.equal(loadTripRecovery(base.id, "owner-a"), null);
+  assert.equal(await loadTripRecovery(base.id, "owner-a"), null);
   assert.equal(loadCachedTripFromStorage(storage, base.id, "owner-a")?.updatedAt, "revision-2");
+  await observed.flush();
   assert.equal(observed.warningStates.includes(true), false);
 });
 
@@ -121,21 +133,22 @@ test("a failed authenticated Map save preserves the device copy and makes recove
   const edited = { ...base, title: "Offline Map edit" };
   const observed = observeRecoveryWarning(base);
   t.after(() => { observed.unsubscribe(); restoreBrowser(); });
-  const recovery = saveTripRecovery(edited, { ownerId: "owner-a", accountSavePending: true });
+  const recovery = await saveTripRecovery(edited, { ownerId: "owner-a", accountSavePending: true });
 
   await assert.rejects(async () => {
     try {
       throw new TypeError("network unavailable");
     } catch (error) {
-      markTripRecoveryState(recovery.handle, "network");
+      await markTripRecoveryState(recovery.handle, "network");
       throw error;
     }
   });
 
-  const remaining = loadTripRecovery(base.id, "owner-a");
+  const remaining = await loadTripRecovery(base.id, "owner-a");
   assert.equal(remaining?.trip.title, "Offline Map edit");
   assert.equal(remaining?.state, "network");
   assert.equal(tripRecoveryIsAwaitingCanonicalSave(remaining!), false);
+  await observed.flush();
   assert.equal(observed.warningStates.at(-1), true);
 });
 
@@ -148,7 +161,7 @@ test("a stale Map CAS remains a conflict and cannot overwrite the cloud trip", a
   cacheCanonicalTripToStorage(storage, cloud);
   const observed = observeRecoveryWarning(stale);
   t.after(() => { observed.unsubscribe(); restoreBrowser(); });
-  const recovery = saveTripRecovery(local, { ownerId: "owner-a", accountSavePending: true });
+  const recovery = await saveTripRecovery(local, { ownerId: "owner-a", accountSavePending: true });
   const request: typeof fetch = async () => new Response(JSON.stringify({
     error: "This trip changed on another device.",
     category: "conflict",
@@ -161,15 +174,16 @@ test("a stale Map CAS remains a conflict and cannot overwrite the cloud trip", a
       try {
         await saveTripRecoveryToEasyT(local, recovery.handle, request);
       } catch (error) {
-        markTripRecoveryState(recovery.handle, "conflict", "cloud-changed");
+        await markTripRecoveryState(recovery.handle, "conflict", "cloud-changed");
         throw error;
       }
     },
     (error: unknown) => error instanceof EasyTTripSaveConflictError,
   );
   assert.equal(loadCachedTripFromStorage(storage, stale.id, "owner-a")?.title, cloud.title);
-  assert.equal(loadTripRecovery(stale.id, "owner-a")?.trip.title, local.title);
-  assert.equal(loadTripRecovery(stale.id, "owner-a")?.state, "conflict");
+  assert.equal((await loadTripRecovery(stale.id, "owner-a"))?.trip.title, local.title);
+  assert.equal((await loadTripRecovery(stale.id, "owner-a"))?.state, "conflict");
+  await observed.flush();
   assert.equal(observed.warningStates.at(-1), true);
 });
 
@@ -198,15 +212,16 @@ test("rapid Map mutations serialize coherent revisions without transient warning
   const stay = mapTrip({ brief: { ...restaurant.brief, selectedPlaces: { stay: ["Ryokan"] } } });
   const activity = mapTrip({ brief: { ...stay.brief, mapPins: [{ id: "museum", title: "Museum", category: "activity", dayNumber: 1, latitude: 35.6, longitude: 139.7 }] } });
   let prior: TripRecoveryHandle | undefined;
-  const saves = [restaurant, stay, activity].map((trip) => {
-    const recovery = saveTripRecovery(trip, { ownerId: "owner-a", replace: prior, accountSavePending: true });
+  const saves: Promise<EasyTTrip>[] = [];
+  for (const trip of [restaurant, stay, activity]) {
+    const recovery = await saveTripRecovery(trip, { ownerId: "owner-a", replace: prior, accountSavePending: true });
     assert.equal(recovery.stored, true);
     prior = recovery.handle;
-    return queue.enqueue(trip, recovery.handle).then((saved) => {
-      cacheCanonicalTrip(saved, recovery.handle);
+    saves.push(queue.enqueue(trip, recovery.handle).then(async (saved) => {
+      await cacheCanonicalTrip(saved, recovery.handle);
       return saved;
-    });
-  });
+    }));
+  }
   await Promise.resolve();
   assert.equal(requestCount, 1);
   assert.equal(observed.warningStates.includes(true), false);
@@ -217,7 +232,8 @@ test("rapid Map mutations serialize coherent revisions without transient warning
   assert.deepEqual(canonical.brief.customActivities?.[1], ["Cafe"]);
   assert.deepEqual(canonical.brief.selectedPlaces.stay, ["Ryokan"]);
   assert.equal(canonical.brief.mapPins?.filter((pin) => pin.id === "museum").length, 1);
-  assert.equal(loadTripRecovery(base.id, "owner-a"), null);
+  assert.equal(await loadTripRecovery(base.id, "owner-a"), null);
+  await observed.flush();
   assert.equal(observed.warningStates.includes(true), false);
 });
 
@@ -227,9 +243,9 @@ test("successful reload is clean, while historical and other-owner recovery rema
   t.after(restoreBrowser);
   const base = mapTrip();
   const edited = { ...base, title: "Canonical Map result" };
-  const recovery = saveTripRecovery(edited, { ownerId: "owner-a", accountSavePending: true });
-  cacheCanonicalTrip({ ...edited, updatedAt: "revision-2" }, recovery.handle);
-  assert.equal(loadTripRecovery(base.id, "owner-a"), null, "a reopen has one canonical result and no stale banner record");
+  const recovery = await saveTripRecovery(edited, { ownerId: "owner-a", accountSavePending: true });
+  await cacheCanonicalTrip({ ...edited, updatedAt: "revision-2" }, recovery.handle);
+  assert.equal(await loadTripRecovery(base.id, "owner-a"), null, "a reopen has one canonical result and no stale banner record");
 
   const historical = { ...edited, title: "Historical unsynced work", updatedAt: "revision-2" };
   saveTripRecoveryToStorage(storage, historical, { ownerId: "owner-a", writeId: "historical-write" });

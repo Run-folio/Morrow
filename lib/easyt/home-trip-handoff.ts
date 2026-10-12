@@ -16,6 +16,8 @@ import { homepageCapturedRouteEvidence, homepageDescribeSourceKey, homepageRoute
 import { acceptedGeographicPlace, geographicCandidateMatches, geographicallyReady } from './geographic-binding.ts';
 import { reportQaPersistenceBoundary, qaNativeFailureCategory, type PersistenceFailureBoundary } from './persistence-outcome.ts';
 
+import {withBrowserHomepageStorage,isBrowserHomepageStorage,freezeHomepageTransition} from './homepage-persistence.ts';
+
 export const HOME_TRIP_DRAFT_KEY = "easyt-home-trip-draft";
 
 export type HomepageDestinationEntry = {
@@ -450,7 +452,7 @@ function homepageIntakeReview(value: unknown, ownerId: string | null): value is 
 
 /** Edits share the receipt lock with submissions so another tab cannot erase
  * an unacknowledged frozen intake. This writes the existing owner key only. */
-export async function persistEditableHomepageInput(input: {
+export async function persistEditableHomepageInputInStorage(input: {
   storage: Pick<Storage, "getItem" | "setItem" | "removeItem">;
   snapshot: HomepageInputSnapshot;
   preserveCompletedReceipt?: boolean;
@@ -663,12 +665,12 @@ type HomepageHandoffCommitInput = {
   stored: StoredHomepageInput;
   draft: HomeTripDraft | PendingHomeTripHandoff;
   isCurrent: () => boolean;
-  preserveAndBegin: () => boolean;
+  preserveAndBegin: () => boolean | Promise<boolean>;
   lock?: <T>(key: string, run: () => Promise<T>) => Promise<T>;
 };
 type HomepageHandoffCommitResult = { ok: true; href: string } | { ok: false; reason: "stale" | "storage" | "preservation" };
 
-export async function commitHomepageHandoff(input: HomepageHandoffCommitInput): Promise<HomepageHandoffCommitResult> {
+export async function commitHomepageHandoffInStorage(input: HomepageHandoffCommitInput): Promise<HomepageHandoffCommitResult> {
   if (!input.isCurrent()) return { ok: false, reason: "stale" };
   const ownerId = input.stored.snapshot.ownerId;
   try {
@@ -696,7 +698,7 @@ export async function commitHomepageHandoff(input: HomepageHandoffCommitInput): 
           return { ok: false as const, reason: "storage" as const };
         if (!input.isCurrent()) return { ok: false as const, reason: "stale" as const };
         try {
-          if (!input.preserveAndBegin()) return { ok: false as const, reason: "preservation" as const };
+          if (!await input.preserveAndBegin() || !input.isCurrent()) return { ok: false as const, reason: "preservation" as const };
         } catch { return { ok: false as const, reason: "preservation" as const }; }
         return { ok: true as const, href: `/journey/new?homeDraft=1&handoff=${encodeURIComponent(pending.handoffId)}` };
       }
@@ -784,10 +786,11 @@ async function commitHomepageHandoffWithinLock(input: HomepageHandoffCommitInput
   }
   let preserved = false;
   try {
-    preserved = input.preserveAndBegin();
+    preserved = await input.preserveAndBegin();
   } catch {
     preserved = false;
   }
+  if (!input.isCurrent()) return { ok: false, reason: "stale" };
   if (!preserved) {
     try {
       restoreHomepageStorageValue(input.storage, HOME_TRIP_DRAFT_KEY, previousDraft);
@@ -805,11 +808,11 @@ async function commitHomepageHandoffWithinLock(input: HomepageHandoffCommitInput
 /** The receipt owner serializes Describe reservation across browser tabs.
  * Read and ID allocation must happen inside the same owner-scoped Web Lock;
  * localStorage read-then-write alone cannot prevent duplicate trip IDs. */
-export async function reservePendingDescribeHandoff(input: {
+export async function reservePendingDescribeHandoffInStorage(input: {
   storage: Pick<Storage, "getItem" | "setItem" | "removeItem">;
   snapshot: HomepageInputSnapshot;
   isCurrent: () => boolean;
-  preserveAndBegin: () => boolean;
+  preserveAndBegin: () => boolean | Promise<boolean>;
   createIds: () => { handoffId: string; tripId: string };
   lock?: <T>(key: string, run: () => Promise<T>) => Promise<T>;
 }): Promise<({ ok: true; href: string; receipt: PendingIntakeReceipt; stored: StoredHomepageInput }) | { ok: false; reason: "stale" | "storage" | "preservation" }> {
@@ -859,7 +862,7 @@ export async function reservePendingDescribeHandoff(input: {
   } catch { return { ok: false, reason: "storage" }; }
 }
 
-async function withHomepageReceiptLock<T>(
+export async function withHomepageReceiptLock<T>(
   ownerId: string | null,
   supplied: (<R>(key: string, run: () => Promise<R>) => Promise<R>) | undefined,
   run: () => Promise<T>,
@@ -875,7 +878,7 @@ async function withHomepageReceiptLock<T>(
 
 /** Direct New Trip shares the receipt lock but keeps its already-mounted
  * Builder as the only document owner. It never writes a Homepage URL envelope. */
-export async function reserveDirectDescribeIntake(input: {
+export async function reserveDirectDescribeIntakeInStorage(input: {
   storage: Pick<Storage, "getItem" | "setItem" | "removeItem">;
   snapshot: HomepageInputSnapshot;
   tripId: string;
@@ -951,7 +954,7 @@ function samePendingReceipt(left: PendingIntakeReceipt | null, right: PendingInt
 }
 
 /** Domain rejection is recoverable intake, not a network failure or canonical acknowledgement. */
-export async function retainPendingIntakeReview(input: {
+export async function retainPendingIntakeReviewInStorage(input: {
   storage: Pick<Storage, "getItem" | "setItem" | "removeItem">;
   receipt: PendingIntakeReceipt;
   fromHomepage: boolean;
@@ -992,7 +995,7 @@ export async function retainPendingIntakeReview(input: {
 
 /** Edit only the frozen intake this Builder actually received. Both keys are
  * changed under the submission lock, so a newer tab's receipt survives. */
-export async function discardPendingIntakeForEdit(input: {
+export async function discardPendingIntakeForEditInStorage(input: {
   storage: Pick<Storage, "getItem" | "setItem" | "removeItem">;
   receipt: PendingIntakeReceipt;
   fromHomepage: boolean;
@@ -1050,7 +1053,7 @@ export async function discardPendingIntakeForEdit(input: {
 
 /** A canonical recovery has been written; complete only its own receipt.
  * A replacement intake token must never be overwritten by old completion. */
-export async function acknowledgePendingIntakeReceipt(input: {
+export async function acknowledgePendingIntakeReceiptInStorage(input: {
   storage: Pick<Storage, "getItem" | "setItem" | "removeItem">;
   pending?: PendingIntakeReceipt;
   completed: HomepageHandoffReceipt;
@@ -1929,7 +1932,7 @@ export async function resolveHandoffIncrementally<T, R>(
     signal?: AbortSignal;
     concurrency?: number;
     timeoutMs?: number;
-    onOutcome: (outcome: HandoffOutcome<T, R>) => void;
+    onOutcome: (outcome: HandoffOutcome<T, R>) => void | Promise<void>;
   },
 ): Promise<HandoffOutcome<T, R>[]> {
   const concurrency = Math.max(1, Math.min(3, Math.floor(options.concurrency ?? 3)));
@@ -1964,7 +1967,7 @@ export async function resolveHandoffIncrementally<T, R>(
         if (onAbort) options.signal?.removeEventListener("abort", onAbort);
       }
       outcomes[index] = outcome;
-      if (!options.signal?.aborted) options.onOutcome(outcome);
+      if (!options.signal?.aborted) await options.onOutcome(outcome);
     }
   };
   await Promise.all(Array.from({ length: Math.min(concurrency, items.length) }, () => worker()));
@@ -2116,7 +2119,7 @@ export function removeHomepageDestination(entries: readonly HomepageDestinationE
   return entries.filter(entry => entry.id !== id);
 }
 
-export async function removeHomeTripDraftIfDurable(
+export async function removeHomeTripDraftIfDurableInStorage(
   storage: Pick<Storage, "getItem" | "removeItem">,
   draft: HomeTripDraft | null,
   trip: EasyTTrip,
@@ -2136,3 +2139,54 @@ export async function removeHomeTripDraftIfDurable(
     return false;
   }
 }
+
+/** Browser callers await physical/domain durability; pure injected adapters keep
+ * their existing codec/lock contract for isolated tests and preparation. */
+export async function persistEditableHomepageInput(input:Parameters<typeof persistEditableHomepageInputInStorage>[0]):ReturnType<typeof persistEditableHomepageInputInStorage> {
+  input=freezeHomepageTransition(input);
+  return withBrowserHomepageStorage<Awaited<ReturnType<typeof persistEditableHomepageInputInStorage>>>({storage:input.storage,ownerId:input.snapshot.ownerId,isCurrent:input.isCurrent,lock:input.lock,failure:{ok:false,reason:'storage'}},
+    (storage,lock)=>persistEditableHomepageInputInStorage({...input,storage,lock}));
+}
+export async function commitHomepageHandoff(input:HomepageHandoffCommitInput):Promise<HomepageHandoffCommitResult> {
+  input=freezeHomepageTransition(input);
+  const browser=isBrowserHomepageStorage(input.storage);
+  return withBrowserHomepageStorage<HomepageHandoffCommitResult>({storage:input.storage,ownerId:input.stored.snapshot.ownerId,isCurrent:input.isCurrent,lock:input.lock,
+    failure:{ok:false,reason:'storage'},stage:'homepage-intake',...(browser?{preserve:input.preserveAndBegin,clearCurrentAfter:true}:{})},
+    (storage,lock)=>commitHomepageHandoffInStorage({...input,storage,lock,preserveAndBegin:browser?()=>true:input.preserveAndBegin}));
+}
+export async function reservePendingDescribeHandoff(input:Parameters<typeof reservePendingDescribeHandoffInStorage>[0]):ReturnType<typeof reservePendingDescribeHandoffInStorage> {
+  input=freezeHomepageTransition(input);
+  const browser=isBrowserHomepageStorage(input.storage);
+  return withBrowserHomepageStorage<Awaited<ReturnType<typeof reservePendingDescribeHandoffInStorage>>>({storage:input.storage,ownerId:input.snapshot.ownerId,isCurrent:input.isCurrent,lock:input.lock,
+    failure:{ok:false,reason:'storage'},stage:'homepage-intake',...(browser?{preserve:input.preserveAndBegin,clearCurrentAfter:true}:{})},
+    (storage,lock)=>reservePendingDescribeHandoffInStorage({...input,storage,lock,preserveAndBegin:browser?()=>true:input.preserveAndBegin}));
+}
+export async function reserveDirectDescribeIntake(input:Parameters<typeof reserveDirectDescribeIntakeInStorage>[0]):ReturnType<typeof reserveDirectDescribeIntakeInStorage> {
+  input=freezeHomepageTransition(input);
+  return withBrowserHomepageStorage<Awaited<ReturnType<typeof reserveDirectDescribeIntakeInStorage>>>({storage:input.storage,ownerId:input.snapshot.ownerId,lock:input.lock,
+    failure:{ok:false,reason:'storage'},stage:'homepage-intake'},(storage,lock)=>reserveDirectDescribeIntakeInStorage({...input,storage,lock}));
+}
+export async function retainPendingIntakeReview(input:Parameters<typeof retainPendingIntakeReviewInStorage>[0]):ReturnType<typeof retainPendingIntakeReviewInStorage> {
+  input=freezeHomepageTransition(input);
+  return withBrowserHomepageStorage<Awaited<ReturnType<typeof retainPendingIntakeReviewInStorage>>>({storage:input.storage,ownerId:input.receipt.ownerId,isCurrent:input.isCurrent,lock:input.lock,
+    failure:{ok:false,reason:'storage'},stage:'homepage-intake'},(storage,lock)=>retainPendingIntakeReviewInStorage({...input,storage,lock}));
+}
+export async function discardPendingIntakeForEdit(input:Parameters<typeof discardPendingIntakeForEditInStorage>[0]):ReturnType<typeof discardPendingIntakeForEditInStorage> {
+  input=freezeHomepageTransition(input);
+  return withBrowserHomepageStorage<Awaited<ReturnType<typeof discardPendingIntakeForEditInStorage>>>({storage:input.storage,ownerId:input.receipt.ownerId,isCurrent:input.isCurrent,lock:input.lock,
+    failure:{ok:false,reason:'storage'},stage:'homepage-intake'},(storage,lock)=>discardPendingIntakeForEditInStorage({...input,storage,lock}));
+}
+export async function acknowledgePendingIntakeReceipt(input:Parameters<typeof acknowledgePendingIntakeReceiptInStorage>[0]):ReturnType<typeof acknowledgePendingIntakeReceiptInStorage> {
+  input=freezeHomepageTransition(input);
+  return withBrowserHomepageStorage<Awaited<ReturnType<typeof acknowledgePendingIntakeReceiptInStorage>>>({storage:input.storage,ownerId:input.completed.ownerId,isCurrent:input.isCurrent,lock:input.lock,
+    failure:{ok:false,reason:'storage'},stage:'intake-ack'},(storage,lock)=>acknowledgePendingIntakeReceiptInStorage({...input,storage,lock}));
+}
+export async function removeHomeTripDraftIfDurable(...args:Parameters<typeof removeHomeTripDraftIfDurableInStorage>):ReturnType<typeof removeHomeTripDraftIfDurableInStorage> {
+  const [storage,draftInput,tripInput,recoveryStored,resolutionPending,lock]=args;
+  if(!isBrowserHomepageStorage(storage))return removeHomeTripDraftIfDurableInStorage(...args);
+  const draft=structuredClone(draftInput),trip=structuredClone(tripInput);
+  if(!draft)return false;
+  return withBrowserHomepageStorage<boolean>({storage:storage as HomepageStorageForDurability,ownerId:draft.homepage?.ownerId??null,lock,failure:false,stage:'intake-ack'},
+    (staged,held)=>removeHomeTripDraftIfDurableInStorage(staged,draft,trip,recoveryStored,resolutionPending,held));
+}
+type HomepageStorageForDurability=Pick<Storage,'getItem'|'setItem'|'removeItem'>;

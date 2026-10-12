@@ -12,7 +12,7 @@ import { builderDocumentFingerprint } from '../lib/easyt/trip-builder-document-c
 import { preferredHandoffLocationChoice } from '../lib/easyt/home-trip-handoff.ts';
 import { authoredContentKey } from '../lib/easyt/trip-retained-authored-content.ts';
 
-test('actual intake callback accepts an unchanged sibling after another enrichment advances revision',()=>{
+test('actual intake callback accepts an unchanged sibling after another enrichment advances revision',async()=>{
   const capture=captureJourneyBrief('Tokyo and Kyoto');
   let trip=requireReadableTripDocument(canonicalRouteFixture()),revision=1;
   trip.brief.structuredBrief=capture.structuredBrief;
@@ -36,16 +36,16 @@ test('actual intake callback accepts an unchanged sibling after another enrichme
   const body=source.slice(source.indexOf('      const onOutcome ='),source.indexOf('      const runLookups ='));
   const script=ts.transpileModule(`${body}\nreturn onOutcome;`,{compilerOptions:{target:ts.ScriptTarget.ES2022}}).outputText;
   const outcome=new Function('scope',`with(scope){${script}}`)(scope);
-  outcome({item:mention,value:[{name:'Kyoto',country:'Japan',coordinates:[135.7681,35.0116]}],status:'resolved'},0);
+  await outcome({item:mention,value:[{name:'Kyoto',country:'Japan',coordinates:[135.7681,35.0116]}],status:'resolved'},0);
   assert.equal(accepted,1,'a sibling input revision must not invalidate an unchanged target');
   const acceptedTrip=structuredClone(trip);
-  const send=()=>{lookupSession.statuses.set(mention.mentionId,'pending');outcome({item:mention,value:[{name:'Kyoto',country:'Japan',coordinates:[135.7681,35.0116]}],status:'resolved'},0)};
-  trip.stops[1]!.longitude=(trip.stops[1]!.longitude??0)+1;send();assert.equal(accepted,1,'a manually replaced target must reject the old result');
-  trip=structuredClone(acceptedTrip);scope.activeBrowserOwnerIdRef.current='owner-b';send();assert.equal(accepted,1,'foreign owner result must be discarded');
-  scope.activeBrowserOwnerIdRef.current='owner-a';trip.id='other-trip';send();assert.equal(accepted,1,'foreign trip result must be discarded');
+  const send=async()=>{lookupSession.statuses.set(mention.mentionId,'pending');await outcome({item:mention,value:[{name:'Kyoto',country:'Japan',coordinates:[135.7681,35.0116]}],status:'resolved'},0)};
+  trip.stops[1]!.longitude=(trip.stops[1]!.longitude??0)+1;await send();assert.equal(accepted,1,'a manually replaced target must reject the old result');
+  trip=structuredClone(acceptedTrip);scope.activeBrowserOwnerIdRef.current='owner-b';await send();assert.equal(accepted,1,'foreign owner result must be discarded');
+  scope.activeBrowserOwnerIdRef.current='owner-a';trip.id='other-trip';await send();assert.equal(accepted,1,'foreign trip result must be discarded');
   trip=structuredClone(acceptedTrip);
   trip.brief.intent.route.destinations=trip.brief.intent.route.destinations.filter(item=>item.id!==mention.mentionId);
-  lookupSession.statuses.set(mention.mentionId,'pending');outcome({item:mention,value:[{name:'Kyoto',country:'Japan',coordinates:[135.7681,35.0116]}],status:'resolved'},0);
+  lookupSession.statuses.set(mention.mentionId,'pending');await outcome({item:mention,value:[{name:'Kyoto',country:'Japan',coordinates:[135.7681,35.0116]}],status:'resolved'},0);
   assert.equal(accepted,1,'removed intent must never resurrect');
 });
 
@@ -60,7 +60,7 @@ test("a fast occurrence publishes while an earlier occurrence remains unresolved
   const seen: string[] = [];
   const work = resolveHandoffIncrementally(["tokyo-first", "kyoto", "tokyo-last"],
     async (id) => id === "tokyo-first" ? first.promise : id,
-    { onOutcome: (outcome) => seen.push(outcome.item), timeoutMs: 1000 });
+    { onOutcome: (outcome) => { seen.push(outcome.item); }, timeoutMs: 1000 });
   await new Promise((resolve) => setTimeout(resolve, 0));
   assert.deepEqual(seen, ["kyoto", "tokyo-last"]);
   first.resolve("tokyo-first");
@@ -113,13 +113,13 @@ test("abort discards late outcomes and a fresh session can retry the same name",
   const late = deferred<string>();
   const seen: string[] = [];
   const work = resolveHandoffIncrementally(["tokyo-1"], async () => late.promise,
-    { signal: controller.signal, onOutcome: (outcome) => seen.push(outcome.item) });
+    { signal: controller.signal, onOutcome: (outcome) => { seen.push(outcome.item); } });
   controller.abort();
   late.resolve("old");
   await work;
   assert.equal(seen.length, 0);
   const retry = await resolveHandoffIncrementally(["tokyo-1"], async () => "new",
-    { onOutcome: (outcome) => seen.push(outcome.item) });
+    { onOutcome: (outcome) => { seen.push(outcome.item); } });
   assert.equal(retry[0]?.value, "new");
   assert.deepEqual(seen, ["tokyo-1"]);
 });

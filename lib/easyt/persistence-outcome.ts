@@ -27,6 +27,12 @@ export function recoveryPersistenceOutcome(result: RecoveryPersistenceEvidence):
 
 export type PersistenceStage = "homepage-input" | "homepage-intake" | "homepage-preservation" | "homepage-resume" | "device-recovery" | "intake-ack" | "builder-entry" | "builder-edit" | "account-ack";
 let sequence = 0;
+let preparationDepth=0;
+/** Staged codec writes are not physical setter/readback evidence. */
+export async function withPersistencePreparation<T>(work:()=>Promise<T>):Promise<T> {
+  preparationDepth++;
+  try{return await work();}finally{preparationDepth--;}
+}
 export type QaPersistenceStage = "hydration" | "intake" | "editable-input" | "recovery-preparation" | "native-write";
 export type QaPersistenceBoundary = "hydration-ready" | "hydration-complete" | "intake-restore" | "intake-guard" | "intake-projection" | "intake-storage-access" | "intake-frozen" | "intake-reservation" | "editable-prepare" | "editable-reserved" | "editable-write" | "editable-readback" | "recovery-candidate" | "recovery-storage-access" | "recovery-seed" | "recovery-scope" | "recovery-replacement" | "recovery-write" | "recovery-cleanup" | "recovery-readback";
 export type QaRecoveryCaller = "seed" | "autosave" | "preservation" | "other";
@@ -112,6 +118,7 @@ reportQaConsole({ kind: "ready", sequence: 0 });
 /** Diagnostic-only accepted/refused prerequisite, with a separate console counter. */
 export function reportQaPersistenceBoundary(stage: QaPersistenceStage, boundary: QaPersistenceBoundary, evidence: QaEvidence) {
   try {
+    if(preparationDepth)return;
     if (!qaEnabled()) return;
     const accepted = qaBoolean(evidence.accepted);
     reportQaConsole({ stage, boundary, phase: evidence.phase,

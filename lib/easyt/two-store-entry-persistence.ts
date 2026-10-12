@@ -1,7 +1,8 @@
 import type { EasyTBrowserStorage } from './storage.ts';
 import type { RecoveryDomainDriver } from './durable-recovery-domain.ts';
 import type { RecoveryEntryScope, RecoveryEntryWrite, RecoveryEntryEnvelope } from './durable-entry-protocol.ts';
-import { createRecoveryEntryStore } from './durable-entry-store.ts';
+import { createRecoveryEntryStore, prepareEntryWrite } from './durable-entry-store.ts';
+import {sameEntryHandle} from './durable-entry-protocol.ts';
 import { recoveryErrorReason } from './durable-recovery-error.ts';
 
 export type TwoStoreEntryRead = { kind: 'ready'; raw: string | null; envelope: RecoveryEntryEnvelope | null; legacyRaw: string | null }
@@ -42,14 +43,24 @@ export function createTwoStoreEntryPersistence(storage: EasyTBrowserStorage, dri
   }
   return {
     read,
-    async save(raw: string | null, options: { allowInitialOverflow?: boolean; writeId?: string } = {}): Promise<TwoStoreEntryWrite> {
+    async save(raw: string | null, options: { allowInitialOverflow?: boolean; writeId?: string; expected?:RecoveryEntryWrite } = {}): Promise<TwoStoreEntryWrite> {
       if (!valid(raw)) return protectedResult('payload');
       const writeId = options.writeId ?? globalThis.crypto.randomUUID(), allowInitialOverflow = options.allowInitialOverflow === true;
+      const expected=options.expected?structuredClone(options.expected):undefined;
       const state = await read(); if (state.kind !== 'ready') return state;
+      if(expected) {
+        const prepared=prepareEntryWrite(expected,scope.ownerId);
+        if(prepared.kind!=='prepared'||prepared.scope.kind!==scope.kind||prepared.scope.tripId!==scope.tripId
+          ||prepared.envelope.handle.writeId!==writeId||prepared.envelope.raw!==raw
+          ||!sameEntryHandle(expected.expectedHead,state.envelope?.handle??null)
+          ||prepared.envelope.legacyRaw!==(state.envelope?.legacyRaw??state.legacyRaw)
+          ||prepared.envelope.retainedPreviousRaw!==state.raw)return protectedResult('preparation-changed');
+      }
       if (!state.envelope) {
         // Clearing is a retained domain tombstone, never automatic native deletion.
         if (raw === null) return protectedResult('admission');
         try {
+          if(!active()||storage.getItem(key)!==state.legacyRaw)return protectedResult('preparation-changed');
           storage.setItem(key, raw);
           const after = await read();
           if (after.kind !== 'ready') return after;
@@ -71,9 +82,14 @@ export function createTwoStoreEntryPersistence(storage: EasyTBrowserStorage, dri
       if (!active() || after.envelope?.handle.writeId !== writeId || after.raw !== raw) return { kind: 'protected', reason: 'head-changed', committed: true };
       return { kind: 'verified', backend: 'indexeddb-entry' };
     },
-    async prepareForDomain(raw: string | null, writeId: string): Promise<RecoveryEntryWrite | TwoStoreEntryWrite> {
+    async prepareForDomain(raw: string | null, writeId: string, observed?:Extract<TwoStoreEntryRead,{kind:'ready'}>): Promise<RecoveryEntryWrite | TwoStoreEntryWrite> {
       if (!valid(raw)) return protectedResult('payload');
-      const state = await read(); return state.kind === 'ready' ? candidate(raw, writeId, state) : state;
+      const expected=observed?structuredClone(observed):undefined;
+      const state = await read();
+      if(state.kind!=='ready')return state;
+      if(expected&&(expected.raw!==state.raw||expected.legacyRaw!==state.legacyRaw
+        ||!sameEntryHandle(expected.envelope?.handle??null,state.envelope?.handle??null)))return protectedResult('preparation-changed');
+      return candidate(raw,writeId,state);
     },
   };
 }

@@ -1,14 +1,21 @@
 import type { EasyTTrip } from './trip.ts';
-import { loadCachedTripFromStorage, saveTripRecoveryToStorage, tripRecoveryStorageKey, currentTripStorageKey, EASYT_ACTIVE_TRIP_KEY,
-  type EasyTBrowserStorage, type TripRecoveryHandle, type TripRecoveryRecord, type TripRecoveryWriteResult } from './storage.ts';
-import { decodeRawRecovery, decodeRecoverySource, decodeDomainCurrent, sameDomainHandle, type NativeRecoveryPointer, type RecoveryDomainDriver, type RecoveryEnvelope, type RecoveryReadResult, type RecoveryHandle } from './durable-recovery-domain.ts';
+import { loadCachedTripFromStorage, saveTripRecoveryToStorage, acknowledgeTripBuildSaveInStorage, tripRecoveryStorageKey, tripCacheStorageKey, currentTripStorageKey, EASYT_ACTIVE_TRIP_KEY,
+  type TripBuildSaveAcknowledgement, type EasyTBrowserStorage, type TripRecoveryHandle, type TripRecoveryRecord, type TripRecoveryWriteResult } from './storage.ts';
+import { decodeRawRecovery, decodeRecoveryEnvelope, decodeRecoverySource, decodeDomainCurrent, sameDomainHandle, type NativeRecoveryPointer, type RecoveryDomainDriver, type RecoveryEnvelope, type RecoveryReadResult, type RecoveryHandle } from './durable-recovery-domain.ts';
+import { tripBuildDocumentsCanonicalEquivalent } from './trip-promotion.ts';
 import { createRecoveryDomainStore } from './durable-recovery-store.ts';
 import { resolveRecoveryProvenance } from './recovery-provenance.ts';
 import { prepareTripDocumentForWrite } from './trip-document.ts';
 import type { RecoveryEntryWrite } from './durable-entry-protocol.ts';
+import { prepareEntryWrite } from './durable-entry-store.ts';
+import { createTwoStoreEntryPersistence } from './two-store-entry-persistence.ts';
+import { builderInputDraftKey, readBuilderInputDraft } from './trip-builder-input-draft.ts';
+import { requireReadableTripDocument } from './trip-document.ts';
+import {createDurableHomepagePersistence,decodeHomepageBundle} from './homepage-persistence.ts';
+import type {PreparedEntryWrite} from './durable-entry-store.ts';
 
 export type TwoStoreRead = { kind: 'found'; trip: EasyTTrip; recovery: TripRecoveryRecord | null; domain: Extract<RecoveryReadResult, { kind: 'ready' }> | null }
-  | { kind: 'missing' } | { kind: 'protected'; reason: string } | { kind: 'unavailable'; reason: string };
+  | { kind: 'missing'; currentCleared?: true } | { kind: 'protected'; reason: string } | { kind: 'unavailable'; reason: string };
 export type TwoStoreList = { kind: 'ready'; recoveries: TripRecoveryRecord[] } | { kind: 'protected' | 'unavailable'; reason: string };
 export type TwoStoreContext = { ownerId: string | null; isCurrent: () => boolean; overflowEnabled: boolean; accountOverflowQualified: boolean };
 export type TwoStoreSaveOptions = { replace?: TripRecoveryHandle; state?: TripRecoveryRecord['state']; writeId?: string; now?: string;
@@ -70,13 +77,25 @@ export function createTwoStoreTripPersistence(storage: EasyTBrowserStorage, driv
       try {
         const native = nativePointer();
         if (!active()) return { kind: 'protected', reason: 'operation-changed' };
+        if(current.current?.backend==='cleared') {
+          if(native.raw!==null&&native.raw!==current.current.nativePointerRaw)return {kind:'protected',reason:'current-divergence'};
+          const after=await domain.current();
+          return active()&&after.kind==='ready'&&JSON.stringify(after.current)===JSON.stringify(current.current)&&nativePointer().raw===native.raw
+            ?{kind:'missing',currentCleared:true}:{kind:'protected',reason:'current-changed'};
+        }
         if (current.current?.backend === 'local-storage') {
           const pointer = current.current;
           if (native.raw !== pointer.nativePointerRaw || native.tripId !== pointer.tripId) return { kind: 'protected', reason: 'current-divergence' };
           const state = await inspect(pointer.tripId); if (state.kind !== 'resolved') return state;
-          if (state.domain.envelope || !state.resolved.source || await digest(state.resolved.source.raw) !== pointer.recoveryDigest) return { kind: 'protected', reason: 'current-divergence' };
-          const record = decodeRecoverySource(state.resolved.source, scope(pointer.tripId));
-          if (record.kind !== 'readable' || record.value.writeId !== pointer.writeId) return { kind: 'protected', reason: 'current-divergence' };
+          if (state.domain.envelope) return { kind: 'protected', reason: 'current-divergence' };
+          if (pointer.source === 'recovery') {
+            if (!state.resolved.source || await digest(state.resolved.source.raw) !== pointer.documentDigest) return { kind: 'protected', reason: 'current-divergence' };
+            const record = decodeRecoverySource(state.resolved.source, scope(pointer.tripId));
+            if (record.kind !== 'readable' || record.value.writeId !== pointer.writeId) return { kind: 'protected', reason: 'current-divergence' };
+          } else {
+            const raw = storage.getItem(tripCacheStorageKey(ownerId,pointer.tripId));
+            if (state.resolved.source || raw === null || await digest(raw) !== pointer.documentDigest) return { kind: 'protected', reason: 'current-divergence' };
+          }
         }
         let result: TwoStoreRead;
         if (current.envelope) {
@@ -89,6 +108,19 @@ export function createTwoStoreTripPersistence(storage: EasyTBrowserStorage, driv
         if (!active() || after.kind !== 'ready' || nativePointer().raw !== native.raw || JSON.stringify(after.current ?? after.envelope?.handle ?? null) !== JSON.stringify(current.current ?? current.envelope?.handle ?? null)) return { kind: 'protected', reason: 'current-changed' };
         return result;
       } catch { return { kind: 'protected', reason: 'current-pointer' }; }
+    },
+    async clearCurrent():Promise<boolean> {
+      try {
+        const listed=await this.list();if(listed.kind!=='ready'||!active())return false;
+        const expected=await driver.readCurrent(ownerId),decoded=decodeDomainCurrent(expected,ownerId);
+        if(decoded.kind!=='readable'||!active())return false;
+        const native=nativePointer(),raw=JSON.stringify({version:1,backend:'cleared',ownerId,nativePointerRaw:native.raw});
+        const result=await driver.run(scope('__navigation__'),null,'readwrite',state=>({value:active()&&state.currentRaw===expected,
+          ...(active()&&state.currentRaw===expected?{currentRaw:raw}:{})}));
+        if(!result||await driver.readCurrent(ownerId)!==raw||!active()||nativePointer().raw!==native.raw)return false;
+        // This is deliberate navigation acknowledgement, not recovery deletion.
+        return true;
+      }catch{return false;}
     },
     async list(): Promise<TwoStoreList> {
       const listed = await domain.list();
@@ -106,6 +138,64 @@ export function createTwoStoreTripPersistence(storage: EasyTBrowserStorage, driv
         }
         return active() ? { kind: 'ready', recoveries } : { kind: 'protected', reason: 'operation-changed' };
       } catch { return { kind: 'unavailable', reason: 'native-read-unknown' }; }
+    },
+    async cached(tripId: string): Promise<TwoStoreRead> {
+      const state = await inspect(tripId); if(state.kind !== 'resolved') return state;
+      if(state.domain.acknowledgement) return {kind:'found',trip:prepareTripDocumentForWrite(JSON.parse(state.domain.acknowledgement.canonicalRaw)),recovery:null,domain:state.domain};
+      try { const trip=loadCachedTripFromStorage(storage,tripId,ownerId);return trip?{kind:'found',trip,recovery:null,domain:null}:{kind:'missing'}; }
+      catch { return {kind:'protected',reason:'cache-document'}; }
+    },
+    /** Every updated low-level native mutation must pass this readiness barrier. */
+    async native<T>(tripId: string, operation: () => T): Promise<{kind:'done';value:T}|{kind:'protected'|'unavailable';reason:string}> {
+      const before=await inspect(tripId);if(before.kind!=='resolved')return before;
+      if(before.domain.envelope)return {kind:'protected',reason:'domain-operation-required'};
+      if(!active())return {kind:'protected',reason:'operation-changed'};
+      const value=operation(),after=await inspect(tripId);
+      if(after.kind!=='resolved')return after;
+      return !active()||after.domain.envelope?{kind:'protected',reason:'operation-changed'}:{kind:'done',value};
+    },
+    async acknowledge(reviewedInput:EasyTTrip,canonicalInput:EasyTTrip,submittedInput:TripRecoveryHandle):Promise<TripBuildSaveAcknowledgement> {
+      let reviewed:EasyTTrip,canonical:EasyTTrip,submitted:TripRecoveryHandle;
+      try { reviewed=prepareTripDocumentForWrite(structuredClone(reviewedInput));canonical=prepareTripDocumentForWrite(structuredClone(canonicalInput));submitted={...submittedInput}; }
+      catch { return {outcome:'invalid-canonical',remainingRecovery:null,accountAcknowledged:false}; }
+      if(submitted.ownerId!==ownerId||canonical.ownerId!==ownerId||canonical.id!==submitted.tripId||!tripBuildDocumentsCanonicalEquivalent(reviewed,canonical,ownerId))
+        return {outcome:'invalid-canonical',remainingRecovery:null,accountAcknowledged:false};
+      const observed=await this.read(submitted.tripId);
+      const remaining=observed.kind==='found'?observed.recovery:null;
+      if(!active())return {outcome:'storage-failed',remainingRecovery:remaining,accountAcknowledged:true,cacheStored:false,deviceOutcome:'unknown'};
+      if(submitted.backend==='indexeddb') {
+        let rawRecovery:string;
+        try {
+          const generation=await driver.run(scope(submitted.tripId),submitted.writeId,'readonly',state=>({value:decodeRecoveryEnvelope(state.generationRaw,scope(submitted.tripId))}));
+          if(generation.kind!=='readable'||!sameDomainHandle(generation.value.handle,domainHandle(submitted))
+            ||!tripBuildDocumentsCanonicalEquivalent(JSON.parse(generation.value.rawRecovery).trip,reviewed,ownerId))return {outcome:'invalid-canonical',remainingRecovery:remaining,accountAcknowledged:false};
+          rawRecovery=generation.value.rawRecovery;
+        } catch { return {outcome:'storage-failed',remainingRecovery:remaining,accountAcknowledged:true,cacheStored:false,deviceOutcome:'unknown'}; }
+        const ack=await domain.recordTrustedAccountAck({handle:domainHandle(submitted),rawRecovery,canonicalRaw:JSON.stringify(canonical)});
+        const after=await this.read(submitted.tripId),afterRecovery=after.kind==='found'?after.recovery:remaining;
+        if(ack.kind!=='journaled'||after.kind==='protected'||after.kind==='unavailable')return {outcome:'storage-failed',remainingRecovery:afterRecovery,accountAcknowledged:true,cacheStored:false,deviceOutcome:after.kind==='protected'?'protected-conflict':'unknown'};
+        return {outcome:ack.headMatches?'acknowledged':'device-newer',remainingRecovery:afterRecovery,accountAcknowledged:true,cacheStored:false};
+      }
+      if(observed.kind==='protected'||observed.kind==='unavailable'||observed.kind==='found'&&observed.domain?.envelope)
+        return {outcome:'storage-failed',remainingRecovery:remaining,accountAcknowledged:true,cacheStored:false,deviceOutcome:observed.kind==='protected'?'protected-conflict':'unknown'};
+      let beforeCurrent:unknown;
+      try { beforeCurrent=await driver.readCurrent(ownerId); } catch { return {outcome:'storage-failed',remainingRecovery:remaining,accountAcknowledged:true,cacheStored:false,deviceOutcome:'unknown'}; }
+      const guarded=await this.native(submitted.tripId,()=>acknowledgeTripBuildSaveInStorage(storage,reviewed,canonical,submitted));
+      if(guarded.kind!=='done')return {outcome:'storage-failed',remainingRecovery:remaining,accountAcknowledged:true,cacheStored:false,deviceOutcome:guarded.kind==='protected'?'protected-conflict':'unknown'};
+      const result=guarded.value;
+      if(result.outcome==='acknowledged') {
+        try {
+          const native=nativePointer(),rawCache=storage.getItem(tripCacheStorageKey(ownerId,submitted.tripId));
+          if(native.tripId===submitted.tripId&&native.raw&&rawCache!==null) {
+            const pointer:NativeRecoveryPointer={version:1,backend:'local-storage',source:'cache',ownerId,tripId:submitted.tripId,writeId:null,nativePointerRaw:native.raw,documentDigest:await digest(rawCache)};
+            const pointerRaw=JSON.stringify(pointer);
+            const updated=await driver.run(scope(submitted.tripId),null,'readwrite',state=>({value:active()&&state.currentRaw===beforeCurrent,
+              ...(active()&&state.currentRaw===beforeCurrent?{currentRaw:pointerRaw}:{})}));
+            if(!updated||await driver.readCurrent(ownerId)!==pointerRaw)return {...result,accountAcknowledged:true,cacheStored:true,deviceOutcome:'pointer-incomplete'};
+          }
+        } catch { return {...result,accountAcknowledged:true,cacheStored:true,deviceOutcome:'pointer-incomplete'}; }
+      }
+      return {...result,accountAcknowledged:result.outcome!=='invalid-canonical',cacheStored:result.outcome!=='storage-failed'};
     },
     async read(tripId: string): Promise<TwoStoreRead> {
       const state = await inspect(tripId); if (state.kind !== 'resolved') return state;
@@ -134,6 +224,34 @@ export function createTwoStoreTripPersistence(storage: EasyTBrowserStorage, driv
       catch { return refused(tripId, writeId, true, 'scope-mismatch'); }
       if (!active() || trip.ownerId !== null && trip.ownerId !== ownerId || ownerId === null && trip.ownerId !== null) return refused(tripId, writeId, true, 'scope-mismatch');
       const state = await inspect(tripId); if (state.kind !== 'resolved') return refused(tripId, writeId, state.kind === 'protected');
+      const requiredEntries:PreparedEntryWrite[]=[];
+      for(const input of options.entries??[]) {
+        const prepared=prepareEntryWrite(input,ownerId);
+        if(prepared.kind!=='prepared'||prepared.envelope.raw===null)return refused(tripId,writeId,true,'scope-mismatch');
+        if(prepared.scope.kind==='builder-input') {
+          const read=readBuilderInputDraft({getItem:()=>prepared.envelope.raw},requireReadableTripDocument(trip),ownerId),metadata=options.entry?.input;
+          if(prepared.scope.tripId!==tripId||read.kind!=='readable'||!metadata||metadata.ownerId!==ownerId||metadata.tripId!==tripId
+            ||metadata.raw!==prepared.envelope.raw||metadata.inputRevision!==read.draft.inputRevision)return refused(tripId,writeId,true,'scope-mismatch');
+        }else {
+          const payload=decodeHomepageBundle(prepared.envelope.raw,ownerId),receipt=payload?.storedInput?.receipt,metadata=options.entry?.receipt;
+          if(receipt?.version!==1||receipt.tripId!==tripId||!metadata||metadata.ownerId!==ownerId||metadata.tripId!==tripId
+            ||metadata.raw!==prepared.envelope.raw||metadata.operationId!==receipt.handoffId)return refused(tripId,writeId,true,'scope-mismatch');
+        }
+        requiredEntries.push(prepared);
+      }
+      const verifyEntries=async()=>{
+        for(const prepared of requiredEntries) {
+          if(prepared.scope.kind==='homepage') {
+            const state=await createDurableHomepagePersistence(storage,driver,{ownerId,isCurrent:active,overflowEnabled:context.overflowEnabled,accountOverflowQualified:context.accountOverflowQualified}).read();
+            if(state.kind!=='ready'||state.raw!==prepared.envelope.raw)return false;
+          }else {
+            const key=builderInputDraftKey(ownerId,tripId),state=await createTwoStoreEntryPersistence(storage,driver,{scope:prepared.scope,key,isCurrent:active,
+              overflowEnabled:context.overflowEnabled,accountOverflowQualified:context.accountOverflowQualified,validate:raw=>raw===null||readBuilderInputDraft({getItem:()=>raw},requireReadableTripDocument(trip),ownerId).kind==='readable'}).read();
+            if(state.kind!=='ready'||state.raw!==prepared.envelope.raw)return false;
+          }
+        }
+        return active();
+      };
       const existing = state.domain.envelope;
       let nativePointerRaw: string | null;
       try { nativePointerRaw = nativePointer().raw; } catch { return refused(tripId, writeId, true); }
@@ -144,8 +262,36 @@ export function createTwoStoreTripPersistence(storage: EasyTBrowserStorage, driv
       let nativeResult: TripRecoveryWriteResult | null = null;
       if (!existing) {
         if (options.replace?.backend === 'indexeddb') return refused(tripId, writeId, true);
-        nativeResult = saveTripRecoveryToStorage(storage, trip, { ownerId, state: options.state, writeId, now: options.now, replace: options.replace });
+        const paired = Boolean(options.entries?.length);
+        nativeResult = saveTripRecoveryToStorage(storage, trip, { ownerId, state: options.state, writeId, now: options.now, replace: options.replace, deferRetirement:paired });
         if (nativeResult.stored) {
+          if(paired) {
+            // Native keys do not form an atomic transaction. Keep the prior
+            // recovery physically intact until the required input is verified.
+            const targetKey=tripRecoveryStorageKey(ownerId,tripId,nativeResult.handle.writeId),targetRaw=storage.getItem(targetKey);
+            const expected=[...state.legacy];
+            if(targetRaw!==null&&!expected.some(source=>source.key===targetKey))expected.push({key:targetKey,raw:targetRaw});
+            const stable=()=>JSON.stringify(nativeSources(tripId))===JSON.stringify([...expected].sort((a,b)=>a.key.localeCompare(b.key)));
+            const ready=await domain.read(tripId);
+            if(!active()||ready.kind!=='ready'||ready.envelope||!stable())return {...nativeResult,stored:false,blockedByExistingRecovery:true,failureReason:'protected-recovery',outcome:'protected-conflict'};
+            for(const prepared of requiredEntries) {
+              const key=builderInputDraftKey(ownerId,tripId),canonical=requireReadableTripDocument(trip);
+              const written=prepared.scope.kind==='homepage'
+                ?await createDurableHomepagePersistence(storage,driver,{ownerId,isCurrent:active,overflowEnabled:context.overflowEnabled,accountOverflowQualified:context.accountOverflowQualified})
+                  .write(prepared.envelope.raw!,{allowInitialOverflow:options.newTripOrClone===true,writeId:prepared.envelope.handle.writeId,expected:options.entries!.find(value=>value.raw===prepared.raw)})
+                :await createTwoStoreEntryPersistence(storage,driver,{scope:prepared.scope,key,isCurrent:active,overflowEnabled:context.overflowEnabled,accountOverflowQualified:context.accountOverflowQualified,
+                  validate:raw=>raw===null||readBuilderInputDraft({getItem:()=>raw},canonical,ownerId).kind==='readable'})
+                  .save(prepared.envelope.raw!,{allowInitialOverflow:options.newTripOrClone===true,writeId:prepared.envelope.handle.writeId,expected:options.entries!.find(value=>value.raw===prepared.raw)});
+              if(written.kind!=='verified')return {...nativeResult,stored:false,failureReason:written.kind==='protected'?'protected-recovery':'receipt-incomplete',blockedByExistingRecovery:written.kind==='protected',outcome:written.kind==='protected'?'protected-conflict':'receipt-incomplete'};
+            }
+            const afterInputs=await domain.read(tripId);
+            if(!active()||afterInputs.kind!=='ready'||afterInputs.envelope||!stable()||!await verifyEntries())return {...nativeResult,stored:false,blockedByExistingRecovery:true,failureReason:'protected-recovery',outcome:'protected-conflict'};
+            const prior=state.resolved.source;
+            if(prior&&prior.key!==EASYT_ACTIVE_TRIP_KEY&&prior.key!==targetKey&&options.replace) {
+              try { if(storage.getItem(prior.key)!==prior.raw)return {...nativeResult,stored:false,blockedByExistingRecovery:true,failureReason:'protected-recovery',outcome:'protected-conflict'};storage.removeItem(prior.key); }
+              catch {return {...nativeResult,stored:false,blockedByExistingRecovery:true,failureReason:'protected-recovery',outcome:'protected-conflict'};}
+            }
+          }
           // A cross-store race after native success is protected, never accepted by recency.
           const after = await inspect(tripId);
           if (!active() || after.kind !== 'resolved' || after.domain.envelope) return { ...nativeResult, stored: false, blockedByExistingRecovery: true, failureReason: 'protected-recovery', outcome: 'protected-conflict' };
@@ -155,7 +301,7 @@ export function createTwoStoreTripPersistence(storage: EasyTBrowserStorage, driv
           try {
             const pointer = nativePointer(), source = after.resolved.source;
             if (pointer.tripId !== tripId || !pointer.raw || !source) return { ...nativeResult, stored:false, failureReason:'pointer-incomplete', outcome:'pointer-incomplete' };
-            const candidate: NativeRecoveryPointer = {version:1,backend:'local-storage',ownerId,tripId,writeId,nativePointerRaw:pointer.raw,recoveryDigest:await digest(source.raw)};
+            const candidate: NativeRecoveryPointer = {version:1,backend:'local-storage',source:'recovery',ownerId,tripId,writeId:nativeResult.handle.writeId,nativePointerRaw:pointer.raw,documentDigest:await digest(source.raw)};
             const raw = JSON.stringify(candidate);
             const moved = await driver.run(scope(tripId),null,'readwrite', observation => !active() || observation.currentRaw !== expectedCurrentRaw
               ? {value:false} : {value:true,currentRaw:raw});
@@ -164,7 +310,8 @@ export function createTwoStoreTripPersistence(storage: EasyTBrowserStorage, driv
             if (!active() || !verified || nativePointer().raw !== pointer.raw || final.kind !== 'resolved' || final.domain.envelope || final.resolved.source?.raw !== source.raw)
               return {...nativeResult,stored:false,pointerAcknowledged:false,failureReason:'pointer-incomplete',outcome:'pointer-incomplete'};
           } catch { return {...nativeResult,stored:false,pointerAcknowledged:false,failureReason:'pointer-incomplete',outcome:'pointer-incomplete'}; }
-          return nativeResult;
+          if(!await verifyEntries())return {...nativeResult,stored:false,blockedByExistingRecovery:true,failureReason:'protected-recovery',outcome:'protected-conflict'};
+          return {...nativeResult,...(requiredEntries.some(value=>value.scope.kind==='homepage')?{receiptAcknowledged:true}:{})};
         }
         if (nativeResult.nativeFailure !== 'quota' || !nativeResult.writeAttempted || !options.newTripOrClone) return nativeResult;
         try { if (JSON.stringify(nativeSources(tripId)) !== JSON.stringify(state.legacy)) return refused(tripId, writeId, true); }
@@ -184,12 +331,13 @@ export function createTwoStoreTripPersistence(storage: EasyTBrowserStorage, driv
       const committed = await domain.commit({ raw: JSON.stringify(candidate), expectedHead: candidate.parent,
         admission: existing ? 'existing-domain' : 'native-setter-quota', entries: options.entries });
       if (committed.kind !== 'verified') return { ...refused(tripId, writeId, committed.kind === 'protected-conflict'),
-        handle: { ownerId, tripId, writeId, backend: 'indexeddb' }, recoveryDurable: committed.commitStatus === 'committed',
-        ...(committed.kind === 'failure' && ['quota', 'security', 'unavailable'].includes(committed.reason) ? { nativeFailure: committed.reason as 'quota' | 'security' | 'unavailable', failureReason: 'device-unavailable' as const, outcome: 'native-write-failed' as const } : {}) };
+        handle: { ownerId, tripId, writeId, backend: 'indexeddb' }, recoveryCommitted: committed.commitStatus === 'committed',recoveryDurable:false,writeAttempted:true,
+        ...(committed.commitStatus==='committed'?{readbackConfirmed:false,failureBoundary:'recovery-readback' as const}:{failureBoundary:'recovery-write' as const}) };
       const after = await inspect(tripId);
-      if (!active() || after.kind !== 'resolved' || !after.domain.envelope || !sameDomainHandle(after.domain.envelope.handle, handle)) return { ...refused(tripId, writeId, true), recoveryDurable: true };
+      if (!active() || after.kind !== 'resolved' || !after.domain.envelope || !sameDomainHandle(after.domain.envelope.handle, handle)||!await verifyEntries()) return { ...refused(tripId, writeId, true), recoveryDurable: true };
       return { stored: true, handle: { ownerId, tripId, writeId, backend: 'indexeddb' }, blockedByExistingRecovery: false,
-        pointerAcknowledged: true, recoveryDurable: true, readbackConfirmed: true, writeAttempted: true, outcome: 'device-confirmed' };
+        pointerAcknowledged: true, recoveryDurable: true, readbackConfirmed: true, writeAttempted: true, outcome: 'device-confirmed',
+        ...(requiredEntries.some(value=>value.scope.kind==='homepage')?{receiptAcknowledged:true}:{}) };
     },
   };
 }

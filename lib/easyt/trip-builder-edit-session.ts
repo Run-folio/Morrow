@@ -426,3 +426,6 @@ export function createBuilderEditSession(options: BuilderEditSessionOptions) {
   };
 }
 export type BuilderEditSession = ReturnType<typeof createBuilderEditSession>;
+
+// Pure value helpers shared by the awaited continuation; synchronous behavior is unchanged.
+export { freeze as freezeBuilderSessionValue, exact as builderSessionValuesEqual };

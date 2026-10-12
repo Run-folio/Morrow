@@ -35,7 +35,8 @@ test("rename persistence reuses the guest recovery and authenticated CAS owner",
   assert.match(shell, /TripShellCanonicalMutationProvider[\s\S]*useTripMutationPersistence\(trip, true\)/);
   assert.match(shell, /TripShellIdentityAndActions[\s\S]*useTripShellMutation\(\)/);
   assert.match(persistence, /saveTripRecovery\(next/);
-  assert.match(persistence, /queueRef\.current!\.enqueue\(next, recovery\.handle\)/);
+  assert.match(persistence, /enqueueAccountSave\(next, recovery\.handle, scope, current\)/);
+  assert.match(persistence, /queueRef\.current!\.enqueue\(outgoing, recovery, authoredFrom\)/);
   assert.match(storage, /customTitle: brief\.customTitle/);
 });
 

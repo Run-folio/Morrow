@@ -54,6 +54,7 @@ export function createRecoveryDomainStore(driver: RecoveryDomainDriver, context:
         const raw = await driver.readCurrent(ownerId), head = decodeDomainCurrent(raw, ownerId);
         if (head.kind !== 'readable') return decodeFailure(head, 'not-started');
         if (!head.value) return active() ? { kind: 'ready', envelope: null, acknowledgement: null } : conflict('operation-changed');
+        if (head.value.backend === 'cleared') return active() ? {kind:'ready',envelope:null,acknowledgement:null,current:head.value}:conflict('operation-changed');
         if (head.value.backend === 'local-storage') return active() ? { kind: 'ready', envelope: null, acknowledgement: null, current: head.value } : conflict('operation-changed');
         const read = await this.read(head.value.tripId); if (read.kind !== 'ready') return read;
         if (!read.envelope || !sameDomainHandle(read.envelope.handle, head.value) || await driver.readCurrent(ownerId) !== raw) return conflict('head-changed');

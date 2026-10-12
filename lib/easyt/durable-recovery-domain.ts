@@ -7,8 +7,9 @@ import type { RecoveryEntryRequest, RecoveryEntryState, RecoveryEntryMutation, R
 /** Recovery-domain protocol. No implicit browser access. */
 export type RecoveryScope = { ownerId: string | null; tripId: string };
 export type RecoveryHandle = RecoveryScope & { version: 1; backend: 'indexeddb'; writeId: string };
-export type NativeRecoveryPointer = RecoveryScope & { version: 1; backend: 'local-storage'; writeId: string; nativePointerRaw: string; recoveryDigest: string };
-export type RecoveryCurrent = RecoveryHandle | NativeRecoveryPointer;
+export type NativeRecoveryPointer = RecoveryScope & { version: 1; backend: 'local-storage'; source: 'recovery' | 'cache'; writeId: string | null; nativePointerRaw: string; documentDigest: string };
+export type ClearedRecoveryPointer = {version:1;backend:'cleared';ownerId:string|null;nativePointerRaw:string|null};
+export type RecoveryCurrent = RecoveryHandle | NativeRecoveryPointer | ClearedRecoveryPointer;
 export type LegacyRecoverySource = { key: string; raw: string };
 export type RecoveryEnvelope = {
   version: 1;
@@ -82,12 +83,19 @@ export function decodeDomainCurrent(raw: unknown, ownerId: string | null): Domai
   if (raw === undefined) return { kind: 'readable', value: null };
   try {
     const value: unknown = typeof raw === 'string' ? JSON.parse(raw) : null;
-    if (!record(value) || typeof value.tripId !== 'string') return { kind: 'corrupt' };
+    if (!record(value)) return { kind: 'corrupt' };
+    if(value.backend==='cleared') {
+      if(value.version!==1)return {kind:'schema'};
+      if(!keys(value,['version','backend','ownerId','nativePointerRaw'])||!owner(value.ownerId)||!(value.nativePointerRaw===null||typeof value.nativePointerRaw==='string'))return {kind:'corrupt'};
+      return value.ownerId===ownerId?{kind:'readable',value:value as ClearedRecoveryPointer}:{kind:'scope'};
+    }
+    if(typeof value.tripId!=='string')return {kind:'corrupt'};
     if (value.backend === 'local-storage') {
       if (value.version !== 1) return { kind: 'schema' };
-      if (!isRecoveryScope(value) || !keys(value, ['version','backend','ownerId','tripId','writeId','nativePointerRaw','recoveryDigest'])
-        || !text(value.writeId) || typeof value.nativePointerRaw !== 'string' || typeof value.recoveryDigest !== 'string'
-        || !/^[a-f0-9]{64}$/.test(value.recoveryDigest)) return { kind: 'corrupt' };
+      if (!isRecoveryScope(value) || !keys(value, ['version','backend','source','ownerId','tripId','writeId','nativePointerRaw','documentDigest'])
+        || !(value.source === 'recovery' && text(value.writeId) || value.source === 'cache' && value.writeId === null)
+        || typeof value.nativePointerRaw !== 'string' || typeof value.documentDigest !== 'string'
+        || !/^[a-f0-9]{64}$/.test(value.documentDigest)) return { kind: 'corrupt' };
       return value.ownerId === ownerId ? { kind: 'readable', value: value as NativeRecoveryPointer } : { kind: 'scope' };
     }
     return decodeDomainHead(raw, { ownerId, tripId: value.tripId });

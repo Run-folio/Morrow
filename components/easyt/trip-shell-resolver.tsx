@@ -3,6 +3,8 @@
 import { notFound, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import {
+  acknowledgeTripBuildSave,
+  BrowserRecoveryReadError,
   cacheCanonicalTrip,
   claimGuestTripRecoveryForOwner,
   EasyTTripAuthError,
@@ -29,6 +31,7 @@ const deviceNoticesShown = new Set<string>();
 type Resolution =
   | { status: "loading"; identity: string }
   | { status: "found"; identity: string; trip: EasyTTrip }
+  | { status: "blocked"; identity: string; kind: "protected" | "unavailable" }
   | { status: "missing"; identity: string };
 
 /** Client boundary for an exact local trip, with optional signed-in promotion. */
@@ -48,6 +51,7 @@ export default function TripShellResolver({
   const currentResolutionIdentityRef = useRef(resolutionIdentity);
   currentResolutionIdentityRef.current = resolutionIdentity;
   const requestGenerationRef = useRef(0);
+  const mountedRef = useRef(true);
   const [resolution, setResolution] = useState<Resolution>({ status: "loading", identity: resolutionIdentity });
   const [deviceNoticeTripId, setDeviceNoticeTripId] = useState<string | null>(null);
   const [syncIssue, setSyncIssue] = useState<"failed" | "conflict" | "auth" | null>(null);
@@ -58,11 +62,32 @@ export default function TripShellResolver({
   const resolveAndPromote = useCallback(async () => {
     const requestIdentity = resolutionIdentity;
     const requestGeneration = ++requestGenerationRef.current;
-    const responseIsCurrent = () => currentResolutionIdentityRef.current === requestIdentity
+    const responseIsCurrent = () => mountedRef.current && currentResolutionIdentityRef.current === requestIdentity
       && requestGenerationRef.current === requestGeneration;
     setSyncing(false);
-    if (ownerId && searchParams.get("saved") === "1") claimGuestTripRecoveryForOwner(tripId, ownerId);
-    const recovery = loadTripRecovery(tripId, ownerId ?? null);
+    setResolution((current) => current.identity === requestIdentity && current.status === "found"
+      ? current : { status: "loading", identity: requestIdentity });
+    setSyncIssue(null);
+    setSyncComplete(false);
+    setShowingCanonicalConflict(false);
+    let recovery;
+    try {
+      if (ownerId && searchParams.get("saved") === "1") {
+        const claimed = await claimGuestTripRecoveryForOwner(tripId, ownerId);
+        if (!responseIsCurrent()) return;
+        if (claimed && !claimed.stored) {
+          setResolution({ status: "blocked", identity: requestIdentity,
+            kind: claimed.blockedByExistingRecovery ? "protected" : "unavailable" });
+          return;
+        }
+      }
+      recovery = await loadTripRecovery(tripId, ownerId ?? null);
+    } catch (error) {
+      if (responseIsCurrent()) setResolution({ status: "blocked", identity: requestIdentity,
+        kind: error instanceof BrowserRecoveryReadError ? error.kind : "unavailable" });
+      return;
+    }
+    if (!responseIsCurrent()) return;
     if (!recovery) {
       setResolution({ status: "missing", identity: requestIdentity });
       return;
@@ -70,9 +95,6 @@ export default function TripShellResolver({
     const localTrip = recovery.trip;
 
     setResolution({ status: "found", identity: requestIdentity, trip: localTrip });
-    setSyncIssue(null);
-    setSyncComplete(false);
-    setShowingCanonicalConflict(false);
     if (!ownerId) return;
     const scopedLocalTrip = tripForRecoveryScope(localTrip, recovery);
     if (!scopedLocalTrip) {
@@ -84,25 +106,27 @@ export default function TripShellResolver({
       const result = localTrip.ownerId
         ? { trip: await saveTripToEasyT(scopedLocalTrip), outcome: "already-canonical" as const }
         : { trip: await saveTripRecoveryToEasyT(localTrip, recovery), outcome: "promoted" as const };
-      const cached = cacheCanonicalTrip(result.trip, recovery);
-      const remainingRecovery = loadTripRecovery(tripId, ownerId);
+      if (!responseIsCurrent()) return;
+      const acknowledged = await acknowledgeTripBuildSave(scopedLocalTrip, result.trip, recovery, { isCurrent: responseIsCurrent });
       if (!responseIsCurrent()) return;
       setResolution({ status: "found", identity: requestIdentity, trip: result.trip });
-      setShowingCanonicalConflict(Boolean(remainingRecovery));
-      setSyncComplete(cached.stored && !remainingRecovery);
-      if (result.outcome === "promoted") {
+      setShowingCanonicalConflict(Boolean(acknowledged.remainingRecovery) || acknowledged.deviceOutcome === "protected-conflict"
+        || acknowledged.deviceOutcome === "unknown" || acknowledged.deviceOutcome === "pointer-incomplete");
+      setSyncComplete(Boolean(acknowledged.accountAcknowledged));
+      if (!acknowledged.accountAcknowledged) setSyncIssue("failed");
+      if (result.outcome === "promoted" && acknowledged.accountAcknowledged) {
         trackEvent("trip_saved", { trip_source: "builder", trip_id: result.trip.id, save_state: "cloud", stop_count: result.trip.stops.length, is_authenticated: true });
       }
     } catch (error) {
       if (error instanceof EasyTTripAuthError) {
-        markTripRecoveryState(recovery, "auth");
+        await markTripRecoveryState(recovery, "auth").catch(() => false);
         if (!responseIsCurrent()) return;
         setSyncIssue("auth");
       } else if (error instanceof EasyTTripPromotionConflictError || error instanceof EasyTTripSaveConflictError) {
         // The cloud response is authoritative for this view, while the
         // different browser copy stays intact until recovery is explicit.
-        cacheCanonicalTrip(error.canonicalTrip);
-        markTripRecoveryState(recovery, "conflict");
+        await cacheCanonicalTrip(error.canonicalTrip).catch(() => undefined);
+        await markTripRecoveryState(recovery, "conflict").catch(() => false);
         if (!responseIsCurrent()) return;
         if (error.reason !== "cloud-deleted") {
           setResolution({ status: "found", identity: requestIdentity, trip: error.canonicalTrip });
@@ -110,7 +134,7 @@ export default function TripShellResolver({
         }
         setSyncIssue("conflict");
       } else {
-        markTripRecoveryState(recovery, "network");
+        await markTripRecoveryState(recovery, "network").catch(() => false);
         if (!responseIsCurrent()) return;
         setSyncIssue("failed");
       }
@@ -123,7 +147,9 @@ export default function TripShellResolver({
     // The server layout already completed the owner-scoped cloud lookup. A
     // second API request here only duplicated that miss; this boundary owns
     // the browser-only exact active-document fallback.
+    mountedRef.current = true;
     void resolveAndPromote();
+    return () => { mountedRef.current = false; requestGenerationRef.current += 1; };
   }, [resolveAndPromote]);
 
   useEffect(() => {
@@ -142,6 +168,15 @@ export default function TripShellResolver({
     </section>;
   }
   if (resolution.status === "missing") notFound();
+  if (resolution.status === "blocked") {
+    return <section className={styles.resolving}>
+      <MorroviaStatusBanner tone="warning"
+        title={resolution.kind === "protected" ? "Device changes need review" : "Device storage unavailable"}
+        detail={resolution.kind === "protected" ? "Separate device copies remain protected. Review them before continuing." : "This trip could not be checked on this device. Try again to open it."}
+        actions={<EasyTButton size="small" variant="secondary" onClick={() => void resolveAndPromote()}>Try again</EasyTButton>}
+      />
+    </section>;
+  }
 
   return <div className={styles.resolverStack}>
     {syncComplete ? <MorroviaStatusBanner className={styles.resolverNotice} tone="success" title="Saved to your account" /> : null}

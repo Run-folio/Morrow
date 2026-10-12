@@ -89,7 +89,7 @@ test('wrong-owner recovery preparation refuses without a native call',async()=>c
 
 test('unavailable recovery storage remains a no-write unknown rather than fabricated native rejection',async()=>capture(async(records,storage)=>{
   Object.defineProperty(window,'localStorage',{get(){throw new DOMException('PRIVATE-ACCESS','SecurityError');}});
-  const result=saveTripRecovery(trip(),{ownerId:'PRIVATE-OWNER'});assert.equal(result.stored,false);assert.equal(storage.writes,0);
+  const result=await saveTripRecovery(trip(),{ownerId:'PRIVATE-OWNER'});assert.equal(result.stored,false);assert.equal(storage.writes,0);
   assert.equal(records[0].boundary,'recovery-storage-access');assert.equal(records[0].accepted,false);assert.equal(records[0].nativeFailure,null);assert.equal(records[0].writeAccepted,null);assert.equal(records[0].writeAttempted,false);
 }));
 

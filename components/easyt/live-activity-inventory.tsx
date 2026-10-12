@@ -26,10 +26,10 @@ type LiveActivityInventoryProps = {
   placement: string;
   workspace: "itinerary" | "map";
   fallback?: ReactNode;
-  onSave: (idea: ItineraryIdea) => boolean;
-  onSchedule: (idea: ItineraryIdea) => boolean;
-  onRemove?: (idea: ItineraryIdea) => boolean;
-  isPending?: (idea: ItineraryIdea) => boolean;
+  onSave: (idea: ItineraryIdea) => boolean | Promise<boolean>;
+  onSchedule: (idea: ItineraryIdea) => boolean | Promise<boolean>;
+  onRemove?: (idea: ItineraryIdea) => boolean | Promise<boolean>;
+  isPending?: (idea: ItineraryIdea) => boolean | Promise<boolean>;
   initialItems?: ActivityInventoryItem[];
   discoveryCategory?: Exclude<DiscoveryCategory, "food">;
 };
@@ -45,6 +45,25 @@ function priceLabel(price: ActivityInventoryItem["price"]) {
 }
 
 export default function LiveActivityInventory({ trip, stop, day, placement, workspace, fallback = null, onSave, onSchedule, onRemove, isPending = () => false, initialItems, discoveryCategory = "for-you" }: LiveActivityInventoryProps) {
+  const actionScope = JSON.stringify([trip.ownerId, trip.id, stop.id, day.id]);
+  const actionScopeRef = useRef(actionScope);
+  actionScopeRef.current = actionScope;
+  const mountedRef = useRef(true);
+  const pendingActionKeysRef = useRef(new Set<string>());
+  const [pendingActions, setPendingActions] = useState<Set<string>>(new Set());
+  useEffect(() => { mountedRef.current = true; return () => { mountedRef.current = false; }; }, []);
+  const performAction = async (idea: ItineraryIdea, action: (idea: ItineraryIdea) => boolean | Promise<boolean>) => {
+    const key = JSON.stringify([actionScope, idea.id]);
+    if (pendingActionKeysRef.current.has(key)) return;
+    pendingActionKeysRef.current.add(key);
+    setPendingActions((current) => new Set(current).add(key));
+    try { await action(idea); } finally {
+      pendingActionKeysRef.current.delete(key);
+      if (mountedRef.current && actionScopeRef.current === actionScope) setPendingActions((current) => {
+        const next = new Set(current); next.delete(key); return next;
+      });
+    }
+  };
   const [items, setItems] = useState<ActivityInventoryItem[]>(initialItems ?? []);
   const [status, setStatus] = useState<"loading" | "ready" | "error" | "incomplete">(initialItems ? "ready" : "loading");
   const [assessment, setAssessment] = useState<PlanningEvidenceState>();
@@ -133,7 +152,7 @@ export default function LiveActivityInventory({ trip, stop, day, placement, work
       const identity = activityInventoryIdentity(item);
       const idea = itineraryIdeaForActivityInventory(stop.id, item, interests);
       const state = ideaStateForPlace(trip, stop.id, identity);
-      const pending = isPending(idea);
+      const pending = isPending(idea) || pendingActions.has(JSON.stringify([actionScope, idea.id]));
       const duration = durationLabel(item.duration);
       const price = priceLabel(item.price);
       const action = item.productUrl ? { provider: "viator", category: "activities", href: item.productUrl, cta: "View on Viator", affiliate: true } as const : null;
@@ -147,9 +166,9 @@ export default function LiveActivityInventory({ trip, stop, day, placement, work
         <div className={styles.actions}>
           {state.state === "planned" ? <>
             <span className={styles.state}><CheckCircle2 aria-hidden="true" />Day {state.day.dayNumber}{state.idea.dayPart ? ` · ${state.idea.dayPart[0]!.toUpperCase()}${state.idea.dayPart.slice(1)}` : " · Placement to review"}</span>
-            {onRemove ? <EasyTButton size="small" variant="quiet" disabled={pending} onClick={() => onRemove(state.idea)}>Remove</EasyTButton> : null}
-          </> : <EasyTButton size="small" variant="secondary" disabled={pending} onClick={() => onSchedule(idea)}>Add to Day {day.dayNumber}</EasyTButton>}
-          {state.state === "available" ? <EasyTButton size="small" variant="quiet" disabled={pending} onClick={() => onSave(idea)}>Save for later</EasyTButton> : state.state === "saved" ? <span className={styles.state}><CheckCircle2 aria-hidden="true" />Saved for later</span> : null}
+            {onRemove ? <EasyTButton size="small" variant="quiet" disabled={pending} onClick={() => { void performAction(state.idea, onRemove); }}>Remove</EasyTButton> : null}
+          </> : <EasyTButton size="small" variant="secondary" disabled={pending} onClick={() => { void performAction(idea, onSchedule); }}>Add to Day {day.dayNumber}</EasyTButton>}
+          {state.state === "available" ? <EasyTButton size="small" variant="quiet" disabled={pending} onClick={() => { void performAction(idea, onSave); }}>Save for later</EasyTButton> : state.state === "saved" ? <span className={styles.state}><CheckCircle2 aria-hidden="true" />Saved for later</span> : null}
           {action ? <MorroviaAffiliateLink action={action} context={{ placement, tripId: trip.id, stopId: stop.id, workspaceView: workspace }} variant="quiet" /> : null}
         </div>
       </article>;

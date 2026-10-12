@@ -474,12 +474,12 @@ test("stale server props and storage events cannot reset the canonical queue", (
   const persistence = readFileSync(new URL("../components/easyt/use-trip-mutation-persistence.ts", import.meta.url), "utf8");
   const shell = readFileSync(new URL("../components/easyt/trip-shell-client.tsx", import.meta.url), "utf8");
 
-  assert.match(persistence, /sameDocument && !canonicalTripRevisionCanReplace\(current, initialTrip\)/);
-  assert.match(persistence, /loadCachedTrip\(initialTrip\.id, initialTrip\.ownerId\)/);
-  assert.match(persistence, /sameDocument && pendingSavesRef\.current\.size > 0/);
+  assert.match(persistence, /sameDocument && recoveryReadyRef\.current && !canonicalTripRevisionCanReplace\(current, initialTrip\)/);
+  assert.match(persistence, /await loadCachedTrip\(initialTrip\.id, initialTrip\.ownerId\)/);
+  assert.match(persistence, /sameDocument && \(pendingSavesRef\.current\.size \|\| pendingLocalWritesRef\.current\.size\)/);
   assert.match(shell, /if \(mutation\.hasPendingSaves\(\)\) return/);
   assert.match(shell, /mutation\.adoptCanonicalTrip\(cached\)/);
   assert.match(shell, /EASYT_ACTIVE_TRIP_CHANGE_EVENT[\s\S]*mutation\.adoptDeviceTrip\(next\)/);
-  assert.match(persistence, /localRecoveryWriteRef\.current \|\| pendingSavesRef\.current\.size > 0/);
+  assert.match(persistence, /localRecoveryWriteRef\.current \|\| pendingSavesRef\.current\.size \|\| pendingLocalWritesRef\.current\.size/);
   assert.doesNotMatch(shell, /setActiveTrip/);
 });

@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { IndexedDbModel } from './helpers/recovery-indexeddb-model.ts';
 
 import {
   addItineraryDayNote,
@@ -366,27 +367,32 @@ test("Undo after the Add acknowledgement persists the original activity state", 
   assert.deepEqual({ ...canonical, updatedAt: base.updatedAt }, base);
 });
 
-test("the first Add acknowledgement keeps a newer pending Undo recovery until its own save", (t) => {
+test("the first Add acknowledgement keeps a newer pending Undo recovery until its own save", async (t) => {
   const storage = new MemoryStorage();
   const originalWindow = Object.getOwnPropertyDescriptor(globalThis, "window");
-  Object.defineProperty(globalThis, "window", { configurable: true, value: { localStorage: storage } });
+  const originalChannel = Object.getOwnPropertyDescriptor(globalThis, 'BroadcastChannel');
+  const browser = Object.assign(new EventTarget(), { localStorage: storage, indexedDB: new IndexedDbModel().factory() });
+  Object.defineProperty(globalThis, "window", { configurable: true, value: browser });
+  Object.defineProperty(globalThis, 'BroadcastChannel', { configurable: true, value: undefined });
   t.after(() => {
     if (originalWindow) Object.defineProperty(globalThis, "window", originalWindow);
     else Reflect.deleteProperty(globalThis, "window");
+    if (originalChannel) Object.defineProperty(globalThis, 'BroadcastChannel', originalChannel);
+    else Reflect.deleteProperty(globalThis, 'BroadcastChannel');
   });
   const base = itineraryTrip();
   const added = addItineraryActivityWithUndo(base, 1, 1, "Lunch in Monti");
   const undone = undoItineraryItemAction(added.trip, added.undo!);
   cacheCanonicalTripToStorage(storage, base);
-  const addRecovery = saveTripRecovery(added.trip, { ownerId: base.ownerId, accountSavePending: true });
-  const undoRecovery = saveTripRecovery(undone.trip, { ownerId: base.ownerId, replace: addRecovery.handle, accountSavePending: true });
+  const addRecovery = await saveTripRecovery(added.trip, { ownerId: base.ownerId, accountSavePending: true });
+  const undoRecovery = await saveTripRecovery(undone.trip, { ownerId: base.ownerId, replace: addRecovery.handle, accountSavePending: true });
   assert.equal(undoRecovery.stored, true);
 
   const acknowledgedAdd = { ...added.trip, updatedAt: "revision-2" };
-  cacheCanonicalTrip(acknowledgedAdd, addRecovery.handle);
+  await cacheCanonicalTrip(acknowledgedAdd, addRecovery.handle);
 
   assert.equal(loadTripRecoveryFromStorage(storage, base.id, base.ownerId)?.writeId, undoRecovery.handle.writeId);
-  cacheCanonicalTrip({ ...undone.trip, updatedAt: "revision-3" }, undoRecovery.handle);
+  await cacheCanonicalTrip({ ...undone.trip, updatedAt: "revision-3" }, undoRecovery.handle);
   assert.equal(loadTripRecoveryFromStorage(storage, base.id, base.ownerId), null);
 });
 

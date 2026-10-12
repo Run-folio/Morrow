@@ -6,7 +6,9 @@ import { CalendarDays, ChevronRight, CircleAlert, MapPin, Route, Sparkles } from
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { JourneyPlannerMap } from "@/components/journey-planner-map";
 import EasyTNavigation from "../easyt-navigation";
-import { cacheCanonicalTrip, canUseHydratedTripScope, loadActiveTrip, loadLocalTrip, loadTripFromEasyT } from "@/lib/easyt/storage";
+import { canUseHydratedTripScope, loadActiveTrip, loadLocalTrip, loadTripFromEasyT, subscribeToTripStorage } from "@/lib/easyt/storage";
+import { EasyTButton } from "@/components/easyt/easyt-controls";
+import { MorroviaStatusBanner } from "@/components/easyt/morrovia-feedback";
 import { requestedTripMatch } from "@/lib/easyt/trip-id-resolution";
 import { authClient } from "@/lib/auth-client";
 import type { EasyTTrip, PlannerMapPin } from "@/lib/easyt/trip";
@@ -73,15 +75,27 @@ export default function MapPlanNext() {
   const [hydratedOwnerScope, setHydratedOwnerScope] = useState<string | null | undefined>(undefined);
   const [hydratedDocumentIdentity, setHydratedDocumentIdentity] = useState<string | undefined>(undefined);
   const [loading, setLoading] = useState(true);
+  const [readFailed, setReadFailed] = useState(false);
+  const [sourceRevision, setSourceRevision] = useState(0);
+  const sourceRevisionRef = useRef(0);
   const [selectedStopId, setSelectedStopId] = useState("");
   const [resolvedCoordinates, setResolvedCoordinates] = useState<Record<string, [number, number]>>({});
   const [finderTab, setFinderTab] = useState<FinderTab>("plan");
   const [showDecisions, setShowDecisions] = useState(true);
 
+  useEffect(() => subscribeToTripStorage(visibleOwnerId, tripId ?? "", () => {
+    sourceRevisionRef.current += 1;
+    setSourceRevision(sourceRevisionRef.current);
+  }), [tripId, visibleOwnerId]);
+
   useEffect(() => {
     if (sessionPending) return;
     let active = true;
+    const revision = sourceRevisionRef.current;
+    const isCurrent = () => active && currentDocumentIdentityRef.current === documentIdentity
+      && sourceRevisionRef.current === revision;
     setLoading(true);
+    setReadFailed(false);
     setHydratedOwnerScope(undefined);
     setHydratedDocumentIdentity(undefined);
     setTrip(null);
@@ -89,28 +103,33 @@ export default function MapPlanNext() {
     setResolvedCoordinates({});
     void (async () => {
       const ownerScope = visibleOwnerId;
-      const local = tripId ? loadLocalTrip(tripId, ownerScope) : loadActiveTrip(ownerScope);
+      const local = tripId ? await loadLocalTrip(tripId, ownerScope) : await loadActiveTrip(ownerScope);
+      if (!isCurrent()) return;
       let next = requestedTripMatch(tripId ?? local?.id ?? "", local, session?.user?.id);
       let resolvedOwnerScope: string | null = ownerScope;
       if (tripId) {
         try {
           const cloud = await loadTripFromEasyT(tripId);
+          if (!isCurrent()) return;
           if (cloud) {
-            cacheCanonicalTrip(cloud);
             next = cloud;
             resolvedOwnerScope = cloud.ownerId;
           }
         } catch { /* retain the exact owner-scoped local copy */ }
       }
-      if (!active) return;
+      if (!isCurrent()) return;
       setHydratedOwnerScope(resolvedOwnerScope);
       setHydratedDocumentIdentity(documentIdentity);
       setTrip(next);
       setSelectedStopId(next?.stops.slice().sort((a, b) => a.order - b.order)[0]?.id ?? "");
       setLoading(false);
-    })();
+    })().catch(() => {
+      if (!isCurrent()) return;
+      setReadFailed(true);
+      setLoading(false);
+    });
     return () => { active = false; };
-  }, [documentIdentity, session?.user?.id, sessionPending, tripId, visibleOwnerId]);
+  }, [documentIdentity, session?.user?.id, sessionPending, sourceRevision, tripId, visibleOwnerId]);
 
   useEffect(() => {
     if (!trip || !hydratedDocumentIdentity || hydratedDocumentIdentity !== documentIdentity) return;
@@ -145,6 +164,7 @@ export default function MapPlanNext() {
       || hydratedDocumentIdentity !== documentIdentity));
 
   if (sessionPending || loading || documentScopeMismatch) return <main className={styles.page}><EasyTNavigation current="trips" /><div className={styles.loading}>Loading your map plan…</div></main>;
+  if (readFailed) return <main className={styles.page}><EasyTNavigation current="trips" /><section className={styles.empty}><MorroviaStatusBanner tone="warning" title="Your device copy could not be checked" detail="Device storage could not confirm the saved trip. Try again before opening another plan." actions={<EasyTButton onClick={() => { sourceRevisionRef.current += 1; setSourceRevision(sourceRevisionRef.current); }}>Try again</EasyTButton>} /></section></main>;
   if (!trip || !selectedStop || !selectedTripStop) return <main className={styles.page}><EasyTNavigation current="trips" /><section className={styles.empty}><p className={styles.eyebrow}>New map view</p><h1>Open a trip first.</h1><p>This comparison view reads the same saved plan as the current map planner.</p><Link href="/journey/dashboard">Go to trips <ChevronRight aria-hidden="true" /></Link></section></main>;
 
   const transferLabel = selectedLeg ? `${transferJourneyModeLabel(selectedLeg)} · ${formatDuration(selectedLeg.durationMinutes)}` : "Arrival details to confirm";

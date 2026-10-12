@@ -91,8 +91,8 @@ type JourneyLocalFinderProps = {
   onPreviewPlace?: (place: JourneyLocalPlace | null) => void;
   onPlacesChange?: (places: JourneyLocalPlace[]) => void;
   onRestaurantSelect?: (restaurant?: JourneyRestaurant, meal?: RestaurantMeal) => void;
-  onSavePlace?: (place: JourneyLocalPlace, kind: "restaurant" | "stay", replaced?: JourneyLocalPlace) => boolean | void;
-  onRemovePlace?: (place: JourneyLocalPlace, kind: "restaurant" | "stay") => boolean | void;
+  onSavePlace?: (place: JourneyLocalPlace, kind: "restaurant" | "stay", replaced?: JourneyLocalPlace) => boolean | void | Promise<boolean | void>;
+  onRemovePlace?: (place: JourneyLocalPlace, kind: "restaurant" | "stay") => boolean | void | Promise<boolean | void>;
 };
 
 export function JourneyLocalFinder({ ownerId, tripId, stopId, canonicalPlaceId, kind, city, country, locale = "en", dayId, dayNumber, coordinates, interests, staySearch, selectedPlaceId, previewedPlaceId, savedPlaceIds, initialState, candidateLimit = 4, progressiveDisplay = false, autoSelectFirst = true, analyticsSurface = "map", mapPresentation, render, onPlaceSelect, onViewOnMap, onPreviewPlace, onPlacesChange, onRestaurantSelect, onSavePlace, onRemovePlace }: JourneyLocalFinderProps) {
@@ -304,7 +304,11 @@ export function JourneyLocalFinder({ ownerId, tripId, stopId, canonicalPlaceId, 
     const savedKey = `${kind}:${dayId}:${saved.id}`;
     if (reportedSaveRef.current === savedKey) return;
     reportedSaveRef.current = savedKey;
-    onSavePlace?.(saved, kind);
+    let active = true;
+    void Promise.resolve(onSavePlace?.(saved, kind)).then((accepted) => {
+      if (active && accepted === false && reportedSaveRef.current === savedKey) reportedSaveRef.current = "";
+    }).catch(() => { if (active && reportedSaveRef.current === savedKey) reportedSaveRef.current = ""; });
+    return () => { active = false; };
   }, [dayId, kind, onSavePlace, saved]);
 
   const candidates = useMemo(() => {
@@ -368,23 +372,33 @@ export function JourneyLocalFinder({ ownerId, tripId, stopId, canonicalPlaceId, 
     });
   }, [chosen, city, country, dayId, kind, staySearch?.adults, staySearch?.checkIn, staySearch?.checkOut, stopId]);
 
-  const save = () => {
+  const actionScope = JSON.stringify([ownerId, tripId, stopId, dayId, kind]);
+  const actionScopeRef = useRef(actionScope);
+  actionScopeRef.current = actionScope;
+  const actionVersionRef = useRef(0);
+  const mountedRef = useRef(true);
+  useEffect(() => { mountedRef.current = true; return () => { mountedRef.current = false; }; }, []);
+
+  const save = async () => {
     if (!chosen) return;
     // A stop has one canonical stay booking, but restaurants are additive.
     // Keep the last saved restaurant as local UI context without turning it
     // into a request to remove an earlier canonical restaurant.
     const replaced = kind === "stay" && saved && saved.id !== chosen.id ? saved : undefined;
-    const accepted = onSavePlace?.(chosen, kind, replaced ?? undefined);
-    if (accepted === false) return;
+    const version = ++actionVersionRef.current;
+    const accepted = await onSavePlace?.(chosen, kind, replaced ?? undefined);
+    if (accepted === false || !mountedRef.current || actionScopeRef.current !== actionScope || actionVersionRef.current !== version) return;
     if (!canonicalSavedState) setSaved(chosen);
     reportedSaveRef.current = `${kind}:${dayId}:${chosen.id}`;
     if (!canonicalSavedState) {
       try { window.localStorage.setItem(storageKey, JSON.stringify({ ...JSON.parse(window.localStorage.getItem(storageKey) ?? "{}"), [dayId]: chosen })); } catch { /* no-op */ }
     }
   };
-  const reset = () => {
+  const reset = async () => {
     const target = canonicalSavedState && chosen && savedPlaceIds?.includes(chosen.id) ? chosen : saved;
-    if (target && onRemovePlace?.(target, kind) === false) return;
+    const version = ++actionVersionRef.current;
+    const accepted = target ? await onRemovePlace?.(target, kind) : true;
+    if (accepted === false || !mountedRef.current || actionScopeRef.current !== actionScope || actionVersionRef.current !== version) return;
     setSaved(null);
     setChosen(null);
     setMeal("dinner");
