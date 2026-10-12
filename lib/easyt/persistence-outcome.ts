@@ -28,7 +28,7 @@ export function recoveryPersistenceOutcome(result: RecoveryPersistenceEvidence):
 export type PersistenceStage = "homepage-input" | "homepage-intake" | "homepage-preservation" | "homepage-resume" | "device-recovery" | "intake-ack" | "builder-entry" | "builder-edit" | "account-ack";
 let sequence = 0;
 export type QaPersistenceStage = "hydration" | "intake" | "editable-input" | "recovery-preparation" | "native-write";
-export type QaPersistenceBoundary = "hydration-ready" | "hydration-complete" | "intake-restore" | "intake-guard" | "intake-projection" | "intake-storage-access" | "intake-frozen" | "intake-reservation" | "editable-prepare" | "editable-reserved" | "editable-write" | "editable-readback" | "recovery-candidate" | "recovery-storage-access" | "recovery-seed" | "recovery-scope" | "recovery-replacement" | "recovery-write" | "recovery-readback";
+export type QaPersistenceBoundary = "hydration-ready" | "hydration-complete" | "intake-restore" | "intake-guard" | "intake-projection" | "intake-storage-access" | "intake-frozen" | "intake-reservation" | "editable-prepare" | "editable-reserved" | "editable-write" | "editable-readback" | "recovery-candidate" | "recovery-storage-access" | "recovery-seed" | "recovery-scope" | "recovery-replacement" | "recovery-write" | "recovery-cleanup" | "recovery-readback";
 export type QaRecoveryCaller = "seed" | "autosave" | "preservation" | "other";
 type QaEvidence = Partial<RecoveryPersistenceEvidence> & {
   accepted?: boolean; writeAccepted?: boolean;
@@ -36,17 +36,22 @@ type QaEvidence = Partial<RecoveryPersistenceEvidence> & {
   entryKind?: "loading" | "fresh" | "explicit-trip" | "current-draft" | "home-handoff" | "pending-home-handoff" | "pending-direct-intake" | "route-handoff" | "populated-builder" | "unavailable";
   caller?: QaRecoveryCaller; writeBranch?: "new-write" | "exact-reuse";
   readbackKind?: "editable-input" | "recovery" | "receipt";
+  operation?: "setter" | "cleanup" | "write-result"; failedOperation?: "setter" | "cleanup";
+  initialSetterFailure?: RecoveryPersistenceEvidence["nativeFailure"];
+  setterFailure?: RecoveryPersistenceEvidence["nativeFailure"]; cleanupFailure?: RecoveryPersistenceEvidence["nativeFailure"];
+  setterRetried?: boolean;
 };
 let qaSequence = 0, qaSessionClass = "unknown", qaEntryKind = "unknown";
 const qaStages = new Set(["homepage-input", "homepage-intake", "homepage-preservation", "homepage-resume", "device-recovery", "intake-ack", "builder-entry", "builder-edit", "account-ack", "hydration", "intake", "editable-input", "recovery-preparation", "native-write"]);
 const qaOutcomes = new Set(["device-confirmed", "native-write-failed", "protected-conflict", "receipt-incomplete", "pointer-incomplete", "unknown", "account-acknowledged", "accepted", "refused"]);
 const qaBoundaries = new Set(["entry-scope", "protected-recovery", "recovery-write", "recovery-readback", "receipt-ack", "receipt-readback", "pointer-ack", "unknown"]);
 const qaAcknowledgements = new Set(["pending", "stale", "storage", "preservation", "accepted"]);
-const qaProducerBoundaries = new Set(["hydration-ready", "hydration-complete", "intake-restore", "intake-guard", "intake-projection", "intake-storage-access", "intake-frozen", "intake-reservation", "editable-prepare", "editable-reserved", "editable-write", "editable-readback", "recovery-candidate", "recovery-storage-access", "recovery-seed", "recovery-scope", "recovery-replacement", "recovery-write", "recovery-readback"]);
+const qaProducerBoundaries = new Set(["hydration-ready", "hydration-complete", "intake-restore", "intake-guard", "intake-projection", "intake-storage-access", "intake-frozen", "intake-reservation", "editable-prepare", "editable-reserved", "editable-write", "editable-readback", "recovery-candidate", "recovery-storage-access", "recovery-seed", "recovery-scope", "recovery-replacement", "recovery-write", "recovery-cleanup", "recovery-readback"]);
 const qaSessions = new Set(["signed-in", "guest", "pending", "unavailable"]);
 const qaEntries = new Set(["loading", "fresh", "explicit-trip", "current-draft", "home-handoff", "pending-home-handoff", "pending-direct-intake", "route-handoff", "populated-builder", "unavailable"]);
 const qaCallers = new Set(["seed", "autosave", "preservation", "other"]), qaWriteBranches = new Set(["new-write", "exact-reuse"]);
 const qaReadbacks = new Set(["editable-input", "recovery", "receipt"]), qaNativeFailures = new Set(["quota", "security", "unavailable", "unknown"]);
+const qaOperations = new Set(["setter", "cleanup", "write-result"]), qaFailedOperations = new Set(["setter", "cleanup"]);
 const qaBoolean = (value: unknown) => typeof value === "boolean" ? value : null;
 const qaCategory = (value: unknown, allowed: Set<string>, fallback: string | null) => typeof value === "string" && allowed.has(value) ? value : fallback;
 function qaEnabled() {
@@ -77,13 +82,19 @@ function reportQaConsole(detail: Record<string, unknown>, evidence?: QaEvidence,
       caller: qaCategory(evidence?.caller, qaCallers, null),
       writeBranch: qaCategory(evidence?.writeBranch, qaWriteBranches, null),
       readbackKind: qaCategory(readbackKind ?? evidence?.readbackKind, qaReadbacks, null),
+      operation: qaCategory(evidence?.operation, qaOperations, null), failedOperation: qaCategory(evidence?.failedOperation, qaFailedOperations, null),
+      initialSetterFailure: evidence?.initialSetterFailure === undefined ? null : qaCategory(evidence.initialSetterFailure, qaNativeFailures, "unknown"),
+      setterFailure: evidence?.setterFailure === undefined ? null : qaCategory(evidence.setterFailure, qaNativeFailures, "unknown"),
+      cleanupFailure: evidence?.cleanupFailure === undefined ? null : qaCategory(evidence.cleanupFailure, qaNativeFailures, "unknown"),
+      setterRetried: qaBoolean(evidence?.setterRetried),
       phase: detail.phase === "probe" ? "probe" : "result",
       outcome: qaCategory(detail.outcome, qaOutcomes, "unknown"),
       failureBoundary: qaCategory(detail.failureBoundary, qaBoundaries, null),
       writeAttempted: qaBoolean(evidence?.writeAttempted), writeAccepted: qaBoolean(evidence?.writeAccepted),
       readbackConfirmed: qaBoolean(evidence?.readbackConfirmed),
       deviceCopyVerified: qaBoolean(evidence?.recoveryDurable) ?? (evidence?.stored === true ? true : null),
-      pointerAcknowledged: qaBoolean(evidence?.pointerAcknowledged),
+      pointerAcknowledged: legacyStage && evidence?.pointerAcknowledged === false && (evidence.failureBoundary === "recovery-write" || evidence.failureBoundary === "recovery-readback")
+        ? null : qaBoolean(evidence?.pointerAcknowledged),
       nativeFailure: detail.nativeFailure === "quota" || detail.nativeFailure === "security" || detail.nativeFailure === "unavailable" || detail.nativeFailure === "unknown" ? detail.nativeFailure : null,
       acknowledgement: qaCategory(detail.acknowledgement, qaAcknowledgements, null),
       scopeMatches: qaBoolean(evidence?.scopeMatches), receiptPresent: qaBoolean(evidence?.receiptPresent),

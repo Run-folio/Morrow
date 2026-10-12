@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { reportQaPersistenceBoundary, qaNativeFailureCategory, reportPersistenceOutcome } from '../lib/easyt/persistence-outcome.ts';
 import { persistEditableHomepageInput, projectHomepageInput, homepageReceiptForProjection, readHomepageInput, createPendingIntakeReceipt } from '../lib/easyt/home-trip-handoff.ts';
-import { saveTripRecovery, saveTripRecoveryToStorage, canUseHydratedTripScope, loadCurrentDraftRecovery, EASYT_TRIP_RECOVERY_PREFIX } from '../lib/easyt/storage.ts';
+import { saveTripRecovery, saveTripRecoveryToStorage, canUseHydratedTripScope, loadCurrentDraftRecovery, EASYT_TRIP_RECOVERY_PREFIX, EASYT_TRIP_CACHE_PREFIX } from '../lib/easyt/storage.ts';
 import { requireReadableTripDocument } from '../lib/easyt/trip-document.ts';
 import { homepageInputStorageKey } from '../lib/easyt/private-browser-context.ts';
 import { tripFromBuilder } from '../lib/easyt/trip.ts';
@@ -71,8 +71,9 @@ test('reserved editable receipt is distinct from stale token and never overwritt
 test('native recovery acceptance follows prepared scope/replacement and precedes exact recovery readback',async()=>capture(async(records,storage)=>{
   const result=saveTripRecoveryToStorage(storage,trip(),{ownerId:'PRIVATE-OWNER',writeId:'PRIVATE-WRITE',now:'2026-10-12T00:00:00.000Z'});
   assert.equal(result.stored,true);
-  assert.deepEqual(records.map(v=>v.boundary),['recovery-candidate','recovery-scope','recovery-replacement','recovery-write','recovery-readback']);
-  assert.ok(records.every(v=>v.accepted===true));assert.equal(records[3].writeAccepted,true);assert.equal(records[3].readbackConfirmed,null);assert.equal(records[4].readbackConfirmed,true);assert.equal(records[4].readbackKind,'recovery');
+  const results=records.filter(v=>v.phase==='result');
+  assert.deepEqual(results.map(v=>v.boundary),['recovery-candidate','recovery-scope','recovery-replacement','recovery-write','recovery-readback']);
+  assert.ok(records.every(v=>v.accepted===true));assert.equal(results[3].writeAccepted,true);assert.equal(results[3].readbackConfirmed,null);assert.equal(results[4].readbackConfirmed,true);assert.equal(results[4].readbackKind,'recovery');
 }));
 
 test('native recovery refusal has an immediately prior accepted replacement prerequisite and unknown readback',async()=>capture(async(records,storage)=>{
@@ -183,8 +184,33 @@ test('actual first-save source closures record all preceding prerequisites befor
   assert.equal(seeded,false);
   const first=records.findIndex(v=>v.phase==='result'&&v.accepted===false);
   assert.ok(first>0);assert.equal(records[first].boundary,'recovery-write');assert.equal(records[first].nativeFailure,'security');assert.equal(records[first].writeAttempted,true);assert.equal(records[first].writeAccepted,false);assert.equal(records[first].readbackConfirmed,null);
-  assert.equal(records[first-1].boundary,'recovery-replacement');assert.equal(records[first-1].accepted,true);
+  assert.equal(records.slice(0,first).filter(v=>v.phase==='result'&&v.accepted===true).at(-1).boundary,'recovery-replacement');
   for(const boundary of ['hydration-complete','intake-guard','intake-projection','editable-write','editable-readback','intake-frozen','recovery-candidate','recovery-scope'])assert.ok(records.slice(0,first).some(v=>v.boundary===boundary&&v.accepted===true),boundary);
   assert.ok(records.some(v=>v.boundary==='recovery-candidate'&&v.caller==='seed'));
   assert.equal(records[first].sessionClass,'signed-in');assert.equal(records[first].entryKind,'fresh');
 },'recovery-denied'));
+
+test('initial setter quota and cleanup security stay separate without inventing a retry setter call',async()=>capture(async(records,storage)=>{
+  storage.values.set(EASYT_TRIP_CACHE_PREFIX+'PRIVATE-CACHE','{}');let setters=0,cleanups=0;
+  storage.setItem=()=>{setters++;throw new DOMException('PRIVATE-QUOTA','QuotaExceededError');};
+  storage.removeItem=()=>{cleanups++;throw new DOMException('PRIVATE-CLEANUP','SecurityError');};
+  const result=saveTripRecoveryToStorage(storage,trip(),{ownerId:'PRIVATE-OWNER',writeId:'PRIVATE-WRITE'});
+  assert.equal(result.stored,false);assert.equal(result.nativeFailure,'security'); // existing aggregate contract unchanged
+  assert.equal(setters,1);assert.equal(cleanups,1);
+  const operations=records.filter(v=>v.phase==='probe'&&v.operation);
+  assert.deepEqual(operations.map(v=>[v.operation,v.nativeFailure]),[['setter','quota'],['cleanup','security']]);
+  const final=records.find(v=>v.operation==='write-result');assert.equal(final.accepted,false);assert.equal(final.writeAccepted,false);
+  assert.equal(final.initialSetterFailure,'quota');assert.equal(final.setterFailure,'quota');assert.equal(final.cleanupFailure,'security');assert.equal(final.failedOperation,'cleanup');assert.equal(final.setterRetried,false);assert.equal(final.readbackConfirmed,null);
+}));
+
+test('successful quota retry preserves the transient setter category and final accepted readback',async()=>capture(async(records,storage)=>{
+  storage.values.set(EASYT_TRIP_CACHE_PREFIX+'PRIVATE-CACHE','{}');let setters=0,cleanups=0;
+  storage.setItem=(key,value)=>{if(++setters===1)throw new DOMException('PRIVATE-QUOTA','QuotaExceededError');storage.values.set(key,value);};
+  storage.removeItem=key=>{cleanups++;storage.values.delete(key);};
+  const result=saveTripRecoveryToStorage(storage,trip(),{ownerId:'PRIVATE-OWNER',writeId:'PRIVATE-WRITE'});
+  assert.equal(result.stored,true);assert.equal(result.nativeFailure,undefined);assert.equal(setters,3);assert.equal(cleanups,1); // recovery retry plus the unchanged pointer acknowledgement
+  assert.deepEqual(records.filter(v=>v.phase==='probe'&&v.operation).map(v=>[v.operation,v.accepted]),[['setter',false],['cleanup',true],['setter',true]]);
+  const final=records.find(v=>v.operation==='write-result');
+  assert.equal(final.accepted,true);assert.equal(final.initialSetterFailure,'quota');assert.equal(final.setterFailure,null);assert.equal(final.cleanupFailure,null);assert.equal(final.failedOperation,null);assert.equal(final.setterRetried,true);assert.equal(final.nativeFailure,null);
+  assert.ok(records.some(v=>v.boundary==='recovery-readback'&&v.readbackConfirmed===true));
+}));

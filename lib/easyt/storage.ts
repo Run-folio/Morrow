@@ -242,12 +242,16 @@ function cacheTimestamp(storage: EasyTBrowserStorage, key: string) {
 }
 
 /** Recovery writes may evict expendable clean cache entries, never recovery. */
-function safeSet(storage: EasyTBrowserStorage, key: string, value: string, protectedKeys: string[] = [], onFailure?: (error: unknown) => void) {
+function safeSet(storage: EasyTBrowserStorage, key: string, value: string, protectedKeys: string[] = [], onFailure?: (error: unknown) => void,
+  onDiagnosticOperation?: (operation: "setter" | "cleanup", accepted: boolean) => void) {
+  const observe = (operation: "setter" | "cleanup", accepted: boolean) => { try { onDiagnosticOperation?.(operation, accepted); } catch { /* Observation cannot enter the native failure branch. */ } };
   try {
     storage.setItem(key, value);
+    observe("setter", true);
     return true;
   } catch (error) {
     onFailure?.(error);
+    observe("setter", false);
     if (!isQuotaError(error)) return false;
   }
 
@@ -257,12 +261,17 @@ function safeSet(storage: EasyTBrowserStorage, key: string, value: string, prote
       && !protectedKeys.includes(candidate))
     .sort((left, right) => cacheTimestamp(storage, left) - cacheTimestamp(storage, right));
   for (const cacheKey of cacheKeys) {
+    let diagnosticOperation: "setter" | "cleanup" = "cleanup";
     try {
       storage.removeItem(cacheKey);
+      observe("cleanup", true);
+      diagnosticOperation = "setter";
       storage.setItem(key, value);
+      observe("setter", true);
       return true;
     } catch (error) {
       onFailure?.(error);
+      observe(diagnosticOperation, false);
       if (!isQuotaError(error)) return false;
     }
   }
@@ -816,14 +825,30 @@ function writeTripRecoveryToStorage(
   // middle of the operation.
   const recoveryKey = tripRecoveryStorageKey(ownerId, trip.id, writeId);
   let nativeFailure: TripRecoveryWriteResult["nativeFailure"];
+  let initialSetterFailure: TripRecoveryWriteResult["nativeFailure"], setterFailure: TripRecoveryWriteResult["nativeFailure"], cleanupFailure: TripRecoveryWriteResult["nativeFailure"];
+  let sawSetter = false, setterRetried = false;
+  let failedOperation: "setter" | "cleanup" | undefined;
   const bytes = JSON.stringify(record);
   const written = safeSet(storage, recoveryKey, bytes, [], error => {
     const name = typeof error === "object" && error !== null && "name" in error ? error.name : undefined;
     nativeFailure = isQuotaError(error) ? "quota" : name === "SecurityError" ? "security" : name === "InvalidStateError" ? "unavailable" : "unknown";
+  }, (operation, accepted) => {
+    if (operation === "setter") {
+      if (!sawSetter) initialSetterFailure = accepted ? undefined : nativeFailure;
+      else setterRetried = true;
+      sawSetter = true;
+      setterFailure = accepted ? undefined : nativeFailure;
+      if (accepted) failedOperation = undefined;
+    } else cleanupFailure = accepted ? undefined : nativeFailure;
+    if (!accepted) failedOperation = operation;
+    reportQaPersistenceBoundary("native-write", operation === "setter" ? "recovery-write" : "recovery-cleanup", {phase:"probe",accepted,operation,
+      writeAttempted:operation === "setter",writeAccepted:operation === "setter" ? accepted : undefined,
+      nativeFailure:accepted ? undefined : nativeFailure,initialSetterFailure,setterFailure,cleanupFailure,failedOperation,setterRetried,writeBranch:"new-write"});
   });
   // A quota retry that succeeds is no longer a rejected native write.
   if (written) nativeFailure = undefined;
-  reportQaPersistenceBoundary("native-write", "recovery-write", {accepted:written,writeAttempted:true,writeAccepted:written,writeBranch:"new-write",nativeFailure});
+  reportQaPersistenceBoundary("native-write", "recovery-write", {accepted:written,operation:"write-result",writeAttempted:true,writeAccepted:written,writeBranch:"new-write",
+    nativeFailure:setterFailure,initialSetterFailure,setterFailure,cleanupFailure,failedOperation,setterRetried});
   const readbackConfirmed = written ? safeGet(storage, recoveryKey) === bytes : undefined;
   if (written) reportQaPersistenceBoundary("native-write", "recovery-readback", {accepted:readbackConfirmed,writeAttempted:true,writeAccepted:true,readbackConfirmed,readbackKind:"recovery",writeBranch:"new-write"});
   const stored = written && readbackConfirmed === true;

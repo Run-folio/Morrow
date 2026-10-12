@@ -107,6 +107,17 @@ test('legacy outcomes never enumerate sensitive extra getters for QA evidence', 
   });
 });
 
+test('unreached pointer checks stay unknown while a checked pointer refusal remains false',async()=>{
+  await fixture({},async(logs,events)=>{
+    const source=await freshOutcomes();
+    source.reportPersistenceOutcome('device-recovery',{stored:false,pointerAcknowledged:false,nativeFailure:'security',writeAttempted:true,failureBoundary:'recovery-write'});
+    source.reportPersistenceOutcome('device-recovery',{stored:true,pointerAcknowledged:false,failureReason:'pointer-incomplete',readbackConfirmed:true});
+    const result=packets(logs).slice(1);
+    assert.equal(result[0].pointerAcknowledged,null);assert.equal((events[0] as any).pointerAcknowledged,false);
+    assert.equal(result[1].pointerAcknowledged,false);assert.equal(result[1].outcome,'pointer-incomplete');
+  });
+});
+
 test('QA capture has a pre-submit ready marker and preserves ordered outcome/probe/ACK events', async () => {
   await fixture({}, async (logs, events) => {
     const source = await freshOutcomes();
@@ -163,7 +174,13 @@ test('capture uses a closed schema, query presence only and unknown rather than 
     assert.equal(result.nativeFailure, 'unknown');
     assert.equal(result.acknowledgement, null);
     for (const key of ['writeAttempted', 'writeAccepted', 'readbackConfirmed', 'deviceCopyVerified', 'pointerAcknowledged', 'scopeMatches', 'receiptPresent', 'receiptAcknowledged', 'accountQueueEntered', 'httpStatusClass', 'accountAcknowledged']) assert.equal(result[key], null, key);
-    assert.deepEqual(Object.keys(result).sort(), ['version', 'kind', 'sequence', 'buildMatch', 'queryKeys', 'sessionClass', 'browserContextClass', 'entryKind', 'stage', 'boundary', 'accepted', 'caller', 'writeBranch', 'readbackKind', 'phase', 'outcome', 'failureBoundary', 'writeAttempted', 'writeAccepted', 'readbackConfirmed', 'deviceCopyVerified', 'pointerAcknowledged', 'nativeFailure', 'acknowledgement', 'scopeMatches', 'receiptPresent', 'receiptAcknowledged', 'accountQueueEntered', 'httpStatusClass', 'accountAcknowledged'].sort());
+    assert.deepEqual(Object.keys(result).sort(), ['version', 'kind', 'sequence', 'buildMatch', 'queryKeys', 'sessionClass', 'browserContextClass', 'entryKind', 'stage', 'boundary', 'accepted', 'caller', 'writeBranch', 'readbackKind', 'operation', 'failedOperation', 'initialSetterFailure', 'setterFailure', 'cleanupFailure', 'setterRetried', 'phase', 'outcome', 'failureBoundary', 'writeAttempted', 'writeAccepted', 'readbackConfirmed', 'deviceCopyVerified', 'pointerAcknowledged', 'nativeFailure', 'acknowledgement', 'scopeMatches', 'receiptPresent', 'receiptAcknowledged', 'accountQueueEntered', 'httpStatusClass', 'accountAcknowledged'].sort());
+    source.reportQaPersistenceBoundary('native-write','recovery-write',{
+      operation:'PRIVATE-OP',failedOperation:'PRIVATE-FAILED',initialSetterFailure:'PRIVATE-INITIAL',setterFailure:'PRIVATE-SETTER',cleanupFailure:'PRIVATE-CLEANUP',setterRetried:'PRIVATE-RETRY',
+    } as never);
+    const provenance=packets(logs).at(-1)!;
+    assert.equal(provenance.operation,null);assert.equal(provenance.failedOperation,null);assert.equal(provenance.setterRetried,null);
+    for(const key of ['initialSetterFailure','setterFailure','cleanupFailure'])assert.equal(provenance[key],'unknown');
     assert.doesNotMatch(logs.join('\n'), /PRIVATE|https?:|ownerId|title|stack|cookie|unrelated/);
   });
 });
