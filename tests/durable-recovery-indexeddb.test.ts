@@ -19,7 +19,7 @@ test('native adapter waits for transaction complete, then independently reads ba
   if (read.kind !== 'ready') assert.fail(read.kind); assert.deepEqual(read.envelope, value); driver.close?.();
 });
 
-test('native request quota aborts the whole transaction including its queued pointer update', async () => {
+test('first native quota cause survives queued pointer AbortError and aborts the whole transaction', async () => {
   const model = new IndexedDbModel(), driver = await openIndexedDbRecoveryDriver(model.factory()), store = createRecoveryDomainStore(driver, context), first = envelope();
   await store.commit(write(first)); const before = structuredClone(model.data); model.failAddStore = 'generations';
   const result = await store.commit(write(envelope('write-2', 'owner-a', first.handle)));

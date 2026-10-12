@@ -46,7 +46,7 @@ export async function openIndexedDbRecoveryDriver(factory: IDBFactory | undefine
         catch (error) { reject(new RecoveryDomainError(recoveryErrorReason(error), 'not-started')); return; }
         let settled = false, decision: RecoveryDomainDecision<T> | undefined, caught: unknown;
         const fail = (error: unknown) => { if (!settled) { settled = true; clearTimeout(timer); reject(error); } };
-        const abort = (error: unknown) => { caught = error; try { tx.abort(); } catch { fail(new RecoveryDomainError(recoveryErrorReason(error), 'unconfirmed')); } };
+        const abort = (error: unknown) => { caught ??= error; try { tx.abort(); } catch { fail(new RecoveryDomainError(recoveryErrorReason(caught), 'unconfirmed')); } };
         const timer = setTimeout(() => abort(new RecoveryDomainError('unavailable', 'unconfirmed')), timeoutMs);
         tx.onabort = () => fail(new RecoveryDomainError(recoveryErrorReason(caught ?? tx.error ?? new DOMException('Aborted', 'AbortError')), 'not-committed'));
         tx.onerror = () => { caught ??= tx.error; };
@@ -74,7 +74,7 @@ export async function openIndexedDbRecoveryDriver(factory: IDBFactory | undefine
             if (decision.headRaw !== undefined) observe(tx.objectStore('heads').put(decision.headRaw, recoveryScopeKey(scope)));
           } catch (error) { abort(error); }
         };
-        const observe = (request: IDBRequest) => { request.onerror = () => { caught = request.error; }; };
+        const observe = (request: IDBRequest) => { request.onerror = () => { caught ??= request.error; }; };
         const read = (store: string, key: string, receive: (raw: unknown) => void) => {
           pending++;
           const request = tx.objectStore(store).get(key); observe(request);

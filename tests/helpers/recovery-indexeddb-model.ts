@@ -36,7 +36,11 @@ class TransactionModel {
   private request(operation: () => unknown, failure?: DOMException) {
     const request = new RequestModel(); this.pending++;
     queueMicrotask(() => {
-      if (this.aborted) { this.pending--; return; }
+      if (this.aborted) {
+        // Real IDB fires AbortError on still-pending requests before tx abort.
+        request.error = new DOMException('Queued request aborted', 'AbortError');
+        request.onerror?.(new Event('error')); this.pending--; return;
+      }
       if (failure) {
         request.error = failure; this.error = failure; request.onerror?.(new Event('error'));
         this.onerror?.(new Event('error')); this.pending--; this.abort(); return;
