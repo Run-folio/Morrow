@@ -62,7 +62,19 @@ class TransactionModel {
         : immutable && values.has(key) ? new DOMException('Duplicate', 'ConstraintError') : undefined;
       return this.request(() => { values.set(key, value); return key; }, failure);
     };
-    return { get: (key: string) => this.request(() => values.get(key)),
+    const openCursor = () => {
+      const request = new RequestModel(), rows = [...values]; let index = 0; this.pending++;
+      const next = () => queueMicrotask(() => {
+        if (this.aborted) { request.error = new DOMException('Aborted', 'AbortError'); request.onerror?.(new Event('error')); this.pending--; return; }
+        let continued = false;
+        request.result = index < rows.length ? { key: rows[index][0], get value() { return rows[index][1]; },
+          continue() { if (continued) throw new DOMException('Already continued', 'InvalidStateError'); continued = true; index++; next(); } } : null;
+        request.onsuccess?.(new Event('success'));
+        if (!continued) { this.pending--; queueMicrotask(() => this.complete()); }
+      });
+      next(); return request as unknown as IDBRequest;
+    };
+    return { get: (key: string) => this.request(() => values.get(key)), openCursor,
       add: (value: unknown, key: string) => mutate(value, key, true), put: (value: unknown, key: string) => mutate(value, key, false) };
   }
 }

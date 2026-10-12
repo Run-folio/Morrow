@@ -13,7 +13,29 @@ test('committed generation, input and receipt reopen exactly without any LS loca
   const reopened = await createRecoveryDomainStore(driver, context()).read(value.handle.tripId);
   assert.equal(reopened.kind, 'ready');
   if (reopened.kind === 'ready') assert.deepEqual(reopened.envelope, value);
-  assert.equal(driver.generations.size, 1); assert.equal(driver.heads.size, 1);
+  assert.equal(driver.generations.size, 1); assert.equal(driver.heads.size, 2);
+});
+
+test('owner-scoped list and current pointer cold-reopen without an LS ID, with guest/account isolation', async () => {
+  const driver = new MemoryRecoveryDriver(), store = createRecoveryDomainStore(driver, context()), first = envelope();
+  await store.commit(write(first)); const second = envelope('second-trip'); second.handle.tripId = 'other-trip';
+  second.entry.pointer.tripId = second.handle.tripId; second.entry.input!.tripId = second.handle.tripId; second.entry.receipt!.tripId = second.handle.tripId;
+  const record = JSON.parse(second.rawRecovery); record.tripId = second.handle.tripId; record.trip.id = second.handle.tripId; second.rawRecovery = JSON.stringify(record);
+  await store.commit(write(second)); const guest = envelope('guest', null); await createRecoveryDomainStore(driver, context(null)).commit(write(guest));
+  const list = await store.list(); assert.equal(list.kind, 'ready');
+  if (list.kind === 'ready') assert.deepEqual(list.recoveries.map(r => r.envelope.handle.tripId).sort(), ['other-trip', 'synthetic-trip']);
+  const current = await createRecoveryDomainStore(driver, context()).current(); assert.equal(current.kind, 'ready');
+  if (current.kind === 'ready') assert.deepEqual(current.envelope, second);
+  const foreign = await createRecoveryDomainStore(driver, context('owner-b')).current();
+  if (foreign.kind !== 'ready') assert.fail(foreign.kind); assert.equal(foreign.envelope, null);
+});
+
+test('corrupt or foreign owner current pointers cannot masquerade as missing or authorize a different trip', async () => {
+  for (const raw of ['{broken', JSON.stringify(envelope('foreign', 'owner-b').handle)]) {
+    const driver = new MemoryRecoveryDriver(); driver.heads.set(JSON.stringify(['owner-a']), raw);
+    const result = await createRecoveryDomainStore(driver, context()).current(); assert.notEqual(result.kind, 'ready');
+    assert.equal(driver.heads.get(JSON.stringify(['owner-a'])), raw);
+  }
 });
 
 test('retry reuses exact immutable generation; a handle collision cannot overwrite it', async () => {

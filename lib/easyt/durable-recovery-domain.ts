@@ -29,19 +29,24 @@ export type RecoveryCommitResult = RecoveryFailure | RecoveryConflict | { kind: 
 export type TrustedAccountAck = { version: 1; handle: RecoveryHandle; rawRecovery: string; canonicalRaw: string };
 export type RecoveryReadResult = RecoveryFailure | RecoveryConflict | { kind: 'ready'; envelope: RecoveryEnvelope | null; acknowledgement: TrustedAccountAck | null };
 export type RecoveryAckResult = RecoveryFailure | RecoveryConflict | { kind: 'journaled'; handle: RecoveryHandle; headMatches: boolean; accountAckMatchesCandidate: true };
+export type RecoveryListResult = RecoveryFailure | RecoveryConflict | { kind: 'ready'; recoveries: { envelope: RecoveryEnvelope; acknowledgement: TrustedAccountAck | null }[] };
 
-export type RecoveryDomainState = { headRaw: unknown; headGenerationRaw: unknown; generationRaw: unknown; acknowledgementRaw: unknown };
-export type RecoveryDomainDecision<T> = { value: T; headRaw?: string; generationRaw?: string; acknowledgementRaw?: string };
+export type RecoveryDomainState = { headRaw: unknown; headGenerationRaw: unknown; generationRaw: unknown; acknowledgementRaw: unknown; currentRaw: unknown };
+export type RecoveryDomainDecision<T> = { value: T; headRaw?: string; generationRaw?: string; acknowledgementRaw?: string; currentRaw?: string };
 /** `run` must serialize readwrite transactions for a scope, atomically commit
  * every returned mutation, use add-only generations/ACKs, and resolve only
  * after completion. Decision callbacks are synchronous, never awaited. */
 export interface RecoveryDomainDriver {
   run<T>(scope: RecoveryScope, writeId: string | null, mode: 'readonly' | 'readwrite', decide: (state: RecoveryDomainState) => RecoveryDomainDecision<T>): Promise<T>;
+  readCurrent(ownerId: string | null): Promise<unknown>;
+  listHeads(ownerId: string | null): Promise<{ key: string; raw: unknown }[]>;
   close?(): void;
 }
 
 export const recoveryScopeKey = (scope: RecoveryScope) => JSON.stringify([scope.ownerId, scope.tripId]);
 export const recoveryGenerationKey = (scope: RecoveryScope, writeId: string) => JSON.stringify([scope.ownerId, scope.tripId, writeId]);
+export const recoveryCurrentKey = (ownerId: string | null) => JSON.stringify([ownerId]);
+export const recoveryOwnerPrefix = (ownerId: string | null) => `${JSON.stringify([ownerId]).slice(0, -1)},`;
 const record = (v: unknown): v is Record<string, unknown> => Boolean(v) && typeof v === 'object' && !Array.isArray(v);
 const text = (v: unknown): v is string => typeof v === 'string' && Boolean(v.trim());
 const owner = (v: unknown): v is string | null => v === null || text(v);
@@ -65,6 +70,14 @@ export function decodeDomainHead(raw: unknown, scope: RecoveryScope): DomainDeco
     if (record(value) && value.version !== 1) return { kind: 'schema' };
     if (!isDomainHandle(value)) return { kind: 'corrupt' };
     return sameRecoveryScope(value, scope) ? { kind: 'readable', value } : { kind: 'scope' };
+  } catch { return { kind: 'corrupt' }; }
+}
+export function decodeDomainCurrent(raw: unknown, ownerId: string | null): DomainDecode<RecoveryHandle | null> {
+  if (raw === undefined) return { kind: 'readable', value: null };
+  try {
+    const value: unknown = typeof raw === 'string' ? JSON.parse(raw) : null;
+    if (!record(value) || typeof value.tripId !== 'string') return { kind: 'corrupt' };
+    return decodeDomainHead(raw, { ownerId, tripId: value.tripId });
   } catch { return { kind: 'corrupt' }; }
 }
 export function decodeRawRecovery(raw: unknown, scope: RecoveryScope): DomainDecode<TripRecoveryRecord> {

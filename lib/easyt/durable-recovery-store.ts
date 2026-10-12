@@ -1,6 +1,6 @@
-import { decodeDomainHead, decodeRecoveryEnvelope, decodeTrustedAccountAck, isDomainHandle, isRecoveryScope,
+import { decodeDomainHead, decodeDomainCurrent, decodeRecoveryEnvelope, decodeTrustedAccountAck, isDomainHandle, isRecoveryScope, recoveryScopeKey,
   sameDomainHandle, sameRecoveryScope, type RecoveryDomainDriver, type RecoveryScope, type RecoveryHandle,
-  type RecoveryCommitResult, type RecoveryReadResult, type RecoveryAckResult, type RecoveryFailureReason,
+  type RecoveryCommitResult, type RecoveryReadResult, type RecoveryAckResult, type RecoveryListResult, type RecoveryFailureReason,
   type RecoveryFailure, type RecoveryConflict, type CommitStatus, type DecodeFailure, type RecoveryEnvelope,
   type RecoveryDomainState } from './durable-recovery-domain.ts';
 export type * from './durable-recovery-domain.ts';
@@ -11,6 +11,7 @@ const failure = (reason: RecoveryFailureReason, commitStatus: CommitStatus = 'no
 const conflict = (reason: RecoveryConflict['reason'], commitStatus: CommitStatus = 'not-started'): RecoveryConflict => ({ kind: 'protected-conflict', reason, commitStatus });
 const decodeFailure = (decoded: DecodeFailure, status: CommitStatus) => decoded.kind === 'scope' ? conflict('scope', status) : failure(decoded.kind, status);
 function stateHead(state: RecoveryDomainState, scope: RecoveryScope): { kind: 'valid'; head: RecoveryHandle | null; envelope: RecoveryEnvelope | null } | RecoveryFailure | RecoveryConflict {
+  const pointer = decodeDomainCurrent(state.currentRaw, scope.ownerId); if (pointer.kind !== 'readable') return decodeFailure(pointer, 'not-committed');
   const head = decodeDomainHead(state.headRaw, scope); if (head.kind !== 'readable') return decodeFailure(head, 'not-committed');
   if (head.value === null) {
     if (state.headGenerationRaw !== undefined) return failure('corrupt', 'not-committed');
@@ -31,6 +32,31 @@ export function createRecoveryDomainStore(driver: RecoveryDomainDriver, context:
   const scopeFor = (tripId: string): RecoveryScope => ({ ownerId, tripId });
   if (!isRecoveryScope(scopeFor('scope-check')) || typeof current !== 'function') throw new TypeError('Invalid recovery context');
   return {
+    async list(): Promise<RecoveryListResult> {
+      if (!active()) return conflict('operation-changed');
+      try {
+        const heads = await driver.listHeads(ownerId), recoveries: Extract<RecoveryListResult, { kind: 'ready' }>['recoveries'] = [];
+        for (const row of heads) {
+          const head = decodeDomainCurrent(row.raw, ownerId); if (head.kind !== 'readable') return decodeFailure(head, 'not-started');
+          if (!head.value || row.key !== recoveryScopeKey(head.value)) return failure('corrupt');
+          const read = await this.read(head.value.tripId); if (read.kind !== 'ready') return read;
+          if (!read.envelope || !sameDomainHandle(read.envelope.handle, head.value)) return conflict('head-changed');
+          recoveries.push({ envelope: read.envelope, acknowledgement: read.acknowledgement });
+        }
+        return active() ? { kind: 'ready', recoveries } : conflict('operation-changed');
+      } catch (error) { return failure(recoveryErrorReason(error)); }
+    },
+    async current(): Promise<RecoveryReadResult> {
+      if (!active()) return conflict('operation-changed');
+      try {
+        const raw = await driver.readCurrent(ownerId), head = decodeDomainCurrent(raw, ownerId);
+        if (head.kind !== 'readable') return decodeFailure(head, 'not-started');
+        if (!head.value) return active() ? { kind: 'ready', envelope: null, acknowledgement: null } : conflict('operation-changed');
+        const read = await this.read(head.value.tripId); if (read.kind !== 'ready') return read;
+        if (!read.envelope || !sameDomainHandle(read.envelope.handle, head.value) || await driver.readCurrent(ownerId) !== raw) return conflict('head-changed');
+        return active() ? read : conflict('operation-changed');
+      } catch (error) { return failure(recoveryErrorReason(error)); }
+    },
     async commit(input: { raw: string; expectedHead: RecoveryHandle | null; admission: 'native-setter-quota' }): Promise<RecoveryCommitResult> {
       if (!active()) return conflict('operation-changed');
       if (input.admission !== 'native-setter-quota') return conflict('admission');
@@ -51,7 +77,7 @@ export function createRecoveryDomainStore(driver: RecoveryDomainDriver, context:
             return { value: { kind: 'committed' } };
           }
           if (!sameDomainHandle(existing.head, expected)) return { value: conflict('head-changed', 'not-committed') };
-          return { value: { kind: 'committed' }, generationRaw: raw, headRaw: JSON.stringify(candidate.handle) };
+          return { value: { kind: 'committed' }, generationRaw: raw, headRaw: JSON.stringify(candidate.handle), currentRaw: JSON.stringify(candidate.handle) };
         });
         if (committed.kind !== 'committed') return committed;
       } catch (error) {
@@ -63,6 +89,8 @@ export function createRecoveryDomainStore(driver: RecoveryDomainDriver, context:
           if (state.generationRaw !== raw) return { value: failure('readback', 'committed') };
           const head = stateHead(state, scope); if (head.kind !== 'valid') return { value: { ...head, commitStatus: 'committed' } };
           if (!sameDomainHandle(head.head, candidate.handle)) return { value: conflict('head-changed', 'committed') };
+          const pointer = decodeDomainCurrent(state.currentRaw, ownerId);
+          if (pointer.kind !== 'readable' || !sameDomainHandle(pointer.value, candidate.handle)) return { value: conflict('head-changed', 'committed') };
           return { value: { kind: 'verified', handle: candidate.handle, raw, commitStatus: 'committed' } };
         });
         return active() ? verified : conflict('operation-changed', 'committed');
