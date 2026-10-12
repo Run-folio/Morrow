@@ -56,9 +56,11 @@ export type TripRecoveryRecord = {
   savedAt: string;
   /** Exact retained legacy source present when this immutable write began. */
   legacySourceRaw?: string;
+  /** Derived by the supported physical-store reader, never inferred from raw JSON. */
+  backend?: 'indexeddb';
 };
 
-export type TripRecoveryHandle = Pick<TripRecoveryRecord, "ownerId" | "tripId" | "writeId">;
+export type TripRecoveryHandle = Pick<TripRecoveryRecord, "ownerId" | "tripId" | "writeId" | "backend">;
 
 export type TripRecoveryClassification =
   | "clean"
@@ -1330,7 +1332,7 @@ export function saveTripRecovery(
     replace?: TripRecoveryHandle;
     accountSavePending?: boolean;
   } = {},
-) {
+): TripRecoveryWriteResult {
   const storage = browserStorage();
   const ownerId = options.ownerId === undefined ? trip.ownerId : options.ownerId;
   const fallback = {
