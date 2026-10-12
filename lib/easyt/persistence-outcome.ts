@@ -27,35 +27,60 @@ export function recoveryPersistenceOutcome(result: RecoveryPersistenceEvidence):
 
 export type PersistenceStage = "homepage-input" | "homepage-intake" | "homepage-preservation" | "homepage-resume" | "device-recovery" | "intake-ack" | "builder-entry" | "builder-edit" | "account-ack";
 let sequence = 0;
-const qaStages = new Set(["homepage-input", "homepage-intake", "homepage-preservation", "homepage-resume", "device-recovery", "intake-ack", "builder-entry", "builder-edit", "account-ack"]);
-const qaOutcomes = new Set(["device-confirmed", "native-write-failed", "protected-conflict", "receipt-incomplete", "pointer-incomplete", "unknown", "account-acknowledged"]);
+export type QaPersistenceStage = "hydration" | "intake" | "editable-input" | "recovery-preparation" | "native-write";
+export type QaPersistenceBoundary = "hydration-ready" | "hydration-complete" | "intake-restore" | "intake-guard" | "intake-projection" | "intake-storage-access" | "intake-frozen" | "intake-reservation" | "editable-prepare" | "editable-reserved" | "editable-write" | "editable-readback" | "recovery-candidate" | "recovery-storage-access" | "recovery-seed" | "recovery-scope" | "recovery-replacement" | "recovery-write" | "recovery-readback";
+export type QaRecoveryCaller = "seed" | "autosave" | "preservation" | "other";
+type QaEvidence = Partial<RecoveryPersistenceEvidence> & {
+  accepted?: boolean; writeAccepted?: boolean;
+  sessionClass?: "signed-in" | "guest" | "pending" | "unavailable";
+  entryKind?: "loading" | "fresh" | "explicit-trip" | "current-draft" | "home-handoff" | "pending-home-handoff" | "pending-direct-intake" | "route-handoff" | "populated-builder" | "unavailable";
+  caller?: QaRecoveryCaller; writeBranch?: "new-write" | "exact-reuse";
+  readbackKind?: "editable-input" | "recovery" | "receipt";
+};
+let qaSequence = 0, qaSessionClass = "unknown", qaEntryKind = "unknown";
+const qaStages = new Set(["homepage-input", "homepage-intake", "homepage-preservation", "homepage-resume", "device-recovery", "intake-ack", "builder-entry", "builder-edit", "account-ack", "hydration", "intake", "editable-input", "recovery-preparation", "native-write"]);
+const qaOutcomes = new Set(["device-confirmed", "native-write-failed", "protected-conflict", "receipt-incomplete", "pointer-incomplete", "unknown", "account-acknowledged", "accepted", "refused"]);
 const qaBoundaries = new Set(["entry-scope", "protected-recovery", "recovery-write", "recovery-readback", "receipt-ack", "receipt-readback", "pointer-ack", "unknown"]);
 const qaAcknowledgements = new Set(["pending", "stale", "storage", "preservation", "accepted"]);
+const qaProducerBoundaries = new Set(["hydration-ready", "hydration-complete", "intake-restore", "intake-guard", "intake-projection", "intake-storage-access", "intake-frozen", "intake-reservation", "editable-prepare", "editable-reserved", "editable-write", "editable-readback", "recovery-candidate", "recovery-storage-access", "recovery-seed", "recovery-scope", "recovery-replacement", "recovery-write", "recovery-readback"]);
+const qaSessions = new Set(["signed-in", "guest", "pending", "unavailable"]);
+const qaEntries = new Set(["loading", "fresh", "explicit-trip", "current-draft", "home-handoff", "pending-home-handoff", "pending-direct-intake", "route-handoff", "populated-builder", "unavailable"]);
+const qaCallers = new Set(["seed", "autosave", "preservation", "other"]), qaWriteBranches = new Set(["new-write", "exact-reuse"]);
+const qaReadbacks = new Set(["editable-input", "recovery", "receipt"]), qaNativeFailures = new Set(["quota", "security", "unavailable", "unknown"]);
 const qaBoolean = (value: unknown) => typeof value === "boolean" ? value : null;
 const qaCategory = (value: unknown, allowed: Set<string>, fallback: string | null) => typeof value === "string" && allowed.has(value) ? value : fallback;
+function qaEnabled() {
+  try { return process.env.MORROVIA_QA_PERSISTENCE_DIAGNOSTICS === "1" && typeof window !== "undefined" && window.location.origin === "https://staging.morrovia.com"; }
+  catch { return false; }
+}
 
 /** QA console only. Closed schema; no storage, network, identifiers or raw errors. */
-function reportQaConsole(detail: Record<string, unknown>, evidence?: RecoveryPersistenceEvidence) {
+function reportQaConsole(detail: Record<string, unknown>, evidence?: QaEvidence, legacyStage?: PersistenceStage) {
   try {
-    if (process.env.MORROVIA_QA_PERSISTENCE_DIAGNOSTICS !== "1" || typeof window === "undefined"
-      || window.location.origin !== "https://staging.morrovia.com") return;
+    if (!qaEnabled()) return;
     const params = new URLSearchParams(window.location.search);
+    const readbackKind = legacyStage ? evidence?.failureBoundary === "receipt-ack" || evidence?.failureBoundary === "receipt-readback" ? "receipt"
+      : legacyStage === "device-recovery" || legacyStage === "builder-entry" || legacyStage === "builder-edit" || legacyStage === "intake-ack" && evidence?.failureReason !== "receipt-incomplete" ? "recovery" : undefined : undefined;
+    if (evidence?.sessionClass !== undefined) qaSessionClass = qaCategory(evidence.sessionClass, qaSessions, "unknown")!;
+    if (evidence?.entryKind !== undefined) qaEntryKind = qaCategory(evidence.entryKind, qaEntries, "unknown")!;
     const common = {
-      version: 1, kind: detail.kind === "ready" ? "ready" : "outcome",
-      sequence: typeof detail.sequence === "number" && Number.isSafeInteger(detail.sequence) && detail.sequence >= 0 ? detail.sequence : null,
+      version: 2, kind: detail.kind === "ready" ? "ready" : "outcome",
+      sequence: detail.kind === "ready" ? 0 : ++qaSequence,
       buildMatch: true,
       queryKeys: { trip: params.has("trip"), recover: params.has("recover"), homeDraft: params.has("homeDraft"), handoff: params.has("handoff"), inspire: params.has("inspire") },
-      // These are not supplied at the existing emitters. Do not guess them or
-      // inspect session/profile/storage to fill the capture contract.
-      sessionClass: "unknown", browserContextClass: "unknown",
+      sessionClass: qaSessionClass, browserContextClass: "unknown", entryKind: qaEntryKind,
     };
     const packet = detail.kind === "ready" ? common : {
       ...common,
       stage: qaCategory(detail.stage, qaStages, "unknown"),
+      boundary: qaCategory(detail.boundary, qaProducerBoundaries, null), accepted: qaBoolean(evidence?.accepted),
+      caller: qaCategory(evidence?.caller, qaCallers, null),
+      writeBranch: qaCategory(evidence?.writeBranch, qaWriteBranches, null),
+      readbackKind: qaCategory(readbackKind ?? evidence?.readbackKind, qaReadbacks, null),
       phase: detail.phase === "probe" ? "probe" : "result",
       outcome: qaCategory(detail.outcome, qaOutcomes, "unknown"),
       failureBoundary: qaCategory(detail.failureBoundary, qaBoundaries, null),
-      writeAttempted: qaBoolean(evidence?.writeAttempted), writeAccepted: null,
+      writeAttempted: qaBoolean(evidence?.writeAttempted), writeAccepted: qaBoolean(evidence?.writeAccepted),
       readbackConfirmed: qaBoolean(evidence?.readbackConfirmed),
       deviceCopyVerified: qaBoolean(evidence?.recoveryDurable) ?? (evidence?.stored === true ? true : null),
       pointerAcknowledged: qaBoolean(evidence?.pointerAcknowledged),
@@ -72,6 +97,30 @@ function reportQaConsole(detail: Record<string, unknown>, evidence?: RecoveryPer
 // Each fresh client document emits a ready delimiter before any submission.
 // Sequence remains document-local; the observer must prove navigation capture.
 reportQaConsole({ kind: "ready", sequence: 0 });
+
+/** Diagnostic-only accepted/refused prerequisite, with a separate console counter. */
+export function reportQaPersistenceBoundary(stage: QaPersistenceStage, boundary: QaPersistenceBoundary, evidence: QaEvidence) {
+  try {
+    if (!qaEnabled()) return;
+    const accepted = qaBoolean(evidence.accepted);
+    reportQaConsole({ stage, boundary, phase: evidence.phase,
+      outcome: accepted === true ? "accepted" : accepted === false ? "refused" : "unknown",
+      nativeFailure: evidence.nativeFailure ? qaCategory(evidence.nativeFailure, qaNativeFailures, "unknown") : null,
+      acknowledgement: evidence.acknowledgement,
+    }, evidence);
+  } catch { /* Never turn an observation into a persistence decision. */ }
+}
+
+/** No arbitrary exception text or getter failure may escape diagnostic capture. */
+export function qaNativeFailureCategory(error: unknown): "quota" | "security" | "unavailable" | "unknown" {
+  try {
+    if (!qaEnabled()) return "unknown";
+    const name = typeof error === "object" && error !== null && "name" in error ? error.name : undefined;
+    const code = typeof error === "object" && error !== null && "code" in error ? error.code : undefined;
+    return name === "QuotaExceededError" || name === "NS_ERROR_DOM_QUOTA_REACHED" || code === 22 || code === 1014 ? "quota"
+      : name === "SecurityError" ? "security" : name === "InvalidStateError" ? "unavailable" : "unknown";
+  } catch { return "unknown"; }
+}
 
 /** Local event only: no identifiers, payloads, messages, tokens, storage values or remote telemetry. */
 export function reportPersistenceOutcome(stage: PersistenceStage, result: RecoveryPersistenceEvidence) {
@@ -95,7 +144,7 @@ export function reportPersistenceOutcome(stage: PersistenceStage, result: Recove
     scopeMatches: typeof result.scopeMatches === "boolean" ? result.scopeMatches : null,
     receiptPresent: typeof result.receiptPresent === "boolean" ? result.receiptPresent : null,
   };
-  reportQaConsole(detail, result);
+  reportQaConsole(detail, result, stage);
   if (typeof window !== "undefined" && typeof window.dispatchEvent === "function" && typeof CustomEvent !== "undefined") window.dispatchEvent(new CustomEvent("morrovia-persistence-outcome", { detail }));
   return detail;
 }

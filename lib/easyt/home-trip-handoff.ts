@@ -14,7 +14,7 @@ import { addLocalDays } from "./local-date.ts";
 import { routeIntentFromHandoff } from "./trip-route-intent.ts";
 import { homepageCapturedRouteEvidence, homepageDescribeSourceKey, homepageRouteChoice, homepageRouteReviewKey, invalidateHomepageRouteReview, type HomepageRouteEvidence } from "./home-route-choice.ts";
 import { acceptedGeographicPlace, geographicCandidateMatches, geographicallyReady } from './geographic-binding.ts';
-import type { PersistenceFailureBoundary } from './persistence-outcome.ts';
+import { reportQaPersistenceBoundary, qaNativeFailureCategory, type PersistenceFailureBoundary } from './persistence-outcome.ts';
 
 export const HOME_TRIP_DRAFT_KEY = "easyt-home-trip-draft";
 
@@ -459,22 +459,31 @@ export async function persistEditableHomepageInput(input: {
 }): Promise<{ ok: true; stored: StoredHomepageInput } | { ok: false; reason: "reserved" | "storage" | "stale" }> {
   try {
     return await withHomepageReceiptLock(input.snapshot.ownerId, input.lock, async () => {
-      if (input.isCurrent && !input.isCurrent()) return { ok: false as const, reason: "stale" as const };
+      if (input.isCurrent && !input.isCurrent()) { reportQaPersistenceBoundary("editable-input", "editable-prepare", {accepted:false,phase:"probe",writeAttempted:false,acknowledgement:"stale"}); return { ok: false as const, reason: "stale" as const }; }
       const key = homepageInputStorageKey(input.snapshot.ownerId);
       const raw = input.storage.getItem(key);
       let previous: StoredHomepageInput | null = null;
       try { previous = raw ? readHomepageInput(JSON.parse(raw), input.snapshot.ownerId) : null; }
-      catch { return { ok: false as const, reason: "storage" as const }; }
-      if (raw && !previous) return { ok: false as const, reason: "storage" as const };
-      if (previous?.receipt?.version === 2) return { ok: false as const, reason: "reserved" as const };
+      catch { reportQaPersistenceBoundary("editable-input", "editable-prepare", {accepted:false,writeAttempted:false,acknowledgement:"storage"}); return { ok: false as const, reason: "storage" as const }; }
+      if (raw && !previous) { reportQaPersistenceBoundary("editable-input", "editable-prepare", {accepted:false,writeAttempted:false,acknowledgement:"storage"}); return { ok: false as const, reason: "storage" as const }; }
+      if (previous?.receipt?.version === 2) { reportQaPersistenceBoundary("editable-input", "editable-reserved", {accepted:false,writeAttempted:false,receiptPresent:true,acknowledgement:"preservation"}); return { ok: false as const, reason: "reserved" as const }; }
       const stored: StoredHomepageInput = input.preserveCompletedReceipt && previous?.receipt?.version === 1
         ? { snapshot: input.snapshot, receipt: previous.receipt } : { snapshot: input.snapshot };
       if (previous?.review) stored.review = previous.review;
       const serialized = JSON.stringify(stored);
+      reportQaPersistenceBoundary("editable-input", "editable-prepare", {accepted:true,writeAttempted:false,receiptPresent:Boolean(previous?.receipt)});
+      let qaWriteAccepted = false;
+      let qaReadbackConfirmed: boolean | undefined;
       try {
         input.storage.setItem(key, serialized);
-        if (input.storage.getItem(key) !== serialized) throw new Error("Editable intake write was not durable");
-      } catch {
+        qaWriteAccepted = true;
+        reportQaPersistenceBoundary("editable-input", "editable-write", {accepted:true,writeAttempted:true,writeAccepted:true});
+        qaReadbackConfirmed = input.storage.getItem(key) === serialized;
+        if (!qaReadbackConfirmed) throw new Error("Editable intake write was not durable");
+        reportQaPersistenceBoundary("editable-input", "editable-readback", {accepted:true,writeAttempted:true,writeAccepted:true,readbackConfirmed:true,readbackKind:"editable-input"});
+      } catch (error) {
+        reportQaPersistenceBoundary("editable-input", qaWriteAccepted ? "editable-readback" : "editable-write", {accepted:false,writeAttempted:true,writeAccepted:qaWriteAccepted,readbackConfirmed:qaReadbackConfirmed,
+          ...(qaWriteAccepted ? {readbackKind:"editable-input" as const} : {nativeFailure:qaNativeFailureCategory(error)})});
         try {
           if (raw === null) input.storage.removeItem(key);
           else input.storage.setItem(key, raw);
@@ -483,7 +492,7 @@ export async function persistEditableHomepageInput(input: {
       }
       return { ok: true as const, stored };
     });
-  } catch { return { ok: false, reason: "storage" }; }
+  } catch { reportQaPersistenceBoundary("editable-input", "editable-prepare", {accepted:false,acknowledgement:"storage"}); return { ok: false, reason: "storage" }; }
 }
 
 /** Preserve the current intake before leaving for the existing import route. */

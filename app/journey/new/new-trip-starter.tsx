@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { reportQaPersistenceBoundary, qaNativeFailureCategory } from "@/lib/easyt/persistence-outcome";
 import { useRouter } from "next/navigation";
 import { MorroviaTripCapture } from "@/components/easyt/morrovia-trip-capture";
 import { JourneyEndpointsEditor } from "@/components/easyt/journey-endpoints-editor";
@@ -57,7 +58,9 @@ export function NewTripStarter({ ownerId, language, travelProfile, onSubmit }: {
         // The completed receipt is detached by the next deliberate edit or
         // submission under the shared owner lock.
       }
-    } catch {
+      reportQaPersistenceBoundary("intake", "intake-restore", {accepted:true,writeAttempted:false,receiptPresent:Boolean(stored?.receipt)});
+    } catch (error) {
+      reportQaPersistenceBoundary("intake", "intake-restore", {accepted:false,writeAttempted:false,nativeFailure:qaNativeFailureCategory(error)});
       setError(language === "es" ? "No pudimos recuperar lo que escribiste en este dispositivo." : "We couldn't restore the trip input on this device.");
     }
     nextEntryId.current = Math.max(1, ...next.entries.map((entry) => Number(entry.id.match(/^destination-(\d+)$/)?.[1] ?? 0))) + 1;
@@ -75,14 +78,20 @@ export function NewTripStarter({ ownerId, language, travelProfile, onSubmit }: {
     snapshotRef.current = next;
     setSnapshot(next);
     setError("");
-    void persistEditableHomepageInput({ storage: window.localStorage, snapshot: next,
+    let intakeStorage: Storage;
+    try { intakeStorage = window.localStorage; }
+    catch (error) { reportQaPersistenceBoundary("intake", "intake-storage-access", {accepted:false,writeAttempted:false,nativeFailure:qaNativeFailureCategory(error)}); throw error; }
+    void persistEditableHomepageInput({ storage: intakeStorage, snapshot: next,
       isCurrent: () => snapshotRef.current.ownerId === next.ownerId && snapshotRef.current.revision === next.revision }).then((result) => {
       if (!result.ok && result.reason !== "stale" && snapshotRef.current.ownerId === next.ownerId && snapshotRef.current.revision === next.revision)
         setError(language === "es" ? "No pudimos guardar estos cambios en este dispositivo." : "We couldn't save these changes on this device.");
     });
   };
   const submit = async () => {
-    if (submitInFlightRef.current || snapshotRef.current.ownerId !== ownerId) return;
+    if (submitInFlightRef.current || snapshotRef.current.ownerId !== ownerId) {
+      reportQaPersistenceBoundary("intake", "intake-guard", {accepted:submitInFlightRef.current ? undefined : false,phase:submitInFlightRef.current ? "probe" : "result",scopeMatches:snapshotRef.current.ownerId === ownerId,writeAttempted:false,acknowledgement:submitInFlightRef.current ? "pending" : undefined});
+      return;
+    }
     submitInFlightRef.current = true;
     const submitted = snapshotRef.current;
     const isCurrent = () => snapshotRef.current.revision === submitted.revision

@@ -124,7 +124,7 @@ import { withProviderTimeout } from "@/lib/easyt/provider-timeout";
 import { hasUsefulRouteSkeleton } from "./trip-builder-entry";
 import { markPlanningMilestone, planningAttemptOutcome, planningContentIsActionable, planningRequiredInterpretationIsComplete } from "@/lib/easyt/planning-attempt-performance";
 import { durableBuilderRecoveryUrl } from "@/lib/easyt/builder-durable-url";
-import { recoveryFailureMessage, recoveryPersistenceOutcome, reportPersistenceOutcome, type PersistenceOutcome } from "@/lib/easyt/persistence-outcome";
+import { recoveryFailureMessage, recoveryPersistenceOutcome, reportPersistenceOutcome, reportQaPersistenceBoundary, qaNativeFailureCategory, type QaRecoveryCaller, type PersistenceOutcome } from "@/lib/easyt/persistence-outcome";
 import { clearTripLegTransportChoice, selectTripLegTransportChoice } from "@/lib/easyt/transport-mode-choice";
 import { authoredContentKey } from "@/lib/easyt/trip-retained-authored-content";
 
@@ -1179,13 +1179,18 @@ function TripBuilderDocument() {
   const submitNewTripIntake = async (snapshot: HomepageInputSnapshot) => {
     const submittedAt = performance.now();
     if (!hydrated || !canUseHydratedTripScope(hydratedOwnerScopeRef.current, activeBrowserOwnerId)
-      || snapshot.ownerId !== activeBrowserOwnerId || hasRouteSkeleton || hasPromptContext) throw new Error("New trip intake is no longer current");
+      || snapshot.ownerId !== activeBrowserOwnerId || hasRouteSkeleton || hasPromptContext) {
+      reportQaPersistenceBoundary("intake", "intake-guard", {accepted:false,writeAttempted:false,scopeMatches:canUseHydratedTripScope(hydratedOwnerScopeRef.current, activeBrowserOwnerId) && snapshot.ownerId === activeBrowserOwnerId});
+      throw new Error("New trip intake is no longer current");
+    }
+    reportQaPersistenceBoundary("intake", "intake-guard", {accepted:true,writeAttempted:false,scopeMatches:true});
     if (snapshot.mode === "describe") {
       const reservation = await reserveDirectDescribeIntake({
         storage: window.localStorage, snapshot, tripId, handoffId: `new-intake-${crypto.randomUUID()}`,
       });
       if (!reservation.ok || !canUseHydratedTripScope(hydratedOwnerScopeRef.current, snapshot.ownerId)
-        || activeBrowserOwnerIdRef.current !== snapshot.ownerId) throw new Error("New trip intake could not be reserved");
+        || activeBrowserOwnerIdRef.current !== snapshot.ownerId) { reportQaPersistenceBoundary("intake", "intake-reservation", {accepted:false}); throw new Error("New trip intake could not be reserved"); }
+      reportQaPersistenceBoundary("intake", "intake-reservation", {accepted:true,scopeMatches:true,receiptPresent:true});
       const receipt = reservation.receipt;
       markPlanningMilestone(receipt.handoffId, "submit", submittedAt);
       markPlanningMilestone(receipt.handoffId, "durable-intake");
@@ -1201,16 +1206,23 @@ function TripBuilderDocument() {
     }
     const handoffId = `new-intake-${crypto.randomUUID()}`;
     const projected = projectHomepageInput({ snapshot, profile: hasSavedTravelProfile ? travelProfile : null, handoffId });
-    if (!projected.ok) throw new Error("New trip intake needs review");
+    if (!projected.ok) { reportQaPersistenceBoundary("intake", "intake-projection", {accepted:false,writeAttempted:false}); throw new Error("New trip intake needs review"); }
+    reportQaPersistenceBoundary("intake", "intake-projection", {accepted:true,writeAttempted:false});
     const receipt = homepageReceiptForProjection(snapshot, projected.draft, tripId);
     markPlanningMilestone(receipt.handoffId, "submit", submittedAt);
     planningAttemptIdRef.current = receipt.handoffId;
     planningModeRef.current = "stops";
     // The completed receipt must follow canonical recovery, so a reload while
     // the Builder is still saving can restore the traveller's original intake.
-    const frozenInput = await persistEditableHomepageInput({ storage: window.localStorage, snapshot,
+    let intakeStorage: Storage;
+    try { intakeStorage = window.localStorage; }
+    catch (error) { reportQaPersistenceBoundary("intake", "intake-storage-access", {accepted:false,writeAttempted:false,nativeFailure:qaNativeFailureCategory(error)}); throw error; }
+    reportQaPersistenceBoundary("intake", "intake-storage-access", {accepted:true,writeAttempted:false});
+    const frozenInput = await persistEditableHomepageInput({ storage: intakeStorage, snapshot,
       isCurrent: () => canUseHydratedTripScope(hydratedOwnerScopeRef.current, snapshot.ownerId)
         && activeBrowserOwnerIdRef.current === snapshot.ownerId });
+    reportQaPersistenceBoundary("intake", "intake-frozen", {accepted:frozenInput.ok,scopeMatches:canUseHydratedTripScope(hydratedOwnerScopeRef.current, snapshot.ownerId) && activeBrowserOwnerIdRef.current === snapshot.ownerId,
+      ...(!frozenInput.ok ? {acknowledgement:frozenInput.reason === "reserved" ? "preservation" as const : frozenInput.reason} : {})});
     if (!frozenInput.ok) throw new Error("New trip input did not persist");
     markPlanningMilestone(receipt.handoffId, "durable-intake");
     pendingNewTripReceiptRef.current = { snapshot, receipt, draft: { ...projected.draft, homepage: { ...projected.draft.homepage!, receipt } } };
@@ -1321,6 +1333,13 @@ function TripBuilderDocument() {
   };
 
   useEffect(() => {
+    // Observe auth-class changes without changing hydration's dependencies or decisions.
+    reportQaPersistenceBoundary("hydration", "hydration-ready", {phase:"probe",sessionClass:sessionPending ? "pending" : sessionUnavailable ? "unavailable" : authenticatedOwnerId ? "signed-in" : "guest"});
+  }, [sessionPending, sessionUnavailable, authenticatedOwnerId]);
+
+  useEffect(() => {
+    reportQaPersistenceBoundary("hydration", "hydration-ready", {accepted:sessionPending || !browserContextReady ? undefined : true,phase:sessionPending || !browserContextReady ? "probe" : "result",writeAttempted:false,
+      sessionClass:sessionPending ? "pending" : sessionUnavailable ? "unavailable" : authenticatedOwnerId ? "signed-in" : "guest"});
     if (sessionPending || !browserContextReady) return;
     if (canUseHydratedTripScope(hydratedOwnerScopeRef.current, activeBrowserOwnerId)) return;
     const previousOwnerScope = hydratedOwnerScopeRef.current;
@@ -1347,6 +1366,8 @@ function TripBuilderDocument() {
       if (saved && active) applyAcceptedBuilderDocument(saved);
     };
     const hydrate = async () => {
+      try {
+      let qaHydrationAccepted = true;
       const params = new URLSearchParams(window.location.search);
       const activeOwnerId = activeBrowserOwnerId;
       const legacyStep = params.get("step");
@@ -1364,6 +1385,7 @@ function TripBuilderDocument() {
           setTripUnavailable(true);
           setEntryKind("unavailable");
           setHydrated(true);
+          reportQaPersistenceBoundary("hydration", "hydration-complete", {accepted:false,scopeMatches:true,entryKind:"unavailable",writeAttempted:false});
         }
         return;
       }
@@ -1386,6 +1408,7 @@ function TripBuilderDocument() {
           applySaved(requestedTrip);
           if (showItinerary) setGenerated(true);
         } else {
+          qaHydrationAccepted = false;
           setTripUnavailable(true);
         }
       } else {
@@ -1398,6 +1421,7 @@ function TripBuilderDocument() {
             setEntryKind("current-draft");
             hydratedOwnerScopeRef.current = activeOwnerId;
             setHydrated(true);
+            reportQaPersistenceBoundary("hydration", "hydration-complete", {accepted:true,scopeMatches:true,entryKind:"current-draft",writeAttempted:false});
             return;
           }
         }
@@ -1596,7 +1620,9 @@ function TripBuilderDocument() {
         hydratedOwnerScopeRef.current = activeOwnerId;
         setEntryKind(hydratedEntryKind);
         setHydrated(true);
+        reportQaPersistenceBoundary("hydration", "hydration-complete", {accepted:qaHydrationAccepted && hydratedEntryKind !== "unavailable",scopeMatches:true,entryKind:qaHydrationAccepted ? hydratedEntryKind : "unavailable",writeAttempted:false});
       }
+      } catch (error) { reportQaPersistenceBoundary("hydration", "hydration-complete", {accepted:active ? false : undefined,phase:active ? "result" : "probe",acknowledgement:active ? undefined : "stale"}); throw error; }
     };
     void hydrate();
     return () => { active = false; };
@@ -4492,7 +4518,7 @@ function TripBuilderDocument() {
     if (conflict.stage === "places") setHasPromptContext(true);
   };
 
-  const persistDeviceRecovery = useCallback((trip: EasyTTrip) => {
+  const persistDeviceRecovery = useCallback((trip: EasyTTrip, qaCaller: QaRecoveryCaller = "other") => {
     const editor = builderEditSessionRef.current;
     if (editor) {
       const snapshot=editor.getSnapshot();
@@ -4505,6 +4531,7 @@ function TripBuilderDocument() {
     reportPersistenceOutcome("builder-entry", {stored:false, phase:"probe", writeAttempted:false, scopeMatches:canUseHydratedTripScope(hydratedOwnerScopeRef.current, ownerId) && (!trip.ownerId || trip.ownerId === ownerId), receiptPresent:Boolean(pendingNewTripReceiptRef.current)});
     if (!canUseHydratedTripScope(hydratedOwnerScopeRef.current, ownerId)
       || (trip.ownerId && trip.ownerId !== ownerId)) {
+      reportQaPersistenceBoundary("recovery-preparation", "recovery-scope", {accepted:false,scopeMatches:false,writeAttempted:false,caller:qaCaller});
       return {
         stored: false,
         handle: { ownerId, tripId: trip.id, writeId: `scope-mismatch-${Date.now()}` },
@@ -4514,6 +4541,7 @@ function TripBuilderDocument() {
         failureBoundary: "entry-scope" as const,
       };
     }
+    reportQaPersistenceBoundary("recovery-preparation", "recovery-scope", {accepted:true,scopeMatches:true,writeAttempted:false,caller:qaCaller,receiptPresent:Boolean(pendingNewTripReceiptRef.current)});
     const currentHandle = recoveryHandleRef.current;
     const replacement = currentHandle?.tripId === trip.id && currentHandle.ownerId === ownerId
       ? currentHandle
@@ -4604,12 +4632,15 @@ function TripBuilderDocument() {
     const start=async()=>{
       try {
         const source=hydratedCanonicalTripRef.current?.id===activeTripDocument.id ? hydratedCanonicalTripRef.current : null;
-        const candidate=requireReadableTripDocument(source??activeTripDocument);
+        let candidate: ReturnType<typeof requireReadableTripDocument>;
+        try { candidate=requireReadableTripDocument(source??activeTripDocument); }
+        catch (error) { reportQaPersistenceBoundary("recovery-preparation", "recovery-candidate", {accepted:false,writeAttempted:false,caller:"seed"}); throw error; }
+        reportQaPersistenceBoundary("recovery-preparation", "recovery-candidate", {accepted:true,writeAttempted:false,caller:"seed"});
         const openedRecovery=source ? recoveryHandleRef.current : null;
         let persistedRecovery: ReturnType<typeof persistDeviceRecovery> | null = null;
         if (!source) {
-          persistedRecovery=persistDeviceRecovery(candidate);
-          if(receiptAcknowledgementRef.current) { await receiptAcknowledgementRef.current; if(!active)return; persistedRecovery=persistDeviceRecovery(candidate); }
+          persistedRecovery=persistDeviceRecovery(candidate,"seed");
+          if(receiptAcknowledgementRef.current) { await receiptAcknowledgementRef.current; if(!active)return; persistedRecovery=persistDeviceRecovery(candidate,"seed"); }
           if(!persistedRecovery.stored) return;
         }
         // A guest reconstruction can reuse a durable write with an older timestamp.
@@ -4620,14 +4651,16 @@ function TripBuilderDocument() {
           || recovery.tripId !== candidate.id || !recovery.writeId || !sameRecoveryDocument(recovery.trip,candidate)
           || expectedRecovery && (recovery.ownerId !== expectedRecovery.ownerId
             || recovery.tripId !== expectedRecovery.tripId || recovery.writeId !== expectedRecovery.writeId))) {
+          reportQaPersistenceBoundary("recovery-preparation", "recovery-seed", {accepted:false,caller:"seed"});
           setDeviceRecoveryBlocked(true);setCloudSaveError("Open this device's separate recovery before editing the account trip.");return;
         }
         if(active) {
+          reportQaPersistenceBoundary("recovery-preparation", "recovery-seed", {accepted:true,scopeMatches:true,caller:"seed"});
           builderSeedPendingRef.current = true;
           setBuilderSeed({initialTrip:recovery?.trip ?? candidate,initialRecovery:recovery,
             initialCanonicalTrip:recovery?null:candidate,allowRecoverySync:!source || builderSearchParams.get("recover")==="1"});
         }
-      }catch { if(active) {reportPersistenceOutcome("builder-entry",{stored:false});setDevicePersistenceOutcome("unknown");setDeviceStorageBlocked(true);setSaveState("error");setCloudSaveError(language === "es" ? "No pudimos abrir este viaje de forma segura. Mantén esta pestaña abierta." : "This trip could not be opened safely. Keep this tab open.");} }
+      }catch { if(active) {reportQaPersistenceBoundary("recovery-preparation", "recovery-seed", {accepted:false,caller:"seed"});reportPersistenceOutcome("builder-entry",{stored:false});setDevicePersistenceOutcome("unknown");setDeviceStorageBlocked(true);setSaveState("error");setCloudSaveError(language === "es" ? "No pudimos abrir este viaje de forma segura. Mantén esta pestaña abierta." : "This trip could not be opened safely. Keep this tab open.");} }
     };
     void start();return()=>{active=false};
   },[builderSeed,hydrated,pendingInterpretation,resolvingLocations,tripUnavailable,activeBrowserOwnerId,activeTripDocument,persistDeviceRecovery]);
@@ -4635,7 +4668,7 @@ function TripBuilderDocument() {
   useEffect(() => {
     const preserveBeforeNewTrip = (event: Event) => {
       if (!hydrated || (!origin.trim() && !tripBrief.trim() && !stops.length)) return;
-      const recovery = persistDeviceRecovery(activeTripDocument);
+      const recovery = persistDeviceRecovery(activeTripDocument,"preservation");
       if (builderEditSessionRef.current) void builderEditSessionRef.current.flush();
       if (receiptAcknowledgementRef.current) {
         event.preventDefault();
@@ -4678,7 +4711,7 @@ function TripBuilderDocument() {
         return;
       }
       lastAcknowledgedCanonicalRef.current = null;
-      const recovery = persistDeviceRecovery(activeTripDocument);
+      const recovery = persistDeviceRecovery(activeTripDocument,"autosave");
       if (recovery.stored && planningAttemptIdRef.current) markPlanningMilestone(planningAttemptIdRef.current, "durable-intake");
       if (receiptAcknowledgementRef.current) {
         setSaveState("device-saving");
