@@ -3,7 +3,7 @@ import test from 'node:test';
 import { createTwoStoreTripPersistence } from '../lib/easyt/two-store-trip-persistence.ts';
 import { MemoryRecoveryDriver } from './helpers/durable-recovery-driver.ts';
 import { envelope } from './helpers/durable-recovery-fixture.ts';
-import { saveTripRecoveryToStorage, tripRecoveryStorageKey, type EasyTBrowserStorage } from '../lib/easyt/storage.ts';
+import { saveTripRecoveryToStorage, tripRecoveryStorageKey, currentTripStorageKey, EASYT_ACTIVE_TRIP_KEY, type EasyTBrowserStorage } from '../lib/easyt/storage.ts';
 import { createRecoveryDomainStore } from '../lib/easyt/durable-recovery-store.ts';
 
 class SyntheticStorage implements EasyTBrowserStorage {
@@ -65,4 +65,45 @@ test('security/silent refusal and held activation/account eligibility cannot adm
     assert.equal((await createTwoStoreTripPersistence(ls, driver, context).save(trip('candidate', ownerId), { newTripOrClone: mode !== 'existing-trip' })).stored, false);
     assert.equal(driver.generations.size, 0);
   }
+});
+
+test('cold current/list discover domain-only trip despite an unchanged older native pointer without copying a locator',async()=>{
+  const ls=new SyntheticStorage(),driver=new MemoryRecoveryDriver();
+  const prior={...trip('prior'),id:'prior-trip'};saveTripRecoveryToStorage(ls,prior,{ownerId:null,writeId:'prior'});
+  ls.refusal='quota';const before=[...ls.values];
+  assert.equal((await createTwoStoreTripPersistence(ls,driver,ctx()).save(trip(),{newTripOrClone:true,writeId:'sole'})).stored,true);
+  const cold=createTwoStoreTripPersistence(ls,driver,ctx()),current=await cold.current();
+  assert.equal(current.kind,'found');if(current.kind==='found')assert.equal(current.recovery?.writeId,'sole');
+  const listed=await cold.list();assert.equal(listed.kind,'ready');if(listed.kind==='ready')assert.deepEqual(new Set(listed.recoveries.map(r=>r.tripId)),new Set([prior.id,trip().id]));
+  assert.deepEqual([...ls.values],before);
+});
+test('unexplained different native navigation after domain commit is a protected current selection',async()=>{
+  const ls=new SyntheticStorage(),driver=new MemoryRecoveryDriver();ls.refusal='quota';
+  await createTwoStoreTripPersistence(ls,driver,ctx()).save(trip(),{newTripOrClone:true});
+  ls.values.set(currentTripStorageKey(null),JSON.stringify({version:2,ownerId:null,tripId:'old-tab-trip'}));
+  assert.equal((await createTwoStoreTripPersistence(ls,driver,ctx()).current()).kind,'protected');
+  assert.equal((await createTwoStoreTripPersistence(ls,driver,ctx()).read(trip().id)).kind,'found');
+});
+test('queryless new Builder does not select an arbitrary recovery without an acknowledged current pointer',async()=>{
+  const ls=new SyntheticStorage(),driver=new MemoryRecoveryDriver();saveTripRecoveryToStorage(ls,trip(),{ownerId:null});
+  ls.values.delete(currentTripStorageKey(null));assert.equal((await createTwoStoreTripPersistence(ls,driver,ctx()).current()).kind,'missing');
+});
+test('v1 source fallback retains observed raw bytes and protects a later old-reader change',async()=>{
+  const ls=new SyntheticStorage(),driver=new MemoryRecoveryDriver(),prior=trip('legacy');ls.values.set(EASYT_ACTIVE_TRIP_KEY,JSON.stringify(prior));ls.refusal='quota';
+  const broker=createTwoStoreTripPersistence(ls,driver,ctx());assert.equal((await broker.read(prior.id)).kind,'found');
+  const updated={...prior,title:'new owned clone source'};
+  assert.equal((await broker.save(updated,{newTripOrClone:true,writeId:'domain'})).stored,true);
+  assert.equal((await broker.read(prior.id)).kind,'found');
+  ls.values.set(EASYT_ACTIVE_TRIP_KEY,JSON.stringify({...prior,title:'old tab diverged'}));
+  assert.equal((await broker.read(prior.id)).kind,'protected');assert.equal(driver.generations.size,1);
+});
+test('supported native save after an overflow trip advances scoped navigation without deleting its domain copy',async()=>{
+  const ls=new SyntheticStorage(),driver=new MemoryRecoveryDriver();ls.refusal='quota';
+  const broker=createTwoStoreTripPersistence(ls,driver,ctx());await broker.save(trip(),{newTripOrClone:true,writeId:'domain'});
+  ls.refusal=null;const next={...trip('next'),id:'next-native'};
+  assert.equal((await broker.save(next,{newTripOrClone:true,writeId:'native'})).stored,true);
+  const current=await broker.current();assert.equal(current.kind,'found');if(current.kind==='found')assert.equal(current.trip.id,next.id);
+  assert.equal(driver.generations.size,1);assert.equal((await broker.read(trip().id)).kind,'found');
+  ls.values.set(currentTripStorageKey(null),JSON.stringify({version:2,ownerId:null,tripId:'old-tab-trip'}));
+  assert.equal((await broker.current()).kind,'protected');
 });

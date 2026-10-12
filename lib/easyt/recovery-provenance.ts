@@ -1,4 +1,4 @@
-import { decodeLegacySource, decodeRecoveryEnvelope, isRecoveryScope,
+import { decodeLegacySource, decodeRecoverySource, decodeRecoveryEnvelope, isRecoveryScope,
   type LegacyRecoverySource, type RecoveryEnvelope, type RecoveryReadResult, type RecoveryScope } from './durable-recovery-domain.ts';
 
 export type LegacyRecoverySnapshot = { kind: 'ready' | 'unavailable'; copies: LegacyRecoverySource[] };
@@ -26,8 +26,11 @@ export function resolveRecoveryProvenance(input: RecoveryProvenanceInput): Recov
   if (preserved.domain === null) {
     if (preserved.legacy.length === 0) return { kind: 'empty', preserved };
     // Multiple physical generations need explicit ancestry, not guessed recency.
-    const first = preserved.legacy[0];
-    if (preserved.legacy.some(source => source.raw !== first.raw)) return protectedResult('ambiguous-legacy');
+    const canonicalCopies = preserved.legacy.filter(source => source.key !== 'easyt:active-trip:v1');
+    const first = canonicalCopies[0] ?? preserved.legacy[0];
+    const decoded = decodeRecoverySource(first, input.scope);
+    const legacyAncestor = decoded.kind === 'readable' ? decoded.value.legacySourceRaw : undefined;
+    if (preserved.legacy.some(source => source.raw !== first.raw && !(source.key === 'easyt:active-trip:v1' && source.raw === legacyAncestor))) return protectedResult('ambiguous-legacy');
     return { kind: 'local-storage', source: { ...first }, preserved };
   }
   let decoded;

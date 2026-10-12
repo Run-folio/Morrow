@@ -40,7 +40,7 @@ export function createRecoveryDomainStore(driver: RecoveryDomainDriver, context:
         const heads = await driver.listHeads(ownerId), recoveries: Extract<RecoveryListResult, { kind: 'ready' }>['recoveries'] = [];
         for (const row of heads) {
           const head = decodeDomainCurrent(row.raw, ownerId); if (head.kind !== 'readable') return decodeFailure(head, 'not-started');
-          if (!head.value || row.key !== recoveryScopeKey(head.value)) return failure('corrupt');
+          if (!head.value || head.value.backend !== 'indexeddb' || row.key !== recoveryScopeKey(head.value)) return failure('corrupt');
           const read = await this.read(head.value.tripId); if (read.kind !== 'ready') return read;
           if (!read.envelope || !sameDomainHandle(read.envelope.handle, head.value)) return conflict('head-changed');
           recoveries.push({ envelope: read.envelope, acknowledgement: read.acknowledgement });
@@ -54,9 +54,10 @@ export function createRecoveryDomainStore(driver: RecoveryDomainDriver, context:
         const raw = await driver.readCurrent(ownerId), head = decodeDomainCurrent(raw, ownerId);
         if (head.kind !== 'readable') return decodeFailure(head, 'not-started');
         if (!head.value) return active() ? { kind: 'ready', envelope: null, acknowledgement: null } : conflict('operation-changed');
+        if (head.value.backend === 'local-storage') return active() ? { kind: 'ready', envelope: null, acknowledgement: null, current: head.value } : conflict('operation-changed');
         const read = await this.read(head.value.tripId); if (read.kind !== 'ready') return read;
         if (!read.envelope || !sameDomainHandle(read.envelope.handle, head.value) || await driver.readCurrent(ownerId) !== raw) return conflict('head-changed');
-        return active() ? read : conflict('operation-changed');
+        return active() ? { ...read, current: head.value } : conflict('operation-changed');
       } catch (error) { return failure(recoveryErrorReason(error)); }
     },
     async commit(input: { raw: string; expectedHead: RecoveryHandle | null; admission: 'native-setter-quota' | 'existing-domain'; entries?: RecoveryEntryWrite[] }): Promise<RecoveryCommitResult> {
@@ -108,7 +109,7 @@ export function createRecoveryDomainStore(driver: RecoveryDomainDriver, context:
           const head = stateHead(state, scope); if (head.kind !== 'valid') return { value: { ...head, commitStatus: 'committed' } };
           if (!sameDomainHandle(head.head, candidate.handle)) return { value: conflict('head-changed', 'committed') };
           const pointer = decodeDomainCurrent(state.currentRaw, ownerId);
-          if (pointer.kind !== 'readable' || !sameDomainHandle(pointer.value, candidate.handle)) return { value: conflict('head-changed', 'committed') };
+          if (pointer.kind !== 'readable' || pointer.value?.backend !== 'indexeddb' || !sameDomainHandle(pointer.value, candidate.handle)) return { value: conflict('head-changed', 'committed') };
           for (const [index, entry] of preparedEntries.entries()) {
             const refused = verifyEntryWrite(entry, state.entries[index]); if (refused) return { value: refused };
           }

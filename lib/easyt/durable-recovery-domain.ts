@@ -1,5 +1,5 @@
 import { readTripDocument } from './trip-document.ts';
-import { tripRecoveryStorageKey } from './storage.ts';
+import { tripRecoveryStorageKey, EASYT_ACTIVE_TRIP_KEY } from './storage.ts';
 import { tripBuildDocumentsCanonicalEquivalent } from './trip-promotion.ts';
 import type { TripRecoveryRecord } from './storage.ts';
 import type { RecoveryEntryRequest, RecoveryEntryState, RecoveryEntryMutation, RecoveryEntryScope } from './durable-entry-protocol.ts';
@@ -7,6 +7,8 @@ import type { RecoveryEntryRequest, RecoveryEntryState, RecoveryEntryMutation, R
 /** Recovery-domain protocol. No implicit browser access. */
 export type RecoveryScope = { ownerId: string | null; tripId: string };
 export type RecoveryHandle = RecoveryScope & { version: 1; backend: 'indexeddb'; writeId: string };
+export type NativeRecoveryPointer = RecoveryScope & { version: 1; backend: 'local-storage'; writeId: string; nativePointerRaw: string; recoveryDigest: string };
+export type RecoveryCurrent = RecoveryHandle | NativeRecoveryPointer;
 export type LegacyRecoverySource = { key: string; raw: string };
 export type RecoveryEnvelope = {
   version: 1;
@@ -20,6 +22,8 @@ export type RecoveryEnvelope = {
     pointer: RecoveryHandle;
     input: (RecoveryScope & { inputRevision: number; raw: string }) | null;
     receipt: (RecoveryScope & { operationId: string; raw: string }) | null;
+    /** Exact older native navigation observed at admission; no locator write is required. */
+    nativePointerRaw?: string | null;
   };
 };
 export type RecoveryFailureReason = 'quota' | 'security' | 'unavailable' | 'blocked' | 'abort' | 'schema' | 'corrupt' | 'readback' | 'unknown';
@@ -28,7 +32,7 @@ export type RecoveryFailure = { kind: 'failure'; reason: RecoveryFailureReason; 
 export type RecoveryConflict = { kind: 'protected-conflict'; reason: 'scope' | 'operation-changed' | 'admission' | 'head-changed' | 'immutable-collision' | 'ack-mismatch'; commitStatus: CommitStatus };
 export type RecoveryCommitResult = RecoveryFailure | RecoveryConflict | { kind: 'verified'; handle: RecoveryHandle; raw: string; commitStatus: 'committed' };
 export type TrustedAccountAck = { version: 1; handle: RecoveryHandle; rawRecovery: string; canonicalRaw: string };
-export type RecoveryReadResult = RecoveryFailure | RecoveryConflict | { kind: 'ready'; envelope: RecoveryEnvelope | null; acknowledgement: TrustedAccountAck | null };
+export type RecoveryReadResult = RecoveryFailure | RecoveryConflict | { kind: 'ready'; envelope: RecoveryEnvelope | null; acknowledgement: TrustedAccountAck | null; current?: RecoveryCurrent };
 export type RecoveryAckResult = RecoveryFailure | RecoveryConflict | { kind: 'journaled'; handle: RecoveryHandle; headMatches: boolean; accountAckMatchesCandidate: true };
 export type RecoveryListResult = RecoveryFailure | RecoveryConflict | { kind: 'ready'; recoveries: { envelope: RecoveryEnvelope; acknowledgement: TrustedAccountAck | null }[] };
 
@@ -74,11 +78,18 @@ export function decodeDomainHead(raw: unknown, scope: RecoveryScope): DomainDeco
     return sameRecoveryScope(value, scope) ? { kind: 'readable', value } : { kind: 'scope' };
   } catch { return { kind: 'corrupt' }; }
 }
-export function decodeDomainCurrent(raw: unknown, ownerId: string | null): DomainDecode<RecoveryHandle | null> {
+export function decodeDomainCurrent(raw: unknown, ownerId: string | null): DomainDecode<RecoveryCurrent | null> {
   if (raw === undefined) return { kind: 'readable', value: null };
   try {
     const value: unknown = typeof raw === 'string' ? JSON.parse(raw) : null;
     if (!record(value) || typeof value.tripId !== 'string') return { kind: 'corrupt' };
+    if (value.backend === 'local-storage') {
+      if (value.version !== 1) return { kind: 'schema' };
+      if (!isRecoveryScope(value) || !keys(value, ['version','backend','ownerId','tripId','writeId','nativePointerRaw','recoveryDigest'])
+        || !text(value.writeId) || typeof value.nativePointerRaw !== 'string' || typeof value.recoveryDigest !== 'string'
+        || !/^[a-f0-9]{64}$/.test(value.recoveryDigest)) return { kind: 'corrupt' };
+      return value.ownerId === ownerId ? { kind: 'readable', value: value as NativeRecoveryPointer } : { kind: 'scope' };
+    }
     return decodeDomainHead(raw, { ownerId, tripId: value.tripId });
   } catch { return { kind: 'corrupt' }; }
 }
@@ -100,10 +111,24 @@ export function decodeRawRecovery(raw: unknown, scope: RecoveryScope): DomainDec
 }
 export function decodeLegacySource(value: unknown, scope: RecoveryScope): DomainDecode<LegacyRecoverySource> {
   if (!record(value) || !keys(value, ['key', 'raw']) || typeof value.key !== 'string' || typeof value.raw !== 'string') return { kind: 'corrupt' };
+  if (value.key === EASYT_ACTIVE_TRIP_KEY) {
+    const source = decodeRecoverySource({ key: value.key, raw: value.raw }, scope);
+    return source.kind === 'readable' ? { kind: 'readable', value: { key: value.key, raw: value.raw } } : source;
+  }
   const recovery = decodeRawRecovery(value.raw, scope); if (recovery.kind !== 'readable') return recovery;
   const base = tripRecoveryStorageKey(scope.ownerId, scope.tripId);
   if (value.key !== base && value.key !== tripRecoveryStorageKey(scope.ownerId, scope.tripId, recovery.value.writeId)) return { kind: 'scope' };
   return { kind: 'readable', value: { key: value.key, raw: value.raw } };
+}
+/** The retained v1 body is addressed explicitly and never rewritten during read. */
+export function decodeRecoverySource(source: LegacyRecoverySource, scope: RecoveryScope): DomainDecode<TripRecoveryRecord> {
+  if (source.key !== EASYT_ACTIVE_TRIP_KEY) return decodeRawRecovery(source.raw, scope);
+  try {
+    const decoded = readTripDocument(JSON.parse(source.raw));
+    if (decoded.kind !== 'readable') return { kind: decoded.kind === 'unsupported' ? 'schema' : 'corrupt' };
+    if (decoded.trip.id !== scope.tripId || decoded.trip.ownerId !== null && decoded.trip.ownerId !== scope.ownerId) return { kind: 'scope' };
+    return { kind: 'readable', value: { version: 2, ...scope, writeId: 'legacy-source', trip: decoded.trip, savedAt: decoded.trip.updatedAt, state: 'pending' } };
+  } catch { return { kind: 'corrupt' }; }
 }
 export function decodeRecoveryEnvelope(raw: unknown, scope: RecoveryScope): DomainDecode<RecoveryEnvelope> {
   try {
@@ -112,7 +137,9 @@ export function decodeRecoveryEnvelope(raw: unknown, scope: RecoveryScope): Doma
     if (value.version !== 1) return { kind: 'schema' };
     if (!keys(value, ['version', 'handle', 'parent', 'rawRecovery', 'legacySources', 'entry']) || !isDomainHandle(value.handle)
       || !(value.parent === null || isDomainHandle(value.parent)) || !Array.isArray(value.legacySources)
-      || !record(value.entry) || !keys(value.entry, ['pointer', 'input', 'receipt']) || !isDomainHandle(value.entry.pointer)) return { kind: 'corrupt' };
+      || !record(value.entry) || !keys(value.entry, ['pointer', 'input', 'receipt', ...('nativePointerRaw' in value.entry ? ['nativePointerRaw'] : [])])
+      || 'nativePointerRaw' in value.entry && value.entry.nativePointerRaw !== null && typeof value.entry.nativePointerRaw !== 'string'
+      || !isDomainHandle(value.entry.pointer)) return { kind: 'corrupt' };
     const handle = value.handle;
     if (!sameRecoveryScope(handle, scope) || !sameDomainHandle(handle, value.entry.pointer)
       || value.parent !== null && (!sameRecoveryScope(value.parent as RecoveryHandle, scope) || (value.parent as RecoveryHandle).writeId === handle.writeId)) return { kind: 'scope' };

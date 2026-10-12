@@ -1,7 +1,7 @@
 import type { EasyTTrip } from './trip.ts';
-import { loadCachedTripFromStorage, saveTripRecoveryToStorage, tripRecoveryStorageKey,
+import { loadCachedTripFromStorage, saveTripRecoveryToStorage, tripRecoveryStorageKey, currentTripStorageKey, EASYT_ACTIVE_TRIP_KEY,
   type EasyTBrowserStorage, type TripRecoveryHandle, type TripRecoveryRecord, type TripRecoveryWriteResult } from './storage.ts';
-import { decodeRawRecovery, sameDomainHandle, type RecoveryDomainDriver, type RecoveryEnvelope, type RecoveryReadResult, type RecoveryHandle } from './durable-recovery-domain.ts';
+import { decodeRawRecovery, decodeRecoverySource, decodeDomainCurrent, sameDomainHandle, type NativeRecoveryPointer, type RecoveryDomainDriver, type RecoveryEnvelope, type RecoveryReadResult, type RecoveryHandle } from './durable-recovery-domain.ts';
 import { createRecoveryDomainStore } from './durable-recovery-store.ts';
 import { resolveRecoveryProvenance } from './recovery-provenance.ts';
 import { prepareTripDocumentForWrite } from './trip-document.ts';
@@ -9,6 +9,7 @@ import type { RecoveryEntryWrite } from './durable-entry-protocol.ts';
 
 export type TwoStoreRead = { kind: 'found'; trip: EasyTTrip; recovery: TripRecoveryRecord | null; domain: Extract<RecoveryReadResult, { kind: 'ready' }> | null }
   | { kind: 'missing' } | { kind: 'protected'; reason: string } | { kind: 'unavailable'; reason: string };
+export type TwoStoreList = { kind: 'ready'; recoveries: TripRecoveryRecord[] } | { kind: 'protected' | 'unavailable'; reason: string };
 export type TwoStoreContext = { ownerId: string | null; isCurrent: () => boolean; overflowEnabled: boolean; accountOverflowQualified: boolean };
 export type TwoStoreSaveOptions = { replace?: TripRecoveryHandle; state?: TripRecoveryRecord['state']; writeId?: string; now?: string;
   newTripOrClone?: boolean; entry?: RecoveryEnvelope['entry']; entries?: RecoveryEntryWrite[]; canonicalBase?: EasyTTrip };
@@ -24,6 +25,14 @@ export function createTwoStoreTripPersistence(storage: EasyTBrowserStorage, driv
       for (let i = 0; i < storage.length; i++) {
         const key = storage.key(i); if (!key || key !== base && !key.startsWith(base + ':')) continue;
         const raw = storage.getItem(key); if (raw !== null) copies.push({ key, raw });
+      }
+      const legacy = storage.getItem(EASYT_ACTIVE_TRIP_KEY);
+      if (legacy !== null) {
+        const value = JSON.parse(legacy) as { id?: unknown; ownerId?: unknown };
+        const ackRaw = storage.getItem(EASYT_ACTIVE_TRIP_KEY + ':acknowledged');
+        const ack = ackRaw === null ? null : JSON.parse(ackRaw) as { source?: unknown; tripId?: unknown; ownerId?: unknown; sourceOwnerId?: unknown };
+        const consumed = ack?.source === legacy && ack.tripId === tripId && (ack.ownerId === ownerId || ack.sourceOwnerId === null);
+        if (!consumed && value?.id === tripId && (value.ownerId === null || value.ownerId === ownerId)) copies.push({ key: EASYT_ACTIVE_TRIP_KEY, raw: legacy });
       }
       return copies.sort((a, b) => a.key.localeCompare(b.key));
     };
@@ -45,7 +54,59 @@ export function createTwoStoreTripPersistence(storage: EasyTBrowserStorage, driv
     stored: false, handle: { ownerId, tripId, writeId }, blockedByExistingRecovery: protectedRecovery, failureReason: reason, writeAttempted: false,
     outcome: protectedRecovery ? 'protected-conflict' : 'unknown' });
   const domainHandle = (handle: TripRecoveryHandle): RecoveryHandle => ({ version: 1, backend: 'indexeddb', ownerId: handle.ownerId, tripId: handle.tripId, writeId: handle.writeId });
+  const nativePointer = () => {
+    const raw = storage.getItem(currentTripStorageKey(ownerId));
+    if (raw !== storage.getItem(currentTripStorageKey(ownerId))) throw new Error('Unstable current pointer');
+    if (raw === null) return { raw, tripId: null };
+    const value = JSON.parse(raw);
+    if (!value || value.version !== 2 || value.ownerId !== ownerId || typeof value.tripId !== 'string' || !value.tripId.trim()) throw new Error('Invalid current pointer');
+    return { raw, tripId: value.tripId as string };
+  };
+  const digest = async (raw: string) => Array.from(new Uint8Array(await globalThis.crypto.subtle.digest('SHA-256', new TextEncoder().encode(raw))), value => value.toString(16).padStart(2, '0')).join('');
   return {
+    async current(): Promise<TwoStoreRead> {
+      const current = await domain.current();
+      if (current.kind !== 'ready') return { kind: current.kind === 'protected-conflict' || ['schema', 'corrupt'].includes(current.reason) ? 'protected' : 'unavailable', reason: current.reason };
+      try {
+        const native = nativePointer();
+        if (!active()) return { kind: 'protected', reason: 'operation-changed' };
+        if (current.current?.backend === 'local-storage') {
+          const pointer = current.current;
+          if (native.raw !== pointer.nativePointerRaw || native.tripId !== pointer.tripId) return { kind: 'protected', reason: 'current-divergence' };
+          const state = await inspect(pointer.tripId); if (state.kind !== 'resolved') return state;
+          if (state.domain.envelope || !state.resolved.source || await digest(state.resolved.source.raw) !== pointer.recoveryDigest) return { kind: 'protected', reason: 'current-divergence' };
+          const record = decodeRecoverySource(state.resolved.source, scope(pointer.tripId));
+          if (record.kind !== 'readable' || record.value.writeId !== pointer.writeId) return { kind: 'protected', reason: 'current-divergence' };
+        }
+        let result: TwoStoreRead;
+        if (current.envelope) {
+          if (native.tripId !== current.envelope.handle.tripId && native.raw !== (current.envelope.entry.nativePointerRaw ?? null)) return { kind: 'protected', reason: 'current-divergence' };
+          result = await this.read(current.envelope.handle.tripId);
+        } else {
+          result = native.tripId ? await this.read(native.tripId) : { kind: 'missing' };
+        }
+        const after = await domain.current();
+        if (!active() || after.kind !== 'ready' || nativePointer().raw !== native.raw || JSON.stringify(after.current ?? after.envelope?.handle ?? null) !== JSON.stringify(current.current ?? current.envelope?.handle ?? null)) return { kind: 'protected', reason: 'current-changed' };
+        return result;
+      } catch { return { kind: 'protected', reason: 'current-pointer' }; }
+    },
+    async list(): Promise<TwoStoreList> {
+      const listed = await domain.list();
+      if (listed.kind !== 'ready') return { kind: listed.kind === 'protected-conflict' || ['schema', 'corrupt'].includes(listed.reason) ? 'protected' : 'unavailable', reason: listed.reason };
+      try {
+        const ids = new Set(listed.recoveries.map(row => row.envelope.handle.tripId));
+        const prefix = tripRecoveryStorageKey(ownerId, 'prefix').slice(0, -'prefix'.length);
+        for (let i = 0; i < storage.length; i++) {
+          const key = storage.key(i); if (key?.startsWith(prefix)) ids.add(decodeURIComponent(key.slice(prefix.length).split(':')[0]));
+        }
+        const recoveries: TripRecoveryRecord[] = [];
+        for (const id of ids) {
+          const read = await this.read(id); if (read.kind === 'protected' || read.kind === 'unavailable') return read;
+          if (read.kind === 'found' && read.recovery) recoveries.push(read.recovery);
+        }
+        return active() ? { kind: 'ready', recoveries } : { kind: 'protected', reason: 'operation-changed' };
+      } catch { return { kind: 'unavailable', reason: 'native-read-unknown' }; }
+    },
     async read(tripId: string): Promise<TwoStoreRead> {
       const state = await inspect(tripId); if (state.kind !== 'resolved') return state;
       if (!active()) return { kind: 'protected', reason: 'operation-changed' };
@@ -56,7 +117,7 @@ export function createTwoStoreTripPersistence(storage: EasyTBrowserStorage, driv
         return { kind: 'found', trip: record.value.trip, recovery: { ...record.value, backend: 'indexeddb' }, domain: state.domain };
       }
       if (state.resolved.kind === 'local-storage' && state.resolved.source) {
-        const record = decodeRawRecovery(state.resolved.source.raw, scope(tripId));
+        const record = decodeRecoverySource(state.resolved.source, scope(tripId));
         if (record.kind !== 'readable') return { kind: 'protected', reason: record.kind };
         return { kind: 'found', trip: record.value.trip, recovery: { ...record.value, backend: undefined }, domain: null };
       }
@@ -74,6 +135,12 @@ export function createTwoStoreTripPersistence(storage: EasyTBrowserStorage, driv
       if (!active() || trip.ownerId !== null && trip.ownerId !== ownerId || ownerId === null && trip.ownerId !== null) return refused(tripId, writeId, true, 'scope-mismatch');
       const state = await inspect(tripId); if (state.kind !== 'resolved') return refused(tripId, writeId, state.kind === 'protected');
       const existing = state.domain.envelope;
+      let nativePointerRaw: string | null;
+      try { nativePointerRaw = nativePointer().raw; } catch { return refused(tripId, writeId, true); }
+      let expectedCurrentRaw: unknown;
+      try { expectedCurrentRaw = await driver.readCurrent(ownerId); if (decodeDomainCurrent(expectedCurrentRaw, ownerId).kind !== 'readable') return refused(tripId,writeId,true); }
+      catch { return refused(tripId, writeId, false); }
+      if (!active()) return refused(tripId, writeId, true);
       let nativeResult: TripRecoveryWriteResult | null = null;
       if (!existing) {
         if (options.replace?.backend === 'indexeddb') return refused(tripId, writeId, true);
@@ -82,6 +149,21 @@ export function createTwoStoreTripPersistence(storage: EasyTBrowserStorage, driv
           // A cross-store race after native success is protected, never accepted by recency.
           const after = await inspect(tripId);
           if (!active() || after.kind !== 'resolved' || after.domain.envelope) return { ...nativeResult, stored: false, blockedByExistingRecovery: true, failureReason: 'protected-recovery', outcome: 'protected-conflict' };
+          // An updated native writer can deliberately supersede domain navigation.
+          // The old domain generation remains untouched. The compact digest pins
+          // the exact native branch; it cannot recover or bless later old-tab work.
+          try {
+            const pointer = nativePointer(), source = after.resolved.source;
+            if (pointer.tripId !== tripId || !pointer.raw || !source) return { ...nativeResult, stored:false, failureReason:'pointer-incomplete', outcome:'pointer-incomplete' };
+            const candidate: NativeRecoveryPointer = {version:1,backend:'local-storage',ownerId,tripId,writeId,nativePointerRaw:pointer.raw,recoveryDigest:await digest(source.raw)};
+            const raw = JSON.stringify(candidate);
+            const moved = await driver.run(scope(tripId),null,'readwrite', observation => !active() || observation.currentRaw !== expectedCurrentRaw
+              ? {value:false} : {value:true,currentRaw:raw});
+            const verified = moved && await driver.readCurrent(ownerId) === raw;
+            const final = await inspect(tripId);
+            if (!active() || !verified || nativePointer().raw !== pointer.raw || final.kind !== 'resolved' || final.domain.envelope || final.resolved.source?.raw !== source.raw)
+              return {...nativeResult,stored:false,pointerAcknowledged:false,failureReason:'pointer-incomplete',outcome:'pointer-incomplete'};
+          } catch { return {...nativeResult,stored:false,pointerAcknowledged:false,failureReason:'pointer-incomplete',outcome:'pointer-incomplete'}; }
           return nativeResult;
         }
         if (nativeResult.nativeFailure !== 'quota' || !nativeResult.writeAttempted || !options.newTripOrClone) return nativeResult;
@@ -98,7 +180,7 @@ export function createTwoStoreTripPersistence(storage: EasyTBrowserStorage, driv
       const record: TripRecoveryRecord = { version: 2, ownerId, tripId, writeId, trip, state: options.state ?? 'pending', savedAt: options.now ?? new Date().toISOString() };
       const entry = options.entry ?? existing?.entry ?? { pointer: handle, input: null, receipt: null };
       const candidate: RecoveryEnvelope = { version: 1, handle, parent: existing?.handle ?? null, rawRecovery: JSON.stringify(record),
-        legacySources: state.legacy, entry: { ...structuredClone(entry), pointer: handle } };
+        legacySources: state.legacy, entry: { ...structuredClone(entry), pointer: handle, nativePointerRaw } };
       const committed = await domain.commit({ raw: JSON.stringify(candidate), expectedHead: candidate.parent,
         admission: existing ? 'existing-domain' : 'native-setter-quota', entries: options.entries });
       if (committed.kind !== 'verified') return { ...refused(tripId, writeId, committed.kind === 'protected-conflict'),
