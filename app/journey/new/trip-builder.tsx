@@ -6211,9 +6211,20 @@ function TripBuilderDocument() {
           const checkpoint = async () => {
             if (!confirmIsCurrent()) return false;
             const owners = discoveryOwnersRef.current;
-            let recovery = await owners.persistDeviceRecovery(owners.trip);
+            const editor = builderEditSessionRef.current;
+            let trip = owners.trip;
+            if (editor) {
+              const source = editor.getSnapshot();
+              if (source.trip.id !== trip.id || source.browserOwnerId !== activeBrowserOwnerIdRef.current) return false;
+              if (!await editor.waitForDeviceWrites() || !confirmIsCurrent() || !builderMountedRef.current
+                || builderEditSessionRef.current !== editor
+                || editor.getSnapshot().browserOwnerId !== source.browserOwnerId
+                || editor.getSnapshot().inputRevision !== source.inputRevision) return false;
+              trip = editor.getSnapshot().trip;
+            }
+            let recovery = await owners.persistDeviceRecovery(trip, "other", confirmIsCurrent);
             if (!confirmIsCurrent()) return false;
-            if (!recovery.stored && receiptAcknowledgementRef.current) {
+            if (!editor && !recovery.stored && receiptAcknowledgementRef.current) {
               const acknowledged = await receiptAcknowledgementRef.current;
               if (!confirmIsCurrent()) return false;
               const current = discoveryOwnersRef.current;

@@ -284,6 +284,56 @@ function nightAdjustment(h: Awaited<ReturnType<typeof harness>>) {
     builderNightsCommand, tripNightsBetween, dispatchAcceptedBuilderEdit: view.dispatch }) as (id: string, delta: number) => Promise<void>;
   return { ...view, adjust };
 }
+function discoveryCheckpoint(h: Awaited<ReturnType<typeof harness>>, renderedTrip: CanonicalEasyTTrip,
+  isCurrent: () => boolean = () => true) {
+  const source = readFileSync(new URL('../app/journey/new/trip-builder.tsx', import.meta.url), 'utf8');
+  const parsed = ts.createSourceFile('trip-builder.tsx', source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
+  let checkpoint = '', persist = '';
+  const visit = (node: ts.Node) => {
+    if (ts.isVariableDeclaration(node) && node.initializer) {
+      if (node.name.getText(parsed) === 'checkpoint') checkpoint = node.initializer.getText(parsed);
+      if (node.name.getText(parsed) === 'persistDeviceRecovery' && ts.isCallExpression(node.initializer)) persist = node.initializer.arguments[0]!.getText(parsed);
+    }
+    ts.forEachChild(node, visit);
+  };
+  visit(parsed); assert.ok(checkpoint); assert.ok(persist);
+  const compile = (body: string, scope: object) => new Function('scope', `with(scope){${ts.transpileModule(`return (${body});`, { compilerOptions: { target: ts.ScriptTarget.ES2022 } }).outputText}}`)(scope);
+  const ref = { current: h.session }, owner = { current: h.session.getSnapshot().browserOwnerId };
+  const mounted = { current: true };
+  const persistDeviceRecovery = compile(persist, { builderEditSessionRef: ref, builderMountedRef: mounted,
+    activeBrowserOwnerIdRef: owner, sameRecoveryDocument: (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b) });
+  const run = compile(checkpoint, { confirmIsCurrent: isCurrent, builderEditSessionRef: ref, builderMountedRef: mounted,
+    activeBrowserOwnerIdRef: owner, discoveryOwnersRef: { current: { trip: renderedTrip, persistDeviceRecovery } },
+    receiptAcknowledgementRef: { current: null }, language: 'en',
+    setDeviceRecoveryBlocked() {}, setDeviceStorageBlocked() {}, setSaveState() {}, setCloudSaveError() {} }) as () => Promise<boolean>;
+  return run;
+}
+test('actual Discovery checkpoint verifies the accepted session document instead of a stale rendered owner ref', async () => {
+  const h = await harness({ initialTrip: requireReadableTripDocument({ ...fixture(), ownerId: null }), owner: null });
+  const rendered = h.session.getSnapshot().trip; await accept(h, budget);
+  assert.equal(await discoveryCheckpoint(h, rendered)(), true);
+  assert.equal(h.writes.length, 0); h.session.dispose();
+});
+test('actual Discovery checkpoint refuses a newer raw input while projection readback is pending', async () => {
+  const { h, gate } = await heldGuestProjection();
+  const pending = discoveryCheckpoint(h, h.session.getSnapshot().trip)(); await tick();
+  const raw = h.session.updateDraft({ binding: { kind: 'origin' }, raw: ' newer checkpoint raw ' }); gate.resolve(); await raw;
+  assert.equal(await pending, false);
+  assert.equal(h.session.getSnapshot().draft.fields[0]?.raw, ' newer checkpoint raw ');
+  assert.equal(h.writes.length, 0); h.session.dispose();
+});
+test('actual Discovery checkpoint cannot confirm after its view retires during readback', async () => {
+  const { h, gate } = await heldGuestProjection(); let current = true;
+  const pending = discoveryCheckpoint(h, h.session.getSnapshot().trip, () => current)(); await tick();
+  current = false; gate.resolve(); assert.equal(await pending, false);
+  assert.equal(h.writes.length, 0); h.session.dispose();
+});
+test('actual Discovery checkpoint cannot acknowledge a different rendered trip scope', async () => {
+  const h = await harness({ initialTrip: requireReadableTripDocument({ ...fixture(), ownerId: null }), owner: null });
+  const other = requireReadableTripDocument({ ...h.session.getSnapshot().trip, id: 'different-trip' });
+  assert.equal(await discoveryCheckpoint(h, other)(), false);
+  assert.equal(h.deviceWrites.length, 0); assert.equal(h.writes.length, 0); h.session.dispose();
+});
 test('actual night controls retain two rapid activations across awaited device acceptance', async () => {
   const h = await harness({ initialTrip: requireReadableTripDocument({ ...fixture(), ownerId: null }), owner: null });
   const view = nightAdjustment(h), stop = h.session.getSnapshot().trip.stops[0]!, gate = h.holdRecovery();
