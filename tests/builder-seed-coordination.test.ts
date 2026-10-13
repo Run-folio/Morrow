@@ -391,13 +391,17 @@ for(const change of ['remove','order','night','undo'] as const)test(`actual pre-
 });
 
 test('actual pre-editor provider clarification keeps its selected point and invalidates the original seed',async()=>{
-  const f=fixture(),seed=effect('seed',f.scope);let selected:any;
+  const f=fixture(),seed=effect('seed',f.scope);let selected:any,advanced=0;
   Object.assign(f.scope,{retireBuilderEntryForInput:value('retireBuilderEntryForInput',f.scope),requiresPhysicalIslandVerification:()=>false,isOriginMention:()=>false,
     handoffLookupSessionRef:{current:{handled:new Set()}},handoffOccurrenceMentionIdsRef:{current:{}},handoffStopOccurrenceId:()=>f.trip.stops[0].id,
     capturedStructuredBrief:{placeMentions:[]},intakeMentions:[],insertHandoffOccurrence:(current:any[],next:any)=>current.map(stop=>stop.id===next.id?{...stop,...next}:stop),
-    setStops(update:any){selected=update(f.trip.stops)},setLocationChoices(){},advanceClarificationSession(){}});
+    planningAreaViewRef:{current:{generation:0}},discoverySearchVersionRef:{current:0},
+    activeDiscoveryRef:{current:{open:true,mentionId:'selected-mention'}},
+    setStops(update:any){selected=update(f.trip.stops)},setLocationChoices(){},advanceClarificationSession(){advanced++;}});
+  f.scope.capturePlanningAreaView=value('capturePlanningAreaView',f.scope);
   const choice={name:f.trip.stops[0].name,country:f.trip.stops[0].country,canonicalPlaceId:f.trip.stops[0].canonicalPlaceId,coordinates:[f.trip.stops[0].longitude,f.trip.stops[0].latitude]};
   await value('chooseProviderClarification',f.scope)({mentionId:'selected-mention',canonicalName:choice.name},choice);
+  assert.equal(advanced,1,'the current pre-editor chooser still completes normally');
   assert.ok(selected);assert.equal(f.scope.builderEntrySessionRef.current.isCurrent(),false);
   f.write.resolve({stored:true,handle:f.handle});f.read.resolve({...f.handle,trip:f.trip});await Promise.all(seed.work);assert.equal(f.seeded(),null);assert.deepEqual(f.feedback,[]);
 });

@@ -3778,6 +3778,13 @@ function TripBuilderDocument() {
   };
 
   const chooseProviderClarification = async (mention: CapturedLocation, choice: LocationChoice) => {
+    // Acceptance may finish after the traveller dismisses or reopens a chooser.
+    // Retain the accepted data, but let only its original view navigate onward.
+    const viewIsCurrent = capturePlanningAreaView();
+    const advanceAcceptedChoice = () => {
+      if (viewIsCurrent() && activeDiscoveryRef.current.open
+        && activeDiscoveryRef.current.mentionId === mention.mentionId) advanceClarificationSession();
+    };
     if (requiresPhysicalIslandVerification(mention)) {
       const snapshot = builderEditSessionRef.current?.getSnapshot();
       if (!snapshot || !providerClarificationScope || snapshot.trip.id !== providerClarificationScope.tripId
@@ -3793,7 +3800,7 @@ function TripBuilderDocument() {
         : await addStop(choice.name, choice.country, mention.mentionId, undefined, suggestion);
       if (!accepted) return;
       setLocationChoices(current => current.filter(item => item.mention.mentionId !== mention.mentionId));
-      advanceClarificationSession();
+      advanceAcceptedChoice();
       return;
     }
     if(builderEditSessionRef.current) {
@@ -3859,7 +3866,7 @@ function TripBuilderDocument() {
       handoffLookupSessionRef.current?.handled.add(mention.mentionId);
       handoffLookupSessionRef.current?.statuses.set(mention.mentionId,'resolved');
       setHandoffResolutionStatuses(current=>({...current,[mention.mentionId]:'resolved'}));
-      setLocationChoices(current=>current.filter(item=>item.mention.mentionId!==mention.mentionId));advanceClarificationSession();return;
+      setLocationChoices(current=>current.filter(item=>item.mention.mentionId!==mention.mentionId));advanceAcceptedChoice();return;
     }
     retireBuilderEntryForInput();
     handoffLookupSessionRef.current?.handled.add(mention.mentionId);
@@ -3893,7 +3900,7 @@ function TripBuilderDocument() {
         }, mention, capturedStructuredBrief.placeMentions ?? intakeMentions, handoffOccurrenceMentionIdsRef.current));
     }
     setLocationChoices((current) => current.filter((item) => item.mention.mentionId !== mention.mentionId));
-    advanceClarificationSession();
+    advanceAcceptedChoice();
   };
 
   const applyTripBrief = async (signal: AbortSignal, isCurrent: () => boolean, brief = tripBrief, onResponse?: () => void) => {
