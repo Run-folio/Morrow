@@ -721,7 +721,13 @@ for (const [width,type] of [[1440,'return_to_start'],[390,'one_way']] as const) 
  const before=trip;await page.reload({waitUntil:'domcontentloaded'});await page.locator('[data-builder-top-controls]').waitFor();
  trip=await recoveryTrip(page,id);assert.ok(trip);assert.deepEqual(trip.stops.map(stop=>[stop.id,stop.canonicalPlaceId,stop.nights]),before.stops.map(stop=>[stop.id,stop.canonicalPlaceId,stop.nights]));
  assert.equal(trip.brief.intent!.route!.tripType,type);assert.deepEqual(trip.brief.structuredBrief!.completedPlanningAreaMentionIds,before.brief.structuredBrief!.completedPlanningAreaMentionIds);
+ await durableBuilderTripId(page);
  await page.getByRole('button',{name:type==='one_way'?'Return to start':'One way',exact:true}).click();
+ const switchedType=type==='one_way'?'return_to_start':'one_way';
+ await page.waitForFunction(label=>[...document.querySelectorAll('[data-builder-top-controls] button')]
+  .find(button=>button.textContent?.trim()===label)?.getAttribute('aria-pressed')==='true',switchedType==='one_way'?'One way':'Return to start');
+ await page.getByText('Saved on this device',{exact:true}).first().waitFor();
+ assert.equal((await recoveryTrip(page,id))!.brief.intent!.route!.tripType,switchedType,'the exact accepted type must be durable before reload');
  await page.reload({waitUntil:'domcontentloaded'});await page.locator('[data-builder-top-controls]').waitFor();
  assert.equal((await recoveryTrip(page,id))!.brief.intent!.route!.tripType,type==='one_way'?'return_to_start':'one_way');
  // Existing saved workspace URLs own orientation; no new browser preference.
