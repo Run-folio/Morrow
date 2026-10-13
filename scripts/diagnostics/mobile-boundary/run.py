@@ -29,8 +29,10 @@ try:
  assert subprocess.check_output(['git','rev-parse','--verify',BASE+'^{commit}'],text=True).strip()==BASE
  archive=subprocess.check_output(['git','archive',BASE]);TARGET.mkdir();record['baseArchiveSHA256']=hashlib.sha256(archive).hexdigest()
  with tarfile.open(fileobj=io.BytesIO(archive)) as tar:
-  members=tar.getmembers();assert not any(m.issym() or m.islnk() for m in members),'Unexpected tracked link in application base'
-  tar.extractall(TARGET,filter='data')
+  members=tar.getmembers();links=[m.name for m in members if m.issym() or m.islnk()]
+  assert links==['.codex-work/morrovia-deck/node_modules'],'Unexpected archive link outside known unused presentation dependency'
+  record['omittedUnusedDependencyLinks']=links;save()
+  tar.extractall(TARGET,members=[m for m in members if not (m.issym() or m.islnk())],filter='data')
  (TARGET/'node_modules').symlink_to(ROOT/'node_modules',target_is_directory=True)
  shutil.copyfile(TARGET/'tests/core-journey-app-browser.test.ts',TARGET/'diagnostic-base-browser-test.txt')
  record['lockfileSHA256']=sha(TARGET/'package-lock.json');save()
