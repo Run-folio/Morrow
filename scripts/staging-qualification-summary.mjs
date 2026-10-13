@@ -1,6 +1,6 @@
 import fs from 'node:fs';
 const [group,logPath,artifactDir]=process.argv.slice(2);
-const expected={core:14,discovery:6,'multi-desktop':1,'multi-mobile':1,timing:11,transport:6}[group];
+const expected={core:14,discovery:6,'multi-desktop':1,'multi-mobile':1,timing:11,transport:9}[group];
 if(!expected)throw Error('Unknown partition');
 const log=fs.readFileSync(logPath,'utf8');
 const count=(name)=>{const m=log.match(new RegExp(`(?:#|ℹ) ${name} (\\d+)`));if(!m)throw Error('Missing '+name+' count');return Number(m[1]);};
