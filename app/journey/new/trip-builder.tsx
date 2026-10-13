@@ -3732,7 +3732,7 @@ function TripBuilderDocument() {
   };
 
   const confirmAttractionVisit = async (mention: CapturedLocation, proposal: AttractionVisitCandidate, routeStopId = proposal.target.routeStopId) => {
-    const stop = stops.find((item) => item.id === routeStopId);
+    const stop = (builderEditSessionRef.current ? currentDiscoveryTrip().stops : stops).find((item) => item.id === routeStopId);
     if (!stop) return;
     handoffLookupSessionRef.current?.handled.add(mention.mentionId);
     rememberStructuralChange("confirm_attraction_visit_base", 0);
