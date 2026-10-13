@@ -16,6 +16,8 @@ import type { CanonicalEasyTTrip } from '../lib/easyt/trip.ts';
 import type { BuilderProjectionResponse } from '../lib/easyt/trip-builder-reconciliation.ts';
 import type { BuilderReconciliationRequest } from '../lib/easyt/trip-builder-edit-session.ts';
 import type { AsyncBuilderEditSessionOptions } from '../lib/easyt/trip-builder-async-edit-session.ts';
+import { builderNightsCommand } from '../lib/easyt/trip-builder-handler-contract.ts';
+import { tripNightsBetween } from '../lib/easyt/night-allocation.ts';
 
 const loaded = import('../lib/easyt/trip-builder-async-edit-session.ts').catch((cause: NodeJS.ErrnoException) => {
   if (cause.code === 'ERR_MODULE_NOT_FOUND') return null; throw cause;
@@ -260,6 +262,102 @@ function builderDispatch(h: Awaited<ReturnType<typeof harness>>) {
   const dispatch = new Function('scope', `with(scope){${script}}`)(scope) as (edit: Parameters<typeof h.session.accept>[0]) => Promise<boolean>;
   return { dispatch, changes, applied, errors, mounted, ref };
 }
+function buildPersistence(h: Awaited<ReturnType<typeof harness>>) {
+  const view = builderDispatch(h);
+  const source = readFileSync(new URL('../app/journey/new/trip-builder.tsx', import.meta.url), 'utf8');
+  const body = source.slice(source.indexOf('  const persistGeneratedTrip ='), source.indexOf('  const settleUnacknowledgedBuild ='));
+  const scope = { builderEditSessionRef: view.ref, builderMountedRef: view.mounted,
+    activeBrowserOwnerIdRef: { current: h.session.getSnapshot().browserOwnerId },
+    buildInvariant: { canBuildTrip: true }, dispatchAcceptedBuilderEdit: view.dispatch,
+    recordGeneratedTrip() {}, surfaceBuildConflict() {}, setCloudSaveError() {}, trackEvent() {}, analyticsTripSource: 'builder' };
+  const script = ts.transpileModule(body + '\nreturn persistGeneratedTrip;', { compilerOptions: { target: ts.ScriptTarget.ES2022 } }).outputText;
+  return { ...view, persist: new Function('scope', `with(scope){${script}}`)(scope) as () => Promise<CanonicalEasyTTrip | null> };
+}
+function nightAdjustment(h: Awaited<ReturnType<typeof harness>>) {
+  const view = builderDispatch(h);
+  const source = readFileSync(new URL('../app/journey/new/trip-builder.tsx', import.meta.url), 'utf8');
+  const body = source.slice(source.indexOf('  const updateAllocatedDays ='), source.indexOf('  const beginRouteEdit ='));
+  const script = ts.transpileModule(body + '\nreturn adjustAllocatedDays;', { compilerOptions: { target: ts.ScriptTarget.ES2022 } }).outputText;
+  const adjust = new Function('scope', `with(scope){${script}}`)({ builderEditSessionRef: view.ref,
+    builderMountedRef: view.mounted, activeBrowserOwnerIdRef: { current: h.session.getSnapshot().browserOwnerId },
+    nightDeltaQueueRef: { current: null }, protectedBuilderStopIds: [], rememberStructuralChange() {},
+    builderNightsCommand, tripNightsBetween, dispatchAcceptedBuilderEdit: view.dispatch }) as (id: string, delta: number) => Promise<void>;
+  return { ...view, adjust };
+}
+test('actual night controls retain two rapid activations across awaited device acceptance', async () => {
+  const h = await harness({ initialTrip: requireReadableTripDocument({ ...fixture(), ownerId: null }), owner: null });
+  const view = nightAdjustment(h), stop = h.session.getSnapshot().trip.stops[0]!, gate = h.holdRecovery();
+  const first = view.adjust(stop.id, 1), second = view.adjust(stop.id, 1); await tick(); gate.resolve();
+  await Promise.all([first, second]);
+  assert.equal(h.session.getSnapshot().trip.stops[0]!.nights, stop.nights! + 2);
+  assert.equal(h.writes.length, 0); h.session.dispose();
+});
+test('queued night activation cannot overwrite newer raw input after a refused predecessor', async () => {
+  const h = await harness({ initialTrip: requireReadableTripDocument({ ...fixture(), ownerId: null }), owner: null });
+  const view = nightAdjustment(h), stop = h.session.getSnapshot().trip.stops[0]!, gate = h.holdRecovery();
+  const first = view.adjust(stop.id, 1), second = view.adjust(stop.id, 1); await tick();
+  const raw = h.session.updateDraft({ binding: { kind: 'origin' }, raw: ' newer raw ' }); gate.resolve();
+  await Promise.all([first, second, raw]);
+  assert.equal(h.session.getSnapshot().trip.stops[0]!.nights, stop.nights);
+  assert.equal(h.session.getSnapshot().draft.fields[0]?.raw, ' newer raw ');
+  assert.equal(h.writes.length, 0); h.session.dispose();
+});
+test('queued night activations stop after native refusal without an automatic second write', async () => {
+  const h = await harness({ initialTrip: requireReadableTripDocument({ ...fixture(), ownerId: null }), owner: null });
+  const view = nightAdjustment(h), stop = h.session.getSnapshot().trip.stops[0]!;
+  h.failRecovery(); await Promise.all([view.adjust(stop.id, 1), view.adjust(stop.id, 1)]);
+  assert.equal(h.deviceWrites.length, 1); assert.equal(h.session.getSnapshot().trip.stops[0]!.nights, stop.nights);
+  assert.equal(h.writes.length, 0); h.session.dispose();
+});
+async function heldGuestProjection() {
+  const initialTrip = requireReadableTripDocument({ ...fixture(), ownerId: null });
+  const h = await harness({ initialTrip, owner: null });
+  await accept(h, origin); await h.run(0);
+  const work = h.projections.at(-1)!; assert.ok(work);
+  const gate = h.holdRecovery(); work.result.resolve(response(work.request)); await tick();
+  assert.equal(h.session.getSnapshot().canonicalSaveState, 'device-saving');
+  return { h, gate };
+}
+test('accepted edit waits for the current projection readback without rebasing newer traveller input', async () => {
+  const { h, gate } = await heldGuestProjection();
+  const revision = h.session.getSnapshot().inputRevision;
+  const pending = h.session.accept(budget, revision); await tick(); gate.resolve();
+  assert.equal((await pending).ok, true);
+  assert.equal(h.session.getSnapshot().inputRevision, revision + 1);
+  assert.equal(h.writes.length, 0); h.session.dispose();
+});
+test('actual Build waits for an in-flight projection commit before accepting planned status', async () => {
+  const { h, gate } = await heldGuestProjection(), view = buildPersistence(h);
+  const revision = h.session.getSnapshot().inputRevision;
+  const pending = view.persist(); await tick(); gate.resolve();
+  const saved = await pending;
+  assert.equal(saved?.status, 'planned');
+  assert.equal(saved?.brief.origin, 'Paris');
+  assert.equal(h.session.getSnapshot().inputRevision, revision + 1);
+  assert.equal(h.writes.length, 0, 'guest Build must not write an account');
+  assert.equal(h.recovery()?.trip.status, 'planned'); h.session.dispose();
+});
+test('waiting Build cannot accept planned status after its mounted scope retires', async () => {
+  const { h, gate } = await heldGuestProjection(), view = buildPersistence(h);
+  const pending = view.persist(); await tick(); view.mounted.current = false; gate.resolve();
+  assert.equal(await pending, null); assert.equal(h.session.getSnapshot().trip.status, 'draft');
+  assert.equal(h.writes.length, 0); h.session.dispose();
+});
+test('waiting Build cannot cross an owner rotation during canonical readback', async () => {
+  const { h, gate } = await heldGuestProjection(), view = buildPersistence(h);
+  const pending = view.persist(); await tick(); h.rotate('different-owner'); gate.resolve();
+  assert.equal(await pending, null); assert.equal(h.session.getSnapshot().trip.status, 'draft');
+  assert.equal(h.writes.length, 0); h.session.dispose();
+});
+test('waiting Build preserves a newer unsubmitted raw input and refuses the stale request', async () => {
+  const { h, gate } = await heldGuestProjection(), view = buildPersistence(h);
+  const pending = view.persist(); await tick();
+  const raw = h.session.updateDraft({ binding: { kind: 'origin' }, raw: ' newer raw origin ' });
+  gate.resolve(); await raw;
+  assert.equal(await pending, null); assert.equal(h.session.getSnapshot().trip.status, 'draft');
+  assert.equal(h.session.getSnapshot().draft.fields[0]?.raw, ' newer raw origin ');
+  assert.equal(h.writes.length, 0); h.session.dispose();
+});
 test('mounted Builder dispatch waits for durable acceptance before publishing Undo and success', async () => {
   const h = await harness(), view = builderDispatch(h), gate = h.holdRecovery();
   const pending = view.dispatch({ kind: 'remove-destination', intentId: 'intent:hiroshima' });

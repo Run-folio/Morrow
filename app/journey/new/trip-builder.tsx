@@ -550,6 +550,8 @@ function TripBuilderDocument() {
   const recoveryHandleRef = useRef<TripRecoveryHandle | null>(null);
   // The mounted session owns canonical rendering, immediate recovery and the single account queue.
   const builderEditSessionRef = useRef<BuilderEditSession | null>(null);
+  const nightDeltaQueueRef = useRef<{ editor: BuilderEditSession; ownerId: string | null; revision: number;
+    pending: number; retired: boolean; tail: Promise<void> } | null>(null);
   const builderMountedRef = useRef(true);
   useEffect(() => { builderMountedRef.current = true; return () => { builderMountedRef.current = false; }; }, []);
   const lastAcknowledgedCanonicalRef = useRef<EasyTTrip | null>(null);
@@ -2885,8 +2887,7 @@ function TripBuilderDocument() {
     if (next === current) return;
     if (builderEditSessionRef.current) {
       rememberStructuralChange("change_nights", 1);
-      await dispatchAcceptedBuilderEdit(builderNightsCommand(builderEditSessionRef.current.getSnapshot().trip, stopId, next));
-      return;
+      return await dispatchAcceptedBuilderEdit(builderNightsCommand(builderEditSessionRef.current.getSnapshot().trip, stopId, next));
     }
     const nextManualStopIds = [...new Set([...manualNightStopIds, stopId])];
     const rebalanced = rebalanceTripNights({
@@ -2907,9 +2908,30 @@ function TripBuilderDocument() {
   };
 
   const adjustAllocatedDays = async (stopId: string, delta: number) => {
-    const live = builderEditSessionRef.current?.getSnapshot().trip;
-    const current = live ? live.stops.find(stop => stop.id === stopId)?.nights ?? 0 : allocation[stopId] ?? 0;
-    await updateAllocatedDays(stopId, current + delta);
+    const editor = builderEditSessionRef.current;
+    if (!editor) { await updateAllocatedDays(stopId, (allocation[stopId] ?? 0) + delta); return; }
+    let queue = nightDeltaQueueRef.current;
+    if (!queue || queue.editor !== editor || !queue.pending) {
+      const source = editor.getSnapshot();
+      queue = { editor, ownerId: source.browserOwnerId, revision: source.inputRevision,
+        pending: 0, retired: false, tail: Promise.resolve() };
+      nightDeltaQueueRef.current = queue;
+    }
+    const retained = queue;
+    const isCurrent = () => !retained.retired && builderMountedRef.current
+      && builderEditSessionRef.current === editor && activeBrowserOwnerIdRef.current === retained.ownerId
+      && editor.getSnapshot().inputRevision === retained.revision;
+    retained.pending++;
+    const operation = retained.tail.then(async () => {
+      if (!isCurrent() || !await editor.waitForDeviceWrites() || !isCurrent()) { retained.retired = true; return; }
+      const stop = editor.getSnapshot().trip.stops.find(item => item.id === stopId);
+      if (!stop) { retained.retired = true; return; }
+      const accepted = await updateAllocatedDays(stopId, (stop.nights ?? 0) + delta);
+      if (accepted !== true || editor.getSnapshot().inputRevision !== retained.revision + 1) retained.retired = true;
+      else retained.revision++;
+    }).catch(error => { retained.retired = true; throw error; }).finally(() => { retained.pending--; });
+    retained.tail = operation.catch(() => undefined);
+    await operation;
   };
 
   const beginRouteEdit = (stopId: string) => {
@@ -4920,6 +4942,13 @@ function TripBuilderDocument() {
   const persistGeneratedTrip = async () => {
     const editor=builderEditSessionRef.current;
     if(editor) {
+      const requestedRevision = editor.getSnapshot().inputRevision;
+      // A projection may already own canonical persistence. Build must follow
+      // its readback, while a newer traveller input still retires this request.
+      if (!await editor.waitForDeviceWrites() || !builderMountedRef.current
+        || builderEditSessionRef.current !== editor
+        || editor.getSnapshot().browserOwnerId !== activeBrowserOwnerIdRef.current
+        || editor.getSnapshot().inputRevision !== requestedRevision) return null;
       const reportSaveFailure = () => {
         const snapshot = editor.getSnapshot();
         if (!snapshot.error || snapshot.browserOwnerId !== activeBrowserOwnerIdRef.current) return;
@@ -6152,13 +6181,14 @@ function TripBuilderDocument() {
         language={language}
         existingPlaceIds={stops.flatMap((stop) => stop.canonicalPlaceId ? [stop.canonicalPlaceId] : [])}
         onAction={async (action) => {
-          if (discoveryCommitRef.current) return;
-          if (discoveryRead?.status === "unsupported-version") return;
+          if (discoveryCommitRef.current || planningAreaViewRef.current.key !== planningAreaViewKey) return false;
+          if (discoveryRead?.status === "unsupported-version") return false;
+          const viewIsCurrent = capturePlanningAreaView();
           const nextDraft = reduceDiscoveryDraft(discoveryDraft, action);
           const event = discoveryChoiceEvent(discoveryEventKind, discoveryDraft, nextDraft, action, discoveryProjection.places.length);
           if (event?.name === "discovery_direction_selected") trackEvent("discovery_direction_selected", event.properties);
           else if (event?.name === "discovery_place_choice_changed") trackEvent("discovery_place_choice_changed", event.properties);
-          await updateDiscoveryPlanningState((current) => {
+          const accepted = await updateDiscoveryPlanningState((current) => {
             const read = readDiscoveryDraft(current, activeClarificationMention.mentionId);
             if (read.status === "unsupported-version") return current;
             const base = read.status === "current" ? read.draft : { ...read.draft, step: discoveryEntry.step };
@@ -6167,6 +6197,7 @@ function TripBuilderDocument() {
               [activeClarificationMention.mentionId]: reduceDiscoveryDraft(base, action),
             } };
           });
+          return accepted && viewIsCurrent();
         }}
         onConfirm={async () => {
           const review = canonicalDiscoveryReview;

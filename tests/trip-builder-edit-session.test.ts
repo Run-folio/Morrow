@@ -102,7 +102,7 @@ function buildPersistence(h: Awaited<ReturnType<typeof harness>>) {
   const body=source.slice(source.indexOf('  const persistGeneratedTrip ='),source.indexOf('  const settleUnacknowledgedBuild ='));
   const events:Array<{event:string;properties:Record<string,unknown>}>=[];
   const ownerRef={current:h.session.getSnapshot().browserOwnerId};
-  const scope={builderEditSessionRef:{current:h.session},buildInvariant:{canBuildTrip:true},
+  const scope={builderEditSessionRef:{current:h.session},builderMountedRef:{current:true},buildInvariant:{canBuildTrip:true},
     dispatchAcceptedBuilderEdit:(edit:Parameters<typeof h.session.accept>[0])=>h.session.accept(edit,h.session.getSnapshot().inputRevision).ok,
     recordGeneratedTrip:()=>{},surfaceBuildConflict:()=>{},setCloudSaveError:()=>{},
     activeBrowserOwnerIdRef:ownerRef,analyticsTripSource:'builder',

@@ -357,6 +357,10 @@ export async function createAsyncBuilderEditSession(options: AsyncBuilderEditSes
   async function acceptEdits(edits: readonly BuilderAcceptedEdit[], expectedInputRevision: number,
     acceptedInputs?: readonly { binding: BuilderInputBinding; raw: string }[]) {
     if (!active() || expectedInputRevision !== inputRevision) return { ok: false as const, reason: 'stale-source' as const };
+    // A preceding projection may change the canonical handle without changing
+    // traveller input. Wait for its readback, then recheck the submitted revision.
+    if (devicePending && !await awaitDeviceWrites()) return { ok: false as const, reason: 'stale-source' as const };
+    if (!active() || expectedInputRevision !== inputRevision) return { ok: false as const, reason: 'stale-source' as const };
     if (draftProtected || error?.category === 'protected') return { ok: false as const, reason: 'protected' as const };
     const guard = operationGuard();
     const inverse = edits.length === 1 && edits[0]!.kind === 'structural-inverse' ? edits[0] : null;
@@ -409,6 +413,7 @@ export async function createAsyncBuilderEditSession(options: AsyncBuilderEditSes
       return acceptEdits([edit], expectedInputRevision, acceptedInput ? [acceptedInput] : undefined);
     },
     acceptBatch: acceptEdits,
+    waitForDeviceWrites: awaitDeviceWrites,
     resumeNecessaryWork,
     async discardDraft(binding: BuilderInputBinding) {
       if (!active() || draftProtected) return false;

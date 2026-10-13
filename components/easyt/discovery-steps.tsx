@@ -26,7 +26,7 @@ type Props = {
   draft: DiscoveryDraft;
   language: EasyTLanguage;
   existingPlaceIds?: readonly string[];
-  onAction: (action: DiscoveryDraftAction) => void;
+  onAction: (action: DiscoveryDraftAction) => void | boolean | Promise<void | boolean>;
   search?: React.ReactNode;
   highlightedPlaceId: string | null;
   onHighlight: (placeId: string) => void;
@@ -180,9 +180,9 @@ export function DiscoverySteps({ entry, mention, projection, draft, language, ex
         <div className={styles.directionContent}><span className={styles.directionNumber}>{String(index + 1).padStart(2, "0")}</span>
           <h4>{discoveryDirectionTitle(language, direction.titleKey, direction.title)}</h4>
           <p>{direction.summary ?? `${direction.placeIds.length} ${copy.directionCount}`}</p>
-          <EasyTButton variant="secondary" fullWidth aria-label={`${copy.accessibility.direction}: ${discoveryDirectionTitle(language, direction.titleKey, direction.title)}`} onClick={() => {
-            onAction({ type: "change-direction", directionId: direction.id });
-            onAction({ type: "set-step", step: "places" });
+          <EasyTButton variant="secondary" fullWidth aria-label={`${copy.accessibility.direction}: ${discoveryDirectionTitle(language, direction.titleKey, direction.title)}`} onClick={async () => {
+            if (await onAction({ type: "change-direction", directionId: direction.id }) === false) return;
+            await onAction({ type: "set-step", step: "places" });
           }}>{copy.directions.supported}</EasyTButton>
         </div>
       </article>)}

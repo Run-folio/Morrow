@@ -15,6 +15,7 @@ import { acceptedGeographicPlace } from "../lib/easyt/geographic-binding.ts";
 import { prepareBuilderHandlerEdit } from "../lib/easyt/trip-builder-handler-contract.ts";
 import { builderDocumentFingerprint } from "../lib/easyt/trip-builder-document-commit.ts";
 import {findCatalogPlaceById} from '../lib/easyt/place-catalog.ts';
+import { loadTripRecoveryFromStorage } from '../lib/easyt/storage.ts';
 
 const require = createRequire(import.meta.url);
 const bundled = `${homedir()}/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright`;
@@ -90,6 +91,7 @@ test("legacy saved Paris origin retains its own identity, point, route order and
  * (a paint opportunity), excluding driver round trips and post-click waits.
  * Retain page-side blocking before click and after DOM mutation in the budget. */
 async function armBrowserInteractionTiming(page: Page, condition: { trigger: string; selected?: string; leavingArea?: string }) {
+  await page.getByRole('button', { name: condition.trigger, exact: true }).waitFor({ state: 'visible' });
   await page.evaluate(condition => {
     const record: { start: number | null; end: number | null } = { start: null, end: null };
     (window as unknown as { __coreInteractionTiming: typeof record }).__coreInteractionTiming = record;
@@ -161,7 +163,20 @@ async function withEvidence(name: string, run: (page: Page, context: BrowserCont
   const context = await browser.newContext({ viewport: { width, height: 1000 } });
   const page = await context.newPage();
   const pageErrors: string[] = [];
+  const apiStatuses: Array<{ path: string; method: string; status: number }> = [];
   page.on("pageerror", error => pageErrors.push(error.message));
+  page.on('response', response => {
+    const path = new URL(response.url()).pathname;
+    if (path.startsWith('/api/')) apiStatuses.push({ path: path.replace(/\/trip-[^/]+/g, '/:trip'), method: response.request().method(), status: response.status() });
+  });
+  await context.addInitScript(() => {
+    const outcomes: Array<{ stage: string; outcome: string }> = [];
+    (window as unknown as { __corePersistenceOutcomes: typeof outcomes }).__corePersistenceOutcomes = outcomes;
+    window.addEventListener('morrovia-persistence-outcome', event => {
+      const detail = (event as CustomEvent).detail;
+      if (typeof detail?.stage === 'string' && typeof detail?.outcome === 'string') outcomes.push({ stage: detail.stage, outcome: detail.outcome });
+    });
+  });
   await context.tracing.start({ screenshots: true, snapshots: true, sources: true });
   try {
     await installDeterministicBoundaries(context);
@@ -170,6 +185,21 @@ async function withEvidence(name: string, run: (page: Page, context: BrowserCont
     await context.tracing.stop();
   } catch (error) {
     mkdirSync(artifacts, { recursive: true });
+    const summary = await page.evaluate(() => ({
+      path: location.pathname.replace(/\/trip-[^/]+/g, '/:trip'),
+      hasTripIdentity: Boolean(new URL(location.href).searchParams.get('trip')),
+      recover: new URL(location.href).searchParams.get('recover') === '1',
+      editor: document.querySelector('[data-builder-edit-session]')?.getAttribute('data-builder-edit-session') ?? null,
+      outcomes: (window as unknown as { __corePersistenceOutcomes?: Array<{ stage: string; outcome: string }> }).__corePersistenceOutcomes ?? [],
+      banners: { protected: /Another device recovery|recovery copy/i.test(document.body.innerText),
+        storage: /Browser storage is blocked/i.test(document.body.innerText),
+        owner: /not available to the current browser account/i.test(document.body.innerText),
+        stale: /trip changed while this edit/i.test(document.body.innerText) },
+    })).catch(() => null);
+    const failure = { case: name, category: error instanceof Error && error.name === 'TimeoutError' ? 'timeout' : 'assertion-or-runtime',
+      summary, apiStatuses, pageErrorCount: pageErrors.length };
+    writeFileSync(`${artifacts}/${name}-failure-summary.json`, JSON.stringify(failure, null, 2));
+    console.error('CORE_JOURNEY_FAILURE ' + JSON.stringify(failure));
     // Fresh local guest context only: retain canonical/recovery evidence, not
     // cookies or arbitrary browser storage, when an end-to-end assertion fails.
     const guestEvidence = await page.evaluate(() => Object.fromEntries(Object.keys(localStorage)
@@ -186,12 +216,21 @@ async function withEvidence(name: string, run: (page: Page, context: BrowserCont
 }
 
 async function recoveryTrip(page: Page, tripId: string) {
-  return page.evaluate((id) => {
-    const records = Object.keys(localStorage).filter((key) => key.startsWith(`easyt:trip-recovery:v2:guest:${encodeURIComponent(id)}:`));
-    return records.map((key) => {
-      try { return JSON.parse(localStorage.getItem(key) ?? "null")?.trip; } catch { return null; }
-    }).find((trip) => trip?.id === id) ?? null;
-  }, tripId) as Promise<EasyTTrip | null>;
+  const entries = await page.evaluate(id => Object.fromEntries(Object.keys(localStorage)
+    .filter(key => key === `easyt:trip-recovery:v2:guest:${encodeURIComponent(id)}` || key.startsWith(`easyt:trip-recovery:v2:guest:${encodeURIComponent(id)}:`))
+    .map(key => [key, localStorage.getItem(key)])), tripId);
+  const keys = Object.keys(entries);
+  return loadTripRecoveryFromStorage({ length: keys.length, key: index => keys[index] ?? null,
+    getItem: key => entries[key] ?? null, setItem() { throw Error('read-only recovery fixture'); }, removeItem() { throw Error('read-only recovery fixture'); } }, tripId, null)?.trip ?? null;
+}
+
+async function durableBuilderTripId(page: Page) {
+  await page.waitForURL(url => url.pathname === '/journey/new' && Boolean(url.searchParams.get('trip')) && url.searchParams.get('recover') === '1');
+  await page.locator('[data-builder-edit-session="active"]').waitFor();
+  await page.getByText('Saved on this device', { exact: true }).first().waitFor();
+  const id = new URL(page.url()).searchParams.get('trip')!;
+  assert.equal((await recoveryTrip(page, id))?.id, id, 'durable navigation must resolve a canonical native recovery');
+  return id;
 }
 
 test('unconfirmed destination focuses its editor and preserves a confirmed airport origin', {skip:!enabled,timeout:60_000},async()=>withEvidence('destination-error-focus',async(page,context)=>{
@@ -233,7 +272,7 @@ test('maintained airport origin survives actual submit, manual Builder change, B
  await page.getByRole('option',{name:/Madrid.*Spain/}).first().click();
  await page.getByRole('button',{name:'Plan my trip'}).first().click();await page.waitForURL(/journey\/new\?/);
  await page.locator('[data-builder-route-workspace]').waitFor();
- const draftId=new URL(page.url()).searchParams.get('trip')!;
+ const draftId=await durableBuilderTripId(page);
  await page.waitForFunction(id=>Object.keys(localStorage).filter(k=>k.startsWith(`easyt:trip-recovery:v2:guest:${encodeURIComponent(id)}:`)).some(k=>JSON.parse(localStorage.getItem(k)??'null')?.trip?.brief?.intent?.route?.origin?.canonicalPlaceId==='reference:ourairports:3632'),draftId);
  assert.equal(geographicallyReady((await recoveryTrip(page,draftId))?.brief.intent?.route?.origin,'endpoint'),true);
  await page.getByRole('combobox',{name:'Start from',exact:true}).fill('GUA');
@@ -277,7 +316,7 @@ test('unseen multi-country destination choices survive actual Plan submission as
  }
  await page.getByRole('button',{name:'Plan my trip'}).first().click();await page.waitForURL(/journey\/new\?/);
  await page.waitForURL(url=>url.pathname==='/journey/new'&&Boolean(url.searchParams.get('trip')));
- const id=new URL(page.url()).searchParams.get('trip')!;
+ const id=await durableBuilderTripId(page);
  await page.waitForFunction(id=>Object.keys(localStorage).filter(k=>k.startsWith(`easyt:trip-recovery:v2:guest:${encodeURIComponent(id)}:`)).some(k=>JSON.parse(localStorage.getItem(k)??'null')?.trip?.brief?.intent?.route?.destinations?.length===4),id);
  const trip=(await recoveryTrip(page,id))!;
  const expected=['southeast-asia','patagonia','alps'];
@@ -295,7 +334,7 @@ test('selected nonseed origin survives Describe submit, Build and reload', {skip
  await page.getByRole('tab',{name:'Describe my trip',exact:true}).click();await page.getByRole('textbox',{name:'Start your plan'}).fill('Visit Madrid and Lisbon for 10 days');
  await page.getByRole('button',{name:'Plan my trip'}).first().click();await page.waitForURL(/journey\/new\?/);
  await page.waitForURL(url=>url.pathname==='/journey/new'&&Boolean(url.searchParams.get('trip')));
- const id=new URL(page.url()).searchParams.get('trip')!;
+ const id=await durableBuilderTripId(page);
  await page.locator('[data-builder-route-workspace]').waitFor({timeout:30_000});
  await page.waitForFunction(id=>Object.keys(localStorage).filter(k=>k.startsWith(`easyt:trip-recovery:v2:guest:${encodeURIComponent(id)}:`)).some(k=>JSON.parse(localStorage.getItem(k)??'null')?.trip?.brief?.intent?.route?.origin?.canonicalPlaceId==='reference:geonames:3175687'),id);
  assert.deepEqual((await recoveryTrip(page,id))!.brief.intent!.route!.origin,selected);
@@ -313,7 +352,7 @@ test('choosing a covered island from a namesake prompt keeps its seven-night bas
  await page.getByRole('textbox',{name:'Start your plan'}).fill('Tenerife 7 nights.');
  await page.getByRole('button',{name:'Plan my trip'}).first().click();
  await page.waitForURL(url=>url.pathname==='/journey/new'&&Boolean(url.searchParams.get('trip')));
- const id=new URL(page.url()).searchParams.get('trip')!;
+ const id=await durableBuilderTripId(page);
  const dialog=page.getByRole('dialog').last();
  const islandChoice=dialog.getByRole('button',{name:/Tenerife, Spain.*Island/});
  await islandChoice.waitFor();
@@ -325,7 +364,7 @@ test('choosing a covered island from a namesake prompt keeps its seven-night bas
  await islandChoice.click();
  await page.waitForFunction(id=>Object.keys(localStorage).filter(k=>k.startsWith(`easyt:trip-recovery:v2:guest:${encodeURIComponent(id)}:`)).some(k=>{
   const mention=JSON.parse(localStorage.getItem(k)??'null')?.trip?.brief?.structuredBrief?.placeMentions?.find((item:{sourceText:string})=>item.sourceText==='Tenerife');
-  return mention?.placeType==='island'&&mention?.status==='partially_resolved';
+  return mention?.placeType==='island'&&mention?.status==='partially_resolved'&&mention?.canonicalPlaceId==='open-world:island-snapshot:relation:2108882';
  }),id);
  const selected=(await recoveryTrip(page,id))!;
  const mention=selected.brief.structuredBrief!.placeMentions!.find(item=>item.mentionId===original.id)!;
@@ -340,7 +379,7 @@ test('choosing a covered island from a namesake prompt keeps its seven-night bas
  if(await done.isEnabled())await done.click();
  await page.waitForFunction(id=>Object.keys(localStorage).filter(k=>k.startsWith(`easyt:trip-recovery:v2:guest:${encodeURIComponent(id)}:`)).some(k=>{
   const trip=JSON.parse(localStorage.getItem(k)??'null')?.trip;
-  return trip?.stops?.some((stop:{name:string;nights:number})=>stop.name==='Santa Cruz de Tenerife'&&stop.nights===7);
+  return trip?.stops?.some((stop:{name:string;nights:number;canonicalPlaceId?:string})=>stop.name==='Santa Cruz de Tenerife'&&stop.nights===7&&stop.canonicalPlaceId==='reference:geonames:2511174');
  }),id);
  const withBase=(await recoveryTrip(page,id))!;
  assert.equal(withBase.brief.intent!.route!.destinations.find(item=>item.id===original.id)?.requestedNights,7);
@@ -358,7 +397,7 @@ test('Canary archipelago search accepts a physically verified member base withou
  await page.getByRole('textbox',{name:'Start your plan'}).fill('Canary Islands 7 nights.');
  await page.getByRole('button',{name:'Plan my trip'}).first().click();
  await page.waitForURL(url=>url.pathname==='/journey/new'&&Boolean(url.searchParams.get('trip')));
- const id=new URL(page.url()).searchParams.get('trip')!;
+ const id=await durableBuilderTripId(page);
  const dialog=page.getByRole('dialog').last();
  await dialog.getByRole('combobox',{name:/Search for somewhere specific/}).fill('Santa Cruz de Tenerife');
  await dialog.getByRole('option',{name:/Santa Cruz de Tenerife.*Spain/}).first().click();
@@ -367,7 +406,7 @@ test('Canary archipelago search accepts a physically verified member base withou
  await dialog.getByRole('button',{name:/Add 1 place/}).click();
  await page.waitForFunction(id=>Object.keys(localStorage).filter(k=>k.startsWith(`easyt:trip-recovery:v2:guest:${encodeURIComponent(id)}:`)).some(k=>{
   const trip=JSON.parse(localStorage.getItem(k)??'null')?.trip;
-  return trip?.stops?.some((stop:{name:string;nights:number})=>stop.name==='Santa Cruz de Tenerife'&&stop.nights===7);
+  return trip?.stops?.some((stop:{name:string;nights:number;canonicalPlaceId?:string})=>stop.name==='Santa Cruz de Tenerife'&&stop.nights===7&&stop.canonicalPlaceId==='reference:geonames:2511174');
  }),id);
  const trip=(await recoveryTrip(page,id))!;
  assert.equal(trip.brief.intent!.route!.destinations[0]?.requestedNights,7);
@@ -382,7 +421,7 @@ test('pending Cusco source confirmation distinguishes real cities and Builds wit
  await page.getByRole('textbox',{name:'Start your plan'}).fill('12 nights: Lima 2, Arequipa 3, Cusco 5, Ollantaytambo 2.');
  await page.getByRole('button',{name:'Plan my trip'}).first().click();
  await page.waitForURL(url=>url.pathname==='/journey/new'&&Boolean(url.searchParams.get('trip')));
- const id=new URL(page.url()).searchParams.get('trip')!;
+ const id=await durableBuilderTripId(page);
  await page.locator('[data-builder-route-workspace]').waitFor();
  const later=page.getByRole('dialog').getByRole('button',{name:'Finish later',exact:true});
  if(await later.waitFor({timeout:5000}).then(()=>true).catch(()=>false))await later.click();
@@ -422,7 +461,7 @@ test('recorded source town choices remain reachable with empty autocomplete and 
  });
  await page.goto(base,{waitUntil:'domcontentloaded'});await page.getByRole('combobox',{name:'Start from',exact:true}).fill('LHR');await page.getByRole('option',{name:/London Heathrow Airport.*United Kingdom/}).click();
  await page.getByRole('button',{name:'One way',exact:true}).click();await page.getByRole('tab',{name:'Describe my trip',exact:true}).click();await page.getByRole('textbox',{name:'Start your plan'}).fill('10 nights: Marrakech 3, Aït Benhaddou 1, Merzouga 2, Fes 4.');await page.getByRole('button',{name:'Plan my trip'}).first().click();
- await page.waitForURL(url=>url.pathname==='/journey/new'&&Boolean(url.searchParams.get('trip')));const id=new URL(page.url()).searchParams.get('trip')!;await page.locator('[data-builder-route-workspace]').waitFor();
+ await page.waitForURL(url=>url.pathname==='/journey/new'&&Boolean(url.searchParams.get('trip')));const id=await durableBuilderTripId(page);await page.locator('[data-builder-route-workspace]').waitFor();
  const before=(await recoveryTrip(page,id))!;const sourceIds=before.brief.intent!.route!.destinations.filter(i=>towns.some(t=>i.sourceText===t.name)).map(i=>[i.id,i.requestedNights]);
  for(const town of towns){let dialog=page.getByRole('dialog').last();const choice=dialog.getByRole('button',{name:new RegExp('^'+town.name+', Morocco')});if(!await choice.isVisible().catch(()=>false)){const later=dialog.getByRole('button',{name:'Finish later',exact:true});if(await later.isVisible().catch(()=>false))await later.click();await page.getByRole('button',{name:'Choose place '+town.name,exact:true}).first().click();dialog=page.getByRole('dialog').last();}await dialog.getByRole('button',{name:new RegExp('^'+town.name+', Morocco')}).first().click();}
  await page.waitForFunction(id=>Object.keys(localStorage).filter(k=>k.startsWith(`easyt:trip-recovery:v2:guest:${encodeURIComponent(id)}:`)).some(k=>JSON.parse(localStorage.getItem(k)??'null')?.trip?.stops?.length===4),id);
@@ -460,6 +499,8 @@ test("Tier 1 guest journey keeps three canonical stops and edits through Build a
   }
   await page.getByRole("button", { name: "Plan my trip" }).first().click();
   await page.waitForURL(/\/journey\/new\?/);
+  await durableBuilderTripId(page);
+  await page.waitForFunction(() => JSON.parse(localStorage.getItem("easyt-private:guest:homepage-input") ?? "null")?.receipt?.version === 1);
   const homepage = await page.evaluate(() => JSON.parse(localStorage.getItem("easyt-private:guest:homepage-input") ?? "null"));
   assert.deepEqual(homepage.snapshot.entries.map((entry: { selection: { canonicalPlaceId: string } }) => entry.selection.canonicalPlaceId), ["madrid", "lisbon", "porto"]);
   assert.equal(homepage.receipt.version, 1);
@@ -471,7 +512,7 @@ test("Tier 1 guest journey keeps three canonical stops and edits through Build a
   const nights = await rows.evaluateAll((items) => items.map((row) => Number(row.querySelector('[aria-label^="Add one night"]')?.getAttribute("aria-label")?.match(/; (\d+) nights/)?.[1])));
   assert.equal(nights.length, 3);
   assert.ok(nights.every((night) => night > 0));
-  const draftTripId = new URL(page.url()).searchParams.get("trip");
+  const draftTripId = await durableBuilderTripId(page);
   assert.ok(draftTripId);
   await page.waitForFunction((id) => Object.keys(localStorage)
     .filter((key) => key.startsWith(`easyt:trip-recovery:v2:guest:${encodeURIComponent(id)}:`))
@@ -625,12 +666,12 @@ for (const [width,type] of [[1440,'return_to_start'],[390,'one_way']] as const) 
  }
  await page.getByRole('button',{name:'Plan my trip',exact:true}).first().click();
  await page.getByRole('dialog').getByRole('heading',{name:'Explore places',exact:true}).waitFor({timeout:20000});
- const id=new URL(page.url()).searchParams.get('trip')!;assert.ok(id);
+ const id=await durableBuilderTripId(page);assert.ok(id);
  const timings:Array<{area:string;acceptMs:number;driverMs:number}>=[];
  const selections:Array<{area:string;place:string;visibleMs:number;driverMs:number}>=[];
  for(const [area,names] of [['South Korea',['Seoul','Busan']],['Africa',['Marrakech','Fes','Chefchaouen']]] as const){
   const dialog=page.getByRole('dialog');await dialog.getByText(area,{exact:true}).first().waitFor();
-  if(await dialog.locator('[data-discovery-step="directions"]').count())await dialog.getByRole('button',{name:/Morocco/}).click();
+  if(area==='Africa'){await dialog.locator('[data-discovery-step="directions"]').waitFor();await dialog.getByRole('button',{name:/Morocco/}).click();}
   for(const name of names){
    const button=dialog.getByRole('button',{name:`Add to shortlist: ${name}`,exact:true});
    await armBrowserInteractionTiming(page,{trigger:`Add to shortlist: ${name}`,selected:`Remove from shortlist: ${name}`});
@@ -719,9 +760,9 @@ for (const [area,names] of [['Japan',['Kyoto','Takayama','Hiroshima']],['South K
  await page.getByRole('button',{name:/Travel dates/}).first().click();await page.getByRole('dialog').locator('[data-date="2026-10-14"]').click();await page.getByRole('dialog').locator('[data-date="2026-10-28"]').click();
  await page.getByRole('combobox',{name:'Destination',exact:true}).fill(area);await page.getByRole('option',{name:new RegExp('^'+area)}).first().click();
  await page.getByRole('button',{name:'Plan my trip',exact:true}).first().click();const dialog=page.getByRole('dialog');await dialog.getByRole('heading',{name:/^(Explore places|Choose a direction)$/}).waitFor({timeout:20000});
- const id=new URL(page.url()).searchParams.get('trip')!;
+ const id=await durableBuilderTripId(page);
  assert.equal(await page.getByRole('button',{name:/^Build trip/}).evaluateAll(buttons=>buttons.some(button=>!(button as HTMLButtonElement).disabled)),false,'an unresolved area without an accepted base has no enabled Build control');
- if(await dialog.locator('[data-discovery-step="directions"]').count())await dialog.getByRole('button',{name:/Morocco/}).click();
+ if(area==='Africa'){await dialog.locator('[data-discovery-step="directions"]').waitFor();await dialog.getByRole('button',{name:/Morocco/}).click();}
  for(const name of names)await dialog.getByRole('button',{name:`Add to shortlist: ${name}`,exact:true}).click();
  await dialog.getByRole('button',{name:`Add ${names.length} places`,exact:true}).click();await dialog.waitFor({state:'hidden'});
  const trip=(await recoveryTrip(page,id))!;assert.ok(trip);assert.equal(trip.stops.length,names.length);assert.deepEqual(new Set(trip.stops.map(stop=>stop.name)),new Set(names));

@@ -362,6 +362,7 @@ export function createBuilderEditSession(options: BuilderEditSessionOptions) {
       return acceptEdits([edit], expectedInputRevision, acceptedInput ? [acceptedInput] : undefined);
     },
     acceptBatch: acceptEdits,
+    async waitForDeviceWrites() { return active(); },
     resumeNecessaryWork,
     discardDraft(binding: BuilderInputBinding) {
       if(!active() || draftProtected) return false;
