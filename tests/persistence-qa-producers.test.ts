@@ -1,8 +1,11 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { readFileSync } from 'node:fs';
+import ts from 'typescript';
+import { createBuilderEntrySession } from '../lib/easyt/trip-builder-entry-session.ts';
 import { reportQaPersistenceBoundary, qaNativeFailureCategory, reportPersistenceOutcome, recoveryPersistenceOutcome, recoveryFailureMessage } from '../lib/easyt/persistence-outcome.ts';
 import { persistEditableHomepageInputInStorage as persistEditableHomepageInput, projectHomepageInput, homepageReceiptForProjection, readHomepageInput, createPendingIntakeReceipt, homepageHandoffMatchesTrip, acknowledgePendingIntakeReceiptInStorage, type HomeTripDraft, type HomepageInputSnapshot } from '../lib/easyt/home-trip-handoff.ts';
-import { saveTripRecovery, saveTripRecoveryToStorage, canUseHydratedTripScope, loadCurrentDraftRecoveryFromStorage, loadTripRecoveryFromStorage, EASYT_TRIP_RECOVERY_PREFIX, EASYT_TRIP_CACHE_PREFIX } from '../lib/easyt/storage.ts';
+import { saveTripRecovery, saveTripRecoveryToStorage, canUseHydratedTripScope, loadCurrentDraftRecoveryFromStorage, loadTripRecoveryFromStorage, sameRecoveryDocument, EASYT_TRIP_RECOVERY_PREFIX, EASYT_TRIP_CACHE_PREFIX } from '../lib/easyt/storage.ts';
 import { requireReadableTripDocument } from '../lib/easyt/trip-document.ts';
 import { homepageInputStorageKey } from '../lib/easyt/private-browser-context.ts';
 import { tripFromBuilder } from '../lib/easyt/trip.ts';
@@ -112,7 +115,7 @@ test('recovery byte-readback refusal follows accepted native write without a nat
 },'mismatch'));
 
 function intakeBindings(storage:ReturnType<typeof memory>,scope='PRIVATE-OWNER') {
-  return {hydrated:true,canUseHydratedTripScope,hydratedOwnerScopeRef:{current:scope},activeBrowserOwnerId:'PRIVATE-OWNER',activeBrowserOwnerIdRef:{current:'PRIVATE-OWNER'},hasRouteSkeleton:false,hasPromptContext:false,tripId:'PRIVATE-TRIP',projectHomepageInput,homepageReceiptForProjection,persistEditableHomepageInput,hasSavedTravelProfile:false,travelProfile:null,markPlanningMilestone(){},planningAttemptIdRef:{current:null},planningModeRef:{current:null},pendingNewTripReceiptRef:{current:null as {snapshot:HomepageInputSnapshot;receipt:ReturnType<typeof homepageReceiptForProjection>;draft:HomeTripDraft}|null},reportQaPersistenceBoundary,qaNativeFailureCategory,applyNewTripIntake(){}};
+  return {retireBuilderEntryForInput(){},hydrated:true,canUseHydratedTripScope,hydratedOwnerScopeRef:{current:scope},activeBrowserOwnerId:'PRIVATE-OWNER',activeBrowserOwnerIdRef:{current:'PRIVATE-OWNER'},hasRouteSkeleton:false,hasPromptContext:false,tripId:'PRIVATE-TRIP',projectHomepageInput,homepageReceiptForProjection,persistEditableHomepageInput,hasSavedTravelProfile:false,travelProfile:null,markPlanningMilestone(){},planningAttemptIdRef:{current:null},planningModeRef:{current:null},pendingNewTripReceiptRef:{current:null as {snapshot:HomepageInputSnapshot;receipt:ReturnType<typeof homepageReceiptForProjection>;draft:HomeTripDraft}|null},reportQaPersistenceBoundary,qaNativeFailureCategory,applyNewTripIntake(){}};
 }
 test('actual direct intake closure reports guard/projection/frozen acceptance around the actual native helper',async()=>capture(async(records,storage)=>{
   const bindings=intakeBindings(storage);let applied=false;bindings.applyNewTripIntake=()=>{applied=true;assert.equal(records.at(-1).boundary,'intake-frozen');assert.equal(records.at(-1).accepted,true);};
@@ -135,7 +138,7 @@ test('actual direct storage getter refusal is captured before the helper can sta
 
 function hydrationBindings() {
   const values:Record<string,unknown>={sessionPending:false,browserContextReady:true,canUseHydratedTripScope,activeBrowserOwnerId:'PRIVATE-OWNER',authenticatedOwnerId:'PRIVATE-OWNER',sessionUnavailable:false,
-    activeBrowserOwnerIdRef:{current:'PRIVATE-OWNER'},builderMountedRef:{current:true},builderInitialOverflowRef:{current:false},
+    builderEntrySessionRef:{current:null},builderEntryHydrationRevisionRef:{current:0},activeBrowserOwnerIdRef:{current:'PRIVATE-OWNER'},builderMountedRef:{current:true},builderInitialOverflowRef:{current:false},
     readDurableHomepageState:async()=>({kind:'ready',storedInput:readHomepageInput(JSON.parse(window.localStorage.getItem(homepageInputStorageKey('PRIVATE-OWNER'))??'null'),'PRIVATE-OWNER'),draft:null,inputRaw:null,draftRaw:null}),
     hydratedOwnerScopeRef:{current:undefined},builderSeedPendingRef:{current:false},pendingNewTripReceiptRef:{current:null},receiptAcknowledgementRef:{current:null},pendingInterpretationRef:{current:null},planningAttemptIdRef:{current:null},activeProjectionTokenRef:{current:null},handoffLookupSessionRef:{current:null},captureRequestGateRef:{current:null},recoveryHandleRef:{current:null},hydratedCanonicalTripRef:{current:null},legacyFocusRef:{current:null},tripId:'PRIVATE-TRIP',
     loadCurrentDraftRecovery:async()=>loadCurrentDraftRecoveryFromStorage(window.localStorage,'PRIVATE-OWNER'),loadRememberedOwner:()=>null,claimGuestTripRecoveryForOwner:async()=>null,travelProfileStorageKey:()=> 'PRIVATE-PROFILE-KEY',travelProfileFromUnknown:()=>null,homepageInputStorageKey,readHomepageInput,publicRouteDetailFor:()=>null,inspirationByKey:{},reportQaPersistenceBoundary,applyAcceptedBuilderDocument(){}};
@@ -169,8 +172,17 @@ test('actual starter restore records acceptance or access refusal before editing
   });
 });
 
+function bindEntry(scope:Record<string,any>) {
+  const text=readFileSync(new URL('../app/journey/new/trip-builder.tsx',import.meta.url),'utf8');
+  const tree=ts.createSourceFile('builder.tsx',text,ts.ScriptTarget.Latest,true,ts.ScriptKind.TSX);
+  let expression='';
+  function visit(node:ts.Node){if(ts.isVariableDeclaration(node)&&node.name.getText(tree)==='ensureBuilderEntry')expression=node.initializer!.getText(tree);ts.forEachChild(node,visit)}visit(tree);
+  Object.assign(scope,{createBuilderEntrySession,requireReadableTripDocument,builderEntrySessionRef:{current:null},builderEntryHydrationRevisionRef:{current:1},builderEntryInputRevisionRef:{current:0},builderEntrySequenceRef:{current:0},builderEntryFeedbackRef:{current:null},builderEntrySourceReceiptRef:{current:null},sameRecoveryDocument});
+  const js=ts.transpileModule('const callback='+expression+';return callback;', {compilerOptions:{target:ts.ScriptTarget.ES2022}}).outputText;
+  scope.ensureBuilderEntry=new Function('scope',`with(scope){${js}}`)(scope);return scope;
+}
 function recoveryBindings(scope='PRIVATE-OWNER') {
-  return {useCallback:(callback:unknown)=>callback,builderSeed:null,builderMountedRef:{current:true},builderInitialOverflowRef:{current:false},builderCurrentDocumentRef:{current:trip()},
+  return bindEntry({useCallback:(callback:unknown)=>callback,builderSeed:null,builderMountedRef:{current:true},builderInitialOverflowRef:{current:false},builderCurrentDocumentRef:{current:trip()},
     builderEditSessionRef:{current:null},activeBrowserOwnerId:'PRIVATE-OWNER',activeBrowserOwnerIdRef:{current:'PRIVATE-OWNER'},language:'en',hydratedOwnerScopeRef:{current:scope},pendingNewTripReceiptRef:{current:null},recoveryHandleRef:{current:null},receiptAcknowledgementRef:{current:null},hydratedCanonicalTripRef:{current:null},
     canUseHydratedTripScope,authoredContentKey,durableBuilderRecoveryUrl,homepageHandoffMatchesTrip,reportPersistenceOutcome,reportQaPersistenceBoundary,
     saveTripRecovery:async(document:Parameters<typeof saveTripRecovery>[0],options:Parameters<typeof saveTripRecovery>[1])=>{
@@ -179,7 +191,8 @@ function recoveryBindings(scope='PRIVATE-OWNER') {
       const receipt=await acknowledgePendingIntakeReceiptInStorage({storage:window.localStorage,...options.intake,isCurrent:options.isCurrent,lock:async(_key,run)=>run()});
       return {...recovery,stored:receipt.ok,receiptAcknowledged:receipt.ok};
     },
-    loadCurrentDraftRecovery:async()=>loadCurrentDraftRecoveryFromStorage(window.localStorage,'PRIVATE-OWNER')};
+    loadTripRecovery:async(id:string,owner:string|null)=>loadTripRecoveryFromStorage(window.localStorage,id,owner),
+    loadCurrentDraftRecovery:async()=>loadCurrentDraftRecoveryFromStorage(window.localStorage,'PRIVATE-OWNER')});
 }
 test('actual Builder recovery scope refuses before invoking the native writer',async()=>capture(async(records,storage)=>{
   const result=await builderClosure('persistDeviceRecovery')(recoveryBindings('PRIVATE-OTHER'),[trip(),'seed']) as any;
@@ -189,10 +202,10 @@ test('actual Builder recovery scope refuses before invoking the native writer',a
 test('actual first-save source closures record all preceding prerequisites before selective native recovery refusal',async()=>capture(async(records,storage)=>{
   await builderClosure('hydrate-effect')(hydrationBindings());
   const intake=intakeBindings(storage);await builderClosure('submitNewTripIntake')(intake,selectedStopsHomepageInput('PRIVATE-OWNER', [['PRIVATE-STOP','Rome']]));
-  const rec={...recoveryBindings(),pendingNewTripReceiptRef:intake.pendingNewTripReceiptRef};
+  const rec=bindEntry({...recoveryBindings(),pendingNewTripReceiptRef:intake.pendingNewTripReceiptRef});
   const persist=(document:unknown,caller:unknown)=>builderClosure('persistDeviceRecovery')(rec,[document,caller]);
   let seeded=false;
-  const bindings={builderSeed:null,hydrated:true,pendingInterpretation:null,resolvingLocations:false,tripUnavailable:false,canUseHydratedTripScope,hydratedOwnerScopeRef:rec.hydratedOwnerScopeRef,activeBrowserOwnerId:'PRIVATE-OWNER',origin:'London',tripBrief:'',activePlaceMentions:[],stops:[{}],hydratedCanonicalTripRef:{current:null},activeTripDocument:trip(),requireReadableTripDocument,recoveryHandleRef:rec.recoveryHandleRef,persistDeviceRecovery:persist,receiptAcknowledgementRef:rec.receiptAcknowledgementRef,reportQaPersistenceBoundary,reportPersistenceOutcome,language:'en',setDevicePersistenceOutcome(){},setDeviceRecoveryDurable(){},recoveryPersistenceOutcome,recoveryFailureMessage:()=>'Device write refused',handoffLookupSessionRef:{current:null},setDeviceStorageBlocked(){},setSaveState(){},setCloudSaveError(){},setDeviceRecoveryBlocked(){},setBuilderSeed(){seeded=true;},builderSearchParams:{get:()=>null},builderSeedPendingRef:{current:false},loadTripRecovery:async(id:string,owner:string|null)=>loadTripRecoveryFromStorage(storage,id,owner)};
+  const bindings={...rec,builderSeed:null,hydrated:true,pendingInterpretation:null,resolvingLocations:false,tripUnavailable:false,canUseHydratedTripScope,hydratedOwnerScopeRef:rec.hydratedOwnerScopeRef,activeBrowserOwnerId:'PRIVATE-OWNER',origin:'London',tripBrief:'',activePlaceMentions:[],stops:[{}],hydratedCanonicalTripRef:{current:null},activeTripDocument:trip(),requireReadableTripDocument,recoveryHandleRef:rec.recoveryHandleRef,persistDeviceRecovery:persist,receiptAcknowledgementRef:rec.receiptAcknowledgementRef,reportQaPersistenceBoundary,reportPersistenceOutcome,language:'en',setDevicePersistenceOutcome(){},setDeviceRecoveryDurable(){},recoveryPersistenceOutcome,recoveryFailureMessage:()=>'Device write refused',handoffLookupSessionRef:{current:null},setDeviceStorageBlocked(){},setSaveState(){},setCloudSaveError(){},setDeviceRecoveryBlocked(){},setBuilderSeed(){seeded=true;},builderSearchParams:{get:()=>null},builderSeedPendingRef:{current:false},loadTripRecovery:async(id:string,owner:string|null)=>loadTripRecoveryFromStorage(storage,id,owner)};
   await builderClosure('seed-effect')(bindings);
   assert.equal(seeded,false);
   const first=records.findIndex(v=>v.phase==='result'&&v.accepted===false);
@@ -378,8 +391,8 @@ test('actual discovery acceptance preserves source and owner guards while a writ
 test('actual Builder intake does not clear pending input before the exact async receipt acknowledgement',async()=>capture(async(_records,storage)=>{
   const snapshot=selectedStopsHomepageInput('PRIVATE-OWNER',[['PRIVATE-STOP','Rome']]),intake=intakeBindings(storage);
   await builderClosure('submitNewTripIntake')(intake,snapshot);const pending=intake.pendingNewTripReceiptRef.current,inputBytes=storage.values.get(homepageInputStorageKey('PRIVATE-OWNER'));
-  const bindings={...recoveryBindings(),pendingNewTripReceiptRef:intake.pendingNewTripReceiptRef};
-  const gate=deferred<void>();bindings.saveTripRecovery=async(document,options)=>{
+  const bindings=bindEntry({...recoveryBindings(),pendingNewTripReceiptRef:intake.pendingNewTripReceiptRef});
+  const gate=deferred<void>();bindings.saveTripRecovery=async(document:Parameters<typeof saveTripRecovery>[0],options:Parameters<typeof saveTripRecovery>[1])=>{
     assert.deepEqual(options?.intake?.draft,(pending as {draft:HomeTripDraft}).draft);await gate.promise;
     return {...saveTripRecoveryToStorage(storage,document,options),receiptAcknowledged:false};
   };

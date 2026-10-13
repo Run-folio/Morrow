@@ -9,6 +9,27 @@ import { durableBuilderRecoveryUrl } from '../lib/easyt/builder-durable-url.ts';
 import { homepageHandoffMatchesTrip } from '../lib/easyt/home-trip-handoff.ts';
 import { builderClosure } from './helpers/qa-persistence-source-fixture.ts';
 import { homeRecoveryFixture } from './helpers/home-recovery-fixture.ts';
+import { createBuilderEntrySession } from '../lib/easyt/trip-builder-entry-session.ts';
+import { requireReadableTripDocument } from '../lib/easyt/trip-document.ts';
+
+function actualEntry(bindings: Record<string, unknown>) {
+  const source = readFileSync(new URL('../app/journey/new/trip-builder.tsx', import.meta.url), 'utf8');
+  const ast = ts.createSourceFile('builder.tsx', source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
+  let expression: string | undefined;
+  const visit = (node: ts.Node) => { if (ts.isVariableDeclaration(node) && node.name.getText(ast) === 'ensureBuilderEntry') expression = node.initializer?.getText(ast); ts.forEachChild(node, visit); };
+  visit(ast); assert.ok(expression);
+  const js = ts.transpileModule(`const entry = ${expression};`, { compilerOptions: { target: ts.ScriptTarget.ES2022 } }).outputText;
+  return new Function('bindings', `with(bindings){${js}return entry;}`)(bindings) as (trip: ReturnType<typeof homeRecoveryFixture>['trip']) => ReturnType<typeof createBuilderEntrySession> | null;
+}
+function actualInputRetirement(bindings: Record<string, unknown>) {
+  const source = readFileSync(new URL('../app/journey/new/trip-builder.tsx', import.meta.url), 'utf8');
+  const ast = ts.createSourceFile('builder.tsx', source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
+  let expression: string | undefined;
+  const visit = (node: ts.Node) => { if (ts.isVariableDeclaration(node) && node.name.getText(ast) === 'retireBuilderEntryForInput') expression = node.initializer?.getText(ast); ts.forEachChild(node, visit); };
+  visit(ast); assert.ok(expression);
+  const js = ts.transpileModule(`const retire = ${expression};`, { compilerOptions: { target: ts.ScriptTarget.ES2022 } }).outputText;
+  return new Function('bindings', `with(bindings){${js}return retire;}`)(bindings) as () => void;
+}
 
 function actualListener(bindings: Record<string, unknown>) {
   const source = readFileSync(new URL('../app/journey/new/trip-builder.tsx', import.meta.url), 'utf8');
@@ -28,6 +49,12 @@ function fixture(actorPending = false) {
   const bindings = { window, hydrated: true, origin: 'London', tripBrief: '', stops: home.trip.stops, activeTripDocument: home.trip,
     useCallback: (callback: unknown) => callback, builderSeed: null, builderMountedRef: { current: true }, builderInitialOverflowRef: { current: false },
     builderCurrentDocumentRef: { current: home.trip }, builderEditSessionRef: { current: null as unknown },
+    builderEntrySessionRef: { current: null as ReturnType<typeof createBuilderEntrySession> | null },
+    builderEntryHydrationRevisionRef: { current: 1 }, builderEntryInputRevisionRef: { current: 0 }, builderEntrySequenceRef: { current: 0 },
+    builderEntryFeedbackRef: { current: null as string | null }, builderEntrySourceReceiptRef: { current: null as unknown },
+    builderSeedPendingRef: { current: false }, setBuilderSeed(_seed: unknown) {},
+    createBuilderEntrySession, requireReadableTripDocument,
+    ensureBuilderEntry: (_trip: typeof home.trip) => null as ReturnType<typeof createBuilderEntrySession> | null,
     activeBrowserOwnerId: 'owner-a', activeBrowserOwnerIdRef: { current: 'owner-a' }, language: 'en', hydratedOwnerScopeRef: { current: 'owner-a' },
     pendingNewTripReceiptRef: { current: { snapshot: home.snapshot, draft: home.draft, receipt: home.intake.completed, fromHomepage: true } },
     recoveryHandleRef: { current: null }, receiptAcknowledgementRef: { current: null }, hydratedCanonicalTripRef: { current: null },
@@ -39,16 +66,19 @@ function fixture(actorPending = false) {
     setDeviceRecoveryDurable(value: unknown) { statuses.push(value); }, setDeviceStorageBlocked(value: unknown) { statuses.push(value); },
     setSaveState(value: unknown) { statuses.push(value); }, setCloudSaveError(value: unknown) { statuses.push(value); },
     saveTripRecovery: async () => gate.promise,
+    loadTripRecovery: async () => ({ version: 2 as const, ownerId: 'owner-a', tripId: home.trip.id, trip: home.trip,
+      state: 'pending' as const, writeId: 'synthetic-write-a', savedAt: '2026-10-13T00:00:00.000Z' }),
     persistDeviceRecovery: (_trip: unknown, _caller: unknown) => Promise.resolve({ stored: false } as TripRecoveryWriteResult),
   };
-  bindings.persistDeviceRecovery = (trip, caller) => builderClosure('persistDeviceRecovery')(bindings, [trip, caller]) as Promise<TripRecoveryWriteResult>;
+  bindings.ensureBuilderEntry = actualEntry(bindings);
+  bindings.persistDeviceRecovery = (trip, caller, ...guard: unknown[]) => builderClosure('persistDeviceRecovery')(bindings, [trip, caller, ...guard]) as Promise<TripRecoveryWriteResult>;
   if (actorPending) bindings.builderEditSessionRef.current = { getSnapshot: () => ({ trip: home.trip, browserOwnerId: 'owner-a', saveState: 'device-saving' }) };
   const cleanup = actualListener(bindings)(); let preservation: Promise<NewTripNavigationPreservation> | undefined;
   window.dispatchEvent(new CustomEvent(EASYT_BEFORE_NEW_TRIP_EVENT, { detail: { waitUntil(value: Promise<NewTripNavigationPreservation>) { preservation = value; } } }));
   assert.ok(preservation);
   const result: TripRecoveryWriteResult = { stored: true, recoveryDurable: true, pointerAcknowledged: true, receiptAcknowledged: true,
     blockedByExistingRecovery: false, handle: { ownerId: 'owner-a', tripId: home.trip.id, writeId: 'synthetic-write-a' } };
-  return { home, bindings, gate, sourceHref, statuses, preservation, result, cleanup };
+  return { home, bindings, gate, sourceHref, statuses, preservation, result, cleanup, retireInput: actualInputRetirement(bindings) };
 }
 test('actual Builder listener emits exact source/trip acknowledgement only after canonical pointer and receipt acceptance', async () => {
   const ui = fixture(); assert.deepEqual(ui.statuses, []); assert.equal(ui.bindings.window.location.href, ui.sourceHref);
@@ -73,7 +103,12 @@ for (const change of ['owner', 'unmount', 'source', 'body', 'listener-cleanup', 
   if (change === 'owner') ui.bindings.activeBrowserOwnerIdRef.current = 'owner-b';
   if (change === 'unmount') ui.bindings.builderMountedRef.current = false;
   if (change === 'source') ui.bindings.builderCurrentDocumentRef.current = { ...ui.home.trip, id: 'trip-b' };
-  if (change === 'body') ui.bindings.builderCurrentDocumentRef.current = { ...ui.home.trip, brief: { ...ui.home.trip.brief, mustDo: 'newer traveller input' } };
+  if (change === 'body') {
+    // The actual raw-input boundary retires its generation before React publishes
+    // a changed document. Keep the original refusal/navigation assertions below.
+    ui.retireInput();
+    ui.bindings.builderCurrentDocumentRef.current = { ...ui.home.trip, brief: { ...ui.home.trip.brief, mustDo: 'newer traveller input' } };
+  }
   if (change === 'listener-cleanup') ui.cleanup();
   if (change === 'owner-cycle') { ui.bindings.activeBrowserOwnerIdRef.current = 'owner-b'; ui.cleanup(); ui.bindings.activeBrowserOwnerIdRef.current = 'owner-a'; }
   ui.gate.resolve(ui.result); assert.equal(await ui.preservation, false);

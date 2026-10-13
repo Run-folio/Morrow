@@ -324,28 +324,48 @@ test("homepage target guard allows an unchanged target after an unrelated accept
   assert.equal(h.trip().brief.intent.route.orderAuthority, "manual");
 });
 
-test("before canonical hydration, homepage lookup preserves a newer point from an absent-coordinate seed", () => {
+test("before canonical hydration, homepage lookup preserves a newer point from an absent-coordinate seed", async () => {
   const h = actualCallbackHarness();
   h.changeCoordinates([-77.025, -12.04]);
+  const editor = h.scope.builderEditSessionRef.current, newer = structuredClone(h.trip());
   const result = h.sendBeforeCanonical(lima.choices);
   assert.deepEqual(result.after, result.before, "the pre-canonical setter must preserve the newer target too");
+  assert.equal(h.scope.pendingHandoffOutcomes.length, 1);
+  h.scope.builderEditSessionRef.current = editor;
+  await h.replayPending();
+  assert.equal(h.accepted(), 0);
+  assert.deepEqual(h.trip(), newer, "queued enrichment still rejects the changed target after editor readiness");
 });
 
-test("before canonical hydration, identical-point newer evidence invalidates the held homepage lookup", () => {
+test("before canonical hydration, identical-point newer evidence invalidates the held homepage lookup", async () => {
   const h = actualCallbackHarness(lima.expected.coordinates);
   const confirmed = acceptedGeographicPlace(stopGeographicPlace(h.trip().stops[0]), lima.expected);
   assert.ok(confirmed?.geographicBinding);
   h.changePlace(confirmed);
+  const editor = h.scope.builderEditSessionRef.current, newer = structuredClone(h.trip());
   const result = h.sendBeforeCanonical(lima.choices);
   assert.deepEqual(result.after, result.before);
+  h.scope.builderEditSessionRef.current = editor;
+  await h.replayPending();
+  assert.equal(h.accepted(), 0);
+  assert.deepEqual(h.trip(), newer, "queued enrichment cannot overwrite newer authoritative evidence");
 });
 
-test("before canonical hydration, an unchanged target still accepts compatible homepage enrichment", () => {
+test("before canonical hydration, compatible homepage enrichment waits for its mounted canonical owner", async () => {
   const h = actualCallbackHarness();
+  const editor = h.scope.builderEditSessionRef.current;
   const result = h.sendBeforeCanonical(lima.choices);
   assert.equal(result.before[0].coordinates, undefined);
-  assert.deepEqual(result.after[0].coordinates, lima.expected.coordinates);
+  assert.deepEqual(result.after, result.before, "optional lookup must not replace the reserved raw seed");
+  assert.equal(h.scope.pendingHandoffOutcomes.length, 1);
+  assert.equal(h.accepted(), 0);
+  h.scope.builderEditSessionRef.current = editor;
+  await h.replayPending();
+  assert.equal(h.accepted(), 1);
+  assert.deepEqual([h.trip().stops[0].longitude, h.trip().stops[0].latitude], lima.expected.coordinates);
   assert.deepEqual(result.after.map(stop => [stop.id, stop.nights]), result.before.map(stop => [stop.id, stop.nights]));
+  assert.deepEqual(h.trip().stops.map(stop => [stop.id, stop.nights]), result.before.map(stop => [stop.id, stop.nights]));
+  assert.deepEqual(h.trip().brief.intent.route.orderedStopIds, h.before.brief.intent.route.orderedStopIds);
 });
 
 test("a fatal initial map failure leaves the route workspace usable", () => {
