@@ -470,7 +470,7 @@ test("the activated Builder keeps one compact details and validation hierarchy",
     "the duplicate Trip-at-a-glance rail must not compete with compact journey details and the route");
   assert.doesNotMatch(builder, /Route insights|Ideas sobre la ruta|styles\.routeInsights/,
     "the overlapping Route insights panel must yield to the canonical Route Check and timing warnings");
-  assert.match(builder, /searchParams\.set\("recover", "1"\)/,
+  assert.match(builder, /searchParams\.set\("recover",\s*"1"\)/,
     "a cloud-backed Builder with newer device edits must keep its recovery scope across refresh");
 });
 

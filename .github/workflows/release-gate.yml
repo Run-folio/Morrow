@@ -4,6 +4,9 @@ on:
   pull_request:
   push:
 
+env:
+  COMMIT_REF: ${{ github.sha }}
+
 jobs:
   release-gate:
     runs-on: ubuntu-latest
