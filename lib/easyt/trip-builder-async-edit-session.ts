@@ -27,6 +27,8 @@ export type BuilderAsyncRecoveryWriteOptions = Parameters<BuilderEditSessionOpti
   /** Exact next input, committed with this canonical candidate before stored:true. */
   draft: BuilderInputDraft;
   canonicalBase: CanonicalEasyTTrip;
+  /** Exact physical predecessor; independent of acknowledged account ancestry. */
+  expectedRecoverySource?: CanonicalEasyTTrip;
   authoredFrom: CanonicalEasyTTrip;
 };
 export type BuilderAsyncAcknowledgement = TripBuildSaveAcknowledgement & {
@@ -44,11 +46,24 @@ export type AsyncBuilderEditSessionOptions = Omit<BuilderEditSessionOptions,
     guard?: BuilderAsyncOperationGuard): Awaitable<BuilderAsyncAcknowledgement>;
   markRecoveryState?(handle: TripRecoveryHandle, state: TripRecoveryState): Awaitable<boolean>;
 };
+export type BuilderCommandReceipt = {
+  sequence: number; rawInputEpoch: number; ownerId: string | null; tripId: string; acceptedRevision: number;
+  handle: TripRecoveryHandle; trip: CanonicalEasyTTrip; committedDraft: BuilderInputDraft;
+};
+type CommandDisposition = 'issued' | 'reserved' | 'accepted' | 'retired' | 'refused' | 'uncertain';
+type CommandRecord = { sequence: number; rawInputEpoch: number; disposition: CommandDisposition;
+  receipt?: BuilderCommandReceipt; done: Promise<void>; finish(): void };
+export type BuilderCommandBarrier = {
+  readonly sequence: number; readonly rawInputEpoch: number;
+  isCurrent(): boolean;
+  wait(): Promise<{ ok: true; trip: CanonicalEasyTTrip; recovery: TripRecoveryHandle | null; acceptedRevision: number }
+    | { ok: false; disposition: 'retired' | 'refused' | 'uncertain' }>;
+};
 type SaveJob = { trip: CanonicalEasyTTrip; localTrip: CanonicalEasyTTrip; handle: TripRecoveryHandle; acceptedRevision: number;
   authoredFrom?: CanonicalEasyTTrip; submitted?: CanonicalEasyTTrip };
 class BuilderPromotionStorageError extends Error {}
 
-/** Ready barrier plus device-first acceptance. The callback owns atomic canonical/input durability. */
+/** Ready barrier plus device-first acceptance. The callback verifies the paired canonical/input operation. */
 export async function createAsyncBuilderEditSession(options: AsyncBuilderEditSessionOptions) {
   let trip = requireReadableTripDocument(options.initialTrip);
   const initialRecovery = options.initialRecovery;
@@ -63,10 +78,11 @@ export async function createAsyncBuilderEditSession(options: AsyncBuilderEditSes
   catch { read = { kind: 'error', reason: 'storage' }; }
   if (options.getOwnerId() !== ownerId) throw new TypeError('Builder owner scope expired during hydration');
   let draft = read.kind === 'readable' ? structuredClone(read.draft) : createBuilderInputDraft(trip, 0, ownerId);
-  let inputRevision = draft.inputRevision, acceptedRevision = 0;
+  let inputRevision = draft.inputRevision, acceptedRevision = 0, rawInputEpoch = 0;
   let disposed = false, draftNeedsWrite = false;
   let recovery: TripRecoveryHandle | null = initialRecovery
     ? { ownerId, tripId, writeId: initialRecovery.writeId, ...(initialRecovery.backend ? { backend: initialRecovery.backend } : {}) } : null;
+  let recoverySource = initialRecovery ? structuredClone(trip) : null;
   let historicalRecovery = Boolean(initialRecovery && ownerId !== null && !options.allowRecoverySync);
   let promoting = false;
   let promotionIdentity: ReadonlyMap<string, string> | null = null;
@@ -87,6 +103,12 @@ export async function createAsyncBuilderEditSession(options: AsyncBuilderEditSes
   let assessmentFeedback: { inputKey: string; assessments: TransferAssessment[] } | null = null;
   let workAbort: AbortController | null = null;
   let deviceTail = Promise.resolve(), devicePending = 0, canonicalPending = 0;
+  let commandSequence = 0, lastCommand: CommandRecord | null = null;
+  const issuedCommands = new Set<CommandRecord>();
+  // Session-local field intent distinguishes unrelated typing from a newer edit
+  // to the discard target, including changing away and back to identical bytes.
+  const rawFieldEpochs = new Map<string, number>();
+  const rawFieldKey = (binding: BuilderInputBinding) => JSON.stringify(Object.entries(binding).sort(([left], [right]) => left.localeCompare(right)));
   const listeners = new Set<() => void>();
   const active = () => !disposed && options.getOwnerId() === ownerId;
   const queue = createTripMutationPersistenceQueue(async (document, handle) => {
@@ -120,10 +142,13 @@ export async function createAsyncBuilderEditSession(options: AsyncBuilderEditSes
       historicalRecovery, browserOwnerId: ownerId, recovery, error }));
     listeners.forEach(listener => listener());
   }
+  function ownedSourceGuard(): BuilderAsyncOperationGuard {
+    const source = freeze(structuredClone(trip)), handle = freeze(structuredClone(recovery)), accepted = acceptedRevision;
+    return { isCurrent: () => active() && acceptedRevision === accepted && exact(trip, source) && exact(recovery, handle) };
+  }
   function operationGuard(): BuilderAsyncOperationGuard {
-    const source = freeze(structuredClone(trip)), handle = freeze(structuredClone(recovery));
-    const revision = inputRevision, accepted = acceptedRevision;
-    return { isCurrent: () => active() && inputRevision === revision && acceptedRevision === accepted && exact(trip, source) && exact(recovery, handle) };
+    const owned = ownedSourceGuard(), revision = inputRevision;
+    return { isCurrent: () => inputRevision === revision && owned.isCurrent() };
   }
   function runDevice<T>(canonical: boolean, operation: () => Promise<T>): Promise<T> {
     devicePending++; if (canonical) canonicalPending++;
@@ -153,46 +178,83 @@ export async function createAsyncBuilderEditSession(options: AsyncBuilderEditSes
   }
   async function storeCanonical(candidate: CanonicalEasyTTrip, canonicalBase: CanonicalEasyTTrip,
     nextDraft: BuilderInputDraft, guard = operationGuard(), continuation?: {
-      advanceRevision?: boolean; authoredFrom?: CanonicalEasyTTrip; committed?(): void;
+      advanceRevision?: boolean; authoredFrom?: CanonicalEasyTTrip; command?: CommandRecord; committed?(): void;
     }): Promise<boolean> {
     const frozen = freeze(requireReadableTripDocument(JSON.parse(JSON.stringify(prepareTripDocumentForWrite(candidate)))));
-    const metadata = freeze({ ownerId, ...(recovery ? { replace: structuredClone(recovery) } : {}),
+    const metadataSource = { ownerId, ...(recovery ? { replace: structuredClone(recovery) } : {}),
       accountSavePending: ownerId !== null && !paused && !historicalRecovery && (candidate.ownerId !== null || promoting),
       state: pauseReason ?? 'pending', draft: structuredClone(nextDraft), canonicalBase: structuredClone(canonicalBase),
-      authoredFrom: structuredClone(continuation?.authoredFrom ?? lastEnqueuedTrip ?? canonicalBase), isCurrent: guard.isCurrent });
+      expectedRecoverySource: recoverySource ? structuredClone(recoverySource) : undefined,
+      authoredFrom: structuredClone(continuation?.authoredFrom ?? lastEnqueuedTrip ?? canonicalBase) };
     return runDevice(true, async () => {
-      if (!guard.isCurrent() || draftProtected) return false;
+      if (!guard.isCurrent() || draftProtected) {
+        if (continuation?.command) continuation.command.disposition = 'retired';
+        return false;
+      }
+      if (continuation?.command) continuation.command.disposition = 'reserved';
+      // Reservation precedes the async callback: new raw intent can retire
+      // queued work, but cannot imply rollback once this exact operation starts.
+      // Identity/promotion continuations retain their stricter existing guard.
+      const reserved = continuation?.committed ? guard : ownedSourceGuard(), reservedEpoch = rawInputEpoch;
+      const metadata = freeze({ ...metadataSource, isCurrent: reserved.isCurrent });
       let result: TripRecoveryWriteResult;
       try { result = await options.saveRecovery(frozen, metadata); }
       catch {
-        if (guard.isCurrent()) { reportPersistenceOutcome('builder-edit', { stored: false }); saveFailure('unknown', 'This edit could not be accepted. Your current trip remains unchanged.', 'unknown'); }
+        if (continuation?.command) continuation.command.disposition = 'uncertain';
+        if (reserved.isCurrent()) { reportPersistenceOutcome('builder-edit', { stored: false }); saveFailure('unknown', 'This edit could not be accepted. Your current trip remains unchanged.', 'unknown'); }
         return false;
       }
-      if (!guard.isCurrent()) return false;
+      if (!reserved.isCurrent()) {
+        if (continuation?.command) continuation.command.disposition = 'uncertain';
+        return false;
+      }
       reportPersistenceOutcome('builder-edit', result);
       if (!result.stored || result.handle.ownerId !== ownerId || result.handle.tripId !== tripId || !result.handle.writeId
         || result.recoveryDurable === false || result.readbackConfirmed === false || result.pointerAcknowledged === false) {
+        if (continuation?.command) continuation.command.disposition = result.writeAttempted === false ? 'refused' : 'uncertain';
         const scopeMatches = result.handle.ownerId === ownerId && result.handle.tripId === tripId;
         if (scopeMatches && result.blockedByExistingRecovery) saveFailure('protected', 'Another device recovery is protected. Reopen it before editing.', 'protected-conflict');
         else if (scopeMatches && result.failureReason === 'device-unavailable') saveFailure('storage', 'This edit could not be saved on this device. Your current trip remains unchanged.', recoveryPersistenceOutcome(result));
         else saveFailure('unknown', 'This edit could not be accepted. Your current trip remains unchanged.', recoveryPersistenceOutcome({ ...result, stored: false }));
         return false;
       }
-      recovery = structuredClone(result.handle); trip = structuredClone(frozen);
+      recovery = structuredClone(result.handle); recoverySource = structuredClone(frozen); trip = structuredClone(frozen);
       if (continuation?.advanceRevision !== false) acceptedRevision++;
-      draft = structuredClone(metadata.draft); inputRevision = draft.inputRevision; draftNeedsWrite = false;
+      if (rawInputEpoch === reservedEpoch) {
+        draft = structuredClone(metadata.draft); draftNeedsWrite = false;
+      } else {
+        // The paired commit retained its frozen input. Newer raw bytes remain
+        // independent and must outrank that committed input's numeric revision.
+        draft = { ...rebindBuilderInputDraft(draft, trip, ownerId),
+          inputRevision: Math.max(draft.inputRevision, metadata.draft.inputRevision) + 1 };
+        draftNeedsWrite = true;
+      }
+      inputRevision = draft.inputRevision;
       pending = { trip: structuredClone(trip), localTrip: structuredClone(trip), handle: structuredClone(recovery), acceptedRevision,
         authoredFrom: structuredClone(metadata.authoredFrom) };
       canonicalSaveState = 'local';
       if (!paused && !error?.deviceOutcome) error = null;
+      if (continuation?.command) {
+        continuation.command.disposition = 'accepted';
+        continuation.command.receipt = freeze({ sequence: continuation.command.sequence, rawInputEpoch: continuation.command.rawInputEpoch,
+          ownerId, tripId, acceptedRevision, handle: structuredClone(recovery), trip: structuredClone(trip), committedDraft: structuredClone(metadata.draft) });
+      }
       continuation?.committed?.();
       return true;
     });
   }
-  async function writeDraft(nextDraft = draft, nextTrip = trip, guard = operationGuard(), install = false): Promise<boolean> {
-    const frozenDraft = freeze(structuredClone(nextDraft)), frozenTrip = freeze(structuredClone(nextTrip));
+  async function writeDraft(nextDraft = draft, nextTrip = trip, guard = operationGuard(), install = false, latestEpoch?: number, discard?: BuilderInputBinding): Promise<boolean> {
+    let frozenDraft = freeze(structuredClone(nextDraft)), frozenTrip = freeze(structuredClone(nextTrip));
     return runDevice(false, async () => {
+      if (latestEpoch !== undefined) {
+        if (!active() || rawInputEpoch !== latestEpoch) return false;
+        // Resolve the canonical basis at execution, after any preceding owned
+        // commit. Do not enqueue a guard tied to its superseded predecessor.
+        frozenDraft = freeze(structuredClone(discard ? discardBuilderInputDraftField(draft, discard, draft.inputRevision) : draft));
+        frozenTrip = freeze(structuredClone(trip)); guard = ownedSourceGuard();
+      }
       if (!guard.isCurrent() || draftProtected) return false;
+      const discardFieldEpoch = discard ? rawFieldEpochs.get(rawFieldKey(discard)) : undefined;
       let result: ReturnType<typeof writeBuilderInputDraft>;
       try { result = await options.writeDraft(frozenTrip, frozenDraft, ownerId, guard); }
       catch { result = { ok: false, reason: 'storage' }; }
@@ -201,8 +263,17 @@ export async function createAsyncBuilderEditSession(options: AsyncBuilderEditSes
         if (!install) draftNeedsWrite = true;
         saveFailure(result.reason === 'protected' ? 'protected' : 'storage', 'The input draft is still in memory and could not be saved on this device.'); return false;
       }
-      if (install) { draft = structuredClone(frozenDraft); inputRevision = draft.inputRevision; }
-      draftNeedsWrite = false;
+      if (install && (latestEpoch === undefined || rawInputEpoch === latestEpoch)) {
+        draft = structuredClone(frozenDraft); inputRevision = draft.inputRevision;
+      } else if (install && rawInputEpoch !== latestEpoch) {
+        // Keep a verified discard for an unchanged target. Newer input in that
+        // field (even an ABA edit) supersedes it; unrelated fields stay intact.
+        const retained = discard && rawFieldEpochs.get(rawFieldKey(discard)) === discardFieldEpoch
+          ? discardBuilderInputDraftField(draft, discard, draft.inputRevision) : draft;
+        draft = { ...retained, inputRevision: Math.max(retained.inputRevision, frozenDraft.inputRevision) + 1 };
+        inputRevision = draft.inputRevision; draftNeedsWrite = true;
+      }
+      if (latestEpoch === undefined || rawInputEpoch === latestEpoch && inputRevision === frozenDraft.inputRevision) draftNeedsWrite = false;
       if (error?.category === 'storage' && !error.deviceOutcome && !paused) error = null;
       return true;
     });
@@ -282,6 +353,7 @@ export async function createAsyncBuilderEditSession(options: AsyncBuilderEditSes
           if (!active()) return;
           if (promotedAck && acceptedRevision === promotedJob.acceptedRevision && exact(recovery, promotedJob.handle) && exact(trip, promotedJob.localTrip)) {
             recovery = promotedAck.outcome === 'acknowledged' ? null : recovery;
+            if (!recovery) recoverySource = null;
             pending = null; canonicalSaveState = 'cloud'; if (!error?.deviceOutcome) error = null;
           }
         } else cloudDue = true;
@@ -296,6 +368,7 @@ export async function createAsyncBuilderEditSession(options: AsyncBuilderEditSes
           throw new Error('A different device recovery still requires attention');
         }
         trip = requireReadableTripDocument(canonical); recovery = ack.outcome === 'acknowledged' ? null : recovery; failedJob = null;
+        if (!recovery) recoverySource = null;
         canonicalSaveState = 'cloud'; if (!draftNeedsWrite && !error?.deviceOutcome) error = null;
       } else if (!paused) canonicalSaveState = 'local';
       publish();
@@ -354,12 +427,14 @@ export async function createAsyncBuilderEditSession(options: AsyncBuilderEditSes
       }
     } finally { if (work === request) { work = null; workAbort = null; if (continued) scheduleWork(); } }
   }
-  async function acceptEdits(edits: readonly BuilderAcceptedEdit[], expectedInputRevision: number,
-    acceptedInputs?: readonly { binding: BuilderInputBinding; raw: string }[]) {
+  async function performAcceptedEdits(edits: readonly BuilderAcceptedEdit[], expectedInputRevision: number,
+    acceptedInputs: readonly { binding: BuilderInputBinding; raw: string }[] | undefined, command: CommandRecord) {
     if (!active() || expectedInputRevision !== inputRevision) return { ok: false as const, reason: 'stale-source' as const };
     // A preceding projection may change the canonical handle without changing
     // traveller input. Wait for its readback, then recheck the submitted revision.
+    const assessedSource = edits.some(edit => edit.kind === 'build-status') ? structuredClone(trip) : null;
     if (devicePending && !await awaitDeviceWrites()) return { ok: false as const, reason: 'stale-source' as const };
+    if (assessedSource && !exact(assessedSource, trip)) return { ok: false as const, reason: 'stale-source' as const };
     if (!active() || expectedInputRevision !== inputRevision) return { ok: false as const, reason: 'stale-source' as const };
     if (draftProtected || error?.category === 'protected') return { ok: false as const, reason: 'protected' as const };
     const guard = operationGuard();
@@ -380,13 +455,50 @@ export async function createAsyncBuilderEditSession(options: AsyncBuilderEditSes
     for (const input of acceptedInputs ?? []) nextDraft = consumeBuilderInputDraft(nextDraft, input.binding, nextDraft.inputRevision, input.raw);
     const nextRevision = Math.max(inputRevision + 1, nextDraft.inputRevision);
     nextDraft = { ...rebindBuilderInputDraft(nextDraft, candidate, ownerId), inputRevision: nextRevision };
-    if (!await storeCanonical(candidate, structuredClone(trip), nextDraft, guard)) {
+    if (!await storeCanonical(candidate, structuredClone(trip), nextDraft, guard, { command })) {
       return { ok: false as const, reason: guard.isCurrent() ? 'storage' as const : 'stale-source' as const };
     }
     if (!paused) error = null;
     else if (error?.deviceOutcome) error = { category: pauseReason ?? 'unknown', message: 'This change is saved on this device. Account sync needs attention.' };
     assessmentFeedback = null;
-    scheduleCloud(); scheduleWork(); publish(); return { ok: true as const, trip: snapshot.trip, releasedNights: prepared.releasedNights };
+    scheduleCloud(); scheduleWork(); publish(); return { ok: true as const, trip: command.receipt!.trip, receipt: command.receipt!, releasedNights: prepared.releasedNights };
+  }
+  function acceptEdits(edits: readonly BuilderAcceptedEdit[], expectedInputRevision: number,
+    acceptedInputs?: readonly { binding: BuilderInputBinding; raw: string }[]) {
+    let finish!: () => void;
+    const done = new Promise<void>(resolve => { finish = resolve; });
+    const command: CommandRecord = { sequence: ++commandSequence, rawInputEpoch, disposition: 'issued', done, finish };
+    issuedCommands.add(command); lastCommand = command;
+    return performAcceptedEdits(edits, expectedInputRevision, acceptedInputs, command).then(result => {
+      if (command.disposition === 'issued') command.disposition = !result.ok && result.reason === 'stale-source' ? 'retired' : 'refused';
+      return result;
+    }, cause => { command.disposition = command.disposition === 'reserved' ? 'uncertain' : 'refused'; throw cause; })
+      .finally(() => { issuedCommands.delete(command); command.finish(); });
+  }
+  function captureCommandBarrier(): BuilderCommandBarrier {
+    const sequence = commandSequence, epoch = rawInputEpoch, precedingDevice = deviceTail;
+    const commands = [...issuedCommands];
+    if (lastCommand && lastCommand.disposition !== 'retired' && !commands.includes(lastCommand)) commands.push(lastCommand);
+    const isCurrent = () => active() && commandSequence === sequence && rawInputEpoch === epoch;
+    return Object.freeze({ sequence, rawInputEpoch: epoch, isCurrent,
+      async wait() {
+        await Promise.all([precedingDevice, ...commands.map(command => command.done)]);
+        if (!isCurrent()) return { ok: false as const, disposition: 'retired' as const };
+        const failed = commands.find(command => command.disposition !== 'accepted');
+        // The barrier grants no account authority. Preserve the existing
+        // explicit promotion path; flush({promoteOwnerless:true}) still owns it.
+        const pendingPromotion = historicalRecovery && trip.ownerId === null && ownerId !== null
+          && pauseReason === 'pending' && error?.category === 'pending';
+        if (failed || error && !pendingPromotion || draftNeedsWrite) return { ok: false as const,
+          disposition: failed?.disposition === 'uncertain' ? 'uncertain' as const : 'refused' as const };
+        return { ok: true as const, trip: snapshot.trip, recovery: snapshot.recovery, acceptedRevision: snapshot.acceptedRevision };
+      },
+    });
+  }
+  function isCommandReceiptCurrent(receipt: BuilderCommandReceipt) {
+    return active() && receipt.sequence === commandSequence && receipt.rawInputEpoch === rawInputEpoch
+      && receipt.ownerId === ownerId && receipt.tripId === tripId && receipt.acceptedRevision === acceptedRevision
+      && exact(receipt.handle, recovery) && exact(receipt.trip, trip);
   }
   publish(); scheduleWork(); if (pending && !paused && !error) scheduleCloud();
   return {
@@ -405,20 +517,24 @@ export async function createAsyncBuilderEditSession(options: AsyncBuilderEditSes
       if (!active() || draftProtected) return false;
       const next = updateBuilderInputDraft(draft, trip, patch.binding, patch.raw, ownerId);
       if (next.inputRevision === draft.inputRevision) return !draftNeedsWrite && !devicePending;
-      draft = next; inputRevision = draft.inputRevision; draftNeedsWrite = true;
+      draft = next; inputRevision = draft.inputRevision; rawInputEpoch++; draftNeedsWrite = true;
+      rawFieldEpochs.set(rawFieldKey(patch.binding), rawInputEpoch);
       scheduleWork(); publish();
-      const stored = await writeDraft(); if (active()) { scheduleWork(); if (stored) scheduleCloud(); publish(); } return stored;
+      const stored = await writeDraft(undefined, undefined, undefined, false, rawInputEpoch);
+      if (active()) { scheduleWork(); if (stored) scheduleCloud(); publish(); } return stored;
     },
     async accept(edit: BuilderAcceptedEdit, expectedInputRevision: number, acceptedInput?: { binding: BuilderInputBinding; raw: string }) {
       return acceptEdits([edit], expectedInputRevision, acceptedInput ? [acceptedInput] : undefined);
     },
     acceptBatch: acceptEdits,
     waitForDeviceWrites: awaitDeviceWrites,
+    captureCommandBarrier, isCommandReceiptCurrent,
     resumeNecessaryWork,
     async discardDraft(binding: BuilderInputBinding) {
       if (!active() || draftProtected) return false;
       const next = discardBuilderInputDraftField(draft, binding, draft.inputRevision);
-      const stored = await writeDraft(next, trip, operationGuard(), true);
+      if (!exact(next, draft)) rawInputEpoch++;
+      const stored = await writeDraft(next, trip, operationGuard(), true, rawInputEpoch, binding);
       if (active()) { scheduleWork(); if (stored) scheduleCloud(); publish(); } return stored;
     },
     async retryNecessaryUnit(unit: Unit) {

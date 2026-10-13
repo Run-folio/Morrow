@@ -211,11 +211,12 @@ test('successful seed and exact handoff cannot relabel or clear protection from 
   assert.equal(f.scope.builderEntryFeedbackRef.current,'foreign-generation');
   const entry=f.scope.builderEntrySessionRef.current,session={},snapshot={trip:f.trip,browserOwnerId:null,recovery:f.handle,error:null};
   assert.equal(entry.handoff(session,snapshot),true);
-  Object.assign(f.scope,{mountedBuilder:{session,snapshot},currentBuilderEntry:entry,initialCloudSaveError:'Unrelated protection'});
+  Object.assign(f.scope,{mountedBuilder:{session,snapshot},currentBuilderEntry:entry,initialCloudSaveError:'Unrelated protection',buildNeedsReview:false});
   f.scope.builderEntryFeedbackRetired=value('builderEntryFeedbackRetired',f.scope);
   assert.equal(value('cloudSaveError',f.scope),'Unrelated protection');
   f.scope.builderEntryFeedbackRef.current=entry.key;f.scope.builderEntryFeedbackRetired=value('builderEntryFeedbackRetired',f.scope);
   assert.equal(value('cloudSaveError',f.scope),'');
+  f.scope.buildNeedsReview=true;assert.equal(value('cloudSaveError',f.scope),'Unrelated protection');f.scope.buildNeedsReview=false;
   f.scope.builderMountedRef.current=false;f.scope.builderEntryFeedbackRetired=value('builderEntryFeedbackRetired',f.scope);
   assert.equal(value('cloudSaveError',f.scope),'Unrelated protection');
 });
@@ -424,7 +425,7 @@ for(const change of ['planning-area','transport-choice','build-status'] as const
     Object.assign(f.scope,{selectTripLegTransportChoice:(trip:any)=>({...trip,brief:{...trip.brief,decisionSelections:{transportByLeg:{leg:'selected-choice'}}}}),setDecisionSelections(next:any){changed=next.transportByLeg.leg==='selected-choice'}});
     const callback=jsxCallback('../app/journey/new/trip-builder.tsx','TripBuilderRouteWorkspace','onTransportChoiceChange',f.scope);assert.ok(callback);await callback('leg','selected-choice');
   }else{
-    Object.assign(f.scope,{buildInvariant:{canBuildTrip:true},setOpeningTrip(){},acceptCurrentRoute(){},setTripStatus(status:string){changed=status==='planned'},setBuildRequested(){}});
+    Object.assign(f.scope,{builderBuildRequestRef:{current:null},setBuildNeedsReview(){},buildInvariant:{canBuildTrip:true},setOpeningTrip(){},acceptCurrentRoute(){},setTripStatus(status:string){changed=status==='planned'},setBuildRequested(){}});
     value('openBuiltTrip',f.scope)();
   }
   assert.equal(changed,true,'explicit source mutation is executed by the production callback');

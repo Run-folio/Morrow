@@ -21,7 +21,7 @@ export type TwoStoreRead = { kind: 'found'; trip: EasyTTrip; recovery: TripRecov
 export type TwoStoreList = { kind: 'ready'; recoveries: TripRecoveryRecord[] } | { kind: 'protected' | 'unavailable'; reason: string };
 export type TwoStoreContext = { ownerId: string | null; isCurrent: () => boolean; overflowEnabled: boolean; accountOverflowQualified: boolean };
 export type TwoStoreSaveOptions = { replace?: TripRecoveryHandle; state?: TripRecoveryRecord['state']; writeId?: string; now?: string;
-  newTripOrClone?: boolean; entry?: RecoveryEnvelope['entry']; entries?: RecoveryEntryWrite[]; canonicalBase?: EasyTTrip };
+  newTripOrClone?: boolean; entry?: RecoveryEnvelope['entry']; entries?: RecoveryEntryWrite[]; canonicalBase?: EasyTTrip; expectedRecoverySource?: EasyTTrip };
 export function createTwoStoreTripPersistence(storage: EasyTBrowserStorage, driver: RecoveryDomainDriver, context: TwoStoreContext) {
   const ownerId = context.ownerId, isCurrent = context.isCurrent;
   const active = () => { try { return isCurrent() === true; } catch { return false; } };
@@ -277,6 +277,18 @@ export function createTwoStoreTripPersistence(storage: EasyTBrowserStorage, driv
       const state = await inspect(tripId); if (state.kind !== 'resolved') return refused(tripId, writeId, state.kind === 'protected');
       if(state.lifecycle?.disposition==='discarded'&&!(state.domain.acknowledgement&&options.canonicalBase
         &&JSON.stringify(prepareTripDocumentForWrite(options.canonicalBase))===JSON.stringify(prepareTripDocumentForWrite(JSON.parse(state.domain.acknowledgement.canonicalRaw)))))return refused(tripId,writeId,true);
+      // A mounted replacement is authorized by its frozen source document, not
+      // just a write ID which an older/native writer may have reused.
+      const expectedRecoverySource = options.expectedRecoverySource ?? options.canonicalBase;
+      if (!state.domain.envelope && options.replace && expectedRecoverySource) {
+        const source = state.resolved.source;
+        const decoded = source ? decodeRecoverySource(source, scope(tripId)) : null;
+        if (decoded?.kind !== 'readable' || options.replace.ownerId !== ownerId || options.replace.tripId !== tripId
+          || options.replace.writeId !== decoded.value.writeId
+          || JSON.stringify(prepareTripDocumentForWrite(decoded.value.trip)) !== JSON.stringify(prepareTripDocumentForWrite(expectedRecoverySource))) {
+          return refused(tripId, writeId, true);
+        }
+      }
       const requiredEntries:PreparedEntryWrite[]=[];
       for(const input of options.entries??[]) {
         const prepared=prepareEntryWrite(input,ownerId);
@@ -315,6 +327,10 @@ export function createTwoStoreTripPersistence(storage: EasyTBrowserStorage, driv
       let nativeResult: TripRecoveryWriteResult | null = null;
       if (!existing) {
         if (options.replace?.backend === 'indexeddb') return refused(tripId, writeId, true);
+        // No await may separate this final exact-byte check from the native
+        // setter. A change during metadata/pointer preparation is not our source.
+        try { if (JSON.stringify(nativeSources(tripId)) !== JSON.stringify(state.legacy)) return refused(tripId, writeId, true); }
+        catch { return refused(tripId, writeId, false); }
         const paired = Boolean(options.entries?.length);
         nativeResult = saveTripRecoveryToStorage(storage, trip, { ownerId, state: options.state, writeId, now: options.now, replace: options.replace, deferRetirement:paired });
         if (nativeResult.stored) {

@@ -17,7 +17,10 @@ import type { BuilderProjectionResponse } from '../lib/easyt/trip-builder-reconc
 import type { BuilderReconciliationRequest } from '../lib/easyt/trip-builder-edit-session.ts';
 import type { AsyncBuilderEditSessionOptions } from '../lib/easyt/trip-builder-async-edit-session.ts';
 import { builderNightsCommand } from '../lib/easyt/trip-builder-handler-contract.ts';
-import { tripNightsBetween } from '../lib/easyt/night-allocation.ts';
+import { tripNightsBetween, allocateTripNights } from '../lib/easyt/night-allocation.ts';
+import { canBuildTrip } from '../lib/easyt/can-build-trip.ts';
+import { acceptedGeographicPlace, stopGeographicPlace } from '../lib/easyt/geographic-binding.ts';
+import type { JourneyEndpointPlace } from '../lib/easyt/trip.ts';
 
 const loaded = import('../lib/easyt/trip-builder-async-edit-session.ts').catch((cause: NodeJS.ErrnoException) => {
   if (cause.code === 'ERR_MODULE_NOT_FOUND') return null; throw cause;
@@ -34,10 +37,18 @@ class MemoryStorage {
 function deferred<T>() { let resolve!: (value: T) => void; let reject!: (cause: unknown) => void;
   const promise = new Promise<T>((yes, no) => { resolve = yes; reject = no; }); return { promise, resolve, reject }; }
 const tick = async () => { for (let i = 0; i < 50; i++) await Promise.resolve(); };
+function verifiedFixturePlace(place:JourneyEndpointPlace) {
+ const verified=acceptedGeographicPlace(place,{...place,providerId:`fixture:${place.name}`,placeType:'city',routability:'direct_destination'},'endpoint');
+ assert.ok(verified,'fixture geography must satisfy the unchanged production verifier');return verified;
+}
 function fixture() { const trip = requireReadableTripDocument(normalizeLegacyGeneratedDayContext(canonicalRouteFixture()));
+  const start=verifiedFixturePlace({name:'London',country:'United Kingdom',canonicalPlaceId:'place:london',coordinates:[-0.1276,51.5072]});
+  trip.brief.intent.route.origin=start;
+  Object.assign(trip.brief,{origin:start.name,originCountry:start.country,originCanonicalPlaceId:start.canonicalPlaceId,originProviderId:start.providerId,originCoordinates:start.coordinates});
+  trip.stops=trip.stops.map(stop=>{const place=verifiedFixturePlace(stopGeographicPlace(stop));return {...stop,providerId:place.providerId,geographicBinding:place.geographicBinding}});
   trip.brief.intent.route.projectionInputKey = routeProjectionInputKey(trip); return trip; }
 const budget = { kind: 'budget', budget: 'high' } as const;
-const origin = { kind: 'origin', place: { name: 'Paris', canonicalPlaceId: 'place:paris', country: 'France', coordinates: [2.35, 48.85] as [number, number] } } as const;
+const origin = { kind: 'origin', place: verifiedFixturePlace({ name: 'Paris', canonicalPlaceId: 'place:paris', country: 'France', coordinates: [2.35, 48.85] }) } as const;
 function response(request: BuilderReconciliationRequest): BuilderProjectionResponse {
   return { scope: request.scope, inputKey: request.inputKey, requestId: request.requestId, dispatched: request.dispatched,
     results: request.dispatched.map(unit => ({ ...unit, phase: 'complete' })),
@@ -120,15 +131,13 @@ test('atomic accepted edit consumes only its exact raw field after durable verif
   gate.resolve(); assert.ok((await pending).ok); assert.deepEqual(h.session.getSnapshot().draft.fields.map(field => field.raw), [' unrelated bytes ']);
   assert.deepEqual(readBuilderInputDraft(h.storage, h.session.getSnapshot().trip), { kind: 'readable', draft: h.session.getSnapshot().draft }); h.session.dispose();
 });
-for (const change of ['owner', 'input', 'dispose'] as const) test(`held accepted edit rejects ${change} change and preserves raw bytes`, async () => {
+for (const change of ['owner', 'dispose'] as const) test(`held accepted edit rejects ${change} change and preserves raw bytes`, async () => {
   const h = await harness(); await h.session.updateDraft({ binding: { kind: 'origin' }, raw: ' retained raw ' }); const before = h.session.getSnapshot(), bytes = new Map(h.storage.values), gate = h.holdRecovery();
   const pending = h.session.accept(budget, before.inputRevision); await tick();
-  let typing: Promise<boolean> | undefined;
-  if (change === 'owner') h.rotate('owner-b'); else if (change === 'dispose') h.session.dispose(); else typing = h.session.updateDraft({ binding: { kind: 'origin' }, raw: ' newer raw ' });
+  if (change === 'owner') h.rotate('owner-b'); else h.session.dispose();
   assert.equal(h.deviceWrites[0]!.options.isCurrent(), false); gate.resolve(); assert.deepEqual(await pending, { ok: false, reason: 'stale-source' });
   assert.equal(h.session.getSnapshot().acceptedRevision, 0); assert.deepEqual(h.session.getSnapshot().trip, before.trip); assert.equal(h.recovery(), null);
-  if (typing) { assert.equal(await typing, true); assert.equal(h.session.getSnapshot().draft.fields[0]!.raw, ' newer raw '); }
-  else assert.deepEqual(h.storage.values, bytes); h.session.dispose();
+  assert.deepEqual(h.storage.values, bytes); h.session.dispose();
 });
 test('held raw input is visible in memory but stays pending and cannot release cloud saving', async () => {
   const h = await harness(); await accept(h); const before = new Map(h.storage.values), gate = h.holdDraft();
@@ -146,11 +155,12 @@ test('stale projection response cannot start a durable write after a newer raw i
   await h.session.updateDraft({ binding: { kind: 'origin' }, raw: ' newer unaccepted origin ' }); const before = h.session.getSnapshot(), writes = h.deviceWrites.length;
   work.result.resolve(response(work.request)); await tick(); assert.equal(h.deviceWrites.length, writes); assert.deepEqual(h.session.getSnapshot().trip, before.trip); assert.equal(work.signal.aborted, true); h.session.dispose();
 });
-test('projection application awaits device verification and rejects input change during commit', async () => {
+test('reserved projection finishes its canonical commit while preserving newer input and refusing stale feedback', async () => {
   const h = await harness(); await accept(h, origin); await h.run(0); const work = h.projections.at(-1)!, before = h.session.getSnapshot(), gate = h.holdRecovery();
   work.result.resolve(response(work.request)); await tick(); assert.equal(h.session.getSnapshot().acceptedRevision, before.acceptedRevision); assert.equal(h.deviceWrites.length, 2);
   const pending = h.session.updateDraft({ binding: { kind: 'origin' }, raw: ' changed during projection ' }); gate.resolve(); await pending; await tick();
-  assert.deepEqual(h.session.getSnapshot().trip, before.trip); assert.equal(h.session.getSnapshot().draft.fields[0]!.raw, ' changed during projection '); h.session.dispose();
+  assert.equal(h.session.getSnapshot().acceptedRevision,before.acceptedRevision+1); assert.deepEqual(h.recovery()?.trip,h.session.getSnapshot().trip);
+  assert.deepEqual(h.session.getSnapshot().transferAssessments,[]); assert.equal(h.session.getSnapshot().draft.fields[0]!.raw, ' changed during projection '); h.session.dispose();
 });
 test('delayed exact ACK never installs old content or retires newer accepted recovery', async () => {
   const h = await harness(); await accept(h); await h.run(450); const gate = h.holdAck(); await h.ack(0);
@@ -262,16 +272,36 @@ function builderDispatch(h: Awaited<ReturnType<typeof harness>>) {
   const dispatch = new Function('scope', `with(scope){${script}}`)(scope) as (edit: Parameters<typeof h.session.accept>[0]) => Promise<boolean>;
   return { dispatch, changes, applied, errors, mounted, ref };
 }
-function buildPersistence(h: Awaited<ReturnType<typeof harness>>) {
+function buildPersistence(h: Awaited<ReturnType<typeof harness>>, onAssessment?: (ordinal:number)=>Promise<void>) {
   const view = builderDispatch(h);
   const source = readFileSync(new URL('../app/journey/new/trip-builder.tsx', import.meta.url), 'utf8');
   const body = source.slice(source.indexOf('  const persistGeneratedTrip ='), source.indexOf('  const settleUnacknowledgedBuild ='));
+  const effects:Array<()=>void>=[];let assessmentCount=0;
   const scope = { builderEditSessionRef: view.ref, builderMountedRef: view.mounted,
     activeBrowserOwnerIdRef: { current: h.session.getSnapshot().browserOwnerId },
     buildInvariant: { canBuildTrip: true }, dispatchAcceptedBuilderEdit: view.dispatch,
+    sameRecoveryDocument: (a:unknown,b:unknown)=>JSON.stringify(a)===JSON.stringify(b),
+    pendingBuildAssessmentRef:{current:null},buildAssessmentRequestId:0,setBuildAssessmentRequestId(){},
+    useEffect(effect:()=>void){effects.push(effect)},activeTripDocument:h.session.getSnapshot().trip,
+    requestBuildAssessment: async (editor:typeof h.session)=>{
+      const pending=requestAssessment(editor);if(onAssessment)await onAssessment(++assessmentCount);
+      const trip=editor.getSnapshot().trip,nightAllocation=trip.brief.nightAllocation??allocateTripNights({totalNights:tripNightsBetween(trip.startDate,trip.endDate),stops:trip.stops});
+      scope.activeTripDocument=trip;
+      scope.buildInvariant=canBuildTrip({origin:trip.brief.intent.route.origin?.name??'',originCoordinates:trip.brief.intent.route.origin?.coordinates,
+        journeyEnd:trip.brief.intent.route.journeyEnd,stops:trip.stops.map(s=>({...s,coordinates:[s.longitude!,s.latitude!] as [number,number]})),
+        startDate:trip.startDate,endDate:trip.endDate,durationDays:tripNightsBetween(trip.startDate,trip.endDate)+1,
+        nightAllocation,allocations:trip.brief.nightAllocations??Object.fromEntries(trip.stops.map(s=>[s.id,s.nights??0])),document:trip});
+      effects[0]!();return pending;
+    },
+    builderBuildNavigationRef:{current:null},
     recordGeneratedTrip() {}, surfaceBuildConflict() {}, setCloudSaveError() {}, trackEvent() {}, analyticsTripSource: 'builder' };
+  const assessmentBody=source.slice(source.indexOf('  const requestBuildAssessment ='),source.indexOf('  const recordGeneratedTrip ='));
+  const requestAssessment=new Function('scope',`with(scope){${ts.transpileModule(assessmentBody+'\nreturn requestBuildAssessment;',{compilerOptions:{target:ts.ScriptTarget.ES2022}}).outputText}}`)(scope) as (editor:typeof h.session)=>Promise<unknown>;
+  const navStart=source.indexOf('  const canOpenBuiltTrip =');
+  // Before the fix there is no final navigation guard; actual callers below also lack it.
+  const canOpen=navStart<0?()=>true:new Function('scope',`with(scope){${ts.transpileModule(source.slice(navStart,source.indexOf('  const settleUnacknowledgedBuild ='))+'\nreturn canOpenBuiltTrip;',{compilerOptions:{target:ts.ScriptTarget.ES2022}}).outputText}}`)(scope) as (trip:CanonicalEasyTTrip)=>boolean;
   const script = ts.transpileModule(body + '\nreturn persistGeneratedTrip;', { compilerOptions: { target: ts.ScriptTarget.ES2022 } }).outputText;
-  return { ...view, persist: new Function('scope', `with(scope){${script}}`)(scope) as () => Promise<CanonicalEasyTTrip | null> };
+  return { ...view, canOpen, persist: new Function('scope', `with(scope){${script}}`)(scope) as (request?: {editor: typeof h.session; barrier: ReturnType<typeof h.session.captureCommandBarrier>}) => Promise<CanonicalEasyTTrip | null> };
 }
 function nightAdjustment(h: Awaited<ReturnType<typeof harness>>) {
   const view = builderDispatch(h);
@@ -342,15 +372,15 @@ test('actual night controls retain two rapid activations across awaited device a
   assert.equal(h.session.getSnapshot().trip.stops[0]!.nights, stop.nights! + 2);
   assert.equal(h.writes.length, 0); h.session.dispose();
 });
-test('queued night activation cannot overwrite newer raw input after a refused predecessor', async () => {
+test('reserved night activation finishes while newer raw input retires the queued second activation', async () => {
   const h = await harness({ initialTrip: requireReadableTripDocument({ ...fixture(), ownerId: null }), owner: null });
   const view = nightAdjustment(h), stop = h.session.getSnapshot().trip.stops[0]!, gate = h.holdRecovery();
   const first = view.adjust(stop.id, 1), second = view.adjust(stop.id, 1); await tick();
   const raw = h.session.updateDraft({ binding: { kind: 'origin' }, raw: ' newer raw ' }); gate.resolve();
   await Promise.all([first, second, raw]);
-  assert.equal(h.session.getSnapshot().trip.stops[0]!.nights, stop.nights);
+  assert.equal(h.session.getSnapshot().trip.stops[0]!.nights, stop.nights! + 1);
   assert.equal(h.session.getSnapshot().draft.fields[0]?.raw, ' newer raw ');
-  assert.equal(h.writes.length, 0); h.session.dispose();
+  assert.equal(h.deviceWrites.length,1); assert.equal(h.writes.length, 0); h.session.dispose();
 });
 test('queued night activations stop after native refusal without an automatic second write', async () => {
   const h = await harness({ initialTrip: requireReadableTripDocument({ ...fixture(), ownerId: null }), owner: null });
@@ -431,4 +461,197 @@ test('mounted Builder preservation refuses a held acceptance instead of fabricat
   const scope = { builderEditSessionRef: { current: h.session }, builderMountedRef: { current: true }, activeBrowserOwnerIdRef: { current: before.ownerId }, sameRecoveryDocument: (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b) };
   const preserve = new Function('scope', `with(scope){${script}}`)(scope) as (trip: CanonicalEasyTTrip) => Promise<{ stored: boolean }>;
   assert.equal((await preserve(before)).stored, false); gate.resolve(); await pending; h.session.dispose();
+});
+
+// Regression: completion of an already-issued origin is not new traveller input.
+test('actual Build follows an origin command issued before Build while its acceptance is pending', async () => {
+  const h=await harness({initialTrip:requireReadableTripDocument({...fixture(),ownerId:null}),owner:null});
+  await h.session.updateDraft({binding:{kind:'origin'},raw:'Paris'});
+  const gate=h.holdRecovery(),before=h.session.getSnapshot();
+  const prior=h.session.accept(origin,before.inputRevision,{binding:{kind:'origin'},raw:'Paris'});await tick();
+  const view=buildPersistence(h),building=view.persist();await tick();gate.resolve();
+  assert.equal((await prior).ok,true);const saved=await building;
+  assert.equal(saved?.status,'planned');assert.equal(saved?.brief.origin,'Paris');assert.equal(h.writes.length,0);h.session.dispose();
+});
+
+test('reserved accepted edit retains newer raw bytes with a revision above the committed draft', async()=>{
+ const h=await harness({initialTrip:requireReadableTripDocument({...fixture(),ownerId:null}),owner:null});
+ await h.session.updateDraft({binding:{kind:'origin'},raw:'original raw'});
+ const gate=h.holdRecovery(),command=h.session.accept(budget,h.session.getSnapshot().inputRevision);await tick();
+ const newer=h.session.updateDraft({binding:{kind:'origin'},raw:'newer raw'});gate.resolve();
+ const result=await command;assert.equal(result.ok,true);assert.equal(await newer,true);
+ if(!result.ok)throw Error('Expected accepted receipt');
+ assert.equal(h.session.isCommandReceiptCurrent(result.receipt),false);
+ assert.ok(h.session.getSnapshot().inputRevision>result.receipt.committedDraft.inputRevision);
+ assert.equal(h.session.getSnapshot().draft.fields[0]?.raw,'newer raw');
+ const read=readBuilderInputDraft(h.storage,h.session.getSnapshot().trip);assert.equal(read.kind,'readable');
+ if(read.kind==='readable')assert.equal(read.draft.fields[0]?.raw,'newer raw');h.session.dispose();
+});
+for(const interruption of ['later-command','prior-refusal','editor-replaced'] as const)test(`actual Build refuses ${interruption} while a prior origin is pending`,async()=>{
+ const h=await harness({initialTrip:requireReadableTripDocument({...fixture(),ownerId:null}),owner:null});
+ const gate=h.holdRecovery(),prior=h.session.accept(origin,h.session.getSnapshot().inputRevision);await tick();
+ const view=buildPersistence(h),building=view.persist();await tick();let later:Promise<unknown>|undefined;
+ if(interruption==='later-command')later=h.session.accept(budget,h.session.getSnapshot().inputRevision);
+ if(interruption==='prior-refusal')h.failRecovery();
+ if(interruption==='editor-replaced')view.ref.current=null as unknown as typeof h.session;
+ gate.resolve();await prior;await later;assert.equal(await building,null);assert.equal(h.session.getSnapshot().trip.status,'draft');assert.equal(h.writes.length,0);h.session.dispose();
+});
+
+test('actual Build retains the existing explicit ownerless promotion path from pending recovery',async()=>{
+ const initial=requireReadableTripDocument({...fixture(),ownerId:null}),storage=new MemoryStorage();
+ assert.equal(saveTripRecoveryToStorage(storage,initial,{ownerId:'owner-a'}).stored,true);
+ const h=await harness({initialTrip:initial,owner:'owner-a',storage}),view=buildPersistence(h);
+ const building=view.persist();await tick();assert.equal(h.writes.length,1,'Build must reach the existing explicit promotion flush');
+ await h.ack(0);const built=await building;assert.equal(built?.ownerId,'owner-a');assert.equal(built?.status,'planned');h.session.dispose();
+});
+test('actual Build request retires when raw input changes before its effect starts',async()=>{
+ const h=await harness({initialTrip:requireReadableTripDocument({...fixture(),ownerId:null}),owner:null}),view=buildPersistence(h);
+ const request={editor:h.session,barrier:h.session.captureCommandBarrier()};
+ await h.session.updateDraft({binding:{kind:'origin'},raw:'typed after Build click'});
+ assert.equal(await view.persist(request),null);assert.equal(h.session.getSnapshot().trip.status,'draft');assert.equal(h.deviceWrites.length,0);h.session.dispose();
+});
+test('actual Build cannot navigate after newer raw input arrives during account flush',async()=>{
+ const h=await harness(),view=buildPersistence(h),building=view.persist();await tick();assert.equal(h.writes.length,1);
+ await h.session.updateDraft({binding:{kind:'origin'},raw:'newer during account flush'});await h.ack(0);
+ assert.equal(await building,null);assert.equal(h.session.getSnapshot().draft.fields[0]?.raw,'newer during account flush');h.session.dispose();
+});
+
+// Independent implementation review regressions: each was RED on the reviewed diff.
+test('discard queued behind a reserved commit settles against its accepted source', async()=>{
+ const h=await harness({initialTrip:requireReadableTripDocument({...fixture(),ownerId:null}),owner:null});
+ await h.session.updateDraft({binding:{kind:'origin'},raw:'discard me'});
+ const gate=h.holdRecovery(),command=h.session.accept(budget,h.session.getSnapshot().inputRevision);await tick();
+ const discard=h.session.discardDraft({kind:'origin'});gate.resolve();assert.equal((await command).ok,true);
+ assert.equal(await discard,true);assert.equal(h.session.getSnapshot().draft.fields.length,0);
+ assert.equal(h.session.getSnapshot().saveState,'local');assert.equal(await h.session.flush(),true);
+ assert.equal((await h.session.captureCommandBarrier().wait()).ok,true);h.session.dispose();
+});
+test('fresh Build can follow an obsolete retired command and a verified discard',async()=>{
+ const h=await harness({initialTrip:requireReadableTripDocument({...fixture(),ownerId:null}),owner:null});
+ const command=h.session.accept(budget,h.session.getSnapshot().inputRevision);
+ const raw=h.session.updateDraft({binding:{kind:'origin'},raw:'superseding raw'});
+ assert.equal((await command).ok,false);assert.equal(await raw,true);
+ assert.equal(await h.session.discardDraft({kind:'origin'}),true);assert.equal(h.session.getSnapshot().error,null);
+ const built=await buildPersistence(h).persist();assert.equal(built?.status,'planned');h.session.dispose();
+});
+test('actual Build must reassess a pending origin clear after its acceptance',async()=>{
+ const h=await harness({initialTrip:requireReadableTripDocument({...fixture(),ownerId:null}),owner:null});
+ const gate=h.holdRecovery(),command=h.session.accept({kind:'origin',place:null},h.session.getSnapshot().inputRevision);await tick();
+ const built=buildPersistence(h).persist();gate.resolve();assert.equal((await command).ok,true);
+ assert.equal(await built,null);assert.equal(h.session.getSnapshot().trip.status,'draft');assert.equal(h.writes.length,0);h.session.dispose();
+});
+
+test('guest Build retirement renders no account failure or unverified device assurance',async()=>{
+ const h=await harness({initialTrip:requireReadableTripDocument({...fixture(),ownerId:null}),owner:null});
+ const gate=h.holdDraft(),writing=h.session.updateDraft({binding:{kind:'origin'},raw:'pending newer raw'});await tick();
+ const source=readFileSync(new URL('../app/journey/new/trip-builder.tsx',import.meta.url),'utf8');
+ const body=source.slice(source.indexOf('  const settleUnacknowledgedBuild ='),source.indexOf('  const openBuiltTrip ='));
+ const scope:any={builderEditSessionRef:{current:h.session},setOpeningTrip(){},setSaveState(){},setBuildNeedsReview(value:boolean){scope.buildNeedsReview=value},
+  setCloudSaveError(fn:any){scope.cloudSaveError=typeof fn==='function'?fn(''):fn},language:'en',buildNeedsReview:false,
+  mountedBuilder:{snapshot:h.session.getSnapshot()},devicePersistenceOutcome:null,deviceStorageBlocked:false,deviceRecoveryBlocked:false,cloudConflictTrip:null,cloudAuthInterrupted:false};
+ const script=ts.transpileModule(body+'\nsettleUnacknowledgedBuild();',{compilerOptions:{target:ts.ScriptTarget.ES2022}}).outputText;
+ new Function('scope',`with(scope){${script}}`)(scope);
+ const parsed=ts.createSourceFile('builder.tsx',source,ts.ScriptTarget.Latest,true,ts.ScriptKind.TSX);const props:Record<string,string>={};
+ function visit(node:ts.Node){if(ts.isJsxSelfClosingElement(node)&&node.tagName.getText(parsed)==='MorroviaRecoveryFeedback'){
+  for(const prop of node.attributes.properties)if(ts.isJsxAttribute(prop)&&['title','safety'].includes(prop.name.getText(parsed))&&prop.initializer&&ts.isJsxExpression(prop.initializer)&&prop.initializer.expression)props[prop.name.getText(parsed)]=prop.initializer.expression.getText(parsed);
+ }ts.forEachChild(node,visit)}visit(parsed);
+ const render=(value:string)=>new Function('scope',`with(scope){return (${value});}`)(scope);
+ assert.doesNotMatch(render(props.title!),/account/i);assert.doesNotMatch(render(props.safety!),/safe on this device/i);
+ assert.match(render(props.safety!),/keep this tab open/i);gate.resolve();await writing;h.session.dispose();
+});
+
+for(const change of ['none','document','revision','owner','unmount'] as const)test(`Build assessment publication is bound to its settled render: ${change}`,async()=>{
+ const h=await harness(),source=readFileSync(new URL('../app/journey/new/trip-builder.tsx',import.meta.url),'utf8');
+ const body=source.slice(source.indexOf('  const requestBuildAssessment ='),source.indexOf('  const recordGeneratedTrip ='));
+ const effects:Array<()=>void>=[],snapshot=h.session.getSnapshot();
+ const scope:any={pendingBuildAssessmentRef:{current:null},setBuildAssessmentRequestId(){},useEffect(effect:()=>void){effects.push(effect)},buildAssessmentRequestId:0,
+  builderEditSessionRef:{current:h.session},builderMountedRef:{current:true},activeBrowserOwnerIdRef:{current:snapshot.browserOwnerId},activeTripDocument:snapshot.trip,
+  buildInvariant:{canBuildTrip:true},sameRecoveryDocument:(a:unknown,b:unknown)=>JSON.stringify(a)===JSON.stringify(b)};
+ const script=ts.transpileModule(body+'\nreturn requestBuildAssessment;',{compilerOptions:{target:ts.ScriptTarget.ES2022}}).outputText;
+ const request=new Function('scope',`with(scope){${script}}`)(scope);const pending=request(h.session);
+ if(change==='document')scope.activeTripDocument={...snapshot.trip,title:'a different rendered document'};
+ if(change==='revision')await accept(h);
+ if(change==='owner')scope.activeBrowserOwnerIdRef.current='owner-b';
+ if(change==='unmount')scope.builderMountedRef.current=false;
+ effects[0]!();const result=await pending;assert.equal(result!==null,change==='none');h.session.dispose();
+});
+test('discard superseded during its reserved write keeps newer raw and persists the higher revision',async()=>{
+ const h=await harness({initialTrip:requireReadableTripDocument({...fixture(),ownerId:null}),owner:null});
+ await h.session.updateDraft({binding:{kind:'origin'},raw:'discard requested'});const gate=h.holdDraft();
+ const discard=h.session.discardDraft({kind:'origin'});await tick();const raw=h.session.updateDraft({binding:{kind:'origin'},raw:'newest raw'});gate.resolve();
+ await discard;assert.equal(await raw,true);assert.equal(h.session.getSnapshot().draft.fields[0]?.raw,'newest raw');
+ assert.deepEqual(readBuilderInputDraft(h.storage,h.session.getSnapshot().trip),{kind:'readable',draft:h.session.getSnapshot().draft});
+ assert.equal(h.session.getSnapshot().saveState,'local');h.session.dispose();
+});
+
+test('Build status refuses a source changed by projection after its assessment',async()=>{
+ const {h,gate}=await heldGuestProjection(),before=h.deviceWrites.length;
+ const command=h.session.accept({kind:'build-status'},h.session.getSnapshot().inputRevision);await tick();gate.resolve();
+ assert.equal((await command).ok,false);assert.equal(h.session.getSnapshot().trip.status,'draft');
+ assert.equal(h.deviceWrites.length,before,'a stale assessment cannot start a status write');h.session.dispose();
+});
+
+// Independent-recheck counterexamples: actual Build closure and assessment publication.
+for(const outcome of ['failed','held'] as const)test(`final Build assessment refuses ${outcome} projection persistence`,async()=>{
+ const h=await harness({initialTrip:requireReadableTripDocument({...fixture(),ownerId:null}),owner:null});await accept(h,origin);
+ let held:ReturnType<typeof h.holdRecovery>|undefined,before:ReturnType<typeof h.session.getSnapshot>|undefined;
+ const view=buildPersistence(h,async ordinal=>{
+  if(ordinal!==2)return;
+  before=h.session.getSnapshot();await h.run(0);const work=h.projections.at(-1)!;assert.ok(work);
+  if(outcome==='failed')h.failRecovery();else held=h.holdRecovery();
+  work.result.resolve(response(work.request));await tick();
+  assert.equal(h.session.getSnapshot().acceptedRevision,before.acceptedRevision);
+  assert.deepEqual(h.session.getSnapshot().trip,before.trip);
+  assert.equal(outcome==='failed'?h.session.getSnapshot().error?.deviceOutcome:h.session.getSnapshot().saveState,outcome==='failed'?'unknown':'device-saving');
+ });
+ const saved=await view.persist();assert.equal(saved,null,'unsettled or failed persistence cannot gain navigation authority');
+ held?.resolve();await tick();h.session.dispose();
+});
+function navigationEffect(h:Awaited<ReturnType<typeof harness>>,view:ReturnType<typeof buildPersistence>,interrupt:()=>Promise<void>,surface:'build'|'map'){
+ const source=readFileSync(new URL('../app/journey/new/trip-builder.tsx',import.meta.url),'utf8');
+ const start=source.indexOf('    void (async () => {',source.indexOf(surface==='build'?'    if (!buildRequested) return;':'        onOpenMap={() => {'));
+ const end=source.indexOf('    })();',start);assert.ok(start>=0&&end>start);
+ const body=source.slice(start+'    void (async () => {'.length,end),navigated:string[]=[];let settled=0;
+ const scope={builderBuildRequestRef:{current:null},persistGeneratedTrip:async()=>{const result=await view.persist();assert.ok(result);await interrupt();return result},
+  hydratedOwnerScopeRef:{current:h.session.getSnapshot().browserOwnerId},activeBrowserOwnerIdRef:{current:h.session.getSnapshot().browserOwnerId},
+  canUseHydratedTripScope:()=>true,canOpenBuiltTrip:view.canOpen,session:null,window:{location:{assign:(path:string)=>navigated.push(path)}},
+  firstTripWorkspaceHref:(id:string)=>'/trip/'+id,mapWorkspaceHref:(id:string)=>'/map/'+id,tripSyncSignInPath:(id:string)=>'/sign-in/'+id,settleUnacknowledgedBuild(){settled++}};
+ return {run:()=>new Function('scope',`with(scope){return (async()=>{${ts.transpileModule(body,{compilerOptions:{target:ts.ScriptTarget.ES2022}}).outputText}})();}`)(scope),navigated,get settled(){return settled}};
+}
+for(const surface of ['build','map'] as const)for(const interruption of ['none','failed','held','new-raw','owner','unmount'] as const)test(`actual ${surface} navigation rechecks ${interruption} after the async persistence return`,async()=>{
+ const h=await harness({initialTrip:requireReadableTripDocument({...fixture(),ownerId:null}),owner:null});await accept(h,origin);
+ const view=buildPersistence(h);let held:ReturnType<typeof h.holdRecovery>|undefined;
+ const nav=navigationEffect(h,view,async()=>{
+  if(interruption==='none')return;
+  if(interruption==='owner'){h.rotate('owner-b');return;}
+  if(interruption==='unmount'){view.mounted.current=false;return;}
+  if(interruption==='new-raw'){await h.session.updateDraft({binding:{kind:'origin'},raw:'new intent after Build returned'});return;}
+  await h.run(0);const work=h.projections.at(-1)!;assert.ok(work);
+  if(interruption==='failed')h.failRecovery();else held=h.holdRecovery();
+  work.result.resolve(response(work.request));await tick();
+ },surface);
+ await nav.run();assert.equal(nav.navigated.length,interruption==='none'?1:0);assert.equal(nav.settled,interruption==='none'?0:1);
+ held?.resolve();await tick();h.session.dispose();
+});
+for(const input of ['unrelated','same-field','same-field-aba'] as const)test(`verified discard preserves only actual newer field intent: ${input}`,async()=>{
+ const h=await harness({initialTrip:requireReadableTripDocument({...fixture(),ownerId:null}),owner:null});
+ const oldRaw='origin requested for discard';await h.session.updateDraft({binding:{kind:'origin'},raw:oldRaw});
+ const gate=h.holdDraft(),discard=h.session.discardDraft({kind:'origin'});await tick();
+ const raw=h.session.updateDraft({binding:input==='unrelated'?{kind:'destination-add'}:{kind:'origin'},raw:'new raw intent'});
+ const back=input==='same-field-aba'?h.session.updateDraft({binding:{kind:'origin'},raw:oldRaw}):undefined;
+ gate.resolve();assert.equal(await discard,true);await raw;if(back)assert.equal(await back,true);
+ const state=h.session.getSnapshot();assert.equal(state.saveState,'local');
+ assert.deepEqual(state.draft.fields.map(f=>({binding:f.binding,raw:f.raw})),[{binding:input==='unrelated'?{kind:'destination-add'}:{kind:'origin'},raw:input==='same-field-aba'?oldRaw:'new raw intent'}]);
+ assert.deepEqual(readBuilderInputDraft(h.storage,state.trip),{kind:'readable',draft:state.draft});h.session.dispose();
+});
+
+for(const interruption of ['write-failure','owner'] as const)test(`unverified discard cannot remove input after ${interruption}`,async()=>{
+ const h=await harness({initialTrip:requireReadableTripDocument({...fixture(),ownerId:null}),owner:null});
+ await h.session.updateDraft({binding:{kind:'origin'},raw:'keep until verified'});const durableBefore=readBuilderInputDraft(h.storage,h.session.getSnapshot().trip);
+ const gate=h.holdDraft(),discard=h.session.discardDraft({kind:'origin'});await tick();
+ const newer=h.session.updateDraft({binding:{kind:'destination-add'},raw:'new unrelated raw'});
+ if(interruption==='write-failure')h.failDraft();else h.rotate('owner-b');gate.resolve();
+ assert.equal(await discard,false);assert.equal(await newer,false);
+ assert.deepEqual(h.session.getSnapshot().draft.fields.map(f=>f.raw),['keep until verified','new unrelated raw']);
+ assert.deepEqual(readBuilderInputDraft(h.storage,h.session.getSnapshot().trip),durableBefore);h.session.dispose();
 });

@@ -1416,11 +1416,12 @@ export async function claimGuestTripRecoveryForOwner(tripId:string,ownerId:strin
 }
 
 export async function saveTripRecovery(trip:EasyTTrip,options:{ownerId?:string|null;state?:TripRecoveryState;replace?:TripRecoveryHandle;accountSavePending?:boolean;
-  isCurrent?:()=>boolean;newTripOrClone?:boolean;canonicalBase?:EasyTTrip;draft?:BuilderInputDraft;intake?:RecoveryIntakeAcknowledgement;}={}):Promise<TripRecoveryWriteResult> {
+  isCurrent?:()=>boolean;newTripOrClone?:boolean;canonicalBase?:EasyTTrip;expectedRecoverySource?:EasyTTrip;draft?:BuilderInputDraft;intake?:RecoveryIntakeAcknowledgement;}={}):Promise<TripRecoveryWriteResult> {
   const candidate=prepareTripDocumentForWrite(structuredClone(trip)),ownerId=options.ownerId===undefined?candidate.ownerId:options.ownerId;
   const guard=browserRecoveryGuard(options.isCurrent),writeId=generatedWriteId();
   const fallback:TripRecoveryWriteResult={stored:false,handle:{ownerId,tripId:candidate.id,writeId},blockedByExistingRecovery:false,failureReason:'unknown',writeAttempted:false,outcome:'unknown'};
   const frozen={state:options.state,replace:options.replace?structuredClone(options.replace):undefined,canonicalBase:options.canonicalBase?structuredClone(options.canonicalBase):undefined,
+    expectedRecoverySource:options.expectedRecoverySource?structuredClone(options.expectedRecoverySource):undefined,
     draft:options.draft?structuredClone(options.draft):undefined,intake:options.intake?structuredClone(options.intake):undefined,newTripOrClone:options.newTripOrClone===true,accountSavePending:options.accountSavePending===true};
   try {
     let storage:EasyTBrowserStorage;
