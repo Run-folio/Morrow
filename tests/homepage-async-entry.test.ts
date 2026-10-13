@@ -4,7 +4,13 @@ import {readFileSync} from 'node:fs';
 import ts from 'typescript';
 import {homeRecoveryFixture} from './helpers/home-recovery-fixture.ts';
 import {emptyHomepageInput} from './fixtures/homepage-dual-entry.ts';
-import {homepageCompletedReceiptIsUnchanged,homepageSemanticInputFingerprint} from '../lib/easyt/home-trip-handoff.ts';
+import {commitHomepageHandoff,homepageCompletedReceiptIsUnchanged,homepageSemanticInputFingerprint,homepagePreflightIssues,
+ projectHomepageInput,homepageReceiptForProjection,reusableHomepageReceipt,reservePendingDescribeHandoff,HOME_TRIP_DRAFT_KEY} from '../lib/easyt/home-trip-handoff.ts';
+import {createDurableHomepagePersistence,prepareIntakeAcknowledgement} from '../lib/easyt/homepage-persistence.ts';
+import {createTwoStoreTripPersistence} from '../lib/easyt/two-store-trip-persistence.ts';
+import {prepareTripDocumentForWrite} from '../lib/easyt/trip-document.ts';
+import {homepageInputStorageKey} from '../lib/easyt/private-browser-context.ts';
+import {MemoryRecoveryDriver} from './helpers/durable-recovery-driver.ts';
 
 /** Execute the actual component callbacks with disposable in-memory dependencies. */
 const source=readFileSync(new URL('../app/journey/home/home-trip-starter.tsx',import.meta.url),'utf8');
@@ -89,4 +95,52 @@ test('same-owner unchanged receipt resume awaits preservation and retains explic
 test('competing receipt during preservation prevents stale same-owner resume navigation',async()=>{
   const {scope,seen,changeReceipt}=resumeScope();scope.beginNewTripNavigation=async()=>{changeReceipt();return true};
   await actualCallback('submit',scope)();assert.deepEqual(seen.hrefs,[]);assert.match(seen.errors.at(-1)!,/couldn't recover/);
+});
+
+test('actual Homepage Stops submit remains pending until canonical recovery and its receipt commit together',async()=>{
+ const fixture=homeRecoveryFixture(),values=new Map<string,string>();
+ let canonicalSetterQuota=false;
+ const storage={get length(){return values.size;},key:(i:number)=>[...values.keys()][i]??null,
+  getItem:(key:string)=>values.get(key)??null,setItem:(key:string,raw:string)=>{
+   if(canonicalSetterQuota&&key.startsWith('easyt:trip-recovery:'))throw new DOMException('Declared model only','QuotaExceededError');values.set(key,raw)},removeItem:(key:string)=>{values.delete(key)}};
+ storage.setItem(homepageInputStorageKey(null),JSON.stringify({snapshot:fixture.snapshot}));
+ const driver=new MemoryRecoveryDriver(),lock=async<T,>(_key:string,work:()=>Promise<T>)=>work();
+ const seen={hrefs:[] as string[],errors:[] as string[]};
+ const scope={recoveryBlocked:false,homepageReadyRef:{current:true},sessionPendingRef:{current:false},ownerIdRef:{current:null},snapshotRef:{current:fixture.snapshot},
+  submitInFlightRef:{current:false},submissionGenerationRef:{current:0},mountedRef:{current:true},performance:{now:()=>1},trackEvent:()=>{},setLoading:()=>{},
+  setCaptureError:(value:string)=>seen.errors.push(value),storedInputRef:{current:{snapshot:fixture.snapshot}},homepageSemanticInputFingerprint,homepageCompletedReceiptIsUnchanged,
+  readDurableHomepageState:()=>createDurableHomepagePersistence(storage,driver,{ownerId:null,isCurrent:()=>true,overflowEnabled:false,accountOverflowQualified:false}).read(),
+  homepagePreflightIssues,evidenceFor:()=>undefined,projectHomepageInput,homepageReceiptForProjection,reusableHomepageReceipt,travelProfile:null,
+  generatedId:(prefix:string)=>prefix+'-actual-stops',window:{localStorage:storage},requestNewTripNavigationAsync:async()=>true,
+  commitHomepageHandoff:(input:Parameters<typeof commitHomepageHandoff>[0])=>commitHomepageHandoff({...input,lock}),
+  reservePendingDescribeHandoff:(input:Parameters<typeof reservePendingDescribeHandoff>[0])=>reservePendingDescribeHandoff({...input,lock}),
+  markPlanningMilestone:()=>{},planningAttemptOutcome:()=>{},router:{push:(href:string)=>seen.hrefs.push(href)},language:'en'};
+ await actualCallback('submit',scope)();
+ assert.deepEqual(seen.errors.filter(Boolean),[]);
+ const retained=JSON.parse(storage.getItem(homepageInputStorageKey(null))!);
+ assert.equal(retained.receipt.version,2,'Completion must wait for the canonical recovery transaction');
+ assert.equal(JSON.stringify(retained.receipt.frozenSnapshot),JSON.stringify(fixture.snapshot));
+ assert.equal(JSON.parse(storage.getItem(HOME_TRIP_DRAFT_KEY)!).version,2);
+ assert.equal(seen.hrefs.length,1);assert.match(seen.hrefs[0]!,/^\/journey\/new\?homeDraft=1&handoff=/);
+ assert.equal(driver.generations.size,0,'Homepage reservation does not fabricate canonical acceptance');
+ // This declared fault model joins the actual producer to the existing broker;
+ // native capacity and the compiled UI are qualified separately.
+ const pending=retained.receipt,projected=projectHomepageInput({snapshot:pending.frozenSnapshot,profile:null,handoffId:pending.handoffId});
+ assert.equal(projected.ok,true);if(!projected.ok)return;
+ const completed=homepageReceiptForProjection(pending.frozenSnapshot,projected.draft,pending.tripId);
+ const draft={...projected.draft,homepage:{...projected.draft.homepage!,receipt:completed}};
+ const candidate=prepareTripDocumentForWrite({...fixture.trip,id:pending.tripId}),context={ownerId:null,isCurrent:()=>true,overflowEnabled:true,accountOverflowQualified:false};
+ const before=[...values],writeId='actual-stops-canonical';canonicalSetterQuota=true;
+ const prepared=await prepareIntakeAcknowledgement(storage,driver,context,{pending,completed,draft,fromHomepage:true},candidate,writeId+':intake');
+ assert.equal(prepared.ok,true);if(!prepared.ok)return;
+ const saved=await createTwoStoreTripPersistence(storage,driver,context).save(candidate,{newTripOrClone:true,writeId,entries:[prepared.entry],entry:{
+  pointer:{version:1,backend:'indexeddb',ownerId:null,tripId:candidate.id,writeId},input:null,receipt:prepared.receipt}});
+ assert.equal(saved.stored,true);assert.equal(saved.receiptAcknowledged,true);assert.equal(saved.pointerAcknowledged,true);assert.deepEqual([...values],before);
+ const readerContext={...context,overflowEnabled:false};
+ const canonical=await createTwoStoreTripPersistence(storage,driver,readerContext).read(candidate.id),home=await createDurableHomepagePersistence(storage,driver,readerContext).read();
+ assert.equal(canonical.kind,'found');assert.equal(home.kind,'ready');
+ if(canonical.kind==='found'&&home.kind==='ready'){
+  assert.equal(canonical.domain?.envelope?.entry.receipt?.raw,home.raw);assert.deepEqual(home.storedInput?.receipt,completed);
+  assert.equal(canonical.trip.id,completed.tripId);assert.equal(canonical.trip.ownerId,null);
+ }
 });

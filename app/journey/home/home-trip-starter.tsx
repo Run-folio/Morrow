@@ -18,7 +18,6 @@ import {
   commitHomepageHandoff,
   homepageCompletedReceiptIsUnchanged,
   homepageHandoffReceiptForOwner,
-  homepageReceiptForProjection,
   homepageSemanticInputFingerprint,
   homepageCaptureWithSharedOrigin,
   homepageSnapshotForDescribePrompt,
@@ -28,7 +27,6 @@ import {
   persistEditableHomepageInput,
   projectHomepageInput,
   reservePendingDescribeHandoff,
-  reusableHomepageReceipt,
   type HomepageDestinationEntry,
   type HomepageInputSnapshot,
   type StoredHomepageInput,
@@ -339,7 +337,15 @@ export default function HomeTripStarter() {
           : form?.querySelector<HTMLInputElement>('input[role="combobox"], textarea'))?.focus();
         return;
       }
-      if (submitted.mode === "describe") {
+      if (submitted.mode === "stops" && !projectHomepageInput({
+        snapshot: submitted, profile: travelProfile, handoffId: "homepage-preflight",
+      }).ok) {
+        setCaptureError(language === "es" ? "Revisa los datos del viaje e inténtalo de nuevo." : "Review your trip details and try again.");
+        return;
+      }
+      // Both entry modes reserve frozen input. Only Builder's canonical
+      // recovery transaction may complete this receipt and its pointer.
+      {
         const committed = await reservePendingDescribeHandoff({
           storage: window.localStorage, snapshot: submitted, isCurrent,
           createIds: () => ({ handoffId: generatedId("handoff"), tripId: generatedId("trip") }),
@@ -359,43 +365,6 @@ export default function HomeTripStarter() {
         router.push(committed.href);
         return;
       }
-      if (!isCurrent()) return;
-      const priorReceipt = storedInputRef.current.receipt;
-      const initialHandoffId = priorReceipt?.handoffId ?? generatedId("handoff");
-      let projected = projectHomepageInput({ snapshot: submitted, profile: travelProfile, handoffId: initialHandoffId });
-      if (!projected.ok) {
-        setCaptureError(language === "es" ? "Revisa los datos del viaje e inténtalo de nuevo." : "Review your trip details and try again.");
-        return;
-      }
-      let receipt = reusableHomepageReceipt(storedInputRef.current, projected.draft);
-      if (!receipt) {
-        const handoffId = priorReceipt ? generatedId("handoff") : initialHandoffId;
-        if (handoffId !== projected.draft.handoffId) {
-          projected = projectHomepageInput({ snapshot: submitted, profile: travelProfile, handoffId });
-          if (!projected.ok) return;
-        }
-        receipt = homepageReceiptForProjection(submitted, projected.draft, generatedId("trip"));
-      }
-      const stored: StoredHomepageInput = { snapshot: submitted, receipt };
-      markPlanningMilestone(receipt.handoffId, "submit", submittedAt);
-      const draft = { ...projected.draft, homepage: { ...projected.draft.homepage!, receipt } };
-      if (!isCurrent()) return;
-      const committed = await commitHomepageHandoff({
-        storage: window.localStorage, stored, draft, isCurrent,
-        preserveAndBegin: () => requestNewTripNavigationAsync(window),
-      });
-      if (!isCurrent()) return;
-      if (!committed.ok) {
-        reportPersistenceOutcome(committed.reason === "preservation" ? "homepage-preservation" : "homepage-intake", {stored:false, acknowledgement:committed.reason});
-        planningAttemptOutcome(receipt.handoffId, "error");
-        setCaptureError(language === "es" ? "No pudimos conservar tu trabajo actual. Inténtalo de nuevo." : "We couldn't preserve your current work. Try again.");
-        trackEvent("trip_generation_failed", { trip_source: "homepage", error_type: "unknown", is_authenticated: Boolean(submittedOwner) });
-        return;
-      }
-      storedInputRef.current = stored;
-      markPlanningMilestone(receipt.handoffId, "durable-intake");
-      navigationStarted = true;
-      router.push(committed.href);
     } catch {
       if (!isCurrent()) return;
       reportPersistenceOutcome("homepage-intake", {stored:false});
