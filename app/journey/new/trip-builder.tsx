@@ -4721,11 +4721,11 @@ function TripBuilderDocument() {
     if (conflict.stage === "places") setHasPromptContext(true);
   };
 
-  const persistDeviceRecovery = useCallback(async (trip: EasyTTrip, qaCaller: QaRecoveryCaller = "other"): Promise<TripRecoveryWriteResult> => {
+  const persistDeviceRecovery = useCallback(async (trip: EasyTTrip, qaCaller: QaRecoveryCaller = "other", sourceIsCurrent: () => boolean = () => true): Promise<TripRecoveryWriteResult> => {
     const editor = builderEditSessionRef.current;
     if (editor) {
       const snapshot = editor.getSnapshot();
-      const refused = !builderMountedRef.current || snapshot.browserOwnerId !== activeBrowserOwnerIdRef.current
+      const refused = !sourceIsCurrent() || !builderMountedRef.current || snapshot.browserOwnerId !== activeBrowserOwnerIdRef.current
         || snapshot.saveState === "device-saving" || snapshot.canonicalSaveState === "device-saving"
         || Boolean(snapshot.error?.deviceOutcome) || ["storage","protected"].includes(snapshot.error?.category ?? "")
         || !sameRecoveryDocument(snapshot.trip, trip);
@@ -4737,7 +4737,7 @@ function TripBuilderDocument() {
     const ownerId = activeBrowserOwnerId, candidate = structuredClone(trip);
     const sourceKey = authoredContentKey(builderCurrentDocumentRef.current);
     const pendingReceipt = pendingNewTripReceiptRef.current;
-    const isCurrent = () => builderMountedRef.current && activeBrowserOwnerIdRef.current === ownerId
+    const isCurrent = () => sourceIsCurrent() && builderMountedRef.current && activeBrowserOwnerIdRef.current === ownerId
       && canUseHydratedTripScope(hydratedOwnerScopeRef.current, ownerId)
       && authoredContentKey(builderCurrentDocumentRef.current) === sourceKey
       && pendingNewTripReceiptRef.current === pendingReceipt;
@@ -4773,7 +4773,10 @@ function TripBuilderDocument() {
     if (builderSeed || !hydrated || pendingInterpretation || resolvingLocations || tripUnavailable
       || !canUseHydratedTripScope(hydratedOwnerScopeRef.current, activeBrowserOwnerId)
       || (!origin.trim() && !tripBrief.trim() && !activePlaceMentions.length && !stops.length)) return;
-    let active=true;
+    let active=true, seeded=false;
+    // Hold enrichment and autosave while the first canonical writer and its
+    // readback own the source. The editor replays queued outcomes after mounting.
+    builderSeedPendingRef.current = true;
     const start=async()=>{
       try {
         const source=hydratedCanonicalTripRef.current?.id===activeTripDocument.id ? hydratedCanonicalTripRef.current : null;
@@ -4784,13 +4787,23 @@ function TripBuilderDocument() {
         const openedRecovery=source ? recoveryHandleRef.current : null;
         let persistedRecovery: Awaited<ReturnType<typeof persistDeviceRecovery>> | null = null;
         if (!source) {
-          persistedRecovery=await persistDeviceRecovery(candidate,"seed");
-          if(receiptAcknowledgementRef.current) { await receiptAcknowledgementRef.current; if(!active)return; persistedRecovery=await persistDeviceRecovery(candidate,"seed"); }
-          if(!persistedRecovery.stored) return;
+          persistedRecovery=await persistDeviceRecovery(candidate,"seed",()=>active);
+          if(!active)return;
+          if(receiptAcknowledgementRef.current) { await receiptAcknowledgementRef.current; if(!active)return; persistedRecovery=await persistDeviceRecovery(candidate,"seed",()=>active); }
+          if(!active)return;
+          if(!persistedRecovery.stored) {
+            setDeviceRecoveryBlocked(persistedRecovery.blockedByExistingRecovery);
+            setDevicePersistenceOutcome(recoveryPersistenceOutcome(persistedRecovery));
+            setDeviceRecoveryDurable(persistedRecovery.recoveryDurable === true);
+            reportPersistenceOutcome("builder-entry",persistedRecovery);
+            setDeviceStorageBlocked(!persistedRecovery.blockedByExistingRecovery);
+            setSaveState("error");setCloudSaveError(recoveryFailureMessage(persistedRecovery,language));return;
+          }
         }
         // A guest reconstruction can reuse a durable write with an older timestamp.
         // Seed that exact document and reject a later or foreign recovery.
         const recovery=await loadTripRecovery(candidate.id,activeBrowserOwnerId);
+        if(!active)return;
         const expectedRecovery=persistedRecovery?.handle ?? openedRecovery;
         if (expectedRecovery && !recovery || recovery && (recovery.ownerId !== activeBrowserOwnerId
           || recovery.tripId !== candidate.id || !recovery.writeId || !sameRecoveryDocument(recovery.trip,candidate)
@@ -4801,13 +4814,19 @@ function TripBuilderDocument() {
         }
         if(active) {
           reportQaPersistenceBoundary("recovery-preparation", "recovery-seed", {accepted:true,scopeMatches:true,caller:"seed"});
-          builderSeedPendingRef.current = true;
+          seeded = true;
           setBuilderSeed({initialTrip:recovery?.trip ?? candidate,initialRecovery:recovery,
             initialCanonicalTrip:recovery?null:candidate,allowRecoverySync:!source || builderSearchParams.get("recover")==="1"});
         }
       }catch { if(active) {reportQaPersistenceBoundary("recovery-preparation", "recovery-seed", {accepted:false,caller:"seed"});reportPersistenceOutcome("builder-entry",{stored:false});setDevicePersistenceOutcome("unknown");setDeviceStorageBlocked(true);setSaveState("error");setCloudSaveError(language === "es" ? "No pudimos abrir este viaje de forma segura. Mantén esta pestaña abierta." : "This trip could not be opened safely. Keep this tab open.");} }
+      finally {
+        if(active && !seeded) {
+          builderSeedPendingRef.current=false;
+          await handoffLookupSessionRef.current?.replayPending?.();
+        }
+      }
     };
-    void start();return()=>{active=false};
+    void start();return()=>{active=false;if(!seeded)builderSeedPendingRef.current=false;};
   },[builderSeed,hydrated,pendingInterpretation,resolvingLocations,tripUnavailable,activeBrowserOwnerId,activeTripDocument,persistDeviceRecovery]);
 
   useEffect(() => {
@@ -4842,7 +4861,7 @@ function TripBuilderDocument() {
   useEffect(() => {
     // A broad-place draft can have no route stops yet. Its explicit discovery
     // choices still need the same device recovery as a shaped route.
-    if (builderSeed || builderEditSessionRef.current || !hydrated || pendingInterpretation || (!origin.trim() && !tripBrief.trim() && !activePlaceMentions.length && !stops.length)) return;
+    if (builderSeed || builderSeedPendingRef.current || builderEditSessionRef.current || !hydrated || pendingInterpretation || (!origin.trim() && !tripBrief.trim() && !activePlaceMentions.length && !stops.length)) return;
     setSaveState("device-saving");
     const timer = window.setTimeout(async () => {
       const acknowledged = lastAcknowledgedCanonicalRef.current;
