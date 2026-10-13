@@ -1,0 +1,46 @@
+name: Discovery mobile refusal boundary diagnostic
+on:
+  push:
+    branches: [codex/discovery-mobile-boundary-diagnostic]
+permissions:
+  contents: read
+jobs:
+  discovery-partition:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Fetch and verify exact release base and diagnostic tooling
+        run: |
+          base=f793b6d85e9a05cb5db3c465a790d96956373cc6
+          git fetch --no-tags --depth=1 origin "$base"
+          test "$(git rev-parse --verify "$base^{commit}")" = "$base"
+          test "$(git rev-parse --verify FETCH_HEAD^{commit})" = "$base"
+          for required in package.json package-lock.json tests/core-journey-app-browser.test.ts app/journey/new/trip-builder.tsx lib/easyt/trip-builder-async-edit-session.ts lib/easyt/two-store-trip-persistence.ts lib/easyt/recovery-domain-policy.ts; do
+            git cat-file -e "$base:$required"
+          done
+          for required in scripts/diagnostics/mobile-boundary/run.py scripts/diagnostics/mobile-boundary/prepare.py scripts/diagnostics/mobile-boundary/verify.mjs; do
+            test -f "$required"
+          done
+          python3 - <<'PY'
+          import ast
+          from pathlib import Path
+          for name in ['run.py','prepare.py']:
+            ast.parse((Path('scripts/diagnostics/mobile-boundary')/name).read_text())
+          PY
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - name: Run original six-case Discovery partition once with targeted observations
+        run: python3 scripts/diagnostics/mobile-boundary/run.py
+      - name: Preserve source, boundary and original assertion evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: discovery-mobile-boundary-evidence
+          path: mobile-boundary-evidence/
+          if-no-files-found: error
+          retention-days: 7

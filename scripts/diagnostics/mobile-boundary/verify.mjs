@@ -1,0 +1,7 @@
+import fs from 'node:fs';import cp from 'node:child_process';import assert from 'node:assert/strict';import ts from 'typescript';
+const [target,out]=process.argv.slice(2),file='tests/core-journey-app-browser.test.ts';
+const original=fs.readFileSync(target+'/diagnostic-base-browser-test.txt','utf8'),changed=fs.readFileSync(target+'/'+file,'utf8');
+function inventory(src){const a=ts.createSourceFile(file,src,ts.ScriptTarget.Latest,true,ts.ScriptKind.TS),assertions=[],timeouts=[],names=[];function visit(n){if(ts.isCallExpression(n)){const text=n.expression.getText(a);if(text==='assert'||text.startsWith('assert.'))assertions.push(n.getText(a));if(text==='test')names.push(n.arguments[0]?.getText(a));}if(ts.isPropertyAssignment(n)&&n.name.getText(a)==='timeout')timeouts.push(n.initializer.getText(a));ts.forEachChild(n,visit);}visit(a);return {assertions,timeouts,names};}
+const before=inventory(original),after=inventory(changed);assert.deepEqual(after,before);
+const result={unchangedAssertionsTimeoutsNames:true,originalAssertions:before.assertions.length,originalTimeouts:before.timeouts.length,originalTestNames:before.names.length,partitionPattern:'^actual (?:Japan|South Korea|Africa) only multi-add',expectedCaseNames:['Japan','South Korea','Africa'].flatMap(area=>[1440,390].map(width=>`actual ${area} only multi-add ${width}px completes Discovery, Build and reload`)),caseTimeoutMs:60000};
+fs.writeFileSync(out,JSON.stringify(result,null,2));console.log(JSON.stringify(result));
