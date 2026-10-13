@@ -14,6 +14,18 @@ jobs:
         with:
           node-version: 22.23.3
           cache: npm
+      - name: Fetch and verify exact pinned application base
+        run: |
+          base=ef44beef72c44cccf65dcf5544805aba4db294f6
+          git fetch --no-tags --depth=1 origin "$base"
+          test "$(git rev-parse --verify "$base^{commit}")" = "$base"
+          test "$(git rev-parse --verify FETCH_HEAD^{commit})" = "$base"
+          for required in package.json package-lock.json tests/core-journey-app-browser.test.ts app/journey/new/trip-builder.tsx lib/easyt/discovery-commit.ts lib/easyt/trip-builder-async-edit-session.ts; do
+            git cat-file -e "$base:$required"
+          done
+          for required in scripts/diagnostics/africa-latency/run.py scripts/diagnostics/africa-latency/prepare.cjs scripts/diagnostics/africa-latency/server-profile.cjs; do
+            test -f "$required"
+          done
       - run: npm ci
       - run: npx playwright install --with-deps chromium
       - name: Control and conditional measured replay (maximum two)

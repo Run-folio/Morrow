@@ -2,6 +2,7 @@ from pathlib import Path
 import os,subprocess,json,time,hashlib,tarfile,signal,re,urllib.request,datetime,shutil
 ROOT=Path.cwd();OUT=ROOT/'africa-diagnostic-evidence';OUT.mkdir(exist_ok=True)
 BASE='ef44beef72c44cccf65dcf5544805aba4db294f6'
+assert subprocess.check_output(['git','rev-parse','--verify',BASE+'^{commit}'],text=True).strip()==BASE, 'Pinned base identity mismatch'
 NAME='actual multi-area Discovery 1440px return_to_start stays responsive, allocates generated nights and survives rapid edits and reload'
 record={'baseCommit':BASE,'diagnosticCommit':subprocess.check_output(['git','rev-parse','HEAD'],text=True).strip(),'started':datetime.datetime.now(datetime.timezone.utc).isoformat(),'maximumExecutions':2,'executions':[],'verdict':'PREPARING'}
 def save(): (OUT/'result.json').write_text(json.dumps(record,indent=2)+'\n')
