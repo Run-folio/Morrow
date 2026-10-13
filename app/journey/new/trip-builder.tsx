@@ -4004,12 +4004,13 @@ function TripBuilderDocument() {
   };
 
   const commitStopOrder = useCallback(async (proposedIds: readonly string[], source: BuilderOrderSource) => {
-    const result = validateBuilderStopOrder(stops, proposedIds, {
+    const currentStops = builderEditSessionRef.current?.getSnapshot().trip.stops ?? stops;
+    const result = validateBuilderStopOrder<Stop>(currentStops, proposedIds, {
       lockedStopIds: protectedBuilderStopIds,
       fixedOrder: fixedBuilderChronology,
     });
     if (!result.ok) return false;
-    rememberStructuralChange(source === "route-check" ? "apply_route_order" : "reorder_stop", stops.length);
+    rememberStructuralChange(source === "route-check" ? "apply_route_order" : "reorder_stop", currentStops.length);
     if (builderEditSessionRef.current) {
       const accepted = await dispatchAcceptedBuilderEdit({ kind: "order", stopIds: result.ids, source });
       if (accepted) { setRoutePreviewStopIds(null); setKeptRouteKey(null); }
@@ -5416,10 +5417,10 @@ function TripBuilderDocument() {
     setOutsideDiscoveryChoice(null);
     setPendingDiscoveryBase(null);
   };
-  // flushSync checkpoints must read the document and handlers from the committed render,
-  // never the closure that started a multi-choice confirmation.
+  // Handlers follow the committed render; active canonical reads follow the
+  // accepted editor, whose durability does not depend on React publication.
   const applyDiscoveryRouteOrder = async (orderedStopIds: readonly string[]) => {
-    const currentIds = discoveryOwnersRef.current.trip.stops.map(stop => stop.id);
+    const currentIds = currentDiscoveryTrip().stops.map(stop => stop.id);
     if (orderedStopIds.length === currentIds.length && orderedStopIds.every((id, index) => id === currentIds[index])) return true;
     // Discovery ordering is a recommendation, so honor the same constraints
     // that gate Route Check. A fixed schedule keeps its existing chronology;
@@ -5433,6 +5434,14 @@ function TripBuilderDocument() {
   useLayoutEffect(() => {
     discoveryOwnersRef.current = { trip: activeTripDocument, addGuidedPlanningPlace, confirmAttractionVisit, persistDeviceRecovery, applyRouteOrder: applyDiscoveryRouteOrder };
   });
+  const currentDiscoveryTrip = () => {
+    const rendered = discoveryOwnersRef.current.trip, editor = builderEditSessionRef.current;
+    if (!editor) return rendered;
+    const snapshot = editor.getSnapshot();
+    if (!builderMountedRef.current || snapshot.browserOwnerId !== activeBrowserOwnerIdRef.current
+      || snapshot.trip.id !== rendered.id) throw new Error("The active editor no longer owns this Discovery trip.");
+    return snapshot.trip;
+  };
   // Keep transient feedback and scrollable content above the actual action
   // height, including wrapping/error copy and text zoom. Never dismiss save errors.
   useLayoutEffect(() => {
@@ -6468,7 +6477,7 @@ function TripBuilderDocument() {
               await new Promise<void>(resolve => window.requestAnimationFrame(() => window.setTimeout(resolve, 0)));
               if (!confirmIsCurrent()) return;
               const result = await commitDiscoveryReview(review, {
-                currentTrip: () => discoveryOwnersRef.current.trip,
+                currentTrip: () => currentDiscoveryTrip(),
                 addBase: async choice => {
                   if (!confirmIsCurrent()) return false;
                   const suggestion = choice.suggestion;
@@ -6486,15 +6495,14 @@ function TripBuilderDocument() {
                   }, true, confirmIsCurrent);
                   if (!added || !confirmIsCurrent()) return false;
                   const ownerHasChoice = () => {
-                    const current = discoveryOwnersRef.current.trip;
+                    const current = currentDiscoveryTrip();
                     return current.stops.some(stop => stop.canonicalPlaceId === choice.id)
                       && Boolean(current.brief.structuredBrief?.placeSelections?.some(selection => selection.mentionId === mention.mentionId
                         && selection.selectedCanonicalPlaceId === choice.id
                         && current.stops.some(stop => stop.id === selection.routeStopId && stop.canonicalPlaceId === choice.id)));
                   };
-                  // React may commit the state updates after the async Add handler
-                  // resolves. Wait for the layout-effect-owned canonical document
-                  // before the confirmation owner validates and checkpoints it.
+                  // The active editor already verified canonical durability. Only
+                  // the legacy path needs to wait for its rendered mutation owner.
                   for (let frame = 0; frame < 8 && !ownerHasChoice(); frame++) {
                     await new Promise<void>(resolve => window.requestAnimationFrame(() => resolve()));
                     if (!confirmIsCurrent()) return false;
@@ -6505,12 +6513,11 @@ function TripBuilderDocument() {
                   if (!confirmIsCurrent()) return false;
                   await discoveryOwnersRef.current.confirmAttractionVisit(mention, visit.proposal, stopId);
                   if (!confirmIsCurrent()) return false;
-                  const ownerHasVisit = () => discoveryOwnersRef.current.trip.brief.structuredBrief?.placeSelections?.some(selection =>
+                  const ownerHasVisit = () => currentDiscoveryTrip().brief.structuredBrief?.placeSelections?.some(selection =>
                     selection.mentionId === visit.intentId && selection.kind === "visit" && selection.routeStopId === stopId
                     && selection.provenance.id === `builder-attraction-visit:${visit.intentId}:${stopId}`) ?? false;
-                  // In the full app, the canonical trip document is projected
-                  // from the committed render. Let its layout-effect ref catch
-                  // up before the commit owner validates the visit checkpoint.
+                  // Active visits are canonical session reads; legacy visits may
+                  // still need their rendered mutation owner to catch up.
                   for (let frame = 0; frame < 8 && !ownerHasVisit(); frame++) {
                     await new Promise<void>(resolve => window.requestAnimationFrame(() => resolve()));
                     if (!confirmIsCurrent()) return false;
@@ -6519,7 +6526,7 @@ function TripBuilderDocument() {
                 },
                 applyRouteOrder: async orderedIds => {
                   if (!confirmIsCurrent()) return false;
-                  const current = discoveryOwnersRef.current.trip;
+                  const current = currentDiscoveryTrip();
                   const stopIds = orderedIds.map(id => id.startsWith("discovery:")
                     ? current.stops.find(stop => stop.canonicalPlaceId === id.slice("discovery:".length))?.id
                     : id).filter((id): id is string => Boolean(id));
