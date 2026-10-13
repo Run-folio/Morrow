@@ -56,7 +56,17 @@ export function BuilderClarificationShell({ open, itemKey, progress, title, desc
   }, [open]);
 
   useEffect(() => {
-    if (open) window.requestAnimationFrame(() => titleRef.current?.focus());
+    if (!open) return;
+    const dialog = dialogRef.current, heading = titleRef.current;
+    let current = true;
+    const frame = window.requestAnimationFrame(() => {
+      // A control may receive focus before this frame. Keep that interaction
+      // and reject work belonging to a retired or replaced dialog.
+      if (!current || dialogRef.current !== dialog || titleRef.current !== heading
+        || !dialog || dialog.contains(document.activeElement)) return;
+      heading?.focus();
+    });
+    return () => { current = false; window.cancelAnimationFrame(frame); };
   }, [itemKey, open]);
 
   if (!open) return null;

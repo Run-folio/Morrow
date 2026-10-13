@@ -769,7 +769,12 @@ for (const [area,names] of [['Japan',['Kyoto','Takayama','Hiroshima']],['South K
  const id=await durableBuilderTripId(page);
  assert.equal(await page.getByRole('button',{name:/^Build trip/}).evaluateAll(buttons=>buttons.some(button=>!(button as HTMLButtonElement).disabled)),false,'an unresolved area without an accepted base has no enabled Build control');
  if(area==='Africa'){await dialog.locator('[data-discovery-step="directions"]').waitFor();await dialog.getByRole('button',{name:/Morocco/}).click();}
- for(const name of names)await dialog.getByRole('button',{name:`Add to shortlist: ${name}`,exact:true}).click();
+ for(const name of names){
+  await dialog.getByRole('button',{name:`Add to shortlist: ${name}`,exact:true}).click();
+  const accepted=dialog.getByRole('button',{name:`Remove from shortlist: ${name}`,exact:true});
+  await accepted.waitFor();
+  assert.equal(await accepted.getAttribute('aria-pressed'),'true','each semantic choice must be accepted before the next click');
+ }
  await dialog.getByRole('button',{name:`Add ${names.length} places`,exact:true}).click();await dialog.waitFor({state:'hidden'});
  const trip=(await recoveryTrip(page,id))!;assert.ok(trip);assert.equal(trip.stops.length,names.length);assert.deepEqual(new Set(trip.stops.map(stop=>stop.name)),new Set(names));
  assert.ok(trip.stops.every(stop=>stop.nights!>0&&geographicallyReady(stopGeographicPlace(stop))));assert.equal(trip.stops.reduce((sum,stop)=>sum+stop.nights!,0),14);
