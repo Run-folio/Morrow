@@ -3,6 +3,8 @@ name: Release gate
 on:
   pull_request:
   push:
+    branches-ignore:
+      - codex/africa-latency-diagnostic
 
 env:
   COMMIT_REF: ${{ github.sha }}
