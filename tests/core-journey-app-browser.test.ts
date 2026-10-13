@@ -191,7 +191,7 @@ async function withEvidence(name: string, run: (page: Page, context: BrowserCont
       recover: new URL(location.href).searchParams.get('recover') === '1',
       editor: document.querySelector('[data-builder-edit-session]')?.getAttribute('data-builder-edit-session') ?? null,
       outcomes: (window as unknown as { __corePersistenceOutcomes?: Array<{ stage: string; outcome: string }> }).__corePersistenceOutcomes ?? [],
-      banners: { protected: /Another device recovery|recovery copy/i.test(document.body.innerText),
+      banners: { protected: /Device changes need review|Another device recovery|recovery copy/i.test(document.body.innerText),
         storage: /Browser storage is blocked/i.test(document.body.innerText),
         owner: /not available to the current browser account/i.test(document.body.innerText),
         stale: /trip changed while this edit/i.test(document.body.innerText) },

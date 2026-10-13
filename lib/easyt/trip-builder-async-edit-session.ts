@@ -30,6 +30,7 @@ export type BuilderAsyncRecoveryWriteOptions = Parameters<BuilderEditSessionOpti
   /** Exact physical predecessor; independent of acknowledged account ancestry. */
   expectedRecoverySource?: CanonicalEasyTTrip;
   authoredFrom: CanonicalEasyTTrip;
+  projectionOnly?: { acceptedRevision: number; inputRevision: number };
 };
 export type BuilderAsyncAcknowledgement = TripBuildSaveAcknowledgement & {
   /** Exact server response authority; never inferred from a GET/cache. */
@@ -178,10 +179,10 @@ export async function createAsyncBuilderEditSession(options: AsyncBuilderEditSes
   }
   async function storeCanonical(candidate: CanonicalEasyTTrip, canonicalBase: CanonicalEasyTTrip,
     nextDraft: BuilderInputDraft, guard = operationGuard(), continuation?: {
-      advanceRevision?: boolean; authoredFrom?: CanonicalEasyTTrip; command?: CommandRecord; committed?(): void;
+      projectionOnly?: boolean; advanceRevision?: boolean; authoredFrom?: CanonicalEasyTTrip; command?: CommandRecord; committed?(): void;
     }): Promise<boolean> {
     const frozen = freeze(requireReadableTripDocument(JSON.parse(JSON.stringify(prepareTripDocumentForWrite(candidate)))));
-    const metadataSource = { ownerId, ...(recovery ? { replace: structuredClone(recovery) } : {}),
+    const metadataSource = { ...(continuation?.projectionOnly ? { projectionOnly: { acceptedRevision, inputRevision } } : {}), ownerId, ...(recovery ? { replace: structuredClone(recovery) } : {}),
       accountSavePending: ownerId !== null && !paused && !historicalRecovery && (candidate.ownerId !== null || promoting),
       state: pauseReason ?? 'pending', draft: structuredClone(nextDraft), canonicalBase: structuredClone(canonicalBase),
       expectedRecoverySource: recoverySource ? structuredClone(recoverySource) : undefined,
@@ -208,6 +209,8 @@ export async function createAsyncBuilderEditSession(options: AsyncBuilderEditSes
         if (continuation?.command) continuation.command.disposition = 'uncertain';
         return false;
       }
+      // Deferral did not issue a write: keep the accepted trip/handle and account job.
+      if (continuation?.projectionOnly && result.projectionDeferred && !result.stored && result.writeAttempted === false) return false;
       reportPersistenceOutcome('builder-edit', result);
       if (!result.stored || result.handle.ownerId !== ownerId || result.handle.tripId !== tripId || !result.handle.writeId
         || result.recoveryDurable === false || result.readbackConfirmed === false || result.pointerAcknowledged === false) {
@@ -410,19 +413,22 @@ export async function createAsyncBuilderEditSession(options: AsyncBuilderEditSes
     try {
       const response = await options.reconcile(structuredClone(request), controller.signal);
       if (!current()) return;
-      const merged = mergeBuilderProjectionResponse(trip, response, request);
+      // Generated day notes remain outside native projection-only eligibility.
+      // Keep their units pending while independently validated route work advances.
+      const routeResponse = { ...response, results: response.results.filter(unit => unit.kind !== 'recommendation'), recommendationProjections: undefined };
+      const merged = mergeBuilderProjectionResponse(trip, routeResponse, request);
       if (!merged.ok || exact(trip, merged.trip)) return;
       const assessments = request.dispatched.filter(unit => unit.kind === 'leg' && response.legs.some(leg => leg.id === unit.targetId))
         .flatMap(unit => { const state = transferAssessmentForLeg(response.assessments, unit.targetId); return state ? [{ legId: unit.targetId, state }] : []; });
       const before = structuredClone(trip), nextDraft = rebindBuilderInputDraft(draft, merged.trip, ownerId);
-      if (!await storeCanonical(merged.trip, before, nextDraft) || !current()) return;
+      if (!await storeCanonical(merged.trip, before, nextDraft, operationGuard(), { projectionOnly: true }) || !current()) return;
       const retained = assessmentFeedback?.inputKey === request.inputKey ? assessmentFeedback.assessments.filter(item => !request.dispatched.some(unit => unit.kind === 'leg' && unit.targetId === item.legId)) : [];
       assessmentFeedback = { inputKey: request.inputKey, assessments: [...retained, ...assessments] };
       continued = true; scheduleCloud(); publish();
     } catch {
       if (!current()) return;
       const failed = mergeBuilderProjectionResponse(trip, { ...request, results: dispatched.map(unit => ({ ...unit, phase: 'failed', reason: 'unavailable' })), legs: [] }, request);
-      if (failed.ok && await storeCanonical(failed.trip, structuredClone(trip), rebindBuilderInputDraft(draft, failed.trip, ownerId)) && current()) {
+      if (failed.ok && await storeCanonical(failed.trip, structuredClone(trip), rebindBuilderInputDraft(draft, failed.trip, ownerId), operationGuard(), { projectionOnly: true }) && current()) {
         continued = true; scheduleCloud(); publish();
       }
     } finally { if (work === request) { work = null; workAbort = null; if (continued) scheduleWork(); } }

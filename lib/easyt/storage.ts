@@ -81,6 +81,8 @@ export type TripRecoveryClassification =
   | "genuine-divergence";
 
 export type TripRecoveryWriteResult = {
+  /** Optional projection declined before any setter; no durability acknowledgement. */
+  projectionDeferred?: boolean;
   stored: boolean;
   handle: TripRecoveryHandle;
   blockedByExistingRecovery: boolean;
@@ -1416,11 +1418,11 @@ export async function claimGuestTripRecoveryForOwner(tripId:string,ownerId:strin
 }
 
 export async function saveTripRecovery(trip:EasyTTrip,options:{ownerId?:string|null;state?:TripRecoveryState;replace?:TripRecoveryHandle;accountSavePending?:boolean;
-  isCurrent?:()=>boolean;newTripOrClone?:boolean;canonicalBase?:EasyTTrip;expectedRecoverySource?:EasyTTrip;draft?:BuilderInputDraft;intake?:RecoveryIntakeAcknowledgement;}={}):Promise<TripRecoveryWriteResult> {
+  isCurrent?:()=>boolean;newTripOrClone?:boolean;canonicalBase?:EasyTTrip;expectedRecoverySource?:EasyTTrip;draft?:BuilderInputDraft;intake?:RecoveryIntakeAcknowledgement;projectionOnly?:{acceptedRevision:number;inputRevision:number};}={}):Promise<TripRecoveryWriteResult> {
   const candidate=prepareTripDocumentForWrite(structuredClone(trip)),ownerId=options.ownerId===undefined?candidate.ownerId:options.ownerId;
   const guard=browserRecoveryGuard(options.isCurrent),writeId=generatedWriteId();
   const fallback:TripRecoveryWriteResult={stored:false,handle:{ownerId,tripId:candidate.id,writeId},blockedByExistingRecovery:false,failureReason:'unknown',writeAttempted:false,outcome:'unknown'};
-  const frozen={state:options.state,replace:options.replace?structuredClone(options.replace):undefined,canonicalBase:options.canonicalBase?structuredClone(options.canonicalBase):undefined,
+  const frozen={projectionOnly:options.projectionOnly?structuredClone(options.projectionOnly):undefined,state:options.state,replace:options.replace?structuredClone(options.replace):undefined,canonicalBase:options.canonicalBase?structuredClone(options.canonicalBase):undefined,
     expectedRecoverySource:options.expectedRecoverySource?structuredClone(options.expectedRecoverySource):undefined,
     draft:options.draft?structuredClone(options.draft):undefined,intake:options.intake?structuredClone(options.intake):undefined,newTripOrClone:options.newTripOrClone===true,accountSavePending:options.accountSavePending===true};
   try {
@@ -1434,7 +1436,7 @@ export async function saveTripRecovery(trip:EasyTTrip,options:{ownerId?:string|n
       const input=createDurableBuilderInputPersistence(storage,driver,{trip:requireReadableTripDocument(candidate),ownerId,isCurrent:guard,
         overflowEnabled:RECOVERY_DOMAIN_OVERFLOW_ENABLED,accountOverflowQualified:RECOVERY_DOMAIN_ACCOUNT_OVERFLOW_QUALIFIED});
       const prepared=await input.prepare(frozen.draft,writeId+':input');
-      if(!prepared.ok)return {...fallback,blockedByExistingRecovery:prepared.reason==='protected',failureReason:prepared.reason==='protected'?'protected-recovery':'unknown',outcome:prepared.reason==='protected'?'protected-conflict':'unknown'};
+      if(!prepared.ok)return {...fallback,...(frozen.projectionOnly?{projectionDeferred:true}:{}),blockedByExistingRecovery:prepared.reason==='protected',failureReason:prepared.reason==='protected'?'protected-recovery':'unknown',outcome:prepared.reason==='protected'?'protected-conflict':'unknown'};
       entries.push(prepared.entry);entry.input=prepared.input;
     }
     if(frozen.intake){

@@ -58,7 +58,14 @@ export function createBuilderEntrySession<Receipt>(options: {
           if (!result.stored || result.recoveryDurable === false || result.readbackConfirmed === false
             || result.pointerAcknowledged === false || receipt && result.receiptAcknowledged !== true
             || result.handle.ownerId !== options.ownerId || result.handle.tripId !== candidate.id || !result.handle.writeId) {
-            phase = 'failed'; return { ...result, stored: false, failureReason: result.pointerAcknowledged === false ? 'pointer-incomplete' : receipt && result.receiptAcknowledged !== true ? 'receipt-incomplete' : result.failureReason ?? 'unknown' };
+            // An unattempted acknowledgement must not hide an earlier body failure.
+            const bodyVerified = (result.stored || result.recoveryDurable === true)
+              && result.recoveryDurable !== false && result.readbackConfirmed !== false;
+            const failureReason = result.failureReason ?? (bodyVerified
+              ? result.pointerAcknowledged === false ? 'pointer-incomplete'
+                : receipt && result.receiptAcknowledged !== true ? 'receipt-incomplete' : 'unknown'
+              : 'unknown');
+            phase = 'failed'; return { ...result, stored: false, failureReason };
           }
           accepted = freeze(structuredClone(result)); return accepted;
         } catch (cause) { if (isCurrent()) phase = 'failed'; throw cause; }

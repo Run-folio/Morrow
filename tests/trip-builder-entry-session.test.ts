@@ -20,6 +20,7 @@ for (const boundary of ['recoveryDurable','readbackConfirmed','pointerAcknowledg
   const f=fixture({handoff:'exact'});let reads=0;
   const result=await f.entry.checkpoint(async()=>({...f.result,[boundary]:false}));
   assert.equal(result.stored,false);
+  assert.equal(result.failureReason,boundary==='pointerAcknowledged'?'pointer-incomplete':boundary==='receiptAcknowledged'?'receipt-incomplete':'unknown');
   assert.equal(await f.entry.verifyReadback(async()=>{reads++;return f.recovery as any}),false);
   assert.equal(reads,0);assert.equal(f.entry.claimSeed(),null);
 });
@@ -88,4 +89,33 @@ test('actual initialization scheduler holds actor work until exact session hando
   assert.equal(f.entry.handoff(session,session.getSnapshot()),true);
   f.entry.releaseScheduledWork(session,null);await Promise.resolve();assert.equal(requests,1,'mounted owner releases scheduled actor work');
   session.dispose();
+});
+
+// A failed body setter never reached the later pointer/receipt boundary.
+for (const nativeFailure of ['SecurityError','QuotaExceededError','InvalidStateError']) test(`entry preserves actual ${nativeFailure} body failure and refuses handoff`,async()=>{
+  const {saveTripRecoveryToStorage}=await import('../lib/easyt/storage.ts');
+  const {recoveryPersistenceOutcome,recoveryFailureMessage}=await import('../lib/easyt/persistence-outcome.ts');
+  const f=fixture({handoff:'exact'});let hits=0;
+  const storage={length:0,key:()=>null,getItem:()=>null,removeItem:()=>{},setItem(){hits++;throw new DOMException('Synthetic only',nativeFailure)}};
+  const native=saveTripRecoveryToStorage(storage,f.candidate,{ownerId:null,writeId:'refused'});
+  assert.ok(hits>0);assert.equal(native.stored,false);assert.equal(native.pointerAcknowledged,false);assert.ok(native.nativeFailure);
+  const result=await f.entry.checkpoint(async()=>native);
+  assert.equal(result.failureReason,native.failureReason);
+  assert.equal(recoveryPersistenceOutcome(result),'native-write-failed');
+  assert.equal(recoveryFailureMessage(result,'en'),'This device could not save the changes. Keep this tab open before leaving.');
+  assert.equal(f.entry.phase,'failed');assert.equal(f.entry.claimCheckpoint(),null);assert.equal(f.entry.claimSeed(),null);
+  assert.equal(await f.entry.verifyReadback(async()=>{throw Error('Refused body must not authorize readback')}),false);
+  assert.equal(f.entry.handoff({}, {trip:f.candidate,browserOwnerId:null,recovery:f.handle}),false);
+  f.entry.retire();assert.equal(f.entry.isCurrent(),false);
+  const retry=fixture();await retry.entry.checkpoint(async()=>retry.result);assert.equal(await retry.entry.verifyReadback(async()=>retry.recovery),true);assert.ok(retry.entry.claimSeed());
+});
+for(const boundary of ['pointer','receipt'] as const)test(`entry derives ${boundary} failure only after verified body`,async()=>{
+  const f=fixture({handoff:'exact'});
+  const result=await f.entry.checkpoint(async()=>({...f.result,recoveryDurable:true,readbackConfirmed:true,...(boundary==='pointer'?{pointerAcknowledged:false}:{receiptAcknowledged:false})}));
+  assert.equal(result.failureReason,`${boundary}-incomplete`);assert.equal(result.stored,false);assert.equal(f.entry.claimCheckpoint(),null);assert.equal(f.entry.claimSeed(),null);
+});
+for(const reason of ['unknown','protected-recovery','pointer-incomplete','receipt-incomplete'] as const)test(`entry retains explicit ${reason} failure without reclassifying an unattempted acknowledgement`,async()=>{
+  const f=fixture({handoff:'exact'});
+  const result=await f.entry.checkpoint(async()=>({...f.result,stored:false,readbackConfirmed:false,pointerAcknowledged:false,receiptAcknowledged:false,failureReason:reason}));
+  assert.equal(result.failureReason,reason);assert.equal(f.entry.claimSeed(),null);
 });
