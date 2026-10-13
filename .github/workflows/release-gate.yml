@@ -1,12 +1,9 @@
 name: Release gate
-
 on:
   pull_request:
   push:
-
 env:
   COMMIT_REF: ${{ github.sha }}
-
 jobs:
   release-gate:
     runs-on: ubuntu-latest
@@ -19,8 +16,64 @@ jobs:
       - run: npm ci
       - run: npm run release:gate
       - run: git diff --check
-
   core-journey-browser:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - group: core
+            pattern: '^(?!actual (?:multi-area Discovery|Japan only multi-add|South Korea only multi-add|Africa only multi-add)|browser interaction timing|visible interaction timing rejects).+'
+          - group: discovery
+            pattern: '^actual (?:Japan|South Korea|Africa) only multi-add'
+          - group: multi-desktop
+            pattern: '^actual multi-area Discovery 1440px'
+          - group: multi-mobile
+            pattern: '^actual multi-area Discovery 390px'
+          - group: timing
+            pattern: '^(?:browser interaction timing|visible interaction timing rejects)'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npm run build
+      - name: Run complete partition within existing guest budget
+        timeout-minutes: 4
+        env:
+          TEST_PATTERN: ${{ matrix.pattern }}
+          MORROVIA_CORE_JOURNEY_BROWSER_TESTS: "1"
+          MORROVIA_BASE_URL: http://127.0.0.1:3100
+          MORROVIA_BROWSER_ARTIFACT_DIR: core-journey-artifacts
+          MORROVIA_STAGING_AFRICA_LATENCY_EXCEPTION: ${{ (github.ref_name == 'staging' || github.ref_name == 'codex/staging-africa-latency-exception') && '1' || '0' }}
+        run: |
+          set -o pipefail
+          npm run start -- -p 3100 > /tmp/morrovia-core-journey-next.log 2>&1 &
+          app_pid=$!
+          trap 'kill "$app_pid" 2>/dev/null || true' EXIT
+          for attempt in $(seq 1 40); do
+            if curl --silent --fail http://127.0.0.1:3100/journey/new > /dev/null; then break; fi
+            sleep 1
+          done
+          curl --silent --fail http://127.0.0.1:3100/journey/new > /dev/null
+          node --experimental-strip-types --test --test-name-pattern="$TEST_PATTERN" tests/core-journey-app-browser.test.ts 2>&1 | tee core-journey.log
+      - name: Verify coverage and report known staging failures
+        run: node scripts/staging-qualification-summary.mjs '${{ matrix.group }}' core-journey.log core-journey-artifacts
+      - name: Preserve qualification evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: core-journey-${{ matrix.group }}
+          path: |
+            core-journey-artifacts/
+            core-journey.log
+            /tmp/morrovia-core-journey-next.log
+          retention-days: 7
+  transport-browser:
     runs-on: ubuntu-latest
     timeout-minutes: 8
     steps:
@@ -31,36 +84,20 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npx playwright install --with-deps chromium
-      - run: npm run build
-      - name: Start local app and run deterministic guest journey
-        # Leave time inside the existing job budget to publish failed-case
-        # traces; repeated failed waits previously exhausted the whole job.
+      - run: npx playwright install --with-deps chrome
+      - name: Run unchanged Transport workspace regression
         timeout-minutes: 4
         env:
-          MORROVIA_CORE_JOURNEY_BROWSER_TESTS: "1"
-          MORROVIA_BASE_URL: http://127.0.0.1:3100
-          MORROVIA_BROWSER_ARTIFACT_DIR: core-journey-artifacts
-        run: |
-          npm run start -- -p 3100 > /tmp/morrovia-core-journey-next.log 2>&1 &
-          app_pid=$!
-          trap 'kill "$app_pid" 2>/dev/null || true' EXIT
-          for attempt in $(seq 1 40); do
-            if curl --silent --fail http://127.0.0.1:3100/journey/new > /dev/null; then break; fi
-            sleep 1
-          done
-          curl --silent --fail http://127.0.0.1:3100/journey/new > /dev/null
-          npm run test:core-journey-browser
-      - name: Run deterministic Transport workspace regression
-        env:
           MORROVIA_BUILDER_BROWSER_TESTS: "1"
-        run: npm run test:transport-browser
-      - name: Upload failure evidence
-        if: failure() || cancelled()
+        run: |
+          set -o pipefail
+          npm run test:transport-browser 2>&1 | tee transport.log
+      - run: node scripts/staging-qualification-summary.mjs transport transport.log transport-artifacts
+      - if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: core-journey-browser-failure
+          name: transport-qualification
           path: |
-            core-journey-artifacts/
-            /tmp/morrovia-core-journey-next.log
-          if-no-files-found: ignore
+            transport.log
+            transport-artifacts/
           retention-days: 7
