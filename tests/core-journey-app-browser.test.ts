@@ -374,6 +374,8 @@ test('choosing a covered island from a namesake prompt keeps its seven-night bas
  assert.deepEqual(selected.stops,[]);
  assert.equal(selected.brief.intent!.route!.destinations.find(item=>item.id===original.id)?.requestedNights,7);
  const baseDialog=page.getByRole('dialog').last();
+ // Durable island identity can precede the namesake-to-Discovery render.
+ await baseDialog.getByRole('heading',{name:'Explore places',exact:true}).waitFor();
  await baseDialog.getByRole('combobox').first().fill('Santa Cruz de Tenerife');
  await baseDialog.getByRole('option',{name:/Santa Cruz de Tenerife.*Spain/}).first().click();
  const done=baseDialog.getByRole('button',{name:/Add places|Add to trip|Finish shaping route/}).last();
