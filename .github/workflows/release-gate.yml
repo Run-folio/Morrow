@@ -24,7 +24,7 @@ jobs:
       matrix:
         include:
           - group: core
-            pattern: '^(?!actual (?:multi-area Discovery|Japan only multi-add|South Korea only multi-add|Africa only multi-add)|browser interaction timing|visible interaction timing rejects).+'
+            pattern: '^(?:legacy saved Paris|unconfirmed destination|unconfirmed origin|maintained airport|distinct same-country|unseen multi-country|selected nonseed|choosing a covered island|Canary archipelago|pending Cusco|recorded source town|Tier 1 guest|Tier 1 Discovery|fresh Return default)'
           - group: discovery
             pattern: '^actual (?:Japan|South Korea|Africa) only multi-add'
           - group: multi-desktop
@@ -67,7 +67,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: core-journey-${{ matrix.group }}
+          name: core-journey-${{ matrix.group }}-${{ github.run_attempt }}
           path: |
             core-journey-artifacts/
             core-journey.log
@@ -96,7 +96,7 @@ jobs:
       - if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: transport-qualification
+          name: transport-qualification-${{ github.run_attempt }}
           path: |
             transport.log
             transport-artifacts/
