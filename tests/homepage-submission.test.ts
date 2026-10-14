@@ -641,3 +641,22 @@ test("validated receipt bookkeeping survives independent JSON reload before retr
   });
   assert.equal(result.ok, true);
 });
+
+for (const change of ['none', 'input-revision', 'draft', 'receipt', 'retired', 'setter-failure'] as const) {
+  test(`completed exact receipt acknowledgement retry preserves authority: ${change}`, async () => {
+    const storage = new MemoryStorage(), { stored, draft } = acceptedHandoff();
+    const pending = createPendingIntakeReceipt(stored.snapshot, { handoffId: stored.receipt.handoffId, tripId: stored.receipt.tripId });
+    const key = homepageInputStorageKey(stored.snapshot.ownerId);
+    storage.setItem(key, JSON.stringify({ ...stored, ...(change === 'input-revision' ? { snapshot: { ...stored.snapshot, revision: stored.snapshot.revision + 1 } } : {}),
+      ...(change === 'receipt' ? { receipt: { ...stored.receipt, handoffId: 'different-operation' } } : {}) }));
+    storage.setItem(HOME_TRIP_DRAFT_KEY, JSON.stringify(change === 'draft' ? { ...draft, brief: 'competing draft' } : draft));
+    const before = new Map(storage.values), writes = storage.writes;
+    if (change === 'setter-failure') storage.failSetAt = writes + 1;
+    const result = await handoffTransitions.acknowledgePendingIntakeReceiptInStorage({ storage, pending, completed: stored.receipt, draft,
+      fromHomepage: true, isCurrent: () => change !== 'retired', lock: testLock });
+    if (change === 'none') { assert.equal(result.ok, true); assert.equal(storage.writes, writes + 2, 'retry must freshly write and verify both slots'); }
+    else if (change === 'setter-failure') { assert.equal(result.ok, false); assert.equal(result.reason, 'storage'); assert.equal(result.writeAttempted, true); }
+    else { assert.equal(result.ok, false); assert.equal(result.reason, 'stale'); assert.equal(storage.writes, writes, 'foreign or retired work must refuse before writing'); }
+    assert.deepEqual(storage.values, before, 'same acknowledgement or refusal preserves retained bytes');
+  });
+}

@@ -1080,11 +1080,18 @@ export async function acknowledgePendingIntakeReceiptInStorage(input: {
         stored = readHomepageInput(JSON.parse(priorInput ?? "null"), completed.ownerId);
         if (input.fromHomepage) envelope = JSON.parse(priorEnvelope ?? "null");
       } catch { return { ok: false as const, reason: "storage" as const }; }
+      // A paired recovery may complete these slots before its pointer fails.
+      // The same pending operation may acknowledge that exact completed pair
+      // again; it still performs the writes/readback below, never adopts a
+      // different receipt, changed raw-input revision or competing draft.
+      const alreadyCompleted = Boolean(pending && pendingIntakeReceiptForOwner(pending, completed.ownerId)
+        && stored?.receipt?.version === 1 && JSON.stringify(stored.receipt) === JSON.stringify(completed)
+        && (!input.fromHomepage || priorEnvelope === JSON.stringify(input.draft)));
       if (!stored || (pending
-        ? !samePendingReceipt(pendingIntakeReceiptForOwner(stored.receipt, completed.ownerId), pending)
+        ? !samePendingReceipt(pendingIntakeReceiptForOwner(stored.receipt, completed.ownerId), pending) && !alreadyCompleted
           || stored.snapshot.revision !== pending.inputRevision
           || homepageSemanticInputFingerprint(stored.snapshot) !== pending.semanticInputFingerprint
-          || (input.fromHomepage && !samePendingReceipt(pendingHomepageHandoffForOwner(envelope, completed.ownerId, pending.handoffId), pending))
+          || (input.fromHomepage && !samePendingReceipt(pendingHomepageHandoffForOwner(envelope, completed.ownerId, pending.handoffId), pending) && !alreadyCompleted)
         : stored.receipt?.version === 2
           || (stored.receipt?.version === 1
             && (stored.receipt.handoffId !== completed.handoffId || stored.receipt.tripId !== completed.tripId))

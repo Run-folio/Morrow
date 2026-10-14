@@ -5681,12 +5681,15 @@ function TripBuilderDocument() {
     if (deviceStorageBlocked) {
       const priorEntry = builderEntrySessionRef.current;
       if (priorEntry?.isCurrent() && priorEntry.phase!=="failed") return;
+      // A failed entry still owns its frozen source while its input/owner scope
+      // is current. Retry that source; fresh persistence must acknowledge it.
+      const retrySource = priorEntry?.isCurrent() ? priorEntry.candidate : activeTripDocument;
       if (priorEntry && priorEntry.isCurrent()) {
         // Explicit retry owns a fresh native acknowledgement; it does not adopt
         // bytes from the previous attempt merely because a read finds them.
         priorEntry.retire();builderEntrySessionRef.current=null;setBuilderSeed(null);
       }
-      const entry=ensureBuilderEntry(activeTripDocument);
+      const entry=ensureBuilderEntry(retrySource);
       if (!entry) return;
       if (priorEntry && builderEntryFeedbackRef.current===priorEntry.key) builderEntryFeedbackRef.current=entry.key;
       builderSeedPendingRef.current=true;

@@ -452,3 +452,42 @@ test('actual explicit Discovery clarification source replacement retires before 
   assert.equal(f.seeded(),null,'confirmed capture metadata cannot be overwritten while its add-stop validation is still held');assert.equal(f.scope.builderEntrySessionRef.current.isCurrent(),false);
   adding.resolve(false);await Promise.resolve();assert.deepEqual(f.feedback,[]);
 });
+
+// Execute the actual entry writer/retry with the real two-store broker. Only
+// React publication and the native Storage/IDB driver are contract fixtures.
+// A pointer failure leaves an exact body; optional render recomputation must
+// not turn the deliberate acknowledgement retry into a different document.
+for(const [competing,receipt,fault] of [[false,false,'pointer'],[true,false,'pointer'],[false,true,'pointer'],[false,true,'receipt'],[false,true,'pending-pointer'],[false,false,'retired']] as const)test(`partial native entry retry ${competing?'protects a competing body':'reuses its frozen body despite later render recomputation'}${receipt?' with required homepage receipt':''} (${fault})`,async()=>{
+ const {createTwoStoreTripPersistence}=await import('../lib/easyt/two-store-trip-persistence.ts');
+ const {MemoryRecoveryDriver}=await import('./helpers/durable-recovery-driver.ts');
+ const {currentTripStorageKey,tripRecoveryStorageKey}=await import('../lib/easyt/storage.ts');
+ const values=new Map<string,string>();let pointerBlocked=fault!=='receipt',receiptBlocked=false,receiptKey='';
+ const storage={get length(){return values.size;},key:(i:number)=>[...values.keys()][i]??null,getItem:(k:string)=>values.get(k)??null,
+  setItem(k:string,v:string){if(receiptBlocked&&k===receiptKey)throw new DOMException('synthetic receipt only','SecurityError');if(pointerBlocked&&k===currentTripStorageKey(null))throw new DOMException('synthetic pointer only','SecurityError');values.set(k,v);},removeItem:(k:string)=>{values.delete(k);}};
+ const f=fixture(),driver=new MemoryRecoveryDriver();let writes=0;
+ const broker=createTwoStoreTripPersistence(storage,driver,{ownerId:null,isCurrent:()=>true,overflowEnabled:false,accountOverflowQualified:false});
+ if(receipt){const home=homeRecoveryFixture(null),handoff=await import('../lib/easyt/home-trip-handoff.ts');let pending:any;
+  for(const [key,raw] of home.native)values.set(key,raw);
+  if(fault==='receipt'||fault==='pending-pointer'){pending=handoff.createPendingIntakeReceipt(home.snapshot,{handoffId:home.intake.completed.handoffId,tripId:home.trip.id});receiptKey=home.native[0][0];values.set(receiptKey,JSON.stringify({snapshot:home.snapshot,receipt:pending}));values.set(handoff.HOME_TRIP_DRAFT_KEY,JSON.stringify({version:2,phase:'pending-interpretation',receipt:pending}));receiptBlocked=fault==='receipt';}
+  f.scope.pendingNewTripReceiptRef.current={snapshot:home.snapshot,receipt:home.intake.completed,pending,draft:home.draft,fromHomepage:true};f.scope.homepageHandoffMatchesTrip=handoff.homepageHandoffMatchesTrip;}
+ f.scope.saveTripRecovery=async(trip:any,options:any)=>{const {isCurrent,ownerId,intake,...saveOptions}=options;const id='attempt-'+ ++writes;const context={ownerId,isCurrent,overflowEnabled:false,accountOverflowQualified:false};let prepared:any;
+  if(intake){prepared=await (await import('../lib/easyt/homepage-persistence.ts')).prepareIntakeAcknowledgement(storage,driver,context,intake,trip,id+':intake');assert.equal(prepared.ok,true);}
+  return createTwoStoreTripPersistence(storage,driver,context).save(trip,{...saveOptions,writeId:id,...(prepared?{entries:[prepared.entry],entry:{pointer:{version:1,backend:'indexeddb',ownerId,tripId:trip.id,writeId:id},input:null,receipt:prepared.receipt}}:{})});};
+ f.scope.loadTripRecovery=async(id:string)=>{const read=await broker.read(id);return read.kind==='found'?{...read.recovery,trip:read.trip}:null;};
+ const partial=await f.scope.persistDeviceRecovery(f.trip,'seed',()=>true);assert.equal(partial.stored,false);assert.equal(partial.failureReason,fault==='receipt'?'receipt-incomplete':'pointer-incomplete');assert.equal(f.scope.builderEntrySessionRef.current.phase,'failed');
+ const oldEntry=f.scope.builderEntrySessionRef.current,retained=new Map(values);assert.equal([...retained.keys()].filter(k=>k.startsWith('easyt:trip-recovery:v2:')).length,1,'body exists but pointer does not');assert.equal(values.has(currentTripStorageKey(null)),fault==='receipt');
+ // A later advisory result can reconstruct render state without any authored
+ // input retirement. The retry must finish the frozen source, not that render.
+ const later={...f.trip,brief:{...f.trip.brief,routeAssessment:{summary:'later advisory render'}}};
+ Object.assign(f.scope,{mountedBuilder:null,syncAction:'retry',deviceStorageBlocked:true,cloudConflictTrip:null,activeTripDocument:later});f.scope.builderCurrentDocumentRef.current=later;
+ pointerBlocked=false;receiptBlocked=false;
+ if(competing){values.clear();values.set(tripRecoveryStorageKey(null,f.trip.id,'foreign-write'),JSON.stringify({version:2,ownerId:null,tripId:f.trip.id,writeId:'foreign-write',state:'pending',savedAt:'2026-10-14T00:00:00Z',trip:{...f.trip,title:'Competing retained body'}}));}
+ const beforeRetry=new Map(values);const readback=gate<any>(),readStarted=gate<void>();
+ if(fault==='retired'){const load=f.scope.loadTripRecovery;f.scope.loadTripRecovery=async(id:string)=>{const retained=await load(id);readStarted.resolve();await readback.promise;return retained;};}
+ const retry=value('recoverFromSaveError',f.scope)();
+ if(fault==='retired'){await readStarted.promise;f.scope.builderEntryInputRevisionRef.current++;f.scope.builderEntrySessionRef.current.retire();readback.resolve(null);}
+ await retry;
+ if(fault==='retired'){assert.equal(f.seeded(),null);assert.equal(f.scope.recoveryHandleRef.current,null);for(const [key,raw] of retained)assert.equal(values.get(key),raw);}
+ else if(competing){assert.equal(f.seeded(),null);assert.equal(f.scope.recoveryHandleRef.current,null);assert.deepEqual(values,beforeRetry,'competing bytes remain protected');}
+ else{assert.ok(f.seeded(),'exact retained body should become an editor seed after fresh pointer verification');assert.ok(sameRecoveryDocument(f.seeded().initialTrip,oldEntry.candidate));assert.equal(f.scope.recoveryHandleRef.current.writeId,'attempt-1');assert.equal(f.scope.builderEntrySessionRef.current.phase,'ready');for(const [key,raw] of retained)if(key.startsWith('easyt:trip-recovery:v2:'))assert.equal(values.get(key),raw,'retry must retain exact original body');if(fault==='receipt'){const input=JSON.parse(values.get(receiptKey)!);assert.equal(input.receipt.version,1);assert.equal(input.receipt.tripId,f.trip.id);}assert.equal(JSON.parse(values.get(currentTripStorageKey(null))!).tripId,f.trip.id);}
+});
