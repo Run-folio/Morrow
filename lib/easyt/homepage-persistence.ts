@@ -29,15 +29,26 @@ export function decodeHomepageBundle(raw:string,ownerId:string|null) {
     const bundle=value as HomepageBundle;
     const storedInput=bundle.inputRaw===null?null:readHomepageInput(JSON.parse(bundle.inputRaw),ownerId);
     if(bundle.inputRaw!==null&&!storedInput)return null;
-    const draft:unknown=bundle.draftRaw===null?null:JSON.parse(bundle.draftRaw);
+    let draft:unknown=bundle.draftRaw===null?null:JSON.parse(bundle.draftRaw);
     if(draft!==null) {
       if(!object(draft))return null;
       if(draft.version===2) {
         const receipt=pendingIntakeReceiptForOwner(draft.receipt,ownerId);
         if(!receipt||!pendingHomepageHandoffForOwner(draft,ownerId,receipt.handoffId))return null;
       }else if('homepage' in draft) {
-        if(!homepageHandoffReceiptForOwner(draft as HomeTripDraft,ownerId))return null;
-      }else if(ownerId!==null||'version' in draft||!['brief','origin','destination','destinations','locationMentions'].some(key=>key in draft))return null;
+        if(!homepageHandoffReceiptForOwner(draft as HomeTripDraft,ownerId)) {
+          // HOME is a shared legacy slot. A valid completed draft for another
+          // scope is not this owner's intake. Preserve its raw bytes in the
+          // bundle/CAS witness, but never expose or consume it as owned input.
+          const homepage=draft.homepage;
+          if('version' in draft||!object(homepage)||(homepage.ownerId!==null&&(typeof homepage.ownerId!=='string'||!homepage.ownerId.trim()))
+            ||homepage.ownerId===ownerId||!homepageHandoffReceiptForOwner(draft as HomeTripDraft,homepage.ownerId as string|null))return null;
+          draft=null;
+        }
+      }else {
+        const legacyDraft=draft;
+        if(ownerId!==null||!object(legacyDraft)||'version' in legacyDraft||!['brief','origin','destination','destinations','locationMentions'].some(key=>key in legacyDraft))return null;
+      }
     }
     return {bundle,storedInput,draft};
   }catch{return null;}

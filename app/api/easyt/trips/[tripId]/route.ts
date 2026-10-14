@@ -39,6 +39,8 @@ export async function GET(_request: Request, context: RouteContext) {
 export async function PUT(request: Request, context: RouteContext) {
   try {
     const owner = await requireEasyTOwner();
+    const expectedOwner=request.headers.get('x-morrovia-expected-owner');
+    if(expectedOwner!==null&&expectedOwner!==owner.id)return NextResponse.json({error:'Account changed. Sign in again.',category:'auth'},{status:403});
     const { tripId } = await context.params;
     const decoded = readTripDocument(await request.json().catch(() => null));
     if (decoded.kind !== "readable") return NextResponse.json({ error: "Invalid or unsupported trip document.", category: "validation" }, { status: 400 });

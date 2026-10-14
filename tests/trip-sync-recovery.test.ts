@@ -135,7 +135,7 @@ test("the trip workspace waits for authenticated saved intent, then uses the rec
   const resolver = readFileSync(new URL("../components/easyt/trip-shell-resolver.tsx", import.meta.url), "utf8");
   assert.match(
     resolver,
-    /if \(ownerId && searchParams\.get\("saved"\) === "1"\) claimGuestTripRecoveryForOwner\(tripId, ownerId\);[\s\S]*loadTripRecovery\(tripId, ownerId \?\? null\)/,
+    /if \(ownerId && searchParams\.get\("saved"\) === "1"\)[\s\S]*saveExplicitGuestTripForOwner\(tripId,ownerId,responseIsCurrent\)[\s\S]*loadTripRecovery\(tripId, ownerId \?\? null\)/,
     "guest recovery must remain untouched until both the saved intent and authenticated owner are present",
   );
   assert.match(resolver, /saveTripRecoveryToEasyT\(localTrip, recovery\)/);

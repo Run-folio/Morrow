@@ -3,7 +3,7 @@ import { readBuilderInputDraft, builderInputDraftKey, type BuilderInputDraft } f
 import { decodeHomepageBundle, type HomepageBundle } from './homepage-persistence.ts';
 import {
   homepageHandoffMatchesTrip, homepageHandoffReceiptForOwner, homepageReceiptForProjection,
-  homepageSemanticInputFingerprint, reusableHomepageReceipt,
+  homepageSemanticInputFingerprint, reusableHomepageReceipt, projectHomepageInput,
   type HomeTripDraft, type HomepageHandoffReceipt, type HomepageInputSnapshot,
 } from './home-trip-handoff.ts';
 import { homepageRouteReviewKey, type HomepageRouteEvidence } from './home-route-choice.ts';
@@ -116,17 +116,26 @@ export function rebindRecoveryClaimInputs(source: RecoveryEnvelope, builderRaw: 
     if (source.handle.ownerId !== null) return held('source-not-guest');
     const raw = decodeRawRecovery(source.rawRecovery, source.handle);
     if (raw.kind !== 'readable' || JSON.parse(source.rawRecovery).trip.schemaVersion !== 2) return held('source-trip-unsupported');
-    const trip = raw.value.trip as CanonicalEasyTTrip;
+    return rebindGuestSaveInputs({trip:raw.value.trip as CanonicalEasyTTrip,input:source.entry.input,receipt:source.entry.receipt},builderRaw,homepageRaw,ownerId);
+  } catch { return held('claim-inputs-unsupported'); }
+}
+
+/** Backend-neutral preparation after the caller has proved exact guest provenance.
+ * This grants no recovery or account authority and writes no source bytes. */
+export function rebindGuestSaveInputs(source:{trip:CanonicalEasyTTrip;input:RecoveryEnvelope['entry']['input'];receipt:RecoveryEnvelope['entry']['receipt']},builderRaw:string|null,homepageRaw:string|null,ownerId:string):RecoveryClaimInputs {
+  try {
+    if(!ownerId.trim())return held('owner-required');
+    const trip=source.trip;
     if (trip.ownerId !== null) return held('source-not-guest');
     let input: RecoveryEnvelope['entry']['input'] = null, reboundBuilder: string | null = null;
-    if (source.entry.input && builderRaw === null) return held('builder-input-required');
-    if (source.entry.input && source.entry.input.raw !== builderRaw) return held('builder-input-changed');
+    if (source.input && builderRaw === null) return held('builder-input-required');
+    if (source.input && source.input.raw !== builderRaw) return held('builder-input-changed');
     if (builderRaw !== null) {
       const key = builderInputDraftKey(null, trip.id);
       const read = readBuilderInputDraft(Object.freeze({ getItem: (observed: string) => observed === key ? builderRaw : null }), trip, null);
       if (read.kind !== 'readable') return held('builder-input-unsupported');
       const draft = JSON.parse(builderRaw) as BuilderInputDraft;
-      if (source.entry.input && source.entry.input.inputRevision !== draft.inputRevision) return held('builder-input-revision-mismatch');
+      if (source.input && source.input.inputRevision !== draft.inputRevision) return held('builder-input-revision-mismatch');
       reboundBuilder = JSON.stringify({ ...draft, ownerId });
       const targetKey = builderInputDraftKey(ownerId, trip.id);
       const target = readBuilderInputDraft(Object.freeze({ getItem: (observed: string) => observed === targetKey ? reboundBuilder : null }), { ...trip, ownerId }, ownerId);
@@ -135,18 +144,22 @@ export function rebindRecoveryClaimInputs(source: RecoveryEnvelope, builderRaw: 
     }
 
     let receipt: RecoveryEnvelope['entry']['receipt'] = null, reboundHomepage: string | null = null;
-    if (source.entry.receipt && homepageRaw === null) return held('homepage-required');
+    if (source.receipt && homepageRaw === null) return held('homepage-required');
     if (homepageRaw !== null) {
       const decoded = decodeHomepageBundle(homepageRaw, null);
-      if (!source.entry.receipt && decoded?.bundle.inputRaw === null && decoded.bundle.draftRaw === null) reboundHomepage = homepageRaw;
+      if (!source.receipt && decoded?.bundle.inputRaw === null && decoded.bundle.draftRaw === null) reboundHomepage = homepageRaw;
       else {
         const current = checkedHome(homepageRaw, trip);
         if ('kind' in current) return current;
-        const original = source.entry.receipt ? checkedHome(source.entry.receipt.raw, trip) : current;
+        const original = source.receipt ? checkedHome(source.receipt.raw, trip) : current;
         if ('kind' in original) return original.reason === 'homepage-unsupported' ? held('homepage-receipt-unsupported') : original;
-        if (source.entry.receipt && source.entry.receipt.operationId !== original.receipt.handoffId
+        if (source.receipt && source.receipt.operationId !== original.receipt.handoffId
           || !sameReceipt(current.receipt, original.receipt)) return held('homepage-receipt-mismatch');
-        const support = current.draft ?? original.draft;
+        let support = current.draft ?? original.draft;
+        if (!support) {
+          const projected=projectHomepageInput({snapshot:current.snapshot,profile:null,handoffId:current.receipt.handoffId});
+          if(projected.ok)support={...projected.draft,homepage:{...projected.draft.homepage!,receipt:current.receipt}};
+        }
         if (!support) return held('homepage-supporting-draft-required');
         const currentRebound = rebindHome(current, support, ownerId, trip);
         if ('kind' in currentRebound) return currentRebound;

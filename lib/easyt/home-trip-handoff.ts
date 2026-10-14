@@ -1,3 +1,4 @@
+import {canonicalTripStopIdentityMap} from './trip-promotion.ts';
 import {referenceGeographicAcceptanceMatches} from './place-reference.ts';
 import { captureJourneyBrief, type JourneyCaptureResult } from "./journey-capture.ts";
 import { catalogPlaceForProviderIdentity, isNegatedEndpointAt, isOvernightBaseEligible, normalizePlacePhrase, placeResolutionIssuesForMentions, type CanonicalPlaceSuggestion, type GeographicBounds, type PlaceRoutability, type ResolvedPlaceMention } from "./place-intelligence.ts";
@@ -811,6 +812,10 @@ async function commitHomepageHandoffWithinLock(input: HomepageHandoffCommitInput
 export async function reservePendingDescribeHandoffInStorage(input: {
   storage: Pick<Storage, "getItem" | "setItem" | "removeItem">;
   snapshot: HomepageInputSnapshot;
+  /** Explicitly start a fresh trip from the visible form after its earlier trip
+   * was edited. Exact old receipt CAS; ordinary repeated submits still resume. */
+  supersedeCompletedReceipt?: HomepageHandoffReceipt;
+  supersedeCompletedInputRaw?: string | null;
   isCurrent: () => boolean;
   preserveAndBegin: () => boolean | Promise<boolean>;
   createIds: () => { handoffId: string; tripId: string };
@@ -838,7 +843,14 @@ export async function reservePendingDescribeHandoffInStorage(input: {
         // canonical Builder document has acknowledged the reservation.
         return { ok: false as const, reason: "preservation" as const };
       }
-      if (sameInput && existingInput?.receipt?.version === 1
+      if (input.supersedeCompletedReceipt) {
+        const expected=input.supersedeCompletedReceipt,current=existingInput?.receipt;
+        if (raw!==input.supersedeCompletedInputRaw || !sameInput || current?.version!==1 || expected.version!==1
+          || current.ownerId!==expected.ownerId || current.tripId!==expected.tripId
+          || current.handoffId!==expected.handoffId || current.inputFingerprint!==expected.inputFingerprint
+          || current.semanticInputFingerprint!==expected.semanticInputFingerprint
+          || !homepageCompletedReceiptIsUnchanged(existingInput!)) return {ok:false as const,reason:'stale' as const};
+      } else if (sameInput && existingInput?.receipt?.version === 1
         && homepageCompletedReceiptIsUnchanged(existingInput)) {
         return { ok: false as const, reason: "storage" as const };
       }
@@ -2020,7 +2032,7 @@ function journeyEndsMatch(expected: JourneyEndSelection | undefined, actual: Jou
 /** Compare the initially accepted versioned intake with its first canonical
  * Builder document. This is used only for durable acknowledgement; it does
  * not constrain subsequent edits to that document. */
-export function homepageHandoffMatchesTrip(draft: HomeTripDraft, trip: EasyTTrip) {
+export function homepageHandoffMatchesTrip(draft: HomeTripDraft, trip: EasyTTrip, options:{allowCanonicalStopIds?:boolean}={}) {
   const handoffOwnerId = draft.homepage?.ownerId ?? null;
   const receipt = homepageHandoffReceiptForOwner(draft, handoffOwnerId);
   if (!receipt || receipt.tripId !== trip.id) return false;
@@ -2055,9 +2067,10 @@ export function homepageHandoffMatchesTrip(draft: HomeTripDraft, trip: EasyTTrip
     })
     : initialStops.map((direct) => ({ id: direct.id, direct }));
   if (expectedStops.length !== trip.stops.length) return false;
+  const canonicalIds=options.allowCanonicalStopIds?canonicalTripStopIdentityMap({id:trip.id,stops:expectedStops}):null;
   if (!expectedStops.every((expected, index) => {
     const actual = trip.stops[index];
-    if (!actual || actual.id !== expected.id) return false;
+    if (!actual || actual.id !== expected.id && actual.id !== canonicalIds?.get(expected.id)) return false;
     if (!expected.direct) return true;
     return normalizePlacePhrase(actual.name) === normalizePlacePhrase(expected.direct.name)
       && (!expected.direct.canonicalPlaceId || actual.canonicalPlaceId === expected.direct.canonicalPlaceId)

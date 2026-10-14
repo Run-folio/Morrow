@@ -6,7 +6,7 @@ import {
   acknowledgeTripBuildSave,
   BrowserRecoveryReadError,
   cacheCanonicalTrip,
-  claimGuestTripRecoveryForOwner,
+  saveExplicitGuestTripForOwner,
   EasyTTripAuthError,
   EasyTTripPromotionConflictError,
   EasyTTripSaveConflictError,
@@ -56,6 +56,7 @@ export default function TripShellResolver({
   const [deviceNoticeTripId, setDeviceNoticeTripId] = useState<string | null>(null);
   const [syncIssue, setSyncIssue] = useState<"failed" | "conflict" | "auth" | null>(null);
   const [syncComplete, setSyncComplete] = useState(false);
+  const [deviceContinuationIncomplete,setDeviceContinuationIncomplete]=useState(false);
   const [syncing, setSyncing] = useState(false);
   const [showingCanonicalConflict, setShowingCanonicalConflict] = useState(false);
 
@@ -69,15 +70,20 @@ export default function TripShellResolver({
       ? current : { status: "loading", identity: requestIdentity });
     setSyncIssue(null);
     setSyncComplete(false);
+    setDeviceContinuationIncomplete(false);
     setShowingCanonicalConflict(false);
     let recovery;
     try {
       if (ownerId && searchParams.get("saved") === "1") {
-        const claimed = await claimGuestTripRecoveryForOwner(tripId, ownerId);
-        if (!responseIsCurrent()) return;
-        if (claimed && !claimed.stored) {
-          setResolution({ status: "blocked", identity: requestIdentity,
-            kind: claimed.blockedByExistingRecovery ? "protected" : "unavailable" });
+        const guest=await loadTripRecovery(tripId,null);
+        if(!responseIsCurrent())return;
+        if(guest){
+          const saved=await saveExplicitGuestTripForOwner(tripId,ownerId,responseIsCurrent);
+          if(!responseIsCurrent())return;
+          setResolution({status:'found',identity:requestIdentity,trip:saved.trip});
+          setSyncComplete(saved.accountAcknowledged);
+          setShowingCanonicalConflict(false);
+          setDeviceContinuationIncomplete(!saved.deviceComplete);
           return;
         }
       }
@@ -180,6 +186,9 @@ export default function TripShellResolver({
 
   return <div className={styles.resolverStack}>
     {syncComplete ? <MorroviaStatusBanner className={styles.resolverNotice} tone="success" title="Saved to your account" /> : null}
+    {deviceContinuationIncomplete ? <MorroviaStatusBanner className={styles.resolverNotice} tone="warning" title="Device save incomplete"
+      detail="Your account copy is saved. Earlier device copies remain protected."
+      actions={<EasyTButton size="small" variant="secondary" onClick={() => void resolveAndPromote()}>Try again</EasyTButton>} /> : null}
     {syncIssue ? <MorroviaStatusBanner
       className={styles.resolverNotice}
       tone={syncIssue === "failed" ? "warning" : syncIssue === "conflict" ? "warning" : "danger"}

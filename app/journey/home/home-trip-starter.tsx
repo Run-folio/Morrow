@@ -18,6 +18,7 @@ import {
   commitHomepageHandoff,
   homepageCompletedReceiptIsUnchanged,
   homepageHandoffReceiptForOwner,
+  homepageHandoffMatchesTrip,
   homepageSemanticInputFingerprint,
   homepageCaptureWithSharedOrigin,
   homepageSnapshotForDescribePrompt,
@@ -28,7 +29,7 @@ import {
   projectHomepageInput,
   reservePendingDescribeHandoff,
   type HomepageDestinationEntry,
-  type HomepageInputSnapshot,
+  type HomepageInputSnapshot, type HomepageHandoffReceipt,
   type StoredHomepageInput,
   type HomeTripDraft,
 } from "@/lib/easyt/home-trip-handoff";
@@ -220,6 +221,8 @@ export default function HomeTripStarter() {
     setLoading(true);
     setCaptureError("");
     let navigationStarted = false;
+    let supersedeCompletedReceipt: HomepageHandoffReceipt | undefined;
+    let supersedeCompletedInputRaw: string | null | undefined;
     try {
       const latestState = await readDurableHomepageState(submittedOwner, isCurrent);
       if (!isCurrent()) return;
@@ -245,7 +248,13 @@ export default function HomeTripStarter() {
         const existingTrip = existingRecovery?.trip
           ?? await loadRequestedTrip(unchangedReceipt.tripId, submittedOwner);
         if (!isCurrent()) return;
-        if (existingTrip) {
+        // The receipt binds the old input, not every later edit to its trip.
+        // Plan with stops must continue the currently visible route intent.
+        const intended = submitted.mode === "stops"
+          ? projectHomepageInput({ snapshot: submitted, profile: travelProfile, handoffId: unchangedReceipt.handoffId }) : null;
+        const matchesSubmitted = (trip: NonNullable<typeof existingTrip>) => submitted.mode !== "stops" || Boolean(intended?.ok
+          && homepageHandoffMatchesTrip({ ...intended.draft, homepage: { ...intended.draft.homepage!, receipt: unchangedReceipt } }, trip, {allowCanonicalStopIds:true}));
+        if (existingTrip && matchesSubmitted(existingTrip)) {
           // Re-read the exact scoped receipt after the asynchronous lookup.
           // A competing tab or changed form cannot redeem this stale action.
           const resumeState = await readDurableHomepageState(submittedOwner, isCurrent);
@@ -277,39 +286,54 @@ export default function HomeTripStarter() {
             setCaptureError(language === "es" ? "No pudimos recuperar este viaje. Revisa Mis viajes." : "We couldn't recover this trip. Check My Trips.");
             return;
           }
+          const currentRecovery = await loadTripRecovery(unchangedReceipt.tripId, submittedOwner);
+          if (!isCurrent()) return;
+          const currentTrip = currentRecovery?.trip ?? await loadRequestedTrip(unchangedReceipt.tripId, submittedOwner);
+          if (!isCurrent()) return;
+          if (!currentTrip || !matchesSubmitted(currentTrip)) {
+            reportPersistenceOutcome("homepage-resume", {stored:false, acknowledgement:"stale", receiptPresent:true});
+            setCaptureError(language === "es" ? "Este viaje ha cambiado. Revisa los datos e inténtalo de nuevo." : "This trip has changed. Review your input and try again.");
+            return;
+          }
           navigationStarted = true;
-          reportPersistenceOutcome("homepage-resume", {stored:Boolean(existingRecovery), receiptPresent:true, scopeMatches:true});
+          reportPersistenceOutcome("homepage-resume", {stored:Boolean(currentRecovery), receiptPresent:true, scopeMatches:true});
           markPlanningMilestone(unchangedReceipt.handoffId, "durable-intake");
           // Only a validated receipt and this owner's readable recovery grant
           // device resume. A cloud-only trip keeps its authenticated entry path.
-          router.push(`/journey/new?trip=${encodeURIComponent(unchangedReceipt.tripId)}${existingRecovery ? "&recover=1" : ""}`);
+          router.push(`/journey/new?trip=${encodeURIComponent(unchangedReceipt.tripId)}${currentRecovery ? "&recover=1" : ""}`);
           return;
         }
-        const pendingState = await readDurableHomepageState(submittedOwner, isCurrent);
-        if (!isCurrent()) return;
-        // The durable reader has validated this versioned draft's scope and codec.
-        const pendingDraft = pendingState.kind === "ready" ? pendingState.draft as HomeTripDraft | null : null;
-        const pendingReceipt = pendingDraft && homepageHandoffReceiptForOwner(pendingDraft, submittedOwner);
-        if (pendingDraft && pendingReceipt?.handoffId === unchangedReceipt.handoffId
-          && pendingReceipt.tripId === unchangedReceipt.tripId
-          && pendingReceipt.inputFingerprint === unchangedReceipt.inputFingerprint
-          && pendingReceipt.semanticInputFingerprint === unchangedReceipt.semanticInputFingerprint) {
-          const committed = await commitHomepageHandoff({
-            storage: window.localStorage, stored: storedInputRef.current, draft: pendingDraft, isCurrent,
-            preserveAndBegin: () => requestNewTripNavigationAsync(window),
-          });
+        if (!existingTrip) {
+          const pendingState = await readDurableHomepageState(submittedOwner, isCurrent);
           if (!isCurrent()) return;
-          if (committed.ok) {
-            navigationStarted = true;
-            markPlanningMilestone(unchangedReceipt.handoffId, "durable-intake");
-            router.push(committed.href);
-            return;
+          // The durable reader has validated this versioned draft's scope and codec.
+          const pendingDraft = pendingState.kind === "ready" ? pendingState.draft as HomeTripDraft | null : null;
+          const pendingReceipt = pendingDraft && homepageHandoffReceiptForOwner(pendingDraft, submittedOwner);
+          if (pendingDraft && pendingReceipt?.handoffId === unchangedReceipt.handoffId
+            && pendingReceipt.tripId === unchangedReceipt.tripId
+            && pendingReceipt.inputFingerprint === unchangedReceipt.inputFingerprint
+            && pendingReceipt.semanticInputFingerprint === unchangedReceipt.semanticInputFingerprint) {
+            const committed = await commitHomepageHandoff({
+              storage: window.localStorage, stored: storedInputRef.current, draft: pendingDraft, isCurrent,
+              preserveAndBegin: () => requestNewTripNavigationAsync(window),
+            });
+            if (!isCurrent()) return;
+            if (committed.ok) {
+              navigationStarted = true;
+              markPlanningMilestone(unchangedReceipt.handoffId, "durable-intake");
+              router.push(committed.href);
+              return;
+            }
           }
+          // A completed receipt is never reprojected just because capture has
+          // changed or the old draft is missing.
+          setCaptureError(language === "es" ? "No pudimos recuperar este viaje. Revisa Mis viajes." : "We couldn't recover this trip. Check My Trips.");
+          return;
         }
-        // A completed receipt is never reprojected just because capture has
-        // changed or the old draft is missing.
-        setCaptureError(language === "es" ? "No pudimos recuperar este viaje. Revisa Mis viajes." : "We couldn't recover this trip. Check My Trips.");
-        return;
+        // A later edited trip is retained; reserve a new identity for this input.
+        supersedeCompletedReceipt = unchangedReceipt;
+        supersedeCompletedInputRaw = latestState.inputRaw;
+
       }
       if (!isCurrent()) return;
       const issues = homepagePreflightIssues(submitted, evidenceFor(submitted));
@@ -347,7 +371,7 @@ export default function HomeTripStarter() {
       // recovery transaction may complete this receipt and its pointer.
       {
         const committed = await reservePendingDescribeHandoff({
-          storage: window.localStorage, snapshot: submitted, isCurrent,
+          storage: window.localStorage, snapshot: submitted, isCurrent, supersedeCompletedReceipt, supersedeCompletedInputRaw,
           createIds: () => ({ handoffId: generatedId("handoff"), tripId: generatedId("trip") }),
           preserveAndBegin: () => requestNewTripNavigationAsync(window),
         });

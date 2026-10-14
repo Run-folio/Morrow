@@ -230,7 +230,7 @@ export function decideExistingTripPromotion(
  * retrying the same browser document is an exact, idempotent operation.
  */
 /** The existing authoritative namespace/occurrence mapping, also used for exact ACK rebinding. */
-export function canonicalTripStopIdentityMap(trip: EasyTTrip): ReadonlyMap<string, string> {
+export function canonicalTripStopIdentityMap(trip: {id:string;stops:ReadonlyArray<{id:string}>}): ReadonlyMap<string, string> {
   const stopPrefix = `${trip.id}-stop-`;
   const candidateId = (id: string) => id.startsWith(stopPrefix) ? id : `${stopPrefix}${id}`;
   const counts = new Map<string, number>();
