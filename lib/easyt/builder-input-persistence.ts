@@ -38,12 +38,20 @@ export function createDurableBuilderInputPersistence(storage:EasyTBrowserStorage
   return {
     read,
     async write(draft:BuilderInputDraft,options:{allowInitialOverflow?:boolean}={}):Promise<ReturnType<typeof writeBuilderInputDraft>> {
-      const allowInitialOverflow=options.allowInitialOverflow===true;
+      // Raw edits on an existing trip are eligible only while the canonical
+      // source is exactly the mounted same-scope document. The body command
+      // independently proves its replacement/cache source before admission.
+      const before = await trips.read(trip.id);
+      const existingSource = before.kind === 'found'
+        && (trip.ownerId === null || trip.ownerId === ownerId)
+        && JSON.stringify(before.trip) === JSON.stringify(trip);
+      const allowInitialOverflow=options.allowInitialOverflow===true || existingSource;
       const staged=await serialize(draft);if(!staged.ok)return staged;
       const writeId=globalThis.crypto.randomUUID(),entry=await entries.prepareForDomain(staged.raw,writeId,staged.observed);
       if(!('raw' in entry))return {ok:false,reason:entry.kind==='protected'?'protected':'storage'};
       const result=await entries.save(staged.raw,{allowInitialOverflow,writeId,expected:entry});
-      return result.kind==='verified'?{ok:true}:{ok:false,reason:result.kind==='protected'?'protected':'storage'};
+      const after = await trips.read(trip.id);
+      return result.kind==='verified' && (!existingSource || after.kind==='found' && JSON.stringify(after.trip)===JSON.stringify(trip))?{ok:true}:{ok:false,reason:result.kind==='protected'?'protected':'storage'};
     },
     async prepare(draft:BuilderInputDraft,writeId:string) {
       const staged=await serialize(draft);if(!staged.ok)return staged;

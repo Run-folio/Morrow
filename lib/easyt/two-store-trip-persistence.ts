@@ -57,13 +57,25 @@ export function createTwoStoreTripPersistence(storage: EasyTBrowserStorage, driv
     const claim=await readRecoveryClaimBarrier(driver,storage,{ownerId,isCurrent:active},tripId,result.envelope);
     if(claim.kind!=='ready')return claim;
     try {
+      let nativeCacheRaw: string | null | undefined;
+      if (result.envelope?.entry.nativeCacheRaw !== undefined) {
+        const raw = storage.getItem(tripCacheStorageKey(ownerId, tripId));
+        nativeCacheRaw = raw;
+        if (raw !== result.envelope.entry.nativeCacheRaw) {
+          const cached = readNativeCache(tripId, raw);
+          if (!result.acknowledgement || cached.kind !== 'found'
+            || JSON.stringify(cached.trip) !== JSON.stringify(prepareTripDocumentForWrite(JSON.parse(result.acknowledgement.canonicalRaw))))
+            return {kind:'protected' as const,reason:'cache-divergence'};
+        }
+      }
       const legacy = nativeSources(tripId), resolved = resolveRecoveryProvenance({ scope: scope(tripId), legacy: { kind: 'ready', copies: legacy }, domain: result });
       if (resolved.kind === 'not-ready') return { kind: 'unavailable' as const, reason: 'unknown' };
       if (resolved.kind === 'protected-conflict') return { kind: 'protected' as const, reason: resolved.reason ?? 'unknown' };
       const metadata=result.envelope?await lifecycle.read(result.envelope):await lifecycle.absent(tripId);
       if(metadata.kind!=='ready')return metadata;
+      if(nativeCacheRaw !== undefined && storage.getItem(tripCacheStorageKey(ownerId,tripId)) !== nativeCacheRaw)return {kind:'protected' as const,reason:'cache-changed'};
       if(!active()||JSON.stringify(nativeSources(tripId))!==JSON.stringify(legacy))return {kind:'protected' as const,reason:'native-changed'};
-      return { kind: 'resolved' as const, resolved, legacy, domain: result,lifecycle:'lifecycle' in metadata?metadata.lifecycle:null };
+      return { kind: 'resolved' as const, resolved, legacy, domain: result,nativeCacheRaw,lifecycle:'lifecycle' in metadata?metadata.lifecycle:null };
     } catch { return { kind: 'unavailable' as const, reason: 'native-read-unknown' }; }
   };
   const refused = (tripId: string, writeId: string, protectedRecovery: boolean, reason: TripRecoveryWriteResult['failureReason'] = protectedRecovery ? 'protected-recovery' : 'unknown'): TripRecoveryWriteResult => ({
@@ -78,10 +90,10 @@ export function createTwoStoreTripPersistence(storage: EasyTBrowserStorage, driv
     if (!value || value.version !== 2 || value.ownerId !== ownerId || typeof value.tripId !== 'string' || !value.tripId.trim()) throw new Error('Invalid current pointer');
     return { raw, tripId: value.tripId as string };
   };
-  const readNativeCache=(tripId:string):TwoStoreRead=>{
+  const readNativeCache=(tripId:string, expectedRaw?:string|null):TwoStoreRead=>{
     let raw:string|null;
     try{const key=tripCacheStorageKey(ownerId,tripId);raw=storage.getItem(key);
-      if(raw!==storage.getItem(key)||!active())return {kind:'protected',reason:'cache-changed'};
+      if((expectedRaw!==undefined&&raw!==expectedRaw)||raw!==storage.getItem(key)||!active())return {kind:'protected',reason:'cache-changed'};
     }catch{return {kind:'unavailable',reason:'cache-read-unknown'};}
     if(raw===null)return {kind:'missing'};
     try{
@@ -292,6 +304,33 @@ export function createTwoStoreTripPersistence(storage: EasyTBrowserStorage, driv
           return reject(true);
         }
       }
+      // Existing-trip admission requires an exact frozen source, never a
+      // reused handle alone or a caller merely declaring the trip "new".
+      let existingAdmission = false;
+      let cacheWitness: {key: string; raw: string} | null = null;
+      if (state.domain.envelope?.entry.nativeCacheRaw !== undefined) {
+        // Carry the exact bytes inspect validated across its lifecycle await.
+        const key = tripCacheStorageKey(ownerId, tripId), raw = state.nativeCacheRaw;
+        if (raw == null || raw !== storage.getItem(key)) return reject(true);
+        cacheWitness = {key, raw};
+      }
+      if (!state.domain.envelope && !options.newTripOrClone && expectedRecoverySource
+        && expectedRecoverySource.id === tripId && expectedRecoverySource.ownerId === trip.ownerId) {
+        if (state.resolved.source && options.replace) {
+          const decoded = decodeRecoverySource(state.resolved.source, scope(tripId));
+          existingAdmission = decoded.kind === 'readable' && options.replace.ownerId === ownerId
+            && options.replace.tripId === tripId && options.replace.writeId === decoded.value.writeId
+            && JSON.stringify(prepareTripDocumentForWrite(decoded.value.trip)) === JSON.stringify(prepareTripDocumentForWrite(expectedRecoverySource));
+        } else if (!state.legacy.length && !options.replace) {
+          const key = tripCacheStorageKey(ownerId, tripId), raw = storage.getItem(key);
+          const cached = readNativeCache(tripId, raw);
+          if (cached.kind === 'found' && cached.trip.ownerId === ownerId
+            && JSON.stringify(cached.trip) === JSON.stringify(prepareTripDocumentForWrite(expectedRecoverySource))) {
+            if (raw !== null && raw === storage.getItem(key)) { cacheWitness = {key, raw}; existingAdmission = true; }
+          }
+        }
+      }
+      const sourceStillCurrent = () => { try { return !cacheWitness || storage.getItem(cacheWitness.key) === cacheWitness.raw; } catch { return false; } };
       const requiredEntries:PreparedEntryWrite[]=[];
       for(const input of options.entries??[]) {
         const prepared=prepareEntryWrite(input,ownerId);
@@ -427,8 +466,8 @@ export function createTwoStoreTripPersistence(storage: EasyTBrowserStorage, driv
         }
         // A projection can replace a proven native source regardless of the
         // session's initial-overflow capability, but can never use that admission.
-        if (options.projectionOnly || nativeResult.nativeFailure !== 'quota' || !nativeResult.writeAttempted || !options.newTripOrClone) return nativeResult;
-        try { if (JSON.stringify(nativeSources(tripId)) !== JSON.stringify(state.legacy)) return reject(true); }
+        if (options.projectionOnly || nativeResult.nativeFailure !== 'quota' || !nativeResult.writeAttempted || !(options.newTripOrClone || existingAdmission)) return nativeResult;
+        try { if (!sourceStillCurrent() || JSON.stringify(nativeSources(tripId)) !== JSON.stringify(state.legacy)) return reject(true); }
         catch { return reject(false); }
       } else {
         const explicit = options.replace?.backend === 'indexeddb' && sameDomainHandle(domainHandle(options.replace), existing.handle);
@@ -439,18 +478,20 @@ export function createTwoStoreTripPersistence(storage: EasyTBrowserStorage, driv
       if (!context.overflowEnabled || ownerId !== null && !context.accountOverflowQualified) return nativeResult ?? reject(true);
       const handle: RecoveryHandle = { version: 1, backend: 'indexeddb', ownerId, tripId, writeId };
       const record: TripRecoveryRecord = { version: 2, ownerId, tripId, writeId, trip, state: options.state ?? 'pending', savedAt: options.now ?? new Date().toISOString() };
+      if(options.entry?.nativeCacheRaw !== undefined && options.entry.nativeCacheRaw !== existing?.entry.nativeCacheRaw)return reject(true,'scope-mismatch');
       const entry = options.entry ?? existing?.entry ?? { pointer: handle, input: null, receipt: null };
       if(options.entry?.claim&&JSON.stringify(options.entry.claim)!==JSON.stringify(existing?.entry.claim))return reject(true,'scope-mismatch');
       const candidate: RecoveryEnvelope = { version: 1, handle, parent: existing?.handle ?? null, rawRecovery: JSON.stringify(record),
         legacySources: state.legacy, entry: { ...structuredClone(entry), pointer: handle, nativePointerRaw,
-          ...(existing?.entry.claim?{claim:structuredClone(existing.entry.claim)}:{}) } };
+          ...(existing?.entry.claim?{claim:structuredClone(existing.entry.claim)}:{}),
+          ...(cacheWitness?{nativeCacheRaw:cacheWitness.raw}:existing?.entry.nativeCacheRaw!==undefined?{nativeCacheRaw:existing.entry.nativeCacheRaw}:{}) } };
       const committed = await domain.commit({ raw: JSON.stringify(candidate), expectedHead: candidate.parent,
         admission: existing ? 'existing-domain' : 'native-setter-quota', entries: options.entries });
       if (committed.kind !== 'verified') return { ...reject(committed.kind === 'protected-conflict'),
         handle: { ownerId, tripId, writeId, backend: 'indexeddb' }, recoveryCommitted: committed.commitStatus === 'committed',recoveryDurable:false,writeAttempted:true,
         ...(committed.commitStatus==='committed'?{readbackConfirmed:false,failureBoundary:'recovery-readback' as const}:{failureBoundary:'recovery-write' as const}) };
       const after = await inspect(tripId);
-      if (!active() || after.kind !== 'resolved' || !after.domain.envelope || !sameDomainHandle(after.domain.envelope.handle, handle)||!await verifyEntries()) return { ...reject(true), recoveryDurable: true };
+      if (!active() || !sourceStillCurrent() || after.kind !== 'resolved' || !after.domain.envelope || !sameDomainHandle(after.domain.envelope.handle, handle)||!await verifyEntries()) return { ...reject(true), recoveryDurable: true };
       return { stored: true, handle: { ownerId, tripId, writeId, backend: 'indexeddb' }, blockedByExistingRecovery: false,
         pointerAcknowledged: true, recoveryDurable: true, readbackConfirmed: true, writeAttempted: true, outcome: 'device-confirmed',
         ...(requiredEntries.some(value=>value.scope.kind==='homepage')?{receiptAcknowledged:true}:{}) };

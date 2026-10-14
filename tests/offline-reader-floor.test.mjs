@@ -6,11 +6,13 @@ import { runInNewContext } from 'node:vm';
 
 // Executes the production worker with synthetic caches/fetch. No browser,
 // native storage, provider, account, or real network is used.
-const source = readFileSync(new URL('../public/easyt-sw.js', import.meta.url), 'utf8');
-const floor = 'idb-recovery-v1';
+const dependencySource=readFileSync(new URL('../public/easyt-offline-dependencies.js',import.meta.url),'utf8');
+const source=dependencySource+'\n'+readFileSync(new URL('../public/easyt-sw.js',import.meta.url),'utf8');
+const floor = 'idb-recovery-account-v1';
 const build = 'synthetic-build-1';
 const commit = 'a'.repeat(40);
 const assets = new Map([
+  ['/easyt-offline-dependencies.js',dependencySource],
   ['/_next/static/chunks/reader.js', 'synthetic reader'],
   ['/_next/static/chunks/lazy-map.js', 'synthetic lazy map'],
   ['/_next/static/css/shell.css', 'synthetic css'],
@@ -259,4 +261,15 @@ test('manifest URL traversal, encoded separators and malformed encodings are ref
     const next = { ...identity, artifactId: createHash('sha256').update(JSON.stringify(identity)).digest('hex') };
     const m = model({ network: online, manifestValue: next }); await assert.rejects(m.lifecycle('install')); assert.equal(m.skipped, 0);
   }
+});
+
+const nextStream = pieces => pieces.map(piece => `<script>self.__next_f.push(${JSON.stringify([1,piece])})</script>`).join('');
+for (const [name, pieces, accepted] of [
+  ['known CSS split at Next script boundary', [':HL["/_next/static/css/she','ll.css","style"]\n'], true],
+  ['unknown CSS split at Next script boundary', [':HL["/_next/static/css/unk','nown.css","style"]\n'], false],
+  ['unknown complete streamed CSS', [':HL["/_next/static/css/unknown.css","style"]\n'], false],
+]) test(`worker install classifies ${name}`,async()=>{
+ const m=model({network:path=>['/','/journey/new','/journey/plan'].includes(path)?new Response(shell(path)+nextStream(pieces),{headers:{'content-type':'text/html'}}):online(path)});
+ if(accepted){await m.lifecycle('install');await m.lifecycle('activate');assert.equal(m.skipped,1);assert.equal(m.claimed,1);}
+ else {await assert.rejects(m.lifecycle('install'));assert.equal(m.skipped,0);assert.equal(m.claimed,0);}
 });

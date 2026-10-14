@@ -1,8 +1,8 @@
 /* Public shells and build assets only. No API, account, profile or trip
  * response is persisted. Older caches are retained for already-open clients. */
-importScripts("/easyt-offline-manifest.js");
+importScripts("/easyt-offline-dependencies.js", "/easyt-offline-manifest.js");
 
-const READER_FLOOR = "idb-recovery-v1";
+const READER_FLOOR = "idb-recovery-account-v1";
 const MANIFEST = self.MORROVIA_OFFLINE_SHELL;
 const CACHE_PREFIX = "easyt-public-shell-";
 const CACHE_NAME = `${CACHE_PREFIX}${READER_FLOOR}-${MANIFEST?.artifactId}`;
@@ -35,7 +35,7 @@ function validManifest() {
     && new Set(MANIFEST.assets.map((asset) => asset.url)).size === MANIFEST.assets.length
     && MANIFEST.assets.every((asset) => typeof asset.url === "string"
       && canonicalAssetPath(asset.url) === asset.url
-      && (asset.url.startsWith("/_next/static/") || asset.url === "/easyt-icon.svg" || asset.url === "/maplibre/maplibre-gl-worker.mjs")
+      && (asset.url.startsWith("/_next/static/") || asset.url === "/easyt-offline-dependencies.js" || asset.url === "/easyt-icon.svg" || asset.url === "/maplibre/maplibre-gl-worker.mjs")
       && /^[a-f0-9]{64}$/.test(asset.sha256));
 }
 
@@ -65,8 +65,12 @@ async function readerDocument(response, exactBuild) {
   if (!exactBuild) return true; // A newer online reader may have its own graph.
   if (meta(html, "morrovia-build-commit") !== MANIFEST.buildCommit) return false;
   const urls = new Set(MANIFEST.assets.map((asset) => asset.url));
-  return [...html.matchAll(/\/_next\/static\/[^"'\\\s<]+/g)].every((match) =>
-    urls.has(canonicalAssetPath(match[0].replaceAll("&amp;", "&").split(/[?#]/)[0])));
+  try {
+    return self.MORROVIA_OFFLINE_DEPENDENCIES.extract(html).every(raw => {
+      const url = canonicalAssetPath(raw);
+      return url !== null && urls.has(url);
+    });
+  } catch { return false; }
 }
 
 async function exactAsset(response, asset) {

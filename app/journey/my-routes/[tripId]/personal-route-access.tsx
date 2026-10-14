@@ -19,7 +19,7 @@ export function PersonalRouteOwnerBoundary({ trip, navigation }: { trip: EasyTTr
   const [rememberedOwnerId, setRememberedOwnerId] = useState<string | null>(null);
   const authenticatedOwnerRef = useRef(trip.ownerId);
   if (session?.user?.id) authenticatedOwnerRef.current = session.user.id;
-  useEffect(() => setRememberedOwnerId(loadRememberedOwner()), []);
+  useEffect(() => { let active=true; void loadRememberedOwner().then(owner=>{if(active)setRememberedOwnerId(owner);}); return()=>{active=false;}; }, []);
   const ownerId = trip.ownerId;
   const boundary = ownerId ? ownerBoundaryState({
     renderedOwnerId: ownerId,

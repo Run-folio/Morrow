@@ -19,7 +19,7 @@ import {
   tripRecoveryIsAwaitingCanonicalSave,
   type TripRecoveryRecord,
   EASYT_LAST_OWNER_KEY,
-  loadRememberedOwner,
+  loadRememberedOwner, observeRememberedOwner,
 } from "@/lib/easyt/storage";
 import { isEasyTTrip, type EasyTTrip } from "@/lib/easyt/trip";
 import ResilientImage from "@/components/easyt/resilient-image";
@@ -219,14 +219,15 @@ export function TripShellTripProvider({ trip, children, cacheTrip = true }: { tr
     : null;
   const currentSaveFailed = mutation.saveState === "error" && !mutation.historicalRecovery;
   useEffect(() => {
-    const refreshOwner = () => setRememberedOwnerId(loadRememberedOwner());
+    const observer = observeRememberedOwner(setRememberedOwnerId);
+    const refreshOwner = observer.refresh;
     const onStorage = (event: StorageEvent) => {
       if (event.key === EASYT_LAST_OWNER_KEY) refreshOwner();
     };
     refreshOwner();
     setReturnTarget(`${window.location.pathname}${window.location.search}${window.location.hash}`);
     window.addEventListener("storage", onStorage);
-    return () => window.removeEventListener("storage", onStorage);
+    return () => { observer.dispose(); window.removeEventListener("storage", onStorage); };
   }, [pathname]);
 
   const ownerBoundary = cacheTrip && trip.ownerId

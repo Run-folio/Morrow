@@ -8,7 +8,7 @@ import { runInNewContext } from 'node:vm';
 
 const script = new URL('../scripts/generate-offline-shell-manifest.mjs', import.meta.url);
 const commit = 'a'.repeat(40);
-const html = '<meta name="morrovia-offline-reader" content="idb-recovery-v1"><meta name="morrovia-build-commit" content="' + commit + '"><script src="/_next/static/chunks/main.js"></script>';
+const html = '<meta name="morrovia-offline-reader" content="idb-recovery-account-v1"><meta name="morrovia-build-commit" content="' + commit + '"><script src="/_next/static/chunks/main.js"></script>';
 function fixture() {
   const root = mkdtempSync(path.join(tmpdir(), 'morrovia-offline-manifest-'));
   const put = (file, body) => { const full = path.join(root, file); mkdirSync(path.dirname(full), { recursive: true }); writeFileSync(full, body); };
@@ -22,6 +22,7 @@ function fixture() {
   put('.next-test/static/media/font.woff2', 'synthetic font');
   put('public/maplibre/maplibre-gl-worker.mjs', 'synthetic worker');
   put('public/easyt-icon.svg', '<svg/>');
+  put('public/easyt-offline-dependencies.js',readFileSync(new URL('../public/easyt-offline-dependencies.js',import.meta.url),'utf8'));
   return { root, put, close: () => rmSync(root, { recursive: true, force: true }) };
 }
 test('build manifest includes lazy chunks/fonts/public worker with exact byte hashes', async () => {
@@ -29,8 +30,8 @@ test('build manifest includes lazy chunks/fonts/public worker with exact byte ha
   const f = fixture();
   try {
     const result = writeOfflineShellManifest(f.root, '.next-test');
-    assert.equal(result.readerFloor, 'idb-recovery-v1'); assert.equal(result.buildId, 'synthetic-build'); assert.equal(result.buildCommit, commit);
-    assert.deepEqual(new Set(result.assets.map(row => row.url)), new Set(['/easyt-icon.svg', '/maplibre/maplibre-gl-worker.mjs', '/_next/static/chunks/lazy-map.js', '/_next/static/chunks/main.js', '/_next/static/media/font.woff2', '/_next/static/chunks/app/journey/%5BtripId%5D/page.js', '/_next/static/chunks/app/api/auth/%5B...all%5D/route.js']));
+    assert.equal(result.readerFloor, 'idb-recovery-account-v1'); assert.equal(result.buildId, 'synthetic-build'); assert.equal(result.buildCommit, commit);
+    assert.deepEqual(new Set(result.assets.map(row => row.url)), new Set(['/easyt-offline-dependencies.js','/easyt-icon.svg', '/maplibre/maplibre-gl-worker.mjs', '/_next/static/chunks/lazy-map.js', '/_next/static/chunks/main.js', '/_next/static/media/font.woff2', '/_next/static/chunks/app/journey/%5BtripId%5D/page.js', '/_next/static/chunks/app/api/auth/%5B...all%5D/route.js']));
     assert.equal(result.assets.find(row => row.url.endsWith('lazy-map.js')).sha256, createHash('sha256').update('synthetic lazy').digest('hex'));
     const context = { self: {} }; runInNewContext(readFileSync(path.join(f.root, 'public/easyt-offline-manifest.js'), 'utf8'), context);
     assert.equal(JSON.stringify(context.self.MORROVIA_OFFLINE_SHELL), JSON.stringify(result));
@@ -58,3 +59,4 @@ test('compiled HTML cannot hide traversal through URL normalization', async () =
     assert.throws(() => writeOfflineShellManifest(f.root, '.next-test'), /Unsafe offline HTML dependency/);
   } finally { f.close(); }
 });
+for (const [name, tail, accepted] of [['known split', 'main.js',true],['unknown split','unknown.js',false]])test(`manifest classifies ${name} Next stream dependency`,async()=>{const{writeOfflineShellManifest}=await import(script),f=fixture();try{const pieces=[':HL["/_next/static/chunks/',tail+'","script"]\n'];const stream=pieces.map(piece=>`<script>self.__next_f.push(${JSON.stringify([1,piece])})</script>`).join('');f.put('.next-test/server/app/journey/new.html',html+stream);if(accepted)assert.ok(writeOfflineShellManifest(f.root,'.next-test'));else assert.throws(()=>writeOfflineShellManifest(f.root,'.next-test'),/dependency missing/);}finally{f.close();}});

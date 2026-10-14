@@ -38,7 +38,7 @@ import {
   resolveCanonicalEquivalentTripRecovery,
   tripRecoveryIsAwaitingCanonicalSave,
   EASYT_LAST_OWNER_KEY,
-  loadRememberedOwner,
+  loadRememberedOwner, observeRememberedOwner,
 } from "@/lib/easyt/storage";
 import { ownerBoundaryState } from "@/lib/easyt/private-browser-context";
 import { journeyReauthenticationPath, tripSyncRecoveryPath } from "@/lib/easyt/trip-continuity";
@@ -220,12 +220,13 @@ export default function DashboardClient({ trips, stamps, ownerId }: { trips: Eas
   const recoveryState = recoveryIssuesScope === ownerScope ? storedRecoveryState : "checking";
 
   useEffect(() => {
-    const refreshOwner = () => setRememberedOwnerId(loadRememberedOwner());
+    const observer = observeRememberedOwner(setRememberedOwnerId);
+    const refreshOwner = observer.refresh;
     const onStorage = (event: StorageEvent) => {
       if (event.key === EASYT_LAST_OWNER_KEY) refreshOwner();
     };
     window.addEventListener("storage", onStorage);
-    return () => window.removeEventListener("storage", onStorage);
+    return () => { observer.dispose(); window.removeEventListener("storage", onStorage); };
   }, []);
 
   useEffect(() => {

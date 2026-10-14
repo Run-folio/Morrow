@@ -1459,7 +1459,7 @@ test("a cross-tab write interleaved inside an older ACK cleanup remains recovera
   assert.equal(loadTripRecoveryFromStorage(storage, first.id, "owner-a")?.writeId, "interleave-2");
 });
 
-test("quota recovery writes evict the oldest clean cache but never another recovery", () => {
+test("quota recovery writes preserve every canonical cache and recovery without cleanup", () => {
   const storage = new MemoryBrowserStorage();
   const oldCache = browserTrip({ id: "trip-old-cache", title: "Old expendable cache" });
   const newCache = browserTrip({ id: "trip-new-cache", title: "Newer cache" });
@@ -1474,14 +1474,14 @@ test("quota recovery writes evict the oldest clean cache but never another recov
   storage.quotaOnSet = (key) => key === targetKey && storage.peek(oldCacheKey) !== null;
   const result = saveTripRecoveryToStorage(storage, target, { writeId: "quota-target" });
 
-  assert.equal(result.stored, true);
-  assert.equal(loadCachedTripFromStorage(storage, oldCache.id, "owner-a"), null);
+  assert.equal(result.stored, false);
+  assert.equal(loadCachedTripFromStorage(storage, oldCache.id, "owner-a")?.id, oldCache.id);
   assert.equal(loadCachedTripFromStorage(storage, newCache.id, "owner-a")?.id, newCache.id);
   assert.equal(loadTripRecoveryFromStorage(storage, protectedRecovery.id, "owner-a")?.trip.id, protectedRecovery.id);
-  assert.equal(loadTripRecoveryFromStorage(storage, target.id, "owner-a")?.trip.id, target.id);
+  assert.equal(loadTripRecoveryFromStorage(storage, target.id, "owner-a"), null);
 });
 
-test("a recovered quota attempt does not mask a later unconfirmed recovery readback", () => {
+test("a quota attempt does not evict cache or issue an unconfirmed cleanup retry", () => {
   const storage = new MemoryBrowserStorage();
   const trip = browserTrip({ title: "Prior accepted edit" });
   const prior = saveTripRecoveryToStorage(storage, trip, { writeId: "before-readback" });
@@ -1501,19 +1501,20 @@ test("a recovered quota attempt does not mask a later unconfirmed recovery readb
   const nativeGet = storage.getItem.bind(storage);
   storage.getItem = key => key === targetKey ? null : nativeGet(key);
   const result = saveTripRecoveryToStorage(storage, { ...trip, title: "Unconfirmed edit" }, { replace: prior.handle, writeId: "unconfirmed-after-quota" });
-  assert.equal(attempts, 2);
-  assert.notEqual(storage.peek(targetKey), null);
+  assert.equal(attempts, 1);
+  assert.equal(storage.peek(targetKey), null);
+  assert.notEqual(storage.peek(cacheKey), null);
   assert.equal(storage.peek(priorKey), before);
   assert.equal(result.stored, false);
   assert.equal(result.writeAttempted, true);
-  assert.equal(result.readbackConfirmed, false);
-  assert.equal(result.failureBoundary, "recovery-readback");
-  assert.equal(result.nativeFailure, undefined);
-  assert.equal(result.failureReason, "unknown");
-  assert.equal(result.outcome, "unknown");
+  assert.equal(result.readbackConfirmed, undefined);
+  assert.equal(result.failureBoundary, "recovery-write");
+  assert.equal(result.nativeFailure, "quota");
+  assert.equal(result.failureReason, "device-unavailable");
+  assert.equal(result.outcome, "native-write-failed");
 });
 
-test("quota exhaustion reports failure after clean eviction and leaves the prior recovery intact", () => {
+test("quota exhaustion reports failure without eviction and leaves the prior recovery intact", () => {
   const storage = new MemoryBrowserStorage();
   const trip = browserTrip({ id: "trip-quota-failure", title: "Previously safe edit" });
   const clean = browserTrip({ id: "trip-expendable", title: "Expendable cache" });
@@ -1529,7 +1530,7 @@ test("quota exhaustion reports failure after clean eviction and leaves the prior
   );
 
   assert.equal(replacement.stored, false);
-  assert.equal(loadCachedTripFromStorage(storage, clean.id, "owner-a"), null);
+  assert.equal(loadCachedTripFromStorage(storage, clean.id, "owner-a")?.id, clean.id);
   assert.equal(loadTripRecoveryFromStorage(storage, trip.id, "owner-a")?.trip.title, "Previously safe edit");
   assert.equal(loadTripRecoveryFromStorage(storage, trip.id, "owner-a")?.writeId, "safe-write");
 });
@@ -1664,13 +1665,14 @@ test("cross-tab storage matching is scoped to exact owner and trip keys", () => 
 });
 
 test("service worker advances public documents online and reopens the planner shell offline", async () => {
-  const source = readFileSync(new URL("../public/easyt-sw.js", import.meta.url), "utf8");
+  const dependencySource = readFileSync(new URL("../public/easyt-offline-dependencies.js", import.meta.url), "utf8");
+  const source = dependencySource + "\n" + readFileSync(new URL("../public/easyt-sw.js", import.meta.url), "utf8");
   const listeners = new Map<string, (event: unknown) => void>();
-  const floor = "idb-recovery-v1", commit = "a".repeat(40);
+  const floor = "idb-recovery-account-v1", commit = "a".repeat(40);
   const shell = (body: string) => `<!doctype html><meta name="morrovia-offline-reader" content="${floor}"><meta name="morrovia-build-commit" content="${commit}"><script src="/_next/static/chunks/planner.js"></script><div>${body}</div>`;
   const plannerShell = shell("offline planner shell");
   const asset = { url: "/_next/static/chunks/planner.js", sha256: createHash("sha256").update("planner dependency").digest("hex") };
-  const identity = { version: 1, readerFloor: floor, buildId: "fixture-build", buildCommit: commit, assets: [asset] };
+  const identity = { version: 1, readerFloor: floor, buildId: "fixture-build", buildCommit: commit, assets: [asset, { url: "/easyt-offline-dependencies.js", sha256: createHash("sha256").update(dependencySource).digest("hex") }] };
   const manifest = { ...identity, artifactId: createHash("sha256").update(JSON.stringify(identity)).digest("hex") };
   const cacheName = `easyt-public-shell-${floor}-${manifest.artifactId}`;
   const previous = new Map([["/_next/static/chunks/previous-client.js", new Response("old client dependency")]]);
@@ -1696,6 +1698,7 @@ test("service worker advances public documents online and reopens the planner sh
       if (installing) {
         assert.equal(options?.credentials, "omit");
         if (key(request) === asset.url) return new Response("planner dependency");
+        if (key(request) === "/easyt-offline-dependencies.js") return new Response(dependencySource);
         return new Response(key(request) === "/journey/plan" ? plannerShell : shell(key(request)), { headers: { "content-type": "text/html" } });
       }
       if (networkResponse) return networkResponse.clone();
@@ -1708,7 +1711,7 @@ test("service worker advances public documents online and reopens the planner sh
     assert.ok(work); await work;
   };
   await lifecycle("install"); assert.equal(skipWaitingCalls, 1);
-  assert.ok(rows.has(asset.url)); assert.ok(rows.has("/__morrovia_offline_ready__"));
+  assert.ok(rows.has(asset.url)); assert.ok(rows.has("/easyt-offline-dependencies.js")); assert.ok(rows.has("/__morrovia_offline_ready__"));
   await lifecycle("activate"); assert.equal(claimed, 1);
   assert.deepEqual(deletedCaches, [], "activation preserves every old graph");
   installing = false; cachedWrites.length = 0;

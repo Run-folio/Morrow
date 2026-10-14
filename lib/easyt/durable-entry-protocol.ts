@@ -1,6 +1,6 @@
 /** Scoped opaque bytes. App adapters must validate the existing input/receipt
  * codecs before interpreting payloads; storage retention is not receipt ACK. */
-export type RecoveryEntryScope = { ownerId: string | null; kind: 'homepage' | 'builder-input' | 'recovery-lifecycle' | 'recovery-claim'; tripId: string | null };
+export type RecoveryEntryScope = { ownerId: string | null; kind: 'homepage' | 'builder-input' | 'recovery-lifecycle' | 'recovery-claim' | 'browser-owner'; tripId: string | null };
 export type RecoveryEntryHandle = RecoveryEntryScope & { version: 1; backend: 'indexeddb-entry'; writeId: string };
 export type RecoveryEntryEnvelope = { version: 1; handle: RecoveryEntryHandle; parent: RecoveryEntryHandle | null;
   raw: string | null; legacyRaw: string | null; retainedPreviousRaw: string | null };
@@ -18,7 +18,7 @@ export const sameEntryScope = (a: RecoveryEntryScope, b: RecoveryEntryScope) => 
 export const sameEntryHandle = (a: RecoveryEntryHandle | null, b: RecoveryEntryHandle | null) => a === null || b === null ? a === b : sameEntryScope(a, b) && a.writeId === b.writeId;
 export function isEntryScope(v: unknown): v is Record<string, unknown> & RecoveryEntryScope {
   return object(v) && (v.ownerId === null || text(v.ownerId))
-    && (v.kind === 'homepage' ? v.tripId === null : (v.kind === 'builder-input'||v.kind==='recovery-lifecycle'||v.kind==='recovery-claim') && text(v.tripId));
+    && (v.kind === 'browser-owner' ? v.tripId === null && v.ownerId === null : v.kind === 'homepage' ? v.tripId === null : (v.kind === 'builder-input'||v.kind==='recovery-lifecycle'||v.kind==='recovery-claim') && text(v.tripId));
 }
 export function isEntryHandle(v: unknown): v is RecoveryEntryHandle {
   return isEntryScope(v) && v.version === 1 && v.backend === 'indexeddb-entry' && text(v.writeId)

@@ -287,46 +287,13 @@ function isQuotaError(error: unknown) {
   return named.name === "QuotaExceededError" || named.name === "NS_ERROR_DOM_QUOTA_REACHED" || named.code === 22 || named.code === 1014;
 }
 
-function cacheTimestamp(storage: EasyTBrowserStorage, key: string) {
-  const parsed = parseStored(safeGet(storage, key));
-  return isTripCacheRecord(parsed) ? Date.parse(parsed.cachedAt) || 0 : 0;
-}
-
-/** Recovery writes may evict expendable clean cache entries, never recovery. */
-function safeSet(storage: EasyTBrowserStorage, key: string, value: string, protectedKeys: string[] = [], onFailure?: (error: unknown) => void,
+/** Native refusal never authorizes implicit cache eviction. The async broker
+ * may admit a proven source to IDB after actual quota; every old copy stays. */
+function safeSet(storage: EasyTBrowserStorage, key: string, value: string, _protectedKeys: string[] = [], onFailure?: (error: unknown) => void,
   onDiagnosticOperation?: (operation: "setter" | "cleanup", accepted: boolean) => void) {
-  const observe = (operation: "setter" | "cleanup", accepted: boolean) => { try { onDiagnosticOperation?.(operation, accepted); } catch { /* Observation cannot enter the native failure branch. */ } };
-  try {
-    storage.setItem(key, value);
-    observe("setter", true);
-    return true;
-  } catch (error) {
-    onFailure?.(error);
-    observe("setter", false);
-    if (!isQuotaError(error)) return false;
-  }
-
-  const cacheKeys = safeKeys(storage)
-    .filter((candidate) => candidate.startsWith(EASYT_TRIP_CACHE_PREFIX)
-      && candidate !== key
-      && !protectedKeys.includes(candidate))
-    .sort((left, right) => cacheTimestamp(storage, left) - cacheTimestamp(storage, right));
-  for (const cacheKey of cacheKeys) {
-    let diagnosticOperation: "setter" | "cleanup" = "cleanup";
-    try {
-      storage.removeItem(cacheKey);
-      observe("cleanup", true);
-      diagnosticOperation = "setter";
-      storage.setItem(key, value);
-      observe("setter", true);
-      return true;
-    } catch (error) {
-      onFailure?.(error);
-      observe(diagnosticOperation, false);
-      if (!isQuotaError(error)) return false;
-    }
-  }
-  return false;
+  const observe=(accepted:boolean)=>{try{onDiagnosticOperation?.("setter",accepted);}catch{/* Observer cannot affect persistence. */}};
+  try { storage.setItem(key, value); observe(true); return true; }
+  catch (error) { onFailure?.(error); observe(false); return false; }
 }
 
 function safeRemove(storage: EasyTBrowserStorage, key: string) {
@@ -1297,26 +1264,53 @@ export async function loadActiveTrip(ownerId:string|null=null):Promise<EasyTTrip
   return legacy?loadLocalTrip(legacy.id,ownerId):null;
 }
 
-export function rememberLastOwner(ownerId: string) {
-  const storage = browserStorage();
-  const prior=storage?loadRememberedOwnerFromStorage(storage):null;
-  if(prior!==ownerId)invalidateBrowserRecoveryScope();
-  const remembered = storage ? rememberLastOwnerInStorage(storage, ownerId) : false;
-  if (remembered && typeof window !== "undefined") window.dispatchEvent(new Event(EASYT_LAST_OWNER_CHANGE_EVENT));
-  return remembered;
+let ownerAddressSequence = 0;
+let requestedAddress: string | null | undefined;
+let pendingAddress: Promise<boolean> | null = null;
+function writeRememberedAddress(ownerId: string | null): Promise<boolean> {
+  if (requestedAddress === ownerId && pendingAddress) return pendingAddress;
+  if (requestedAddress !== ownerId) invalidateBrowserRecoveryScope();
+  requestedAddress = ownerId;
+  const sequence = ++ownerAddressSequence;
+  const current = () => sequence === ownerAddressSequence;
+  const work = async () => {
+    try {
+      const { createDurableOwnerAddress } = await import('./durable-owner-address.ts');
+      const result = await createDurableOwnerAddress(browserRecoveryStorage(), await browserRecoveryDriver(), current).write(ownerId);
+      if (result.kind !== 'verified' || !current()) return false;
+      if (typeof window !== 'undefined') window.dispatchEvent(new Event(EASYT_LAST_OWNER_CHANGE_EVENT));
+      return true;
+    } catch { return false; }
+  };
+  const promise = work(); pendingAddress = promise;
+  void promise.finally(() => { if (pendingAddress === promise) pendingAddress = null; });
+  return promise;
 }
-
-export function loadRememberedOwner() {
-  const storage = browserStorage();
-  return storage ? loadRememberedOwnerFromStorage(storage) : null;
+export function rememberLastOwner(ownerId: string) { return writeRememberedAddress(ownerId); }
+export async function loadRememberedOwner(): Promise<string | null> {
+  const sequence = ownerAddressSequence;
+  try {
+    const { createDurableOwnerAddress } = await import('./durable-owner-address.ts');
+    const result = await createDurableOwnerAddress(browserRecoveryStorage(), await browserRecoveryDriver(), () => sequence === ownerAddressSequence).read();
+    return sequence === ownerAddressSequence && result.kind === 'ready' ? result.ownerId : null;
+  } catch { return null; }
 }
-
 export function forgetRememberedOwner() {
-  const storage = browserStorage();
-  invalidateBrowserRecoveryScope();
-  const forgotten = storage ? forgetRememberedOwnerInStorage(storage) : false;
-  if (forgotten && typeof window !== "undefined") window.dispatchEvent(new Event(EASYT_LAST_OWNER_CHANGE_EVENT));
-  return forgotten;
+  // Retire pending address writes synchronously. Clearing this noncredential
+  // native hint preserves the existing sign-out fence, never any trip bytes.
+  ownerAddressSequence++; invalidateBrowserRecoveryScope(); requestedAddress = undefined;
+  const storage = browserStorage(); if (storage) forgetRememberedOwnerInStorage(storage);
+  return writeRememberedAddress(null);
+}
+/** Subscribers cannot install an older async result after another refresh or unmount. */
+export function observeRememberedOwner(publish: (owner: string | null) => void, ready?: () => void) {
+  let active = true, revision = 0;
+  return {
+    refresh: () => { const requested = ++revision; void loadRememberedOwner().then(owner => {
+      if (!active || requested !== revision) return; publish(owner); ready?.();
+    }); },
+    dispose: () => { active = false; revision++; },
+  };
 }
 
 export async function loadTripRecovery(tripId:string,ownerId:string|null):Promise<TripRecoveryRecord|null> {

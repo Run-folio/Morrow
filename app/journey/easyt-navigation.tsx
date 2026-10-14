@@ -18,6 +18,8 @@ import {
 import { authClient } from "@/lib/auth-client";
 import { identifyAnalyticsUser, resetAnalyticsIdentity } from "@/lib/analytics";
 import { beginNewTripNavigation, forgetRememberedOwner, rememberLastOwner } from "@/lib/easyt/storage";
+import { completeOwnerSignOut } from "@/lib/easyt/durable-owner-address";
+import { MorroviaBriefNotice } from "@/components/easyt/morrovia-feedback";
 import { EasyTLinkButton } from "@/components/easyt/easyt-controls";
 import MorroviaBrandLogo from "@/components/morrovia-brand-logo";
 import EasyTProductTour from "@/components/easyt/easyt-product-tour";
@@ -48,6 +50,7 @@ export default function EasyTNavigation({
   const [language, setLanguage] = useState<Language>("en");
   const [isAdmin, setIsAdmin] = useState(false);
   const [signOutBusy, setSignOutBusy] = useState(false);
+  const [signOutFailed, setSignOutFailed] = useState(false);
   const accountMenuRef = useRef<HTMLDetailsElement>(null);
   const compactMenuRef = useRef<HTMLDetailsElement>(null);
   const activeAccount = sessionPending
@@ -118,15 +121,13 @@ export default function EasyTNavigation({
   const signOut = async () => {
     // Remove the offline address hint before the session is cleared so a cold
     // signed-out shell cannot reopen the previous account's local documents.
-    setSignOutBusy(true);
-    forgetRememberedOwner();
+    setSignOutBusy(true); setSignOutFailed(false);
     try {
-      await authClient.signOut();
-      resetAnalyticsIdentity();
-    } finally {
-      setSignOutBusy(false);
-      window.location.assign("/journey/login");
-    }
+      const finished = await completeOwnerSignOut(forgetRememberedOwner, async () => { await authClient.signOut(); });
+      if (!finished) { setSignOutFailed(true); return; }
+      resetAnalyticsIdentity(); window.location.assign("/journey/login");
+    } catch { setSignOutFailed(true); }
+    finally { setSignOutBusy(false); }
   };
 
   const beginNewTrip = async (event: ReactMouseEvent<HTMLAnchorElement>) => {
@@ -241,6 +242,7 @@ export default function EasyTNavigation({
         </details>
       </nav>
       </header>
+      {signOutFailed ? <MorroviaBriefNotice tone="danger" variant="toast" title={language === "es" ? "No se pudo cerrar la sesión" : "Couldn't finish signing out"} detail={language === "es" ? "La sesión sigue abierta. Inténtalo de nuevo." : "You are still signed in. Please try again."} onDismiss={() => setSignOutFailed(false)} /> : null}
       <EasyTProductTour showTrigger={false} listenForOpen />
     </>
   );

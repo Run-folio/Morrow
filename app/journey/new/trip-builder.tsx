@@ -25,7 +25,7 @@ import {
 import { useSearchParams } from "next/navigation";
 import dynamic from "next/dynamic";
 import { useCallback, useEffect, useLayoutEffect, useId, useMemo, useRef, useState, type DragEvent as ReactDragEvent } from "react";
-import { acknowledgeTripBuildSave, cacheCanonicalTrip, deferNewTripNavigation, canUseHydratedTripScope, claimGuestTripRecoveryForOwner, EASYT_BEFORE_NEW_TRIP_EVENT, EASYT_LAST_OWNER_CHANGE_EVENT, EASYT_LAST_OWNER_KEY, EasyTTripAuthError, EasyTTripPromotionConflictError, EasyTTripSaveConflictError, forgetRememberedOwner, loadActiveTrip, loadCurrentDraftRecovery, loadRememberedOwner, loadRequestedTrip, loadTripRecovery, markTripRecoveryState, ownerIdForBrowserRecovery, rememberLastOwner, saveTripRecovery, saveTripRecoveryToEasyT, sameRecoveryDocument, shouldAllowNewTripNavigation, tripDocumentsCanonicalEquivalent, type TripRecoveryHandle, type TripRecoveryWriteResult } from "@/lib/easyt/storage";
+import { acknowledgeTripBuildSave, cacheCanonicalTrip, deferNewTripNavigation, canUseHydratedTripScope, claimGuestTripRecoveryForOwner, EASYT_BEFORE_NEW_TRIP_EVENT, EASYT_LAST_OWNER_CHANGE_EVENT, EASYT_LAST_OWNER_KEY, EasyTTripAuthError, EasyTTripPromotionConflictError, EasyTTripSaveConflictError, forgetRememberedOwner, loadActiveTrip, loadCurrentDraftRecovery, loadRememberedOwner, observeRememberedOwner, loadRequestedTrip, loadTripRecovery, markTripRecoveryState, ownerIdForBrowserRecovery, rememberLastOwner, saveTripRecovery, saveTripRecoveryToEasyT, sameRecoveryDocument, shouldAllowNewTripNavigation, tripDocumentsCanonicalEquivalent, type TripRecoveryHandle, type TripRecoveryWriteResult } from "@/lib/easyt/storage";
 import { canonicalTripStopIdentityMap, tripBuildDocumentsCanonicalEquivalent } from "@/lib/easyt/trip-promotion";
 import { type BuilderAcceptedEdit, type BuilderStructuralSnapshot } from "@/lib/easyt/trip-builder-edit";
 import { builderNightsCommand, builderRemoveCommand, builderPlaceCommand, builderDetailsCommands } from "@/lib/easyt/trip-builder-handler-contract";
@@ -1012,19 +1012,20 @@ function TripBuilderDocument() {
   useEffect(() => () => handoffLookupSessionRef.current?.controller.abort(), []);
 
   useEffect(() => {
-    const updateRememberedOwner = () => setRememberedOwnerId(loadRememberedOwner());
+    const observer = observeRememberedOwner(setRememberedOwnerId, () => setBrowserContextReady(true));
+    const updateRememberedOwner = observer.refresh;
     const updateConnectivity = () => setBrowserOffline(window.navigator.onLine === false);
     const onStorage = (event: StorageEvent) => {
       if (event.key === EASYT_LAST_OWNER_KEY) updateRememberedOwner();
     };
     updateRememberedOwner();
     updateConnectivity();
-    setBrowserContextReady(true);
     window.addEventListener("online", updateConnectivity);
     window.addEventListener("offline", updateConnectivity);
     window.addEventListener(EASYT_LAST_OWNER_CHANGE_EVENT, updateRememberedOwner);
     window.addEventListener("storage", onStorage);
     return () => {
+      observer.dispose();
       window.removeEventListener("online", updateConnectivity);
       window.removeEventListener("offline", updateConnectivity);
       window.removeEventListener(EASYT_LAST_OWNER_CHANGE_EVENT, updateRememberedOwner);

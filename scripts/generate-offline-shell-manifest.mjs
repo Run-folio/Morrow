@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import dependencies from '../public/easyt-offline-dependencies.js';
 import { MORROVIA_OFFLINE_READER_FLOOR } from '../lib/easyt/offline-reader-floor.ts';
 
 // HTML omits lazy chunks. Only public build files, never user/API responses.
@@ -38,15 +39,15 @@ export function writeOfflineShellManifest(root, dist = '.next') {
   };
   walk(staticRoot);
   if (!assets.length) throw new Error('Offline client graph is empty');
-  for (const url of ['/easyt-icon.svg', '/maplibre/maplibre-gl-worker.mjs']) add(url, path.join(root, 'public', url.slice(1)));
+  for (const url of ['/easyt-offline-dependencies.js', '/easyt-icon.svg', '/maplibre/maplibre-gl-worker.mjs']) add(url, path.join(root, 'public', url.slice(1)));
   assets.sort((a, b) => a.url.localeCompare(b.url, 'en'));
   const assetUrls = new Set(assets.map(asset => asset.url));
   for (const route of ['journey/new', 'journey/plan']) {
     const html = fs.readFileSync(path.join(buildRoot, 'server/app', route + '.html'), 'utf8');
     if (!html.includes(`name="morrovia-offline-reader" content="${MORROVIA_OFFLINE_READER_FLOOR}"`)
       || !html.includes(`name="morrovia-build-commit" content="${buildCommit}"`)) throw new Error('Offline shell reader/build marker missing: ' + route);
-    for (const match of html.matchAll(/\/_next\/static\/[^"'\\\s<]+/g)) {
-      const url = canonicalAssetPath(match[0].replaceAll('&amp;', '&').split(/[?#]/)[0]);
+    for (const raw of dependencies.extract(html)) {
+      const url = canonicalAssetPath(raw);
       if (!url) throw new Error('Unsafe offline HTML dependency');
       if (!assetUrls.has(url)) throw new Error('Offline shell dependency missing: ' + url);
     }

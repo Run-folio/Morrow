@@ -26,6 +26,8 @@ export type RecoveryEnvelope = {
     receipt: (RecoveryScope & { operationId: string; raw: string }) | null;
     /** Exact older native navigation observed at admission; no locator write is required. */
     nativePointerRaw?: string | null;
+    /** Exact canonical cache observed at first existing-trip admission. */
+    nativeCacheRaw?: string;
     /** Paired local claim proof; never a credential or an account ACK. */
     claim?: { source: RecoveryHandle; claimId: string };
   };
@@ -238,10 +240,16 @@ export function decodeRecoveryEnvelope(raw: unknown, scope: RecoveryScope): Doma
     if (value.version !== 1) return { kind: 'schema' };
     if (!keys(value, ['version', 'handle', 'parent', 'rawRecovery', 'legacySources', 'entry']) || !isDomainHandle(value.handle)
       || !(value.parent === null || isDomainHandle(value.parent)) || !Array.isArray(value.legacySources)
-      || !record(value.entry) || !keys(value.entry, ['pointer', 'input', 'receipt', ...('nativePointerRaw' in value.entry ? ['nativePointerRaw'] : []), ...('claim' in value.entry ? ['claim'] : [])])
+      || !record(value.entry) || !keys(value.entry, ['pointer', 'input', 'receipt', ...('nativePointerRaw' in value.entry ? ['nativePointerRaw'] : []), ...('claim' in value.entry ? ['claim'] : []), ...('nativeCacheRaw' in value.entry ? ['nativeCacheRaw'] : [])])
       || 'nativePointerRaw' in value.entry && value.entry.nativePointerRaw !== null && typeof value.entry.nativePointerRaw !== 'string'
       || !isDomainHandle(value.entry.pointer)) return { kind: 'corrupt' };
     const handle = value.handle;
+    if ('nativeCacheRaw' in value.entry) {
+      if (typeof value.entry.nativeCacheRaw !== 'string') return {kind:'corrupt'};
+      let cache:unknown;try{cache=JSON.parse(value.entry.nativeCacheRaw);}catch{return {kind:'corrupt'};}
+      if(!record(cache)||cache.version!==2||cache.ownerId!==scope.ownerId||cache.tripId!==scope.tripId||typeof cache.cachedAt!=='string')return {kind:'scope'};
+      const cached=readTripDocument(cache.trip);if(cached.kind!=='readable'||cached.trip.ownerId!==scope.ownerId||cached.trip.id!==scope.tripId)return {kind:'scope'};
+    }
     if ('claim' in value.entry) {
       const claim = value.entry.claim;
       if (!record(claim) || !keys(claim, ['source', 'claimId']) || !isDomainHandle(claim.source)

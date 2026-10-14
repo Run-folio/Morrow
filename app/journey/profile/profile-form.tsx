@@ -13,7 +13,7 @@ import { easytCopy } from "@/lib/easyt/i18n";
 import { type TravelProfile } from "@/lib/easyt/travel-profile";
 import { type TravelReadinessProfile } from "@/lib/easyt/travel-readiness";
 import { ownerBoundaryState, travelProfileStorageKey, travelReadinessStorageKey } from "@/lib/easyt/private-browser-context";
-import { EASYT_LAST_OWNER_KEY, loadRememberedOwner } from "@/lib/easyt/storage";
+import { EASYT_LAST_OWNER_KEY, loadRememberedOwner, observeRememberedOwner } from "@/lib/easyt/storage";
 import { journeyReauthenticationPath } from "@/lib/easyt/trip-continuity";
 import { tripInterestIds, tripInterestLabels, type TripInterest } from "@/lib/easyt/trip-interest";
 
@@ -145,10 +145,12 @@ export default function ProfileForm({
 
   const boundary = ownerBoundaryState({ renderedOwnerId: ownerId, sessionOwnerId: session?.user?.id, rememberedOwnerId, sessionPending, previouslyAuthenticatedOwnerId: authenticatedOwnerRef.current });
   useEffect(() => {
-    const refreshOwner = () => setRememberedOwnerId(loadRememberedOwner());
+    const observer = observeRememberedOwner(setRememberedOwnerId);
+    const refreshOwner = observer.refresh;
     const onStorage = (event: StorageEvent) => { if (event.key === EASYT_LAST_OWNER_KEY) refreshOwner(); };
+    refreshOwner();
     window.addEventListener("storage", onStorage);
-    return () => window.removeEventListener("storage", onStorage);
+    return () => { observer.dispose(); window.removeEventListener("storage", onStorage); };
   }, []);
   useEffect(() => {
     if (boundary === "mismatch") window.location.reload();

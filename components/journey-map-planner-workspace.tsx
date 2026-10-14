@@ -30,7 +30,7 @@ import type { TripMutationPersistence } from "@/components/easyt/use-trip-mutati
 import ResilientImage from "@/components/easyt/resilient-image";
 import { journeyCalendar, journeyDayMedia, journeyDetails, journeyMedia, march2027Journey, type JourneyCalendarDay, type JourneyLeg, type JourneyRestaurant, type JourneyStop, type RestaurantMeal } from "@/lib/journey";
 import { getCountryIntelligence } from "@/lib/country-intelligence";
-import { acknowledgeTripBuildSave, cacheCanonicalTrip, deferNewTripNavigation, canUseHydratedTripScope, claimGuestTripRecoveryForOwner, EASYT_BEFORE_NEW_TRIP_EVENT, EASYT_LAST_OWNER_CHANGE_EVENT, EASYT_LAST_OWNER_KEY, EasyTTripAuthError, EasyTTripPromotionConflictError, EasyTTripSaveConflictError, forgetRememberedOwner, loadActiveTrip, loadLocalTrip, loadRememberedOwner, loadTripFromEasyT, loadTripRecovery, markTripRecoveryState, ownerIdForBrowserRecovery, rememberLastOwner, saveTripRecovery, saveTripRecoveryToEasyT, subscribeToTripStorage, type TripRecoveryHandle } from "@/lib/easyt/storage";
+import { acknowledgeTripBuildSave, cacheCanonicalTrip, deferNewTripNavigation, canUseHydratedTripScope, claimGuestTripRecoveryForOwner, EASYT_BEFORE_NEW_TRIP_EVENT, EASYT_LAST_OWNER_CHANGE_EVENT, EASYT_LAST_OWNER_KEY, EasyTTripAuthError, EasyTTripPromotionConflictError, EasyTTripSaveConflictError, forgetRememberedOwner, loadActiveTrip, loadLocalTrip, loadRememberedOwner, observeRememberedOwner, loadTripFromEasyT, loadTripRecovery, markTripRecoveryState, ownerIdForBrowserRecovery, rememberLastOwner, saveTripRecovery, saveTripRecoveryToEasyT, subscribeToTripStorage, type TripRecoveryHandle } from "@/lib/easyt/storage";
 import { canApplyCanonicalCopilotChange, tripEditorSyncAction, tripSyncRecoveryPath, tripSyncSignInPath } from "@/lib/easyt/trip-continuity";
 import { createTripMutationPersistenceQueue, mergeTripMutationDocuments } from "@/lib/easyt/trip-mutation-persistence";
 import { addMappedPlaceToTrip, removeMappedPlaceFromTrip } from "@/lib/easyt/map-place-itinerary";
@@ -857,7 +857,8 @@ export function JourneyMapPlannerWorkspace({
     return () => window.removeEventListener("easyt-language-change", updateLanguage);
   }, []);
   useEffect(() => {
-    const updateRememberedOwner = () => setRememberedOwnerId(loadRememberedOwner());
+    const observer = observeRememberedOwner(setRememberedOwnerId);
+    const updateRememberedOwner = observer.refresh;
     updateRememberedOwner();
     const updateConnectivity = () => setBrowserOffline(window.navigator.onLine === false);
     updateConnectivity();
@@ -869,6 +870,7 @@ export function JourneyMapPlannerWorkspace({
     };
     window.addEventListener("storage", onStorage);
     return () => {
+      observer.dispose();
       window.removeEventListener("online", updateConnectivity);
       window.removeEventListener("offline", updateConnectivity);
       window.removeEventListener(EASYT_LAST_OWNER_CHANGE_EVENT, updateRememberedOwner);
