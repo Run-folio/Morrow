@@ -42,6 +42,7 @@ export const EASYT_ACTIVE_TRIP_KEY = "easyt:active-trip:v1";
 export const EASYT_ACTIVE_TRIP_CHANGE_EVENT = "easyt-active-trip-change";
 export const EASYT_TRIP_STORAGE_CHANGE_EVENT = "easyt-trip-storage-change";
 export const EASYT_BEFORE_NEW_TRIP_EVENT = "easyt-before-new-trip";
+export const EASYT_NEW_TRIP_INPUT_CHANGE_EVENT = "easyt-new-trip-input-change";
 export const EASYT_LAST_OWNER_CHANGE_EVENT = "easyt-last-owner-change";
 export const EASYT_TRIP_CACHE_PREFIX = "easyt:trip-cache:v2:";
 export const EASYT_TRIP_RECOVERY_PREFIX = "easyt:trip-recovery:v2:";

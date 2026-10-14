@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import { EASYT_NEW_TRIP_INPUT_CHANGE_EVENT } from "@/lib/easyt/storage";
 import type { NewTripNavigationRecoveryAcknowledgement } from "@/lib/easyt/storage";
 
 /** Keep one preservation request attached to its mounted owner and source. */
@@ -14,7 +15,10 @@ export function useNewTripNavigationScope(getOwnerId: () => string | null, inten
   const pendingRef = useRef<object | null>(null);
   useEffect(() => {
     mountedRef.current = true;
-    return () => { mountedRef.current = false; pendingRef.current = null; };
+    const retireForInput = () => { latestRef.current.generation++; };
+    window.addEventListener(EASYT_NEW_TRIP_INPUT_CHANGE_EVENT, retireForInput);
+    return () => { mountedRef.current = false; pendingRef.current = null;
+      window.removeEventListener(EASYT_NEW_TRIP_INPUT_CHANGE_EVENT, retireForInput); };
   }, []);
 
   return { start() {

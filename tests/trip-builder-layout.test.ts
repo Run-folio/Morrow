@@ -54,7 +54,7 @@ function acceptedHomepageDraft(mode: "direct" | "area" | "describe") {
   };
 }
 
-test("a useful route requires a valid stop occurrence, independently of endpoint context", () => {
+test("a useful route requires a valid stop occurrence, independently of endpoint context", async () => {
   assert.equal(hasUsefulRouteSkeleton([]), false);
   const stop = { id: "tokyo-first", name: "Tokyo", country: "Japan", canonicalPlaceId: "tokyo" };
   assert.equal(hasUsefulRouteSkeleton([stop]), true);
@@ -172,7 +172,7 @@ browserTest("legacy step query cannot switch an empty Builder into timing and pr
   } finally { await view.close(); }
 });
 
-test("Builder workspace height and capture width remain content-driven", () => {
+test("Builder workspace height and capture width remain content-driven", async () => {
   const builder = readFileSync(new URL("../app/journey/new/trip-builder.tsx", import.meta.url), "utf8");
   const styles = readFileSync(new URL("../app/journey/new/trip-builder.module.css", import.meta.url), "utf8");
   const handoffShell = styles.slice(styles.indexOf(".homepageHandoff {"), styles.indexOf(".homepageHandoff .steps"));
@@ -195,7 +195,7 @@ test("Builder workspace height and capture width remain content-driven", () => {
     "the unified Builder must not reserve an empty column for a removed summary rail");
 });
 
-test("desktop Builder uses the approved wide workspace without changing tablet and mobile breakpoints", () => {
+test("desktop Builder uses the approved wide workspace without changing tablet and mobile breakpoints", async () => {
   const pageStyles = readFileSync(new URL("../app/journey/new/new-trip.module.css", import.meta.url), "utf8");
   const styles = readFileSync(new URL("../app/journey/new/trip-builder.module.css", import.meta.url), "utf8");
   const desktopStart = styles.lastIndexOf("@media (min-width: 1025px)");
@@ -215,7 +215,7 @@ test("desktop Builder uses the approved wide workspace without changing tablet a
     "the visual elevation must not rewrite the existing tablet or mobile rules");
 });
 
-test("the unified route workspace projects canonical occurrences beside the map", () => {
+test("the unified route workspace projects canonical occurrences beside the map", async () => {
   const builder = readFileSync(new URL("../app/journey/new/trip-builder.tsx", import.meta.url), "utf8");
   const workspace = readFileSync(new URL("../app/journey/new/trip-builder-route-workspace.tsx", import.meta.url), "utf8");
   const styles = readFileSync(new URL("../app/journey/new/trip-builder.module.css", import.meta.url), "utf8");
@@ -253,7 +253,7 @@ test("the unified route workspace projects canonical occurrences beside the map"
     "the unified workspace should not impose a fixed width that can overflow narrow fixtures");
 });
 
-test("versioned homepage hydration reserves identity before replay and keeps one Builder document owner", () => {
+test("versioned homepage hydration reserves identity before replay and keeps one Builder document owner", async () => {
   const builder = readFileSync(new URL("../app/journey/new/trip-builder.tsx", import.meta.url), "utf8");
   assert.match(builder, /homepageHandoffReceiptForOwner\(homeDraft, activeOwnerId\)/);
   assert.match(builder, /setTripId\(homepageReceipt\.tripId\)/);
@@ -264,7 +264,7 @@ test("versioned homepage hydration reserves identity before replay and keeps one
   assert.equal((builder.match(/function TripBuilderDocument\(/g) ?? []).length, 1);
 });
 
-test("homepage lookup cannot overwrite a newer point when its seed had no coordinates", () => {
+test("homepage lookup cannot overwrite a newer point when its seed had no coordinates", async () => {
   const h = actualCallbackHarness();
   const seed = h.scope.seedById.get(h.before.stops[0].id);
   assert.equal(seed.coordinates, undefined);
@@ -274,7 +274,7 @@ test("homepage lookup cannot overwrite a newer point when its seed had no coordi
   assert.equal(newer.stops[0].name, seed.name);
   assert.equal(newer.stops[0].canonicalPlaceId, seed.canonicalPlaceId);
   assert.equal(newer.stops[0].geographicBinding, undefined, "coordinate presence must matter independently of evidence");
-  h.send(lima.choices);
+  await h.send(lima.choices);
   assert.equal(h.accepted(), 0, "a held provider response must not apply another edit");
   assert.deepEqual(h.trip(), newer, "newer point, evidence, occurrence IDs, nights and manual authority remain intact");
 });
@@ -284,18 +284,18 @@ for (const [field, place] of [
   ["country", { country: "Chile" }],
   ["canonical identity", { canonicalPlaceId: "open-world:replacement-lima" }],
   ["provider identity", { providerId: "replacement-provider" }],
-] as const) test(`homepage lookup preserves a later authoritative ${field} change`, () => {
+] as const) test(`homepage lookup preserves a later authoritative ${field} change`, async () => {
   // A provider-only identity can accept a country correction. The catalogue
   // Lima identity correctly refuses a contradictory country before this guard.
   const h = actualCallbackHarness(lima.expected.coordinates, field === "country" ? "open-world:fixture-lima" : "lima");
   h.changePlace(place);
   const newer = structuredClone(h.trip());
-  h.send(lima.choices);
+  await h.send(lima.choices);
   assert.equal(h.accepted(), 0);
   assert.deepEqual(h.trip(), newer, "stale enrichment cannot rewrite the changed target or its sibling state");
 });
 
-test("homepage lookup cannot overwrite newer evidence at an identical identity, provider and point", () => {
+test("homepage lookup cannot overwrite newer evidence at an identical identity, provider and point", async () => {
   const h = actualCallbackHarness(lima.expected.coordinates);
   const seed = h.scope.seedById.get(h.before.stops[0].id);
   assert.equal(seed.geographicBinding, undefined);
@@ -307,15 +307,15 @@ test("homepage lookup cannot overwrite newer evidence at an identical identity, 
   assert.equal(target.name, seed.name); assert.equal(target.country, seed.country);
   assert.equal(target.canonicalPlaceId, seed.canonicalPlaceId); assert.equal(target.providerId, seed.providerId);
   assert.deepEqual(target.coordinates, seed.coordinates);
-  h.send(lima.choices);
+  await h.send(lima.choices);
   assert.equal(h.accepted(), 0, "evidence alone changes the authoritative target");
   assert.deepEqual(h.trip(), newer);
 });
 
-test("homepage target guard allows an unchanged target after an unrelated accepted budget edit", () => {
+test("homepage target guard allows an unchanged target after an unrelated accepted budget edit", async () => {
   const h = actualCallbackHarness();
   h.scope.dispatchAcceptedBuilderEdit({ kind: "budget", budget: "high" }, { expectedInputRevision: 1 });
-  h.send(lima.choices);
+  await h.send(lima.choices);
   assert.equal(h.accepted(), 2, "both sibling edit and compatible enrichment must be accepted");
   assert.equal(h.trip().brief.budgetBand, "high");
   assert.deepEqual([h.trip().stops[0].longitude, h.trip().stops[0].latitude], lima.expected.coordinates);
@@ -328,7 +328,7 @@ test("before canonical hydration, homepage lookup preserves a newer point from a
   const h = actualCallbackHarness();
   h.changeCoordinates([-77.025, -12.04]);
   const editor = h.scope.builderEditSessionRef.current, newer = structuredClone(h.trip());
-  const result = h.sendBeforeCanonical(lima.choices);
+  const result = await h.sendBeforeCanonical(lima.choices);
   assert.deepEqual(result.after, result.before, "the pre-canonical setter must preserve the newer target too");
   assert.equal(h.scope.pendingHandoffOutcomes.length, 1);
   h.scope.builderEditSessionRef.current = editor;
@@ -343,7 +343,7 @@ test("before canonical hydration, identical-point newer evidence invalidates the
   assert.ok(confirmed?.geographicBinding);
   h.changePlace(confirmed);
   const editor = h.scope.builderEditSessionRef.current, newer = structuredClone(h.trip());
-  const result = h.sendBeforeCanonical(lima.choices);
+  const result = await h.sendBeforeCanonical(lima.choices);
   assert.deepEqual(result.after, result.before);
   h.scope.builderEditSessionRef.current = editor;
   await h.replayPending();
@@ -354,7 +354,7 @@ test("before canonical hydration, identical-point newer evidence invalidates the
 test("before canonical hydration, compatible homepage enrichment waits for its mounted canonical owner", async () => {
   const h = actualCallbackHarness();
   const editor = h.scope.builderEditSessionRef.current;
-  const result = h.sendBeforeCanonical(lima.choices);
+  const result = await h.sendBeforeCanonical(lima.choices);
   assert.equal(result.before[0].coordinates, undefined);
   assert.deepEqual(result.after, result.before, "optional lookup must not replace the reserved raw seed");
   assert.equal(h.scope.pendingHandoffOutcomes.length, 1);
@@ -368,7 +368,7 @@ test("before canonical hydration, compatible homepage enrichment waits for its m
   assert.deepEqual(h.trip().brief.intent.route.orderedStopIds, h.before.brief.intent.route.orderedStopIds);
 });
 
-test("a fatal initial map failure leaves the route workspace usable", () => {
+test("a fatal initial map failure leaves the route workspace usable", async () => {
   const workspace = readFileSync(new URL("../app/journey/new/trip-builder-route-workspace.tsx", import.meta.url), "utf8");
   const map = readFileSync(new URL("../components/journey-planner-map.tsx", import.meta.url), "utf8");
 
@@ -385,7 +385,7 @@ test("a fatal initial map failure leaves the route workspace usable", () => {
     "only this Builder map owner should decide whether to show its fallback");
 });
 
-test("Builder spacing and healthy route copy use the focused production treatment", () => {
+test("Builder spacing and healthy route copy use the focused production treatment", async () => {
   const page = readFileSync(new URL("../app/journey/new/page.tsx", import.meta.url), "utf8");
   const pageStyles = readFileSync(new URL("../app/journey/new/new-trip.module.css", import.meta.url), "utf8");
   const builder = readFileSync(new URL("../app/journey/new/trip-builder.tsx", import.meta.url), "utf8");
@@ -418,7 +418,7 @@ test("Builder spacing and healthy route copy use the focused production treatmen
     "an actionable transport constraint warning should remain visible");
 });
 
-test("the Journey shell and immersive closing share one production footer owner", () => {
+test("the Journey shell and immersive closing share one production footer owner", async () => {
   const layout = readFileSync(new URL("../app/journey/layout.tsx", import.meta.url), "utf8");
   const shellStyles = readFileSync(new URL("../app/journey/journey-design.css", import.meta.url), "utf8");
   const closing = readFileSync(new URL("../app/journey/home/immersive/closing-chapter.tsx", import.meta.url), "utf8");
@@ -437,7 +437,7 @@ test("the Journey shell and immersive closing share one production footer owner"
     "Storybook should render the exact production footer component");
 });
 
-test("clarification presentation separates action-required geography from confirmed stay bases", () => {
+test("clarification presentation separates action-required geography from confirmed stay bases", async () => {
   const builder = readFileSync(new URL("../app/journey/new/trip-builder.tsx", import.meta.url), "utf8");
   const styles = readFileSync(new URL("../app/journey/new/trip-builder.module.css", import.meta.url), "utf8");
   const dialog = readFileSync(new URL("../components/easyt/builder-clarification-dialog.tsx", import.meta.url), "utf8");
@@ -464,7 +464,7 @@ test("clarification presentation separates action-required geography from confir
     "confirmed base cards should stack at narrow widths");
 });
 
-test("the activated Builder keeps one compact details and validation hierarchy", () => {
+test("the activated Builder keeps one compact details and validation hierarchy", async () => {
   const builder = readFileSync(new URL("../app/journey/new/trip-builder.tsx", import.meta.url), "utf8");
   const details = readFileSync(new URL("../app/journey/new/trip-builder-details-editor.tsx", import.meta.url), "utf8");
 
@@ -494,7 +494,7 @@ test("the activated Builder keeps one compact details and validation hierarchy",
     "a cloud-backed Builder with newer device edits must keep its recovery scope across refresh");
 });
 
-test("Journey is the only Add stop entry point after a route exists", () => {
+test("Journey is the only Add stop entry point after a route exists", async () => {
   const builder = readFileSync(new URL("../app/journey/new/trip-builder.tsx", import.meta.url), "utf8");
   const workspace = readFileSync(new URL("../app/journey/new/trip-builder-route-workspace.tsx", import.meta.url), "utf8");
 
@@ -506,7 +506,7 @@ test("Journey is the only Add stop entry point after a route exists", () => {
     "the Route workspace must not duplicate the Journey Add stop action");
 });
 
-test("night allocation is compact Route metadata instead of a separate band", () => {
+test("night allocation is compact Route metadata instead of a separate band", async () => {
   const builder = readFileSync(new URL("../app/journey/new/trip-builder.tsx", import.meta.url), "utf8");
   const workspace = readFileSync(new URL("../app/journey/new/trip-builder-route-workspace.tsx", import.meta.url), "utf8");
 
@@ -522,7 +522,7 @@ test("night allocation is compact Route metadata instead of a separate band", ()
     "Route metadata must use the tested canonical count and allocation-state wording");
 });
 
-test("Builder hierarchy has production Storybook coverage at every required width", () => {
+test("Builder hierarchy has production Storybook coverage at every required width", async () => {
   const stories = readFileSync(new URL("../app/journey/new/trip-builder-review.stories.tsx", import.meta.url), "utf8");
   const styles = readFileSync(new URL("../app/journey/new/trip-builder.module.css", import.meta.url), "utf8");
   const autocompleteStyles = readFileSync(new URL("../components/easyt/canonical-place-autocomplete.module.css", import.meta.url), "utf8");
@@ -541,7 +541,7 @@ test("Builder hierarchy has production Storybook coverage at every required widt
     "mobile journey commit controls should retain full touch targets");
 });
 
-test("night allocation reads canonical arrival and departure transfer impacts", () => {
+test("night allocation reads canonical arrival and departure transfer impacts", async () => {
   const builder = readFileSync(new URL("../app/journey/new/trip-builder.tsx", import.meta.url), "utf8");
 
   assert.match(builder, /transferImpactFromMetadata\(builderCanonicalLegs\.find\(\(leg\) => leg\.toStopId === stop\.id\)\?\.routeMetadata\.transferImpact\)/,
@@ -554,7 +554,7 @@ test("night allocation reads canonical arrival and departure transfer impacts", 
     "the route-metadata wrapper is not itself a transfer impact");
 });
 
-test("manual night edits use canonical rebalance, durable stop intent and shared feedback", () => {
+test("manual night edits use canonical rebalance, durable stop intent and shared feedback", async () => {
   const builder = readFileSync(new URL("../app/journey/new/trip-builder.tsx", import.meta.url), "utf8");
   const trip = readFileSync(new URL("../lib/easyt/trip.ts", import.meta.url), "utf8");
   const storage = readFileSync(new URL("../lib/easyt/storage.ts", import.meta.url), "utf8");

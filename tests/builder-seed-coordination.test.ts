@@ -211,7 +211,7 @@ test('successful seed and exact handoff cannot relabel or clear protection from 
   assert.equal(f.scope.builderEntryFeedbackRef.current,'foreign-generation');
   const entry=f.scope.builderEntrySessionRef.current,session={},snapshot={trip:f.trip,browserOwnerId:null,recovery:f.handle,error:null};
   assert.equal(entry.handoff(session,snapshot),true);
-  Object.assign(f.scope,{mountedBuilder:{session,snapshot},currentBuilderEntry:entry,initialCloudSaveError:'Unrelated protection',buildNeedsReview:false});
+  Object.assign(f.scope,{mountedBuilder:{session,snapshot},currentBuilderEntry:entry,initialCloudSaveError:'Unrelated protection',buildNeedsReview:false,editNeedsReview:false});
   f.scope.builderEntryFeedbackRetired=value('builderEntryFeedbackRetired',f.scope);
   assert.equal(value('cloudSaveError',f.scope),'Unrelated protection');
   f.scope.builderEntryFeedbackRef.current=entry.key;f.scope.builderEntryFeedbackRetired=value('builderEntryFeedbackRetired',f.scope);

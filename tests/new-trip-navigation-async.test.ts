@@ -3,6 +3,7 @@ import test from 'node:test';
 import { readFileSync } from 'node:fs';
 import ts from 'typescript';
 import { durableBuilderRecoveryUrl } from '../lib/easyt/builder-durable-url.ts';
+import { EASYT_NEW_TRIP_INPUT_CHANGE_EVENT } from '../lib/easyt/storage.ts';
 import type { NewTripNavigationRecoveryAcknowledgement } from '../lib/easyt/storage.ts';
 type PreservationGuard = (acknowledgements?: readonly NewTripNavigationRecoveryAcknowledgement[]) => boolean;
 
@@ -35,7 +36,7 @@ function actualFunction(file: string, name: string, scope: Record<string, unknow
   } }).outputText;
   return new Function('scope', `with(scope){${script}return actual;}`)(scope) as (...args: unknown[]) => unknown;
 }
-function fixture(surface: Surface, preservation: (owner: string | null, guard?: PreservationGuard) => unknown,
+async function fixture(surface: Surface, preservation: (owner: string | null, guard?: PreservationGuard) => unknown,
   sourceHref = surface === 'navigation' ? 'https://synthetic.test/journey/new?trip=trip-a'
     : surface === 'route' ? 'https://synthetic.test/journey/routes/route-a' : 'https://synthetic.test/') {
   const slots: unknown[] = [], effects: Array<{ effect: () => void | (() => void); dependencies?: unknown[]; cleanup?: () => void }> = [];
@@ -61,9 +62,9 @@ function fixture(surface: Surface, preservation: (owner: string | null, guard?: 
     useMemo: (calculate: () => unknown) => { cursor++; return calculate(); }, useEffect, useLayoutEffect: useEffect,
     useNewTripNavigationScope: (...args: unknown[]) => actualFunction('app/journey/use-new-trip-navigation-scope.ts', 'useNewTripNavigationScope', scope)(...args),
     authClient: { useSession: () => ({ data: session, isPending: false }) }, useHomepageLanguage: () => 'en',
-    loadRememberedOwner: () => rememberedOwner,
+    loadRememberedOwner: async () => rememberedOwner,
     beginNewTripNavigation: (owner: string | null, _target: unknown, guard?: PreservationGuard) => { calls.push({ owner, guard }); events.push('preservation'); return preservation(owner, guard); },
-    window: target, document: new EventTarget(),
+    EASYT_NEW_TRIP_INPUT_CHANGE_EVENT,window: target, document: new EventTarget(),
     fetch: async () => ({ ok: true, json: async () => ({ isAdmin: false }) }),
     establishSessionLanguage: () => 'en', EASYT_LANGUAGE_CHANGE_EVENT: 'synthetic-language',
     easytCopy: { en: { nav: { newTrip: 'New trip' } } },
@@ -84,12 +85,15 @@ function fixture(surface: Surface, preservation: (owner: string | null, guard?: 
     for (const entry of effects) if (entry && !entry.cleanup) { const cleanup = entry.effect(); entry.cleanup = typeof cleanup === 'function' ? cleanup : () => {}; }
   }
   render();
+  await Promise.resolve();
+  render();
   return { calls, events, navigations, target, click: (event = click()) => ({ result: handler(event), event }),
     unmount() { for (const entry of effects) entry?.cleanup?.(); },
     changeOwner(owner = 'owner-b') { rememberedOwner = owner; session = { user: { ...session.user, id: owner } }; render(); },
     changeIntent() { props = surface === 'route' ? { ...props, draft: { routeKey: 'route-b', destinations: ['C'], durationDays: 5 } }
       : { ...props, current: 'home' }; render(); },
     restoreIntent() { props = initialProps; render(); },
+    changeRawInput() { target.dispatchEvent(new Event(EASYT_NEW_TRIP_INPUT_CHANGE_EVENT)); },
     changeDocument() { target.location.href = 'https://synthetic.test/journey/new?trip=trip-b'; },
   };
 }
@@ -100,7 +104,7 @@ function click(changes: Partial<{ metaKey: boolean; ctrlKey: boolean; shiftKey: 
 
 for (const surface of Object.keys(surfaces) as Surface[]) {
   for (const accepted of [false, true]) test(`${surface} actual handler waits for literal ${accepted} before navigation and analytics`, async () => {
-    const gate = deferred<boolean>(), ui = fixture(surface, () => gate.promise), invocation = ui.click();
+    const gate = deferred<boolean>(), ui = await fixture(surface, () => gate.promise), invocation = ui.click();
     assert.equal(invocation.event.prevented, true, 'default navigation must stop synchronously');
     assert.deepEqual(ui.navigations, []); assert.deepEqual(ui.events, ['preservation']);
     gate.resolve(accepted); await invocation.result;
@@ -108,43 +112,43 @@ for (const surface of Object.keys(surfaces) as Surface[]) {
     assert.deepEqual(ui.events, accepted ? surface === 'route' ? ['preservation', 'analytics', 'navigate'] : ['preservation', 'navigate'] : ['preservation']);
   });
   test(`${surface} actual handler rejects truthy non-boolean preservation`, async () => {
-    const ui = fixture(surface, async () => ({ stored: true })); await ui.click().result;
+    const ui = await fixture(surface, async () => ({ stored: true })); await ui.click().result;
     assert.deepEqual(ui.navigations, []); assert.deepEqual(ui.events, ['preservation']);
   });
   test(`${surface} actual handler catches rejection and permits a later retry`, async () => {
-    let attempt = 0; const gate = deferred<boolean>(), ui = fixture(surface, () => ++attempt === 1 ? gate.promise : Promise.resolve(true));
+    let attempt = 0; const gate = deferred<boolean>(), ui = await fixture(surface, () => ++attempt === 1 ? gate.promise : Promise.resolve(true));
     const invocation = ui.click(); assert.deepEqual(ui.navigations, []); gate.reject(new Error('synthetic preservation refusal'));
     await assert.doesNotReject(async () => { await invocation.result; }); assert.deepEqual(ui.navigations, []);
     await ui.click().result; assert.equal(ui.calls.length, 2); assert.equal(ui.navigations.length, 1);
   });
   test(`${surface} actual handler shares one pending preservation across repeated clicks`, async () => {
-    const gate = deferred<boolean>(), ui = fixture(surface, () => gate.promise), first = ui.click(), second = ui.click();
+    const gate = deferred<boolean>(), ui = await fixture(surface, () => gate.promise), first = ui.click(), second = ui.click();
     assert.equal(first.event.prevented, true); assert.equal(second.event.prevented, true); assert.equal(ui.calls.length, 1);
     assert.deepEqual(ui.navigations, []); gate.resolve(true); await Promise.all([first.result, second.result]); assert.equal(ui.navigations.length, 1);
   });
   test(`${surface} actual handler releases a refused request for retry`, async () => {
-    let attempt = 0; const ui = fixture(surface, async () => ++attempt === 1 ? false : true);
+    let attempt = 0; const ui = await fixture(surface, async () => ++attempt === 1 ? false : true);
     await ui.click().result; assert.deepEqual(ui.navigations, []); await ui.click().result;
     assert.equal(ui.calls.length, 2); assert.equal(ui.navigations.length, 1);
   });
   test(`${surface} actual handler does not start preservation after unmount`, async () => {
-    const ui = fixture(surface, async () => true); ui.unmount(); await ui.click().result;
+    const ui = await fixture(surface, async () => true); ui.unmount(); await ui.click().result;
     assert.deepEqual(ui.calls, []); assert.deepEqual(ui.navigations, []);
   });
   test(`${surface} actual handler accepts its same-trip recovery marker during preservation`, async () => {
-    const gate = deferred<boolean>(), ui = fixture(surface, () => gate.promise, 'https://synthetic.test/journey/new?trip=trip-a'), invocation = ui.click();
+    const gate = deferred<boolean>(), ui = await fixture(surface, () => gate.promise, 'https://synthetic.test/journey/new?trip=trip-a'), invocation = ui.click();
     ui.target.location.href += '&recover=1'; assert.equal(ui.calls[0]?.guard?.(), true);
     assert.deepEqual(ui.navigations, []); gate.resolve(true); await invocation.result; assert.equal(ui.navigations.length, 1);
   });
   for (const metadata of ['acknowledged recovery', 'presentation step']) test(`${surface} actual handler retains its document across ${metadata} metadata`, async () => {
-    const gate = deferred<boolean>(), ui = fixture(surface, () => gate.promise,
+    const gate = deferred<boolean>(), ui = await fixture(surface, () => gate.promise,
       `https://synthetic.test/journey/new?trip=trip-a&${metadata === 'acknowledged recovery' ? 'recover=1' : 'step=places'}`), invocation = ui.click();
     ui.target.location.href = `https://synthetic.test/journey/new?trip=trip-a${metadata === 'presentation step' ? '&step=dates#dates' : ''}`;
     assert.equal(ui.calls[0]?.guard?.(), true); gate.resolve(true); await invocation.result; assert.equal(ui.navigations.length, 1);
   });
   for (const source of ['inspire=route-source', 'homeDraft=1']) test(`${surface} actual handler accepts its verified ${source} durable URL transition`, async () => {
     const sourceHref = `https://synthetic.test/journey/new?${source}&handoff=source-a`, gate = deferred<boolean>();
-    const ui = fixture(surface, async (_owner, guard) => { await gate.promise; guard?.([{ sourceHref, tripId: 'trip-a' }]); return true; }, sourceHref), invocation = ui.click();
+    const ui = await fixture(surface, async (_owner, guard) => { await gate.promise; guard?.([{ sourceHref, tripId: 'trip-a' }]); return true; }, sourceHref), invocation = ui.click();
     const durableUrl = durableBuilderRecoveryUrl(ui.target.location.href, 'trip-a'); assert.ok(durableUrl);
     ui.target.location.href = durableUrl.href; assert.equal(ui.calls[0]?.guard?.(), false, 'URL shape alone cannot authorize a trip');
     assert.deepEqual(ui.navigations, []); gate.resolve(true); await invocation.result; assert.equal(ui.navigations.length, 1);
@@ -152,7 +156,7 @@ for (const surface of Object.keys(surfaces) as Surface[]) {
   for (const source of ['inspire=route-source', 'homeDraft=1']) for (const acknowledgement of ['missing', 'wrong-trip', 'wrong-source', 'conflicting']) {
     test(`${surface} actual handler rejects ${acknowledgement} acknowledgement for foreign ${source} promotion with the same handoff`, async () => {
       const sourceHref = `https://synthetic.test/journey/new?${source}&handoff=source-a`, gate = deferred<boolean>();
-      const ui = fixture(surface, async (_owner, guard) => {
+      const ui = await fixture(surface, async (_owner, guard) => {
         await gate.promise;
         if (acknowledgement !== 'missing') guard?.(acknowledgement === 'conflicting'
           ? [{ sourceHref, tripId: 'trip-a' }, { sourceHref, tripId: 'trip-b' }]
@@ -166,7 +170,7 @@ for (const surface of Object.keys(surfaces) as Surface[]) {
   }
   for (const nextSource of ['inspire=route-other', 'trip=trip-a&recover=1&handoff=other', 'trip=trip-a']) {
     test(`${surface} actual handler rejects unrelated source changes ${nextSource}`, async () => {
-      const gate = deferred<boolean>(), ui = fixture(surface, () => gate.promise, 'https://synthetic.test/journey/new?inspire=route-source&handoff=source-a'), invocation = ui.click();
+      const gate = deferred<boolean>(), ui = await fixture(surface, () => gate.promise, 'https://synthetic.test/journey/new?inspire=route-source&handoff=source-a'), invocation = ui.click();
       ui.target.location.href = `https://synthetic.test/journey/new?${nextSource}`;
       assert.equal(ui.calls[0]?.guard?.(), false); gate.resolve(true); await invocation.result;
       assert.deepEqual(ui.navigations, []); assert.deepEqual(ui.events, ['preservation']);
@@ -174,7 +178,7 @@ for (const surface of Object.keys(surfaces) as Surface[]) {
   }
   for (const change of ['unmount', 'owner', 'document', ...(surface === 'closing' ? [] : ['intent'])]) {
     test(`${surface} actual handler preserves the replacement scope after ${change} during preservation`, async () => {
-      const gate = deferred<boolean>(), ui = fixture(surface, () => gate.promise), invocation = ui.click();
+      const gate = deferred<boolean>(), ui = await fixture(surface, () => gate.promise), invocation = ui.click();
       assert.equal(ui.calls[0]?.guard?.(), true, 'the storage start guard must capture the live mounted source');
       if (change === 'unmount') ui.unmount(); if (change === 'owner') ui.changeOwner();
       if (change === 'document') ui.changeDocument(); if (change === 'intent') ui.changeIntent();
@@ -183,7 +187,7 @@ for (const surface of Object.keys(surfaces) as Surface[]) {
     });
   }
   for (const cycle of ['owner', ...(surface === 'closing' ? [] : ['intent'])]) test(`${surface} actual rerender ${cycle} A to B to A cannot revive pending preservation`, async () => {
-    const gate = deferred<boolean>(), ui = fixture(surface, () => gate.promise), invocation = ui.click();
+    const gate = deferred<boolean>(), ui = await fixture(surface, () => gate.promise), invocation = ui.click();
     if (cycle === 'owner') { ui.changeOwner(); ui.changeOwner('owner-a'); }
     else { ui.changeIntent(); ui.restoreIntent(); }
     assert.equal(ui.calls[0]?.guard?.(), false, 'a retired render scope stays retired after its values return');
@@ -191,8 +195,11 @@ for (const surface of Object.keys(surfaces) as Surface[]) {
   });
   if (surface !== 'closing') for (const modification of [{ metaKey: true }, { ctrlKey: true }, { shiftKey: true }, { altKey: true }, { button: 1 }]) {
     test(`${surface} actual link retains native modified-click ${JSON.stringify(modification)}`, async () => {
-      const ui = fixture(surface, async () => true), invocation = ui.click(click(modification)); await invocation.result;
+      const ui = await fixture(surface, async () => true), invocation = ui.click(click(modification)); await invocation.result;
       assert.equal(invocation.event.prevented, false); assert.deepEqual(ui.calls, []); assert.deepEqual(ui.navigations, []);
     });
   }
 }
+
+test('New final navigation refuses child edit after ACK while another listener waits',async()=>{const gate=deferred<boolean>(),ui=await fixture('navigation',async(_owner,guard)=>{assert.equal(guard?.(),true);await gate.promise;return guard?.()===true;});const first=ui.click();ui.changeRawInput();gate.resolve(true);await first.result;assert.deepEqual(ui.navigations,[]);});
+test('actual beginNewTripNavigation refuses child edit while pointer clear is pending',async()=>{const clear=deferred<void>(),reached=deferred<void>();const ui=await fixture('navigation',async(owner,guard)=>actualFunction('lib/easyt/storage.ts','beginNewTripNavigation',{browserRecoveryGuard:(g:unknown)=>g,collectNewTripNavigationPreservation:async()=>({accepted:true,acknowledgements:[]}),browserTripPersistence:async()=>({clearCurrent:async()=>{reached.resolve();await clear.promise;return true;}}),dispatchTripStorageChange(){}})(owner,ui.target,guard));const first=ui.click();await reached.promise;ui.changeRawInput();clear.resolve();await first.result;assert.deepEqual(ui.navigations,[]);});

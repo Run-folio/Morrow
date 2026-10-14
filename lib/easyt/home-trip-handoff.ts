@@ -457,6 +457,7 @@ export async function persistEditableHomepageInputInStorage(input: {
   storage: Pick<Storage, "getItem" | "setItem" | "removeItem">;
   snapshot: HomepageInputSnapshot;
   preserveCompletedReceipt?: boolean;
+  expectedPrevious?: { inputRaw: string | null; draftRaw: string | null };
   isCurrent?: () => boolean;
   lock?: <T>(key: string, run: () => Promise<T>) => Promise<T>;
 }): Promise<{ ok: true; stored: StoredHomepageInput } | { ok: false; reason: "reserved" | "storage" | "stale" }> {
@@ -465,6 +466,8 @@ export async function persistEditableHomepageInputInStorage(input: {
       if (input.isCurrent && !input.isCurrent()) { reportQaPersistenceBoundary("editable-input", "editable-prepare", {accepted:false,phase:"probe",writeAttempted:false,acknowledgement:"stale"}); return { ok: false as const, reason: "stale" as const }; }
       const key = homepageInputStorageKey(input.snapshot.ownerId);
       const raw = input.storage.getItem(key);
+      if (input.expectedPrevious && (raw !== input.expectedPrevious.inputRaw
+        || input.storage.getItem(HOME_TRIP_DRAFT_KEY) !== input.expectedPrevious.draftRaw)) return { ok: false as const, reason: "stale" as const };
       let previous: StoredHomepageInput | null = null;
       try { previous = raw ? readHomepageInput(JSON.parse(raw), input.snapshot.ownerId) : null; }
       catch { reportQaPersistenceBoundary("editable-input", "editable-prepare", {accepted:false,writeAttempted:false,acknowledgement:"storage"}); return { ok: false as const, reason: "storage" as const }; }
@@ -1079,6 +1082,7 @@ export function pendingHomepageSubmissionForOwner(stored: StoredHomepageInput | 
 export function pendingIntakeContinuation(input: {
   ownerId: string | null; inputRaw: string | null; draftRaw: string | null;
   recovery: {ownerId:string|null;tripId:string;state:string;trip:EasyTTrip};
+  fromHomepage?: boolean;
 }) {
   try {
     const stored = readHomepageInput(JSON.parse(input.inputRaw ?? "null"), input.ownerId);
@@ -1087,16 +1091,27 @@ export function pendingIntakeContinuation(input: {
       || input.recovery.tripId !== stored.receipt.tripId || input.recovery.state !== "pending"
       || input.recovery.trip.status !== "draft" || input.recovery.trip.ownerId !== null) return null;
     const pending = pendingHomepageSubmissionForOwner(stored, home, input.ownerId);
+    const fromHomepage = input.fromHomepage !== false;
+    if (!fromHomepage && home !== null) return null;
     if (pending) {
       if (homepageSemanticInputFingerprint(stored.snapshot) !== pending.semanticInputFingerprint
-        || !samePendingReceipt(pendingHomepageHandoffForOwner(home, input.ownerId, pending.handoffId), pending)) return null;
+        || fromHomepage && !samePendingReceipt(pendingHomepageHandoffForOwner(home, input.ownerId, pending.handoffId), pending)) return null;
       const projected = projectHomepageInput({snapshot:pending.frozenSnapshot,profile:null,handoffId:pending.handoffId});
       if (!projected.ok) return null;
       const receipt = homepageReceiptForProjection(pending.frozenSnapshot, projected.draft, pending.tripId);
       const draft: HomeTripDraft = {...projected.draft,homepage:{...projected.draft.homepage!,receipt}};
       if (stored.receipt.version === 1 && JSON.stringify(stored.receipt) !== JSON.stringify(receipt)
         || !homepageHandoffMatchesTrip(draft, input.recovery.trip)) return null;
-      return {snapshot:pending.frozenSnapshot,receipt,draft,pending,fromHomepage:true as const,resumedInputRaw:input.inputRaw};
+      return {snapshot:pending.frozenSnapshot,receipt,draft,pending,fromHomepage,resumedInputRaw:input.inputRaw};
+    }
+    if (!fromHomepage && stored.receipt.version === 1) {
+      if (stored.receipt.semanticInputFingerprint !== homepageSemanticInputFingerprint(stored.snapshot)) return null;
+      const projected = projectHomepageInput({snapshot:stored.snapshot,profile:null,handoffId:stored.receipt.handoffId});
+      if (!projected.ok) return null;
+      const receipt = homepageReceiptForProjection(stored.snapshot, projected.draft, stored.receipt.tripId);
+      const draft: HomeTripDraft = {...projected.draft,homepage:{...projected.draft.homepage!,receipt}};
+      if (JSON.stringify(receipt) !== JSON.stringify(stored.receipt) || !homepageHandoffMatchesTrip(draft, input.recovery.trip)) return null;
+      return {snapshot:stored.snapshot,receipt,draft,pending:undefined,fromHomepage:false as const,resumedInputRaw:input.inputRaw};
     }
     const receipt = homepageHandoffReceiptForOwner(home, input.ownerId);
     if (stored.receipt.version !== 1 || !receipt || JSON.stringify(receipt) !== JSON.stringify(stored.receipt)

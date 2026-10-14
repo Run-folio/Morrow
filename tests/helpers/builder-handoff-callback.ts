@@ -33,7 +33,7 @@ export function actualCallbackHarness(initialCoordinates?:[number,number], initi
   setLocationChoices:(fn:any)=>{choices=fn(choices)},mergeHandoffLocationChoice,handoffOutcomeIsCurrent,retireHandoffResolutionStatus,preferredHandoffLocationChoice,referenceGeographicAcceptanceMatches,acceptedGeographicPlace,authoredContentKey,geographicInputKey,stopGeographicPlace,
   isOriginMention:(m:any)=>m.role==='origin'||m.role==='fixed_start',draft:{},originResolutionVersionRef:{current:0},originVersion:0,
   seedById:new Map(trip.stops.map(s=>[s.id,stopGeographicPlace(s)])),handoffOccurrenceMentionIdsRef:{current:{[id]:mention.mentionId}},handoffStopOccurrenceId,builderPlaceCommand,
-  dispatchAcceptedBuilderEdit:(command:any,options:any)=>{assert.equal(options.expectedInputRevision,revision);const result=prepareBuilderHandlerEdit(trip,command,builderDocumentFingerprint(trip));assert.ok(result.ok);if(result.ok)trip=result.trip;revision++;accepted++;}};
+  dispatchAcceptedBuilderEdit:(command:any,options:any)=>{assert.equal(options.expectedInputRevision,revision);const result=prepareBuilderHandlerEdit(trip,command,builderDocumentFingerprint(trip));assert.ok(result.ok);if(result.ok)trip=result.trip;revision++;accepted++;return true;}};
  const source=readFileSync(new URL('../../app/journey/new/trip-builder.tsx',import.meta.url),'utf8');
  const key=source.slice(source.indexOf('  const savedTargetKey='),source.indexOf('  const savedFinishIsCurrent='));
  scope.savedTargetKey=new Function('scope',`with(scope){${ts.transpileModule(`${key}\nreturn savedTargetKey;`,{compilerOptions:{target:ts.ScriptTarget.ES2022}}).outputText}}`)(scope);
@@ -53,22 +53,22 @@ export function actualCallbackHarness(initialCoordinates?:[number,number], initi
   changePlace:(place:Partial<JourneyEndpointPlace>)=>changePlace({...stopGeographicPlace(trip.stops[0]),...place}),
   changeCoordinates:(coordinates:[number,number])=>changePlace({name:'Lima',canonicalPlaceId:'lima',country:'Peru',coordinates}),
   send:(cs:any[])=>callback({item:mention,value:cs,status:'resolved'},0),
-  sendDuringCanonicalMount:(cs:any[])=>{
+  sendDuringCanonicalMount:async(cs:any[])=>{
    const editor=scope.builderEditSessionRef.current;let temporaryUpdates=0;
    scope.builderSeedPendingRef.current=true;scope.builderEditSessionRef.current=null;
    scope.setStops=()=>{temporaryUpdates++};
-   callback({item:mention,value:cs,status:'resolved'},0);
+   await callback({item:mention,value:cs,status:'resolved'},0);
    scope.builderEditSessionRef.current=editor;return temporaryUpdates;
   },
   replayPending:()=>lookupSession.replayPending?.(),
-  sendBeforeCanonical:(cs:any[])=>{
+  sendBeforeCanonical:async(cs:any[])=>{
    // Replay the same production callback before the canonical owner exists,
    // with the real handoff merge and a fixture implementation of React's setter.
    const before=trip.stops.map(stop=>({...stopGeographicPlace(stop),id:stop.id,nights:stop.nights}));
    let current=structuredClone(before);
    scope.builderEditSessionRef.current=null;
    scope.setStops=(update:any)=>{current=update(current)};
-   callback({item:mention,value:cs,status:'resolved'},0);
+   await callback({item:mention,value:cs,status:'resolved'},0);
    return {before,after:current};
   },
  };

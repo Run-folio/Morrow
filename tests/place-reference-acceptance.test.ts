@@ -12,23 +12,23 @@ const record=searchReferencePlaces('Lima',{explicitCountryNames:['Peru']}).find(
 const current={...record,name:record.canonicalName,country:'Peru',coordinates:record.coordinates!,referenceSnapshotId:REFERENCE_SNAPSHOT_ID};
 const owner={name:'Lima',country:'Peru',canonicalPlaceId:current.canonicalPlaceId};
 const future={...current,providerId:current.providerId.replace(`@${REFERENCE_SNAPSHOT_ID}:`,'@future-snapshot:'),referenceSnapshotId:'future-snapshot'};
-test('actual initial Builder callback rejects incompatible reference response without accepted edit',()=>{
- const h=actualCallbackHarness();h.send([future]);assert.equal(h.accepted(),0);assert.deepEqual(h.trip(),h.before);
+test('actual initial Builder callback rejects incompatible reference response without accepted edit',async()=>{
+ const h=actualCallbackHarness();await h.send([future]);assert.equal(h.accepted(),0);assert.deepEqual(h.trip(),h.before);
  assert.ok(h.choices().every(item=>item.choices.length===0));
 });
-test('new shared geographic writer binds only the exact compiled reference tuple',()=>{
+test('new shared geographic writer binds only the exact compiled reference tuple',async()=>{
  assert.ok(acceptedGeographicPlace(owner,current));
  for(const bad of [future,{...current,referenceSnapshotId:undefined},{...current,canonicalPlaceId:'reference:geonames:1'},{...current,country:'Chile'},{...current,coordinates:[-77,-12] as [number,number]},{...current,placeType:'town'},{...current,coordinates:{0:-77.02824,1:-12.04318,length:2} as unknown as [number,number]}])assert.equal(acceptedGeographicPlace(owner,bad),undefined);
  assert.equal(acceptedGeographicPlace({...owner,canonicalPlaceId:'reference:geonames:1'},current),undefined);
 });
-test('current reference callback preserves sibling budget, manual order, nights, commitments and content',()=>{
+test('current reference callback preserves sibling budget, manual order, nights, commitments and content',async()=>{
  const h=actualCallbackHarness();h.trip().brief.budgetBand='high';h.trip().stops[1].nights=5;const before=structuredClone(h.trip());
- h.send([current]);assert.equal(h.accepted(),1);const after=h.trip();
+ await h.send([current]);assert.equal(h.accepted(),1);const after=h.trip();
  assert.equal(after.brief.budgetBand,'high');assert.equal(after.stops[1].nights,5);
  assert.deepEqual(after.brief.intent.route.orderedStopIds,before.brief.intent.route.orderedStopIds);
  assert.deepEqual(after.planItems,before.planItems);assert.deepEqual(after.brief.intent.hardConstraints.fixedCommitments,before.brief.intent.hardConstraints.fixedCommitments);
 });
-test('historical accepted reference bindings remain readable without current snapshot acceptance',()=>{
+test('historical accepted reference bindings remain readable without current snapshot acceptance',async()=>{
  const place=acceptedGeographicPlace(owner,current)!;assert.ok(place);
  const old={...place,providerId:future.providerId,geographicBinding:{...place.geographicBinding!,providerId:future.providerId,inputKey:JSON.stringify([place.canonicalPlaceId,future.providerId,'lima','peru',place.coordinates])}};
  assert.equal(geographicallyReady(old),true);assert.equal(acceptedGeographicPlace(owner,future),undefined);
@@ -51,15 +51,15 @@ test('actual saved Builder lookup filters mismatched snapshots and never saves d
  }
 });
 
-test('pre-canonical handoff and endpoint suggestion cannot bind incompatible new reference evidence',()=>{
- const h=actualCallbackHarness();const result=h.sendBeforeCanonical([future]);assert.deepEqual(result.after,result.before);
+test('pre-canonical handoff and endpoint suggestion cannot bind incompatible new reference evidence',async()=>{
+ const h=actualCallbackHarness();const result=await h.sendBeforeCanonical([future]);assert.deepEqual(result.after,result.before);
  assert.equal(acceptedGeographicPlace({...owner,name:'Lima'},future,'endpoint'),undefined);
 });
 
 import {canonicalPlaceSuggestionForId,canonicalPlaceSuggestionsForQuery} from '../lib/easyt/place-intelligence.ts';
 import {journeyEndpointPlaceFromSuggestion} from '../lib/easyt/journey-endpoints.ts';
 import {referenceCountrySeeds} from '../lib/easyt/place-reference.ts';
-test('compiled generated catalog choices carry evidence through manual endpoint selection',()=>{
+test('compiled generated catalog choices carry evidence through manual endpoint selection',async()=>{
  const seed=referenceCountrySeeds('FJ')[0];
  for(const suggestion of [canonicalPlaceSuggestionForId(seed.canonicalPlaceId),canonicalPlaceSuggestionsForQuery(seed.canonicalName,['Fiji']).find(s=>s.canonicalPlaceId===seed.canonicalPlaceId)]){
   assert.ok(suggestion);assert.equal(suggestion.referenceSnapshotId,REFERENCE_SNAPSHOT_ID);

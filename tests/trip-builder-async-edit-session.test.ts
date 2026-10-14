@@ -267,7 +267,7 @@ function builderDispatch(h: Awaited<ReturnType<typeof harness>>) {
   const scope = { builderEditSessionRef: ref, builderMountedRef: mounted, activeBrowserOwnerIdRef: { current: h.session.getSnapshot().browserOwnerId },
     builderStructuralFeedback: () => ({ summary: 'remove_stop' }), captureStructuralChange: (summary: string, canonical: unknown) => ({ summary, canonical }),
     publishStructuralChange: (frame: unknown) => changes.push(frame), applyAcceptedBuilderDocument: (trip: unknown) => applied.push(trip),
-    setCloudSaveError: (message: string) => errors.push(message), setSaveState: () => {} };
+    setCloudSaveError: (message: string) => errors.push(message), setSaveState: () => {},setEditNeedsReview(){} };
   const script = ts.transpileModule(source.slice(start, end) + '\nreturn dispatchAcceptedBuilderEdit;', { compilerOptions: { target: ts.ScriptTarget.ES2022 } }).outputText;
   const dispatch = new Function('scope', `with(scope){${script}}`)(scope) as (edit: Parameters<typeof h.session.accept>[0]) => Promise<boolean>;
   return { dispatch, changes, applied, errors, mounted, ref };
@@ -283,20 +283,24 @@ function buildPersistence(h: Awaited<ReturnType<typeof harness>>, onAssessment?:
     sameRecoveryDocument: (a:unknown,b:unknown)=>JSON.stringify(a)===JSON.stringify(b),
     pendingBuildAssessmentRef:{current:null},buildAssessmentRequestId:0,setBuildAssessmentRequestId(){},
     useEffect(effect:()=>void){effects.push(effect)},activeTripDocument:h.session.getSnapshot().trip,
-    requestBuildAssessment: async (editor:typeof h.session)=>{
-      const pending=requestAssessment(editor);if(onAssessment)await onAssessment(++assessmentCount);
+    requestBuildAssessment: async (editor:typeof h.session,isCurrent?:()=>boolean)=>{
+      const pending=requestAssessment(editor,isCurrent);if(onAssessment)await onAssessment(++assessmentCount);
+      renderAssessment(editor);return pending;
+    },
+    builderBuildNavigationRef:{current:null},
+    recordGeneratedTrip() {}, surfaceBuildConflict() {}, setCloudSaveError() {}, trackEvent() {}, analyticsTripSource: 'builder' };
+  function renderAssessment(editor:typeof h.session){
       const trip=editor.getSnapshot().trip,nightAllocation=trip.brief.nightAllocation??allocateTripNights({totalNights:tripNightsBetween(trip.startDate,trip.endDate),stops:trip.stops});
       scope.activeTripDocument=trip;
       scope.buildInvariant=canBuildTrip({origin:trip.brief.intent.route.origin?.name??'',originCoordinates:trip.brief.intent.route.origin?.coordinates,
         journeyEnd:trip.brief.intent.route.journeyEnd,stops:trip.stops.map(s=>({...s,coordinates:[s.longitude!,s.latitude!] as [number,number]})),
         startDate:trip.startDate,endDate:trip.endDate,durationDays:tripNightsBetween(trip.startDate,trip.endDate)+1,
         nightAllocation,allocations:trip.brief.nightAllocations??Object.fromEntries(trip.stops.map(s=>[s.id,s.nights??0])),document:trip});
-      effects[0]!();return pending;
-    },
-    builderBuildNavigationRef:{current:null},
-    recordGeneratedTrip() {}, surfaceBuildConflict() {}, setCloudSaveError() {}, trackEvent() {}, analyticsTripSource: 'builder' };
+      effects[0]!();
+  }
+  h.session.subscribe(()=>queueMicrotask(()=>{if(scope.pendingBuildAssessmentRef.current)renderAssessment(h.session);}));
   const assessmentBody=source.slice(source.indexOf('  const requestBuildAssessment ='),source.indexOf('  const recordGeneratedTrip ='));
-  const requestAssessment=new Function('scope',`with(scope){${ts.transpileModule(assessmentBody+'\nreturn requestBuildAssessment;',{compilerOptions:{target:ts.ScriptTarget.ES2022}}).outputText}}`)(scope) as (editor:typeof h.session)=>Promise<unknown>;
+  const requestAssessment=new Function('scope',`with(scope){${ts.transpileModule(assessmentBody+'\nreturn requestBuildAssessment;',{compilerOptions:{target:ts.ScriptTarget.ES2022}}).outputText}}`)(scope) as (editor:typeof h.session,isCurrent?:()=>boolean)=>Promise<unknown>;
   const navStart=source.indexOf('  const canOpenBuiltTrip =');
   // Before the fix there is no final navigation guard; actual callers below also lack it.
   const canOpen=navStart<0?()=>true:new Function('scope',`with(scope){${ts.transpileModule(source.slice(navStart,source.indexOf('  const settleUnacknowledgedBuild ='))+'\nreturn canOpenBuiltTrip;',{compilerOptions:{target:ts.ScriptTarget.ES2022}}).outputText}}`)(scope) as (trip:CanonicalEasyTTrip)=>boolean;
@@ -573,7 +577,7 @@ for(const change of ['none','document','revision','owner','unmount'] as const)te
  if(change==='revision')await accept(h);
  if(change==='owner')scope.activeBrowserOwnerIdRef.current='owner-b';
  if(change==='unmount')scope.builderMountedRef.current=false;
- effects[0]!();const result=await pending;assert.equal(result!==null,change==='none');h.session.dispose();
+ effects[0]!();if(change==='document'){let settled=false;void pending.then(()=>{settled=true;});await tick();assert.equal(settled,false,'a mismatched render grants no assessment');scope.activeTripDocument=snapshot.trip;effects[0]!();}const result=await pending;assert.equal(result!==null,change==='none'||change==='document');h.session.dispose();
 });
 test('discard superseded during its reserved write keeps newer raw and persists the higher revision',async()=>{
  const h=await harness({initialTrip:requireReadableTripDocument({...fixture(),ownerId:null}),owner:null});
@@ -594,7 +598,7 @@ test('Build status refuses a source changed by projection after its assessment',
 // Independent-recheck counterexamples: actual Build closure and assessment publication.
 for(const outcome of ['failed','held'] as const)test(`final Build assessment refuses ${outcome} projection persistence`,async()=>{
  const h=await harness({initialTrip:requireReadableTripDocument({...fixture(),ownerId:null}),owner:null});await accept(h,origin);
- let held:ReturnType<typeof h.holdRecovery>|undefined,before:ReturnType<typeof h.session.getSnapshot>|undefined;
+ let held:ReturnType<typeof h.holdRecovery>|undefined,before:ReturnType<typeof h.session.getSnapshot>|undefined;const reached=deferred<void>();
  const view=buildPersistence(h,async ordinal=>{
   if(ordinal!==2)return;
   before=h.session.getSnapshot();await h.run(0);const work=h.projections.at(-1)!;assert.ok(work);
@@ -602,10 +606,9 @@ for(const outcome of ['failed','held'] as const)test(`final Build assessment ref
   work.result.resolve(response(work.request));await tick();
   assert.equal(h.session.getSnapshot().acceptedRevision,before.acceptedRevision);
   assert.deepEqual(h.session.getSnapshot().trip,before.trip);
-  assert.equal(outcome==='failed'?h.session.getSnapshot().error?.deviceOutcome:h.session.getSnapshot().saveState,outcome==='failed'?'unknown':'device-saving');
+  assert.equal(outcome==='failed'?h.session.getSnapshot().error?.deviceOutcome:h.session.getSnapshot().saveState,outcome==='failed'?'unknown':'device-saving');reached.resolve();
  });
- const saved=await view.persist();assert.equal(saved,null,'unsettled or failed persistence cannot gain navigation authority');
- held?.resolve();await tick();h.session.dispose();
+ let settled=false;const building=view.persist().then(value=>{settled=true;return value;});await reached.promise;await tick();if(outcome==='held'){assert.equal(settled,false,'held persistence grants no navigation authority');held!.resolve();}const saved=await building;assert.equal(saved?.status??null,outcome==='held'?'planned':null);await tick();h.session.dispose();
 });
 function navigationEffect(h:Awaited<ReturnType<typeof harness>>,view:ReturnType<typeof buildPersistence>,interrupt:()=>Promise<void>,surface:'build'|'map'){
  const source=readFileSync(new URL('../app/journey/new/trip-builder.tsx',import.meta.url),'utf8');
@@ -654,4 +657,11 @@ for(const interruption of ['write-failure','owner'] as const)test(`unverified di
  assert.equal(await discard,false);assert.equal(await newer,false);
  assert.deepEqual(h.session.getSnapshot().draft.fields.map(f=>f.raw),['keep until verified','new unrelated raw']);
  assert.deepEqual(readBuilderInputDraft(h.storage,h.session.getSnapshot().trip),durableBefore);h.session.dispose();
+});
+
+
+for(const boundary of [1,2])test(`Build follows a healthy same-command projection at assessment ${boundary}`,async()=>{
+ const h=await harness({initialTrip:requireReadableTripDocument({...fixture(),ownerId:null}),owner:null});await accept(h,origin);
+ const view=buildPersistence(h,async ordinal=>{if(ordinal!==boundary)return;await h.run(0);const work=h.projections.at(-1)!;assert.ok(work);work.result.resolve(response(work.request));await tick();});
+ try{const saved=await view.persist();assert.equal(saved?.status,'planned');assert.equal(h.writes.length,0);}finally{h.session.dispose();}
 });

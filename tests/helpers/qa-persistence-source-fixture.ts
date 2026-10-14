@@ -10,7 +10,7 @@ export function builderClosure(name: 'submitNewTripIntake' | 'persistDeviceRecov
   function visit(node: ts.Node) {
     if ((['submitNewTripIntake','persistDeviceRecovery','updateDiscoveryPlanningState','addDiscoverySearchSelection'].includes(name)) && ts.isVariableDeclaration(node) && node.name.getText(tree) === name && node.initializer) expression = node.initializer.getText(tree);
     if (name === 'hydrate-effect' && ts.isCallExpression(node) && node.expression.getText(tree) === 'useEffect' && node.arguments[0]?.getText(tree).includes('const hydrate = async')) expression = node.arguments[0].getText(tree);
-    if (name === 'starter-restore' && ts.isCallExpression(node) && node.expression.getText(tree) === 'useEffect' && node.arguments[0]?.getText(tree).includes('let next = emptyInput(ownerId)')) expression = node.arguments[0].getText(tree);
+    if (name === 'starter-restore' && ts.isCallExpression(node) && node.expression.getText(tree) === 'useEffect' && node.arguments[0]?.getText(tree).includes('nextEntryId.current')) expression = node.arguments[0].getText(tree);
     if (name === 'seed-effect' && ts.isCallExpression(node) && node.expression.getText(tree) === 'useEffect' && node.arguments[0]?.getText(tree).includes('builderSeed || !hydrated')) expression = node.arguments[0].getText(tree);
     if ((name === 'top-removal-confirm' || name === 'top-type-confirm') && ts.isJsxSelfClosingElement(node) && node.tagName.getText(tree) === 'MorroviaConfirmationDialog') {
       const pending = name === 'top-removal-confirm' ? 'pendingTopRemoval' : 'pendingTopType';
