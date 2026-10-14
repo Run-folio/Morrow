@@ -19,7 +19,7 @@ export type HomepageBundle = {version:1;inputRaw:string|null;draftRaw:string|nul
 export type DurableHomepageState = {kind:'ready';storedInput:StoredHomepageInput|null;draft:unknown|null;inputRaw:string|null;draftRaw:string|null;
   raw:string;legacyRaw:string;envelope:RecoveryEntryEnvelope|null}|{kind:'protected'|'unavailable';reason:string};
 export type HomepageWriteResult = {kind:'verified';backend:'local-storage'|'indexeddb-entry'}|{kind:'protected'|'unavailable'|'failure';reason:string;committed?:boolean;nativeFailure?:'quota'|'security'|'unavailable'|'unknown'};
-export type RecoveryIntakeAcknowledgement={pending?:PendingIntakeReceipt;completed:HomepageHandoffReceipt;draft:HomeTripDraft;fromHomepage:boolean};
+export type RecoveryIntakeAcknowledgement={pending?:PendingIntakeReceipt;completed:HomepageHandoffReceipt;draft:HomeTripDraft;fromHomepage:boolean;resumedInputRaw?:string};
 const object=(value:unknown):value is Record<string,unknown>=>Boolean(value&&typeof value==='object'&&!Array.isArray(value));
 export function decodeHomepageBundle(raw:string,ownerId:string|null) {
   try {

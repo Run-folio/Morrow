@@ -5,7 +5,7 @@ import ts from 'typescript';
 import {homeRecoveryFixture} from './helpers/home-recovery-fixture.ts';
 import {emptyHomepageInput} from './fixtures/homepage-dual-entry.ts';
 import {commitHomepageHandoff,homepageCompletedReceiptIsUnchanged,homepageSemanticInputFingerprint,homepagePreflightIssues,
- projectHomepageInput,homepageReceiptForProjection,homepageHandoffMatchesTrip,reusableHomepageReceipt,reservePendingDescribeHandoff,HOME_TRIP_DRAFT_KEY} from '../lib/easyt/home-trip-handoff.ts';
+ projectHomepageInput,homepageReceiptForProjection,homepageHandoffMatchesTrip,reusableHomepageReceipt,reservePendingDescribeHandoff,pendingHomepageSubmissionForOwner,pendingIntakeReceiptForOwner,pendingHomepageHandoffForOwner,createPendingIntakeReceipt,HOME_TRIP_DRAFT_KEY} from '../lib/easyt/home-trip-handoff.ts';
 import {createDurableHomepagePersistence,prepareIntakeAcknowledgement} from '../lib/easyt/homepage-persistence.ts';
 import {createTwoStoreTripPersistence} from '../lib/easyt/two-store-trip-persistence.ts';
 import {prepareTripDocumentForWrite} from '../lib/easyt/trip-document.ts';
@@ -17,7 +17,7 @@ import {MemoryRecoveryDriver} from './helpers/durable-recovery-driver.ts';
 /** Execute the actual component callbacks with disposable in-memory dependencies. */
 const source=readFileSync(new URL('../app/journey/home/home-trip-starter.tsx',import.meta.url),'utf8');
 const ast=ts.createSourceFile('home.tsx',source,ts.ScriptTarget.Latest,true,ts.ScriptKind.TSX);
-function actualCallback(name:'hydrate'|'submit'|'retryRecoveryRead',scope:Record<string,unknown>) {
+function actualCallback(name:'hydrate'|'submit'|'retryRecoveryRead'|'resumePendingSubmission',scope:Record<string,unknown>) {
   let callback:ts.ArrowFunction|undefined;
   const walk=(node:ts.Node)=>{
     if(name!=='hydrate'&&ts.isVariableDeclaration(node)&&node.name.getText(ast)===name&&node.initializer&&ts.isArrowFunction(node.initializer))callback=node.initializer;
@@ -26,14 +26,14 @@ function actualCallback(name:'hydrate'|'submit'|'retryRecoveryRead',scope:Record
   };
   walk(ast);assert.ok(callback,`Actual ${name} callback must exist`);
   const script=ts.transpileModule(`const callback=${callback.getText(ast)};`,{compilerOptions:{target:ts.ScriptTarget.ES2022}}).outputText;
-  return new Function('scope',`with(scope){${script}return callback;}`)(scope) as ()=>unknown;
+  return new Function('scope',`with(scope){const inputBlocked=scope.inputBlocked ?? scope.recoveryBlocked;${script}return callback;}`)(scope) as ()=>unknown;
 }
 const tick=()=>new Promise<void>(done=>setImmediate(done));
 function deferred<T>(){let resolve!:(value:T)=>void;return {promise:new Promise<T>(done=>{resolve=done}),resolve:(value:T)=>resolve(value)}}
 function hydrationScope(read:(owner:string|null,guard:()=>boolean)=>Promise<unknown>) {
   const seen={blocked:[] as boolean[],errors:[] as string[],snapshots:[] as unknown[]};
   const initial={...emptyHomepageInput('owner-a'),prompt:'retained typed input'};
-  const scope={ownerId:'owner-a',sessionPending:false,language:'en',homepageReadyRef:{current:true},mountedRef:{current:true},
+  const scope={setPendingSubmission:()=>{},pendingHomepageSubmissionForOwner,ownerId:'owner-a',sessionPending:false,language:'en',homepageReadyRef:{current:true},mountedRef:{current:true},
     homepageEditedRef:{current:false},
     ownerIdRef:{current:'owner-a'},sessionPendingRef:{current:false},snapshotRef:{current:initial},storedInputRef:{current:{snapshot:initial}},
     destinationIdRef:{current:0},setRecoveryBlocked:(value:boolean)=>seen.blocked.push(value),cancelSubmission:()=>{},setCaptureError:(value:string)=>seen.errors.push(value),
@@ -209,4 +209,16 @@ test('fresh reservation never overwrites a concurrently changed raw homepage sna
  const storage={getItem:(key:string)=>values.get(key)??null,setItem:(key:string,raw:string)=>{values.set(key,raw)},removeItem:(key:string)=>{values.delete(key)}};
  const result=await reservePendingDescribeHandoff({storage,snapshot:f.snapshot,supersedeCompletedReceipt:f.intake.completed,supersedeCompletedInputRaw:f.native[0]![1],isCurrent:()=>true,preserveAndBegin:()=>true,createIds:()=>({tripId:'new',handoffId:'new'}),lock:async(_key,work)=>work()});
  assert.equal(result.ok,false);assert.equal(storage.getItem(key),changed);
+});
+
+
+test('explicit pending continuation uses the actual resume callback without clearing current selection',async()=>{
+ const fixture=homeRecoveryFixture('owner-a');fixture.snapshot.revision=95;const receipt=createPendingIntakeReceipt(fixture.snapshot,{handoffId:fixture.intake.completed.handoffId,tripId:fixture.trip.id});
+ const stored={snapshot:{...fixture.snapshot,revision:97},receipt},inputRaw=JSON.stringify(stored),draft={version:2,phase:'pending-interpretation',receipt},draftRaw=JSON.stringify(draft);
+ for(const mode of ['match','edited-memory','changed-durable-input','owner-change']as const){let reads=0;const seen={hrefs:[]as string[],errors:[]as string[]};const ownerIdRef={current:'owner-a'},homepageEditedRef={current:mode==='edited-memory'};
+ const scope={pendingSubmission:{receipt,inputRaw,draftRaw},loading:false,homepageEditedRef,mountedRef:{current:true},homepageReadyRef:{current:true},sessionPendingRef:{current:false},ownerIdRef,language:'en',setLoading:()=>{},setCaptureError:(v:string)=>seen.errors.push(v),pendingHomepageSubmissionForOwner,pendingHomepageHandoffForOwner,homepageSemanticInputFingerprint,
+ readDurableHomepageState:async()=>{reads++;if(mode==='owner-change')ownerIdRef.current='owner-b';return{kind:'ready',storedInput:stored,inputRaw:mode==='changed-durable-input'?inputRaw+' ':inputRaw,draft,draftRaw};},router:{push:(v:string)=>seen.hrefs.push(v)}};
+ actualCallback('resumePendingSubmission',scope)();await tick();
+ if(mode==='match'){assert.deepEqual(seen.hrefs,[`/journey/new?homeDraft=1&handoff=${receipt.handoffId}&resumePending=1`]);assert.equal(reads,1);}else{assert.deepEqual(seen.hrefs,[]);if(mode==='edited-memory')assert.equal(reads,0);}
+ }
 });

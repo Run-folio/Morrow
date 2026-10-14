@@ -1063,6 +1063,49 @@ export async function discardPendingIntakeForEditInStorage(input: {
   } catch { return { ok: false, reason: "storage" }; }
 }
 
+/** A completed input can coexist with its pending HOME envelope after an
+ * interrupted pair. This selects a reservation, never commit authority. */
+export function pendingHomepageSubmissionForOwner(stored: StoredHomepageInput | null | undefined, draft: unknown, ownerId: string | null) {
+  const pending = pendingIntakeReceiptForOwner(stored?.receipt, ownerId);
+  if (pending) return pending;
+  const receipt = stored?.receipt;
+  if (receipt?.version !== 1 || receipt.ownerId !== ownerId) return null;
+  const retained = pendingHomepageHandoffForOwner(draft, ownerId, receipt.handoffId);
+  return retained && retained.tripId === receipt.tripId && retained.semanticInputFingerprint === receipt.semanticInputFingerprint ? retained : null;
+}
+
+/** Reading a continuation is not a durable ACK. Both pending and exact
+ * completed pairs must still pass the normal body/receipt/pointer checkpoint. */
+export function pendingIntakeContinuation(input: {
+  ownerId: string | null; inputRaw: string | null; draftRaw: string | null;
+  recovery: {ownerId:string|null;tripId:string;state:string;trip:EasyTTrip};
+}) {
+  try {
+    const stored = readHomepageInput(JSON.parse(input.inputRaw ?? "null"), input.ownerId);
+    const home = JSON.parse(input.draftRaw ?? "null");
+    if (!stored?.receipt || input.inputRaw === null || input.recovery.ownerId !== input.ownerId
+      || input.recovery.tripId !== stored.receipt.tripId || input.recovery.state !== "pending"
+      || input.recovery.trip.status !== "draft" || input.recovery.trip.ownerId !== null) return null;
+    const pending = pendingHomepageSubmissionForOwner(stored, home, input.ownerId);
+    if (pending) {
+      if (homepageSemanticInputFingerprint(stored.snapshot) !== pending.semanticInputFingerprint
+        || !samePendingReceipt(pendingHomepageHandoffForOwner(home, input.ownerId, pending.handoffId), pending)) return null;
+      const projected = projectHomepageInput({snapshot:pending.frozenSnapshot,profile:null,handoffId:pending.handoffId});
+      if (!projected.ok) return null;
+      const receipt = homepageReceiptForProjection(pending.frozenSnapshot, projected.draft, pending.tripId);
+      const draft: HomeTripDraft = {...projected.draft,homepage:{...projected.draft.homepage!,receipt}};
+      if (stored.receipt.version === 1 && JSON.stringify(stored.receipt) !== JSON.stringify(receipt)
+        || !homepageHandoffMatchesTrip(draft, input.recovery.trip)) return null;
+      return {snapshot:pending.frozenSnapshot,receipt,draft,pending,fromHomepage:true as const,resumedInputRaw:input.inputRaw};
+    }
+    const receipt = homepageHandoffReceiptForOwner(home, input.ownerId);
+    if (stored.receipt.version !== 1 || !receipt || JSON.stringify(receipt) !== JSON.stringify(stored.receipt)
+      || receipt.semanticInputFingerprint !== homepageSemanticInputFingerprint(stored.snapshot)
+      || !homepageHandoffMatchesTrip(home, input.recovery.trip)) return null;
+    return {snapshot:stored.snapshot,receipt,draft:home as HomeTripDraft,pending:undefined,fromHomepage:true as const,resumedInputRaw:input.inputRaw};
+  } catch { return null; }
+}
+
 /** A canonical recovery has been written; complete only its own receipt.
  * A replacement intake token must never be overwritten by old completion. */
 export async function acknowledgePendingIntakeReceiptInStorage(input: {
@@ -1071,6 +1114,9 @@ export async function acknowledgePendingIntakeReceiptInStorage(input: {
   completed: HomepageHandoffReceipt;
   draft: HomeTripDraft;
   fromHomepage: boolean;
+  /** Exact input read when explicitly resuming a matching pending recovery.
+   * Allows revision-only drift; never substitutes the frozen snapshot. */
+  resumedInputRaw?: string;
   isCurrent?: () => boolean;
   lock?: <T>(key: string, run: () => Promise<T>) => Promise<T>;
 }): Promise<({ ok: true } | { ok: false; reason: "stale" | "storage" }) & { writeAttempted?: boolean; readbackConfirmed?: boolean; failureBoundary?: PersistenceFailureBoundary }> {
@@ -1092,16 +1138,37 @@ export async function acknowledgePendingIntakeReceiptInStorage(input: {
         stored = readHomepageInput(JSON.parse(priorInput ?? "null"), completed.ownerId);
         if (input.fromHomepage) envelope = JSON.parse(priorEnvelope ?? "null");
       } catch { return { ok: false as const, reason: "storage" as const }; }
+      // A resumed completed pair selected this exact HOME document. A new
+      // HOME value must not become its preparation baseline merely because
+      // the account-scoped input still holds the old completed receipt.
+      if (!pending && input.resumedInputRaw !== undefined && input.fromHomepage
+        && priorEnvelope !== JSON.stringify(input.draft)) return { ok: false as const, reason: "stale" as const };
       // A paired recovery may complete these slots before its pointer fails.
       // The same pending operation may acknowledge that exact completed pair
       // again; it still performs the writes/readback below, never adopts a
       // different receipt, changed raw-input revision or competing draft.
       const alreadyCompleted = Boolean(pending && pendingIntakeReceiptForOwner(pending, completed.ownerId)
         && stored?.receipt?.version === 1 && JSON.stringify(stored.receipt) === JSON.stringify(completed)
-        && (!input.fromHomepage || priorEnvelope === JSON.stringify(input.draft)));
+        && (!input.fromHomepage || priorEnvelope === JSON.stringify(input.draft)
+          || samePendingReceipt(pendingHomepageHandoffForOwner(envelope, completed.ownerId, pending.handoffId), pending)));
+      let resumedInputMatches = input.resumedInputRaw !== undefined && priorInput === input.resumedInputRaw;
+      if (!resumedInputMatches && alreadyCompleted && input.resumedInputRaw !== undefined && pending) {
+        // Pointer-only retry may see our own completed input/HOME pair. Require
+        // its exact bytes derived from the original witness, including revision.
+        try {
+          const resumed = readHomepageInput(JSON.parse(input.resumedInputRaw), completed.ownerId);
+          if (resumed && samePendingReceipt(pendingIntakeReceiptForOwner(resumed.receipt, completed.ownerId), pending)) {
+            const keepReview = resumed.review && resumed.review.resubmissionHandoffId !== completed.handoffId;
+            resumedInputMatches = priorInput === JSON.stringify({snapshot:resumed.snapshot,receipt:completed,
+              ...(keepReview ? {review:resumed.review} : {})});
+          }
+        } catch { /* A malformed witness grants no retry authority. */ }
+      }
+      if (input.resumedInputRaw !== undefined && !resumedInputMatches)
+        return { ok: false as const, reason: "stale" as const };
       if (!stored || (pending
         ? !samePendingReceipt(pendingIntakeReceiptForOwner(stored.receipt, completed.ownerId), pending) && !alreadyCompleted
-          || stored.snapshot.revision !== pending.inputRevision
+          || stored.snapshot.revision !== pending.inputRevision && !resumedInputMatches
           || homepageSemanticInputFingerprint(stored.snapshot) !== pending.semanticInputFingerprint
           || (input.fromHomepage && !samePendingReceipt(pendingHomepageHandoffForOwner(envelope, completed.ownerId, pending.handoffId), pending) && !alreadyCompleted)
         : stored.receipt?.version === 2

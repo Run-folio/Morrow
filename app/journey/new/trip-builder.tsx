@@ -68,7 +68,7 @@ import { defaultTravelProfile, travelProfileFromUnknown, tripInterestsWithProfil
 import { firstTripWorkspaceHref, mapWorkspaceHref, stayWorkspaceHref, tripWorkspaceHref } from "@/lib/easyt/trip-workspace-links";
 import { createLatestJourneyCaptureRequestGate, journeyCaptureFailureMessage, requestJourneyCapture } from "@/lib/easyt/journey-capture-client";
 import { homepageCapturedRouteEvidence, homepageDescribeSourceKey, newTripCapturedJourneyEnd } from "@/lib/easyt/home-route-choice";
-import { retainPendingIntakeReview, createHandoffSharedLookup, discardPendingIntakeForEdit, handoffLookupMentions, handoffOutcomeIsCurrent, handoffStopOccurrenceId, homepageBuilderDateRange, homepageHandoffMatchesTrip, homepageHandoffReceiptForOwner, homepageReceiptForProjection, insertHandoffOccurrence, handoffCanonicalOccurrenceBindings, persistEditableHomepageInput, projectHomepageInput, pendingIntakeReceiptForOwner, pendingHomepageHandoffForOwner, reserveDirectDescribeIntake, retireHandoffResolutionStatus, homeTripDraftInterestsWereExplicit, homeTripDraftTimingFlexibility, initialHandoffRouteStops, mergeHandoffLocationChoice, preferredHandoffLocationChoice, removeHomeTripDraftIfDurable, resolveHandoffIncrementally, routableHandoffMentions, tripInterestsFromHomeDraft, type HandoffLocationChoice, type HomeTripDraft, type HomepageInputSnapshot, type PendingHomeTripHandoff, type PendingIntakeReceipt } from "@/lib/easyt/home-trip-handoff";
+import { pendingIntakeContinuation, retainPendingIntakeReview, createHandoffSharedLookup, discardPendingIntakeForEdit, handoffLookupMentions, handoffOutcomeIsCurrent, handoffStopOccurrenceId, homepageBuilderDateRange, homepageHandoffMatchesTrip, homepageHandoffReceiptForOwner, homepageReceiptForProjection, insertHandoffOccurrence, handoffCanonicalOccurrenceBindings, persistEditableHomepageInput, projectHomepageInput, pendingIntakeReceiptForOwner, pendingHomepageHandoffForOwner, reserveDirectDescribeIntake, retireHandoffResolutionStatus, homeTripDraftInterestsWereExplicit, homeTripDraftTimingFlexibility, initialHandoffRouteStops, mergeHandoffLocationChoice, preferredHandoffLocationChoice, removeHomeTripDraftIfDurable, resolveHandoffIncrementally, routableHandoffMentions, tripInterestsFromHomeDraft, type HandoffLocationChoice, type HomeTripDraft, type HomepageInputSnapshot, type PendingHomeTripHandoff, type PendingIntakeReceipt } from "@/lib/easyt/home-trip-handoff";
 import { resolveNewTripEntryState, type NewTripEntryState } from "./new-trip-entry-state";
 import { NewTripStarter } from "./new-trip-starter";
 import type { JourneyCaptureResult } from "@/lib/easyt/journey-capture";
@@ -573,6 +573,8 @@ function TripBuilderDocument() {
     draft: HomeTripDraft;
     pending?: PendingIntakeReceipt;
     fromHomepage?: boolean;
+    resumedInputRaw?: string;
+    resumedTrip?: EasyTTrip;
   } | null>(null);
   const receiptAcknowledgementRef = useRef<Promise<boolean> | null>(null);
   const pendingInterpretationRef = useRef<PendingIntakeReceipt | null>(null);
@@ -706,6 +708,7 @@ function TripBuilderDocument() {
   const [entryKind, setEntryKind] = useState<NewTripEntryState["kind"]>("loading");
   const [resumedQuerylessDraft, setResumedQuerylessDraft] = useState(false);
   const [tripUnavailable, setTripUnavailable] = useState(false);
+  const [pendingContinuationNeedsReview, setPendingContinuationNeedsReview] = useState(false);
   const [initialSaveState, setSaveState] = useState<"device-saving" | "local" | "cloud-saving" | "cloud" | "error">("device-saving");
   const [initialCloudSaveError, setCloudSaveError] = useState("");
   const [buildNeedsReview, setBuildNeedsReview] = useState(false);
@@ -1484,6 +1487,7 @@ function TripBuilderDocument() {
     setEntryKind("loading");
     setResumedQuerylessDraft(false);
     setTripUnavailable(false);
+    setPendingContinuationNeedsReview(false);
     let active = true;
     const applySaved = (saved: Awaited<ReturnType<typeof loadActiveTrip>>) => {
       if (saved && active) applyAcceptedBuilderDocument(saved);
@@ -1629,10 +1633,28 @@ function TripBuilderDocument() {
               const pending = storedHomepageInput.receipt;
               startPending(pending, true);
             } else if (entry.kind === "explicit-trip" && existingTrip && existingTrip.id === entry.tripId) {
-              recoveryHandleRef.current = existingRecovery ?? null;
-              applySaved(existingTrip);
-              resumedHomepageTrip = true;
-              hydratedEntryKind = "explicit-trip";
+              if (params.get("resumePending") === "1") {
+                const continuation = existingRecovery && pendingIntakeContinuation({ownerId:activeOwnerId,
+                  inputRaw:homepageState.inputRaw,draftRaw:homepageState.draftRaw,recovery:existingRecovery});
+                if (!continuation) {
+                  setPendingContinuationNeedsReview(true);
+                  setTripUnavailable(true);
+                  hydratedEntryKind = "unavailable";
+                } else {
+                  // Keep the exact document as the candidate, but require the
+                  // pending receipt checkpoint before granting editor authority.
+                  pendingNewTripReceiptRef.current = {...continuation,resumedTrip:existingTrip};
+                  recoveryHandleRef.current = existingRecovery;
+                  applySaved(existingTrip);
+                  resumedHomepageTrip = true;
+                  hydratedEntryKind = "explicit-trip";
+                }
+              } else {
+                recoveryHandleRef.current = existingRecovery ?? null;
+                applySaved(existingTrip);
+                resumedHomepageTrip = true;
+                hydratedEntryKind = "explicit-trip";
+              }
             } else {
               setTripUnavailable(true);
               hydratedEntryKind = "unavailable";
@@ -1688,18 +1710,26 @@ function TripBuilderDocument() {
               ?? await loadRequestedTrip(homepageReceipt.tripId, activeOwnerId);
             if (!active) return;
             if (existingHomepageTrip) {
-              homeDraftRef.current = homeDraft;
-              setArrivedFromHomepage(true);
-              recoveryHandleRef.current = existingRecovery
-                ? { ownerId: existingRecovery.ownerId, tripId: existingRecovery.tripId, writeId: existingRecovery.writeId, ...(existingRecovery.backend?{backend:existingRecovery.backend}:{}) }
-                : null;
-              applySaved(existingHomepageTrip);
-              if (existingRecovery && homepageHandoffMatchesTrip(homeDraft, existingHomepageTrip)) {
-                await removeHomeTripDraftIfDurable(window.localStorage, homeDraft, existingHomepageTrip, true, false);
-                if (!active) return;
+              const explicitContinuation = params.get("resumePending") === "1";
+              const continuation = explicitContinuation && existingRecovery && pendingIntakeContinuation({ownerId:activeOwnerId,
+                inputRaw:homepageState.inputRaw,draftRaw:homepageState.draftRaw,recovery:existingRecovery});
+              if (explicitContinuation && !continuation) {
+                setPendingContinuationNeedsReview(true);setTripUnavailable(true);hydratedEntryKind="unavailable";homeDraft=null;
+              } else {
+                if (continuation) pendingNewTripReceiptRef.current={...continuation,resumedTrip:existingHomepageTrip};
+                homeDraftRef.current = homeDraft;
+                setArrivedFromHomepage(true);
+                recoveryHandleRef.current = existingRecovery
+                  ? { ownerId: existingRecovery.ownerId, tripId: existingRecovery.tripId, writeId: existingRecovery.writeId, ...(existingRecovery.backend?{backend:existingRecovery.backend}:{}) }
+                  : null;
+                applySaved(existingHomepageTrip);
+                if (!continuation && existingRecovery && homepageHandoffMatchesTrip(homeDraft, existingHomepageTrip)) {
+                  await removeHomeTripDraftIfDurable(window.localStorage, homeDraft, existingHomepageTrip, true, false);
+                  if (!active) return;
+                }
+                resumedHomepageTrip = true;
+                hydratedEntryKind = "explicit-trip";
               }
-              resumedHomepageTrip = true;
-              hydratedEntryKind = "explicit-trip";
             }
           }
         }
@@ -1741,7 +1771,8 @@ function TripBuilderDocument() {
       }
       if (active) {
         hydratedOwnerScopeRef.current = activeOwnerId;
-        builderInitialOverflowRef.current = ["fresh","route-handoff","home-handoff","pending-home-handoff","pending-direct-intake"].includes(hydratedEntryKind);
+        builderInitialOverflowRef.current = Boolean(pendingNewTripReceiptRef.current?.resumedTrip)
+          || ["fresh","route-handoff","home-handoff","pending-home-handoff","pending-direct-intake"].includes(hydratedEntryKind);
         setEntryKind(hydratedEntryKind);
         setHydrated(true);
         reportQaPersistenceBoundary("hydration", "hydration-complete", {accepted:qaHydrationAccepted && hydratedEntryKind !== "unavailable",scopeMatches:true,entryKind:qaHydrationAccepted ? hydratedEntryKind : "unavailable",writeAttempted:false});
@@ -4496,8 +4527,8 @@ function TripBuilderDocument() {
     const receiptToken = pendingNewTripReceiptRef.current;
     const inputRevision = builderEntryInputRevisionRef.current, hydrationRevision = builderEntryHydrationRevisionRef.current;
     const ownerId = activeBrowserOwnerIdRef.current;
-    const canonical = hydratedCanonicalTripRef.current?.id === trip.id ? hydratedCanonicalTripRef.current : null;
-    const candidate = requireReadableTripDocument(canonical ?? trip);
+    const canonical = !receiptToken?.resumedTrip && hydratedCanonicalTripRef.current?.id === trip.id ? hydratedCanonicalTripRef.current : null;
+    const candidate = requireReadableTripDocument(receiptToken?.resumedTrip ?? canonical ?? trip);
     const key = JSON.stringify([hydrationRevision, ownerId, candidate.id, inputRevision, ++builderEntrySequenceRef.current,
       receiptToken?.receipt.handoffId, receiptToken?.pending?.inputRevision, receiptToken?.pending?.semanticInputFingerprint]);
     const entry: BuilderEntrySession<NonNullable<typeof pendingNewTripReceiptRef.current>> = createBuilderEntrySession({ key, ownerId, candidate, receipt: receiptToken, initialCanonical: canonical,
@@ -4887,7 +4918,7 @@ function TripBuilderDocument() {
       const replacement = currentHandle?.tripId === candidate.id && currentHandle.ownerId === ownerId ? currentHandle : undefined;
       reportQaPersistenceBoundary("recovery-preparation", "recovery-scope", {accepted:true,scopeMatches:true,writeAttempted:false,caller:qaCaller,receiptPresent:Boolean(pendingReceipt)});
       return saveTripRecovery(candidate, {ownerId,replace:replacement,isCurrent:()=>generationIsCurrent() && canUseHydratedTripScope(hydratedOwnerScopeRef.current, ownerId),newTripOrClone:builderInitialOverflowRef.current,
-        ...(pendingReceipt ? {intake:{pending:pendingReceipt.pending,completed:pendingReceipt.receipt,draft:pendingReceipt.draft,fromHomepage:Boolean(pendingReceipt.fromHomepage)}} : {})});
+        ...(pendingReceipt ? {expectedRecoverySource:pendingReceipt.resumedTrip,intake:{pending:pendingReceipt.pending,completed:pendingReceipt.receipt,draft:pendingReceipt.draft,fromHomepage:Boolean(pendingReceipt.fromHomepage),resumedInputRaw:pendingReceipt.resumedInputRaw}} : {})});
     });
     const generationIsCurrent=() => entry!.isCurrent() && canUseHydratedTripScope(hydratedOwnerScopeRef.current, ownerId);
     if (!generationIsCurrent()) return {...recovery,stored:false,failureReason:"unknown"};
@@ -4928,7 +4959,7 @@ function TripBuilderDocument() {
     builderSeedPendingRef.current = true;
     const start=async()=>{
       try {
-        const source=hydratedCanonicalTripRef.current?.id===entry.candidate.id ? hydratedCanonicalTripRef.current : null;
+        const source=!pendingNewTripReceiptRef.current?.resumedTrip && hydratedCanonicalTripRef.current?.id===entry.candidate.id ? hydratedCanonicalTripRef.current : null;
         const candidate=entry.candidate;
         reportQaPersistenceBoundary("recovery-preparation", "recovery-candidate", {accepted:true,writeAttempted:false,caller:"seed"});
         if (!source) {
@@ -5775,7 +5806,7 @@ function TripBuilderDocument() {
     return <div data-builder-root="true" data-builder-edit-session={mountedBuilder ? "active" : "hydrating"} className={`${styles.shellWide} ${mobilePolish.builder}`} aria-busy="true"><div className={styles.locationResolution} role="status">Checking the current account before opening this trip…</div></div>;
   }
   if (tripUnavailable) {
-    return <div data-builder-root="true" className={`${styles.shellWide} ${mobilePolish.builder}`}><aside className={styles.cloudSaveError} role="alert"><span>This trip is not available to the current browser account. Its original device copy remains preserved in its owner scope.</span></aside></div>;
+    return <div data-builder-root="true" className={`${styles.shellWide} ${mobilePolish.builder}`}><aside className={styles.cloudSaveError} role="alert"><span>{pendingContinuationNeedsReview ? "Your saved submission and device trip need review before resuming. Both remain preserved." : "This trip is not available to the current browser account. Its original device copy remains preserved in its owner scope."}</span></aside></div>;
   }
 
   if (generated && buildInvariant.canBuildTrip) {

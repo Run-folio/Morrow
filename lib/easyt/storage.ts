@@ -1676,6 +1676,13 @@ export async function saveTripRecoveryToEasyT(
 ) {
   const scopedTrip = tripForRecoveryScope(trip, recovery);
   if (!scopedTrip) throw new Error("Trip recovery ownership mismatch.");
+  // Recovery scope is the user's explicit destination. Pin both promotion and
+  // subsequent CAS so a cookie/session rotation cannot write another account.
+  const scopedRequest: typeof fetch = recovery.ownerId === null ? request : (url, init) => {
+    const headers = new Headers(init?.headers);
+    headers.set('x-morrovia-expected-owner', recovery.ownerId!);
+    return request(url, {...init, headers});
+  };
   if (trip.ownerId === null) {
     // Promotion remains an insert-only draft boundary. Building a new trip
     // produces a planned document, so first claim its exact ID as a draft,
@@ -1687,7 +1694,7 @@ export async function saveTripRecoveryToEasyT(
     }
     let promoted: EasyTTrip;
     try {
-      promoted = (await promoteTripToEasyT({ ...trip, status: "draft" }, request)).trip;
+      promoted = (await promoteTripToEasyT({ ...trip, status: "draft" }, scopedRequest)).trip;
     } catch (error) {
       // The planned CAS may have committed even when its response was lost.
       // A retry of that exact reviewed document must acknowledge the existing
@@ -1699,9 +1706,12 @@ export async function saveTripRecoveryToEasyT(
       }
       throw error;
     }
+    if (promoted.id !== trip.id || recovery.ownerId !== null && promoted.ownerId !== recovery.ownerId) {
+      throw new EasyTTripPersistenceError({category:'validation',status:200,operation:'promotion',message:'Canonical promotion ownership mismatch.'});
+    }
     if (trip.status === "draft") return promoted;
     try {
-      return await saveTripToEasyT({ ...promoted, status: trip.status }, request);
+      return await saveTripToEasyT({ ...promoted, status: trip.status }, scopedRequest);
     } catch (error) {
       // Concurrent double-clicks share one trip ID and one CAS baseline. If
       // another request saved the exact reviewed planned state first, its
@@ -1714,7 +1724,7 @@ export async function saveTripRecoveryToEasyT(
     }
   }
   try {
-    return await saveTripToEasyT(scopedTrip, request);
+    return await saveTripToEasyT(scopedTrip, scopedRequest);
   } catch (error) {
     // The same lost-response rule applies when Builder is editing an existing
     // account draft: an exact canonical conflict proves the write committed.

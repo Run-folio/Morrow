@@ -16,6 +16,9 @@ import { travelProfileFromUnknown, tripInterestsWithProfileDefaults, type Travel
 import { travelProfileStorageKey } from "@/lib/easyt/private-browser-context";
 import {
   commitHomepageHandoff,
+  pendingHomepageSubmissionForOwner,
+  pendingHomepageHandoffForOwner,
+  type PendingIntakeReceipt,
   homepageCompletedReceiptIsUnchanged,
   homepageHandoffReceiptForOwner,
   homepageHandoffMatchesTrip,
@@ -104,6 +107,8 @@ export default function HomeTripStarter() {
     originFocusRequestedRef.current = false;
   }, [snapshot.mode, loading, originFocusRequestKey]);
   const [recoveryBlocked, setRecoveryBlocked] = useState(true);
+  const [pendingSubmission, setPendingSubmission] = useState<{receipt:PendingIntakeReceipt;inputRaw:string|null;draftRaw:string|null}|null>(null);
+  const inputBlocked = recoveryBlocked || Boolean(pendingSubmission);
   const [focusEntryId, setFocusEntryId] = useState<string | null>(null);
   const [focusRequestKey, setFocusRequestKey] = useState(0);
 
@@ -133,7 +138,7 @@ export default function HomeTripStarter() {
     })();
   };
   const updateSnapshot = (update: (current: HomepageInputSnapshot) => HomepageInputSnapshot, reviewedEvidence?: HomepageRouteEvidence) => {
-    if (recoveryBlocked || !homepageReadyRef.current || sessionPendingRef.current || ownerIdRef.current !== snapshotRef.current.ownerId) return;
+    if (inputBlocked || !homepageReadyRef.current || sessionPendingRef.current || ownerIdRef.current !== snapshotRef.current.ownerId) return;
     cancelSubmission();
     let next = { ...invalidateHomepageRouteReview(snapshotRef.current, update(snapshotRef.current)), revision: snapshotRef.current.revision + 1 };
     if (reviewedEvidence && next.tripType?.state === "selected") next = { ...next, routeReview: { version: 1, acceptedTripType: next.tripType.value, reviewedInputKey: homepageRouteReviewKey(next, reviewedEvidence) } };
@@ -155,6 +160,7 @@ export default function HomeTripStarter() {
     let active = true;
     homepageReadyRef.current = false;
     setRecoveryBlocked(true);
+    setPendingSubmission(null);
     if (sessionPending) return () => { active = false; };
     cancelSubmission();
     setCaptureError("");
@@ -188,11 +194,42 @@ export default function HomeTripStarter() {
       snapshotRef.current = next;
       setSnapshot(next);
       homepageReadyRef.current = true;
+      const pending = pendingHomepageSubmissionForOwner(state.storedInput, state.draft, ownerId);
+      setPendingSubmission(pending ? {receipt:pending,inputRaw:state.inputRaw,draftRaw:state.draftRaw} : null);
       setRecoveryBlocked(false);
     };
     void hydrate();
     return () => { active = false; homepageReadyRef.current = false; };
   }, [ownerId, sessionPending, recoveryReadAttempt]);
+
+  const resumePendingSubmission = () => { void (async () => {
+    const retained = pendingSubmission;
+    if (!retained || loading || homepageEditedRef.current) {
+      setCaptureError(language === "es" ? "Mantén esta pestaña abierta para conservar tus cambios actuales." : "Keep this tab open to preserve your current edits.");
+      return;
+    }
+    const isCurrent = () => mountedRef.current && homepageReadyRef.current && !sessionPendingRef.current
+      && ownerIdRef.current === retained.receipt.ownerId && !homepageEditedRef.current;
+    setLoading(true);
+    try {
+      const state = await readDurableHomepageState(retained.receipt.ownerId,isCurrent);
+      if (!isCurrent()) return;
+      const pending = state.kind === "ready" && pendingHomepageSubmissionForOwner(state.storedInput,state.draft,retained.receipt.ownerId);
+      const envelope = state.kind === "ready" && pendingHomepageHandoffForOwner(state.draft,retained.receipt.ownerId,retained.receipt.handoffId);
+      if (state.kind !== "ready" || state.inputRaw !== retained.inputRaw || state.draftRaw !== retained.draftRaw
+        || !pending || !envelope || pending.tripId !== retained.receipt.tripId || pending.inputRevision !== retained.receipt.inputRevision
+        || pending.semanticInputFingerprint !== retained.receipt.semanticInputFingerprint
+        || homepageSemanticInputFingerprint(state.storedInput!.snapshot) !== pending.semanticInputFingerprint) {
+        setCaptureError(language === "es" ? "La entrada guardada necesita revisión. Conserva esta pestaña abierta." : "The saved submission needs review. Keep this tab open.");
+        return;
+      }
+      // Resume the same operation. Starting a new trip would clear its pointer
+      // and unnecessarily depend on unrelated protected recoveries.
+      router.push(`/journey/new?homeDraft=1&handoff=${encodeURIComponent(pending.handoffId)}&resumePending=1`);
+    } catch {
+      if (isCurrent()) setCaptureError(language === "es" ? "No pudimos reanudar el envío guardado. Conserva esta pestaña abierta." : "We couldn't resume the saved submission. Keep this tab open.");
+    } finally { if (isCurrent()) setLoading(false); }
+  })(); };
 
   const markPromptStarted = (inputMethod: "text" | "voice", value: string) => {
     if (promptStartedRef.current || value.trim().length < 3) return;
@@ -201,7 +238,7 @@ export default function HomeTripStarter() {
   };
 
   const submit = async () => {
-    if (recoveryBlocked || !homepageReadyRef.current || sessionPendingRef.current || ownerIdRef.current !== snapshotRef.current.ownerId) return;
+    if (inputBlocked || !homepageReadyRef.current || sessionPendingRef.current || ownerIdRef.current !== snapshotRef.current.ownerId) return;
     if (submitInFlightRef.current) return;
     submitInFlightRef.current = true;
     const submittedAt = performance.now();
@@ -446,8 +483,11 @@ export default function HomeTripStarter() {
   {recoveryBlocked && captureError ? <MorroviaRecoveryFeedback title={captureError}
     safety={language === "es" ? "Conserva esta pestaña abierta mientras revisamos tu entrada guardada." : "Keep this tab open while we check your saved input."}
     onRetry={retryRecoveryRead} retryLabel={language === "es" ? "Reintentar recuperación" : "Try recovery again"} /> : null}
+  {pendingSubmission ? <MorroviaRecoveryFeedback title={language === "es" ? "Tienes un envío de viaje pendiente" : "Your saved submission is waiting"}
+    safety={language === "es" ? "Reanúdalo antes de empezar otro viaje." : "Resume it before starting another trip."}
+    onRetry={loading ? undefined : resumePendingSubmission} retryLabel={language === "es" ? "Reanudar envío guardado" : "Resume saved submission"} /> : null}
   <MorroviaTripCapture
-    formId="start-building" progressiveDetails disabled={sessionPending || recoveryBlocked} language={language} value={snapshot.prompt}
+    formId="start-building" progressiveDetails disabled={sessionPending || inputBlocked} language={language} value={snapshot.prompt}
     onValueChange={(prompt) => {
       const next = homepageSnapshotForDescribePrompt(snapshotRef.current, prompt);
       updateSnapshot(() => next);
@@ -455,13 +495,13 @@ export default function HomeTripStarter() {
     onPromptStarted={markPromptStarted}
     homepageEntry={{
       planner: {
-        tripTypeControl: <div data-homepage-trip-type><EasyTSegmentedControl ariaLabel={language === "es" ? "Tipo de viaje" : "Trip type"} disabled={sessionPending || recoveryBlocked || loading}
+        tripTypeControl: <div data-homepage-trip-type><EasyTSegmentedControl ariaLabel={language === "es" ? "Tipo de viaje" : "Trip type"} disabled={sessionPending || inputBlocked || loading}
           value={choice.tripType} options={[{ value: "return_to_start", label: language === "es" ? "Volver al inicio" : "Return to start" }, { value: "one_way", label: language === "es" ? "Solo ida" : "One way" }]}
           onChange={type => { if (type !== "unknown_legacy") requestTripType(type); }} /></div>,
         originEntry: <div data-homepage-origin><span data-morrovia-field-label>{language === "es" ? "Sales desde" : "Start from"}</span><CanonicalPlaceAutocomplete
           language={language} label={language === "es" ? "Sales desde" : "Start from"} value={originInput}
           placeholder={language === "es" ? "Ciudad o aeropuerto" : "City or airport"} allowedPlaceTypes={["city", "town", "transport_gateway"]}
-          requireCoordinates disabled={sessionPending || recoveryBlocked || loading}
+          requireCoordinates disabled={sessionPending || inputBlocked || loading}
           onChange={value => updateSnapshot(current => ({ ...current, originInput: value, origin: { state: "cleared" } }))}
           onClear={() => updateSnapshot(current => ({ ...current, originInput: "", origin: { state: "cleared" } }))}
           onSelect={suggestion => {const place=journeyEndpointPlaceFromSuggestion(suggestion);if(place)updateSnapshot(current => ({ ...current, originInput: suggestion.label, origin: { state: "selected", value: place } }));}} /></div>,
@@ -471,7 +511,7 @@ export default function HomeTripStarter() {
       onModeChange: (mode) => updateSnapshot((current) => ({ ...current, mode })),
       destinationEntry: destinationSummary(snapshot.entries, language),
       destinationEditor: <HomeDestinationEditor
-        entries={snapshot.entries} language={language} disabled={loading || sessionPending || recoveryBlocked}
+        entries={snapshot.entries} language={language} disabled={loading || sessionPending || inputBlocked}
         createEntry={() => ({ id: `destination-${destinationIdRef.current++}`, text: "", selection: null })}
         focusEntryId={focusEntryId} focusRequestKey={focusRequestKey}
         onChange={(entries: HomepageDestinationEntry[]) => updateSnapshot((current) => ({ ...current, entries }))}
