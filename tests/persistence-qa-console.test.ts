@@ -48,21 +48,24 @@ test('producer prerequisites interleave with outcomes in console order without a
     const producer = (source as any).reportQaPersistenceBoundary;
     assert.equal(typeof producer, 'function');
     producer('hydration', 'hydration-complete', { accepted: true, scopeMatches: true, entryKind: 'fresh', sessionClass: 'signed-in' });
+    producer('hydration', 'hydration-complete', { accepted: false, guardReason: 'homepage-read-protected', entryKind: 'unavailable' });
     producer('intake', 'intake-guard', { accepted: true, scopeMatches: true, writeAttempted: false });
     const result = source.reportPersistenceOutcome('builder-entry', { stored: false, phase: 'probe', scopeMatches: true });
     producer('native-write', 'recovery-write', { accepted: false, writeAttempted: true, writeAccepted: false, nativeFailure: 'security', writeBranch: 'new-write' });
     source.reportPersistenceOutcome('device-recovery', { stored: false, nativeFailure: 'security', writeAttempted: true, failureBoundary: 'recovery-write' });
     const captured = packets(logs);
-    assert.deepEqual(captured.map(v=>v.sequence), [0,1,2,3,4,5]);
+    assert.deepEqual(captured.map(v=>v.sequence), [0,1,2,3,4,5,6]);
     assert.equal(result.sequence, 1);
     assert.equal((events[1] as any).sequence, 2);
     assert.equal(events.length, 2);
     assert.equal(captured[1].accepted, true);
-    assert.equal(captured[4].writeAccepted, false);
-    assert.equal(captured[4].readbackConfirmed, null);
-    assert.equal(captured[4].boundary, 'recovery-write');
-    assert.equal(captured[5].sessionClass, 'signed-in');
-    assert.equal(captured[5].entryKind, 'fresh');
+    assert.equal(captured[1].guardReason, null);
+    assert.equal(captured[2].guardReason, 'homepage-read-protected');
+    assert.equal(captured[5].writeAccepted, false);
+    assert.equal(captured[5].readbackConfirmed, null);
+    assert.equal(captured[5].boundary, 'recovery-write');
+    assert.equal(captured[6].sessionClass, 'signed-in');
+    assert.equal(captured[6].entryKind, 'unavailable');
   });
 });
 
@@ -71,13 +74,13 @@ test('new producer fields remain closed, fault-isolated and distinguish unknown 
     const source = await freshOutcomes();
     const producer = (source as any).reportQaPersistenceBoundary;
     assert.equal(typeof producer, 'function');
-    const evidence = { accepted: 'PRIVATE-ACCEPTED', writeAccepted: 'PRIVATE-WRITE', sessionClass: 'PRIVATE-SESSION', entryKind: 'PRIVATE-ENTRY', caller: 'PRIVATE-CALLER', readbackKind: 'PRIVATE-READBACK', writeBranch: 'PRIVATE-BRANCH', nativeFailure: 'PRIVATE-ERROR', ownerId: 'PRIVATE-OWNER', storage: 'PRIVATE-BYTES' };
+    const evidence = { accepted: 'PRIVATE-ACCEPTED', writeAccepted: 'PRIVATE-WRITE', sessionClass: 'PRIVATE-SESSION', entryKind: 'PRIVATE-ENTRY', guardReason: 'PRIVATE-GUARD', caller: 'PRIVATE-CALLER', readbackKind: 'PRIVATE-READBACK', writeBranch: 'PRIVATE-BRANCH', nativeFailure: 'PRIVATE-ERROR', ownerId: 'PRIVATE-OWNER', storage: 'PRIVATE-BYTES' };
     Object.defineProperty(evidence, 'trip', { get() { throw new Error('PRIVATE-GETTER'); } });
     producer('PRIVATE-STAGE','PRIVATE-BOUNDARY',evidence);
     producer('native-write','recovery-readback',{accepted:false,writeAttempted:true,writeAccepted:true,readbackConfirmed:false,readbackKind:'recovery'});
     const result=packets(logs);
     assert.equal(result[1].stage,'unknown'); assert.equal(result[1].boundary,null);
-    for(const k of ['accepted','writeAccepted','readbackKind','writeBranch','caller']) assert.equal(result[1][k],null,k);
+    for(const k of ['accepted','writeAccepted','readbackKind','writeBranch','caller','guardReason']) assert.equal(result[1][k],null,k);
     assert.equal(result[1].sessionClass,'unknown'); assert.equal(result[1].entryKind,'unknown');
     assert.equal(result[2].writeAccepted,true); assert.equal(result[2].readbackConfirmed,false);
     assert.equal(result[2].readbackKind,'recovery'); assert.equal(result[2].receiptAcknowledged,null);
@@ -174,7 +177,7 @@ test('capture uses a closed schema, query presence only and unknown rather than 
     assert.equal(result.nativeFailure, 'unknown');
     assert.equal(result.acknowledgement, null);
     for (const key of ['writeAttempted', 'writeAccepted', 'readbackConfirmed', 'deviceCopyVerified', 'pointerAcknowledged', 'scopeMatches', 'receiptPresent', 'receiptAcknowledged', 'accountQueueEntered', 'httpStatusClass', 'accountAcknowledged']) assert.equal(result[key], null, key);
-    assert.deepEqual(Object.keys(result).sort(), ['version', 'kind', 'sequence', 'buildMatch', 'queryKeys', 'sessionClass', 'browserContextClass', 'entryKind', 'stage', 'boundary', 'accepted', 'caller', 'writeBranch', 'readbackKind', 'operation', 'failedOperation', 'initialSetterFailure', 'setterFailure', 'cleanupFailure', 'setterRetried', 'phase', 'outcome', 'failureBoundary', 'writeAttempted', 'writeAccepted', 'readbackConfirmed', 'deviceCopyVerified', 'pointerAcknowledged', 'nativeFailure', 'acknowledgement', 'scopeMatches', 'receiptPresent', 'receiptAcknowledged', 'accountQueueEntered', 'httpStatusClass', 'accountAcknowledged'].sort());
+    assert.deepEqual(Object.keys(result).sort(), ['version', 'kind', 'sequence', 'buildMatch', 'queryKeys', 'sessionClass', 'browserContextClass', 'entryKind', 'stage', 'boundary', 'accepted', 'guardReason', 'caller', 'writeBranch', 'readbackKind', 'operation', 'failedOperation', 'initialSetterFailure', 'setterFailure', 'cleanupFailure', 'setterRetried', 'phase', 'outcome', 'failureBoundary', 'writeAttempted', 'writeAccepted', 'readbackConfirmed', 'deviceCopyVerified', 'pointerAcknowledged', 'nativeFailure', 'acknowledgement', 'scopeMatches', 'receiptPresent', 'receiptAcknowledged', 'accountQueueEntered', 'httpStatusClass', 'accountAcknowledged'].sort());
     source.reportQaPersistenceBoundary('native-write','recovery-write',{
       operation:'PRIVATE-OP',failedOperation:'PRIVATE-FAILED',initialSetterFailure:'PRIVATE-INITIAL',setterFailure:'PRIVATE-SETTER',cleanupFailure:'PRIVATE-CLEANUP',setterRetried:'PRIVATE-RETRY',
     } as never);

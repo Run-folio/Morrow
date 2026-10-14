@@ -25,7 +25,7 @@ import {
 import { useSearchParams } from "next/navigation";
 import dynamic from "next/dynamic";
 import { useCallback, useEffect, useLayoutEffect, useId, useMemo, useRef, useState, type DragEvent as ReactDragEvent } from "react";
-import { acknowledgeTripBuildSave, cacheCanonicalTrip, deferNewTripNavigation, canUseHydratedTripScope, claimGuestTripRecoveryForOwner, EASYT_BEFORE_NEW_TRIP_EVENT, EASYT_LAST_OWNER_CHANGE_EVENT, EASYT_LAST_OWNER_KEY, EasyTTripAuthError, EasyTTripPromotionConflictError, EasyTTripSaveConflictError, forgetRememberedOwner, loadActiveTrip, loadCurrentDraftRecovery, loadRememberedOwner, observeRememberedOwner, loadRequestedTrip, loadTripRecovery, markTripRecoveryState, ownerIdForBrowserRecovery, rememberLastOwner, saveTripRecovery, saveTripRecoveryToEasyT, sameRecoveryDocument, shouldAllowNewTripNavigation, tripDocumentsCanonicalEquivalent, type TripRecoveryHandle, type TripRecoveryWriteResult } from "@/lib/easyt/storage";
+import { acknowledgeTripBuildSave, cacheCanonicalTrip, deferNewTripNavigation, canUseHydratedTripScope, claimGuestTripRecoveryForOwner, EASYT_BEFORE_NEW_TRIP_EVENT, EASYT_LAST_OWNER_CHANGE_EVENT, EASYT_LAST_OWNER_KEY, BrowserRecoveryReadError, EasyTTripAuthError, EasyTTripPromotionConflictError, EasyTTripSaveConflictError, forgetRememberedOwner, loadActiveTrip, loadCurrentDraftRecovery, loadRememberedOwner, observeRememberedOwner, loadRequestedTrip, loadTripRecovery, markTripRecoveryState, ownerIdForBrowserRecovery, rememberLastOwner, saveTripRecovery, saveTripRecoveryToEasyT, sameRecoveryDocument, shouldAllowNewTripNavigation, tripDocumentsCanonicalEquivalent, type TripRecoveryHandle, type TripRecoveryWriteResult } from "@/lib/easyt/storage";
 import { canonicalTripStopIdentityMap, tripBuildDocumentsCanonicalEquivalent } from "@/lib/easyt/trip-promotion";
 import { type BuilderAcceptedEdit, type BuilderStructuralSnapshot } from "@/lib/easyt/trip-builder-edit";
 import { builderNightsCommand, builderRemoveCommand, builderPlaceCommand, builderDetailsCommands } from "@/lib/easyt/trip-builder-handler-contract";
@@ -128,7 +128,7 @@ import { withProviderTimeout } from "@/lib/easyt/provider-timeout";
 import { hasUsefulRouteSkeleton } from "./trip-builder-entry";
 import { markPlanningMilestone, planningAttemptOutcome, planningContentIsActionable, planningRequiredInterpretationIsComplete } from "@/lib/easyt/planning-attempt-performance";
 import { durableBuilderRecoveryUrl } from "@/lib/easyt/builder-durable-url";
-import { recoveryFailureMessage, recoveryPersistenceOutcome, reportPersistenceOutcome, reportQaPersistenceBoundary, qaNativeFailureCategory, type QaRecoveryCaller, type PersistenceOutcome } from "@/lib/easyt/persistence-outcome";
+import { recoveryFailureMessage, recoveryPersistenceOutcome, reportPersistenceOutcome, reportQaPersistenceBoundary, qaNativeFailureCategory, type QaEntryGuardReason, type QaRecoveryCaller, type PersistenceOutcome } from "@/lib/easyt/persistence-outcome";
 import { clearTripLegTransportChoice, selectTripLegTransportChoice } from "@/lib/easyt/transport-mode-choice";
 import { authoredContentKey } from "@/lib/easyt/trip-retained-authored-content";
 
@@ -1513,6 +1513,8 @@ function TripBuilderDocument() {
       if (saved && active) applyAcceptedBuilderDocument(saved);
     };
     const hydrate = async () => {
+      let guardReason: QaEntryGuardReason | null = null;
+      const guardEntry = (reason: QaEntryGuardReason) => { guardReason = reason; setTripUnavailable(true); };
       try {
       let qaHydrationAccepted = true;
       const params = new URLSearchParams(window.location.search);
@@ -1529,10 +1531,10 @@ function TripBuilderDocument() {
       if (!tripIdFromUrl && typeof previousOwnerScope === "string" && previousOwnerScope !== activeOwnerId) {
         if (active) {
           hydratedOwnerScopeRef.current = activeOwnerId;
-          setTripUnavailable(true);
+          guardEntry("owner-transition");
           setEntryKind("unavailable");
           setHydrated(true);
-          reportQaPersistenceBoundary("hydration", "hydration-complete", {accepted:false,scopeMatches:true,entryKind:"unavailable",writeAttempted:false});
+          reportQaPersistenceBoundary("hydration", "hydration-complete", {accepted:false,scopeMatches:true,entryKind:"unavailable",guardReason:"owner-transition",writeAttempted:false});
         }
         return;
       }
@@ -1557,13 +1559,16 @@ function TripBuilderDocument() {
           if (showItinerary) setGenerated(true);
         } else {
           qaHydrationAccepted = false;
-          setTripUnavailable(true);
+          guardEntry("requested-trip-missing");
         }
       } else {
         const directHomepageState = !params.has("homeDraft") && !params.has("inspire")
           ? await readDurableHomepageState(activeOwnerId, () => active && activeBrowserOwnerIdRef.current === activeOwnerId) : null;
         if (!active || activeBrowserOwnerIdRef.current !== activeOwnerId) return;
-        if (directHomepageState && directHomepageState.kind !== "ready") throw new Error("Homepage input could not be opened safely");
+        if (directHomepageState && directHomepageState.kind !== "ready") {
+          guardReason = directHomepageState.kind === "protected" ? "homepage-read-protected" : "homepage-read-unavailable";
+          throw new Error("Homepage input could not be opened safely");
+        }
         const directPending = directHomepageState?.kind === "ready"
           && pendingHomepageSubmissionForOwner(directHomepageState.storedInput, directHomepageState.draft, activeOwnerId);
         if (directPending && params.get("resumePending") !== "1") {
@@ -1614,7 +1619,10 @@ function TripBuilderDocument() {
         let storedHomepageInput = null;
         const homepageState = directHomepageState ?? await readDurableHomepageState(activeOwnerId, () => active && activeBrowserOwnerIdRef.current === activeOwnerId);
         if (!active) return;
-        if (homepageState.kind !== "ready") throw new Error("Homepage input could not be opened safely");
+        if (homepageState.kind !== "ready") {
+          guardReason = homepageState.kind === "protected" ? "homepage-read-protected" : "homepage-read-unavailable";
+          throw new Error("Homepage input could not be opened safely");
+        }
         storedHomepageInput = homepageState.storedInput;
         if (receivingHomeDraft) homeDraft = homepageState.draft as HomeTripDraft | PendingHomeTripHandoff | null;
         if (!homeDraft && !receivingHomeDraft) {
@@ -1642,7 +1650,7 @@ function TripBuilderDocument() {
             ? storedHomepageInput.receipt : null);
           if (directReceipt) {
             if (params.get("resumePending") !== "1" || params.get("handoff") !== directReceipt.handoffId) {
-              setTripUnavailable(true); hydratedEntryKind = "unavailable";
+              guardEntry("pending-receipt-protected"); hydratedEntryKind = "unavailable";
             } else {
             const existingRecovery = await loadTripRecovery(directReceipt.tripId, activeOwnerId);
             const existingTrip = existingRecovery?.trip ?? await loadRequestedTrip(directReceipt.tripId, activeOwnerId);
@@ -1651,7 +1659,7 @@ function TripBuilderDocument() {
               const continuation = existingRecovery && pendingIntakeContinuation({ownerId:activeOwnerId,
                 inputRaw:homepageState.inputRaw,draftRaw:homepageState.draftRaw,recovery:existingRecovery,fromHomepage:false});
               if (!continuation) {
-                setPendingContinuationNeedsReview(true); setTripUnavailable(true); hydratedEntryKind = "unavailable";
+                setPendingContinuationNeedsReview(true); guardEntry("pending-continuation-protected"); hydratedEntryKind = "unavailable";
               } else {
                 pendingNewTripReceiptRef.current = {...continuation,resumedTrip:existingTrip};
                 recoveryHandleRef.current = existingRecovery;
@@ -1661,7 +1669,7 @@ function TripBuilderDocument() {
               }
             } else if (pending && storedHomepageInput?.snapshot.revision === pending.inputRevision
               && homepageSemanticInputFingerprint(storedHomepageInput.snapshot) === pending.semanticInputFingerprint) startPending(pending, false);
-            else { setPendingContinuationNeedsReview(true); setTripUnavailable(true); hydratedEntryKind = "unavailable"; }
+            else { setPendingContinuationNeedsReview(true); guardEntry("pending-continuation-protected"); hydratedEntryKind = "unavailable"; }
             }
           }
         }
@@ -1682,7 +1690,7 @@ function TripBuilderDocument() {
               const pending = storedHomepageInput.receipt;
               if (storedHomepageInput.snapshot.revision !== pending.inputRevision
                 || homepageSemanticInputFingerprint(storedHomepageInput.snapshot) !== pending.semanticInputFingerprint) {
-                setPendingContinuationNeedsReview(true); setTripUnavailable(true); hydratedEntryKind = "unavailable";
+                setPendingContinuationNeedsReview(true); guardEntry("pending-receipt-protected"); hydratedEntryKind = "unavailable";
               } else startPending(pending, true);
             } else if (entry.kind === "explicit-trip" && existingTrip && existingTrip.id === entry.tripId) {
               if (params.get("resumePending") === "1") {
@@ -1690,7 +1698,7 @@ function TripBuilderDocument() {
                   inputRaw:homepageState.inputRaw,draftRaw:homepageState.draftRaw,recovery:existingRecovery});
                 if (!continuation) {
                   setPendingContinuationNeedsReview(true);
-                  setTripUnavailable(true);
+                  guardEntry("pending-continuation-protected");
                   hydratedEntryKind = "unavailable";
                 } else {
                   // Keep the exact document as the candidate, but require the
@@ -1708,7 +1716,7 @@ function TripBuilderDocument() {
                 hydratedEntryKind = "explicit-trip";
               }
             } else {
-              setTripUnavailable(true);
+              guardEntry("handoff-protected");
               hydratedEntryKind = "unavailable";
             }
             homeDraft = null;
@@ -1734,7 +1742,7 @@ function TripBuilderDocument() {
               resumedHomepageTrip = true;
               setArrivedFromHomepage(true);
               hydratedEntryKind = "explicit-trip";
-            } else { setTripUnavailable(true); hydratedEntryKind = "unavailable"; }
+            } else { guardEntry("handoff-protected"); hydratedEntryKind = "unavailable"; }
           } else {
             const entry = resolveNewTripEntryState({
               hydrated: true, ownerId: activeOwnerId, homeDraft: true,
@@ -1742,7 +1750,7 @@ function TripBuilderDocument() {
             });
             if (entry.kind === "unavailable") {
               homeDraft = null;
-              setTripUnavailable(true);
+              guardEntry("handoff-protected");
               hydratedEntryKind = "unavailable";
             }
           }
@@ -1766,7 +1774,7 @@ function TripBuilderDocument() {
               const continuation = explicitContinuation && existingRecovery && pendingIntakeContinuation({ownerId:activeOwnerId,
                 inputRaw:homepageState.inputRaw,draftRaw:homepageState.draftRaw,recovery:existingRecovery});
               if (explicitContinuation && !continuation) {
-                setPendingContinuationNeedsReview(true);setTripUnavailable(true);hydratedEntryKind="unavailable";homeDraft=null;
+                setPendingContinuationNeedsReview(true);guardEntry("pending-continuation-protected");hydratedEntryKind="unavailable";homeDraft=null;
               } else {
                 if (continuation) pendingNewTripReceiptRef.current={...continuation,resumedTrip:existingHomepageTrip};
                 homeDraftRef.current = homeDraft;
@@ -1827,10 +1835,14 @@ function TripBuilderDocument() {
           || ["fresh","route-handoff","home-handoff","pending-home-handoff","pending-direct-intake"].includes(hydratedEntryKind);
         setEntryKind(hydratedEntryKind);
         setHydrated(true);
-        reportQaPersistenceBoundary("hydration", "hydration-complete", {accepted:qaHydrationAccepted && hydratedEntryKind !== "unavailable",scopeMatches:true,entryKind:qaHydrationAccepted ? hydratedEntryKind : "unavailable",writeAttempted:false});
+        reportQaPersistenceBoundary("hydration", "hydration-complete", {accepted:qaHydrationAccepted && hydratedEntryKind !== "unavailable",scopeMatches:true,entryKind:qaHydrationAccepted ? hydratedEntryKind : "unavailable",guardReason:guardReason ?? undefined,writeAttempted:false});
       }
-      } catch { reportQaPersistenceBoundary("hydration", "hydration-complete", {accepted:active ? false : undefined,phase:active ? "result" : "probe",acknowledgement:active ? undefined : "stale"});
-        if(active && builderMountedRef.current){hydratedOwnerScopeRef.current=activeBrowserOwnerId;setTripUnavailable(true);setEntryKind("unavailable");setHydrated(true);setDeviceStorageBlocked(true);setSaveState("error");setCloudSaveError("This trip could not be opened safely. Keep this tab open and try again.");}
+      } catch (error) {
+        const failureReason = guardReason ?? (error instanceof BrowserRecoveryReadError
+          ? error.kind === "protected" ? "recovery-read-protected" : "recovery-read-unavailable"
+          : "entry-exception");
+        reportQaPersistenceBoundary("hydration", "hydration-complete", {accepted:active ? false : undefined,phase:active ? "result" : "probe",acknowledgement:active ? undefined : "stale",guardReason:active ? failureReason : undefined});
+        if(active && builderMountedRef.current){hydratedOwnerScopeRef.current=activeBrowserOwnerId;guardEntry(failureReason);setEntryKind("unavailable");setHydrated(true);setDeviceStorageBlocked(true);setSaveState("error");setCloudSaveError("This trip could not be opened safely. Keep this tab open and try again.");}
       }
     };
     void hydrate();

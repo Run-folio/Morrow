@@ -4,8 +4,8 @@ import { readFileSync } from 'node:fs';
 import ts from 'typescript';
 import { createBuilderEntrySession } from '../lib/easyt/trip-builder-entry-session.ts';
 import { reportQaPersistenceBoundary, qaNativeFailureCategory, reportPersistenceOutcome, recoveryPersistenceOutcome, recoveryFailureMessage } from '../lib/easyt/persistence-outcome.ts';
-import { persistEditableHomepageInputInStorage as persistEditableHomepageInput, projectHomepageInput, homepageReceiptForProjection, readHomepageInput, createPendingIntakeReceipt, pendingHomepageSubmissionForOwner, homepageHandoffMatchesTrip, acknowledgePendingIntakeReceiptInStorage, type HomeTripDraft, type HomepageInputSnapshot } from '../lib/easyt/home-trip-handoff.ts';
-import { saveTripRecovery, saveTripRecoveryToStorage, canUseHydratedTripScope, loadCurrentDraftRecoveryFromStorage, loadTripRecoveryFromStorage, sameRecoveryDocument, EASYT_TRIP_RECOVERY_PREFIX, EASYT_TRIP_CACHE_PREFIX } from '../lib/easyt/storage.ts';
+import { persistEditableHomepageInputInStorage as persistEditableHomepageInput, projectHomepageInput, homepageReceiptForProjection, readHomepageInput, createPendingIntakeReceipt, pendingIntakeReceiptForOwner, pendingHomepageSubmissionForOwner, homepageHandoffMatchesTrip, acknowledgePendingIntakeReceiptInStorage, type HomeTripDraft, type HomepageInputSnapshot } from '../lib/easyt/home-trip-handoff.ts';
+import { BrowserRecoveryReadError, saveTripRecovery, saveTripRecoveryToStorage, canUseHydratedTripScope, loadCurrentDraftRecoveryFromStorage, loadTripRecoveryFromStorage, sameRecoveryDocument, EASYT_TRIP_RECOVERY_PREFIX, EASYT_TRIP_CACHE_PREFIX } from '../lib/easyt/storage.ts';
 import { requireReadableTripDocument } from '../lib/easyt/trip-document.ts';
 import { homepageInputStorageKey } from '../lib/easyt/private-browser-context.ts';
 import { tripFromBuilder } from '../lib/easyt/trip.ts';
@@ -141,7 +141,7 @@ function hydrationBindings() {
     builderEntrySessionRef:{current:null},builderEntryHydrationRevisionRef:{current:0},activeBrowserOwnerIdRef:{current:'PRIVATE-OWNER'},builderMountedRef:{current:true},builderInitialOverflowRef:{current:false},
     pendingHomepageSubmissionForOwner,readDurableHomepageState:async()=>({kind:'ready',storedInput:readHomepageInput(JSON.parse(window.localStorage.getItem(homepageInputStorageKey('PRIVATE-OWNER'))??'null'),'PRIVATE-OWNER'),draft:null,inputRaw:null,draftRaw:null}),
     hydratedOwnerScopeRef:{current:undefined},builderSeedPendingRef:{current:false},pendingNewTripReceiptRef:{current:null},receiptAcknowledgementRef:{current:null},pendingInterpretationRef:{current:null},planningAttemptIdRef:{current:null},activeProjectionTokenRef:{current:null},handoffLookupSessionRef:{current:null},captureRequestGateRef:{current:null},recoveryHandleRef:{current:null},hydratedCanonicalTripRef:{current:null},legacyFocusRef:{current:null},tripId:'PRIVATE-TRIP',
-    loadCurrentDraftRecovery:async()=>loadCurrentDraftRecoveryFromStorage(window.localStorage,'PRIVATE-OWNER'),loadRememberedOwner:()=>null,claimGuestTripRecoveryForOwner:async()=>null,travelProfileStorageKey:()=> 'PRIVATE-PROFILE-KEY',travelProfileFromUnknown:()=>null,homepageInputStorageKey,readHomepageInput,publicRouteDetailFor:()=>null,inspirationByKey:{},reportQaPersistenceBoundary,applyAcceptedBuilderDocument(){}};
+    loadCurrentDraftRecovery:async()=>loadCurrentDraftRecoveryFromStorage(window.localStorage,'PRIVATE-OWNER'),loadRememberedOwner:()=>null,claimGuestTripRecoveryForOwner:async()=>null,travelProfileStorageKey:()=> 'PRIVATE-PROFILE-KEY',travelProfileFromUnknown:()=>null,homepageInputStorageKey,readHomepageInput,publicRouteDetailFor:()=>null,inspirationByKey:{},reportQaPersistenceBoundary,applyAcceptedBuilderDocument(){},BrowserRecoveryReadError,pendingIntakeReceiptForOwner};
   return new Proxy(values,{has:(target,key)=>Reflect.has(target,key)||typeof key==='string'&&key.startsWith('set'),get:(target,key)=>Reflect.has(target,key)?target[key as string]:typeof key==='string'&&key.startsWith('set')?()=>{}:undefined});
 }
 test('actual fresh hydration closure emits resolved readiness before accepted owned fresh entry',async()=>capture(async(records)=>{
@@ -159,7 +159,35 @@ test('actual missing explicit trip hydration does not falsely acknowledge an acc
   window.location.search='?trip=PRIVATE-MISSING';
   const bindings=hydrationBindings();bindings.loadRequestedTrip=async()=>null;bindings.loadTripRecovery=()=>null;
   await builderClosure('hydrate-effect')(bindings);
-  assert.equal(records.at(-1).boundary,'hydration-complete');assert.equal(records.at(-1).accepted,false);assert.equal(records.at(-1).entryKind,'unavailable');
+  assert.equal(records.at(-1).boundary,'hydration-complete');assert.equal(records.at(-1).accepted,false);assert.equal(records.at(-1).entryKind,'unavailable');assert.equal(records.at(-1).guardReason,'requested-trip-missing');
+}));
+
+test('actual queryless hydration separates owner transition from protected and unavailable homepage reads',async()=>capture(async(records)=>{
+  for (const [kind,expected] of [['owner','owner-transition'],['protected','homepage-read-protected'],['unavailable','homepage-read-unavailable']] as const) {
+    const bindings=hydrationBindings();let blocked=0,reads=0;
+    bindings.setTripUnavailable=(value:boolean)=>{if(value)blocked++;};
+    if(kind==='owner')bindings.hydratedOwnerScopeRef={current:'PRIVATE-OTHER'};
+    else bindings.readDurableHomepageState=async()=>{reads++;return {kind,reason:'PRIVATE-REASON'};};
+    const before=records.length;
+    await builderClosure('hydrate-effect')(bindings);
+    const packet=records.slice(before).at(-1);
+    assert.equal(packet.guardReason,expected);assert.equal(packet.accepted,false);
+    assert.equal(blocked,1);assert.equal(reads,kind==='owner'?0:1);
+  }
+}));
+
+test('actual queryless hydration distinguishes a protected recovery read from a pending receipt refusal',async()=>capture(async(records)=>{
+  const recovery=hydrationBindings();recovery.loadCurrentDraftRecovery=async()=>{throw new BrowserRecoveryReadError('protected','PRIVATE-REASON');};
+  await builderClosure('hydrate-effect')(recovery);
+  assert.equal(records.at(-1).guardReason,'recovery-read-protected');
+  const snapshot=selectedStopsHomepageInput('PRIVATE-OWNER');
+  const receipt=createPendingIntakeReceipt(snapshot,{handoffId:'PRIVATE-HANDOFF',tripId:'PRIVATE-TRIP'});
+  const pending=hydrationBindings();
+  pending.readDurableHomepageState=async()=>({kind:'ready',storedInput:readHomepageInput({snapshot,receipt},'PRIVATE-OWNER'),draft:null,inputRaw:null,draftRaw:null});
+  pending.pendingHomepageSubmissionForOwner=()=>false;
+  await builderClosure('hydrate-effect')(pending);
+  assert.equal(records.at(-1).guardReason,'pending-receipt-protected');
+  assert.equal(records.at(-1).accepted,false);
 }));
 
 test('actual starter restore records acceptance or access refusal before editing is possible',async()=>{

@@ -35,11 +35,15 @@ export async function withPersistencePreparation<T>(work:()=>Promise<T>):Promise
 }
 export type QaPersistenceStage = "hydration" | "intake" | "editable-input" | "recovery-preparation" | "native-write";
 export type QaPersistenceBoundary = "hydration-ready" | "hydration-complete" | "intake-restore" | "intake-guard" | "intake-projection" | "intake-storage-access" | "intake-frozen" | "intake-reservation" | "editable-prepare" | "editable-reserved" | "editable-write" | "editable-readback" | "recovery-candidate" | "recovery-storage-access" | "recovery-seed" | "recovery-scope" | "recovery-replacement" | "recovery-write" | "recovery-cleanup" | "recovery-readback";
+export type QaEntryGuardReason = "owner-transition" | "requested-trip-missing" | "homepage-read-protected" | "homepage-read-unavailable"
+  | "recovery-read-protected" | "recovery-read-unavailable" | "pending-receipt-protected"
+  | "pending-continuation-protected" | "handoff-protected" | "entry-exception";
 export type QaRecoveryCaller = "seed" | "autosave" | "preservation" | "other";
 type QaEvidence = Partial<RecoveryPersistenceEvidence> & {
   accepted?: boolean; writeAccepted?: boolean;
   sessionClass?: "signed-in" | "guest" | "pending" | "unavailable";
   entryKind?: "loading" | "fresh" | "explicit-trip" | "current-draft" | "home-handoff" | "pending-home-handoff" | "pending-direct-intake" | "route-handoff" | "populated-builder" | "unavailable";
+  guardReason?: QaEntryGuardReason;
   caller?: QaRecoveryCaller; writeBranch?: "new-write" | "exact-reuse";
   readbackKind?: "editable-input" | "recovery" | "receipt";
   operation?: "setter" | "cleanup" | "write-result"; failedOperation?: "setter" | "cleanup";
@@ -55,6 +59,7 @@ const qaAcknowledgements = new Set(["pending", "stale", "storage", "preservation
 const qaProducerBoundaries = new Set(["hydration-ready", "hydration-complete", "intake-restore", "intake-guard", "intake-projection", "intake-storage-access", "intake-frozen", "intake-reservation", "editable-prepare", "editable-reserved", "editable-write", "editable-readback", "recovery-candidate", "recovery-storage-access", "recovery-seed", "recovery-scope", "recovery-replacement", "recovery-write", "recovery-cleanup", "recovery-readback"]);
 const qaSessions = new Set(["signed-in", "guest", "pending", "unavailable"]);
 const qaEntries = new Set(["loading", "fresh", "explicit-trip", "current-draft", "home-handoff", "pending-home-handoff", "pending-direct-intake", "route-handoff", "populated-builder", "unavailable"]);
+const qaEntryGuardReasons = new Set(["owner-transition", "requested-trip-missing", "homepage-read-protected", "homepage-read-unavailable", "recovery-read-protected", "recovery-read-unavailable", "pending-receipt-protected", "pending-continuation-protected", "handoff-protected", "entry-exception"]);
 const qaCallers = new Set(["seed", "autosave", "preservation", "other"]), qaWriteBranches = new Set(["new-write", "exact-reuse"]);
 const qaReadbacks = new Set(["editable-input", "recovery", "receipt"]), qaNativeFailures = new Set(["quota", "security", "unavailable", "unknown"]);
 const qaOperations = new Set(["setter", "cleanup", "write-result"]), qaFailedOperations = new Set(["setter", "cleanup"]);
@@ -85,6 +90,7 @@ function reportQaConsole(detail: Record<string, unknown>, evidence?: QaEvidence,
       ...common,
       stage: qaCategory(detail.stage, qaStages, "unknown"),
       boundary: qaCategory(detail.boundary, qaProducerBoundaries, null), accepted: qaBoolean(evidence?.accepted),
+      guardReason: qaCategory(evidence?.guardReason, qaEntryGuardReasons, null),
       caller: qaCategory(evidence?.caller, qaCallers, null),
       writeBranch: qaCategory(evidence?.writeBranch, qaWriteBranches, null),
       readbackKind: qaCategory(readbackKind ?? evidence?.readbackKind, qaReadbacks, null),
