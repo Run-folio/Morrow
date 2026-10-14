@@ -21,20 +21,32 @@ export type DurableHomepageState = {kind:'ready';storedInput:StoredHomepageInput
 export type HomepageWriteResult = {kind:'verified';backend:'local-storage'|'indexeddb-entry'}|{kind:'protected'|'unavailable'|'failure';reason:string;committed?:boolean;nativeFailure?:'quota'|'security'|'unavailable'|'unknown'};
 export type RecoveryIntakeAcknowledgement={pending?:PendingIntakeReceipt;completed:HomepageHandoffReceipt;draft:HomeTripDraft;fromHomepage:boolean;resumedInputRaw?:string};
 const object=(value:unknown):value is Record<string,unknown>=>Boolean(value&&typeof value==='object'&&!Array.isArray(value));
-export function decodeHomepageBundle(raw:string,ownerId:string|null) {
+type InvalidHomepagePayloadReason='native-bundle-invalid'|'native-input-invalid'|'native-draft-invalid'|'native-foreign-pending-envelope';
+export function decodeHomepageBundle(raw:string,ownerId:string|null,onInvalid?:(reason:InvalidHomepagePayloadReason)=>void) {
+  const refuse=(reason:InvalidHomepagePayloadReason)=>{onInvalid?.(reason);return null;};
+  let invalidReason:InvalidHomepagePayloadReason='native-bundle-invalid';
   try {
     const value:unknown=JSON.parse(raw);
     if(!object(value)||value.version!==1||Object.keys(value).sort().join(',')!=='draftRaw,inputRaw,version'
-      ||![value.inputRaw,value.draftRaw].every(item=>item===null||typeof item==='string'))return null;
+      ||![value.inputRaw,value.draftRaw].every(item=>item===null||typeof item==='string'))return refuse('native-bundle-invalid');
     const bundle=value as HomepageBundle;
+    invalidReason='native-input-invalid';
     const storedInput=bundle.inputRaw===null?null:readHomepageInput(JSON.parse(bundle.inputRaw),ownerId);
-    if(bundle.inputRaw!==null&&!storedInput)return null;
+    if(bundle.inputRaw!==null&&!storedInput)return refuse('native-input-invalid');
+    invalidReason='native-draft-invalid';
     let draft:unknown=bundle.draftRaw===null?null:JSON.parse(bundle.draftRaw);
     if(draft!==null) {
-      if(!object(draft))return null;
+      if(!object(draft))return refuse('native-draft-invalid');
       if(draft.version===2) {
         const receipt=pendingIntakeReceiptForOwner(draft.receipt,ownerId);
-        if(!receipt||!pendingHomepageHandoffForOwner(draft,ownerId,receipt.handoffId))return null;
+        if(!receipt||!pendingHomepageHandoffForOwner(draft,ownerId,receipt.handoffId)) {
+          const foreignOwner=object(draft.receipt)?draft.receipt.ownerId:undefined;
+          if(onInvalid&&foreignOwner!==ownerId&&(foreignOwner===null||typeof foreignOwner==='string'&&foreignOwner.trim().length>0)) {
+            const foreignReceipt=pendingIntakeReceiptForOwner(draft.receipt,foreignOwner);
+            if(foreignReceipt&&pendingHomepageHandoffForOwner(draft,foreignOwner,foreignReceipt.handoffId))return refuse('native-foreign-pending-envelope');
+          }
+          return refuse('native-draft-invalid');
+        }
       }else if('homepage' in draft) {
         if(!homepageHandoffReceiptForOwner(draft as HomeTripDraft,ownerId)) {
           // HOME is a shared legacy slot. A valid completed draft for another
@@ -42,16 +54,16 @@ export function decodeHomepageBundle(raw:string,ownerId:string|null) {
           // bundle/CAS witness, but never expose or consume it as owned input.
           const homepage=draft.homepage;
           if('version' in draft||!object(homepage)||(homepage.ownerId!==null&&(typeof homepage.ownerId!=='string'||!homepage.ownerId.trim()))
-            ||homepage.ownerId===ownerId||!homepageHandoffReceiptForOwner(draft as HomeTripDraft,homepage.ownerId as string|null))return null;
+            ||homepage.ownerId===ownerId||!homepageHandoffReceiptForOwner(draft as HomeTripDraft,homepage.ownerId as string|null))return refuse('native-draft-invalid');
           draft=null;
         }
       }else {
         const legacyDraft=draft;
-        if(ownerId!==null||!object(legacyDraft)||'version' in legacyDraft||!['brief','origin','destination','destinations','locationMentions'].some(key=>key in legacyDraft))return null;
+        if(ownerId!==null||!object(legacyDraft)||'version' in legacyDraft||!['brief','origin','destination','destinations','locationMentions'].some(key=>key in legacyDraft))return refuse('native-draft-invalid');
       }
     }
     return {bundle,storedInput,draft};
-  }catch{return null;}
+  }catch{return refuse(invalidReason);}
 }
 export function createDurableHomepagePersistence(storage:HomepageStorage,driver:RecoveryDomainDriver,context:{ownerId:string|null;isCurrent:()=>boolean;overflowEnabled:boolean;accountOverflowQualified:boolean}) {
   const ownerId=context.ownerId,scope={ownerId,kind:'homepage' as const,tripId:null},inputKey=homepageInputStorageKey(ownerId);
@@ -72,7 +84,8 @@ export function createDurableHomepagePersistence(storage:HomepageStorage,driver:
     try {
       const legacyRaw=nativeRaw(),envelope=result.envelope;
       if(!active())return {kind:'protected',reason:'operation-changed'};
-      if(!decodeHomepageBundle(legacyRaw,ownerId))return {kind:'protected',reason:'native-payload'};
+      let nativePayloadReason:InvalidHomepagePayloadReason='native-bundle-invalid';
+      if(!decodeHomepageBundle(legacyRaw,ownerId,reason=>{nativePayloadReason=reason;}))return {kind:'protected',reason:nativePayloadReason};
       if(envelope&&legacyRaw!==envelope.legacyRaw&&legacyRaw!==envelope.raw)return {kind:'protected',reason:'native-divergence'};
       const raw=envelope?envelope.raw:legacyRaw;
       const decoded=raw===null?null:decodeHomepageBundle(raw,ownerId);

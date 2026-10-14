@@ -44,6 +44,7 @@ type QaEvidence = Partial<RecoveryPersistenceEvidence> & {
   sessionClass?: "signed-in" | "guest" | "pending" | "unavailable";
   entryKind?: "loading" | "fresh" | "explicit-trip" | "current-draft" | "home-handoff" | "pending-home-handoff" | "pending-direct-intake" | "route-handoff" | "populated-builder" | "unavailable";
   guardReason?: QaEntryGuardReason;
+  homepageReadReason?: string;
   caller?: QaRecoveryCaller; writeBranch?: "new-write" | "exact-reuse";
   readbackKind?: "editable-input" | "recovery" | "receipt";
   operation?: "setter" | "cleanup" | "write-result"; failedOperation?: "setter" | "cleanup";
@@ -60,6 +61,18 @@ const qaProducerBoundaries = new Set(["hydration-ready", "hydration-complete", "
 const qaSessions = new Set(["signed-in", "guest", "pending", "unavailable"]);
 const qaEntries = new Set(["loading", "fresh", "explicit-trip", "current-draft", "home-handoff", "pending-home-handoff", "pending-direct-intake", "route-handoff", "populated-builder", "unavailable"]);
 const qaEntryGuardReasons = new Set(["owner-transition", "requested-trip-missing", "homepage-read-protected", "homepage-read-unavailable", "recovery-read-protected", "recovery-read-unavailable", "pending-receipt-protected", "pending-continuation-protected", "handoff-protected", "entry-exception"]);
+// Only the finite reasons returned by the durable Homepage reader and its
+// entry/claim barriers. Never forward raw storage values or exception text.
+const qaHomepageReadReasons = new Set([
+  "operation-changed", "scope", "admission", "head-changed", "immutable-collision", "ack-mismatch",
+  "schema", "corrupt", "entry-changed", "entry-readback-unknown",
+  "native-claim-unqualified", "native-claim-enumeration-unknown", "claim-enumeration-unavailable", "claim-enumeration-unknown",
+  "claim-canonical-unknown", "claim-read-unknown", "claim-proof-missing", "claim-proof-payload", "claim-source-pending",
+  "claim-owner", "claim-pending", "claim-source-changed", "claim-set-changed", "claim-verification-unknown",
+  "native-payload", "native-bundle-invalid", "native-input-invalid", "native-draft-invalid", "native-foreign-pending-envelope",
+  "native-divergence", "native-read-unknown", "payload", "storage-access",
+  "quota", "security", "unavailable", "blocked", "abort", "readback", "unknown",
+]);
 const qaCallers = new Set(["seed", "autosave", "preservation", "other"]), qaWriteBranches = new Set(["new-write", "exact-reuse"]);
 const qaReadbacks = new Set(["editable-input", "recovery", "receipt"]), qaNativeFailures = new Set(["quota", "security", "unavailable", "unknown"]);
 const qaOperations = new Set(["setter", "cleanup", "write-result"]), qaFailedOperations = new Set(["setter", "cleanup"]);
@@ -91,6 +104,7 @@ function reportQaConsole(detail: Record<string, unknown>, evidence?: QaEvidence,
       stage: qaCategory(detail.stage, qaStages, "unknown"),
       boundary: qaCategory(detail.boundary, qaProducerBoundaries, null), accepted: qaBoolean(evidence?.accepted),
       guardReason: qaCategory(evidence?.guardReason, qaEntryGuardReasons, null),
+      homepageReadReason: qaCategory(evidence?.homepageReadReason, qaHomepageReadReasons, null),
       caller: qaCategory(evidence?.caller, qaCallers, null),
       writeBranch: qaCategory(evidence?.writeBranch, qaWriteBranches, null),
       readbackKind: qaCategory(readbackKind ?? evidence?.readbackKind, qaReadbacks, null),

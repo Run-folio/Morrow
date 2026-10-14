@@ -31,7 +31,8 @@ async function capture(run:(records:any[],storage:ReturnType<typeof memory>)=>Pr
   process.env.MORROVIA_QA_PERSISTENCE_DIAGNOSTICS='1';
   console.info=(message:unknown)=>{assert.equal(typeof message,'string');assert.ok((message as string).startsWith(prefix));records.push(JSON.parse((message as string).slice(prefix.length)));};
   globalThis.fetch=()=>{requests++;throw new Error('Synthetic network forbidden');};
-  try {await run(records,storage);assert.equal(requests,0);assert.doesNotMatch(JSON.stringify(records),/PRIVATE|ownerId|tripId|writeId|payload|message|stack|cookie/);
+  try {await run(records,storage);assert.equal(requests,0);assert.doesNotMatch(JSON.stringify(records),/PRIVATE|ownerId|tripId|writeId|message|stack|cookie/);
+    for(const packet of records)assert.equal(Object.hasOwn(packet,'payload'),false);
     for(let i=1;i<records.length;i++)assert.equal(records[i].sequence,records[i-1].sequence+1);
   } finally {console.info=oldInfo;globalThis.fetch=oldFetch;if(oldFlag===undefined)delete process.env.MORROVIA_QA_PERSISTENCE_DIAGNOSTICS;else process.env.MORROVIA_QA_PERSISTENCE_DIAGNOSTICS=oldFlag;if(descriptor)Object.defineProperty(globalThis,'window',descriptor);else Reflect.deleteProperty(globalThis,'window');}
 }
@@ -172,7 +173,27 @@ test('actual queryless hydration separates owner transition from protected and u
     await builderClosure('hydrate-effect')(bindings);
     const packet=records.slice(before).at(-1);
     assert.equal(packet.guardReason,expected);assert.equal(packet.accepted,false);
+    assert.equal(packet.homepageReadReason,null);
     assert.equal(blocked,1);assert.equal(reads,kind==='owner'?0:1);
+  }
+}));
+
+test('actual queryless hydration forwards the existing closed Homepage read reason without another read',async()=>capture(async(records)=>{
+  for(const [kind,reason] of [
+    ['protected','native-foreign-pending-envelope'],['protected','native-input-invalid'],
+    ['protected','native-draft-invalid'],['protected','native-bundle-invalid'],['protected','native-divergence'],
+    ['protected','native-claim-unqualified'],['protected','corrupt'],
+    ['unavailable','security'],
+  ] as const){
+    const bindings=hydrationBindings();let reads=0;
+    bindings.readDurableHomepageState=async()=>{reads++;return {kind,reason};};
+    const before=records.length;
+    await builderClosure('hydrate-effect')(bindings);
+    const packet=records.slice(before).at(-1);
+    assert.equal(packet.guardReason,kind==='protected'?'homepage-read-protected':'homepage-read-unavailable');
+    assert.equal(packet.homepageReadReason,reason);
+    assert.equal(packet.accepted,false);
+    assert.equal(reads,1);
   }
 }));
 

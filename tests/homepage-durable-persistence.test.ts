@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import {createDurableHomepagePersistence} from '../lib/easyt/homepage-persistence.ts';
+import {createDurableHomepagePersistence,decodeHomepageBundle} from '../lib/easyt/homepage-persistence.ts';
 import {createPendingIntakeReceipt,HOME_TRIP_DRAFT_KEY,pendingReceiptStillCurrent,reservePendingDescribeHandoff,resolveHandoffIncrementally} from '../lib/easyt/home-trip-handoff.ts';
 import {homepageInputStorageKey} from '../lib/easyt/private-browser-context.ts';
 import {emptyHomepageInput} from './fixtures/homepage-dual-entry.ts';
@@ -8,12 +8,36 @@ import {MemoryRecoveryDriver} from './helpers/durable-recovery-driver.ts';
 
 /** Fault model only; no native browser capacity/durability or live user state. */
 class NativeHomeModel {
-  values=new Map<string,string>();failKey:string|null=null;failure='QuotaExceededError';writeCount=0;
+  values=new Map<string,string>();failKey:string|null=null;failure='QuotaExceededError';writeCount=0;reads:string[]=[];
   get length(){return this.values.size;}key(i:number){return [...this.values.keys()][i]??null;}
-  getItem(key:string){return this.values.get(key)??null;}
+  getItem(key:string){this.reads.push(key);return this.values.get(key)??null;}
   setItem(key:string,raw:string){this.writeCount++;if(key===this.failKey)throw new DOMException('Synthetic only',this.failure);this.values.set(key,raw);}
   removeItem(key:string){this.values.delete(key);}
 }
+test('one existing native read classifies foreign pending, malformed draft and wrong-owner input without accepting or writing',async()=>{
+  const currentOwner='owner-b',foreignOwner='owner-a',foreignSnapshot=emptyHomepageInput(foreignOwner);
+  const foreignReceipt=createPendingIntakeReceipt(foreignSnapshot,{handoffId:'foreign-handoff',tripId:'foreign-trip'});
+  const pending={version:2,phase:'pending-interpretation',receipt:foreignReceipt};
+  for(const [name,inputRaw,draftRaw,expected] of [
+    ['foreign pending envelope',null,JSON.stringify(pending),'native-foreign-pending-envelope'],
+    ['malformed foreign pending envelope',null,JSON.stringify({...pending,receipt:{...foreignReceipt,inputRevision:7}}),'native-draft-invalid'],
+    ['malformed shared draft',null,'{}','native-draft-invalid'],
+    ['foreign input in current owner key',JSON.stringify({snapshot:foreignSnapshot}),JSON.stringify(pending),'native-input-invalid'],
+  ] as const){
+    const storage=new NativeHomeModel(),driver=new MemoryRecoveryDriver();
+    if(inputRaw!==null)storage.setItem(homepageInputStorageKey(currentOwner),inputRaw);
+    if(draftRaw!==null)storage.setItem(HOME_TRIP_DRAFT_KEY,draftRaw);
+    const before=[...storage.values],writes=storage.writeCount;
+    const state=await createDurableHomepagePersistence(storage,driver,{ownerId:currentOwner,isCurrent:()=>true,overflowEnabled:false,accountOverflowQualified:false}).read();
+    assert.deepEqual(state,{kind:'protected',reason:expected},name);
+    assert.deepEqual(storage.reads,[homepageInputStorageKey(currentOwner),HOME_TRIP_DRAFT_KEY,homepageInputStorageKey(currentOwner),HOME_TRIP_DRAFT_KEY],name);
+    assert.equal(storage.writeCount,writes,name);assert.deepEqual([...storage.values],before,name);
+    assert.equal(driver.generations.size,0,name);
+  }
+  const reasons:string[]=[];
+  assert.equal(decodeHomepageBundle('{',currentOwner,reason=>reasons.push(reason)),null);
+  assert.deepEqual(reasons,['native-bundle-invalid']);
+});
 test('native claim enumeration failure remains unknown and never authorizes a Home write',async()=>{
   const ls=new NativeHomeModel(),driver=new MemoryRecoveryDriver();ls.key=()=>{throw new DOMException('Synthetic only','SecurityError')};
   ls.values.set('unrelated','retained');

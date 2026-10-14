@@ -1514,6 +1514,7 @@ function TripBuilderDocument() {
     };
     const hydrate = async () => {
       let guardReason: QaEntryGuardReason | null = null;
+      let homepageReadReason: string | null = null;
       const guardEntry = (reason: QaEntryGuardReason) => { guardReason = reason; setTripUnavailable(true); };
       try {
       let qaHydrationAccepted = true;
@@ -1567,6 +1568,7 @@ function TripBuilderDocument() {
         if (!active || activeBrowserOwnerIdRef.current !== activeOwnerId) return;
         if (directHomepageState && directHomepageState.kind !== "ready") {
           guardReason = directHomepageState.kind === "protected" ? "homepage-read-protected" : "homepage-read-unavailable";
+          homepageReadReason = directHomepageState.reason;
           throw new Error("Homepage input could not be opened safely");
         }
         const directPending = directHomepageState?.kind === "ready"
@@ -1621,6 +1623,7 @@ function TripBuilderDocument() {
         if (!active) return;
         if (homepageState.kind !== "ready") {
           guardReason = homepageState.kind === "protected" ? "homepage-read-protected" : "homepage-read-unavailable";
+          homepageReadReason = homepageState.reason;
           throw new Error("Homepage input could not be opened safely");
         }
         storedHomepageInput = homepageState.storedInput;
@@ -1841,7 +1844,7 @@ function TripBuilderDocument() {
         const failureReason = guardReason ?? (error instanceof BrowserRecoveryReadError
           ? error.kind === "protected" ? "recovery-read-protected" : "recovery-read-unavailable"
           : "entry-exception");
-        reportQaPersistenceBoundary("hydration", "hydration-complete", {accepted:active ? false : undefined,phase:active ? "result" : "probe",acknowledgement:active ? undefined : "stale",guardReason:active ? failureReason : undefined});
+        reportQaPersistenceBoundary("hydration", "hydration-complete", {accepted:active ? false : undefined,phase:active ? "result" : "probe",acknowledgement:active ? undefined : "stale",guardReason:active ? failureReason : undefined,homepageReadReason:active ? homepageReadReason ?? undefined : undefined});
         if(active && builderMountedRef.current){hydratedOwnerScopeRef.current=activeBrowserOwnerId;guardEntry(failureReason);setEntryKind("unavailable");setHydrated(true);setDeviceStorageBlocked(true);setSaveState("error");setCloudSaveError("This trip could not be opened safely. Keep this tab open and try again.");}
       }
     };
