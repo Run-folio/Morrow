@@ -32,7 +32,8 @@ async function harness({newTripOrClone,mixed,overflowEnabled=false}){
   writes.push({optional:!!m.projectionOnly,result});if(m.projectionOnly)completed.resolve(result);return result;
  },
  reconcile:async req=>{
-  request=req;const leg=req.dispatched.find(u=>u.kind==='leg'),rec=req.dispatched.find(u=>u.kind==='recommendation');assert.ok(leg);assert.ok(rec);
+  request=req;const leg=req.dispatched.find(u=>u.kind==='leg'),rec=req.trip.brief.cascadeStatus.routeReconciliation.residual.find(u=>u.kind==='recommendation');assert.ok(leg);assert.ok(rec);
+  assert.equal(req.dispatched.some(u=>u.kind==='recommendation'),false,'ineligible generated work stays outside route dispatch');
   const response={...req,results:[{...leg,phase:'complete'},...(mixed?[{...rec,phase:'complete'}]:[])],legs:req.trip.legs.filter(l=>l.id===leg.targetId),
    recommendationProjections:mixed?[{stopId:rec.targetId,days:req.trip.planItems.filter(d=>d.stopId===rec.targetId).map(d=>({id:d.id,contextNotes:['New generated guidance for this occurrence']}))}]:[]};
   return response;

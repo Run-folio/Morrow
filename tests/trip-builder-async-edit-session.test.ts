@@ -17,6 +17,10 @@ import type { BuilderProjectionResponse } from '../lib/easyt/trip-builder-reconc
 import type { BuilderReconciliationRequest } from '../lib/easyt/trip-builder-edit-session.ts';
 import type { AsyncBuilderEditSessionOptions } from '../lib/easyt/trip-builder-async-edit-session.ts';
 import { builderNightsCommand } from '../lib/easyt/trip-builder-handler-contract.ts';
+import { reconcileBuilderDependencies } from '../lib/easyt/trip-builder-reconciliation.ts';
+import { geographicallyReady, guardTripRoutingGeometry } from '../lib/easyt/geographic-binding.ts';
+import { transferAssessmentForLeg } from '../lib/easyt/planning-evidence-presentation.ts';
+import { qualifiedA17TripFixture } from './fixtures/batch14-a17-trip.ts';
 import { tripNightsBetween, allocateTripNights } from '../lib/easyt/night-allocation.ts';
 import { canBuildTrip } from '../lib/easyt/can-build-trip.ts';
 import { acceptedGeographicPlace, stopGeographicPlace } from '../lib/easyt/geographic-binding.ts';
@@ -664,4 +668,55 @@ for(const boundary of [1,2])test(`Build follows a healthy same-command projectio
  const h=await harness({initialTrip:requireReadableTripDocument({...fixture(),ownerId:null}),owner:null});await accept(h,origin);
  const view=buildPersistence(h,async ordinal=>{if(ordinal!==boundary)return;await h.run(0);const work=h.projections.at(-1)!;assert.ok(work);work.result.resolve(response(work.request));await tick();});
  try{const saved=await view.persist();assert.equal(saved?.status,'planned');assert.equal(h.writes.length,0);}finally{h.session.dispose();}
+});
+
+/** Real production worker closure; only network boundaries are synthetic. */
+function mountedReconciliationWorker(network: Record<string,unknown>) {
+ const source=readFileSync(new URL('../app/journey/new/trip-builder.tsx',import.meta.url),'utf8');
+ const start=source.indexOf('async function reconcileAcceptedBuilderRequest('),end=source.indexOf('function TripBuilderDocument()',start);
+ assert.ok(start>=0&&end>start);
+ const script=ts.transpileModule(source.slice(start,end)+'\nreturn reconcileAcceptedBuilderRequest;', {compilerOptions:{target:ts.ScriptTarget.ES2022}}).outputText;
+ return new Function('scope',`with(scope){${script}}`)({reconcileBuilderDependencies,geographicallyReady,stopGeographicPlace,transferAssessmentForLeg,
+  guardTripRoutingGeometry,...network}) as AsyncBuilderEditSessionOptions['reconcile'];
+}
+
+test('mounted transfer work completes while ineligible generated recommendation lookup is held',async()=>{
+ const h=await harness({initialTrip:requireReadableTripDocument(canonicalTripForOwner('owner-a',await qualifiedA17TripFixture()))}),held=deferred<void>();let transferCalls=0,recommendationCalls=0;
+ h.options.reconcile=mountedReconciliationWorker({
+  resolveBuilderRecommendation:async()=>{recommendationCalls++;await held.promise;throw Error('held optional recommendation');},
+  fetch:async(_url:string,init:RequestInit)=>{transferCalls++;const body=JSON.parse(String(init.body)) as {legs:CanonicalEasyTTrip['legs']};
+   return Response.json({legs:body.legs,assessments:body.legs.map(leg=>({legId:leg.id,state:{retrieval:'completed',evidence:'conditional',retryable:false}}))});},
+ });
+ try {
+  await accept(h,{kind:'remove-destination',intentId:'intent:hue'});const before=h.session.getSnapshot();assert.ok(before.pendingUnits.some(unit=>unit.kind==='recommendation'));
+  await h.run(0);await tick();
+  assert.equal(transferCalls,1,'transfer request must not wait for discarded recommendation work');
+  assert.equal(recommendationCalls,0,'route-only session must not launch ineligible generated work');
+  assert.equal(h.session.getSnapshot().pendingUnits.some(unit=>unit.kind==='leg'),false);
+  assert.ok(h.session.getSnapshot().pendingUnits.some(unit=>unit.kind==='recommendation'),'retain generated work without claiming completion');
+  assert.deepEqual(h.session.getSnapshot().trip.planItems,before.trip.planItems);
+  assert.deepEqual(h.session.getSnapshot().transferAssessments.map(item=>item.legId).sort(),
+   before.pendingUnits.filter(unit=>unit.kind==='leg').map(unit=>unit.targetId).sort());
+  await h.run(0);assert.equal(transferCalls,1,'remaining recommendation work cannot schedule another route request');
+ } finally {held.resolve();h.session.dispose();await tick();}
+});
+
+test('route-only dispatch retains unavailable transfer evidence without automatic retry or invented timing',async()=>{
+ const h=await harness({initialTrip:requireReadableTripDocument(canonicalTripForOwner('owner-a',await qualifiedA17TripFixture()))});let calls=0;
+ h.options.reconcile=mountedReconciliationWorker({
+  resolveBuilderRecommendation:()=>{throw Error('ineligible generated work must not run');},
+  fetch:async(_url:string,init:RequestInit)=>{calls++;const {legs}=JSON.parse(String(init.body)) as {legs:CanonicalEasyTTrip['legs']};
+   return Response.json({legs:legs.map(leg=>({...leg,mode:'unknown',durationMinutes:null,headlineMinutes:null,doorToDoorMinutes:null})),
+    assessments:legs.map(leg=>({legId:leg.id,state:{retrieval:'unavailable',evidence:'insufficient',reason:'configuration_unavailable',retryable:false}}))});},
+ });
+ try {
+  await accept(h,{kind:'remove-destination',intentId:'intent:hue'});const before=h.session.getSnapshot();
+  await h.run(0);await tick();const state=h.session.getSnapshot();
+  const expected=before.pendingUnits.filter(unit=>unit.kind==='leg').map(unit=>unit.targetId).sort();
+  assert.deepEqual(state.failedUnits.filter(unit=>unit.kind==='leg').map(unit=>unit.targetId).sort(),expected);
+  for(const id of expected){const leg=state.trip.legs.find(leg=>leg.id===id)!;assert.equal(leg.durationMinutes,null);assert.equal(leg.mode,'unknown');
+   const assessment=transferAssessmentForLeg(state.transferAssessments,id);assert.equal(assessment?.reason,'configuration_unavailable');assert.equal(assessment?.retryable,false);}
+  assert.deepEqual(state.trip.planItems,before.trip.planItems);assert.ok(state.pendingUnits.some(unit=>unit.kind==='recommendation'));
+  await h.run(0);assert.equal(calls,1);
+ }finally{h.session.dispose();}
 });

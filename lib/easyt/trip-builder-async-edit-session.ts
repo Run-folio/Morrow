@@ -393,14 +393,17 @@ export async function createAsyncBuilderEditSession(options: AsyncBuilderEditSes
       if (active()) startSave();
     });
   }
+  // Generated day notes cannot enter this route-only persistence path. Do not
+  // let their provider requests delay the leg results this session can retain.
+  const pendingRouteUnits = () => pendingBuilderReconciliationUnits(trip).filter(unit => unit.kind !== 'recommendation');
   function scheduleWork() {
     cancelWork?.(); workAbort?.abort(); workAbort = null; work = null;
-    if (!active() || draftProtected || devicePending || !pendingBuilderReconciliationUnits(trip).length) return;
+    if (!active() || draftProtected || devicePending || !pendingRouteUnits().length) return;
     cancelWork = options.schedule(() => { cancelWork = null; void resumeNecessaryWork(); }, 0);
   }
   async function resumeNecessaryWork() {
     if (!active() || draftProtected || devicePending || work) return;
-    const dispatched = pendingBuilderReconciliationUnits(trip);
+    const dispatched = pendingRouteUnits();
     if (!dispatched.length) return;
     const request: BuilderReconciliationRequest = freeze({ trip: structuredClone(trip), scope: { ownerId: trip.ownerId, tripId, inputRevision },
       inputKey: routeProjectionInputKey(trip), requestId: `${tripId}:${inputRevision}:${++requestSequence}:${options.now()}`, dispatched });
