@@ -10,6 +10,8 @@ import { tripRecoveryStorageKey, currentTripStorageKey } from '../lib/easyt/stor
 import { canonicalRouteFixture } from './fixtures/batch14-route-documents.ts';
 import { normalizeLegacyGeneratedDayContext } from '../lib/easyt/itinerary-generated-context.ts';
 import { prepareBuilderNecessaryProjection } from '../lib/easyt/trip-builder-reconciliation.ts';
+import { buildCanonicalTripLegs } from '../lib/easyt/trip-legs.ts';
+import { routeProjectionInputKey } from '../lib/easyt/trip-route-intent.ts';
 const base=requireReadableTripDocument({...normalizeLegacyGeneratedDayContext(canonicalRouteFixture()),ownerId:null});
 const prepared=prepareBuilderNecessaryProjection(base,base,{legIds:base.legs.map(l=>l.id),scheduleStopIds:[],recommendationStopIds:[],endpointChanged:false,routeAssessment:true});
 assert.equal(prepared.ok,true);
@@ -20,8 +22,15 @@ class MemoryStorage {
  getItem(k){return this.values.get(k)??null;} setItem(k,v){this.values.set(k,v);} removeItem(k){this.values.delete(k);}
 }
 async function harness(boundary='before-body', configuration={}) {
- const storage=new MemoryStorage(),driver=new MemoryRecoveryDriver(),trip=requireReadableTripDocument(structuredClone(initial.trip));
- const priorKey=tripRecoveryStorageKey(null,trip.id,initial.writeId),priorRaw=JSON.stringify(initial),targetId='synthetic-projection-target',targetKey=tripRecoveryStorageKey(null,trip.id,targetId),inputKey=builderInputDraftKey(null,trip.id);
+ const recovery=structuredClone(initial);
+ if(configuration.complete){
+  const source=structuredClone(base);
+  source.legs=buildCanonicalTripLegs({tripId:source.id,origin:{...source.brief.intent.route.origin,coordinates:null},journeyEnd:source.brief.intent.route.journeyEnd,stops:source.stops});
+  source.brief.intent.route.projectionInputKey='prior-stale-marker';
+  const pending=prepareBuilderNecessaryProjection(source,source,{legIds:source.legs.map(l=>l.id),scheduleStopIds:[],recommendationStopIds:[],endpointChanged:false,routeAssessment:true});assert.equal(pending.ok,true);recovery.trip=pending.trip;
+ }
+ const storage=new MemoryStorage(),driver=new MemoryRecoveryDriver(),trip=requireReadableTripDocument(structuredClone(recovery.trip));
+ const priorKey=tripRecoveryStorageKey(null,trip.id,initial.writeId),priorRaw=JSON.stringify(recovery),targetId='synthetic-projection-target',targetKey=tripRecoveryStorageKey(null,trip.id,targetId),inputKey=builderInputDraftKey(null,trip.id);
  storage.setItem(priorKey,priorRaw);storage.setItem(currentTripStorageKey(null),JSON.stringify({version:2,ownerId:null,tripId:trip.id}));
  let owner=null,armed=false,held=false,inputWrites=0,callbackCalls=0,reconcileCalls=0,candidate,metadata;
  const entered=deferred(),release=deferred(),done=deferred(),timers=[];
@@ -37,7 +46,7 @@ async function harness(boundary='before-body', configuration={}) {
     (boundary==='after-body'||boundary==='after-input'&&inputWrites>0))await pause();
   return run(...args);
  };
- const options={initialTrip:trip,initialRecovery:structuredClone(initial),getOwnerId:()=>owner,
+ const options={initialTrip:trip,initialRecovery:recovery,getOwnerId:()=>owner,
   readDraft:()=>input().read(),writeDraft:(t,d,o,g)=>createDurableBuilderInputPersistence(storage,driver,{trip:t,...context(g.isCurrent)}).write(d),
   saveRecovery:async(t,m)=>{
    t=structuredClone(t);callbackCalls++;candidate=structuredClone(t);metadata=structuredClone({...m,isCurrent:undefined});
@@ -52,6 +61,7 @@ async function harness(boundary='before-body', configuration={}) {
   },
   reconcile:async request=>{
    reconcileCalls++;
+   if(configuration.complete)return {...request,results:request.dispatched.map(u=>({...u,phase:'complete'})),legs:request.trip.legs.map(l=>({...l,routeMetadata:{source:'missing-evidence'}}))};
    return {...request,results:request.dispatched.map(u=>({...u,phase:'failed',reason:'unavailable'})),legs:[]};
   },
   persistAccount:()=>{throw Error('Unexpected account write');},now:()=> '2026-10-13T18:21:55.963Z',schedule:(callback,delay)=>{const t={callback,delay,active:true};timers.push(t);return ()=>{t.active=false;};},
@@ -67,6 +77,22 @@ async function harness(boundary='before-body', configuration={}) {
   start(){armed=true;const t=timers.find(t=>t.active&&t.delay===0);assert.ok(t,'hydration schedules real optional work');t.active=false;t.callback();},
   rotate(){owner='foreign-owner';},get counts(){return {callbackCalls,reconcileCalls,inputWrites};},get candidate(){return candidate;},get metadata(){return metadata;}};
 }
+for(const change of ['forged-marker','cleared-marker','changed-input-key','pending','failed','conflict','invalid-adjacency'])test(`completion admission rejects ${change}`,{timeout:4000},async()=>{
+ const h=await harness('before-body',{complete:true,beforeSave({t}){
+  assert.equal(t.brief.intent.route.projectionInputKey,routeProjectionInputKey(t),'real merge completed the batch');
+  if(change==='forged-marker')t.brief.intent.route.projectionInputKey='forged';
+  if(change==='cleared-marker')t.brief.intent.route.projectionInputKey=null;
+  if(change==='changed-input-key'){t.brief.intent.preferences.transportModes=['drive'];t.brief.intent.route.projectionInputKey=routeProjectionInputKey(t);}
+  if(['pending','failed','conflict'].includes(change))t.brief.cascadeStatus.routeReconciliation={...structuredClone(h.trip.brief.cascadeStatus.routeReconciliation),residual:[{...h.trip.brief.cascadeStatus.routeReconciliation.residual[0],phase:change}]};
+  if(change==='invalid-adjacency')t.legs.reverse();
+ }});
+ try{
+  h.start();await h.entered.promise;h.release.resolve();const saved=await h.done.promise;
+  assert.equal(saved.stored,false,JSON.stringify(saved));assert.equal(saved.projectionDeferred,true);assert.equal(saved.writeAttempted,false);
+  assert.equal(h.storage.getItem(h.targetKey),null);assert.equal(h.storage.getItem(h.priorKey),h.priorRaw);assert.equal(h.storage.getItem(h.inputKey),h.inputRaw);
+  const reopened=await h.reopen();assert.equal(reopened.kind,'found');assert.deepEqual(reopened.trip,JSON.parse(JSON.stringify(h.trip)));
+ }finally{h.session.dispose();}
+});
 for(const boundary of ['after-body'])test(`document abandonment ${boundary} keeps one readable projection`,{timeout:4000},async t=>{
  const h=await harness(boundary);h.start();await h.entered.promise;
  assert.equal(h.counts.reconcileCalls,1);assert.equal(h.counts.callbackCalls,1);

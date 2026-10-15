@@ -15,6 +15,7 @@ import {createDurableHomepagePersistence,decodeHomepageBundle} from './homepage-
 import type {PreparedEntryWrite} from './durable-entry-store.ts';
 import {createRecoveryLifecycle} from './recovery-domain-lifecycle.ts';
 import {readRecoveryClaimBarrier,readOwnerRecoveryClaimBarrier,recoveryClaimTripIds} from './recovery-domain-claim.ts';
+import {commitAcceptedRouteProjection,routeProjectionInputKey} from './trip-route-intent.ts';
 
 export type TwoStoreRead = { kind: 'found'; trip: EasyTTrip; recovery: TripRecoveryRecord | null; domain: Extract<RecoveryReadResult, { kind: 'ready' }> | null }
   | { kind: 'missing'; currentCleared?: true } | { kind: 'protected'; reason: string } | { kind: 'unavailable'; reason: string };
@@ -379,13 +380,24 @@ export function createTwoStoreTripPersistence(storage: EasyTBrowserStorage, driv
           || prepared.envelope.raw !== prepared.envelope.legacyRaw
           || prepared.envelope.raw !== prepared.envelope.retainedPreviousRaw) return reject(true);
         const before = requireReadableTripDocument(source), candidate = requireReadableTripDocument(trip);
-        // Narrow whitelist: optional route legs/assessment/residuals only. All other
+        // Narrow whitelist: optional route legs/assessment/residuals and a guarded
+        // completion marker only. All other
         // authored or derived fields must remain exact; broader projections defer.
         const comparable = structuredClone(candidate);
         comparable.legs = structuredClone(before.legs);
         comparable.brief.routeAssessment = before.brief.routeAssessment;
         if (comparable.brief.cascadeStatus && before.brief.cascadeStatus)
           comparable.brief.cascadeStatus.routeReconciliation = before.brief.cascadeStatus.routeReconciliation;
+        if (candidate.brief.intent.route.projectionInputKey !== before.brief.intent.route.projectionInputKey) {
+          const inputKey = routeProjectionInputKey(before);
+          if (routeProjectionInputKey(candidate) !== inputKey
+            || candidate.brief.intent.route.projectionInputKey !== inputKey
+            || candidate.brief.cascadeStatus?.routeReconciliation?.residual.some(unit => unit.kind !== 'recommendation')
+            || commitAcceptedRouteProjection(before, {basedOnInputKey:inputKey,projectedTrip:candidate,reason:'necessary_reconciliation'}).kind !== 'accepted') return reject(true);
+          // Validate with the route guard, but retain the completed candidate:
+          // the guard's returned document rebuilds from the prior brief.
+          comparable.brief.intent.route.projectionInputKey = before.brief.intent.route.projectionInputKey;
+        }
         const key = builderInputDraftKey(ownerId,tripId), raw = prepared.envelope.raw;
         const priorInput = readBuilderInputDraft({getItem:()=>raw},before,ownerId);
         const nextInput = readBuilderInputDraft({getItem:()=>raw},candidate,ownerId);
