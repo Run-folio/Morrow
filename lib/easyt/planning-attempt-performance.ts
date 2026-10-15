@@ -38,7 +38,7 @@ export function markPlanningMilestone(attemptId: string, milestone: PlanningMile
   current.marks[milestone] = at;
   current.last = at;
   if (typeof window !== "undefined") {
-    try { window.performance.mark(`morrovia-planning:${attemptId}:${milestone}`); }
+    try { window.performance.mark(`morrovia-planning:${attemptId}:${milestone}`, { startTime: at }); }
     catch { /* Timing diagnostics must never affect planning. */ }
   }
 }
@@ -49,7 +49,7 @@ export function planningAttemptOutcome(attemptId: string, outcome: PlanningOutco
   current.outcome = outcome;
   current.last = at;
   if (typeof window !== "undefined") {
-    try { window.performance.mark(`morrovia-planning:${attemptId}:${outcome}`); }
+    try { window.performance.mark(`morrovia-planning:${attemptId}:${outcome}`, { startTime: at }); }
     catch { /* Local diagnostics only. */ }
   }
 }

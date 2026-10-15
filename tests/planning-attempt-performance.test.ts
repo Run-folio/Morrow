@@ -71,9 +71,29 @@ test("retry keeps browser timing marks within the new attempt", () => {
       `morrovia-planning:${id}:submit`,
       `morrovia-planning:${id}:first-actionable`,
     ]);
+    assert.deepEqual(names.map(name => performance.getEntriesByName(name)[0]!.startTime), [200, 240]);
   } finally {
     for (const entry of performance.getEntriesByType("mark"))
       if (entry.name.startsWith(`morrovia-planning:${id}:`)) performance.clearMarks(entry.name);
+    Reflect.deleteProperty(globalThis, "window");
+  }
+});
+
+test("native timing marks preserve the caller's historical timestamps including zero and terminal outcomes", () => {
+  const id = "opaque-historical-timing";
+  Object.defineProperty(globalThis, "window", { configurable: true, value: { performance } });
+  try {
+    markPlanningMilestone(id, "submit", 0);
+    markPlanningMilestone(id, "durable-intake", 35);
+    planningAttemptOutcome(id, "error", 70);
+    const starts = ["submit", "durable-intake", "error"].map(stage =>
+      performance.getEntriesByName(`morrovia-planning:${id}:${stage}`)[0]!.startTime);
+    assert.deepEqual(starts, [0, 35, 70]);
+    assert.equal(starts[1]! - starts[0]!, 35);
+    assert.equal(planningAttemptDurations(id)["durable-intake"], 35);
+  } finally {
+    for (const stage of ["submit", "durable-intake", "error"])
+      performance.clearMarks(`morrovia-planning:${id}:${stage}`);
     Reflect.deleteProperty(globalThis, "window");
   }
 });
