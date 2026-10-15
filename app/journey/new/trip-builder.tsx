@@ -6549,6 +6549,7 @@ function TripBuilderDocument() {
           const viewIsCurrent = capturePlanningAreaView(), userInputVersion = planningBaseSearchUserIntentVersionRef.current;
           const confirmIsCurrent = () => viewIsCurrent() && planningBaseSearchUserIntentVersionRef.current === userInputVersion;
           if (!confirmIsCurrent()) return;
+          const releaseAutomaticWork = builderEditSessionRef.current?.deferAutomaticWork();
           discoveryCommitRef.current = true;
           setDiscoveryCommitting(true);
           const mention = activeClarificationMention;
@@ -6694,6 +6695,7 @@ function TripBuilderDocument() {
               advanceClarificationSession();
             } catch { /* Preserve the current choices when any acceptance is rejected. */ }
             finally {
+              releaseAutomaticWork?.();
               discoveryCommitRef.current = false;
               if (builderMountedRef.current) setDiscoveryCommitting(false);
             }
@@ -7074,6 +7076,7 @@ function TripBuilderDocument() {
           const isCurrent = () => viewIsCurrent() && planningBaseSearchUserIntentVersionRef.current === userInputVersion;
           if (!isCurrent()) return;
           const mention = activeClarificationMention;
+          const releaseAutomaticWork = builderEditSessionRef.current?.deferAutomaticWork();
           discoveryCommitRef.current = true;
           setDiscoveryCommitting(true);
           try {
@@ -7096,7 +7099,7 @@ function TripBuilderDocument() {
           if (!isCurrent()) return;
           advanceClarificationSession();
           } catch { /* Rejected work keeps this clarification and its input open. */ }
-          finally { discoveryCommitRef.current = false; if (builderMountedRef.current) setDiscoveryCommitting(false); }
+          finally { releaseAutomaticWork?.(); discoveryCommitRef.current = false; if (builderMountedRef.current) setDiscoveryCommitting(false); }
         }}
         onRemoveItem={activeClarificationMention && activeClarificationRemovalPlan?.ownershipKnown
           ? async () => await removePlanningArea(activeClarificationMention, activeClarificationRemovalPlan)

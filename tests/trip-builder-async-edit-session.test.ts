@@ -109,6 +109,82 @@ async function accept(h: Awaited<ReturnType<typeof harness>>, edit = budget as P
   const result = await h.session.accept(edit, h.session.getSnapshot().inputRevision); assert.ok(result.ok); return h.session.getSnapshot();
 }
 
+test('session-scoped automatic deferral keeps explicit writes durable and resumes latest work once', async () => {
+  const h = await harness();
+  const release = h.session.deferAutomaticWork();
+  await accept(h, origin); await h.run(0); await h.session.resumeNecessaryWork();
+  assert.equal(h.projections.length, 0); assert.equal(h.deviceWrites.length, 1);
+  assert.deepEqual(h.recovery()?.trip, h.session.getSnapshot().trip);
+  release(); release(); await h.run(0);
+  assert.equal(h.projections.length, 1);
+  h.projections[0]!.result.resolve(response(h.projections[0]!.request)); await tick();
+  assert.equal(h.deviceWrites.length, 2); h.session.dispose();
+});
+for (const failed of [false, true]) test(`a ${failed ? 'rejected' : 'successful'} response during deferral cannot write a projection`, async () => {
+  const h = await harness(); await accept(h, origin); const before = h.session.getSnapshot().trip;
+  const work = h.session.resumeNecessaryWork(); await tick(); const release = h.session.deferAutomaticWork();
+  if (failed) h.projections[0]!.result.reject(new Error('synthetic provider failure'));
+  else h.projections[0]!.result.resolve(response(h.projections[0]!.request));
+  await work; assert.equal(h.deviceWrites.length, 1); assert.deepEqual(h.session.getSnapshot().trip, before);
+  release(); await h.run(0); assert.equal(h.projections.length, 2);
+  h.projections[1]!.result.resolve(response(h.projections[1]!.request)); await tick();
+  assert.equal(h.deviceWrites.length, 2); h.session.dispose();
+});
+for (const releaseDuringCleanup of [false, true]) test(`projection admission rechecks deferral before reservation${releaseDuringCleanup ? ' and preserves release during cleanup' : ''}`, async () => {
+  const h = await harness(); await accept(h, origin);
+  const work = h.session.resumeNecessaryWork(); await tick();
+  let release: (() => void) | undefined, acquired = false, released = false;
+  const unsubscribe = h.session.subscribe(() => {
+    if (!acquired && h.session.getSnapshot().saveState === 'device-saving') {
+      acquired = true; release = h.session.deferAutomaticWork();
+    } else if (acquired && !released && releaseDuringCleanup && h.session.getSnapshot().saveState !== 'device-saving') {
+      released = true; release!();
+    }
+  });
+  h.projections[0]!.result.resolve(response(h.projections[0]!.request)); await work;
+  assert.equal(acquired, true, 'the response was admitted before deferral acquired in device queue publication');
+  assert.equal(h.deviceWrites.length, 1, 'an unreserved optional write must not start while held');
+  unsubscribe(); release!(); await h.run(0);
+  assert.equal(h.projections.length, 2, 'release must survive the older wrapper cleanup without another edit');
+  await h.run(0); assert.equal(h.projections.length, 2);
+  h.projections[1]!.result.resolve(response(h.projections[1]!.request)); await tick(); h.session.dispose();
+});
+
+test('deferral preserves an already reserved projection save and explicit acceptance waits for its readback', async () => {
+  const h = await harness(); await accept(h, origin);
+  const work = h.session.resumeNecessaryWork(); await tick(); const gate = h.holdRecovery();
+  h.projections[0]!.result.resolve(response(h.projections[0]!.request)); await tick();
+  assert.equal(h.deviceWrites.length, 2); const reserved = h.deviceWrites[1]!.options;
+  const release = h.session.deferAutomaticWork(); let settled = false;
+  const nextOrigin = { kind: 'origin', place: verifiedFixturePlace({ name: 'Berlin', country: 'Germany', canonicalPlaceId: 'place:berlin', coordinates: [13.405, 52.52] }) } as const;
+  const explicit = h.session.accept(nextOrigin, h.session.getSnapshot().inputRevision).then(result => { settled = true; return result; });
+  await tick(); assert.equal(settled, false); assert.equal(reserved.isCurrent(), true);
+  gate.resolve(); await work; assert.ok((await explicit).ok);
+  assert.equal(h.deviceWrites.length, 3); assert.deepEqual(h.recovery()?.trip, h.session.getSnapshot().trip);
+  release(); await h.run(0); assert.equal(h.projections.length, 2); h.session.dispose();
+});
+
+test('deferral release while a reserved write remains pending wakes current work after it finishes', async () => {
+  const h = await harness(); await accept(h, origin); const work = h.session.resumeNecessaryWork(); await tick();
+  const gate = h.holdRecovery(); h.projections[0]!.result.resolve(response(h.projections[0]!.request)); await tick();
+  const release = h.session.deferAutomaticWork(); release(); await h.run(0);
+  assert.equal(h.projections.length, 1); gate.resolve(); await work; await h.run(0);
+  assert.deepEqual(h.recovery()?.trip, h.session.getSnapshot().trip);
+  h.session.dispose();
+});
+
+test('deferral is instance-owned, idempotent, and cannot strand a replacement or erase newer raw input', async () => {
+  const h = await harness(); const first = h.session.deferAutomaticWork(), second = h.session.deferAutomaticWork();
+  await accept(h, origin); await h.session.updateDraft({ binding: { kind: 'origin' }, raw: ' newest raw input ' });
+  first(); first(); await h.run(0); assert.equal(h.projections.length, 0);
+  second(); await h.run(0); assert.equal(h.projections.length, 1);
+  assert.equal(h.projections[0]!.request.scope.inputRevision, h.session.getSnapshot().inputRevision);
+  assert.equal(h.session.getSnapshot().draft.fields[0]!.raw, ' newest raw input ');
+  const oldRelease = h.session.deferAutomaticWork(); const replacement = await harness({ initialTrip: h.session.getSnapshot().trip });
+  h.rotate('other-owner'); h.session.dispose(); oldRelease(); await replacement.run(0);
+  assert.equal(replacement.projections.length, 1); replacement.session.dispose();
+});
+
 test('hydration awaits authoritative draft read and rejects an owner change during the read', async () => {
   const h = await harness(), gate = deferred<ReturnType<typeof readBuilderInputDraft>>(); let owner = 'owner-a', settled = false;
   const pending = (await api()).createAsyncBuilderEditSession({ ...h.options, getOwnerId: () => owner, readDraft: () => gate.promise }).then(value => { settled = true; return value; });

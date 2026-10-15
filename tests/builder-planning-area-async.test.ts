@@ -17,12 +17,13 @@ const evaluate=(code:string,context:any)=>runInNewContext(ts.transpileModule(`($
 function fixture() {
   let resolve!:(value:boolean)=>void,reject!:(error:Error)=>void,calls=0;
   const gate=new Promise<boolean>((yes,no)=>{resolve=yes;reject=no});
-  const view={owner:'owner-a',trip:'trip-a',ids:['mention-a'],index:0,open:true,dismissed:false,raw:'Old search',stopInput:'',editor:true,advances:0,completed:[] as string[],baseErrors:{} as Record<string,string>};
+  const view={owner:'owner-a',trip:'trip-a',ids:['mention-a'],index:0,open:true,dismissed:false,raw:'Old search',stopInput:'',editor:true,advances:0,completed:[] as string[],baseErrors:{} as Record<string,string>,automaticHeld:false,releases:0};
   const refSlots:any[]=[],effects:(void|(()=>void))[]=[];let slot=0;
   const context:any={Promise,Set,Map,JSON,structuredClone,language:'en',
     useRef:(value:any)=>refSlots[slot++]??(refSlots[slot-1]={current:value}),useEffect:(fn:()=>void|(()=>void))=>effects.push(fn()),
     builderMountedRef:{current:true},activeBrowserOwnerIdRef:{current:view.owner},builderCurrentDocumentRef:{current:{id:view.trip}},
-    builderEditSessionRef:{current:{getSnapshot:()=>({trip:{brief:{intent:{route:{destinations:[]}}}}})}},discoverySearchVersionRef:{current:0},
+    builderEditSessionRef:{current:{getSnapshot:()=>({trip:{brief:{intent:{route:{destinations:[]}}}}}),
+      deferAutomaticWork:()=>{view.automaticHeld=true;return()=>{view.automaticHeld=false;view.releases++}}}},discoverySearchVersionRef:{current:0},
     planningBaseSearchIntentVersionRef:{current:0},planningBaseSearchUserIntentVersionRef:{current:0},
     capturedStructuredBrief:{placeMentions:[{mentionId:'mention-a'}]},placeSelections:[{mentionId:'mention-a',routeStopId:'stop-a'}],
     dispatchAcceptedBuilderEdit:()=>{calls++;return gate},dispatchAcceptedBuilderEdits:()=>{calls++;return gate},
@@ -116,4 +117,21 @@ test('Discovery confirmation retains a newer view during its deferred review',as
   const work=ui.onConfirm();for(let i=0;i<8&&!finish;i++)await Promise.resolve();assert.equal(typeof finish,'function');ui.view.ids=['mention-b'];ui.render();
   finish({ok:true,committedIds:[]});ui.resolve(true);await work;await Promise.resolve();await Promise.resolve();
   assert.deepEqual(ui.view.ids,['mention-b']);assert.equal(ui.view.advances,0);
+});
+
+for(const action of ['onConfirm','onDone'] as const)for(const result of ['accepted','refused','throw','new-raw','replacement','null-editor'] as const)
+test(`${action} releases only its captured editor on ${result}`,async()=>{
+  const ui=fixture();const original=ui.context.builderEditSessionRef.current;
+  if(result==='null-editor')ui.context.builderEditSessionRef.current=null;
+  const work=ui[action]();
+  assert.equal(ui.view.automaticHeld,result!=='null-editor');
+  let replacementHeld=false;
+  if(result==='replacement'||result==='null-editor')ui.context.builderEditSessionRef.current={...original,
+    deferAutomaticWork:()=>{replacementHeld=true;return()=>{replacementHeld=false}}};
+  if(result==='new-raw'){ui.view.raw='Newest bytes';ui.context.planningBaseSearchUserIntentVersionRef.current++;}
+  if(result==='throw')ui.reject(new Error('Synthetic acceptance error'));else ui.resolve(result!=='refused');
+  await work;
+  assert.equal(ui.view.automaticHeld,false);assert.equal(ui.view.releases,result==='null-editor'?0:1);
+  assert.equal(replacementHeld,false);assert.equal(ui.context.discoveryCommitRef.current,false);
+  if(result==='new-raw')assert.equal(ui.view.raw,'Newest bytes');
 });

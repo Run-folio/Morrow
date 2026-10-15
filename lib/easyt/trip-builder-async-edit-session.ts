@@ -103,6 +103,8 @@ export async function createAsyncBuilderEditSession(options: AsyncBuilderEditSes
   let work: BuilderReconciliationRequest | null = null, requestSequence = 0;
   let assessmentFeedback: { inputKey: string; assessments: TransferAssessment[] } | null = null;
   let workAbort: AbortController | null = null;
+  const automaticWorkHolds = new Set<object>();
+  let workWakeRequested = false;
   let deviceTail = Promise.resolve(), devicePending = 0, canonicalPending = 0;
   let commandSequence = 0, lastCommand: CommandRecord | null = null;
   const issuedCommands = new Set<CommandRecord>();
@@ -156,7 +158,7 @@ export async function createAsyncBuilderEditSession(options: AsyncBuilderEditSes
     cancelCloud?.(); cancelCloud = null; cloudDue = false; publish();
     const result = deviceTail.then(operation).finally(() => {
       devicePending--; if (canonical) canonicalPending--;
-      if (active()) { publish(); if (!devicePending) scheduleCloud(); }
+      if (active()) { publish(); if (!devicePending) { scheduleCloud(); wakeAutomaticWork(); } }
     });
     deviceTail = result.then(() => undefined, () => undefined);
     return result;
@@ -396,13 +398,22 @@ export async function createAsyncBuilderEditSession(options: AsyncBuilderEditSes
   // Generated day notes cannot enter this route-only persistence path. Do not
   // let their provider requests delay the leg results this session can retain.
   const pendingRouteUnits = () => pendingBuilderReconciliationUnits(trip).filter(unit => unit.kind !== 'recommendation');
+  function wakeAutomaticWork() {
+    if (!workWakeRequested || automaticWorkHolds.size || !active() || draftProtected || devicePending || work) return;
+    scheduleWork();
+  }
   function scheduleWork() {
-    cancelWork?.(); workAbort?.abort(); workAbort = null; work = null;
-    if (!active() || draftProtected || devicePending || !pendingRouteUnits().length) return;
+    cancelWork?.(); cancelWork = null; workAbort?.abort(); workAbort = null; work = null;
+    workWakeRequested = false;
+    if (!active() || draftProtected) return;
+    if (automaticWorkHolds.size || devicePending) { workWakeRequested = true; return; }
+    if (!pendingRouteUnits().length) return;
     cancelWork = options.schedule(() => { cancelWork = null; void resumeNecessaryWork(); }, 0);
   }
   async function resumeNecessaryWork() {
-    if (!active() || draftProtected || devicePending || work) return;
+    if (!active() || draftProtected) return;
+    if (automaticWorkHolds.size || devicePending) { workWakeRequested = true; return; }
+    if (work) return;
     const dispatched = pendingRouteUnits();
     if (!dispatched.length) return;
     const request: BuilderReconciliationRequest = freeze({ trip: structuredClone(trip), scope: { ownerId: trip.ownerId, tripId, inputRevision },
@@ -413,9 +424,18 @@ export async function createAsyncBuilderEditSession(options: AsyncBuilderEditSes
     const controller = new AbortController(); workAbort = controller;
     let continued = false;
     const current = () => active() && work === request && inputRevision === request.scope.inputRevision;
+    const projectionCurrent = () => {
+      if (!current()) return false;
+      if (automaticWorkHolds.size) { workWakeRequested = true; return false; }
+      return true;
+    };
+    const projectionGuard = () => {
+      const source = operationGuard();
+      return { isCurrent: () => source.isCurrent() && projectionCurrent() };
+    };
     try {
       const response = await options.reconcile(structuredClone(request), controller.signal);
-      if (!current()) return;
+      if (!projectionCurrent()) return;
       // Generated day notes remain outside native projection-only eligibility.
       // Keep their units pending while independently validated route work advances.
       const routeResponse = { ...response, results: response.results.filter(unit => unit.kind !== 'recommendation'), recommendationProjections: undefined };
@@ -424,17 +444,17 @@ export async function createAsyncBuilderEditSession(options: AsyncBuilderEditSes
       const assessments = request.dispatched.filter(unit => unit.kind === 'leg' && response.legs.some(leg => leg.id === unit.targetId))
         .flatMap(unit => { const state = transferAssessmentForLeg(response.assessments, unit.targetId); return state ? [{ legId: unit.targetId, state }] : []; });
       const before = structuredClone(trip), nextDraft = rebindBuilderInputDraft(draft, merged.trip, ownerId);
-      if (!await storeCanonical(merged.trip, before, nextDraft, operationGuard(), { projectionOnly: true }) || !current()) return;
+      if (!await storeCanonical(merged.trip, before, nextDraft, projectionGuard(), { projectionOnly: true }) || !projectionCurrent()) return;
       const retained = assessmentFeedback?.inputKey === request.inputKey ? assessmentFeedback.assessments.filter(item => !request.dispatched.some(unit => unit.kind === 'leg' && unit.targetId === item.legId)) : [];
       assessmentFeedback = { inputKey: request.inputKey, assessments: [...retained, ...assessments] };
       continued = true; scheduleCloud(); publish();
     } catch {
-      if (!current()) return;
+      if (!projectionCurrent()) return;
       const failed = mergeBuilderProjectionResponse(trip, { ...request, results: dispatched.map(unit => ({ ...unit, phase: 'failed', reason: 'unavailable' })), legs: [] }, request);
-      if (failed.ok && await storeCanonical(failed.trip, structuredClone(trip), rebindBuilderInputDraft(draft, failed.trip, ownerId), operationGuard(), { projectionOnly: true }) && current()) {
+      if (failed.ok && await storeCanonical(failed.trip, structuredClone(trip), rebindBuilderInputDraft(draft, failed.trip, ownerId), projectionGuard(), { projectionOnly: true }) && projectionCurrent()) {
         continued = true; scheduleCloud(); publish();
       }
-    } finally { if (work === request) { work = null; workAbort = null; if (continued) scheduleWork(); } }
+    } finally { if (work === request) { work = null; workAbort = null; if (continued) scheduleWork(); else wakeAutomaticWork(); } }
   }
   async function performAcceptedEdits(edits: readonly BuilderAcceptedEdit[], expectedInputRevision: number,
     acceptedInputs: readonly { binding: BuilderInputBinding; raw: string }[] | undefined, command: CommandRecord) {
@@ -539,6 +559,15 @@ export async function createAsyncBuilderEditSession(options: AsyncBuilderEditSes
     waitForDeviceWrites: awaitDeviceWrites,
     captureCommandBarrier, isCommandReceiptCurrent,
     resumeNecessaryWork,
+    /** Only automatic projections yield; already reserved device writes finish under their owned-source guard. */
+    deferAutomaticWork() {
+      const hold = {};
+      if (active()) { automaticWorkHolds.add(hold); workWakeRequested = true; cancelWork?.(); cancelWork = null; }
+      return () => {
+        if (!automaticWorkHolds.delete(hold)) return;
+        wakeAutomaticWork();
+      };
+    },
     async discardDraft(binding: BuilderInputBinding) {
       if (!active() || draftProtected) return false;
       const next = discardBuilderInputDraftField(draft, binding, draft.inputRevision);
