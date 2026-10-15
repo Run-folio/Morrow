@@ -41,7 +41,6 @@ import {
   type ExploreDiscoveryLaneStatus,
   type ExploreCategory,
   type ExplorePrimaryCategory,
-  type ExploreLocalPlace,
   type ExploreResult,
 } from "@/lib/easyt/explore";
 import { createAbortableEffectScope } from "@/lib/easyt/abortable-effect";
@@ -50,10 +49,10 @@ import { planningEvidenceFromResponse, planningLaneMessage, planningLaneResponse
 import type { PlanningEvidenceState } from "@/lib/easyt/planning-evidence-state";
 import { tripSyncSignInPath } from "@/lib/easyt/trip-continuity";
 import type { ItineraryDiscoveryPlace } from "@/lib/easyt/itinerary-day-context";
-import type { JourneyLocalPlace } from "@/lib/easyt/local-place";
+import { localSearchPayload, type JourneyLocalPlace } from "@/lib/easyt/local-place";
 import { recommendationDetailForExploreResult } from "@/lib/easyt/recommendation-detail";
 import { removeItineraryIdea, saveItineraryIdea, scheduleItineraryIdea, validIdeaDays } from "@/lib/easyt/itinerary-ideas";
-import { exploreWorkspaceHref, mapWorkspaceHref, itineraryWorkspaceHref } from "@/lib/easyt/trip-workspace-links";
+import { exploreWorkspaceHref, mapWorkspaceHref, itineraryWorkspaceHref, tripBuilderHref } from "@/lib/easyt/trip-workspace-links";
 import { mapResultHandoffForExploreResult, mapResultSelectionId, mapResultSelectionIdForIdea } from "@/lib/easyt/map-result-selection";
 import { routeTimelineStopsForTrip } from "@/lib/easyt/route-timeline";
 import type { EasyTTrip, TripStop } from "@/lib/easyt/trip";
@@ -82,7 +81,6 @@ export type TripExploreWorkspaceProps = {
 };
 
 type DiscoveryPayload = { places?: ItineraryDiscoveryPlace[]; unavailable?: boolean; assessment?: PlanningEvidenceState };
-type LocalPayload = { places?: ExploreLocalPlace[]; unavailable?: boolean };
 type ActivityPayload = { activities?: ActivityInventoryItem[]; unavailable?: boolean; assessment?: PlanningEvidenceState };
 
 const categoryIcons: Record<ExplorePrimaryCategory, typeof Sparkles> = {
@@ -232,8 +230,11 @@ async function loadOutdoors(trip: EasyTTrip, stop: TripStop, signal: AbortSignal
   return (payload.places ?? []).map((place) => exploreResultForPlace(stop, place, interests));
 }
 
-async function loadRestaurants(stop: TripStop, signal: AbortSignal) {
-  if (stop.latitude === null || stop.longitude === null) return [];
+async function loadRestaurants(stop: TripStop, signal: AbortSignal, onAssessment: (assessment: PlanningEvidenceState) => void) {
+  if (stop.latitude === null || stop.longitude === null) {
+    onAssessment({ retrieval: "blocked", evidence: "unqualified", reason: "identity_required", retryable: false });
+    throw new Error("Restaurant discovery requires a mapped destination");
+  }
   const query = new URLSearchParams({
     city: stop.name,
     country: stop.country,
@@ -245,9 +246,13 @@ async function loadRestaurants(stop: TripStop, signal: AbortSignal) {
   if (stop.canonicalPlaceId) query.set("canonicalPlaceId", stop.canonicalPlaceId);
   const response = await fetch(`/api/journey-local-search?${query}`, { signal });
   if (!response.ok) throw new Error("Restaurant discovery unavailable");
-  const payload = await response.json() as LocalPayload;
+  const payload = localSearchPayload(await response.json());
   if (payload.unavailable) throw new Error("Restaurant discovery unavailable");
-  return (payload.places ?? []).map((place) => exploreResultForLocalPlace(stop, place));
+  return payload.places.map(place => {
+    const provider = place.provider;
+    if (provider !== "google-places" && provider !== "openstreetmap") throw new Error("Restaurant source unavailable");
+    return exploreResultForLocalPlace(stop, { ...place, provider });
+  });
 }
 
 async function loadTours(trip: EasyTTrip, stop: TripStop, signal: AbortSignal, onAssessment: (assessment?: PlanningEvidenceState) => void) {
@@ -294,6 +299,11 @@ export default function TripExploreWorkspace({
   const [organicStatus, setOrganicStatus] = useState<ExploreDiscoveryLaneStatus>(initialResults
     ? initialOrganicState ?? (initialPlan.mapped || initialPlan.dayTrips || initialPlan.restaurants || initialPlan.outdoors ? initialOrganicResults.length ? "ready" : "empty" : "idle")
     : initialPlan.mapped || initialPlan.dayTrips || initialPlan.restaurants || initialPlan.outdoors ? "loading" : "idle");
+  // Food health belongs to venue retrieval; unrelated mapped success cannot qualify it.
+  const [restaurantStatus, setRestaurantStatus] = useState<ExploreDiscoveryLaneStatus>(initialPlan.restaurants
+    ? initialResults ? initialOrganicState ?? (initialOrganicResults.some(result => result.kind === "restaurant") ? "ready" : "empty") : "loading"
+    : "idle");
+  const [restaurantAssessment, setRestaurantAssessment] = useState<PlanningEvidenceState>();
   const [commercialStatus, setCommercialStatus] = useState<ExploreDiscoveryLaneStatus>(initialResults
     ? initialProviderState
     : initialPlan.tours ? "loading" : "idle");
@@ -432,7 +442,7 @@ export default function TripExploreWorkspace({
     };
     const scopeKey = JSON.stringify([category, destinationId, discoveryRequestKey]);
     const sameScope = requestScopeRef.current === scopeKey;
-    const skipOrganic = sameScope && organicAssessment?.retrieval !== "completed" && organicAssessment?.retryable === false;
+    const skipOrganic = !plan.restaurants && sameScope && organicAssessment?.retrieval !== "completed" && organicAssessment?.retryable === false;
     const skipCommercial = sameScope && commercialAssessment?.retrieval !== "completed" && commercialAssessment?.retryable === false;
     if (!sameScope) {
       replaceOrganicResults([]);
@@ -440,11 +450,24 @@ export default function TripExploreWorkspace({
     }
     requestScopeRef.current = scopeKey;
     if (!skipOrganic) setOrganicAssessment(undefined);
+    if (plan.restaurants) {
+      setRestaurantAssessment(undefined);
+      setRestaurantStatus(scopedStops.length ? "loading" : "empty");
+    }
     if (!skipCommercial) setCommercialAssessment(undefined);
     const organicRequests = scopedStops.flatMap((stop) => [
       ...(plan.mapped ? [() => loadMappedPlaces(discoveryTrip, stop, scope.signal, assessment => scope.commit(() => setOrganicAssessment(assessment)))] : []),
       ...(plan.dayTrips ? [() => loadDayTrips(discoveryTrip, stop, scope.signal)] : []),
-      ...(plan.restaurants ? [() => loadRestaurants(stop, scope.signal)] : []),
+      ...(plan.restaurants ? [async () => {
+        try {
+          const places = await loadRestaurants(stop, scope.signal, assessment => scope.commit(() => setRestaurantAssessment(assessment)));
+          scope.commit(() => setRestaurantStatus(places.length ? "ready" : "empty"));
+          return places;
+        } catch (error) {
+          scope.commit(() => setRestaurantStatus("degraded"));
+          throw error;
+        }
+      }] : []),
       ...(plan.outdoors ? [() => loadOutdoors(discoveryTrip, stop, scope.signal)] : []),
     ]);
     const commercialRequests = scopedStops.flatMap((stop) => plan.tours
@@ -538,17 +561,21 @@ export default function TripExploreWorkspace({
 
   const destinationLabel = activeDestination?.label ?? "your trip";
   const relevantStatuses = [
-    ...(activeSourcePlan.mapped || activeSourcePlan.dayTrips || activeSourcePlan.restaurants || activeSourcePlan.outdoors ? [organicStatus] : []),
+    ...(activeSourcePlan.mapped || activeSourcePlan.dayTrips || activeSourcePlan.restaurants || activeSourcePlan.outdoors ? [activeSourcePlan.restaurants ? restaurantStatus : organicStatus] : []),
     ...(activeSourcePlan.tours ? [commercialStatus] : []),
   ];
   const relevantAssessments = [
-    ...(activeSourcePlan.mapped && organicAssessment && organicAssessment.retrieval !== "completed" ? [organicAssessment] : []),
+    ...(activeSourcePlan.restaurants
+      ? restaurantAssessment && restaurantAssessment.retrieval !== "completed" ? [restaurantAssessment] : []
+      : activeSourcePlan.mapped && organicAssessment && organicAssessment.retrieval !== "completed" ? [organicAssessment] : []),
     ...(activeSourcePlan.tours && commercialAssessment && commercialAssessment.retrieval !== "completed" ? [commercialAssessment] : []),
   ];
   const resultsPresentation = !visibleResults.length && relevantAssessments.length && !relevantStatuses.includes("loading")
     ? "unavailable" : exploreResultsPresentation(visibleResults.length, relevantStatuses);
   const incomplete = relevantAssessments.some(state => state.retrieval === "checking" || state.retrieval === "not-attempted");
-  const canRetry = (organicStatus === "degraded" || organicAssessment && organicAssessment.retrieval !== "completed") && organicAssessment?.retryable !== false
+  const canRetry = activeSourcePlan.restaurants
+    ? restaurantStatus === "degraded" && restaurantAssessment?.retryable !== false
+    : (organicStatus === "degraded" || organicAssessment && organicAssessment.retrieval !== "completed") && organicAssessment?.retryable !== false
     || (commercialStatus === "degraded" || commercialAssessment && commercialAssessment.retrieval !== "completed") && commercialAssessment?.retryable !== false;
   const needsSignIn = activeSourcePlan.tours && commercialStatus === "degraded" && planningRequiresSignIn(commercialAssessment);
 
@@ -605,10 +632,11 @@ export default function TripExploreWorkspace({
       </div> : null}
       {resultsPresentation === "unavailable" ? <><MorroviaSectionStatus
         state="error"
-        title={incomplete ? "Ideas are not ready yet" : "We couldn’t load ideas right now"}
+        title={restaurantAssessment?.reason === "identity_required" && activeSourcePlan.restaurants ? "This stop needs a mapped location"
+          : incomplete ? "Ideas are not ready yet" : activeSourcePlan.restaurants ? "We couldn’t load food ideas right now" : "We couldn’t load ideas right now"}
         detail={relevantAssessments.length ? [...new Set(relevantAssessments.map(state => planningLaneMessage(state, "en")))].join(" ") : "Your trip and saved ideas are unchanged."}
         onRetry={canRetry ? () => setRetryVersion(current => current + 1) : undefined}
-      />{needsSignIn ? <EasyTButton variant="secondary" size="small" onClick={() => window.location.assign(tripSyncSignInPath(workingTrip.id))}>Sign in</EasyTButton> : null}</> : null}
+      />{activeSourcePlan.restaurants && restaurantAssessment?.reason === "identity_required" ? <EasyTLinkButton variant="secondary" size="small" href={tripBuilderHref(workingTrip.id, workingTrip.ownerId)}>Adjust route</EasyTLinkButton> : null}{needsSignIn ? <EasyTButton variant="secondary" size="small" onClick={() => window.location.assign(tripSyncSignInPath(workingTrip.id))}>Sign in</EasyTButton> : null}</> : null}
       {resultsPresentation === "empty" ? <section className={styles.empty} aria-live="polite"><strong>No {exploreCategoryLabels[category].toLocaleLowerCase()} ideas found</strong><p>Try For you or another category for {destinationLabel}.</p></section> : null}
 
       {visibleResults.length ? <div className={styles.grid} id="explore-results">

@@ -8,6 +8,8 @@ import { TripShellCanonicalMutationProvider } from "./trip-shell-client";
 import TripExploreWorkspace from "./trip-explore-workspace";
 
 const trip = structuredClone(tourTripFixture);
+const foodRetrievalTrip = { ...trip, brief: { ...trip.brief, itineraryIdeas: [] } };
+const unmappedFoodTrip = { ...foodRetrievalTrip, stops: foodRetrievalTrip.stops.map((stop, index) => index === 0 ? { ...stop, latitude: null, longitude: null } : stop) };
 const cusco = trip.stops[0]!;
 const valley = trip.stops[1]!;
 
@@ -260,6 +262,10 @@ export const RepeatedAthensReturnMobile390: Story = { args: { trip: repeatedAthe
 export const Restaurant: Story = { args: { initialResults: [restaurant], initialCategory: "food" } };
 export const MustSee: Story = { args: { initialCategory: "must-see" } };
 export const Food: Story = { args: { initialCategory: "food" } };
+export const FoodRestaurantUnavailable: Story = { args: { trip: foodRetrievalTrip, initialCategory: "food", initialResults: [mapped[0]!], initialOrganicState: "degraded" } };
+export const FoodRestaurantLoading: Story = { args: { trip: foodRetrievalTrip, initialCategory: "food", initialResults: [mapped[0]!], initialOrganicState: "loading" } };
+export const FoodLiveRequests: Story = { args: { trip: foodRetrievalTrip, initialCategory: "food", initialResults: undefined } };
+export const FoodNeedsMappedLocation: Story = { args: { trip: unmappedFoodTrip, initialCategory: "food", initialResults: undefined } };
 export const Tours: Story = { args: { initialCategory: "tours" } };
 export const LegacyDayTripsSelectionNormalizesToTours: Story = { args: { trip: tokyoTrip, initialResults: [tokyoOrganicDayTrip, tokyoCommercialDayTrip], initialDestinationId: "tokyo", initialCategory: "day-trips" } };
 export const TokyoForYou: Story = { args: { trip: tokyoTrip, initialResults: [tokyoLandmark, ...tokyoOutdoors], initialDestinationId: "tokyo" } };

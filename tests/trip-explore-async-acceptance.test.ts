@@ -6,6 +6,7 @@ import ts from 'typescript';
 import * as explore from '../lib/easyt/explore.ts';
 import * as ideas from '../lib/easyt/itinerary-ideas.ts';
 import * as tripModel from '../lib/easyt/trip.ts';
+import * as localPlace from '../lib/easyt/local-place.ts';
 import * as addAnalytics from '../lib/easyt/itinerary-add-analytics.ts';
 import { requireReadableTripDocument } from '../lib/easyt/trip-document.ts';
 import { canonicalRouteFixture } from './fixtures/batch14-route-documents.ts';
@@ -73,7 +74,7 @@ function harness(queued = false) {
   const imports: Record<string, any> = {
     react: hooks, 'lucide-react': new Proxy({}, { get: () => () => null }),
     '@/lib/analytics': { trackEvent: (name: string, data: Record<string, unknown>) => events.push({ name, data }) },
-    '@/lib/easyt/trip': tripModel, '@/lib/easyt/explore': { ...explore,
+    '@/lib/easyt/local-place': localPlace, '@/lib/easyt/trip': tripModel, '@/lib/easyt/explore': { ...explore,
       streamExploreDiscoveryLane: (_requests: unknown[], snapshot: (snapshot: explore.ExploreDiscoveryLaneSnapshot) => void) => {
         // Capture the real production snapshot continuation; never execute provider requests.
         sourceCallbacks.push(snapshot); return Promise.resolve();
