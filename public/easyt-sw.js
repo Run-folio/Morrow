@@ -2,7 +2,7 @@
  * response is persisted. Older caches are retained for already-open clients. */
 importScripts("/easyt-offline-dependencies.js", "/easyt-offline-manifest.js");
 
-const READER_FLOOR = "idb-recovery-account-v1";
+const READER_FLOOR = "idb-recovery-account-homepage-v2";
 const MANIFEST = self.MORROVIA_OFFLINE_SHELL;
 const CACHE_PREFIX = "easyt-public-shell-";
 const CACHE_NAME = `${CACHE_PREFIX}${READER_FLOOR}-${MANIFEST?.artifactId}`;

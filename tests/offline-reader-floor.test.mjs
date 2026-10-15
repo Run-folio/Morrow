@@ -8,7 +8,7 @@ import { runInNewContext } from 'node:vm';
 // native storage, provider, account, or real network is used.
 const dependencySource=readFileSync(new URL('../public/easyt-offline-dependencies.js',import.meta.url),'utf8');
 const source=dependencySource+'\n'+readFileSync(new URL('../public/easyt-sw.js',import.meta.url),'utf8');
-const floor = 'idb-recovery-account-v1';
+const floor = 'idb-recovery-account-homepage-v2';
 const build = 'synthetic-build-1';
 const commit = 'a'.repeat(40);
 const assets = new Map([
@@ -198,7 +198,7 @@ test('API, writes and private response bodies remain outside the cache', async (
 });
 
 test('a corrupt or unsupported manifest cannot install a reader floor', async () => {
-  for (const manifestValue of [null, { ...manifest, readerFloor: 'legacy' }, { ...manifest, assets: [{ url: '/api/private', sha256: 'a'.repeat(64) }] }]) {
+  for (const manifestValue of [null, { ...manifest, readerFloor: 'legacy' }, { ...manifest, readerFloor: 'idb-recovery-account-v1' }, { ...manifest, assets: [{ url: '/api/private', sha256: 'a'.repeat(64) }] }]) {
     const m = model({ network: online, manifestValue });
     await assert.rejects(m.lifecycle('install'));
     assert.equal(m.skipped, 0); assert.equal(m.claimed, 0);

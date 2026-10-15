@@ -14,6 +14,8 @@ import { resumableNewTripSnapshot } from '../app/journey/new/new-trip-entry-stat
 import { authoredContentKey } from '../lib/easyt/trip-retained-authored-content.ts';
 import { durableBuilderRecoveryUrl } from '../lib/easyt/builder-durable-url.ts';
 import { builderClosure } from './helpers/qa-persistence-source-fixture.ts';
+import {createDurableHomepagePersistence} from '../lib/easyt/homepage-persistence.ts';
+import {MemoryRecoveryDriver} from './helpers/durable-recovery-driver.ts';
 
 const prefix='[morrovia-persistence-qa] ';
 type Mode='ok'|'denied'|'mismatch'|'recovery-denied';
@@ -149,6 +151,26 @@ test('actual fresh hydration closure emits resolved readiness before accepted ow
   const bindings=hydrationBindings();await builderClosure('hydrate-effect')(bindings);
   assert.deepEqual(records.map(v=>[v.boundary,v.accepted]),[['hydration-ready',true],['hydration-complete',true]]);
   assert.equal(records[1].sessionClass,'signed-in');assert.equal(records[1].entryKind,'fresh');assert.equal(records[1].scopeMatches,true);
+}));
+test('actual queryless New hydration accepts fresh owner scopes without consuming a foreign legacy pending envelope',async()=>capture(async(records,storage)=>{
+  const snapshot={...emptyHomepageInput('PRIVATE-FOREIGN'),mode:'describe' as const,prompt:'PRIVATE-INPUT'};
+  const receipt=createPendingIntakeReceipt(snapshot,{handoffId:'PRIVATE-HANDOFF',tripId:'PRIVATE-TRIP'});
+  storage.values.set(homepageInputStorageKey('PRIVATE-FOREIGN'),JSON.stringify({snapshot,receipt}));
+  storage.values.set('easyt-home-trip-draft',JSON.stringify({version:2,phase:'pending-interpretation',receipt}));
+  const before=[...storage.values],driver=new MemoryRecoveryDriver();
+  for(const ownerId of [null,'PRIVATE-OWNER']) {
+    const bindings=hydrationBindings();bindings.activeBrowserOwnerId=ownerId;bindings.authenticatedOwnerId=ownerId;
+    bindings.activeBrowserOwnerIdRef={current:ownerId};bindings.loadCurrentDraftRecovery=async()=>null;
+    bindings.readDurableHomepageState=async(_owner:string|null,guard:()=>boolean)=>createDurableHomepagePersistence(storage,driver,{ownerId,isCurrent:guard,overflowEnabled:false,accountOverflowQualified:false}).read();
+    await builderClosure('hydrate-effect')(bindings);
+    assert.equal(records.at(-1).accepted,true);assert.equal(records.at(-1).entryKind,'fresh');assert.equal(records.at(-1).guardReason,null);
+    assert.equal(records.at(-1).sessionClass,ownerId?'signed-in':'guest');
+    let enabled=false;
+    const starter={mountedRef:{current:true},readyRef:{current:false},ownerRef:{current:ownerId},generationRef:{current:0},pendingSubmissionRef:{current:null},setPendingSubmission(){},pendingHomepageSubmissionForOwner,readDurableHomepageState:bindings.readDurableHomepageState,
+      ownerId,language:'en',submitInFlightRef:{current:false},emptyInput:emptyHomepageInput,resumableNewTripSnapshot,nextEntryId:{current:0},snapshotRef:{current:null},
+      setSnapshot(value:HomepageInputSnapshot){assert.equal(value.ownerId,ownerId);assert.equal(value.prompt,'');},setStartInput(){},setEndInput(){},setReady(value:boolean){enabled=value;},setError(){assert.fail('fresh scope must remain editable');},reportQaPersistenceBoundary,qaNativeFailureCategory};
+    await builderClosure('starter-restore')(starter);assert.equal(enabled,true);assert.equal(storage.writes,0);assert.deepEqual([...storage.values],before);
+  }
 }));
 
 test('actual unresolved hydration is a waiting probe, not a false first failure',async()=>capture(async(records)=>{

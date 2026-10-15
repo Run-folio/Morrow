@@ -1668,7 +1668,8 @@ test("service worker advances public documents online and reopens the planner sh
   const dependencySource = readFileSync(new URL("../public/easyt-offline-dependencies.js", import.meta.url), "utf8");
   const source = dependencySource + "\n" + readFileSync(new URL("../public/easyt-sw.js", import.meta.url), "utf8");
   const listeners = new Map<string, (event: unknown) => void>();
-  const floor = "idb-recovery-account-v1", commit = "a".repeat(40);
+  const {MORROVIA_OFFLINE_READER_FLOOR:floor}=await import('../lib/easyt/offline-reader-floor.ts');
+  const commit = "a".repeat(40);
   const shell = (body: string) => `<!doctype html><meta name="morrovia-offline-reader" content="${floor}"><meta name="morrovia-build-commit" content="${commit}"><script src="/_next/static/chunks/planner.js"></script><div>${body}</div>`;
   const plannerShell = shell("offline planner shell");
   const asset = { url: "/_next/static/chunks/planner.js", sha256: createHash("sha256").update("planner dependency").digest("hex") };

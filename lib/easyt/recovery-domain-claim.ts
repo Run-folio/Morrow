@@ -8,8 +8,7 @@ import {resolveRecoveryProvenance} from './recovery-provenance.ts';
 import {recoveryErrorReason} from './durable-recovery-error.ts';
 import {rebindRecoveryClaimInputs} from './recovery-claim-inputs.ts';
 import {builderInputDraftKey} from './trip-builder-input-draft.ts';
-import {homepageInputStorageKey} from './private-browser-context.ts';
-import {HOME_TRIP_DRAFT_KEY} from './home-trip-handoff.ts';
+import {readNativeHomepageBundle} from './homepage-persistence.ts';
 import {tripRecoveryStorageKey,tripCacheStorageKey,currentTripStorageKey,EASYT_ACTIVE_TRIP_KEY,type EasyTBrowserStorage} from './storage.ts';
 
 type NativeSnapshot={recoveries:{key:string;raw:string}[];builderRaw:string|null;homeInputRaw:string|null;homeDraftRaw:string|null;cacheRaw:string|null;pointerRaw:string|null;legacyRaw:string|null};
@@ -33,6 +32,7 @@ function signature(state:RecoveryDomainState) {
 }
 function nativeSnapshot(storage:ClaimStorage,ownerId:string|null,tripId:string):NativeSnapshot {
   const snapshot=()=>{
+    const home=readNativeHomepageBundle(storage,ownerId);
     const prefix=tripRecoveryStorageKey(ownerId,tripId),recoveries:{key:string;raw:string}[]=[];
     if(typeof storage.length!=='number'||typeof storage.key!=='function')throw new Error('Claim native enumeration unavailable');
     for(let i=0;i<storage.length;i++) {
@@ -40,7 +40,7 @@ function nativeSnapshot(storage:ClaimStorage,ownerId:string|null,tripId:string):
       const raw=storage.getItem(key);if(raw!==null)recoveries.push({key,raw});
     }
     return {recoveries:recoveries.sort((a,b)=>a.key.localeCompare(b.key)),builderRaw:storage.getItem(builderInputDraftKey(ownerId,tripId)),
-      homeInputRaw:storage.getItem(homepageInputStorageKey(ownerId)),homeDraftRaw:storage.getItem(HOME_TRIP_DRAFT_KEY),
+      homeInputRaw:home.inputRaw,homeDraftRaw:home.draftRaw,
       cacheRaw:storage.getItem(tripCacheStorageKey(ownerId,tripId)),pointerRaw:storage.getItem(currentTripStorageKey(ownerId)),legacyRaw:storage.getItem(EASYT_ACTIVE_TRIP_KEY)};
   };
   const first=snapshot();if(JSON.stringify(first)!==JSON.stringify(snapshot()))throw new Error('Unstable claim source');return first;

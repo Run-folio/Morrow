@@ -49,6 +49,24 @@ test('Homepage hydration stays disabled until both-store owner-scoped read resol
   gate.resolve({kind:'ready',storedInput:{snapshot:fixture.snapshot,receipt:fixture.intake.completed}});await tick();
   assert.equal(scope.snapshotRef.current,fixture.snapshot);assert.deepEqual(seen.blocked,[true,false]);assert.equal(scope.homepageReadyRef.current,true);cleanup();
 });
+test('actual Homepage hydration enables fresh guest and signed-in input beside an unchanged foreign pending handoff',async()=>{
+  for(const ownerId of [null,'owner-b']) {
+    const foreignSnapshot={...emptyHomepageInput('owner-a'),mode:'describe' as const,prompt:'foreign private input'};
+    const receipt=createPendingIntakeReceipt(foreignSnapshot,{handoffId:'foreign-handoff',tripId:'foreign-trip'});
+    const values=new Map([[homepageInputStorageKey('owner-a'),JSON.stringify({snapshot:foreignSnapshot,receipt})],
+      [HOME_TRIP_DRAFT_KEY,JSON.stringify({version:2,phase:'pending-interpretation',receipt})]]);
+    let writes=0;
+    const storage={get length(){return values.size;},key:(i:number)=>[...values.keys()][i]??null,getItem:(key:string)=>values.get(key)??null,
+      setItem:(key:string,raw:string)=>{writes++;values.set(key,raw);},removeItem:(key:string)=>{writes++;values.delete(key);}};
+    const before=[...values],driver=new MemoryRecoveryDriver();
+    const {scope,seen}=hydrationScope((_,guard)=>createDurableHomepagePersistence(storage,driver,{ownerId,isCurrent:guard,overflowEnabled:false,accountOverflowQualified:false}).read());
+    const current={...scope,ownerId,ownerIdRef:{current:ownerId},snapshotRef:{current:emptyHomepageInput(ownerId)}};
+    const cleanup=actualCallback('hydrate',current)() as ()=>void;await tick();
+    assert.equal(current.homepageReadyRef.current,true);assert.equal(seen.blocked.at(-1),false);
+    assert.equal(current.snapshotRef.current.ownerId,ownerId);assert.equal(current.snapshotRef.current.prompt,'');
+    assert.deepEqual([...values],before);assert.equal(writes,0);cleanup();
+  }
+});
 test('unknown/protected Homepage reads retain same-owner memory and do not manufacture empty durable input',async()=>{
   for(const kind of ['unavailable','protected']) {
     const {scope,seen,initial}=hydrationScope(async()=>({kind,reason:'synthetic'}));actualCallback('hydrate',scope)();await tick();

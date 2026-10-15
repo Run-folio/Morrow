@@ -2,7 +2,9 @@ import assert from 'node:assert/strict';import test from 'node:test';
 import {saveTripRecoveryToStorage,saveExplicitGuestTripForOwnerInStorage,tripRecoveryStorageKey} from '../lib/easyt/storage.ts';
 import {MemoryRecoveryDriver} from './helpers/durable-recovery-driver.ts';
 import {homeRecoveryFixture} from './helpers/home-recovery-fixture.ts';
-import {HOME_TRIP_DRAFT_KEY} from '../lib/easyt/home-trip-handoff.ts';
+import {HOME_TRIP_DRAFT_KEY,createPendingIntakeReceipt} from '../lib/easyt/home-trip-handoff.ts';
+import {homepageDraftStorageKey} from '../lib/easyt/private-browser-context.ts';
+import {emptyHomepageInput} from './fixtures/homepage-dual-entry.ts';
 import {canonicalTripForOwner} from '../lib/easyt/trip-promotion.ts';
 import {createTwoStoreTripPersistence} from '../lib/easyt/two-store-trip-persistence.ts';
 import {builderInputDraftKey,createBuilderInputDraft,updateBuilderInputDraft} from '../lib/easyt/trip-builder-input-draft.ts';
@@ -21,6 +23,25 @@ test('explicit native guest save promotes exact owner snapshot and retains guest
  assert.deepEqual(calls,['POST','PUT']);
 });
 function promotion(owner='owner-a',after?:()=>void):typeof fetch{return async(_url,init)=>{const body=JSON.parse(init!.body as string);after?.();return Response.json({trip:canonicalTripForOwner(owner,body),outcome:'promoted'},{status:201});};}
+function scopedFixture() {
+ const f=fixture(),scopedKey=homepageDraftStorageKey(null),snapshot=emptyHomepageInput('owner-foreign');
+ const receipt=createPendingIntakeReceipt(snapshot,{handoffId:'foreign-pending',tripId:'foreign-trip'});
+ f.values.set(scopedKey,f.values.get(HOME_TRIP_DRAFT_KEY)!);
+ f.values.set(HOME_TRIP_DRAFT_KEY,JSON.stringify({version:2,phase:'pending-interpretation',receipt}));
+ return {...f,scopedKey};
+}
+test('explicit guest save reads its scoped handoff and leaves the foreign shared pending envelope unchanged',async()=>{
+ const f=scopedFixture(),before=[...f.values];
+ const result=await saveExplicitGuestTripForOwnerInStorage(f.storage,f.driver,f.context,f.guest.id,promotion());
+ assert.equal(result.accountAcknowledged,true);assert.equal(result.deviceComplete,true);
+ for(const [key,raw]of before)assert.equal(f.storage.getItem(key),raw);
+});
+test('a scoped guest handoff changed during account ACK stays preserved and cannot earn device completion',async()=>{
+ const f=scopedFixture(),changed=JSON.stringify({...f.draft,brief:'New guest input while account save is pending'}),foreign=f.values.get(HOME_TRIP_DRAFT_KEY);
+ const result=await saveExplicitGuestTripForOwnerInStorage(f.storage,f.driver,f.context,f.guest.id,promotion('owner-a',()=>f.values.set(f.scopedKey,changed)));
+ assert.equal(result.accountAcknowledged,true);assert.equal(result.deviceComplete,false);
+ assert.equal(f.storage.getItem(f.scopedKey),changed);assert.equal(f.storage.getItem(HOME_TRIP_DRAFT_KEY),foreign);
+});
 test('repeat explicit save is idempotent and retains guest raw witnesses',async()=>{const f=fixture(),request=promotion();const first=await saveExplicitGuestTripForOwnerInStorage(f.storage,f.driver,f.context,f.guest.id,request);assert.equal(first.deviceComplete,true);const second=await saveExplicitGuestTripForOwnerInStorage(f.storage,f.driver,f.context,f.guest.id,request);assert.equal(second.deviceComplete,true);});
 test('destination divergence refuses before any promotion',async()=>{const f=fixture();saveTripRecoveryToStorage(f.storage,{...f.guest,ownerId:'owner-a',title:'Different account edit'},{ownerId:'owner-a',writeId:'competing'});let calls=0;await assert.rejects(saveExplicitGuestTripForOwnerInStorage(f.storage,f.driver,f.context,f.guest.id,async()=>{calls++;throw Error('no request');}));assert.equal(calls,0);});
 test('foreign response owner cannot grant local ownership',async()=>{const f=fixture();await assert.rejects(saveExplicitGuestTripForOwnerInStorage(f.storage,f.driver,f.context,f.guest.id,promotion('owner-b')));assert.equal(f.storage.getItem(builderInputDraftKey('owner-b',f.guest.id)),null);});

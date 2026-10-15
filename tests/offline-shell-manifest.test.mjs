@@ -8,7 +8,7 @@ import { runInNewContext } from 'node:vm';
 
 const script = new URL('../scripts/generate-offline-shell-manifest.mjs', import.meta.url);
 const commit = 'a'.repeat(40);
-const html = '<meta name="morrovia-offline-reader" content="idb-recovery-account-v1"><meta name="morrovia-build-commit" content="' + commit + '"><script src="/_next/static/chunks/main.js"></script>';
+const html = '<meta name="morrovia-offline-reader" content="idb-recovery-account-homepage-v2"><meta name="morrovia-build-commit" content="' + commit + '"><script src="/_next/static/chunks/main.js"></script>';
 function fixture() {
   const root = mkdtempSync(path.join(tmpdir(), 'morrovia-offline-manifest-'));
   const put = (file, body) => { const full = path.join(root, file); mkdirSync(path.dirname(full), { recursive: true }); writeFileSync(full, body); };
@@ -30,7 +30,7 @@ test('build manifest includes lazy chunks/fonts/public worker with exact byte ha
   const f = fixture();
   try {
     const result = writeOfflineShellManifest(f.root, '.next-test');
-    assert.equal(result.readerFloor, 'idb-recovery-account-v1'); assert.equal(result.buildId, 'synthetic-build'); assert.equal(result.buildCommit, commit);
+    assert.equal(result.readerFloor, 'idb-recovery-account-homepage-v2'); assert.equal(result.buildId, 'synthetic-build'); assert.equal(result.buildCommit, commit);
     assert.deepEqual(new Set(result.assets.map(row => row.url)), new Set(['/easyt-offline-dependencies.js','/easyt-icon.svg', '/maplibre/maplibre-gl-worker.mjs', '/_next/static/chunks/lazy-map.js', '/_next/static/chunks/main.js', '/_next/static/media/font.woff2', '/_next/static/chunks/app/journey/%5BtripId%5D/page.js', '/_next/static/chunks/app/api/auth/%5B...all%5D/route.js']));
     assert.equal(result.assets.find(row => row.url.endsWith('lazy-map.js')).sha256, createHash('sha256').update('synthetic lazy').digest('hex'));
     const context = { self: {} }; runInNewContext(readFileSync(path.join(f.root, 'public/easyt-offline-manifest.js'), 'utf8'), context);

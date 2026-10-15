@@ -4,7 +4,7 @@ import type { StoredHomepageInput, PendingIntakeReceipt } from './home-trip-hand
 import {HOME_TRIP_DRAFT_KEY,readHomepageInput,pendingIntakeReceiptForOwner,pendingHomepageHandoffForOwner,
   homepageHandoffReceiptForOwner,homepageHandoffMatchesTrip,pendingReceiptStillCurrent,withHomepageReceiptLock,acknowledgePendingIntakeReceiptInStorage,
   type HomeTripDraft,type HomepageHandoffReceipt} from './home-trip-handoff.ts';
-import {homepageInputStorageKey} from './private-browser-context.ts';
+import {homepageInputStorageKey,homepageDraftStorageKey} from './private-browser-context.ts';
 import {createRecoveryEntryStore} from './durable-entry-store.ts';
 import {sameEntryHandle} from './durable-entry-protocol.ts';
 import {recoveryErrorReason} from './durable-recovery-error.ts';
@@ -41,11 +41,16 @@ export function decodeHomepageBundle(raw:string,ownerId:string|null,onInvalid?:(
         const receipt=pendingIntakeReceiptForOwner(draft.receipt,ownerId);
         if(!receipt||!pendingHomepageHandoffForOwner(draft,ownerId,receipt.handoffId)) {
           const foreignOwner=object(draft.receipt)?draft.receipt.ownerId:undefined;
-          if(onInvalid&&foreignOwner!==ownerId&&(foreignOwner===null||typeof foreignOwner==='string'&&foreignOwner.trim().length>0)) {
+          if(foreignOwner!==ownerId&&(foreignOwner===null||typeof foreignOwner==='string'&&foreignOwner.trim().length>0)) {
             const foreignReceipt=pendingIntakeReceiptForOwner(draft.receipt,foreignOwner);
-            if(foreignReceipt&&pendingHomepageHandoffForOwner(draft,foreignOwner,foreignReceipt.handoffId))return refuse('native-foreign-pending-envelope');
+            if(foreignReceipt&&pendingHomepageHandoffForOwner(draft,foreignOwner,foreignReceipt.handoffId)) {
+              // The shared legacy slot is another owner's reservation. Retain
+              // its exact raw bytes, but do not expose or redeem it here.
+              draft=null;
+            }else return refuse('native-draft-invalid');
+          }else {
+            return refuse('native-draft-invalid');
           }
-          return refuse('native-draft-invalid');
         }
       }else if('homepage' in draft) {
         if(!homepageHandoffReceiptForOwner(draft as HomeTripDraft,ownerId)) {
@@ -65,12 +70,68 @@ export function decodeHomepageBundle(raw:string,ownerId:string|null,onInvalid?:(
     return {bundle,storedInput,draft};
   }catch{return refuse(invalidReason);}
 }
+class NativeHomepageConflict extends Error {
+  readonly reason:string;
+  constructor(reason:string){super(reason);this.reason=reason;}
+}
+function draftOwnershipPreserved(decoded:NonNullable<ReturnType<typeof decodeHomepageBundle>>,previousRaw:string|null) {
+  // Readers may retain a foreign legacy witness. Writers may carry that exact
+  // witness forward, never introduce or replace someone else's handoff.
+  return decoded.draft!==null||decoded.bundle.draftRaw===null||JSON.parse(decoded.bundle.draftRaw)===null||decoded.bundle.draftRaw===previousRaw;
+}
+/** Compare owner state, not the lifetime of a foreign shared reservation. A
+ * matching pending envelope duplicates the exact frozen input receipt; older
+ * readers may represent that same intake with input only. Physical bytes stay
+ * retained in both native storage and entry witnesses. */
+function nativeHomepageLineage(raw:string|null,ownerId:string|null) {
+  const decoded=raw===null?null:decodeHomepageBundle(raw,ownerId);if(!decoded)return null;
+  const pending=pendingIntakeReceiptForOwner(decoded.storedInput?.receipt,ownerId);
+  const duplicate=pending&&decoded.bundle.draftRaw===JSON.stringify({version:2,phase:'pending-interpretation',receipt:pending})
+    &&pendingReceiptStillCurrent({getItem:key=>key===homepageInputStorageKey(ownerId)?decoded.bundle.inputRaw:key===HOME_TRIP_DRAFT_KEY?decoded.bundle.draftRaw:null},pending,true);
+  return JSON.stringify({...decoded.bundle,draftRaw:decoded.draft===null||duplicate?null:decoded.bundle.draftRaw});
+}
+function sameNativeHomepageLineage(left:string,right:string|null,ownerId:string|null) {
+  const normalized=nativeHomepageLineage(left,ownerId);return normalized!==null&&normalized===nativeHomepageLineage(right,ownerId);
+}
+/** A scoped null is empty, not a competing handoff. A sole owned shared copy
+ * remains visible to current and older clients. Two live owned copies or any
+ * malformed slot stay protected without a winner, migration or deletion. */
+export function readNativeHomepageBundle(storage:Pick<Storage,'getItem'>,ownerId:string|null):HomepageBundle {
+  let inputRaw=storage.getItem(homepageInputStorageKey(ownerId));
+  // An older reader must not interpret an invisible scoped handoff as direct
+  // input and abandon it. This lossless wrapper deliberately has no snapshot,
+  // so old codecs refuse before mutation; no tab is reloaded or closed.
+  if(inputRaw!==null) {
+    let value:unknown;try{value=JSON.parse(inputRaw);}catch{throw new NativeHomepageConflict('native-input-invalid');}
+    if(object(value)&&'ownerScopedHomepageInput' in value) {
+      if(value.version!==1||Object.keys(value).sort().join(',')!=='ownerScopedHomepageInput,version'
+        ||!(value.ownerScopedHomepageInput===null||typeof value.ownerScopedHomepageInput==='string')
+        ||inputRaw!==JSON.stringify({version:1,ownerScopedHomepageInput:value.ownerScopedHomepageInput}))throw new NativeHomepageConflict('native-input-invalid');
+      inputRaw=value.ownerScopedHomepageInput;
+    }
+  }
+  const legacy=storage.getItem(HOME_TRIP_DRAFT_KEY),scoped=storage.getItem(homepageDraftStorageKey(ownerId));
+  if(scoped!==null) {
+    let ownedLegacy=false;
+    for(const [raw,isScoped] of [[legacy,false],[scoped,true]] as const) {
+      if(raw===null)continue;
+      let reason:InvalidHomepagePayloadReason='native-draft-invalid';
+      const decoded=decodeHomepageBundle(JSON.stringify({version:1,inputRaw:null,draftRaw:raw}),ownerId,value=>{reason=value;});
+      if(!decoded)throw new NativeHomepageConflict(reason);
+      if(!isScoped&&decoded.draft!==null)ownedLegacy=true;
+      if(isScoped&&raw!=='null'&&decoded.draft===null)throw new NativeHomepageConflict('scope');
+    }
+    if(scoped==='null')return {version:1,inputRaw,draftRaw:ownedLegacy?legacy:null};
+    if(ownedLegacy)throw new NativeHomepageConflict('native-divergence');
+  }
+  return {version:1,inputRaw,draftRaw:scoped!==null?(scoped==='null'?null:scoped):legacy};
+}
 export function createDurableHomepagePersistence(storage:HomepageStorage,driver:RecoveryDomainDriver,context:{ownerId:string|null;isCurrent:()=>boolean;overflowEnabled:boolean;accountOverflowQualified:boolean}) {
-  const ownerId=context.ownerId,scope={ownerId,kind:'homepage' as const,tripId:null},inputKey=homepageInputStorageKey(ownerId);
+  const ownerId=context.ownerId,scope={ownerId,kind:'homepage' as const,tripId:null},inputKey=homepageInputStorageKey(ownerId),scopedDraftKey=homepageDraftStorageKey(ownerId);
   const active=()=>{try{return context.isCurrent()===true;}catch{return false;}};
   const entries=createRecoveryEntryStore(driver,{ownerId,isCurrent:active});
   const nativeRaw=()=>{
-    const snapshot=()=>JSON.stringify({version:1,inputRaw:storage.getItem(inputKey),draftRaw:storage.getItem(HOME_TRIP_DRAFT_KEY)});
+    const snapshot=()=>JSON.stringify(readNativeHomepageBundle(storage,ownerId));
     const raw=snapshot();if(raw!==snapshot())throw new Error('Homepage native snapshot changed');return raw;
   };
   async function read():Promise<DurableHomepageState> {
@@ -86,12 +147,12 @@ export function createDurableHomepagePersistence(storage:HomepageStorage,driver:
       if(!active())return {kind:'protected',reason:'operation-changed'};
       let nativePayloadReason:InvalidHomepagePayloadReason='native-bundle-invalid';
       if(!decodeHomepageBundle(legacyRaw,ownerId,reason=>{nativePayloadReason=reason;}))return {kind:'protected',reason:nativePayloadReason};
-      if(envelope&&legacyRaw!==envelope.legacyRaw&&legacyRaw!==envelope.raw)return {kind:'protected',reason:'native-divergence'};
+      if(envelope&&!sameNativeHomepageLineage(legacyRaw,envelope.legacyRaw,ownerId)&&!sameNativeHomepageLineage(legacyRaw,envelope.raw,ownerId))return {kind:'protected',reason:'native-divergence'};
       const raw=envelope?envelope.raw:legacyRaw;
       const decoded=raw===null?null:decodeHomepageBundle(raw,ownerId);
       if(!decoded||raw===null)return {kind:'protected',reason:'payload'};
       return {kind:'ready',...decoded.bundle,storedInput:decoded.storedInput,draft:decoded.draft,raw,legacyRaw,envelope};
-    }catch{return {kind:'unavailable',reason:'native-read-unknown'};}
+    }catch(error){return error instanceof NativeHomepageConflict?{kind:'protected',reason:error.reason}:{kind:'unavailable',reason:'native-read-unknown'};}
   }
   function entry(raw:string,writeId:string,before:Extract<DurableHomepageState,{kind:'ready'}>,legacyRaw=before.legacyRaw):RecoveryEntryWrite {
     const envelope:RecoveryEntryEnvelope={version:1,handle:{...scope,version:1,backend:'indexeddb-entry',writeId},parent:before.envelope?.handle??null,
@@ -109,6 +170,7 @@ export function createDurableHomepagePersistence(storage:HomepageStorage,driver:
       const decoded=decodeHomepageBundle(raw,ownerId);if(!decoded)return {kind:'protected',reason:'payload'};
       const writeId=options.writeId??globalThis.crypto.randomUUID(),allowInitialOverflow=options.allowInitialOverflow===true,expected=options.expected?structuredClone(options.expected):undefined;
       const before=await read();if(before.kind!=='ready')return before;
+      if(!draftOwnershipPreserved(decoded,before.draftRaw))return {kind:'protected',reason:'scope'};
       if(expected) {
         const validated=prepareEntryWrite(expected,ownerId);if(validated.kind!=='prepared'||validated.scope.kind!=='homepage')return {kind:'protected',reason:'preparation'};
         const prepared=validated.envelope;
@@ -118,17 +180,31 @@ export function createDurableHomepagePersistence(storage:HomepageStorage,driver:
       let legacyRaw=before.legacyRaw,confirmedNativeFailure: 'quota'|'security'|'unavailable'|'unknown'|undefined;
       if(!before.envelope) {
         const previous=JSON.parse(before.legacyRaw) as HomepageBundle,target=decoded.bundle;
-        const changes:Array<{key:string;before:string|null;after:string|null}>=[];
+        const changes:Array<{field:'inputRaw'|'draftRaw';key:string;before:string|null;after:string|null;logicalAfter:string|null}>=[];
+        // Continue a sole shared owned lineage through its existing key, even
+        // beside an empty scoped slot. A live scoped copy or foreign shared
+        // reservation requires the scoped key; never overwrite foreign bytes.
         let setterQuota=false;
         try {
-          for(const [field,key] of [['inputRaw',inputKey],['draftRaw',HOME_TRIP_DRAFT_KEY]] as const) {
-            const old=previous[field],next=target[field];if(old===next)continue;
-            if(!active()||nativeRaw()!==JSON.stringify({...previous,...Object.fromEntries(changes.map(change=>[change.key===inputKey?'inputRaw':'draftRaw',change.after]))}))return {kind:'protected',reason:'native-changed'};
-            try {if(next===null)storage.removeItem(key);else storage.setItem(key,next);}
-            catch(error){const reason=recoveryErrorReason(error);setterQuota=next!==null&&reason==='quota';
-              if(next!==null)confirmedNativeFailure=reason==='quota'||reason==='security'||reason==='unavailable'?reason:'unknown';throw error;}
-            changes.push({key,before:old,after:next});
-            if(storage.getItem(key)!==next)throw new Error('Homepage native readback refused');
+          const shared=storage.getItem(HOME_TRIP_DRAFT_KEY),scoped=storage.getItem(scopedDraftKey);
+          const sharedDecoded=decodeHomepageBundle(JSON.stringify({version:1,inputRaw:null,draftRaw:shared}),ownerId);
+          const foreignShared=shared!==null&&sharedDecoded?.draft===null&&JSON.parse(shared)!==null;
+          const draftKey=scoped!==null&&scoped!=='null'||foreignShared?scopedDraftKey:HOME_TRIP_DRAFT_KEY;
+          const scopedInput=draftKey===scopedDraftKey&&decoded.draft!==null;
+          // Fence before creating a scoped draft; retire that draft before
+          // releasing the fence. Every interruption stays old-reader safe.
+          const fields=scoped!==null&&scoped!=='null'&&!scopedInput
+            ?[['draftRaw',draftKey],['inputRaw',inputKey]] as const:[['inputRaw',inputKey],['draftRaw',draftKey]] as const;
+          for(const [field,key] of fields) {
+            const old=previous[field],next=target[field],physicalBefore=storage.getItem(key);
+            const physicalNext=field==='inputRaw'&&scopedInput?JSON.stringify({version:1,ownerScopedHomepageInput:next}):key===scopedDraftKey&&next===null?'null':next;
+            if(old===next&&(field==='draftRaw'||physicalBefore===physicalNext))continue;
+            if(!active()||nativeRaw()!==JSON.stringify({...previous,...Object.fromEntries(changes.map(change=>[change.field,change.logicalAfter]))}))return {kind:'protected',reason:'native-changed'};
+            try {if(physicalNext===null)storage.removeItem(key);else storage.setItem(key,physicalNext);}
+            catch(error){const reason=recoveryErrorReason(error);setterQuota=physicalNext!==null&&reason==='quota';
+              if(physicalNext!==null)confirmedNativeFailure=reason==='quota'||reason==='security'||reason==='unavailable'?reason:'unknown';throw error;}
+            changes.push({field,key,before:physicalBefore,after:physicalNext,logicalAfter:next});
+            if(storage.getItem(key)!==physicalNext)throw new Error('Homepage native readback refused');
           }
           const after=await read();
           if(after.kind!=='ready')return after;
@@ -140,7 +216,12 @@ export function createDurableHomepagePersistence(storage:HomepageStorage,driver:
           for(const change of [...changes].reverse()) {
             try {if(storage.getItem(change.key)!==change.after)return {kind:'protected',reason:'native-divergence'};
               if(change.before===null)storage.removeItem(change.key);else storage.setItem(change.key,change.before);}
-            catch {/* A confirmed setter quota may retain prior and partial bytes below. */}
+            catch {
+              // Inverse fence ordering is safe only after each restoration
+              // succeeds. Do not release a fence while a live draft remains,
+              // or restore a live draft after its fence restoration failed.
+              break;
+            }
           }
           if(!setterQuota||!allowInitialOverflow)return {kind:'failure',reason:recoveryErrorReason(error),...(confirmedNativeFailure?{nativeFailure:confirmedNativeFailure}:{})};
           try {
@@ -150,7 +231,7 @@ export function createDurableHomepagePersistence(storage:HomepageStorage,driver:
         }
       }
       if(!context.overflowEnabled||ownerId!==null&&!context.accountOverflowQualified)return {kind:'failure',reason:'overflow-held',...(confirmedNativeFailure?{nativeFailure:confirmedNativeFailure}:{})};
-      const committed=await createRecoveryEntryStore(driver,{ownerId,isCurrent:()=>{try{return active()&&nativeRaw()===legacyRaw;}catch{return false;}}}).commit(entry(raw,writeId,before,legacyRaw));
+      const committed=await createRecoveryEntryStore(driver,{ownerId,isCurrent:()=>{try{return active()&&sameNativeHomepageLineage(nativeRaw(),legacyRaw,ownerId);}catch{return false;}}}).commit(entry(raw,writeId,before,legacyRaw));
       if(committed.kind!=='verified')return {kind:committed.kind==='protected-conflict'?'protected':'failure',reason:committed.kind==='ready'?'unknown':committed.reason,committed:'commitStatus' in committed&&committed.commitStatus==='committed'};
       const after=await read();if(after.kind!=='ready')return {...after,committed:true};
       return active()&&after.raw===raw&&after.envelope?.handle.writeId===writeId?{kind:'verified',backend:'indexeddb-entry'}:{kind:'protected',reason:'head-changed',committed:true};
@@ -161,7 +242,9 @@ export function createDurableHomepagePersistence(storage:HomepageStorage,driver:
       try {
         const value=await work(virtual(bundle)),raw=JSON.stringify(bundle);
         if(!active())return {kind:'protected',reason:'operation-changed'};
-        if(!decodeHomepageBundle(raw,ownerId))return {kind:'protected',reason:'payload'};
+        const decoded=decodeHomepageBundle(raw,ownerId);
+        if(!decoded)return {kind:'protected',reason:'payload'};
+        if(!draftOwnershipPreserved(decoded,before.draftRaw))return {kind:'protected',reason:'scope'};
         return {kind:'prepared',value,raw,entry:entry(raw,writeId,before)};
       }catch{return {kind:'protected',reason:'preparation'};}
     },

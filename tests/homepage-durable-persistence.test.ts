@@ -14,12 +14,11 @@ class NativeHomeModel {
   setItem(key:string,raw:string){this.writeCount++;if(key===this.failKey)throw new DOMException('Synthetic only',this.failure);this.values.set(key,raw);}
   removeItem(key:string){this.values.delete(key);}
 }
-test('one existing native read classifies foreign pending, malformed draft and wrong-owner input without accepting or writing',async()=>{
+test('malformed shared drafts and wrong-owner input stay protected without accepting or writing',async()=>{
   const currentOwner='owner-b',foreignOwner='owner-a',foreignSnapshot=emptyHomepageInput(foreignOwner);
   const foreignReceipt=createPendingIntakeReceipt(foreignSnapshot,{handoffId:'foreign-handoff',tripId:'foreign-trip'});
   const pending={version:2,phase:'pending-interpretation',receipt:foreignReceipt};
   for(const [name,inputRaw,draftRaw,expected] of [
-    ['foreign pending envelope',null,JSON.stringify(pending),'native-foreign-pending-envelope'],
     ['malformed foreign pending envelope',null,JSON.stringify({...pending,receipt:{...foreignReceipt,inputRevision:7}}),'native-draft-invalid'],
     ['malformed shared draft',null,'{}','native-draft-invalid'],
     ['foreign input in current owner key',JSON.stringify({snapshot:foreignSnapshot}),JSON.stringify(pending),'native-input-invalid'],
@@ -30,7 +29,7 @@ test('one existing native read classifies foreign pending, malformed draft and w
     const before=[...storage.values],writes=storage.writeCount;
     const state=await createDurableHomepagePersistence(storage,driver,{ownerId:currentOwner,isCurrent:()=>true,overflowEnabled:false,accountOverflowQualified:false}).read();
     assert.deepEqual(state,{kind:'protected',reason:expected},name);
-    assert.deepEqual(storage.reads,[homepageInputStorageKey(currentOwner),HOME_TRIP_DRAFT_KEY,homepageInputStorageKey(currentOwner),HOME_TRIP_DRAFT_KEY],name);
+    assert.equal(storage.reads.includes(homepageInputStorageKey(foreignOwner)),false,'do not inspect another owner input to open fresh entry');
     assert.equal(storage.writeCount,writes,name);assert.deepEqual([...storage.values],before,name);
     assert.equal(driver.generations.size,0,name);
   }

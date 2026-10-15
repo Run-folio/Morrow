@@ -1417,7 +1417,7 @@ export async function saveExplicitGuestTripForOwnerInStorage(storage:EasyTBrowse
   const {createTwoStoreEntryPersistence}=await import('./two-store-entry-persistence.ts');
   const {createDurableHomepagePersistence,decodeHomepageBundle}=await import('./homepage-persistence.ts');
   const {builderInputDraftKey,readBuilderInputDraft,remapBuilderInputDraftIdentity}=await import('./trip-builder-input-draft.ts');
-  const {homepageInputStorageKey}=await import('./private-browser-context.ts');
+  const {homepageInputStorageKey,homepageDraftStorageKey}=await import('./private-browser-context.ts');
   const {HOME_TRIP_DRAFT_KEY}=await import('./home-trip-handoff.ts');
   const {rebindGuestSaveInputs}=await import('./recovery-claim-inputs.ts');
   const {canonicalTripStopIdentityMap}=await import('./trip-promotion.ts');
@@ -1427,7 +1427,7 @@ export async function saveExplicitGuestTripForOwnerInStorage(storage:EasyTBrowse
   const inputStore=createTwoStoreEntryPersistence(storage,driver,{...guestContext,scope:{ownerId:null,kind:'builder-input',tripId},key:builderInputDraftKey(null,tripId),validate:raw=>raw===null||typeof raw==='string'});
   const guestHome=createDurableHomepagePersistence(storage,driver,guestContext),ownerHome=createDurableHomepagePersistence(storage,driver,context);
   const nativeWitness=()=>{
-    const prefix=tripRecoveryStorageKey(null,tripId),keys=[builderInputDraftKey(null,tripId),homepageInputStorageKey(null),HOME_TRIP_DRAFT_KEY,tripCacheStorageKey(null,tripId),EASYT_ACTIVE_TRIP_KEY];
+    const prefix=tripRecoveryStorageKey(null,tripId),keys=[builderInputDraftKey(null,tripId),homepageInputStorageKey(null),homepageDraftStorageKey(null),HOME_TRIP_DRAFT_KEY,tripCacheStorageKey(null,tripId),EASYT_ACTIVE_TRIP_KEY];
     for(let i=0;i<storage.length;i++){const key=storage.key(i);if(key&&(key===prefix||key.startsWith(prefix+':')))keys.push(key);}
     return JSON.stringify([...new Set(keys)].sort().map(key=>[key,storage.getItem(key)]));
   };
