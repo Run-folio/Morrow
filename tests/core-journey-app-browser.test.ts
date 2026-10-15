@@ -17,6 +17,7 @@ import { prepareBuilderHandlerEdit } from "../lib/easyt/trip-builder-handler-con
 import { builderDocumentFingerprint } from "../lib/easyt/trip-builder-document-commit.ts";
 import {findCatalogPlaceById} from '../lib/easyt/place-catalog.ts';
 import { loadTripRecoveryFromStorage } from '../lib/easyt/storage.ts';
+import { attachJapanModuleDiagnostics, markJapanModuleDiagnostic } from './helpers/japan-module-diagnostics.mjs';
 
 const require = createRequire(import.meta.url);
 const bundled = `${homedir()}/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright`;
@@ -144,7 +145,7 @@ async function browserInteractionElapsed(page: Page) {
   });
 }
 
-async function installDeterministicBoundaries(context: BrowserContext) {
+async function installDeterministicBoundaries(context: BrowserContext, recordAbort?: (url: string) => void) {
   await context.addInitScript(({ key, value }: { key: string; value: string }) => {
     if (!localStorage.getItem(key)) localStorage.setItem(key, value);
   }, { key: PRIVACY_CONSENT_STORAGE_KEY, value: consent });
@@ -156,7 +157,7 @@ async function installDeterministicBoundaries(context: BrowserContext) {
   });
   // No external media/providers are needed for this local deterministic journey.
   // The bundled fallback style still mounts the real MapLibre canvas and markers.
-  await context.route("https://**/*", (route) => route.abort());
+  await context.route("https://**/*", (route) => { recordAbort?.(route.request().url()); return route.abort(); });
 }
 
 async function withEvidence(name: string, run: (page: Page, context: BrowserContext) => Promise<void>, width = 390) {
@@ -179,8 +180,10 @@ async function withEvidence(name: string, run: (page: Page, context: BrowserCont
     });
   });
   await context.tracing.start({ screenshots: true, snapshots: true, sources: true });
+  let moduleDiagnostics: Awaited<ReturnType<typeof attachJapanModuleDiagnostics>> | null = null;
   try {
-    await installDeterministicBoundaries(context);
+    if (name === 'single-area-Japan-1440') moduleDiagnostics = await attachJapanModuleDiagnostics(context, page, { base, artifacts, commit: process.env.COMMIT_REF ?? null });
+    await installDeterministicBoundaries(context, url => moduleDiagnostics?.harnessAbort(url));
     await run(page, context);
     assert.deepEqual(pageErrors, [], "guest journey has no unhandled page errors");
     await context.tracing.stop();
@@ -211,6 +214,7 @@ async function withEvidence(name: string, run: (page: Page, context: BrowserCont
     await context.tracing.stop({ path: `${artifacts}/${name}.zip` }).catch(() => {});
     throw error;
   } finally {
+    await moduleDiagnostics?.finish().catch(error => console.error('MODULE_DIAGNOSTICS_CAPTURE_FAILED', error?.name ?? 'unknown'));
     await context.close();
     await browser.close();
   }
@@ -791,18 +795,18 @@ for (const [area,names] of [['Japan',['Kyoto','Takayama','Hiroshima']],['South K
  assert.ok(trip.stops.every(stop=>stop.nights!>0&&geographicallyReady(stopGeographicPlace(stop))));assert.equal(trip.stops.reduce((sum,stop)=>sum+stop.nights!,0),14);
  assert.equal(await page.getByRole('button',{name:`Remove ${area}`,exact:true}).count(),0);
  await page.screenshot({path:`${artifacts}/single-area-${area.replaceAll(' ','-')}-${width}-builder.png`,fullPage:true});
- await page.reload({waitUntil:'domcontentloaded'});await page.locator('[data-builder-top-controls]').waitFor();assert.deepEqual((await recoveryTrip(page,id))!.stops,trip.stops);
+ markJapanModuleDiagnostic(page,'builder-reload-start');await page.reload({waitUntil:'domcontentloaded'});await page.locator('[data-builder-top-controls]').waitFor();markJapanModuleDiagnostic(page,'builder-reload-complete');assert.deepEqual((await recoveryTrip(page,id))!.stops,trip.stops);
  const build=page.getByRole('button',{name:/^Build trip/});
  assert.equal(await build.isDisabled(),false,'completed Discovery must supersede the original no-base intake blocker');
- await build.click();await page.waitForURL(/journey\/trip-[^/]+\?created=1/,{timeout:25000});
+ markJapanModuleDiagnostic(page,'build-click-start');await build.click();markJapanModuleDiagnostic(page,'build-click-complete');await page.waitForURL(/journey\/trip-[^/]+\?created=1/,{timeout:25000});markJapanModuleDiagnostic(page,'trip-url-accepted');
  const builtId=new URL(page.url()).pathname.split('/')[2]!;await page.getByRole('region',{name:'Trip overview',exact:true}).waitFor();
  const built=(await recoveryTrip(page,builtId))!;assert.equal(built.status,'planned');
  assert.deepEqual(built.stops.map(stop=>[stop.id,stop.canonicalPlaceId,stop.nights]),trip.stops.map(stop=>[stop.id,stop.canonicalPlaceId,stop.nights]));
- await page.reload({waitUntil:'domcontentloaded'});await page.getByRole('region',{name:'Trip overview',exact:true}).waitFor();
+ markJapanModuleDiagnostic(page,'overview-reload-start');await page.reload({waitUntil:'domcontentloaded'});await page.getByRole('region',{name:'Trip overview',exact:true}).waitFor();markJapanModuleDiagnostic(page,'overview-reload-complete');
  assert.deepEqual((await recoveryTrip(page,builtId))!.stops,built.stops);
- await page.goto(`${base}/journey/${builtId}/itinerary`,{waitUntil:'domcontentloaded'});await page.getByRole('region',{name:'Trip itinerary',exact:true}).waitFor();
+ markJapanModuleDiagnostic(page,'itinerary-navigation-start');await page.goto(`${base}/journey/${builtId}/itinerary`,{waitUntil:'domcontentloaded'});await page.getByRole('region',{name:'Trip itinerary',exact:true}).waitFor();markJapanModuleDiagnostic(page,'itinerary-navigation-complete');
  assert.equal(await page.getByRole('button',{name:'Day by day',exact:true}).getAttribute('aria-pressed'),'true');
- await page.reload({waitUntil:'domcontentloaded'});await page.getByRole('region',{name:'Trip itinerary',exact:true}).waitFor();
+ markJapanModuleDiagnostic(page,'itinerary-reload-start');await page.reload({waitUntil:'domcontentloaded'});await page.getByRole('region',{name:'Trip itinerary',exact:true}).waitFor();markJapanModuleDiagnostic(page,'itinerary-reload-complete');
  assert.deepEqual((await recoveryTrip(page,builtId))!.stops,built.stops);
 },width));
 test('fresh Return default and disabled selected trip types retain readable production styling',{skip:!enabled,timeout:30000},async()=>withEvidence('disabled-trip-type',async(page)=>{
