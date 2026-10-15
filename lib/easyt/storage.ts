@@ -555,6 +555,14 @@ function stableJsonValue(value: unknown): unknown {
   );
 }
 
+/** Complete persisted JSON equality, including revision and generated state.
+ * Object property order is representational; arrays and every value remain exact.
+ * Raw recovery/provenance bytes must still use their existing byte comparisons. */
+export function samePersistedTripDocument(left: EasyTTrip, right: EasyTTrip) {
+  return JSON.stringify(stableJsonValue(prepareTripDocumentForWrite(left)))
+    === JSON.stringify(stableJsonValue(prepareTripDocumentForWrite(right)));
+}
+
 function sortedById<T extends { id: string }>(items: T[] | undefined) {
   return items ? [...items].sort((left, right) => left.id.localeCompare(right.id)) : undefined;
 }

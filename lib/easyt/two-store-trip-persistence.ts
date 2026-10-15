@@ -1,5 +1,5 @@
 import type { EasyTTrip } from './trip.ts';
-import { loadCachedTripFromStorage, saveTripRecoveryToStorage, acknowledgeTripBuildSaveInStorage, markTripRecoveryStateInStorage,discardTripRecoveryInStorage,tripRecoveryStorageKey, tripCacheStorageKey, currentTripStorageKey, EASYT_ACTIVE_TRIP_KEY,
+import { loadCachedTripFromStorage, saveTripRecoveryToStorage, acknowledgeTripBuildSaveInStorage, markTripRecoveryStateInStorage,discardTripRecoveryInStorage,tripRecoveryStorageKey, tripCacheStorageKey, currentTripStorageKey, EASYT_ACTIVE_TRIP_KEY, samePersistedTripDocument,
   type TripBuildSaveAcknowledgement, type EasyTBrowserStorage, type TripRecoveryHandle, type TripRecoveryRecord, type TripRecoveryWriteResult } from './storage.ts';
 import { decodeRawRecovery, decodeRecoveryEnvelope, decodeRecoverySource, decodeDomainCurrent, sameDomainHandle, type NativeRecoveryPointer, type RecoveryDomainDriver, type RecoveryEnvelope, type RecoveryReadResult, type RecoveryHandle } from './durable-recovery-domain.ts';
 import { tripBuildDocumentsCanonicalEquivalent } from './trip-promotion.ts';
@@ -291,7 +291,7 @@ export function createTwoStoreTripPersistence(storage: EasyTBrowserStorage, driv
       if (!active() || trip.ownerId !== null && trip.ownerId !== ownerId || ownerId === null && trip.ownerId !== null) return reject(true, 'scope-mismatch');
       const state = await inspect(tripId); if (state.kind !== 'resolved') return reject(state.kind === 'protected');
       if(state.lifecycle?.disposition==='discarded'&&!(state.domain.acknowledgement&&options.canonicalBase
-        &&JSON.stringify(prepareTripDocumentForWrite(options.canonicalBase))===JSON.stringify(prepareTripDocumentForWrite(JSON.parse(state.domain.acknowledgement.canonicalRaw)))))return reject(true);
+        &&samePersistedTripDocument(options.canonicalBase,JSON.parse(state.domain.acknowledgement.canonicalRaw))))return reject(true);
       // A mounted replacement is authorized by its frozen source document, not
       // just a write ID which an older/native writer may have reused.
       const expectedRecoverySource = options.expectedRecoverySource ?? options.canonicalBase;
@@ -472,7 +472,7 @@ export function createTwoStoreTripPersistence(storage: EasyTBrowserStorage, driv
       } else {
         const explicit = options.replace?.backend === 'indexeddb' && sameDomainHandle(domainHandle(options.replace), existing.handle);
         const acknowledgedBase = state.domain.acknowledgement && options.canonicalBase
-          && JSON.stringify(prepareTripDocumentForWrite(options.canonicalBase)) === JSON.stringify(prepareTripDocumentForWrite(JSON.parse(state.domain.acknowledgement.canonicalRaw)));
+          && samePersistedTripDocument(options.canonicalBase, JSON.parse(state.domain.acknowledgement.canonicalRaw));
         if (!explicit && !acknowledgedBase) return reject(true);
       }
       if (!context.overflowEnabled || ownerId !== null && !context.accountOverflowQualified) return nativeResult ?? reject(true);
