@@ -16,7 +16,7 @@ export const localSearchFallbackHedgeMs = 1_000;
 /** Only an explicit collection is evidence of a valid empty provider search. */
 export function providerResults<Result>(payload: unknown, key: string): Result[] {
   if (!payload || typeof payload !== "object" || !Array.isArray((payload as Record<string, unknown>)[key])) {
-    throw new Error("Local venue provider returned an invalid response");
+    throw new SyntaxError("Local venue provider returned an invalid response");
   }
   return (payload as Record<string, Result[]>)[key];
 }
@@ -43,15 +43,73 @@ export function localSearchScope(kind: LocalSearchKind, placeType?: PlaceTypeLit
   };
 }
 
+export type LocalSearchProviderId = "google" | "osm" | "photon";
+export type LocalSearchProviderDiagnostic = {
+  provider: LocalSearchProviderId;
+  outcome: "ready" | "empty" | "timeout" | "aborted" | "http_error" | "malformed" | "configuration" | "unavailable";
+  durationMs: number;
+  status?: number;
+};
+
+export class LocalSearchProviderFailure extends Error {
+  readonly outcome: "http_error" | "configuration";
+  readonly status?: number;
+  constructor(outcome: "http_error" | "configuration", status?: number) {
+    super("Local venue provider failed");
+    this.outcome = outcome;
+    this.status = status;
+  }
+}
+
+/** Keep HTTP status without retaining the URL, headers or response body. */
+export async function localSearchProviderJson(response: Pick<Response, "ok" | "status" | "json">): Promise<unknown> {
+  if (!response.ok) throw new LocalSearchProviderFailure("http_error", response.status);
+  return response.json();
+}
+
+const validHttpStatus = (value: unknown): value is number => typeof value === "number" && Number.isInteger(value) && value >= 100 && value <= 599;
+
+/** Fixed, low-cardinality fields only; never copy exception text or provider data. */
+export function localSearchDiagnosticServerTiming(records: readonly LocalSearchProviderDiagnostic[]): string {
+  const providers = { google: "local-google", osm: "local-osm", photon: "local-photon" };
+  const outcomes = new Set(["ready", "empty", "timeout", "aborted", "http_error", "malformed", "configuration", "unavailable"]);
+  return records.flatMap(record => {
+    const provider = Object.hasOwn(providers, record.provider) ? providers[record.provider] : null;
+    if (!provider || !outcomes.has(record.outcome) || !Number.isFinite(record.durationMs) || record.durationMs < 0) return [];
+    const status = validHttpStatus(record.status) ? `:${record.status}` : "";
+    return [`${provider};dur=${Math.round(record.durationMs)};desc="${record.outcome}${status}"`];
+  }).join(", ");
+}
+
 export async function localSearchProviderOutcome<Result>(
   request: () => Promise<readonly Result[]>,
+  diagnostic?: { provider: LocalSearchProviderId; record: (value: LocalSearchProviderDiagnostic) => void; now?: () => number },
 ): Promise<LocalSearchProviderOutcome<Result>> {
+  const now = () => {
+    try { const value = diagnostic?.now ? diagnostic.now() : performance.now(); return Number.isFinite(value) ? value : 0; }
+    catch { return 0; }
+  };
+  const startedAt = diagnostic ? now() : 0;
+  const record = (outcome: LocalSearchProviderDiagnostic["outcome"], status?: number) => {
+    if (!diagnostic) return;
+    try {
+      const elapsed = now() - startedAt;
+      diagnostic.record({ provider: diagnostic.provider, outcome, durationMs: Number.isFinite(elapsed) ? Math.max(0, Math.round(elapsed)) : 0,
+        ...(validHttpStatus(status) ? { status } : {}) });
+    } catch { /* Diagnostics cannot change the provider result or trigger more work. */ }
+  };
   try {
     const places = await request();
+    record(places.length ? "ready" : "empty");
     return places.length
       ? { state: "ready", places }
       : { state: "empty", places: [] };
-  } catch {
+  } catch (error) {
+    const outcome = error instanceof LocalSearchProviderFailure ? error.outcome
+      : error instanceof Error && error.name === "TimeoutError" ? "timeout"
+        : error instanceof Error && error.name === "AbortError" ? "aborted"
+          : error instanceof Error && error.name === "SyntaxError" ? "malformed" : "unavailable";
+    record(outcome, error instanceof LocalSearchProviderFailure ? error.status : undefined);
     return { state: "failed", places: [] };
   }
 }

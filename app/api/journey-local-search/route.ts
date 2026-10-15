@@ -8,6 +8,11 @@ import { findCatalogPlaceById } from "@/lib/easyt/place-catalog";
 import {
   firstUsefulLocalSearchWithFallback,
   localSearchProviderOutcome,
+  localSearchProviderJson,
+  localSearchDiagnosticServerTiming,
+  LocalSearchProviderFailure,
+  type LocalSearchProviderDiagnostic,
+  type LocalSearchProviderId,
   localSearchScope,
   localSearchPrimaryLanes,
   providerResults,
@@ -103,8 +108,7 @@ async function photonFallback(kind: "restaurant" | "stay", city: string, country
     next: { revalidate: 60 * 60 * 12 },
     signal: AbortSignal.timeout(5000),
   });
-  if (!response.ok) throw new Error("Fallback venue lookup unavailable");
-  const features = providerResults<PhotonPlace>(await response.json(), "features");
+  const features = providerResults<PhotonPlace>(await localSearchProviderJson(response), "features");
   const places: LocalPlace[] = [];
   for (const place of features) {
       const properties = place.properties ?? {};
@@ -139,7 +143,7 @@ async function photonFallback(kind: "restaurant" | "stay", city: string, country
 
 async function googleOperationalPlaces(kind: "restaurant" | "stay", country: string, latitude: number, longitude: number, locale: string, radiusKm: number) {
   const apiKey = process.env.GOOGLE_PLACES_API_KEY;
-  if (!apiKey) throw new Error("Google Places lookup unavailable");
+  if (!apiKey) throw new LocalSearchProviderFailure("configuration");
   const response = await fetch("https://places.googleapis.com/v1/places:searchNearby", {
     method: "POST",
     headers: {
@@ -157,9 +161,8 @@ async function googleOperationalPlaces(kind: "restaurant" | "stay", country: str
     next: { revalidate: 60 * 15 },
     signal: AbortSignal.timeout(7000),
   });
-  if (!response.ok) throw new Error("Google Places lookup unavailable");
   const seen = new Set<string>();
-  return qualityControlledLocalPlaces(((await response.json() as { places?: GooglePlace[] }).places ?? [])
+  return qualityControlledLocalPlaces(((await localSearchProviderJson(response) as { places?: GooglePlace[] }).places ?? [])
     .flatMap((place) => {
       const displayName = resolvePlaceDisplayName({ defaultName: place.displayName?.text }, locale);
       const lat = place.location?.latitude;
@@ -202,8 +205,7 @@ async function openStreetMapPlaces(kind: "restaurant" | "stay", city: string, co
     next: { revalidate: 60 * 60 * 12 },
     signal: AbortSignal.timeout(4500),
   });
-  if (!response.ok) throw new Error("Local venue lookup unavailable");
-  const elements = providerResults<OverpassElement>(await response.json(), "elements");
+  const elements = providerResults<OverpassElement>(await localSearchProviderJson(response), "elements");
   const seen = new Set<string>();
   const places: LocalPlace[] = [];
   for (const place of elements) {
@@ -247,8 +249,10 @@ async function openStreetMapPlaces(kind: "restaurant" | "stay", city: string, co
 
 export async function GET(request: NextRequest) {
   const startedAt = performance.now();
+  const providerDiagnostics: LocalSearchProviderDiagnostic[] = [];
+  const diagnosticFor = (provider: LocalSearchProviderId) => ({ provider, record: (value: LocalSearchProviderDiagnostic) => { providerDiagnostics.push(value); } });
   const baseResponse = (body: Record<string, unknown>) => NextResponse.json(body, {
-    headers: { "Server-Timing": `first-base;dur=${recommendationDurationMs(startedAt, performance.now())}` },
+    headers: { "Server-Timing": [`first-base;dur=${recommendationDurationMs(startedAt, performance.now())}`, localSearchDiagnosticServerTiming(providerDiagnostics)].filter(Boolean).join(", ") },
   });
   const city = request.nextUrl.searchParams.get("city")?.trim();
   const country = request.nextUrl.searchParams.get("country")?.trim();
@@ -286,8 +290,8 @@ export async function GET(request: NextRequest) {
     // a separate client request and is never inferred here.
     const scope = localSearchScope(kind, catalogMatchesRequest ? catalogPlace?.placeType : undefined);
     const outcome = await firstUsefulLocalSearchWithFallback(localSearchPrimaryLanes(mapPresentation,
-      () => localSearchProviderOutcome(() => googleOperationalPlaces(kind, country ?? "", latitude, longitude, locale, scope.primaryRadiusKm)),
-      () => localSearchProviderOutcome(() => openStreetMapPlaces(kind, city, country ?? "", latitude, longitude, locale, scope.primaryRadiusKm)),
+      () => localSearchProviderOutcome(() => googleOperationalPlaces(kind, country ?? "", latitude, longitude, locale, scope.primaryRadiusKm), diagnosticFor("google")),
+      () => localSearchProviderOutcome(() => openStreetMapPlaces(kind, city, country ?? "", latitude, longitude, locale, scope.primaryRadiusKm), diagnosticFor("osm")),
     ), () => localSearchProviderOutcome(() => photonFallback(
       kind,
       city,
@@ -296,7 +300,7 @@ export async function GET(request: NextRequest) {
       longitude,
       locale,
       scope.fallbackRadiusKm,
-    )));
+    ), diagnosticFor("photon")));
     if (outcome.state === "ready") {
       const source = outcome.places[0]?.provider === "google-places" ? "Google Places" : "OpenStreetMap";
       return baseResponse({ places: outcome.places, source, inventory: false, searchStatus: "ready" });
