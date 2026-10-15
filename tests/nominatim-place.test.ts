@@ -290,7 +290,7 @@ test("a single explicit country triggers bounded contextual retrieval and honors
   assert.equal(result.mentions[0]?.status, "resolved");
 });
 
-test("the full Singapore/Kuala Lumpur capture keeps broad Borneo but removes city base cards", async () => {
+test("the full Singapore/Kuala Lumpur capture keeps Bali and Borneo as base decisions while cities remain routable", async () => {
   const inputs = ["Sydney", "Auckland", "Bali", "Borneo", "Singapore", "Kuala Lumpur"]
     .map((sourceText) => ({ sourceText, role: "preferred" as const, travelIntent: "route-stop" as const }));
   const result = await resolveExplicitPlaceMentionsWithProvider(inputs, createNominatimPlaceProvider(fetchFixture));
@@ -300,7 +300,9 @@ test("the full Singapore/Kuala Lumpur capture keeps broad Borneo but removes cit
   assert.equal(result.mentions.find((mention) => mention.sourceText === "Kuala Lumpur")?.placeType, "city");
   assert.equal(result.mentions.find((mention) => mention.sourceText === "Kuala Lumpur")?.directlyRoutable, true);
   assert.equal(result.mentions.find((mention) => mention.sourceText === "Borneo")?.requiresBaseSelection, true);
-  assert.deepEqual(result.issues.filter((issue) => issue.code === "region_requires_base").map((issue) => issue.sourceText), ["Borneo"]);
+  assert.equal(result.mentions.find((mention) => mention.sourceText === "Bali")?.placeType, "island");
+  assert.equal(result.mentions.find((mention) => mention.sourceText === "Bali")?.directlyRoutable, false);
+  assert.deepEqual(result.issues.filter((issue) => issue.code === "region_requires_base").map((issue) => issue.sourceText), ["Bali", "Borneo"]);
 });
 
 test("co-located locality node and boundary collapse without collapsing the city-state country", async () => {

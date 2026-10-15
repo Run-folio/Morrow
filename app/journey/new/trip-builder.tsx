@@ -98,7 +98,7 @@ import { discoveryEntryForBrief, type DiscoveryEntry } from "@/lib/easyt/discove
 import { readDiscoveryDraft, reduceDiscoveryDraft, selectCanonicalSearchResult } from "@/lib/easyt/discovery-draft";
 import { buildDiscoveryReview } from "@/lib/easyt/discovery-review";
 import { commitDiscoveryReview } from "@/lib/easyt/discovery-commit";
-import { discoveryBaseForSearchedArea, discoveryClarificationSearchCanAdd, discoverySearchOutsideMention, discoverySearchStopSuggestion } from "@/lib/easyt/discovery-confirmation";
+import { discoveryBaseAreaForMention, discoveryBaseForSearchedArea, discoveryClarificationSearchCanAdd, discoverySearchOutsideMention, discoverySearchStopSuggestion } from "@/lib/easyt/discovery-confirmation";
 import { flushSync } from "react-dom";
 import { projectDiscovery } from "@/lib/easyt/discovery-projection";
 import { discoveryProjectionKey } from "@/lib/easyt/discovery-projection-key";
@@ -2227,6 +2227,11 @@ function TripBuilderDocument() {
     [activeClarificationMention],
   );
   const activeNearbyBaseAnchorKey = JSON.stringify(activeNearbyBaseAnchor ?? null);
+  const discoveryBaseRead = activeClarificationMention ? readDiscoveryDraft(capturedStructuredBrief, activeClarificationMention.mentionId) : null;
+  const discoveryBaseArea = pendingDiscoveryBase && pendingDiscoveryBase.mentionId === activeClarificationMention?.mentionId ? pendingDiscoveryBase.area
+    : activeClarificationMention && discoveryBaseRead && discoveryBaseRead.status !== 'unsupported-version'
+      ? discoveryBaseAreaForMention(activeClarificationMention, discoveryBaseRead.draft) : null;
+  const discoveryBaseAreaKey = JSON.stringify(discoveryBaseArea);
   const pendingClarificationNames = pendingClarificationIds.flatMap((mentionId) => {
     const mention = activePlaceMentions.find((item) => item.mentionId === mentionId)
       ?? locationChoices.find((item) => item.mention.mentionId === mentionId)?.mention;
@@ -2289,12 +2294,12 @@ function TripBuilderDocument() {
   }, [activeClarificationMention?.mentionId, activeNearbyBaseAnchorKey, clarificationOpen, nearbyBaseRetryNonce]);
 
   useEffect(() => {
-    const pending = pendingDiscoveryBase;
+    const pending = discoveryBaseArea && activeClarificationMention ? { mentionId: activeClarificationMention.mentionId, area: discoveryBaseArea } : null;
     if (!clarificationOpen || !pending || pending.mentionId !== activeClarificationMention?.mentionId) return;
     const anchor = nearbyBaseAnchorForMention({ canonicalPlaceId: pending.area.canonicalPlaceId,
       canonicalName: pending.area.name, placeType: pending.area.placeType, parentCountries: [pending.area.country],
       parentRegionId: pending.area.region, coordinates: pending.area.coordinates, routability: pending.area.routability ?? "needs_base_selection" });
-    if (!anchor) { setSearchedAreaBases({ mentionId: pending.mentionId, status: "empty", suggestions: [] }); return; }
+    if (!anchor) { setSearchedAreaBases({ mentionId: pending.mentionId, status: pending.area.placeType === 'island' ? "ready" : "empty", suggestions: [] }); return; }
     const scope = createAbortableEffectScope("Discovery area base search");
     const params = new URLSearchParams({ nearbyBases: "1", anchorName: anchor.canonicalName,
       anchorType: anchor.placeType, anchorLon: String(anchor.coordinates![0]), anchorLat: String(anchor.coordinates![1]),
@@ -2315,7 +2320,7 @@ function TripBuilderDocument() {
       .catch(error => { if (!scope.isCancellation(error)) scope.commit(() =>
         setSearchedAreaBases({ mentionId: pending.mentionId, status: "unavailable", suggestions: [] })); });
     return () => scope.dispose();
-  }, [activeClarificationMention?.mentionId, clarificationOpen, pendingDiscoveryBase]);
+  }, [activeClarificationMention?.mentionId, clarificationOpen, discoveryBaseAreaKey]);
 
   useEffect(() => {
     const scope = `${activeBrowserOwnerId ?? "guest"}:${tripId}`;
@@ -6527,6 +6532,7 @@ function TripBuilderDocument() {
         onAction={async (action) => {
           if (discoveryCommitRef.current || planningAreaViewRef.current.key !== planningAreaViewKey) return false;
           if (discoveryRead?.status === "unsupported-version") return false;
+          discoverySearchVersionRef.current += 1;
           const viewIsCurrent = capturePlanningAreaView();
           const nextDraft = reduceDiscoveryDraft(discoveryDraft, action);
           const event = discoveryChoiceEvent(discoveryEventKind, discoveryDraft, nextDraft, action, discoveryProjection.places.length);
@@ -6928,28 +6934,40 @@ function TripBuilderDocument() {
             setBaseSearchInputs(current => ({ ...current, [activeClarificationMention.mentionId]: "" }));
           },
         } : undefined}
-        baseChoice={pendingDiscoveryBase?.mentionId === activeClarificationMention.mentionId ? {
-          area: pendingDiscoveryBase.area,
+        baseChoice={discoveryBaseArea ? {
+          area: discoveryBaseArea,
           candidates: searchedAreaBases?.mentionId === activeClarificationMention.mentionId ? searchedAreaBases.suggestions : [],
           status: searchedAreaBases?.mentionId === activeClarificationMention.mentionId ? searchedAreaBases.status : "loading",
           value: baseSearchInputs[activeClarificationMention.mentionId] ?? "",
-          onChange: value => { retireBuilderEntryForInput(); planningBaseSearchUserIntentVersionRef.current += 1; setBaseSearchInputs(current => ({ ...current, [activeClarificationMention.mentionId]: value }));
+          onChange: value => { retireBuilderEntryForInput(); discoverySearchVersionRef.current += 1; planningBaseSearchUserIntentVersionRef.current += 1; setBaseSearchInputs(current => ({ ...current, [activeClarificationMention.mentionId]: value }));
             setBaseSearchErrors(current => ({ ...current, [activeClarificationMention.mentionId]: "" })); },
           onSelect: async suggestion => {
-            if (!discoveryBaseForSearchedArea(pendingDiscoveryBase.area, suggestion)) {
+            if (discoveryCommitRef.current) return;
+            const area = discoveryBaseArea;
+            discoverySearchVersionRef.current += 1;
+            const viewIsCurrent = capturePlanningAreaView(), userInputVersion = planningBaseSearchUserIntentVersionRef.current;
+            const parent = { canonicalPlaceId: area.canonicalPlaceId, canonicalName: area.name, placeType: area.placeType,
+              parentCountries: [area.country], parentRegionId: area.region, bounds: area.bounds };
+            const physicalIsland = requiresPhysicalIslandVerification(parent);
+            const base = physicalIsland
+              ? discoverySearchStopSuggestion(suggestion) && countryCodeFor(suggestion.country) === countryCodeFor(area.country)
+                ? await verifyPhysicalIslandSuggestion(parent, suggestion) : null
+              : discoveryBaseForSearchedArea(area, suggestion);
+            if (!viewIsCurrent() || planningBaseSearchUserIntentVersionRef.current !== userInputVersion) return;
+            if (!base) {
               setBaseSearchErrors(current => ({ ...current, [activeClarificationMention.mentionId]: language === "es"
-                ? `No podemos confirmar ${suggestion.name} como base en ${pendingDiscoveryBase.area.name}. Busca otra ciudad o población.`
-                : `We cannot confirm ${suggestion.name} as a base in ${pendingDiscoveryBase.area.name}. Search for another city or town.` }));
+                ? `No podemos confirmar ${suggestion.name} como base en ${area.name}. Busca otra ciudad o población.`
+                : `We cannot confirm ${suggestion.name} as a base in ${area.name}. Search for another city or town.` }));
               return;
             }
-            if (discoverySearchOutsideMention(suggestion, activeClarificationMention)) {
+            if (discoverySearchOutsideMention(base, activeClarificationMention)) {
               setPendingDiscoveryBase(null);
-              setOutsideDiscoveryChoice({ mentionId: activeClarificationMention.mentionId, suggestion });
+              setOutsideDiscoveryChoice({ mentionId: activeClarificationMention.mentionId, suggestion: base });
               return;
             }
-            await addDiscoverySearchSelection(suggestion, false);
+            await addDiscoverySearchSelection(base, false);
           },
-          onCancel: () => { setPendingDiscoveryBase(null); setBaseSearchErrors(current => ({ ...current, [activeClarificationMention.mentionId]: "" })); },
+          onCancel: () => { discoverySearchVersionRef.current += 1; setPendingDiscoveryBase(null); setBaseSearchErrors(current => ({ ...current, [activeClarificationMention.mentionId]: "" })); },
         } : undefined}
       /> : renderedDiscoveryEntry.kind === "legacy-recovery" ? <BuilderClarificationDialog
         open={clarificationOpen && Boolean(activeClarificationId) && Boolean(activeProviderClarification || activeClarificationMention)}

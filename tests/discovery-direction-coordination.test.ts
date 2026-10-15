@@ -50,7 +50,7 @@ function actualBuilderAction(input: { accept: () => Promise<boolean>; isCurrent:
   };
   visit(parsed); assert.ok(callback);
   const script = ts.transpileModule(`return (${callback});`, { compilerOptions: { target: ts.ScriptTarget.ES2022 } }).outputText;
-  return new Function('scope', `with(scope){${script}}`)({ discoveryCommitRef: { current: false }, discoveryRead: { status: 'current' },
+  return new Function('scope', `with(scope){${script}}`)({ discoveryCommitRef: { current: false }, discoverySearchVersionRef: { current: 0 }, discoveryRead: { status: 'current' },
     planningAreaViewRef: { current: { key: input.retired ? 'newer-view' : 'synthetic-view' } }, planningAreaViewKey: 'synthetic-view',
     capturePlanningAreaView: () => input.isCurrent, discoveryDraft: createDiscoveryDraft(), reduceDiscoveryDraft,
     discoveryChoiceEvent: () => null, discoveryEventKind: 'country', discoveryProjection: { places: [] },

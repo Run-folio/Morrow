@@ -13,6 +13,17 @@ export type DiscoveryUnresolvedChoice = {
 };
 export type DiscoveryReadyChoice = { id: string; name: string; suggestion: CanonicalPlaceSuggestion };
 
+/** An unresolved island stay uses the existing base chooser without inventing a route point. */
+export function discoveryBaseAreaForMention(mention: ResolvedPlaceMention, draft: DiscoveryDraft): CanonicalPlaceSuggestion | null {
+  if (mention.placeType !== 'island' || mention.status !== 'resolved' || !mention.canonicalPlaceId
+    || mention.parentCountries.length !== 1 || draft.shortlistIds.length) return null;
+  const area: CanonicalPlaceSuggestion = { canonicalPlaceId: mention.canonicalPlaceId, name: mention.canonicalName,
+    label: `${mention.canonicalName}, ${mention.parentCountries[0]}`, country: mention.parentCountries[0]!,
+    placeType: mention.placeType, routability: mention.routability, coordinates: mention.coordinates,
+    bounds: mention.bounds, region: mention.parentRegionId, provenance: mention.provenance };
+  return placeSuggestionRequiresBaseSelection(area) ? area : null;
+}
+
 /** An explicit identity choice can resolve an unknown place without claiming
  * that it is a reviewed Discovery recommendation. */
 export function discoveryClarificationSearchCanAdd(suggestion: CanonicalPlaceSuggestion) {

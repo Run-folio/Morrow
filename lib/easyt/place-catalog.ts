@@ -367,7 +367,7 @@ const benchmarkPlaces: PlaceCatalogEntry[] = [
   city("jaipur", "Jaipur", "India"),
   city("udaipur", "Udaipur", "India"),
   city("mumbai", "Mumbai", "India", ["Bombay"]),
-  place("bali", "Bali", [], "island", "direct_destination", ["Indonesia"]),
+  place("bali", "Bali", [], "island", "needs_base_selection", ["Indonesia"]),
   place("nusa-lembongan", "Nusa Lembongan", [], "island", "direct_destination", ["Indonesia"], { parentRegionId: "bali" }),
   place("gili-air", "Gili Air", [], "island", "direct_destination", ["Indonesia"]),
   place("lombok", "Lombok", [], "island", "direct_destination", ["Indonesia"]),

@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
+import ts from 'typescript';
 
 const read = (path: string) => readFileSync(new URL(`../${path}`, import.meta.url), "utf8");
 
@@ -107,8 +108,23 @@ test("pending unresolved intent uses semantic EN and ES labels", () => {
 test("visual Discovery uses the modal title and secondary geography without duplicate step headings", () => {
   const modal = read("components/easyt/discovery-modal.tsx");
   const steps = read("components/easyt/discovery-steps.tsx");
-  assert.match(modal, /title=\{copy\.steps\[step\]\}/);
-  assert.match(modal, /description=\{name\}/);
+  const ast=ts.createSourceFile('modal.tsx',modal,ts.ScriptTarget.Latest,true,ts.ScriptKind.TSX);
+  const expressions=new Map<string,string>();
+  function visit(node:ts.Node){
+    if(ts.isVariableDeclaration(node)&&node.name.getText(ast)==='baseTitle'&&node.initializer)expressions.set('baseTitle',node.initializer.getText(ast));
+    if(ts.isJsxOpeningElement(node)&&node.tagName.getText(ast)==='BuilderClarificationShell')for(const prop of node.attributes.properties){
+      if(ts.isJsxAttribute(prop)&&['title','description'].includes(prop.name.getText(ast))&&prop.initializer&&ts.isJsxExpression(prop.initializer)&&prop.initializer.expression)
+        expressions.set(prop.name.getText(ast),prop.initializer.expression.getText(ast));
+    }
+    ts.forEachChild(node,visit);
+  }visit(ast);
+  const evaluate=(key:string,scope:object)=>new Function('scope',`with(scope){${ts.transpileModule(`return (${expressions.get(key)});`,{compilerOptions:{target:ts.ScriptTarget.ES2022}}).outputText}}`)(scope);
+  for(const [rootBaseChoice,language,title,description] of [[false,'en','Explore places','Balkans'],
+    [true,'en','Where will you stay in Bali?','Island · Indonesia'],[true,'es','¿Dónde te alojarás en Bali?','Isla · Indonesia']] as const){
+    const scope={rootBaseChoice,language,baseChoice:{area:{name:'Bali',country:'Indonesia'}},copy:{steps:{places:'Explore places'}},step:'places',name:'Balkans',baseTitle:''};
+    scope.baseTitle=evaluate('baseTitle',scope);
+    assert.equal(evaluate('title',scope),title);assert.equal(evaluate('description',scope),description);
+  }
   assert.doesNotMatch(steps, /<h3>|styles\.eyebrow\}>\{copy\.steps/);
   assert.doesNotMatch(steps, /<p className=\{styles\.truth\}>/);
 });

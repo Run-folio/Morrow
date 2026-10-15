@@ -4,7 +4,9 @@ import { useState } from "react";
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
 import { expect, fn, userEvent, waitFor, within } from "storybook/test";
 import { DiscoveryModal } from "./discovery-modal";
-import { discoverySelectablePlaces } from "@/lib/easyt/discovery-confirmation";
+import { discoveryBaseAreaForMention, discoverySelectablePlaces } from "@/lib/easyt/discovery-confirmation";
+import { EasyTButton } from './easyt-controls';
+import { baliBaseFixtures } from './storybook/bali-base.fixture';
 import { createDiscoveryDraft, reduceDiscoveryDraft, type DiscoveryDraft, type DiscoveryDraftAction } from "@/lib/easyt/discovery-draft";
 import { projectDiscovery, type DiscoveryProjection } from "@/lib/easyt/discovery-projection";
 import type { DiscoveryEntry } from "@/lib/easyt/discovery-entry";
@@ -29,8 +31,9 @@ const japanMention = mention("Japan");
 
 type Scene = { entry: DiscoveryEntry; mention: ResolvedPlaceMention; projection: DiscoveryProjection; draft: DiscoveryDraft;
   canonicalTrip?: EasyTTrip; language?: "en" | "es"; existingPlaceIds?: string[]; note?: string; loading?: boolean; saveError?: string; timingDecoy?: boolean;
-  baseChoice?: { area: CanonicalPlaceSuggestion; candidates: CanonicalPlaceSuggestion[]; status: "ready" | "empty" };
-  actionSpy?: (action: DiscoveryDraftAction) => void; confirmSpy?: () => void; closeSpy?: () => void };
+  baseChoice?: { area: CanonicalPlaceSuggestion; candidates: CanonicalPlaceSuggestion[]; status: "loading" | "ready" | "empty" | "unavailable" };
+  actionSpy?: (action: DiscoveryDraftAction) => void; confirmSpy?: () => void; closeSpy?: () => void;
+  baseSelectSpy?: (suggestion: CanonicalPlaceSuggestion) => void };
 
 function SceneModal({ entry, mention: sceneMention, projection: sceneProjection, draft: initialDraft, language = "en", existingPlaceIds = [], note, loading, saveError, timingDecoy, baseChoice, actionSpy, confirmSpy, closeSpy, canonicalTrip }: Scene) {
   const [draft, setDraft] = useState(initialDraft);
@@ -154,6 +157,46 @@ export const BalkansCreteChooseBase: Story = { args: { ...BalkansStopsOnly.args,
   draft: { ...placesDraft, shortlistIds: ["athens"] }, baseChoice: { area: creteArea, candidates: [heraklionBase], status: "ready" } } };
 export const BalkansCreteNoSafeBase: Story = { args: { ...BalkansCreteChooseBase.args,
   baseChoice: { area: creteArea, candidates: [], status: "empty" } } };
+
+function BaliBaseScene({ language = 'en', baseChoice, baseSelectSpy, confirmSpy }: Scene) {
+  const [open, setOpen] = useState(true), [draft, setDraft] = useState<DiscoveryDraft>(placesDraft), [value, setValue] = useState('');
+  const island = mention('Bali');
+  const area = discoveryBaseAreaForMention(island, draft);
+  const onAction = (action: DiscoveryDraftAction) => setDraft(current => reduceDiscoveryDraft(current, action));
+  return <main className="morrovia-editorial-page">
+    <EasyTButton onClick={() => setOpen(true)}>{language === 'es' ? 'Elegir base' : 'Choose a base'}</EasyTButton>
+    <DiscoveryModal open={open} entry={{ kind: 'region', step: 'places' }} mention={island}
+      projection={projection('Bali', draft)} draft={draft} language={language} onAction={onAction}
+      onClose={() => setOpen(false)} onConfirm={() => confirmSpy?.()}
+      baseChoice={area ? { area, candidates: baseChoice?.candidates ?? [], status: baseChoice?.status ?? 'ready', value,
+        onChange: setValue, onCancel: () => {}, onSelect: suggestion => {
+          baseSelectSpy?.(suggestion);
+          onAction({ type: 'add-search-shortlist', suggestion, outsideAccepted: false });
+          setValue('');
+        } } : undefined} />
+  </main>;
+}
+const baliArea = discoveryBaseAreaForMention(mention('Bali'), placesDraft)!;
+export const BaliBaseSearch: Story = { args: { entry: { kind: 'region', step: 'places' }, mention: mention('Bali'),
+  projection: projection('Bali'), draft: placesDraft }, render: args => <BaliBaseScene {...args} /> };
+export const BaliBaseChoices: Story = { ...BaliBaseSearch, args: { ...BaliBaseSearch.args,
+  baseChoice: { area: baliArea, candidates: baliBaseFixtures, status: 'ready' } } };
+export const BaliBaseSpanish390: Story = { ...BaliBaseChoices, args: { ...BaliBaseChoices.args, language: 'es' },
+  parameters: { viewport: { defaultViewport: 'morrovia390' } } };
+export const BaliBaseUnavailable: Story = { ...BaliBaseSearch, args: { ...BaliBaseSearch.args,
+  baseChoice: { area: baliArea, candidates: [], status: 'unavailable' } } };
+export const BaliBaseKeyboardSelection: Story = { ...BaliBaseChoices, args: { ...BaliBaseChoices.args, baseSelectSpy: fn(), confirmSpy: fn() },
+  play: async ({ canvasElement, args }) => {
+    const canvas = within(canvasElement);
+    await expect(canvas.getByRole('heading', { name: 'Where will you stay in Bali?' })).toBeVisible();
+    await expect(args.baseSelectSpy).not.toHaveBeenCalled();
+    await expect(canvas.queryByRole('button', { name: /^Add 1 place$/ })).not.toBeInTheDocument();
+    const choice = canvas.getByRole('button', { name: 'Add Denpasar as a base' });
+    choice.focus(); await userEvent.keyboard('{Enter}');
+    await expect(args.baseSelectSpy).toHaveBeenCalledWith(expect.objectContaining({ canonicalPlaceId: 'reference:geonames:1645528', placeType: 'city' }));
+    await expect(canvas.getByRole('button', { name: 'Add 1 place' })).toBeEnabled();
+    await expect(args.confirmSpy).not.toHaveBeenCalled();
+  } };
 export const AustraliaExistingStop: Story = { args: { ...AustraliaPlaces.args, existingPlaceIds: [australiaStops[0]!.id] } };
 export const AustraliaNoPhoto: Story = { args: { ...AustraliaPlaces.args } };
 export const AustraliaLoading: Story = { args: { ...AustraliaPlaces.args, loading: true } };
