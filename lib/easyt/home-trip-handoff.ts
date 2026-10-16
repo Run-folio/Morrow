@@ -2210,6 +2210,13 @@ export function homeTripDraftIsDurable(draft: HomeTripDraft, trip: EasyTTrip, re
   );
 }
 
+/** Discard optional unfinished searches only when a selected stop can be submitted. */
+export function homepageSnapshotForStopSubmission(snapshot: HomepageInputSnapshot): HomepageInputSnapshot {
+  if (snapshot.mode !== "stops" || !snapshot.entries.some(entry => entry.selection)) return snapshot;
+  const entries = snapshot.entries.filter(entry => entry.selection);
+  return entries.length === snapshot.entries.length ? snapshot : { ...snapshot, entries };
+}
+
 export function homepageDestinationAddTarget(entries: readonly HomepageDestinationEntry[], createEntry: () => HomepageDestinationEntry): { entries: HomepageDestinationEntry[]; focusEntryId: string } {
   const blank = entries.find(entry => !entry.selection && !entry.text.trim());
   if (blank) return { entries: [...entries], focusEntryId: blank.id };

@@ -54,9 +54,14 @@ export function firstTripWorkspaceHref(tripId: string) {
   return `${tripWorkspaceHref(tripId)}?created=1`;
 }
 
+/** Enter only after an explicit account-save action; signing in alone does not authorize promotion. */
+export function tripSaveContinuationHref(tripId: string, view: "overview" | "explore" = "overview") {
+  return view === "explore" ? `${tripWorkspaceHref(tripId)}/explore?saved=1` : `${firstTripWorkspaceHref(tripId)}&saved=1`;
+}
+
 /** A guest explicitly opts into account promotion after seeing the local trip. */
 export function tripSaveSignInHref(tripId: string, mode: 'sign-in' | 'sign-up' = 'sign-in') {
-  const returnHref = `${firstTripWorkspaceHref(tripId)}&saved=1`;
+  const returnHref = tripSaveContinuationHref(tripId);
   return `/journey/login?${mode === 'sign-up' ? 'mode=sign-up&' : ''}next=${encodeURIComponent(returnHref)}`;
 }
 

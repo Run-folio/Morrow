@@ -17,9 +17,9 @@ let bundle: Promise<string> | undefined;
 async function builderBundle() {
   bundle ??= build({
     stdin: {
-      contents: `import React from 'react'; import {createRoot} from 'react-dom/client'; import Builder from './app/journey/new/trip-builder'; import Importer from './app/journey/new/import/spreadsheet-import-client'; import Overview from './components/easyt/trip-overview-workspace'; import Transport from './components/easyt/trip-transport-workspace'; import Itinerary from './components/easyt/trip-itinerary-workspace'; import {loadLocalTripFromStorage} from './lib/easyt/storage'; import TripShell from './components/easyt/trip-shell'; import {useTripShellTrip} from './components/easyt/trip-shell-client';
-      function WorkspaceFromShell(){const trip=useTripShellTrip();return location.pathname.endsWith('/transport')?React.createElement(Transport,{trip}):location.pathname.endsWith('/itinerary')?React.createElement(Itinerary,{trip}):React.createElement(Overview,{trip,initialPrepActions:[],initialPrepReadinessCards:[],initialPrepProviderStatus:'available'});}
-      function App(){if(location.pathname.endsWith('/import'))return React.createElement(Importer);if(location.pathname!=='/journey/new'){const tripId=decodeURIComponent(location.pathname.split('/')[2]??'');const trip=window.__BUILDER_TEST_CANONICAL_TRIP__??loadLocalTripFromStorage(localStorage,tripId,window.__BUILDER_TEST_OWNER__??null);return trip?React.createElement(TripShell,{trip,cacheTrip:Boolean(window.__BUILDER_TEST_CANONICAL_TRIP__),orientationAutoStart:false},React.createElement(WorkspaceFromShell)):React.createElement('p',null,'Trip unavailable');}return React.createElement(Builder);}
+      contents: `import React from 'react'; import {createRoot} from 'react-dom/client'; import Builder from './app/journey/new/trip-builder'; import Home from './app/journey/home/home-trip-starter'; import LegacyPlanner from './components/journey-map-planner-workspace'; import Resolver from './components/easyt/trip-shell-resolver'; import Explore from './components/easyt/trip-explore-workspace'; import Importer from './app/journey/new/import/spreadsheet-import-client'; import Overview from './components/easyt/trip-overview-workspace'; import Transport from './components/easyt/trip-transport-workspace'; import Itinerary from './components/easyt/trip-itinerary-workspace'; import {loadLocalTripFromStorage} from './lib/easyt/storage'; import TripShell from './components/easyt/trip-shell'; import {useTripShellTrip} from './components/easyt/trip-shell-client';
+      function WorkspaceFromShell(){const trip=useTripShellTrip();return location.pathname.endsWith('/explore')?React.createElement(Explore,{trip}):location.pathname.endsWith('/transport')?React.createElement(Transport,{trip}):location.pathname.endsWith('/itinerary')?React.createElement(Itinerary,{trip}):React.createElement(Overview,{trip,initialPrepActions:[],initialPrepReadinessCards:[],initialPrepProviderStatus:'available'});}
+      function App(){if(location.pathname==='/')return React.createElement(Home);if(location.pathname==='/journey/plan')return React.createElement(LegacyPlanner);if(location.pathname.endsWith('/import'))return React.createElement(Importer);if(location.pathname!=='/journey/new'){const tripId=decodeURIComponent(location.pathname.split('/')[2]??'');const trip=window.__BUILDER_TEST_CANONICAL_TRIP__??loadLocalTripFromStorage(localStorage,tripId,window.__BUILDER_TEST_OWNER__??null);return trip?React.createElement(TripShell,{trip,cacheTrip:Boolean(window.__BUILDER_TEST_CANONICAL_TRIP__),orientationAutoStart:false},React.createElement(WorkspaceFromShell)):React.createElement(Resolver,{tripId,ownerId:window.__BUILDER_TEST_OWNER__??undefined},React.createElement(WorkspaceFromShell));}return React.createElement(Builder);}
       createRoot(document.getElementById('root')).render(React.createElement(App));`,
       resolveDir: fileURLToPath(new URL("../../", import.meta.url)), loader: "tsx",
     },
@@ -33,7 +33,7 @@ async function builderBundle() {
       builder.onResolve({ filter: /^@\/lib\/auth-client$/ }, () => ({ path: "auth", namespace: "fixture" }));
       builder.onLoad({ filter: /^auth$/, namespace: "fixture" }, () => ({resolveDir:fileURLToPath(new URL("../../",import.meta.url)),contents:`import {useState,useEffect} from 'react'; export const authClient={useSession(){const [owner,setOwner]=useState(window.__BUILDER_TEST_OWNER__??null);useEffect(()=>{const update=()=>setOwner(window.__BUILDER_TEST_OWNER__??null);window.addEventListener('builder-test-owner',update);return()=>window.removeEventListener('builder-test-owner',update)},[]);return {data:owner?{user:{id:owner,name:'Test traveller',email:'fixture@example.invalid'}}:null,isPending:false,error:null}},getSession:async()=>({data:window.__BUILDER_TEST_OWNER__?{user:{id:window.__BUILDER_TEST_OWNER__}}:null,error:null})};` }));
       builder.onLoad({ filter: /.*/, namespace: "framework" }, ({ path }) => ({ resolveDir: fileURLToPath(new URL("../../", import.meta.url)), contents: path.endsWith("navigation")
-        ? `export const useSearchParams=()=>new URLSearchParams(location.search); export const usePathname=()=>location.pathname; export const useSelectedLayoutSegment=()=>null; export const useRouter=()=>({push:href=>location.assign(href),replace:href=>location.replace(href)});`
+        ? `const searchParams=new URLSearchParams(location.search); export const useSearchParams=()=>searchParams; export const usePathname=()=>location.pathname; export const useSelectedLayoutSegment=()=>null; export const useRouter=()=>({push:href=>location.assign(href),replace:href=>location.replace(href)});export const notFound=()=>{throw Error('Fixture route not found')};`
         : `import React from 'react'; export default function Component({children, priority, fill, unoptimized, ...props}) {return React.createElement('${path.endsWith("link") ? "a" : "img"}',props,children)}`,
       }));
     } }],
@@ -189,8 +189,11 @@ export async function renderBuilder({
     await route.continue();
   });
   if (draft) await page.addInitScript((value: unknown) => localStorage.setItem("easyt-home-trip-draft", JSON.stringify(value)), draft);
-  if (storedInput) await page.addInitScript(({ key, value }: { key: string; value: unknown }) => localStorage.setItem(key, JSON.stringify(value)), {
-    key: homepageInputStorageKey(storedInput.snapshot.ownerId), value: storedInput,
+  if (storedInput) await page.addInitScript(({ key, value, entryPath }: { key: string; value: unknown; entryPath: string }) => {
+    if (entryPath === "/" && location.pathname !== "/") return;
+    localStorage.setItem(key, JSON.stringify(value));
+  }, {
+    key: homepageInputStorageKey(storedInput.snapshot.ownerId), value: storedInput, entryPath: path,
   });
   if (language) await page.addInitScript((value: "en" | "es") => localStorage.setItem("easyt-language", value), language);
   if (shellCanonicalTrip) await page.addInitScript((value: unknown) => { (window as Window & { __BUILDER_TEST_CANONICAL_TRIP__?: unknown }).__BUILDER_TEST_CANONICAL_TRIP__ = value; }, shellCanonicalTrip);
@@ -222,10 +225,16 @@ export async function renderBuilder({
   const address = server.address() as { port: number };
   await page.goto(`http://127.0.0.1:${address.port}${path}${query}`);
   try {
-    await page.waitForFunction(() => location.pathname.endsWith("/import")
+    await page.waitForFunction(() => location.pathname === "/"
+      ? Boolean(document.getElementById("start-building"))
+      : location.pathname === "/journey/plan"
+        ? Boolean(document.querySelector("main"))
+      : location.pathname.endsWith("/import")
       ? Boolean(document.querySelector('a[href="/journey/new"]'))
       : location.pathname === "/journey/new"
         ? Boolean(document.querySelector('[data-builder-root="true"]:not([aria-busy="true"])'))
+        : location.pathname.endsWith("/explore")
+          ? Boolean(document.querySelector('[aria-label="Explore recommendations"]'))
         : location.pathname.endsWith("/transport")
           ? Boolean(document.querySelector('[aria-labelledby="transport-workspace-heading"]'))
           : location.pathname.endsWith("/itinerary")

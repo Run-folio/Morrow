@@ -274,6 +274,7 @@ function clientHarness(t: { after: (callback: () => void) => void }, storageOver
     conflictTrip: null, saveState: 'idle', hasPendingSaves: () => false, isPending: () => false, adoptCanonicalTrip: async () => true,
     adoptDeviceTrip: async () => true, mutateTrip: async () => true, ...mutationOverrides };
   const storage = { BrowserRecoveryReadError, loadRememberedOwner: () => null, loadTripRecovery: async () => remaining,
+    observeRememberedOwner: (publish: (owner: string | null) => void) => ({ refresh: () => publish(sessionOwner), dispose: () => undefined }),
     cacheCanonicalTrip: async () => ({ stored: true }), loadCachedTrip: async () => props.trip,
     resolveCanonicalEquivalentTripRecovery: async () => ({ recoveryResolved: false }),
     subscribeToTripStorage: () => () => undefined, tripRecoveryIsAwaitingCanonicalSave: () => false,
@@ -368,9 +369,15 @@ test('resolver ignores an old-owner read and cannot promote it after the route o
   assert.deepEqual(h.cloud.map(trip => trip.ownerId), ['owner-b']);
 });
 
-test('resolver does not start promotion when the exact guest claim is protected', async () => {
-  const h = resolverHarness({ claimGuestTripRecoveryForOwner: async () => ({ stored: false, blockedByExistingRecovery: true }) });
+test('resolver does not start promotion when the explicit guest save is protected', async () => {
+  let attempts = 0;
+  const h = resolverHarness({ saveExplicitGuestTripForOwner: async (tripId: string, ownerId: string, isCurrent: () => boolean) => {
+    attempts += 1;
+    assert.equal(tripId, 'async-shell-trip'); assert.equal(ownerId, 'owner-a'); assert.equal(isCurrent(), true);
+    throw new BrowserRecoveryReadError('protected');
+  } });
   h.search.set('saved', '1'); h.render(); await tick();
+  assert.equal(attempts, 1, 'the current guarded explicit-save boundary must actually run');
   assert.equal(findNode(h.render(), h.Banner)?.props.title, 'Device changes need review');
   assert.equal(h.cloud.length, 0); assert.equal(h.missing(), 0);
 });

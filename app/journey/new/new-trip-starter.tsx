@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { MorroviaTripCapture } from "@/components/easyt/morrovia-trip-capture";
 import { JourneyEndpointsEditor } from "@/components/easyt/journey-endpoints-editor";
 import { HomeDestinationEditor } from "@/app/journey/home/home-destination-editor";
-import { homepageSnapshotForDescribePrompt, homepageVisibleDateRange, persistEditableHomepageInput, persistHomepageIntakeForImport, type HomepageDestinationEntry, type HomepageInputSnapshot, pendingHomepageSubmissionForOwner, pendingHomepageHandoffForOwner, homepageSemanticInputFingerprint, type PendingIntakeReceipt, pendingIntakeContinuation } from "@/lib/easyt/home-trip-handoff";
+import { homepageSnapshotForStopSubmission, homepageSnapshotForDescribePrompt, homepageVisibleDateRange, persistEditableHomepageInput, persistHomepageIntakeForImport, type HomepageDestinationEntry, type HomepageInputSnapshot, pendingHomepageSubmissionForOwner, pendingHomepageHandoffForOwner, homepageSemanticInputFingerprint, type PendingIntakeReceipt, pendingIntakeContinuation } from "@/lib/easyt/home-trip-handoff";
 import { readDurableHomepageState } from "@/lib/easyt/homepage-persistence";
 import { deferNewTripNavigation, EASYT_BEFORE_NEW_TRIP_EVENT, EASYT_NEW_TRIP_INPUT_CHANGE_EVENT, loadCurrentDraftRecovery } from "@/lib/easyt/storage";
 import { journeyEndpointPlaceFromSuggestion } from "@/lib/easyt/journey-endpoints";
@@ -246,6 +246,8 @@ export function NewTripStarter({ ownerId, language, travelProfile, onSubmit }: {
       reportQaPersistenceBoundary("intake", "intake-guard", {accepted:submitInFlightRef.current ? undefined : false,phase:submitInFlightRef.current ? "probe" : "result",scopeMatches:snapshotRef.current.ownerId === ownerId,writeAttempted:false,acknowledgement:submitInFlightRef.current ? "pending" : undefined});
       return;
     }
+    const prepared = homepageSnapshotForStopSubmission(snapshotRef.current);
+    if (prepared !== snapshotRef.current) update(() => prepared);
     submitInFlightRef.current = true;
     const submitted = snapshotRef.current;
     const isCurrent = () => snapshotRef.current.revision === submitted.revision

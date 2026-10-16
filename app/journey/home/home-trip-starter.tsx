@@ -25,6 +25,7 @@ import {
   homepageSemanticInputFingerprint,
   homepageCaptureWithSharedOrigin,
   homepageSnapshotForDescribePrompt,
+  homepageSnapshotForStopSubmission,
   homepageVisibleDateRange,
   homepagePreflightIssues,
   type HomepageTripType,
@@ -240,6 +241,8 @@ export default function HomeTripStarter() {
   const submit = async () => {
     if (inputBlocked || !homepageReadyRef.current || sessionPendingRef.current || ownerIdRef.current !== snapshotRef.current.ownerId) return;
     if (submitInFlightRef.current) return;
+    const prepared = homepageSnapshotForStopSubmission(snapshotRef.current);
+    if (prepared !== snapshotRef.current) updateSnapshot(() => prepared);
     submitInFlightRef.current = true;
     const submittedAt = performance.now();
     const submitted = snapshotRef.current;

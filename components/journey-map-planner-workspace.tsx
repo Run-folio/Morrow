@@ -20,7 +20,7 @@ import { JourneyWeather } from "@/components/journey-weather";
 import EasyTTripCopilot from "@/components/easyt/easyt-trip-copilot";
 import { MorroviaRecoveryFeedback, MorroviaSaveStatus, MorroviaStatusBanner } from "@/components/easyt/morrovia-feedback";
 import { MorroviaSectionStatus } from "@/components/easyt/morrovia-loading-states";
-import { EasyTButton, EasyTSelect } from "@/components/easyt/easyt-controls";
+import { EasyTButton, EasyTLinkButton, EasyTSelect } from "@/components/easyt/easyt-controls";
 import ItineraryItemDetail from "@/components/easyt/itinerary-item-detail";
 import placeMediaStyles from "@/components/easyt/map-place-enrichment.module.css";
 import TripTransportChoiceControl from "@/components/easyt/trip-transport-choice-control";
@@ -30,7 +30,7 @@ import type { TripMutationPersistence } from "@/components/easyt/use-trip-mutati
 import ResilientImage from "@/components/easyt/resilient-image";
 import { journeyCalendar, journeyDayMedia, journeyDetails, journeyMedia, march2027Journey, type JourneyCalendarDay, type JourneyLeg, type JourneyRestaurant, type JourneyStop, type RestaurantMeal } from "@/lib/journey";
 import { getCountryIntelligence } from "@/lib/country-intelligence";
-import { acknowledgeTripBuildSave, cacheCanonicalTrip, deferNewTripNavigation, canUseHydratedTripScope, claimGuestTripRecoveryForOwner, EASYT_BEFORE_NEW_TRIP_EVENT, EASYT_LAST_OWNER_CHANGE_EVENT, EASYT_LAST_OWNER_KEY, EasyTTripAuthError, EasyTTripPromotionConflictError, EasyTTripSaveConflictError, forgetRememberedOwner, loadActiveTrip, loadLocalTrip, loadRememberedOwner, observeRememberedOwner, loadTripFromEasyT, loadTripRecovery, markTripRecoveryState, ownerIdForBrowserRecovery, rememberLastOwner, saveTripRecovery, saveTripRecoveryToEasyT, subscribeToTripStorage, type TripRecoveryHandle } from "@/lib/easyt/storage";
+import { acknowledgeTripBuildSave, cacheCanonicalTrip, deferNewTripNavigation, canUseHydratedTripScope, EASYT_BEFORE_NEW_TRIP_EVENT, EASYT_LAST_OWNER_CHANGE_EVENT, EASYT_LAST_OWNER_KEY, EasyTTripAuthError, EasyTTripPromotionConflictError, EasyTTripSaveConflictError, forgetRememberedOwner, loadActiveTrip, loadLocalTrip, loadRememberedOwner, observeRememberedOwner, loadTripFromEasyT, loadTripRecovery, markTripRecoveryState, ownerIdForBrowserRecovery, rememberLastOwner, saveTripRecovery, saveTripRecoveryToEasyT, subscribeToTripStorage, type TripRecoveryHandle } from "@/lib/easyt/storage";
 import { canApplyCanonicalCopilotChange, tripEditorSyncAction, tripSyncRecoveryPath, tripSyncSignInPath } from "@/lib/easyt/trip-continuity";
 import { createTripMutationPersistenceQueue, mergeTripMutationDocuments } from "@/lib/easyt/trip-mutation-persistence";
 import { addMappedPlaceToTrip, removeMappedPlaceFromTrip } from "@/lib/easyt/map-place-itinerary";
@@ -57,7 +57,7 @@ import { applyRecommendation, recommendationImpact, reviewTrip, tripHealthSummar
 import { accommodationProgress, removeMappedStayForStop, selectMappedStayForStop, stayBookingForStop } from "@/lib/easyt/accommodation";
 import { getCurrentPartnerAction, type ResolvedAffiliateAction } from "@/lib/easyt/booking-readiness";
 import { classifyAnalyticsSaveError, hasAnalyticsConsent, trackEvent } from "@/lib/analytics";
-import { initialMapCameraMode, itineraryWorkspaceHref, mapWorkspaceHref, mapWorkspaceSelectionForTarget, parseMapWorkspaceTarget } from "@/lib/easyt/trip-workspace-links";
+import { initialMapCameraMode, itineraryWorkspaceHref, mapWorkspaceHref, mapWorkspaceSelectionForTarget, parseMapWorkspaceTarget, tripSaveContinuationHref } from "@/lib/easyt/trip-workspace-links";
 import { formatIsoDate, parseIsoDate } from "@/lib/easyt/trip-lifecycle";
 import { deriveTripDateFacts, formatTripNights, incomingLegForPlanItem, orderedTripPlanItems, stableStopDateRange } from "@/lib/easyt/trip-facts";
 import { conciseMapDescription, formatMapDuration, mapRouteLegsFromTrip, type MapCopilotScope } from "@/lib/easyt/map-spatial-context";
@@ -476,7 +476,7 @@ export function JourneyMapPlannerWorkspace({
   const [customBrief, setCustomBrief] = useState<CustomBrief | null>(() => providedTrip ? customBriefFromEasyT(providedTrip) : null);
   const [customTrip, setCustomTrip] = useState<EasyTTrip | null>(providedTrip);
   const [planHydrated, setPlanHydrated] = useState(Boolean(providedTrip) || !isPlanningPreview);
-  const [explicitTripIssue, setExplicitTripIssue] = useState<"auth" | "missing" | "storage" | null>(null);
+  const [explicitTripIssue, setExplicitTripIssue] = useState<"auth" | "missing" | "storage" | "guest-save-required" | null>(null);
   const [resolvedCoordinates, setResolvedCoordinates] = useState<Record<string, [number, number]>>({});
   const [placeMedia, setPlaceMedia] = useState<Record<string, PlaceMedia>>({});
   const [cloudSaveState, setCloudSaveState] = useState<"idle" | "saving" | "saved" | "error">("idle");
@@ -2540,10 +2540,6 @@ export function JourneyMapPlannerWorkspace({
           : await loadActiveTrip(storageOwnerId);
         if (!isCurrent()) return;
         if (recoveryRequested && tripId) {
-          // A remembered offline owner may read its own recovery, but only a
-          // live authenticated owner may claim a guest document.
-          if (verifiedOwnerId) await claimGuestTripRecoveryForOwner(tripId, verifiedOwnerId);
-          if (!isCurrent()) return;
           const activeRecovery = await loadTripRecovery(tripId, storageOwnerId);
           if (!isCurrent()) return;
           if (activeRecovery) {
@@ -2614,6 +2610,17 @@ export function JourneyMapPlannerWorkspace({
           }
           setHasUnsavedChanges(false);
           return;
+        }
+        // A generic activity sign-in (including historical save=1 URLs) is
+        // not account-save consent. Offer the existing guarded continuation
+        // only after owner-scoped reads fail and an exact guest copy is known.
+        if (tripId && recoveryRequested && verifiedOwnerId) {
+          const guestRecovery = await loadTripRecovery(tripId, null);
+          if (!isCurrent()) return;
+          if (guestRecovery) {
+            setExplicitTripIssue("guest-save-required");
+            return;
+          }
         }
         if (tripId) {
           setCustomTrip(null);
@@ -2889,7 +2896,12 @@ export function JourneyMapPlannerWorkspace({
       <>
         {!isShellPresentation ? <div className={styles.productNavigation}><EasyTNavigation current="prototype" storageOwnerId={activeBrowserOwnerId} /></div> : null}
         <main className={`${styles.journey} ${styles.planUnavailable}`}>
-          {storageUnavailable ? <MorroviaStatusBanner tone="warning" title="Your device copy could not be checked" detail="Device storage could not confirm the saved trip. Try again before starting another plan." actions={<EasyTButton onClick={() => setHydrationRevision((revision) => revision + 1)}>Try again</EasyTButton>} /> : <>
+          {explicitTripIssue === "guest-save-required" ? <MorroviaRecoveryFeedback
+            title={language === "es" ? "Este viaje sigue en este dispositivo" : "This trip is still on this device"}
+            detail={language === "es" ? "Guárdalo en tu cuenta para continuar con las experiencias reservables." : "Save it to your account to continue with bookable experiences."}
+            safety={language === "es" ? "La copia de este dispositivo se conservará." : "Your device copy will be kept."}
+            actions={<EasyTLinkButton href={tripSaveContinuationHref(searchParams.get("trip") ?? "", "explore")} variant="secondary">{language === "es" ? "Guardar viaje en mi cuenta" : "Save trip to my account"}</EasyTLinkButton>}
+          /> : storageUnavailable ? <MorroviaStatusBanner tone="warning" title="Your device copy could not be checked" detail="Device storage could not confirm the saved trip. Try again before starting another plan." actions={<EasyTButton onClick={() => setHydrationRevision((revision) => revision + 1)}>Try again</EasyTButton>} /> : <>
           <h1>{needsAuth ? "Sign in to open this trip" : customTrip ? "This trip has no planned days yet" : "This trip is unavailable"}</h1>
           <p>{needsAuth ? "The requested trip is not available on this device. Sign in to check the saved cloud copy." : customTrip ? "Add or regenerate itinerary days before using the map workspace." : "It may have been removed, or you may not have access to it."}</p>
           <Link href={needsAuth ? `/journey/login?next=${encodeURIComponent(mapWorkspaceHref(searchParams.get("trip") ?? ""))}` : customTrip ? `/journey/${encodeURIComponent(customTrip.id)}/itinerary` : "/journey/dashboard"}>{needsAuth ? "Sign in" : customTrip ? "Open itinerary" : "Back to trips"}</Link>

@@ -4,7 +4,7 @@ import {readFileSync} from 'node:fs';
 import ts from 'typescript';
 import {homeRecoveryFixture} from './helpers/home-recovery-fixture.ts';
 import {emptyHomepageInput} from './fixtures/homepage-dual-entry.ts';
-import {commitHomepageHandoff,homepageCompletedReceiptIsUnchanged,homepageSemanticInputFingerprint,homepagePreflightIssues,
+import {homepageSnapshotForStopSubmission,commitHomepageHandoff,homepageCompletedReceiptIsUnchanged,homepageSemanticInputFingerprint,homepagePreflightIssues,
  projectHomepageInput,homepageReceiptForProjection,homepageHandoffMatchesTrip,reusableHomepageReceipt,reservePendingDescribeHandoff,pendingHomepageSubmissionForOwner,pendingIntakeReceiptForOwner,pendingHomepageHandoffForOwner,createPendingIntakeReceipt,HOME_TRIP_DRAFT_KEY} from '../lib/easyt/home-trip-handoff.ts';
 import {createDurableHomepagePersistence,prepareIntakeAcknowledgement} from '../lib/easyt/homepage-persistence.ts';
 import {createTwoStoreTripPersistence} from '../lib/easyt/two-store-trip-persistence.ts';
@@ -26,7 +26,7 @@ function actualCallback(name:'hydrate'|'submit'|'retryRecoveryRead'|'resumePendi
   };
   walk(ast);assert.ok(callback,`Actual ${name} callback must exist`);
   const script=ts.transpileModule(`const callback=${callback.getText(ast)};`,{compilerOptions:{target:ts.ScriptTarget.ES2022}}).outputText;
-  return new Function('scope',`with(scope){const inputBlocked=scope.inputBlocked ?? scope.recoveryBlocked;${script}return callback;}`)(scope) as ()=>unknown;
+  return new Function('scope',`with(scope){const inputBlocked=scope.inputBlocked ?? scope.recoveryBlocked;${script}return callback;}` )({homepageSnapshotForStopSubmission,...scope}) as ()=>unknown;
 }
 const tick=()=>new Promise<void>(done=>setImmediate(done));
 function deferred<T>(){let resolve!:(value:T)=>void;return {promise:new Promise<T>(done=>{resolve=done}),resolve:(value:T)=>resolve(value)}}
