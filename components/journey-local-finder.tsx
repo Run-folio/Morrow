@@ -164,6 +164,7 @@ export function JourneyLocalFinder({ ownerId, tripId, stopId, canonicalPlaceId, 
   const reportedAccommodationSearchRef = useRef("");
   const autoSelectedRef = useRef(false);
   const loadedBaseResultKeyRef = useRef<string | null>(initialCorePlaces.length ? baseResultKey : null);
+  const lastBaseRequestRef = useRef<{ key: string; version: number } | null>(null);
   const performanceRequestRef = useRef<{ token: string; startedAt: number } | null>(null);
   const firstUsefulPerformanceRef = useRef("");
   const storageKey = `journey:local-${kind}:v3`;
@@ -194,6 +195,8 @@ export function JourneyLocalFinder({ ownerId, tripId, stopId, canonicalPlaceId, 
     // shortlist. A changed stop, date range, or finder kind is a genuinely
     // different result set, so it starts from the honest initial state.
     const resultKey = localFinderQueryKey({ kind, city, country, canonicalPlaceId, dayId, coordinates: [longitude, latitude], locale, staySearch, mapPresentation });
+    const refresh = lastBaseRequestRef.current?.key === resultKey && lastBaseRequestRef.current.version !== searchVersion;
+    lastBaseRequestRef.current = { key: resultKey, version: searchVersion };
     const cachedBaseResult = kind === "stay" ? peekLocalFinderBaseResult<ReturnType<typeof localSearchPayload>>(baseResultKey) : null;
     const retainExistingResults = Boolean(cachedBaseResult?.places.length)
       || (loadedBaseResultKeyRef.current === baseResultKey && corePlaces.length > 0);
@@ -258,7 +261,8 @@ export function JourneyLocalFinder({ ownerId, tripId, stopId, canonicalPlaceId, 
             const query = new URLSearchParams({ kind, city, country, lat: String(latitude), lon: String(longitude), locale });
             if (canonicalPlaceId) query.set("canonicalPlaceId", canonicalPlaceId);
             if (mapPresentation) query.set("mapPresentation", mapPresentation);
-            const response = await fetch(`/api/journey-local-search?${query}`);
+            if (refresh) query.set("refresh", "1");
+            const response = await fetch(`/api/journey-local-search?${query}`, { signal: AbortSignal.timeout(10_000) });
             if (!response.ok) throw new Error("Local recommendations unavailable");
             const payload = localSearchPayload(await response.json());
             return mapPresentation === "maplibre" ? { ...payload, places: payload.places.filter((place) => place.provider !== "google-places") } : payload;
@@ -272,7 +276,7 @@ export function JourneyLocalFinder({ ownerId, tripId, stopId, canonicalPlaceId, 
       ...(hasCommercialLane ? [{
         lane: "commercial" as const,
         request: async (): Promise<FinderLaneValue> => {
-          const response = await fetch(`/api/journey-accommodation-search?${new URLSearchParams({ lat: String(latitude), lon: String(longitude), checkIn: staySearch!.checkIn!, checkOut: staySearch!.checkOut!, adults: String(staySearch?.adults ?? 1), rooms: String(staySearch?.rooms ?? 1), currency: staySearch?.currency ?? "USD", locale, ...(staySearch?.bookerCountry ? { bookerCountry: staySearch.bookerCountry } : {}) })}`, { signal: controller.signal });
+          const response = await fetch(`/api/journey-accommodation-search?${new URLSearchParams({ lat: String(latitude), lon: String(longitude), checkIn: staySearch!.checkIn!, checkOut: staySearch!.checkOut!, adults: String(staySearch?.adults ?? 1), rooms: String(staySearch?.rooms ?? 1), currency: staySearch?.currency ?? "USD", locale, ...(staySearch?.bookerCountry ? { bookerCountry: staySearch.bookerCountry } : {}) })}`, { signal: AbortSignal.any([controller.signal, AbortSignal.timeout(10_000)]) });
           if (!response.ok) throw new Error("Live accommodation inventory unavailable");
           return { lane: "commercial", payload: accommodationInventoryPayload(await response.json()) };
         },

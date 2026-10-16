@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
+import { revalidateTag } from "next/cache";
+import { createHash } from "node:crypto";
 import { resolveOsmPlaceDisplayName, resolvePlaceDisplayName } from "@/lib/easyt/place-display-name";
 import { operationalPlaceStatus } from "@/lib/easyt/place-status";
 import { localPlaceWithinCanonicalScope } from "@/lib/easyt/local-place-geography";
@@ -100,12 +102,12 @@ function validPhotonCategory(kind: "restaurant" | "stay", properties: NonNullabl
     : /\b(?:restaurant|cafe|café|fast_food)\b/u.test(category);
 }
 
-async function photonFallback(kind: "restaurant" | "stay", city: string, country: string, latitude: number, longitude: number, locale: string, radiusKm: number) {
+async function photonFallback(kind: "restaurant" | "stay", city: string, country: string, latitude: number, longitude: number, locale: string, radiusKm: number, refresh = false) {
   const term = kind === "stay" ? "hotel" : "restaurant";
   const destinationQuery = [term, city === "your location" ? "" : city, country].filter(Boolean).join(" ");
   const response = await fetch(`https://photon.komoot.io/api/?${new URLSearchParams({ q: destinationQuery, lat: String(latitude), lon: String(longitude), limit: "20", lang: locale })}`, {
     headers: { "User-Agent": "Journey local venue finder (portfolio prototype)" },
-    next: { revalidate: 60 * 60 * 12 },
+    ...(refresh ? { cache: "no-store" as const } : { next: { revalidate: 60 * 60 * 12 } }),
     signal: AbortSignal.timeout(5000),
   });
   const features = providerResults<PhotonPlace>(await localSearchProviderJson(response), "features");
@@ -141,7 +143,7 @@ async function photonFallback(kind: "restaurant" | "stay", city: string, country
   return qualityControlledLocalPlaces(places);
 }
 
-async function googleOperationalPlaces(kind: "restaurant" | "stay", country: string, latitude: number, longitude: number, locale: string, radiusKm: number) {
+async function googleOperationalPlaces(kind: "restaurant" | "stay", country: string, latitude: number, longitude: number, locale: string, radiusKm: number, refresh = false) {
   const apiKey = process.env.GOOGLE_PLACES_API_KEY;
   if (!apiKey) throw new LocalSearchProviderFailure("configuration");
   const response = await fetch("https://places.googleapis.com/v1/places:searchNearby", {
@@ -158,7 +160,7 @@ async function googleOperationalPlaces(kind: "restaurant" | "stay", country: str
       locationRestriction: { circle: { center: { latitude, longitude }, radius: radiusKm * 1_000 } },
       languageCode: locale,
     }),
-    next: { revalidate: 60 * 15 },
+    ...(refresh ? { cache: "no-store" as const } : { next: { revalidate: 60 * 15 } }),
     signal: AbortSignal.timeout(7000),
   });
   const seen = new Set<string>();
@@ -194,18 +196,28 @@ async function googleOperationalPlaces(kind: "restaurant" | "stay", country: str
     }));
 }
 
-async function openStreetMapPlaces(kind: "restaurant" | "stay", city: string, country: string, latitude: number, longitude: number, locale: string, radiusKm: number) {
+async function openStreetMapPlaces(kind: "restaurant" | "stay", city: string, country: string, latitude: number, longitude: number, locale: string, radiusKm: number, refresh = false) {
   const radius = Math.round(radiusKm * 1_000);
   const matcher = kind === "stay"
     ? '["tourism"~"^(hotel|hostel|guest_house|motel)$"]'
     : '["amenity"~"^(restaurant|cafe|fast_food)$"]';
   const query = `[out:json][timeout:18];nwr(around:${radius},${latitude},${longitude})${matcher}["name"];out center tags 35;`;
+  const cacheTag = `local-osm:${createHash("sha256").update(query).digest("hex")}`;
+  // An explicit retry retires this exact query's cached response as well as
+  // bypassing it. Queue invalidation before any provider can finish the route;
+  // the no-store retry cannot race a fresh cache write at request-end flush.
+  if (refresh) revalidateTag(cacheTag);
   const response = await fetch(`https://overpass.kumi.systems/api/interpreter?${new URLSearchParams({ data: query })}`, {
     headers: { "User-Agent": "Journey local venue finder (portfolio prototype)" },
-    next: { revalidate: 60 * 60 * 12 },
+    ...(refresh ? { cache: "no-store" as const } : { next: { revalidate: 60 * 60 * 12, tags: [cacheTag] } }),
     signal: AbortSignal.timeout(4500),
   });
-  const elements = providerResults<OverpassElement>(await localSearchProviderJson(response), "elements");
+  const payload = await localSearchProviderJson(response);
+  // Overpass can report a runtime failure in an HTTP200 JSON remark, even
+  // after emitting partial elements. That is not a completed venue search.
+  const remark = (payload as { remark?: unknown } | null)?.remark;
+  if (typeof remark === "string" && /\bruntime error\s*:/i.test(remark)) throw new Error("Local venue provider failed");
+  const elements = providerResults<OverpassElement>(payload, "elements");
   const seen = new Set<string>();
   const places: LocalPlace[] = [];
   for (const place of elements) {
@@ -258,6 +270,9 @@ export async function GET(request: NextRequest) {
   const country = request.nextUrl.searchParams.get("country")?.trim();
   const canonicalPlaceId = request.nextUrl.searchParams.get("canonicalPlaceId")?.trim();
   const kind = request.nextUrl.searchParams.get("kind") === "stay" ? "stay" : "restaurant";
+  // Explicit retry bypasses provider data caches; ordinary requests keep their
+  // existing reuse policy. No extra provider attempt or query salt is added.
+  const refresh = request.nextUrl.searchParams.get("refresh") === "1";
   const mapPresentation = request.nextUrl.searchParams.get("mapPresentation") === "maplibre" ? "maplibre" : "none";
   const requestedLatitude = Number(request.nextUrl.searchParams.get("lat"));
   const requestedLongitude = Number(request.nextUrl.searchParams.get("lon"));
@@ -290,8 +305,8 @@ export async function GET(request: NextRequest) {
     // a separate client request and is never inferred here.
     const scope = localSearchScope(kind, catalogMatchesRequest ? catalogPlace?.placeType : undefined);
     const outcome = await firstUsefulLocalSearchWithFallback(localSearchPrimaryLanes(mapPresentation,
-      () => localSearchProviderOutcome(() => googleOperationalPlaces(kind, country ?? "", latitude, longitude, locale, scope.primaryRadiusKm), diagnosticFor("google")),
-      () => localSearchProviderOutcome(() => openStreetMapPlaces(kind, city, country ?? "", latitude, longitude, locale, scope.primaryRadiusKm), diagnosticFor("osm")),
+      () => localSearchProviderOutcome(() => googleOperationalPlaces(kind, country ?? "", latitude, longitude, locale, scope.primaryRadiusKm, refresh), diagnosticFor("google")),
+      () => localSearchProviderOutcome(() => openStreetMapPlaces(kind, city, country ?? "", latitude, longitude, locale, scope.primaryRadiusKm, refresh), diagnosticFor("osm")),
     ), () => localSearchProviderOutcome(() => photonFallback(
       kind,
       city,
@@ -300,6 +315,7 @@ export async function GET(request: NextRequest) {
       longitude,
       locale,
       scope.fallbackRadiusKm,
+      refresh,
     ), diagnosticFor("photon")));
     if (outcome.state === "ready") {
       const source = outcome.places[0]?.provider === "google-places" ? "Google Places" : "OpenStreetMap";

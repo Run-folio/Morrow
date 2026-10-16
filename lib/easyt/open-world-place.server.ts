@@ -1,10 +1,13 @@
 import {searchReferencePlaces,referenceSnapshotId} from './place-reference.server.ts';
+import {findCatalogPlacesByPhrase} from './place-catalog.ts';
+import {countryCodeFor} from './country-registry.ts';
 import { searchBundledIslandIdentityCandidates } from './island-geography.server.ts';
 import { searchPhotonTravelCandidates } from "./photon-place.server.ts";
 import { searchOpenStreetMapNearbySettlements } from "./openstreetmap-nearby-place.server.ts";
 import { resolvePlaceDisplayName } from "./place-display-name.ts";
 import {
   providerLookupRequest,
+  catalogPlaceForProviderIdentity,
   rankNearbyBaseCandidates,
   type NearbyBaseAnchor,
   type NearbyBaseSuggestion,
@@ -235,6 +238,22 @@ function rankCanonicalCandidates(
   }).sort(compareCanonicalCandidateEvidence);
 }
 
+/** Exact, country-scoped catalogue aliases can fill gaps in the bounded
+ * reference alias list. Keep the source tuple and require the existing identity
+ * checks; prefixes, airports and ambiguous catalogue phrases gain no evidence. */
+function referenceCatalogAliases(phrase: string, context: PlaceResolutionContext) {
+  const entries = findCatalogPlacesByPhrase(phrase).filter(entry =>
+    entry.routability === 'direct_destination' && ['city', 'town'].includes(entry.placeType)
+    && entry.parentCountries.length === 1 && context.explicitCountryNames?.length === 1
+    && countryCodeFor(entry.parentCountries[0]) === countryCodeFor(context.explicitCountryNames[0]));
+  if (entries.length !== 1) return [];
+  const entry = entries[0]!;
+  return [entry.canonicalName, ...entry.aliases].filter(alias => normalized(alias) !== normalized(phrase))
+    .flatMap(alias => searchReferencePlaces(alias, context).filter(candidate =>
+      normalized(candidate.canonicalName) === normalized(alias)
+      && catalogPlaceForProviderIdentity({...candidate,parentCountries:candidate.parentCountries??[]})?.canonicalPlaceId === entry.canonicalPlaceId));
+}
+
 /** Shared provider-neutral boundary for automatic capture and Builder Search.
  * The bounded cache retains compact canonical facts only—never prompts, model
  * output, or raw provider responses. */
@@ -259,7 +278,12 @@ export function createOpenWorldPlaceProvider(options: {
     timeoutMs: 4_500,
     async lookup(phrase, context) {
       const request = providerLookupRequest(phrase, context);
-      const reference=options.sources?[]:searchReferencePlaces(request.phrase,request.context);
+      const directReference=options.sources?[]:searchReferencePlaces(request.phrase,request.context);
+      const aliasReference=options.sources||directReference.some(candidate=>candidate.matchQuality==='exact')
+        ? [] : referenceCatalogAliases(request.phrase,request.context);
+      const reference=aliasReference.length ? [...directReference,...aliasReference]
+        .filter((candidate,index,all)=>all.findIndex(other=>other.providerId===candidate.providerId)===index)
+        .sort((left,right)=>(right.rankScore??0)-(left.rankScore??0)).slice(0,12) : directReference;
       const islandIdentities=options.sources?[]:searchBundledIslandIdentityCandidates(request.phrase, request.context.explicitCountryNames ?? [], request.context.explicitPlaceTypes ?? []);
       const local=[...reference,...islandIdentities];
       if(!options.sources&&(options.searchMode==='reference-only'||local.some(c=>c.matchQuality==='exact')))

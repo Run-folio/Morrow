@@ -230,7 +230,7 @@ async function loadOutdoors(trip: EasyTTrip, stop: TripStop, signal: AbortSignal
   return (payload.places ?? []).map((place) => exploreResultForPlace(stop, place, interests));
 }
 
-async function loadRestaurants(stop: TripStop, signal: AbortSignal, onAssessment: (assessment: PlanningEvidenceState) => void) {
+async function loadRestaurants(stop: TripStop, signal: AbortSignal, onAssessment: (assessment: PlanningEvidenceState) => void, refresh = false) {
   if (stop.latitude === null || stop.longitude === null) {
     onAssessment({ retrieval: "blocked", evidence: "unqualified", reason: "identity_required", retryable: false });
     throw new Error("Restaurant discovery requires a mapped destination");
@@ -244,7 +244,8 @@ async function loadRestaurants(stop: TripStop, signal: AbortSignal, onAssessment
     locale: "en",
   });
   if (stop.canonicalPlaceId) query.set("canonicalPlaceId", stop.canonicalPlaceId);
-  const response = await fetch(`/api/journey-local-search?${query}`, { signal });
+  if (refresh) query.set("refresh", "1");
+  const response = await fetch(`/api/journey-local-search?${query}`, { signal: AbortSignal.any([signal, AbortSignal.timeout(10_000)]) });
   if (!response.ok) throw new Error("Restaurant discovery unavailable");
   const payload = localSearchPayload(await response.json());
   if (payload.unavailable) throw new Error("Restaurant discovery unavailable");
@@ -310,7 +311,7 @@ export default function TripExploreWorkspace({
   const [organicAssessment, setOrganicAssessment] = useState<PlanningEvidenceState>();
   const [commercialAssessment, setCommercialAssessment] = useState<PlanningEvidenceState>();
   const [retryVersion, setRetryVersion] = useState(0);
-  const requestScopeRef = useRef<string | null>(null);
+  const requestScopeRef = useRef<{ key: string; retryVersion: number } | null>(null);
   const [selectedResultId, setSelectedResultId] = useState<string | null>(initialSelectedResultId ?? null);
   const [selectedDayByResult, setSelectedDayByResult] = useState<Record<string, number>>({});
   const [notice, setNotice] = useState<string | null>(null);
@@ -441,14 +442,15 @@ export default function TripExploreWorkspace({
       if (snapshot.pendingCount === 0) trackEvent("recommendation_performance", { ...properties, milestone: "lane_ready" });
     };
     const scopeKey = JSON.stringify([category, destinationId, discoveryRequestKey]);
-    const sameScope = requestScopeRef.current === scopeKey;
+    const sameScope = requestScopeRef.current?.key === scopeKey;
+    const refresh = sameScope && requestScopeRef.current!.retryVersion !== retryVersion;
     const skipOrganic = !plan.restaurants && sameScope && organicAssessment?.retrieval !== "completed" && organicAssessment?.retryable === false;
     const skipCommercial = sameScope && commercialAssessment?.retrieval !== "completed" && commercialAssessment?.retryable === false;
     if (!sameScope) {
       replaceOrganicResults([]);
       replaceCommercialResults([]);
     }
-    requestScopeRef.current = scopeKey;
+    requestScopeRef.current = { key: scopeKey, retryVersion };
     if (!skipOrganic) setOrganicAssessment(undefined);
     if (plan.restaurants) {
       setRestaurantAssessment(undefined);
@@ -460,7 +462,7 @@ export default function TripExploreWorkspace({
       ...(plan.dayTrips ? [() => loadDayTrips(discoveryTrip, stop, scope.signal)] : []),
       ...(plan.restaurants ? [async () => {
         try {
-          const places = await loadRestaurants(stop, scope.signal, assessment => scope.commit(() => setRestaurantAssessment(assessment)));
+          const places = await loadRestaurants(stop, scope.signal, assessment => scope.commit(() => setRestaurantAssessment(assessment)), refresh);
           scope.commit(() => setRestaurantStatus(places.length ? "ready" : "empty"));
           return places;
         } catch (error) {

@@ -209,10 +209,26 @@ for (const retrieval of ['blocked', 'checking', 'not-attempted']) test(`Explore 
   assert.match(view.text(), /Tokyo Museum/);
 });
 test('Explore Food offers timeout recovery when another organic source completed empty', async t => {
-  let organicCalls = 0;
-  const view = mount(t, 'components/easyt/trip-explore-workspace.tsx', { trip: fixture(), initialCategory: 'food' }, url => url.includes('journey-discover')
-    ? Response.json(++organicCalls === 1 ? { places: [], assessment: assessment('unavailable', 'timeout', true) } : { places: [], assessment: assessment('completed', 'successful_empty') })
-    : Response.json({ places: [] }));
+  let restaurantCalls = 0;
+  const view = mount(t, 'components/easyt/trip-explore-workspace.tsx', { trip: fixture(), initialCategory: 'food' }, url => url.includes('journey-local-search')
+    ? ++restaurantCalls === 1 ? Response.json({ places: [], searchStatus: 'failed', unavailable: true }, { status: 504 }) : Response.json({ places: [], searchStatus: 'empty' })
+    : Response.json({ places: [], assessment: assessment('completed', 'successful_empty') }));
   await view.settle(); assert.doesNotMatch(view.text(), /No food ideas/); const retry = view.statuses().find(status => status.onRetry); assert.ok(retry);
-  retry.onRetry(); view.render(); await view.settle(); assert.equal(organicCalls, 2); assert.equal(view.statuses().length, 0); assert.match(view.text(), /No food ideas/);
+  retry.onRetry(); view.render(); await view.settle(); assert.equal(restaurantCalls, 2); assert.equal(view.statuses().length, 0); assert.match(view.text(), /No food ideas/);
+});
+test('Food retry requests fresh venues and clears its failed state when a useful result returns',async t=>{
+ let calls=0;const venue={id:'recovered-restaurant',name:'Recovered local restaurant',address:'Tokyo, Japan',category:'restaurant',coordinates:[139.6917,35.6896],mapsUrl:'https://example.invalid/restaurant',provider:'openstreetmap',availability:'check'};
+ const view=mount(t,'components/easyt/trip-explore-workspace.tsx',{trip:fixture(),initialCategory:'food'},url=>url.includes('journey-local-search')
+  ? Response.json(++calls===1?{places:[],searchStatus:'failed',unavailable:true}:{places:[venue],searchStatus:'ready'})
+  : Response.json({places:[],assessment:assessment('completed','successful_empty')}));
+ await view.settle();const retry=view.statuses().find(s=>s.onRetry);assert.ok(retry);assert.match(retry.title,/couldn.t load food ideas/i);retry.onRetry();view.render();await view.settle();const requests=view.calls.filter(c=>c.url.includes('journey-local-search'));assert.equal(requests.length,2);assert.equal(new URL(requests[0].url,'http://fixture').searchParams.has('refresh'),false);assert.equal(new URL(requests[1].url,'http://fixture').searchParams.get('refresh'),'1');assert.match(view.text(),/Recovered local restaurant/);assert.equal(view.statuses().length,0);
+ view.props.trip=structuredClone(view.props.trip);
+ const oldStopId=view.props.trip.stops[0].id;
+ view.props.trip.stops[0].id='other-stop';
+ for(const day of view.props.trip.planItems)if(day.stopId===oldStopId)day.stopId='other-stop';
+ for(const destination of view.props.trip.brief.intent.route?.destinations??[])destination.stopIds=destination.stopIds.map((id:string)=>id===oldStopId?'other-stop':id);
+ view.render();await view.settle();
+ const nextRequests=view.calls.filter(c=>c.url.includes('journey-local-search'));
+ assert.ok(nextRequests.length>requests.length,'the new stop must actually issue its own request');
+ assert.equal(new URL(nextRequests.at(-1)!.url,'http://fixture').searchParams.has('refresh'),false);
 });

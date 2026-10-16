@@ -1,3 +1,5 @@
+import {findCatalogPlaceById,findCatalogPlacesByPhrase} from './place-catalog.ts';
+
 /**
  * Small, curated planning facts for destinations and transfers.
  *
@@ -573,6 +575,15 @@ function plannerTransfer(
 const verifyLiveService = "verify the live service before booking.";
 const verifyLiveTimetable = "verify the live timetable before booking.";
 
+const parisMadridAirSource: KnowledgeSource = {
+  id: "airfrance:paris-madrid-route",
+  label: "Air France — Paris to Madrid",
+  kind: "official",
+  url: "https://wwws.airfrance.fr/fr-fr/vols-de-paris-a-madrid",
+  reviewedAt: "2026-10-16",
+  supports: "Published Paris Charles-de-Gaulle (CDG) to Madrid Barajas (MAD) flight route; not date-specific availability, a timetable or an airline duration.",
+};
+
 const gyeongbuSources: readonly [KnowledgeSource, KnowledgeSource] = [
   {id:"visitkorea:gyeongbu-ktx",label:"Korea Tourism Organization — Train guide",kind:"official",url:"https://english.visitkorea.or.kr/svc/contents/contentsView.do?menuSn=470&vcontsId=140656",reviewedAt:"2026-10-08",supports:"Gyeongbu KTX connects Seoul Station and Busan Station; direction corroborated by KORAIL 2026-04-14."},
   {id:"visitkorea:seoul-busan-station-time",label:"Korea Tourism Organization — Busan guide",kind:"official",url:"https://english.visitkorea.or.kr/svc/contents/contentsView.do?vcontsId=222586",reviewedAt:"2026-10-08",supports:"Indicative Seoul Station to Busan Station KTX time about 3 hours; service-dependent, not a live schedule or door-to-door time."},
@@ -585,8 +596,19 @@ const gyeongbuTransfer = (fromCanonicalId:string,toCanonicalId:string): Destinat
   note:knownKnowledgeFact("Gyeongbu KTX: about 3h station to station, service-dependent. Local access and waiting are separate Morrovia planning allowances; verify the live timetable before booking.","static",gyeongbuSources),
 });
 
-/** Existing planner allowances, moved intact behind the knowledge boundary. */
+/** Reviewed pair facts and existing planner allowances behind the knowledge boundary. */
 export const CURATED_DESTINATION_TRANSFERS: readonly DestinationTransferKnowledge[] = [
+  {
+    fromCanonicalId: "paris", toCanonicalId: "madrid",
+    mode: knownKnowledgeFact("flight", "static", parisMadridAirSource),
+    // Existing model: 180 + (1052 / 760) * 60 = about 263 minutes;
+    // rounded to the resolver's 15-minute planning granularity, not airline timing.
+    planningMinutes: knownKnowledgeFact(270, "estimated", plannerAllowanceSource),
+    durationBasis: knownKnowledgeFact("door-to-door", "static", plannerAllowanceSource),
+    realisticRangeMinutes: unknownKnowledgeFact("No reviewed airline duration range or date-specific timetable."),
+    borderFriction: unknownKnowledgeFact("No source-specific border or airport processing time."),
+    note: knownKnowledgeFact("Air France publishes the Paris CDG–Madrid MAD route. Morrovia uses a 4h30 door-to-door planning allowance, not an airline schedule; verify the service and timing for your dates before booking.", "static", [parisMadridAirSource, plannerAllowanceSource]),
+  },
   gyeongbuTransfer("seoul","busan"), gyeongbuTransfer("busan","seoul"),
   plannerTransfer("guatemala-city", "los-angeles", "flight", 480, `Approximate door-to-door flight allowance; ${verifyLiveService}`),
   plannerTransfer("los-angeles", "tokyo", "flight", 840, `Approximate door-to-door trans-Pacific allowance; ${verifyLiveService}`),
@@ -890,6 +912,18 @@ export function createDestinationKnowledgeStore(options: {
   const railEndpointNameCandidates = new Map<string, IntercityRailEndpointKnowledge[]>();
   for (const endpoint of railEndpointById.values()) {
     railEndpointByNameCountry.set(identityCountryKey(endpoint.name, endpoint.country), endpoint);
+    // Reuse exact reviewed settlement aliases only with explicit country scope.
+    // This projects knowledge; it never relabels the saved provider identity.
+    const catalog = findCatalogPlaceById(endpoint.canonicalId);
+    if (catalog && ['city', 'town'].includes(catalog.placeType)
+      && normalise(catalog.canonicalName) === normalise(endpoint.name)
+      && catalog.parentCountries.length === 1 && normalise(catalog.parentCountries[0]!) === normalise(endpoint.country)) {
+      for (const alias of catalog.aliases) {
+        const matches = findCatalogPlacesByPhrase(alias);
+        if (matches.length === 1 && matches[0]!.canonicalPlaceId === catalog.canonicalPlaceId)
+          railEndpointByNameCountry.set(identityCountryKey(alias, endpoint.country), endpoint);
+      }
+    }
     const nameKey = normalise(endpoint.name);
     railEndpointNameCandidates.set(nameKey, [...(railEndpointNameCandidates.get(nameKey) ?? []), endpoint]);
   }
@@ -961,6 +995,8 @@ export function createDestinationKnowledgeStore(options: {
     findTransfer: (from, to) => {
       const fact = transferByPair.get(transferKey(rawIdentityForTransfer(from), rawIdentityForTransfer(to)))
         ?? transferByPair.get(transferKey(identityForTransfer(from), identityForTransfer(to)));
+      if (fact?.mode.sources.some(source => source.id === parisMadridAirSource.id)
+        && (normalise(from.country ?? "") !== "france" || normalise(to.country ?? "") !== "spain")) return undefined;
       if (fact?.mode.sources.some(source => source.id === "visitkorea:gyeongbu-ktx")
         && [from, to].some(endpoint => endpoint.country
           ? !["south-korea", "republic-of-korea"].includes(normalise(endpoint.country))

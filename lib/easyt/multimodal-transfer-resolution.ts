@@ -835,7 +835,12 @@ async function resolveTransferJourney(
     && (rail.connectionCount === null || rail.connectionCount <= 1)
     && !travellerPrefersRoad);
   let roadEstimate: RoadEstimateReference | undefined;
-  if (!excludedModes.has("road") && !credibleLowChangeRailDominatesRoad) {
+  // With an exact allowed flight, an optional cross-border road reference
+  // cannot be selected under the passenger-road rule below. Its provider
+  // must not become a dependency of this independently supported flight.
+  const skipOptionalRoadReference = exact?.summaryMode === "flight" && candidates.includes(exact)
+    && !sameCountry(from, to) && !travellerPrefersRoad && !findSurfaceCrossing(from, to, "road");
+  if (!excludedModes.has("road") && !credibleLowChangeRailDominatesRoad && !skipOptionalRoadReference) {
     // A complete gateway composition has already routed its ground access;
     // avoid a second, unrelated origin-to-destination driving request.
     const road = mixed ? null : await roadCandidate(leg, options.provider, options.onRoadAssessment);
@@ -852,6 +857,8 @@ async function resolveTransferJourney(
     if (!road && !canonicalGatewayAccess) diagnostic.rejected.push("No plausible routed road estimate or canonical gateway access was available.");
   } else if (credibleLowChangeRailDominatesRoad) {
     diagnostic.rejected.push("Road lookup skipped because credible low-change rail is under six hours and the traveller has no road preference.");
+  } else if (skipOptionalRoadReference) {
+    diagnostic.rejected.push("Optional cross-border road reference skipped because an exact flight is supported and driving is not an eligible passenger choice.");
   }
   const rankedCandidates = rankCandidates(candidates, preferredModes);
   diagnostic.candidates = rankedCandidates.slice(0, MULTIMODAL_SELECTION_RULES.maximumCandidates);

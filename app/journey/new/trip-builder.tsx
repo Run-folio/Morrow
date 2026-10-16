@@ -3385,7 +3385,7 @@ function TripBuilderDocument() {
       } : null);
       const resolved = canonicalResolved ?? await (async () => {
         const response = await fetch(`/api/journey-geocode?place=${encodeURIComponent(canonicalSuggestion?.name ?? value)}${routeCountry ? `&country=${encodeURIComponent(routeCountry)}` : ""}${nearby ? `&nearLat=${nearby[1]}&nearLon=${nearby[0]}` : ""}`);
-        const payload = await response.json() as { result?: { canonicalPlaceId?: string; name?: string; country?: string; countryCode?: string; region?: string; administrativeHierarchy?: string[]; providerId?: string; coordinates?: [number, number]; kind?: string; locality?: string } | null };
+        const payload = await response.json() as { result?: LocationChoice | null };
         return payload.result;
       })();
       if(!lookupIsCurrent())return;
@@ -3511,7 +3511,7 @@ function TripBuilderDocument() {
         locality: resolved.locality,
       };
       const acceptedPlace=acceptedGeographicPlace({name:addedStop.name,country:addedStop.country,canonicalPlaceId:addedStop.canonicalPlaceId,providerId:addedStop.providerId,coordinates:addedStop.coordinates},
-        {...resolved,name:resolvedName,placeType:canonicalSuggestion?.placeType??resolved.kind,routability:canonicalSuggestion?.routability??('routability' in resolved?resolved.routability as string:undefined)});
+        resolved);
       if(!acceptedPlace)return fail(language==='es'?'Elige una ciudad o población verificada.':'Choose a verified city or town.');
       addedStop.geographicBinding=acceptedPlace.geographicBinding;
       const selectedCommands: BuilderAcceptedEdit[] = [];
