@@ -1,0 +1,62 @@
+{
+  "source": "Disposable actual staging c1a16c3 homepage/Builder entry, 2026-10-16; no traveller data",
+  "stops": [
+    {
+      "id": "destination-1",
+      "name": "Lima",
+      "country": "Peru",
+      "canonicalPlaceId": "lima",
+      "providerId": "reference:geonames:3936456@699b595afdba9be6994e:PE:city:-77.02824:-12.04318",
+      "longitude": -77.02824,
+      "latitude": -12.04318,
+      "geographicBinding": {
+        "version": 1,
+        "source": "provider",
+        "canonicalPlaceId": "lima",
+        "providerId": "reference:geonames:3936456@699b595afdba9be6994e:PE:city:-77.02824:-12.04318",
+        "placeType": "city",
+        "country": "Peru",
+        "routability": "direct_destination",
+        "inputKey": "[\"lima\",\"reference:geonames:3936456@699b595afdba9be6994e:PE:city:-77.02824:-12.04318\",\"lima\",\"peru\",[-77.02824,-12.04318]]"
+      }
+    },
+    {
+      "id": "destination-2",
+      "name": "Bogot\u00e1",
+      "country": "Colombia",
+      "canonicalPlaceId": "bogota",
+      "providerId": "reference:geonames:3688689@699b595afdba9be6994e:CO:city:-74.08175:4.60971",
+      "longitude": -74.08175,
+      "latitude": 4.60971,
+      "geographicBinding": {
+        "version": 1,
+        "source": "provider",
+        "canonicalPlaceId": "bogota",
+        "providerId": "reference:geonames:3688689@699b595afdba9be6994e:CO:city:-74.08175:4.60971",
+        "placeType": "city",
+        "country": "Colombia",
+        "routability": "direct_destination",
+        "inputKey": "[\"bogota\",\"reference:geonames:3688689@699b595afdba9be6994e:CO:city:-74.08175:4.60971\",\"bogota\",\"colombia\",[-74.08175,4.60971]]"
+      }
+    },
+    {
+      "id": "destination-3",
+      "name": "Cartagena",
+      "country": "Colombia",
+      "canonicalPlaceId": "reference:geonames:3687238",
+      "providerId": "reference:geonames:3687238@699b595afdba9be6994e:CO:city:-75.49328:10.39817",
+      "longitude": -75.49328,
+      "latitude": 10.39817,
+      "geographicBinding": {
+        "version": 1,
+        "source": "provider",
+        "canonicalPlaceId": "reference:geonames:3687238",
+        "providerId": "reference:geonames:3687238@699b595afdba9be6994e:CO:city:-75.49328:10.39817",
+        "placeType": "city",
+        "country": "Colombia",
+        "routability": "direct_destination",
+        "inputKey": "[\"reference:geonames:3687238\",\"reference:geonames:3687238@699b595afdba9be6994e:CO:city:-75.49328:10.39817\",\"cartagena\",\"colombia\",[-75.49328,10.39817]]"
+      }
+    }
+  ]
+}

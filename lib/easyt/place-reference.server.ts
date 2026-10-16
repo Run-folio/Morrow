@@ -99,8 +99,8 @@ export function searchReferencePlaces(query:string,context:PlaceResolutionContex
 }
 export const referenceSnapshotId=()=>data().manifest.snapshotId;
 
-// Explicit compatibility mapping, reviewed against the existing Tokyo
-// Discovery tuple and GeoNames 1850147 in the pinned reference snapshot.
+// Explicit compatibility mappings reviewed against each authored Discovery
+// tuple and its exact GeoNames city in the pinned reference snapshot.
 // Every unmapped catalog/reference pair remains unresolved. Exact tuple
 // checks fail closed if either source changes; names or nearby points never
 // create another mapping. This is discovery projection, not saved identity.
@@ -110,6 +110,10 @@ const activityReferenceBindings:Readonly<Record<string,{
 }>>={
  tokyo:{referenceId:'reference:geonames:1850147',name:'Tokyo',countryCode:'JP',placeType:'city',
   catalogPoint:[139.6917,35.6895],referencePoint:[139.69171,35.6895]},
+ lima:{referenceId:'reference:geonames:3936456',name:'Lima',countryCode:'PE',placeType:'city',
+  catalogPoint:[-77.0428,-12.0464],referencePoint:[-77.02824,-12.04318]},
+ bogota:{referenceId:'reference:geonames:3688689',name:'Bogotá',countryCode:'CO',placeType:'city',
+  catalogPoint:[-74.0721,4.711],referencePoint:[-74.08175,4.60971]},
 };
 
 /** Discovery projection from a pinned source identity. Caller coordinates are
