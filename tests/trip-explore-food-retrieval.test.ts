@@ -34,9 +34,10 @@ function harness(category = 'food') {
   const snapshots: Promise<unknown>[] = [];
   const state: Record<string, any> = { organicResults: [], commercialResults: [], organicStatus: 'idle', restaurantStatus: 'idle', commercialStatus: 'idle' };
   const scope: Record<string, any> = { ...explore, ...presentation, localSearchPayload, tripIntentForTrip, URLSearchParams,
-    initialResults: undefined, category, createAbortableEffectScope, discoveryTripRef: { current: trip },
+    initialResults: undefined, retryVersion: 0, category, createAbortableEffectScope, discoveryTripRef: { current: trip },
     destinationId: trip.stops[0]!.id, discoveryRequestKey: 'synthetic-route', requestScopeRef: { current: null },
-    laneResultsRef: { current: state }, trackEvent: () => {}, recommendationDurationMs: (a: number, b: number) => b - a,
+    laneResultsRef: { current: state }, sessionPending: false, commercialRequestScopeRef: { current: null },
+    commercialLifetimeRef: { current: {} }, reportSnapshot: () => {}, trackEvent: () => {}, recommendationDurationMs: (a: number, b: number) => b - a,
     replaceOrganicResults: (value: unknown[]) => { state.organicResults = value; },
     replaceCommercialResults: (value: unknown[]) => { state.commercialResults = value; },
     fetch: async (value: string) => { const request = { url: new URL(value, 'https://fixture.invalid'), response: deferred<any>() }; requests.push(request); return request.response.promise; },
@@ -47,8 +48,16 @@ function harness(category = 'food') {
     scope['set' + key[0]!.toUpperCase() + key.slice(1)] = (value: unknown) => { state[key] = value; };
   }
   for (const name of ['providerRequestBody', 'loadMappedPlaces', 'loadRestaurants', 'loadTours', 'loadDayTrips', 'loadOutdoors']) scope[name] = evaluate(extract('function', name), scope);
-  let cleanup: (() => void) | undefined;
-  const mount = () => { cleanup?.(); cleanup = evaluate(extract('effect', 'Explore organic and commercial discovery'), scope)(); };
+  let cleanups: Array<() => void> = [];
+  const mount = () => {
+    cleanups.forEach(dispose => dispose());
+    scope.commercialIdentity = JSON.stringify([scope.category, scope.destinationId, scope.discoveryRequestKey]);
+    scope.commercialLifetimeRef.current = { key: scope.commercialIdentity };
+    cleanups = ['organic', 'commercial'].flatMap(lane => {
+      const dispose = evaluate(extract('effect', `Explore ${lane} discovery`), scope)();
+      return dispose ? [dispose] : [];
+    });
+  };
   const reply = async (index: number, payload: unknown) => { requests[index]!.response.resolve({ ok: true, json: async () => payload }); await tick(); };
   const fail = async (index: number) => { requests[index]!.response.reject(new Error('synthetic provider unavailable')); await tick(); };
   const mapped = () => ({ places: [{ id: 'museum', title: 'Synthetic museum', area: 'Tokyo', type: 'Museum', tags: ['Culture'], description: 'A museum for visitors', qualityScore: 10, coordinates: [139.7, 35.7] }], assessment: { retrieval: 'completed', evidence: 'conditional', retryable: false } });
@@ -70,7 +79,7 @@ function harness(category = 'food') {
     for (const name of ['relevantStatuses', 'relevantAssessments', 'resultsPresentation', 'canRetry']) renderScope[name] = evaluate(extract('variable', name), renderScope);
     return { ...renderScope, visibleResults } as { visibleResults: explore.ExploreResult[]; resultsPresentation: string; canRetry: unknown };
   };
-  return { scope, state, requests, mount, retry, reply, fail, mapped, food, view, dispose: () => cleanup?.() };
+  return { scope, state, requests, mount, retry, reply, fail, mapped, food, view, dispose: () => cleanups.forEach(dispose => dispose()) };
 }
 
 for (const first of ['mapped', 'restaurant'] as const) test(`Food exposes restaurant failure and retry when ${first} settles first`, async () => {

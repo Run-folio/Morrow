@@ -25,7 +25,7 @@ function deferred<T>() { let resolve!: (value: T) => void; const promise = new P
 
 // Execute the real component effects and request boundaries with a deterministic
 // hook scheduler. Only browser, analytics and child UI boundaries are replaced.
-function mount(t: any, path: string, props: any, respond: (url: string, init: any) => Promise<Response> | Response) {
+function mount(t: any, path: string, props: any, respond: (url: string, init: any) => Promise<Response> | Response, auth: { data: any; isPending: boolean } = { data: null, isPending: false }) {
   const values: any[] = [], cleanups = new Map<number, (() => void) | undefined>();
   let cursor = 0, dirty = false, pending: Array<() => void> = [], tree: any;
   const same = (a: any[], b: any[]) => a?.length === b?.length && a.every((value, index) => Object.is(value, b[index]));
@@ -48,6 +48,7 @@ function mount(t: any, path: string, props: any, respond: (url: string, init: an
   const mod = { exports: {} as any };
   new Function('require', 'module', 'exports', output)((id: string) => {
     if (id === 'react') return hooks;
+    if (id === '@/lib/auth-client') return { authClient: { useSession: () => auth } };
     if (id === '@/lib/analytics') return { trackEvent: (...args: any[]) => events.push(args) };
     if (id.endsWith('/trip-shell-client') || id === './trip-shell-client') return { useTripShellMutation: () => ({ trip: props.trip, error: null, isPending: () => false, mutateTrip: () => true }) };
     if (id.endsWith('/morrovia-loading-states') || id === './morrovia-loading-states') return { MorroviaSectionStatus: Status, MorroviaSkeleton: () => null };
@@ -67,7 +68,7 @@ function mount(t: any, path: string, props: any, respond: (url: string, init: an
   const settle = async () => { for (let i = 0; i < 12; i++) { await Promise.resolve(); render(); } };
   t.after(() => { cleanups.forEach(cleanup => cleanup?.()); globalThis.fetch = before.fetch; (globalThis as any).window = before.window; (globalThis as any).sessionStorage = before.sessionStorage; });
   render();
-  return { calls, events, render, settle, statuses, text, nodes, props };
+  return { calls, events, render, settle, statuses, text, nodes, props, auth };
 }
 function refinementProps(base = fixture()) { return { trip: base, stop: base.stops[0], day: base.planItems[0], onSelectionChange() {}, activityAction: null }; }
 function inventoryProps(base = fixture()) { return { trip: base, stop: base.stops[0], day: base.planItems[0], workspace: 'map', placement: 'controlled', onSave: () => true, onSchedule: () => true, fallback: 'Generic provider handoff' }; }
@@ -231,4 +232,69 @@ test('Food retry requests fresh venues and clears its failed state when a useful
  const nextRequests=view.calls.filter(c=>c.url.includes('journey-local-search'));
  assert.ok(nextRequests.length>requests.length,'the new stop must actually issue its own request');
  assert.equal(new URL(nextRequests.at(-1)!.url,'http://fixture').searchParams.has('refresh'),false);
+});
+
+for (const category of ['tours', 'for-you']) test(`Explore ${category} recovers guest denial on sign-in without tab switching or organic restart`, async t => {
+  const base=fixture(),before=JSON.stringify(base);
+  const auth:{data:any;isPending:boolean}={data:null,isPending:false};
+  const view=mount(t,'components/easyt/trip-explore-workspace.tsx',{trip:base,initialCategory:category},url=>url.includes('journey-activity-inventory')
+    ? auth.data ? Response.json({activities:[activity]}) : Response.json({activities:[],assessment:assessment('blocked','auth_required')},{status:401})
+    : Response.json({places:category==='for-you'?[place]:[],assessment:assessment('completed')}),auth);
+  await view.settle();assert.equal(view.calls.filter(c=>c.url.includes('activity-inventory')).length,1);
+  const organic=view.calls.filter(c=>!c.url.includes('activity-inventory')).length;
+  auth.data={user:{id:'owner-a'}};view.render();await view.settle();
+  assert.equal(view.calls.filter(c=>c.url.includes('activity-inventory')).length,2,'settled sign-in must replace the guest request');
+  assert.match(view.text(),/Tokyo Museum tour/);assert.doesNotMatch(view.text(),/Sign in/);
+  assert.equal(view.calls.filter(c=>!c.url.includes('activity-inventory')).length,organic,'auth alone must not restart organic work');
+  assert.equal(JSON.stringify(view.props.trip),before);
+});
+test('Explore pending session leaves local ideas running and starts commercial once authentication settles',async t=>{
+  const auth:{data:any;isPending:boolean}={data:null,isPending:true};
+  const view=mount(t,'components/easyt/trip-explore-workspace.tsx',{trip:fixture()},url=>url.includes('activity-inventory')?Response.json({activities:[activity]}):Response.json({places:[place],assessment:assessment('completed')}),auth);
+  await view.settle();assert.match(view.text(),/Tokyo Museum/);assert.equal(view.calls.filter(c=>c.url.includes('activity-inventory')).length,0);
+  auth.data={user:{id:'owner-a'}};auth.isPending=false;view.render();await view.settle();
+  assert.equal(view.calls.filter(c=>c.url.includes('activity-inventory')).length,1);assert.match(view.text(),/Tokyo Museum tour/);
+});
+test('Explore account switch retires old request and ignores its late denial after current results',async t=>{
+  const old=deferred<Response>(),auth:{data:any;isPending:boolean}={data:{user:{id:'owner-a'}},isPending:false};let calls=0;
+  const view=mount(t,'components/easyt/trip-explore-workspace.tsx',{trip:fixture(),initialCategory:'tours'},()=>++calls===1?old.promise:Response.json({activities:[{...activity,title:'Owner B tour',providerProductId:'OWNER-B'}]}),auth);
+  await view.settle();auth.data={user:{id:'owner-b'}};view.render();await view.settle();
+  assert.equal(view.calls.length,2);assert.equal(view.calls[0]!.init.signal.aborted,true);assert.match(view.text(),/Owner B tour/);
+  old.resolve(Response.json({activities:[],assessment:assessment('blocked','auth_required')},{status:401}));await view.settle();
+  assert.match(view.text(),/Owner B tour/);assert.doesNotMatch(view.text(),/Sign in/);
+});
+test('Explore sign-out clears previous commercial results and rejects late former-account success',async t=>{
+  const old=deferred<Response>(),auth:{data:any;isPending:boolean}={data:{user:{id:'owner-a'}},isPending:false};let calls=0;
+  const view=mount(t,'components/easyt/trip-explore-workspace.tsx',{trip:fixture(),initialCategory:'tours'},()=>++calls===1?old.promise:Response.json({activities:[],assessment:assessment('blocked','auth_required')},{status:401}),auth);
+  await view.settle();auth.data=null;view.render();await view.settle();assert.equal(view.calls.length,2);assert.equal(view.calls[0]!.init.signal.aborted,true);
+  old.resolve(Response.json({activities:[activity]}));await view.settle();assert.doesNotMatch(view.text(),/Tokyo Museum tour/);assert.match(view.text(),/Sign in/);
+});
+test('Explore clears already rendered commercial results while a new auth scope is still pending',async t=>{
+  const auth:{data:any;isPending:boolean}={data:{user:{id:'owner-a'}},isPending:false};
+  const view=mount(t,'components/easyt/trip-explore-workspace.tsx',{trip:fixture(),initialCategory:'tours'},()=>Response.json({activities:[activity]}),auth);
+  await view.settle();assert.match(view.text(),/Tokyo Museum tour/);const count=view.calls.length;
+  auth.data=null;auth.isPending=true;view.render();await view.settle();assert.doesNotMatch(view.text(),/Tokyo Museum tour/);assert.equal(view.calls.length,count);
+});
+test('Explore auth transition does not cancel an independent pending organic request',async t=>{
+  const organic=deferred<Response>(),auth:{data:any;isPending:boolean}={data:null,isPending:true};
+  const view=mount(t,'components/easyt/trip-explore-workspace.tsx',{trip:fixture()},url=>url.includes('activity-inventory')?Response.json({activities:[activity]}):organic.promise,auth);
+  await view.settle();assert.equal(view.calls.length,1);const signal=view.calls[0]!.init.signal;
+  auth.data={user:{id:'owner-a'}};auth.isPending=false;view.render();await view.settle();assert.equal(signal.aborted,false);assert.match(view.text(),/Tokyo Museum tour/);
+  organic.resolve(Response.json({places:[place],assessment:assessment('completed')}));await view.settle();assert.match(view.text(),/Tokyo Museum/);assert.equal(view.calls.filter(c=>c.url.includes('journey-discover')).length,1);
+});
+test('Explore ABA account transition cannot accept an older response from the same account id',async t=>{
+  const old=deferred<Response>(),auth:{data:any;isPending:boolean}={data:{user:{id:'owner-a'}},isPending:false};let calls=0;
+  const view=mount(t,'components/easyt/trip-explore-workspace.tsx',{trip:fixture(),initialCategory:'tours'},()=>++calls===1?old.promise:Response.json({activities:[{...activity,title:'Current auth generation tour',providerProductId:'CURRENT-GENERATION'}]}),auth);
+  await view.settle();auth.data={user:{id:'owner-b'}};view.render();await view.settle();auth.data={user:{id:'owner-a'}};view.render();await view.settle();assert.equal(view.calls.length,3);
+  old.resolve(Response.json({activities:[activity]}));await view.settle();assert.match(view.text(),/Current auth generation tour/);assert.doesNotMatch(view.text(),/Tokyo Museum tour/);
+});
+
+test('Explore seeded commercial results survive category navigation without fetching', async t => {
+  const { exploreResultForActivity } = require(resolve('lib/easyt/explore.ts'));
+  const base=fixture(),seeded=exploreResultForActivity(base.stops[0],activity,base);
+  const view=mount(t,'components/easyt/trip-explore-workspace.tsx',{trip:base,initialResults:[seeded],initialCategory:'for-you'},()=>{throw new Error('seed mode must not fetch');});
+  await view.settle();assert.match(view.text(),/Tokyo Museum tour/);
+  const tours=view.nodes().find(n=>n.type===Button&&n.props.children==='Tours');assert.ok(tours);
+  tours.props.onClick();view.render();await view.settle();
+  assert.match(view.text(),/Tokyo Museum tour/);assert.equal(view.calls.length,0);
 });

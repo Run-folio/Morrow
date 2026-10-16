@@ -29,7 +29,7 @@ function harness(queued = false) {
     idea: { ...first.idea, id: 'second-museum', placeId: 'second-museum', title: 'Second museum' }, title: 'Second museum' };
   const states: any[] = [], cleanup: Array<() => void> = [], mountEffects: Array<() => void | (() => void)> = [], queuedState: Array<() => void> = [];
   let deferState = false;
-  let discoveryEffect: (() => void | (() => void)) | undefined;
+  const discoveryEffects = new Map<string, () => void | (() => void)>();
   const sourceCallbacks: Array<(snapshot: explore.ExploreDiscoveryLaneSnapshot) => void> = [];
   let cursor = 0;
   const hooks = {
@@ -45,7 +45,9 @@ function harness(queued = false) {
     useMemo(factory: () => any) { return factory(); },
     useCallback(callback: any) { return callback; },
     useEffect(effect: () => void | (() => void), dependencies: unknown[]) {
-      if (effect.toString().includes('Explore organic and commercial discovery')) discoveryEffect = effect;
+      for (const lane of ['organic', 'commercial']) {
+        if (effect.toString().includes(`Explore ${lane} discovery`)) discoveryEffects.set(lane, effect);
+      }
       const index = cursor++;
       if (!(index in states)) {
         states[index] = true;
@@ -72,7 +74,7 @@ function harness(queued = false) {
     },
   };
   const imports: Record<string, any> = {
-    react: hooks, 'lucide-react': new Proxy({}, { get: () => () => null }),
+    react: hooks, '@/lib/auth-client': { authClient: { useSession: () => ({ data: null, isPending: false }) } }, 'lucide-react': new Proxy({}, { get: () => () => null }),
     '@/lib/analytics': { trackEvent: (name: string, data: Record<string, unknown>) => events.push({ name, data }) },
     '@/lib/easyt/local-place': localPlace, '@/lib/easyt/trip': tripModel, '@/lib/easyt/explore': { ...explore,
       streamExploreDiscoveryLane: (_requests: unknown[], snapshot: (snapshot: explore.ExploreDiscoveryLaneSnapshot) => void) => {
@@ -136,8 +138,8 @@ function harness(queued = false) {
     deferState: () => { deferState = true; },
     flushState: () => { deferState = false; queuedState.splice(0).forEach(update => update()); },
     startSyntheticDiscovery: () => {
-      initialResults = undefined; render(); assert.ok(discoveryEffect);
-      const dispose = discoveryEffect(); if (dispose) cleanup.push(dispose);
+      initialResults = undefined; render(); assert.equal(discoveryEffects.size, 2);
+      for (const effect of discoveryEffects.values()) { const dispose = effect(); if (dispose) cleanup.push(dispose); }
       assert.equal(sourceCallbacks.length, 2);
       sourceCallbacks[0]!({ results: [first, second], status: 'ready', pendingCount: 0, failedCount: 0 }); render();
       events.length = 0;

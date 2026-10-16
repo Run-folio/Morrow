@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { trackEvent } from "@/lib/analytics";
+import { authClient } from "@/lib/auth-client";
 import { itineraryAddSourceForIdea, newlyScheduledItineraryIdea } from "@/lib/easyt/itinerary-add-analytics";
 import { JourneyRouteStopTrack } from "@/components/journey-planner-strip";
 import type { ActivityInventoryItem } from "@/lib/easyt/activity-inventory";
@@ -285,6 +286,8 @@ export default function TripExploreWorkspace({
 }: TripExploreWorkspaceProps) {
   const mutation = useTripShellMutation();
   const workingTrip = mutation.trip;
+  const { data: session, isPending: sessionPending } = authClient.useSession();
+  const sessionOwnerId = session?.user?.id ?? null;
   const discoveryRequestKey = exploreDiscoveryRequestKey(workingTrip);
   const discoveryTripRef = useRef(workingTrip);
   if (exploreDiscoveryRequestKey(discoveryTripRef.current) !== discoveryRequestKey) discoveryTripRef.current = workingTrip;
@@ -292,11 +295,21 @@ export default function TripExploreWorkspace({
   const [destinationId, setDestinationId] = useState<string | null>(() => resolveExploreDestinationId(destinations, initialDestinationId));
   const normalizedInitialCategory = normalizeExploreCategory(initialCategory);
   const [category, setCategory] = useState<ExplorePrimaryCategory>(normalizedInitialCategory);
+  const activeSourcePlan = exploreSourcePlan(category, workingTrip);
+  // Seeded fixtures contain all categories and destinations; auth still bounds their visibility.
+  const commercialIdentity = JSON.stringify([initialResults ? "seeded" : category, initialResults ? null : destinationId, discoveryRequestKey, sessionPending, sessionOwnerId]);
+  const commercialLifetimeRef = useRef({ key: commercialIdentity });
+  if (commercialLifetimeRef.current.key !== commercialIdentity) commercialLifetimeRef.current = { key: commercialIdentity };
+  const commercialRequestScopeRef = useRef<string | null>(null);
+  const [commercialResultIdentity, setCommercialResultIdentity] = useState(commercialIdentity);
   const initialPlan = exploreSourcePlan(normalizedInitialCategory, trip);
   const initialOrganicResults = (initialResults ?? []).filter((result) => result.idea.source !== "live-provider-inventory");
   const initialCommercialResults = (initialResults ?? []).filter((result) => result.idea.source === "live-provider-inventory");
   const [organicResults, setOrganicResults] = useState<ExploreResult[]>(initialOrganicResults);
-  const [commercialResults, setCommercialResults] = useState<ExploreResult[]>(initialCommercialResults);
+  const [storedCommercialResults, setCommercialResults] = useState<ExploreResult[]>(initialCommercialResults);
+  // Retire rendered inventory synchronously when auth or request identity changes.
+  const commercialResults = useMemo(() => commercialResultIdentity === commercialIdentity ? storedCommercialResults : [],
+    [commercialResultIdentity, commercialIdentity, storedCommercialResults]);
   const [organicStatus, setOrganicStatus] = useState<ExploreDiscoveryLaneStatus>(initialResults
     ? initialOrganicState ?? (initialPlan.mapped || initialPlan.dayTrips || initialPlan.restaurants || initialPlan.outdoors ? initialOrganicResults.length ? "ready" : "empty" : "idle")
     : initialPlan.mapped || initialPlan.dayTrips || initialPlan.restaurants || initialPlan.outdoors ? "loading" : "idle");
@@ -305,11 +318,13 @@ export default function TripExploreWorkspace({
     ? initialResults ? initialOrganicState ?? (initialOrganicResults.some(result => result.kind === "restaurant") ? "ready" : "empty") : "loading"
     : "idle");
   const [restaurantAssessment, setRestaurantAssessment] = useState<PlanningEvidenceState>();
-  const [commercialStatus, setCommercialStatus] = useState<ExploreDiscoveryLaneStatus>(initialResults
+  const [storedCommercialStatus, setCommercialStatus] = useState<ExploreDiscoveryLaneStatus>(initialResults
     ? initialProviderState
     : initialPlan.tours ? "loading" : "idle");
   const [organicAssessment, setOrganicAssessment] = useState<PlanningEvidenceState>();
-  const [commercialAssessment, setCommercialAssessment] = useState<PlanningEvidenceState>();
+  const [storedCommercialAssessment, setCommercialAssessment] = useState<PlanningEvidenceState>();
+  const commercialAssessment = commercialResultIdentity === commercialIdentity ? storedCommercialAssessment : undefined;
+  const commercialStatus = commercialResultIdentity === commercialIdentity ? storedCommercialStatus : activeSourcePlan.tours ? "loading" : "idle";
   const [retryVersion, setRetryVersion] = useState(0);
   const requestScopeRef = useRef<{ key: string; retryVersion: number } | null>(null);
   const [selectedResultId, setSelectedResultId] = useState<string | null>(initialSelectedResultId ?? null);
@@ -333,7 +348,7 @@ export default function TripExploreWorkspace({
     [category, destinationId, results, workingTrip],
   );
   const actions = useExploreActionScope(JSON.stringify([
-    workingTrip.id, workingTrip.ownerId, discoveryRequestKey, destinationId, category,
+    workingTrip.id, workingTrip.ownerId, discoveryRequestKey, destinationId, category, sessionPending, sessionOwnerId,
     selectedResultId, selectedDayByResult, requestedDayNumber,
     workingTrip.planItems.map(day => [day.id, day.stopId, day.dayNumber, day.date]),
   ]), results);
@@ -352,6 +367,7 @@ export default function TripExploreWorkspace({
     setOrganicResults(next);
   };
   const replaceCommercialResults = (next: ExploreResult[]) => {
+    setCommercialResultIdentity(commercialIdentity);
     laneResultsRef.current.commercialResults = next;
     actions.replaceSources(projectExploreResults(laneResultsRef.current.organicResults, next, laneResultsRef.current.persistedResults));
     setCommercialResults(next);
@@ -390,7 +406,6 @@ export default function TripExploreWorkspace({
     () => activeDestination ? exploreOpportunityForTrip(workingTrip, activeDestination.id) : null,
     [activeDestination, workingTrip],
   );
-  const activeSourcePlan = exploreSourcePlan(category, workingTrip);
   const navigationStops = useMemo(
     () => destinationId
       ? routeTimelineStopsForTrip(workingTrip, { scopeId: destinationId })
@@ -412,9 +427,33 @@ export default function TripExploreWorkspace({
     window.requestAnimationFrame(() => origin?.focus());
   }, [retireActionIntent]);
 
+  const metricsKey = JSON.stringify([category, destinationId, discoveryRequestKey, retryVersion]);
+  const discoveryMetricsRef = useRef({ key: metricsKey, firstUsefulReported: false });
+  if (discoveryMetricsRef.current.key !== metricsKey) discoveryMetricsRef.current = { key: metricsKey, firstUsefulReported: false };
+
+  const discoveryMetrics = discoveryMetricsRef.current;
+  const recommendationKind = category === "food" ? "restaurant" as const
+    : category === "for-you" ? "mixed" as const
+      : "activity" as const;
+  const reportSnapshot = (lane: "core" | "commercial", snapshot: ExploreDiscoveryLaneSnapshot, startedAt: number) => {
+    const properties = {
+      surface: "explore" as const,
+      recommendation_kind: recommendationKind,
+      lane,
+      duration_ms: recommendationDurationMs(startedAt, performance.now()),
+      result_count: snapshot.results.length,
+      outcome: snapshot.status === "degraded" ? "unavailable" as const : snapshot.results.length ? "ready" as const : "empty" as const,
+    };
+    if (snapshot.results.length && !discoveryMetrics.firstUsefulReported) {
+      discoveryMetrics.firstUsefulReported = true;
+      trackEvent("recommendation_performance", { ...properties, milestone: "first_useful" });
+    }
+    if (snapshot.pendingCount === 0) trackEvent("recommendation_performance", { ...properties, milestone: "lane_ready" });
+  };
+
   useEffect(() => {
     if (initialResults) return;
-    const scope = createAbortableEffectScope("Explore organic and commercial discovery");
+    const scope = createAbortableEffectScope("Explore organic discovery");
     const discoveryTrip = discoveryTripRef.current;
     const discoveryDestinations = exploreDestinationOptions(discoveryTrip);
     const scopedStops = destinationId
@@ -422,33 +461,12 @@ export default function TripExploreWorkspace({
       : [];
     const plan = exploreSourcePlan(category, discoveryTrip);
     const startedAt = performance.now();
-    let firstUsefulReported = false;
-    const recommendationKind = category === "food" ? "restaurant" as const
-      : category === "for-you" ? "mixed" as const
-        : "activity" as const;
-    const reportSnapshot = (lane: "core" | "commercial", snapshot: ExploreDiscoveryLaneSnapshot) => {
-      const properties = {
-        surface: "explore" as const,
-        recommendation_kind: recommendationKind,
-        lane,
-        duration_ms: recommendationDurationMs(startedAt, performance.now()),
-        result_count: snapshot.results.length,
-        outcome: snapshot.status === "degraded" ? "unavailable" as const : snapshot.results.length ? "ready" as const : "empty" as const,
-      };
-      if (snapshot.results.length && !firstUsefulReported) {
-        firstUsefulReported = true;
-        trackEvent("recommendation_performance", { ...properties, milestone: "first_useful" });
-      }
-      if (snapshot.pendingCount === 0) trackEvent("recommendation_performance", { ...properties, milestone: "lane_ready" });
-    };
     const scopeKey = JSON.stringify([category, destinationId, discoveryRequestKey]);
     const sameScope = requestScopeRef.current?.key === scopeKey;
     const refresh = sameScope && requestScopeRef.current!.retryVersion !== retryVersion;
     const skipOrganic = !plan.restaurants && sameScope && organicAssessment?.retrieval !== "completed" && organicAssessment?.retryable === false;
-    const skipCommercial = sameScope && commercialAssessment?.retrieval !== "completed" && commercialAssessment?.retryable === false;
     if (!sameScope) {
       replaceOrganicResults([]);
-      replaceCommercialResults([]);
     }
     requestScopeRef.current = { key: scopeKey, retryVersion };
     if (!skipOrganic) setOrganicAssessment(undefined);
@@ -456,7 +474,6 @@ export default function TripExploreWorkspace({
       setRestaurantAssessment(undefined);
       setRestaurantStatus(scopedStops.length ? "loading" : "empty");
     }
-    if (!skipCommercial) setCommercialAssessment(undefined);
     const organicRequests = scopedStops.flatMap((stop) => [
       ...(plan.mapped ? [() => loadMappedPlaces(discoveryTrip, stop, scope.signal, assessment => scope.commit(() => setOrganicAssessment(assessment)))] : []),
       ...(plan.dayTrips ? [() => loadDayTrips(discoveryTrip, stop, scope.signal)] : []),
@@ -472,21 +489,50 @@ export default function TripExploreWorkspace({
       }] : []),
       ...(plan.outdoors ? [() => loadOutdoors(discoveryTrip, stop, scope.signal)] : []),
     ]);
-    const commercialRequests = scopedStops.flatMap((stop) => plan.tours
-      ? [() => loadTours(discoveryTrip, stop, scope.signal, assessment => scope.commit(() => setCommercialAssessment(assessment)))]
-      : []);
     if (!skipOrganic) void streamExploreDiscoveryLane(organicRequests, (snapshot) => scope.commit(() => {
       replaceOrganicResults(snapshot.results.length ? snapshot.results : snapshot.pendingCount || snapshot.failedCount ? laneResultsRef.current.organicResults : []);
       setOrganicStatus(snapshot.status);
-      if (organicRequests.length) reportSnapshot("core", snapshot);
-    }));
-    if (!skipCommercial) void streamExploreDiscoveryLane(commercialRequests, (snapshot) => scope.commit(() => {
-      replaceCommercialResults(snapshot.results.length ? snapshot.results : snapshot.pendingCount || snapshot.failedCount ? laneResultsRef.current.commercialResults : []);
-      setCommercialStatus(snapshot.status);
-      if (commercialRequests.length) reportSnapshot("commercial", snapshot);
+      if (organicRequests.length) reportSnapshot("core", snapshot, startedAt);
     }));
     return () => scope.dispose();
   }, [category, destinationId, discoveryRequestKey, initialResults, retryVersion]);
+
+  useEffect(() => {
+    if (initialResults) return;
+    const scope = createAbortableEffectScope("Explore commercial discovery");
+    const lifetime = commercialLifetimeRef.current;
+    const commit = (publish: () => void) => {
+      if (commercialLifetimeRef.current === lifetime) scope.commit(publish);
+    };
+    const sameScope = commercialRequestScopeRef.current === commercialIdentity;
+    const skipCommercial = sameScope && commercialAssessment?.retrieval !== "completed" && commercialAssessment?.retryable === false;
+    commercialRequestScopeRef.current = commercialIdentity;
+    if (!sameScope) {
+      replaceCommercialResults([]);
+      setCommercialAssessment(undefined);
+    }
+    const discoveryTrip = discoveryTripRef.current;
+    const plan = exploreSourcePlan(category, discoveryTrip);
+    const scopedStops = destinationId
+      ? exploreDestinationOptions(discoveryTrip).filter((item) => item.id === destinationId).map((item) => item.stop)
+      : [];
+    if (sessionPending) {
+      setCommercialStatus(plan.tours && scopedStops.length ? "loading" : "idle");
+      return () => scope.dispose();
+    }
+    if (skipCommercial) return () => scope.dispose();
+    setCommercialAssessment(undefined);
+    const startedAt = performance.now();
+    const requests = scopedStops.flatMap((stop) => plan.tours
+      ? [() => loadTours(discoveryTrip, stop, scope.signal, assessment => commit(() => setCommercialAssessment(assessment)))]
+      : []);
+    void streamExploreDiscoveryLane(requests, (snapshot) => commit(() => {
+      replaceCommercialResults(snapshot.results.length ? snapshot.results : snapshot.pendingCount || snapshot.failedCount ? laneResultsRef.current.commercialResults : []);
+      setCommercialStatus(snapshot.status);
+      if (requests.length) reportSnapshot("commercial", snapshot, startedAt);
+    }));
+    return () => scope.dispose();
+  }, [category, destinationId, discoveryRequestKey, initialResults, retryVersion, commercialIdentity, sessionPending]);
 
   useEffect(() => {
     if (selectedResultId && !results.some((result) => result.identity === selectedResultId)) closeDetail();
