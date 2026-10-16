@@ -8,11 +8,12 @@ export function isStagingAfricaLatencyException(area: string, width: number, tri
     && ((width === 1440 && tripType === 'return_to_start') || (width === 390 && tripType === 'one_way'));
 }
 
-/** Only the owner-approved South Korea desktop acceptance timing, never functional checks. */
+/** Only explicit owner-approved South Korea timing contexts; never functional checks. */
 export function isStagingSouthKoreaLatencyException(area: string, width: number, tripType: string,
   environment: Record<string, string | undefined> = process.env): boolean {
-  return environment.MORROVIA_STAGING_SOUTH_KOREA_LATENCY_EXCEPTION === '1'
-    && environment.GITHUB_ACTIONS === 'true'
+  return environment.GITHUB_ACTIONS === 'true'
     && ['staging', 'codex/staging-africa-latency-exception'].includes(environment.GITHUB_REF_NAME ?? '')
-    && area === 'South Korea' && width === 1440 && tripType === 'return_to_start';
+    && area === 'South Korea'
+    && ((environment.MORROVIA_STAGING_SOUTH_KOREA_LATENCY_EXCEPTION === '1' && width === 1440 && tripType === 'return_to_start')
+      || (environment.MORROVIA_STAGING_SOUTH_KOREA_MOBILE_LATENCY_EXCEPTION === '1' && width === 390 && tripType === 'one_way'));
 }

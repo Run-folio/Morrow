@@ -51,6 +51,7 @@ jobs:
           MORROVIA_BROWSER_ARTIFACT_DIR: core-journey-artifacts
           MORROVIA_STAGING_AFRICA_LATENCY_EXCEPTION: ${{ (github.ref_name == 'staging' || github.ref_name == 'codex/staging-africa-latency-exception') && '1' || '0' }}
           MORROVIA_STAGING_SOUTH_KOREA_LATENCY_EXCEPTION: ${{ (github.ref_name == 'staging' || github.ref_name == 'codex/staging-africa-latency-exception') && '1' || '0' }}
+          MORROVIA_STAGING_SOUTH_KOREA_MOBILE_LATENCY_EXCEPTION: ${{ (github.ref_name == 'staging' || github.ref_name == 'codex/staging-africa-latency-exception') && '1' || '0' }}
         run: |
           set -o pipefail
           npm run start -- -p 3100 > /tmp/morrovia-core-journey-next.log 2>&1 &
