@@ -11,6 +11,7 @@ import {
   EasyTTripPromotionConflictError,
   EasyTTripSaveConflictError,
   loadTripRecovery,
+  loadTripWorkspaceDocument,
   markTripRecoveryState,
   saveTripRecoveryToEasyT,
   saveTripToEasyT,
@@ -50,6 +51,10 @@ export default function TripShellResolver({
   const resolutionIdentity = JSON.stringify([ownerId ?? null, tripId]);
   const currentResolutionIdentityRef = useRef(resolutionIdentity);
   currentResolutionIdentityRef.current = resolutionIdentity;
+  // Only a current explicit account ACK may bridge incomplete device persistence.
+  // Retire it synchronously across owner/trip changes, including A→B→A.
+  const acknowledgedAccountRef = useRef<{identity:string;trip:EasyTTrip;deviceIncomplete:boolean}|null>(null);
+  if (acknowledgedAccountRef.current?.identity !== resolutionIdentity) acknowledgedAccountRef.current = null;
   const requestGenerationRef = useRef(0);
   const mountedRef = useRef(true);
   const [resolution, setResolution] = useState<Resolution>({ status: "loading", identity: resolutionIdentity });
@@ -60,7 +65,7 @@ export default function TripShellResolver({
   const [syncing, setSyncing] = useState(false);
   const [showingCanonicalConflict, setShowingCanonicalConflict] = useState(false);
 
-  const resolveAndPromote = useCallback(async () => {
+  const resolveAndPromote = useCallback(async (retryAcknowledgedSave = false) => {
     const requestIdentity = resolutionIdentity;
     const requestGeneration = ++requestGenerationRef.current;
     const responseIsCurrent = () => mountedRef.current && currentResolutionIdentityRef.current === requestIdentity
@@ -70,16 +75,19 @@ export default function TripShellResolver({
       ? current : { status: "loading", identity: requestIdentity });
     setSyncIssue(null);
     setSyncComplete(false);
-    setDeviceContinuationIncomplete(false);
+    setDeviceContinuationIncomplete(acknowledgedAccountRef.current?.deviceIncomplete ?? false);
     setShowingCanonicalConflict(false);
     let recovery;
+    let localTrip: EasyTTrip;
     try {
-      if (ownerId && searchParams.get("saved") === "1") {
+      if (ownerId && (searchParams.get("saved") === "1"
+        || retryAcknowledgedSave && acknowledgedAccountRef.current?.identity === requestIdentity)) {
         const guest=await loadTripRecovery(tripId,null);
         if(!responseIsCurrent())return;
         if(guest){
           const saved=await saveExplicitGuestTripForOwner(tripId,ownerId,responseIsCurrent);
           if(!responseIsCurrent())return;
+          if (saved.accountAcknowledged) acknowledgedAccountRef.current = saved.deviceComplete ? null : {identity:requestIdentity,trip:saved.trip,deviceIncomplete:true};
           setResolution({status:'found',identity:requestIdentity,trip:saved.trip});
           setSyncComplete(saved.accountAcknowledged);
           setShowingCanonicalConflict(false);
@@ -87,21 +95,33 @@ export default function TripShellResolver({
           return;
         }
       }
-      recovery = await loadTripRecovery(tripId, ownerId ?? null);
+      const document = await loadTripWorkspaceDocument(tripId, ownerId ?? null);
+      if (!responseIsCurrent()) return;
+      if (!document) {
+        const acknowledged = acknowledgedAccountRef.current;
+        if (acknowledged?.identity === requestIdentity) {
+          setResolution({status:'found',identity:requestIdentity,trip:acknowledged.trip});
+          setSyncComplete(true);
+          setDeviceContinuationIncomplete(acknowledged.deviceIncomplete);
+        } else setResolution({status:'missing',identity:requestIdentity});
+        return;
+      }
+      const acknowledged = acknowledgedAccountRef.current;
+      if (acknowledged && (document.recovery || JSON.stringify(document.trip) !== JSON.stringify(acknowledged.trip))) {
+        acknowledgedAccountRef.current = null;
+        setDeviceContinuationIncomplete(false);
+      }
+      localTrip = document.trip;
+      recovery = document.recovery;
     } catch (error) {
       if (responseIsCurrent()) setResolution({ status: "blocked", identity: requestIdentity,
         kind: error instanceof BrowserRecoveryReadError ? error.kind : "unavailable" });
       return;
     }
     if (!responseIsCurrent()) return;
-    if (!recovery) {
-      setResolution({ status: "missing", identity: requestIdentity });
-      return;
-    }
-    const localTrip = recovery.trip;
-
     setResolution({ status: "found", identity: requestIdentity, trip: localTrip });
-    if (!ownerId) return;
+    // Acknowledged document reads never start another account write.
+    if (!recovery || !ownerId) return;
     const scopedLocalTrip = tripForRecoveryScope(localTrip, recovery);
     if (!scopedLocalTrip) {
       setSyncIssue("auth");
@@ -188,7 +208,7 @@ export default function TripShellResolver({
     {syncComplete ? <MorroviaStatusBanner className={styles.resolverNotice} tone="success" title="Saved to your account" /> : null}
     {deviceContinuationIncomplete ? <MorroviaStatusBanner className={styles.resolverNotice} tone="warning" title="Device save incomplete"
       detail="Your account copy is saved. Earlier device copies remain protected."
-      actions={<EasyTButton size="small" variant="secondary" onClick={() => void resolveAndPromote()}>Try again</EasyTButton>} /> : null}
+      actions={<EasyTButton size="small" variant="secondary" onClick={() => void resolveAndPromote(true)}>Try again</EasyTButton>} /> : null}
     {syncIssue ? <MorroviaStatusBanner
       className={styles.resolverNotice}
       tone={syncIssue === "failed" ? "warning" : syncIssue === "conflict" ? "warning" : "danger"}

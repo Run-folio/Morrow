@@ -222,13 +222,14 @@ test('an unconfirmed device ACK retains account authority but holds further acco
 function resolverHarness(overrides: Record<string, any> = {}) {
   const schedule = scheduler();
   let props = { tripId: 'async-shell-trip', ownerId: 'owner-a' as string | undefined, children: null };
-  const search = new URLSearchParams();
+  let search = new URLSearchParams();
   const cloud: any[] = [];
   let missing = 0;
   const Shell = () => null, Banner = () => null;
   const storage = {
     BrowserRecoveryReadError,
-    loadTripRecovery: async (tripId: string, ownerId: string) => ({ tripId, ownerId, writeId: 'recovery', trip: { ...canonicalRouteFixture(), id: tripId, ownerId } }),
+    loadTripRecovery: async (tripId: string, ownerId: string | null) => ({ tripId, ownerId, writeId: 'recovery', trip: { ...canonicalRouteFixture(), id: tripId, ownerId } }),
+    loadTripWorkspaceDocument: async (tripId: string, ownerId: string | null) => { const recovery = await storage.loadTripRecovery(tripId, ownerId); return recovery ? { trip: recovery.trip, recovery } : null; },
     claimGuestTripRecoveryForOwner: async () => null,
     tripForRecoveryScope: (trip: any) => trip,
     saveTripToEasyT: async (trip: any) => { cloud.push(trip); return trip; },
@@ -252,6 +253,7 @@ function resolverHarness(overrides: Record<string, any> = {}) {
     './trip-shell': { default: Shell }, './trip-shell.module.css': { default: {} },
   }).default;
   return { render: () => schedule.render(component, props), unmount: () => schedule.unmount(), search, Shell, Banner, cloud,
+    setSearch: (query: string) => { search = new URLSearchParams(query); },
     setOwner: (ownerId: string | undefined) => { props = { ...props, ownerId }; }, missing: () => missing };
 }
 function findNode(node: any, type: any): any {
@@ -388,4 +390,96 @@ test('resolver retains account Saved truth after optional cache refusal and keep
   const node = h.render();
   assert.equal(findNode(node, h.Banner)?.props.title, 'Saved to your account');
   assert.equal(findNode(node, h.Shell)?.props.cacheTrip, true);
+});
+
+
+test('acknowledged account document remains available after explicit save and ordinary navigation', async () => {
+  const trip = { ...canonicalRouteFixture(), id: 'async-shell-trip', ownerId: 'owner-a' };
+  let promotions = 0;
+  const reads: Array<string | null> = [];
+  const h = resolverHarness({
+    loadTripRecovery: async (_id: string, owner: string | null) => { reads.push(owner); return owner === null ? { trip: { ...trip, ownerId: null } } : null; },
+    loadTripWorkspaceDocument: async (id: string, owner: string | null) => { assert.equal(id, trip.id); assert.equal(owner, trip.ownerId); return { trip, recovery: null }; },
+    saveExplicitGuestTripForOwner: async () => { promotions++; return { trip, accountAcknowledged: true, deviceComplete: true }; },
+  });
+  h.search.set('saved', '1'); h.render(); await tick();
+  assert.equal(findNode(h.render(), h.Banner)?.props.title, 'Saved to your account');
+  for (const query of ['', 'stop=owned-stop', 'day=2', 'leg=owned-leg', 'mode=plan&returnTo=%2Fjourney%2Fasync-shell-trip']) {
+    h.setSearch(query); h.render(); await tick();
+    assert.equal(findNode(h.render(), h.Shell)?.props.trip, trip);
+    assert.equal(h.missing(), 0);
+  }
+  assert.equal(promotions, 1, 'ordinary navigation never repeats guest promotion');
+  assert.deepEqual(reads.filter(owner => owner === null), [null]);
+  assert.equal(h.cloud.length, 0, 'acknowledged document reads do not queue account writes');
+});
+
+test('fresh resolver reopen renders an owner-scoped acknowledged document without saving it again', async () => {
+  const trip = { ...canonicalRouteFixture(), id: 'async-shell-trip', ownerId: 'owner-a' };
+  const h = resolverHarness({ loadTripRecovery: async () => null, loadTripWorkspaceDocument: async () => ({ trip, recovery: null }) });
+  h.render(); await tick(); assert.equal(findNode(h.render(), h.Shell)?.props.trip, trip);
+  assert.equal(h.missing(), 0); assert.equal(h.cloud.length, 0);
+});
+
+
+test('account ACK without device continuation survives navigation with its incomplete warning', async () => {
+  const trip = { ...canonicalRouteFixture(), id: 'async-shell-trip', ownerId: 'owner-a' };
+  const h = resolverHarness({loadTripRecovery: async () => ({trip: {...trip, ownerId: null}}), loadTripWorkspaceDocument: async () => null,
+    saveExplicitGuestTripForOwner: async () => ({trip, accountAcknowledged: true, deviceComplete: false})});
+  h.search.set('saved', '1'); h.render(); await tick(); assert.ok(findNode(h.render(), h.Shell));
+  h.setSearch('stop=owned-stop'); h.render(); await tick();
+  const node = h.render(); assert.equal(findNode(node, h.Shell)?.props.trip, trip); assert.equal(h.missing(), 0);
+  const banners = (function collect(n:any):any[]{return !n?[]:Array.isArray(n)?n.flatMap(collect):[...(n.type===h.Banner?[n]:[]),...collect(n.props?.children)]})(node);
+  assert.ok(banners.some(n=>n.props.title==='Device save incomplete'));
+  h.setOwner('owner-b'); h.render(); await tick(); assert.throws(()=>h.render(), /not found/);
+  h.setOwner('owner-a'); h.render(); await tick(); assert.throws(()=>h.render(), /not found/, 'A→B→A retires earlier in-memory ACK');
+});
+
+
+for (const kind of ['protected', 'unavailable']) test(`acknowledged result cannot bypass a ${kind} document read`, async () => {
+  const trip = { ...canonicalRouteFixture(), id: 'async-shell-trip', ownerId: 'owner-a' };
+  const h = resolverHarness({loadTripRecovery: async () => ({trip: {...trip, ownerId: null}}), loadTripWorkspaceDocument: async () => {throw new BrowserRecoveryReadError(kind)},
+    saveExplicitGuestTripForOwner: async () => ({trip, accountAcknowledged:true,deviceComplete:false})});
+  h.search.set('saved','1'); h.render(); await tick(); assert.ok(findNode(h.render(),h.Shell));
+  h.setSearch('');h.render();await tick();const node=h.render();
+  assert.equal(findNode(node,h.Shell),null);assert.equal(h.missing(),0);
+  assert.equal(findNode(node,h.Banner)?.props.title,kind==='protected'?'Device changes need review':'Device storage unavailable');
+});
+
+test('one document observation keeps a current pending recovery on its existing save path', async () => {
+  const trip = {...canonicalRouteFixture(),id:'async-shell-trip',ownerId:'owner-a'};
+  const recovery = {trip,tripId:trip.id,ownerId:trip.ownerId,writeId:'new-pending'};
+  let reads=0;
+  const h = resolverHarness({loadTripRecovery:async()=>assert.fail('ordinary document read must not split into a separate recovery observation'),
+    loadTripWorkspaceDocument: async()=>{reads++;return {trip,recovery}}});
+  h.render();await tick();assert.equal(findNode(h.render(),h.Shell)?.props.trip,trip);
+  assert.equal(reads,1);assert.deepEqual(h.cloud,[trip]);assert.equal(h.missing(),0);
+});
+
+test('late acknowledged-document read cannot cross an owner transition', async () => {
+  const read=deferred<any>();const ownerB={...canonicalRouteFixture(),id:'async-shell-trip',ownerId:'owner-b'};
+  const h=resolverHarness({loadTripWorkspaceDocument:(_id:string,owner:string)=>owner==='owner-a'?read.promise:Promise.resolve({trip:ownerB,recovery:null})});
+  h.render();h.setOwner('owner-b');h.render();await tick();
+  read.resolve({trip:{...ownerB,ownerId:'owner-a'},recovery:null});await tick();
+  assert.equal(findNode(h.render(),h.Shell)?.props.trip,ownerB);assert.equal(h.cloud.length,0);
+});
+
+
+test('incomplete account continuation retries only after the explicit retry action on an ordinary tab', async()=>{
+ const trip={...canonicalRouteFixture(),id:'async-shell-trip',ownerId:'owner-a'};let retries=0;
+ const h=resolverHarness({loadTripRecovery:async()=>({trip:{...trip,ownerId:null}}),loadTripWorkspaceDocument:async()=>null,
+ saveExplicitGuestTripForOwner:async()=>({trip,accountAcknowledged:true,deviceComplete:++retries>1})});
+ h.search.set('saved','1');h.render();await tick();h.setSearch('stop=stop');h.render();await tick();assert.equal(retries,1);
+ const banner=(function find(n:any):any{return !n?null:Array.isArray(n)?n.map(find).find(Boolean):n.type===h.Banner&&n.props.title==='Device save incomplete'?n:find(n.props?.children)})(h.render());
+ banner.props.actions.props.onClick();await tick();assert.equal(retries,2);assert.ok(findNode(h.render(),h.Shell));assert.equal(h.cloud.length,0);
+});
+
+test('a current pending document retires an incomplete earlier ACK before later missing reads',async()=>{
+ const trip={...canonicalRouteFixture(),id:'async-shell-trip',ownerId:'owner-a'};let document:any=null;
+ const h=resolverHarness({loadTripRecovery:async()=>({trip:{...trip,ownerId:null}}),loadTripWorkspaceDocument:async()=>document,
+ saveExplicitGuestTripForOwner:async()=>({trip,accountAcknowledged:true,deviceComplete:false})});
+ h.search.set('saved','1');h.render();await tick();
+ const newer={...trip,title:'Current device edit'};document={trip:newer,recovery:{trip:newer,ownerId:'owner-a',tripId:trip.id,writeId:'current'}};
+ h.setSearch('day=2');h.render();await tick();assert.equal(findNode(h.render(),h.Shell)?.props.trip.title,'Current device edit');
+ document=null;h.setSearch('day=3');h.render();await tick();assert.throws(()=>h.render(),/not found/);
 });

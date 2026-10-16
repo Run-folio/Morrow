@@ -17,9 +17,9 @@ let bundle: Promise<string> | undefined;
 async function builderBundle() {
   bundle ??= build({
     stdin: {
-      contents: `import React from 'react'; import {createRoot} from 'react-dom/client'; import Builder from './app/journey/new/trip-builder'; import Home from './app/journey/home/home-trip-starter'; import LegacyPlanner from './components/journey-map-planner-workspace'; import Resolver from './components/easyt/trip-shell-resolver'; import Explore from './components/easyt/trip-explore-workspace'; import Importer from './app/journey/new/import/spreadsheet-import-client'; import Overview from './components/easyt/trip-overview-workspace'; import Transport from './components/easyt/trip-transport-workspace'; import Itinerary from './components/easyt/trip-itinerary-workspace'; import {loadLocalTripFromStorage} from './lib/easyt/storage'; import TripShell from './components/easyt/trip-shell'; import {useTripShellTrip} from './components/easyt/trip-shell-client';
-      function WorkspaceFromShell(){const trip=useTripShellTrip();return location.pathname.endsWith('/explore')?React.createElement(Explore,{trip}):location.pathname.endsWith('/transport')?React.createElement(Transport,{trip}):location.pathname.endsWith('/itinerary')?React.createElement(Itinerary,{trip}):React.createElement(Overview,{trip,initialPrepActions:[],initialPrepReadinessCards:[],initialPrepProviderStatus:'available'});}
-      function App(){if(location.pathname==='/')return React.createElement(Home);if(location.pathname==='/journey/plan')return React.createElement(LegacyPlanner);if(location.pathname.endsWith('/import'))return React.createElement(Importer);if(location.pathname!=='/journey/new'){const tripId=decodeURIComponent(location.pathname.split('/')[2]??'');const trip=window.__BUILDER_TEST_CANONICAL_TRIP__??loadLocalTripFromStorage(localStorage,tripId,window.__BUILDER_TEST_OWNER__??null);return trip?React.createElement(TripShell,{trip,cacheTrip:Boolean(window.__BUILDER_TEST_CANONICAL_TRIP__),orientationAutoStart:false},React.createElement(WorkspaceFromShell)):React.createElement(Resolver,{tripId,ownerId:window.__BUILDER_TEST_OWNER__??undefined},React.createElement(WorkspaceFromShell));}return React.createElement(Builder);}
+      contents: `import React from 'react'; import {createRoot} from 'react-dom/client'; import Builder from './app/journey/new/trip-builder'; import Home from './app/journey/home/home-trip-starter'; import LegacyPlanner from './components/journey-map-planner-workspace'; import Resolver from './components/easyt/trip-shell-resolver'; import Explore from './components/easyt/trip-explore-workspace'; import Stay from './components/easyt/trip-stay-workspace'; import MapWorkspace from './components/easyt/trip-map-workspace'; import Importer from './app/journey/new/import/spreadsheet-import-client'; import Overview from './components/easyt/trip-overview-workspace'; import Transport from './components/easyt/trip-transport-workspace'; import Itinerary from './components/easyt/trip-itinerary-workspace'; import {loadLocalTripFromStorage} from './lib/easyt/storage'; import TripShell from './components/easyt/trip-shell'; import {useTripShellTrip} from './components/easyt/trip-shell-client';
+      function WorkspaceFromShell(){const trip=useTripShellTrip();return location.pathname.endsWith('/map')?React.createElement(MapWorkspace,{trip}):location.pathname.endsWith('/stay')?React.createElement(Stay,{trip}):location.pathname.endsWith('/explore')?React.createElement(Explore,{trip}):location.pathname.endsWith('/transport')?React.createElement(Transport,{trip}):location.pathname.endsWith('/itinerary')?React.createElement(Itinerary,{trip}):React.createElement(Overview,{trip,initialPrepActions:[],initialPrepReadinessCards:[],initialPrepProviderStatus:'available'});}
+      function App(){if(location.pathname==='/')return React.createElement(Home);if(location.pathname==='/journey/plan')return React.createElement(LegacyPlanner);if(location.pathname.endsWith('/import'))return React.createElement(Importer);if(location.pathname!=='/journey/new'){const tripId=decodeURIComponent(location.pathname.split('/')[2]??'');const trip=window.__BUILDER_TEST_CANONICAL_TRIP__??loadLocalTripFromStorage(localStorage,tripId,window.__BUILDER_TEST_OWNER__??null);return trip&&!window.__BUILDER_TEST_FORCE_RESOLVER__?React.createElement(TripShell,{trip,cacheTrip:Boolean(window.__BUILDER_TEST_CANONICAL_TRIP__),orientationAutoStart:false},React.createElement(WorkspaceFromShell)):React.createElement(Resolver,{tripId,ownerId:window.__BUILDER_TEST_OWNER__??undefined},React.createElement(WorkspaceFromShell));}return React.createElement(Builder);}
       createRoot(document.getElementById('root')).render(React.createElement(App));`,
       resolveDir: fileURLToPath(new URL("../../", import.meta.url)), loader: "tsx",
     },
@@ -61,6 +61,8 @@ export async function renderBuilder({
   ownerId,
   accountRequest,
   seedRecovery = true,
+  forceResolver = false,
+  simulatedSignIn = false,
   shellCanonicalTrip,
   discoveryRequest,
   transferRequest,
@@ -83,6 +85,8 @@ export async function renderBuilder({
   language?: "en" | "es";
   ownerId?: string;
   seedRecovery?: boolean;
+  forceResolver?: boolean;
+  simulatedSignIn?: boolean;
   shellCanonicalTrip?: { id: string; ownerId: string | null } & Record<string, unknown>;
   accountRequest?: (input:{method:string;path:string;trip:unknown}) => Promise<{status:number;body:unknown}> | {status:number;body:unknown};
   transferRequest?: (input:{legs:unknown[]}) => Promise<{status:number;body:unknown}> | {status:number;body:unknown};
@@ -172,6 +176,10 @@ export async function renderBuilder({
         : null);
       response.setHeader("Content-Type", "application/json"); response.end(JSON.stringify({ candidates: result ? [result] : [], places: [], result })); return;
     }
+    if (simulatedSignIn && request.url?.startsWith('/journey/login?')) {
+      response.setHeader('Content-Type','text/html');
+      response.end(`<button id="complete">Complete simulated sign in</button><script>document.getElementById('complete').onclick=()=>{sessionStorage.setItem('builder-fixture-owner','owner-a');location.assign(new URLSearchParams(location.search).get('next'))}</script>`);return;
+    }
     response.setHeader("Content-Type", "text/html; charset=utf-8");
     response.end(`<div id="root"></div><script>${script.replaceAll("</script>", "<\\/script>")}</script>`);
   });
@@ -182,6 +190,8 @@ export async function renderBuilder({
     : await chromium.launch({ channel: process.env.MORROVIA_BROWSER_CHANNEL ?? "chrome", headless: true });
   const page = await browser.newPage();
   if(ownerId) await page.addInitScript((owner:string)=>{(window as Window & {__BUILDER_TEST_OWNER__?:string}).__BUILDER_TEST_OWNER__=owner},ownerId);
+  if (forceResolver) await page.addInitScript(() => { (window as Window & {__BUILDER_TEST_FORCE_RESOLVER__?:boolean}).__BUILDER_TEST_FORCE_RESOLVER__ = true; });
+  if (simulatedSignIn) await page.addInitScript(() => { (window as Window & {__BUILDER_TEST_OWNER__?:string}).__BUILDER_TEST_OWNER__ = sessionStorage.getItem('builder-fixture-owner') ?? undefined; });
   const errors: string[] = [];
   page.on("pageerror", (error: Error) => errors.push(error.message));
   if (geocodeDelayMs > 0) await page.route("**/api/journey-geocode?**", async (route: { continue: () => Promise<void> }) => {

@@ -1322,6 +1322,14 @@ export function observeRememberedOwner(publish: (owner: string | null) => void, 
   };
 }
 
+/** One protected broker observation: an acknowledged document may have no pending recovery. */
+export async function loadTripWorkspaceDocument(tripId:string,ownerId:string|null):Promise<{trip:EasyTTrip;recovery:TripRecoveryRecord|null}|null> {
+  if(typeof window==='undefined')return null;
+  const read=await (await browserTripPersistence(ownerId)).read(tripId);
+  if(read.kind==='protected'||read.kind==='unavailable')throw new BrowserRecoveryReadError(read.kind,read.reason);
+  return read.kind==='found'?{trip:read.trip,recovery:read.recovery}:null;
+}
+
 export async function loadTripRecovery(tripId:string,ownerId:string|null):Promise<TripRecoveryRecord|null> {
   if(typeof window==='undefined')return null;
   const read=await (await browserTripPersistence(ownerId)).read(tripId);
