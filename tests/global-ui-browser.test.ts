@@ -251,7 +251,7 @@ test('Add panel explains duration filtering without treating returned products a
   } finally { await browser.close(); }
 });
 
-test('Transport rows and global summary distinguish pending, settled unknown, failed and supported results', { skip: !url, timeout: 90_000 }, async () => {
+test('Builder completion and transport rows distinguish pending, settled unknown, failed and supported results', { skip: !url, timeout: 90_000 }, async () => {
   const browser = await chromium.launch({ channel: 'chrome', headless: true });
   try {
     const page = await browser.newPage();
@@ -261,18 +261,19 @@ test('Transport rows and global summary distinguish pending, settled unknown, fa
         await page.goto(`${url}/iframe.html?id=morrovia-05-product-patterns-builder-route-allocation--transport-${state}&viewMode=story`);
         await page.getByText('Tokyo', { exact: true }).first().waitFor();
         const text = await page.locator('main').innerText();
-        assert.doesNotMatch(text, /Details up to date/);
+        const header = state === 'pending' ? /Updating details/ : state === 'failed' || state === 'timeout' ? /Details need retry/ : state === 'blocked' ? /Review needed/ : /Details up to date/;
+        assert.match(text, header);
         if (state === 'pending') assert.match(text, /Checking transport options/);
         else assert.doesNotMatch(text, /Checking transport options/);
-        if (state === 'settled-unknown') assert.match(text, /0 of 2 transfers · 2 need checking/);
+        if (state === 'settled-unknown') assert.match(text, /Transfer needs checking/);
         if (state === 'failed') {
-          assert.match(text, /2 could not be checked/);
+          assert.match(text, /Could not check/);
           assert.equal(await page.getByRole('button', { name: 'Try again', exact: true }).count(), 2);
         }
-        if (state === 'supported') { assert.match(text, /2 of 2 transfers/); assert.match(text, /Rail/); }
-        if (state === 'blocked') { assert.match(text, /2 could not be checked/); assert.equal(await page.getByRole('button', { name: 'Try again', exact: true }).count(), 0); }
+        if (state === 'supported') { assert.match(text, /Rail/); }
+        if (state === 'blocked') { assert.match(text, /Review needed/); assert.equal(await page.getByRole('button', { name: 'Try again', exact: true }).count(), 0); }
         if (state === 'timeout') { assert.match(text, /timed out/); assert.equal(await page.getByRole('button', { name: 'Try again', exact: true }).count(), 2); }
-        if (state === 'no-route' || state === 'not-attempted') { assert.match(text, /0 of 2 transfers · 2 need checking/); assert.equal(await page.getByRole('button', { name: 'Try again', exact: true }).count(), 0); }
+        if (state === 'no-route' || state === 'not-attempted') { assert.match(text, /Transfer needs checking/); assert.equal(await page.getByRole('button', { name: 'Try again', exact: true }).count(), 0); }
         assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
         await capture(page, `transport-${state}-${width}`);
       }
@@ -442,4 +443,25 @@ test('Activity unavailable presentation is consistent for Tokyo, Cusco, Rome and
       await capture(page, `activity-${name}-unavailable-${index % 2 ? 1440 : 390}`);
     }
   } finally { await browser.close(); }
+});
+
+
+test('Main Africa planning control retains four flights and the unresolved transfer on mobile and desktop', {skip: !url, timeout: 60_000}, async () => {
+  const browser = await chromium.launch({channel: 'chrome', headless: true});
+  try {
+    const page = await browser.newPage();
+    for (const width of [390, 1440]) for (const language of ['en', 'es']) {
+      await page.setViewportSize({width, height: 900});
+      await page.goto(`${url}/iframe.html?id=morrovia-05-product-patterns-builder-route-allocation--main-africa-planning${language === 'es' ? '-spanish' : ''}&viewMode=story`);
+      await page.getByText('Cape Town', {exact: true}).first().waitFor();
+      const text = await page.locator('main').innerText();
+      assert.match(text, language === 'es' ? /Datos actualizados/ : /Details up to date/);
+      assert.equal(await page.locator('strong').filter({hasText: /· Flight$/}).count(), 4);
+      assert.match(text, /15h 45m/); assert.match(text, /6h 15m/);
+      assert.doesNotMatch(text, /Transport needs checking\./);
+      assert.equal(await page.locator('strong').filter({hasText: /Transfer needs checking$/}).count(), 1);
+      assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
+      await capture(page, `main-africa-planning-${language}-${width}`);
+    }
+  } finally {await browser.close();}
 });

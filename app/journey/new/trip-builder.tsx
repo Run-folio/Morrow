@@ -1,8 +1,9 @@
 "use client";
 
-import { transportAssessmentSummary } from "@/lib/easyt/itinerary-transport-agenda";
+import { builderDetailsStatus } from "@/lib/easyt/builder-planning-status";
 import type { TransferAssessment } from '@/lib/easyt/planning-evidence-state';
 import { currentBuilderTransferAssessments, transferAssessmentForLeg } from '@/lib/easyt/planning-evidence-presentation';
+import { requestCanonicalTransferResolution } from '@/lib/easyt/transfer-resolution-client';
 
 import { builderStructuralFeedback } from "@/lib/easyt/trip-builder-structural-feedback";
 
@@ -503,16 +504,13 @@ async function reconcileAcceptedBuilderRequest(request: BuilderReconciliationReq
   for(const result of results)if(result.kind==='leg'&&legs.some(leg=>leg.id===result.targetId&&leg.routeMetadata.source==='unverified-geography')){result.phase='failed';result.reason='unavailable'}
   if (qualifiedLegs.length) {
     try {
-      const response = await fetch("/api/journey-transfer-resolution", { method: "POST", headers: {"Content-Type":"application/json"},
-        body: JSON.stringify({legs:qualifiedLegs}), cache: "no-store", signal });
-      if (!response.ok) throw new Error("Transfer assessment unavailable");
-      const payload = await response.json() as {legs?: TripLeg[]; assessments?: TransferAssessment[]};
-      if (!Array.isArray(payload.legs) || payload.legs.length !== qualifiedLegs.length) throw new Error("Invalid transfer assessment");
-      legs = legs.map(leg=>payload.legs!.find(result=>result.id===leg.id)??leg);
-      assessments = qualifiedLegs.flatMap(leg => { const state = transferAssessmentForLeg(payload.assessments, leg.id); return state ? [{ legId: leg.id, state }] : []; });
+      const payload = await requestCanonicalTransferResolution(qualifiedLegs, signal);
+      if (!payload.ok) throw new Error("Invalid transfer assessment input");
+      legs = legs.map(leg=>payload.legs.find(result=>result.id===leg.id)??leg);
+      assessments = payload.assessments;
       for (const result of results) if (result.kind === 'leg') {
         const state = transferAssessmentForLeg(assessments, result.targetId);
-        if (state?.retrieval === 'unavailable' || state?.retrieval === 'blocked') { result.phase = 'failed'; result.reason = 'unavailable'; }
+        if (payload.failedLegIds.includes(result.targetId) || state?.retrieval === 'unavailable' || state?.retrieval === 'blocked') { result.phase = 'failed'; result.reason = 'unavailable'; }
       }
     } catch (error) {
       if (signal.aborted) throw error;
@@ -2646,16 +2644,8 @@ function TripBuilderDocument() {
       return;
     }
     const controller = new AbortController();
-    void fetch("/api/journey-transfer-resolution", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      cache: "no-store",
-      signal: controller.signal,
-      body: JSON.stringify({ legs: baselineBuilderCanonicalLegs }),
-    }).then(async (response) => {
-      if (!response.ok) return null;
-      const payload = await response.json() as { legs?: TripLeg[]; assessments?: TransferAssessment[] };
-      return Array.isArray(payload.legs) && payload.legs.length === baselineBuilderCanonicalLegs.length ? { legs: payload.legs, assessments: payload.assessments } : null;
+    void requestCanonicalTransferResolution(baselineBuilderCanonicalLegs, controller.signal).then((payload) => {
+      return payload.ok && payload.failedLegIds.length === 0 ? { legs: payload.legs, assessments: payload.assessments } : null;
     }).then((result) => {
       if (result && !controller.signal.aborted) setResolvedBuilderLegs({ key: transferResolutionKey, ...result });
     }).catch(() => undefined);
@@ -6420,7 +6410,7 @@ function TripBuilderDocument() {
                 stopReview={stopId=><>{necessaryReview(["recommendation"],stopId)}{renderSavedLocationReview(stopId)}</>}
                 nightReview={nightEditFeedback?.tone==="warning" ? <p role="status" className={styles.hintError}>{nightEditFeedback.title} {nightEditFeedback.detail}</p> : null}
                 reviewControl={<div className={styles.builderReviewActions}>
-                  <MorroviaSaveStatus {...transportAssessmentSummary(activeTripDocument, language, activeBuilderTransferAssessments)} />
+                  <MorroviaSaveStatus {...builderDetailsStatus(activeTripDocument, language, activeBuilderTransferAssessments)} />
                 </div>}
                 nightStatus={{ total: totalNights, allocated: allocatedNights, complete: allNightsAllocated, language }}
                 onSelectStop={setSelectedRouteStopId}

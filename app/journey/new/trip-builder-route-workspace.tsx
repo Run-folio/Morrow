@@ -1,5 +1,6 @@
 "use client";
 
+import { builderHasUsablePlanningTransfer } from "@/lib/easyt/builder-planning-status";
 import { transportAssessmentState } from "@/lib/easyt/itinerary-transport-agenda";
 import { transferAssessmentForLeg, transportEvidenceMessage } from '@/lib/easyt/planning-evidence-presentation';
 
@@ -180,7 +181,7 @@ export function TripBuilderRouteWorkspace({
               <div className={styles.builderRouteTransfer} role="cell">
                 <Route aria-hidden="true" />
                 <span><strong>{leg ? `${leg.fromEndpoint?.name ? `From ${leg.fromEndpoint.name} · ` : ""}${assessment === "pending" ? "Checking transport options…" : assessment === "failed" || assessment === 'blocked' ? "Transport check unavailable" : transferJourneyModeLabel(leg)}` : index === 0 ? "Starts here" : "Transfer to confirm"}</strong><small>{assessment === "pending" ? "This connection is being assessed." : evidence && (assessment === 'failed' || assessment === 'blocked') ? transportEvidenceMessage(evidence, 'en') : assessment === "failed" ? "Try checking this connection again." : leg ? formatMapDuration(transferMinutes) : "No arrival transfer"}</small>
-                  {assessment === "unknown" ? <small>Transport needs checking.</small> : null}
+                  {assessment === "unknown" && leg && leg.mode !== "unknown" && !builderHasUsablePlanningTransfer(routingTrip, leg, evidence) ? <small>Transport needs checking.</small> : null}
                   {leg?.mode === "unknown" && leg.roadEstimate ? <small>{formatRoadEstimateReference(leg.roadEstimate)}</small> : null}
                   {recommendedLeg && !preview?.ok ? <span onClick={(event) => event.stopPropagation()}>
                     <TripTransportChoiceControl

@@ -11,6 +11,7 @@ import { createBuilderEntrySession } from '../lib/easyt/trip-builder-entry-sessi
 import { rebalanceTripNights } from '../lib/easyt/night-allocation.ts';
 import { validateBuilderStopOrder, routeIntentForAcceptedBuilderOrder } from '../lib/easyt/trip-builder-order.ts';
 import { routeIntentFromHandoff } from '../lib/easyt/trip-route-intent.ts';
+import { requestCanonicalTransferResolution } from '../lib/easyt/transfer-resolution-client.ts';
 import { builderDiscoveryInputKey } from '../lib/easyt/trip-builder-recommendations.ts';
 
 const source=()=>readFileSync(new URL('../app/journey/new/trip-builder.tsx',import.meta.url),'utf8');
@@ -21,7 +22,7 @@ function effect(kind:'seed'|'autosave'|'discovery'|'transfer'|'preservation'|'ha
     if(ts.isCallExpression(node)&&node.expression.getText(tree)==='useEffect') {
       const body=node.arguments[0]?.getText(tree)??'';
       if(kind==='seed'?body.includes('const seed=entry.claimSeed()'):kind==='autosave'?body.includes('lastAcknowledgedCanonicalRef.current = null;')
-        :kind==='preservation'?body.includes('const preserveBeforeNewTrip'):kind==='handoff'?body.includes('const entry=builderEntrySessionRef.current')&&body.includes('mountedBuilder.snapshot.recovery'):kind==='discovery'?body.includes('Builder preview discovery'):body.includes('void fetch("/api/journey-transfer-resolution"'))expression=body;
+        :kind==='preservation'?body.includes('const preserveBeforeNewTrip'):kind==='handoff'?body.includes('const entry=builderEntrySessionRef.current')&&body.includes('mountedBuilder.snapshot.recovery'):kind==='discovery'?body.includes('Builder preview discovery'):body.includes('void requestCanonicalTransferResolution('))expression=body;
     }
     ts.forEachChild(node,visit);
   }
@@ -122,7 +123,7 @@ test('current unsuccessful seed drains queued lookup failures so their existing 
   assert.equal(queued.length,0);assert.equal(lookupSession.statuses.get('synthetic-mention'),'failed');assert.equal(f.seeded(),null);
 });
 
-for (const producer of ['discovery','transfer'] as const) test(`actual ${producer} functional update cannot replace a seed across native write, readback and editor-ready handoff`,async()=>{
+for (const producer of ['discovery','transfer'] as const) test(`actual ${producer} functional update cannot replace a seed across native write, readback and editor-ready handoff`,async t=>{
   const f=fixture(),response=gate<any>(),submitted:any[]=[],cache:any={};let writes=0;
   const initial=structuredClone(f.trip);
   f.scope.saveTripRecovery=async(candidate:any,options:any)=>{
@@ -131,16 +132,18 @@ for (const producer of ['discovery','transfer'] as const) test(`actual ${produce
   };
   const first=effect('seed',f.scope);
   const providerScope:any={...f.scope,createAbortableEffectScope,builderDiscoveryInputKey,tripId:f.trip.id,activeBrowserOwnerIdRef:{current:null},
-    canonicalBuilder:null,previewDiscovery:cache,previewDiscoveryKey:'source-a',baselineBuilderCanonicalLegs:f.trip.legs,transferResolutionKey:'source-a',
-    loadBuilderDiscoveryPlaces:()=>response.promise,fetch:()=>response.promise,
+    canonicalBuilder:null,previewDiscovery:cache,previewDiscoveryKey:'source-a',baselineBuilderCanonicalLegs:f.trip.legs.map(leg=>({...leg,routeMetadata:{...leg.routeMetadata,source:'morrovia-planner'}})),transferResolutionKey:'source-a',
+    loadBuilderDiscoveryPlaces:()=>response.promise,requestCanonicalTransferResolution,
     setPreviewDiscovery(update:(current:any)=>any){
       const next=update(cache);Object.assign(cache,next);
       f.scope.activeTripDocument={...f.trip,updatedAt:'2026-10-14T01:00:00.000Z',recommendations:[{id:'preview-context',kind:'place',title:'Optional preview',reason:'Optional context',stopId:f.trip.stops[0]?.id}]};
     },
     setResolvedBuilderLegs(result:any){f.scope.activeTripDocument={...f.trip,updatedAt:'2026-10-14T01:00:00.000Z',legs:result?.legs??f.trip.legs};}};
+  if(producer==='transfer')t.mock.method(globalThis,'fetch',async()=>response.promise);
   const optional=effect(producer,providerScope);
-  response.resolve(producer==='discovery'?[]:{ok:true,json:async()=>({legs:f.trip.legs.map(leg=>({...leg,provider:'Optional transfer response'})),assessments:[]})});
+  response.resolve(producer==='discovery'?[]:{ok:true,json:async()=>({legs:f.trip.legs.map(leg=>({...leg,provider:'Optional transfer response'})),assessments:f.trip.legs.map(leg=>({legId:leg.id,state:{retrieval:'completed',evidence:'conditional',retryable:false}}))})});
   await new Promise<void>(resolve=>setImmediate(resolve));
+  if(producer==='transfer')assert.equal(f.scope.activeTripDocument.legs[0]?.provider,'Optional transfer response','real bounded preview must actually complete before exercising seed retention');
   first.cleanup?.();const rerender=effect('seed',f.scope);
   assert.equal(writes,1,'optional recomputation must join the existing frozen writer, not create a competing native write');
   f.write.resolve({stored:true,handle:f.handle,pointerAcknowledged:true});

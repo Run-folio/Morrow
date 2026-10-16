@@ -20,6 +20,7 @@ import { builderNightsCommand } from '../lib/easyt/trip-builder-handler-contract
 import { reconcileBuilderDependencies } from '../lib/easyt/trip-builder-reconciliation.ts';
 import { geographicallyReady, guardTripRoutingGeometry } from '../lib/easyt/geographic-binding.ts';
 import { transferAssessmentForLeg } from '../lib/easyt/planning-evidence-presentation.ts';
+import { requestCanonicalTransferResolution } from '../lib/easyt/transfer-resolution-client.ts';
 import { qualifiedA17TripFixture } from './fixtures/batch14-a17-trip.ts';
 import { tripNightsBetween, allocateTripNights } from '../lib/easyt/night-allocation.ts';
 import { canBuildTrip } from '../lib/easyt/can-build-trip.ts';
@@ -753,15 +754,15 @@ function mountedReconciliationWorker(network: Record<string,unknown>) {
  assert.ok(start>=0&&end>start);
  const script=ts.transpileModule(source.slice(start,end)+'\nreturn reconcileAcceptedBuilderRequest;', {compilerOptions:{target:ts.ScriptTarget.ES2022}}).outputText;
  return new Function('scope',`with(scope){${script}}`)({reconcileBuilderDependencies,geographicallyReady,stopGeographicPlace,transferAssessmentForLeg,
-  guardTripRoutingGeometry,...network}) as AsyncBuilderEditSessionOptions['reconcile'];
+  guardTripRoutingGeometry,requestCanonicalTransferResolution,...network}) as AsyncBuilderEditSessionOptions['reconcile'];
 }
 
-test('mounted transfer work completes while ineligible generated recommendation lookup is held',async()=>{
+test('mounted transfer work completes while ineligible generated recommendation lookup is held',async t=>{
  const h=await harness({initialTrip:requireReadableTripDocument(canonicalTripForOwner('owner-a',await qualifiedA17TripFixture()))}),held=deferred<void>();let transferCalls=0,recommendationCalls=0;
  h.options.reconcile=mountedReconciliationWorker({
   resolveBuilderRecommendation:async()=>{recommendationCalls++;await held.promise;throw Error('held optional recommendation');},
-  fetch:async(_url:string,init:RequestInit)=>{transferCalls++;const body=JSON.parse(String(init.body)) as {legs:CanonicalEasyTTrip['legs']};
-   return Response.json({legs:body.legs,assessments:body.legs.map(leg=>({legId:leg.id,state:{retrieval:'completed',evidence:'conditional',retryable:false}}))});},
+  fetch: t.mock.method(globalThis,'fetch',async(_url:any,init?:RequestInit)=>{transferCalls++;const body=JSON.parse(String(init?.body)) as {legs:CanonicalEasyTTrip['legs']};
+   return Response.json({legs:body.legs,assessments:body.legs.map(leg=>({legId:leg.id,state:{retrieval:'completed',evidence:'conditional',retryable:false}}))});}),
  });
  try {
   await accept(h,{kind:'remove-destination',intentId:'intent:hue'});const before=h.session.getSnapshot();assert.ok(before.pendingUnits.some(unit=>unit.kind==='recommendation'));
@@ -777,13 +778,13 @@ test('mounted transfer work completes while ineligible generated recommendation 
  } finally {held.resolve();h.session.dispose();await tick();}
 });
 
-test('route-only dispatch retains unavailable transfer evidence without automatic retry or invented timing',async()=>{
+test('route-only dispatch retains unavailable transfer evidence without automatic retry or invented timing',async t=>{
  const h=await harness({initialTrip:requireReadableTripDocument(canonicalTripForOwner('owner-a',await qualifiedA17TripFixture()))});let calls=0;
  h.options.reconcile=mountedReconciliationWorker({
   resolveBuilderRecommendation:()=>{throw Error('ineligible generated work must not run');},
-  fetch:async(_url:string,init:RequestInit)=>{calls++;const {legs}=JSON.parse(String(init.body)) as {legs:CanonicalEasyTTrip['legs']};
+  fetch:t.mock.method(globalThis,'fetch',async(_url:any,init?:RequestInit)=>{calls++;const {legs}=JSON.parse(String(init?.body)) as {legs:CanonicalEasyTTrip['legs']};
    return Response.json({legs:legs.map(leg=>({...leg,mode:'unknown',durationMinutes:null,headlineMinutes:null,doorToDoorMinutes:null})),
-    assessments:legs.map(leg=>({legId:leg.id,state:{retrieval:'unavailable',evidence:'insufficient',reason:'configuration_unavailable',retryable:false}}))});},
+    assessments:legs.map(leg=>({legId:leg.id,state:{retrieval:'unavailable',evidence:'insufficient',reason:'configuration_unavailable',retryable:false}}))});}),
  });
  try {
   await accept(h,{kind:'remove-destination',intentId:'intent:hue'});const before=h.session.getSnapshot();

@@ -7,7 +7,8 @@ import styles from "./trip-builder.module.css";
 import { EasyTButton } from "@/components/easyt/easyt-controls";
 import { adaptedDiscoveryPlaces } from "@/lib/easyt/discovery-evidence-adapter";
 import { MorroviaSaveStatus } from "@/components/easyt/morrovia-feedback";
-import { transportAssessmentSummary } from "@/lib/easyt/itinerary-transport-agenda";
+import { builderDetailsStatus } from "@/lib/easyt/builder-planning-status";
+import matchedAfricaFixture from "@/tests/fixtures/main-staging-africa-control.json";
 import type { PlanningEvidenceState } from '@/lib/easyt/planning-evidence-state';
 
 function AllocationStory({ initialNights, language, totalNights = 7, singleStop = false }: { initialNights: number[]; language: "en" | "es"; totalNights?: number; singleStop?: boolean }) {
@@ -62,7 +63,7 @@ function TransportAssessmentStory({ phase }: { phase: "unknown" | "pending" | "f
   const assessments = state ? legs.map(leg => ({ legId: leg.id, state })) : undefined;
   return <TripBuilderRouteWorkspace canonicalTrip={trip} transferAssessments={assessments} previewStopIds={null} selectedStopId={null} lockedStopIds={[]} fixedOrder={false} routeCheckProposalStopIds={null}
     nightStatus={{ total: 7, allocated: 7, complete: true, language: "en" }}
-    reviewControl={<MorroviaSaveStatus {...transportAssessmentSummary(trip, "en", assessments)} />}
+    reviewControl={<MorroviaSaveStatus {...builderDetailsStatus(trip, "en", assessments)} />}
     legReview={phase === "failed" || state?.retryable ? () => <span role="status">Could not check this connection. <EasyTButton size="small" variant="quiet">Try again</EasyTButton></span> : undefined}
     onSelectStop={() => {}} onPreviewOrder={() => {}} onCommitOrder={() => false} onEditNights={() => {}} onRemoveStop={() => {}} onTransportChoiceChange={() => {}} />;
 }
@@ -74,3 +75,17 @@ export const TransportBlocked: Story = { render: () => <TransportAssessmentStory
 export const TransportTimeout: Story = { render: () => <TransportAssessmentStory phase="timeout" /> };
 export const TransportNoRoute: Story = { render: () => <TransportAssessmentStory phase="no-route" /> };
 export const TransportNotAttempted: Story = { render: () => <TransportAssessmentStory phase="not-attempted" /> };
+
+// Synthetic guest control captured from the matched main/staging journey.
+function MainAfricaPlanningStory({language = "en"}: {language?: "en" | "es"}) {
+  const trip = matchedAfricaFixture as unknown as EasyTTrip;
+  const assessments = trip.legs.map(leg => ({legId: leg.id, state: {retrieval: "completed" as const, evidence: "insufficient" as const, retryable: false}}));
+  return <TripBuilderRouteWorkspace canonicalTrip={trip} transferAssessments={assessments}
+    previewStopIds={null} selectedStopId={null} lockedStopIds={[]} fixedOrder={false} routeCheckProposalStopIds={null}
+    nightStatus={{total: 6, allocated: 6, complete: true, language}}
+    reviewControl={<MorroviaSaveStatus {...builderDetailsStatus(trip, language, assessments)} />}
+    onSelectStop={() => {}} onPreviewOrder={() => {}} onCommitOrder={() => false}
+    onEditNights={() => {}} onRemoveStop={() => {}} onTransportChoiceChange={() => {}} />;
+}
+export const MainAfricaPlanning: Story = {render: () => <MainAfricaPlanningStory />};
+export const MainAfricaPlanningSpanish: Story = {render: () => <MainAfricaPlanningStory language="es" />};

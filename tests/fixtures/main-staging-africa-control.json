@@ -1,0 +1,4237 @@
+{
+  "schemaVersion": 2,
+  "id": "trip-a39bddc5-fb9a-48d4-aea4-09a5c5f6743c",
+  "ownerId": null,
+  "title": "Paris to Cape Town & Windhoek & Swakopmund & Victoria Falls & Mombasa",
+  "status": "draft",
+  "startDate": "2026-10-22",
+  "endDate": "2026-10-28",
+  "travellers": 2,
+  "currency": "GBP",
+  "brief": {
+    "endDateIsSuggestion": false,
+    "mustDo": "",
+    "pace": "slow",
+    "hotelChanges": "few",
+    "budgetBand": "mid",
+    "budgetPreference": {
+      "source": "fallback",
+      "value": "mid"
+    },
+    "selectedPlaces": {},
+    "dayAllocations": {
+      "destination-1": 2,
+      "destination-2": 1,
+      "destination-3": 1,
+      "destination-4": 1,
+      "destination-5": 2
+    },
+    "nightAllocations": {
+      "destination-1": 2,
+      "destination-2": 1,
+      "destination-3": 1,
+      "destination-4": 1,
+      "destination-5": 1
+    },
+    "manualNightStopIds": [],
+    "nightAllocation": {
+      "version": 1,
+      "configVersion": "night-allocation-v2-marginal-depth",
+      "state": "allocated",
+      "totalAvailableNights": 6,
+      "totalAllocatedNights": 6,
+      "allocations": {
+        "destination-1": 2,
+        "destination-2": 1,
+        "destination-3": 1,
+        "destination-4": 1,
+        "destination-5": 1
+      },
+      "stops": [
+        {
+          "stopId": "destination-1",
+          "name": "Cape Town",
+          "nights": 2,
+          "minimumNights": 1,
+          "idealNights": 2,
+          "targetNights": 2,
+          "minimumSource": "morrovia-default",
+          "idealSource": "morrovia-default",
+          "roles": [],
+          "isAnchor": false,
+          "isRequired": true,
+          "isFixed": false,
+          "isManual": false,
+          "depth": "ordinary",
+          "matchedInterests": [],
+          "transferDayLoss": null,
+          "confidence": {
+            "minimumNights": {
+              "version": 1,
+              "state": "estimated",
+              "level": "low",
+              "freshness": "unknown",
+              "scope": "planning-rule",
+              "sources": [],
+              "reason": "Minimum stay uses a Morrovia default because no destination-specific fact is known.",
+              "confirmation": {
+                "needed": true,
+                "reason": "Confirm the minimum stay before relying on this stay recommendation."
+              }
+            },
+            "idealNights": {
+              "version": 1,
+              "state": "estimated",
+              "level": "low",
+              "freshness": "unknown",
+              "scope": "planning-rule",
+              "sources": [],
+              "reason": "Ideal stay uses a Morrovia default because no destination-specific fact is known.",
+              "confirmation": {
+                "needed": true,
+                "reason": "Confirm the ideal stay before relying on this stay recommendation."
+              }
+            },
+            "allocation": {
+              "version": 1,
+              "state": "structured",
+              "level": "high",
+              "freshness": "current",
+              "scope": "traveller-intent",
+              "sources": [],
+              "reason": "The night count is an explicit traveller edit.",
+              "confirmation": {
+                "needed": false,
+                "reason": null
+              }
+            }
+          },
+          "reasons": [
+            {
+              "code": "fallback-minimum",
+              "message": "Cape Town uses the existing planning fallback because no curated minimum is available."
+            },
+            {
+              "code": "fallback-ideal",
+              "message": "Cape Town keeps fallback ideal-night guidance rather than inventing destination knowledge."
+            },
+            {
+              "code": "pace",
+              "message": "balanced pace sets a 2-night target before traveller-authored adjustments."
+            },
+            {
+              "code": "destination-depth",
+              "message": "Cape Town has ordinary stay-depth evidence for marginal night allocation."
+            },
+            {
+              "code": "required-priority",
+              "message": "Cape Town is a required or must-visit stop."
+            },
+            {
+              "code": "diminishing-returns",
+              "message": "Each additional night in Cape Town is valued incrementally with bounded diminishing returns."
+            }
+          ]
+        },
+        {
+          "stopId": "destination-2",
+          "name": "Windhoek",
+          "nights": 1,
+          "minimumNights": 1,
+          "idealNights": 2,
+          "targetNights": 2,
+          "minimumSource": "morrovia-default",
+          "idealSource": "morrovia-default",
+          "roles": [],
+          "isAnchor": false,
+          "isRequired": true,
+          "isFixed": false,
+          "isManual": false,
+          "depth": "ordinary",
+          "matchedInterests": [],
+          "transferDayLoss": null,
+          "confidence": {
+            "minimumNights": {
+              "version": 1,
+              "state": "estimated",
+              "level": "low",
+              "freshness": "unknown",
+              "scope": "planning-rule",
+              "sources": [],
+              "reason": "Minimum stay uses a Morrovia default because no destination-specific fact is known.",
+              "confirmation": {
+                "needed": true,
+                "reason": "Confirm the minimum stay before relying on this stay recommendation."
+              }
+            },
+            "idealNights": {
+              "version": 1,
+              "state": "estimated",
+              "level": "low",
+              "freshness": "unknown",
+              "scope": "planning-rule",
+              "sources": [],
+              "reason": "Ideal stay uses a Morrovia default because no destination-specific fact is known.",
+              "confirmation": {
+                "needed": true,
+                "reason": "Confirm the ideal stay before relying on this stay recommendation."
+              }
+            },
+            "allocation": {
+              "version": 1,
+              "state": "structured",
+              "level": "high",
+              "freshness": "current",
+              "scope": "traveller-intent",
+              "sources": [],
+              "reason": "The night count is an explicit traveller edit.",
+              "confirmation": {
+                "needed": false,
+                "reason": null
+              }
+            }
+          },
+          "reasons": [
+            {
+              "code": "fallback-minimum",
+              "message": "Windhoek uses the existing planning fallback because no curated minimum is available."
+            },
+            {
+              "code": "fallback-ideal",
+              "message": "Windhoek keeps fallback ideal-night guidance rather than inventing destination knowledge."
+            },
+            {
+              "code": "pace",
+              "message": "balanced pace sets a 2-night target before traveller-authored adjustments."
+            },
+            {
+              "code": "destination-depth",
+              "message": "Windhoek has ordinary stay-depth evidence for marginal night allocation."
+            },
+            {
+              "code": "required-priority",
+              "message": "Windhoek is a required or must-visit stop."
+            },
+            {
+              "code": "diminishing-returns",
+              "message": "Each additional night in Windhoek is valued incrementally with bounded diminishing returns."
+            }
+          ]
+        },
+        {
+          "stopId": "destination-3",
+          "name": "Swakopmund",
+          "nights": 1,
+          "minimumNights": 1,
+          "idealNights": 2,
+          "targetNights": 2,
+          "minimumSource": "morrovia-default",
+          "idealSource": "morrovia-default",
+          "roles": [],
+          "isAnchor": false,
+          "isRequired": true,
+          "isFixed": false,
+          "isManual": false,
+          "depth": "ordinary",
+          "matchedInterests": [],
+          "transferDayLoss": null,
+          "confidence": {
+            "minimumNights": {
+              "version": 1,
+              "state": "estimated",
+              "level": "low",
+              "freshness": "unknown",
+              "scope": "planning-rule",
+              "sources": [],
+              "reason": "Minimum stay uses a Morrovia default because no destination-specific fact is known.",
+              "confirmation": {
+                "needed": true,
+                "reason": "Confirm the minimum stay before relying on this stay recommendation."
+              }
+            },
+            "idealNights": {
+              "version": 1,
+              "state": "estimated",
+              "level": "low",
+              "freshness": "unknown",
+              "scope": "planning-rule",
+              "sources": [],
+              "reason": "Ideal stay uses a Morrovia default because no destination-specific fact is known.",
+              "confirmation": {
+                "needed": true,
+                "reason": "Confirm the ideal stay before relying on this stay recommendation."
+              }
+            },
+            "allocation": {
+              "version": 1,
+              "state": "structured",
+              "level": "high",
+              "freshness": "current",
+              "scope": "traveller-intent",
+              "sources": [],
+              "reason": "The night count is an explicit traveller edit.",
+              "confirmation": {
+                "needed": false,
+                "reason": null
+              }
+            }
+          },
+          "reasons": [
+            {
+              "code": "fallback-minimum",
+              "message": "Swakopmund uses the existing planning fallback because no curated minimum is available."
+            },
+            {
+              "code": "fallback-ideal",
+              "message": "Swakopmund keeps fallback ideal-night guidance rather than inventing destination knowledge."
+            },
+            {
+              "code": "pace",
+              "message": "balanced pace sets a 2-night target before traveller-authored adjustments."
+            },
+            {
+              "code": "destination-depth",
+              "message": "Swakopmund has ordinary stay-depth evidence for marginal night allocation."
+            },
+            {
+              "code": "required-priority",
+              "message": "Swakopmund is a required or must-visit stop."
+            },
+            {
+              "code": "diminishing-returns",
+              "message": "Each additional night in Swakopmund is valued incrementally with bounded diminishing returns."
+            }
+          ]
+        },
+        {
+          "stopId": "destination-4",
+          "name": "Victoria Falls",
+          "nights": 1,
+          "minimumNights": 1,
+          "idealNights": 2,
+          "targetNights": 2,
+          "minimumSource": "morrovia-default",
+          "idealSource": "morrovia-default",
+          "roles": [],
+          "isAnchor": false,
+          "isRequired": true,
+          "isFixed": false,
+          "isManual": false,
+          "depth": "ordinary",
+          "matchedInterests": [],
+          "transferDayLoss": null,
+          "confidence": {
+            "minimumNights": {
+              "version": 1,
+              "state": "estimated",
+              "level": "low",
+              "freshness": "unknown",
+              "scope": "planning-rule",
+              "sources": [],
+              "reason": "Minimum stay uses a Morrovia default because no destination-specific fact is known.",
+              "confirmation": {
+                "needed": true,
+                "reason": "Confirm the minimum stay before relying on this stay recommendation."
+              }
+            },
+            "idealNights": {
+              "version": 1,
+              "state": "estimated",
+              "level": "low",
+              "freshness": "unknown",
+              "scope": "planning-rule",
+              "sources": [],
+              "reason": "Ideal stay uses a Morrovia default because no destination-specific fact is known.",
+              "confirmation": {
+                "needed": true,
+                "reason": "Confirm the ideal stay before relying on this stay recommendation."
+              }
+            },
+            "allocation": {
+              "version": 1,
+              "state": "structured",
+              "level": "high",
+              "freshness": "current",
+              "scope": "traveller-intent",
+              "sources": [],
+              "reason": "The night count is an explicit traveller edit.",
+              "confirmation": {
+                "needed": false,
+                "reason": null
+              }
+            }
+          },
+          "reasons": [
+            {
+              "code": "fallback-minimum",
+              "message": "Victoria Falls uses the existing planning fallback because no curated minimum is available."
+            },
+            {
+              "code": "fallback-ideal",
+              "message": "Victoria Falls keeps fallback ideal-night guidance rather than inventing destination knowledge."
+            },
+            {
+              "code": "pace",
+              "message": "balanced pace sets a 2-night target before traveller-authored adjustments."
+            },
+            {
+              "code": "destination-depth",
+              "message": "Victoria Falls has ordinary stay-depth evidence for marginal night allocation."
+            },
+            {
+              "code": "required-priority",
+              "message": "Victoria Falls is a required or must-visit stop."
+            },
+            {
+              "code": "diminishing-returns",
+              "message": "Each additional night in Victoria Falls is valued incrementally with bounded diminishing returns."
+            }
+          ]
+        },
+        {
+          "stopId": "destination-5",
+          "name": "Mombasa",
+          "nights": 1,
+          "minimumNights": 1,
+          "idealNights": 2,
+          "targetNights": 2,
+          "minimumSource": "morrovia-default",
+          "idealSource": "morrovia-default",
+          "roles": [],
+          "isAnchor": false,
+          "isRequired": true,
+          "isFixed": false,
+          "isManual": false,
+          "depth": "ordinary",
+          "matchedInterests": [],
+          "transferDayLoss": null,
+          "confidence": {
+            "minimumNights": {
+              "version": 1,
+              "state": "estimated",
+              "level": "low",
+              "freshness": "unknown",
+              "scope": "planning-rule",
+              "sources": [],
+              "reason": "Minimum stay uses a Morrovia default because no destination-specific fact is known.",
+              "confirmation": {
+                "needed": true,
+                "reason": "Confirm the minimum stay before relying on this stay recommendation."
+              }
+            },
+            "idealNights": {
+              "version": 1,
+              "state": "estimated",
+              "level": "low",
+              "freshness": "unknown",
+              "scope": "planning-rule",
+              "sources": [],
+              "reason": "Ideal stay uses a Morrovia default because no destination-specific fact is known.",
+              "confirmation": {
+                "needed": true,
+                "reason": "Confirm the ideal stay before relying on this stay recommendation."
+              }
+            },
+            "allocation": {
+              "version": 1,
+              "state": "structured",
+              "level": "high",
+              "freshness": "current",
+              "scope": "traveller-intent",
+              "sources": [],
+              "reason": "The night count is an explicit traveller edit.",
+              "confirmation": {
+                "needed": false,
+                "reason": null
+              }
+            }
+          },
+          "reasons": [
+            {
+              "code": "fallback-minimum",
+              "message": "Mombasa uses the existing planning fallback because no curated minimum is available."
+            },
+            {
+              "code": "fallback-ideal",
+              "message": "Mombasa keeps fallback ideal-night guidance rather than inventing destination knowledge."
+            },
+            {
+              "code": "pace",
+              "message": "balanced pace sets a 2-night target before traveller-authored adjustments."
+            },
+            {
+              "code": "destination-depth",
+              "message": "Mombasa has ordinary stay-depth evidence for marginal night allocation."
+            },
+            {
+              "code": "required-priority",
+              "message": "Mombasa is a required or must-visit stop."
+            },
+            {
+              "code": "diminishing-returns",
+              "message": "Each additional night in Mombasa is valued incrementally with bounded diminishing returns."
+            }
+          ]
+        }
+      ],
+      "conflicts": [],
+      "notices": []
+    },
+    "capturedIntent": {
+      "originalBrief": "",
+      "parserVersion": "homepage-input-v1",
+      "regions": [],
+      "routeHints": [],
+      "mentions": [
+        {
+          "sourceText": "Cape Town",
+          "canonicalName": "Cape Town",
+          "canonicalPlaceId": "cape-town",
+          "placeType": "city",
+          "role": "stop",
+          "order": 0,
+          "status": "resolved",
+          "intent": "place",
+          "country": "South Africa"
+        },
+        {
+          "sourceText": "Windhoek",
+          "canonicalName": "Windhoek",
+          "canonicalPlaceId": "windhoek",
+          "placeType": "city",
+          "role": "stop",
+          "order": 1,
+          "status": "resolved",
+          "intent": "place",
+          "country": "Namibia"
+        },
+        {
+          "sourceText": "Swakopmund",
+          "canonicalName": "Swakopmund",
+          "canonicalPlaceId": "swakopmund",
+          "placeType": "city",
+          "role": "stop",
+          "order": 2,
+          "status": "resolved",
+          "intent": "place",
+          "country": "Namibia"
+        },
+        {
+          "sourceText": "Victoria Falls",
+          "canonicalName": "Victoria Falls",
+          "canonicalPlaceId": "victoria-falls",
+          "placeType": "town",
+          "role": "stop",
+          "order": 3,
+          "status": "resolved",
+          "intent": "place",
+          "country": "Zimbabwe"
+        },
+        {
+          "sourceText": "Mombasa",
+          "canonicalName": "Mombasa",
+          "canonicalPlaceId": "reference:geonames:186301",
+          "placeType": "city",
+          "role": "stop",
+          "order": 4,
+          "status": "resolved",
+          "intent": "place",
+          "country": "Kenya"
+        }
+      ]
+    },
+    "scheduleLocks": {
+      "stopIds": [],
+      "arrivalDates": {}
+    },
+    "decisionSelections": {
+      "routeOrder": "entered",
+      "transportByLeg": {}
+    },
+    "intent": {
+      "version": 2,
+      "travellers": 2,
+      "timing": {
+        "flexibility": "fixed",
+        "durationDays": 7
+      },
+      "hardConstraints": {
+        "originRequired": true,
+        "mustSeeStopIds": [
+          "destination-1",
+          "destination-2",
+          "destination-3",
+          "destination-4",
+          "destination-5"
+        ],
+        "optionalStopIds": [],
+        "fixedCommitments": [],
+        "avoidDriving": false
+      },
+      "preferences": {
+        "budgetSensitivity": "mid",
+        "transportModes": [
+          "flight",
+          "train"
+        ],
+        "pace": "balanced",
+        "interests": [],
+        "dislikes": []
+      },
+      "route": {
+        "version": 1,
+        "origin": {
+          "name": "Paris",
+          "canonicalPlaceId": "reference:geonames:2988507",
+          "country": "France",
+          "providerId": "reference:geonames:2988507@699b595afdba9be6994e:FR:city:2.3488:48.85341",
+          "coordinates": [
+            2.3488,
+            48.85341
+          ],
+          "geographicBinding": {
+            "version": 1,
+            "source": "provider",
+            "canonicalPlaceId": "reference:geonames:2988507",
+            "providerId": "reference:geonames:2988507@699b595afdba9be6994e:FR:city:2.3488:48.85341",
+            "placeType": "city",
+            "country": "France",
+            "routability": "direct_destination",
+            "inputKey": "[\"reference:geonames:2988507\",\"reference:geonames:2988507@699b595afdba9be6994e:FR:city:2.3488:48.85341\",\"paris\",\"france\",[2.3488,48.85341]]"
+          }
+        },
+        "tripType": "one_way",
+        "journeyEnd": {
+          "mode": "unknown"
+        },
+        "destinations": [
+          {
+            "id": "homepage-entry:destination-1",
+            "sourceText": "Cape Town",
+            "kind": "overnight_place",
+            "selectedPlace": {
+              "name": "Cape Town",
+              "canonicalPlaceId": "cape-town",
+              "country": "South Africa",
+              "providerId": "reference:geonames:3369157@699b595afdba9be6994e:ZA:city:18.42322:-33.92584",
+              "coordinates": [
+                18.42322,
+                -33.92584
+              ],
+              "geographicBinding": {
+                "version": 1,
+                "source": "provider",
+                "canonicalPlaceId": "cape-town",
+                "providerId": "reference:geonames:3369157@699b595afdba9be6994e:ZA:city:18.42322:-33.92584",
+                "placeType": "city",
+                "country": "South Africa",
+                "routability": "direct_destination",
+                "inputKey": "[\"cape-town\",\"reference:geonames:3369157@699b595afdba9be6994e:ZA:city:18.42322:-33.92584\",\"cape town\",\"south africa\",[18.42322,-33.92584]]"
+              }
+            },
+            "resolution": "resolved",
+            "requestedNights": null,
+            "routeMembership": "required",
+            "stopIds": [
+              "destination-1"
+            ]
+          },
+          {
+            "id": "homepage-entry:destination-2",
+            "sourceText": "Windhoek",
+            "kind": "overnight_place",
+            "selectedPlace": {
+              "name": "Windhoek",
+              "canonicalPlaceId": "windhoek",
+              "coordinates": [
+                17.0832,
+                -22.5609
+              ],
+              "country": "Namibia"
+            },
+            "resolution": "resolved",
+            "requestedNights": null,
+            "routeMembership": "required",
+            "stopIds": [
+              "destination-2"
+            ]
+          },
+          {
+            "id": "homepage-entry:destination-3",
+            "sourceText": "Swakopmund",
+            "kind": "overnight_place",
+            "selectedPlace": {
+              "name": "Swakopmund",
+              "canonicalPlaceId": "swakopmund",
+              "coordinates": [
+                14.5053,
+                -22.6784
+              ],
+              "country": "Namibia"
+            },
+            "resolution": "resolved",
+            "requestedNights": null,
+            "routeMembership": "required",
+            "stopIds": [
+              "destination-3"
+            ]
+          },
+          {
+            "id": "homepage-entry:destination-4",
+            "sourceText": "Victoria Falls",
+            "kind": "overnight_place",
+            "selectedPlace": {
+              "name": "Victoria Falls",
+              "canonicalPlaceId": "victoria-falls",
+              "country": "Zimbabwe",
+              "providerId": "reference:geonames:879431@699b595afdba9be6994e:ZW:town:25.83066:-17.93285",
+              "coordinates": [
+                25.83066,
+                -17.93285
+              ],
+              "geographicBinding": {
+                "version": 1,
+                "source": "provider",
+                "canonicalPlaceId": "victoria-falls",
+                "providerId": "reference:geonames:879431@699b595afdba9be6994e:ZW:town:25.83066:-17.93285",
+                "placeType": "town",
+                "country": "Zimbabwe",
+                "routability": "direct_destination",
+                "inputKey": "[\"victoria-falls\",\"reference:geonames:879431@699b595afdba9be6994e:ZW:town:25.83066:-17.93285\",\"victoria falls\",\"zimbabwe\",[25.83066,-17.93285]]"
+              }
+            },
+            "resolution": "resolved",
+            "requestedNights": null,
+            "routeMembership": "required",
+            "stopIds": [
+              "destination-4"
+            ]
+          },
+          {
+            "id": "homepage-entry:destination-5",
+            "sourceText": "Mombasa",
+            "kind": "overnight_place",
+            "selectedPlace": {
+              "name": "Mombasa",
+              "canonicalPlaceId": "reference:geonames:186301",
+              "coordinates": [
+                39.66359,
+                -4.05466
+              ],
+              "country": "Kenya"
+            },
+            "resolution": "resolved",
+            "requestedNights": null,
+            "routeMembership": "required",
+            "stopIds": [
+              "destination-5"
+            ]
+          }
+        ],
+        "orderAuthority": "optimizable",
+        "explicitIntentIds": null,
+        "orderedStopIds": [
+          "destination-1",
+          "destination-2",
+          "destination-3",
+          "destination-4",
+          "destination-5"
+        ],
+        "projectionInputKey": "{\"destinations\":[{\"id\":\"homepage-entry:destination-1\",\"kind\":\"overnight_place\",\"requestedNights\":null,\"resolution\":\"resolved\",\"routeMembership\":\"required\",\"selectedPlace\":{\"canonicalPlaceId\":\"cape-town\",\"coordinates\":[18.42322,-33.92584],\"geographicBinding\":{\"canonicalPlaceId\":\"cape-town\",\"country\":\"South Africa\",\"inputKey\":\"[\\\"cape-town\\\",\\\"reference:geonames:3369157@699b595afdba9be6994e:ZA:city:18.42322:-33.92584\\\",\\\"cape town\\\",\\\"south africa\\\",[18.42322,-33.92584]]\",\"placeType\":\"city\",\"providerId\":\"reference:geonames:3369157@699b595afdba9be6994e:ZA:city:18.42322:-33.92584\",\"routability\":\"direct_destination\",\"source\":\"provider\",\"version\":1},\"geographicReady\":true,\"providerId\":\"reference:geonames:3369157@699b595afdba9be6994e:ZA:city:18.42322:-33.92584\"},\"stopIds\":[\"destination-1\"]},{\"id\":\"homepage-entry:destination-2\",\"kind\":\"overnight_place\",\"requestedNights\":null,\"resolution\":\"resolved\",\"routeMembership\":\"required\",\"selectedPlace\":{\"canonicalPlaceId\":\"windhoek\",\"coordinates\":[17.0832,-22.5609],\"providerId\":null},\"stopIds\":[\"destination-2\"]},{\"id\":\"homepage-entry:destination-3\",\"kind\":\"overnight_place\",\"requestedNights\":null,\"resolution\":\"resolved\",\"routeMembership\":\"required\",\"selectedPlace\":{\"canonicalPlaceId\":\"swakopmund\",\"coordinates\":[14.5053,-22.6784],\"providerId\":null},\"stopIds\":[\"destination-3\"]},{\"id\":\"homepage-entry:destination-4\",\"kind\":\"overnight_place\",\"requestedNights\":null,\"resolution\":\"resolved\",\"routeMembership\":\"required\",\"selectedPlace\":{\"canonicalPlaceId\":\"victoria-falls\",\"coordinates\":[25.83066,-17.93285],\"geographicBinding\":{\"canonicalPlaceId\":\"victoria-falls\",\"country\":\"Zimbabwe\",\"inputKey\":\"[\\\"victoria-falls\\\",\\\"reference:geonames:879431@699b595afdba9be6994e:ZW:town:25.83066:-17.93285\\\",\\\"victoria falls\\\",\\\"zimbabwe\\\",[25.83066,-17.93285]]\",\"placeType\":\"town\",\"providerId\":\"reference:geonames:879431@699b595afdba9be6994e:ZW:town:25.83066:-17.93285\",\"routability\":\"direct_destination\",\"source\":\"provider\",\"version\":1},\"geographicReady\":true,\"providerId\":\"reference:geonames:879431@699b595afdba9be6994e:ZW:town:25.83066:-17.93285\"},\"stopIds\":[\"destination-4\"]},{\"id\":\"homepage-entry:destination-5\",\"kind\":\"overnight_place\",\"requestedNights\":null,\"resolution\":\"resolved\",\"routeMembership\":\"required\",\"selectedPlace\":{\"canonicalPlaceId\":\"reference:geonames:186301\",\"coordinates\":[39.66359,-4.05466],\"providerId\":null},\"stopIds\":[\"destination-5\"]}],\"endDate\":\"2026-10-28\",\"explicitIntentIds\":null,\"fixedCommitments\":[],\"journeyEnd\":{\"mode\":\"unknown\"},\"orderAuthority\":\"optimizable\",\"orderedStopIds\":[\"destination-1\",\"destination-2\",\"destination-3\",\"destination-4\",\"destination-5\"],\"origin\":{\"canonicalPlaceId\":\"reference:geonames:2988507\",\"coordinates\":[2.3488,48.85341],\"geographicBinding\":{\"canonicalPlaceId\":\"reference:geonames:2988507\",\"country\":\"France\",\"inputKey\":\"[\\\"reference:geonames:2988507\\\",\\\"reference:geonames:2988507@699b595afdba9be6994e:FR:city:2.3488:48.85341\\\",\\\"paris\\\",\\\"france\\\",[2.3488,48.85341]]\",\"placeType\":\"city\",\"providerId\":\"reference:geonames:2988507@699b595afdba9be6994e:FR:city:2.3488:48.85341\",\"routability\":\"direct_destination\",\"source\":\"provider\",\"version\":1},\"geographicReady\":true,\"providerId\":\"reference:geonames:2988507@699b595afdba9be6994e:FR:city:2.3488:48.85341\"},\"scheduleLocks\":{\"arrivalDates\":{},\"stopIds\":[]},\"startDate\":\"2026-10-22\",\"stops\":[{\"id\":\"destination-1\",\"nights\":2,\"place\":{\"canonicalPlaceId\":\"cape-town\",\"coordinates\":[18.42322,-33.92584],\"geographicBinding\":{\"canonicalPlaceId\":\"cape-town\",\"country\":\"South Africa\",\"inputKey\":\"[\\\"cape-town\\\",\\\"reference:geonames:3369157@699b595afdba9be6994e:ZA:city:18.42322:-33.92584\\\",\\\"cape town\\\",\\\"south africa\\\",[18.42322,-33.92584]]\",\"placeType\":\"city\",\"providerId\":\"reference:geonames:3369157@699b595afdba9be6994e:ZA:city:18.42322:-33.92584\",\"routability\":\"direct_destination\",\"source\":\"provider\",\"version\":1},\"geographicReady\":true,\"providerId\":\"reference:geonames:3369157@699b595afdba9be6994e:ZA:city:18.42322:-33.92584\"}},{\"id\":\"destination-2\",\"nights\":1,\"place\":{\"canonicalPlaceId\":\"windhoek\",\"coordinates\":[17.0832,-22.5609],\"geographicBinding\":{\"canonicalPlaceId\":\"windhoek\",\"country\":\"Namibia\",\"inputKey\":\"[\\\"windhoek\\\",null,\\\"windhoek\\\",\\\"namibia\\\",[17.0832,-22.5609]]\",\"placeType\":\"city\",\"routability\":\"direct_destination\",\"source\":\"catalog\",\"version\":1},\"geographicReady\":true,\"providerId\":null}},{\"id\":\"destination-3\",\"nights\":1,\"place\":{\"canonicalPlaceId\":\"swakopmund\",\"coordinates\":[14.5053,-22.6784],\"geographicBinding\":{\"canonicalPlaceId\":\"swakopmund\",\"country\":\"Namibia\",\"inputKey\":\"[\\\"swakopmund\\\",null,\\\"swakopmund\\\",\\\"namibia\\\",[14.5053,-22.6784]]\",\"placeType\":\"city\",\"routability\":\"direct_destination\",\"source\":\"catalog\",\"version\":1},\"geographicReady\":true,\"providerId\":null}},{\"id\":\"destination-4\",\"nights\":1,\"place\":{\"canonicalPlaceId\":\"victoria-falls\",\"coordinates\":[25.83066,-17.93285],\"geographicBinding\":{\"canonicalPlaceId\":\"victoria-falls\",\"country\":\"Zimbabwe\",\"inputKey\":\"[\\\"victoria-falls\\\",\\\"reference:geonames:879431@699b595afdba9be6994e:ZW:town:25.83066:-17.93285\\\",\\\"victoria falls\\\",\\\"zimbabwe\\\",[25.83066,-17.93285]]\",\"placeType\":\"town\",\"providerId\":\"reference:geonames:879431@699b595afdba9be6994e:ZW:town:25.83066:-17.93285\",\"routability\":\"direct_destination\",\"source\":\"provider\",\"version\":1},\"geographicReady\":true,\"providerId\":\"reference:geonames:879431@699b595afdba9be6994e:ZW:town:25.83066:-17.93285\"}},{\"id\":\"destination-5\",\"nights\":1,\"place\":{\"canonicalPlaceId\":\"reference:geonames:186301\",\"coordinates\":[39.66359,-4.05466],\"geographicBinding\":{\"canonicalPlaceId\":\"reference:geonames:186301\",\"country\":\"Kenya\",\"inputKey\":\"[\\\"reference:geonames:186301\\\",\\\"reference:geonames:186301@699b595afdba9be6994e:KE:city:39.66359:-4.05466\\\",\\\"mombasa\\\",\\\"kenya\\\",[39.66359,-4.05466]]\",\"placeType\":\"city\",\"providerId\":\"reference:geonames:186301@699b595afdba9be6994e:KE:city:39.66359:-4.05466\",\"routability\":\"direct_destination\",\"source\":\"provider\",\"version\":1},\"geographicReady\":true,\"providerId\":\"reference:geonames:186301@699b595afdba9be6994e:KE:city:39.66359:-4.05466\"}}],\"transport\":{\"avoidDriving\":false,\"modes\":[\"flight\",\"train\"]},\"tripType\":\"one_way\"}"
+      }
+    },
+    "structuredBrief": {
+      "version": 1,
+      "duration": {
+        "value": 7,
+        "unit": "days",
+        "precision": "exact",
+        "provenance": {
+          "source": "builder",
+          "kind": "explicit",
+          "confidence": "high"
+        }
+      },
+      "destinations": [
+        {
+          "name": "Paris",
+          "canonicalPlaceId": "reference:geonames:2988507",
+          "role": "arrival-gateway",
+          "priority": "required",
+          "provenance": {
+            "source": "builder",
+            "kind": "explicit",
+            "confidence": "high"
+          },
+          "parentCountries": [
+            "France"
+          ],
+          "resolutionStatus": "resolved",
+          "routability": "direct_destination"
+        },
+        {
+          "id": "destination-1",
+          "name": "Cape Town",
+          "canonicalPlaceId": "cape-town",
+          "placeMentionId": "homepage-entry:destination-1",
+          "placeType": "city",
+          "resolutionStatus": "resolved",
+          "routability": "direct_destination",
+          "sourceLabel": "Cape Town",
+          "parentCountries": [
+            "South Africa"
+          ],
+          "role": "preferred",
+          "priority": "normal",
+          "provenance": {
+            "source": "builder",
+            "kind": "explicit",
+            "confidence": "high"
+          }
+        },
+        {
+          "id": "destination-2",
+          "name": "Windhoek",
+          "canonicalPlaceId": "windhoek",
+          "placeMentionId": "homepage-entry:destination-2",
+          "placeType": "city",
+          "resolutionStatus": "resolved",
+          "routability": "direct_destination",
+          "sourceLabel": "Windhoek",
+          "parentCountries": [
+            "Namibia"
+          ],
+          "role": "preferred",
+          "priority": "normal",
+          "provenance": {
+            "source": "builder",
+            "kind": "explicit",
+            "confidence": "high"
+          }
+        },
+        {
+          "id": "destination-3",
+          "name": "Swakopmund",
+          "canonicalPlaceId": "swakopmund",
+          "placeMentionId": "homepage-entry:destination-3",
+          "placeType": "city",
+          "resolutionStatus": "resolved",
+          "routability": "direct_destination",
+          "sourceLabel": "Swakopmund",
+          "parentCountries": [
+            "Namibia"
+          ],
+          "role": "preferred",
+          "priority": "normal",
+          "provenance": {
+            "source": "builder",
+            "kind": "explicit",
+            "confidence": "high"
+          }
+        },
+        {
+          "id": "destination-4",
+          "name": "Victoria Falls",
+          "canonicalPlaceId": "victoria-falls",
+          "placeMentionId": "homepage-entry:destination-4",
+          "placeType": "town",
+          "resolutionStatus": "resolved",
+          "routability": "direct_destination",
+          "sourceLabel": "Victoria Falls",
+          "parentCountries": [
+            "Zimbabwe"
+          ],
+          "role": "preferred",
+          "priority": "normal",
+          "provenance": {
+            "source": "builder",
+            "kind": "explicit",
+            "confidence": "high"
+          }
+        },
+        {
+          "id": "destination-5",
+          "name": "Mombasa",
+          "canonicalPlaceId": "reference:geonames:186301",
+          "placeMentionId": "homepage-entry:destination-5",
+          "placeType": "city",
+          "resolutionStatus": "resolved",
+          "routability": "direct_destination",
+          "sourceLabel": "Mombasa",
+          "parentCountries": [
+            "Kenya"
+          ],
+          "role": "preferred",
+          "priority": "normal",
+          "provenance": {
+            "source": "builder",
+            "kind": "explicit",
+            "confidence": "high"
+          }
+        }
+      ],
+      "mustVisit": [
+        {
+          "id": "destination-1",
+          "name": "Cape Town",
+          "canonicalPlaceId": "cape-town",
+          "placeMentionId": "homepage-entry:destination-1",
+          "placeType": "city",
+          "resolutionStatus": "resolved",
+          "routability": "direct_destination",
+          "sourceLabel": "Cape Town",
+          "parentCountries": [
+            "South Africa"
+          ],
+          "role": "preferred",
+          "priority": "normal",
+          "provenance": {
+            "source": "builder",
+            "kind": "explicit",
+            "confidence": "high"
+          }
+        },
+        {
+          "id": "destination-2",
+          "name": "Windhoek",
+          "canonicalPlaceId": "windhoek",
+          "placeMentionId": "homepage-entry:destination-2",
+          "placeType": "city",
+          "resolutionStatus": "resolved",
+          "routability": "direct_destination",
+          "sourceLabel": "Windhoek",
+          "parentCountries": [
+            "Namibia"
+          ],
+          "role": "preferred",
+          "priority": "normal",
+          "provenance": {
+            "source": "builder",
+            "kind": "explicit",
+            "confidence": "high"
+          }
+        },
+        {
+          "id": "destination-3",
+          "name": "Swakopmund",
+          "canonicalPlaceId": "swakopmund",
+          "placeMentionId": "homepage-entry:destination-3",
+          "placeType": "city",
+          "resolutionStatus": "resolved",
+          "routability": "direct_destination",
+          "sourceLabel": "Swakopmund",
+          "parentCountries": [
+            "Namibia"
+          ],
+          "role": "preferred",
+          "priority": "normal",
+          "provenance": {
+            "source": "builder",
+            "kind": "explicit",
+            "confidence": "high"
+          }
+        },
+        {
+          "id": "destination-4",
+          "name": "Victoria Falls",
+          "canonicalPlaceId": "victoria-falls",
+          "placeMentionId": "homepage-entry:destination-4",
+          "placeType": "town",
+          "resolutionStatus": "resolved",
+          "routability": "direct_destination",
+          "sourceLabel": "Victoria Falls",
+          "parentCountries": [
+            "Zimbabwe"
+          ],
+          "role": "preferred",
+          "priority": "normal",
+          "provenance": {
+            "source": "builder",
+            "kind": "explicit",
+            "confidence": "high"
+          }
+        },
+        {
+          "id": "destination-5",
+          "name": "Mombasa",
+          "canonicalPlaceId": "reference:geonames:186301",
+          "placeMentionId": "homepage-entry:destination-5",
+          "placeType": "city",
+          "resolutionStatus": "resolved",
+          "routability": "direct_destination",
+          "sourceLabel": "Mombasa",
+          "parentCountries": [
+            "Kenya"
+          ],
+          "role": "preferred",
+          "priority": "normal",
+          "provenance": {
+            "source": "builder",
+            "kind": "explicit",
+            "confidence": "high"
+          }
+        }
+      ],
+      "countries": [],
+      "preferredRegions": [],
+      "dates": {
+        "start": {
+          "value": "2026-10-22",
+          "provenance": {
+            "source": "builder",
+            "kind": "explicit",
+            "confidence": "high"
+          }
+        },
+        "end": {
+          "value": "2026-10-28",
+          "provenance": {
+            "source": "builder",
+            "kind": "explicit",
+            "confidence": "high"
+          }
+        },
+        "fixed": {
+          "value": true,
+          "provenance": {
+            "source": "builder",
+            "kind": "explicit",
+            "confidence": "high"
+          }
+        }
+      },
+      "interests": [],
+      "transportPreferences": [],
+      "accommodationPreferences": [],
+      "budget": {
+        "value": "mid",
+        "provenance": {
+          "source": "morrovia-default",
+          "kind": "default",
+          "confidence": "low"
+        }
+      },
+      "hardConstraints": [
+        {
+          "type": "duration",
+          "duration": {
+            "value": 7,
+            "unit": "days",
+            "precision": "exact",
+            "provenance": {
+              "source": "builder",
+              "kind": "explicit",
+              "confidence": "high"
+            }
+          }
+        },
+        {
+          "type": "start-at",
+          "value": "Paris",
+          "provenance": {
+            "source": "builder",
+            "kind": "explicit",
+            "confidence": "high"
+          }
+        },
+        {
+          "type": "must-visit",
+          "value": "Cape Town",
+          "provenance": {
+            "source": "builder",
+            "kind": "explicit",
+            "confidence": "high"
+          }
+        },
+        {
+          "type": "must-visit",
+          "value": "Windhoek",
+          "provenance": {
+            "source": "builder",
+            "kind": "explicit",
+            "confidence": "high"
+          }
+        },
+        {
+          "type": "must-visit",
+          "value": "Swakopmund",
+          "provenance": {
+            "source": "builder",
+            "kind": "explicit",
+            "confidence": "high"
+          }
+        },
+        {
+          "type": "must-visit",
+          "value": "Victoria Falls",
+          "provenance": {
+            "source": "builder",
+            "kind": "explicit",
+            "confidence": "high"
+          }
+        },
+        {
+          "type": "must-visit",
+          "value": "Mombasa",
+          "provenance": {
+            "source": "builder",
+            "kind": "explicit",
+            "confidence": "high"
+          }
+        }
+      ],
+      "softPreferences": [
+        {
+          "type": "budget",
+          "value": "mid",
+          "provenance": {
+            "source": "morrovia-default",
+            "kind": "default",
+            "confidence": "low"
+          }
+        }
+      ],
+      "source": {
+        "parserVersion": "homepage-input-v1",
+        "inputs": [
+          "builder"
+        ]
+      },
+      "confidence": "high",
+      "issues": [],
+      "placeMentions": [
+        {
+          "mentionId": "homepage-entry:destination-1",
+          "sourceText": "Cape Town",
+          "sourceTexts": [
+            "Cape Town"
+          ],
+          "normalizedPhrase": "cape town",
+          "canonicalName": "Cape Town",
+          "canonicalPlaceId": "cape-town",
+          "aliases": [],
+          "placeType": "city",
+          "status": "resolved",
+          "confidence": {
+            "version": 1,
+            "state": "structured",
+            "level": "high",
+            "freshness": "current",
+            "scope": "traveller-intent",
+            "sources": [
+              {
+                "id": "homepage-entry:destination-1",
+                "label": "Homepage destination selection",
+                "kind": "traveller",
+                "supports": "The traveller explicitly selected this canonical destination occurrence on the homepage."
+              }
+            ],
+            "reason": "The traveller explicitly selected this canonical destination occurrence.",
+            "confirmation": {
+              "needed": false,
+              "reason": null
+            }
+          },
+          "provenance": [
+            {
+              "id": "morrovia-place-catalog:cape-town",
+              "label": "Morrovia curated place catalog",
+              "kind": "canonical",
+              "supports": "Canonical identity, aliases, type and stable containment for Cape Town.",
+              "reviewedAt": "2026-08-23"
+            },
+            {
+              "id": "homepage-entry:destination-1",
+              "label": "Homepage destination selection",
+              "kind": "builder",
+              "supports": "The traveller explicitly selected this canonical destination occurrence on the homepage."
+            }
+          ],
+          "parentCountries": [
+            "South Africa"
+          ],
+          "routability": "direct_destination",
+          "directlyRoutable": true,
+          "requiresBaseSelection": false,
+          "isAnchor": false,
+          "role": "preferred",
+          "order": 0,
+          "candidates": [
+            {
+              "canonicalPlaceId": "cape-town",
+              "canonicalName": "Cape Town",
+              "aliases": [],
+              "placeType": "city",
+              "parentCountries": [
+                "South Africa"
+              ],
+              "routability": "direct_destination",
+              "confidence": {
+                "version": 1,
+                "state": "structured",
+                "level": "high",
+                "freshness": "current",
+                "scope": "traveller-intent",
+                "sources": [
+                  {
+                    "id": "homepage-entry:destination-1",
+                    "label": "Homepage destination selection",
+                    "kind": "traveller",
+                    "supports": "The traveller explicitly selected this canonical destination occurrence on the homepage."
+                  }
+                ],
+                "reason": "The traveller explicitly selected this canonical destination occurrence.",
+                "confirmation": {
+                  "needed": false,
+                  "reason": null
+                }
+              },
+              "provenance": [
+                {
+                  "id": "morrovia-place-catalog:cape-town",
+                  "label": "Morrovia curated place catalog",
+                  "kind": "canonical",
+                  "supports": "Canonical identity, aliases, type and stable containment for Cape Town.",
+                  "reviewedAt": "2026-08-23"
+                },
+                {
+                  "id": "homepage-entry:destination-1",
+                  "label": "Homepage destination selection",
+                  "kind": "builder",
+                  "supports": "The traveller explicitly selected this canonical destination occurrence on the homepage."
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "mentionId": "homepage-entry:destination-2",
+          "sourceText": "Windhoek",
+          "sourceTexts": [
+            "Windhoek"
+          ],
+          "normalizedPhrase": "windhoek",
+          "canonicalName": "Windhoek",
+          "canonicalPlaceId": "windhoek",
+          "aliases": [],
+          "placeType": "city",
+          "status": "resolved",
+          "confidence": {
+            "version": 1,
+            "state": "structured",
+            "level": "high",
+            "freshness": "current",
+            "scope": "traveller-intent",
+            "sources": [
+              {
+                "id": "homepage-entry:destination-2",
+                "label": "Homepage destination selection",
+                "kind": "traveller",
+                "supports": "The traveller explicitly selected this canonical destination occurrence on the homepage."
+              }
+            ],
+            "reason": "The traveller explicitly selected this canonical destination occurrence.",
+            "confirmation": {
+              "needed": false,
+              "reason": null
+            }
+          },
+          "provenance": [
+            {
+              "id": "morrovia-place-catalog:windhoek",
+              "label": "Morrovia curated place catalog",
+              "kind": "canonical",
+              "supports": "Canonical identity, aliases, type and stable containment for Windhoek.",
+              "reviewedAt": "2026-09-10"
+            },
+            {
+              "id": "homepage-entry:destination-2",
+              "label": "Homepage destination selection",
+              "kind": "builder",
+              "supports": "The traveller explicitly selected this canonical destination occurrence on the homepage."
+            }
+          ],
+          "parentCountries": [
+            "Namibia"
+          ],
+          "coordinates": [
+            17.0832,
+            -22.5609
+          ],
+          "routability": "direct_destination",
+          "directlyRoutable": true,
+          "requiresBaseSelection": false,
+          "isAnchor": false,
+          "role": "preferred",
+          "order": 1,
+          "candidates": [
+            {
+              "canonicalPlaceId": "windhoek",
+              "canonicalName": "Windhoek",
+              "aliases": [],
+              "placeType": "city",
+              "parentCountries": [
+                "Namibia"
+              ],
+              "coordinates": [
+                17.0832,
+                -22.5609
+              ],
+              "routability": "direct_destination",
+              "confidence": {
+                "version": 1,
+                "state": "structured",
+                "level": "high",
+                "freshness": "current",
+                "scope": "traveller-intent",
+                "sources": [
+                  {
+                    "id": "homepage-entry:destination-2",
+                    "label": "Homepage destination selection",
+                    "kind": "traveller",
+                    "supports": "The traveller explicitly selected this canonical destination occurrence on the homepage."
+                  }
+                ],
+                "reason": "The traveller explicitly selected this canonical destination occurrence.",
+                "confirmation": {
+                  "needed": false,
+                  "reason": null
+                }
+              },
+              "provenance": [
+                {
+                  "id": "morrovia-place-catalog:windhoek",
+                  "label": "Morrovia curated place catalog",
+                  "kind": "canonical",
+                  "supports": "Canonical identity, aliases, type and stable containment for Windhoek.",
+                  "reviewedAt": "2026-09-10"
+                },
+                {
+                  "id": "homepage-entry:destination-2",
+                  "label": "Homepage destination selection",
+                  "kind": "builder",
+                  "supports": "The traveller explicitly selected this canonical destination occurrence on the homepage."
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "mentionId": "homepage-entry:destination-3",
+          "sourceText": "Swakopmund",
+          "sourceTexts": [
+            "Swakopmund"
+          ],
+          "normalizedPhrase": "swakopmund",
+          "canonicalName": "Swakopmund",
+          "canonicalPlaceId": "swakopmund",
+          "aliases": [],
+          "placeType": "city",
+          "status": "resolved",
+          "confidence": {
+            "version": 1,
+            "state": "structured",
+            "level": "high",
+            "freshness": "current",
+            "scope": "traveller-intent",
+            "sources": [
+              {
+                "id": "homepage-entry:destination-3",
+                "label": "Homepage destination selection",
+                "kind": "traveller",
+                "supports": "The traveller explicitly selected this canonical destination occurrence on the homepage."
+              }
+            ],
+            "reason": "The traveller explicitly selected this canonical destination occurrence.",
+            "confirmation": {
+              "needed": false,
+              "reason": null
+            }
+          },
+          "provenance": [
+            {
+              "id": "morrovia-place-catalog:swakopmund",
+              "label": "Morrovia curated place catalog",
+              "kind": "canonical",
+              "supports": "Canonical identity, aliases, type and stable containment for Swakopmund.",
+              "reviewedAt": "2026-09-10"
+            },
+            {
+              "id": "homepage-entry:destination-3",
+              "label": "Homepage destination selection",
+              "kind": "builder",
+              "supports": "The traveller explicitly selected this canonical destination occurrence on the homepage."
+            }
+          ],
+          "parentCountries": [
+            "Namibia"
+          ],
+          "coordinates": [
+            14.5053,
+            -22.6784
+          ],
+          "routability": "direct_destination",
+          "directlyRoutable": true,
+          "requiresBaseSelection": false,
+          "isAnchor": false,
+          "role": "preferred",
+          "order": 2,
+          "candidates": [
+            {
+              "canonicalPlaceId": "swakopmund",
+              "canonicalName": "Swakopmund",
+              "aliases": [],
+              "placeType": "city",
+              "parentCountries": [
+                "Namibia"
+              ],
+              "coordinates": [
+                14.5053,
+                -22.6784
+              ],
+              "routability": "direct_destination",
+              "confidence": {
+                "version": 1,
+                "state": "structured",
+                "level": "high",
+                "freshness": "current",
+                "scope": "traveller-intent",
+                "sources": [
+                  {
+                    "id": "homepage-entry:destination-3",
+                    "label": "Homepage destination selection",
+                    "kind": "traveller",
+                    "supports": "The traveller explicitly selected this canonical destination occurrence on the homepage."
+                  }
+                ],
+                "reason": "The traveller explicitly selected this canonical destination occurrence.",
+                "confirmation": {
+                  "needed": false,
+                  "reason": null
+                }
+              },
+              "provenance": [
+                {
+                  "id": "morrovia-place-catalog:swakopmund",
+                  "label": "Morrovia curated place catalog",
+                  "kind": "canonical",
+                  "supports": "Canonical identity, aliases, type and stable containment for Swakopmund.",
+                  "reviewedAt": "2026-09-10"
+                },
+                {
+                  "id": "homepage-entry:destination-3",
+                  "label": "Homepage destination selection",
+                  "kind": "builder",
+                  "supports": "The traveller explicitly selected this canonical destination occurrence on the homepage."
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "mentionId": "homepage-entry:destination-4",
+          "sourceText": "Victoria Falls",
+          "sourceTexts": [
+            "Victoria Falls"
+          ],
+          "normalizedPhrase": "victoria falls",
+          "canonicalName": "Victoria Falls",
+          "canonicalPlaceId": "victoria-falls",
+          "aliases": [],
+          "placeType": "town",
+          "status": "resolved",
+          "confidence": {
+            "version": 1,
+            "state": "structured",
+            "level": "high",
+            "freshness": "current",
+            "scope": "traveller-intent",
+            "sources": [
+              {
+                "id": "homepage-entry:destination-4",
+                "label": "Homepage destination selection",
+                "kind": "traveller",
+                "supports": "The traveller explicitly selected this canonical destination occurrence on the homepage."
+              }
+            ],
+            "reason": "The traveller explicitly selected this canonical destination occurrence.",
+            "confirmation": {
+              "needed": false,
+              "reason": null
+            }
+          },
+          "provenance": [
+            {
+              "id": "morrovia-place-catalog:victoria-falls",
+              "label": "Morrovia curated place catalog",
+              "kind": "canonical",
+              "supports": "Canonical identity, aliases, type and stable containment for Victoria Falls.",
+              "reviewedAt": "2026-08-23"
+            },
+            {
+              "id": "homepage-entry:destination-4",
+              "label": "Homepage destination selection",
+              "kind": "builder",
+              "supports": "The traveller explicitly selected this canonical destination occurrence on the homepage."
+            }
+          ],
+          "parentCountries": [
+            "Zimbabwe"
+          ],
+          "routability": "direct_destination",
+          "directlyRoutable": true,
+          "requiresBaseSelection": false,
+          "isAnchor": false,
+          "role": "preferred",
+          "order": 3,
+          "candidates": [
+            {
+              "canonicalPlaceId": "victoria-falls",
+              "canonicalName": "Victoria Falls",
+              "aliases": [],
+              "placeType": "town",
+              "parentCountries": [
+                "Zimbabwe"
+              ],
+              "routability": "direct_destination",
+              "confidence": {
+                "version": 1,
+                "state": "structured",
+                "level": "high",
+                "freshness": "current",
+                "scope": "traveller-intent",
+                "sources": [
+                  {
+                    "id": "homepage-entry:destination-4",
+                    "label": "Homepage destination selection",
+                    "kind": "traveller",
+                    "supports": "The traveller explicitly selected this canonical destination occurrence on the homepage."
+                  }
+                ],
+                "reason": "The traveller explicitly selected this canonical destination occurrence.",
+                "confirmation": {
+                  "needed": false,
+                  "reason": null
+                }
+              },
+              "provenance": [
+                {
+                  "id": "morrovia-place-catalog:victoria-falls",
+                  "label": "Morrovia curated place catalog",
+                  "kind": "canonical",
+                  "supports": "Canonical identity, aliases, type and stable containment for Victoria Falls.",
+                  "reviewedAt": "2026-08-23"
+                },
+                {
+                  "id": "homepage-entry:destination-4",
+                  "label": "Homepage destination selection",
+                  "kind": "builder",
+                  "supports": "The traveller explicitly selected this canonical destination occurrence on the homepage."
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "mentionId": "homepage-entry:destination-5",
+          "sourceText": "Mombasa",
+          "sourceTexts": [
+            "Mombasa"
+          ],
+          "normalizedPhrase": "mombasa",
+          "canonicalName": "Mombasa",
+          "canonicalPlaceId": "reference:geonames:186301",
+          "aliases": [],
+          "placeType": "city",
+          "status": "resolved",
+          "confidence": {
+            "version": 1,
+            "state": "structured",
+            "level": "high",
+            "freshness": "current",
+            "scope": "traveller-intent",
+            "sources": [
+              {
+                "id": "homepage-entry:destination-5",
+                "label": "Homepage destination selection",
+                "kind": "traveller",
+                "supports": "The traveller explicitly selected this canonical destination occurrence on the homepage."
+              }
+            ],
+            "reason": "The traveller explicitly selected this canonical destination occurrence.",
+            "confirmation": {
+              "needed": false,
+              "reason": null
+            }
+          },
+          "provenance": [
+            {
+              "id": "reference:geonames:186301@699b595afdba9be6994e:KE:city:39.66359:-4.05466",
+              "label": "GeoNames",
+              "kind": "provider",
+              "supports": "Settlement identity from GeoNames (PPLA); filtered/adapted CC BY 4.0 data, not a travel recommendation."
+            },
+            {
+              "id": "homepage-entry:destination-5",
+              "label": "Homepage destination selection",
+              "kind": "builder",
+              "supports": "The traveller explicitly selected this canonical destination occurrence on the homepage."
+            }
+          ],
+          "parentCountries": [
+            "Kenya"
+          ],
+          "coordinates": [
+            39.66359,
+            -4.05466
+          ],
+          "routability": "direct_destination",
+          "directlyRoutable": true,
+          "requiresBaseSelection": false,
+          "isAnchor": false,
+          "role": "preferred",
+          "order": 4,
+          "candidates": [
+            {
+              "canonicalPlaceId": "reference:geonames:186301",
+              "canonicalName": "Mombasa",
+              "aliases": [],
+              "placeType": "city",
+              "parentCountries": [
+                "Kenya"
+              ],
+              "coordinates": [
+                39.66359,
+                -4.05466
+              ],
+              "routability": "direct_destination",
+              "confidence": {
+                "version": 1,
+                "state": "structured",
+                "level": "high",
+                "freshness": "current",
+                "scope": "traveller-intent",
+                "sources": [
+                  {
+                    "id": "homepage-entry:destination-5",
+                    "label": "Homepage destination selection",
+                    "kind": "traveller",
+                    "supports": "The traveller explicitly selected this canonical destination occurrence on the homepage."
+                  }
+                ],
+                "reason": "The traveller explicitly selected this canonical destination occurrence.",
+                "confirmation": {
+                  "needed": false,
+                  "reason": null
+                }
+              },
+              "provenance": [
+                {
+                  "id": "reference:geonames:186301@699b595afdba9be6994e:KE:city:39.66359:-4.05466",
+                  "label": "GeoNames",
+                  "kind": "provider",
+                  "supports": "Settlement identity from GeoNames (PPLA); filtered/adapted CC BY 4.0 data, not a travel recommendation."
+                },
+                {
+                  "id": "homepage-entry:destination-5",
+                  "label": "Homepage destination selection",
+                  "kind": "builder",
+                  "supports": "The traveller explicitly selected this canonical destination occurrence on the homepage."
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "placeIssues": [],
+      "placeSelections": [
+        {
+          "mentionId": "homepage-entry:destination-1",
+          "kind": "visit",
+          "selectedCanonicalPlaceId": "cape-town",
+          "selectedName": "Cape Town",
+          "selectedPlaceType": "city",
+          "selectedParentCountries": [
+            "South Africa"
+          ],
+          "routeStopId": "destination-1",
+          "provenance": {
+            "id": "homepage-entry:destination-1",
+            "label": "Homepage destination selection",
+            "kind": "builder",
+            "supports": "The traveller explicitly selected this canonical destination occurrence on the homepage."
+          },
+          "confidence": {
+            "version": 1,
+            "state": "structured",
+            "level": "high",
+            "freshness": "current",
+            "scope": "traveller-intent",
+            "sources": [
+              {
+                "id": "homepage-entry:destination-1",
+                "label": "Homepage destination selection",
+                "kind": "traveller",
+                "supports": "The traveller explicitly selected this canonical destination occurrence on the homepage."
+              }
+            ],
+            "reason": "The traveller explicitly selected this canonical destination occurrence.",
+            "confirmation": {
+              "needed": false,
+              "reason": null
+            }
+          }
+        },
+        {
+          "mentionId": "homepage-entry:destination-2",
+          "kind": "visit",
+          "selectedCanonicalPlaceId": "windhoek",
+          "selectedName": "Windhoek",
+          "selectedPlaceType": "city",
+          "selectedParentCountries": [
+            "Namibia"
+          ],
+          "routeStopId": "destination-2",
+          "provenance": {
+            "id": "homepage-entry:destination-2",
+            "label": "Homepage destination selection",
+            "kind": "builder",
+            "supports": "The traveller explicitly selected this canonical destination occurrence on the homepage."
+          },
+          "confidence": {
+            "version": 1,
+            "state": "structured",
+            "level": "high",
+            "freshness": "current",
+            "scope": "traveller-intent",
+            "sources": [
+              {
+                "id": "homepage-entry:destination-2",
+                "label": "Homepage destination selection",
+                "kind": "traveller",
+                "supports": "The traveller explicitly selected this canonical destination occurrence on the homepage."
+              }
+            ],
+            "reason": "The traveller explicitly selected this canonical destination occurrence.",
+            "confirmation": {
+              "needed": false,
+              "reason": null
+            }
+          }
+        },
+        {
+          "mentionId": "homepage-entry:destination-3",
+          "kind": "visit",
+          "selectedCanonicalPlaceId": "swakopmund",
+          "selectedName": "Swakopmund",
+          "selectedPlaceType": "city",
+          "selectedParentCountries": [
+            "Namibia"
+          ],
+          "routeStopId": "destination-3",
+          "provenance": {
+            "id": "homepage-entry:destination-3",
+            "label": "Homepage destination selection",
+            "kind": "builder",
+            "supports": "The traveller explicitly selected this canonical destination occurrence on the homepage."
+          },
+          "confidence": {
+            "version": 1,
+            "state": "structured",
+            "level": "high",
+            "freshness": "current",
+            "scope": "traveller-intent",
+            "sources": [
+              {
+                "id": "homepage-entry:destination-3",
+                "label": "Homepage destination selection",
+                "kind": "traveller",
+                "supports": "The traveller explicitly selected this canonical destination occurrence on the homepage."
+              }
+            ],
+            "reason": "The traveller explicitly selected this canonical destination occurrence.",
+            "confirmation": {
+              "needed": false,
+              "reason": null
+            }
+          }
+        },
+        {
+          "mentionId": "homepage-entry:destination-4",
+          "kind": "visit",
+          "selectedCanonicalPlaceId": "victoria-falls",
+          "selectedName": "Victoria Falls",
+          "selectedPlaceType": "town",
+          "selectedParentCountries": [
+            "Zimbabwe"
+          ],
+          "routeStopId": "destination-4",
+          "provenance": {
+            "id": "homepage-entry:destination-4",
+            "label": "Homepage destination selection",
+            "kind": "builder",
+            "supports": "The traveller explicitly selected this canonical destination occurrence on the homepage."
+          },
+          "confidence": {
+            "version": 1,
+            "state": "structured",
+            "level": "high",
+            "freshness": "current",
+            "scope": "traveller-intent",
+            "sources": [
+              {
+                "id": "homepage-entry:destination-4",
+                "label": "Homepage destination selection",
+                "kind": "traveller",
+                "supports": "The traveller explicitly selected this canonical destination occurrence on the homepage."
+              }
+            ],
+            "reason": "The traveller explicitly selected this canonical destination occurrence.",
+            "confirmation": {
+              "needed": false,
+              "reason": null
+            }
+          }
+        },
+        {
+          "mentionId": "homepage-entry:destination-5",
+          "kind": "visit",
+          "selectedCanonicalPlaceId": "reference:geonames:186301",
+          "selectedName": "Mombasa",
+          "selectedPlaceType": "city",
+          "selectedParentCountries": [
+            "Kenya"
+          ],
+          "routeStopId": "destination-5",
+          "provenance": {
+            "id": "homepage-entry:destination-5",
+            "label": "Homepage destination selection",
+            "kind": "builder",
+            "supports": "The traveller explicitly selected this canonical destination occurrence on the homepage."
+          },
+          "confidence": {
+            "version": 1,
+            "state": "structured",
+            "level": "high",
+            "freshness": "current",
+            "scope": "traveller-intent",
+            "sources": [
+              {
+                "id": "homepage-entry:destination-5",
+                "label": "Homepage destination selection",
+                "kind": "traveller",
+                "supports": "The traveller explicitly selected this canonical destination occurrence on the homepage."
+              }
+            ],
+            "reason": "The traveller explicitly selected this canonical destination occurrence.",
+            "confirmation": {
+              "needed": false,
+              "reason": null
+            }
+          }
+        }
+      ],
+      "completedPlanningAreaMentionIds": [],
+      "removedPlaceMentionIds": []
+    },
+    "cascadeStatus": {
+      "conflicts": [],
+      "affectedBookingIds": [],
+      "affectedPlanItemCount": 0,
+      "routeReconciliation": {
+        "version": 1,
+        "inputKey": "{\"destinations\":[{\"id\":\"homepage-entry:destination-1\",\"kind\":\"overnight_place\",\"requestedNights\":null,\"resolution\":\"resolved\",\"routeMembership\":\"required\",\"selectedPlace\":{\"canonicalPlaceId\":\"cape-town\",\"coordinates\":[18.42322,-33.92584],\"geographicBinding\":{\"canonicalPlaceId\":\"cape-town\",\"country\":\"South Africa\",\"inputKey\":\"[\\\"cape-town\\\",\\\"reference:geonames:3369157@699b595afdba9be6994e:ZA:city:18.42322:-33.92584\\\",\\\"cape town\\\",\\\"south africa\\\",[18.42322,-33.92584]]\",\"placeType\":\"city\",\"providerId\":\"reference:geonames:3369157@699b595afdba9be6994e:ZA:city:18.42322:-33.92584\",\"routability\":\"direct_destination\",\"source\":\"provider\",\"version\":1},\"geographicReady\":true,\"providerId\":\"reference:geonames:3369157@699b595afdba9be6994e:ZA:city:18.42322:-33.92584\"},\"stopIds\":[\"destination-1\"]},{\"id\":\"homepage-entry:destination-2\",\"kind\":\"overnight_place\",\"requestedNights\":null,\"resolution\":\"resolved\",\"routeMembership\":\"required\",\"selectedPlace\":{\"canonicalPlaceId\":\"windhoek\",\"coordinates\":[17.0832,-22.5609],\"providerId\":null},\"stopIds\":[\"destination-2\"]},{\"id\":\"homepage-entry:destination-3\",\"kind\":\"overnight_place\",\"requestedNights\":null,\"resolution\":\"resolved\",\"routeMembership\":\"required\",\"selectedPlace\":{\"canonicalPlaceId\":\"swakopmund\",\"coordinates\":[14.5053,-22.6784],\"providerId\":null},\"stopIds\":[\"destination-3\"]},{\"id\":\"homepage-entry:destination-4\",\"kind\":\"overnight_place\",\"requestedNights\":null,\"resolution\":\"resolved\",\"routeMembership\":\"required\",\"selectedPlace\":{\"canonicalPlaceId\":\"victoria-falls\",\"coordinates\":[25.83066,-17.93285],\"geographicBinding\":{\"canonicalPlaceId\":\"victoria-falls\",\"country\":\"Zimbabwe\",\"inputKey\":\"[\\\"victoria-falls\\\",\\\"reference:geonames:879431@699b595afdba9be6994e:ZW:town:25.83066:-17.93285\\\",\\\"victoria falls\\\",\\\"zimbabwe\\\",[25.83066,-17.93285]]\",\"placeType\":\"town\",\"providerId\":\"reference:geonames:879431@699b595afdba9be6994e:ZW:town:25.83066:-17.93285\",\"routability\":\"direct_destination\",\"source\":\"provider\",\"version\":1},\"geographicReady\":true,\"providerId\":\"reference:geonames:879431@699b595afdba9be6994e:ZW:town:25.83066:-17.93285\"},\"stopIds\":[\"destination-4\"]},{\"id\":\"homepage-entry:destination-5\",\"kind\":\"overnight_place\",\"requestedNights\":null,\"resolution\":\"resolved\",\"routeMembership\":\"required\",\"selectedPlace\":{\"canonicalPlaceId\":\"reference:geonames:186301\",\"coordinates\":[39.66359,-4.05466],\"providerId\":null},\"stopIds\":[\"destination-5\"]}],\"endDate\":\"2026-10-28\",\"explicitIntentIds\":null,\"fixedCommitments\":[],\"journeyEnd\":{\"mode\":\"unknown\"},\"orderAuthority\":\"optimizable\",\"orderedStopIds\":[\"destination-1\",\"destination-2\",\"destination-3\",\"destination-4\",\"destination-5\"],\"origin\":{\"canonicalPlaceId\":\"reference:geonames:2988507\",\"coordinates\":[2.3488,48.85341],\"geographicBinding\":{\"canonicalPlaceId\":\"reference:geonames:2988507\",\"country\":\"France\",\"inputKey\":\"[\\\"reference:geonames:2988507\\\",\\\"reference:geonames:2988507@699b595afdba9be6994e:FR:city:2.3488:48.85341\\\",\\\"paris\\\",\\\"france\\\",[2.3488,48.85341]]\",\"placeType\":\"city\",\"providerId\":\"reference:geonames:2988507@699b595afdba9be6994e:FR:city:2.3488:48.85341\",\"routability\":\"direct_destination\",\"source\":\"provider\",\"version\":1},\"geographicReady\":true,\"providerId\":\"reference:geonames:2988507@699b595afdba9be6994e:FR:city:2.3488:48.85341\"},\"scheduleLocks\":{\"arrivalDates\":{},\"stopIds\":[]},\"startDate\":\"2026-10-22\",\"stops\":[{\"id\":\"destination-1\",\"nights\":2,\"place\":{\"canonicalPlaceId\":\"cape-town\",\"coordinates\":[18.42322,-33.92584],\"geographicBinding\":{\"canonicalPlaceId\":\"cape-town\",\"country\":\"South Africa\",\"inputKey\":\"[\\\"cape-town\\\",\\\"reference:geonames:3369157@699b595afdba9be6994e:ZA:city:18.42322:-33.92584\\\",\\\"cape town\\\",\\\"south africa\\\",[18.42322,-33.92584]]\",\"placeType\":\"city\",\"providerId\":\"reference:geonames:3369157@699b595afdba9be6994e:ZA:city:18.42322:-33.92584\",\"routability\":\"direct_destination\",\"source\":\"provider\",\"version\":1},\"geographicReady\":true,\"providerId\":\"reference:geonames:3369157@699b595afdba9be6994e:ZA:city:18.42322:-33.92584\"}},{\"id\":\"destination-2\",\"nights\":1,\"place\":{\"canonicalPlaceId\":\"windhoek\",\"coordinates\":[17.0832,-22.5609],\"geographicBinding\":{\"canonicalPlaceId\":\"windhoek\",\"country\":\"Namibia\",\"inputKey\":\"[\\\"windhoek\\\",null,\\\"windhoek\\\",\\\"namibia\\\",[17.0832,-22.5609]]\",\"placeType\":\"city\",\"routability\":\"direct_destination\",\"source\":\"catalog\",\"version\":1},\"geographicReady\":true,\"providerId\":null}},{\"id\":\"destination-3\",\"nights\":1,\"place\":{\"canonicalPlaceId\":\"swakopmund\",\"coordinates\":[14.5053,-22.6784],\"geographicBinding\":{\"canonicalPlaceId\":\"swakopmund\",\"country\":\"Namibia\",\"inputKey\":\"[\\\"swakopmund\\\",null,\\\"swakopmund\\\",\\\"namibia\\\",[14.5053,-22.6784]]\",\"placeType\":\"city\",\"routability\":\"direct_destination\",\"source\":\"catalog\",\"version\":1},\"geographicReady\":true,\"providerId\":null}},{\"id\":\"destination-4\",\"nights\":1,\"place\":{\"canonicalPlaceId\":\"victoria-falls\",\"coordinates\":[25.83066,-17.93285],\"geographicBinding\":{\"canonicalPlaceId\":\"victoria-falls\",\"country\":\"Zimbabwe\",\"inputKey\":\"[\\\"victoria-falls\\\",\\\"reference:geonames:879431@699b595afdba9be6994e:ZW:town:25.83066:-17.93285\\\",\\\"victoria falls\\\",\\\"zimbabwe\\\",[25.83066,-17.93285]]\",\"placeType\":\"town\",\"providerId\":\"reference:geonames:879431@699b595afdba9be6994e:ZW:town:25.83066:-17.93285\",\"routability\":\"direct_destination\",\"source\":\"provider\",\"version\":1},\"geographicReady\":true,\"providerId\":\"reference:geonames:879431@699b595afdba9be6994e:ZW:town:25.83066:-17.93285\"}},{\"id\":\"destination-5\",\"nights\":1,\"place\":{\"canonicalPlaceId\":\"reference:geonames:186301\",\"coordinates\":[39.66359,-4.05466],\"geographicBinding\":{\"canonicalPlaceId\":\"reference:geonames:186301\",\"country\":\"Kenya\",\"inputKey\":\"[\\\"reference:geonames:186301\\\",\\\"reference:geonames:186301@699b595afdba9be6994e:KE:city:39.66359:-4.05466\\\",\\\"mombasa\\\",\\\"kenya\\\",[39.66359,-4.05466]]\",\"placeType\":\"city\",\"providerId\":\"reference:geonames:186301@699b595afdba9be6994e:KE:city:39.66359:-4.05466\",\"routability\":\"direct_destination\",\"source\":\"provider\",\"version\":1},\"geographicReady\":true,\"providerId\":\"reference:geonames:186301@699b595afdba9be6994e:KE:city:39.66359:-4.05466\"}}],\"transport\":{\"avoidDriving\":false,\"modes\":[\"flight\",\"train\"]},\"tripType\":\"one_way\"}",
+        "residual": [
+          {
+            "kind": "recommendation",
+            "targetId": "destination-1",
+            "basisKey": "{\"budget\":\"mid\",\"preferences\":{\"budgetSensitivity\":\"mid\",\"dislikes\":[],\"interests\":[],\"pace\":\"balanced\",\"transportModes\":[\"flight\",\"train\"]},\"stop\":{\"canonicalPlaceId\":\"cape-town\",\"coordinates\":[18.42322,-33.92584],\"geographicBinding\":{\"canonicalPlaceId\":\"cape-town\",\"country\":\"South Africa\",\"inputKey\":\"[\\\"cape-town\\\",\\\"reference:geonames:3369157@699b595afdba9be6994e:ZA:city:18.42322:-33.92584\\\",\\\"cape town\\\",\\\"south africa\\\",[18.42322,-33.92584]]\",\"placeType\":\"city\",\"providerId\":\"reference:geonames:3369157@699b595afdba9be6994e:ZA:city:18.42322:-33.92584\",\"routability\":\"direct_destination\",\"source\":\"provider\",\"version\":1},\"geographicReady\":true,\"id\":\"destination-1\",\"nights\":2},\"travellers\":2}",
+            "phase": "pending"
+          },
+          {
+            "kind": "recommendation",
+            "targetId": "destination-4",
+            "basisKey": "{\"budget\":\"mid\",\"preferences\":{\"budgetSensitivity\":\"mid\",\"dislikes\":[],\"interests\":[],\"pace\":\"balanced\",\"transportModes\":[\"flight\",\"train\"]},\"stop\":{\"canonicalPlaceId\":\"victoria-falls\",\"coordinates\":[25.83066,-17.93285],\"geographicBinding\":{\"canonicalPlaceId\":\"victoria-falls\",\"country\":\"Zimbabwe\",\"inputKey\":\"[\\\"victoria-falls\\\",\\\"reference:geonames:879431@699b595afdba9be6994e:ZW:town:25.83066:-17.93285\\\",\\\"victoria falls\\\",\\\"zimbabwe\\\",[25.83066,-17.93285]]\",\"placeType\":\"town\",\"providerId\":\"reference:geonames:879431@699b595afdba9be6994e:ZW:town:25.83066:-17.93285\",\"routability\":\"direct_destination\",\"source\":\"provider\",\"version\":1},\"geographicReady\":true,\"id\":\"destination-4\",\"nights\":1},\"travellers\":2}",
+            "phase": "pending"
+          }
+        ]
+      }
+    },
+    "builderCalendarGeneration": 7,
+    "itineraryIdeas": [],
+    "routeAssessment": {
+      "route": {
+        "state": "recommendation",
+        "currentStopIds": [
+          "destination-1",
+          "destination-2",
+          "destination-3",
+          "destination-4",
+          "destination-5"
+        ],
+        "recommendedStopIds": [
+          "destination-5",
+          "destination-4",
+          "destination-2",
+          "destination-3",
+          "destination-1"
+        ],
+        "currentTransferMinutes": 2160,
+        "recommendedTransferMinutes": 1950,
+        "improvementMinutes": 210,
+        "reasons": [
+          "It removes about 3h 30m of estimated door-to-door travel.",
+          "It removes material geographic backtracking under the current route criteria."
+        ],
+        "tradeoffs": [],
+        "summary": "Mombasa \u2192 Victoria Falls \u2192 Windhoek \u2192 Swakopmund \u2192 Cape Town is the strongest order under the current route criteria.",
+        "confidence": {
+          "version": 1,
+          "state": "estimated",
+          "level": "medium",
+          "freshness": "unknown",
+          "scope": "general-route",
+          "sources": [
+            {
+              "id": "planner:transfer-impact-rules-v1",
+              "label": "Morrovia deterministic transfer-impact rules",
+              "kind": "curated",
+              "supports": "Mode-specific access, processing, waiting, arrival and usable-day planning ranges.",
+              "reviewedAt": "2026-08-23"
+            }
+          ],
+          "reason": "Confidence in the route score based on its weakest material connection evidence.",
+          "confirmation": {
+            "needed": true,
+            "reason": "Confirm exact services and schedules for the traveller's dates before booking."
+          }
+        }
+      },
+      "durations": {
+        "destination-1": {
+          "stopId": "destination-1",
+          "minimumDays": 2,
+          "recommendedDays": 2,
+          "usableDays": 1.25,
+          "arrivalMinutes": 945,
+          "arrivalLoad": "travel-heavy",
+          "reason": "The arrival transfer takes most of the day, so one full day is protected here."
+        },
+        "destination-2": {
+          "stopId": "destination-2",
+          "minimumDays": 2,
+          "recommendedDays": 2,
+          "usableDays": 1.25,
+          "arrivalMinutes": 300,
+          "arrivalLoad": "travel-heavy",
+          "reason": "The arrival transfer takes most of the day, so one full day is protected here."
+        },
+        "destination-3": {
+          "stopId": "destination-3",
+          "minimumDays": 2,
+          "recommendedDays": 2,
+          "usableDays": 1.5,
+          "arrivalMinutes": 240,
+          "arrivalLoad": "substantial",
+          "reason": "The arrival transfer uses a meaningful part of the day."
+        },
+        "destination-4": {
+          "stopId": "destination-4",
+          "minimumDays": 2,
+          "recommendedDays": 2,
+          "usableDays": 1.25,
+          "arrivalMinutes": 300,
+          "arrivalLoad": "travel-heavy",
+          "reason": "The arrival transfer takes most of the day, so one full day is protected here."
+        },
+        "destination-5": {
+          "stopId": "destination-5",
+          "minimumDays": 2,
+          "recommendedDays": 2,
+          "usableDays": 1.25,
+          "arrivalMinutes": 375,
+          "arrivalLoad": "travel-heavy",
+          "reason": "The arrival transfer takes most of the day, so one full day is protected here."
+        }
+      },
+      "comfortableDays": 10,
+      "shortfallDays": 3,
+      "overload": {
+        "reason": "Every remaining stop is marked must-see, so add days rather than compressing the route."
+      }
+    },
+    "origin": "Paris",
+    "originCanonicalPlaceId": "reference:geonames:2988507",
+    "originProviderId": "reference:geonames:2988507@699b595afdba9be6994e:FR:city:2.3488:48.85341",
+    "originCountry": "France",
+    "originCoordinates": [
+      2.3488,
+      48.85341
+    ],
+    "journeyEnd": {
+      "mode": "unknown"
+    }
+  },
+  "stops": [
+    {
+      "id": "destination-1",
+      "name": "Cape Town",
+      "country": "South Africa",
+      "order": 0,
+      "latitude": -33.92584,
+      "longitude": 18.42322,
+      "arrivalDate": "2026-10-22",
+      "departureDate": "2026-10-24",
+      "nights": 2,
+      "canonicalPlaceId": "cape-town",
+      "providerId": "reference:geonames:3369157@699b595afdba9be6994e:ZA:city:18.42322:-33.92584",
+      "geographicBinding": {
+        "version": 1,
+        "source": "provider",
+        "canonicalPlaceId": "cape-town",
+        "providerId": "reference:geonames:3369157@699b595afdba9be6994e:ZA:city:18.42322:-33.92584",
+        "placeType": "city",
+        "country": "South Africa",
+        "routability": "direct_destination",
+        "inputKey": "[\"cape-town\",\"reference:geonames:3369157@699b595afdba9be6994e:ZA:city:18.42322:-33.92584\",\"cape town\",\"south africa\",[18.42322,-33.92584]]"
+      }
+    },
+    {
+      "id": "destination-2",
+      "name": "Windhoek",
+      "country": "Namibia",
+      "canonicalPlaceId": "windhoek",
+      "geographicBinding": {
+        "version": 1,
+        "source": "catalog",
+        "canonicalPlaceId": "windhoek",
+        "placeType": "city",
+        "country": "Namibia",
+        "routability": "direct_destination",
+        "inputKey": "[\"windhoek\",null,\"windhoek\",\"namibia\",[17.0832,-22.5609]]"
+      },
+      "order": 1,
+      "latitude": -22.5609,
+      "longitude": 17.0832,
+      "arrivalDate": "2026-10-24",
+      "departureDate": "2026-10-25",
+      "nights": 1
+    },
+    {
+      "id": "destination-3",
+      "name": "Swakopmund",
+      "country": "Namibia",
+      "canonicalPlaceId": "swakopmund",
+      "geographicBinding": {
+        "version": 1,
+        "source": "catalog",
+        "canonicalPlaceId": "swakopmund",
+        "placeType": "city",
+        "country": "Namibia",
+        "routability": "direct_destination",
+        "inputKey": "[\"swakopmund\",null,\"swakopmund\",\"namibia\",[14.5053,-22.6784]]"
+      },
+      "order": 2,
+      "latitude": -22.6784,
+      "longitude": 14.5053,
+      "arrivalDate": "2026-10-25",
+      "departureDate": "2026-10-26",
+      "nights": 1
+    },
+    {
+      "id": "destination-4",
+      "name": "Victoria Falls",
+      "country": "Zimbabwe",
+      "order": 3,
+      "latitude": -17.93285,
+      "longitude": 25.83066,
+      "arrivalDate": "2026-10-26",
+      "departureDate": "2026-10-27",
+      "nights": 1,
+      "canonicalPlaceId": "victoria-falls",
+      "providerId": "reference:geonames:879431@699b595afdba9be6994e:ZW:town:25.83066:-17.93285",
+      "geographicBinding": {
+        "version": 1,
+        "source": "provider",
+        "canonicalPlaceId": "victoria-falls",
+        "providerId": "reference:geonames:879431@699b595afdba9be6994e:ZW:town:25.83066:-17.93285",
+        "placeType": "town",
+        "country": "Zimbabwe",
+        "routability": "direct_destination",
+        "inputKey": "[\"victoria-falls\",\"reference:geonames:879431@699b595afdba9be6994e:ZW:town:25.83066:-17.93285\",\"victoria falls\",\"zimbabwe\",[25.83066,-17.93285]]"
+      }
+    },
+    {
+      "id": "destination-5",
+      "name": "Mombasa",
+      "country": "Kenya",
+      "canonicalPlaceId": "reference:geonames:186301",
+      "providerId": "reference:geonames:186301@699b595afdba9be6994e:KE:city:39.66359:-4.05466",
+      "geographicBinding": {
+        "version": 1,
+        "source": "provider",
+        "canonicalPlaceId": "reference:geonames:186301",
+        "providerId": "reference:geonames:186301@699b595afdba9be6994e:KE:city:39.66359:-4.05466",
+        "placeType": "city",
+        "country": "Kenya",
+        "routability": "direct_destination",
+        "inputKey": "[\"reference:geonames:186301\",\"reference:geonames:186301@699b595afdba9be6994e:KE:city:39.66359:-4.05466\",\"mombasa\",\"kenya\",[39.66359,-4.05466]]"
+      },
+      "order": 4,
+      "latitude": -4.05466,
+      "longitude": 39.66359,
+      "arrivalDate": "2026-10-27",
+      "departureDate": "2026-10-28",
+      "nights": 1
+    }
+  ],
+  "legs": [
+    {
+      "id": "trip-a39bddc5-fb9a-48d4-aea4-09a5c5f6743c-leg-1",
+      "fromStopId": "trip-a39bddc5-fb9a-48d4-aea4-09a5c5f6743c-origin",
+      "toStopId": "destination-1",
+      "fromEndpoint": {
+        "name": "Paris",
+        "canonicalPlaceId": "reference:geonames:2988507",
+        "country": "France",
+        "providerId": "reference:geonames:2988507@699b595afdba9be6994e:FR:city:2.3488:48.85341",
+        "coordinates": [
+          2.3488,
+          48.85341
+        ],
+        "geographicBinding": {
+          "version": 1,
+          "source": "provider",
+          "canonicalPlaceId": "reference:geonames:2988507",
+          "providerId": "reference:geonames:2988507@699b595afdba9be6994e:FR:city:2.3488:48.85341",
+          "placeType": "city",
+          "country": "France",
+          "routability": "direct_destination",
+          "inputKey": "[\"reference:geonames:2988507\",\"reference:geonames:2988507@699b595afdba9be6994e:FR:city:2.3488:48.85341\",\"paris\",\"france\",[2.3488,48.85341]]"
+        },
+        "kind": "origin",
+        "id": "trip-a39bddc5-fb9a-48d4-aea4-09a5c5f6743c-origin"
+      },
+      "toEndpoint": {
+        "kind": "stop",
+        "id": "destination-1",
+        "name": "Cape Town",
+        "country": "South Africa",
+        "canonicalPlaceId": "cape-town",
+        "providerId": "reference:geonames:3369157@699b595afdba9be6994e:ZA:city:18.42322:-33.92584",
+        "geographicBinding": {
+          "version": 1,
+          "source": "provider",
+          "canonicalPlaceId": "cape-town",
+          "providerId": "reference:geonames:3369157@699b595afdba9be6994e:ZA:city:18.42322:-33.92584",
+          "placeType": "city",
+          "country": "South Africa",
+          "routability": "direct_destination",
+          "inputKey": "[\"cape-town\",\"reference:geonames:3369157@699b595afdba9be6994e:ZA:city:18.42322:-33.92584\",\"cape town\",\"south africa\",[18.42322,-33.92584]]"
+        },
+        "coordinates": [
+          18.42322,
+          -33.92584
+        ]
+      },
+      "classification": "arrival",
+      "mode": "flight",
+      "distanceKm": 9342,
+      "straightLineDistanceKm": 9342,
+      "routedDistanceKm": null,
+      "durationMinutes": 945,
+      "headlineMinutes": 945,
+      "doorToDoorMinutes": 945,
+      "usableDayLoss": 1,
+      "provider": "Morrovia door-to-door flight planning estimate; a connection may be required, so verify the complete live journey.",
+      "provenance": "planning_estimate",
+      "confidence": "low",
+      "scheduleNeedsChecking": true,
+      "warnings": [],
+      "routeMetadata": {
+        "planningEstimate": true,
+        "source": "multimodal-resolver",
+        "roadFallbackEligible": false,
+        "gatewayResolutionRequired": false,
+        "label": "Paris \u2192 Cape Town",
+        "routingConfidence": "medium",
+        "transferImpact": {
+          "version": 1,
+          "mode": "flight",
+          "headline": {
+            "status": "unknown",
+            "value": null,
+            "confidence": "unknown",
+            "sources": [],
+            "reason": "The curated allowance is door-to-door and does not expose headline transport time."
+          },
+          "doorToDoor": {
+            "status": "known",
+            "value": {
+              "planningMinutes": 945,
+              "rangeMinutes": {
+                "minimum": 930,
+                "maximum": 960
+              },
+              "precision": "estimated-range"
+            },
+            "confidence": "estimated",
+            "sources": [
+              {
+                "id": "morrovia:multimodal-resolution-v1",
+                "label": "Morrovia multimodal resolver",
+                "kind": "curated",
+                "supports": "Aggregated segment planning duration."
+              }
+            ]
+          },
+          "components": [
+            {
+              "id": "origin-local",
+              "label": "Local journey to departure point",
+              "timing": {
+                "status": "unknown",
+                "value": null,
+                "confidence": "unknown",
+                "sources": [],
+                "reason": "The curated source supports the total allowance but not this individual component."
+              },
+              "reason": "The curated source supports the total allowance but not this individual component."
+            },
+            {
+              "id": "check-in-security",
+              "label": "Check-in and security",
+              "timing": {
+                "status": "unknown",
+                "value": null,
+                "confidence": "unknown",
+                "sources": [],
+                "reason": "The curated source supports the total allowance but not this individual component."
+              },
+              "reason": "The curated source supports the total allowance but not this individual component."
+            },
+            {
+              "id": "waiting-buffer",
+              "label": "Waiting and departure buffer",
+              "timing": {
+                "status": "unknown",
+                "value": null,
+                "confidence": "unknown",
+                "sources": [],
+                "reason": "The curated source supports the total allowance but not this individual component."
+              },
+              "reason": "The curated source supports the total allowance but not this individual component."
+            },
+            {
+              "id": "transport",
+              "label": "Headline transport",
+              "timing": {
+                "status": "unknown",
+                "value": null,
+                "confidence": "unknown",
+                "sources": [],
+                "reason": "The source does not separate in-vehicle time from its door-to-door allowance."
+              },
+              "reason": "The source does not separate in-vehicle time from its door-to-door allowance."
+            },
+            {
+              "id": "border-immigration",
+              "label": "Border and immigration",
+              "timing": {
+                "status": "unknown",
+                "value": null,
+                "confidence": "unknown",
+                "sources": [],
+                "reason": "The curated source supports the total allowance but not this individual component."
+              },
+              "reason": "The curated source supports the total allowance but not this individual component."
+            },
+            {
+              "id": "connection-buffer",
+              "label": "Connection buffer",
+              "timing": {
+                "status": "unknown",
+                "value": null,
+                "confidence": "unknown",
+                "sources": [],
+                "reason": "The curated source supports the total allowance but not this individual component."
+              },
+              "reason": "The curated source supports the total allowance but not this individual component."
+            },
+            {
+              "id": "arrival-local",
+              "label": "Arrival to accommodation",
+              "timing": {
+                "status": "unknown",
+                "value": null,
+                "confidence": "unknown",
+                "sources": [],
+                "reason": "The curated source supports the total allowance but not this individual component."
+              },
+              "reason": "The curated source supports the total allowance but not this individual component."
+            }
+          ],
+          "usableDayLoss": {
+            "classification": "full-day-or-more",
+            "estimatedDayFraction": 1,
+            "reason": "The estimated transfer needs a full travel day or more."
+          },
+          "occursOvernight": null,
+          "assumptions": [
+            "The existing curated total is preserved without inventing a component breakdown.",
+            "No defensible minimum/maximum range is currently available for this allowance."
+          ],
+          "claimConfidence": {
+            "headline": {
+              "version": 1,
+              "state": "unknown",
+              "level": "unknown",
+              "freshness": "unknown",
+              "scope": "unknown",
+              "sources": [],
+              "reason": "The curated allowance is door-to-door and does not expose headline transport time.",
+              "confirmation": {
+                "needed": true,
+                "reason": "The curated allowance is door-to-door and does not expose headline transport time."
+              }
+            },
+            "doorToDoor": {
+              "version": 1,
+              "state": "estimated",
+              "level": "medium",
+              "freshness": "unknown",
+              "scope": "planning-rule",
+              "sources": [
+                {
+                  "id": "morrovia:multimodal-resolution-v1",
+                  "label": "Morrovia multimodal resolver",
+                  "kind": "curated",
+                  "supports": "Aggregated segment planning duration."
+                }
+              ],
+              "reason": "Confidence in the realistic door-to-door travel-day allowance.",
+              "confirmation": {
+                "needed": true,
+                "reason": "Confirm current access, processing, connection and arrival conditions before booking."
+              }
+            }
+          }
+        },
+        "planningConfidence": {
+          "availability": {
+            "version": 1,
+            "state": "inferred",
+            "level": "medium",
+            "freshness": "unknown",
+            "scope": "general-route",
+            "sources": [],
+            "reason": "The connection is inferred from existing route geography or planning rules.",
+            "confirmation": {
+              "needed": true,
+              "reason": "Confirm that this route operates for the traveller's dates."
+            }
+          },
+          "schedule": {
+            "version": 1,
+            "state": "unknown",
+            "level": "unknown",
+            "freshness": "unknown",
+            "scope": "unknown",
+            "sources": [],
+            "reason": "The general route may be plausible, but no exact schedule has been verified for these dates.",
+            "confirmation": {
+              "needed": true,
+              "reason": "The general route may be plausible, but no exact schedule has been verified for these dates."
+            }
+          },
+          "duration": {
+            "version": 1,
+            "state": "estimated",
+            "level": "medium",
+            "freshness": "reviewed",
+            "scope": "planning-rule",
+            "sources": [
+              {
+                "id": "planner:transfer-impact-rules-v1",
+                "label": "Morrovia deterministic transfer-impact rules",
+                "kind": "curated",
+                "supports": "Mode-specific access, processing, waiting, arrival and usable-day planning ranges.",
+                "reviewedAt": "2026-08-23"
+              }
+            ],
+            "reason": "Confidence in the connection duration used by route planning.",
+            "confirmation": {
+              "needed": true,
+              "reason": "Confirm the current operator duration before booking."
+            }
+          },
+          "doorToDoor": {
+            "version": 1,
+            "state": "estimated",
+            "level": "medium",
+            "freshness": "reviewed",
+            "scope": "planning-rule",
+            "sources": [
+              {
+                "id": "planner:transfer-impact-rules-v1",
+                "label": "Morrovia deterministic transfer-impact rules",
+                "kind": "curated",
+                "supports": "Mode-specific access, processing, waiting, arrival and usable-day planning ranges.",
+                "reviewedAt": "2026-08-23"
+              }
+            ],
+            "reason": "Confidence in the realistic door-to-door travel-day allowance.",
+            "confirmation": {
+              "needed": true,
+              "reason": "Confirm current access, processing, connection and arrival conditions before booking."
+            }
+          },
+          "overall": {
+            "version": 1,
+            "state": "estimated",
+            "level": "medium",
+            "freshness": "unknown",
+            "scope": "general-route",
+            "sources": [
+              {
+                "id": "planner:transfer-impact-rules-v1",
+                "label": "Morrovia deterministic transfer-impact rules",
+                "kind": "curated",
+                "supports": "Mode-specific access, processing, waiting, arrival and usable-day planning ranges.",
+                "reviewedAt": "2026-08-23"
+              }
+            ],
+            "reason": "Confidence in using this connection for route comparison.",
+            "confirmation": {
+              "needed": true,
+              "reason": "The general route may be plausible, but no exact schedule has been verified for these dates."
+            }
+          }
+        },
+        "classification": "arrival",
+        "validationWarnings": [],
+        "transportConstraints": {
+          "avoidDriving": false,
+          "excludedModes": [],
+          "preferredModes": [
+            "flight",
+            "train"
+          ]
+        },
+        "multimodalResolution": {
+          "version": 1,
+          "selected": "flight",
+          "candidates": [
+            {
+              "id": "flight:legacy-estimate",
+              "summaryMode": "flight",
+              "segments": [
+                {
+                  "mode": "flight",
+                  "fromEndpoint": {
+                    "name": "Paris",
+                    "canonicalPlaceId": "reference:geonames:2988507",
+                    "country": "France",
+                    "providerId": "reference:geonames:2988507@699b595afdba9be6994e:FR:city:2.3488:48.85341",
+                    "coordinates": [
+                      2.3488,
+                      48.85341
+                    ],
+                    "geographicBinding": {
+                      "version": 1,
+                      "source": "provider",
+                      "canonicalPlaceId": "reference:geonames:2988507",
+                      "providerId": "reference:geonames:2988507@699b595afdba9be6994e:FR:city:2.3488:48.85341",
+                      "placeType": "city",
+                      "country": "France",
+                      "routability": "direct_destination",
+                      "inputKey": "[\"reference:geonames:2988507\",\"reference:geonames:2988507@699b595afdba9be6994e:FR:city:2.3488:48.85341\",\"paris\",\"france\",[2.3488,48.85341]]"
+                    },
+                    "kind": "origin",
+                    "id": "trip-a39bddc5-fb9a-48d4-aea4-09a5c5f6743c-origin"
+                  },
+                  "toEndpoint": {
+                    "kind": "stop",
+                    "id": "destination-1",
+                    "name": "Cape Town",
+                    "country": "South Africa",
+                    "canonicalPlaceId": "cape-town",
+                    "providerId": "reference:geonames:3369157@699b595afdba9be6994e:ZA:city:18.42322:-33.92584",
+                    "geographicBinding": {
+                      "version": 1,
+                      "source": "provider",
+                      "canonicalPlaceId": "cape-town",
+                      "providerId": "reference:geonames:3369157@699b595afdba9be6994e:ZA:city:18.42322:-33.92584",
+                      "placeType": "city",
+                      "country": "South Africa",
+                      "routability": "direct_destination",
+                      "inputKey": "[\"cape-town\",\"reference:geonames:3369157@699b595afdba9be6994e:ZA:city:18.42322:-33.92584\",\"cape town\",\"south africa\",[18.42322,-33.92584]]"
+                    },
+                    "coordinates": [
+                      18.42322,
+                      -33.92584
+                    ]
+                  },
+                  "distanceKm": 9342,
+                  "durationMinutes": 945,
+                  "provider": "Morrovia door-to-door flight planning estimate; a connection may be required, so verify the complete live journey.",
+                  "provenance": "planning_estimate",
+                  "confidence": "low",
+                  "scheduleNeedsChecking": true,
+                  "id": "reference:geonames:2988507:cape-town:flight:0"
+                }
+              ],
+              "totalDurationMinutes": 945,
+              "distanceKm": 9342,
+              "confidence": "low",
+              "provenance": "planning_estimate",
+              "evidence": "legacy_flight_estimate",
+              "connectionCount": null,
+              "reasons": [
+                "The legacy planner supports a flight estimate and no gateway contradiction is known.",
+                "This mode matches the traveller's stated transport preference."
+              ],
+              "score": 50.5
+            }
+          ],
+          "rejected": [
+            "No plausible routed road estimate or canonical gateway access was available."
+          ],
+          "selectedCandidateId": "flight:legacy-estimate"
+        }
+      },
+      "segments": [
+        {
+          "mode": "flight",
+          "fromEndpoint": {
+            "name": "Paris",
+            "canonicalPlaceId": "reference:geonames:2988507",
+            "country": "France",
+            "providerId": "reference:geonames:2988507@699b595afdba9be6994e:FR:city:2.3488:48.85341",
+            "coordinates": [
+              2.3488,
+              48.85341
+            ],
+            "geographicBinding": {
+              "version": 1,
+              "source": "provider",
+              "canonicalPlaceId": "reference:geonames:2988507",
+              "providerId": "reference:geonames:2988507@699b595afdba9be6994e:FR:city:2.3488:48.85341",
+              "placeType": "city",
+              "country": "France",
+              "routability": "direct_destination",
+              "inputKey": "[\"reference:geonames:2988507\",\"reference:geonames:2988507@699b595afdba9be6994e:FR:city:2.3488:48.85341\",\"paris\",\"france\",[2.3488,48.85341]]"
+            },
+            "kind": "origin",
+            "id": "trip-a39bddc5-fb9a-48d4-aea4-09a5c5f6743c-origin"
+          },
+          "toEndpoint": {
+            "kind": "stop",
+            "id": "destination-1",
+            "name": "Cape Town",
+            "country": "South Africa",
+            "canonicalPlaceId": "cape-town",
+            "providerId": "reference:geonames:3369157@699b595afdba9be6994e:ZA:city:18.42322:-33.92584",
+            "geographicBinding": {
+              "version": 1,
+              "source": "provider",
+              "canonicalPlaceId": "cape-town",
+              "providerId": "reference:geonames:3369157@699b595afdba9be6994e:ZA:city:18.42322:-33.92584",
+              "placeType": "city",
+              "country": "South Africa",
+              "routability": "direct_destination",
+              "inputKey": "[\"cape-town\",\"reference:geonames:3369157@699b595afdba9be6994e:ZA:city:18.42322:-33.92584\",\"cape town\",\"south africa\",[18.42322,-33.92584]]"
+            },
+            "coordinates": [
+              18.42322,
+              -33.92584
+            ]
+          },
+          "distanceKm": 9342,
+          "durationMinutes": 945,
+          "provider": "Morrovia door-to-door flight planning estimate; a connection may be required, so verify the complete live journey.",
+          "provenance": "planning_estimate",
+          "confidence": "low",
+          "scheduleNeedsChecking": true,
+          "id": "reference:geonames:2988507:cape-town:flight:0"
+        }
+      ]
+    },
+    {
+      "id": "trip-a39bddc5-fb9a-48d4-aea4-09a5c5f6743c-leg-2",
+      "fromStopId": "destination-1",
+      "toStopId": "destination-2",
+      "fromEndpoint": {
+        "kind": "stop",
+        "id": "destination-1",
+        "name": "Cape Town",
+        "country": "South Africa",
+        "canonicalPlaceId": "cape-town",
+        "providerId": "reference:geonames:3369157@699b595afdba9be6994e:ZA:city:18.42322:-33.92584",
+        "geographicBinding": {
+          "version": 1,
+          "source": "provider",
+          "canonicalPlaceId": "cape-town",
+          "providerId": "reference:geonames:3369157@699b595afdba9be6994e:ZA:city:18.42322:-33.92584",
+          "placeType": "city",
+          "country": "South Africa",
+          "routability": "direct_destination",
+          "inputKey": "[\"cape-town\",\"reference:geonames:3369157@699b595afdba9be6994e:ZA:city:18.42322:-33.92584\",\"cape town\",\"south africa\",[18.42322,-33.92584]]"
+        },
+        "coordinates": [
+          18.42322,
+          -33.92584
+        ]
+      },
+      "toEndpoint": {
+        "kind": "stop",
+        "id": "destination-2",
+        "name": "Windhoek",
+        "country": "Namibia",
+        "canonicalPlaceId": "windhoek",
+        "geographicBinding": {
+          "version": 1,
+          "source": "catalog",
+          "canonicalPlaceId": "windhoek",
+          "placeType": "city",
+          "country": "Namibia",
+          "routability": "direct_destination",
+          "inputKey": "[\"windhoek\",null,\"windhoek\",\"namibia\",[17.0832,-22.5609]]"
+        },
+        "coordinates": [
+          17.0832,
+          -22.5609
+        ]
+      },
+      "classification": "international",
+      "mode": "flight",
+      "distanceKm": 1270,
+      "straightLineDistanceKm": 1270,
+      "routedDistanceKm": null,
+      "durationMinutes": 300,
+      "headlineMinutes": 300,
+      "doorToDoorMinutes": 300,
+      "usableDayLoss": 0.75,
+      "provider": "Morrovia door-to-door flight planning estimate; a connection may be required, so verify the complete live journey.",
+      "provenance": "planning_estimate",
+      "confidence": "low",
+      "scheduleNeedsChecking": true,
+      "warnings": [],
+      "routeMetadata": {
+        "planningEstimate": true,
+        "source": "multimodal-resolver",
+        "roadFallbackEligible": false,
+        "gatewayResolutionRequired": false,
+        "label": "Cape Town \u2192 Windhoek",
+        "routingConfidence": "medium",
+        "transferImpact": {
+          "version": 1,
+          "mode": "flight",
+          "headline": {
+            "status": "unknown",
+            "value": null,
+            "confidence": "unknown",
+            "sources": [],
+            "reason": "The curated allowance is door-to-door and does not expose headline transport time."
+          },
+          "doorToDoor": {
+            "status": "known",
+            "value": {
+              "planningMinutes": 300,
+              "rangeMinutes": {
+                "minimum": 285,
+                "maximum": 315
+              },
+              "precision": "estimated-range"
+            },
+            "confidence": "estimated",
+            "sources": [
+              {
+                "id": "morrovia:multimodal-resolution-v1",
+                "label": "Morrovia multimodal resolver",
+                "kind": "curated",
+                "supports": "Aggregated segment planning duration."
+              }
+            ]
+          },
+          "components": [
+            {
+              "id": "origin-local",
+              "label": "Local journey to departure point",
+              "timing": {
+                "status": "unknown",
+                "value": null,
+                "confidence": "unknown",
+                "sources": [],
+                "reason": "The curated source supports the total allowance but not this individual component."
+              },
+              "reason": "The curated source supports the total allowance but not this individual component."
+            },
+            {
+              "id": "check-in-security",
+              "label": "Check-in and security",
+              "timing": {
+                "status": "unknown",
+                "value": null,
+                "confidence": "unknown",
+                "sources": [],
+                "reason": "The curated source supports the total allowance but not this individual component."
+              },
+              "reason": "The curated source supports the total allowance but not this individual component."
+            },
+            {
+              "id": "waiting-buffer",
+              "label": "Waiting and departure buffer",
+              "timing": {
+                "status": "unknown",
+                "value": null,
+                "confidence": "unknown",
+                "sources": [],
+                "reason": "The curated source supports the total allowance but not this individual component."
+              },
+              "reason": "The curated source supports the total allowance but not this individual component."
+            },
+            {
+              "id": "transport",
+              "label": "Headline transport",
+              "timing": {
+                "status": "unknown",
+                "value": null,
+                "confidence": "unknown",
+                "sources": [],
+                "reason": "The source does not separate in-vehicle time from its door-to-door allowance."
+              },
+              "reason": "The source does not separate in-vehicle time from its door-to-door allowance."
+            },
+            {
+              "id": "border-immigration",
+              "label": "Border and immigration",
+              "timing": {
+                "status": "unknown",
+                "value": null,
+                "confidence": "unknown",
+                "sources": [],
+                "reason": "The curated source supports the total allowance but not this individual component."
+              },
+              "reason": "The curated source supports the total allowance but not this individual component."
+            },
+            {
+              "id": "connection-buffer",
+              "label": "Connection buffer",
+              "timing": {
+                "status": "unknown",
+                "value": null,
+                "confidence": "unknown",
+                "sources": [],
+                "reason": "The curated source supports the total allowance but not this individual component."
+              },
+              "reason": "The curated source supports the total allowance but not this individual component."
+            },
+            {
+              "id": "arrival-local",
+              "label": "Arrival to accommodation",
+              "timing": {
+                "status": "unknown",
+                "value": null,
+                "confidence": "unknown",
+                "sources": [],
+                "reason": "The curated source supports the total allowance but not this individual component."
+              },
+              "reason": "The curated source supports the total allowance but not this individual component."
+            }
+          ],
+          "usableDayLoss": {
+            "classification": "most-of-day",
+            "estimatedDayFraction": 0.75,
+            "reason": "The estimated transfer consumes most of a normal travel day."
+          },
+          "occursOvernight": null,
+          "assumptions": [
+            "The existing curated total is preserved without inventing a component breakdown.",
+            "No defensible minimum/maximum range is currently available for this allowance."
+          ],
+          "claimConfidence": {
+            "headline": {
+              "version": 1,
+              "state": "unknown",
+              "level": "unknown",
+              "freshness": "unknown",
+              "scope": "unknown",
+              "sources": [],
+              "reason": "The curated allowance is door-to-door and does not expose headline transport time.",
+              "confirmation": {
+                "needed": true,
+                "reason": "The curated allowance is door-to-door and does not expose headline transport time."
+              }
+            },
+            "doorToDoor": {
+              "version": 1,
+              "state": "estimated",
+              "level": "medium",
+              "freshness": "unknown",
+              "scope": "planning-rule",
+              "sources": [
+                {
+                  "id": "morrovia:multimodal-resolution-v1",
+                  "label": "Morrovia multimodal resolver",
+                  "kind": "curated",
+                  "supports": "Aggregated segment planning duration."
+                }
+              ],
+              "reason": "Confidence in the realistic door-to-door travel-day allowance.",
+              "confirmation": {
+                "needed": true,
+                "reason": "Confirm current access, processing, connection and arrival conditions before booking."
+              }
+            }
+          }
+        },
+        "planningConfidence": {
+          "availability": {
+            "version": 1,
+            "state": "inferred",
+            "level": "medium",
+            "freshness": "unknown",
+            "scope": "general-route",
+            "sources": [],
+            "reason": "The connection is inferred from existing route geography or planning rules.",
+            "confirmation": {
+              "needed": true,
+              "reason": "Confirm that this route operates for the traveller's dates."
+            }
+          },
+          "schedule": {
+            "version": 1,
+            "state": "unknown",
+            "level": "unknown",
+            "freshness": "unknown",
+            "scope": "unknown",
+            "sources": [],
+            "reason": "The general route may be plausible, but no exact schedule has been verified for these dates.",
+            "confirmation": {
+              "needed": true,
+              "reason": "The general route may be plausible, but no exact schedule has been verified for these dates."
+            }
+          },
+          "duration": {
+            "version": 1,
+            "state": "estimated",
+            "level": "medium",
+            "freshness": "reviewed",
+            "scope": "planning-rule",
+            "sources": [
+              {
+                "id": "planner:transfer-impact-rules-v1",
+                "label": "Morrovia deterministic transfer-impact rules",
+                "kind": "curated",
+                "supports": "Mode-specific access, processing, waiting, arrival and usable-day planning ranges.",
+                "reviewedAt": "2026-08-23"
+              }
+            ],
+            "reason": "Confidence in the connection duration used by route planning.",
+            "confirmation": {
+              "needed": true,
+              "reason": "Confirm the current operator duration before booking."
+            }
+          },
+          "doorToDoor": {
+            "version": 1,
+            "state": "estimated",
+            "level": "medium",
+            "freshness": "reviewed",
+            "scope": "planning-rule",
+            "sources": [
+              {
+                "id": "planner:transfer-impact-rules-v1",
+                "label": "Morrovia deterministic transfer-impact rules",
+                "kind": "curated",
+                "supports": "Mode-specific access, processing, waiting, arrival and usable-day planning ranges.",
+                "reviewedAt": "2026-08-23"
+              }
+            ],
+            "reason": "Confidence in the realistic door-to-door travel-day allowance.",
+            "confirmation": {
+              "needed": true,
+              "reason": "Confirm current access, processing, connection and arrival conditions before booking."
+            }
+          },
+          "overall": {
+            "version": 1,
+            "state": "estimated",
+            "level": "medium",
+            "freshness": "unknown",
+            "scope": "general-route",
+            "sources": [
+              {
+                "id": "planner:transfer-impact-rules-v1",
+                "label": "Morrovia deterministic transfer-impact rules",
+                "kind": "curated",
+                "supports": "Mode-specific access, processing, waiting, arrival and usable-day planning ranges.",
+                "reviewedAt": "2026-08-23"
+              }
+            ],
+            "reason": "Confidence in using this connection for route comparison.",
+            "confirmation": {
+              "needed": true,
+              "reason": "The general route may be plausible, but no exact schedule has been verified for these dates."
+            }
+          }
+        },
+        "classification": "international",
+        "validationWarnings": [],
+        "transportConstraints": {
+          "avoidDriving": false,
+          "excludedModes": [],
+          "preferredModes": [
+            "flight",
+            "train"
+          ]
+        },
+        "multimodalResolution": {
+          "version": 1,
+          "selected": "flight",
+          "candidates": [
+            {
+              "id": "flight:legacy-estimate",
+              "summaryMode": "flight",
+              "segments": [
+                {
+                  "mode": "flight",
+                  "fromEndpoint": {
+                    "kind": "stop",
+                    "id": "destination-1",
+                    "name": "Cape Town",
+                    "country": "South Africa",
+                    "canonicalPlaceId": "cape-town",
+                    "providerId": "reference:geonames:3369157@699b595afdba9be6994e:ZA:city:18.42322:-33.92584",
+                    "geographicBinding": {
+                      "version": 1,
+                      "source": "provider",
+                      "canonicalPlaceId": "cape-town",
+                      "providerId": "reference:geonames:3369157@699b595afdba9be6994e:ZA:city:18.42322:-33.92584",
+                      "placeType": "city",
+                      "country": "South Africa",
+                      "routability": "direct_destination",
+                      "inputKey": "[\"cape-town\",\"reference:geonames:3369157@699b595afdba9be6994e:ZA:city:18.42322:-33.92584\",\"cape town\",\"south africa\",[18.42322,-33.92584]]"
+                    },
+                    "coordinates": [
+                      18.42322,
+                      -33.92584
+                    ]
+                  },
+                  "toEndpoint": {
+                    "kind": "stop",
+                    "id": "destination-2",
+                    "name": "Windhoek",
+                    "country": "Namibia",
+                    "canonicalPlaceId": "windhoek",
+                    "geographicBinding": {
+                      "version": 1,
+                      "source": "catalog",
+                      "canonicalPlaceId": "windhoek",
+                      "placeType": "city",
+                      "country": "Namibia",
+                      "routability": "direct_destination",
+                      "inputKey": "[\"windhoek\",null,\"windhoek\",\"namibia\",[17.0832,-22.5609]]"
+                    },
+                    "coordinates": [
+                      17.0832,
+                      -22.5609
+                    ]
+                  },
+                  "distanceKm": 1270,
+                  "durationMinutes": 300,
+                  "provider": "Morrovia door-to-door flight planning estimate; a connection may be required, so verify the complete live journey.",
+                  "provenance": "planning_estimate",
+                  "confidence": "low",
+                  "scheduleNeedsChecking": true,
+                  "id": "cape-town:windhoek:flight:0"
+                }
+              ],
+              "totalDurationMinutes": 300,
+              "distanceKm": 1270,
+              "confidence": "low",
+              "provenance": "planning_estimate",
+              "evidence": "legacy_flight_estimate",
+              "connectionCount": null,
+              "reasons": [
+                "The legacy planner supports a flight estimate and no gateway contradiction is known.",
+                "This mode matches the traveller's stated transport preference."
+              ],
+              "score": 72
+            }
+          ],
+          "rejected": [
+            "No plausible routed road estimate or canonical gateway access was available."
+          ],
+          "selectedCandidateId": "flight:legacy-estimate"
+        }
+      },
+      "segments": [
+        {
+          "mode": "flight",
+          "fromEndpoint": {
+            "kind": "stop",
+            "id": "destination-1",
+            "name": "Cape Town",
+            "country": "South Africa",
+            "canonicalPlaceId": "cape-town",
+            "providerId": "reference:geonames:3369157@699b595afdba9be6994e:ZA:city:18.42322:-33.92584",
+            "geographicBinding": {
+              "version": 1,
+              "source": "provider",
+              "canonicalPlaceId": "cape-town",
+              "providerId": "reference:geonames:3369157@699b595afdba9be6994e:ZA:city:18.42322:-33.92584",
+              "placeType": "city",
+              "country": "South Africa",
+              "routability": "direct_destination",
+              "inputKey": "[\"cape-town\",\"reference:geonames:3369157@699b595afdba9be6994e:ZA:city:18.42322:-33.92584\",\"cape town\",\"south africa\",[18.42322,-33.92584]]"
+            },
+            "coordinates": [
+              18.42322,
+              -33.92584
+            ]
+          },
+          "toEndpoint": {
+            "kind": "stop",
+            "id": "destination-2",
+            "name": "Windhoek",
+            "country": "Namibia",
+            "canonicalPlaceId": "windhoek",
+            "geographicBinding": {
+              "version": 1,
+              "source": "catalog",
+              "canonicalPlaceId": "windhoek",
+              "placeType": "city",
+              "country": "Namibia",
+              "routability": "direct_destination",
+              "inputKey": "[\"windhoek\",null,\"windhoek\",\"namibia\",[17.0832,-22.5609]]"
+            },
+            "coordinates": [
+              17.0832,
+              -22.5609
+            ]
+          },
+          "distanceKm": 1270,
+          "durationMinutes": 300,
+          "provider": "Morrovia door-to-door flight planning estimate; a connection may be required, so verify the complete live journey.",
+          "provenance": "planning_estimate",
+          "confidence": "low",
+          "scheduleNeedsChecking": true,
+          "id": "cape-town:windhoek:flight:0"
+        }
+      ]
+    },
+    {
+      "id": "trip-a39bddc5-fb9a-48d4-aea4-09a5c5f6743c-leg-3",
+      "fromStopId": "destination-2",
+      "toStopId": "destination-3",
+      "fromEndpoint": {
+        "kind": "stop",
+        "id": "destination-2",
+        "name": "Windhoek",
+        "country": "Namibia",
+        "canonicalPlaceId": "windhoek",
+        "geographicBinding": {
+          "version": 1,
+          "source": "catalog",
+          "canonicalPlaceId": "windhoek",
+          "placeType": "city",
+          "country": "Namibia",
+          "routability": "direct_destination",
+          "inputKey": "[\"windhoek\",null,\"windhoek\",\"namibia\",[17.0832,-22.5609]]"
+        },
+        "coordinates": [
+          17.0832,
+          -22.5609
+        ]
+      },
+      "toEndpoint": {
+        "kind": "stop",
+        "id": "destination-3",
+        "name": "Swakopmund",
+        "country": "Namibia",
+        "canonicalPlaceId": "swakopmund",
+        "geographicBinding": {
+          "version": 1,
+          "source": "catalog",
+          "canonicalPlaceId": "swakopmund",
+          "placeType": "city",
+          "country": "Namibia",
+          "routability": "direct_destination",
+          "inputKey": "[\"swakopmund\",null,\"swakopmund\",\"namibia\",[14.5053,-22.6784]]"
+        },
+        "coordinates": [
+          14.5053,
+          -22.6784
+        ]
+      },
+      "classification": "intercity",
+      "mode": "unknown",
+      "distanceKm": 265,
+      "straightLineDistanceKm": 265,
+      "routedDistanceKm": null,
+      "durationMinutes": null,
+      "headlineMinutes": null,
+      "doorToDoorMinutes": null,
+      "usableDayLoss": null,
+      "provider": "Rail could be considered for this distance, but Morrovia has no supported service fact for this exact leg.",
+      "provenance": "planning_estimate",
+      "confidence": "unknown",
+      "scheduleNeedsChecking": true,
+      "warnings": [],
+      "routeMetadata": {
+        "planningEstimate": true,
+        "source": "morrovia-planner",
+        "roadFallbackEligible": true,
+        "gatewayResolutionRequired": false,
+        "label": "Windhoek \u2192 Swakopmund",
+        "routingConfidence": "unconfirmed",
+        "planningConfidence": {
+          "availability": {
+            "version": 1,
+            "state": "inferred",
+            "level": "medium",
+            "freshness": "unknown",
+            "scope": "general-route",
+            "sources": [],
+            "reason": "The connection is inferred from existing route geography or planning rules.",
+            "confirmation": {
+              "needed": true,
+              "reason": "Confirm that this route operates for the traveller's dates."
+            }
+          },
+          "schedule": {
+            "version": 1,
+            "state": "unknown",
+            "level": "unknown",
+            "freshness": "unknown",
+            "scope": "unknown",
+            "sources": [],
+            "reason": "The general route may be plausible, but no exact schedule has been verified for these dates.",
+            "confirmation": {
+              "needed": true,
+              "reason": "The general route may be plausible, but no exact schedule has been verified for these dates."
+            }
+          },
+          "duration": {
+            "version": 1,
+            "state": "estimated",
+            "level": "medium",
+            "freshness": "reviewed",
+            "scope": "planning-rule",
+            "sources": [
+              {
+                "id": "planner:transfer-impact-rules-v1",
+                "label": "Morrovia deterministic transfer-impact rules",
+                "kind": "curated",
+                "supports": "Mode-specific access, processing, waiting, arrival and usable-day planning ranges.",
+                "reviewedAt": "2026-08-23"
+              }
+            ],
+            "reason": "Confidence in the connection duration used by route planning.",
+            "confirmation": {
+              "needed": true,
+              "reason": "Confirm the current operator duration before booking."
+            }
+          },
+          "doorToDoor": {
+            "version": 1,
+            "state": "estimated",
+            "level": "medium",
+            "freshness": "reviewed",
+            "scope": "planning-rule",
+            "sources": [
+              {
+                "id": "planner:transfer-impact-rules-v1",
+                "label": "Morrovia deterministic transfer-impact rules",
+                "kind": "curated",
+                "supports": "Mode-specific access, processing, waiting, arrival and usable-day planning ranges.",
+                "reviewedAt": "2026-08-23"
+              }
+            ],
+            "reason": "Confidence in the realistic door-to-door travel-day allowance.",
+            "confirmation": {
+              "needed": true,
+              "reason": "Confirm current access, processing, connection and arrival conditions before booking."
+            }
+          },
+          "overall": {
+            "version": 1,
+            "state": "estimated",
+            "level": "medium",
+            "freshness": "unknown",
+            "scope": "general-route",
+            "sources": [
+              {
+                "id": "planner:transfer-impact-rules-v1",
+                "label": "Morrovia deterministic transfer-impact rules",
+                "kind": "curated",
+                "supports": "Mode-specific access, processing, waiting, arrival and usable-day planning ranges.",
+                "reviewedAt": "2026-08-23"
+              }
+            ],
+            "reason": "Confidence in using this connection for route comparison.",
+            "confirmation": {
+              "needed": true,
+              "reason": "The general route may be plausible, but no exact schedule has been verified for these dates."
+            }
+          }
+        },
+        "classification": "intercity",
+        "validationWarnings": [],
+        "transportConstraints": {
+          "avoidDriving": false,
+          "excludedModes": [],
+          "preferredModes": []
+        }
+      }
+    },
+    {
+      "id": "trip-a39bddc5-fb9a-48d4-aea4-09a5c5f6743c-leg-4",
+      "fromStopId": "destination-3",
+      "toStopId": "destination-4",
+      "fromEndpoint": {
+        "kind": "stop",
+        "id": "destination-3",
+        "name": "Swakopmund",
+        "country": "Namibia",
+        "canonicalPlaceId": "swakopmund",
+        "geographicBinding": {
+          "version": 1,
+          "source": "catalog",
+          "canonicalPlaceId": "swakopmund",
+          "placeType": "city",
+          "country": "Namibia",
+          "routability": "direct_destination",
+          "inputKey": "[\"swakopmund\",null,\"swakopmund\",\"namibia\",[14.5053,-22.6784]]"
+        },
+        "coordinates": [
+          14.5053,
+          -22.6784
+        ]
+      },
+      "toEndpoint": {
+        "kind": "stop",
+        "id": "destination-4",
+        "name": "Victoria Falls",
+        "country": "Zimbabwe",
+        "canonicalPlaceId": "victoria-falls",
+        "providerId": "reference:geonames:879431@699b595afdba9be6994e:ZW:town:25.83066:-17.93285",
+        "geographicBinding": {
+          "version": 1,
+          "source": "provider",
+          "canonicalPlaceId": "victoria-falls",
+          "providerId": "reference:geonames:879431@699b595afdba9be6994e:ZW:town:25.83066:-17.93285",
+          "placeType": "town",
+          "country": "Zimbabwe",
+          "routability": "direct_destination",
+          "inputKey": "[\"victoria-falls\",\"reference:geonames:879431@699b595afdba9be6994e:ZW:town:25.83066:-17.93285\",\"victoria falls\",\"zimbabwe\",[25.83066,-17.93285]]"
+        },
+        "coordinates": [
+          25.83066,
+          -17.93285
+        ]
+      },
+      "classification": "international",
+      "mode": "flight",
+      "distanceKm": 1293,
+      "straightLineDistanceKm": 1293,
+      "routedDistanceKm": null,
+      "durationMinutes": 300,
+      "headlineMinutes": 300,
+      "doorToDoorMinutes": 300,
+      "usableDayLoss": 0.75,
+      "provider": "Morrovia door-to-door flight planning estimate; a connection may be required, so verify the complete live journey.",
+      "provenance": "planning_estimate",
+      "confidence": "low",
+      "scheduleNeedsChecking": true,
+      "warnings": [],
+      "routeMetadata": {
+        "planningEstimate": true,
+        "source": "multimodal-resolver",
+        "roadFallbackEligible": false,
+        "gatewayResolutionRequired": false,
+        "label": "Swakopmund \u2192 Victoria Falls",
+        "routingConfidence": "medium",
+        "transferImpact": {
+          "version": 1,
+          "mode": "flight",
+          "headline": {
+            "status": "unknown",
+            "value": null,
+            "confidence": "unknown",
+            "sources": [],
+            "reason": "The curated allowance is door-to-door and does not expose headline transport time."
+          },
+          "doorToDoor": {
+            "status": "known",
+            "value": {
+              "planningMinutes": 300,
+              "rangeMinutes": {
+                "minimum": 285,
+                "maximum": 315
+              },
+              "precision": "estimated-range"
+            },
+            "confidence": "estimated",
+            "sources": [
+              {
+                "id": "morrovia:multimodal-resolution-v1",
+                "label": "Morrovia multimodal resolver",
+                "kind": "curated",
+                "supports": "Aggregated segment planning duration."
+              }
+            ]
+          },
+          "components": [
+            {
+              "id": "origin-local",
+              "label": "Local journey to departure point",
+              "timing": {
+                "status": "unknown",
+                "value": null,
+                "confidence": "unknown",
+                "sources": [],
+                "reason": "The curated source supports the total allowance but not this individual component."
+              },
+              "reason": "The curated source supports the total allowance but not this individual component."
+            },
+            {
+              "id": "check-in-security",
+              "label": "Check-in and security",
+              "timing": {
+                "status": "unknown",
+                "value": null,
+                "confidence": "unknown",
+                "sources": [],
+                "reason": "The curated source supports the total allowance but not this individual component."
+              },
+              "reason": "The curated source supports the total allowance but not this individual component."
+            },
+            {
+              "id": "waiting-buffer",
+              "label": "Waiting and departure buffer",
+              "timing": {
+                "status": "unknown",
+                "value": null,
+                "confidence": "unknown",
+                "sources": [],
+                "reason": "The curated source supports the total allowance but not this individual component."
+              },
+              "reason": "The curated source supports the total allowance but not this individual component."
+            },
+            {
+              "id": "transport",
+              "label": "Headline transport",
+              "timing": {
+                "status": "unknown",
+                "value": null,
+                "confidence": "unknown",
+                "sources": [],
+                "reason": "The source does not separate in-vehicle time from its door-to-door allowance."
+              },
+              "reason": "The source does not separate in-vehicle time from its door-to-door allowance."
+            },
+            {
+              "id": "border-immigration",
+              "label": "Border and immigration",
+              "timing": {
+                "status": "unknown",
+                "value": null,
+                "confidence": "unknown",
+                "sources": [],
+                "reason": "The curated source supports the total allowance but not this individual component."
+              },
+              "reason": "The curated source supports the total allowance but not this individual component."
+            },
+            {
+              "id": "connection-buffer",
+              "label": "Connection buffer",
+              "timing": {
+                "status": "unknown",
+                "value": null,
+                "confidence": "unknown",
+                "sources": [],
+                "reason": "The curated source supports the total allowance but not this individual component."
+              },
+              "reason": "The curated source supports the total allowance but not this individual component."
+            },
+            {
+              "id": "arrival-local",
+              "label": "Arrival to accommodation",
+              "timing": {
+                "status": "unknown",
+                "value": null,
+                "confidence": "unknown",
+                "sources": [],
+                "reason": "The curated source supports the total allowance but not this individual component."
+              },
+              "reason": "The curated source supports the total allowance but not this individual component."
+            }
+          ],
+          "usableDayLoss": {
+            "classification": "most-of-day",
+            "estimatedDayFraction": 0.75,
+            "reason": "The estimated transfer consumes most of a normal travel day."
+          },
+          "occursOvernight": null,
+          "assumptions": [
+            "The existing curated total is preserved without inventing a component breakdown.",
+            "No defensible minimum/maximum range is currently available for this allowance."
+          ],
+          "claimConfidence": {
+            "headline": {
+              "version": 1,
+              "state": "unknown",
+              "level": "unknown",
+              "freshness": "unknown",
+              "scope": "unknown",
+              "sources": [],
+              "reason": "The curated allowance is door-to-door and does not expose headline transport time.",
+              "confirmation": {
+                "needed": true,
+                "reason": "The curated allowance is door-to-door and does not expose headline transport time."
+              }
+            },
+            "doorToDoor": {
+              "version": 1,
+              "state": "estimated",
+              "level": "medium",
+              "freshness": "unknown",
+              "scope": "planning-rule",
+              "sources": [
+                {
+                  "id": "morrovia:multimodal-resolution-v1",
+                  "label": "Morrovia multimodal resolver",
+                  "kind": "curated",
+                  "supports": "Aggregated segment planning duration."
+                }
+              ],
+              "reason": "Confidence in the realistic door-to-door travel-day allowance.",
+              "confirmation": {
+                "needed": true,
+                "reason": "Confirm current access, processing, connection and arrival conditions before booking."
+              }
+            }
+          }
+        },
+        "planningConfidence": {
+          "availability": {
+            "version": 1,
+            "state": "inferred",
+            "level": "medium",
+            "freshness": "unknown",
+            "scope": "general-route",
+            "sources": [],
+            "reason": "The connection is inferred from existing route geography or planning rules.",
+            "confirmation": {
+              "needed": true,
+              "reason": "Confirm that this route operates for the traveller's dates."
+            }
+          },
+          "schedule": {
+            "version": 1,
+            "state": "unknown",
+            "level": "unknown",
+            "freshness": "unknown",
+            "scope": "unknown",
+            "sources": [],
+            "reason": "The general route may be plausible, but no exact schedule has been verified for these dates.",
+            "confirmation": {
+              "needed": true,
+              "reason": "The general route may be plausible, but no exact schedule has been verified for these dates."
+            }
+          },
+          "duration": {
+            "version": 1,
+            "state": "estimated",
+            "level": "medium",
+            "freshness": "reviewed",
+            "scope": "planning-rule",
+            "sources": [
+              {
+                "id": "planner:transfer-impact-rules-v1",
+                "label": "Morrovia deterministic transfer-impact rules",
+                "kind": "curated",
+                "supports": "Mode-specific access, processing, waiting, arrival and usable-day planning ranges.",
+                "reviewedAt": "2026-08-23"
+              }
+            ],
+            "reason": "Confidence in the connection duration used by route planning.",
+            "confirmation": {
+              "needed": true,
+              "reason": "Confirm the current operator duration before booking."
+            }
+          },
+          "doorToDoor": {
+            "version": 1,
+            "state": "estimated",
+            "level": "medium",
+            "freshness": "reviewed",
+            "scope": "planning-rule",
+            "sources": [
+              {
+                "id": "planner:transfer-impact-rules-v1",
+                "label": "Morrovia deterministic transfer-impact rules",
+                "kind": "curated",
+                "supports": "Mode-specific access, processing, waiting, arrival and usable-day planning ranges.",
+                "reviewedAt": "2026-08-23"
+              }
+            ],
+            "reason": "Confidence in the realistic door-to-door travel-day allowance.",
+            "confirmation": {
+              "needed": true,
+              "reason": "Confirm current access, processing, connection and arrival conditions before booking."
+            }
+          },
+          "overall": {
+            "version": 1,
+            "state": "estimated",
+            "level": "medium",
+            "freshness": "unknown",
+            "scope": "general-route",
+            "sources": [
+              {
+                "id": "planner:transfer-impact-rules-v1",
+                "label": "Morrovia deterministic transfer-impact rules",
+                "kind": "curated",
+                "supports": "Mode-specific access, processing, waiting, arrival and usable-day planning ranges.",
+                "reviewedAt": "2026-08-23"
+              }
+            ],
+            "reason": "Confidence in using this connection for route comparison.",
+            "confirmation": {
+              "needed": true,
+              "reason": "The general route may be plausible, but no exact schedule has been verified for these dates."
+            }
+          }
+        },
+        "classification": "international",
+        "validationWarnings": [],
+        "transportConstraints": {
+          "avoidDriving": false,
+          "excludedModes": [],
+          "preferredModes": [
+            "flight",
+            "train"
+          ]
+        },
+        "multimodalResolution": {
+          "version": 1,
+          "selected": "flight",
+          "candidates": [
+            {
+              "id": "flight:legacy-estimate",
+              "summaryMode": "flight",
+              "segments": [
+                {
+                  "mode": "flight",
+                  "fromEndpoint": {
+                    "kind": "stop",
+                    "id": "destination-3",
+                    "name": "Swakopmund",
+                    "country": "Namibia",
+                    "canonicalPlaceId": "swakopmund",
+                    "geographicBinding": {
+                      "version": 1,
+                      "source": "catalog",
+                      "canonicalPlaceId": "swakopmund",
+                      "placeType": "city",
+                      "country": "Namibia",
+                      "routability": "direct_destination",
+                      "inputKey": "[\"swakopmund\",null,\"swakopmund\",\"namibia\",[14.5053,-22.6784]]"
+                    },
+                    "coordinates": [
+                      14.5053,
+                      -22.6784
+                    ]
+                  },
+                  "toEndpoint": {
+                    "kind": "stop",
+                    "id": "destination-4",
+                    "name": "Victoria Falls",
+                    "country": "Zimbabwe",
+                    "canonicalPlaceId": "victoria-falls",
+                    "providerId": "reference:geonames:879431@699b595afdba9be6994e:ZW:town:25.83066:-17.93285",
+                    "geographicBinding": {
+                      "version": 1,
+                      "source": "provider",
+                      "canonicalPlaceId": "victoria-falls",
+                      "providerId": "reference:geonames:879431@699b595afdba9be6994e:ZW:town:25.83066:-17.93285",
+                      "placeType": "town",
+                      "country": "Zimbabwe",
+                      "routability": "direct_destination",
+                      "inputKey": "[\"victoria-falls\",\"reference:geonames:879431@699b595afdba9be6994e:ZW:town:25.83066:-17.93285\",\"victoria falls\",\"zimbabwe\",[25.83066,-17.93285]]"
+                    },
+                    "coordinates": [
+                      25.83066,
+                      -17.93285
+                    ]
+                  },
+                  "distanceKm": 1293,
+                  "durationMinutes": 300,
+                  "provider": "Morrovia door-to-door flight planning estimate; a connection may be required, so verify the complete live journey.",
+                  "provenance": "planning_estimate",
+                  "confidence": "low",
+                  "scheduleNeedsChecking": true,
+                  "id": "swakopmund:victoria-falls:flight:0"
+                }
+              ],
+              "totalDurationMinutes": 300,
+              "distanceKm": 1293,
+              "confidence": "low",
+              "provenance": "planning_estimate",
+              "evidence": "legacy_flight_estimate",
+              "connectionCount": null,
+              "reasons": [
+                "The legacy planner supports a flight estimate and no gateway contradiction is known.",
+                "This mode matches the traveller's stated transport preference."
+              ],
+              "score": 72
+            }
+          ],
+          "rejected": [
+            "No plausible routed road estimate or canonical gateway access was available."
+          ],
+          "selectedCandidateId": "flight:legacy-estimate"
+        }
+      },
+      "segments": [
+        {
+          "mode": "flight",
+          "fromEndpoint": {
+            "kind": "stop",
+            "id": "destination-3",
+            "name": "Swakopmund",
+            "country": "Namibia",
+            "canonicalPlaceId": "swakopmund",
+            "geographicBinding": {
+              "version": 1,
+              "source": "catalog",
+              "canonicalPlaceId": "swakopmund",
+              "placeType": "city",
+              "country": "Namibia",
+              "routability": "direct_destination",
+              "inputKey": "[\"swakopmund\",null,\"swakopmund\",\"namibia\",[14.5053,-22.6784]]"
+            },
+            "coordinates": [
+              14.5053,
+              -22.6784
+            ]
+          },
+          "toEndpoint": {
+            "kind": "stop",
+            "id": "destination-4",
+            "name": "Victoria Falls",
+            "country": "Zimbabwe",
+            "canonicalPlaceId": "victoria-falls",
+            "providerId": "reference:geonames:879431@699b595afdba9be6994e:ZW:town:25.83066:-17.93285",
+            "geographicBinding": {
+              "version": 1,
+              "source": "provider",
+              "canonicalPlaceId": "victoria-falls",
+              "providerId": "reference:geonames:879431@699b595afdba9be6994e:ZW:town:25.83066:-17.93285",
+              "placeType": "town",
+              "country": "Zimbabwe",
+              "routability": "direct_destination",
+              "inputKey": "[\"victoria-falls\",\"reference:geonames:879431@699b595afdba9be6994e:ZW:town:25.83066:-17.93285\",\"victoria falls\",\"zimbabwe\",[25.83066,-17.93285]]"
+            },
+            "coordinates": [
+              25.83066,
+              -17.93285
+            ]
+          },
+          "distanceKm": 1293,
+          "durationMinutes": 300,
+          "provider": "Morrovia door-to-door flight planning estimate; a connection may be required, so verify the complete live journey.",
+          "provenance": "planning_estimate",
+          "confidence": "low",
+          "scheduleNeedsChecking": true,
+          "id": "swakopmund:victoria-falls:flight:0"
+        }
+      ]
+    },
+    {
+      "id": "trip-a39bddc5-fb9a-48d4-aea4-09a5c5f6743c-leg-5",
+      "fromStopId": "destination-4",
+      "toStopId": "destination-5",
+      "fromEndpoint": {
+        "kind": "stop",
+        "id": "destination-4",
+        "name": "Victoria Falls",
+        "country": "Zimbabwe",
+        "canonicalPlaceId": "victoria-falls",
+        "providerId": "reference:geonames:879431@699b595afdba9be6994e:ZW:town:25.83066:-17.93285",
+        "geographicBinding": {
+          "version": 1,
+          "source": "provider",
+          "canonicalPlaceId": "victoria-falls",
+          "providerId": "reference:geonames:879431@699b595afdba9be6994e:ZW:town:25.83066:-17.93285",
+          "placeType": "town",
+          "country": "Zimbabwe",
+          "routability": "direct_destination",
+          "inputKey": "[\"victoria-falls\",\"reference:geonames:879431@699b595afdba9be6994e:ZW:town:25.83066:-17.93285\",\"victoria falls\",\"zimbabwe\",[25.83066,-17.93285]]"
+        },
+        "coordinates": [
+          25.83066,
+          -17.93285
+        ]
+      },
+      "toEndpoint": {
+        "kind": "stop",
+        "id": "destination-5",
+        "name": "Mombasa",
+        "country": "Kenya",
+        "canonicalPlaceId": "reference:geonames:186301",
+        "providerId": "reference:geonames:186301@699b595afdba9be6994e:KE:city:39.66359:-4.05466",
+        "geographicBinding": {
+          "version": 1,
+          "source": "provider",
+          "canonicalPlaceId": "reference:geonames:186301",
+          "providerId": "reference:geonames:186301@699b595afdba9be6994e:KE:city:39.66359:-4.05466",
+          "placeType": "city",
+          "country": "Kenya",
+          "routability": "direct_destination",
+          "inputKey": "[\"reference:geonames:186301\",\"reference:geonames:186301@699b595afdba9be6994e:KE:city:39.66359:-4.05466\",\"mombasa\",\"kenya\",[39.66359,-4.05466]]"
+        },
+        "coordinates": [
+          39.66359,
+          -4.05466
+        ]
+      },
+      "classification": "international",
+      "mode": "flight",
+      "distanceKm": 2156,
+      "straightLineDistanceKm": 2156,
+      "routedDistanceKm": null,
+      "durationMinutes": 375,
+      "headlineMinutes": 375,
+      "doorToDoorMinutes": 375,
+      "usableDayLoss": 0.75,
+      "provider": "Morrovia door-to-door flight planning estimate; a connection may be required, so verify the complete live journey.",
+      "provenance": "planning_estimate",
+      "confidence": "low",
+      "scheduleNeedsChecking": true,
+      "warnings": [],
+      "routeMetadata": {
+        "planningEstimate": true,
+        "source": "multimodal-resolver",
+        "roadFallbackEligible": false,
+        "gatewayResolutionRequired": false,
+        "label": "Victoria Falls \u2192 Mombasa",
+        "routingConfidence": "medium",
+        "transferImpact": {
+          "version": 1,
+          "mode": "flight",
+          "headline": {
+            "status": "unknown",
+            "value": null,
+            "confidence": "unknown",
+            "sources": [],
+            "reason": "The curated allowance is door-to-door and does not expose headline transport time."
+          },
+          "doorToDoor": {
+            "status": "known",
+            "value": {
+              "planningMinutes": 375,
+              "rangeMinutes": {
+                "minimum": 360,
+                "maximum": 390
+              },
+              "precision": "estimated-range"
+            },
+            "confidence": "estimated",
+            "sources": [
+              {
+                "id": "morrovia:multimodal-resolution-v1",
+                "label": "Morrovia multimodal resolver",
+                "kind": "curated",
+                "supports": "Aggregated segment planning duration."
+              }
+            ]
+          },
+          "components": [
+            {
+              "id": "origin-local",
+              "label": "Local journey to departure point",
+              "timing": {
+                "status": "unknown",
+                "value": null,
+                "confidence": "unknown",
+                "sources": [],
+                "reason": "The curated source supports the total allowance but not this individual component."
+              },
+              "reason": "The curated source supports the total allowance but not this individual component."
+            },
+            {
+              "id": "check-in-security",
+              "label": "Check-in and security",
+              "timing": {
+                "status": "unknown",
+                "value": null,
+                "confidence": "unknown",
+                "sources": [],
+                "reason": "The curated source supports the total allowance but not this individual component."
+              },
+              "reason": "The curated source supports the total allowance but not this individual component."
+            },
+            {
+              "id": "waiting-buffer",
+              "label": "Waiting and departure buffer",
+              "timing": {
+                "status": "unknown",
+                "value": null,
+                "confidence": "unknown",
+                "sources": [],
+                "reason": "The curated source supports the total allowance but not this individual component."
+              },
+              "reason": "The curated source supports the total allowance but not this individual component."
+            },
+            {
+              "id": "transport",
+              "label": "Headline transport",
+              "timing": {
+                "status": "unknown",
+                "value": null,
+                "confidence": "unknown",
+                "sources": [],
+                "reason": "The source does not separate in-vehicle time from its door-to-door allowance."
+              },
+              "reason": "The source does not separate in-vehicle time from its door-to-door allowance."
+            },
+            {
+              "id": "border-immigration",
+              "label": "Border and immigration",
+              "timing": {
+                "status": "unknown",
+                "value": null,
+                "confidence": "unknown",
+                "sources": [],
+                "reason": "The curated source supports the total allowance but not this individual component."
+              },
+              "reason": "The curated source supports the total allowance but not this individual component."
+            },
+            {
+              "id": "connection-buffer",
+              "label": "Connection buffer",
+              "timing": {
+                "status": "unknown",
+                "value": null,
+                "confidence": "unknown",
+                "sources": [],
+                "reason": "The curated source supports the total allowance but not this individual component."
+              },
+              "reason": "The curated source supports the total allowance but not this individual component."
+            },
+            {
+              "id": "arrival-local",
+              "label": "Arrival to accommodation",
+              "timing": {
+                "status": "unknown",
+                "value": null,
+                "confidence": "unknown",
+                "sources": [],
+                "reason": "The curated source supports the total allowance but not this individual component."
+              },
+              "reason": "The curated source supports the total allowance but not this individual component."
+            }
+          ],
+          "usableDayLoss": {
+            "classification": "most-of-day",
+            "estimatedDayFraction": 0.75,
+            "reason": "The estimated transfer consumes most of a normal travel day."
+          },
+          "occursOvernight": null,
+          "assumptions": [
+            "The existing curated total is preserved without inventing a component breakdown.",
+            "No defensible minimum/maximum range is currently available for this allowance."
+          ],
+          "claimConfidence": {
+            "headline": {
+              "version": 1,
+              "state": "unknown",
+              "level": "unknown",
+              "freshness": "unknown",
+              "scope": "unknown",
+              "sources": [],
+              "reason": "The curated allowance is door-to-door and does not expose headline transport time.",
+              "confirmation": {
+                "needed": true,
+                "reason": "The curated allowance is door-to-door and does not expose headline transport time."
+              }
+            },
+            "doorToDoor": {
+              "version": 1,
+              "state": "estimated",
+              "level": "medium",
+              "freshness": "unknown",
+              "scope": "planning-rule",
+              "sources": [
+                {
+                  "id": "morrovia:multimodal-resolution-v1",
+                  "label": "Morrovia multimodal resolver",
+                  "kind": "curated",
+                  "supports": "Aggregated segment planning duration."
+                }
+              ],
+              "reason": "Confidence in the realistic door-to-door travel-day allowance.",
+              "confirmation": {
+                "needed": true,
+                "reason": "Confirm current access, processing, connection and arrival conditions before booking."
+              }
+            }
+          }
+        },
+        "planningConfidence": {
+          "availability": {
+            "version": 1,
+            "state": "inferred",
+            "level": "medium",
+            "freshness": "unknown",
+            "scope": "general-route",
+            "sources": [],
+            "reason": "The connection is inferred from existing route geography or planning rules.",
+            "confirmation": {
+              "needed": true,
+              "reason": "Confirm that this route operates for the traveller's dates."
+            }
+          },
+          "schedule": {
+            "version": 1,
+            "state": "unknown",
+            "level": "unknown",
+            "freshness": "unknown",
+            "scope": "unknown",
+            "sources": [],
+            "reason": "The general route may be plausible, but no exact schedule has been verified for these dates.",
+            "confirmation": {
+              "needed": true,
+              "reason": "The general route may be plausible, but no exact schedule has been verified for these dates."
+            }
+          },
+          "duration": {
+            "version": 1,
+            "state": "estimated",
+            "level": "medium",
+            "freshness": "reviewed",
+            "scope": "planning-rule",
+            "sources": [
+              {
+                "id": "planner:transfer-impact-rules-v1",
+                "label": "Morrovia deterministic transfer-impact rules",
+                "kind": "curated",
+                "supports": "Mode-specific access, processing, waiting, arrival and usable-day planning ranges.",
+                "reviewedAt": "2026-08-23"
+              }
+            ],
+            "reason": "Confidence in the connection duration used by route planning.",
+            "confirmation": {
+              "needed": true,
+              "reason": "Confirm the current operator duration before booking."
+            }
+          },
+          "doorToDoor": {
+            "version": 1,
+            "state": "estimated",
+            "level": "medium",
+            "freshness": "reviewed",
+            "scope": "planning-rule",
+            "sources": [
+              {
+                "id": "planner:transfer-impact-rules-v1",
+                "label": "Morrovia deterministic transfer-impact rules",
+                "kind": "curated",
+                "supports": "Mode-specific access, processing, waiting, arrival and usable-day planning ranges.",
+                "reviewedAt": "2026-08-23"
+              }
+            ],
+            "reason": "Confidence in the realistic door-to-door travel-day allowance.",
+            "confirmation": {
+              "needed": true,
+              "reason": "Confirm current access, processing, connection and arrival conditions before booking."
+            }
+          },
+          "overall": {
+            "version": 1,
+            "state": "estimated",
+            "level": "medium",
+            "freshness": "unknown",
+            "scope": "general-route",
+            "sources": [
+              {
+                "id": "planner:transfer-impact-rules-v1",
+                "label": "Morrovia deterministic transfer-impact rules",
+                "kind": "curated",
+                "supports": "Mode-specific access, processing, waiting, arrival and usable-day planning ranges.",
+                "reviewedAt": "2026-08-23"
+              }
+            ],
+            "reason": "Confidence in using this connection for route comparison.",
+            "confirmation": {
+              "needed": true,
+              "reason": "The general route may be plausible, but no exact schedule has been verified for these dates."
+            }
+          }
+        },
+        "classification": "international",
+        "validationWarnings": [],
+        "transportConstraints": {
+          "avoidDriving": false,
+          "excludedModes": [],
+          "preferredModes": [
+            "flight",
+            "train"
+          ]
+        },
+        "multimodalResolution": {
+          "version": 1,
+          "selected": "flight",
+          "candidates": [
+            {
+              "id": "flight:legacy-estimate",
+              "summaryMode": "flight",
+              "segments": [
+                {
+                  "mode": "flight",
+                  "fromEndpoint": {
+                    "kind": "stop",
+                    "id": "destination-4",
+                    "name": "Victoria Falls",
+                    "country": "Zimbabwe",
+                    "canonicalPlaceId": "victoria-falls",
+                    "providerId": "reference:geonames:879431@699b595afdba9be6994e:ZW:town:25.83066:-17.93285",
+                    "geographicBinding": {
+                      "version": 1,
+                      "source": "provider",
+                      "canonicalPlaceId": "victoria-falls",
+                      "providerId": "reference:geonames:879431@699b595afdba9be6994e:ZW:town:25.83066:-17.93285",
+                      "placeType": "town",
+                      "country": "Zimbabwe",
+                      "routability": "direct_destination",
+                      "inputKey": "[\"victoria-falls\",\"reference:geonames:879431@699b595afdba9be6994e:ZW:town:25.83066:-17.93285\",\"victoria falls\",\"zimbabwe\",[25.83066,-17.93285]]"
+                    },
+                    "coordinates": [
+                      25.83066,
+                      -17.93285
+                    ]
+                  },
+                  "toEndpoint": {
+                    "kind": "stop",
+                    "id": "destination-5",
+                    "name": "Mombasa",
+                    "country": "Kenya",
+                    "canonicalPlaceId": "reference:geonames:186301",
+                    "providerId": "reference:geonames:186301@699b595afdba9be6994e:KE:city:39.66359:-4.05466",
+                    "geographicBinding": {
+                      "version": 1,
+                      "source": "provider",
+                      "canonicalPlaceId": "reference:geonames:186301",
+                      "providerId": "reference:geonames:186301@699b595afdba9be6994e:KE:city:39.66359:-4.05466",
+                      "placeType": "city",
+                      "country": "Kenya",
+                      "routability": "direct_destination",
+                      "inputKey": "[\"reference:geonames:186301\",\"reference:geonames:186301@699b595afdba9be6994e:KE:city:39.66359:-4.05466\",\"mombasa\",\"kenya\",[39.66359,-4.05466]]"
+                    },
+                    "coordinates": [
+                      39.66359,
+                      -4.05466
+                    ]
+                  },
+                  "distanceKm": 2156,
+                  "durationMinutes": 375,
+                  "provider": "Morrovia door-to-door flight planning estimate; a connection may be required, so verify the complete live journey.",
+                  "provenance": "planning_estimate",
+                  "confidence": "low",
+                  "scheduleNeedsChecking": true,
+                  "id": "victoria-falls:reference:geonames:186301:flight:0"
+                }
+              ],
+              "totalDurationMinutes": 375,
+              "distanceKm": 2156,
+              "confidence": "low",
+              "provenance": "planning_estimate",
+              "evidence": "legacy_flight_estimate",
+              "connectionCount": null,
+              "reasons": [
+                "The legacy planner supports a flight estimate and no gateway contradiction is known.",
+                "This mode matches the traveller's stated transport preference."
+              ],
+              "score": 69.5
+            }
+          ],
+          "rejected": [
+            "No plausible routed road estimate or canonical gateway access was available."
+          ],
+          "selectedCandidateId": "flight:legacy-estimate"
+        }
+      },
+      "segments": [
+        {
+          "mode": "flight",
+          "fromEndpoint": {
+            "kind": "stop",
+            "id": "destination-4",
+            "name": "Victoria Falls",
+            "country": "Zimbabwe",
+            "canonicalPlaceId": "victoria-falls",
+            "providerId": "reference:geonames:879431@699b595afdba9be6994e:ZW:town:25.83066:-17.93285",
+            "geographicBinding": {
+              "version": 1,
+              "source": "provider",
+              "canonicalPlaceId": "victoria-falls",
+              "providerId": "reference:geonames:879431@699b595afdba9be6994e:ZW:town:25.83066:-17.93285",
+              "placeType": "town",
+              "country": "Zimbabwe",
+              "routability": "direct_destination",
+              "inputKey": "[\"victoria-falls\",\"reference:geonames:879431@699b595afdba9be6994e:ZW:town:25.83066:-17.93285\",\"victoria falls\",\"zimbabwe\",[25.83066,-17.93285]]"
+            },
+            "coordinates": [
+              25.83066,
+              -17.93285
+            ]
+          },
+          "toEndpoint": {
+            "kind": "stop",
+            "id": "destination-5",
+            "name": "Mombasa",
+            "country": "Kenya",
+            "canonicalPlaceId": "reference:geonames:186301",
+            "providerId": "reference:geonames:186301@699b595afdba9be6994e:KE:city:39.66359:-4.05466",
+            "geographicBinding": {
+              "version": 1,
+              "source": "provider",
+              "canonicalPlaceId": "reference:geonames:186301",
+              "providerId": "reference:geonames:186301@699b595afdba9be6994e:KE:city:39.66359:-4.05466",
+              "placeType": "city",
+              "country": "Kenya",
+              "routability": "direct_destination",
+              "inputKey": "[\"reference:geonames:186301\",\"reference:geonames:186301@699b595afdba9be6994e:KE:city:39.66359:-4.05466\",\"mombasa\",\"kenya\",[39.66359,-4.05466]]"
+            },
+            "coordinates": [
+              39.66359,
+              -4.05466
+            ]
+          },
+          "distanceKm": 2156,
+          "durationMinutes": 375,
+          "provider": "Morrovia door-to-door flight planning estimate; a connection may be required, so verify the complete live journey.",
+          "provenance": "planning_estimate",
+          "confidence": "low",
+          "scheduleNeedsChecking": true,
+          "id": "victoria-falls:reference:geonames:186301:flight:0"
+        }
+      ]
+    }
+  ],
+  "planItems": [
+    {
+      "id": "trip-a39bddc5-fb9a-48d4-aea4-09a5c5f6743c-calendar:destination-1:0:0",
+      "stopId": "destination-1",
+      "date": "2026-10-22",
+      "dayNumber": 1,
+      "type": "open",
+      "title": "Flexible day in Cape Town",
+      "reason": "Plan this day around your preferences.",
+      "notes": [],
+      "startsAt": null,
+      "endsAt": null,
+      "bookingUrl": null,
+      "latitude": null,
+      "longitude": null
+    },
+    {
+      "id": "trip-a39bddc5-fb9a-48d4-aea4-09a5c5f6743c-calendar:destination-1:1:1",
+      "stopId": "destination-1",
+      "date": "2026-10-23",
+      "dayNumber": 2,
+      "type": "open",
+      "title": "Flexible day in Cape Town",
+      "reason": "Plan this day around your preferences.",
+      "notes": [],
+      "startsAt": null,
+      "endsAt": null,
+      "bookingUrl": null,
+      "latitude": null,
+      "longitude": null
+    },
+    {
+      "id": "trip-a39bddc5-fb9a-48d4-aea4-09a5c5f6743c-calendar:destination-2:0:2",
+      "stopId": "destination-2",
+      "date": "2026-10-24",
+      "dayNumber": 3,
+      "type": "open",
+      "title": "Flexible day in Windhoek",
+      "reason": "Plan this day around your preferences.",
+      "notes": [],
+      "startsAt": null,
+      "endsAt": null,
+      "bookingUrl": null,
+      "latitude": null,
+      "longitude": null
+    },
+    {
+      "id": "trip-a39bddc5-fb9a-48d4-aea4-09a5c5f6743c-calendar:destination-3:0:3",
+      "stopId": "destination-3",
+      "date": "2026-10-25",
+      "dayNumber": 4,
+      "type": "open",
+      "title": "Flexible day in Swakopmund",
+      "reason": "Plan this day around your preferences.",
+      "notes": [],
+      "startsAt": null,
+      "endsAt": null,
+      "bookingUrl": null,
+      "latitude": null,
+      "longitude": null
+    },
+    {
+      "id": "trip-a39bddc5-fb9a-48d4-aea4-09a5c5f6743c-calendar:destination-4:0:4",
+      "stopId": "destination-4",
+      "date": "2026-10-26",
+      "dayNumber": 5,
+      "type": "open",
+      "title": "Flexible day in Victoria Falls",
+      "reason": "Plan this day around your preferences.",
+      "notes": [],
+      "startsAt": null,
+      "endsAt": null,
+      "bookingUrl": null,
+      "latitude": null,
+      "longitude": null
+    },
+    {
+      "id": "trip-a39bddc5-fb9a-48d4-aea4-09a5c5f6743c-calendar:destination-5:0:5",
+      "stopId": "destination-5",
+      "date": "2026-10-27",
+      "dayNumber": 6,
+      "type": "open",
+      "title": "Flexible day in Mombasa",
+      "reason": "Plan this day around your preferences.",
+      "notes": [],
+      "startsAt": null,
+      "endsAt": null,
+      "bookingUrl": null,
+      "latitude": null,
+      "longitude": null
+    },
+    {
+      "id": "trip-a39bddc5-fb9a-48d4-aea4-09a5c5f6743c-calendar:destination-5:1:6",
+      "stopId": "destination-5",
+      "date": "2026-10-28",
+      "dayNumber": 7,
+      "type": "open",
+      "title": "Flexible day in Mombasa",
+      "reason": "Plan this day around your preferences.",
+      "notes": [],
+      "startsAt": null,
+      "endsAt": null,
+      "bookingUrl": null,
+      "latitude": null,
+      "longitude": null
+    }
+  ],
+  "recommendations": [],
+  "createdAt": "2026-10-15T23:27:23.542Z",
+  "updatedAt": "2026-10-15T23:27:24.172Z"
+}

@@ -1,8 +1,9 @@
 import { transportBookingForLeg } from "./booking-readiness.ts";
 import { routeEndpointForLeg } from "./trip-legs.ts";
 import type { CanonicalRouteEndpoint, EasyTTrip, TripBooking, TripLeg } from "./trip.ts";
-import { effectiveTripLeg } from "./transport-mode-choice.ts";
-import { guardTripRoutingGeometry } from "./geographic-binding.ts";
+import { effectiveTripLeg, selectedTransportChoiceForLeg, supportedTransportChoicesForLeg } from "./transport-mode-choice.ts";
+import { guardTripRoutingGeometry, preservedTransferFacts } from "./geographic-binding.ts";
+import { isInsufficientTransferEvidence } from './transfer-evidence-quality.ts';
 import type { PlanningEvidenceState, TransferAssessment } from './planning-evidence-state.ts';
 import { transferAssessmentForLeg } from './planning-evidence-presentation.ts';
 
@@ -19,6 +20,15 @@ export function transportAssessmentState(trip: EasyTTrip, leg: TripLeg, assessme
   // A preserved leg retains its prior qualified evidence without a new lookup.
   const preservedEvidence = assessment?.retrieval === 'not-attempted' && assessment.reason === undefined;
   if (assessment && (assessment.retrieval !== 'completed' && !preservedEvidence || !['verified', 'conditional'].includes(assessment.evidence))) return 'unknown';
+  // Session feedback can disappear after edits/reopen. Its absence cannot
+  // upgrade the durable candidate's insufficient evidence into route support.
+  if (!preservedTransferFacts(leg)) {
+    const diagnostic = leg.routeMetadata.multimodalResolution as { selectedCandidateId?: unknown } | undefined;
+    const selected = selectedTransportChoiceForLeg(trip, leg)
+      ?? supportedTransportChoicesForLeg(trip, leg).find(candidate => candidate.candidateId === diagnostic?.selectedCandidateId);
+    if (isInsufficientTransferEvidence(selected?.evidence)
+      || !selected && leg.provenance === 'planning_estimate' && leg.confidence === 'low') return 'unknown';
+  }
   // The resolver can settle successfully with unknown evidence. Its HTTP result
   // does not expose swallowed provider failures; do not infer a failure here.
   return leg.mode !== "unknown" && ["provider", "canonical_schedule", "routing_engine", "planning_estimate"].includes(leg.provenance ?? "") ? "supported" : "unknown";

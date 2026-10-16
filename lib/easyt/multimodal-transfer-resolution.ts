@@ -14,6 +14,7 @@ import { REFERENCE_SNAPSHOT_ID } from "./place-reference.ts";
 import type { RoadRoutingProvider } from "./road-routing.ts";
 import type {PlanningEvidenceState,TransferAssessment} from './planning-evidence-state.ts';
 import {providerFailureAssessment} from './planning-provider-assessment.ts';
+import { isInsufficientTransferEvidence } from './transfer-evidence-quality.ts';
 import { estimateTransferImpact } from "./transfer-impact.ts";
 import { findSurfaceCrossing } from "./surface-crossing-evidence.ts";
 import { reconcileLegacyTransportLeg } from "./transport-leg-compatibility.ts";
@@ -773,7 +774,7 @@ export async function resolveCanonicalTransferJourney(
   const unqualified = result.leg.routeMetadata.source === 'unverified-geography';
   const preserved = result.outcome === 'preserved';
   const selected = result.diagnostic.candidates.find(candidate => candidate.id === result.diagnostic.selectedCandidateId);
-  const weakPairEvidence = selected && ['legacy_flight_estimate','direct_air_connectivity','direct_rail_connectivity','air_gateway_composition'].includes(selected.evidence);
+  const weakPairEvidence = selected && isInsufficientTransferEvidence(selected.evidence);
   const evidence = unqualified ? 'unqualified' : result.outcome === 'unresolved' || result.leg.mode === 'unknown' || weakPairEvidence ? 'insufficient' : 'conditional';
   const failed = roads.find(state => state.retrieval === 'unavailable');
   const noRoute = roads.find(state => state.reason === 'no_route');
