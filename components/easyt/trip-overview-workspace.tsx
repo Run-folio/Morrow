@@ -17,8 +17,10 @@ import {
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { accommodationProgress, stayBookingForStop } from "@/lib/easyt/accommodation";
+import { tripWithEffectiveTransportChoices } from '@/lib/easyt/transport-mode-choice';
+import { transferTimingLabel } from '@/lib/easyt/transfer-timing-label';
 import { tripHealth } from "@/lib/easyt/review";
-import { formatTripDuration, formatTripNights } from "@/lib/easyt/trip-facts";
+import { formatTripNights } from "@/lib/easyt/trip-facts";
 import type { EasyTTrip } from "@/lib/easyt/trip";
 import ResilientImage from "./resilient-image";
 import {
@@ -106,8 +108,8 @@ function conciseTransferLabel(leg: EasyTTrip["legs"][number] | null | undefined)
   if (!leg) return null;
   const minutes = leg.doorToDoorMinutes ?? leg.durationMinutes;
   if (!minutes) return "Transfer to confirm";
-  const duration = formatTripDuration(minutes);
-  return leg.mode === "flight" ? `${duration} by air` : `${duration} transfer`;
+  const duration = transferTimingLabel(leg);
+  return leg.mode === "flight" ? `${duration} total by air` : `${duration} transfer`;
 }
 
 export function OverviewStepMedia({ image, name, country, meta, number, href, onImageError }: { image: OverviewPlaceImage | null; name: string; country?: string | null; meta: string; number: number; href: string; onImageError?: (src: string) => void }) {
@@ -127,7 +129,7 @@ export function OverviewStepMedia({ image, name, country, meta, number, href, on
 }
 
 export default function TripOverviewWorkspace({
-  trip,
+  trip: canonicalTrip,
   firstArrival = false,
   initialPrepActions,
   initialPrepReadinessCards,
@@ -136,6 +138,7 @@ export default function TripOverviewWorkspace({
   now,
   language: suppliedLanguage,
 }: TripOverviewWorkspaceProps) {
+  const trip = useMemo(() => tripWithEffectiveTransportChoices(canonicalTrip), [canonicalTrip]);
   const mutation = useTripShellMutation();
   const [travellerDetailsOpen, setTravellerDetailsOpen] = useState(false);
   const [language, setLanguage] = useState<"en" | "es">(suppliedLanguage ?? "en");

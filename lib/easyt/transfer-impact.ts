@@ -297,11 +297,21 @@ export function estimateTransferImpact(input: EstimateTransferImpactInput): Tran
 }
 
 export function transferDoorToDoorMinutes(impact: TransferImpact | undefined, fallback: number | null = null) {
-  return impact?.doorToDoor.status === "known" ? impact.doorToDoor.value.planningMinutes : fallback;
+  const value = impact?.doorToDoor?.status === "known" ? impact.doorToDoor.value?.planningMinutes : null;
+  return typeof value === "number" && Number.isFinite(value) && value >= 0 ? value : fallback;
 }
 
 export function transferHeadlineMinutes(impact: TransferImpact | undefined) {
-  return impact?.headline.status === "known" ? impact.headline.value.planningMinutes : null;
+  const value = impact?.headline?.status === "known" ? impact.headline.value?.planningMinutes : null;
+  return typeof value === "number" && Number.isFinite(value) && value >= 0 ? value : null;
+}
+
+function validTimingFact(value: unknown): boolean {
+  if (!value || typeof value !== "object") return false;
+  const fact = value as Partial<KnowledgeFact<TransferTimeEstimate>>;
+  if (fact.status === "unknown") return fact.value === null;
+  const point = fact.value?.planningMinutes;
+  return fact.status === "known" && typeof point === "number" && Number.isFinite(point) && point >= 0;
 }
 
 export function isTransferImpact(value: unknown): value is TransferImpact {
@@ -309,9 +319,14 @@ export function isTransferImpact(value: unknown): value is TransferImpact {
   const impact = value as Partial<TransferImpact>;
   return impact.version === 1
     && (impact.mode === "flight" || impact.mode === "train" || impact.mode === "road" || impact.mode === "ferry")
-    && Boolean(impact.doorToDoor && typeof impact.doorToDoor === "object")
-    && Boolean(impact.headline && typeof impact.headline === "object")
-    && Array.isArray(impact.components);
+    && validTimingFact(impact.doorToDoor)
+    && validTimingFact(impact.headline)
+    && Array.isArray(impact.components)
+    && impact.components.every(component => component && validTimingFact(component.timing))
+    && Boolean(impact.usableDayLoss && typeof impact.usableDayLoss === "object"
+      && ["light", "substantial", "most-of-day", "full-day-or-more", "unknown"].includes(impact.usableDayLoss.classification)
+      && (impact.usableDayLoss.estimatedDayFraction === null || (typeof impact.usableDayLoss.estimatedDayFraction === "number"
+        && Number.isFinite(impact.usableDayLoss.estimatedDayFraction) && impact.usableDayLoss.estimatedDayFraction >= 0 && impact.usableDayLoss.estimatedDayFraction <= 1)));
 }
 
 export function transferImpactFromMetadata(value: unknown) {

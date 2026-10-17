@@ -67,7 +67,7 @@ export function mapPlanAgendaForDay(trip: EasyTTrip, dayId: string) {
         ? `Arrive in ${composition.context.destination}`
         : `Travel onward from ${composition.context.destination}`,
     scheduleLabel: useExactStart(),
-    metadata: compactMapPlanDuration(transfer.durationMinutes),
+    metadata: transfer.durationMinutes === null ? null : `${transfer.timingLabel ?? compactMapPlanDuration(transfer.durationMinutes)} total`,
     detail: [
       transfer.durationIsEstimate ? "Planning estimate" : null,
       transfer.scheduleNeedsChecking ? "check current schedules" : null,

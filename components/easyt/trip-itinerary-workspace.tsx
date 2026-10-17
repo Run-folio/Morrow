@@ -1,4 +1,6 @@
 "use client";
+import {effectiveTripLeg} from '@/lib/easyt/transport-mode-choice';
+import {transferTimingLabel} from '@/lib/easyt/transfer-timing-label';
 
 import { googlePlaceReferenceIdeas, legacyItineraryIdeas } from "@/lib/easyt/trip";
 
@@ -916,7 +918,7 @@ export default function TripItineraryWorkspace({
   const dayNotes = workingTrip.brief.dayNotes?.[active.dayNumber] ?? [];
   const customActivities = workingTrip.brief.customActivities?.[active.dayNumber] ?? [];
   const recommendations = workingTrip.recommendations.filter((recommendation) => recommendation.status === "open" && recommendation.affectedDays.includes(active.dayNumber));
-  const logisticsLegs = itineraryDayLegs(workingTrip, active).filter((leg) => dayComposition?.transfers.some((transfer) => transfer.id === leg.id));
+  const logisticsLegs = itineraryDayLegs(workingTrip, active).filter((leg) => dayComposition?.transfers.some((transfer) => transfer.id === leg.id)).map(leg => effectiveTripLeg(workingTrip, leg));
   const transportAgenda = itineraryTransportAgenda(workingTrip);
   const selectedTransportAgenda = selectedItemId?.startsWith("leg-")
     ? transportAgenda.find((item) => item.leg.id === selectedItemId.slice(4)) ?? null
@@ -2272,7 +2274,7 @@ function CalendarItemButton({ item, day, copy, language, draggable, dragging, on
     Icon = iconForLeg(item.agenda.leg.mode);
     title = `${item.agenda.from.name} → ${item.agenda.to.name}`;
     const durationMinutes = item.agenda.leg.doorToDoorMinutes ?? item.agenda.leg.durationMinutes;
-    meta = [copy.transfer, transferJourneyModeLabel(item.agenda.leg), durationMinutes === null ? copy.timeNotSet : `~${formatTripDuration(durationMinutes)}`].join(" · ");
+    meta = [copy.transfer, transferJourneyModeLabel(item.agenda.leg), durationMinutes === null ? copy.timeNotSet : `${transferTimingLabel(item.agenda.leg)} total`].join(" · ");
   } else if (item.kind === "accommodation") {
     Icon = BedDouble;
     title = item.booking.title;
@@ -3135,7 +3137,7 @@ function LogisticsLeg({ leg, trip, copy, selected, onSelect }: { leg: TripLeg; t
   const arrivalLabel = semanticSamePlaceArrival(trip, leg);
   const transferLabel = transferJourneyModeLabel(leg);
   const segmentSummary = transferJourneySegmentSummary(leg);
-  return <EasyTButton variant="quiet" className={`${styles.logisticsCard} ${selected ? styles.logisticsSelected : ""}`} aria-pressed={selected} onClick={(event) => onSelect(event.currentTarget)}><Icon aria-hidden="true" /><div><small>{transferLabel}</small><strong>{arrivalLabel ?? (from && to ? `${from} → ${to}` : leg.mode)}</strong><span>{arrivalLabel ? "Arrival into your first overnight destination" : durationMinutes === null ? "Timing needs confirmation" : `~${formatTripDuration(durationMinutes)} total · ${leg.provenance === "planning_estimate" || leg.provenance === "routing_engine" ? copy.estimate : "Saved timing"}`}</span>{segmentSummary ? <span>{segmentSummary}</span> : null}</div><ArrowRight aria-hidden="true" /></EasyTButton>;
+  return <EasyTButton variant="quiet" className={`${styles.logisticsCard} ${selected ? styles.logisticsSelected : ""}`} aria-pressed={selected} onClick={(event) => onSelect(event.currentTarget)}><Icon aria-hidden="true" /><div><small>{transferLabel}</small><strong>{arrivalLabel ?? (from && to ? `${from} → ${to}` : leg.mode)}</strong><span>{arrivalLabel ? "Arrival into your first overnight destination" : durationMinutes === null ? "Timing needs confirmation" : `${transferTimingLabel(leg)} total · ${leg.provenance === "planning_estimate" || leg.provenance === "routing_engine" ? copy.estimate : "Saved timing"}`}</span>{segmentSummary ? <span>{segmentSummary}</span> : null}</div><ArrowRight aria-hidden="true" /></EasyTButton>;
 }
 
 function BookingCard({ booking, copy, selected, onSelect }: { booking: TripBooking; copy: ReturnType<typeof itineraryCopy>; selected: boolean; onSelect: (origin: HTMLButtonElement) => void }) {

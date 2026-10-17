@@ -1,3 +1,4 @@
+import {transferTimingLabel} from './transfer-timing-label.ts';
 import type { EasyTTrip, RoadEstimateReference, TripLeg } from "./trip.ts";
 import type { PlanningConfidence } from "./planning-confidence.ts";
 import type { TransferImpact } from "./transfer-impact.ts";
@@ -36,6 +37,8 @@ export type MapRouteLeg = {
   mode: MapTransportMode;
   modeLabel: string;
   distanceKm: number | null;
+  headlineLabel?: string;
+  totalLabel?: string;
   headlineMinutes: number | null;
   doorToDoorMinutes: number | null;
   confidence: PlanningConfidence | null;
@@ -251,7 +254,8 @@ export function mapTransportModeLabel(mode: MapTransportMode) {
 }
 
 function knownPlanningMinutes(value: TransferImpact["headline"] | TransferImpact["doorToDoor"] | undefined) {
-  return value?.status === "known" ? value.value.planningMinutes : null;
+  const point = value?.status === "known" ? value.value?.planningMinutes : null;
+  return typeof point === "number" && Number.isFinite(point) && point >= 0 ? point : null;
 }
 
 /**
@@ -304,6 +308,8 @@ export function mapRouteLegsFromTrip(trip: Pick<EasyTTrip, "stops" | "legs"> & P
       mode,
       modeLabel: mode === leg.mode ? transferJourneyModeLabel(leg) : mapTransportModeLabel(mode),
       distanceKm: leg.mode === "unknown" && leg.roadEstimate ? leg.roadEstimate.distanceKm : leg.routedDistanceKm ?? leg.distanceKm,
+      headlineLabel: transferTimingLabel(leg, 'headline', 'Not available'),
+      totalLabel: transferTimingLabel(leg),
       headlineMinutes: leg.headlineMinutes ?? knownPlanningMinutes(impact?.headline),
       doorToDoorMinutes: leg.doorToDoorMinutes ?? knownPlanningMinutes(impact?.doorToDoor) ?? leg.durationMinutes,
       confidence,

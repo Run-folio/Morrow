@@ -1,4 +1,5 @@
 "use client";
+import {transferTimingLabel} from '@/lib/easyt/transfer-timing-label';
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
@@ -10,7 +11,6 @@ import { EasyTButton, EasyTLinkButton } from "./easyt-controls";
 import { transportAffiliateActionForLeg, type ResolvedAffiliateAction } from "@/lib/easyt/booking-readiness";
 import { itineraryTransportAgenda, transportJourneyKnowledge, transportPresentationCounts, transportPresentationState, type ItineraryTransportAgendaLeg, type TransportPresentationState } from "@/lib/easyt/itinerary-transport-agenda";
 import { mapRouteLegsFromTrip } from "@/lib/easyt/map-spatial-context";
-import { formatTripDuration } from "@/lib/easyt/trip-facts";
 import { formatIsoDate } from "@/lib/easyt/trip-lifecycle";
 import { transferJourneyModeLabel } from "@/lib/easyt/transfer-journey";
 import { formatRoadEstimateReference } from "@/lib/easyt/road-estimate-presentation";
@@ -102,13 +102,13 @@ function noteForJourney(item: ItineraryTransportAgendaLeg, copy: ReturnType<type
     if (!duration) return copy.timeUnknown;
     return copy.bestOptionNeedsChecking;
   }
-  const formattedDuration = formatTripDuration(duration!);
+  const formattedDuration = transferTimingLabel(item.leg);
   if (state === "check-timetable" || state === "check-service") {
     const checkCopy = state === "check-service" ? copy.serviceEstimateNote : copy.scheduledEstimateNote;
-    return `${copy.approximate}${formattedDuration}. ${checkCopy}`;
+    return `${formattedDuration}. ${checkCopy}`;
   }
-  if (item.leg.mode === "road") return `${copy.approximate}${formattedDuration}${copy.byRoad}. ${copy.roadEstimateNote}`;
-  return `${copy.approximate}${formattedDuration}.`;
+  if (item.leg.mode === "road") return `${formattedDuration}${copy.byRoad}. ${copy.roadEstimateNote}`;
+  return `${formattedDuration}.`;
 }
 
 function endpointMapStop(endpoint: CanonicalRouteEndpoint, item: ItineraryTransportAgendaLeg, language: Language): JourneyStop | null {
@@ -224,7 +224,7 @@ function TransportCard({ item, index, language, copy, selected, forReview, onSel
     <span className={styles.modeIcon}><Icon aria-hidden="true" /></span>
     <div className={styles.cardBody}>
       <h3>{item.from.name}<span className="sr-only"> {language === "es" ? "a" : "to"} </span><ArrowRight aria-hidden="true" />{item.to.name}</h3>
-      <p className={styles.mode}>{transferJourneyModeLabel(leg)}{durationMinutes === null ? null : <><i aria-hidden="true">·</i>~{formatTripDuration(durationMinutes)}</>}</p>
+      <p className={styles.mode}>{transferJourneyModeLabel(leg)}{durationMinutes === null ? null : <><i aria-hidden="true">·</i>{transferTimingLabel(leg)} total</>}</p>
       <p className={styles.note}>{noteForJourney(item, copy, language)}</p>
     </div>
     <div className={styles.cardEnd}>

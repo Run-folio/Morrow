@@ -1,8 +1,8 @@
 "use client";
+import {transferTimingLabel} from '@/lib/easyt/transfer-timing-label';
 
 import { useId, useState } from "react";
 import { Check, ChevronDown } from "lucide-react";
-import { formatTripDuration } from "@/lib/easyt/trip-facts";
 import type { EasyTTrip, TripLeg, TripTransferMode } from "@/lib/easyt/trip";
 import {
   effectiveTripLeg,
@@ -50,7 +50,7 @@ export default function TripTransportChoiceControl({
 
   return <span className={styles.control} data-transport-choice-leg={leg.id}>
     <span className={styles.current}>
-      <span><b>{modeLabels[effective.mode]}</b>{effectiveMinutes !== null ? ` · ~${formatTripDuration(effectiveMinutes)}` : ""}</span>
+      <span><b>{modeLabels[effective.mode]}</b>{effectiveMinutes !== null ? ` · ${transferTimingLabel(effective)} total` : ""}</span>
       <small>{selected ? "Your choice" : "Morrovia recommendation"}</small>
       <EasyTButton
         aria-controls={optionsId}
@@ -74,7 +74,7 @@ export default function TripTransportChoiceControl({
         onClick={() => onChange(candidate.identity)}
       >
         {candidate.mode === effective.mode ? <Check aria-hidden="true" /> : null}
-        {modeLabels[candidate.mode]} · ~{formatTripDuration(candidate.durationMinutes)}
+        {modeLabels[candidate.mode]} · {transferTimingLabel({...candidate,doorToDoorMinutes:candidate.durationMinutes})} total
       </EasyTButton>)}
       {!alternatives.length ? <span>No other evidence-backed mode is currently supported for this leg.</span> : null}
     </span> : null}

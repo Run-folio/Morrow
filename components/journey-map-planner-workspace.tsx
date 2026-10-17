@@ -1,4 +1,5 @@
 "use client";
+import {aggregateTransferTimingLabel,transferTimingLabel} from '@/lib/easyt/transfer-timing-label';
 
 import { legacyItineraryIdeas } from "@/lib/easyt/trip";
 
@@ -809,7 +810,7 @@ export function JourneyMapPlannerWorkspace({
     mode: (selectedLeg.mode === "train" ? "rail" : selectedLeg.mode === "walk" ? "road" : selectedLeg.mode) as JourneyLeg["mode"],
     from: routeEndpointForLeg(customTrip, selectedLeg, "from")?.name,
     detail: selectedLeg.provider ?? "Timing needs confirmation",
-    duration: formatMapDuration(selectedLeg.doorToDoorMinutes ?? selectedLeg.durationMinutes),
+    duration: `${transferTimingLabel(selectedLeg)} total`,
     classificationLabel: language === "es"
       ? ({ arrival: "Viaje de llegada", international: "Traslado internacional", intercity: "Traslado interurbano", local: "Traslado local", departure: "Viaje de salida" }[selectedLeg.classification ?? "intercity"])
       : tripLegClassificationLabel(selectedLeg.classification),
@@ -818,9 +819,8 @@ export function JourneyMapPlannerWorkspace({
   const mappedDistanceKm = customTrip && customTrip.legs.every((leg) => leg.distanceKm !== null)
     ? customTrip.legs.reduce((total, leg) => total + (leg.distanceKm ?? 0), 0)
     : null;
-  const mappedTravelMinutes = customTrip && customTrip.legs.every((leg) => (leg.doorToDoorMinutes ?? leg.durationMinutes) !== null)
-    ? customTrip.legs.reduce((total, leg) => total + (leg.doorToDoorMinutes ?? leg.durationMinutes ?? 0), 0)
-    : null;
+  const effectiveTravelLegs = customTrip ? tripWithEffectiveTransportChoices(customTrip).legs : [];
+  const mappedTravelLabel = aggregateTransferTimingLabel(effectiveTravelLegs);
   const selectedStayDates = customTrip && selectedTripStop ? stableStopDateRange(selectedTripStop, customTrip) : null;
   const selectedActivities = (selectedPlanItem?.notes ?? selectedDay.items).map((item) => {
     if (!selectedLeg || !/^(?:Estimated door-to-door: about|Morrovia planning estimate:)/i.test(item)) return item;
@@ -2924,7 +2924,7 @@ export function JourneyMapPlannerWorkspace({
               sdkLoader={storyState?.googleFixture?.sdkLoader}
               mapId={process.env.NEXT_PUBLIC_GOOGLE_MAPS_MAP_ID}
               stops={canonicalMapStops.map((stop, index) => ({ id: stop.id, name: stop.city, coordinates: stop.coordinates ?? null, sequence: index }))}
-              legs={canonicalMapLegs.map((leg) => ({ id: leg.id, fromStopId: leg.fromStopId, toStopId: leg.toStopId, modeLabel: leg.modeLabel, durationLabel: `${formatMapDuration(leg.doorToDoorMinutes)}${leg.scheduleNeedsChecking ? " · needs checking" : ""}`, routeGeometry: leg.routeGeometry }))}
+              legs={canonicalMapLegs.map((leg) => ({ id: leg.id, fromStopId: leg.fromStopId, toStopId: leg.toStopId, modeLabel: leg.modeLabel, durationLabel: `${leg.totalLabel ?? `~${formatMapDuration(leg.doorToDoorMinutes)}`} total${leg.scheduleNeedsChecking ? " · needs checking" : ""}`, routeGeometry: leg.routeGeometry }))}
               places={googleCanvasPlaces}
               selectedStopId={mapMode === "overview" ? null : selectedTripStop?.id ?? null}
               selectedPlaceId={selectedLocalPlace?.selectionId ?? selectedPlannerPin?.id ?? (selectedGooglePlaceId ? `google-poi:${selectedGooglePlaceId}` : null)}
@@ -3117,7 +3117,7 @@ export function JourneyMapPlannerWorkspace({
                 <div><dt>Nights</dt><dd>{selectedTripStop.nights ?? "To confirm"}</dd></div>
                 <div><dt>Check out</dt><dd>{formatIsoDate(selectedTripStop.departureDate, "en", { month: "short", day: "numeric" }) ?? "To confirm"}</dd></div>
               </dl> : null}
-              {isPlanningPreview && selectedLeg && customTrip ? <div className={styles.destinationTransfer}><small>{tripLegClassificationLabel(selectedLeg.classification)}</small><strong>{routeEndpointForLeg(customTrip, selectedLeg, "from")?.name ?? "Previous endpoint"} → {routeEndpointForLeg(customTrip, selectedLeg, "to")?.name ?? selectedDay.city}</strong><span>{formatMapDuration(selectedLeg.doorToDoorMinutes ?? selectedLeg.durationMinutes)} · {selectedLeg.provider ?? "Timing needs confirmation"}</span></div> : null}
+              {isPlanningPreview && selectedLeg && customTrip ? <div className={styles.destinationTransfer}><small>{tripLegClassificationLabel(selectedLeg.classification)}</small><strong>{routeEndpointForLeg(customTrip, selectedLeg, "from")?.name ?? "Previous endpoint"} → {routeEndpointForLeg(customTrip, selectedLeg, "to")?.name ?? selectedDay.city}</strong><span>{transferTimingLabel(selectedLeg)} total · {selectedLeg.provider ?? "Timing needs confirmation"}</span></div> : null}
               {!isCustomJourney ? <div className={styles.highlights}>
                 {selected.highlights.map((highlight, index) => <span key={highlight}><b>0{index + 1}</b>{highlight}</span>)}
               </div> : null}
@@ -3238,12 +3238,12 @@ export function JourneyMapPlannerWorkspace({
             <dl className={styles.mapContextFacts}><div><dt>Category</dt><dd>{pinCategoryLabel(selectedPlannerPin.category)}</dd></div><div><dt>Day</dt><dd>{selectedPlannerPin.dayNumber ? `Day ${selectedPlannerPin.dayNumber}` : "Trip-wide"}</dd></div></dl>
           </div> : selectedRouteLeg ? <div className={styles.mapLegDetail}>
             <p className={styles.mapContextCopy}>{selectedRouteLeg.doorToDoorMinutes !== null
-              ? `Plan around ${formatMapDuration(selectedRouteLeg.doorToDoorMinutes)} door to door${selectedRouteLeg.mode === "road" ? " by road" : selectedRouteLeg.mode === "flight" ? " by air" : selectedRouteLeg.mode === "train" ? " by rail" : selectedRouteLeg.mode === "ferry" ? " by ferry" : selectedRouteLeg.mode === "walk" ? " on foot" : ""}.`
+              ? `Plan around ${selectedRouteLeg.totalLabel ?? `~${formatMapDuration(selectedRouteLeg.doorToDoorMinutes)}`} door to door${selectedRouteLeg.mode === "road" ? " by road" : selectedRouteLeg.mode === "flight" ? " by air" : selectedRouteLeg.mode === "train" ? " by rail" : selectedRouteLeg.mode === "ferry" ? " by ferry" : selectedRouteLeg.mode === "walk" ? " on foot" : ""}.`
               : "Door-to-door timing is not available yet for this transfer."}</p>
             <dl className={styles.mapTransferPrimary}>
               <div><dt>{selectedRouteLeg.roadEstimate ? "Road estimate distance" : "Distance"}</dt><dd>{selectedRouteLeg.distanceKm !== null ? `${Math.round(selectedRouteLeg.distanceKm).toLocaleString()} km` : "Not available"}</dd></div>
-              <div><dt>{selectedRouteLeg.roadEstimate ? "Road estimate driving time" : selectedRouteLeg.mode === "road" ? "Driving time" : selectedRouteLeg.mode === "flight" ? "Flight time" : selectedRouteLeg.mode === "train" ? "Rail time" : selectedRouteLeg.mode === "ferry" ? "Ferry time" : selectedRouteLeg.mode === "walk" ? "Walking time" : "Travel time"}</dt><dd>{selectedRouteLeg.roadEstimate ? `~${formatMapDuration(selectedRouteLeg.roadEstimate.durationMinutes)}` : selectedRouteLeg.headlineMinutes !== null ? `~${formatMapDuration(selectedRouteLeg.headlineMinutes)}` : "Not available"}</dd></div>
-              <div><dt>Door to door</dt><dd>{selectedRouteLeg.doorToDoorMinutes !== null ? `~${formatMapDuration(selectedRouteLeg.doorToDoorMinutes)}` : "Not available"}</dd></div>
+              <div><dt>{selectedRouteLeg.roadEstimate ? "Road estimate driving time" : selectedRouteLeg.mode === "road" ? "Driving time" : selectedRouteLeg.mode === "flight" ? "Flight time" : selectedRouteLeg.mode === "train" ? "Rail time" : selectedRouteLeg.mode === "ferry" ? "Ferry time" : selectedRouteLeg.mode === "walk" ? "Walking time" : "Travel time"}</dt><dd>{selectedRouteLeg.roadEstimate ? `~${formatMapDuration(selectedRouteLeg.roadEstimate.durationMinutes)}` : selectedRouteLeg.headlineLabel ?? (selectedRouteLeg.headlineMinutes !== null ? `~${formatMapDuration(selectedRouteLeg.headlineMinutes)}` : "Not available")}</dd></div>
+              <div><dt>Door to door</dt><dd>{selectedRouteLeg.totalLabel ?? (selectedRouteLeg.doorToDoorMinutes !== null ? `~${formatMapDuration(selectedRouteLeg.doorToDoorMinutes)}` : "Not available")}</dd></div>
             </dl>
             <EasyTButton variant="quiet" size="small" className={styles.mapTransferDetailToggle} aria-expanded={transferDetailsExpanded} aria-controls="selected-transfer-details" onClick={() => setTransferDetailsExpanded((expanded) => !expanded)}>{transferDetailsExpanded ? "Hide details" : "Details"}<ChevronDown aria-hidden="true" /></EasyTButton>
             <div id="selected-transfer-details" className={styles.mapTransferSecondary} data-expanded={transferDetailsExpanded ? "true" : "false"}>
@@ -3257,7 +3257,7 @@ export function JourneyMapPlannerWorkspace({
               <div><dt>Trip</dt><dd>{journey.calendar.length} days</dd></div>
               <div><dt>Transfers</dt><dd>{customTrip.legs.length}</dd></div>
               <div><dt>Mapped distance</dt><dd>{mappedDistanceKm !== null ? `${Math.round(mappedDistanceKm).toLocaleString()} km` : "To confirm"}</dd></div>
-              <div><dt>Travel time</dt><dd>{mappedTravelMinutes !== null ? `${Math.floor(mappedTravelMinutes / 60)}h ${mappedTravelMinutes % 60}m` : "To confirm"}</dd></div>
+              <div><dt>Travel time</dt><dd>{mappedTravelLabel === "Timing to confirm" ? mappedTravelLabel : `${mappedTravelLabel} total`}</dd></div>
             </dl>
             <p className={styles.mapPlanningKey}><span aria-hidden="true" /> Dashed lines are approximate planning connections.</p>
           </> : <>
@@ -3267,7 +3267,7 @@ export function JourneyMapPlannerWorkspace({
             <dl className={styles.mapContextFacts}>
               <div><dt>Arrival</dt><dd>{formatIsoDate(selectedTripStop?.arrivalDate, "en", { month: "short", day: "numeric" }) ?? "To confirm"}</dd></div>
               <div><dt>Stay</dt><dd>{selectedTripStop?.nights ? `${selectedTripStop.nights} ${selectedTripStop.nights === 1 ? "night" : "nights"}` : "To confirm"}</dd></div>
-              <div><dt>Transfer in</dt><dd>{selectedLeg?.durationMinutes ? `${Math.floor(selectedLeg.durationMinutes / 60)}h ${selectedLeg.durationMinutes % 60}m` : selectedLeg ? "Timing to confirm" : "First stop"}</dd></div>
+              <div><dt>Transfer in</dt><dd>{selectedLeg ? transferTimingLabel(selectedLeg) : "First stop"}</dd></div>
               <div><dt>Accommodation</dt><dd>{selectedStay?.title || "Not saved"}</dd></div>
             </dl>
             {selectedDestinationMapsUrl || selectedDestinationMedia?.learnMoreUrl ? <div className={styles.mapExternalActions}>

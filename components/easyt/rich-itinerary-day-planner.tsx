@@ -428,7 +428,7 @@ export default function RichItineraryDayPlanner({
           </div>
           <div className={styles.transferList}>
             {composition.transfers.map((transfer) => {
-              const duration = transfer.durationMinutes === null ? null : formatTripDuration(transfer.durationMinutes);
+              const duration = transfer.durationMinutes === null ? null : transfer.timingLabel ?? `${transfer.durationIsEstimate ? "~" : ""}${formatTripDuration(transfer.durationMinutes)}`;
               return (
                 <article className={`${styles.transfer} ${selectedTransferId === transfer.id ? styles.transferSelected : ""}`} key={`${transfer.direction}-${transfer.id}`}>
                   <EasyTButton className={styles.transferSelect} variant="quiet" aria-pressed={selectedTransferId === transfer.id} onClick={(event) => onTransferSelect?.(transfer.id, event.currentTarget)}>
@@ -436,7 +436,7 @@ export default function RichItineraryDayPlanner({
                     <strong>{transfer.origin && transfer.destination ? `${transfer.origin} → ${transfer.destination}` : tripLegClassificationLabel(transfer.classification)}</strong>
                     <p>
                       {transfer.mode !== "unknown" ? transfer.mode : tripLegClassificationLabel(transfer.classification)}
-                      {duration ? ` · ${transfer.durationIsEstimate ? "~" : ""}${duration}` : ` · ${copy.timingUnknown}`}
+                      {duration ? ` · ${duration} total` : ` · ${copy.timingUnknown}`}
                       {duration && transfer.durationIsEstimate ? ` · ${copy.estimate}` : ""}
                     </p>
                     {transfer.scheduleNeedsChecking ? <small>{copy.scheduleCheck}</small> : null}

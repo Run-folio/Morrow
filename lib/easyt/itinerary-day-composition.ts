@@ -1,3 +1,5 @@
+import {effectiveTripLeg} from './transport-mode-choice.ts';
+import {transferTimingLabel} from './transfer-timing-label.ts';
 import { googlePlaceReferenceIdeas, legacyItineraryIdeas } from "./trip.ts";
 import { stayBookingForStop } from "./accommodation.ts";
 import { itineraryActivityProtection } from "./itinerary-mutations.ts";
@@ -53,6 +55,7 @@ export type ComposedItineraryTransfer = {
   mode: TripLeg["mode"];
   durationMinutes: number | null;
   durationIsEstimate: boolean;
+  timingLabel?: string;
   provider: string | null;
   confidence: TripLeg["confidence"];
   scheduleNeedsChecking: boolean;
@@ -112,9 +115,10 @@ function finalDepartureLegForDay(trip: EasyTTrip, day: PlanItem) {
 
 function transferForComposition(
   trip: EasyTTrip,
-  leg: TripLeg,
+  recommendedLeg: TripLeg,
   direction: ComposedItineraryTransfer["direction"],
 ): ComposedItineraryTransfer {
+  const leg = effectiveTripLeg(trip, recommendedLeg);
   const from = routeEndpointForLeg(trip, leg, "from");
   const to = routeEndpointForLeg(trip, leg, "to");
   return {
@@ -125,6 +129,7 @@ function transferForComposition(
     destination: to?.name ?? null,
     mode: leg.mode,
     durationMinutes: leg.doorToDoorMinutes ?? leg.durationMinutes,
+    timingLabel: transferTimingLabel(leg),
     durationIsEstimate: leg.provenance === "planning_estimate",
     provider: leg.provider,
     confidence: leg.confidence,

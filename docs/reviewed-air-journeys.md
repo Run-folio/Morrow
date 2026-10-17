@@ -46,3 +46,25 @@ range fix (or an equivalent reader correction). Test saved new-candidate
 documents against that rollback build before authorizing publication.
 
 No push, deployment or hosted acceptance is implied by a passing local build.
+
+## Timing presentation follow-up
+
+The shared `transfer-timing-label.ts` formatter preserves supplied ranges and
+explicit unknowns, binds impact precision to the leg's version and effective
+mode, and labels planning totals approximately. Aggregate timing requires every
+leg's total to be known; a defensible aggregate range requires bounds for every
+leg. A booking does not promote an estimated duration to a verified duration.
+
+Builder, Overview, Map leg/aggregate/day agenda, Itinerary day/calendar,
+Transport and choice labels reuse their current components and styling.
+Overview and Itinerary now project the traveller's selected transport timing
+before display. Raw optional timing metadata is validated at shared reader
+boundaries. Recovery and mutation still use the canonical document; displaying
+a choice does not replace the stored recommendation or rewrite authored data.
+
+Rendered-component checks bundle the complete production components and stub
+only framework/auth/map-renderer boundaries. The private Calendar item is
+exposed by appending an export in the test bundle, without extracting or
+replacing its render body. Checks exercise ranges, unknowns, recovery readback,
+choice changes and an accepted two-stop journey. These are local server renders,
+not browser interaction, provider acceptance or native Google map overlay QA.

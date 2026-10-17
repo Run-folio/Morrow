@@ -59,7 +59,7 @@ test("agenda projects a compact transfer and removes duplicated planning prose",
   const transfer = agenda.items.find((item) => item.kind === "transfer");
   assert.deepEqual(transfer, {
     id: "tokyo-kyoto", kind: "transfer", title: "Tokyo → Kyoto", scheduleLabel: "08:15",
-    metadata: "4h", detail: "Planning estimate · check current schedules", mapSelectionId: null, transferMode: "train",
+    metadata: "~4h total", detail: "Planning estimate · check current schedules", mapSelectionId: null, transferMode: "train",
   });
   assert.equal(agenda.items.some((item) => item.title.includes("compare current rail")), false);
 });
