@@ -53,12 +53,13 @@ local ideas remain usable, with existing generic public affiliate handoffs.
 3. Verify non-secret account-specific limits and window semantics; lower these
    conservative defaults if required. These limits are not a provider entitlement
    or proof of account billing terms.
-4. Prepare/verify a host-enforced path-scoped 20 requests/minute/client rule using
-   host-authenticated requester identity. No per-client rule is activated or
-   claimed here. An arbitrary forwarding header is not trusted. A Next.js route
-   export alone is not evidence of Netlify enforcement; verify emitted binding
-   and then deployed behavior separately. The database budget protects outbound
-   usage independently of any host enforcement lag.
+4. The [native Edge guard](guest-viator-netlify-edge.md) now prepares a path-scoped
+   20 requests/minute/IP/domain rule. Its intermediate native manifest is checked
+   locally; full Deno/Next.js adapter binding, hosted post-processing acceptance
+   and real host-owned client identity remain unverified. No per-client rule is
+   activated or claimed effective. An arbitrary forwarding header is not trusted.
+   The database budget protects outbound usage independently of host enforcement
+   lag. Read the linked readiness note for exact build and quota evidence gaps.
 5. Separately approve staging publication, then verify disposable guest/session
    transitions, fresh inventory and exact affiliate destinations there. Local
    synthetic transport and React rendering do not prove live provider acceptance,

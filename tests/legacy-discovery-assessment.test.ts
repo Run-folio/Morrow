@@ -73,6 +73,16 @@ function mount(t: any, path: string, props: any, respond: (url: string, init: an
 function refinementProps(base = fixture()) { return { trip: base, stop: base.stops[0], day: base.planItems[0], onSelectionChange() {}, activityAction: null }; }
 function inventoryProps(base = fixture()) { return { trip: base, stop: base.stops[0], day: base.planItems[0], workspace: 'map', placement: 'controlled', onSave: () => true, onSchedule: () => true, fallback: 'Generic provider handoff' }; }
 
+for (const surface of ['live inventory','Explore'] as const) test(`${surface} retains public fallback for a plain-text host 429 without a sign-in prompt`,async t=>{
+  const live=surface==='live inventory';
+  const view=mount(t,live?'components/easyt/live-activity-inventory.tsx':'components/easyt/trip-explore-workspace.tsx',live?inventoryProps():{trip:fixture(),initialCategory:'for-you'},url=>url.includes('activity-inventory')
+    ? new Response('Synthetic host rate limit',{status:429,headers:{'content-type':'text/plain'}})
+    : Response.json({places:[place],assessment:assessment('completed')}));
+  await view.settle();assert.doesNotMatch(view.text(),/Sign in/);
+  if(live){assert.match(view.text(),/Generic provider handoff/);assert.ok(view.statuses().some(status=>status.state==='error'));}
+  else {assert.match(view.text(),/Tokyo Museum/);assert.ok(view.nodes().some(node=>node.props?.action?.href==='https://vi.me/IiuWB'));}
+});
+
 test('switching live inventory to outdoors clears commercial results and feedback without requesting a provider', async t => {
   const view = mount(t, 'components/easyt/live-activity-inventory.tsx', inventoryProps(), () => Response.json({ activities: [activity] }));
   await view.settle(); assert.match(view.text(), /Tokyo Museum tour/);
