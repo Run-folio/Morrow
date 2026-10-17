@@ -15,7 +15,8 @@ import type { RoadRoutingProvider } from "./road-routing.ts";
 import type {PlanningEvidenceState,TransferAssessment} from './planning-evidence-state.ts';
 import {providerFailureAssessment} from './planning-provider-assessment.ts';
 import { isInsufficientTransferEvidence } from './transfer-evidence-quality.ts';
-import { estimateTransferImpact } from "./transfer-impact.ts";
+import { estimateTransferImpact, type TransferImpact } from "./transfer-impact.ts";
+import {reviewedAirJourney} from './reviewed-air-journeys.ts';
 import { findSurfaceCrossing } from "./surface-crossing-evidence.ts";
 import { reconcileLegacyTransportLeg } from "./transport-leg-compatibility.ts";
 import type {
@@ -30,6 +31,7 @@ import type {
 
 export type TransferEvidenceKind =
   | "exact_transfer"
+  | "reviewed_air_journey"
   | "intercity_rail_network"
   | "direct_rail_connectivity"
   | "routed_road"
@@ -46,6 +48,8 @@ export type TransferJourneyCandidate = {
   /** Reviewed in-vehicle time when distinct from access/waiting allowances. */
   headlineMinutes?: number;
   headlineTiming?: KnowledgeFact<number>;
+  /** Preserve the allowance's actual timing basis, sources and unknown range. */
+  transferImpact?: TransferImpact;
   distanceKm: number | null;
   confidence: "high" | "medium" | "low";
   provenance: TripLegProvenance;
@@ -283,6 +287,25 @@ function hasDirectConnectivity(
 ) {
   return knowledge.connectivity.status === "known"
     && knowledge.connectivity.value.some((item) => item.mode === mode && item.access === "direct");
+}
+
+function reviewedAirCandidate(leg:TripLeg):TransferJourneyCandidate|null {
+ if(!leg.fromEndpoint||!leg.toEndpoint)return null;
+ const reviewed=reviewedAirJourney(leg.fromEndpoint,leg.toEndpoint);
+ if(!reviewed||reviewed.transfer.planningMinutes.status!=='known')return null;
+ const fact=reviewed.transfer;
+ const impact=estimateTransferImpact({mode:'flight',knownDoorToDoorMinutes:fact.planningMinutes,
+  knownDoorToDoorRange:fact.realisticRangeMinutes,borderFriction:fact.borderFriction,
+  international:!sameCountry(leg.fromEndpoint,leg.toEndpoint),connectionCount:null});
+ return candidate({id:`flight:reviewed:${reviewed.id}`,summaryMode:'flight',
+  segments:[segment({mode:'flight',fromEndpoint:leg.fromEndpoint,toEndpoint:leg.toEndpoint,
+   durationMinutes:reviewed.transfer.planningMinutes.value,distanceKm:leg.straightLineDistanceKm??leg.distanceKm,
+   provider:fact.note.status==='known'?fact.note.value:null,provenance:'planning_estimate',confidence:'medium',scheduleNeedsChecking:true})],
+  totalDurationMinutes:reviewed.transfer.planningMinutes.value,distanceKm:leg.straightLineDistanceKm??leg.distanceKm,
+  transferImpact:impact,confidence:'medium',provenance:'planning_estimate',evidence:'reviewed_air_journey',connectionCount:null,
+  reasons:['A reviewed directional flight corridor matches the exact physical endpoints; availability and timing still need checking.',
+   ...(fact.mode.status==='known'?fact.mode.sources.map(s=>`Evidence: ${s.label}${s.url?` (${s.url})`:''}.`):[])],
+ });
 }
 
 function railCandidate(
@@ -616,7 +639,7 @@ function candidateMatchesPreference(candidate: TransferJourneyCandidate, preferr
 }
 
 function evidenceAdjustment(evidence: TransferEvidenceKind) {
-  if (evidence === "exact_transfer") return 6;
+  if (evidence === "exact_transfer" || evidence === "reviewed_air_journey") return 6;
   if (evidence === "intercity_rail_network") return 4;
   if (evidence === "routed_road") return 3;
   if (evidence === "direct_rail_connectivity" || evidence === "direct_air_connectivity" || evidence === "air_gateway_composition") return 2;
@@ -719,7 +742,7 @@ function applyCandidate(leg: TripLeg, selected: TransferJourneyCandidate, diagno
         ? "train"
         : "road"
     : selected.summaryMode === "train" ? "train" : selected.summaryMode;
-  const transferImpact = estimateTransferImpact({
+  const transferImpact = selected.transferImpact ?? estimateTransferImpact({
     mode: dominantMode === "walk" || dominantMode === "unknown" ? "road" : dominantMode,
     headlineMinutes: selected.headlineTiming,
     knownDoorToDoorMinutes: {
@@ -738,7 +761,7 @@ function applyCandidate(leg: TripLeg, selected: TransferJourneyCandidate, diagno
     segments: selected.segments,
     durationMinutes: selected.totalDurationMinutes,
     doorToDoorMinutes: selected.totalDurationMinutes,
-    headlineMinutes: selected.headlineMinutes ?? selected.totalDurationMinutes,
+    headlineMinutes: selected.headlineMinutes ?? (selected.transferImpact ? null : selected.totalDurationMinutes),
     distanceKm: selected.distanceKm,
     routedDistanceKm: onlySegment?.mode === "road" ? onlySegment.distanceKm : null,
     routeGeometry: onlySegment?.routeGeometry,
@@ -818,13 +841,14 @@ async function resolveTransferJourney(
   const toKnowledge = knowledge.forTransferResolution(to);
   const { excludedModes, preferredModes } = transportRules(leg);
   const exact = exactTransferCandidate(leg, knowledge.findTransfer(from, to));
+  const reviewedAir = excludedModes.has('flight') ? null : reviewedAirCandidate(leg);
   const railDistanceKm = haversineKm(from.coordinates, to.coordinates);
   const railNetworkEvidence = railDistanceKm === null ? undefined : knowledge.findIntercityRailConnection(from, to, railDistanceKm);
   const rail = excludedModes.has("train") ? null : railCandidate(leg, fromKnowledge, toKnowledge, railNetworkEvidence);
   const directFlight = excludedModes.has("flight") ? null : directFlightCandidate(leg, fromKnowledge, toKnowledge);
   const mixed = excludedModes.has("flight") || excludedModes.has("road") ? null : await mixedGatewayCandidate(leg, fromKnowledge, toKnowledge, options.provider, options.onRoadAssessment);
   const canonicalGatewayAccess = excludedModes.has("road") ? null : gatewayAccessCandidate(leg, fromKnowledge, toKnowledge);
-  const candidates = [exact, rail, mixed, directFlight]
+  const candidates = [exact, reviewedAir, rail, mixed, directFlight]
     .filter((item): item is TransferJourneyCandidate => Boolean(item))
     .filter((item) => candidateAllowed(item, excludedModes));
 
@@ -838,7 +862,7 @@ async function resolveTransferJourney(
   // With an exact allowed flight, an optional cross-border road reference
   // cannot be selected under the passenger-road rule below. Its provider
   // must not become a dependency of this independently supported flight.
-  const skipOptionalRoadReference = exact?.summaryMode === "flight" && candidates.includes(exact)
+  const skipOptionalRoadReference = ((exact?.summaryMode === "flight" && candidates.includes(exact)) || (reviewedAir !== null && candidates.includes(reviewedAir)))
     && !sameCountry(from, to) && !travellerPrefersRoad && !findSurfaceCrossing(from, to, "road");
   if (!excludedModes.has("road") && !credibleLowChangeRailDominatesRoad && !skipOptionalRoadReference) {
     // A complete gateway composition has already routed its ground access;

@@ -83,7 +83,9 @@ const ceilTo15 = (minutes: number) => Math.max(0, Math.ceil(minutes / 15) * 15);
 function timingFromMinutes(fact: KnowledgeFact<number>, range?: KnowledgeFact<TransferMinuteRange>): KnowledgeFact<TransferTimeEstimate> {
   if (fact.status === "unknown") return unknownKnowledgeFact(fact.reason);
   const knownRange = range?.status === "known" ? range.value : null;
-  const estimatedRange = fact.confidence === "estimated" && !knownRange
+  // An explicitly unknown range is evidence of a limitation, not permission
+  // to manufacture a tight interval around a broad planning allocation.
+  const estimatedRange = fact.confidence === "estimated" && range === undefined
     ? { minimum: floorTo15(fact.value - 15), maximum: ceilTo15(fact.value + 15) }
     : knownRange;
   return knownKnowledgeFact({

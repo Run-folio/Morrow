@@ -6,6 +6,8 @@ import type {
   TripLegTransportChoice,
   TripTransferMode,
 } from "./trip.ts";
+import {estimateTransferImpact,isTransferImpact,type TransferImpact} from './transfer-impact.ts';
+import {knownKnowledgeFact,unknownKnowledgeFact} from './destination-knowledge.ts';
 
 const supportedModes = new Set<TripTransferMode>(["flight", "train", "road", "ferry", "walk", "mixed"]);
 const supportedProvenance = new Set<TripLegProvenance>(["provider", "canonical_schedule", "routing_engine", "planning_estimate"]);
@@ -23,10 +25,31 @@ export type SupportedTransportChoice = {
   connectionCount: number | null;
   reasons: string[];
   segments: TransferSegment[];
+  transferImpact?: TransferImpact;
 };
 
 function record(value: unknown): Record<string, unknown> | null {
   return value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : null;
+}
+
+function candidateImpact(value:unknown,mode:unknown,totalMinutes:number):TransferImpact|undefined {
+ if(!isTransferImpact(value)||value.mode!==mode)return undefined;
+ const timing=(raw:unknown)=>{
+  const fact=record(raw);if(!fact||!Array.isArray(fact.sources))return false;
+  if(fact.status==='unknown')return fact.value===null&&fact.confidence==='unknown';
+  const estimate=record(fact.value),range=record(estimate?.rangeMinutes);
+  return fact.status==='known'&&['estimated','static','verified'].includes(String(fact.confidence))
+   &&!!estimate&&typeof estimate.planningMinutes==='number'&&Number.isFinite(estimate.planningMinutes)&&estimate.planningMinutes>=0
+   &&['planning-allowance','estimated-range','verified-point'].includes(String(estimate.precision))
+   &&(estimate.rangeMinutes===null||!!range&&typeof range.minimum==='number'&&typeof range.maximum==='number'
+    &&Number.isFinite(range.minimum)&&Number.isFinite(range.maximum)&&range.minimum>=0&&range.minimum<=estimate.planningMinutes&&range.maximum>=estimate.planningMinutes);
+ };
+ const total=record(value.doorToDoor),estimate=record(total?.value),loss=record(value.usableDayLoss);
+ if(!timing(total)||total?.status!=='known'||estimate?.planningMinutes!==totalMinutes||!timing(value.headline)
+  ||!loss||typeof loss.estimatedDayFraction!=='number'||!Number.isFinite(loss.estimatedDayFraction)||loss.estimatedDayFraction<0||loss.estimatedDayFraction>1
+  ||!Array.isArray(value.assumptions)||!value.assumptions.every(s=>typeof s==='string')
+  ||!value.components.every(component=>!!record(component)&&typeof component.id==='string'&&typeof component.label==='string'&&timing(component.timing)))return undefined;
+ return value;
 }
 
 function endpointIds(leg: TripLeg) {
@@ -88,6 +111,7 @@ function supportedCandidateForLeg(leg: TripLeg, value: unknown): SupportedTransp
     evidence: candidate.evidence,
   };
   const confidence = candidate.confidence === "high" || candidate.confidence === "low" ? candidate.confidence : "medium";
+  const timing=candidateImpact(candidate.transferImpact,candidate.summaryMode,candidate.totalDurationMinutes);
   return {
     ...partial,
     identity: candidateIdentity(partial),
@@ -103,6 +127,7 @@ function supportedCandidateForLeg(leg: TripLeg, value: unknown): SupportedTransp
     connectionCount: typeof candidate.connectionCount === "number" ? candidate.connectionCount : null,
     reasons: Array.isArray(candidate.reasons) ? candidate.reasons.filter((reason): reason is string => typeof reason === "string") : [],
     segments,
+    ...(timing?{transferImpact:timing}:{}),
   };
 }
 
@@ -147,12 +172,19 @@ export function effectiveTripLeg(trip: EasyTTrip, leg: TripLeg): TripLeg {
   if (!selected) return leg;
   const provider = [...new Set(selected.segments.flatMap((segment) => segment.provider ? [segment.provider] : []))].join(" ") || null;
   const singleRoad = selected.segments.length === 1 && selected.segments[0]?.mode === "road" ? selected.segments[0] : null;
+  const impactMode=selected.mode==='mixed'?selected.segments.some(segment=>segment.mode==='flight')?'flight':selected.segments.some(segment=>segment.mode==='train')?'train':'road':selected.mode==='walk'?'road':selected.mode;
+  const impact=selected.transferImpact??estimateTransferImpact({mode:impactMode==='unknown'?'road':impactMode,
+    knownDoorToDoorMinutes:knownKnowledgeFact(selected.durationMinutes,'estimated',{id:'morrovia:selected-transport-allowance',label:'Selected transport planning total',kind:'curated',supports:'Total from the selected supported candidate; not an independently verified schedule.'}),
+    knownDoorToDoorRange:unknownKnowledgeFact('The selected candidate does not supply a defensible timing interval.'),connectionCount:selected.connectionCount});
+  const metadata={...leg.routeMetadata,transferImpact:impact};
+  // A selected mode must never inherit the recommendation's different timing
+  // basis. Reviewed candidates carry their complete, source-scoped allowance.
   return {
     ...leg,
     mode: selected.mode,
     segments: selected.segments,
     durationMinutes: selected.durationMinutes,
-    headlineMinutes: selected.headlineMinutes ?? selected.durationMinutes,
+    headlineMinutes: selected.headlineMinutes ?? (selected.transferImpact?null:selected.durationMinutes),
     doorToDoorMinutes: selected.durationMinutes,
     distanceKm: selected.distanceKm,
     routedDistanceKm: singleRoad?.distanceKm ?? null,
@@ -160,10 +192,11 @@ export function effectiveTripLeg(trip: EasyTTrip, leg: TripLeg): TripLeg {
     provider,
     provenance: selected.provenance,
     confidence: selected.confidence,
+    usableDayLoss: impact.usableDayLoss.estimatedDayFraction,
     scheduleNeedsChecking: selected.segments.some((segment) => segment.scheduleNeedsChecking),
     warnings: [],
     routeMetadata: {
-      ...leg.routeMetadata,
+      ...metadata,
       effectiveTransportChoice: {
         identity: selected.identity,
         candidateId: selected.candidateId,
