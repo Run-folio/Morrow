@@ -108,8 +108,7 @@ import TripExplicitPlans from "@/components/easyt/trip-explicit-plans";
 import { removeExplicitVisitIntent, removeFixedCommitment, scheduleExplicitVisitIntent } from "@/lib/easyt/trip-explicit-plans";
 import type { ActivityInventoryItem } from "@/lib/easyt/activity-inventory";
 import type { PlanningEvidenceState, PlanningResultCounts } from '@/lib/easyt/planning-evidence-state';
-import { planningEvidenceFromResponse, planningLaneMessage, planningLaneResponseStatus, planningRequiresSignIn } from '@/lib/easyt/planning-evidence-presentation';
-import { tripSyncSignInPath } from '@/lib/easyt/trip-continuity';
+import { planningEvidenceFromResponse, publicActivityLaneMessage, planningLaneResponseStatus } from '@/lib/easyt/planning-evidence-presentation';
 import { dedupeExploreResults, exploreResultForActivity, exploreResultForIdea, exploreResultForLocalPlace, exploreResultForPlace, type ExploreLocalPlace, type ExploreResult } from "@/lib/easyt/explore";
 import { discoveryCategoryMatches } from "@/lib/easyt/discovery-taxonomy";
 import { rankItineraryRecommendations } from "@/lib/easyt/itinerary-recommendations";
@@ -2560,13 +2559,12 @@ function ItineraryDaySuggestions({ trip, day, stop, copy, language, initialPlace
   const incompleteAssessments = [organicStatus === 'error' || organicStatus === 'incomplete' ? organicAssessment : undefined, commercialStatus === 'error' || commercialStatus === 'incomplete' ? commercialAssessment : undefined].filter((state): state is PlanningEvidenceState => Boolean(state));
   const canRetry = (organicStatus === 'error' && organicAssessment?.retryable !== false) || (commercialStatus === 'error' && commercialAssessment?.retryable !== false)
     || (organicStatus === 'incomplete' && organicAssessment?.retryable === true) || (commercialStatus === 'incomplete' && commercialAssessment?.retryable === true);
-  const needsSignIn = commercialStatus === 'error' && planningRequiresSignIn(commercialAssessment);
   const filteredAtAdmission = [organicCounts, commercialCounts].some(counts => counts && counts.raw > 0 && counts.returned === 0);
   const retrySuggestions = () => { onInteractionReset(); setRetryVersion(current => current + 1); };
   const suggestionStatus = <><MorroviaSectionStatus compact state="error" title={unavailable ? copy.suggestionsUnavailable : language === 'es' ? 'Las sugerencias aún no están listas.' : 'Suggestions are not ready yet.'}
-    detail={[...new Set(incompleteAssessments.map(state => planningLaneMessage(state, language))), results.length ? language === 'es' ? 'Se conservan las ideas disponibles.' : 'Available ideas are kept.' : language === 'es' ? 'Puedes añadir tu propio plan.' : 'You can still add your own plan.'].join(' ')}
+    detail={[...new Set(incompleteAssessments.map(state => publicActivityLaneMessage(state, language))), results.length ? language === 'es' ? 'Se conservan las ideas disponibles.' : 'Available ideas are kept.' : language === 'es' ? 'Puedes añadir tu propio plan.' : 'You can still add your own plan.'].join(' ')}
     retryLabel={language === "es" ? "Volver a buscar sugerencias" : "Try suggestions again"} onRetry={canRetry ? retrySuggestions : undefined} />
-    {needsSignIn ? <EasyTButton variant="secondary" size="small" onClick={() => window.location.assign(tripSyncSignInPath(trip.id))}>{language === 'es' ? 'Iniciar sesión' : 'Sign in'}</EasyTButton> : null}</>;
+</>;
   const availableForAdd = stop ? dedupeExploreResults([...results, ...localPlaces.map(place => exploreResultForLocalPlace(stop, place))]).filter(result => ideaStateForPlace(trip, stop.id, result.idea.placeId).state !== "planned") : [];
   const missingDestination = !stop || !stop.canonicalPlaceId || stop.latitude === null || stop.longitude === null;
   const emptyAddMessage = missingDestination && !availableForAdd.length

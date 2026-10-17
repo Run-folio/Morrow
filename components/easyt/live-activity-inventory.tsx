@@ -14,9 +14,8 @@ import { ideaStateForPlace } from "@/lib/easyt/itinerary-ideas";
 import { tripIntentForTrip, type EasyTTrip, type ItineraryIdea, type PlanItem, type TripStop } from "@/lib/easyt/trip";
 import { discoveryCategoryMatches, type DiscoveryCategory } from "@/lib/easyt/discovery-taxonomy";
 import { activityDurationLabel as faithfulActivityDurationLabel } from "@/lib/easyt/itinerary-schedule-awareness";
-import { planningEvidenceFromResponse, planningLaneMessage, planningLaneResponseStatus, planningRequiresSignIn } from "@/lib/easyt/planning-evidence-presentation";
+import { planningEvidenceFromResponse, publicActivityLaneMessage, planningLaneResponseStatus } from "@/lib/easyt/planning-evidence-presentation";
 import type { PlanningEvidenceState } from "@/lib/easyt/planning-evidence-state";
-import { tripSyncSignInPath } from "@/lib/easyt/trip-continuity";
 import styles from "./live-activity-inventory.module.css";
 
 type LiveActivityInventoryProps = {
@@ -142,9 +141,9 @@ export default function LiveActivityInventory({ trip, stop, day, placement, work
   if (status === "loading" && !ranked.length) return <section className={styles.group} aria-label="Live experiences"><MorroviaSectionStatus title="Finding experiences" detail={`Checking current options around ${stop.name}.`} /></section>;
   const unsettled = status === "error" || status === "incomplete";
   const feedback = unsettled ? <><MorroviaSectionStatus compact state="error" title={status === "incomplete" ? "Experiences are not ready yet" : "Experiences are unavailable"}
-    detail={assessment ? planningLaneMessage(assessment, "en") : "Bookable experiences are unavailable right now."}
+    detail={assessment ? publicActivityLaneMessage(assessment, "en") : "Bookable experiences are unavailable right now."}
     onRetry={status === "error" && assessment?.retryable !== false || status === "incomplete" && assessment?.retryable === true ? () => setRetryVersion(current => current + 1) : undefined} />
-    {planningRequiresSignIn(assessment) ? <EasyTButton variant="secondary" size="small" onClick={() => window.location.assign(tripSyncSignInPath(trip.id))}>Sign in</EasyTButton> : null}</> : null;
+</> : null;
   if (!ranked.length) return <>{feedback}{discoveryCategory === "for-you" || discoveryCategory === "tours" ? fallback : null}</>;
 
   return <section className={styles.group} aria-label="Live experiences">

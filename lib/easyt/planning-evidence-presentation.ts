@@ -38,6 +38,14 @@ export function planningRequiresSignIn(state: PlanningEvidenceState | undefined)
   return state?.reason === 'auth_required' && state.retrieval === 'blocked' && state.diagnostics?.stage !== 'provider';
 }
 
+/** Public inventory cannot ask for an account, including a stale legacy 401. */
+export function publicActivityLaneMessage(state: PlanningEvidenceState, language: 'en' | 'es'): string {
+  if (state.reason === 'auth_required') return language === 'es'
+    ? 'Las experiencias reservables no están disponibles ahora.'
+    : 'Bookable experiences are unavailable right now.';
+  return planningLaneMessage(state, language);
+}
+
 /** Reasons are deliberate user actions or outcome explanations, never diagnostic jargon. */
 export function planningLaneMessage(state: PlanningEvidenceState, language: 'en' | 'es'): string {
   if (state.retrieval === 'checking') return language === 'es' ? 'La búsqueda no ha terminado.' : 'The search has not finished.';

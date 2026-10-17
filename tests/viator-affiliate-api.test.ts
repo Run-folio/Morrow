@@ -14,11 +14,12 @@ function loadViatorModule() {
   const timeoutSource = readFileSync("lib/easyt/provider-timeout.ts", "utf8");
   const viatorSource = readFileSync("lib/easyt/viator-affiliate.server.ts", "utf8")
     .replace('import "server-only";\n', "")
+    .replace('import {createViatorAdmission, viatorRetryAfter, type ViatorAdmission} from "./viator-admission.server.ts";\n', "")
     .replace('import { withProviderTimeout } from "./provider-timeout.ts";\n', "")
     .replace(/import \{[\s\S]*?\} from "\.\/viator-destination-resolver\.server\.ts";\n/, "")
     .replace('export type { ActivityDestinationIdentity, ViatorDestinationResolution } from "./viator-destination-resolver.server.ts";\n', "");
   viatorModule ??= import(`data:text/javascript;base64,${Buffer.from(transpileModule(
-    `${countrySource}\n${destinationResolverSource}\n${timeoutSource}\n${viatorSource}`,
+    `const createViatorAdmission=()=>({claim:async()=>({admitted:true,token:"fixture"}),release:async()=>{},cooldown:async()=>{}}); const viatorRetryAfter=()=>60;\n${countrySource}\n${destinationResolverSource}\n${timeoutSource}\n${viatorSource}`,
     { compilerOptions: { module: ModuleKind.ESNext, target: ScriptTarget.ESNext } },
   ).outputText).toString("base64")}`) as Promise<ViatorModule>;
   return viatorModule;
@@ -220,7 +221,7 @@ test("classifies 401, 403, 429, and other provider status failures without leaki
 
 test("classifies timeout, network, invalid JSON, and malformed provider shapes safely", async () => {
   const { ViatorAffiliateClient, ViatorAffiliateError, normalizeViatorProducts } = await loadViatorModule();
-  const timeout = new ViatorAffiliateClient(configuration, { request: async () => new Promise<Response>(() => undefined), cache: new Map(), timeoutMs: 5, resolveDestination: resolvedDestination });
+  const timeout = new ViatorAffiliateClient(configuration, { request: async (_url, init) => new Promise<Response>((_resolve, reject) => { init?.signal?.addEventListener("abort", () => reject(init.signal?.reason), {once:true}); }), cache: new Map(), timeoutMs: 5, resolveDestination: resolvedDestination });
   await assert.rejects(timeout.searchActivities({ destination: paris }), (error: unknown) => error instanceof ViatorAffiliateError && error.category === "timeout");
   const network = new ViatorAffiliateClient(configuration, { request: async () => { throw new Error(`network ${apiKey}`); }, cache: new Map(), resolveDestination: resolvedDestination });
   await assert.rejects(network.searchActivities({ destination: paris }), (error: unknown) => error instanceof ViatorAffiliateError && error.category === "unavailable" && !error.message.includes(apiKey));
