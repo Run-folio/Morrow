@@ -436,7 +436,7 @@ test("short and landscape Map viewports retain recoverable canvas and safe-area 
   assert.match(mapDockStylesSource, /--mobile-map-visible-space:112px/);
   assert.match(mapDockStylesSource, /--mobile-map-drawer-collapsed-height:72px/);
   assert.match(mapDockStylesSource, /padding:10px 2px calc\(24px \+ env\(safe-area-inset-bottom\)\)/);
-  assert.match(mapDockStylesSource, /bottom:max\(10px,env\(safe-area-inset-bottom\)\)!important/);
+  // Actual collapsed-control hit testing lives in mobile-map-planning-browser.test.ts.
   for (const story of ["Mobile320MapCanvas", "Mobile390StayResultsOpen", "Mobile430SelectedStayOpen", "Mobile390EatResultsOpen", "Mobile430SelectedEatOpen", "Mobile390SeeOpen", "Mobile390SavedPinOpen", "MobileShortStayOpen", "MobileLandscapeCollapsed", "Tablet768StayOpen", "Mobile390ShortResultsOpen", "Mobile390MediumResultsOpen", "Mobile390LongResultsOpen", "Mobile390EmptyResultsOpen", "Mobile390SelectedDetailOpen"]) {
     assert.match(mapStoriesSource, new RegExp(`export const ${story}`), story);
   }
