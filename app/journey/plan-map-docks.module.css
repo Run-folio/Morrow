@@ -221,7 +221,7 @@
 
   .plan:has(:global([data-mobile-drawer-state="open"])) :global([class*="mapDayControl"]),
   .plan:has(:global([data-mobile-drawer-state="open"])) :global([class*="mapAssistant"]) { display:none!important; }
-  .plan :global([class*="mapDayControl"]) { bottom:max(10px,env(safe-area-inset-bottom))!important; }
+  .plan :global([class*="mapDayControl"]) { bottom:calc(var(--mobile-map-drawer-collapsed-height) + max(10px,env(safe-area-inset-bottom)))!important; }
   .plan :global(.planner-map .maplibregl-ctrl-bottom-right) { bottom:calc(var(--mobile-map-sheet-height) + 4px)!important; }
   .plan :global([class*="undoToast"]),
   .plan :global([class*="mapSaveStatus"]) { top:calc(var(--mobile-map-strip-height) + 8px)!important;bottom:auto!important; }

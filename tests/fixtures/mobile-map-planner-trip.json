@@ -1,0 +1,3699 @@
+{
+  "schemaVersion": 2,
+  "id": "trip-39000000-9800-4981-8440-202610170001",
+  "ownerId": null,
+  "title": "Synthetic mapped trip for mobile planner regression",
+  "status": "planned",
+  "startDate": "2027-05-01",
+  "endDate": "2027-05-07",
+  "travellers": 2,
+  "currency": "GBP",
+  "brief": {
+    "mustDo": "",
+    "pace": "slow",
+    "hotelChanges": "few",
+    "budgetBand": "mid",
+    "selectedPlaces": {},
+    "intent": {
+      "version": 2,
+      "travellers": 2,
+      "timing": {
+        "flexibility": "fixed",
+        "durationDays": 7
+      },
+      "hardConstraints": {
+        "originRequired": true,
+        "mustSeeStopIds": [
+          "qa-bogota",
+          "qa-cartagena"
+        ],
+        "optionalStopIds": [],
+        "fixedCommitments": [],
+        "avoidDriving": false
+      },
+      "preferences": {
+        "budgetSensitivity": "mid",
+        "transportModes": [
+          "flight",
+          "train"
+        ],
+        "pace": "balanced",
+        "interests": [],
+        "dislikes": []
+      },
+      "route": {
+        "version": 1,
+        "origin": {
+          "name": "Quito",
+          "country": "Ecuador",
+          "canonicalPlaceId": "reference:geonames:3652462",
+          "coordinates": [
+            -78.52495,
+            -0.22985
+          ],
+          "providerId": "reference:geonames:3652462@699b595afdba9be6994e:EC:city:-78.52495:-0.22985",
+          "geographicBinding": {
+            "version": 1,
+            "source": "provider",
+            "canonicalPlaceId": "reference:geonames:3652462",
+            "providerId": "reference:geonames:3652462@699b595afdba9be6994e:EC:city:-78.52495:-0.22985",
+            "placeType": "city",
+            "country": "Ecuador",
+            "routability": "direct_destination",
+            "inputKey": "[\"reference:geonames:3652462\",\"reference:geonames:3652462@699b595afdba9be6994e:EC:city:-78.52495:-0.22985\",\"quito\",\"ecuador\",[-78.52495,-0.22985]]"
+          }
+        },
+        "tripType": "unknown_legacy",
+        "journeyEnd": {
+          "mode": "unknown"
+        },
+        "destinations": [
+          {
+            "id": "legacy-stop:qa-bogota",
+            "sourceText": "Bogot\u00e1",
+            "kind": "overnight_place",
+            "selectedPlace": {
+              "name": "Bogot\u00e1",
+              "geographicBinding": {
+                "version": 1,
+                "source": "provider",
+                "canonicalPlaceId": "reference:geonames:3688689",
+                "providerId": "reference:geonames:3688689@699b595afdba9be6994e:CO:city:-74.08175:4.60971",
+                "placeType": "city",
+                "country": "Colombia",
+                "routability": "direct_destination",
+                "inputKey": "[\"reference:geonames:3688689\",\"reference:geonames:3688689@699b595afdba9be6994e:CO:city:-74.08175:4.60971\",\"bogota\",\"colombia\",[-74.08175,4.60971]]"
+              },
+              "canonicalPlaceId": "reference:geonames:3688689",
+              "providerId": "reference:geonames:3688689@699b595afdba9be6994e:CO:city:-74.08175:4.60971",
+              "country": "Colombia",
+              "coordinates": [
+                -74.08175,
+                4.60971
+              ]
+            },
+            "resolution": "resolved",
+            "requestedNights": null,
+            "routeMembership": "required",
+            "stopIds": [
+              "qa-bogota"
+            ]
+          },
+          {
+            "id": "legacy-stop:qa-cartagena",
+            "sourceText": "Cartagena",
+            "kind": "overnight_place",
+            "selectedPlace": {
+              "name": "Cartagena",
+              "geographicBinding": {
+                "version": 1,
+                "source": "provider",
+                "canonicalPlaceId": "reference:geonames:3687238",
+                "providerId": "reference:geonames:3687238@699b595afdba9be6994e:CO:city:-75.49328:10.39817",
+                "placeType": "city",
+                "country": "Colombia",
+                "routability": "direct_destination",
+                "inputKey": "[\"reference:geonames:3687238\",\"reference:geonames:3687238@699b595afdba9be6994e:CO:city:-75.49328:10.39817\",\"cartagena\",\"colombia\",[-75.49328,10.39817]]"
+              },
+              "canonicalPlaceId": "reference:geonames:3687238",
+              "providerId": "reference:geonames:3687238@699b595afdba9be6994e:CO:city:-75.49328:10.39817",
+              "country": "Colombia",
+              "coordinates": [
+                -75.49328,
+                10.39817
+              ]
+            },
+            "resolution": "resolved",
+            "requestedNights": null,
+            "routeMembership": "required",
+            "stopIds": [
+              "qa-cartagena"
+            ]
+          }
+        ],
+        "orderAuthority": "legacy_preserved",
+        "explicitIntentIds": null,
+        "orderedStopIds": [
+          "qa-bogota",
+          "qa-cartagena"
+        ],
+        "projectionInputKey": null
+      }
+    },
+    "origin": "Quito",
+    "originCanonicalPlaceId": "reference:geonames:3652462",
+    "originProviderId": "reference:geonames:3652462@699b595afdba9be6994e:EC:city:-78.52495:-0.22985",
+    "originCountry": "Ecuador",
+    "originCoordinates": [
+      -78.52495,
+      -0.22985
+    ],
+    "journeyEnd": {
+      "mode": "unknown"
+    }
+  },
+  "stops": [
+    {
+      "id": "qa-bogota",
+      "order": 0,
+      "name": "Bogot\u00e1",
+      "country": "Colombia",
+      "canonicalPlaceId": "reference:geonames:3688689",
+      "providerId": "reference:geonames:3688689@699b595afdba9be6994e:CO:city:-74.08175:4.60971",
+      "geographicBinding": {
+        "version": 1,
+        "source": "provider",
+        "canonicalPlaceId": "reference:geonames:3688689",
+        "providerId": "reference:geonames:3688689@699b595afdba9be6994e:CO:city:-74.08175:4.60971",
+        "placeType": "city",
+        "country": "Colombia",
+        "routability": "direct_destination",
+        "inputKey": "[\"reference:geonames:3688689\",\"reference:geonames:3688689@699b595afdba9be6994e:CO:city:-74.08175:4.60971\",\"bogota\",\"colombia\",[-74.08175,4.60971]]"
+      },
+      "latitude": 4.60971,
+      "longitude": -74.08175,
+      "arrivalDate": "2027-05-01",
+      "departureDate": "2027-05-04",
+      "nights": 3
+    },
+    {
+      "id": "qa-cartagena",
+      "order": 1,
+      "name": "Cartagena",
+      "country": "Colombia",
+      "canonicalPlaceId": "reference:geonames:3687238",
+      "providerId": "reference:geonames:3687238@699b595afdba9be6994e:CO:city:-75.49328:10.39817",
+      "geographicBinding": {
+        "version": 1,
+        "source": "provider",
+        "canonicalPlaceId": "reference:geonames:3687238",
+        "providerId": "reference:geonames:3687238@699b595afdba9be6994e:CO:city:-75.49328:10.39817",
+        "placeType": "city",
+        "country": "Colombia",
+        "routability": "direct_destination",
+        "inputKey": "[\"reference:geonames:3687238\",\"reference:geonames:3687238@699b595afdba9be6994e:CO:city:-75.49328:10.39817\",\"cartagena\",\"colombia\",[-75.49328,10.39817]]"
+      },
+      "latitude": 10.39817,
+      "longitude": -75.49328,
+      "arrivalDate": "2027-05-04",
+      "departureDate": "2027-05-07",
+      "nights": 3
+    }
+  ],
+  "legs": [
+    {
+      "id": "qa-flight-viator-20261017-leg-1",
+      "fromStopId": "qa-flight-viator-20261017-origin",
+      "toStopId": "qa-bogota",
+      "fromEndpoint": {
+        "name": "Quito",
+        "country": "Ecuador",
+        "canonicalPlaceId": "reference:geonames:3652462",
+        "coordinates": [
+          -78.52495,
+          -0.22985
+        ],
+        "providerId": "reference:geonames:3652462@699b595afdba9be6994e:EC:city:-78.52495:-0.22985",
+        "geographicBinding": {
+          "version": 1,
+          "source": "provider",
+          "canonicalPlaceId": "reference:geonames:3652462",
+          "providerId": "reference:geonames:3652462@699b595afdba9be6994e:EC:city:-78.52495:-0.22985",
+          "placeType": "city",
+          "country": "Ecuador",
+          "routability": "direct_destination",
+          "inputKey": "[\"reference:geonames:3652462\",\"reference:geonames:3652462@699b595afdba9be6994e:EC:city:-78.52495:-0.22985\",\"quito\",\"ecuador\",[-78.52495,-0.22985]]"
+        },
+        "kind": "origin",
+        "id": "qa-flight-viator-20261017-origin"
+      },
+      "toEndpoint": {
+        "kind": "stop",
+        "id": "qa-bogota",
+        "name": "Bogot\u00e1",
+        "country": "Colombia",
+        "canonicalPlaceId": "reference:geonames:3688689",
+        "providerId": "reference:geonames:3688689@699b595afdba9be6994e:CO:city:-74.08175:4.60971",
+        "geographicBinding": {
+          "version": 1,
+          "source": "provider",
+          "canonicalPlaceId": "reference:geonames:3688689",
+          "providerId": "reference:geonames:3688689@699b595afdba9be6994e:CO:city:-74.08175:4.60971",
+          "placeType": "city",
+          "country": "Colombia",
+          "routability": "direct_destination",
+          "inputKey": "[\"reference:geonames:3688689\",\"reference:geonames:3688689@699b595afdba9be6994e:CO:city:-74.08175:4.60971\",\"bogota\",\"colombia\",[-74.08175,4.60971]]"
+        },
+        "coordinates": [
+          -74.08175,
+          4.60971
+        ]
+      },
+      "classification": "arrival",
+      "mode": "flight",
+      "distanceKm": 730,
+      "straightLineDistanceKm": 730,
+      "routedDistanceKm": null,
+      "durationMinutes": 240,
+      "headlineMinutes": null,
+      "doorToDoorMinutes": 240,
+      "usableDayLoss": 0.5,
+      "provider": "About 4h door to door as a Morrovia planning allowance, including airport access and processing; not an airline duration. Check the full flight and any connection for your dates. Quito Airport \u2014 Bogot\u00e1 departures (https://www.aeropuertoquito.aero/itinerarios-internacionales/).",
+      "provenance": "planning_estimate",
+      "confidence": "medium",
+      "scheduleNeedsChecking": true,
+      "warnings": [],
+      "routeMetadata": {
+        "planningEstimate": true,
+        "source": "multimodal-resolver",
+        "roadFallbackEligible": false,
+        "gatewayResolutionRequired": false,
+        "label": "Quito \u2192 Bogot\u00e1",
+        "routingConfidence": "medium",
+        "transferImpact": {
+          "version": 1,
+          "mode": "flight",
+          "headline": {
+            "status": "unknown",
+            "value": null,
+            "confidence": "unknown",
+            "sources": [],
+            "reason": "The curated allowance is door-to-door and does not expose headline transport time."
+          },
+          "doorToDoor": {
+            "status": "known",
+            "value": {
+              "planningMinutes": 240,
+              "rangeMinutes": null,
+              "precision": "planning-allowance"
+            },
+            "confidence": "estimated",
+            "sources": [
+              {
+                "id": "morrovia:reviewed-air-allowance-v1",
+                "label": "Morrovia existing flight planning rule",
+                "kind": "curated",
+                "reviewedAt": "2026-10-17",
+                "supports": "Existing estimateFlightPlanningMinutes rule: 180 minutes airport/access allowance plus distance at 760 km/h with a one-hour transport floor; rounded up to a whole-hour planning allocation after directional service feasibility is established. Not reviewed airline timing, a measured range, timetable or date-specific itinerary. Any required connection must be checked."
+              }
+            ]
+          },
+          "components": [
+            {
+              "id": "origin-local",
+              "label": "Local journey to departure point",
+              "timing": {
+                "status": "unknown",
+                "value": null,
+                "confidence": "unknown",
+                "sources": [],
+                "reason": "The curated source supports the total allowance but not this individual component."
+              },
+              "reason": "The curated source supports the total allowance but not this individual component."
+            },
+            {
+              "id": "check-in-security",
+              "label": "Check-in and security",
+              "timing": {
+                "status": "unknown",
+                "value": null,
+                "confidence": "unknown",
+                "sources": [],
+                "reason": "The curated source supports the total allowance but not this individual component."
+              },
+              "reason": "The curated source supports the total allowance but not this individual component."
+            },
+            {
+              "id": "waiting-buffer",
+              "label": "Waiting and departure buffer",
+              "timing": {
+                "status": "unknown",
+                "value": null,
+                "confidence": "unknown",
+                "sources": [],
+                "reason": "The curated source supports the total allowance but not this individual component."
+              },
+              "reason": "The curated source supports the total allowance but not this individual component."
+            },
+            {
+              "id": "transport",
+              "label": "Headline transport",
+              "timing": {
+                "status": "unknown",
+                "value": null,
+                "confidence": "unknown",
+                "sources": [],
+                "reason": "The source does not separate in-vehicle time from its door-to-door allowance."
+              },
+              "reason": "The source does not separate in-vehicle time from its door-to-door allowance."
+            },
+            {
+              "id": "border-immigration",
+              "label": "Border and immigration",
+              "timing": {
+                "status": "unknown",
+                "value": null,
+                "confidence": "unknown",
+                "sources": [],
+                "reason": "Airport and border processing are included in the broad total, not separately measured."
+              },
+              "reason": "Airport and border processing are included in the broad total, not separately measured."
+            },
+            {
+              "id": "connection-buffer",
+              "label": "Connection buffer",
+              "timing": {
+                "status": "unknown",
+                "value": null,
+                "confidence": "unknown",
+                "sources": [],
+                "reason": "The curated source supports the total allowance but not this individual component."
+              },
+              "reason": "The curated source supports the total allowance but not this individual component."
+            },
+            {
+              "id": "arrival-local",
+              "label": "Arrival to accommodation",
+              "timing": {
+                "status": "unknown",
+                "value": null,
+                "confidence": "unknown",
+                "sources": [],
+                "reason": "The curated source supports the total allowance but not this individual component."
+              },
+              "reason": "The curated source supports the total allowance but not this individual component."
+            }
+          ],
+          "usableDayLoss": {
+            "classification": "substantial",
+            "estimatedDayFraction": 0.5,
+            "reason": "The estimated transfer uses a meaningful part of the day."
+          },
+          "occursOvernight": null,
+          "assumptions": [
+            "The existing curated total is preserved without inventing a component breakdown.",
+            "No defensible minimum/maximum range is currently available for this allowance."
+          ],
+          "claimConfidence": {
+            "headline": {
+              "version": 1,
+              "state": "unknown",
+              "level": "unknown",
+              "freshness": "unknown",
+              "scope": "unknown",
+              "sources": [],
+              "reason": "The curated allowance is door-to-door and does not expose headline transport time.",
+              "confirmation": {
+                "needed": true,
+                "reason": "The curated allowance is door-to-door and does not expose headline transport time."
+              }
+            },
+            "doorToDoor": {
+              "version": 1,
+              "state": "estimated",
+              "level": "medium",
+              "freshness": "reviewed",
+              "scope": "planning-rule",
+              "sources": [
+                {
+                  "id": "morrovia:reviewed-air-allowance-v1",
+                  "label": "Morrovia existing flight planning rule",
+                  "kind": "curated",
+                  "reviewedAt": "2026-10-17",
+                  "supports": "Existing estimateFlightPlanningMinutes rule: 180 minutes airport/access allowance plus distance at 760 km/h with a one-hour transport floor; rounded up to a whole-hour planning allocation after directional service feasibility is established. Not reviewed airline timing, a measured range, timetable or date-specific itinerary. Any required connection must be checked."
+                }
+              ],
+              "reason": "Confidence in the realistic door-to-door travel-day allowance.",
+              "confirmation": {
+                "needed": true,
+                "reason": "Confirm current access, processing, connection and arrival conditions before booking."
+              }
+            }
+          }
+        },
+        "planningConfidence": {
+          "availability": {
+            "version": 1,
+            "state": "inferred",
+            "level": "medium",
+            "freshness": "unknown",
+            "scope": "general-route",
+            "sources": [],
+            "reason": "The connection is inferred from existing route geography or planning rules.",
+            "confirmation": {
+              "needed": true,
+              "reason": "Confirm that this route operates for the traveller's dates."
+            }
+          },
+          "schedule": {
+            "version": 1,
+            "state": "unknown",
+            "level": "unknown",
+            "freshness": "unknown",
+            "scope": "unknown",
+            "sources": [],
+            "reason": "The general route may be plausible, but no exact schedule has been verified for these dates.",
+            "confirmation": {
+              "needed": true,
+              "reason": "The general route may be plausible, but no exact schedule has been verified for these dates."
+            }
+          },
+          "duration": {
+            "version": 1,
+            "state": "estimated",
+            "level": "medium",
+            "freshness": "reviewed",
+            "scope": "planning-rule",
+            "sources": [
+              {
+                "id": "planner:transfer-impact-rules-v1",
+                "label": "Morrovia deterministic transfer-impact rules",
+                "kind": "curated",
+                "supports": "Mode-specific access, processing, waiting, arrival and usable-day planning ranges.",
+                "reviewedAt": "2026-08-23"
+              }
+            ],
+            "reason": "Confidence in the connection duration used by route planning.",
+            "confirmation": {
+              "needed": true,
+              "reason": "Confirm the current operator duration before booking."
+            }
+          },
+          "doorToDoor": {
+            "version": 1,
+            "state": "estimated",
+            "level": "medium",
+            "freshness": "reviewed",
+            "scope": "planning-rule",
+            "sources": [
+              {
+                "id": "planner:transfer-impact-rules-v1",
+                "label": "Morrovia deterministic transfer-impact rules",
+                "kind": "curated",
+                "supports": "Mode-specific access, processing, waiting, arrival and usable-day planning ranges.",
+                "reviewedAt": "2026-08-23"
+              }
+            ],
+            "reason": "Confidence in the realistic door-to-door travel-day allowance.",
+            "confirmation": {
+              "needed": true,
+              "reason": "Confirm current access, processing, connection and arrival conditions before booking."
+            }
+          },
+          "overall": {
+            "version": 1,
+            "state": "estimated",
+            "level": "medium",
+            "freshness": "unknown",
+            "scope": "general-route",
+            "sources": [
+              {
+                "id": "planner:transfer-impact-rules-v1",
+                "label": "Morrovia deterministic transfer-impact rules",
+                "kind": "curated",
+                "supports": "Mode-specific access, processing, waiting, arrival and usable-day planning ranges.",
+                "reviewedAt": "2026-08-23"
+              }
+            ],
+            "reason": "Confidence in using this connection for route comparison.",
+            "confirmation": {
+              "needed": true,
+              "reason": "The general route may be plausible, but no exact schedule has been verified for these dates."
+            }
+          }
+        },
+        "classification": "arrival",
+        "validationWarnings": [],
+        "transportConstraints": {
+          "avoidDriving": false,
+          "excludedModes": [],
+          "preferredModes": []
+        },
+        "multimodalResolution": {
+          "version": 1,
+          "selected": "flight",
+          "candidates": [
+            {
+              "id": "flight:reviewed:quito-bogota",
+              "summaryMode": "flight",
+              "segments": [
+                {
+                  "mode": "flight",
+                  "fromEndpoint": {
+                    "name": "Quito",
+                    "country": "Ecuador",
+                    "canonicalPlaceId": "reference:geonames:3652462",
+                    "coordinates": [
+                      -78.52495,
+                      -0.22985
+                    ],
+                    "providerId": "reference:geonames:3652462@699b595afdba9be6994e:EC:city:-78.52495:-0.22985",
+                    "geographicBinding": {
+                      "version": 1,
+                      "source": "provider",
+                      "canonicalPlaceId": "reference:geonames:3652462",
+                      "providerId": "reference:geonames:3652462@699b595afdba9be6994e:EC:city:-78.52495:-0.22985",
+                      "placeType": "city",
+                      "country": "Ecuador",
+                      "routability": "direct_destination",
+                      "inputKey": "[\"reference:geonames:3652462\",\"reference:geonames:3652462@699b595afdba9be6994e:EC:city:-78.52495:-0.22985\",\"quito\",\"ecuador\",[-78.52495,-0.22985]]"
+                    },
+                    "kind": "origin",
+                    "id": "qa-flight-viator-20261017-origin"
+                  },
+                  "toEndpoint": {
+                    "kind": "stop",
+                    "id": "qa-bogota",
+                    "name": "Bogot\u00e1",
+                    "country": "Colombia",
+                    "canonicalPlaceId": "reference:geonames:3688689",
+                    "providerId": "reference:geonames:3688689@699b595afdba9be6994e:CO:city:-74.08175:4.60971",
+                    "geographicBinding": {
+                      "version": 1,
+                      "source": "provider",
+                      "canonicalPlaceId": "reference:geonames:3688689",
+                      "providerId": "reference:geonames:3688689@699b595afdba9be6994e:CO:city:-74.08175:4.60971",
+                      "placeType": "city",
+                      "country": "Colombia",
+                      "routability": "direct_destination",
+                      "inputKey": "[\"reference:geonames:3688689\",\"reference:geonames:3688689@699b595afdba9be6994e:CO:city:-74.08175:4.60971\",\"bogota\",\"colombia\",[-74.08175,4.60971]]"
+                    },
+                    "coordinates": [
+                      -74.08175,
+                      4.60971
+                    ]
+                  },
+                  "durationMinutes": 240,
+                  "distanceKm": 730,
+                  "provider": "About 4h door to door as a Morrovia planning allowance, including airport access and processing; not an airline duration. Check the full flight and any connection for your dates. Quito Airport \u2014 Bogot\u00e1 departures (https://www.aeropuertoquito.aero/itinerarios-internacionales/).",
+                  "provenance": "planning_estimate",
+                  "confidence": "medium",
+                  "scheduleNeedsChecking": true,
+                  "id": "reference:geonames:3652462:reference:geonames:3688689:flight:0"
+                }
+              ],
+              "totalDurationMinutes": 240,
+              "distanceKm": 730,
+              "transferImpact": {
+                "version": 1,
+                "mode": "flight",
+                "headline": {
+                  "status": "unknown",
+                  "value": null,
+                  "confidence": "unknown",
+                  "sources": [],
+                  "reason": "The curated allowance is door-to-door and does not expose headline transport time."
+                },
+                "doorToDoor": {
+                  "status": "known",
+                  "value": {
+                    "planningMinutes": 240,
+                    "rangeMinutes": null,
+                    "precision": "planning-allowance"
+                  },
+                  "confidence": "estimated",
+                  "sources": [
+                    {
+                      "id": "morrovia:reviewed-air-allowance-v1",
+                      "label": "Morrovia existing flight planning rule",
+                      "kind": "curated",
+                      "reviewedAt": "2026-10-17",
+                      "supports": "Existing estimateFlightPlanningMinutes rule: 180 minutes airport/access allowance plus distance at 760 km/h with a one-hour transport floor; rounded up to a whole-hour planning allocation after directional service feasibility is established. Not reviewed airline timing, a measured range, timetable or date-specific itinerary. Any required connection must be checked."
+                    }
+                  ]
+                },
+                "components": [
+                  {
+                    "id": "origin-local",
+                    "label": "Local journey to departure point",
+                    "timing": {
+                      "status": "unknown",
+                      "value": null,
+                      "confidence": "unknown",
+                      "sources": [],
+                      "reason": "The curated source supports the total allowance but not this individual component."
+                    },
+                    "reason": "The curated source supports the total allowance but not this individual component."
+                  },
+                  {
+                    "id": "check-in-security",
+                    "label": "Check-in and security",
+                    "timing": {
+                      "status": "unknown",
+                      "value": null,
+                      "confidence": "unknown",
+                      "sources": [],
+                      "reason": "The curated source supports the total allowance but not this individual component."
+                    },
+                    "reason": "The curated source supports the total allowance but not this individual component."
+                  },
+                  {
+                    "id": "waiting-buffer",
+                    "label": "Waiting and departure buffer",
+                    "timing": {
+                      "status": "unknown",
+                      "value": null,
+                      "confidence": "unknown",
+                      "sources": [],
+                      "reason": "The curated source supports the total allowance but not this individual component."
+                    },
+                    "reason": "The curated source supports the total allowance but not this individual component."
+                  },
+                  {
+                    "id": "transport",
+                    "label": "Headline transport",
+                    "timing": {
+                      "status": "unknown",
+                      "value": null,
+                      "confidence": "unknown",
+                      "sources": [],
+                      "reason": "The source does not separate in-vehicle time from its door-to-door allowance."
+                    },
+                    "reason": "The source does not separate in-vehicle time from its door-to-door allowance."
+                  },
+                  {
+                    "id": "border-immigration",
+                    "label": "Border and immigration",
+                    "timing": {
+                      "status": "unknown",
+                      "value": null,
+                      "confidence": "unknown",
+                      "sources": [],
+                      "reason": "Airport and border processing are included in the broad total, not separately measured."
+                    },
+                    "reason": "Airport and border processing are included in the broad total, not separately measured."
+                  },
+                  {
+                    "id": "connection-buffer",
+                    "label": "Connection buffer",
+                    "timing": {
+                      "status": "unknown",
+                      "value": null,
+                      "confidence": "unknown",
+                      "sources": [],
+                      "reason": "The curated source supports the total allowance but not this individual component."
+                    },
+                    "reason": "The curated source supports the total allowance but not this individual component."
+                  },
+                  {
+                    "id": "arrival-local",
+                    "label": "Arrival to accommodation",
+                    "timing": {
+                      "status": "unknown",
+                      "value": null,
+                      "confidence": "unknown",
+                      "sources": [],
+                      "reason": "The curated source supports the total allowance but not this individual component."
+                    },
+                    "reason": "The curated source supports the total allowance but not this individual component."
+                  }
+                ],
+                "usableDayLoss": {
+                  "classification": "substantial",
+                  "estimatedDayFraction": 0.5,
+                  "reason": "The estimated transfer uses a meaningful part of the day."
+                },
+                "occursOvernight": null,
+                "assumptions": [
+                  "The existing curated total is preserved without inventing a component breakdown.",
+                  "No defensible minimum/maximum range is currently available for this allowance."
+                ],
+                "claimConfidence": {
+                  "headline": {
+                    "version": 1,
+                    "state": "unknown",
+                    "level": "unknown",
+                    "freshness": "unknown",
+                    "scope": "unknown",
+                    "sources": [],
+                    "reason": "The curated allowance is door-to-door and does not expose headline transport time.",
+                    "confirmation": {
+                      "needed": true,
+                      "reason": "The curated allowance is door-to-door and does not expose headline transport time."
+                    }
+                  },
+                  "doorToDoor": {
+                    "version": 1,
+                    "state": "estimated",
+                    "level": "medium",
+                    "freshness": "reviewed",
+                    "scope": "planning-rule",
+                    "sources": [
+                      {
+                        "id": "morrovia:reviewed-air-allowance-v1",
+                        "label": "Morrovia existing flight planning rule",
+                        "kind": "curated",
+                        "reviewedAt": "2026-10-17",
+                        "supports": "Existing estimateFlightPlanningMinutes rule: 180 minutes airport/access allowance plus distance at 760 km/h with a one-hour transport floor; rounded up to a whole-hour planning allocation after directional service feasibility is established. Not reviewed airline timing, a measured range, timetable or date-specific itinerary. Any required connection must be checked."
+                      }
+                    ],
+                    "reason": "Confidence in the realistic door-to-door travel-day allowance.",
+                    "confirmation": {
+                      "needed": true,
+                      "reason": "Confirm current access, processing, connection and arrival conditions before booking."
+                    }
+                  }
+                }
+              },
+              "confidence": "medium",
+              "provenance": "planning_estimate",
+              "evidence": "reviewed_air_journey",
+              "connectionCount": null,
+              "reasons": [
+                "A reviewed directional flight corridor matches the exact physical endpoints; availability and timing still need checking.",
+                "Evidence: Quito Airport \u2014 Bogot\u00e1 departures (https://www.aeropuertoquito.aero/itinerarios-internacionales/)."
+              ],
+              "score": 91
+            }
+          ],
+          "rejected": [
+            "Optional cross-border road reference skipped because an exact flight is supported and driving is not an eligible passenger choice."
+          ],
+          "selectedCandidateId": "flight:reviewed:quito-bogota"
+        }
+      },
+      "segments": [
+        {
+          "mode": "flight",
+          "fromEndpoint": {
+            "name": "Quito",
+            "country": "Ecuador",
+            "canonicalPlaceId": "reference:geonames:3652462",
+            "coordinates": [
+              -78.52495,
+              -0.22985
+            ],
+            "providerId": "reference:geonames:3652462@699b595afdba9be6994e:EC:city:-78.52495:-0.22985",
+            "geographicBinding": {
+              "version": 1,
+              "source": "provider",
+              "canonicalPlaceId": "reference:geonames:3652462",
+              "providerId": "reference:geonames:3652462@699b595afdba9be6994e:EC:city:-78.52495:-0.22985",
+              "placeType": "city",
+              "country": "Ecuador",
+              "routability": "direct_destination",
+              "inputKey": "[\"reference:geonames:3652462\",\"reference:geonames:3652462@699b595afdba9be6994e:EC:city:-78.52495:-0.22985\",\"quito\",\"ecuador\",[-78.52495,-0.22985]]"
+            },
+            "kind": "origin",
+            "id": "qa-flight-viator-20261017-origin"
+          },
+          "toEndpoint": {
+            "kind": "stop",
+            "id": "qa-bogota",
+            "name": "Bogot\u00e1",
+            "country": "Colombia",
+            "canonicalPlaceId": "reference:geonames:3688689",
+            "providerId": "reference:geonames:3688689@699b595afdba9be6994e:CO:city:-74.08175:4.60971",
+            "geographicBinding": {
+              "version": 1,
+              "source": "provider",
+              "canonicalPlaceId": "reference:geonames:3688689",
+              "providerId": "reference:geonames:3688689@699b595afdba9be6994e:CO:city:-74.08175:4.60971",
+              "placeType": "city",
+              "country": "Colombia",
+              "routability": "direct_destination",
+              "inputKey": "[\"reference:geonames:3688689\",\"reference:geonames:3688689@699b595afdba9be6994e:CO:city:-74.08175:4.60971\",\"bogota\",\"colombia\",[-74.08175,4.60971]]"
+            },
+            "coordinates": [
+              -74.08175,
+              4.60971
+            ]
+          },
+          "durationMinutes": 240,
+          "distanceKm": 730,
+          "provider": "About 4h door to door as a Morrovia planning allowance, including airport access and processing; not an airline duration. Check the full flight and any connection for your dates. Quito Airport \u2014 Bogot\u00e1 departures (https://www.aeropuertoquito.aero/itinerarios-internacionales/).",
+          "provenance": "planning_estimate",
+          "confidence": "medium",
+          "scheduleNeedsChecking": true,
+          "id": "reference:geonames:3652462:reference:geonames:3688689:flight:0"
+        }
+      ]
+    },
+    {
+      "id": "qa-flight-viator-20261017-leg-2",
+      "fromStopId": "qa-bogota",
+      "toStopId": "qa-cartagena",
+      "fromEndpoint": {
+        "kind": "stop",
+        "id": "qa-bogota",
+        "name": "Bogot\u00e1",
+        "country": "Colombia",
+        "canonicalPlaceId": "reference:geonames:3688689",
+        "providerId": "reference:geonames:3688689@699b595afdba9be6994e:CO:city:-74.08175:4.60971",
+        "geographicBinding": {
+          "version": 1,
+          "source": "provider",
+          "canonicalPlaceId": "reference:geonames:3688689",
+          "providerId": "reference:geonames:3688689@699b595afdba9be6994e:CO:city:-74.08175:4.60971",
+          "placeType": "city",
+          "country": "Colombia",
+          "routability": "direct_destination",
+          "inputKey": "[\"reference:geonames:3688689\",\"reference:geonames:3688689@699b595afdba9be6994e:CO:city:-74.08175:4.60971\",\"bogota\",\"colombia\",[-74.08175,4.60971]]"
+        },
+        "coordinates": [
+          -74.08175,
+          4.60971
+        ]
+      },
+      "toEndpoint": {
+        "kind": "stop",
+        "id": "qa-cartagena",
+        "name": "Cartagena",
+        "country": "Colombia",
+        "canonicalPlaceId": "reference:geonames:3687238",
+        "providerId": "reference:geonames:3687238@699b595afdba9be6994e:CO:city:-75.49328:10.39817",
+        "geographicBinding": {
+          "version": 1,
+          "source": "provider",
+          "canonicalPlaceId": "reference:geonames:3687238",
+          "providerId": "reference:geonames:3687238@699b595afdba9be6994e:CO:city:-75.49328:10.39817",
+          "placeType": "city",
+          "country": "Colombia",
+          "routability": "direct_destination",
+          "inputKey": "[\"reference:geonames:3687238\",\"reference:geonames:3687238@699b595afdba9be6994e:CO:city:-75.49328:10.39817\",\"cartagena\",\"colombia\",[-75.49328,10.39817]]"
+        },
+        "coordinates": [
+          -75.49328,
+          10.39817
+        ]
+      },
+      "classification": "intercity",
+      "mode": "flight",
+      "distanceKm": 662,
+      "straightLineDistanceKm": 662,
+      "routedDistanceKm": null,
+      "durationMinutes": 240,
+      "headlineMinutes": null,
+      "doorToDoorMinutes": 240,
+      "usableDayLoss": 0.5,
+      "provider": "About 4h door to door as a Morrovia planning allowance, including airport access and processing; not an airline duration. Check the full flight and any connection for your dates. LATAM \u2014 Bogot\u00e1 to Cartagena (https://www.latamairlines.com/us/en/destinations/colombia/flights-from-bogota-to-cartagena).",
+      "provenance": "planning_estimate",
+      "confidence": "medium",
+      "scheduleNeedsChecking": true,
+      "warnings": [
+        "Road estimate only; no passenger service or private-driver availability is confirmed.",
+        "Stops and road conditions are not included unless the routing source states otherwise."
+      ],
+      "routeMetadata": {
+        "planningEstimate": true,
+        "source": "multimodal-resolver",
+        "roadFallbackEligible": false,
+        "gatewayResolutionRequired": false,
+        "label": "Bogot\u00e1 \u2192 Cartagena",
+        "routingConfidence": "unconfirmed",
+        "planningConfidence": {
+          "availability": {
+            "version": 1,
+            "state": "inferred",
+            "level": "medium",
+            "freshness": "unknown",
+            "scope": "general-route",
+            "sources": [],
+            "reason": "The connection is inferred from existing route geography or planning rules.",
+            "confirmation": {
+              "needed": true,
+              "reason": "Confirm that this route operates for the traveller's dates."
+            }
+          },
+          "schedule": {
+            "version": 1,
+            "state": "unknown",
+            "level": "unknown",
+            "freshness": "unknown",
+            "scope": "unknown",
+            "sources": [],
+            "reason": "The general route may be plausible, but no exact schedule has been verified for these dates.",
+            "confirmation": {
+              "needed": true,
+              "reason": "The general route may be plausible, but no exact schedule has been verified for these dates."
+            }
+          },
+          "duration": {
+            "version": 1,
+            "state": "estimated",
+            "level": "medium",
+            "freshness": "reviewed",
+            "scope": "planning-rule",
+            "sources": [
+              {
+                "id": "planner:transfer-impact-rules-v1",
+                "label": "Morrovia deterministic transfer-impact rules",
+                "kind": "curated",
+                "supports": "Mode-specific access, processing, waiting, arrival and usable-day planning ranges.",
+                "reviewedAt": "2026-08-23"
+              }
+            ],
+            "reason": "Confidence in the connection duration used by route planning.",
+            "confirmation": {
+              "needed": true,
+              "reason": "Confirm the current operator duration before booking."
+            }
+          },
+          "doorToDoor": {
+            "version": 1,
+            "state": "estimated",
+            "level": "medium",
+            "freshness": "reviewed",
+            "scope": "planning-rule",
+            "sources": [
+              {
+                "id": "planner:transfer-impact-rules-v1",
+                "label": "Morrovia deterministic transfer-impact rules",
+                "kind": "curated",
+                "supports": "Mode-specific access, processing, waiting, arrival and usable-day planning ranges.",
+                "reviewedAt": "2026-08-23"
+              }
+            ],
+            "reason": "Confidence in the realistic door-to-door travel-day allowance.",
+            "confirmation": {
+              "needed": true,
+              "reason": "Confirm current access, processing, connection and arrival conditions before booking."
+            }
+          },
+          "overall": {
+            "version": 1,
+            "state": "estimated",
+            "level": "medium",
+            "freshness": "unknown",
+            "scope": "general-route",
+            "sources": [
+              {
+                "id": "planner:transfer-impact-rules-v1",
+                "label": "Morrovia deterministic transfer-impact rules",
+                "kind": "curated",
+                "supports": "Mode-specific access, processing, waiting, arrival and usable-day planning ranges.",
+                "reviewedAt": "2026-08-23"
+              }
+            ],
+            "reason": "Confidence in using this connection for route comparison.",
+            "confirmation": {
+              "needed": true,
+              "reason": "The general route may be plausible, but no exact schedule has been verified for these dates."
+            }
+          }
+        },
+        "classification": "intercity",
+        "validationWarnings": [],
+        "transportConstraints": {
+          "avoidDriving": false,
+          "excludedModes": [],
+          "preferredModes": []
+        },
+        "transferImpact": {
+          "version": 1,
+          "mode": "flight",
+          "headline": {
+            "status": "unknown",
+            "value": null,
+            "confidence": "unknown",
+            "sources": [],
+            "reason": "The curated allowance is door-to-door and does not expose headline transport time."
+          },
+          "doorToDoor": {
+            "status": "known",
+            "value": {
+              "planningMinutes": 240,
+              "rangeMinutes": null,
+              "precision": "planning-allowance"
+            },
+            "confidence": "estimated",
+            "sources": [
+              {
+                "id": "morrovia:reviewed-air-allowance-v1",
+                "label": "Morrovia existing flight planning rule",
+                "kind": "curated",
+                "reviewedAt": "2026-10-17",
+                "supports": "Existing estimateFlightPlanningMinutes rule: 180 minutes airport/access allowance plus distance at 760 km/h with a one-hour transport floor; rounded up to a whole-hour planning allocation after directional service feasibility is established. Not reviewed airline timing, a measured range, timetable or date-specific itinerary. Any required connection must be checked."
+              }
+            ]
+          },
+          "components": [
+            {
+              "id": "origin-local",
+              "label": "Local journey to departure point",
+              "timing": {
+                "status": "unknown",
+                "value": null,
+                "confidence": "unknown",
+                "sources": [],
+                "reason": "The curated source supports the total allowance but not this individual component."
+              },
+              "reason": "The curated source supports the total allowance but not this individual component."
+            },
+            {
+              "id": "check-in-security",
+              "label": "Check-in and security",
+              "timing": {
+                "status": "unknown",
+                "value": null,
+                "confidence": "unknown",
+                "sources": [],
+                "reason": "The curated source supports the total allowance but not this individual component."
+              },
+              "reason": "The curated source supports the total allowance but not this individual component."
+            },
+            {
+              "id": "waiting-buffer",
+              "label": "Waiting and departure buffer",
+              "timing": {
+                "status": "unknown",
+                "value": null,
+                "confidence": "unknown",
+                "sources": [],
+                "reason": "The curated source supports the total allowance but not this individual component."
+              },
+              "reason": "The curated source supports the total allowance but not this individual component."
+            },
+            {
+              "id": "transport",
+              "label": "Headline transport",
+              "timing": {
+                "status": "unknown",
+                "value": null,
+                "confidence": "unknown",
+                "sources": [],
+                "reason": "The source does not separate in-vehicle time from its door-to-door allowance."
+              },
+              "reason": "The source does not separate in-vehicle time from its door-to-door allowance."
+            },
+            {
+              "id": "border-immigration",
+              "label": "Border and immigration",
+              "timing": {
+                "status": "unknown",
+                "value": null,
+                "confidence": "unknown",
+                "sources": [],
+                "reason": "Airport and border processing are included in the broad total, not separately measured."
+              },
+              "reason": "Airport and border processing are included in the broad total, not separately measured."
+            },
+            {
+              "id": "connection-buffer",
+              "label": "Connection buffer",
+              "timing": {
+                "status": "unknown",
+                "value": null,
+                "confidence": "unknown",
+                "sources": [],
+                "reason": "The curated source supports the total allowance but not this individual component."
+              },
+              "reason": "The curated source supports the total allowance but not this individual component."
+            },
+            {
+              "id": "arrival-local",
+              "label": "Arrival to accommodation",
+              "timing": {
+                "status": "unknown",
+                "value": null,
+                "confidence": "unknown",
+                "sources": [],
+                "reason": "The curated source supports the total allowance but not this individual component."
+              },
+              "reason": "The curated source supports the total allowance but not this individual component."
+            }
+          ],
+          "usableDayLoss": {
+            "classification": "substantial",
+            "estimatedDayFraction": 0.5,
+            "reason": "The estimated transfer uses a meaningful part of the day."
+          },
+          "occursOvernight": null,
+          "assumptions": [
+            "The existing curated total is preserved without inventing a component breakdown.",
+            "No defensible minimum/maximum range is currently available for this allowance."
+          ],
+          "claimConfidence": {
+            "headline": {
+              "version": 1,
+              "state": "unknown",
+              "level": "unknown",
+              "freshness": "unknown",
+              "scope": "unknown",
+              "sources": [],
+              "reason": "The curated allowance is door-to-door and does not expose headline transport time.",
+              "confirmation": {
+                "needed": true,
+                "reason": "The curated allowance is door-to-door and does not expose headline transport time."
+              }
+            },
+            "doorToDoor": {
+              "version": 1,
+              "state": "estimated",
+              "level": "medium",
+              "freshness": "reviewed",
+              "scope": "planning-rule",
+              "sources": [
+                {
+                  "id": "morrovia:reviewed-air-allowance-v1",
+                  "label": "Morrovia existing flight planning rule",
+                  "kind": "curated",
+                  "reviewedAt": "2026-10-17",
+                  "supports": "Existing estimateFlightPlanningMinutes rule: 180 minutes airport/access allowance plus distance at 760 km/h with a one-hour transport floor; rounded up to a whole-hour planning allocation after directional service feasibility is established. Not reviewed airline timing, a measured range, timetable or date-specific itinerary. Any required connection must be checked."
+                }
+              ],
+              "reason": "Confidence in the realistic door-to-door travel-day allowance.",
+              "confirmation": {
+                "needed": true,
+                "reason": "Confirm current access, processing, connection and arrival conditions before booking."
+              }
+            }
+          }
+        },
+        "multimodalResolution": {
+          "version": 1,
+          "selected": "flight",
+          "candidates": [
+            {
+              "id": "flight:reviewed:bogota-cartagena",
+              "summaryMode": "flight",
+              "segments": [
+                {
+                  "mode": "flight",
+                  "fromEndpoint": {
+                    "kind": "stop",
+                    "id": "qa-bogota",
+                    "name": "Bogot\u00e1",
+                    "country": "Colombia",
+                    "canonicalPlaceId": "reference:geonames:3688689",
+                    "providerId": "reference:geonames:3688689@699b595afdba9be6994e:CO:city:-74.08175:4.60971",
+                    "geographicBinding": {
+                      "version": 1,
+                      "source": "provider",
+                      "canonicalPlaceId": "reference:geonames:3688689",
+                      "providerId": "reference:geonames:3688689@699b595afdba9be6994e:CO:city:-74.08175:4.60971",
+                      "placeType": "city",
+                      "country": "Colombia",
+                      "routability": "direct_destination",
+                      "inputKey": "[\"reference:geonames:3688689\",\"reference:geonames:3688689@699b595afdba9be6994e:CO:city:-74.08175:4.60971\",\"bogota\",\"colombia\",[-74.08175,4.60971]]"
+                    },
+                    "coordinates": [
+                      -74.08175,
+                      4.60971
+                    ]
+                  },
+                  "toEndpoint": {
+                    "kind": "stop",
+                    "id": "qa-cartagena",
+                    "name": "Cartagena",
+                    "country": "Colombia",
+                    "canonicalPlaceId": "reference:geonames:3687238",
+                    "providerId": "reference:geonames:3687238@699b595afdba9be6994e:CO:city:-75.49328:10.39817",
+                    "geographicBinding": {
+                      "version": 1,
+                      "source": "provider",
+                      "canonicalPlaceId": "reference:geonames:3687238",
+                      "providerId": "reference:geonames:3687238@699b595afdba9be6994e:CO:city:-75.49328:10.39817",
+                      "placeType": "city",
+                      "country": "Colombia",
+                      "routability": "direct_destination",
+                      "inputKey": "[\"reference:geonames:3687238\",\"reference:geonames:3687238@699b595afdba9be6994e:CO:city:-75.49328:10.39817\",\"cartagena\",\"colombia\",[-75.49328,10.39817]]"
+                    },
+                    "coordinates": [
+                      -75.49328,
+                      10.39817
+                    ]
+                  },
+                  "durationMinutes": 240,
+                  "distanceKm": 662,
+                  "provider": "About 4h door to door as a Morrovia planning allowance, including airport access and processing; not an airline duration. Check the full flight and any connection for your dates. LATAM \u2014 Bogot\u00e1 to Cartagena (https://www.latamairlines.com/us/en/destinations/colombia/flights-from-bogota-to-cartagena).",
+                  "provenance": "planning_estimate",
+                  "confidence": "medium",
+                  "scheduleNeedsChecking": true,
+                  "id": "reference:geonames:3688689:reference:geonames:3687238:flight:0"
+                }
+              ],
+              "totalDurationMinutes": 240,
+              "distanceKm": 662,
+              "transferImpact": {
+                "version": 1,
+                "mode": "flight",
+                "headline": {
+                  "status": "unknown",
+                  "value": null,
+                  "confidence": "unknown",
+                  "sources": [],
+                  "reason": "The curated allowance is door-to-door and does not expose headline transport time."
+                },
+                "doorToDoor": {
+                  "status": "known",
+                  "value": {
+                    "planningMinutes": 240,
+                    "rangeMinutes": null,
+                    "precision": "planning-allowance"
+                  },
+                  "confidence": "estimated",
+                  "sources": [
+                    {
+                      "id": "morrovia:reviewed-air-allowance-v1",
+                      "label": "Morrovia existing flight planning rule",
+                      "kind": "curated",
+                      "reviewedAt": "2026-10-17",
+                      "supports": "Existing estimateFlightPlanningMinutes rule: 180 minutes airport/access allowance plus distance at 760 km/h with a one-hour transport floor; rounded up to a whole-hour planning allocation after directional service feasibility is established. Not reviewed airline timing, a measured range, timetable or date-specific itinerary. Any required connection must be checked."
+                    }
+                  ]
+                },
+                "components": [
+                  {
+                    "id": "origin-local",
+                    "label": "Local journey to departure point",
+                    "timing": {
+                      "status": "unknown",
+                      "value": null,
+                      "confidence": "unknown",
+                      "sources": [],
+                      "reason": "The curated source supports the total allowance but not this individual component."
+                    },
+                    "reason": "The curated source supports the total allowance but not this individual component."
+                  },
+                  {
+                    "id": "check-in-security",
+                    "label": "Check-in and security",
+                    "timing": {
+                      "status": "unknown",
+                      "value": null,
+                      "confidence": "unknown",
+                      "sources": [],
+                      "reason": "The curated source supports the total allowance but not this individual component."
+                    },
+                    "reason": "The curated source supports the total allowance but not this individual component."
+                  },
+                  {
+                    "id": "waiting-buffer",
+                    "label": "Waiting and departure buffer",
+                    "timing": {
+                      "status": "unknown",
+                      "value": null,
+                      "confidence": "unknown",
+                      "sources": [],
+                      "reason": "The curated source supports the total allowance but not this individual component."
+                    },
+                    "reason": "The curated source supports the total allowance but not this individual component."
+                  },
+                  {
+                    "id": "transport",
+                    "label": "Headline transport",
+                    "timing": {
+                      "status": "unknown",
+                      "value": null,
+                      "confidence": "unknown",
+                      "sources": [],
+                      "reason": "The source does not separate in-vehicle time from its door-to-door allowance."
+                    },
+                    "reason": "The source does not separate in-vehicle time from its door-to-door allowance."
+                  },
+                  {
+                    "id": "border-immigration",
+                    "label": "Border and immigration",
+                    "timing": {
+                      "status": "unknown",
+                      "value": null,
+                      "confidence": "unknown",
+                      "sources": [],
+                      "reason": "Airport and border processing are included in the broad total, not separately measured."
+                    },
+                    "reason": "Airport and border processing are included in the broad total, not separately measured."
+                  },
+                  {
+                    "id": "connection-buffer",
+                    "label": "Connection buffer",
+                    "timing": {
+                      "status": "unknown",
+                      "value": null,
+                      "confidence": "unknown",
+                      "sources": [],
+                      "reason": "The curated source supports the total allowance but not this individual component."
+                    },
+                    "reason": "The curated source supports the total allowance but not this individual component."
+                  },
+                  {
+                    "id": "arrival-local",
+                    "label": "Arrival to accommodation",
+                    "timing": {
+                      "status": "unknown",
+                      "value": null,
+                      "confidence": "unknown",
+                      "sources": [],
+                      "reason": "The curated source supports the total allowance but not this individual component."
+                    },
+                    "reason": "The curated source supports the total allowance but not this individual component."
+                  }
+                ],
+                "usableDayLoss": {
+                  "classification": "substantial",
+                  "estimatedDayFraction": 0.5,
+                  "reason": "The estimated transfer uses a meaningful part of the day."
+                },
+                "occursOvernight": null,
+                "assumptions": [
+                  "The existing curated total is preserved without inventing a component breakdown.",
+                  "No defensible minimum/maximum range is currently available for this allowance."
+                ],
+                "claimConfidence": {
+                  "headline": {
+                    "version": 1,
+                    "state": "unknown",
+                    "level": "unknown",
+                    "freshness": "unknown",
+                    "scope": "unknown",
+                    "sources": [],
+                    "reason": "The curated allowance is door-to-door and does not expose headline transport time.",
+                    "confirmation": {
+                      "needed": true,
+                      "reason": "The curated allowance is door-to-door and does not expose headline transport time."
+                    }
+                  },
+                  "doorToDoor": {
+                    "version": 1,
+                    "state": "estimated",
+                    "level": "medium",
+                    "freshness": "reviewed",
+                    "scope": "planning-rule",
+                    "sources": [
+                      {
+                        "id": "morrovia:reviewed-air-allowance-v1",
+                        "label": "Morrovia existing flight planning rule",
+                        "kind": "curated",
+                        "reviewedAt": "2026-10-17",
+                        "supports": "Existing estimateFlightPlanningMinutes rule: 180 minutes airport/access allowance plus distance at 760 km/h with a one-hour transport floor; rounded up to a whole-hour planning allocation after directional service feasibility is established. Not reviewed airline timing, a measured range, timetable or date-specific itinerary. Any required connection must be checked."
+                      }
+                    ],
+                    "reason": "Confidence in the realistic door-to-door travel-day allowance.",
+                    "confirmation": {
+                      "needed": true,
+                      "reason": "Confirm current access, processing, connection and arrival conditions before booking."
+                    }
+                  }
+                }
+              },
+              "confidence": "medium",
+              "provenance": "planning_estimate",
+              "evidence": "reviewed_air_journey",
+              "connectionCount": null,
+              "reasons": [
+                "A reviewed directional flight corridor matches the exact physical endpoints; availability and timing still need checking.",
+                "Evidence: LATAM \u2014 Bogot\u00e1 to Cartagena (https://www.latamairlines.com/us/en/destinations/colombia/flights-from-bogota-to-cartagena)."
+              ],
+              "score": 91
+            },
+            {
+              "id": "road:routed",
+              "summaryMode": "road",
+              "segments": [
+                {
+                  "mode": "road",
+                  "fromEndpoint": {
+                    "kind": "stop",
+                    "id": "qa-bogota",
+                    "name": "Bogot\u00e1",
+                    "country": "Colombia",
+                    "canonicalPlaceId": "reference:geonames:3688689",
+                    "providerId": "reference:geonames:3688689@699b595afdba9be6994e:CO:city:-74.08175:4.60971",
+                    "geographicBinding": {
+                      "version": 1,
+                      "source": "provider",
+                      "canonicalPlaceId": "reference:geonames:3688689",
+                      "providerId": "reference:geonames:3688689@699b595afdba9be6994e:CO:city:-74.08175:4.60971",
+                      "placeType": "city",
+                      "country": "Colombia",
+                      "routability": "direct_destination",
+                      "inputKey": "[\"reference:geonames:3688689\",\"reference:geonames:3688689@699b595afdba9be6994e:CO:city:-74.08175:4.60971\",\"bogota\",\"colombia\",[-74.08175,4.60971]]"
+                    },
+                    "coordinates": [
+                      -74.08175,
+                      4.60971
+                    ]
+                  },
+                  "toEndpoint": {
+                    "kind": "stop",
+                    "id": "qa-cartagena",
+                    "name": "Cartagena",
+                    "country": "Colombia",
+                    "canonicalPlaceId": "reference:geonames:3687238",
+                    "providerId": "reference:geonames:3687238@699b595afdba9be6994e:CO:city:-75.49328:10.39817",
+                    "geographicBinding": {
+                      "version": 1,
+                      "source": "provider",
+                      "canonicalPlaceId": "reference:geonames:3687238",
+                      "providerId": "reference:geonames:3687238@699b595afdba9be6994e:CO:city:-75.49328:10.39817",
+                      "placeType": "city",
+                      "country": "Colombia",
+                      "routability": "direct_destination",
+                      "inputKey": "[\"reference:geonames:3687238\",\"reference:geonames:3687238@699b595afdba9be6994e:CO:city:-75.49328:10.39817\",\"cartagena\",\"colombia\",[-75.49328,10.39817]]"
+                    },
+                    "coordinates": [
+                      -75.49328,
+                      10.39817
+                    ]
+                  },
+                  "distanceKm": 979,
+                  "durationMinutes": 825,
+                  "provider": "OpenRouteService road route; Morrovia planning estimate, not a live timetable.",
+                  "provenance": "routing_engine",
+                  "confidence": "medium",
+                  "scheduleNeedsChecking": true,
+                  "routeGeometry": [
+                    [
+                      -74.08235,
+                      4.61016
+                    ],
+                    [
+                      -74.07963,
+                      4.63228
+                    ],
+                    [
+                      -74.07293,
+                      4.66125
+                    ],
+                    [
+                      -74.07647,
+                      4.68086
+                    ],
+                    [
+                      -74.10054,
+                      4.70289
+                    ],
+                    [
+                      -74.12453,
+                      4.72595
+                    ],
+                    [
+                      -74.13664,
+                      4.73987
+                    ],
+                    [
+                      -74.17449,
+                      4.77256
+                    ],
+                    [
+                      -74.21191,
+                      4.80709
+                    ],
+                    [
+                      -74.2482,
+                      4.83289
+                    ],
+                    [
+                      -74.28974,
+                      4.85772
+                    ],
+                    [
+                      -74.29954,
+                      4.87668
+                    ],
+                    [
+                      -74.30549,
+                      4.89142
+                    ],
+                    [
+                      -74.31103,
+                      4.90049
+                    ],
+                    [
+                      -74.29807,
+                      4.91163
+                    ],
+                    [
+                      -74.29113,
+                      4.92267
+                    ],
+                    [
+                      -74.29677,
+                      4.93093
+                    ],
+                    [
+                      -74.31131,
+                      4.94364
+                    ],
+                    [
+                      -74.2939,
+                      4.94675
+                    ],
+                    [
+                      -74.30168,
+                      4.95629
+                    ],
+                    [
+                      -74.31329,
+                      4.96761
+                    ],
+                    [
+                      -74.31394,
+                      4.97669
+                    ],
+                    [
+                      -74.32147,
+                      4.97922
+                    ],
+                    [
+                      -74.32355,
+                      4.99365
+                    ],
+                    [
+                      -74.32846,
+                      4.9896
+                    ],
+                    [
+                      -74.34431,
+                      5.00638
+                    ],
+                    [
+                      -74.3525,
+                      5.02154
+                    ],
+                    [
+                      -74.36954,
+                      5.03408
+                    ],
+                    [
+                      -74.38483,
+                      5.05194
+                    ],
+                    [
+                      -74.40462,
+                      5.06208
+                    ],
+                    [
+                      -74.42391,
+                      5.06464
+                    ],
+                    [
+                      -74.44072,
+                      5.07197
+                    ],
+                    [
+                      -74.45106,
+                      5.06067
+                    ],
+                    [
+                      -74.45849,
+                      5.03604
+                    ],
+                    [
+                      -74.47031,
+                      5.02059
+                    ],
+                    [
+                      -74.48109,
+                      5.0137
+                    ],
+                    [
+                      -74.4867,
+                      5.02238
+                    ],
+                    [
+                      -74.49551,
+                      5.02833
+                    ],
+                    [
+                      -74.50552,
+                      5.03806
+                    ],
+                    [
+                      -74.51251,
+                      5.0423
+                    ],
+                    [
+                      -74.5164,
+                      5.04737
+                    ],
+                    [
+                      -74.51662,
+                      5.05244
+                    ],
+                    [
+                      -74.52384,
+                      5.04974
+                    ],
+                    [
+                      -74.53055,
+                      5.04887
+                    ],
+                    [
+                      -74.52909,
+                      5.05599
+                    ],
+                    [
+                      -74.5363,
+                      5.04895
+                    ],
+                    [
+                      -74.54089,
+                      5.04642
+                    ],
+                    [
+                      -74.54144,
+                      5.03806
+                    ],
+                    [
+                      -74.54176,
+                      5.03078
+                    ],
+                    [
+                      -74.54551,
+                      5.02469
+                    ],
+                    [
+                      -74.55358,
+                      5.02964
+                    ],
+                    [
+                      -74.56407,
+                      5.03639
+                    ],
+                    [
+                      -74.56858,
+                      5.04048
+                    ],
+                    [
+                      -74.57547,
+                      5.03856
+                    ],
+                    [
+                      -74.58139,
+                      5.04049
+                    ],
+                    [
+                      -74.58378,
+                      5.04483
+                    ],
+                    [
+                      -74.58674,
+                      5.04934
+                    ],
+                    [
+                      -74.59194,
+                      5.05858
+                    ],
+                    [
+                      -74.59961,
+                      5.06827
+                    ],
+                    [
+                      -74.60122,
+                      5.08277
+                    ],
+                    [
+                      -74.59214,
+                      5.10212
+                    ],
+                    [
+                      -74.5912,
+                      5.1362
+                    ],
+                    [
+                      -74.58584,
+                      5.17372
+                    ],
+                    [
+                      -74.5817,
+                      5.20646
+                    ],
+                    [
+                      -74.57028,
+                      5.24415
+                    ],
+                    [
+                      -74.56797,
+                      5.28149
+                    ],
+                    [
+                      -74.56599,
+                      5.32437
+                    ],
+                    [
+                      -74.56518,
+                      5.35551
+                    ],
+                    [
+                      -74.58604,
+                      5.36819
+                    ],
+                    [
+                      -74.60382,
+                      5.39813
+                    ],
+                    [
+                      -74.59961,
+                      5.43429
+                    ],
+                    [
+                      -74.60141,
+                      5.4624
+                    ],
+                    [
+                      -74.60912,
+                      5.49817
+                    ],
+                    [
+                      -74.62835,
+                      5.50649
+                    ],
+                    [
+                      -74.62892,
+                      5.53702
+                    ],
+                    [
+                      -74.61357,
+                      5.66561
+                    ],
+                    [
+                      -74.63245,
+                      5.75752
+                    ],
+                    [
+                      -74.60467,
+                      5.78324
+                    ],
+                    [
+                      -74.58508,
+                      5.82213
+                    ],
+                    [
+                      -74.56335,
+                      5.86513
+                    ],
+                    [
+                      -74.56534,
+                      5.90617
+                    ],
+                    [
+                      -74.57057,
+                      5.9403
+                    ],
+                    [
+                      -74.55194,
+                      5.99357
+                    ],
+                    [
+                      -74.54723,
+                      6.0232
+                    ],
+                    [
+                      -74.55143,
+                      6.07526
+                    ],
+                    [
+                      -74.57,
+                      6.1689
+                    ],
+                    [
+                      -74.54036,
+                      6.22599
+                    ],
+                    [
+                      -74.47739,
+                      6.26869
+                    ],
+                    [
+                      -74.44686,
+                      6.30827
+                    ],
+                    [
+                      -74.40908,
+                      6.37413
+                    ],
+                    [
+                      -74.33271,
+                      6.40919
+                    ],
+                    [
+                      -74.28978,
+                      6.46
+                    ],
+                    [
+                      -74.27909,
+                      6.48718
+                    ],
+                    [
+                      -74.34256,
+                      6.49192
+                    ],
+                    [
+                      -74.39592,
+                      6.5292
+                    ],
+                    [
+                      -74.44548,
+                      6.4923
+                    ],
+                    [
+                      -74.4827,
+                      6.49448
+                    ],
+                    [
+                      -74.52358,
+                      6.49551
+                    ],
+                    [
+                      -74.55013,
+                      6.48527
+                    ],
+                    [
+                      -74.57173,
+                      6.49166
+                    ],
+                    [
+                      -74.58179,
+                      6.48076
+                    ],
+                    [
+                      -74.58952,
+                      6.4827
+                    ],
+                    [
+                      -74.60853,
+                      6.47934
+                    ],
+                    [
+                      -74.61308,
+                      6.47478
+                    ],
+                    [
+                      -74.62041,
+                      6.46592
+                    ],
+                    [
+                      -74.63034,
+                      6.45811
+                    ],
+                    [
+                      -74.65348,
+                      6.44867
+                    ],
+                    [
+                      -74.6723,
+                      6.45366
+                    ],
+                    [
+                      -74.68389,
+                      6.47241
+                    ],
+                    [
+                      -74.70973,
+                      6.47949
+                    ],
+                    [
+                      -74.71985,
+                      6.48348
+                    ],
+                    [
+                      -74.733,
+                      6.48878
+                    ],
+                    [
+                      -74.74877,
+                      6.49734
+                    ],
+                    [
+                      -74.77319,
+                      6.51109
+                    ],
+                    [
+                      -74.79869,
+                      6.51234
+                    ],
+                    [
+                      -74.79991,
+                      6.54963
+                    ],
+                    [
+                      -74.78755,
+                      6.5698
+                    ],
+                    [
+                      -74.79048,
+                      6.61217
+                    ],
+                    [
+                      -74.80027,
+                      6.64819
+                    ],
+                    [
+                      -74.79131,
+                      6.67776
+                    ],
+                    [
+                      -74.79895,
+                      6.72087
+                    ],
+                    [
+                      -74.79299,
+                      6.76339
+                    ],
+                    [
+                      -74.79744,
+                      6.80274
+                    ],
+                    [
+                      -74.78775,
+                      6.84078
+                    ],
+                    [
+                      -74.79707,
+                      6.86864
+                    ],
+                    [
+                      -74.77671,
+                      6.88901
+                    ],
+                    [
+                      -74.75891,
+                      6.91608
+                    ],
+                    [
+                      -74.76176,
+                      6.9444
+                    ],
+                    [
+                      -74.76001,
+                      6.9739
+                    ],
+                    [
+                      -74.75577,
+                      6.99692
+                    ],
+                    [
+                      -74.73148,
+                      7.02272
+                    ],
+                    [
+                      -74.70931,
+                      7.03781
+                    ],
+                    [
+                      -74.70949,
+                      7.05644
+                    ],
+                    [
+                      -74.72896,
+                      7.07893
+                    ],
+                    [
+                      -74.75948,
+                      7.10524
+                    ],
+                    [
+                      -74.77383,
+                      7.14189
+                    ],
+                    [
+                      -74.78974,
+                      7.17036
+                    ],
+                    [
+                      -74.79579,
+                      7.20252
+                    ],
+                    [
+                      -74.81056,
+                      7.23719
+                    ],
+                    [
+                      -74.8297,
+                      7.27003
+                    ],
+                    [
+                      -74.83578,
+                      7.29986
+                    ],
+                    [
+                      -74.83689,
+                      7.32553
+                    ],
+                    [
+                      -74.84679,
+                      7.35687
+                    ],
+                    [
+                      -74.85896,
+                      7.3931
+                    ],
+                    [
+                      -74.85921,
+                      7.42403
+                    ],
+                    [
+                      -74.86421,
+                      7.45729
+                    ],
+                    [
+                      -74.85149,
+                      7.48492
+                    ],
+                    [
+                      -74.85448,
+                      7.51187
+                    ],
+                    [
+                      -74.86587,
+                      7.5295
+                    ],
+                    [
+                      -74.88138,
+                      7.56233
+                    ],
+                    [
+                      -74.89456,
+                      7.60496
+                    ],
+                    [
+                      -74.89821,
+                      7.64433
+                    ],
+                    [
+                      -74.89208,
+                      7.68495
+                    ],
+                    [
+                      -74.90174,
+                      7.72851
+                    ],
+                    [
+                      -74.89855,
+                      7.75601
+                    ],
+                    [
+                      -74.91959,
+                      7.78303
+                    ],
+                    [
+                      -74.93922,
+                      7.81001
+                    ],
+                    [
+                      -74.97069,
+                      7.82339
+                    ],
+                    [
+                      -74.98769,
+                      7.84324
+                    ],
+                    [
+                      -75.00879,
+                      7.84672
+                    ],
+                    [
+                      -75.04272,
+                      7.84847
+                    ],
+                    [
+                      -75.0981,
+                      7.91482
+                    ],
+                    [
+                      -75.18081,
+                      7.96809
+                    ],
+                    [
+                      -75.22094,
+                      7.98095
+                    ],
+                    [
+                      -75.25129,
+                      8.01229
+                    ],
+                    [
+                      -75.3404,
+                      8.05157
+                    ],
+                    [
+                      -75.38794,
+                      8.09685
+                    ],
+                    [
+                      -75.45293,
+                      8.18021
+                    ],
+                    [
+                      -75.49377,
+                      8.24394
+                    ],
+                    [
+                      -75.54139,
+                      8.32123
+                    ],
+                    [
+                      -75.57121,
+                      8.38447
+                    ],
+                    [
+                      -75.5576,
+                      8.42922
+                    ],
+                    [
+                      -75.54736,
+                      8.43326
+                    ],
+                    [
+                      -75.52467,
+                      8.45355
+                    ],
+                    [
+                      -75.51628,
+                      8.48974
+                    ],
+                    [
+                      -75.50447,
+                      8.53556
+                    ],
+                    [
+                      -75.48738,
+                      8.56373
+                    ],
+                    [
+                      -75.48485,
+                      8.60566
+                    ],
+                    [
+                      -75.48149,
+                      8.6319
+                    ],
+                    [
+                      -75.49464,
+                      8.65171
+                    ],
+                    [
+                      -75.49348,
+                      8.67228
+                    ],
+                    [
+                      -75.49745,
+                      8.70007
+                    ],
+                    [
+                      -75.49143,
+                      8.74265
+                    ],
+                    [
+                      -75.49828,
+                      8.77998
+                    ],
+                    [
+                      -75.50834,
+                      8.8161
+                    ],
+                    [
+                      -75.4707,
+                      8.84827
+                    ],
+                    [
+                      -75.44931,
+                      8.90729
+                    ],
+                    [
+                      -75.44308,
+                      8.93665
+                    ],
+                    [
+                      -75.45437,
+                      8.95324
+                    ],
+                    [
+                      -75.45588,
+                      8.98625
+                    ],
+                    [
+                      -75.45664,
+                      9.02464
+                    ],
+                    [
+                      -75.41592,
+                      9.06889
+                    ],
+                    [
+                      -75.40335,
+                      9.10776
+                    ],
+                    [
+                      -75.39125,
+                      9.12654
+                    ],
+                    [
+                      -75.38274,
+                      9.14407
+                    ],
+                    [
+                      -75.39378,
+                      9.17482
+                    ],
+                    [
+                      -75.38875,
+                      9.19429
+                    ],
+                    [
+                      -75.40694,
+                      9.22029
+                    ],
+                    [
+                      -75.414,
+                      9.25083
+                    ],
+                    [
+                      -75.40979,
+                      9.27265
+                    ],
+                    [
+                      -75.38981,
+                      9.28951
+                    ],
+                    [
+                      -75.36959,
+                      9.30703
+                    ],
+                    [
+                      -75.35159,
+                      9.30733
+                    ],
+                    [
+                      -75.33426,
+                      9.31718
+                    ],
+                    [
+                      -75.31596,
+                      9.3225
+                    ],
+                    [
+                      -75.3,
+                      9.31949
+                    ],
+                    [
+                      -75.28473,
+                      9.32459
+                    ],
+                    [
+                      -75.28549,
+                      9.34944
+                    ],
+                    [
+                      -75.27256,
+                      9.37555
+                    ],
+                    [
+                      -75.2637,
+                      9.40212
+                    ],
+                    [
+                      -75.25117,
+                      9.41712
+                    ],
+                    [
+                      -75.23176,
+                      9.43267
+                    ],
+                    [
+                      -75.22511,
+                      9.45493
+                    ],
+                    [
+                      -75.21186,
+                      9.46824
+                    ],
+                    [
+                      -75.23043,
+                      9.49327
+                    ],
+                    [
+                      -75.23433,
+                      9.51229
+                    ],
+                    [
+                      -75.22521,
+                      9.52788
+                    ],
+                    [
+                      -75.21865,
+                      9.54857
+                    ],
+                    [
+                      -75.20271,
+                      9.56707
+                    ],
+                    [
+                      -75.18274,
+                      9.60125
+                    ],
+                    [
+                      -75.15909,
+                      9.61431
+                    ],
+                    [
+                      -75.15005,
+                      9.63854
+                    ],
+                    [
+                      -75.12458,
+                      9.68258
+                    ],
+                    [
+                      -75.10921,
+                      9.71198
+                    ],
+                    [
+                      -75.11442,
+                      9.73692
+                    ],
+                    [
+                      -75.12995,
+                      9.76763
+                    ],
+                    [
+                      -75.12387,
+                      9.78566
+                    ],
+                    [
+                      -75.12172,
+                      9.82268
+                    ],
+                    [
+                      -75.12051,
+                      9.84705
+                    ],
+                    [
+                      -75.10859,
+                      9.89406
+                    ],
+                    [
+                      -75.0892,
+                      9.9444
+                    ],
+                    [
+                      -75.08006,
+                      9.96318
+                    ],
+                    [
+                      -75.07804,
+                      9.99094
+                    ],
+                    [
+                      -75.08055,
+                      10.05492
+                    ],
+                    [
+                      -75.08025,
+                      10.07648
+                    ],
+                    [
+                      -75.09373,
+                      10.07078
+                    ],
+                    [
+                      -75.1088,
+                      10.06923
+                    ],
+                    [
+                      -75.12677,
+                      10.07194
+                    ],
+                    [
+                      -75.14027,
+                      10.08691
+                    ],
+                    [
+                      -75.15977,
+                      10.10821
+                    ],
+                    [
+                      -75.1957,
+                      10.13733
+                    ],
+                    [
+                      -75.26319,
+                      10.13605
+                    ],
+                    [
+                      -75.29997,
+                      10.16613
+                    ],
+                    [
+                      -75.30865,
+                      10.19482
+                    ],
+                    [
+                      -75.34234,
+                      10.23815
+                    ],
+                    [
+                      -75.35012,
+                      10.2593
+                    ],
+                    [
+                      -75.37045,
+                      10.27901
+                    ],
+                    [
+                      -75.38942,
+                      10.29904
+                    ],
+                    [
+                      -75.40024,
+                      10.31502
+                    ],
+                    [
+                      -75.40627,
+                      10.32926
+                    ],
+                    [
+                      -75.41885,
+                      10.33906
+                    ],
+                    [
+                      -75.43494,
+                      10.34692
+                    ],
+                    [
+                      -75.45037,
+                      10.36587
+                    ],
+                    [
+                      -75.47168,
+                      10.38618
+                    ],
+                    [
+                      -75.48869,
+                      10.39098
+                    ],
+                    [
+                      -75.49337,
+                      10.39812
+                    ]
+                  ],
+                  "id": "reference:geonames:3688689:reference:geonames:3687238:road:0"
+                }
+              ],
+              "totalDurationMinutes": 825,
+              "distanceKm": 979,
+              "confidence": "medium",
+              "provenance": "routing_engine",
+              "evidence": "routed_road",
+              "connectionCount": 0,
+              "reasons": [
+                "The road provider returned a plausible routed journey between the actual endpoints. This is a driving estimate, not evidence of passenger service."
+              ],
+              "score": 68.63
+            }
+          ],
+          "rejected": [],
+          "selectedCandidateId": "flight:reviewed:bogota-cartagena"
+        }
+      },
+      "segments": [
+        {
+          "mode": "flight",
+          "fromEndpoint": {
+            "kind": "stop",
+            "id": "qa-bogota",
+            "name": "Bogot\u00e1",
+            "country": "Colombia",
+            "canonicalPlaceId": "reference:geonames:3688689",
+            "providerId": "reference:geonames:3688689@699b595afdba9be6994e:CO:city:-74.08175:4.60971",
+            "geographicBinding": {
+              "version": 1,
+              "source": "provider",
+              "canonicalPlaceId": "reference:geonames:3688689",
+              "providerId": "reference:geonames:3688689@699b595afdba9be6994e:CO:city:-74.08175:4.60971",
+              "placeType": "city",
+              "country": "Colombia",
+              "routability": "direct_destination",
+              "inputKey": "[\"reference:geonames:3688689\",\"reference:geonames:3688689@699b595afdba9be6994e:CO:city:-74.08175:4.60971\",\"bogota\",\"colombia\",[-74.08175,4.60971]]"
+            },
+            "coordinates": [
+              -74.08175,
+              4.60971
+            ]
+          },
+          "toEndpoint": {
+            "kind": "stop",
+            "id": "qa-cartagena",
+            "name": "Cartagena",
+            "country": "Colombia",
+            "canonicalPlaceId": "reference:geonames:3687238",
+            "providerId": "reference:geonames:3687238@699b595afdba9be6994e:CO:city:-75.49328:10.39817",
+            "geographicBinding": {
+              "version": 1,
+              "source": "provider",
+              "canonicalPlaceId": "reference:geonames:3687238",
+              "providerId": "reference:geonames:3687238@699b595afdba9be6994e:CO:city:-75.49328:10.39817",
+              "placeType": "city",
+              "country": "Colombia",
+              "routability": "direct_destination",
+              "inputKey": "[\"reference:geonames:3687238\",\"reference:geonames:3687238@699b595afdba9be6994e:CO:city:-75.49328:10.39817\",\"cartagena\",\"colombia\",[-75.49328,10.39817]]"
+            },
+            "coordinates": [
+              -75.49328,
+              10.39817
+            ]
+          },
+          "durationMinutes": 240,
+          "distanceKm": 662,
+          "provider": "About 4h door to door as a Morrovia planning allowance, including airport access and processing; not an airline duration. Check the full flight and any connection for your dates. LATAM \u2014 Bogot\u00e1 to Cartagena (https://www.latamairlines.com/us/en/destinations/colombia/flights-from-bogota-to-cartagena).",
+          "provenance": "planning_estimate",
+          "confidence": "medium",
+          "scheduleNeedsChecking": true,
+          "id": "reference:geonames:3688689:reference:geonames:3687238:flight:0"
+        }
+      ],
+      "roadEstimate": {
+        "provider": "openrouteservice",
+        "profile": "driving-car",
+        "provenance": "routed",
+        "checkedAt": "2026-10-17T03:15:57.929Z",
+        "distanceKm": 979,
+        "durationMinutes": 825,
+        "confidence": "medium",
+        "routeGeometry": [
+          [
+            -74.08235,
+            4.61016
+          ],
+          [
+            -74.07963,
+            4.63228
+          ],
+          [
+            -74.07293,
+            4.66125
+          ],
+          [
+            -74.07647,
+            4.68086
+          ],
+          [
+            -74.10054,
+            4.70289
+          ],
+          [
+            -74.12453,
+            4.72595
+          ],
+          [
+            -74.13664,
+            4.73987
+          ],
+          [
+            -74.17449,
+            4.77256
+          ],
+          [
+            -74.21191,
+            4.80709
+          ],
+          [
+            -74.2482,
+            4.83289
+          ],
+          [
+            -74.28974,
+            4.85772
+          ],
+          [
+            -74.29954,
+            4.87668
+          ],
+          [
+            -74.30549,
+            4.89142
+          ],
+          [
+            -74.31103,
+            4.90049
+          ],
+          [
+            -74.29807,
+            4.91163
+          ],
+          [
+            -74.29113,
+            4.92267
+          ],
+          [
+            -74.29677,
+            4.93093
+          ],
+          [
+            -74.31131,
+            4.94364
+          ],
+          [
+            -74.2939,
+            4.94675
+          ],
+          [
+            -74.30168,
+            4.95629
+          ],
+          [
+            -74.31329,
+            4.96761
+          ],
+          [
+            -74.31394,
+            4.97669
+          ],
+          [
+            -74.32147,
+            4.97922
+          ],
+          [
+            -74.32355,
+            4.99365
+          ],
+          [
+            -74.32846,
+            4.9896
+          ],
+          [
+            -74.34431,
+            5.00638
+          ],
+          [
+            -74.3525,
+            5.02154
+          ],
+          [
+            -74.36954,
+            5.03408
+          ],
+          [
+            -74.38483,
+            5.05194
+          ],
+          [
+            -74.40462,
+            5.06208
+          ],
+          [
+            -74.42391,
+            5.06464
+          ],
+          [
+            -74.44072,
+            5.07197
+          ],
+          [
+            -74.45106,
+            5.06067
+          ],
+          [
+            -74.45849,
+            5.03604
+          ],
+          [
+            -74.47031,
+            5.02059
+          ],
+          [
+            -74.48109,
+            5.0137
+          ],
+          [
+            -74.4867,
+            5.02238
+          ],
+          [
+            -74.49551,
+            5.02833
+          ],
+          [
+            -74.50552,
+            5.03806
+          ],
+          [
+            -74.51251,
+            5.0423
+          ],
+          [
+            -74.5164,
+            5.04737
+          ],
+          [
+            -74.51662,
+            5.05244
+          ],
+          [
+            -74.52384,
+            5.04974
+          ],
+          [
+            -74.53055,
+            5.04887
+          ],
+          [
+            -74.52909,
+            5.05599
+          ],
+          [
+            -74.5363,
+            5.04895
+          ],
+          [
+            -74.54089,
+            5.04642
+          ],
+          [
+            -74.54144,
+            5.03806
+          ],
+          [
+            -74.54176,
+            5.03078
+          ],
+          [
+            -74.54551,
+            5.02469
+          ],
+          [
+            -74.55358,
+            5.02964
+          ],
+          [
+            -74.56407,
+            5.03639
+          ],
+          [
+            -74.56858,
+            5.04048
+          ],
+          [
+            -74.57547,
+            5.03856
+          ],
+          [
+            -74.58139,
+            5.04049
+          ],
+          [
+            -74.58378,
+            5.04483
+          ],
+          [
+            -74.58674,
+            5.04934
+          ],
+          [
+            -74.59194,
+            5.05858
+          ],
+          [
+            -74.59961,
+            5.06827
+          ],
+          [
+            -74.60122,
+            5.08277
+          ],
+          [
+            -74.59214,
+            5.10212
+          ],
+          [
+            -74.5912,
+            5.1362
+          ],
+          [
+            -74.58584,
+            5.17372
+          ],
+          [
+            -74.5817,
+            5.20646
+          ],
+          [
+            -74.57028,
+            5.24415
+          ],
+          [
+            -74.56797,
+            5.28149
+          ],
+          [
+            -74.56599,
+            5.32437
+          ],
+          [
+            -74.56518,
+            5.35551
+          ],
+          [
+            -74.58604,
+            5.36819
+          ],
+          [
+            -74.60382,
+            5.39813
+          ],
+          [
+            -74.59961,
+            5.43429
+          ],
+          [
+            -74.60141,
+            5.4624
+          ],
+          [
+            -74.60912,
+            5.49817
+          ],
+          [
+            -74.62835,
+            5.50649
+          ],
+          [
+            -74.62892,
+            5.53702
+          ],
+          [
+            -74.61357,
+            5.66561
+          ],
+          [
+            -74.63245,
+            5.75752
+          ],
+          [
+            -74.60467,
+            5.78324
+          ],
+          [
+            -74.58508,
+            5.82213
+          ],
+          [
+            -74.56335,
+            5.86513
+          ],
+          [
+            -74.56534,
+            5.90617
+          ],
+          [
+            -74.57057,
+            5.9403
+          ],
+          [
+            -74.55194,
+            5.99357
+          ],
+          [
+            -74.54723,
+            6.0232
+          ],
+          [
+            -74.55143,
+            6.07526
+          ],
+          [
+            -74.57,
+            6.1689
+          ],
+          [
+            -74.54036,
+            6.22599
+          ],
+          [
+            -74.47739,
+            6.26869
+          ],
+          [
+            -74.44686,
+            6.30827
+          ],
+          [
+            -74.40908,
+            6.37413
+          ],
+          [
+            -74.33271,
+            6.40919
+          ],
+          [
+            -74.28978,
+            6.46
+          ],
+          [
+            -74.27909,
+            6.48718
+          ],
+          [
+            -74.34256,
+            6.49192
+          ],
+          [
+            -74.39592,
+            6.5292
+          ],
+          [
+            -74.44548,
+            6.4923
+          ],
+          [
+            -74.4827,
+            6.49448
+          ],
+          [
+            -74.52358,
+            6.49551
+          ],
+          [
+            -74.55013,
+            6.48527
+          ],
+          [
+            -74.57173,
+            6.49166
+          ],
+          [
+            -74.58179,
+            6.48076
+          ],
+          [
+            -74.58952,
+            6.4827
+          ],
+          [
+            -74.60853,
+            6.47934
+          ],
+          [
+            -74.61308,
+            6.47478
+          ],
+          [
+            -74.62041,
+            6.46592
+          ],
+          [
+            -74.63034,
+            6.45811
+          ],
+          [
+            -74.65348,
+            6.44867
+          ],
+          [
+            -74.6723,
+            6.45366
+          ],
+          [
+            -74.68389,
+            6.47241
+          ],
+          [
+            -74.70973,
+            6.47949
+          ],
+          [
+            -74.71985,
+            6.48348
+          ],
+          [
+            -74.733,
+            6.48878
+          ],
+          [
+            -74.74877,
+            6.49734
+          ],
+          [
+            -74.77319,
+            6.51109
+          ],
+          [
+            -74.79869,
+            6.51234
+          ],
+          [
+            -74.79991,
+            6.54963
+          ],
+          [
+            -74.78755,
+            6.5698
+          ],
+          [
+            -74.79048,
+            6.61217
+          ],
+          [
+            -74.80027,
+            6.64819
+          ],
+          [
+            -74.79131,
+            6.67776
+          ],
+          [
+            -74.79895,
+            6.72087
+          ],
+          [
+            -74.79299,
+            6.76339
+          ],
+          [
+            -74.79744,
+            6.80274
+          ],
+          [
+            -74.78775,
+            6.84078
+          ],
+          [
+            -74.79707,
+            6.86864
+          ],
+          [
+            -74.77671,
+            6.88901
+          ],
+          [
+            -74.75891,
+            6.91608
+          ],
+          [
+            -74.76176,
+            6.9444
+          ],
+          [
+            -74.76001,
+            6.9739
+          ],
+          [
+            -74.75577,
+            6.99692
+          ],
+          [
+            -74.73148,
+            7.02272
+          ],
+          [
+            -74.70931,
+            7.03781
+          ],
+          [
+            -74.70949,
+            7.05644
+          ],
+          [
+            -74.72896,
+            7.07893
+          ],
+          [
+            -74.75948,
+            7.10524
+          ],
+          [
+            -74.77383,
+            7.14189
+          ],
+          [
+            -74.78974,
+            7.17036
+          ],
+          [
+            -74.79579,
+            7.20252
+          ],
+          [
+            -74.81056,
+            7.23719
+          ],
+          [
+            -74.8297,
+            7.27003
+          ],
+          [
+            -74.83578,
+            7.29986
+          ],
+          [
+            -74.83689,
+            7.32553
+          ],
+          [
+            -74.84679,
+            7.35687
+          ],
+          [
+            -74.85896,
+            7.3931
+          ],
+          [
+            -74.85921,
+            7.42403
+          ],
+          [
+            -74.86421,
+            7.45729
+          ],
+          [
+            -74.85149,
+            7.48492
+          ],
+          [
+            -74.85448,
+            7.51187
+          ],
+          [
+            -74.86587,
+            7.5295
+          ],
+          [
+            -74.88138,
+            7.56233
+          ],
+          [
+            -74.89456,
+            7.60496
+          ],
+          [
+            -74.89821,
+            7.64433
+          ],
+          [
+            -74.89208,
+            7.68495
+          ],
+          [
+            -74.90174,
+            7.72851
+          ],
+          [
+            -74.89855,
+            7.75601
+          ],
+          [
+            -74.91959,
+            7.78303
+          ],
+          [
+            -74.93922,
+            7.81001
+          ],
+          [
+            -74.97069,
+            7.82339
+          ],
+          [
+            -74.98769,
+            7.84324
+          ],
+          [
+            -75.00879,
+            7.84672
+          ],
+          [
+            -75.04272,
+            7.84847
+          ],
+          [
+            -75.0981,
+            7.91482
+          ],
+          [
+            -75.18081,
+            7.96809
+          ],
+          [
+            -75.22094,
+            7.98095
+          ],
+          [
+            -75.25129,
+            8.01229
+          ],
+          [
+            -75.3404,
+            8.05157
+          ],
+          [
+            -75.38794,
+            8.09685
+          ],
+          [
+            -75.45293,
+            8.18021
+          ],
+          [
+            -75.49377,
+            8.24394
+          ],
+          [
+            -75.54139,
+            8.32123
+          ],
+          [
+            -75.57121,
+            8.38447
+          ],
+          [
+            -75.5576,
+            8.42922
+          ],
+          [
+            -75.54736,
+            8.43326
+          ],
+          [
+            -75.52467,
+            8.45355
+          ],
+          [
+            -75.51628,
+            8.48974
+          ],
+          [
+            -75.50447,
+            8.53556
+          ],
+          [
+            -75.48738,
+            8.56373
+          ],
+          [
+            -75.48485,
+            8.60566
+          ],
+          [
+            -75.48149,
+            8.6319
+          ],
+          [
+            -75.49464,
+            8.65171
+          ],
+          [
+            -75.49348,
+            8.67228
+          ],
+          [
+            -75.49745,
+            8.70007
+          ],
+          [
+            -75.49143,
+            8.74265
+          ],
+          [
+            -75.49828,
+            8.77998
+          ],
+          [
+            -75.50834,
+            8.8161
+          ],
+          [
+            -75.4707,
+            8.84827
+          ],
+          [
+            -75.44931,
+            8.90729
+          ],
+          [
+            -75.44308,
+            8.93665
+          ],
+          [
+            -75.45437,
+            8.95324
+          ],
+          [
+            -75.45588,
+            8.98625
+          ],
+          [
+            -75.45664,
+            9.02464
+          ],
+          [
+            -75.41592,
+            9.06889
+          ],
+          [
+            -75.40335,
+            9.10776
+          ],
+          [
+            -75.39125,
+            9.12654
+          ],
+          [
+            -75.38274,
+            9.14407
+          ],
+          [
+            -75.39378,
+            9.17482
+          ],
+          [
+            -75.38875,
+            9.19429
+          ],
+          [
+            -75.40694,
+            9.22029
+          ],
+          [
+            -75.414,
+            9.25083
+          ],
+          [
+            -75.40979,
+            9.27265
+          ],
+          [
+            -75.38981,
+            9.28951
+          ],
+          [
+            -75.36959,
+            9.30703
+          ],
+          [
+            -75.35159,
+            9.30733
+          ],
+          [
+            -75.33426,
+            9.31718
+          ],
+          [
+            -75.31596,
+            9.3225
+          ],
+          [
+            -75.3,
+            9.31949
+          ],
+          [
+            -75.28473,
+            9.32459
+          ],
+          [
+            -75.28549,
+            9.34944
+          ],
+          [
+            -75.27256,
+            9.37555
+          ],
+          [
+            -75.2637,
+            9.40212
+          ],
+          [
+            -75.25117,
+            9.41712
+          ],
+          [
+            -75.23176,
+            9.43267
+          ],
+          [
+            -75.22511,
+            9.45493
+          ],
+          [
+            -75.21186,
+            9.46824
+          ],
+          [
+            -75.23043,
+            9.49327
+          ],
+          [
+            -75.23433,
+            9.51229
+          ],
+          [
+            -75.22521,
+            9.52788
+          ],
+          [
+            -75.21865,
+            9.54857
+          ],
+          [
+            -75.20271,
+            9.56707
+          ],
+          [
+            -75.18274,
+            9.60125
+          ],
+          [
+            -75.15909,
+            9.61431
+          ],
+          [
+            -75.15005,
+            9.63854
+          ],
+          [
+            -75.12458,
+            9.68258
+          ],
+          [
+            -75.10921,
+            9.71198
+          ],
+          [
+            -75.11442,
+            9.73692
+          ],
+          [
+            -75.12995,
+            9.76763
+          ],
+          [
+            -75.12387,
+            9.78566
+          ],
+          [
+            -75.12172,
+            9.82268
+          ],
+          [
+            -75.12051,
+            9.84705
+          ],
+          [
+            -75.10859,
+            9.89406
+          ],
+          [
+            -75.0892,
+            9.9444
+          ],
+          [
+            -75.08006,
+            9.96318
+          ],
+          [
+            -75.07804,
+            9.99094
+          ],
+          [
+            -75.08055,
+            10.05492
+          ],
+          [
+            -75.08025,
+            10.07648
+          ],
+          [
+            -75.09373,
+            10.07078
+          ],
+          [
+            -75.1088,
+            10.06923
+          ],
+          [
+            -75.12677,
+            10.07194
+          ],
+          [
+            -75.14027,
+            10.08691
+          ],
+          [
+            -75.15977,
+            10.10821
+          ],
+          [
+            -75.1957,
+            10.13733
+          ],
+          [
+            -75.26319,
+            10.13605
+          ],
+          [
+            -75.29997,
+            10.16613
+          ],
+          [
+            -75.30865,
+            10.19482
+          ],
+          [
+            -75.34234,
+            10.23815
+          ],
+          [
+            -75.35012,
+            10.2593
+          ],
+          [
+            -75.37045,
+            10.27901
+          ],
+          [
+            -75.38942,
+            10.29904
+          ],
+          [
+            -75.40024,
+            10.31502
+          ],
+          [
+            -75.40627,
+            10.32926
+          ],
+          [
+            -75.41885,
+            10.33906
+          ],
+          [
+            -75.43494,
+            10.34692
+          ],
+          [
+            -75.45037,
+            10.36587
+          ],
+          [
+            -75.47168,
+            10.38618
+          ],
+          [
+            -75.48869,
+            10.39098
+          ],
+          [
+            -75.49337,
+            10.39812
+          ]
+        ],
+        "attribution": "\u00a9 openrouteservice.org by HeiGIT | Map data \u00a9 OpenStreetMap contributors",
+        "warnings": [
+          "Road estimate only; no passenger service or private-driver availability is confirmed.",
+          "Stops and road conditions are not included unless the routing source states otherwise."
+        ]
+      }
+    }
+  ],
+  "planItems": [
+    {
+      "id": "qa-day-0",
+      "stopId": "qa-bogota",
+      "date": "2027-05-01",
+      "dayNumber": 1,
+      "type": "open",
+      "title": "Flexible day in Lima",
+      "reason": "Plan this day around your preferences.",
+      "notes": [],
+      "startsAt": null,
+      "endsAt": null,
+      "bookingUrl": null,
+      "latitude": null,
+      "longitude": null,
+      "location": "Bogot\u00e1"
+    },
+    {
+      "id": "qa-day-1",
+      "stopId": "qa-bogota",
+      "date": "2027-05-02",
+      "dayNumber": 2,
+      "type": "open",
+      "title": "Flexible day in Lima",
+      "reason": "Plan this day around your preferences.",
+      "notes": [],
+      "startsAt": null,
+      "endsAt": null,
+      "bookingUrl": null,
+      "latitude": null,
+      "longitude": null,
+      "location": "Bogot\u00e1"
+    },
+    {
+      "id": "qa-day-2",
+      "stopId": "qa-bogota",
+      "date": "2027-05-03",
+      "dayNumber": 3,
+      "type": "open",
+      "title": "Flexible day in Lima",
+      "reason": "Plan this day around your preferences.",
+      "notes": [],
+      "startsAt": null,
+      "endsAt": null,
+      "bookingUrl": null,
+      "latitude": null,
+      "longitude": null,
+      "location": "Bogot\u00e1"
+    },
+    {
+      "id": "qa-day-3",
+      "stopId": "qa-cartagena",
+      "date": "2027-05-04",
+      "dayNumber": 4,
+      "type": "open",
+      "title": "Flexible day in Lima",
+      "reason": "Plan this day around your preferences.",
+      "notes": [],
+      "startsAt": null,
+      "endsAt": null,
+      "bookingUrl": null,
+      "latitude": null,
+      "longitude": null,
+      "location": "Cartagena"
+    },
+    {
+      "id": "qa-day-4",
+      "stopId": "qa-cartagena",
+      "date": "2027-05-05",
+      "dayNumber": 5,
+      "type": "open",
+      "title": "Flexible day in Lima",
+      "reason": "Plan this day around your preferences.",
+      "notes": [],
+      "startsAt": null,
+      "endsAt": null,
+      "bookingUrl": null,
+      "latitude": null,
+      "longitude": null,
+      "location": "Cartagena"
+    },
+    {
+      "id": "qa-day-5",
+      "stopId": "qa-cartagena",
+      "date": "2027-05-06",
+      "dayNumber": 6,
+      "type": "open",
+      "title": "Flexible day in Lima",
+      "reason": "Plan this day around your preferences.",
+      "notes": [],
+      "startsAt": null,
+      "endsAt": null,
+      "bookingUrl": null,
+      "latitude": null,
+      "longitude": null,
+      "location": "Cartagena"
+    }
+  ],
+  "recommendations": [],
+  "createdAt": "2026-10-16T23:23:56.877Z",
+  "updatedAt": "2026-10-16T23:23:57.173Z"
+}

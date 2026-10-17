@@ -1327,7 +1327,7 @@ export function JourneyMapPlannerWorkspace({
     if (!customTrip || !customTrip.stops.some((stop) => stop.id === stopId)) return;
     drawerScrollResetRef.current = true;
     setIsPlaying(false);
-    setMobileShapeDayOpen(false);
+    setMobileShapeDayOpen(true);
     setSelectedMapStopId(stopId);
     if (firstItem) {
       setSelectedId(`${customTrip.id}-day-${firstItem.dayNumber}`);
@@ -1338,6 +1338,9 @@ export function JourneyMapPlannerWorkspace({
     setNativeGooglePoint(null);
     setSelectedPlannerPin(null);
     setSelectedRouteLegId(null);
+    setPinPlacementMode(false);
+    setPinCoordinates(null);
+    setTripStatusExpanded(false);
     setMapDetailScope("stop");
     setMapMode("detail");
     setMobileMapDrawerOpen(true);
@@ -3019,19 +3022,7 @@ export function JourneyMapPlannerWorkspace({
             resetWholeRoute();
             return;
           }
-          const firstItem = customTrip.planItems.filter((item) => item.stopId === scopeId).sort((a, b) => a.dayNumber - b.dayNumber)[0];
-          setIsPlaying(false);
-          setMobileShapeDayOpen(false);
-          setSelectedMapStopId(scopeId);
-          if (firstItem) {
-            setSelectedDayId(`${customTrip.id}-calendar-${firstItem.dayNumber}`);
-            setSelectedId(`${customTrip.id}-day-${firstItem.dayNumber}`);
-          }
-          setSelectedMapResult(null);
-          setSelectedRouteLegId(null);
-          setMapDetailScope("stop");
-          setMapMode("detail");
-          setMobileMapDrawerOpen(true);
+          selectCanonicalMapStop(scopeId);
         }}
         overflow={isShellPresentation ? <>
           <button type="button" onClick={() => setIsPlaying((playing) => !playing)}>{isPlaying ? planCopy.pause : planCopy.play}</button>
