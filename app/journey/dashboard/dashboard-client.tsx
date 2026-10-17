@@ -4,7 +4,6 @@ import Link from "next/link";
 import {
   Archive,
   ArrowRight,
-  CalendarCheck2,
   Copy,
   Gift,
   Globe2,
@@ -750,7 +749,6 @@ function TripActionsMenu({ trip, language, copy, working, workingAction, onActio
   return <details className={styles.tripMenu}>
         <summary aria-label={`${language === "es" ? "Acciones para" : "Actions for"} ${tripDisplayTitle(trip)}`}><MoreHorizontal aria-hidden="true" /></summary>
         <div>
-          <Link href={`/journey/trip?trip=${encodeURIComponent(trip.id)}`} onClick={() => trackTripReopened(trip)}><CalendarCheck2 aria-hidden="true" />{language === "es" ? "Modo viaje" : "Trip mode"}</Link>
           {trip.status === "archived" ? <EasyTButton icon={RotateCcw} variant="quiet" size="small" fullWidth disabled={working} onClick={() => onAction(trip.id, "restore")}>{actionLabel("restore")}</EasyTButton> : <EasyTButton icon={Archive} variant="quiet" size="small" fullWidth disabled={working} onClick={() => onAction(trip.id, "archive")}>{actionLabel("archive")}</EasyTButton>}
           <EasyTButton icon={Copy} variant="quiet" size="small" fullWidth disabled={working} onClick={() => onAction(trip.id, "duplicate")}>{actionLabel("duplicate")}</EasyTButton>
           <EasyTButton icon={Gift} variant="quiet" size="small" fullWidth disabled={working} onClick={() => onGift(trip)}>{copy.gift}</EasyTButton>
