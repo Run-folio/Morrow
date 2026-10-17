@@ -110,7 +110,7 @@ test("routed road evidence stays a separate reference across Builder and Transpo
   try {
     const row = builder.page.locator('[data-builder-route-workspace] [data-builder-stop-index="1"]');
     await row.waitFor();
-    assert.match((await row.innerText()).replaceAll(/\s+/g, " "), /Transfer needs checking\s*To confirm\s*Road estimate only · 455 km · about 6h 30m driving/);
+    assert.match((await row.innerText()).replaceAll(/\s+/g, " "), /Transfer needs checking\s*Timing to confirm\s*Road estimate only · 455 km · about 6h 30m driving/);
     assert.doesNotMatch(await row.innerText(), /Transport needs checking\./);
     assert.deepEqual(builder.errors, []);
   } finally { await builder.close(); }
