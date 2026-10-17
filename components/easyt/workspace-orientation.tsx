@@ -423,7 +423,7 @@ export function useWorkspaceOrientationBlocker(blocked: boolean) {
   }, [blocked, id, setBlocked]);
 }
 
-export function WorkspaceOrientationLauncher({ onRenameTrip }: { onRenameTrip?: () => void } = {}) {
+export function WorkspaceOrientationLauncher({ onRenameTrip, renderTripActions }: { onRenameTrip?: () => void; renderTripActions?: (close: () => void) => ReactNode } = {}) {
   const context = useContext(WorkspaceOrientationContext);
   const [open, setOpen] = useState(false);
   const [menuPosition, setMenuPosition] = useState<CSSProperties>({});
@@ -472,6 +472,7 @@ export function WorkspaceOrientationLauncher({ onRenameTrip }: { onRenameTrip?: 
     {open && typeof document !== "undefined" ? createPortal(<div ref={menuRef} id="workspace-more-menu" role="menu" className={styles.menu} style={menuPosition}>
       {onRenameTrip ? <EasyTButton role="menuitem" size="small" variant="quiet" onClick={() => { buttonRef.current?.focus(); setOpen(false); onRenameTrip(); }}>Rename trip</EasyTButton> : null}
       <EasyTButton role="menuitem" size="small" variant="quiet" disabled={!context?.canReplay} onClick={() => { setOpen(false); context?.replay(buttonRef.current); }}>Show me around</EasyTButton>
+      {renderTripActions ? <><hr role="separator" />{renderTripActions(() => { buttonRef.current?.focus(); setOpen(false); })}</> : null}
     </div>, document.body) : null}
   </div>;
 }

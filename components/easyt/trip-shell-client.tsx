@@ -30,7 +30,8 @@ import { EasyTButton, EasyTLinkButton } from "./easyt-controls";
 import { EasyTField } from "./easyt-controls";
 import { MorroviaConfirmationDialog, MorroviaFormDialog, MorroviaSaveStatus, MorroviaStatusBanner } from "./morrovia-feedback";
 import { useWorkspaceOrientationBlocker, useWorkspaceOrientationTarget, WorkspaceOrientationLauncher } from "./workspace-orientation";
-import { renameTripIdentity, tripCustomTitle, tripDisplayTitle } from "@/lib/easyt/trip-display";
+import { renameTripIdentity, tripCustomTitle, tripDisplayTitle, tripOverviewDisplayTitle } from "@/lib/easyt/trip-display";
+import { TripOverviewLibraryActions } from "./trip-overview-library-actions";
 import { deriveTripDateFacts } from "@/lib/easyt/trip-facts";
 import { tripRouteDisplayLabel } from "@/lib/easyt/trip-legs";
 import { importedLegacyRepairContextAllows, repairEligibleSpreadsheetV1Trip } from "@/lib/easyt/imported-trip-hydration";
@@ -65,6 +66,7 @@ export function TripShellIdentityAndActions() {
   const mutation = useTripShellMutation();
   const trip = mutation.trip;
   const pathname = usePathname();
+  const isOverview = workspaceViewFromPathname(pathname, trip.id) === "overview";
   const routeLabel = tripRouteDisplayLabel(trip);
   const dateFacts = deriveTripDateFacts({ startDate: trip.startDate, endDate: trip.endDate });
   const duration = dateFacts.durationDays;
@@ -138,8 +140,8 @@ export function TripShellIdentityAndActions() {
   return <>
     <div className={styles.tripIdentity}>
       <p className={styles.eyebrow}>{status}</p>
-      <h1 id="trip-shell-title">{tripDisplayTitle(mutation.trip)}</h1>
-      <p className={styles.routeSummary}>{routeLabel}</p>
+      <h1 id="trip-shell-title">{isOverview ? tripOverviewDisplayTitle(mutation.trip) : tripDisplayTitle(mutation.trip)}</h1>
+      {!isOverview ? <p className={styles.routeSummary}>{routeLabel}</p> : null}
       <dl className={styles.metadata}>
         <div><dt><CalendarDays aria-hidden="true" /><span className={styles.srOnly}>Dates</span></dt><dd>{dateFacts.rangeLabel}</dd></div>
         <div><dt><Clock3 aria-hidden="true" /><span className={styles.srOnly}>Duration</span></dt><dd>{duration ? `${duration} ${duration === 1 ? "day" : "days"}` : "Duration to confirm"}</dd></div>
@@ -152,7 +154,7 @@ export function TripShellIdentityAndActions() {
       <EasyTLinkButton className={styles.editAction} href={mapWorkspaceHref(trip.id, null, "plan", null, null, null, tripWorkspaceHref(trip.id))} icon={Map} size="small" variant="secondary">Explore map</EasyTLinkButton>
       <EasyTLinkButton className={styles.editAction} href={personalRouteHref(trip.id)} icon={Route} size="small" variant="secondary">View my route</EasyTLinkButton>
       <EasyTLinkButton className={styles.editAction} href={editHref} icon={Edit3} size="small" variant="secondary" aria-label="Edit trip brief">Edit</EasyTLinkButton>
-      <WorkspaceOrientationLauncher onRenameTrip={openRename} />
+      {isOverview ? <TripOverviewLibraryActions mutation={mutation} onRenameTrip={openRename} /> : <WorkspaceOrientationLauncher onRenameTrip={openRename} />}
     </div>
     <MorroviaFormDialog
       open={renameOpen}

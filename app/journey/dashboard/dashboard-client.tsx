@@ -12,14 +12,13 @@ import {
   MoreHorizontal,
   RotateCcw,
   Trash2,
-  X,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { authClient } from "@/lib/auth-client";
 import type { EasyTTrip, TripStatus } from "@/lib/easyt/trip";
-import { EasyTButton, EasyTField, EasyTLinkButton, EasyTSelect, EasyTSegmentedControl, EasyTTextArea } from "@/components/easyt/easyt-controls";
-import { MorroviaBriefNotice, MorroviaConfirmationDialog, MorroviaStatusBanner } from "@/components/easyt/morrovia-feedback";
+import { EasyTButton, EasyTField, EasyTLinkButton, EasyTSelect, EasyTSegmentedControl } from "@/components/easyt/easyt-controls";
+import { MorroviaBriefNotice, MorroviaStatusBanner } from "@/components/easyt/morrovia-feedback";
 import ResilientImage from "@/components/easyt/resilient-image";
 import MorroviaPhotoCredit from "@/components/easyt/morrovia-photo-credit";
 import CountryVisualFallback, { CountryIllustrationLabel } from "@/components/easyt/country-visual-fallback";
@@ -33,7 +32,6 @@ import {
   loadCachedTrip,
   listTripRecoveries,
   loadTripRecovery,
-  reconcileTripCloudMutation,
   resolveCanonicalEquivalentTripRecovery,
   tripRecoveryIsAwaitingCanonicalSave,
   EASYT_LAST_OWNER_KEY,
@@ -41,7 +39,6 @@ import {
 } from "@/lib/easyt/storage";
 import { ownerBoundaryState } from "@/lib/easyt/private-browser-context";
 import { journeyReauthenticationPath, tripSyncRecoveryPath } from "@/lib/easyt/trip-continuity";
-import { runClientMutation } from "@/lib/easyt/client-mutation";
 import { trackEvent } from "@/lib/analytics";
 import { easytCopy, languageFromStorage, type EasyTLanguage } from "@/lib/easyt/i18n";
 import { mapWorkspaceHref, tripWorkspaceHref } from "@/lib/easyt/trip-workspace-links";
@@ -54,7 +51,8 @@ import { mapRouteLegsFromTrip } from "@/lib/easyt/map-spatial-context";
 import { routeDestinationPhoto } from "@/lib/easyt/route-images";
 import { dashboardLibraryTrips, type DashboardLibraryView, type DashboardSortMode } from "@/lib/easyt/dashboard-library";
 import { dashboardTripPhoto, dashboardTripCoverPlace, type DashboardTripPhoto } from "@/lib/easyt/dashboard-trip-image";
-import accountStyles from "../account.module.css";
+import {useTripLibraryActions} from "@/components/easyt/use-trip-library-actions";
+import {TripLibraryActionDialogs} from "@/components/easyt/trip-library-action-dialogs";
 import styles from "./dashboard.module.css";
 
 type StampSummary = { countryId: string; status: "visited" | "want" };
@@ -167,22 +165,6 @@ export default function DashboardClient({ trips, stamps, ownerId }: { trips: Eas
   const [view, setView] = useState<DashboardLibraryView>("all");
   const [sort, setSort] = useState<DashboardSortMode>("updated");
   const [query, setQuery] = useState("");
-  const [working, setWorking] = useState<string | null>(null);
-  const [workingAction, setWorkingAction] = useState<"archive" | "restore" | "duplicate" | "delete" | null>(null);
-  const actionInFlightRef = useRef<string | null>(null);
-  const [actionError, setActionError] = useState("");
-  const [failedAction, setFailedAction] = useState<{ id: string; action: "archive" | "restore" | "duplicate" } | null>(null);
-  const [actionNotice, setActionNotice] = useState<{ title: string; detail: string } | null>(null);
-  const [pendingDelete, setPendingDelete] = useState<EasyTTrip | null>(null);
-  const [deleteError, setDeleteError] = useState("");
-  const [gifting, setGifting] = useState<EasyTTrip | null>(null);
-  const [giftEmail, setGiftEmail] = useState("");
-  const [giftNote, setGiftNote] = useState("");
-  const [giftState, setGiftState] = useState<"idle" | "sending" | "complete">("idle");
-  const [giftError, setGiftError] = useState("");
-  const [claimUrl, setClaimUrl] = useState("");
-  const giftRequestRef = useRef<{ signature: string; key: string } | null>(null);
-  const [delivered, setDelivered] = useState(false);
   const [language, setLanguage] = useState<EasyTLanguage>("en");
   const [storedRecoveryIssues, setRecoveryIssues] = useState<Record<string, DashboardRecoveryIssue>>({});
   const [recoveryIssuesScope, setRecoveryIssuesScope] = useState<string | null>(null);
@@ -215,6 +197,8 @@ export default function DashboardClient({ trips, stamps, ownerId }: { trips: Eas
 
   const ownerScope = JSON.stringify([ownerId, session?.user?.id ?? null, sessionPending, boundary]);
   ownerScopeRef.current = ownerScope;
+  const libraryActions = useTripLibraryActions({ownerId,ownerScope,boundary,language,refresh: () => router.refresh()});
+  const {working,workingAction,actionError,failedAction,actionNotice,setActionNotice,runAction,openGift,requestDelete}=libraryActions;
   const recoveryIssues = recoveryIssuesScope === ownerScope ? storedRecoveryIssues : {};
   const recoveryState = recoveryIssuesScope === ownerScope ? storedRecoveryState : "checking";
 
@@ -317,150 +301,6 @@ export default function DashboardClient({ trips, stamps, ownerId }: { trips: Eas
   const featuredPhoto = featuredTrip ? cardPhotos.get(featuredTrip.id) : null;
   useEffect(() => setFeaturedImageDisplayed(false), [featuredPhoto?.src]);
 
-  const runAction = async (id: string, action: "archive" | "restore" | "duplicate") => {
-    if (actionInFlightRef.current || boundary !== "current") return;
-    const actionScope = ownerScope;
-    const isCurrent = () => mountedRef.current && ownerScopeRef.current === actionScope;
-    actionInFlightRef.current = id;
-    setWorking(id);
-    setWorkingAction(action);
-    setActionError("");
-    setFailedAction(null);
-    try {
-      const result = await runClientMutation(() => fetch(`/api/easyt/trips/${encodeURIComponent(id)}`, {
-        method: "PATCH",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ action }),
-      }));
-      if (!isCurrent()) return;
-      if (result.kind === "network") {
-        setActionError("This trip could not be updated. Check your connection and try again.");
-        setFailedAction({ id, action });
-        return;
-      }
-      const response = result.value;
-      if (response.ok) {
-        const payload = await response.json() as { trip?: EasyTTrip };
-        if (!isCurrent()) return;
-        if (!payload.trip || payload.trip.ownerId !== ownerId || (action !== "duplicate" && payload.trip.id !== id)) {
-          setActionError("The account response did not confirm this trip update. Refresh your trips before trying again.");
-          return;
-        }
-        if ((action === "archive" || action === "restore") && payload.trip) {
-          await reconcileTripCloudMutation(ownerId, id, action, payload.trip);
-          if (!isCurrent()) return;
-          setActionNotice({
-            title: action === "archive"
-              ? (language === "es" ? "Viaje archivado" : "Trip archived")
-              : (language === "es" ? "Viaje restaurado" : "Trip restored"),
-            detail: action === "archive"
-              ? (language === "es"
-                ? `“${tripDisplayTitle(payload.trip)}” está ahora en Viajes archivados.`
-                : `“${tripDisplayTitle(payload.trip)}” is now in Archived trips.`)
-              : (language === "es"
-                ? `“${tripDisplayTitle(payload.trip)}” está ahora en Viajes activos.`
-                : `“${tripDisplayTitle(payload.trip)}” is now in Active trips.`),
-          });
-        }
-        if (action === "duplicate" && payload.trip) {
-          setActionNotice({
-            title: language === "es" ? "Viaje duplicado" : "Trip duplicated",
-            detail: language === "es"
-              ? `“${tripDisplayTitle(payload.trip)}” está ahora en Viajes activos.`
-              : `“${tripDisplayTitle(payload.trip)}” is now in Active trips.`,
-          });
-        }
-        router.refresh();
-      }
-      else {
-        setActionError(response.status === 401 ? "Your session ended. Sign in again before changing this trip." : "This trip could not be updated. Please try again.");
-        if (response.status !== 401) setFailedAction({ id, action });
-      }
-    } catch {
-      if (!isCurrent()) return;
-      setActionError("This trip could not be updated. Check your connection and try again.");
-      setFailedAction({ id, action });
-    } finally {
-      if (actionInFlightRef.current === id) actionInFlightRef.current = null;
-      if (isCurrent()) { setWorking(null); setWorkingAction(null); }
-    }
-  };
-
-  const remove = async (trip: EasyTTrip) => {
-    if (actionInFlightRef.current || boundary !== "current") return;
-    const actionScope = ownerScope;
-    const isCurrent = () => mountedRef.current && ownerScopeRef.current === actionScope;
-    actionInFlightRef.current = trip.id;
-    setWorking(trip.id);
-    setWorkingAction("delete");
-    setDeleteError("");
-    try {
-      const response = await fetch(`/api/easyt/trips/${encodeURIComponent(trip.id)}`, { method: "DELETE" });
-      if (!isCurrent()) return;
-      if (response.ok) {
-        await reconcileTripCloudMutation(ownerId, trip.id, "delete");
-        if (!isCurrent()) return;
-        setPendingDelete(null);
-        setActionNotice({
-          title: language === "es" ? "Viaje eliminado" : "Trip deleted",
-          detail: language === "es"
-            ? `“${tripDisplayTitle(trip)}” se eliminó de tu cuenta.`
-            : `“${tripDisplayTitle(trip)}” was removed from your account.`,
-        });
-        router.refresh();
-      }
-      else setDeleteError(response.status === 401 ? "Your session ended. Sign in again before deleting this trip." : "This trip could not be deleted. Please try again.");
-    } catch {
-      if (!isCurrent()) return;
-      setDeleteError("This trip could not be deleted. Check your connection and try again.");
-    } finally {
-      if (actionInFlightRef.current === trip.id) actionInFlightRef.current = null;
-      if (isCurrent()) { setWorking(null); setWorkingAction(null); }
-    }
-  };
-
-  const openGift = (trip: EasyTTrip) => {
-    setGifting(trip);
-    setGiftEmail("");
-    setGiftNote("");
-    setGiftState("idle");
-    setGiftError("");
-    setClaimUrl("");
-    giftRequestRef.current = null;
-  };
-
-  const sendGift = async () => {
-    if (!gifting) return;
-    setGiftState("sending");
-    setGiftError("");
-    try {
-      const signature = JSON.stringify([gifting.id, giftEmail.trim().toLowerCase(), giftNote.trim()]);
-      if (giftRequestRef.current?.signature !== signature) {
-        giftRequestRef.current = { signature, key: crypto.randomUUID() };
-      }
-      const response = await fetch(`/api/easyt/trips/${encodeURIComponent(gifting.id)}/gift`, {
-        method: "POST",
-        headers: {
-          "content-type": "application/json",
-          "idempotency-key": giftRequestRef.current.key,
-        },
-        body: JSON.stringify({ email: giftEmail, note: giftNote }),
-      });
-      const payload = (await response.json()) as { error?: string; claimUrl?: string; delivered?: boolean };
-      if (!response.ok || !payload.claimUrl) {
-        setGiftError(response.status === 401 ? "Your session ended. Sign in again before sharing this trip." : payload.error || (language === "es" ? "No se pudo crear la invitación." : "Unable to create invitation."));
-        return;
-      }
-      setClaimUrl(payload.claimUrl);
-      setDelivered(Boolean(payload.delivered));
-      setGiftState("complete");
-    } catch {
-      setGiftError(language === "es" ? "Revisa tu conexión e inténtalo de nuevo." : "Check your connection and try again.");
-    } finally {
-      setGiftState((current) => current === "complete" ? current : "idle");
-    }
-  };
-
   const stampSummary = summarizeStampRows(stamps);
   const visitedCount = stampSummary.visited;
   const wantCount = stampSummary.want;
@@ -540,7 +380,7 @@ export default function DashboardClient({ trips, stamps, ownerId }: { trips: Eas
                 <Link href={tripWorkspaceHref(featuredTrip.id)} onClick={() => trackTripReopened(featuredTrip)}>Overview</Link>
                 <Link href={`/journey/${encodeURIComponent(featuredTrip.id)}/itinerary`} onClick={() => trackTripReopened(featuredTrip)}>Itinerary</Link>
               </nav>
-              <TripActionsMenu trip={featuredTrip} language={language} copy={copy} working={working === featuredTrip.id} workingAction={working === featuredTrip.id ? workingAction : null} onAction={runAction} onGift={openGift} onRemove={(trip) => { setDeleteError(""); setPendingDelete(trip); }} />
+              <TripActionsMenu trip={featuredTrip} language={language} copy={copy} working={working === featuredTrip.id} workingAction={working === featuredTrip.id ? workingAction : null} onAction={runAction} onGift={openGift} onRemove={requestDelete} />
             </div>
           </div>
           <Link className={styles.currentMap} href={mapWorkspaceHref(featuredTrip.id, null, "plan", null, null, null, "/journey/dashboard")} onClick={() => trackTripReopened(featuredTrip)} aria-label={`${isSpanish ? "Abrir mapa de" : "Open map for"} ${tripDisplayTitle(featuredTrip)}`}>
@@ -588,10 +428,10 @@ export default function DashboardClient({ trips, stamps, ownerId }: { trips: Eas
         </div>
 
         <div id="dashboard-trip-grid" className={styles.tripSections}>
-          {sort === "updated" ? <RecentlyUpdatedTrips trips={secondaryTrips} cardPhotos={cardPhotos} recoveryIssues={recoveryIssues} language={language} copy={copy} working={working} workingAction={workingAction} onAction={runAction} onGift={openGift} onPhotoError={markCoverFailed} onRemove={(trip) => { setDeleteError(""); setPendingDelete(trip); }} /> : <>
-            <JourneySection kind="upcoming" trips={upcomingTrips} cardPhotos={cardPhotos} recoveryIssues={recoveryIssues} language={language} copy={copy} working={working} workingAction={workingAction} onAction={runAction} onGift={openGift} onPhotoError={markCoverFailed} onRemove={(trip) => { setDeleteError(""); setPendingDelete(trip); }} />
-            <JourneySection kind="idea" trips={ideaTrips} cardPhotos={cardPhotos} recoveryIssues={recoveryIssues} language={language} copy={copy} working={working} workingAction={workingAction} onAction={runAction} onGift={openGift} onPhotoError={markCoverFailed} onRemove={(trip) => { setDeleteError(""); setPendingDelete(trip); }} />
-            <JourneySection kind="past" trips={pastTrips} cardPhotos={cardPhotos} recoveryIssues={recoveryIssues} language={language} copy={copy} working={working} workingAction={workingAction} onAction={runAction} onGift={openGift} onPhotoError={markCoverFailed} onRemove={(trip) => { setDeleteError(""); setPendingDelete(trip); }} />
+          {sort === "updated" ? <RecentlyUpdatedTrips trips={secondaryTrips} cardPhotos={cardPhotos} recoveryIssues={recoveryIssues} language={language} copy={copy} working={working} workingAction={workingAction} onAction={runAction} onGift={openGift} onPhotoError={markCoverFailed} onRemove={requestDelete} /> : <>
+            <JourneySection kind="upcoming" trips={upcomingTrips} cardPhotos={cardPhotos} recoveryIssues={recoveryIssues} language={language} copy={copy} working={working} workingAction={workingAction} onAction={runAction} onGift={openGift} onPhotoError={markCoverFailed} onRemove={requestDelete} />
+            <JourneySection kind="idea" trips={ideaTrips} cardPhotos={cardPhotos} recoveryIssues={recoveryIssues} language={language} copy={copy} working={working} workingAction={workingAction} onAction={runAction} onGift={openGift} onPhotoError={markCoverFailed} onRemove={requestDelete} />
+            <JourneySection kind="past" trips={pastTrips} cardPhotos={cardPhotos} recoveryIssues={recoveryIssues} language={language} copy={copy} working={working} workingAction={workingAction} onAction={runAction} onGift={openGift} onPhotoError={markCoverFailed} onRemove={requestDelete} />
           </>}
           {!secondaryTrips.length && (Boolean(query) || view !== "all") ? (
             <div className={styles.emptyState}>
@@ -619,45 +459,7 @@ export default function DashboardClient({ trips, stamps, ownerId }: { trips: Eas
         <Link href="/journey/stamps">{isSpanish ? "Tus sellos" : "Your Stamps"}<span>{visitedCount} {isSpanish ? "visitados" : "visited"} · {wantCount} {isSpanish ? "deseados" : "want to go"}</span><ArrowRight aria-hidden="true" /></Link>
       </footer>
 
-      {gifting ? (
-        <div className={accountStyles.giftOverlay} role="presentation" onMouseDown={() => setGifting(null)}>
-          <section className={accountStyles.giftDialog} role="dialog" aria-modal="true" aria-labelledby="gift-title" onMouseDown={(event) => event.stopPropagation()}>
-            <EasyTButton className={accountStyles.giftClose} icon={X} iconOnly size="small" variant="secondary" onClick={() => setGifting(null)} aria-label={isSpanish ? "Cerrar diálogo" : "Close gift dialog"}>{isSpanish ? "Cerrar diálogo" : "Close gift dialog"}</EasyTButton>
-            <span className={accountStyles.giftDialogIcon}><Gift aria-hidden="true" /></span>
-            <p className={accountStyles.eyebrow}>{copy.giftTitle}</p>
-            <h2 id="gift-title">{isSpanish ? "Compartir" : "Share"} {tripDisplayTitle(gifting)}</h2>
-            {giftState === "complete" ? (
-              <div className={accountStyles.giftComplete}>
-                <p>{delivered ? copy.inviteSent : copy.inviteReady}</p>
-                <input value={claimUrl} readOnly aria-label={isSpanish ? "Enlace para reclamar" : "Gift claim link"} />
-                <EasyTButton className={accountStyles.primaryLink} onClick={() => navigator.clipboard.writeText(claimUrl)}>{copy.copyLink}</EasyTButton>
-              </div>
-            ) : (
-              <>
-                <p className={accountStyles.muted}>{copy.draftHint}</p>
-                <EasyTField fieldClassName={accountStyles.field} label={copy.recipient} type="email" value={giftEmail} onChange={(event) => setGiftEmail(event.target.value)} placeholder="friend@example.com" autoComplete="email" />
-                <EasyTTextArea fieldClassName={accountStyles.field} label={copy.note} value={giftNote} onChange={(event) => setGiftNote(event.target.value)} placeholder={isSpanish ? "Un pequeño adelanto para nuestra próxima aventura…" : "A little head start for our next adventure…"} maxLength={500} />
-                {giftError ? <p className={accountStyles.syncError}>{giftError}</p> : null}
-                <EasyTButton className={accountStyles.primaryLink} loading={giftState === "sending"} onClick={sendGift}>{giftState === "sending" ? copy.creatingInvite : copy.createInvite}</EasyTButton>
-              </>
-            )}
-          </section>
-        </div>
-      ) : null}
-      <MorroviaConfirmationDialog
-        open={Boolean(pendingDelete)}
-        title={pendingDelete ? `${isSpanish ? "¿Eliminar" : "Delete"} “${tripDisplayTitle(pendingDelete)}”?` : "Delete trip?"}
-        detail={isSpanish ? "Este viaje se eliminará de tu cuenta." : "This trip will be removed from your account."}
-        consequences={isSpanish
-          ? ["El plan, las notas y los datos guardados de este viaje dejarán de estar disponibles.", "Esta acción no se puede deshacer desde Morrovia."]
-          : ["The plan, notes and saved trip data will no longer be available.", "This action cannot be undone in Morrovia."]}
-        cancelLabel={isSpanish ? "Conservar viaje" : "Keep trip"}
-        confirmLabel={isSpanish ? "Eliminar viaje" : "Delete trip"}
-        confirming={Boolean(pendingDelete && working === pendingDelete.id)}
-        error={deleteError || undefined}
-        onCancel={() => { if (!working) { setPendingDelete(null); setDeleteError(""); } }}
-        onConfirm={() => { if (pendingDelete) void remove(pendingDelete); }}
-      />
+      <TripLibraryActionDialogs actions={libraryActions} language={language} />
     </>
   );
 }

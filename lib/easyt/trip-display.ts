@@ -1,4 +1,5 @@
 import type { EasyTTrip } from "./trip.ts";
+import { countryFor } from "./country-registry.ts";
 
 type DisplayTrip = Pick<EasyTTrip, "title" | "stops"> & {
   brief: Pick<EasyTTrip["brief"], "origin" | "customTitle">;
@@ -60,4 +61,16 @@ export function tripDisplayTitle(trip: DisplayTrip) {
       return true;
     });
   return formatTripPlaceList(geographicPlaces);
+}
+
+/** Overview identity is display-only. Unknown legacy provenance stays untouched. */
+export function tripOverviewDisplayTitle(trip: DisplayTrip) {
+  if (typeof trip.brief.customTitle === "string" && trip.brief.customTitle.trim()) return trip.brief.customTitle;
+  if (!Object.prototype.hasOwnProperty.call(trip.brief, "customTitle") && trip.title.trim()
+    && trip.title !== legacyGeneratedTripTitle(trip)) return trip.title;
+  const countries = [...trip.stops].sort((a, b) => a.order - b.order)
+    .map(stop => countryFor(stop.countryCode ?? "") ?? countryFor(stop.country))
+    .filter((country): country is NonNullable<typeof country> => Boolean(country))
+    .map(country => country.name);
+  return countries.length ? formatTripPlaceList([...new Set(countries)]) : "Your trip";
 }

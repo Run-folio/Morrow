@@ -625,3 +625,24 @@ export const PersistedPracticalPrep: Story = {
 };
 
 export const PersistedPracticalPrepMobile: Story = { ...PersistedPracticalPrep, globals: { viewport: { value: "morrovia390", isRotated: false } } };
+
+// Disposable identity/action fixture. Production handlers remain unchanged;
+// browser qualification supplies isolated API responses and never sends a gift.
+const overviewIdentityTrip: EasyTTrip = {
+  ...baseTrip, id: "storybook-overview-identity", title: "London Gatwick → Beijing → Shanghai → Tokyo",
+  brief: { ...baseTrip.brief, customTitle: null, origin: "London Gatwick", originCountry: "United Kingdom", originCoordinates: [-0.1821, 51.1537], bookings: [], routeAssessment: undefined },
+  stops: baseTrip.stops.map((stop,index) => ({ ...stop, ...[
+    {name:"Beijing",country:"China",latitude:39.9042,longitude:116.4074},
+    {name:"Shanghai",country:"China",latitude:31.2304,longitude:121.4737},
+    {name:"Tokyo",country:"Japan",latitude:35.6762,longitude:139.6503},
+  ][index]! })),
+  legs: baseTrip.legs.map(leg => ({...leg,mode:"flight",durationMinutes:null,doorToDoorMinutes:null,distanceKm:null,provider:null,provenance:undefined,routeMetadata:{}})),
+  planItems: baseTrip.planItems.map(item => ({...item,image:null})),
+};
+const identityParameters = { feedbackAuthenticatedFixture: true, nextjs: { appDirectory: true, navigation: { pathname: "/journey/storybook-overview-identity" } } };
+export const LibraryActionsOwner: Story = { args: { trip: overviewIdentityTrip }, parameters: identityParameters };
+export const LibraryActionsOwnerMobile: Story = { ...LibraryActionsOwner, globals: { viewport: { value: "morrovia390", isRotated: false } } };
+export const LibraryActionsGuest: Story = { ...LibraryActionsOwner, args: { trip: {...overviewIdentityTrip,ownerId:null} }, parameters: {...identityParameters,feedbackAuthenticatedFixture:false} };
+export const AuthoredIdentity: Story = { ...LibraryActionsOwner, args: {trip:{...overviewIdentityTrip,title:"Our spring adventure",brief:{...overviewIdentityTrip.brief,customTitle:"Our spring adventure"}}} };
+export const AmbiguousLegacyIdentity: Story = { ...LibraryActionsOwner, args: {trip:{...overviewIdentityTrip,brief:Object.fromEntries(Object.entries(overviewIdentityTrip.brief).filter(([key])=>key!=="customTitle")) as EasyTTrip["brief"]}} };
+export const OtherWorkspaceRouteContext: Story = { ...LibraryActionsOwner, parameters: {...identityParameters,nextjs:{appDirectory:true,navigation:{pathname:"/journey/storybook-overview-identity/itinerary"}}} };

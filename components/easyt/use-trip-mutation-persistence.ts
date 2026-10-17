@@ -298,6 +298,17 @@ export function useTripMutationPersistence(initialTrip: EasyTTrip, enabled: bool
   }, []);
   const hasPendingSaves = useCallback(() => pendingSavesRef.current.size > 0 || pendingLocalWritesRef.current.size > 0, []);
 
+  // Read-only eligibility for account-level actions. A resolved save waiter is
+  // insufficient when its exact device acknowledgement could not be verified.
+  const isAccountCopySettled = useCallback(() => {
+    const current = tripRef.current;
+    const scope = JSON.stringify([initialTrip.id, initialTrip.ownerId, session?.user?.id ?? null, enabled]);
+    return enabled && scopeIsCurrent(scope) && recoveryReadyRef.current && !conflictRef.current
+      && current.id === initialTrip.id && current.ownerId === initialTrip.ownerId
+      && Boolean(current.ownerId) && current.ownerId === session?.user?.id
+      && recoveryHandleRef.current === null && !hasPendingSaves();
+  }, [enabled, initialTrip.id, initialTrip.ownerId, session?.user?.id, scopeIsCurrent, hasPendingSaves]);
+
   const adoptDeviceTrip = useCallback(async (next: EasyTTrip) => {
     if (localRecoveryWriteRef.current || pendingSavesRef.current.size || pendingLocalWritesRef.current.size) return false;
     const current = tripRef.current, scope = liveScopeRef.current;
@@ -345,7 +356,7 @@ export function useTripMutationPersistence(initialTrip: EasyTTrip, enabled: bool
   return {
     acceptCanonicalTrip, adoptCanonicalTrip, adoptDeviceTrip, conflictTrip,
     currentRecoveryWrite: recoveryHandleRef.current, error, failure, hasPendingSaves, historicalRecovery,
-    recoveryClassifiedFor, recoveryReady, isPending: (key: string) => Boolean(pendingKeys[key]),
+    recoveryClassifiedFor, recoveryReady, isAccountCopySettled, isPending: (key: string) => Boolean(pendingKeys[key]),
     lastAcknowledgedMutation, mutateTrip, openConflictCloudCopy, saveState, trip, waitForPending,
   };
 }

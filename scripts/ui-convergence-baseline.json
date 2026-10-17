@@ -31,7 +31,6 @@
     "native-control": {
       "app/journey/admin/feedback/feedback-triage-list.tsx": 4,
       "app/journey/admin/users/user-support.tsx": 6,
-      "app/journey/dashboard/dashboard-client.tsx": 1,
       "app/journey/dashboard/first-trip-guide.tsx": 1,
       "app/journey/error.tsx": 1,
       "app/journey/gift/[token]/claim-gift.tsx": 1,
