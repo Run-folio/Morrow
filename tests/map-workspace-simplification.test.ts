@@ -99,8 +99,8 @@ test("Map Viator requests and reveals real inventory in six-item batches with th
   assert.match(liveInventory, /Show more experiences/);
   assert.match(seeRefinement, /Browse tours and activities/);
   assert.doesNotMatch(seeRefinement, /More ways to explore|Booking options from/);
-  const inventoryRoute = readFileSync(new URL("../app/api/journey-activity-inventory/route.ts", import.meta.url), "utf8");
-  assert.match(inventoryRoute, /workspace === "map" \? 12 : 4/);
+  const inventoryRequest = readFileSync(new URL("../lib/easyt/viator-public-request.ts", import.meta.url), "utf8");
+  assert.match(inventoryRequest, /workspace === 'map' \? 12 : 4/);
   assert.match(liveInventory, /MorroviaAffiliateLink/);
   assert.match(liveInventory, /affiliateDisclosure/);
 });

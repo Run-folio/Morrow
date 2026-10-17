@@ -1,4 +1,5 @@
 import "server-only";
+import {createViatorAdmission, viatorRetryAfter, type ViatorAdmission} from "./viator-admission.server.ts";
 
 import { withProviderTimeout } from "./provider-timeout.ts";
 import type { ActivityInventoryItem } from "./activity-inventory.ts";
@@ -23,13 +24,15 @@ export class ViatorAffiliateError extends Error {
   readonly category: ViatorFailureCategory;
   readonly status?: number;
   readonly lookupAttempted?: boolean;
+  readonly retryAfterSeconds?: number;
 
-  constructor(category: ViatorFailureCategory, message = "Viator activities are unavailable.", options: { status?: number; lookupAttempted?: boolean } = {}) {
+  constructor(category: ViatorFailureCategory, message = "Viator activities are unavailable.", options: { status?: number; lookupAttempted?: boolean; retryAfterSeconds?: number } = {}) {
     super(message);
     this.name = "ViatorAffiliateError";
     this.category = category;
     this.status = options.status;
     this.lookupAttempted = options.lookupAttempted;
+    this.retryAfterSeconds = options.retryAfterSeconds;
   }
 }
 
@@ -61,6 +64,9 @@ const apiBaseByEnvironment: Record<ViatorApiEnvironment, string> = {
   sandbox: "https://api.sandbox.viator.com/partner",
   production: "https://api.viator.com/partner",
 };
+type SearchResult = {activities: ActivityInventoryItem[]; counts?: PlanningResultCounts; cacheOutcome: PlanningCacheOutcome};
+const sharedProductRequests = new WeakMap<ViatorActivityCache, Map<string, Promise<SearchResult>>>();
+const localOutboundWork = new Map<string, number>();
 const sharedActivityCache: ViatorActivityCache = new Map();
 const sharedTaxonomyCache: ViatorTaxonomyCache = new Map();
 const sharedDestinationResolutionCache: ViatorDestinationResolutionCache = new Map();
@@ -210,6 +216,7 @@ function cloneActivities(activities: ActivityInventoryItem[]) {
 
 export type ViatorAffiliateClientOptions = {
   request?: FetchLike;
+  admission?: ViatorAdmission;
   cache?: ViatorActivityCache;
   taxonomyCache?: ViatorTaxonomyCache;
   destinationResolutionCache?: ViatorDestinationResolutionCache;
@@ -224,6 +231,8 @@ export type ViatorAffiliateClientOptions = {
 export class ViatorAffiliateClient {
   private readonly configuration: ViatorApiConfiguration;
   private readonly request: FetchLike;
+  private readonly admission: ViatorAdmission;
+  private readonly productRequests: Map<string, Promise<SearchResult>>;
   private readonly cache: ViatorActivityCache;
   private readonly taxonomyCache: ViatorTaxonomyCache;
   private readonly taxonomyRequests: Map<string, Promise<ViatorDestinationTaxonomy>>;
@@ -240,6 +249,10 @@ export class ViatorAffiliateClient {
     this.configuration = configuration;
     this.request = resolvedOptions.request ?? fetch;
     this.cache = resolvedOptions.cache ?? sharedActivityCache;
+    this.admission = resolvedOptions.admission ?? createViatorAdmission(configuration.environment);
+    let requests = sharedProductRequests.get(this.cache);
+    if (!requests) { requests = new Map(); sharedProductRequests.set(this.cache, requests); }
+    this.productRequests = requests;
     this.taxonomyCache = resolvedOptions.taxonomyCache ?? sharedTaxonomyCache;
     this.taxonomyRequests = resolvedOptions.taxonomyCache ? new Map() : sharedTaxonomyRequests;
     this.destinationResolutionCache = resolvedOptions.destinationResolutionCache ?? sharedDestinationResolutionCache;
@@ -256,21 +269,58 @@ export class ViatorAffiliateClient {
   }
 
   private async providerJson(url: string, label: string, init: RequestInit) {
+    // A local shedder protects the coordinator itself. Only SQL establishes the
+    // cross-instance ceiling; this never waits or substitutes for a SQL claim.
+    const scope=this.configuration.environment;
+    const active=localOutboundWork.get(scope) ?? 0;
+    if (active>=2) throw new ViatorAffiliateError("rate_limited",undefined,{lookupAttempted:false,retryAfterSeconds:60});
+    localOutboundWork.set(scope,active+1);
+    let released=false;
+    const releaseLocal=()=>{
+      if (released) return;
+      released=true;localOutboundWork.set(scope,(localOutboundWork.get(scope) ?? 1)-1);
+    };
+    return this.admittedProviderJson(url,label,init,releaseLocal);
+  }
+
+  private async admittedProviderJson(url: string, label: string, init: RequestInit, releaseLocal:()=>void) {
+    const claiming=Promise.resolve().then(()=>this.admission.claim());
+    let claim;
+    try { claim = await withProviderTimeout({label:"Activity admission",timeoutMs:2000,request:()=>claiming}); }
+    catch {
+      // A response deadline does not cancel Neon HTTP SQL. Retain the local
+      // slot until it settles; a late permit is released without any dispatch.
+      void claiming.then(async late=>{if(late.admitted)await this.admission.release(late.token);})
+        .catch(()=>{}).finally(releaseLocal);
+      throw new ViatorAffiliateError("unavailable", undefined, {lookupAttempted:false, retryAfterSeconds:60});
+    }
+    if (!claim.admitted) {
+      releaseLocal();
+      throw new ViatorAffiliateError("rate_limited", undefined, {lookupAttempted:false, retryAfterSeconds:claim.retryAfterSeconds});
+    }
+    const token=claim.token;
     try {
-      return await withProviderTimeout({
-        label,
-        timeoutMs: this.timeoutMs,
-        request: async (signal) => {
-          const response = await this.request(url, { ...init, cache: "no-store", signal });
-          if (response.status === 401 || response.status === 403) throw new ViatorAffiliateError("authentication", undefined, { status: response.status });
-          if (response.status === 429) throw new ViatorAffiliateError("rate_limited", undefined, { status: 429 });
-          if (!response.ok) throw new ViatorAffiliateError("unavailable", undefined, { status: response.status });
+      return await withProviderTimeout({label, timeoutMs:this.timeoutMs, request: async signal => {
+        try {
+          const response=await this.request(url,{...init,cache:"no-store",signal});
+          if (response.status===429) {
+            const retryAfterSeconds=viatorRetryAfter(response.headers.get("retry-after"),this.now());
+            await this.admission.cooldown(retryAfterSeconds);
+            throw new ViatorAffiliateError("rate_limited",undefined,{status:429,retryAfterSeconds});
+          }
+          if (response.status===401 || response.status===403) throw new ViatorAffiliateError("authentication",undefined,{status:response.status});
+          if (!response.ok) throw new ViatorAffiliateError("unavailable",undefined,{status:response.status});
           try { return await response.json(); } catch { throw new ViatorAffiliateError("malformed"); }
-        },
-      });
+        } finally {
+          // Runs when the underlying operation settles, including after timeout.
+          // If it never settles, the SQL lease expires; do not free a live call.
+          try { await this.admission.release(token); } catch { /* Retain expiring lease on database failure. */ }
+          finally { releaseLocal(); }
+        }
+      }});
     } catch (error) {
       if (error instanceof ViatorAffiliateError) throw error;
-      if (error instanceof Error && (error.name === "TimeoutError" || error.name === "AbortError")) throw new ViatorAffiliateError("timeout");
+      if (error instanceof Error && (error.name==="TimeoutError" || error.name==="AbortError")) throw new ViatorAffiliateError("timeout");
       throw new ViatorAffiliateError("unavailable");
     }
   }
@@ -347,6 +397,12 @@ export class ViatorAffiliateClient {
     if (cached && cached.expiresAt > this.now()) return {activities:cloneActivities(cached.activities),...(cached.counts?{counts:{...cached.counts}}:{}),cacheOutcome:'hit'};
     if (cached) this.cache.delete(cacheKey);
 
+    const pending = this.productRequests.get(cacheKey);
+    if (pending) {
+      const result=await pending;
+      return {...result,activities:cloneActivities(result.activities),...(result.counts?{counts:{...result.counts}}:{})};
+    }
+    const work=(async () => {
     const payload = await this.providerJson(`${this.configuration.apiBaseUrl}/products/search`, "Viator product search", {
       method: "POST",
       headers: { ...this.providerHeaders(locale), "Content-Type": "application/json" },
@@ -357,6 +413,14 @@ export class ViatorAffiliateClient {
     const counts={raw:(payload as {products:unknown[]}).products.length,admitted:activities.length,returned:activities.length};
     this.cache.set(cacheKey, { expiresAt: this.now() + this.cacheTtlMs, activities: cloneActivities(activities),counts });
     while (this.cache.size > this.maxCacheEntries) this.cache.delete(this.cache.keys().next().value!);
-    return {activities:cloneActivities(activities),counts,cacheOutcome:'miss'};
+    return {activities:cloneActivities(activities),counts,cacheOutcome:'miss' as const};
+    })();
+    this.productRequests.set(cacheKey,work);
+    try {
+      const result=await work;
+      return {...result,activities:cloneActivities(result.activities),...(result.counts?{counts:{...result.counts}}:{})};
+    } finally {
+      if (this.productRequests.get(cacheKey)===work) this.productRequests.delete(cacheKey);
+    }
   }
 }

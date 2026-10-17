@@ -10,6 +10,7 @@ const fixture=()=>((globalThis as any).__phase1Api);
 async function handler(path:string) {
  const realViator=resolve('lib/easyt/viator-affiliate.server.ts'),realRoad=resolve('lib/easyt/road-routing.ts'),realReference=resolve('lib/easyt/place-reference.server.ts');
  const bundled=await build({entryPoints:[path],bundle:true,write:false,platform:'node',format:'esm',plugins:[{name:'external-boundaries-only',setup(b){
+  b.onResolve({filter:/^\.\/viator-admission\.server\.ts$/},()=>({path:'admission',namespace:'fixture'}));
   b.onResolve({filter:/^server-only$/},()=>({path:'empty',namespace:'fixture'}));
   b.onResolve({filter:/^next\/server$/},()=>({path:'next',namespace:'fixture'}));
   b.onResolve({filter:/^@\/lib\/easyt\/owner$/},()=>({path:'owner',namespace:'fixture'}));
@@ -17,6 +18,7 @@ async function handler(path:string) {
   b.onResolve({filter:/^@\/lib\/easyt\/viator-affiliate\.server$/},()=>({path:'viator',namespace:'fixture'}));
   b.onResolve({filter:/^\.\/road-routing\.server\.ts$/},()=>({path:'road',namespace:'fixture'}));
   b.onLoad({filter:/.*/,namespace:'fixture'},({path})=>({resolveDir:process.cwd(),contents:path==='empty'?'':path==='next'?`export const NextResponse={json:(body,options)=>Response.json(body,options)}; export class NextRequest {}`:
+   path==='admission'?`export function createViatorAdmission(){return {claim:async()=>({admitted:true,token:'fixture'}),release:async()=>{},cooldown:async()=>{}}} export const viatorRetryAfter=()=>60;`:
    path==='owner'?`export async function requireEasyTOwner(){if(globalThis.__phase1Api.guest)throw new Error('Unauthorized');return 'disposable-owner';}`:
    path==='reference'?`import * as real from ${JSON.stringify(realReference)};export const trustedLocalActivityCentre=real.trustedLocalActivityCentre;export function trustedPinnedActivityCentre(input){if(globalThis.__phase1Api.identityUnavailable)throw new Error('Private reference storage failure');return real.trustedPinnedActivityCentre(input);}`:
    path==='road'?`import {RoadRoutingError} from ${JSON.stringify(realRoad)};export {RoadRoutingError};export class OpenRouteServiceRoadRoutingProvider {constructor(){if(globalThis.__phase1Api.configurationMissing)throw new RoadRoutingError('configuration');}provider='openrouteservice';async route(){globalThis.__phase1Api.providerCalls++;throw new RoadRoutingError(globalThis.__phase1Api.roadFailure??'timeout');}}`:
@@ -37,7 +39,7 @@ const tokyo=selected('Tokyo','Japan');
 const discovery=(name='Tokyo',country='Japan',id=tokyo.canonicalPlaceId!,providerId=tokyo.providerId!)=>
  new URL('http://localhost/api/journey-discover?'+new URLSearchParams({destination:name,country,canonicalPlaceId:id,providerId,lat:'35.6896',lon:'139.6917'}));
 const inventoryBody={destination:{canonicalPlaceId:tokyo.canonicalPlaceId,name:'Tokyo',country:'Japan',countryCode:'JP',coordinates:{latitude:35.6895,longitude:139.69171}},workspace:'itinerary'};
-const inventoryRequest=(body:any=inventoryBody)=>new Request('http://localhost/api/journey-activity-inventory',{method:'POST',body:JSON.stringify(body)});
+const inventoryRequest=(body:any=inventoryBody)=>new Request('http://localhost/api/journey-activity-inventory',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(body)});
 const product=(id:string)=>({productCode:id,title:`Disposable culture tour ${id}`,destinations:[{ref:'123',primary:true}],duration:{fixedDurationInMinutes:120}});
 
 test('trusted pinned Tokyo discovery uses source coordinates while stored legacy points remain unchanged',async t=>{
@@ -165,12 +167,11 @@ test('local identity-source failure does not claim a Wikipedia request',async t=
  assert.equal(body.counts,undefined);assert.equal(fixture().requests.length,0);
  assert.equal(JSON.stringify(body).includes('Private reference'),false);
 });
-test('anonymous commercial remains401 and does not claim zero stock or call provider',async t=>{
- setup(t,{guest:true,request:async()=>{assert.fail('guest cannot call inventory provider');}});
+test('anonymous commercial search is public and a real empty page is not an authentication failure',async t=>{
+ setup(t,{guest:true});
  const response=await (await api.inventory).POST(inventoryRequest());const body=await response.json();
- assert.equal(response.status,401);assert.deepEqual(body.activities,[]);assert.equal(body.assessment?.reason,'auth_required');
- assert.equal(body.assessment?.retrieval,'blocked');assert.equal(body.assessment?.retryable,false);assert.equal(body.counts,undefined);
- assert.equal(body.assessment?.evidence,'insufficient','authentication does not prove invalid geography');
+ assert.equal(response.status,200);assert.deepEqual(body.activities,[]);assert.equal(body.assessment?.reason,'successful_empty');
+ assert.equal(body.assessment?.retrieval,'completed');assert.deepEqual(body.counts,{raw:0,admitted:0,returned:0});
 });
 test('commercial transient failure, cached empty and expired cache remain distinguishable',async()=>{
  const {ViatorAffiliateClient}=await handler('lib/easyt/viator-affiliate.server.ts');

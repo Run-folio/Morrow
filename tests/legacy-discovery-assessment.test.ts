@@ -131,7 +131,7 @@ for (const [name, path, getProps] of [
   ['Explore tours', 'components/easyt/trip-explore-workspace.tsx', (base = fixture()) => ({ trip: base, initialCategory: 'tours' })],
 ] as const) {
   for (const [kind, state, status, wantSignIn] of [
-    ['guest', assessment('blocked', 'auth_required'), 401, true],
+    ['legacy guest denial', assessment('blocked', 'auth_required'), 401, false],
     ['provider authentication', assessment('unavailable', 'auth_required', false, 'provider'), 503, false],
     ['identity', assessment('blocked', 'identity_required'), 400, false],
     ['incomplete', assessment('not-attempted'), 200, false],
@@ -139,6 +139,7 @@ for (const [name, path, getProps] of [
     const view = mount(t, path, getProps(), () => Response.json({ activities: [activity], assessment: state }, { status })); await view.settle();
     assert.ok(view.statuses().some(status => status.state === 'error'));
     assert.equal(view.nodes().some(node => node.type === Button && node.props.children === 'Sign in'), wantSignIn);
+    assert.ok(view.statuses().every(status => !/sign in/i.test(status.detail ?? '')));
     assert.doesNotMatch(view.text(), /No tours ideas|Tokyo Museum tour/); assert.ok(view.statuses().every(status => !status.onRetry));
   });
   test(`${name} forwards its existing provider pin and completed empty does not show failure`, async t => {
@@ -267,7 +268,7 @@ test('Explore sign-out clears previous commercial results and rejects late forme
   const old=deferred<Response>(),auth:{data:any;isPending:boolean}={data:{user:{id:'owner-a'}},isPending:false};let calls=0;
   const view=mount(t,'components/easyt/trip-explore-workspace.tsx',{trip:fixture(),initialCategory:'tours'},()=>++calls===1?old.promise:Response.json({activities:[],assessment:assessment('blocked','auth_required')},{status:401}),auth);
   await view.settle();auth.data=null;view.render();await view.settle();assert.equal(view.calls.length,2);assert.equal(view.calls[0]!.init.signal.aborted,true);
-  old.resolve(Response.json({activities:[activity]}));await view.settle();assert.doesNotMatch(view.text(),/Tokyo Museum tour/);assert.match(view.text(),/Sign in/);
+  old.resolve(Response.json({activities:[activity]}));await view.settle();assert.doesNotMatch(view.text(),/Tokyo Museum tour|Sign in/);
 });
 test('Explore clears already rendered commercial results while a new auth scope is still pending',async t=>{
   const auth:{data:any;isPending:boolean}={data:{user:{id:'owner-a'}},isPending:false};

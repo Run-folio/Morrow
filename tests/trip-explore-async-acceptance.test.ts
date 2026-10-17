@@ -29,6 +29,7 @@ function harness(queued = false) {
     idea: { ...first.idea, id: 'second-museum', placeId: 'second-museum', title: 'Second museum' }, title: 'Second museum' };
   const states: any[] = [], cleanup: Array<() => void> = [], mountEffects: Array<() => void | (() => void)> = [], queuedState: Array<() => void> = [];
   let deferState = false;
+  let session: unknown = null;
   const discoveryEffects = new Map<string, () => void | (() => void)>();
   const sourceCallbacks: Array<(snapshot: explore.ExploreDiscoveryLaneSnapshot) => void> = [];
   let cursor = 0;
@@ -74,7 +75,7 @@ function harness(queued = false) {
     },
   };
   const imports: Record<string, any> = {
-    react: hooks, '@/lib/auth-client': { authClient: { useSession: () => ({ data: null, isPending: false }) } }, 'lucide-react': new Proxy({}, { get: () => () => null }),
+    react: hooks, '@/lib/auth-client': { authClient: { useSession: () => ({ data: session, isPending: false }) } }, 'lucide-react': new Proxy({}, { get: () => () => null }),
     '@/lib/analytics': { trackEvent: (name: string, data: Record<string, unknown>) => events.push({ name, data }) },
     '@/lib/easyt/local-place': localPlace, '@/lib/easyt/trip': tripModel, '@/lib/easyt/explore': { ...explore,
       streamExploreDiscoveryLane: (_requests: unknown[], snapshot: (snapshot: explore.ExploreDiscoveryLaneSnapshot) => void) => {
@@ -88,8 +89,8 @@ function harness(queued = false) {
       let active = true;
       return { signal: new AbortController().signal, commit: (apply: () => void) => { if (active) apply(); }, dispose: () => { active = false; } };
     } }, '@/lib/easyt/recommendation-performance': { recommendationDurationMs: (start: number, end: number) => end - start },
-    '@/lib/easyt/planning-evidence-presentation': { planningLaneMessage: () => 'Provider unavailable', planningRequiresSignIn: () => false },
-    '@/lib/easyt/trip-continuity': {}, '@/lib/easyt/recommendation-detail': { recommendationDetailForExploreResult: () => ({}) },
+    '@/lib/easyt/planning-evidence-presentation': { publicActivityLaneMessage: () => 'Provider unavailable', planningRequiresSignIn: () => false },
+    '@/lib/easyt/trip-continuity': {}, '@/lib/easyt/booking-readiness': {getCurrentPartnerAction:()=>undefined}, '@/lib/easyt/recommendation-detail': { recommendationDetailForExploreResult: () => ({}) },
     '@/lib/easyt/trip-workspace-links': { itineraryWorkspaceHref: () => '/fixture/day', mapWorkspaceHref: () => '/fixture/map', exploreWorkspaceHref: () => '/fixture/explore' },
     '@/lib/easyt/map-result-selection': { mapResultSelectionId: () => 'selection', mapResultSelectionIdForIdea: () => 'selection', mapResultHandoffForExploreResult: () => ({}) },
     '@/lib/easyt/route-timeline': { routeTimelineStopsForTrip: () => [] },
@@ -126,6 +127,9 @@ function harness(queued = false) {
   const schedule = (tree = render()) => button('Add to Day 2', tree).props.onClick;
   const notices = () => findAll(render(), node => node.props?.role === 'status');
   return { render, button, save, schedule, notices, accepted, updateGate, requests, events, first, second, Detail, StopTrack, findAll,
+    setSession: (next: unknown) => { session = next; },
+    commercialCallback: () => sourceCallbacks[1]!,
+    restartCommercial: () => { const dispose = discoveryEffects.get("commercial")!(); if (dispose) cleanup.push(dispose); return sourceCallbacks[sourceCallbacks.length - 1]!; },
     trip: () => trip, switchTrip: (patch: Partial<EasyTTrip>) => { trip = requireReadableTripDocument({ ...trip, ...patch }); },
     setRequestedDay: (day: number | null) => { requestedDayNumber = day; },
     replaceSource: (next: explore.ExploreResult | null) => {
@@ -401,5 +405,33 @@ for (const update of ['same', 'unrelated', 'failed-lane'] as const) {
     if (update === 'failed-lane') h.sourceSnapshot([], 0, 1);
     h.accepted.resolve(true); assert.equal(await pending, true); h.flushState();
     assert.equal(h.notices().length, 1); assert.equal(h.events.filter(event => event.name === 'explore_added_to_day').length, 1);
+  });
+}
+
+for (const transition of ['sign-in', 'sign-out', 'destination'] as const) {
+  test(`public commercial inventory discards a late response after ${transition} and accepts the current request`, () => {
+    const h = harness();
+    if (transition === 'sign-out') h.setSession({user:{id:'disposable-owner'}});
+    h.startSyntheticDiscovery();
+    const before = JSON.stringify(h.trip());
+    const stop = h.trip().stops[0]!;
+    const tour = explore.exploreResultForActivity(stop, {
+      provider:'viator',source:'viator',providerProductId:'LATE-PUBLIC',title:'Late public tour',
+      destination:{canonicalPlaceId:stop.canonicalPlaceId!,label:stop.name},
+      productUrl:'https://www.viator.com/tours/Tokyo/LATE-PUBLIC?medium=api',
+      provenance:{kind:'live_provider_search',provider:'viator',checkedAt:'2026-10-17T00:00:00Z'},
+    },h.trip());
+    const old = h.commercialCallback();
+    if (transition === 'sign-in') h.setSession({user:{id:'disposable-owner'}});
+    else if (transition === 'sign-out') h.setSession(null);
+    else h.findAll(h.render(), node => node.type === h.StopTrack)[0].props.onSelectStop('kyoto');
+    h.render();old({results:[tour],status:'ready',pendingCount:0,failedCount:0});
+    assert.equal(h.findAll(h.render(),node=>node.props?.['aria-label']==='Open details for Late public tour').length,0);
+    const current=h.restartCommercial();
+    if (transition!=='destination') {
+      current({results:[tour],status:'ready',pendingCount:0,failedCount:0});
+      assert.equal(h.findAll(h.render(),node=>node.props?.['aria-label']==='Open details for Late public tour').length,1);
+    }
+    assert.equal(JSON.stringify(h.trip()),before);assert.equal(h.requests.length,0);
   });
 }

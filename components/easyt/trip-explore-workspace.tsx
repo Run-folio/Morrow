@@ -46,9 +46,9 @@ import {
 } from "@/lib/easyt/explore";
 import { createAbortableEffectScope } from "@/lib/easyt/abortable-effect";
 import { recommendationDurationMs } from "@/lib/easyt/recommendation-performance";
-import { planningEvidenceFromResponse, planningLaneMessage, planningLaneResponseStatus, planningRequiresSignIn } from "@/lib/easyt/planning-evidence-presentation";
+import { planningEvidenceFromResponse, publicActivityLaneMessage, planningLaneResponseStatus } from "@/lib/easyt/planning-evidence-presentation";
 import type { PlanningEvidenceState } from "@/lib/easyt/planning-evidence-state";
-import { tripSyncSignInPath } from "@/lib/easyt/trip-continuity";
+import { getCurrentPartnerAction } from "@/lib/easyt/booking-readiness";
 import type { ItineraryDiscoveryPlace } from "@/lib/easyt/itinerary-day-context";
 import { localSearchPayload, type JourneyLocalPlace } from "@/lib/easyt/local-place";
 import { recommendationDetailForExploreResult } from "@/lib/easyt/recommendation-detail";
@@ -625,7 +625,7 @@ export default function TripExploreWorkspace({
     ? restaurantStatus === "degraded" && restaurantAssessment?.retryable !== false
     : (organicStatus === "degraded" || organicAssessment && organicAssessment.retrieval !== "completed") && organicAssessment?.retryable !== false
     || (commercialStatus === "degraded" || commercialAssessment && commercialAssessment.retrieval !== "completed") && commercialAssessment?.retryable !== false;
-  const needsSignIn = activeSourcePlan.tours && commercialStatus === "degraded" && planningRequiresSignIn(commercialAssessment);
+  const experienceFallback = activeSourcePlan.tours && commercialStatus !== "loading" && !commercialResults.length ? getCurrentPartnerAction("activities") : undefined;
 
   return <section className={styles.workspace} aria-label="Explore recommendations">
     {notice || mutation.error ? <div className={styles.feedbackRow}>
@@ -682,9 +682,13 @@ export default function TripExploreWorkspace({
         state="error"
         title={restaurantAssessment?.reason === "identity_required" && activeSourcePlan.restaurants ? "This stop needs a mapped location"
           : incomplete ? "Ideas are not ready yet" : activeSourcePlan.restaurants ? "We couldn’t load food ideas right now" : "We couldn’t load ideas right now"}
-        detail={relevantAssessments.length ? [...new Set(relevantAssessments.map(state => planningLaneMessage(state, "en")))].join(" ") : "Your trip and saved ideas are unchanged."}
+        detail={relevantAssessments.length ? [...new Set(relevantAssessments.map(state => publicActivityLaneMessage(state, "en")))].join(" ") : "Your trip and saved ideas are unchanged."}
         onRetry={canRetry ? () => setRetryVersion(current => current + 1) : undefined}
-      />{activeSourcePlan.restaurants && restaurantAssessment?.reason === "identity_required" ? <EasyTLinkButton variant="secondary" size="small" href={tripBuilderHref(workingTrip.id, workingTrip.ownerId)}>Adjust route</EasyTLinkButton> : null}{needsSignIn ? <EasyTButton variant="secondary" size="small" onClick={() => window.location.assign(tripSyncSignInPath(workingTrip.id))}>Sign in</EasyTButton> : null}</> : null}
+      />{activeSourcePlan.restaurants && restaurantAssessment?.reason === "identity_required" ? <EasyTLinkButton variant="secondary" size="small" href={tripBuilderHref(workingTrip.id, workingTrip.ownerId)}>Adjust route</EasyTLinkButton> : null}</> : null}
+      {experienceFallback ? <section className={styles.empty} aria-label="Browse tours and activities">
+        <MorroviaAffiliateLink action={experienceFallback} context={{placement:"explore_experiences",tripId:workingTrip.id,...(destinationId?{stopId:destinationId}:{}),workspaceView:"explore"}} variant="quiet" />
+        <small>{compactAffiliateDisclosure}</small>
+      </section> : null}
       {resultsPresentation === "empty" ? <section className={styles.empty} aria-live="polite"><strong>No {exploreCategoryLabels[category].toLocaleLowerCase()} ideas found</strong><p>Try For you or another category for {destinationLabel}.</p></section> : null}
 
       {visibleResults.length ? <div className={styles.grid} id="explore-results">
