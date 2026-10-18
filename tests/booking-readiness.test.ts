@@ -1,10 +1,14 @@
 import assert from "node:assert/strict";
-import test from "node:test";
+import test, { afterEach, beforeEach, mock } from "node:test";
 import { affiliateClickEventForAction } from "../lib/easyt/affiliate-click.ts";
 import { affiliatePartners, buildBookingReadiness, getAccommodationBookingUrl, getBookingAction, omioBookingActionForLeg, transportAffiliateActionForLeg } from "../lib/easyt/booking-readiness.ts";
 import { transportPresentationState } from "../lib/easyt/itinerary-transport-agenda.ts";
+import { buildOmioRouteSearchLink } from "../lib/easyt/omio-search-link.ts";
 import { LEGACY_ROAD_COMPATIBILITY_SOURCE } from "../lib/easyt/transport-leg-compatibility.ts";
 import type { EasyTTrip } from "../lib/easyt/trip.ts";
+
+beforeEach(() => mock.timers.enable({ apis: ["Date"], now: new Date("2026-09-01T00:00:00.000Z") }));
+afterEach(() => mock.timers.reset());
 
 const trip = (): EasyTTrip => ({
   schemaVersion: 1, id: "bookable", ownerId: null, title: "Bookable", status: "draft", startDate: "2026-10-01", endDate: "2026-10-06", travellers: 2, currency: "GBP",
@@ -112,6 +116,7 @@ test("uses Trip.com car rental only when a driving route actually calls for a ca
 
 test("selected transport handoff routes eligible road legs to Trip.com car hire and keeps Omio mode-aware", () => {
   const source = trip();
+  const beforeTrip = new Date("2026-09-01T00:00:00.000Z");
   const road = { ...mainLeg(source), mode: "road" as const, classification: "intercity" as const, distanceKm: 180, durationMinutes: 240, confidence: "medium" as const };
   const carHire = transportAffiliateActionForLeg(source, road);
   assert.deepEqual({ provider: carHire?.provider, category: carHire?.category, href: carHire?.href, cta: carHire?.cta }, {
@@ -122,13 +127,17 @@ test("selected transport handoff routes eligible road legs to Trip.com car hire 
   assert.equal(omioBookingActionForLeg(source, road), null);
 
   for (const mode of ["train", "ferry", "flight"] as const) {
-    const scheduled = transportAffiliateActionForLeg(source, { ...mainLeg(source), mode, classification: "intercity" });
-    assert.deepEqual({ provider: scheduled?.provider, href: scheduled?.href }, { provider: "omio", href: affiliatePartners.omio.transportUrl });
+    const scheduled = transportAffiliateActionForLeg(source, { ...mainLeg(source), mode, classification: "intercity" }, beforeTrip);
+    assert.equal(scheduled?.provider, "omio");
+    if (mode === "flight" || mode === "train") {
+      const search = new URL(new URL(scheduled!.href).searchParams.get("u")!);
+      assert.equal(search.searchParams.get("travelMode"), mode === "train" ? "TRAIN" : "FLIGHT");
+    } else assert.equal(scheduled?.href, affiliatePartners.omio.transportUrl);
   }
-  const coach = transportAffiliateActionForLeg(source, { ...road, provider: "Regional coach service" });
+  const coach = transportAffiliateActionForLeg(source, { ...road, provider: "Regional coach service" }, beforeTrip);
   assert.deepEqual({ provider: coach?.provider, href: coach?.href }, { provider: "omio", href: affiliatePartners.omio.transportUrl });
-  const unknown = transportAffiliateActionForLeg(source, { ...road, mode: "unknown", durationMinutes: null, doorToDoorMinutes: null });
-  assert.deepEqual({ provider: unknown?.provider, href: unknown?.href }, { provider: "omio", href: affiliatePartners.omio.transportUrl });
+  const unknown = transportAffiliateActionForLeg(source, { ...road, mode: "unknown", durationMinutes: null, doorToDoorMinutes: null }, beforeTrip);
+  assert.equal(unknown, null, "unknown modes do not imply Omio route support");
 });
 
 test("Windhoek to Sossusvlei keeps car hire available for a low-confidence road planning estimate", () => {
@@ -225,8 +234,8 @@ test("does not create an airport-transfer action without an existing airport con
   assert.equal(buildBookingReadiness(trip()).some((action) => action.category === "ground-transport"), false);
 });
 
-test("keeps existing Omio and Viator partner destinations unchanged", () => {
-  assert.equal(affiliatePartners.omio.transportUrl, "https://omio.sjv.io/2RBeqD");
+test("uses the verified existing Omio Impact tracking structure and existing Viator destination", () => {
+  assert.equal(affiliatePartners.omio.transportUrl, "https://omio.sjv.io/c/7643967/409973/7385");
   assert.equal(affiliatePartners.viator.activitiesUrl, "https://vi.me/IiuWB");
 });
 
@@ -236,7 +245,7 @@ test("does not offer flights while a blocking schedule conflict remains", () => 
   assert.equal(buildBookingReadiness(source).some((action) => action.category === "flight"), false);
 });
 
-test("offers the exact Omio link for unbooked major train, coach, flight and ferry transfers", () => {
+test("offers route-specific Omio links for verified flight and train modes, and general links otherwise", () => {
   const modes = [
     { mode: "train" as const, provider: "Rail estimate" },
     { mode: "road" as const, provider: "Coach estimate" },
@@ -247,11 +256,51 @@ test("offers the exact Omio link for unbooked major train, coach, flight and fer
     const source = trip();
     source.legs[1] = { ...mainLeg(source), mode, provider };
     const action = omioBookingActionForLeg(source, mainLeg(source), new Date("2026-09-01T12:00:00"));
-    assert.equal(action?.href, affiliatePartners.omio.transportUrl);
+    if (mode === "flight" || mode === "train") {
+      const tracked = new URL(action!.href);
+      const search = new URL(tracked.searchParams.get("u")!);
+      assert.equal(search.searchParams.get("departurePosTerm"), "Paris, France");
+      assert.equal(search.searchParams.get("arrivalPosTerm"), "Rome, Italy");
+      assert.equal(search.searchParams.get("departureDate"), "2026-10-04");
+      assert.equal(search.searchParams.get("travelMode"), mode === "train" ? "TRAIN" : "FLIGHT");
+    } else assert.equal(action?.href, affiliatePartners.omio.transportUrl);
     assert.equal(action?.transferId, "leg");
     assert.equal(action?.originStopId, "paris");
     assert.equal(action?.destinationStopId, "rome");
   }
+});
+
+test("Omio route-link builder validates verified train and flight modes, encoding, places and future dates", () => {
+  const now = new Date("2026-10-01T12:00:00.000Z");
+  for (const mode of ["flight", "train"] as const) {
+    const href = buildOmioRouteSearchLink({ mode, originName: "Paris", originCountry: "France", destinationName: "Berlin", destinationCountry: "Germany", departureDate: "2026-11-20", currency: "GBP", now });
+    assert.ok(href, `${mode} produces a route-specific handoff`);
+    const tracked = new URL(href);
+    assert.equal(tracked.origin + tracked.pathname, "https://omio.sjv.io/c/7643967/409973/7385");
+    assert.match(tracked.search, /departurePosTerm%3DParis%252C%2BFrance/, "nested position terms are encoded through the Impact URL");
+    const search = new URL(tracked.searchParams.get("u")!);
+    assert.equal(search.hostname, "www.omio.com");
+    assert.equal(search.pathname, "/links/626fa8a9-f982-43d0-ace9-9a13f6b14612");
+    assert.deepEqual(Object.fromEntries(search.searchParams), {
+      departurePosTerm: "Paris, France", arrivalPosTerm: "Berlin, Germany", departureDate: "2026-11-20",
+      travelMode: mode === "train" ? "TRAIN" : "FLIGHT", locale: "en", currency: "GBP",
+    });
+  }
+  for (const invalid of [
+    { mode: "road", originName: "Paris", originCountry: "France", destinationName: "Berlin", destinationCountry: "Germany", departureDate: "2026-11-20" },
+    { mode: "ferry", originName: "Paris", originCountry: "France", destinationName: "Berlin", destinationCountry: "Germany", departureDate: "2026-11-20" },
+    { mode: "bus", originName: "Paris", originCountry: "France", destinationName: "Berlin", destinationCountry: "Germany", departureDate: "2026-11-20" },
+    { mode: "flight", originName: "Paris", originCountry: "", destinationName: "Berlin", destinationCountry: "Germany", departureDate: "2026-11-20" },
+    { mode: "flight", originName: "Paris", originCountry: "France", destinationName: "Berlin", destinationCountry: "Germany", departureDate: "2026-02-30" },
+    { mode: "flight", originName: "Paris", originCountry: "France", destinationName: "Berlin", destinationCountry: "Germany", departureDate: "2026-09-30" },
+  ]) assert.equal(buildOmioRouteSearchLink({ ...invalid, now }), null);
+});
+
+test("Omio uses the displayed agenda departure date when building a route handoff", () => {
+  const source = trip();
+  const action = omioBookingActionForLeg(source, mainLeg(source), new Date("2026-09-01T12:00:00Z"), "2026-11-20");
+  const search = new URL(new URL(action!.href).searchParams.get("u")!);
+  assert.equal(search.searchParams.get("departureDate"), "2026-11-20");
 });
 
 test("keeps canonical intercity rail eligible when transfer impact includes local access prose", () => {
@@ -349,4 +398,11 @@ test("uses cautious Omio copy for a partial transfer and no booking actions afte
   ended.startDate = "2026-08-01";
   ended.endDate = "2026-08-05";
   assert.deepEqual(buildBookingReadiness(ended, {}, new Date("2026-09-01T12:00:00")), []);
+});
+
+test("does not link unknown transport modes to Omio as if the route were supported", () => {
+  const source = trip();
+  const unknown = { ...mainLeg(source), mode: "unknown" as const, durationMinutes: null, doorToDoorMinutes: null };
+  assert.equal(omioBookingActionForLeg(source, unknown, new Date("2026-09-01T12:00:00Z")), null);
+  assert.equal(transportAffiliateActionForLeg(source, unknown, new Date("2026-09-01T12:00:00Z")), null);
 });

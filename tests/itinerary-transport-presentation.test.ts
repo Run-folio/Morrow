@@ -50,11 +50,18 @@ test("Transport presents a calm chronological journey list with one contextual a
   assert.match(transport, /leg\.doorToDoorMinutes \?\? leg\.durationMinutes/);
   assert.match(transport, /data-knowledge=\{transportJourneyKnowledge\(leg\)\}/);
   assert.match(transport, /View details/);
+  assert.match(transport, /role="list"/);
+  assert.match(transport, /role="listitem"/);
+  assert.match(transport, /aria-expanded=\{selected\}/);
+  assert.match(transport, /aria-controls=\{`transport-detail-\$\{leg\.id\}`\}/);
   assert.match(transport, /item\.booking\?\.url/);
-  assert.match(transport, /item\.booking \? null : transportAffiliateActionForLeg\(trip, leg\)/);
+  assert.match(transport, /item\.booking \|\| item\.bookingMismatch \|\| !isFutureDate\(item\.date\) \? null : transportAffiliateActionForLeg\(trip, leg/);
   assert.match(transport, /data-presentation-state=\{state\}/);
   assert.match(transport, /data-knowledge=\{transportJourneyKnowledge\(leg\)\}/);
   assert.match(transport, /durationMinutes === null \? null/);
+  assert.match(transport, /showCurrentDuration=\{false\}/, "expanded Transport details keep the selected-mode control without repeating the row duration");
+  const compactNote = transport.slice(transport.indexOf("function noteForJourney"), transport.indexOf("function detailNoteForJourney"));
+  assert.doesNotMatch(compactNote, /transferTimingLabel/, "compact caveats do not repeat the headline timing estimate");
   assert.doesNotMatch(transport, /<details className=\{styles\.details\}>/);
   assert.doesNotMatch(transport, /copy\.distance|copy\.confidence|copy\.source/);
 });
@@ -64,7 +71,7 @@ test("transport partners use the existing affiliate handoff and cannot mutate ca
   assert.match(transport, /<MorroviaAffiliateLink action=\{\{ \.\.\.action, cta: label \}\}/);
   assert.match(transport, /placement: "itinerary_transfer"/);
   assert.match(transport, /action=\{\{ \.\.\.action, cta: label \}\}/);
-  assert.match(transport, /cta: label \}\}[\s\S]*variant="secondary"/);
+  assert.match(transport, /cta: label \}\}[\s\S]*variant="primary"/);
   assert.doesNotMatch(transport, /MorroviaPartnerPromotion|Contact support|Need help/);
   assert.match(transport, /<small>\{affiliateDisclosure\}<\/small>/);
   const action = transport.slice(transport.indexOf("function TransportAffiliateAction"));
@@ -72,16 +79,17 @@ test("transport partners use the existing affiliate handoff and cannot mutate ca
 });
 
 test("Transport keeps planning information above a subordinate selected-journey handoff", () => {
-  assert.ok(transport.indexOf("item.from.name") < transport.indexOf("transferJourneyModeLabel(leg)"));
-  assert.ok(transport.indexOf("transferJourneyModeLabel(leg)") < transport.indexOf("noteForJourney(item, copy, language)"));
+  const card = transport.slice(transport.indexOf("function TransportCard"), transport.indexOf("function SelectedJourneyDetail"));
+  assert.ok(card.indexOf("item.from.name") < card.indexOf("transferJourneyModeLabel(leg)"));
+  assert.doesNotMatch(card, /styles\.note/);
   assert.match(transportStyles, /\.workspace \{[\s\S]*background: var\(--morrovia-paper\)/);
   assert.match(transportStyles, /\.card \{[\s\S]*background: var\(--morrovia-paper\)/);
   assert.doesNotMatch(transportStyles, /background: var\(--morrovia-lilac(?:-strong)?\)/);
-  assert.match(transportStyles, /\.omioAction > small \{[\s\S]*font: var\(--morrovia-type-fine-print\)/);
+  assert.match(transportStyles, /\.partnerNote \{[\s\S]*font: var\(--morrovia-type-fine-print\)/);
 });
 
 test("Transport synchronizes one occurrence-safe selected journey with the canonical map projection", () => {
-  assert.match(transport, /useState<string \| null>\(orientation\.legId \?\? items\[0\]\?\.leg\.id \?\? null\)/);
+  assert.match(transport, /useState<string \| null>\(orientation\.legId \?\? null\)/);
   assert.match(transport, /parseTransportWorkspaceTarget\(trip, searchParams\)/);
   assert.match(transport, /window\.history\.pushState/);
   assert.match(transport, /tripWithEffectiveTransportChoices\(trip\)/);
@@ -89,9 +97,9 @@ test("Transport synchronizes one occurrence-safe selected journey with the canon
   assert.match(transport, /<JourneyPlannerMap/);
   assert.match(transport, /selectedLegId=\{selectedLegId\}/);
   assert.match(transport, /onLegSelect=\{\(leg\) => selectJourney\(leg\.id\)\}/);
-  assert.match(transport, /const selectJourney = \(id: string\) => \{\s*setSelectedLegId\(id\)/);
+  assert.match(transport, /const selectJourney = \(id: string, toggle = false\) => \{/);
   assert.match(transport, /data-selected=\{selected \? "true" : undefined\}/);
-  assert.match(transportStyles, /grid-template-columns:\s*minmax\(0,\s*1\.08fr\)\s+minmax\(320px,\s*\.92fr\)/);
+  assert.match(transportStyles, /grid-template-columns:\s*minmax\(0,\s*1fr\)/);
   assert.doesNotMatch(transport, /cameraOcclusions=\{transportCameraOcclusions\}/);
   assert.doesNotMatch(transport, /detailRailRef|mapPanelRef|transportCameraOcclusions/);
 });
@@ -99,19 +107,23 @@ test("Transport synchronizes one occurrence-safe selected journey with the canon
 test("Transport preserves the list when the map is unavailable and keeps mobile list-first", () => {
   assert.match(transport, /onLifecycleChange=\{setMapLifecycle\}/);
   assert.match(transport, /mapLifecycle === "unavailable"/);
-  assert.match(transport, /Show route map/);
+  assert.match(transport, /Show map/);
   assert.match(transportStyles, /@media \(max-width: 820px\)[\s\S]*grid-template-columns:\s*minmax\(0,\s*1fr\)/);
-  assert.match(transportStyles, /@media \(max-width: 820px\)[\s\S]*\.mapPanel\[data-mobile-open="false"\]\s*\{[\s\S]*display:\s*none/);
+  assert.match(transportStyles, /\.mapPanel\[data-open="false"\]\s*\{\s*display:\s*none/);
   assert.match(transportStyles, /overflow-x:\s*clip/);
 });
 
 test("Transport summary and cards use traveller-facing states, mode-aware copy, and detail-only handoffs", () => {
-  assert.match(transport, /transportPresentationCounts\(items\)/);
+  assert.doesNotMatch(transport, /styles\.summaryCounts/);
+  assert.match(transport, /heading: "Your connections"/);
+  assert.doesNotMatch(transport, /This reflects your confirmation/);
+  const expansion = transport.slice(transport.indexOf("function SelectedJourneyDetail"), transport.indexOf("function TransportManualBookingEditor"));
+  assert.doesNotMatch(expansion, /<h3>|displayDate/);
   assert.match(transport, /planningEstimate: "Planning estimate"/);
   assert.match(transport, /roadEstimateNote/);
   assert.doesNotMatch(transport, /Planning estimate; check live schedules before booking\./);
   assert.match(transport, /Compare car hire/);
-  assert.match(transport, /transportAffiliateActionForLeg\(trip, leg\)/);
+  assert.match(transport, /transportAffiliateActionForLeg\(trip, leg/);
   assert.match(transport, /MorroviaAffiliateLink action=\{\{ \.\.\.action, cta: label \}\}/);
   assert.match(transport, /affiliateDisclosure/);
   assert.equal((transport.match(/<MorroviaAffiliateLink/g) ?? []).length, 1);
@@ -119,6 +131,10 @@ test("Transport summary and cards use traveller-facing states, mode-aware copy, 
 
 test("Transport traveller-facing copy has English and Spanish parity", () => {
   assert.match(transport, /planningEstimate: "Estimación de planificación"/);
+  assert.match(transport, /generalOmioSearch: "Abrir búsqueda general de Omio"/);
+  assert.match(transport, /No se transfieren la ruta, la fecha ni el número de viajeros/);
+  assert.match(transport, /generalOmioSearch: "Open general Omio search"/);
+  assert.match(transport, /Your route, date and traveller count aren't carried over/);
   assert.match(transport, /checkTimetable: "Consultar horario"/);
   assert.match(transport, /checkService: "Confirmar servicio"/);
   assert.match(transport, /needsCheckingStatus: "Necesita comprobarse"/);
@@ -132,6 +148,6 @@ test("the first-class workspace has responsive Storybook coverage and narrow-scr
     assert.match(stories, new RegExp(`export const ${story}`));
   }
   assert.match(transportStyles, /@media \(max-width: 820px\)[\s\S]*--morrovia-mobile-dock-offset/);
-  assert.match(transportStyles, /\.cardBody h3,[\s\S]*overflow-wrap: anywhere/);
-  assert.match(transportStyles, /@media \(max-width: 540px\)[\s\S]*grid-template-columns: 26px 36px minmax\(0, 1fr\)/);
+  assert.match(transportStyles, /\.cardBody h3 \{[\s\S]*overflow-wrap: anywhere/);
+  assert.match(transportStyles, /@media \(max-width: 540px\)[\s\S]*grid-template-columns: 52px 24px minmax\(0, 1fr\)/);
 });

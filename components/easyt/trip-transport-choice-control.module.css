@@ -11,3 +11,32 @@
   .options { align-items: stretch; flex-direction: column; }
   .options > button { width: 100%; }
 }
+
+.modeDialog { width: min(600px, calc(100vw - 28px)); max-height: calc(100dvh - 28px); padding: 0; overflow-y: auto; border: 1px solid var(--morrovia-line); border-radius: var(--morrovia-radius); background: var(--morrovia-paper); color: var(--morrovia-ink); box-shadow: var(--morrovia-shadow-overlay); }
+.modeDialog::backdrop { background: color-mix(in srgb, var(--morrovia-ink) 35%, transparent); backdrop-filter: blur(3px); }
+.dialogContent { display: grid; gap: 18px; padding: 28px; }
+.dialogHeader { display: flex; justify-content: space-between; align-items: start; gap: 12px; }
+.dialogHeader h2 { margin: 0; font: 500 30px/1.2 var(--morrovia-display); letter-spacing: -.025em; }
+.dialogDate { margin: 0 0 8px; color: var(--morrovia-muted); font: var(--morrovia-type-metadata); text-transform: uppercase; }
+.prompt { margin: 0; font: var(--morrovia-type-supporting-body); color: var(--morrovia-ink-soft); }
+.modeCards { display: grid; gap: 12px; }
+.modeCard { width: 100%; display: grid !important; grid-template-columns: 28px minmax(0, 1fr) auto; align-items: start !important; gap: 14px !important; padding: 20px !important; text-align: left; white-space: normal !important; }
+.modeCard[aria-checked="true"] { border-color: var(--morrovia-action); outline: 1px solid var(--morrovia-action); outline-offset: -1px; }
+.modeCard > svg { width: 25px !important; height: 25px !important; margin-top: 2px; color: var(--morrovia-signal); }
+.modeText { display: grid; gap: 7px; color: var(--morrovia-ink); }
+.modeText strong { font: var(--morrovia-type-supporting-body); font-weight: 700; }
+.modeText > span { font: var(--morrovia-type-supporting-body); }
+.modeText small { color: var(--morrovia-muted); font: var(--morrovia-type-fine-print); }
+.currentBadge { color: var(--morrovia-ink-soft); font: var(--morrovia-type-metadata); }
+.planNote { margin: 0; color: var(--morrovia-ink-soft); font: var(--morrovia-type-supporting-body); }
+.estimateDetails { color: var(--morrovia-ink-soft); font: var(--morrovia-type-supporting-body); }
+.estimateDetails[hidden] { display: none; }
+.estimateDetails p { margin: 0 0 8px; }
+.dialogFooter { display: flex; justify-content: end; gap: 10px; padding-top: 18px; border-top: 1px solid var(--morrovia-line); }
+@media (max-width: 540px) {
+  .dialogContent { padding: 20px; gap: 16px; }
+  .dialogHeader h2 { font-size: 27px; }
+  .modeCard { padding: 16px !important; grid-template-columns: 25px minmax(0, 1fr); }
+  .currentBadge { grid-column: 2; }
+  .dialogFooter > button { flex: 1; }
+}

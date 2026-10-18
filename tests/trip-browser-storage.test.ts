@@ -44,6 +44,7 @@ import {
   type EasyTBrowserStorage,
 } from "../lib/easyt/storage.ts";
 import { canonicalTripRevisionCanReplace, canApplyCanonicalCopilotChange, tripConflictResolutionActions, tripEditorSyncAction } from "../lib/easyt/trip-continuity.ts";
+import { markTransportLegBooked } from "../lib/easyt/transport-booking.ts";
 import { applyResolvedTripCopilotAction, type ResolvedTripCopilotAction } from "../lib/easyt/trip-copilot-actions.ts";
 import {
   applyTripCopilotPreview,
@@ -57,6 +58,7 @@ import { createDiscoveryDraft, reduceDiscoveryDraft } from "../lib/easyt/discove
 import { extractStructuredTripBrief } from "../lib/easyt/structured-trip-brief.ts";
 import type { EasyTTrip } from "../lib/easyt/trip.ts";
 import { NIKKO_ROUTE_FIXTURE } from "./fixtures/prebeta-place-trip-state.ts";
+import { IndexedDbModel } from "./helpers/recovery-indexeddb-model.ts";
 
 function browserTrip(overrides: Partial<EasyTTrip> = {}): EasyTTrip {
   return {
@@ -1018,6 +1020,18 @@ test("a guest recovery is explicitly claimed by A and is not readable when the b
   assert.equal(loadActiveTripFromStorage(storage, "owner-a")?.id, guestTrip.id);
 });
 
+test("older trip documents without manual transport fields remain readable and retain existing bookings", () => {
+  const existing = { id: "legacy-transport-ticket", type: "transport" as const, title: "Imported ticket", date: "2026-10-05", confirmation: "LEGACY-123", url: null,
+    transportDetails: { mode: "train" as const, from: "Paris", to: "Brussels" } };
+  const legacy = browserTrip({ brief: { ...browserTrip().brief, bookings: [existing] } });
+  const raw = JSON.parse(JSON.stringify(legacy)) as Record<string, any>;
+  delete raw.brief.bookings[0].transportLegBinding;
+  delete raw.brief.bookings[0].travellerMarkedBooked;
+  const loaded = requireReadableTripDocument(raw as unknown as EasyTTrip);
+  assert.deepEqual(loaded.brief.bookings?.[0], existing);
+  assert.equal("transportLegBinding" in loaded.brief.bookings![0], false);
+});
+
 test("the authenticated workspace promotes a complete planned guest recovery into one Account B trip", async () => {
   const storage = new MemoryBrowserStorage();
   const ownerId = "owner-b";
@@ -1043,6 +1057,10 @@ test("the authenticated workspace promotes a complete planned guest recovery int
       { id: "brussels-amsterdam", fromStopId: "brussels", toStopId: "amsterdam", fromEndpoint: { kind: "stop", id: "brussels", name: "Brussels", country: "Belgium", coordinates: [4.3517, 50.8503] }, toEndpoint: { kind: "stop", id: "amsterdam", name: "Amsterdam", country: "Netherlands", coordinates: [4.9041, 52.3676] }, classification: "intercity", mode: "train", distanceKm: 173, durationMinutes: 120, provider: "Morrovia planner", routeMetadata: {}, warnings: [] },
     ],
   });
+  const importedBooking = { id: "existing-imported-ticket", type: "transport" as const, title: "Existing imported ticket", date: "2026-10-05", confirmation: "KEEP-123", url: "https://rail.example/ticket", transportDetails: { mode: "train" as const, from: "Paris", to: "Brussels" }, importDetails: { candidateId: "candidate-imported", fingerprint: "fingerprint-imported", sources: ["calendar"] as Array<"calendar">, provider: "Rail provider", endDate: null, location: null, confidence: "high" as const } };
+  guestTrip.brief.bookings = [importedBooking];
+  const manualBookingTrip = markTransportLegBooked(guestTrip, "paris-brussels", { confirmation: "MANUAL-456", note: "Synthetic guest fixture" });
+  guestTrip.brief.bookings = manualBookingTrip.brief.bookings;
   const guestRecovery = saveTripRecoveryToStorage(storage, guestTrip, {
     ownerId: null,
     writeId: "guest-save-before-auth",
@@ -1058,6 +1076,9 @@ test("the authenticated workspace promotes a complete planned guest recovery int
   const recovery = loadTripRecoveryFromStorage(storage, guestTrip.id, ownerId);
   assert.ok(recovery);
   assert.deepEqual(recovery.trip, requireReadableTripDocument(guestTrip));
+  assert.deepEqual(recovery.trip.brief.bookings?.[0], importedBooking, "guest claim preserves the existing imported record byte-for-byte");
+  assert.equal(recovery.trip.brief.bookings?.[1]?.transportLegBinding?.legId, "paris-brussels");
+  assert.equal(recovery.trip.brief.bookings?.[1]?.confirmation, "MANUAL-456");
 
   const accountTrips = new Map<string, EasyTTrip>();
   const requests: Array<{ endpoint: string; method: string; ownerId: string | null; status: EasyTTrip["status"]; id: string }> = [];
@@ -1094,6 +1115,9 @@ test("the authenticated workspace promotes a complete planned guest recovery int
   assert.equal(canonical.stops.reduce((total, stop) => total + (stop.nights ?? 0), 0), 7);
   assert.deepEqual(canonical.stops.map((stop) => stop.name), ["Brussels", "Amsterdam"]);
   assert.deepEqual(canonical.legs.map((leg) => [leg.mode, leg.durationMinutes]), [["train", 120], ["train", 120]]);
+  assert.deepEqual(canonical.brief.bookings?.[0], importedBooking, "account promotion preserves existing imported data");
+  assert.equal(canonical.brief.bookings?.[1]?.transportLegBinding?.legId, "paris-brussels");
+  assert.equal(canonical.brief.bookings?.[1]?.confirmation, "MANUAL-456");
   assert.deepEqual(accountTrips.get(guestTrip.id), canonical, "Account B listing and direct read share the canonical document");
   assert.deepEqual(acknowledgement, { stored: true, recoveryResolved: true });
   assert.equal(loadTripRecoveryFromStorage(storage, guestTrip.id, ownerId), null);
@@ -1169,6 +1193,7 @@ test("exact recovery remains visible when another trip owns the current pointer"
 
 test("loadRequestedTrip falls back to the exact cached document when the cloud request is offline", async (context) => {
   const storage = new MemoryBrowserStorage();
+  const browser = Object.assign(new EventTarget(), { localStorage: storage, indexedDB: new IndexedDbModel().factory() });
   const cached = browserTrip({ id: "trip-requested-offline", title: "Cached for offline reopen" });
   assert.equal(cacheCanonicalTripToStorage(storage, cached), true);
 
@@ -1176,7 +1201,7 @@ test("loadRequestedTrip falls back to the exact cached document when the cloud r
   const originalFetch = globalThis.fetch;
   Object.defineProperty(globalThis, "window", {
     configurable: true,
-    value: { localStorage: storage },
+    value: browser,
   });
   globalThis.fetch = async () => {
     throw new TypeError("network unavailable");
@@ -1199,7 +1224,7 @@ test("loadRequestedTrip does not use a local cache after a definitive cloud 404"
 
   const windowDescriptor = Object.getOwnPropertyDescriptor(globalThis, "window");
   const originalFetch = globalThis.fetch;
-  Object.defineProperty(globalThis, "window", { configurable: true, value: { localStorage: storage } });
+  Object.defineProperty(globalThis, "window", { configurable: true, value: { localStorage: storage, addEventListener: () => {} } });
   globalThis.fetch = async () => new Response(JSON.stringify({ error: "Trip not found." }), { status: 404 });
   context.after(() => {
     globalThis.fetch = originalFetch;
@@ -1212,6 +1237,7 @@ test("loadRequestedTrip does not use a local cache after a definitive cloud 404"
 
 test("offline requested-trip composition returns dirty recovery ahead of the same clean cache", async (context) => {
   const storage = new MemoryBrowserStorage();
+  const browser = Object.assign(new EventTarget(), { localStorage: storage, indexedDB: new IndexedDbModel().factory() });
   const tripId = "trip-requested-dirty-offline";
   const clean = browserTrip({ id: tripId, title: "Clean cached cloud revision" });
   const dirty = browserTrip({ id: tripId, title: "Dirty device revision" });
@@ -1220,7 +1246,7 @@ test("offline requested-trip composition returns dirty recovery ahead of the sam
 
   const windowDescriptor = Object.getOwnPropertyDescriptor(globalThis, "window");
   const originalFetch = globalThis.fetch;
-  Object.defineProperty(globalThis, "window", { configurable: true, value: { localStorage: storage } });
+  Object.defineProperty(globalThis, "window", { configurable: true, value: browser });
   globalThis.fetch = async () => { throw new TypeError("network unavailable"); };
   context.after(() => {
     globalThis.fetch = originalFetch;

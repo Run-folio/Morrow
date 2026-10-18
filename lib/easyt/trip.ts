@@ -556,6 +556,18 @@ export type TripBooking = {
     from: string;
     to: string;
   };
+  /** Exact route occurrence for a traveller's manual Transport workspace mark. */
+  transportLegBinding?: {
+    version: 1;
+    legId: string;
+    mode: TripTransferMode;
+    fromEndpointId: string;
+    toEndpointId: string;
+    fromLabel: string;
+    toLabel: string;
+  };
+  /** Explicit unmark keeps this record and its optional details for later. */
+  travellerMarkedBooked?: boolean;
   /** Provenance for an explicitly confirmed provider-neutral import. */
   importDetails?: {
     candidateId: string;

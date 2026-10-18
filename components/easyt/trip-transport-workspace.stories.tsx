@@ -4,6 +4,8 @@ import { cancunReturnTripFixture } from "./storybook/cancun-return-trip.fixture"
 import TripShell from "./trip-shell";
 import TripTransportWorkspace from "./trip-transport-workspace";
 import { selectTripLegTransportChoice, supportedTransportChoicesForLeg } from "@/lib/easyt/transport-mode-choice";
+import { japanTrip } from "../../tests/fixtures/transport-choice";
+import { markTransportLegBooked } from "@/lib/easyt/transport-booking";
 
 const transportTrip: EasyTTrip = {
   ...cancunReturnTripFixture,
@@ -146,6 +148,14 @@ const explicitChoice = supportedTransportChoicesForLeg(modeChoiceTrip, modeChoic
 const explicitChoiceTrip = explicitChoice
   ? selectTripLegTransportChoice(modeChoiceTrip, modeChoiceTrip.legs[0].id, explicitChoice.identity)
   : modeChoiceTrip;
+const manualBookingLeg = transportTrip.legs.find((leg) => leg.mode === "flight" || leg.mode === "train");
+const manualBookingTrip = manualBookingLeg
+  ? markTransportLegBooked(transportTrip, manualBookingLeg.id, {
+      confirmation: "STORY-RAIL-123",
+      url: "https://example.com/booking",
+      note: "Example booking details for the presentation fixture.",
+    })
+  : transportTrip;
 
 const meta = {
   title: "Morrovia/05 Product Patterns/Trip workspace/Transport",
@@ -189,3 +199,10 @@ export const EvidenceBackedModeChoice: Story = {
 export const ExplicitTravellerChoice: Story = {
   args: { trip: explicitChoiceTrip },
 };
+
+export const ManualBookingDetails: Story = {
+  args: { trip: manualBookingTrip },
+};
+
+export const UnbookedConnections: Story = { args: { trip: { ...transportTrip, brief: { ...transportTrip.brief, bookings: [] } } } };
+export const ModeDialogOptions: Story = { args: { trip: japanTrip() } };

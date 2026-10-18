@@ -6,6 +6,7 @@ import { guardTripRoutingGeometry, preservedTransferFacts } from "./geographic-b
 import { isInsufficientTransferEvidence } from './transfer-evidence-quality.ts';
 import type { PlanningEvidenceState, TransferAssessment } from './planning-evidence-state.ts';
 import { transferAssessmentForLeg } from './planning-evidence-presentation.ts';
+import { travellerTransportBookingForLeg, travellerTransportBookingMismatchForLeg, unmatchedTravellerTransportBookings } from "./transport-booking.ts";
 
 export type TransportAssessmentState = "pending" | "failed" | "blocked" | "review" | "supported" | "unknown";
 
@@ -74,6 +75,8 @@ export type ItineraryTransportAgendaLeg = {
   date: string | null;
   dayNumber: number | null;
   booking: TripBooking | null;
+  manualBooking: TripBooking | null;
+  bookingMismatch: TripBooking | null;
   status: ItineraryTransportAgendaStatus;
 };
 
@@ -169,7 +172,11 @@ export function itineraryTransportAgenda(trip: EasyTTrip): ItineraryTransportAge
       to,
       ...itineraryDateForLeg(trip, leg, to),
       booking,
+      manualBooking: travellerTransportBookingForLeg(trip, leg),
+      bookingMismatch: travellerTransportBookingMismatchForLeg(trip, leg),
       status: itineraryTransportAgendaStatus(leg, booking),
     }];
   });
 }
+
+export { unmatchedTravellerTransportBookings };

@@ -4,6 +4,8 @@ import { deriveTripDateFacts, stableStopDateRange } from "./trip-facts.ts";
 import { validateOptionalAffiliateUrl } from "./affiliate-configuration.ts";
 import { LEGACY_ROAD_COMPATIBILITY_SOURCE } from "./transport-leg-compatibility.ts";
 import { SPREADSHEET_IMPORT_PARSER_VERSION } from "./spreadsheet-import.ts";
+import { buildOmioRouteSearchLink, OMIO_TRACKING_BASE } from "./omio-search-link.ts";
+import { travellerTransportBookingForLeg } from "./transport-booking.ts";
 
 export type BookingCategory = "accommodation" | "flight" | "activity" | "car-rental" | "connectivity" | "ground-transport" | "transport" | "insurance";
 export type AffiliateAnalyticsCategory = "accommodation" | "car_rental" | "activities" | "airport_transfer" | "travel_insurance";
@@ -51,7 +53,7 @@ export const affiliatePartners = {
   },
   omio: {
     provider: "omio",
-    transportUrl: "https://omio.sjv.io/2RBeqD",
+    transportUrl: OMIO_TRACKING_BASE,
   },
   saily: {
     provider: "saily",
@@ -240,12 +242,15 @@ const selectedDecision = (trip: EasyTTrip, leg: TripLeg) => trip.brief.decisionS
 const normalise = (value: string) => value.trim().toLocaleLowerCase();
 
 export function transportBookingForLeg(trip: EasyTTrip, leg: TripLeg, from?: TripStop, to?: TripStop) {
+  const manual = travellerTransportBookingForLeg(trip, leg);
+  if (manual) return manual.travellerMarkedBooked === false ? undefined : manual;
   if (trip.brief.capturedIntent?.parserVersion === SPREADSHEET_IMPORT_PARSER_VERSION) {
     // Spreadsheet bookings are attached to a dated, canonical leg at import.
     // Matching their free-text endpoint names again would attach an unmatched
     // booking to a different occurrence or date after review.
     const importedBookingId = leg.routeMetadata.importedBookingId;
     return (trip.brief.bookings ?? []).find((booking) => booking.type === "transport"
+      && !booking.transportLegBinding
       && (booking.id === leg.id
         || booking.id === `transport-${leg.id}`
         || (typeof importedBookingId === "string" && booking.id === importedBookingId)));
@@ -253,7 +258,7 @@ export function transportBookingForLeg(trip: EasyTTrip, leg: TripLeg, from?: Tri
   const fromName = normalise(from?.name ?? "");
   const toName = normalise(to?.name ?? "");
   return (trip.brief.bookings ?? []).find((booking) => {
-    if (booking.type !== "transport") return false;
+    if (booking.type !== "transport" || booking.transportLegBinding) return false;
     if (booking.id === leg.id || booking.id === `transport-${leg.id}`) return true;
     const explicitFrom = normalise(booking.transportDetails?.from ?? "");
     const explicitTo = normalise(booking.transportDetails?.to ?? "");
@@ -302,7 +307,7 @@ function hasSupportedOmioSegment(leg: TripLeg) {
     || (segment.mode === "road" && /\b(bus|coach|shuttle)\b/.test(segment.provider?.toLocaleLowerCase() ?? "")));
 }
 
-export function omioBookingActionForLeg(trip: EasyTTrip, leg: TripLeg, now = new Date()): (BookingReadinessAction & ResolvedAffiliateAction) | null {
+export function omioBookingActionForLeg(trip: EasyTTrip, leg: TripLeg, now = new Date(), departureDate?: string | null): (BookingReadinessAction & ResolvedAffiliateAction) | null {
   const dateFacts = deriveTripDateFacts(trip, now);
   if (dateFacts.state !== "valid" || dateFacts.lifecycle.state === "ended") return null;
   const from = trip.stops.find((stop) => stop.id === leg.fromStopId);
@@ -315,10 +320,19 @@ export function omioBookingActionForLeg(trip: EasyTTrip, leg: TripLeg, now = new
   const supported = ["train", "flight", "ferry"].includes(leg.mode)
     || (leg.mode === "road" && describesCoachOrBus(leg))
     || (leg.mode === "mixed" && hasSupportedOmioSegment(leg));
-  const needsComparison = leg.mode === "unknown" && typeof leg.distanceKm === "number" && leg.distanceKm >= 40;
-  if (!supported && !needsComparison) return null;
+  if (!supported) return null;
 
   const partial = leg.mode === "unknown" || leg.durationMinutes === null || leg.distanceKm === null;
+  const routeSearchUrl = buildOmioRouteSearchLink({
+    mode: leg.mode,
+    originName: from.name,
+    originCountry: from.country,
+    destinationName: to.name,
+    destinationCountry: to.country,
+    departureDate: departureDate ?? from.departureDate ?? to.arrivalDate,
+    currency: trip.currency,
+    now,
+  });
   return {
     id: `omio-${leg.id}`,
     category: "transport",
@@ -328,7 +342,7 @@ export function omioBookingActionForLeg(trip: EasyTTrip, leg: TripLeg, now = new
       ? "Compare transport options on Omio before relying on this connection; coverage and schedules vary by route."
       : `${leg.mode === "road" ? "Coach or bus" : leg.mode} selected · compare transport options on Omio before booking.`,
     cta: partial ? "Check transport options on Omio" : "Compare transport on Omio",
-    href: affiliatePartners.omio.transportUrl,
+    href: routeSearchUrl ?? affiliatePartners.omio.transportUrl,
     tripId: trip.id,
     stopId: to.id,
     transferId: leg.id,
@@ -340,7 +354,7 @@ export function omioBookingActionForLeg(trip: EasyTTrip, leg: TripLeg, now = new
 }
 
 /** Selects a supported affiliate handoff for one selected canonical journey. */
-export function transportAffiliateActionForLeg(trip: EasyTTrip, leg: TripLeg, now = new Date()): ResolvedAffiliateAction | null {
+export function transportAffiliateActionForLeg(trip: EasyTTrip, leg: TripLeg, now = new Date(), departureDate?: string | null): ResolvedAffiliateAction | null {
   const from = trip.stops.find((stop) => stop.id === leg.fromStopId);
   const to = trip.stops.find((stop) => stop.id === leg.toStopId);
   if (!from || !to || transportBookingForLeg(trip, leg, from, to)) return null;
@@ -356,7 +370,7 @@ export function transportAffiliateActionForLeg(trip: EasyTTrip, leg: TripLeg, no
     && !trip.brief.intent?.hardConstraints.avoidDriving;
   if (carHireEligibleRoad) return getCurrentPartnerAction("car_rental") ?? null;
 
-  return omioBookingActionForLeg(trip, leg, now);
+  return omioBookingActionForLeg(trip, leg, now, departureDate);
 }
 
 /**

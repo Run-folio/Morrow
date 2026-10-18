@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { renderBuilder, builderBrowserTestsEnabled } from "./helpers/builder-render.ts";
-import type { EasyTTrip, TransferSegment } from "../lib/easyt/trip.ts";
+import { japanTrip } from "./fixtures/transport-choice.ts";
 import { geographicallyReady, stopGeographicPlace } from "../lib/easyt/geographic-binding.ts";
 
 test("transport fixture owns canonical geography; coordinates without identity remain unverified", () => {
@@ -14,49 +14,52 @@ test("transport fixture owns canonical geography; coordinates without identity r
   assert.equal(geographicallyReady({ ...stop, canonicalPlaceId: undefined }), false);
 });
 
-function japanTrip(): EasyTTrip {
-  const from = { kind: "stop" as const, id: "tokyo", canonicalPlaceId: "tokyo", name: "Tokyo", country: "Japan", coordinates: [139.6917, 35.6895] as [number, number] };
-  const to = { kind: "stop" as const, id: "kyoto", canonicalPlaceId: "kyoto", name: "Kyoto", country: "Japan", coordinates: [135.7681, 35.0116] as [number, number] };
-  const rail: TransferSegment = { id: "tokyo:kyoto:train:0", mode: "train", fromEndpoint: from, toEndpoint: to, distanceKm: 365, durationMinutes: 135, provider: "Reviewed Tokaido rail evidence.", provenance: "canonical_schedule", confidence: "high", scheduleNeedsChecking: true };
-  const road: TransferSegment = { id: "tokyo:kyoto:road:0", mode: "road", fromEndpoint: from, toEndpoint: to, distanceKm: 455, durationMinutes: 390, provider: "OpenRouteService routed road estimate.", provenance: "routing_engine", confidence: "medium", scheduleNeedsChecking: true };
-  return {
-    schemaVersion: 1, id: "trip-japan-choice", ownerId: null, title: "Japan", status: "planned", startDate: "2027-04-01", endDate: "2027-04-08", travellers: 2, currency: "GBP",
-    brief: { origin: "Tokyo", originCanonicalPlaceId: "tokyo", originCountry: "Japan", originCoordinates: [139.6917, 35.6895], mustDo: "", pace: "slow", hotelChanges: "few", budgetBand: "mid", selectedPlaces: {}, decisionSelections: { transportByLeg: {} }, intent: { version: 1, travellers: 2, timing: { flexibility: "fixed", durationDays: 8 }, hardConstraints: { originRequired: true, mustSeeStopIds: [], optionalStopIds: [], fixedCommitments: [], avoidDriving: false }, preferences: { budgetSensitivity: "mid", transportModes: ["train"], pace: "balanced", interests: [], dislikes: [] } } },
-    stops: [
-      { id: "tokyo", canonicalPlaceId: "tokyo", order: 0, name: "Tokyo", country: "Japan", latitude: 35.6895, longitude: 139.6917, arrivalDate: "2027-04-01", departureDate: "2027-04-04", nights: 3 },
-      { id: "kyoto", canonicalPlaceId: "kyoto", order: 1, name: "Kyoto", country: "Japan", latitude: 35.0116, longitude: 135.7681, arrivalDate: "2027-04-04", departureDate: "2027-04-08", nights: 4 },
-    ],
-    legs: [{ id: "trip-japan-choice-leg-1", fromStopId: "tokyo", toStopId: "kyoto", fromEndpoint: from, toEndpoint: to, classification: "intercity", mode: "train", distanceKm: 365, durationMinutes: 135, doorToDoorMinutes: 135, headlineMinutes: 135, provider: rail.provider, provenance: rail.provenance, confidence: rail.confidence, scheduleNeedsChecking: true, warnings: [], segments: [rail], routeMetadata: { source: "multimodal-resolver", planningEstimate: true, multimodalResolution: { version: 1, selected: "train", selectedCandidateId: "rail:network:tokaido", candidates: [
-      { id: "rail:network:tokaido", summaryMode: "train", segments: [rail], totalDurationMinutes: 135, distanceKm: 365, confidence: "high", provenance: "canonical_schedule", evidence: "intercity_rail_network", connectionCount: 0, score: 90, reasons: ["Reviewed rail evidence supports this journey."] },
-      { id: "road:routed", summaryMode: "road", segments: [road], totalDurationMinutes: 390, distanceKm: 455, confidence: "medium", provenance: "routing_engine", evidence: "routed_road", connectionCount: 0, score: 55, reasons: ["A road provider returned a plausible route."] },
-    ], rejected: [] } } }],
-    planItems: [{ id: "day-4", stopId: "kyoto", dayNumber: 4, date: "2027-04-04", type: "transport", title: "Tokyo to Kyoto", reason: "", notes: [], startsAt: null, endsAt: null, bookingUrl: null, latitude: null, longitude: null }],
-    recommendations: [], createdAt: "2026-09-22T12:00:00.000Z", updatedAt: "2026-09-22T12:00:00.000Z",
-  };
-}
 
-test("Transport changes one evidence-backed leg and restores Morrovia's recommendation after reload", { skip: !builderBrowserTestsEnabled, timeout: 30_000 }, async () => {
+test("Transport modal keeps choices as drafts until Apply and restores the recommendation after reload", { skip: !builderBrowserTestsEnabled, timeout: 40_000 }, async () => {
   const trip = japanTrip();
   const view = await renderBuilder({ path: `/journey/${trip.id}/transport`, initialTrip: trip });
   try {
-    const step = async (label: string, action: () => Promise<unknown>) => {
-      try { await action(); } catch (error) {
-        throw new Error(`${label} failed:\n${await view.page.locator("body").innerText()}`, { cause: error });
-      }
-    };
-    await step("open choice control", () => view.page.getByRole("button", { name: "Change transport mode" }).click({ timeout: 5_000 }));
-    await step("choose road", () => view.page.getByRole("button", { name: /Road.*6h 30m/ }).click({ timeout: 5_000 }));
-    await step("show explicit choice", () => view.page.getByText("Your choice", { exact: true }).waitFor({ timeout: 5_000 }));
-    assert.equal(await view.page.getByText(/Road.*6h 30m/).count() > 0, true);
+    const card = view.page.locator("[data-transport-leg-id]").first();
+    await card.getByRole("button", { name: /View details:/ }).click();
+    const snapshot = () => view.page.evaluate((tripId: string) => Object.fromEntries(Object.entries(localStorage).filter(([key]) => key.includes(encodeURIComponent(tripId)))), trip.id);
+    const before = await snapshot();
+    const trigger = view.page.getByRole("button", { name: "Change transport mode" });
+    const dialog = view.page.getByRole("dialog", { name: "Change transport", exact: true });
+    await trigger.click();
+    await dialog.getByRole("radio", { name: /Road.*6h 30m/ }).click();
+    assert.deepEqual(await snapshot(), before, "selecting a radio does not save");
+    await dialog.getByRole("button", { name: "Cancel", exact: true }).click();
+    assert.deepEqual(await snapshot(), before, "Cancel does not save");
+    await view.page.waitForFunction(() => document.activeElement?.getAttribute("aria-label") === "Change transport mode");
+    await trigger.focus();
+    await trigger.click();
+    await dialog.getByRole("radio", { name: /Train/ }).focus();
+    await view.page.keyboard.press("ArrowDown");
+    assert.equal(await dialog.getByRole("radio", { name: /Road/ }).getAttribute("aria-checked"), "true");
+    for (let i = 0; i < 8; i++) await view.page.keyboard.press("Tab");
+    assert.equal(await dialog.evaluate((element: HTMLElement) => element.contains(document.activeElement)), true, "keyboard focus stays in the modal");
+    await view.page.keyboard.press("Escape");
+    assert.deepEqual(await snapshot(), before, "Escape does not save");
+    await trigger.click();
+    await dialog.getByRole("radio", { name: /Road/ }).click();
+    await view.page.mouse.click(2, 2);
+    await dialog.waitFor({ state: "hidden" });
+    assert.deepEqual(await snapshot(), before, "backdrop close does not save");
+    await trigger.click();
+    await dialog.getByRole("radio", { name: /Road/ }).click();
+    await dialog.getByRole("button", { name: "Use road", exact: true }).click();
+    await dialog.waitFor({ state: "hidden" });
+    await card.getByText(/Road.*6h 30m/).first().waitFor();
     await view.page.reload();
-    await step("reload explicit choice", () => view.page.getByText("Your choice", { exact: true }).waitFor({ timeout: 5_000 }));
+    await card.getByText(/Road.*6h 30m/).first().waitFor();
     for (const width of [390, 1024]) {
       await view.page.setViewportSize({ width, height: 844 });
       assert.equal(await view.page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
     }
-    await step("reopen choice control", () => view.page.getByRole("button", { name: "Change transport mode" }).click({ timeout: 5_000 }));
-    await step("restore recommendation", () => view.page.getByRole("button", { name: "Use Morrovia recommendation" }).click({ timeout: 5_000 }));
-    await step("show recommendation", () => view.page.getByText("Morrovia recommendation", { exact: true }).waitFor({ timeout: 5_000 }));
+    await trigger.click();
+    await dialog.getByRole("radio", { name: /Train/ }).click();
+    await dialog.getByRole("button", { name: "Use train", exact: true }).click();
+    await card.getByText(/Rail.*2h 15m/).first().waitFor();
     assert.deepEqual(view.errors, []);
   } finally { await view.close(); }
 });
