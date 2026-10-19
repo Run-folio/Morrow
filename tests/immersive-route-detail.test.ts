@@ -147,6 +147,17 @@ test("the map library remains behind intersection and selection never recreates 
   assert.doesNotMatch(read(owner + "route-map-summary.tsx"), /className=\{styles\.mapStops\}/);
 });
 
+test("desktop sticky route map fits the viewport while its panels scroll internally", () => {
+  const css = read(owner + "route-overview.module.css");
+  assert.match(css, /@media\s*\(min-width:\s*1081px\)[\s\S]*?\.journeyMap\s*\{[^}]*height:\s*calc\(100svh\s*-\s*var\(--morrovia-sticky-content-offset\)\s*-\s*16px\)/);
+  assert.match(css, /\.journeyMap\s*>\s*div\s*\{[^}]*grid-template-rows:\s*auto\s+minmax\(0,\s*1fr\)[^}]*height:\s*100%/);
+  assert.match(css, /\.journeyMap\s+\.mapLayout\s*\{[^}]*min-height:\s*0[^}]*grid-template-rows:\s*minmax\(0,\s*min\(350px,\s*50%\)\)\s+minmax\(0,\s*1fr\)/);
+  assert.match(css, /\.journeyMap\s+\.mapShell\s*\{[^}]*height:\s*100%[^}]*min-height:\s*0/);
+  assert.match(css, /\.journeyNavigator\s*\{[^}]*overflow:auto/);
+  assert.match(css, /\.mapDetail\s*\{[^}]*overflow:auto/);
+  assert.match(css, /@media\(max-width:700px\)[\s\S]*?\.mapShell\s*\{\s*height:420px;\s*min-height:420px;/);
+});
+
 test("actions reuse canonical handoff and analytics while mobile and motion keep equivalent content", () => {
   const view = read(owner + "route-detail-view.tsx");
   const action = read(owner + "route-plan-link.tsx");

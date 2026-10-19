@@ -12,7 +12,7 @@ export type OmioRouteSearchInput = {
   now?: Date;
 };
 
-function validFutureDate(value: string | null | undefined, now: Date) {
+export function validOmioDepartureDate(value: string | null | undefined, now: Date) {
   if (!value || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
   const parsed = new Date(`${value}T00:00:00.000Z`);
   if (!Number.isFinite(parsed.getTime()) || parsed.toISOString().slice(0, 10) !== value) return false;
@@ -22,7 +22,7 @@ function validFutureDate(value: string | null | undefined, now: Date) {
 
 /** Builds only train and flight search forms verified in Omio using the existing Impact tracking contract. */
 export function buildOmioRouteSearchLink(input: OmioRouteSearchInput): string | null {
-  if ((input.mode !== "flight" && input.mode !== "train") || !validFutureDate(input.departureDate, input.now ?? new Date())) return null;
+  if ((input.mode !== "flight" && input.mode !== "train") || !validOmioDepartureDate(input.departureDate, input.now ?? new Date())) return null;
   const originName = input.originName.trim();
   const originCountry = input.originCountry.trim();
   const destinationName = input.destinationName.trim();

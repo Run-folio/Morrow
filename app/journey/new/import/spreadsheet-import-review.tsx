@@ -1,11 +1,12 @@
 "use client";
 
 import { AlertTriangle, Check, ChevronDown, FileSpreadsheet, MapPin, RotateCcw } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { CanonicalPlaceAutocomplete } from "@/components/easyt/canonical-place-autocomplete";
+import { MorroviaPlaceDataCredit } from "@/components/easyt/morrovia-place-data-credit";
 import { EasyTButton, EasyTField, EasyTSelect } from "@/components/easyt/easyt-controls";
 import { MorroviaRecoveryFeedback } from "@/components/easyt/morrovia-feedback";
-import { acceptImportPlace, importCandidateFromSuggestion, importPlanningParent, type ImportPlaceCandidate } from "@/lib/easyt/spreadsheet-import-places";
+import { acceptImportPlace, assessImportPlaceCandidates, importCandidateFromSuggestion, importPlaceRequest, importPlanningParent, resolveSpreadsheetImportPlace, verifySpreadsheetImportBase, type ImportPlaceCandidate } from "@/lib/easyt/spreadsheet-import-places";
 import {
   spreadsheetImportFieldLabels,
   spreadsheetImportFields,
@@ -27,30 +28,67 @@ function ImportPlaceClarification({ name, country, options, role = "stop", onSel
   const [parent, setParent] = useState<ImportPlaceCandidate | null>(null);
   const [search, setSearch] = useState("");
   const [error, setError] = useState("");
-  const choose = (candidate: ImportPlaceCandidate) => {
+  const [searchResults, setSearchResults] = useState<ImportPlaceCandidate[] | null>(null);
+  const [checking, setChecking] = useState(false);
+  const requestRef = useRef<AbortController | null>(null);
+  useEffect(() => () => requestRef.current?.abort(), []);
+  const invalidate = () => { requestRef.current?.abort(); requestRef.current = null; setChecking(false); };
+  const sourceRequest = importPlaceRequest(name, country ?? "");
+  const choose = async (candidate: ImportPlaceCandidate) => {
+    invalidate(); setError("");
     const planningParent = importPlanningParent(candidate);
-    if (planningParent) { setParent(candidate); setSearch(""); setError(""); return; }
-    const accepted = acceptImportPlace(candidate, role);
-    if (!accepted) { setError(role === "stop" ? "Choose a city or town to stay in." : "Choose a verified city or airport."); return; }
-    onSelect(accepted);
+    if (planningParent) { setParent(candidate); setSearch(""); setSearchResults(null); return; }
+    const controller = new AbortController(); requestRef.current = controller; setChecking(true);
+    try {
+      const accepted = parent ? await verifySpreadsheetImportBase(candidate, importPlanningParent(parent)!, controller.signal)
+        : assessImportPlaceCandidates(sourceRequest, [candidate], role).candidates.length ? acceptImportPlace(candidate, role) : null;
+      if (controller.signal.aborted || requestRef.current !== controller) return;
+      if (!accepted) { setError(parent ? "This base could not be verified in the selected area. Try again." : role === "stop" ? "Choose a verified city or town matching the imported country and region." : "Choose a verified city or airport."); return; }
+      onSelect(accepted);
+    } catch {
+      if (!controller.signal.aborted && requestRef.current === controller) setError("Place checking is unavailable. Try again.");
+    } finally { if (requestRef.current === controller) { requestRef.current = null; setChecking(false); } }
   };
+  const lookup = async () => {
+    invalidate(); setError(""); setSearchResults([]);
+    const query = search.trim() || (!parent ? name : "");
+    if (!query) return;
+    const controller = new AbortController(); requestRef.current = controller; setChecking(true);
+    try {
+      const result = await resolveSpreadsheetImportPlace(query, parent?.country || sourceRequest.country, role, controller.signal,
+        { mode: "resolve", parent: parent ? importPlanningParent(parent) : undefined });
+      if (controller.signal.aborted || requestRef.current !== controller) return;
+      const candidates = parent ? result.candidates : assessImportPlaceCandidates(sourceRequest, result.candidates, role).candidates;
+      setSearchResults(candidates);
+      if (!candidates.length) setError("No verified matches found. Try a more specific place.");
+    } catch {
+      if (!controller.signal.aborted && requestRef.current === controller) setError("Place checking is unavailable. Try again.");
+    } finally { if (requestRef.current === controller) { requestRef.current = null; setChecking(false); } }
+  };
+  const visibleOptions = searchResults ?? (!parent && !search.trim() ? options : []);
+  const dataSources: Array<'geonames' | 'ourairports' | 'openstreetmap'> = [];
+  if (visibleOptions.some(option => option.providerId?.startsWith('reference:geonames:'))) dataSources.push('geonames');
+  if (visibleOptions.some(option => option.providerId?.startsWith('reference:ourairports:'))) dataSources.push('ourairports');
+  if (visibleOptions.some(option => /^(photon:|nominatim:|openstreetmap:)/.test(option.providerId ?? ''))) dataSources.push('openstreetmap');
   return <>
-    {options.length && !parent ? <EasyTSelect label={`Meaning of ${name}`} value="" onChange={event => {
+    {visibleOptions.length ? <EasyTSelect label={searchResults ? `Search results for ${search.trim() || name}` : `Meaning of ${name}`} value="" onChange={event => {
       if (event.target.value === "") return;
-      const candidate = options[Number(event.target.value)];
-      if (candidate) choose(candidate);
-    }}><option value="">Choose the intended place…</option>{options.map((option, index) => <option key={`${option.canonicalPlaceId}-${index}`} value={index}>
+      const candidate = visibleOptions[Number(event.target.value)];
+      if (candidate) void choose(candidate);
+    }}><option value="">Choose the intended place…</option>{visibleOptions.map((option, index) => <option key={`${option.canonicalPlaceId}-${index}`} value={index}>
       {[option.name, option.placeType?.replaceAll("_", " "), option.region, option.country].filter(Boolean).join(" · ")}
     </option>)}</EasyTSelect> : null}
-    {parent ? <><p>Choose where to stay in {parent.name}. The dates and nights stay the same.</p><EasyTButton variant="quiet" onClick={() => { setParent(null); setSearch(""); setError(""); }}>Change area</EasyTButton></> : null}
+    <MorroviaPlaceDataCredit sources={dataSources} />
+    {parent ? <><p>Choose where to stay in {parent.name}. The dates and nights stay the same.</p><EasyTButton variant="quiet" onClick={() => { invalidate(); setParent(null); setSearch(""); setSearchResults(null); setError(""); }}>Change area</EasyTButton></> : null}
     <CanonicalPlaceAutocomplete
       label={parent ? `Overnight base in ${parent.name}` : `Search for ${name}`}
       placeholder={parent ? "Search for a city or town" : "Search with country or region"}
-      value={search} onChange={setSearch} contextCountries={parent?.country ? [parent.country] : country ? [country] : undefined}
+      value={search} onChange={value => { invalidate(); setSearch(value); setSearchResults(null); setError(""); }} contextCountries={parent?.country ? [parent.country] : sourceRequest.country ? [sourceRequest.country] : undefined}
       includeNonRoutable={!parent} parentConstraint={parent ? importPlanningParent(parent) : undefined}
       allowedPlaceTypes={parent ? ["city", "town"] : undefined} requireCoordinates={Boolean(parent)}
-      menuPlacement="inline" onSelect={suggestion => choose(importCandidateFromSuggestion(suggestion))}
+      menuPlacement="inline" onSelect={suggestion => { void choose(importCandidateFromSuggestion(suggestion)); }} onSubmitFreeText={() => { void lookup(); }}
     />
+    <EasyTButton variant="secondary" size="small" loading={checking} disabled={Boolean(parent) && !search.trim()} onClick={() => { void lookup(); }}>{parent ? "Search bases" : "Search places"}</EasyTButton>
     {error ? <p className={styles.placeFailure} role="alert">{error}</p> : null}
   </>;
 }
@@ -197,7 +235,7 @@ export function SpreadsheetImportReview({
           const options = placeOptions[stop.id] ?? [];
           return <div className={styles.attentionItem} key={stop.id}>
             <div><h3>Which {stop.name} do you mean?</h3><p>Morrovia needs a safe place match to build the route.</p></div>
-            <ImportPlaceClarification key={`${stop.id}:${stop.name}:${stop.country}`} name={stop.name} country={stop.country || options[0]?.country} options={options} onSelect={candidate => onSelectPlace(stop.id, candidate)} />
+            <ImportPlaceClarification key={`${stop.id}:${stop.name}:${stop.country}`} name={stop.name} country={stop.country} options={options} onSelect={candidate => onSelectPlace(stop.id, candidate)} />
           </div>;
         })}
 

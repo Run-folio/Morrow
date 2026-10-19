@@ -5164,7 +5164,8 @@ function TripBuilderDocument() {
     // Same-command projection completion is progress, not new traveller intent.
     // Wait for its verified device result and matching render; do not recapture
     // a barrier or assess a different document using the preceding render.
-    if (snapshot.saveState === "device-saving" || snapshot.canonicalSaveState === "device-saving"
+    if (snapshot.pendingUnits.some(unit => unit.kind !== "recommendation")
+      || snapshot.saveState === "device-saving" || snapshot.canonicalSaveState === "device-saving"
       || !sameRecoveryDocument(activeTripDocument, snapshot.trip)) return;
     pendingBuildAssessmentRef.current = null;
     request.resolve({ trip: snapshot.trip, assessment: buildInvariant });
@@ -5239,6 +5240,7 @@ function TripBuilderDocument() {
       const readyToNavigate = () => {
         const current = editor.getSnapshot();
         return completion.isCurrent() && mounted() && !current.error
+          && !current.pendingUnits.some(unit => unit.kind !== "recommendation")
           && (current.saveState === "local" || current.saveState === "cloud")
           && (current.canonicalSaveState === "local" || current.canonicalSaveState === "cloud")
           && current.acceptedRevision === finalSnapshot.acceptedRevision

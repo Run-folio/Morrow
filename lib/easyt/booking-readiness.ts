@@ -4,8 +4,9 @@ import { deriveTripDateFacts, stableStopDateRange } from "./trip-facts.ts";
 import { validateOptionalAffiliateUrl } from "./affiliate-configuration.ts";
 import { LEGACY_ROAD_COMPATIBILITY_SOURCE } from "./transport-leg-compatibility.ts";
 import { SPREADSHEET_IMPORT_PARSER_VERSION } from "./spreadsheet-import.ts";
-import { buildOmioRouteSearchLink, OMIO_TRACKING_BASE } from "./omio-search-link.ts";
+import { buildOmioRouteSearchLink, OMIO_TRACKING_BASE, validOmioDepartureDate } from "./omio-search-link.ts";
 import { travellerTransportBookingForLeg } from "./transport-booking.ts";
+import { routeEndpointForLeg } from "./trip-legs.ts";
 
 export type BookingCategory = "accommodation" | "flight" | "activity" | "car-rental" | "connectivity" | "ground-transport" | "transport" | "insurance";
 export type AffiliateAnalyticsCategory = "accommodation" | "car_rental" | "activities" | "airport_transfer" | "travel_insurance";
@@ -241,7 +242,7 @@ const selectedDecision = (trip: EasyTTrip, leg: TripLeg) => trip.brief.decisionS
 
 const normalise = (value: string) => value.trim().toLocaleLowerCase();
 
-export function transportBookingForLeg(trip: EasyTTrip, leg: TripLeg, from?: TripStop, to?: TripStop) {
+export function transportBookingForLeg(trip: EasyTTrip, leg: TripLeg, from?: Pick<TripStop, "name">, to?: Pick<TripStop, "name">) {
   const manual = travellerTransportBookingForLeg(trip, leg);
   if (manual) return manual.travellerMarkedBooked === false ? undefined : manual;
   if (trip.brief.capturedIntent?.parserVersion === SPREADSHEET_IMPORT_PARSER_VERSION) {
@@ -310,9 +311,17 @@ function hasSupportedOmioSegment(leg: TripLeg) {
 export function omioBookingActionForLeg(trip: EasyTTrip, leg: TripLeg, now = new Date(), departureDate?: string | null): (BookingReadinessAction & ResolvedAffiliateAction) | null {
   const dateFacts = deriveTripDateFacts(trip, now);
   if (dateFacts.state !== "valid" || dateFacts.lifecycle.state === "ended") return null;
-  const from = trip.stops.find((stop) => stop.id === leg.fromStopId);
-  const to = trip.stops.find((stop) => stop.id === leg.toStopId);
+  const from = routeEndpointForLeg(trip, leg, "from");
+  const to = routeEndpointForLeg(trip, leg, "to");
   if (!from || !to || from.id === to.id || !from.name.trim() || !to.name.trim()) return null;
+  const fromStop = trip.stops.find((stop) => stop.id === leg.fromStopId);
+  const toStop = trip.stops.find((stop) => stop.id === leg.toStopId);
+  // An explicitly unavailable agenda date must not be replaced by a different
+  // stop date. Origin/end are canonical route roles, not overnight stops.
+  const resolvedDate = departureDate !== undefined ? departureDate
+    : to.kind === "end" ? trip.endDate
+      : fromStop?.departureDate ?? toStop?.arrivalDate ?? (from.kind === "origin" ? trip.startDate : null);
+  if (!validOmioDepartureDate(resolvedDate, now)) return null;
   if (transportBookingForLeg(trip, leg, from, to)
     || isLocalTransfer(leg)
     || leg.routeMetadata.source === LEGACY_ROAD_COMPATIBILITY_SOURCE) return null;
@@ -326,10 +335,10 @@ export function omioBookingActionForLeg(trip: EasyTTrip, leg: TripLeg, now = new
   const routeSearchUrl = buildOmioRouteSearchLink({
     mode: leg.mode,
     originName: from.name,
-    originCountry: from.country,
+    originCountry: from.country ?? "",
     destinationName: to.name,
-    destinationCountry: to.country,
-    departureDate: departureDate ?? from.departureDate ?? to.arrivalDate,
+    destinationCountry: to.country ?? "",
+    departureDate: resolvedDate,
     currency: trip.currency,
     now,
   });
@@ -344,7 +353,7 @@ export function omioBookingActionForLeg(trip: EasyTTrip, leg: TripLeg, now = new
     cta: partial ? "Check transport options on Omio" : "Compare transport on Omio",
     href: routeSearchUrl ?? affiliatePartners.omio.transportUrl,
     tripId: trip.id,
-    stopId: to.id,
+    stopId: to.kind === "stop" ? to.id : undefined,
     transferId: leg.id,
     originStopId: from.id,
     destinationStopId: to.id,
@@ -355,8 +364,8 @@ export function omioBookingActionForLeg(trip: EasyTTrip, leg: TripLeg, now = new
 
 /** Selects a supported affiliate handoff for one selected canonical journey. */
 export function transportAffiliateActionForLeg(trip: EasyTTrip, leg: TripLeg, now = new Date(), departureDate?: string | null): ResolvedAffiliateAction | null {
-  const from = trip.stops.find((stop) => stop.id === leg.fromStopId);
-  const to = trip.stops.find((stop) => stop.id === leg.toStopId);
+  const from = routeEndpointForLeg(trip, leg, "from");
+  const to = routeEndpointForLeg(trip, leg, "to");
   if (!from || !to || transportBookingForLeg(trip, leg, from, to)) return null;
 
   const duration = leg.doorToDoorMinutes ?? leg.durationMinutes;

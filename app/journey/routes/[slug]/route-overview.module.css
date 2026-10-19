@@ -244,12 +244,12 @@
 .mapLayout { position:relative; isolation:isolate; grid-template-columns:minmax(0,1fr) 380px; grid-template-rows:auto 1fr; min-height:620px; background:var(--morrovia-paper); }
 .liveRouteMap { z-index:0; grid-area:1/1/3/3; }
 .journeyNavigator { z-index:2; grid-column:2; grid-row:1; min-width:0; max-height:350px; overflow:auto; border-bottom:1px solid var(--morrovia-line); border-left:1px solid var(--morrovia-line); background:var(--morrovia-paper); }
-.journeyNavigator ol { margin:0; padding:12px; list-style:none; }
-.journeyNavigator li + li { border-top:1px solid var(--morrovia-line); }
-.journeyNavigatorButton { display:grid!important; grid-template-columns:minmax(0,1fr) auto; gap:4px 12px; width:100%; min-height:52px; padding:10px 9px!important; text-align:left; white-space:normal; }
-.journeyNavigatorButton > span { overflow:hidden; text-overflow:ellipsis; font:var(--morrovia-type-control); }
+.journeyNavigator ol { display:grid; gap:4px; margin:0; padding:12px; list-style:none; }
+.journeyNavigatorButton { display:grid!important; grid-template-columns:minmax(0,1fr) auto; gap:4px 12px; width:100%; min-height:52px; padding:10px 9px!important; border-radius:var(--morrovia-control-radius)!important; text-align:left; white-space:normal; }
+.journeyNavigatorButton > span:first-child { min-width:0; overflow-wrap:anywhere; font:var(--morrovia-type-control); }
 .journeyNavigatorButton small { color:var(--morrovia-muted); font:var(--morrovia-type-fine-print); text-align:right; }
-.journeyNavigatorButton svg { grid-column:2; grid-row:1/3; align-self:center; color:var(--morrovia-signal); }
+.journeyNavigatorModeIcon { grid-column:2; grid-row:1/3; width:30px; height:30px; display:grid; place-items:center; color:var(--morrovia-signal); }
+.journeyNavigatorModeIcon svg { width:22px; height:22px; }
 .journeyNavigatorButton[aria-current="location"] { color:var(--morrovia-ink); background:var(--morrovia-lilac-strong); box-shadow:inset 3px 0 var(--morrovia-action); }
 .mapDetail { z-index:2; grid-column:2; grid-row:2; min-height:0; overflow:auto; padding:32px 28px; background:var(--morrovia-paper); }
 .mapFacts { display:grid; gap:0; margin:28px 0 0; }
@@ -332,12 +332,12 @@
   .overviewSection { padding-block:58px; }
   .mapLayout { display:flex; flex-direction:column; }
   .journeyNavigator { order:0; max-height:none; overflow-x:auto; overflow-y:hidden; border-right:0; border-bottom:1px solid var(--morrovia-line); border-left:0; overscroll-behavior-inline:contain; scrollbar-width:thin; }
-  .journeyNavigator ol { display:flex; width:max-content; min-width:100%; padding:8px; }
-  .journeyNavigator li { flex:none; }
-  .journeyNavigator li + li { border-top:0; border-left:1px solid var(--morrovia-line); }
-  .journeyNavigatorButton { grid-template-columns:auto; min-width:138px; min-height:52px; }
+  .journeyNavigator ol { display:flex; gap:4px; width:max-content; min-width:100%; padding:8px; }
+  .journeyNavigator li { flex:none; width:min(54vw,220px); }
+  .journeyNavigatorButton { grid-template-columns:minmax(0,1fr) auto; min-width:0; min-height:52px; }
   .journeyNavigatorButton small { text-align:left; }
-  .journeyNavigatorButton svg { display:none; }
+  .journeyNavigatorModeIcon { width:24px; height:26px; }
+  .journeyNavigatorModeIcon svg { width:20px; height:20px; }
   .liveRouteMap { order:1; }
   .mapShell { height:420px; min-height:420px; }
   .mapDetail { order:2; overflow:visible; padding:24px 18px; border-left:0; border-top:1px solid var(--morrovia-line); }
@@ -467,4 +467,28 @@
   .experienceCopy { display:block; padding-top:12px; }
   .experienceCopy > span { display:block; margin-bottom:7px; }
   .experienceCopy small { display:none; }
+}
+
+@media(min-width:1081px) {
+  .journeyMap {
+    height:calc(100svh - var(--morrovia-sticky-content-offset) - 16px);
+    min-height:0;
+    display:grid;
+    grid-template-rows:minmax(0,1fr) auto;
+  }
+  .journeyMap > div {
+    display:grid;
+    grid-template-rows:auto minmax(0,1fr);
+    height:100%;
+    min-height:0;
+  }
+  .journeyMap .mapToolbar { margin:0 0 12px; }
+  .journeyMap .mapLayout {
+    height:100%;
+    min-height:0;
+    /* Leave room for selected details in short desktop viewports. */
+    grid-template-rows:minmax(0,min(350px,50%)) minmax(0,1fr);
+  }
+  .journeyMap .mapShell { height:100%; min-height:0; }
+  .journeyMap > .mapNote { margin:0!important; }
 }

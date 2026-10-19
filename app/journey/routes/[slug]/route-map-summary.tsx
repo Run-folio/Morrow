@@ -1,9 +1,10 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { ArrowRight, MoonStar } from "lucide-react";
+import { MoonStar } from "lucide-react";
 import { EasyTButton } from "@/components/easyt/easyt-controls";
 import { MorroviaStatusBanner } from "@/components/easyt/morrovia-feedback";
+import { mapTransportIcon } from "@/components/easyt/morrovia-transport-icons";
 import type { PublicRouteConnection, PublicRouteStop } from "@/lib/easyt/public-route";
 import type { RouteNightGuide } from "./route-detail-presentation";
 import { transferStatus, nightLabel } from "./route-detail-labels";
@@ -82,12 +83,18 @@ export default function RouteMapSummary({ title, stops, countries, nights, durat
   const connection = connectionIndex >= 0 ? stops[connectionIndex]?.onward : null;
   const guide = stopIndex >= 0 ? nights[stopIndex] : null;
   const items = [
-    { selection: { kind: "route" } as const, label: "Whole journey", meta: `${stops.length} stops` },
+    { selection: { kind: "route" } as const, label: "Whole journey", meta: `${stops.length} stops`, accessibleLabel: `Whole journey, ${stops.length} stops` },
     ...stops.flatMap((item, index) => {
       const next = stops[index + 1];
       return [
-        { selection: { kind: "stop", stopId: item.id } as const, label: `${index + 1}. ${item.name}`, meta: item.country },
-        ...(item.onward && next ? [{ selection: { kind: "connection", connectionId: editorialConnectionId(item.id, next.id, item.onward.id) } as const, label: `${item.name} to ${item.onward.to}`, meta: item.onward.modeLabel }] : []),
+        { selection: { kind: "stop", stopId: item.id } as const, label: `${index + 1}. ${item.name}`, accessibleLabel: `Stop ${index + 1}: ${item.name}, ${item.country}` },
+        ...(item.onward && next ? [{
+          selection: { kind: "connection", connectionId: editorialConnectionId(item.id, next.id, item.onward.id) } as const,
+          label: `${item.name} to ${item.onward.to}`,
+          mode: item.onward.mode,
+          modeLabel: item.onward.modeLabel,
+          accessibleLabel: `${item.onward.modeLabel} connection: ${item.name} to ${item.onward.to}${item.country !== next.country ? `, crossing from ${item.country} into ${next.country}` : ""}`,
+        }] : []),
       ];
     }),
   ];
@@ -102,9 +109,10 @@ export default function RouteMapSummary({ title, stops, countries, nights, durat
       <nav ref={navigatorRef} className={styles.journeyNavigator} aria-label="Explore this journey">
         <ol>{items.map((item) => {
           const active = journeySelectionKey(item.selection) === journeySelectionKey(selected);
+          const Icon = "mode" in item ? mapTransportIcon(item.mode === "bus" ? "road" : item.mode) : null;
           return <li key={journeySelectionKey(item.selection)}>
-            <EasyTButton variant="quiet" className={styles.journeyNavigatorButton} aria-current={active ? "location" : undefined} onClick={() => activateSelection(item.selection)}>
-              <span>{item.label}</span><small>{item.meta}</small>{item.selection.kind === "connection" && <ArrowRight aria-hidden="true" />}
+            <EasyTButton variant="quiet" className={styles.journeyNavigatorButton} aria-label={item.accessibleLabel} aria-current={active ? "location" : undefined} onClick={() => activateSelection(item.selection)}>
+              <span>{item.label}</span>{"meta" in item && <small>{item.meta}</small>}{Icon && <span className={styles.journeyNavigatorModeIcon} aria-hidden="true"><Icon /></span>}
             </EasyTButton>
           </li>;
         })}</ol>

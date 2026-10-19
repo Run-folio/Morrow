@@ -74,6 +74,8 @@ export default function SpreadsheetImportClient() {
 
   const table = sheets[sheetIndex] ?? null;
   const proposal = useMemo<SpreadsheetImportProposal | null>(() => table ? buildSpreadsheetImportProposal(table, mappings) : null, [mappings, table]);
+  const proposalRef = useRef(proposal);
+  proposalRef.current = proposal;
   const reviewedInputKey = proposal && resolvedOrigin
     ? JSON.stringify({ proposal, origin: resolvedOrigin, places: proposal.stops.map((stop) => resolvedPlaces[stop.id]) })
     : null;
@@ -395,7 +397,7 @@ export default function SpreadsheetImportClient() {
         <MorroviaStatusBanner tone="warning" title={`${sheets.length} plausible worksheets found`} detail="Choose one worksheet. Morrovia does not merge unrelated sheets in V1." />
         <EasyTSelect label="Worksheet" value={String(sheetIndex)} onChange={(event) => chooseSheet(Number(event.target.value))}>{sheets.map((sheet, index) => <option value={index} key={sheet.name}>{sheet.name} · {sheet.rows.length} rows</option>)}</EasyTSelect>
       </section> : null}
-      {proposal ? <SpreadsheetImportReview
+      {proposal ? <SpreadsheetImportReview key={JSON.stringify([ownerScope, proposal])}
         proposal={proposal}
         mappings={mappings}
         sourceRowCount={table.rows.length}
@@ -414,8 +416,8 @@ export default function SpreadsheetImportClient() {
         onUpdateMapping={updateMapping}
         onOriginValueChange={(value) => { inputVersionRef.current += 1; originRequestVersionRef.current += 1; setOriginValue(value); setResolvedOrigin(null); setOriginOptions([]); setOriginError(""); }}
         onResolveOrigin={() => void resolveOrigin()}
-        onSelectOrigin={(option) => { const accepted = acceptImportPlace(option, "endpoint"); if (!accepted) return; inputVersionRef.current += 1; originRequestVersionRef.current += 1; setResolvedOrigin(accepted); setOriginValue(accepted.name); setOriginError(""); }}
-        onSelectPlace={(stopId, option) => { inputVersionRef.current += 1; setResolvedPlaces((current) => ({ ...current, [stopId]: placeFromCandidate(stopId, option) })); }}
+        onSelectOrigin={(option) => { if (!mountedRef.current || ownerScopeRef.current !== ownerScope || proposalRef.current !== proposal) return; const accepted = acceptImportPlace(option, "endpoint"); if (!accepted) return; inputVersionRef.current += 1; originRequestVersionRef.current += 1; setResolvedOrigin(accepted); setOriginValue(accepted.name); setOriginError(""); }}
+        onSelectPlace={(stopId, option) => { if (!mountedRef.current || ownerScopeRef.current !== ownerScope || proposalRef.current !== proposal) return; inputVersionRef.current += 1; setResolvedPlaces((current) => ({ ...current, [stopId]: placeFromCandidate(stopId, option) })); }}
         onConfirm={() => void confirm()}
       /> : null}
     </>}

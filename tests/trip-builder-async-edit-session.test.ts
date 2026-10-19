@@ -366,6 +366,13 @@ function buildPersistence(h: Awaited<ReturnType<typeof harness>>, onAssessment?:
     useEffect(effect:()=>void){effects.push(effect)},activeTripDocument:h.session.getSnapshot().trip,
     requestBuildAssessment: async (editor:typeof h.session,isCurrent?:()=>boolean)=>{
       const pending=requestAssessment(editor,isCurrent);if(onAssessment)await onAssessment(++assessmentCount);
+      else {
+        // Unrelated Build fixtures complete their simulated provider boundary;
+        // explicit projection tests retain control through onAssessment.
+        await h.run(0);
+        for(const work of h.projections)if(!work.signal.aborted)work.result.resolve(response(work.request));
+        await tick();
+      }
       renderAssessment(editor);return pending;
     },
     builderBuildNavigationRef:{current:null},
@@ -582,11 +589,11 @@ for(const interruption of ['later-command','prior-refusal','editor-replaced'] as
  gate.resolve();await prior;await later;assert.equal(await building,null);assert.equal(h.session.getSnapshot().trip.status,'draft');assert.equal(h.writes.length,0);h.session.dispose();
 });
 
-test('actual Build retains the existing explicit ownerless promotion path from pending recovery',async()=>{
+test('actual Build retains the existing explicit ownerless promotion path from pending recovery',{timeout:5000},async()=>{
  const initial=requireReadableTripDocument({...fixture(),ownerId:null}),storage=new MemoryStorage();
  assert.equal(saveTripRecoveryToStorage(storage,initial,{ownerId:'owner-a'}).stored,true);
  const h=await harness({initialTrip:initial,owner:'owner-a',storage}),view=buildPersistence(h);
- const building=view.persist();await tick();assert.equal(h.writes.length,1,'Build must reach the existing explicit promotion flush');
+ const building=view.persist();for(let turn=0;turn<20&&!h.writes.length;turn++)await tick();assert.equal(h.writes.length,1,'Build must reach the existing explicit promotion flush');
  await h.ack(0);const built=await building;assert.equal(built?.ownerId,'owner-a');assert.equal(built?.status,'planned');h.session.dispose();
 });
 test('actual Build request retires when raw input changes before its effect starts',async()=>{
@@ -595,8 +602,8 @@ test('actual Build request retires when raw input changes before its effect star
  await h.session.updateDraft({binding:{kind:'origin'},raw:'typed after Build click'});
  assert.equal(await view.persist(request),null);assert.equal(h.session.getSnapshot().trip.status,'draft');assert.equal(h.deviceWrites.length,0);h.session.dispose();
 });
-test('actual Build cannot navigate after newer raw input arrives during account flush',async()=>{
- const h=await harness(),view=buildPersistence(h),building=view.persist();await tick();assert.equal(h.writes.length,1);
+test('actual Build cannot navigate after newer raw input arrives during account flush',{timeout:5000},async()=>{
+ const h=await harness(),view=buildPersistence(h),building=view.persist();for(let turn=0;turn<20&&!h.writes.length;turn++)await tick();assert.equal(h.writes.length,1);
  await h.session.updateDraft({binding:{kind:'origin'},raw:'newer during account flush'});await h.ack(0);
  assert.equal(await building,null);assert.equal(h.session.getSnapshot().draft.fields[0]?.raw,'newer during account flush');h.session.dispose();
 });
@@ -677,11 +684,11 @@ test('Build status refuses a source changed by projection after its assessment',
 });
 
 // Independent-recheck counterexamples: actual Build closure and assessment publication.
-for(const outcome of ['failed','held'] as const)test(`final Build assessment refuses ${outcome} projection persistence`,async()=>{
+for(const outcome of ['failed','held'] as const)test(`Build assessment refuses ${outcome} projection persistence`,{timeout:5000},async()=>{
  const h=await harness({initialTrip:requireReadableTripDocument({...fixture(),ownerId:null}),owner:null});await accept(h,origin);
  let held:ReturnType<typeof h.holdRecovery>|undefined,before:ReturnType<typeof h.session.getSnapshot>|undefined;const reached=deferred<void>();
  const view=buildPersistence(h,async ordinal=>{
-  if(ordinal!==2)return;
+  if(ordinal!==1)return;
   before=h.session.getSnapshot();await h.run(0);const work=h.projections.at(-1)!;assert.ok(work);
   if(outcome==='failed')h.failRecovery();else held=h.holdRecovery();
   work.result.resolve(response(work.request));await tick();
@@ -702,7 +709,7 @@ function navigationEffect(h:Awaited<ReturnType<typeof harness>>,view:ReturnType<
   firstTripWorkspaceHref:(id:string)=>'/trip/'+id,mapWorkspaceHref:(id:string)=>'/map/'+id,tripSyncSignInPath:(id:string)=>'/sign-in/'+id,settleUnacknowledgedBuild(){settled++}};
  return {run:()=>new Function('scope',`with(scope){return (async()=>{${ts.transpileModule(body,{compilerOptions:{target:ts.ScriptTarget.ES2022}}).outputText}})();}`)(scope),navigated,get settled(){return settled}};
 }
-for(const surface of ['build','map'] as const)for(const interruption of ['none','failed','held','new-raw','owner','unmount'] as const)test(`actual ${surface} navigation rechecks ${interruption} after the async persistence return`,async()=>{
+for(const surface of ['build','map'] as const)for(const interruption of ['none','failed','held','new-raw','owner','unmount'] as const)test(`actual ${surface} navigation rechecks ${interruption} after the async persistence return`,{timeout:5000},async()=>{
  const h=await harness({initialTrip:requireReadableTripDocument({...fixture(),ownerId:null}),owner:null});await accept(h,origin);
  const view=buildPersistence(h);let held:ReturnType<typeof h.holdRecovery>|undefined;
  const nav=navigationEffect(h,view,async()=>{
@@ -710,9 +717,11 @@ for(const surface of ['build','map'] as const)for(const interruption of ['none',
   if(interruption==='owner'){h.rotate('owner-b');return;}
   if(interruption==='unmount'){view.mounted.current=false;return;}
   if(interruption==='new-raw'){await h.session.updateDraft({binding:{kind:'origin'},raw:'new intent after Build returned'});return;}
-  await h.run(0);const work=h.projections.at(-1)!;assert.ok(work);
-  if(interruption==='failed')h.failRecovery();else held=h.holdRecovery();
-  work.result.resolve(response(work.request));await tick();
+  // Required route work has completed before Build returns. A no-op discard
+  // still owns a real device write without changing input or canonical revision.
+  if(interruption==='failed')h.failDraft();else held=h.holdDraft();
+  const writing=h.session.discardDraft({kind:'origin'});await tick();
+  if(interruption==='failed')await writing;
  },surface);
  await nav.run();assert.equal(nav.navigated.length,interruption==='none'?1:0);assert.equal(nav.settled,interruption==='none'?0:1);
  held?.resolve();await tick();h.session.dispose();
@@ -741,10 +750,14 @@ for(const interruption of ['write-failure','owner'] as const)test(`unverified di
 });
 
 
-for(const boundary of [1,2])test(`Build follows a healthy same-command projection at assessment ${boundary}`,async()=>{
+for(const boundary of [1,2])test(`Build assesses a healthy same-command projection at assessment ${boundary}`,{timeout:5000},async()=>{
  const h=await harness({initialTrip:requireReadableTripDocument({...fixture(),ownerId:null}),owner:null});await accept(h,origin);
- const view=buildPersistence(h,async ordinal=>{if(ordinal!==boundary)return;await h.run(0);const work=h.projections.at(-1)!;assert.ok(work);work.result.resolve(response(work.request));await tick();});
- try{const saved=await view.persist();assert.equal(saved?.status,'planned');assert.equal(h.writes.length,0);}finally{h.session.dispose();}
+ let assessed=false;
+ const view=buildPersistence(h,async ordinal=>{
+  if(ordinal===1){await h.run(0);const work=h.projections.at(-1)!;assert.ok(work);work.result.resolve(response(work.request));await tick();}
+  if(ordinal===boundary){assessed=true;assert.equal(h.session.getSnapshot().pendingUnits.some(unit=>unit.kind!=='recommendation'),false);}
+ });
+ try{const saved=await view.persist();assert.equal(saved?.status,'planned');assert.equal(h.writes.length,0);assert.equal(assessed,true);}finally{h.session.dispose();}
 });
 
 /** Real production worker closure; only network boundaries are synthetic. */
