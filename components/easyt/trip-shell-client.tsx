@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname, useRouter, useSelectedLayoutSegment } from "next/navigation";
 import { BedDouble, CalendarDays, Clock3, Edit3, House, Map, MapPin, Route, Sparkles } from "lucide-react";
-import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useReducer, useRef, useState, type ReactNode } from "react";
 import { authClient } from "@/lib/auth-client";
 import { trackEvent } from "@/lib/analytics";
 import {
@@ -62,11 +62,23 @@ export function useOptionalTripShellMutation() {
   return useContext(TripShellMutationContext);
 }
 
+/** @param {{ expanded: boolean; dismissed: boolean; hovered: boolean; focused: boolean }} state @param {"pointer-enter" | "pointer-leave" | "focus" | "blur" | "toggle"} action @returns {{ expanded: boolean; dismissed: boolean; hovered: boolean; focused: boolean }} */
+function reduceTripTitleDisclosure(state: { expanded: boolean; dismissed: boolean; hovered: boolean; focused: boolean }, action: "pointer-enter" | "pointer-leave" | "focus" | "blur" | "toggle") {
+  if (action === "pointer-enter") return { ...state, hovered: true, dismissed: false };
+  if (action === "pointer-leave") return { ...state, hovered: false, dismissed: state.focused ? state.dismissed : false };
+  if (action === "focus") return { ...state, focused: true, dismissed: false };
+  if (action === "blur") return { ...state, focused: false, dismissed: state.hovered ? state.dismissed : false };
+  return state.expanded ? { ...state, expanded: false, dismissed: true } : { ...state, expanded: true, dismissed: false };
+}
+
 export function TripShellIdentityAndActions() {
   const mutation = useTripShellMutation();
   const trip = mutation.trip;
   const pathname = usePathname();
   const isOverview = workspaceViewFromPathname(pathname, trip.id) === "overview";
+  const displayTitle = isOverview ? tripOverviewDisplayTitle(mutation.trip) : tripDisplayTitle(mutation.trip);
+  const [titleDisclosure, dispatchTitleDisclosure] = useReducer(reduceTripTitleDisclosure, { expanded: false, dismissed: false, hovered: false, focused: false });
+  const { expanded: titleExpanded, dismissed: titlePreviewDismissed, hovered: titleHovered, focused: titleFocused } = titleDisclosure;
   const routeLabel = tripRouteDisplayLabel(trip);
   const dateFacts = deriveTripDateFacts({ startDate: trip.startDate, endDate: trip.endDate });
   const duration = dateFacts.durationDays;
@@ -140,7 +152,21 @@ export function TripShellIdentityAndActions() {
   return <>
     <div className={styles.tripIdentity}>
       <p className={styles.eyebrow}>{status}</p>
-      <h1 id="trip-shell-title">{isOverview ? tripOverviewDisplayTitle(mutation.trip) : tripDisplayTitle(mutation.trip)}</h1>
+      <h1 id="trip-shell-title">
+        <span className={styles.tripTitleDisclosure}>
+          <button
+            className={styles.tripTitleToggle}
+            type="button"
+            aria-expanded={titleExpanded}
+            onPointerEnter={() => dispatchTitleDisclosure("pointer-enter")}
+            onPointerLeave={() => dispatchTitleDisclosure("pointer-leave")}
+            onFocus={() => dispatchTitleDisclosure("focus")}
+            onBlur={() => dispatchTitleDisclosure("blur")}
+            onClick={() => dispatchTitleDisclosure("toggle")}
+          ><span>{displayTitle}</span></button>
+          <span className={styles.tripTitleFull} aria-hidden="true" style={{ display: titleExpanded || ((titleHovered || titleFocused) && !titlePreviewDismissed) ? "block" : "none" }}>{displayTitle}</span>
+        </span>
+      </h1>
       {!isOverview ? <p className={styles.routeSummary}>{routeLabel}</p> : null}
       <dl className={styles.metadata}>
         <div><dt><CalendarDays aria-hidden="true" /><span className={styles.srOnly}>Dates</span></dt><dd>{dateFacts.rangeLabel}</dd></div>
@@ -477,10 +503,10 @@ export function useTripShellTrip() {
 
 const views = [
   { id: "overview", label: "Overview", icon: House, suffix: "" },
+  { id: "transport", label: "Transport", icon: Route, suffix: "/transport" },
   { id: "itinerary", label: "Itinerary", icon: CalendarDays, suffix: "/itinerary" },
   { id: "explore", label: "Explore", icon: Sparkles, suffix: "/explore" },
   { id: "stay", label: "Stay", icon: BedDouble, suffix: "/stay" },
-  { id: "transport", label: "Transport", icon: Route, suffix: "/transport" },
 ] as const;
 
 type TripWorkspaceView = typeof views[number]["id"];

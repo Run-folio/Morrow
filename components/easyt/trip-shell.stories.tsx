@@ -160,6 +160,24 @@ export const LongTitleAndMissingImage: Story = {
   },
 };
 
+const longMultiCountryTitle = "From London and Edinburgh to Tokyo, Kyoto, Seoul, Taipei, Singapore, Sydney, Auckland and Vancouver: a long journey across ten countries with history, food and nature";
+const longMultiCountryTitleTrip: EasyTTrip = {
+  ...trip,
+  title: longMultiCountryTitle,
+  brief: { ...trip.brief, customTitle: longMultiCountryTitle },
+};
+
+export const LongMultiCountryTitleDesktop1440: Story = {
+  ...Overview,
+  args: { ...Overview.args, trip: longMultiCountryTitleTrip },
+  globals: { viewport: { value: "morrovia1440", isRotated: false } },
+};
+
+export const LongMultiCountryTitleMobile390: Story = {
+  ...LongMultiCountryTitleDesktop1440,
+  globals: { viewport: { value: "morrovia390", isRotated: false } },
+};
+
 const coverTrip: EasyTTrip = {
   ...trip,
   id: "storybook-first-destination-cover",

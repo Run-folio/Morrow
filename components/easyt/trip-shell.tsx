@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import type { EasyTTrip } from "@/lib/easyt/trip";
 import { deriveTripDateFacts } from "@/lib/easyt/trip-facts";
-import { TripShellCanonicalMutationProvider, TripShellChrome, TripShellIdentityAndActions, TripShellImage, TripShellNavigation, TripShellTripProvider, TripWorkspaceNavigationProvider } from "./trip-shell-client";
+import { TripShellCanonicalMutationProvider, TripShellChrome, TripShellIdentityAndActions, TripShellNavigation, TripShellTripProvider, TripWorkspaceNavigationProvider } from "./trip-shell-client";
 import { ContextualFeedbackProvider } from "./contextual-feedback-controller";
 import { WorkspaceOrientationProvider } from "./workspace-orientation";
 import styles from "./trip-shell.module.css";
@@ -23,7 +23,6 @@ export default function TripShell({ trip, children, deviceOnlyNotice, cacheTrip 
           <TripWorkspaceNavigationProvider tripId={trip.id}>
           <TripShellChrome tripId={trip.id}><section className={styles.shell} aria-labelledby="trip-shell-title">
           <header className={styles.tripHeader}>
-            <TripShellImage />
             <TripShellIdentityAndActions />
           </header>
 
