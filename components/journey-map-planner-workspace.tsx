@@ -550,6 +550,8 @@ export function JourneyMapPlannerWorkspace({
   const [tripHealthDetail, setTripHealthDetail] = useState<TripHealthDetail | null>(null);
   const [mobileMapDrawerOpen, setMobileMapDrawerOpenState] = useState(Boolean(storyState?.mobileDrawerOpen));
   const setMobileMapDrawerOpen = useMapPlannerIntentSetter(setMobileMapDrawerOpenState, mobileMapDrawerOpen, plannerActionRevisionRef);
+  const [mobileMapDrawerExpanded, setMobileMapDrawerExpanded] = useState(false);
+  const drawerSurfaceRef = useRef<HTMLDivElement>(null);
   const drawerGestureRef = useRef<{ pointerId: number; x: number; y: number; startedAt: number } | null>(null);
   const suppressDrawerClickRef = useRef(false);
   const drawerBodyRef = useRef<HTMLDivElement>(null);
@@ -1158,19 +1160,20 @@ export function JourneyMapPlannerWorkspace({
         setCameraDrawerLayoutState(null);
         return;
       }
-      const style = getComputedStyle(workspace);
-      const stripHeight = parseFloat(style.getPropertyValue("--mobile-map-strip-height")) || 0;
-      const visibleMap = parseFloat(style.getPropertyValue("--mobile-map-visible-space")) || 0;
-      const collapsedHeight = parseFloat(style.getPropertyValue("--mobile-map-drawer-collapsed-height")) || 0;
-      const bottom = mobileMapDrawerOpen ? Math.max(0, workspace.clientHeight - stripHeight - visibleMap) : collapsedHeight;
+      const bounds = (workspace.querySelector<HTMLElement>(".planner-map, .journey-map") ?? workspace).getBoundingClientRect();
+      const drawerBounds = drawerSurfaceRef.current?.getBoundingClientRect();
+      const bottom = drawerBounds ? Math.min(bounds.height, Math.max(0, bounds.bottom - drawerBounds.top)) : 0;
       setMapCameraOcclusions((current) => current.bottom === bottom ? current : { ...current, bottom });
       setCameraDrawerLayoutState(mobileMapDrawerOpen ? "open" : "collapsed");
     };
     measure();
     const observer = new ResizeObserver(measure);
     observer.observe(workspace);
+    if (drawerSurfaceRef.current) observer.observe(drawerSurfaceRef.current);
+    const mapLayer = workspace.querySelector<HTMLElement>(".planner-map, .journey-map");
+    if (mapLayer) observer.observe(mapLayer);
     return () => observer.disconnect();
-  }, [isShellPresentation, mobileMapDrawerOpen]);
+  }, [isShellPresentation, hasCanonicalPlanner, planHydrated, googleCanvasActive, mobileMapDrawerOpen, mobileMapDrawerExpanded]);
   const showDayPlanner = Boolean(hasCanonicalPlanner && selected.coordinates && mapMode === "detail" && !selectedPlannerPin && !selectedRouteLeg);
   const mobileMapSheetView = tripStatusExpanded
     ? "status"
@@ -1191,6 +1194,31 @@ export function JourneyMapPlannerWorkspace({
           ?? selectedPlannerPin?.title
           ?? (selectedRouteLeg ? `${selectedRouteLeg.fromName} → ${selectedRouteLeg.toName}` : null)
           ?? (mapMode === "overview" ? "Whole route" : selectedTripStop?.name ?? selected.city);
+  const mobileMapContextCloseLabel = mobileMapSheetView !== "context" ? null
+    : selectedPlaceDetail ? `Close details for ${selectedPlaceDetail.title}`
+      : selectedGooglePlaceId || selectedLocalPlace ? "Close selected place details"
+      : selectedPlannerPin ? "Close selected pin details"
+        : selectedRouteLeg ? "Close transfer details"
+          : mapMode === "detail" ? "Close destination details" : null;
+  const closeMobileMapContext = () => {
+    if (selectedGooglePlaceId) {
+      dismissGooglePlace();
+      if (selectedPlaceDetail && shapeDayTab === "plan") setMobileShapeDayOpen(true);
+    } else if (selectedLocalPlace) dismissSelectedMapResult();
+    else if (selectedPlannerPin) {
+      const id = selectedPlannerPin.id;
+      setSelectedPlannerPin(null);
+      setMobileMapDrawerOpen(false);
+      restoreMapMarkerFocus("plannerPinId", id);
+    } else if (selectedRouteLeg) clearSelectedRouteLeg();
+    else if (mapMode === "detail") resetWholeRoute();
+  };
+  useEffect(() => { setMobileMapDrawerExpanded(false); }, [mobileMapDrawerOpen, mobileMapSheetTitle]);
+  const advanceMobileDrawer = () => {
+    if (!mobileMapDrawerOpen) setMobileMapDrawerOpen(true);
+    else if (!mobileMapDrawerExpanded) setMobileMapDrawerExpanded(true);
+    else setMobileMapDrawerOpen(false);
+  };
   useEffect(() => {
     if (!isShellPresentation) return;
     if (pinPlacementMode || pinCoordinates || selectedLocalPlaceId || selectedPlannerPin || selectedRouteLegId) {
@@ -1214,9 +1242,10 @@ export function JourneyMapPlannerWorkspace({
     drawerGestureRef.current = null;
     if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId);
     if (Math.hypot(event.clientX - start.x, event.clientY - start.y) > 8) suppressDrawerClickRef.current = true;
-    const decision = mobileMapDrawerDragDecision({ startX: start.x, startY: start.y, endX: event.clientX, endY: event.clientY, elapsedMs: performance.now() - start.startedAt, open: mobileMapDrawerOpen });
+    const decision = mobileMapDrawerDragDecision({ startX: start.x, startY: start.y, endX: event.clientX, endY: event.clientY, elapsedMs: performance.now() - start.startedAt, open: mobileMapDrawerOpen, expanded: mobileMapDrawerExpanded });
     if (!decision) return;
-    setMobileMapDrawerOpen(decision === "open");
+    setMobileMapDrawerExpanded(decision === "expanded");
+    setMobileMapDrawerOpen(decision !== "collapsed");
   };
   const mapStopOrientationTarget = useWorkspaceOrientationTarget("map", "map-stop");
   const mapExploreOrientationTarget = useWorkspaceOrientationTarget("map", "map-explore");
@@ -3131,17 +3160,20 @@ export function JourneyMapPlannerWorkspace({
       {showDayPlanner ? <button type="button" className={styles.mapDayControl} aria-label={`Open planning for ${selected.city}`} aria-expanded={mobileMapDrawerOpen && mobileMapSheetView === "planner"} aria-controls="map-contextual-sheet" onClick={() => { setMobileMapDrawerOpen(true); setMobileShapeDayOpen(true); }}><CalendarDays aria-hidden="true" /><span><small>{selectedDay.label || `Day ${selectedPlanItem?.dayNumber ?? 1}`}</small><strong>{selected.city}</strong></span></button> : null}
 
       <div
+        ref={drawerSurfaceRef}
         id="map-contextual-sheet"
         className={styles.mapContextualSurface}
         data-mobile-sheet-view={mobileMapSheetView}
         data-mobile-drawer-state={mobileMapDrawerOpen ? "open" : "collapsed"}
+        data-mobile-drawer-size={mobileMapDrawerExpanded ? "expanded" : "intermediate"}
       >
         <header className={styles.mobileMapSheetControls}>
-          <EasyTButton type="button" variant="quiet" className={mapDocks.mobileMapDrawerToggle} aria-label={`${mobileMapDrawerOpen ? "Collapse" : "Expand"} ${mobileMapSheetTitle} details`} aria-expanded={mobileMapDrawerOpen} aria-controls="map-contextual-sheet-content" onPointerDown={onDrawerPointerDown} onPointerUp={onDrawerPointerUp} onPointerCancel={() => { drawerGestureRef.current = null; suppressDrawerClickRef.current = false; }} onClick={(event) => { if (suppressDrawerClickRef.current) { suppressDrawerClickRef.current = false; if (event.detail !== 0) return; } setMobileMapDrawerOpen((open) => !open); }}>
+          <EasyTButton type="button" variant="quiet" className={mapDocks.mobileMapDrawerToggle} aria-label={`${mobileMapDrawerExpanded ? "Collapse" : "Expand"} ${mobileMapSheetTitle} details${mobileMapDrawerOpen && !mobileMapDrawerExpanded ? " further" : ""}`} aria-expanded={mobileMapDrawerOpen} aria-controls="map-contextual-sheet-content" onPointerDown={onDrawerPointerDown} onPointerUp={onDrawerPointerUp} onPointerCancel={() => { drawerGestureRef.current = null; suppressDrawerClickRef.current = false; }} onClick={(event) => { if (suppressDrawerClickRef.current) { suppressDrawerClickRef.current = false; if (event.detail !== 0) return; } advanceMobileDrawer(); }}>
             <span className={mapDocks.mobileMapDrawerGrip} aria-hidden="true" />
             <span className={mapDocks.mobileMapDrawerTitle}>{mobileMapSheetTitle}</span>
-            {mobileMapDrawerOpen ? <ChevronDown aria-hidden="true" /> : <ChevronUp aria-hidden="true" />}
+            {mobileMapDrawerExpanded ? <ChevronDown aria-hidden="true" /> : <ChevronUp aria-hidden="true" />}
           </EasyTButton>
+          {mobileMapContextCloseLabel ? <EasyTButton type="button" iconOnly icon={X} variant="quiet" className={mapDocks.mobileMapDrawerClose} onClick={closeMobileMapContext}>{mobileMapContextCloseLabel}</EasyTButton> : null}
         </header>
         <div id="map-contextual-sheet-content" ref={drawerBodyRef} className={styles.mobileMapSheetBody}>
       <aside className={`${styles.itineraryPanel} ${hasCanonicalPlanner ? `${styles.itineraryWithFinder} ${styles.canonicalPlannerStatus}` : ""} ${hasCanonicalPlanner && tripStatusExpanded ? styles.tripStatusExpanded : ""} ${tripHealthDetail ? styles.healthDetailOpen : ""} ${pinPlacementMode || Boolean(pinCoordinates) ? styles.mapContextHidden : ""} ${defaultMapContext ? styles.mapDefaultContext : ""} ${isShellPresentation && !showShellContext ? styles.mapContextEmpty : ""} ${isShellPresentation && selectedRouteLeg ? styles.mapTransferContext : ""} ${isShellPresentation && (selectedLocalPlace || selectedPlannerPin || selectedGooglePlaceId) ? styles.mapPlaceContext : ""} ${isShellPresentation && mapMode === "detail" && !selectedLocalPlace && !selectedPlannerPin && !selectedRouteLeg && !selectedGooglePlaceId ? styles.mapDestinationContext : ""}`} aria-label="Selected map context" aria-live="polite">
@@ -3155,6 +3187,7 @@ export function JourneyMapPlannerWorkspace({
           {selectedPlaceDetail ? <div className={styles.mapPlaceDetail}>
             <ItineraryItemDetail
               embedded
+              compactMapHeader
               omitEmptyMedia
               omitMapAction
               stackActions

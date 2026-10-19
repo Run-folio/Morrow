@@ -56,6 +56,48 @@ test('an existing catalog owner with its explicitly pinned reference selection r
  assert.equal(new URL(fixture().requests[0]).searchParams.get('ggscoord'),'35.6895|139.69171');
  assert.equal(url.searchParams.get('canonicalPlaceId'),'tokyo');
 });
+// Reviewed catalog/reference pairs reproduced from a saved Paris/Madrid route.
+// These public source tuples are fixtures, never a traveller-document migration.
+const parisMadridBindings = [
+ {id:'paris',name:'Paris',country:'France',referenceId:'reference:geonames:2988507',providerId:'reference:geonames:2988507@699b595afdba9be6994e:FR:city:2.3488:48.85341',catalogPoint:[2.3522,48.8566],referencePoint:[2.3488,48.85341],otherId:'madrid',otherCountry:'Spain',sameCountryOther:'reference:geonames:2996944'},
+ {id:'madrid',name:'Madrid',country:'Spain',referenceId:'reference:geonames:3117735',providerId:'reference:geonames:3117735@699b595afdba9be6994e:ES:city:-3.70256:40.4165',catalogPoint:[-3.7038,40.4168],referencePoint:[-3.70256,40.4165],otherId:'paris',otherCountry:'France',sameCountryOther:'reference:geonames:3128760'},
+] as const;
+for(const pair of parisMadridBindings) {
+ test(`catalog ${pair.id} accepts only its reviewed current reference pin without rewriting the selected identity`,async t=>{
+  setup(t,{organic:()=>Response.json({query:{pages:{701:{pageid:701,title:`${pair.name} Art Museum`,extract:'A major museum and visitor gallery.',coordinates:[{lon:pair.referencePoint[0],lat:pair.referencePoint[1]}]}}}})});
+  assert.equal(referencePlaceById(pair.referenceId)?.providerId,pair.providerId);
+  const url=discovery(pair.name,pair.country,pair.id,pair.providerId);
+  url.searchParams.set('lat',String(pair.referencePoint[1]));url.searchParams.set('lon',String(pair.referencePoint[0]));
+  const before=url.toString(),response=await api.discover.GET({nextUrl:url}),body=await response.json();
+  assert.equal(response.status,200);assert.equal(body.assessment?.retrieval,'completed');
+  assert.equal(body.places.length,1);assert.equal(body.places[0].title,`${pair.name} Art Museum`);
+  assert.equal(new URL(fixture().requests[0]).searchParams.get('ggscoord'),`${pair.referencePoint[1]}|${pair.referencePoint[0]}`);
+  assert.equal(url.toString(),before);assert.equal(url.searchParams.get('canonicalPlaceId'),pair.id);
+ });
+ for(const kind of ['catalog','reference'] as const)test(`${pair.id} retains its existing exact ${kind} discovery identity`,async t=>{
+  setup(t);
+  const url=discovery(pair.name,pair.country,kind==='catalog'?pair.id:pair.referenceId,kind==='catalog'?`morrovia-place-catalog:${pair.id}`:pair.providerId);
+  const point=kind==='catalog'?pair.catalogPoint:pair.referencePoint;
+  const body=await (await api.discover.GET({nextUrl:url})).json();
+  assert.equal(body.assessment?.retrieval,'completed');
+  assert.equal(new URL(fixture().requests[0]).searchParams.get('ggscoord'),`${point[1]}|${point[0]}`);
+ });
+ for(const [label,mutate] of [
+  ['stale snapshot',(url:URL)=>url.searchParams.set('providerId',pair.providerId.replace('@699b595afdba9be6994e:', '@stale-snapshot:'))],
+  ['tampered source point',(url:URL)=>url.searchParams.set('providerId',[...pair.providerId.split(':').slice(0,-2),pair.referencePoint[0]+0.00001,pair.referencePoint[1]].join(':'))],
+  ['conflicting canonical identity',(url:URL)=>url.searchParams.set('canonicalPlaceId',pair.otherId)],
+  ['wrong country',(url:URL)=>url.searchParams.set('country',pair.otherCountry)],
+  ['unsupported alias',(url:URL)=>url.searchParams.set('destination',`${pair.name} centre`)],
+  ['different same-country source',(url:URL)=>{const other=referencePlaceById(pair.sameCountryOther);assert.ok(other);url.searchParams.set('providerId',other.providerId);}],
+  ['reference identity missing its provider pin',(url:URL)=>{url.searchParams.set('canonicalPlaceId',pair.referenceId);url.searchParams.delete('providerId');}],
+ ] as const)test(`catalog ${pair.id} still blocks ${label} before provider consumption`,async t=>{
+  setup(t);const url=discovery(pair.name,pair.country,pair.id,pair.providerId);mutate(url);const before=url.toString();
+  const response=await api.discover.GET({nextUrl:url}),body=await response.json();
+  assert.equal(response.status,200);assert.equal(body.assessment?.retrieval,'blocked');assert.equal(body.assessment?.reason,'identity_required');
+  assert.equal(body.assessment?.retryable,false);assert.deepEqual(body.assessment?.diagnostics?.attemptedSources,[]);
+  assert.deepEqual(body.places,[]);assert.equal(fixture().requests.length,0);assert.equal(url.toString(),before);
+ });
+}
 for(const [owner,name,country,id,lat,lon] of [
  ['cusco','Cusco','Peru','reference:geonames:3697554','-13.5319','-71.9675'],
  ['boston','Boston','United States','reference:geonames:5109797','42.3601','-71.0589'],

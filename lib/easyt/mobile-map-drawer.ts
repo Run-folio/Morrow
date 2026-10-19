@@ -5,10 +5,11 @@ export type MobileMapDrawerDrag = {
   endY: number;
   elapsedMs: number;
   open: boolean;
+  expanded?: boolean;
 };
 
 /** Handle-only gestures keep ordinary result scrolling and map panning separate. */
-export function mobileMapDrawerDragDecision(gesture: MobileMapDrawerDrag): "open" | "collapsed" | null {
+export function mobileMapDrawerDragDecision(gesture: MobileMapDrawerDrag): "open" | "expanded" | "collapsed" | null {
   const deltaX = gesture.endX - gesture.startX;
   const deltaY = gesture.endY - gesture.startY;
   const distance = Math.abs(deltaY);
@@ -16,6 +17,7 @@ export function mobileMapDrawerDragDecision(gesture: MobileMapDrawerDrag): "open
   const intentional = distance >= 56 || distance / Math.max(gesture.elapsedMs, 1) >= 0.45;
   if (!intentional) return null;
   if (deltaY < 0 && !gesture.open) return "open";
-  if (deltaY > 0 && gesture.open) return "collapsed";
+  if (deltaY < 0 && !gesture.expanded) return "expanded";
+  if (deltaY > 0 && gesture.open) return gesture.expanded ? "open" : "collapsed";
   return null;
 }

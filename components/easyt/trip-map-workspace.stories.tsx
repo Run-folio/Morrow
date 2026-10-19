@@ -13,6 +13,8 @@ import { affiliatePartners, getActivityBookingAction, type ResolvedAffiliateActi
 import { tourTripFixture } from "./storybook/tour-trip.fixture";
 import { cancunReturnTripFixture } from "./storybook/cancun-return-trip.fixture";
 
+import mobileMapTrip from "../../tests/fixtures/mobile-map-planner-trip.json";
+
 const image = "/journey/peru-sacred-valley-route.jpg";
 
 const day = (dayNumber: number, stopId: string, title: string, type: PlanItem["type"] = "activity", dayImage = image): PlanItem => ({
@@ -1287,4 +1289,49 @@ function GoogleCanvasAdapterStory() {
 
 export const GoogleCanvasAdapterFixture: Story = {
   render: () => <GoogleCanvasAdapterStory />,
+};
+
+// Uses the retained qualified geography fixture so the production identity guard
+// exercises the real planner, including the embedded drawer content.
+const qualifiedDrawerTrip = mobileMapTrip as unknown as EasyTTrip;
+export const MobileDrawerQualifiedTrip: Story = {
+  args: {
+    storyTrip: {
+      ...qualifiedDrawerTrip,
+      ownerId: "storybook-traveller",
+      planItems: qualifiedDrawerTrip.planItems.map(item => item.dayNumber === 1
+        ? { ...item, notes: Array.from({ length: 20 }, (_, index) => `Synthetic itinerary activity ${index + 1}`) }
+        : item),
+    },
+    storyState: { mobileShapeDayOpen: true, mobileDrawerOpen: true },
+  },
+  parameters: { nextjs: { appDirectory: true, navigation: { pathname: `/journey/${qualifiedDrawerTrip.id}/map`, query: { stop: qualifiedDrawerTrip.stops[0]!.id, mode: "plan" } } } },
+  globals: { viewport: { value: "morrovia390", isRotated: false } },
+};
+
+export const MobileDrawerQualifiedGoogle: Story = {
+  ...MobileDrawerQualifiedTrip,
+  args: { ...MobileDrawerQualifiedTrip.args, storyState: { ...MobileDrawerQualifiedTrip.args!.storyState, googleFixture } },
+};
+
+export const MobileDrawerQualifiedPin: Story = {
+  ...MobileDrawerQualifiedTrip,
+  args: {
+    ...MobileDrawerQualifiedTrip.args,
+    storyTrip: { ...qualifiedDrawerTrip, ownerId: "storybook-traveller", brief: { ...qualifiedDrawerTrip.brief, mapPins: [{ id: "qa-bogota-pin", title: "Synthetic Bogotá viewpoint", category: "custom", dayNumber: 1, latitude: qualifiedDrawerTrip.stops[0]!.latitude!, longitude: qualifiedDrawerTrip.stops[0]!.longitude! }] } },
+    storyState: { mapMode: "detail", mobileDrawerOpen: true, selectedPlannerPinId: "qa-bogota-pin" },
+  },
+};
+
+const qualifiedDrawerStay: JourneyLocalPlace = {
+  ...providerPlaces.hotel,
+  id: "qa-bogota-stay",
+  name: "Synthetic Bogotá courtyard stay",
+  address: "Bogotá, Colombia",
+  coordinates: [qualifiedDrawerTrip.stops[0]!.longitude!, qualifiedDrawerTrip.stops[0]!.latitude!],
+  description: "A synthetic stay used to review the selected-place header, location and booking actions.",
+};
+export const MobileDrawerQualifiedStay: Story = {
+  ...MobileDrawerQualifiedTrip,
+  args: { ...MobileDrawerQualifiedTrip.args, storyState: { mapMode: "detail", shapeDayTab: "stay", localPlaces: [qualifiedDrawerStay], selectedLocalPlaceId: qualifiedDrawerStay.id, mobileDrawerOpen: true } },
 };

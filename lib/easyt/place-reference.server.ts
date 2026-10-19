@@ -114,6 +114,10 @@ const activityReferenceBindings:Readonly<Record<string,{
   catalogPoint:[-77.0428,-12.0464],referencePoint:[-77.02824,-12.04318]},
  bogota:{referenceId:'reference:geonames:3688689',name:'Bogotá',countryCode:'CO',placeType:'city',
   catalogPoint:[-74.0721,4.711],referencePoint:[-74.08175,4.60971]},
+ paris:{referenceId:'reference:geonames:2988507',name:'Paris',countryCode:'FR',placeType:'city',
+  catalogPoint:[2.3522,48.8566],referencePoint:[2.3488,48.85341]},
+ madrid:{referenceId:'reference:geonames:3117735',name:'Madrid',countryCode:'ES',placeType:'city',
+  catalogPoint:[-3.7038,40.4168],referencePoint:[-3.70256,40.4165]},
 };
 
 /** Discovery projection from a pinned source identity. Caller coordinates are

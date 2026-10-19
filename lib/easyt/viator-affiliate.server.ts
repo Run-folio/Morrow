@@ -1,3 +1,4 @@
+import type {ActivityDiagnosticEvent, ActivityDiagnosticOperation, ActivityDiagnosticSink} from './activity-search-diagnostics.server.ts';
 import "server-only";
 import {createViatorAdmission, viatorRetryAfter, type ViatorAdmission} from "./viator-admission.server.ts";
 
@@ -224,6 +225,7 @@ export type ViatorAffiliateClientOptions = {
   taxonomyCacheTtlMs?: number;
   maxCacheEntries?: number;
   timeoutMs?: number;
+  diagnostics?: ActivityDiagnosticSink;
   now?: () => number;
   resolveDestination?: ViatorDestinationResolver;
 };
@@ -241,6 +243,7 @@ export class ViatorAffiliateClient {
   private readonly taxonomyCacheTtlMs: number;
   private readonly maxCacheEntries: number;
   private readonly timeoutMs: number;
+  private readonly diagnostics?: ActivityDiagnosticSink;
   private readonly now: () => number;
   private readonly resolveDestination: ViatorDestinationResolver;
 
@@ -248,6 +251,7 @@ export class ViatorAffiliateClient {
     const resolvedOptions = typeof options === "function" ? { request: options } : options;
     this.configuration = configuration;
     this.request = resolvedOptions.request ?? fetch;
+    this.diagnostics = resolvedOptions.diagnostics;
     this.cache = resolvedOptions.cache ?? sharedActivityCache;
     this.admission = resolvedOptions.admission ?? createViatorAdmission(configuration.environment);
     let requests = sharedProductRequests.get(this.cache);
@@ -268,41 +272,58 @@ export class ViatorAffiliateClient {
     return { "Accept-Language": locale, Accept: "application/json;version=2.0", "exp-api-key": this.configuration.apiKey };
   }
 
-  private async providerJson(url: string, label: string, init: RequestInit) {
+  private diagnostic(stage:ActivityDiagnosticEvent['stage'], operation:ActivityDiagnosticOperation, outcome:ActivityDiagnosticEvent['outcome'], started:number, error?:unknown, httpStatus?:number) {
+    try { this.diagnostics?.({stage,operation,outcome,elapsedMs:performance.now()-started,error,httpStatus}); } catch { /* Non-authoritative observer. */ }
+  }
+
+  private async releasePermit(token:string, operation:ActivityDiagnosticOperation) {
+    const started=performance.now();this.diagnostic('permit-release',operation,'started',started);
+    try { await this.admission.release(token);this.diagnostic('permit-release',operation,'completed',started); }
+    catch(error) { this.diagnostic('permit-release',operation,'failed',started,error);throw error; }
+  }
+
+  private async providerJson(url: string, label: string, init: RequestInit, operation:ActivityDiagnosticOperation) {
     // A local shedder protects the coordinator itself. Only SQL establishes the
     // cross-instance ceiling; this never waits or substitutes for a SQL claim.
     const scope=this.configuration.environment;
     const active=localOutboundWork.get(scope) ?? 0;
-    if (active>=2) throw new ViatorAffiliateError("rate_limited",undefined,{lookupAttempted:false,retryAfterSeconds:60});
+    if (active>=2) {
+      this.diagnostic('admission',operation,'denied',performance.now());
+      throw new ViatorAffiliateError("rate_limited",undefined,{lookupAttempted:false,retryAfterSeconds:60});
+    }
     localOutboundWork.set(scope,active+1);
     let released=false;
     const releaseLocal=()=>{
       if (released) return;
       released=true;localOutboundWork.set(scope,(localOutboundWork.get(scope) ?? 1)-1);
     };
-    return this.admittedProviderJson(url,label,init,releaseLocal);
+    return this.admittedProviderJson(url,label,init,releaseLocal,operation);
   }
 
-  private async admittedProviderJson(url: string, label: string, init: RequestInit, releaseLocal:()=>void) {
+  private async admittedProviderJson(url: string, label: string, init: RequestInit, releaseLocal:()=>void, operation:ActivityDiagnosticOperation) {
+    const admissionStarted=performance.now();this.diagnostic('admission',operation,'started',admissionStarted);
     const claiming=Promise.resolve().then(()=>this.admission.claim());
     let claim;
     try { claim = await withProviderTimeout({label:"Activity admission",timeoutMs:2000,request:()=>claiming}); }
-    catch {
-      // A response deadline does not cancel Neon HTTP SQL. Retain the local
-      // slot until it settles; a late permit is released without any dispatch.
-      void claiming.then(async late=>{if(late.admitted)await this.admission.release(late.token);})
-        .catch(()=>{}).finally(releaseLocal);
+    catch(error) {
+      this.diagnostic('admission',operation,'failed',admissionStarted,error);
+      // Keep the original late-permit cleanup and local-slot ownership.
+      void claiming.then(async late=>{if(late.admitted)await this.releasePermit(late.token,operation);})
+        .catch(lateError=>{this.diagnostic('admission',operation,'late-failed',admissionStarted,lateError);}).finally(releaseLocal);
       throw new ViatorAffiliateError("unavailable", undefined, {lookupAttempted:false, retryAfterSeconds:60});
     }
+    this.diagnostic('admission',operation,claim.admitted?'completed':'denied',admissionStarted);
     if (!claim.admitted) {
       releaseLocal();
       throw new ViatorAffiliateError("rate_limited", undefined, {lookupAttempted:false, retryAfterSeconds:claim.retryAfterSeconds});
     }
     const token=claim.token;
+    const providerStarted=performance.now();this.diagnostic('provider',operation,'started',providerStarted);
     try {
       return await withProviderTimeout({label, timeoutMs:this.timeoutMs, request: async signal => {
+        let httpStatus:number|undefined;
         try {
-          const response=await this.request(url,{...init,cache:"no-store",signal});
+          const response=await this.request(url,{...init,cache:"no-store",signal});httpStatus=response.status;
           if (response.status===429) {
             const retryAfterSeconds=viatorRetryAfter(response.headers.get("retry-after"),this.now());
             await this.admission.cooldown(retryAfterSeconds);
@@ -310,17 +331,24 @@ export class ViatorAffiliateClient {
           }
           if (response.status===401 || response.status===403) throw new ViatorAffiliateError("authentication",undefined,{status:response.status});
           if (!response.ok) throw new ViatorAffiliateError("unavailable",undefined,{status:response.status});
-          try { return await response.json(); } catch { throw new ViatorAffiliateError("malformed"); }
+          let payload:unknown;
+          try { payload=await response.json(); } catch { throw new ViatorAffiliateError("malformed"); }
+          this.diagnostic('provider',operation,'completed',providerStarted,undefined,httpStatus);
+          return payload;
+        } catch(error) {
+          this.diagnostic('provider',operation,'failed',providerStarted,error,httpStatus);throw error;
         } finally {
-          // Runs when the underlying operation settles, including after timeout.
-          // If it never settles, the SQL lease expires; do not free a live call.
-          try { await this.admission.release(token); } catch { /* Retain expiring lease on database failure. */ }
+          // Release remains inside the existing timeout boundary; only observation changes.
+          try { await this.releasePermit(token,operation); } catch { /* Retain expiring lease on database failure. */ }
           finally { releaseLocal(); }
         }
       }});
     } catch (error) {
       if (error instanceof ViatorAffiliateError) throw error;
-      if (error instanceof Error && (error.name==="TimeoutError" || error.name==="AbortError")) throw new ViatorAffiliateError("timeout");
+      if (error instanceof Error && (error.name==="TimeoutError" || error.name==="AbortError")) {
+        this.diagnostic('request-boundary',operation,'timeout',providerStarted,error);
+        throw new ViatorAffiliateError("timeout");
+      }
       throw new ViatorAffiliateError("unavailable");
     }
   }
@@ -336,7 +364,7 @@ export class ViatorAffiliateClient {
       const payload = await this.providerJson(`${this.configuration.apiBaseUrl}/destinations`, "Viator destination taxonomy", {
         method: "GET",
         headers: this.providerHeaders(locale),
-      });
+      }, "destination-taxonomy");
       let taxonomy: ViatorDestinationTaxonomy;
       try {
         taxonomy = normalizeViatorDestinationTaxonomy(payload);
@@ -407,7 +435,7 @@ export class ViatorAffiliateClient {
       method: "POST",
       headers: { ...this.providerHeaders(locale), "Content-Type": "application/json" },
       body: JSON.stringify({ filtering: { destination: destination.providerDestinationId }, sorting: { sort: "DEFAULT" }, pagination: { start, count }, currency }),
-    });
+    }, "product-search");
 
     const activities = normalizeViatorProducts(payload, destination, new Date(this.now()).toISOString());
     const counts={raw:(payload as {products:unknown[]}).products.length,admitted:activities.length,returned:activities.length};

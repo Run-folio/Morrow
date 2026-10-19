@@ -77,14 +77,17 @@
 @media (max-width:980px) {
   .plan {
     --mobile-map-strip-height:72px;
-    --mobile-map-visible-space:136px;
-    --mobile-map-drawer-collapsed-height:72px;
+    --mobile-map-visible-space:clamp(160px,24svh,240px);
+    --mobile-map-drawer-collapsed-height:calc(52px + env(safe-area-inset-bottom));
     --mobile-map-sheet-height:var(--mobile-map-drawer-collapsed-height);
     height:100svh;
-    min-height:100svh;
+    min-height:0;
     padding:0;
     overflow:hidden;
   }
+
+  .plan[class*="shellPlanner"] { height:calc(100svh - var(--morrovia-navigation-height));min-height:0; }
+  .plan[data-map-expanded="true"] { height:100svh; }
 
   .plan :global(.journey-map),
   .plan :global(.planner-map) {
@@ -93,22 +96,18 @@
     border:0;
   }
 
-  .plan:has(:global([data-mobile-drawer-state="open"])) { --mobile-map-sheet-height:calc(100% - var(--mobile-map-strip-height) - var(--mobile-map-visible-space)); }
-
-  .plan[data-google-discovery="true"]:has(:global([data-mobile-drawer-state="open"])) {
-    --mobile-map-sheet-height:min(56svh,calc(100% - var(--mobile-map-strip-height) - var(--mobile-map-visible-space)));
-  }
+  .plan:has(:global([data-mobile-drawer-state="open"])) { --mobile-map-sheet-height:min(50svh,calc(100% - var(--mobile-map-strip-height) - var(--mobile-map-visible-space))); }
+  .plan:has(:global([data-mobile-drawer-state="open"][data-mobile-drawer-size="expanded"])) { --mobile-map-sheet-height:calc(100% - var(--mobile-map-strip-height) - var(--mobile-map-visible-space)); }
   .plan[data-google-discovery="true"] :global(.planner-map) {
     bottom:var(--mobile-map-sheet-height)!important;
   }
-  .plan[data-google-discovery="true"] :global([class*="mapContextualSurface"]) {
+  .plan :global([class*="mapContextualSurface"]) {
     box-sizing:border-box;
   }
-  .plan[data-google-discovery="true"] :global([class*="finderDock"]) > header > small,
-  .plan[data-google-discovery="true"] :global([class*="finderDock"]) > header > span {
-    display:none;
-  }
-  .plan[data-google-discovery="true"] :global([class*="finderDock"])::before { display:none;content:none; }
+  .plan :global([class*="finderDock"])::before { display:none;content:none; }
+  .plan :global([class*="finderPlaceHeading"]) h2,
+  .plan :global([class*="mobileShapeDayClose"]) { display:none; }
+  .plan :global([class*="finderPlaceHeading"]) { display:flex;align-items:center;gap:8px; }
 
   .plan :global([class*="mapContextualSurface"]) {
     position:absolute;
@@ -132,24 +131,22 @@
     backdrop-filter:blur(16px);
     transition:height .18s ease;
   }
-  .plan :global([class*="mapContextualSurface"][data-mobile-sheet-view="context"]) {
-    height:min(var(--mobile-map-sheet-height),52svh);
-  }
   .plan :global([class*="mobileMapSheetControls"]) {
-    min-height:72px;
+    min-height:51px;
     flex:0 0 auto;
-    display:block;
+    display:flex;
     border-bottom:1px solid var(--hairline);
   }
   .plan .mobileMapDrawerToggle {
     position:relative;
     display:flex;
-    width:100%;
-    min-height:71px;
+    flex:1;
+    min-width:0;
+    min-height:50px;
     align-items:center;
     justify-content:space-between;
     gap:12px;
-    padding:18px 8px 8px;
+    padding:14px 8px 4px;
     border:0;
     background:transparent;
     color:var(--morrovia-ink);
@@ -158,12 +155,17 @@
     cursor:pointer;
     touch-action:none;
   }
+  .plan .mobileMapDrawerClose { flex:0 0 44px;width:44px;height:44px;align-self:center; }
+  .plan :global([class*="mapContextHeading"]),
+  .plan :global([class*="mapPlaceDetail"] [class*="mapSelectionClose"]) { display:none!important; }
+  .plan :global([class*="mapPlaceDetail"] [class*="mapSelectionPresentation"] [class*="header"]) { padding-right:0; }
   .plan .mobileMapDrawerToggle:focus-visible { outline:3px solid var(--morrovia-focus-ring);outline-offset:-4px; }
   .plan .mobileMapDrawerToggle svg { flex:0 0 20px;width:20px;height:20px;color:var(--morrovia-action); }
   .plan .mobileMapDrawerGrip { position:absolute;top:8px;left:50%;width:36px;height:4px;border-radius:var(--morrovia-control-radius);background:var(--morrovia-line);transform:translateX(-50%); }
   .plan .mobileMapDrawerTitle { min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap; }
   .plan :global([class*="mobileMapSheetBody"]) { position:relative;display:block;flex:1;min-height:0;overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin;padding:10px 2px calc(24px + env(safe-area-inset-bottom)); }
   .plan :global([data-mobile-drawer-state="collapsed"]) :global([class*="mobileMapSheetBody"]) { display:none; }
+  .plan :global([data-mobile-drawer-state="collapsed"]) { padding-bottom:env(safe-area-inset-bottom); }
 
   .plan :global([class*="mobileMapSheetBody"]) > :global([class*="finderDock"]),
   .plan :global([class*="mobileMapSheetBody"]) > :global([class*="canonicalPlannerStatus"]),
@@ -173,6 +175,7 @@
     display:none!important;
     width:100%!important;
     height:auto!important;
+    min-height:0!important;
     max-width:none!important;
     max-height:none!important;
     margin:0!important;
@@ -265,7 +268,7 @@
   .plan {
     --mobile-map-strip-height:72px;
     --mobile-map-visible-space:112px;
-    min-height:420px;
+    min-height:0;
   }
   .plan :global([class*="mapContextualSurface"]) { max-height:calc(100% - var(--mobile-map-strip-height) - 4px); }
   .plan :global([class*="finderDock"]) > header { padding-top:6px; }

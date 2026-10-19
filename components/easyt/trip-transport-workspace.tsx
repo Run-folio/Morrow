@@ -3,7 +3,7 @@ import {transferTimingLabel} from '@/lib/easyt/transfer-timing-label';
 
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { AlertCircle, ArrowRight, CarFront, ChevronDown, ExternalLink, Map as MapIcon, Plane, Route, Ship, TrainFront, X, type LucideIcon } from "lucide-react";
+import { AlertCircle, ArrowRight, CarFront, ChevronDown, ChevronUp, ExternalLink, Map as MapIcon, Plane, Route, Ship, TrainFront, X, type LucideIcon } from "lucide-react";
 import { JourneyPlannerMap } from "@/components/journey-planner-map";
 import type { JourneyStop } from "@/lib/journey";
 import { affiliateDisclosure, visibleAffiliateDisclosure, MorroviaAffiliateLink } from "./affiliate-link";
@@ -235,7 +235,7 @@ function TransportCard({ trip, item, language, copy, selected, forReview, onSele
     <div className={styles.cardEnd}>
       {forReview ? <span className={styles.status} data-tone="attention">{language === "es" ? "Revisar ruta" : "Route check"}</span> : null}
       <span className={styles.status} data-tone={state === "booked" ? "booked" : state === "planning-estimate" ? "estimate" : "attention"}>{status}</span>
-      <EasyTButton size="small" variant="quiet" iconOnly icon={selected ? X : ChevronDown} aria-expanded={selected}
+      <EasyTButton size="small" variant="quiet" iconOnly icon={selected ? ChevronUp : ChevronDown} aria-expanded={selected}
         aria-label={`${selected ? copy.hideDetails : copy.viewDetails}: ${item.from.name} ${language === "es" ? "a" : "to"} ${item.to.name}`}
         aria-controls={`transport-detail-${leg.id}`} onClick={onSelect}>{selected ? copy.hideDetails : copy.viewDetails}</EasyTButton>
     </div>

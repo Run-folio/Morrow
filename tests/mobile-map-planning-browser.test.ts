@@ -44,6 +44,13 @@ async function open(width:number){
   return{page,rail,planner,sheet,async capture(name:string){if(!shots)return;mkdirSync(shots,{recursive:true});await page.screenshot({path:`${shots}/${name}.png`,fullPage:true});writeFileSync(`${shots}/${name}.json`,JSON.stringify(await page.evaluate(()=>({width:innerWidth,view:document.querySelector('#map-contextual-sheet')?.getAttribute('data-mobile-sheet-view'),state:document.querySelector('#map-contextual-sheet')?.getAttribute('data-mobile-drawer-state')})),null,2));},async close(){try{assert.deepEqual(errors,[]);assert.equal(accountWrites,0);assert.deepEqual(await page.evaluate((key:string)=>[localStorage.getItem(key),localStorage.getItem('mobile-map-control')],recoveryKey),[recoveryRaw,'preserve']);}finally{await browser.close();}}};
 }
 
+async function collapseDrawer(sheet:any) {
+  const control=sheet.locator(':scope > header button');
+  if(await sheet.getAttribute('data-mobile-drawer-state')==='collapsed')return;
+  await control.click();
+  if(await sheet.getAttribute('data-mobile-drawer-state')!=='collapsed')await control.click();
+}
+
 for(const width of [390,980,981,1440])test(`${width}px ordinary Map stop selection exposes itinerary and planning tabs`,{skip:!enabled,timeout:60000},async()=>{
   const h=await open(width);try{
     await h.rail.getByRole('button',{name:/^Bogotá/}).click();
@@ -55,7 +62,7 @@ for(const width of [390,980,981,1440])test(`${width}px ordinary Map stop selecti
       await h.planner.getByRole('tab',{name:tab,exact:true}).click();await h.planner.getByRole('region',{name:panel,exact:true}).waitFor();
     }
     await h.planner.getByRole('tab',{name:'See',exact:true}).click();await h.page.getByText('No places are available for this stop yet.',{exact:true}).waitFor();
-    await h.rail.getByRole('button',{name:/Cartagena/}).click();await h.planner.getByRole('heading',{name:'Cartagena',exact:true}).waitFor();
+    await h.rail.getByRole('button',{name:/Cartagena/}).click();if(width<=980)await h.sheet.getByRole('button',{name:/^Expand Cartagena details/}).waitFor();else await h.planner.getByRole('heading',{name:'Cartagena',exact:true}).waitFor();
     await h.planner.getByRole('tab',{name:'Plan',exact:true}).click();await h.planner.getByRole('region',{name:'Selected day plan',exact:true}).waitFor();
     await h.capture(`map-${width}-selected`);
     if(width===390){await h.page.setViewportSize({width:981,height:1000});assert.equal(await h.planner.getByRole('tab',{name:'Plan',exact:true}).isVisible(),true);await h.page.setViewportSize({width:390,height:844});assert.equal(await h.planner.getByRole('tab',{name:'Plan',exact:true}).isVisible(),true);}
@@ -73,13 +80,13 @@ test('390px Map marker stop selection opens the same populated planner',{skip:!e
 
 test('390px collapsed Map planning entry receives a real tap and reopens its itinerary',{skip:!enabled,timeout:60000},async()=>{
   const h=await open(390);try{
-    await h.rail.getByRole('button',{name:/^Bogotá/}).click();await h.sheet.locator('header').first().getByRole('button').click();
+    await h.rail.getByRole('button',{name:/^Bogotá/}).click();await collapseDrawer(h.sheet);
     await h.sheet.evaluate(async(e:HTMLElement)=>{e.getBoundingClientRect();await new Promise<void>(resolve=>requestAnimationFrame(()=>requestAnimationFrame(()=>resolve())));await Promise.all(e.getAnimations().map(a=>a.finished.catch(()=>{})));});
     const entry=h.page.getByRole('button',{name:'Open planning for Bogotá',exact:true});await entry.waitFor();
     const hit=await entry.evaluate((e:HTMLElement)=>{const r=e.getBoundingClientRect(),hit=document.elementFromPoint(r.x+r.width/2,r.y+r.height/2);return Boolean(hit&&e.contains(hit));});
     assert.equal(hit,true,'collapsed drawer must not cover the planning entry');
     await entry.click();await h.planner.getByRole('region',{name:'Selected day plan',exact:true}).waitFor();
-    await h.sheet.locator('header').first().getByRole('button').click();await h.sheet.locator('header').first().getByRole('button').click();
+    await collapseDrawer(h.sheet);await h.sheet.locator(':scope > header button').click();
     await h.planner.getByRole('region',{name:'Selected day plan',exact:true}).waitFor();await h.capture('map-390-reopened');
   }finally{await h.close();}
 });

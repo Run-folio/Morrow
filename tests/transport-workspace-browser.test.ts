@@ -38,6 +38,7 @@ test("Transport keeps selected journey, card and map leg synchronized at desktop
     const firstDetailsControl = view.page.locator('[data-transport-leg-id="trip-japan-choice-leg-1"] button[aria-expanded="false"]');
     const detailsTarget = await firstDetailsControl.getAttribute("aria-controls");
     assert.ok(detailsTarget);
+    assert.equal(await firstDetailsControl.locator("svg.lucide-chevron-down").count(), 1);
     assert.equal(await view.page.locator(`#${detailsTarget}`).count(), 1, "collapsed detail controls keep a valid DOM target");
     const artifacts = process.env.MORROVIA_BROWSER_ARTIFACT_DIR;
     if (artifacts) {
@@ -51,6 +52,7 @@ test("Transport keeps selected journey, card and map leg synchronized at desktop
 
     await view.page.locator('[data-transport-leg-id="trip-japan-choice-leg-1"]').getByRole("button", { name: /View details: Tokyo to Kyoto/ }).click();
     const firstCard = view.page.locator('[data-transport-leg-id="trip-japan-choice-leg-1"]');
+    assert.equal(await firstCard.getByRole("button", { name: /Hide details: Tokyo to Kyoto/ }).locator("svg.lucide-chevron-up").count(), 1);
     const compactText = await firstCard.innerText();
     assert.equal((compactText.match(/2h 15m/g) ?? []).length, 1, "the compact row shows the estimated duration once");
     assert.equal(await view.page.locator('[aria-label="Whole-trip route map preview"]').getAttribute("data-selected-leg-id"), "trip-japan-choice-leg-1");
@@ -79,6 +81,7 @@ test("Transport keeps selected journey, card and map leg synchronized at desktop
     assert.equal(await secondCard.getByRole("button", { name: /Hide details: Kyoto to Osaka/ }).getAttribute("aria-expanded"), "true");
     await secondCard.getByRole("button", { name: /Hide details: Kyoto to Osaka/ }).click();
     assert.equal(await secondCard.getByRole("button", { name: /View details: Kyoto to Osaka/ }).getAttribute("aria-expanded"), "false");
+    assert.equal(await secondCard.getByRole("button", { name: /View details: Kyoto to Osaka/ }).locator("svg.lucide-chevron-down").count(), 1);
     const secondDetails = secondCard.getByRole("button", { name: /View details: Kyoto to Osaka/ });
     await secondDetails.focus();
     await view.page.keyboard.press("Enter");
