@@ -84,7 +84,8 @@ test("Transport keeps planning information above a subordinate selected-journey 
   assert.doesNotMatch(card, /styles\.note/);
   assert.match(transportStyles, /\.workspace \{[\s\S]*background: var\(--morrovia-paper\)/);
   assert.match(transportStyles, /\.card \{[\s\S]*background: var\(--morrovia-paper\)/);
-  assert.doesNotMatch(transportStyles, /background: var\(--morrovia-lilac(?:-strong)?\)/);
+  const cardStyle = transportStyles.match(/\.card \{[^}]*\}/)?.[0] ?? "";
+  assert.doesNotMatch(cardStyle, /background: var\(--morrovia-lilac(?:-strong)?\)/, "the list remains paper; hover and status pills may use the existing lilac surface");
   assert.match(transportStyles, /\.partnerNote \{[\s\S]*font: var\(--morrovia-type-fine-print\)/);
 });
 
@@ -149,5 +150,6 @@ test("the first-class workspace has responsive Storybook coverage and narrow-scr
   }
   assert.match(transportStyles, /@media \(max-width: 820px\)[\s\S]*--morrovia-mobile-dock-offset/);
   assert.match(transportStyles, /\.cardBody h3 \{[\s\S]*overflow-wrap: anywhere/);
-  assert.match(transportStyles, /@media \(max-width: 540px\)[\s\S]*grid-template-columns: 52px 24px minmax\(0, 1fr\)/);
+  assert.match(transportStyles, /@media \(max-width: 540px\)[\s\S]*--row-columns: 52px 24px minmax\(0, 1fr\)/);
+  assert.match(transportStyles, /\.summary \{[^}]*grid-template-columns: var\(--row-columns\)/, "the summary retains the responsive card columns");
 });

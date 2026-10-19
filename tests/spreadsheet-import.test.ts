@@ -345,10 +345,11 @@ test("privacy boundary keeps raw files client-side and sends no spreadsheet rows
   const client = readFileSync(new URL("../app/journey/new/import/spreadsheet-import-client.tsx", import.meta.url), "utf8");
   const parser = readFileSync(new URL("../lib/easyt/spreadsheet-import-file.ts", import.meta.url), "utf8");
   const core = readFileSync(new URL("../lib/easyt/spreadsheet-import.ts", import.meta.url), "utf8");
+  const places = readFileSync(new URL("../lib/easyt/spreadsheet-import-places.ts", import.meta.url), "utf8");
   assert.doesNotMatch(`${client}\n${parser}\n${core}`, /openai|chatgpt|responses\.create|dangerouslySetInnerHTML/i);
   assert.doesNotMatch(parser, /fetch\(|http:|https:/);
   assert.doesNotMatch(client, /localStorage.*file|sessionStorage.*file|FormData|FileReader/);
-  assert.match(client, /\/api\/journey-geocode/);
+  assert.match(places, /\/api\/journey-geocode/);
   assert.match(parser, /bookVBA: false/);
   assert.match(parser, /cellFormula: false/);
 });

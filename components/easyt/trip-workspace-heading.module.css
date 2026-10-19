@@ -1,0 +1,12 @@
+/* Corresponding main sections reuse Overview's type. Hero titles, day headings
+   and secondary navigation keep their own hierarchy. */
+.sectionTitle {
+  color: var(--morrovia-ink);
+  font: 600 clamp(29px, 2.7vw, 38px)/1.05 var(--morrovia-display);
+  letter-spacing: -.035em;
+  text-wrap: pretty;
+}
+
+@media (max-width: 520px) {
+  .sectionTitle { font-size: 30px; }
+}

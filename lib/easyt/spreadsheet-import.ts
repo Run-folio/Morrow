@@ -1,10 +1,12 @@
 import { buildCanonicalTripLegs } from "./trip-legs.ts";
 import { buildImportedDatedDays, unconfirmedImportedLeg } from "./imported-trip-hydration.ts";
 import { prepareTripDocumentForWrite } from "./trip-document.ts";
+import { countryNameFor } from "./country-registry.ts";
 import {
   defaultTripIntent,
   tripFromBuilder,
   type EasyTTrip,
+  type GeographicBinding,
   type TripBooking,
   type TripLeg,
 } from "./trip.ts";
@@ -151,6 +153,8 @@ export type ResolvedImportPlace = {
   countryCode?: string;
   region?: string;
   providerId?: string;
+  geographicBinding?: GeographicBinding;
+  administrativeHierarchy?: string[];
   coordinates: [number, number];
 };
 
@@ -591,12 +595,21 @@ function modeForLeg(mode: ImportBookingProposal["transportDetails"] extends infe
   return mode ?? "unknown";
 }
 
+function bookingPlaceKey(name: string, expectedCountry: string) {
+  const parts = name.split(',').map(value => value.trim());
+  const country = parts.length > 1 ? countryNameFor(parts.at(-1)) : null;
+  if (country && normalise(country) === normalise(countryNameFor(expectedCountry) ?? expectedCountry)) parts.pop();
+  return normalise(parts.join(', '));
+}
+
 export function canonicalTripFromSpreadsheetProposal(input: {
   id: string;
   proposal: SpreadsheetImportProposal;
   origin: ResolvedImportOrigin;
   places: ResolvedImportPlace[];
   createdAt?: string;
+  /** Only a newly reviewed import opts into planning; saved imports are untouched. */
+  recommendUnbookedTransfers?: boolean;
 }): EasyTTrip {
   const { id, proposal, origin, places } = input;
   if (!proposal.canConfirmStructure || !proposal.startDate || !proposal.endDate) throw new Error("The import proposal still has structural conflicts.");
@@ -613,7 +626,9 @@ export function canonicalTripFromSpreadsheetProposal(input: {
     originProviderId: origin.providerId,
     stops: proposal.stops.map((stop) => {
       const place = placeByStop.get(stop.id)!;
-      return { id: stop.id, name: place.name, country: place.country, canonicalPlaceId: place.canonicalPlaceId, countryCode: place.countryCode, region: place.region, providerId: place.providerId, coordinates: place.coordinates };
+      return { id: stop.id, name: place.name, country: place.country, canonicalPlaceId: place.canonicalPlaceId, countryCode: place.countryCode, region: place.region, providerId: place.providerId, coordinates: place.coordinates,
+        ...(place.geographicBinding === undefined ? {} : { geographicBinding: place.geographicBinding }),
+        ...(place.administrativeHierarchy === undefined ? {} : { administrativeHierarchy: place.administrativeHierarchy }) };
     }),
     startDate: proposal.startDate,
     endDate: proposal.endDate,
@@ -640,6 +655,9 @@ export function canonicalTripFromSpreadsheetProposal(input: {
       }),
     },
   });
+  if (origin.geographicBinding && base.brief.intent?.route?.origin) {
+    base.brief.intent.route.origin.geographicBinding = structuredClone(origin.geographicBinding);
+  }
   const stops = base.stops.map((stop) => {
     const imported = proposal.stops.find((candidate) => candidate.id === stop.id)!;
     return { ...stop, arrivalDate: imported.arrivalDate, departureDate: imported.departureDate, nights: imported.nights };
@@ -655,17 +673,27 @@ export function canonicalTripFromSpreadsheetProposal(input: {
   }
   let legs = buildCanonicalTripLegs({
     tripId: id,
-    origin: { name: origin.name, country: origin.country, canonicalPlaceId: origin.canonicalPlaceId, providerId: origin.providerId, coordinates: origin.coordinates },
+    origin: { name: origin.name, country: origin.country, canonicalPlaceId: origin.canonicalPlaceId, providerId: origin.providerId, coordinates: origin.coordinates,
+      ...(origin.geographicBinding === undefined ? {} : { geographicBinding: origin.geographicBinding }) },
     stops,
   }).map(unconfirmedImportedLeg);
+  if (input.recommendUnbookedTransfers) legs = legs.map(leg => ({ ...leg,
+    routeMetadata: { ...leg.routeMetadata, source: "spreadsheet-import-planning" },
+  }));
+  const bookingMatchesEndpoints = (leg: TripLeg, booking: ImportBookingProposal) => {
+    if (!booking.transportDetails) return false;
+    const originalFrom = proposal.stops.find(stop => stop.id === leg.fromStopId)?.name ?? proposal.origin;
+    const originalTo = proposal.stops.find(stop => stop.id === leg.toStopId)?.name;
+    const fromCountry = leg.fromEndpoint?.country ?? '';
+    const toCountry = leg.toEndpoint?.country ?? '';
+    return [leg.fromEndpoint?.name, originalFrom].some(name => name && bookingPlaceKey(name, fromCountry) === bookingPlaceKey(booking.transportDetails!.from, fromCountry))
+      && [leg.toEndpoint?.name, originalTo].some(name => name && bookingPlaceKey(name, toCountry) === bookingPlaceKey(booking.transportDetails!.to, toCountry));
+  };
   for (const booking of proposal.bookings) {
     if (!booking.transportDetails) continue;
-    const fromKey = normalise(booking.transportDetails.from);
-    const toKey = normalise(booking.transportDetails.to);
     const matches = legs.filter((leg) => {
       const incoming = stops.find((stop) => stop.id === leg.toStopId);
-      return normalise(leg.fromEndpoint?.name ?? "") === fromKey
-        && normalise(leg.toEndpoint?.name ?? "") === toKey
+      return bookingMatchesEndpoints(leg, booking)
         && incoming?.arrivalDate === booking.date;
     });
     if (matches.length !== 1) continue;
@@ -679,10 +707,22 @@ export function canonicalTripFromSpreadsheetProposal(input: {
         provenance: "unknown" as const,
         confidence: booking.transportDetails!.mode ? "high" as const : "unknown" as const,
         scheduleNeedsChecking: true,
-        routeMetadata: { ...leg.routeMetadata, source: "spreadsheet-import-booking", importedBookingId: booking.id, sourceMode: booking.transportDetails!.sourceMode },
+        routeMetadata: { ...leg.routeMetadata, source: "imported-booking", importedBookingId: booking.id, sourceMode: booking.transportDetails!.sourceMode },
       };
     });
   }
+  // An unresolved booking association is a review issue, never permission to
+  // recommend a competing mode for the same occurrence or endpoint pair.
+  const matchedBookings = new Set(legs.map(leg => leg.routeMetadata.importedBookingId));
+  const unmatchedBookings = proposal.bookings.filter(booking => booking.transportDetails && !matchedBookings.has(booking.id));
+  legs = legs.map(leg => {
+    const incoming = proposal.stops.find(stop => stop.id === leg.toStopId);
+    const outgoing = proposal.stops.find(stop => stop.id === leg.fromStopId);
+    const held = unmatchedBookings.some(booking => booking.date === incoming?.arrivalDate
+      || incoming?.sourceRows.includes(booking.sourceRow) || outgoing?.sourceRows.includes(booking.sourceRow)
+      || bookingMatchesEndpoints(leg, booking));
+    return leg.routeMetadata.source === "spreadsheet-import-planning" && held ? unconfirmedImportedLeg(leg) : leg;
+  });
   const document = prepareTripDocumentForWrite({ ...base, stops, legs, planItems,
     brief: { ...base.brief, bookings: proposal.bookings.map(bookingFromProposal),
       customActivities: Object.fromEntries(planItems.filter((day) => day.notes.length).map((day) => [day.dayNumber, [...day.notes]])),

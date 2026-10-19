@@ -12,19 +12,21 @@ const require = createRequire(import.meta.url);
 export const builderBrowserTestsEnabled = process.env.MORROVIA_BUILDER_BROWSER_TESTS === "1";
 const bundledRuntime = `${homedir()}/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright`;
 const runtime = process.env.MORROVIA_PLAYWRIGHT_MODULE ?? (existsSync(bundledRuntime) ? bundledRuntime : "playwright");
-let bundle: Promise<string> | undefined;
+// Opt-in styled fixtures render production CSS modules and tokens without a full
+// app/Storybook build. Framework, auth and map boundaries retain the same stubs.
+const bundles = new Map<boolean, Promise<{ script: string; css: string }>>();
 
-async function builderBundle() {
-  bundle ??= build({
+async function builderBundle(styled = false) {
+  if (!bundles.has(styled)) bundles.set(styled, build({
     stdin: {
-      contents: `import React from 'react'; import {createRoot} from 'react-dom/client'; import Builder from './app/journey/new/trip-builder'; import Home from './app/journey/home/home-trip-starter'; import LegacyPlanner from './components/journey-map-planner-workspace'; import Resolver from './components/easyt/trip-shell-resolver'; import Explore from './components/easyt/trip-explore-workspace'; import Stay from './components/easyt/trip-stay-workspace'; import MapWorkspace from './components/easyt/trip-map-workspace'; import Importer from './app/journey/new/import/spreadsheet-import-client'; import Overview from './components/easyt/trip-overview-workspace'; import Transport from './components/easyt/trip-transport-workspace'; import Itinerary from './components/easyt/trip-itinerary-workspace'; import {loadLocalTripFromStorage} from './lib/easyt/storage'; import TripShell from './components/easyt/trip-shell'; import {useTripShellTrip} from './components/easyt/trip-shell-client';
-      function WorkspaceFromShell(){const trip=useTripShellTrip();return location.pathname.endsWith('/map')?React.createElement(MapWorkspace,{trip}):location.pathname.endsWith('/stay')?React.createElement(Stay,{trip}):location.pathname.endsWith('/explore')?React.createElement(Explore,{trip,initialDestinationId:new URLSearchParams(location.search).get('stop')??undefined}):location.pathname.endsWith('/transport')?React.createElement(Transport,{trip}):location.pathname.endsWith('/itinerary')?React.createElement(Itinerary,{trip,selectedDayNumber:Number(new URLSearchParams(location.search).get('day'))||undefined}):React.createElement(Overview,{trip,initialPrepActions:[],initialPrepReadinessCards:[],initialPrepProviderStatus:'available'});}
+      contents: `${styled ? "import './app/journey/journey-design.css';" : ""}import React from 'react'; import {createRoot} from 'react-dom/client'; import Builder from './app/journey/new/trip-builder'; import Home from './app/journey/home/home-trip-starter'; import LegacyPlanner from './components/journey-map-planner-workspace'; import Resolver from './components/easyt/trip-shell-resolver'; import Explore from './components/easyt/trip-explore-workspace'; import Stay from './components/easyt/trip-stay-workspace'; import MapWorkspace from './components/easyt/trip-map-workspace'; import Importer from './app/journey/new/import/spreadsheet-import-client'; import Overview from './components/easyt/trip-overview-workspace'; import Transport from './components/easyt/trip-transport-workspace'; import Itinerary from './components/easyt/trip-itinerary-workspace'; import {loadLocalTripFromStorage} from './lib/easyt/storage'; import TripShell from './components/easyt/trip-shell'; import {useTripShellTrip} from './components/easyt/trip-shell-client';
+      function WorkspaceFromShell(){const trip=useTripShellTrip();return location.pathname.endsWith('/map')?React.createElement(MapWorkspace,{trip}):location.pathname.endsWith('/stay')?React.createElement(Stay,{trip}):location.pathname.endsWith('/explore')?React.createElement(Explore,{trip,initialDestinationId:new URLSearchParams(location.search).get('stop')??undefined}):location.pathname.endsWith('/transport')?React.createElement(Transport,{trip,language:localStorage.getItem('easyt-language')==='es'?'es':'en'}):location.pathname.endsWith('/itinerary')?React.createElement(Itinerary,{trip,selectedDayNumber:Number(new URLSearchParams(location.search).get('day'))||undefined}):React.createElement(Overview,{trip,initialPrepActions:[],initialPrepReadinessCards:[],initialPrepProviderStatus:'available'});}
       function App(){if(location.pathname==='/')return React.createElement(Home);if(location.pathname==='/journey/plan')return React.createElement(LegacyPlanner);if(location.pathname.endsWith('/import'))return React.createElement(Importer);if(location.pathname!=='/journey/new'){const tripId=decodeURIComponent(location.pathname.split('/')[2]??'');const trip=window.__BUILDER_TEST_CANONICAL_TRIP__??loadLocalTripFromStorage(localStorage,tripId,window.__BUILDER_TEST_OWNER__??null);return trip&&!window.__BUILDER_TEST_FORCE_RESOLVER__?React.createElement(TripShell,{trip,cacheTrip:Boolean(window.__BUILDER_TEST_CANONICAL_TRIP__),orientationAutoStart:false},React.createElement(WorkspaceFromShell)):React.createElement(Resolver,{tripId,ownerId:window.__BUILDER_TEST_OWNER__??undefined},React.createElement(WorkspaceFromShell));}return React.createElement(Builder);}
       createRoot(document.getElementById('root')).render(React.createElement(App));`,
       resolveDir: fileURLToPath(new URL("../../", import.meta.url)), loader: "tsx",
     },
-    bundle: true, write: false, platform: "browser", format: "iife", jsx: "automatic",
-    loader: { ".css": "empty", ".module.css": "empty" },
+    bundle: true, write: false, outfile: "builder-fixture.js", platform: "browser", format: "iife", jsx: "automatic",
+    loader: styled ? { ".css": "css", ".module.css": "local-css" } : { ".css": "empty", ".module.css": "empty" },
     define: { "process.env.NODE_ENV": '"test"', "process.env": "{}" },
     plugins: [{ name: "framework-boundaries", setup(builder) {
       builder.onResolve({ filter: /^next\/(navigation|link|image)$/ }, ({ path }) => ({ path, namespace: "framework" }));
@@ -37,8 +39,9 @@ async function builderBundle() {
         : `import React from 'react'; export default function Component({children, priority, fill, unoptimized, ...props}) {return React.createElement('${path.endsWith("link") ? "a" : "img"}',props,children)}`,
       }));
     } }],
-  }).then((result) => result.outputFiles[0].text);
-  return bundle;
+  }).then((result) => ({ script: result.outputFiles.find((file) => file.path.endsWith(".js"))!.text,
+    css: result.outputFiles.find((file) => file.path.endsWith(".css"))?.text ?? "" })));
+  return bundles.get(styled)!;
 }
 
 export async function renderBuilder({
@@ -66,6 +69,7 @@ export async function renderBuilder({
   shellCanonicalTrip,
   discoveryRequest,
   transferRequest,
+  styled = false,
 }: {
   query?: string;
   draft?: unknown;
@@ -87,12 +91,13 @@ export async function renderBuilder({
   seedRecovery?: boolean;
   forceResolver?: boolean;
   simulatedSignIn?: boolean;
+  styled?: boolean;
   shellCanonicalTrip?: { id: string; ownerId: string | null } & Record<string, unknown>;
   accountRequest?: (input:{method:string;path:string;trip:unknown}) => Promise<{status:number;body:unknown}> | {status:number;body:unknown};
   transferRequest?: (input:{legs:unknown[]}) => Promise<{status:number;body:unknown}> | {status:number;body:unknown};
   discoveryRequest?: (destination:string,context:{cacheControl:string|undefined}) => Promise<{status:number;body:unknown}> | {status:number;body:unknown};
 } = {}) {
-  const script = await builderBundle();
+  const { script, css } = await builderBundle(styled);
   let captureRequests = 0;
   const geocodeRequests = new Map<string, number>();
   const server = createServer(async (request, response) => {
@@ -181,7 +186,7 @@ export async function renderBuilder({
       response.end(`<button id="complete">Complete simulated sign in</button><script>document.getElementById('complete').onclick=()=>{sessionStorage.setItem('builder-fixture-owner','owner-a');location.assign(new URLSearchParams(location.search).get('next'))}</script>`);return;
     }
     response.setHeader("Content-Type", "text/html; charset=utf-8");
-    response.end(`<div id="root"></div><script>${script.replaceAll("</script>", "<\\/script>")}</script>`);
+    response.end(`${styled ? `<style>*,::before,::after{box-sizing:border-box}body{margin:0}.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}${css}</style>` : ""}<div id="root"></div><script>${script.replaceAll("</script>", "<\\/script>")}</script>`);
   });
   await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
   const { chromium, webkit } = require(runtime);

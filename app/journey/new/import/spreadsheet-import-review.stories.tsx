@@ -1,9 +1,11 @@
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
+import { useState } from "react";
+import { acceptImportPlace } from "@/lib/easyt/spreadsheet-import-places";
 import { buildSpreadsheetImportProposal, parseDelimitedText, type ResolvedImportOrigin, type ResolvedImportPlace, type SpreadsheetImportIssue } from "@/lib/easyt/spreadsheet-import";
 import { cleanFiveStopTripCsv } from "../../../../tests/fixtures/spreadsheet-import";
 import { SpreadsheetImportReview, type SpreadsheetImportPlaceCandidate } from "./spreadsheet-import-review";
 
-type ReviewState = "clean" | "attention" | "partial" | "mapping";
+type ReviewState = "clean" | "attention" | "partial" | "mapping" | "island";
 
 const table = parseDelimitedText(cleanFiveStopTripCsv, "Trip.xlsx");
 const cleanProposal = buildSpreadsheetImportProposal(table);
@@ -46,12 +48,13 @@ function resolvedPlaces(proposal = cleanProposal) {
 }
 
 function ReviewFixture({ state }: { state: ReviewState }) {
+  const [selected, setSelected] = useState<Record<string, ResolvedImportPlace>>({});
   const mappings = state === "attention"
     ? cleanProposal.columns.map((mapping) => mapping.field === "activityDate" ? { ...mapping, header: "Date", field: null, state: "ambiguous" as const, suggestions: ["activityDate" as const, "transportDate" as const] } : mapping)
     : state === "mapping"
       ? cleanProposal.columns.map((mapping) => mapping.field === "destination" ? { ...mapping, header: "Place", field: null, state: "ambiguous" as const, suggestions: ["destination" as const, "origin" as const] } : mapping)
       : cleanProposal.columns;
-  const proposal = state === "clean" ? cleanReviewProposal : state === "partial" ? {
+  const proposal = state === "island" ? buildSpreadsheetImportProposal(parseDelimitedText('Destination,Country,Arrival date,Departure date\nBohol,Philippines,2026-12-18,2026-12-22')) : state === "clean" ? cleanReviewProposal : state === "partial" ? {
     ...cleanProposal,
     activities: cleanProposal.activities.slice(0, 8),
     issues: [
@@ -61,14 +64,21 @@ function ReviewFixture({ state }: { state: ReviewState }) {
   } : cleanProposal;
   const places = resolvedPlaces(proposal);
   if (state === "attention") delete places[proposal.stops[2].id];
+  if (state === "island") delete places[proposal.stops[0].id];
+  Object.assign(places, selected);
   const madridCandidate: SpreadsheetImportPlaceCandidate = {
     canonicalPlaceId: "fixture:madrid",
     name: "Madrid",
     country: "Spain",
     countryCode: "ES",
     coordinates: [-3.7038, 40.4168],
+    placeType: "city", routability: "direct_destination",
   };
-  const canConfirm = state === "clean" || state === "partial";
+  const islandOptions: SpreadsheetImportPlaceCandidate[] = [
+    { canonicalPlaceId: "open-world:photon:N:7070779312", providerId: "photon:N:7070779312", name: "Bohol", country: "Philippines", region: "Palawan", coordinates: [119.8922002, 10.4819463], placeType: "town", routability: "direct_destination" },
+    { canonicalPlaceId: "open-world:photon:R:3625899", providerId: "photon:R:3625899", name: "Bohol", country: "Philippines", coordinates: [124.2064612, 9.8807822], placeType: "island", routability: "needs_base_selection" },
+  ];
+  const canConfirm = state === "clean" || state === "partial" || state === "island" && Boolean(places[proposal.stops[0].id]);
 
   return <main className="morrovia-editorial-page" style={{ minHeight: "100vh", padding: 24 }}>
     <div style={{ width: "min(100%, 960px)", margin: "0 auto" }}>
@@ -78,7 +88,7 @@ function ReviewFixture({ state }: { state: ReviewState }) {
         sourceRowCount={proposal.rows.length}
         sourceColumnCount={table.headers.length}
         resolvedPlaces={places}
-        placeOptions={state === "attention" ? { [proposal.stops[2].id]: [madridCandidate] } : {}}
+        placeOptions={state === "island" ? { [proposal.stops[0].id]: islandOptions } : state === "attention" ? { [proposal.stops[2].id]: [madridCandidate] } : {}}
         resolvingPlaces={false}
         originValue={state === "mapping" ? "" : "London"}
         resolvedOrigin={state === "mapping" ? null : origin}
@@ -92,7 +102,7 @@ function ReviewFixture({ state }: { state: ReviewState }) {
         onOriginValueChange={() => undefined}
         onResolveOrigin={() => undefined}
         onSelectOrigin={() => undefined}
-        onSelectPlace={() => undefined}
+        onSelectPlace={(stopId, candidate) => { const place = acceptImportPlace(candidate); if (place) setSelected(current => ({ ...current, [stopId]: { ...place, sourceStopId: stopId } })); }}
         onConfirm={() => undefined}
       />
     </div>
@@ -115,3 +125,5 @@ export const NeedsAttention: Story = { args: { state: "attention" } };
 export const PartialImport: Story = { args: { state: "partial" } };
 export const MappingRequired: Story = { args: { state: "mapping" } };
 export const CleanImportAt390: Story = { args: { state: "clean" }, globals: { viewport: { value: "morrovia390", isRotated: false } } };
+export const IslandNeedsBase: Story = { args: { state: "island" } };
+export const IslandNeedsBaseAt390: Story = { args: { state: "island" }, globals: { viewport: { value: "morrovia390", isRotated: false } } };

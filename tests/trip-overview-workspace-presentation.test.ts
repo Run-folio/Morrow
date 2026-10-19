@@ -29,7 +29,7 @@ test("Overview prioritises the route, one planning action and three next-to-arra
   assert.ok(route >= 0 && route < arrange);
   assert.ok(arrange < plans);
   assert.ok(plans < beforeGo);
-  assert.match(source, /<h2 id="overview-route-title">Your route<\/h2>/);
+  assert.match(source, /<h2 id="overview-route-title" className=\{workspaceHeading\.sectionTitle\}>Your route<\/h2>/);
   assert.doesNotMatch(source, /Your route is ready to shape|Here’s your trip at a glance/);
   assert.match(shellClientSource, />Explore map<\/EasyTLinkButton>[\s\S]*>View my route<\/EasyTLinkButton>[\s\S]*>Edit<\/EasyTLinkButton>/);
   assert.doesNotMatch(source, /Review route|Explore on map|View journey|Adjust route/);

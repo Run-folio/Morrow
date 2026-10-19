@@ -1,0 +1,101 @@
+{
+  "Bohol, Philippines": [
+    {
+      "canonicalPlaceId": "open-world:photon:N:7070779312",
+      "name": "Bohol",
+      "country": "Philippines",
+      "countryCode": "PH",
+      "region": "Palawan",
+      "providerId": "photon:N:7070779312",
+      "providerSourceLabel": "Komoot Photon",
+      "normalizationReason": "provider locality (village) is directly routable; alias name match; route-stop intent; source=Komoot Photon",
+      "coordinates": [
+        119.8922002,
+        10.4819463
+      ],
+      "kind": "town",
+      "placeType": "town",
+      "locality": "Bohol",
+      "routability": "direct_destination",
+      "matchQuality": "alias",
+      "rankScore": 99
+    },
+    {
+      "canonicalPlaceId": "open-world:photon:R:3625899",
+      "name": "Bohol",
+      "country": "Philippines",
+      "countryCode": "PH",
+      "region": "Bohol",
+      "providerId": "photon:R:3625899",
+      "providerSourceLabel": "Komoot Photon",
+      "normalizationReason": "provider island identity needs an overnight base; alias name match; route-stop intent; source=Komoot Photon",
+      "coordinates": [
+        124.2064612,
+        9.8807822
+      ],
+      "kind": "island",
+      "placeType": "island",
+      "routability": "needs_base_selection",
+      "matchQuality": "alias",
+      "rankScore": 53
+    },
+    {
+      "canonicalPlaceId": "open-world:photon:R:1550487",
+      "name": "Bohol",
+      "country": "Philippines",
+      "countryCode": "PH",
+      "providerId": "photon:R:1550487",
+      "providerSourceLabel": "Komoot Photon",
+      "normalizationReason": "provider administrative identity remains a planning area; alias name match; route-stop intent; source=Komoot Photon",
+      "coordinates": [
+        124.1615579,
+        9.833333
+      ],
+      "kind": "region",
+      "placeType": "region",
+      "routability": "planning_area",
+      "matchQuality": "alias",
+      "rankScore": 52
+    }
+  ],
+  "Siquijor, Philippines": [
+    {
+      "canonicalPlaceId": "open-world:photon:R:3604064",
+      "name": "Siquijor",
+      "country": "Philippines",
+      "countryCode": "PH",
+      "region": "Siquijor",
+      "providerId": "photon:R:3604064",
+      "providerSourceLabel": "Komoot Photon",
+      "normalizationReason": "provider locality (town) is directly routable; alias name match; route-stop intent; source=Komoot Photon",
+      "coordinates": [
+        123.5138212,
+        9.2155864
+      ],
+      "kind": "town",
+      "placeType": "town",
+      "locality": "Siquijor",
+      "routability": "direct_destination",
+      "matchQuality": "alias",
+      "rankScore": 105
+    },
+    {
+      "canonicalPlaceId": "open-world:photon:R:3604058",
+      "name": "Siquijor",
+      "country": "Philippines",
+      "countryCode": "PH",
+      "providerId": "photon:R:3604058",
+      "providerSourceLabel": "Komoot Photon",
+      "normalizationReason": "provider administrative identity remains a planning area; alias name match; route-stop intent; source=Komoot Photon",
+      "coordinates": [
+        123.58,
+        9.18
+      ],
+      "kind": "region",
+      "placeType": "region",
+      "routability": "planning_area",
+      "matchQuality": "alias",
+      "rankScore": 53
+    }
+  ]
+}

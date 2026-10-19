@@ -1945,7 +1945,7 @@
   border-bottom: 1px solid var(--morrovia-line);
 }
 .workspaceToolbar > div:first-child { flex: 1; min-width: 180px; }
-.workspaceToolbar h2 { margin: 0; font: 700 28px/1.1 var(--morrovia-display); }
+.workspaceToolbar h2 { margin: 0; }
 .workspaceToolbar p { margin: 6px 0 0; color: var(--morrovia-ink-soft); font: var(--morrovia-type-supporting-body); }
 .workspaceToolbar .subviewBar { padding: 0; border: 0; }
 .dateNavigation { display: flex; align-items: end; gap: 6px; min-width: 0; }
@@ -2038,7 +2038,6 @@
   .dayPanel { padding: 16px; }
   .calendarWorkspace .dayPanel { padding: 16px; }
   .mobileSavedIdeas { order: 6; display: block; }
-  .workspaceToolbar h2 { font-size: 24px; }
   .logisticsDetailScrim {
     position: fixed;
     z-index: 89;
@@ -2090,7 +2089,6 @@
     padding: 8px 12px;
   }
   .workspaceToolbar > div:first-child { grid-area: title; min-width: 0; }
-  .workspaceToolbar h2 { font-size: 22px; }
   .workspaceToolbar p { display: none; }
   .workspaceToolbar .subviewBar { grid-area: switch; order: 0; width: auto; }
   .workspaceToolbar .subviewBar > div { width: auto; }

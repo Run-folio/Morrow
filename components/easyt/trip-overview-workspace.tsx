@@ -33,6 +33,7 @@ import {
   tripWorkspaceHref,
 } from "@/lib/easyt/trip-workspace-links";
 import styles from "./trip-overview-workspace.module.css";
+import workspaceHeading from "./trip-workspace-heading.module.css";
 import { canonicalLegIntegrityIssues, endEndpointForTrip, originEndpointForTrip, tripRouteDisplayEndpoints } from "@/lib/easyt/trip-legs";
 import { mapRouteLegsFromTrip } from "@/lib/easyt/map-spatial-context";
 import type { JourneyStop } from "@/lib/journey";
@@ -381,7 +382,7 @@ export default function TripOverviewWorkspace({
         <section ref={nextOrientationTarget} className={styles.routeCard} aria-labelledby="overview-route-title">
           <div className={styles.routeIntro}>
             <div>
-              <h2 id="overview-route-title">Your route</h2>
+              <h2 id="overview-route-title" className={workspaceHeading.sectionTitle}>Your route</h2>
             </div>
           </div>
           <div className={styles.routeComposition}>

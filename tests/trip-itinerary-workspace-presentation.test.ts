@@ -237,7 +237,7 @@ test("Calendar keeps its items in day cards alongside the shared day context rai
 
 test("Calendar preserves trip title, date and timeline while naming selected-day details", () => {
   const shell = readFileSync(new URL("../components/easyt/trip-shell-client.tsx", import.meta.url), "utf8");
-  assert.match(shell, /<h1 id="trip-shell-title">\{tripDisplayTitle\(mutation\.trip\)\}/);
+  assert.match(shell, /<h1 id="trip-shell-title">\{isOverview \? tripOverviewDisplayTitle\(mutation\.trip\) : tripDisplayTitle\(mutation\.trip\)\}/);
   assert.match(shell, /dateFacts\.rangeLabel/);
   assert.match(itinerary, /className=\{styles\.workspaceToolbar\}/);
   assert.match(itinerary, /displayDate\(days\[0\]!\.date, language, true\)/);

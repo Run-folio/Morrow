@@ -1,8 +1,11 @@
 "use client";
 
 import { AlertTriangle, Check, ChevronDown, FileSpreadsheet, MapPin, RotateCcw } from "lucide-react";
+import { useState } from "react";
+import { CanonicalPlaceAutocomplete } from "@/components/easyt/canonical-place-autocomplete";
 import { EasyTButton, EasyTField, EasyTSelect } from "@/components/easyt/easyt-controls";
 import { MorroviaRecoveryFeedback } from "@/components/easyt/morrovia-feedback";
+import { acceptImportPlace, importCandidateFromSuggestion, importPlanningParent, type ImportPlaceCandidate } from "@/lib/easyt/spreadsheet-import-places";
 import {
   spreadsheetImportFieldLabels,
   spreadsheetImportFields,
@@ -15,15 +18,42 @@ import {
 import { formatImportDate, formatImportDateRange, groupSkippedImportIssues, skippedImportSummary } from "./spreadsheet-import-review-presentation";
 import styles from "./spreadsheet-import.module.css";
 
-export type SpreadsheetImportPlaceCandidate = {
-  canonicalPlaceId: string;
-  name: string;
-  country: string;
-  countryCode?: string;
-  region?: string;
-  providerId?: string;
-  coordinates: [number, number];
-};
+export type SpreadsheetImportPlaceCandidate = ImportPlaceCandidate;
+
+function ImportPlaceClarification({ name, country, options, role = "stop", onSelect }: {
+  name: string; country?: string; options: ImportPlaceCandidate[]; role?: "stop" | "endpoint";
+  onSelect: (candidate: ImportPlaceCandidate) => void;
+}) {
+  const [parent, setParent] = useState<ImportPlaceCandidate | null>(null);
+  const [search, setSearch] = useState("");
+  const [error, setError] = useState("");
+  const choose = (candidate: ImportPlaceCandidate) => {
+    const planningParent = importPlanningParent(candidate);
+    if (planningParent) { setParent(candidate); setSearch(""); setError(""); return; }
+    const accepted = acceptImportPlace(candidate, role);
+    if (!accepted) { setError(role === "stop" ? "Choose a city or town to stay in." : "Choose a verified city or airport."); return; }
+    onSelect(accepted);
+  };
+  return <>
+    {options.length && !parent ? <EasyTSelect label={`Meaning of ${name}`} value="" onChange={event => {
+      if (event.target.value === "") return;
+      const candidate = options[Number(event.target.value)];
+      if (candidate) choose(candidate);
+    }}><option value="">Choose the intended place…</option>{options.map((option, index) => <option key={`${option.canonicalPlaceId}-${index}`} value={index}>
+      {[option.name, option.placeType?.replaceAll("_", " "), option.region, option.country].filter(Boolean).join(" · ")}
+    </option>)}</EasyTSelect> : null}
+    {parent ? <><p>Choose where to stay in {parent.name}. The dates and nights stay the same.</p><EasyTButton variant="quiet" onClick={() => { setParent(null); setSearch(""); setError(""); }}>Change area</EasyTButton></> : null}
+    <CanonicalPlaceAutocomplete
+      label={parent ? `Overnight base in ${parent.name}` : `Search for ${name}`}
+      placeholder={parent ? "Search for a city or town" : "Search with country or region"}
+      value={search} onChange={setSearch} contextCountries={parent?.country ? [parent.country] : country ? [country] : undefined}
+      includeNonRoutable={!parent} parentConstraint={parent ? importPlanningParent(parent) : undefined}
+      allowedPlaceTypes={parent ? ["city", "town"] : undefined} requireCoordinates={Boolean(parent)}
+      menuPlacement="inline" onSelect={suggestion => choose(importCandidateFromSuggestion(suggestion))}
+    />
+    {error ? <p className={styles.placeFailure} role="alert">{error}</p> : null}
+  </>;
+}
 
 export type SpreadsheetImportReviewProps = {
   proposal: SpreadsheetImportProposal;
@@ -126,13 +156,15 @@ export function SpreadsheetImportReview({
         <strong className={styles.summaryLine}>{summary}</strong>
       </header>
 
-      {resolvedOrigin ? <div className={styles.originSummary}><MapPin aria-hidden="true" /><span><small>Starting in</small><strong>{originValue || resolvedOrigin.name}{resolvedOrigin.country ? `, ${resolvedOrigin.country}` : ""}</strong></span></div> : null}
+      {resolvedOrigin ? <div className={styles.originSummary}><MapPin aria-hidden="true" /><span><small>Starting in</small><strong>{resolvedOrigin.name}{resolvedOrigin.country ? `, ${resolvedOrigin.country}` : ""}</strong></span></div> : null}
 
       <section className={styles.routeReview} aria-labelledby="route-review-title">
         <div className={styles.subheading}><h2 id="route-review-title">Your route</h2><p>In the same order as your spreadsheet</p></div>
         <ol>{stops.map((stop, index) => <li key={stop.id} data-resolved={Boolean(resolvedPlaces[stop.id])}>
           <b>{index + 1}</b>
-          <div><strong>{stop.name}{stop.country ? `, ${stop.country}` : ""}</strong><span>{formatImportDateRange(stop.arrivalDate, stop.departureDate)} · {stop.nights === null ? "? nights" : plural(stop.nights, "night")}</span></div>
+          <div><strong>{resolvedPlaces[stop.id]?.name ?? stop.name}{(resolvedPlaces[stop.id]?.country ?? stop.country) ? `, ${resolvedPlaces[stop.id]?.country ?? stop.country}` : ""}</strong>
+            {resolvedPlaces[stop.id] && resolvedPlaces[stop.id].name !== stop.name ? <small>Imported as {stop.name}</small> : null}
+            <span>{formatImportDateRange(stop.arrivalDate, stop.departureDate)} · {stop.nights === null ? "? nights" : plural(stop.nights, "night")}</span></div>
           {!resolvedPlaces[stop.id] && !resolvingPlaces ? <span className={styles.routeAttention}>Needs your attention</span> : null}
         </li>)}</ol>
       </section>
@@ -153,10 +185,7 @@ export function SpreadsheetImportReview({
             <EasyTField label="Starting city or airport" value={originValue} onChange={(event) => onOriginValueChange(event.target.value)} error={originError} />
             <EasyTButton variant="secondary" onClick={onResolveOrigin} disabled={!originValue.trim()}>Check place</EasyTButton>
           </div>
-          {originOptions.length ? <EasyTSelect label="Choose starting point" defaultValue="" onChange={(event) => {
-            const option = originOptions[Number(event.target.value)];
-            if (option) onSelectOrigin(option);
-          }}><option value="">Choose…</option>{originOptions.map((option, index) => <option value={index} key={option.canonicalPlaceId}>{option.name}, {option.country}</option>)}</EasyTSelect> : null}
+          <ImportPlaceClarification key={`origin:${originValue}`} name={originValue || "starting point"} options={originOptions} role="endpoint" onSelect={onSelectOrigin} />
         </div> : null}
 
         {ambiguousMappings.length ? <div className={styles.attentionItem}>
@@ -168,11 +197,7 @@ export function SpreadsheetImportReview({
           const options = placeOptions[stop.id] ?? [];
           return <div className={styles.attentionItem} key={stop.id}>
             <div><h3>Which {stop.name} do you mean?</h3><p>Morrovia needs a safe place match to build the route.</p></div>
-            {options.length ? <EasyTSelect label={`Choose ${stop.name}`} defaultValue="" onChange={(event) => {
-              const option = options[Number(event.target.value)];
-              if (option) onSelectPlace(stop.id, option);
-            }}><option value="">Choose the intended place…</option>{options.map((option, index) => <option value={index} key={option.canonicalPlaceId}>{option.name}, {option.country}</option>)}</EasyTSelect>
-              : <p className={styles.placeFailure}>No safe place match was found. Add a country column or correct the destination in the source.</p>}
+            <ImportPlaceClarification key={`${stop.id}:${stop.name}:${stop.country}`} name={stop.name} country={stop.country || options[0]?.country} options={options} onSelect={candidate => onSelectPlace(stop.id, candidate)} />
           </div>;
         })}
 

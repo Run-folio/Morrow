@@ -3,6 +3,7 @@ import {transferTimingLabel} from '@/lib/easyt/transfer-timing-label';
 
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
+import workspaceHeading from "./trip-workspace-heading.module.css";
 import { AlertCircle, ArrowRight, CarFront, ChevronDown, ChevronUp, ExternalLink, Map as MapIcon, Plane, Route, Ship, TrainFront, X, type LucideIcon } from "lucide-react";
 import { JourneyPlannerMap } from "@/components/journey-planner-map";
 import type { JourneyStop } from "@/lib/journey";
@@ -184,7 +185,7 @@ export default function TripTransportWorkspace({ trip, language = "en" }: { trip
 
   return <section className={styles.workspace} aria-labelledby={headingId}>
     <header className={styles.header}>
-      <div className={styles.heading}><span>{copy.eyebrow}</span><h2 id={headingId}>{copy.heading}</h2></div>
+      <div className={styles.heading}><span>{copy.eyebrow}</span><h2 id={headingId} className={workspaceHeading.sectionTitle}>{copy.heading}</h2></div>
       {items.length ? <EasyTButton className={styles.mapToggle} icon={mapOpen ? X : MapIcon} size="small" variant="secondary"
         aria-expanded={mapOpen} aria-controls="transport-route-map" onClick={() => setMapOpen((current) => !current)}>
         {mapOpen ? copy.hideMap : copy.showMap}
@@ -225,17 +226,21 @@ function TransportCard({ trip, item, language, copy, selected, forReview, onSele
   const durationMinutes = leg.doorToDoorMinutes ?? leg.durationMinutes;
   const state = transportPresentationState(leg, item.booking?.type === "transport");
   const status = !item.booking && isPassengerServiceLeg(leg) ? copy.notBooked : presentationLabel(state, leg, copy, transportBookingMarkedByTraveller(item.manualBooking));
+  const Chevron = selected ? ChevronUp : ChevronDown;
   return <article className={styles.card} role="listitem" data-transport-leg-id={leg.id} data-selected={selected ? "true" : undefined} data-review-target={forReview ? "true" : undefined} data-presentation-state={state} data-knowledge={transportJourneyKnowledge(leg)}>
-    <time className={styles.date} dateTime={item.date ?? undefined}>{displayDate(item.date, language, copy.dateUnknown)}</time>
-    <span className={styles.modeIcon}><Icon aria-hidden="true" /></span>
-    <div className={styles.cardBody}>
-      <h3>{item.from.name}<span className="sr-only"> {language === "es" ? "a" : "to"} </span><ArrowRight aria-hidden="true" />{item.to.name}</h3>
-      <p className={styles.mode}>{transferJourneyModeLabel(leg)}{durationMinutes === null ? null : <><i aria-hidden="true">·</i>{transferTimingLabel(leg)} total</>}</p>
-    </div>
-    <div className={styles.cardEnd}>
-      {forReview ? <span className={styles.status} data-tone="attention">{language === "es" ? "Revisar ruta" : "Route check"}</span> : null}
-      <span className={styles.status} data-tone={state === "booked" ? "booked" : state === "planning-estimate" ? "estimate" : "attention"}>{status}</span>
-      <EasyTButton size="small" variant="quiet" iconOnly icon={selected ? ChevronUp : ChevronDown} aria-expanded={selected}
+    <div className={styles.summary} data-transport-summary>
+      <time className={styles.date} dateTime={item.date ?? undefined}>{displayDate(item.date, language, copy.dateUnknown)}</time>
+      <span className={styles.modeIcon}><Icon aria-hidden="true" /></span>
+      <div className={styles.cardBody}>
+        <h3>{item.from.name}<span className="sr-only"> {language === "es" ? "a" : "to"} </span><ArrowRight aria-hidden="true" />{item.to.name}</h3>
+        <p className={styles.mode}>{transferJourneyModeLabel(leg)}{durationMinutes === null ? null : <><i aria-hidden="true">·</i>{transferTimingLabel(leg)} total</>}</p>
+      </div>
+      <div className={styles.cardEnd}>
+        {forReview ? <span className={styles.status} data-tone="attention">{language === "es" ? "Revisar ruta" : "Route check"}</span> : null}
+        <span className={styles.status} data-tone={state === "booked" ? "booked" : state === "planning-estimate" ? "estimate" : "attention"}>{status}</span>
+        <span className={styles.chevron} aria-hidden="true"><Chevron /></span>
+      </div>
+      <EasyTButton className={styles.summaryToggle} size="small" variant="quiet" iconOnly aria-expanded={selected}
         aria-label={`${selected ? copy.hideDetails : copy.viewDetails}: ${item.from.name} ${language === "es" ? "a" : "to"} ${item.to.name}`}
         aria-controls={`transport-detail-${leg.id}`} onClick={onSelect}>{selected ? copy.hideDetails : copy.viewDetails}</EasyTButton>
     </div>

@@ -20,6 +20,8 @@ import {
   type SpreadsheetTable,
 } from "@/lib/easyt/spreadsheet-import";
 import { parseSpreadsheetWorkbook } from "@/lib/easyt/spreadsheet-import-file";
+import { acceptImportPlace, resolveSpreadsheetImportPlace } from "@/lib/easyt/spreadsheet-import-places";
+import { assessSpreadsheetImportTransfers } from "@/lib/easyt/spreadsheet-import-transfers";
 import { acknowledgeTripBuildSave, BrowserRecoveryReadError, loadTripRecovery, saveTripRecovery, saveTripRecoveryToEasyT, subscribeToTripStorage } from "@/lib/easyt/storage";
 import { pendingSpreadsheetImportForRetry, type PendingSpreadsheetImportSubmission } from "@/lib/easyt/spreadsheet-import-submission";
 import { tripSyncRecoveryPath } from "@/lib/easyt/trip-continuity";
@@ -30,17 +32,9 @@ import styles from "./spreadsheet-import.module.css";
 type PlaceCandidate = SpreadsheetImportPlaceCandidate;
 
 function placeFromCandidate(sourceStopId: string, candidate: PlaceCandidate): ResolvedImportPlace {
-  return { sourceStopId, ...candidate };
-}
-
-async function placeResponse(name: string, country: string) {
-  const countryQuery = country ? `&country=${encodeURIComponent(country)}` : "";
-  const direct = await fetch(`/api/journey-geocode?place=${encodeURIComponent(name)}${countryQuery}`);
-  const directPayload = direct.ok ? await direct.json() as { result?: PlaceCandidate | null } : {};
-  if (directPayload.result?.coordinates) return { result: directPayload.result, candidates: [] as PlaceCandidate[] };
-  const candidatesResponse = await fetch(`/api/journey-geocode?place=${encodeURIComponent(name)}&candidates=1${countryQuery}`);
-  const candidatesPayload = candidatesResponse.ok ? await candidatesResponse.json() as { candidates?: PlaceCandidate[] } : {};
-  return { result: null, candidates: candidatesPayload.candidates ?? [] };
+  const accepted = acceptImportPlace(candidate);
+  if (!accepted) throw new Error("Confirm a verified city or town before importing.");
+  return { sourceStopId, ...accepted };
 }
 
 export default function SpreadsheetImportClient() {
@@ -76,6 +70,7 @@ export default function SpreadsheetImportClient() {
   const [accountSaveWarning, setAccountSaveWarning] = useState<{ tripId: string; ownerId: string | null; accountAcknowledged: boolean; detail: string; protectedRecovery: boolean } | null>(null);
   const confirmingRef = useRef(false);
   const pendingSubmissionRef = useRef<PendingSpreadsheetImportSubmission | null>(null);
+  const transferRequestRef = useRef<AbortController | null>(null);
 
   const table = sheets[sheetIndex] ?? null;
   const proposal = useMemo<SpreadsheetImportProposal | null>(() => table ? buildSpreadsheetImportProposal(table, mappings) : null, [mappings, table]);
@@ -84,6 +79,7 @@ export default function SpreadsheetImportClient() {
     : null;
   const reviewedInputKeyRef = useRef(reviewedInputKey);
   reviewedInputKeyRef.current = reviewedInputKey;
+  useEffect(() => () => { transferRequestRef.current?.abort(); }, [ownerScope, reviewedInputKey]);
   useEffect(() => { mountedRef.current = true; return () => { mountedRef.current = false; }; }, []);
   useEffect(() => subscribeToTripStorage(visibleOwnerId, "", () => { recoverySourceRevisionRef.current += 1; }), [visibleOwnerId]);
   useEffect(() => {
@@ -213,7 +209,7 @@ export default function SpreadsheetImportClient() {
       && originRequestVersionRef.current === requestVersion;
     const resolve = async () => {
       try {
-        const response = await placeResponse(proposal.origin!, "");
+        const response = await resolveSpreadsheetImportPlace(proposal.origin!, "", "endpoint");
         if (!isCurrent()) return;
         if (response.result) {
           setResolvedOrigin(response.result);
@@ -235,7 +231,7 @@ export default function SpreadsheetImportClient() {
     const resolve = async () => {
       setResolvingPlaces(true);
       const results = await Promise.all(proposal.stops.map(async (stop) => {
-        try { return { stop, ...(await placeResponse(stop.name, stop.country)) }; }
+        try { return { stop, ...(await resolveSpreadsheetImportPlace(stop.name, stop.country)) }; }
         catch { return { stop, result: null, candidates: [] as PlaceCandidate[] }; }
       }));
       if (cancelled || !mountedRef.current || ownerScopeRef.current !== ownerScope) return;
@@ -262,7 +258,7 @@ export default function SpreadsheetImportClient() {
     setOriginError("");
     setOriginOptions([]);
     try {
-      const response = await placeResponse(originValue.trim(), "");
+      const response = await resolveSpreadsheetImportPlace(originValue.trim(), "", "endpoint");
       if (!isCurrent()) return;
       if (response.result) { setResolvedOrigin(response.result); setOriginValue(response.result.name); return; }
       setResolvedOrigin(null);
@@ -313,12 +309,18 @@ export default function SpreadsheetImportClient() {
       if (recoverySourceRevisionRef.current !== sourceRevision) throw new Error("The device copy changed while it was being checked. Review it before retrying this import.");
       let pending = pendingSpreadsheetImportForRetry(previous, { reviewedInputKey, ownerId, recovery });
       if (!pending) {
-        const trip = canonicalTripFromSpreadsheetProposal({
+        const candidate = canonicalTripFromSpreadsheetProposal({
           id: `trip-${crypto.randomUUID()}`,
           proposal,
           origin: resolvedOrigin,
           places: proposal.stops.map((stop) => resolvedPlaces[stop.id]),
+          recommendUnbookedTransfers: true,
         });
+        const controller = new AbortController();
+        transferRequestRef.current = controller;
+        const trip = await assessSpreadsheetImportTransfers(candidate, controller.signal);
+        if (!isCurrent()) return;
+        if (recoverySourceRevisionRef.current !== sourceRevision) throw new Error("The device copy changed while this import was being prepared. Review it before retrying.");
         const preserved = await saveTripRecovery(trip, { ownerId, newTripOrClone: true, isCurrent, accountSavePending: Boolean(ownerId) });
         if (!isCurrent()) return;
         if (!preserved.stored) throw new Error(preserved.blockedByExistingRecovery
@@ -412,7 +414,7 @@ export default function SpreadsheetImportClient() {
         onUpdateMapping={updateMapping}
         onOriginValueChange={(value) => { inputVersionRef.current += 1; originRequestVersionRef.current += 1; setOriginValue(value); setResolvedOrigin(null); setOriginOptions([]); setOriginError(""); }}
         onResolveOrigin={() => void resolveOrigin()}
-        onSelectOrigin={(option) => { inputVersionRef.current += 1; originRequestVersionRef.current += 1; setResolvedOrigin(option); setOriginValue(option.name); setOriginError(""); }}
+        onSelectOrigin={(option) => { const accepted = acceptImportPlace(option, "endpoint"); if (!accepted) return; inputVersionRef.current += 1; originRequestVersionRef.current += 1; setResolvedOrigin(accepted); setOriginValue(accepted.name); setOriginError(""); }}
         onSelectPlace={(stopId, option) => { inputVersionRef.current += 1; setResolvedPlaces((current) => ({ ...current, [stopId]: placeFromCandidate(stopId, option) })); }}
         onConfirm={() => void confirm()}
       /> : null}
