@@ -105,6 +105,7 @@ export async function createAsyncBuilderEditSession(options: AsyncBuilderEditSes
   let workAbort: AbortController | null = null;
   const automaticWorkHolds = new Set<object>();
   let workWakeRequested = false;
+  let routeWorkBlocked = false;
   let deviceTail = Promise.resolve(), devicePending = 0, canonicalPending = 0;
   let commandSequence = 0, lastCommand: CommandRecord | null = null;
   const issuedCommands = new Set<CommandRecord>();
@@ -140,7 +141,7 @@ export async function createAsyncBuilderEditSession(options: AsyncBuilderEditSes
     snapshot = freeze(structuredClone({ trip, draft, inputRevision, acceptedRevision,
       canonicalSaveState: canonicalPending && !error ? 'device-saving' : canonicalSaveState,
       saveState: error ? 'error' : devicePending || draftNeedsWrite ? 'device-saving' : draft.fields.length && canonicalSaveState === 'cloud' ? 'local' : canonicalSaveState,
-      projectionState, pendingUnits, failedUnits, conflictUnits,
+      projectionState, pendingUnits, failedUnits, conflictUnits, routeWorkBlocked,
       transferAssessments: assessmentFeedback?.inputKey === routeProjectionInputKey(trip) ? assessmentFeedback.assessments : [],
       historicalRecovery, browserOwnerId: ownerId, recovery, error }));
     listeners.forEach(listener => listener());
@@ -404,6 +405,7 @@ export async function createAsyncBuilderEditSession(options: AsyncBuilderEditSes
   }
   function scheduleWork() {
     cancelWork?.(); cancelWork = null; workAbort?.abort(); workAbort = null; work = null;
+    routeWorkBlocked = false;
     workWakeRequested = false;
     if (!active() || draftProtected) return;
     if (automaticWorkHolds.size || devicePending) { workWakeRequested = true; return; }
@@ -416,12 +418,14 @@ export async function createAsyncBuilderEditSession(options: AsyncBuilderEditSes
     if (work) return;
     const dispatched = pendingRouteUnits();
     if (!dispatched.length) return;
+    routeWorkBlocked = false;
     const request: BuilderReconciliationRequest = freeze({ trip: structuredClone(trip), scope: { ownerId: trip.ownerId, tripId, inputRevision },
       inputKey: routeProjectionInputKey(trip), requestId: `${tripId}:${inputRevision}:${++requestSequence}:${options.now()}`, dispatched });
     if (assessmentFeedback?.inputKey === request.inputKey) assessmentFeedback = { inputKey: request.inputKey, assessments: assessmentFeedback.assessments.filter(item => !dispatched.some(unit => unit.kind === 'leg' && unit.targetId === item.legId)) };
     else assessmentFeedback = null;
     work = request;
     const controller = new AbortController(); workAbort = controller;
+    publish();
     let continued = false;
     const current = () => active() && work === request && inputRevision === request.scope.inputRevision;
     const projectionCurrent = () => {
@@ -454,7 +458,18 @@ export async function createAsyncBuilderEditSession(options: AsyncBuilderEditSes
       if (failed.ok && await storeCanonical(failed.trip, structuredClone(trip), rebindBuilderInputDraft(draft, failed.trip, ownerId), projectionGuard(), { projectionOnly: true }) && projectionCurrent()) {
         continued = true; scheduleCloud(); publish();
       }
-    } finally { if (work === request) { work = null; workAbort = null; if (continued) scheduleWork(); else wakeAutomaticWork(); } }
+    } finally {
+      if (work === request) {
+        // A deferred/no-progress result leaves the accepted document intact.
+        // Surface a review outcome instead of leaving Build waiting on a worker
+        // that has stopped. Holds and stale requests still yield to their owner.
+        const pendingPromotion = historicalRecovery && trip.ownerId === null && ownerId !== null && error?.category === 'pending';
+        if (!continued && projectionCurrent() && !workWakeRequested && (!error || pendingPromotion) && pendingRouteUnits().length) routeWorkBlocked = true;
+        work = null; workAbort = null;
+        if (continued) scheduleWork(); else wakeAutomaticWork();
+        if (active()) publish();
+      }
+    }
   }
   async function performAcceptedEdits(edits: readonly BuilderAcceptedEdit[], expectedInputRevision: number,
     acceptedInputs: readonly { binding: BuilderInputBinding; raw: string }[] | undefined, command: CommandRecord) {

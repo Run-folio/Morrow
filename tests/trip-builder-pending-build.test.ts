@@ -64,7 +64,7 @@ async function harness(input: { initialTrip?: CanonicalEasyTTrip; owner?: string
   const initialTrip = input.initialTrip ?? fixture(), ownerId = input.owner === undefined ? initialTrip.ownerId : input.owner;
   const storage = input.storage ?? new MemoryStorage(); let owner = ownerId;
   let recoveryGate: ReturnType<typeof deferred<void>> | null = null, draftGate: ReturnType<typeof deferred<void>> | null = null;
-  let ackGate: ReturnType<typeof deferred<void>> | null = null, failRecovery = false, failDraft = false, cacheFails = false;
+  let ackGate: ReturnType<typeof deferred<void>> | null = null, failRecovery = false, failDraft = false, cacheFails = false, deferProjection = false;
   const timers: { callback: () => void; delay: number; active: boolean }[] = [];
   const writes: { trip: CanonicalEasyTTrip; result: ReturnType<typeof deferred<CanonicalEasyTTrip>> }[] = [];
   const projections: { request: BuilderReconciliationRequest; signal: AbortSignal; result: ReturnType<typeof deferred<BuilderProjectionResponse>> }[] = [];
@@ -80,6 +80,8 @@ async function harness(input: { initialTrip?: CanonicalEasyTTrip; owner?: string
     },
     saveRecovery: async (trip, metadata) => {
       deviceWrites.push({ trip, options: metadata }); const gate = recoveryGate; if (gate) await gate.promise;
+      if (metadata.projectionOnly && deferProjection) return { stored: false, projectionDeferred: true, writeAttempted: false,
+        handle: metadata.replace!, blockedByExistingRecovery: false };
       if (!metadata.isCurrent() || failRecovery || failDraft) return { stored: false, handle: metadata.replace ?? { ownerId: metadata.ownerId, tripId: trip.id, writeId: 'refused' }, blockedByExistingRecovery: false, failureReason: 'device-unavailable' };
       // Synthetic atomic callback: no fault or guard can occur between these synchronous writes.
       const result = saveTripRecoveryToStorage(storage, trip, metadata);
@@ -99,6 +101,7 @@ async function harness(input: { initialTrip?: CanonicalEasyTTrip; owner?: string
   };
   const session = await (await api()).createAsyncBuilderEditSession(options);
   return { session, options, storage, deviceWrites, writes, projections,
+    deferProjection(value: boolean) { deferProjection = value; },
     holdRecovery() { recoveryGate = deferred<void>(); return recoveryGate; }, holdDraft() { draftGate = deferred<void>(); return draftGate; }, holdAck() { ackGate = deferred<void>(); return ackGate; },
     failRecovery() { failRecovery = true; }, failDraft() { failDraft = true; }, failCache() { cacheFails = true; }, rotate(value: string | null) { owner = value; },
     recovery: () => loadTripRecoveryFromStorage(storage, initialTrip.id, ownerId),
@@ -127,7 +130,7 @@ function buildPersistence(h: Awaited<ReturnType<typeof harness>>, onAssessment?:
   const view = builderDispatch(h);
   const source = readFileSync(new URL('../app/journey/new/trip-builder.tsx', import.meta.url), 'utf8');
   const body = source.slice(source.indexOf('  const persistGeneratedTrip ='), source.indexOf('  const settleUnacknowledgedBuild ='));
-  const effects:Array<()=>void>=[];let assessmentCount=0;
+  const effects:Array<()=>void>=[];let assessmentCount=0,generatedCount=0;
   const scope = { builderEditSessionRef: view.ref, builderMountedRef: view.mounted,
     activeBrowserOwnerIdRef: { current: h.session.getSnapshot().browserOwnerId },
     buildInvariant: { canBuildTrip: true }, dispatchAcceptedBuilderEdit: view.dispatch,
@@ -139,7 +142,7 @@ function buildPersistence(h: Awaited<ReturnType<typeof harness>>, onAssessment?:
       renderAssessment(editor);return pending;
     },
     builderBuildNavigationRef:{current:null},
-    recordGeneratedTrip() {}, surfaceBuildConflict() {}, setCloudSaveError() {}, trackEvent() {}, analyticsTripSource: 'builder' };
+    recordGeneratedTrip() {generatedCount++;}, surfaceBuildConflict() {}, setCloudSaveError() {}, trackEvent() {}, analyticsTripSource: 'builder' };
   function renderAssessment(editor:typeof h.session){
       const trip=editor.getSnapshot().trip,nightAllocation=trip.brief.nightAllocation??allocateTripNights({totalNights:tripNightsBetween(trip.startDate,trip.endDate),stops:trip.stops});
       scope.activeTripDocument=trip;
@@ -155,7 +158,7 @@ function buildPersistence(h: Awaited<ReturnType<typeof harness>>, onAssessment?:
   const navStart=source.indexOf('  const canOpenBuiltTrip =');
   const canOpen=navStart<0?()=>true:new Function('scope',`with(scope){${ts.transpileModule(source.slice(navStart,source.indexOf('  const settleUnacknowledgedBuild ='))+'\nreturn canOpenBuiltTrip;',{compilerOptions:{target:ts.ScriptTarget.ES2022}}).outputText}}`)(scope) as (trip:CanonicalEasyTTrip)=>boolean;
   const script = ts.transpileModule(body + '\nreturn persistGeneratedTrip;', { compilerOptions: { target: ts.ScriptTarget.ES2022 } }).outputText;
-  return { ...view, canOpen, render:()=>renderAssessment(h.session), persist: new Function('scope', `with(scope){${script}}`)(scope) as (request?: {editor: typeof h.session; barrier: ReturnType<typeof h.session.captureCommandBarrier>}) => Promise<CanonicalEasyTTrip | null> };
+  return { ...view, canOpen, generated:()=>generatedCount, render:()=>renderAssessment(h.session), persist: new Function('scope', `with(scope){${script}}`)(scope) as (request?: {editor: typeof h.session; barrier: ReturnType<typeof h.session.captureCommandBarrier>}) => Promise<CanonicalEasyTTrip | null> };
 }
 
 const reorderedIds=['destination-1','destination-3','destination-2'];
@@ -249,4 +252,45 @@ test('the navigation receipt refuses a durably saved trip with route work still 
       sameRecoveryDocument:(a:unknown,b:unknown)=>JSON.stringify(a)===JSON.stringify(b)}) as ()=>boolean;
     assert.equal(ready(),false,'durable saving does not imply completed route details');
   } finally {h.session.dispose();}
+});
+
+for(const providerError of [false,true])test(`Build returns review on deferred projection after provider ${providerError?'error':'response'}, then supports a deliberate retry`,{timeout:5000},async()=>{
+  const {h,work}=await heldRoute(),view=buildPersistence(h);h.deferProjection(true);
+  try{
+    const before=h.session.getSnapshot(),stored=[...h.storage.values];
+    const building=view.persist(),state=observe(building);await tick();
+    assert.equal(state.settled,false);
+    if(providerError)work.result.reject(new Error('Synthetic unavailable provider'));else work.result.resolve(response(work.request));
+    await tick();
+    assert.equal(state.settled,true,'deferred route work must return from Build for review');
+    assert.equal(await building,null);assert.equal(view.canOpen(before.trip),false);
+    assert.equal(view.generated(),0,'review cannot count an unresolved trip as generated');
+    assert.equal(h.session.getSnapshot().trip.status,'draft');assert.equal(h.writes.length,0);
+    assert.deepEqual(h.session.getSnapshot().trip,before.trip);assert.deepEqual([...h.storage.values],stored);
+    assert.equal(h.session.getSnapshot().routeWorkBlocked,true);
+    h.deferProjection(false);
+    const retry=view.persist(),retryState=observe(retry);await tick();
+    assert.equal(h.projections.length,2,'the next deliberate Build retries the stopped route worker once');
+    assert.equal(retryState.settled,false);
+    h.projections[1]!.result.resolve(response(h.projections[1]!.request));
+    await finishBuild(h,retryState);const built=await retry;assert.ok(built);assert.equal(view.canOpen(built),true);
+    assert.equal(h.session.getSnapshot().pendingUnits.some(unit=>unit.kind!=='recommendation'),false);
+    assert.equal(h.projections.length,2,'completion cannot duplicate provider work');
+    assert.equal(view.generated(),1,'only the successful retry records generation');
+  }finally{h.session.dispose();}
+});
+
+for(const language of ['en','es'])for(const pendingPromotion of [false,true])test(`stopped Build restores ${language} feedback and preserves ${pendingPromotion?'explicit recovery':'review and retry'} action semantics`,async()=>{
+  const source=readFileSync(new URL('../app/journey/new/trip-builder.tsx',import.meta.url),'utf8');
+  const start=source.indexOf('  const settleUnacknowledgedBuild ='),end=source.indexOf('  const openBuiltTrip =',start);
+  let opening=true,review=false,message='',saveState='';
+  const state={routeWorkBlocked:true,saveState:pendingPromotion?'error':'local',
+    error:pendingPromotion?{category:'pending',message:'The saved device trip needs recovery before account sync.'}:null};
+  const scope={language,builderEditSessionRef:{current:{getSnapshot:()=>state}},setOpeningTrip:(value:boolean)=>{opening=value;},
+    setSaveState:(value:string)=>{saveState=value;},setBuildNeedsReview:(value:boolean)=>{review=value;},
+    setCloudSaveError:(update:(current:string)=>string)=>{message=update(message);}};
+  const settle=new Function('scope',`with(scope){${ts.transpileModule(source.slice(start,end)+'\nreturn settleUnacknowledgedBuild;',{compilerOptions:{target:ts.ScriptTarget.ES2022}}).outputText}}`)(scope) as ()=>void;
+  settle();assert.equal(opening,false);assert.equal(saveState,state.saveState);assert.equal(review,!pendingPromotion);
+  if(pendingPromotion)assert.equal(message,state.error!.message,'an existing explicit recovery requirement must outrank a Build retry message');
+  else assert.equal(message,language==='es'?'No se pudieron completar las comprobaciones de la ruta. Revisa el viaje y pulsa Crear viaje para volver a intentarlo.':'Route checks could not finish. Review the trip and choose Build trip to try again.');
 });

@@ -27,6 +27,8 @@ export type BuilderEditSessionSnapshot = {
   saveState: BuilderSessionSaveState; canonicalSaveState: BuilderSessionSaveState;
   projectionState: 'legacy-unverified' | 'pending' | 'current' | 'provisional' | 'failed' | 'conflict';
   pendingUnits: Unit[]; failedUnits: Unit[]; conflictUnits: Unit[];
+  /** Session-only: required work stopped without a safely retained result. Never a completed assessment. */
+  routeWorkBlocked?: boolean;
   transferAssessments: TransferAssessment[];
   historicalRecovery: boolean; browserOwnerId: string | null;
   recovery: TripRecoveryHandle | null; error: { category: TripRecoveryState | 'storage' | 'protected'; message: string; deviceOutcome?: PersistenceOutcome; rejectedEditMessage?: string } | null;

@@ -749,6 +749,8 @@ for (const [width,type] of [[1440,'return_to_start'],[390,'one_way']] as const) 
  await page.getByRole('region',{name:'Trip itinerary',exact:true}).waitFor();
  await page.getByRole('button',{name:'Calendar',exact:true}).waitFor();
  assert.equal(await page.getByRole('button',{name:'Day by day',exact:true}).getAttribute('aria-pressed'),'true');
+ await page.getByRole('button',{name:'Skip workspace guide',exact:true}).click();
+ await page.locator('[role="dialog"][data-workspace-orientation-ui="true"]').waitFor({state:'hidden'});
  await page.getByRole('button',{name:'Calendar',exact:true}).click();
  const calendar=page.locator('#itinerary-calendar');
  const dayHeader=calendar.locator('..').locator('header').first();

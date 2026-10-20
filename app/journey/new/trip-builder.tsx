@@ -5156,7 +5156,7 @@ function TripBuilderDocument() {
       && snapshot.trip.id === request.tripId && request.isCurrent();
     const pendingPromotion = snapshot.historicalRecovery && snapshot.trip.ownerId === null
       && snapshot.browserOwnerId !== null && snapshot.error?.category === "pending";
-    if (!current || snapshot.error && !pendingPromotion) {
+    if (!current || snapshot.error && !pendingPromotion || snapshot.routeWorkBlocked) {
       pendingBuildAssessmentRef.current = null;
       request.resolve(null);
       return;
@@ -5218,6 +5218,9 @@ function TripBuilderDocument() {
           is_authenticated: snapshot.browserOwnerId !== null,
         });
       };
+      // A new, deliberate Build retries stopped route work. Deferral itself
+      // never loops or weakens the storage admission/pending-work guards.
+      if (editor.getSnapshot().routeWorkBlocked) void editor.resumeNecessaryWork();
       const assessed = await requestBuildAssessment(editor, dependency.isCurrent);
       if (!assessed || !dependency.isCurrent() || !mounted()
         || !sameRecoveryDocument(editor.getSnapshot().trip, assessed.trip)) return null;
@@ -5269,6 +5272,9 @@ function TripBuilderDocument() {
     setSaveState(state?.saveState ?? "local");
     setBuildNeedsReview(!state?.error);
     setCloudSaveError((current) => current || state?.error?.message
+      || (state?.routeWorkBlocked ? (language === "es"
+        ? "No se pudieron completar las comprobaciones de la ruta. Revisa el viaje y pulsa Crear viaje para volver a intentarlo."
+        : "Route checks could not finish. Review the trip and choose Build trip to try again.") : "")
       || "The trip changed before Build completed. Review the latest trip and build again.");
   };
 
@@ -7218,7 +7224,9 @@ function TripBuilderDocument() {
               : (language === "es" ? "No se pudo guardar en tu cuenta" : "Couldn't save to your account")}
         detail={cloudSaveError}
         safety={(buildNeedsReview || editNeedsReview) && !mountedBuilder?.snapshot.error
-          ? (language === "es" ? "Mantén esta pestaña abierta mientras revisas los cambios y terminas de guardar." : "Keep this tab open while you review changes and saving finishes.")
+          ? mountedBuilder?.snapshot.routeWorkBlocked
+            ? (language === "es" ? "Tu viaje y tus datos introducidos se conservan. Mantén esta pestaña abierta mientras los revisas." : "Your current trip and input remain preserved. Keep this tab open while you review them.")
+            : (language === "es" ? "Mantén esta pestaña abierta mientras revisas los cambios y terminas de guardar." : "Keep this tab open while you review changes and saving finishes.")
           : mountedBuilder?.snapshot.error?.deviceOutcome
           ? (language === "es" ? "Este cambio no se aplicó. Revísalo y vuelve a aplicarlo; mantén esta pestaña abierta." : "This change was not applied. Review and reapply it; keep this tab open.")
           : devicePersistenceOutcome === "receipt-incomplete" || devicePersistenceOutcome === "pointer-incomplete"
