@@ -4,7 +4,7 @@
   overflow: hidden;
   border: 1px solid var(--morrovia-line);
   border-radius: var(--morrovia-radius);
-  background: var(--morrovia-paper);
+  background: var(--morrovia-control-surface);
 }
 
 .layout {
@@ -21,7 +21,7 @@
   padding: 14px 14px 0;
   display: grid;
   gap: 10px;
-  background: var(--morrovia-paper);
+  background: transparent;
 }
 
 .main {
@@ -31,7 +31,7 @@
   align-content: start;
   gap: 18px;
   border-right: 1px solid var(--morrovia-line);
-  background: var(--morrovia-paper);
+  background: transparent;
 }
 
 .layoutNoRail .main { border-right: 0; }
@@ -42,13 +42,11 @@
   overflow: hidden;
   border-bottom: 1px solid var(--morrovia-line);
 }
+.stopNavigation > nav { background: transparent; }
 
 .intro h2 {
   max-width: 760px;
   margin: 0;
-  color: var(--morrovia-ink);
-  font: 500 clamp(30px, 4vw, 48px)/1.02 var(--morrovia-display);
-  letter-spacing: -.035em;
 }
 .intro p { margin: 8px 0 0; color: var(--morrovia-muted); font: var(--morrovia-type-metadata); }
 
@@ -89,7 +87,7 @@
   flex-direction: column;
   border: 1px solid var(--morrovia-line);
   border-radius: var(--morrovia-radius);
-  background: var(--morrovia-paper);
+  background: var(--morrovia-control-surface);
   transition: border-color 160ms ease, box-shadow 160ms ease;
 }
 
@@ -213,14 +211,14 @@
   gap: 14px;
   overflow-y: auto;
   overscroll-behavior: contain;
-  background: var(--morrovia-paper);
+  background: transparent;
 }
 
 .detail {
   padding: 14px;
   border: 1px solid var(--morrovia-line);
   border-radius: var(--morrovia-radius);
-  background: var(--morrovia-paper);
+  background: var(--morrovia-control-surface);
 }
 
 .detailClose { margin: 0 0 10px auto; }
@@ -256,7 +254,6 @@
 @media (max-width: 620px) {
   .main { padding: 16px 14px 24px; }
   .feedbackRow { padding: 10px 10px 0; }
-  .intro h2 { font-size: 34px; }
   .grid, .loading > div:last-child { grid-template-columns: minmax(0, 1fr); }
   .cardMedia { height: 190px; min-height: 0; }
   .cardActions { width: 100%; }
@@ -267,7 +264,6 @@
 @media (max-width: 390px) {
   .main { padding-inline: 10px; }
   .stopNavigation { margin-inline: -10px; }
-  .intro h2 { font-size: 30px; }
   .cardBody { padding: 12px 12px 7px; }
   .cardActions { padding: 7px 12px 12px; }
   .detail { padding: 10px; }

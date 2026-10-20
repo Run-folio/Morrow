@@ -94,19 +94,26 @@
 }
 
 .tripTitleDisclosure { display: block; position: relative; min-width: 0; }
-.tripTitleToggle {
+.tripIdentity .tripTitleToggle {
   display: block;
   width: 100%;
   min-width: 0;
+  min-height: 44px;
   overflow: hidden;
   padding: 0;
   border: 0;
+  border-radius: 0;
   background: transparent;
   color: inherit;
   font: inherit;
   letter-spacing: inherit;
   text-align: left;
   cursor: pointer;
+}
+.tripIdentity .tripTitleToggle:hover:not(:disabled) {
+  transform: none;
+  background: transparent;
+  color: inherit;
 }
 .tripTitleToggle > span {
   display: block;
@@ -126,17 +133,6 @@
   font: var(--morrovia-type-supporting-body);
   letter-spacing: 0;
 }
-.routeSummary {
-  margin: 7px 0 0;
-  overflow: hidden;
-  color: var(--morrovia-ink-soft);
-  font-size: 13px;
-  font-weight: 700;
-  line-height: 1.4;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
 .metadata {
   display: flex;
   flex-wrap: wrap;
@@ -400,7 +396,6 @@
   }
 
   .tripIdentity > .eyebrow { display: block; }
-  .routeSummary { display: none; }
 
   .metadata {
     gap: 4px 8px;

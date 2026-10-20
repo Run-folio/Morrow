@@ -43,7 +43,7 @@
   text-wrap: pretty;
 }
 
-.routeIntro h2 { margin: 7px 0 0; }
+.routeIntro h2 { margin: 0; }
 .routeIntro span, .sectionDetail {
   display: block;
   margin-top: 6px;
@@ -54,7 +54,6 @@
 }
 
 .routeComposition {
-  margin-top: 20px;
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(260px, 320px);
   align-items: stretch;
@@ -62,6 +61,7 @@
 }
 
 .routeJourney { min-width: 0; }
+.routeJourney > .routeIntro { margin-bottom: 20px; }
 .routeList {
   margin: 0;
   padding: 4px 3px 0;
@@ -137,6 +137,13 @@
 .routeDirection { position: absolute; top: 80px; right: -19px; width: 15px; height: 15px; color: var(--morrovia-ink-soft); }
 
 .routeMapPreview { min-width: 0; }
+@media (min-width: 981px) {
+  .routeComposition > .routeMapPreview {
+    grid-template-rows: minmax(230px, 1fr) auto;
+    align-content: stretch;
+  }
+  .routeComposition > .routeMapPreview > div:first-child { height: auto; }
+}
 .emptyRoute {
   min-height: 120px;
   margin-top: 18px;

@@ -2,7 +2,22 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { itineraryNotesForDisplay, semanticSamePlaceArrival } from "../lib/easyt/itinerary-presentation.ts";
+import * as presentation from "../lib/easyt/itinerary-presentation.ts";
 import type { EasyTTrip, PlanItem, TripLeg } from "../lib/easyt/trip.ts";
+
+test("day subtitles omit exact generated filler while preserving authored titles and source data", () => {
+  assert.equal(typeof presentation.itineraryDaySubtitle, "function");
+  const day = Object.freeze({ title: "Flexible day in Paris" });
+  assert.equal(presentation.itineraryDaySubtitle(day.title, "Paris"), null);
+  assert.equal(presentation.itineraryDaySubtitle("  Flexible  day in PARIS ", "Paris"), null);
+  assert.equal(presentation.itineraryDaySubtitle("Paris", "Paris"), null);
+  assert.equal(presentation.itineraryDaySubtitle("Explore Paris", "Paris"), null);
+  assert.equal(presentation.itineraryDaySubtitle("Flexible day in Paris with Claire", "Paris"), "Flexible day in Paris with Claire");
+  assert.equal(presentation.itineraryDaySubtitle("Birthday lunch", "Paris"), "Birthday lunch");
+  assert.equal(presentation.itineraryDaySubtitle("Flexible day in Lyon", "Paris"), "Flexible day in Lyon");
+  assert.equal(presentation.itineraryDaySubtitle("Flexible day in Paris", null), "Flexible day in Paris");
+  assert.equal(day.title, "Flexible day in Paris");
+});
 
 test("a transfer summary removes only repeated generated route and estimate rows", () => {
   const leg = { fromStopId: "cusco", toStopId: "valley", durationMinutes: 57 } as TripLeg;

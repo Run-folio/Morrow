@@ -137,7 +137,7 @@ export default function MorroviaPhotoCredit({
   const portal = portalReady && open ? createPortal(<div ref={panelRef} id={popoverId} role="dialog" aria-label={language === "es" ? "Información de la foto" : "Photo information"} className={styles.panel} style={panelStyle ? { left: panelStyle.left, top: panelStyle.top, width: panelStyle.width } : { left: 12, top: 12, width: "min(280px, calc(100vw - 24px))" }} onClick={(event) => event.stopPropagation()}>
     {links}
     {fullCreditLink}
-  </div>, document.body) : null;
+  </div>, triggerRef.current?.closest("dialog[open]") ?? document.body) : null;
 
   return <>{root}{portal}</>;
 }

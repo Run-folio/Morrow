@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import type { Meta, StoryObj } from '@storybook/react';
+import { expect, within } from 'storybook/test';
 import { JourneyPlannerMap } from '@/components/journey-planner-map';
 import type { JourneyStop } from '@/lib/journey';
 import { mapRouteLegsFromTrip } from '@/lib/easyt/map-spatial-context';
@@ -20,7 +21,29 @@ function PreviewStory({context,deferred=false}: {context:'journey'|'stay'|'day'|
    {context==='empty'?undefined:<MapContent stops={context==='journey'?stops:dayContext.stops} legs={context==='journey'?mapRouteLegsFromTrip(trip):dayContext.legs} selectedId={selected} plannerPins={dayContext.pins} focusCoordinates={context==='journey'?null:dayContext.focusCoordinates} draftPinCoordinates={null} pinPlacementMode={false} overviewMode={context==='journey'} surface={context==='journey'?{variant:'preview'}:{variant:'embedded',interaction:'selection-only'}} onMapPinDrop={()=>{}} onPlannerPinSelect={()=>{}} onSelect={setSelected} />}
   </MorroviaMapPreview>;
 }
-const meta={title:'Morrovia/05 Product Patterns/Map preview',component:PreviewStory,args:{context:'journey'},decorators:[(Story)=><main className="morrovia-editorial-page"><Story /></main>],parameters:{layout:'padded'}} satisfies Meta<typeof PreviewStory>;
+const meta={
+  title:'Morrovia/05 Product Patterns/Map preview',component:PreviewStory,args:{context:'journey'},
+  decorators:[(Story)=><main className="morrovia-editorial-page"><Story /></main>],parameters:{layout:'padded'},
+  play: async ({ canvasElement, args }) => {
+    const label = args.context === 'stay' ? 'Stay map' : args.context === 'day' ? 'Day map' : 'Journey map';
+    const preview = within(canvasElement).getByRole('region', { name: label });
+    await expect(within(preview).queryByRole('heading', { name: label })).toBeNull();
+    const frame = preview.querySelector<HTMLElement>('[class*="frame"]');
+    if (!frame) throw new Error('The map preview frame must remain available');
+    const cardRect = preview.getBoundingClientRect();
+    const frameRect = frame.getBoundingClientRect();
+    const cardStyle = getComputedStyle(preview);
+    await expect(Math.abs(frameRect.left - cardRect.left - parseFloat(cardStyle.borderLeftWidth))).toBeLessThan(1);
+    await expect(Math.abs(cardRect.right - frameRect.right - parseFloat(cardStyle.borderRightWidth))).toBeLessThan(1);
+    await expect(Math.abs(frameRect.top - cardRect.top - parseFloat(cardStyle.borderTopWidth))).toBeLessThan(1);
+    const action = within(preview).getByRole('link', { name: 'View map' });
+    await expect(action).toBeVisible();
+    await expect(action.getBoundingClientRect().top).toBeGreaterThanOrEqual(frameRect.bottom);
+    if (args.context === 'journey') {
+      await expect(within(preview).getByRole('link', { name: 'Open Journey map' })).toHaveAttribute('href', action.getAttribute('href'));
+    }
+  },
+} satisfies Meta<typeof PreviewStory>;
 export default meta;
 type Story=StoryObj<typeof meta>;
 export const Journey: Story={};

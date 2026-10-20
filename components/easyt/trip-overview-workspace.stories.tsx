@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import { loadTripRecovery, subscribeToTripStorage } from "@/lib/easyt/storage";
 import { MorroviaSectionStatus } from "./morrovia-loading-states";
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
+import { expect, within } from "storybook/test";
 import { affiliatePartners, type BookingReadinessAction } from "@/lib/easyt/booking-readiness";
 import type { EasyTTrip, PlanItem } from "@/lib/easyt/trip";
 import type { ReadinessCard, TravelReadinessProfile } from "@/lib/easyt/travel-readiness";
@@ -646,3 +647,61 @@ export const LibraryActionsGuest: Story = { ...LibraryActionsOwner, args: { trip
 export const AuthoredIdentity: Story = { ...LibraryActionsOwner, args: {trip:{...overviewIdentityTrip,title:"Our spring adventure",brief:{...overviewIdentityTrip.brief,customTitle:"Our spring adventure"}}} };
 export const AmbiguousLegacyIdentity: Story = { ...LibraryActionsOwner, args: {trip:{...overviewIdentityTrip,brief:Object.fromEntries(Object.entries(overviewIdentityTrip.brief).filter(([key])=>key!=="customTitle")) as EasyTTrip["brief"]}} };
 export const OtherWorkspaceRouteContext: Story = { ...LibraryActionsOwner, parameters: {...identityParameters,nextjs:{appDirectory:true,navigation:{pathname:"/journey/storybook-overview-identity/itinerary"}}} };
+
+const checkRouteMapFraming: Story["play"] = async ({ canvasElement }) => {
+  const canvas = within(canvasElement);
+  const heading = canvas.getByRole("heading", { name: "Your route" });
+  const preview = canvas.getByRole("region", { name: "Journey map" });
+  const journey = canvasElement.querySelector<HTMLElement>('[class*="routeJourney"]');
+  const frame = preview.querySelector<HTMLElement>('[class*="frame"]');
+  if (!journey?.lastElementChild || !frame) throw new Error("Route content and map frame must remain available");
+  const previewRect = preview.getBoundingClientRect();
+  const contentBottom = journey.lastElementChild.getBoundingClientRect().bottom;
+  if (window.innerWidth > 980) {
+    await expect(Math.abs(previewRect.top - heading.getBoundingClientRect().top)).toBeLessThan(1);
+    await expect(previewRect.bottom - contentBottom).toBeGreaterThanOrEqual(-1);
+    await expect(previewRect.bottom - contentBottom).toBeLessThan(44);
+  } else {
+    await expect(previewRect.top).toBeGreaterThanOrEqual(contentBottom);
+  }
+  await expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(window.innerWidth);
+  await expect(previewRect.height - frame.getBoundingClientRect().height).toBeGreaterThanOrEqual(60);
+  await expect(within(preview).getByRole("link", { name: "View map" })).toBeVisible();
+  const transferTitle = canvas.queryByText("A transfer still needs checking", { exact: true });
+  if (transferTitle) {
+    const insight = transferTitle.closest("aside");
+    if (!insight) throw new Error("The transfer warning must retain its accessible region");
+    await expect(within(insight).queryByText("Transfer details", { exact: true })).toBeNull();
+    await expect(within(insight).getByText("Confirm its route and timing before booking.", { exact: true })).toBeVisible();
+    await expect(within(insight).getByRole("link", { name: "View detailed itinerary" })).toBeVisible();
+  }
+};
+
+export const MapFramingAirportAndTransferReview: Story = {
+  args: { trip: { ...overviewIdentityTrip, ownerId: null } }, play: checkRouteMapFraming,
+  parameters: { nextjs: { appDirectory: true, navigation: { pathname: `/journey/${overviewIdentityTrip.id}` } } },
+};
+export const MapFramingConfirmedRoute: Story = { args: { trip: routeReviewTrip("confirmed", "confirmed") }, play: checkRouteMapFraming };
+
+// Repeated canonical places exercise eight distinct occurrences without
+// inventing geography or duration estimates. This fixture is never saved.
+const framingStops = Array.from({ length: 8 }, (_, index) => ({
+  ...coherentRouteTrip.stops[index % coherentRouteTrip.stops.length]!,
+  id: `map-framing-stop-${index + 1}`, order: index, nights: 1,
+  arrivalDate: `2026-08-${21 + index}`, departureDate: `2026-08-${22 + index}`,
+}));
+const eightStopFramingTrip: EasyTTrip = {
+  ...coherentRouteTrip, id: "storybook-map-framing-eight-occurrences", endDate: "2026-08-29",
+  brief: { ...coherentRouteTrip.brief, routeAssessment: undefined, bookings: [] },
+  stops: framingStops, planItems: [],
+  legs: framingStops.slice(1).map((stop, index) => ({
+    ...coherentRouteTrip.legs[0]!, id: `map-framing-leg-${index + 1}`,
+    fromStopId: framingStops[index]!.id, toStopId: stop.id,
+    mode: "unknown", distanceKm: null, durationMinutes: null, doorToDoorMinutes: null,
+    provider: null, routeMetadata: {},
+  })),
+};
+export const MapFramingEightStops: Story = {
+  args: { trip: eightStopFramingTrip }, play: checkRouteMapFraming,
+  parameters: { nextjs: { appDirectory: true, navigation: { pathname: `/journey/${eightStopFramingTrip.id}` } } },
+};

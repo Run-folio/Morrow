@@ -23,6 +23,7 @@ import ItineraryItemDetail from "./itinerary-item-detail";
 import { JourneyLocalPlacePhotoAttribution, JourneyLocalPlacePhotoMedia, useJourneyLocalPlacePhotos } from "./journey-local-place-photo";
 import { MorroviaBriefNotice, MorroviaStatusBanner } from "./morrovia-feedback";
 import { MorroviaSectionStatus, MorroviaSkeleton } from "./morrovia-loading-states";
+import workspaceHeading from "./trip-workspace-heading.module.css";
 import { useTripShellMutation } from "./trip-shell-client";
 import styles from "./trip-stay-workspace.module.css";
 
@@ -183,7 +184,7 @@ function StayFinderSurface({
 
     <div className={styles.main}>
       <header className={styles.intro}>
-        <h2>Where to stay in {context.stop.name}</h2>
+        <h2 className={workspaceHeading.sectionTitle}>Where to stay in {context.stop.name}</h2>
         <p>{context.nights} {context.nights === 1 ? "night" : "nights"} · {context.dateLabel}</p>
       </header>
 

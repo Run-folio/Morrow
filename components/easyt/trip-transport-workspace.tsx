@@ -185,7 +185,7 @@ export default function TripTransportWorkspace({ trip, language = "en" }: { trip
 
   return <section className={styles.workspace} aria-labelledby={headingId}>
     <header className={styles.header}>
-      <div className={styles.heading}><span>{copy.eyebrow}</span><h2 id={headingId} className={workspaceHeading.sectionTitle}>{copy.heading}</h2></div>
+      <div className={styles.heading}><h2 id={headingId} className={workspaceHeading.sectionTitle}>{copy.heading}</h2></div>
       {items.length ? <EasyTButton className={styles.mapToggle} icon={mapOpen ? X : MapIcon} size="small" variant="secondary"
         aria-expanded={mapOpen} aria-controls="transport-route-map" onClick={() => setMapOpen((current) => !current)}>
         {mapOpen ? copy.hideMap : copy.showMap}

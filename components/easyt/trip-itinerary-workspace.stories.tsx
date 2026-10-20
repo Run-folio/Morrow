@@ -881,6 +881,7 @@ export const Calendar: Story = {
 };
 export const CalendarAttributedPhoto: Story = {
   ...Calendar,
+  parameters: { nextjs: { appDirectory: true, navigation: { pathname: "/journey/storybook-calendar-attributed-photo/itinerary", segments: ["itinerary"] } } },
   args: {
     trip: {
       ...tokyoHierarchyTrip,
@@ -1167,10 +1168,10 @@ export const RepeatedDestinationSecondOccurrence: Story = {
     destinations[2]!.click();
     await settle();
     if (new URL(window.location.href).searchParams.get("day") !== "5") throw new Error("The second Tokyo occurrence must write its canonical day deep link");
-    if (destinations[2]!.getAttribute("aria-current") !== "step" || !canvasElement.querySelector('[role="tab"][aria-selected="true"]')?.textContent?.includes("05")) {
+    if (destinations[2]!.getAttribute("aria-current") !== "step" || canvasElement.querySelector<HTMLSelectElement>('select')?.value !== repeatedTokyoTrip.planItems.find(day => day.dayNumber === 5)?.id) {
       throw new Error("The second Tokyo occurrence must remain active at its first canonical day");
     }
-    const nextDay = [...canvasElement.querySelectorAll<HTMLButtonElement>('[role="tab"]')].find((button) => button.textContent?.includes("06"));
+    const nextDay = canvasElement.querySelectorAll<HTMLButtonElement>('[role="tab"]')[5];
     if (!nextDay) throw new Error("Missing later day for the second Tokyo occurrence");
     nextDay.click();
     await settle();
@@ -1178,11 +1179,11 @@ export const RepeatedDestinationSecondOccurrence: Story = {
     if (destinations[2]!.getAttribute("aria-current") !== "step") throw new Error("The second Tokyo occurrence must remain active on later days");
     [...canvasElement.querySelectorAll<HTMLButtonElement>("button")].find((button) => button.textContent?.trim() === "Calendar")?.click();
     await settle();
-    if (destinations[2]!.getAttribute("aria-current") !== "step" || !canvasElement.querySelector('[data-selected="true"]')) throw new Error("Calendar lost the selected occurrence");
+    if (canvasElement.querySelector<HTMLSelectElement>('select')?.value !== repeatedTokyoTrip.planItems.find(day => day.dayNumber === 6)?.id || !canvasElement.querySelector('[data-selected="true"]')) throw new Error("Calendar lost the selected occurrence");
     if (new URL(window.location.href).searchParams.get("day") !== "6") throw new Error("Calendar changed the selected day deep link");
     [...canvasElement.querySelectorAll<HTMLButtonElement>("button")].find((button) => button.textContent?.trim() === "Day by day")?.click();
     await settle();
-    if (destinations[2]!.getAttribute("aria-current") !== "step" || !canvasElement.querySelector('[role="tab"][aria-selected="true"]')?.textContent?.includes("06")) throw new Error("Day by day lost the selected occurrence");
+    if (canvasElement.querySelector<HTMLSelectElement>('select')?.value !== repeatedTokyoTrip.planItems.find(day => day.dayNumber === 6)?.id || !canvasElement.querySelector('nav[aria-label="Route destinations"] button[aria-current="step"]')) throw new Error("Day by day lost the selected occurrence");
   },
 };
 
@@ -1251,7 +1252,7 @@ const mexicoLogisticsOnlyTrip: EasyTTrip = {
   },
 };
 
-const itineraryStoryRoute = (tripId: string) => ({ nextjs: { appDirectory: true, navigation: { pathname: `/journey/${tripId}/itinerary` } } });
+const itineraryStoryRoute = (tripId: string) => ({ nextjs: { appDirectory: true, navigation: { pathname: `/journey/${tripId}/itinerary`, segments: ["itinerary"] } } });
 
 export const AcceptanceEmptyMexicoNoStay: Story = { args: { trip: mexicoAcceptanceTrip, selectedDayNumber: 2, initialSuggestions: { 2: [] }, initialActivityInventory: { 2: [] }, activityAction: null }, parameters: itineraryStoryRoute(mexicoAcceptanceTrip.id) };
 export const AcceptancePlannedMexicoStayPhoto: Story = { args: { trip: mexicoPlannedTrip, selectedDayNumber: 2, initialSuggestions: { 2: [] }, initialActivityInventory: { 2: [] }, activityAction: null }, parameters: itineraryStoryRoute(mexicoPlannedTrip.id) };
@@ -1277,7 +1278,38 @@ export const AcceptanceTransferStayTransition: Story = { ...RoadResolvedTravelDa
 export const AcceptanceNoSuggestions: Story = { ...AcceptanceEmptyMexicoNoStay, args: { ...AcceptanceEmptyMexicoNoStay.args, initialSuggestions: { 2: [] }, initialActivityInventory: { 2: [] }, activityAction: null } };
 export const AcceptanceNoPhotography: Story = { ...SelectedDayWithoutPhotography, parameters: itineraryStoryRoute("storybook-itinerary-no-photography") };
 export const AcceptanceLongDestinations: Story = { ...LongContentContainment, parameters: itineraryStoryRoute(longContentTrip.id) };
-export const AcceptanceRepeatedTokyo: Story = { ...RepeatedDestinationSecondOccurrence, parameters: itineraryStoryRoute(repeatedTokyoTrip.id) };
+export const AcceptanceRepeatedTokyo: Story = {
+  ...RepeatedDestinationSecondOccurrence,
+  args: {
+    ...RepeatedDestinationSecondOccurrence.args,
+    initialSuggestions: Object.fromEntries(repeatedTokyoTrip.planItems.map(day => [day.dayNumber, []])),
+    initialActivityInventory: Object.fromEntries(repeatedTokyoTrip.planItems.map(day => [day.dayNumber, []])),
+    activityAction: null,
+  },
+  parameters: itineraryStoryRoute(repeatedTokyoTrip.id),
+};
+export const PresentationReviewTokyo: Story = {
+  ...AcceptanceRepeatedTokyo,
+  args: { ...AcceptanceRepeatedTokyo.args, selectedDayNumber: 5 },
+  play: undefined,
+};
+// Display-only stress case: retain the same Tokyo occurrence and credited image.
+const closeLongTitleTrip: EasyTTrip = {
+  ...repeatedTokyoTrip,
+  id: "storybook-itinerary-close-long-title",
+  stops: repeatedTokyoTrip.stops.map(stop => stop.id === "tokyo-return" ? { ...stop, name: "Tokyo Imperial Palace and Ginza neighbourhoods" } : stop),
+  planItems: repeatedTokyoTrip.planItems.map(day => day.stopId === "tokyo-return" ? {
+    ...day,
+    image: CalendarAttributedPhoto.args!.trip!.planItems[0]!.image,
+    sourceUrl: CalendarAttributedPhoto.args!.trip!.planItems[0]!.sourceUrl,
+  } : day),
+};
+export const AcceptanceLongCityThumbnail320: Story = {
+  ...AcceptanceRepeatedTokyo,
+  args: { ...AcceptanceRepeatedTokyo.args, trip: closeLongTitleTrip },
+  parameters: itineraryStoryRoute(closeLongTitleTrip.id),
+  globals: { viewport: { value: "morrovia320", isRotated: false } },
+};
 export const AcceptanceDenseDay: Story = { ...DenseDay, parameters: itineraryStoryRoute(edgeCaseTrip.id) };
 export const AcceptanceLogisticsOnly: Story = { args: { trip: mexicoLogisticsOnlyTrip, selectedDayNumber: 1, initialSuggestions: { 1: [] }, initialActivityInventory: { 1: [] }, activityAction: null }, parameters: itineraryStoryRoute(mexicoLogisticsOnlyTrip.id) };
 export const AcceptanceMobile390: Story = { ...AcceptancePlannedMexicoStayPhoto, globals: { viewport: { value: "morrovia390", isRotated: false } } };

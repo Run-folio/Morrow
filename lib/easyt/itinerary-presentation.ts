@@ -9,6 +9,15 @@ function normalized(value: string) {
   return value.trim().replace(/\s+/g, " ").toLocaleLowerCase();
 }
 
+/** Hide redundant generated headings without changing the saved day title. */
+export function itineraryDaySubtitle(title: string, place: string | null | undefined): string | null {
+  if (!place?.trim()) return title;
+  const candidate = normalized(title);
+  return [place, `Explore ${place}`, `Flexible day in ${place}`].some(value => normalized(value) === candidate)
+    ? null
+    : title;
+}
+
 /** Presentation-only semantic label for the engine's canonical same-city arrival leg. */
 export function semanticSamePlaceArrival(trip: EasyTTrip, leg: TripLeg) {
   if (leg.classification !== "arrival") return null;

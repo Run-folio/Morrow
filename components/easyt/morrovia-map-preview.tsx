@@ -19,11 +19,10 @@ export function MorroviaMapPreview({ title, href, children, size = 'standard', c
   language?: 'en' | 'es';
 }) {
   return <section className={`${styles.card} ${size === 'large' ? styles.large : ''} ${className}`} aria-label={title} data-map-preview="">
-    <h3>{title}</h3>
     <div className={styles.frame}>
       {children ?? <div className={styles.empty}><MorroviaSectionStatus compact state="success" title={language === 'es' ? 'Aún no hay lugares en el mapa' : 'No mapped places yet'} detail={language === 'es' ? 'Añade un lugar para verlo aquí.' : 'Add a place to see it here.'} /></div>}
       {wholePreviewLink ? <Link href={href} className={styles.frameLink} aria-label={`${language === 'es' ? 'Abrir' : 'Open'} ${title}`} /> : null}
     </div>
-    <EasyTLinkButton href={href} icon={MapIcon} variant="quiet" size="small" fullWidth>{language === 'es' ? 'Ver mapa' : 'View map'}</EasyTLinkButton>
+    <div className={styles.action}><EasyTLinkButton href={href} icon={MapIcon} variant="quiet" size="small" fullWidth>{language === 'es' ? 'Ver mapa' : 'View map'}</EasyTLinkButton></div>
   </section>;
 }

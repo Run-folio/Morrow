@@ -40,8 +40,8 @@ test("missing accommodation is shown only for a real overnight requirement", () 
     booking: null,
   }), {
     state: "missing",
-    title: "Cusco",
-    detail: "No stay organised",
+    title: "No stay selected",
+    detail: "",
   });
 
   assert.equal(itineraryStayPresentation({
@@ -50,4 +50,10 @@ test("missing accommodation is shown only for a real overnight requirement", () 
     stopId: null,
     booking: null,
   }), null);
+});
+
+test("uncertain stay details preserve their disclosure without using the city as a stay name", () => {
+  assert.deepEqual(itineraryStayPresentation({ state: "unknown", destination: "Paris", stopId: "paris", booking: null }), {
+    state: "unknown", title: "No stay selected", detail: "Stay details to confirm",
+  });
 });

@@ -22,13 +22,13 @@ export function itineraryStayPresentation(tonight: ComposedItineraryTonight): It
   if (tonight.state === "not-organised") {
     return {
       state: "missing",
-      title: tonight.destination ?? "Stay",
-      detail: "No stay organised",
+      title: "No stay selected",
+      detail: "",
     };
   }
   return {
     state: "unknown",
-    title: tonight.destination ?? "Stay",
+    title: "No stay selected",
     detail: "Stay details to confirm",
   };
 }

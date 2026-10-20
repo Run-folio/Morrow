@@ -138,7 +138,7 @@ const meta = {
   component: TripStayWorkspace,
   parameters: {
     layout: "fullscreen",
-    nextjs: { appDirectory: true, navigation: { pathname: `/journey/${trip.id}/stay`, query: { stop: "tokyo-first" } } },
+    nextjs: { appDirectory: true, navigation: { pathname: `/journey/${trip.id}/stay`, segments: ["stay"], query: { stop: "tokyo-first" } } },
   },
   decorators: [(Story, context) => <main className="morrovia-editorial-page" style={{ minHeight: "100vh", paddingTop: 1 }}><TripShell trip={context.args.trip} cacheTrip={false} orientationAutoStart={false}><Story /></TripShell></main>],
   args: { trip, initialStopId: "tokyo-first", initialFinderState: ready },

@@ -19,6 +19,7 @@
   min-width: 0;
   border-bottom: 1px solid var(--morrovia-line);
 }
+.destinationTrack > nav { background: transparent; }
 
 .routePhotoSources { color: var(--morrovia-ink-soft); font: var(--morrovia-type-fine-print); }
 .routePhotoSources summary { min-height: 44px; cursor: pointer; }
@@ -33,7 +34,7 @@
   display: flex;
   align-items: center;
   border-bottom: 1px solid var(--morrovia-line);
-  background: var(--morrovia-paper);
+  background: transparent;
 }
 
 .calendarWorkspace,
@@ -257,30 +258,7 @@
   display: flex;
   flex-direction: column;
   border-right: 1px solid var(--morrovia-line);
-  background: var(--morrovia-paper);
-}
-
-.railHeader {
-  min-height: 62px;
-  padding: 0 22px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  border-bottom: 1px solid var(--morrovia-line);
-}
-
-.railHeader h2 {
-  margin: 0;
-  color: var(--morrovia-ink);
-  font: 700 14px/1.2 var(--morrovia-ui);
-  text-transform: uppercase;
-}
-
-.railHeader span {
-  color: var(--morrovia-signal);
-  font: 800 10px/1.2 var(--morrovia-meta);
-  letter-spacing: .08em;
+  background: transparent;
 }
 
 .dayList {
@@ -311,7 +289,7 @@
   min-height: 66px;
   padding: 10px 12px 10px 18px;
   display: grid;
-  grid-template-columns: 34px minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr);
   align-items: center;
   gap: 3px 8px;
   border: 0;
@@ -348,16 +326,6 @@
 
 .dayButtonActive::before {
   background: var(--morrovia-signal);
-}
-
-.dayButton > b,
-.dayButtonActive > b {
-  color: var(--morrovia-ink-soft);
-  font: 800 11px/1 var(--morrovia-meta);
-}
-
-.dayButtonActive > b {
-  color: var(--morrovia-signal);
 }
 
 .dayButton > span,
@@ -399,11 +367,12 @@
 
 .dayButton .dayMeta,
 .dayButtonActive .dayMeta {
-  grid-column: 2;
   display: flex;
   align-items: center;
   justify-content: flex-start;
   gap: 7px;
+  color: var(--morrovia-ink-soft);
+  font: 700 10px/1.2 var(--morrovia-meta);
 }
 
 .dayMeta svg {
@@ -439,16 +408,15 @@
   overflow: visible;
 }
 
-.dayHeader[data-photo="true"] { min-height: 138px; align-items: center; margin: -12px -12px 14px; padding: 14px 18px; border-radius: var(--morrovia-control-radius); }
-.dayHeader[data-photo="true"]::after { position: absolute; z-index: 1; inset: 0; content: ""; border-radius: inherit; background: linear-gradient(90deg, var(--morrovia-paper) 34%, color-mix(in srgb, var(--morrovia-paper) 78%, transparent) 58%, transparent 100%); pointer-events: none; }
-.dayHeaderMedia { position: absolute; inset: 0 0 0 auto; width: 72%; height: 100%; border-radius: inherit; }
+.dayHeader[data-photo="true"] { display: flex; align-items: center; gap: 16px; margin-bottom: 14px; }
+.dayHeaderMedia { position: relative; flex: none; width: 96px; height: 96px; border-radius: var(--morrovia-control-radius); }
 .dayHeaderPhoto { position: absolute; inset: 0; width: 100%; height: 100%; border-radius: inherit; object-fit: cover; object-position: center; }
-.dayHeader[data-photo="true"] > .dayHeaderContent { position: relative; z-index: 2; max-width: 75%; }
 .dayHeroCredit { --photo-credit-inline: 6px; --photo-credit-block: 6px; }
-.calendarDayHeroCredit { position: relative; left: auto; bottom: auto; margin: -8px 0 6px auto; }
 
 .dayHeaderContent {
+  flex: 1;
   min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .dayHeader p {
@@ -1023,7 +991,7 @@
 .contextRail {
   min-width: 0;
   border-left: 1px solid var(--morrovia-line);
-  background: var(--morrovia-paper);
+  background: transparent;
 }
 
 .contextRailBody {
@@ -1038,7 +1006,7 @@
   max-height: calc(100vh - 112px);
   overflow-y: auto;
   scrollbar-gutter: stable;
-  background: var(--morrovia-paper);
+  background: transparent;
 }
 
 .contextSection {
@@ -1848,7 +1816,6 @@
 }
 
 @media (max-width: 540px) {
-  .workspace { border-right: 0; border-left: 0; border-radius: 0; }
   .subviewBar { padding: 10px 12px; }
   .subviewBar > div { width: 100%; }
   .calendarView {
@@ -1862,7 +1829,6 @@
   .calendarDaySelect { min-height: 112px; }
   .calendarItem strong,
   .calendarItem small { white-space: normal; }
-  .railHeader { min-height: 54px; padding: 0 16px; }
   .dayPanel {
     padding: 24px 16px calc(28px + env(safe-area-inset-bottom));
     display: flex;
@@ -1940,13 +1906,11 @@
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: 16px;
-  padding: 18px;
+  justify-content: flex-end;
+  gap: 12px;
+  padding: 12px 16px;
   border-bottom: 1px solid var(--morrovia-line);
 }
-.workspaceToolbar > div:first-child { flex: 1; min-width: 180px; }
-.workspaceToolbar h2 { margin: 0; }
-.workspaceToolbar p { margin: 6px 0 0; color: var(--morrovia-ink-soft); font: var(--morrovia-type-supporting-body); }
 .workspaceToolbar .subviewBar { padding: 0; border: 0; }
 .dateNavigation { display: flex; align-items: end; gap: 6px; min-width: 0; }
 .dateNavigation > label { width: 260px; min-width: 0; }
@@ -2069,7 +2033,6 @@
 }
 
 @media (max-width: 540px) {
-  .calendarIdeasButton { grid-column: 1 / -1; }
   .calendarItemDialog[data-dialog-presentation="modal"] { width: calc(100vw - 16px); max-height: calc(100svh - 16px); }
   .calendarItemHeader { padding: 8px 12px; }
   .notice {
@@ -2082,39 +2045,29 @@
   .notice .compactNotice { width: 100%; }
   .workspaceToolbar {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
-    grid-template-areas: "title switch" "date date";
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas: "switch" "date";
     align-items: center;
     gap: 6px 8px;
     padding: 8px 12px;
   }
-  .workspaceToolbar > div:first-child { grid-area: title; min-width: 0; }
-  .workspaceToolbar p { display: none; }
-  .workspaceToolbar .subviewBar { grid-area: switch; order: 0; width: auto; }
-  .workspaceToolbar .subviewBar > div { width: auto; }
+  .workspaceToolbar .subviewBar { grid-area: switch; order: 0; width: 100%; }
+  .workspaceToolbar .subviewBar > div { width: 100%; }
   .dateNavigation { grid-area: date; align-items: center; gap: 4px; }
   .dateNavigation > label { min-width: 0; }
-  .compactJumpLabel { position: absolute; width: 1px; height: 1px; padding: 0; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; }
-  .railHeader { display: none; }
   .dayList { padding: 6px 12px; }
   .dayPanel { padding: 12px 12px calc(24px + env(safe-area-inset-bottom)); }
-  .dayHeader[data-photo="true"] { min-height: 100px; margin: -4px -4px 8px; padding: 10px 12px; }
+  .dayHeader[data-photo="true"] { margin-bottom: 8px; }
   .dayHeader h2 { margin: 5px 0 0; font-size: clamp(27px, 8vw, 34px); overflow-wrap: break-word; }
   .stayContext { margin-top: 8px; padding: 8px 10px; }
   .stayContext { grid-template-columns: 20px minmax(0, 1fr); }
   .stayContext > a { grid-column: 2; justify-self: start; }
 }
 
-@media (max-width: 360px) {
-  .workspaceToolbar { grid-template-areas: "switch switch" "title title" "date date"; }
-  .workspaceToolbar .subviewBar { justify-self: stretch; }
-  .workspaceToolbar .subviewBar > div { width: 100%; }
-}
-
 /* The same mounted day content adapts between a panel and a native modal. */
 .calendarDaySheet[data-dialog-presentation="inline"],
 .calendarSheetContent { display: contents; }
-.calendarSheetHeader { display: none; }
+.calendarSheetActions { display: none; }
 .calendarDaySheet[data-dialog-presentation="modal"] {
   position: fixed; inset: auto 0 0; margin: 0 auto; box-sizing: border-box;
   width: min(100%, 760px); max-width: 100%;
@@ -2129,13 +2082,12 @@
 .calendarDaySheet:not([open])[data-dialog-presentation="modal"] { display: none; }
 .calendarDaySheet::backdrop { background: var(--morrovia-overlay); }
 .calendarDaySheet[data-dialog-presentation="modal"] .calendarSheetContent { display: block; }
-.calendarDaySheet[data-dialog-presentation="modal"] .calendarSheetHeader {
-  display: flex; align-items: start; gap: 12px; justify-content: space-between;
-  position: sticky; top: 0; z-index: 2; padding: 16px;
-  background: var(--morrovia-control-surface); border-bottom: 1px solid var(--morrovia-line);
+.calendarDaySheet[data-dialog-presentation="modal"] .calendarSheetActions {
+  display: flex; justify-content: flex-end; height: 0; padding: 0 12px;
+  position: sticky; top: 12px; z-index: 3;
 }
-.calendarSheetHeader h2 { margin: 0; font: 600 22px/1.2 var(--morrovia-display); overflow-wrap: anywhere; }
-.calendarSheetHeader button { flex: none; }
+.calendarSheetActions button { min-width: 44px; min-height: 44px; width: 44px; height: 44px; flex: none; background: var(--morrovia-control-surface); }
+.calendarDaySheet[data-dialog-presentation="modal"] .dayHeader { padding-right: 52px; }
 .calendarDaySheet[data-dialog-presentation="modal"] .dayPanel,
 .calendarDaySheet[data-dialog-presentation="modal"] .contextRail { border-left: 0; min-width: 0; }
 .calendarDaySheet[data-dialog-presentation="modal"] .calendarEmbeddedDetail { position: static; width: auto; max-height: none; padding: 16px; }
@@ -2144,7 +2096,6 @@
 .calendarDaySheet [hidden] { display: none; }
 
 .calendarDaySheet[data-dialog-presentation="modal"] .contextRail { position: relative; z-index: 0; }
-.calendarSheetActions { display: grid; gap: 8px; flex: none; }
 
 @media (min-width: 1100px) and (hover: hover) and (pointer: fine) {
   .calendarWorkspace .dayPanel [data-itinerary-drag-handle] { display: inline-flex; }
@@ -2164,7 +2115,12 @@
   .calendarWorkspace .calendarSheetContent { display: block; }
   .calendarWorkspace .dayPanel, .calendarWorkspace .contextRail { border-left: 0; }
 }
-.calendarIdeasButton { justify-self: start; }
+
+@container (max-width: 420px) {
+  .dayHeader[data-photo="true"] { gap: 12px; }
+  .dayHeaderMedia { width: 72px; height: 72px; }
+  .dayHeader h2 { font-size: 30px; }
+}
 .calendarItemDialog[data-dialog-presentation="inline"],
 .calendarItemDialog[data-dialog-presentation="inline"] .calendarItemBody { display: contents; }
 .calendarItemDialog[data-dialog-presentation="modal"] {

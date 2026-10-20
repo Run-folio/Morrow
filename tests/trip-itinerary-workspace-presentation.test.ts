@@ -38,8 +38,9 @@ test("the itinerary restores the day rail beside the agenda without a second sel
   assert.match(itinerary, /className=\{styles\.dayPanel\}/);
   assert.match(itinerary, /styles\.contextRail/);
   assert.match(styles, /grid-template-columns: minmax\(190px, 230px\) minmax\(0, 1fr\) minmax\(260px, 300px\)/);
-  assert.match(styles, /\.dayButton,\s*\.dayButtonActive\s*\{[^}]*grid-template-columns: 34px minmax\(0, 1fr\);/, "the narrow rail must reserve the text column instead of placing the date beside it");
-  assert.match(styles, /\.dayButton \.dayMeta,\s*\.dayButtonActive \.dayMeta\s*\{[^}]*grid-column: 2;/);
+  assert.match(styles, /\.dayButton,\s*\.dayButtonActive\s*\{[^}]*grid-template-columns: minmax\(0, 1fr\);/, "each day uses a single text column without a second ordinal");
+  const rail = itinerary.slice(itinerary.indexOf('<nav className={styles.rail}'), itinerary.indexOf('<ItineraryCalendar'));
+  assert.doesNotMatch(rail, /className=\{styles\.railHeader\}|<b>\{pad\(day\.dayNumber\)\}<\/b>/);
   assert.doesNotMatch(itinerary, /Edit trip brief/);
 });
 
@@ -198,8 +199,9 @@ test("mobile composition keeps the plan before Saved Ideas and secondary discove
   const planner = itinerary.indexOf("<RichItineraryDayPlanner");
   assert.equal((itinerary.match(/<RichItineraryDayPlanner/g) ?? []).length, 1);
   assert.equal((itinerary.match(/<ItineraryDaySuggestions/g) ?? []).length, 1);
-  assert.match(itinerary, /workspaceView === "days" \? activityIdeas : null/);
-  assert.match(itinerary, /<div className=\{styles\.contextRailBody\}[^>]*>\s*\{workspaceView === "calendar" \? activityIdeas : null\}/, 'Calendar ideas belong to the shared sidebar context');
+  const contextBody = itinerary.slice(itinerary.indexOf('<div className={styles.contextRailBody}'), itinerary.indexOf('<TripExplicitPlans'));
+  assert.equal((contextBody.match(/\{activityIdeas\}/g) ?? []).length, 1, 'both views share one suggestions location after the map and Add activity');
+  assert.ok(contextBody.indexOf('<MorroviaMapPreview') < contextBody.indexOf('{activityIdeas}'));
   assert.doesNotMatch(itinerary, /className=\{styles\.calendarIdeas\}/, 'Calendar ideas are not appended below all weeks');
 
   const singleColumn = styles.slice(styles.indexOf("@media (max-width: 900px)"), styles.indexOf("@media (max-width: 540px)"));

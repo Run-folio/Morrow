@@ -8,18 +8,51 @@ const styles = readFileSync(new URL("../components/easyt/trip-itinerary-workspac
 const stories = readFileSync(new URL("../components/easyt/trip-itinerary-workspace.stories.tsx", import.meta.url), "utf8");
 
 test("mobile day orientation stays compact and scrolls its own rail", () => {
-  assert.match(itinerary, /labelClassName=\{styles\.compactJumpLabel\}/);
+  assert.match(itinerary, /label=\{copy\.jumpToDateDestination\} labelClassName="sr-only"/);
+  assert.doesNotMatch(itinerary, /styles\.compactJumpLabel/);
   assert.match(itinerary, /ref=\{dayListRef\}/);
   assert.match(itinerary, /dayListRef\.current\?\.scrollTo|rail\.scrollTo/);
   assert.doesNotMatch(itinerary, /tab-\$\{selectedIndex\}`\)\?\.scrollIntoView/);
   const mobile = styles.slice(styles.lastIndexOf("@media (max-width: 540px)"));
   assert.match(mobile, /\.workspaceToolbar\s*\{[^}]*display:\s*grid/);
-  assert.match(mobile, /\.workspaceToolbar p\s*\{\s*display:\s*none/);
-  assert.match(mobile, /\.railHeader\s*\{\s*display:\s*none/);
-  assert.match(mobile, /\.dayHeader\[data-photo="true"\]\s*\{[^}]*min-height:\s*\d+px/);
-  assert.match(styles, /\.dayHeader\[data-photo="true"\] > \.dayHeaderContent\s*\{/);
+  assert.match(mobile, /grid-template-areas: "switch" "date"/);
+  assert.doesNotMatch(itinerary, /className=\{styles\.railHeader\}/);
+  assert.match(styles, /\.dayHeader\[data-photo="true"\]\s*\{[^}]*display:\s*flex/);
+  assert.match(styles, /\.dayHeaderMedia\s*\{[^}]*position:\s*relative/);
   assert.doesNotMatch(styles, /\.dayHeader\[data-photo="true"\] > div\s*\{/);
   assert.match(mobile, /\.dayHeader h2\s*\{[^}]*overflow-wrap:\s*break-word/);
+});
+
+test("Calendar uses a sticky content Close target without a separate visible sheet heading", () => {
+  assert.doesNotMatch(itinerary, /styles\.calendarSheetHeader|copy\.dayDetails/);
+  assert.match(itinerary, /<h2 data-calendar-sheet-heading tabIndex=\{-1\}>\{stop\?\.name \?\? active\.title\}<\/h2>/);
+  assert.match(itinerary, /ariaLabel=\{`\$\{copy\.day\} \$\{active\.dayNumber\}: \$\{stop\?\.name \?\? active\.title\}`\}/);
+  assert.match(itinerary, /<time dateTime=\{active\.date\}>\{displayDayDate\(active\.date, language\)\}<\/time>/);
+  assert.match(itinerary, /icon=\{X\} iconOnly variant="quiet" aria-label="Close day details" onClick=\{closeCalendarSheet\}/);
+  assert.match(styles, /\.calendarDaySheet\[data-dialog-presentation="modal"\] \.calendarSheetActions\s*\{[^}]*position:\s*sticky/);
+  assert.match(styles, /\.calendarSheetActions button\s*\{[^}]*min-width:\s*44px;[^}]*min-height:\s*44px/);
+  assert.match(styles, /\.calendarDaySheet\[data-dialog-presentation="modal"\] \.dayHeader\s*\{[^}]*padding-right:\s*\d+px/);
+});
+
+test("view titles stay accessible without reserving a visible toolbar title column", () => {
+  assert.match(itinerary, /<h2 className="sr-only">\{workspaceView === "calendar" \? copy\.calendar : copy\.dayByDay\}<\/h2>/);
+  assert.doesNotMatch(styles, /grid-template-areas: "title switch"|grid-area: title/);
+});
+
+test("day rail shows dates without visible day ordinals while its accessible names retain occurrence context", () => {
+  const rail = itinerary.slice(itinerary.indexOf('<nav className={styles.rail}'), itinerary.indexOf('<ItineraryCalendar'));
+  assert.match(rail, /aria-label=\{`\$\{copy\.day\} \$\{day\.dayNumber\}/);
+  assert.doesNotMatch(rail, /className=\{styles\.dayMeta\}>\{copy\.day\}/);
+  assert.match(rail, /className=\{styles\.dayMeta\}><time dateTime=\{day\.date\}/);
+});
+
+test("map keeps its accessible name and precedes Add activity and suggestions in DOM order", () => {
+  const rail = itinerary.slice(itinerary.indexOf('<div className={styles.contextRailBody}'), itinerary.indexOf('<TripExplicitPlans'));
+  const map = rail.indexOf('<MorroviaMapPreview');
+  const add = rail.indexOf('onClick={() => openAddFlow(0, "activity", "morning")}');
+  const ideas = rail.indexOf('{activityIdeas}');
+  assert.ok(map >= 0 && map < add && add < ideas);
+  assert.match(rail, /<MorroviaMapPreview title=\{copy\.dayMap\}/);
 });
 
 test("matched populated acceptance route uses the trip's real Itinerary path", () => {
@@ -80,10 +113,10 @@ test("Calendar keeps day cards selectable while removing redundant empty-card an
   assert.match(itinerary, /aria-label="Close day details"/);
 });
 
-test("Calendar places the existing photo-credit control below its side image", () => {
-  assert.match(itinerary, /workspaceView === "days" \? dayHeroCredit : null/);
-  assert.match(itinerary, /workspaceView === "calendar" \? dayHeroCredit : null/);
-  assert.match(styles, /\.calendarDayHeroCredit\s*\{[^}]*position:\s*relative/);
+test("both itinerary views keep the existing photo-credit control with the thumbnail", () => {
+  assert.match(itinerary, /className=\{styles\.dayHeaderMedia\}[\s\S]*?\{dayHeroCredit\}/);
+  assert.doesNotMatch(itinerary, /calendarDayHeroCredit/);
+  assert.match(styles, /\.dayHeaderMedia\s*\{[^}]*position:\s*relative/);
   assert.match(stories, /export const CalendarAttributedPhoto: Story/);
 });
 

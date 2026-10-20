@@ -380,13 +380,13 @@ export default function TripOverviewWorkspace({
     <section className={styles.overview} aria-label="Trip overview">
       <div className={styles.grid}>
         <section ref={nextOrientationTarget} className={styles.routeCard} aria-labelledby="overview-route-title">
-          <div className={styles.routeIntro}>
-            <div>
-              <h2 id="overview-route-title" className={workspaceHeading.sectionTitle}>Your route</h2>
-            </div>
-          </div>
           <div className={styles.routeComposition}>
             <div className={styles.routeJourney}>
+              <div className={styles.routeIntro}>
+                <div>
+                  <h2 id="overview-route-title" className={workspaceHeading.sectionTitle}>Your route</h2>
+                </div>
+              </div>
               {orderedStops.length ? <ol className={styles.routeList} aria-label={`Trip route from ${trip.brief.origin}${journeyEnd ? ` to ${journeyEnd.name}` : ""}`} tabIndex={0}>
                 {[
                   ...(routeDisplayEndpoints[0]?.kind === "origin" ? [{ id: origin.id, name: origin.name, country: origin.country, image: initialPlaceImages[origin.id] ?? resolvedPlaceImages[imageCacheKeysByOccurrence[origin.id]], meta: "Journey origin", href: routeIssueHref(trip.id), transfer: conciseTransferLabel(trip.legs.find((item) => item.classification === "arrival" || item.fromEndpoint?.kind === "origin")) }] : []),
@@ -406,7 +406,7 @@ export default function TripOverviewWorkspace({
               </ol> : <div className={styles.emptyRoute}><MapPin aria-hidden="true" /><p>Add a destination to start shaping this trip.</p></div>}
             {routeInsight ? <aside className={styles.routeRationale} aria-labelledby="overview-route-rationale-title" data-route-insight="">
               <Sparkles aria-hidden="true" />
-              <div><p id="overview-route-rationale-title">{routeInsight.label}</p><strong>{routeInsight.title}</strong><span>{routeInsight.detail}</span></div>
+              <div>{routeInsight.label !== "Transfer details" ? <p>{routeInsight.label}</p> : null}<strong id="overview-route-rationale-title">{routeInsight.title}</strong><span>{routeInsight.detail}</span></div>
               <EasyTLinkButton href={itineraryWorkspaceHref(trip.id)} size="small" variant="quiet">View detailed itinerary<ChevronRight aria-hidden="true" /></EasyTLinkButton>
             </aside> : routeRationale && !routeInsight ? <aside className={styles.routeRationale} aria-labelledby="overview-route-rationale-title">
               <Sparkles aria-hidden="true" /><div><p id="overview-route-rationale-title">Why this order</p><span>{routeRationaleCopy(routeRationale)}</span></div>

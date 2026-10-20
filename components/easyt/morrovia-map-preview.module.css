@@ -1,6 +1,6 @@
-.card{display:grid;min-width:0;align-content:start;gap:10px;padding:14px;border:1px solid var(--morrovia-line);border-radius:var(--morrovia-radius);background:var(--morrovia-paper)}
-.card h3{margin:0;color:var(--morrovia-ink);font:var(--morrovia-type-control)}
-.frame{position:relative;isolation:isolate;height:230px;overflow:hidden;border-radius:var(--morrovia-control-radius);background:var(--morrovia-surface)}
+.card{display:grid;min-width:0;align-content:start;border:1px solid var(--morrovia-line);border-radius:var(--morrovia-radius);background:var(--morrovia-paper)}
+.frame{position:relative;isolation:isolate;height:230px;overflow:hidden;border-radius:inherit;border-bottom-left-radius:0;border-bottom-right-radius:0;background:var(--morrovia-surface)}
+.action{padding:10px 14px 14px}
 .large .frame{height:300px}
 .frame :global(.planner-map){position:absolute;inset:0}
 .frame :global(.maplibregl-canvas){outline:0}
@@ -13,7 +13,7 @@
 .frame :global(.planner-map__pin.is-active),.frame :global(.planner-map__pin:focus-visible){outline:3px solid var(--morrovia-focus-ring);outline-offset:2px}
 @media(max-width:720px){.frame,.large .frame{height:220px}}
 
-.frameLink{position:absolute;inset:0;z-index:3;cursor:pointer;border-radius:var(--morrovia-control-radius)}
+.frameLink{position:absolute;inset:0;z-index:3;cursor:pointer;border-radius:inherit}
 .frameLink:focus-visible{outline:3px solid var(--morrovia-focus-ring);outline-offset:-3px}
 
 /* Native credits remain operable above the full-frame navigation link. */

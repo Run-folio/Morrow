@@ -142,7 +142,7 @@
       "components/easyt/morrovia-loading-states.module.css": 3,
       "components/easyt/trip-itinerary-workspace.module.css": 4,
       "components/easyt/trip-overview-workspace.module.css": 8,
-      "components/easyt/trip-shell.module.css": 4,
+      "components/easyt/trip-shell.module.css": 3,
       "components/journey-itinerary-accommodation.module.css": 2,
       "components/journey-itinerary-refinement.module.css": 7,
       "components/journey-planner-strip.module.css": 6,

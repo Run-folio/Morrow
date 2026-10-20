@@ -33,7 +33,6 @@ import { useWorkspaceOrientationBlocker, useWorkspaceOrientationTarget, Workspac
 import { renameTripIdentity, tripCustomTitle, tripDisplayTitle, tripOverviewDisplayTitle } from "@/lib/easyt/trip-display";
 import { TripOverviewLibraryActions } from "./trip-overview-library-actions";
 import { deriveTripDateFacts } from "@/lib/easyt/trip-facts";
-import { tripRouteDisplayLabel } from "@/lib/easyt/trip-legs";
 import { importedLegacyRepairContextAllows, repairEligibleSpreadsheetV1Trip } from "@/lib/easyt/imported-trip-hydration";
 import { personalRouteHref } from "@/lib/easyt/personal-route";
 import { overnightAccommodationStops } from "@/lib/easyt/accommodation";
@@ -79,7 +78,6 @@ export function TripShellIdentityAndActions() {
   const displayTitle = isOverview ? tripOverviewDisplayTitle(mutation.trip) : tripDisplayTitle(mutation.trip);
   const [titleDisclosure, dispatchTitleDisclosure] = useReducer(reduceTripTitleDisclosure, { expanded: false, dismissed: false, hovered: false, focused: false });
   const { expanded: titleExpanded, dismissed: titlePreviewDismissed, hovered: titleHovered, focused: titleFocused } = titleDisclosure;
-  const routeLabel = tripRouteDisplayLabel(trip);
   const dateFacts = deriveTripDateFacts({ startDate: trip.startDate, endDate: trip.endDate });
   const duration = dateFacts.durationDays;
   const overnightPlaceCount = overnightAccommodationStops(trip).length;
@@ -154,8 +152,10 @@ export function TripShellIdentityAndActions() {
       <p className={styles.eyebrow}>{status}</p>
       <h1 id="trip-shell-title">
         <span className={styles.tripTitleDisclosure}>
-          <button
+          <EasyTButton
             className={styles.tripTitleToggle}
+            variant="quiet"
+            size="small"
             type="button"
             aria-expanded={titleExpanded}
             onPointerEnter={() => dispatchTitleDisclosure("pointer-enter")}
@@ -163,11 +163,10 @@ export function TripShellIdentityAndActions() {
             onFocus={() => dispatchTitleDisclosure("focus")}
             onBlur={() => dispatchTitleDisclosure("blur")}
             onClick={() => dispatchTitleDisclosure("toggle")}
-          ><span>{displayTitle}</span></button>
+          ><span>{displayTitle}</span></EasyTButton>
           <span className={styles.tripTitleFull} aria-hidden="true" style={{ display: titleExpanded || ((titleHovered || titleFocused) && !titlePreviewDismissed) ? "block" : "none" }}>{displayTitle}</span>
         </span>
       </h1>
-      {!isOverview ? <p className={styles.routeSummary}>{routeLabel}</p> : null}
       <dl className={styles.metadata}>
         <div><dt><CalendarDays aria-hidden="true" /><span className={styles.srOnly}>Dates</span></dt><dd>{dateFacts.rangeLabel}</dd></div>
         <div><dt><Clock3 aria-hidden="true" /><span className={styles.srOnly}>Duration</span></dt><dd>{duration ? `${duration} ${duration === 1 ? "day" : "days"}` : "Duration to confirm"}</dd></div>
