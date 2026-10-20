@@ -20,7 +20,7 @@ async function builderBundle(styled = false) {
   if (!bundles.has(styled)) bundles.set(styled, build({
     stdin: {
       contents: `${styled ? "import './app/journey/journey-design.css';" : ""}import React from 'react'; import {createRoot} from 'react-dom/client'; import Builder from './app/journey/new/trip-builder'; import Home from './app/journey/home/home-trip-starter'; import LegacyPlanner from './components/journey-map-planner-workspace'; import Resolver from './components/easyt/trip-shell-resolver'; import Explore from './components/easyt/trip-explore-workspace'; import Stay from './components/easyt/trip-stay-workspace'; import MapWorkspace from './components/easyt/trip-map-workspace'; import Importer from './app/journey/new/import/spreadsheet-import-client'; import Overview from './components/easyt/trip-overview-workspace'; import Transport from './components/easyt/trip-transport-workspace'; import Itinerary from './components/easyt/trip-itinerary-workspace'; import {loadLocalTripFromStorage} from './lib/easyt/storage'; import TripShell from './components/easyt/trip-shell'; import {useTripShellTrip} from './components/easyt/trip-shell-client';
-      function WorkspaceFromShell(){const trip=useTripShellTrip();return location.pathname.endsWith('/map')?React.createElement(MapWorkspace,{trip}):location.pathname.endsWith('/stay')?React.createElement(Stay,{trip}):location.pathname.endsWith('/explore')?React.createElement(Explore,{trip,initialDestinationId:new URLSearchParams(location.search).get('stop')??undefined}):location.pathname.endsWith('/transport')?React.createElement(Transport,{trip,language:localStorage.getItem('easyt-language')==='es'?'es':'en'}):location.pathname.endsWith('/itinerary')?React.createElement(Itinerary,{trip,selectedDayNumber:Number(new URLSearchParams(location.search).get('day'))||undefined}):React.createElement(Overview,{trip,initialPrepActions:[],initialPrepReadinessCards:[],initialPrepProviderStatus:'available'});}
+      function WorkspaceFromShell(){const trip=useTripShellTrip();return location.pathname.endsWith('/map')?React.createElement(MapWorkspace,{trip}):location.pathname.endsWith('/stay')?React.createElement(Stay,{trip}):location.pathname.endsWith('/explore')?React.createElement(Explore,{trip,initialDestinationId:new URLSearchParams(location.search).get('stop')??undefined}):location.pathname.endsWith('/transport')?React.createElement(Transport,{trip,language:localStorage.getItem('easyt-language')==='es'?'es':'en'}):location.pathname.endsWith('/itinerary')?React.createElement(Itinerary,{trip,selectedDayNumber:Number(new URLSearchParams(location.search).get('day'))||undefined}):React.createElement(Overview,{trip,...(window.__BUILDER_TEST_LIVE_PREP__?{}:{initialPrepActions:[],initialPrepReadinessCards:[],initialPrepProviderStatus:'available'})});}
       function App(){if(location.pathname==='/')return React.createElement(Home);if(location.pathname==='/journey/plan')return React.createElement(LegacyPlanner);if(location.pathname.endsWith('/import'))return React.createElement(Importer);if(location.pathname!=='/journey/new'){const tripId=decodeURIComponent(location.pathname.split('/')[2]??'');const trip=window.__BUILDER_TEST_CANONICAL_TRIP__??loadLocalTripFromStorage(localStorage,tripId,window.__BUILDER_TEST_OWNER__??null);return trip&&!window.__BUILDER_TEST_FORCE_RESOLVER__?React.createElement(TripShell,{trip,cacheTrip:Boolean(window.__BUILDER_TEST_CANONICAL_TRIP__),orientationAutoStart:false},React.createElement(WorkspaceFromShell)):React.createElement(Resolver,{tripId,ownerId:window.__BUILDER_TEST_OWNER__??undefined},React.createElement(WorkspaceFromShell));}return React.createElement(Builder);}
       createRoot(document.getElementById('root')).render(React.createElement(App));`,
       resolveDir: fileURLToPath(new URL("../../", import.meta.url)), loader: "tsx",
@@ -70,6 +70,8 @@ export async function renderBuilder({
   discoveryRequest,
   transferRequest,
   styled = false,
+  liveOverviewPrep = false,
+  prepRequest,
 }: {
   query?: string;
   draft?: unknown;
@@ -92,6 +94,8 @@ export async function renderBuilder({
   forceResolver?: boolean;
   simulatedSignIn?: boolean;
   styled?: boolean;
+  liveOverviewPrep?: boolean;
+  prepRequest?: (input:{path:string;body:unknown}) => Promise<{status:number;body:unknown}> | {status:number;body:unknown};
   shellCanonicalTrip?: { id: string; ownerId: string | null } & Record<string, unknown>;
   accountRequest?: (input:{method:string;path:string;trip:unknown}) => Promise<{status:number;body:unknown}> | {status:number;body:unknown};
   transferRequest?: (input:{legs:unknown[]}) => Promise<{status:number;body:unknown}> | {status:number;body:unknown};
@@ -103,6 +107,11 @@ export async function renderBuilder({
   const server = createServer(async (request, response) => {
     if (request.url?.startsWith("/api/")) {
       const url = new URL(request.url, "http://localhost");
+      if ((url.pathname === '/api/journey-booking-readiness' || url.pathname === '/api/journey-readiness') && prepRequest) {
+        const chunks:Buffer[]=[];for await(const chunk of request)chunks.push(Buffer.from(chunk));
+        const result=await prepRequest({path:url.pathname,body:JSON.parse(Buffer.concat(chunks).toString())});
+        response.statusCode=result.status;response.setHeader('Content-Type','application/json');response.end(JSON.stringify(result.body));return;
+      }
       if (url.pathname === '/api/journey-discover' && discoveryRequest) {
         const result = await discoveryRequest(url.searchParams.get('destination') ?? '',{cacheControl:request.headers['cache-control']});
         response.statusCode = result.status; response.setHeader('Content-Type', 'application/json');
@@ -194,6 +203,7 @@ export async function renderBuilder({
     ? await webkit.launch({ headless: true })
     : await chromium.launch({ channel: process.env.MORROVIA_BROWSER_CHANNEL ?? "chrome", headless: true });
   const page = await browser.newPage();
+  if (liveOverviewPrep) await page.addInitScript(() => { (window as Window & { __BUILDER_TEST_LIVE_PREP__?: boolean }).__BUILDER_TEST_LIVE_PREP__ = true; });
   if(ownerId) await page.addInitScript((owner:string)=>{(window as Window & {__BUILDER_TEST_OWNER__?:string}).__BUILDER_TEST_OWNER__=owner},ownerId);
   if (forceResolver) await page.addInitScript(() => { (window as Window & {__BUILDER_TEST_FORCE_RESOLVER__?:boolean}).__BUILDER_TEST_FORCE_RESOLVER__ = true; });
   if (simulatedSignIn) await page.addInitScript(() => { (window as Window & {__BUILDER_TEST_OWNER__?:string}).__BUILDER_TEST_OWNER__ = sessionStorage.getItem('builder-fixture-owner') ?? undefined; });

@@ -467,7 +467,7 @@ export default function TripOverviewWorkspace({
           <div className={styles.sectionHeading}>
             <div><p>{language === "es" ? "Antes de salir" : "Before you go"}</p><h2 id="overview-before-go-title">{language === "es" ? "Preparativos prácticos" : "Practical prep"}</h2><span className={styles.sectionDetail}>{language === "es" ? "Algunos detalles útiles que organizar antes del viaje." : "A few useful details to sort before your trip."}</span></div>
           </div>
-          {prepProviderStatus !== "available" ? <div className={styles.beforeGoStatus}>
+          {prepProviderStatus !== "available" ? <div className={prepProviderStatus === "loading" ? "sr-only" : styles.beforeGoStatus}>
             {prepProviderStatus === "unavailable"
               ? <MorroviaStatusBanner title={language === "es" ? "Parte de la información no está disponible" : "Some guidance is unavailable"} detail={language === "es" ? "Tu viaje guardado no ha cambiado. Vuelve a intentarlo antes de usar la información de los proveedores." : "Your saved trip is unchanged. Retry before relying on the provider-backed task list."} actions={<EasyTButton size="small" variant="secondary" onClick={prepReadiness.retryProviders}>{language === "es" ? "Volver a intentar" : "Try again"}</EasyTButton>} />
               : <MorroviaSectionStatus title={language === "es" ? "Consultando los preparativos" : "Checking practical tasks"} detail={language === "es" ? "Las tareas guardadas siguen visibles mientras se carga la información actual." : "Your saved trip tasks remain visible while current guidance loads."} />}
