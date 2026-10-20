@@ -7,7 +7,7 @@ import { createRecoveryDomainStore } from './durable-recovery-store.ts';
 import { resolveRecoveryProvenance } from './recovery-provenance.ts';
 import { prepareTripDocumentForWrite } from './trip-document.ts';
 import type { RecoveryEntryWrite } from './durable-entry-protocol.ts';
-import { prepareEntryWrite } from './durable-entry-store.ts';
+import { prepareEntryWrite, createRecoveryEntryStore } from './durable-entry-store.ts';
 import { createTwoStoreEntryPersistence } from './two-store-entry-persistence.ts';
 import { builderInputDraftKey, readBuilderInputDraft } from './trip-builder-input-draft.ts';
 import { requireReadableTripDocument } from './trip-document.ts';
@@ -76,7 +76,8 @@ export function createTwoStoreTripPersistence(storage: EasyTBrowserStorage, driv
       if(metadata.kind!=='ready')return metadata;
       if(nativeCacheRaw !== undefined && storage.getItem(tripCacheStorageKey(ownerId,tripId)) !== nativeCacheRaw)return {kind:'protected' as const,reason:'cache-changed'};
       if(!active()||JSON.stringify(nativeSources(tripId))!==JSON.stringify(legacy))return {kind:'protected' as const,reason:'native-changed'};
-      return { kind: 'resolved' as const, resolved, legacy, domain: result,nativeCacheRaw,lifecycle:'lifecycle' in metadata?metadata.lifecycle:null };
+      return { kind: 'resolved' as const, resolved, legacy, domain: result,nativeCacheRaw,lifecycle:'lifecycle' in metadata?metadata.lifecycle:null,
+        lifecycleEntry:'entry' in metadata?metadata.entry:null };
     } catch { return { kind: 'unavailable' as const, reason: 'native-read-unknown' }; }
   };
   const refused = (tripId: string, writeId: string, protectedRecovery: boolean, reason: TripRecoveryWriteResult['failureReason'] = protectedRecovery ? 'protected-recovery' : 'unknown'): TripRecoveryWriteResult => ({
@@ -369,15 +370,15 @@ export function createTwoStoreTripPersistence(storage: EasyTBrowserStorage, driv
       if (!active()) return reject(true);
       // Projection-only admission never creates or changes required input metadata.
       let projectionInput: { key: string; raw: string } | null = null;
+      let projectionFence: Parameters<typeof domain.commit>[0]['projectionFence'];
       if (options.projectionOnly) {
         const revision = options.projectionOnly, prepared = requiredEntries[0], source = options.expectedRecoverySource;
         if (!Number.isSafeInteger(revision.acceptedRevision) || revision.acceptedRevision < 0
           || !Number.isSafeInteger(revision.inputRevision) || revision.inputRevision < 0
-          || !source || !options.replace || options.replace.backend || state.domain.envelope
+          || !source || !options.replace
           || options.entry?.receipt || options.entry?.claim
           || requiredEntries.length !== 1 || prepared.scope.kind !== 'builder-input'
-          || prepared.envelope.parent || prepared.envelope.raw === null
-          || prepared.envelope.raw !== prepared.envelope.legacyRaw
+          || prepared.envelope.raw === null
           || prepared.envelope.raw !== prepared.envelope.retainedPreviousRaw) return reject(true);
         const before = requireReadableTripDocument(source), candidate = requireReadableTripDocument(trip);
         // Narrow whitelist: optional route legs/assessment/residuals and a guarded
@@ -409,8 +410,35 @@ export function createTwoStoreTripPersistence(storage: EasyTBrowserStorage, driv
         const observed = await createTwoStoreEntryPersistence(storage,driver,{scope:prepared.scope,key,isCurrent:active,
           overflowEnabled:context.overflowEnabled,accountOverflowQualified:context.accountOverflowQualified,
           validate:value=>value !== null && readBuilderInputDraft({getItem:()=>value},before,ownerId).kind==='readable'}).read();
-        if (!active() || observed.kind !== 'ready' || observed.envelope || observed.raw !== raw || observed.legacyRaw !== raw) return reject(true);
-        projectionInput = {key,raw};
+        if (!active() || observed.kind !== 'ready' || observed.raw !== raw) return reject(true);
+        if (existing) {
+          // Optional work may advance only the exact body already selected by
+          // navigation. Do not adopt an earlier clear or another selected trip.
+          const selected = decodeDomainCurrent(expectedCurrentRaw,ownerId);
+          if (selected.kind !== 'readable' || selected.value?.backend !== 'indexeddb'
+            || !sameDomainHandle(selected.value,existing.handle)) return reject(true);
+          if (options.replace.backend !== 'indexeddb' || !sameDomainHandle(domainHandle(options.replace),existing.handle)
+            || existing.entry.claim || !observed.envelope || !prepared.envelope.parent
+            || JSON.stringify(prepared.envelope.parent) !== JSON.stringify(observed.envelope.handle)
+            || observed.legacyRaw !== prepared.envelope.legacyRaw
+            || existing.entry.input?.raw !== raw || existing.entry.input.inputRevision !== revision.inputRevision
+            || JSON.stringify(requireReadableTripDocument(JSON.parse(existing.rawRecovery).trip)) !== JSON.stringify(before)
+            || state.lifecycle && (state.lifecycle.disposition !== 'active' || state.lifecycle.state !== (options.state ?? 'pending'))) return reject(true);
+          const claimScope = {ownerId,tripId,kind:'recovery-claim' as const};
+          const claim = await createRecoveryEntryStore(driver,{ownerId,isCurrent:active}).read(claimScope);
+          if (!active() || claim.kind !== 'ready' || claim.envelope) return reject(true);
+          projectionFence = {sourceRaw:JSON.stringify(existing),currentRaw:expectedCurrentRaw,entries:[
+            {scope:{ownerId,tripId,kind:'recovery-lifecycle'},raw:state.lifecycleEntry ? JSON.stringify(state.lifecycleEntry) : null},
+            {scope:claimScope,raw:null}]};
+          // Assert the exact existing input generation; do not create or rebind it.
+          options.entries = [{raw:JSON.stringify(observed.envelope),expectedHead:observed.envelope.parent,
+            admission:observed.envelope.parent?'existing-domain':'native-setter-quota'}];
+          options.entry = {...structuredClone(existing.entry),pointer:options.entry!.pointer};
+        } else {
+          if (options.replace.backend || prepared.envelope.parent || prepared.envelope.raw !== prepared.envelope.legacyRaw
+            || observed.envelope || observed.legacyRaw !== raw) return reject(true);
+          projectionInput = {key,raw};
+        }
       }
       let nativeResult: TripRecoveryWriteResult | null = null;
       if (!existing) {
@@ -498,12 +526,20 @@ export function createTwoStoreTripPersistence(storage: EasyTBrowserStorage, driv
           ...(existing?.entry.claim?{claim:structuredClone(existing.entry.claim)}:{}),
           ...(cacheWitness?{nativeCacheRaw:cacheWitness.raw}:existing?.entry.nativeCacheRaw!==undefined?{nativeCacheRaw:existing.entry.nativeCacheRaw}:{}) } };
       const committed = await domain.commit({ raw: JSON.stringify(candidate), expectedHead: candidate.parent,
-        admission: existing ? 'existing-domain' : 'native-setter-quota', entries: options.entries });
-      if (committed.kind !== 'verified') return { ...reject(committed.kind === 'protected-conflict'),
-        handle: { ownerId, tripId, writeId, backend: 'indexeddb' }, recoveryCommitted: committed.commitStatus === 'committed',recoveryDurable:false,writeAttempted:true,
+        admission: existing ? 'existing-domain' : 'native-setter-quota', entries: options.entries, projectionFence });
+      if (committed.kind !== 'verified') return { ...refused(tripId,writeId,committed.kind === 'protected-conflict'),
+        handle: { ownerId, tripId, writeId, backend: 'indexeddb' }, recoveryDurable:false,
+        ...(projectionFence ? {
+          recoveryCommitted:committed.commitStatus === 'unconfirmed' ? undefined : committed.commitStatus === 'committed',
+          writeAttempted:committed.commitStatus !== 'not-started',readbackConfirmed:false,
+        } : {recoveryCommitted:committed.commitStatus === 'committed',writeAttempted:true}),
         ...(committed.commitStatus==='committed'?{readbackConfirmed:false,failureBoundary:'recovery-readback' as const}:{failureBoundary:'recovery-write' as const}) };
       const after = await inspect(tripId);
-      if (!active() || !sourceStillCurrent() || after.kind !== 'resolved' || !after.domain.envelope || !sameDomainHandle(after.domain.envelope.handle, handle)||!await verifyEntries()) return { ...reject(true), recoveryDurable: true };
+      if (!active() || !sourceStillCurrent() || after.kind !== 'resolved' || !after.domain.envelope || !sameDomainHandle(after.domain.envelope.handle, handle)||!await verifyEntries()) {
+        if (!projectionFence) return { ...reject(true), recoveryDurable: true };
+        return { ...refused(tripId,writeId,true),handle:{ownerId,tripId,writeId,backend:'indexeddb'},writeAttempted:true,
+          recoveryCommitted:true,recoveryDurable:true,readbackConfirmed:false,failureBoundary:'recovery-readback' };
+      }
       return { stored: true, handle: { ownerId, tripId, writeId, backend: 'indexeddb' }, blockedByExistingRecovery: false,
         pointerAcknowledged: true, recoveryDurable: true, readbackConfirmed: true, writeAttempted: true, outcome: 'device-confirmed',
         ...(requiredEntries.some(value=>value.scope.kind==='homepage')?{receiptAcknowledged:true}:{}) };

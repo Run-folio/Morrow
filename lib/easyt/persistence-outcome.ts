@@ -34,7 +34,7 @@ export async function withPersistencePreparation<T>(work:()=>Promise<T>):Promise
   try{return await work();}finally{preparationDepth--;}
 }
 export type QaPersistenceStage = "hydration" | "intake" | "editable-input" | "recovery-preparation" | "native-write";
-export type QaPersistenceBoundary = "hydration-ready" | "hydration-complete" | "intake-restore" | "intake-guard" | "intake-projection" | "intake-storage-access" | "intake-frozen" | "intake-reservation" | "editable-prepare" | "editable-reserved" | "editable-write" | "editable-readback" | "recovery-candidate" | "recovery-storage-access" | "recovery-seed" | "recovery-scope" | "recovery-replacement" | "recovery-write" | "recovery-cleanup" | "recovery-readback";
+export type QaPersistenceBoundary = "hydration-ready" | "hydration-complete" | "intake-restore" | "intake-guard" | "intake-projection" | "intake-storage-access" | "intake-frozen" | "intake-reservation" | "editable-prepare" | "editable-reserved" | "editable-write" | "editable-readback" | "recovery-candidate" | "recovery-storage-access" | "recovery-driver-open" | "recovery-seed" | "recovery-scope" | "recovery-replacement" | "recovery-write" | "recovery-cleanup" | "recovery-readback";
 export type QaEntryGuardReason = "owner-transition" | "requested-trip-missing" | "homepage-read-protected" | "homepage-read-unavailable"
   | "recovery-read-protected" | "recovery-read-unavailable" | "pending-receipt-protected"
   | "pending-continuation-protected" | "handoff-protected" | "entry-exception";
@@ -51,13 +51,15 @@ type QaEvidence = Partial<RecoveryPersistenceEvidence> & {
   initialSetterFailure?: RecoveryPersistenceEvidence["nativeFailure"];
   setterFailure?: RecoveryPersistenceEvidence["nativeFailure"]; cleanupFailure?: RecoveryPersistenceEvidence["nativeFailure"];
   setterRetried?: boolean;
+  driverFailure?: "quota" | "security" | "unavailable" | "blocked" | "abort" | "schema" | "corrupt" | "readback" | "unknown";
 };
 let qaSequence = 0, qaSessionClass = "unknown", qaEntryKind = "unknown";
 const qaStages = new Set(["homepage-input", "homepage-intake", "homepage-preservation", "homepage-resume", "device-recovery", "intake-ack", "builder-entry", "builder-edit", "account-ack", "hydration", "intake", "editable-input", "recovery-preparation", "native-write"]);
 const qaOutcomes = new Set(["device-confirmed", "native-write-failed", "protected-conflict", "receipt-incomplete", "pointer-incomplete", "unknown", "account-acknowledged", "accepted", "refused"]);
 const qaBoundaries = new Set(["entry-scope", "protected-recovery", "recovery-write", "recovery-readback", "receipt-ack", "receipt-readback", "pointer-ack", "unknown"]);
 const qaAcknowledgements = new Set(["pending", "stale", "storage", "preservation", "accepted"]);
-const qaProducerBoundaries = new Set(["hydration-ready", "hydration-complete", "intake-restore", "intake-guard", "intake-projection", "intake-storage-access", "intake-frozen", "intake-reservation", "editable-prepare", "editable-reserved", "editable-write", "editable-readback", "recovery-candidate", "recovery-storage-access", "recovery-seed", "recovery-scope", "recovery-replacement", "recovery-write", "recovery-cleanup", "recovery-readback"]);
+const qaProducerBoundaries = new Set(["hydration-ready", "hydration-complete", "intake-restore", "intake-guard", "intake-projection", "intake-storage-access", "intake-frozen", "intake-reservation", "editable-prepare", "editable-reserved", "editable-write", "editable-readback", "recovery-candidate", "recovery-storage-access", "recovery-driver-open", "recovery-seed", "recovery-scope", "recovery-replacement", "recovery-write", "recovery-cleanup", "recovery-readback"]);
+const qaDriverFailures = new Set(["quota", "security", "unavailable", "blocked", "abort", "schema", "corrupt", "readback", "unknown"]);
 const qaSessions = new Set(["signed-in", "guest", "pending", "unavailable"]);
 const qaEntries = new Set(["loading", "fresh", "explicit-trip", "current-draft", "home-handoff", "pending-home-handoff", "pending-direct-intake", "route-handoff", "populated-builder", "unavailable"]);
 const qaEntryGuardReasons = new Set(["owner-transition", "requested-trip-missing", "homepage-read-protected", "homepage-read-unavailable", "recovery-read-protected", "recovery-read-unavailable", "pending-receipt-protected", "pending-continuation-protected", "handoff-protected", "entry-exception"]);
@@ -113,6 +115,7 @@ function reportQaConsole(detail: Record<string, unknown>, evidence?: QaEvidence,
       setterFailure: evidence?.setterFailure === undefined ? null : qaCategory(evidence.setterFailure, qaNativeFailures, "unknown"),
       cleanupFailure: evidence?.cleanupFailure === undefined ? null : qaCategory(evidence.cleanupFailure, qaNativeFailures, "unknown"),
       setterRetried: qaBoolean(evidence?.setterRetried),
+      driverFailure: qaCategory(evidence?.driverFailure, qaDriverFailures, null),
       phase: detail.phase === "probe" ? "probe" : "result",
       outcome: qaCategory(detail.outcome, qaOutcomes, "unknown"),
       failureBoundary: qaCategory(detail.failureBoundary, qaBoundaries, null),

@@ -7,11 +7,12 @@ export type * from './durable-recovery-domain.ts';
 export { openIndexedDbRecoveryDriver } from './durable-recovery-indexeddb.ts';
 import { RecoveryDomainError, recoveryErrorReason } from './durable-recovery-error.ts';
 export { RecoveryDomainError, recoveryErrorReason } from './durable-recovery-error.ts';
-import { entryHeadKey, type RecoveryEntryWrite, type RecoveryEntryMutation } from './durable-entry-protocol.ts';
+import { entryHeadKey, decodeEntryEnvelope, type RecoveryEntryScope, type RecoveryEntryWrite, type RecoveryEntryMutation } from './durable-entry-protocol.ts';
 import { prepareEntryWrite, decideEntryWrite, verifyEntryWrite, type PreparedEntryWrite } from './durable-entry-store.ts';
 const failure = (reason: RecoveryFailureReason, commitStatus: CommitStatus = 'not-started'): RecoveryFailure => ({ kind: 'failure', reason, commitStatus });
 const conflict = (reason: RecoveryConflict['reason'], commitStatus: CommitStatus = 'not-started'): RecoveryConflict => ({ kind: 'protected-conflict', reason, commitStatus });
 const decodeFailure = (decoded: DecodeFailure, status: CommitStatus) => decoded.kind === 'scope' ? conflict('scope', status) : failure(decoded.kind, status);
+type ProjectionFence = { sourceRaw: string; currentRaw: unknown; entries: {scope: RecoveryEntryScope; raw: string | null}[] };
 function stateHead(state: RecoveryDomainState, scope: RecoveryScope): { kind: 'valid'; head: RecoveryHandle | null; envelope: RecoveryEnvelope | null } | RecoveryFailure | RecoveryConflict {
   const pointer = decodeDomainCurrent(state.currentRaw, scope.ownerId); if (pointer.kind !== 'readable') return decodeFailure(pointer, 'not-committed');
   const head = decodeDomainHead(state.headRaw, scope); if (head.kind !== 'readable') return decodeFailure(head, 'not-committed');
@@ -61,7 +62,7 @@ export function createRecoveryDomainStore(driver: RecoveryDomainDriver, context:
         return active() ? { ...read, current: head.value } : conflict('operation-changed');
       } catch (error) { return failure(recoveryErrorReason(error)); }
     },
-    async commit(input: { raw: string; expectedHead: RecoveryHandle | null; admission: 'native-setter-quota' | 'existing-domain'; entries?: RecoveryEntryWrite[] }): Promise<RecoveryCommitResult> {
+    async commit(input: { raw: string; expectedHead: RecoveryHandle | null; admission: 'native-setter-quota' | 'existing-domain'; entries?: RecoveryEntryWrite[]; projectionFence?: ProjectionFence }): Promise<RecoveryCommitResult> {
       if (!active()) return conflict('operation-changed');
       if (input.admission !== 'native-setter-quota' && !(input.admission === 'existing-domain' && input.expectedHead !== null)) return conflict('admission');
       let parsed: unknown; try { parsed = JSON.parse(input.raw); } catch { return failure('corrupt'); }
@@ -69,8 +70,20 @@ export function createRecoveryDomainStore(driver: RecoveryDomainDriver, context:
       const scope = scopeFor(parsed.handle.tripId), decoded = decodeRecoveryEnvelope(input.raw, scope);
       if (decoded.kind !== 'readable') return decodeFailure(decoded, 'not-started');
       const candidate = decoded.value, raw = input.raw;
+      let fence: ProjectionFence | undefined;
+      try { fence = input.projectionFence ? structuredClone(input.projectionFence) : undefined; } catch { return conflict('scope'); }
       const expected = input.expectedHead === null ? null : isDomainHandle(input.expectedHead) ? { ...input.expectedHead } : undefined;
       if (expected === undefined || expected && !sameRecoveryScope(expected, scope) || !sameDomainHandle(candidate.parent, expected)) return conflict('scope');
+      if (fence) {
+        const source = decodeRecoveryEnvelope(fence.sourceRaw, scope), seen = new Set<string>();
+        if (input.admission !== 'existing-domain' || !expected || source.kind !== 'readable' || !sameDomainHandle(source.value.handle, expected)
+          || !Array.isArray(fence.entries)) return conflict('scope');
+        for (const entry of fence.entries) {
+          if (entry.scope.ownerId !== ownerId || entry.scope.tripId !== scope.tripId || !['recovery-lifecycle','recovery-claim'].includes(entry.scope.kind)
+            || seen.has(entryHeadKey(entry.scope)) || entry.raw !== null && decodeEntryEnvelope(entry.raw, entry.scope).kind !== 'readable') return conflict('scope');
+          seen.add(entryHeadKey(entry.scope));
+        }
+      }
       if (input.entries !== undefined && !Array.isArray(input.entries)) return failure('corrupt');
       const preparedEntries: PreparedEntryWrite[] = [], seenEntries = new Set<string>();
       for (const entry of input.entries ?? []) {
@@ -82,17 +95,29 @@ export function createRecoveryDomainStore(driver: RecoveryDomainDriver, context:
         if (requiredRaw !== prepared.envelope.raw) return conflict('scope');
         seenEntries.add(key); preparedEntries.push(prepared);
       }
-      const entryRequests = preparedEntries.map(entry => ({ scope: entry.scope, writeId: entry.envelope.handle.writeId }));
+      const entryRequests = [...preparedEntries.map(entry => ({ scope: entry.scope, writeId: entry.envelope.handle.writeId })),
+        ...(fence?.entries ?? []).map(entry => ({scope: entry.scope, writeId: null}))];
+      const unchangedMetadata = (state: RecoveryDomainState) => (fence?.entries ?? []).every((entry,index) => {
+        const observed = state.entries[preparedEntries.length + index];
+        if (!observed) return false;
+        if (entry.raw === null) return observed.headRaw === undefined && observed.headGenerationRaw === undefined && observed.generationRaw === undefined;
+        const decoded = decodeEntryEnvelope(entry.raw, entry.scope);
+        return decoded.kind === 'readable' && observed.headRaw === JSON.stringify(decoded.value.handle)
+          && observed.headGenerationRaw === entry.raw && observed.generationRaw === entry.raw;
+      });
       try {
         const committed = await driver.run<RecoveryCommitResult | { kind: 'committed' }>(scope, candidate.handle.writeId, 'readwrite', state => {
           if (!active()) return { value: conflict('operation-changed', 'not-committed') };
           const existing = stateHead(state, scope); if (existing.kind !== 'valid') return { value: existing };
+          if (fence && (state.headGenerationRaw !== fence.sourceRaw || state.currentRaw !== fence.currentRaw || !unchangedMetadata(state)))
+            return {value: conflict('head-changed','not-committed')};
           // Only the dedicated paired transaction may introduce a claim.
           // Later generic edits must retain that exact ancestry pointer.
           if(JSON.stringify(candidate.entry.claim)!==JSON.stringify(existing.envelope?.entry.claim))return {value:conflict('admission','not-committed')};
           const entryWrites: RecoveryEntryMutation[] = [];
           for (const [index, entry] of preparedEntries.entries()) {
             const decision = decideEntryWrite(entry, state.entries[index]); if (decision.kind !== 'write') return { value: decision };
+            if (fence && decision.mutation) return {value: conflict('admission','not-committed')};
             if (decision.mutation) entryWrites.push(decision.mutation);
           }
           if (state.generationRaw !== undefined) {
@@ -112,6 +137,7 @@ export function createRecoveryDomainStore(driver: RecoveryDomainDriver, context:
         const verified = await driver.run<RecoveryCommitResult>(scope, candidate.handle.writeId, 'readonly', state => {
           if (state.generationRaw !== raw) return { value: failure('readback', 'committed') };
           const head = stateHead(state, scope); if (head.kind !== 'valid') return { value: { ...head, commitStatus: 'committed' } };
+          if (fence && !unchangedMetadata(state)) return {value: conflict('head-changed','committed')};
           if (!sameDomainHandle(head.head, candidate.handle)) return { value: conflict('head-changed', 'committed') };
           const pointer = decodeDomainCurrent(state.currentRaw, ownerId);
           if (pointer.kind !== 'readable' || pointer.value?.backend !== 'indexeddb' || !sameDomainHandle(pointer.value, candidate.handle)) return { value: conflict('head-changed', 'committed') };

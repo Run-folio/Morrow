@@ -18,6 +18,7 @@ import { builderDocumentFingerprint } from "../lib/easyt/trip-builder-document-c
 import {findCatalogPlaceById} from '../lib/easyt/place-catalog.ts';
 import { loadTripRecoveryFromStorage } from '../lib/easyt/storage.ts';
 import { attachJapanModuleDiagnostics, markJapanModuleDiagnostic } from './helpers/japan-module-diagnostics.mjs';
+import { acceptanceWindowEvidence, timingTraceOptions } from './helpers/acceptance-timing-evidence.mjs';
 
 const require = createRequire(import.meta.url);
 const bundled = `${homedir()}/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright`;
@@ -31,6 +32,7 @@ if (enabled) {
   }
 }
 const artifacts = process.env.MORROVIA_BROWSER_ARTIFACT_DIR ?? "/tmp/morrovia-core-journey";
+const timingEvidenceContexts = new WeakSet<BrowserContext>();
 const consent = JSON.stringify(createPrivacyConsentRecord({ analytics: false, affiliateTracking: false }, "2026-10-05T12:00:00.000Z"));
 
 const places = {
@@ -166,6 +168,12 @@ async function withEvidence(name: string, run: (page: Page, context: BrowserCont
   const page = await context.newPage();
   const pageErrors: string[] = [];
   const apiStatuses: Array<{ path: string; method: string; status: number }> = [];
+  const blockedAccountWrites: string[] = [];
+  if (name.startsWith('multi-area-')) await context.route('**/api/easyt/trips**', route => {
+    const method = route.request().method();
+    if (!['GET','HEAD'].includes(method)) { blockedAccountWrites.push(method); return route.abort(); }
+    return route.continue();
+  });
   page.on("pageerror", error => pageErrors.push(error.message));
   page.on('response', response => {
     const path = new URL(response.url()).pathname;
@@ -185,8 +193,12 @@ async function withEvidence(name: string, run: (page: Page, context: BrowserCont
     if (name === 'single-area-Japan-1440') moduleDiagnostics = await attachJapanModuleDiagnostics(context, page, { base, artifacts, commit: process.env.COMMIT_REF ?? null });
     await installDeterministicBoundaries(context, url => moduleDiagnostics?.harnessAbort(url));
     await run(page, context);
+    assert.deepEqual(blockedAccountWrites, [], 'synthetic timing capture issues no account writes');
     assert.deepEqual(pageErrors, [], "guest journey has no unhandled page errors");
-    await context.tracing.stop();
+    const timingTrace = timingTraceOptions(artifacts, name, timingEvidenceContexts.has(context)
+      || process.env.MORROVIA_RETAIN_TIMING_TRACES === '1' && name.startsWith('multi-area-'));
+    if (timingTrace) mkdirSync(artifacts, { recursive: true });
+    await context.tracing.stop(timingTrace);
   } catch (error) {
     mkdirSync(artifacts, { recursive: true });
     const summary = await page.evaluate(() => ({
@@ -675,6 +687,7 @@ for (const [width,type] of [[1440,'return_to_start'],[390,'one_way']] as const) 
  await page.getByRole('dialog').getByRole('heading',{name:'Explore places',exact:true}).waitFor({timeout:20000});
  const id=await durableBuilderTripId(page);assert.ok(id);
  const timings:Array<{area:string;acceptMs:number;driverMs:number}>=[];
+ const acceptanceWindows:Array<{area:string;start:number;end:number;elapsedMs:number;longTasks:Array<{start:number;duration:number}>}>=[];
  const knownTimingFailures: Array<{ area: string; scope: string; width: number; type: string; elapsedMs: number; thresholdMs: number; thresholdPassed: false; functionalStatus: string }> = [];
  const selections:Array<{area:string;place:string;visibleMs:number;driverMs:number}>=[];
  for(const [area,names] of [['South Korea',['Seoul','Busan']],['Africa',['Marrakech','Fes','Chefchaouen']]] as const){
@@ -701,8 +714,11 @@ for (const [width,type] of [[1440,'return_to_start'],[390,'one_way']] as const) 
   const started=Date.now();await dialog.getByRole('button',{name:`Add ${names.length} places`,exact:true}).click();
   await page.waitForFunction(area=>!document.querySelector('[role="dialog"]')?.textContent?.includes(area),area,{timeout:15000});
   const driverMs=Date.now()-started,acceptMs=await browserInteractionElapsed(page);timings.push({area,acceptMs,driverMs});
+  const windowEvidence=await page.evaluate(()=>({record:(window as unknown as {__coreInteractionTiming:{start:number;end:number}}).__coreInteractionTiming,tasks:(window as unknown as {__routeTasks:Array<{start:number;duration:number}>}).__routeTasks}));
+  acceptanceWindows.push({area,...acceptanceWindowEvidence(windowEvidence.record,windowEvidence.tasks)});
   if (Number.isFinite(acceptMs) && acceptMs>=2500 && (isStagingAfricaLatencyException(area,width,type) || isStagingSouthKoreaLatencyException(area,width,type))) {
    const failure={area,scope:`staging-only-known-${area}-acceptance-failure`,width,type,elapsedMs:acceptMs,thresholdMs:2500,thresholdPassed:false as const,functionalStatus:'pending'};knownTimingFailures.push(failure);
+   timingEvidenceContexts.add(context);
    mkdirSync(artifacts,{recursive:true});writeFileSync(`${artifacts}/known-${area.toLowerCase().replaceAll(' ','-')}-${width}.json`,JSON.stringify(failure,null,2));
    console.warn(`KNOWN STAGING FAILURE: ${area} ${width}px acceptance ${acceptMs.toFixed(1)}ms exceeds unchanged2500ms; all remaining functional checks still required.`);
   } else {
@@ -730,7 +746,7 @@ for (const [width,type] of [[1440,'return_to_start'],[390,'one_way']] as const) 
  assert.deepEqual(trip.brief.manualNightStopIds,[target.id]);assert.equal(trip.brief.intent!.route!.tripType,type);
  const tasks=await page.evaluate(start=>(window as unknown as {__routeTasks:Array<{start:number;duration:number}>}).__routeTasks.filter(task=>task.start>=start),editStart);
  assert.ok(tasks.every(task=>task.duration<1000),'rapid night edits have no one-second main-thread freeze');
- mkdirSync(artifacts,{recursive:true});writeFileSync(`${artifacts}/multi-area-${width}-timing.json`,JSON.stringify({width,type,timings,selections,nightTasks:tasks},null,2));
+ mkdirSync(artifacts,{recursive:true});writeFileSync(`${artifacts}/multi-area-${width}-timing.json`,JSON.stringify({width,type,timings,selections,acceptanceWindows,nightTasks:tasks},null,2));
  await page.screenshot({path:`${artifacts}/multi-area-${width}-builder.png`,fullPage:true});
  const before=trip;await page.reload({waitUntil:'domcontentloaded'});await page.locator('[data-builder-top-controls]').waitFor();
  trip=await recoveryTrip(page,id);assert.ok(trip);assert.deepEqual(trip.stops.map(stop=>[stop.id,stop.canonicalPlaceId,stop.nights]),before.stops.map(stop=>[stop.id,stop.canonicalPlaceId,stop.nights]));

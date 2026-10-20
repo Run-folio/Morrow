@@ -128,7 +128,7 @@ for(const mode of modes)for(const providerError of [false,true])test(`Build asse
   await h.run();await h.session.waitForDeviceWrites();await turn();
   const after=h.session.getSnapshot(),view=assessment(h.session,source);await turn();
   assert.equal(view.state().settled,true,'a stopped route worker must settle Build');
-  if(mode==='native'){
+  if(mode!=='indexeddb-input'){
    assert.equal(view.state().returnedTrip,true);assert.equal(after.pendingUnits.some(u=>u.kind!=='recommendation'),false);
    assert.equal(Boolean(after.routeWorkBlocked),false);
    if(providerError)assert.ok(after.failedUnits.length,'provider failure remains terminal failed evidence');
@@ -147,10 +147,10 @@ for(const mode of modes)test(`delayed ${mode} route response stays pending until
   await accepted(h);const view=assessment(h.session,source);await h.run();view.render();await turn();
   assert.equal(view.state().settled,false);assert.equal(Boolean(h.session.getSnapshot().routeWorkBlocked),false);
   release();for(let i=0;i<100;i++)await turn();await h.session.waitForDeviceWrites();view.render();await turn();
-  assert.equal(view.state().settled,true);assert.equal(view.state().returnedTrip,mode==='native');
+  assert.equal(view.state().settled,true);assert.equal(view.state().returnedTrip,mode!=='indexeddb-input');
  }finally{release();h.close();}
 });
-for(const mode of ['indexeddb-body','indexeddb-input'])test(`explicit retry of ${mode} remains bounded and preserves every copy`,{timeout:15000},async()=>{
+for(const mode of ['indexeddb-input'])test(`explicit retry of ${mode} remains bounded and preserves every copy`,{timeout:15000},async()=>{
  const h=await harness(mode);
  try{
   await accepted(h);const before=copies(h);await h.run();assert.equal(h.session.getSnapshot().routeWorkBlocked,true);
@@ -159,6 +159,12 @@ for(const mode of ['indexeddb-body','indexeddb-input'])test(`explicit retry of $
   const view=assessment(h.session,source);await turn();assert.equal(view.state().settled,false);
   release();await retry;view.render();await turn();
   assert.deepEqual(view.state(),{settled:true,returnedTrip:false});assert.equal(h.trace.reconcileCalls,2);await retained(h,before);
+ }finally{h.close();}
+});
+test('completed IDB body does not start another provider call or write on explicit necessary-work retry',{timeout:15000},async()=>{
+ const h=await harness('indexeddb-body');try{await accepted(h);await h.run();assert.equal(Boolean(h.session.getSnapshot().routeWorkBlocked),false);
+  assert.equal(h.session.getSnapshot().pendingUnits.some(unit=>unit.kind!=='recommendation'),false);const completed=copies(h);
+  await h.session.resumeNecessaryWork();await h.session.waitForDeviceWrites();assert.equal(h.trace.reconcileCalls,1);await retained(h,completed);
  }finally{h.close();}
 });
 for(const mode of modes)for(const retirement of ['input','owner','dispose'])test(`stale ${mode} worker cannot publish blocked or completed work after ${retirement}`,{timeout:15000},async()=>{
@@ -188,11 +194,20 @@ test('a provider response with no usable progress settles for review rather than
  }finally{h.close();}
 });
 
-for(const mode of ['indexeddb-body','indexeddb-input'])for(const providerError of [false,true])test(`historical pending promotion returns review: ${mode}, provider ${providerError?'error':'response'}`,{timeout:15000},async()=>{
+for(const mode of modes)for(const providerError of [false,true])test(`historical promotion stays fenced after ${mode} route outcome, provider ${providerError?'error':'response'}`,{timeout:15000},async()=>{
  const h=await harness(mode,'owner-a');try{
   await accepted(h);const before=copies(h);h.control.providerError=providerError;await h.run();
   const view=assessment(h.session,source);await turn();
   assert.equal(h.session.getSnapshot().historicalRecovery,true);assert.equal(h.session.getSnapshot().error?.category,'pending');
-  assert.deepEqual(view.state(),{settled:true,returnedTrip:false});assert.equal(h.session.getSnapshot().routeWorkBlocked,true);await retained(h,before);
+  assert.equal(await h.session.flush(),false,'route assessment is not permission to promote a historical recovery');
+  assert.equal(h.trace.accountWrites,0);assert.equal(h.session.getSnapshot().trip.ownerId,null);
+  if(mode==='indexeddb-input'){
+   assert.deepEqual(view.state(),{settled:true,returnedTrip:false});assert.equal(h.session.getSnapshot().routeWorkBlocked,true);await retained(h,before);
+  }else{
+   assert.deepEqual(view.state(),{settled:true,returnedTrip:true});assert.equal(Boolean(h.session.getSnapshot().routeWorkBlocked),false);
+   assert.deepEqual(h.session.getSnapshot().draft,before.draft);
+   if(mode==='indexeddb-body')for(const [key,raw] of before.domain.get('generations'))assert.equal(h.model.data.get('generations').get(key),raw);
+   const cold=await h.broker(()=>true).read(before.trip.id);assert.equal(cold.kind,'found');assert.deepEqual(cold.trip,h.session.getSnapshot().trip);
+  }
  }finally{h.close();}
 });

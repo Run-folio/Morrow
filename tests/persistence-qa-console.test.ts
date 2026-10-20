@@ -193,7 +193,7 @@ test('capture uses a closed schema, query presence only and unknown rather than 
       stored: false, nativeFailure: 'PRIVATE-EXCEPTION', acknowledgement: 'PRIVATE-ACK',
       writeAttempted: 'PRIVATE-ATTEMPT', readbackConfirmed: 'PRIVATE-READBACK',
       ownerId: 'PRIVATE-OWNER', trip: { title: 'PRIVATE-DOCUMENT' }, message: 'PRIVATE-MESSAGE',
-      token: 'PRIVATE-SECRET', failureBoundary: 'PRIVATE-BOUNDARY', phase: 'PRIVATE-PHASE',
+      token: 'PRIVATE-SECRET', failureBoundary: 'PRIVATE-BOUNDARY', phase: 'PRIVATE-PHASE', driverFailure: 'PRIVATE-DRIVER',
     } as never);
     const [ready, result] = packets(logs);
     assert.deepEqual(ready.queryKeys, { trip: true, recover: true, homeDraft: true, handoff: true, inspire: true });
@@ -201,8 +201,9 @@ test('capture uses a closed schema, query presence only and unknown rather than 
     assert.equal(result.stage, 'unknown');
     assert.equal(result.nativeFailure, 'unknown');
     assert.equal(result.acknowledgement, null);
+    assert.equal(result.driverFailure, null);
     for (const key of ['writeAttempted', 'writeAccepted', 'readbackConfirmed', 'deviceCopyVerified', 'pointerAcknowledged', 'scopeMatches', 'receiptPresent', 'receiptAcknowledged', 'accountQueueEntered', 'httpStatusClass', 'accountAcknowledged']) assert.equal(result[key], null, key);
-    assert.deepEqual(Object.keys(result).sort(), ['version', 'kind', 'sequence', 'buildMatch', 'queryKeys', 'sessionClass', 'browserContextClass', 'entryKind', 'stage', 'boundary', 'accepted', 'guardReason', 'homepageReadReason', 'caller', 'writeBranch', 'readbackKind', 'operation', 'failedOperation', 'initialSetterFailure', 'setterFailure', 'cleanupFailure', 'setterRetried', 'phase', 'outcome', 'failureBoundary', 'writeAttempted', 'writeAccepted', 'readbackConfirmed', 'deviceCopyVerified', 'pointerAcknowledged', 'nativeFailure', 'acknowledgement', 'scopeMatches', 'receiptPresent', 'receiptAcknowledged', 'accountQueueEntered', 'httpStatusClass', 'accountAcknowledged'].sort());
+    assert.deepEqual(Object.keys(result).sort(), ['version', 'kind', 'sequence', 'buildMatch', 'queryKeys', 'sessionClass', 'browserContextClass', 'entryKind', 'stage', 'boundary', 'accepted', 'guardReason', 'homepageReadReason', 'caller', 'writeBranch', 'readbackKind', 'operation', 'failedOperation', 'initialSetterFailure', 'setterFailure', 'cleanupFailure', 'setterRetried', 'driverFailure', 'phase', 'outcome', 'failureBoundary', 'writeAttempted', 'writeAccepted', 'readbackConfirmed', 'deviceCopyVerified', 'pointerAcknowledged', 'nativeFailure', 'acknowledgement', 'scopeMatches', 'receiptPresent', 'receiptAcknowledged', 'accountQueueEntered', 'httpStatusClass', 'accountAcknowledged'].sort());
     source.reportQaPersistenceBoundary('native-write','recovery-write',{
       operation:'PRIVATE-OP',failedOperation:'PRIVATE-FAILED',initialSetterFailure:'PRIVATE-INITIAL',setterFailure:'PRIVATE-SETTER',cleanupFailure:'PRIVATE-CLEANUP',setterRetried:'PRIVATE-RETRY',
     } as never);

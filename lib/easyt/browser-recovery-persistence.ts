@@ -3,6 +3,8 @@ import { createTwoStoreTripPersistence, type TwoStoreContext } from './two-store
 import type { RecoveryDomainDriver } from './durable-recovery-domain.ts';
 import { RECOVERY_DOMAIN_OVERFLOW_ENABLED, RECOVERY_DOMAIN_ACCOUNT_OVERFLOW_QUALIFIED } from './recovery-domain-policy.ts';
 import { EASYT_LAST_OWNER_KEY, EASYT_TRIP_STORAGE_CHANGE_EVENT, type EasyTBrowserStorage, type TripStorageChange } from './storage.ts';
+import { reportQaPersistenceBoundary } from './persistence-outcome.ts';
+import { recoveryErrorReason } from './durable-recovery-error.ts';
 
 let driver: Promise<RecoveryDomainDriver> | null = null;
 let ownerEpoch = 0;
@@ -53,7 +55,13 @@ export async function browserRecoveryDriver(): Promise<RecoveryDomainDriver> {
   if (!driver) {
     let factory: IDBFactory | undefined;
     try { factory = typeof window === 'undefined' ? undefined : window.indexedDB; } catch { /* Open will refuse absence. */ }
-    driver = openIndexedDbRecoveryDriver(factory).catch(error => { driver = null; throw error; });
+    driver = openIndexedDbRecoveryDriver(factory).catch(error => {
+      driver = null;
+      reportQaPersistenceBoundary('recovery-preparation', 'recovery-driver-open', {
+        accepted: false, writeAttempted: false, driverFailure: recoveryErrorReason(error),
+      });
+      throw error;
+    });
   }
   return driver;
 }
