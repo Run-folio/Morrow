@@ -102,6 +102,7 @@ import RichItineraryDayPlanner from "@/components/easyt/rich-itinerary-day-plann
 import { ContextualFeedbackSlot } from "./contextual-feedback-controller";
 import ItineraryItemDetail, { type ItineraryItemDetailModel } from "@/components/easyt/itinerary-item-detail";
 import ItineraryActivityIdentity from "@/components/easyt/itinerary-activity-identity";
+import ItineraryDraggableCard from "./itinerary-draggable-card";
 import { affiliateDisclosure, MorroviaAffiliateDisclosure, MorroviaAffiliateLink } from "@/components/easyt/affiliate-link";
 import { MorroviaPartnerPromotion } from "@/components/easyt/partner-promotion";
 import TripExplicitPlans from "@/components/easyt/trip-explicit-plans";
@@ -1162,7 +1163,7 @@ export default function TripItineraryWorkspace({
     setPlannerDrag(null);
   };
 
-  const dropPlannerItem = async (dayPart: ItineraryDayPart, insertionIndex: number) => {
+  const dropPlannerItem = async (dayPart: ItineraryDayPart | null, insertionIndex: number) => {
     const isCurrent = captureActionScope();
     const dragged = plannerDragRef.current ?? plannerDrag;
     if (!dragged) return;
@@ -1171,6 +1172,7 @@ export default function TripItineraryWorkspace({
     const fullDay = dragged.kind === "suggestion"
       ? isFullDayActivity(dragged.idea.providerMetadata?.duration)
       : isFullDayActivity(dragged.activity.providerMetadata?.duration);
+    if (dayPart === null && !fullDay) return false;
     if (dragged.kind === "activity" && fullDay) {
       setPlannerError(copy.fullDayPeriodDropError);
       return false;
@@ -1182,7 +1184,7 @@ export default function TripItineraryWorkspace({
       const accepted = await mutateCurrentTrip((current) => {
         const result = fullDay
           ? scheduleItineraryIdeaWithUndo(current, dragged.idea, active.id, null)
-          : scheduleItineraryIdeaAtPositionWithUndo(current, dragged.idea, active.id, dayPart, insertionIndex);
+          : scheduleItineraryIdeaAtPositionWithUndo(current, dragged.idea, active.id, dayPart!, insertionIndex);
         mutationReason = result.reason ?? "";
         receipt = result.undo ?? null;
         newItem = newlyScheduledItineraryIdea(current, result.trip, dragged.idea);
@@ -1203,6 +1205,7 @@ export default function TripItineraryWorkspace({
       else if (mutationReason && !mutationReason.includes("already")) setPlannerError(mutationReason);
       return;
     }
+    if (dayPart === null) return false;
     let mutationReason = "";
     const accepted = await mutateCurrentTrip((current) => {
       const result = placeItineraryActivity(current, active.id, dragged.activity.id, dayPart, insertionIndex);
@@ -1729,6 +1732,7 @@ export default function TripItineraryWorkspace({
             } : undefined}
             onActivityDragEnd={nativePlannerDrag ? clearPlannerDrag : undefined}
             onActivityDrop={dropPlannerItem}
+            onFullDayDrop={() => dropPlannerItem(null, 0)}
             selectedActivityId={selectedActivity?.id ?? null}
             onActivitySelect={(activity, trigger) => {
               selectedItemOriginRef.current = trigger;
@@ -2129,13 +2133,16 @@ function SavedIdeasSection({
       const preferredDay = preferredItineraryIdeaDay(trip, idea.stopId);
       const allowsDayPart = activityAllowsDayPart(idea.providerMetadata?.duration, "morning");
       const fullDay = isFullDayActivity(idea.providerMetadata?.duration);
-      const draggable = !mobile && (allowsDayPart || fullDay) && Boolean(onDragStart);
-      return <article
+      const draggable = !mobile && !pending(idea) && (allowsDayPart || fullDay) && Boolean(onDragStart);
+      return <ItineraryDraggableCard
+        draggable={draggable}
+        onDragStart={(event) => onDragStart?.(idea, event)}
+        onDragEnd={onDragEnd}
         role="listitem"
         key={idea.id}
         className={draggingIdeaId === idea.id ? styles.discoveryCardDragging : undefined}
       >
-        <EasyTButton className={styles.savedIdeaSelect} variant="quiet" aria-label={`Open details for ${idea.title}`} aria-pressed={selectedIdeaId === idea.id} onClick={(event) => onOpenDetail(idea, event.currentTarget)}>
+        <EasyTButton data-itinerary-drag-surface className={styles.savedIdeaSelect} variant="quiet" aria-label={`Open details for ${idea.title}`} aria-pressed={selectedIdeaId === idea.id} onClick={(event) => onOpenDetail(idea, event.currentTarget)}>
           <ItineraryActivityIdentity title={idea.title} category={idea.category} image={idea.image} meta={`Saved for ${stopName}`} compact />
         </EasyTButton>
         <div className={styles.savedIdeaActions}>
@@ -2146,12 +2153,9 @@ function SavedIdeasSection({
             size="small"
             variant="quiet"
             data-itinerary-drag-handle={idea.id}
-            draggable
             tabIndex={-1}
             aria-hidden="true"
             title={fullDay ? copy.fullDayDropIntent : `${copy.dragActivity}: ${idea.title}`}
-            onDragStart={(event) => onDragStart?.(idea, event)}
-            onDragEnd={onDragEnd}
           >{fullDay ? copy.fullDayDropIntent : `${copy.dragActivity}: ${idea.title}`}</EasyTButton> : null}
           {preferredDay ? <ItineraryDayPicker
             scopeKey={JSON.stringify([trip.ownerId, trip.id, idea.id])}
@@ -2172,7 +2176,7 @@ function SavedIdeasSection({
           /> : null}
           <EasyTButton size="small" variant="quiet" disabled={pending(idea)} onClick={() => onRemove(idea)}>{copy.remove}</EasyTButton>
         </div>
-      </article>;
+      </ItineraryDraggableCard>;
     })}</div>
   </details>;
 }
@@ -2776,9 +2780,9 @@ function ItineraryRankedSuggestionCard({ result, tripId, scopeKey, language, opt
   const meta = [result.location, result.category, result.duration, commercial ? "Viator" : null].filter(Boolean).join(" · ");
   const action = commercial && result.providerUrl ? { provider: "viator", category: "activities", href: result.providerUrl, cta: "View on Viator", affiliate: true } as const : null;
   const draggable = state.state !== "planned" && (allowsDayPart || isFullDayActivity(result.idea.providerMetadata?.duration)) && !pending && Boolean(onDragStart);
-  return <article className={`${styles.discoveryCard} ${dragging ? styles.discoveryCardDragging : ""}`} data-itinerary-suggestion-id={result.sourceId} data-provider-product-id={result.providerProductId} aria-labelledby={titleId} aria-busy={pending || undefined} draggable={draggable} onDragStart={draggable ? onDragStart : undefined} onDragEnd={draggable ? onDragEnd : undefined}>
+  return <ItineraryDraggableCard className={`${styles.discoveryCard} ${dragging ? styles.discoveryCardDragging : ""}`} data-itinerary-suggestion-id={result.sourceId} data-provider-product-id={result.providerProductId} aria-labelledby={titleId} aria-busy={pending || undefined} draggable={draggable} onDragStart={draggable ? onDragStart : undefined} onDragEnd={draggable ? onDragEnd : undefined}>
     <div className={styles.discoveryMedia}>
-      <ResilientImage src={result.image} alt="" fallback={<span className={styles.discoveryFallback}><MapPin aria-hidden="true" /></span>} />
+      <ResilientImage src={result.image} alt="" draggable={false} fallback={<span className={styles.discoveryFallback}><MapPin aria-hidden="true" /></span>} />
       {!commercial && result.providerUrl ? <a href={result.providerUrl} target="_blank" rel="noopener noreferrer" aria-label={`Open source for ${result.title}`}><ExternalLink aria-hidden="true" /></a> : null}
     </div>
     <div className={styles.discoveryCopy}><div id={titleId}><ItineraryActivityIdentity title={result.title} category={result.kind === "restaurant" ? "restaurant" : "activity"} meta={meta} compact /></div></div>
@@ -2790,7 +2794,7 @@ function ItineraryRankedSuggestionCard({ result, tripId, scopeKey, language, opt
       {state.state === "available" ? <EasyTButton size="small" variant="quiet" disabled={pending} onClick={onSave}>{pending ? "Saving…" : "Save"}</EasyTButton> : state.state === "saved" ? <span className={styles.savedIdeaState}>Saved for later</span> : onRemove ? <EasyTButton size="small" variant="quiet" disabled={pending} onClick={onRemove}>Remove</EasyTButton> : null}
       {action ? <><MorroviaAffiliateLink action={action} context={{ placement: "itinerary_day_experiences", tripId, stopId: result.stopId, workspaceView: "itinerary" }} variant="quiet" /><MorroviaAffiliateDisclosure className={styles.commercialDisclosure} provider="viator" /></> : null}
     </div>
-  </article>;
+  </ItineraryDraggableCard>;
 }
 
 type DiscoveryIdeaState = ReturnType<typeof ideaStateForPlace>;
@@ -3101,9 +3105,9 @@ function TimelineRow({
   }
 
   return (
-    <article className={`${styles.detailRow} ${booking ? styles.bookingRow : custom ? styles.customRow : ""} ${selected ? styles.selectedRow : ""}`} data-itinerary-item={itemId}>
+    <ItineraryDraggableCard draggable={editable && Boolean(onDragStart)} onDragStart={onDragStart} onDragEnd={onDragEnd} className={`${styles.detailRow} ${booking ? styles.bookingRow : custom ? styles.customRow : ""} ${selected ? styles.selectedRow : ""}`} data-itinerary-item={itemId}>
       <span className={styles.detailIcon}><Icon aria-hidden="true" /></span>
-      <EasyTButton className={styles.rowSelect} variant="quiet" aria-pressed={selected} onClick={() => { onSelect(); if (editable) onBeginEdit(); }} title={!editable && custom && protectedReason ? copy.protectedItem : undefined}>
+      <EasyTButton data-itinerary-drag-surface className={styles.rowSelect} variant="quiet" aria-pressed={selected} onClick={() => { onSelect(); if (editable) onBeginEdit(); }} title={!editable && custom && protectedReason ? copy.protectedItem : undefined}>
         <span className={styles.itemCopy}>
         <strong>{note}</strong>
         <span>{stop?.name ?? copy.dayPlan}<i aria-hidden="true">·</i>{planItemLabel(day.type, language)}</span>
@@ -3111,7 +3115,7 @@ function TimelineRow({
       </EasyTButton>
       <div className={styles.itemActions}>
         {status ? <span className={booking?.confirmation ? styles.confirmedStatus : styles.savedStatus}>{status}</span> : null}
-        {editable && onDragStart ? <EasyTButton className={styles.dragHandle} icon={GripVertical} iconOnly size="small" variant="quiet" draggable onDragStart={onDragStart} onDragEnd={onDragEnd}>{copy.dragActivity}: {note}</EasyTButton> : null}
+        {editable && onDragStart ? <EasyTButton className={styles.dragHandle} icon={GripVertical} iconOnly size="small" variant="quiet" data-itinerary-drag-handle={itemId}>{copy.dragActivity}: {note}</EasyTButton> : null}
         {externalHref ? <a className={styles.rowExternal} href={externalHref} target="_blank" rel="noopener noreferrer" aria-label={`${copy.bookingLink}: ${note}`}><ExternalLink aria-hidden="true" /></a> : null}
         {editable ? <div className={styles.rowMenu}>
           <EasyTButton aria-expanded={menuOpen} aria-haspopup="menu" className={styles.rowEdit} icon={MoreHorizontal} iconOnly size="small" variant="quiet" onClick={onToggleMenu}>{copy.edit}: {note}</EasyTButton>
@@ -3123,7 +3127,7 @@ function TimelineRow({
           </div> : null}
         </div> : null}
       </div>
-    </article>
+    </ItineraryDraggableCard>
   );
 }
 

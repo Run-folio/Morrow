@@ -12,6 +12,8 @@ import {
   type PlanningParentConstraint,
 } from "@/lib/easyt/place-intelligence";
 import { placeAutocompleteKeyAction, prioritizeRouteStopSuggestions, mergeEquivalentPlaceSuggestions, placeSuggestionLocationDetail, placeSuggestionMapUrl } from "@/lib/easyt/place-autocomplete";
+import { consolidateFreshDestinationSuggestions } from "@/lib/easyt/destination-planning-policy";
+import { withProviderTimeout } from "@/lib/easyt/provider-timeout";
 import { createAbortableEffectScope } from "@/lib/easyt/abortable-effect";
 import {referenceKnownCodeKind,referenceGeographicAcceptanceMatches} from '@/lib/easyt/place-reference';
 import type { EasyTLanguage } from "@/lib/easyt/i18n";
@@ -105,6 +107,7 @@ export function CanonicalPlaceAutocomplete({
   const inputRef = useRef<HTMLInputElement>(null);
   const rootRef = useRef<HTMLDivElement>(null);
   const allowedTypeKey = (allowedPlaceTypes ?? []).join("|");
+  const contextCountriesKey = JSON.stringify(contextCountries ?? []);
   const parentConstraintKey = JSON.stringify(parentConstraint ?? null);
   const nearbyAnchorKey = JSON.stringify(nearbyAnchor ?? null);
   const catalogSuggestions = useMemo(() => canonicalPlaceSuggestionsForQuery(deferredValue, contextCountries, 8, includeNonRoutable)
@@ -164,8 +167,8 @@ export function CanonicalPlaceAutocomplete({
         params.set("anchorLon", String(nearbyAnchor.coordinates[0]));
         params.set("anchorLat", String(nearbyAnchor.coordinates[1]));
       }
-      fetch(`/api/journey-geocode?${params}`, { signal: scope.signal })
-        .then(async (response) => {
+      withProviderTimeout({ label: "Place search", timeoutMs: 20_000, signal: scope.signal, request: async (signal) => {
+          const response = await fetch(`/api/journey-geocode?${params}`, { signal });
           if (!response.ok) throw new Error("place search unavailable");
           return response.json() as Promise<{ candidates?: Array<{
             canonicalPlaceId?: string;
@@ -187,7 +190,7 @@ export function CanonicalPlaceAutocomplete({
             kind?: string;
             routability?: CanonicalPlaceSuggestion["routability"];
           }> }>;
-        })
+        } })
         .then((payload) => {
           const nextSuggestions = (payload.candidates ?? []).filter(referenceGeographicAcceptanceMatches).map((candidate) => {
             const kind = (candidate.kind ?? "").toLocaleLowerCase();
@@ -241,12 +244,12 @@ export function CanonicalPlaceAutocomplete({
         .finally(() => scope.commit(() => setProviderSearching(false)));
     }, 220);
     return () => { window.clearTimeout(timer); scope.dispose(); };
-  }, [allowedTypeKey, contextCountries, deferredValue, nearbyAnchorKey, parentConstraintKey, retryNonce, searchIntent]);
+  }, [allowedTypeKey, contextCountriesKey, deferredValue, nearbyAnchorKey, parentConstraintKey, retryNonce, searchIntent]);
 
-  const suggestions = useMemo(() => prioritizeRouteStopSuggestions(mergeEquivalentPlaceSuggestions([...catalogSuggestions, ...providerSuggestions]
+  const suggestions = useMemo(() => prioritizeRouteStopSuggestions(consolidateFreshDestinationSuggestions(mergeEquivalentPlaceSuggestions([...catalogSuggestions, ...providerSuggestions]
     .filter((suggestion) => !excludeCanonicalIds.includes(suggestion.canonicalPlaceId))
     .filter((suggestion) => !requireCoordinates || Boolean(suggestion.coordinates))
-    )
+    ), { intent: searchIntent === "route-stop" ? "fresh-stop" : "explicit-area" })
     , searchIntent, deferredValue).slice(0, 8), [catalogSuggestions, excludeCanonicalIds, providerSuggestions, requireCoordinates, searchIntent, deferredValue]);
   const optionKeys = useMemo(() => {
     // Conflicting source tuples remain selectable even when their canonical ID

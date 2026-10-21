@@ -33,7 +33,7 @@ type Scene = { entry: DiscoveryEntry; mention: ResolvedPlaceMention; projection:
   canonicalTrip?: EasyTTrip; language?: "en" | "es"; existingPlaceIds?: string[]; note?: string; loading?: boolean; saveError?: string; timingDecoy?: boolean;
   baseChoice?: { area: CanonicalPlaceSuggestion; candidates: CanonicalPlaceSuggestion[]; status: "loading" | "ready" | "empty" | "unavailable" };
   actionSpy?: (action: DiscoveryDraftAction) => void; confirmSpy?: () => void; closeSpy?: () => void;
-  baseSelectSpy?: (suggestion: CanonicalPlaceSuggestion) => void };
+  baseSelectSpy?: (suggestion: CanonicalPlaceSuggestion) => void; baseRetrySpy?: () => void };
 
 function SceneModal({ entry, mention: sceneMention, projection: sceneProjection, draft: initialDraft, language = "en", existingPlaceIds = [], note, loading, saveError, timingDecoy, baseChoice, actionSpy, confirmSpy, closeSpy, canonicalTrip }: Scene) {
   const [draft, setDraft] = useState(initialDraft);
@@ -158,7 +158,7 @@ export const BalkansCreteChooseBase: Story = { args: { ...BalkansStopsOnly.args,
 export const BalkansCreteNoSafeBase: Story = { args: { ...BalkansCreteChooseBase.args,
   baseChoice: { area: creteArea, candidates: [], status: "empty" } } };
 
-function BaliBaseScene({ language = 'en', baseChoice, baseSelectSpy, confirmSpy }: Scene) {
+function BaliBaseScene({ language = 'en', baseChoice, baseSelectSpy, baseRetrySpy, confirmSpy }: Scene) {
   const [open, setOpen] = useState(true), [draft, setDraft] = useState<DiscoveryDraft>(placesDraft), [value, setValue] = useState('');
   const island = mention('Bali');
   const area = discoveryBaseAreaForMention(island, draft);
@@ -169,7 +169,7 @@ function BaliBaseScene({ language = 'en', baseChoice, baseSelectSpy, confirmSpy 
       projection={projection('Bali', draft)} draft={draft} language={language} onAction={onAction}
       onClose={() => setOpen(false)} onConfirm={() => confirmSpy?.()}
       baseChoice={area ? { area, candidates: baseChoice?.candidates ?? [], status: baseChoice?.status ?? 'ready', value,
-        onChange: setValue, onCancel: () => {}, onSelect: suggestion => {
+        onChange: setValue, onCancel: () => {}, onRetry: () => baseRetrySpy?.(), onSelect: suggestion => {
           baseSelectSpy?.(suggestion);
           onAction({ type: 'add-search-shortlist', suggestion, outsideAccepted: false });
           setValue('');
@@ -185,6 +185,15 @@ export const BaliBaseSpanish390: Story = { ...BaliBaseChoices, args: { ...BaliBa
   parameters: { viewport: { defaultViewport: 'morrovia390' } } };
 export const BaliBaseUnavailable: Story = { ...BaliBaseSearch, args: { ...BaliBaseSearch.args,
   baseChoice: { area: baliArea, candidates: [], status: 'unavailable' } } };
+export const BaliBaseLoading: Story = { ...BaliBaseSearch, args: { ...BaliBaseSearch.args,
+  baseChoice: { area: baliArea, candidates: [], status: 'loading' } } };
+export const BaliBaseRetry: Story = { ...BaliBaseUnavailable, args: { ...BaliBaseUnavailable.args, baseRetrySpy: fn() },
+  play: async ({ canvasElement, args }) => {
+    await userEvent.click(within(canvasElement).getByRole('button', { name: 'Try again' }));
+    await expect(args.baseRetrySpy).toHaveBeenCalledOnce();
+  } };
+export const BaliBaseUnavailableSpanish390: Story = { ...BaliBaseUnavailable,
+  args: { ...BaliBaseUnavailable.args, language: 'es' }, parameters: { viewport: { defaultViewport: 'morrovia390' } } };
 export const BaliBaseKeyboardSelection: Story = { ...BaliBaseChoices, args: { ...BaliBaseChoices.args, baseSelectSpy: fn(), confirmSpy: fn() },
   play: async ({ canvasElement, args }) => {
     const canvas = within(canvasElement);

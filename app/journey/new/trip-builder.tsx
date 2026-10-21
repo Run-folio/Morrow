@@ -99,6 +99,7 @@ import { discoveryEntryForBrief, type DiscoveryEntry } from "@/lib/easyt/discove
 import { readDiscoveryDraft, reduceDiscoveryDraft, selectCanonicalSearchResult } from "@/lib/easyt/discovery-draft";
 import { buildDiscoveryReview } from "@/lib/easyt/discovery-review";
 import { commitDiscoveryReview } from "@/lib/easyt/discovery-commit";
+import { destinationPlanningDecision } from "@/lib/easyt/destination-planning-policy";
 import { discoveryBaseAreaForMention, discoveryBaseForSearchedArea, discoveryClarificationSearchCanAdd, discoverySearchOutsideMention, discoverySearchStopSuggestion } from "@/lib/easyt/discovery-confirmation";
 import { flushSync } from "react-dom";
 import { projectDiscovery } from "@/lib/easyt/discovery-projection";
@@ -761,7 +762,8 @@ function TripBuilderDocument() {
   };
   const [outsideDiscoveryChoice, setOutsideDiscoveryChoice] = useState<{ mentionId: string; suggestion: CanonicalPlaceSuggestion } | null>(null);
   const [pendingDiscoveryBase, setPendingDiscoveryBase] = useState<{ mentionId: string; area: CanonicalPlaceSuggestion } | null>(null);
-  const [searchedAreaBases, setSearchedAreaBases] = useState<NearbyBaseDiscoveryState | null>(null);
+  const [searchedAreaBases, setSearchedAreaBases] = useState<{ mentionId: string; areaKey: string; status: NearbyBaseDiscoveryState["status"]; suggestions: CanonicalPlaceSuggestion[] } | null>(null);
+  const [searchedAreaBaseRetryNonce, setSearchedAreaBaseRetryNonce] = useState(0);
   const discoverySearchVersionRef = useRef(0);
   const [originPlanningMentionId, setOriginPlanningMentionId] = useState<string | null>(null);
   const [transientPlanningMentionId, setTransientPlanningMentionId] = useState<string | null>(null);
@@ -2325,28 +2327,43 @@ function TripBuilderDocument() {
     const anchor = nearbyBaseAnchorForMention({ canonicalPlaceId: pending.area.canonicalPlaceId,
       canonicalName: pending.area.name, placeType: pending.area.placeType, parentCountries: [pending.area.country],
       parentRegionId: pending.area.region, coordinates: pending.area.coordinates, routability: pending.area.routability ?? "needs_base_selection" });
-    if (!anchor) { setSearchedAreaBases({ mentionId: pending.mentionId, status: pending.area.placeType === 'island' ? "ready" : "empty", suggestions: [] }); return; }
+    const areaKey = JSON.stringify(pending.area);
+    const parent = { canonicalPlaceId: pending.area.canonicalPlaceId, canonicalName: pending.area.name,
+      placeType: pending.area.placeType, parentCountries: [pending.area.country] };
+    const areaDiscovery = !anchor && requiresPhysicalIslandVerification(parent)
+      && destinationPlanningDecision(pending.area, { intent: "explicit-area" }).behavior === "choose-base";
+    if (!anchor && !areaDiscovery) { setSearchedAreaBases({ mentionId: pending.mentionId, areaKey, status: "empty", suggestions: [] }); return; }
     const scope = createAbortableEffectScope("Discovery area base search");
-    const params = new URLSearchParams({ nearbyBases: "1", anchorName: anchor.canonicalName,
+    const params = anchor ? new URLSearchParams({ nearbyBases: "1", anchorName: anchor.canonicalName,
       anchorType: anchor.placeType, anchorLon: String(anchor.coordinates![0]), anchorLat: String(anchor.coordinates![1]),
-      anchorId: anchor.canonicalPlaceId ?? "" });
-    anchor.parentCountries.forEach(country => params.append("anchorCountry", country));
-    if (anchor.parentRegionId) params.set("anchorRegion", anchor.parentRegionId);
-    setSearchedAreaBases({ mentionId: pending.mentionId, status: "loading", suggestions: [] });
-    withProviderTimeout({ label: "Discovery area bases", timeoutMs: 7_000, signal: scope.signal,
-      request: signal => fetch(`/api/journey-geocode?${params}`, { signal }) })
-      .then(async response => {
+      anchorId: anchor.canonicalPlaceId ?? "" }) : new URLSearchParams({ areaBases: "1", parentName: parent.canonicalName,
+      parentType: parent.placeType, parentId: parent.canonicalPlaceId ?? "", parentCountry: pending.area.country });
+    if (anchor) {
+      anchor.parentCountries.forEach(country => params.append("anchorCountry", country));
+      if (anchor.parentRegionId) params.set("anchorRegion", anchor.parentRegionId);
+    }
+    setSearchedAreaBases({ mentionId: pending.mentionId, areaKey, status: "loading", suggestions: [] });
+    withProviderTimeout({ label: "Discovery area bases", timeoutMs: 20_000, signal: scope.signal,
+      request: async signal => {
+        const response = await fetch(`/api/journey-geocode?${params}`, { signal });
         if (!response.ok) throw new Error("Discovery area bases unavailable");
-        return response.json() as Promise<{ candidates?: NearbyBaseSuggestion[] }>;
-      })
-      .then(payload => scope.commit(() => {
-        const suggestions = (payload.candidates ?? []).filter(candidate => discoveryBaseForSearchedArea(pending.area, candidate));
-        setSearchedAreaBases({ mentionId: pending.mentionId, status: suggestions.length ? "ready" : "empty", suggestions });
+        const payload = await response.json() as { candidates?: CanonicalPlaceSuggestion[] };
+        if (!payload || !Array.isArray(payload.candidates)) throw new Error("Invalid discovery area bases");
+        return payload.candidates;
+      } })
+      .then(candidates => scope.commit(() => {
+        // The area endpoint has already verified physical containment. Preserve
+        // only valid settlement identities; selecting one still re-verifies it.
+        const suggestions = candidates.filter(candidate => areaDiscovery
+          ? discoverySearchStopSuggestion(candidate) && countryCodeFor(candidate.country) === countryCodeFor(pending.area.country)
+            && destinationPlanningDecision(candidate).behavior === "direct-stop"
+          : discoveryBaseForSearchedArea(pending.area, candidate));
+        setSearchedAreaBases({ mentionId: pending.mentionId, areaKey, status: suggestions.length ? "ready" : "empty", suggestions });
       }))
       .catch(error => { if (!scope.isCancellation(error)) scope.commit(() =>
-        setSearchedAreaBases({ mentionId: pending.mentionId, status: "unavailable", suggestions: [] })); });
+        setSearchedAreaBases({ mentionId: pending.mentionId, areaKey, status: "unavailable", suggestions: [] })); });
     return () => scope.dispose();
-  }, [activeClarificationMention?.mentionId, clarificationOpen, discoveryBaseAreaKey]);
+  }, [activeClarificationMention?.mentionId, clarificationOpen, discoveryBaseAreaKey, searchedAreaBaseRetryNonce]);
 
   useEffect(() => {
     const scope = `${activeBrowserOwnerId ?? "guest"}:${tripId}`;
@@ -6978,8 +6995,9 @@ function TripBuilderDocument() {
         } : undefined}
         baseChoice={discoveryBaseArea ? {
           area: discoveryBaseArea,
-          candidates: searchedAreaBases?.mentionId === activeClarificationMention.mentionId ? searchedAreaBases.suggestions : [],
-          status: searchedAreaBases?.mentionId === activeClarificationMention.mentionId ? searchedAreaBases.status : "loading",
+          onRetry: () => setSearchedAreaBaseRetryNonce(current => current + 1),
+          candidates: searchedAreaBases?.mentionId === activeClarificationMention.mentionId && searchedAreaBases.areaKey === discoveryBaseAreaKey ? searchedAreaBases.suggestions : [],
+          status: searchedAreaBases?.mentionId === activeClarificationMention.mentionId && searchedAreaBases.areaKey === discoveryBaseAreaKey ? searchedAreaBases.status : "loading",
           value: baseSearchInputs[activeClarificationMention.mentionId] ?? "",
           onChange: value => { retireBuilderEntryForInput(); discoverySearchVersionRef.current += 1; planningBaseSearchUserIntentVersionRef.current += 1; setBaseSearchInputs(current => ({ ...current, [activeClarificationMention.mentionId]: value }));
             setBaseSearchErrors(current => ({ ...current, [activeClarificationMention.mentionId]: "" })); },

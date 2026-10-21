@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import {referencePlaceById,referenceSnapshotId} from '@/lib/easyt/place-reference.server';
+import { destinationPlanningDecision } from "@/lib/easyt/destination-planning-policy";
+import {referencePlaceById,referenceSnapshotId,referenceAreaBaseSeeds} from '@/lib/easyt/place-reference.server';
 import {referenceSelectionMatches} from '@/lib/easyt/place-reference';
-import {countryCodeFor} from '@/lib/easyt/country-registry';
+import {countryCodeFor,countryFor} from '@/lib/easyt/country-registry';
 import { geocodeNearbyContext, needsDestinationConfirmation } from "@/lib/easyt/destination-resolution";
 import { createOpenWorldPlaceProvider, searchOpenWorldNearbyBaseSuggestions, searchOpenWorldTravelCandidates } from "@/lib/easyt/open-world-place.server";
 import { requiresPhysicalIslandVerification } from "@/lib/easyt/island-geography";
@@ -165,6 +166,31 @@ export async function GET(request: NextRequest) {
   const mode=request.nextUrl.searchParams.get('mode');
   if(mode!==null&&mode!=='autocomplete'&&mode!=='resolve')return NextResponse.json({result:null},{status:400});
   if(mode==='autocomplete'&&request.nextUrl.searchParams.get('nearbyBases')==='1')return NextResponse.json({candidates:[],status:'explicit-nearby-search-required'});
+  if (request.nextUrl.searchParams.get("areaBases") === "1") {
+    if (mode === "autocomplete") return NextResponse.json({ candidates: [], status: "explicit-area-search-required" });
+    const parent = planningParentFromRequest(request);
+    if (!parent || parent.canonicalName.length > 140 || parent.parentCountries.length !== 1
+      || !countryCodeFor(parent.parentCountries[0])
+      || destinationPlanningDecision(parent, { intent: "explicit-area" }).behavior !== "choose-base")
+      return NextResponse.json({ candidates: [], status: "invalid-parent" }, { status: 400 });
+    parent.parentCountries = [countryFor(parent.parentCountries[0])!.name];
+    try {
+      // Administrative source facts only seed candidates. Every offered island
+      // settlement must pass the existing physical polygon verification.
+      if (!requiresPhysicalIslandVerification(parent)) return NextResponse.json({ candidates: [], status: "empty" });
+      const seeds = referenceAreaBaseSeeds(parent).filter(validReferenceCandidate)
+        .filter(candidate => candidate.parentCountries?.length === 1 && matchesCountry(candidate.parentCountries[0], parent.parentCountries[0]!));
+      const verified = seeds.length ? await normalizePhysicalIslandBaseCandidates(seeds, parent, { signal: request.signal }) : [];
+      const candidates = verified.filter(validReferenceCandidate)
+        .filter(candidate => ["city", "town"].includes(candidate.placeType) && placeCandidateWithinPlanningParent(candidate, parent))
+        .slice(0, 5).map(candidate => ({ ...responseCandidate(candidate), label: `${candidate.canonicalName}, ${candidate.parentCountries![0]}`,
+          provenance: [{ id: candidate.providerId, kind: "provider", label: candidate.providerSourceLabel ?? "Settlement geography",
+            supports: candidate.normalizationReason! }] }));
+      return NextResponse.json({ candidates, status: candidates.length ? "ready" : "empty" });
+    } catch {
+      return NextResponse.json({ candidates: [], status: "unavailable" }, { status: 503 });
+    }
+  }
   if (request.nextUrl.searchParams.get("nearbyBases") === "1") {
     const anchor = nearbyAnchorFromRequest(request);
     if (!anchor) return NextResponse.json({ candidates: [], status: "invalid-anchor" }, { status: 400 });

@@ -16,7 +16,7 @@ export default function ItineraryActivityIdentity({ title, category, meta, image
   const Icon = category === "restaurant" ? Utensils : MapPin;
   return (
     <div className={`${styles.identity} ${compact ? styles.compact : ""} ${card ? styles.card : ""}`}>
-      {image ? <span className={styles.media}><ResilientImage src={image} alt="" fallback={<Icon aria-hidden="true" />} /></span> : <span className={styles.icon}><Icon aria-hidden="true" /></span>}
+      {image ? <span className={styles.media}><ResilientImage src={image} alt="" draggable={false} fallback={<Icon aria-hidden="true" />} /></span> : <span className={styles.icon}><Icon aria-hidden="true" /></span>}
       <span className={styles.copy}>
         <strong>{title}</strong>
         {meta ? <small>{meta}</small> : null}

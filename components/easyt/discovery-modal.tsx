@@ -25,7 +25,7 @@ type Search = {
   onSelect: (suggestion: CanonicalPlaceSuggestion) => void;
 };
 type BaseChoice = { area: CanonicalPlaceSuggestion; candidates: CanonicalPlaceSuggestion[];
-  status: "loading" | "ready" | "empty" | "unavailable"; value: string;
+  status: "loading" | "ready" | "empty" | "unavailable"; value: string; onRetry?: () => void;
   onChange: (value: string) => void; onSelect: (suggestion: CanonicalPlaceSuggestion) => void; onCancel: () => void };
 
 export function DiscoveryModal({ open, entry, mention, projection, draft, onAction, onConfirm, onClose, language = "en", search, outsideChoice, baseChoice, existingPlaceIds = [], loading = false, saveError, canonicalReview }: {
@@ -163,9 +163,15 @@ export function DiscoveryModal({ open, entry, mention, projection, draft, onActi
             ? `Añadir ${candidate.name} como base` : `Add ${candidate.name} as a base`}>
           {candidate.name} · {candidate.placeType === 'city' ? language === 'es' ? 'Ciudad' : 'City' : language === 'es' ? 'Población' : 'Town'}</EasyTButton>)}
       </div> : null}
-      {baseChoice.status === "empty" || baseChoice.status === "unavailable" ? <p role="status">{language === "es"
-        ? `No pudimos verificar una base en ${baseChoice.area.name} ahora. Busca otra ciudad o población.`
-        : `We couldn't verify a base in ${baseChoice.area.name} right now. Search for another city or town.`}</p> : null}
+      {baseChoice.status !== "loading" && !baseChoice.candidates.length ? <>
+        <p role="status">{baseChoice.status === "unavailable"
+          ? language === "es" ? "No se pueden cargar las sugerencias de bases ahora. Vuelve a intentarlo o busca una ciudad o población."
+            : "Base suggestions are unavailable right now. Try again or search for a city or town."
+          : language === "es" ? `No se encontraron bases verificadas en ${baseChoice.area.name}. Busca una ciudad o población.`
+            : `No verified bases found in ${baseChoice.area.name}. Search for a city or town.`}</p>
+        {baseChoice.onRetry ? <EasyTButton size="small" variant="secondary" disabled={loading} onClick={baseChoice.onRetry}>
+          {language === "es" ? "Volver a intentar" : "Try again"}</EasyTButton> : null}
+      </> : null}
       <CanonicalPlaceAutocomplete language={language}
         label={language === "es" ? `Busca una ciudad o población en ${baseChoice.area.name}` : `Search for a city or town in ${baseChoice.area.name}`}
         value={baseChoice.value} placeholder={language === "es" ? "Busca una base" : "Search for a base"}

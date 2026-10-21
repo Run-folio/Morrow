@@ -15,13 +15,16 @@ import { buildBuilderRoutePreview } from "@/lib/easyt/trip-builder-route-preview
 import { builderDestinationCards } from "@/lib/easyt/builder-map-destination-cards";
 import { transferJourneyModeLabel } from "@/lib/easyt/transfer-journey";
 import { formatRoadEstimateReference } from "@/lib/easyt/road-estimate-presentation";
-import type { EasyTTrip } from "@/lib/easyt/trip";
+import type { EasyTTrip, TripLeg } from "@/lib/easyt/trip";
+import { flightAirportAssumptionLabel } from "@/lib/easyt/flight-airport-assumptions";
+import { transportBookingForLeg } from "@/lib/easyt/booking-readiness";
 import { effectiveTripLeg, tripWithEffectiveTransportChoices } from "@/lib/easyt/transport-mode-choice";
 import styles from "./trip-builder.module.css";
 import { useBuilderStopReorder } from "./use-builder-stop-reorder";
 import { builderNightAllocationLabel, type BuilderNightStatus } from "./builder-night-allocation-label";
 import { tripNightsBetween } from "@/lib/easyt/night-allocation";
 import {guardTripRoutingGeometry,stopGeographicPlace,validatedPlaceCoordinates} from '@/lib/easyt/geographic-binding';
+import { routeEndpointForLeg } from "@/lib/easyt/trip-legs";
 
 export type BuilderOrderSource = "drag" | "move-menu" | "route-check";
 
@@ -120,6 +123,24 @@ export function TripBuilderRouteWorkspace({
     onPreview: onPreviewOrder,
     onCommit: onCommitOrder,
   });
+  const departureRecommendation = routingTrip.legs.find((leg) => leg.classification === "departure" && leg.fromStopId === presentedTrip.stops.at(-1)?.id) ?? null;
+  const departureLeg = departureRecommendation ? effectiveTripLeg(routingTrip, departureRecommendation) : null;
+  const departureOrigin = departureLeg ? routeEndpointForLeg(routingTrip, departureLeg, "from") : null;
+  const departureEndpoint = departureLeg ? routeEndpointForLeg(routingTrip, departureLeg, "to") : null;
+  const departureEvidence = departureLeg && !preview?.ok ? transferAssessmentForLeg(transferAssessments, departureLeg.id) : undefined;
+  const departureAssessment = departureLeg ? transportAssessmentState(canonicalTrip, departureLeg, departureEvidence) : null;
+  const departureMinutes = departureLeg?.doorToDoorMinutes ?? departureLeg?.durationMinutes ?? null;
+  const airportAssumptionForLeg = (leg: TripLeg | null) => {
+    if (!leg) return null;
+    const fromEndpoint = routeEndpointForLeg(routingTrip, leg, "from") ?? leg.fromEndpoint;
+    const toEndpoint = routeEndpointForLeg(routingTrip, leg, "to") ?? leg.toEndpoint;
+    if (transportBookingForLeg(canonicalTrip, leg, fromEndpoint, toEndpoint)) return null;
+    return flightAirportAssumptionLabel({ ...leg, fromEndpoint, toEndpoint }, nightStatus.language);
+  };
+  const departureAirportAssumption = airportAssumptionForLeg(departureLeg);
+  const returnsToStart = routingTrip.brief.intent?.route
+    ? routingTrip.brief.intent.route.tripType === "return_to_start"
+    : (routingTrip.brief.journeyEnd ?? routingTrip.brief.intent?.journeyEnd)?.mode === "same_as_start";
 
   const selectStop = (stopId: string, reveal = false) => {
     onSelectStop(stopId);
@@ -155,6 +176,7 @@ export function TripBuilderRouteWorkspace({
             const evidence = leg && !preview?.ok ? transferAssessmentForLeg(transferAssessments, leg.id) : undefined;
             const assessment = leg ? transportAssessmentState(canonicalTrip, leg, evidence) : null;
             const transferMinutes = leg?.doorToDoorMinutes ?? leg?.durationMinutes ?? null;
+            const airportAssumption = airportAssumptionForLeg(leg);
             const usableDays = usableTime(stop.nights ?? 0, transferMinutes);
             const isLocked = fixedOrder || locked.has(stop.id);
             const isSelected = selectedStopId === stop.id;
@@ -184,6 +206,7 @@ export function TripBuilderRouteWorkspace({
                 <span><strong>{leg ? `${leg.fromEndpoint?.name ? `From ${leg.fromEndpoint.name} · ` : ""}${assessment === "pending" ? "Checking transport options…" : assessment === "failed" || assessment === 'blocked' ? "Transport check unavailable" : transferJourneyModeLabel(leg)}` : index === 0 ? "Starts here" : "Transfer to confirm"}</strong><small>{assessment === "pending" ? "This connection is being assessed." : evidence && (assessment === 'failed' || assessment === 'blocked') ? transportEvidenceMessage(evidence, 'en') : assessment === "failed" ? "Try checking this connection again." : leg ? `${transferTimingLabel(leg)}${leg.mode === "flight" && transferMinutes !== null ? " total" : ""}` : "No arrival transfer"}</small>
                   {assessment === "unknown" && leg && leg.mode !== "unknown" && !builderHasUsablePlanningTransfer(routingTrip, leg, evidence) ? <small>Transport needs checking.</small> : null}
                   {leg?.mode === "unknown" && leg.roadEstimate ? <small>{formatRoadEstimateReference(leg.roadEstimate)}</small> : null}
+                  {airportAssumption ? <small>{airportAssumption}</small> : null}
                   {recommendedLeg && !preview?.ok ? <span onClick={(event) => event.stopPropagation()}>
                     <TripTransportChoiceControl
                       trip={canonicalTrip}
@@ -221,6 +244,31 @@ export function TripBuilderRouteWorkspace({
               </details>
             </div>;
           })}
+          {departureRecommendation && departureLeg && departureEndpoint?.name.trim() && departureEndpoint.kind !== "stop" ? <div
+            role="row"
+            className={styles.builderRouteRow}
+            data-builder-endpoint-leg-id={departureLeg.id}
+          >
+            <div className={styles.builderRouteIdentity} role="cell"><span>
+              <small>{returnsToStart ? "Return" : "Finish"}</small>
+              <strong>{departureEndpoint.name}</strong>
+              <small>{departureEndpoint.country}</small>
+            </span></div>
+            <div className={styles.builderRouteTransfer} role="cell">
+              <Route aria-hidden="true" />
+              <span>
+                <strong>{departureOrigin?.name ? `From ${departureOrigin.name} · ` : ""}{departureAssessment === "pending" ? "Checking transport options…" : departureAssessment === "failed" || departureAssessment === "blocked" ? "Transport check unavailable" : transferJourneyModeLabel(departureLeg)}</strong>
+                <small>{departureAssessment === "pending" ? "This connection is being assessed." : departureEvidence && (departureAssessment === "failed" || departureAssessment === "blocked") ? transportEvidenceMessage(departureEvidence, "en") : departureAssessment === "failed" ? "Try checking this connection again." : `${transferTimingLabel(departureLeg)}${departureLeg.mode === "flight" && departureMinutes !== null ? " total" : ""}`}</small>
+                {departureAssessment === "unknown" && departureLeg.mode !== "unknown" && !builderHasUsablePlanningTransfer(routingTrip, departureLeg, departureEvidence) ? <small>Transport needs checking.</small> : null}
+                {departureLeg.mode === "unknown" && departureLeg.roadEstimate ? <small>{formatRoadEstimateReference(departureLeg.roadEstimate)}</small> : null}
+                {departureAirportAssumption ? <small>{departureAirportAssumption}</small> : null}
+                {!preview?.ok ? <TripTransportChoiceControl trip={canonicalTrip} leg={departureRecommendation} onChange={(identity) => onTransportChoiceChange(departureRecommendation.id, identity)} /> : null}
+                {legReview?.(departureRecommendation.id)}
+              </span>
+            </div>
+            <div className={styles.builderRouteNights} role="cell" aria-label="Not an overnight stop">—</div>
+            <div className={styles.builderRouteUsable} role="cell" aria-label="Not an overnight stop">—</div>
+          </div> : null}
         </div>
       </section>
 

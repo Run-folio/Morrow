@@ -1,3 +1,4 @@
+import { destinationPlanningDecision } from './destination-planning-policy.ts';
 import {
   PLACE_CATALOG,
   catalogAliasesForPlace,
@@ -590,9 +591,9 @@ const planningAreaPlaceTypes = new Set<PlaceType>([
 ]);
 
 export function placeSuggestionRequiresBaseSelection(suggestion: CanonicalPlaceSuggestion) {
-  if (suggestion.routability === "planning_area" || suggestion.routability === "needs_base_selection" || suggestion.routability === "anchor_or_poi") return true;
-  if (suggestion.routability === "direct_destination" || suggestion.routability === "non_routable_reference") return false;
-  return planningAreaPlaceTypes.has(suggestion.placeType);
+  // Fresh search may recommend a complete maintained target; this boundary only
+  // classifies the selected identity and never rewrites an existing selection.
+  return destinationPlanningDecision(suggestion).behavior === 'choose-base';
 }
 
 type RawCatalogMatch = { entry: PlaceCatalogEntry; alias: string; start: number; end: number; sourceText: string };

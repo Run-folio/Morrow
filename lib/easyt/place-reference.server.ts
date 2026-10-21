@@ -5,7 +5,7 @@ import {gunzipSync} from 'node:zlib';
 import {reviewedPhotoNameSupplement} from './place-photo-aliases.server.ts';
 import {countryFor, countryCodeFor} from './country-registry.ts';
 import {referenceRecordKey, referenceKnownCodeKind, type ReferencePlaceRecord, type ReferenceSnapshotManifest} from './place-reference.ts';
-import type {PlaceProviderCandidate, PlaceResolutionContext} from './place-intelligence.ts';
+import type {PlaceProviderCandidate, PlaceResolutionContext, PlanningParentConstraint} from './place-intelligence.ts';
 import {PLACE_CATALOG,findCatalogPlaceById} from './place-catalog.ts';
 import {discoveryPlaceForId} from './discovery-content.ts';
 
@@ -97,6 +97,36 @@ export function searchReferencePlaces(query:string,context:PlaceResolutionContex
   const names=[t[1],...(t[7] as string[])].map(normalized);const s=score(names);if(s)insert({id:t[0],offset,score:s+contextual(t[2]),population:t[6] as number,canonicalExact:names[0]===q});}
  return matches.map(m=>candidate(m.airport??settlementAt(m.offset!),m.score));
 }
+// Candidate discovery only: a maintained administrative name is never physical
+// island membership. The caller must verify every returned settlement point.
+const areaSeedCache = new Map<string, number[]>();
+export function referenceAreaBaseSeeds(parent: PlanningParentConstraint): PlaceProviderCandidate[] {
+ if (parent.parentCountries.length !== 1 || !['island', 'archipelago'].includes(parent.placeType)) return [];
+ const code = countryCodeFor(parent.parentCountries[0]), name = normalized(parent.canonicalName);
+ if (!code || !name || parent.canonicalName.length > 140) return [];
+ const d = data(), key = `${code}:${name}`;
+ let offsets = areaSeedCache.get(key);
+ if (!offsets) {
+  const regions = new Set(Object.entries(d.adminContext.admin1).filter(([id, label]) => id.startsWith(`${code}.`) && normalized(label) === name).map(([id]) => id));
+  const districts = new Set(Object.entries(d.adminContext.admin2).filter(([id, label]) => id.startsWith(`${code}.`) && normalized(label) === name).map(([id]) => id));
+  if (!regions.size && !districts.size) return [];
+  const matches: Array<{offset:number;population:number;id:number}> = [];
+  // The integrity-checked snapshot is finite. Retain only sixteen candidates,
+  // ordered by recorded population; this is discovery, not a travel ranking.
+  for (const offset of d.offsets) {
+   const t = settlementTupleAt(offset), admin = t[10];
+   if (t[2] !== code || !admin || (!regions.has(`${code}.${admin[0]}`) && !districts.has(`${code}.${admin[0]}.${admin[1]}`))) continue;
+   matches.push({offset,population:Number(t[6]) || 0,id:Number(t[0])});
+   matches.sort((a,b) => b.population-a.population || a.id-b.id);
+   if (matches.length > 16) matches.pop();
+  }
+  offsets = matches.map(match => match.offset);
+  if (areaSeedCache.size >= 32) areaSeedCache.delete(areaSeedCache.keys().next().value!);
+  areaSeedCache.set(key, offsets);
+ }
+ return offsets.map(offset => candidate(settlementAt(offset), 0));
+}
+
 export const referenceSnapshotId=()=>data().manifest.snapshotId;
 
 // Explicit compatibility mappings reviewed against each authored Discovery

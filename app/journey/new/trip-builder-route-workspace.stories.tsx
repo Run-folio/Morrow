@@ -76,6 +76,41 @@ export const TransportTimeout: Story = { render: () => <TransportAssessmentStory
 export const TransportNoRoute: Story = { render: () => <TransportAssessmentStory phase="no-route" /> };
 export const TransportNotAttempted: Story = { render: () => <TransportAssessmentStory phase="not-attempted" /> };
 
+function ReturnConnectionStory({ phase }: { phase: "supported" | "unknown" | "pending" | "failed" | "road-reference" | "explicit" | "one-way" }) {
+  const places = adaptedDiscoveryPlaces();
+  const origin = places.find(place => place.id === "tokyo")!;
+  const stops = ["kyoto", "osaka"].map((id, order) => {
+    const place = places.find(candidate => candidate.id === id)!;
+    return { ...tourTripFixture.stops[order]!, id, order, canonicalPlaceId: id, name: place.name, country: place.country, longitude: place.coordinates[0], latitude: place.coordinates[1], geographicBinding: undefined, providerId: undefined };
+  });
+  const leg: EasyTTrip["legs"][number] = {
+    id: "storybook-return-leg", fromStopId: "osaka", toStopId: `${tourTripFixture.id}-end`, classification: "departure",
+    fromEndpoint: { kind: "stop", id: "osaka", name: "Osaka", country: "Japan", coordinates: [stops[1].longitude!, stops[1].latitude!] },
+    toEndpoint: { kind: "end", id: `${tourTripFixture.id}-end`, name: origin.name, country: origin.country, canonicalPlaceId: origin.id, coordinates: [...origin.coordinates] },
+    mode: phase === "supported" ? "train" : "unknown", durationMinutes: phase === "supported" ? 170 : null, distanceKm: null,
+    provider: null, provenance: phase === "supported" ? "canonical_schedule" : "unknown", confidence: phase === "supported" ? "high" : "unknown", scheduleNeedsChecking: true, routeMetadata: {},
+    ...(phase === "road-reference" ? { roadEstimate: { provider: "openrouteservice" as const, profile: "driving-car" as const, provenance: "routed" as const, checkedAt: "2026-10-21T00:00:00Z", distanceKm: 500, durationMinutes: 390, confidence: "medium" as const, routeGeometry: [], attribution: "Story fixture", warnings: [] } } : {}),
+  };
+  const trip: EasyTTrip = { ...tourTripFixture, stops, legs: phase === "one-way" ? [] : [leg], brief: {
+    ...tourTripFixture.brief, origin: origin.name, originCountry: origin.country, originCanonicalPlaceId: origin.id, originCoordinates: [...origin.coordinates],
+    journeyEnd: phase === "one-way" ? { mode: "unknown" } : phase === "explicit" ? { mode: "explicit", place: { name: origin.name, country: origin.country, canonicalPlaceId: origin.id, coordinates: [...origin.coordinates] } } : { mode: "same_as_start" },
+  } };
+  const state: PlanningEvidenceState | undefined = phase === "pending" ? { retrieval: "checking", evidence: "insufficient", retryable: false }
+    : phase === "failed" ? { retrieval: "unavailable", evidence: "insufficient", reason: "timeout", retryable: true } : undefined;
+  return <TripBuilderRouteWorkspace canonicalTrip={trip} transferAssessments={state ? [{ legId: leg.id, state }] : undefined}
+    previewStopIds={null} selectedStopId={null} lockedStopIds={[]} fixedOrder={false} routeCheckProposalStopIds={null}
+    nightStatus={{ total: 5, allocated: 5, complete: true, language: "en" }}
+    onSelectStop={() => {}} onPreviewOrder={() => {}} onCommitOrder={() => false} onEditNights={() => {}} onRemoveStop={() => {}} onTransportChoiceChange={() => {}} />;
+}
+export const CanonicalReturnSupported: Story = { render: () => <ReturnConnectionStory phase="supported" /> };
+export const CanonicalReturnUnknown: Story = { render: () => <ReturnConnectionStory phase="unknown" /> };
+export const CanonicalReturnPending: Story = { render: () => <ReturnConnectionStory phase="pending" /> };
+export const CanonicalReturnFailed: Story = { render: () => <ReturnConnectionStory phase="failed" /> };
+export const CanonicalReturnRoadReference: Story = { render: () => <ReturnConnectionStory phase="road-reference" /> };
+export const ExplicitFinishEndpoint: Story = { render: () => <ReturnConnectionStory phase="explicit" /> };
+export const OneWayWithoutInventedReturn: Story = { render: () => <ReturnConnectionStory phase="one-way" /> };
+export const CanonicalReturnMobile390: Story = { ...CanonicalReturnUnknown, globals: { viewport: { value: "morrovia390", isRotated: false } } };
+
 // Synthetic guest control captured from the matched main/staging journey.
 function MainAfricaPlanningStory({language = "en"}: {language?: "en" | "es"}) {
   const trip = matchedAfricaFixture as unknown as EasyTTrip;

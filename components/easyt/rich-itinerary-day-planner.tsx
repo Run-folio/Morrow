@@ -27,6 +27,7 @@ import type { ItineraryDayPart } from "@/lib/easyt/trip";
 import { activityAllowsDayPart, activityDayPartFit, activityDurationLabel, activityStartTimeLabel, fullDayActivityTiming, isFullDayActivity, itineraryScheduleWarnings } from "@/lib/easyt/itinerary-schedule-awareness";
 import { EasyTButton, EasyTField, EasyTSelect } from "./easyt-controls";
 import ItineraryActivityIdentity from "./itinerary-activity-identity";
+import ItineraryDraggableCard from "./itinerary-draggable-card";
 import styles from "./rich-itinerary-day-planner.module.css";
 
 type RichItineraryDayPlannerProps = {
@@ -50,9 +51,10 @@ type RichItineraryDayPlannerProps = {
   draggedFullDay?: boolean;
   draggedFullDayActivity?: boolean;
   draggedActivityId?: string | null;
-  onActivityDragStart?: (activity: ComposedItineraryActivity, event: DragEvent<HTMLButtonElement>) => void;
+  onActivityDragStart?: (activity: ComposedItineraryActivity, event: DragEvent<HTMLElement>) => void;
   onActivityDragEnd?: () => void;
   onActivityDrop?: (dayPart: ItineraryDayPart, insertionIndex: number) => void;
+  onFullDayDrop?: () => void;
   selectedActivityId?: string | null;
   onActivitySelect?: (activity: ComposedItineraryActivity, trigger: HTMLButtonElement) => void;
   onTransferSelect?: (transferId: string, trigger: HTMLButtonElement) => void;
@@ -180,7 +182,7 @@ function ActivityRow({
   onMoveToDay?: RichItineraryDayPlannerProps["onMoveToDay"];
   draggable: boolean;
   dragging: boolean;
-  onDragStart?: (event: DragEvent<HTMLButtonElement>) => void;
+  onDragStart?: (event: DragEvent<HTMLElement>) => void;
   onDragEnd?: () => void;
   selected: boolean;
   onSelect?: (trigger: HTMLButtonElement) => void;
@@ -205,8 +207,8 @@ function ActivityRow({
     activity.area,
   ].filter(Boolean).join(" · ");
   return (
-    <article className={`${styles.activity} ${selected ? styles.activitySelected : ""} ${dragging ? styles.activityDragging : ""}`} aria-busy={pending || undefined} data-itinerary-activity-id={activity.id}>
-      <EasyTButton className={styles.activitySelect} variant="quiet" aria-pressed={selected} onClick={(event) => onSelect?.(event.currentTarget)}>
+    <ItineraryDraggableCard className={`${styles.activity} ${selected ? styles.activitySelected : ""} ${dragging ? styles.activityDragging : ""}`} aria-busy={pending || undefined} data-itinerary-activity-id={activity.id} draggable={draggable && !pending && !activity.booking && (allowsDayPart || fullDay)} onDragStart={onDragStart} onDragEnd={onDragEnd}>
+      <EasyTButton className={styles.activitySelect} data-itinerary-drag-surface variant="quiet" aria-pressed={selected} onClick={(event) => onSelect?.(event.currentTarget)}>
         <ItineraryActivityIdentity
           title={activity.title}
           category={activity.category}
@@ -224,11 +226,8 @@ function ActivityRow({
         size="small"
         variant="quiet"
         data-itinerary-drag-handle={activity.id}
-        draggable
         tabIndex={-1}
         aria-hidden="true"
-        onDragStart={onDragStart}
-        onDragEnd={onDragEnd}
       >{copy.dragActivity}: {activity.title}</EasyTButton> : null}
       {activity.dayPartEditable && (allowsDayPart || fullDay) ? <details className={styles.activityMenu}>
         <summary aria-label={`Organise ${activity.title}`}><MoreHorizontal aria-hidden="true" /></summary>
@@ -276,7 +275,7 @@ function ActivityRow({
           >{copy.moveToDay}</EasyTButton> : null}
         </div>
       </details> : null}
-    </article>
+    </ItineraryDraggableCard>
   );
 }
 
@@ -302,6 +301,7 @@ export default function RichItineraryDayPlanner({
   onActivityDragStart,
   onActivityDragEnd,
   onActivityDrop,
+  onFullDayDrop,
   selectedActivityId = null,
   onActivitySelect,
   onTransferSelect,
@@ -501,7 +501,30 @@ export default function RichItineraryDayPlanner({
         })}
       </section> : null}
 
-      {draggedFullDay ? <p className={styles.fullDayDropIntent} role="status">{copy.fullDayDropIntent}</p> : draggedFullDayActivity ? <p className={styles.fullDayDropIntent} role="status">{copy.fullDayActivityDropIntent}</p> : null}
+      {draggedFullDay ? <p
+        className={`${styles.fullDayDropIntent} ${dropTarget === "full-day" ? styles.periodDropActive : ""}`}
+        role="status"
+        data-full-day-drop-zone
+        onDragEnter={(event) => {
+          if (!dragActive || !draggedFullDay || !onFullDayDrop) return;
+          event.preventDefault();
+          event.stopPropagation();
+          setDropTarget("full-day");
+        }}
+        onDragOver={(event) => {
+          if (!dragActive || !draggedFullDay || !onFullDayDrop) return;
+          event.preventDefault();
+          event.stopPropagation();
+        }}
+        onDragLeave={() => setDropTarget(null)}
+        onDrop={(event) => {
+          if (!dragActive || !draggedFullDay || !onFullDayDrop) return;
+          event.preventDefault();
+          event.stopPropagation();
+          setDropTarget(null);
+          onFullDayDrop();
+        }}
+      >{copy.fullDayDropIntent}</p> : draggedFullDayActivity ? <p className={styles.fullDayDropIntent} role="status">{copy.fullDayActivityDropIntent}</p> : null}
       <div className={styles.periodGrid}>{itineraryPlanningParts.map(renderPeriod)}</div>
 
       {untimedActivities.length ? (

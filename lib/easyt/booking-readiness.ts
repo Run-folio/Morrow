@@ -1,3 +1,4 @@
+import { flightPlanningAirports, flightAirportAssumptionLabel } from './flight-airport-assumptions.ts';
 import { tripHealth } from "./review.ts";
 import type { EasyTTrip, TripLeg, TripStop } from "./trip.ts";
 import { deriveTripDateFacts, stableStopDateRange } from "./trip-facts.ts";
@@ -332,12 +333,18 @@ export function omioBookingActionForLeg(trip: EasyTTrip, leg: TripLeg, now = new
   if (!supported) return null;
 
   const partial = leg.mode === "unknown" || leg.durationMinutes === null || leg.distanceKm === null;
+  // Flight-search preferences are derived; canonical city endpoints and timing
+  // remain unchanged. No airport default establishes a scheduled service.
+  const flightPlan = leg.mode === "flight" ? flightPlanningAirports({ ...leg, fromEndpoint: from, toEndpoint: to }) : null;
+  const searchFrom = flightPlan?.from.endpoint ?? from;
+  const searchTo = flightPlan?.to.endpoint ?? to;
+  const airportAssumption = flightAirportAssumptionLabel({ ...leg, fromEndpoint: from, toEndpoint: to });
   const routeSearchUrl = buildOmioRouteSearchLink({
     mode: leg.mode,
-    originName: from.name,
-    originCountry: from.country ?? "",
-    destinationName: to.name,
-    destinationCountry: to.country ?? "",
+    originName: searchFrom.name,
+    originCountry: searchFrom.country ?? "",
+    destinationName: searchTo.name,
+    destinationCountry: searchTo.country ?? "",
     departureDate: resolvedDate,
     currency: trip.currency,
     now,
@@ -347,9 +354,9 @@ export function omioBookingActionForLeg(trip: EasyTTrip, leg: TripLeg, now = new
     category: "transport",
     provider: affiliatePartners.omio.provider,
     title: partial ? `Check transport options for ${from.name} → ${to.name}` : `Compare transport for ${from.name} → ${to.name}`,
-    detail: partial
+    detail: [partial
       ? "Compare transport options on Omio before relying on this connection; coverage and schedules vary by route."
-      : `${leg.mode === "road" ? "Coach or bus" : leg.mode} selected · compare transport options on Omio before booking.`,
+      : `${leg.mode === "road" ? "Coach or bus" : leg.mode} selected · compare transport options on Omio before booking.`, airportAssumption].filter(Boolean).join(" "),
     cta: partial ? "Check transport options on Omio" : "Compare transport on Omio",
     href: routeSearchUrl ?? affiliatePartners.omio.transportUrl,
     tripId: trip.id,

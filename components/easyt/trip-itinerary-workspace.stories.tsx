@@ -699,6 +699,30 @@ export const ContextualAddPanel: Story = {
 export const CommercialProviderUnavailable: Story = { ...MixedOrganicAndCommercialShortlist, args: { ...MixedOrganicAndCommercialShortlist.args, initialActivityInventory: { 1: [] } } };
 export const OrganicProviderUnavailable: Story = { args: { initialSuggestions: { 1: [] }, initialActivityInventory: { 1: storyCommercialInventory } } };
 export const FullDayExperienceOnOpenDay: Story = MixedOrganicAndCommercialShortlist;
+export const FullDaySuggestionTopAreaDrop: Story = {
+  ...MixedOrganicAndCommercialShortlist,
+  play: async ({ canvasElement }) => {
+    const settle = () => new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
+    await settle();
+    const card = canvasElement.querySelector<HTMLElement>('[data-provider-product-id="CUSCO-FULL-DAY"][draggable="true"]');
+    if (!card) throw new Error("Missing full-day suggestion card");
+    const transfer = new DataTransfer();
+    card.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true, pointerType: "mouse", button: 0 }));
+    card.dispatchEvent(new DragEvent("dragstart", { bubbles: true, cancelable: true, dataTransfer: transfer }));
+    await settle();
+    const target = canvasElement.querySelector<HTMLElement>("[data-full-day-drop-zone]");
+    if (!target) throw new Error("Missing top-area full-day target");
+    const over = new DragEvent("dragover", { bubbles: true, cancelable: true, dataTransfer: transfer });
+    target.dispatchEvent(over);
+    if (!over.defaultPrevented) throw new Error("The top area must accept the full-day drag");
+    target.dispatchEvent(new DragEvent("drop", { bubbles: true, cancelable: true, dataTransfer: transfer }));
+    card.dispatchEvent(new DragEvent("dragend", { bubbles: true, dataTransfer: transfer }));
+    await settle();
+    const cards = [...canvasElement.querySelectorAll("[data-full-day-band] strong")].filter(node => node.textContent === storyCommercialInventory[0].title);
+    if (cards.length !== 1) throw new Error("The full-day drop must create one band above the slots");
+    if (canvasElement.querySelectorAll("section[data-day-part]").length !== 3) throw new Error("Normal planning slots must remain available");
+  },
+};
 export const FullDayExperienceOnBusyDay: Story = { ...MixedOrganicAndCommercialShortlist, args: { ...MixedOrganicAndCommercialShortlist.args, selectedDayNumber: 2, initialActivityInventory: { 2: storyCommercialInventory } } };
 export const ExtendedExperienceDayLevel: Story = { ...MixedOrganicAndCommercialShortlist, args: { ...MixedOrganicAndCommercialShortlist.args, initialActivityInventory: { 1: extendedCommercialInventory } } };
 export const EveningFreeContext: Story = {
@@ -801,6 +825,28 @@ export const SuggestionDraggingOverMorning: Story = {
 };
 
 export const SavedIdeaScheduling: Story = UnscheduledSavedIdea;
+export const PlannedActivityWholeCardDrag: Story = {
+  ...RichDayPlannerIntegrated,
+  play: async ({ canvasElement }) => {
+    const settle = () => new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
+    await settle();
+    const card = canvasElement.querySelector<HTMLElement>('[data-day-part="morning"] [data-itinerary-activity-id][draggable="true"]');
+    const body = card?.querySelector<HTMLElement>("[data-itinerary-drag-surface] strong");
+    const target = canvasElement.querySelector<HTMLElement>('section[data-day-part="evening"]');
+    if (!card || !body || !target) throw new Error("Missing card body or evening drop target");
+    const id = card.dataset.itineraryActivityId;
+    const transfer = new DataTransfer();
+    body.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true, pointerType: "mouse", button: 0 }));
+    card.dispatchEvent(new DragEvent("dragstart", { bubbles: true, cancelable: true, dataTransfer: transfer }));
+    await settle();
+    target.dispatchEvent(new DragEvent("dragover", { bubbles: true, cancelable: true, dataTransfer: transfer }));
+    target.dispatchEvent(new DragEvent("drop", { bubbles: true, cancelable: true, dataTransfer: transfer }));
+    card.dispatchEvent(new DragEvent("dragend", { bubbles: true, dataTransfer: transfer }));
+    await settle();
+    const moved = [...canvasElement.querySelectorAll<HTMLElement>("[data-itinerary-activity-id]")].filter(node => node.dataset.itineraryActivityId === id);
+    if (moved.length !== 1 || moved[0].closest("[data-day-part]")?.getAttribute("data-day-part") !== "evening") throw new Error("Dragging the body must move the canonical activity once");
+  },
+};
 export const AlreadyAddedSuggestionState: Story = RecommendationAlreadyScheduled;
 export const MobileAddFallback390: Story = { ...RecommendationDefault, globals: { viewport: { value: "morrovia390", isRotated: false } } };
 

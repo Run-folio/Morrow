@@ -1,4 +1,5 @@
 "use client";
+import {flightAirportAssumptionLabel} from '@/lib/easyt/flight-airport-assumptions';
 import {transferTimingLabel} from '@/lib/easyt/transfer-timing-label';
 
 import { useEffect, useMemo, useState } from "react";
@@ -258,8 +259,10 @@ function SelectedJourneyDetail({ trip, item, language, copy }: { trip: EasyTTrip
   const pendingKey = `transport-choice-${leg.id}`;
   const action = item.booking || item.bookingMismatch || !isFutureDate(item.date) ? null : transportAffiliateActionForLeg(trip, leg, new Date(), item.date);
   const detailNotes = [...new Set([noteForJourney(item, copy, language), detailNoteForJourney(item, copy, language)].filter((value): value is string => Boolean(value)))];
+  const airportAssumption = item.booking || item.bookingMismatch ? null : flightAirportAssumptionLabel({ ...leg, fromEndpoint: item.from, toEndpoint: item.to }, language);
   const actionDetail = action?.category === "car_rental" ? null : action?.href === affiliatePartners.omio.transportUrl ? copy.omioDetailsNotCarried : leg.mode === "train" ? copy.omioTrainDetailsCarried : copy.omioFlightDetailsCarried;
   return <section className={styles.selectedDetail} aria-live="polite" aria-label={copy.journeyDetails}>
+    {airportAssumption ? <p data-flight-airport-assumption>{airportAssumption}</p> : null}
     <div className={styles.connectionActions}>
       {action ? <TransportAffiliateAction action={action} trip={trip} leg={leg}
         label={action.category === "car_rental" ? copy.compareCarHire : leg.mode === "train" ? copy.findTrains : leg.mode === "flight" ? copy.findFlights : copy.findTransport} /> : null}

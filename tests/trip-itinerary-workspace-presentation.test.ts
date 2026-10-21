@@ -383,7 +383,7 @@ test("planner drag ownership survives native pointer timing and is cleared at wo
   assert.match(itinerary, /onDragStart=\{nativePlannerDrag \? \(idea, event\) => \{[\s\S]{0,220}beginPlannerDrag\(\{ kind: "suggestion", idea \}\);/);
   assert.match(itinerary, /onDragEnd=\{nativePlannerDrag \? clearPlannerDrag : undefined\}/);
   assert.match(itinerary, /onInteractionReset=\{clearPlannerDrag\}/);
-  assert.match(itinerary, /scheduleItineraryIdeaAtPositionWithUndo\(current, dragged\.idea, active\.id, dayPart, insertionIndex\)/);
+  assert.match(itinerary, /scheduleItineraryIdeaAtPositionWithUndo\(current, dragged\.idea, active\.id, dayPart!, insertionIndex\)/);
   assert.match(itinerary, /window\.matchMedia\("\(hover: hover\) and \(pointer: fine\)"\)/);
   assert.match(itinerary, /onActivityDragStart=\{nativePlannerDrag \? \(activity, event\) => \{/);
   assert.match(itinerary, /onActivityDragEnd=\{nativePlannerDrag \? clearPlannerDrag : undefined\}/);

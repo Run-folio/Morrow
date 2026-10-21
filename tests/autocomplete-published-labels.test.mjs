@@ -7,8 +7,8 @@ import {mergeEquivalentPlaceSuggestions,placeSuggestionLocationDetail} from '../
 const choices=name=>canonicalPlaceSuggestionsForQuery(name,[],30,true);
 const pair=name=>choices(name).filter(c=>c.name===name&&c.placeType==='city');
 for(const name of ['Beijing','Seoul','Paris','Manila']){
- test(`${name}: published catalog and reference choices have distinguishable rendered labels without changing selection`,async()=>{
-  const view=autocompleteRender(name);
+ test(`${name}: explicit planning-area catalog and reference choices retain distinguishable labels and raw selections`,async()=>{
+  const view=autocompleteRender(name,{searchIntent:'planning-area'});
   try{
    await view.settle();
    const rows=view.rows().map(row=>{row.choose();return {label:row.label,choice:view.selected.at(-1)};})
@@ -28,8 +28,8 @@ test('Bali API attribution echo collapses to one island while retaining base-sel
   assert.equal(rows.length,1);rows[0].choose();assert.equal(view.selected.at(-1).routability,'needs_base_selection');assert.equal(view.selected.at(-1).placeType,'island');
  }finally{view.close();}
 });
-test('Hong Kong catalog, reference city and explicit jurisdiction are preserved as different tuples',async()=>{
- const view=autocompleteRender('Hong Kong');
+test('Hong Kong explicit planning-area catalog, reference city and jurisdiction retain different tuples',async()=>{
+ const view=autocompleteRender('Hong Kong',{searchIntent:'planning-area'});
  try{await view.settle();const rows=view.rows().map(row=>{row.choose();return {label:row.label,choice:view.selected.at(-1)};});
   for(const id of ['hong-kong','reference:geonames:1819729','jurisdiction-hk'])assert(rows.some(row=>row.choice.canonicalPlaceId===id));
   assert.equal(rows.find(row=>row.choice.canonicalPlaceId==='hong-kong').choice.country,'China');

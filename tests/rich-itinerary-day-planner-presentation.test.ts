@@ -70,7 +70,8 @@ test("broad periods use semantic headings, canonical controls, and a keyboard-ac
 });
 
 test("native drag uses a canonical pointer source while preserving every canonical placement path", () => {
-  assert.match(component, /<EasyTButton[\s\S]{0,240}className=\{styles\.dragHandle\}[\s\S]{0,240}data-itinerary-drag-handle=\{activity\.id\}[\s\S]{0,240}draggable[\s\S]{0,240}onDragStart=\{onDragStart\}/);
+  assert.match(component, /<ItineraryDraggableCard[^>]*data-itinerary-activity-id=\{activity\.id\}[^>]*draggable=\{draggable && !pending && !activity\.booking && \(allowsDayPart \|\| fullDay\)\} onDragStart=\{onDragStart\}/);
+  assert.match(component, /data-itinerary-drag-handle=\{activity\.id\}/);
   assert.match(component, /tabIndex=\{-1\}[\s\S]{0,120}aria-hidden="true"/,
     "the pointer-only source must not masquerade as a keyboard action");
   assert.match(component, />\{copy\.dragActivity\}: \{activity\.title\}<\/EasyTButton>/);
@@ -81,7 +82,7 @@ test("native drag uses a canonical pointer source while preserving every canonic
   assert.match(workspace, /beginPlannerDrag\(\{ kind: "activity", activity, sourceDayId: active\.id, sourceStopId: active\.stopId \}\)/);
   assert.match(component, /onMoveToDay/);
   assert.match(workspace, /plannerDragRef\.current = dragged/);
-  assert.match(workspace, /const dropPlannerItem = async \(dayPart: ItineraryDayPart, insertionIndex: number\)/);
+  assert.match(workspace, /const dropPlannerItem = async \(dayPart: ItineraryDayPart \| null, insertionIndex: number\)/);
   assert.match(workspace, /const dragged = plannerDragRef\.current \?\? plannerDrag/);
   assert.match(workspace, /placeItineraryActivity\(current, active\.id, dragged\.activity\.id, dayPart, insertionIndex\)/);
   assert.match(workspace, /mutation\.mutateTrip/);
@@ -130,7 +131,7 @@ test("slot Add composer, first-class travel, and tonight context stay distinct",
   assert.match(component, /tonight\.state === "not-organised"/);
   assert.match(component, /copy\.noOvernight/);
   assert.doesNotMatch(component, /09:00|13:00|18:00|hourly|calendar grid/i);
-  const travelSection = component.slice(component.indexOf("composition.transfers.length"), component.indexOf("className={styles.periodGrid}"));
+  const travelSection = component.slice(component.indexOf("composition.transfers.length"), component.indexOf("{fullDayActivities.length"));
   const tonightSection = component.slice(component.indexOf("className={styles.tonight}"), component.indexOf("</section>", component.indexOf("className={styles.tonight}")));
   assert.doesNotMatch(travelSection, /onDrop/);
   assert.doesNotMatch(tonightSection, /onDrop/);
@@ -233,7 +234,7 @@ test("full-day activities render once as a day-level band with only verified per
 test("full-day period drops announce day-level placement and keep mobile and keyboard alternatives", () => {
   assert.match(component, /draggedFullDay/);
   assert.match(component, /copy\.fullDayDropIntent/);
-  assert.match(component, /className=\{styles\.fullDayDropIntent\} role="status"[\s\S]{0,120}\{copy\.fullDayDropIntent\}/);
+  assert.match(component, /data-full-day-drop-zone[\s\S]{0,1000}onFullDayDrop\(\);[\s\S]{0,80}\{copy\.fullDayDropIntent\}/);
   assert.doesNotMatch(component, /draggedFullDay \? <small className=\{styles\.fullDayDropIntent\}/);
   assert.match(component, /onMoveToDay/);
   assert.match(styles, /@media \(hover: none\), \(pointer: coarse\)[\s\S]*\.dragHandle \{[\s\S]*display: none/);

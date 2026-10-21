@@ -11,6 +11,7 @@ import { geographicallyReady, stopGeographicPlace } from "../lib/easyt/geographi
 import { REFERENCE_SNAPSHOT_ID } from "../lib/easyt/place-reference.ts";
 import type { EasyTTrip, JourneyEndpointPlace, DestinationIntent } from "../lib/easyt/trip.ts";
 import { canonicalRouteFixture } from "./fixtures/batch14-route-documents.ts";
+import { maintainedCoreDestinations } from "./fixtures/core-journey-destinations.ts";
 import { requireReadableTripDocument, prepareTripDocumentForWrite } from "../lib/easyt/trip-document.ts";
 import { acceptedGeographicPlace } from "../lib/easyt/geographic-binding.ts";
 import { prepareBuilderHandlerEdit } from "../lib/easyt/trip-builder-handler-contract.ts";
@@ -45,13 +46,13 @@ const places = {
 } as const;
 
 // Coordinate-required origin selection uses these maintained city identities.
-// Legacy destination identities in this journey remain separately authoritative.
+// Existing saved legacy identities remain separately authoritative.
 const origins = {
   Paris: { name: "Paris", country: "France", countryCode: "FR", canonicalPlaceId: "reference:geonames:2988507", coordinates: [2.3488, 48.85341] },
   London: { name: "London", country: "United Kingdom", countryCode: "GB", canonicalPlaceId: "reference:geonames:2643743", coordinates: [-0.12574, 51.50853] },
 } as const;
 
-function assertOrigin(place: JourneyEndpointPlace | null | undefined, expected: typeof origins[keyof typeof origins]) {
+function assertOrigin(place: JourneyEndpointPlace | null | undefined, expected: typeof origins[keyof typeof origins] | typeof maintainedCoreDestinations[number]) {
   assert.ok(place);
   assert.deepEqual({ name: place.name, country: place.country, canonicalPlaceId: place.canonicalPlaceId, coordinates: place.coordinates },
     { name: expected.name, country: expected.country, canonicalPlaceId: expected.canonicalPlaceId, coordinates: [...expected.coordinates] });
@@ -64,10 +65,16 @@ function assertOrigin(place: JourneyEndpointPlace | null | undefined, expected: 
 
 function assertDestinationGeography(trip: EasyTTrip) {
   assert.deepEqual(trip.stops.map(stop => ({ id: stop.canonicalPlaceId, country: stop.country, coordinates: [stop.longitude, stop.latitude] })),
-    [places.Madrid, places.Lisbon, places.Porto].map(place => ({ id: place.canonicalPlaceId, country: place.country, coordinates: [...place.coordinates] })));
-  for (const stop of trip.stops) assert.equal(geographicallyReady(stopGeographicPlace(stop)), true);
+    maintainedCoreDestinations.map(place => ({ id: place.canonicalPlaceId, country: place.country, coordinates: [...place.coordinates] })));
+  for (const [index, stop] of trip.stops.entries()) {
+    assert.equal(geographicallyReady(stopGeographicPlace(stop)), true);
+    assertOrigin(stopGeographicPlace(stop), maintainedCoreDestinations[index]!);
+  }
   assert.deepEqual(trip.brief.intent?.route?.destinations.map(intent => [intent.selectedPlace?.canonicalPlaceId, intent.selectedPlace?.country, intent.kind]),
-    [["madrid", "Spain", "overnight_place"], ["lisbon", "Portugal", "overnight_place"], ["porto", "Portugal", "overnight_place"]]);
+    maintainedCoreDestinations.map(place => [place.canonicalPlaceId, place.country, "overnight_place"]));
+  for (const [index, intent] of (trip.brief.intent?.route?.destinations ?? []).entries()) {
+    assertOrigin(intent.selectedPlace, maintainedCoreDestinations[index]!);
+  }
   assert.equal(trip.brief.intent?.route?.tripType, "return_to_start");
   assert.equal(trip.brief.intent?.route?.journeyEnd.mode, "same_as_start");
 }
@@ -521,7 +528,9 @@ test("Tier 1 guest journey keeps three canonical stops and edits through Build a
   await durableBuilderTripId(page);
   await page.waitForFunction(() => JSON.parse(localStorage.getItem("easyt-private:guest:homepage-input") ?? "null")?.receipt?.version === 1);
   const homepage = await page.evaluate(() => JSON.parse(localStorage.getItem("easyt-private:guest:homepage-input") ?? "null"));
-  assert.deepEqual(homepage.snapshot.entries.map((entry: { selection: { canonicalPlaceId: string } }) => entry.selection.canonicalPlaceId), ["madrid", "lisbon", "porto"]);
+  assert.deepEqual(homepage.snapshot.entries.map((entry: { selection: { canonicalPlaceId: string; name: string; country: string; coordinates: number[] } }) => ({
+    id: entry.selection.canonicalPlaceId, name: entry.selection.name, country: entry.selection.country, coordinates: entry.selection.coordinates,
+  })), maintainedCoreDestinations.map(place => ({ id: place.canonicalPlaceId, name: place.name, country: place.country, coordinates: [...place.coordinates] })));
   assert.equal(homepage.receipt.version, 1);
   assertOrigin(homepage.snapshot.origin.value, origins.Paris);
   const builder = page.locator("[data-builder-route-workspace]");
@@ -558,7 +567,7 @@ test("Tier 1 guest journey keeps three canonical stops and edits through Build a
   assert.ok(built, "Build leaves a recoverable guest trip on this device");
   assertOrigin(built.brief.intent?.route?.origin, origins.London);
   assertDestinationGeography(built);
-  assert.deepEqual(built.stops.map((stop) => stop.canonicalPlaceId), ["madrid", "lisbon", "porto"]);
+  assert.deepEqual(built.stops.map((stop) => stop.canonicalPlaceId), maintainedCoreDestinations.map(place => place.canonicalPlaceId));
   assert.deepEqual(built.stops.map((stop) => stop.nights), nights);
   assert.equal(built.stops.some((stop) => stop.name === "London"), false);
 
