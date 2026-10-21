@@ -73,7 +73,14 @@ function assertDestinationGeography(trip: EasyTTrip) {
   assert.deepEqual(trip.brief.intent?.route?.destinations.map(intent => [intent.selectedPlace?.canonicalPlaceId, intent.selectedPlace?.country, intent.kind]),
     maintainedCoreDestinations.map(place => [place.canonicalPlaceId, place.country, "overnight_place"]));
   for (const [index, intent] of (trip.brief.intent?.route?.destinations ?? []).entries()) {
-    assertOrigin(intent.selectedPlace, maintainedCoreDestinations[index]!);
+    // Captured intent retains source identity; accepted provider proof belongs
+    // to the authoritative stop, checked above, rather than this source view.
+    const expected = maintainedCoreDestinations[index]!;
+    assert.ok(intent.selectedPlace);
+    assert.deepEqual({ name: intent.selectedPlace.name, canonicalPlaceId: intent.selectedPlace.canonicalPlaceId,
+      country: intent.selectedPlace.country, coordinates: intent.selectedPlace.coordinates },
+      { name: expected.name, canonicalPlaceId: expected.canonicalPlaceId, country: expected.country, coordinates: [...expected.coordinates] });
+    assert.deepEqual(intent.stopIds, [trip.stops[index]!.id]);
   }
   assert.equal(trip.brief.intent?.route?.tripType, "return_to_start");
   assert.equal(trip.brief.intent?.route?.journeyEnd.mode, "same_as_start");
