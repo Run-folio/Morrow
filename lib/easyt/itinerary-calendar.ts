@@ -61,11 +61,10 @@ function weekStart(value: string) {
 }
 
 function activitySchedule(activity: ComposedItineraryActivity): ItineraryCalendarSchedule {
+  if (isFullDayActivity(activity.providerMetadata?.duration)) return { kind: "full-day" };
   if (activity.startsAt) return { kind: "time", startsAt: activity.startsAt };
   if (activity.dayPart) return { kind: "day-part", dayPart: activity.dayPart };
-  return isFullDayActivity(activity.providerMetadata?.duration)
-    ? { kind: "full-day" }
-    : { kind: "time-not-set" };
+  return { kind: "time-not-set" };
 }
 
 /** Night bands use occurrence IDs and the half-open stay interval, never labels. */

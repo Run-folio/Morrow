@@ -136,6 +136,11 @@ function nearbyAnchorFromRequest(request: NextRequest): NearbyBaseAnchor | undef
 }
 
 function responseNearbyCandidate(candidate: NearbyBaseSuggestion) {
+  const providerId = candidate.provenance.find(source => source.kind === "provider")?.id;
+  if (providerId?.startsWith("reference:") && (!validReferenceCandidate({
+    canonicalPlaceId: candidate.canonicalPlaceId, providerId, canonicalName: candidate.name,
+    parentCountries: [candidate.country], placeType: candidate.placeType, coordinates: candidate.coordinates,
+  }) || candidate.referenceSnapshotId !== referenceSnapshotId())) return null;
   return {
     canonicalPlaceId: candidate.canonicalPlaceId,
     name: candidate.name,
@@ -145,7 +150,8 @@ function responseNearbyCandidate(candidate: NearbyBaseSuggestion) {
     coordinates: candidate.coordinates,
     placeType: candidate.placeType,
     routability: candidate.routability,
-    providerId: candidate.provenance[0]?.id,
+    providerId,
+    referenceSnapshotId: candidate.referenceSnapshotId,
     providerSourceLabel: candidate.provenance[0]?.label,
     distanceKm: candidate.distanceKm,
     containment: candidate.containment,
@@ -163,8 +169,9 @@ export async function GET(request: NextRequest) {
     const anchor = nearbyAnchorFromRequest(request);
     if (!anchor) return NextResponse.json({ candidates: [], status: "invalid-anchor" }, { status: 400 });
     try {
-      const candidates = await searchOpenWorldNearbyBaseSuggestions(anchor, { limit: 5, maximumDistanceKm: 140 });
-      return NextResponse.json({ candidates: candidates.map(responseNearbyCandidate), status: candidates.length ? "ready" : "empty" });
+      const suggestions = await searchOpenWorldNearbyBaseSuggestions(anchor, { limit: 5, maximumDistanceKm: 140 });
+      const candidates = suggestions.map(responseNearbyCandidate).filter(candidate => candidate !== null);
+      return NextResponse.json({ candidates, status: candidates.length ? "ready" : "empty" });
     } catch {
       return NextResponse.json({ candidates: [], status: "unavailable" }, { status: 503 });
     }
@@ -181,22 +188,43 @@ export async function GET(request: NextRequest) {
   const nearby = geocodeNearbyContext(request.nextUrl.searchParams);
   if (!place || place.length > 140 || (country && country.length > 100)) return NextResponse.json({ result: null }, { status: 400 });
 
+  const importLookup = request.nextUrl.searchParams.get('consumer') === 'spreadsheet-import';
+  const refreshImport = importLookup && mode === 'resolve';
+  let sourceFailed = false;
+  const importFetch: typeof fetch | undefined = importLookup ? async (input, init) => {
+    let options = init;
+    if (refreshImport) {
+      options = { ...init, cache: 'no-store' };
+      delete options.next;
+    }
+    const response = await fetch(input, options);
+    if (!response.ok) throw new Error('Import place source unavailable');
+    const url = new URL(typeof input === 'string' ? input : input instanceof URL ? input.href : input.url);
+    if (url.origin === 'https://photon.komoot.io' && url.pathname === '/api/') {
+      const payload = await response.clone().json() as { features?: unknown } | null;
+      if (!payload || !Array.isArray(payload.features)) throw new Error('Import place source unavailable');
+    }
+    return response;
+  } : undefined;
   try {
     const availableCandidates = (await searchOpenWorldTravelCandidates(place, {
       travelIntent,
       ...(country ? { countryNames: [country], explicitCountryNames: [country] } : {}),
-    }, createOpenWorldPlaceProvider({searchMode:mode==='autocomplete'?'reference-only':'reference-with-photon'})))
+    }, createOpenWorldPlaceProvider({searchMode:mode==='autocomplete'?'reference-only':'reference-with-photon',
+      fetchImpl:importFetch, ...(refreshImport ? {cache:new Map()} : {}),
+      ...(importLookup ? {onSourceFailure:()=>{sourceFailed=true;}} : {})})))
       .filter(validReferenceCandidate)
       .filter((candidate) => !country || matchesCountry(candidate.parentCountries?.[0], country));
     // An island's administrative label or rectangle is not physical
     // containment. Normalize only independently checked settlement points.
     const candidates = (planningParent && requiresPhysicalIslandVerification(planningParent)
-      ? await normalizePhysicalIslandBaseCandidates(availableCandidates, planningParent, { signal: request.signal })
+      ? await normalizePhysicalIslandBaseCandidates(availableCandidates, planningParent, { signal: request.signal, fetchImpl: importFetch })
       : availableCandidates)
       .filter((candidate) => !planningParent || placeCandidateWithinPlanningParent(candidate, planningParent))
       .filter((candidate) => !nearbyAnchor || Boolean(placeCandidateSuitableAsNearbyBase(nearbyAnchor, candidate)))
       .sort((left, right) => (right.rankScore ?? 0) - (left.rankScore ?? 0) || distanceFrom(nearby, left) - distanceFrom(nearby, right));
 
+    if (importLookup && sourceFailed && !candidates.length) throw new Error('Import place source unavailable');
     if (request.nextUrl.searchParams.get("candidates") === "1") {
       return NextResponse.json({ candidates: candidates.slice(0, 8).map(responseCandidate) });
     }

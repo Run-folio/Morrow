@@ -6,13 +6,14 @@ import { buildTripCopilotProjection } from '../lib/easyt/trip-copilot.ts';
 import { structuredTripBriefFromSavedSelections } from '../lib/easyt/structured-trip-brief.ts';
 import { canonicalRouteFixture, legacyRouteFixture } from './fixtures/batch14-route-documents.ts';
 
-for (const [name,id,query] of [['Japan','japan','Japan'],['Germany','germany','Germany'],['Japan','japan','Japón'],['United States','united-states','USA']]) {
-  test(`whole-query ${query} prioritizes verified country before namesakes and display limit`,()=>{
+for (const [name,id,query,winner] of [['Japan','japan','Japan','foreign-town'],['Germany','germany','Germany','foreign-town'],['Japan','japan','Japón','japan'],['United States','united-states','USA','united-states']]) {
+  test(`whole-query ${query} preserves exact settlement intent and explicit country aliases before the display limit`,()=>{
     const town={name,canonicalPlaceId:'foreign-town',placeType:'town',routability:'direct_destination'};
     const country={name,canonicalPlaceId:id,placeType:'country',routability:'planning_area'};
     const candidates=[town,...Array.from({length:8},(_,i)=>({...town,name:`Other ${i}`})),country];
     const ranked=prioritizeRouteStopSuggestions(candidates,'route-stop',query);
-    assert.equal(ranked.slice(0,8)[0],country);
+    assert.equal(ranked.slice(0,8)[0]?.canonicalPlaceId,winner);
+    assert.deepEqual(prioritizeRouteStopSuggestions([country,town],'planning-area',query),[country,town]);
     assert.equal(candidates[0],town);
   });
 }

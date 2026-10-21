@@ -150,7 +150,7 @@ export function createMorroviaBasemapLifecycle(map: MorroviaBasemapMap, options:
     timeout = setTimeout(() => useFallback("The detailed basemap did not become ready in time."), timeoutMs);
   };
   const markDetailedReady = (event: string) => {
-    if (status === "fallback") return;
+    if (disposed || status === "fallback") return;
     const current = inspectMorroviaBasemap(map, status, reason);
     if (!current.detailedSourcePresent || !current.detailedSourceLoaded) return;
     clearLoadTimeout();
@@ -159,6 +159,7 @@ export function createMorroviaBasemapLifecycle(map: MorroviaBasemapMap, options:
     publish(event);
   };
   const handleStyleLoad: BasemapListener = () => {
+    if (disposed) return;
     if (status === "fallback") {
       options.onStyleReady?.();
       publish("fallback-style.load");
@@ -178,6 +179,7 @@ export function createMorroviaBasemapLifecycle(map: MorroviaBasemapMap, options:
   };
   const handleIdle: BasemapListener = () => markDetailedReady("detailed-idle.ready");
   const handleZoomEnd: BasemapListener = () => {
+    if (disposed) return;
     const current = snapshot();
     options.onTrace?.("zoomend", current);
     if (status === "fallback" || current.zoom < MORROVIA_DETAIL_ZOOM || !current.styleLoaded) return;

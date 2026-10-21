@@ -1,4 +1,5 @@
 import { findCatalogPlaceById, normalizeCatalogPhrase } from "./place-catalog.ts";
+import { REFERENCE_SNAPSHOT_ID, referenceGeographicAcceptanceMatches, referenceSeedRetired } from "./place-reference.ts";
 
 export type PlaceAutocompleteKeyResult = {
   activeIndex: number;
@@ -12,28 +13,34 @@ export type PlaceAutocompleteIdentity = {
   placeType?: string;
 };
 
-type SuggestionLocation = PlaceAutocompleteIdentity & {country?:string;region?:string;administrativeHierarchy?:readonly string[];coordinates?:readonly number[];providerId?:string;referenceSnapshotId?:string;providerSourceId?:string;featureCode?:string;provenance?:readonly {id:string}[]};
+type SuggestionLocation = PlaceAutocompleteIdentity & {country?:string;region?:string;administrativeHierarchy?:readonly string[];coordinates?:readonly number[];routability?:string;providerId?:string;referenceSnapshotId?:string;providerSourceId?:string;featureCode?:string;provenance?:readonly {id:string;kind?:string}[]};
 export function mergeEquivalentPlaceSuggestions<T extends SuggestionLocation>(suggestions:readonly T[]):T[]{
- // The pinned crosswalk has no reviewed mappings. Different canonical IDs
- // remain selectable even when their names and complete geographic facts match.
- // Restoring cross-source suppression requires a reviewed mapping plus exact
- // validation of BOTH published source tuples, never an ID/name/point heuristic.
+ // Different canonical IDs require reviewed equivalence evidence. Within one
+ // stable catalog ID, API attribution is not a second place. Keep the whole
+ // first tuple; never graft provider proof or coordinates onto another row.
  const sameArray=(left:readonly unknown[]|undefined,right:readonly unknown[]|undefined)=>
   left===undefined||right===undefined ? left===right
    : left.length===right.length&&left.every((value,index)=>value===right[index]);
  const validPoint=(point:readonly number[]|undefined)=>point===undefined
   ||point.length===2&&point.every(Number.isFinite)&&Math.abs(point[0]!)<=180&&Math.abs(point[1]!)<=90;
- const sameSuggestionTuple=(left:T,right:T)=>left.canonicalPlaceId===right.canonicalPlaceId
+ const attribution=(item:T)=>item.provenance?.map(source=>`${source.kind??'unknown'}:${source.id}`);
+ const providerClaim=(item:T)=>JSON.stringify(item.provenance?.filter(source=>source.kind==='provider').map(source=>source.id).sort()??[]);
+ const sameFacts=(left:T,right:T)=>left.canonicalPlaceId===right.canonicalPlaceId
   &&left.name===right.name&&left.country===right.country&&left.placeType===right.placeType
+  &&left.routability===right.routability
   &&left.region===right.region&&sameArray(left.administrativeHierarchy,right.administrativeHierarchy)
   &&validPoint(left.coordinates)&&validPoint(right.coordinates)&&sameArray(left.coordinates,right.coordinates)
   &&left.providerId===right.providerId&&left.referenceSnapshotId===right.referenceSnapshotId
-  &&left.providerSourceId===right.providerSourceId&&left.featureCode===right.featureCode
-  &&sameArray(left.provenance?.map(source=>source.id),right.provenance?.map(source=>source.id));
- return suggestions.filter((item,index,all)=>!item.canonicalPlaceId||!validPoint(item.coordinates)
-  ||all.findIndex(other=>sameSuggestionTuple(other,item))===index);
+  &&left.providerSourceId===right.providerSourceId&&left.featureCode===right.featureCode;
+ return suggestions.filter((item,index,all)=>{
+  if(!item.canonicalPlaceId||!validPoint(item.coordinates))return true;
+  const group=all.filter(other=>sameFacts(other,item));
+  const providerClaims=new Set(group.map(providerClaim).filter(claim=>claim!=='[]'));
+  const sameAttributionRequired=item.canonicalPlaceId.startsWith('reference:')||providerClaims.size>1;
+  return all.findIndex(other=>sameFacts(other,item)&&(!sameAttributionRequired||sameArray(attribution(other),attribution(item))))===index;
+ });
 }
-export function placeSuggestionLocationDetail(item:SuggestionLocation, suggestions:readonly SuggestionLocation[]){
+export function placeSuggestionLocationDetail(item:SuggestionLocation, suggestions:readonly SuggestionLocation[], language:'en'|'es'='en'){
  const nameKey=(name:string)=>normalizeCatalogPhrase(name.normalize('NFKD').replace(/['’]/g,''));
  const sameLabel=suggestions.filter(other=>nameKey(other.name)===nameKey(item.name)
    && other.country===item.country&&other.placeType===item.placeType);
@@ -43,9 +50,21 @@ export function placeSuggestionLocationDetail(item:SuggestionLocation, suggestio
   if(sameLabel.filter(other=>(other.administrativeHierarchy?.filter(Boolean)??(other.region?[other.region]:[])).slice(0,depth).join('|')===key).length===1)
    return [...hierarchy.slice(0,depth).reverse(),item.country].filter(Boolean).join(' · ');
  }
- // Keep distinct identities and the existing map link when verified geography
- // cannot disambiguate further. Source attribution belongs to the credit owner.
- return [...hierarchy.slice().reverse(),item.country].filter(Boolean).join(' · ');
+ // With no reviewed cross-source mapping, indistinguishable rows need the
+ // published source distinction. This attributes the record; it neither proves
+ // equivalence nor grants geographic acceptance to a selected tuple.
+ const entry=item.canonicalPlaceId?findCatalogPlaceById(item.canonicalPlaceId):undefined;
+ const samePoint=entry?.coordinates===undefined ? item.coordinates===undefined
+  : item.coordinates?.length===2&&entry.coordinates.every((value,index)=>value===item.coordinates![index]);
+ const sourceMatches=entry&&(!item.providerId||item.providerId===entry.referenceProviderId)
+  &&(!item.referenceSnapshotId||Boolean(entry.referenceProviderId)&&item.referenceSnapshotId===REFERENCE_SNAPSHOT_ID)
+  &&(!item.provenance||item.provenance.every(source=>source.id===entry.provenance.id));
+ const publishedSource=entry&&entry.canonicalName===item.name&&entry.placeType===item.placeType
+  &&entry.parentCountries.length===1&&entry.parentCountries[0]===item.country&&samePoint&&sourceMatches
+  &&(!item.routability||item.routability===entry.routability)&&!referenceSeedRetired(entry.canonicalPlaceId)
+  ?entry.provenance.label:undefined;
+ return [...hierarchy.slice().reverse(),item.country,sameLabel.length>1?publishedSource:undefined,
+  sameLabel.length>1?(language==='es'?'Ubicación por confirmar':'Location to confirm'):undefined].filter(Boolean).join(' · ');
 }
 
 export function placeSuggestionMapUrl(item:SuggestionLocation, suggestions:readonly SuggestionLocation[]) {
@@ -58,7 +77,7 @@ export function placeSuggestionMapUrl(item:SuggestionLocation, suggestions:reado
 
 /** Keep the provider's relevance order, but make an exact same-name route
  * endpoint the first choice when an administrative area shares its label. */
-export function prioritizeRouteStopSuggestions<T extends { name: string; canonicalPlaceId?: string; placeType?: string; routability?: string; matchedAirportCode?: string; matchedIcaoCode?: string }>(
+export function prioritizeRouteStopSuggestions<T extends SuggestionLocation & { routability?: string; matchedAirportCode?: string; matchedIcaoCode?: string }>(
   suggestions: readonly T[], intent: "route-stop" | "planning-area" | "anchor" | "unknown", query?: string,
 ): T[] {
   if (intent !== "route-stop") return [...suggestions];
@@ -72,9 +91,8 @@ export function prioritizeRouteStopSuggestions<T extends { name: string; canonic
       Number(right.routability === "direct_destination") - Number(left.routability === "direct_destination"));
     slots.forEach((index, offset) => { result[index] = ordered[offset]!; });
   }
-  // A whole-query catalog area is a planning intent even in the route-stop field.
-  // Require its catalog identity/type and exact name or curated alias; qualified
-  // locality queries deliberately keep the provider/endpoint relevance order.
+  // Whole-query catalog areas retain their planning intent, including qualified
+  // administrative queries and physical islands/attractions sharing a city name.
   const phrase = normalizeCatalogPhrase(query ?? "");
   const exactPlanningIntent = (item: T) => {
     if (!phrase || !item.canonicalPlaceId) return false;
@@ -88,8 +106,35 @@ export function prioritizeRouteStopSuggestions<T extends { name: string; canonic
   const code=(query??'').trim().toUpperCase();
   const exactAirport = (item:T)=>item.placeType==='transport_gateway'&&item.routability==='direct_destination'
     && ((/^[A-Z]{3}$/.test(code)&&item.matchedAirportCode===code)||(/^[A-Z]{4}$/.test(code)&&item.matchedIcaoCode===code));
-  return [...result.filter(exactAirport), ...result.filter(item => !exactAirport(item) && exactPlanningIntent(item)),
-    ...result.filter(item => !exactAirport(item) && !exactPlanningIntent(item))];
+  const maintainedReference = (item: T) => {
+    const entry = item.canonicalPlaceId ? findCatalogPlaceById(item.canonicalPlaceId) : undefined;
+    const providerId = item.provenance?.find(source => source.kind === "provider")?.id;
+    return Boolean(entry?.referenceProviderId && entry.referenceProviderId === providerId
+      && !referenceSeedRetired(entry.canonicalPlaceId) && entry.placeType === item.placeType && entry.routability === item.routability
+      && [entry.canonicalName, ...entry.aliases].some(name => normalizeCatalogPhrase(name) === normalizeCatalogPhrase(item.name))
+      && entry.parentCountries.some(country => normalizeCatalogPhrase(country) === normalizeCatalogPhrase(item.country ?? ""))
+      && item.coordinates?.length === 2 && entry.coordinates?.every((value, index) => value === item.coordinates![index])
+      && referenceGeographicAcceptanceMatches({ ...item, providerId }));
+  };
+  const exactSettlement = (item: T) => Boolean(phrase) && (item.placeType === "city" || item.placeType === "town")
+    && item.routability === "direct_destination" && normalizeCatalogPhrase(item.name) === phrase
+    && (item.canonicalPlaceId?.startsWith("reference:") ? maintainedReference(item)
+      : referenceGeographicAcceptanceMatches({ ...item, providerId: item.provenance?.find(source => source.kind === "provider")?.id }));
+  const settlements = result.filter(exactSettlement);
+  const exactAdministration = (item: T) => ["country", "region", "sub_region"].includes(item.placeType ?? "")
+    && exactPlanningIntent(item);
+  // Use the same provider provenance and tuple acceptance as the Homepage.
+  // Distinct accepted settlements keep their original order and remain explicit choices.
+  const references = settlements.filter(item => item.canonicalPlaceId?.startsWith("reference:"));
+  const preferredReference = references.length === 1 ? references[0] : undefined;
+  const prioritizeSettlements = Boolean(preferredReference) || result.some(exactAdministration);
+  const priority = (item: T) => {
+    if (exactAirport(item)) return 0;
+    if (exactPlanningIntent(item) && !(settlements.length && exactAdministration(item))) return 1;
+    if (prioritizeSettlements && exactSettlement(item)) return item === preferredReference ? 2 : 3;
+    return 4;
+  };
+  return result.sort((left, right) => priority(left) - priority(right));
 }
 
 /** Treat canonical identity as authoritative. Display text is only a fallback

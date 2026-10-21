@@ -69,7 +69,7 @@ function ImportPlaceClarification({ name, country, options, role = "stop", onSel
   const dataSources: Array<'geonames' | 'ourairports' | 'openstreetmap'> = [];
   if (visibleOptions.some(option => option.providerId?.startsWith('reference:geonames:'))) dataSources.push('geonames');
   if (visibleOptions.some(option => option.providerId?.startsWith('reference:ourairports:'))) dataSources.push('ourairports');
-  if (visibleOptions.some(option => /^(photon:|nominatim:|openstreetmap:)/.test(option.providerId ?? ''))) dataSources.push('openstreetmap');
+  if (visibleOptions.some(option => /^(photon:|nominatim:|openstreetmap:|island-snapshot:)/.test(option.providerId ?? '') || ('normalizationReason' in option && typeof option.normalizationReason === 'string' && option.normalizationReason.startsWith('Physical island verified: OSM ')))) dataSources.push('openstreetmap');
   return <>
     {visibleOptions.length ? <EasyTSelect label={searchResults ? `Search results for ${search.trim() || name}` : `Meaning of ${name}`} value="" onChange={event => {
       if (event.target.value === "") return;

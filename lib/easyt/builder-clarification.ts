@@ -2,6 +2,66 @@ import type { CuratedRouteKnowledge } from "./curated-route-knowledge.ts";
 import type { ResolvedPlaceMention } from "./place-intelligence.ts";
 import type { PublicRoutePlanDraft } from "./public-route.ts";
 import type { StructuredTripBrief } from "./structured-trip-brief.ts";
+import type { CanonicalEasyTTrip } from "./trip.ts";
+import { authoredContentKey } from "./trip-retained-authored-content.ts";
+import { geographicallyReady, stopGeographicPlace } from "./geographic-binding.ts";
+
+export function builderMentionHasVerifiedOccurrence(trip: CanonicalEasyTTrip, mention: ResolvedPlaceMention): boolean {
+  if (mention.status!=='resolved' || mention.routability!=='direct_destination') return false;
+  if (mention.role==='origin' || mention.role==='fixed_start') return geographicallyReady(trip.brief.intent.route.origin,'endpoint');
+  if (mention.role==='fixed_end') {
+    const end=trip.brief.intent.route.journeyEnd;
+    return end.mode==='explicit' && geographicallyReady(end.place,'endpoint');
+  }
+  const intent=trip.brief.intent.route.destinations.find(item=>item.id===mention.mentionId);
+  if (intent?.kind!=='overnight_place' || intent.resolution!=='resolved' || intent.stopIds.length!==1) return false;
+  const stop=trip.stops.find(item=>item.id===intent.stopIds[0]);
+  return Boolean(stop && geographicallyReady(stopGeographicPlace(stop)));
+}
+
+/** Only a previous provider session proves that an absent intent was retired.
+ * Newly authored transient planning mentions can legitimately precede intent. */
+export function retiredProviderClarificationIds<T extends {
+  mention: ResolvedPlaceMention;
+  scope?: {tripId:string;ownerId:string|null};
+}>(entries: readonly T[], trip: CanonicalEasyTTrip|undefined, tripId:string, ownerId:string|null): Set<string> {
+  if (!trip || trip.id!==tripId) return new Set();
+  return new Set(entries.filter(entry=>!['origin','fixed_start','fixed_end'].includes(entry.mention.role)
+    && (!entry.scope || entry.scope.tripId===tripId && entry.scope.ownerId===ownerId)
+    && trip.brief.structuredBrief?.placeMentions?.some(source=>source.mentionId===entry.mention.mentionId
+      && authoredContentKey(source)===authoredContentKey(entry.mention))
+    && !trip.brief.intent.route.destinations.some(intent=>intent.id===entry.mention.mentionId))
+    .map(entry=>entry.mention.mentionId));
+}
+
+/** Transient lookup results cannot outlive their current authored occurrence. */
+export function currentProviderClarifications<T extends {
+  mention: ResolvedPlaceMention;
+  scope?: {tripId:string;ownerId:string|null};
+}>(entries: readonly T[], context: {
+  trip?: CanonicalEasyTTrip;
+  tripId: string;
+  ownerId: string|null;
+  activeMentions: readonly ResolvedPlaceMention[];
+}): T[] {
+  return entries.filter(entry => {
+    if (entry.scope && (entry.scope.tripId !== context.tripId || entry.scope.ownerId !== context.ownerId)) return false;
+    const active=context.activeMentions.find(mention=>mention.mentionId===entry.mention.mentionId);
+    if (!active || authoredContentKey(active)!==authoredContentKey(entry.mention)) return false;
+    if (!context.trip) return true;
+    if (context.trip.id!==context.tripId || context.trip.brief.structuredBrief?.removedPlaceMentionIds?.includes(entry.mention.mentionId)) return false;
+    const source=context.trip.brief.structuredBrief?.placeMentions?.find(mention=>mention.mentionId===entry.mention.mentionId);
+    if (!source || authoredContentKey(source)!==authoredContentKey(entry.mention)) return false;
+    if (builderMentionHasVerifiedOccurrence(context.trip,source)) return false;
+    if (['origin','fixed_start','end','fixed_end'].includes(source.role)) return true;
+    const intent=context.trip.brief.intent.route.destinations.find(item=>item.id===source.mentionId);
+    if (!intent) return false;
+    // A failed optional enrichment cannot invalidate an independently verified
+    // settlement already accepted into this occurrence. Unresolved identity is
+    // deliberately excluded from this completion rule.
+    return true;
+  });
+}
 
 type ReviewedRouteStop = {
   id: string;

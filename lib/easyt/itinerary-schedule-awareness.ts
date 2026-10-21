@@ -1,5 +1,6 @@
 import type { ComposedItineraryActivity, ItineraryDayComposition } from "./itinerary-day-composition.ts";
 import type { ItineraryDayPart, ItineraryIdea } from "./trip.ts";
+import type { ItineraryPlanningPart } from "./itinerary-day-part-intent.ts";
 
 export type ActivityDuration = NonNullable<NonNullable<ItineraryIdea["providerMetadata"]>["duration"]>;
 
@@ -67,6 +68,50 @@ export function activityAllowsDayPart(
   return fit !== "extended" && fit !== "full-day";
 }
 
+export type FullDayActivityTiming =
+  | { kind: "untimed"; dayParts: []; continuesOvernight: false }
+  | { kind: "timed"; startsAt: string; endsAt: string; dayParts: ItineraryPlanningPart[]; continuesOvernight: boolean };
+
+const planningPartWindows: Array<{ part: ItineraryPlanningPart; start: number; end: number }> = [
+  { part: "morning", start: 6 * 60, end: 12 * 60 },
+  { part: "afternoon", start: 12 * 60, end: 17 * 60 },
+  { part: "evening", start: 17 * 60, end: 24 * 60 },
+];
+
+function clockLabel(minutes: number) {
+  const withinDay = minutes % (24 * 60);
+  return `${String(Math.floor(withinDay / 60)).padStart(2, "0")}:${String(withinDay % 60).padStart(2, "0")}`;
+}
+
+/**
+ * Projects a sourced full-day activity into only the periods its exact interval
+ * overlaps. Ranged duration evidence stays untimed, and overnight spill never
+ * fabricates a second-day item.
+ */
+export function fullDayActivityTiming(
+  duration: ActivityDuration | undefined,
+  startsAt: string | undefined,
+): FullDayActivityTiming | null {
+  if (!isFullDayActivity(duration)) return null;
+  const bounds = activityDurationBounds(duration);
+  const start = exactStartMinutes(startsAt);
+  if (!bounds?.exact || bounds.minimumMinutes === undefined || start === null) {
+    return { kind: "untimed", dayParts: [], continuesOvernight: false };
+  }
+  const end = start + bounds.minimumMinutes;
+  const dayEnd = 24 * 60;
+  const dayParts = planningPartWindows
+    .filter(({ start: periodStart, end: periodEnd }) => start < periodEnd && Math.min(end, dayEnd) > periodStart)
+    .map(({ part }) => part);
+  return {
+    kind: "timed",
+    startsAt: clockLabel(start),
+    endsAt: clockLabel(end),
+    dayParts,
+    continuesOvernight: end > dayEnd,
+  };
+}
+
 function exactStartMinutes(value: string | undefined) {
   const match = value?.match(/^([01]\d|2[0-3]):([0-5]\d)$/);
   return match ? Number(match[1]) * 60 + Number(match[2]) : null;
@@ -108,9 +153,15 @@ export function itineraryScheduleWarnings(composition: ItineraryDayComposition) 
     const hasOtherSubstantialPlan = activities.some((candidate) => {
       if (candidate.id === left.id) return false;
       const bounds = activityDurationBounds(candidate.providerMetadata?.duration);
-      return bounds?.minimumMinutes !== undefined && bounds.minimumMinutes >= 60;
+      if (bounds?.minimumMinutes === undefined || bounds.minimumMinutes < 60) return false;
+      const rightInterval = exactInterval(candidate);
+      if (leftInterval && rightInterval) {
+        return leftInterval.start < rightInterval.end && rightInterval.start < leftInterval.end;
+      }
+      return true;
     }) || composition.transfers.some((transfer) => (transfer.durationMinutes ?? 0) >= 120);
-    if (hasOtherSubstantialPlan) {
+    const exactOverlapAlreadyWarned = warnings.some((warning) => warning.kind === "exact-overlap" && warning.activityIds.includes(left.id));
+    if (hasOtherSubstantialPlan && !exactOverlapAlreadyWarned) {
       const duration = activityDurationLabel(left.providerMetadata?.duration) ?? "long";
       warnings.push({
         activityIds: [left.id],

@@ -38,8 +38,16 @@ for (const width of [1440, 390]) test(`exact workbook ${width}px keeps every occ
   const { page } = fixture;
   try {
     await page.setViewportSize({ width, height: 900 });
+    const baseOrigin = new URL(page.url()).origin;
+    let accountWrites = 0;
+    await page.context().route('**/*', (route: any) => {
+      const request = route.request(), url = new URL(request.url());
+      if (url.origin !== baseOrigin) return route.abort();
+      if (url.pathname.startsWith('/api/easyt/trips') && !['GET', 'HEAD'].includes(request.method())) { accountWrites++; return route.abort(); }
+      return route.continue();
+    });
     let baseAttempts = 0;
-    const tagbilaran = { name: 'Tagbilaran City', country: 'Philippines', canonicalPlaceId: 'fixture:tagbilaran', providerId: 'fixture:tagbilaran', coordinates: [123.85219, 9.65556], placeType: 'city', routability: 'direct_destination', region: 'Bohol', normalizationReason: 'Physical island verified: OSM relation:3625899; result=strict-inside/outside-holes' };
+    const tagbilaran = { name: 'Tagbilaran City', country: 'Philippines', canonicalPlaceId: 'reference:geonames:1684497', providerId: 'reference:geonames:1684497@699b595afdba9be6994e:PH:city:123.85219:9.65556', referenceSnapshotId: '699b595afdba9be6994e', coordinates: [123.85219, 9.65556], placeType: 'city', routability: 'direct_destination', region: 'Bohol', normalizationReason: 'Physical island verified: OSM relation:3625899; result=strict-inside/outside-holes' };
     const settlement = (name: string, coordinates: number[], region?: string) => ({ name, country: 'Philippines', coordinates, region, canonicalPlaceId: `fixture:${name}`, providerId: `fixture:${name}`, placeType: 'city', routability: 'direct_destination' });
     await page.route('**/api/journey-geocode?**', async (route: any) => {
       const url = new URL(route.request().url());
@@ -79,7 +87,14 @@ for (const width of [1440, 390]) test(`exact workbook ${width}px keeps every occ
     mkdirSync(evidenceDir, { recursive: true });
     await page.screenshot({ path: join(evidenceDir, `${width}-provider-unavailable.png`), fullPage: true });
     await bohol.getByRole('button', { name: 'Search bases', exact: true }).click();
-    await bohol.getByRole('combobox', { name: 'Search results for Tagbilaran', exact: true }).selectOption({ label: 'Tagbilaran City · city · Bohol · Philippines' });
+    const baseResults = bohol.getByRole('combobox', { name: 'Search results for Tagbilaran', exact: true });
+    await baseResults.waitFor();
+    await baseResults.focus();
+    await bohol.getByRole('listbox').waitFor({ state: 'hidden' });
+    await bohol.getByRole('link', { name: 'GeoNames', exact: true }).waitFor({ state: 'visible' });
+    await bohol.getByRole('link', { name: '© OpenStreetMap contributors', exact: true }).waitFor({ state: 'visible' });
+    await page.screenshot({ path: join(evidenceDir, `${width}-base-result-credit.png`), fullPage: true });
+    await baseResults.selectOption({ label: 'Tagbilaran City · city · Bohol · Philippines' });
     await page.getByText('IMPORT READY', { exact: true }).waitFor();
     await page.getByRole('region', { name: 'Trip details', exact: true }).getByText('Notes', { exact: true }).click();
     await page.getByText('Trip starts in Manila', { exact: true }).waitFor();
@@ -105,6 +120,7 @@ for (const width of [1440, 390]) test(`exact workbook ${width}px keeps every occ
     const reopened = await page.evaluate(() => Object.keys(localStorage).filter(key => key.startsWith('easyt:trip-recovery:v2:')).map(key => JSON.parse(localStorage.getItem(key)!)).map(record => record.trip));
     assert.deepEqual(reopened[0].stops.map((stop: any) => stop.id), trips[0].stops.map((stop: any) => stop.id));
     assert.equal(reopened[0].planItems.length, 21);
+    assert.equal(accountWrites, 0);
     assert.deepEqual(fixture.errors, []);
   } finally { await fixture.close(); }
 });

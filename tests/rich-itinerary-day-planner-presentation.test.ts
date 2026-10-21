@@ -19,8 +19,8 @@ test("empty day exposes the same three direct planning slots as a populated day"
 
 test("populated day shows all three periods and saved unslotted rows", () => {
   assert.match(component, /itineraryPlanningParts\.map\(renderPeriod\)/);
-  assert.match(component, /unslotted\.length \? \(/);
-  assert.ok(component.indexOf("className={styles.periodGrid}") < component.indexOf("unslotted.length ? ("));
+  assert.match(component, /untimedActivities\.length \? \(/);
+  assert.ok(component.indexOf("className={styles.periodGrid}") < component.indexOf("untimedActivities.length ? ("));
   assert.doesNotMatch(component, /className=\{styles\.secondaryPeriods\}/);
 });
 
@@ -63,7 +63,7 @@ test("broad periods use semantic headings, canonical controls, and a keyboard-ac
   assert.match(component, /onActivityDrop/);
   assert.match(component, /data-day-part=\{part\}/);
   assert.match(component, /data-drop-index/);
-  assert.match(component, /data-drop-zone={dragActive \? "ready" : undefined}/);
+  assert.match(component, /data-drop-zone={dragActive && !draggedFullDayActivity \? "ready" : undefined}/);
   assert.match(component, /onActivityDrop\?\.\(part, activities\.length\)/);
   assert.match(component, /event\.stopPropagation\(\)/);
   assert.match(component, /draggable=\{activity\.dayPartEditable && Boolean\(onActivityDragStart\)\}/);
@@ -90,8 +90,8 @@ test("native drag uses a canonical pointer source while preserving every canonic
 
 test("whole, empty, populated, and insertion drop targets retain native acceptance semantics", () => {
   assert.equal((component.match(/onDragEnter=\{\(event\) => \{ event\.preventDefault\(\);/g) ?? []).length, 4, "every native drop target cancels dragenter so a fast pointer drop is accepted");
-  assert.match(component, /data-day-part=\{part\}[\s\S]{0,420}onDragOver=\{\(event\) => \{ if \(onActivityDrop\) event\.preventDefault\(\); \}\}[\s\S]{0,320}onActivityDrop\?\.\(part, activities\.length\)/);
-  assert.match(component, /className=\{`\$\{styles\.freePeriod\}[\s\S]{0,400}onDragOver=\{\(event\) => \{ event\.stopPropagation\(\); if \(onActivityDrop\) event\.preventDefault\(\); \}\}[\s\S]{0,240}onActivityDrop\?\.\(part, 0\)/);
+  assert.match(component, /data-day-part=\{part\}[\s\S]{0,420}onDragOver=\{\(event\) => \{ if \(onActivityDrop && !draggedFullDayActivity\) event\.preventDefault\(\); \}\}[\s\S]{0,320}onActivityDrop\?\.\(part, activities\.length\)/);
+  assert.match(component, /className=\{`\$\{styles\.freePeriod\}[\s\S]{0,400}onDragOver=\{\(event\) => \{ event\.stopPropagation\(\); if \(onActivityDrop && !draggedFullDayActivity\) event\.preventDefault\(\); \}\}[\s\S]{0,240}onActivityDrop\?\.\(part, 0\)/);
   const populatedMarker = component.slice(component.indexOf("data-drop-index={activityIndex}"), component.indexOf("<ActivityRow", component.indexOf("data-drop-index={activityIndex}")));
   const appendMarker = component.slice(component.indexOf("data-drop-index={activities.length}"), component.indexOf("</div>", component.indexOf("data-drop-index={activities.length}")));
   assert.match(populatedMarker, /onActivityDrop\?\.\(part, activityIndex\)/);
@@ -165,12 +165,13 @@ test("the scheduled card is the primary selection target and editing chrome is s
   assert.match(styles, /\.activitySelect \{[\s\S]*min-height: 68px/);
 });
 
-test("the rendered planner follows Travel, chronological day parts, unslotted context, then Tonight", () => {
+test("the rendered planner follows Travel, full-day band, chronological day parts, unslotted context, then Tonight", () => {
   const travelIndex = component.indexOf("composition.transfers.length");
+  const fullDayIndex = component.indexOf("data-full-day-band");
   const periodsIndex = component.indexOf("className={styles.periodGrid}");
-  const unslottedIndex = component.indexOf("unslotted.length ? (");
+  const unslottedIndex = component.indexOf("untimedActivities.length ? (");
   const tonightIndex = component.indexOf("className={`${styles.tonight}");
-  assert.ok(travelIndex < periodsIndex && periodsIndex < unslottedIndex && unslottedIndex < tonightIndex);
+  assert.ok(travelIndex < fullDayIndex && fullDayIndex < periodsIndex && periodsIndex < unslottedIndex && unslottedIndex < tonightIndex);
   assert.match(composition, /itineraryDayParts = \["morning", "midday", "afternoon", "evening"\]/);
 });
 
@@ -186,6 +187,8 @@ test("Storybook uses the production component for composed planner and responsiv
     "MultipleActivitiesInAfternoon",
     "ExactTimeAndUntimedMix",
     "FullDayExperienceWarning",
+    "FullDayUntimed",
+    "DraggingFullDayOverPeriod",
     "RestaurantAndEveningActivity",
     "TransferAndActivities",
     "DraggingActivityOverMorning",
@@ -212,4 +215,56 @@ test("Storybook uses the production component for composed planner and responsiv
     "Desktop1440",
     "Desktop1680",
   ]) assert.match(stories, new RegExp(`export const ${story}`));
+});
+
+test("full-day activities render once as a day-level band with only verified period overlaps", () => {
+  assert.match(component, /const fullDayActivities = unslotted\.filter/);
+  assert.match(component, /data-full-day-band/);
+  assert.match(component, /fullDayActivityTiming/);
+  assert.match(component, /data-period-overlap/);
+  assert.match(component, /copy\.fullDayTimingToConfirm/);
+  assert.match(styles, /\.fullDayBand/);
+  assert.match(styles, /\.fullDaySpanTrack/);
+  assert.match(component, /isFullDayActivity\(activity\.providerMetadata\?\.duration\)/);
+  assert.ok(component.indexOf("data-full-day-band") < component.indexOf("className={styles.periodGrid}"), "the full-day card stays above the usable period slots");
+  assert.match(component, /onAddOpen\?\.\(part\)/, "period slots remain addable when a full-day activity is present");
+});
+
+test("full-day period drops announce day-level placement and keep mobile and keyboard alternatives", () => {
+  assert.match(component, /draggedFullDay/);
+  assert.match(component, /copy\.fullDayDropIntent/);
+  assert.match(component, /className=\{styles\.fullDayDropIntent\} role="status"[\s\S]{0,120}\{copy\.fullDayDropIntent\}/);
+  assert.doesNotMatch(component, /draggedFullDay \? <small className=\{styles\.fullDayDropIntent\}/);
+  assert.match(component, /onMoveToDay/);
+  assert.match(styles, /@media \(hover: none\), \(pointer: coarse\)[\s\S]*\.dragHandle \{[\s\S]*display: none/);
+  assert.match(workspace, /isFullDayActivity\(dragged\.idea\.providerMetadata\?\.duration\)/);
+  assert.match(workspace, /isFullDayActivity\(dragged\.activity\.providerMetadata\?\.duration\)/);
+});
+
+test("saved full-day ideas expose a dedicated day-level drag handle", () => {
+  assert.match(workspace, /const fullDay = isFullDayActivity\(idea\.providerMetadata\?\.duration\)/);
+  assert.match(workspace, /data-itinerary-drag-handle=\{idea\.id\}/);
+  assert.match(workspace, /fullDay \? copy\.fullDayDropIntent/);
+});
+
+test("ranked full-day suggestions remain draggable to the day-level band", () => {
+  assert.match(workspace, /const draggable = state\.state !== "planned" && \(allowsDayPart \|\| isFullDayActivity\(result\.idea\.providerMetadata\?\.duration\)\) && !pending && Boolean\(onDragStart\)/);
+  assert.match(workspace, /draggable=\{draggable\} onDragStart=\{draggable \? onDragStart : undefined\}/);
+});
+
+test("ranked rows for already-planned ideas cannot create a duplicate no-op drag source", () => {
+  assert.match(workspace, /state\.state !== "planned" && \(allowsDayPart \|\| isFullDayActivity\(result\.idea\.providerMetadata\?\.duration\)\)/);
+});
+
+test("dropping an already-planned full-day activity on a period reports the unchanged placement clearly", () => {
+  assert.match(workspace, /if \(dragged\.kind === "activity" && fullDay\) \{[\s\S]{0,240}setPlannerError\(copy\.fullDayPeriodDropError\);[\s\S]{0,80}return false;/);
+  assert.match(workspace, /fullDayPeriodDropError: "This full-day plan already sits above the time slots\. Use Move to another day or Calendar to change its day\."/);
+  assert.match(workspace, /fullDayPeriodDropError: "Este plan de día completo ya aparece sobre los horarios\. Usa Mover a otro día o Calendario para cambiarlo de día\."/);
+});
+
+test("planned full-day drag shows its valid route and periods are not marked as drop targets", () => {
+  assert.match(component, /draggedFullDayActivity/);
+  assert.match(component, /draggedFullDayActivity \? <p className=\{styles\.fullDayDropIntent\} role="status">\{copy\.fullDayActivityDropIntent\}/);
+  assert.match(component, /dragActive && !draggedFullDayActivity \? styles\.periodDropReady/);
+  assert.match(component, /if \(onActivityDrop && !draggedFullDayActivity\) event\.preventDefault\(\)/);
 });

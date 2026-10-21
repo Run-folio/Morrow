@@ -1,0 +1,1175 @@
+[
+  {
+    "phrase": "Manila",
+    "country": "Philippines",
+    "calls": 0,
+    "candidates": [
+      {
+        "providerId": "reference:geonames:1701668@699b595afdba9be6994e:PH:city:120.9822:14.6042",
+        "canonicalPlaceId": "reference:geonames:1701668",
+        "name": "Manila",
+        "type": "city",
+        "countries": [
+          "Philippines"
+        ],
+        "point": [
+          120.9822,
+          14.6042
+        ],
+        "rank": 1001,
+        "routability": "direct_destination",
+        "match": "exact"
+      }
+    ]
+  },
+  {
+    "phrase": "El Nido",
+    "country": "Philippines",
+    "calls": 0,
+    "candidates": [
+      {
+        "providerId": "reference:geonames:1713917@699b595afdba9be6994e:PH:city:119.39556:11.18583",
+        "canonicalPlaceId": "reference:geonames:1713917",
+        "name": "El Nido",
+        "type": "city",
+        "countries": [
+          "Philippines"
+        ],
+        "point": [
+          119.39556,
+          11.18583
+        ],
+        "rank": 1001,
+        "routability": "direct_destination",
+        "match": "exact"
+      },
+      {
+        "providerId": "reference:ourairports:31007@699b595afdba9be6994e:PH:transport_gateway:119.416087:11.202399",
+        "canonicalPlaceId": "reference:ourairports:31007",
+        "name": "El Nido Airport",
+        "type": "transport_gateway",
+        "countries": [
+          "Philippines"
+        ],
+        "point": [
+          119.416087,
+          11.202399
+        ],
+        "rank": 701,
+        "routability": "direct_destination",
+        "match": "partial"
+      }
+    ]
+  },
+  {
+    "phrase": "Cebu City",
+    "country": "Philippines",
+    "calls": 0,
+    "candidates": [
+      {
+        "providerId": "reference:geonames:1717512@699b595afdba9be6994e:PH:city:123.89071:10.31672",
+        "canonicalPlaceId": "reference:geonames:1717512",
+        "name": "Cebu City",
+        "type": "city",
+        "countries": [
+          "Philippines"
+        ],
+        "point": [
+          123.89071,
+          10.31672
+        ],
+        "rank": 1001,
+        "routability": "direct_destination",
+        "match": "exact"
+      }
+    ]
+  },
+  {
+    "phrase": "Siquijor",
+    "country": "Philippines",
+    "calls": 0,
+    "candidates": [
+      {
+        "providerId": "reference:geonames:1686066@699b595afdba9be6994e:PH:city:123.515:9.2142",
+        "canonicalPlaceId": "reference:geonames:1686066",
+        "name": "Siquijor",
+        "type": "city",
+        "countries": [
+          "Philippines"
+        ],
+        "point": [
+          123.515,
+          9.2142
+        ],
+        "rank": 1001,
+        "routability": "direct_destination",
+        "match": "exact"
+      }
+    ]
+  },
+  {
+    "phrase": "Tokyo",
+    "country": "Japan",
+    "calls": 0,
+    "candidates": [
+      {
+        "providerId": "reference:geonames:1850147@699b595afdba9be6994e:JP:city:139.69171:35.6895",
+        "canonicalPlaceId": "reference:geonames:1850147",
+        "name": "Tokyo",
+        "type": "city",
+        "countries": [
+          "Japan"
+        ],
+        "point": [
+          139.69171,
+          35.6895
+        ],
+        "rank": 1001,
+        "routability": "direct_destination",
+        "match": "exact"
+      },
+      {
+        "providerId": "reference:ourairports:5627@699b595afdba9be6994e:JP:transport_gateway:139.786958:35.549678",
+        "canonicalPlaceId": "reference:ourairports:5627",
+        "name": "Tokyo Haneda International Airport",
+        "type": "transport_gateway",
+        "countries": [
+          "Japan"
+        ],
+        "point": [
+          139.786958,
+          35.549678
+        ],
+        "rank": 701,
+        "routability": "direct_destination",
+        "match": "partial"
+      },
+      {
+        "providerId": "reference:geonames:1850692@699b595afdba9be6994e:JP:town:139.5383:35.72526",
+        "canonicalPlaceId": "reference:geonames:1850692",
+        "name": "Nishi-Tokyo-shi",
+        "type": "town",
+        "countries": [
+          "Japan"
+        ],
+        "point": [
+          139.5383,
+          35.72526
+        ],
+        "rank": 501,
+        "routability": "direct_destination",
+        "match": "partial"
+      }
+    ]
+  },
+  {
+    "phrase": "Chiang Mai",
+    "country": "Thailand",
+    "calls": 0,
+    "candidates": [
+      {
+        "providerId": "reference:geonames:1153671@699b595afdba9be6994e:TH:city:98.98468:18.79038",
+        "canonicalPlaceId": "reference:geonames:1153671",
+        "name": "Chiang Mai",
+        "type": "city",
+        "countries": [
+          "Thailand"
+        ],
+        "point": [
+          98.98468,
+          18.79038
+        ],
+        "rank": 1001,
+        "routability": "direct_destination",
+        "match": "exact"
+      },
+      {
+        "providerId": "reference:ourairports:26647@699b595afdba9be6994e:TH:transport_gateway:98.962600708:18.766799926799997",
+        "canonicalPlaceId": "reference:ourairports:26647",
+        "name": "Chiang Mai International Airport",
+        "type": "transport_gateway",
+        "countries": [
+          "Thailand"
+        ],
+        "point": [
+          98.962600708,
+          18.766799926799997
+        ],
+        "rank": 701,
+        "routability": "direct_destination",
+        "match": "partial"
+      }
+    ]
+  },
+  {
+    "phrase": "Valencia",
+    "country": "Spain",
+    "calls": 0,
+    "candidates": [
+      {
+        "providerId": "reference:geonames:2509954@699b595afdba9be6994e:ES:city:-0.37966:39.47391",
+        "canonicalPlaceId": "reference:geonames:2509954",
+        "name": "Valencia",
+        "type": "city",
+        "countries": [
+          "Spain"
+        ],
+        "point": [
+          -0.37966,
+          39.47391
+        ],
+        "rank": 1001,
+        "routability": "direct_destination",
+        "match": "exact"
+      },
+      {
+        "providerId": "reference:geonames:2509950@699b595afdba9be6994e:ES:city:-7.24435:39.41148",
+        "canonicalPlaceId": "reference:geonames:2509950",
+        "name": "Valencia de Alcántara",
+        "type": "city",
+        "countries": [
+          "Spain"
+        ],
+        "point": [
+          -7.24435,
+          39.41148
+        ],
+        "rank": 701,
+        "routability": "direct_destination",
+        "match": "partial"
+      },
+      {
+        "providerId": "reference:geonames:3106718@699b595afdba9be6994e:ES:city:-5.5172:42.29374",
+        "canonicalPlaceId": "reference:geonames:3106718",
+        "name": "Valencia de Don Juan",
+        "type": "city",
+        "countries": [
+          "Spain"
+        ],
+        "point": [
+          -5.5172,
+          42.29374
+        ],
+        "rank": 701,
+        "routability": "direct_destination",
+        "match": "partial"
+      },
+      {
+        "providerId": "reference:geonames:2509947@699b595afdba9be6994e:ES:city:-6.46667:38.26667",
+        "canonicalPlaceId": "reference:geonames:2509947",
+        "name": "Valencia del Ventoso",
+        "type": "city",
+        "countries": [
+          "Spain"
+        ],
+        "point": [
+          -6.46667,
+          38.26667
+        ],
+        "rank": 701,
+        "routability": "direct_destination",
+        "match": "partial"
+      },
+      {
+        "providerId": "reference:geonames:2509948@699b595afdba9be6994e:ES:city:-7.11965:38.24243",
+        "canonicalPlaceId": "reference:geonames:2509948",
+        "name": "Valencia del Mombuey",
+        "type": "city",
+        "countries": [
+          "Spain"
+        ],
+        "point": [
+          -7.11965,
+          38.24243
+        ],
+        "rank": 701,
+        "routability": "direct_destination",
+        "match": "partial"
+      },
+      {
+        "providerId": "reference:geonames:2509949@699b595afdba9be6994e:ES:city:-6.00403:38.40518",
+        "canonicalPlaceId": "reference:geonames:2509949",
+        "name": "Valencia de las Torres",
+        "type": "city",
+        "countries": [
+          "Spain"
+        ],
+        "point": [
+          -6.00403,
+          38.40518
+        ],
+        "rank": 701,
+        "routability": "direct_destination",
+        "match": "partial"
+      },
+      {
+        "providerId": "reference:ourairports:4042@699b595afdba9be6994e:ES:transport_gateway:-0.480961:39.489162",
+        "canonicalPlaceId": "reference:ourairports:4042",
+        "name": "Valencia Airport",
+        "type": "transport_gateway",
+        "countries": [
+          "Spain"
+        ],
+        "point": [
+          -0.480961,
+          39.489162
+        ],
+        "rank": 701,
+        "routability": "direct_destination",
+        "match": "partial"
+      }
+    ]
+  },
+  {
+    "phrase": "Granada",
+    "country": "Spain",
+    "calls": 0,
+    "candidates": [
+      {
+        "providerId": "reference:geonames:2517117@699b595afdba9be6994e:ES:city:-3.60667:37.18817",
+        "canonicalPlaceId": "reference:geonames:2517117",
+        "name": "Granada",
+        "type": "city",
+        "countries": [
+          "Spain"
+        ],
+        "point": [
+          -3.60667,
+          37.18817
+        ],
+        "rank": 1001,
+        "routability": "direct_destination",
+        "match": "exact"
+      },
+      {
+        "providerId": "reference:geonames:2521993@699b595afdba9be6994e:ES:city:-3.98963:37.00689",
+        "canonicalPlaceId": "reference:geonames:2521993",
+        "name": "Alhama de Granada",
+        "type": "city",
+        "countries": [
+          "Spain"
+        ],
+        "point": [
+          -3.98963,
+          37.00689
+        ],
+        "rank": 501,
+        "routability": "direct_destination",
+        "match": "partial"
+      },
+      {
+        "providerId": "reference:geonames:3119655@699b595afdba9be6994e:ES:town:1.71902:41.37816",
+        "canonicalPlaceId": "reference:geonames:3119655",
+        "name": "La Granada",
+        "type": "town",
+        "countries": [
+          "Spain"
+        ],
+        "point": [
+          1.71902,
+          41.37816
+        ],
+        "rank": 501,
+        "routability": "direct_destination",
+        "match": "partial"
+      },
+      {
+        "providerId": "reference:geonames:2521209@699b595afdba9be6994e:ES:city:-3.48095:37.21803",
+        "canonicalPlaceId": "reference:geonames:2521209",
+        "name": "Beas de Granada",
+        "type": "city",
+        "countries": [
+          "Spain"
+        ],
+        "point": [
+          -3.48095,
+          37.21803
+        ],
+        "rank": 501,
+        "routability": "direct_destination",
+        "match": "partial"
+      },
+      {
+        "providerId": "reference:ourairports:4011@699b595afdba9be6994e:ES:transport_gateway:-3.77736:37.188702",
+        "canonicalPlaceId": "reference:ourairports:4011",
+        "name": "F.G.L. Airport Granada-Jaén Airport",
+        "type": "transport_gateway",
+        "countries": [
+          "Spain"
+        ],
+        "point": [
+          -3.77736,
+          37.188702
+        ],
+        "rank": 501,
+        "routability": "direct_destination",
+        "match": "partial"
+      }
+    ]
+  },
+  {
+    "phrase": "Lyon",
+    "country": "France",
+    "calls": 0,
+    "candidates": [
+      {
+        "providerId": "reference:geonames:2996944@699b595afdba9be6994e:FR:city:4.84789:45.74906",
+        "canonicalPlaceId": "reference:geonames:2996944",
+        "name": "Lyon",
+        "type": "city",
+        "countries": [
+          "France"
+        ],
+        "point": [
+          4.84789,
+          45.74906
+        ],
+        "rank": 1001,
+        "routability": "direct_destination",
+        "match": "exact"
+      },
+      {
+        "providerId": "reference:geonames:2979239@699b595afdba9be6994e:FR:town:5.29223:45.01968",
+        "canonicalPlaceId": "reference:geonames:2979239",
+        "name": "Saint-Jean-en-Royans",
+        "type": "town",
+        "countries": [
+          "France"
+        ],
+        "point": [
+          5.29223,
+          45.01968
+        ],
+        "rank": 701,
+        "routability": "direct_destination",
+        "match": "partial"
+      },
+      {
+        "providerId": "reference:geonames:2996938@699b595afdba9be6994e:FR:town:1.47709:49.39892",
+        "canonicalPlaceId": "reference:geonames:2996938",
+        "name": "Lyons-la-Forêt",
+        "type": "town",
+        "countries": [
+          "France"
+        ],
+        "point": [
+          1.47709,
+          49.39892
+        ],
+        "rank": 701,
+        "routability": "direct_destination",
+        "match": "partial"
+      },
+      {
+        "providerId": "reference:ourairports:4137@699b595afdba9be6994e:FR:transport_gateway:5.090139:45.725996",
+        "canonicalPlaceId": "reference:ourairports:4137",
+        "name": "Lyon Saint-Exupéry Airport",
+        "type": "transport_gateway",
+        "countries": [
+          "France"
+        ],
+        "point": [
+          5.090139,
+          45.725996
+        ],
+        "rank": 701,
+        "routability": "direct_destination",
+        "match": "partial"
+      },
+      {
+        "providerId": "reference:geonames:2980586@699b595afdba9be6994e:FR:town:4.80259:45.73375",
+        "canonicalPlaceId": "reference:geonames:2980586",
+        "name": "Sainte-Foy-lès-Lyon",
+        "type": "town",
+        "countries": [
+          "France"
+        ],
+        "point": [
+          4.80259,
+          45.73375
+        ],
+        "rank": 501,
+        "routability": "direct_destination",
+        "match": "partial"
+      },
+      {
+        "providerId": "reference:geonames:3025668@699b595afdba9be6994e:FR:town:4.3889:45.63779",
+        "canonicalPlaceId": "reference:geonames:3025668",
+        "name": "Chazelles-sur-Lyon",
+        "type": "town",
+        "countries": [
+          "France"
+        ],
+        "point": [
+          4.3889,
+          45.63779
+        ],
+        "rank": 501,
+        "routability": "direct_destination",
+        "match": "partial"
+      },
+      {
+        "providerId": "reference:geonames:3024435@699b595afdba9be6994e:FR:town:3.31017:46.10826",
+        "canonicalPlaceId": "reference:geonames:3024435",
+        "name": "Cognat-Lyonne",
+        "type": "town",
+        "countries": [
+          "France"
+        ],
+        "point": [
+          3.31017,
+          46.10826
+        ],
+        "rank": 501,
+        "routability": "direct_destination",
+        "match": "partial"
+      }
+    ]
+  },
+  {
+    "phrase": "Santorini",
+    "country": "Greece",
+    "calls": 0,
+    "candidates": [
+      {
+        "providerId": "island-snapshot:relation:453964",
+        "canonicalPlaceId": null,
+        "name": "Santorini",
+        "type": "island",
+        "countries": [
+          "Greece"
+        ],
+        "point": [
+          25.4566637,
+          36.4071112
+        ],
+        "rank": 1200,
+        "routability": "needs_base_selection",
+        "match": "exact"
+      },
+      {
+        "providerId": "reference:ourairports:4286@699b595afdba9be6994e:GR:transport_gateway:25.478638:36.400045",
+        "canonicalPlaceId": "reference:ourairports:4286",
+        "name": "Santorini International Airport",
+        "type": "transport_gateway",
+        "countries": [
+          "Greece"
+        ],
+        "point": [
+          25.478638,
+          36.400045
+        ],
+        "rank": 901,
+        "routability": "direct_destination",
+        "match": "partial"
+      }
+    ]
+  },
+  {
+    "phrase": "Crete",
+    "country": "Greece",
+    "calls": 0,
+    "candidates": [
+      {
+        "providerId": "island-snapshot:relation:453129",
+        "canonicalPlaceId": null,
+        "name": "Crete",
+        "type": "island",
+        "countries": [
+          "Greece"
+        ],
+        "point": [
+          24.4633423,
+          35.3084952
+        ],
+        "rank": 1200,
+        "routability": "needs_base_selection",
+        "match": "exact"
+      }
+    ]
+  },
+  {
+    "phrase": "Tenerife",
+    "country": "Spain",
+    "calls": 0,
+    "candidates": [
+      {
+        "providerId": "island-snapshot:relation:2108882",
+        "canonicalPlaceId": null,
+        "name": "Tenerife",
+        "type": "island",
+        "countries": [
+          "Spain"
+        ],
+        "point": [
+          -16.6214471,
+          28.2935785
+        ],
+        "rank": 1200,
+        "routability": "needs_base_selection",
+        "match": "exact"
+      },
+      {
+        "providerId": "reference:ourairports:3084@699b595afdba9be6994e:ES:transport_gateway:-16.341707:28.482752",
+        "canonicalPlaceId": "reference:ourairports:3084",
+        "name": "Tenerife Norte-Ciudad de La Laguna Airport",
+        "type": "transport_gateway",
+        "countries": [
+          "Spain"
+        ],
+        "point": [
+          -16.341707,
+          28.482752
+        ],
+        "rank": 901,
+        "routability": "direct_destination",
+        "match": "partial"
+      },
+      {
+        "providerId": "reference:ourairports:3083@699b595afdba9be6994e:ES:transport_gateway:-16.5725:28.0445",
+        "canonicalPlaceId": "reference:ourairports:3083",
+        "name": "Tenerife Sur Airport",
+        "type": "transport_gateway",
+        "countries": [
+          "Spain"
+        ],
+        "point": [
+          -16.5725,
+          28.0445
+        ],
+        "rank": 901,
+        "routability": "direct_destination",
+        "match": "partial"
+      },
+      {
+        "providerId": "reference:geonames:2521582@699b595afdba9be6994e:ES:city:-16.68102:28.09962",
+        "canonicalPlaceId": "reference:geonames:2521582",
+        "name": "Arona",
+        "type": "city",
+        "countries": [
+          "Spain"
+        ],
+        "point": [
+          -16.68102,
+          28.09962
+        ],
+        "rank": 701,
+        "routability": "direct_destination",
+        "match": "partial"
+      },
+      {
+        "providerId": "reference:geonames:2511174@699b595afdba9be6994e:ES:city:-16.25462:28.46824",
+        "canonicalPlaceId": "reference:geonames:2511174",
+        "name": "Santa Cruz de Tenerife",
+        "type": "city",
+        "countries": [
+          "Spain"
+        ],
+        "point": [
+          -16.25462,
+          28.46824
+        ],
+        "rank": 701,
+        "routability": "direct_destination",
+        "match": "partial"
+      }
+    ]
+  },
+  {
+    "phrase": "Gran Canaria",
+    "country": "Spain",
+    "calls": 0,
+    "candidates": [
+      {
+        "providerId": "island-snapshot:relation:2214683",
+        "canonicalPlaceId": null,
+        "name": "Gran Canaria",
+        "type": "island",
+        "countries": [
+          "Spain"
+        ],
+        "point": [
+          -15.6062305,
+          27.9580004
+        ],
+        "rank": 1200,
+        "routability": "needs_base_selection",
+        "match": "exact"
+      },
+      {
+        "providerId": "reference:ourairports:3081@699b595afdba9be6994e:ES:transport_gateway:-15.3866:27.9319",
+        "canonicalPlaceId": "reference:ourairports:3081",
+        "name": "Gran Canaria Airport",
+        "type": "transport_gateway",
+        "countries": [
+          "Spain"
+        ],
+        "point": [
+          -15.3866,
+          27.9319
+        ],
+        "rank": 901,
+        "routability": "direct_destination",
+        "match": "partial"
+      }
+    ]
+  },
+  {
+    "phrase": "Canary Islands",
+    "country": "Spain",
+    "calls": 0,
+    "candidates": [
+      {
+        "providerId": "island-snapshot:relation:5392189",
+        "canonicalPlaceId": null,
+        "name": "Canary Islands",
+        "type": "archipelago",
+        "countries": [
+          "Spain"
+        ],
+        "point": [
+          -16.6214471,
+          28.2935785
+        ],
+        "rank": 1200,
+        "routability": "needs_base_selection",
+        "match": "exact"
+      }
+    ]
+  },
+  {
+    "phrase": "Bohol",
+    "country": "Philippines",
+    "calls": 1,
+    "candidates": [
+      {
+        "providerId": "reference:ourairports:336116@699b595afdba9be6994e:PH:transport_gateway:123.770143:9.573045",
+        "canonicalPlaceId": "reference:ourairports:336116",
+        "name": "Bohol-Panglao International Airport",
+        "type": "transport_gateway",
+        "countries": [
+          "Philippines"
+        ],
+        "point": [
+          123.770143,
+          9.573045
+        ],
+        "rank": 901,
+        "routability": "direct_destination",
+        "match": "partial"
+      },
+      {
+        "providerId": "reference:geonames:1697782@699b595afdba9be6994e:PH:town:125.8363:7.5233",
+        "canonicalPlaceId": "reference:geonames:1697782",
+        "name": "New Bohol",
+        "type": "town",
+        "countries": [
+          "Philippines"
+        ],
+        "point": [
+          125.8363,
+          7.5233
+        ],
+        "rank": 701,
+        "routability": "direct_destination",
+        "match": "partial"
+      },
+      {
+        "providerId": "photon:R:1550487",
+        "canonicalPlaceId": null,
+        "name": "Bohol",
+        "type": "region",
+        "countries": [
+          "Philippines"
+        ],
+        "point": [
+          124.1615579,
+          9.833333
+        ],
+        "rank": 388,
+        "routability": "planning_area",
+        "match": "exact"
+      },
+      {
+        "providerId": "photon:N:7070779312",
+        "canonicalPlaceId": null,
+        "name": "Bohol",
+        "type": "town",
+        "countries": [
+          "Philippines"
+        ],
+        "point": [
+          119.8922002,
+          10.4819463
+        ],
+        "rank": 346,
+        "routability": "direct_destination",
+        "match": "exact"
+      },
+      {
+        "providerId": "photon:R:13149256",
+        "canonicalPlaceId": null,
+        "name": "Bohol-Panglao International Airport",
+        "type": "transport_gateway",
+        "countries": [
+          "Philippines"
+        ],
+        "point": [
+          123.7733382,
+          9.577673
+        ],
+        "rank": 313,
+        "routability": "direct_destination",
+        "match": "alias"
+      },
+      {
+        "providerId": "photon:R:3625899",
+        "canonicalPlaceId": null,
+        "name": "Bohol",
+        "type": "island",
+        "countries": [
+          "Philippines"
+        ],
+        "point": [
+          124.2064612,
+          9.8807822
+        ],
+        "rank": 297,
+        "routability": "needs_base_selection",
+        "match": "exact"
+      },
+      {
+        "providerId": "photon:N:7660323185",
+        "canonicalPlaceId": null,
+        "name": "Bohol - Lahoy",
+        "type": "landmark",
+        "countries": [
+          "Philippines"
+        ],
+        "point": [
+          124.435886,
+          9.7203663
+        ],
+        "rank": 267,
+        "routability": "anchor_or_poi",
+        "match": "alias"
+      }
+    ]
+  },
+  {
+    "phrase": "Bohol, Philippines",
+    "country": "Philippines",
+    "calls": 1,
+    "candidates": [
+      {
+        "providerId": "photon:N:7070779312",
+        "canonicalPlaceId": null,
+        "name": "Bohol",
+        "type": "town",
+        "countries": [
+          "Philippines"
+        ],
+        "point": [
+          119.8922002,
+          10.4819463
+        ],
+        "rank": 321,
+        "routability": "direct_destination",
+        "match": "alias"
+      },
+      {
+        "providerId": "photon:R:1550487",
+        "canonicalPlaceId": null,
+        "name": "Bohol",
+        "type": "region",
+        "countries": [
+          "Philippines"
+        ],
+        "point": [
+          124.1615579,
+          9.833333
+        ],
+        "rank": 273,
+        "routability": "planning_area",
+        "match": "alias"
+      },
+      {
+        "providerId": "photon:R:3625899",
+        "canonicalPlaceId": null,
+        "name": "Bohol",
+        "type": "island",
+        "countries": [
+          "Philippines"
+        ],
+        "point": [
+          124.2064612,
+          9.8807822
+        ],
+        "rank": 272,
+        "routability": "needs_base_selection",
+        "match": "alias"
+      }
+    ]
+  },
+  {
+    "phrase": "Bohol province",
+    "country": "Philippines",
+    "calls": 1,
+    "candidates": [
+      {
+        "providerId": "photon:R:1550487",
+        "canonicalPlaceId": null,
+        "name": "Bohol",
+        "type": "region",
+        "countries": [
+          "Philippines"
+        ],
+        "point": [
+          124.1615579,
+          9.833333
+        ],
+        "rank": 588,
+        "routability": "planning_area",
+        "match": "exact"
+      },
+      {
+        "providerId": "photon:N:7070779312",
+        "canonicalPlaceId": null,
+        "name": "Bohol",
+        "type": "town",
+        "countries": [
+          "Philippines"
+        ],
+        "point": [
+          119.8922002,
+          10.4819463
+        ],
+        "rank": 346,
+        "routability": "direct_destination",
+        "match": "exact"
+      },
+      {
+        "providerId": "photon:R:13149256",
+        "canonicalPlaceId": null,
+        "name": "Bohol-Panglao International Airport",
+        "type": "transport_gateway",
+        "countries": [
+          "Philippines"
+        ],
+        "point": [
+          123.7733382,
+          9.577673
+        ],
+        "rank": 313,
+        "routability": "direct_destination",
+        "match": "alias"
+      },
+      {
+        "providerId": "photon:R:3625899",
+        "canonicalPlaceId": null,
+        "name": "Bohol",
+        "type": "island",
+        "countries": [
+          "Philippines"
+        ],
+        "point": [
+          124.2064612,
+          9.8807822
+        ],
+        "rank": 297,
+        "routability": "needs_base_selection",
+        "match": "exact"
+      },
+      {
+        "providerId": "photon:N:7660323185",
+        "canonicalPlaceId": null,
+        "name": "Bohol - Lahoy",
+        "type": "landmark",
+        "countries": [
+          "Philippines"
+        ],
+        "point": [
+          124.435886,
+          9.7203663
+        ],
+        "rank": 267,
+        "routability": "anchor_or_poi",
+        "match": "alias"
+      }
+    ]
+  },
+  {
+    "phrase": "Bohol island",
+    "country": "Philippines",
+    "calls": 1,
+    "candidates": [
+      {
+        "providerId": "photon:N:7070779312",
+        "canonicalPlaceId": null,
+        "name": "Bohol",
+        "type": "town",
+        "countries": [
+          "Philippines"
+        ],
+        "point": [
+          119.8922002,
+          10.4819463
+        ],
+        "rank": 321,
+        "routability": "direct_destination",
+        "match": "alias"
+      },
+      {
+        "providerId": "photon:R:1550487",
+        "canonicalPlaceId": null,
+        "name": "Bohol",
+        "type": "region",
+        "countries": [
+          "Philippines"
+        ],
+        "point": [
+          124.1615579,
+          9.833333
+        ],
+        "rank": 273,
+        "routability": "planning_area",
+        "match": "alias"
+      },
+      {
+        "providerId": "photon:R:3625899",
+        "canonicalPlaceId": null,
+        "name": "Bohol",
+        "type": "island",
+        "countries": [
+          "Philippines"
+        ],
+        "point": [
+          124.2064612,
+          9.8807822
+        ],
+        "rank": 272,
+        "routability": "needs_base_selection",
+        "match": "alias"
+      }
+    ]
+  },
+  {
+    "phrase": "Bohol",
+    "country": null,
+    "calls": 1,
+    "candidates": [
+      {
+        "providerId": "reference:ourairports:336116@699b595afdba9be6994e:PH:transport_gateway:123.770143:9.573045",
+        "canonicalPlaceId": "reference:ourairports:336116",
+        "name": "Bohol-Panglao International Airport",
+        "type": "transport_gateway",
+        "countries": [
+          "Philippines"
+        ],
+        "point": [
+          123.770143,
+          9.573045
+        ],
+        "rank": 700,
+        "routability": "direct_destination",
+        "match": "partial"
+      },
+      {
+        "providerId": "reference:geonames:1697782@699b595afdba9be6994e:PH:town:125.8363:7.5233",
+        "canonicalPlaceId": "reference:geonames:1697782",
+        "name": "New Bohol",
+        "type": "town",
+        "countries": [
+          "Philippines"
+        ],
+        "point": [
+          125.8363,
+          7.5233
+        ],
+        "rank": 500,
+        "routability": "direct_destination",
+        "match": "partial"
+      },
+      {
+        "providerId": "photon:R:1550487",
+        "canonicalPlaceId": null,
+        "name": "Bohol",
+        "type": "region",
+        "countries": [
+          "Philippines"
+        ],
+        "point": [
+          124.1615579,
+          9.833333
+        ],
+        "rank": 168,
+        "routability": "planning_area",
+        "match": "exact"
+      },
+      {
+        "providerId": "photon:N:7070779312",
+        "canonicalPlaceId": null,
+        "name": "Bohol",
+        "type": "town",
+        "countries": [
+          "Philippines"
+        ],
+        "point": [
+          119.8922002,
+          10.4819463
+        ],
+        "rank": 126,
+        "routability": "direct_destination",
+        "match": "exact"
+      },
+      {
+        "providerId": "photon:R:13149256",
+        "canonicalPlaceId": null,
+        "name": "Bohol-Panglao International Airport",
+        "type": "transport_gateway",
+        "countries": [
+          "Philippines"
+        ],
+        "point": [
+          123.7733382,
+          9.577673
+        ],
+        "rank": 93,
+        "routability": "direct_destination",
+        "match": "alias"
+      },
+      {
+        "providerId": "photon:R:3625899",
+        "canonicalPlaceId": null,
+        "name": "Bohol",
+        "type": "island",
+        "countries": [
+          "Philippines"
+        ],
+        "point": [
+          124.2064612,
+          9.8807822
+        ],
+        "rank": 77,
+        "routability": "needs_base_selection",
+        "match": "exact"
+      },
+      {
+        "providerId": "photon:N:7660323185",
+        "canonicalPlaceId": null,
+        "name": "Bohol - Lahoy",
+        "type": "landmark",
+        "countries": [
+          "Philippines"
+        ],
+        "point": [
+          124.435886,
+          9.7203663
+        ],
+        "rank": 47,
+        "routability": "anchor_or_poi",
+        "match": "alias"
+      }
+    ]
+  }
+]

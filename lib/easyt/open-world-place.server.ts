@@ -265,6 +265,8 @@ export function createOpenWorldPlaceProvider(options: {
   cacheTtlMs?: number;
   maxCacheEntries?: number;
   sourceTimeoutMs?: number;
+  /** Observation only; default callers retain the existing search contract. */
+  onSourceFailure?: () => void;
 } = {}): PlaceIntelligenceProvider {
   const sources = options.sources ?? defaultSources(options.fetchImpl, Math.max(1,Math.min(options.sourceTimeoutMs??3500,3500)));
   const cache = options.cache ?? sharedCandidateCache;
@@ -318,6 +320,9 @@ export function createOpenWorldPlaceProvider(options: {
           (error) => { clearTimeout(timer); reject(error); },
         );
       })));
+      if (settled.some(result => result.status === 'rejected')) {
+        try { options.onSourceFailure?.(); } catch { /* An observer cannot change search facts. */ }
+      }
       const deduplicated = settled.flatMap((result) => result.status === "fulfilled" ? result.value : [])
         .filter((candidate, index, all) => all.findIndex((other) => other.providerId === candidate.providerId) === index)
         .sort(compareCanonicalCandidateEvidence)

@@ -3,7 +3,8 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { composeItineraryDay, fallbackItineraryDayPart } from "../lib/easyt/itinerary-day-composition.ts";
-import { placeItineraryActivity, preferredItineraryDayPart, scheduleItineraryIdeaAtPosition } from "../lib/easyt/itinerary-activity-placement.ts";
+import { moveItineraryActivityAcrossDays, placeItineraryActivity, preferredItineraryDayPart, scheduleItineraryIdeaAtPosition } from "../lib/easyt/itinerary-activity-placement.ts";
+import { composeItineraryDayForPlanning } from "../lib/easyt/itinerary-day-part-intent.ts";
 import {
   assignItineraryIdeaDayPart,
   itineraryIdeaForPlace,
@@ -403,7 +404,7 @@ test("automatic Add to Day chooses a deterministic suitable available period wit
   assert.equal(composeItineraryDay(scheduled, "kyoto-4")?.planned.morning[0]?.id, attraction.id);
 });
 
-test("a full-day provider activity cannot be dragged into one time-of-day slot", () => {
+test("dropping a full-day provider activity on a period keeps its single canonical day-level item", () => {
   const source = tripFixture();
   const idea = {
     ...itineraryIdeaForPlace({ stopId: "kyoto", place: place("regional-tour", "Eleven-hour regional tour"), reasons: ["destination-significance"] }),
@@ -419,8 +420,62 @@ test("a full-day provider activity cannot be dragged into one time-of-day slot",
   assert.equal(directlyAssigned, scheduled, "the direct mutation helper rejects a forced single-part write");
   const placed = placeItineraryActivity(scheduled, "kyoto-4", idea.id, "afternoon", 0);
   assert.equal(placed.changed, false);
-  assert.match(placed.reason ?? "", /needs most of the day/);
+  assert.match(placed.reason ?? "", /day level/i);
   assert.equal(legacyItineraryIdeas(scheduled.brief.itineraryIdeas)?.find((candidate) => candidate.id === idea.id)?.dayPart, null);
+  assert.equal(composeItineraryDayForPlanning(placed.trip, "kyoto-4")?.unslotted.filter((activity) => activity.id === idea.id).length, 1);
+  assert.equal(Object.values(composeItineraryDayForPlanning(placed.trip, "kyoto-4")!.planned).flat().some((activity) => activity.id === idea.id), false);
+});
+
+test("full-day activity with an old period assignment is projected as a single full-day row", () => {
+  const source = tripFixture();
+  const idea = {
+    ...itineraryIdeaForPlace({ stopId: "kyoto", place: place("timed-tour", "Timed all-day tour"), reasons: ["destination-significance"] }),
+    providerMetadata: { duration: { fixedMinutes: 480 }, provenance: { kind: "live_provider_search" as const, provider: "viator" as const, checkedAt: "2026-09-13T00:00:00.000Z" } },
+    startsAt: "08:00",
+  };
+  const scheduled = scheduleItineraryIdea(source, idea, "kyoto-4", "morning");
+  const legacyAssigned = {
+    ...scheduled,
+    brief: {
+      ...scheduled.brief,
+      itineraryIdeas: legacyItineraryIdeas(scheduled.brief.itineraryIdeas).map((candidate) => candidate.id === idea.id ? { ...candidate, dayPart: "morning" as const } : candidate),
+    },
+  };
+  const composition = composeItineraryDayForPlanning(legacyAssigned, "kyoto-4")!;
+  assert.equal(composition.unslotted.filter((activity) => activity.id === idea.id).length, 1);
+  assert.deepEqual(Object.values(composition.planned).flat().filter((activity) => activity.id === idea.id), []);
+});
+
+test("a saved full-day idea dropped on a period schedules once at day level", () => {
+  const source = tripFixture();
+  const idea = {
+    ...itineraryIdeaForPlace({ stopId: "kyoto", place: place("saved-full-day", "Saved all-day tour"), reasons: ["destination-significance"] }),
+    providerMetadata: { duration: { fixedMinutes: 600 }, provenance: { kind: "live_provider_search" as const, provider: "viator" as const, checkedAt: "2026-09-13T00:00:00.000Z" } },
+  };
+  const firstDrop = scheduleItineraryIdeaAtPosition(source, idea, "kyoto-4", "afternoon", 0);
+  const repeatedDrop = scheduleItineraryIdeaAtPosition(firstDrop.trip, idea, "kyoto-4", "evening", 0);
+  const composition = composeItineraryDayForPlanning(firstDrop.trip, "kyoto-4")!;
+  assert.equal(firstDrop.changed, true);
+  assert.equal(repeatedDrop.changed, false);
+  assert.equal(legacyItineraryIdeas(firstDrop.trip.brief.itineraryIdeas)?.filter((candidate) => candidate.id === idea.id).length, 1);
+  assert.equal(composition.unslotted.filter((activity) => activity.id === idea.id).length, 1);
+  assert.equal(Object.values(composition.planned).flat().some((activity) => activity.id === idea.id), false);
+});
+
+test("moving a full-day activity across days clears its period without duplicating it", () => {
+  const source = tripFixture();
+  const idea = {
+    ...itineraryIdeaForPlace({ stopId: "kyoto", place: place("moving-full-day", "Moving all-day tour"), reasons: ["destination-significance"] }),
+    providerMetadata: { duration: { fixedMinutes: 600 }, provenance: { kind: "live_provider_search" as const, provider: "viator" as const, checkedAt: "2026-09-13T00:00:00.000Z" } },
+  };
+  const scheduled = scheduleItineraryIdea(source, idea, "kyoto-3", "morning");
+  const moved = moveItineraryActivityAcrossDays(scheduled, "kyoto-3", idea.id, "kyoto-4", "afternoon");
+  const composition = composeItineraryDayForPlanning(moved.trip, "kyoto-4")!;
+  assert.equal(moved.changed, true);
+  assert.equal(legacyItineraryIdeas(moved.trip.brief.itineraryIdeas)?.find((candidate) => candidate.id === idea.id)?.dayId, "kyoto-4");
+  assert.equal(legacyItineraryIdeas(moved.trip.brief.itineraryIdeas)?.find((candidate) => candidate.id === idea.id)?.dayPart, null);
+  assert.equal(composition.unslotted.filter((activity) => activity.id === idea.id).length, 1);
+  assert.equal(composeItineraryDay(moved.trip, "kyoto-3")?.unslotted.some((activity) => activity.id === idea.id), false);
 });
 
 test("slot, extended and full-day ideas enforce one duration model at the mutation boundary", () => {
@@ -461,6 +516,39 @@ test("the hosted-equivalent eleven-hour activity remains day-level after JSON re
   const reloaded = JSON.parse(JSON.stringify(attempted)) as EasyTTrip;
   assert.equal(legacyItineraryIdeas(reloaded.brief.itineraryIdeas)?.find((candidate) => candidate.id === idea.id)?.dayPart, null);
   assert.equal(composeItineraryDay(reloaded, "kyoto-4")?.unslotted.some((activity) => activity.id === idea.id), true);
+});
+
+test("a persisted full-day band leaves period plans intact and available around its unknown timing", () => {
+  const source = tripFixture();
+  const shortIdea = {
+    ...itineraryIdeaForPlace({ stopId: "kyoto", place: place("early-garden", "Early garden visit"), reasons: ["destination-significance" as const] }),
+    providerMetadata: { duration: { fixedMinutes: 90 }, provenance: { kind: "live_provider_search" as const, provider: "viator" as const, checkedAt: "2026-09-13T00:00:00.000Z" as const } },
+  };
+  const tour = {
+    ...itineraryIdeaForPlace({ stopId: "kyoto", place: place("overarching-tour", "Mt Fuji and Hakone one-day tour"), reasons: ["destination-significance" as const] }),
+    providerMetadata: { duration: { fixedMinutes: 660 }, provenance: { kind: "live_provider_search" as const, provider: "viator" as const, checkedAt: "2026-09-13T00:00:00.000Z" as const } },
+  };
+  const laterIdea = {
+    ...itineraryIdeaForPlace({ stopId: "kyoto", place: place("late-dinner", "Late dinner"), reasons: ["interest-relevance" as const] }),
+    providerMetadata: { duration: { fixedMinutes: 60 }, provenance: { kind: "live_provider_search" as const, provider: "viator" as const, checkedAt: "2026-09-13T00:00:00.000Z" as const } },
+  };
+  const withMorning = scheduleItineraryIdea(source, shortIdea, "kyoto-4", "morning");
+  const withTour = scheduleItineraryIdeaAtPosition(withMorning, tour, "kyoto-4", "afternoon", 0);
+  const withEvening = scheduleItineraryIdea(withTour.trip, laterIdea, "kyoto-4", "evening");
+  const storage = new MemoryStorage();
+  assert.equal(saveTripRecoveryToStorage(storage, withEvening, { ownerId: null, writeId: "full-day-open-periods" }).stored, true);
+  const reloaded = loadLocalTripFromStorage(storage, source.id, null)!;
+  const composition = composeItineraryDayForPlanning(reloaded, "kyoto-4")!;
+  const storedTour = legacyItineraryIdeas(reloaded.brief.itineraryIdeas)?.filter((idea) => idea.id === tour.id);
+
+  assert.equal(storedTour?.length, 1, "the full-day item remains canonical after reload");
+  assert.equal(storedTour?.[0]?.dayPart ?? null, null);
+  assert.equal(storedTour?.[0]?.startsAt, undefined, "unknown timing stays unknown");
+  assert.deepEqual(storedTour?.[0]?.providerMetadata?.duration, { fixedMinutes: 660 });
+  assert.deepEqual(composition.planned.morning.map((activity) => activity.id), [shortIdea.id]);
+  assert.deepEqual(composition.planned.evening.map((activity) => activity.id), [laterIdea.id]);
+  assert.deepEqual(composition.planned.afternoon.map((activity) => activity.id), []);
+  assert.deepEqual(composition.unslotted.map((activity) => activity.id), [tour.id]);
 });
 
 test("suggestion metadata and stable identity survive scheduling and JSON reload", () => {
@@ -609,13 +697,18 @@ test("saved ideas remain unscheduled until the canonical schedule action is used
   assert.equal(scheduled.planItems.find((day) => day.id === "kyoto-4")?.notes.filter((note) => note === idea.title).length, 1);
 });
 
-test("a failed durable write leaves the original suggestion and itinerary unchanged", () => {
+test("a failed durable write leaves a full-day suggestion and itinerary unchanged", () => {
   const source = tripFixture();
-  const idea = itineraryIdeaForPlace({ stopId: "kyoto", place: place("garden", "Murin-an Garden"), reasons: ["destination-significance"] });
+  const idea = {
+    ...itineraryIdeaForPlace({ stopId: "kyoto", place: place("garden", "Murin-an Garden"), reasons: ["destination-significance"] }),
+    providerMetadata: { duration: { fixedMinutes: 600 }, provenance: { kind: "live_provider_search" as const, provider: "viator" as const, checkedAt: "2026-09-13T00:00:00.000Z" } },
+  };
   const saved = { ...source, brief: { ...source.brief, itineraryIdeas: [idea] } };
-  const scheduled = scheduleItineraryIdea(saved, idea, "kyoto-4", "afternoon");
-  const write = saveTripRecoveryToStorage(new FailingStorage(), scheduled, { ownerId: null, writeId: "failed-placement" });
+  const scheduled = scheduleItineraryIdeaAtPosition(saved, idea, "kyoto-4", "afternoon", 0);
+  const write = saveTripRecoveryToStorage(new FailingStorage(), scheduled.trip, { ownerId: null, writeId: "failed-full-day-placement" });
   assert.equal(write.stored, false);
   assert.equal(legacyItineraryIdeas(saved.brief.itineraryIdeas)?.[0]?.dayId, undefined);
   assert.equal(saved.planItems.find((day) => day.id === "kyoto-4")?.notes.includes(idea.title), false);
+  assert.equal(legacyItineraryIdeas(saved.brief.itineraryIdeas)?.[0]?.dayPart, undefined);
+  assert.equal(composeItineraryDayForPlanning(saved, "kyoto-4")?.unslotted.some((activity) => activity.id === idea.id), false);
 });

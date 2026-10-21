@@ -1558,6 +1558,8 @@
   gap: 7px;
 }
 
+.savedIdeaDragHandle { width: 32px; height: 32px; min-height: 32px; padding: 0; cursor: grab; }
+
 .dayPicker {
   position: relative;
   min-width: 0;
@@ -1898,6 +1900,7 @@
 @media (hover: none), (pointer: coarse) {
   .dragHint { display: none; }
   .discoveryCard { cursor: default; }
+  .savedIdeaDragHandle { display: none; }
 }
 
 /* Ticket 311: one orientation toolbar and a plan-first compact composition. */

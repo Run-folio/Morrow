@@ -257,18 +257,18 @@ export function JourneyLocalFinder({ ownerId, tripId, stopId, canonicalPlaceId, 
           // Shared base requests deliberately outlive an individual mount. The
           // active-scope guard below prevents stale publication, while a rapid
           // return to the same stop can reuse the same safe mapped-place work.
-          const requestBasePlaces = async () => {
+          const requestBasePlaces = async (signal?: AbortSignal) => {
             const query = new URLSearchParams({ kind, city, country, lat: String(latitude), lon: String(longitude), locale });
             if (canonicalPlaceId) query.set("canonicalPlaceId", canonicalPlaceId);
             if (mapPresentation) query.set("mapPresentation", mapPresentation);
             if (refresh) query.set("refresh", "1");
-            const response = await fetch(`/api/journey-local-search?${query}`, { signal: AbortSignal.timeout(10_000) });
+            const response = await fetch(`/api/journey-local-search?${query}`, { signal: signal ?? AbortSignal.timeout(10_000) });
             if (!response.ok) throw new Error("Local recommendations unavailable");
             const payload = localSearchPayload(await response.json());
             return mapPresentation === "maplibre" ? { ...payload, places: payload.places.filter((place) => place.provider !== "google-places") } : payload;
           };
           const payload = kind === "stay"
-            ? await loadLocalFinderBaseResult(baseResultKey, requestBasePlaces, { shouldCache: (result) => result.places.length > 0 && !result.unavailable })
+            ? await loadLocalFinderBaseResult(baseResultKey, requestBasePlaces, { timeoutMs: 10_000, shouldCache: (result) => result.places.length > 0 && !result.unavailable })
             : await requestBasePlaces();
           return { lane: "core", payload };
         },

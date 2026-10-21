@@ -52,8 +52,22 @@ export async function verifySpreadsheetImportBase(candidate: ImportPlaceCandidat
     ...candidate, label: candidate.name, placeType: candidate.placeType ?? candidate.kind ?? 'unknown',
     provenance: candidate.providerId ? [{ id: candidate.providerId, label: 'Selected place', kind: 'provider', supports: 'Explicit import base selection' }] : [],
   };
-  const verified = await verifyPhysicalIslandSuggestion(parent, suggestion, { signal });
+  let unavailable = false;
+  const importFetch: typeof fetch = async (input, init) => {
+    const url = new URL(input instanceof Request ? input.url : String(input), 'http://localhost');
+    url.searchParams.set('consumer', 'spreadsheet-import');
+    url.searchParams.set('mode', 'resolve');
+    try {
+      const response = await fetch(`${url.pathname}${url.search}`, init);
+      if (!response.ok) { unavailable = true; return response; }
+      const payload = await response.clone().json() as { candidates?: unknown } | null;
+      if (!payload || !Array.isArray(payload.candidates)) unavailable = true;
+      return response;
+    } catch (error) { unavailable = true; throw error; }
+  };
+  const verified = await verifyPhysicalIslandSuggestion(parent, suggestion, { signal, fetchImpl: importFetch });
   signal?.throwIfAborted();
+  if (unavailable) throw new Error('Place checking unavailable');
   if (!verified || !placeCandidateWithinPlanningParent({
     canonicalName: verified.name, parentCountries: [verified.country], parentRegionId: verified.region,
     placeType: verified.placeType, coordinates: verified.coordinates, routability: verified.routability,
@@ -80,7 +94,7 @@ export async function resolveSpreadsheetImportPlace(name: string, country: strin
   options: { mode?: 'resolve'; parent?: PlanningParentConstraint } = {}) {
   const request = importPlaceRequest(name, country);
   if (request.conflict) return { result: null, candidates: [] as ImportPlaceCandidate[] };
-  const params = new URLSearchParams({ place: request.query, candidates: '1' });
+  const params = new URLSearchParams({ place: request.query, candidates: '1', consumer: 'spreadsheet-import' });
   if (request.country) params.set('country', request.country);
   if (options.mode) params.set('mode', options.mode);
   const parent = options.parent;
@@ -92,10 +106,27 @@ export async function resolveSpreadsheetImportPlace(name: string, country: strin
     if (parent.bounds) for (const key of ['south', 'west', 'north', 'east'] as const)
       params.set(`parent${key[0].toUpperCase()}${key.slice(1)}`, String(parent.bounds[key]));
   }
-  const response = await fetch(`/api/journey-geocode?${params}`, { signal });
-  if (!response.ok) throw new Error('Place checking unavailable');
-  const payload = await response.json() as { candidates?: ImportPlaceCandidate[] };
-  const candidates = (payload.candidates ?? []).filter(candidate => !parent || placeCandidateWithinPlanningParent({
+  const lookup = async (query: string) => {
+    signal?.throwIfAborted();
+    params.set('place', query);
+    const response = await fetch(`/api/journey-geocode?${params}`, { signal });
+    signal?.throwIfAborted();
+    if (!response.ok) throw new Error('Place checking unavailable');
+    const payload = await response.json() as { candidates?: ImportPlaceCandidate[] } | null;
+    signal?.throwIfAborted();
+    if (!payload || !Array.isArray(payload.candidates)) throw new Error('Place checking unavailable');
+    return payload.candidates;
+  };
+  let available = await lookup(request.query);
+  // Explicit base retries may remove a redundant country from the phrase,
+  // while keeping it and every parent constraint in the same API request.
+  // A failed request or a rejected nonempty response never opens this path.
+  if (options.mode === 'resolve' && parent && request.country && Array.isArray(available) && available.length === 0) {
+    const parts = name.split(',').map(value => value.trim()).filter(Boolean);
+    const fallback = parts.length > 1 && countryNameFor(parts.at(-1)) ? parts.slice(0, -1).join(', ') : name.trim();
+    if (fallback && fallback !== request.query) available = await lookup(fallback);
+  }
+  const candidates = (available ?? []).filter(candidate => !parent || placeCandidateWithinPlanningParent({
     canonicalName: candidate.name, parentCountries: [candidate.country], parentRegionId: candidate.region,
     placeType: candidate.placeType ?? candidate.kind ?? 'unknown', coordinates: candidate.coordinates, routability: candidate.routability,
   }, parent));

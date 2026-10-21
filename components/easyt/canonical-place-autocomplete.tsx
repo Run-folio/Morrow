@@ -248,6 +248,17 @@ export function CanonicalPlaceAutocomplete({
     .filter((suggestion) => !requireCoordinates || Boolean(suggestion.coordinates))
     )
     , searchIntent, deferredValue).slice(0, 8), [catalogSuggestions, excludeCanonicalIds, providerSuggestions, requireCoordinates, searchIntent, deferredValue]);
+  const optionKeys = useMemo(() => {
+    // Conflicting source tuples remain selectable even when their canonical ID
+    // agrees. React identity must follow the complete choice, not that ID alone.
+    const occurrences = new Map<string, number>();
+    return suggestions.map((suggestion) => {
+      const identity = JSON.stringify(suggestion);
+      const occurrence = occurrences.get(identity) ?? 0;
+      occurrences.set(identity, occurrence + 1);
+      return `${identity}:${occurrence}`;
+    });
+  }, [suggestions]);
   const searching = value !== deferredValue || providerSearching;
   const choose = (suggestion: CanonicalPlaceSuggestion) => {
     onSelect(suggestion);
@@ -318,17 +329,17 @@ export function CanonicalPlaceAutocomplete({
         role="option"
         aria-selected={index === activeIndex}
         id={`${listId}-${index}`}
-        key={suggestion.canonicalPlaceId}
+        key={optionKeys[index]}
         className={index === activeIndex ? styles.optionOn : undefined}
         onMouseDown={(event) => event.preventDefault()}
         onClick={() => choose(suggestion)}
-      ><MapPin aria-hidden="true" /><span><b>{suggestion.name}</b><small>{[placeSuggestionLocationDetail(suggestion,suggestions),showPlaceType ? placeTypeLabel(suggestion.placeType,language):null].filter(Boolean).join(' · ')}</small>{suggestion.scheduledService===false ? <small>{language==="es"?"No consta servicio regular de pasajeros":"No scheduled passenger service recorded"}</small>:null}</span></button>)) : providerFailed ? <div className={styles.failure} role="alert"><p>{resolvedFailureMessage}</p><EasyTButton variant="secondary" size="small" onMouseDown={(event) => event.preventDefault()} onClick={() => setRetryNonce((current) => current + 1)}>{language === "es" ? "Reintentar" : "Retry"}</EasyTButton></div> : <p role="status">{resolvedEmptyMessage}</p>}
+      ><MapPin aria-hidden="true" /><span><b>{suggestion.name}</b><small>{[placeSuggestionLocationDetail(suggestion,suggestions,language),showPlaceType ? placeTypeLabel(suggestion.placeType,language):null].filter(Boolean).join(' · ')}</small>{suggestion.scheduledService===false ? <small>{language==="es"?"No consta servicio regular de pasajeros":"No scheduled passenger service recorded"}</small>:null}</span></button>)) : providerFailed ? <div className={styles.failure} role="alert"><p>{resolvedFailureMessage}</p><EasyTButton variant="secondary" size="small" onMouseDown={(event) => event.preventDefault()} onClick={() => setRetryNonce((current) => current + 1)}>{language === "es" ? "Reintentar" : "Retry"}</EasyTButton></div> : <p role="status">{resolvedEmptyMessage}</p>}
       </div>
-      {mapChoice && mapHref ? <a className={styles.mapChoice} href={mapHref} target="_blank" rel="noopener noreferrer" aria-label={`${language === "es" ? "Ver en mapa" : "View on map"}: ${mapChoice.name}, ${placeSuggestionLocationDetail(mapChoice,suggestions)}`}>{language === "es" ? `Ver ${placeSuggestionLocationDetail(mapChoice,suggestions)} en el mapa` : `View ${placeSuggestionLocationDetail(mapChoice,suggestions)} on map`}</a> : null}
+      {mapChoice && mapHref ? <a className={styles.mapChoice} href={mapHref} target="_blank" rel="noopener noreferrer" aria-label={`${language === "es" ? "Ver en mapa" : "View on map"}: ${mapChoice.name}, ${placeSuggestionLocationDetail(mapChoice,suggestions,language)}`}>{language === "es" ? `Ver ${placeSuggestionLocationDetail(mapChoice,suggestions,language)} en el mapa` : `View ${placeSuggestionLocationDetail(mapChoice,suggestions,language)} on map`}</a> : null}
       <MorroviaPlaceDataCredit language={language} sources={[
         ...(suggestions.some(s=>s.provenance.some(p=>p.id.startsWith('reference:geonames:')))?['geonames' as const]:[]),
         ...(suggestions.some(s=>s.provenance.some(p=>p.id.startsWith('reference:ourairports:')))?['ourairports' as const]:[]),
-        ...(suggestions.some(s=>s.provenance.some(p=>/^(photon:|nominatim:|openstreetmap:)/.test(p.id)||p.supports.startsWith('Physical island verified: OSM ')))?['openstreetmap' as const]:[]),
+        ...(suggestions.some(s=>s.provenance.some(p=>/^(photon:|nominatim:|openstreetmap:|island-snapshot:)/.test(p.id)||p.supports.startsWith('Physical island verified: OSM ')))?['openstreetmap' as const]:[]),
       ]}/>
     </div> : null}
   </div>;

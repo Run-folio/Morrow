@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import ts from 'typescript';
 import dependencies from '../public/easyt-offline-dependencies.js';
 import { MORROVIA_OFFLINE_READER_FLOOR } from '../lib/easyt/offline-reader-floor.ts';
 
@@ -13,6 +14,47 @@ function canonicalAssetPath(pathname) {
     if (segments.some(segment => !segment || segment === '.' || segment === '..' || segment.includes('/') || segment.includes('\\') || segment.includes('%'))) return null;
     return '/' + segments.map(segment => encodeURIComponent(segment)).join('/');
   } catch { return null; }
+}
+
+// Keep this public module boundary in step with the service-worker allowlist.
+// Parse actual ESM imports (including re-exports and literal dynamic imports),
+// so an added or missing dependency cannot silently qualify a cold graph.
+const publicWorkerModules = new Set(['/maplibre/maplibre-gl-worker.mjs', '/maplibre/maplibre-gl-shared.mjs']);
+// MapLibre 6.1.0 also contains two parameterized imports for its optional custom
+// script/RTL plugin API, which this app does not enable. They are not startup
+// dependencies. Only these exact reviewed distribution bytes may contain them;
+// a changed module with an unresolvable import must fail qualification.
+const optionalPluginLoaderWorkerSha256 = '5a77b4637ea5ae64f0b1f208e4b1f4d9c681e2575d96e592f2074925597224c6';
+function addPublicWorkerGraph(root, add) {
+  const visited = new Set();
+  const visit = url => {
+    if (visited.has(url)) return;
+    if (!publicWorkerModules.has(url)) throw new Error('Offline worker dependency is outside the supported public graph: ' + url);
+    visited.add(url);
+    const file = path.join(root, 'public', url.slice(1));
+    let source;
+    try { add(url, file); source = fs.readFileSync(file, 'utf8'); }
+    catch { throw new Error('Offline worker dependency unavailable: ' + url); }
+    const parsed = ts.createSourceFile(file, source, ts.ScriptTarget.Latest, true, ts.ScriptKind.JS);
+    if (parsed.parseDiagnostics.length) throw new Error('Offline worker module could not be parsed: ' + url);
+    const knownOptionalPluginLoader = url === '/maplibre/maplibre-gl-worker.mjs'
+      && createHash('sha256').update(source).digest('hex') === optionalPluginLoaderWorkerSha256;
+    const dependency = node => {
+      if (!node || !ts.isStringLiteralLike(node)) throw new Error('Offline worker module dependency must be a literal');
+      const relative = node.text;
+      if (!relative.startsWith('./') || canonicalAssetPath('/maplibre/' + relative.slice(2)) !== '/maplibre/' + relative.slice(2)) throw new Error('Offline worker dependency must be a canonical local module');
+      visit('/maplibre/' + relative.slice(2));
+    };
+    const inspect = node => {
+      if (ts.isImportDeclaration(node) || ts.isExportDeclaration(node) && node.moduleSpecifier) dependency(node.moduleSpecifier);
+      if (ts.isCallExpression(node) && node.expression.kind === ts.SyntaxKind.ImportKeyword) {
+        if (!knownOptionalPluginLoader || node.arguments[0] && ts.isStringLiteralLike(node.arguments[0])) dependency(node.arguments[0]);
+      }
+      ts.forEachChild(node, inspect);
+    };
+    inspect(parsed);
+  };
+  for (const url of publicWorkerModules) visit(url);
 }
 
 export function writeOfflineShellManifest(root, dist = '.next') {
@@ -39,7 +81,8 @@ export function writeOfflineShellManifest(root, dist = '.next') {
   };
   walk(staticRoot);
   if (!assets.length) throw new Error('Offline client graph is empty');
-  for (const url of ['/easyt-offline-dependencies.js', '/easyt-icon.svg', '/maplibre/maplibre-gl-worker.mjs']) add(url, path.join(root, 'public', url.slice(1)));
+  for (const url of ['/easyt-offline-dependencies.js', '/easyt-icon.svg']) add(url, path.join(root, 'public', url.slice(1)));
+  addPublicWorkerGraph(root, add);
   assets.sort((a, b) => a.url.localeCompare(b.url, 'en'));
   const assetUrls = new Set(assets.map(asset => asset.url));
   for (const route of ['journey/new', 'journey/plan']) {

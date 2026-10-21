@@ -20,7 +20,8 @@ function fixture() {
   put('.next-test/static/chunks/app/journey/[tripId]/page.js', 'synthetic dynamic route');
   put('.next-test/static/chunks/app/api/auth/[...all]/route.js', 'synthetic catchall');
   put('.next-test/static/media/font.woff2', 'synthetic font');
-  put('public/maplibre/maplibre-gl-worker.mjs', 'synthetic worker');
+  put('public/maplibre/maplibre-gl-worker.mjs', 'import "./maplibre-gl-shared.mjs";');
+  put('public/maplibre/maplibre-gl-shared.mjs', 'export const shared = true;');
   put('public/easyt-icon.svg', '<svg/>');
   put('public/easyt-offline-dependencies.js',readFileSync(new URL('../public/easyt-offline-dependencies.js',import.meta.url),'utf8'));
   return { root, put, close: () => rmSync(root, { recursive: true, force: true }) };
@@ -31,12 +32,53 @@ test('build manifest includes lazy chunks/fonts/public worker with exact byte ha
   try {
     const result = writeOfflineShellManifest(f.root, '.next-test');
     assert.equal(result.readerFloor, 'idb-recovery-account-homepage-v2'); assert.equal(result.buildId, 'synthetic-build'); assert.equal(result.buildCommit, commit);
-    assert.deepEqual(new Set(result.assets.map(row => row.url)), new Set(['/easyt-offline-dependencies.js','/easyt-icon.svg', '/maplibre/maplibre-gl-worker.mjs', '/_next/static/chunks/lazy-map.js', '/_next/static/chunks/main.js', '/_next/static/media/font.woff2', '/_next/static/chunks/app/journey/%5BtripId%5D/page.js', '/_next/static/chunks/app/api/auth/%5B...all%5D/route.js']));
+    assert.deepEqual(new Set(result.assets.map(row => row.url)), new Set(['/easyt-offline-dependencies.js','/easyt-icon.svg', '/maplibre/maplibre-gl-worker.mjs', '/maplibre/maplibre-gl-shared.mjs', '/_next/static/chunks/lazy-map.js', '/_next/static/chunks/main.js', '/_next/static/media/font.woff2', '/_next/static/chunks/app/journey/%5BtripId%5D/page.js', '/_next/static/chunks/app/api/auth/%5B...all%5D/route.js']));
     assert.equal(result.assets.find(row => row.url.endsWith('lazy-map.js')).sha256, createHash('sha256').update('synthetic lazy').digest('hex'));
     const context = { self: {} }; runInNewContext(readFileSync(path.join(f.root, 'public/easyt-offline-manifest.js'), 'utf8'), context);
     assert.equal(JSON.stringify(context.self.MORROVIA_OFFLINE_SHELL), JSON.stringify(result));
   } finally { f.close(); }
 });
+
+test('actual public worker imports form a complete graph with exact distribution byte hashes', async () => {
+  const { writeOfflineShellManifest } = await import(script), f = fixture();
+  try {
+    for (const name of ['maplibre-gl-worker.mjs', 'maplibre-gl-shared.mjs']) f.put('public/maplibre/' + name, readFileSync(new URL('../public/maplibre/' + name, import.meta.url)));
+    const result = writeOfflineShellManifest(f.root, '.next-test');
+    const expected = {
+      'maplibre-gl-worker.mjs': '5a77b4637ea5ae64f0b1f208e4b1f4d9c681e2575d96e592f2074925597224c6',
+      'maplibre-gl-shared.mjs': 'ce66c617187b6956d878d3961aceeb7c335eec3f76ee8d80737a917d8e989860',
+    };
+    for (const [name, sha256] of Object.entries(expected)) assert.equal(result.assets.find(asset => asset.url === '/maplibre/' + name)?.sha256, sha256, name);
+  } finally { f.close(); }
+});
+
+test('missing imported worker dependency prevents emitting an offline manifest', async () => {
+  const { writeOfflineShellManifest } = await import(script), f = fixture();
+  try {
+    rmSync(path.join(f.root, 'public/maplibre/maplibre-gl-shared.mjs'));
+    assert.throws(() => writeOfflineShellManifest(f.root, '.next-test'), /worker dependency.*maplibre-gl-shared/i);
+    assert.throws(() => readFileSync(path.join(f.root, 'public/easyt-offline-manifest.js')));
+  } finally { f.close(); }
+});
+
+test('both supported worker modules remain required by the service-worker manifest contract', async () => {
+  const { writeOfflineShellManifest } = await import(script), f = fixture();
+  try {
+    f.put('public/maplibre/maplibre-gl-worker.mjs', 'export {};');
+    rmSync(path.join(f.root, 'public/maplibre/maplibre-gl-shared.mjs'));
+    assert.throws(() => writeOfflineShellManifest(f.root, '.next-test'), /worker dependency.*maplibre-gl-shared/i);
+  } finally { f.close(); }
+});
+
+for (const dependency of ['import "./missing.mjs";', 'export { x } from "./missing.mjs";', 'import("./missing.mjs");', 'import(variable);', 'import "https://foreign.invalid/private.mjs";']) {
+  test(`worker graph refuses unqualified dependency: ${dependency}`, async () => {
+    const { writeOfflineShellManifest } = await import(script), f = fixture();
+    try {
+      f.put('public/maplibre/maplibre-gl-shared.mjs', dependency);
+      assert.throws(() => writeOfflineShellManifest(f.root, '.next-test'), /worker (dependency|module)/i);
+    } finally { f.close(); }
+  });
+}
 for (const reason of ['reader marker missing', 'commit mismatch', 'missing direct file', 'missing public worker', 'unsafe build id']) {
   test(`build cannot emit an accepted floor with ${reason}`, async () => {
     const { writeOfflineShellManifest } = await import(script); const f = fixture();

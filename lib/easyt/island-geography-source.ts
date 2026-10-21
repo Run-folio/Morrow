@@ -1,11 +1,12 @@
 import { createHash } from 'node:crypto';
 import { countryCodeFor } from './country-registry.ts';
 import { normalizeIslandName, physicalGeometry, physicalCoastlineGeometry, validIslandPoint, type Point, type PhysicalIslandGeometry } from './physical-island-geometry.ts';
+import { geofabrikIslandGeometryBody } from './geofabrik-island-source.ts';
 
 export const islandDigest = (value: string | Uint8Array) => createHash('sha256').update(value).digest('hex');
 export type IslandSourceEvidence = { url: string; query?: string; checkedAt: string; body: unknown; bodySHA256: string; originalResponseSHA256?: string; originalResponseBody?: string };
 export type IslandSourceRecord = {
-  id: string; name: string; country: string; geometryKind: 'island-relation' | 'coastline';
+  id: string; name: string; country: string; geometryKind: 'island-relation' | 'coastline' | 'geofabrik-relation-v1';
   identity: IslandSourceEvidence; geometry: IslandSourceEvidence;
 };
 export type IslandGroupSource = {
@@ -53,12 +54,14 @@ export function islandSourceIdentity(source: IslandSourceEvidence, name: string,
 export function compileIslandSource(source: IslandSourceRecord): CompiledIslandSource {
   if (!/^[a-z0-9][a-z0-9-]{0,79}$/.test(source.id) || !source.name || !normalizeIslandName(source.name)) throw new Error('Invalid island record key');
   const identity = islandSourceIdentity(source.identity, source.name, source.country, 'island');
-  checkEvidence(source.geometry, 'overpass-api.de');
+  const geofabrik = source.geometryKind === 'geofabrik-relation-v1';
+  checkEvidence(source.geometry, geofabrik ? 'download.geofabrik.de' : 'overpass-api.de');
   const deadline = Date.now() + 10_000;
   let geometry: PhysicalIslandGeometry | null; let sourceGeometryId: string;
-  if (source.geometryKind === 'island-relation') {
+  if (source.geometryKind === 'island-relation' || geofabrik) {
     const [type, rawId] = identity.id.split(':');
-    geometry = physicalGeometry(source.geometry.body, { id: Number(rawId), type: type as 'way' | 'relation', name: identity.name, country: source.country }, deadline);
+    const body = geofabrik ? geofabrikIslandGeometryBody(source.geometry, deadline) : source.geometry.body;
+    geometry = physicalGeometry(body, { id: Number(rawId), type: type as 'way' | 'relation', name: identity.name, country: source.country }, deadline);
     sourceGeometryId = identity.id;
   } else if (source.geometryKind === 'coastline') {
     const physical = physicalCoastlineGeometry(source.geometry.body, identity.point, deadline);

@@ -38,15 +38,17 @@ export function peekLocalFinderBaseResult<Result>(key: string, now = Date.now())
  * Shares identical mapped-place work and keeps a short-lived successful base
  * result for return visits. Date-specific commercial inventory never enters
  * this cache. The caller remains responsible for active-context checks before
- * publishing a result.
+ * publishing a result. An optional deadline belongs to the shared attempt,
+ * including body parsing, and settles even if transport ignores its signal.
  */
 export function loadLocalFinderBaseResult<Result>(
   key: string,
-  request: () => Promise<Result>,
+  request: (signal?: AbortSignal) => Promise<Result>,
   options: {
     now?: () => number;
     ttlMs?: number;
     shouldCache?: (value: Result) => boolean;
+    timeoutMs?: number;
   } = {},
 ): Promise<Result> {
   const now = options.now ?? Date.now;
@@ -56,15 +58,38 @@ export function loadLocalFinderBaseResult<Result>(
   const activeRequest = inFlightRequests.get(key);
   if (activeRequest) return activeRequest as Promise<Result>;
 
-  const promise = Promise.resolve()
-    .then(request)
+  const controller = options.timeoutMs === undefined ? undefined : new AbortController();
+  const deadline = options.timeoutMs === undefined ? undefined : now() + options.timeoutMs;
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  let expired = false;
+  let rejectDeadline: ((error: unknown) => void) | undefined;
+  const timeoutError = () => {
+    const error = new DOMException("Local recommendations timed out", "TimeoutError");
+    expired = true;
+    rejectDeadline?.(error);
+    controller?.abort(error);
+    return error;
+  };
+  const pending = Promise.resolve().then(() => request(controller?.signal));
+  const bounded = options.timeoutMs === undefined ? pending : Promise.race([
+    pending,
+    new Promise<never>((_resolve, reject) => {
+      rejectDeadline = reject;
+      timer = setTimeout(timeoutError, options.timeoutMs);
+    }),
+  ]);
+  const promise = bounded
     .then((value) => {
-      if (options.shouldCache?.(value) ?? true) {
+      // Also reject a late response when the event loop has not run its timer
+      // yet. Expired raw transport work never reaches this cache or publisher.
+      if (expired || (deadline !== undefined && now() >= deadline)) throw timeoutError();
+      if (inFlightRequests.get(key) === promise && (options.shouldCache?.(value) ?? true)) {
         storeCachedResult(key, value, now() + (options.ttlMs ?? localFinderBaseCacheTtlMs));
       }
       return value;
     })
     .finally(() => {
+      if (timer !== undefined) clearTimeout(timer);
       if (inFlightRequests.get(key) === promise) inFlightRequests.delete(key);
     });
   inFlightRequests.set(key, promise);

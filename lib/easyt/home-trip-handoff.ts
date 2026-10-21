@@ -1,5 +1,5 @@
 import {canonicalTripStopIdentityMap} from './trip-promotion.ts';
-import {referenceGeographicAcceptanceMatches} from './place-reference.ts';
+import {referenceGeographicAcceptanceMatches,referenceSeedRetired} from './place-reference.ts';
 import { captureJourneyBrief, type JourneyCaptureResult } from "./journey-capture.ts";
 import { catalogPlaceForProviderIdentity, isNegatedEndpointAt, isOvernightBaseEligible, normalizePlacePhrase, placeResolutionIssuesForMentions, type CanonicalPlaceSuggestion, type GeographicBounds, type PlaceRoutability, type ResolvedPlaceMention } from "./place-intelligence.ts";
 import { findCatalogPlaceById } from "./place-catalog.ts";
@@ -1304,14 +1304,31 @@ export function handoffRouteStops(
   return routableHandoffMentions(mentions)
     .filter((mention) => mention.role !== "origin" && mention.role !== "fixed_start")
     .filter((mention) => mention.mentionId !== endpointOwnedMentionId)
-    .map((mention) => ({
-      id: handoffRouteStopId(mention),
-      name: mention.canonicalName,
-      country: mention.parentCountries.length === 1 ? mention.parentCountries[0] : "",
-      canonicalPlaceId: mention.canonicalPlaceId,
-      coordinates: mention.coordinates,
-      intent: "place" as const,
-    }));
+    .map((mention) => {
+      const stop = {
+        id: handoffRouteStopId(mention),
+        name: mention.canonicalName,
+        country: mention.parentCountries.length === 1 ? mention.parentCountries[0] : "",
+        canonicalPlaceId: mention.canonicalPlaceId,
+        coordinates: mention.coordinates,
+        intent: "place" as const,
+      };
+      const providerId = mention.provenance.find(source => source.kind === "provider")?.id;
+      const reference = mention.canonicalPlaceId ? findCatalogPlaceById(mention.canonicalPlaceId) : undefined;
+      const maintainedReference = reference?.referenceProviderId && reference.referenceProviderId === providerId
+        && !referenceSeedRetired(reference.canonicalPlaceId) && reference.placeType === mention.placeType && reference.routability === mention.routability
+        && [reference.canonicalName, ...reference.aliases].some(name => normalizePlacePhrase(name) === normalizePlacePhrase(mention.canonicalName))
+        && reference.parentCountries.some(country => normalizePlacePhrase(country) === normalizePlacePhrase(stop.country))
+        && mention.coordinates?.length === 2 && reference.coordinates?.every((value, index) => value === mention.coordinates![index]);
+      // Carry proof already present in this exact reference mention. Extract
+      // its snapshot from provenance; new acceptance still requires the pinned
+      // maintained record and complete tuple. Other captured points remain unverified.
+      const accepted = maintainedReference && mention.canonicalPlaceId?.startsWith("reference:") && providerId?.startsWith("reference:")
+        ? acceptedGeographicPlace(stop, { ...stop, providerId, placeType: mention.placeType,
+          routability: mention.routability, referenceSnapshotId: providerId.split("@")[1]?.split(":")[0] })
+        : undefined;
+      return accepted ? { ...stop, providerId: accepted.providerId, geographicBinding: accepted.geographicBinding } : stop;
+    });
 }
 
 /** Curated and legacy handoffs may already own a complete route with stable

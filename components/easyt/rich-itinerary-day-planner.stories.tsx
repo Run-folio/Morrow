@@ -199,11 +199,19 @@ const fullDayTrip: EasyTTrip = {
   brief: {
     ...baseTrip.brief,
     itineraryIdeas: [
-      { id: "idea-full-day", stopId: "kyoto", placeId: "viator:full-day", title: "Kyoto and Nara full-day experience", category: "activity", area: "Kyoto", placeType: "Bookable experience", source: "live-provider-inventory", sourceUrl: "https://www.viator.com/", reasons: [], provider: "viator", providerProductId: "full-day", providerMetadata: { duration: { fixedMinutes: 600 }, provenance: { kind: "live_provider_search", provider: "viator", checkedAt: "2026-09-13T12:00:00.000Z" } }, dayId: "kyoto-2", dayPart: "morning", startsAt: "08:00" },
-      { id: "idea-evening", stopId: "kyoto", placeId: "evening", title: "Evening theatre", category: "activity", area: "Gion", placeType: "Culture", source: "personalised-recommendation", reasons: ["interest-relevance"], providerMetadata: { duration: { fixedMinutes: 120 }, provenance: { kind: "live_provider_search", provider: "viator", checkedAt: "2026-09-13T12:00:00.000Z" } }, dayId: "kyoto-2", dayPart: "evening", startsAt: "19:00" },
+      { id: "idea-full-day", stopId: "kyoto", placeId: "viator:full-day", title: "Kyoto and Nara full-day experience", category: "activity", area: "Kyoto", placeType: "Bookable experience", source: "live-provider-inventory", sourceUrl: "https://www.viator.com/", reasons: [], provider: "viator", providerProductId: "full-day", providerMetadata: { duration: { fixedMinutes: 600 }, provenance: { kind: "live_provider_search", provider: "viator", checkedAt: "2026-09-13T12:00:00.000Z" } }, dayId: "kyoto-2", dayPart: null, startsAt: "08:00" },
+      { id: "idea-evening", stopId: "kyoto", placeId: "evening", title: "Evening theatre", category: "activity", area: "Gion", placeType: "Culture", source: "personalised-recommendation", reasons: ["interest-relevance"], providerMetadata: { duration: { fixedMinutes: 120 }, provenance: { kind: "live_provider_search", provider: "viator", checkedAt: "2026-09-13T12:00:00.000Z" } }, dayId: "kyoto-2", dayPart: "evening", startsAt: "17:00" },
     ],
   },
-  planItems: baseTrip.planItems.map((day) => day.id === "kyoto-2" ? { ...day, notes: ["Kyoto and Nara full-day experience", "Evening theatre"], noteDayParts: ["morning", "evening"] } : day),
+  planItems: baseTrip.planItems.map((day) => day.id === "kyoto-2" ? { ...day, notes: ["Kyoto and Nara full-day experience", "Evening theatre"], noteDayParts: [null, "evening"] } : day),
+};
+
+const untimedFullDayTrip: EasyTTrip = {
+  ...fullDayTrip,
+  brief: {
+    ...fullDayTrip.brief,
+    itineraryIdeas: fullDayTrip.brief.itineraryIdeas?.map((idea) => idea.id === "idea-full-day" ? { ...idea, startsAt: undefined } : idea),
+  },
 };
 
 const emptyPlanningTrip: EasyTTrip = {
@@ -288,6 +296,22 @@ export const MultipleActivitiesInMorning: Story = { render: () => <StoryFrame tr
 export const MultipleActivitiesInAfternoon: Story = MultipleActivitiesInMorning;
 export const ExactTimeAndUntimedMix: Story = MultipleActivitiesInMorning;
 export const FullDayExperienceWarning: Story = { render: () => <StoryFrame trip={fullDayTrip} dayId="kyoto-2" /> };
+export const FullDayContinuesOvernight: Story = {
+  render: () => <StoryFrame trip={{
+    ...fullDayTrip,
+    brief: { ...fullDayTrip.brief, itineraryIdeas: fullDayTrip.brief.itineraryIdeas?.map((idea) => idea.id === "idea-full-day" ? { ...idea, startsAt: "22:00" } : idea) },
+  }} dayId="kyoto-2" />,
+};
+export const FullDayUntimed: Story = { args: { composition: composeItineraryDayForPlanning(untimedFullDayTrip, "kyoto-2")! } };
+export const DraggingFullDayOverPeriod: Story = {
+  args: {
+    composition: composeItineraryDayForPlanning(fullDayTrip, "kyoto-2")!,
+    dragActive: true,
+    draggedFullDay: true,
+    onActivityDragStart: () => undefined,
+    onActivityDrop: () => undefined,
+  },
+};
 export const ExactOverlapWarning: Story = { render: () => <StoryFrame trip={overlapTrip} dayId="kyoto-2" /> };
 export const RestaurantAndEveningActivity: Story = FullDayExperienceWarning;
 export const TransferAndActivities: Story = ArrivalDay;

@@ -290,6 +290,94 @@ test("a disposed basemap lifecycle ignores stale provider and style callbacks", 
   assert.equal(changes.length, 1, "only the initial loading snapshot was published");
 });
 
+test("the production 12 second deadline falls back once and latches against late readiness", (t) => {
+  t.mock.timers.enable({ apis: ["setTimeout"] });
+  const map = new FakeBasemap();
+  map.loadDetailed(false);
+  const lifecycle = createMorroviaBasemapLifecycle(map);
+  map.emit("style.load");
+  t.mock.timers.tick(11_999);
+  assert.equal(lifecycle.getSnapshot().status, "loading");
+  assert.equal(map.setStyleCalls.length, 0);
+  t.mock.timers.tick(1);
+  assert.equal(lifecycle.getSnapshot().status, "fallback");
+  assert.match(lifecycle.getSnapshot().reason!, /in time/);
+  map.loadDetailed(true);
+  map.emit("sourcedata", { sourceId: MORROVIA_DETAILED_BASEMAP_SOURCE_ID });
+  map.emit("idle");
+  t.mock.timers.tick(24_000);
+  assert.equal(lifecycle.getSnapshot().status, "fallback");
+  assert.equal(map.setStyleCalls.length, 1);
+  lifecycle.dispose();
+});
+
+test("source readiness cancels the production deadline and retry owns a fresh deadline", (t) => {
+  t.mock.timers.enable({ apis: ["setTimeout"] });
+  const map = new FakeBasemap();
+  map.loadDetailed(false);
+  const lifecycle = createMorroviaBasemapLifecycle(map);
+  t.mock.timers.tick(4_000);
+  map.detailedSourceLoaded = true;
+  map.emit("sourcedata", { sourceId: MORROVIA_DETAILED_BASEMAP_SOURCE_ID });
+  t.mock.timers.tick(20_000);
+  assert.equal(lifecycle.getSnapshot().status, "detailed");
+  assert.equal(map.setStyleCalls.length, 0);
+  lifecycle.handleError({ sourceId: MORROVIA_DETAILED_BASEMAP_SOURCE_ID });
+  lifecycle.retry();
+  assert.equal(lifecycle.getSnapshot().status, "loading");
+  assert.equal(map.setStyleCalls.at(-1), MORROVIA_DETAILED_BASEMAP_STYLE_URL);
+  t.mock.timers.tick(11_999);
+  assert.equal(lifecycle.getSnapshot().status, "loading");
+  t.mock.timers.tick(1);
+  assert.equal(lifecycle.getSnapshot().status, "fallback");
+  assert.equal(map.setStyleCalls.length, 3);
+  lifecycle.dispose();
+});
+
+test("generic loading and abort errors cannot replace detail before its deadline", (t) => {
+  t.mock.timers.enable({ apis: ["setTimeout"] });
+  const map = new FakeBasemap();
+  const lifecycle = createMorroviaBasemapLifecycle(map);
+  assert.equal(lifecycle.handleError({ error: new TypeError("Load failed") }), false);
+  assert.equal(lifecycle.handleError({ error: new DOMException("private abort detail", "AbortError") }), false);
+  assert.equal(lifecycle.getSnapshot().status, "loading");
+  t.mock.timers.tick(12_000);
+  assert.equal(lifecycle.getSnapshot().status, "fallback");
+  lifecycle.dispose();
+});
+
+test("disposal rejects callbacks already captured by a dispatcher and leaves remount independent", (t) => {
+  t.mock.timers.enable({ apis: ["setTimeout"] });
+  const map = new FakeBasemap();
+  const traces: string[] = [], changes: MorroviaBasemapSnapshot[] = [];
+  let styleReady = 0;
+  const old = createMorroviaBasemapLifecycle(map, {
+    onTrace: event => traces.push(event),
+    onChange: value => changes.push(value),
+    onStyleReady: () => { styleReady++; },
+  });
+  const queued = [...map.listeners].flatMap(([type, listeners]) => [...listeners].map(listener => () => listener({ type, sourceId: MORROVIA_DETAILED_BASEMAP_SOURCE_ID })));
+  old.dispose();
+  old.dispose();
+  map.loadDetailed(true);
+  for (const callback of queued) callback();
+  old.retry();
+  t.mock.timers.tick(12_000);
+  assert.equal(styleReady, 0, "retained style callbacks cannot publish readiness after disposal");
+  assert.deepEqual(traces, ["initial"]);
+  assert.equal(changes.length, 1);
+  assert.equal(old.getSnapshot().status, "loading");
+  assert.equal(map.setStyleCalls.length, 0);
+  const remount = createMorroviaBasemapLifecycle(map);
+  map.emit("style.load");
+  assert.equal(remount.getSnapshot().status, "detailed");
+  t.mock.timers.tick(12_000);
+  assert.equal(remount.getSnapshot().status, "detailed");
+  assert.equal(styleReady, 0);
+  remount.dispose();
+  for (const listeners of map.listeners.values()) assert.equal(listeners.size, 0);
+});
+
 test("style readiness never asks MapLibre to inspect a missing style", () => {
   const map = new FakeBasemap();
   map.styleAvailable = false;

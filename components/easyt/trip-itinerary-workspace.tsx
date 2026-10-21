@@ -113,7 +113,7 @@ import { dedupeExploreResults, exploreResultForActivity, exploreResultForIdea, e
 import { discoveryCategoryMatches } from "@/lib/easyt/discovery-taxonomy";
 import { rankItineraryRecommendations } from "@/lib/easyt/itinerary-recommendations";
 import { recommendationDurationMs } from "@/lib/easyt/recommendation-performance";
-import { activityAllowsDayPart, activityDayPartFit } from "@/lib/easyt/itinerary-schedule-awareness";
+import { activityAllowsDayPart, activityDayPartFit, fullDayActivityTiming, isFullDayActivity, type ActivityDuration } from "@/lib/easyt/itinerary-schedule-awareness";
 import { hasCalendarArrivalEvent, itineraryCalendarNightBands, itineraryCalendarWeeks, type ItineraryCalendarDay, type ItineraryCalendarItem, type ItineraryCalendarWeek } from "@/lib/easyt/itinerary-calendar";
 import { itineraryTransportAgenda, type ItineraryTransportAgendaLeg } from "@/lib/easyt/itinerary-transport-agenda";
 import { useWorkspaceOrientationReady, useWorkspaceOrientationTarget } from "@/components/easyt/workspace-orientation";
@@ -178,6 +178,19 @@ function addedToDayNotice(language: "en" | "es", dayNumber: number, dayPart?: It
   return dayPart ? `${day} · ${itineraryDayPartLabels[language][dayPart]}` : day;
 }
 
+function fullDayPlacementLabel(language: "en" | "es", duration: ActivityDuration | undefined, startsAt?: string) {
+  const copy = itineraryCopy(language);
+  const timing = fullDayActivityTiming(duration, startsAt);
+  if (timing?.kind === "timed") {
+    return `${copy.fullDay} · ${timing.startsAt}–${timing.endsAt}${timing.continuesOvernight ? ` · ${copy.continuesOvernight}` : ""}`;
+  }
+  return `${copy.fullDay} · ${copy.timingToConfirm}`;
+}
+
+function addedFullDayNotice(language: "en" | "es", dayNumber: number, label: string) {
+  return language === "es" ? `Añadido al día ${dayNumber} · ${label}` : `Added to Day ${dayNumber} · ${label}`;
+}
+
 const pad = (value: number) => String(value).padStart(2, "0");
 
 function displayDate(value: string, language: "en" | "es", compact = false) {
@@ -234,7 +247,11 @@ function itineraryCopy(language: "en" | "es") {
     arrival: "Llegada",
     departure: "Salida",
     fullDay: "Día completo",
+    fullDayDropIntent: "Añadir al día como plan de día completo",
+    fullDayPeriodDropError: "Este plan de día completo ya aparece sobre los horarios. Usa Mover a otro día o Calendario para cambiarlo de día.",
     timeNotSet: "Hora por decidir",
+    timingToConfirm: "horario por confirmar",
+    continuesOvernight: "continúa durante la noche",
     accommodation: "Estancia",
     booking: "Reserva",
     noCalendarPlans: "Sin planes guardados todavía",
@@ -347,8 +364,12 @@ function itineraryCopy(language: "en" | "es") {
     licence: "Licence",
     arrival: "Arrival",
     departure: "Departure",
-    fullDay: "Full day",
+    fullDay: "Full-day",
+    fullDayDropIntent: "Add to this day as a full-day plan",
+    fullDayPeriodDropError: "This full-day plan already sits above the time slots. Use Move to another day or Calendar to change its day.",
     timeNotSet: "Time not set",
+    timingToConfirm: "timing to confirm",
+    continuesOvernight: "continues overnight",
     accommodation: "Stay",
     booking: "Booking",
     noCalendarPlans: "No saved plans yet",
@@ -1147,12 +1168,21 @@ export default function TripItineraryWorkspace({
     if (!dragged) return;
     clearPlannerDrag();
     setPlannerError("");
+    const fullDay = dragged.kind === "suggestion"
+      ? isFullDayActivity(dragged.idea.providerMetadata?.duration)
+      : isFullDayActivity(dragged.activity.providerMetadata?.duration);
+    if (dragged.kind === "activity" && fullDay) {
+      setPlannerError(copy.fullDayPeriodDropError);
+      return false;
+    }
     if (dragged.kind === "suggestion") {
       let mutationReason = "";
       let receipt: ItineraryItemUndoReceipt | null = null;
       let newItem = false;
       const accepted = await mutateCurrentTrip((current) => {
-        const result = scheduleItineraryIdeaAtPositionWithUndo(current, dragged.idea, active.id, dayPart, insertionIndex);
+        const result = fullDay
+          ? scheduleItineraryIdeaWithUndo(current, dragged.idea, active.id, null)
+          : scheduleItineraryIdeaAtPositionWithUndo(current, dragged.idea, active.id, dayPart, insertionIndex);
         mutationReason = result.reason ?? "";
         receipt = result.undo ?? null;
         newItem = newlyScheduledItineraryIdea(current, result.trip, dragged.idea);
@@ -1161,12 +1191,15 @@ export default function TripItineraryWorkspace({
       if (!isCurrent()) return false;
       if (accepted) {
         setUndoReceipt(receipt);
-        setNotice(addedToDayNotice(language, active.dayNumber, dayPart));
+        setNotice(fullDay
+          ? addedFullDayNotice(language, active.dayNumber, fullDayPlacementLabel(language, dragged.idea.providerMetadata?.duration))
+          : addedToDayNotice(language, active.dayNumber, dayPart));
         if (newItem) {
           trackEvent("itinerary_item_added", { trip_id: workingTrip.id, stop_id: dragged.idea.stopId, source: itineraryAddSourceForIdea(dragged.idea), item_kind: dragged.idea.category });
           trackEvent("attraction_selected", { trip_id: workingTrip.id, stop_id: active.stopId, source: "itinerary_drag" });
         }
       }
+      else if (fullDay && mutationReason.includes("already")) setNotice(addedFullDayNotice(language, active.dayNumber, fullDayPlacementLabel(language, dragged.idea.providerMetadata?.duration, dragged.idea.startsAt)));
       else if (mutationReason && !mutationReason.includes("already")) setPlannerError(mutationReason);
       return;
     }
@@ -1177,7 +1210,10 @@ export default function TripItineraryWorkspace({
       return result.trip;
     }, `itinerary-activity-place-${dragged.activity.id}`);
     if (!isCurrent()) return false;
-    if (accepted) setNotice(`${dragged.activity.title} moved to ${dayPart[0]!.toUpperCase()}${dayPart.slice(1)}`);
+    if (accepted) setNotice(fullDay
+      ? addedFullDayNotice(language, active.dayNumber, fullDayPlacementLabel(language, dragged.activity.providerMetadata?.duration, dragged.activity.startsAt))
+      : `${dragged.activity.title} moved to ${dayPart[0]!.toUpperCase()}${dayPart.slice(1)}`);
+    else if (fullDay && mutationReason.includes("already at day level")) setNotice(addedFullDayNotice(language, active.dayNumber, fullDayPlacementLabel(language, dragged.activity.providerMetadata?.duration, dragged.activity.startsAt)));
     else if (mutationReason && !mutationReason.includes("already")) setPlannerError(mutationReason);
   };
 
@@ -1683,6 +1719,8 @@ export default function TripItineraryWorkspace({
             onMoveActivity={moveComposedActivity}
             onMoveToDay={(activity, trigger) => openMoveFlow(activity, active.id, trigger)}
             dragActive={Boolean(plannerDrag)}
+            draggedFullDay={plannerDrag?.kind === "suggestion" && isFullDayActivity(plannerDrag.idea.providerMetadata?.duration)}
+            draggedFullDayActivity={plannerDrag?.kind === "activity" && isFullDayActivity(plannerDrag.activity.providerMetadata?.duration)}
             draggedActivityId={plannerDrag?.kind === "activity" ? plannerDrag.activity.id : null}
             onActivityDragStart={nativePlannerDrag ? (activity, event) => {
               event.dataTransfer.effectAllowed = "move";
@@ -2090,19 +2128,31 @@ function SavedIdeasSection({
       const options = itineraryIdeaDayOptions(trip, idea.stopId);
       const preferredDay = preferredItineraryIdeaDay(trip, idea.stopId);
       const allowsDayPart = activityAllowsDayPart(idea.providerMetadata?.duration, "morning");
-      const draggable = !mobile && allowsDayPart && Boolean(onDragStart);
+      const fullDay = isFullDayActivity(idea.providerMetadata?.duration);
+      const draggable = !mobile && (allowsDayPart || fullDay) && Boolean(onDragStart);
       return <article
         role="listitem"
         key={idea.id}
         className={draggingIdeaId === idea.id ? styles.discoveryCardDragging : undefined}
-        draggable={draggable}
-        onDragStart={draggable ? (event) => onDragStart?.(idea, event) : undefined}
-        onDragEnd={draggable ? onDragEnd : undefined}
       >
         <EasyTButton className={styles.savedIdeaSelect} variant="quiet" aria-label={`Open details for ${idea.title}`} aria-pressed={selectedIdeaId === idea.id} onClick={(event) => onOpenDetail(idea, event.currentTarget)}>
           <ItineraryActivityIdentity title={idea.title} category={idea.category} image={idea.image} meta={`Saved for ${stopName}`} compact />
         </EasyTButton>
         <div className={styles.savedIdeaActions}>
+          {draggable ? <EasyTButton
+            className={styles.savedIdeaDragHandle}
+            icon={GripVertical}
+            iconOnly
+            size="small"
+            variant="quiet"
+            data-itinerary-drag-handle={idea.id}
+            draggable
+            tabIndex={-1}
+            aria-hidden="true"
+            title={fullDay ? copy.fullDayDropIntent : `${copy.dragActivity}: ${idea.title}`}
+            onDragStart={(event) => onDragStart?.(idea, event)}
+            onDragEnd={onDragEnd}
+          >{fullDay ? copy.fullDayDropIntent : `${copy.dragActivity}: ${idea.title}`}</EasyTButton> : null}
           {preferredDay ? <ItineraryDayPicker
             scopeKey={JSON.stringify([trip.ownerId, trip.id, idea.id])}
             placeTitle={idea.title}
@@ -2165,7 +2215,7 @@ function SelectedDayStayContext({ composition, tripId, onSelect }: {
 function calendarScheduleLabel(item: Extract<ItineraryCalendarItem, { kind: "activity" }>, copy: ReturnType<typeof itineraryCopy>, language: "en" | "es") {
   if (item.schedule.kind === "time") return item.schedule.startsAt;
   if (item.schedule.kind === "day-part") return itineraryDayPartLabels[language][item.schedule.dayPart];
-  if (item.schedule.kind === "full-day") return copy.fullDay;
+  if (item.schedule.kind === "full-day") return fullDayPlacementLabel(language, item.activity.providerMetadata?.duration, item.activity.startsAt);
   return copy.flexible;
 }
 
@@ -2725,7 +2775,7 @@ function ItineraryRankedSuggestionCard({ result, tripId, scopeKey, language, opt
   const actionLabel = state.state === "planned" ? `Added to Day ${state.day.dayNumber}` : `Add to Day ${preferredDay?.dayNumber ?? ""}`;
   const meta = [result.location, result.category, result.duration, commercial ? "Viator" : null].filter(Boolean).join(" · ");
   const action = commercial && result.providerUrl ? { provider: "viator", category: "activities", href: result.providerUrl, cta: "View on Viator", affiliate: true } as const : null;
-  const draggable = allowsDayPart && !pending && Boolean(onDragStart);
+  const draggable = state.state !== "planned" && (allowsDayPart || isFullDayActivity(result.idea.providerMetadata?.duration)) && !pending && Boolean(onDragStart);
   return <article className={`${styles.discoveryCard} ${dragging ? styles.discoveryCardDragging : ""}`} data-itinerary-suggestion-id={result.sourceId} data-provider-product-id={result.providerProductId} aria-labelledby={titleId} aria-busy={pending || undefined} draggable={draggable} onDragStart={draggable ? onDragStart : undefined} onDragEnd={draggable ? onDragEnd : undefined}>
     <div className={styles.discoveryMedia}>
       <ResilientImage src={result.image} alt="" fallback={<span className={styles.discoveryFallback}><MapPin aria-hidden="true" /></span>} />

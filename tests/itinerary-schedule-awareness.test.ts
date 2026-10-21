@@ -6,6 +6,7 @@ import { itineraryIdeaForActivityInventory } from "../lib/easyt/activity-invento
 import { composeItineraryDay } from "../lib/easyt/itinerary-day-composition.ts";
 import { removeItineraryIdea, scheduleItineraryIdea } from "../lib/easyt/itinerary-ideas.ts";
 import {
+  fullDayActivityTiming,
   activityAllowsDayPart,
   activityDayPartFit,
   activityDurationLabel,
@@ -64,6 +65,33 @@ test("broad day-part fit distinguishes short, medium, full-day and unknown durat
   assert.equal(activityAllowsDayPart({ fixedMinutes: 660 }, null), true, "day-level placement is always valid");
 });
 
+test("full-day timing projects only verified current-day period overlap", () => {
+  assert.deepEqual(fullDayActivityTiming({ fixedMinutes: 480 }, "08:00"), {
+    kind: "timed",
+    startsAt: "08:00",
+    endsAt: "16:00",
+    dayParts: ["morning", "afternoon"],
+    continuesOvernight: false,
+  });
+  assert.deepEqual(fullDayActivityTiming({ fixedMinutes: 600 }, "22:00"), {
+    kind: "timed",
+    startsAt: "22:00",
+    endsAt: "08:00",
+    dayParts: ["evening"],
+    continuesOvernight: true,
+  }, "overnight continuation does not create next-day period occupancy");
+  assert.deepEqual(fullDayActivityTiming({ fixedMinutes: 600 }, undefined), {
+    kind: "untimed",
+    dayParts: [],
+    continuesOvernight: false,
+  });
+  assert.deepEqual(fullDayActivityTiming({ fromMinutes: 480, toMinutes: 600 }, "08:00"), {
+    kind: "untimed",
+    dayParts: [],
+    continuesOvernight: false,
+  }, "a duration range cannot establish the exact occupied periods");
+});
+
 test("exact overlap warns only when canonical start and fixed duration are both known", () => {
   const museum = { ...providerIdea("museum", "Museum", { fixedMinutes: 120 }), startsAt: "14:00" };
   const coffee = { ...providerIdea("coffee", "Coffee", { fixedMinutes: 60 }), startsAt: "15:00" };
@@ -88,6 +116,13 @@ test("a sourced full-day experience warns beside a substantial plan without bloc
   assert.equal(itineraryScheduleWarnings(composition).some((warning) => warning.kind === "long-duration" && warning.message.includes("10h")), true);
   const cleared = scheduled([providerIdea("full-day", "Long day tour", { fixedMinutes: 600 })]);
   assert.equal(itineraryScheduleWarnings(cleared).some((warning) => warning.kind === "long-duration"), false);
+});
+
+test("a known full-day interval does not warn about plans outside its actual span", () => {
+  const tour = { ...providerIdea("timed-full-day", "Timed full-day tour", { fixedMinutes: 480 }), startsAt: "08:00" };
+  const laterDinner = { ...providerIdea("later-dinner", "Later dinner", { fixedMinutes: 60 }), startsAt: "17:00" };
+  const composition = scheduled([tour, laterDinner]);
+  assert.equal(itineraryScheduleWarnings(composition).some((warning) => warning.kind === "long-duration"), false);
 });
 
 test("duration, provenance and optional exact time survive day-level scheduling and JSON persistence", () => {

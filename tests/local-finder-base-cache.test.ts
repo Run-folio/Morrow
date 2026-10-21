@@ -60,6 +60,83 @@ test("identical in-flight base requests share one provider lookup", async () => 
   assert.deepEqual(await second, ["Shared stay"]);
 });
 
+async function flushDeadline() {
+  for (let i = 0; i < 12; i++) await Promise.resolve();
+}
+
+test("bounded shared work rejects independently of transport abort and releases its key", async (t) => {
+  t.mock.timers.enable({ apis: ["Date", "setTimeout"], now: 0 });
+  let signal: AbortSignal | undefined;
+  const pending = deferred<string[]>();
+  const first = loadLocalFinderBaseResult("bounded", (attemptSignal) => {
+    signal = attemptSignal;
+    return pending.promise;
+  }, { timeoutMs: 10_000 });
+  let outcome = "pending";
+  void first.then(() => { outcome = "ready"; }, (error) => { outcome = error.name; });
+  await flushDeadline();
+  t.mock.timers.tick(6_000);
+  const joined = loadLocalFinderBaseResult("bounded", async () => ["duplicate"], { timeoutMs: 10_000 });
+  assert.equal(joined, first);
+  t.mock.timers.tick(4_000); await flushDeadline();
+  assert.equal(outcome, "TimeoutError");
+  assert.equal(signal?.aborted, true);
+  assert.deepEqual(await loadLocalFinderBaseResult("bounded", async () => ["fresh"], { timeoutMs: 10_000 }), ["fresh"]);
+  pending.resolve(["expired"]); await flushDeadline();
+  assert.deepEqual(peekLocalFinderBaseResult("bounded"), ["fresh"]);
+});
+
+test("a result arriving after the deadline cannot cache before its delayed timer runs", async (t) => {
+  t.mock.timers.enable({ apis: ["Date", "setTimeout"], now: 0 });
+  const pending = deferred<string[]>();
+  const attempt = loadLocalFinderBaseResult("delayed-timer", () => pending.promise, { timeoutMs: 10_000 });
+  let outcome = "pending";
+  void attempt.then(() => { outcome = "ready"; }, (error) => { outcome = error.name; });
+  await flushDeadline();
+  t.mock.timers.setTime(10_001);
+  pending.resolve(["too late"]); await flushDeadline();
+  assert.equal(outcome, "TimeoutError");
+  assert.equal(peekLocalFinderBaseResult("delayed-timer"), null);
+});
+
+test("expired work cannot repopulate an empty cache on late completion", async (t) => {
+  t.mock.timers.enable({ apis: ["Date", "setTimeout"], now: 0 });
+  const pending = deferred<string[]>();
+  const attempt = loadLocalFinderBaseResult("late-empty", () => pending.promise, { timeoutMs: 10_000 });
+  let outcome = "pending";
+  void attempt.then(() => { outcome = "ready"; }, (error) => { outcome = error.name; });
+  await flushDeadline(); t.mock.timers.tick(10_000); await flushDeadline();
+  assert.equal(outcome, "TimeoutError");
+  pending.resolve(["expired"]); await flushDeadline();
+  assert.equal(peekLocalFinderBaseResult("late-empty"), null);
+});
+
+for (const failure of [false, true]) test(`settled ${failure ? "failed" : "successful"} work clears its owned deadline timer`, async (t) => {
+  t.mock.timers.enable({ apis: ["Date", "setTimeout"], now: 0 });
+  let signal: AbortSignal | undefined;
+  const attempt = loadLocalFinderBaseResult("settled", async (attemptSignal) => {
+    signal = attemptSignal;
+    if (failure) throw Error("Synthetic failure");
+    return ["safe"];
+  }, { timeoutMs: 10_000 });
+  if (failure) await assert.rejects(attempt, /Synthetic failure/);
+  else assert.deepEqual(await attempt, ["safe"]);
+  assert.ok(signal, "bounded transport receives the shared abort signal");
+  t.mock.timers.tick(20_000); await flushDeadline();
+  assert.equal(signal.aborted, false, "a settled attempt owns no remaining timeout");
+});
+
+test("an older rejected request cannot evict a newer shared entry", async () => {
+  const old = deferred<string[]>(), current = deferred<string[]>();
+  const oldAttempt = loadLocalFinderBaseResult("own-entry", () => old.promise);
+  const oldFailure = assert.rejects(oldAttempt, /Old failure/);
+  await flushDeadline(); clearLocalFinderBaseCacheForTests();
+  const currentAttempt = loadLocalFinderBaseResult("own-entry", () => current.promise);
+  await flushDeadline(); old.reject(Error("Old failure")); await oldFailure;
+  assert.equal(loadLocalFinderBaseResult("own-entry", async () => ["duplicate"]), currentAttempt);
+  current.resolve(["current"]); assert.deepEqual(await currentAttempt, ["current"]);
+});
+
 test("different stop identities are never deduplicated", async () => {
   let requestCount = 0;
   const tokyo = loadLocalFinderBaseResult("tokyo-stop-1", async () => { requestCount += 1; return ["Tokyo one"]; });

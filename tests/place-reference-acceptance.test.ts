@@ -42,6 +42,7 @@ test('actual saved Builder lookup filters mismatched snapshots and never saves d
  for(const candidate of [current,future]){
   const h=actualCallbackHarness(undefined,current.canonicalPlaceId),before=JSON.stringify(h.trip());let review:any;
   const scope={...h.scope,stopGeographicPlace,authoredContentKey,geographicInputKey,geographicallyReady,geographicCandidateMatches,
+   builderMountedRef:{current:true},
    savedFinishRequestRef:{current:null},setSavedFinishReview:(value:any)=>{review=value},
    withProviderTimeout:async({request,signal}:any)=>request(signal),fetch:async()=>({ok:true,json:async()=>({candidates:[candidate]})})};
   const callback=new Function('scope',`with(scope){${ts.transpileModule(helpers+lookup+'\nreturn confirmSavedLocation;',{compilerOptions:{target:ts.ScriptTarget.ES2022}}).outputText}}`)(scope);

@@ -5,6 +5,7 @@ import {
   type ItineraryDayComposition,
 } from "./itinerary-day-composition.ts";
 import type { EasyTTrip, ItineraryDayPart } from "./trip.ts";
+import { isFullDayActivity } from "./itinerary-schedule-awareness.ts";
 
 function explicitDayPartForActivity(
   trip: EasyTTrip,
@@ -68,6 +69,9 @@ export function composeItineraryDayForPlanning(trip: EasyTTrip, dayId: string): 
   if (!composition) return null;
   const activities = [...itineraryDayParts.flatMap((part) => composition.planned[part]), ...composition.unslotted]
     .map((activity) => {
+      if (isFullDayActivity(activity.providerMetadata?.duration)) {
+        return { ...activity, dayPart: null };
+      }
       const timedPart = partForLocalStart(activity.startsAt);
       const dayPart = timedPart ?? (activity.dayPart === "midday" ? "afternoon" : activity.dayPart);
       return { ...activity, dayPart, dayPartEditable: activity.dayPartEditable && timedPart === null };

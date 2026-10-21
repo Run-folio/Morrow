@@ -1699,7 +1699,11 @@ test("service worker advances public documents online and reopens the planner sh
   const shell = (body: string) => `<!doctype html><meta name="morrovia-offline-reader" content="${floor}"><meta name="morrovia-build-commit" content="${commit}"><script src="/_next/static/chunks/planner.js"></script><div>${body}</div>`;
   const plannerShell = shell("offline planner shell");
   const asset = { url: "/_next/static/chunks/planner.js", sha256: createHash("sha256").update("planner dependency").digest("hex") };
-  const identity = { version: 1, readerFloor: floor, buildId: "fixture-build", buildCommit: commit, assets: [asset, { url: "/easyt-offline-dependencies.js", sha256: createHash("sha256").update(dependencySource).digest("hex") }] };
+  const mapModules = new Map([
+    ["/maplibre/maplibre-gl-worker.mjs", 'import "./maplibre-gl-shared.mjs";'],
+    ["/maplibre/maplibre-gl-shared.mjs", "export const shared = true;"],
+  ]);
+  const identity = { version: 1, readerFloor: floor, buildId: "fixture-build", buildCommit: commit, assets: [asset, { url: "/easyt-offline-dependencies.js", sha256: createHash("sha256").update(dependencySource).digest("hex") }, ...[...mapModules].map(([url, body]) => ({ url, sha256: createHash("sha256").update(body).digest("hex") }))] };
   const manifest = { ...identity, artifactId: createHash("sha256").update(JSON.stringify(identity)).digest("hex") };
   const cacheName = `easyt-public-shell-${floor}-${manifest.artifactId}`;
   const previous = new Map([["/_next/static/chunks/previous-client.js", new Response("old client dependency")]]);
@@ -1726,6 +1730,7 @@ test("service worker advances public documents online and reopens the planner sh
         assert.equal(options?.credentials, "omit");
         if (key(request) === asset.url) return new Response("planner dependency");
         if (key(request) === "/easyt-offline-dependencies.js") return new Response(dependencySource);
+        if (mapModules.has(key(request))) return new Response(mapModules.get(key(request)));
         return new Response(key(request) === "/journey/plan" ? plannerShell : shell(key(request)), { headers: { "content-type": "text/html" } });
       }
       if (networkResponse) return networkResponse.clone();
@@ -1739,6 +1744,7 @@ test("service worker advances public documents online and reopens the planner sh
   };
   await lifecycle("install"); assert.equal(skipWaitingCalls, 1);
   assert.ok(rows.has(asset.url)); assert.ok(rows.has("/easyt-offline-dependencies.js")); assert.ok(rows.has("/__morrovia_offline_ready__"));
+  for (const [url, body] of mapModules) assert.equal(await rows.get(url)?.clone().text(), body);
   await lifecycle("activate"); assert.equal(claimed, 1);
   assert.deepEqual(deletedCaches, [], "activation preserves every old graph");
   installing = false; cachedWrites.length = 0;

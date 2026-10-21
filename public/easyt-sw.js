@@ -31,11 +31,12 @@ function validManifest() {
     && (MANIFEST.buildCommit === "" || /^[a-f0-9]{40}$/i.test(MANIFEST.buildCommit))
     && Array.isArray(MANIFEST.assets) && MANIFEST.assets.length > 0
     && MANIFEST.assets.every((asset) => asset && typeof asset === "object")
+    && ["/maplibre/maplibre-gl-worker.mjs", "/maplibre/maplibre-gl-shared.mjs"].every(url => MANIFEST.assets.some(asset => asset.url === url))
     && /^[a-f0-9]{64}$/.test(MANIFEST.artifactId)
     && new Set(MANIFEST.assets.map((asset) => asset.url)).size === MANIFEST.assets.length
     && MANIFEST.assets.every((asset) => typeof asset.url === "string"
       && canonicalAssetPath(asset.url) === asset.url
-      && (asset.url.startsWith("/_next/static/") || asset.url === "/easyt-offline-dependencies.js" || asset.url === "/easyt-icon.svg" || asset.url === "/maplibre/maplibre-gl-worker.mjs")
+      && (asset.url.startsWith("/_next/static/") || asset.url === "/easyt-offline-dependencies.js" || asset.url === "/easyt-icon.svg" || asset.url === "/maplibre/maplibre-gl-worker.mjs" || asset.url === "/maplibre/maplibre-gl-shared.mjs")
       && /^[a-f0-9]{64}$/.test(asset.sha256));
 }
 

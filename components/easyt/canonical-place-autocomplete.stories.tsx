@@ -33,3 +33,8 @@ export const VerifiedCityIdentity:Story={args:{value:'Manila',label:'Destination
  globalThis.fetch=(async(input,init)=>String(input).startsWith('/api/journey-geocode?')?new Response(JSON.stringify({candidates:[candidate]})):original(input,init)) as typeof fetch;
  return ()=>{globalThis.fetch=original;};
 }};
+
+// Offline catalog/reference collisions: no identity equivalence is inferred.
+export const PublishedCityChoices:Story={...MetropolitanCity,args:{value:'Beijing',label:'Destination',placeholder:'City or area'}};
+export const PublishedCityChoicesSpanish:Story={...PublishedCityChoices,args:{...PublishedCityChoices.args,language:'es'}};
+export const PublishedCityChoicesMobile:Story={...PublishedCityChoices,globals:{viewport:{value:'morrovia390',isRotated:false}}};

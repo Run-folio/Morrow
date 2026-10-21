@@ -291,6 +291,15 @@
   min-width: 0;
 }
 
+.fullDayBandList { display: grid; gap: 7px; }
+.fullDayBand { min-width: 0; overflow: hidden; border: 1px solid var(--morrovia-line); border-left: 3px solid var(--morrovia-action); border-radius: var(--morrovia-control-radius); background: var(--morrovia-paper); }
+.fullDayBand .activity { border: 0; background: transparent; }
+.fullDaySpanTrack { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 3px; padding: 0 12px 10px; }
+.fullDaySpanTrack > span { min-width: 0; display: grid; min-height: 22px; place-items: center; border-radius: var(--morrovia-control-radius); background: color-mix(in srgb, var(--morrovia-line) 36%, var(--morrovia-paper)); color: var(--morrovia-muted); font: var(--morrovia-type-metadata); overflow-wrap: anywhere; text-align: center; }
+.fullDaySpanTrack > span[data-period-overlap] { background: var(--morrovia-action); color: var(--morrovia-paper); }
+.fullDayMenuLabel { margin: 0; padding: 7px 4px; color: var(--morrovia-ink-soft); font: var(--morrovia-type-supporting-body); }
+.fullDayDropIntent { margin: 0; padding: 9px 12px; border: 1px solid var(--morrovia-line); border-radius: var(--morrovia-control-radius); background: var(--morrovia-paper); color: var(--morrovia-action); font: var(--morrovia-type-supporting-body); }
+
 .activityDropGroup {
   min-width: 0;
 }

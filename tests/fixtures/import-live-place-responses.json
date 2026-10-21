@@ -1,0 +1,96 @@
+{
+  "description": "Captured public GET responses for deterministic query/guard regressions. Replays are not real-base browser or save/reopen acceptance. No candidate identity, point or containment proof has been synthesized.",
+  "responses": {
+    "qualifiedEmpty": {
+      "capturedAt": "2026-10-20T13:20:58.918454+00:00",
+      "url": "https://staging.morrovia.com/api/journey-geocode?candidates=1&country=Philippines&place=Tagbilaran%2C+Philippines&mode=resolve",
+      "status": 200,
+      "payload": {
+        "candidates": []
+      }
+    },
+    "tagbilaranReference": {
+      "capturedAt": "2026-10-20T13:21:49.080920+00:00",
+      "url": "https://staging.morrovia.com/api/journey-geocode?candidates=1&country=Philippines&place=Tagbilaran&mode=resolve",
+      "status": 200,
+      "payload": {
+        "candidates": [
+          {
+            "canonicalPlaceId": "reference:geonames:1684497",
+            "name": "Tagbilaran City",
+            "country": "Philippines",
+            "providerId": "reference:geonames:1684497@699b595afdba9be6994e:PH:city:123.85219:9.65556",
+            "providerSourceLabel": "GeoNames · filtered and adapted",
+            "coordinates": [
+              123.85219,
+              9.65556
+            ],
+            "kind": "city",
+            "placeType": "city",
+            "locality": "Tagbilaran City",
+            "routability": "direct_destination",
+            "matchQuality": "exact",
+            "rankScore": 1001,
+            "referenceSnapshotId": "699b595afdba9be6994e"
+          }
+        ]
+      }
+    },
+    "siquijorProvince": {
+      "capturedAt": "2026-10-20T13:21:07.613021+00:00",
+      "url": "https://staging.morrovia.com/api/journey-geocode?candidates=1&country=Philippines&place=Siquijor%2C+Philippines&mode=resolve&parentName=Siquijor&parentType=region&parentId=open-world%3Aphoton%3AR%3A3604058&parentCountry=Philippines",
+      "status": 200,
+      "payload": {
+        "candidates": [
+          {
+            "canonicalPlaceId": "open-world:photon:R:3604064",
+            "name": "Siquijor",
+            "country": "Philippines",
+            "countryCode": "PH",
+            "region": "Siquijor",
+            "providerId": "photon:R:3604064",
+            "providerSourceLabel": "Komoot Photon",
+            "normalizationReason": "provider locality (town) is directly routable; alias name match; route-stop intent; source=Komoot Photon; explicit country context",
+            "coordinates": [
+              123.5138212,
+              9.2155864
+            ],
+            "kind": "town",
+            "placeType": "town",
+            "locality": "Siquijor",
+            "routability": "direct_destination",
+            "matchQuality": "alias",
+            "rankScore": 325
+          }
+        ]
+      }
+    },
+    "siquijorReference": {
+      "capturedAt": "2026-10-19T14:23:51.196206+00:00",
+      "url": "https://staging.morrovia.com/api/journey-geocode?place=Siquijor&candidates=1&mode=autocomplete&intent=route-stop",
+      "status": 200,
+      "payload": {
+        "candidates": [
+          {
+            "canonicalPlaceId": "reference:geonames:1686066",
+            "name": "Siquijor",
+            "country": "Philippines",
+            "providerId": "reference:geonames:1686066@699b595afdba9be6994e:PH:city:123.515:9.2142",
+            "providerSourceLabel": "GeoNames · filtered and adapted",
+            "coordinates": [
+              123.515,
+              9.2142
+            ],
+            "kind": "city",
+            "placeType": "city",
+            "locality": "Siquijor",
+            "routability": "direct_destination",
+            "matchQuality": "exact",
+            "rankScore": 1000,
+            "referenceSnapshotId": "699b595afdba9be6994e"
+          }
+        ]
+      }
+    }
+  }
+}

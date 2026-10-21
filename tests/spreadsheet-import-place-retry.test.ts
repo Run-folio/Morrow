@@ -25,7 +25,7 @@ test('explicit intake retry carries the chosen region and qualified label throug
       mode: 'resolve', parent: { canonicalName: 'Siquijor', canonicalPlaceId: 'open-world:photon:R:3604058', placeType: 'region', parentCountries: ['Philippines'] },
     });
     assert.deepEqual(Object.fromEntries(requests[0].searchParams), {
-      place: 'Siquijor, Philippines', candidates: '1', country: 'Philippines', mode: 'resolve',
+      place: 'Siquijor, Philippines', candidates: '1', consumer: 'spreadsheet-import', country: 'Philippines', mode: 'resolve',
       parentName: 'Siquijor', parentType: 'region', parentId: 'open-world:photon:R:3604058', parentCountry: 'Philippines',
     });
   } finally { globalThis.fetch = original; }
@@ -70,7 +70,11 @@ for (const [name, patch, status] of [
   const original = globalThis.fetch;
   const base = candidate('Fira', 'Greece');
   globalThis.fetch = async () => Response.json({ candidates: [{ ...base, region: 'Santorini', normalizationReason: 'physical verification', ...patch }] }, { status });
-  try { assert.equal(await verify(base, { canonicalName: 'Santorini', placeType: 'island', parentCountries: ['Greece'] }), null); }
+  try {
+    const result = verify(base, { canonicalName: 'Santorini', placeType: 'island', parentCountries: ['Greece'] });
+    if (status === 503) await assert.rejects(result, /unavailable/);
+    else assert.equal(await result, null);
+  }
   finally { globalThis.fetch = original; }
 });
 

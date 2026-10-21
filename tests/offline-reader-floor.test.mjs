@@ -16,7 +16,8 @@ const assets = new Map([
   ['/_next/static/chunks/reader.js', 'synthetic reader'],
   ['/_next/static/chunks/lazy-map.js', 'synthetic lazy map'],
   ['/_next/static/css/shell.css', 'synthetic css'],
-  ['/maplibre/maplibre-gl-worker.mjs', 'synthetic map worker'],
+  ['/maplibre/maplibre-gl-worker.mjs', 'import "./maplibre-gl-shared.mjs";'],
+  ['/maplibre/maplibre-gl-shared.mjs', 'export const shared = true;'],
 ]);
 const manifest = {
   version: 1, readerFloor: floor, buildId: build, buildCommit: commit,
@@ -113,6 +114,34 @@ test('takeover waits for the complete direct and lazy reader graph', async () =>
   for (const asset of assets.keys()) assert.ok(m.stores.get(currentCache)?.has(asset), asset);
   assert.ok(m.stores.get(currentCache)?.has(readyKey));
   assert.ok(m.requests.every(row => row.options?.credentials === 'omit'));
+});
+
+test('the cold offline worker dependency is intercepted and served with exact accepted bytes', async () => {
+  const prepared = await installed();
+  const offline = model({ seed: [...prepared.stores] });
+  const response = await offline.request('/maplibre/maplibre-gl-shared.mjs', 'cors');
+  assert.ok(response);
+  assert.equal(await response.text(), assets.get('/maplibre/maplibre-gl-shared.mjs'));
+  assert.equal(offline.requests.length, 0);
+});
+
+for (const reason of ['missing', 'corrupt']) test(`a ${reason} shared worker dependency revokes cold reader readiness`, async () => {
+  const prepared = await installed(), rows = prepared.stores.get(currentCache);
+  if (reason === 'missing') rows.delete('/maplibre/maplibre-gl-shared.mjs');
+  else rows.set('/maplibre/maplibre-gl-shared.mjs', new Response('wrong bytes'));
+  const offline = model({ seed: [...prepared.stores] });
+  assert.equal((await offline.request('/journey/new')).type, 'error');
+});
+
+test('an otherwise authenticated manifest missing the worker import cannot install a cold reader', async () => {
+  const incomplete = {
+    version: manifest.version, readerFloor: floor, buildId: build, buildCommit: commit,
+    assets: manifest.assets.filter(asset => asset.url !== '/maplibre/maplibre-gl-shared.mjs'),
+  };
+  incomplete.artifactId = createHash('sha256').update(JSON.stringify(incomplete)).digest('hex');
+  const worker = model({ network: online, manifestValue: incomplete });
+  await assert.rejects(worker.lifecycle('install'));
+  assert.equal(worker.skipped, 0);
 });
 
 for (const reason of ['legacy document', 'wrong commit', 'unknown direct chunk', 'lazy refusal', 'wrong asset bytes', 'cache refusal']) {

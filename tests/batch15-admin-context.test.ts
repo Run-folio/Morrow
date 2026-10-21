@@ -20,7 +20,7 @@ test('island bindings migrate with the reference snapshot while retaining review
   const derived = JSON.parse(gunzipSync(readFileSync('data/place-reference/islands/base-bindings.json.gz')).toString());
   assert.equal(manifest.referenceSnapshotId, referenceSnapshotId());
   assert.equal(derived.referenceSnapshotId, referenceSnapshotId());
-  assert.equal(derived.bindings.length, 192);
+  assert.equal(derived.bindings.length, 278);
   assert.ok(searchBundledIslandIdentityCandidates('Santorini').some(item => item.canonicalName === 'Santorini'));
 });
 

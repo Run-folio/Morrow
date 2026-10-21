@@ -185,6 +185,17 @@ test("preserves day parts, explicit times, full-day duration and time-not-set se
   ]);
 });
 
+test("full-day calendar activities keep one full-day item even when an exact start is known", () => {
+  const trip = representativeTrip();
+  trip.brief.itineraryIdeas = (trip.brief.itineraryIdeas ?? []).map((idea) => idea.id === "kyoto-tour"
+    ? { ...idea, dayPart: "morning", startsAt: "08:00" }
+    : idea);
+  const tour = itineraryCalendarDays(trip).flatMap((day) => day.items)
+    .find((item) => item.kind === "activity" && item.activity.id === "kyoto-tour");
+  assert.equal(tour?.kind, "activity");
+  if (tour?.kind === "activity") assert.deepEqual(tour.schedule, { kind: "full-day" });
+});
+
 test("projects accommodation and dated bookings without duplicating a transport booking", () => {
   const days = itineraryCalendarDays(representativeTrip());
   assert.equal(days[0]?.items.some((item) => item.kind === "accommodation" && item.booking.id === "stay-tokyo-first"), true);

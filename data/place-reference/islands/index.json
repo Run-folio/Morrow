@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "snapshotId": "2aca69a1f810",
+  "snapshotId": "9f5de7411bdc",
   "islands": [
     {
       "id": "santorini",
@@ -41,6 +41,16 @@
         "Gran Canaria"
       ],
       "identityId": "relation:2214683"
+    },
+    {
+      "id": "bohol",
+      "name": "Bohol",
+      "countryCode": "PH",
+      "aliases": [
+        "Bohol",
+        "Bohol"
+      ],
+      "identityId": "relation:3625899"
     }
   ],
   "groups": [

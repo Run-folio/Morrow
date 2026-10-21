@@ -24,7 +24,7 @@ import {
 } from "@/lib/easyt/itinerary-day-composition";
 import { itineraryPlanningParts, type ItineraryPlanningPart } from "@/lib/easyt/itinerary-day-part-intent";
 import type { ItineraryDayPart } from "@/lib/easyt/trip";
-import { activityAllowsDayPart, activityDayPartFit, activityDurationLabel, activityStartTimeLabel, isFullDayActivity, itineraryScheduleWarnings } from "@/lib/easyt/itinerary-schedule-awareness";
+import { activityAllowsDayPart, activityDayPartFit, activityDurationLabel, activityStartTimeLabel, fullDayActivityTiming, isFullDayActivity, itineraryScheduleWarnings } from "@/lib/easyt/itinerary-schedule-awareness";
 import { EasyTButton, EasyTField, EasyTSelect } from "./easyt-controls";
 import ItineraryActivityIdentity from "./itinerary-activity-identity";
 import styles from "./rich-itinerary-day-planner.module.css";
@@ -47,6 +47,8 @@ type RichItineraryDayPlannerProps = {
   onMoveActivity?: (activity: ComposedItineraryActivity, direction: "earlier" | "later") => void;
   onMoveToDay?: (activity: ComposedItineraryActivity, trigger: HTMLButtonElement) => void;
   dragActive?: boolean;
+  draggedFullDay?: boolean;
+  draggedFullDayActivity?: boolean;
   draggedActivityId?: string | null;
   onActivityDragStart?: (activity: ComposedItineraryActivity, event: DragEvent<HTMLButtonElement>) => void;
   onActivityDragEnd?: () => void;
@@ -88,6 +90,11 @@ function copyFor(language: "en" | "es") {
     dragActivity: "Arrastrar para organizar",
     bookedActivity: "Reservado",
     timeNotSet: "PLANIFICADO · HORA SIN FIJAR",
+    fullDay: "Día completo",
+    fullDayTimingToConfirm: "Día completo · horario por confirmar",
+    fullDayDropIntent: "Añadir al día como plan de día completo",
+    fullDayActivityDropIntent: "Los planes de día completo se mantienen sobre los horarios. Usa Mover a otro día o Calendario para cambiarlo de día.",
+    continuesOvernight: "continúa durante la noche",
     choosePeriod: "Momento del día",
     unsetPeriod: "Hora sin fijar",
     tonight: "Esta noche",
@@ -116,6 +123,11 @@ function copyFor(language: "en" | "es") {
     dragActivity: "Drag to organise",
     bookedActivity: "Booked",
     timeNotSet: "Planned",
+    fullDay: "Full-day",
+    fullDayTimingToConfirm: "Full-day · timing to confirm",
+    fullDayDropIntent: "Add to this day as a full-day plan",
+    fullDayActivityDropIntent: "Full-day plans stay above the time slots. Use Move to another day or Calendar to change its day.",
+    continuesOvernight: "continues overnight",
     choosePeriod: "Part of day",
     unsetPeriod: "Time not set",
     tonight: "Tonight",
@@ -177,11 +189,17 @@ function ActivityRow({
   const copy = copyFor(language);
   const duration = activityDurationLabel(activity.providerMetadata?.duration);
   const durationFit = activityDayPartFit(activity.providerMetadata?.duration);
+  const fullDay = isFullDayActivity(activity.providerMetadata?.duration);
+  const fullDayTiming = fullDayActivityTiming(activity.providerMetadata?.duration, activity.startsAt);
   const allowsDayPart = activityAllowsDayPart(activity.providerMetadata?.duration, "morning");
+  const fullDayScheduleLabel = fullDay
+    ? fullDayTiming?.kind === "timed"
+      ? `${copy.fullDay} · ${fullDayTiming.startsAt}–${fullDayTiming.endsAt}${fullDayTiming.continuesOvernight ? ` · ${copy.continuesOvernight}` : ""}`
+      : copy.fullDayTimingToConfirm
+    : null;
   const meta = [
-    activityStartTimeLabel(activity.startsAt),
+    fullDayScheduleLabel ?? activityStartTimeLabel(activity.startsAt),
     duration,
-    isFullDayActivity(activity.providerMetadata?.duration) ? (language === "es" ? "Experiencia de día completo" : "Full-day experience") : null,
     durationFit === "extended" ? (language === "es" ? "Necesita gran parte del día" : "Needs a large part of the day") : null,
     activity.placeType,
     activity.area,
@@ -199,7 +217,7 @@ function ActivityRow({
         {activity.booking ? <span className={styles.bookedState}>{copy.bookedActivity}</span> : null}
         {warnings.map((warning) => <span className={styles.activityWarning} role="status" key={warning}><AlertTriangle aria-hidden="true" />{warning}</span>)}
       </EasyTButton>
-      {draggable && allowsDayPart ? <EasyTButton
+      {draggable && (allowsDayPart || fullDay) ? <EasyTButton
         className={styles.dragHandle}
         icon={GripVertical}
         iconOnly
@@ -212,10 +230,10 @@ function ActivityRow({
         onDragStart={onDragStart}
         onDragEnd={onDragEnd}
       >{copy.dragActivity}: {activity.title}</EasyTButton> : null}
-      {activity.dayPartEditable && allowsDayPart ? <details className={styles.activityMenu}>
+      {activity.dayPartEditable && (allowsDayPart || fullDay) ? <details className={styles.activityMenu}>
         <summary aria-label={`Organise ${activity.title}`}><MoreHorizontal aria-hidden="true" /></summary>
         <div>
-          <EasyTSelect
+          {allowsDayPart ? <EasyTSelect
             id={controlId}
             fieldClassName={styles.dayPartField}
             label={`${copy.choosePeriod}: ${activity.title}`}
@@ -230,7 +248,7 @@ function ActivityRow({
             {itineraryPlanningParts.map((part) => (
               <option value={part} key={part}>{dayPartLabels[language][part]}</option>
             ))}
-          </EasyTSelect>
+          </EasyTSelect> : <p className={styles.fullDayMenuLabel}>{fullDayScheduleLabel}</p>}
           {activity.dayPart !== null && onMoveActivity ? <div className={styles.activityMoveActions}>
         <EasyTButton
           icon={ArrowUp}
@@ -278,6 +296,8 @@ export default function RichItineraryDayPlanner({
   onMoveActivity,
   onMoveToDay,
   dragActive = false,
+  draggedFullDay = false,
+  draggedFullDayActivity = false,
   draggedActivityId = null,
   onActivityDragStart,
   onActivityDragEnd,
@@ -295,6 +315,8 @@ export default function RichItineraryDayPlanner({
   const titleId = `rich-day-${composition.day.id}`;
   const tonight = composition.tonight;
   const unslotted = composition.unslotted.filter((activity) => activity.source !== "day-note");
+  const fullDayActivities = unslotted.filter((activity) => isFullDayActivity(activity.providerMetadata?.duration));
+  const untimedActivities = unslotted.filter((activity) => !isFullDayActivity(activity.providerMetadata?.duration));
   const controlPrefix = useId().replaceAll(":", "");
   const focusAfterMoveRef = useRef<string | null>(null);
   const focusAfterAddRef = useRef<{ dayId: string; part: ItineraryPlanningPart } | null>(null);
@@ -328,16 +350,16 @@ export default function RichItineraryDayPlanner({
     const headingId = `${titleId}-${part}`;
     return (
       <section
-        className={`${styles.period} ${dragActive ? styles.periodDropReady : ""} ${dropTarget?.startsWith(`${part}:`) ? styles.periodDropActive : ""}`}
+        className={`${styles.period} ${dragActive && !draggedFullDayActivity ? styles.periodDropReady : ""} ${dropTarget?.startsWith(`${part}:`) ? styles.periodDropActive : ""}`}
         data-day-part={part}
-        data-drop-zone={dragActive ? "ready" : undefined}
+        data-drop-zone={dragActive && !draggedFullDayActivity ? "ready" : undefined}
         aria-labelledby={headingId}
         data-empty={activities.length === 0}
         key={part}
-        onDragEnter={(event) => { event.preventDefault(); if (dragActive) setDropTarget(`${part}:${activities.length}`); }}
-        onDragOver={(event) => { if (onActivityDrop) event.preventDefault(); }}
+        onDragEnter={(event) => { event.preventDefault(); if (dragActive && !draggedFullDayActivity) setDropTarget(`${part}:${activities.length}`); }}
+        onDragOver={(event) => { if (onActivityDrop && !draggedFullDayActivity) event.preventDefault(); }}
         onDrop={(event) => {
-          if (!onActivityDrop) return;
+          if (!onActivityDrop || draggedFullDayActivity) return;
           event.preventDefault();
           onActivityDrop?.(part, activities.length);
           setDropTarget(null);
@@ -354,10 +376,10 @@ export default function RichItineraryDayPlanner({
                 className={`${styles.dropMarker} ${dropTarget === `${part}:${activityIndex}` ? styles.dropMarkerActive : ""}`}
                 data-drop-index={activityIndex}
                 aria-hidden="true"
-                onDragEnter={(event) => { event.preventDefault(); event.stopPropagation(); if (dragActive) setDropTarget(`${part}:${activityIndex}`); }}
-                onDragOver={(event) => { event.stopPropagation(); if (onActivityDrop) event.preventDefault(); }}
-                onDrop={(event) => { event.preventDefault(); event.stopPropagation(); onActivityDrop?.(part, activityIndex); setDropTarget(null); }}
-              >{dragActive ? "Drop here" : null}</div>
+                onDragEnter={(event) => { event.preventDefault(); event.stopPropagation(); if (dragActive && !draggedFullDayActivity) setDropTarget(`${part}:${activityIndex}`); }}
+                onDragOver={(event) => { event.stopPropagation(); if (onActivityDrop && !draggedFullDayActivity) event.preventDefault(); }}
+                onDrop={(event) => { event.preventDefault(); event.stopPropagation(); if (!draggedFullDayActivity) onActivityDrop?.(part, activityIndex); setDropTarget(null); }}
+              >{dragActive && !draggedFullDayActivity ? "Drop here" : null}</div>
               <ActivityRow
                 activity={activity}
                 language={language}
@@ -382,18 +404,18 @@ export default function RichItineraryDayPlanner({
               className={`${styles.dropMarker} ${dropTarget === `${part}:${activities.length}` ? styles.dropMarkerActive : ""}`}
               data-drop-index={activities.length}
               aria-hidden="true"
-              onDragEnter={(event) => { event.preventDefault(); event.stopPropagation(); if (dragActive) setDropTarget(`${part}:${activities.length}`); }}
-              onDragOver={(event) => { event.stopPropagation(); if (onActivityDrop) event.preventDefault(); }}
-              onDrop={(event) => { event.preventDefault(); event.stopPropagation(); onActivityDrop?.(part, activities.length); setDropTarget(null); }}
-            >{dragActive ? "Drop here" : null}</div>
+              onDragEnter={(event) => { event.preventDefault(); event.stopPropagation(); if (dragActive && !draggedFullDayActivity) setDropTarget(`${part}:${activities.length}`); }}
+              onDragOver={(event) => { event.stopPropagation(); if (onActivityDrop && !draggedFullDayActivity) event.preventDefault(); }}
+              onDrop={(event) => { event.preventDefault(); event.stopPropagation(); if (!draggedFullDayActivity) onActivityDrop?.(part, activities.length); setDropTarget(null); }}
+            >{dragActive && !draggedFullDayActivity ? "Drop here" : null}</div>
           </div>
         ) : (
           <div
             className={`${styles.freePeriod} ${dropTarget === `${part}:0` ? styles.freePeriodDropActive : ""}`}
             data-drop-index="0"
-            onDragEnter={(event) => { event.preventDefault(); event.stopPropagation(); if (dragActive) setDropTarget(`${part}:0`); }}
-            onDragOver={(event) => { event.stopPropagation(); if (onActivityDrop) event.preventDefault(); }}
-            onDrop={(event) => { event.preventDefault(); event.stopPropagation(); onActivityDrop?.(part, 0); setDropTarget(null); }}
+            onDragEnter={(event) => { event.preventDefault(); event.stopPropagation(); if (dragActive && !draggedFullDayActivity) setDropTarget(`${part}:0`); }}
+            onDragOver={(event) => { event.stopPropagation(); if (onActivityDrop && !draggedFullDayActivity) event.preventDefault(); }}
+            onDrop={(event) => { event.preventDefault(); event.stopPropagation(); if (!draggedFullDayActivity) onActivityDrop?.(part, 0); setDropTarget(null); }}
           >
           </div>
         )}
@@ -448,19 +470,51 @@ export default function RichItineraryDayPlanner({
         </section>
       ) : null}
 
+      {fullDayActivities.length ? <section className={styles.fullDayBandList} aria-label={copy.fullDay}>
+        {fullDayActivities.map((activity) => {
+          const timing = fullDayActivityTiming(activity.providerMetadata?.duration, activity.startsAt);
+          const coveredParts = timing?.kind === "timed" ? timing.dayParts : [];
+          return <div className={styles.fullDayBand} data-full-day-band key={activity.id}>
+            <ActivityRow
+              activity={activity}
+              language={language}
+              pending={pendingActivityId === activity.id}
+              controlId={`${controlPrefix}-${activity.id}`}
+              canMoveEarlier={false}
+              canMoveLater={false}
+              onBeforeDayPartChange={(activityId) => { focusAfterMoveRef.current = activityId; }}
+              onDayPartChange={onDayPartChange}
+              onMoveActivity={onMoveActivity}
+              onMoveToDay={onMoveToDay}
+              draggable={activity.dayPartEditable && Boolean(onActivityDragStart)}
+              dragging={draggedActivityId === activity.id}
+              onDragStart={(event) => onActivityDragStart?.(activity, event)}
+              onDragEnd={() => { setDropTarget(null); onActivityDragEnd?.(); }}
+              selected={selectedActivityId === activity.id}
+              onSelect={(trigger) => onActivitySelect?.(activity, trigger)}
+              warnings={warningsFor(activity.id)}
+            />
+            {timing?.kind === "timed" ? <div className={styles.fullDaySpanTrack} role="img" aria-label={`${copy.fullDay}: ${coveredParts.map((part) => dayPartLabels[language][part]).join(", ")}${timing.continuesOvernight ? ` · ${copy.continuesOvernight}` : ""}`}>
+              {itineraryPlanningParts.map((part) => <span data-period-overlap={coveredParts.includes(part) || undefined} key={part}>{dayPartLabels[language][part]}</span>)}
+            </div> : null}
+          </div>;
+        })}
+      </section> : null}
+
+      {draggedFullDay ? <p className={styles.fullDayDropIntent} role="status">{copy.fullDayDropIntent}</p> : draggedFullDayActivity ? <p className={styles.fullDayDropIntent} role="status">{copy.fullDayActivityDropIntent}</p> : null}
       <div className={styles.periodGrid}>{itineraryPlanningParts.map(renderPeriod)}</div>
 
-      {unslotted.length ? (
+      {untimedActivities.length ? (
         <section className={styles.unslotted} aria-labelledby={`${titleId}-unslotted`}>
           <div className={styles.unslottedHeading}>
             <div>
               <Clock3 aria-hidden="true" />
               <h3 id={`${titleId}-unslotted`}>{copy.timeNotSet}</h3>
             </div>
-            <span>{unslotted.length}</span>
+            <span>{untimedActivities.length}</span>
           </div>
           <div className={styles.unslottedList}>
-            {unslotted.map((activity) => (
+            {untimedActivities.map((activity) => (
               <ActivityRow
                 activity={activity}
                 language={language}

@@ -88,7 +88,7 @@ test('lookup sends only qualified place fields and requests candidates rather th
     assert.equal(result.result, null);
     assert.equal(requests.length, 1);
     assert.equal(requests[0].pathname, '/api/journey-geocode');
-    assert.deepEqual(Object.fromEntries(requests[0].searchParams), { place: 'Bohol, Philippines', candidates: '1', country: 'Philippines' });
+    assert.deepEqual(Object.fromEntries(requests[0].searchParams), { place: 'Bohol, Philippines', candidates: '1', consumer: 'spreadsheet-import', country: 'Philippines' });
     assert.deepEqual(await resolveSpreadsheetImportPlace('Paris, France', 'Germany'), { result: null, candidates: [] });
     assert.equal(requests.length, 1, 'conflicting country fields are not sent to the provider');
   } finally { globalThis.fetch = original; }

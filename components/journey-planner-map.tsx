@@ -18,6 +18,7 @@ import type { MapResultPlace } from "@/lib/easyt/map-result-selection";
 import { applyMapCameraRequest, focusMapCamera, fitMapCamera, interruptMapCamera, type MapCamera } from "@/lib/easyt/map-camera";
 import { resolveMapCameraRequest, resolveMapInsets, resolveMapSurfacePolicy, type MorroviaMapInsets, type MorroviaMapSurface } from "@/lib/easyt/map-surface-policy";
 import { createMorroviaBasemapLifecycle, hasMorroviaActiveStyle, type MorroviaBasemapLifecycle, type MorroviaBasemapMap, type MorroviaBasemapStatus } from "@/lib/easyt/map-basemap-lifecycle";
+import { createMorroviaMapDiagnostics } from "@/lib/easyt/map-runtime-diagnostics";
 import { bindMapMarkerActivation, canonicalMapTransportMode, formatMapDuration, mapRouteBearing, mapRouteFitCoordinates, mapRouteLegActivationEvent, mapRouteLegIdAtPoint, mapRouteMarkerCoordinates, mapStopIdAtPoint, mapTransportModeLabel, type MapRouteLeg } from "@/lib/easyt/map-spatial-context";
 
 export type JourneyMapDestinationCard = {
@@ -274,6 +275,12 @@ export function JourneyPlannerMap({
 
   useEffect(() => {
     if (!containerRef.current) return;
+    const mapDiagnostics = createMorroviaMapDiagnostics({
+      origin: window.location.origin,
+      search: window.location.search,
+      nodeEnv: process.env.NODE_ENV,
+      buildCommit: process.env.MORROVIA_BUILD_COMMIT,
+    });
     if (!mapRef.current) {
       maplibregl.setWorkerUrl(MORROVIA_MAP_WORKER_URL);
       const firstStop = selectedResult?.coordinates
@@ -292,6 +299,8 @@ export function JourneyPlannerMap({
         });
       } catch (error) {
         setMapUnavailable(true);
+        mapDiagnostics.error("initialization-error", error);
+        mapDiagnostics.dispose();
         onLifecycleChangeRef.current?.("unavailable");
         console.error("Morrovia could not initialise the route map.", error);
         return;
@@ -319,6 +328,7 @@ export function JourneyPlannerMap({
       onLifecycleChangeRef.current?.("unavailable");
     };
     const basemapLifecycle = createMorroviaBasemapLifecycle(map as unknown as MorroviaBasemapMap, {
+      onTrace: mapDiagnostics.trace,
       onChange: (snapshot) => {
         if (ownerActive && mapRef.current === map) setBasemapStatus(snapshot.status);
       },
@@ -329,6 +339,7 @@ export function JourneyPlannerMap({
         }
       },
     });
+    mapDiagnostics.observe(map, basemapLifecycle.getSnapshot);
     basemapLifecycleRef.current = basemapLifecycle;
     const handleMapError = (event: maplibregl.ErrorEvent) => {
       const value = event.error;
@@ -353,6 +364,7 @@ export function JourneyPlannerMap({
 
     return () => {
       ownerActive = false;
+      mapDiagnostics.dispose();
       disposeAttribution();
       basemapLifecycle.dispose();
       if (basemapLifecycleRef.current === basemapLifecycle) basemapLifecycleRef.current = null;

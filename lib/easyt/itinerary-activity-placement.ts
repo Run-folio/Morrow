@@ -150,7 +150,9 @@ export function moveItineraryActivityAcrossDays(
   if (activity.booking || !activity.dayPartEditable || activity.source === "day-note") {
     return unchanged(trip, "This fixed or structural item cannot be moved.");
   }
-  if (!activityAllowsDayPart(activity.providerMetadata?.duration, targetDayPart)) {
+  const fullDay = activityDayPartFit(activity.providerMetadata?.duration) === "full-day";
+  const effectiveDayPart = fullDay ? null : targetDayPart;
+  if (!activityAllowsDayPart(activity.providerMetadata?.duration, effectiveDayPart)) {
     return unchanged(trip, "This activity needs most of the day and cannot fit in one part of the day.");
   }
 
@@ -159,7 +161,7 @@ export function moveItineraryActivityAcrossDays(
       trip,
       (legacyItineraryIdeas(trip.brief.itineraryIdeas)).find((candidate) => candidate.id === activity.id)!,
       targetDayId,
-      targetDayPart,
+      effectiveDayPart,
     );
   }
   if (activity.noteIndex === null) return unchanged(trip, "This activity cannot be safely moved.");
@@ -168,7 +170,7 @@ export function moveItineraryActivityAcrossDays(
       dayNumber: source.composition.day.dayNumber,
       noteIndex: activity.noteIndex,
       title: activity.title,
-    }, targetDayPart);
+    }, effectiveDayPart);
     if (!assigned.changed) return assigned;
     return {
       ...assigned,
@@ -176,7 +178,7 @@ export function moveItineraryActivityAcrossDays(
         kind: "authored-activity",
         title: activity.title,
         expectedDayId: targetDayId,
-        expectedDayPart: targetDayPart,
+        expectedDayPart: effectiveDayPart,
         restoreDayId: sourceDayId,
         restoreNoteIndex: activity.noteIndex,
         restoreDayPart: activity.dayPart,
@@ -196,7 +198,7 @@ export function moveItineraryActivityAcrossDays(
     dayNumber: targetDay.dayNumber,
     noteIndex: movedIndex,
     title: activity.title,
-  }, targetDayPart);
+    }, effectiveDayPart);
   const next = assigned.changed ? assigned.trip : moved.trip;
   return {
     trip: next,
@@ -205,7 +207,7 @@ export function moveItineraryActivityAcrossDays(
       kind: "authored-activity",
       title: activity.title,
       expectedDayId: targetDayId,
-      expectedDayPart: targetDayPart,
+      expectedDayPart: effectiveDayPart,
       restoreDayId: sourceDayId,
       restoreNoteIndex: activity.noteIndex,
       restoreDayPart: activity.dayPart,
@@ -373,7 +375,22 @@ export function placeItineraryActivity(
     return unchanged(trip, "This activity cannot be safely moved.");
   }
   const durationFit = activityDayPartFit(initial.activity.providerMetadata?.duration);
-  if (durationFit === "full-day" || durationFit === "extended") {
+  if (durationFit === "full-day") {
+    if (initial.activity.source === "itinerary-idea") {
+      const cleared = assignItineraryIdeaDayPart(trip, initial.activity.id, null);
+      return cleared === trip ? unchanged(trip, "This full-day activity is already at day level.") : { trip: cleared, changed: true };
+    }
+    if (initial.activity.source === "authored-activity" && initial.activity.noteIndex !== null) {
+      const cleared = assignItineraryActivityDayPart(trip, {
+        dayNumber: initial.composition.day.dayNumber,
+        noteIndex: initial.activity.noteIndex,
+        title: initial.activity.title,
+      }, null);
+      return cleared.changed ? cleared : unchanged(trip, "This full-day activity is already at day level.");
+    }
+    return unchanged(trip, "This full-day activity stays at day level.");
+  }
+  if (durationFit === "extended") {
     return unchanged(trip, "This activity needs most of the day and cannot fit in one part of the day.");
   }
 

@@ -16,7 +16,7 @@ import {
 } from "./planning-confidence.ts";
 import { destinationKnowledge } from "./destination-knowledge.ts";
 import { routeFamilies, routeFamilyByKey, type RouteFamily } from "./route-catalog.ts";
-import {REFERENCE_SNAPSHOT_ID,referenceRecordKey,referenceKnownCodeKind,referenceSeedRetired} from './place-reference.ts';
+import {REFERENCE_SNAPSHOT_ID,referenceRecordKey,referenceKnownCodeKind,referenceSeedRetired,referenceGeographicAcceptanceMatches} from './place-reference.ts';
 import {countryCodeFor} from './country-registry.ts';
 
 export const PLACE_INTELLIGENCE_VERSION = 1 as const;
@@ -956,6 +956,12 @@ export function rankNearbyBaseCandidates(
 
   const ranked = candidates.flatMap((candidate) => {
     if (conflictedProviderIds.has(candidate.providerId)) return [];
+    const reference = candidate.providerId.startsWith("reference:");
+    if (reference && !referenceGeographicAcceptanceMatches({
+      canonicalPlaceId: candidate.canonicalPlaceId, providerId: candidate.providerId,
+      referenceSnapshotId: REFERENCE_SNAPSHOT_ID, country: candidate.parentCountries?.[0],
+      placeType: candidate.placeType, coordinates: candidate.coordinates,
+    })) return [];
     const suitability = placeCandidateSuitableAsNearbyBase(anchor, candidate, maximumDistanceKm);
     if (!suitability || !candidate.coordinates) return [];
     const country = candidate.parentCountries?.[0];
@@ -982,7 +988,8 @@ export function rankNearbyBaseCandidates(
     return [{
       score,
       suggestion: {
-        canonicalPlaceId: candidate.providerId.startsWith("open-world:") ? candidate.providerId : `open-world:${candidate.providerId}`,
+        canonicalPlaceId: reference ? candidate.canonicalPlaceId! : candidate.providerId.startsWith("open-world:") ? candidate.providerId : `open-world:${candidate.providerId}`,
+        ...(reference ? { referenceSnapshotId: REFERENCE_SNAPSHOT_ID } : {}),
         name: candidate.canonicalName,
         label: `${candidate.canonicalName}${candidate.parentRegionId ? ` · ${candidate.parentRegionId}` : ""}, ${country}`,
         country,
@@ -2106,6 +2113,37 @@ export function appendSelectedPlanningAreaMention(
   };
 }
 
+/** Ordinary settlement capture may use a unique exact maintained city/town
+ * beside an administrative label. Keep the catalog's broad identity and all
+ * explicit area/context choices intact; this is not a cross-source mapping. */
+function ordinarySettlementForAdministration(matches: RawCatalogMatch[], prompt: string, context: PlaceResolutionContext) {
+  const first = matches[0]!;
+  const entries = unique(matches.map(match => match.entry), entry => entry.canonicalPlaceId);
+  const original = entries[0]!;
+  const administrative = ["country", "region", "sub_region"].includes(original.placeType);
+  if (entries.length !== 1 || !administrative
+    || context.travelIntent && context.travelIntent !== "route-stop"
+    || context.explicitPlaceTypes?.some(type => type !== "city" && type !== "town")
+    || context.selectedPlaces?.some(place => place.canonicalPlaceId === original.canonicalPlaceId)) return undefined;
+  const areaType = "(?:country|region|subregion|state|province|prefecture|county|territory|republic|kingdom|jurisdiction|país|región|provincia|estado)";
+  if (new RegExp(`\\b${areaType}\\b`, "iu").test(first.sourceText)
+    || new RegExp(`\\b${areaType}(?:\\s+(?:of|called|named|de|del))?\\s+(?:the\\s+)?$`, "iu").test(prompt.slice(0, first.start))
+    || new RegExp(`^\\s*(?:(?:[,:–—-]|\\(|\\[)\\s*)*(?:as\\s+)?(?:(?:a|the)\\s+)?${areaType}\\b`, "iu").test(prompt.slice(first.end))) return undefined;
+  const phrase = normalizePlacePhrase(first.sourceText);
+  const countries = context.explicitCountryNames?.length ? context.explicitCountryNames : context.countryNames;
+  const settlements = PLACE_CATALOG.filter(entry => entry.referenceProviderId
+    && !referenceSeedRetired(entry.canonicalPlaceId) && isOvernightBaseEligible(entry)
+    && normalizePlacePhrase(entry.canonicalName) === phrase
+    && (!context.explicitPlaceTypes?.length || context.explicitPlaceTypes.includes(entry.placeType))
+    && original.parentCountries.some(country => countryCodeFor(country) === countryCodeFor(entry.parentCountries[0]))
+    && (!countries?.length || countries.some(country =>
+      countryCodeFor(country) === countryCodeFor(entry.parentCountries[0])))
+    && referenceGeographicAcceptanceMatches({ canonicalPlaceId: entry.canonicalPlaceId,
+      providerId: entry.referenceProviderId, referenceSnapshotId: REFERENCE_SNAPSHOT_ID,
+      country: entry.parentCountries[0], placeType: entry.placeType, coordinates: entry.coordinates }));
+  return settlements.length === 1 ? settlements[0] : undefined;
+}
+
 function buildDeterministicMentions(prompt: string, context: PlaceResolutionContext) {
   const catalogMatches = rawCatalogMatches(prompt);
   // A directional qualifier changes a named country into the traveller's
@@ -2132,7 +2170,7 @@ function buildDeterministicMentions(prompt: string, context: PlaceResolutionCont
   for (const matches of groups.values()) {
     const first = matches[0];
     const entries = unique(matches.map((match) => match.entry), (entry) => entry.canonicalPlaceId);
-    const chosen = contextChoice(entries, promptIds, context);
+    const chosen = ordinarySettlementForAdministration(matches, prompt, context) ?? contextChoice(entries, promptIds, context);
     const role = roleAt(prompt, first.sourceText, first.start, chosen?.placeType ?? entries[0]?.placeType ?? "unknown");
     if (!chosen && entries.length > 1) {
       const candidates = entries.map((entry) => catalogCandidate(entry, sourceFromCatalog(entry, first.alias)));
