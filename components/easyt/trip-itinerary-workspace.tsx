@@ -1310,6 +1310,20 @@ export default function TripItineraryWorkspace({
     setNotice(copy.activityUpdated);
   };
 
+  const removeComposedActivity = async (activity: ComposedItineraryActivity) => {
+    const isCurrent = captureActionScope();
+    if ((activity.source === "itinerary-idea" && activity.placeId) || activity.source === "google-place-reference") {
+      const accepted = await mutateCurrentTrip((current) => removeItineraryIdea(current, activity.id), `itinerary-idea-remove-${activity.id}`);
+      if (!isCurrent()) return false;
+      if (accepted) { closeSelectedDetail(); setNotice(copy.activityRemoved); }
+      return;
+    }
+    if (activity.source === "authored-activity" && activity.noteIndex !== null) {
+      setRemoveTarget({ dayNumber: active.dayNumber, noteIndex: activity.noteIndex, title: activity.title });
+      setRemoveError("");
+    }
+  };
+
   const confirmRemoveActivity = async () => {
     const isCurrent = captureActionScope();
     if (!removeTarget) return;
@@ -1723,6 +1737,8 @@ export default function TripItineraryWorkspace({
             onDayPartChange={changeActivityDayPart}
             onMoveActivity={moveComposedActivity}
             onMoveToDay={(activity, trigger) => openMoveFlow(activity, active.id, trigger)}
+            onRemoveActivity={removeComposedActivity}
+            isActivityPending={(activity) => dayPending || mutation.isPending(`itinerary-idea-remove-${activity.id}`)}
             dragActive={Boolean(plannerDrag)}
             draggedFullDay={plannerDrag?.kind === "suggestion" && isFullDayActivity(plannerDrag.idea.providerMetadata?.duration)}
             draggedFullDayActivity={plannerDrag?.kind === "activity" && isFullDayActivity(plannerDrag.activity.providerMetadata?.duration)}
@@ -1900,19 +1916,7 @@ export default function TripItineraryWorkspace({
             const accepted = await mutateCurrentTrip((current) => removeItineraryIdea(current, selectedRecommendationState!.idea.id), `itinerary-suggestion-${selectedRecommendation.stopId}-${selectedRecommendation.idea.placeId}`);
             if (!isCurrent()) return false;
             if (accepted) { closeSelectedDetail(); setNotice("Removed from itinerary"); }
-          } : selectedActivity ? async () => {
-            const isCurrent = captureActionScope();
-            if ((selectedActivity.source === "itinerary-idea" && selectedActivity.placeId) || selectedActivity.source === "google-place-reference") {
-              const accepted = await mutateCurrentTrip((current) => removeItineraryIdea(current, selectedActivity.id), `itinerary-idea-remove-${selectedActivity.id}`);
-              if (!isCurrent()) return false;
-              if (accepted) { closeSelectedDetail(); setNotice(copy.activityRemoved); }
-              return;
-            }
-            if (selectedActivity.source === "authored-activity" && selectedActivity.noteIndex !== null) {
-              setRemoveTarget({ dayNumber: active.dayNumber, noteIndex: selectedActivity.noteIndex, title: selectedActivity.title });
-              setRemoveError("");
-            }
-          } : stayBooking && stop ? async () => {
+          } : selectedActivity ? () => removeComposedActivity(selectedActivity) : stayBooking && stop ? async () => {
             const isCurrent = captureActionScope();
             const changed = await mutateCurrentTrip((current) => removeStayBooking(current, stop.id), `itinerary-stay-${stop.id}`);
             if (!isCurrent()) return false;

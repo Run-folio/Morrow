@@ -1,5 +1,6 @@
 import { useMemo, useRef, useState } from "react";
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
+import { fn } from "storybook/test";
 import { type ComposedItineraryActivity } from "@/lib/easyt/itinerary-day-composition";
 import { composeItineraryDayForPlanning } from "@/lib/easyt/itinerary-day-part-intent";
 import { assignItineraryIdeaDayPart } from "@/lib/easyt/itinerary-ideas";
@@ -150,6 +151,17 @@ const meta = {
 
 export default meta;
 type Story = StoryObj<typeof meta>;
+
+export const ActivityMenuRemove: Story = {
+  args: { onRemoveActivity: fn() },
+};
+export const ActivityMenuRemovePending: Story = {
+  args: { onRemoveActivity: fn(), pendingActivityId: "idea-fushimi" },
+};
+export const ActivityMenuRemoveMobile390: Story = {
+  ...ActivityMenuRemove,
+  globals: { viewport: { value: "morrovia390", isRotated: false } },
+};
 
 const sparseTrip: EasyTTrip = {
   ...baseTrip,

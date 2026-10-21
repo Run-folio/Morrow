@@ -12,6 +12,7 @@ import {
   GripVertical,
   MoreHorizontal,
   Route,
+  Trash2,
 } from "lucide-react";
 import { useEffect, useId, useRef, useState, type DragEvent } from "react";
 import {
@@ -39,6 +40,7 @@ type RichItineraryDayPlannerProps = {
   ideasHref?: string;
   language?: "en" | "es";
   pendingActivityId?: string | null;
+  isActivityPending?: (activity: ComposedItineraryActivity) => boolean;
   onAddCancel?: () => void;
   onAddDraftChange?: (value: string) => void;
   onAddOpen?: (dayPart: ItineraryPlanningPart) => void;
@@ -47,6 +49,7 @@ type RichItineraryDayPlannerProps = {
   onDayPartChange?: (activity: ComposedItineraryActivity, dayPart: ItineraryDayPart | null) => void;
   onMoveActivity?: (activity: ComposedItineraryActivity, direction: "earlier" | "later") => void;
   onMoveToDay?: (activity: ComposedItineraryActivity, trigger: HTMLButtonElement) => void;
+  onRemoveActivity?: (activity: ComposedItineraryActivity) => void;
   dragActive?: boolean;
   draggedFullDay?: boolean;
   draggedFullDayActivity?: boolean;
@@ -89,6 +92,7 @@ function copyFor(language: "en" | "es") {
     moveEarlier: "Mover antes en",
     moveLater: "Mover después en",
     moveToDay: "Mover a otro día",
+    remove: "Eliminar",
     dragActivity: "Arrastrar para organizar",
     bookedActivity: "Reservado",
     timeNotSet: "PLANIFICADO · HORA SIN FIJAR",
@@ -122,6 +126,7 @@ function copyFor(language: "en" | "es") {
     moveEarlier: "Move earlier in",
     moveLater: "Move later in",
     moveToDay: "Move to another day",
+    remove: "Remove",
     dragActivity: "Drag to organise",
     bookedActivity: "Booked",
     timeNotSet: "Planned",
@@ -162,6 +167,7 @@ function ActivityRow({
   onDayPartChange,
   onMoveActivity,
   onMoveToDay,
+  onRemoveActivity,
   draggable,
   dragging,
   onDragStart,
@@ -180,6 +186,7 @@ function ActivityRow({
   onDayPartChange?: RichItineraryDayPlannerProps["onDayPartChange"];
   onMoveActivity?: RichItineraryDayPlannerProps["onMoveActivity"];
   onMoveToDay?: RichItineraryDayPlannerProps["onMoveToDay"];
+  onRemoveActivity?: RichItineraryDayPlannerProps["onRemoveActivity"];
   draggable: boolean;
   dragging: boolean;
   onDragStart?: (event: DragEvent<HTMLElement>) => void;
@@ -273,6 +280,17 @@ function ActivityRow({
             disabled={pending}
             onClick={(event) => onMoveToDay(activity, event.currentTarget)}
           >{copy.moveToDay}</EasyTButton> : null}
+          {onRemoveActivity && !activity.booking && (activity.source === "itinerary-idea" || activity.source === "google-place-reference" || activity.source === "authored-activity") ? <EasyTButton
+            icon={Trash2}
+            size="small"
+            variant="danger"
+            disabled={pending}
+            onClick={(event) => {
+              const menu = event.currentTarget.closest("details");
+              if (menu) { menu.open = false; menu.querySelector("summary")?.focus(); }
+              onRemoveActivity(activity);
+            }}
+          >{copy.remove}</EasyTButton> : null}
         </div>
       </details> : null}
     </ItineraryDraggableCard>
@@ -287,6 +305,7 @@ export default function RichItineraryDayPlanner({
   addError = "",
   language = "en",
   pendingActivityId,
+  isActivityPending,
   onAddCancel,
   onAddDraftChange,
   onAddOpen,
@@ -294,6 +313,7 @@ export default function RichItineraryDayPlanner({
   onDayPartChange,
   onMoveActivity,
   onMoveToDay,
+  onRemoveActivity,
   dragActive = false,
   draggedFullDay = false,
   draggedFullDayActivity = false,
@@ -383,7 +403,7 @@ export default function RichItineraryDayPlanner({
               <ActivityRow
                 activity={activity}
                 language={language}
-                pending={pendingActivityId === activity.id}
+                pending={pendingActivityId === activity.id || Boolean(isActivityPending?.(activity))}
                 controlId={`${controlPrefix}-${activity.id}`}
                 canMoveEarlier={activity.noteIndex !== null && (activities[activityIndex - 1]?.noteIndex ?? null) !== null}
                 canMoveLater={activity.noteIndex !== null && (activities[activityIndex + 1]?.noteIndex ?? null) !== null}
@@ -391,6 +411,7 @@ export default function RichItineraryDayPlanner({
                 onDayPartChange={onDayPartChange}
                 onMoveActivity={onMoveActivity}
                 onMoveToDay={onMoveToDay}
+                onRemoveActivity={onRemoveActivity}
                 draggable={activity.dayPartEditable && Boolean(onActivityDragStart)}
                 dragging={draggedActivityId === activity.id}
                 onDragStart={(event) => onActivityDragStart?.(activity, event)}
@@ -478,7 +499,7 @@ export default function RichItineraryDayPlanner({
             <ActivityRow
               activity={activity}
               language={language}
-              pending={pendingActivityId === activity.id}
+              pending={pendingActivityId === activity.id || Boolean(isActivityPending?.(activity))}
               controlId={`${controlPrefix}-${activity.id}`}
               canMoveEarlier={false}
               canMoveLater={false}
@@ -486,6 +507,7 @@ export default function RichItineraryDayPlanner({
               onDayPartChange={onDayPartChange}
               onMoveActivity={onMoveActivity}
               onMoveToDay={onMoveToDay}
+              onRemoveActivity={onRemoveActivity}
               draggable={activity.dayPartEditable && Boolean(onActivityDragStart)}
               dragging={draggedActivityId === activity.id}
               onDragStart={(event) => onActivityDragStart?.(activity, event)}
@@ -541,7 +563,7 @@ export default function RichItineraryDayPlanner({
               <ActivityRow
                 activity={activity}
                 language={language}
-                pending={pendingActivityId === activity.id}
+                pending={pendingActivityId === activity.id || Boolean(isActivityPending?.(activity))}
                 controlId={`${controlPrefix}-${activity.id}`}
                 canMoveEarlier={false}
                 canMoveLater={false}
@@ -549,6 +571,7 @@ export default function RichItineraryDayPlanner({
                 onDayPartChange={onDayPartChange}
                 onMoveActivity={onMoveActivity}
                 onMoveToDay={onMoveToDay}
+                onRemoveActivity={onRemoveActivity}
                 draggable={activity.dayPartEditable && Boolean(onActivityDragStart)}
                 dragging={draggedActivityId === activity.id}
                 onDragStart={(event) => onActivityDragStart?.(activity, event)}

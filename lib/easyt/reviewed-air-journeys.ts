@@ -12,6 +12,8 @@ const cities={
  quito:{catalogId:'quito',name:'Quito',country:'Ecuador',countryCode:'EC',referenceId:'3652462',point:[-78.52495,-0.22985],catalogPoint:[-78.4678,-0.1807]},
  bogota:{catalogId:'bogota',name:'Bogotá',country:'Colombia',countryCode:'CO',referenceId:'3688689',point:[-74.08175,4.60971],catalogPoint:[-74.0721,4.711]},
  cartagena:{name:'Cartagena',country:'Colombia',countryCode:'CO',referenceId:'3687238',point:[-75.49328,10.39817]},
+ osaka:{catalogId:'osaka',name:'Osaka',country:'Japan',countryCode:'JP',referenceId:'1853909',point:[135.50107,34.69379],catalogPoint:[135.5023,34.6937]},
+ seoul:{catalogId:'seoul',name:'Seoul',country:'South Korea',countryCode:'KR',referenceId:'1835848',point:[126.9784,37.566],catalogPoint:[126.978,37.5665]},
 } as const satisfies Record<string,ReviewedCity>;
 type CityId=keyof typeof cities;
 const normalized=(value:string|undefined)=>value?.normalize('NFKD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
@@ -25,11 +27,12 @@ function matches(endpoint:CanonicalRouteEndpoint,city:ReviewedCity){
  return endpoint.canonicalPlaceId===city.catalogId&&!!city.catalogPoint&&samePoint(city.catalogPoint);
 }
 const allowanceSource:KnowledgeSource={id:'morrovia:reviewed-air-allowance-v1',label:'Morrovia existing flight planning rule',kind:'curated',reviewedAt:'2026-10-17',supports:'Existing estimateFlightPlanningMinutes rule: 180 minutes airport/access allowance plus distance at 760 km/h with a one-hour transport floor; rounded up to a whole-hour planning allocation after directional service feasibility is established. Not reviewed airline timing, a measured range, timetable or date-specific itinerary. Any required connection must be checked.'};
-const route=(id:string,label:string,url:string,supports:string):KnowledgeSource=>({id,label,url,supports,kind:'official',reviewedAt:'2026-10-17'});
+const route=(id:string,label:string,url:string,supports:string,reviewedAt='2026-10-17'):KnowledgeSource=>({id,label,url,supports,kind:'official',reviewedAt});
 const journeys:readonly {from:CityId;to:CityId;source:KnowledgeSource}[]=[
  {from:'lima',to:'cusco',source:route('latam:lima-cusco','LATAM — Lima to Cusco','https://www.latamairlines.com/us/en/destinations/peru/flights-from-lima-to-cusco','Directional LIM–CUZ route, with nonstop offers on published sample dates; not availability or timing for the traveller’s dates.')},
  {from:'quito',to:'bogota',source:route('quito-airport:bogota-departures','Quito Airport — Bogotá departures','https://www.aeropuertoquito.aero/itinerarios-internacionales/','Directional Bogotá departures in the airport international itinerary, corroborated by the 2026-10-16 board; not a date-specific booking or journey duration.')},
  {from:'bogota',to:'cartagena',source:route('latam:bogota-cartagena','LATAM — Bogotá to Cartagena','https://www.latamairlines.com/us/en/destinations/colombia/flights-from-bogota-to-cartagena','Directional BOG–CTG route, with nonstop offers on published sample dates; not availability or timing for the traveller’s dates.')},
+ {from:'osaka',to:'seoul',source:route('korean-air:osaka-seoul','Korean Air — Osaka to Seoul','https://www.koreanair.com/flights/en/flights-from-osaka-to-seoul','Published directional Osaka (KIX) to Seoul (ICN/GMP) route offers support this city corridor, not nonstop service, journey timing or availability for the traveller’s dates.','2026-10-21')},
 ];
 
 /** Called only after the shared geographic guard; never relabels a saved place. */

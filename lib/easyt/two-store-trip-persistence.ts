@@ -472,7 +472,11 @@ export function createTwoStoreTripPersistence(storage: EasyTBrowserStorage, driv
                   .write(prepared.envelope.raw!,{allowInitialOverflow:options.newTripOrClone===true,writeId:prepared.envelope.handle.writeId,expected:options.entries!.find(value=>value.raw===prepared.raw)})
                 :await createTwoStoreEntryPersistence(storage,driver,{scope:prepared.scope,key,isCurrent:active,overflowEnabled:context.overflowEnabled,accountOverflowQualified:context.accountOverflowQualified,
                   validate:raw=>raw===null||readBuilderInputDraft({getItem:()=>raw},canonical,ownerId).kind==='readable'})
-                  .save(prepared.envelope.raw!,{allowInitialOverflow:options.newTripOrClone===true,writeId:prepared.envelope.handle.writeId,expected:options.entries!.find(value=>value.raw===prepared.raw)});
+                  // The paired input has the same exact-source admission as
+                  // its body. Reopening an existing trip removes the new-trip
+                  // capability; it must not strand an owned body if input alone
+                  // hits quota. The prepared entry still pins its prior bytes.
+                  .save(prepared.envelope.raw!,{allowInitialOverflow:options.newTripOrClone===true||existingAdmission,writeId:prepared.envelope.handle.writeId,expected:options.entries!.find(value=>value.raw===prepared.raw)});
               if(written.kind!=='verified')return {...nativeResult,stored:false,failureReason:written.kind==='protected'?'protected-recovery':'receipt-incomplete',blockedByExistingRecovery:written.kind==='protected',outcome:written.kind==='protected'?'protected-conflict':'receipt-incomplete'};
             }
             const afterInputs=await domain.read(tripId);
