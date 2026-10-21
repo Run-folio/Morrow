@@ -44,6 +44,7 @@ import {
   type ExplorePrimaryCategory,
   type ExploreResult,
 } from "@/lib/easyt/explore";
+import { activityCooldownKey, useActivityClientCooldown } from "@/lib/easyt/activity-client-cooldown";
 import { createAbortableEffectScope } from "@/lib/easyt/abortable-effect";
 import { recommendationDurationMs } from "@/lib/easyt/recommendation-performance";
 import { planningEvidenceFromResponse, publicActivityLaneMessage, planningLaneResponseStatus } from "@/lib/easyt/planning-evidence-presentation";
@@ -257,7 +258,7 @@ async function loadRestaurants(stop: TripStop, signal: AbortSignal, onAssessment
   });
 }
 
-async function loadTours(trip: EasyTTrip, stop: TripStop, signal: AbortSignal, onAssessment: (assessment?: PlanningEvidenceState) => void) {
+async function loadTours(trip: EasyTTrip, stop: TripStop, signal: AbortSignal, onAssessment: (assessment?: PlanningEvidenceState) => void, onResponse: (response: Response) => void) {
   if (!stop.canonicalPlaceId) {
     onAssessment({ retrieval: "blocked", evidence: "unqualified", reason: "identity_required", retryable: false });
     throw new Error("Tour inventory requires a destination");
@@ -268,6 +269,7 @@ async function loadTours(trip: EasyTTrip, stop: TripStop, signal: AbortSignal, o
     body: JSON.stringify(providerRequestBody(trip, stop)),
     signal,
   });
+  onResponse(response);
   const payload = await response.json() as ActivityPayload;
   onAssessment(planningEvidenceFromResponse(payload));
   if (planningLaneResponseStatus(payload, response.ok) !== "ready") throw new Error("Tour inventory unavailable");
@@ -293,6 +295,8 @@ export default function TripExploreWorkspace({
   if (exploreDiscoveryRequestKey(discoveryTripRef.current) !== discoveryRequestKey) discoveryTripRef.current = workingTrip;
   const destinations = useMemo(() => exploreDestinationOptions(discoveryTripRef.current), [discoveryRequestKey]);
   const [destinationId, setDestinationId] = useState<string | null>(() => resolveExploreDestinationId(destinations, initialDestinationId));
+  const commercialCooldownKey = activityCooldownKey(workingTrip, destinations.find(item => item.id === destinationId)?.stop);
+  const commercialCooldown = useActivityClientCooldown(commercialCooldownKey);
   const normalizedInitialCategory = normalizeExploreCategory(initialCategory);
   const [category, setCategory] = useState<ExplorePrimaryCategory>(normalizedInitialCategory);
   const activeSourcePlan = exploreSourcePlan(category, workingTrip);
@@ -520,11 +524,19 @@ export default function TripExploreWorkspace({
       setCommercialStatus(plan.tours && scopedStops.length ? "loading" : "idle");
       return () => scope.dispose();
     }
+    if (plan.tours && commercialCooldown.isCoolingDown()) {
+      setCommercialAssessment({ retrieval: "unavailable", evidence: "insufficient", reason: "provider_error", retryable: true });
+      setCommercialStatus("degraded");
+      return () => scope.dispose();
+    }
     if (skipCommercial) return () => scope.dispose();
     setCommercialAssessment(undefined);
     const startedAt = performance.now();
     const requests = scopedStops.flatMap((stop) => plan.tours
-      ? [() => loadTours(discoveryTrip, stop, scope.signal, assessment => commit(() => setCommercialAssessment(assessment)))]
+      ? [() => {
+        if (commercialCooldown.isCoolingDown()) throw new Error("Tour inventory is cooling down");
+        return loadTours(discoveryTrip, stop, scope.signal, assessment => commit(() => setCommercialAssessment(assessment)), response => commit(() => commercialCooldown.recordResponse(response)));
+      }]
       : []);
     void streamExploreDiscoveryLane(requests, (snapshot) => commit(() => {
       replaceCommercialResults(snapshot.results.length ? snapshot.results : snapshot.pendingCount || snapshot.failedCount ? laneResultsRef.current.commercialResults : []);
@@ -532,7 +544,7 @@ export default function TripExploreWorkspace({
       if (requests.length) reportSnapshot("commercial", snapshot, startedAt);
     }));
     return () => scope.dispose();
-  }, [category, destinationId, discoveryRequestKey, initialResults, retryVersion, commercialIdentity, sessionPending]);
+  }, [category, destinationId, discoveryRequestKey, initialResults, retryVersion, commercialIdentity, sessionPending, commercialCooldownKey]);
 
   useEffect(() => {
     if (selectedResultId && !results.some((result) => result.identity === selectedResultId)) closeDetail();
@@ -624,7 +636,7 @@ export default function TripExploreWorkspace({
   const canRetry = activeSourcePlan.restaurants
     ? restaurantStatus === "degraded" && restaurantAssessment?.retryable !== false
     : (organicStatus === "degraded" || organicAssessment && organicAssessment.retrieval !== "completed") && organicAssessment?.retryable !== false
-    || (commercialStatus === "degraded" || commercialAssessment && commercialAssessment.retrieval !== "completed") && commercialAssessment?.retryable !== false;
+    || !commercialCooldown.coolingDown && (commercialStatus === "degraded" || commercialAssessment && commercialAssessment.retrieval !== "completed") && commercialAssessment?.retryable !== false;
   const experienceFallback = activeSourcePlan.tours && commercialStatus !== "loading" && !commercialResults.length ? getCurrentPartnerAction("activities") : undefined;
 
   return <section className={styles.workspace} aria-label="Explore recommendations">

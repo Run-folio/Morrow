@@ -58,10 +58,10 @@ test('retry starts a fresh request and can recover from prior failure without ch
  const retry=harness(async()=>Response.json({candidates:[]}));await settle();
  assert.equal(initial.states.at(-1).status,'unavailable');assert.equal(retry.states.at(-1).status,'empty');assert.equal(retry.context.discoveryBaseArea,area);retry.dispose?.();
 });
-test('existing anchored island keeps the nearby-base discovery request',async()=>{
+test('anchored island requests physical area bases instead of proximity discovery',async()=>{
  const h=harness(async()=>Response.json({candidates:[]}),true,{...area,coordinates:[124.2,9.8]});await settle();
  assert.equal(h.requests.length,1);const params=new URL(h.requests[0]!.url,'http://local').searchParams;
- assert.equal(params.get('nearbyBases'),'1');assert.equal(params.has('areaBases'),false);assert.equal(params.get('anchorLon'),'124.2');h.dispose?.();
+ assert.equal(params.get('areaBases'),'1');assert.equal(params.has('nearbyBases'),false);assert.equal(params.get('parentName'),area.name);assert.equal(params.has('anchorLon'),false);h.dispose?.();
 });
 
 test('actual Builder offers a verified server settlement without auto-selecting or moving the island',async()=>{
@@ -80,4 +80,10 @@ test('changing area within the same mention hides earlier candidates before the 
  const previous={mentionId:'one',areaKey:'old-area',suggestions:[{name:'Old base'}]};
  assert.deepEqual(read({searchedAreaBases:previous,activeClarificationMention:{mentionId:'one'},discoveryBaseAreaKey:'new-area'}),[]);
  assert.deepEqual(read({searchedAreaBases:previous,activeClarificationMention:{mentionId:'one'},discoveryBaseAreaKey:'old-area'}),previous.suggestions);
+});
+
+test('existing non-island natural area preserves nearby-anchor discovery',async()=>{
+ const h=harness(async()=>Response.json({candidates:[]}),true,{...area,placeType:'natural_area',coordinates:[124.2,9.8]});await settle();
+ assert.equal(h.requests.length,1);const params=new URL(h.requests[0]!.url,'http://local').searchParams;
+ assert.equal(params.get('nearbyBases'),'1');assert.equal(params.has('areaBases'),false);assert.equal(params.get('anchorLon'),'124.2');h.dispose?.();
 });

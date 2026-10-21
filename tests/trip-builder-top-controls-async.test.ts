@@ -7,6 +7,7 @@ import { canonicalRouteFixture } from './fixtures/batch14-route-documents.ts';
 import { requireReadableTripDocument } from '../lib/easyt/trip-document.ts';
 import { createBuilderInputDraft, updateBuilderInputDraft } from '../lib/easyt/trip-builder-input-draft.ts';
 import { builderChipOccurrenceOrder } from '../lib/easyt/trip-builder-order.ts';
+import * as destinationPresentation from '../lib/easyt/destination-intent-presentation.ts';
 import type { CanonicalEasyTTrip, DestinationIntent } from '../lib/easyt/trip.ts';
 import type { CanonicalPlaceSuggestion } from '../lib/easyt/place-intelligence.ts';
 
@@ -49,6 +50,7 @@ function harness(editGate?: { promise: Promise<unknown> }) {
     '@/components/easyt/morrovia-quantity-selector': { MorroviaQuantitySelector: noop },
     '@/components/easyt/morrovia-destination-field': { MorroviaDestinationField: noop, MorroviaDestinationTag: Tag },
     '@/lib/easyt/trip-builder-order': { builderChipOccurrenceOrder },
+    '@/lib/easyt/destination-intent-presentation': destinationPresentation,
     './use-builder-stop-reorder': { useBuilderStopReorder: () => ({ gripProps: () => ({}) }) },
     './trip-builder-top-controls.module.css': { default: {} }, '@/components/easyt/morrovia-planner-controls.module.css': { default: {} },
   };
@@ -87,6 +89,7 @@ function harness(editGate?: { promise: Promise<unknown> }) {
   const escape = (id: string) => tag(id).props.editor.props.onKeyDown({ key: 'Escape', preventDefault: noop });
   const place = { id: 'replacement-tokyo', name: 'Replacement Tokyo', country: 'Japan', coordinates: [139.7, 35.7] } as unknown as CanonicalPlaceSuggestion;
   return { render, tag, input, escape, place, intentA, intentB, requests, edits, focus, acceptance,
+    configureIntents: (intents: DestinationIntent[]) => { trip.brief.intent.route.destinations = intents; },
     open: async (id: string) => { await tag(id).props.onEdit(); return render(); },
     switchTrip: (patch: Partial<CanonicalEasyTTrip>) => { trip = requireReadableTripDocument({ ...trip, ...patch }); draft = createBuilderInputDraft(trip); },
     setDisabled: (value: boolean) => { disabled = value; },
@@ -95,6 +98,20 @@ function harness(editGate?: { promise: Promise<unknown> }) {
     useAcceptance: (gate: ReturnType<typeof deferred<unknown>>) => { acceptance = gate; },
   };
 }
+
+test('actual Builder chips distinguish country and capital while editing retains raw names and IDs', async () => {
+  const h=harness();
+  const country={...h.intentA,id:'country-sm',sourceText:'San Marino',kind:'planning_area' as const,stopIds:[],resolution:'needs_base' as const,selectedPlace:{name:'San Marino',country:'San Marino',canonicalPlaceId:'san-marino'}};
+  const city={...h.intentB,id:'city-sm',sourceText:'San Marino',selectedPlace:{name:'San Marino',country:'San Marino',canonicalPlaceId:'reference:geonames:3168070'}};
+  h.configureIntents([country,city]);
+  assert.equal(h.tag(country.id).props.label,'San Marino · Country');
+  assert.equal(h.tag(city.id).props.label,'San Marino · City');
+  assert.equal(h.tag(country.id).props.removeLabel,'Remove San Marino · Country');
+  await h.open(city.id);
+  assert.equal(h.input(city.id).props.value,'San Marino');
+  assert.equal(country.selectedPlace.canonicalPlaceId,'san-marino');
+  assert.equal(city.selectedPlace.canonicalPlaceId,'reference:geonames:3168070');
+});
 
 test('Builder destination selection waits for accepted true before closing and focusing its own editor', async () => {
   const h = harness(); await h.open(h.intentA.id); h.focus.length = 0;

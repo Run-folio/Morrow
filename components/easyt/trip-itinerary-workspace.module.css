@@ -2141,7 +2141,7 @@
 }
 .calendarItemBody { min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
 .calendarItemDialog .calendarEmbeddedDetail { position: static; width: auto; max-height: none; padding: 16px; }
-.calendarItemDialog .logisticsDetailClose { display: none; }
+.calendarItemDialog[data-dialog-presentation="modal"] .logisticsDetailClose { display: none; }
 
 .calendarWorkspace .ideasSection .discoveryCard { display: grid; grid-template-columns: 72px minmax(0, 1fr); gap: 8px; padding: 8px; }
 .calendarWorkspace .ideasSection .discoveryMedia { height: 72px; }

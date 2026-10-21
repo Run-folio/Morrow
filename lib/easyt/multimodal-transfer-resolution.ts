@@ -17,6 +17,8 @@ import {providerFailureAssessment} from './planning-provider-assessment.ts';
 import { isInsufficientTransferEvidence } from './transfer-evidence-quality.ts';
 import { estimateTransferImpact, type TransferImpact } from "./transfer-impact.ts";
 import {reviewedAirJourney} from './reviewed-air-journeys.ts';
+import {FLIGHT_AIRPORT_DEFAULTS,flightPlanningAirports} from './flight-airport-assumptions.ts';
+import {countryCodeFor} from './country-registry.ts';
 import { findSurfaceCrossing } from "./surface-crossing-evidence.ts";
 import { reconcileLegacyTransportLeg } from "./transport-leg-compatibility.ts";
 import type {
@@ -38,6 +40,7 @@ export type TransferEvidenceKind =
   | "canonical_gateway_access"
   | "direct_air_connectivity"
   | "legacy_flight_estimate"
+  | "airport_planning_allowance"
   | "air_gateway_composition";
 
 export type TransferJourneyCandidate = {
@@ -467,6 +470,43 @@ function directFlightCandidate(
   });
 }
 
+/** The approved airport projection supports a planning allowance only. It is
+ * not evidence of an operating route, a nonstop service or a timetable. */
+export function airportFlightPlanningCandidate(leg:TripLeg):TransferJourneyCandidate|null {
+  if (leg.mode!=='flight' || FLIGHT_AIRPORT_DEFAULTS.snapshotId!==REFERENCE_SNAPSHOT_ID
+    || !['morrovia-planner','multimodal-resolver'].includes(String(leg.routeMetadata.source))) return null;
+  // Assess the canonical journey, never borrow a stale segment's airport pair.
+  const airports=flightPlanningAirports({...leg,segments:undefined});
+  if (!airports || !leg.fromEndpoint || !leg.toEndpoint) return null;
+  const recordFor=(endpoint:CanonicalRouteEndpoint)=>FLIGHT_AIRPORT_DEFAULTS.entries.map(row=>row.airport).find(airport=>
+    airport.status==='active' && airport.scheduledService && airport.airportType==='large_airport'
+    && endpoint.canonicalPlaceId===airport.canonicalPlaceId && endpoint.providerId===airport.providerId
+    && countryCodeFor(endpoint.country)===airport.countryCode
+    && [airport.canonicalName,airport.iataCode,airport.icaoCode].some(name=>normalized(name)===normalized(endpoint.name))
+    && endpoint.coordinates?.every((value,index)=>value===airport.coordinates[index])
+    && transferEndpointGeographicallyReady(endpoint));
+  const fromRecord=recordFor(airports.from.endpoint),toRecord=recordFor(airports.to.endpoint);
+  if (!fromRecord || !toRecord || fromRecord.canonicalPlaceId===toRecord.canonicalPlaceId) return null;
+  const airportDistance=haversineKm(airports.from.endpoint.coordinates??undefined,airports.to.endpoint.coordinates??undefined);
+  if (airportDistance===null || airportDistance<80) return null;
+  // Reuse the existing whole-journey allowance, including its airport/access
+  // time. Adding separate airport access here would count that allowance twice.
+  const total=roundPlanningMinutes(estimateFlightPlanningMinutes(airportDistance).totalMinutes);
+  const provider=`Morrovia flight planning allowance via ${fromRecord.iataCode}–${toRecord.iataCode}, including airport and access time; verify flights before booking.`;
+  const transferImpact=estimateTransferImpact({mode:'flight',knownDoorToDoorMinutes:{status:'known',value:total,confidence:'estimated',
+    sources:[{id:'planner:airport-planning-allowance-v1',label:'Morrovia airport planning allowance',kind:'curated',
+      supports:'Existing flight planning formula applied to approved pinned airport endpoints; no airline service or timetable evidence.'}]},
+    knownDoorToDoorRange:{status:'unknown',value:null,confidence:'unknown',sources:[],reason:'No defensible range is available for this planning allowance.'},
+    international:!sameCountry(leg.fromEndpoint,leg.toEndpoint),connectionCount:null});
+  return candidate({id:'flight:airport-planning',summaryMode:'flight',
+    segments:[segment({mode:'flight',fromEndpoint:leg.fromEndpoint,toEndpoint:leg.toEndpoint,
+      distanceKm:leg.straightLineDistanceKm??leg.distanceKm,durationMinutes:total,provider,provenance:'planning_estimate',confidence:'low',scheduleNeedsChecking:true})],
+    totalDurationMinutes:total,distanceKm:leg.straightLineDistanceKm??leg.distanceKm,
+    transferImpact,confidence:'low',provenance:'planning_estimate',evidence:'airport_planning_allowance',connectionCount:null,
+    reasons:['The canonical endpoints resolve to active scheduled airports in the approved pinned projection.',
+      'The existing whole-journey flight allowance includes airport/access time; service, connections and timetables are unverified.']});
+}
+
 async function routeGatewayAccess(
   from: CanonicalRouteEndpoint,
   to: CanonicalRouteEndpoint,
@@ -603,6 +643,7 @@ async function boundedFerryJourney(leg: TripLeg, provider?: RoadRoutingProvider,
 }
 
 function shouldPreserve(leg: TripLeg) {
+  if (leg.provenance === 'provider' || leg.provenance === 'canonical_schedule') return true;
   const metadata = leg.routeMetadata as { source?: unknown; routingConfidence?: unknown; roadFallbackEligible?: unknown; decisionOption?: unknown; userConfirmed?: unknown; confirmed?: unknown };
   if (metadata.decisionOption !== undefined || metadata.userConfirmed === true || metadata.confirmed === true) return true;
   if (metadata.source === "spreadsheet-import-unconfirmed" && leg.mode === "unknown" && metadata.roadFallbackEligible === false) return true;
@@ -846,9 +887,10 @@ async function resolveTransferJourney(
   const railNetworkEvidence = railDistanceKm === null ? undefined : knowledge.findIntercityRailConnection(from, to, railDistanceKm);
   const rail = excludedModes.has("train") ? null : railCandidate(leg, fromKnowledge, toKnowledge, railNetworkEvidence);
   const directFlight = excludedModes.has("flight") ? null : directFlightCandidate(leg, fromKnowledge, toKnowledge);
+  const airportPlanning = excludedModes.has("flight") ? null : airportFlightPlanningCandidate(leg);
   const mixed = excludedModes.has("flight") || excludedModes.has("road") ? null : await mixedGatewayCandidate(leg, fromKnowledge, toKnowledge, options.provider, options.onRoadAssessment);
   const canonicalGatewayAccess = excludedModes.has("road") ? null : gatewayAccessCandidate(leg, fromKnowledge, toKnowledge);
-  const candidates = [exact, reviewedAir, rail, mixed, directFlight]
+  const candidates = [exact, reviewedAir, rail, mixed, directFlight, airportPlanning]
     .filter((item): item is TransferJourneyCandidate => Boolean(item))
     .filter((item) => candidateAllowed(item, excludedModes));
 

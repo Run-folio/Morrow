@@ -347,6 +347,23 @@
   min-height: 44px;
 }
 
+.activityBooking {
+  display: grid;
+  gap: 8px;
+}
+
+.activitySecondaryActions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.activitySecondaryActions > * {
+  width: 100%;
+  min-width: 0;
+  min-height: 44px;
+}
+
 .stackedActions {
   grid-template-columns: minmax(0, 1fr);
 }

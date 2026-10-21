@@ -57,8 +57,8 @@ export function flightAirportAssumptionLabel(leg:TripLeg,language:'en'|'es'='en'
  const plan=flightPlanningAirports(leg);if(!plan)return null;
  const assumed=[plan.from,plan.to].filter(endpoint=>endpoint.assumed);
  if(!assumed.length)return null;
- const airports=assumed.map(endpoint=>`${endpoint.cityName}: ${endpoint.airportCode}`).join(' · ');
+ const airports=assumed.map(endpoint=>`${endpoint.cityName} ${endpoint.airportCode}`).join(' · ');
  return language==='es'
-  ? `${leg.mode==='unknown'?'Si vuelas, aeropuertos previstos':'Aeropuertos previstos'}: ${airports}. Servicio y traslados al aeropuerto por comprobar.`
-  : `${leg.mode==='unknown'?'If flying, assumed airports':'Assumed airports'}: ${airports}. Flight service and airport transfers need checking.`;
+  ? `${leg.mode==='unknown'?'Si vuelas, ':''}${assumed.length===1?'Aeropuerto previsto':'Aeropuertos previstos'}: ${airports}`
+  : `${leg.mode==='unknown'?'If flying, ':''}${assumed.length===1?'Assumed airport':'Assumed airports'}: ${airports}`;
 }

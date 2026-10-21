@@ -176,7 +176,7 @@ test("all entry surfaces use one presentation and one canonical mutation path", 
   assert.match(itinerary, /recommendationDetailForExploreResult/);
   assert.match(itinerary, /selectedResultId=\{selectedRecommendation\?\.identity \?\? null\}/);
   assert.match(itinerary, /onSelectedDetailRefresh/);
-  assert.match(itinerary, /className=\{styles\.contextRailBody\} hidden=\{Boolean\(selectedDetail \|\| selectedTransportAgenda \|\| selectedBooking\)\}/);
+  assert.match(itinerary, /className=\{styles\.contextRailBody\} hidden=\{workspaceView === "days" && Boolean\(selectedDetail \|\| selectedTransportAgenda \|\| selectedBooking\)\}/);
   assert.match(map, /recommendationDetailForMapResult/);
   assert.match(explore, /useTripShellMutation/);
   assert.match(itinerary, /useOptionalTripShellMutation/);

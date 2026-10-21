@@ -6,6 +6,7 @@ import {countryCodeFor,countryFor} from '@/lib/easyt/country-registry';
 import { geocodeNearbyContext, needsDestinationConfirmation } from "@/lib/easyt/destination-resolution";
 import { createOpenWorldPlaceProvider, searchOpenWorldNearbyBaseSuggestions, searchOpenWorldTravelCandidates } from "@/lib/easyt/open-world-place.server";
 import { requiresPhysicalIslandVerification } from "@/lib/easyt/island-geography";
+import { bundledIslandBaseSeeds } from "@/lib/easyt/island-geography.server";
 import { normalizePhysicalIslandBaseCandidates } from "@/lib/easyt/openstreetmap-island-containment.server";
 import { catalogPlaceForProviderIdentity, placeCandidateSuitableAsNearbyBase, placeCandidateWithinPlanningParent, type GeographicBounds, type NearbyBaseAnchor, type NearbyBaseSuggestion, type PlaceProviderCandidate, type PlaceType, type PlanningParentConstraint } from "@/lib/easyt/place-intelligence";
 
@@ -175,10 +176,11 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ candidates: [], status: "invalid-parent" }, { status: 400 });
     parent.parentCountries = [countryFor(parent.parentCountries[0])!.name];
     try {
-      // Administrative source facts only seed candidates. Every offered island
-      // settlement must pass the existing physical polygon verification.
+      // Covered islands discover exact settlements from accepted bindings;
+      // uncovered administrative facts only seed the live physical check.
+      // Every offered settlement must pass physical polygon verification.
       if (!requiresPhysicalIslandVerification(parent)) return NextResponse.json({ candidates: [], status: "empty" });
-      const seeds = referenceAreaBaseSeeds(parent).filter(validReferenceCandidate)
+      const seeds = (bundledIslandBaseSeeds(parent) ?? referenceAreaBaseSeeds(parent)).filter(validReferenceCandidate)
         .filter(candidate => candidate.parentCountries?.length === 1 && matchesCountry(candidate.parentCountries[0], parent.parentCountries[0]!));
       const verified = seeds.length ? await normalizePhysicalIslandBaseCandidates(seeds, parent, { signal: request.signal }) : [];
       const candidates = verified.filter(validReferenceCandidate)

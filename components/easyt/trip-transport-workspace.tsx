@@ -234,7 +234,7 @@ function TransportCard({ trip, item, language, copy, selected, forReview, onSele
       <span className={styles.modeIcon}><Icon aria-hidden="true" /></span>
       <div className={styles.cardBody}>
         <h3>{item.from.name}<span className="sr-only"> {language === "es" ? "a" : "to"} </span><ArrowRight aria-hidden="true" />{item.to.name}</h3>
-        <p className={styles.mode}>{transferJourneyModeLabel(leg)}{durationMinutes === null ? null : <><i aria-hidden="true">·</i>{transferTimingLabel(leg)} total</>}</p>
+        <p className={styles.mode}>{transferJourneyModeLabel(leg)}{durationMinutes === null ? null : <><i aria-hidden="true">·</i>{leg.provenance === "planning_estimate" && leg.mode !== "unknown" && transferTimingLabel(leg) !== "Timing to confirm" ? language === "es" ? "Estimado · " : "Estimated · " : ""}{transferTimingLabel(leg)} total</>}</p>
       </div>
       <div className={styles.cardEnd}>
         {forReview ? <span className={styles.status} data-tone="attention">{language === "es" ? "Revisar ruta" : "Route check"}</span> : null}

@@ -1,0 +1,434 @@
+{
+  "id": "airport-planning-control-leg-2",
+  "fromStopId": "paris-stay",
+  "toStopId": "airport-planning-control-end",
+  "fromEndpoint": {
+    "kind": "stop",
+    "id": "paris-stay",
+    "name": "Paris",
+    "country": "France",
+    "canonicalPlaceId": "reference:geonames:2988507",
+    "providerId": "reference:geonames:2988507@699b595afdba9be6994e:FR:city:2.3488:48.85341",
+    "geographicBinding": {
+      "version": 1,
+      "source": "provider",
+      "canonicalPlaceId": "reference:geonames:2988507",
+      "providerId": "reference:geonames:2988507@699b595afdba9be6994e:FR:city:2.3488:48.85341",
+      "placeType": "city",
+      "country": "France",
+      "routability": "direct_destination",
+      "inputKey": "[\"reference:geonames:2988507\",\"reference:geonames:2988507@699b595afdba9be6994e:FR:city:2.3488:48.85341\",\"paris\",\"france\",[2.3488,48.85341]]"
+    },
+    "coordinates": [
+      2.3488,
+      48.85341
+    ]
+  },
+  "toEndpoint": {
+    "kind": "end",
+    "id": "airport-planning-control-end",
+    "name": "London Heathrow Airport",
+    "country": "United Kingdom",
+    "canonicalPlaceId": "reference:ourairports:2434",
+    "providerId": "reference:ourairports:2434@699b595afdba9be6994e:GB:transport_gateway:-0.459909:51.470748",
+    "geographicBinding": {
+      "version": 1,
+      "source": "provider",
+      "canonicalPlaceId": "reference:ourairports:2434",
+      "providerId": "reference:ourairports:2434@699b595afdba9be6994e:GB:transport_gateway:-0.459909:51.470748",
+      "placeType": "transport_gateway",
+      "country": "United Kingdom",
+      "routability": "direct_destination",
+      "inputKey": "[\"reference:ourairports:2434\",\"reference:ourairports:2434@699b595afdba9be6994e:GB:transport_gateway:-0.459909:51.470748\",\"london heathrow airport\",\"united kingdom\",[-0.459909,51.470748]]"
+    },
+    "coordinates": [
+      -0.459909,
+      51.470748
+    ]
+  },
+  "classification": "departure",
+  "mode": "unknown",
+  "distanceKm": 353,
+  "straightLineDistanceKm": 353,
+  "routedDistanceKm": null,
+  "durationMinutes": null,
+  "headlineMinutes": null,
+  "doorToDoorMinutes": null,
+  "usableDayLoss": null,
+  "provider": "Air is plausible, but Morrovia has no direct-service or complete multimodal evidence for this regional cross-border journey.",
+  "provenance": "unknown",
+  "confidence": "unknown",
+  "scheduleNeedsChecking": true,
+  "warnings": [],
+  "routeMetadata": {
+    "planningEstimate": true,
+    "source": "multimodal-resolver",
+    "roadFallbackEligible": false,
+    "gatewayResolutionRequired": false,
+    "label": "Paris → London Heathrow Airport",
+    "routingConfidence": "medium",
+    "transferImpact": {
+      "version": 1,
+      "mode": "flight",
+      "headline": {
+        "status": "known",
+        "value": {
+          "planningMinutes": 60,
+          "rangeMinutes": {
+            "minimum": 45,
+            "maximum": 75
+          },
+          "precision": "estimated-range"
+        },
+        "confidence": "estimated",
+        "sources": [
+          {
+            "id": "planner:transfer-impact-rules-v1",
+            "label": "Morrovia deterministic transfer-impact rules",
+            "kind": "curated",
+            "supports": "Mode-specific access, processing, waiting, arrival and usable-day planning ranges.",
+            "reviewedAt": "2026-08-23"
+          }
+        ]
+      },
+      "doorToDoor": {
+        "status": "known",
+        "value": {
+          "planningMinutes": 255,
+          "rangeMinutes": {
+            "minimum": 180,
+            "maximum": 330
+          },
+          "precision": "estimated-range"
+        },
+        "confidence": "estimated",
+        "sources": [
+          {
+            "id": "planner:transfer-impact-rules-v1",
+            "label": "Morrovia deterministic transfer-impact rules",
+            "kind": "curated",
+            "supports": "Mode-specific access, processing, waiting, arrival and usable-day planning ranges.",
+            "reviewedAt": "2026-08-23"
+          }
+        ]
+      },
+      "components": [
+        {
+          "id": "origin-local",
+          "label": "Local journey to departure point",
+          "timing": {
+            "status": "known",
+            "value": {
+              "planningMinutes": 45,
+              "rangeMinutes": {
+                "minimum": 30,
+                "maximum": 60
+              },
+              "precision": "estimated-range"
+            },
+            "confidence": "estimated",
+            "sources": [
+              {
+                "id": "planner:transfer-impact-rules-v1",
+                "label": "Morrovia deterministic transfer-impact rules",
+                "kind": "curated",
+                "supports": "Mode-specific access, processing, waiting, arrival and usable-day planning ranges.",
+                "reviewedAt": "2026-08-23"
+              }
+            ]
+          },
+          "reason": "Mode rule for flight access."
+        },
+        {
+          "id": "check-in-security",
+          "label": "Check-in and security",
+          "timing": {
+            "status": "known",
+            "value": {
+              "planningMinutes": 45,
+              "rangeMinutes": {
+                "minimum": 30,
+                "maximum": 60
+              },
+              "precision": "estimated-range"
+            },
+            "confidence": "estimated",
+            "sources": [
+              {
+                "id": "planner:transfer-impact-rules-v1",
+                "label": "Morrovia deterministic transfer-impact rules",
+                "kind": "curated",
+                "supports": "Mode-specific access, processing, waiting, arrival and usable-day planning ranges.",
+                "reviewedAt": "2026-08-23"
+              }
+            ]
+          },
+          "reason": "Mode rule for flight processing."
+        },
+        {
+          "id": "waiting-buffer",
+          "label": "Waiting and departure buffer",
+          "timing": {
+            "status": "known",
+            "value": {
+              "planningMinutes": 60,
+              "rangeMinutes": {
+                "minimum": 45,
+                "maximum": 75
+              },
+              "precision": "estimated-range"
+            },
+            "confidence": "estimated",
+            "sources": [
+              {
+                "id": "planner:transfer-impact-rules-v1",
+                "label": "Morrovia deterministic transfer-impact rules",
+                "kind": "curated",
+                "supports": "Mode-specific access, processing, waiting, arrival and usable-day planning ranges.",
+                "reviewedAt": "2026-08-23"
+              }
+            ]
+          },
+          "reason": "Mode rule for flight departure reliability."
+        },
+        {
+          "id": "transport",
+          "label": "Headline transport",
+          "timing": {
+            "status": "known",
+            "value": {
+              "planningMinutes": 60,
+              "rangeMinutes": {
+                "minimum": 45,
+                "maximum": 75
+              },
+              "precision": "estimated-range"
+            },
+            "confidence": "estimated",
+            "sources": [
+              {
+                "id": "planner:transfer-impact-rules-v1",
+                "label": "Morrovia deterministic transfer-impact rules",
+                "kind": "curated",
+                "supports": "Mode-specific access, processing, waiting, arrival and usable-day planning ranges.",
+                "reviewedAt": "2026-08-23"
+              }
+            ]
+          },
+          "reason": "In-vehicle or scheduled transport time."
+        },
+        {
+          "id": "border-immigration",
+          "label": "Border and immigration",
+          "timing": {
+            "status": "unknown",
+            "value": null,
+            "confidence": "unknown",
+            "sources": [],
+            "reason": "This is cross-border, but no stable border or immigration allowance is curated."
+          },
+          "reason": "This is cross-border, but no stable border or immigration allowance is curated."
+        },
+        {
+          "id": "connection-buffer",
+          "label": "Connection buffer",
+          "timing": {
+            "status": "unknown",
+            "value": null,
+            "confidence": "unknown",
+            "sources": [],
+            "reason": "The route does not identify whether a timed connection is required."
+          },
+          "reason": "The route does not identify whether a timed connection is required."
+        },
+        {
+          "id": "arrival-local",
+          "label": "Arrival to accommodation",
+          "timing": {
+            "status": "known",
+            "value": {
+              "planningMinutes": 45,
+              "rangeMinutes": {
+                "minimum": 30,
+                "maximum": 60
+              },
+              "precision": "estimated-range"
+            },
+            "confidence": "estimated",
+            "sources": [
+              {
+                "id": "planner:transfer-impact-rules-v1",
+                "label": "Morrovia deterministic transfer-impact rules",
+                "kind": "curated",
+                "supports": "Mode-specific access, processing, waiting, arrival and usable-day planning ranges.",
+                "reviewedAt": "2026-08-23"
+              }
+            ]
+          },
+          "reason": "Mode rule for flight arrival access."
+        }
+      ],
+      "usableDayLoss": {
+        "classification": "substantial",
+        "estimatedDayFraction": 0.5,
+        "reason": "The estimated transfer uses a meaningful part of the day."
+      },
+      "occursOvernight": null,
+      "assumptions": [
+        "Mode overheads are broad planning ranges, not live schedule or queue predictions.",
+        "Unknown border or immigration time is excluded from the numeric total and remains visible as a limitation.",
+        "Unknown connection time is excluded from the numeric total and remains visible as a limitation."
+      ],
+      "claimConfidence": {
+        "headline": {
+          "version": 1,
+          "state": "estimated",
+          "level": "medium",
+          "freshness": "reviewed",
+          "scope": "planning-rule",
+          "sources": [
+            {
+              "id": "planner:transfer-impact-rules-v1",
+              "label": "Morrovia deterministic transfer-impact rules",
+              "kind": "curated",
+              "supports": "Mode-specific access, processing, waiting, arrival and usable-day planning ranges.",
+              "reviewedAt": "2026-08-23"
+            }
+          ],
+          "reason": "Confidence in the headline transport duration used for planning.",
+          "confirmation": {
+            "needed": true,
+            "reason": "Confirm the operator's current duration and exact service before booking."
+          }
+        },
+        "doorToDoor": {
+          "version": 1,
+          "state": "estimated",
+          "level": "medium",
+          "freshness": "reviewed",
+          "scope": "planning-rule",
+          "sources": [
+            {
+              "id": "planner:transfer-impact-rules-v1",
+              "label": "Morrovia deterministic transfer-impact rules",
+              "kind": "curated",
+              "supports": "Mode-specific access, processing, waiting, arrival and usable-day planning ranges.",
+              "reviewedAt": "2026-08-23"
+            }
+          ],
+          "reason": "Confidence in the realistic door-to-door travel-day allowance.",
+          "confirmation": {
+            "needed": true,
+            "reason": "Confirm current access, processing, connection and arrival conditions before booking."
+          }
+        }
+      }
+    },
+    "planningConfidence": {
+      "availability": {
+        "version": 1,
+        "state": "inferred",
+        "level": "medium",
+        "freshness": "unknown",
+        "scope": "general-route",
+        "sources": [],
+        "reason": "The connection is inferred from existing route geography or planning rules.",
+        "confirmation": {
+          "needed": true,
+          "reason": "Confirm that this route operates for the traveller's dates."
+        }
+      },
+      "schedule": {
+        "version": 1,
+        "state": "unknown",
+        "level": "unknown",
+        "freshness": "unknown",
+        "scope": "unknown",
+        "sources": [],
+        "reason": "The general route may be plausible, but no exact schedule has been verified for these dates.",
+        "confirmation": {
+          "needed": true,
+          "reason": "The general route may be plausible, but no exact schedule has been verified for these dates."
+        }
+      },
+      "duration": {
+        "version": 1,
+        "state": "estimated",
+        "level": "medium",
+        "freshness": "reviewed",
+        "scope": "planning-rule",
+        "sources": [
+          {
+            "id": "planner:transfer-impact-rules-v1",
+            "label": "Morrovia deterministic transfer-impact rules",
+            "kind": "curated",
+            "supports": "Mode-specific access, processing, waiting, arrival and usable-day planning ranges.",
+            "reviewedAt": "2026-08-23"
+          }
+        ],
+        "reason": "Confidence in the connection duration used by route planning.",
+        "confirmation": {
+          "needed": true,
+          "reason": "Confirm the current operator duration before booking."
+        }
+      },
+      "doorToDoor": {
+        "version": 1,
+        "state": "estimated",
+        "level": "medium",
+        "freshness": "reviewed",
+        "scope": "planning-rule",
+        "sources": [
+          {
+            "id": "planner:transfer-impact-rules-v1",
+            "label": "Morrovia deterministic transfer-impact rules",
+            "kind": "curated",
+            "supports": "Mode-specific access, processing, waiting, arrival and usable-day planning ranges.",
+            "reviewedAt": "2026-08-23"
+          }
+        ],
+        "reason": "Confidence in the realistic door-to-door travel-day allowance.",
+        "confirmation": {
+          "needed": true,
+          "reason": "Confirm current access, processing, connection and arrival conditions before booking."
+        }
+      },
+      "overall": {
+        "version": 1,
+        "state": "estimated",
+        "level": "medium",
+        "freshness": "unknown",
+        "scope": "general-route",
+        "sources": [
+          {
+            "id": "planner:transfer-impact-rules-v1",
+            "label": "Morrovia deterministic transfer-impact rules",
+            "kind": "curated",
+            "supports": "Mode-specific access, processing, waiting, arrival and usable-day planning ranges.",
+            "reviewedAt": "2026-08-23"
+          }
+        ],
+        "reason": "Confidence in using this connection for route comparison.",
+        "confirmation": {
+          "needed": true,
+          "reason": "The general route may be plausible, but no exact schedule has been verified for these dates."
+        }
+      }
+    },
+    "classification": "departure",
+    "validationWarnings": [],
+    "transportConstraints": {
+      "avoidDriving": false,
+      "excludedModes": [],
+      "preferredModes": []
+    },
+    "multimodalResolution": {
+      "version": 1,
+      "selected": "unresolved",
+      "candidates": [],
+      "rejected": [
+        "No plausible routed road estimate or canonical gateway access was available."
+      ]
+    }
+  }
+}

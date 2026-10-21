@@ -128,7 +128,8 @@ function TransportModeDialog({ trip, leg, onChange, pending, departureDate, lang
         <div className={styles.modeCards} role="radiogroup" aria-label={isSpanish ? "Opciones de transporte" : "Transport options"}>
           {options.map((option, index) => {
             const Icon = option.mode === "train" ? TrainFront : option.mode === "flight" ? Plane : option.mode === "road" ? CarFront : option.mode === "ferry" ? Ship : option.mode === "walk" ? Footprints : Route;
-            return <EasyTButton key={option.identity ?? "recommendation"} className={styles.modeCard} variant="secondary" role="radio" aria-checked={draft === option.identity} data-mode-initial={draft === option.identity ? "true" : undefined} tabIndex={draft === option.identity ? 0 : -1} disabled={pending}
+            const initialFocus = draft === option.identity || draft === null && index === 0;
+            return <EasyTButton key={option.identity ?? "recommendation"} className={styles.modeCard} variant="secondary" role="radio" aria-checked={draft === option.identity} data-mode-initial={initialFocus ? "true" : undefined} tabIndex={initialFocus ? 0 : -1} disabled={pending}
               onClick={() => setDraft(option.identity)} onKeyDown={(event) => {
                 if (!["ArrowDown", "ArrowUp", "ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
                 event.preventDefault();

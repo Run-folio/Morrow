@@ -17,7 +17,13 @@ async function geometryBody(response: Response) {
       if (bytes > maximumBodyBytes) throw new Error('Island geometry exceeds the bounded lookup limit');
       text += decoder.decode(chunk.value, { stream: true });
     }
-    return JSON.parse(text + decoder.decode()) as unknown;
+    const body = JSON.parse(text + decoder.decode()) as { elements?: unknown; remark?: unknown } | null;
+    // Overpass can return HTTP200 and elements:[] alongside a runtime failure.
+    // A diagnostic remark is not an authoritative empty geometry result.
+    if (!body || !Array.isArray(body.elements)
+      || body.remark !== undefined && (typeof body.remark !== 'string' || body.remark.trim()))
+      throw new Error('Existing island geometry provider unavailable');
+    return body;
   } finally { await reader.cancel().catch(() => {}); }
 }
 
@@ -41,7 +47,19 @@ export async function normalizeLivePhysicalIslandBaseCandidates(candidates: Plac
   if (!eligible.length) return [];
   const fetchImpl = options.fetchImpl ?? fetch, deadline = Date.now() + 15_000;
   const signalFor = (ms: number) => options.signal ? AbortSignal.any([options.signal, AbortSignal.timeout(ms)]) : AbortSignal.timeout(ms);
-  const found = await searchPhotonTravelCandidates(parent.canonicalName, { travelIntent: 'planning-area', explicitCountryNames: parent.parentCountries, countryNames: parent.parentCountries }, fetchImpl, { signal: signalFor(2_500) });
+  // The general search adapter treats failed or missing Photon results as an
+  // empty search. Physical verification needs a retryable source failure.
+  // Keep this stricter transport contract local to the physical consumer.
+  const physicalIdentityFetch: typeof fetch = async (input, init) => {
+    const options = { ...init, cache: 'no-store' as const };
+    delete options.next;
+    const response = await fetchImpl(input, options);
+    if (!response.ok) throw new Error('Existing island identity provider unavailable');
+    const payload = await response.clone().json() as { features?: unknown } | null;
+    if (!payload || !Array.isArray(payload.features)) throw new Error('Existing island identity provider unavailable');
+    return response;
+  };
+  const found = await searchPhotonTravelCandidates(parent.canonicalName, { travelIntent: 'planning-area', explicitCountryNames: parent.parentCountries, countryNames: parent.parentCountries }, physicalIdentityFetch, { signal: signalFor(2_500) });
   const islands = found.filter(c => c.placeType === 'island' && c.matchQuality === 'exact' && normalize(c.canonicalName) === normalize(parent.canonicalName)
     && c.parentCountries?.some(country => sameCountry(country, parent.parentCountries[0]!)) && /^[RW]:\d+$/.test(c.providerId));
   const identities = new Set(islands.map(c => c.providerId)); if (identities.size !== 1) return [];
@@ -50,7 +68,7 @@ export async function normalizeLivePhysicalIslandBaseCandidates(candidates: Plac
   const query = `[out:json][timeout:8];${type}(${id});out geom;`;
   const results = await Promise.allSettled(endpoints.map(async endpoint => geometryBody(await fetchImpl(endpoint, {
     method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8', 'User-Agent': 'Morrovia trip planner/1.0 (https://morrovia.com)' },
-    body: new URLSearchParams({ data: query }), signal: signalFor(10_000), next: { revalidate: 86_400 },
+    body: new URLSearchParams({ data: query }), signal: signalFor(10_000), cache: 'no-store',
   }))));
   const available = results.flatMap(r => r.status === 'fulfilled' ? [r.value] : []);
   if (!available.length) throw new Error('Existing island geometry providers unavailable');

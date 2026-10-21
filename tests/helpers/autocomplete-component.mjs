@@ -47,3 +47,13 @@ export function selectHomepageEntry(selection, id='synthetic-entry') {
  if(!autocomplete)throw new Error('Actual homepage autocomplete callback missing');
  autocomplete.props.onSelect(selection);return entries[0];
 }
+
+/** Actual editor output, without running child components or browser effects. */
+export function homepagePresentation(entries, language='en') {
+ const hooks={forwardRef:require('react').forwardRef,useState:initial=>[typeof initial==='function'?initial():initial,()=>{}],useRef:initial=>({current:initial}),useEffect(){}};
+ const module={exports:{}};
+ const context=vm.createContext({module,exports:module.exports,require,console,__hooks:hooks});
+ new vm.Script(script,{filename:'actual-home-editor-presentation.cjs'}).runInContext(context);
+ const tree=module.exports.HomeDestinationEditor({entries,language,onChange(){}});
+ return {status:tree.props.status,tags:allElements(tree).filter(node=>node.props.removeLabel).map(node=>({id:node.props.id,label:node.props.label,editLabel:node.props.editLabel,removeLabel:node.props.removeLabel}))};
+}

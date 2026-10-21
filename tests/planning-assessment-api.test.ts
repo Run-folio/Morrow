@@ -56,13 +56,14 @@ test('an existing catalog owner with its explicitly pinned reference selection r
  assert.equal(new URL(fixture().requests[0]).searchParams.get('ggscoord'),'35.6895|139.69171');
  assert.equal(url.searchParams.get('canonicalPlaceId'),'tokyo');
 });
-// Reviewed catalog/reference pairs reproduced from a saved Paris/Madrid route.
+// Reviewed catalog/reference pairs reproduced from saved route/request evidence.
 // These public source tuples are fixtures, never a traveller-document migration.
-const parisMadridBindings = [
+const reviewedActivityBindings = [
  {id:'paris',name:'Paris',country:'France',referenceId:'reference:geonames:2988507',providerId:'reference:geonames:2988507@699b595afdba9be6994e:FR:city:2.3488:48.85341',catalogPoint:[2.3522,48.8566],referencePoint:[2.3488,48.85341],otherId:'madrid',otherCountry:'Spain',sameCountryOther:'reference:geonames:2996944'},
  {id:'madrid',name:'Madrid',country:'Spain',referenceId:'reference:geonames:3117735',providerId:'reference:geonames:3117735@699b595afdba9be6994e:ES:city:-3.70256:40.4165',catalogPoint:[-3.7038,40.4168],referencePoint:[-3.70256,40.4165],otherId:'paris',otherCountry:'France',sameCountryOther:'reference:geonames:3128760'},
+ {id:'reykjavik',name:'Reykjavík',country:'Iceland',referenceId:'reference:geonames:3413829',providerId:'reference:geonames:3413829@699b595afdba9be6994e:IS:city:-21.89541:64.13548',catalogPoint:[-21.9426,64.1466],referencePoint:[-21.89541,64.13548],otherId:'paris',otherCountry:'France',sameCountryOther:'reference:geonames:2633274'},
 ] as const;
-for(const pair of parisMadridBindings) {
+for(const pair of reviewedActivityBindings) {
  test(`catalog ${pair.id} accepts only its reviewed current reference pin without rewriting the selected identity`,async t=>{
   setup(t,{organic:()=>Response.json({query:{pages:{701:{pageid:701,title:`${pair.name} Art Museum`,extract:'A major museum and visitor gallery.',coordinates:[{lon:pair.referencePoint[0],lat:pair.referencePoint[1]}]}}}})});
   assert.equal(referencePlaceById(pair.referenceId)?.providerId,pair.providerId);

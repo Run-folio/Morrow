@@ -136,6 +136,21 @@ function trip(brief = structuredBrief()): EasyTTrip {
   };
 }
 
+test('a routed capital does not silently consume separate unresolved country or island intent', async () => {
+  const { unresolvedPlaceIntentsForTrip } = await import('../lib/easyt/unresolved-place-intent.ts');
+  const brief=structuredBrief();
+  const country={...krugerMention,mentionId:'country-sm',sourceText:'San Marino',canonicalName:'San Marino',canonicalPlaceId:'san-marino',placeType:'country' as const,parentCountries:['San Marino'],routability:'planning_area' as const};
+  const island={...krugerMention,mentionId:'island-bali',sourceText:'Bali',canonicalName:'Bali',canonicalPlaceId:'bali',placeType:'island' as const,parentCountries:['Indonesia']};
+  brief.placeMentions=[country,island];
+  brief.placeIssues=[country,island].map(mention=>({...krugerIssue,mentionId:mention.mentionId,canonicalPlaceId:mention.canonicalPlaceId,sourceText:mention.sourceText}));
+  const document=trip(brief);
+  document.stops=[{...document.stops[0],id:'capital-sm',name:'San Marino',country:'San Marino',canonicalPlaceId:'reference:geonames:3168070'}];
+  const before=JSON.stringify(document);
+  assert.deepEqual(unresolvedPlaceIntentsForTrip(document).map(row=>row.mention.mentionId),['country-sm','island-bali']);
+  assert.equal(document.stops.length,1);
+  assert.equal(JSON.stringify(document),before);
+});
+
 test("projects retained unresolved place truth without creating a route stop", async () => {
   const module = await import("../lib/easyt/unresolved-place-intent.ts").catch(() => ({}));
   const project = (module as { unresolvedPlaceIntentsForTrip?: (trip: EasyTTrip) => Array<{

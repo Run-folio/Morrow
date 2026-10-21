@@ -3,6 +3,7 @@ import test from 'node:test';
 import {readFileSync} from 'node:fs';
 import {searchReferencePlaces} from '../lib/easyt/place-reference.server.ts';
 import {normalizeLivePhysicalIslandBaseCandidates} from '../lib/easyt/openstreetmap-island-containment.server.ts';
+import {searchPhotonTravelCandidates} from '../lib/easyt/photon-place.server.ts';
 import type {PlaceProviderCandidate,PlanningParentConstraint} from '../lib/easyt/place-intelligence.ts';
 const raw=JSON.parse(readFileSync(new URL('./fixtures/batch14-physical-island-geography.json',import.meta.url),'utf8'));
 const fira=searchReferencePlaces('Fira',{explicitCountryNames:['Greece']}).find(c=>c.canonicalPlaceId==='reference:geonames:252920')!;
@@ -35,3 +36,23 @@ test('captured larger physical Crete polygon accepts the existing unchanged Chan
 
 test('bounded dense simple geometry is rejected without approximating or skipping topology checks',async()=>{const geometry=structuredClone(raw.overpass.body),points:Array<{lon:number;lat:number}>=[];for(let i=0;i<5000;i++){points.push({lon:i%2?26:25,lat:36+i/10000},{lon:i%2?25:26,lat:36+i/10000});}points.push({lon:24.9,lat:36.4999},{lon:24.9,lat:36},{...points[0]!});geometry.elements[0].members=[{type:'way',ref:1,role:'outer',geometry:points}];const start=Date.now();assert.deepEqual(await resolve([fira],parent,fixture(raw.photon.body,geometry)),[]);assert(Date.now()-start<5000);});
 test('point/member caps and adjacent overlapping edges fail closed',async()=>{for(const members of [[{type:'way',ref:1,role:'outer',geometry:Array.from({length:60001},(_,i)=>({lon:25+i/100000,lat:36}))}],Array.from({length:601},(_,i)=>({type:'way',ref:i,role:'outer',geometry:square(25,36,26,37)})),[{type:'way',ref:1,role:'outer',geometry:[{lon:25,lat:36},{lon:26,lat:36},{lon:25.5,lat:36},{lon:26,lat:37},{lon:25,lat:37},{lon:25,lat:36}]}]]){const geometry=structuredClone(raw.overpass.body);geometry.elements[0].members=members;assert.deepEqual(await resolve([fira],parent,fixture(raw.photon.body,geometry)),[]);}});
+
+test('Overpass runtime error remarks remain retryable unavailable even with a valid empty elements array',async()=>{
+ await assert.rejects(resolve([fira],parent,fixture(raw.photon.body,{elements:[],remark:'runtime error: Query timed out in "query" at line 1 after 8 seconds.'})),/unavailable/i);
+});
+test('physical verification bypasses raw provider caching for both identity and geometry requests',async()=>{
+ const requests:Array<{url:string;options:RequestInit & {next?:unknown}}>=[];const original=fixture();
+ const [verified]=await resolve([fira],parent,async(input,init)=>{requests.push({url:String(input),options:init??{}});return original(input,init);});
+ assert(verified);assert.equal(requests.length,3);
+ for(const {url,options} of requests){assert.equal(options.cache,'no-store',url);assert.equal('next' in options,false,url);assert(options.signal);}
+});
+test('ordinary Photon search preserves its existing cache policy',async()=>{
+ let calls=0;const candidates=await searchPhotonTravelCandidates('Santorini',{},async(_input,init)=>{calls++;assert.equal(init?.cache,undefined);assert.deepEqual(init?.next,{revalidate:60*60*24*30});return Response.json(raw.photon.body);});
+ assert.equal(calls,1);assert(candidates.length>0);
+});
+test('healthy empty Overpass results remain empty without a physical containment claim',async()=>{
+ assert.deepEqual(await resolve([fira],parent,fixture(raw.photon.body,{elements:[]})),[]);
+});
+test('physical identity HTTP404 is unavailable rather than an authoritative empty search',async()=>{
+ await assert.rejects(resolve([fira],parent,async()=>new Response('',{status:404})),/unavailable/i);
+});

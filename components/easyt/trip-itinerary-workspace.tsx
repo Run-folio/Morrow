@@ -72,6 +72,7 @@ import {
   itinerarySuggestionCandidates,
   type ItineraryDiscoveryPlace,
 } from "@/lib/easyt/itinerary-day-context";
+import { activityCooldownKey, useActivityClientCooldown } from "@/lib/easyt/activity-client-cooldown";
 import { createAbortableEffectScope } from "@/lib/easyt/abortable-effect";
 import { assignItineraryIdeaDayPart, ideaStateForPlace, itineraryIdeaDayOptions, preferredItineraryIdeaDay, removeItineraryIdea, saveItineraryIdea, type ItineraryIdeaDayOption } from "@/lib/easyt/itinerary-ideas";
 import { itineraryDayParts, type ComposedItineraryActivity, type ItineraryDayComposition } from "@/lib/easyt/itinerary-day-composition";
@@ -1027,6 +1028,7 @@ export default function TripItineraryWorkspace({
         dateSummary: `${displayDayDate(active.date, language)}${selectedActivity.dayPart ? ` · ${itineraryDayPartLabels[language][selectedActivity.dayPart]}` : ""}`,
         bookingStatus: booking?.confirmation ? "Confirmed" : booking ? "Saved booking" : null,
         bookingHref: booking?.url ?? selectedActivity.sourceUrl ?? null,
+        provider: selectedActivity.provider,
         whyFit: active.reason || null,
         practical: [
           ...(rating ? [{ label: "Rating", value: `${rating}${reviews ? ` · ${reviews.toLocaleString()} reviews` : ""}` }] : []),
@@ -1851,6 +1853,14 @@ export default function TripItineraryWorkspace({
           mapHref={selectedRecommendation ? selectedRecommendationMapHref : selectedItemMapHref}
           pending={selectedRecommendation ? mutation.isPending(`itinerary-suggestion-${selectedRecommendation.stopId}-${selectedRecommendation.idea.placeId}`) : selectedActivity ? mutation.isPending(`itinerary-activity-day-part-${selectedActivity.id}`) : stayBooking ? mutation.isPending(`itinerary-stay-${stop?.id}`) : false}
           onClose={closeSelectedDetail}
+          activityPresentation={selectedDetail.kind === "activity" || selectedDetail.kind === "tour"}
+          activityBooking={{
+            href: selectedRecommendation
+              ? selectedRecommendation.provider === "viator" ? selectedRecommendation.providerUrl : null
+              : selectedActivity?.booking?.url ?? (selectedActivity?.provider === "viator" ? selectedActivity.sourceUrl : null),
+            provider: selectedRecommendation?.provider ?? (selectedActivity?.booking?.url ? undefined : selectedActivity?.provider),
+            context: { placement: "itinerary_day_experiences", tripId: workingTrip.id, stopId: selectedRecommendation?.stopId ?? stop?.id, workspaceView: "itinerary" },
+          }}
           primaryActions={selectedRecommendation && selectedRecommendationState ? <>
             {selectedRecommendationState.state !== "planned" ? <EasyTButton
               icon={CirclePlus}
@@ -1866,7 +1876,7 @@ export default function TripItineraryWorkspace({
                 if (accepted) setNotice("Idea saved");
               }}
             >Save for later</EasyTButton> : null}
-            {selectedRecommendation.provider === "viator" && selectedRecommendation.providerUrl ? <><MorroviaAffiliateLink
+            {selectedDetail.kind !== "activity" && selectedDetail.kind !== "tour" && selectedRecommendation.provider === "viator" && selectedRecommendation.providerUrl ? <><MorroviaAffiliateLink
               action={{ provider: "viator", category: "activities", href: selectedRecommendation.providerUrl, cta: "View on Viator", affiliate: true }}
               context={{ placement: "itinerary_day_experiences", tripId: workingTrip.id, stopId: selectedRecommendation.stopId, workspaceView: "itinerary" }}
               variant="secondary"
@@ -2367,6 +2377,11 @@ function ItineraryDaySuggestions({ trip, day, stop, copy, language, initialPlace
   const [places, setPlaces] = useState<ItineraryDiscoveryPlace[]>(initialPlaces ?? []);
   const captureSuggestionScope = useItineraryActionScope(JSON.stringify([trip.ownerId, trip.id, day.id, addPart, addDraft]));
   const [organicStatus, setOrganicStatus] = useState<"idle" | "loading" | "ready" | "error" | "incomplete">(initialPlaces ? "ready" : "idle");
+  const commercialCooldownKey = activityCooldownKey(trip, stop);
+  const commercialCooldown = useActivityClientCooldown(commercialCooldownKey);
+  const commercialRequestIdentity = JSON.stringify([commercialCooldownKey, day.id, day.dayNumber, trip.currency, stop?.id, stop?.countryCode, stop?.region, trip.brief.structuredBrief?.placeMentions]);
+  const commercialLifetimeRef = useRef({ key: commercialRequestIdentity });
+  if (commercialLifetimeRef.current.key !== commercialRequestIdentity) commercialLifetimeRef.current = { key: commercialRequestIdentity };
   const [inventory, setInventory] = useState<ActivityInventoryItem[]>(initialActivityInventory ?? []);
   const [commercialStatus, setCommercialStatus] = useState<"idle" | "loading" | "ready" | "error" | "incomplete">(initialActivityInventory ? "ready" : "idle");
   const [organicAssessment, setOrganicAssessment] = useState<PlanningEvidenceState>();
@@ -2506,12 +2521,21 @@ function ItineraryDaySuggestions({ trip, day, stop, copy, language, initialPlace
       return;
     }
     const scope = createAbortableEffectScope(`Itinerary experiences for day ${day.dayNumber}`);
+    const lifetime = commercialLifetimeRef.current;
+    const commit = (publish: () => void) => {
+      if (commercialLifetimeRef.current === lifetime) scope.commit(publish);
+    };
     const startedAt = performance.now();
     const placeMention = trip.brief.structuredBrief?.placeMentions?.find((mention) => mention.canonicalPlaceId === stop.canonicalPlaceId);
-    const scopeKey = JSON.stringify([stop.id, stop.canonicalPlaceId, stop.providerId, stop.name, stop.country, stop.countryCode, stop.region, stop.latitude, stop.longitude, trip.currency, placeMention]);
+    const scopeKey = JSON.stringify([commercialCooldownKey, stop.id, trip.currency, placeMention]);
     if (commercialScopeRef.current === scopeKey && (commercialStatus === 'error' || commercialStatus === 'incomplete') && commercialAssessment?.retryable === false) return;
     if (commercialScopeRef.current !== scopeKey) setInventory([]);
     commercialScopeRef.current = scopeKey;
+    if (commercialCooldown.isCoolingDown()) {
+      setCommercialAssessment({ retrieval: "unavailable", evidence: "insufficient", reason: "provider_error", retryable: true });
+      setCommercialStatus("error");
+      return () => scope.dispose();
+    }
     setCommercialAssessment(undefined);
     setCommercialCounts(undefined);
     setCommercialStatus("loading");
@@ -2531,9 +2555,10 @@ function ItineraryDaySuggestions({ trip, day, stop, copy, language, initialPlace
       }, currency: trip.currency }),
       signal: scope.signal,
     }).then(async (response) => {
+      commit(() => commercialCooldown.recordResponse(response));
       const payload = await response.json() as { activities?: ActivityInventoryItem[]; unavailable?: boolean; assessment?: PlanningEvidenceState; counts?: PlanningResultCounts };
       return { payload, ok: response.ok };
-    }).then(({ payload, ok }) => scope.commit(() => {
+    }).then(({ payload, ok }) => commit(() => {
       const assessment = planningEvidenceFromResponse(payload);
       setCommercialAssessment(assessment);
       const responseStatus = planningLaneResponseStatus(payload, ok);
@@ -2551,13 +2576,13 @@ function ItineraryDaySuggestions({ trip, day, stop, copy, language, initialPlace
       trackEvent("recommendation_performance", { ...properties, milestone: "lane_ready" });
     })).catch((caught: unknown) => {
       if (scope.isCancellation(caught)) return;
-      scope.commit(() => {
+      commit(() => {
         setCommercialStatus("error");
         trackEvent("recommendation_performance", { surface: "itinerary", recommendation_kind: "activity", lane: "commercial", milestone: "lane_ready", duration_ms: recommendationDurationMs(startedAt, performance.now()), result_count: 0, outcome: "unavailable" });
       });
     });
     return () => scope.dispose();
-  }, [day.dayNumber, initialActivityInventory, retryVersion, stop?.canonicalPlaceId, stop?.providerId, stop?.country, stop?.countryCode, stop?.id, stop?.latitude, stop?.longitude, stop?.name, stop?.region, trip.brief.structuredBrief?.placeMentions, trip.currency]);
+  }, [day.dayNumber, initialActivityInventory, retryVersion, stop?.canonicalPlaceId, stop?.providerId, stop?.country, stop?.countryCode, stop?.id, stop?.latitude, stop?.longitude, stop?.name, stop?.region, trip.brief.structuredBrief?.placeMentions, trip.currency, commercialCooldownKey, commercialRequestIdentity]);
 
   const results = useMemo(() => {
     if (!stop) return [];
@@ -2594,8 +2619,8 @@ function ItineraryDaySuggestions({ trip, day, stop, copy, language, initialPlace
   const incomplete = organicStatus === 'incomplete' || commercialStatus === 'incomplete';
   const unsettled = unavailable || incomplete;
   const incompleteAssessments = [organicStatus === 'error' || organicStatus === 'incomplete' ? organicAssessment : undefined, commercialStatus === 'error' || commercialStatus === 'incomplete' ? commercialAssessment : undefined].filter((state): state is PlanningEvidenceState => Boolean(state));
-  const canRetry = (organicStatus === 'error' && organicAssessment?.retryable !== false) || (commercialStatus === 'error' && commercialAssessment?.retryable !== false)
-    || (organicStatus === 'incomplete' && organicAssessment?.retryable === true) || (commercialStatus === 'incomplete' && commercialAssessment?.retryable === true);
+  const canRetry = (organicStatus === 'error' && organicAssessment?.retryable !== false) || (!commercialCooldown.coolingDown && commercialStatus === 'error' && commercialAssessment?.retryable !== false)
+    || (organicStatus === 'incomplete' && organicAssessment?.retryable === true) || (!commercialCooldown.coolingDown && commercialStatus === 'incomplete' && commercialAssessment?.retryable === true);
   const filteredAtAdmission = [organicCounts, commercialCounts].some(counts => counts && counts.raw > 0 && counts.returned === 0);
   const retrySuggestions = () => { onInteractionReset(); setRetryVersion(current => current + 1); };
   const suggestionStatus = <><MorroviaSectionStatus compact state="error" title={unavailable ? copy.suggestionsUnavailable : language === 'es' ? 'Las sugerencias aún no están listas.' : 'Suggestions are not ready yet.'}
@@ -3190,6 +3215,7 @@ function ItineraryLogisticsDetail({ trip, agenda = null, booking = null, languag
   onClose: () => void;
 }) {
   const copy = itineraryCopy(language);
+  const closeLabel = language === "es" ? "Cerrar" : "Close";
   const shellRef = useRef<HTMLElement>(null);
   const closeRef = useRef<HTMLButtonElement>(null);
   const [mobileSheet, setMobileSheet] = useState(false);
@@ -3234,9 +3260,9 @@ function ItineraryLogisticsDetail({ trip, agenda = null, booking = null, languag
   }, [embedded, onClose, title]);
 
   return <>
-    {!embedded ? <EasyTButton className={styles.logisticsDetailScrim} iconOnly variant="quiet" aria-label={`${copy.cancel}: ${title}`} onClick={onClose}>{copy.cancel}</EasyTButton> : null}
+    {!embedded ? <EasyTButton className={styles.logisticsDetailScrim} iconOnly variant="quiet" aria-label={`${closeLabel}: ${title}`} onClick={onClose}>{closeLabel}</EasyTButton> : null}
     <section ref={shellRef} className={`${styles.logisticsDetail} ${embedded ? styles.calendarEmbeddedDetail : ""}`} role={!embedded && mobileSheet ? "dialog" : "region"} aria-modal={!embedded && mobileSheet || undefined} aria-label={`${copy.details}: ${title}`}>
-      <EasyTButton ref={closeRef} className={styles.logisticsDetailClose} icon={X} iconOnly variant="secondary" aria-label={`${copy.cancel}: ${title}`} onClick={onClose}>{copy.cancel}</EasyTButton>
+      <EasyTButton ref={closeRef} className={styles.logisticsDetailClose} icon={X} iconOnly variant="secondary" aria-label={`${language === "es" ? "Cerrar detalles de" : "Close details for"} ${title}`} onClick={onClose}>{closeLabel}</EasyTButton>
       <header>
         <span>{agenda ? copy.transfer : copy.booking}</span>
         <h2>{title}</h2>

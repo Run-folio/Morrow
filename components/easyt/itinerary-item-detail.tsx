@@ -16,6 +16,9 @@ import {
   X,
 } from "lucide-react";
 import { useEffect, useId, useRef, useState, type ReactNode } from "react";
+import type { AffiliateClickContext } from "@/lib/easyt/affiliate-click";
+import { validateOptionalAffiliateUrl } from "@/lib/easyt/affiliate-configuration";
+import { MorroviaAffiliateDisclosure, MorroviaAffiliateLink } from "./affiliate-link";
 import type { ItineraryDayPart } from "@/lib/easyt/trip";
 import type { RecommendationDetailModel } from "@/lib/easyt/recommendation-detail";
 import { recommendationDetailTitleTier } from "@/lib/easyt/recommendation-detail-title";
@@ -44,6 +47,8 @@ type Props = {
   stackActions?: boolean;
   mapSelectionPresentation?: boolean;
   providerContent?: ReactNode;
+  activityPresentation?: boolean;
+  activityBooking?: { href?: string | null; provider?: string | null; context: AffiliateClickContext };
 };
 
 const partLabels: Record<ItineraryDayPart, string> = {
@@ -71,6 +76,8 @@ export default function RecommendationDetail({
   stackActions = false,
   mapSelectionPresentation = false,
   providerContent,
+  activityPresentation = false,
+  activityBooking,
 }: Props) {
   const headingId = useId();
   const shellRef = useRef<HTMLElement>(null);
@@ -80,9 +87,13 @@ export default function RecommendationDetail({
   const [failedImageSrc, setFailedImageSrc] = useState<string | null>(null);
   const KindIcon = detail.kind === "restaurant" ? Utensils : detail.kind === "accommodation" ? BedDouble : Sparkles;
   const titleTier = recommendationDetailTitleTier(detail.title);
+  const isActivityPresentation = activityPresentation && (detail.kind === "activity" || detail.kind === "tour");
+  const booking = isActivityPresentation ? activityBookingLink(activityBooking) : null;
   const practicalFacts = mapSelectionPresentation
     ? detail.practical?.filter((fact) => /^(rating|distance|saved location)$/i.test(fact.label))
-    : detail.practical;
+    : isActivityPresentation && !mapHref
+      ? detail.practical?.filter((fact) => fact.label.toLowerCase() !== "map")
+      : detail.practical;
 
   useEffect(() => {
     if (embedded) return;
@@ -158,26 +169,51 @@ export default function RecommendationDetail({
           <p>{detail.commercialFacts.qualification}</p>
         </section> : null}
 
-        {detail.whyFit && !mapSelectionPresentation ? <section className={styles.why} aria-label="Why this fits"><Sparkles aria-hidden="true" /><div><h3>{detail.whyFitLabel ?? "Why it fits this part of the day"}</h3><p>{detail.whyFit}</p></div></section> : null}
+        {detail.whyFit && !mapSelectionPresentation && !isActivityPresentation ? <section className={styles.why} aria-label="Why this fits"><Sparkles aria-hidden="true" /><div><h3>{detail.whyFitLabel ?? "Why it fits this part of the day"}</h3><p>{detail.whyFit}</p></div></section> : null}
 
         {practicalFacts?.length ? <section className={styles.practical}>{!mapSelectionPresentation ? <h3>Practical info</h3> : null}<dl>{practicalFacts.map((fact) => <div key={fact.label}><dt>{fact.label}</dt><dd>{fact.value}</dd></div>)}</dl></section> : null}
 
         {providerContent ? <section aria-label="Place details from provider">{providerContent}</section> : null}
 
-        {detail.canMoveTime && onDayPartChange ? <EasyTSelect label="Part of day" value={detail.dayPart ?? ""} disabled={pending} onChange={(event) => onDayPartChange(event.target.value ? event.target.value as ItineraryDayPart : null)}>
+        {detail.canMoveTime && onDayPartChange ? <EasyTSelect label={isActivityPresentation ? "Schedule for" : "Part of day"} value={detail.dayPart ?? ""} disabled={pending} onChange={(event) => onDayPartChange(event.target.value ? event.target.value as ItineraryDayPart : null)}>
           <option value="">Time not set</option>
           {(Object.keys(partLabels) as ItineraryDayPart[]).map((part) => <option value={part} key={part}>{partLabels[part]}</option>)}
         </EasyTSelect> : null}
 
-        <div className={`${styles.actions} ${stackActions ? styles.stackedActions : ""}`}>
+        {isActivityPresentation ? <>
+          {booking ? <div className={styles.activityBooking}>
+            {booking.affiliate && activityBooking ? <>
+              <MorroviaAffiliateLink action={{ provider: "viator", category: "activities", href: booking.href, cta: booking.label, affiliate: true }} context={activityBooking.context} variant="primary" fullWidth />
+              <MorroviaAffiliateDisclosure provider="viator" />
+            </> : <EasyTLinkButton href={booking.href} target="_blank" rel="noopener noreferrer" icon={ExternalLink} variant="primary" fullWidth>{booking.label}</EasyTLinkButton>}
+          </div> : null}
+          <div className={styles.activitySecondaryActions}>
+            {primaryActions}
+            {detail.canRemove && onRemove ? <EasyTButton icon={Trash2} variant="secondary" onClick={onRemove}>Remove</EasyTButton> : null}
+          </div>
+          {!omitMapAction && mapHref ? <EasyTLinkButton href={mapHref} icon={MapIcon} fullWidth variant="secondary" loading={mapPending} onClick={() => setMapPending(true)}>{mapPending ? "Opening map…" : "View on map"}</EasyTLinkButton> : null}
+        </> : <div className={`${styles.actions} ${stackActions ? styles.stackedActions : ""}`}>
           {primaryActions}
           {!omitMapAction && mapHref ? <EasyTLinkButton href={mapHref} icon={MapIcon} fullWidth loading={mapPending} onClick={() => setMapPending(true)}>{mapPending ? "Opening map…" : "View on map"}</EasyTLinkButton> : null}
           {detail.bookingHref ? <EasyTLinkButton href={detail.bookingHref} target="_blank" rel="noopener noreferrer" icon={ExternalLink} variant="secondary">Open booking</EasyTLinkButton> : null}
           {onManage ? <EasyTButton icon={BedDouble} variant="secondary" onClick={onManage}>{manageLabel}</EasyTButton> : null}
           {onAddNote ? <EasyTButton icon={NotebookPen} variant="secondary" onClick={onAddNote}>Add note</EasyTButton> : null}
           {detail.canRemove && onRemove ? <EasyTButton icon={Trash2} variant="danger" onClick={onRemove}>Remove</EasyTButton> : null}
-        </div>
+        </div>}
       </div>
     </section>
   </>;
+}
+
+/** Keep the supplied attribution URL intact. Source metadata alone cannot brand a link. */
+function activityBookingLink(booking: Props["activityBooking"]) {
+  const href = validateOptionalAffiliateUrl(booking?.href ?? undefined);
+  if (!href) return null;
+  const url = new URL(href);
+  const host = url.hostname.toLowerCase();
+  const matches = (domain: string) => host === domain || host.endsWith(`.${domain}`);
+  const viator = matches("viator.com") || host === "vi.me";
+  if (booking?.provider === "viator" && (!viator || url.protocol !== "https:")) return null;
+  const providerLabel = viator ? "Viator" : matches("getyourguide.com") ? "GetYourGuide" : matches("trip.com") ? "Trip.com" : matches("booking.com") ? "Booking.com" : null;
+  return { href, label: providerLabel ? `Book on ${providerLabel}` : "Book", affiliate: booking?.provider === "viator" && viator };
 }

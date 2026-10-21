@@ -35,7 +35,7 @@ test('unbooked flight planning derives CDG and LHR without rewriting city route 
  assert.equal(plan.to.endpoint.canonicalPlaceId,'reference:ourairports:2434');
  assert.equal(plan.from.assumed,true);assert.equal(plan.to.assumed,true);
  assert.match(flightAirportAssumptionLabel(source)! ,/CDG.*LHR/);
- assert.match(flightAirportAssumptionLabel(source)! ,/service.*checking/i);
+ assert.equal(flightAirportAssumptionLabel(source),'Assumed airports: Paris CDG · London LHR');
  assert.deepEqual(source,before);
 });
 test('explicit Gatwick and Orly remain the exact selected endpoint objects',()=>{

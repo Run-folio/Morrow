@@ -37,6 +37,9 @@ function harness(category = 'food') {
     initialResults: undefined, retryVersion: 0, category, createAbortableEffectScope, discoveryTripRef: { current: trip },
     destinationId: trip.stops[0]!.id, discoveryRequestKey: 'synthetic-route', requestScopeRef: { current: null },
     laneResultsRef: { current: state }, sessionPending: false, commercialRequestScopeRef: { current: null },
+    // Food tests exercise organic request ownership; actual commercial cooldown
+    // effects and headers are covered by activity-client-cooldown.test.mjs.
+    commercialCooldown: { coolingDown: false, isCoolingDown: () => false, recordResponse: () => {} },
     commercialLifetimeRef: { current: {} }, reportSnapshot: () => {}, trackEvent: () => {}, recommendationDurationMs: (a: number, b: number) => b - a,
     replaceOrganicResults: (value: unknown[]) => { state.organicResults = value; },
     replaceCommercialResults: (value: unknown[]) => { state.commercialResults = value; },

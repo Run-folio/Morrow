@@ -148,6 +148,8 @@ const activityReferenceBindings:Readonly<Record<string,{
   catalogPoint:[2.3522,48.8566],referencePoint:[2.3488,48.85341]},
  madrid:{referenceId:'reference:geonames:3117735',name:'Madrid',countryCode:'ES',placeType:'city',
   catalogPoint:[-3.7038,40.4168],referencePoint:[-3.70256,40.4165]},
+ reykjavik:{referenceId:'reference:geonames:3413829',name:'Reykjavík',countryCode:'IS',placeType:'city',
+  catalogPoint:[-21.9426,64.1466],referencePoint:[-21.89541,64.13548]},
 };
 
 /** Discovery projection from a pinned source identity. Caller coordinates are

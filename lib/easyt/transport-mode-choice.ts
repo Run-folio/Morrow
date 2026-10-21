@@ -8,6 +8,8 @@ import type {
 } from "./trip.ts";
 import {estimateTransferImpact,isTransferImpact,type TransferImpact} from './transfer-impact.ts';
 import {knownKnowledgeFact,unknownKnowledgeFact} from './destination-knowledge.ts';
+import {airportFlightPlanningCandidate} from './multimodal-transfer-resolution.ts';
+import {preservedTransferFacts} from './geographic-binding.ts';
 
 const supportedModes = new Set<TripTransferMode>(["flight", "train", "road", "ferry", "walk", "mixed"]);
 const supportedProvenance = new Set<TripLegProvenance>(["provider", "canonical_schedule", "routing_engine", "planning_estimate"]);
@@ -131,11 +133,21 @@ function supportedCandidateForLeg(leg: TripLeg, value: unknown): SupportedTransp
   };
 }
 
-export function supportedTransportChoicesForLeg(_trip: EasyTTrip, leg: TripLeg): SupportedTransportChoice[] {
+export function supportedTransportChoicesForLeg(trip: EasyTTrip, leg: TripLeg): SupportedTransportChoice[] {
   const diagnostic = record(leg.routeMetadata.multimodalResolution);
-  if (!diagnostic || !Array.isArray(diagnostic.candidates)) return [];
+  const candidates: unknown[] = diagnostic && Array.isArray(diagnostic.candidates) ? [...diagnostic.candidates] : [];
+  // A saved unknown leg stays authoritative. This derived option is offered in
+  // the existing selector only; selecting it uses the existing explicit choice
+  // model, never replaces the saved source leg or runs a migration/provider.
+  const boundBooking = trip.brief.bookings?.some(booking => booking.type === 'transport'
+    && (booking.transportLegBinding?.legId === leg.id || booking.id === leg.id || booking.id === `transport-${leg.id}`
+      || booking.id === leg.routeMetadata.importedBookingId));
+  if (leg.mode === 'unknown' && !leg.segments?.length && !preservedTransferFacts(leg) && !boundBooking) {
+    const option = airportFlightPlanningCandidate({...leg, mode: 'flight'});
+    if (option) candidates.push(option);
+  }
   const seen = new Set<string>();
-  return diagnostic.candidates.flatMap((candidate) => {
+  return candidates.flatMap((candidate) => {
     const supported = supportedCandidateForLeg(leg, candidate);
     if (!supported || seen.has(supported.identity)) return [];
     seen.add(supported.identity);

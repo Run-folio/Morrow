@@ -10,6 +10,8 @@ import { selectTripLegTransportChoice, supportedTransportChoicesForLeg } from ".
 import { searchReferencePlaces } from "../lib/easyt/place-reference.server.ts";
 import { REFERENCE_SNAPSHOT_ID } from "../lib/easyt/place-reference.ts";
 import { acceptedGeographicPlace } from "../lib/easyt/geographic-binding.ts";
+import { buildCanonicalTripLegs } from "../lib/easyt/trip-legs.ts";
+import { resolveCanonicalTransferJourney } from "../lib/easyt/multimodal-transfer-resolution.ts";
 
 const project = fileURLToPath(new URL("../", import.meta.url));
 const require = createRequire(new URL("../package.json", import.meta.url));
@@ -144,4 +146,26 @@ test("incoming and return airport assumptions remain conditional, unknown and hi
   assert.doesNotMatch(text(render(trip).nodes.find(node => node.props["data-builder-stop-id"] === "paris-stop")), /assumed airports/i);
   trip.brief.intent!.route.tripType = "one_way"; trip.brief.journeyEnd = { mode: "unknown" }; trip.legs = trip.legs.slice(0, 1);
   assert.equal(render(trip).endpoint, undefined);
+});
+
+test('actual Builder shows one estimated total and a short airport tag for resolved Paris to LHR return',async()=>{
+  const place=(query:string,country:string)=>{
+    const row=searchReferencePlaces(query,{explicitCountryNames:[country]})[0]!;
+    const owner={name:row.canonicalName,country,canonicalPlaceId:row.canonicalPlaceId};
+    return acceptedGeographicPlace(owner,{...row,...owner,referenceSnapshotId:REFERENCE_SNAPSHOT_ID},'endpoint')!;
+  };
+  const paris=place('Paris','France'),heathrow=place('LHR','United Kingdom'),trip=fixture();
+  trip.stops=[{...trip.stops[0],...paris,id:'paris-stop',longitude:paris.coordinates![0],latitude:paris.coordinates![1]}];
+  trip.brief.intent!.route={version:1,origin:heathrow,tripType:'return_to_start',journeyEnd:{mode:'same_as_start'},destinations:[],
+    orderAuthority:'manual',explicitIntentIds:null,orderedStopIds:['paris-stop'],projectionInputKey:null};
+  const canonical=buildCanonicalTripLegs({tripId:trip.id,origin:{...heathrow,coordinates:heathrow.coordinates??null},stops:trip.stops,journeyEnd:{mode:'same_as_start'}});
+  canonical[1].id='return-leg';
+  trip.legs=await Promise.all(canonical.map(async leg=>(await resolveCanonicalTransferJourney(leg)).leg));
+  const before=structuredClone(trip),view=render(trip),incoming=view.nodes.find(node=>node.props['data-builder-stop-id']==='paris-stop');
+  for(const row of [incoming,view.endpoint]){
+    assert.ok(row);assert.match(text(row),/Estimated[\s\S]*~4h total/);
+    assert.match(text(row),/Assumed airport: Paris CDG/);
+    assert.doesNotMatch(text(row),/Timing to confirm|Flight service and airport|Transport needs checking|If flying/);
+  }
+  assert.deepEqual(trip,before);
 });

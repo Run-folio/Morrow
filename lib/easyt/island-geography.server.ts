@@ -7,8 +7,8 @@ import { coveredIslandParent, type IslandGeographyIndex, type IslandGroupIndexEn
 import { islandDigest, compileIslandSource, validateIslandGroup, type IslandSourceRecord, type IslandGroupSource, type CompiledIslandSource } from './island-geography-source.ts';
 import { normalizeIslandName, physicalContains, validIslandPoint } from './physical-island-geometry.ts';
 import { isOvernightBaseEligible, type PlaceProviderCandidate, type PlanningParentConstraint } from './place-intelligence.ts';
-import { countryCodeFor } from './country-registry.ts';
-import { referenceSnapshotId } from './place-reference.server.ts';
+import { countryCodeFor, countryFor } from './country-registry.ts';
+import { referencePlaceById, referenceSnapshotId } from './place-reference.server.ts';
 
 type SnapshotFile = { path: string; sha256: string; bytes: number; inflatedBytes: number };
 type SnapshotManifest = { version: number; snapshotId: string; referenceSnapshotId: string; files: SnapshotFile[] };
@@ -68,6 +68,35 @@ export function createIslandGeographyReader(root = resolve(process.cwd(), 'data/
     const value = { source, compiled }; records.set(id, value); return value;
   }
   return {
+    baseSeeds(parent: PlanningParentConstraint): PlaceProviderCandidate[] | undefined {
+      if (!coveredIslandParent(parent)) return undefined;
+      const entry = coveredIslandParent(parent, loadIndex()); if (!entry) return undefined;
+      let ids = [entry.id];
+      if (parent.placeType === 'archipelago') {
+        const group = loadIndex().groups.find(group => group.id === entry.id);
+        if (!group) throw new Error('Covered island group is missing');
+        ids = group.memberIslandIds;
+      }
+      // Bindings are reviewed against the same immutable reference snapshot.
+      // They discover candidates only; normalize still checks every exact
+      // identity, provider version, country and point against physical geometry.
+      return [...bindings!.values()].filter(binding => binding[4] === entry.countryCode && binding[5].some(id => ids.includes(id)))
+        .flatMap(binding => {
+          const record = referencePlaceById(binding[0]);
+          if (!record || record.status !== 'active' || record.source !== 'geonames'
+            || record.providerId !== binding[1] || record.countryCode !== binding[4]
+            || record.coordinates[0] !== binding[2] || record.coordinates[1] !== binding[3]) return [];
+          return [record];
+        })
+        .sort((a, b) => (b.population ?? 0) - (a.population ?? 0) || a.canonicalPlaceId.localeCompare(b.canonicalPlaceId))
+        .slice(0, 16).map((record): PlaceProviderCandidate => ({
+          canonicalPlaceId: record.canonicalPlaceId, providerId: record.providerId,
+          canonicalName: record.canonicalName, aliases: [...record.aliases], placeType: record.placeType,
+          parentCountries: [countryFor(record.countryCode)!.name], coordinates: [...record.coordinates],
+          providerSourceId: record.source, providerSourceLabel: 'GeoNames · filtered and adapted',
+          routability: 'direct_destination', matchQuality: 'exact', rankScore: 0,
+        }));
+    },
     identities(phrase: string, explicitCountries: string[] = [], explicitPlaceTypes: string[] = []): PlaceProviderCandidate[] {
       const normalized = normalizeIslandName(phrase);
       const known = [...bundledIndex.islands, ...bundledIndex.groups];
@@ -143,4 +172,5 @@ export function createIslandGeographyReader(root = resolve(process.cwd(), 'data/
 
 const accepted = createIslandGeographyReader();
 export const normalizeBundledIslandCandidates = (candidates: PlaceProviderCandidate[], parent: PlanningParentConstraint) => accepted.normalize(candidates, parent);
+export const bundledIslandBaseSeeds = (parent: PlanningParentConstraint) => accepted.baseSeeds(parent);
 export const searchBundledIslandIdentityCandidates = (phrase: string, explicitCountries: string[] = [], explicitPlaceTypes: string[] = []) => accepted.identities(phrase, explicitCountries, explicitPlaceTypes);

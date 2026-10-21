@@ -12,6 +12,7 @@ import type { CanonicalPlaceSuggestion } from '@/lib/easyt/place-intelligence';
 import styles from './trip-builder-top-controls.module.css';
 import plannerStyles from '@/components/easyt/morrovia-planner-controls.module.css';
 import { builderChipOccurrenceOrder } from '@/lib/easyt/trip-builder-order';
+import { destinationIntentPresentationInput, destinationSelectionLabel } from '@/lib/easyt/destination-intent-presentation';
 import { useBuilderStopReorder } from './use-builder-stop-reorder';
 
 type Type= 'return_to_start'|'one_way';
@@ -80,7 +81,8 @@ export function TripBuilderTopControls({trip,draft,language,disabled=false,onTyp
     addAction={<EasyTButton className={destinationAddClassName} icon={Plus} variant="secondary" disabled={disabled} onClick={onAdd}>{es?'Añadir destino':'Add destination'}</EasyTButton>}>
     {displayedIntents.map((intent,index)=>{
       const field=draft.fields.find(f=>f.binding.kind==='destination'&&f.binding.intentId===intent.id);
-      const label=intent.selectedPlace?.name??intent.sourceText;
+      const rawLabel=intent.selectedPlace?.name??intent.sourceText;
+      const label=destinationSelectionLabel(destinationIntentPresentationInput(intent),route.destinations.map(destinationIntentPresentationInput),language);
       const bases=route.orderedStopIds.filter(id=>intent.stopIds.includes(id)).map(id=>trip.stops.find(stop=>stop.id===id)).filter((stop):stop is CanonicalEasyTTrip['stops'][number]=>Boolean(stop));
       if(intent.kind==='planning_area' && bases.length) return <li key={intent.id} className={styles.parentGroup} data-destination-intent-id={intent.id} data-destination-parent-group ref={node=>{if(node)nodes.current.set(intent.id,node);else nodes.current.delete(intent.id)}}>
         <div role="group" aria-label={label}>
@@ -89,7 +91,7 @@ export function TripBuilderTopControls({trip,draft,language,disabled=false,onTyp
             onEdit={()=>openIntent(intent)} onRemove={()=>onRemoveStop?.(stop.id)} />)}</ul>
         </div>
       </li>;
-      const repeated=route.destinations.filter(other=>(other.selectedPlace?.name??other.sourceText)===label).length>1;
+      const repeated=route.destinations.filter(other=>(other.selectedPlace?.name??other.sourceText)===rawLabel).length>1;
       const reorderLabel=`${es?'Reordenar':'Reorder'} ${label}${repeated?`, ${es?'parada':'stop'} ${route.orderedStopIds.indexOf(intent.stopIds[0])+1}`:''}`;
       return <MorroviaDestinationTag key={intent.id} id={intent.id} ref={node=>{if(node)nodes.current.set(intent.id,node);else nodes.current.delete(intent.id)}}
         label={label} disabled={disabled||isIntentPending(intent.id)} removeDisabled={intent.stopIds.some(id=>trip.brief.scheduleLocks?.stopIds.includes(id))}
@@ -98,7 +100,7 @@ export function TripBuilderTopControls({trip,draft,language,disabled=false,onTyp
         editLabel={`${es?'Editar':'Edit'} ${label}`} removeLabel={`${es?'Quitar':'Remove'} ${label}`}
         onEdit={()=>openIntent(intent)} onRemove={()=>onRemoveIntent(intent)}
         editor={editingId===intent.id?<div onKeyDown={event=>{if(event.key==='Escape'&&scopeIsCurrent()&&editingIdRef.current===intent.id&&editorTokenRef.current===renderEditorToken){event.preventDefault();focusId.current=intent.id;changeEditor(null)}}}>
-          <CanonicalPlaceAutocomplete autoFocus language={language} label={es?'Destino':'Destination'} placeholder={es?'Ciudad o lugar':'City or place'} value={field?.status==='editable'?field.raw:label}
+          <CanonicalPlaceAutocomplete autoFocus language={language} label={es?'Destino':'Destination'} placeholder={es?'Ciudad o lugar':'City or place'} value={field?.status==='editable'?field.raw:rawLabel}
             disabled={disabled||isIntentPending(intent.id)||field?.status==='binding-conflict'} requireCoordinates searchIntent="route-stop"
             onChange={raw=>{if(scopeIsCurrent()&&editingIdRef.current===intent.id&&editorTokenRef.current===renderEditorToken&&!isIntentPending(intent.id)){changeEditor(intent.id);onIntentInput(intent.id,raw)}}} onSelect={place=>selectIntent(intent,place)} />
         </div>:undefined} />;

@@ -65,6 +65,7 @@ import {
   recommendationIsRepresentedByUnresolvedPlaceIntent,
   unresolvedPlaceIntentsForTrip,
 } from "@/lib/easyt/unresolved-place-intent";
+import { destinationTypeLabel } from "@/lib/easyt/destination-intent-presentation";
 
 const progressIconByCategory: Record<OverviewReadinessCategoryId, LucideIcon> = {
   itinerary: CalendarCheck2,
@@ -424,7 +425,7 @@ export default function TripOverviewWorkspace({
                 <MapPin aria-hidden="true" />
                 <div>
                   <p>Not included yet</p>
-                  <strong>{intent.mention.sourceText}</strong>
+                  <strong>{intent.mention.sourceText} · {destinationTypeLabel(intent.mention.placeType)}</strong>
                   <span>Morrovia couldn’t confidently add this place to your route.</span>
                 </div>
                 <div className={styles.unresolvedIntentActions}>

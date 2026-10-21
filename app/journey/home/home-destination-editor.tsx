@@ -6,7 +6,8 @@ import { CanonicalPlaceAutocomplete } from "@/components/easyt/canonical-place-a
 import { EasyTButton } from "@/components/easyt/easyt-controls";
 import type { EasyTLanguage } from "@/lib/easyt/i18n";
 import { homepageDestinationAddTarget, removeHomepageDestination, type HomepageDestinationEntry } from "@/lib/easyt/home-trip-handoff";
-import { isOvernightBaseEligible, type CanonicalPlaceSuggestion } from "@/lib/easyt/place-intelligence";
+import { type CanonicalPlaceSuggestion } from "@/lib/easyt/place-intelligence";
+import { destinationSelectionCategory, destinationSelectionLabel } from "@/lib/easyt/destination-intent-presentation";
 import { MorroviaDestinationField, MorroviaDestinationTag, destinationAddClassName } from "@/components/easyt/morrovia-destination-field";
 
 export function HomeDestinationEditor({ entries, language, disabled = false, focusEntryId, focusRequestKey = 0, createEntry, onChange }: {
@@ -55,14 +56,17 @@ export function HomeDestinationEditor({ entries, language, disabled = false, foc
     focusTarget.current = id;
     setEditingId(null);
   };
-  const unconfirmed = entries.filter(entry => entry.text.trim() && !entry.selection).length;
-  const areas = entries.filter(entry => entry.selection?.routability === "planning_area").length;
-  const anchors = entries.filter(entry => entry.selection && entry.selection.routability !== "planning_area" && !isOvernightBaseEligible({ placeType: entry.selection.placeType, routability: entry.selection.routability ?? (entry.selection.placeType === "city" || entry.selection.placeType === "town" ? "direct_destination" : "anchor_or_poi") })).length;
+  const category = (entry: HomepageDestinationEntry) => entry.selection ? destinationSelectionCategory(entry.selection) : 'unconfirmed';
+  const unconfirmed = entries.filter(entry => entry.text.trim() && category(entry) === 'unconfirmed').length;
+  const areas = entries.filter(entry => entry.selection && category(entry) === 'area').length;
+  const anchors = entries.filter(entry => entry.selection && category(entry) === 'visit').length;
+  const peers = entries.flatMap(entry => entry.selection ? [entry.selection] : []);
+  const label = (entry: HomepageDestinationEntry) => entry.selection ? destinationSelectionLabel(entry.selection, peers, language) : entry.text || (es ? 'Destino' : 'Destination');
   return <MorroviaDestinationField homepage label={es ? "Lugares que quieres visitar" : "Places you want to visit"}
     status={unconfirmed || areas || anchors ? [
       unconfirmed ? `${unconfirmed} ${es ? "sin confirmar" : "unconfirmed"}` : "",
-      areas ? `${areas} ${es ? "zonas de planificación" : "planning areas"}` : "",
-      anchors ? `${anchors} ${es ? "lugares de interés" : "points of interest"}` : "",
+      areas ? `${areas} ${es ? (areas === 1 ? "zona de planificación" : "zonas de planificación") : (areas === 1 ? "planning area" : "planning areas")}` : "",
+      anchors ? `${anchors} ${es ? (anchors === 1 ? "lugar de interés" : "lugares de interés") : (anchors === 1 ? "point of interest" : "points of interest")}` : "",
     ].filter(Boolean).join(" · ") : undefined}
     addAction={createEntry ? <EasyTButton className={destinationAddClassName} ref={addRef} icon={Plus} variant="secondary" disabled={disabled}
       aria-label={es ? "Añadir destino" : "Add destination"} onClick={() => {
@@ -73,9 +77,9 @@ export function HomeDestinationEditor({ entries, language, disabled = false, foc
       }}>{es ? "Añadir destino" : "Add destination"}</EasyTButton> : null}>
     {entries.map((entry,index)=><MorroviaDestinationTag key={entry.id} id={entry.id} homepage
       ref={node=>{if(node)nodes.current.set(entry.id,node);else nodes.current.delete(entry.id)}}
-      label={entry.selection?.name ?? (entry.text || (es ? "Destino" : "Destination"))} disabled={disabled}
-      editLabel={`${es ? "Editar" : "Edit"} ${entry.text || (es ? "destino" : "destination")}`}
-      removeLabel={`${es ? "Eliminar" : "Remove"} ${entry.text || (es ? "destino" : "destination")}`}
+      label={label(entry)} disabled={disabled}
+      editLabel={`${es ? "Editar" : "Edit"} ${label(entry)}`}
+      removeLabel={`${es ? "Eliminar" : "Remove"} ${label(entry)}`}
       onEdit={()=>{focusTarget.current=entry.id;setEditingId(entry.id)}}
       onRemove={()=>{
         const next=removeHomepageDestination(latest.current.entries,entry.id);

@@ -74,7 +74,14 @@ function harness(queued = false) {
       return stored === true ? changed : stored;
     },
   };
+  const cooldownModule = { exports: {} as any };
+  const cooldownJs = ts.transpileModule(readFileSync('lib/easyt/activity-client-cooldown.ts', 'utf8'), {
+    compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
+  }).outputText;
+  new Function('require', 'module', 'exports', cooldownJs)(
+    (id: string) => id === 'react' ? hooks : require(id), cooldownModule, cooldownModule.exports);
   const imports: Record<string, any> = {
+    '@/lib/easyt/activity-client-cooldown': cooldownModule.exports,
     react: hooks, '@/lib/auth-client': { authClient: { useSession: () => ({ data: session, isPending: false }) } }, 'lucide-react': new Proxy({}, { get: () => () => null }),
     '@/lib/analytics': { trackEvent: (name: string, data: Record<string, unknown>) => events.push({ name, data }) },
     '@/lib/easyt/local-place': localPlace, '@/lib/easyt/trip': tripModel, '@/lib/easyt/explore': { ...explore,

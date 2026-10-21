@@ -2330,15 +2330,15 @@ function TripBuilderDocument() {
     const areaKey = JSON.stringify(pending.area);
     const parent = { canonicalPlaceId: pending.area.canonicalPlaceId, canonicalName: pending.area.name,
       placeType: pending.area.placeType, parentCountries: [pending.area.country] };
-    const areaDiscovery = !anchor && requiresPhysicalIslandVerification(parent)
+    const areaDiscovery = requiresPhysicalIslandVerification(parent)
       && destinationPlanningDecision(pending.area, { intent: "explicit-area" }).behavior === "choose-base";
     if (!anchor && !areaDiscovery) { setSearchedAreaBases({ mentionId: pending.mentionId, areaKey, status: "empty", suggestions: [] }); return; }
     const scope = createAbortableEffectScope("Discovery area base search");
-    const params = anchor ? new URLSearchParams({ nearbyBases: "1", anchorName: anchor.canonicalName,
+    const params = anchor && !areaDiscovery ? new URLSearchParams({ nearbyBases: "1", anchorName: anchor.canonicalName,
       anchorType: anchor.placeType, anchorLon: String(anchor.coordinates![0]), anchorLat: String(anchor.coordinates![1]),
       anchorId: anchor.canonicalPlaceId ?? "" }) : new URLSearchParams({ areaBases: "1", parentName: parent.canonicalName,
       parentType: parent.placeType, parentId: parent.canonicalPlaceId ?? "", parentCountry: pending.area.country });
-    if (anchor) {
+    if (anchor && !areaDiscovery) {
       anchor.parentCountries.forEach(country => params.append("anchorCountry", country));
       if (anchor.parentRegionId) params.set("anchorRegion", anchor.parentRegionId);
     }
