@@ -6787,6 +6787,9 @@ function TripBuilderDocument() {
         }}
         onClose={async (action) => {
           if (discoveryCommitRef.current) return;
+          const viewGeneration = planningAreaViewRef.current.generation;
+          const searchVersion = discoverySearchVersionRef.current;
+          const baseSearchVersion = planningBaseSearchIntentVersionRef.current;
           const editor = builderEditSessionRef.current;
           const currentSave = editor?.getSnapshot();
           const ownerId = activeBrowserOwnerIdRef.current;
@@ -6801,6 +6804,9 @@ function TripBuilderDocument() {
           const closeIsCurrent = (checkFallbackInput = true) => {
             const latest = editor?.getSnapshot();
             return builderMountedRef.current && builderEditSessionRef.current === editor
+              && planningAreaViewRef.current.generation === viewGeneration
+              && discoverySearchVersionRef.current === searchVersion
+              && planningBaseSearchIntentVersionRef.current === baseSearchVersion
               && activeBrowserOwnerIdRef.current === ownerId
               && activeDiscoveryRef.current.open && activeDiscoveryRef.current.mentionId === mentionId
               && discoveryOwnersRef.current.trip.id === tripId
@@ -6819,16 +6825,27 @@ function TripBuilderDocument() {
           }
           // Persist an explicit empty draft as well as changed choices. Sparse
           // browse-only flows may have no mutation action before Finish later.
-          if (!await updateDiscoveryPlanningState((current) => {
+          let draftChanged = false;
+          let nextFallbackInputKey = expectedFallbackInputKey;
+          const planningStored = await updateDiscoveryPlanningState((current) => {
             const next = { ...current, discoveryDraftByMentionId: {
               ...current.discoveryDraftByMentionId, [mentionId]: closeDraft,
             } };
-            if (currentSave && JSON.stringify(current.discoveryDraftByMentionId?.[mentionId]) !== JSON.stringify(closeDraft)) {
-              expectedInputRevision = currentSave.inputRevision + 1;
-            }
-            expectedFallbackInputKey = fallbackInputKey({ ...sourceTrip, brief: { ...sourceTrip.brief, structuredBrief: next } });
+            draftChanged = JSON.stringify(current.discoveryDraftByMentionId?.[mentionId]) !== JSON.stringify(closeDraft);
+            nextFallbackInputKey = fallbackInputKey({ ...sourceTrip, brief: { ...sourceTrip.brief, structuredBrief: next } });
+            // React may run the pre-editor updater during the next render.
+            if (!currentSave) expectedFallbackInputKey = nextFallbackInputKey;
             return next;
-          }) || !closeIsCurrent(false)) return;
+          });
+          if (!planningStored) {
+            // Closing only hides this mounted dialog. Keep its draft, pending
+            // search/base choices and save warning available when reopened.
+            if (closeIsCurrent()) dismissClarificationSession();
+            return;
+          }
+          if (currentSave && draftChanged) expectedInputRevision = currentSave.inputRevision + 1;
+          if (currentSave) expectedFallbackInputKey = nextFallbackInputKey;
+          if (!closeIsCurrent(false)) return;
           await new Promise<void>(resolve => window.requestAnimationFrame(() => resolve()));
           if (!closeIsCurrent()) return;
           const owners = discoveryOwnersRef.current;
@@ -6841,6 +6858,7 @@ function TripBuilderDocument() {
             setCloudSaveError(language === "es"
               ? "No pudimos guardar tus elecciones. Mantén esta ventana abierta y resuelve el problema de recuperación."
               : "Your choices could not be saved. Keep this window open and resolve the recovery issue.");
+            dismissClarificationSession();
             return;
           }
           setCloudSaveError("");
@@ -6966,6 +6984,7 @@ function TripBuilderDocument() {
                 return;
               }
               if (discoverySearchOutsideMention(suggestion, activeClarificationMention)) {
+                discoverySearchVersionRef.current += 1;
                 setOutsideDiscoveryChoice({ mentionId: activeClarificationMention.mentionId, suggestion });
                 return;
               }

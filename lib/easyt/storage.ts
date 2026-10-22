@@ -1,5 +1,5 @@
 import { requireReadableTripDocument, prepareTripDocumentForWrite, TripDocumentReadError } from "./trip-document.ts";
-import { recoveryPersistenceOutcome, reportPersistenceOutcome, reportQaPersistenceBoundary, type PersistenceOutcome, type PersistenceFailureBoundary } from "./persistence-outcome.ts";
+import { recoveryPersistenceOutcome, reportPersistenceOutcome, reportQaPersistenceBoundary, reportQaProtectedWriteRefusal, type PersistenceOutcome, type PersistenceFailureBoundary } from "./persistence-outcome.ts";
 import { legacyItineraryIdeas } from "./trip.ts";
 import { tripIntentForTrip, type EasyTTrip } from "./trip.ts";
 import { normalizeLegacyGeneratedDayContext } from "./itinerary-generated-context.ts";
@@ -956,16 +956,17 @@ export function cacheCanonicalTripWithRecoveryToStorage(
   // or another cloud writer). A device snapshot equal to the previously cached
   // A contains no unique work, so it is safe to retire after B is durable.
   // A snapshot that differs from both A and B remains untouched.
-  // An in-flight inverse can equal the previous canonical document while the
-  // preceding Add is being acknowledged. Keep that newer recovery until its
-  // own save resolves; historical snapshots may still be retired as before.
+  // An in-flight inverse can equal either canonical document while an earlier
+  // request is being acknowledged. A generic cache refresh does not own that
+  // recovery's ACK; keep it until its own save resolves. Historical snapshots
+  // may still be retired as before.
   const rawRecovery = currentRecovery ? recoveryRecordForHandle(storage, currentRecovery) : null;
   // Representation-only read migration is not a durable acknowledgement.
   const sameDocumentVersion = rawRecovery?.trip.schemaVersion === trip.schemaVersion;
-  const redundantRecovery = Boolean(currentRecovery && sameDocumentVersion && (
+  const redundantRecovery = Boolean(currentRecovery && sameDocumentVersion
+    && !tripRecoveryIsAwaitingCanonicalSave(currentRecovery) && (
     tripRecoveryMatchesCanonical(currentRecovery, trip)
       || (previousCanonical
-        && !tripRecoveryIsAwaitingCanonicalSave(currentRecovery)
         && tripRecoveryMatchesCanonical(currentRecovery, previousCanonical))
   ));
   const recoveryResolved = stored && currentRecovery && (acknowledgedRecovery || redundantRecovery)
@@ -1562,6 +1563,7 @@ export async function saveTripRecovery(trip:EasyTTrip,options:{ownerId?:string|n
     if(frozen.intake){
       const prepared=await prepareIntakeAcknowledgement(storage,driver,{ownerId,isCurrent:guard,overflowEnabled:RECOVERY_DOMAIN_OVERFLOW_ENABLED,
         accountOverflowQualified:RECOVERY_DOMAIN_ACCOUNT_OVERFLOW_QUALIFIED},frozen.intake,candidate,writeId+':intake');
+      if(!prepared.ok && prepared.reason==='protected')reportQaProtectedWriteRefusal('intake-prepare',guard,false);
       if(!prepared.ok)return {...fallback,blockedByExistingRecovery:prepared.reason==='protected',failureReason:prepared.reason==='protected'?'protected-recovery':'unknown',outcome:prepared.reason==='protected'?'protected-conflict':'unknown'};
       entries.push(prepared.entry);entry.receipt=prepared.receipt;
     }
@@ -1573,6 +1575,7 @@ export async function saveTripRecovery(trip:EasyTTrip,options:{ownerId?:string|n
     }
     return guard()?result:{...result,stored:false,outcome:'unknown',failureReason:'unknown'};
   }catch(error){
+    if(error instanceof BrowserRecoveryReadError && error.kind==='protected')reportQaProtectedWriteRefusal('browser-protected-read',guard,false,error.reason);
     const result=error instanceof BrowserRecoveryReadError&&error.kind==='protected'?{...fallback,blockedByExistingRecovery:true,failureReason:'protected-recovery' as const,outcome:'protected-conflict' as const}:fallback;
     reportPersistenceOutcome('device-recovery',result);return result;
   }

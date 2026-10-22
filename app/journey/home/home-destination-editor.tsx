@@ -8,6 +8,7 @@ import type { EasyTLanguage } from "@/lib/easyt/i18n";
 import { homepageDestinationAddTarget, removeHomepageDestination, type HomepageDestinationEntry } from "@/lib/easyt/home-trip-handoff";
 import { type CanonicalPlaceSuggestion } from "@/lib/easyt/place-intelligence";
 import { destinationSelectionCategory, destinationSelectionLabel } from "@/lib/easyt/destination-intent-presentation";
+import { searchCompletedPlaceCandidates } from "@/lib/easyt/completed-place-search";
 import { MorroviaDestinationField, MorroviaDestinationTag, destinationAddClassName } from "@/components/easyt/morrovia-destination-field";
 
 export function HomeDestinationEditor({ entries, language, disabled = false, focusEntryId, focusRequestKey = 0, createEntry, onChange }: {
@@ -87,12 +88,13 @@ export function HomeDestinationEditor({ entries, language, disabled = false, foc
         if(editingId===entry.id)setEditingId(null);
         onChange(next);
       }} editor={editingId===entry.id ? <div onKeyDown={event=>{
-        if(event.key==="Enter")event.preventDefault();
+        if(event.key==="Enter" && (event.target as HTMLElement).tagName==="INPUT")event.preventDefault();
         if(event.key==="Escape"){event.preventDefault();focusTarget.current=entry.id;setEditingId(null)}
       }}><CanonicalPlaceAutocomplete language={language} label={es ? "Destino" : "Destination"} value={entry.text}
         placeholder={es ? "Ciudad, país o región" : "City, country or region"} disabled={disabled} includeNonRoutable
         onChange={value=>replace(entry.id,current=>({...current,text:value,selection:null}))}
         onClear={()=>replace(entry.id,current=>({...current,text:"",selection:null}))}
+        onFreeTextSearch={searchCompletedPlaceCandidates} showSearchAction
         onSelect={suggestion=>select(entry.id,suggestion)} /></div> : undefined} />)}
   </MorroviaDestinationField>;
 }

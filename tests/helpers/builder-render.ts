@@ -19,9 +19,9 @@ const bundles = new Map<boolean, Promise<{ script: string; css: string }>>();
 async function builderBundle(styled = false) {
   if (!bundles.has(styled)) bundles.set(styled, build({
     stdin: {
-      contents: `${styled ? "import './app/journey/journey-design.css';" : ""}import React from 'react'; import {createRoot} from 'react-dom/client'; import Builder from './app/journey/new/trip-builder'; import Home from './app/journey/home/home-trip-starter'; import LegacyPlanner from './components/journey-map-planner-workspace'; import Resolver from './components/easyt/trip-shell-resolver'; import Explore from './components/easyt/trip-explore-workspace'; import Stay from './components/easyt/trip-stay-workspace'; import MapWorkspace from './components/easyt/trip-map-workspace'; import Importer from './app/journey/new/import/spreadsheet-import-client'; import Overview from './components/easyt/trip-overview-workspace'; import Transport from './components/easyt/trip-transport-workspace'; import Itinerary from './components/easyt/trip-itinerary-workspace'; import {loadLocalTripFromStorage} from './lib/easyt/storage'; import TripShell from './components/easyt/trip-shell'; import {useTripShellTrip} from './components/easyt/trip-shell-client';
+      contents: `${styled ? "import './app/journey/journey-design.css';" : ""}import React from 'react'; import {createRoot} from 'react-dom/client'; import Builder from './app/journey/new/trip-builder'; import Home from './app/journey/home/home-trip-starter'; import LegacyPlanner from './components/journey-map-planner-workspace'; import Resolver from './components/easyt/trip-shell-resolver'; import Explore from './components/easyt/trip-explore-workspace'; import Stay from './components/easyt/trip-stay-workspace'; import MapWorkspace from './components/easyt/trip-map-workspace'; import Importer from './app/journey/new/import/spreadsheet-import-client'; import Overview from './components/easyt/trip-overview-workspace'; import Transport from './components/easyt/trip-transport-workspace'; import Itinerary from './components/easyt/trip-itinerary-workspace'; import Dashboard from './app/journey/dashboard/dashboard-client'; import {loadLocalTripFromStorage} from './lib/easyt/storage'; import TripShell from './components/easyt/trip-shell'; import {useTripShellTrip} from './components/easyt/trip-shell-client';
       function WorkspaceFromShell(){const trip=useTripShellTrip();return location.pathname.endsWith('/map')?React.createElement(MapWorkspace,{trip}):location.pathname.endsWith('/stay')?React.createElement(Stay,{trip}):location.pathname.endsWith('/explore')?React.createElement(Explore,{trip,initialDestinationId:new URLSearchParams(location.search).get('stop')??undefined}):location.pathname.endsWith('/transport')?React.createElement(Transport,{trip,language:localStorage.getItem('easyt-language')==='es'?'es':'en'}):location.pathname.endsWith('/itinerary')?React.createElement(Itinerary,{trip,selectedDayNumber:Number(new URLSearchParams(location.search).get('day'))||undefined}):React.createElement(Overview,{trip,...(window.__BUILDER_TEST_LIVE_PREP__?{}:{initialPrepActions:[],initialPrepReadinessCards:[],initialPrepProviderStatus:'available'})});}
-      function App(){if(location.pathname==='/')return React.createElement(Home);if(location.pathname==='/journey/plan')return React.createElement(LegacyPlanner);if(location.pathname.endsWith('/import'))return React.createElement(Importer);if(location.pathname!=='/journey/new'){const tripId=decodeURIComponent(location.pathname.split('/')[2]??'');const trip=window.__BUILDER_TEST_CANONICAL_TRIP__??loadLocalTripFromStorage(localStorage,tripId,window.__BUILDER_TEST_OWNER__??null);return trip&&!window.__BUILDER_TEST_FORCE_RESOLVER__?React.createElement(TripShell,{trip,cacheTrip:Boolean(window.__BUILDER_TEST_CANONICAL_TRIP__),orientationAutoStart:false},React.createElement(WorkspaceFromShell)):React.createElement(Resolver,{tripId,ownerId:window.__BUILDER_TEST_OWNER__??undefined},React.createElement(WorkspaceFromShell));}return React.createElement(Builder);}
+      function App(){if(location.pathname==='/journey/dashboard')return React.createElement(Dashboard,{trips:window.__BUILDER_TEST_DASHBOARD_TRIPS__??[],stamps:[],ownerId:window.__BUILDER_TEST_OWNER__??'owner-a'});if(location.pathname==='/')return React.createElement(Home);if(location.pathname==='/journey/plan')return React.createElement(LegacyPlanner);if(location.pathname.endsWith('/import'))return React.createElement(Importer);if(location.pathname!=='/journey/new'){const tripId=decodeURIComponent(location.pathname.split('/')[2]??'');const trip=window.__BUILDER_TEST_CANONICAL_TRIP__??loadLocalTripFromStorage(localStorage,tripId,window.__BUILDER_TEST_OWNER__??null);return trip&&!window.__BUILDER_TEST_FORCE_RESOLVER__?React.createElement(TripShell,{trip,cacheTrip:Boolean(window.__BUILDER_TEST_CANONICAL_TRIP__),orientationAutoStart:false},React.createElement(WorkspaceFromShell)):React.createElement(Resolver,{tripId,ownerId:window.__BUILDER_TEST_OWNER__??undefined},React.createElement(WorkspaceFromShell));}return React.createElement(Builder);}
       createRoot(document.getElementById('root')).render(React.createElement(App));`,
       resolveDir: fileURLToPath(new URL("../../", import.meta.url)), loader: "tsx",
     },
@@ -72,6 +72,8 @@ export async function renderBuilder({
   styled = false,
   liveOverviewPrep = false,
   prepRequest,
+  offlineOnly = false,
+  dashboardTrips,
 }: {
   query?: string;
   draft?: unknown;
@@ -95,6 +97,10 @@ export async function renderBuilder({
   simulatedSignIn?: boolean;
   styled?: boolean;
   liveOverviewPrep?: boolean;
+  /** Opt-in isolated integration checks must never contact external services. */
+  offlineOnly?: boolean;
+  /** Server-supplied synthetic listing, allowing actual dashboard reopen paths. */
+  dashboardTrips?: () => unknown[];
   prepRequest?: (input:{path:string;body:unknown}) => Promise<{status:number;body:unknown}> | {status:number;body:unknown};
   shellCanonicalTrip?: { id: string; ownerId: string | null } & Record<string, unknown>;
   accountRequest?: (input:{method:string;path:string;trip:unknown}) => Promise<{status:number;body:unknown}> | {status:number;body:unknown};
@@ -195,14 +201,27 @@ export async function renderBuilder({
       response.end(`<button id="complete">Complete simulated sign in</button><script>document.getElementById('complete').onclick=()=>{sessionStorage.setItem('builder-fixture-owner','owner-a');location.assign(new URLSearchParams(location.search).get('next'))}</script>`);return;
     }
     response.setHeader("Content-Type", "text/html; charset=utf-8");
-    response.end(`${styled ? `<style>*,::before,::after{box-sizing:border-box}body{margin:0}.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}${css}</style>` : ""}<div id="root"></div><script>${script.replaceAll("</script>", "<\\/script>")}</script>`);
+    response.end(`${styled ? `<style>*,::before,::after{box-sizing:border-box}body{margin:0}.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}${css}</style>` : ""}<div id="root"></div><script>window.__BUILDER_TEST_DASHBOARD_TRIPS__=${JSON.stringify(dashboardTrips?.()??[]).replaceAll("<","\\u003c")}</script><script>${script.replaceAll("</script>", "<\\/script>")}</script>`);
   });
   await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
   const { chromium, webkit } = require(runtime);
-  const browser = browserName === "webkit"
-    ? await webkit.launch({ headless: true })
-    : await chromium.launch({ channel: process.env.MORROVIA_BROWSER_CHANNEL ?? "chrome", headless: true });
+  let browser;
+  try {
+    const executablePath = process.env.MORROVIA_BUILDER_BROWSER_EXECUTABLE;
+    if (executablePath && !existsSync(executablePath)) throw new Error("The explicitly selected test browser does not exist");
+    browser = browserName === "webkit"
+      ? await webkit.launch({ headless: true })
+      : await chromium.launch(executablePath ? { executablePath, headless: true } : { channel: process.env.MORROVIA_BROWSER_CHANNEL ?? "chrome", headless: true });
+  } catch (error) {
+    await new Promise<void>((resolve) => server.close(() => resolve()));
+    throw error;
+  }
   const page = await browser.newPage();
+  if (offlineOnly) await page.route("**/*", async (route: { request: () => { url: () => string }; continue: () => Promise<void>; abort: () => Promise<void> }) => {
+    const url = new URL(route.request().url());
+    if (url.protocol === "http:" && url.hostname === "127.0.0.1" && url.port === String((server.address() as {port:number}).port)) await route.continue();
+    else await route.abort();
+  });
   if (liveOverviewPrep) await page.addInitScript(() => { (window as Window & { __BUILDER_TEST_LIVE_PREP__?: boolean }).__BUILDER_TEST_LIVE_PREP__ = true; });
   if(ownerId) await page.addInitScript((owner:string)=>{(window as Window & {__BUILDER_TEST_OWNER__?:string}).__BUILDER_TEST_OWNER__=owner},ownerId);
   if (forceResolver) await page.addInitScript(() => { (window as Window & {__BUILDER_TEST_FORCE_RESOLVER__?:boolean}).__BUILDER_TEST_FORCE_RESOLVER__ = true; });

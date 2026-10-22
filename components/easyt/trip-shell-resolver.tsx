@@ -14,7 +14,6 @@ import {
   loadTripWorkspaceDocument,
   markTripRecoveryState,
   saveTripRecoveryToEasyT,
-  saveTripToEasyT,
   tripForRecoveryScope,
 } from "@/lib/easyt/storage";
 import type { EasyTTrip } from "@/lib/easyt/trip";
@@ -136,7 +135,7 @@ export default function TripShellResolver({
     setSyncing(true);
     try {
       const result = localTrip.ownerId
-        ? { trip: await saveTripToEasyT(scopedLocalTrip), outcome: "already-canonical" as const }
+        ? { trip: await saveTripRecoveryToEasyT(scopedLocalTrip, recovery), outcome: "already-canonical" as const }
         : { trip: await saveTripRecoveryToEasyT(localTrip, recovery), outcome: "promoted" as const };
       if (!responseIsCurrent()) return;
       const acknowledged = await acknowledgeTripBuildSave(scopedLocalTrip, result.trip, recovery, { isCurrent: responseIsCurrent });

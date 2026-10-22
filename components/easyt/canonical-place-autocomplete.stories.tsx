@@ -49,3 +49,14 @@ export const PublicPlaceResearch:Story={...MetropolitanCity,args:{value:'Yunomin
   }]}};
 export const PublicPlaceResearchMobile:Story={...PublicPlaceResearch,globals:{viewport:{value:'morrovia390',isRotated:false}}};
 export const PublicPlaceResearchSpanish:Story={...PublicPlaceResearch,args:{...PublicPlaceResearch.args,language:'es'}};
+
+// Offline Home action: Enter and Search use the same completed-search owner.
+export const ExplicitCompletedSearch:Story={...MetropolitanCity,args:{value:'Yunomine hot spring village',label:'Destination',showSearchAction:true,
+  onFreeTextSearch:async()=>[{
+    canonicalPlaceId:'open-world:photon:N:2822838506',name:'Yunomine Onsen',country:'Japan',label:'Yunomine Onsen, Japan',
+    placeType:'town',routability:'direct_destination',coordinates:[135.7575842,33.8288351],
+    provenance:[{id:'photon:N:2822838506',kind:'provider',label:'Photon / OpenStreetMap',supports:'Recorded locality fixture; completed search is mocked.'}],
+  }]}};
+export const ExplicitCompletedSearchMobile:Story={...ExplicitCompletedSearch,globals:{viewport:{value:'morrovia390',isRotated:false}}};
+export const ExplicitCompletedSearchDisabled:Story={...ExplicitCompletedSearch,args:{...ExplicitCompletedSearch.args,disabled:true}};
+export const ExplicitCompletedSearchFailure:Story={...ExplicitCompletedSearch,args:{...ExplicitCompletedSearch.args,onFreeTextSearch:async()=>{throw new Error('Offline failure fixture');}}};

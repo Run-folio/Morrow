@@ -352,12 +352,13 @@ test('actual reorder gesture cleans up while an async acceptance is held and pre
   assert.deepEqual(previews.at(-1),['b','a']);const pending=hook.drop();assert.equal(pending instanceof Promise,true);assert.equal(previews.at(-1),null);
   gate.resolve(false);assert.equal(await pending,false);cleanups.forEach(cleanup=>cleanup());assert.equal(previews.at(-1),null);
 });
-test('actual discovery close cannot use a prior cloud ACK to dismiss a pending device write',async()=>{
+test('actual discovery close dismisses pending device failure ephemerally without using a prior cloud ACK',async()=>{
   const fixture=discoveryCloseFixture('none'),editor=fixture.bindings.builderEditSessionRef.current,getSnapshot=editor.getSnapshot;
   editor.getSnapshot=()=>({...getSnapshot(),saveState:'device-saving'});
   const bindings={...fixture.bindings,lastAcknowledgedCanonicalRef:{current:fixture.bindings.activeTripDocument},
     tripDocumentsCanonicalEquivalent:()=>true,updateDiscoveryPlanningState:async()=>false};
-  await builderClosure('discovery-close')(bindings,'later');assert.deepEqual(fixture.effects,[]);assert.deepEqual(fixture.persisted,[]);
+  const before=structuredClone(bindings.activeTripDocument);
+  await builderClosure('discovery-close')(bindings,'later');assert.deepEqual(fixture.effects,['dismiss']);assert.deepEqual(fixture.persisted,[]);assert.deepEqual(bindings.activeTripDocument,before);
 });
 
 function discoveryCloseFixture(hold:'planning'|'frame'|'persistence'|'none',stored=true,changed=false) {
@@ -371,7 +372,7 @@ function discoveryCloseFixture(hold:'planning'|'frame'|'persistence'|'none',stor
     if(hold==='persistence'){entered.resolve();await gate.promise;}
     return {stored,blockedByExistingRecovery:false};
   };
-  const bindings={discoveryCommitRef:{current:false},builderMountedRef:{current:true},builderEditSessionRef:{current:editor},
+  const bindings={discoveryCommitRef:{current:false},discoverySearchVersionRef:{current:0},planningBaseSearchIntentVersionRef:{current:0},planningAreaViewRef:{current:{generation:1}},builderMountedRef:{current:true},builderEditSessionRef:{current:editor},
     activeBrowserOwnerIdRef:{current:'owner-a'},activeDiscoveryRef:{current:{open:true,mentionId:'mention-a'}},
     activeTripDocument:document,activeClarificationMention:{mentionId:'mention-a'},discoveryDraft:closeDraft,
     lastAcknowledgedCanonicalRef:{current:null},tripDocumentsCanonicalEquivalent:()=>false,discoveryEventKind:'country',language:'en',authoredContentKey,
@@ -429,10 +430,10 @@ for(const changed of [false,true]) test(`actual pre-actor discovery close verifi
   assert.deepEqual(fixture.effects,[]);fixture.gate.resolve();await work;
   assert.deepEqual(fixture.persisted,['trip-a']);assert.deepEqual(fixture.effects,['recovery-status','storage-status','save-status','error-status','dismiss','analytics']);
 });
-test('actual discovery close preserves its current clarification after a held recovery refuses',async()=>{
-  const fixture=discoveryCloseFixture('persistence',false),work=builderClosure('discovery-close')(fixture.bindings,'later');
+test('actual discovery close preserves warning and draft while dismissing after held recovery refusal',async()=>{
+  const fixture=discoveryCloseFixture('persistence',false),before=structuredClone(fixture.bindings.activeTripDocument),work=builderClosure('discovery-close')(fixture.bindings,'later');
   await fixture.entered.promise;assert.deepEqual(fixture.effects,[]);fixture.gate.resolve();await work;
-  assert.deepEqual(fixture.effects,['recovery-status','storage-status','save-status','error-status']);
+  assert.deepEqual(fixture.effects,['recovery-status','storage-status','save-status','error-status','dismiss']);assert.deepEqual(fixture.bindings.activeTripDocument,before);
 });
 
 for(const name of ['top-removal-confirm','top-type-confirm'] as const) test(`actual ${name} closes only its own durably accepted review`,async()=>{

@@ -203,7 +203,7 @@ test('capture uses a closed schema, query presence only and unknown rather than 
     assert.equal(result.acknowledgement, null);
     assert.equal(result.driverFailure, null);
     for (const key of ['writeAttempted', 'writeAccepted', 'readbackConfirmed', 'deviceCopyVerified', 'pointerAcknowledged', 'scopeMatches', 'receiptPresent', 'receiptAcknowledged', 'accountQueueEntered', 'httpStatusClass', 'accountAcknowledged']) assert.equal(result[key], null, key);
-    assert.deepEqual(Object.keys(result).sort(), ['version', 'kind', 'sequence', 'buildMatch', 'queryKeys', 'sessionClass', 'browserContextClass', 'entryKind', 'stage', 'boundary', 'accepted', 'guardReason', 'homepageReadReason', 'caller', 'writeBranch', 'readbackKind', 'operation', 'failedOperation', 'initialSetterFailure', 'setterFailure', 'cleanupFailure', 'setterRetried', 'driverFailure', 'phase', 'outcome', 'failureBoundary', 'writeAttempted', 'writeAccepted', 'readbackConfirmed', 'deviceCopyVerified', 'pointerAcknowledged', 'nativeFailure', 'acknowledgement', 'scopeMatches', 'receiptPresent', 'receiptAcknowledged', 'accountQueueEntered', 'httpStatusClass', 'accountAcknowledged'].sort());
+    assert.deepEqual(Object.keys(result).sort(), ['version', 'kind', 'sequence', 'buildMatch', 'queryKeys', 'sessionClass', 'browserContextClass', 'entryKind', 'stage', 'boundary', 'accepted', 'guardReason', 'homepageReadReason', 'protectedWriteCheck', 'protectedReadReason', 'caller', 'writeBranch', 'readbackKind', 'operation', 'failedOperation', 'initialSetterFailure', 'setterFailure', 'cleanupFailure', 'setterRetried', 'driverFailure', 'phase', 'outcome', 'failureBoundary', 'writeAttempted', 'writeAccepted', 'readbackConfirmed', 'deviceCopyVerified', 'pointerAcknowledged', 'nativeFailure', 'acknowledgement', 'scopeMatches', 'receiptPresent', 'receiptAcknowledged', 'accountQueueEntered', 'httpStatusClass', 'accountAcknowledged'].sort());
     source.reportQaPersistenceBoundary('native-write','recovery-write',{
       operation:'PRIVATE-OP',failedOperation:'PRIVATE-FAILED',initialSetterFailure:'PRIVATE-INITIAL',setterFailure:'PRIVATE-SETTER',cleanupFailure:'PRIVATE-CLEANUP',setterRetried:'PRIVATE-RETRY',
     } as never);
@@ -254,3 +254,48 @@ test('build enables QA output only with explicit opt-in and an exact valid expec
     for (const key of keys) { if (saved[key] === undefined) delete process.env[key]; else process.env[key] = saved[key]; }
   }
 });
+
+test('protected-write capture keeps only finite checks/reasons and performs no storage or network work', async () => {
+  await fixture({}, async (logs, events) => {
+    const source = await freshOutcomes();
+    const report = (source as any).reportQaProtectedWriteRefusal;
+    assert.equal(typeof report, 'function', 'protected-write observer must exist');
+    report('input-trip-read', () => true, false, 'cache-divergence');
+    report('body-replacement', () => true, false);
+    report('body-native-input-write', () => true, true, 'preparation-changed');
+    report('PRIVATE-CHECK', () => true, false, 'PRIVATE-REASON');
+    const captured = packets(logs).slice(1);
+    assert.deepEqual(captured.map(v => v.protectedWriteCheck), ['input-trip-read', 'body-replacement', 'body-native-input-write', null]);
+    assert.deepEqual(captured.map(v => v.protectedReadReason), ['cache-divergence', null, 'preparation-changed', 'unknown']);
+    assert.deepEqual(captured.map(v => v.writeAttempted), [false, false, true, false]);
+    assert.ok(captured.every(v => v.boundary === 'protected-write-refusal' && v.accepted === false));
+    assert.equal(events.length, 0, 'diagnostic does not alter legacy event dispatch');
+    assert.doesNotMatch(logs.join('\n'), /PRIVATE/);
+  });
+});
+
+for (const retired of ['false', 'throws']) test(`protected-write observer ignores ${retired} ownership guard`, async () => {
+  await fixture({}, async logs => {
+    const source = await freshOutcomes(); const report = (source as any).reportQaProtectedWriteRefusal;
+    assert.equal(typeof report, 'function');
+    const before = logs.length;
+    report('body-replacement', () => { if (retired === 'throws') throw Error('PRIVATE'); return false; }, false);
+    assert.equal(logs.length, before);
+  });
+});
+
+for (const options of [{ enabled: '0' }, { origin: 'https://morrovia.com' }, { throwingConsole: true }]) test(`protected-write observer remains inert under ${JSON.stringify(options)}`, async () => {
+  await fixture(options, async logs => {
+    const source = await freshOutcomes(); const report = (source as any).reportQaProtectedWriteRefusal;
+    assert.equal(typeof report, 'function'); const before = logs.length;
+    assert.doesNotThrow(() => report('body-inspect', () => true, false, 'divergence'));
+    assert.equal(logs.length, before);
+  });
+});
+
+test('protected read observation retains finite lifecycle categories and leaves unknown attempt evidence unknown',async()=>fixture({},async logs=>{
+  const source=await freshOutcomes();const report=(source as any).reportQaProtectedWriteRefusal;assert.equal(typeof report,'function');
+  const reasons=['canonical-changed','lifecycle-payload','lifecycle-binding','unbound-lifecycle','lifecycle-read-unknown'];
+  for(const reason of reasons)report('body-inspect',()=>true,undefined,reason);
+  const captured=packets(logs).slice(1);assert.deepEqual(captured.map(p=>p.protectedReadReason),reasons);assert.ok(captured.every(p=>p.writeAttempted===null));
+}));

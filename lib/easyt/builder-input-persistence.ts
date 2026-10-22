@@ -7,6 +7,7 @@ import { RECOVERY_DOMAIN_OVERFLOW_ENABLED, RECOVERY_DOMAIN_ACCOUNT_OVERFLOW_QUAL
 import type { RecoveryDomainDriver } from './durable-recovery-domain.ts';
 import type { EasyTBrowserStorage } from './storage.ts';
 import { createTwoStoreTripPersistence } from './two-store-trip-persistence.ts';
+import { reportQaProtectedWriteRefusal } from './persistence-outcome.ts';
 
 export function createDurableBuilderInputPersistence(storage:EasyTBrowserStorage,driver:RecoveryDomainDriver,context:{
   trip:CanonicalEasyTTrip;ownerId:string|null;isCurrent:()=>boolean;overflowEnabled:boolean;accountOverflowQualified:boolean;
@@ -15,8 +16,9 @@ export function createDurableBuilderInputPersistence(storage:EasyTBrowserStorage
   const entries=createTwoStoreEntryPersistence(storage,driver,{...context,scope:{ownerId,kind:'builder-input',tripId:trip.id},key,
     validate:raw=>raw===null||readBuilderInputDraft({getItem:()=>raw},trip,ownerId).kind==='readable'});
   const trips=createTwoStoreTripPersistence(storage,driver,context);
-  async function barrier() {
+  async function barrier(forWrite = false) {
     const state=await trips.read(trip.id);
+    if(forWrite && state.kind==='protected')reportQaProtectedWriteRefusal('input-trip-read',context.isCurrent,false,state.reason);
     return state.kind==='protected'?{kind:'protected' as const,raw:''}:state.kind==='unavailable'?{kind:'error' as const,reason:'storage' as const}:null;
   }
   async function read():Promise<BuilderInputReadResult> {
@@ -27,12 +29,14 @@ export function createDurableBuilderInputPersistence(storage:EasyTBrowserStorage
     return readBuilderInputDraft({getItem:()=>result.raw},trip,ownerId);
   }
   async function serialize(input:BuilderInputDraft) {
-    const draft=structuredClone(input),refused=await barrier();
+    const draft=structuredClone(input),refused=await barrier(true);
     if(refused)return {ok:false as const,reason:refused.kind==='protected'?'protected' as const:'storage' as const};
     const observed=await entries.read();
+    if(observed.kind==='protected')reportQaProtectedWriteRefusal('input-entry-read',context.isCurrent,false,observed.reason);
     if(observed.kind!=='ready')return {ok:false as const,reason:observed.kind==='protected'?'protected' as const:'storage' as const};
     let raw=observed.raw;
     const result=writeBuilderInputDraft({getItem:()=>raw,setItem:(_,next)=>{raw=next}},trip,draft,ownerId);
+    if(!result.ok && result.reason==='protected')reportQaProtectedWriteRefusal('input-serialize',context.isCurrent,false);
     return result.ok&&raw!==null?{ok:true as const,raw,observed,inputRevision:draft.inputRevision}:{ok:false as const,reason:result.ok?'invalid' as const:result.reason};
   }
   return {
@@ -48,14 +52,19 @@ export function createDurableBuilderInputPersistence(storage:EasyTBrowserStorage
       const allowInitialOverflow=options.allowInitialOverflow===true || existingSource;
       const staged=await serialize(draft);if(!staged.ok)return staged;
       const writeId=globalThis.crypto.randomUUID(),entry=await entries.prepareForDomain(staged.raw,writeId,staged.observed);
+      if(!('raw' in entry) && entry.kind==='protected')reportQaProtectedWriteRefusal('input-entry-prepare',context.isCurrent,false,entry.reason);
       if(!('raw' in entry))return {ok:false,reason:entry.kind==='protected'?'protected':'storage'};
       const result=await entries.save(staged.raw,{allowInitialOverflow,writeId,expected:entry});
+      if(result.kind==='protected')reportQaProtectedWriteRefusal('input-entry-write',context.isCurrent,result.committed===true?true:undefined,result.reason);
       const after = await trips.read(trip.id);
+      if(result.kind==='verified' && existingSource && !(after.kind==='found' && JSON.stringify(after.trip)===JSON.stringify(trip)))
+        reportQaProtectedWriteRefusal('input-source-readback',context.isCurrent,true,'reason' in after?after.reason:undefined);
       return result.kind==='verified' && (!existingSource || after.kind==='found' && JSON.stringify(after.trip)===JSON.stringify(trip))?{ok:true}:{ok:false,reason:result.kind==='protected'?'protected':'storage'};
     },
     async prepare(draft:BuilderInputDraft,writeId:string) {
       const staged=await serialize(draft);if(!staged.ok)return staged;
       const entry=await entries.prepareForDomain(staged.raw,writeId,staged.observed);
+      if(!('raw' in entry) && entry.kind==='protected')reportQaProtectedWriteRefusal('input-entry-prepare',context.isCurrent,false,entry.reason);
       return 'raw' in entry?{ok:true as const,entry,input:{ownerId,tripId:trip.id,inputRevision:staged.inputRevision,raw:staged.raw}}:
         {ok:false as const,reason:entry.kind==='protected'?'protected' as const:'storage' as const};
     },

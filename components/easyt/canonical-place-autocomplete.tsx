@@ -61,6 +61,7 @@ export function CanonicalPlaceAutocomplete({
   onSelect,
   onSubmitFreeText,
   onFreeTextSearch,
+  showSearchAction = false,
   onPublicPlaceSearch,
   submitFreeTextOnBlur = false,
   revealSuggestionsKey,
@@ -94,6 +95,8 @@ export function CanonicalPlaceAutocomplete({
   onSubmitFreeText?: () => void;
   /** Explicit search runs only after Enter; it never participates in keystroke autocomplete. */
   onFreeTextSearch?: (query: string, signal: AbortSignal) => Promise<CanonicalPlaceSuggestion[] | CompletedPlaceSearchResult>;
+  /** Explicit completed search using the same action as Enter. */
+  showSearchAction?: boolean;
   /** Separate public-name research action offered only after a completed miss. */
   onPublicPlaceSearch?: (query: string, signal: AbortSignal) => Promise<CanonicalPlaceSuggestion[] | CompletedPlaceSearchResult>;
   submitFreeTextOnBlur?: boolean;
@@ -405,6 +408,15 @@ export function CanonicalPlaceAutocomplete({
       onMouseDown={(event) => event.preventDefault()}
       onClick={() => { onClear(); setOpen(false); setActiveIndex(-1); }}
     >{clearLabel ?? `Clear ${label}`}</EasyTButton> : null}
+    {showSearchAction && onFreeTextSearch ? <EasyTButton
+      className={styles.searchAction}
+      variant="secondary"
+      size="small"
+      disabled={disabled || !value.trim()}
+      loading={completedSearchStatus === "loading"}
+      onMouseDown={event => event.preventDefault()}
+      onClick={() => runCompletedSearch()}
+    >{language === "es" ? "Buscar" : "Search"}</EasyTButton> : null}
     {open && value.trim().length >= 2 ? <div className={`${styles.menu} ${menuPlacement === "inline" ? styles.menuInline : ""}`}>
       <div id={listId} role="listbox" className={styles.optionsList}>
       {searching && !suggestions.length ? <p role="status">{language === "es" ? "Buscando lugares…" : "Searching places…"}</p> : suggestions.length ? suggestions.map((suggestion, index) => (

@@ -13,7 +13,7 @@ test('actual guest build and explicit simulated sign-in save survives every work
  snapshot.tripType={state:'selected',value:'one_way'};
  snapshot.dates={state:'selected',value:{start:'2026-11-01',end:'2026-11-08'}};
  let account:EasyTTrip|null=null;const writes:string[]=[];
- const h=await renderBuilder({path:'/',storedInput:{snapshot:JSON.parse(JSON.stringify(snapshot))},seedRecovery:false,forceResolver:true,simulatedSignIn:true,
+ const h=await renderBuilder({path:'/',storedInput:{snapshot:JSON.parse(JSON.stringify(snapshot))},seedRecovery:false,forceResolver:true,simulatedSignIn:true,offlineOnly:true,
  geocodeCandidates:Object.fromEntries([
   ['Madrid','Spain',[-3.7038,40.4168]],['Lisbon','Portugal',[-9.1393,38.7223]],['Porto','Portugal',[-8.6291,41.1579]],
  ].map(([name,country,coordinates])=>[String(name),[{name,country,coordinates,canonicalPlaceId:String(name).toLowerCase(),providerId:'core-fixture:'+String(name).toLowerCase(),kind:'city',placeType:'city',routability:'direct_destination',matchQuality:'exact',rankScore:200}]])),

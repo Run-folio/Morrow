@@ -17,6 +17,7 @@ import type {PreparedEntryWrite} from './durable-entry-store.ts';
 import {createRecoveryLifecycle} from './recovery-domain-lifecycle.ts';
 import {readRecoveryClaimBarrier,readOwnerRecoveryClaimBarrier,recoveryClaimTripIds} from './recovery-domain-claim.ts';
 import {commitAcceptedRouteProjection,routeProjectionInputKey} from './trip-route-intent.ts';
+import {reportQaProtectedWriteRefusal,type QaProtectedWriteCheck} from './persistence-outcome.ts';
 
 export type TwoStoreRead = { kind: 'found'; trip: EasyTTrip; recovery: TripRecoveryRecord | null; domain: Extract<RecoveryReadResult, { kind: 'ready' }> | null }
   | { kind: 'missing'; currentCleared?: true } | { kind: 'protected'; reason: string } | { kind: 'unavailable'; reason: string };
@@ -285,16 +286,22 @@ export function createTwoStoreTripPersistence(storage: EasyTBrowserStorage, driv
     },
     async save(inputTrip: EasyTTrip, options: TwoStoreSaveOptions = {}): Promise<TripRecoveryWriteResult> {
       const writeId = options.writeId ?? globalThis.crypto.randomUUID(), tripId = inputTrip.id;
-      const reject = (protectedCopy: boolean, reason?: TripRecoveryWriteResult['failureReason']): TripRecoveryWriteResult => ({
-        ...refused(tripId,writeId,protectedCopy,reason), ...(options.projectionOnly ? {projectionDeferred:true,writeAttempted:false} : {}) });
+      const reject = (protectedCopy: boolean, reason?: TripRecoveryWriteResult['failureReason'], check?: QaProtectedWriteCheck, readReason?: string, attempted = false): TripRecoveryWriteResult => {
+        if(protectedCopy && check)reportQaProtectedWriteRefusal(check,active,attempted,readReason);
+        return { ...refused(tripId,writeId,protectedCopy,reason), ...(options.projectionOnly ? {projectionDeferred:true,writeAttempted:false} : {}) };
+      };
+      const observedRefusal = (result:TripRecoveryWriteResult,check:QaProtectedWriteCheck,readReason?:string,attempted:boolean|null = result.writeAttempted??null):TripRecoveryWriteResult => {
+        if(result.blockedByExistingRecovery)reportQaProtectedWriteRefusal(check,active,attempted===null?undefined:attempted,readReason);
+        return result;
+      };
       // Caller-owned bodies/metadata must be frozen before the first async barrier.
       let trip: EasyTTrip;
       try { trip = prepareTripDocumentForWrite(structuredClone(inputTrip)); options = structuredClone(options); }
-      catch { return reject(true, 'scope-mismatch'); }
-      if (!active() || trip.ownerId !== null && trip.ownerId !== ownerId || ownerId === null && trip.ownerId !== null) return reject(true, 'scope-mismatch');
-      const state = await inspect(tripId); if (state.kind !== 'resolved') return reject(state.kind === 'protected');
+      catch { return reject(true, 'scope-mismatch', 'body-candidate'); }
+      if (!active() || trip.ownerId !== null && trip.ownerId !== ownerId || ownerId === null && trip.ownerId !== null) return reject(true, 'scope-mismatch', 'body-scope');
+      const state = await inspect(tripId); if (state.kind !== 'resolved') return reject(state.kind === 'protected',undefined,'body-inspect',state.reason);
       if(state.lifecycle?.disposition==='discarded'&&!(state.domain.acknowledgement&&options.canonicalBase
-        &&samePersistedTripDocument(options.canonicalBase,JSON.parse(state.domain.acknowledgement.canonicalRaw))))return reject(true);
+        &&samePersistedTripDocument(options.canonicalBase,JSON.parse(state.domain.acknowledgement.canonicalRaw))))return reject(true,undefined,'body-lifecycle');
       // A mounted replacement is authorized by its frozen source document, not
       // just a write ID which an older/native writer may have reused.
       const expectedRecoverySource = options.expectedRecoverySource ?? options.canonicalBase;
@@ -304,7 +311,7 @@ export function createTwoStoreTripPersistence(storage: EasyTBrowserStorage, driv
         if (decoded?.kind !== 'readable' || options.replace.ownerId !== ownerId || options.replace.tripId !== tripId
           || options.replace.writeId !== decoded.value.writeId
           || JSON.stringify(prepareTripDocumentForWrite(decoded.value.trip)) !== JSON.stringify(prepareTripDocumentForWrite(expectedRecoverySource))) {
-          return reject(true);
+          return reject(true,undefined,'body-replacement');
         }
       }
       // Existing-trip admission requires an exact frozen source, never a
@@ -314,7 +321,7 @@ export function createTwoStoreTripPersistence(storage: EasyTBrowserStorage, driv
       if (state.domain.envelope?.entry.nativeCacheRaw !== undefined) {
         // Carry the exact bytes inspect validated across its lifecycle await.
         const key = tripCacheStorageKey(ownerId, tripId), raw = state.nativeCacheRaw;
-        if (raw == null || raw !== storage.getItem(key)) return reject(true);
+        if (raw == null || raw !== storage.getItem(key)) return reject(true,undefined,'body-cache-witness');
         cacheWitness = {key, raw};
       }
       if (!state.domain.envelope && !options.newTripOrClone && expectedRecoverySource
@@ -337,15 +344,15 @@ export function createTwoStoreTripPersistence(storage: EasyTBrowserStorage, driv
       const requiredEntries:PreparedEntryWrite[]=[];
       for(const input of options.entries??[]) {
         const prepared=prepareEntryWrite(input,ownerId);
-        if(prepared.kind!=='prepared'||prepared.envelope.raw===null)return reject(true,'scope-mismatch');
+        if(prepared.kind!=='prepared'||prepared.envelope.raw===null)return reject(true,'scope-mismatch','body-entry-scope');
         if(prepared.scope.kind==='builder-input') {
           const read=readBuilderInputDraft({getItem:()=>prepared.envelope.raw},requireReadableTripDocument(trip),ownerId),metadata=options.entry?.input;
           if(prepared.scope.tripId!==tripId||read.kind!=='readable'||!metadata||metadata.ownerId!==ownerId||metadata.tripId!==tripId
-            ||metadata.raw!==prepared.envelope.raw||metadata.inputRevision!==read.draft.inputRevision)return reject(true,'scope-mismatch');
+            ||metadata.raw!==prepared.envelope.raw||metadata.inputRevision!==read.draft.inputRevision)return reject(true,'scope-mismatch','body-entry-input');
         }else {
           const payload=decodeHomepageBundle(prepared.envelope.raw,ownerId),receipt=payload?.storedInput?.receipt,metadata=options.entry?.receipt;
           if(receipt?.version!==1||receipt.tripId!==tripId||!metadata||metadata.ownerId!==ownerId||metadata.tripId!==tripId
-            ||metadata.raw!==prepared.envelope.raw||metadata.operationId!==receipt.handoffId)return reject(true,'scope-mismatch');
+            ||metadata.raw!==prepared.envelope.raw||metadata.operationId!==receipt.handoffId)return reject(true,'scope-mismatch','body-entry-receipt');
         }
         requiredEntries.push(prepared);
       }
@@ -364,9 +371,9 @@ export function createTwoStoreTripPersistence(storage: EasyTBrowserStorage, driv
       };
       const existing = state.domain.envelope;
       let nativePointerRaw: string | null;
-      try { nativePointerRaw = nativePointer().raw; } catch { return reject(true); }
+      try { nativePointerRaw = nativePointer().raw; } catch { return reject(true,undefined,'body-native-pointer'); }
       let expectedCurrentRaw: unknown;
-      try { expectedCurrentRaw = await driver.readCurrent(ownerId); if (decodeDomainCurrent(expectedCurrentRaw, ownerId).kind !== 'readable') return reject(true); }
+      try { expectedCurrentRaw = await driver.readCurrent(ownerId); if (decodeDomainCurrent(expectedCurrentRaw, ownerId).kind !== 'readable') return reject(true,undefined,'body-domain-pointer'); }
       catch { return reject(false); }
       if (!active()) return reject(true);
       // Projection-only work retains the exact input bytes. An existing domain
@@ -381,7 +388,7 @@ export function createTwoStoreTripPersistence(storage: EasyTBrowserStorage, driv
           || options.entry?.receipt || options.entry?.claim
           || requiredEntries.length !== 1 || prepared.scope.kind !== 'builder-input'
           || prepared.envelope.raw === null
-          || prepared.envelope.raw !== prepared.envelope.retainedPreviousRaw) return reject(true);
+          || prepared.envelope.raw !== prepared.envelope.retainedPreviousRaw) return reject(true,undefined,'body-projection-shape');
         const before = requireReadableTripDocument(source), candidate = requireReadableTripDocument(trip);
         // Narrow whitelist: optional route legs/assessment/residuals and a guarded
         // completion marker only. All other
@@ -396,7 +403,7 @@ export function createTwoStoreTripPersistence(storage: EasyTBrowserStorage, driv
           if (routeProjectionInputKey(candidate) !== inputKey
             || candidate.brief.intent.route.projectionInputKey !== inputKey
             || candidate.brief.cascadeStatus?.routeReconciliation?.residual.some(unit => unit.kind !== 'recommendation')
-            || commitAcceptedRouteProjection(before, {basedOnInputKey:inputKey,projectedTrip:candidate,reason:'necessary_reconciliation'}).kind !== 'accepted') return reject(true);
+            || commitAcceptedRouteProjection(before, {basedOnInputKey:inputKey,projectedTrip:candidate,reason:'necessary_reconciliation'}).kind !== 'accepted') return reject(true,undefined,'body-projection-route');
           // Validate with the route guard, but retain the completed candidate:
           // the guard's returned document rebuilds from the prior brief.
           comparable.brief.intent.route.projectionInputKey = before.brief.intent.route.projectionInputKey;
@@ -408,27 +415,27 @@ export function createTwoStoreTripPersistence(storage: EasyTBrowserStorage, driv
           || priorInput.kind !== 'readable' || nextInput.kind !== 'readable'
           || priorInput.draft.inputRevision !== revision.inputRevision
           || JSON.stringify(priorInput.draft) !== JSON.stringify(nextInput.draft)
-          || priorInput.draft.fields.some(field=>field.status !== 'editable')) return reject(true);
+          || priorInput.draft.fields.some(field=>field.status !== 'editable')) return reject(true,undefined,'body-projection-document');
         const observed = await createTwoStoreEntryPersistence(storage,driver,{scope:prepared.scope,key,isCurrent:active,
           overflowEnabled:context.overflowEnabled,accountOverflowQualified:context.accountOverflowQualified,
           validate:value=>value !== null && readBuilderInputDraft({getItem:()=>value},before,ownerId).kind==='readable'}).read();
-        if (!active() || observed.kind !== 'ready' || observed.raw !== raw) return reject(true);
+        if (!active() || observed.kind !== 'ready' || observed.raw !== raw) return reject(true,undefined,'body-projection-input',observed.kind==='ready'?undefined:observed.reason);
         if (existing) {
           // Optional work may advance only the exact body already selected by
           // navigation. Do not adopt an earlier clear or another selected trip.
           const selected = decodeDomainCurrent(expectedCurrentRaw,ownerId);
           if (selected.kind !== 'readable' || selected.value?.backend !== 'indexeddb'
-            || !sameDomainHandle(selected.value,existing.handle)) return reject(true);
+            || !sameDomainHandle(selected.value,existing.handle)) return reject(true,undefined,'body-projection-current');
           if (options.replace.backend !== 'indexeddb' || !sameDomainHandle(domainHandle(options.replace),existing.handle)
             || existing.entry.claim || !observed.envelope || !prepared.envelope.parent
             || JSON.stringify(prepared.envelope.parent) !== JSON.stringify(observed.envelope.handle)
             || observed.legacyRaw !== prepared.envelope.legacyRaw
             || existing.entry.input?.raw !== raw || existing.entry.input.inputRevision !== revision.inputRevision
             || JSON.stringify(requireReadableTripDocument(JSON.parse(existing.rawRecovery).trip)) !== JSON.stringify(before)
-            || state.lifecycle && (state.lifecycle.disposition !== 'active' || state.lifecycle.state !== (options.state ?? 'pending'))) return reject(true);
+            || state.lifecycle && (state.lifecycle.disposition !== 'active' || state.lifecycle.state !== (options.state ?? 'pending'))) return reject(true,undefined,'body-projection-source');
           const claimScope = {ownerId,tripId,kind:'recovery-claim' as const};
           const claim = await createRecoveryEntryStore(driver,{ownerId,isCurrent:active}).read(claimScope);
-          if (!active() || claim.kind !== 'ready' || claim.envelope) return reject(true);
+          if (!active() || claim.kind !== 'ready' || claim.envelope) return reject(true,undefined,'body-projection-claim','reason' in claim?claim.reason:undefined);
           projectionFence = {sourceRaw:JSON.stringify(existing),currentRaw:expectedCurrentRaw,entries:[
             {scope:{ownerId,tripId,kind:'recovery-lifecycle'},raw:state.lifecycleEntry ? JSON.stringify(state.lifecycleEntry) : null},
             {scope:claimScope,raw:null}]};
@@ -437,7 +444,7 @@ export function createTwoStoreTripPersistence(storage: EasyTBrowserStorage, driv
             admission:observed.envelope.parent?'existing-domain':'native-setter-quota'}];
           options.entry = {...structuredClone(existing.entry),pointer:options.entry!.pointer};
         } else {
-          if (options.replace.backend) return reject(true);
+          if (options.replace.backend) return reject(true,undefined,'body-projection-native');
           if (observed.envelope) {
             // Native body + domain input is a supported paired write, not a new
             // overflow admission. Pin navigation, body and immutable input head.
@@ -448,10 +455,10 @@ export function createTwoStoreTripPersistence(storage: EasyTBrowserStorage, driv
               || selected.value.nativePointerRaw !== nativePointerRaw || !prior
               || selected.value.documentDigest !== await digest(prior.raw)
               || !sameEntryHandle(prepared.envelope.parent,observed.envelope.handle)
-              || observed.legacyRaw !== prepared.envelope.legacyRaw || !active()) return reject(true);
+              || observed.legacyRaw !== prepared.envelope.legacyRaw || !active()) return reject(true,undefined,'body-projection-native');
           } else {
             if (prepared.envelope.parent || prepared.envelope.raw !== prepared.envelope.legacyRaw
-              || observed.legacyRaw !== raw) return reject(true);
+              || observed.legacyRaw !== raw) return reject(true,undefined,'body-projection-native');
             projectionInput = {key,raw};
           }
         }
@@ -459,19 +466,20 @@ export function createTwoStoreTripPersistence(storage: EasyTBrowserStorage, driv
       let nativeResult: TripRecoveryWriteResult | null = null;
       let pairedPointerRaw: string | null = null;
       if (!existing) {
-        if (options.replace?.backend === 'indexeddb') return reject(true);
+        if (options.replace?.backend === 'indexeddb') return reject(true,undefined,'body-native-source');
         // No await may separate this final exact-byte check from the native
         // setter. A change during metadata/pointer preparation is not our source.
-        try { if (JSON.stringify(nativeSources(tripId)) !== JSON.stringify(state.legacy)) return reject(true); }
+        try { if (JSON.stringify(nativeSources(tripId)) !== JSON.stringify(state.legacy)) return reject(true,undefined,'body-native-source'); }
         catch { return reject(false); }
         // Final synchronous input/source/owner check; no await before native replacement.
         if (projectionInput) {
           try { if (!active() || storage.getItem(projectionInput.key) !== projectionInput.raw
-            || JSON.stringify(nativeSources(tripId)) !== JSON.stringify(state.legacy)) return reject(true); }
+            || JSON.stringify(nativeSources(tripId)) !== JSON.stringify(state.legacy)) return reject(true,undefined,'body-native-input'); }
           catch { return reject(false); }
         }
         const paired = Boolean(options.entries?.length) && !projectionInput;
         nativeResult = saveTripRecoveryToStorage(storage, trip, { ownerId, state: options.state, writeId, now: options.now, replace: options.replace, deferRetirement:paired });
+        if(nativeResult.blockedByExistingRecovery)reportQaProtectedWriteRefusal('body-native-setter',active,nativeResult.writeAttempted);
         if (nativeResult.stored) {
           if(paired) {
             // Native keys do not form an atomic transaction. Keep the prior
@@ -481,7 +489,7 @@ export function createTwoStoreTripPersistence(storage: EasyTBrowserStorage, driv
             if(targetRaw!==null&&!expected.some(source=>source.key===targetKey))expected.push({key:targetKey,raw:targetRaw});
             const stable=()=>JSON.stringify(nativeSources(tripId))===JSON.stringify([...expected].sort((a,b)=>a.key.localeCompare(b.key)));
             const ready=await domain.read(tripId);
-            if(!active()||ready.kind!=='ready'||ready.envelope||!stable())return {...nativeResult,stored:false,blockedByExistingRecovery:true,failureReason:'protected-recovery',outcome:'protected-conflict'};
+            if(!active()||ready.kind!=='ready'||ready.envelope||!stable())return observedRefusal({...nativeResult,stored:false,blockedByExistingRecovery:true,failureReason:'protected-recovery',outcome:'protected-conflict'},'body-native-after-write',ready.kind==='ready'?undefined:ready.reason);
             for(const prepared of requiredEntries) {
               const key=builderInputDraftKey(ownerId,tripId),canonical=requireReadableTripDocument(trip);
               const written=prepared.scope.kind==='homepage'
@@ -494,10 +502,10 @@ export function createTwoStoreTripPersistence(storage: EasyTBrowserStorage, driv
                   // capability; it must not strand an owned body if input alone
                   // hits quota. The prepared entry still pins its prior bytes.
                   .save(prepared.envelope.raw!,{allowInitialOverflow:options.newTripOrClone===true||existingAdmission,writeId:prepared.envelope.handle.writeId,expected:options.entries!.find(value=>value.raw===prepared.raw)});
-              if(written.kind!=='verified')return {...nativeResult,stored:false,failureReason:written.kind==='protected'?'protected-recovery':'receipt-incomplete',blockedByExistingRecovery:written.kind==='protected',outcome:written.kind==='protected'?'protected-conflict':'receipt-incomplete'};
+              if(written.kind!=='verified')return observedRefusal({...nativeResult,stored:false,failureReason:written.kind==='protected'?'protected-recovery':'receipt-incomplete',blockedByExistingRecovery:written.kind==='protected',outcome:written.kind==='protected'?'protected-conflict':'receipt-incomplete'},'body-native-input-write',written.reason);
             }
             const afterInputs=await domain.read(tripId);
-            if(!active()||afterInputs.kind!=='ready'||afterInputs.envelope||!stable()||!await verifyEntries())return {...nativeResult,stored:false,blockedByExistingRecovery:true,failureReason:'protected-recovery',outcome:'protected-conflict'};
+            if(!active()||afterInputs.kind!=='ready'||afterInputs.envelope||!stable()||!await verifyEntries())return observedRefusal({...nativeResult,stored:false,blockedByExistingRecovery:true,failureReason:'protected-recovery',outcome:'protected-conflict'},'body-native-input-readback',afterInputs.kind==='ready'?undefined:afterInputs.reason);
             // Complete navigation before retiring the exact owned predecessor.
             // With both native generations retained, provenance intentionally
             // refuses a normal read; validate the new target directly instead.
@@ -524,13 +532,13 @@ export function createTwoStoreTripPersistence(storage: EasyTBrowserStorage, driv
             pairedPointerRaw=raw;
             const prior=state.resolved.source;
             if(prior&&prior.key!==EASYT_ACTIVE_TRIP_KEY&&prior.key!==targetKey&&options.replace) {
-              try { if(storage.getItem(prior.key)!==prior.raw)return {...nativeResult,stored:false,blockedByExistingRecovery:true,failureReason:'protected-recovery',outcome:'protected-conflict'};storage.removeItem(prior.key); }
-              catch {return {...nativeResult,stored:false,blockedByExistingRecovery:true,failureReason:'protected-recovery',outcome:'protected-conflict'};}
+              try { if(storage.getItem(prior.key)!==prior.raw)return observedRefusal({...nativeResult,stored:false,blockedByExistingRecovery:true,failureReason:'protected-recovery',outcome:'protected-conflict'},'body-native-retirement');storage.removeItem(prior.key); }
+              catch {return observedRefusal({...nativeResult,stored:false,blockedByExistingRecovery:true,failureReason:'protected-recovery',outcome:'protected-conflict'},'body-native-retirement');}
             }
           }
           // A cross-store race after native success is protected, never accepted by recency.
           const after = await inspect(tripId);
-          if (!active() || after.kind !== 'resolved' || after.domain.envelope) return { ...nativeResult, stored: false, pointerAcknowledged:false, blockedByExistingRecovery: true, failureReason: 'protected-recovery', outcome: 'protected-conflict' };
+          if (!active() || after.kind !== 'resolved' || after.domain.envelope) return observedRefusal({ ...nativeResult, stored: false, pointerAcknowledged:false, blockedByExistingRecovery: true, failureReason: 'protected-recovery', outcome: 'protected-conflict' },'body-native-after-write',after.kind==='resolved'?undefined:after.reason);
           // An updated native writer can deliberately supersede domain navigation.
           // The old domain generation remains untouched. The compact digest pins
           // the exact native branch; it cannot recover or bless later old-tab work.
@@ -546,44 +554,44 @@ export function createTwoStoreTripPersistence(storage: EasyTBrowserStorage, driv
             if (!active() || !verified || nativePointer().raw !== pointer.raw || final.kind !== 'resolved' || final.domain.envelope || final.resolved.source?.raw !== source.raw)
               return {...nativeResult,stored:false,pointerAcknowledged:false,failureReason:'pointer-incomplete',outcome:'pointer-incomplete'};
           } catch { return {...nativeResult,stored:false,pointerAcknowledged:false,failureReason:'pointer-incomplete',outcome:'pointer-incomplete'}; }
-          if(!await verifyEntries())return {...nativeResult,stored:false,pointerAcknowledged:false,blockedByExistingRecovery:true,failureReason:'protected-recovery',outcome:'protected-conflict'};
+          if(!await verifyEntries())return observedRefusal({...nativeResult,stored:false,pointerAcknowledged:false,blockedByExistingRecovery:true,failureReason:'protected-recovery',outcome:'protected-conflict'},'body-native-final-input');
           return {...nativeResult,...(requiredEntries.some(value=>value.scope.kind==='homepage')?{receiptAcknowledged:true}:{})};
         }
         // A projection can replace a proven native source regardless of the
         // session's initial-overflow capability, but can never use that admission.
         if (options.projectionOnly || nativeResult.nativeFailure !== 'quota' || !nativeResult.writeAttempted || !(options.newTripOrClone || existingAdmission)) return nativeResult;
-        try { if (!sourceStillCurrent() || JSON.stringify(nativeSources(tripId)) !== JSON.stringify(state.legacy)) return reject(true); }
+        try { if (!sourceStillCurrent() || JSON.stringify(nativeSources(tripId)) !== JSON.stringify(state.legacy)) return reject(true,undefined,'body-overflow-source',undefined,nativeResult.writeAttempted===true); }
         catch { return reject(false); }
       } else {
         const explicit = options.replace?.backend === 'indexeddb' && sameDomainHandle(domainHandle(options.replace), existing.handle);
         const acknowledgedBase = state.domain.acknowledgement && options.canonicalBase
           && samePersistedTripDocument(options.canonicalBase, JSON.parse(state.domain.acknowledgement.canonicalRaw));
-        if (!explicit && !acknowledgedBase) return reject(true);
+        if (!explicit && !acknowledgedBase) return reject(true,undefined,'body-domain-authority');
       }
-      if (!context.overflowEnabled || ownerId !== null && !context.accountOverflowQualified) return nativeResult ?? reject(true);
+      if (!context.overflowEnabled || ownerId !== null && !context.accountOverflowQualified) return nativeResult ?? reject(true,undefined,'body-overflow-policy');
       const handle: RecoveryHandle = { version: 1, backend: 'indexeddb', ownerId, tripId, writeId };
       const record: TripRecoveryRecord = { version: 2, ownerId, tripId, writeId, trip, state: options.state ?? 'pending', savedAt: options.now ?? new Date().toISOString() };
-      if(options.entry?.nativeCacheRaw !== undefined && options.entry.nativeCacheRaw !== existing?.entry.nativeCacheRaw)return reject(true,'scope-mismatch');
+      if(options.entry?.nativeCacheRaw !== undefined && options.entry.nativeCacheRaw !== existing?.entry.nativeCacheRaw)return reject(true,'scope-mismatch','body-domain-entry',undefined,nativeResult?.writeAttempted===true);
       const entry = options.entry ?? existing?.entry ?? { pointer: handle, input: null, receipt: null };
-      if(options.entry?.claim&&JSON.stringify(options.entry.claim)!==JSON.stringify(existing?.entry.claim))return reject(true,'scope-mismatch');
+      if(options.entry?.claim&&JSON.stringify(options.entry.claim)!==JSON.stringify(existing?.entry.claim))return reject(true,'scope-mismatch','body-domain-entry',undefined,nativeResult?.writeAttempted===true);
       const candidate: RecoveryEnvelope = { version: 1, handle, parent: existing?.handle ?? null, rawRecovery: JSON.stringify(record),
         legacySources: state.legacy, entry: { ...structuredClone(entry), pointer: handle, nativePointerRaw,
           ...(existing?.entry.claim?{claim:structuredClone(existing.entry.claim)}:{}),
           ...(cacheWitness?{nativeCacheRaw:cacheWitness.raw}:existing?.entry.nativeCacheRaw!==undefined?{nativeCacheRaw:existing.entry.nativeCacheRaw}:{}) } };
       const committed = await domain.commit({ raw: JSON.stringify(candidate), expectedHead: candidate.parent,
         admission: existing ? 'existing-domain' : 'native-setter-quota', entries: options.entries, projectionFence });
-      if (committed.kind !== 'verified') return { ...refused(tripId,writeId,committed.kind === 'protected-conflict'),
+      if (committed.kind !== 'verified') return observedRefusal({ ...refused(tripId,writeId,committed.kind === 'protected-conflict'),
         handle: { ownerId, tripId, writeId, backend: 'indexeddb' }, recoveryDurable:false,
         ...(projectionFence ? {
           recoveryCommitted:committed.commitStatus === 'unconfirmed' ? undefined : committed.commitStatus === 'committed',
           writeAttempted:committed.commitStatus !== 'not-started',readbackConfirmed:false,
         } : {recoveryCommitted:committed.commitStatus === 'committed',writeAttempted:true}),
-        ...(committed.commitStatus==='committed'?{readbackConfirmed:false,failureBoundary:'recovery-readback' as const}:{failureBoundary:'recovery-write' as const}) };
+        ...(committed.commitStatus==='committed'?{readbackConfirmed:false,failureBoundary:'recovery-readback' as const}:{failureBoundary:'recovery-write' as const}) },'body-domain-commit',committed.reason,nativeResult?.writeAttempted===true?true:committed.commitStatus==='unconfirmed'?null:committed.commitStatus!=='not-started');
       const after = await inspect(tripId);
       if (!active() || !sourceStillCurrent() || after.kind !== 'resolved' || !after.domain.envelope || !sameDomainHandle(after.domain.envelope.handle, handle)||!await verifyEntries()) {
-        if (!projectionFence) return { ...reject(true), recoveryDurable: true };
-        return { ...refused(tripId,writeId,true),handle:{ownerId,tripId,writeId,backend:'indexeddb'},writeAttempted:true,
-          recoveryCommitted:true,recoveryDurable:true,readbackConfirmed:false,failureBoundary:'recovery-readback' };
+        if (!projectionFence) return observedRefusal({ ...reject(true), recoveryDurable: true },'body-domain-readback',undefined,true);
+        return observedRefusal({ ...refused(tripId,writeId,true),handle:{ownerId,tripId,writeId,backend:'indexeddb'},writeAttempted:true,
+          recoveryCommitted:true,recoveryDurable:true,readbackConfirmed:false,failureBoundary:'recovery-readback' },'body-domain-readback');
       }
       return { stored: true, handle: { ownerId, tripId, writeId, backend: 'indexeddb' }, blockedByExistingRecovery: false,
         pointerAcknowledged: true, recoveryDurable: true, readbackConfirmed: true, writeAttempted: true, outcome: 'device-confirmed',

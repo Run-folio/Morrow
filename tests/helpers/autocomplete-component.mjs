@@ -32,7 +32,8 @@ export function autocompleteRender(query,{api=async()=>({status:200,body:{candid
   for(const effect of effects)if(effect.callback){const callback=effect.callback;effect.callback=null;effect.cleanup=callback();}return tree;};
  render();allElements(tree).find(node=>node.props.role==='combobox').props.onFocus();render();
  return {selected,calls,render,enter(){allElements(tree).find(node=>node.props.role==='combobox').props.onKeyDown({key:'Enter',preventDefault(){}});},change(next){allElements(tree).find(node=>node.props.role==='combobox').props.onChange({target:{value:next}});props.value=next;render();},async settle(){const pending=[...timers.values()];timers.clear();for(const timer of pending)timer();for(let i=0;i<40;i++)await Promise.resolve();render();},
-  actions(){return allElements(tree).filter(node=>node.props.onClick && node.props.role!=='option').map(node=>({label:text(node),click:()=>node.props.onClick()}));},
+  key(key){allElements(tree).find(node=>node.props.role==='combobox').props.onKeyDown({key,preventDefault(){}});render();},
+  actions(){return allElements(tree).filter(node=>node.props.onClick && node.props.role!=='option').map(node=>({label:text(node),disabled:Boolean(node.props.disabled||node.props.loading),click:()=>node.props.onClick()}));},
   rows(){return allElements(tree).filter(node=>node.props.role==='option').map(node=>({key:node.key,label:text(node),choose:()=>node.props.onClick()}));},
   close(){for(const effect of effects)effect.cleanup?.();}};
 }
@@ -59,4 +60,19 @@ export function homepagePresentation(entries, language='en') {
  new vm.Script(script,{filename:'actual-home-editor-presentation.cjs'}).runInContext(context);
  const tree=module.exports.HomeDestinationEditor({entries,language,onChange(){}});
  return {status:tree.props.status,tags:allElements(tree).filter(node=>node.props.removeLabel).map(node=>({id:node.props.id,label:node.props.label,editLabel:node.props.editLabel,removeLabel:node.props.removeLabel}))};
+}
+
+/** Runs the actual mounted Home editor callbacks without DOM scheduling. */
+export function homepageEditorCallbacks(initialEntries, api=async()=>({status:200,body:{candidates:[]}})) {
+ let entries=initialEntries,disabled=false,stateIndex=0,refIndex=0,editorTree;
+ const values=[],refs=[];
+ const hooks={forwardRef:require('react').forwardRef,useState(initial){const at=stateIndex++;if(!(at in values))values[at]=typeof initial==='function'?initial():initial;return [values[at],next=>{values[at]=typeof next==='function'?next(values[at]):next;}];},useRef(initial){const at=refIndex++;return refs[at]??(refs[at]={current:initial});},useEffect(){}};
+ const module={exports:{}};
+ const context=vm.createContext({module,exports:module.exports,require,console,URL,URLSearchParams,AbortController,AbortSignal,DOMException,setTimeout,clearTimeout,__hooks:hooks,
+  fetch:async(url,init)=>{const response=await api({url:String(url),...init});return {ok:response.status>=200&&response.status<300,json:async()=>response.body};}});
+ new vm.Script(script,{filename:'actual-mounted-home-editor.cjs'}).runInContext(context);
+ const render=()=>{stateIndex=0;refIndex=0;const tree=module.exports.HomeDestinationEditor({entries,language:'en',disabled,onChange:next=>{entries=next;}});
+  const tag=allElements(tree).find(node=>node.props.editor);editorTree=tag?.props.editor;
+  return tag?allElements(tag.props.editor).find(node=>node.type?.name==='CanonicalPlaceAutocomplete')?.props:null;};
+ return {render,editorKeyDown(event){editorTree.props.onKeyDown(event);},get entries(){return entries;},setDisabled(value){disabled=value;}};
 }

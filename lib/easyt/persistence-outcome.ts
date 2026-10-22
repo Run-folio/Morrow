@@ -34,12 +34,24 @@ export async function withPersistencePreparation<T>(work:()=>Promise<T>):Promise
   try{return await work();}finally{preparationDepth--;}
 }
 export type QaPersistenceStage = "hydration" | "intake" | "editable-input" | "recovery-preparation" | "native-write";
-export type QaPersistenceBoundary = "hydration-ready" | "hydration-complete" | "intake-restore" | "intake-guard" | "intake-projection" | "intake-storage-access" | "intake-frozen" | "intake-reservation" | "editable-prepare" | "editable-reserved" | "editable-write" | "editable-readback" | "recovery-candidate" | "recovery-storage-access" | "recovery-driver-open" | "recovery-seed" | "recovery-scope" | "recovery-replacement" | "recovery-write" | "recovery-cleanup" | "recovery-readback";
+export type QaPersistenceBoundary = "hydration-ready" | "hydration-complete" | "intake-restore" | "intake-guard" | "intake-projection" | "intake-storage-access" | "intake-frozen" | "intake-reservation" | "editable-prepare" | "editable-reserved" | "editable-write" | "editable-readback" | "recovery-candidate" | "recovery-storage-access" | "recovery-driver-open" | "recovery-seed" | "recovery-scope" | "recovery-replacement" | "recovery-write" | "recovery-cleanup" | "recovery-readback" | "protected-write-refusal";
+const protectedWriteChecks = [
+  "input-trip-read", "input-entry-read", "input-serialize", "input-entry-prepare", "input-entry-write", "input-source-readback", "intake-prepare", "browser-protected-read",
+  "body-candidate", "body-scope", "body-inspect", "body-lifecycle", "body-replacement", "body-cache-witness",
+  "body-entry-scope", "body-entry-input", "body-entry-receipt", "body-native-pointer", "body-domain-pointer",
+  "body-projection-shape", "body-projection-route", "body-projection-document", "body-projection-input",
+  "body-projection-current", "body-projection-source", "body-projection-claim", "body-projection-native",
+  "body-native-source", "body-native-input", "body-native-setter", "body-native-after-write", "body-native-input-write",
+  "body-native-input-readback", "body-native-retirement", "body-native-final-input", "body-overflow-source",
+  "body-domain-authority", "body-overflow-policy", "body-domain-entry", "body-domain-commit", "body-domain-readback",
+] as const;
+export type QaProtectedWriteCheck = typeof protectedWriteChecks[number];
 export type QaEntryGuardReason = "owner-transition" | "requested-trip-missing" | "homepage-read-protected" | "homepage-read-unavailable"
   | "recovery-read-protected" | "recovery-read-unavailable" | "pending-receipt-protected"
   | "pending-continuation-protected" | "handoff-protected" | "entry-exception";
 export type QaRecoveryCaller = "seed" | "autosave" | "preservation" | "other";
 type QaEvidence = Partial<RecoveryPersistenceEvidence> & {
+  protectedWriteCheck?: QaProtectedWriteCheck; protectedReadReason?: string;
   accepted?: boolean; writeAccepted?: boolean;
   sessionClass?: "signed-in" | "guest" | "pending" | "unavailable";
   entryKind?: "loading" | "fresh" | "explicit-trip" | "current-draft" | "home-handoff" | "pending-home-handoff" | "pending-direct-intake" | "route-handoff" | "populated-builder" | "unavailable";
@@ -58,7 +70,8 @@ const qaStages = new Set(["homepage-input", "homepage-intake", "homepage-preserv
 const qaOutcomes = new Set(["device-confirmed", "native-write-failed", "protected-conflict", "receipt-incomplete", "pointer-incomplete", "unknown", "account-acknowledged", "accepted", "refused"]);
 const qaBoundaries = new Set(["entry-scope", "protected-recovery", "recovery-write", "recovery-readback", "receipt-ack", "receipt-readback", "pointer-ack", "unknown"]);
 const qaAcknowledgements = new Set(["pending", "stale", "storage", "preservation", "accepted"]);
-const qaProducerBoundaries = new Set(["hydration-ready", "hydration-complete", "intake-restore", "intake-guard", "intake-projection", "intake-storage-access", "intake-frozen", "intake-reservation", "editable-prepare", "editable-reserved", "editable-write", "editable-readback", "recovery-candidate", "recovery-storage-access", "recovery-driver-open", "recovery-seed", "recovery-scope", "recovery-replacement", "recovery-write", "recovery-cleanup", "recovery-readback"]);
+const qaProducerBoundaries = new Set(["hydration-ready", "hydration-complete", "intake-restore", "intake-guard", "intake-projection", "intake-storage-access", "intake-frozen", "intake-reservation", "editable-prepare", "editable-reserved", "editable-write", "editable-readback", "recovery-candidate", "recovery-storage-access", "recovery-driver-open", "recovery-seed", "recovery-scope", "recovery-replacement", "recovery-write", "recovery-cleanup", "recovery-readback", "protected-write-refusal"]);
+const qaProtectedWriteChecks = new Set<string>(protectedWriteChecks);
 const qaDriverFailures = new Set(["quota", "security", "unavailable", "blocked", "abort", "schema", "corrupt", "readback", "unknown"]);
 const qaSessions = new Set(["signed-in", "guest", "pending", "unavailable"]);
 const qaEntries = new Set(["loading", "fresh", "explicit-trip", "current-draft", "home-handoff", "pending-home-handoff", "pending-direct-intake", "route-handoff", "populated-builder", "unavailable"]);
@@ -74,6 +87,11 @@ const qaHomepageReadReasons = new Set([
   "native-payload", "native-bundle-invalid", "native-input-invalid", "native-draft-invalid", "native-foreign-pending-envelope",
   "native-divergence", "native-read-unknown", "payload", "storage-access",
   "quota", "security", "unavailable", "blocked", "abort", "readback", "unknown",
+]);
+const qaProtectedReadReasons = new Set([...qaHomepageReadReasons,
+  "cache-divergence", "cache-changed", "cache-document", "cache-read-unknown", "current-divergence", "current-changed", "current-pointer",
+  "divergence", "ambiguous-legacy", "missing-provenance", "native-changed", "native-readback", "preparation-changed", "overflow-held",
+  "canonical-changed", "lifecycle-payload", "lifecycle-binding", "unbound-lifecycle", "lifecycle-read-unknown",
 ]);
 const qaCallers = new Set(["seed", "autosave", "preservation", "other"]), qaWriteBranches = new Set(["new-write", "exact-reuse"]);
 const qaReadbacks = new Set(["editable-input", "recovery", "receipt"]), qaNativeFailures = new Set(["quota", "security", "unavailable", "unknown"]);
@@ -107,6 +125,8 @@ function reportQaConsole(detail: Record<string, unknown>, evidence?: QaEvidence,
       boundary: qaCategory(detail.boundary, qaProducerBoundaries, null), accepted: qaBoolean(evidence?.accepted),
       guardReason: qaCategory(evidence?.guardReason, qaEntryGuardReasons, null),
       homepageReadReason: qaCategory(evidence?.homepageReadReason, qaHomepageReadReasons, null),
+      protectedWriteCheck: qaCategory(evidence?.protectedWriteCheck, qaProtectedWriteChecks, null),
+      protectedReadReason: evidence?.protectedReadReason === undefined ? null : qaCategory(evidence.protectedReadReason, qaProtectedReadReasons, "unknown"),
       caller: qaCategory(evidence?.caller, qaCallers, null),
       writeBranch: qaCategory(evidence?.writeBranch, qaWriteBranches, null),
       readbackKind: qaCategory(readbackKind ?? evidence?.readbackKind, qaReadbacks, null),
@@ -150,6 +170,16 @@ export function reportQaPersistenceBoundary(stage: QaPersistenceStage, boundary:
       acknowledgement: evidence.acknowledgement,
     }, evidence);
   } catch { /* Never turn an observation into a persistence decision. */ }
+}
+
+/** Observe only the refusal already decided by a current operation. No new reads or decisions. */
+export function reportQaProtectedWriteRefusal(check: QaProtectedWriteCheck, isCurrent: () => boolean, writeAttempted: boolean | undefined, readReason?: string) {
+  try {
+    if (!qaEnabled() || isCurrent() !== true) return;
+    reportQaPersistenceBoundary("recovery-preparation", "protected-write-refusal", {
+      accepted: false, protectedWriteCheck: check, protectedReadReason: readReason, writeAttempted,
+    });
+  } catch { /* Observation cannot change saving or ownership decisions. */ }
 }
 
 /** No arbitrary exception text or getter failure may escape diagnostic capture. */

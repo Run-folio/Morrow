@@ -6,6 +6,7 @@ import ts from 'typescript';
 import { canonicalRouteFixture } from './fixtures/batch14-route-documents.ts';
 import { canonicalTripRevisionCanReplace } from '../lib/easyt/trip-continuity.ts';
 import { createTripMutationPersistenceQueue, newestTripMutationCanonical } from '../lib/easyt/trip-mutation-persistence.ts';
+import { tripOverviewDisplayTitle } from '../lib/easyt/trip-display.ts';
 import * as workspaceDiagnostic from '../lib/easyt/workspace-recovery-diagnostic.ts';
 import {BrowserRecoveryReadError as ActualBrowserRecoveryReadError} from '../lib/easyt/browser-recovery-persistence.ts';
 
@@ -26,6 +27,7 @@ function scheduler() {
   return {
     hooks: {
       useState(initial: any) { const index = cursor++; if (!(index in values)) values[index] = typeof initial === 'function' ? initial() : initial; return [values[index], (value: any) => { values[index] = typeof value === 'function' ? value(values[index]) : value; }]; },
+      useReducer(reducer: any, initial: any) { const index = cursor++; if (!(index in values)) values[index] = initial; return [values[index], (action: any) => { values[index] = reducer(values[index], action); }]; },
       useRef(initial: any) { const index = cursor++; return values[index] ??= { current: initial }; },
       useCallback(callback: any, dependencies: any[]) { const index = cursor++; if (!values[index] || !same(values[index].dependencies, dependencies)) values[index] = { callback, dependencies }; return values[index].callback; },
       useEffect(callback: any, dependencies: any[]) { const index = cursor++; if (!values[index] || !same(values[index], dependencies)) { values[index] = dependencies; effects.push(() => { cleanups.get(index)?.(); const cleanup = callback(); if (cleanup) cleanups.set(index, cleanup); else cleanups.delete(index); }); } },
@@ -348,7 +350,7 @@ function clientHarness(t: { after: (callback: () => void) => void }, storageOver
     '@/lib/easyt/trip-continuity': { canonicalTripRevisionCanReplace, tripConflictResolutionActions: () => ({}), journeyReauthenticationPath: () => '/sign-in' },
     '@/lib/easyt/private-browser-context': { ownerBoundaryState: () => 'current' },
     '@/lib/easyt/trip-workspace-links': { workspaceVisitKey: (path: string) => path, workspaceViewFromPathname: () => 'overview', tripBuilderHref: () => '/builder', mapWorkspaceHref: () => '/map', tripWorkspaceHref: () => '/trip' },
-    '@/lib/easyt/trip-display': { tripDisplayTitle: (trip: any) => trip.title, tripCustomTitle: () => '', renameTripIdentity: (trip: any, title: string) => ({ ...trip, title }) },
+    '@/lib/easyt/trip-display': { tripOverviewDisplayTitle, tripDisplayTitle: (trip: any) => trip.title, tripCustomTitle: () => '', renameTripIdentity: (trip: any, title: string) => ({ ...trip, title }) },
     '@/lib/easyt/trip-facts': { deriveTripDateFacts: () => ({ durationDays: 2, rangeLabel: 'Dates' }) },
     '@/lib/easyt/trip-legs': { tripRouteDisplayLabel: () => 'Route' },
     '@/lib/easyt/accommodation': { overnightAccommodationStops: () => [] },
@@ -368,7 +370,11 @@ function clientHarness(t: { after: (callback: () => void) => void }, storageOver
 test('rename dialog stays open until the scoped durable mutation is accepted', async t => {
   const saved = deferred<boolean>();
   const h = clientHarness(t, {}, { mutateTrip: () => saved.promise });
-  findNode(h.renderIdentity(), h.Launcher).props.onRenameTrip();
+  const renameOwner = (node: any): any => !node ? null : Array.isArray(node)
+    ? node.map(renameOwner).find(Boolean) : typeof node.props?.onRenameTrip === 'function'
+      ? node : renameOwner(node.props?.children);
+  const action = renameOwner(h.renderIdentity()); assert.ok(action, 'current workspace exposes the shared rename callback');
+  action.props.onRenameTrip();
   findNode(h.renderIdentity(), h.Field).props.onChange({ target: { value: 'Accepted name' } });
   findNode(h.renderIdentity(), h.Form).props.onSubmit();
   await tick(); assert.equal(findNode(h.renderIdentity(), h.Form).props.open, true);
@@ -537,4 +543,24 @@ test('a current pending document retires an incomplete earlier ACK before later 
  const newer={...trip,title:'Current device edit'};document={trip:newer,recovery:{trip:newer,ownerId:'owner-a',tripId:trip.id,writeId:'current'}};
  h.setSearch('day=2');h.render();await tick();assert.equal(findNode(h.render(),h.Shell)?.props.trip.title,'Current device edit');
  document=null;h.setSearch('day=3');h.render();await tick();assert.throws(()=>h.render(),/not found/);
+});
+
+test('account-owned workspace recovery retries through the owner-pinned exact-conflict acknowledgement path',async()=>{
+  let direct=0,recoveryCalls=0,acks=0;
+  const h=resolverHarness({saveTripToEasyT:async()=>{direct++;throw Error('Unqualified retry must not run');},
+    saveTripRecoveryToEasyT:async(trip:any,handle:any)=>{recoveryCalls++;assert.equal(handle.ownerId,'owner-a');assert.equal(handle.tripId,trip.id);assert.equal(handle.writeId,'recovery');return trip;},
+    acknowledgeTripBuildSave:async()=>{acks++;return {accountAcknowledged:true,outcome:'acknowledged',remainingRecovery:null};}});
+  h.render();await tick();const view=h.render();
+  assert.equal(direct,0);assert.equal(recoveryCalls,1);assert.equal(acks,1);assert.equal(findNode(view,h.Banner)?.props.title,'Saved to your account');assert.ok(findNode(view,h.Shell));
+});
+
+test('workspace qualified retry still protects a genuinely different account conflict',async()=>{
+  class DifferentAccountConflict extends Error {reason='cloud-changed';canonicalTrip={...canonicalRouteFixture(),id:'async-shell-trip',ownerId:'owner-a',title:'Different account work'};}
+  const marked:string[]=[];let acks=0;
+  const h=resolverHarness({EasyTTripSaveConflictError:DifferentAccountConflict,
+    saveTripRecoveryToEasyT:async()=>{throw new DifferentAccountConflict();},
+    markTripRecoveryState:async(_handle:any,state:string)=>{marked.push(state);return true;},
+    acknowledgeTripBuildSave:async()=>{acks++;return {accountAcknowledged:true,outcome:'acknowledged'};}});
+  h.render();await tick();const view=h.render();
+  assert.equal(acks,0);assert.deepEqual(marked,['conflict']);assert.equal(findNode(view,h.Banner)?.props.title,'Cloud copy kept safe');assert.equal(findNode(view,h.Shell)?.props.trip.title,'Different account work');
 });
