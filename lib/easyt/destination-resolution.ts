@@ -5,7 +5,7 @@ import { isOvernightBaseEligible, validPlaceCoordinates, type CanonicalPlaceSugg
 const normalise = (value: string) => value.toLocaleLowerCase().replace(/[’']/g, "").replace(/[^a-z0-9]+/g, " ").trim();
 
 /** Revalidate every island base, including catalog/guided choices, through
- * the existing server's physical-polygon guard. Never substitute its point
+ * the existing server's physical-polygon or exact reviewed-membership guard. Never substitute its point
  * or identity for the traveller's selected settlement. */
 export async function verifyPhysicalIslandSuggestion(parent: PlanningParentConstraint, suggestion: CanonicalPlaceSuggestion, options: { fetchImpl?: typeof fetch; signal?: AbortSignal } = {}): Promise<CanonicalPlaceSuggestion | null> {
   if (!requiresPhysicalIslandVerification(parent)) return suggestion;

@@ -66,7 +66,7 @@ import { inspirationByKey } from "@/lib/easyt/inspiration";
 import { publicRouteDetailFor } from "@/lib/easyt/public-route";
 import { routePlannerPayload } from "@/lib/easyt/public-route-handoff";
 import { defaultTravelProfile, travelProfileFromUnknown, tripInterestsWithProfileDefaults, type TravelProfile } from "@/lib/easyt/travel-profile";
-import { firstTripWorkspaceHref, mapWorkspaceHref, stayWorkspaceHref, tripWorkspaceHref } from "@/lib/easyt/trip-workspace-links";
+import { firstTripWorkspaceHref, mapWorkspaceHref, stayWorkspaceHref, tripWorkspaceHref, tripSaveContinuationHref } from "@/lib/easyt/trip-workspace-links";
 import { createLatestJourneyCaptureRequestGate, journeyCaptureFailureMessage, requestJourneyCapture } from "@/lib/easyt/journey-capture-client";
 import { homepageCapturedRouteEvidence, homepageDescribeSourceKey, newTripCapturedJourneyEnd } from "@/lib/easyt/home-route-choice";
 import { pendingIntakeContinuation, retainPendingIntakeReview, createHandoffSharedLookup, discardPendingIntakeForEdit, handoffLookupMentions, handoffOutcomeIsCurrent, handoffStopOccurrenceId, homepageBuilderDateRange, homepageHandoffMatchesTrip, homepageHandoffReceiptForOwner, homepageReceiptForProjection, insertHandoffOccurrence, handoffCanonicalOccurrenceBindings, persistEditableHomepageInput, projectHomepageInput, pendingIntakeReceiptForOwner, pendingHomepageSubmissionForOwner, homepageSemanticInputFingerprint, pendingHomepageHandoffForOwner, reserveDirectDescribeIntake, retireHandoffResolutionStatus, homeTripDraftInterestsWereExplicit, homeTripDraftTimingFlexibility, initialHandoffRouteStops, mergeHandoffLocationChoice, preferredHandoffLocationChoice, removeHomeTripDraftIfDurable, resolveHandoffIncrementally, routableHandoffMentions, tripInterestsFromHomeDraft, type HandoffLocationChoice, type HomeTripDraft, type HomepageInputSnapshot, type PendingHomeTripHandoff, type PendingIntakeReceipt } from "@/lib/easyt/home-trip-handoff";
@@ -707,6 +707,7 @@ function TripBuilderDocument() {
   const [entryKind, setEntryKind] = useState<NewTripEntryState["kind"]>("loading");
   const [resumedQuerylessDraft, setResumedQuerylessDraft] = useState(false);
   const [tripUnavailable, setTripUnavailable] = useState(false);
+  const [guestSaveRequired, setGuestSaveRequired] = useState<{tripId:string;ownerId:string}|null>(null);
   const [pendingContinuationNeedsReview, setPendingContinuationNeedsReview] = useState(false);
   const [initialSaveState, setSaveState] = useState<"device-saving" | "local" | "cloud-saving" | "cloud" | "error">("device-saving");
   const [initialCloudSaveError, setCloudSaveError] = useState("");
@@ -1522,6 +1523,7 @@ function TripBuilderDocument() {
     setEntryKind("loading");
     setResumedQuerylessDraft(false);
     setTripUnavailable(false);
+    setGuestSaveRequired(null);
     setPendingContinuationNeedsReview(false);
     let active = true;
     const applySaved = (saved: Awaited<ReturnType<typeof loadActiveTrip>>) => {
@@ -1556,14 +1558,10 @@ function TripBuilderDocument() {
       }
       if (tripIdFromUrl) {
         const explicitRecovery = params.get("recover") === "1";
-        if (authenticatedOwnerId && explicitRecovery) {
-          const claimed = await claimGuestTripRecoveryForOwner(tripIdFromUrl, authenticatedOwnerId);
-          if (active && activeBrowserOwnerIdRef.current === activeOwnerId && claimed?.stored) recoveryHandleRef.current = claimed.handle;
-        }
         const ownerScope = activeOwnerId;
         const requestedRecovery = explicitRecovery ? await loadTripRecovery(tripIdFromUrl, ownerScope) : null;
         const requestedTrip = requestedRecovery?.trip ?? await loadRequestedTrip(tripIdFromUrl, ownerScope);
-        if (!active) return;
+        if (!active || activeBrowserOwnerIdRef.current !== ownerScope) return;
         if (requestedTrip) {
           const matchingRecovery = requestedRecovery ?? await loadTripRecovery(tripIdFromUrl, ownerScope);
           if (!active || activeBrowserOwnerIdRef.current !== ownerScope) return;
@@ -1574,6 +1572,15 @@ function TripBuilderDocument() {
           applySaved(requestedTrip);
           if (showItinerary) setGenerated(true);
         } else {
+          // A login/recovery return is not permission to claim guest data. Only
+          // an exact guest source can offer the existing explicit account-save
+          // action, after the authenticated account lookup has missed.
+          if (explicitRecovery && authenticatedOwnerId && authenticatedOwnerId === ownerScope) {
+            const guest = await loadTripRecovery(tripIdFromUrl,null);
+            if (!active || activeBrowserOwnerIdRef.current !== ownerScope) return;
+            if (guest?.trip.id === tripIdFromUrl && guest.trip.ownerId === null)
+              setGuestSaveRequired({tripId:tripIdFromUrl,ownerId:authenticatedOwnerId});
+          }
           qaHydrationAccepted = false;
           guardEntry("requested-trip-missing");
         }
@@ -1999,7 +2006,7 @@ function TripBuilderDocument() {
       window.location.assign("/journey/dashboard");
       return;
     }
-    if (hydrated && session?.user?.id && !tripOwnerId) {
+    if (hydrated && !tripUnavailable && session?.user?.id && !tripOwnerId) {
       // A recovery scope protects the local document for this account. It is
       // not cloud ownership: the first authenticated write must remain an
       // ownerless promotion until the repository creates the canonical row.
@@ -2007,7 +2014,7 @@ function TripBuilderDocument() {
       if (active && activeBrowserOwnerIdRef.current === session.user.id && claimed?.stored) recoveryHandleRef.current = claimed.handle;
     }
     })();return () => {active = false;};
-  }, [hydrated, session?.user?.id, tripId, tripOwnerId]);
+  }, [hydrated, tripUnavailable, session?.user?.id, tripId, tripOwnerId]);
 
   const totalDays = useMemo(() => {
     const d = Math.round((+new Date(`${endDate}T00:00:00`) - +new Date(`${startDate}T00:00:00`)) / 86400000) + 1;
@@ -5948,6 +5955,15 @@ function TripBuilderDocument() {
     return <div data-builder-root="true" data-builder-edit-session={mountedBuilder ? "active" : "hydrating"} className={`${styles.shellWide} ${mobilePolish.builder}`} aria-busy="true"><div className={styles.locationResolution} role="status">Checking the current account before opening this trip…</div></div>;
   }
   if (tripUnavailable) {
+    if (guestSaveRequired && guestSaveRequired.ownerId === authenticatedOwnerId
+      && guestSaveRequired.ownerId === activeBrowserOwnerId) {
+      return <div data-builder-root="true" className={`${styles.shellWide} ${mobilePolish.builder}`}><MorroviaRecoveryFeedback
+        title={language === "es" ? "Este viaje sigue en este dispositivo" : "This trip is still on this device"}
+        detail={language === "es" ? "Guárdalo en tu cuenta para continuar editándolo." : "Save it to your account to continue editing."}
+        safety={language === "es" ? "La copia de este dispositivo se conservará." : "Your device copy will be kept."}
+        actions={<EasyTLinkButton href={tripSaveContinuationHref(guestSaveRequired.tripId)} variant="secondary">{language === "es" ? "Guardar viaje en mi cuenta" : "Save trip to my account"}</EasyTLinkButton>}
+      /></div>;
+    }
     return <div data-builder-root="true" className={`${styles.shellWide} ${mobilePolish.builder}`}><aside className={styles.cloudSaveError} role="alert"><span>{pendingContinuationNeedsReview ? "Your saved submission and device trip need review before resuming. Both remain preserved." : "This trip is not available to the current browser account. Its original device copy remains preserved in its owner scope."}</span></aside></div>;
   }
 

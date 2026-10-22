@@ -46,6 +46,13 @@ export const DatePickerDisabledDates: Story = {
   },
 };
 
+export const DatePickerSearchFromToday: Story = {
+  render: function SearchDateStory() {
+    const [range, setRange] = useState({ start: "", end: "" });
+    return <div style={{ ...storyGrid, maxWidth: 390 }}><MorroviaDatePicker mode="range" combinedLabel="Travel dates" startLabel="Start date" endLabel="End date" startValue={range.start} endValue={range.end} minToday onChange={setRange} defaultOpen /></div>;
+  },
+};
+
 export const DatePickerKeyboardFocus: Story = {
   render: function KeyboardDateStory() {
     const [value, setValue] = useState("2026-09-18");

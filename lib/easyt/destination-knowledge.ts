@@ -1,3 +1,4 @@
+import { reviewedIslandGatewayForBase, REVIEWED_ISLAND_DESTINATIONS } from './reviewed-island-destinations.ts';
 import {findCatalogPlaceById,findCatalogPlacesByPhrase} from './place-catalog.ts';
 
 /**
@@ -99,6 +100,7 @@ export type DestinationKnowledge = {
 };
 
 export type DestinationIdentityInput = {
+  coordinates?: readonly number[] | null;
   canonicalPlaceId?: string;
   id?: string;
   providerId?: string;
@@ -986,10 +988,17 @@ export function createDestinationKnowledgeStore(options: {
     },
     forTransferResolution: (input) => {
       const destination = findDestination(input);
+      const reviewedGateway = options.destinations === undefined && !destination ? reviewedIslandGatewayForBase(input) : undefined;
       return {
         canonicalId: destination?.canonicalId ?? null,
         connectivity: destination?.connectivity ?? unknownFor("Transport connectivity", input),
-        airGateways: destination?.airGateways ?? unknownFor("Air gateways", input),
+        airGateways: reviewedGateway ? knownKnowledgeFact([{ canonicalId: reviewedGateway.canonicalPlaceId,
+          geographicPlaceId: reviewedGateway.canonicalPlaceId, name: reviewedGateway.canonicalName, country: "Indonesia",
+          coordinates: [...reviewedGateway.coordinates], providerId: reviewedGateway.providerId, accessMode: "road" as const }], "static", {
+          id: "indonesia-tourism:airport-access", label: "Indonesia Tourism · reviewed Bali airport access", kind: "official",
+          url: REVIEWED_ISLAND_DESTINATIONS.sources[2]!.url, reviewedAt: REVIEWED_ISLAND_DESTINATIONS.reviewedAt,
+          supports: "Reviewed road access to DPS for exact Ubud/Kuta bases; no flight service or ground schedule guarantee.",
+        }) : destination?.airGateways ?? unknownFor("Air gateways", input),
       };
     },
     findTransfer: (from, to) => {

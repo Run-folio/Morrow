@@ -44,6 +44,7 @@ import { loadRequestedTrip, loadTripRecovery } from "@/lib/easyt/storage";
 import { readDurableHomepageState } from "@/lib/easyt/homepage-persistence";
 import { HomeDestinationEditor } from "./home-destination-editor";
 import { reportPersistenceOutcome } from "@/lib/easyt/persistence-outcome";
+import { homepageSearchDateIssue, searchDateIssueMessage, type SearchDateDraft } from "@/lib/easyt/search-dates";
 
 function generatedId(prefix: string) {
   try { return `${prefix}-${crypto.randomUUID()}`; }
@@ -100,6 +101,12 @@ export default function HomeTripStarter() {
   const { start: startDate, end: endDate } = homepageVisibleDateRange(snapshot);
   const [loading, setLoading] = useState(false);
   const [captureError, setCaptureError] = useState("");
+  const dateTypedDraftRef = useRef<SearchDateDraft>({});
+  const [dateTypedDraft, setDateTypedDraft] = useState<SearchDateDraft>({});
+  const updateDateTypedDraft = (next: SearchDateDraft) => {
+    dateTypedDraftRef.current = next;
+    setDateTypedDraft(next);
+  };
   const originFocusRequestedRef = useRef(false);
   const [originFocusRequestKey, setOriginFocusRequestKey] = useState(0);
   useEffect(() => {
@@ -162,6 +169,7 @@ export default function HomeTripStarter() {
     homepageReadyRef.current = false;
     setRecoveryBlocked(true);
     setPendingSubmission(null);
+    updateDateTypedDraft({});
     if (sessionPending) return () => { active = false; };
     cancelSubmission();
     setCaptureError("");
@@ -281,7 +289,7 @@ export default function HomeTripStarter() {
       const unchangedReceipt = latestStored?.receipt?.version === 1
         && homepageCompletedReceiptIsUnchanged({ snapshot: submitted, receipt: latestStored.receipt })
         ? latestStored.receipt : undefined;
-      if (unchangedReceipt) {
+      if (unchangedReceipt && !Object.values(dateTypedDraftRef.current).some(raw => raw.trim())) {
         markPlanningMilestone(unchangedReceipt.handoffId, "submit", submittedAt);
         const existingRecovery = await loadTripRecovery(unchangedReceipt.tripId, submittedOwner);
         if (!isCurrent()) return;
@@ -376,6 +384,11 @@ export default function HomeTripStarter() {
 
       }
       if (!isCurrent()) return;
+      const dateIssue = homepageSearchDateIssue(submitted, dateTypedDraftRef.current);
+      if (dateIssue) {
+        setCaptureError(searchDateIssueMessage(dateIssue, language));
+        return;
+      }
       const issues = homepagePreflightIssues(submitted, evidenceFor(submitted));
       if (!isCurrent()) return;
       if (issues.length) {
@@ -522,10 +535,22 @@ export default function HomeTripStarter() {
       budget: snapshot.budget.state === "selected" ? snapshot.budget.value : null,
       onBudgetChange: (budget) => updateSnapshot((current) => ({ ...current, budget: budget ? { state: "selected", value: budget } : { state: "cleared" } })),
       datesChosen: snapshot.dates.state === "selected",
-      onDatesClear: () => updateSnapshot((current) => ({ ...current, dates: { state: "cleared" } })),
+      dateTypedDraft,
+      onDateTypedDraftChange: (boundary, raw) => {
+        cancelSubmission();
+        updateDateTypedDraft({ ...dateTypedDraftRef.current, [boundary]: raw });
+        setCaptureError("");
+      },
+      onDatesClear: () => {
+        updateDateTypedDraft({});
+        updateSnapshot((current) => ({ ...current, dates: { state: "cleared" } }));
+      },
     }}
     startDate={startDate} endDate={endDate}
-    onDatesChange={(range) => updateSnapshot((current) => ({ ...current, dates: { state: "selected", value: range } }))}
+    onDatesChange={(range) => {
+      updateDateTypedDraft({});
+      updateSnapshot((current) => ({ ...current, dates: { state: "selected", value: range } }));
+    }}
     travellers={travellers}
     onTravellersChange={(value) => updateSnapshot((current) => ({ ...current, travellers: { state: "selected", value } }))}
     interests={interests}

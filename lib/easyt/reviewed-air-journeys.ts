@@ -33,6 +33,7 @@ const journeys:readonly {from:CityId;to:CityId;source:KnowledgeSource}[]=[
  {from:'quito',to:'bogota',source:route('quito-airport:bogota-departures','Quito Airport — Bogotá departures','https://www.aeropuertoquito.aero/itinerarios-internacionales/','Directional Bogotá departures in the airport international itinerary, corroborated by the 2026-10-16 board; not a date-specific booking or journey duration.')},
  {from:'bogota',to:'cartagena',source:route('latam:bogota-cartagena','LATAM — Bogotá to Cartagena','https://www.latamairlines.com/us/en/destinations/colombia/flights-from-bogota-to-cartagena','Directional BOG–CTG route, with nonstop offers on published sample dates; not availability or timing for the traveller’s dates.')},
  {from:'osaka',to:'seoul',source:route('korean-air:osaka-seoul','Korean Air — Osaka to Seoul','https://www.koreanair.com/flights/en/flights-from-osaka-to-seoul','Published directional Osaka (KIX) to Seoul (ICN/GMP) route offers support this city corridor, not nonstop service, journey timing or availability for the traveller’s dates.','2026-10-21')},
+ {from:'seoul',to:'osaka',source:route('korean-air:seoul-osaka','Korean Air — Seoul to Osaka','https://www.koreanair.com/flights/en/flights-from-seoul-to-osaka','Published directional Seoul (ICN/GMP) to Osaka (KIX) route offers support this city corridor, not nonstop service, journey timing or availability for the traveller’s dates.','2026-10-21')},
 ];
 
 /** Called only after the shared geographic guard; never relabels a saved place. */

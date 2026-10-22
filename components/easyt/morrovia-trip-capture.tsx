@@ -105,6 +105,8 @@ export type HomepageCaptureEntry = {
   budget: "value" | "mid" | "high" | null;
   onBudgetChange: (value: "value" | "mid" | "high" | null) => void;
   datesChosen: boolean;
+  dateTypedDraft?: Partial<Record<"start" | "end", string>>;
+  onDateTypedDraftChange?: (boundary: "start" | "end", raw: string) => void;
   onDatesClear: () => void;
 };
 
@@ -261,7 +263,7 @@ export function MorroviaTripCapture({
     (order[next] === "stops" ? stopsTabRef : describeTabRef).current?.focus();
   };
   const submitAction = <EasyTButton type="submit" size="large" icon={homepageEntry ? Search : undefined} loading={loading} disabled={disabled}>{loading && !homepageEntry ? text.checking : <>{text.continue} <ArrowRight aria-hidden="true" /></>}</EasyTButton>;
-  const homepageDates = homepageEntry ? <MorroviaDatePicker className={styles.utilityCell} fieldPresentation="planner" mode="range" locale={language} combinedLabel={text.travelDates} clearLabel={text.clearDates} startLabel={text.startDate} endLabel={text.endDate} startValue={startDate} endValue={endDate} disabled={disabled || loading} onChange={onDatesChange} onClear={homepageEntry.onDatesClear} /> : null;
+  const homepageDates = homepageEntry ? <MorroviaDatePicker className={styles.utilityCell} fieldPresentation="planner" mode="range" locale={language} combinedLabel={text.travelDates} clearLabel={text.clearDates} startLabel={text.startDate} endLabel={text.endDate} startValue={startDate} endValue={endDate} minToday typedDraft={homepageEntry.dateTypedDraft} onTypedDraftChange={homepageEntry.onDateTypedDraftChange} disabled={disabled || loading} onChange={onDatesChange} onClear={homepageEntry.onDatesClear} /> : null;
   const homepagePersonalize = homepageEntry ? <div className={styles.utilityCell}>
     <EasyTButton className={plannerFieldButtonClassName} data-morrovia-planner-trigger variant="secondary" disabled={disabled || loading} aria-label={text.personalize} aria-expanded={personalizeOpen} aria-controls={personalizeId} onClick={() => setPersonalizeOpen((current) => !current)}><MorroviaPlannerFieldContent label={text.personalize} value={personalizationSummary || text.personalizeSummary} icon={SlidersHorizontal} /></EasyTButton>
   </div> : null;

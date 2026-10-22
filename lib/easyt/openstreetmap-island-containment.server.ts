@@ -1,3 +1,4 @@
+import { normalizeReviewedIslandBaseCandidates } from './reviewed-island-destinations.server.ts';
 import { countryCodeFor } from './country-registry.ts';
 import { searchPhotonTravelCandidates } from './photon-place.server.ts';
 import { isOvernightBaseEligible, type PlaceProviderCandidate, type PlanningParentConstraint } from './place-intelligence.ts';
@@ -27,11 +28,13 @@ async function geometryBody(response: Response) {
   } finally { await reader.cancel().catch(() => {}); }
 }
 
-/** Existing-provider fact normalization only. No requested parent label, admin
- * hierarchy, rectangle or proximity can replace the physical polygon check. */
+/** Only exact reviewed memberships or physical verification may approve a base.
+ * Labels, administrative hierarchy, rectangles and proximity grant no proof. */
 export async function normalizePhysicalIslandBaseCandidates(candidates: PlaceProviderCandidate[], parent: PlanningParentConstraint, options: { fetchImpl?: typeof fetch; signal?: AbortSignal } = {}): Promise<PlaceProviderCandidate[]> {
   if (!['island', 'archipelago'].includes(parent.placeType)) return candidates;
   if (candidates.length > 16 || parent.parentCountries.length !== 1 || !countryCodeFor(parent.parentCountries[0])) return [];
+  const reviewed = normalizeReviewedIslandBaseCandidates(candidates, parent);
+  if (reviewed !== undefined) return reviewed;
   const bundled = normalizeBundledIslandCandidates(candidates, parent);
   if (bundled !== undefined) return bundled;
   return normalizeLivePhysicalIslandBaseCandidates(candidates, parent, options);

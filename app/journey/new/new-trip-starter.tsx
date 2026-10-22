@@ -19,6 +19,7 @@ import { MorroviaRecoveryFeedback } from "@/components/easyt/morrovia-feedback";
 import { EasyTButton, EasyTLinkButton } from "@/components/easyt/easyt-controls";
 import { FileSpreadsheet } from "lucide-react";
 import styles from "./trip-builder.module.css";
+import { homepageSearchDateIssue, searchDateIssueMessage, type SearchDateDraft } from "@/lib/easyt/search-dates";
 
 function emptyInput(ownerId: string | null): HomepageInputSnapshot {
   return {
@@ -56,6 +57,12 @@ export function NewTripStarter({ ownerId, language, travelProfile, onSubmit }: {
   const { start: startDate, end: endDate } = homepageVisibleDateRange(snapshot);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const dateTypedDraftRef = useRef<SearchDateDraft>({});
+  const [dateTypedDraft, setDateTypedDraft] = useState<SearchDateDraft>({});
+  const updateDateTypedDraft = (next: SearchDateDraft) => {
+    dateTypedDraftRef.current = next;
+    setDateTypedDraft(next);
+  };
 
   useEffect(() => {
     mountedRef.current = true;
@@ -248,6 +255,11 @@ export function NewTripStarter({ ownerId, language, travelProfile, onSubmit }: {
     }
     const prepared = homepageSnapshotForStopSubmission(snapshotRef.current);
     if (prepared !== snapshotRef.current) update(() => prepared);
+    const dateIssue = homepageSearchDateIssue(snapshotRef.current, dateTypedDraftRef.current);
+    if (dateIssue) {
+      setError(searchDateIssueMessage(dateIssue, language));
+      return;
+    }
     submitInFlightRef.current = true;
     const submitted = snapshotRef.current;
     const isCurrent = () => snapshotRef.current.revision === submitted.revision
@@ -331,7 +343,15 @@ export function NewTripStarter({ ownerId, language, travelProfile, onSubmit }: {
       budget: snapshot.budget.state === "selected" ? snapshot.budget.value : null,
       onBudgetChange: (budget) => update((current) => ({ ...current, budget: budget ? { state: "selected", value: budget } : { state: "cleared" } })),
       datesChosen: snapshot.dates.state === "selected",
-      onDatesClear: () => update((current) => ({ ...current, dates: { state: "cleared" } })),
+      dateTypedDraft,
+      onDateTypedDraftChange: (boundary, raw) => {
+        update(current => current);
+        updateDateTypedDraft({ ...dateTypedDraftRef.current, [boundary]: raw });
+      },
+      onDatesClear: () => {
+        updateDateTypedDraft({});
+        update((current) => ({ ...current, dates: { state: "cleared" } }));
+      },
     }}
     endpointEntry={<JourneyEndpointsEditor
       language={language} startValue={startInput} endValue={endInput} endSelection={journeyEnd}
@@ -344,7 +364,10 @@ export function NewTripStarter({ ownerId, language, travelProfile, onSubmit }: {
       onEndModeChange={(mode) => { setEndInput(""); update((current) => ({ ...current, journeyEnd: { state: "selected", value: { mode } } })); }}
     />}
     startDate={startDate} endDate={endDate}
-    onDatesChange={(range) => update((current) => ({ ...current, dates: { state: "selected", value: range } }))}
+    onDatesChange={(range) => {
+      updateDateTypedDraft({});
+      update((current) => ({ ...current, dates: { state: "selected", value: range } }));
+    }}
     travellers={travellers} onTravellersChange={(value) => update((current) => ({ ...current, travellers: { state: "selected", value } }))}
     interests={interests} onInterestsChange={(value: TripInterest[]) => update((current) => ({ ...current, interests: { state: "selected", value } }))}
     travelProfile={travelProfile} onSubmit={submit} loading={loading} error={error}

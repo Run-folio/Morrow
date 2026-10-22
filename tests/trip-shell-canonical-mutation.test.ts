@@ -381,13 +381,13 @@ test("canonical baseline selection is owner-scoped, monotonic and accepts normal
   assert.equal(newestTripMutationCanonical(normalized, rendered).updatedAt, normalized.updatedAt);
 });
 
-test("rename identity preserves normalization, clearing and the geographic fallback", () => {
+test("rename identity preserves normalization, clearing and the destination fallback", () => {
   const base = trip();
   const renamed = renameTripIdentity(base, "  Café   日本  ");
   assert.equal(tripCustomTitle(renamed), "Café 日本");
   assert.deepEqual(renamed.stops, base.stops);
   assert.deepEqual(renamed.planItems, base.planItems);
-  assert.equal(tripDisplayTitle(renameTripIdentity(renamed, "")), "Japan");
+  assert.equal(tripDisplayTitle(renameTripIdentity(renamed, "")), "Tokyo");
 });
 
 test("clean signed-in rename acknowledges only its exact recovery and reloads canonical B", async () => {

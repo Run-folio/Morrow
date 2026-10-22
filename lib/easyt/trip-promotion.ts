@@ -370,12 +370,14 @@ export function duplicateTripDocument(
   input: { id: string; now: string; nextId: () => string; title?: string },
 ): EasyTTrip {
   source = prepareTripDocumentForWrite(source);
+  const title = input.title ?? `${source.title} copy`;
   const stopIds = new Map(source.stops.map((stop) => [stop.id, `${input.id}-stop-${input.nextId()}`]));
   const remapped = remapTripStopReferences({
     ...source,
     id: input.id,
     ownerId: null,
-    title: input.title ?? `${source.title} copy`,
+    title,
+    brief: { ...source.brief, customTitle: title },
     status: "draft",
   }, stopIds, source);
   const legIds = new Map(remapped.legs.map(leg => [leg.id, `${input.id}-leg-${input.nextId()}`]));

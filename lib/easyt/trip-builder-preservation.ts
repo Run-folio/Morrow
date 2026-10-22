@@ -1,19 +1,23 @@
 import { cascadeTripSchedule } from "./cascade.ts";
 import { reconcileAuthoredDayState } from "./trip-authored-day-state.ts";
 import type { EasyTTrip } from "./trip.ts";
+import { tripCustomTitle } from "./trip-display.ts";
 
 /** Carry canonical traveller state through the Builder's derived document rebuild. */
 export function preserveBuilderCanonicalState(hydrated: EasyTTrip | null, rebuilt: EasyTTrip): EasyTTrip {
   if (!hydrated || hydrated.id !== rebuilt.id) return cascadeTripSchedule(rebuilt).trip;
   const activeStopIds = new Set(rebuilt.stops.map((stop) => stop.id));
   const bookings = hydrated.brief.bookings;
+  const customTitle = tripCustomTitle(hydrated);
   const preserved: EasyTTrip = {
     ...rebuilt,
+    ...(customTitle ? { title: hydrated.title } : {}),
     ownerId: hydrated.ownerId,
     archivedFromStatus: hydrated.archivedFromStatus,
     changeHistory: hydrated.changeHistory,
     brief: {
       ...rebuilt.brief,
+      ...(customTitle ? { customTitle: hydrated.brief.customTitle ?? customTitle } : {}),
       retainedAuthoredContent: hydrated.brief.retainedAuthoredContent,
       cascadeStatus: hydrated.brief.cascadeStatus,
       dayNotes: hydrated.brief.dayNotes,

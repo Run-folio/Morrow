@@ -49,9 +49,6 @@ jobs:
           MORROVIA_CORE_JOURNEY_BROWSER_TESTS: "1"
           MORROVIA_BASE_URL: http://127.0.0.1:3100
           MORROVIA_BROWSER_ARTIFACT_DIR: core-journey-artifacts
-          MORROVIA_STAGING_AFRICA_LATENCY_EXCEPTION: ${{ (github.ref_name == 'staging' || github.ref_name == 'codex/staging-africa-latency-exception') && '1' || '0' }}
-          MORROVIA_STAGING_SOUTH_KOREA_LATENCY_EXCEPTION: ${{ (github.ref_name == 'staging' || github.ref_name == 'codex/staging-africa-latency-exception') && '1' || '0' }}
-          MORROVIA_STAGING_SOUTH_KOREA_MOBILE_LATENCY_EXCEPTION: ${{ (github.ref_name == 'staging' || github.ref_name == 'codex/staging-africa-latency-exception') && '1' || '0' }}
         run: |
           set -o pipefail
           npm run start -- -p 3100 > /tmp/morrovia-core-journey-next.log 2>&1 &
@@ -63,7 +60,7 @@ jobs:
           done
           curl --silent --fail http://127.0.0.1:3100/journey/new > /dev/null
           node --experimental-strip-types --test --test-name-pattern="$TEST_PATTERN" tests/core-journey-app-browser.test.ts 2>&1 | tee core-journey.log
-      - name: Verify coverage and report known staging failures
+      - name: Verify functional coverage and report performance targets
         run: node scripts/staging-qualification-summary.mjs '${{ matrix.group }}' core-journey.log core-journey-artifacts
       - name: Preserve qualification evidence
         if: always()

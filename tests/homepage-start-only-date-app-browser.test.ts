@@ -18,6 +18,8 @@ test("Homepage start-only dates remain an unconfirmed suggestion through Builder
   const context = await browser.newContext({ viewport: { width: 390, height: 844 } });
   try {
     const page = await context.newPage();
+    // Keep the fixture calendar stable without pausing timers or performance.now.
+    await page.clock.setFixedTime("2026-10-01T12:00:00Z");
     page.setDefaultTimeout(10000);
     await page.route("**/api/**", async (route:Route) => {
       const request=route.request(),path=new URL(request.url()).pathname;
@@ -78,6 +80,8 @@ test("Homepage start plus a stated two-week duration derives the exact end", { s
   const context = await browser.newContext({ viewport: { width: 390, height: 844 } });
   try {
     const page = await context.newPage();
+    // Keep the fixture calendar stable without pausing timers or performance.now.
+    await page.clock.setFixedTime("2026-10-01T12:00:00Z");
     page.setDefaultTimeout(10000);
     await page.route("**/api/**", async (route:Route) => {
       const request=route.request(),path=new URL(request.url()).pathname;
@@ -120,6 +124,8 @@ test("Homepage complete dates stay authoritative through Builder reload", { skip
   const context = await browser.newContext({ viewport: { width: 390, height: 844 } });
   try {
     const page = await context.newPage();
+    // Keep the fixture calendar stable without pausing timers or performance.now.
+    await page.clock.setFixedTime("2026-10-01T12:00:00Z");
     page.setDefaultTimeout(10000);
     await page.route("**/api/**", async (route:Route) => {
       const request=route.request(),path=new URL(request.url()).pathname;

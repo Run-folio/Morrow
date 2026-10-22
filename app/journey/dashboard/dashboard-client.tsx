@@ -264,8 +264,8 @@ export default function DashboardClient({ trips, stamps, ownerId }: { trips: Eas
           tripId: recovery.tripId,
           tripTitle: tripDisplayTitle(recovery.trip),
           detail: recovery.conflictReason === "cloud-deleted"
-            ? "This trip is no longer in the cloud, but its device copy remains protected for review."
-            : "A device copy remains protected, but its cloud trip is not in this dashboard.",
+            ? "This trip was previously reported as deleted from your account. Its device copy is available to review."
+            : "This trip is not in this dashboard. Its account save status is unconfirmed. Review the device copy.",
         };
       }
       if (!isCurrent()) return;
@@ -327,8 +327,8 @@ export default function DashboardClient({ trips, stamps, ownerId }: { trips: Eas
         <MorroviaStatusBanner
           className={styles.dashboardNotice}
           tone="warning"
-          title={orphanRecoveryIssues.length === 1 ? `${orphanRecoveryIssues[0].tripTitle} has a protected device copy` : `${orphanRecoveryIssues.length} protected device copies are available`}
-          detail={orphanRecoveryIssues.length === 1 ? orphanRecoveryIssues[0].detail : "Their cloud trips are not currently in this dashboard. The device copies remain safe until you choose to review them."}
+          title={orphanRecoveryIssues.length === 1 ? `${orphanRecoveryIssues[0].tripTitle}: device copy to review` : `${orphanRecoveryIssues.length} device copies to review`}
+          detail={orphanRecoveryIssues.length === 1 ? orphanRecoveryIssues[0].detail : "These trips are not in this dashboard. Their account save status is unconfirmed. Review each device copy."}
           actions={orphanRecoveryIssues.length === 1
             ? <EasyTLinkButton size="small" variant="secondary" href={tripSyncRecoveryPath(orphanRecoveryIssues[0].tripId)}>Review device copy</EasyTLinkButton>
             : <EasyTButton size="small" variant="secondary" aria-expanded={showDetachedRecoveries} aria-controls="dashboard-detached-recoveries" onClick={() => setShowDetachedRecoveries((shown) => !shown)}>{showDetachedRecoveries ? "Hide device copies" : "Review device copies"}</EasyTButton>}

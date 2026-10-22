@@ -14,23 +14,23 @@ function displayTrip(origin: string, names: string[], title: string, countries: 
   };
 }
 
-test("formats deterministic builder titles from resolved geographic identity rather than the route", () => {
+test("formats known generated titles from the first three destination stops", () => {
   assert.equal(
     tripDisplayTitle(displayTrip("Cusco", ["Cusco", "Sacred Valley", "Arequipa"], "Cusco to Cusco & Sacred Valley & Arequipa", ["Peru", "Peru", "Peru"])),
-    "Peru",
+    "Cusco & Sacred Valley & Arequipa",
   );
   assert.equal(
     tripDisplayTitle(displayTrip("Bangkok", ["Siem Reap", "Phnom Penh", "Ho Chi Minh City"], "Bangkok to Siem Reap & Phnom Penh & Ho Chi Minh City", ["Cambodia", "Cambodia", "Vietnam"])),
-    "Cambodia & Vietnam",
+    "Siem Reap & Phnom Penh & Ho Chi Minh City",
   );
-  assert.equal(tripDisplayTitle(displayTrip("London", ["Paris"], "London to Paris", ["France"])), "France");
-  assert.equal(tripDisplayTitle(displayTrip("London", ["Paris", "Bruges", "Amsterdam", "Cologne"], "legacy", ["France", "Belgium", "Netherlands", "Germany"], null)), "France, Belgium + 2 more");
+  assert.equal(tripDisplayTitle(displayTrip("London", ["Paris"], "London to Paris", ["France"])), "Paris");
+  assert.equal(tripDisplayTitle(displayTrip("London", ["Paris", "Bruges", "Amsterdam", "Cologne"], "legacy", ["France", "Belgium", "Netherlands", "Germany"], null)), "Paris & Bruges & Amsterdam");
 });
 
 test("preserves a traveller-authored title", () => {
   assert.equal(tripDisplayTitle(displayTrip("London", ["Paris"], "Anniversary by rail")), "Anniversary by rail");
   assert.equal(tripDisplayTitle(displayTrip("London", ["Paris"], "old", ["France"], "春の記念旅行 — París")), "春の記念旅行 — París");
-  assert.equal(tripDisplayTitle(displayTrip("London", ["Paris"], "old", ["France"], null)), "France");
+  assert.equal(tripDisplayTitle(displayTrip("London", ["Paris"], "old", ["France"], null)), "Paris");
 });
 
 test("renaming changes only identity fields and clearing restores the geographic title", () => {
@@ -61,27 +61,27 @@ test("renaming changes only identity fields and clearing restores the geographic
   assert.equal(renamed.updatedAt, source.updatedAt, "the canonical revision remains the CAS token sent to the repository");
   const cleared = renameTripIdentity(renamed, "  ");
   assert.equal(cleared.brief.customTitle, null);
-  assert.equal(tripDisplayTitle(cleared), "France & Belgium");
+  assert.equal(tripDisplayTitle(cleared), "Paris & Bruges");
 });
 
-test("generated identity covers country depth, route endpoints, repeats, fallback and Unicode deterministically", () => {
-  assert.equal(tripDisplayTitle(displayTrip("London", ["Tokyo"], "London to Tokyo", ["Japan"])), "Japan", "pure origin excluded");
-  assert.equal(tripDisplayTitle(displayTrip("London", ["London", "Paris"], "London to London & Paris", ["United Kingdom", "France"])), "United Kingdom & France", "a genuine origin stay is included");
-  assert.equal(tripDisplayTitle(displayTrip("London", ["Paris", "Bruges"], "London to Paris & Bruges", ["France", "Belgium"])), "France & Belgium", "endpoint-only return is absent from the stop model");
-  assert.equal(tripDisplayTitle(displayTrip("London", ["Tokyo", "Kyoto", "Osaka"], "London to Tokyo & Kyoto & Osaka", ["Japan", "Japan", "Japan"])), "Japan", "country repeats deduplicate");
-  assert.equal(tripDisplayTitle(displayTrip("London", ["Tokyo", "Tokyo"], "London to Tokyo & Tokyo", ["", ""])), "Tokyo", "unresolved repeated city deduplicates");
+test("generated identity preserves ordered destination occurrences, origin stays and Unicode", () => {
+  assert.equal(tripDisplayTitle(displayTrip("London", ["Tokyo"], "London to Tokyo", ["Japan"])), "Tokyo", "pure origin excluded");
+  assert.equal(tripDisplayTitle(displayTrip("London", ["London", "Paris"], "London to London & Paris", ["United Kingdom", "France"])), "London & Paris", "a genuine origin stay is included");
+  assert.equal(tripDisplayTitle(displayTrip("London", ["Paris", "Bruges"], "London to Paris & Bruges", ["France", "Belgium"])), "Paris & Bruges", "endpoint-only return is absent from the stop model");
+  assert.equal(tripDisplayTitle(displayTrip("London", ["Tokyo", "Kyoto", "Osaka"], "London to Tokyo & Kyoto & Osaka", ["Japan", "Japan", "Japan"])), "Tokyo & Kyoto & Osaka", "destination stops retain their names");
+  assert.equal(tripDisplayTitle(displayTrip("London", ["Tokyo", "Tokyo"], "London to Tokyo & Tokyo", ["", ""])), "Tokyo & Tokyo", "intentional destination repeats remain");
   assert.equal(tripDisplayTitle(displayTrip("London", ["東京", "Kyoto"], "London to 東京 & Kyoto", ["", ""])), "東京 & Kyoto", "unresolved Unicode falls back to destinations");
-  assert.equal(tripDisplayTitle(displayTrip("London", ["A", "B", "C"], "London to A & B & C", ["The United Kingdom of Example Islands", "The Federated Republic of Example Mountains", "The Commonwealth of Example Coast"])), "The United Kingdom of Example Islands, The Federated Republic of Example Mountains & The Commonwealth of Example Coast");
-  assert.equal(tripDisplayTitle(displayTrip("London", ["Tokyo", "Shanghai", "Hanoi"], "London to Tokyo & Shanghai & Hanoi", ["Japan", "China", "Vietnam"])), "Japan, China & Vietnam");
-  assert.equal(tripDisplayTitle(displayTrip("London", ["Tokyo", "Shanghai", "Hanoi", "Bangkok"], "London to Tokyo & Shanghai & Hanoi & Bangkok", ["Japan", "China", "Vietnam", "Thailand"])), "Japan, China + 2 more");
+  assert.equal(tripDisplayTitle(displayTrip("London", ["A", "B", "C"], "London to A & B & C", ["The United Kingdom of Example Islands", "The Federated Republic of Example Mountains", "The Commonwealth of Example Coast"])), "A & B & C");
+  assert.equal(tripDisplayTitle(displayTrip("London", ["Tokyo", "Shanghai", "Hanoi"], "London to Tokyo & Shanghai & Hanoi", ["Japan", "China", "Vietnam"])), "Tokyo & Shanghai & Hanoi");
+  assert.equal(tripDisplayTitle(displayTrip("London", ["Tokyo", "Shanghai", "Hanoi", "Bangkok"], "London to Tokyo & Shanghai & Hanoi & Bangkok", ["Japan", "China", "Vietnam", "Thailand"])), "Tokyo & Shanghai & Hanoi");
 });
 
 test("route edits update automatic identity but never replace a custom override", () => {
   const automatic = displayTrip("London", ["Tokyo"], "London to Tokyo", ["Japan"], null);
   const edited = { ...automatic, stops: [...automatic.stops, { ...automatic.stops[0]!, id: "shanghai", order: 1, name: "Shanghai", country: "China" }] };
-  assert.equal(tripDisplayTitle(edited), "Japan & China");
+  assert.equal(tripDisplayTitle(edited), "Tokyo & Shanghai");
   const custom = { ...edited, title: "Our spring trip", brief: { ...edited.brief, customTitle: "Our spring trip" } };
   const customRouteEdit = { ...custom, stops: [...custom.stops, { ...custom.stops[0]!, id: "hanoi", order: 2, name: "Hanoi", country: "Vietnam" }] };
   assert.equal(tripDisplayTitle(customRouteEdit), "Our spring trip");
-  assert.equal(tripDisplayTitle({ ...customRouteEdit, brief: { ...customRouteEdit.brief, customTitle: null } }), "Japan, China & Vietnam");
+  assert.equal(tripDisplayTitle({ ...customRouteEdit, brief: { ...customRouteEdit.brief, customTitle: null } }), "Tokyo & Shanghai & Hanoi");
 });

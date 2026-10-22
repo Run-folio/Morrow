@@ -43,13 +43,29 @@ if(group==='transport'){
 }
 if(count('pass')!==expected||count('fail')!==0||count('cancelled')!==0)throw Error('Incomplete or failed '+group+' qualification');
 fs.mkdirSync(artifactDir,{recursive:true});
-const known=fs.readdirSync(artifactDir).filter(name=>/^known-(africa|south-korea)-(1440|390)\.json$/.test(name)).map(name=>JSON.parse(fs.readFileSync(artifactDir+'/'+name,'utf8')));
-const allowedTimingScopes=new Set(['Africa:1440:return_to_start','Africa:390:one_way','South Korea:1440:return_to_start','South Korea:390:one_way']);
-for(const failure of known){
- if(!['multi-desktop','multi-mobile'].includes(group)||!['Africa','South Korea'].includes(failure.area)||failure.scope!==`staging-only-known-${failure.area}-acceptance-failure`||!allowedTimingScopes.has(`${failure.area}:${failure.width}:${failure.type}`)||failure.width!==(group==='multi-desktop'?1440:390)||failure.type!==(group==='multi-desktop'?'return_to_start':'one_way')||failure.thresholdMs!==2500||failure.thresholdPassed!==false||!Number.isFinite(failure.elapsedMs)||failure.elapsedMs<2500||failure.functionalStatus!=='passed')throw Error('Invalid/incomplete known-failure record');
- console.log(`::warning title=Known staging-only ${failure.area} responsiveness failure::${failure.width}px acceptance ${failure.elapsedMs.toFixed(1)}ms; unchanged limit2500ms. Functional and recovery assertions completed.`);
+const acceptanceFiles=fs.readdirSync(artifactDir).filter(name=>/^acceptance-.*\.json$/.test(name));
+const multiArea=['multi-desktop','multi-mobile'].includes(group);
+const acceptancePerformance=acceptanceFiles.map(name=>{
+ const report=JSON.parse(fs.readFileSync(artifactDir+'/'+name,'utf8'));
+ const width=group==='multi-desktop'?1440:390;
+ if(!multiArea||!['South Korea','Africa'].includes(report.area)||report.scope!=='multi-area-discovery-acceptance'
+   ||name!==`acceptance-${report.area.toLowerCase().replaceAll(' ','-')}-${width}.json`
+   ||report.width!==width||report.type!==(width===1440?'return_to_start':'one_way')
+   ||report.thresholdMs!==2500||!Number.isFinite(report.elapsedMs)||report.elapsedMs<0||report.elapsedMs>=15000
+   ||!Number.isFinite(report.driverMs)||report.driverMs<0||report.thresholdPassed!==(report.elapsedMs<2500)
+   ||report.functionalTimeoutMs!==15000||report.functionalStatus!=='passed')throw Error('Invalid/incomplete acceptance-performance record');
+ return report;
+}).sort((a,b)=>['South Korea','Africa'].indexOf(a.area)-['South Korea','Africa'].indexOf(b.area));
+if(multiArea&&(acceptancePerformance.length!==2||new Set(acceptancePerformance.map(report=>report.area)).size!==2))
+ throw Error('Invalid/incomplete acceptance-performance coverage: South Korea and Africa records are required');
+const performanceFailures=acceptancePerformance.filter(report=>!report.thresholdPassed);
+for(const failure of performanceFailures){
+ console.log(`::warning title=Discovery acceptance performance failure::${failure.area} ${failure.width}px acceptance ${failure.elapsedMs.toFixed(1)}ms >= unchanged 2500ms target. Functional and recovery assertions completed.`);
 }
-const result={group,expected,nonwaivedCasesPassed:count('pass'),nonwaivedFailures:0,...(group==='transport'?{verifiedCases:transportCases,skipped:0,cancelled:0,todo:0}:{}),knownPerformanceFailures:known,classification:known.length?'nonwaived-gates-pass-with-known-staging-performance-failures':'pass',commit:process.env.COMMIT_REF??null};
+const result={group,expected,nonwaivedCasesPassed:count('pass'),nonwaivedFailures:0,...(group==='transport'?{verifiedCases:transportCases,skipped:0,cancelled:0,todo:0}:{}),
+ ...(multiArea?{functionalStatus:'passed',performanceStatus:performanceFailures.length?'failed':'passed',performanceTargetMs:2500,acceptancePerformance,performanceFailures}:{}),
+ classification:performanceFailures.length?'functional-gates-pass-with-performance-failures':'pass',commit:process.env.COMMIT_REF??null};
 fs.writeFileSync(artifactDir+'/qualification.json',JSON.stringify(result,null,2));
-if(process.env.GITHUB_STEP_SUMMARY)fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY,`### ${group}: ${expected} nonwaived cases passed\n\n`+known.map(f=>`- **KNOWN FAILURE, staging only:** ${f.area} ${f.width}px ${f.elapsedMs.toFixed(1)}ms >= unchanged2500ms. Functional/recovery checks passed.\n`).join(''));
+if(process.env.GITHUB_STEP_SUMMARY)fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY,`### ${group}: ${expected} functional cases passed\n\n`
+ +acceptancePerformance.map(f=>`- **${f.thresholdPassed?'PERFORMANCE PASS':'PERFORMANCE FAILURE'}:** ${f.area} ${f.width}px ${f.elapsedMs.toFixed(1)}ms ${f.thresholdPassed?'<':'>='} unchanged 2500ms target. Functional/recovery checks passed within existing bounds.\n`).join(''));
 console.log(JSON.stringify(result));

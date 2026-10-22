@@ -28,6 +28,8 @@ type SharedDatePickerProps = {
   locale?: "en" | "es";
   max?: string;
   min?: string;
+  /** Opt in for new searches; existing and historical trip editors stay unrestricted. */
+  minToday?: boolean;
   name?: string;
   size?: PickerSize;
   /** Optional caller-owned unaccepted text; canonical date values remain separate. */
@@ -207,6 +209,7 @@ export function MorroviaDatePicker(props: MorroviaDatePickerProps) {
   const isRange = props.mode === "range";
   const currentStart = isRange ? props.startValue : props.value;
   const currentEnd = isRange ? props.endValue : "";
+  const minimumDate = () => [props.min, props.minToday ? todayLocalIso() : undefined].filter(Boolean).sort().at(-1);
   const [open, setOpen] = useState(Boolean(props.defaultOpen));
   const [portalReady, setPortalReady] = useState(false);
   const [activeBoundary, setActiveBoundary] = useState<DateBoundary>("start");
@@ -301,7 +304,7 @@ export function MorroviaDatePicker(props: MorroviaDatePickerProps) {
   }, [activeBoundary, currentEnd, currentStart, month, open]);
 
   const pick = (value: string) => {
-    if (!isWithin(value, props.min, props.max)) return;
+    if (!isWithin(value, minimumDate(), props.max)) return;
     if (!isRange) {
       props.onChange(value);
       close(true);
@@ -338,8 +341,8 @@ export function MorroviaDatePicker(props: MorroviaDatePickerProps) {
     }
   };
   const calendarMin = isRange && activeBoundary === "end"
-    ? [props.min, props.startValue].filter(Boolean).sort().at(-1)
-    : props.min;
+    ? [minimumDate(), props.startValue].filter(Boolean).sort().at(-1)
+    : minimumDate();
   const panelLabel = isRange && combinedRange
     ? `${props.combinedLabel}: ${copy[locale].chooseDate}`
     : isRange

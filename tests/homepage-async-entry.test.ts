@@ -13,6 +13,7 @@ import {homepageInputStorageKey} from '../lib/easyt/private-browser-context.ts';
 import {prepareAcceptedBuilderEdit} from '../lib/easyt/trip-builder-edit.ts';
 import {builderDocumentFingerprint} from '../lib/easyt/trip-builder-document-commit.ts';
 import {MemoryRecoveryDriver} from './helpers/durable-recovery-driver.ts';
+import {homepageSearchDateIssue,searchDateIssueMessage} from '../lib/easyt/search-dates.ts';
 
 /** Execute the actual component callbacks with disposable in-memory dependencies. */
 const source=readFileSync(new URL('../app/journey/home/home-trip-starter.tsx',import.meta.url),'utf8');
@@ -26,7 +27,10 @@ function actualCallback(name:'hydrate'|'submit'|'retryRecoveryRead'|'resumePendi
   };
   walk(ast);assert.ok(callback,`Actual ${name} callback must exist`);
   const script=ts.transpileModule(`const callback=${callback.getText(ast)};`,{compilerOptions:{target:ts.ScriptTarget.ES2022}}).outputText;
-  return new Function('scope',`with(scope){const inputBlocked=scope.inputBlocked ?? scope.recoveryBlocked;${script}return callback;}` )({homepageSnapshotForStopSubmission,...scope}) as ()=>unknown;
+  return new Function('scope',`with(scope){const inputBlocked=scope.inputBlocked ?? scope.recoveryBlocked;${script}return callback;}` )({homepageSnapshotForStopSubmission,
+    // This suite exercises October intake/recovery fixtures against a fixed local calendar.
+    homepageSearchDateIssue:(snapshot:Parameters<typeof homepageSearchDateIssue>[0],draft:Parameters<typeof homepageSearchDateIssue>[1])=>homepageSearchDateIssue(snapshot,draft,new Date(2026,9,1,12)),
+    searchDateIssueMessage,dateTypedDraftRef:{current:{}},updateDateTypedDraft:()=>{},...scope}) as ()=>unknown;
 }
 const tick=()=>new Promise<void>(done=>setImmediate(done));
 function deferred<T>(){let resolve!:(value:T)=>void;return {promise:new Promise<T>(done=>{resolve=done}),resolve:(value:T)=>resolve(value)}}

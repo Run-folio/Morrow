@@ -12,6 +12,8 @@ async function fixture(width:number){
  page.setDefaultTimeout(10000);page.on('pageerror',(e:Error)=>errors.push(e.message));
  await page.addInitScript(({key,s,consentKey,consent}:any)=>{if(sessionStorage.getItem('seeded-compact'))return;sessionStorage.setItem('seeded-compact','1');localStorage.setItem(key,JSON.stringify({snapshot:s}));localStorage.setItem(consentKey,JSON.stringify(consent))},{key,s:snapshot(),consentKey:PRIVACY_CONSENT_STORAGE_KEY,consent:createPrivacyConsentRecord({analytics:false,affiliateTracking:false},'2026-10-08T12:00:00Z')});
  await page.route('**/api/**',async(route:any)=>{const path=new URL(route.request().url()).pathname;requests.push(path);await route.fulfill({status:path.includes('/auth/')?200:404,contentType:'application/json',body:JSON.stringify(path.includes('/auth/')?null:{error:'Isolated layout fixture'})})});
+ // Fixed calendar date only; timers/performance remain real for existing fixtures.
+ await page.clock.setFixedTime('2026-10-01T12:00:00Z');
  await page.goto(base,{waitUntil:'domcontentloaded'});await page.getByRole('combobox',{name:'Start from',exact:true}).waitFor();await page.waitForFunction(()=>document.querySelector<HTMLInputElement>('[data-homepage-origin] input')?.value==='London');
  const stored=()=>page.evaluate((k:string)=>JSON.parse(localStorage.getItem(k)!).snapshot,key);
  return {page,errors,requests,stored,close:()=>browser.close()};

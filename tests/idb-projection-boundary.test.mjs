@@ -1,6 +1,4 @@
-// Prospective projection requirements. Production admission is deliberately unchanged.
-// With production imports, IDB negatives stop at categorical deferral and the
-// positive control stays red. The test-only candidate path qualifies admission.
+// Actual adapter/session projection boundaries; all storage and providers are isolated.
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {harness,accepted,copies,retained,coldRead} from './helpers/idb-projection-boundary.mjs';
@@ -15,7 +13,7 @@ function inputCopies(h){
 }
 async function runRoute(h){await h.run();await h.session.waitForDeviceWrites();return h.trace.writes.filter(w=>w.projection).at(-1);}
 
-test('RED: existing IDB body and unchanged IDB input complete and cold-reopen without rewriting input',{timeout:15000},async()=>{
+test('existing IDB body and unchanged IDB input complete and cold-reopen without rewriting input',{timeout:15000},async()=>{
  const h=await harness('indexeddb-body');
  try{
   await accepted(h);const beforeInput=inputCopies(h),originals=structuredClone(h.model.data.get('generations'));
@@ -41,11 +39,12 @@ test('control: ordinary authored IDB edits retain ancestors and cold-reopen',{ti
   const cold=await coldRead(h);assert.equal(cold.kind,'found');assert.deepEqual(cold.trip,h.session.getSnapshot().trip);
   assert.equal(h.trace.accountWrites,0);}finally{h.close();}
 });
-test('mixed native-body/IDB-input remains deferred on two deliberate attempts',{timeout:15000},async()=>{
+test('mixed native-body/IDB-input completes once with exact raw input and immutable ancestry',{timeout:15000},async()=>{
  const h=await harness('indexeddb-input');try{await accepted(h);const before=copies(h);const first=await runRoute(h);
-  assert.equal(first.result.projectionDeferred,true);assert.equal(first.result.writeAttempted,false);await retained(h,before);
-  await h.session.resumeNecessaryWork();await h.session.waitForDeviceWrites();assert.equal(h.trace.providerCalls,2);await retained(h,before);
-  const retry=h.trace.writes.filter(w=>w.projection).at(-1);assert.equal(retry.result.projectionDeferred,true);assert.equal(retry.result.writeAttempted,false);
+  assert.equal(first.result.stored,true);assert.deepEqual(h.session.getSnapshot().draft,before.draft);
+  for(const [key,raw]of before.domain.get('generations'))assert.equal(h.model.data.get('generations').get(key),raw);
+  const completed=copies(h);await h.session.resumeNecessaryWork();await h.session.waitForDeviceWrites();
+  assert.equal(h.trace.reconcileCalls,1);await retained(h,completed);
  }finally{h.close();}
 });
 
@@ -65,7 +64,7 @@ const forbidden={
  'missing bound input metadata':({options})=>{options.entry.input=null;},
  'corrupt input envelope':({options})=>{options.entries[0].raw='{broken';},
 };
-for(const mode of ['native','indexeddb-body'])for(const [name,change] of Object.entries(forbidden))test(`${mode}: rejects ${name} without changing any durable copy`,{timeout:15000},async()=>{
+for(const mode of ['native','indexeddb-body','indexeddb-input'])for(const [name,change] of Object.entries(forbidden))test(`${mode}: rejects ${name} without changing any durable copy`,{timeout:15000},async()=>{
  const h=await harness(mode);try{
   await accepted(h);const before=copies(h);let injected=false;
   h.control.beforeProjectionSave=async state=>{injected=true;change(state);};
@@ -121,7 +120,7 @@ test('prewrite driver unavailability refuses without issuing a write and preserv
  }finally{h.close();}
 });
 
-test('RED: eligible IDB projection that starts then aborts must report writeAttempted, never no-write deferral',{timeout:15000},async()=>{
+test('eligible IDB projection that starts then aborts must report writeAttempted, never no-write deferral',{timeout:15000},async()=>{
  const h=await harness('indexeddb-body');try{await accepted(h);const before=copies(h),run=h.driver.run.bind(h.driver);let targetId=null,started=0;
   h.control.beforeProjectionSave=async({options})=>{targetId=options.writeId;h.model.failAddStore='generations';};
   h.driver.run=(scope,id,mode,decide,entries)=>{if(id===targetId&&mode==='readwrite')started++;return run(scope,id,mode,decide,entries);};

@@ -1,21 +1,28 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { isStagingAfricaLatencyException } from './helpers/staging-africa-latency.ts';
-const staging = { MORROVIA_STAGING_AFRICA_LATENCY_EXCEPTION: '1', GITHUB_ACTIONS: 'true', GITHUB_REF_NAME: 'staging' };
-test('staging exception admits only the two approved Africa acceptance contexts', () => {
-  assert.equal(isStagingAfricaLatencyException('Africa',1440,'return_to_start',staging),true);
-  assert.equal(isStagingAfricaLatencyException('Africa',390,'one_way',staging),true);
-  assert.equal(isStagingAfricaLatencyException('Africa',1440,'return_to_start',{...staging,GITHUB_REF_NAME:'codex/staging-africa-latency-exception'}),true);
+import * as latency from './helpers/staging-africa-latency.ts';
+
+// Replaces the former branch exception with the approved performance reporting contract.
+test('multi-area acceptance exposes a fixed target and bounded completion', () => {
+  assert.equal(typeof latency.createAcceptancePerformanceReport, 'function');
+  assert.equal(latency.ACCEPTANCE_TARGET_MS, 2500);
+  assert.equal(latency.ACCEPTANCE_COMPLETION_TIMEOUT_MS, 15000);
 });
-for (const [label,area,width,type,env] of [
-  ['main','Africa',1440,'return_to_start',{...staging,GITHUB_REF_NAME:'main'}],
-  ['other branch','Africa',1440,'return_to_start',{...staging,GITHUB_REF_NAME:'codex/other'}],
-  ['local','Africa',1440,'return_to_start',{...staging,GITHUB_ACTIONS:undefined}],
-  ['flag absent','Africa',1440,'return_to_start',{...staging,MORROVIA_STAGING_AFRICA_LATENCY_EXCEPTION:undefined}],
-  ['flag false','Africa',1440,'return_to_start',{...staging,MORROVIA_STAGING_AFRICA_LATENCY_EXCEPTION:'0'}],
-  ['South Korea','South Korea',1440,'return_to_start',staging],
-  ['Japan','Japan',1440,'return_to_start',staging],
-  ['other width','Africa',768,'return_to_start',staging],
-  ['unapproved desktop type','Africa',1440,'one_way',staging],
-  ['unapproved mobile type','Africa',390,'return_to_start',staging],
-] as const) test(`staging timing exception refuses ${label}`,()=>assert.equal(isStagingAfricaLatencyException(area,width,type,env),false));
+for (const area of ['South Korea', 'Africa']) for (const [width, type] of [[1440, 'return_to_start'], [390, 'one_way']] as const) {
+  for (const elapsedMs of [0, 2499.9, 2500, 3171.7, 6869.5]) test(`${area} ${width}px reports ${elapsedMs}ms without completing functional checks`, () => {
+    assert.equal(typeof latency.createAcceptancePerformanceReport, 'function');
+    const report = latency.createAcceptancePerformanceReport(area, width, type, elapsedMs, elapsedMs + 20);
+    assert.deepEqual(report, { area, scope: 'multi-area-discovery-acceptance', width, type, elapsedMs, driverMs: elapsedMs + 20,
+      thresholdMs: 2500, thresholdPassed: elapsedMs < 2500, functionalTimeoutMs: 15000, functionalStatus: 'pending' });
+  });
+}
+for (const elapsedMs of [NaN, Infinity, -Infinity, -1, 15000]) test(`invalid or uncompleted elapsed time ${elapsedMs} fails closed`, () => {
+  assert.equal(typeof latency.createAcceptancePerformanceReport, 'function');
+  assert.throws(() => latency.createAcceptancePerformanceReport('Africa', 390, 'one_way', elapsedMs, 5000), /Invalid acceptance timing/);
+});
+for (const [area, width, type] of [['Japan', 390, 'one_way'], ['Africa', 430, 'one_way'], ['South Korea', 390, 'return_to_start']] as const) {
+  test(`unreviewed report context ${area} ${width}px ${type} fails closed`, () => {
+    assert.equal(typeof latency.createAcceptancePerformanceReport, 'function');
+    assert.throws(() => latency.createAcceptancePerformanceReport(area, width, type, 3000, 3020), /Invalid acceptance context/);
+  });
+}

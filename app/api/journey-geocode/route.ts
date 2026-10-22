@@ -1,3 +1,4 @@
+import { reviewedIslandBaseSeeds } from '@/lib/easyt/reviewed-island-destinations.server';
 import { NextRequest, NextResponse } from "next/server";
 import { destinationPlanningDecision } from "@/lib/easyt/destination-planning-policy";
 import {referencePlaceById,referenceSnapshotId,referenceAreaBaseSeeds} from '@/lib/easyt/place-reference.server';
@@ -178,9 +179,9 @@ export async function GET(request: NextRequest) {
     try {
       // Covered islands discover exact settlements from accepted bindings;
       // uncovered administrative facts only seed the live physical check.
-      // Every offered settlement must pass physical polygon verification.
+      // Every offered settlement needs physical or exact reviewed membership proof.
       if (!requiresPhysicalIslandVerification(parent)) return NextResponse.json({ candidates: [], status: "empty" });
-      const seeds = (bundledIslandBaseSeeds(parent) ?? referenceAreaBaseSeeds(parent)).filter(validReferenceCandidate)
+      const seeds = (reviewedIslandBaseSeeds(parent) ?? bundledIslandBaseSeeds(parent) ?? referenceAreaBaseSeeds(parent)).filter(validReferenceCandidate)
         .filter(candidate => candidate.parentCountries?.length === 1 && matchesCountry(candidate.parentCountries[0], parent.parentCountries[0]!));
       const verified = seeds.length ? await normalizePhysicalIslandBaseCandidates(seeds, parent, { signal: request.signal }) : [];
       const candidates = verified.filter(validReferenceCandidate)
@@ -235,7 +236,9 @@ export async function GET(request: NextRequest) {
     return response;
   } : undefined;
   try {
-    const availableCandidates = (await searchOpenWorldTravelCandidates(place, {
+    const reviewedMatches = planningParent ? reviewedIslandBaseSeeds(planningParent)?.filter(candidate =>
+      [candidate.canonicalName, ...(candidate.aliases ?? [])].some(name => normalise(name).includes(normalise(place)))) : undefined;
+    const availableCandidates = (reviewedMatches?.length ? reviewedMatches : await searchOpenWorldTravelCandidates(place, {
       travelIntent,
       ...(country ? { countryNames: [country], explicitCountryNames: [country] } : {}),
     }, createOpenWorldPlaceProvider({searchMode:mode==='autocomplete'?'reference-only':'reference-with-photon',

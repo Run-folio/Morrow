@@ -13,6 +13,12 @@ export function legacyGeneratedTripTitle(trip: DisplayTrip) {
   return `${trip.brief.origin} to ${trip.stops.map((stop) => stop.name).join(" & ")}`;
 }
 
+/** Stops own destination identity; origin and return endpoints are transport context. */
+export function generatedTripTitle(stops: ReadonlyArray<{ name: string; order: number }>) {
+  return [...stops].sort((left, right) => left.order - right.order)
+    .map((stop) => stop.name.trim()).filter(Boolean).slice(0, 3).join(" & ") || "Untitled trip";
+}
+
 export function formatTripPlaceList(names: string[]) {
   const places = names.map((name) => name.trim()).filter(Boolean);
   if (!places.length) return "Untitled trip";
@@ -36,31 +42,21 @@ export function renameTripIdentity(trip: EasyTTrip, input: string): EasyTTrip {
   const customTitle = input.trim().replace(/\s+/g, " ");
   return {
     ...trip,
-    title: customTitle || legacyGeneratedTripTitle(trip),
+    title: customTitle || generatedTripTitle(trip.stops),
     brief: { ...trip.brief, customTitle: customTitle || null },
   };
 }
 
 /**
- * Presentation-only title cleanup for titles produced by the legacy builder.
- * Any title that does not exactly match that deterministic generated format is
- * treated as traveller-authored and is preserved verbatim.
+ * Presentation-only title cleanup for titles with known generated provenance.
+ * Explicit customTitle:null or the exact legacy builder formula identifies an
+ * automatic title. Unrecognized saved titles keep their existing custom identity.
  */
 export function tripDisplayTitle(trip: DisplayTrip) {
   const customTitle = tripCustomTitle(trip);
   if (customTitle) return customTitle;
 
-  const seen = new Set<string>();
-  const geographicPlaces = [...trip.stops]
-    .sort((left, right) => left.order - right.order)
-    .map((stop) => stop.country?.trim() || stop.region?.trim() || stop.name.trim())
-    .filter((name) => {
-      const key = normalized(name);
-      if (!key || seen.has(key)) return false;
-      seen.add(key);
-      return true;
-    });
-  return formatTripPlaceList(geographicPlaces);
+  return generatedTripTitle(trip.stops);
 }
 
 /** Overview identity is display-only. Unknown legacy provenance stays untouched. */

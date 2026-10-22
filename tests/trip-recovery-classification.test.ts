@@ -134,9 +134,10 @@ test("save header and dashboard source keep historical recovery separate and tri
   assert.match(dashboard, /recoveryIssues\[trip\.id\]/);
   assert.match(dashboard, /tripRecoveryIsAwaitingCanonicalSave\(recovery\)/);
   assert.match(dashboard, /listTripRecoveries\(ownerId\)/);
-  assert.match(dashboard, /classifyTripRecovery\(\{[\s\S]{0,180}previousCanonicalTrip: loadCachedTrip\(recovery\.tripId, ownerId\)/);
-  assert.match(dashboard, /classification === "equivalent"\) resolveCanonicalEquivalentTripRecovery/);
-  assert.match(dashboard, /classification === "historical-superseded"\) cacheCanonicalTrip\(canonicalTrip\)/);
+  assert.match(dashboard, /const previousCanonicalTrip = await loadCachedTrip\(recovery\.tripId, ownerId\)/);
+  assert.match(dashboard, /classifyTripRecovery\(\{ recovery, canonicalTrip, previousCanonicalTrip \}\)/);
+  assert.match(dashboard, /classification === "equivalent"\) await resolveCanonicalEquivalentTripRecovery/);
+  assert.match(dashboard, /classification === "historical-superseded"\) await cacheCanonicalTrip\(canonicalTrip\)/);
   assert.match(dashboard, /has device changes to review/);
   assert.doesNotMatch(dashboard, /Cloud copy kept safe/);
 });
@@ -144,9 +145,29 @@ test("save header and dashboard source keep historical recovery separate and tri
 test("dashboard groups detached recoveries behind one calm disclosure while keeping each review path", () => {
   const dashboard = readFileSync(new URL("../app/journey/dashboard/dashboard-client.tsx", import.meta.url), "utf8");
   const stories = readFileSync(new URL("../app/journey/dashboard/dashboard-client.stories.tsx", import.meta.url), "utf8");
-  assert.match(dashboard, /\$\{orphanRecoveryIssues\.length\} protected device copies are available/);
+  assert.match(dashboard, /\$\{orphanRecoveryIssues\.length\} device copies to review/);
   assert.match(dashboard, /setShowDetachedRecoveries\(\(shown\) => !shown\)/);
   assert.match(dashboard, /orphanRecoveryIssues\.map\(\(issue\) => <article key=\{issue\.tripId\}>/);
   assert.match(dashboard, /recovery\.conflictReason === "cloud-deleted"/);
   assert.match(stories, /export const DashboardDetachedRecoveriesGrouped/);
+});
+
+test("detached-copy copy distinguishes an unconfirmed account save from a previously reported deletion", () => {
+  const dashboard = readFileSync(new URL("../app/journey/dashboard/dashboard-client.tsx", import.meta.url), "utf8");
+  assert.match(dashboard, /This trip is not in this dashboard\. Its account save status is unconfirmed\. Review the device copy\./);
+  assert.match(dashboard, /This trip was previously reported as deleted from your account\. Its device copy is available to review\./);
+  assert.match(dashboard, /These trips are not in this dashboard\. Their account save status is unconfirmed\. Review each device copy\./);
+  assert.doesNotMatch(dashboard, /device copies remain safe until you choose/);
+});
+
+test("detached-copy presentation retains the warning, complete account comparison and individual review links", () => {
+  const dashboard = readFileSync(new URL("../app/journey/dashboard/dashboard-client.tsx", import.meta.url), "utf8");
+  const detachedPresentation = dashboard.split("{orphanRecoveryIssues.length ? <>")[1]?.split("{featuredTrip ? (")[0] ?? "";
+  assert.match(detachedPresentation, /tone="warning"/);
+  assert.match(dashboard, /Object\.values\(recoveryIssues\)\.filter\(\(issue\) => !trips\.some\(\(trip\) => trip\.id === issue\.tripId\)\)/);
+  assert.match(detachedPresentation, /aria-expanded=\{showDetachedRecoveries\}/);
+  assert.match(detachedPresentation, /href=\{tripSyncRecoveryPath\(orphanRecoveryIssues\[0\]\.tripId\)\}/);
+  assert.match(detachedPresentation, /href=\{tripSyncRecoveryPath\(issue\.tripId\)\}/);
+  assert.match(dashboard, /if \(boundary !== "current"\) return/);
+  assert.match(dashboard, /recoveryState === "unavailable"/);
 });

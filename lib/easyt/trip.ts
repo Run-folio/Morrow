@@ -9,6 +9,7 @@ import { normalizeJourneyEnd } from "./journey-endpoints.ts";
 import { geographicInputKey } from './geographic-binding.ts';
 import { normalizeTripInterests, type TripInterest } from "./trip-interest.ts";
 import type { FixedCommitmentPlace, FixedCommitmentType } from "./fixed-commitment.ts";
+import { generatedTripTitle } from "./trip-display.ts";
 
 export const EASYT_TRIP_SCHEMA_VERSION = 2 as const;
 
@@ -400,7 +401,7 @@ export type TripBrief = {
   origin: string;
   /** Preview end date awaiting the traveller's explicit duration choice. */
   endDateIsSuggestion?: boolean;
-  /** Traveller-authored identity. Null explicitly opts back into the generated geographic title. */
+  /** Traveller-authored identity. Null explicitly opts back into the generated destination title. */
   customTitle?: string | null;
   originCoordinates?: [number, number];
   originCanonicalPlaceId?: string;
@@ -778,7 +779,7 @@ export function tripFromBuilder(input: BuilderTripInput): CanonicalEasyTTrip {
     schemaVersion: EASYT_TRIP_SCHEMA_VERSION,
     id: input.id,
     ownerId: null,
-    title: `${input.origin} to ${stops.map((stop) => stop.name).join(" & ")}`,
+    title: generatedTripTitle(stops),
     status: input.status ?? "draft",
     startDate: input.startDate,
     endDate: input.endDate,
@@ -786,6 +787,7 @@ export function tripFromBuilder(input: BuilderTripInput): CanonicalEasyTTrip {
     currency: "GBP",
     brief: {
       origin: input.origin,
+      customTitle: null,
       endDateIsSuggestion: input.endDateIsSuggestion,
       originCoordinates: input.originCoordinates,
       originCanonicalPlaceId: input.originCanonicalPlaceId,

@@ -1,0 +1,78 @@
+{
+  "version": 1,
+  "referenceSnapshotId": "699b595afdba9be6994e",
+  "reviewedAt": "2026-10-21",
+  "coverage": "reviewed subset; not physical polygon coverage",
+  "island": {
+    "canonicalPlaceId": "bali",
+    "canonicalName": "Bali",
+    "placeType": "island",
+    "countryCode": "ID",
+    "physicalIdentity": "wikidata:Q4648"
+  },
+  "sources": [
+    {
+      "id": "indonesia-tourism:bali",
+      "url": "https://www.indonesia.travel/gb/en/destination/bali-nusa-tenggara/bali/bali",
+      "supports": "Bali island, Kuta and the Ngurah Rai arrival gateway."
+    },
+    {
+      "id": "indonesia-tourism:ubud",
+      "url": "https://www.indonesia.travel/gb/en/destination/bali-nusa-tenggara/bali/ubud",
+      "supports": "Ubud is in central Bali island."
+    },
+    {
+      "id": "indonesia-tourism:airport-access",
+      "url": "https://www.indonesia.travel/gb/en/destination/bali-nusa-tenggara/bali/denpasar---bali-ngurah-rai-airport",
+      "supports": "Road access from Ngurah Rai Airport to Ubud and Kuta; no service, price or timing guarantee."
+    }
+  ],
+  "bases": [
+    {
+      "source": "geonames",
+      "sourceId": "1622846",
+      "canonicalPlaceId": "reference:geonames:1622846",
+      "providerId": "reference:geonames:1622846@699b595afdba9be6994e:ID:town:115.2654:-8.5098",
+      "canonicalName": "Ubud",
+      "countryCode": "ID",
+      "coordinates": [
+        115.2654,
+        -8.5098
+      ],
+      "placeType": "town",
+      "status": "active"
+    },
+    {
+      "source": "geonames",
+      "sourceId": "1639002",
+      "canonicalPlaceId": "reference:geonames:1639002",
+      "providerId": "reference:geonames:1639002@699b595afdba9be6994e:ID:town:115.17234:-8.72332",
+      "canonicalName": "Kuta",
+      "countryCode": "ID",
+      "coordinates": [
+        115.17234,
+        -8.72332
+      ],
+      "placeType": "town",
+      "status": "active"
+    }
+  ],
+  "gateway": {
+    "source": "ourairports",
+    "sourceId": "26751",
+    "canonicalPlaceId": "reference:ourairports:26751",
+    "providerId": "reference:ourairports:26751@699b595afdba9be6994e:ID:transport_gateway:115.167123:-8.748409",
+    "canonicalName": "Denpasar I Gusti Ngurah Rai International Airport",
+    "countryCode": "ID",
+    "coordinates": [
+      115.167123,
+      -8.748409
+    ],
+    "placeType": "transport_gateway",
+    "status": "active",
+    "airportType": "large_airport",
+    "iataCode": "DPS",
+    "icaoCode": "WADD",
+    "scheduledService": true
+  }
+}

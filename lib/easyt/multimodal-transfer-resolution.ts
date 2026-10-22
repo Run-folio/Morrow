@@ -1,3 +1,4 @@
+import { reviewedIslandGatewayRecord } from './reviewed-island-destinations.ts';
 import {
   destinationKnowledge,
   type DestinationAirGateway,
@@ -128,7 +129,13 @@ function gatewayEndpoint(gateway: DestinationAirGateway): CanonicalRouteEndpoint
   // A reviewed gateway relationship can explicitly reference an existing
   // geographic record. Resolve that record through normal acceptance, never
   // infer identity from coordinate proximity or stamp a readiness flag.
-  const reference=gateway.geographicPlaceId?findCatalogPlaceById(gateway.geographicPlaceId):undefined;
+  const reviewed = reviewedIslandGatewayRecord();
+  const reference = reviewed && gateway.geographicPlaceId === reviewed.canonicalPlaceId
+    && gateway.canonicalId === reviewed.canonicalPlaceId && gateway.providerId === reviewed.providerId
+    && gateway.country === "Indonesia" && gateway.coordinates.every((value, i) => value === reviewed.coordinates[i])
+    ? { canonicalPlaceId: reviewed.canonicalPlaceId, canonicalName: reviewed.canonicalName, coordinates: reviewed.coordinates,
+      referenceProviderId: reviewed.providerId, placeType: reviewed.placeType, routability: "direct_destination" as const }
+    : gateway.geographicPlaceId ? findCatalogPlaceById(gateway.geographicPlaceId) : undefined;
   const selected=reference?.coordinates&&reference.referenceProviderId?acceptedGeographicPlace({name:gateway.name,country:gateway.country,canonicalPlaceId:gateway.canonicalId},
     {name:reference.canonicalName,country:gateway.country,canonicalPlaceId:reference.canonicalPlaceId,providerId:reference.referenceProviderId,coordinates:[...reference.coordinates],
       placeType:reference.placeType,routability:reference.routability,referenceSnapshotId:REFERENCE_SNAPSHOT_ID},'endpoint'):undefined;
