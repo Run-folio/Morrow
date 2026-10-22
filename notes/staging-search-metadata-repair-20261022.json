@@ -1,0 +1,74 @@
+{
+  "date": "2026-10-22",
+  "supersedes": "staging-search-qualification-followup-20261022.json",
+  "design": {
+    "purpose": "Application deployment attestation replaces application-owned custom GUC; not external authentication or permission enforcement",
+    "connection": "Exact independently verified direct/pooler endpoint, database, port and TLS; reject routing overrides, duplicate and unknown URI parameters before constructing driver from captured URL",
+    "metadata": "Ordinary versioned pinned deployment tuple plus server current_database; missing/mismatch/outage fails closed; SQL claim/cache also check exact metadata",
+    "permissions": "No ALTER DATABASE/ROLE/SYSTEM, no parameter grants, no role or credential changes",
+    "activation": "Metadata cannot enable AI; no policy row, no cache publication, feature config unchanged"
+  },
+  "review": {
+    "independentAgent": "staging_isolation_review",
+    "applicationIsolation": "approved; no remaining material finding",
+    "harness": "both findings fixed and independently confirmed: exact reviewed function-body/config pin and direct endpoint/in-transaction PID capture"
+  },
+  "verification": {
+    "focusedPassed": 160,
+    "focusedFailed": 0,
+    "focusedBrowserSkipped": 1,
+    "focusedLog": "/tmp/morrovia-search-metadata-repair-tests.log",
+    "separateApprovedBrowserPassed": 2,
+    "typecheck": "passed nonincremental",
+    "diffCheck": "passed",
+    "redFirst": [
+      "review flags accepted missing/wrong database route",
+      "migration still depended on custom GUC"
+    ],
+    "sqlSequentialBudgetChecks": "passed against updated isolated qualification function; not concurrency proof"
+  },
+  "stagingSetup": {
+    "project": "frosty-mode-70756654",
+    "branch": "br-lingering-sunset-arw7uok8",
+    "endpoint": "ep-fancy-credit-ar0ithc8.c-4.us-west-2.aws.neon.tech",
+    "database": "morrovia_staging",
+    "migration": "0017 ordinary-metadata revision applied 2026-10-22T19:07:09.856Z",
+    "executionRole": "neondb_owner",
+    "publicPolicyRows": 0,
+    "publicMappingRows": 0,
+    "functionSecurityDefiner": false,
+    "functionAcl": "{neondb_owner=X/neondb_owner}",
+    "missingPolicyClaim": {
+      "admitted": false,
+      "reservedMicroUsd": 0
+    },
+    "customGucAttempt": "Not retried; earlier rejected transaction remained rolled back"
+  },
+  "qualificationState": {
+    "schema": "morrovia_place_research_qualification_20261022",
+    "functionUpdatedToMetadataRevision": true,
+    "enabled": false,
+    "totalLimitMicroUsd": 0,
+    "dailyLimitMicroUsd": 0,
+    "testOnlyLifetimeReservedMicroUsd": 750000,
+    "realSpend": false
+  },
+  "concurrency": {
+    "harness": "scripts/staging-place-concurrency.mjs",
+    "mockTestsPassed": 3,
+    "liveExecuted": false,
+    "blocker": "Current process has no DATABASE_URL or staging declaration; no credential/config extraction attempted",
+    "runInExistingAuthorizedStagingRunner": "MORROVIA_PLACE_RESEARCH_CONCURRENCY_TESTS=1 node scripts/staging-place-concurrency.mjs",
+    "requirements": "Existing verified direct staging DATABASE_URL, MORROVIA_ENVIRONMENT=staging, live research disabled; installed function exactly matches reviewed local migration body"
+  },
+  "remaining": [
+    "true overlapping two-session SQL qualification",
+    "actual deployed database role/preflight qualification",
+    "hosted Builder/base-panel acceptance",
+    "aggregate hosted-search billing bound; AI must remain disabled"
+  ],
+  "paidCalls": 0,
+  "productionWrites": 0,
+  "deployed": false,
+  "committed": false
+}

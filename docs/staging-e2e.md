@@ -6,19 +6,22 @@ Better Auth secret, or a production provider credential.
 
 ## One-time platform setup
 
-1. Create a separate Neon project or a branch named `morrovia-staging`. In it,
-   create database `morrovia_staging` and a least-privilege app role such as
-   `morrovia_staging_app`. Do not use `neondb`.
-2. Apply the repository migrations to `morrovia_staging`, then add this
-   startup option to the dedicated staging `DATABASE_URL`:
-
-   ```text
-   options=-c%20app.morrovia_environment%3Dstaging
-   ```
-
-   Neon does not permit the staging role to persist this custom parameter with
-   `ALTER DATABASE`. `pg` sends the URL option when it opens each connection,
-   and the preflight reads the resulting `app.morrovia_environment` setting.
+1. Use the independently reviewed staging target: Neon project
+   `frosty-mode-70756654`, branch `br-lingering-sunset-arw7uok8`, database
+   `morrovia_staging`, and direct endpoint
+   `ep-fancy-credit-ar0ithc8.c-4.us-west-2.aws.neon.tech`. The matching `-pooler`
+   endpoint is accepted for application preflight; the isolated concurrency
+   qualification requires the direct endpoint. Do not substitute another branch
+   or production database.
+2. Apply the reviewed migrations only after independently checking the target.
+   Migration `0017_morrovia_place_research.sql` records the pinned staging tuple
+   in `morrovia_deployment_metadata`. Preflight checks this metadata and
+   `current_database()` before checking persistence tables. Do not add custom
+   `app.morrovia_environment` connection options or use `ALTER DATABASE`/role
+   grants to create a marker. Missing or mismatched metadata fails closed.
+   Use an existing authorized staging runtime role; no new permissions are
+   implied by the metadata. Concurrency qualification separately checks ownership
+   of its isolated test objects and must never use application trips or accounts.
 
 3. Create a dedicated Netlify staging site/deploy or a protected `staging`
    branch deploy with the permanent URL `https://staging.morrovia.com`. It is
@@ -45,8 +48,8 @@ Better Auth secret, or a production provider credential.
    ```
 
    The command fails closed unless the URL is non-production, all auth URLs
-   agree, the database is named `morrovia_staging*`, the database itself says
-   `app.morrovia_environment=staging`, required tables exist, and the configured
+   agree, the connection targets the exact reviewed staging database and endpoint,
+   the pinned deployment metadata matches, required tables exist, and the configured
    provider policy explicitly allows only the selected OpenAI/Unsplash providers.
 
 ## Disposable test data

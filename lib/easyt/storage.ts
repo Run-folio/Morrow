@@ -1450,7 +1450,19 @@ export async function saveExplicitGuestTripForOwnerInStorage(storage:EasyTBrowse
   const observe=async()=>{
     const native=nativeWitness();
     const body=await guestStore.read(tripId),input=await inputStore.read(),home=await guestHome.read();
-    if(!active()||body.kind!=='found'||!body.recovery||body.trip.ownerId!==null||body.recovery.state==='conflict'||input.kind!=='ready'||home.kind!=='ready')throw new BrowserRecoveryReadError('protected','guest-source-not-ready');
+    const current=active();
+    if(!current||body.kind!=='found'||!body.recovery||body.trip.ownerId!==null||body.recovery.state==='conflict'||input.kind!=='ready'||home.kind!=='ready') {
+      // Observe only the first failed clause of the existing guard. No extra
+      // reads, authority, writes or retries; source records never enter the error.
+      const source = !current ? {slot:'current-operation',readKind:'not-current'} as const
+        : body.kind!=='found' ? {slot:'trip',readKind:body.kind} as const
+        : !body.recovery ? {slot:'trip',readKind:'acknowledged'} as const
+        : body.trip.ownerId!==null ? {slot:'trip',readKind:'foreign'} as const
+        : body.recovery.state==='conflict' ? {slot:'trip',readKind:'conflict'} as const
+        : input.kind!=='ready' ? {slot:'input',readKind:input.kind} as const
+        : {slot:'homepage',readKind:home.kind} as const;
+      throw new BrowserRecoveryReadError('protected','guest-source-not-ready',source);
+    }
     if(native!==nativeWitness())throw new BrowserRecoveryReadError('protected','guest-native-changed');
     return {body,input,home,native};
   };

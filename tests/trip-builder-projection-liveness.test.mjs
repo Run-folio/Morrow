@@ -54,10 +54,21 @@ function assessment(session,componentSource){
   sameRecoveryDocument:(a,b)=>JSON.stringify(a)===JSON.stringify(b),useEffect:fn=>effects.push(fn)};
  const snippet=componentSource.slice(componentSource.indexOf('  const requestBuildAssessment ='),componentSource.indexOf('  const recordGeneratedTrip ='));
  const request=new Function('scope',`with(scope){${ts.transpileModule(snippet+'\nreturn requestBuildAssessment;',{compilerOptions:{target:ts.ScriptTarget.ES2022}}).outputText}}`)(scope);
- let settled=false,value;
+ let settled=false,value,unsubscribe=()=>{};
  const render=()=>{scope.activeTripDocument=session.getSnapshot().trip;effects[0]();};
- request(session,session.captureCommandBarrier().isCurrent).then(v=>{settled=true;value=v;});effects[0]();
- return {render,state:()=>({settled,returnedTrip:Boolean(value?.trip)})};
+ const outcome=request(session,session.captureCommandBarrier().isCurrent).then(v=>{settled=true;value=v;unsubscribe();});
+ // React observes session snapshots and reruns this effect. A single manually
+ // rendered effect plus one event-loop turn does not model that lifecycle.
+ unsubscribe=session.subscribe(render);effects[0]();
+ const state=()=>({settled,returnedTrip:Boolean(value?.trip)});
+ const wait=async(timeoutMs=10000)=>{
+  if(settled)return state();
+  return new Promise((resolve,reject)=>{
+   const timer=setTimeout(()=>{unsubscribe();reject(new Error('Build assessment did not settle within the test deadline'));},timeoutMs);
+   outcome.then(()=>{clearTimeout(timer);resolve(state());},error=>{clearTimeout(timer);unsubscribe();reject(error);});
+  });
+ };
+ return {render,state,wait};
 }
 async function harness(mode,browserOwner=null){
  const storage=new Storage(),model=new IndexedDbModel(),driver=await openIndexedDbRecoveryDriver(model.factory());
@@ -191,13 +202,38 @@ for(const mode of modes)for(const providerError of [false,true])test(`historical
  const h=await harness(mode,'owner-a');try{
   await accepted(h);const before=copies(h);h.control.providerError=providerError;await h.run();
   const view=assessment(h.session,source);await turn();
+  assert.deepEqual(await view.wait(),{settled:true,returnedTrip:true});
   assert.equal(h.session.getSnapshot().historicalRecovery,true);assert.equal(h.session.getSnapshot().error?.category,'pending');
   assert.equal(await h.session.flush(),false,'route assessment is not permission to promote a historical recovery');
   assert.equal(h.trace.accountWrites,0);assert.equal(h.session.getSnapshot().trip.ownerId,null);
-  assert.deepEqual(view.state(),{settled:true,returnedTrip:true});assert.equal(Boolean(h.session.getSnapshot().routeWorkBlocked),false);
+  assert.equal(Boolean(h.session.getSnapshot().routeWorkBlocked),false);
   assert.deepEqual(h.session.getSnapshot().draft,before.draft);
   for(const [key,raw] of before.domain.get('generations'))assert.equal(h.model.data.get('generations').get(key),raw);
   const cold=await h.broker(()=>true).read(before.trip.id);assert.equal(cold.kind,'found');assert.deepEqual(cold.trip,h.session.getSnapshot().trip);
 
  }finally{h.close();}
+});
+
+for(const mode of ['native','indexeddb-input'])test(`assessment observes delayed verified ${mode} completion without authorizing historical promotion`,{timeout:15000},async()=>{
+ const h=await harness(mode,'owner-a');let release;h.control.gate=new Promise(resolve=>{release=resolve;});
+ try{
+  await accepted(h);const before=copies(h);await h.run();
+  const view=assessment(h.session,source),waiting=view.wait();await turn();
+  assert.deepEqual(view.state(),{settled:false,returnedTrip:false},'pending provider work is not a completed assessment');
+  release();assert.deepEqual(await waiting,{settled:true,returnedTrip:true});
+  assert.equal(h.session.getSnapshot().historicalRecovery,true);assert.equal(await h.session.flush(),false);
+  assert.equal(h.trace.accountWrites,0);assert.equal(h.session.getSnapshot().trip.ownerId,null);
+  assert.deepEqual(h.session.getSnapshot().draft,before.draft);
+  for(const[key,raw]of before.domain.get('generations'))assert.equal(h.model.data.get('generations').get(key),raw);
+  const cold=await h.broker(()=>true).read(before.trip.id);assert.equal(cold.kind,'found');assert.deepEqual(cold.trip,h.session.getSnapshot().trip);
+ }finally{release();h.close();}
+});
+
+test('assessment observation deadline cannot turn unfinished work into success',{timeout:15000},async()=>{
+ const h=await harness('native');let release;h.control.gate=new Promise(resolve=>{release=resolve;});
+ try{
+  await accepted(h);const before=copies(h);await h.run();const view=assessment(h.session,source);
+  await assert.rejects(view.wait(25),/did not settle within the test deadline/);
+  assert.deepEqual(view.state(),{settled:false,returnedTrip:false});await retained(h,before);
+ }finally{h.close();release();}
 });

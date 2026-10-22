@@ -56,6 +56,7 @@ import { trackEvent } from "@/lib/analytics";
 import { itineraryAddSourceForIdea, newlyScheduledItineraryIdea } from "@/lib/easyt/itinerary-add-analytics";
 import { affiliateProviderLabel, getCurrentPartnerAction, omioBookingActionForLeg, type ResolvedAffiliateAction } from "@/lib/easyt/booking-readiness";
 import { removeStayBooking, stayBookingForStop } from "@/lib/easyt/accommodation";
+import { tripComRailRouteUrl } from "@/lib/easyt/trip-com-rail-link";
 import { routeEndpointForLeg } from "@/lib/easyt/trip-legs";
 import { transferJourneyModeLabel, transferJourneySegmentSummary } from "@/lib/easyt/transfer-journey";
 import { exploreWorkspaceHref, firstItineraryDayForStop, itineraryWorkspaceHref, mapWorkspaceHref, initialItineraryWorkspaceView, parseItineraryWorkspaceTarget, stayWorkspaceHref, transportWorkspaceHref } from "@/lib/easyt/trip-workspace-links";
@@ -2342,10 +2343,15 @@ function CalendarItemButton({ item, day, copy, language, draggable, dragging, on
 }
 
 function OmioTransportAction({ action, trip, leg }: { action: ResolvedAffiliateAction; trip: EasyTTrip; leg: TripLeg }) {
+  const tripComUrl = tripComRailRouteUrl(routeEndpointForLeg(trip, leg, "from"), routeEndpointForLeg(trip, leg, "to"), leg.mode);
   return <div className={styles.omioAction}>
     <MorroviaAffiliateLink action={action} context={{ placement: "itinerary_transfer", tripId: trip.id, transferId: leg.id, originStopId: leg.fromStopId, destinationStopId: leg.toStopId }} />
     <small>{affiliateDisclosure}</small>
     <MorroviaPartnerPromotion action={action} />
+    {tripComUrl ? <>
+      <a href={tripComUrl} target="_blank" rel="noopener noreferrer" aria-label="Try Trip.com, opens route page in a new tab">Try Trip.com<ExternalLink aria-hidden="true" /></a>
+      <small>Route page · enter dates and travellers on Trip.com.</small>
+    </> : null}
   </div>;
 }
 

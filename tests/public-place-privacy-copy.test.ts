@@ -1,0 +1,5 @@
+import assert from 'node:assert/strict';import test from 'node:test';import {readFileSync} from 'node:fs';
+test('EN/ES privacy copy describes conditional public research, independent validation and manual cache publication',()=>{
+ const notice=readFileSync('app/journey/privacy/privacy-notice.tsx','utf8');assert.equal((notice.match(/aiPlaceSearch:/g)??[]).length,2);assert.match(notice,/<p>\{t.aiPlaceSearch\}<\/p>/);assert.match(notice,/When public-place research is enabled/);assert.match(notice,/Cuando se habilite/);assert.match(notice,/OpenAI does not search the web/);assert.doesNotMatch(notice,/token-counting endpoint/);assert.match(notice,/no busca en la web/);assert.match(notice,/Photon\/OpenStreetMap/);assert.match(notice,/does not automatically publish search inputs/);assert.match(notice,/No se publican automáticamente/);assert.match(notice,/store:false/);
+ const ops=readFileSync('docs/privacy-operations.md','utf8');assert.match(ops,/Optional public-place research \(default off\)/);assert.match(ops,/shared cache reads only at runtime/);assert.match(ops,/Before enabling OpenAI in production/);
+});

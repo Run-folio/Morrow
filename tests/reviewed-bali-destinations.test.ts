@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { build } from 'esbuild';
+import {emptyServerMarkerPlugin} from './helpers/server-marker.mjs';
 import { referencePlaceById, referenceSnapshotId } from '../lib/easyt/place-reference.server.ts';
 import { destinationKnowledge } from '../lib/easyt/destination-knowledge.ts';
 
@@ -8,7 +9,7 @@ const parent={canonicalPlaceId:'bali',canonicalName:'Bali',placeType:'island',pa
 const ids=['reference:geonames:1622846','reference:geonames:1639002'];
 let apiPromise:Promise<any>|undefined;
 function api(){return apiPromise??=(async()=>{
- const result=await build({entryPoints:['app/api/journey-geocode/route.ts'],bundle:true,write:false,format:'esm',platform:'node',plugins:[{name:'next-response',setup(b){
+ const result=await build({entryPoints:['app/api/journey-geocode/route.ts'],bundle:true,write:false,format:'esm',platform:'node',plugins:[emptyServerMarkerPlugin,{name:'next-response',setup(b){
  b.onResolve({filter:/^next\/server$/},()=>({path:'next',namespace:'fixture'}));
  b.onLoad({filter:/.*/,namespace:'fixture'},()=>({contents:'export const NextResponse={json:(body,options)=>({body,status:options?.status??200})};'}));
  }}]});return import(`data:text/javascript;base64,${Buffer.from(result.outputFiles[0]!.text).toString('base64')}`);

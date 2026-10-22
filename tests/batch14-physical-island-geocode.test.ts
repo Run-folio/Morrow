@@ -1,3 +1,4 @@
+import { emptyServerMarkerPlugin } from './helpers/server-marker.mjs';
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {readFileSync} from 'node:fs';
@@ -6,7 +7,7 @@ import {build} from 'esbuild';
 import {searchReferencePlaces} from '../lib/easyt/place-reference.server.ts';
 const fira=searchReferencePlaces('Fira',{explicitCountryNames:['Greece']}).find(c=>c.canonicalPlaceId==='reference:geonames:252920')!;assert(fira);
 async function mountedAPI(candidates = [fira]){
- const output=await build({entryPoints:['app/api/journey-geocode/route.ts'],bundle:true,write:false,format:'esm',platform:'node',plugins:[{name:'recorded-settlement',setup(b){
+ const output=await build({entryPoints:['app/api/journey-geocode/route.ts'],bundle:true,write:false,format:'esm',platform:'node',plugins:[emptyServerMarkerPlugin,{name:'recorded-settlement',setup(b){
   b.onResolve({filter:/^next\/server$/},()=>({path:'next-response',namespace:'fixture'}));
   b.onResolve({filter:/open-world-place\.server$/},()=>({path:'settlement',namespace:'fixture'}));
   b.onLoad({filter:/.*/,namespace:'fixture'},({path})=>({contents:path==='next-response'?`export const NextResponse={json:(body,options)=>({body,status:options?.status??200})};`:`export const createOpenWorldPlaceProvider=()=>({});export const searchOpenWorldNearbyBaseSuggestions=async()=>[];export const searchOpenWorldTravelCandidates=async()=>${JSON.stringify(candidates)};`}));

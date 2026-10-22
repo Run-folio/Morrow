@@ -1,4 +1,5 @@
 import { Client } from "pg";
+import {assertStagingConnectionTarget,assertStagingDeploymentMetadata,STAGING_METADATA_QUERY} from '../lib/easyt/staging-deployment-target.mjs';
 
 export const TEST_ACCOUNTS = [
   { name: "Test User A", email: "test-user-a@morrovia-staging.test", passwordKey: "STAGING_TEST_PASSWORD_A" },
@@ -115,6 +116,7 @@ export function loadStagingConfig(environment = process.env) {
   }
 
   const databaseUrl = required("DATABASE_URL", environment);
+  assertStagingConnectionTarget(databaseUrl);
   const database = new URL(databaseUrl);
   const expectedDbName = required("MORROVIA_STAGING_DB_NAME", environment);
   const expectedDbHost = required("MORROVIA_STAGING_DB_HOST", environment).toLowerCase();
@@ -175,14 +177,17 @@ export async function markDisposableTestAccountEmailVerified(client, email) {
   }
 }
 
-export async function verifyStagingDatabase(config) {
-  const client = new Client({ connectionString: config.databaseUrl });
+/** @param {any} config
+ * @param {{createClient?:(options:{connectionString:string})=>{connect:()=>Promise<unknown>,query:(text:string,params?:unknown[])=>Promise<{rows:any[]}>,end:()=>Promise<unknown>}} [options] */
+export async function verifyStagingDatabase(config, { createClient = (options) => new Client(options) } = {}) {
+  assertStagingConnectionTarget(config.databaseUrl);
+  const client = createClient({ connectionString: config.databaseUrl });
   await client.connect();
   try {
+    assertStagingDeploymentMetadata((await client.query(STAGING_METADATA_QUERY)).rows);
     const result = await client.query(`
       select
         current_database() as database_name,
-        current_setting('app.morrovia_environment', true) as environment,
         to_regclass('public.easyt_users') is not null as has_users,
         to_regclass('public.easyt_trips') is not null as has_trips,
         to_regclass('public.easyt_copilot_previews') is not null as has_copilot_previews,
@@ -192,9 +197,6 @@ export async function verifyStagingDatabase(config) {
     const row = result.rows[0];
     if (row.database_name !== config.expectedDbName) {
       throw new Error("Connected database name does not match the staging allow-list.");
-    }
-    if (row.environment !== "staging") {
-      throw new Error("Database is missing app.morrovia_environment=staging.");
     }
     if (!row.has_users || !row.has_trips || !row.has_copilot_previews || !row.has_country_stamps || !row.has_country_memories) {
       throw new Error("Staging migrations have not created the required persistence tables.");

@@ -1,3 +1,4 @@
+import { emptyServerMarkerPlugin } from './helpers/server-marker.mjs';
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {createRequire} from 'node:module';
@@ -23,7 +24,7 @@ test('country-scoped catalogue alias finds the intact reference Sevilla tuple',a
 });
 
 test('actual API chooses Sevilla for English catalogue Seville with and without Madrid context',async t=>{
- const require=createRequire(import.meta.url),bundle=await build({entryPoints:['app/api/journey-geocode/route.ts'],bundle:true,write:false,format:'cjs',platform:'node',external:['next/server']});
+ const require=createRequire(import.meta.url),bundle=await build({entryPoints:['app/api/journey-geocode/route.ts'],bundle:true,write:false,format:'cjs',platform:'node',external:['next/server'],plugins:[emptyServerMarkerPlugin]});
  const module={exports:{} as any};new Function('require','module','exports',bundle.outputFiles[0].text)(require,module,module.exports);
  let external=0;t.mock.method(globalThis,'fetch',async()=>{external++;throw new Error('offline control');});
  for(const nearby of ['', '&nearLat=40.4165&nearLon=-3.70256']){

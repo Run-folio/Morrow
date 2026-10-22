@@ -14,7 +14,8 @@ function allElements(node,out=[]){if(!node||typeof node!=='object')return out;if
 function text(node){if(node===null||node===undefined||typeof node==='boolean')return '';if(typeof node==='string'||typeof node==='number')return String(node);if(Array.isArray(node))return node.map(text).join('');return text(node.props?.children);}
 /** Executes the actual component body/effect and returned option handlers. React
  * scheduling and native DOM are substituted; never a browser/hydration proof. */
-export function autocompleteRender(query,{api=async()=>({status:200,body:{candidates:[]}}),searchIntent='route-stop',contextCountries}={}){
+/** @param {string} query @param {{api?: (request: {pathname:string,method:string,searchParams:URLSearchParams})=>Promise<{status:number,body:{candidates:unknown[]}}>, searchIntent?:string, contextCountries?:string[], onFreeTextSearch?: (query:string,signal:AbortSignal)=>Promise<any>, onPublicPlaceSearch?: (query:string,signal:AbortSignal)=>Promise<any>}} [options] */
+export function autocompleteRender(query,{api=async()=>({status:200,body:{candidates:[]}}),searchIntent='route-stop',contextCountries,onFreeTextSearch,onPublicPlaceSearch}={}){
  const values=[],refs=[],effects=[],timers=new Map(),selected=[],calls=[];let timerId=0;let stateIndex=0,refIndex=0,effectIndex=0;
  const hooks={forwardRef:require('react').forwardRef,useState(initial){const at=stateIndex++;if(!(at in values))values[at]=typeof initial==='function'?initial():initial;return [values[at],next=>{values[at]=typeof next==='function'?next(values[at]):next;}];},
   useRef(initial){const at=refIndex++;return refs[at]??(refs[at]={current:initial});},
@@ -25,11 +26,13 @@ export function autocompleteRender(query,{api=async()=>({status:200,body:{candid
   fetch:async(url)=>{const parsed=new URL(url,'http://127.0.0.1:43189');calls.push(parsed);const response=await api({pathname:parsed.pathname,method:'GET',searchParams:parsed.searchParams});return {ok:response.status>=200&&response.status<300,status:response.status,json:async()=>JSON.parse(JSON.stringify(response.body))};}});
  new vm.Script(script,{filename:'actual-autocomplete-bundle.cjs'}).runInContext(context);
  let tree;
- let props={label:'Synthetic destination',placeholder:'Place',value:query,includeNonRoutable:true,contextCountries,searchIntent,onChange(){},onSelect:suggestion=>selected.push(suggestion)};
+ let props={label:'Synthetic destination',placeholder:'Place',value:query,includeNonRoutable:true,contextCountries,searchIntent,onChange(){},onSelect:suggestion=>selected.push(suggestion),onFreeTextSearch,onPublicPlaceSearch};
  const render=(overrides={})=>{props={...props,...overrides};stateIndex=0;refIndex=0;effectIndex=0;tree=module.exports.CanonicalPlaceAutocomplete(props);
+  for(const node of allElements(tree)){const ref=node.props.ref;if(ref&&typeof ref==='object')ref.current={value:node.props.role==='combobox'?props.value:undefined,focus(){},contains(){return false;}};}
   for(const effect of effects)if(effect.callback){const callback=effect.callback;effect.callback=null;effect.cleanup=callback();}return tree;};
  render();allElements(tree).find(node=>node.props.role==='combobox').props.onFocus();render();
- return {selected,calls,render,async settle(){const pending=[...timers.values()];timers.clear();for(const timer of pending)timer();for(let i=0;i<40;i++)await Promise.resolve();render();},
+ return {selected,calls,render,enter(){allElements(tree).find(node=>node.props.role==='combobox').props.onKeyDown({key:'Enter',preventDefault(){}});},change(next){allElements(tree).find(node=>node.props.role==='combobox').props.onChange({target:{value:next}});props.value=next;render();},async settle(){const pending=[...timers.values()];timers.clear();for(const timer of pending)timer();for(let i=0;i<40;i++)await Promise.resolve();render();},
+  actions(){return allElements(tree).filter(node=>node.props.onClick && node.props.role!=='option').map(node=>({label:text(node),click:()=>node.props.onClick()}));},
   rows(){return allElements(tree).filter(node=>node.props.role==='option').map(node=>({key:node.key,label:text(node),choose:()=>node.props.onClick()}));},
   close(){for(const effect of effects)effect.cleanup?.();}};
 }

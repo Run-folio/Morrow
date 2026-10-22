@@ -6,6 +6,8 @@ import ts from 'typescript';
 import { canonicalRouteFixture } from './fixtures/batch14-route-documents.ts';
 import { canonicalTripRevisionCanReplace } from '../lib/easyt/trip-continuity.ts';
 import { createTripMutationPersistenceQueue, newestTripMutationCanonical } from '../lib/easyt/trip-mutation-persistence.ts';
+import * as workspaceDiagnostic from '../lib/easyt/workspace-recovery-diagnostic.ts';
+import {BrowserRecoveryReadError as ActualBrowserRecoveryReadError} from '../lib/easyt/browser-recovery-persistence.ts';
 
 const require = createRequire(import.meta.url);
 const tick = async () => { for (let index = 0; index < 20; index++) await Promise.resolve(); };
@@ -244,6 +246,7 @@ function resolverHarness(overrides: Record<string, any> = {}) {
     react: schedule.hooks,
     'next/navigation': { useSearchParams: () => search, notFound: () => { missing += 1; throw new Error('not found'); } },
     '@/lib/easyt/storage': storage,
+    '@/lib/easyt/workspace-recovery-diagnostic': workspaceDiagnostic,
     '@/lib/analytics': { trackEvent: () => undefined },
     '@/lib/easyt/trip-continuity': { tripSyncRecoveryPath: () => '/recovery' },
     '@/lib/easyt/trip-workspace-links': { tripSaveSignInHref: () => '/sign-in' },
@@ -262,6 +265,58 @@ function findNode(node: any, type: any): any {
   if (node.type === type) return node;
   return findNode(node.props?.children, type);
 }
+
+function enableWorkspaceDiagnostic(t: {after:(cleanup:()=>void)=>void}) {
+  const env=process.env.MORROVIA_QA_PERSISTENCE_DIAGNOSTICS, descriptor=Object.getOwnPropertyDescriptor(globalThis,'window');
+  process.env.MORROVIA_QA_PERSISTENCE_DIAGNOSTICS='1';
+  Object.defineProperty(globalThis,'window',{configurable:true,value:{location:{origin:'https://staging.morrovia.com'}}});
+  t.after(()=>{if(env===undefined)delete process.env.MORROVIA_QA_PERSISTENCE_DIAGNOSTICS;else process.env.MORROVIA_QA_PERSISTENCE_DIAGNOSTICS=env;
+    if(descriptor)Object.defineProperty(globalThis,'window',descriptor);else Reflect.deleteProperty(globalThis,'window');});
+}
+for(const phase of ['guest-read','explicit-save','owner-workspace-read']) test(`workspace diagnostic identifies actual resolver ${phase} refusal without saving`,async t=>{
+  enableWorkspaceDiagnostic(t); let attempts=0;
+  const error=new ActualBrowserRecoveryReadError('protected','homepage-trip-mismatch');
+  const refuse=async()=>{attempts++;throw error;};
+  const h=resolverHarness({BrowserRecoveryReadError:ActualBrowserRecoveryReadError,
+    ...(phase==='guest-read'?{loadTripRecovery:refuse}:phase==='explicit-save'?{saveExplicitGuestTripForOwner:refuse}:{loadTripWorkspaceDocument:refuse})});
+  if(phase!=='owner-workspace-read')h.search.set('saved','1');
+  h.render();await tick();const banner=findNode(h.render(),h.Banner);
+  assert.equal(banner.props.title,'Device changes need review');assert.ok(banner.props.detail.endsWith(`Support code: ${phase} / homepage-trip-mismatch`));
+  assert.equal(findNode(h.render(),h.Shell),null);assert.equal(h.cloud.length,0);assert.equal(h.missing(),0);assert.equal(attempts,1);
+  await tick();h.render();assert.equal(attempts,1,'diagnostics must not retry automatically');
+  await banner.props.actions.props.onClick();await tick();assert.equal(attempts,2,'existing user retry remains available');
+});
+for(const retirement of ['owner','owner-roundtrip','generation','unmount'])test(`workspace diagnostic cannot publish after ${retirement} retirement`,async t=>{
+  enableWorkspaceDiagnostic(t);const read=deferred<any>();let reads=0;
+  const h=resolverHarness({BrowserRecoveryReadError:ActualBrowserRecoveryReadError,loadTripWorkspaceDocument:()=>++reads===1?read.promise:Promise.reject(new ActualBrowserRecoveryReadError('protected','destination-exists'))});
+  h.render();await tick();
+  if(retirement==='owner')h.setOwner('owner-b');
+  if(retirement==='owner-roundtrip'){h.setOwner('owner-b');h.render();await tick();h.setOwner('owner-a');}
+  if(retirement==='generation')h.setSearch('day=2');
+  if(retirement==='unmount')h.unmount();else {h.render();await tick();}
+  read.reject(new ActualBrowserRecoveryReadError('protected','homepage-trip-mismatch'));await tick();
+  const banner=findNode(h.render(),h.Banner);
+  if(retirement==='unmount')assert.equal(banner,null);
+  else {assert.ok(banner.props.detail.includes('destination-exists'));assert.ok(!banner.props.detail.includes('homepage-trip-mismatch'));}
+  assert.equal(h.cloud.length,0);assert.equal(h.missing(),0);
+});
+test('workspace diagnostic is absent from the actual banner without build opt-in',async t=>{
+  enableWorkspaceDiagnostic(t);process.env.MORROVIA_QA_PERSISTENCE_DIAGNOSTICS='0';
+  const h=resolverHarness({BrowserRecoveryReadError:ActualBrowserRecoveryReadError,loadTripWorkspaceDocument:async()=>{throw new ActualBrowserRecoveryReadError('protected','homepage-trip-mismatch')}});
+  h.render();await tick();const banner=findNode(h.render(),h.Banner);
+  assert.equal(banner.props.title,'Device changes need review');
+  assert.equal(banner.props.detail,'Separate device copies remain protected. Review them before continuing.');
+  assert.equal(h.cloud.length,0);
+});
+test('workspace diagnostic never renders exception content and vanishes after successful explicit retry',async t=>{
+  enableWorkspaceDiagnostic(t);let refused=true;
+  const trip={...canonicalRouteFixture(),id:'async-shell-trip',ownerId:'owner-a'};
+  const h=resolverHarness({BrowserRecoveryReadError:ActualBrowserRecoveryReadError,loadTripWorkspaceDocument:async()=>{
+    if(refused)throw new ActualBrowserRecoveryReadError('protected','PRIVATE-ACCOUNT-CONTENT');return {trip,recovery:null};}});
+  h.render();await tick();const banner=findNode(h.render(),h.Banner);assert.ok(banner.props.detail.endsWith('owner-workspace-read / other-protected'));
+  assert.ok(!JSON.stringify(h.render()).includes('PRIVATE-ACCOUNT-CONTENT'));refused=false;banner.props.actions.props.onClick();await tick();
+  assert.equal(findNode(h.render(),h.Banner)??null,null);assert.ok(findNode(h.render(),h.Shell));assert.equal(h.cloud.length,0);
+});
 
 function clientHarness(t: { after: (callback: () => void) => void }, storageOverrides: Record<string, any> = {}, mutationOverrides: Record<string, any> = {}) {
   const schedule = scheduler();

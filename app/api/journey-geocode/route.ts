@@ -1,3 +1,8 @@
+import {createReviewedPlaceMappingReader} from '@/lib/easyt/public-place-durable.server';
+import { defaultPlaceResearchControls, publicPlaceResearchReady } from '@/lib/easyt/public-place-research-controls.server';
+import { PlacePostError, readCompletedPlacePost } from '@/lib/easyt/public-place-post.server';
+import { publicPlaceQueryAllowed } from '@/lib/easyt/public-place-search-input';
+import { enrichPublicPlaceSearch } from '@/lib/easyt/public-place-research.server';
 import { reviewedIslandBaseSeeds } from '@/lib/easyt/reviewed-island-destinations.server';
 import { NextRequest, NextResponse } from "next/server";
 import { destinationPlanningDecision } from "@/lib/easyt/destination-planning-policy";
@@ -164,7 +169,7 @@ function responseNearbyCandidate(candidate: NearbyBaseSuggestion) {
   };
 }
 
-export async function GET(request: NextRequest) {
+async function resolvePlaceRequest(request: NextRequest, researchConfirmed=false) {
   const mode=request.nextUrl.searchParams.get('mode');
   if(mode!==null&&mode!=='autocomplete'&&mode!=='resolve')return NextResponse.json({result:null},{status:400});
   if(mode==='autocomplete'&&request.nextUrl.searchParams.get('nearbyBases')==='1')return NextResponse.json({candidates:[],status:'explicit-nearby-search-required'});
@@ -219,31 +224,53 @@ export async function GET(request: NextRequest) {
 
   const importLookup = request.nextUrl.searchParams.get('consumer') === 'spreadsheet-import';
   const refreshImport = importLookup && mode === 'resolve';
+  const completedPlaceLookup = mode === 'resolve' && request.nextUrl.searchParams.get('candidates') === '1'
+    && requestedIntent === 'route-stop' && !importLookup && !planningParent && !nearbyAnchor
+    && !request.nextUrl.searchParams.has('nearbyBaseSearch')
+    && !request.nextUrl.searchParams.has('anchorName') && !request.nextUrl.searchParams.has('nearLat')
+    && !request.nextUrl.searchParams.has('nearLon');
+  const publicPlaceConfirmed = completedPlaceLookup && researchConfirmed;
+  const monitoredLookup = importLookup || completedPlaceLookup;
   let sourceFailed = false;
-  const importFetch: typeof fetch | undefined = importLookup ? async (input, init) => {
+  const importFetch: typeof fetch | undefined = monitoredLookup ? async (input, init) => {
     let options = init;
-    if (refreshImport) {
+    if (refreshImport || completedPlaceLookup) {
       options = { ...init, cache: 'no-store' };
       delete options.next;
     }
+    if (request.signal) options = { ...options, signal: options?.signal
+      ? AbortSignal.any([request.signal,options.signal]) : request.signal };
     const response = await fetch(input, options);
-    if (!response.ok) throw new Error('Import place source unavailable');
+    if (!response.ok) throw new Error('Place source unavailable');
     const url = new URL(typeof input === 'string' ? input : input instanceof URL ? input.href : input.url);
     if (url.origin === 'https://photon.komoot.io' && url.pathname === '/api/') {
       const payload = await response.clone().json() as { features?: unknown } | null;
-      if (!payload || !Array.isArray(payload.features)) throw new Error('Import place source unavailable');
+      if (!payload || !Array.isArray(payload.features)) throw new Error('Place source unavailable');
     }
     return response;
   } : undefined;
   try {
     const reviewedMatches = planningParent ? reviewedIslandBaseSeeds(planningParent)?.filter(candidate =>
       [candidate.canonicalName, ...(candidate.aliases ?? [])].some(name => normalise(name).includes(normalise(place)))) : undefined;
-    const availableCandidates = (reviewedMatches?.length ? reviewedMatches : await searchOpenWorldTravelCandidates(place, {
+    const deterministicCandidates = (reviewedMatches?.length ? reviewedMatches : await searchOpenWorldTravelCandidates(place, {
       travelIntent,
       ...(country ? { countryNames: [country], explicitCountryNames: [country] } : {}),
     }, createOpenWorldPlaceProvider({searchMode:mode==='autocomplete'?'reference-only':'reference-with-photon',
-      fetchImpl:importFetch, ...(refreshImport ? {cache:new Map()} : {}),
-      ...(importLookup ? {onSourceFailure:()=>{sourceFailed=true;}} : {})})))
+      fetchImpl:importFetch, ...(refreshImport || completedPlaceLookup ? {cache:new Map()} : {}),
+      ...(monitoredLookup ? {onSourceFailure:()=>{sourceFailed=true;}} : {})})));
+    let researchUnavailable=false;
+    const researchedCandidates = publicPlaceConfirmed ? await enrichPublicPlaceSearch({
+      query:place,country,publicPlaceConfirmed,deterministicCandidates,sourceFailed,
+      signal:request.signal,
+    },{mappingReader:createReviewedPlaceMappingReader(),onUnavailable:()=>{researchUnavailable=true;},research:async (query,country,signal) => (await import("@/lib/easyt/public-place-research-openai.server")).researchPublicPlaceNames(query,country,signal),lookup:async (alias,signal) => {
+      let aliasFailed=false;
+      const fetchAlias: typeof fetch = async (input,init) => importFetch!(input,{...init,signal:init?.signal?AbortSignal.any([signal,init.signal]):signal});
+      const candidates=await searchOpenWorldTravelCandidates(alias,{travelIntent,...(country?{countryNames:[country],explicitCountryNames:[country]}:{})},
+        createOpenWorldPlaceProvider({searchMode:'reference-with-photon',cache:new Map(),fetchImpl:fetchAlias,onSourceFailure:()=>{aliasFailed=true;}}));
+      if(aliasFailed) sourceFailed=true;
+      return {candidates,sourceFailed:aliasFailed};
+    }}) : [];
+    const availableCandidates = [...deterministicCandidates,...researchedCandidates]
       .filter(validReferenceCandidate)
       .filter((candidate) => !country || matchesCountry(candidate.parentCountries?.[0], country));
     // An island's administrative label or rectangle is not physical
@@ -255,9 +282,11 @@ export async function GET(request: NextRequest) {
       .filter((candidate) => !nearbyAnchor || Boolean(placeCandidateSuitableAsNearbyBase(nearbyAnchor, candidate)))
       .sort((left, right) => (right.rankScore ?? 0) - (left.rankScore ?? 0) || distanceFrom(nearby, left) - distanceFrom(nearby, right));
 
-    if (importLookup && sourceFailed && !candidates.length) throw new Error('Import place source unavailable');
+    if ((monitoredLookup && sourceFailed || publicPlaceConfirmed && researchUnavailable) && !candidates.length) throw new Error('Place source unavailable');
     if (request.nextUrl.searchParams.get("candidates") === "1") {
-      return NextResponse.json({ candidates: candidates.slice(0, 8).map(responseCandidate) });
+      return NextResponse.json({ candidates: candidates.slice(0, 8).map(responseCandidate),
+        ...(completedPlaceLookup ? {publicResearchAvailable:!sourceFailed&&!deterministicCandidates.length
+          &&publicPlaceQueryAllowed(place,country)&&publicPlaceResearchReady(defaultPlaceResearchControls())} : {}) });
     }
 
     const countries = candidates.map((candidate) => candidate.parentCountries?.[0] ?? "");
@@ -272,4 +301,27 @@ export async function GET(request: NextRequest) {
   } catch {
     return NextResponse.json({ result: null }, { status: request.nextUrl.searchParams.get("candidates") === "1" ? 503 : 200 });
   }
+}
+
+
+export async function GET(request:NextRequest) {
+  // Paid research is never available via a link, prefetch or query-string flag.
+  if(request.nextUrl.searchParams.has('research'))return NextResponse.json({candidates:[],status:'post-required'},{status:405,headers:{'cache-control':'private, no-store','allow':'POST'}});
+  return resolvePlaceRequest(request);
+}
+export async function POST(request:NextRequest) {
+  const headers={'cache-control':'private, no-store'};
+  try{
+    if(request.nextUrl.search || request.headers.get('origin')!==request.nextUrl.origin
+      || request.headers.get('sec-fetch-site')&&request.headers.get('sec-fetch-site')!=='same-origin')
+      return NextResponse.json({candidates:[],status:'invalid-origin'},{status:403,headers});
+    const input=await readCompletedPlacePost(request);
+    if(input.research&&!publicPlaceResearchReady(defaultPlaceResearchControls()))
+      return NextResponse.json({candidates:[],status:'research-disabled'},{status:503,headers});
+    const url=new URL(request.nextUrl.origin+'/api/journey-geocode');
+    url.search=new URLSearchParams({place:input.place,mode:'resolve',candidates:'1',intent:'route-stop',...(input.country?{country:input.country}:{})}).toString();
+    // Internal projection only; the submitted name never travels in a request URL.
+    const result=await resolvePlaceRequest({nextUrl:url,signal:request.signal} as NextRequest,input.research);
+    result.headers.set('cache-control','private, no-store');return result;
+  }catch(error){return NextResponse.json({candidates:[],status:'unavailable'},{status:error instanceof PlacePostError?error.status:503,headers});}
 }

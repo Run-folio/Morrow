@@ -1,0 +1,406 @@
+{
+  "query": "Yunomine hot spring village",
+  "country": "Japan",
+  "officialSource": "https://www.tb-kumano.jp/en/places/yunomine/",
+  "expected": {
+    "providerId": "photon:N:2822838506",
+    "name": "Yunomine Onsen",
+    "countryCode": "JP",
+    "osmKey": "place",
+    "osmValue": "locality",
+    "applicationPlaceType": "town",
+    "routability": "direct_destination"
+  },
+  "captures": [
+    {
+      "url": "https://photon.komoot.io/api/?q=Yunomine+hot+spring+village&limit=8&lang=en",
+      "status": 200,
+      "body": {
+        "type": "FeatureCollection",
+        "features": [
+          {
+            "type": "Feature",
+            "properties": {
+              "osm_type": "W",
+              "osm_id": 256190307,
+              "osm_key": "tourism",
+              "osm_value": "museum",
+              "type": "house",
+              "housenumber": "2",
+              "name": "Beitou Hot Spring Museum",
+              "street": "Zhongshan Road",
+              "locality": "Linquan Village",
+              "district": "Beitou",
+              "city": "Taipei",
+              "country": "Taiwan",
+              "postcode": "11243",
+              "countrycode": "TW",
+              "extent": [
+                121.5069664,
+                25.1367542,
+                121.5073456,
+                25.1364336
+              ]
+            },
+            "geometry": {
+              "type": "Point",
+              "coordinates": [
+                121.5071899,
+                25.1365786
+              ]
+            }
+          },
+          {
+            "type": "Feature",
+            "properties": {
+              "osm_type": "N",
+              "osm_id": 940950153,
+              "osm_key": "tourism",
+              "osm_value": "attraction",
+              "type": "house",
+              "housenumber": "167",
+              "name": "Green Island Asahi Hot Spring",
+              "street": "溫泉路",
+              "district": "Baisha",
+              "city": "Green Island",
+              "county": "Taitung County",
+              "state": "台灣省",
+              "country": "Taiwan",
+              "postcode": "951",
+              "countrycode": "TW"
+            },
+            "geometry": {
+              "type": "Point",
+              "coordinates": [
+                121.50407,
+                22.636906
+              ]
+            }
+          },
+          {
+            "type": "Feature",
+            "properties": {
+              "osm_type": "R",
+              "osm_id": 18146283,
+              "osm_key": "boundary",
+              "osm_value": "census",
+              "type": "other",
+              "name": "Hot Springs Village",
+              "city": "Hot Springs Village",
+              "county": "Garland",
+              "state": "Arkansas",
+              "country": "United States",
+              "postcode": "71909",
+              "countrycode": "US",
+              "extent": [
+                -93.07291,
+                34.712649,
+                -92.923818,
+                34.618089
+              ]
+            },
+            "geometry": {
+              "type": "Point",
+              "coordinates": [
+                -93.0012525,
+                34.665341
+              ]
+            }
+          },
+          {
+            "type": "Feature",
+            "properties": {
+              "osm_type": "N",
+              "osm_id": 151905299,
+              "osm_key": "place",
+              "osm_value": "town",
+              "type": "city",
+              "name": "Hot Springs Village",
+              "county": "Garland",
+              "state": "Arkansas",
+              "country": "United States",
+              "postcode": "71909",
+              "countrycode": "US"
+            },
+            "geometry": {
+              "type": "Point",
+              "coordinates": [
+                -92.9983875,
+                34.6795724
+              ]
+            }
+          },
+          {
+            "type": "Feature",
+            "properties": {
+              "osm_type": "N",
+              "osm_id": 12311526501,
+              "osm_key": "leisure",
+              "osm_value": "sauna",
+              "type": "house",
+              "name": "Maple Leaf Village Hot Spring Resort",
+              "street": "智谷三街",
+              "district": "Wanbao",
+              "city": "Harbin",
+              "county": "Daoli District",
+              "state": "Heilongjiang Province",
+              "country": "China",
+              "postcode": "150000",
+              "countrycode": "CN"
+            },
+            "geometry": {
+              "type": "Point",
+              "coordinates": [
+                126.4603068,
+                45.8241069
+              ]
+            }
+          },
+          {
+            "type": "Feature",
+            "properties": {
+              "osm_type": "W",
+              "osm_id": 429788591,
+              "osm_key": "highway",
+              "osm_value": "path",
+              "type": "street",
+              "name": "Lisong Hot Spring Path",
+              "district": "Lidao Village",
+              "city": "Haiduan",
+              "county": "Taitung County",
+              "country": "Taiwan",
+              "postcode": "957",
+              "countrycode": "TW",
+              "extent": [
+                121.0347791,
+                23.196727,
+                121.0356609,
+                23.19657
+              ]
+            },
+            "geometry": {
+              "type": "Point",
+              "coordinates": [
+                121.0352417,
+                23.1966695
+              ]
+            }
+          },
+          {
+            "type": "Feature",
+            "properties": {
+              "osm_type": "W",
+              "osm_id": 516958667,
+              "osm_key": "leisure",
+              "osm_value": "park",
+              "type": "other",
+              "name": "Jiaoxi Hot Spring Square",
+              "district": "德陽村",
+              "city": "Jiaoxi Township",
+              "county": "Yilan County",
+              "country": "Taiwan",
+              "countrycode": "TW",
+              "extent": [
+                121.773275,
+                24.8291241,
+                121.7737856,
+                24.828719
+              ]
+            },
+            "geometry": {
+              "type": "Point",
+              "coordinates": [
+                121.7735663,
+                24.8289194
+              ]
+            }
+          },
+          {
+            "type": "Feature",
+            "properties": {
+              "osm_type": "W",
+              "osm_id": 548927488,
+              "osm_key": "highway",
+              "osm_value": "tertiary",
+              "type": "street",
+              "name": "Hot Spring Road",
+              "district": "Wenquan",
+              "city": "Beinan",
+              "county": "Taitung County",
+              "country": "Taiwan",
+              "postcode": "954",
+              "countrycode": "TW",
+              "extent": [
+                121.0216989,
+                22.6967195,
+                121.0236672,
+                22.6948703
+              ]
+            },
+            "geometry": {
+              "type": "Point",
+              "coordinates": [
+                121.0226974,
+                22.6957522
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "url": "https://photon.komoot.io/api/?q=Yunomine+Onsen&limit=8&lang=en",
+      "status": 200,
+      "body": {
+        "type": "FeatureCollection",
+        "features": [
+          {
+            "type": "Feature",
+            "properties": {
+              "osm_type": "W",
+              "osm_id": 303934214,
+              "osm_key": "natural",
+              "osm_value": "hot_spring",
+              "type": "house",
+              "name": "Yunomine Onsen Public Bath",
+              "street": "湯元橋",
+              "locality": "Hongucho-Yunomine",
+              "district": "Hongu",
+              "city": "Tanabe",
+              "state": "Wakayama Prefecture",
+              "country": "Japan",
+              "postcode": "646-8545",
+              "countrycode": "JP",
+              "extent": [
+                135.7577474,
+                33.8288264,
+                135.7578949,
+                33.8287685
+              ]
+            },
+            "geometry": {
+              "type": "Point",
+              "coordinates": [
+                135.757818,
+                33.8287966
+              ]
+            }
+          },
+          {
+            "type": "Feature",
+            "properties": {
+              "osm_type": "W",
+              "osm_id": 303934214,
+              "osm_key": "amenity",
+              "osm_value": "public_bath",
+              "type": "house",
+              "name": "Yunomine Onsen Public Bath",
+              "street": "湯元橋",
+              "locality": "Hongucho-Yunomine",
+              "district": "Hongu",
+              "city": "Tanabe",
+              "state": "Wakayama Prefecture",
+              "country": "Japan",
+              "postcode": "646-8545",
+              "countrycode": "JP",
+              "extent": [
+                135.7577474,
+                33.8288264,
+                135.7578949,
+                33.8287685
+              ]
+            },
+            "geometry": {
+              "type": "Point",
+              "coordinates": [
+                135.757818,
+                33.8287966
+              ]
+            }
+          },
+          {
+            "type": "Feature",
+            "properties": {
+              "osm_type": "N",
+              "osm_id": 2822838506,
+              "osm_key": "place",
+              "osm_value": "locality",
+              "type": "locality",
+              "name": "Yunomine Onsen",
+              "district": "Hongu",
+              "city": "Tanabe",
+              "state": "Wakayama Prefecture",
+              "country": "Japan",
+              "postcode": "646-8545",
+              "countrycode": "JP"
+            },
+            "geometry": {
+              "type": "Point",
+              "coordinates": [
+                135.7575842,
+                33.8288351
+              ]
+            }
+          },
+          {
+            "type": "Feature",
+            "properties": {
+              "osm_type": "N",
+              "osm_id": 2822853461,
+              "osm_key": "highway",
+              "osm_value": "bus_stop",
+              "type": "house",
+              "name": "Yunomine Onsen",
+              "street": "湯元橋",
+              "locality": "Hongucho-Yunomine",
+              "district": "Hongu",
+              "city": "Tanabe",
+              "state": "Wakayama Prefecture",
+              "country": "Japan",
+              "postcode": "646-8545",
+              "countrycode": "JP"
+            },
+            "geometry": {
+              "type": "Point",
+              "coordinates": [
+                135.7575631,
+                33.8286995
+              ]
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "baseline": [],
+  "canonicalLookup": [
+    {
+      "providerId": "photon:N:2822838506",
+      "canonicalName": "Yunomine Onsen",
+      "placeType": "town",
+      "parentCountries": [
+        "Japan"
+      ],
+      "parentRegionId": "Wakayama Prefecture",
+      "accessPlaceName": "Tanabe",
+      "coordinates": [
+        135.7575842,
+        33.8288351
+      ],
+      "routability": "direct_destination",
+      "matchQuality": "exact",
+      "rankScore": 341,
+      "providerRank": 2,
+      "normalizationReason": "provider locality (locality) is directly routable; exact name match; route-stop intent; source=Komoot Photon; explicit country context",
+      "country": "Japan",
+      "countryCode": "JP",
+      "region": "Wakayama Prefecture",
+      "locality": "Tanabe",
+      "providerKey": "place",
+      "providerKind": "locality",
+      "providerSourceId": "photon",
+      "providerSourceLabel": "Komoot Photon"
+    }
+  ],
+  "preverifiedAt": "2026-10-22T16:44:18.802Z"
+}

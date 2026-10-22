@@ -1,8 +1,9 @@
+import { emptyServerMarkerPlugin } from './helpers/server-marker.mjs';
 import test from 'node:test';import assert from 'node:assert/strict';import {build} from 'esbuild';import {createRequire} from 'node:module';
 import {createOpenWorldPlaceProvider} from '../lib/easyt/open-world-place.server.ts';
 import {trustedLocalActivityCentre} from '../lib/easyt/place-reference.server.ts';
 import {referenceCountrySeeds} from '../lib/easyt/place-reference.ts';
-async function handler(path:string){const require=createRequire(import.meta.url);const bundle=await build({entryPoints:[path],bundle:true,write:false,format:'cjs',platform:'node',external:['next/server']});const module={exports:{} as any};new Function('require','module','exports',bundle.outputFiles[0].text)(require,module,module.exports);return {GET:module.exports.GET,Request:require('next/server').NextRequest};}
+async function handler(path:string){const require=createRequire(import.meta.url);const bundle=await build({entryPoints:[path],bundle:true,write:false,format:'cjs',platform:'node',external:['next/server'],plugins:[emptyServerMarkerPlugin]});const module={exports:{} as any};new Function('require','module','exports',bundle.outputFiles[0].text)(require,module,module.exports);return {GET:module.exports.GET,Request:require('next/server').NextRequest};}
 test('autocomplete and exact local resolves make zero external calls; an unresolved explicit lookup makes one abortable Photon call',async()=>{
  const calls:{url:string;signal:AbortSignal}[]=[];const fetcher=(async(input:any,init:any)=>{calls.push({url:String(input),signal:init.signal});return new Response('{"features":[]}');}) as typeof fetch;
  const local=createOpenWorldPlaceProvider({searchMode:'reference-only',fetchImpl:fetcher,cache:new Map()});

@@ -5,6 +5,8 @@ import {
   type PlaceRoutability,
   type PlaceType,
 } from "./place-intelligence.ts";
+import { countryFor } from "./country-registry.ts";
+import { reviewedAliasMatchesPhotonFeature } from "./place-search-aliases.ts";
 
 type PhotonFeature = {
   properties?: {
@@ -31,10 +33,13 @@ export type PhotonTravelCandidate = PlaceProviderCandidate & {
   countryCode?: string;
   region?: string;
   locality?: string;
+  providerName?: string;
+  providerKey?: string;
   providerKind: string;
 };
 
-const normalize = (value: string) => value.toLocaleLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, " ").trim();
+const normalize = (value: string) => value.normalize("NFKD").replace(/[\u0300-\u036f]/g, "")
+  .toLocaleLowerCase().replace(/[^\p{L}\p{N}]+/gu, " ").trim().replace(/\s+/g, " ");
 
 function editDistance(left: string, right: string) {
   const previous = Array.from({ length: right.length + 1 }, (_, index) => index);
@@ -116,7 +121,15 @@ export async function searchPhotonTravelCandidates(
     const facts = taxonomy(feature, context);
     if (!coordinates || !name || (!country && facts.placeType !== "continent") || !providerId) return [];
     if (facts.placeType === "unknown") return [];
-    const quality = matchQuality(name, phrase);
+    const reviewedAlias = reviewedAliasMatchesPhotonFeature({
+      query: phrase,
+      name,
+      countryCode: properties.countrycode,
+      providerId,
+      key: properties.osm_key,
+      value: properties.osm_value,
+    });
+    const quality = reviewedAlias ? "alias" as const : matchQuality(name, phrase);
     if (quality === "partial") return [];
     const rawAdministrativeLevel = Number(properties.extra?.admin_level);
     const administrativeLevel = Number.isFinite(rawAdministrativeLevel) ? rawAdministrativeLevel : undefined;
@@ -134,9 +147,9 @@ export async function searchPhotonTravelCandidates(
     return [{
       providerId,
       canonicalName: name,
-      ...(quality === "alias" ? { aliases: [phrase] } : {}),
+      ...(quality === "alias" ? { aliases: [...new Set([phrase, ...(reviewedAlias?.displayAliases ?? [])])] } : {}),
       placeType: facts.placeType,
-      parentCountries: country ? [country] : [],
+      parentCountries: country ? [countryFor(properties.countrycode)?.name ?? country] : [],
       parentRegionId: properties.state ?? properties.county,
       accessPlaceName: properties.city,
       coordinates,
@@ -150,11 +163,13 @@ export async function searchPhotonTravelCandidates(
       ...(geographicSignificance ? { geographicSignificance } : {}),
       providerRank: index,
       ...(administrativeLevel !== undefined ? { administrativeLevel } : {}),
-      normalizationReason: `${facts.reason}; ${quality} name match; ${context.travelIntent ?? "unknown"} intent${geographicSignificance ? `; recognised higher-order geography (${geographicSignificance.toFixed(2)})` : ""}`,
+      normalizationReason: `${facts.reason}; ${reviewedAlias ? `reviewed alternate-name match (${reviewedAlias.id})` : `${quality} name match`}; ${context.travelIntent ?? "unknown"} intent${geographicSignificance ? `; recognised higher-order geography (${geographicSignificance.toFixed(2)})` : ""}`,
       country,
       countryCode: properties.countrycode?.toUpperCase(),
       region: properties.state ?? properties.county,
       locality: properties.city,
+      providerName: properties.name,
+      providerKey: properties.osm_key,
       providerKind: properties.osm_value ?? properties.type ?? properties.osm_key ?? "place",
     }];
   });

@@ -1,3 +1,4 @@
+import { emptyServerMarkerPlugin } from './helpers/server-marker.mjs';
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {readFileSync} from 'node:fs';
@@ -8,7 +9,7 @@ const captured=JSON.parse(readFileSync('tests/fixtures/batch14-physical-island-g
 const fira=searchReferencePlaces('Fira',{explicitCountryNames:['Greece']}).find(c=>c.canonicalPlaceId==='reference:geonames:252920')!;
 const athens=searchReferencePlaces('Athens',{explicitCountryNames:['Greece']}).find(c=>c.placeType==='city')!;
 async function api(seeds:PlaceProviderCandidate[]){
- const output=await build({entryPoints:['app/api/journey-geocode/route.ts'],bundle:true,write:false,format:'esm',platform:'node',plugins:[{name:'injected-candidate-source',setup(b){
+ const output=await build({entryPoints:['app/api/journey-geocode/route.ts'],bundle:true,write:false,format:'esm',platform:'node',plugins:[emptyServerMarkerPlugin,{name:'injected-candidate-source',setup(b){
   b.onResolve({filter:/^next\/server$/},()=>({path:'next',namespace:'fixture'}));
   b.onResolve({filter:/place-reference\.server$/},()=>({path:'reference',namespace:'fixture'}));
   b.onLoad({filter:/.*/,namespace:'fixture'},({path})=>({resolveDir:process.cwd(),contents:path==='next'

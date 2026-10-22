@@ -5,6 +5,7 @@ import ts from 'typescript';
 import {homeRecoveryFixture} from './helpers/home-recovery-fixture.ts';
 import {tripSaveContinuationHref,tripSaveSignInHref} from '../lib/easyt/trip-workspace-links.ts';
 import {safeJourneyReturnTarget} from '../lib/easyt/trip-continuity.ts';
+import {workspaceRefusalDiagnostic} from '../lib/easyt/workspace-recovery-diagnostic.ts';
 
 const source=readFileSync('app/journey/new/trip-builder.tsx','utf8');
 const ast=ts.createSourceFile('builder.tsx',source,ts.ScriptTarget.Latest,true,ts.ScriptKind.TSX);let branch;
@@ -79,7 +80,7 @@ function connected(existingSession=false){
  const context={ownerId:'owner-a',isCurrent:()=>current,overflowEnabled:true,accountOverflowQualified:true};
  const broker=ownerId=>createTwoStoreTripPersistence(storage,driver,{...context,ownerId});
  const scope={resolutionIdentity:'owner-a:'+guest.id,requestGenerationRef:{current:0},mountedRef:{current:true},currentResolutionIdentityRef:{current:'owner-a:'+guest.id},
-  acknowledgedAccountRef:{current:null},ownerId:'owner-a',tripId:guest.id,searchParams:new URLSearchParams('saved=1'),BrowserRecoveryReadError,
+  acknowledgedAccountRef:{current:null},ownerId:'owner-a',tripId:guest.id,searchParams:new URLSearchParams('saved=1'),BrowserRecoveryReadError,workspaceRefusalDiagnostic,
   setSyncing:v=>{state.syncing=v},setResolution:v=>{if(typeof v!=='function')state.resolution=v},setSyncIssue:v=>{state.issue=v},setSyncComplete:v=>{state.complete=v},setDeviceContinuationIncomplete:v=>{state.incomplete=v},setShowingCanonicalConflict(){},
   loadTripRecovery:async(id,owner)=>{const read=await broker(owner).read(id);if(read.kind==='protected'||read.kind==='unavailable')throw new BrowserRecoveryReadError('protected','fixture');return read.kind==='found'?read.recovery:null},
   loadTripWorkspaceDocument:async(id,owner)=>{const read=await broker(owner).read(id);return read.kind==='found'?{trip:read.trip,recovery:read.recovery}:null},

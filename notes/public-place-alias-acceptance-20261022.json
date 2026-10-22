@@ -1,0 +1,3094 @@
+{
+  "phase": "approved-counter-free-four-20261022",
+  "startedAt": "2026-10-22T19:35:44.075Z",
+  "approvedMaxCalls": 4,
+  "approvedMaxUsd": 1,
+  "counterCalls": 0,
+  "dispatched": 4,
+  "reservedMicroUsd": 1000000,
+  "perCallUpperMicroUsd": 231845,
+  "combinedUpperMicroUsd": 927380,
+  "costBasis": "Official Luna 1050000 context*.20/M +1024 output*.75/M, plus10%regional; no tools/cache writes/retries/counter",
+  "cases": [
+    {
+      "query": "Hirayu",
+      "country": "Japan",
+      "expected": {
+        "ids": [
+          "photon:N:2481035449"
+        ],
+        "country": "Japan",
+        "types": [
+          "town"
+        ],
+        "routability": "direct_destination",
+        "source": "https://www.japan.travel/en/spot/1263/"
+      }
+    },
+    {
+      "query": "Fangjin mountain",
+      "country": "China",
+      "expected": {
+        "ids": [
+          "photon:N:699700351",
+          "photon:W:626892766"
+        ],
+        "country": "China",
+        "types": [
+          "natural_area"
+        ],
+        "routability": "needs_base_selection",
+        "source": "https://whc.unesco.org/en/list/1559/"
+      }
+    },
+    {
+      "query": "Yunomine",
+      "country": "Japan",
+      "expected": {
+        "ids": [
+          "photon:N:2822838506"
+        ],
+        "country": "Japan",
+        "types": [
+          "town"
+        ],
+        "routability": "direct_destination",
+        "source": "https://www.tb-kumano.jp/en/places/yunomine/"
+      }
+    },
+    {
+      "query": "Springfield",
+      "country": "United States",
+      "expected": {
+        "negative": "ambiguous; no suggested specific identity without additional context"
+      }
+    }
+  ],
+  "results": [
+    {
+      "query": "Hirayu",
+      "country": "Japan",
+      "expected": {
+        "ids": [
+          "photon:N:2481035449"
+        ],
+        "country": "Japan",
+        "types": [
+          "town"
+        ],
+        "routability": "direct_destination",
+        "source": "https://www.japan.travel/en/spot/1263/"
+      },
+      "requestBytes": 1417,
+      "state": "evaluated",
+      "startedAt": "2026-10-22T19:35:44.077Z",
+      "latencyMs": 3878,
+      "response": {
+        "id": "resp_0940b47c8efb96b8016ada6591607c87d2b64b21fa3d3266f8",
+        "model": "gpt-6-luna",
+        "status": "completed",
+        "service_tier": "default",
+        "usage": {
+          "input_tokens": 192,
+          "input_tokens_details": {
+            "cache_write_tokens": 0,
+            "cache_write_tokens_details": {
+              "ttl_12h_tokens": 0,
+              "ttl_30m_tokens": 0
+            },
+            "cached_tokens": 0
+          },
+          "output_tokens": 186,
+          "output_tokens_details": {
+            "reasoning_tokens": 155
+          },
+          "total_tokens": 378
+        },
+        "output": [
+          {
+            "id": "rs_0940b47c8efb96b8016ada65921f1c87d2b2a8c121590e5bbc",
+            "type": "reasoning",
+            "content": [],
+            "encrypted_content": "gAAAAABq2mWUOVdpPpWuIJ0EUhJWslQ6f-mRHxweZAEXoWJiU-UegTD4pwo6lXywQZlYAUjRPYkKQ7gNatQQCLsGeU0gHt9jbQG3RwyYSTxltBOEIemDXuRVWqLvxjnWLas_h7xLX3y0SAzxPY3SH72oUR885Nm4jU2MpteeFXaG4nY4JgVSFhiismKp6HkZw7aVfOic7Bga9a4tuBhPRKUfZtFUdein063WUukfvAQONOqUO8Y8Fsz1rvolxLz1Vl2EwluCUjjiCMQpY_QVeJc8cJorShUFLB_aW91KsYuwyx9m4-yZLhEirIJUkV3X7KgCNoFW5mYCWMKtTh5yhha1gAcgwY1sC5uHWWjj7WozpJQAy4IN2bWVTFxx7hl40NI5cb0uYyhb4BXyCx26pzYeJh2D4gHJebDwTvxxtdClcJqiNw4V1JDZ-OehqMqOClRVLhUlQJ-RMtlPnxG-iMf4tMa2o7SMTjJZJKyxhP7WOZuE3F2wun6rXrqAHfJL0zTzKyPueqBscvYKFnSYBWTIgxJln3YN_Ea95slzxjQhRhBnOLeIOmlL2wNPC0onTcvLFPnjsUq2BF7codmLxXIQdBNtL3UMyR4XXoRiGyE4dKiS2ShrLkBWde3bV43BHKznVNgZTUvg0yEeO7XMyHCC1oMRCitgzY3F4jn5-Nd4EOPFmszS-Z9eTro3uQyXy4HUg-IxWUXIT-FNn_KtJHM8aMvOGhyGzWiJPN5VteK6-IGFTWa22Z6u6dU2PATme3Rx6VMIC_URSbdhDAjtzHCQdAblGOVl2ncICEXL6GFtOehArQKBDgGAVDlZ3fif6UW1d13uMzkevPDbMproHjPdM_zAU3JKbqI8tqTN-GLqvQ5iHsUl0TA2XYIUFtS_FtozK9hrykgnGG6Qlz6bivPzT7LbcUJLKM7eRSnuuv9y2z8kDP1MQxmtX3NknY_hMGq3CY8BKdaDzi3MTx91DAyPbktvRKlSqr1Z78qzumEI6V-MK32Q0T4gyfYysaV7NJ5uJvkhYk4Qpjafrrq2LCnRH19WTAiUxbV8p2xJFjINgovu1qrNrPMafDqLouKSeCl5KlgePRJt4296ZO3DSFHPhFugpeo8NeqBVJXH5MjnDdDxd3G2ALDLvUkpjcMHya7yC4oCshOcSTi4OeQNybIp1-AHdIjjot8KypKcr7Dh8o7YfKzeJspeASJ09ALFvXHHHS63aOOHjbV_I2-XcV-ukbZostOTyFMfTFDGCioyi8pzFTTER6woftOYSbhVdVAhvigLFmLOru5ScAlfYd8q5vRL3Z7Wx2Ef5L1w57YFsvB3MckZJASgTpQto8fJWoM5kG8zzRmhsN4aQjl9uNEJJzo9kBS6ae1u765oeqlmlmqP9eleqgqZVXhIzlUlMOqFOH8mWOnAO8j2ckpdcWxlNGG9GLkEh_PzvXDO5pz0qWOa8-8TfBPf7hqPhojjLi2qy472NMVei28uRifnCU2C3lYqWsdtf_hPgxiB2Ou9LTjPmT6fto4QqrJMRCT40Fo6jHSzvt8rwaXsbGBzstwiBT3-jTdgtJPY4MIjFOZiRNfftRGZYqBCLYuUZSYcFDixhot62eAr1pU995rF32TPXiXUuKU6bT7XvY-GmtwjE5me9ouXrJCpL_HIWoYnYysYz3xoorFQRnFgWGw6fcIHgmKP60xQxcan2mVVelJlnibHOpxZFwebkO5zk4G4FUEjqprsAUCttrYobH7n3VVNDCV7EzhrpNjGnw4B9S4lRZs5AU56XELeCJt-YBPnfW-AzYuMWoydqRiAnmNekxgceGK0Hp4R-yYNDpbKTbof2ETON98En8hy7bjzFCYJWqgCk0AJzqTbNEZhsT9GO67-aHqJ2UmoMpTQpF8-9jfRSszMbX62tolFMkL8RloZD2e5xgfm-3E_2w-jllGHv9mP63XEgz75u7LNqZbG5St866_BAuK_sgKi--EOev51BsMYbZR1hc9vPfpvlTBTIuiZEGSW6lXiyDfxnUHxPJ61gis8Ih4-CT2Zvw0sCPUDOq4HLtbg41zN6grvqnpPuUQlkDz2SK8meNOlbSpjmfhDPCLlqfhsuFWVjed2WKKvQgYK75pkncjzLNRsD4jSCj2sI_m5qF3fwjmyt5yljIRZiIf8uwuk0FLEJwmYxMD6ctiQPuGEjegTz1O2_3nFEmkaegaAgNGYhh2Rh8jQMa2lP6N1Ixiz7wL6oenam8vJU3anyj_mmnW04xZ3rKkKMvL620KA1WeoP-UhQBvSgLzgFjztMyhgM71nsCgNxNO10L8ykcnbApF57fzbudw_TSXJd1w_XSECf9P6QAIe5LbHqnHduw2SaYToZyvM46jQ5lQYTlqKHn00gfH8egv61Pd__nxdoOAltTHSlcJQQ6d6hmeycD7WbVFoEaeN7Cgx7UXicOOIGKLix6AUDm9RYXabpl6bDt6CzvTwrBlZNW3XLNqO0rQaHgqs8ldXxpFRAYQdW0hBOX5od1z8cq7DUtQwkWuausl4Ul8X8Ry1dZkxE5mRiHox48SiqnL9RpxOI5HvVWIpUaIBXgWDmuPyFieUbAUi8Mrm-4kqzvATOidi3IoEwjIj-okLw13niarSvZEjljGVfZ6NlPOxHXysfZJktp5pJdzjByISmyJCIs2AjRVfcEVODwshC2WY8ulEsyfnvXSAy4aKk4ZXdLj6BHwyCwYSXFkOPGs94BvzhGev0fhyqMZvcNbCfZoEUkP0X-MD8MDwbzYnOB5ad17D75LkPAvj9yzENYjbE3mjnMLequvGi8BO9hl2dMgTPAdfrvlqWDvDW-xnQK9acLGw1LQ-IpG3bNrzRIbRJd3pw604Aw94OawZGVOn7jdMxf5CY54Ir5WxaFCGqOG5PmHgW3XmtuKCLH7L0R_pWIw2kVdw7cQR285ePaZ9RaZNBJqyOu3z6xqEvpjG6noS2NOavP4EngVBzQyn49N1eVmHrjKsIwYbxjAml1giO2VuYeIP4szbMSt7aupsIUhG2vyUjI2wAGM4VKOA-Hw34eYNRX1CU7jrr4wpF_FKKRnqDQ6ugy48Gh7RYIJEE6g1DIUBbfx55521B2KHMAF9G9NebJ_pbdWFRVVKXb0JpwkykCv88DmT9rnlVTLxD0Eln41hbUnAyFTtkhoU2gOoLGAZe6Ebw9FHS1IUQxJwP4u7g2zgORVYhciua9Ei_pP15c-H3VKezskiwfdDNoG6SvzcaC42z0tI7RO7LfdL99h33jALC8tFbZQVX9GD8uRwyWqOAW3n7vRDYg4NT12tPGUa77jHDBO88_XnlStICiNefu1tlVsk_SJnrKL13bLxuvuLfScUqVm27c3bdAech-alOTsGpP_E8OEp4m4=",
+            "summary": []
+          },
+          {
+            "id": "msg_0940b47c8efb96b8016ada6593ab5c87d2aa6ea6c0a3f596ec",
+            "type": "message",
+            "status": "completed",
+            "content": [
+              {
+                "type": "output_text",
+                "annotations": [],
+                "logprobs": [],
+                "text": "{\"status\":\"candidates\",\"candidates\":[{\"alternate_name\":\"平湯\"}]}"
+              }
+            ],
+            "phase": "final_answer",
+            "role": "assistant"
+          }
+        ]
+      },
+      "estimatedTokenCostUsd": 0.0001122,
+      "estimatedCostIncludingRegionalCeilingUsd": 0.00012342,
+      "aliases": [
+        {
+          "alternate_name": "平湯"
+        }
+      ],
+      "aliasStatus": "candidates",
+      "baseline": {
+        "sourceFailed": false,
+        "candidates": [
+          {
+            "providerId": "photon:N:2481035449",
+            "canonicalName": "Hirayu Onsen",
+            "aliases": [
+              "平湯温泉",
+              "Hirayu"
+            ],
+            "placeType": "town",
+            "parentCountries": [
+              "Japan"
+            ],
+            "parentRegionId": "Gifu Prefecture",
+            "accessPlaceName": "Takayama",
+            "coordinates": [
+              137.5536701,
+              36.1914892
+            ],
+            "routability": "direct_destination",
+            "matchQuality": "alias",
+            "rankScore": 321,
+            "providerRank": 0,
+            "normalizationReason": "provider feature matched reviewed alternate-name entry hirayu-onsen; source=Komoot Photon; explicit country context",
+            "country": "Japan",
+            "countryCode": "JP",
+            "region": "Gifu Prefecture",
+            "locality": "Takayama",
+            "providerName": "平湯温泉",
+            "providerKey": "place",
+            "providerKind": "hamlet",
+            "providerSourceId": "photon",
+            "providerSourceLabel": "Komoot Photon"
+          },
+          {
+            "providerId": "photon:N:4459168397",
+            "canonicalName": "Hirayu Waterfall",
+            "aliases": [
+              "Hirayu"
+            ],
+            "placeType": "natural_area",
+            "parentCountries": [
+              "Japan"
+            ],
+            "parentRegionId": "Gifu Prefecture",
+            "accessPlaceName": "Takayama",
+            "coordinates": [
+              137.5596133,
+              36.1770547
+            ],
+            "routability": "needs_base_selection",
+            "matchQuality": "alias",
+            "rankScore": 273,
+            "providerRank": 0,
+            "normalizationReason": "provider natural-area identity remains an anchor; alias name match; route-stop intent; source=Komoot Photon; explicit country context",
+            "country": "Japan",
+            "countryCode": "JP",
+            "region": "Gifu Prefecture",
+            "locality": "Takayama",
+            "providerName": "Hirayu Waterfall",
+            "providerKey": "waterway",
+            "providerKind": "waterfall",
+            "providerSourceId": "photon",
+            "providerSourceLabel": "Komoot Photon"
+          },
+          {
+            "providerId": "photon:N:13240608102",
+            "canonicalName": "Hirayu Shrine",
+            "aliases": [
+              "Hirayu"
+            ],
+            "placeType": "landmark",
+            "parentCountries": [
+              "Japan"
+            ],
+            "parentRegionId": "Gifu Prefecture",
+            "accessPlaceName": "Takayama",
+            "coordinates": [
+              137.5543469,
+              36.192132
+            ],
+            "routability": "anchor_or_poi",
+            "matchQuality": "alias",
+            "rankScore": 267,
+            "providerRank": 6,
+            "normalizationReason": "provider landmark identity remains an anchor; alias name match; route-stop intent; source=Komoot Photon; explicit country context",
+            "country": "Japan",
+            "countryCode": "JP",
+            "region": "Gifu Prefecture",
+            "locality": "Takayama",
+            "providerName": "Hirayu Shrine",
+            "providerKey": "historic",
+            "providerKind": "wayside_shrine",
+            "providerSourceId": "photon",
+            "providerSourceLabel": "Komoot Photon"
+          },
+          {
+            "providerId": "photon:N:4459184090",
+            "canonicalName": "Hirayu Waterfall View",
+            "aliases": [
+              "Hirayu"
+            ],
+            "placeType": "landmark",
+            "parentCountries": [
+              "Japan"
+            ],
+            "parentRegionId": "Gifu Prefecture",
+            "accessPlaceName": "Takayama",
+            "coordinates": [
+              137.5592361,
+              36.1786964
+            ],
+            "routability": "anchor_or_poi",
+            "matchQuality": "alias",
+            "rankScore": 266,
+            "providerRank": 7,
+            "normalizationReason": "provider landmark identity remains an anchor; alias name match; route-stop intent; source=Komoot Photon; explicit country context",
+            "country": "Japan",
+            "countryCode": "JP",
+            "region": "Gifu Prefecture",
+            "locality": "Takayama",
+            "providerName": "Hirayu Waterfall View",
+            "providerKey": "tourism",
+            "providerKind": "viewpoint",
+            "providerSourceId": "photon",
+            "providerSourceLabel": "Komoot Photon"
+          }
+        ]
+      },
+      "verifiedCandidates": [],
+      "providerChecks": [
+        {
+          "alias": "平湯",
+          "candidates": [
+            {
+              "providerId": "photon:N:2481035449",
+              "canonicalName": "平湯温泉",
+              "placeType": "town",
+              "parentCountries": [
+                "Japan"
+              ],
+              "parentRegionId": "Gifu Prefecture",
+              "accessPlaceName": "Takayama",
+              "coordinates": [
+                137.5536701,
+                36.1914892
+              ],
+              "routability": "direct_destination",
+              "matchQuality": "alias",
+              "rankScore": 318,
+              "providerRank": 3,
+              "normalizationReason": "provider locality (hamlet) is directly routable; alias name match; route-stop intent; source=Komoot Photon; explicit country context",
+              "country": "Japan",
+              "countryCode": "JP",
+              "region": "Gifu Prefecture",
+              "locality": "Takayama",
+              "providerName": "平湯温泉",
+              "providerKey": "place",
+              "providerKind": "hamlet",
+              "providerSourceId": "photon",
+              "providerSourceLabel": "Komoot Photon"
+            },
+            {
+              "providerId": "photon:N:4415925374",
+              "canonicalName": "平湯プリンスホテル",
+              "placeType": "landmark",
+              "parentCountries": [
+                "Japan"
+              ],
+              "parentRegionId": "Gifu Prefecture",
+              "accessPlaceName": "Takayama",
+              "coordinates": [
+                137.5537135,
+                36.1930786
+              ],
+              "routability": "anchor_or_poi",
+              "matchQuality": "alias",
+              "rankScore": 267,
+              "providerRank": 6,
+              "normalizationReason": "provider landmark identity remains an anchor; alias name match; route-stop intent; source=Komoot Photon; explicit country context",
+              "country": "Japan",
+              "countryCode": "JP",
+              "region": "Gifu Prefecture",
+              "locality": "Takayama",
+              "providerName": "平湯プリンスホテル",
+              "providerKey": "tourism",
+              "providerKind": "hotel",
+              "providerSourceId": "photon",
+              "providerSourceLabel": "Komoot Photon"
+            }
+          ],
+          "sourceFailed": false
+        }
+      ],
+      "productWouldOfferAi": false,
+      "classification": "no_expected_verified_candidate"
+    },
+    {
+      "query": "Fangjin mountain",
+      "country": "China",
+      "expected": {
+        "ids": [
+          "photon:N:699700351",
+          "photon:W:626892766"
+        ],
+        "country": "China",
+        "types": [
+          "natural_area"
+        ],
+        "routability": "needs_base_selection",
+        "source": "https://whc.unesco.org/en/list/1559/"
+      },
+      "requestBytes": 1427,
+      "state": "evaluated",
+      "startedAt": "2026-10-22T19:35:50.460Z",
+      "latencyMs": 2048,
+      "response": {
+        "id": "resp_0273c5e828d38339016ada6596e23087d297a416f88550052d",
+        "model": "gpt-6-luna",
+        "status": "completed",
+        "service_tier": "default",
+        "usage": {
+          "input_tokens": 193,
+          "input_tokens_details": {
+            "cache_write_tokens": 0,
+            "cache_write_tokens_details": {
+              "ttl_12h_tokens": 0,
+              "ttl_30m_tokens": 0
+            },
+            "cached_tokens": 0
+          },
+          "output_tokens": 108,
+          "output_tokens_details": {
+            "reasoning_tokens": 68
+          },
+          "total_tokens": 301
+        },
+        "output": [
+          {
+            "id": "rs_0273c5e828d38339016ada6597a95c87d2ae1e99e228c33ad6",
+            "type": "reasoning",
+            "content": [],
+            "encrypted_content": "gAAAAABq2mWY6Y2uIFzDdps0LVnCbk0B39xICBh-0uKDN1x-pzkC2rbL08X8-AVAsFXI-iobfRFZ_Q51uvGbouuFCHaN42NYuqXJ2AhNBhLXtHfKbfI23guSNqWg76Ryzrem7cZ-SSf660FoREz2cJjflGWjTh0NKqdrJB9tpCZiGoNjxIth22f89BLz3kswFRQ6fKmoq_mIQpSvWBUpfYrjZLwbdhmwokoPeaEAZ4p4bZqcgQ3p5cVeEt-nIP1Tq1MqYOXYpukdkbfNL8EJo5rU6uNwdz_EAB_tWQ3miBrjSMc1SZEjzwWtCGu0WMIOtSemje0Zkfiq-g6sKIlZ7f6ffEC7xFPNA7eeI2DfgZKRXq-hwysAN-EU0GLzn97C0FhTBQf196QarPimAml8npIqAdNbfsDP7-JiBgF0v0AZhL0Kd5dwTPt3bdDEUv8ZbKPd2qlGZsA9lIvEcWr4CpTqblyer-etgSSkVxrbZn-6U8AMhXpBbAXPIbaJSuTHinQSOFsA8duPpIPIUF9JWxASRQnl6NFT2xdioaq_IrqPwTKK3p4BFooU9XV1TWAyqbafUW5LeLuqz5gJgnumGFNcQxvxMZXlWKY5iu971froxLiGt5FY5lH6mJNOO850fZ5CEjw6K3gqB0LeOG7Kn91N6tfpuY0xq6-kFqI5IroL8aFFOh5fR0PiVgGCQwlEs3jYZoFxX6F7jcj6CeMtyLOP1ND8nXiBBajXuMv4N2Po61vYzL9cFLuMISBy_SlQpqhwau7u3Z-89UWULzp0QgbaviuE-59pg7d6pWINRbjFKrRgO2hqsOUB7XOJKivJe2_Itller-s2dPaFVBSK8XbCL_qz-r_D70LrHsDM5oZqzc6odSXYIMbk9gwTfGKGmN-Z7hdeQ3YFbEzAzEfxKzc7d5bnv6yf7ediXPcz2GNS8rB32ZUeV_N0Es61kghSXXSPtflEzB4mZvM95oo31PwLjAMYpd_cbBnpEnyIjiKq2tc0vCpfFhGrtivMnFUsgpf3snIsJbRNyYEZIkmQChfbFtLRZk2qNSAr1u0tYbSiUGh3DZcocmyB9ZuqxnlhclKZFeA23vQyVRzzDR_CfC8V4dX8546odRgpQIB-dh-pOtTp9xXDwljM4j6AYCwfOMUaqvxO1YX18ks1GMNhHheFslfsGjSPdFVsjlPbYViubfVQODg7C3RaonWq_73xX39OI-JmHNPgESbM0BB7QJBBTTk_ClfyIb3OyHgnBP8wJyrs5sKKe8fTE0B3GHLNZ00ZkuJVaiS0a82bJ17yLa0tuMuvNXAVvBq_Yy1eiP5xMrQe6LKrrH0zBpNiFF6oYE-l2m6cUTRii-Nb7Djp4XteWCb7UFEuYp6MR3K_sF1sjkPtx0hBhcJSZ0IwKUAYXVmCPbD6MMn8qBzC9kM1Yve5ZyfHTZB-95K5gS5hZnBSaSE55X0gY7jNeeZguJJO545mrmGhNjYHQHm03OX1yB6qH4IJpakzVc2za7qJwt_AwKLKzxrlkxZXHM7z0WjpIJ4GRCGKm64aH6AUxFHTKfadM9VA_7sJYWgXcc3SocP9Cm6tm1OUJ810SYMqGz1b26PzaIy6iUb7KFWVyYjLnfjENSwdEoCuTChdiLZhlF8lqwFR4hpwtV2e78ZfyaFI7MdN4TRNF5AWVs6aKC7r-GEnnNTbPmnzeQR_hz0JhJAXd9EdqGCbPG3p9H4SmMHPIbkb5W5Nt1XdHvBs3WH5nLzskSfd1AkstXjsF52M65uNRWmkiD8zSlegd5_r5rndVPJ9ImGwiCsNBTj9pFc4qq2AsNghkrIeQ_IzFisO1EskDNXL9Y18FASHmjU2ifZ4gz52wd1GFsLD9W7bP1wRHrq2ddLMWyVDL-LiOsWl076tyWQh8MYPjaZQhdU3IOy4s173tcxndXyxOxY6GQAM_xt_gKN9tN08nPmUj-fA-q4N26oqfDZn7RIQtDgLQKeaQWn05st9jhK7saCzFxjbVnTbswTJTTv-pbgQr4e7E2dhy5bpX0jm4EecRnW8xinrr9pPrXsLoaol757_fZmVWtF2V9mBzPyxPiBPfKq3hnA-X_a28EzmEcvRIHmDeIGYgn2dfhn2xsSittoaACVjjdF_lUI3lu3fpR974CDudGWdvLx2miFb1NfEwFWHdRs2rx9LVRbOl7H0Db0TBjO6W6kUOYPCuOeSnjQiHL208BJ3qIUPLcKYZTw=",
+            "summary": []
+          },
+          {
+            "id": "msg_0273c5e828d38339016ada6598541487d2b1c0f4496e237cb4",
+            "type": "message",
+            "status": "completed",
+            "content": [
+              {
+                "type": "output_text",
+                "annotations": [],
+                "logprobs": [],
+                "text": "{\"status\":\"candidates\",\"candidates\":[{\"alternate_name\":\"Fanjing Mountain\"},{\"alternate_name\":\"梵净山\"}]}"
+              }
+            ],
+            "phase": "final_answer",
+            "role": "assistant"
+          }
+        ]
+      },
+      "estimatedTokenCostUsd": 0.00007329999999999999,
+      "estimatedCostIncludingRegionalCeilingUsd": 0.00008062999999999999,
+      "aliases": [
+        {
+          "alternate_name": "Fanjing Mountain"
+        },
+        {
+          "alternate_name": "梵净山"
+        }
+      ],
+      "aliasStatus": "candidates",
+      "baseline": {
+        "sourceFailed": false,
+        "candidates": [
+          {
+            "providerId": "photon:N:699700351",
+            "canonicalName": "Fanjing Mountain",
+            "aliases": [
+              "Fangjin mountain"
+            ],
+            "placeType": "natural_area",
+            "parentCountries": [
+              "China"
+            ],
+            "parentRegionId": "Guizhou Province",
+            "coordinates": [
+              108.6921395,
+              27.9193854
+            ],
+            "routability": "needs_base_selection",
+            "matchQuality": "alias",
+            "rankScore": 273,
+            "providerRank": 0,
+            "normalizationReason": "provider natural-area identity remains an anchor; alias name match; route-stop intent; source=Komoot Photon; explicit country context",
+            "country": "China",
+            "countryCode": "CN",
+            "region": "Guizhou Province",
+            "providerName": "Fanjing Mountain",
+            "providerKey": "natural",
+            "providerKind": "peak",
+            "providerSourceId": "photon",
+            "providerSourceLabel": "Komoot Photon"
+          }
+        ]
+      },
+      "verifiedCandidates": [
+        {
+          "providerId": "photon:N:699700351",
+          "canonicalName": "Fanjing Mountain",
+          "placeType": "natural_area",
+          "parentCountries": [
+            "China"
+          ],
+          "parentRegionId": "Guizhou Province",
+          "coordinates": [
+            108.6921395,
+            27.9193854
+          ],
+          "routability": "needs_base_selection",
+          "matchQuality": "exact",
+          "rankScore": 298,
+          "providerRank": 0,
+          "normalizationReason": "provider natural-area identity remains an anchor; exact name match; route-stop intent; source=Komoot Photon; explicit country context",
+          "country": "China",
+          "countryCode": "CN",
+          "region": "Guizhou Province",
+          "providerName": "Fanjing Mountain",
+          "providerKey": "natural",
+          "providerKind": "peak",
+          "providerSourceId": "photon",
+          "providerSourceLabel": "Komoot Photon"
+        }
+      ],
+      "providerChecks": [
+        {
+          "alias": "Fanjing Mountain",
+          "candidates": [
+            {
+              "providerId": "photon:N:699700351",
+              "canonicalName": "Fanjing Mountain",
+              "placeType": "natural_area",
+              "parentCountries": [
+                "China"
+              ],
+              "parentRegionId": "Guizhou Province",
+              "coordinates": [
+                108.6921395,
+                27.9193854
+              ],
+              "routability": "needs_base_selection",
+              "matchQuality": "exact",
+              "rankScore": 298,
+              "providerRank": 0,
+              "normalizationReason": "provider natural-area identity remains an anchor; exact name match; route-stop intent; source=Komoot Photon; explicit country context",
+              "country": "China",
+              "countryCode": "CN",
+              "region": "Guizhou Province",
+              "providerName": "Fanjing Mountain",
+              "providerKey": "natural",
+              "providerKind": "peak",
+              "providerSourceId": "photon",
+              "providerSourceLabel": "Komoot Photon"
+            }
+          ],
+          "sourceFailed": false
+        },
+        {
+          "alias": "梵净山",
+          "candidates": [
+            {
+              "providerId": "photon:W:1168426344",
+              "canonicalName": "梵净山公园",
+              "placeType": "natural_area",
+              "parentCountries": [
+                "China"
+              ],
+              "parentRegionId": "Guizhou Province",
+              "accessPlaceName": "Jiangkou",
+              "coordinates": [
+                108.8333381,
+                27.7077693
+              ],
+              "routability": "needs_base_selection",
+              "matchQuality": "alias",
+              "rankScore": 272,
+              "providerRank": 1,
+              "normalizationReason": "provider natural-area identity remains an anchor; alias name match; route-stop intent; source=Komoot Photon; explicit country context",
+              "country": "China",
+              "countryCode": "CN",
+              "region": "Guizhou Province",
+              "locality": "Jiangkou",
+              "providerName": "梵净山公园",
+              "providerKey": "leisure",
+              "providerKind": "park",
+              "providerSourceId": "photon",
+              "providerSourceLabel": "Komoot Photon"
+            }
+          ],
+          "sourceFailed": false
+        }
+      ],
+      "productWouldOfferAi": false,
+      "classification": "expected_provider_identity_verified"
+    },
+    {
+      "query": "Yunomine",
+      "country": "Japan",
+      "expected": {
+        "ids": [
+          "photon:N:2822838506"
+        ],
+        "country": "Japan",
+        "types": [
+          "town"
+        ],
+        "routability": "direct_destination",
+        "source": "https://www.tb-kumano.jp/en/places/yunomine/"
+      },
+      "requestBytes": 1419,
+      "state": "evaluated",
+      "startedAt": "2026-10-22T19:35:56.100Z",
+      "latencyMs": 1834,
+      "response": {
+        "id": "resp_072ab41e64b955f7016ada659c785887d2936851c686abe87c",
+        "model": "gpt-6-luna",
+        "status": "completed",
+        "service_tier": "default",
+        "usage": {
+          "input_tokens": 193,
+          "input_tokens_details": {
+            "cache_write_tokens": 0,
+            "cache_write_tokens_details": {
+              "ttl_12h_tokens": 0,
+              "ttl_30m_tokens": 0
+            },
+            "cached_tokens": 0
+          },
+          "output_tokens": 140,
+          "output_tokens_details": {
+            "reasoning_tokens": 96
+          },
+          "total_tokens": 333
+        },
+        "output": [
+          {
+            "id": "rs_072ab41e64b955f7016ada659cec1487d28936b682b74ce87d",
+            "type": "reasoning",
+            "content": [],
+            "encrypted_content": "gAAAAABq2mWeWsQqsLLUpyuiVuGKGBDez4-kgl2oxpLlzk6OI7szoM1_3vuxyli1y1c90kLiaCQsUCcDRz_XLFlS6VhVE0OlG_Vw86jQT4HxNP7RA6wcH-_s7qKsM2sKw9FCYusTmmY0dN2ryJDC2TC5c6FFHrW_WURs5mQ-_aCJ-tjIy6qufUe6s-RH_k9R4lS-z_C8KQRE4MJMyQe39FfAx_RlHYYuOQU0TBBFEAn7iVn84IIPpEM9wZa478OjPQ24bhnxd3e5BebUl17LWGuYZMURTcBkLSa5eKfgC9WztQd2liktzBcovOTlzhBOXIIqxeK984EEB3beEToj7U2wb_A4zK399RUduiq9g2JtpOEt6WBMrGDyeo1OT0D1RIULXmxzuWqOczlT8HPJhXamr_kgtyukB8gni1PWrryVSmZes27kT2FQwjyjKgE59Qu3mDeVEm_4ryjw8KQg14xOn81amdEUK_xkkdc8hQbNJ1oHhezTfIdL4GWB_6_-bIfoW5TwkF_1384nhnadER8Ced-FCV_R4xUjjASal5-kWTNWqNxX40douTOElSRjeqGV5DTryVpQpgFz8cW3UQUDvA2QRnZftGLft-kqS_omoc6sNW4v_6F9oBXCl3Ztq_q-yRLodTFClX8JBNuqhVlGr6HDgyrcuFROB8yE63zB6R9soEJvrKN0ZY6M84TLEPmWaJs7c36UXv012WpQ2klSQX4e6fi4JQCyr5_mSXosZg8zaz2gX3mmJrvIPu_1tOBxV8WX6FnKOnqIkICsh_fp60vSot2wVph9-Caa0jEXkkg311LInK3iaWbIUX5mQLvzlnGZGxpaukm4bfzywYvRvK6cr1sn7wfghPBfzToOtmq2TnZ-QnI_fo1WPcMHyDUHrFyw9jfADY_0r4dE8HRpxM0IdART21dsuHQyz42NR3XKy1ssgx1qgce6HrmjVNk7z4raip56otDqzgdkW1jf0iqLvKe5VY4J8MnyF9RRd4uB01I_HlupxwYo2RnbjvMmdjituZD8PDHDhKjEBw3ZfSDIkjBowOsKr0C6RlIOz3BK7dbSI5vcMm8uCBRsq8vEaT3gAe0Xw2uVeScINkfST04DSVCqmq54L15EyXn50iBaZSGhuPqzyGp_0y800fVbE46y4OgMn_w6GDOJnqYHUQ8IFknPZLnP0VUdLnK5HQWlkg_FM0YPlUgJ37Sf4pYr6n4gLaeOaNETYZh-sofufz_5BilVBMV5mq0BdQCmQjP4TKmsLiu3NTJZGyy2tK6Y-n8B_8xT0ks_z9n8uuaGFBPdQhqP2xqCcmKiBgxaApR-CaxvCPhxe6n5kRvwEHeGZmjEJPy8aA1YDTGeE_spZ-YDz4Dh30Juv_c7FNew7gpxv0ryLB3lxcsmLt67lgMA-reIA9N298y4QflLoHfTc9FJvcgAPONN7WwNtcl1-6lXqnj7xE3vSwyFcgfQ7OKmntws1gc8YfmFKXM2dPEhznmAn8DmSyFC_pNZRZLZ65MsxNHxhPnxp9gvJ0PBe5kPExv7BqT69Ag6mmTWyZM_XdshEkO0HOW00ZWCDNj6H_FfCfQgg5x-Yj3_Ux5CFeLJQKVMojJpfuBv8a9SJNax58EjWOuKPA0cI7ZMG7UCmtAsV6gSYh_le_di-lJHlm7oW_SBUl9TktygXhP7bvcvy_omNlgBMR5LdHxqfX7inIQL3sbWuxh5EQ3Y8jikVFxgeUa77ALTsU13UU-stJ6mhopfaQOjNb5kdWqdNEBewUfrHv7PI05iuFT2FY0fmsEOcdL-ve4bJ3zZsITpN3L8s32D1N1XJJGUstv3vYtbOYPIefcCcn2Lwf6EvvOZF_WhdkuAEXig3KwYLb1C0Mx64FTgQsYfQehWGfJ6ZvDYM_3fw5ZgQE_1_XpvMrTcvy75Q1ybjQ1nDyqMGY7g0pUGnrUXd2YXqDiHyg8gN8kf_QZhz9fNA57ehFtivfydUITM93WgcGTaxBvx7ocyAl4dNc2BypTdrSf3buANSr_1huKDw6PhI0AReElsg-UkhJ7ElbLajYaOBT37Bm6BvuUZW0OKz5iyAsp7n29DGgr4pZ2PMov9SHpYEUads1Xpm_oURQMyIVp2IWDzkTDl-LQIAP0f2V7lSVkWdTJz8A4U5ZFHANtJyN5mzOpmg3-NoE1z_8mfit6uLJwMcNoZh8E78PWlnEb9qHQfcdzjdhXwAoJzod5qAYBB3EOCuz4l1K7g9RupH8M2Lxom8Fq4f5rtS6hkzRmKlo7jBy2LyJnPBXONNtzkRi4GaoeXoJ3RgU6oftpLZ6n7vgjp2QSqRe5jL74OkEUyiYTgK4C8Kvu2nsJzEkmNcNBEQqp6_kMJ90QFI_UcBB-B7rQOfqJL5iUu9ar_JA6eooPvTCrDVyWHEKqxljQK-hk6g0H4ideidJ_2ONE_LUecd0_XscxVEXKb4XDtSWwcOtq2MnaVjbtnA9t8NbeIRQzY2nbXuoYGXMuR3h9Lu3exo_QVPBvRSYUOyu2QrwM9zb36Qv0VPdsD2DZsXy-j5qY=",
+            "summary": []
+          },
+          {
+            "id": "msg_072ab41e64b955f7016ada659db3ec87d2bedbd2916d29bd0d",
+            "type": "message",
+            "status": "completed",
+            "content": [
+              {
+                "type": "output_text",
+                "annotations": [],
+                "logprobs": [],
+                "text": "{\"status\":\"candidates\",\"candidates\":[{\"alternate_name\":\"Yunomine Onsen\"},{\"alternate_name\":\"湯の峰温泉\"}]}"
+              }
+            ],
+            "phase": "final_answer",
+            "role": "assistant"
+          }
+        ]
+      },
+      "estimatedTokenCostUsd": 0.0000893,
+      "estimatedCostIncludingRegionalCeilingUsd": 0.00009823000000000001,
+      "aliases": [
+        {
+          "alternate_name": "Yunomine Onsen"
+        },
+        {
+          "alternate_name": "湯の峰温泉"
+        }
+      ],
+      "aliasStatus": "candidates",
+      "baseline": {
+        "sourceFailed": false,
+        "candidates": [
+          {
+            "providerId": "photon:N:2822838506",
+            "canonicalName": "Yunomine Onsen",
+            "aliases": [
+              "Yunomine"
+            ],
+            "placeType": "town",
+            "parentCountries": [
+              "Japan"
+            ],
+            "parentRegionId": "Wakayama Prefecture",
+            "accessPlaceName": "Tanabe",
+            "coordinates": [
+              135.7575842,
+              33.8288351
+            ],
+            "routability": "direct_destination",
+            "matchQuality": "alias",
+            "rankScore": 314,
+            "providerRank": 4,
+            "normalizationReason": "provider locality (locality) is directly routable; alias name match; route-stop intent; source=Komoot Photon; explicit country context",
+            "country": "Japan",
+            "countryCode": "JP",
+            "region": "Wakayama Prefecture",
+            "locality": "Tanabe",
+            "providerName": "Yunomine Onsen",
+            "providerKey": "place",
+            "providerKind": "locality",
+            "providerSourceId": "photon",
+            "providerSourceLabel": "Komoot Photon"
+          },
+          {
+            "providerId": "photon:N:3210675118",
+            "canonicalName": "Yunomine Oji",
+            "aliases": [
+              "Yunomine"
+            ],
+            "placeType": "landmark",
+            "parentCountries": [
+              "Japan"
+            ],
+            "parentRegionId": "Wakayama Prefecture",
+            "accessPlaceName": "Tanabe",
+            "coordinates": [
+              135.7580841,
+              33.8293322
+            ],
+            "routability": "anchor_or_poi",
+            "matchQuality": "alias",
+            "rankScore": 271,
+            "providerRank": 2,
+            "normalizationReason": "provider landmark identity remains an anchor; alias name match; route-stop intent; source=Komoot Photon; explicit country context",
+            "country": "Japan",
+            "countryCode": "JP",
+            "region": "Wakayama Prefecture",
+            "locality": "Tanabe",
+            "providerName": "Yunomine Oji",
+            "providerKey": "historic",
+            "providerKind": "wayside_shrine",
+            "providerSourceId": "photon",
+            "providerSourceLabel": "Komoot Photon"
+          },
+          {
+            "providerId": "photon:W:1271634622",
+            "canonicalName": "Yunomineso",
+            "aliases": [
+              "Yunomine"
+            ],
+            "placeType": "landmark",
+            "parentCountries": [
+              "Japan"
+            ],
+            "parentRegionId": "Wakayama Prefecture",
+            "accessPlaceName": "Tanabe",
+            "coordinates": [
+              135.7541998,
+              33.8241288
+            ],
+            "routability": "anchor_or_poi",
+            "matchQuality": "alias",
+            "rankScore": 270,
+            "providerRank": 3,
+            "normalizationReason": "provider landmark identity remains an anchor; alias name match; route-stop intent; source=Komoot Photon; explicit country context",
+            "country": "Japan",
+            "countryCode": "JP",
+            "region": "Wakayama Prefecture",
+            "locality": "Tanabe",
+            "providerName": "Yunomineso",
+            "providerKey": "tourism",
+            "providerKind": "hotel",
+            "providerSourceId": "photon",
+            "providerSourceLabel": "Komoot Photon"
+          }
+        ]
+      },
+      "verifiedCandidates": [
+        {
+          "providerId": "photon:N:2822838506",
+          "canonicalName": "Yunomine Onsen",
+          "placeType": "town",
+          "parentCountries": [
+            "Japan"
+          ],
+          "parentRegionId": "Wakayama Prefecture",
+          "accessPlaceName": "Tanabe",
+          "coordinates": [
+            135.7575842,
+            33.8288351
+          ],
+          "routability": "direct_destination",
+          "matchQuality": "exact",
+          "rankScore": 341,
+          "providerRank": 2,
+          "normalizationReason": "provider locality (locality) is directly routable; exact name match; route-stop intent; source=Komoot Photon; explicit country context",
+          "country": "Japan",
+          "countryCode": "JP",
+          "region": "Wakayama Prefecture",
+          "locality": "Tanabe",
+          "providerName": "Yunomine Onsen",
+          "providerKey": "place",
+          "providerKind": "locality",
+          "providerSourceId": "photon",
+          "providerSourceLabel": "Komoot Photon"
+        }
+      ],
+      "providerChecks": [
+        {
+          "alias": "Yunomine Onsen",
+          "candidates": [
+            {
+              "providerId": "photon:N:2822838506",
+              "canonicalName": "Yunomine Onsen",
+              "placeType": "town",
+              "parentCountries": [
+                "Japan"
+              ],
+              "parentRegionId": "Wakayama Prefecture",
+              "accessPlaceName": "Tanabe",
+              "coordinates": [
+                135.7575842,
+                33.8288351
+              ],
+              "routability": "direct_destination",
+              "matchQuality": "exact",
+              "rankScore": 341,
+              "providerRank": 2,
+              "normalizationReason": "provider locality (locality) is directly routable; exact name match; route-stop intent; source=Komoot Photon; explicit country context",
+              "country": "Japan",
+              "countryCode": "JP",
+              "region": "Wakayama Prefecture",
+              "locality": "Tanabe",
+              "providerName": "Yunomine Onsen",
+              "providerKey": "place",
+              "providerKind": "locality",
+              "providerSourceId": "photon",
+              "providerSourceLabel": "Komoot Photon"
+            }
+          ],
+          "sourceFailed": false
+        },
+        {
+          "alias": "湯の峰温泉",
+          "candidates": [],
+          "sourceFailed": false
+        }
+      ],
+      "productWouldOfferAi": false,
+      "classification": "expected_provider_identity_verified"
+    },
+    {
+      "query": "Springfield",
+      "country": "United States",
+      "expected": {
+        "negative": "ambiguous; no suggested specific identity without additional context"
+      },
+      "requestBytes": 1430,
+      "state": "evaluated",
+      "startedAt": "2026-10-22T19:36:00.377Z",
+      "latencyMs": 1542,
+      "response": {
+        "id": "resp_0e3a8e82e3d94fbf016ada65a0c55487d29664ff94307ff2a6",
+        "model": "gpt-6-luna",
+        "status": "completed",
+        "service_tier": "default",
+        "usage": {
+          "input_tokens": 192,
+          "input_tokens_details": {
+            "cache_write_tokens": 0,
+            "cache_write_tokens_details": {
+              "ttl_12h_tokens": 0,
+              "ttl_30m_tokens": 0
+            },
+            "cached_tokens": 0
+          },
+          "output_tokens": 41,
+          "output_tokens_details": {
+            "reasoning_tokens": 18
+          },
+          "total_tokens": 233
+        },
+        "output": [
+          {
+            "id": "rs_0e3a8e82e3d94fbf016ada65a16c7087d2be5ef8373933da77",
+            "type": "reasoning",
+            "content": [],
+            "encrypted_content": "gAAAAABq2mWiFG-2E5bYNhZJA93jklWFXU683SHzAgj5qzS16889AvMaOz2qsA7-2D-7SaoFV4TXws6t1rlQM_nX_8KOpfQ_SIriXcmHvGcy4AMhBUpjGS-0rbknEoVxTTfUUbDzyag-7pQJejjomeODTeO2y7A5DtTv-sKGHm7jZU5ZPrtbp4VeLlrzr8vDWY0lZdVjHm12a9CFBMV5UXHKc_IZWBz9D97XMil1OrvMJLC8JJkwj2SkKaG-PNTX5kdLRVegxWAF-0TheYiEGn88E7JC01jyzfjebWD2tlvElgSY4mopZSFYATHYmIoLwuWm7sU5AvUclVM7H4YQPKgFljJw1pV8wAWhpzfBaDorLupkjFtq-1D0x0pEA6q7FtX3ySxMo1YYzSbjF18I2vgxJPVJ8paajyU_gsmeErnJyAwVDgS_dwmiaO3ciQpXgQ_qpjF8OjDu65HHsFc9V8ifHC1Lq6SR-18OFTeQvDZBzXJ_s51TrE2Y71nv5mwxCfdH9TZ36SeseKdforNPdMvCjktQIkHe0fOUVf9tf9LfLn6joxtsh8xwoKgbhFX5bX1xhVAQbZUlYGL4iS6bu6_SXg3xQjKlr2XGRRmUmSGgpetVfEDn7zakni0OBoiMEy8JCtvDQV4031d-jCaF2som0day2pIhW_XgjSea_qawiMobBRrh4Zl50Irv6prx9zNqrKUbePLFDdMx21LoasSQWYqRy8Azl6wJGoW3Zs12NAjHP9Z74piFI95skfbpo_Zt3pNQ63ZGS4UgyL375vl1HVcsJdNEh0cEIeHHpzPuUb3ErYSYam7rdLKKgtlmeBQ1YeoswGlzgJwjafDCWnSG5bMhYBncXaMT--t5SXadu0AJXG3aUozwCr5nJ4wFXbB1GJXjldJIfQMD6tZayOBqXO5qx2Oan_GIis3rzJUW_zJ9cFZPP_zEZqeITlxVwElHeZIY_KbYpPSP4juKuLuWZ07z4yzwwqSpC6MwPGD_qEG6hi6jWZOIcVvx7-hOpVDS0uCq_a7DEiuriwGiBnpaYA3rCPSMki5Z5AGYyijgSThsdkt4QhmUxB5uyqndY7U4niNFieoU0UXDyuzp4zX2QAdzTOrykN78O7r9f8s-xkGG-r44EEYcNwToGJwxu4EcerstPvHxG_fduf95_m2cVLUWUD8FqSk_qkud-TW2l9rYrtAv7Lt43jR97XmXP-O4DZuHoUYK_5ToqmKzU50hJ8xPacyotWDUVTraP56GBlThbQGVOPx4LfupdIViX6Lsim_CQ2cGygfmbO70iv3UVjBiJcsQ6Oh7bDrEBn3FQa1VyFac9nxz3y3pdq7Oi-3kCxF-Ji-MCMqj66koAQk8pAvo5VgPTATHcN_LSdcAoSKU6od-RqrXdc5gv1duJFnARI4otG7nyEbN7nPHu6nyKHGpEq3aRagYWVFUKCyoFQlzaNLHq7d2Xogkl5Vc_jLfQuwJmWj1Lfd2dYhv1Al_MQPE7-7IDxUv_TB8NupnFEHbOXrlZ-1cNljhDO3xRhW6wT0nyfxWUja2p5XmgmV0e6fml35FA_g-vfZi2vU8vwwIhC3vA8A4Y2_M1b3Rktm36PrUWvPOQSOEEoS9FYiVXPskx1ldop1U55xGpwXWUv_BOxtjL55gL_GzbLz8pI17jGLuyToM",
+            "summary": []
+          },
+          {
+            "id": "msg_0e3a8e82e3d94fbf016ada65a1aabc87d2afcadc4878b74d5b",
+            "type": "message",
+            "status": "completed",
+            "content": [
+              {
+                "type": "output_text",
+                "annotations": [],
+                "logprobs": [],
+                "text": "{\"status\":\"ambiguous\",\"candidates\":[]}"
+              }
+            ],
+            "phase": "final_answer",
+            "role": "assistant"
+          }
+        ]
+      },
+      "estimatedTokenCostUsd": 0.0000397,
+      "estimatedCostIncludingRegionalCeilingUsd": 0.00004367000000000001,
+      "aliases": [],
+      "aliasStatus": "ambiguous",
+      "baseline": {
+        "sourceFailed": false,
+        "candidates": [
+          {
+            "canonicalPlaceId": "reference:geonames:4409896",
+            "providerId": "reference:geonames:4409896@699b595afdba9be6994e:US:city:-93.29824:37.21533",
+            "providerSourceId": "geonames",
+            "providerSourceLabel": "GeoNames · filtered and adapted",
+            "canonicalName": "Springfield",
+            "aliases": [
+              "North Springfield",
+              "SGF",
+              "Springfijld",
+              "Springfild",
+              "aspryngfyld  myzwry",
+              "sbrynghfyld",
+              "seupeulingpildeu",
+              "si pu lin fei er de"
+            ],
+            "placeType": "city",
+            "parentCountries": [
+              "United States"
+            ],
+            "parentRegionId": "Missouri",
+            "administrativeHierarchy": [
+              "Missouri"
+            ],
+            "coordinates": [
+              -93.29824,
+              37.21533
+            ],
+            "routability": "direct_destination",
+            "matchQuality": "exact",
+            "rankScore": 1001,
+            "settlementKind": "city",
+            "settlementPopulation": 170188
+          },
+          {
+            "canonicalPlaceId": "reference:geonames:4951788",
+            "providerId": "reference:geonames:4951788@699b595afdba9be6994e:US:town:-72.58981:42.10148",
+            "providerSourceId": "geonames",
+            "providerSourceLabel": "GeoNames · filtered and adapted",
+            "canonicalName": "Springfield",
+            "aliases": [
+              "Agawam",
+              "Agawome",
+              "Campifons",
+              "Nayasset",
+              "SFY",
+              "Springfield City",
+              "Springfijld",
+              "Springfild"
+            ],
+            "placeType": "town",
+            "parentCountries": [
+              "United States"
+            ],
+            "parentRegionId": "Massachusetts",
+            "administrativeHierarchy": [
+              "Massachusetts"
+            ],
+            "coordinates": [
+              -72.58981,
+              42.10148
+            ],
+            "routability": "direct_destination",
+            "matchQuality": "exact",
+            "rankScore": 1001,
+            "settlementKind": "town",
+            "settlementPopulation": 154341
+          },
+          {
+            "canonicalPlaceId": "reference:geonames:4250542",
+            "providerId": "reference:geonames:4250542@699b595afdba9be6994e:US:city:-89.64371:39.80172",
+            "providerSourceId": "geonames",
+            "providerSourceLabel": "GeoNames · filtered and adapted",
+            "canonicalName": "Springfield",
+            "aliases": [
+              "Campifons",
+              "SPI",
+              "Sprin'nkfilnt",
+              "Sprinfield",
+              "Springfijld",
+              "Springfild",
+              "Springfilda",
+              "Springfildas"
+            ],
+            "placeType": "city",
+            "parentCountries": [
+              "United States"
+            ],
+            "parentRegionId": "Illinois",
+            "administrativeHierarchy": [
+              "Illinois"
+            ],
+            "coordinates": [
+              -89.64371,
+              39.80172
+            ],
+            "routability": "direct_destination",
+            "matchQuality": "exact",
+            "rankScore": 1001,
+            "settlementKind": "city",
+            "settlementPopulation": 114394
+          },
+          {
+            "canonicalPlaceId": "reference:geonames:5754005",
+            "providerId": "reference:geonames:5754005@699b595afdba9be6994e:US:town:-123.02203:44.04624",
+            "providerSourceId": "geonames",
+            "providerSourceLabel": "GeoNames · filtered and adapted",
+            "canonicalName": "Springfield",
+            "aliases": [
+              "Springfijld",
+              "Springfild",
+              "aspyryng fyld  awrgn",
+              "sbrynghfyld",
+              "seupeulingpildeu",
+              "si pu lin fei er de",
+              "supuringufirudo",
+              "Спрингфийлд"
+            ],
+            "placeType": "town",
+            "parentCountries": [
+              "United States"
+            ],
+            "parentRegionId": "Oregon",
+            "administrativeHierarchy": [
+              "Oregon"
+            ],
+            "coordinates": [
+              -123.02203,
+              44.04624
+            ],
+            "routability": "direct_destination",
+            "matchQuality": "exact",
+            "rankScore": 1001,
+            "settlementKind": "town",
+            "settlementPopulation": 60870
+          },
+          {
+            "canonicalPlaceId": "reference:geonames:4525353",
+            "providerId": "reference:geonames:4525353@699b595afdba9be6994e:US:city:-83.80882:39.92423",
+            "providerSourceId": "geonames",
+            "providerSourceLabel": "GeoNames · filtered and adapted",
+            "canonicalName": "Springfield",
+            "aliases": [
+              "Gillistown",
+              "Post Town",
+              "SGH",
+              "Springfild",
+              "aspryngfyld  awhayw",
+              "sbrynghfyld",
+              "seupeulingpildeu",
+              "si pu lin fei er de"
+            ],
+            "placeType": "city",
+            "parentCountries": [
+              "United States"
+            ],
+            "parentRegionId": "Ohio",
+            "administrativeHierarchy": [
+              "Ohio",
+              "Clark County"
+            ],
+            "coordinates": [
+              -83.80882,
+              39.92423
+            ],
+            "routability": "direct_destination",
+            "matchQuality": "exact",
+            "rankScore": 1001,
+            "settlementKind": "city",
+            "settlementPopulation": 59680
+          },
+          {
+            "canonicalPlaceId": "reference:geonames:4787117",
+            "providerId": "reference:geonames:4787117@699b595afdba9be6994e:US:town:-77.1872:38.78928",
+            "providerSourceId": "geonames",
+            "providerSourceLabel": "GeoNames · filtered and adapted",
+            "canonicalName": "Springfield",
+            "aliases": [
+              "Springfild",
+              "aspryngfyld  wyrjynya",
+              "aysprynqfyld  wyrjynya",
+              "chun tian shi",
+              "sbrynghfyld",
+              "sbrynjfyld",
+              "si pu lin fei er de",
+              "spryngpyld"
+            ],
+            "placeType": "town",
+            "parentCountries": [
+              "United States"
+            ],
+            "parentRegionId": "Virginia",
+            "administrativeHierarchy": [
+              "Virginia",
+              "Fairfax County"
+            ],
+            "coordinates": [
+              -77.1872,
+              38.78928
+            ],
+            "routability": "direct_destination",
+            "matchQuality": "exact",
+            "rankScore": 1001,
+            "settlementKind": "town",
+            "settlementPopulation": 30484
+          },
+          {
+            "canonicalPlaceId": "reference:geonames:4561407",
+            "providerId": "reference:geonames:4561407@699b595afdba9be6994e:US:town:-75.32019:39.93067",
+            "providerSourceId": "geonames",
+            "providerSourceLabel": "GeoNames · filtered and adapted",
+            "canonicalName": "Springfield",
+            "aliases": [
+              "Springfild",
+              "Спрингфилд"
+            ],
+            "placeType": "town",
+            "parentCountries": [
+              "United States"
+            ],
+            "parentRegionId": "Pennsylvania",
+            "administrativeHierarchy": [
+              "Pennsylvania",
+              "Delaware County"
+            ],
+            "coordinates": [
+              -75.32019,
+              39.93067
+            ],
+            "routability": "direct_destination",
+            "matchQuality": "exact",
+            "rankScore": 1001,
+            "settlementKind": "town",
+            "settlementPopulation": 23363
+          },
+          {
+            "canonicalPlaceId": "reference:geonames:4659557",
+            "providerId": "reference:geonames:4659557@699b595afdba9be6994e:US:city:-86.885:36.50921",
+            "providerSourceId": "geonames",
+            "providerSourceLabel": "GeoNames · filtered and adapted",
+            "canonicalName": "Springfield",
+            "aliases": [
+              "Springfild",
+              "aspryngfyld  tnsy",
+              "sbrynghfyld",
+              "Спрингфилд",
+              "Спрінгфілд",
+              "اسپرینگفیلد، تنسی",
+              "سبرينغفيلد",
+              "سپرنگفیلڈ، ٹینیسی"
+            ],
+            "placeType": "city",
+            "parentCountries": [
+              "United States"
+            ],
+            "parentRegionId": "Tennessee",
+            "administrativeHierarchy": [
+              "Tennessee"
+            ],
+            "coordinates": [
+              -86.885,
+              36.50921
+            ],
+            "routability": "direct_destination",
+            "matchQuality": "exact",
+            "rankScore": 1001,
+            "settlementKind": "city",
+            "settlementPopulation": 16808
+          },
+          {
+            "canonicalPlaceId": "reference:geonames:5104952",
+            "providerId": "reference:geonames:5104952@699b595afdba9be6994e:US:town:-74.31723:40.70491",
+            "providerSourceId": "geonames",
+            "providerSourceLabel": "GeoNames · filtered and adapted",
+            "canonicalName": "Springfield",
+            "aliases": [
+              "Springfild",
+              "Спрингфилд"
+            ],
+            "placeType": "town",
+            "parentCountries": [
+              "United States"
+            ],
+            "parentRegionId": "New Jersey",
+            "administrativeHierarchy": [
+              "New Jersey"
+            ],
+            "coordinates": [
+              -74.31723,
+              40.70491
+            ],
+            "routability": "direct_destination",
+            "matchQuality": "exact",
+            "rankScore": 1001,
+            "settlementKind": "town",
+            "settlementPopulation": 14429
+          },
+          {
+            "canonicalPlaceId": "reference:geonames:4173892",
+            "providerId": "reference:geonames:4173892@699b595afdba9be6994e:US:town:-85.61132:30.15326",
+            "providerSourceId": "geonames",
+            "providerSourceLabel": "GeoNames · filtered and adapted",
+            "canonicalName": "Springfield",
+            "aliases": [
+              "Springfild",
+              "sbrynghfyld",
+              "si pu lin fei er de",
+              "springaphilda",
+              "Спрингфилд",
+              "Спрінгфілд",
+              "اسپرینگ‌فیلد، فلوریدا",
+              "سبرينغفيلد"
+            ],
+            "placeType": "town",
+            "parentCountries": [
+              "United States"
+            ],
+            "parentRegionId": "Florida",
+            "administrativeHierarchy": [
+              "Florida"
+            ],
+            "coordinates": [
+              -85.61132,
+              30.15326
+            ],
+            "routability": "direct_destination",
+            "matchQuality": "exact",
+            "rankScore": 1001,
+            "settlementKind": "town",
+            "settlementPopulation": 9442
+          },
+          {
+            "canonicalPlaceId": "reference:geonames:5010917",
+            "providerId": "reference:geonames:5010917@699b595afdba9be6994e:US:town:-85.23916:42.32643",
+            "providerSourceId": "geonames",
+            "providerSourceLabel": "GeoNames · filtered and adapted",
+            "canonicalName": "Springfield",
+            "aliases": [
+              "Springfild",
+              "asprynqfyld  myshyqan",
+              "sbrynghfyld",
+              "sbrynjfyld",
+              "si pu lin fei er de",
+              "spryngpyld",
+              "Спрингфилд",
+              "Спрінгфілд"
+            ],
+            "placeType": "town",
+            "parentCountries": [
+              "United States"
+            ],
+            "parentRegionId": "Michigan",
+            "administrativeHierarchy": [
+              "Michigan",
+              "Calhoun County"
+            ],
+            "coordinates": [
+              -85.23916,
+              42.32643
+            ],
+            "routability": "direct_destination",
+            "matchQuality": "exact",
+            "rankScore": 1001,
+            "settlementKind": "town",
+            "settlementPopulation": 5192
+          },
+          {
+            "canonicalPlaceId": "reference:geonames:5241423",
+            "providerId": "reference:geonames:5241423@699b595afdba9be6994e:US:town:-72.48231:43.29841",
+            "providerSourceId": "geonames",
+            "providerSourceLabel": "GeoNames · filtered and adapted",
+            "canonicalName": "Springfield",
+            "aliases": [
+              "Springfild",
+              "VSF",
+              "sbrynghfyld",
+              "seupeulingpildeu",
+              "si pu lin fei er de",
+              "Спрингфилд",
+              "Спрингфілд",
+              "سبرينغفيلد"
+            ],
+            "placeType": "town",
+            "parentCountries": [
+              "United States"
+            ],
+            "parentRegionId": "Vermont",
+            "administrativeHierarchy": [
+              "Vermont"
+            ],
+            "coordinates": [
+              -72.48231,
+              43.29841
+            ],
+            "routability": "direct_destination",
+            "matchQuality": "exact",
+            "rankScore": 1001,
+            "settlementKind": "town",
+            "settlementPopulation": 3979
+          }
+        ]
+      },
+      "verifiedCandidates": [],
+      "providerChecks": [],
+      "productWouldOfferAi": false,
+      "classification": "negative_control_pass"
+    }
+  ],
+  "providerCaptures": [
+    {
+      "query": "Hirayu",
+      "url": "https://photon.komoot.io/api/?q=Hirayu&limit=8&lang=en",
+      "status": 200,
+      "latencyMs": 904,
+      "body": {
+        "type": "FeatureCollection",
+        "features": [
+          {
+            "type": "Feature",
+            "properties": {
+              "osm_type": "N",
+              "osm_id": 4459168397,
+              "osm_key": "waterway",
+              "osm_value": "waterfall",
+              "type": "other",
+              "name": "Hirayu Waterfall",
+              "city": "Takayama",
+              "state": "Gifu Prefecture",
+              "country": "Japan",
+              "postcode": "506-1433",
+              "countrycode": "JP"
+            },
+            "geometry": {
+              "type": "Point",
+              "coordinates": [
+                137.5596133,
+                36.1770547
+              ]
+            }
+          },
+          {
+            "type": "Feature",
+            "properties": {
+              "osm_type": "N",
+              "osm_id": 293547539,
+              "osm_key": "highway",
+              "osm_value": "traffic_signals",
+              "type": "house",
+              "name": "Hirayu I.C",
+              "street": "National Highway Route 158",
+              "locality": "奥飛騨温泉郷平湯",
+              "district": "平湯温泉",
+              "city": "Takayama",
+              "state": "Gifu Prefecture",
+              "country": "Japan",
+              "postcode": "506-1433",
+              "countrycode": "JP"
+            },
+            "geometry": {
+              "type": "Point",
+              "coordinates": [
+                137.5515726,
+                36.1861878
+              ]
+            }
+          },
+          {
+            "type": "Feature",
+            "properties": {
+              "osm_type": "W",
+              "osm_id": 682421370,
+              "osm_key": "amenity",
+              "osm_value": "public_bath",
+              "type": "house",
+              "name": "Hirayu No Yu",
+              "street": "National Highway Route 158",
+              "locality": "奥飛騨温泉郷平湯",
+              "district": "平湯温泉",
+              "city": "Takayama",
+              "state": "Gifu Prefecture",
+              "country": "Japan",
+              "postcode": "506-1433",
+              "countrycode": "JP",
+              "extent": [
+                137.5545527,
+                36.1918499,
+                137.5548289,
+                36.1916681
+              ]
+            },
+            "geometry": {
+              "type": "Point",
+              "coordinates": [
+                137.5546927,
+                36.1917699
+              ]
+            }
+          },
+          {
+            "type": "Feature",
+            "properties": {
+              "osm_type": "N",
+              "osm_id": 3794385975,
+              "osm_key": "amenity",
+              "osm_value": "bus_station",
+              "type": "house",
+              "name": "Hirayu Bus Station",
+              "street": "National Highway Route 158",
+              "locality": "奥飛騨温泉郷平湯",
+              "district": "平湯温泉",
+              "city": "Takayama",
+              "state": "Gifu Prefecture",
+              "country": "Japan",
+              "postcode": "506-1433",
+              "countrycode": "JP"
+            },
+            "geometry": {
+              "type": "Point",
+              "coordinates": [
+                137.5519345,
+                36.1909518
+              ]
+            }
+          },
+          {
+            "type": "Feature",
+            "properties": {
+              "osm_type": "W",
+              "osm_id": 1220491455,
+              "osm_key": "landuse",
+              "osm_value": "winter_sports",
+              "type": "other",
+              "name": "Hirayu Onsen Ski Area",
+              "district": "平湯温泉",
+              "city": "Takayama",
+              "state": "Gifu Prefecture",
+              "country": "Japan",
+              "countrycode": "JP",
+              "extent": [
+                137.5523257,
+                36.187632,
+                137.566455,
+                36.1821139
+              ]
+            },
+            "geometry": {
+              "type": "Point",
+              "coordinates": [
+                137.5591537,
+                36.1847976
+              ]
+            }
+          },
+          {
+            "type": "Feature",
+            "properties": {
+              "osm_type": "W",
+              "osm_id": 124494806,
+              "osm_key": "bridge",
+              "osm_value": "yes",
+              "type": "house",
+              "name": "Hirayu Bridge",
+              "street": "National Highway Route 158",
+              "locality": "奥飛騨温泉郷平湯",
+              "district": "平湯温泉",
+              "city": "Takayama",
+              "state": "Gifu Prefecture",
+              "country": "Japan",
+              "postcode": "506-1433",
+              "countrycode": "JP",
+              "extent": [
+                137.558701,
+                36.1932688,
+                137.5588913,
+                36.1932414
+              ]
+            },
+            "geometry": {
+              "type": "Point",
+              "coordinates": [
+                137.5587962,
+                36.1932551
+              ]
+            }
+          },
+          {
+            "type": "Feature",
+            "properties": {
+              "osm_type": "N",
+              "osm_id": 13240608102,
+              "osm_key": "historic",
+              "osm_value": "wayside_shrine",
+              "type": "house",
+              "name": "Hirayu Shrine",
+              "street": "National Highway Route 158",
+              "locality": "奥飛騨温泉郷平湯",
+              "district": "平湯温泉",
+              "city": "Takayama",
+              "state": "Gifu Prefecture",
+              "country": "Japan",
+              "postcode": "506-1433",
+              "countrycode": "JP"
+            },
+            "geometry": {
+              "type": "Point",
+              "coordinates": [
+                137.5543469,
+                36.192132
+              ]
+            }
+          },
+          {
+            "type": "Feature",
+            "properties": {
+              "osm_type": "N",
+              "osm_id": 4459184090,
+              "osm_key": "tourism",
+              "osm_value": "viewpoint",
+              "type": "house",
+              "name": "Hirayu Waterfall View",
+              "street": "National Highway Route 158",
+              "locality": "奥飛騨温泉郷平湯",
+              "district": "平湯温泉",
+              "city": "Takayama",
+              "state": "Gifu Prefecture",
+              "country": "Japan",
+              "postcode": "506-1433",
+              "countrycode": "JP"
+            },
+            "geometry": {
+              "type": "Point",
+              "coordinates": [
+                137.5592361,
+                36.1786964
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "query": "平湯温泉",
+      "url": "https://photon.komoot.io/api/?q=%E5%B9%B3%E6%B9%AF%E6%B8%A9%E6%B3%89&limit=8&lang=en",
+      "status": 200,
+      "latencyMs": 209,
+      "body": {
+        "type": "FeatureCollection",
+        "features": [
+          {
+            "type": "Feature",
+            "properties": {
+              "osm_type": "N",
+              "osm_id": 2481035449,
+              "osm_key": "place",
+              "osm_value": "hamlet",
+              "type": "district",
+              "name": "平湯温泉",
+              "city": "Takayama",
+              "state": "Gifu Prefecture",
+              "country": "Japan",
+              "postcode": "506-1433",
+              "countrycode": "JP"
+            },
+            "geometry": {
+              "type": "Point",
+              "coordinates": [
+                137.5536701,
+                36.1914892
+              ]
+            }
+          },
+          {
+            "type": "Feature",
+            "properties": {
+              "osm_type": "N",
+              "osm_id": 6568198007,
+              "osm_key": "amenity",
+              "osm_value": "public_bath",
+              "type": "house",
+              "name": "平湯温泉;アルプス街道平湯",
+              "street": "National Highway Route 158",
+              "locality": "奥飛騨温泉郷平湯",
+              "district": "平湯温泉",
+              "city": "Takayama",
+              "state": "Gifu Prefecture",
+              "country": "Japan",
+              "postcode": "506-1433",
+              "countrycode": "JP"
+            },
+            "geometry": {
+              "type": "Point",
+              "coordinates": [
+                137.5516527,
+                36.1910908
+              ]
+            }
+          },
+          {
+            "type": "Feature",
+            "properties": {
+              "osm_type": "W",
+              "osm_id": 124545658,
+              "osm_key": "bridge",
+              "osm_value": "yes",
+              "type": "house",
+              "name": "平湯温泉大橋",
+              "street": "National Highway Route 158",
+              "locality": "奥飛騨温泉郷平湯",
+              "district": "平湯温泉",
+              "city": "Takayama",
+              "state": "Gifu Prefecture",
+              "country": "Japan",
+              "postcode": "506-1433",
+              "countrycode": "JP",
+              "extent": [
+                137.5455984,
+                36.1876187,
+                137.5457234,
+                36.1866512
+              ]
+            },
+            "geometry": {
+              "type": "Point",
+              "coordinates": [
+                137.5457159,
+                36.1871498
+              ]
+            }
+          },
+          {
+            "type": "Feature",
+            "properties": {
+              "osm_type": "W",
+              "osm_id": 1220491455,
+              "osm_key": "landuse",
+              "osm_value": "winter_sports",
+              "type": "other",
+              "name": "Hirayu Onsen Ski Area",
+              "district": "平湯温泉",
+              "city": "Takayama",
+              "state": "Gifu Prefecture",
+              "country": "Japan",
+              "countrycode": "JP",
+              "extent": [
+                137.5523257,
+                36.187632,
+                137.566455,
+                36.1821139
+              ]
+            },
+            "geometry": {
+              "type": "Point",
+              "coordinates": [
+                137.5591537,
+                36.1847976
+              ]
+            }
+          },
+          {
+            "type": "Feature",
+            "properties": {
+              "osm_type": "N",
+              "osm_id": 7609146775,
+              "osm_key": "amenity",
+              "osm_value": "post_office",
+              "type": "house",
+              "housenumber": "196",
+              "name": "Hirayu Onsen Summary Post Office",
+              "street": "763",
+              "locality": "奥飛騨温泉郷平湯湯の平",
+              "city": "Takayama",
+              "state": "Gifu Prefecture",
+              "country": "Japan",
+              "postcode": "506-1433",
+              "countrycode": "JP"
+            },
+            "geometry": {
+              "type": "Point",
+              "coordinates": [
+                137.5524075,
+                36.1907684
+              ]
+            }
+          },
+          {
+            "type": "Feature",
+            "properties": {
+              "osm_type": "N",
+              "osm_id": 7857831652,
+              "osm_key": "amenity",
+              "osm_value": "public_bath",
+              "type": "house",
+              "name": "平田温泉",
+              "street": "National Highway Route 19",
+              "locality": "Tokugawa 1-chome",
+              "district": "Higashi Ward",
+              "city": "Nagoya",
+              "state": "Aichi Prefecture",
+              "country": "Japan",
+              "postcode": "461-0025",
+              "countrycode": "JP"
+            },
+            "geometry": {
+              "type": "Point",
+              "coordinates": [
+                136.9215384,
+                35.1796387
+              ]
+            }
+          },
+          {
+            "type": "Feature",
+            "properties": {
+              "osm_type": "N",
+              "osm_id": 12842159872,
+              "osm_key": "amenity",
+              "osm_value": "public_bath",
+              "type": "house",
+              "name": "Hirakawa Onsen",
+              "street": "弘前田舎館黒石線",
+              "locality": "Ofukuro",
+              "city": "Inakadate",
+              "county": "Minamitsugaru County",
+              "state": "Aomori Prefecture",
+              "country": "Japan",
+              "postcode": "036-8082",
+              "countrycode": "JP"
+            },
+            "geometry": {
+              "type": "Point",
+              "coordinates": [
+                140.5159561,
+                40.6184327
+              ]
+            }
+          },
+          {
+            "type": "Feature",
+            "properties": {
+              "osm_type": "N",
+              "osm_id": 13830370882,
+              "osm_key": "highway",
+              "osm_value": "bus_stop",
+              "type": "house",
+              "name": "Hirase Onsen",
+              "street": "National Highway Route 156",
+              "locality": "Hirase",
+              "city": "Shirakawa",
+              "county": "Ono County",
+              "state": "Gifu Prefecture",
+              "country": "Japan",
+              "postcode": "501-5507",
+              "countrycode": "JP"
+            },
+            "geometry": {
+              "type": "Point",
+              "coordinates": [
+                136.9030246,
+                36.175468
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "query": "平湯",
+      "url": "https://photon.komoot.io/api/?q=%E5%B9%B3%E6%B9%AF&limit=8&lang=en",
+      "status": 200,
+      "latencyMs": 216,
+      "body": {
+        "type": "FeatureCollection",
+        "features": [
+          {
+            "type": "Feature",
+            "properties": {
+              "osm_type": "N",
+              "osm_id": 3794385975,
+              "osm_key": "amenity",
+              "osm_value": "bus_station",
+              "type": "house",
+              "name": "Hirayu Bus Station",
+              "street": "National Highway Route 158",
+              "locality": "奥飛騨温泉郷平湯",
+              "district": "平湯温泉",
+              "city": "Takayama",
+              "state": "Gifu Prefecture",
+              "country": "Japan",
+              "postcode": "506-1433",
+              "countrycode": "JP"
+            },
+            "geometry": {
+              "type": "Point",
+              "coordinates": [
+                137.5519345,
+                36.1909518
+              ]
+            }
+          },
+          {
+            "type": "Feature",
+            "properties": {
+              "osm_type": "N",
+              "osm_id": 1385530085,
+              "osm_key": "mountain_pass",
+              "osm_value": "yes",
+              "type": "other",
+              "name": "平湯峠",
+              "city": "Takayama",
+              "state": "Gifu Prefecture",
+              "country": "Japan",
+              "postcode": "506-1433",
+              "countrycode": "JP"
+            },
+            "geometry": {
+              "type": "Point",
+              "coordinates": [
+                137.5304571,
+                36.1807545
+              ]
+            }
+          },
+          {
+            "type": "Feature",
+            "properties": {
+              "osm_type": "N",
+              "osm_id": 6568198007,
+              "osm_key": "amenity",
+              "osm_value": "public_bath",
+              "type": "house",
+              "name": "平湯温泉;アルプス街道平湯",
+              "street": "National Highway Route 158",
+              "locality": "奥飛騨温泉郷平湯",
+              "district": "平湯温泉",
+              "city": "Takayama",
+              "state": "Gifu Prefecture",
+              "country": "Japan",
+              "postcode": "506-1433",
+              "countrycode": "JP"
+            },
+            "geometry": {
+              "type": "Point",
+              "coordinates": [
+                137.5516527,
+                36.1910908
+              ]
+            }
+          },
+          {
+            "type": "Feature",
+            "properties": {
+              "osm_type": "N",
+              "osm_id": 2481035449,
+              "osm_key": "place",
+              "osm_value": "hamlet",
+              "type": "district",
+              "name": "平湯温泉",
+              "city": "Takayama",
+              "state": "Gifu Prefecture",
+              "country": "Japan",
+              "postcode": "506-1433",
+              "countrycode": "JP"
+            },
+            "geometry": {
+              "type": "Point",
+              "coordinates": [
+                137.5536701,
+                36.1914892
+              ]
+            }
+          },
+          {
+            "type": "Feature",
+            "properties": {
+              "osm_type": "W",
+              "osm_id": 464229152,
+              "osm_key": "natural",
+              "osm_value": "grassland",
+              "type": "other",
+              "name": "平湯スキー場",
+              "district": "平湯温泉",
+              "city": "Takayama",
+              "state": "Gifu Prefecture",
+              "country": "Japan",
+              "countrycode": "JP",
+              "extent": [
+                137.5523257,
+                36.1861597,
+                137.5628245,
+                36.182506
+              ]
+            },
+            "geometry": {
+              "type": "Point",
+              "coordinates": [
+                137.5553087,
+                36.1844098
+              ]
+            }
+          },
+          {
+            "type": "Feature",
+            "properties": {
+              "osm_type": "W",
+              "osm_id": 622149249,
+              "osm_key": "highway",
+              "osm_value": "secondary",
+              "type": "street",
+              "name": "平湯久手線",
+              "district": "平湯温泉",
+              "city": "Takayama",
+              "state": "Gifu Prefecture",
+              "country": "Japan",
+              "postcode": "506-1433",
+              "countrycode": "JP",
+              "extent": [
+                137.5304571,
+                36.18269,
+                137.544753,
+                36.176482
+              ]
+            },
+            "geometry": {
+              "type": "Point",
+              "coordinates": [
+                137.5368268,
+                36.1765138
+              ]
+            }
+          },
+          {
+            "type": "Feature",
+            "properties": {
+              "osm_type": "N",
+              "osm_id": 4415925374,
+              "osm_key": "tourism",
+              "osm_value": "hotel",
+              "type": "house",
+              "name": "平湯プリンスホテル",
+              "street": "National Highway Route 158",
+              "locality": "奥飛騨温泉郷平湯",
+              "district": "平湯温泉",
+              "city": "Takayama",
+              "state": "Gifu Prefecture",
+              "country": "Japan",
+              "postcode": "506-1433",
+              "countrycode": "JP"
+            },
+            "geometry": {
+              "type": "Point",
+              "coordinates": [
+                137.5537135,
+                36.1930786
+              ]
+            }
+          },
+          {
+            "type": "Feature",
+            "properties": {
+              "osm_type": "N",
+              "osm_id": 4459168397,
+              "osm_key": "waterway",
+              "osm_value": "waterfall",
+              "type": "other",
+              "name": "Hirayu Waterfall",
+              "city": "Takayama",
+              "state": "Gifu Prefecture",
+              "country": "Japan",
+              "postcode": "506-1433",
+              "countrycode": "JP"
+            },
+            "geometry": {
+              "type": "Point",
+              "coordinates": [
+                137.5596133,
+                36.1770547
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "query": "Fangjin mountain",
+      "url": "https://photon.komoot.io/api/?q=Fangjin+mountain&limit=8&lang=en",
+      "status": 200,
+      "latencyMs": 436,
+      "body": {
+        "type": "FeatureCollection",
+        "features": [
+          {
+            "type": "Feature",
+            "properties": {
+              "osm_type": "N",
+              "osm_id": 699700351,
+              "osm_key": "natural",
+              "osm_value": "peak",
+              "type": "other",
+              "name": "Fanjing Mountain",
+              "county": "Yinjiang",
+              "state": "Guizhou Province",
+              "country": "China",
+              "postcode": "558000",
+              "countrycode": "CN"
+            },
+            "geometry": {
+              "type": "Point",
+              "coordinates": [
+                108.6921395,
+                27.9193854
+              ]
+            }
+          },
+          {
+            "type": "Feature",
+            "properties": {
+              "osm_type": "W",
+              "osm_id": 1346205350,
+              "osm_key": "shop",
+              "osm_value": "ticket",
+              "type": "house",
+              "name": "Fanjing Mountain Tourist Center",
+              "street": "Lotus Square",
+              "city": "Bagan",
+              "county": "Jiangkou",
+              "state": "Guizhou Province",
+              "country": "China",
+              "postcode": "558000",
+              "countrycode": "CN",
+              "extent": [
+                108.7717254,
+                27.8454855,
+                108.7722558,
+                27.8448109
+              ]
+            },
+            "geometry": {
+              "type": "Point",
+              "coordinates": [
+                108.7719906,
+                27.8451482
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "query": "Fanjingshan",
+      "url": "https://photon.komoot.io/api/?q=Fanjingshan&limit=8&lang=en",
+      "status": 200,
+      "latencyMs": 263,
+      "body": {
+        "type": "FeatureCollection",
+        "features": [
+          {
+            "type": "Feature",
+            "properties": {
+              "osm_type": "N",
+              "osm_id": 7491142475,
+              "osm_key": "natural",
+              "osm_value": "peak",
+              "type": "other",
+              "name": "Fanjingshan",
+              "county": "Jiangkou",
+              "state": "Guizhou Province",
+              "country": "China",
+              "postcode": "558000",
+              "countrycode": "CN"
+            },
+            "geometry": {
+              "type": "Point",
+              "coordinates": [
+                108.6917029,
+                27.9099965
+              ]
+            }
+          },
+          {
+            "type": "Feature",
+            "properties": {
+              "osm_type": "W",
+              "osm_id": 626892766,
+              "osm_key": "natural",
+              "osm_value": "wood",
+              "type": "other",
+              "name": "Fanjingshan National Nature Reserve",
+              "city": "Bagan",
+              "county": "Jiangkou",
+              "state": "Guizhou Province",
+              "country": "China",
+              "postcode": "558000",
+              "countrycode": "CN",
+              "extent": [
+                108.6367576,
+                27.9296138,
+                108.7818037,
+                27.8465231
+              ]
+            },
+            "geometry": {
+              "type": "Point",
+              "coordinates": [
+                108.7254986,
+                27.8904161
+              ]
+            }
+          },
+          {
+            "type": "Feature",
+            "properties": {
+              "osm_type": "W",
+              "osm_id": 626892766,
+              "osm_key": "leisure",
+              "osm_value": "nature_reserve",
+              "type": "other",
+              "name": "Fanjingshan National Nature Reserve",
+              "city": "Bagan",
+              "county": "Jiangkou",
+              "state": "Guizhou Province",
+              "country": "China",
+              "postcode": "558000",
+              "countrycode": "CN",
+              "extent": [
+                108.6367576,
+                27.9296138,
+                108.7818037,
+                27.8465231
+              ]
+            },
+            "geometry": {
+              "type": "Point",
+              "coordinates": [
+                108.7254986,
+                27.8904161
+              ]
+            }
+          },
+          {
+            "type": "Feature",
+            "properties": {
+              "osm_type": "W",
+              "osm_id": 1346205253,
+              "osm_key": "building",
+              "osm_value": "yes",
+              "type": "house",
+              "name": "Fanjingshan Exhibition Center",
+              "street": "Lotus Square",
+              "city": "Bagan",
+              "county": "Jiangkou",
+              "state": "Guizhou Province",
+              "country": "China",
+              "postcode": "558000",
+              "countrycode": "CN",
+              "extent": [
+                108.7696414,
+                27.8464165,
+                108.7700821,
+                27.8460347
+              ]
+            },
+            "geometry": {
+              "type": "Point",
+              "coordinates": [
+                108.7698618,
+                27.8462256
+              ]
+            }
+          },
+          {
+            "type": "Feature",
+            "properties": {
+              "osm_type": "N",
+              "osm_id": 699700351,
+              "osm_key": "natural",
+              "osm_value": "peak",
+              "type": "other",
+              "name": "Fanjing Mountain",
+              "county": "Yinjiang",
+              "state": "Guizhou Province",
+              "country": "China",
+              "postcode": "558000",
+              "countrycode": "CN"
+            },
+            "geometry": {
+              "type": "Point",
+              "coordinates": [
+                108.6921395,
+                27.9193854
+              ]
+            }
+          },
+          {
+            "type": "Feature",
+            "properties": {
+              "osm_type": "N",
+              "osm_id": 4500456782,
+              "osm_key": "place",
+              "osm_value": "village",
+              "type": "district",
+              "name": "Fanjiashan",
+              "city": "Xiaokangying",
+              "county": "Yuzhong County",
+              "state": "Gansu Province",
+              "country": "China",
+              "countrycode": "CN"
+            },
+            "geometry": {
+              "type": "Point",
+              "coordinates": [
+                104.0961137,
+                35.8125847
+              ]
+            }
+          },
+          {
+            "type": "Feature",
+            "properties": {
+              "osm_type": "N",
+              "osm_id": 3419553329,
+              "osm_key": "place",
+              "osm_value": "village",
+              "type": "district",
+              "name": "Fanjiashan",
+              "city": "Sancang",
+              "county": "Wudu",
+              "state": "Gansu Province",
+              "country": "China",
+              "countrycode": "CN"
+            },
+            "geometry": {
+              "type": "Point",
+              "coordinates": [
+                105.09859,
+                33.016179
+              ]
+            }
+          },
+          {
+            "type": "Feature",
+            "properties": {
+              "osm_type": "N",
+              "osm_id": 4753471165,
+              "osm_key": "place",
+              "osm_value": "village",
+              "type": "city",
+              "name": "Fanjiashan",
+              "county": "Cheng",
+              "state": "Gansu Province",
+              "country": "China",
+              "countrycode": "CN"
+            },
+            "geometry": {
+              "type": "Point",
+              "coordinates": [
+                105.8859118,
+                33.6762515
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "query": "Fanjing Mountain",
+      "url": "https://photon.komoot.io/api/?q=Fanjing+Mountain&limit=8&lang=en",
+      "status": 200,
+      "latencyMs": 222,
+      "body": {
+        "type": "FeatureCollection",
+        "features": [
+          {
+            "type": "Feature",
+            "properties": {
+              "osm_type": "N",
+              "osm_id": 699700351,
+              "osm_key": "natural",
+              "osm_value": "peak",
+              "type": "other",
+              "name": "Fanjing Mountain",
+              "county": "Yinjiang",
+              "state": "Guizhou Province",
+              "country": "China",
+              "postcode": "558000",
+              "countrycode": "CN"
+            },
+            "geometry": {
+              "type": "Point",
+              "coordinates": [
+                108.6921395,
+                27.9193854
+              ]
+            }
+          },
+          {
+            "type": "Feature",
+            "properties": {
+              "osm_type": "W",
+              "osm_id": 1346205350,
+              "osm_key": "shop",
+              "osm_value": "ticket",
+              "type": "house",
+              "name": "Fanjing Mountain Tourist Center",
+              "street": "Lotus Square",
+              "city": "Bagan",
+              "county": "Jiangkou",
+              "state": "Guizhou Province",
+              "country": "China",
+              "postcode": "558000",
+              "countrycode": "CN",
+              "extent": [
+                108.7717254,
+                27.8454855,
+                108.7722558,
+                27.8448109
+              ]
+            },
+            "geometry": {
+              "type": "Point",
+              "coordinates": [
+                108.7719906,
+                27.8451482
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "query": "梵净山",
+      "url": "https://photon.komoot.io/api/?q=%E6%A2%B5%E5%87%80%E5%B1%B1&limit=8&lang=en",
+      "status": 200,
+      "latencyMs": 257,
+      "body": {
+        "type": "FeatureCollection",
+        "features": [
+          {
+            "type": "Feature",
+            "properties": {
+              "osm_type": "N",
+              "osm_id": 699700351,
+              "osm_key": "natural",
+              "osm_value": "peak",
+              "type": "other",
+              "name": "Fanjing Mountain",
+              "county": "Yinjiang",
+              "state": "Guizhou Province",
+              "country": "China",
+              "postcode": "558000",
+              "countrycode": "CN"
+            },
+            "geometry": {
+              "type": "Point",
+              "coordinates": [
+                108.6921395,
+                27.9193854
+              ]
+            }
+          },
+          {
+            "type": "Feature",
+            "properties": {
+              "osm_type": "W",
+              "osm_id": 1168426344,
+              "osm_key": "leisure",
+              "osm_value": "park",
+              "type": "other",
+              "name": "梵净山公园",
+              "district": "Shuangjiang",
+              "city": "Jiangkou",
+              "county": "Jiangkou",
+              "state": "Guizhou Province",
+              "country": "China",
+              "postcode": "558000",
+              "countrycode": "CN",
+              "extent": [
+                108.8320301,
+                27.7099244,
+                108.8347923,
+                27.7055959
+              ]
+            },
+            "geometry": {
+              "type": "Point",
+              "coordinates": [
+                108.8333381,
+                27.7077693
+              ]
+            }
+          },
+          {
+            "type": "Feature",
+            "properties": {
+              "osm_type": "W",
+              "osm_id": 1168508700,
+              "osm_key": "natural",
+              "osm_value": "bare_rock",
+              "type": "other",
+              "name": "梵净山公园",
+              "district": "Shuangjiang",
+              "city": "Jiangkou",
+              "county": "Jiangkou",
+              "state": "Guizhou Province",
+              "country": "China",
+              "postcode": "558000",
+              "countrycode": "CN",
+              "extent": [
+                108.8328623,
+                27.7073867,
+                108.8329346,
+                27.707311
+              ]
+            },
+            "geometry": {
+              "type": "Point",
+              "coordinates": [
+                108.8328985,
+                27.7073488
+              ]
+            }
+          },
+          {
+            "type": "Feature",
+            "properties": {
+              "osm_type": "W",
+              "osm_id": 1167928023,
+              "osm_key": "highway",
+              "osm_value": "primary",
+              "type": "street",
+              "name": "梵净山大道",
+              "district": "Shuangjiang",
+              "city": "Jiangkou",
+              "county": "Jiangkou",
+              "state": "Guizhou Province",
+              "country": "China",
+              "postcode": "558000",
+              "countrycode": "CN",
+              "extent": [
+                108.8319596,
+                27.7098604,
+                108.8332768,
+                27.7053585
+              ]
+            },
+            "geometry": {
+              "type": "Point",
+              "coordinates": [
+                108.8326339,
+                27.7076102
+              ]
+            }
+          },
+          {
+            "type": "Feature",
+            "properties": {
+              "osm_type": "W",
+              "osm_id": 688869236,
+              "osm_key": "highway",
+              "osm_value": "trunk",
+              "type": "street",
+              "name": "梵净山大道",
+              "district": "Xieqiao",
+              "city": "Wanshan",
+              "county": "Tongren",
+              "state": "Guizhou Province",
+              "country": "China",
+              "postcode": "558000",
+              "countrycode": "CN",
+              "extent": [
+                109.1777106,
+                27.6817667,
+                109.1779452,
+                27.6814426
+              ]
+            },
+            "geometry": {
+              "type": "Point",
+              "coordinates": [
+                109.1778279,
+                27.6816047
+              ]
+            }
+          },
+          {
+            "type": "Feature",
+            "properties": {
+              "osm_type": "W",
+              "osm_id": 626892766,
+              "osm_key": "natural",
+              "osm_value": "wood",
+              "type": "other",
+              "name": "Fanjingshan National Nature Reserve",
+              "city": "Bagan",
+              "county": "Jiangkou",
+              "state": "Guizhou Province",
+              "country": "China",
+              "postcode": "558000",
+              "countrycode": "CN",
+              "extent": [
+                108.6367576,
+                27.9296138,
+                108.7818037,
+                27.8465231
+              ]
+            },
+            "geometry": {
+              "type": "Point",
+              "coordinates": [
+                108.7254986,
+                27.8904161
+              ]
+            }
+          },
+          {
+            "type": "Feature",
+            "properties": {
+              "osm_type": "W",
+              "osm_id": 626892766,
+              "osm_key": "leisure",
+              "osm_value": "nature_reserve",
+              "type": "other",
+              "name": "Fanjingshan National Nature Reserve",
+              "city": "Bagan",
+              "county": "Jiangkou",
+              "state": "Guizhou Province",
+              "country": "China",
+              "postcode": "558000",
+              "countrycode": "CN",
+              "extent": [
+                108.6367576,
+                27.9296138,
+                108.7818037,
+                27.8465231
+              ]
+            },
+            "geometry": {
+              "type": "Point",
+              "coordinates": [
+                108.7254986,
+                27.8904161
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "query": "Yunomine",
+      "url": "https://photon.komoot.io/api/?q=Yunomine&limit=8&lang=en",
+      "status": 200,
+      "latencyMs": 233,
+      "body": {
+        "type": "FeatureCollection",
+        "features": [
+          {
+            "type": "Feature",
+            "properties": {
+              "osm_type": "W",
+              "osm_id": 303934214,
+              "osm_key": "natural",
+              "osm_value": "hot_spring",
+              "type": "house",
+              "name": "Yunomine Onsen Public Bath",
+              "street": "湯元橋",
+              "locality": "Hongucho-Yunomine",
+              "district": "Hongu",
+              "city": "Tanabe",
+              "state": "Wakayama Prefecture",
+              "country": "Japan",
+              "postcode": "646-8545",
+              "countrycode": "JP",
+              "extent": [
+                135.7577474,
+                33.8288264,
+                135.7578949,
+                33.8287685
+              ]
+            },
+            "geometry": {
+              "type": "Point",
+              "coordinates": [
+                135.757818,
+                33.8287966
+              ]
+            }
+          },
+          {
+            "type": "Feature",
+            "properties": {
+              "osm_type": "W",
+              "osm_id": 303934214,
+              "osm_key": "amenity",
+              "osm_value": "public_bath",
+              "type": "house",
+              "name": "Yunomine Onsen Public Bath",
+              "street": "湯元橋",
+              "locality": "Hongucho-Yunomine",
+              "district": "Hongu",
+              "city": "Tanabe",
+              "state": "Wakayama Prefecture",
+              "country": "Japan",
+              "postcode": "646-8545",
+              "countrycode": "JP",
+              "extent": [
+                135.7577474,
+                33.8288264,
+                135.7578949,
+                33.8287685
+              ]
+            },
+            "geometry": {
+              "type": "Point",
+              "coordinates": [
+                135.757818,
+                33.8287966
+              ]
+            }
+          },
+          {
+            "type": "Feature",
+            "properties": {
+              "osm_type": "N",
+              "osm_id": 3210675118,
+              "osm_key": "historic",
+              "osm_value": "wayside_shrine",
+              "type": "house",
+              "name": "Yunomine Oji",
+              "street": "Kumano Kodo Dainichi goe",
+              "locality": "Hongucho-Yunomine",
+              "district": "Hongu",
+              "city": "Tanabe",
+              "state": "Wakayama Prefecture",
+              "country": "Japan",
+              "postcode": "646-8545",
+              "countrycode": "JP"
+            },
+            "geometry": {
+              "type": "Point",
+              "coordinates": [
+                135.7580841,
+                33.8293322
+              ]
+            }
+          },
+          {
+            "type": "Feature",
+            "properties": {
+              "osm_type": "W",
+              "osm_id": 1271634622,
+              "osm_key": "tourism",
+              "osm_value": "hotel",
+              "type": "house",
+              "name": "Yunomineso",
+              "street": "湯元橋",
+              "locality": "Hongucho-Yunomine",
+              "district": "Hongu",
+              "city": "Tanabe",
+              "state": "Wakayama Prefecture",
+              "country": "Japan",
+              "postcode": "646-8545",
+              "countrycode": "JP",
+              "extent": [
+                135.7539483,
+                33.8243376,
+                135.7544513,
+                33.8238751
+              ]
+            },
+            "geometry": {
+              "type": "Point",
+              "coordinates": [
+                135.7541998,
+                33.8241288
+              ]
+            }
+          },
+          {
+            "type": "Feature",
+            "properties": {
+              "osm_type": "N",
+              "osm_id": 2822838506,
+              "osm_key": "place",
+              "osm_value": "locality",
+              "type": "locality",
+              "name": "Yunomine Onsen",
+              "district": "Hongu",
+              "city": "Tanabe",
+              "state": "Wakayama Prefecture",
+              "country": "Japan",
+              "postcode": "646-8545",
+              "countrycode": "JP"
+            },
+            "geometry": {
+              "type": "Point",
+              "coordinates": [
+                135.7575842,
+                33.8288351
+              ]
+            }
+          },
+          {
+            "type": "Feature",
+            "properties": {
+              "osm_type": "N",
+              "osm_id": 2822853461,
+              "osm_key": "highway",
+              "osm_value": "bus_stop",
+              "type": "house",
+              "name": "Yunomine Onsen",
+              "street": "湯元橋",
+              "locality": "Hongucho-Yunomine",
+              "district": "Hongu",
+              "city": "Tanabe",
+              "state": "Wakayama Prefecture",
+              "country": "Japan",
+              "postcode": "646-8545",
+              "countrycode": "JP"
+            },
+            "geometry": {
+              "type": "Point",
+              "coordinates": [
+                135.7575631,
+                33.8286995
+              ]
+            }
+          },
+          {
+            "type": "Feature",
+            "properties": {
+              "osm_type": "N",
+              "osm_id": 1423072813,
+              "osm_key": "amenity",
+              "osm_value": "post_office",
+              "type": "house",
+              "name": "Yunomine Post Office",
+              "locality": "Hongucho-Shimoyukawa",
+              "district": "Hongu",
+              "city": "Tanabe",
+              "state": "Wakayama Prefecture",
+              "country": "Japan",
+              "postcode": "647-1734",
+              "countrycode": "JP"
+            },
+            "geometry": {
+              "type": "Point",
+              "coordinates": [
+                135.752819,
+                33.82294
+              ]
+            }
+          },
+          {
+            "type": "Feature",
+            "properties": {
+              "osm_type": "N",
+              "osm_id": 8744240646,
+              "osm_key": "place",
+              "osm_value": "quarter",
+              "type": "locality",
+              "name": "Hongucho-Yunomine",
+              "district": "Hongu",
+              "city": "Tanabe",
+              "state": "Wakayama Prefecture",
+              "country": "Japan",
+              "postcode": "646-8545",
+              "countrycode": "JP"
+            },
+            "geometry": {
+              "type": "Point",
+              "coordinates": [
+                135.7553266,
+                33.8317753
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "query": "Yunomine Onsen",
+      "url": "https://photon.komoot.io/api/?q=Yunomine+Onsen&limit=8&lang=en",
+      "status": 200,
+      "latencyMs": 221,
+      "body": {
+        "type": "FeatureCollection",
+        "features": [
+          {
+            "type": "Feature",
+            "properties": {
+              "osm_type": "W",
+              "osm_id": 303934214,
+              "osm_key": "natural",
+              "osm_value": "hot_spring",
+              "type": "house",
+              "name": "Yunomine Onsen Public Bath",
+              "street": "湯元橋",
+              "locality": "Hongucho-Yunomine",
+              "district": "Hongu",
+              "city": "Tanabe",
+              "state": "Wakayama Prefecture",
+              "country": "Japan",
+              "postcode": "646-8545",
+              "countrycode": "JP",
+              "extent": [
+                135.7577474,
+                33.8288264,
+                135.7578949,
+                33.8287685
+              ]
+            },
+            "geometry": {
+              "type": "Point",
+              "coordinates": [
+                135.757818,
+                33.8287966
+              ]
+            }
+          },
+          {
+            "type": "Feature",
+            "properties": {
+              "osm_type": "W",
+              "osm_id": 303934214,
+              "osm_key": "amenity",
+              "osm_value": "public_bath",
+              "type": "house",
+              "name": "Yunomine Onsen Public Bath",
+              "street": "湯元橋",
+              "locality": "Hongucho-Yunomine",
+              "district": "Hongu",
+              "city": "Tanabe",
+              "state": "Wakayama Prefecture",
+              "country": "Japan",
+              "postcode": "646-8545",
+              "countrycode": "JP",
+              "extent": [
+                135.7577474,
+                33.8288264,
+                135.7578949,
+                33.8287685
+              ]
+            },
+            "geometry": {
+              "type": "Point",
+              "coordinates": [
+                135.757818,
+                33.8287966
+              ]
+            }
+          },
+          {
+            "type": "Feature",
+            "properties": {
+              "osm_type": "N",
+              "osm_id": 2822838506,
+              "osm_key": "place",
+              "osm_value": "locality",
+              "type": "locality",
+              "name": "Yunomine Onsen",
+              "district": "Hongu",
+              "city": "Tanabe",
+              "state": "Wakayama Prefecture",
+              "country": "Japan",
+              "postcode": "646-8545",
+              "countrycode": "JP"
+            },
+            "geometry": {
+              "type": "Point",
+              "coordinates": [
+                135.7575842,
+                33.8288351
+              ]
+            }
+          },
+          {
+            "type": "Feature",
+            "properties": {
+              "osm_type": "N",
+              "osm_id": 2822853461,
+              "osm_key": "highway",
+              "osm_value": "bus_stop",
+              "type": "house",
+              "name": "Yunomine Onsen",
+              "street": "湯元橋",
+              "locality": "Hongucho-Yunomine",
+              "district": "Hongu",
+              "city": "Tanabe",
+              "state": "Wakayama Prefecture",
+              "country": "Japan",
+              "postcode": "646-8545",
+              "countrycode": "JP"
+            },
+            "geometry": {
+              "type": "Point",
+              "coordinates": [
+                135.7575631,
+                33.8286995
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "query": "湯の峰温泉",
+      "url": "https://photon.komoot.io/api/?q=%E6%B9%AF%E3%81%AE%E5%B3%B0%E6%B8%A9%E6%B3%89&limit=8&lang=en",
+      "status": 200,
+      "latencyMs": 217,
+      "body": {
+        "type": "FeatureCollection",
+        "features": [
+          {
+            "type": "Feature",
+            "properties": {
+              "osm_type": "N",
+              "osm_id": 2822853461,
+              "osm_key": "highway",
+              "osm_value": "bus_stop",
+              "type": "house",
+              "name": "Yunomine Onsen",
+              "street": "湯元橋",
+              "locality": "Hongucho-Yunomine",
+              "district": "Hongu",
+              "city": "Tanabe",
+              "state": "Wakayama Prefecture",
+              "country": "Japan",
+              "postcode": "646-8545",
+              "countrycode": "JP"
+            },
+            "geometry": {
+              "type": "Point",
+              "coordinates": [
+                135.7575631,
+                33.8286995
+              ]
+            }
+          },
+          {
+            "type": "Feature",
+            "properties": {
+              "osm_type": "W",
+              "osm_id": 303934214,
+              "osm_key": "amenity",
+              "osm_value": "public_bath",
+              "type": "house",
+              "name": "Yunomine Onsen Public Bath",
+              "street": "湯元橋",
+              "locality": "Hongucho-Yunomine",
+              "district": "Hongu",
+              "city": "Tanabe",
+              "state": "Wakayama Prefecture",
+              "country": "Japan",
+              "postcode": "646-8545",
+              "countrycode": "JP",
+              "extent": [
+                135.7577474,
+                33.8288264,
+                135.7578949,
+                33.8287685
+              ]
+            },
+            "geometry": {
+              "type": "Point",
+              "coordinates": [
+                135.757818,
+                33.8287966
+              ]
+            }
+          },
+          {
+            "type": "Feature",
+            "properties": {
+              "osm_type": "W",
+              "osm_id": 303934214,
+              "osm_key": "natural",
+              "osm_value": "hot_spring",
+              "type": "house",
+              "name": "Yunomine Onsen Public Bath",
+              "street": "湯元橋",
+              "locality": "Hongucho-Yunomine",
+              "district": "Hongu",
+              "city": "Tanabe",
+              "state": "Wakayama Prefecture",
+              "country": "Japan",
+              "postcode": "646-8545",
+              "countrycode": "JP",
+              "extent": [
+                135.7577474,
+                33.8288264,
+                135.7578949,
+                33.8287685
+              ]
+            },
+            "geometry": {
+              "type": "Point",
+              "coordinates": [
+                135.757818,
+                33.8287966
+              ]
+            }
+          },
+          {
+            "type": "Feature",
+            "properties": {
+              "osm_type": "N",
+              "osm_id": 8172711109,
+              "osm_key": "railway",
+              "osm_value": "station",
+              "type": "house",
+              "name": "Yunoyama-Onsen",
+              "street": "Route Chayamachi-Yunoyama Station",
+              "locality": "大字菰野",
+              "city": "Komono",
+              "county": "Mie County",
+              "state": "Mie Prefecture",
+              "country": "Japan",
+              "postcode": "510-1233",
+              "countrycode": "JP"
+            },
+            "geometry": {
+              "type": "Point",
+              "coordinates": [
+                136.4740053,
+                35.0118439
+              ]
+            }
+          },
+          {
+            "type": "Feature",
+            "properties": {
+              "osm_type": "N",
+              "osm_id": 416052684,
+              "osm_key": "railway",
+              "osm_value": "stop",
+              "type": "house",
+              "name": "Yunoyama-Onsen",
+              "street": "Route Chayamachi-Yunoyama Station",
+              "locality": "大字菰野",
+              "city": "Komono",
+              "county": "Mie County",
+              "state": "Mie Prefecture",
+              "country": "Japan",
+              "postcode": "510-1233",
+              "countrycode": "JP"
+            },
+            "geometry": {
+              "type": "Point",
+              "coordinates": [
+                136.4740339,
+                35.0117953
+              ]
+            }
+          },
+          {
+            "type": "Feature",
+            "properties": {
+              "osm_type": "N",
+              "osm_id": 5683464376,
+              "osm_key": "highway",
+              "osm_value": "bus_stop",
+              "type": "house",
+              "name": "湯の川温泉",
+              "street": "National Highway Route 278",
+              "locality": "Ugauracho",
+              "city": "Hakodate",
+              "county": "Oshima Subprefecture",
+              "state": "Hokkaido",
+              "country": "Japan",
+              "postcode": "040-0023",
+              "countrycode": "JP"
+            },
+            "geometry": {
+              "type": "Point",
+              "coordinates": [
+                140.7865848,
+                41.774746
+              ]
+            }
+          },
+          {
+            "type": "Feature",
+            "properties": {
+              "osm_type": "N",
+              "osm_id": 8288778320,
+              "osm_key": "amenity",
+              "osm_value": "public_bath",
+              "type": "house",
+              "name": "湯の華温泉",
+              "street": "道祖本街道",
+              "locality": "Kotobukicho 2-chome",
+              "city": "Takatsuki",
+              "state": "Osaka Prefecture",
+              "country": "Japan",
+              "postcode": "569-0823",
+              "countrycode": "JP"
+            },
+            "geometry": {
+              "type": "Point",
+              "coordinates": [
+                135.60252,
+                34.8281837
+              ]
+            }
+          },
+          {
+            "type": "Feature",
+            "properties": {
+              "osm_type": "N",
+              "osm_id": 9820263817,
+              "osm_key": "amenity",
+              "osm_value": "public_bath",
+              "type": "house",
+              "name": "湯の花温泉",
+              "street": "龍田橋",
+              "locality": "室町一丁目",
+              "city": "Ogaki",
+              "state": "Gifu Prefecture",
+              "country": "Japan",
+              "postcode": "503-0911",
+              "countrycode": "JP"
+            },
+            "geometry": {
+              "type": "Point",
+              "coordinates": [
+                136.6136498,
+                35.3646419
+              ]
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "note": "Isolated generator acceptance; existing deterministic pilot matches can suppress AI in the product. No durable cache publication or live activation.",
+  "finishedAt": "2026-10-22T19:36:01.947Z",
+  "estimatedTokenCostUsd": 0.0003145,
+  "estimatedCostIncludingRegionalCeilingUsd": 0.00034595000000000003
+}

@@ -1,10 +1,11 @@
+import { emptyServerMarkerPlugin } from './helpers/server-marker.mjs';
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {build} from 'esbuild';
 import type {NextRequest} from 'next/server';
 
 test('geocode API never auto-selects cross-country Porto with missing nearby context',async()=>{
- const result=await build({entryPoints:['app/api/journey-geocode/route.ts'],bundle:true,write:false,format:'esm',platform:'node',plugins:[{name:'controlled-provider',setup(b){
+ const result=await build({entryPoints:['app/api/journey-geocode/route.ts'],bundle:true,write:false,format:'esm',platform:'node',plugins:[emptyServerMarkerPlugin,{name:'controlled-provider',setup(b){
   b.onResolve({filter:/^next\/server$/},()=>({path:'next-response',namespace:'fixture'}));
   b.onResolve({filter:/open-world-place\.server$/},()=>({path:'provider',namespace:'fixture'}));
   b.onLoad({filter:/.*/,namespace:'fixture'},({path})=>({contents:path==='next-response'?`export const NextResponse={json:(body,options)=>({body,status:options?.status??200})};`:

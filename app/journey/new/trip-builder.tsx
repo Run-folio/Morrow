@@ -108,6 +108,8 @@ import { discoveryChoiceEvent, discoveryConfirmedEvent, discoveryDismissedEvent 
 import { discoveryBaseSuitableForMention, discoveryPlaceWithinMention } from "@/lib/easyt/discovery-content";
 import { PRODUCT_TOUR_STATE_EVENT } from "@/components/easyt/easyt-product-tour";
 import { EasyTButton, EasyTField, EasyTLinkButton, EasyTSelect } from "@/components/easyt/easyt-controls";
+
+import { searchCompletedPlaceCandidates, searchPublicPlaceCandidates } from '@/lib/easyt/completed-place-search';
 import { MorroviaDatePicker } from "@/components/easyt/morrovia-date-picker";
 import { MorroviaQuantitySelector } from "@/components/easyt/morrovia-quantity-selector";
 import { MorroviaBriefNotice, MorroviaConfirmationDialog, MorroviaRecoveryFeedback, MorroviaSaveStatus, MorroviaStatusBanner } from "@/components/easyt/morrovia-feedback";
@@ -6118,7 +6120,8 @@ function TripBuilderDocument() {
                     describedBy={stopError ? stopErrorId : undefined}
                     onChange={(value) => { retireBuilderEntryForInput(); cancelCountryAddReview();builderEditSessionRef.current?.updateDraft({binding:{kind:"destination-add"},raw:value});setStopInput(value); setStopError(""); }}
                     onSelect={async (suggestion) => { void addStop(suggestion.name, suggestion.country, undefined, undefined, suggestion); }}
-                    onSubmitFreeText={async () => { void addStop(); }}
+                    onFreeTextSearch={searchCompletedPlaceCandidates}
+                    onPublicPlaceSearch={searchPublicPlaceCandidates}
                   />
                   {countryAddReviewControl}
                   {stopChecking ? <p role="status">{ui.checking}</p> : null}
@@ -6346,7 +6349,8 @@ function TripBuilderDocument() {
                       revealSuggestionsKey={stopSearchReadyKey}
                       onChange={(value) => { retireBuilderEntryForInput(); cancelCountryAddReview();builderEditSessionRef.current?.updateDraft({binding:{kind:"destination-add"},raw:value});setStopInput(value); setStopError(""); }}
                       onSelect={async (suggestion) => { void addStop(suggestion.name, suggestion.country, undefined, undefined, suggestion); }}
-                      onSubmitFreeText={async () => { void addStop(); }}
+                      onFreeTextSearch={searchCompletedPlaceCandidates}
+                    onPublicPlaceSearch={searchPublicPlaceCandidates}
                     />
                     {countryAddReviewControl}
                     {stopChecking ? <small className={styles.hint} role="status">{ui.checking}</small> : null}

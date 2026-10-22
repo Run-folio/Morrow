@@ -38,3 +38,14 @@ export const VerifiedCityIdentity:Story={args:{value:'Manila',label:'Destination
 export const PublishedCityChoices:Story={...MetropolitanCity,args:{value:'Beijing',label:'Destination',placeholder:'City or area'}};
 export const PublishedCityChoicesSpanish:Story={...PublishedCityChoices,args:{...PublishedCityChoices.args,language:'es'}};
 export const PublishedCityChoicesMobile:Story={...PublishedCityChoices,globals:{viewport:{value:'morrovia390',isRotated:false}}};
+
+// Offline interaction: press Enter for the deterministic miss, then explicitly
+// search the public name. Selecting the result is still a separate action.
+export const PublicPlaceResearch:Story={...MetropolitanCity,args:{value:'Yunomine hot spring village',label:'Destination',
+  onFreeTextSearch:async()=>({suggestions:[],publicResearchAvailable:true}),onPublicPlaceSearch:async()=>[{
+    canonicalPlaceId:'open-world:photon:N:2822838506',name:'Yunomine Onsen',country:'Japan',label:'Yunomine Onsen, Japan',
+    placeType:'town',routability:'direct_destination',coordinates:[135.7575842,33.8288351],
+    provenance:[{id:'photon:N:2822838506',kind:'provider',label:'Photon / OpenStreetMap',supports:'Recorded locality fixture; public-name research is mocked.'}],
+  }]}};
+export const PublicPlaceResearchMobile:Story={...PublicPlaceResearch,globals:{viewport:{value:'morrovia390',isRotated:false}}};
+export const PublicPlaceResearchSpanish:Story={...PublicPlaceResearch,args:{...PublicPlaceResearch.args,language:'es'}};

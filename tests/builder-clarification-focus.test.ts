@@ -67,14 +67,18 @@ function focusPorts() {
   const windowPort = { requestAnimationFrame: (run: () => void) => { const id = ++nextFrame; frames.set(id, { run, cancelled: false }); return id; },
     cancelAnimationFrame: (id: number) => { const frame = frames.get(id); if (frame) frame.cancelled = true; },
     setTimeout: (run: () => void) => { timers.push(run); return timers.length; } };
+  const completedSearchRef = {current:{sequence:0,controller:null as AbortController|null}};
+  const completedState = {suggestions:['previous result'] as unknown[],status:'ready',researchUsed:true};
   const autocomplete = { rootRef: { current: root }, window: windowPort, document: documentPort,
+    completedSearchRef,setCompletedSuggestions:(value:unknown[])=>{completedState.suggestions=value;},
+    setCompletedSearchStatus:(value:string)=>{completedState.status=value;},setPublicResearchUsed:(value:boolean)=>{completedState.researchUsed=value;},
     submitFreeTextOnBlur: false, onSubmitFreeText() {}, onChange() {}, setOpen: (open: boolean) => { menuOpen = open; }, setActiveIndex() {} };
   blur = autocompleteHandler('onBlur')(autocomplete);
   const focusInput = () => { input.focus(); autocompleteHandler('onFocus')(autocomplete)(); };
   const enterQuery = () => { focusInput(); autocompleteHandler('onChange')(autocomplete)({ target: { value: 'Santa Cruz de Tenerife' } }); };
   const scope = { open: true, itemKey: 'island:places', dialogRef: { current: dialog }, titleRef: { current: heading },
     dismissRef: { current: () => { dismissals++; } }, loadingRef: { current: false }, document: documentPort, window: windowPort, HTMLElement: ElementPort };
-  return { scope, trigger, dialog, heading, input, close, footer, root, enterQuery, focusInput, ElementPort,
+  return { scope, trigger, dialog, heading, input, close, footer, root, enterQuery, focusInput, ElementPort,completedSearchRef,completedState,
     activeName: () => documentPort.activeElement?.name, menuOpen: () => menuOpen, dismissals: () => dismissals,
     frameCount: () => frames.size, cancelledFrames: () => [...frames.values()].filter(frame => frame.cancelled).length,
     runFrames: (deliverCancelled = false) => { const pending = [...frames.values()]; frames.clear(); for (const frame of pending) if (deliverCancelled || !frame.cancelled) frame.run(); },
@@ -87,6 +91,14 @@ test('actual deferred shell focus cannot blur an already edited combobox and clo
   const f = focusPorts(); shellEffect('focus')(f.scope)();
   f.enterQuery(); f.runFrames(); f.runTimers();
   assert.deepEqual({ active: f.activeName(), menuOpen: f.menuOpen() }, { active: 'input', menuOpen: true });
+});
+
+test('actual autocomplete typing retires completed search without changing focus ownership',()=>{
+  const f=focusPorts(),pending=new AbortController();f.completedSearchRef.current.controller=pending;
+  f.enterQuery();assert.equal(pending.signal.aborted,true);assert.equal(f.completedSearchRef.current.sequence,1);
+  assert.equal(f.completedSearchRef.current.controller,null);
+  assert.deepEqual(f.completedState,{suggestions:[],status:'idle',researchUsed:false});
+  assert.equal(f.activeName(),'input');assert.equal(f.menuOpen(),true);
 });
 
 test('initial shell entry still focuses its heading when focus remains outside the dialog', () => {

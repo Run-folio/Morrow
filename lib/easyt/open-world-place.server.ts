@@ -1,6 +1,7 @@
 import {searchReferencePlaces,referenceSnapshotId} from './place-reference.server.ts';
 import {findCatalogPlacesByPhrase} from './place-catalog.ts';
 import {countryCodeFor} from './country-registry.ts';
+import { lookupReviewedPlaceSearchAlias, reviewedAliasMatchesCandidate, reviewedPlaceSearchQueries } from './place-search-aliases.ts';
 import { searchBundledIslandIdentityCandidates } from './island-geography.server.ts';
 import { searchPhotonTravelCandidates } from "./photon-place.server.ts";
 import { searchOpenStreetMapNearbySettlements } from "./openstreetmap-nearby-place.server.ts";
@@ -19,7 +20,7 @@ import {
 export type OpenWorldPlaceSource = {
   id: string;
   label: string;
-  search?: (phrase: string, context: PlaceResolutionContext) => Promise<OpenWorldTravelCandidate[]>;
+  search?: (phrase: string, context: PlaceResolutionContext, options?: { signal?: AbortSignal }) => Promise<OpenWorldTravelCandidate[]>;
   nearby?: (anchor: NearbyBaseAnchor, radiusKm: number) => Promise<OpenWorldTravelCandidate[]>;
 };
 
@@ -28,6 +29,8 @@ export type OpenWorldTravelCandidate = PlaceProviderCandidate & {
   countryCode?: string;
   region?: string;
   locality?: string;
+  providerName?: string;
+  providerKey?: string;
   providerKind?: string;
 };
 
@@ -104,7 +107,9 @@ function defaultSources(fetchImpl?: typeof fetch, timeoutMs=3500): OpenWorldPlac
     {
       id: "photon",
       label: "Komoot Photon",
-      search: (phrase, context) => searchPhotonTravelCandidates(phrase, context, fetchImpl, {signal:AbortSignal.timeout(timeoutMs)}),
+      search: (phrase, context, options) => searchPhotonTravelCandidates(phrase, context, fetchImpl, {
+        signal: options?.signal ? AbortSignal.any([options.signal, AbortSignal.timeout(timeoutMs)]) : AbortSignal.timeout(timeoutMs),
+      }),
     },
     {
       id: "openstreetmap-overpass",
@@ -299,28 +304,64 @@ export function createOpenWorldPlaceProvider(options: {
       if (cached) cache.delete(key);
 
       const searchSources = sources.filter((source) => source.search);
+      const aliasCountry = request.context.explicitCountryNames?.length === 1
+        ? countryCodeFor(request.context.explicitCountryNames[0]) ?? undefined : undefined;
+      const reviewedAlias = lookupReviewedPlaceSearchAlias(request.phrase, aliasCountry);
+      const aliasQueries = (source: OpenWorldPlaceSource) => source.id === "photon" && reviewedAlias
+        ? reviewedPlaceSearchQueries(request.phrase, reviewedAlias.countryCode) : [];
+      let sourceTimedOut = false;
+      let alternateSourceFailed = false;
       const settled = await Promise.allSettled(searchSources.map((source) => new Promise<PlaceProviderCandidate[]>((resolve, reject) => {
-        const timer = setTimeout(() => reject(new Error(`${source.id} lookup timed out`)), sourceTimeoutMs);
-        source.search!(request.phrase, request.context).then(
-          (sourceCandidates) => {
-            clearTimeout(timer);
-            resolve(sourceCandidates.flatMap((candidate): PlaceProviderCandidate[] => {
-              const validated = validatedCandidate(candidate);
-              if (!validated) return [];
-              return [{
-                ...validated,
-                providerId: `${source.id}:${validated.providerId}`,
-                providerSourceId: source.id,
-                providerSourceLabel: source.label,
-                aliases: [...new Set([...(validated.aliases ?? []), ...(normalized(validated.canonicalName) !== normalized(phrase) ? [phrase] : [])])],
-                normalizationReason: `${validated.normalizationReason ?? "provider travel entity"}; source=${source.label}`,
-              }];
-            }));
-          },
-          (error) => { clearTimeout(timer); reject(error); },
-        );
+        const controller = new AbortController();
+        const accepted: PlaceProviderCandidate[] = [];
+        const timer = setTimeout(() => {
+          sourceTimedOut = true;
+          controller.abort();
+          if (accepted.length) resolve([...accepted]);
+          else reject(new Error(`${source.id} lookup timed out`));
+        }, sourceTimeoutMs);
+        const convert = (candidate: OpenWorldTravelCandidate, queryPhrase: string): PlaceProviderCandidate[] => {
+          const aliasMatch = reviewedAlias && source.id === "photon" && reviewedAliasMatchesCandidate(candidate, reviewedAlias);
+          if (reviewedAlias && source.id === "photon" && queryPhrase !== request.phrase && !aliasMatch) return [];
+          const enriched = aliasMatch ? {
+            ...candidate,
+            aliases: [...new Set([...(candidate.aliases ?? []), ...reviewedAlias.displayAliases, ...reviewedAlias.inputAliases, request.phrase])],
+            matchQuality: "alias" as const,
+            normalizationReason: `provider feature matched reviewed alternate-name entry ${reviewedAlias.id}`,
+          } : candidate;
+          const validated = validatedCandidate(enriched);
+          if (!validated) return [];
+          return [{
+            ...validated,
+            providerId: `${source.id}:${validated.providerId}`,
+            providerSourceId: source.id,
+            providerSourceLabel: source.label,
+            aliases: [...new Set([...(validated.aliases ?? []), ...(normalized(validated.canonicalName) !== normalized(phrase) ? [phrase] : [])])],
+            normalizationReason: `${validated.normalizationReason ?? "provider travel entity"}; source=${source.label}`,
+          }];
+        };
+        void (async () => {
+          const queries = [request.phrase, ...aliasQueries(source)];
+          for (const [queryIndex, query] of [...new Set(queries)].entries()) {
+            if (controller.signal.aborted) break;
+            let results: OpenWorldTravelCandidate[];
+            try {
+              results = await source.search!(query, request.context, { signal: controller.signal });
+            } catch (error) {
+              // A failed alternate-name request must not discard useful facts
+              // already returned for the traveller's original wording.
+              if (queryIndex === 0) throw error;
+              alternateSourceFailed = true;
+              break;
+            }
+            if (controller.signal.aborted) break;
+            accepted.push(...results.flatMap((candidate) => convert(candidate, query)));
+            if (!reviewedAlias || source.id !== "photon" || accepted.some((candidate) => reviewedAliasMatchesCandidate(candidate, reviewedAlias))) break;
+          }
+          return accepted;
+        })().then((sourceCandidates) => { clearTimeout(timer); resolve(sourceCandidates); }, (error) => { clearTimeout(timer); reject(error); });
       })));
-      if (settled.some(result => result.status === 'rejected')) {
+      if (sourceTimedOut || alternateSourceFailed || settled.some(result => result.status === 'rejected')) {
         try { options.onSourceFailure?.(); } catch { /* An observer cannot change search facts. */ }
       }
       const deduplicated = settled.flatMap((result) => result.status === "fulfilled" ? result.value : [])

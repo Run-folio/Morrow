@@ -101,6 +101,8 @@ If not, simplify before building.
 
 ## Engineering guidance
 
+Make the best decision that will elevate all three: the user experience (UX), developer experience (DX), and agent experience (AX) always, without breaking anything
+
 Before making changes:
 
 1. Inspect the existing implementation.
@@ -123,6 +125,8 @@ Default to repository evidence and existing project validation as applicable: fo
 If real hosted or browser verification is still necessary after implementation, report `MANUAL HOSTED VERIFICATION REQUIRED`; do not block ticket completion indefinitely waiting for browser permissions. This rule does not relax functional correctness, production deployment confirmation, or explicit approval requirements for production pushes, destructive actions, or sensitive operations.
 
 ## UI and design-system contract
+
+Cut taglines, helper text and secondary labels. If a screen needs them to make sense, fix the layout.
 
 Use the minimum explanation required for confident use: if the interface
 already communicates it, do not explain it again. Apply the

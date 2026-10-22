@@ -21,6 +21,7 @@ import type { EasyTTrip } from "@/lib/easyt/trip";
 import { trackEvent } from "@/lib/analytics";
 import { tripSyncRecoveryPath } from "@/lib/easyt/trip-continuity";
 import { tripSaveSignInHref } from "@/lib/easyt/trip-workspace-links";
+import {workspaceRefusalDiagnostic, workspaceRefusalSupportCode, type WorkspaceRefusalDiagnostic, type WorkspaceRefusalPhase} from "@/lib/easyt/workspace-recovery-diagnostic";
 import { EasyTButton, EasyTLinkButton } from "./easyt-controls";
 import { MorroviaBriefNotice, MorroviaStatusBanner } from "./morrovia-feedback";
 import { MorroviaSectionStatus } from "./morrovia-loading-states";
@@ -32,7 +33,7 @@ const deviceNoticesShown = new Set<string>();
 type Resolution =
   | { status: "loading"; identity: string }
   | { status: "found"; identity: string; trip: EasyTTrip }
-  | { status: "blocked"; identity: string; kind: "protected" | "unavailable" }
+  | { status: "blocked"; identity: string; kind: "protected" | "unavailable"; diagnostic: WorkspaceRefusalDiagnostic }
   | { status: "missing"; identity: string };
 
 /** Client boundary for an exact local trip, with optional signed-in promotion. */
@@ -79,12 +80,15 @@ export default function TripShellResolver({
     setShowingCanonicalConflict(false);
     let recovery;
     let localTrip: EasyTTrip;
+    let refusalPhase: WorkspaceRefusalPhase = "owner-workspace-read";
     try {
       if (ownerId && (searchParams.get("saved") === "1"
         || retryAcknowledgedSave && acknowledgedAccountRef.current?.identity === requestIdentity)) {
+        refusalPhase="guest-read";
         const guest=await loadTripRecovery(tripId,null);
         if(!responseIsCurrent())return;
         if(guest){
+          refusalPhase="explicit-save";
           const saved=await saveExplicitGuestTripForOwner(tripId,ownerId,responseIsCurrent);
           if(!responseIsCurrent())return;
           if (saved.accountAcknowledged) acknowledgedAccountRef.current = saved.deviceComplete ? null : {identity:requestIdentity,trip:saved.trip,deviceIncomplete:true};
@@ -95,6 +99,7 @@ export default function TripShellResolver({
           return;
         }
       }
+      refusalPhase="owner-workspace-read";
       const document = await loadTripWorkspaceDocument(tripId, ownerId ?? null);
       if (!responseIsCurrent()) return;
       if (!document) {
@@ -115,7 +120,8 @@ export default function TripShellResolver({
       recovery = document.recovery;
     } catch (error) {
       if (responseIsCurrent()) setResolution({ status: "blocked", identity: requestIdentity,
-        kind: error instanceof BrowserRecoveryReadError ? error.kind : "unavailable" });
+        kind: error instanceof BrowserRecoveryReadError ? error.kind : "unavailable",
+        diagnostic: workspaceRefusalDiagnostic(refusalPhase,error instanceof BrowserRecoveryReadError ? error : null) });
       return;
     }
     if (!responseIsCurrent()) return;
@@ -195,10 +201,12 @@ export default function TripShellResolver({
   }
   if (resolution.status === "missing") notFound();
   if (resolution.status === "blocked") {
+    const supportCode=workspaceRefusalSupportCode(resolution.diagnostic);
     return <section className={styles.resolving}>
       <MorroviaStatusBanner tone="warning"
         title={resolution.kind === "protected" ? "Device changes need review" : "Device storage unavailable"}
-        detail={resolution.kind === "protected" ? "Separate device copies remain protected. Review them before continuing." : "This trip could not be checked on this device. Try again to open it."}
+        detail={(resolution.kind === "protected" ? "Separate device copies remain protected. Review them before continuing." : "This trip could not be checked on this device. Try again to open it.")
+          + (supportCode ? ` Support code: ${supportCode}` : "")}
         actions={<EasyTButton size="small" variant="secondary" onClick={() => void resolveAndPromote()}>Try again</EasyTButton>}
       />
     </section>;

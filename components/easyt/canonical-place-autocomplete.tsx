@@ -1,5 +1,6 @@
 "use client";
 
+import { type CompletedPlaceSearchResult, publicPlaceQueryAllowed, submittedPublicPlaceInput } from '@/lib/easyt/public-place-search-input';
 import { MapPin, X } from "lucide-react";
 import { useDeferredValue, useEffect, useId, useMemo, useRef, useState } from "react";
 import {
@@ -59,6 +60,8 @@ export function CanonicalPlaceAutocomplete({
   onClear,
   onSelect,
   onSubmitFreeText,
+  onFreeTextSearch,
+  onPublicPlaceSearch,
   submitFreeTextOnBlur = false,
   revealSuggestionsKey,
   menuPlacement = "overlay",
@@ -89,6 +92,10 @@ export function CanonicalPlaceAutocomplete({
   onClear?: () => void;
   onSelect: (suggestion: CanonicalPlaceSuggestion) => void;
   onSubmitFreeText?: () => void;
+  /** Explicit search runs only after Enter; it never participates in keystroke autocomplete. */
+  onFreeTextSearch?: (query: string, signal: AbortSignal) => Promise<CanonicalPlaceSuggestion[] | CompletedPlaceSearchResult>;
+  /** Separate public-name research action offered only after a completed miss. */
+  onPublicPlaceSearch?: (query: string, signal: AbortSignal) => Promise<CanonicalPlaceSuggestion[] | CompletedPlaceSearchResult>;
   submitFreeTextOnBlur?: boolean;
   revealSuggestionsKey?: number;
   /** Inline placement keeps the list reachable inside a scrolling modal. */
@@ -103,7 +110,22 @@ export function CanonicalPlaceAutocomplete({
   const [providerSuggestions, setProviderSuggestions] = useState<(CanonicalPlaceSuggestion & { matchedAirportCode?: string;matchedIcaoCode?:string })[]>([]);
   const [providerSearching, setProviderSearching] = useState(false);
   const [providerFailed, setProviderFailed] = useState(false);
+  const [completedSuggestions, setCompletedSuggestions] = useState<CanonicalPlaceSuggestion[]>([]);
+  const [completedSearchStatus, setCompletedSearchStatus] = useState<"idle" | "loading" | "ready" | "failed">("idle");
+  const completedSearchRef = useRef<{ sequence: number; controller: AbortController | null }>({ sequence: 0, controller: null });
+  const [publicResearchAvailable,setPublicResearchAvailable] = useState(false);
+  const [publicResearchUsed, setPublicResearchUsed] = useState(false);
   const [retryNonce, setRetryNonce] = useState(0);
+  useEffect(() => {
+    // Covers clear and parent-driven value changes as well as input events.
+    completedSearchRef.current.sequence += 1;
+    completedSearchRef.current.controller?.abort();
+    completedSearchRef.current.controller = null;
+    setCompletedSuggestions([]);
+    setCompletedSearchStatus("idle");
+    setPublicResearchUsed(false);
+    setPublicResearchAvailable(false);
+  }, [value]);
   const inputRef = useRef<HTMLInputElement>(null);
   const rootRef = useRef<HTMLDivElement>(null);
   const allowedTypeKey = (allowedPlaceTypes ?? []).join("|");
@@ -246,11 +268,11 @@ export function CanonicalPlaceAutocomplete({
     return () => { window.clearTimeout(timer); scope.dispose(); };
   }, [allowedTypeKey, contextCountriesKey, deferredValue, nearbyAnchorKey, parentConstraintKey, retryNonce, searchIntent]);
 
-  const suggestions = useMemo(() => prioritizeRouteStopSuggestions(consolidateFreshDestinationSuggestions(mergeEquivalentPlaceSuggestions([...catalogSuggestions, ...providerSuggestions]
+  const suggestions = useMemo(() => prioritizeRouteStopSuggestions(consolidateFreshDestinationSuggestions(mergeEquivalentPlaceSuggestions([...catalogSuggestions, ...providerSuggestions, ...completedSuggestions]
     .filter((suggestion) => !excludeCanonicalIds.includes(suggestion.canonicalPlaceId))
     .filter((suggestion) => !requireCoordinates || Boolean(suggestion.coordinates))
     ), { intent: searchIntent === "route-stop" ? "fresh-stop" : "explicit-area" })
-    , searchIntent, deferredValue).slice(0, 8), [catalogSuggestions, excludeCanonicalIds, providerSuggestions, requireCoordinates, searchIntent, deferredValue]);
+    , searchIntent, deferredValue).slice(0, 8), [catalogSuggestions, completedSuggestions, excludeCanonicalIds, providerSuggestions, requireCoordinates, searchIntent, deferredValue]);
   const optionKeys = useMemo(() => {
     // Conflicting source tuples remain selectable even when their canonical ID
     // agrees. React identity must follow the complete choice, not that ID alone.
@@ -262,8 +284,56 @@ export function CanonicalPlaceAutocomplete({
       return `${identity}:${occurrence}`;
     });
   }, [suggestions]);
-  const searching = value !== deferredValue || providerSearching;
+  const searching = value !== deferredValue || providerSearching || completedSearchStatus === "loading";
+  const runCompletedSearch = (query = inputRef.current?.value.trim() ?? value.trim(), publicResearch = false) => {
+    const search = publicResearch ? onPublicPlaceSearch : onFreeTextSearch;
+    if (!search || !query) { onSubmitFreeText?.(); return; }
+    completedSearchRef.current.controller?.abort();
+    const controller = new AbortController();
+    const sequence = ++completedSearchRef.current.sequence;
+    completedSearchRef.current.controller = controller;
+    setCompletedSearchStatus("loading");
+    setCompletedSuggestions([]);
+    setOpen(true);
+    setActiveIndex(-1);
+    if (publicResearch) setPublicResearchUsed(true);
+    void search(query, controller.signal).then((results) => {
+      if (controller.signal.aborted || completedSearchRef.current.sequence !== sequence
+        || inputRef.current?.value.trim() !== query) return;
+      setPublicResearchAvailable(!Array.isArray(results) && results.publicResearchAvailable===true);
+      const accepted = (Array.isArray(results)?results:results.suggestions)
+        .filter(referenceGeographicAcceptanceMatches)
+        .filter((suggestion) => !excludeCanonicalIds.includes(suggestion.canonicalPlaceId))
+        .filter((suggestion) => !allowedPlaceTypes?.length || allowedPlaceTypes.includes(suggestion.placeType))
+        .filter((suggestion) => !requireCoordinates || Boolean(suggestion.coordinates))
+        .filter((suggestion) => !nearbyAnchor || Boolean(placeCandidateSuitableAsNearbyBase(nearbyAnchor, {
+          providerId: suggestion.canonicalPlaceId, canonicalName: suggestion.name, placeType: suggestion.placeType,
+          parentCountries: [suggestion.country], parentRegionId: suggestion.region, coordinates: suggestion.coordinates,
+          routability: suggestion.routability ?? "direct_destination",
+        })))
+        .filter((suggestion) => !parentConstraint || placeCandidateWithinPlanningParent({
+          canonicalName: suggestion.name, placeType: suggestion.placeType, parentCountries: [suggestion.country],
+          parentRegionId: suggestion.region, coordinates: suggestion.coordinates,
+        }, parentConstraint));
+      setCompletedSuggestions(accepted);
+      setCompletedSearchStatus("ready");
+      setProviderFailed(false);
+      setOpen(true);
+    }).catch((error: unknown) => {
+      if (controller.signal.aborted || completedSearchRef.current.sequence !== sequence) return;
+      setCompletedSearchStatus("failed");
+      setProviderFailed(true);
+    }).finally(() => {
+      if (completedSearchRef.current.sequence === sequence) completedSearchRef.current.controller = null;
+    });
+  };
+  useEffect(() => () => {
+    completedSearchRef.current.sequence += 1;
+    completedSearchRef.current.controller?.abort();
+  }, []);
   const choose = (suggestion: CanonicalPlaceSuggestion) => {
+    completedSearchRef.current.sequence += 1;
+    completedSearchRef.current.controller?.abort();
     onSelect(suggestion);
     setOpen(false);
     setActiveIndex(-1);
@@ -274,6 +344,8 @@ export function CanonicalPlaceAutocomplete({
     inputRef.current?.focus();
     setOpen(true);
   }, [revealSuggestionsKey]);
+  const publicInput=submittedPublicPlaceInput(value.trim());
+  const canResearchPublicPlace=publicPlaceQueryAllowed(publicInput.query,publicInput.country);
   const mapChoice = activeIndex >= 0 ? suggestions[activeIndex] : suggestions.find(suggestion => placeSuggestionMapUrl(suggestion,suggestions));
   const mapHref = mapChoice ? placeSuggestionMapUrl(mapChoice,suggestions) : null;
 
@@ -283,7 +355,7 @@ export function CanonicalPlaceAutocomplete({
       window.setTimeout(() => {
         if (rootRef.current?.contains(document.activeElement)) return;
         setOpen(false);
-        if (submitFreeTextOnBlur) onSubmitFreeText?.();
+        if (submitFreeTextOnBlur) runCompletedSearch();
       }, 100);
     }}>
     {/* morrovia-ui-audit-allow-next-line native-control -- The shared ARIA combobox owns active-descendant, listbox and free-text keyboard behaviour that EasyTField does not expose. */}
@@ -303,13 +375,23 @@ export function CanonicalPlaceAutocomplete({
       aria-invalid={invalid || undefined}
       aria-describedby={describedBy}
       onFocus={() => setOpen(true)}
-      onChange={(event) => { onChange(event.target.value); setOpen(true); setActiveIndex(-1); }}
+      onChange={(event) => {
+        completedSearchRef.current.sequence += 1;
+        completedSearchRef.current.controller?.abort();
+        completedSearchRef.current.controller = null;
+        setCompletedSuggestions([]);
+        setCompletedSearchStatus("idle");
+        setPublicResearchUsed(false);
+        onChange(event.target.value);
+        setOpen(true);
+        setActiveIndex(-1);
+      }}
       onKeyDown={(event) => {
         const result = placeAutocompleteKeyAction(event.key, activeIndex, suggestions.length);
         if (result.activeIndex !== activeIndex || result.choose || result.close) event.preventDefault();
         setActiveIndex(result.activeIndex);
         if (result.choose) choose(suggestions[result.activeIndex]!);
-        else if (event.key === "Enter" && onSubmitFreeText) { event.preventDefault(); onSubmitFreeText(); }
+        else if (event.key === "Enter" && (onSubmitFreeText || onFreeTextSearch)) { event.preventDefault(); runCompletedSearch(); }
         if (result.close) setOpen(false);
       }}
     />
@@ -336,8 +418,15 @@ export function CanonicalPlaceAutocomplete({
         className={index === activeIndex ? styles.optionOn : undefined}
         onMouseDown={(event) => event.preventDefault()}
         onClick={() => choose(suggestion)}
-      ><MapPin aria-hidden="true" /><span><b>{suggestion.name}</b><small>{[placeSuggestionLocationDetail(suggestion,suggestions,language),showPlaceType ? placeTypeLabel(suggestion.placeType,language):null].filter(Boolean).join(' · ')}</small>{suggestion.scheduledService===false ? <small>{language==="es"?"No consta servicio regular de pasajeros":"No scheduled passenger service recorded"}</small>:null}</span></button>)) : providerFailed ? <div className={styles.failure} role="alert"><p>{resolvedFailureMessage}</p><EasyTButton variant="secondary" size="small" onMouseDown={(event) => event.preventDefault()} onClick={() => setRetryNonce((current) => current + 1)}>{language === "es" ? "Reintentar" : "Retry"}</EasyTButton></div> : <p role="status">{resolvedEmptyMessage}</p>}
+      ><MapPin aria-hidden="true" /><span><b>{suggestion.name}</b><small>{[placeSuggestionLocationDetail(suggestion,suggestions,language),showPlaceType ? placeTypeLabel(suggestion.placeType,language):null].filter(Boolean).join(' · ')}</small>{suggestion.scheduledService===false ? <small>{language==="es"?"No consta servicio regular de pasajeros":"No scheduled passenger service recorded"}</small>:null}</span></button>)) : providerFailed ? <div className={styles.failure} role="alert"><p>{resolvedFailureMessage}</p><EasyTButton variant="secondary" size="small" onMouseDown={(event) => event.preventDefault()} onClick={() => {
+        if (completedSearchStatus === "failed" && onFreeTextSearch) runCompletedSearch();
+        else setRetryNonce((current) => current + 1);
+      }}>{language === "es" ? "Reintentar" : "Retry"}</EasyTButton></div> : <p role="status">{resolvedEmptyMessage}</p>}
       </div>
+      {!searching && !suggestions.length && !providerFailed && completedSearchStatus === "ready" && onPublicPlaceSearch && publicResearchAvailable && canResearchPublicPlace && !publicResearchUsed ? <div className={styles.failure}>
+        <p>{language === "es" ? "Pedir a OpenAI otros nombres de este lugar público. No incluyas direcciones ni datos personales." : "Ask OpenAI for alternative names of this public place. No addresses or personal details."}</p>
+        <EasyTButton variant="secondary" size="small" disabled={disabled} onMouseDown={event => event.preventDefault()} onClick={() => runCompletedSearch(undefined,true)}>{language === "es" ? "Buscar nombres de lugares públicos" : "Search public place names"}</EasyTButton>
+      </div> : null}
       {mapChoice && mapHref ? <a className={styles.mapChoice} href={mapHref} target="_blank" rel="noopener noreferrer" aria-label={`${language === "es" ? "Ver en mapa" : "View on map"}: ${mapChoice.name}, ${placeSuggestionLocationDetail(mapChoice,suggestions,language)}`}>{language === "es" ? `Ver ${placeSuggestionLocationDetail(mapChoice,suggestions,language)} en el mapa` : `View ${placeSuggestionLocationDetail(mapChoice,suggestions,language)} on map`}</a> : null}
       <MorroviaPlaceDataCredit language={language} sources={[
         ...(suggestions.some(s=>s.provenance.some(p=>p.id.startsWith('reference:geonames:')))?['geonames' as const]:[]),

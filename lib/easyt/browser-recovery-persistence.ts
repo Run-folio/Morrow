@@ -5,6 +5,7 @@ import { RECOVERY_DOMAIN_OVERFLOW_ENABLED, RECOVERY_DOMAIN_ACCOUNT_OVERFLOW_QUAL
 import { EASYT_LAST_OWNER_KEY, EASYT_TRIP_STORAGE_CHANGE_EVENT, type EasyTBrowserStorage, type TripStorageChange } from './storage.ts';
 import { reportQaPersistenceBoundary } from './persistence-outcome.ts';
 import { recoveryErrorReason } from './durable-recovery-error.ts';
+import {guestSourceObservation, type GuestSourceObservation} from './workspace-recovery-diagnostic.ts';
 
 let driver: Promise<RecoveryDomainDriver> | null = null;
 let ownerEpoch = 0;
@@ -13,10 +14,12 @@ let channel: BroadcastChannel | null = null;
 
 export class BrowserRecoveryReadError extends Error {
   readonly kind:'protected'|'unavailable';readonly reason:string;
-  constructor(kind: 'protected' | 'unavailable', reason: string) {
+  readonly sourceObservation?: GuestSourceObservation;
+  constructor(kind: 'protected' | 'unavailable', reason: string, source?: GuestSourceObservation) {
     super(kind === 'protected' ? 'The device recovery needs review before continuing.' : 'Device recovery could not be checked. Keep this tab open and try again.');
     this.name = 'BrowserRecoveryReadError';
     this.kind=kind;this.reason=reason;
+    if(reason==='guest-source-not-ready'&&source)this.sourceObservation=guestSourceObservation(source.slot,source.readKind);
   }
 }
 /** Auth scope changes invalidate pending work; a remembered address grants no authority. */
