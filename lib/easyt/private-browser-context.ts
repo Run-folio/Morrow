@@ -20,6 +20,12 @@ export function homepageDraftStorageKey(ownerId: string | null) {
   return `${PRIVATE_CONTEXT_PREFIX}:${privateContextScope(ownerId)}:homepage-draft`;
 }
 
+/** Historical intake provenance is independent of editable Home and trip recovery. */
+export function tripReceiptStorageKey(ownerId: string | null, tripId: string) {
+  if (!tripId.trim()) throw new TypeError('A completed receipt requires a trip');
+  return `${PRIVATE_CONTEXT_PREFIX}:${privateContextScope(ownerId)}:trip-receipt:${encodeURIComponent(tripId)}`;
+}
+
 export type OwnerBoundaryState = "pending" | "current" | "expired" | "mismatch" | "signed-out";
 
 export function ownerBoundaryState({

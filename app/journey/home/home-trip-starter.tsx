@@ -287,6 +287,7 @@ export default function HomeTripStarter() {
         && homepageSemanticInputFingerprint(latestStored.snapshot) === homepageSemanticInputFingerprint(submitted);
       if (sameStoredMeaning && latestStored) storedInputRef.current = latestStored;
       const unchangedReceipt = latestStored?.receipt?.version === 1
+        && Boolean(latestStored.receipt.semanticInputFingerprint)
         && homepageCompletedReceiptIsUnchanged({ snapshot: submitted, receipt: latestStored.receipt })
         ? latestStored.receipt : undefined;
       if (unchangedReceipt && !Object.values(dateTypedDraftRef.current).some(raw => raw.trim())) {

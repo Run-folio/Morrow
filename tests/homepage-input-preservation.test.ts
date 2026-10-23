@@ -161,7 +161,7 @@ test("a completed receipt classifies unchanged semantic input without trusting n
   };
   assert.equal(homepageCompletedReceiptIsUnchanged({ snapshot, receipt }), true);
   assert.equal(homepageCompletedReceiptIsUnchanged({ snapshot: { ...snapshot, prompt: "Kyoto then Osaka" }, receipt }), false);
-  assert.equal(homepageCompletedReceiptIsUnchanged({ snapshot, receipt: { ...receipt, semanticInputFingerprint: undefined } }), true);
+  assert.equal(homepageCompletedReceiptIsUnchanged({ snapshot, receipt: { ...receipt, semanticInputFingerprint: undefined } }), false);
   assert.equal(reusableHomepageReceipt({ snapshot: { ...snapshot, prompt: "Kyoto then Osaka" }, receipt }, result.draft), null);
 });
 

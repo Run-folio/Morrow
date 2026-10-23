@@ -8,9 +8,48 @@ import { requireReadableTripDocument } from '../lib/easyt/trip-document.ts';
 import { nextTripUpdatedAt } from '../lib/easyt/trip-continuity.ts';
 import { jsonbObjectOrder, saveReopenTripFixture } from './fixtures/save-reopen-trip.ts';
 import type { EasyTTrip } from '../lib/easyt/trip.ts';
+import {tripRecoveryStorageKey,tripDocumentsCanonicalEquivalent} from '../lib/easyt/storage.ts';
 
 const publicTown={name:'Hirayu Onsen',label:'Hirayu Onsen, Takayama, Gifu, Japan',country:'Japan',region:'Gifu',locality:'Takayama',canonicalPlaceId:'open-world:photon:N:2481035449',providerId:'photon:N:2481035449',coordinates:[137.5536701,36.1914892],kind:'town',placeType:'town',routability:'direct_destination',matchQuality:'exact',rankScore:200};
 const scenic=(name:string,type:string,id:string)=>({name,label:name+', Guizhou, China',country:'China',region:'Guizhou',canonicalPlaceId:'open-world:fixture:'+id,providerId:'fixture:'+id,coordinates:[108.7255,27.8904],kind:type,placeType:type,routability:'planning_area',matchQuality:'exact',rankScore:200});
+
+test('a real second-document stale canonical cache preserves rapid Builder inverse edits until ordered ACKs',
+ {skip:!builderBrowserTestsEnabled,timeout:90000},async t=>{
+ let account=saveReopenTripFixture(),writes=0,conflicts=0,release!:()=>void,started!:()=>void;
+ const initial=structuredClone(account),held=new Promise<void>(done=>{release=done}),begin=new Promise<void>(done=>{started=done});
+ const h=await renderBuilder({initialTrip:initial,seedRecovery:false,ownerId:'owner-a',query:'?trip='+initial.id,forceResolver:true,offlineOnly:true,
+  accountRequest:async({method,trip})=>{
+   if(method==='GET')return {status:200,body:{trip:jsonbObjectOrder(account)}};
+   const submitted=requireReadableTripDocument(trip);if(submitted.updatedAt!==account.updatedAt){conflicts++;return {status:409,body:{trip:jsonbObjectOrder(account),error:'Synthetic conflict',conflictReason:'cloud-changed'}};}
+   account=canonicalTripForOwner('owner-a',submitted,nextTripUpdatedAt(account.updatedAt));writes++;if(writes===1){started();await held;}return {status:200,body:{trip:jsonbObjectOrder(account)}};
+  }});
+ const page=h.page,prefix=tripRecoveryStorageKey('owner-a',initial.id),nights=initial.stops.find(s=>s.name==='Flores')!.nights!;
+ try{
+  await page.locator('[data-builder-edit-session="active"]').waitFor();
+  await page.getByRole('button',{name:/^Add one night to Flores/}).click();await begin;
+  await page.getByRole('button',{name:/^Remove one night from Flores/}).click();
+  await page.waitForFunction(({prefix,nights}:{prefix:string;nights:number})=>{const raw=Object.keys(localStorage).filter(key=>key.startsWith(prefix+':')).map(key=>localStorage.getItem(key)).filter(Boolean);return raw.length===1&&JSON.parse(raw[0]!).trip.stops.find((s:any)=>s.name==='Flores').nights===nights;},{prefix,nights});
+  await page.waitForTimeout(500); // let the owned inverse enter the serialized account queue
+  const pendingInverse=await page.evaluate((prefix:string)=>Object.keys(localStorage).filter(key=>key.startsWith(prefix+':')).map(key=>JSON.parse(localStorage.getItem(key)!)),prefix);
+  assert.equal(pendingInverse.length,1);assert.deepEqual(pendingInverse[0].trip.stops.map((stop:any)=>[stop.id,stop.nights]),initial.stops.map(stop=>[stop.id,stop.nights]));
+  const origin=new URL(page.url()).origin,second=await page.context().newPage();await second.route('**/*',async(route:any)=>new URL(route.request().url()).origin===origin?route.continue():route.abort());
+  await second.addInitScript((trip:EasyTTrip)=>{(window as any).__BUILDER_TEST_OWNER__='owner-a';(window as any).__BUILDER_TEST_CANONICAL_TRIP__=trip;},initial);
+  await second.addInitScript((prefix:string)=>{(window as any).__recoveryOperations=[];for(const method of ['setItem','removeItem'] as const){const original=Storage.prototype[method];(Storage.prototype as any)[method]=function(key:string,...args:string[]){if(key.startsWith(prefix+':'))(window as any).__recoveryOperations.push(method);return (original as any).call(this,key,...args);};}},prefix);
+  await second.goto(origin+'/journey/'+initial.id);await second.getByRole('region',{name:'Trip overview',exact:true}).waitFor();await second.waitForTimeout(180);
+  assert.deepEqual(await second.evaluate(()=>(window as any).__recoveryOperations),[],'the second document has no authority to publish or retire the pending inverse');
+  const remaining=await page.evaluate((prefix:string)=>Object.keys(localStorage).filter(key=>key.startsWith(prefix+':')).map(key=>JSON.parse(localStorage.getItem(key)!)),prefix);
+  assert.equal(remaining.length,1);assert.equal(tripDocumentsCanonicalEquivalent(remaining[0].trip,pendingInverse[0].trip),true,'owned projection may replace its own handle, but the complete traveller inverse and manual allocation intent must remain');
+  await page.getByRole('button',{name:/^Add one night to Flores/}).click();
+  await page.waitForFunction(({prefix,nights}:{prefix:string;nights:number})=>Object.keys(localStorage).filter(key=>key.startsWith(prefix+':')).some(key=>JSON.parse(localStorage.getItem(key)!).trip.stops.find((s:any)=>s.name==='Flores').nights===nights+1),{prefix,nights});
+  assert.equal(await page.getByText('Another device recovery is protected. Reopen it before editing.',{exact:true}).count(),0);assert.equal(writes,1);
+  // The existing Builder keeps one latest pending job while a save is held.
+  // The user's third edit explicitly supersedes the still-unsent inverse.
+  release();for(let i=0;i<160&&writes<2;i++)await page.waitForTimeout(30);
+  await page.getByText('Saved to your account',{exact:true}).first().waitFor();assert.equal(writes,2);assert.equal(conflicts,0);assert.equal(account.stops.find(s=>s.name==='Flores')!.nights,nights+1);
+  assert.deepEqual(account.stops.map(s=>s.id),initial.stops.map(s=>s.id));await second.close();
+  t.diagnostic(JSON.stringify({realReactAndIndexedDb:true,realDocuments:2,rapidInverseEdits:3,orderedAccountWrites:writes,supersededUnsentInverseCoalesced:true,conflicts,realOAuthOrSql:false}));
+ }finally{release?.();await h.close();}
+});
 
 test('guest Overview sign-in then real dashboard, Builder and workspace writers preserve sequential edits under strict account CAS',
  {skip:!builderBrowserTestsEnabled,timeout:120000},async t=>{

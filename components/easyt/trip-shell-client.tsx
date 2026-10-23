@@ -274,6 +274,9 @@ export function TripShellTripProvider({ trip, children, cacheTrip = true }: { tr
 
   useEffect(() => {
     if (!cacheTrip || mutation.trip.brief.capturedIntent?.parserVersion !== "spreadsheet-v1" || mutation.trip.planItems.length !== 0) return;
+    // Automatic repair has no explicit-save intent. It cannot retry or consume
+    // a retained submission while waiting for its own account acknowledgement.
+    if(!mutation.isAccountCopySettled())return;
     const identity = `${mutation.trip.id}:${mutation.trip.ownerId ?? "guest"}:${mutation.trip.updatedAt}`;
     if (legacyRepairAttemptedRef.current.has(identity)) return;
     if (!importedLegacyRepairContextAllows({
@@ -291,7 +294,7 @@ export function TripShellTripProvider({ trip, children, cacheTrip = true }: { tr
     })) return;
     legacyRepairAttemptedRef.current.add(identity);
     void mutation.mutateTrip(repairEligibleSpreadsheetV1Trip, "import-legacy-hydration-v1");
-  }, [cacheTrip, mutation.trip, mutation.recoveryClassifiedFor, mutation.hasPendingSaves, mutation.historicalRecovery, mutation.saveState, mutation.mutateTrip, ownerBoundary, session?.user?.id, sessionPending, visibleDeviceRecovery]);
+  }, [cacheTrip, mutation.trip, mutation.recoveryClassifiedFor, mutation.hasPendingSaves, mutation.historicalRecovery, mutation.saveState, mutation.mutateTrip, mutation.isAccountCopySettled, ownerBoundary, session?.user?.id, sessionPending, visibleDeviceRecovery]);
 
   useEffect(() => {
     // A server-resolved deep link is canonical for this owner. Refresh the

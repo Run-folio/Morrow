@@ -25,7 +25,7 @@ export function createTwoStoreEntryPersistence(storage: EasyTBrowserStorage, dri
     const domain = await entries.read(scope);
     if (domain.kind !== 'ready') return { kind: domain.kind === 'protected-conflict' || domain.kind === 'failure' && ['schema', 'corrupt'].includes(domain.reason)
       ? 'protected' : 'unavailable', reason: domain.kind === 'verified' ? 'unknown' : domain.reason };
-    if(scope.kind==='builder-input'&&scope.tripId!==null) {
+    if((scope.kind==='builder-input'||scope.kind==='trip-receipt')&&scope.tripId!==null) {
       const canonical=await createRecoveryDomainStore(driver,{ownerId:scope.ownerId,isCurrent:active}).read(scope.tripId);
       if(canonical.kind!=='ready')return {kind:'protected',reason:'claim-canonical-unknown'};
       const claim=await readRecoveryClaimBarrier(driver,storage,{ownerId:scope.ownerId,isCurrent:active},scope.tripId,canonical.envelope);if(claim.kind!=='ready')return claim;
@@ -60,6 +60,7 @@ export function createTwoStoreEntryPersistence(storage: EasyTBrowserStorage, dri
       const writeId = options.writeId ?? globalThis.crypto.randomUUID(), allowInitialOverflow = options.allowInitialOverflow === true;
       const expected=options.expected?structuredClone(options.expected):undefined;
       const state = await read(); if (state.kind !== 'ready') return state;
+      if(scope.kind==='trip-receipt'&&(raw===null||state.raw!==null&&state.raw!==raw))return protectedResult('receipt-exists');
       if(expected) {
         const prepared=prepareEntryWrite(expected,scope.ownerId);
         if(prepared.kind!=='prepared'||prepared.scope.kind!==scope.kind||prepared.scope.tripId!==scope.tripId

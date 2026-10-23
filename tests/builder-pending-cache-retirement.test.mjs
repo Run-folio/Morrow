@@ -7,8 +7,10 @@ import { envelope } from './helpers/durable-recovery-fixture.ts';
 import { createAsyncBuilderEditSession } from '../lib/easyt/trip-builder-async-edit-session.ts';
 import { createBuilderInputDraft } from '../lib/easyt/trip-builder-input-draft.ts';
 import { readDurableBuilderInputDraft, writeDurableBuilderInputDraft } from '../lib/easyt/builder-input-persistence.ts';
+import {createTwoStoreTripPersistence} from '../lib/easyt/two-store-trip-persistence.ts';
+import {openIndexedDbRecoveryDriver} from '../lib/easyt/durable-recovery-indexeddb.ts';
 import { acknowledgeTripBuildSave, cacheCanonicalTrip, loadTripRecovery, saveTripRecovery,
-  tripDocumentsCanonicalEquivalent, tripRecoveryIsAwaitingCanonicalSave } from '../lib/easyt/storage.ts';
+  tripDocumentsCanonicalEquivalent, tripRecoveryIsAwaitingCanonicalSave,resolveCanonicalEquivalentTripRecovery } from '../lib/easyt/storage.ts';
 
 class SyntheticStorage {
   values = new Map();
@@ -100,6 +102,37 @@ test('generic account cache refresh respects paired Builder save ownership (Inde
         assert.equal((await nextEdit()).ok, true); assert.equal(session.getSnapshot().error, null);
       });
     });
+    await t.test('a separate document cache writer must preserve the first document pending inverse', async () => {
+      // Separate ESM instance models the second document's private pending-save
+      // registry. The actual native broker barriers and cache adapter run here:
+      // this is a transaction model, not real browser/OAuth/SQL proof.
+      const otherDocument = await import('../lib/easyt/storage.ts?synthetic-other-document');
+      await withPendingInverse(async ({ initial, session, recovery, nextEdit }) => {
+        assert.equal(tripRecoveryIsAwaitingCanonicalSave(recovery), true);
+        assert.equal(otherDocument.tripRecoveryIsAwaitingCanonicalSave(recovery), false);
+        const otherDriver=await openIndexedDbRecoveryDriver(model.factory());
+        const broker=createTwoStoreTripPersistence(storage,otherDriver,{ownerId:initial.ownerId,isCurrent:()=>true,overflowEnabled:true,accountOverflowQualified:true});
+        let nativeResult;
+        const cached=await broker.native(initial.id,()=>nativeResult=otherDocument.cacheCanonicalTripWithRecoveryToStorage(storage,initial));
+        const remaining = await loadTripRecovery(initial.id, initial.ownerId);
+        const next = await nextEdit();
+        t.diagnostic(JSON.stringify({separateDocumentRegistry:true,brokerResult:cached.kind,nativeOperationRan:Boolean(nativeResult),retired:nativeResult?.recoveryResolved}));
+        assert.deepEqual({ retired:nativeResult?.recoveryResolved, pendingHandleRetained:remaining?.writeId===recovery.writeId,
+          nextAccepted:next.ok,errorCategory:session.getSnapshot().error?.category??null },
+        {retired:false,pendingHandleRetained:true,nextAccepted:true,errorCategory:null});
+      });
+    });
+    await t.test('canonical equivalence reconciliation must not acknowledge another in-flight save',async()=>{
+      await withPendingInverse(async({initial,session,recovery,nextEdit})=>{
+        assert.equal(tripRecoveryIsAwaitingCanonicalSave(recovery),true);
+        const resolved=await resolveCanonicalEquivalentTripRecovery(initial,recovery);
+        const remaining=await loadTripRecovery(initial.id,initial.ownerId),next=await nextEdit();
+        assert.deepEqual({equivalent:resolved.equivalent,retired:resolved.recoveryResolved,
+          pendingHandleRetained:remaining?.writeId===recovery.writeId,nextAccepted:next.ok,
+          errorCategory:session.getSnapshot().error?.category??null},
+        {equivalent:true,retired:false,pendingHandleRetained:true,nextAccepted:true,errorCategory:null});
+      });
+    });
     await t.test('same-document cache refresh after dispose retains the pending handle until exact ACK', async () => {
       await withPendingInverse(async ({ initial, session, recovery }) => {
         session.dispose();
@@ -113,13 +146,16 @@ test('generic account cache refresh respects paired Builder save ownership (Inde
         assert.equal(await loadTripRecovery(initial.id, initial.ownerId), null);
       });
     });
-    await t.test('historical equivalent recovery is retired when no active save owns it', async () => {
+    await t.test('historical equivalence preserves recovery until an exact account ACK retires it', async () => {
       const trip = fixture();
       const written = await saveTripRecovery(trip, { newTripOrClone: true, draft: createBuilderInputDraft(trip) });
       assert.equal(written.stored, true);
       const recovery = await loadTripRecovery(trip.id, trip.ownerId);
       assert.equal(tripRecoveryIsAwaitingCanonicalSave(recovery), false); preserve('historical recovery before retirement');
-      assert.deepEqual(await cacheCanonicalTrip(trip), { stored: true, recoveryResolved: true });
+      assert.deepEqual(await cacheCanonicalTrip(trip), { stored: true, recoveryResolved: false });
+      assert.equal((await loadTripRecovery(trip.id,trip.ownerId)).writeId,recovery.writeId);
+      const acknowledged=await acknowledgeTripBuildSave(trip,trip,written.handle);
+      assert.equal(acknowledged.accountAcknowledged,true);assert.equal(acknowledged.outcome,'acknowledged');
       assert.equal(await loadTripRecovery(trip.id, trip.ownerId), null);
     });
     await t.test('exact account ACK still retires the supplied pending handle', async () => {

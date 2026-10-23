@@ -939,7 +939,6 @@ export function cacheCanonicalTripWithRecoveryToStorage(
   now = new Date().toISOString(),
 ) {
   trip = prepareTripDocumentForWrite(trip);
-  const previousCanonical = loadCachedTripFromStorage(storage, trip.id, trip.ownerId);
   const stored = writeCanonicalTripCacheToStorage(storage, trip, now);
   const recoveryRecord = resolvedRecovery ? recoveryRecordForHandle(storage, resolvedRecovery) : null;
   const acknowledgedRecovery = Boolean(resolvedRecovery
@@ -948,29 +947,13 @@ export function cacheCanonicalTripWithRecoveryToStorage(
     && trip.id === resolvedRecovery.tripId
     && (resolvedRecovery.ownerId === null
       ? recoveryRecord.trip.ownerId === null
-      : trip.ownerId === resolvedRecovery.ownerId));
-  const currentRecovery = acknowledgedRecovery
-    ? recoveryRecord
-    : loadTripRecoveryFromStorage(storage, trip.id, trip.ownerId);
-  // A canonical response may legitimately move A -> B (for example Luna Apply
-  // or another cloud writer). A device snapshot equal to the previously cached
-  // A contains no unique work, so it is safe to retire after B is durable.
-  // A snapshot that differs from both A and B remains untouched.
-  // An in-flight inverse can equal either canonical document while an earlier
-  // request is being acknowledged. A generic cache refresh does not own that
-  // recovery's ACK; keep it until its own save resolves. Historical snapshots
-  // may still be retired as before.
-  const rawRecovery = currentRecovery ? recoveryRecordForHandle(storage, currentRecovery) : null;
-  // Representation-only read migration is not a durable acknowledgement.
-  const sameDocumentVersion = rawRecovery?.trip.schemaVersion === trip.schemaVersion;
-  const redundantRecovery = Boolean(currentRecovery && sameDocumentVersion
-    && !tripRecoveryIsAwaitingCanonicalSave(currentRecovery) && (
-    tripRecoveryMatchesCanonical(currentRecovery, trip)
-      || (previousCanonical
-        && tripRecoveryMatchesCanonical(currentRecovery, previousCanonical))
-  ));
-  const recoveryResolved = stored && currentRecovery && (acknowledgedRecovery || redundantRecovery)
-    ? resolveTripRecoveryInStorage(storage, currentRecovery)
+      : trip.ownerId === resolvedRecovery.ownerId)
+    && tripBuildDocumentsCanonicalEquivalent(recoveryRecord.trip,trip,trip.ownerId));
+  // A matching body may be an inverse queued behind another save, including
+  // work owned by another document. Neither cache refresh nor equivalence
+  // grants ACK authority. Only the exact submitted handle AND content do.
+  const recoveryResolved = stored && acknowledgedRecovery && recoveryRecord
+    ? resolveTripRecoveryInStorage(storage, recoveryRecord)
     : false;
   // Only the exact successful write may acknowledge the legacy source it
   // observed. Keep its bytes, and never hide a later old-client edit.
@@ -1045,18 +1028,13 @@ export function cacheCanonicalTripToStorage(
   return cacheCanonicalTripWithRecoveryToStorage(storage, trip, undefined, now).stored;
 }
 
-/** Resolve a stranded recovery only after proving it is the canonical document. */
+/** Read-only classification: equality grants neither cache publication nor ACK. */
 export function resolveCanonicalEquivalentTripRecoveryInStorage(
   storage: EasyTBrowserStorage,
   canonicalTrip: EasyTTrip,
   recovery: TripRecoveryRecord,
 ) {
-  const equivalent = tripRecoveryMatchesCanonical(recovery, canonicalTrip);
-  if (!equivalent) return { equivalent, stored: false, recoveryResolved: false };
-  return {
-    equivalent,
-    ...cacheCanonicalTripWithRecoveryToStorage(storage, canonicalTrip, recovery),
-  };
+  return {equivalent:tripRecoveryMatchesCanonical(recovery,canonicalTrip),stored:false,recoveryResolved:false};
 }
 
 /** Update status only while this is still the exact pending write. */
@@ -1434,17 +1412,25 @@ export async function saveExplicitGuestTripForOwnerInStorage(storage:EasyTBrowse
   const {createTwoStoreEntryPersistence}=await import('./two-store-entry-persistence.ts');
   const {createDurableHomepagePersistence,decodeHomepageBundle}=await import('./homepage-persistence.ts');
   const {builderInputDraftKey,readBuilderInputDraft,remapBuilderInputDraftIdentity}=await import('./trip-builder-input-draft.ts');
-  const {homepageInputStorageKey,homepageDraftStorageKey}=await import('./private-browser-context.ts');
+  const {homepageInputStorageKey,homepageDraftStorageKey,tripReceiptStorageKey}=await import('./private-browser-context.ts');
   const {HOME_TRIP_DRAFT_KEY}=await import('./home-trip-handoff.ts');
   const {rebindGuestSaveInputs}=await import('./recovery-claim-inputs.ts');
   const {canonicalTripStopIdentityMap}=await import('./trip-promotion.ts');
+  const {createTripReceiptPersistence,completedTripReceipt}=await import('./trip-receipt-persistence.ts');
   const active=()=>context.isCurrent()===true,ownerId=context.ownerId;
   if(!ownerId.trim()||!active())throw new BrowserRecoveryReadError('protected','operation-changed');
   const guestContext={...context,ownerId:null},guestStore=createTwoStoreTripPersistence(storage,driver,guestContext),ownedStore=createTwoStoreTripPersistence(storage,driver,context);
   const inputStore=createTwoStoreEntryPersistence(storage,driver,{...guestContext,scope:{ownerId:null,kind:'builder-input',tripId},key:builderInputDraftKey(null,tripId),validate:raw=>raw===null||typeof raw==='string'});
   const guestHome=createDurableHomepagePersistence(storage,driver,guestContext),ownerHome=createDurableHomepagePersistence(storage,driver,context);
+  const receiptStore=createTripReceiptPersistence(storage,driver,{...context,tripId});
+  const homeWitness=()=>JSON.stringify([homepageInputStorageKey(ownerId),homepageDraftStorageKey(ownerId),HOME_TRIP_DRAFT_KEY].map(key=>[key,storage.getItem(key)]));
   const nativeWitness=()=>{
     const prefix=tripRecoveryStorageKey(null,tripId),keys=[builderInputDraftKey(null,tripId),homepageInputStorageKey(null),homepageDraftStorageKey(null),HOME_TRIP_DRAFT_KEY,tripCacheStorageKey(null,tripId),EASYT_ACTIVE_TRIP_KEY];
+    for(let i=0;i<storage.length;i++){const key=storage.key(i);if(key&&(key===prefix||key.startsWith(prefix+':')))keys.push(key);}
+    return JSON.stringify([...new Set(keys)].sort().map(key=>[key,storage.getItem(key)]));
+  };
+  const targetNativeWitness=()=>{
+    const prefix=tripRecoveryStorageKey(ownerId,tripId),keys=[currentTripStorageKey(ownerId)];
     for(let i=0;i<storage.length;i++){const key=storage.key(i);if(key&&(key===prefix||key.startsWith(prefix+':')))keys.push(key);}
     return JSON.stringify([...new Set(keys)].sort().map(key=>[key,storage.getItem(key)]));
   };
@@ -1469,6 +1455,19 @@ export async function saveExplicitGuestTripForOwnerInStorage(storage:EasyTBrowse
   };
   const ownerCacheKey=tripCacheStorageKey(ownerId,tripId);let ownerCacheWitness=storage.getItem(ownerCacheKey);
   const source=await observe(),sourceKey=JSON.stringify(source),owned=await ownedStore.read(tripId),destinationHome=await ownerHome.read();
+  // The existing two-scope driver is used read-only. No claim, adoption,
+  // ownership receipt or mutation is created by this witness.
+  const witnessRequest:import('./durable-recovery-domain.ts').RecoveryClaimRequest={
+    sourceHandle:{version:1,backend:'indexeddb',ownerId:null,tripId,writeId:source.body.recovery!.writeId},
+    targetHandle:{version:1,backend:'indexeddb',ownerId,tripId,writeId:source.body.recovery!.writeId},
+    sourceEntries:[{scope:{ownerId:null,tripId,kind:'builder-input'},writeId:null},{scope:{ownerId:null,tripId:null,kind:'homepage'},writeId:null},
+      {scope:{ownerId:null,tripId,kind:'recovery-lifecycle'},writeId:null},{scope:{ownerId:null,tripId,kind:'recovery-claim'},writeId:null}],
+    targetEntries:[{scope:{ownerId,tripId,kind:'builder-input'},writeId:null},{scope:{ownerId,tripId:null,kind:'homepage'},writeId:null},
+      {scope:{ownerId,tripId,kind:'trip-receipt'},writeId:null}],
+  };
+  if(!driver.runClaim)throw new BrowserRecoveryReadError('unavailable','guest-source-not-ready');
+  const sourceDurableWitness=await driver.runClaim(witnessRequest,'readonly',state=>({value:JSON.stringify(state.source)}));
+  const destinationHomeWitness=homeWitness();
   if((owned.kind!=='missing'&&(owned.kind!=='found'||!tripBuildDocumentsCanonicalEquivalent(source.body.trip,owned.trip,ownerId)))||destinationHome.kind!=='ready'||destinationHome.draft)throw new BrowserRecoveryReadError('protected','destination-exists');
   const targetInput=createTwoStoreEntryPersistence(storage,driver,{...context,scope:{ownerId,kind:'builder-input',tripId},key:builderInputDraftKey(ownerId,tripId),validate:raw=>raw===null||typeof raw==='string'});
   const targetInputBefore=await targetInput.read();
@@ -1479,7 +1478,15 @@ export async function saveExplicitGuestTripForOwnerInStorage(storage:EasyTBrowse
   const prospective=requireReadableTripDocument(canonicalTripForOwner(ownerId,trip));
   const desiredInput=prepared.builderRaw===null?null:JSON.stringify(remapBuilderInputDraftIdentity(JSON.parse(prepared.builderRaw),requireReadableTripDocument({...trip,ownerId}),prospective,canonicalTripStopIdentityMap(trip),ownerId));
   const desiredHome=prepared.homepageRaw===null?null:decodeHomepageBundle(prepared.homepageRaw,ownerId);
-  if(targetInputBefore.raw!==null&&targetInputBefore.raw!==desiredInput||destinationHome.storedInput&&destinationHome.inputRaw!==desiredHome?.bundle.inputRaw)throw new BrowserRecoveryReadError('protected','destination-input-exists');
+  const previousReceipt=destinationHome.storedInput?.receipt;
+  const unrelatedCompleted=previousReceipt?.version===1&&previousReceipt.tripId!==tripId
+    &&Boolean(completedTripReceipt(JSON.stringify({version:1,inputRaw:destinationHome.inputRaw,draftRaw:null}),ownerId,previousReceipt.tripId));
+  if(targetInputBefore.raw!==null&&targetInputBefore.raw!==desiredInput
+    ||destinationHome.storedInput&&destinationHome.inputRaw!==desiredHome?.bundle.inputRaw&&!unrelatedCompleted)
+    throw new BrowserRecoveryReadError('protected','destination-input-exists');
+  const receiptBefore=await receiptStore.read(),receiptRaw=prepared.receipt?.raw??null;
+  if(receiptBefore.kind!=='ready'||receiptBefore.raw!==null&&receiptBefore.raw!==receiptRaw
+    ||receiptRaw!==null&&!completedTripReceipt(receiptRaw,ownerId,tripId))throw new BrowserRecoveryReadError('protected','destination-input-exists');
 
   if(JSON.stringify(await observe())!==sourceKey)throw new BrowserRecoveryReadError('protected','guest-source-changed');
   // Bind the authenticated destination on the server as well as at readback.
@@ -1495,8 +1502,10 @@ export async function saveExplicitGuestTripForOwnerInStorage(storage:EasyTBrowse
   // protected even if scope/source changes or device persistence fails now.
   try {
   if(!active()||JSON.stringify(await observe())!==sourceKey)return {trip:canonical,accountAcknowledged:true,deviceComplete:false};
-  const currentOwned=await ownedStore.read(tripId),currentHome=await ownerHome.read(),currentInput=await targetInput.read();
-  if(JSON.stringify(currentOwned)!==JSON.stringify(owned)||currentHome.kind!=='ready'||currentHome.raw!==destinationHome.raw||JSON.stringify(currentInput)!==JSON.stringify(targetInputBefore))return {trip:canonical,accountAcknowledged:true,deviceComplete:false};
+  const currentOwned=await ownedStore.read(tripId),currentHome=await ownerHome.read(),currentInput=await targetInput.read(),currentReceipt=await receiptStore.read();
+  if(JSON.stringify(currentOwned)!==JSON.stringify(owned)||currentHome.kind!=='ready'||currentHome.raw!==destinationHome.raw
+    ||homeWitness()!==destinationHomeWitness||JSON.stringify(currentInput)!==JSON.stringify(targetInputBefore)
+    ||JSON.stringify(currentReceipt)!==JSON.stringify(receiptBefore))return {trip:canonical,accountAcknowledged:true,deviceComplete:false};
   const writeId=generatedWriteId(),entries:import('./durable-entry-protocol.ts').RecoveryEntryWrite[]=[];
   let input:import('./durable-recovery-domain.ts').RecoveryEnvelope['entry']['input']=null;
   if(prepared.builderRaw!==null){
@@ -1508,18 +1517,18 @@ export async function saveExplicitGuestTripForOwnerInStorage(storage:EasyTBrowse
     entries.push(staged.entry);input=staged.input;
   }
   let receipt:import('./durable-recovery-domain.ts').RecoveryEnvelope['entry']['receipt']=null;
-  if(prepared.homepageRaw!==null&&prepared.receipt){
-    const bundle=decodeHomepageBundle(prepared.homepageRaw,ownerId)!;
-    // Never replace the shared HOME slot. Its foreign raw bytes remain a
-    // CAS witness, while only the account-scoped completed input is copied.
-    const staged=await ownerHome.prepare(async stage=>{stage.setItem(homepageInputStorageKey(ownerId),bundle.bundle.inputRaw!);},writeId+':home');
-    if(staged.kind!=='prepared')return {trip:canonical,accountAcknowledged:true,deviceComplete:false};
+  if(receiptRaw!==null){
+    // A completed receipt belongs to this trip. Home remains the owner's
+    // current input and all guest/shared handoff bytes remain untouched.
+    const staged=await receiptStore.prepare(receiptRaw,writeId+':receipt');
+    if(!staged.ok)return {trip:canonical,accountAcknowledged:true,deviceComplete:false};
     const envelope=JSON.parse(staged.entry.raw);
-    if(envelope.retainedPreviousRaw!==destinationHome.raw||envelope.legacyRaw!==destinationHome.legacyRaw||JSON.stringify(staged.entry.expectedHead)!==JSON.stringify(destinationHome.envelope?.handle??null))return {trip:canonical,accountAcknowledged:true,deviceComplete:false};
-    entries.push(staged.entry);receipt={...prepared.receipt,raw:staged.raw};
+    if(envelope.retainedPreviousRaw!==receiptBefore.raw||envelope.legacyRaw!==receiptBefore.legacyRaw
+      ||JSON.stringify(staged.entry.expectedHead)!==JSON.stringify(receiptBefore.envelope?.handle??null))return {trip:canonical,accountAcknowledged:true,deviceComplete:false};
+    entries.push(staged.entry);receipt=staged.receipt;
   }
   if(JSON.stringify(await observe())!==sourceKey)return {trip:canonical,accountAcknowledged:true,deviceComplete:false};
-  const stillCurrent=()=>active()&&nativeWitness()===source.native&&storage.getItem(ownerCacheKey)===ownerCacheWitness;
+  const stillCurrent=()=>active()&&nativeWitness()===source.native&&homeWitness()===destinationHomeWitness&&storage.getItem(ownerCacheKey)===ownerCacheWitness;
   const saved=await createTwoStoreTripPersistence(storage,driver,{...context,isCurrent:stillCurrent}).save(canonical,{newTripOrClone:owned.kind==='missing',...(owned.kind==='found'?{canonicalBase:owned.trip,expectedRecoverySource:owned.trip,...(owned.recovery?{replace:owned.recovery}:{})}:{}),writeId,entries,entry:{pointer:{version:1,backend:'indexeddb',ownerId,tripId,writeId},input,receipt}});
   if(!saved.stored||!active())return {trip:canonical,accountAcknowledged:true,deviceComplete:false};
   if(!stillCurrent())return {trip:canonical,accountAcknowledged:true,deviceComplete:false};
@@ -1528,8 +1537,34 @@ export async function saveExplicitGuestTripForOwnerInStorage(storage:EasyTBrowse
     storage.setItem(key,raw);if(key===ownerCacheKey)ownerCacheWitness=raw;
   }};
   const acknowledged=await createTwoStoreTripPersistence(acknowledgedStorage,driver,{...context,isCurrent:stillCurrent}).acknowledge(canonical,canonical,saved.handle);
-  const sourceUnchanged=active()&&JSON.stringify(await observe())===sourceKey;
-  return {trip:canonical,accountAcknowledged:true,deviceComplete:sourceUnchanged&&acknowledged.outcome==='acknowledged'&&(!acknowledged.deviceOutcome||acknowledged.deviceOutcome==='device-confirmed'||acknowledged.deviceOutcome==='account-acknowledged')};
+  const destinationNative=targetNativeWitness();
+  const sourceUnchanged=active()&&JSON.stringify(await observe())===sourceKey,finalReceipt=await receiptStore.read(),finalHome=await ownerHome.read();
+  const finalInput=await targetInput.read(),finalBody=await ownedStore.read(tripId),currentHeadWitness=await driver.readCurrent(ownerId),finalCurrent=await ownedStore.current();
+  const durableReadback=finalInput.kind==='ready'&&finalReceipt.kind==='ready'&&finalHome.kind==='ready'&&finalBody.kind==='found'
+    &&await driver.runClaim({...witnessRequest,targetHandle:{...witnessRequest.targetHandle,writeId:saved.handle.writeId}},'readonly',state=>{
+      const entryMatches=(index:number,envelope:import('./durable-entry-protocol.ts').RecoveryEntryEnvelope|null)=>
+        state.target.entries[index]?.headRaw===(envelope?JSON.stringify(envelope.handle):undefined)
+        &&state.target.entries[index]?.headGenerationRaw===(envelope?JSON.stringify(envelope):undefined);
+      const body=finalBody.domain?.envelope;
+      return {value:active()&&stillCurrent()&&targetNativeWitness()===destinationNative&&JSON.stringify(state.source)===sourceDurableWitness
+        &&(saved.handle.backend!=='indexeddb'||body?.handle.writeId===saved.handle.writeId)
+        &&state.target.headRaw===(body?JSON.stringify(body.handle):undefined)
+        &&state.target.headGenerationRaw===(body?JSON.stringify(body):undefined)
+        &&state.target.acknowledgementRaw===(finalBody.domain?.acknowledgement?JSON.stringify(finalBody.domain.acknowledgement):undefined)
+        &&state.target.currentRaw===currentHeadWitness
+        &&entryMatches(0,finalInput.envelope)&&entryMatches(1,finalHome.envelope)&&entryMatches(2,finalReceipt.envelope)};
+    });
+  return {trip:canonical,accountAcknowledged:true,deviceComplete:sourceUnchanged&&stillCurrent()
+    &&targetNativeWitness()===destinationNative
+    &&durableReadback
+    &&finalReceipt.kind==='ready'&&finalReceipt.raw===receiptRaw&&finalHome.kind==='ready'&&finalHome.raw===destinationHome.raw
+    &&finalInput.kind==='ready'&&finalInput.raw===(input?.raw??targetInputBefore.raw)
+    &&storage.getItem(builderInputDraftKey(ownerId,tripId))===finalInput.legacyRaw
+    &&storage.getItem(tripReceiptStorageKey(ownerId,tripId))===finalReceipt.legacyRaw
+    &&finalBody.kind==='found'&&!finalBody.recovery&&tripBuildDocumentsCanonicalEquivalent(canonical,finalBody.trip,ownerId)
+    &&finalCurrent.kind==='found'&&!finalCurrent.recovery&&finalCurrent.trip.id===tripId&&finalCurrent.trip.ownerId===ownerId
+    &&tripBuildDocumentsCanonicalEquivalent(canonical,finalCurrent.trip,ownerId)
+    &&acknowledged.outcome==='acknowledged'&&(!acknowledged.deviceOutcome||acknowledged.deviceOutcome==='device-confirmed'||acknowledged.deviceOutcome==='account-acknowledged')};
   }catch{return {trip:canonical,accountAcknowledged:true,deviceComplete:false};}
 }
 

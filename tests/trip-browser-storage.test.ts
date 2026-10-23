@@ -5,6 +5,16 @@ import { createHash, webcrypto } from "node:crypto";
 import test from "node:test";
 import { runInNewContext } from "node:vm";
 
+test('an explicit ACK cannot retire changed content that reused the same recovery handle',()=>{
+  const storage=new MemoryBrowserStorage(),trip=browserTrip({id:'same-handle-content-guard',ownerId:'owner-a',title:'Submitted document'});
+  const saved=saveTripRecoveryToStorage(storage,trip,{writeId:'reused-handle'});assert.equal(saved.stored,true);
+  const key=tripRecoveryStorageKey('owner-a',trip.id,saved.handle.writeId),record=JSON.parse(storage.getItem(key)!);
+  record.trip={...record.trip,title:'Later content under the same old-client handle'};const changedRaw=JSON.stringify(record);storage.setItem(key,changedRaw);
+  const result=cacheCanonicalTripWithRecoveryToStorage(storage,trip,saved.handle);
+  assert.equal(result.stored,true);assert.equal(result.recoveryResolved,false);
+  assert.equal(storage.getItem(key),changedRaw,'a handle is insufficient proof for different content');
+});
+
 import {
   EASYT_ACTIVE_TRIP_KEY,
   acknowledgeTripBuildSaveInStorage,
@@ -193,7 +203,7 @@ for (const [name, category] of [["QuotaExceededError", "quota"], ["SecurityError
   });
 }
 
-test("a committed first Builder save accepts a later provider-only recovery without manufacturing divergence", () => {
+test("an earlier Builder ACK preserves a later provider-only write until its own exact ACK", () => {
   const storage = new MemoryBrowserStorage();
   const reviewed = browserTrip({
     id: "trip-first-authenticated-build",
@@ -226,10 +236,13 @@ test("a committed first Builder save accepts a later provider-only recovery with
     "2026-09-15T18:40:03.000Z",
   );
   const result = acknowledgeTripBuildSaveInStorage(storage, reviewed, canonical, submitted.handle);
-  assert.equal(result.outcome, "acknowledged");
-  assert.equal(result.remainingRecovery, null);
-  assert.equal(loadTripRecoveryFromStorage(storage, reviewed.id, "owner-a"), null);
+  assert.equal(result.outcome, "device-newer");
+  assert.equal(result.remainingRecovery?.writeId, laterRecovery.handle.writeId);
+  assert.equal(loadTripRecoveryFromStorage(storage, reviewed.id, "owner-a")?.writeId, laterRecovery.handle.writeId);
   assert.equal(loadCachedTripFromStorage(storage, reviewed.id, "owner-a")?.updatedAt, canonical.updatedAt);
+  const laterCanonical=canonicalTripForOwner("owner-a",providerEnriched,"2026-09-15T18:40:04.000Z");
+  const exact=acknowledgeTripBuildSaveInStorage(storage,providerEnriched,laterCanonical,laterRecovery.handle);
+  assert.equal(exact.outcome,"acknowledged");assert.equal(loadTripRecoveryFromStorage(storage,reviewed.id,"owner-a"),null);
 });
 
 test("Builder acknowledgement preserves a genuinely newer traveller recovery", () => {
@@ -393,7 +406,7 @@ test("canonical caching resolves only the same owner, trip, and recovery write",
   assert.equal(loadTripRecoveryFromStorage(storage, pending.id, "owner-a"), null);
 });
 
-test("hydration resolves a stranded Build recovery only when its server-normalized document is canonical-equivalent", () => {
+test("hydration classifies a stranded Build recovery read-only; its exact ACK alone retires it", () => {
   const ownerId = "owner-a";
   const local = browserTrip({
     id: "trip-stranded-build",
@@ -451,8 +464,11 @@ test("hydration resolves a stranded Build recovery only when its server-normaliz
   assert.equal(tripRecoveryMatchesCanonical(storedRecovery, canonical), true);
   const result = resolveCanonicalEquivalentTripRecoveryInStorage(storage, canonical, storedRecovery);
 
-  assert.deepEqual(result, { equivalent: true, stored: true, recoveryResolved: true });
-  assert.equal(loadTripRecoveryFromStorage(storage, local.id, ownerId), null);
+  assert.deepEqual(result, { equivalent: true, stored: false, recoveryResolved: false });
+  assert.equal(loadTripRecoveryFromStorage(storage, local.id, ownerId)?.writeId,storedRecovery.writeId);
+  assert.equal(loadCachedTripFromStorage(storage,local.id,ownerId),null);
+  assert.equal(acknowledgeTripBuildSaveInStorage(storage,local,canonical,storedRecovery).outcome,"acknowledged");
+  assert.equal(loadTripRecoveryFromStorage(storage,local.id,ownerId),null);
   assert.deepEqual(loadCachedTripFromStorage(storage, local.id, ownerId), canonical);
 });
 
@@ -493,7 +509,7 @@ test("derived planner rebuilds do not create a false cloud/device conflict", () 
   assert.equal(tripDocumentsCanonicalEquivalent({ ...local, brief: { ...local.brief, mustDo: "A real traveller edit" } }, canonical), false);
 });
 
-test("canonical refresh retires an aligned or stale baseline snapshot without relying on updatedAt", () => {
+test("canonical refresh preserves a different write even when its body matches an older baseline", () => {
   const storage = new MemoryBrowserStorage();
   const cloudA = browserTrip({ id: "trip-stale-baseline", travellers: 2 });
   assert.equal(cacheCanonicalTripToStorage(storage, cloudA), true);
@@ -505,8 +521,9 @@ test("canonical refresh retires an aligned or stale baseline snapshot without re
   const cloudB = { ...cloudA, travellers: 3, updatedAt: "2026-08-23T12:00:00.000Z" };
   const refreshed = cacheCanonicalTripWithRecoveryToStorage(storage, cloudB);
 
-  assert.deepEqual(refreshed, { stored: true, recoveryResolved: true });
-  assert.equal(loadTripRecoveryFromStorage(storage, cloudA.id, "owner-a"), null);
+  assert.deepEqual(refreshed, { stored: true, recoveryResolved: false });
+  assert.equal(loadTripRecoveryFromStorage(storage, cloudA.id, "owner-a")?.writeId,snapshot.handle.writeId);
+  assert.equal(loadTripRecoveryFromStorage(storage,cloudA.id,"owner-a")?.trip.travellers,2);
   assert.deepEqual(loadCachedTripFromStorage(storage, cloudA.id, "owner-a"), requireReadableTripDocument(cloudB));
 });
 
@@ -540,7 +557,7 @@ test("successful Add pin save acknowledges the canonical map pin and refresh sta
   assert.equal(loadTripRecoveryFromStorage(storage, cloud.id, "owner-a"), null);
 });
 
-test("Luna preview is inert and confirmed Apply rebases an unchanged device baseline", () => {
+test("Luna preview is inert and canonical Apply preserves the separate baseline copy", () => {
   const storage = new MemoryBrowserStorage();
   const stop = { id: "rome", order: 0, name: "Rome", country: "Italy", latitude: 41.9, longitude: 12.5, arrivalDate: "2026-12-01", departureDate: "2026-12-03", nights: 2 };
   const cloudA = browserTrip({ id: "trip-luna-reconcile", stops: [stop] });
@@ -553,8 +570,9 @@ test("Luna preview is inert and confirmed Apply rebases an unchanged device base
   assert.deepEqual(loadCachedTripFromStorage(storage, cloudA.id, "owner-a")?.stops[0].nights, 2);
 
   const cloudB = { ...cloudA, stops: [{ ...stop, nights: 3 }], updatedAt: "2026-08-23T12:00:00.000Z" };
-  assert.deepEqual(cacheCanonicalTripWithRecoveryToStorage(storage, cloudB), { stored: true, recoveryResolved: true });
-  assert.equal(loadTripRecoveryFromStorage(storage, cloudA.id, "owner-a"), null);
+  assert.deepEqual(cacheCanonicalTripWithRecoveryToStorage(storage, cloudB), { stored: true, recoveryResolved: false });
+  assert.equal(loadTripRecoveryFromStorage(storage, cloudA.id, "owner-a")?.writeId,recovery.handle.writeId);
+  assert.equal(loadTripRecoveryFromStorage(storage,cloudA.id,"owner-a")?.trip.stops[0].nights,2);
   assert.equal(loadCachedTripFromStorage(storage, cloudA.id, "owner-a")?.stops[0].nights, 3);
 });
 
@@ -894,7 +912,9 @@ test("the Nikko save, Map reopen and reload sequence converges while a later tra
   const recovery = loadTripRecoveryFromStorage(storage, local.id, ownerId)!;
 
   assert.equal(tripRecoveryMatchesCanonical(recovery, canonical), true);
-  assert.deepEqual(resolveCanonicalEquivalentTripRecoveryInStorage(storage, canonical, recovery), { equivalent: true, stored: true, recoveryResolved: true });
+  assert.deepEqual(resolveCanonicalEquivalentTripRecoveryInStorage(storage, canonical, recovery), { equivalent: true, stored: false, recoveryResolved: false });
+  assert.equal(loadTripRecoveryFromStorage(storage,local.id,ownerId)?.writeId,recovery.writeId);
+  assert.equal(acknowledgeTripBuildSaveInStorage(storage,local,canonical,recovery).outcome,"acknowledged");
   assert.equal(loadTripRecoveryFromStorage(storage, local.id, ownerId), null);
   assert.equal(loadCachedTripFromStorage(storage, local.id, ownerId)?.stops.at(-1)?.canonicalPlaceId, "nikko");
 
@@ -1571,7 +1591,8 @@ test("a quota-blocked current pointer still allows an equivalent recovery to rec
   assert.equal(cacheCanonicalTripToStorage(storage, trip), true);
   assert.equal(loadCurrentTripIdFromStorage(storage, "owner-a"), trip.id);
   assert.equal(loadCachedTripFromStorage(storage, trip.id, "owner-a")?.id, trip.id);
-  assert.equal(resolveTripRecoveryInStorage(storage, recovery.handle), false);
+  assert.equal(loadTripRecoveryFromStorage(storage,trip.id,"owner-a")?.writeId,recovery.handle.writeId);
+  assert.equal(acknowledgeTripBuildSaveInStorage(storage,trip,trip,recovery.handle).outcome,"acknowledged");
   assert.equal(loadTripRecoveryFromStorage(storage, trip.id, "owner-a"), null);
   assert.equal(loadCachedTripFromStorage(storage, trip.id, "owner-a")?.id, trip.id);
 });

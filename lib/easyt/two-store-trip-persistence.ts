@@ -13,6 +13,8 @@ import { createTwoStoreEntryPersistence } from './two-store-entry-persistence.ts
 import { builderInputDraftKey, readBuilderInputDraft } from './trip-builder-input-draft.ts';
 import { requireReadableTripDocument } from './trip-document.ts';
 import {createDurableHomepagePersistence,decodeHomepageBundle} from './homepage-persistence.ts';
+import {completedTripReceipt,createTripReceiptPersistence} from './trip-receipt-persistence.ts';
+import {tripReceiptStorageKey} from './private-browser-context.ts';
 import type {PreparedEntryWrite} from './durable-entry-store.ts';
 import {createRecoveryLifecycle} from './recovery-domain-lifecycle.ts';
 import {readRecoveryClaimBarrier,readOwnerRecoveryClaimBarrier,recoveryClaimTripIds} from './recovery-domain-claim.ts';
@@ -350,8 +352,9 @@ export function createTwoStoreTripPersistence(storage: EasyTBrowserStorage, driv
           if(prepared.scope.tripId!==tripId||read.kind!=='readable'||!metadata||metadata.ownerId!==ownerId||metadata.tripId!==tripId
             ||metadata.raw!==prepared.envelope.raw||metadata.inputRevision!==read.draft.inputRevision)return reject(true,'scope-mismatch','body-entry-input');
         }else {
-          const payload=decodeHomepageBundle(prepared.envelope.raw,ownerId),receipt=payload?.storedInput?.receipt,metadata=options.entry?.receipt;
+          const receipt=prepared.scope.kind==='trip-receipt'?completedTripReceipt(prepared.envelope.raw,ownerId,tripId):decodeHomepageBundle(prepared.envelope.raw,ownerId)?.storedInput?.receipt,metadata=options.entry?.receipt;
           if(receipt?.version!==1||receipt.tripId!==tripId||!metadata||metadata.ownerId!==ownerId||metadata.tripId!==tripId
+            ||prepared.scope.kind==='trip-receipt'&&prepared.scope.tripId!==tripId
             ||metadata.raw!==prepared.envelope.raw||metadata.operationId!==receipt.handoffId)return reject(true,'scope-mismatch','body-entry-receipt');
         }
         requiredEntries.push(prepared);
@@ -360,6 +363,9 @@ export function createTwoStoreTripPersistence(storage: EasyTBrowserStorage, driv
         for(const prepared of requiredEntries) {
           if(prepared.scope.kind==='homepage') {
             const state=await createDurableHomepagePersistence(storage,driver,{ownerId,isCurrent:active,overflowEnabled:context.overflowEnabled,accountOverflowQualified:context.accountOverflowQualified}).read();
+            if(state.kind!=='ready'||state.raw!==prepared.envelope.raw)return false;
+          }else if(prepared.scope.kind==='trip-receipt') {
+            const state=await createTripReceiptPersistence(storage,driver,{...context,tripId,isCurrent:active}).read();
             if(state.kind!=='ready'||state.raw!==prepared.envelope.raw)return false;
           }else {
             const key=builderInputDraftKey(ownerId,tripId),state=await createTwoStoreEntryPersistence(storage,driver,{scope:prepared.scope,key,isCurrent:active,
@@ -495,8 +501,8 @@ export function createTwoStoreTripPersistence(storage: EasyTBrowserStorage, driv
               const written=prepared.scope.kind==='homepage'
                 ?await createDurableHomepagePersistence(storage,driver,{ownerId,isCurrent:active,overflowEnabled:context.overflowEnabled,accountOverflowQualified:context.accountOverflowQualified})
                   .write(prepared.envelope.raw!,{allowInitialOverflow:options.newTripOrClone===true,writeId:prepared.envelope.handle.writeId,expected:options.entries!.find(value=>value.raw===prepared.raw)})
-                :await createTwoStoreEntryPersistence(storage,driver,{scope:prepared.scope,key,isCurrent:active,overflowEnabled:context.overflowEnabled,accountOverflowQualified:context.accountOverflowQualified,
-                  validate:raw=>raw===null||readBuilderInputDraft({getItem:()=>raw},canonical,ownerId).kind==='readable'})
+                :await createTwoStoreEntryPersistence(storage,driver,{scope:prepared.scope,key:prepared.scope.kind==='trip-receipt'?tripReceiptStorageKey(ownerId,tripId):key,isCurrent:active,overflowEnabled:context.overflowEnabled,accountOverflowQualified:context.accountOverflowQualified,
+                  validate:raw=>raw===null||(prepared.scope.kind==='trip-receipt'?Boolean(completedTripReceipt(raw,ownerId,tripId)):readBuilderInputDraft({getItem:()=>raw},canonical,ownerId).kind==='readable')})
                   // The paired input has the same exact-source admission as
                   // its body. Reopening an existing trip removes the new-trip
                   // capability; it must not strand an owned body if input alone
@@ -555,7 +561,7 @@ export function createTwoStoreTripPersistence(storage: EasyTBrowserStorage, driv
               return {...nativeResult,stored:false,pointerAcknowledged:false,failureReason:'pointer-incomplete',outcome:'pointer-incomplete'};
           } catch { return {...nativeResult,stored:false,pointerAcknowledged:false,failureReason:'pointer-incomplete',outcome:'pointer-incomplete'}; }
           if(!await verifyEntries())return observedRefusal({...nativeResult,stored:false,pointerAcknowledged:false,blockedByExistingRecovery:true,failureReason:'protected-recovery',outcome:'protected-conflict'},'body-native-final-input');
-          return {...nativeResult,...(requiredEntries.some(value=>value.scope.kind==='homepage')?{receiptAcknowledged:true}:{})};
+          return {...nativeResult,...(requiredEntries.some(value=>value.scope.kind==='homepage'||value.scope.kind==='trip-receipt')?{receiptAcknowledged:true}:{})};
         }
         // A projection can replace a proven native source regardless of the
         // session's initial-overflow capability, but can never use that admission.
@@ -595,7 +601,7 @@ export function createTwoStoreTripPersistence(storage: EasyTBrowserStorage, driv
       }
       return { stored: true, handle: { ownerId, tripId, writeId, backend: 'indexeddb' }, blockedByExistingRecovery: false,
         pointerAcknowledged: true, recoveryDurable: true, readbackConfirmed: true, writeAttempted: true, outcome: 'device-confirmed',
-        ...(requiredEntries.some(value=>value.scope.kind==='homepage')?{receiptAcknowledged:true}:{}) };
+        ...(requiredEntries.some(value=>value.scope.kind==='homepage'||value.scope.kind==='trip-receipt')?{receiptAcknowledged:true}:{}) };
     },
   };
 }

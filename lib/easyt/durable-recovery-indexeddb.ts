@@ -137,7 +137,7 @@ export async function openIndexedDbRecoveryDriver(factory: IDBFactory | undefine
     runClaim<T>(input: RecoveryClaimRequest, mode: 'readonly' | 'readwrite', decide: (state: RecoveryClaimState) => RecoveryClaimDecision<T>): Promise<T> {
       let request: RecoveryClaimRequest;
       try {
-        request = snapshotRecoveryClaimRequest(input);
+        request = snapshotRecoveryClaimRequest(input,mode==='readonly');
         if (mode !== 'readonly' && mode !== 'readwrite') throw new TypeError('Invalid claim mode');
       } catch { return Promise.reject(new RecoveryDomainError('security', 'not-started')); }
       if (closed) return Promise.reject(new RecoveryDomainError('unavailable', 'not-started'));

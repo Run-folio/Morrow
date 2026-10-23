@@ -90,7 +90,7 @@ export function createRecoveryDomainStore(driver: RecoveryDomainDriver, context:
         const prepared = prepareEntryWrite(entry, ownerId); if (prepared.kind !== 'prepared') return prepared;
         if(prepared.scope.kind==='recovery-lifecycle'||prepared.scope.kind==='recovery-claim'||prepared.scope.kind==='browser-owner')return conflict('admission');
         const key = entryHeadKey(prepared.scope);
-        if (seenEntries.has(key) || prepared.scope.kind === 'builder-input' && prepared.scope.tripId !== candidate.handle.tripId) return conflict('scope');
+        if (seenEntries.has(key) || (prepared.scope.kind === 'builder-input'||prepared.scope.kind==='trip-receipt') && prepared.scope.tripId !== candidate.handle.tripId) return conflict('scope');
         const requiredRaw = prepared.scope.kind === 'builder-input' ? candidate.entry.input?.raw ?? null : candidate.entry.receipt?.raw ?? null;
         if (requiredRaw !== prepared.envelope.raw) return conflict('scope');
         seenEntries.add(key); preparedEntries.push(prepared);

@@ -112,3 +112,109 @@ test('unsupported or blank-owner foreign completed HOME stays protected',async()
  draft.homepage.ownerId='';draft.homepage.receipt.ownerId='';
  assert.equal(decodeHomepageBundle(JSON.stringify({version:1,inputRaw:null,draftRaw:JSON.stringify(draft)}),'owner-a'),null);
 });
+
+test('destination input changed during final receipt and Home readback cannot earn complete device status',async()=>{
+ const f=fixture(),{tripCacheStorageKey}=await import('../lib/easyt/storage.ts'),key=builderInputDraftKey('owner-a',f.guest.id);
+ const cacheKey=tripCacheStorageKey('owner-a',f.guest.id),set=f.storage.setItem.bind(f.storage),run=f.driver.runEntry.bind(f.driver);
+ let accountCacheWritten=false,receiptRead=false,changed=false;
+ f.storage.setItem=(name,raw)=>{set(name,raw);if(name===cacheKey)accountCacheWritten=true;};
+ f.driver.runEntry=(async(...args:Parameters<typeof f.driver.runEntry>)=>{
+  if(accountCacheWritten&&args[0].ownerId==='owner-a'){
+   if(args[0].kind==='trip-receipt')receiptRead=true;
+   if(receiptRead&&args[0].kind==='homepage'&&!changed){changed=true;f.values.set(key,'Protected concurrent account raw input');}
+  }
+  return run(...args);
+ }) as typeof f.driver.runEntry;
+ const result=await saveExplicitGuestTripForOwnerInStorage(f.storage,f.driver,f.context,f.guest.id,promotion());
+ assert.equal(changed,true,'the competing input must arrive after the account cache was acknowledged');
+ assert.equal(result.accountAcknowledged,true);assert.equal(result.deviceComplete,false);
+ assert.equal(f.values.get(key),'Protected concurrent account raw input');
+ for(const [name,raw]of f.native)assert.equal(f.values.get(name),raw);
+});
+
+test('a late destination IDB input generation is preserved and prevents device-complete status',async()=>{
+ const f=fixture(),{tripCacheStorageKey}=await import('../lib/easyt/storage.ts');
+ const {createTwoStoreEntryPersistence}=await import('../lib/easyt/two-store-entry-persistence.ts');
+ const key=builderInputDraftKey('owner-a',f.guest.id),cacheKey=tripCacheStorageKey('owner-a',f.guest.id),set=f.storage.setItem.bind(f.storage);
+ let accountCacheWritten=false,inputRead=false,changed=false;
+ f.storage.setItem=(name,raw)=>{if(name===key)throw new DOMException('Synthetic input quota','QuotaExceededError');set(name,raw);if(name===cacheKey)accountCacheWritten=true;};
+ const runEntry=f.driver.runEntry.bind(f.driver),readCurrent=f.driver.readCurrent.bind(f.driver);
+ f.driver.runEntry=(async(...args:Parameters<typeof f.driver.runEntry>)=>{if(accountCacheWritten&&args[0].ownerId==='owner-a'&&args[0].kind==='builder-input')inputRead=true;return runEntry(...args);}) as typeof f.driver.runEntry;
+ let competingRaw='';
+ f.driver.readCurrent=async owner=>{
+  if(owner==='owner-a'&&inputRead&&!changed){
+   changed=true;const adapter=createTwoStoreEntryPersistence(f.storage,f.driver,{...f.context,scope:{ownerId:'owner-a',tripId:f.guest.id,kind:'builder-input'},key,validate:()=>true});
+   const before=await adapter.read();assert.equal(before.kind,'ready');if(before.kind!=='ready'||!before.raw)throw Error('Synthetic input expected');
+   const next=JSON.parse(before.raw);next.inputRevision++;next.fields[0].raw='Competing late IDB input';competingRaw=JSON.stringify(next);
+   assert.equal((await adapter.save(competingRaw,{writeId:'late-target-input'})).kind,'verified');
+  }
+  return readCurrent(owner);
+ };
+ const result=await saveExplicitGuestTripForOwnerInStorage(f.storage,f.driver,f.context,f.guest.id,promotion());
+ assert.equal(changed,true);assert.equal(result.accountAcknowledged,true);assert.equal(result.deviceComplete,false);
+ const adapter=createTwoStoreEntryPersistence(f.storage,f.driver,{...f.context,scope:{ownerId:'owner-a',tripId:f.guest.id,kind:'builder-input'},key,validate:()=>true});
+ const after=await adapter.read();assert.equal(after.kind,'ready');if(after.kind==='ready')assert.equal(after.raw,competingRaw);
+});
+
+test('independent receipt write refusal leaves source and account ACK distinct and supports exact retry',async()=>{
+ const f=fixture(),{tripReceiptStorageKey}=await import('../lib/easyt/private-browser-context.ts'),key=tripReceiptStorageKey('owner-a',f.guest.id);
+ const before=new Map(f.values),set=f.storage.setItem.bind(f.storage);let refuse=true;
+ f.storage.setItem=(name,raw)=>{if(refuse&&name===key)throw new DOMException('Synthetic receipt refusal','SecurityError');set(name,raw);};
+ const first=await saveExplicitGuestTripForOwnerInStorage(f.storage,f.driver,f.context,f.guest.id,promotion());
+ assert.equal(first.accountAcknowledged,true);assert.equal(first.deviceComplete,false);assert.equal(f.values.has(key),false);
+ for(const [name,raw]of before)assert.equal(f.values.get(name),raw);
+ refuse=false;const retry=await saveExplicitGuestTripForOwnerInStorage(f.storage,f.driver,f.context,f.guest.id,promotion());
+ assert.equal(retry.deviceComplete,true);assert.ok(f.values.has(key));for(const [name,raw]of before)assert.equal(f.values.get(name),raw);
+});
+
+test('a late native destination branch cannot be hidden by complete device status',async()=>{
+ const f=fixture(),run=f.driver.runClaim.bind(f.driver);let witnesses=0,changed=false;
+ f.driver.runClaim=(async(...args:Parameters<typeof f.driver.runClaim>)=>{
+  if(args[1]==='readonly'&&++witnesses===2){
+   changed=true;const competing=canonicalTripForOwner('owner-a',{...f.guest,title:'Protected late destination branch'});
+   assert.equal(saveTripRecoveryToStorage(f.storage,competing,{ownerId:'owner-a',writeId:'late-native-account'}).stored,true);
+  }
+  return run(...args);
+ }) as typeof f.driver.runClaim;
+ const result=await saveExplicitGuestTripForOwnerInStorage(f.storage,f.driver,f.context,f.guest.id,promotion());
+ assert.equal(changed,true);assert.equal(result.accountAcknowledged,true);assert.equal(result.deviceComplete,false);
+ const raw=f.values.get(tripRecoveryStorageKey('owner-a',f.guest.id,'late-native-account'));assert.ok(raw);assert.equal(JSON.parse(raw).trip.title,'Protected late destination branch');
+});
+
+test('native branch arriving during the last current-pointer read cannot become its own readback witness',async()=>{
+ const f=fixture(),{tripCacheStorageKey}=await import('../lib/easyt/storage.ts');
+ const set=f.storage.setItem.bind(f.storage),run=f.driver.runEntry.bind(f.driver),readCurrent=f.driver.readCurrent.bind(f.driver);
+ let accountCache=false,inputRead=false,currentReads=0,changed=false;
+ f.storage.setItem=(key,raw)=>{set(key,raw);if(key===tripCacheStorageKey('owner-a',f.guest.id))accountCache=true;};
+ f.driver.runEntry=(async(...args:Parameters<typeof f.driver.runEntry>)=>{if(accountCache&&args[0].ownerId==='owner-a'&&args[0].kind==='builder-input')inputRead=true;return run(...args);}) as typeof f.driver.runEntry;
+ f.driver.readCurrent=async owner=>{
+  if(inputRead&&owner==='owner-a'&&++currentReads===3){changed=true;assert.equal(saveTripRecoveryToStorage(f.storage,canonicalTripForOwner('owner-a',{...f.guest,title:'Late in current()'}),{ownerId:'owner-a',writeId:'during-current'}).stored,true);}
+  return readCurrent(owner);
+ };
+ const result=await saveExplicitGuestTripForOwnerInStorage(f.storage,f.driver,f.context,f.guest.id,promotion());
+ assert.equal(changed,true);assert.equal(result.accountAcknowledged,true);assert.equal(result.deviceComplete,false);
+ assert.equal(JSON.parse(f.values.get(tripRecoveryStorageKey('owner-a',f.guest.id,'during-current'))!).trip.title,'Late in current()');
+});
+
+test('late guest IDB source advancement preserves both generations and cannot earn device completion',async()=>{
+ const f=fixture(),{tripCacheStorageKey}=await import('../lib/easyt/storage.ts'),guest=createTwoStoreTripPersistence(f.storage,f.driver,{...f.context,ownerId:null});
+ const before=await guest.read(f.guest.id);assert.equal(before.kind,'found');if(before.kind!=='found')return;
+ const set=f.storage.setItem.bind(f.storage);let accountCache=false,inputRead=false,changed=false;
+ f.storage.setItem=(key,raw)=>{if(key.startsWith(tripRecoveryStorageKey(null,f.guest.id)))throw new DOMException('Synthetic guest quota','QuotaExceededError');set(key,raw);if(key===tripCacheStorageKey('owner-a',f.guest.id))accountCache=true;};
+ const writeId='guest-durable-source';
+ const saved=await guest.save(f.guest,{newTripOrClone:true,replace:before.recovery!,expectedRecoverySource:f.guest,writeId,
+  entry:{pointer:{version:1,backend:'indexeddb',ownerId:null,tripId:f.guest.id,writeId},input:{ownerId:null,tripId:f.guest.id,inputRevision:f.input.inputRevision,raw:f.storage.getItem(builderInputDraftKey(null,f.guest.id))!},
+   receipt:{ownerId:null,tripId:f.guest.id,operationId:f.intake.completed.handoffId,raw:JSON.stringify({version:1,inputRaw:f.native[0][1],draftRaw:f.native[1][1]})}}});
+ assert.equal(saved.stored,true);const originals=new Map(f.driver.generations),bytes=new Map(f.values),run=f.driver.runEntry.bind(f.driver),read=f.driver.readCurrent.bind(f.driver);
+ f.driver.runEntry=(async(...args:Parameters<typeof f.driver.runEntry>)=>{if(accountCache&&args[0].ownerId==='owner-a'&&args[0].kind==='builder-input')inputRead=true;return run(...args);}) as typeof f.driver.runEntry;
+ f.driver.readCurrent=async owner=>{
+  if(owner==='owner-a'&&inputRead&&!changed){changed=true;const current=await guest.read(f.guest.id);assert.equal(current.kind,'found');if(current.kind!=='found')throw Error('Synthetic guest source required');
+   assert.equal((await guest.save({...current.trip,title:'Later guest branch'},{replace:current.recovery!,canonicalBase:current.trip,expectedRecoverySource:current.trip,writeId:'late-guest-generation'})).stored,true);
+  }
+  return read(owner);
+ };
+ const result=await saveExplicitGuestTripForOwnerInStorage(f.storage,f.driver,f.context,f.guest.id,promotion());
+ assert.equal(changed,true);assert.equal(result.accountAcknowledged,true);assert.equal(result.deviceComplete,false);
+ const later=await guest.read(f.guest.id);assert.equal(later.kind,'found');if(later.kind==='found')assert.equal(later.trip.title,'Later guest branch');
+ for(const [key,raw]of originals)assert.equal(f.driver.generations.get(key),raw);for(const [key,raw]of bytes)assert.equal(f.values.get(key),raw);
+});

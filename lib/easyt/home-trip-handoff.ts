@@ -573,12 +573,13 @@ export function homepageSemanticInputFingerprint(snapshot: HomepageInputSnapshot
   return `homepage-input-v1-${homepageFingerprintHash(JSON.stringify(canonicalFingerprintValue(meaning)))}`;
 }
 
-/** A legacy completed receipt is also treated as unchanged: it cannot prove an edit. */
+/** Resuming an identity requires positive proof of the visible input meaning.
+ * Legacy receipts remain readable; missing proof cannot certify unchanged input. */
 export function homepageCompletedReceiptIsUnchanged(stored: StoredHomepageInput): boolean {
   const receipt = stored.receipt;
   if (receipt?.version === 2) return false;
-  return Boolean(receipt && (!receipt.semanticInputFingerprint
-    || receipt.semanticInputFingerprint === homepageSemanticInputFingerprint(stored.snapshot)));
+  return Boolean(receipt?.semanticInputFingerprint
+    && receipt.semanticInputFingerprint === homepageSemanticInputFingerprint(stored.snapshot));
 }
 
 /** Construct the existing receipt for either producer of a Builder projection. */

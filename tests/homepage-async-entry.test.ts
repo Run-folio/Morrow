@@ -121,6 +121,29 @@ test('competing receipt during preservation prevents stale same-owner resume nav
   await actualCallback('submit',scope)();assert.deepEqual(seen.hrefs,[]);assert.match(seen.errors.at(-1)!,/couldn't recover/);
 });
 
+test('edited Describe input with a legacy completed receipt must not redeem the old trip identity',async()=>{
+ const {scope,seen,fixture}=resumeScope();
+ const receipt={...fixture.intake.completed};delete receipt.semanticInputFingerprint;
+ const changed={...fixture.snapshot,mode:'describe' as const,prompt:'Tokyo, Takayama and Matsumoto from London in March 2027',revision:fixture.snapshot.revision+1};
+ const stored={snapshot:changed,receipt},inputRaw=JSON.stringify(stored),values=new Map(fixture.native);
+ values.set(homepageInputStorageKey(null),inputRaw);
+ const storage={getItem:(key:string)=>values.get(key)??null,setItem:(key:string,raw:string)=>{values.set(key,raw)},removeItem:(key:string)=>{values.delete(key)}};
+ let reservations=0;
+ const bindings={...scope,snapshotRef:{current:changed},storedInputRef:{current:stored},
+  readDurableHomepageState:async()=>({kind:'ready',storedInput:stored,inputRaw,draft:fixture.draft}),
+  homepagePreflightIssues:()=>[],evidenceFor:()=>undefined,travelProfile:null,
+  generatedId:(prefix:string)=>prefix+'-new-describe-input',window:{localStorage:storage},requestNewTripNavigationAsync:async()=>true,
+  reservePendingDescribeHandoff:async(input:Parameters<typeof reservePendingDescribeHandoff>[0])=>{
+   reservations++;return reservePendingDescribeHandoff({...input,lock:async(_key,work)=>work()});
+  }};
+ await actualCallback('submit',bindings)();
+ assert.equal(seen.hrefs.some(href=>href.includes('trip='+fixture.trip.id)),false,'a changed prompt cannot silently reopen its earlier trip');
+ assert.equal(reservations,1,'the new input needs its own reserved identity');
+ assert.deepEqual(seen.hrefs,['/journey/new?homeDraft=1&handoff=handoff-new-describe-input']);
+ assert.equal(values.get(HOME_TRIP_DRAFT_KEY)===fixture.native[1]![1],false,'new pending input must be explicit');
+ assert.deepEqual(seen.errors.filter(Boolean),[]);
+});
+
 test('actual Homepage Stops submit remains pending until canonical recovery and its receipt commit together',async()=>{
  const fixture=homeRecoveryFixture(),values=new Map<string,string>();
  let canonicalSetterQuota=false;

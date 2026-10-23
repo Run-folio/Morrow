@@ -52,6 +52,14 @@ const turn = () => new Promise<void>(resolve => setImmediate(resolve));
 
 for (const native of [true, false]) {
   const label = native ? 'native adapter model' : 'memory contract model';
+  test(`${label}: independent receipt participates only in a read-only paired-scope witness`,async()=>{
+    const s=await setup(native),receipt=entry({ownerId:'owner-a',kind:'trip-receipt',tripId:s.source.handle.tripId},'historical-receipt');
+    s.maps().get('heads')!.set(entryHeadKey(receipt.scope),receipt.headRaw);s.maps().get('generations')!.set(entryGenerationKey(receipt.scope,receipt.writeId),receipt.raw);
+    const request=structuredClone(s.request);request.targetEntries.push({scope:receipt.scope,writeId:null});const before=structuredClone(s.maps());
+    const result=await s.run(request,'readonly',state=>({value:state.target.entries.at(-1)?.headGenerationRaw}));assert.equal(result,receipt.raw);
+    await assert.rejects(s.run(request,'readwrite',()=>({value:true,targetEntryWrites:[receipt]})));
+    assert.deepEqual(s.maps(),before);s.driver.close?.();
+  });
   test(`${label}: claim snapshot binds both canonical heads, current pointers and metadata generations`, async () => {
     const s = await setup(native);
     const snapshot = await s.run(s.request, 'readonly', state => ({ value: state }));

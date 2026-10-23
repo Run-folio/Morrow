@@ -82,7 +82,7 @@ export function isDomainHandle(value: unknown): value is RecoveryHandle {
     && value.version === 1 && value.backend === 'indexeddb' && text(value.writeId);
 }
 /** Snapshot before any await; reject requests outside the two fixed scopes. */
-export function snapshotRecoveryClaimRequest(request: RecoveryClaimRequest): RecoveryClaimRequest {
+export function snapshotRecoveryClaimRequest(request: RecoveryClaimRequest,readOnly=false): RecoveryClaimRequest {
   if (!record(request) || !keys(request, ['sourceHandle', 'targetHandle', 'sourceEntries', 'targetEntries'])
     || !isDomainHandle(request.sourceHandle) || !isDomainHandle(request.targetHandle)
     || request.sourceHandle.ownerId !== null || !text(request.targetHandle.ownerId)
@@ -93,7 +93,8 @@ export function snapshotRecoveryClaimRequest(request: RecoveryClaimRequest): Rec
     return rows.map(row => {
       if (!record(row) || !keys(row, ['scope', 'writeId']) || !isEntryScope(row.scope)
         || !keys(row.scope, ['ownerId', 'kind', 'tripId']) || row.scope.ownerId !== scope.ownerId
-        || !['homepage', 'builder-input', 'recovery-lifecycle', 'recovery-claim'].includes(row.scope.kind)
+        || !(['homepage', 'builder-input', 'recovery-lifecycle', 'recovery-claim'].includes(row.scope.kind)
+          || readOnly&&scope.ownerId!==null&&row.scope.kind==='trip-receipt')
         || (row.scope.kind === 'homepage' ? row.scope.tripId !== null : row.scope.tripId !== scope.tripId)
         || !(row.writeId === null || text(row.writeId))) throw new TypeError('Unbound claim entry');
       const key = entryHeadKey(row.scope);
