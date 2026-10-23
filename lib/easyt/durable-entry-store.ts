@@ -15,7 +15,7 @@ export function prepareEntryWrite(input: RecoveryEntryWrite, ownerId: string | n
   if (!value || typeof value !== 'object' || !('handle' in value) || !isEntryHandle(value.handle)) return failure('corrupt');
   const scope: RecoveryEntryScope = { ownerId, kind: value.handle.kind, tripId: value.handle.tripId };
   const decoded = decodeEntryEnvelope(input.raw, scope); if (decoded.kind !== 'readable') return invalid(decoded.kind);
-  if(scope.kind==='trip-receipt'&&(decoded.value.raw===null||decoded.value.retainedPreviousRaw!==null&&decoded.value.retainedPreviousRaw!==decoded.value.raw))return conflict('scope');
+  if((scope.kind==='trip-receipt'||scope.kind==='trip-creation')&&(decoded.value.raw===null||decoded.value.retainedPreviousRaw!==null&&decoded.value.retainedPreviousRaw!==decoded.value.raw))return conflict('scope');
   const expected = input.expectedHead === null ? null : isEntryHandle(input.expectedHead) ? { ...input.expectedHead } : undefined;
   if (expected === undefined || expected && !sameEntryScope(expected, scope) || !sameEntryHandle(expected, decoded.value.parent)) return conflict('scope');
   if (input.admission !== 'native-setter-quota' && !(input.admission === 'existing-domain' && expected !== null)) return conflict('admission');
@@ -31,7 +31,7 @@ export function entryHead(state: RecoveryEntryState, scope: RecoveryEntryScope) 
 export function decideEntryWrite(prepared: PreparedEntryWrite, state: RecoveryEntryState): { kind: 'write'; mutation?: RecoveryEntryMutation } | RecoveryFailure | RecoveryConflict {
   if (!state) return failure('corrupt');
   const current = entryHead(state, prepared.scope); if (current.kind !== 'valid') return current;
-  if(prepared.scope.kind==='trip-receipt'&&current.envelope&&current.envelope.raw!==prepared.envelope.raw)return conflict('scope','not-committed');
+  if((prepared.scope.kind==='trip-receipt'||prepared.scope.kind==='trip-creation')&&current.envelope&&current.envelope.raw!==prepared.envelope.raw)return conflict('scope','not-committed');
   if (state.generationRaw !== undefined) {
     if (state.generationRaw !== prepared.raw) return conflict('immutable-collision', 'not-committed');
     return sameEntryHandle(current.handle, prepared.envelope.handle) ? { kind: 'write' } : conflict('head-changed', 'not-committed');

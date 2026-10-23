@@ -7,6 +7,8 @@ import {tripReceiptStorageKey,homepageInputStorageKey} from '../lib/easyt/privat
 import {createTwoStoreTripPersistence} from '../lib/easyt/two-store-trip-persistence.ts';
 import {createTwoStoreEntryPersistence} from '../lib/easyt/two-store-entry-persistence.ts';
 import {tripRecoveryStorageKey} from '../lib/easyt/storage.ts';
+import {createDurableHomepagePersistence} from '../lib/easyt/homepage-persistence.ts';
+import {createRecoveryDomainStore} from '../lib/easyt/durable-recovery-store.ts';
 
 function fixture(){
  const source=homeRecoveryFixture('owner-a'),values=new Map<string,string>();
@@ -83,4 +85,28 @@ for(const quota of ['body','receipt'] as const)test(`genuine ${quota} quota pres
  assert.equal((await store.acknowledge(f.trip,f.trip,saved.handle)).outcome,'acknowledged');
  const cold=await createTripReceiptPersistence(f.storage,f.driver,f.context).read();assert.equal(cold.kind,'ready');if(cold.kind==='ready')assert.equal(cold.raw,f.raw);
  assert.equal(f.values.get(homeKey),'Existing owner Home bytes');
+});
+
+for(const boundary of ['broker','domain'] as const)for(const corruption of ['different-input','missing-pair'] as const)
+test(`${boundary} refuses historical receipt/Home exception with ${corruption} without writes`,async()=>{
+ const f=fixture(),receipt=await createTripReceiptPersistence(f.storage,f.driver,f.context).prepare(f.raw,'paired-receipt');
+ assert.equal(receipt.ok,true);if(!receipt.ok)return;
+ const homeBundle=JSON.parse(f.raw);homeBundle.draftRaw=null;
+ if(corruption==='different-input')homeBundle.inputRaw=JSON.stringify(JSON.parse(homeBundle.inputRaw),null,2);
+ const home=await createDurableHomepagePersistence(f.storage,f.driver,f.context).prepare(async staged=>{staged.setItem(homepageInputStorageKey('owner-a'),homeBundle.inputRaw);},'paired-home');
+ assert.equal(home.kind,'prepared');if(home.kind!=='prepared')return;
+ const entries=corruption==='missing-pair'?[home.entry]:[home.entry,receipt.entry];
+ const handle={version:1 as const,backend:'indexeddb' as const,ownerId:'owner-a',tripId:f.trip.id,writeId:'paired-body'};
+ const entry={pointer:handle,input:null,receipt:receipt.receipt};
+ const before=[...f.values];
+ if(boundary==='broker'){
+  const result=await createTwoStoreTripPersistence(f.storage,f.driver,f.context).save(f.trip,{newTripOrClone:true,writeId:handle.writeId,entries,entry});
+  assert.equal(result.stored,false);assert.equal(result.blockedByExistingRecovery,true);
+ }else{
+  const raw=JSON.stringify({version:1,handle,parent:null,legacySources:[],entry,
+   rawRecovery:JSON.stringify({version:2,ownerId:'owner-a',tripId:f.trip.id,writeId:handle.writeId,trip:f.trip,state:'pending',savedAt:'2026-10-23T00:00:00.000Z'})});
+  const result=await createRecoveryDomainStore(f.driver,f.context).commit({raw,expectedHead:null,admission:'native-setter-quota',entries});
+  assert.equal(result.kind,'protected-conflict');
+ }
+ assert.deepEqual([...f.values],before);assert.equal(f.driver.generations.size,0);assert.equal(f.driver.heads.size,0);
 });

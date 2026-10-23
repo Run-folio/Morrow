@@ -1,3 +1,6 @@
+import {decodeCreationReceipt,decodeTripCreationToken,validCreationReceiptRebind,type CreationReceiptRebind} from './trip-creation-provenance.ts';
+import {prepareTripDocumentForWrite} from './trip-document.ts';
+import {decodeRawRecovery,decodeRecoverySource} from './durable-recovery-domain.ts';
 import { decodeDomainHead, decodeDomainCurrent, decodeRecoveryEnvelope, decodeTrustedAccountAck, isDomainHandle, isRecoveryScope, recoveryScopeKey,
   sameDomainHandle, sameRecoveryScope, type RecoveryDomainDriver, type RecoveryScope, type RecoveryHandle,
   type RecoveryCommitResult, type RecoveryReadResult, type RecoveryAckResult, type RecoveryListResult, type RecoveryFailureReason,
@@ -9,6 +12,7 @@ import { RecoveryDomainError, recoveryErrorReason } from './durable-recovery-err
 export { RecoveryDomainError, recoveryErrorReason } from './durable-recovery-error.ts';
 import { entryHeadKey, decodeEntryEnvelope, type RecoveryEntryScope, type RecoveryEntryWrite, type RecoveryEntryMutation } from './durable-entry-protocol.ts';
 import { prepareEntryWrite, decideEntryWrite, verifyEntryWrite, type PreparedEntryWrite } from './durable-entry-store.ts';
+import { homepageInputMatchesTripReceipt } from './trip-receipt-persistence.ts';
 const failure = (reason: RecoveryFailureReason, commitStatus: CommitStatus = 'not-started'): RecoveryFailure => ({ kind: 'failure', reason, commitStatus });
 const conflict = (reason: RecoveryConflict['reason'], commitStatus: CommitStatus = 'not-started'): RecoveryConflict => ({ kind: 'protected-conflict', reason, commitStatus });
 const decodeFailure = (decoded: DecodeFailure, status: CommitStatus) => decoded.kind === 'scope' ? conflict('scope', status) : failure(decoded.kind, status);
@@ -62,7 +66,7 @@ export function createRecoveryDomainStore(driver: RecoveryDomainDriver, context:
         return active() ? { ...read, current: head.value } : conflict('operation-changed');
       } catch (error) { return failure(recoveryErrorReason(error)); }
     },
-    async commit(input: { raw: string; expectedHead: RecoveryHandle | null; admission: 'native-setter-quota' | 'existing-domain'; entries?: RecoveryEntryWrite[]; projectionFence?: ProjectionFence }): Promise<RecoveryCommitResult> {
+    async commit(input: { raw: string; expectedHead: RecoveryHandle | null; admission: 'native-setter-quota' | 'existing-domain'; entries?: RecoveryEntryWrite[]; projectionFence?: ProjectionFence;creationReceiptRebind?:CreationReceiptRebind }): Promise<RecoveryCommitResult> {
       if (!active()) return conflict('operation-changed');
       if (input.admission !== 'native-setter-quota' && !(input.admission === 'existing-domain' && input.expectedHead !== null)) return conflict('admission');
       let parsed: unknown; try { parsed = JSON.parse(input.raw); } catch { return failure('corrupt'); }
@@ -70,6 +74,7 @@ export function createRecoveryDomainStore(driver: RecoveryDomainDriver, context:
       const scope = scopeFor(parsed.handle.tripId), decoded = decodeRecoveryEnvelope(input.raw, scope);
       if (decoded.kind !== 'readable') return decodeFailure(decoded, 'not-started');
       const candidate = decoded.value, raw = input.raw;
+      const creationRebind=input.creationReceiptRebind?structuredClone(input.creationReceiptRebind):undefined;
       let fence: ProjectionFence | undefined;
       try { fence = input.projectionFence ? structuredClone(input.projectionFence) : undefined; } catch { return conflict('scope'); }
       const expected = input.expectedHead === null ? null : isDomainHandle(input.expectedHead) ? { ...input.expectedHead } : undefined;
@@ -90,9 +95,14 @@ export function createRecoveryDomainStore(driver: RecoveryDomainDriver, context:
         const prepared = prepareEntryWrite(entry, ownerId); if (prepared.kind !== 'prepared') return prepared;
         if(prepared.scope.kind==='recovery-lifecycle'||prepared.scope.kind==='recovery-claim'||prepared.scope.kind==='browser-owner')return conflict('admission');
         const key = entryHeadKey(prepared.scope);
-        if (seenEntries.has(key) || (prepared.scope.kind === 'builder-input'||prepared.scope.kind==='trip-receipt') && prepared.scope.tripId !== candidate.handle.tripId) return conflict('scope');
-        const requiredRaw = prepared.scope.kind === 'builder-input' ? candidate.entry.input?.raw ?? null : candidate.entry.receipt?.raw ?? null;
-        if (requiredRaw !== prepared.envelope.raw) return conflict('scope');
+        if (seenEntries.has(key) || (prepared.scope.kind === 'builder-input'||prepared.scope.kind==='trip-receipt'||prepared.scope.kind==='trip-creation') && prepared.scope.tripId !== candidate.handle.tripId) return conflict('scope');
+        const requiredRaw = prepared.scope.kind === 'builder-input' ? candidate.entry.input?.raw ?? null : prepared.scope.kind==='trip-creation'
+          ?decodeCreationReceipt(candidate.entry.receipt?.raw??'',scope.ownerId,scope.tripId)?.reservationRaw??null:candidate.entry.receipt?.raw ?? null;
+        if(prepared.scope.kind==='trip-creation'&&!decodeTripCreationToken(prepared.envelope.raw??'',scope.ownerId,scope.tripId))return conflict('scope');
+        if (requiredRaw !== prepared.envelope.raw && (prepared.scope.kind!=='homepage'||requiredRaw===null||prepared.envelope.raw===null
+          ||!homepageInputMatchesTripReceipt(prepared.envelope.raw,requiredRaw,ownerId,scope.tripId)
+          ||!(input.entries??[]).some(value=>{const paired=prepareEntryWrite(value,ownerId);return paired.kind==='prepared'
+            &&paired.scope.kind==='trip-receipt'&&paired.scope.tripId===scope.tripId&&paired.envelope.raw===requiredRaw;})))return conflict('scope');
         seenEntries.add(key); preparedEntries.push(prepared);
       }
       const entryRequests = [...preparedEntries.map(entry => ({ scope: entry.scope, writeId: entry.envelope.handle.writeId })),
@@ -114,6 +124,22 @@ export function createRecoveryDomainStore(driver: RecoveryDomainDriver, context:
           // Only the dedicated paired transaction may introduce a claim.
           // Later generic edits must retain that exact ancestry pointer.
           if(JSON.stringify(candidate.entry.claim)!==JSON.stringify(existing.envelope?.entry.claim))return {value:conflict('admission','not-committed')};
+          const creation=candidate.entry.receipt&&decodeCreationReceipt(candidate.entry.receipt.raw,ownerId,scope.tripId);
+          if(creation&&candidate.entry.receipt?.raw!==existing.envelope?.entry.receipt?.raw) {
+            const token=decodeTripCreationToken(creation.reservationRaw,ownerId,scope.tripId);
+            const body=decodeRawRecovery(candidate.rawRecovery,scope);
+            const reservation=preparedEntries.find(entry=>entry.scope.kind==='trip-creation');
+            const completed=preparedEntries.find(entry=>entry.scope.kind==='trip-receipt');
+            const exactInitial=(value:ReturnType<typeof decodeRawRecovery>)=>Boolean(token&&value.kind==='readable'
+              &&value.value.writeId===token.initialWriteId&&JSON.stringify(prepareTripDocumentForWrite(value.value.trip))===token.initialTripRaw);
+            const fresh=token&&body.kind==='readable'&&candidate.handle.writeId===token.initialWriteId&&exactInitial(body)
+              &&(!existing.envelope||exactInitial(decodeRawRecovery(existing.envelope.rawRecovery,scope)))
+              &&candidate.legacySources.every(source=>exactInitial(decodeRecoverySource(source,scope)))
+              &&reservation?.envelope.raw===creation.reservationRaw&&reservation.envelope.retainedPreviousRaw===creation.reservationRaw
+              &&completed?.envelope.raw===candidate.entry.receipt!.raw;
+            if(!fresh&&!(creationRebind&&body.kind==='readable'&&validCreationReceiptRebind(creationRebind,candidate.entry.receipt!.raw,body.value.trip,ownerId)))
+              return {value:conflict('admission','not-committed')};
+          }
           const entryWrites: RecoveryEntryMutation[] = [];
           for (const [index, entry] of preparedEntries.entries()) {
             const decision = decideEntryWrite(entry, state.entries[index]); if (decision.kind !== 'write') return { value: decision };

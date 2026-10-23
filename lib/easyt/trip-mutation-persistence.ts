@@ -36,7 +36,8 @@ function isObject(value: unknown): value is JsonObject {
 }
 
 function jsonEqual(left: unknown, right: unknown) {
-  return JSON.stringify(left) === JSON.stringify(right);
+  // Account JSONB readback can reorder keys without changing authored values.
+  return authoredContentKey(left) === authoredContentKey(right);
 }
 
 function keyedArray(items: unknown[]): items is Array<JsonObject & { id: string }> {

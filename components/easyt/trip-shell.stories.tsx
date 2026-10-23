@@ -341,3 +341,21 @@ export const Desktop1440: Story = {
   parameters: { ...Overview.parameters },
   globals: { viewport: { value: "morrovia1440", isRotated: false } },
 };
+
+// The shared shell must keep the same generated country identity across tabs.
+export const GeneratedOneCountryItinerary: Story = {
+  ...GeneratedOneCountry,
+  args: { ...GeneratedOneCountry.args, children: Itinerary.args?.children },
+  parameters: Itinerary.parameters,
+};
+
+export const GeneratedTwoCountriesMap: Story = {
+  ...GeneratedTwoCountries,
+  args: { ...GeneratedTwoCountries.args, children: MapWorkspace.args?.children },
+  parameters: MapWorkspace.parameters,
+};
+
+export const Mobile390GeneratedCountryItinerary: Story = {
+  ...GeneratedOneCountryItinerary,
+  globals: { viewport: { value: "morrovia390", isRotated: false } },
+};

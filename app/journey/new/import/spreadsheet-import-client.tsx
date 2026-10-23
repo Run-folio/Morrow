@@ -1,5 +1,7 @@
 "use client";
 
+import {createTripCreationToken,loadReservedTripCreation,type TripCreationToken} from "@/lib/easyt/trip-creation-provenance";
+import type {EasyTTrip} from "@/lib/easyt/trip";
 import Link from "next/link";
 import { ArrowLeft, FileSpreadsheet, Upload } from "lucide-react";
 import { useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
@@ -69,6 +71,19 @@ export default function SpreadsheetImportClient() {
   const [saveError, setSaveError] = useState("");
   const [accountSaveWarning, setAccountSaveWarning] = useState<{ tripId: string; ownerId: string | null; accountAcknowledged: boolean; detail: string; protectedRecovery: boolean } | null>(null);
   const confirmingRef = useRef(false);
+  const [reservedCreation,setReservedCreation]=useState<{ownerScope:string;href:string}|null>(null);
+  const reservedCreationHref=reservedCreation?.ownerScope===ownerScope?reservedCreation.href:null;
+  useEffect(()=>{
+    setReservedCreation(null);
+    const params=new URLSearchParams(window.location.search),id=params.get("creation"),operation=params.get("creationOperation");
+    if(!id||!operation||sessionPending)return;
+    let active=true;const ownerId=visibleOwnerId;
+    void loadReservedTripCreation(id,operation,ownerId,()=>active&&ownerScopeRef.current===ownerScope).then(reserved=>{
+      if(active&&ownerScopeRef.current===ownerScope&&reserved)setReservedCreation({ownerScope,href:`/journey/new?trip=${encodeURIComponent(id)}&creation=${encodeURIComponent(operation)}`});
+    }).catch(()=>{});
+    return()=>{active=false;};
+  },[visibleOwnerId,sessionPending,ownerScope]);
+  const creationSubmissionRef=useRef<{reviewedInputKey:string;ownerId:string|null;trip:EasyTTrip;token:TripCreationToken}|null>(null);
   const pendingSubmissionRef = useRef<PendingSpreadsheetImportSubmission | null>(null);
   const transferRequestRef = useRef<AbortController | null>(null);
 
@@ -290,7 +305,7 @@ export default function SpreadsheetImportClient() {
   };
 
   const allPlacesResolved = Boolean(proposal?.stops.length) && proposal!.stops.every((stop) => resolvedPlaces[stop.id]);
-  const canConfirm = Boolean(proposal?.canConfirmStructure && resolvedOrigin && allPlacesResolved && !resolvingPlaces && !sessionPending && !accountSaveWarning);
+  const canConfirm = Boolean(proposal?.canConfirmStructure && resolvedOrigin && allPlacesResolved && !resolvingPlaces && !sessionPending && !accountSaveWarning && !reservedCreationHref);
 
   const confirm = async () => {
     if (!proposal || !resolvedOrigin || !reviewedInputKey || !canConfirm || saving || confirmingRef.current) return;
@@ -311,6 +326,8 @@ export default function SpreadsheetImportClient() {
       if (recoverySourceRevisionRef.current !== sourceRevision) throw new Error("The device copy changed while it was being checked. Review it before retrying this import.");
       let pending = pendingSpreadsheetImportForRetry(previous, { reviewedInputKey, ownerId, recovery });
       if (!pending) {
+        let fresh=creationSubmissionRef.current;
+        if(!fresh||fresh.reviewedInputKey!==reviewedInputKey||fresh.ownerId!==ownerId) {
         const candidate = canonicalTripFromSpreadsheetProposal({
           id: `trip-${crypto.randomUUID()}`,
           proposal,
@@ -323,7 +340,15 @@ export default function SpreadsheetImportClient() {
         const trip = await assessSpreadsheetImportTransfers(candidate, controller.signal);
         if (!isCurrent()) return;
         if (recoverySourceRevisionRef.current !== sourceRevision) throw new Error("The device copy changed while this import was being prepared. Review it before retrying.");
-        const preserved = await saveTripRecovery(trip, { ownerId, newTripOrClone: true, isCurrent, accountSavePending: Boolean(ownerId) });
+        fresh={reviewedInputKey,ownerId,trip,token:createTripCreationToken(trip,ownerId,"spreadsheet-import",crypto.randomUUID())};
+        creationSubmissionRef.current=fresh;
+        }
+        const {trip}=fresh;
+        const preserved = await saveTripRecovery(trip, { ownerId, newTripOrClone: true, creation:fresh.token,onCreationAttempted:()=>{
+          if(!isCurrent())return;
+          const url=new URL(window.location.href);url.searchParams.set("creation",trip.id);url.searchParams.set("creationOperation",fresh!.token.operationId);
+          window.history.replaceState(window.history.state,"",url);
+        }, isCurrent, accountSavePending: Boolean(ownerId) });
         if (!isCurrent()) return;
         if (!preserved.stored) throw new Error(preserved.blockedByExistingRecovery
           ? "A different recovery copy already exists on this device. Open or resolve it before importing another trip."
@@ -365,6 +390,7 @@ export default function SpreadsheetImportClient() {
   };
 
   return <div className={styles.boundary}>
+    {reservedCreationHref ? <MorroviaStatusBanner tone="warning" title="Your reviewed import is preserved" detail="Continue the interrupted creation before importing another trip." actions={<EasyTLinkButton href={reservedCreationHref}>Continue reviewed trip</EasyTLinkButton>} /> : null}
     {accountSaveWarning && accountSaveWarning.ownerId === visibleOwnerId ? <MorroviaStatusBanner tone="warning" title={accountSaveWarning.accountAcknowledged ? "Saved to your account" : "Saved on this device"} detail={accountSaveWarning.detail} actions={<EasyTLinkButton href={accountSaveWarning.protectedRecovery ? tripSyncRecoveryPath(accountSaveWarning.tripId) : firstTripWorkspaceHref(accountSaveWarning.tripId)}>{accountSaveWarning.protectedRecovery ? "Review device copy" : "Open saved trip"}</EasyTLinkButton>} /> : null}
     <Link className={styles.back} href="/journey/new"><ArrowLeft aria-hidden="true" /> Back to trip creation</Link>
     {!table ? <header className={styles.hero}>

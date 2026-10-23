@@ -52,6 +52,16 @@ const turn = () => new Promise<void>(resolve => setImmediate(resolve));
 
 for (const native of [true, false]) {
   const label = native ? 'native adapter model' : 'memory contract model';
+  test(`${label}: guest receipt is read-only and bound to the exact source trip`,async()=>{
+    const s=await setup(native),receipt=entry({ownerId:null,kind:'trip-receipt',tripId:s.source.handle.tripId},'guest-historical-receipt');
+    s.maps().get('heads')!.set(entryHeadKey(receipt.scope),receipt.headRaw);s.maps().get('generations')!.set(entryGenerationKey(receipt.scope,receipt.writeId),receipt.raw);
+    const request=structuredClone(s.request);request.sourceEntries.push({scope:receipt.scope,writeId:null});const before=structuredClone(s.maps());
+    assert.equal(await s.run(request,'readonly',state=>({value:state.source.entries.at(-1)?.headGenerationRaw})),receipt.raw);
+    await assert.rejects(s.run(request,'readwrite',()=>({value:true,sourceEntryWrites:[receipt]})));
+    request.sourceEntries.at(-1)!.scope.tripId='other-trip';
+    await assert.rejects(s.run(request,'readonly',()=>({value:true})));
+    assert.deepEqual(s.maps(),before);s.driver.close?.();
+  });
   test(`${label}: independent receipt participates only in a read-only paired-scope witness`,async()=>{
     const s=await setup(native),receipt=entry({ownerId:'owner-a',kind:'trip-receipt',tripId:s.source.handle.tripId},'historical-receipt');
     s.maps().get('heads')!.set(entryHeadKey(receipt.scope),receipt.headRaw);s.maps().get('generations')!.set(entryGenerationKey(receipt.scope,receipt.writeId),receipt.raw);

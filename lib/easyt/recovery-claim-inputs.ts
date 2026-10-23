@@ -1,3 +1,4 @@
+import {decodeCreationReceipt,decodeTripCreationToken,creationReceiptRaw} from './trip-creation-provenance.ts';
 import { decodeRecoveryEnvelope, decodeRawRecovery, type RecoveryEnvelope } from './durable-recovery-domain.ts';
 import { readBuilderInputDraft, builderInputDraftKey, type BuilderInputDraft } from './trip-builder-input-draft.ts';
 import { decodeHomepageBundle, type HomepageBundle } from './homepage-persistence.ts';
@@ -8,6 +9,7 @@ import {
 } from './home-trip-handoff.ts';
 import { homepageRouteReviewKey, type HomepageRouteEvidence } from './home-route-choice.ts';
 import type { CanonicalEasyTTrip, JourneyEndSelection } from './trip.ts';
+import { completedTripReceipt } from './trip-receipt-persistence.ts';
 
 type Held = { kind: 'held'; reason: string };
 export type RecoveryClaimInputs = Held | {
@@ -20,7 +22,7 @@ type CheckedHome = {
 const held = (reason: string): Held => ({ kind: 'held', reason });
 const object = (value: unknown): value is Record<string, unknown> => Boolean(value && typeof value === 'object' && !Array.isArray(value));
 
-function checkedHome(raw: string, trip: CanonicalEasyTTrip): CheckedHome | Held {
+function checkedHome(raw: string, trip: CanonicalEasyTTrip, historical = false): CheckedHome | Held {
   const decoded = decodeHomepageBundle(raw, null);
   if (!decoded) return held('homepage-unsupported');
   const { storedInput, bundle } = decoded;
@@ -35,7 +37,7 @@ function checkedHome(raw: string, trip: CanonicalEasyTTrip): CheckedHome | Held 
     draft = decoded.draft as HomeTripDraft;
     const draftReceipt = homepageHandoffReceiptForOwner(draft, null);
     if (!draftReceipt || !sameReceipt(receipt, draftReceipt) || !reusableHomepageReceipt(storedInput, draft)) return held('homepage-receipt-mismatch');
-    if (!homepageHandoffMatchesTrip(draft, trip)) return held('homepage-trip-mismatch');
+    if (!historical && !homepageHandoffMatchesTrip(draft, trip)) return held('homepage-trip-mismatch');
   }
   return { bundle, snapshot: storedInput.snapshot, receipt, draft };
 }
@@ -79,7 +81,7 @@ function rebindSnapshot(snapshot: HomepageInputSnapshot, ownerId: string): Homep
   } catch { return held('homepage-route-review-unsupported'); }
 }
 
-function rebindHome(home: CheckedHome, support: HomeTripDraft, ownerId: string, trip: CanonicalEasyTTrip): { raw: string } | Held {
+function rebindHome(home: CheckedHome, support: HomeTripDraft, ownerId: string, trip: CanonicalEasyTTrip, historical = false): { raw: string } | Held {
   const snapshot = rebindSnapshot(home.snapshot, ownerId);
   if ('kind' in snapshot) return snapshot;
   const draft = structuredClone(home.draft ?? support);
@@ -100,7 +102,7 @@ function rebindHome(home: CheckedHome, support: HomeTripDraft, ownerId: string, 
   if (!decoded?.storedInput || decoded.storedInput.receipt?.version !== 1
     || decoded.storedInput.receipt.semanticInputFingerprint !== homepageSemanticInputFingerprint(decoded.storedInput.snapshot)
     || !reusableHomepageReceipt(decoded.storedInput, draft)
-    || !homepageHandoffMatchesTrip(draft, { ...trip, ownerId })) return held('homepage-rebound-invalid');
+    || (historical ? !completedTripReceipt(raw, ownerId, trip.id) : !homepageHandoffMatchesTrip(draft, { ...trip, ownerId }))) return held('homepage-rebound-invalid');
   return { raw };
 }
 
@@ -122,11 +124,26 @@ export function rebindRecoveryClaimInputs(source: RecoveryEnvelope, builderRaw: 
 
 /** Backend-neutral preparation after the caller has proved exact guest provenance.
  * This grants no recovery or account authority and writes no source bytes. */
-export function rebindGuestSaveInputs(source:{trip:CanonicalEasyTTrip;input:RecoveryEnvelope['entry']['input'];receipt:RecoveryEnvelope['entry']['receipt']},builderRaw:string|null,homepageRaw:string|null,ownerId:string):RecoveryClaimInputs {
+export function rebindGuestSaveInputs(source:{trip:CanonicalEasyTTrip;input:RecoveryEnvelope['entry']['input'];receipt:RecoveryEnvelope['entry']['receipt']},builderRaw:string|null,homepageRaw:string|null,ownerId:string,
+  completedIntake?:NonNullable<RecoveryEnvelope['entry']['receipt']>):RecoveryClaimInputs {
   try {
     if(!ownerId.trim())return held('owner-required');
     const trip=source.trip;
     if (trip.ownerId !== null) return held('source-not-guest');
+    // Only a receipt observed in the trip's own persistence scope (or its
+    // validated recovery generation) is historical provenance. The shared
+    // Home slot alone keeps the original first-document shape requirement.
+    const creation=completedIntake&&decodeCreationReceipt(completedIntake.raw,null,trip.id);
+    if(creation) {
+      if(completedIntake!.ownerId!==null||completedIntake!.tripId!==trip.id||completedIntake!.operationId!==creation.operationId
+        ||source.receipt&&JSON.stringify(source.receipt)!==JSON.stringify(completedIntake))return held('homepage-receipt-mismatch');
+    } else if (completedIntake) {
+      const checked=completedTripReceipt(completedIntake.raw,null,trip.id);
+      if(!checked||completedIntake.ownerId!==null||completedIntake.tripId!==trip.id
+        ||completedIntake.operationId!==checked.handoffId
+        ||source.receipt&&JSON.stringify(source.receipt)!==JSON.stringify(completedIntake))return held('homepage-receipt-mismatch');
+      homepageRaw=completedIntake.raw;
+    }
     let input: RecoveryEnvelope['entry']['input'] = null, reboundBuilder: string | null = null;
     if (source.input && builderRaw === null) return held('builder-input-required');
     if (source.input && source.input.raw !== builderRaw) return held('builder-input-changed');
@@ -143,15 +160,21 @@ export function rebindGuestSaveInputs(source:{trip:CanonicalEasyTTrip;input:Reco
       input = { ownerId, tripId: trip.id, inputRevision: draft.inputRevision, raw: reboundBuilder };
     }
 
+    if(creation) {
+      const token=decodeTripCreationToken(creation.reservationRaw,null,trip.id);
+      if(!token)return held('homepage-receipt-mismatch');
+      const raw=creationReceiptRaw(token,ownerId);
+      return {kind:'ready',input,receipt:{ownerId,tripId:trip.id,operationId:creation.operationId,raw},builderRaw:reboundBuilder,homepageRaw:null};
+    }
     let receipt: RecoveryEnvelope['entry']['receipt'] = null, reboundHomepage: string | null = null;
     if (source.receipt && homepageRaw === null) return held('homepage-required');
     if (homepageRaw !== null) {
       const decoded = decodeHomepageBundle(homepageRaw, null);
       if (!source.receipt && decoded?.bundle.inputRaw === null && decoded.bundle.draftRaw === null) reboundHomepage = homepageRaw;
       else {
-        const current = checkedHome(homepageRaw, trip);
+        const current = checkedHome(homepageRaw, trip, Boolean(completedIntake));
         if ('kind' in current) return current;
-        const original = source.receipt ? checkedHome(source.receipt.raw, trip) : current;
+        const original = source.receipt ? checkedHome(source.receipt.raw, trip, Boolean(completedIntake)) : current;
         if ('kind' in original) return original.reason === 'homepage-unsupported' ? held('homepage-receipt-unsupported') : original;
         if (source.receipt && source.receipt.operationId !== original.receipt.handoffId
           || !sameReceipt(current.receipt, original.receipt)) return held('homepage-receipt-mismatch');
@@ -161,9 +184,12 @@ export function rebindGuestSaveInputs(source:{trip:CanonicalEasyTTrip;input:Reco
           if(projected.ok)support={...projected.draft,homepage:{...projected.draft.homepage!,receipt:current.receipt}};
         }
         if (!support) return held('homepage-supporting-draft-required');
-        const currentRebound = rebindHome(current, support, ownerId, trip);
+        // Reprojection is only a fallback for an exact existing receipt. Never
+        // replace historical provider/profile interpretation with new output.
+        if(!reusableHomepageReceipt({snapshot:original.snapshot,receipt:original.receipt},support))return held('homepage-receipt-mismatch');
+        const currentRebound = rebindHome(current, support, ownerId, trip, Boolean(completedIntake));
         if ('kind' in currentRebound) return currentRebound;
-        const originalRebound = rebindHome(original, support, ownerId, trip);
+        const originalRebound = rebindHome(original, support, ownerId, trip, Boolean(completedIntake));
         if ('kind' in originalRebound) return originalRebound;
         reboundHomepage = currentRebound.raw;
         receipt = { ownerId, tripId: trip.id, operationId: original.receipt.handoffId, raw: originalRebound.raw };

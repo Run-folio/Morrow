@@ -75,7 +75,7 @@ export function TripShellIdentityAndActions() {
   const trip = mutation.trip;
   const pathname = usePathname();
   const isOverview = workspaceViewFromPathname(pathname, trip.id) === "overview";
-  const displayTitle = isOverview ? tripOverviewDisplayTitle(mutation.trip) : tripDisplayTitle(mutation.trip);
+  const displayTitle = tripOverviewDisplayTitle(mutation.trip);
   const [titleDisclosure, dispatchTitleDisclosure] = useReducer(reduceTripTitleDisclosure, { expanded: false, dismissed: false, hovered: false, focused: false });
   const { expanded: titleExpanded, dismissed: titlePreviewDismissed, hovered: titleHovered, focused: titleFocused } = titleDisclosure;
   const dateFacts = deriveTripDateFacts({ startDate: trip.startDate, endDate: trip.endDate });

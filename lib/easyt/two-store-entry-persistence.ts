@@ -25,7 +25,7 @@ export function createTwoStoreEntryPersistence(storage: EasyTBrowserStorage, dri
     const domain = await entries.read(scope);
     if (domain.kind !== 'ready') return { kind: domain.kind === 'protected-conflict' || domain.kind === 'failure' && ['schema', 'corrupt'].includes(domain.reason)
       ? 'protected' : 'unavailable', reason: domain.kind === 'verified' ? 'unknown' : domain.reason };
-    if((scope.kind==='builder-input'||scope.kind==='trip-receipt')&&scope.tripId!==null) {
+    if((scope.kind==='builder-input'||scope.kind==='trip-receipt'||scope.kind==='trip-creation')&&scope.tripId!==null) {
       const canonical=await createRecoveryDomainStore(driver,{ownerId:scope.ownerId,isCurrent:active}).read(scope.tripId);
       if(canonical.kind!=='ready')return {kind:'protected',reason:'claim-canonical-unknown'};
       const claim=await readRecoveryClaimBarrier(driver,storage,{ownerId:scope.ownerId,isCurrent:active},scope.tripId,canonical.envelope);if(claim.kind!=='ready')return claim;
@@ -48,6 +48,11 @@ export function createTwoStoreEntryPersistence(storage: EasyTBrowserStorage, dri
     } catch { return { kind: 'unavailable', reason: 'native-read-unknown' }; }
   }
   function candidate(raw: string | null, writeId: string, state: Extract<TwoStoreEntryRead, { kind: 'ready' }>): RecoveryEntryWrite {
+    // An immutable operation is replayed verbatim. Making its current handle
+    // its own parent would turn a successful-but-unconfirmed write into a fork.
+    if(state.envelope?.handle.writeId===writeId&&state.envelope.raw===raw)return {
+      raw:JSON.stringify(state.envelope),expectedHead:state.envelope.parent,
+      admission:state.envelope.parent?'existing-domain':'native-setter-quota'};
     const envelope: RecoveryEntryEnvelope = { version: 1,
       handle: { ...scope, version: 1, backend: 'indexeddb-entry', writeId }, parent: state.envelope?.handle ?? null,
       raw, legacyRaw: state.envelope?.legacyRaw ?? state.legacyRaw, retainedPreviousRaw: state.raw };
@@ -60,14 +65,16 @@ export function createTwoStoreEntryPersistence(storage: EasyTBrowserStorage, dri
       const writeId = options.writeId ?? globalThis.crypto.randomUUID(), allowInitialOverflow = options.allowInitialOverflow === true;
       const expected=options.expected?structuredClone(options.expected):undefined;
       const state = await read(); if (state.kind !== 'ready') return state;
-      if(scope.kind==='trip-receipt'&&(raw===null||state.raw!==null&&state.raw!==raw))return protectedResult('receipt-exists');
+      if((scope.kind==='trip-receipt'||scope.kind==='trip-creation')&&(raw===null||state.raw!==null&&state.raw!==raw))return protectedResult('receipt-exists');
       if(expected) {
         const prepared=prepareEntryWrite(expected,scope.ownerId);
+        const replay=prepared.kind==='prepared'&&state.envelope!==null&&JSON.stringify(state.envelope)===prepared.raw;
         if(prepared.kind!=='prepared'||prepared.scope.kind!==scope.kind||prepared.scope.tripId!==scope.tripId
           ||prepared.envelope.handle.writeId!==writeId||prepared.envelope.raw!==raw
-          ||!sameEntryHandle(expected.expectedHead,state.envelope?.handle??null)
+          ||!replay&&(!sameEntryHandle(expected.expectedHead,state.envelope?.handle??null)
           ||prepared.envelope.legacyRaw!==(state.envelope?.legacyRaw??state.legacyRaw)
-          ||prepared.envelope.retainedPreviousRaw!==state.raw)return protectedResult('preparation-changed');
+          ||prepared.envelope.retainedPreviousRaw!==state.raw))return protectedResult('preparation-changed');
+        if(replay)return active()?{kind:'verified',backend:'indexeddb-entry'}:protectedResult('operation-changed');
       }
       if (!state.envelope) {
         // Clearing is a retained domain tombstone, never automatic native deletion.

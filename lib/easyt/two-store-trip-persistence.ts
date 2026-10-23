@@ -13,7 +13,8 @@ import { createTwoStoreEntryPersistence } from './two-store-entry-persistence.ts
 import { builderInputDraftKey, readBuilderInputDraft } from './trip-builder-input-draft.ts';
 import { requireReadableTripDocument } from './trip-document.ts';
 import {createDurableHomepagePersistence,decodeHomepageBundle} from './homepage-persistence.ts';
-import {completedTripReceipt,createTripReceiptPersistence} from './trip-receipt-persistence.ts';
+import {decodeTripCreationToken,decodeCreationReceipt,createTripCreationPersistence,validCreationReceiptRebind,type TripCreationToken,type CreationReceiptRebind} from './trip-creation-provenance.ts';
+import {completedTripReceipt,tripReceiptIdentity,createTripReceiptPersistence,homepageInputMatchesTripReceipt} from './trip-receipt-persistence.ts';
 import {tripReceiptStorageKey} from './private-browser-context.ts';
 import type {PreparedEntryWrite} from './durable-entry-store.ts';
 import {createRecoveryLifecycle} from './recovery-domain-lifecycle.ts';
@@ -27,7 +28,7 @@ export type TwoStoreList = { kind: 'ready'; recoveries: TripRecoveryRecord[] } |
 export type TwoStoreContext = { ownerId: string | null; isCurrent: () => boolean; overflowEnabled: boolean; accountOverflowQualified: boolean };
 export type TwoStoreSaveOptions = { replace?: TripRecoveryHandle; state?: TripRecoveryRecord['state']; writeId?: string; now?: string;
   projectionOnly?: { acceptedRevision: number; inputRevision: number };
-  newTripOrClone?: boolean; entry?: RecoveryEnvelope['entry']; entries?: RecoveryEntryWrite[]; canonicalBase?: EasyTTrip; expectedRecoverySource?: EasyTTrip };
+  creation?: TripCreationToken; creationReceiptRebind?:CreationReceiptRebind; newTripOrClone?: boolean; entry?: RecoveryEnvelope['entry']; entries?: RecoveryEntryWrite[]; canonicalBase?: EasyTTrip; expectedRecoverySource?: EasyTTrip };
 export function createTwoStoreTripPersistence(storage: EasyTBrowserStorage, driver: RecoveryDomainDriver, context: TwoStoreContext) {
   const ownerId = context.ownerId, isCurrent = context.isCurrent;
   const active = () => { try { return isCurrent() === true; } catch { return false; } };
@@ -343,6 +344,29 @@ export function createTwoStoreTripPersistence(storage: EasyTBrowserStorage, driv
         }
       }
       const sourceStillCurrent = () => { try { return !cacheWitness || storage.getItem(cacheWitness.key) === cacheWitness.raw; } catch { return false; } };
+      const creationReceipt=options.entry?.receipt&&decodeCreationReceipt(options.entry.receipt.raw,ownerId,tripId);
+      if(creationReceipt&&!options.creation) {
+        const retained=await createTripReceiptPersistence(storage,driver,{...context,tripId,isCurrent:active}).read();
+        if(retained.kind!=='ready'||retained.raw!==options.entry!.receipt!.raw
+          &&(!options.creationReceiptRebind||!validCreationReceiptRebind(options.creationReceiptRebind,options.entry!.receipt!.raw,trip,ownerId)))
+          return reject(true,'scope-mismatch','body-entry-receipt');
+      }
+      if(options.creation) {
+        const token=decodeTripCreationToken(JSON.stringify(options.creation),ownerId,tripId);
+        const source=state.resolved.source?decodeRecoverySource(state.resolved.source,scope(tripId)):null;
+        const initial=state.domain.envelope?decodeRawRecovery(state.domain.envelope.rawRecovery,scope(tripId)):source;
+        const initialOnly=initial?.kind==='readable'&&token&&initial.value.writeId===token.initialWriteId
+          &&options.replace?.writeId===token.initialWriteId
+          &&JSON.stringify(prepareTripDocumentForWrite(initial.value.trip))===token.initialTripRaw;
+        const unused=!state.domain.envelope&&!state.legacy.length&&readNativeCache(tripId).kind==='missing';
+        if(!token||writeId!==token.initialWriteId||JSON.stringify(trip)!==token.initialTripRaw
+          ||state.domain.acknowledgement||state.lifecycle||state.domain.envelope?.entry.claim
+          ||!unused&&!initialOnly)return reject(true,'scope-mismatch','body-entry-receipt');
+        const proof=await createTripCreationPersistence(storage,driver,{...context,tripId,isCurrent:active}).read();
+        if(proof.kind!=='ready'||proof.raw!==JSON.stringify(token)
+          ||!(options.entries??[]).some(value=>{const entry=prepareEntryWrite(value,ownerId);return entry.kind==='prepared'
+            &&entry.scope.kind==='trip-creation'&&entry.scope.tripId===tripId&&entry.envelope.raw===proof.raw;}))return reject(true,'scope-mismatch','body-entry-receipt');
+      }
       const requiredEntries:PreparedEntryWrite[]=[];
       for(const input of options.entries??[]) {
         const prepared=prepareEntryWrite(input,ownerId);
@@ -351,11 +375,20 @@ export function createTwoStoreTripPersistence(storage: EasyTBrowserStorage, driv
           const read=readBuilderInputDraft({getItem:()=>prepared.envelope.raw},requireReadableTripDocument(trip),ownerId),metadata=options.entry?.input;
           if(prepared.scope.tripId!==tripId||read.kind!=='readable'||!metadata||metadata.ownerId!==ownerId||metadata.tripId!==tripId
             ||metadata.raw!==prepared.envelope.raw||metadata.inputRevision!==read.draft.inputRevision)return reject(true,'scope-mismatch','body-entry-input');
+        }else if(prepared.scope.kind==='trip-creation') {
+          const token=decodeTripCreationToken(prepared.envelope.raw,ownerId,tripId),receipt=options.entry?.receipt;
+          const completed=receipt&&decodeCreationReceipt(receipt.raw,ownerId,tripId);
+          if(!options.creation||!token||prepared.scope.tripId!==tripId||JSON.stringify(token)!==JSON.stringify(options.creation)
+            ||completed?.reservationRaw!==prepared.envelope.raw||token.initialWriteId!==writeId)return reject(true,'scope-mismatch','body-entry-receipt');
         }else {
-          const receipt=prepared.scope.kind==='trip-receipt'?completedTripReceipt(prepared.envelope.raw,ownerId,tripId):decodeHomepageBundle(prepared.envelope.raw,ownerId)?.storedInput?.receipt,metadata=options.entry?.receipt;
-          if(receipt?.version!==1||receipt.tripId!==tripId||!metadata||metadata.ownerId!==ownerId||metadata.tripId!==tripId
+          const receipt=prepared.scope.kind==='trip-receipt'?tripReceiptIdentity(prepared.envelope.raw,ownerId,tripId):decodeHomepageBundle(prepared.envelope.raw,ownerId)?.storedInput?.receipt,metadata=options.entry?.receipt;
+          if(!receipt||('version' in receipt&&(receipt.version!==1||receipt.tripId!==tripId))||!metadata||metadata.ownerId!==ownerId||metadata.tripId!==tripId
             ||prepared.scope.kind==='trip-receipt'&&prepared.scope.tripId!==tripId
-            ||metadata.raw!==prepared.envelope.raw||metadata.operationId!==receipt.handoffId)return reject(true,'scope-mismatch','body-entry-receipt');
+            ||metadata.raw!==prepared.envelope.raw&&(prepared.scope.kind!=='homepage'
+              ||!homepageInputMatchesTripReceipt(prepared.envelope.raw,metadata.raw,ownerId,tripId)
+              ||!(options.entries??[]).some(value=>{const paired=prepareEntryWrite(value,ownerId);return paired.kind==='prepared'
+                &&paired.scope.kind==='trip-receipt'&&paired.scope.tripId===tripId&&paired.envelope.raw===metadata.raw;}))
+            ||metadata.operationId!==('operationId' in receipt?receipt.operationId:receipt.handoffId))return reject(true,'scope-mismatch','body-entry-receipt');
         }
         requiredEntries.push(prepared);
       }
@@ -363,6 +396,9 @@ export function createTwoStoreTripPersistence(storage: EasyTBrowserStorage, driv
         for(const prepared of requiredEntries) {
           if(prepared.scope.kind==='homepage') {
             const state=await createDurableHomepagePersistence(storage,driver,{ownerId,isCurrent:active,overflowEnabled:context.overflowEnabled,accountOverflowQualified:context.accountOverflowQualified}).read();
+            if(state.kind!=='ready'||state.raw!==prepared.envelope.raw)return false;
+          }else if(prepared.scope.kind==='trip-creation') {
+            const state=await createTripCreationPersistence(storage,driver,{...context,tripId,isCurrent:active}).read();
             if(state.kind!=='ready'||state.raw!==prepared.envelope.raw)return false;
           }else if(prepared.scope.kind==='trip-receipt') {
             const state=await createTripReceiptPersistence(storage,driver,{...context,tripId,isCurrent:active}).read();
@@ -375,6 +411,18 @@ export function createTwoStoreTripPersistence(storage: EasyTBrowserStorage, driv
         }
         return active();
       };
+      if(options.creation&&(state.domain.envelope||state.resolved.source)&&await verifyEntries()) {
+        // The exact reserved initial checkpoint already completed. Re-read the
+        // body/proof, report that checkpoint, and leave navigation untouched.
+        // In particular, never generate a self-parent IDB generation on retry.
+        const after=await inspect(tripId);
+        const proof=await createTripCreationPersistence(storage,driver,{...context,tripId,isCurrent:active}).read();
+        if(!active()||after.kind!=='resolved'||JSON.stringify(after)!==JSON.stringify(state)
+          ||proof.kind!=='ready'||proof.raw!==JSON.stringify(options.creation))return reject(true,undefined,'body-entry-receipt');
+        return {stored:true,handle:{ownerId,tripId,writeId,...(state.domain.envelope?{backend:'indexeddb' as const}:{})},
+          blockedByExistingRecovery:false,pointerAcknowledged:false,recoveryDurable:true,readbackConfirmed:true,
+          writeAttempted:false,outcome:'device-confirmed',receiptAcknowledged:true};
+      }
       const existing = state.domain.envelope;
       let nativePointerRaw: string | null;
       try { nativePointerRaw = nativePointer().raw; } catch { return reject(true,undefined,'body-native-pointer'); }
@@ -501,8 +549,10 @@ export function createTwoStoreTripPersistence(storage: EasyTBrowserStorage, driv
               const written=prepared.scope.kind==='homepage'
                 ?await createDurableHomepagePersistence(storage,driver,{ownerId,isCurrent:active,overflowEnabled:context.overflowEnabled,accountOverflowQualified:context.accountOverflowQualified})
                   .write(prepared.envelope.raw!,{allowInitialOverflow:options.newTripOrClone===true,writeId:prepared.envelope.handle.writeId,expected:options.entries!.find(value=>value.raw===prepared.raw)})
+                :prepared.scope.kind==='trip-creation'
+                ?await createTripCreationPersistence(storage,driver,{...context,tripId,isCurrent:active}).save(prepared.envelope.raw!,{allowInitialOverflow:true,writeId:prepared.envelope.handle.writeId,expected:options.entries!.find(value=>value.raw===prepared.raw)})
                 :await createTwoStoreEntryPersistence(storage,driver,{scope:prepared.scope,key:prepared.scope.kind==='trip-receipt'?tripReceiptStorageKey(ownerId,tripId):key,isCurrent:active,overflowEnabled:context.overflowEnabled,accountOverflowQualified:context.accountOverflowQualified,
-                  validate:raw=>raw===null||(prepared.scope.kind==='trip-receipt'?Boolean(completedTripReceipt(raw,ownerId,tripId)):readBuilderInputDraft({getItem:()=>raw},canonical,ownerId).kind==='readable')})
+                  validate:raw=>raw===null||(prepared.scope.kind==='trip-receipt'?Boolean(tripReceiptIdentity(raw,ownerId,tripId)):readBuilderInputDraft({getItem:()=>raw},canonical,ownerId).kind==='readable')})
                   // The paired input has the same exact-source admission as
                   // its body. Reopening an existing trip removes the new-trip
                   // capability; it must not strand an owned body if input alone
@@ -585,7 +635,7 @@ export function createTwoStoreTripPersistence(storage: EasyTBrowserStorage, driv
           ...(existing?.entry.claim?{claim:structuredClone(existing.entry.claim)}:{}),
           ...(cacheWitness?{nativeCacheRaw:cacheWitness.raw}:existing?.entry.nativeCacheRaw!==undefined?{nativeCacheRaw:existing.entry.nativeCacheRaw}:{}) } };
       const committed = await domain.commit({ raw: JSON.stringify(candidate), expectedHead: candidate.parent,
-        admission: existing ? 'existing-domain' : 'native-setter-quota', entries: options.entries, projectionFence });
+        admission: existing ? 'existing-domain' : 'native-setter-quota', entries: options.entries, projectionFence,creationReceiptRebind:options.creationReceiptRebind });
       if (committed.kind !== 'verified') return observedRefusal({ ...refused(tripId,writeId,committed.kind === 'protected-conflict'),
         handle: { ownerId, tripId, writeId, backend: 'indexeddb' }, recoveryDurable:false,
         ...(projectionFence ? {

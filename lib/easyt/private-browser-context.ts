@@ -21,6 +21,10 @@ export function homepageDraftStorageKey(ownerId: string | null) {
 }
 
 /** Historical intake provenance is independent of editable Home and trip recovery. */
+export function tripCreationStorageKey(ownerId: string | null, tripId: string) {
+  return `${PRIVATE_CONTEXT_PREFIX}:${privateContextScope(ownerId)}:trip-creation:${encodeURIComponent(tripId)}`;
+}
+
 export function tripReceiptStorageKey(ownerId: string | null, tripId: string) {
   if (!tripId.trim()) throw new TypeError('A completed receipt requires a trip');
   return `${PRIVATE_CONTEXT_PREFIX}:${privateContextScope(ownerId)}:trip-receipt:${encodeURIComponent(tripId)}`;

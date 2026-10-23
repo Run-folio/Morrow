@@ -1,3 +1,4 @@
+import type {TripCreationToken} from './trip-creation-provenance.ts';
 import type { EasyTTrip, CanonicalEasyTTrip } from './trip.ts';
 import type { TripRecoveryHandle, TripRecoveryRecord, TripRecoveryWriteResult } from './storage.ts';
 import { sameRecoveryDocument } from './storage.ts';
@@ -13,11 +14,12 @@ const sameHandle = (a: TripRecoveryHandle | null | undefined, b: TripRecoveryHan
 
 /** One frozen pre-editor source; storage callbacks retain all persistence authority. */
 export function createBuilderEntrySession<Receipt>(options: {
-  key: string; ownerId: string | null; candidate: CanonicalEasyTTrip; receipt: Receipt | null;
+  key: string; ownerId: string | null; candidate: CanonicalEasyTTrip; receipt: Receipt | null; creation?:TripCreationToken|null;
   initialCanonical: EasyTTrip | null; openedRecovery: TripRecoveryHandle | null;
   isCurrent(): boolean;
 }) {
   const candidate = freeze(structuredClone(options.candidate)), receipt = freeze(structuredClone(options.receipt));
+  const creation=freeze(structuredClone(options.creation??null));
   const initialCanonical = freeze(structuredClone(options.initialCanonical)), openedRecovery = freeze(structuredClone(options.openedRecovery));
   const scheduledWork = new Set<() => void>();
   let workReleased = false;
@@ -29,7 +31,7 @@ export function createBuilderEntrySession<Receipt>(options: {
   const refused = (): TripRecoveryWriteResult => ({ stored: false, writeAttempted: false, blockedByExistingRecovery: false,
     failureReason: 'unknown', handle: { ownerId: options.ownerId, tripId: candidate.id, writeId: 'retired-builder-entry' } });
   return {
-    key: options.key, ownerId: options.ownerId, candidate, receipt,
+    key: options.key, ownerId: options.ownerId, candidate, receipt, creation,
     isCurrent, retire() { retired = true; scheduledWork.clear(); },
     holdScheduledWork(callback: () => void) {
       if (!isCurrent()) return () => {};
@@ -56,14 +58,14 @@ export function createBuilderEntrySession<Receipt>(options: {
           const result = await write(candidate, receipt, isCurrent);
           if (!isCurrent()) return { ...result, stored: false, failureReason: 'unknown' as const };
           if (!result.stored || result.recoveryDurable === false || result.readbackConfirmed === false
-            || result.pointerAcknowledged === false || receipt && result.receiptAcknowledged !== true
+            || result.pointerAcknowledged === false || (receipt||creation) && result.receiptAcknowledged !== true
             || result.handle.ownerId !== options.ownerId || result.handle.tripId !== candidate.id || !result.handle.writeId) {
             // An unattempted acknowledgement must not hide an earlier body failure.
             const bodyVerified = (result.stored || result.recoveryDurable === true)
               && result.recoveryDurable !== false && result.readbackConfirmed !== false;
             const failureReason = result.failureReason ?? (bodyVerified
               ? result.pointerAcknowledged === false ? 'pointer-incomplete'
-                : receipt && result.receiptAcknowledged !== true ? 'receipt-incomplete' : 'unknown'
+                : (receipt||creation) && result.receiptAcknowledged !== true ? 'receipt-incomplete' : 'unknown'
               : 'unknown');
             phase = 'failed'; return { ...result, stored: false, failureReason };
           }

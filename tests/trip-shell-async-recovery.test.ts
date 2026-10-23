@@ -6,7 +6,8 @@ import ts from 'typescript';
 import { canonicalRouteFixture } from './fixtures/batch14-route-documents.ts';
 import { canonicalTripRevisionCanReplace } from '../lib/easyt/trip-continuity.ts';
 import { createTripMutationPersistenceQueue, newestTripMutationCanonical } from '../lib/easyt/trip-mutation-persistence.ts';
-import { tripOverviewDisplayTitle } from '../lib/easyt/trip-display.ts';
+import * as tripDisplay from '../lib/easyt/trip-display.ts';
+import { workspaceViewFromPathname } from '../lib/easyt/trip-workspace-links.ts';
 import * as workspaceDiagnostic from '../lib/easyt/workspace-recovery-diagnostic.ts';
 import {BrowserRecoveryReadError as ActualBrowserRecoveryReadError} from '../lib/easyt/browser-recovery-persistence.ts';
 
@@ -325,6 +326,7 @@ function clientHarness(t: { after: (callback: () => void) => void }, storageOver
   const originalWindow = Object.getOwnPropertyDescriptor(globalThis, 'window');
   Object.defineProperty(globalThis, 'window', { configurable: true, value: Object.assign(new EventTarget(), { location: { pathname: '/journey/async-shell-trip', search: '', hash: '' } }) });
   t.after(() => { schedule.unmount(); if (originalWindow) Object.defineProperty(globalThis, 'window', originalWindow); else Reflect.deleteProperty(globalThis, 'window'); });
+  let pathname = '/journey/async-shell-trip';
   let sessionOwner = 'owner-a';
   let props = { trip: { ...canonicalRouteFixture(), id: 'async-shell-trip', ownerId: sessionOwner }, children: null };
   let remaining: any = { ownerId: props.trip.ownerId, tripId: props.trip.id, writeId: 'reviewed', trip: { ...props.trip, title: 'Device edits' } };
@@ -343,14 +345,14 @@ function clientHarness(t: { after: (callback: () => void) => void }, storageOver
   for (const match of source.matchAll(/from "([^"]+)"/g)) imports[match[1]] = {};
   Object.assign(imports, {
     react: { ...schedule.hooks, createContext: () => ({ Provider: () => null }), useContext: () => mutation },
-    'next/navigation': { usePathname: () => '/journey/async-shell-trip', useRouter: () => ({}), useSelectedLayoutSegment: () => null },
+    'next/navigation': { usePathname: () => pathname, useRouter: () => ({}), useSelectedLayoutSegment: () => null },
     '@/lib/auth-client': { authClient: { useSession: () => ({ data: { user: { id: sessionOwner } }, isPending: false }) } },
     '@/lib/analytics': { trackEvent: () => undefined }, '@/lib/easyt/storage': storage,
     '@/lib/easyt/trip': { isEasyTTrip: () => true },
     '@/lib/easyt/trip-continuity': { canonicalTripRevisionCanReplace, tripConflictResolutionActions: () => ({}), journeyReauthenticationPath: () => '/sign-in' },
     '@/lib/easyt/private-browser-context': { ownerBoundaryState: () => 'current' },
-    '@/lib/easyt/trip-workspace-links': { workspaceVisitKey: (path: string) => path, workspaceViewFromPathname: () => 'overview', tripBuilderHref: () => '/builder', mapWorkspaceHref: () => '/map', tripWorkspaceHref: () => '/trip' },
-    '@/lib/easyt/trip-display': { tripOverviewDisplayTitle, tripDisplayTitle: (trip: any) => trip.title, tripCustomTitle: () => '', renameTripIdentity: (trip: any, title: string) => ({ ...trip, title }) },
+    '@/lib/easyt/trip-workspace-links': { workspaceVisitKey: (path: string) => path, workspaceViewFromPathname, tripBuilderHref: () => '/builder', mapWorkspaceHref: () => '/map', tripWorkspaceHref: () => '/trip' },
+    '@/lib/easyt/trip-display': tripDisplay,
     '@/lib/easyt/trip-facts': { deriveTripDateFacts: () => ({ durationDays: 2, rangeLabel: 'Dates' }) },
     '@/lib/easyt/trip-legs': { tripRouteDisplayLabel: () => 'Route' },
     '@/lib/easyt/accommodation': { overnightAccommodationStops: () => [] },
@@ -363,7 +365,7 @@ function clientHarness(t: { after: (callback: () => void) => void }, storageOver
   });
   const client = load('../components/easyt/trip-shell-client.tsx', imports);
   return { render: () => schedule.render(client.TripShellTripProvider, props), renderIdentity: () => schedule.render(client.TripShellIdentityAndActions),
-    Dialog, Form, Field, Launcher, Button, mutation, setRemaining: (value: any) => { remaining = value; },
+    Dialog, Form, Field, Launcher, Button, mutation, setPathname: (value: string) => { pathname = value; }, setRemaining: (value: any) => { remaining = value; },
     setOwner: (value: string) => { sessionOwner = value; props = { ...props, trip: { ...props.trip, ownerId: value } }; mutation.trip = props.trip; } };
 }
 
@@ -563,4 +565,28 @@ test('workspace qualified retry still protects a genuinely different account con
     acknowledgeTripBuildSave:async()=>{acks++;return {accountAcknowledged:true,outcome:'acknowledged'};}});
   h.render();await tick();const view=h.render();
   assert.equal(acks,0);assert.deepEqual(marked,['conflict']);assert.equal(findNode(view,h.Banner)?.props.title,'Cloud copy kept safe');assert.equal(findNode(view,h.Shell)?.props.trip.title,'Different account work');
+});
+
+for (const identity of [
+  { label: 'explicit automatic', title: 'Stored generated city names', customTitle: null, expected: 'Japan' },
+  { label: 'legacy automatic', title: 'London to Tokyo & Kyoto & Hiroshima', expected: 'Japan' },
+  { label: 'custom Unicode', title: 'Previous stored name', customTitle: '春の旅 — Japan', expected: '春の旅 — Japan' },
+  { label: 'unknown legacy', title: 'Our anniversary by rail', expected: 'Our anniversary by rail' },
+]) test(`shared header retains ${identity.label} identity across every workspace tab without writing`, t => {
+  let writes = 0;
+  const h = clientHarness(t, {}, { mutateTrip: async () => { writes++; return true; } });
+  h.mutation.trip.title = identity.title;
+  delete h.mutation.trip.brief.customTitle;
+  if ('customTitle' in identity) h.mutation.trip.brief.customTitle = identity.customTitle;
+  const before = structuredClone(h.mutation.trip);
+  const text = (node: any): string => node == null ? '' : typeof node === 'string' ? node
+    : Array.isArray(node) ? node.map(text).join('') : text(node.props?.children);
+  for (const tab of ['', '/itinerary', '/map', '/calendar', '/explore', '/stay', '/transport']) {
+    h.setPathname(`/journey/async-shell-trip${tab}`);
+    const button = findNode(h.renderIdentity(), h.Button);
+    assert.ok(button, `title disclosure exists on ${tab || '/overview'}`);
+    assert.equal(text(button), identity.expected, `same display identity on ${tab || '/overview'}`);
+  }
+  assert.deepEqual(h.mutation.trip, before, 'presentation cannot rewrite stored identity or content');
+  assert.equal(writes, 0);
 });

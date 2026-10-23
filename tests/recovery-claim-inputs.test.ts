@@ -169,3 +169,14 @@ test('combined frozen Builder and HOME metadata remain complete, deterministic a
   assert.notEqual(other.homepageRaw, first.homepageRaw);
   assert.equal(JSON.stringify(home.source), before);
 });
+
+test('historical support may not be regenerated as a different provider interpretation', async () => {
+  const {rebindGuestSaveInputs}=await api();
+  const {homeRecoveryFixture}=await import('./helpers/home-recovery-fixture.ts');
+  const f=homeRecoveryFixture(),draft={...f.draft,routeHints:['Synthetic provider-specific interpretation']};
+  const receipt=homepageReceiptForProjection(f.snapshot,draft,f.trip.id);
+  const raw=JSON.stringify({version:1,inputRaw:JSON.stringify({snapshot:f.snapshot,receipt}),draftRaw:null});
+  const historical={ownerId:null,tripId:f.trip.id,operationId:receipt.handoffId,raw};
+  const result=rebindGuestSaveInputs({trip:f.trip,input:null,receipt:null},null,raw,'owner-a',historical);
+  assert.deepEqual(result,{kind:'held',reason:'homepage-receipt-mismatch'});
+});

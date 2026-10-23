@@ -1,5 +1,6 @@
 "use client";
 
+import {createTripCreationToken,loadTripCreationContinuation,loadReservedTripCreation,type TripCreationToken} from "@/lib/easyt/trip-creation-provenance";
 import { builderDetailsStatus } from "@/lib/easyt/builder-planning-status";
 import type { TransferAssessment } from '@/lib/easyt/planning-evidence-state';
 import { currentBuilderTransferAssessments, transferAssessmentForLeg } from '@/lib/easyt/planning-evidence-presentation';
@@ -577,6 +578,7 @@ function TripBuilderDocument() {
     resumedInputRaw?: string;
     resumedTrip?: EasyTTrip;
   } | null>(null);
+  const builderCreationTokenRef=useRef<TripCreationToken|null>(null);
   const receiptAcknowledgementRef = useRef<Promise<boolean> | null>(null);
   const pendingInterpretationRef = useRef<PendingIntakeReceipt | null>(null);
   const planningAttemptIdRef = useRef<string | null>(null);
@@ -1511,6 +1513,7 @@ function TripBuilderDocument() {
     setBuilderSeed(null);
     builderSeedPendingRef.current = false;
     pendingNewTripReceiptRef.current = null;
+    builderCreationTokenRef.current=null;
     receiptAcknowledgementRef.current = null;
     pendingInterpretationRef.current = null;
     planningAttemptIdRef.current = null;
@@ -1562,7 +1565,12 @@ function TripBuilderDocument() {
         const explicitRecovery = params.get("recover") === "1";
         const ownerScope = activeOwnerId;
         const requestedRecovery = explicitRecovery ? await loadTripRecovery(tripIdFromUrl, ownerScope) : null;
-        const requestedTrip = requestedRecovery?.trip ?? await loadRequestedTrip(tripIdFromUrl, ownerScope);
+        let requestedTrip = requestedRecovery?.trip ?? await loadRequestedTrip(tripIdFromUrl, ownerScope);
+        if(!requestedTrip&&params.get("creation")) {
+          const reserved=await loadReservedTripCreation(tripIdFromUrl,params.get("creation")!,ownerScope,()=>active&&activeBrowserOwnerIdRef.current===ownerScope);
+          if(!active)return;
+          if(reserved){builderCreationTokenRef.current=reserved.token;requestedTrip=reserved.trip;}
+        }
         if (!active || activeBrowserOwnerIdRef.current !== ownerScope) return;
         if (requestedTrip) {
           const matchingRecovery = requestedRecovery ?? await loadTripRecovery(tripIdFromUrl, ownerScope);
@@ -1571,6 +1579,12 @@ function TripBuilderDocument() {
             && JSON.stringify(matchingRecovery.trip) === JSON.stringify(requestedTrip)
             ? matchingRecovery
             : null;
+          if(matchingRecovery) {
+            const creation=await loadTripCreationContinuation(requestedTrip,matchingRecovery.writeId,ownerScope,()=>active&&activeBrowserOwnerIdRef.current===ownerScope);
+            if(!active)return;
+            if(creation.kind==='protected') {guardEntry("pending-continuation-protected");hydratedEntryKind="unavailable";}
+            else if(creation.kind==='pending')builderCreationTokenRef.current=creation.token;
+          }
           applySaved(requestedTrip);
           if (showItinerary) setGenerated(true);
         } else {
@@ -1608,6 +1622,12 @@ function TripBuilderDocument() {
         if (!params.has("homeDraft") && !params.has("inspire") && params.get("resumePending") !== "1") {
           const currentDraft = await loadCurrentDraftRecovery(activeOwnerId);
           if (currentDraft && active) {
+            const creation=await loadTripCreationContinuation(currentDraft.trip,currentDraft.writeId,activeOwnerId,()=>active&&activeBrowserOwnerIdRef.current===activeOwnerId);
+            if(!active)return;
+            if(creation.kind==='protected') {
+              hydratedOwnerScopeRef.current=activeOwnerId;guardEntry("pending-continuation-protected");setEntryKind("unavailable");setHydrated(true);return;
+            }
+            if(creation.kind==='pending'){builderCreationTokenRef.current=creation.token;builderInitialOverflowRef.current=true;}
             recoveryHandleRef.current = currentDraft;
             applySaved(currentDraft.trip);
             setResumedQuerylessDraft(true);
@@ -1798,7 +1818,11 @@ function TripBuilderDocument() {
             if (!active) return;
             if (existingHomepageTrip) {
               const explicitContinuation = params.get("resumePending") === "1";
-              const continuation = explicitContinuation && existingRecovery && pendingIntakeContinuation({ownerId:activeOwnerId,
+              // The same explicit Home handoff can reload after its body was
+              // preserved but its receipt checkpoint failed. Re-complete only
+              // a still-initial, exact guest intake before editing can begin.
+              // Queryless New and changed/foreign sources keep their own guards.
+              const continuation = (explicitContinuation || receivingHomeDraft && activeOwnerId === null) && existingRecovery && pendingIntakeContinuation({ownerId:activeOwnerId,
                 inputRaw:homepageState.inputRaw,draftRaw:homepageState.draftRaw,recovery:existingRecovery});
               if (explicitContinuation && !continuation) {
                 setPendingContinuationNeedsReview(true);guardEntry("pending-continuation-protected");hydratedEntryKind="unavailable";homeDraft=null;
@@ -1817,6 +1841,8 @@ function TripBuilderDocument() {
                 resumedHomepageTrip = true;
                 hydratedEntryKind = "explicit-trip";
               }
+            } else if(storedHomepageInput?.receipt?.version===1) {
+              pendingNewTripReceiptRef.current={snapshot:storedHomepageInput.snapshot,receipt:homepageReceipt,draft:homeDraft,fromHomepage:true};
             }
           }
         }
@@ -1858,7 +1884,7 @@ function TripBuilderDocument() {
       }
       if (active) {
         hydratedOwnerScopeRef.current = activeOwnerId;
-        builderInitialOverflowRef.current = Boolean(pendingNewTripReceiptRef.current?.resumedTrip)
+        builderInitialOverflowRef.current = Boolean(builderCreationTokenRef.current || pendingNewTripReceiptRef.current?.resumedTrip)
           || ["fresh","route-handoff","home-handoff","pending-home-handoff","pending-direct-intake"].includes(hydratedEntryKind);
         setEntryKind(hydratedEntryKind);
         setHydrated(true);
@@ -1978,6 +2004,7 @@ function TripBuilderDocument() {
     setTripBrief("");
     setHasPromptContext(false);
     setArrivedFromHomepage(false);
+    builderCreationTokenRef.current=null;
     setTripId(crypto.randomUUID());
     setEntryKind("fresh");
     setTripBriefCaptureError("");
@@ -4651,11 +4678,16 @@ function TripBuilderDocument() {
     const receiptToken = pendingNewTripReceiptRef.current;
     const inputRevision = builderEntryInputRevisionRef.current, hydrationRevision = builderEntryHydrationRevisionRef.current;
     const ownerId = activeBrowserOwnerIdRef.current;
-    const canonical = !receiptToken?.resumedTrip && hydratedCanonicalTripRef.current?.id === trip.id ? hydratedCanonicalTripRef.current : null;
-    const candidate = requireReadableTripDocument(receiptToken?.resumedTrip ?? canonical ?? trip);
+    const canonical = !builderCreationTokenRef.current && !receiptToken?.resumedTrip && hydratedCanonicalTripRef.current?.id === trip.id ? hydratedCanonicalTripRef.current : null;
+    const reservedCreation=builderCreationTokenRef.current;
+    const candidate = requireReadableTripDocument(reservedCreation?.tripId===trip.id?JSON.parse(reservedCreation.initialTripRaw):receiptToken?.resumedTrip ?? canonical ?? trip);
+    if(!receiptToken&&!canonical&&!recoveryHandleRef.current&&!builderCreationTokenRef.current
+      &&(entryKind==="fresh"||entryKind==="route-handoff"))
+      builderCreationTokenRef.current=createTripCreationToken(candidate,ownerId,entryKind==="route-handoff"?"curated-route":"manual-builder",crypto.randomUUID());
+    const creation=builderCreationTokenRef.current?.tripId===candidate.id?builderCreationTokenRef.current:null;
     const key = JSON.stringify([hydrationRevision, ownerId, candidate.id, inputRevision, ++builderEntrySequenceRef.current,
       receiptToken?.receipt.handoffId, receiptToken?.pending?.inputRevision, receiptToken?.pending?.semanticInputFingerprint]);
-    const entry: BuilderEntrySession<NonNullable<typeof pendingNewTripReceiptRef.current>> = createBuilderEntrySession({ key, ownerId, candidate, receipt: receiptToken, initialCanonical: canonical,
+    const entry: BuilderEntrySession<NonNullable<typeof pendingNewTripReceiptRef.current>> = createBuilderEntrySession({ key, ownerId, candidate, receipt: receiptToken, creation, initialCanonical: canonical,
       openedRecovery: canonical ? recoveryHandleRef.current : null,
       isCurrent: () => builderMountedRef.current && activeBrowserOwnerIdRef.current === ownerId
         && builderEntryHydrationRevisionRef.current === hydrationRevision && builderEntryInputRevisionRef.current === inputRevision
@@ -5041,7 +5073,11 @@ function TripBuilderDocument() {
       const currentHandle = recoveryHandleRef.current;
       const replacement = currentHandle?.tripId === candidate.id && currentHandle.ownerId === ownerId ? currentHandle : undefined;
       reportQaPersistenceBoundary("recovery-preparation", "recovery-scope", {accepted:true,scopeMatches:true,writeAttempted:false,caller:qaCaller,receiptPresent:Boolean(pendingReceipt)});
-      return saveTripRecovery(candidate, {ownerId,replace:replacement,isCurrent:()=>generationIsCurrent() && canUseHydratedTripScope(hydratedOwnerScopeRef.current, ownerId),newTripOrClone:builderInitialOverflowRef.current,
+      return saveTripRecovery(candidate, {ownerId,replace:replacement,isCurrent:()=>generationIsCurrent() && canUseHydratedTripScope(hydratedOwnerScopeRef.current, ownerId),newTripOrClone:builderInitialOverflowRef.current,...(entry!.creation?{creation:entry!.creation,onCreationAttempted:()=>{
+          if(!generationIsCurrent())return;
+          const url=new URL(window.location.href);url.searchParams.set("trip",candidate.id);url.searchParams.set("creation",entry!.creation!.operationId);
+          window.history.replaceState(window.history.state,"",url);
+        }}:{}),
         ...(pendingReceipt ? {expectedRecoverySource:pendingReceipt.resumedTrip,intake:{pending:pendingReceipt.pending,completed:pendingReceipt.receipt,draft:pendingReceipt.draft,fromHomepage:Boolean(pendingReceipt.fromHomepage),resumedInputRaw:pendingReceipt.resumedInputRaw}} : {})});
     });
     const generationIsCurrent=() => entry!.isCurrent() && canUseHydratedTripScope(hydratedOwnerScopeRef.current, ownerId);
@@ -5083,7 +5119,7 @@ function TripBuilderDocument() {
     builderSeedPendingRef.current = true;
     const start=async()=>{
       try {
-        const source=!pendingNewTripReceiptRef.current?.resumedTrip && hydratedCanonicalTripRef.current?.id===entry.candidate.id ? hydratedCanonicalTripRef.current : null;
+        const source=!entry.creation && !pendingNewTripReceiptRef.current?.resumedTrip && hydratedCanonicalTripRef.current?.id===entry.candidate.id ? hydratedCanonicalTripRef.current : null;
         const candidate=entry.candidate;
         reportQaPersistenceBoundary("recovery-preparation", "recovery-candidate", {accepted:true,writeAttempted:false,caller:"seed"});
         if (!source) {

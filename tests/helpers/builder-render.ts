@@ -16,8 +16,9 @@ const runtime = process.env.MORROVIA_PLAYWRIGHT_MODULE ?? (existsSync(bundledRun
 // app/Storybook build. Framework, auth and map boundaries retain the same stubs.
 const bundles = new Map<boolean, Promise<{ script: string; css: string }>>();
 
-async function builderBundle(styled = false) {
-  if (!bundles.has(styled)) bundles.set(styled, build({
+export async function builderBundle(styled = false, sourceOverrides?: ReadonlyMap<string,string>) {
+  if (!sourceOverrides && bundles.has(styled)) return bundles.get(styled)!;
+  const pending = build({
     stdin: {
       contents: `${styled ? "import './app/journey/journey-design.css';" : ""}import React from 'react'; import {createRoot} from 'react-dom/client'; import Builder from './app/journey/new/trip-builder'; import Home from './app/journey/home/home-trip-starter'; import LegacyPlanner from './components/journey-map-planner-workspace'; import Resolver from './components/easyt/trip-shell-resolver'; import Explore from './components/easyt/trip-explore-workspace'; import Stay from './components/easyt/trip-stay-workspace'; import MapWorkspace from './components/easyt/trip-map-workspace'; import Importer from './app/journey/new/import/spreadsheet-import-client'; import Overview from './components/easyt/trip-overview-workspace'; import Transport from './components/easyt/trip-transport-workspace'; import Itinerary from './components/easyt/trip-itinerary-workspace'; import Dashboard from './app/journey/dashboard/dashboard-client'; import {loadLocalTripFromStorage,loadTripRecovery,acknowledgeTripBuildSave,saveTripRecoveryToEasyT,expectCanonicalSave} from './lib/easyt/storage'; import TripShell from './components/easyt/trip-shell'; import {useTripShellTrip,useTripShellMutation,TripShellCanonicalMutationProvider} from './components/easyt/trip-shell-client';
       function MutationControls(){const mutation=useTripShellMutation();return React.createElement('section',{'aria-label':'Synthetic mutation probe'},React.createElement('button',{onClick:()=>void mutation.mutateTrip(current=>({...current,title:current.title+' edited'}),'p0-title')},'Apply synthetic title edit'),React.createElement('button',{onClick:()=>void mutation.mutateTrip(current=>current,'p0-noop')},'No-op synthetic edit'),React.createElement('button',{onClick:async()=>{const r=await loadTripRecovery(mutation.trip.id,mutation.trip.ownerId);if(!r)throw Error('Synthetic retained source required');const c=await saveTripRecoveryToEasyT(r.trip,r);const a=await acknowledgeTripBuildSave(r.trip,c,r);if(a.outcome!=='acknowledged')throw Error('Synthetic ACK required');await mutation.adoptCanonicalTrip(c);}},'Acknowledge via separate fixture path'),React.createElement('output',{'data-save-state':mutation.saveState},mutation.saveState));}
@@ -32,6 +33,11 @@ async function builderBundle(styled = false) {
     loader: styled ? { ".css": "css", ".module.css": "local-css" } : { ".css": "empty", ".module.css": "empty" },
     define: { "process.env.NODE_ENV": '"test"', "process.env": "{}" },
     plugins: [{ name: "framework-boundaries", setup(builder) {
+      // Explicit test-only frozen source comparison; imports retain their real
+      // source paths. Normal fixtures always read the working candidate.
+      if(sourceOverrides)builder.onLoad({filter:/\.[cm]?[jt]sx?$/},({path})=>{
+        const contents=sourceOverrides.get(path);return contents===undefined?undefined:{contents,loader:path.endsWith('x')?'tsx':'ts',resolveDir:path.slice(0,path.lastIndexOf('/'))};
+      });
       builder.onResolve({ filter: /^next\/(navigation|link|image)$/ }, ({ path }) => ({ path, namespace: "framework" }));
       builder.onResolve({ filter: /^@\/components\/journey-planner-map$/ }, () => ({ path: "map", namespace: "fixture" }));
       builder.onLoad({ filter: /^map$/, namespace: "fixture" }, () => ({ resolveDir: fileURLToPath(new URL("../../", import.meta.url)), contents: `import React,{useEffect} from 'react'; export function JourneyPlannerMap({legs=[],stops=[],selectedId,selectedLegId,onSelect,onLegSelect,onLifecycleChange}){useEffect(()=>onLifecycleChange?.(window.__MORROVIA_MAP_UNAVAILABLE__?'unavailable':'ready'),[onLifecycleChange]);return React.createElement('div',{'aria-label':'Whole-trip route map preview','data-selected-leg-id':selectedLegId??''},[...stops.map(stop=>React.createElement('button',{key:'stop:'+stop.id,type:'button','aria-label':'Map stop '+(stop.city||stop.name),'aria-pressed':stop.id===selectedId,onClick:()=>onSelect?.(stop.id)},stop.city||stop.name)),...legs.map(leg=>React.createElement('button',{key:'leg:'+leg.id,type:'button','aria-label':'Map leg '+leg.fromName+' to '+leg.toName,'aria-pressed':leg.id===selectedLegId,onClick:()=>onLegSelect?.(leg)},leg.fromName+' → '+leg.toName))]);}` }));
@@ -43,8 +49,9 @@ async function builderBundle(styled = false) {
       }));
     } }],
   }).then((result) => ({ script: result.outputFiles.find((file) => file.path.endsWith(".js"))!.text,
-    css: result.outputFiles.find((file) => file.path.endsWith(".css"))?.text ?? "" })));
-  return bundles.get(styled)!;
+    css: result.outputFiles.find((file) => file.path.endsWith(".css"))?.text ?? "" }));
+  if(!sourceOverrides)bundles.set(styled,pending);
+  return pending;
 }
 
 export async function renderBuilder({

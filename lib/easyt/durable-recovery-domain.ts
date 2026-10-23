@@ -94,7 +94,7 @@ export function snapshotRecoveryClaimRequest(request: RecoveryClaimRequest,readO
       if (!record(row) || !keys(row, ['scope', 'writeId']) || !isEntryScope(row.scope)
         || !keys(row.scope, ['ownerId', 'kind', 'tripId']) || row.scope.ownerId !== scope.ownerId
         || !(['homepage', 'builder-input', 'recovery-lifecycle', 'recovery-claim'].includes(row.scope.kind)
-          || readOnly&&scope.ownerId!==null&&row.scope.kind==='trip-receipt')
+          || readOnly&&(row.scope.kind==='trip-receipt'||row.scope.kind==='trip-creation'))
         || (row.scope.kind === 'homepage' ? row.scope.tripId !== null : row.scope.tripId !== scope.tripId)
         || !(row.writeId === null || text(row.writeId))) throw new TypeError('Unbound claim entry');
       const key = entryHeadKey(row.scope);
