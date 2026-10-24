@@ -166,6 +166,10 @@ function validEnvelope(value: unknown): value is BuilderInputDraft {
   }
   return fingerprint(value.fields as BuilderInputField[]) === value.basedOnFingerprint;
 }
+/** Validate an isolated retained draft without rebinding or adopting it. */
+export function isBuilderInputDraftForScope(value:unknown,ownerId:string|null,tripId:string):value is BuilderInputDraft {
+  return validEnvelope(value)&&value.ownerId===ownerId&&value.tripId===tripId&&JSON.stringify(value).length<=BYTE_LIMIT;
+}
 export type BuilderInputReadResult = { kind: "empty" } | { kind: "readable"; draft: BuilderInputDraft }
   | { kind: "protected"; raw: string } | { kind: "error"; reason: "storage" };
 export function readBuilderInputDraft(storage: Pick<BuilderInputStorage, "getItem">, trip: CanonicalEasyTTrip, scopeOwnerId = trip.ownerId): BuilderInputReadResult {

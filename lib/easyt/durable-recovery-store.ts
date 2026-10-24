@@ -59,6 +59,7 @@ export function createRecoveryDomainStore(driver: RecoveryDomainDriver, context:
         const raw = await driver.readCurrent(ownerId), head = decodeDomainCurrent(raw, ownerId);
         if (head.kind !== 'readable') return decodeFailure(head, 'not-started');
         if (!head.value) return active() ? { kind: 'ready', envelope: null, acknowledgement: null } : conflict('operation-changed');
+        if (head.value.backend === 'creation-handover') return conflict('operation-changed');
         if (head.value.backend === 'cleared') return active() ? {kind:'ready',envelope:null,acknowledgement:null,current:head.value}:conflict('operation-changed');
         if (head.value.backend === 'local-storage') return active() ? { kind: 'ready', envelope: null, acknowledgement: null, current: head.value } : conflict('operation-changed');
         const read = await this.read(head.value.tripId); if (read.kind !== 'ready') return read;
@@ -66,7 +67,7 @@ export function createRecoveryDomainStore(driver: RecoveryDomainDriver, context:
         return active() ? { ...read, current: head.value } : conflict('operation-changed');
       } catch (error) { return failure(recoveryErrorReason(error)); }
     },
-    async commit(input: { raw: string; expectedHead: RecoveryHandle | null; admission: 'native-setter-quota' | 'existing-domain'; entries?: RecoveryEntryWrite[]; projectionFence?: ProjectionFence;creationReceiptRebind?:CreationReceiptRebind }): Promise<RecoveryCommitResult> {
+    async commit(input: { raw: string; expectedHead: RecoveryHandle | null; admission: 'native-setter-quota' | 'existing-domain'; entries?: RecoveryEntryWrite[]; projectionFence?: ProjectionFence;navigationFence?:{currentRaw:unknown;witness?:{entry:import('./durable-entry-protocol.ts').RecoveryEntryRequest;entryRaw:string};isCurrent:()=>boolean};creationReceiptRebind?:CreationReceiptRebind }): Promise<RecoveryCommitResult> {
       if (!active()) return conflict('operation-changed');
       if (input.admission !== 'native-setter-quota' && !(input.admission === 'existing-domain' && input.expectedHead !== null)) return conflict('admission');
       let parsed: unknown; try { parsed = JSON.parse(input.raw); } catch { return failure('corrupt'); }
@@ -75,6 +76,16 @@ export function createRecoveryDomainStore(driver: RecoveryDomainDriver, context:
       if (decoded.kind !== 'readable') return decodeFailure(decoded, 'not-started');
       const candidate = decoded.value, raw = input.raw;
       const creationRebind=input.creationReceiptRebind?structuredClone(input.creationReceiptRebind):undefined;
+      const navigationFence=input.navigationFence?{...input.navigationFence,witness:input.navigationFence.witness?structuredClone(input.navigationFence.witness):undefined}:undefined;
+      if(navigationFence&&decodeDomainCurrent(navigationFence.currentRaw,ownerId).kind!=='readable')return conflict('scope');
+      const navigationWitness=navigationFence?.witness;
+      if(navigationWitness){
+        const entry=decodeEntryEnvelope(navigationWitness.entryRaw,navigationWitness.entry.scope),pointer=decodeDomainCurrent(navigationFence!.currentRaw,ownerId);
+        if(navigationWitness.entry.scope.kind!=='creation-navigation'||navigationWitness.entry.scope.ownerId!==ownerId||navigationWitness.entry.scope.tripId!==scope.tripId
+          ||entry.kind!=='readable'||entry.value.raw!==navigationFence!.currentRaw||entry.value.handle.writeId!==navigationWitness.entry.writeId
+          ||pointer.kind!=='readable'||pointer.value?.backend!=='creation-handover'||pointer.value.tripId!==scope.tripId
+          ||pointer.value.writeId!==candidate.handle.writeId||pointer.value.attemptId!==navigationWitness.entry.writeId)return conflict('scope');
+      }
       let fence: ProjectionFence | undefined;
       try { fence = input.projectionFence ? structuredClone(input.projectionFence) : undefined; } catch { return conflict('scope'); }
       const expected = input.expectedHead === null ? null : isDomainHandle(input.expectedHead) ? { ...input.expectedHead } : undefined;
@@ -93,7 +104,7 @@ export function createRecoveryDomainStore(driver: RecoveryDomainDriver, context:
       const preparedEntries: PreparedEntryWrite[] = [], seenEntries = new Set<string>();
       for (const entry of input.entries ?? []) {
         const prepared = prepareEntryWrite(entry, ownerId); if (prepared.kind !== 'prepared') return prepared;
-        if(prepared.scope.kind==='recovery-lifecycle'||prepared.scope.kind==='recovery-claim'||prepared.scope.kind==='browser-owner')return conflict('admission');
+        if(prepared.scope.kind==='recovery-lifecycle'||prepared.scope.kind==='recovery-claim'||prepared.scope.kind==='browser-owner'||prepared.scope.kind==='creation-navigation')return conflict('admission');
         const key = entryHeadKey(prepared.scope);
         if (seenEntries.has(key) || (prepared.scope.kind === 'builder-input'||prepared.scope.kind==='trip-receipt'||prepared.scope.kind==='trip-creation') && prepared.scope.tripId !== candidate.handle.tripId) return conflict('scope');
         const requiredRaw = prepared.scope.kind === 'builder-input' ? candidate.entry.input?.raw ?? null : prepared.scope.kind==='trip-creation'
@@ -106,7 +117,7 @@ export function createRecoveryDomainStore(driver: RecoveryDomainDriver, context:
         seenEntries.add(key); preparedEntries.push(prepared);
       }
       const entryRequests = [...preparedEntries.map(entry => ({ scope: entry.scope, writeId: entry.envelope.handle.writeId })),
-        ...(fence?.entries ?? []).map(entry => ({scope: entry.scope, writeId: null}))];
+        ...(fence?.entries ?? []).map(entry => ({scope: entry.scope, writeId: null})),...(navigationWitness?[navigationWitness.entry]:[])];
       const unchangedMetadata = (state: RecoveryDomainState) => (fence?.entries ?? []).every((entry,index) => {
         const observed = state.entries[preparedEntries.length + index];
         if (!observed) return false;
@@ -118,6 +129,12 @@ export function createRecoveryDomainStore(driver: RecoveryDomainDriver, context:
       try {
         const committed = await driver.run<RecoveryCommitResult | { kind: 'committed' }>(scope, candidate.handle.writeId, 'readwrite', state => {
           if (!active()) return { value: conflict('operation-changed', 'not-committed') };
+          if(navigationFence&&(state.currentRaw!==navigationFence.currentRaw||!navigationFence.isCurrent()))return {value:conflict('operation-changed','not-committed')};
+          if(navigationWitness){
+            const row=state.entries.at(-1),entry=JSON.parse(navigationWitness.entryRaw);
+            if(row?.headRaw!==JSON.stringify(entry.handle)||row.headGenerationRaw!==navigationWitness.entryRaw||row.generationRaw!==navigationWitness.entryRaw)
+              return {value:conflict('operation-changed','not-committed')};
+          }
           const existing = stateHead(state, scope); if (existing.kind !== 'valid') return { value: existing };
           if (fence && (state.headGenerationRaw !== fence.sourceRaw || state.currentRaw !== fence.currentRaw || !unchangedMetadata(state)))
             return {value: conflict('head-changed','not-committed')};

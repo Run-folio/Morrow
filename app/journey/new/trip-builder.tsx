@@ -46,6 +46,9 @@ import { allRequiredStaysHaveNights } from "@/lib/easyt/trip-builder-generated-n
 import { projectBuilderCalendar } from "@/lib/easyt/trip-builder-calendar";
 import { resolveBuilderRecommendation, loadBuilderDiscoveryPlaces, builderDiscoveryInputKey, currentBuilderDiscoveredPlaces, type BuilderDiscoveryCache } from "@/lib/easyt/trip-builder-recommendations";
 import { readDurableHomepageState, pendingDurableReceiptStillCurrent } from "@/lib/easyt/homepage-persistence";
+import {InterruptedInputReview} from '@/components/easyt/interrupted-input-review';
+import {readInterruptedBuilderInputs, retainInterruptedBuilderInput, type InterruptedBuilderInput} from '@/lib/easyt/interrupted-builder-input';
+import {browserRecoveryStorage} from '@/lib/easyt/browser-recovery-persistence';
 import { readDurableBuilderInputDraft, writeDurableBuilderInputDraft } from "@/lib/easyt/builder-input-persistence";
 import { type BuilderInputBinding } from "@/lib/easyt/trip-builder-input-draft";
 import { EasyTTripPersistenceError, isTripPersistenceAuthenticationError, tripRecoveryStateForPersistenceError } from "@/lib/easyt/trip-persistence-error";
@@ -579,6 +582,7 @@ function TripBuilderDocument() {
     resumedTrip?: EasyTTrip;
   } | null>(null);
   const builderCreationTokenRef=useRef<TripCreationToken|null>(null);
+  const builderCreationReplayScopeRef=useRef<{token:TripCreationToken;ownerId:string|null;inputRevision:number;hydrationRevision:number}|null>(null);
   const receiptAcknowledgementRef = useRef<Promise<boolean> | null>(null);
   const pendingInterpretationRef = useRef<PendingIntakeReceipt | null>(null);
   const planningAttemptIdRef = useRef<string | null>(null);
@@ -599,7 +603,10 @@ function TripBuilderDocument() {
   if (!captureRequestGateRef.current) captureRequestGateRef.current = createLatestJourneyCaptureRequestGate();
   const hydratedOwnerScopeRef = useRef<string | null | undefined>(undefined);
   const activeBrowserOwnerIdRef = useRef(activeBrowserOwnerId);
-  activeBrowserOwnerIdRef.current = activeBrowserOwnerId;
+  const interruptedSeenSessionsRef = useRef(new WeakSet<object>());
+  const pendingInterruptedInputsRef = useRef<InterruptedBuilderInput[]>([]);
+  const [interruptedReadVersion,setInterruptedReadVersion] = useState(0);
+  const [interruptedInputs,setInterruptedInputs] = useState<{ownerId:string|null;tripId:string;records:InterruptedBuilderInput[];unreadable:boolean}|null>(null);
   const builderEntrySessionRef = useRef<BuilderEntrySession<NonNullable<typeof pendingNewTripReceiptRef.current>> | null>(null);
   const builderEntryHydrationRevisionRef = useRef(0);
   const builderEntryInputRevisionRef = useRef(0);
@@ -610,6 +617,24 @@ function TripBuilderDocument() {
   const builderSeedPendingRef = useRef(false);
   const builderInitialOverflowRef = useRef(false);
   const builderCurrentDocumentRef = useRef<EasyTTrip | null>(null);
+  // Freeze only the previous mounted owner's raw input before retiring its authority.
+  // Retention is passive and synchronous; it cannot authorize the old async writer.
+  const retiringEditor = builderEditSessionRef.current;
+  if (retiringEditor && (sessionPending || activeBrowserOwnerIdRef.current !== activeBrowserOwnerId)
+    && !interruptedSeenSessionsRef.current.has(retiringEditor)) {
+    const snapshot=retiringEditor.getSnapshot(),entry=builderEntrySessionRef.current;
+    if (entry?.isMountedSession(retiringEditor,snapshot.browserOwnerId)
+      && snapshot.browserOwnerId===activeBrowserOwnerIdRef.current && snapshot.draft.fields.length
+      && (snapshot.saveState==='device-saving'||snapshot.error?.category==='storage'||snapshot.error?.category==='protected')) {
+      const capture:InterruptedBuilderInput=Object.freeze({version:1,ownerId:snapshot.browserOwnerId,tripId:snapshot.trip.id,
+        captureId:crypto.randomUUID(),entryKey:entry.key,draft:snapshot.draft});
+      let verified=false;
+      try {verified=retainInterruptedBuilderInput(browserRecoveryStorage(),capture).kind==='verified';}catch{/* Keep the only copy below. */}
+      if(!verified)pendingInterruptedInputsRef.current.push(capture);
+    }
+    interruptedSeenSessionsRef.current.add(retiringEditor);
+  }
+  activeBrowserOwnerIdRef.current = activeBrowserOwnerId;
   if (builderEntrySessionRef.current && builderEntrySessionRef.current.ownerId !== activeBrowserOwnerId) builderEntrySessionRef.current.retire();
   const retireBuilderEntryForInput = () => {
     const entry = builderEntrySessionRef.current;
@@ -618,7 +643,10 @@ function TripBuilderDocument() {
       entry.retire(); builderSeedPendingRef.current = false; setBuilderSeed(null);
     }
   };
-  const mountedBuilder = useBuilderEditSession(builderSeed && builderSeed.initialTrip.id && hydratedOwnerScopeRef.current === activeBrowserOwnerId ? {
+  // A matching owner cannot revive a generation retired during an auth refetch.
+  const builderSeedIsCurrent = Boolean(builderSeed && (!builderSeed.entryKey
+    || builderEntrySessionRef.current?.key === builderSeed.entryKey && builderEntrySessionRef.current.isCurrent()));
+  const mountedBuilder = useBuilderEditSession(builderSeed && builderSeedIsCurrent && !sessionPending && builderSeed.initialTrip.id && hydratedOwnerScopeRef.current === activeBrowserOwnerId ? {
     ...builderSeed,
     getOwnerId: () => activeBrowserOwnerIdRef.current,
     readDraft: (trip, owner) => readDurableBuilderInputDraft(trip, owner, () => builderMountedRef.current && activeBrowserOwnerIdRef.current === owner
@@ -667,6 +695,25 @@ function TripBuilderDocument() {
   const currentBuilderEntry = builderEntrySessionRef.current;
   if (mountedBuilder && currentBuilderEntry && currentBuilderEntry.key === builderSeed?.entryKey) currentBuilderEntry.handoff(mountedBuilder.session, mountedBuilder.snapshot);
   const canonicalBuilder = mountedBuilder?.snapshot.trip;
+  useEffect(()=>{
+    const warn=(event:BeforeUnloadEvent)=>{if(pendingInterruptedInputsRef.current.length){event.preventDefault();event.returnValue='';}};
+    window.addEventListener('beforeunload',warn);return()=>window.removeEventListener('beforeunload',warn);
+  },[]);
+  useEffect(()=>{
+    const current=mountedBuilder?.snapshot;
+    if(sessionPending||!current||current.browserOwnerId!==activeBrowserOwnerId){setInterruptedInputs(null);return;}
+    let read:{records:InterruptedBuilderInput[];unreadable:boolean};
+    try {read=readInterruptedBuilderInputs(browserRecoveryStorage(),activeBrowserOwnerId,current.trip.id);}catch{read={records:[],unreadable:true};}
+    setInterruptedInputs({ownerId:activeBrowserOwnerId,tripId:current.trip.id,...read});
+  },[activeBrowserOwnerId,sessionPending,mountedBuilder?.snapshot.trip.id,interruptedReadVersion]);
+  const retryInterruptedRetention=()=>{
+    if(sessionPending)return;
+    pendingInterruptedInputsRef.current=pendingInterruptedInputsRef.current.filter(capture=>{
+      if(capture.ownerId!==activeBrowserOwnerId)return true;
+      try{return retainInterruptedBuilderInput(browserRecoveryStorage(),capture).kind!=='verified';}catch{return true;}
+    });
+    setInterruptedReadVersion(value=>value+1);
+  };
   useEffect(()=>{
     if(!mountedBuilder)return;
     recoveryHandleRef.current=mountedBuilder.snapshot.recovery;
@@ -1504,7 +1551,8 @@ function TripBuilderDocument() {
     reportQaPersistenceBoundary("hydration", "hydration-ready", {accepted:sessionPending || !browserContextReady ? undefined : true,phase:sessionPending || !browserContextReady ? "probe" : "result",writeAttempted:false,
       sessionClass:sessionPending ? "pending" : sessionUnavailable ? "unavailable" : authenticatedOwnerId ? "signed-in" : "guest"});
     if (sessionPending || !browserContextReady) return;
-    if (canUseHydratedTripScope(hydratedOwnerScopeRef.current, activeBrowserOwnerId)) return;
+    if (canUseHydratedTripScope(hydratedOwnerScopeRef.current, activeBrowserOwnerId)
+      && (!builderSeed || builderSeedIsCurrent)) return;
     const previousOwnerScope = hydratedOwnerScopeRef.current;
     builderEntrySessionRef.current?.retire(); builderEntrySessionRef.current = null;
     builderEntryHydrationRevisionRef.current += 1;
@@ -1900,7 +1948,7 @@ function TripBuilderDocument() {
     };
     void hydrate();
     return () => { active = false; };
-  }, [activeBrowserOwnerId, authenticatedOwnerId, browserContextReady, sessionPending]);
+  }, [activeBrowserOwnerId, authenticatedOwnerId, browserContextReady, sessionPending, builderSeedIsCurrent]);
 
   useEffect(() => {
     if (!hydrated || !pendingInterpretation) return;
@@ -2032,6 +2080,7 @@ function TripBuilderDocument() {
     if (session?.user?.id && tripOwnerId && session.user.id !== tripOwnerId) {
       // Keep the first account's browser copy quarantined, but never leave it
       // visible after this tab observes a different authenticated account.
+      if(pendingInterruptedInputsRef.current.length)return; // A failed retention must not destroy the only copy.
       window.location.assign("/journey/dashboard");
       return;
     }
@@ -4680,11 +4729,17 @@ function TripBuilderDocument() {
     const ownerId = activeBrowserOwnerIdRef.current;
     const canonical = !builderCreationTokenRef.current && !receiptToken?.resumedTrip && hydratedCanonicalTripRef.current?.id === trip.id ? hydratedCanonicalTripRef.current : null;
     const reservedCreation=builderCreationTokenRef.current;
+    const replayScope=builderCreationReplayScopeRef.current;
+    // Keep immutable creation proof, but never seed it across an authored edit
+    // or a changed owner/hydration lifetime. Reconciliation needs separate authority.
+    if(reservedCreation && replayScope?.token===reservedCreation
+      &&(replayScope.ownerId!==ownerId||replayScope.inputRevision!==inputRevision||replayScope.hydrationRevision!==hydrationRevision))return null;
     const candidate = requireReadableTripDocument(reservedCreation?.tripId===trip.id?JSON.parse(reservedCreation.initialTripRaw):receiptToken?.resumedTrip ?? canonical ?? trip);
     if(!receiptToken&&!canonical&&!recoveryHandleRef.current&&!builderCreationTokenRef.current
       &&(entryKind==="fresh"||entryKind==="route-handoff"))
       builderCreationTokenRef.current=createTripCreationToken(candidate,ownerId,entryKind==="route-handoff"?"curated-route":"manual-builder",crypto.randomUUID());
     const creation=builderCreationTokenRef.current?.tripId===candidate.id?builderCreationTokenRef.current:null;
+    if(creation && replayScope?.token!==creation)builderCreationReplayScopeRef.current={token:creation,ownerId,inputRevision,hydrationRevision};
     const key = JSON.stringify([hydrationRevision, ownerId, candidate.id, inputRevision, ++builderEntrySequenceRef.current,
       receiptToken?.receipt.handoffId, receiptToken?.pending?.inputRevision, receiptToken?.pending?.semanticInputFingerprint]);
     const entry: BuilderEntrySession<NonNullable<typeof pendingNewTripReceiptRef.current>> = createBuilderEntrySession({ key, ownerId, candidate, receipt: receiptToken, creation, initialCanonical: canonical,
@@ -5989,6 +6044,15 @@ function TripBuilderDocument() {
     </div>;
   };
 
+  if(pendingInterruptedInputsRef.current.length){
+    const own=!sessionPending&&pendingInterruptedInputsRef.current.every(capture=>capture.ownerId===activeBrowserOwnerId);
+    return <div data-builder-root="true" className={`${styles.shellWide} ${mobilePolish.builder}`}>
+      {own?<InterruptedInputReview records={pendingInterruptedInputsRef.current} memoryOnly onRetry={retryInterruptedRetention} language={language}/>
+       :<MorroviaRecoveryFeedback title={language==='es'?'No se pudieron conservar unas ediciones':'Some edits could not be preserved'}
+         detail={language==='es'?'Vuelve a la cuenta original para revisarlas.':'Return to the original account to review them.'}
+         safety={language==='es'?'No están guardadas. Mantén esta pestaña abierta.':'They are not saved. Keep this tab open.'}/>}
+    </div>;
+  }
   if (!hydrated || ownerScopeMismatch || (hydratedCanonicalTripRef.current?.id === tripId && !mountedBuilder && !tripUnavailable && !deviceRecoveryBlocked && !deviceStorageBlocked)) {
     return <div data-builder-root="true" data-builder-edit-session={mountedBuilder ? "active" : "hydrating"} className={`${styles.shellWide} ${mobilePolish.builder}`} aria-busy="true"><div className={styles.locationResolution} role="status">Checking the current account before opening this trip…</div></div>;
   }
@@ -6095,6 +6159,8 @@ function TripBuilderDocument() {
 
   return (
     <div data-builder-root="true" data-builder-edit-session={mountedBuilder ? "active" : "hydrating"} data-homepage-handoff={isHomepagePromptHandoff ? "true" : undefined} className={`${styles.shellWide} ${mobilePolish.builder} ${isHomepagePromptHandoff ? styles.homepageHandoff : ""}`}>
+      {interruptedInputs && !sessionPending && interruptedInputs.ownerId===activeBrowserOwnerId && interruptedInputs.tripId===tripId
+        ?<InterruptedInputReview records={interruptedInputs.records} unreadable={interruptedInputs.unreadable} language={language}/>:null}
       <div className={`${styles.wizardBody} ${!hasRouteSkeleton ? styles.emptyWorkspace : ""} ${entryKind === "fresh" ? styles.freshWorkspace : ""}`}>
         <div className={styles.pane}>
           <div id="builder-summary" tabIndex={-1} className={styles.stack} onInputCapture={retireBuilderEntryForInput}>

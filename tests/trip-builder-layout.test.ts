@@ -6,7 +6,7 @@ import { hasUsefulRouteSkeleton } from "../app/journey/new/trip-builder-entry.ts
 import { publicRouteDetailFor } from "../lib/easyt/public-route.ts";
 import { routePlannerPayload } from "../lib/easyt/public-route-handoff.ts";
 import { extractStructuredTripBrief } from "../lib/easyt/structured-trip-brief.ts";
-import { homepageSubmissionFingerprint, projectHomepageInput } from "../lib/easyt/home-trip-handoff.ts";
+import { homepageReceiptForProjection, projectHomepageInput, type HomeTripDraft, type HomepageInputSnapshot } from "../lib/easyt/home-trip-handoff.ts";
 import { emptyHomepageInput, selectedEntry } from "./fixtures/homepage-dual-entry.ts";
 import { findCatalogPlaceById } from "../lib/easyt/place-catalog.ts";
 import { actualCallbackHarness, lima } from "./helpers/builder-handoff-callback.ts";
@@ -39,19 +39,28 @@ function acceptedHomepageDraft(mode: "direct" | "area" | "describe") {
   const result = projectHomepageInput({ snapshot, profile: null, handoffId: `handoff-${mode}` });
   assert.equal(result.ok, true);
   if (!result.ok) throw new Error("Expected accepted Homepage draft");
-  return {
-    ...result.draft,
-    homepage: {
-      ...result.draft.homepage!,
-      receipt: {
-        version: 1 as const,
-        ownerId: null,
-        handoffId: result.draft.handoffId!,
-        inputFingerprint: homepageSubmissionFingerprint(result.draft),
-        tripId: `trip-reserved-${mode}`,
-      },
-    },
-  };
+  return { draft: result.draft, snapshot };
+
+}
+
+// The receiver requires matching editable input, completed projection receipt and URL token.
+function renderHomeDraft(draft: HomeTripDraft, snapshot: HomepageInputSnapshot = emptyHomepageInput(), extraQuery = "") {
+  const handoffId = draft.handoffId ?? "layout-route-handoff";
+  const projected: HomeTripDraft = {...draft, handoffId, homepage: draft.homepage ?? {
+    version:1,ownerId:snapshot.ownerId,revision:snapshot.revision,mode:snapshot.mode,occurrenceMentionIds:{},
+    choices:{dates:snapshot.dates,budget:snapshot.budget,interests:snapshot.interests,travellers:snapshot.travellers,origin:snapshot.origin,journeyEnd:snapshot.journeyEnd},
+  }};
+  const receipt = homepageReceiptForProjection(snapshot, projected, `trip-reserved-${handoffId.replace("handoff-", "")}`);
+  projected.homepage!.receipt = receipt;
+  const query = new URLSearchParams(extraQuery); query.set("homeDraft","1");query.set("handoff",handoffId);
+  return renderBuilder({query:`?${query}`,draft:projected,storedInput:{snapshot,receipt}});
+}
+async function submitFirstTokyo(view: Awaited<ReturnType<typeof renderBuilder>>) {
+  await view.page.getByRole("button",{name:/Add your first stop/}).click();
+  await view.page.getByRole("combobox", {name:"Destination",exact:true}).fill("Tokyo");
+  await view.page.getByRole("option").filter({hasText:"Tokyo"}).first().click();
+  await view.page.getByRole("button", {name:"Plan my trip",exact:true}).click();
+  await view.page.locator('[data-builder-edit-session="active"]').waitFor({timeout:10000});
 }
 
 test("a useful route requires a valid stop occurrence, independently of endpoint context", async () => {
@@ -72,8 +81,10 @@ browserTest("direct Builder entry offers capture, first place and import without
   try {
     const text = await view.page.locator("body").innerText();
     assert.doesNotMatch(text, /STEP 1 OF 2|STEP 2 OF 2|Set dates & nights/);
-    assert.match(text, /Describe your trip/);
-    assert.equal(await view.page.getByRole("combobox", { name: "Add your first place", exact: true }).count(), 1);
+    assert.match(text, /Describe my trip/);
+    assert.equal(await view.page.getByRole("button", {name:/Add your first stop/}).count(),1);
+    await view.page.getByRole("button", {name:/Add your first stop/}).click();
+    assert.equal(await view.page.getByRole("combobox", { name: "Destination", exact: true }).count(), 1);
     assert.equal(await view.page.getByRole("link", { name: "Import existing trip" }).getAttribute("href"), "/journey/new/import");
     assert.doesNotMatch(text, /Nights per stop|Trip at a glance/);
     assert.deepEqual(view.errors, []);
@@ -82,8 +93,8 @@ browserTest("direct Builder entry offers capture, first place and import without
 
 browserTest("useful homepage and template handoffs show route timing immediately", async () => {
   const draft = routePlannerPayload(publicRouteDetailFor("morocco-rail")!.planDraft);
-  for (const entry of [{ query: "?homeDraft=1", draft }, { query: "?inspire=morocco-rail" }]) {
-    const view = await renderBuilder(entry);
+  for (const entry of ["home", "template"]) {
+    const view = entry === "home" ? await renderHomeDraft(draft) : await renderBuilder({query:"?inspire=morocco-rail"});
     try {
       const text = await view.page.locator("body").innerText();
       assert.match(text, /Nights per stop/);
@@ -98,7 +109,7 @@ browserTest("useful homepage and template handoffs show route timing immediately
 
 browserTest("mobile route map disclosure releases the map height", async () => {
   const draft = routePlannerPayload(publicRouteDetailFor("morocco-rail")!.planDraft);
-  const view = await renderBuilder({ query: "?homeDraft=1", draft });
+  const view = await renderHomeDraft(draft);
   try {
     await view.page.setViewportSize({ width: 390, height: 844 });
     const collapse = view.page.getByRole("button", { name: "Collapse map", exact: true });
@@ -110,7 +121,9 @@ browserTest("mobile route map disclosure releases the map height", async () => {
 
 browserTest("area-only handoff stays in clarification without an empty route or retired intake", async () => {
   const brief = "Two weeks in Thailand";
-  const view = await renderBuilder({ query: "?homeDraft=1", draft: { brief, structuredBrief: extractStructuredTripBrief(brief) } });
+  const snapshot=emptyHomepageInput(); snapshot.mode="describe";snapshot.prompt=brief;
+  const projected=projectHomepageInput({snapshot,profile:null,handoffId:"layout-thailand"});assert.ok(projected.ok);
+  const view = await renderHomeDraft(projected.draft,snapshot);
   try {
     const text = await view.page.locator("body").innerText();
     assert.match(text, /Thailand/);
@@ -120,8 +133,8 @@ browserTest("area-only handoff stays in clarification without an empty route or 
 
 browserTest("versioned direct, area and Describe handoffs hydrate the unified Builder under their reserved identity", async () => {
   for (const mode of ["direct", "area", "describe"] as const) {
-    const draft = acceptedHomepageDraft(mode);
-    const view = await renderBuilder({ query: "?homeDraft=1", draft });
+    const {draft,snapshot} = acceptedHomepageDraft(mode);
+    const view = await renderHomeDraft(draft,snapshot);
     try {
       if (mode === "direct") {
         await view.page.waitForFunction(() => Object.keys(localStorage).some((key) => key.includes("trip-reserved-direct")), undefined, { timeout: 10_000 });
@@ -142,15 +155,15 @@ browserTest("versioned direct, area and Describe handoffs hydrate the unified Bu
 });
 
 browserTest("homepage handoff adopts its durable recovery URL once and restores on reload", async () => {
-  const draft = acceptedHomepageDraft("direct");
-  const view = await renderBuilder({ query: "?homeDraft=1&campaign=beta", draft });
+  const {draft,snapshot} = acceptedHomepageDraft("direct");
+  const view = await renderHomeDraft(draft,snapshot,"campaign=beta");
   try {
     await view.page.waitForFunction(() => new URL(location.href).searchParams.get("trip") === "trip-reserved-direct");
     const durableUrl = new URL(view.page.url());
     assert.equal(durableUrl.searchParams.get("recover"), "1");
     assert.equal(durableUrl.searchParams.has("homeDraft"), false);
     assert.equal(durableUrl.searchParams.get("campaign"), "beta");
-    await view.page.getByText("Changes saved on this device", { exact: true }).waitFor();
+    await view.page.getByText("Saved on this device", { exact: true }).waitFor();
 
     await view.page.reload();
     await view.page.getByRole("heading", { name: "Nights per stop" }).waitFor();
@@ -163,7 +176,7 @@ browserTest("homepage handoff adopts its durable recovery URL once and restores 
 browserTest("legacy step query cannot switch an empty Builder into timing and preserves other parameters", async () => {
   const view = await renderBuilder({ query: "?step=1&recover=1&view=brief&campaign=test" });
   try {
-    assert.match(await view.page.locator("body").innerText(), /Describe your trip/);
+    assert.match(await view.page.locator("body").innerText(), /Describe my trip/);
     const url = new URL(view.page.url());
     assert.equal(url.searchParams.has("step"), false);
     assert.equal(url.searchParams.get("recover"), "1");
@@ -576,10 +589,9 @@ test("manual night edits use canonical rebalance, durable stop intent and shared
 browserTest("first-place selection creates route timing without requiring endpoint context", async () => {
   const view = await renderBuilder();
   try {
-    await view.page.getByRole("combobox", { name: "Add your first place", exact: true }).fill("Tokyo");
-    await view.page.getByRole("option").filter({ hasText: "Tokyo" }).first().click();
+    await submitFirstTokyo(view);
     await view.page.getByRole("heading", { name: "Nights per stop" }).waitFor();
-    assert.equal(await view.page.getByRole("heading", { name: "Describe your trip" }).count(), 0);
+    assert.equal(await view.page.getByRole("tab", { name: "Describe my trip", exact: true }).count(), 0);
     assert.match(await view.page.locator("body").innerText(), /Tokyo/);
     assert.equal(await view.page.getByRole("button", { name: /Build trip/ }).isDisabled(), true);
   } finally { await view.close(); }
@@ -588,8 +600,7 @@ browserTest("first-place selection creates route timing without requiring endpoi
 browserTest("passive validation preserves Starting from focus while typing after the first place", async () => {
   const view = await renderBuilder();
   try {
-    await view.page.getByRole("combobox", { name: "Add your first place", exact: true }).fill("Tokyo");
-    await view.page.getByRole("option").filter({ hasText: "Tokyo" }).first().click();
+    await submitFirstTokyo(view);
     await view.page.getByRole("heading", { name: "Nights per stop" }).waitFor();
     const origin = view.page.getByRole("combobox", { name: "Start from", exact: true });
     await origin.focus();
@@ -601,31 +612,32 @@ browserTest("passive validation preserves Starting from focus while typing after
   } finally { await view.close(); }
 });
 
-browserTest("first-place resolution keeps the pending selection visible and prevents competing capture", async () => {
-  const view = await renderBuilder();
-  let release!: () => void;
-  const pending = new Promise<void>((resolve) => { release = resolve; });
-  let started!: () => void;
-  const requestStarted = new Promise<void>((resolve) => { started = resolve; });
-  try {
-    await view.page.route("**/api/journey-geocode?place=Tokyo&country=Japan", async (route: { fulfill: (response: unknown) => Promise<void> }) => {
-      started();
-      await pending;
-      await route.fulfill({ contentType: "application/json", body: JSON.stringify({ result: { name: "Tokyo", country: "Japan", canonicalPlaceId: "tokyo", coordinates: [139.6917, 35.6895], kind: "city" } }) });
+browserTest("first-place resolution keeps the pending selection visible and prevents competing capture", async()=>{
+  const view=await renderBuilder({geocodeCandidates:{"Pending City":[{name:"Pending City",country:"Japan",canonicalPlaceId:"fixture:pending-city",providerId:"fixture:pending-city-provider",placeType:"city",routability:"direct_destination"}]}});let release!:()=>void;const pending=new Promise<void>(resolve=>{release=resolve});let started!:()=>void;const requestStarted=new Promise<void>(resolve=>{started=resolve});
+  try{
+    await view.page.getByRole("button",{name:/Add your first stop/}).click();
+    await view.page.getByRole("combobox",{name:"Destination",exact:true}).fill("Pending City");
+    await view.page.getByRole("option").filter({hasText:"Pending City"}).first().click();
+    // Selection is local intent; enrichment begins after explicit submission now.
+    await view.page.route("**/api/journey-geocode?**",async(route:{fulfill:(response:unknown)=>Promise<void>})=>{
+      started();await pending;await route.fulfill({contentType:"application/json",body:JSON.stringify({candidates:[{name:"Pending City",country:"Japan",canonicalPlaceId:"fixture:pending-city",providerId:"fixture:pending-city-provider",coordinates:[139.6917,35.6895],kind:"city",routability:"direct_destination"}]})}).catch(()=>{});
     });
-    const input = view.page.getByRole("combobox", { name: "Add your first place", exact: true });
-    await input.fill("Tokyo");
-    await view.page.getByRole("option").filter({ hasText: "Tokyo" }).first().click();
-    await requestStarted;
-    assert.equal(await input.isDisabled(), true);
-    assert.equal(await view.page.getByRole("button", { name: "Plan my trip" }).isDisabled(), true);
-    release();
-    await view.page.getByRole("heading", { name: "Nights per stop" }).waitFor();
-  } finally { release(); await view.close(); }
+    await view.page.getByRole("button",{name:"Plan my trip",exact:true}).click();await Promise.race([requestStarted,new Promise((_,reject)=>setTimeout(()=>reject(new Error("Expected the coordinate-less first place enrichment request")),5000))]);
+    await view.page.getByRole("heading",{name:"Nights per stop"}).waitFor();
+    assert.equal(await view.page.getByText("Pending City",{exact:true}).count()>0,true,"submitted first place remains visible while enrichment is pending");
+    assert.equal(await view.page.getByRole("button",{name:"Plan my trip",exact:true}).count(),0,"submitted capture is replaced, so a competing intake cannot be submitted");
+    assert.equal(await view.page.getByRole("tab",{name:"Describe my trip",exact:true}).count(),0);
+    release();await view.page.locator('[data-builder-edit-session="active"]').waitFor({timeout:10000});
+    await view.page.waitForFunction(()=>Object.entries(localStorage).filter(([key])=>key.startsWith("easyt:trip-recovery:v2:")).some(([,raw])=>JSON.parse(raw).trip?.stops.some((stop:{canonicalPlaceId:string;longitude:number;latitude:number})=>stop.canonicalPlaceId==="fixture:pending-city"&&stop.longitude===139.6917&&stop.latitude===35.6895)),undefined,{timeout:10000});
+    assert.deepEqual(view.errors,[]);
+  }finally{release();await view.close()}
 });
 
 browserTest("endpoint-only handoff does not create an overnight route or timing table", async () => {
-  const view = await renderBuilder({ query: "?homeDraft=1", draft: { origin: "London", originCoordinates: [-0.1276, 51.5072], originCountry: "United Kingdom", journeyEnd: { mode: "same-as-start" } } });
+  const snapshot=emptyHomepageInput();snapshot.origin={state:"selected",value:{name:"London",canonicalPlaceId:"london",country:"United Kingdom",coordinates:[-.1276,51.5072]}};snapshot.journeyEnd={state:"selected",value:{mode:"same_as_start"}};
+  // An endpoint-only input is rejected before handoff; retain it in the starter.
+  assert.equal(projectHomepageInput({snapshot,profile:null,handoffId:"endpoint-only"}).ok,false);
+  const view=await renderBuilder({storedInput:{snapshot}});
   try {
     assert.equal(await view.page.getByRole("heading", { name: "Nights per stop" }).count(), 0);
     assert.equal(await view.page.getByRole("complementary", { name: "Trip at a glance" }).count(), 0);
@@ -635,11 +647,12 @@ browserTest("endpoint-only handoff does not create an overnight route or timing 
 browserTest("direct text capture uses the existing parser then replaces capture with the populated route", async () => {
   const view = await renderBuilder();
   try {
-    await view.page.getByRole("textbox", { name: "TELL US ABOUT YOUR TRIP" }).fill("Tokyo for one week");
+    await view.page.getByRole("tab", {name:"Describe my trip",exact:true}).click();
+    await view.page.getByRole("textbox", { name: "Start your plan",exact:true }).fill("Tokyo for one week");
     await view.page.getByRole("button", { name: "Plan my trip" }).click();
     await view.page.getByRole("heading", { name: "Nights per stop" }).waitFor();
     assert.match(await view.page.locator("body").innerText(), /Tokyo/);
-    assert.equal(await view.page.getByRole("heading", { name: "Describe your trip" }).count(), 0);
+    assert.equal(await view.page.getByRole("tab", { name: "Describe my trip", exact: true }).count(), 0);
     assert.deepEqual(view.errors, []);
   } finally { await view.close(); }
 });

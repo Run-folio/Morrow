@@ -1,17 +1,24 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+import { requireReadableTripDocument } from "../lib/easyt/trip-document.ts";
 import { canBuildTrip, type CanBuildTripInput } from "../lib/easyt/can-build-trip.ts";
 import type { NightAllocationResult } from "../lib/easyt/night-allocation.ts";
 import { createPlanningConfidence } from "../lib/easyt/planning-confidence.ts";
 import { publicRouteDetailFor } from "../lib/easyt/public-route.ts";
 import { routePlannerPayload } from "../lib/easyt/public-route-handoff.ts";
-import { homepageReceiptForProjection, type HomeTripDraft } from "../lib/easyt/home-trip-handoff.ts";
+import { homepageReceiptForProjection, projectHomepageInput, type HomeTripDraft } from "../lib/easyt/home-trip-handoff.ts";
 import { generateRouteCandidates } from "../lib/easyt/route-candidates.ts";
 import { extractStructuredTripBrief, mergeStructuredTripBrief, routeConstraintsFromStructuredTripBrief } from "../lib/easyt/structured-trip-brief.ts";
 import { validateBuilderStopOrder } from "../lib/easyt/trip-builder-order.ts";
-import type { EasyTTrip } from "../lib/easyt/trip.ts";
+import { tripFromBuilder, type EasyTTrip } from "../lib/easyt/trip.ts";
+import { acceptedGeographicPlace } from "../lib/easyt/geographic-binding.ts";
+import { projectBuilderCalendar } from "../lib/easyt/trip-builder-calendar.ts";
+import { transferResponse } from "./helpers/successful-transfer-fixture.ts";
 import { builderBrowserTestsEnabled, renderBuilder } from "./helpers/builder-render.ts";
-import { emptyHomepageInput } from "./fixtures/homepage-dual-entry.ts";
+import { emptyHomepageInput, selectedStopsHomepageInput } from "./fixtures/homepage-dual-entry.ts";
+import { routeProjectionInputKey } from "../lib/easyt/trip-route-intent.ts";
 import { canonicalRouteFixture } from './fixtures/batch14-route-documents.ts';
 
 // These scenarios exercise a populated Builder. The current Homepage handoff
@@ -25,7 +32,7 @@ function renderPopulatedBuilder(draft: HomeTripDraft, options: Parameters<typeof
     handoffId,
     homepage: {
       version: 1, ownerId: null, revision: snapshot.revision, mode: "stops",
-      occurrenceMentionIds: {},
+      occurrenceMentionIds: draft.homepage?.occurrenceMentionIds ?? {},
       choices: {
         dates: snapshot.dates, budget: snapshot.budget, interests: snapshot.interests,
         travellers: snapshot.travellers, origin: snapshot.origin, journeyEnd: snapshot.journeyEnd,
@@ -51,82 +58,84 @@ const endpointDraft = {
 };
 
 test("populated Builder directly exposes explicit, Same as start and unknown journey ends", { skip: !builderBrowserTestsEnabled }, async () => {
-  for (const [journeyEnd, expectedEnd] of [
-    [{ mode: "explicit", place: endpointDraft.destinations[1] }, "Busan"],
-    [{ mode: "same_as_start" }, "London"],
-    [{ mode: "unknown" }, ""],
-  ] as const) {
-    const view = await renderPopulatedBuilder({ ...endpointDraft, journeyEnd });
+  for (const journeyEnd of [{mode:"explicit",place:endpointDraft.destinations[1]}, {mode:"same_as_start"}, {mode:"unknown"}] as const) {
+    const view=await renderPopulatedBuilder({...endpointDraft,journeyEnd});
     try {
-      const details = view.page.getByRole("region", { name: "Journey details", exact: true });
-      await details.waitFor({ timeout: 3000 });
-      assert.equal(await details.getByRole("combobox", { name: "Ending at" }).inputValue(), expectedEnd);
-      assert.equal(await details.getByRole("button", { name: "Edit trip", exact: true }).count(), 0);
-      assert.equal(await view.page.getByRole("heading", { name: "Nights per stop" }).count(), 1);
-      assert.equal(await view.page.getByRole("textbox", { name: "TELL US ABOUT YOUR TRIP" }).count(), 0);
-      assert.deepEqual(view.errors, []);
-    } finally { await view.close(); }
+      const top=view.page.locator('[data-builder-top-controls]');await top.waitFor();
+      const type=top.getByRole("group",{name:"Trip type",exact:true});
+      if(journeyEnd.mode==="explicit") assert.equal(await top.getByText("Busan",{exact:true}).count()>0,true);
+      if(journeyEnd.mode==="same_as_start") assert.equal(await type.getByRole("button",{name:"Return to start",exact:true}).getAttribute("aria-pressed"),"true");
+      if(journeyEnd.mode==="unknown") {
+        assert.equal(await type.getByRole("button",{name:"Return to start",exact:true}).getAttribute("aria-pressed"),"false");
+        assert.equal(await type.getByRole("button",{name:"One way",exact:true}).getAttribute("aria-pressed"),"false");
+      }
+      assert.equal(await top.getByRole("button",{name:"Edit trip",exact:true}).count(),0);
+      assert.equal(await view.page.getByRole("heading",{name:"Nights per stop"}).count(),1);
+      assert.equal(await view.page.getByRole("textbox",{name:"Start your plan",exact:true}).count(),0);
+      assert.deepEqual(view.errors,[]);
+    } finally {await view.close();}
   }
 });
 
-test("editing Builder end modes commits atomically and Cancel leaves canonical recovery unchanged", { skip: !builderBrowserTestsEnabled }, async () => {
-  const view = await renderPopulatedBuilder({ ...endpointDraft, journeyEnd: { mode: "unknown" } });
-  const storedTrip = async (mode: string) => {
-    await view.page.waitForFunction((expected: string) => Object.keys(localStorage)
-      .filter((key) => key.startsWith("easyt:trip-recovery:v2:"))
-      .some((key) => JSON.parse(localStorage.getItem(key)!).trip?.brief.journeyEnd?.mode === expected), mode);
-    return await view.page.evaluate(() => Object.keys(localStorage)
-      .filter((key) => key.startsWith("easyt:trip-recovery:v2:"))
-      .map((key) => JSON.parse(localStorage.getItem(key)!)).find((record) => record.trip)?.trip) as EasyTTrip;
+test("editing Builder end modes commits atomically and Cancel leaves canonical recovery unchanged", {skip:!builderBrowserTestsEnabled}, async()=>{
+  // Current UI retains legacy explicit finishes, confirms them deliberately, and
+  // replaces them only after acceptance. Travellers now commit immediately.
+  const verified=(place: typeof endpointDraft.destinations[number])=>acceptedGeographicPlace(place,{...place,providerId:`fixture:${place.canonicalPlaceId}`,placeType:"city",routability:"direct_destination"})!;
+  const origin=acceptedGeographicPlace({name:"London",canonicalPlaceId:"london",country:"United Kingdom",coordinates:endpointDraft.originCoordinates},{name:"London",canonicalPlaceId:"london",providerId:"fixture:london",country:"United Kingdom",coordinates:endpointDraft.originCoordinates,placeType:"city",routability:"direct_destination"},"endpoint")!;
+  let initial=tripFromBuilder({id:"endpoint-edit-fixture",origin:origin.name,originCountry:origin.country,originCanonicalPlaceId:origin.canonicalPlaceId,originProviderId:origin.providerId,originCoordinates:origin.coordinates,
+    journeyEnd:{mode:"explicit",place:{name:"Busan",country:"South Korea",canonicalPlaceId:"busan"}},stops:endpointDraft.destinations.map(stop=>({...stop,...verified(stop)})),
+    startDate:endpointDraft.startDate,endDate:endpointDraft.endDate,picks:{},mustDo:"",pace:"slow",hotels:"few",budget:"value",nightAllocations:{"seoul-stay":5,"busan-stay":5},draft:[]});
+  initial.brief.intent!.route.origin=origin;initial=requireReadableTripDocument(projectBuilderCalendar(initial,initial).trip);
+  const storageUrl=new URL("../lib/easyt/storage.ts",import.meta.url);
+  const observedStorage=readFileSync(storageUrl,"utf8")+'\nif(typeof window!=="undefined"){(window as any).__endpointTestReadRecovery=loadTripRecovery;}';
+  const view=await renderBuilder({sourceOverrides:new Map([[fileURLToPath(storageUrl),observedStorage]]),initialTrip:initial,query:`?trip=${initial.id}&recover=1`,transferRequest:({legs})=>transferResponse(legs),
+    geocodeCandidates:{Busan:[{name:"Busan",country:"South Korea",canonicalPlaceId:"busan",providerId:"fixture:busan",coordinates:[129.0756,35.1796],placeType:"city",routability:"direct_destination"}]},
+  });
+  // Read the exact owner/trip through the actual dual-store reader. A scan of
+  // the first legacy mirror can observe a retained predecessor instead of head.
+  const storedTrip=async()=>requireReadableTripDocument(await view.page.evaluate(async(id:string)=>{
+    const read=(window as unknown as {__endpointTestReadRecovery:(id:string,owner:null)=>Promise<{trip:unknown}|null>}).__endpointTestReadRecovery;
+    return (await read(id,null))?.trip;
+  },initial.id));
+  const waitTrip=async(predicate:(trip:ReturnType<typeof requireReadableTripDocument>)=>boolean,label:string)=>{
+    for(let attempt=0;attempt<100;attempt++){
+      const trip=await storedTrip();if(predicate(trip))return trip;
+      await view.page.waitForTimeout(50);
+    }
+    assert.fail(`Expected ${label} on the exact current recovery`);
   };
-  try {
-    await view.page.route("**/api/journey-geocode?place=Busan*", async (route: { fulfill: (response: unknown) => Promise<void> }) => {
-      await route.fulfill({
-        contentType: "application/json",
-        body: JSON.stringify({ candidates: [{
-          name: "Busan", country: "South Korea", canonicalPlaceId: "busan", providerId: "fixture:busan",
-          coordinates: [129.0756, 35.1796], placeType: "city", routability: "direct_destination", matchQuality: "exact",
-        }] }),
-      });
-    });
-    const details = view.page.getByRole("region", { name: "Journey details", exact: true });
-    await details.waitFor({ timeout: 3000 });
-    const before = await storedTrip("unknown");
-    const stopIds = before.stops.map((stop) => stop.id);
-    await details.getByRole("combobox", { name: "Ending at" }).fill("Busan");
-    await details.getByRole("option").filter({ hasText: "Busan" }).first().click();
-    await details.getByRole("button", { name: "Cancel", exact: true }).click();
-    assert.equal((await storedTrip("unknown")).brief.journeyEnd?.mode, "unknown");
-    await details.getByRole("combobox", { name: "Ending at" }).fill("Busan");
-    await details.getByRole("option").filter({ hasText: "Busan" }).first().click();
-    await details.getByRole("button", { name: "Save changes", exact: true }).click();
-    const explicit = await storedTrip("explicit");
-    assert.equal(explicit.brief.journeyEnd?.mode === "explicit" && explicit.brief.journeyEnd.place.canonicalPlaceId, "busan");
-    assert.deepEqual(explicit.stops.map((stop) => stop.id), stopIds);
-    assert.equal(explicit.stops.find((stop) => stop.canonicalPlaceId === "busan")?.nights, before.stops.find((stop) => stop.canonicalPlaceId === "busan")?.nights);
-    await details.getByRole("button", { name: "Same as start", exact: true }).click();
-    await details.getByRole("button", { name: "Save changes", exact: true }).click();
-    const roundTrip = await storedTrip("same_as_start");
-    assert.deepEqual(roundTrip.stops.map((stop) => stop.id), stopIds);
-    assert.equal(roundTrip.legs.at(-1)?.classification, "departure");
-    assert.equal(roundTrip.legs.at(-1)?.toEndpoint?.canonicalPlaceId, "london");
-    assert.equal(roundTrip.stops.some((stop) => stop.canonicalPlaceId === "london"), false);
-    await details.getByRole("button", { name: "Clear journey end", exact: true }).click();
-    await details.getByRole("button", { name: "Save changes", exact: true }).click();
-    const unknown = await storedTrip("unknown");
-    assert.deepEqual(unknown.stops.map((stop) => stop.id), stopIds);
-    assert.equal(unknown.legs.some((leg) => leg.classification === "departure"), false);
-    await details.getByRole("button", { name: /Increase travellers/ }).click();
-    await details.getByRole("button", { name: "Cancel", exact: true }).click();
-    assert.equal((await storedTrip("unknown")).travellers, 2);
-    await details.getByRole("button", { name: /Increase travellers/ }).click();
-    await details.getByRole("button", { name: "Save changes", exact: true }).click();
-    await view.page.waitForFunction(() => Object.keys(localStorage)
-      .filter((key) => key.startsWith("easyt:trip-recovery:v2:"))
-      .some((key) => JSON.parse(localStorage.getItem(key)!).trip?.travellers === 3));
-    assert.equal((await storedTrip("unknown")).travellers, 3);
-    assert.deepEqual(view.errors, []);
-  } finally { await view.close(); }
+  const settledTrip=()=>waitTrip(trip=>trip.brief.intent.route.projectionInputKey===routeProjectionInputKey(trip),"acknowledged current projection");
+  const waitMode=(mode:string)=>waitTrip(trip=>trip.brief.journeyEnd?.mode===mode&&trip.brief.intent.route.journeyEnd.mode===mode,`journey end ${mode}`);
+
+  try{
+    const top=view.page.locator('[data-builder-top-controls]');await top.waitFor();
+    const before=await waitMode("explicit"),stopIds=before.stops.map(stop=>stop.id);
+    await top.getByRole("button",{name:"Confirm saved finish",exact:true}).click();
+    const dialog=view.page.getByRole("dialog");await dialog.getByRole("button",{name:/Busan/}).waitFor();
+    await dialog.getByRole("button",{name:"Finish later",exact:true}).click();
+    assert.deepEqual(await storedTrip(),before,"dismissing an unaccepted finish lookup cannot change canonical recovery");
+    await top.getByRole("button",{name:"Confirm saved finish",exact:true}).click();await dialog.getByRole("button",{name:/Busan/}).click();
+    await waitTrip(trip=>trip.brief.intent.route.journeyEnd.mode==="explicit"&&Boolean(trip.brief.intent.route.journeyEnd.place.coordinates),"confirmed explicit finish");
+    await waitTrip(trip=>Boolean(trip.brief.routeAssessment),"derived route assessment");
+    const explicit=await settledTrip();
+    assert.equal(explicit.brief.journeyEnd?.mode==="explicit"&&explicit.brief.journeyEnd.place.canonicalPlaceId,"busan");
+    assert.deepEqual(explicit.stops.map(stop=>stop.id),stopIds);
+    assert.equal(explicit.stops.find(stop=>stop.canonicalPlaceId==="busan")?.nights,before.stops.find(stop=>stop.canonicalPlaceId==="busan")?.nights);
+    await top.getByRole("button",{name:"Return to start",exact:true}).click();
+    await dialog.getByRole("button",{name:"Keep finish",exact:true}).click();
+    assert.deepEqual(await storedTrip(),explicit,"cancelling replacement retains the exact accepted recovery");
+    await top.getByRole("button",{name:"Return to start",exact:true}).click();await dialog.getByRole("button",{name:"Return to start",exact:true}).click();
+    await waitMode("same_as_start");
+    const roundTrip=await settledTrip();assert.deepEqual(roundTrip.stops.map(stop=>stop.id),stopIds);
+    assert.equal(roundTrip.legs.at(-1)?.classification,"departure");assert.equal(roundTrip.legs.at(-1)?.toEndpoint?.canonicalPlaceId,"london");assert.equal(roundTrip.stops.some(stop=>stop.canonicalPlaceId==="london"),false);
+    await top.getByRole("button",{name:"One way",exact:true}).click();await waitMode("unknown");
+    const unknown=await settledTrip();
+    assert.deepEqual(unknown.stops.map(stop=>stop.id),stopIds);assert.equal(unknown.legs.some(leg=>leg.classification==="departure"),false);
+    assert.equal(unknown.travellers,2);await top.getByRole("button",{name:/Increase travellers/}).click();
+    await waitTrip(trip=>trip.travellers===3,"accepted traveller count");
+    assert.equal((await storedTrip()).travellers,3);await view.page.reload();await top.waitFor();assert.equal((await storedTrip()).travellers,3);
+    assert.deepEqual((await storedTrip()).stops.map(stop=>stop.id),stopIds);assert.deepEqual(view.errors,[]);
+  }finally{await view.close()}
 });
 
 test("canonical published handoff stays ready while optional enrichment is pending in Chromium and WebKit", { skip: !builderBrowserTestsEnabled }, async () => {
@@ -137,9 +146,12 @@ test("canonical published handoff stays ready while optional enrichment is pendi
       geocodeDelayMs: 2_000,
     });
     try {
+      // Mandatory checkpoint completion is separate from optional provider work.
+      await view.page.locator('[data-builder-edit-session="active"]').waitFor({timeout:10000});
       const build = view.page.getByRole("button", { name: "Build trip", exact: false });
       await build.waitFor({ timeout: 3_000 });
       assert.equal(await build.isDisabled(), false, `${browserName} must use the canonical handoff instead of pending enrichment`);
+      assert.ok(view.pendingGeocodeRequests() > 0, "optional provider requests remain pending at Build");
       assert.equal(await view.page.getByText("Finish checking your places before continuing.", { exact: true }).count(), 0);
       await build.evaluate((element: HTMLButtonElement) => element.click());
       await view.page.waitForFunction(() => location.pathname !== "/journey/new", undefined, { timeout: 10_000 });
@@ -202,6 +214,12 @@ function krugerAttentionDraft() {
   const route = publicRouteDetailFor("morocco-rail");
   assert.ok(route);
   const draft = routePlannerPayload(route.planDraft);
+  const selected = selectedStopsHomepageInput(null, draft.destinations!.map(stop => [stop.id, stop.name]));
+  const projected = projectHomepageInput({snapshot:selected,profile:null,handoffId:"park-fixture-source"});
+  assert.ok(projected.ok);
+  if(!projected.ok) throw new Error("Expected valid source projection");
+  const routeMentions=projected.draft.structuredBrief?.placeMentions ?? [];
+  assert.equal(routeMentions.filter(mention=>mention.routability==='direct_destination').length,draft.destinations!.length);
   const provenance = [{
     id: "fixture:kruger-national-park",
     label: "Controlled place fixture",
@@ -253,9 +271,10 @@ function krugerAttentionDraft() {
   };
   return {
     ...draft,
+    homepage: projected.draft.homepage,
     structuredBrief: {
       ...draft.structuredBrief,
-      placeMentions: [...(draft.structuredBrief.placeMentions ?? []), mention],
+      placeMentions: [...routeMentions, mention],
       placeIssues: [...(draft.structuredBrief.placeIssues ?? []), issue],
     },
   };
@@ -513,7 +532,7 @@ test("Build requires explicit continuation without adding unresolved intent and 
     await view.page.waitForFunction(() => location.pathname !== "/journey/new", undefined, { timeout: 10_000 });
     const unresolvedRow = view.page.getByLabel("Places not included in this route");
     await unresolvedRow.getByText("Not included yet", { exact: true }).waitFor();
-    assert.equal(await unresolvedRow.getByText("Kruger National Park", { exact: true }).count(), 1);
+    assert.equal(await unresolvedRow.getByText("Kruger National Park · Area", { exact: true }).count(), 1);
     assert.equal(await unresolvedRow.getByRole("link", { name: "Choose a nearby base", exact: true }).count(), 1);
     assert.equal(await view.page.getByText("Choose where to stay for Kruger National Park before Morrovia adds it to the route.", { exact: true }).count(), 0);
     const saved = await view.page.evaluate(() => Object.keys(localStorage)
@@ -525,7 +544,7 @@ test("Build requires explicit continuation without adding unresolved intent and 
     assert.equal(saved.stops.some((stop) => stop.canonicalPlaceId === "fixture:kruger-national-park"), false);
     await view.page.reload();
     const reloadedRow = view.page.getByLabel("Places not included in this route");
-    await reloadedRow.getByText("Kruger National Park", { exact: true }).waitFor();
+    await reloadedRow.getByText("Kruger National Park · Area", { exact: true }).waitFor();
     await reloadedRow.getByRole("button", { name: "Dismiss", exact: true }).click();
     await reloadedRow.waitFor({ state: "detached" });
     await view.page.waitForFunction(() => Object.keys(localStorage)
@@ -541,6 +560,7 @@ test("Build requires explicit continuation without adding unresolved intent and 
 test("Overview recovery deep-link opens the exact retained Builder mention", { skip: !builderBrowserTestsEnabled, timeout: 30_000 }, async () => {
   const view = await renderPopulatedBuilder(multipleAttentionDraft(), { query: "?placeIntent=place-serengeti-national-park" });
   try {
+    await view.page.locator('[data-builder-edit-session="active"]').waitFor({timeout:10000});
     const dialog = view.page.getByRole("dialog");
     await dialog.getByText("Serengeti National Park", { exact: true }).first().waitFor({ timeout: 5_000 });
     assert.equal(await dialog.getByText("Kruger National Park", { exact: true }).count(), 0);
@@ -584,7 +604,7 @@ test("post-Build Kruger recovery preserves the unresolved reminder until canonic
     assert.ok(savedTripId);
     await view.page.goto(new URL(`/journey/${encodeURIComponent(savedTripId)}`, view.page.url()).href);
     await view.page.getByLabel("Trip overview").waitFor();
-    assert.equal(await view.page.getByLabel("Places not included in this route").getByText("Kruger National Park", { exact: true }).count(), 1);
+    assert.equal(await view.page.getByLabel("Places not included in this route").getByText("Kruger National Park · Area", { exact: true }).count(), 1);
     const saved = await view.page.evaluate(() => Object.keys(localStorage)
       .filter((key) => key.startsWith("easyt:trip-recovery:v2:"))
       .map((key) => JSON.parse(localStorage.getItem(key)!))
@@ -650,7 +670,7 @@ test("populated Builder only presents route-stop search results whose selected e
     Almaty: {
       canonicalPlaceId: "open-world:fixture:almaty",
       providerId: "fixture:almaty",
-      providerSourceLabel: "Controlled global place provider",
+      providerSourceLabel: "Controlled global place provider", region: "Fixture district",
       name: "Almaty",
       country: "Kazakhstan",
       coordinates: [76.886, 43.2389],
@@ -660,7 +680,7 @@ test("populated Builder only presents route-stop search results whose selected e
     Samarkand: {
       canonicalPlaceId: "open-world:fixture:samarkand",
       providerId: "fixture:samarkand",
-      providerSourceLabel: "Controlled global place provider",
+      providerSourceLabel: "Controlled global place provider", region: "Fixture district",
       name: "Samarkand",
       country: "Uzbekistan",
       coordinates: [66.9597, 39.6542],
@@ -670,7 +690,7 @@ test("populated Builder only presents route-stop search results whose selected e
     Tokyo: {
       canonicalPlaceId: "open-world:fixture:tokyo",
       providerId: "fixture:tokyo",
-      providerSourceLabel: "Controlled global place provider",
+      providerSourceLabel: "Controlled global place provider", region: "Fixture district",
       name: "Tokyo",
       country: "Japan",
       coordinates: [139.6917, 35.6895],
@@ -684,23 +704,29 @@ test("populated Builder only presents route-stop search results whose selected e
       await view.page.getByRole("button", { name: "Add destination", exact: true }).click();
       const search = view.page.getByRole("combobox", { name: "Add a stop", exact: true });
       await search.fill(place.name);
-      const option = view.page.getByRole("option", { name: new RegExp(`^${place.name}`) });
+      const option = view.page.getByRole("option", { name: new RegExp(`^${place.name}.*Fixture district`) });
       await option.waitFor({ timeout: 5_000 });
       await option.click();
+      await view.page.getByRole("group",{name:"Review destination",exact:true}).getByRole("button",{name:`Add ${place.name}`,exact:true}).click();
       await view.page.getByText(place.name, { exact: true }).first().waitFor({ timeout: 5_000 });
       assert.equal(await view.page.getByText(new RegExp(`We couldn't verify.*${place.name}`)).count(), 0);
+      await view.page.waitForFunction((id:string)=>Object.entries(localStorage).filter(([key])=>key.startsWith("easyt:trip-recovery:v2:")).some(([,raw])=>JSON.parse(raw).trip?.stops.some((stop:{canonicalPlaceId:string})=>stop.canonicalPlaceId===id)),place.canonicalPlaceId);
       assert.deepEqual(view.errors, []);
     } finally { await view.close(); }
   }
 
-  for (const weakCatalogPlace of ["Almaty", "Samarkand"]) {
-    const view = await renderPopulatedBuilder(endpointDraft);
+  for (const weakCatalogPlace of ["Unverified Almaty", "Unverified Samarkand"]) {
+    const view = await renderPopulatedBuilder(endpointDraft,{geocodeCandidates:{[weakCatalogPlace]:[{name:weakCatalogPlace,country:"Kazakhstan",canonicalPlaceId:`fixture:unverified:${weakCatalogPlace}`,placeType:"city",routability:"direct_destination"}]}});
     try {
       await view.page.getByRole("button", { name: "Add destination", exact: true }).click();
+      const stopsBefore=await view.page.evaluate(()=>Object.entries(localStorage).filter(([key])=>key.startsWith("easyt:trip-recovery:v2:")).map(([,raw])=>JSON.parse(raw)).find(record=>record.trip)?.trip.stops);
       await view.page.getByRole("combobox", { name: "Add a stop", exact: true }).fill(weakCatalogPlace);
-      await view.page.waitForTimeout(350);
-      assert.equal(await view.page.getByRole("option", { name: new RegExp(`^${weakCatalogPlace}`) }).count(), 0,
-        `${weakCatalogPlace} must not be actionable without coordinates from canonical evidence`);
+      // Current search permits a name to be checked; canonical acceptance still needs coordinates.
+      await view.page.getByRole("option",{name:new RegExp(`^${weakCatalogPlace}`)}).click();
+      await view.page.getByText(new RegExp(`We couldn't verify.*${weakCatalogPlace}`)).waitFor();
+      assert.equal(await view.page.getByRole("group",{name:"Review destination",exact:true}).count(),0);
+      assert.deepEqual(await view.page.evaluate(()=>Object.entries(localStorage).filter(([key])=>key.startsWith("easyt:trip-recovery:v2:")).map(([,raw])=>JSON.parse(raw)).find(record=>record.trip)?.trip.stops),stopsBefore,
+        `${weakCatalogPlace} cannot enter the canonical route without geographic evidence`);
     } finally { await view.close(); }
   }
 });
@@ -715,7 +741,7 @@ test("the inline Add a stop field stays ready for consecutive canonical addition
   const desktopPlace = { canonicalPlaceId: "open-world:fixture:seoul", providerId: "fixture:seoul", name: "Seoul", country: "South Korea", coordinates: [126.978, 37.5665], placeType: "city", routability: "direct_destination" };
   const geocodeCandidates = Object.fromEntries([...places, desktopPlace].map((place) => [place.name, [{
     ...place,
-    providerSourceLabel: "Controlled global place provider",
+    providerSourceLabel: "Controlled global place provider", region: "Fixture district",
   }]]));
   const view = await renderPopulatedBuilder({ destinations: [{ ...places[0], id: "almaty-seed", coordinates: places[0].coordinates as [number, number] }] }, { geocodeCandidates });
   try {
@@ -724,7 +750,8 @@ test("the inline Add a stop field stays ready for consecutive canonical addition
     for (const place of places.slice(1)) {
       const search = view.page.getByRole("combobox", { name: "Add a stop", exact: true });
       await search.fill(place.name);
-      await view.page.getByRole("option", { name: new RegExp(`^${place.name}`) }).click();
+      await view.page.getByRole("option", { name: new RegExp(`^${place.name}.*Fixture district`) }).click();
+      if (place.country !== "Japan" || place.name === "Tokyo") await view.page.getByRole("group",{name:"Review destination",exact:true}).getByRole("button",{name:`Add ${place.name}`,exact:true}).click();
       await view.page.getByText(place.name, { exact: true }).first().waitFor({ timeout: 5_000 });
       assert.equal(await search.count(), 1, "the same Add stop flow should remain mounted");
       assert.equal(await search.inputValue(), "");
@@ -732,13 +759,14 @@ test("the inline Add a stop field stays ready for consecutive canonical addition
         "focus should return to the cleared search after a successful add");
     }
 
-    const stopOrder = await view.page.locator('[data-builder-top-controls] [data-destination-intent-id] > button:first-of-type').allTextContents();
+    const stopOrder = await view.page.locator('[data-builder-top-controls] [data-destination-intent-id] > button[aria-label^="Edit "]').allTextContents();
     assert.deepEqual(stopOrder.map((label: string) => label.trim()), ["Almaty", "Samarkand", "Tokyo", "Osaka"]);
 
     const search = view.page.getByRole("combobox", { name: "Add a stop", exact: true });
     await search.fill("Almaty");
     await view.page.waitForTimeout(350);
-    assert.equal(await view.page.getByRole("option", { name: /^Almaty/ }).count(), 0);
+    assert.equal(await view.page.getByRole("option", { name: /^Almaty.*Fixture district/ }).count(), 0,"the exact accepted provider identity is excluded; other catalogue identities are not silently merged");
+    assert.equal(await view.page.evaluate(()=>Object.entries(localStorage).filter(([key])=>key.startsWith("easyt:trip-recovery:v2:")).map(([,raw])=>JSON.parse(raw)).find(record=>record.trip)?.trip.stops.filter((stop:{canonicalPlaceId:string})=>stop.canonicalPlaceId==="open-world:fixture:almaty").length),1);
     assert.equal(await view.page.getByText("Almaty", { exact: true }).count() > 0, true);
 
     assert.equal(await search.count(), 1, "the field remains available after duplicate prevention");
@@ -748,7 +776,8 @@ test("the inline Add a stop field stays ready for consecutive canonical addition
     await view.page.setViewportSize({ width: 1280, height: 900 });
     const desktopSearch = view.page.getByRole("combobox", { name: "Add a stop", exact: true });
     await desktopSearch.fill(desktopPlace.name);
-    await view.page.getByRole("option", { name: new RegExp(`^${desktopPlace.name}`) }).click();
+    await view.page.getByRole("option", { name: new RegExp(`^${desktopPlace.name}.*Fixture district`) }).click();
+    await view.page.getByRole("group",{name:"Review destination",exact:true}).getByRole("button",{name:`Add ${desktopPlace.name}`,exact:true}).click();
     await view.page.getByText(desktopPlace.name, { exact: true }).first().waitFor();
     assert.equal(await desktopSearch.inputValue(), "");
     assert.equal(await desktopSearch.evaluate((element: HTMLElement) => globalThis.document.activeElement === element), true);

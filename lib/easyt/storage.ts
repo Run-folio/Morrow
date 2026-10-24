@@ -421,8 +421,9 @@ function setCurrentTripInStorage(
   ownerId: string | null,
   tripId: string,
   protectedKeys: string[] = [],
+  navigationAttemptId?: string,
 ) {
-  const record: CurrentTripRecord = { version: 2, ownerId, tripId };
+  const record = { version: 2 as const, ownerId, tripId, ...(navigationAttemptId?{navigationAttemptId}:{}) };
   return safeSet(storage, currentTripStorageKey(ownerId), JSON.stringify(record), protectedKeys);
 }
 
@@ -802,6 +803,7 @@ function writeTripRecoveryToStorage(
     replace?: TripRecoveryHandle;
     /** The async broker retires a predecessor only after all required metadata verifies. */
     deferRetirement?: boolean;
+    navigationAttemptId?: string;
   } = {},
 ): TripRecoveryWriteResult {
   try { trip = prepareTripDocumentForWrite(trip); }
@@ -820,7 +822,7 @@ function writeTripRecoveryToStorage(
     // into a false stale-write result.
     if (sameRecoveryDocument(existing.trip, trip)) {
       reportQaPersistenceBoundary("recovery-preparation", "recovery-replacement", {accepted:true,writeBranch:"exact-reuse",writeAttempted:false});
-      setCurrentTripInStorage(storage, ownerId, trip.id, [tripRecoveryStorageKey(ownerId, trip.id)]);
+      setCurrentTripInStorage(storage, ownerId, trip.id, [tripRecoveryStorageKey(ownerId, trip.id)], options.navigationAttemptId);
       const pointerAcknowledged = loadCurrentTripIdFromStorage(storage, ownerId) === trip.id;
       return { stored: true, handle: existing, blockedByExistingRecovery: false, pointerAcknowledged, writeAttempted: true,
         ...(!pointerAcknowledged ? { failureReason: "pointer-incomplete" as const } : {}) };
@@ -883,7 +885,7 @@ function writeTripRecoveryToStorage(
   const stored = written && readbackConfirmed === true;
   let pointerAcknowledged = false;
   if (stored) {
-    setCurrentTripInStorage(storage, ownerId, trip.id, [recoveryKey]);
+    setCurrentTripInStorage(storage, ownerId, trip.id, [recoveryKey], options.navigationAttemptId);
     pointerAcknowledged = loadCurrentTripIdFromStorage(storage, ownerId) === trip.id;
     if (pointerAcknowledged && existing && options.replace && !options.deferRetirement) {
       const replacedKey = recoveryRecordKey(storage, options.replace);
@@ -907,6 +909,7 @@ export function saveTripRecoveryToStorage(
     now?: string;
     replace?: TripRecoveryHandle;
     deferRetirement?: boolean;
+    navigationAttemptId?: string;
   } = {},
 ): TripRecoveryWriteResult {
   const ownerId = options.ownerId === undefined ? trip.ownerId : options.ownerId;

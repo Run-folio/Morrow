@@ -103,6 +103,34 @@ function mergeAuthoredDocument(base: unknown, authored: unknown, canonical: unkn
   return structuredClone(authored);
 }
 
+// This optional reference is produced by road-transfer-resolution, independently
+// of the selected mode/transport metadata. Unknown extensions stay protected.
+// Provider check times use toISOString(); noncanonical or normalized dates defer.
+function generatedRoadReference(value: unknown): boolean {
+  if (value === undefined) return true;
+  if (!isObject(value)) return false;
+  const fields = ['provider', 'profile', 'provenance', 'checkedAt', 'distanceKm', 'durationMinutes',
+    'confidence', 'routeGeometry', 'attribution', 'warnings'];
+  return Object.keys(value).every(key => fields.includes(key))
+    && value.provider === 'openrouteservice' && value.profile === 'driving-car' && value.provenance === 'routed'
+    && value.confidence === 'medium' && typeof value.checkedAt === 'string' && Number.isFinite(Date.parse(value.checkedAt))
+    && new Date(value.checkedAt).toISOString() === value.checkedAt
+    && typeof value.distanceKm === 'number' && Number.isFinite(value.distanceKm) && value.distanceKm > 0
+    && typeof value.durationMinutes === 'number' && Number.isFinite(value.durationMinutes) && value.durationMinutes > 0
+    && typeof value.attribution === 'string' && Array.isArray(value.warnings) && value.warnings.every(item => typeof item === 'string')
+    && Array.isArray(value.routeGeometry) && value.routeGeometry.length >= 2
+    && value.routeGeometry.every(point => Array.isArray(point) && point.length === 2
+      && typeof point[0] === 'number' && Number.isFinite(point[0]) && point[0] >= -180 && point[0] <= 180
+      && typeof point[1] === 'number' && Number.isFinite(point[1]) && point[1] >= -90 && point[1] <= 90);
+}
+
+function onlyGeneratedRoadReferenceChanged(before: EasyTTrip['legs'][number], after: EasyTTrip['legs'][number]) {
+  if (!generatedRoadReference(before.roadEstimate) || !generatedRoadReference(after.roadEstimate)) return false;
+  const { roadEstimate: beforeReference, ...beforeContent } = before;
+  const { roadEstimate: afterReference, ...afterContent } = after;
+  return authoredContentKey(beforeContent) === authoredContentKey(afterContent);
+}
+
 export function mergeTripMutationDocuments(base: EasyTTrip, authored: EasyTTrip, canonical: EasyTTrip) {
   if (!sameTripDocument(base, authored) || !sameTripDocument(base, canonical)) return structuredClone(authored);
   let merged = mergeAuthoredDocument(base, authored, canonical) as EasyTTrip;
@@ -114,7 +142,12 @@ export function mergeTripMutationDocuments(base: EasyTTrip, authored: EasyTTrip,
     const pairChanged = !canonicalLeg || canonicalLeg.fromStopId !== baseLeg.fromStopId || canonicalLeg.toStopId !== baseLeg.toStopId;
     if (authoredLeg && authoredContentKey(authoredLeg) !== authoredContentKey(baseLeg) && pairChanged) throw new EasyTTripSaveConflictError("Concurrent transport and route edits need review. The recovery copy has been preserved.", canonical, "cloud-changed");
     const authoredPairChanged = !authoredLeg || authoredLeg.fromStopId !== baseLeg.fromStopId || authoredLeg.toStopId !== baseLeg.toStopId;
-    if (canonicalLeg && authoredContentKey(canonicalLeg) !== authoredContentKey(baseLeg) && authoredPairChanged) throw new EasyTTripSaveConflictError("Concurrent route and transport edits need review. The recovery copy has been preserved.", canonical, "cloud-changed");
+    // A removed leg cannot carry a refreshed driving reference into the new
+    // route. Only that derived-only difference may be discarded; same-ID pair
+    // edits and every selected/unknown transport field retain the conflict.
+    const removedLegReferenceRefresh = !authoredLeg && canonicalLeg && !pairChanged
+      && onlyGeneratedRoadReferenceChanged(baseLeg, canonicalLeg);
+    if (canonicalLeg && authoredContentKey(canonicalLeg) !== authoredContentKey(baseLeg) && authoredPairChanged && !removedLegReferenceRefresh) throw new EasyTTripSaveConflictError("Concurrent route and transport edits need review. The recovery copy has been preserved.", canonical, "cloud-changed");
   }
   if (base.brief.intent?.route && authored.brief.intent?.route && canonical.brief.intent?.route) {
     const unit = (trip: EasyTTrip) => ({ stops: trip.stops, route: trip.brief.intent!.route! });

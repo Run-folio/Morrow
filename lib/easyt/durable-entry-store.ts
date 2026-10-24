@@ -62,7 +62,7 @@ export function createRecoveryEntryStore(driver: RecoveryDomainDriver, context: 
     async commit(input: RecoveryEntryWrite): Promise<RecoveryEntryResult> {
       if (!active()) return conflict('operation-changed'); const prepared = prepareEntryWrite(input, ownerId);
       if (prepared.kind !== 'prepared') return prepared;
-      if(prepared.scope.kind==='recovery-lifecycle'||prepared.scope.kind==='recovery-claim')return conflict('admission');
+      if(prepared.scope.kind==='recovery-lifecycle'||prepared.scope.kind==='recovery-claim'||prepared.scope.kind==='creation-navigation')return conflict('admission');
       try {
         const result = await driver.runEntry<RecoveryEntryResult | { kind: 'committed' }>(prepared.scope, prepared.envelope.handle.writeId, 'readwrite', state => {
           if (!active()) return { value: conflict('operation-changed', 'not-committed') };

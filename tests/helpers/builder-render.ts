@@ -42,7 +42,7 @@ export async function builderBundle(styled = false, sourceOverrides?: ReadonlyMa
       builder.onResolve({ filter: /^@\/components\/journey-planner-map$/ }, () => ({ path: "map", namespace: "fixture" }));
       builder.onLoad({ filter: /^map$/, namespace: "fixture" }, () => ({ resolveDir: fileURLToPath(new URL("../../", import.meta.url)), contents: `import React,{useEffect} from 'react'; export function JourneyPlannerMap({legs=[],stops=[],selectedId,selectedLegId,onSelect,onLegSelect,onLifecycleChange}){useEffect(()=>onLifecycleChange?.(window.__MORROVIA_MAP_UNAVAILABLE__?'unavailable':'ready'),[onLifecycleChange]);return React.createElement('div',{'aria-label':'Whole-trip route map preview','data-selected-leg-id':selectedLegId??''},[...stops.map(stop=>React.createElement('button',{key:'stop:'+stop.id,type:'button','aria-label':'Map stop '+(stop.city||stop.name),'aria-pressed':stop.id===selectedId,onClick:()=>onSelect?.(stop.id)},stop.city||stop.name)),...legs.map(leg=>React.createElement('button',{key:'leg:'+leg.id,type:'button','aria-label':'Map leg '+leg.fromName+' to '+leg.toName,'aria-pressed':leg.id===selectedLegId,onClick:()=>onLegSelect?.(leg)},leg.fromName+' → '+leg.toName))]);}` }));
       builder.onResolve({ filter: /^@\/lib\/auth-client$/ }, () => ({ path: "auth", namespace: "fixture" }));
-      builder.onLoad({ filter: /^auth$/, namespace: "fixture" }, () => ({resolveDir:fileURLToPath(new URL("../../",import.meta.url)),contents:`import {useState,useEffect} from 'react'; export const authClient={useSession(){const [owner,setOwner]=useState(window.__BUILDER_TEST_OWNER__??null);useEffect(()=>{const update=()=>setOwner(window.__BUILDER_TEST_OWNER__??null);window.addEventListener('builder-test-owner',update);return()=>window.removeEventListener('builder-test-owner',update)},[]);return {data:owner?{user:{id:owner,name:'Test traveller',email:'fixture@example.invalid'}}:null,isPending:false,error:null}},getSession:async()=>({data:window.__BUILDER_TEST_OWNER__?{user:{id:window.__BUILDER_TEST_OWNER__}}:null,error:null})};` }));
+      builder.onLoad({ filter: /^auth$/, namespace: "fixture" }, () => ({resolveDir:fileURLToPath(new URL("../../",import.meta.url)),contents:sourceOverrides?.get("fixture:auth")??`import {useState,useEffect} from 'react'; export const authClient={useSession(){const [owner,setOwner]=useState(window.__BUILDER_TEST_OWNER__??null);useEffect(()=>{const update=()=>setOwner(window.__BUILDER_TEST_OWNER__??null);window.addEventListener('builder-test-owner',update);return()=>window.removeEventListener('builder-test-owner',update)},[]);return {data:owner?{user:{id:owner,name:'Test traveller',email:'fixture@example.invalid'}}:null,isPending:false,error:null}},getSession:async()=>({data:window.__BUILDER_TEST_OWNER__?{user:{id:window.__BUILDER_TEST_OWNER__}}:null,error:null})};` }));
       builder.onLoad({ filter: /.*/, namespace: "framework" }, ({ path }) => ({ resolveDir: fileURLToPath(new URL("../../", import.meta.url)), contents: path.endsWith("navigation")
         ? `const searchParams=new URLSearchParams(location.search); export const useSearchParams=()=>searchParams; export const usePathname=()=>location.pathname; export const useSelectedLayoutSegment=()=>null; export const useRouter=()=>({push:href=>location.assign(href),replace:href=>location.replace(href)});export const notFound=()=>{throw Error('Fixture route not found')};`
         : `import React from 'react'; export default function Component({children, priority, fill, unoptimized, ...props}) {return React.createElement('${path.endsWith("link") ? "a" : "img"}',props,children)}`,
@@ -73,6 +73,7 @@ export async function renderBuilder({
   language,
   ownerId,
   accountRequest,
+  authSessionRequest,
   seedRecovery = true,
   forceResolver = false,
   simulatedSignIn = false,
@@ -80,6 +81,7 @@ export async function renderBuilder({
   discoveryRequest,
   transferRequest,
   styled = false,
+  sourceOverrides,
   liveOverviewPrep = false,
   prepRequest,
   offlineOnly = false,
@@ -112,6 +114,8 @@ export async function renderBuilder({
   forceResolver?: boolean;
   simulatedSignIn?: boolean;
   styled?: boolean;
+  /** Test-only source instrumentation; normal fixtures retain production source. */
+  sourceOverrides?: ReadonlyMap<string,string>;
   liveOverviewPrep?: boolean;
   /** Opt-in isolated integration checks must never contact external services. */
   offlineOnly?: boolean;
@@ -119,16 +123,21 @@ export async function renderBuilder({
   dashboardTrips?: () => unknown[];
   prepRequest?: (input:{path:string;body:unknown}) => Promise<{status:number;body:unknown}> | {status:number;body:unknown};
   shellCanonicalTrip?: { id: string; ownerId: string | null } & Record<string, unknown>;
+  /** Optional real SDK session endpoint, entirely synthetic and loopback-local. */
+  authSessionRequest?: () => Promise<{status:number;body:unknown}> | {status:number;body:unknown};
   accountRequest?: (input:{method:string;path:string;trip:unknown}) => Promise<{status:number;body:unknown}> | {status:number;body:unknown};
   transferRequest?: (input:{legs:unknown[]}) => Promise<{status:number;body:unknown}> | {status:number;body:unknown};
   discoveryRequest?: (destination:string,context:{cacheControl:string|undefined}) => Promise<{status:number;body:unknown}> | {status:number;body:unknown};
 } = {}) {
-  const { script, css } = await builderBundle(styled);
+  const { script, css } = await builderBundle(styled, sourceOverrides);
   let captureRequests = 0;
   const geocodeRequests = new Map<string, number>();
   const server = createServer(async (request, response) => {
     if (request.url?.startsWith("/api/")) {
       const url = new URL(request.url, "http://localhost");
+      if (url.pathname === "/api/auth/get-session" && authSessionRequest) {
+        const result=await authSessionRequest();response.statusCode=result.status;response.setHeader("Content-Type","application/json");response.end(JSON.stringify(result.body));return;
+      }
       if ((url.pathname === '/api/journey-booking-readiness' || url.pathname === '/api/journey-readiness') && prepRequest) {
         const chunks:Buffer[]=[];for await(const chunk of request)chunks.push(Buffer.from(chunk));
         const result=await prepRequest({path:url.pathname,body:JSON.parse(Buffer.concat(chunks).toString())});
@@ -249,9 +258,13 @@ export async function renderBuilder({
   if (simulatedSignIn) await page.addInitScript(() => { (window as Window & {__BUILDER_TEST_OWNER__?:string}).__BUILDER_TEST_OWNER__ = sessionStorage.getItem('builder-fixture-owner') ?? undefined; });
   const errors: string[] = [];
   page.on("pageerror", (error: Error) => errors.push(error.message));
+  let pendingGeocodeRequests = 0;
   if (geocodeDelayMs > 0) await page.route("**/api/journey-geocode?**", async (route: { continue: () => Promise<void> }) => {
-    await new Promise((resolve) => setTimeout(resolve, geocodeDelayMs));
-    await route.continue();
+    pendingGeocodeRequests += 1;
+    try {
+      await new Promise((resolve) => setTimeout(resolve, geocodeDelayMs));
+      await route.continue();
+    } finally { pendingGeocodeRequests -= 1; }
   });
   if (draft) await page.addInitScript((value: unknown) => localStorage.setItem("easyt-home-trip-draft", JSON.stringify(value)), draft);
   if (storedInput) await page.addInitScript(({ key, value, entryPath }: { key: string; value: unknown; entryPath: string }) => {
@@ -309,5 +322,5 @@ export async function renderBuilder({
     await browser.close(); server.close();
     throw new Error(`Builder failed to render: ${errors.join("; ")}`, { cause: error });
   }
-  return { page, errors, captureRequests: () => captureRequests, geocodeRequests: () => Object.fromEntries(geocodeRequests), close: async () => { await browser.close(); await new Promise<void>((resolve) => server.close(() => resolve())); } };
+  return { page, errors, pendingGeocodeRequests: () => pendingGeocodeRequests, captureRequests: () => captureRequests, geocodeRequests: () => Object.fromEntries(geocodeRequests), close: async () => { await browser.close(); await new Promise<void>((resolve) => server.close(() => resolve())); } };
 }

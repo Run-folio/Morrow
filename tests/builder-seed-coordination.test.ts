@@ -12,6 +12,7 @@ import { rebalanceTripNights } from '../lib/easyt/night-allocation.ts';
 import { validateBuilderStopOrder, routeIntentForAcceptedBuilderOrder } from '../lib/easyt/trip-builder-order.ts';
 import { routeIntentFromHandoff } from '../lib/easyt/trip-route-intent.ts';
 import { requestCanonicalTransferResolution } from '../lib/easyt/transfer-resolution-client.ts';
+import { createTripCreationToken } from '../lib/easyt/trip-creation-provenance.ts';
 import { builderDiscoveryInputKey } from '../lib/easyt/trip-builder-recommendations.ts';
 
 const source=()=>readFileSync(new URL('../app/journey/new/trip-builder.tsx',import.meta.url),'utf8');
@@ -36,7 +37,7 @@ function gate<T>() {let resolve!:(value:T)=>void;return {promise:new Promise<T>(
 function fixture() {
   const trip=homeRecoveryFixture(null).trip,write=gate<any>(),read=gate<any>();let seeded:any=null;
   const feedback:unknown[]=[],timers:Array<()=>Promise<void>>=[];
-  const scope:any={builderSeed:null,hydrated:true,pendingInterpretation:null,resolvingLocations:false,tripUnavailable:false,
+  const scope:any={builderCreationTokenRef:{current:null},builderCreationReplayScopeRef:{current:null},entryKind:'fresh',createTripCreationToken,builderSeed:null,hydrated:true,pendingInterpretation:null,resolvingLocations:false,tripUnavailable:false,
     canUseHydratedTripScope,hydratedOwnerScopeRef:{current:null},activeBrowserOwnerId:null,origin:'',tripBrief:'Selected stops',activePlaceMentions:[],stops:trip.stops,
     hydratedCanonicalTripRef:{current:null},activeTripDocument:trip,requireReadableTripDocument,recoveryHandleRef:{current:null},
     useCallback:(fn:any)=>fn,builderMountedRef:{current:true},activeBrowserOwnerIdRef:{current:null},builderCurrentDocumentRef:{current:trip},
@@ -50,8 +51,9 @@ function fixture() {
     window:{location:{href:'http://synthetic.invalid/journey/new'},history:{replaceState(){}},setTimeout(fn:()=>Promise<void>){timers.push(fn);return timers.length;},clearTimeout(){}},
     recoveryPersistenceOutcome:(v:any)=>v.stored?'device-confirmed':'protected-conflict',recoveryFailureMessage:()=> 'Protected recovery',tripDocumentsCanonicalEquivalent:()=>false};
   const tree=ts.createSourceFile('builder.tsx',source(),ts.ScriptTarget.Latest,true,ts.ScriptKind.TSX);
-  let entryExpression='';
-  function visit(node:ts.Node){if(ts.isVariableDeclaration(node)&&node.name.getText(tree)==='ensureBuilderEntry')entryExpression=node.initializer!.getText(tree);ts.forEachChild(node,visit)}visit(tree);
+  let entryExpression='',retireExpression='';
+  function visit(node:ts.Node){if(ts.isVariableDeclaration(node)){if(node.name.getText(tree)==='ensureBuilderEntry')entryExpression=node.initializer!.getText(tree);if(node.name.getText(tree)==='retireBuilderEntryForInput')retireExpression=node.initializer!.getText(tree);}ts.forEachChild(node,visit)}visit(tree);
+  scope.retireBuilderEntryForInput=new Function('scope',`with(scope){${ts.transpileModule('return ('+retireExpression+');',{compilerOptions:{target:ts.ScriptTarget.ES2022}}).outputText}}`)(scope);
   scope.ensureBuilderEntry=new Function('scope',`with(scope){return ${ts.transpileModule('const entry='+entryExpression+';entry;', {compilerOptions:{target:ts.ScriptTarget.ES2022}}).outputText.replace('const entry =','').replace(/;\s*entry;\s*$/,'')};}`)(scope);
   scope.persistDeviceRecovery=(...args:any[])=>builderClosure('persistDeviceRecovery')(scope,args);
   const handle={ownerId:null,tripId:trip.id,writeId:'seed-write'};
@@ -77,7 +79,7 @@ test('actual seed reserves the existing lookup queue before native write/readbac
   assert.equal(rawMutations,0,'enrichment during a canonical reservation must not mutate the guarded source');
   assert.equal(outcomeScope.pendingHandoffOutcomes.length,1);
   assert.equal(f.timers.length,0,'the seed owns initial persistence until its readback finishes');
-  f.write.resolve({stored:true,handle:f.handle});
+  f.write.resolve({stored:true,receiptAcknowledged:true,handle:f.handle});
   f.read.resolve({...f.handle,trip:f.trip});await Promise.all(seed.work);
   assert.equal(f.seeded().initialTrip.id,f.trip.id);
   assert.equal(f.scope.builderSeedPendingRef.current,true,'queued outcomes remain held until the editor mounts');
@@ -85,7 +87,7 @@ test('actual seed reserves the existing lookup queue before native write/readbac
 
 test('retired actual seed cannot report another readback as a competing recovery or mount a stale editor',async()=>{
   const f=fixture(),seed=effect('seed',f.scope);
-  f.write.resolve({stored:true,handle:f.handle});await Promise.resolve();await Promise.resolve();
+  f.write.resolve({stored:true,receiptAcknowledged:true,handle:f.handle});await Promise.resolve();await Promise.resolve();
   seed.cleanup?.();f.scope.builderMountedRef.current=false;
   f.read.resolve({...f.handle,writeId:'newer-write',trip:f.trip});await Promise.all(seed.work);
   assert.equal(f.seeded(),null);assert.deepEqual(f.feedback,[],'a retired attempt cannot publish protected feedback');
@@ -146,7 +148,7 @@ for (const producer of ['discovery','transfer'] as const) test(`actual ${produce
   if(producer==='transfer')assert.equal(f.scope.activeTripDocument.legs[0]?.provider,'Optional transfer response','real bounded preview must actually complete before exercising seed retention');
   first.cleanup?.();const rerender=effect('seed',f.scope);
   assert.equal(writes,1,'optional recomputation must join the existing frozen writer, not create a competing native write');
-  f.write.resolve({stored:true,handle:f.handle,pointerAcknowledged:true});
+  f.write.resolve({stored:true,receiptAcknowledged:true,handle:f.handle,pointerAcknowledged:true});
   f.read.resolve({...f.handle,trip:initial});await Promise.all([...first.work,...rerender.work]);
   assert.deepEqual(submitted,[initial]);assert.deepEqual(f.seeded().initialTrip,initial);
   assert.equal(f.scope.builderSeedPendingRef.current,true,'the accepted seed remains reserved while the async editor is not ready');
@@ -183,21 +185,21 @@ for(const point of ['write','readback','editor-initializing'] as const) for(cons
     setJourneyEndTouched(){},setJourneyEndInput:raw,setJourneyEndError(){},setJourneyEndResolutionAttempted(){},setJourneyEnd(){},
     startDate:f.trip.startDate,endDate:f.trip.endDate,rememberStructuralChange(){},setStartDate:raw,setEndDate:raw,setDatesManuallyEdited(){},setEndDateStillSuggested(){},
     fixedCommitmentInputRef:{current:{label:'',date:'',generation:0}},setFixedCommitmentLabelState:raw,setFixedCommitmentDateState:raw});
-  if(point!=='write'){f.write.resolve({stored:true,handle:f.handle,pointerAcknowledged:true});await new Promise<void>(resolve=>setImmediate(resolve));}
+  if(point!=='write'){f.write.resolve({stored:true,receiptAcknowledged:true,handle:f.handle,pointerAcknowledged:true});await new Promise<void>(resolve=>setImmediate(resolve));}
   if(point==='editor-initializing'){f.read.resolve({...f.handle,trip:f.trip});await Promise.all(seed.work);assert.ok(f.seeded());}
   const fn=input==='brief'||input==='destination-add'?inputHandler(input,f.scope):value(input==='origin'?'replaceJourneyOrigin':input==='end'?'changeJourneyEndInput':input==='dates'?'updateTravelRange':input==='fixed-label'?'setFixedCommitmentLabel':'setFixedCommitmentDate',f.scope);
   await fn(...(input==='origin'?[{name:'new raw'}]:input==='dates'?['2026-11-01','2026-11-03']:['new raw']));
   assert.ok(visible);assert.equal(f.scope.builderSeedPendingRef.current,false);
-  f.write.resolve({stored:true,handle:f.handle});f.read.resolve({...f.handle,trip:f.trip});await Promise.all(seed.work);
+  f.write.resolve({stored:true,receiptAcknowledged:true,handle:f.handle});f.read.resolve({...f.handle,trip:f.trip});await Promise.all(seed.work);
   assert.equal(f.seeded(),null);assert.deepEqual(f.feedback,[]);
 });
 test('a retired actual recovery consumer cannot install an entry or start a native writer',async()=>{
-  const f=fixture();let writes=0;f.scope.saveTripRecovery=async()=>{writes++;return {stored:true,handle:f.handle}};
+  const f=fixture();let writes=0;f.scope.saveTripRecovery=async()=>{writes++;return {stored:true,receiptAcknowledged:true,handle:f.handle}};
   const result=await f.scope.persistDeviceRecovery(f.trip,'seed',()=>false);
   assert.equal(result.stored,false);assert.equal(writes,0);assert.equal(f.scope.builderEntrySessionRef.current,null);
 });
 test('a current entry never acknowledges a foreign incoming trip',async()=>{
-  const f=fixture();f.scope.ensureBuilderEntry(f.trip);let writes=0;f.scope.saveTripRecovery=async()=>{writes++;return {stored:true,handle:f.handle}};
+  const f=fixture();f.scope.ensureBuilderEntry(f.trip);let writes=0;f.scope.saveTripRecovery=async()=>{writes++;return {stored:true,receiptAcknowledged:true,handle:f.handle}};
   const result=await f.scope.persistDeviceRecovery({...f.trip,id:'foreign-trip'},'other');assert.equal(result.stored,false);assert.equal(writes,0);
   assert.equal(f.scope.builderEntrySessionRef.current.candidate.id,f.trip.id);
 });
@@ -205,12 +207,12 @@ test('a seed joins the generation writer first started by an autosave whose opti
   const f=fixture();let writes=0;f.scope.saveTripRecovery=async()=>{writes++;return f.write.promise};
   const autosave=effect('autosave',f.scope),saving=f.timers[0]();autosave.cleanup?.();
   const seed=effect('seed',f.scope);assert.equal(writes,1);
-  f.write.resolve({stored:true,handle:f.handle});f.read.resolve({...f.handle,trip:f.trip});await Promise.all([saving,...seed.work]);
+  f.write.resolve({stored:true,receiptAcknowledged:true,handle:f.handle});f.read.resolve({...f.handle,trip:f.trip});await Promise.all([saving,...seed.work]);
   assert.ok(f.seeded());assert.equal(writes,1);assert.ok(!f.feedback.includes('Protected recovery'));
 });
 test('successful seed and exact handoff cannot relabel or clear protection from another generation',async()=>{
   const f=fixture();f.scope.builderEntryFeedbackRef.current='foreign-generation';
-  const seed=effect('seed',f.scope);f.write.resolve({stored:true,handle:f.handle});f.read.resolve({...f.handle,trip:f.trip});await Promise.all(seed.work);
+  const seed=effect('seed',f.scope);f.write.resolve({stored:true,receiptAcknowledged:true,handle:f.handle});f.read.resolve({...f.handle,trip:f.trip});await Promise.all(seed.work);
   assert.equal(f.scope.builderEntryFeedbackRef.current,'foreign-generation');
   const entry=f.scope.builderEntrySessionRef.current,session={},snapshot={trip:f.trip,browserOwnerId:null,recovery:f.handle,error:null};
   assert.equal(entry.handoff(session,snapshot),true);
@@ -234,7 +236,7 @@ function preservation(f:ReturnType<typeof fixture>) {
 }
 for(const point of ['write','readback'] as const)test(`actual preservation cannot publish feedback or navigation into raw input entered during ${point}`,async()=>{
   const f=fixture(),pending=preservation(f);
-  if(point==='readback'){f.write.resolve({stored:true,handle:f.handle,pointerAcknowledged:true});await new Promise<void>(resolve=>setImmediate(resolve));}
+  if(point==='readback'){f.write.resolve({stored:true,receiptAcknowledged:true,handle:f.handle,pointerAcknowledged:true});await new Promise<void>(resolve=>setImmediate(resolve));}
   f.scope.retireBuilderEntryForInput=value('retireBuilderEntryForInput',f.scope);let raw='';
   Object.assign(f.scope,{setTripBrief(text:string){raw=text},setTripBriefCaptureError(){}});
   inputHandler('brief',f.scope)('newer raw');
@@ -243,12 +245,12 @@ for(const point of ['write','readback'] as const)test(`actual preservation canno
   assert.equal(f.scope.builderEntryFeedbackRef.current,null);pending.cleanup?.();
 });
 test('actual preservation captures its source and accepts only the exact verified generation',async()=>{
-  const f=fixture(),pending=preservation(f);f.write.resolve({stored:true,handle:f.handle,pointerAcknowledged:true});f.read.resolve({...f.handle,trip:f.trip});
+  const f=fixture(),pending=preservation(f);f.write.resolve({stored:true,receiptAcknowledged:true,handle:f.handle,pointerAcknowledged:true});f.read.resolve({...f.handle,trip:f.trip});
   assert.deepEqual(await pending.work,{accepted:true,recoveryNavigation:{sourceHref:'http://synthetic.invalid/journey/new',tripId:f.trip.id}});
   assert.equal(f.scope.builderEntrySessionRef.current.phase,'ready');assert.equal(f.scope.pendingNewTripReceiptRef.current,null);pending.cleanup?.();
 });
 test('actual ready handoff cannot release a newly installed intake receipt or foreign feedback',async()=>{
-  const f=fixture(),seed=effect('seed',f.scope);f.write.resolve({stored:true,handle:f.handle});f.read.resolve({...f.handle,trip:f.trip});await Promise.all(seed.work);
+  const f=fixture(),seed=effect('seed',f.scope);f.write.resolve({stored:true,receiptAcknowledged:true,handle:f.handle});f.read.resolve({...f.handle,trip:f.trip});await Promise.all(seed.work);
   const entry=f.scope.builderEntrySessionRef.current,session={},snapshot={trip:f.trip,browserOwnerId:null,recovery:f.handle,error:null,canonicalSaveState:'local'};
   assert.equal(entry.handoff(session,snapshot),true);f.scope.builderSeed=f.seeded();f.scope.mountedBuilder={session,snapshot};
   const replacement={replacement:true};f.scope.pendingNewTripReceiptRef.current=replacement;f.scope.builderEntryFeedbackRef.current='foreign-generation';
@@ -262,7 +264,7 @@ test('actual reviewed device retry starts a fresh guarded writer after native re
   Object.assign(f.scope,{mountedBuilder:null,syncAction:'retry',deviceStorageBlocked:true,cloudConflictTrip:null});
   f.scope.saveTripRecovery=async()=>{writes++;return write.promise};f.feedback.length=0;
   const retry=value('recoverFromSaveError',f.scope)();assert.equal(writes,2);assert.notEqual(f.scope.builderEntrySessionRef.current.key,previous.key);
-  assert.equal(f.seeded(),null);write.resolve({stored:true,handle:f.handle,pointerAcknowledged:true});
+  assert.equal(f.seeded(),null);write.resolve({stored:true,receiptAcknowledged:true,handle:f.handle,pointerAcknowledged:true});
   await new Promise<void>(resolve=>setImmediate(resolve));assert.equal(f.seeded(),null,'retry cannot seed before exact readback');
   f.read.resolve({...f.handle,trip:f.trip});await retry;assert.ok(f.seeded());assert.equal(f.scope.builderSeedPendingRef.current,true);
   assert.ok(!f.feedback.includes(''),'retry persistence alone cannot clear protected feedback before editor readiness');
@@ -282,7 +284,7 @@ test('actual explicit retry does not duplicate a held writer and preserves a new
   const first=value('recoverFromSaveError',f.scope)();await value('recoverFromSaveError',f.scope)();assert.equal(writes,1);
   f.scope.retireBuilderEntryForInput=value('retireBuilderEntryForInput',f.scope);let raw='';
   Object.assign(f.scope,{setTripBrief(text:string){raw=text},setTripBriefCaptureError(){}});f.feedback.length=0;
-  inputHandler('brief',f.scope)('newer raw');retryWrite.resolve({stored:true,handle:f.handle});f.read.resolve({...f.handle,trip:f.trip});await first;
+  inputHandler('brief',f.scope)('newer raw');retryWrite.resolve({stored:true,receiptAcknowledged:true,handle:f.handle});f.read.resolve({...f.handle,trip:f.trip});await first;
   assert.equal(raw,'newer raw');assert.equal(f.seeded(),null);assert.equal(f.scope.recoveryHandleRef.current,null);assert.deepEqual(f.feedback,[]);
 });
 test('actual explicit retry reports an unknown read/write rejection only into its own current generation',async()=>{
@@ -294,7 +296,7 @@ test('actual explicit retry reports an unknown read/write rejection only into it
 });
 
 test('actual seeded initialization failure retries with a fresh exact entry while its closure still captures the old seed',async()=>{
-  const f=fixture(),seed=effect('seed',f.scope);f.write.resolve({stored:true,handle:f.handle});f.read.resolve({...f.handle,trip:f.trip});await Promise.all(seed.work);
+  const f=fixture(),seed=effect('seed',f.scope);f.write.resolve({stored:true,receiptAcknowledged:true,handle:f.handle});f.read.resolve({...f.handle,trip:f.trip});await Promise.all(seed.work);
   const previous=f.scope.builderEntrySessionRef.current;f.scope.builderSeed=f.seeded();
   const tree=ts.createSourceFile('builder.tsx',source(),ts.ScriptTarget.Latest,true,ts.ScriptKind.TSX);let expression='';
   function visit(node:ts.Node){if(ts.isCallExpression(node)&&node.expression.getText(tree)==='useBuilderEditSession')expression=node.arguments[2].getText(tree);ts.forEachChild(node,visit)}visit(tree);
@@ -302,7 +304,7 @@ test('actual seeded initialization failure retries with a fresh exact entry whil
   failed();assert.equal(previous.phase,'failed');assert.ok(f.scope.builderSeed,'actual closure deliberately retains the old React seed');
   Object.assign(f.scope,{mountedBuilder:null,syncAction:'retry',deviceStorageBlocked:true,cloudConflictTrip:null});
   const nextHandle={...f.handle,writeId:'reviewed-retry'},nextRead=gate<any>();let writes=0;
-  f.scope.saveTripRecovery=async(_trip:any,options:any)=>{writes++;assert.deepEqual(options.replace,f.handle);return {stored:true,handle:nextHandle}};
+  f.scope.saveTripRecovery=async(_trip:any,options:any)=>{writes++;assert.deepEqual(options.replace,f.handle);return {stored:true,receiptAcknowledged:true,handle:nextHandle}};
   f.scope.loadTripRecovery=()=>nextRead.promise;
   const retry=value('recoverFromSaveError',f.scope)();await new Promise<void>(resolve=>setImmediate(resolve));
   assert.equal(writes,1,'old nonnull seed may not refuse a newly reviewed generation');
@@ -327,7 +329,7 @@ for(const name of ['onEndChange','onEndModeChange','onEndSelect','onStartSelect'
   await callback(name==='onEndModeChange'?'same_as_start':name==='onEndChange'?'new raw end':{name:'new chosen endpoint',country:'France',canonicalPlaceId:'paris'});
   assert.equal(f.scope.builderEntrySessionRef.current.isCurrent(),false,'raw/selected details must retire before the asynchronous checkpoint can return');
   assert.ok(draft.journeyOrigin.name||draft.journeyEndInput||draft.journeyEnd.mode==='same_as_start');
-  f.write.resolve({stored:true,handle:f.handle,pointerAcknowledged:true});f.read.resolve({...f.handle,trip:f.trip});await Promise.all(seed.work);
+  f.write.resolve({stored:true,receiptAcknowledged:true,handle:f.handle,pointerAcknowledged:true});f.read.resolve({...f.handle,trip:f.trip});await Promise.all(seed.work);
   assert.equal(f.seeded(),null);assert.deepEqual(f.feedback,[]);
 });
 function actualDetailsEditor(scope:Record<string,unknown>,props:Record<string,unknown>) {
@@ -351,7 +353,7 @@ for(const field of ['date','travellers','budget'] as const)test(`actual legacy i
   control.props.onChange(field==='date'?{start:'2026-11-02',end:'2026-11-09'}:field==='travellers'?4:{target:{value:'high'}});timeline.push('event-complete');
   assert.ok(timeline.includes('functional-update'));assert.equal(f.scope.builderEntrySessionRef.current.isCurrent(),false,'held Promise continuations cannot precede synchronous parent retirement');
   assert.equal(field==='date'?states[0].startDate:field==='travellers'?states[0].travellers:states[0].budget,field==='date'?'2026-11-02':field==='travellers'?4:'high');
-  f.write.resolve({stored:true,handle:f.handle});f.read.resolve({...f.handle,trip:f.trip});await Promise.all(seed.work);
+  f.write.resolve({stored:true,receiptAcknowledged:true,handle:f.handle});f.read.resolve({...f.handle,trip:f.trip});await Promise.all(seed.work);
   assert.equal(f.seeded(),null);assert.deepEqual(f.feedback,[]);
 });
 test('actual parent input capture retires before an invalid date picker raw-text handler publishes its unparsed input',async()=>{
@@ -366,7 +368,7 @@ test('actual parent input capture retires before an invalid date picker raw-text
   const change=jsxCallback('../components/easyt/morrovia-date-picker.tsx','input','onChange',{setTypedDate(value:string){raw=value},props:{onTypedDraftChange(){parsed++}},activeBoundary:'start'});assert.ok(change);change(event);
   assert.equal(raw,event.target.value);assert.equal(f.scope.builderEntrySessionRef.current.isCurrent(),false,'unparsed date text must invalidate the native generation even when valid-date onChange is silent');
   assert.equal(parsed,1,'existing raw-date callback behavior is preserved');
-  f.write.resolve({stored:true,handle:f.handle});f.read.resolve({...f.handle,trip:f.trip});await Promise.all(seed.work);assert.equal(f.seeded(),null);assert.deepEqual(f.feedback,[]);
+  f.write.resolve({stored:true,receiptAcknowledged:true,handle:f.handle});f.read.resolve({...f.handle,trip:f.trip});await Promise.all(seed.work);assert.equal(f.seeded(),null);assert.deepEqual(f.feedback,[]);
 });
 
 for(const change of ['remove','order','night','undo'] as const)test(`actual pre-editor ${change} control preserves its visible change and refuses the old held seed`,async()=>{
@@ -390,7 +392,7 @@ for(const change of ['remove','order','night','undo'] as const)test(`actual pre-
   if(change==='undo'){await value('undoStructuralChange',f.scope)();assert.deepEqual(visibleStops.map(stop=>stop.id),f.trip.stops.map(stop=>stop.id).reverse());}
   assert.equal(f.scope.builderEntrySessionRef.current.isCurrent(),false,'canonical source mutation must retire before the held native completion');
   assert.equal(published,change==='undo'?0:1,'existing Undo metadata publication remains intact');
-  f.write.resolve({stored:true,handle:f.handle});f.read.resolve({...f.handle,trip:f.trip});await Promise.all(seed.work);assert.equal(f.seeded(),null);assert.deepEqual(f.feedback,[]);
+  f.write.resolve({stored:true,receiptAcknowledged:true,handle:f.handle});f.read.resolve({...f.handle,trip:f.trip});await Promise.all(seed.work);assert.equal(f.seeded(),null);assert.deepEqual(f.feedback,[]);
 });
 
 test('actual pre-editor provider clarification keeps its selected point and invalidates the original seed',async()=>{
@@ -406,7 +408,7 @@ test('actual pre-editor provider clarification keeps its selected point and inva
   await value('chooseProviderClarification',f.scope)({mentionId:'selected-mention',canonicalName:choice.name},choice);
   assert.equal(advanced,1,'the current pre-editor chooser still completes normally');
   assert.ok(selected);assert.equal(f.scope.builderEntrySessionRef.current.isCurrent(),false);
-  f.write.resolve({stored:true,handle:f.handle});f.read.resolve({...f.handle,trip:f.trip});await Promise.all(seed.work);assert.equal(f.seeded(),null);assert.deepEqual(f.feedback,[]);
+  f.write.resolve({stored:true,receiptAcknowledged:true,handle:f.handle});f.read.resolve({...f.handle,trip:f.trip});await Promise.all(seed.work);assert.equal(f.seeded(),null);assert.deepEqual(f.feedback,[]);
 });
 for(const current of [false,true])test(`actual accepted brief capture ${current?'retires its replaced source':'preserves its existing stale-response refusal'}`,async()=>{
   const f=fixture(),seed=effect('seed',f.scope),response=gate<any>();let visible='';
@@ -416,7 +418,7 @@ for(const current of [false,true])test(`actual accepted brief capture ${current?
   const capture=value('applyTripBrief',f.scope)(new AbortController().signal,()=>current,'new accepted source');
   response.resolve({structuredBrief:f.trip.brief.structuredBrief,mentions:[],routeHints:[],journeyEnd:{mode:'unknown'}});await capture;
   assert.equal(visible,current?'new accepted source':'');assert.equal(f.scope.builderEntrySessionRef.current.isCurrent(),!current);
-  f.write.resolve({stored:true,handle:f.handle});f.read.resolve({...f.handle,trip:f.trip});await Promise.all(seed.work);
+  f.write.resolve({stored:true,receiptAcknowledged:true,handle:f.handle});f.read.resolve({...f.handle,trip:f.trip});await Promise.all(seed.work);
   assert.equal(Boolean(f.seeded()),!current);assert.deepEqual(f.feedback,[]);
 });
 
@@ -436,7 +438,7 @@ for(const change of ['planning-area','transport-choice','build-status'] as const
     value('openBuiltTrip',f.scope)();
   }
   assert.equal(changed,true,'explicit source mutation is executed by the production callback');
-  f.write.resolve({stored:true,handle:f.handle});f.read.resolve({...f.handle,trip:f.trip});await Promise.all(seed.work);assert.equal(f.seeded(),null,'the held checkpoint/readback must not install its old source after an explicit mutation');assert.equal(f.scope.builderEntrySessionRef.current.isCurrent(),false);assert.deepEqual(f.feedback,[]);
+  f.write.resolve({stored:true,receiptAcknowledged:true,handle:f.handle});f.read.resolve({...f.handle,trip:f.trip});await Promise.all(seed.work);assert.equal(f.seeded(),null,'the held checkpoint/readback must not install its old source after an explicit mutation');assert.equal(f.scope.builderEntrySessionRef.current.isCurrent(),false);assert.deepEqual(f.feedback,[]);
 });
 
 test('actual explicit Discovery clarification source replacement retires before a held add-stop validation continues',async()=>{
@@ -451,7 +453,7 @@ test('actual explicit Discovery clarification source replacement retires before 
   function visit(node:ts.Node){if(ts.isPropertyAssignment(node)&&node.name.getText(tree)==='onSelect'&&ts.isArrowFunction(node.initializer)&&node.initializer.getText(tree).includes('discoveryEntry.kind === "clarification"'))expression=node.initializer.getText(tree);ts.forEachChild(node,visit)}visit(tree);assert.ok(expression);
   const callback=new Function('scope',`with(scope){${ts.transpileModule(`return (${expression});`,{compilerOptions:{target:ts.ScriptTarget.ES2022}}).outputText}}`)(f.scope);
   await callback({name:f.trip.stops[0].name,country:f.trip.stops[0].country,canonicalPlaceId:f.trip.stops[0].canonicalPlaceId,placeType:'city'});assert.equal(changed,true);
-  f.write.resolve({stored:true,handle:f.handle});f.read.resolve({...f.handle,trip:f.trip});await Promise.all(seed.work);
+  f.write.resolve({stored:true,receiptAcknowledged:true,handle:f.handle});f.read.resolve({...f.handle,trip:f.trip});await Promise.all(seed.work);
   assert.equal(f.seeded(),null,'confirmed capture metadata cannot be overwritten while its add-stop validation is still held');assert.equal(f.scope.builderEntrySessionRef.current.isCurrent(),false);
   adding.resolve(false);await Promise.resolve();assert.deepEqual(f.feedback,[]);
 });
@@ -468,12 +470,16 @@ for(const [competing,receipt,fault] of [[false,false,'pointer'],[true,false,'poi
  const storage={get length(){return values.size;},key:(i:number)=>[...values.keys()][i]??null,getItem:(k:string)=>values.get(k)??null,
   setItem(k:string,v:string){if(receiptBlocked&&k===receiptKey)throw new DOMException('synthetic receipt only','SecurityError');if(pointerBlocked&&k===currentTripStorageKey(null))throw new DOMException('synthetic pointer only','SecurityError');values.set(k,v);},removeItem:(k:string)=>{values.delete(k);}};
  const f=fixture(),driver=new MemoryRecoveryDriver();let writes=0;
+ // These legacy checkpoint cases retain their original write-ID assertions.
+ // Fresh creation identity/preparation is qualified through the real facade in
+ // trip-creation-pointer-retry.test.mjs; do not fabricate a creation ACK here.
+ f.scope.entryKind=receipt?'home-handoff':'explicit-trip';
  const broker=createTwoStoreTripPersistence(storage,driver,{ownerId:null,isCurrent:()=>true,overflowEnabled:false,accountOverflowQualified:false});
  if(receipt){const home=homeRecoveryFixture(null),handoff=await import('../lib/easyt/home-trip-handoff.ts');let pending:any;
   for(const [key,raw] of home.native)values.set(key,raw);
   if(fault==='receipt'||fault==='pending-pointer'){pending=handoff.createPendingIntakeReceipt(home.snapshot,{handoffId:home.intake.completed.handoffId,tripId:home.trip.id});receiptKey=home.native[0][0];values.set(receiptKey,JSON.stringify({snapshot:home.snapshot,receipt:pending}));values.set(handoff.HOME_TRIP_DRAFT_KEY,JSON.stringify({version:2,phase:'pending-interpretation',receipt:pending}));receiptBlocked=fault==='receipt';}
   f.scope.pendingNewTripReceiptRef.current={snapshot:home.snapshot,receipt:home.intake.completed,pending,draft:home.draft,fromHomepage:true};f.scope.homepageHandoffMatchesTrip=handoff.homepageHandoffMatchesTrip;}
- f.scope.saveTripRecovery=async(trip:any,options:any)=>{const {isCurrent,ownerId,intake,...saveOptions}=options;const id='attempt-'+ ++writes;const context={ownerId,isCurrent,overflowEnabled:false,accountOverflowQualified:false};let prepared:any;
+ f.scope.saveTripRecovery=async(trip:any,options:any)=>{const {isCurrent,ownerId,intake,...saveOptions}=options;if(options.creation)throw new Error('Creation must use the real facade fixture');const id='attempt-'+ ++writes;const context={ownerId,isCurrent,overflowEnabled:false,accountOverflowQualified:false};let prepared:any;
   if(intake){prepared=await (await import('../lib/easyt/homepage-persistence.ts')).prepareIntakeAcknowledgement(storage,driver,context,intake,trip,id+':intake');assert.equal(prepared.ok,true);}
   return createTwoStoreTripPersistence(storage,driver,context).save(trip,{...saveOptions,writeId:id,...(prepared?{entries:[prepared.entry],entry:{pointer:{version:1,backend:'indexeddb',ownerId,tripId:trip.id,writeId:id},input:null,receipt:prepared.receipt}}:{})});};
  f.scope.loadTripRecovery=async(id:string)=>{const read=await broker.read(id);return read.kind==='found'?{...read.recovery,trip:read.trip}:null;};
@@ -493,4 +499,51 @@ for(const [competing,receipt,fault] of [[false,false,'pointer'],[true,false,'poi
  if(fault==='retired'){assert.equal(f.seeded(),null);assert.equal(f.scope.recoveryHandleRef.current,null);for(const [key,raw] of retained)assert.equal(values.get(key),raw);}
  else if(competing){assert.equal(f.seeded(),null);assert.equal(f.scope.recoveryHandleRef.current,null);assert.deepEqual(values,beforeRetry,'competing bytes remain protected');}
  else{assert.ok(f.seeded(),'exact retained body should become an editor seed after fresh pointer verification');assert.ok(sameRecoveryDocument(f.seeded().initialTrip,oldEntry.candidate));assert.equal(f.scope.recoveryHandleRef.current.writeId,'attempt-1');assert.equal(f.scope.builderEntrySessionRef.current.phase,'ready');for(const [key,raw] of retained)if(key.startsWith('easyt:trip-recovery:v2:'))assert.equal(values.get(key),raw,'retry must retain exact original body');if(fault==='receipt'){const input=JSON.parse(values.get(receiptKey)!);assert.equal(input.receipt.version,1);assert.equal(input.receipt.tripId,f.trip.id);}assert.equal(JSON.parse(values.get(currentTripStorageKey(null))!).tripId,f.trip.id);}
+});
+
+
+for(const entryKind of ['fresh','route-handoff']) for(const resumed of [false,true])
+  test(`authored input cannot replay the creation source after rerender (${entryKind}, ${resumed?'resumed':'new'})`,async()=>{
+    const f=fixture();f.scope.entryKind=entryKind;
+    if(resumed)f.scope.builderCreationTokenRef.current=createTripCreationToken(f.trip,null,entryKind==='fresh'?'manual-builder':'curated-route','resumed-creation');
+    const first=f.scope.ensureBuilderEntry(f.trip),token=f.scope.builderCreationTokenRef.current,proof=JSON.stringify(token);
+    let writes=0;f.scope.saveTripRecovery=()=>{writes++;return f.write.promise;};
+    const pending=effect('seed',f.scope);
+    assert.equal(writes,1);
+    f.scope.retireBuilderEntryForInput();
+    const changed=structuredClone(f.trip);changed.travellers=4;
+    f.scope.activeTripDocument=changed;f.scope.builderCurrentDocumentRef.current=changed;
+    assert.equal(first.isCurrent(),false);
+    assert.equal(f.scope.ensureBuilderEntry(changed),null,'authored revision cannot reseed the old immutable document');
+    effect('seed',f.scope);
+    assert.equal(writes,1,'rerender cannot start another writer with retired input');
+    f.write.resolve({stored:true,receiptAcknowledged:true,pointerAcknowledged:true,handle:f.handle});
+    f.read.resolve({...f.handle,trip:f.trip});await Promise.all(pending.work);
+    assert.equal(f.seeded(),null,'late old acknowledgement cannot mount an editor');
+    assert.equal(f.scope.ensureBuilderEntry(changed),null,'later rerenders remain protected');
+    assert.equal(f.scope.builderCurrentDocumentRef.current.travellers,4,'current authored input remains intact');
+    assert.equal(f.scope.builderCreationTokenRef.current,token,'reserved identity is not replaced');
+    assert.equal(JSON.stringify(token),proof,'immutable creation proof remains exact');
+  });
+
+for(const boundary of ['owner','hydration']) test(`creation replay remains bound to its selected ${boundary}`,()=>{
+  const f=fixture();f.scope.ensureBuilderEntry(f.trip);
+  const token=f.scope.builderCreationTokenRef.current,proof=JSON.stringify(token);
+  const changed=structuredClone(f.trip);changed.travellers=4;f.scope.builderCurrentDocumentRef.current=changed;
+  if(boundary==='owner')f.scope.activeBrowserOwnerIdRef.current='different-owner';
+  else f.scope.builderEntryHydrationRevisionRef.current++;
+  assert.equal(f.scope.ensureBuilderEntry(changed),null);
+  assert.equal(JSON.stringify(token),proof);
+});
+
+test('advisory rerender can retain the selected creation source within the same input revision',()=>{
+  const f=fixture(),first=f.scope.ensureBuilderEntry(f.trip),token=f.scope.builderCreationTokenRef.current;
+  first.retire();
+  const advisory={...f.trip,recommendations:[{id:'preview-only',kind:'place',title:'Optional preview',reason:'Optional context',stopId:f.trip.stops[0]?.id}]};
+  f.scope.builderCurrentDocumentRef.current=advisory;
+  const next=f.scope.ensureBuilderEntry(advisory);
+  assert.ok(next?.isCurrent());
+  assert.equal(next.candidate.travellers,f.trip.travellers);
+  assert.equal(JSON.stringify(next.candidate),token.initialTripRaw);
+  assert.equal(f.scope.builderCreationTokenRef.current,token);
 });

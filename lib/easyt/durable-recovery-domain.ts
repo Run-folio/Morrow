@@ -10,7 +10,8 @@ export type RecoveryScope = { ownerId: string | null; tripId: string };
 export type RecoveryHandle = RecoveryScope & { version: 1; backend: 'indexeddb'; writeId: string };
 export type NativeRecoveryPointer = RecoveryScope & { version: 1; backend: 'local-storage'; source: 'recovery' | 'cache'; writeId: string | null; nativePointerRaw: string; documentDigest: string };
 export type ClearedRecoveryPointer = {version:1;backend:'cleared';ownerId:string|null;nativePointerRaw:string|null};
-export type RecoveryCurrent = RecoveryHandle | NativeRecoveryPointer | ClearedRecoveryPointer;
+export type CreationHandoverPointer = RecoveryScope & {version:1;backend:'creation-handover';writeId:string;attemptId:string;creationDigest:string;nativePointerRaw:string};
+export type RecoveryCurrent = RecoveryHandle | NativeRecoveryPointer | ClearedRecoveryPointer | CreationHandoverPointer;
 export type LegacyRecoverySource = { key: string; raw: string };
 export type RecoveryEnvelope = {
   version: 1;
@@ -174,6 +175,16 @@ export function decodeDomainCurrent(raw: unknown, ownerId: string | null): Domai
   try {
     const value: unknown = typeof raw === 'string' ? JSON.parse(raw) : null;
     if (!record(value)) return { kind: 'corrupt' };
+    if(value.backend==='creation-handover') {
+      if(value.version!==1)return {kind:'schema'};
+      if(!isRecoveryScope(value)||!keys(value,['version','backend','ownerId','tripId','writeId','attemptId','creationDigest','nativePointerRaw'])
+        ||!text(value.writeId)||!text(value.attemptId)||typeof value.creationDigest!=='string'||!/^[a-f0-9]{64}$/.test(value.creationDigest)
+        ||typeof value.nativePointerRaw!=='string')return {kind:'corrupt'};
+      const native:unknown=JSON.parse(value.nativePointerRaw);
+      if(!record(native)||!keys(native,['version','ownerId','tripId','navigationAttemptId'])||native.version!==2
+        ||native.ownerId!==value.ownerId||native.tripId!==value.tripId||native.navigationAttemptId!==value.attemptId)return {kind:'corrupt'};
+      return value.ownerId===ownerId?{kind:'readable',value:value as CreationHandoverPointer}:{kind:'scope'};
+    }
     if(value.backend==='cleared') {
       if(value.version!==1)return {kind:'schema'};
       if(!keys(value,['version','backend','ownerId','nativePointerRaw'])||!owner(value.ownerId)||!(value.nativePointerRaw===null||typeof value.nativePointerRaw==='string'))return {kind:'corrupt'};
