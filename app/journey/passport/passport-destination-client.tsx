@@ -39,7 +39,7 @@ import editorial from "../surface-editorial.module.css";
 
 const copy = {
   en: {
-    eyebrow: "PASSPORT TO DESTINATION", title: "Check what to verify before you book.", intro: "Choose your passport and destination to see a reviewed tourist rule where available, or find an official source to check.",
+    eyebrow: "PASSPORT TO DESTINATION", title: "Check what to verify before you book.", intro: "Reviewed tourist rules where available; otherwise, check an official source.",
     passport: "Your passport", destination: "Destination", check: "Check requirements", checking: "Checking…", private: "We do not save this check or ask for passport numbers, photos or copies.", failed: "Requirements could not be checked. Try again before relying on this result.",
     resultEyebrow: "TOURIST ENTRY RESULT", entry: "Tourist entry", stay: "Permitted stay", confidence: "Result status", verified: "Reviewed rule", needsConfirmation: "Needs confirmation", unavailable: "Entry information unavailable", resultAvailable: "Official guidance reviewed", noResult: "No matched rule is available",
     officialStrip: "Requirements can change. Check the destination authority before you book or travel.", open: "View official source", considerations: "Entry checks", passportChecks: "Passport checks", validity: "Passport validity", scope: "Tourist-entry scope",
@@ -48,7 +48,7 @@ const copy = {
     prepEyebrow: "PLANNING A TRIP?", prepTitle: "Trip readiness lives in each trip Overview.", prepCopy: "Keep entry checks, saved reminders, stays and transport decisions with the trip they affect.", prepAction: "Open your trips", buildAction: "Build a plan",
   },
   es: {
-    eyebrow: "PASAPORTE AL DESTINO", title: "Comprueba qué verificar antes de reservar.", intro: "Elige tu pasaporte y destino para ver una regla turística revisada, si existe, o encontrar una fuente oficial.",
+    eyebrow: "PASAPORTE AL DESTINO", title: "Comprueba qué verificar antes de reservar.", intro: "Reglas turísticas revisadas cuando estén disponibles; si no, consulta una fuente oficial.",
     passport: "Tu pasaporte", destination: "Destino", check: "Comprobar requisitos", checking: "Comprobando…", private: "No guardamos esta consulta ni pedimos números, fotos o copias del pasaporte.", failed: "No se pudieron comprobar los requisitos. Inténtalo de nuevo antes de confiar en el resultado.",
     resultEyebrow: "RESULTADO DE ENTRADA TURÍSTICA", entry: "Entrada turística", stay: "Estancia permitida", confidence: "Estado del resultado", verified: "Regla revisada", needsConfirmation: "Requiere confirmación", unavailable: "Información de entrada no disponible", resultAvailable: "Guía oficial revisada", noResult: "No hay una regla coincidente disponible",
     officialStrip: "Los requisitos pueden cambiar. Consulta la autoridad del destino antes de reservar o viajar.", open: "Ver fuente oficial", considerations: "Comprobaciones de entrada", passportChecks: "Comprobaciones del pasaporte", validity: "Validez del pasaporte", scope: "Alcance de entrada turística",
@@ -168,12 +168,13 @@ export default function PassportDestinationClient() {
   return <main id="main-content" className={`${styles.page} ${editorial.surface} ${editorial.passport} morrovia-editorial-page`}>
     <EasyTNavigation current="passport" />
     <section className={styles.hero} aria-labelledby="passport-page-title">
-      <div className={styles.heroCopy}><p>{t.eyebrow}</p><h1 id="passport-page-title">{t.title}</h1><span>{t.intro}</span></div>
+      <div className={styles.heroCopy}><p>{t.eyebrow}</p><h1 id="passport-page-title">{t.title}</h1></div>
       <div className={styles.heroMark} aria-hidden="true"><Globe2 /><Waves /></div>
     </section>
 
     <section className={styles.tool} aria-labelledby="passport-check-title">
       <h2 id="passport-check-title" className={styles.srOnly}>{t.eyebrow}</h2>
+      <p className={styles.coverage}>{t.intro}</p>
       <form className={styles.form} onSubmit={(event) => { event.preventDefault(); void checkDestination(); }}>
         <EasyTSelect id="passport-nationality" label={t.passport} value={nationality} onChange={(event) => { passportChosenRef.current = true; invalidateResult(); setNationality(event.target.value); }}>{passportNationalityCountries.map((country) => <option key={country.code} value={country.code}>{country.flag} {passportCountryLabel(country)}</option>)}</EasyTSelect>
         <EasyTSelect id="passport-destination" label={t.destination} value={destination} onChange={(event) => { invalidateResult(); setDestination(event.target.value); }}>{passportDestinationCountries.map((country) => <option key={country.code} value={country.code}>{country.flag} {country.name}</option>)}</EasyTSelect>

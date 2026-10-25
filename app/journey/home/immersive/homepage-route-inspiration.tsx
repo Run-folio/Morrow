@@ -86,7 +86,6 @@ export default function HomepageRouteInspiration({ routes, previewRoutes }: { ro
       <div>
         <span className={styles.eyebrow}>{es ? "Inspiración para tu viaje" : "Trip inspiration"}</span>
         <h2 id="homepage-inspiration-heading">{es ? "¿No sabes adónde ir?" : "Not sure where to go?"}</h2>
-        <p>{es ? "Empieza con una de estas rutas y luego hazla tuya." : "Start with one of these routes, then make it yours."}</p>
       </div>
       <Link className={styles.inspirationCatalogue} href="/journey/discover">{es ? "Ver todas las rutas" : "View all routes"}<ArrowRight aria-hidden="true" /></Link>
     </header>

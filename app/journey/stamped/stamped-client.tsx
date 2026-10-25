@@ -146,7 +146,6 @@ const copy = {
     statsVisited: "Countries seen",
     statsWant: "Want to visit",
     stale: "Showing the saved copy on this device. It may be out of date.",
-    subtitle: "A simple way to keep a living record of where you’ve been and the places still calling.",
     title: "Your world, marked.",
     unmarkedMemory: "This memory is preserved even while the country is unmarked.",
     worldMap: "Interactive world map",
@@ -197,7 +196,6 @@ const copy = {
     statsVisited: "Países visitados",
     statsWant: "Quiero visitar",
     stale: "Mostramos la copia guardada en este dispositivo. Puede estar desactualizada.",
-    subtitle: "Una forma sencilla de guardar un registro vivo de dónde has estado y de los lugares que aún te llaman.",
     title: "Tu mundo, marcado.",
     unmarkedMemory: "Este recuerdo se conserva aunque el país no esté marcado.",
     worldMap: "Mapa mundial interactivo",
@@ -432,7 +430,6 @@ export function StampedExperience({
         <div className={styles.heroCopy}>
           <p className={styles.eyebrow}>MORROVIA · {language === "es" ? "SELLOS" : "STAMPED"}</p>
           <h1>{labels.title}</h1>
-          <p className={styles.heroIntro}>{labels.subtitle}</p>
         </div>
 
         {!ready ? (

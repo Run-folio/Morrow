@@ -54,7 +54,9 @@ type RangeDatePickerProps = SharedDatePickerProps & {
   endValue: string;
   mode: "range";
   onClear?: () => void;
-  onChange: (range: { end: string; start: string }) => void;
+  /** Keep a range local until end selection; callers key this picker to their edit scope/date source. */
+  commitRangeOnEnd?: boolean;
+  onChange: (range: { end: string; start: string }) => void | boolean | Promise<void | boolean>;
   placeholder?: string;
   startLabel: string;
   startName?: string;
@@ -207,8 +209,8 @@ function CalendarPanel({
 export function MorroviaDatePicker(props: MorroviaDatePickerProps) {
   const locale = props.locale ?? "en";
   const isRange = props.mode === "range";
-  const currentStart = isRange ? props.startValue : props.value;
-  const currentEnd = isRange ? props.endValue : "";
+  let currentStart = isRange ? props.startValue : props.value;
+  let currentEnd = isRange ? props.endValue : "";
   const minimumDate = () => [props.min, props.minToday ? todayLocalIso() : undefined].filter(Boolean).sort().at(-1);
   const [open, setOpen] = useState(Boolean(props.defaultOpen));
   const [portalReady, setPortalReady] = useState(false);
@@ -216,6 +218,13 @@ export function MorroviaDatePicker(props: MorroviaDatePickerProps) {
   const [month, setMonth] = useState(() => startOfLocalMonth(currentStart || todayLocalIso()));
   const [popoverPosition, setPopoverPosition] = useState<{ left: number; maxHeight?: number; top: number } | null>(null);
   const [internalTypedDate, setTypedDate] = useState("");
+  const [rangePreview, setRangePreview] = useState<{start:string;end:string}|null>(null);
+  const [rangePending, setRangePending] = useState(false);
+  const previewRef=useRef(rangePreview),pendingRef=useRef(rangePending),rangeAttempt=useRef(0),rangeMounted=useRef(true);
+  if(isRange && props.commitRangeOnEnd && rangePreview && (open || rangePending)) {
+    currentStart=rangePreview.start;currentEnd=rangePreview.end;
+  }
+  useEffect(()=>{rangeMounted.current=true;return()=>{rangeMounted.current=false;rangeAttempt.current++;};},[]);
   const typedDate=props.typedDraft?.[activeBoundary]??internalTypedDate;
   const rootRef = useRef<HTMLDivElement>(null);
   const popoverRef = useRef<HTMLDivElement>(null);
@@ -227,10 +236,12 @@ export function MorroviaDatePicker(props: MorroviaDatePickerProps) {
   const combinedRange = isRange && Boolean(props.combinedLabel);
   const close = (restoreFocus = false) => {
     setOpen(false);
+    if(!pendingRef.current){previewRef.current=null;setRangePreview(null);}
     if (restoreFocus) window.requestAnimationFrame(() => (activeBoundary === "end" ? endTriggerRef.current ?? startTriggerRef.current : startTriggerRef.current)?.focus({ preventScroll: true }));
   };
   const openFor = (boundary: DateBoundary) => {
-    if (props.disabled) return;
+    if (props.disabled || pendingRef.current) return;
+    previewRef.current=null;setRangePreview(null);
     const nextValue = boundary === "end" ? currentEnd || currentStart : currentStart;
     setActiveBoundary(boundary);
     setMonth(startOfLocalMonth(nextValue || todayLocalIso()));
@@ -304,6 +315,7 @@ export function MorroviaDatePicker(props: MorroviaDatePickerProps) {
   }, [activeBoundary, currentEnd, currentStart, month, open]);
 
   const pick = (value: string) => {
+    if (props.disabled || pendingRef.current) return;
     if (!isWithin(value, minimumDate(), props.max)) return;
     if (!isRange) {
       props.onChange(value);
@@ -311,14 +323,26 @@ export function MorroviaDatePicker(props: MorroviaDatePickerProps) {
       return;
     }
     if (activeBoundary === "start") {
-      const nextEnd = props.endValue && props.endValue >= value ? props.endValue : "";
-      props.onChange({ start: value, end: nextEnd });
+      const nextEnd = currentEnd && currentEnd >= value ? currentEnd : "";
+      if(props.commitRangeOnEnd){
+        const preview={start:value,end:nextEnd};previewRef.current=preview;setRangePreview(preview);
+      }else props.onChange({ start: value, end: nextEnd });
       setActiveBoundary("end");
       setMonth(startOfLocalMonth(nextEnd || value));
       setTypedDate("");
       return;
     }
-    if (value < props.startValue) return;
+    const selectedStart=props.commitRangeOnEnd ? previewRef.current?.start ?? props.startValue : props.startValue;
+    if (value < selectedStart) return;
+    if(props.commitRangeOnEnd){
+      const range={start:selectedStart,end:value},attempt=++rangeAttempt.current;
+      previewRef.current=range;setRangePreview(range);pendingRef.current=true;setRangePending(true);
+      close(true);
+      const finish=()=>{if(!rangeMounted.current||rangeAttempt.current!==attempt)return;
+        pendingRef.current=false;setRangePending(false);previewRef.current=null;setRangePreview(null);};
+      try{void Promise.resolve(props.onChange(range)).then(finish,finish);}catch{finish();}
+      return;
+    }
     props.onChange({ start: props.startValue, end: value });
     close(true);
   };
@@ -341,7 +365,7 @@ export function MorroviaDatePicker(props: MorroviaDatePickerProps) {
     }
   };
   const calendarMin = isRange && activeBoundary === "end"
-    ? [minimumDate(), props.startValue].filter(Boolean).sort().at(-1)
+    ? [minimumDate(), currentStart].filter(Boolean).sort().at(-1)
     : minimumDate();
   const panelLabel = isRange && combinedRange
     ? `${props.combinedLabel}: ${copy[locale].chooseDate}`
@@ -359,7 +383,7 @@ export function MorroviaDatePicker(props: MorroviaDatePickerProps) {
     aria-expanded={open && activeBoundary === boundary}
     aria-haspopup="dialog"
     aria-controls={open ? dialogId : undefined}
-    disabled={props.disabled}
+    disabled={props.disabled || rangePending}
     onClick={() => open && activeBoundary === boundary ? close(false) : openFor(boundary)}
   >
     {props.fieldPresentation === "planner" ? <MorroviaPlannerFieldContent label={label} value={displayValue ?? (formatLocalDate(value, locale) || placeholder)} icon={CalendarDays} /> : <>
@@ -397,15 +421,15 @@ export function MorroviaDatePicker(props: MorroviaDatePickerProps) {
     </div>
   </> : null;
 
-  return <div className={`${rootClass}${combinedRange ? ` ${styles.combinedRange}` : ""}`} ref={rootRef}>
+  return <div className={`${rootClass}${combinedRange ? ` ${styles.combinedRange}` : ""}`} ref={rootRef} aria-busy={rangePending || undefined}>
     <div className={isRange && !combinedRange ? styles.rangeFields : styles.singleField}>
       {isRange && combinedRange ? <>
-        {trigger("start", props.combinedLabel ?? props.startLabel, props.startValue, startTriggerRef, formatLocalDateRange(props.startValue, props.endValue, locale, props.placeholder ?? (locale === "es" ? "Añadir fechas" : "Add dates")))}
+        {trigger("start", props.combinedLabel ?? props.startLabel, currentStart, startTriggerRef, formatLocalDateRange(currentStart, currentEnd, locale, props.placeholder ?? (locale === "es" ? "Añadir fechas" : "Add dates")))}
         {props.startName ? <input type="hidden" name={props.startName} value={props.startValue} /> : null}
         {props.endName ? <input type="hidden" name={props.endName} value={props.endValue} /> : null}
       </> : isRange ? <>
-        {trigger("start", props.startLabel, props.startValue, startTriggerRef)}
-        {trigger("end", props.endLabel, props.endValue, endTriggerRef)}
+        {trigger("start", props.startLabel, currentStart, startTriggerRef)}
+        {trigger("end", props.endLabel, currentEnd, endTriggerRef)}
         {props.startName ? <input type="hidden" name={props.startName} value={props.startValue} /> : null}
         {props.endName ? <input type="hidden" name={props.endName} value={props.endValue} /> : null}
       </> : <>

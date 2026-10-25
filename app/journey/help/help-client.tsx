@@ -226,7 +226,6 @@ export default function HelpCenter({
           <div className={styles.heroCopy}>
             <p className={styles.eyebrow}>HELP CENTER</p>
             <h1 id="help-title">How can we help?</h1>
-            <p className={styles.heroLede}>Find answers, learn the basics or get the most out of Morrovia.</p>
             <div className={styles.searchBar} role="search">
               <EasyTField
                 type="search"

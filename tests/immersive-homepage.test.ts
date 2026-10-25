@@ -318,7 +318,7 @@ test("only the full-screen homepage LCP image uses the Next responsive priority 
 test("compact route inspiration remains an open-world starting point", () => {
   const source = readFileSync(new URL("../app/journey/home/immersive/homepage-route-inspiration.tsx", import.meta.url), "utf8");
   assert.match(source, /Not sure where to go\?/);
-  assert.match(source, /Start with one of these routes, then make it yours\./);
+  assert.doesNotMatch(source, /Start with one of these routes, then make it yours\./);
   assert.match(source, /href="\/journey\/discover"/);
 });
 

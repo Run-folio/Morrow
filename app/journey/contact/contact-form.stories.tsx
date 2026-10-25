@@ -7,7 +7,7 @@ function ContactPageStory() {
   return <main className={`${styles.page} morrovia-editorial-page`}>
     <EasyTNavigation landing />
     <section className={styles.content}>
-      <header className={styles.heading}><p>CONTACT MORROVIA</p><h1>How can we help?</h1><span>Ask about planning, your account, privacy or anything that is getting in the way of your trip.</span></header>
+      <header className={styles.heading}><p>CONTACT MORROVIA</p><h1>How can we help?</h1></header>
       <div className={styles.surface}><ContactForm /></div>
     </section>
   </main>;

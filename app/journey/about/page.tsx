@@ -78,7 +78,7 @@ export default function AboutPage() {
               <span className={styles.heroTitleLine}>Planning it <em>shouldn’t</em> be.</span>
             </h1>
             <p className={styles.heroLede}>
-              Morrovia helps independent travellers turn complex, multi-stop ideas into realistic routes, sensible nights and a plan that stays connected from first idea to departure.
+              Plan a realistic multi-stop trip, with routes, nights and days connected.
             </p>
             <ul className={styles.heroPrinciples} aria-label="What Morrovia stands for">
               {heroPrinciples.map(([Icon, label]) => (

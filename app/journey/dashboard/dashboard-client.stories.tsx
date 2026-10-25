@@ -213,7 +213,7 @@ const meta = {
   parameters: { layout: "fullscreen", nextjs: { appDirectory: true, navigation: { pathname: "/journey/dashboard" } } },
   decorators: [(Story) => {
     setStorybookAuthOwner("storybook-first-traveller");
-    return <main className="morrovia-editorial-page" style={{ minHeight: "100vh", overflow: "hidden" }}><div style={{ width: "min(1320px, calc(100% - 40px))", margin: "0 auto 80px" }}><header className={styles.pageIntro}><p className={styles.eyebrow}>Your personal journey library</p><h1><span>Your journeys.</span><em>Ready when you are.</em></h1></header><Story /></div></main>;
+    return <main className="morrovia-editorial-page" style={{ minHeight: "100vh", overflow: "hidden" }}><div style={{ width: "min(1320px, calc(100% - 40px))", margin: "0 auto 80px" }}><header className={styles.pageIntro}><h1><span>Your journeys.</span><em>Ready when you are.</em></h1></header><Story /></div></main>;
   }],
   args: { trips: [], stamps: [], ownerId: "storybook-first-traveller" },
 } satisfies Meta<typeof DashboardClient>;

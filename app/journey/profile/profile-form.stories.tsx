@@ -2,6 +2,8 @@ import type { Meta, StoryObj } from "@storybook/nextjs-vite";
 
 import ProfileForm from "./profile-form";
 import styles from "../account.module.css";
+import { setStorybookAuthOwner } from "../../../.storybook/auth-client.mock";
+import { rememberLastOwner } from "@/lib/easyt/storage";
 
 const meta = {
   title: "Morrovia/05 Product Patterns/Profile form",
@@ -23,13 +25,16 @@ const meta = {
       passportExpiryMonth: "",
     },
   },
+  beforeEach: (context) => {
+    setStorybookAuthOwner(context.args.ownerId);
+    rememberLastOwner(context.args.ownerId);
+  },
   decorators: [
     (Story) => (
       <main className={styles.page}>
         <section className={styles.profileWrap}>
           <p className={styles.eyebrow}>Account settings</p>
           <h1>Your profile.</h1>
-          <p className={styles.profileIntro}>Manage your details and the travel preferences Morrovia uses as a starting point for new trips.</p>
           <Story />
         </section>
       </main>

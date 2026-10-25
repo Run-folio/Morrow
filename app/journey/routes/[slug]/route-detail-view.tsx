@@ -44,7 +44,6 @@ export default function RouteDetailView({ detail, activityAction, navigation, in
       <div className={styles.heroCopy}>
         <p className={styles.eyebrow}>{detail.countries.join(" · ")} · {detail.stops.length} stops</p>
         <h1 id="route-title" tabIndex={-1} aria-label={detail.title}>{visual.title}{visual.emphasis && <><span className={styles.srOnly}>,</span><em>{visual.emphasis}</em></>}</h1>
-        <p className={styles.heroPromise}>{discovery.story.promise}</p>
         <p className={styles.routeOrder}>{detail.stops.map(stop => stop.name).join(" → ")}</p>
         <div className={styles.heroActions}><RoutePlanLink className={styles.onPhoto} draft={detail.planDraft} placement="hero">Use this route</RoutePlanLink></div>
       </div>
@@ -54,6 +53,7 @@ export default function RouteDetailView({ detail, activityAction, navigation, in
       <header className={styles.sectionHeading}><p className={styles.eyebrow}>Why this route</p><h2 id="route-why-heading">A journey with a <em>clear shape.</em></h2></header>
       <div className={styles.whyLayout}>
         <div className={styles.whyStory}>
+          <p>{discovery.story.promise}</p>
           {distinctArc && <p>{distinctArc}</p>}
           {discovery.story.rhythm && <p><strong>Trip rhythm</strong>{discovery.story.rhythm}</p>}
           {distinctBestFor && <p><strong>Best for</strong>{distinctBestFor}</p>}
@@ -77,7 +77,7 @@ export default function RouteDetailView({ detail, activityAction, navigation, in
     </section>}
 
     <section className={`${styles.journeySection} ${styles.wrap}`} id="route-journey" aria-labelledby="route-journey-heading">
-      <header className={styles.sectionHeading}><p className={styles.eyebrow}>Journey and geography</p><h2 id="route-journey-heading">See why each place <em>belongs.</em></h2><p>The sequence, pacing and connections are one coordinated journey.</p></header>
+      <header className={styles.sectionHeading}><p className={styles.eyebrow}>Journey and geography</p><h2 id="route-journey-heading">See why each place <em>belongs.</em></h2></header>
       <div className={styles.journeyLayout}>
         <ol className={styles.journeyList}>{detail.stops.map((stop, index) => {
           const guide = visual.nights[index];
@@ -109,8 +109,9 @@ export default function RouteDetailView({ detail, activityAction, navigation, in
     </section>
 
     {discovery.experiences.length > 0 && <section className={`${styles.experiencesSection} ${styles.wrap}`} id="route-experiences" aria-labelledby="route-experiences-heading">
-      <header className={styles.experienceHeading}><div><p className={styles.eyebrow}>Explore this route</p><h2 id="route-experiences-heading">Signature moments, <em>in context.</em></h2></div><p>Reviewed experiences that fit the route without changing its overnight bases.</p></header>
+      <header className={styles.experienceHeading}><div><p className={styles.eyebrow}>Explore this route</p><h2 id="route-experiences-heading">Signature moments, <em>in context.</em></h2></div></header>
       <ol className={styles.experienceGrid}>{discovery.experiences.map((experience, index) => <li key={`${experience.name}-${experience.stopName}`} className={styles.experienceCard}><RouteDetailPhoto photo={experience.photo} label={experience.name} landscape /><div className={styles.experienceCopy}><span aria-hidden="true">{String(index + 1).padStart(2, "0")}</span><div><h3>{experience.name}</h3><p>From {experience.stopName}</p><small>{experience.context}</small></div></div></li>)}</ol>
+      <p className={styles.experienceScope}>These experiences use the route’s existing overnight bases.</p>
       {experienceAction && <aside className={styles.experienceBooking} aria-label="Activity booking options"><div><span>Booking options from {affiliateProviderLabel(experienceAction.provider)}</span><p>Browse tours, activities and tickets around these bases. Availability and details remain with the provider.</p></div><div><MorroviaAffiliateLink action={experienceAction} context={{ placement: "route_detail_experiences", destinationCount: detail.stops.length }} /><small>{affiliateDisclosure}</small></div></aside>}
     </section>}
 
@@ -123,6 +124,6 @@ export default function RouteDetailView({ detail, activityAction, navigation, in
 
     <section className={`${styles.sourcesSection} ${styles.wrap}`} aria-label="Sources and editorial review"><details className={`${styles.disclosure} ${styles.sourcesDisclosure}`}><summary><span><strong>Sources &amp; review</strong><small>Full provenance, editorial status and known unknowns</small></span><span>{detail.sources.length} sources · reviewed {detail.reviewedAt}</span><ChevronDown aria-hidden="true" /></summary><div className={styles.sourcesBody}><div><MorroviaStatusBanner tone={detail.confidence === "needs-review" ? "warning" : "info"} title={`Editorial record · ${detail.confidence.replaceAll("-", " ")} confidence`} detail={`Reviewed ${detail.reviewedAt}`} />{release?.editorialOwner && <p>Prepared by {release.editorialOwner}</p>}{release?.editorialReviewer && <p>Reviewed by {release.editorialReviewer}</p>}<p>{detail.eyebrow}</p></div><div>{release?.explicitUnknowns?.map((unknown, index) => <p key={index}><strong>{unknown.reference}</strong><br />{unknown.reason}</p>)}{detail.sources.map(source => <a className={styles.sourceLink} key={source.url} href={source.url} target="_blank" rel="noreferrer"><strong>{source.label}<ArrowUpRight aria-hidden="true" /></strong><span>{source.covers}</span>{source.checkedAt && <small>Checked {source.checkedAt}</small>}{source.limitations && <small>{source.limitations}</small>}</a>)}</div></div></details></section>
 
-    <section className={styles.finalCta} id="route-plan" aria-labelledby="route-closing-heading"><RouteDetailPhoto photo={visual.closing} label={detail.title} landscape className={styles.heroPhoto} /><div className={styles.closingCopy}><p className={styles.eyebrow}>{detail.countries.join(" · ")} · Your next chapter</p><h2 id="route-closing-heading">Take this route.<br /><em>Make it yours.</em></h2><p>Keep the reviewed sequence, or shape the dates and nights around your trip.</p><div className={styles.heroActions}><RoutePlanLink className={styles.onPhoto} draft={detail.planDraft} placement="final">Use this route</RoutePlanLink></div></div></section>
+    <section className={styles.finalCta} id="route-plan" aria-labelledby="route-closing-heading"><RouteDetailPhoto photo={visual.closing} label={detail.title} landscape className={styles.heroPhoto} /><div className={styles.closingCopy}><p className={styles.eyebrow}>{detail.countries.join(" · ")} · Your next chapter</p><h2 id="route-closing-heading">Take this route.<br /><em>Make it yours.</em></h2><div className={styles.heroActions}><RoutePlanLink className={styles.onPhoto} draft={detail.planDraft} placement="final">Use this route</RoutePlanLink></div></div></section>
   </>;
 }

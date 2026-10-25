@@ -64,7 +64,7 @@ export default function ImmersiveHome({ routes, previewRoutes, initialIndex }: {
       {heroImageDisplayed && visibleHeroPhoto && !visibleHeroPhoto.firstParty ? <MorroviaPhotoCredit ownership="third-party" className={styles.heroPhotoCredit} placement="bottom-left" photoLabel={visibleHeroPhoto.country} credit={es ? visibleHeroPhoto.creditEs : visibleHeroPhoto.credit} authorHref={visibleHeroPhoto.authorUrl} sourceHref={visibleHeroPhoto.source.startsWith("http") ? visibleHeroPhoto.source : null} fullCreditHref="/journey/immersive/credits.html" /> : null}
       <div className={styles.navigation}><EasyTNavigation current="home" landing logoTone="light" deferPrefetch /></div>
       <div className={`${styles.heroBody} ${styles.heroBodyDualEntry}`}>
-        <div className={styles.heroCopy}><h1><span>{es ? "Viajes con varias paradas," : "Multi-stop trips,"}</span><span className={styles.heroEmphasis}>{es ? "hechos sencillos." : "made simple."}</span></h1><p>{es ? "Planifica tu ruta, alojamientos y actividades, todo en un mismo lugar." : "Plan your route, stays and activities, all in one place."}</p></div>
+        <div className={styles.heroCopy}><h1><span>{es ? "Viajes con varias paradas," : "Multi-stop trips,"}</span><span className={styles.heroEmphasis}>{es ? "hechos sencillos." : "made simple."}</span></h1></div>
         <div className={styles.planner}><HomeTripStarter /></div>
       </div>
       <div className={styles.heroBottom}><a href="#routes">{es ? "De una idea a un viaje" : "From an idea to a journey"} <ArrowDown aria-hidden="true" /></a></div>

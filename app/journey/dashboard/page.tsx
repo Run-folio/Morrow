@@ -42,7 +42,6 @@ export default async function EasyTDashboardPage() {
       />
       <section className={styles.dashboard}>
         <header className={dashboardStyles.pageIntro}>
-          <p className={dashboardStyles.eyebrow}>Your personal journey library</p>
           <h1><span>Your journeys.</span><em>Ready when you are.</em></h1>
         </header>
         <DashboardClient key={session.user.id} trips={trips} stamps={stamps} ownerId={session.user.id} />

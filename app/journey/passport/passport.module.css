@@ -387,3 +387,5 @@
   .heroCopy > span { margin-top: 14px; font-size: 14px; line-height: 1.48; }
   .tool { padding: 18px; }
 }
+
+.coverage { margin: 0 0 20px; color: var(--morrovia-ink-soft); font: var(--morrovia-type-supporting-body); }

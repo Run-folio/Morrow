@@ -243,10 +243,12 @@ test('reserved projection finishes its canonical commit while preserving newer i
   assert.equal(h.session.getSnapshot().acceptedRevision,before.acceptedRevision+1); assert.deepEqual(h.recovery()?.trip,h.session.getSnapshot().trip);
   assert.deepEqual(h.session.getSnapshot().transferAssessments,[]); assert.equal(h.session.getSnapshot().draft.fields[0]!.raw, ' changed during projection '); h.session.dispose();
 });
-test('delayed exact ACK never installs old content or retires newer accepted recovery', async () => {
+test('held exact ACK serializes a later edit and never retires its new recovery', async () => {
   const h = await harness(); await accept(h); await h.run(450); const gate = h.holdAck(); await h.ack(0);
-  const later = await accept(h, { kind: 'travellers', travellers: 4 }), handle = h.recovery()!.writeId;
-  gate.resolve(); await tick(); assert.equal(h.session.getSnapshot().trip.travellers, 4); assert.equal(h.session.getSnapshot().acceptedRevision, later.acceptedRevision); assert.equal(h.recovery()!.writeId, handle);
+  let finished=false;const pending=accept(h, { kind: 'travellers', travellers: 4 }).then(value=>{finished=true;return value;});
+  await tick();assert.equal(finished,false,'later edit waits for the ACK/editor transaction');
+  gate.resolve();const later=await pending,handle=h.recovery()!.writeId;
+  await tick(); assert.equal(h.session.getSnapshot().trip.travellers, 4); assert.equal(h.session.getSnapshot().acceptedRevision, later.acceptedRevision); assert.equal(h.recovery()!.writeId, handle);
   await h.run(450); assert.equal(h.writes.length, 2); assert.equal(h.writes[1]!.trip.travellers, 4); assert.notEqual(h.writes[1]!.trip.updatedAt, fixture().updatedAt); await h.ack(1); assert.equal(h.session.getSnapshot().canonicalSaveState, 'cloud'); h.session.dispose();
 });
 test('exact account ACK remains account truth when optional canonical cache fails', async () => {
@@ -314,13 +316,14 @@ test('latest promotion is a durable identity continuation without a new accepted
   const revision = h.session.getSnapshot().acceptedRevision, saving = h.session.flush({ promoteOwnerless: true }); await tick(); await h.ack(0);
   assert.equal(await saving, true); assert.equal(h.session.getSnapshot().acceptedRevision, revision); assert.equal(h.writes.length, 1); h.session.dispose();
 });
-test('pre-promotion Undo maps become available after durable remap while exact ACK journaling is held', async () => {
+test('pre-promotion Undo waits for held ACK journaling and retains durable remap', async () => {
   const initial = fixture(); initial.ownerId = null; const h = await harness({ initialTrip: initial, owner: 'owner-a' }); await accept(h);
   const frame = h.session.captureStructuralSnapshot(), gate = h.holdAck(), saving = h.session.flush({ promoteOwnerless: true }); await tick();
   await accept(h, { kind: 'remove-destination', intentId: 'intent:hiroshima' }); await h.ack(0);
   assert.equal(h.session.getSnapshot().trip.ownerId, 'owner-a');
-  const inverse = await h.session.accept({ kind: 'structural-inverse', snapshot: frame }, h.session.getSnapshot().inputRevision); assert.equal(inverse.ok, true, JSON.stringify(inverse));
-  gate.resolve(); await tick(); await h.run(450); if (h.writes[1]) await h.ack(1); if (h.writes[2]) await h.ack(2); await saving;
+  let finished=false;const pending=h.session.accept({ kind: 'structural-inverse', snapshot: frame }, h.session.getSnapshot().inputRevision).then(result=>{finished=true;return result;});
+  await tick();assert.equal(finished,false);gate.resolve();const inverse=await pending;assert.equal(inverse.ok,true,JSON.stringify(inverse));
+  await tick(); await h.run(450); if (h.writes[1]) await h.ack(1); if (h.writes[2]) await h.ack(2); await saving;
   assert.equal(h.session.getSnapshot().trip.stops.length, initial.stops.length); h.session.dispose();
 });
 
@@ -809,4 +812,22 @@ test('route-only dispatch retains unavailable transfer evidence without automati
   assert.deepEqual(state.trip.planItems,before.trip.planItems);assert.ok(state.pendingUnits.some(unit=>unit.kind==='recommendation'));
   await h.run(0);assert.equal(calls,1);
  }finally{h.session.dispose();}
+});
+
+test('raw input during held ACK stays visible and persists after canonical installation',async()=>{
+ const h=await harness();await accept(h);await h.run(450);const gate=h.holdAck();await h.ack(0);
+ let finished=false;const typing=h.session.updateDraft({binding:{kind:'origin'},raw:'new input during ACK'}).then(value=>{finished=true;return value;});
+ await tick();assert.equal(finished,false);assert.equal(h.session.getSnapshot().draft.fields[0]!.raw,'new input during ACK');
+ gate.resolve();assert.equal(await typing,true);assert.equal(h.session.getSnapshot().draft.fields[0]!.raw,'new input during ACK');
+ assert.equal(h.session.getSnapshot().trip.ownerId,'owner-a');assert.equal(h.session.getSnapshot().error,null);h.session.dispose();
+});
+
+test('queued date intent settles and remains device-durable after ACK timeout rejection',async()=>{
+ const h=await harness();await accept(h);const gate=deferred<void>();
+ h.options.acknowledgeRecovery=async()=>{await gate.promise;throw new Error('Synthetic ACK readback timeout');};
+ await h.run(450);await h.ack(0);let finished=false;
+ const pending=h.session.accept({kind:'dates',startDate:'2026-10-11',endDate:'2026-10-19'},h.session.getSnapshot().inputRevision).then(value=>{finished=true;return value;});
+ await tick();assert.equal(finished,false);gate.resolve();const result=await pending;await tick();
+ assert.equal(result.ok,true);assert.equal(h.session.getSnapshot().trip.startDate,'2026-10-11');assert.equal(h.recovery()!.trip.startDate,'2026-10-11');
+ assert.notEqual(h.session.getSnapshot().saveState,'cloud');assert.ok(h.session.getSnapshot().error);assert.equal(h.writes.length,1);h.session.dispose();
 });

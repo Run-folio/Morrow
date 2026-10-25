@@ -41,7 +41,7 @@ test("Route Detail keeps the route handoff and source guidance without the redun
   assert.doesNotMatch(detail, /styles\.editable/);
   assert.doesNotMatch(css, /\.editable\s*\{/);
   assert.match(detail, /<RoutePlanLink[^>]+placement="hero">Use this route<\/RoutePlanLink>/);
-  assert.match(detail, /Keep the reviewed sequence, or shape the dates and nights around your trip\./);
+  assert.doesNotMatch(detail, /Keep the reviewed sequence, or shape the dates and nights around your trip\./);
   assert.match(detail, /Sources &amp; review/);
   assert.match(link, /\/journey\/new\?inspire=\$\{encodeURIComponent\(draft\.routeKey\)\}/);
 });

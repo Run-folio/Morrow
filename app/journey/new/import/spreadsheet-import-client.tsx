@@ -396,7 +396,6 @@ export default function SpreadsheetImportClient() {
     {!table ? <header className={styles.hero}>
       <p>IMPORT EXISTING TRIP</p>
       <h1>Bring your trip into Morrovia.</h1>
-      <span>Upload or paste what you already have. Nothing becomes a trip until you review and confirm it.</span>
     </header> : null}
 
     {!table ? <section className={styles.inputPanel} aria-labelledby="import-source-title">
@@ -404,6 +403,7 @@ export default function SpreadsheetImportClient() {
         <div><span>STEP 1</span><h2 id="import-source-title">Choose your source</h2><p>CSV, XLSX, or a copied spreadsheet table.</p></div>
         <FileSpreadsheet aria-hidden="true" />
       </div>
+      <p className={styles.confirmationNote}>Review and confirm before creating a trip.</p>
       <EasyTSegmentedControl ariaLabel="Import source" value={inputMode} onChange={changeInputMode} options={[{ value: "file", label: "Upload file", controls: "import-file" }, { value: "paste", label: "Paste table", controls: "import-paste" }]} />
       {inputMode === "file" ? <div id="import-file" className={styles.filePanel}>
         <Upload aria-hidden="true" />

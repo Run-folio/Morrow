@@ -18,7 +18,6 @@ export default async function ContactPage({ searchParams }: { searchParams: Prom
       <header className={styles.heading}>
         <p>CONTACT MORROVIA</p>
         <h1 id="contact-title">How can we help?</h1>
-        <span>Ask about planning, your account, privacy or anything that is getting in the way of your trip.</span>
       </header>
       <div className={styles.surface}>
         <ContactForm topic={contactTopic(topic)} />

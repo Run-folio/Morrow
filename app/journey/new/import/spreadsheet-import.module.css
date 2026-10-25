@@ -386,3 +386,5 @@
   .importDetails > summary { align-items: flex-start; }
   .detailsAction { white-space: normal; }
 }
+
+.confirmationNote { margin: 0; color: var(--morrovia-ink-soft); font: var(--morrovia-type-supporting-body); }

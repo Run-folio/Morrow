@@ -88,7 +88,7 @@ function harness(editGate?: { promise: Promise<unknown> }) {
   const input = (id: string, tree = render()) => find(tag(id, tree).props.editor, node => node.type === Autocomplete);
   const escape = (id: string) => tag(id).props.editor.props.onKeyDown({ key: 'Escape', preventDefault: noop });
   const place = { id: 'replacement-tokyo', name: 'Replacement Tokyo', country: 'Japan', coordinates: [139.7, 35.7] } as unknown as CanonicalPlaceSuggestion;
-  return { render, tag, input, escape, place, intentA, intentB, requests, edits, focus, acceptance,
+  return { render, find, tag, input, escape, place, intentA, intentB, requests, edits, focus, acceptance,
     configureIntents: (intents: DestinationIntent[]) => { trip.brief.intent.route.destinations = intents; },
     open: async (id: string) => { await tag(id).props.onEdit(); return render(); },
     switchTrip: (patch: Partial<CanonicalEasyTTrip>) => { trip = requireReadableTripDocument({ ...trip, ...patch }); draft = createBuilderInputDraft(trip); },
@@ -256,4 +256,13 @@ test('stale Builder completion cannot clear a fresh pending operation after effe
   assert.equal(h.requests.length, 2); h.acceptance.resolve(true); assert.equal(await old, false);
   assert.equal(h.input(h.intentA.id).props.disabled, true);
   gate.resolve(true); assert.equal(await fresh, true); assert.equal(h.input(h.intentA.id), null);
+});
+
+test('Builder range preview is scoped to account trip and canonical date source',()=>{
+ const h=harness();const picker=(tree:any)=>h.find(tree,(node:any)=>node.props?.mode==='range'&&node.props?.commitRangeOnEnd===true);
+ const a=picker(h.render());assert.ok(a);const key=a.key;
+ h.switchTrip({ownerId:'owner-b'});const ownerKey=picker(h.render()).key;assert.notEqual(ownerKey,key);
+ h.switchTrip({id:'another-trip'});const tripKey=picker(h.render()).key;assert.notEqual(tripKey,ownerKey);
+ h.switchTrip({endDate:'2026-10-20'});const dateKey=picker(h.render()).key;assert.notEqual(dateKey,tripKey);
+ h.switchTrip({title:'Unrelated title'});assert.equal(picker(h.render()).key,dateKey);h.unmount();
 });

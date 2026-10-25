@@ -65,3 +65,27 @@ test("the shared picker still permits historical trip dates unless Search opts i
   yesterday.props.onClick();
   assert.deepEqual(selected, [{ start: "2026-10-20", end: "" }]);
 });
+
+test('complete-range mode does not submit a partial start selection',()=>{
+ const selected:unknown[]=[];const e=renderPicker({commitRangeOnEnd:true,endValue:'2026-10-28',onChange:(range:unknown)=>selected.push(range)});
+ e.find(x=>x.props['data-date']==='2026-10-22')!.props.onClick();assert.deepEqual(selected,[]);
+});
+test('complete-range end uses the local selected start while canonical props are unchanged',()=>{
+ const selected:unknown[]=[];const e=renderPicker({commitRangeOnEnd:true,endValue:'2026-10-28',onChange:(range:unknown)=>selected.push(range)},undefined,{2:'end',6:{start:'2026-10-22',end:'2026-10-28'}});
+ e.find(x=>x.props['data-date']==='2026-10-29')!.props.onClick();assert.deepEqual(selected,[{start:'2026-10-22',end:'2026-10-29'}]);
+});
+test('closing a partial complete-range selection makes no submission',()=>{
+ const selected:unknown[]=[];const e=renderPicker({commitRangeOnEnd:true,endValue:'2026-10-28',onChange:(range:unknown)=>selected.push(range)},undefined,{2:'end',6:{start:'2026-10-22',end:'2026-10-28'}});
+ e.find(x=>x.props['aria-label']==='Close calendar')!.props.onClick();assert.deepEqual(selected,[]);
+});
+test('complete-range trigger is busy until its submitted range settles',()=>{
+ const e=renderPicker({commitRangeOnEnd:true,endValue:'2026-10-28',defaultOpen:false},undefined,{6:{start:'2026-10-22',end:'2026-10-29'},7:true});
+ assert.ok(e.filter(x=>x.props['aria-haspopup']==='dialog').every(x=>x.props.disabled===true));
+ assert.ok(e.some(x=>x.props['aria-busy']===true));
+});
+
+test('complete-range end permits a valid range before the original start',()=>{
+ const selected:unknown[]=[];const e=renderPicker({commitRangeOnEnd:true,endValue:'2026-10-28',onChange:(range:unknown)=>selected.push(range)},undefined,{2:'end',6:{start:'2026-10-18',end:'2026-10-28'}});
+ const end=e.find(x=>x.props['data-date']==='2026-10-20')!;assert.equal(end.props.disabled,false);end.props.onClick();
+ assert.deepEqual(selected,[{start:'2026-10-18',end:'2026-10-20'}]);
+});

@@ -39,15 +39,11 @@ export default function ProfileLocaleContent({
   }, [accountLanguage]);
 
   const copy = easytCopy[language].account;
-  const profileIntro = language === "es"
-    ? "Gestiona tus datos y las preferencias de viaje que Morrovia usa como punto de partida para nuevos viajes."
-    : "Manage your details and the travel preferences Morrovia uses as a starting point for new trips.";
 
   return (
     <section className={styles.profileWrap}>
       <p className={styles.eyebrow}>{copy.settings}</p>
       <h1>{copy.profileTitle}</h1>
-      <p className={styles.profileIntro}>{profileIntro}</p>
       <ProfileForm
         key={ownerId}
         ownerId={ownerId}

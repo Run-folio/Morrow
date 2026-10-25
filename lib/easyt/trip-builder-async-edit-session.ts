@@ -154,12 +154,13 @@ export async function createAsyncBuilderEditSession(options: AsyncBuilderEditSes
     const owned = ownedSourceGuard(), revision = inputRevision;
     return { isCurrent: () => inputRevision === revision && owned.isCurrent() };
   }
-  function runDevice<T>(canonical: boolean, operation: () => Promise<T>): Promise<T> {
+  function runDevice<T>(canonical: boolean, operation: () => Promise<T>, resetCloudSchedule = true): Promise<T> {
     devicePending++; if (canonical) canonicalPending++;
-    cancelCloud?.(); cancelCloud = null; cloudDue = false; publish();
+    if (resetCloudSchedule) { cancelCloud?.(); cancelCloud = null; cloudDue = false; }
+    publish();
     const result = deviceTail.then(operation).finally(() => {
       devicePending--; if (canonical) canonicalPending--;
-      if (active()) { publish(); if (!devicePending) { scheduleCloud(); wakeAutomaticWork(); } }
+      if (active()) { publish(); if (!devicePending) { if (resetCloudSchedule) scheduleCloud(); wakeAutomaticWork(); } }
     });
     deviceTail = result.then(() => undefined, () => undefined);
     return result;
@@ -292,14 +293,21 @@ export async function createAsyncBuilderEditSession(options: AsyncBuilderEditSes
     while (devicePending && active()) await deviceTail;
     return active();
   }
-  async function acknowledge(job: SaveJob, canonical: CanonicalEasyTTrip) {
-    // Delayed predecessor ACKs may journal exact authority without changing the current head.
-    const ack = await options.acknowledgeRecovery(freeze(structuredClone(job.submitted!)), freeze(structuredClone(canonical)),
-      freeze(structuredClone(job.handle)), { isCurrent: active });
-    if (!await awaitDeviceWrites()) return null;
-    if (!acknowledgementAccepted(ack)) throw new Error('Canonical acknowledgement could not be retained on this device');
-    reportExactAccountAcknowledgement();
-    return ack;
+  async function acknowledge(job: SaveJob, canonical: CanonicalEasyTTrip, install?: (ack: BuilderAsyncAcknowledgement) => void) {
+    // Durable cleanup and its editor predecessor must advance together. A new
+    // edit cannot replace a recovery already retired by an ACK still in flight.
+    // Delayed predecessor ACKs may still journal authority without changing head.
+    return runDevice(false, async () => {
+      if (!active()) return null;
+      const ack = await options.acknowledgeRecovery(freeze(structuredClone(job.submitted!)), freeze(structuredClone(canonical)),
+        freeze(structuredClone(job.handle)), { isCurrent: active });
+      if (!active()) return null;
+      if (!acknowledgementAccepted(ack)) throw new Error('Canonical acknowledgement could not be retained on this device');
+      install?.(ack);
+      reportExactAccountAcknowledgement();
+      return ack;
+    // ACK delivery is not new intent: retain an already-due account save.
+    }, false);
   }
   function startSave() {
     if (!active() || paused || devicePending || draftNeedsWrite || inFlight || !pending || ownerId === null || !cloudDue || pending.trip.ownerId === null && !promoting) return;
@@ -355,28 +363,30 @@ export async function createAsyncBuilderEditSession(options: AsyncBuilderEditSes
         if (isLatest) {
           // The new device handle represents the same exact account document. Resolve only that retained continuation.
           const promotedJob = { ...job, handle: retainedHandle, localTrip: retainedTrip, acceptedRevision: retainedRevision, submitted: canonical };
-          const promotedAck = await acknowledge(promotedJob, canonical);
+          await acknowledge(promotedJob, canonical, promotedAck => {
+            if (acceptedRevision === promotedJob.acceptedRevision && exact(recovery, promotedJob.handle) && exact(trip, promotedJob.localTrip)) {
+              recovery = promotedAck.outcome === 'acknowledged' ? null : recovery;
+              if (!recovery) recoverySource = null;
+              pending = null; canonicalSaveState = 'cloud'; if (!error?.deviceOutcome) error = null;
+            }
+          });
           if (!active()) return;
-          if (promotedAck && acceptedRevision === promotedJob.acceptedRevision && exact(recovery, promotedJob.handle) && exact(trip, promotedJob.localTrip)) {
-            recovery = promotedAck.outcome === 'acknowledged' ? null : recovery;
-            if (!recovery) recoverySource = null;
-            pending = null; canonicalSaveState = 'cloud'; if (!error?.deviceOutcome) error = null;
-          }
         } else cloudDue = true;
         if (pending) cloudDue = true;
         scheduleWork(); publish(); return;
       }
-      const ack = await acknowledge(job, canonical);
+      const ack = await acknowledge(job, canonical, ack => {
+        const isCurrent = acceptedRevision === job.acceptedRevision && exact(recovery, job.handle) && exact(trip, job.localTrip);
+        if (isCurrent) {
+          if (ack.outcome !== 'acknowledged' && !(ack.accountAcknowledged === true && ack.outcome === 'storage-failed')) {
+            throw new Error('A different device recovery still requires attention');
+          }
+          trip = requireReadableTripDocument(canonical); recovery = ack.outcome === 'acknowledged' ? null : recovery; failedJob = null;
+          if (!recovery) recoverySource = null;
+          canonicalSaveState = 'cloud'; if (!draftNeedsWrite && !error?.deviceOutcome) error = null;
+        } else if (!paused) canonicalSaveState = 'local';
+      });
       if (!ack || !active()) return;
-      const isCurrent = acceptedRevision === job.acceptedRevision && exact(recovery, job.handle) && exact(trip, job.localTrip);
-      if (isCurrent) {
-        if (ack.outcome !== 'acknowledged' && !(ack.accountAcknowledged === true && ack.outcome === 'storage-failed')) {
-          throw new Error('A different device recovery still requires attention');
-        }
-        trip = requireReadableTripDocument(canonical); recovery = ack.outcome === 'acknowledged' ? null : recovery; failedJob = null;
-        if (!recovery) recoverySource = null;
-        canonicalSaveState = 'cloud'; if (!draftNeedsWrite && !error?.deviceOutcome) error = null;
-      } else if (!paused) canonicalSaveState = 'local';
       publish();
     }).catch(async cause => {
       if (!active()) return;

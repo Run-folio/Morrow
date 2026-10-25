@@ -17,7 +17,6 @@ export default function RoutesOverviewHero({ image, navigation, count, imageUnav
     <div className={styles.copy}>
       <p className={styles.eyebrow}>ROUTES WITH A POINT OF VIEW</p>
       <h1 id="routes-title">Find a way through.<em>Make it yours.</em></h1>
-      <p className={styles.support}>Considered journeys. Open possibilities.<br />Find your starting point, then change anything.</p>
       <EasyTLinkButton href="#discover-routes" variant="quiet" icon={ArrowDown} className={styles.browse}>Browse {count} starting points</EasyTLinkButton>
     </div>
     {image && !imageUnavailable && imageDisplayed && <MorroviaPhotoCredit ownership={image.provenance === "reviewed-morrovia-first-party" ? "morrovia" : "third-party"} placement="bottom-left" photoLabel={image.alt} credit={image.credit} authorHref={image.authorUrl} sourceHref={image.sourceUrl} licenseHref={image.licenseUrl} fullCreditHref="/journey/immersive/credits.html" />}
