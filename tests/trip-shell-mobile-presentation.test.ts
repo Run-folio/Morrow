@@ -22,7 +22,7 @@ test("shared shell keeps one action and navigation owner without repeating the t
   assert.match(dashboard, /ResilientImage src=\{photo\?\.src\}/);
   assert.match(dashboard, /dashboardTripCoverPlace\(trip\)/);
   assert.match(client, /const \{ trip \} = useTripShellMutation\(\);[\s\S]*tripCoverImage\(trip, new Set\(excluded\)\)/);
-  assert.match(client, /personalRouteHref\(trip\.id\)/);
+  assert.doesNotMatch(client, /personalRouteHref\(|View my route/);
   assert.match(client, /tripBuilderHref\(trip\.id, trip\.ownerId\)/);
   assert.match(client, /<WorkspaceOrientationLauncher onRenameTrip=\{openRename\}/);
   assert.match(client, /aria-current=\{active \? "page" : undefined\}/);
@@ -55,7 +55,7 @@ test("slim trip identity retains status, truncated title disclosure, all stats, 
   assert.match(identity, /overnightPlaceCount/);
   assert.match(identity, /mutation\.trip\.legs\.length/);
   assert.match(client, /<MorroviaSaveStatus state=\{mutation\.saveState\}/);
-  assert.match(client, />Explore map<\/EasyTLinkButton>[\s\S]*>View my route<\/EasyTLinkButton>[\s\S]*>Edit<\/EasyTLinkButton>[\s\S]*<TripOverviewLibraryActions/);
+  assert.match(client, />Explore map<\/EasyTLinkButton>[\s\S]*>Edit<\/EasyTLinkButton>[\s\S]*<TripOverviewLibraryActions/);
   assert.match(css, /\.tripHeader\s*\{[^}]*grid-template-columns:\s*minmax\(0,\s*1fr\) auto[^}]*min-height:\s*0/);
   assert.match(css, /\.tripTitleToggle\s*>\s*span\s*\{[^}]*text-overflow:\s*ellipsis[^}]*white-space:\s*nowrap/);
   assert.match(css, /\.tripTitleToggle:focus-visible/);

@@ -1481,7 +1481,15 @@ export async function saveExplicitGuestTripForOwnerInStorage(storage:EasyTBrowse
   const destinationHomeWitness=homeWitness();
   const sourceReceiptRaw=source.receipt.raw??source.body.domain?.envelope?.entry.receipt?.raw??null;
   const noHome=Boolean(sourceReceiptRaw&&decodeCreationReceipt(sourceReceiptRaw,null,tripId));
-  if((owned.kind!=='missing'&&(owned.kind!=='found'||!tripBuildDocumentsCanonicalEquivalent(source.body.trip,owned.trip,ownerId)))||destinationHome.kind!=='ready'||!noHome&&destinationHome.draft)throw new BrowserRecoveryReadError('protected','destination-exists');
+  const previousReceipt=destinationHome.kind==='ready'?destinationHome.storedInput?.receipt:undefined;
+  // Retain the existing input-only history exception, including foreign shared
+  // legacy drafts that the owner-scoped reader has excluded and preserves.
+  const unrelatedCompleted=destinationHome.kind==='ready'&&previousReceipt?.version===1&&previousReceipt.tripId!==tripId
+    &&Boolean(completedTripReceipt(JSON.stringify({version:1,inputRaw:destinationHome.inputRaw,draftRaw:null}),ownerId,previousReceipt.tripId));
+  // An owned draft needs proof of the entire completed bundle for a different
+  // trip. Input-only history must never excuse unfinished or changed work.
+  const unrelatedCompletedDraft=unrelatedCompleted&&Boolean(completedTripReceipt(destinationHome.raw,ownerId,previousReceipt!.tripId));
+  if((owned.kind!=='missing'&&(owned.kind!=='found'||!tripBuildDocumentsCanonicalEquivalent(source.body.trip,owned.trip,ownerId)))||destinationHome.kind!=='ready'||!noHome&&destinationHome.draft&&!unrelatedCompletedDraft)throw new BrowserRecoveryReadError('protected','destination-exists');
   const targetInput=createTwoStoreEntryPersistence(storage,driver,{...context,scope:{ownerId,kind:'builder-input',tripId},key:builderInputDraftKey(ownerId,tripId),validate:raw=>raw===null||typeof raw==='string'});
   const targetInputBefore=await targetInput.read();
   if(targetInputBefore.kind!=='ready')throw new BrowserRecoveryReadError('protected','destination-input-exists');
@@ -1493,9 +1501,6 @@ export async function saveExplicitGuestTripForOwnerInStorage(storage:EasyTBrowse
   const prospective=requireReadableTripDocument(canonicalTripForOwner(ownerId,trip));
   const desiredInput=prepared.builderRaw===null?null:JSON.stringify(remapBuilderInputDraftIdentity(JSON.parse(prepared.builderRaw),requireReadableTripDocument({...trip,ownerId}),prospective,canonicalTripStopIdentityMap(trip),ownerId));
   const desiredHome=prepared.homepageRaw===null?null:decodeHomepageBundle(prepared.homepageRaw,ownerId);
-  const previousReceipt=destinationHome.storedInput?.receipt;
-  const unrelatedCompleted=previousReceipt?.version===1&&previousReceipt.tripId!==tripId
-    &&Boolean(completedTripReceipt(JSON.stringify({version:1,inputRaw:destinationHome.inputRaw,draftRaw:null}),ownerId,previousReceipt.tripId));
   if(targetInputBefore.raw!==null&&targetInputBefore.raw!==desiredInput
     ||!noHome&&destinationHome.storedInput&&destinationHome.inputRaw!==desiredHome?.bundle.inputRaw&&!unrelatedCompleted)
     throw new BrowserRecoveryReadError('protected','destination-input-exists');

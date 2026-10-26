@@ -21,6 +21,7 @@ function harness(queued = false) {
   const states: any[] = [], cleanups: Array<() => void> = [], mountEffects: Array<() => void | (() => void)> = [], queuedState: Array<() => void> = [];
   let cursor = 0, deferredState = false, renderOnAcceptance = false;
   const hooks = {
+    useReducer(reducer: any, initial: any) { const index=cursor++; if(!(index in states))states[index]=initial;return [states[index],(action:any)=>{states[index]=reducer(states[index],action);}]; },
     createContext: () => ({ Provider: () => null }), useContext: () => mutation,
     useState(initial: any) {
       const index = cursor++;
@@ -224,4 +225,11 @@ test('rename validation retains Unicode raw text and never starts an overlong mu
   const h = harness(); h.open(); const raw = '日'.repeat(81); h.type(raw); h.submit();
   assert.equal(h.requests.length, 0); assert.equal(h.form().props.open, true); assert.equal(h.field().props.value, raw);
   assert.equal(h.form().props.error, 'Use 80 characters or fewer.');
+});
+
+for(const ownerId of [null,'owner-a'])test(`shared header hides personal route while retaining planning controls for ${ownerId??'guest'}`,()=>{
+ const h=harness();h.switchTrip({ownerId});const before=JSON.stringify(h.trip());
+ for(const view of ['', '/itinerary','/map']){h.switchView(`/journey/${h.trip().id}${view}`);const hrefs:string[]=[];const walk=(node:any):void=>{if(Array.isArray(node)){node.forEach(walk);return;}if(!node||typeof node!=='object')return;if(node.props?.href)hrefs.push(node.props.href);walk(node.props?.children);};walk(h.render());
+ assert.ok(hrefs.includes('/fixture/map'));assert.ok(hrefs.includes('/fixture/builder'));assert.ok(!hrefs.includes('/fixture/route'));}
+ assert.equal(h.requests.length,0);assert.equal(JSON.stringify(h.trip()),before);h.unmount();
 });

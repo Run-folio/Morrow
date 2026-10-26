@@ -34,7 +34,6 @@ import { renameTripIdentity, tripCustomTitle, tripDisplayTitle, tripOverviewDisp
 import { TripOverviewLibraryActions } from "./trip-overview-library-actions";
 import { deriveTripDateFacts } from "@/lib/easyt/trip-facts";
 import { importedLegacyRepairContextAllows, repairEligibleSpreadsheetV1Trip } from "@/lib/easyt/imported-trip-hydration";
-import { personalRouteHref } from "@/lib/easyt/personal-route";
 import { overnightAccommodationStops } from "@/lib/easyt/accommodation";
 import { tripCoverImage, resolvedOverviewPhoto, type OverviewPlaceImage } from "@/lib/easyt/trip-overview-imagery";
 import { canonicalPlacePhotoCacheKey, discardFailedRoutePhoto, resolveRoutePhotoCandidates } from "@/lib/easyt/route-photo-cache";
@@ -177,7 +176,6 @@ export function TripShellIdentityAndActions() {
     <div className={styles.headerActions}>
       {trip.ownerId && mutation.saveState !== "idle" ? <MorroviaSaveStatus state={mutation.saveState} /> : null}
       <EasyTLinkButton className={styles.editAction} href={mapWorkspaceHref(trip.id, null, "plan", null, null, null, tripWorkspaceHref(trip.id))} icon={Map} size="small" variant="secondary">Explore map</EasyTLinkButton>
-      <EasyTLinkButton className={styles.editAction} href={personalRouteHref(trip.id)} icon={Route} size="small" variant="secondary">View my route</EasyTLinkButton>
       <EasyTLinkButton className={styles.editAction} href={editHref} icon={Edit3} size="small" variant="secondary" aria-label="Edit trip brief">Edit</EasyTLinkButton>
       {isOverview ? <TripOverviewLibraryActions mutation={mutation} onRenameTrip={openRename} /> : <WorkspaceOrientationLauncher onRenameTrip={openRename} />}
     </div>

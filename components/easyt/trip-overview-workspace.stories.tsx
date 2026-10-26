@@ -705,3 +705,13 @@ export const MapFramingEightStops: Story = {
   args: { trip: eightStopFramingTrip }, play: checkRouteMapFraming,
   parameters: { nextjs: { appDirectory: true, navigation: { pathname: `/journey/${eightStopFramingTrip.id}` } } },
 };
+
+const compactEndpointTrip: EasyTTrip = { ...baseTrip,
+  brief: {...baseTrip.brief,origin:"London Gatwick (LGW)",originCountry:"United Kingdom",originCoordinates:[-0.19,51.15],journeyEnd:{mode:"same_as_start"}},
+  legs:[...baseTrip.legs,
+    {...baseTrip.legs[0]!,id:"compact-arrival",classification:"arrival",fromStopId:`${baseTrip.id}-origin`,toStopId:baseTrip.stops[0]!.id,mode:"flight",durationMinutes:null},
+    {...baseTrip.legs[0]!,id:"compact-return",classification:"departure",fromStopId:baseTrip.stops.at(-1)!.id,toStopId:`${baseTrip.id}-end`,mode:"flight",durationMinutes:180}],
+};
+export const CompactReturnEndpoints: Story = {args:{trip:compactEndpointTrip}};
+export const CompactGuestEndpoints: Story = {args:{trip:{...compactEndpointTrip,ownerId:null}}};
+export const CompactDifferentEndpoint: Story = {args:{trip:{...compactEndpointTrip,brief:{...compactEndpointTrip.brief,journeyEnd:{mode:"explicit",place:{name:"Seoul",country:"South Korea",coordinates:[126.978,37.566]}}}}}};

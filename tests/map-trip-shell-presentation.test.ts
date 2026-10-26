@@ -463,7 +463,8 @@ test("TripShell keeps five planning tabs and the approved route action in the he
   assert.ok(overview >= 0);
   assert.ok(overview < itinerary && itinerary < explore && explore < stay && stay < transport);
   assert.doesNotMatch(tripShellSource, /id: "journey"|id: "map"/);
-  assert.match(tripShellSource, /href=\{personalRouteHref\(trip\.id\)\}[\s\S]*>View my route<\/EasyTLinkButton>[\s\S]*aria-label="Edit trip brief"[\s\S]*>Edit<\/EasyTLinkButton>/);
+  assert.match(tripShellSource, /mapWorkspaceHref\(trip\.id[\s\S]*>Explore map<\/EasyTLinkButton>[\s\S]*aria-label="Edit trip brief"[\s\S]*>Edit<\/EasyTLinkButton>/);
+  assert.doesNotMatch(tripShellSource, /personalRouteHref\(|View my route/);
   assert.match(tripShellSource, /trip\.ownerId && mutation\.saveState !== "idle" \? <MorroviaSaveStatus state=\{mutation\.saveState\} \/> : null/);
   assert.doesNotMatch(tripShellSource, /id: "prep"|label: "Prep"|suffix: "\/prep"/);
   assert.match(tripShellSource, /committedSegment\)\?\.id \?\? "overview";/);

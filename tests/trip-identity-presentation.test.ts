@@ -21,10 +21,10 @@ test("Rename trip lives under More and uses the shared accessible form dialog", 
   assert.match(dialog, /returnFocusRef\.current\?\.focus\(\)/);
 });
 
-test("trip header owns the four route actions in the requested order", () => {
+test("trip header retains map edit and menu actions without the personal route entry", () => {
   const shell = read("components/easyt/trip-shell-client.tsx");
   const actions = shell.slice(shell.indexOf('<div className={styles.headerActions}>'), shell.indexOf('</div>', shell.indexOf('<div className={styles.headerActions}>')));
-  assert.match(actions, /mapWorkspaceHref\(trip\.id[\s\S]*>Explore map<\/EasyTLinkButton>[\s\S]*personalRouteHref\(trip\.id\)[\s\S]*>View my route<\/EasyTLinkButton>[\s\S]*>Edit<\/EasyTLinkButton>[\s\S]*WorkspaceOrientationLauncher/);
+  assert.match(actions, /mapWorkspaceHref\(trip\.id[\s\S]*>Explore map<\/EasyTLinkButton>[\s\S]*>Edit<\/EasyTLinkButton>[\s\S]*WorkspaceOrientationLauncher/);
   assert.doesNotMatch(actions, />Route<\/EasyTLinkButton>/);
 });
 

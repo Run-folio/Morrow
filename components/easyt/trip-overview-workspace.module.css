@@ -262,3 +262,9 @@
   .routeList > li { flex-basis: 136px; min-width: 136px; }
 
 }
+
+.endpointSummary { display:flex; flex-wrap:wrap; align-items:center; gap:8px 16px; margin:12px 0; color:var(--morrovia-ink-soft); font:600 12px/1.4 var(--morrovia-ui); }
+.endpointSummary a { display:inline-flex; align-items:center; gap:6px; max-width:100%; color:var(--morrovia-ink); text-decoration:none; overflow-wrap:anywhere; }
+.endpointSummary a:focus-visible { outline:2px solid var(--morrovia-focus-ring); outline-offset:4px; border-radius:var(--morrovia-control-radius); }
+.endpointSummary svg { flex:0 0 auto; width:14px; height:14px; color:var(--morrovia-action); }
+.endpointTransfer { display:inline-flex; align-items:center; gap:6px; }

@@ -34,7 +34,7 @@ import {
 } from "@/lib/easyt/trip-workspace-links";
 import styles from "./trip-overview-workspace.module.css";
 import workspaceHeading from "./trip-workspace-heading.module.css";
-import { canonicalLegIntegrityIssues, endEndpointForTrip, originEndpointForTrip, tripRouteDisplayEndpoints } from "@/lib/easyt/trip-legs";
+import { canonicalLegIntegrityIssues, endEndpointForTrip, originEndpointForTrip } from "@/lib/easyt/trip-legs";
 import { mapRouteLegsFromTrip } from "@/lib/easyt/map-spatial-context";
 import type { JourneyStop } from "@/lib/journey";
 import { MorroviaMapPreview } from "./morrovia-map-preview";
@@ -52,7 +52,7 @@ import { languageFromStorage, EASYT_LANGUAGE_CHANGE_EVENT } from "@/lib/easyt/i1
 import { presentOverviewIssues, presentOverviewRouteInsight } from "@/lib/easyt/trip-overview-issues";
 import { useWorkspaceOrientationReady, useWorkspaceOrientationTarget } from "./workspace-orientation";
 import { sameJourneyPlace } from "@/lib/easyt/journey-endpoints";
-import { personalRouteHref } from "@/lib/easyt/personal-route";
+import { overviewRouteSteps } from "@/lib/easyt/trip-overview-route-steps";
 import TripExplicitPlans from "./trip-explicit-plans";
 import { overviewPlaceImage, overviewStopImage, resolvedOverviewPhoto, type OverviewPlaceImage } from "@/lib/easyt/trip-overview-imagery";
 import { canonicalPlacePhotoCacheKey, discardFailedRoutePhoto, resolveDistinctRoutePhotoCandidates, type RoutePhotoCandidate } from "@/lib/easyt/route-photo-cache";
@@ -112,6 +112,13 @@ function conciseTransferLabel(leg: EasyTTrip["legs"][number] | null | undefined)
   if (!minutes) return "Transfer to confirm";
   const duration = transferTimingLabel(leg);
   return leg.mode === "flight" ? `${duration} total by air` : `${duration} transfer`;
+}
+
+export function OverviewEndpointSummary({ label, href, transfer }: { label: string; href: string; transfer: string | null }) {
+  return <div className={styles.endpointSummary} data-overview-endpoint="">
+    <Link href={href}><MapPin aria-hidden="true" /><span>{label}</span></Link>
+    {transfer ? <span className={styles.endpointTransfer}><ArrowRight aria-hidden="true" />{transfer}</span> : null}
+  </div>;
 }
 
 export function OverviewStepMedia({ image, name, country, meta, number, href, onImageError }: { image: OverviewPlaceImage | null; name: string; country?: string | null; meta: string; number: number; href: string; onImageError?: (src: string) => void }) {
@@ -191,7 +198,10 @@ export default function TripOverviewWorkspace({
   const routeAssessment = trip.brief.routeAssessment?.route;
   const routeRationale = routeAssessment && routeAssessment.state !== "insufficient-data" ? routeAssessment : null;
   const origin = useMemo(() => originEndpointForTrip(trip), [trip]);
-  const routeDisplayEndpoints = useMemo(() => tripRouteDisplayEndpoints(trip), [trip]);
+  const routeSteps = useMemo(() => overviewRouteSteps(trip, language), [trip, language]);
+  const departureStep = routeSteps.find(step => step.kind === "origin");
+  const returnStep = routeSteps.find(step => step.kind === "end");
+  const staySteps = routeSteps.filter(step => step.kind === "stay");
   const journeyEnd = useMemo(() => endEndpointForTrip(trip), [trip]);
   const lastRouteStop = orderedStops.at(-1);
   const journeyEndIsLastStop = Boolean(journeyEnd && lastRouteStop && sameJourneyPlace({
@@ -388,23 +398,17 @@ export default function TripOverviewWorkspace({
                   <h2 id="overview-route-title" className={workspaceHeading.sectionTitle}>Your route</h2>
                 </div>
               </div>
-              {orderedStops.length ? <ol className={styles.routeList} aria-label={`Trip route from ${trip.brief.origin}${journeyEnd ? ` to ${journeyEnd.name}` : ""}`} tabIndex={0}>
-                {[
-                  ...(routeDisplayEndpoints[0]?.kind === "origin" ? [{ id: origin.id, name: origin.name, country: origin.country, image: initialPlaceImages[origin.id] ?? resolvedPlaceImages[imageCacheKeysByOccurrence[origin.id]], meta: "Journey origin", href: routeIssueHref(trip.id), transfer: conciseTransferLabel(trip.legs.find((item) => item.classification === "arrival" || item.fromEndpoint?.kind === "origin")) }] : []),
-                  ...orderedStops.map((stop, index) => {
-                    const next = orderedStops[index + 1];
-                    const leg = next
-                      ? trip.legs.find((item) => item.fromStopId === stop.id && item.toStopId === next.id)
-                      : journeyEnd ? trip.legs.find((item) => item.fromStopId === stop.id && item.toStopId === journeyEnd.id) : null;
-                    return { id: stop.id, name: stop.name, country: stop.country, image: initialPlaceImages[stop.id] ?? resolvedPlaceImages[imageCacheKeysByOccurrence[stop.id]], meta: `${formatTripNights(stop.nights)}${journeyEndIsLastStop && index === orderedStops.length - 1 ? " · Journey end" : ""}`, href: itineraryWorkspaceHref(trip.id, firstItineraryDayForStop(trip, stop.id)), transfer: conciseTransferLabel(leg) };
-                  }),
-                  ...(journeyEnd && !journeyEndIsLastStop ? [{ id: journeyEnd.id, name: journeyEnd.name, country: journeyEnd.country, image: initialPlaceImages[journeyEnd.id] ?? resolvedPlaceImages[imageCacheKeysByOccurrence[journeyEnd.id]], meta: "Journey end", href: routeIssueHref(trip.id), transfer: null }] : []),
-                ].map((step, index, steps) => <li key={step.id} className={styles.routeStep}>
-                  <OverviewStepMedia image={step.image} name={step.name} country={step.country} meta={step.meta} number={index + 1} href={step.href} onImageError={(src) => recoverImage(step.id, src)} />
-                  {step.transfer ? <div className={styles.transfer}><ArrowRight aria-hidden="true" /><span>{step.transfer}</span></div> : <div className={styles.transferSpacer} aria-hidden="true" />}
-                  {index < steps.length - 1 ? <ChevronRight className={styles.routeDirection} aria-hidden="true" /> : null}
-                </li>)}
-              </ol> : <div className={styles.emptyRoute}><MapPin aria-hidden="true" /><p>Add a destination to start shaping this trip.</p></div>}
+              {orderedStops.length ? <>
+                {departureStep ? <OverviewEndpointSummary label={departureStep.label!} href={routeIssueHref(trip.id)} transfer={conciseTransferLabel(departureStep.leg)} /> : null}
+                <ol className={styles.routeList} aria-label={`Trip route from ${trip.brief.origin}${journeyEnd ? ` to ${journeyEnd.name}` : ""}`} tabIndex={0}>
+                  {staySteps.map((step, index) => <li key={step.id} className={styles.routeStep}>
+                    <OverviewStepMedia image={initialPlaceImages[step.id] ?? resolvedPlaceImages[imageCacheKeysByOccurrence[step.id]]} name={step.name} country={step.country} meta={`${formatTripNights(step.stop!.nights)}${step.isJourneyEnd ? " · Journey end" : ""}`} number={step.number} href={itineraryWorkspaceHref(trip.id, firstItineraryDayForStop(trip, step.id))} onImageError={(src) => recoverImage(step.id, src)} />
+                    {step.leg ? <div className={styles.transfer}><ArrowRight aria-hidden="true" /><span>{conciseTransferLabel(step.leg)}</span></div> : <div className={styles.transferSpacer} aria-hidden="true" />}
+                    {index < staySteps.length - 1 ? <ChevronRight className={styles.routeDirection} aria-hidden="true" /> : null}
+                  </li>)}
+                </ol>
+                {returnStep ? <OverviewEndpointSummary label={returnStep.label!} href={routeIssueHref(trip.id)} transfer={null} /> : null}
+              </> : <div className={styles.emptyRoute}><MapPin aria-hidden="true" /><p>Add a destination to start shaping this trip.</p></div>}
             {routeInsight ? <aside className={styles.routeRationale} aria-labelledby="overview-route-rationale-title" data-route-insight="">
               <Sparkles aria-hidden="true" />
               <div>{routeInsight.label !== "Transfer details" ? <p>{routeInsight.label}</p> : null}<strong id="overview-route-rationale-title">{routeInsight.title}</strong><span>{routeInsight.detail}</span></div>

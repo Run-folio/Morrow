@@ -31,7 +31,7 @@ test("Overview prioritises the route, one planning action and three next-to-arra
   assert.ok(plans < beforeGo);
   assert.match(source, /<h2 id="overview-route-title" className=\{workspaceHeading\.sectionTitle\}>Your route<\/h2>/);
   assert.doesNotMatch(source, /Your route is ready to shape|Here’s your trip at a glance/);
-  assert.match(shellClientSource, />Explore map<\/EasyTLinkButton>[\s\S]*>View my route<\/EasyTLinkButton>[\s\S]*>Edit<\/EasyTLinkButton>/);
+  assert.match(shellClientSource, />Explore map<\/EasyTLinkButton>[\s\S]*>Edit<\/EasyTLinkButton>/);
   assert.doesNotMatch(source, /Review route|Explore on map|View journey|Adjust route/);
   assert.doesNotMatch(source, /className=\{styles\.routeActions\}/);
   assert.match(source, /Next to arrange/);
@@ -122,22 +122,23 @@ test("Before You Go reuses canonical preparation tasks and actions without a sec
 });
 
 test("route storytelling resolves imagery, stays image-led and links to the canonical Map", () => {
-  assert.match(source, /tripRouteDisplayEndpoints\(trip\)/);
+  assert.match(source, /overviewRouteSteps\(trip, language\)/);
+  assert.match(readFileSync("lib/easyt/trip-overview-route-steps.ts", "utf8"), /tripRouteDisplayEndpoints\(trip\)/);
   assert.match(source, /overviewStopImage\(trip, stop, new Set\(failures\)\)/);
   assert.match(source, /resolveDistinctRoutePhotoCandidates\(imageResolutionCandidates/);
   assert.match(source, /const imageCacheKeysByOccurrence = useMemo/);
   assert.match(source, /canonicalPlacePhotoCacheKey\(\{/);
   assert.doesNotMatch(source, /\/api\/journey-place\?/);
   assert.doesNotMatch(source, /Promise\.all\(imageResolutionCandidates/);
-  assert.match(source, /resolvedPlaceImages\[imageCacheKeysByOccurrence\[stop\.id\]\]/);
+  assert.match(source, /resolvedPlaceImages\[imageCacheKeysByOccurrence\[step\.id\]\]/);
   assert.match(source, /MorroviaPhotoCredit size="compact"[^>]*placement="bottom-right"/);
-  assert.match(source, /formatTripNights\(stop\.nights\)/);
+  assert.match(source, /formatTripNights\(step\.stop!\.nights\)/);
   assert.match(source, /className=\{styles\.stopNumber\}>\{number\}/);
   assert.doesNotMatch(source, /className=\{styles\.stopNumber\}>From/);
-  assert.match(source, /conciseTransferLabel\(leg\)/);
+  assert.match(source, /conciseTransferLabel\(step\.leg\)/);
   assert.match(source, /className=\{styles\.transfer\}><ArrowRight/);
   assert.match(source, /className=\{styles\.stopOverlay\}/);
-  assert.match(source, /href: routeIssueHref\(trip\.id\)/);
+  assert.match(source, /href=\{routeIssueHref\(trip\.id\)\}/);
   assert.match(source, /<DeferredJourneyPlannerMap[\s\S]*overviewMode surface=\{\{ variant: "preview" \}\}/);
   assert.doesNotMatch(source, /View full map/);
   assert.doesNotMatch(source, /GEORGIA|Tbilisi|Stepantsminda|Ushguli|Mestia/);
@@ -173,4 +174,14 @@ test("Overview responsive rules keep mobile controls usable without page overflo
   assert.ok(mobileFrame, "the shared map preview keeps a responsive mobile frame");
   assert.ok(Number(mobileFrame[1]) >= 200, "the mobile map preview remains tall enough to use");
   assert.match(styles, /overflow-x: auto;/);
+});
+
+test("Overview endpoint summaries replace only endpoint photography and preserve logical numbering",()=>{
+ assert.match(source,/staySteps\.map\(\(step, index\) => <li key=\{step.id\}/);
+ assert.match(source,/number=\{step.number\}/);
+ assert.match(source,/OverviewEndpointSummary label=\{departureStep.label!\}[^\n]*transfer=\{conciseTransferLabel\(departureStep.leg\)\}/);
+ assert.match(source,/OverviewEndpointSummary label=\{returnStep.label!\}/);
+ const compact=source.slice(source.indexOf('export function OverviewEndpointSummary'),source.indexOf('export function OverviewStepMedia'));
+ assert.doesNotMatch(compact,/ResilientImage|OverviewStepMedia|<img/);assert.match(compact,/<Link href=\{href\}/);
+ assert.match(source,/const overviewMapStops = useMemo<JourneyStop\[\]>/);assert.match(source,/const overviewMapLegs = useMemo\(\(\) => mapRouteLegsFromTrip\(trip\)/);
 });

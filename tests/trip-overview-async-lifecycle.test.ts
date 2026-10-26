@@ -56,7 +56,7 @@ test("Overview effects use semantic dependencies and abort stale shared-cache re
   assert.match(source, /\{ signal: controller\.signal, reservedSources:/);
   assert.match(source, /if \(selection\.kind === "empty"\) delete resolvedImagesRef\.current\[candidate\.cacheKey\]/);
   assert.match(source, /Object\.entries\(resolvedImagesRef\.current\)\.filter\(\(\[key\]\) => Object\.values\(imageCacheKeysByOccurrence\)\.includes\(key\)\)/);
-  assert.match(source, /resolvedPlaceImages\[imageCacheKeysByOccurrence\[stop\.id\]\]/);
+  assert.match(source, /resolvedPlaceImages\[imageCacheKeysByOccurrence\[step\.id\]\]/);
   assert.doesNotMatch(source, /representativeStay|setRepresentativeStay/);
   assert.match(source, /return \(\) => controller\.abort\(\)/);
   assert.match(source, /\}, \[imageResolutionCandidates, initialPlaceImages, imageCacheKeysByOccurrence\]\);/);
