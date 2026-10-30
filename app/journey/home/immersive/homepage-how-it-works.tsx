@@ -1,8 +1,8 @@
 "use client";
 
-import { ArrowRight, Compass, Luggage, Route } from "lucide-react";
+import { ChevronDown, Compass, Luggage, Route } from "lucide-react";
 import { EasyTButton } from "@/components/easyt/easyt-controls";
-import { PRODUCT_TOUR_OPEN_EVENT } from "@/components/easyt/easyt-product-tour";
+import { useId, useRef, useState } from "react";
 import { useHomepageLanguage } from "./use-homepage-language";
 import styles from "./immersive.module.css";
 
@@ -22,18 +22,23 @@ const steps = {
 export default function HomepageHowItWorks() {
   const language = useHomepageLanguage();
   const es = language === "es";
+  const [expanded, setExpanded] = useState(false);
+  const panelId = useId();
+  const triggerRef = useRef<HTMLButtonElement>(null);
 
-  return <section id="how-it-works" className={styles.howItWorks} aria-labelledby="homepage-how-heading">
+  return <section id="how-it-works" className={styles.howItWorks} aria-label={es ? "Cómo funciona" : "How it works"} onKeyDown={(event) => {
+    if (expanded && event.key === "Escape") { event.preventDefault(); setExpanded(false); triggerRef.current?.focus(); }
+  }}>
     <header className={styles.howHeading}>
-      <div><span className={styles.eyebrow}>{es ? "Cómo funciona" : "How it works"}</span><h2 id="homepage-how-heading">{es ? "De idea a viaje." : "From idea to itinerary."}</h2></div>
-      <EasyTButton variant="quiet" icon={ArrowRight} onClick={() => window.dispatchEvent(new Event(PRODUCT_TOUR_OPEN_EVENT))}>{es ? "Ver cómo funciona" : "See how it works"}</EasyTButton>
+      {expanded ? <div><span className={styles.eyebrow}>{es ? "Cómo funciona" : "How it works"}</span><h2 id="homepage-how-heading">{es ? "De idea a viaje." : "From idea to itinerary."}</h2></div> : null}
+      <EasyTButton ref={triggerRef} variant="quiet" icon={ChevronDown} aria-expanded={expanded} aria-controls={panelId} onClick={() => setExpanded((current) => !current)}>{expanded ? es ? "Ocultar cómo funciona" : "Hide how it works" : es ? "Ver cómo funciona" : "See how it works"}</EasyTButton>
     </header>
-    <ol className={styles.howSteps}>
+    <div id={panelId} hidden={!expanded}><ol className={styles.howSteps}>
       {steps[language].map(({ title, copy, icon: Icon }, index) => <li key={title}>
         <span className={styles.howStepIcon}><Icon aria-hidden="true" /></span>
         <span className={styles.howStepNumber}>{String(index + 1).padStart(2, "0")}</span>
         <div><h3>{title}</h3><p>{copy}</p></div>
       </li>)}
-    </ol>
+    </ol></div>
   </section>;
 }

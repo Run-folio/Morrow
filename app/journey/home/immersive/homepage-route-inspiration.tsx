@@ -84,7 +84,6 @@ export default function HomepageRouteInspiration({ routes, previewRoutes }: { ro
   return <section id="routes" className={styles.inspiration} aria-labelledby="homepage-inspiration-heading">
     <header className={styles.inspirationHeading}>
       <div>
-        <span className={styles.eyebrow}>{es ? "Inspiración para tu viaje" : "Trip inspiration"}</span>
         <h2 id="homepage-inspiration-heading">{es ? "¿No sabes adónde ir?" : "Not sure where to go?"}</h2>
       </div>
       <Link className={styles.inspirationCatalogue} href="/journey/discover">{es ? "Ver todas las rutas" : "View all routes"}<ArrowRight aria-hidden="true" /></Link>

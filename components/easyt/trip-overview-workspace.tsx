@@ -470,7 +470,7 @@ export default function TripOverviewWorkspace({
 
         <section className={styles.beforeGo} id="before-you-go" aria-labelledby="overview-before-go-title">
           <div className={styles.sectionHeading}>
-            <div><p>{language === "es" ? "Antes de salir" : "Before you go"}</p><h2 id="overview-before-go-title">{language === "es" ? "Preparativos prácticos" : "Practical prep"}</h2><span className={styles.sectionDetail}>{language === "es" ? "Algunos detalles útiles que organizar antes del viaje." : "A few useful details to sort before your trip."}</span></div>
+            <div><h2 id="overview-before-go-title">{language === "es" ? "Preparativos prácticos" : "Practical prep"}</h2></div>
           </div>
           {prepProviderStatus !== "available" ? <div className={prepProviderStatus === "loading" ? "sr-only" : styles.beforeGoStatus}>
             {prepProviderStatus === "unavailable"

@@ -1,12 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowRight, Check, CircleDot, Map, SlidersHorizontal, Stamp } from "lucide-react";
-import { useEffect, useState } from "react";
+import { ArrowRight, Check, ChevronDown, CircleDot, Map, SlidersHorizontal, Stamp } from "lucide-react";
+import { useEffect, useId, useRef, useState } from "react";
 import type { EasyTTrip } from "@/lib/easyt/trip";
 import { mapWorkspaceHref } from "@/lib/easyt/trip-workspace-links";
 import { languageFromStorage, type EasyTLanguage } from "@/lib/easyt/i18n";
 import styles from "../account.module.css";
+import { EasyTButton } from "@/components/easyt/easyt-controls";
 
 const copy = {
   en: {
@@ -19,19 +20,30 @@ const copy = {
 
 export default function FirstTripGuide({ trips }: { trips: EasyTTrip[] }) {
   const [language, setLanguage] = useState<EasyTLanguage>("en");
-  const [dismissed, setDismissed] = useState(true);
+  const [expanded, setExpanded] = useState(false);
+  const panelId = useId();
+  const rootRef = useRef<HTMLElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const closeRef = useRef<HTMLButtonElement>(null);
+  const focusRequest = useRef<"open" | "close" | null>(null);
   const text = copy[language];
   const firstTrip = trips.find((trip) => trip.status !== "archived");
-  const guideKey = "easyt-first-trip-guide-dismissed";
 
   useEffect(() => {
     setLanguage(languageFromStorage());
-    setDismissed(window.localStorage.getItem(guideKey) === "1");
     const updateLanguage = (event: Event) => setLanguage((event as CustomEvent<EasyTLanguage>).detail);
     window.addEventListener("easyt-language-change", updateLanguage);
     return () => window.removeEventListener("easyt-language-change", updateLanguage);
   }, []);
-  if (dismissed) return null;
+  useEffect(() => {
+    const request = focusRequest.current;
+    focusRequest.current = null;
+    if (!request) return;
+    const focused = document.activeElement;
+    if (focused !== document.body && focused !== document.documentElement && !rootRef.current?.contains(focused)) return;
+    (request === "open" ? closeRef.current : triggerRef.current)?.focus();
+  }, [expanded]);
+  const toggle = (next: boolean) => { focusRequest.current = next ? "open" : "close"; setExpanded(next); };
 
   const steps = firstTrip
     ? [
@@ -49,9 +61,16 @@ export default function FirstTripGuide({ trips }: { trips: EasyTTrip[] }) {
   const activeIndex = steps.findIndex((step) => !step.done);
   const active = steps[activeIndex < 0 ? steps.length - 1 : activeIndex];
 
-  return <section className={styles.firstTripGuide} aria-labelledby="first-trip-guide-title">
-    <div className={styles.guideHead}><div><p className={styles.eyebrow}>{text.eyebrow}</p><h2 id="first-trip-guide-title">{text.title}</h2></div><button type="button" onClick={() => { window.localStorage.setItem(guideKey, "1"); setDismissed(true); }}>{text.dismiss}</button></div>
-    <div className={styles.guideSteps}>{steps.map((step, index) => { const Icon = step.icon; const isActive = index === activeIndex; return <div className={`${styles.guideStep} ${step.done ? styles.guideDone : ""} ${isActive ? styles.guideActive : ""}`} key={step.title}><span><Icon aria-hidden="true" /></span><div><small>{step.done ? text.complete : String(index + 1).padStart(2, "0")}</small><strong>{step.title}</strong></div></div>; })}</div>
-    <div className={styles.guideAction}><div><small>{activeIndex + 1} / {steps.length}</small><strong>{active.title}</strong><p>{active.detail}</p></div><Link href={active.href}>{text.action} <ArrowRight aria-hidden="true" /></Link></div>
+  return <section ref={rootRef} aria-label={text.eyebrow} onKeyDown={(event) => {
+    if (expanded && event.key === "Escape") { event.preventDefault(); toggle(false); }
+  }}>
+    {!expanded ? <EasyTButton ref={triggerRef} variant="quiet" icon={ChevronDown} aria-expanded={false} aria-controls={panelId} onClick={() => toggle(true)}>{text.eyebrow}</EasyTButton> : null}
+    <div id={panelId} hidden={!expanded}>
+      {expanded ? <div className={styles.firstTripGuide}>
+        <div className={styles.guideHead}><div><p className={styles.eyebrow}>{text.eyebrow}</p><h2>{text.title}</h2></div><EasyTButton ref={closeRef} variant="quiet" aria-expanded={true} aria-controls={panelId} onClick={() => toggle(false)}>{text.dismiss}</EasyTButton></div>
+        <div className={styles.guideSteps}>{steps.map((step, index) => { const Icon = step.icon; const isActive = index === activeIndex; return <div aria-current={isActive ? "step" : undefined} className={`${styles.guideStep} ${step.done ? styles.guideDone : ""} ${isActive ? styles.guideActive : ""}`} key={step.title}><span><Icon aria-hidden="true" /></span><div><small>{step.done ? text.complete : String(index + 1).padStart(2, "0")}</small><strong>{step.title}</strong></div></div>; })}</div>
+        <div className={styles.guideAction}><div><p>{active.detail}</p></div><Link href={active.href}>{text.action} <ArrowRight aria-hidden="true" /></Link></div>
+      </div> : null}
+    </div>
   </section>;
 }

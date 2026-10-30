@@ -1,5 +1,7 @@
 "use client";
 
+import FirstTripGuide from "./first-trip-guide";
+
 import Link from "next/link";
 import {
   Archive,
@@ -48,7 +50,6 @@ import { tripDisplayTitle } from "@/lib/easyt/trip-display";
 import { dashboardHeroTrip } from "@/lib/easyt/trip-status";
 import { accommodationProgress } from "@/lib/easyt/accommodation";
 import { mapRouteLegsFromTrip } from "@/lib/easyt/map-spatial-context";
-import { routeDestinationPhoto } from "@/lib/easyt/route-images";
 import { dashboardLibraryTrips, type DashboardLibraryView, type DashboardSortMode } from "@/lib/easyt/dashboard-library";
 import { dashboardTripPhoto, dashboardTripCoverPlace, type DashboardTripPhoto } from "@/lib/easyt/dashboard-trip-image";
 import {useTripLibraryActions} from "@/components/easyt/use-trip-library-actions";
@@ -175,7 +176,6 @@ export default function DashboardClient({ trips, stamps, ownerId }: { trips: Eas
   const ownerScopeRef = useRef("");
   const [showDetachedRecoveries, setShowDetachedRecoveries] = useState(false);
   const [featuredImageDisplayed, setFeaturedImageDisplayed] = useState(false);
-  const [closingImageDisplayed, setClosingImageDisplayed] = useState(false);
   const copy = easytCopy[language].dashboard;
 
   useEffect(() => { mountedRef.current = true; return () => { mountedRef.current = false; }; }, []);
@@ -306,9 +306,6 @@ export default function DashboardClient({ trips, stamps, ownerId }: { trips: Eas
   const wantCount = stampSummary.want;
   const isSpanish = language === "es";
   const featuredTitle = featuredTrip ? featuredTitleParts(tripDisplayTitle(featuredTrip)) : null;
-  const closingPhoto = routeDestinationPhoto("Tokyo", "Japan");
-  const closingPhotoSrc = closingPhoto?.variants.at(-1)?.src;
-  useEffect(() => setClosingImageDisplayed(false), [closingPhotoSrc]);
   const featuredRecoveryIssue = featuredTrip ? recoveryIssues[featuredTrip.id] : undefined;
   const orphanRecoveryIssues = Object.values(recoveryIssues).filter((issue) => !trips.some((trip) => trip.id === issue.tripId));
 
@@ -317,6 +314,7 @@ export default function DashboardClient({ trips, stamps, ownerId }: { trips: Eas
 
   return (
     <>
+      {boundary === "current" && recoveryState === "none" ? <FirstTripGuide trips={trips} /> : null}
       {actionNotice ? <div className={styles.actionNotice}><MorroviaBriefNotice title={actionNotice.title} detail={actionNotice.detail} autoDismissMs={6500} onDismiss={() => setActionNotice(null)} /></div> : null}
       {actionError ? <MorroviaStatusBanner className={styles.dashboardNotice} tone="danger" title={actionError} actions={actionError.includes("session") ? <EasyTLinkButton size="small" href={journeyReauthenticationPath("/journey/dashboard")}>Sign in again</EasyTLinkButton> : failedAction ? <EasyTButton size="small" variant="secondary" onClick={() => void runAction(failedAction.id, failedAction.action)}>{isSpanish ? "Reintentar" : "Try again"}</EasyTButton> : undefined} /> : null}
       {recoveryState === "unavailable" ? <MorroviaStatusBanner className={styles.dashboardNotice} tone="warning"
@@ -396,9 +394,7 @@ export default function DashboardClient({ trips, stamps, ownerId }: { trips: Eas
         </article>
       ) : recoveryState === "unavailable" || recoveryState === "issue" ? null : (
         <article className={styles.emptyHero}>
-          <p className={styles.eyebrow}>{isSpanish ? "Tu primer viaje" : "Your first trip"}</p>
           <h2>{isSpanish ? "¿Adónde quieres ir primero?" : "Where will you go first?"}</h2>
-          <p>{isSpanish ? "Cuéntanos qué lugares, cuándo te gustaría ir y qué estilo de viaje tienes en mente." : "Tell us the places, timing and travel style you have in mind."}</p>
           <EasyTLinkButton href="/#start-building">{isSpanish ? "Planificar un viaje" : "Plan a trip"}<ArrowRight aria-hidden="true" /></EasyTLinkButton>
         </article>
       )}
@@ -444,18 +440,7 @@ export default function DashboardClient({ trips, stamps, ownerId }: { trips: Eas
         </div>
       </section> : null}
 
-      <section className={styles.closingInvitation} aria-labelledby="closing-invitation-title">
-        <ResilientImage src={closingPhotoSrc} alt={closingPhoto?.alt ?? ""} onDisplayState={setClosingImageDisplayed} fallback={<div className={styles.closingFallback}><Globe2 aria-hidden="true" /></div>} />
-        <div className={styles.closingContent}>
-          <p className={styles.eyebrow}>{isSpanish ? "Otro lugar que te llama" : "Another way to go"}</p>
-          <h2 id="closing-invitation-title"><span>{isSpanish ? "¿Algún otro lugar" : "Somewhere else"}</span><em>{isSpanish ? "en mente?" : "on your mind?"}</em></h2>
-          {recoveryState !== "checking" && recoveryState !== "syncing" && recoveryState !== "unavailable" ? <EasyTLinkButton variant="secondary" href="/#start-building">{isSpanish ? "Empezar otro viaje" : "Start another trip"}<ArrowRight aria-hidden="true" /></EasyTLinkButton> : null}
-        </div>
-      {closingPhoto && closingImageDisplayed ? <MorroviaPhotoCredit ownership={closingPhoto.provenance === "reviewed-morrovia-first-party" ? "morrovia" : "third-party"} photoLabel={closingPhoto.alt} credit={`${closingPhoto.author} · ${closingPhoto.license}`} authorHref={closingPhoto.authorUrl} sourceHref={closingPhoto.sourceUrl} licenseHref={closingPhoto.licenseUrl} fullCreditHref={`/journey/immersive/credits.html#${closingPhoto.key}`} /> : null}
-      </section>
-
       <footer className={styles.libraryFooter}>
-        <p>{isSpanish ? "Cada viaje, a su tiempo." : "Every journey, in its own time."}</p>
         <Link href="/journey/stamps">{isSpanish ? "Tus sellos" : "Your Stamps"}<span>{visitedCount} {isSpanish ? "visitados" : "visited"} · {wantCount} {isSpanish ? "deseados" : "want to go"}</span><ArrowRight aria-hidden="true" /></Link>
       </footer>
 
@@ -515,11 +500,7 @@ function JourneySection({ kind, trips, cardPhotos, language, copy, recoveryIssue
   return <section className={`${styles.journeySection} ${styles[`${kind}Section`]}`} aria-labelledby={`${kind}-journeys-title`}>
     <header className={styles.sectionHeading}>
       <h2 id={`${kind}-journeys-title`}><span>{headings[kind][0]}</span><em>{headings[kind][1]}</em></h2>
-      <p>{kind === "upcoming"
-        ? (isSpanish ? "Rutas decididas, listas para preparar." : "Routes decided, ready for the details.")
-        : kind === "idea"
-          ? (isSpanish ? "Bocetos de rutas que aún pueden cambiar." : "Route sketches that still have room to change.")
-          : (isSpanish ? "Lugares vividos, guardados para otra vez." : "Places lived, kept close for another time.")}</p>
+
     </header>
     <div className={styles.sectionGrid} data-count={Math.min(visibleTrips.length, 4)}>
       {visibleTrips.map((trip) => <TripCard key={trip.id} kind={kind} trip={trip} photo={cardPhotos.get(trip.id) ?? null} {...cardProps} working={working === trip.id} />)}

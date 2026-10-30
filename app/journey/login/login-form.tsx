@@ -155,9 +155,8 @@ export default function LoginForm({
   }
 
   return <section className={styles.authPanel}>
-    <p className={styles.eyebrow}>Morrovia account</p>
     <h2>{backToTripHref ? "Save this trip." : mode === "sign-in" ? "Welcome back." : "Start travelling."}</h2>
-    <p className={styles.muted}>{backToTripHref ? "Keep this exact trip and continue planning on another device." : mode === "sign-in" ? "Open your saved plans and pick up where you left off." : "Save your first plan and keep every trip in one place."}</p>
+    {backToTripHref ? <p className={styles.muted}>Keep this exact trip and continue planning on another device.</p> : null}
     {(!configured || showSetupNotice) && <p className={styles.setupNotice}>Accounts are being connected to the live site. The Tokyo Marathon+ prototype and trip builder are still available.</p>}
     <EasyTSegmentedControl
       ariaLabel="Account action"
@@ -186,9 +185,9 @@ export default function LoginForm({
     {resendConfirmed && verificationFailure ? <MorroviaStatusBanner tone="success" title="Verification email sent" detail={`Check ${verificationFailure.email}, including spam.`} /> : null}
     {resendError && verificationFailure ? <p className={styles.error} role="alert">{resendError}</p> : null}
     <form className={styles.form} method="post" action="/journey/login" onSubmit={submit} aria-busy={!handlerReady || busy || undefined}>
-      {mode === "sign-up" && <EasyTField label="Your name" name="name" disabled={!handlerReady} autoComplete="name" required placeholder="Your name" />}
+      {mode === "sign-up" && <EasyTField label="Your name" name="name" disabled={!handlerReady} autoComplete="name" required />}
       <EasyTField label="Email" name="email" disabled={!handlerReady} type="email" autoComplete="email" required placeholder="you@example.com" value={email} onChange={(event) => { setEmail(event.target.value); setVerificationFailure(null); }} />
-      <EasyTPasswordField label="Password" name="password" disabled={!handlerReady} minLength={8} autoComplete={mode === "sign-in" ? "current-password" : "new-password"} required placeholder="At least 8 characters" />
+      <EasyTPasswordField label="Password" name="password" disabled={!handlerReady} minLength={8} autoComplete={mode === "sign-in" ? "current-password" : "new-password"} required placeholder={mode === "sign-up" ? "At least 8 characters" : undefined} />
       {mode === "sign-in" && <a className={styles.forgotLink} href="/journey/forgot-password">Forgot password?</a>}
       <EasyTButton className={styles.authSubmit} type="submit" fullWidth loading={busy} disabled={!handlerReady || !configured || googleBusy || Boolean(verificationFailure)}>{configured ? mode === "sign-in" ? "Sign in →" : "Create account →" : "Accounts coming online"}</EasyTButton>
       <noscript><p className={styles.muted}>Enable JavaScript to sign in securely.</p></noscript>

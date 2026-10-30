@@ -67,7 +67,7 @@ export default function ImmersiveHome({ routes, previewRoutes, initialIndex }: {
         <div className={styles.heroCopy}><h1><span>{es ? "Viajes con varias paradas," : "Multi-stop trips,"}</span><span className={styles.heroEmphasis}>{es ? "hechos sencillos." : "made simple."}</span></h1></div>
         <div className={styles.planner}><HomeTripStarter /></div>
       </div>
-      <div className={styles.heroBottom}><a href="#routes">{es ? "De una idea a un viaje" : "From an idea to a journey"} <ArrowDown aria-hidden="true" /></a></div>
+      <div className={styles.heroBottom}><a href="#routes" aria-label={es ? "Explorar rutas" : "Explore routes"}><ArrowDown aria-hidden="true" /></a></div>
     </section>
     <HomepageRouteInspiration routes={routes} previewRoutes={previewRoutes} />
     <HomepageHowItWorks />

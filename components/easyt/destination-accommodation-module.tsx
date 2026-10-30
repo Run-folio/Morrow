@@ -262,7 +262,7 @@ export default function DestinationAccommodationModule({
         onOpenChange={setAlreadyBookedOpen}
         triggerLabel="Already booked?"
         title={`Add accommodation in ${stop.name}`}
-        detail="Add it manually, check a connected calendar, or forward a confirmation. Nothing is added until you confirm it."
+        detail="Nothing is added until you confirm it."
         actions={<div className={styles.secondaryActions}>
           <EasyTButton size="small" variant="secondary" icon={Plus} onClick={startManual}>Add booking</EasyTButton>
           <EasyTButton size="small" variant="quiet" icon={CalendarSearch} disabled={!trip.ownerId || importsLoading} onClick={() => void checkCalendar()}>Check calendar</EasyTButton>

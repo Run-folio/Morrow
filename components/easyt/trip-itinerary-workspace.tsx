@@ -2414,11 +2414,11 @@ function ItineraryDaySuggestions({ trip, day, stop, copy, language, initialPlace
   const addLabels = language === "es" ? {
     title: "Añadir plan", close: "Cerrar", search: "Buscar ideas", own: "Añade el tuyo", add: "Añadir", save: "Guardar para después", saved: "Guardado para después",
     categories: { "for-you": "Para ti", "must-see": "Imprescindibles", culture: "Cultura", tours: "Excursiones", outdoors: "Naturaleza", food: "Comida y bebida" },
-    finding: "Buscando ideas", findingDetail: "Según este destino y tus intereses.", empty: "No hay ideas que coincidan. Prueba otra categoría o añade la tuya.", foodError: "No hay sugerencias de comida ahora. Puedes añadir un lugar tú mismo.", addError: "No se pudo añadir este plan.", saveError: "No se pudo guardar esta idea.", rating: "valoración", planOnly: "Solo planificación",
+    finding: "Buscando ideas", empty: "No hay ideas que coincidan.", foodError: "No hay sugerencias de comida ahora. Puedes añadir un lugar tú mismo.", addError: "No se pudo añadir este plan.", saveError: "No se pudo guardar esta idea.", rating: "valoración", planOnly: "Solo planificación",
   } : {
     title: "Add a plan", close: "Close", search: "Search ideas", own: "Add your own", add: "Add", save: "Save for later", saved: "Saved for later",
     categories: { "for-you": "For you", "must-see": "Must-see", culture: "Culture", tours: "Tours", outdoors: "Nature / outdoors", food: "Food & drink" },
-    finding: "Finding ideas", findingDetail: "Using this destination and your trip interests.", empty: "No matching ideas yet. Search another category or add your own.", foodError: "Food ideas are unavailable right now. You can still add your own place.", addError: "This plan could not be added safely.", saveError: "This idea could not be saved safely.", rating: "rating", planOnly: "Plan only",
+    finding: "Finding ideas", empty: "No matching ideas yet.", foodError: "Food ideas are unavailable right now. You can still add your own place.", addError: "This plan could not be added safely.", saveError: "This idea could not be saved safely.", rating: "rating", planOnly: "Plan only",
   };
 
   useEffect(() => {
@@ -2671,7 +2671,7 @@ function ItineraryDaySuggestions({ trip, day, stop, copy, language, initialPlace
         {(["for-you", "must-see", "culture", "tours", "outdoors", "food"] as const).map((category) => <EasyTButton key={category} size="small" variant={addCategory === category ? "primary" : "quiet"} aria-pressed={addCategory === category} onClick={() => { setAddCategory(category); setAddResultError(""); }}>{addLabels.categories[category]}</EasyTButton>)}
       </div>
       <div className={styles.contextualAddResults} aria-live="polite">
-        {!addResults.length && (loading || (addCategory === "food" && foodStatus === "loading")) ? <MorroviaSectionStatus compact title={addLabels.finding} detail={addLabels.findingDetail} /> : null}
+        {!addResults.length && (loading || (addCategory === "food" && foodStatus === "loading")) ? <MorroviaSectionStatus compact title={addLabels.finding} /> : null}
         {unsettled && !loading ? suggestionStatus : null}
         {addCategory === "food" && foodStatus === "error" ? <p>{addLabels.foodError}</p> : null}
         {!addResults.length && !unsettled && (addCategory !== "food" || foodStatus !== "error") && !(loading || (addCategory === "food" && foodStatus === "loading")) ? <p>{emptyAddMessage}</p> : null}

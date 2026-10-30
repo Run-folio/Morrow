@@ -39,3 +39,5 @@
 .selectField:focus-within { outline: 3px solid var(--morrovia-focus-ring); outline-offset: -3px; box-shadow: var(--morrovia-focus-shadow); }
 .selectField[data-disabled] { opacity: .62; background: var(--morrovia-disabled); }
 .selectField[data-disabled] .nativeSelect { cursor: not-allowed; }
+
+.content[data-unlabelled] .value { grid-row: 1 / 3; align-self: center; }

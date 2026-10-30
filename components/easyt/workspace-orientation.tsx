@@ -105,7 +105,7 @@ function anchoredPosition(element: HTMLElement): CSSProperties {
   return { left, top, width };
 }
 
-export function WorkspaceOrientationProvider({ ownerId, children, autoStart = true, accountVersionSeen = 0 }: { ownerId: string | null; children: ReactNode; autoStart?: boolean; accountVersionSeen?: number }) {
+export function WorkspaceOrientationProvider({ ownerId, children, autoStart = false, accountVersionSeen = 0 }: { ownerId: string | null; children: ReactNode; autoStart?: boolean; accountVersionSeen?: number }) {
   const pathname = usePathname();
   const workspace = workspaceFromPathname(pathname);
   const targetsRef = useRef(new Map<WorkspaceOrientationTarget, Registration>());

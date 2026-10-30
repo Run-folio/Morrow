@@ -127,7 +127,7 @@ function categoryLabel(count: number, label: string) {
 
 function MappingSelect({ mapping, onUpdate }: { mapping: SpreadsheetColumnMapping; onUpdate: (columnIndex: number, value: string) => void }) {
   return <div className={styles.mappingRow} data-state={mapping.state}>
-    <div><strong>{mapping.header}</strong><small>{mapping.state === "mapped" ? "Ready" : mapping.state === "ambiguous" ? "Needs your attention" : "Not imported"}</small></div>
+    <div><strong>{mapping.header}</strong>{mapping.state !== "mapped" ? <small>{mapping.state === "ambiguous" ? "Needs your attention" : "Not imported"}</small> : null}</div>
     <EasyTSelect label={`Meaning of ${mapping.header}`} labelClassName="sr-only" value={mapping.field ?? "ignore"} onChange={(event) => onUpdate(mapping.index, event.target.value)}>
       <option value="ignore">Do not import</option>
       {spreadsheetImportFields.map((field: SpreadsheetImportField) => <option key={field} value={field}>{spreadsheetImportFieldLabels[field]}</option>)}
@@ -172,32 +172,23 @@ export function SpreadsheetImportReview({
   const skippedIssueGroups = groupSkippedImportIssues(notImportedIssues);
   const skippedSummary = skippedImportSummary(skippedIssueGroups);
   const attentionCount = ambiguousMappings.length + attentionIssues.length + (resolvedOrigin ? 0 : 1) + (resolvingPlaces ? 0 : unresolvedStops.length);
-  const summary = [
-    plural(stops.length, "stop"),
-    plural(proposal.totalNights, "night"),
-    plural(stays.length, "stay"),
-    plural(journeys.length, "journey", "journeys"),
-    plural(activities.length, "activity", "activities"),
-  ].join(" · ");
+
 
   return <>
     <section className={styles.sourceBar} aria-label="Import source">
-      <div><FileSpreadsheet aria-hidden="true" /><span><strong>{proposal.sourceName}</strong><small>Spreadsheet ready to review</small></span></div>
+      <div><FileSpreadsheet aria-hidden="true" /><span><strong>{proposal.sourceName}</strong></span></div>
       <EasyTButton variant="quiet" size="small" icon={RotateCcw} onClick={onReset}>Change source</EasyTButton>
     </section>
 
     <section className={styles.reviewPanel} aria-labelledby="import-review-title">
       <header className={styles.reviewHeading}>
-        <p>{canConfirm ? "IMPORT READY" : "REVIEW YOUR IMPORT"}</p>
         <h1 id="import-review-title">Review your trip</h1>
-        <span>Check the route and anything that needs your attention before Morrovia creates the trip.</span>
-        <strong className={styles.summaryLine}>{summary}</strong>
       </header>
 
       {resolvedOrigin ? <div className={styles.originSummary}><MapPin aria-hidden="true" /><span><small>Starting in</small><strong>{resolvedOrigin.name}{resolvedOrigin.country ? `, ${resolvedOrigin.country}` : ""}</strong></span></div> : null}
 
       <section className={styles.routeReview} aria-labelledby="route-review-title">
-        <div className={styles.subheading}><h2 id="route-review-title">Your route</h2><p>In the same order as your spreadsheet</p></div>
+        <div className={styles.subheading}><h2 id="route-review-title">Your route</h2></div>
         <ol>{stops.map((stop, index) => <li key={stop.id} data-resolved={Boolean(resolvedPlaces[stop.id])}>
           <b>{index + 1}</b>
           <div><strong>{resolvedPlaces[stop.id]?.name ?? stop.name}{(resolvedPlaces[stop.id]?.country ?? stop.country) ? `, ${resolvedPlaces[stop.id]?.country ?? stop.country}` : ""}</strong>
@@ -234,7 +225,7 @@ export function SpreadsheetImportReview({
         {!resolvingPlaces && unresolvedStops.map((stop) => {
           const options = placeOptions[stop.id] ?? [];
           return <div className={styles.attentionItem} key={stop.id}>
-            <div><h3>Which {stop.name} do you mean?</h3><p>Morrovia needs a safe place match to build the route.</p></div>
+            <div><h3>Which {stop.name} do you mean?</h3></div>
             <ImportPlaceClarification key={`${stop.id}:${stop.name}:${stop.country}`} name={stop.name} country={stop.country} options={options} onSelect={candidate => onSelectPlace(stop.id, candidate)} />
           </div>;
         })}
@@ -245,7 +236,7 @@ export function SpreadsheetImportReview({
       {saveError ? <MorroviaRecoveryFeedback title="The trip was not created" detail={saveError} safety="The reviewed import remains on this page. Retry after resolving the issue; Morrovia will not create a second trip silently." onRetry={onConfirm} /> : null}
 
       <footer className={styles.confirmFooter}>
-        <p><strong>{canConfirm ? "Everything looks ready. You can edit everything after import." : "Resolve the items under Needs your attention before creating the trip."}</strong></p>
+        {!canConfirm ? <p><strong>Resolve the items under Needs your attention before creating the trip.</strong></p> : null}
         <EasyTButton size="large" icon={Check} loading={saving} disabled={!canConfirm} onClick={onConfirm}>Create trip</EasyTButton>
       </footer>
 

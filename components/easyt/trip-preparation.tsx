@@ -249,6 +249,9 @@ export function TripPreparationCards({ tasks, tripId, language, onOpenTravellerD
     {tasks.map((task) => {
       const Icon = iconByKind[task.id];
       const action = task.action;
+      const genericOverviewDetail = (kind: string, detail: string) =>
+        (kind === "insurance" && ["Consider whether you need cover for your trip.", "Valora si necesitas cobertura para tu viaje."].includes(detail))
+        || (kind === "connectivity" && ["Compare eSIM coverage, data amounts and validity.", "Compara cobertura eSIM, datos y periodos de validez."].includes(detail));
       const reviewed = task.status === "sorted" || task.status === "not-needed";
       const legacyTask: TripPrepTask = { ...task, kind: task.id, category: "good", status: "to-do" };
       const disclosure = language === "es"
@@ -260,7 +263,7 @@ export function TripPreparationCards({ tasks, tripId, language, onOpenTravellerD
         <span className={styles.overviewPrepIcon}><Icon aria-hidden="true" /></span>
         <div className={styles.overviewPrepCopy}>
           <h3>{task.title}</h3>
-          <p>{task.detail}</p>
+          {genericOverviewDetail(task.id, task.detail) ? null : <p>{task.detail}</p>}
           {action?.affiliate ? <small className={styles.overviewPrepDisclosure}>{disclosure}</small> : null}
           <div className={styles.overviewPrepAction}>
             {action?.opensTravellerDetails ? <EasyTButton variant="quiet" size="small" onClick={onOpenTravellerDetails}>{action.label}<ArrowRight aria-hidden="true" /></EasyTButton>
