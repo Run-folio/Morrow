@@ -2,6 +2,7 @@
 
 import { ArrowLeft, ArrowRight, Check, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { languageFromStorage, type EasyTLanguage } from "@/lib/easyt/i18n";
 import { PRODUCT_TOUR_COMPLETE_KEY, shouldShowProductTourPrompt } from "@/lib/easyt/product-tour";
 import styles from "./easyt-product-tour.module.css";
@@ -66,6 +67,7 @@ export default function EasyTProductTour({ triggerLabel, listenForOpen = false, 
   const [step, setStep] = useState(initialIndex);
   const [language, setLanguage] = useState<EasyTLanguage>("en");
   const triggerRef = useRef<HTMLButtonElement>(null);
+  const nextRef = useRef<HTMLButtonElement>(null);
   const returnFocusRef = useRef<HTMLElement | null>(null);
   const dialogRef = useRef<HTMLElement>(null);
   const text = copy[language];
@@ -128,7 +130,7 @@ export default function EasyTProductTour({ triggerLabel, listenForOpen = false, 
       setStep(initialIndex);
       setOpen(true);
     }}>{triggerLabel ?? text.trigger}</button> : null}
-    {open ? <div className={styles.overlay} role="presentation" onMouseDown={close}>
+    {open ? createPortal(<div className={mobileStyles.tour}><div className={styles.overlay} role="presentation" onMouseDown={close}>
       <section ref={dialogRef} className={styles.dialog} role="dialog" aria-modal="true" aria-labelledby="easyt-tour-title" aria-describedby="easyt-tour-description" onMouseDown={(event) => event.stopPropagation()}>
         <button className={styles.close} type="button" onClick={close} aria-label={text.close}><X aria-hidden="true" /></button>
         <div className={styles.visual}><div className={styles.mediaFrame}><div className={styles.screen}><picture><source media="(max-width: 680px)" srcSet={current.mobileImage} /><img src={current.image} alt={current.alt} /></picture></div></div></div>
@@ -137,10 +139,10 @@ export default function EasyTProductTour({ triggerLabel, listenForOpen = false, 
           <h2 id="easyt-tour-title">{current.title}</h2>
           <p id="easyt-tour-description">{current.copy}</p>
           <div className={styles.dots} aria-live="polite"><span className={styles.srOnly}>{`${text.step} ${step + 1} ${text.of} ${text.steps.length}`}</span>{text.steps.map((item, index) => <i aria-hidden="true" className={index === step ? styles.dotActive : ""} key={item.label} />)}</div>
-          <div className={styles.actions}>{step > 0 ? <button className={styles.back} type="button" onClick={() => setStep(step - 1)}><ArrowLeft aria-hidden="true" /> {text.back}</button> : <span />}{step === text.steps.length - 1 ? <button className={styles.next} type="button" onClick={close}><Check aria-hidden="true" /> {text.finish}</button> : <button className={styles.next} type="button" onClick={() => setStep(step + 1)}>{text.next} <ArrowRight aria-hidden="true" /></button>}</div>
+          <div className={styles.actions}>{step > 0 ? <button className={styles.back} type="button" onClick={() => { setStep(step - 1); nextRef.current?.focus(); }}><ArrowLeft aria-hidden="true" /> {text.back}</button> : <span />}{step === text.steps.length - 1 ? <button ref={nextRef} className={styles.next} type="button" onClick={close}><Check aria-hidden="true" /> {text.finish}</button> : <button ref={nextRef} className={styles.next} type="button" onClick={() => setStep(step + 1)}>{text.next} <ArrowRight aria-hidden="true" /></button>}</div>
           <button className={styles.skip} type="button" onClick={close}>{text.skip}</button>
         </div>
       </section>
-    </div> : null}
+    </div></div>, document.body) : null}
   </div>;
 }

@@ -238,11 +238,44 @@
 }
 
 .country {
-  fill: #e2e3ee;
+  fill: var(--stamp-region-pale, #e2e3ee);
   stroke: #fff;
   stroke-width: 1.1;
   vector-effect: non-scaling-stroke;
   transition: fill .18s ease, opacity .18s ease, filter .18s ease, stroke .18s ease;
+}
+
+/* Approved cartographic annotations, scoped to the existing five-region model.
+   Status controls and text continue to use semantic success/action tokens. */
+.country[data-region="Africa"] {
+  /* morrovia-ui-audit-allow-next-line raw-color -- Approved Africa unmarked cartographic fill, scoped to the existing region geography. */
+  --stamp-region-pale: #eee5dc;
+  /* morrovia-ui-audit-allow-next-line raw-color -- Approved Africa visited cartographic fill; semantic status actions remain green. */
+  --stamp-region-fill: #ac896b;
+}
+.country[data-region="Americas"] {
+  /* morrovia-ui-audit-allow-next-line raw-color -- Approved Americas unmarked cartographic fill, scoped to the existing region geography. */
+  --stamp-region-pale: #e0e9e4;
+  /* morrovia-ui-audit-allow-next-line raw-color -- Approved Americas visited cartographic fill; semantic status actions remain green. */
+  --stamp-region-fill: #77978a;
+}
+.country[data-region="Asia"] {
+  /* morrovia-ui-audit-allow-next-line raw-color -- Approved Asia unmarked cartographic fill, scoped to the existing region geography. */
+  --stamp-region-pale: #e7e3ed;
+  /* morrovia-ui-audit-allow-next-line raw-color -- Approved Asia visited cartographic fill; semantic status actions remain green. */
+  --stamp-region-fill: #9589ad;
+}
+.country[data-region="Europe"] {
+  /* morrovia-ui-audit-allow-next-line raw-color -- Approved Europe unmarked cartographic fill, scoped to the existing region geography. */
+  --stamp-region-pale: #e0e5ee;
+  /* morrovia-ui-audit-allow-next-line raw-color -- Approved Europe visited cartographic fill; semantic status actions remain green. */
+  --stamp-region-fill: #7c8eae;
+}
+.country[data-region="Oceania"] {
+  /* morrovia-ui-audit-allow-next-line raw-color -- Approved Oceania unmarked cartographic fill, scoped to the existing region geography. */
+  --stamp-region-pale: #ece4e9;
+  /* morrovia-ui-audit-allow-next-line raw-color -- Approved Oceania visited cartographic fill; semantic status actions remain green. */
+  --stamp-region-fill: #ad8b9f;
 }
 
 .countryInteractive {
@@ -258,18 +291,23 @@
 }
 
 .countryVisited {
-  fill: var(--morrovia-success);
+  fill: var(--stamp-region-fill, var(--morrovia-line));
 }
 
 .countryWant {
-  fill: var(--morrovia-action);
+  stroke: var(--morrovia-action);
+  stroke-width: 1.5;
 }
 
 .countrySelected {
-  filter: drop-shadow(0 0 7px rgba(244, 43, 122, .34));
-  stroke: var(--morrovia-signal);
+  stroke: var(--morrovia-ink);
   stroke-width: 2.4;
 }
+
+.patternLayer { pointer-events: none; stroke: none; }
+.visitedPattern { stroke: var(--morrovia-ink); stroke-opacity: .25; stroke-width: 1.1; }
+.wantPattern { fill: var(--morrovia-action); }
+.patternMuted { opacity: .48; }
 
 .countryMuted {
   fill: #ececf3;
@@ -301,7 +339,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 28px;
+  gap: 18px;
   border-top: 1px solid var(--morrovia-line);
   background: rgba(255, 255, 255, .74);
   color: var(--morrovia-muted);
@@ -315,15 +353,23 @@
 }
 
 .legendDot {
-  width: 9px;
-  height: 9px;
-  border-radius: 50%;
-  background: var(--morrovia-action);
+  width: 14px;
+  height: 14px;
+  border: 1px solid var(--morrovia-action);
+  border-radius: 3px;
+  background: radial-gradient(var(--morrovia-action) 1px, transparent 1px) 0 0 / 5px 5px;
 }
 
 .legendDot[data-status="visited"] {
-  background: var(--morrovia-success);
+  border-color: var(--morrovia-line);
+  background: repeating-linear-gradient(135deg,
+    /* morrovia-ui-audit-allow-next-line raw-color -- Legend sample repeats the approved visited cartographic fill, independent of the green status action. */
+    #7c8eae 0 3px,
+    /* morrovia-ui-audit-allow-next-line raw-color -- Legend sample supplies contrast for the visited hatch, independent of the green status action. */
+    #bac3d3 3px 4px);
 }
+
+.legendDot[data-status="selected"] { border: 2px solid var(--morrovia-ink); background: var(--morrovia-lilac); }
 
 .emptyCard {
   position: absolute;
@@ -538,7 +584,6 @@
 .rowCountry:focus-visible,
 .rowActions button:focus-visible,
 .regionHeading button:focus-visible,
-.searchBox input:focus-visible,
 .regionSelect select:focus-visible,
 .notice button:focus-visible {
   outline: 2px solid var(--morrovia-signal);
@@ -667,7 +712,7 @@
   outline: 0;
   background: transparent;
   color: var(--morrovia-ink);
-  font: 12px/1.3 var(--morrovia-ui);
+  font: 14px/1.3 var(--morrovia-ui);
 }
 
 .searchBox input::placeholder {
@@ -815,10 +860,10 @@
 
 .rowMain {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(62px, auto) 96px;
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
-  gap: 8px;
-  min-height: 58px;
+  gap: 12px;
+  min-height: 72px;
 }
 
 .countryRow[data-selected="true"] {
@@ -830,19 +875,20 @@
 
 .rowCountry {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   min-width: 0;
   min-height: 44px;
   gap: 8px;
   border: 0;
   background: transparent;
   color: var(--morrovia-ink);
-  padding: 0;
+  padding: 12px 0;
   text-align: left;
   cursor: pointer;
 }
 
 .rowCountry .flag {
+  margin-top: 3px;
   width: 20px;
   font-size: 15px;
   text-align: center;
@@ -850,19 +896,21 @@
 
 .rowCountry strong {
   min-width: 0;
-  overflow: hidden;
-  font-size: 11px;
+  font-size: 15px;
   font-weight: 700;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  line-height: 1.35;
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
+
+.rowIdentity { display: grid; min-width: 0; gap: 4px; }
+.selectedLabel { color: var(--morrovia-ink-soft); }
 
 .rowStatusText {
   color: var(--morrovia-muted);
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 650;
-  text-align: right;
-  white-space: nowrap;
+  text-align: left;
 }
 
 .rowStatusText[data-status="visited"] {
@@ -876,26 +924,24 @@
 .rowActions {
   display: flex;
   justify-content: flex-end;
-  gap: 4px;
+  gap: 6px;
 }
 
 .rowActions button {
-  display: grid;
-  place-items: center;
-  width: 44px;
-  height: 44px;
-  flex: 0 0 44px;
-  border: 1px solid var(--morrovia-ink-soft);
-  border-radius: 50%;
-  background: #fff;
-  color: var(--morrovia-ink-soft);
-  padding: 0;
-  cursor: pointer;
-  transition: border-color 160ms ease, background 160ms ease, color 160ms ease, transform 160ms ease;
+  min-height: 44px;
+  min-width: 62px;
+  gap: 5px;
+  padding: 0 10px;
+  font-size: 12px;
 }
 
 .rowActions button:hover:not(:disabled) {
   transform: translateY(-1px);
+}
+
+.rowActions button[data-status="visited"] {
+  border-color: var(--morrovia-success);
+  color: var(--morrovia-success);
 }
 
 .rowActions button[data-status="visited"][data-active="true"] {
@@ -916,8 +962,8 @@
 }
 
 .rowActions svg {
-  width: 20px;
-  height: 20px;
+  width: 15px;
+  height: 15px;
   stroke-width: 2;
 }
 
@@ -984,9 +1030,11 @@
   .statsPanel,
   .statsLoading { max-width: 680px; }
   .workspace { display: flex; flex-direction: column; height: auto; }
-  .mapPanel { order: 2; min-height: 520px; }
-  .map { min-height: 430px; max-height: 500px; }
-  .explorerPanel { order: 1; min-height: 640px; border-bottom: 1px solid var(--morrovia-line); border-left: 0; }
+  .mapPanel { min-height: 0; grid-template-rows: auto 44px; border-bottom: 1px solid var(--morrovia-line); }
+  .mapViewport { min-height: 250px; }
+  .map { min-height: 0; height: 250px; max-height: 250px; padding: 12px 8px; }
+  .explorerPanel { min-height: 0; border-left: 0; }
+  .countryCard { position: relative; left: auto; bottom: auto; width: calc(100% - 28px); max-height: none; margin: 0 14px 14px; }
   .countryList { max-height: 520px; }
 }
 
@@ -1011,16 +1059,16 @@
   .mapPanel,
   .explorerPanel { border-radius: 12px; }
   .mapPanel { grid-template-rows: auto 44px; min-height: 0; }
-  .mapViewport { min-height: 340px; }
-  .map { min-height: 330px; max-height: 380px; padding: 20px 0 12px; }
+  .mapViewport { min-height: 210px; }
+  .map { min-height: 0; height: 210px; max-height: 210px; padding: 12px 8px; }
   .mapControls { top: 14px; left: 14px; gap: 5px; }
   .mapControl { width: 44px !important; min-width: 44px !important; height: 44px !important; min-height: 44px !important; }
   .mapLegend { gap: 18px; font-size: 9px; }
-  .emptyCard { bottom: 18px; width: calc(100% - 32px); padding: 17px; }
+  .emptyCard { position: relative; left: auto; bottom: auto; transform: none; width: calc(100% - 28px); margin: 0 14px 14px; padding: 17px; }
   .emptyCard h2 { font-size: 22px; }
   .emptyCard p { font-size: 11px; }
   .countryCard { position: relative; left: auto; bottom: auto; width: calc(100% - 28px); max-height: none; margin: -6px 14px 14px; box-shadow: 0 12px 28px rgba(23, 16, 111, .12); }
-  .explorerPanel { min-height: 610px; }
+  .explorerPanel { min-height: 0; }
   .explorerHeader { gap: 14px; padding: 20px 16px 14px; }
   .explorerHeader h2 { font-size: 22px; }
   .filterRow { align-items: flex-start; flex-direction: column; }
@@ -1028,9 +1076,8 @@
   .regionSelect select { flex: 1; max-width: none; }
   .countryList { max-height: 500px; padding-inline: 10px; padding-bottom: calc(var(--morrovia-mobile-dock-offset) + 18px); scroll-padding-bottom: calc(var(--morrovia-mobile-dock-offset) + 18px); }
   .countryRow { min-height: 60px; }
-  .rowMain { grid-template-columns: minmax(0, 1fr) 64px 96px; gap: 6px; min-height: 60px; }
-  .rowCountry strong { font-size: 12px; }
-  .rowStatusText { font-size: 10px; }
+  .rowMain { gap: 8px; }
+  .rowActions button { min-width: 58px; padding-inline: 8px; }
 }
 
 @media (max-width: 360px) {
@@ -1039,8 +1086,9 @@
   .statItem { padding-inline: 9px; }
   .statusTabs :global(button),
   .statusControl :global(button) { padding-inline: 5px; font-size: 10px; }
-  .rowCountry strong { max-width: 118px; }
-  .rowMain { grid-template-columns: minmax(0, 1fr) 58px 92px; gap: 4px; }
+  .rowMain { gap: 6px; }
+  .rowActions { gap: 4px; }
+  .rowActions button { min-width: 44px; padding-inline: 6px; gap: 4px; }
 }
 
 @media (prefers-reduced-motion: reduce) {

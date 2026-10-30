@@ -1,6 +1,6 @@
 "use client";
 
-import { BedDouble, Check, MapPin, Star } from "lucide-react";
+import { BedDouble, Check, Map, MapPin, Star } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { trackEvent } from "@/lib/analytics";
@@ -18,13 +18,14 @@ import { stayCandidateFit, stayIsSelected, stayWorkspaceContext, type StayWorksp
 import type { EasyTTrip } from "@/lib/easyt/trip";
 import { mapWorkspaceHref, stayWorkspaceHref, tripBuilderHref } from "@/lib/easyt/trip-workspace-links";
 import { MorroviaAffiliateDisclosure, MorroviaAffiliateLink } from "./affiliate-link";
-import { EasyTButton, EasyTLinkButton } from "./easyt-controls";
+import { EasyTButton, EasyTLinkButton, EasyTField, EasyTSelect } from "./easyt-controls";
 import ItineraryItemDetail from "./itinerary-item-detail";
 import { JourneyLocalPlacePhotoAttribution, JourneyLocalPlacePhotoMedia, useJourneyLocalPlacePhotos } from "./journey-local-place-photo";
 import { MorroviaBriefNotice, MorroviaStatusBanner } from "./morrovia-feedback";
 import { MorroviaSectionStatus, MorroviaSkeleton } from "./morrovia-loading-states";
 import workspaceHeading from "./trip-workspace-heading.module.css";
 import { useTripShellMutation } from "./trip-shell-client";
+import { useMobileTripWorkspace } from "./trip-mobile-sheet";
 import styles from "./trip-stay-workspace.module.css";
 
 export type TripStayWorkspaceProps = {
@@ -63,6 +64,13 @@ function StayFinderSurface({
   onSelectStop: (stopId: string) => void;
 }) {
   const mutation = useTripShellMutation();
+  const mobile = useMobileTripWorkspace();
+  const [stayQuery, setStayQuery] = useState("");
+  const [showAllStays, setShowAllStays] = useState(false);
+  const filteredCandidates = finder.candidates.filter(place => `${place.name} ${place.address}`.toLocaleLowerCase().includes(stayQuery.trim().toLocaleLowerCase()));
+  const mobileCandidates = [...filteredCandidates].sort((a, b) => Number(stayIsSelected(workingTrip, context, b)) - Number(stayIsSelected(workingTrip, context, a)));
+  const visibleCandidates = mobile ? stayQuery.trim() || showAllStays ? mobileCandidates : mobileCandidates.slice(0, 1) : finder.candidates;
+  useEffect(() => { setStayQuery(""); setShowAllStays(false); }, [context.stop.id, workingTrip.id, workingTrip.ownerId]);
   const actionScopeRef = useRef({ identity: "", revision: 0 });
   const actionIdentity = JSON.stringify([workingTrip.ownerId, workingTrip.id, context.stop.id]);
   if (actionScopeRef.current.identity !== actionIdentity) actionScopeRef.current = { identity: actionIdentity, revision: actionScopeRef.current.revision + 1 };
@@ -184,11 +192,19 @@ function StayFinderSurface({
 
     <div className={styles.main}>
       <header className={styles.intro}>
-        <h2 className={workspaceHeading.sectionTitle}>Where to stay in {context.stop.name}</h2>
+        <h2 className={workspaceHeading.sectionTitle}>{mobile ? "Stays in" : "Where to stay in"} {context.stop.name}</h2>
         <p>{context.nights} {context.nights === 1 ? "night" : "nights"} · {context.dateLabel}</p>
       </header>
 
-      {compact ? mapPreview : null}
+      {mobile ? <>
+        <div className={styles.mobileStayToolbar}>
+          <EasyTSelect label="Overnight stop" labelClassName="sr-only" value={context.stop.id} onChange={event => onSelectStop(event.target.value)}>
+            {navigationStops.map(stop => { const scope = stayWorkspaceContext(workingTrip, stop.id); return <option key={stop.id} value={stop.id}>{scope?.stop.name} · {scope?.dateLabel} · {scope?.nights} nights</option>; })}
+          </EasyTSelect>
+          <EasyTLinkButton href={fullMapHref(selected)} icon={Map} size="small" variant="secondary">Map</EasyTLinkButton>
+        </div>
+        <EasyTField label="Search these stays" value={stayQuery} onChange={event => setStayQuery(event.target.value)} type="search" />
+      </> : compact ? mapPreview : null}
 
       {booking && !finder.candidates.some((place) => stayIsSelected(workingTrip, context, place)) ? <MorroviaStatusBanner
         tone="success"
@@ -208,7 +224,7 @@ function StayFinderSurface({
         {finder.status === "loading" ? <div className={styles.loading}><MorroviaSectionStatus title="Finding stays for this stop" detail={`Keeping ${context.stop.name}, ${context.nights} nights and ${context.dateLabel} in place.`} /><div aria-hidden="true"><MorroviaSkeleton height={240} radius="card" /><MorroviaSkeleton height={240} radius="card" /></div></div> : null}
         {finder.status === "failed" ? <MorroviaSectionStatus state="error" title="Couldn’t load stays" retryLabel="Try again" onRetry={finder.retry} /> : null}
         {finder.status === "empty" ? <MorroviaStatusBanner title="No stay options found" detail="No mapped stays came back for this stop. Try again later." /> : null}
-        {finder.candidates.length ? <div className={styles.grid}>{finder.candidates.map((place) => {
+        {finder.candidates.length ? <div className={styles.grid}>{visibleCandidates.map((place) => {
           const isSelected = place.id === selectedBase?.id;
           const isChosen = stayIsSelected(workingTrip, context, place);
           const price = formattedPrice(place);
@@ -238,10 +254,13 @@ function StayFinderSurface({
             </div>
             <EasyTButton type="button" className={styles.cardOpen} variant="quiet" aria-label={`Open details for ${place.name}`} aria-pressed={isSelected} onClick={() => selectPlace(place)}>Open details for {place.name}</EasyTButton>
             <div className={styles.cardActions}>
+              {mobile && isChosen ? <p className={styles.mobileStayState}><Check aria-hidden="true" />Chosen · {booking?.confirmation?.trim() ? "Booking details saved" : "Not booked"}</p> : null}
               <EasyTButton fullWidth loading={mutation.isPending(chooseKey)} disabled={isChosen} aria-pressed={isChosen} variant={isChosen ? "secondary" : "primary"} onClick={() => chooseStay(place)}>{isChosen ? "Chosen" : "Choose stay"}</EasyTButton>
             </div>
           </article>;
         })}</div> : null}
+        {mobile && stayQuery.trim() && !filteredCandidates.length ? <p>No stays match this search.</p> : null}
+        {mobile && !stayQuery.trim() && filteredCandidates.length > 1 ? <EasyTButton variant="quiet" onClick={() => setShowAllStays(value => !value)} aria-expanded={showAllStays}>{showAllStays ? "Show fewer stays" : `Compare more stays (${filteredCandidates.length - 1})`}</EasyTButton> : null}
       </section>
     </div>
 

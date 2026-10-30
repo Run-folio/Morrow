@@ -274,7 +274,10 @@
 .emptyHero > p:not(.eyebrow),
 .emptyState p { max-width: 52ch; margin: 0; color: var(--morrovia-muted); line-height: 1.55; }
 
-.tripLibrary { margin-top: clamp(56px, 8vw, 112px); }
+.collectionPage.collectionPage { margin-top: 24px; }
+.libraryLayout { display: flex; flex-direction: column; min-width: 0; }
+.libraryControls { order: 1; }
+.tripLibrary { order: 2; }
 .libraryToolbar {
   display: flex;
   align-items: center;
@@ -305,7 +308,7 @@
   display: grid;
   grid-template-columns: minmax(180px, .28fr) minmax(0, 1fr);
   gap: clamp(28px, 5vw, 70px);
-  padding: clamp(58px, 8vw, 112px) 0;
+  padding: 24px 0;
   border-bottom: 1px solid var(--morrovia-line);
 }
 .sectionHeading { align-self: start; }
@@ -377,7 +380,7 @@
 .tripImageFallback svg,
 .routePreviewFallback svg { width: 26px; height: 26px; }
 .cardBody { padding: 18px 2px 0; }
-.cardBody h3 { margin: 0; font: 500 clamp(1.42rem, 2vw, 2rem)/1.05 var(--morrovia-ui); letter-spacing: -.04em; }
+.cardBody h3 { margin: 0; overflow-wrap: anywhere; font: 500 clamp(1.42rem, 2vw, 2rem)/1.05 var(--morrovia-ui); letter-spacing: -.04em; }
 .cardBody h3 a { color: inherit; text-decoration: none; }
 .cardBody h3 a:hover { color: var(--morrovia-action); }
 .tripRoute { margin: 9px 0 0; color: var(--morrovia-ink-soft); font-size: .78rem; line-height: 1.45; }
@@ -415,7 +418,7 @@
   margin-top: 3px;
 }
 .tripCardActions { position: relative; z-index: 5; justify-content: space-between; gap: 8px; margin-top: 13px; }
-.openAction { padding-left: 0 !important; }
+.openAction { flex: none; }
 
 .tripMenu { position: relative; }
 .tripMenu summary {
@@ -532,7 +535,7 @@
 .loadingHero { display: grid; min-height: 560px; grid-template-rows: 1fr 124px; }
 .loadingHero > * { border-radius: var(--morrovia-radius); }
 .loadingHero article { display: none; }
-.loadingToolbar { display: flex; justify-content: space-between; gap: 18px; margin-top: 40px; }
+.loadingToolbar { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 18px; }
 .loadingGrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 28px; }
 .loadingGrid article { display: grid; gap: 16px; }
 
@@ -551,6 +554,7 @@
 }
 
 @media (max-width: 768px) {
+  .libraryControls { margin: 0; }
   .pageIntro { margin-top: 46px; }
   .currentJourney { display: block; min-height: 0; box-shadow: none; }
   .currentMedia { height: 390px; border-radius: var(--morrovia-radius); }
@@ -619,7 +623,7 @@
   .searchControl,
   .sortControl { width: 100%; }
   .sortControl { grid-column: 1 / -1; grid-row: 2; }
-  .journeySection { padding: 56px 0; }
+  .journeySection { padding: 24px 0; }
   .sectionHeading,
   .pastSection .sectionHeading { display: block; }
   .sectionHeading h2 { font-size: clamp(2.35rem, 11vw, 3.2rem); }
@@ -627,7 +631,7 @@
   .pastSection .sectionHeading p { max-width: 30ch; margin-top: 12px; text-align: left; }
   .cardMedia { height: 61vw; min-height: 190px; max-height: 300px; }
   .cardBody { padding-top: 15px; }
-  .tripFacts { display: grid; gap: 2px; }
+  .tripFacts { gap: 4px 8px; }
   .tripFacts > *::after { display: none; }
   .closingInvitation { min-height: 390px; }
   .closingContent { width: min(100% - 32px, 1320px); }
@@ -659,3 +663,13 @@
 /* Reuse the neutral country graphic while preserving readable hero identity. */
 .currentMediaNeutral .currentIdentity { color: var(--morrovia-ink); }
 .currentMediaNeutral .currentIdentity .eyebrow { color: var(--morrovia-signal); }
+
+.countryFallback { height: 100%; }
+
+/* Only a rendered country/neutral fallback becomes shallow; pending and real photos retain their cover. */
+@media (max-width: 700px) {
+  .cardMedia:has(.countryFallback) { height: 72px; min-height: 72px; aspect-ratio: auto; }
+  .countryFallback > div { display: flex; flex-direction: row; align-items: center; justify-content: flex-start; gap: 10px; padding: 0 14px; }
+  .countryFallback span { margin: 0; font-size: 13px; }
+  .countryFallback span:first-child { font-size: 24px; }
+}

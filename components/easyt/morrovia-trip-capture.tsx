@@ -1,5 +1,6 @@
 "use client";
 
+import { releaseAvailability } from "@/lib/easyt/release-availability";
 import { ArrowRight, CalendarDays, ChevronDown, MapPin, Plus, Search, SlidersHorizontal, Sparkles, UsersRound } from "lucide-react";
 import { useEffect, useId, useRef, useState, type FormEvent, type KeyboardEvent, type ReactNode } from "react";
 import type { EasyTLanguage } from "@/lib/easyt/i18n";
@@ -96,6 +97,8 @@ const copy = {
 } as const;
 
 export type HomepageCaptureEntry = {
+  /** Home can expose the bounded traveller control without changing budget state. */
+  travellersOnly?: boolean;
   planner?: { tripTypeControl: ReactNode; originEntry: ReactNode; routeSummary: ReactNode };
   mode: "stops" | "describe";
   onModeChange: (mode: "stops" | "describe") => void;
@@ -264,12 +267,16 @@ export function MorroviaTripCapture({
   };
   const submitAction = <EasyTButton type="submit" size="large" icon={homepageEntry ? Search : undefined} loading={loading} disabled={disabled}>{loading && !homepageEntry ? text.checking : <>{text.continue} <ArrowRight aria-hidden="true" /></>}</EasyTButton>;
   const homepageDates = homepageEntry ? <MorroviaDatePicker className={styles.utilityCell} fieldPresentation="planner" mode="range" locale={language} combinedLabel={text.travelDates} clearLabel={text.clearDates} startLabel={text.startDate} endLabel={text.endDate} startValue={startDate} endValue={endDate} minToday typedDraft={homepageEntry.dateTypedDraft} onTypedDraftChange={homepageEntry.onDateTypedDraftChange} disabled={disabled || loading} onChange={onDatesChange} onClear={homepageEntry.onDatesClear} /> : null;
-  const homepagePersonalize = homepageEntry ? <div className={styles.utilityCell}>
+  const homepagePersonalize = homepageEntry?.travellersOnly ? <MorroviaQuantitySelector
+    className={styles.utilityCell} fieldPresentation="planner" label={text.travellers} locale={language}
+    noun={language === "es" ? "viajero" : "traveller"} nounPlural={language === "es" ? "viajeros" : "travellers"}
+    value={travellers} min={1} max={12} disabled={disabled || loading} onChange={onTravellersChange}
+  /> : homepageEntry ? <div className={styles.utilityCell}>
     <EasyTButton className={plannerFieldButtonClassName} data-morrovia-planner-trigger variant="secondary" disabled={disabled || loading} aria-label={personalizationSummary ? `${text.personalizeSummary}: ${personalizationSummary}` : text.personalizeSummary} aria-expanded={personalizeOpen} aria-controls={personalizeId} onClick={() => setPersonalizeOpen((current) => !current)}><MorroviaPlannerFieldContent label={personalizationSummary ? text.personalizeSummary : undefined} value={personalizationSummary || text.personalizeSummary} icon={SlidersHorizontal} /></EasyTButton>
   </div> : null;
   const homepageAction = <div className={styles.wideAction}>{submitAction}</div>;
   const homepageLayoutClass = `${styles.wideHomeLayout}${personalizeOpen ? ` ${styles.wideHomeLayoutPersonalized}` : ""}`;
-  const homepagePersonalizePanel = homepageEntry && personalizeOpen ? <div className={`${styles.personalizePanel} ${styles.wideHomePersonalize}`} id={personalizeId}>
+  const homepagePersonalizePanel = homepageEntry && !homepageEntry.travellersOnly && personalizeOpen ? <div className={`${styles.personalizePanel} ${styles.wideHomePersonalize}`} id={personalizeId}>
     {endpointEntry ? <div className={styles.personalizeEndpoints}>{endpointEntry}</div> : null}
     <MorroviaQuantitySelector className={styles.personalizeTravellers} compact label={text.travellers} locale={language} noun={language === "es" ? "viajero" : "traveller"} nounPlural={language === "es" ? "viajeros" : "travellers"} value={travellers} min={1} max={12} disabled={disabled || loading} onChange={onTravellersChange} />
     <div className={styles.budgetPanel} aria-label={text.budget}><span data-morrovia-field-label>{text.budget}</span><div><div className={styles.budgetChoices}>{(["value", "mid", "high"] as const).map((budget) => <EasyTButton variant="secondary" size="small" key={budget} aria-pressed={homepageEntry.budget === budget} disabled={disabled || loading} onClick={() => homepageEntry.onBudgetChange(budget)}>{text[`budget${budget === "value" ? "Value" : budget === "mid" ? "Mid" : "High"}`]}</EasyTButton>)}</div>{homepageEntry.budget ? <EasyTButton className={styles.budgetClear} variant="quiet" size="small" disabled={disabled || loading} onClick={() => homepageEntry.onBudgetChange(null)}>{text.clear}</EasyTButton> : null}</div></div>
@@ -299,7 +306,7 @@ export function MorroviaTripCapture({
           {homepagePersonalizePanel}
           {homepageAction}
         </div>
-        <div className={styles.plannerSummary}>{homepageEntry.planner.routeSummary}</div>
+        {homepageEntry.planner.routeSummary ? <div className={styles.plannerSummary}>{homepageEntry.planner.routeSummary}</div> : null}
       </> : <>
       {homepageEntry.mode === "stops" ? <>
         <div className={homepageLayoutClass}>
@@ -379,13 +386,13 @@ export function MorroviaTripCapture({
           onChange={onTravellersChange}
         /> : null}
         </div>
-        {progressiveDetails && travelProfile ? <section className={styles.travelStyle} aria-label={text.travelStyle}>
+        {releaseAvailability.travelPreferences && progressiveDetails && travelProfile ? <section className={styles.travelStyle} aria-label={text.travelStyle}>
           <div className={styles.travelStyleHead}><span>{text.travelStyle}</span><a href="/journey/profile">{text.edit}</a></div>
           <div className={styles.travelStyleChips}>{travelStyleLabels(travelProfile, language).map((label) => <span key={label}>{label}</span>)}</div>
         </section> : null}
       </div> : null}
       <div className={styles.footer}>
-        {!progressiveDetails && travelProfile ? <section className={styles.travelStyle} aria-label={text.travelStyle}>
+        {releaseAvailability.travelPreferences && !progressiveDetails && travelProfile ? <section className={styles.travelStyle} aria-label={text.travelStyle}>
           <div className={styles.travelStyleHead}><span>{text.travelStyle}</span><a href="/journey/profile">{text.edit}</a></div>
           <div className={styles.travelStyleChips}>{travelStyleLabels(travelProfile, language).map((label) => <span key={label}>{label}</span>)}</div>
         </section> : null}

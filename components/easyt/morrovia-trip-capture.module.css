@@ -272,10 +272,11 @@
   .textareaField textarea { min-height: 102px; }
   .wideCard { gap: 12px; padding: 14px; }
   .modeTabs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0; }
-  .modeTab { min-height: 48px; padding-inline: 6px; font-size: 12px; }
+  .modeTab { min-width: 0; min-height: 48px; padding: 8px 6px; font-size: 12px; white-space: normal; overflow-wrap: anywhere; }
 }
 
 @media (max-width: 340px) {
+  .modeTab svg { display: none; }
   .textareaField textarea { min-height: 134px; padding-bottom: 52px; }
 }
 
@@ -316,3 +317,11 @@
 
 /* The expanded disclosure already names this destination editor. */
 .wideDestinationEditor [data-morrovia-field-label] { display: none; }
+/* Compact Home composition; shared field and action behavior stays with its owner. */
+@media (max-width: 700px) {
+  .plannerCard { gap: 0; }
+  .plannerHeader { gap: 8px; padding: 0; }
+  .plannerRoute :global([data-homepage-origin]) { padding-block: 4px; }
+  .plannerRoute :global([role="tabpanel"]) { padding-block: 10px; }
+  .plannerBottom { padding: 8px 0 0; gap: 10px; }
+}

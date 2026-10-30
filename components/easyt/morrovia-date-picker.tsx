@@ -295,15 +295,16 @@ export function MorroviaDatePicker(props: MorroviaDatePickerProps) {
       const popover = popoverRef.current?.getBoundingClientRect();
       if (!root || !popover) return;
       const gutter = 16;
+      const body = popoverRef.current?.querySelector<HTMLElement>(`.${styles.popoverBody}`);
+      const naturalHeight = popover.height + (body ? body.scrollHeight - body.clientHeight : 0);
       const below = root.bottom + 8;
-      const above = root.top - popover.height - 8;
+      const above = root.top - naturalHeight - 8;
       const spaceBelow = window.innerHeight - below - gutter;
       const spaceAbove = root.top - 8 - gutter;
-      const fitsBelow = popover.height <= spaceBelow;
-      const fitsAbove = popover.height <= spaceAbove;
-      const useBelow = fitsBelow || (!fitsAbove && spaceBelow >= spaceAbove);
-      const top = useBelow ? below : fitsAbove ? above : gutter;
-      const maxHeight = fitsBelow || fitsAbove ? undefined : Math.max(280, useBelow ? spaceBelow : spaceAbove);
+      const fitsBelow = naturalHeight <= spaceBelow;
+      const fitsAbove = naturalHeight <= spaceAbove;
+      const top = fitsBelow ? below : fitsAbove ? above : gutter;
+      const maxHeight = fitsBelow || fitsAbove ? undefined : window.innerHeight - gutter * 2;
       const left = Math.max(gutter, Math.min(root.left, window.innerWidth - popover.width - gutter));
       setPopoverPosition({ left, maxHeight, top });
     };
@@ -412,6 +413,7 @@ export function MorroviaDatePicker(props: MorroviaDatePickerProps) {
         <div><strong>{panelLabel}</strong>{isRange ? <span id={helpId}>{copy[locale].rangeHelp}</span> : null}</div>
         <button type="button" aria-label={copy[locale].close} onClick={() => close(true)}><X aria-hidden="true" /></button>
       </div>
+      <div className={styles.popoverBody}>
       <CalendarPanel
         activeBoundary={activeBoundary}
         isRange={isRange}
@@ -430,6 +432,7 @@ export function MorroviaDatePicker(props: MorroviaDatePickerProps) {
           {isRange && props.onClear && (props.startValue || props.endValue) ? <button type="button" onClick={() => { props.onClear?.(); close(true); }}>{props.clearLabel ?? (locale === "es" ? "Borrar fechas" : "Clear dates")}</button> : null}
         </div>
         <label><span>{copy[locale].typeIt}</span><input value={typedDate} inputMode="numeric" placeholder={locale === "es" ? "AAAA-MM-DD" : "YYYY-MM-DD"} aria-label={copy[locale].dateFormat} onChange={(event) => {setTypedDate(event.target.value);props.onTypedDraftChange?.(activeBoundary,event.target.value)}} onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); submitTypedDate(); } }} /></label>
+      </div>
       </div>
     </div>
   </> : null;

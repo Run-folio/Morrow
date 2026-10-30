@@ -1,5 +1,6 @@
 "use client";
 
+import { releaseAvailability } from "@/lib/easyt/release-availability";
 import {createTripCreationToken,loadTripCreationContinuation,loadReservedTripCreation,type TripCreationToken} from "@/lib/easyt/trip-creation-provenance";
 import { builderDetailsStatus } from "@/lib/easyt/builder-planning-status";
 import type { TransferAssessment } from '@/lib/easyt/planning-evidence-state';
@@ -6161,7 +6162,7 @@ function TripBuilderDocument() {
       {unit.phase==="failed" && (unit.kind !== 'leg' || transferAssessmentForLeg(mountedBuilder.snapshot.transferAssessments, unit.targetId)?.retryable !== false) ? <EasyTButton variant="quiet" size="small" onClick={()=>mountedBuilder.session.retryNecessaryUnit(unit)}>{language==="es"?"Reintentar":"Try again"}</EasyTButton> : null}
     </span>);
   const topPersonalize = <div className={styles.topPreferences}>
-    {hasSavedTravelProfile && <section className={styles.travelStyle}>
+    {releaseAvailability.travelPreferences && hasSavedTravelProfile && <section className={styles.travelStyle}>
       <div className={styles.travelStyleHead}><span>{language === "es" ? "TU ESTILO DE VIAJE" : "YOUR TRAVEL STYLE"}</span><a href="/journey/profile">{language === "es" ? "Editar" : "Edit"}</a></div>
       <div className={styles.travelStyleChips}>{travelStyleLabels(travelProfile, language).map(label => <span key={label}>{label}</span>)}</div>
     </section>}
@@ -6256,7 +6257,7 @@ function TripBuilderDocument() {
                 </section>}
                 {entryKind !== "fresh" && <div className={styles.importTripEntry}><EasyTLinkButton href="/journey/new/import" variant="secondary" size="small" icon={FileSpreadsheet}>Import existing trip</EasyTLinkButton></div>}
               </div>}
-              {!mountedBuilder && hasSavedTravelProfile && !arrivedFromHomepage && <section className={styles.travelStyle} aria-label={language === "es" ? "Tu estilo de viaje" : "Your travel style"}>
+              {releaseAvailability.travelPreferences && !mountedBuilder && hasSavedTravelProfile && !arrivedFromHomepage && <section className={styles.travelStyle} aria-label={language === "es" ? "Tu estilo de viaje" : "Your travel style"}>
                 <div className={styles.travelStyleHead}><span>{language === "es" ? "TU ESTILO DE VIAJE" : "YOUR TRAVEL STYLE"}</span><a href="/journey/profile">{language === "es" ? "Editar" : "Edit"}</a></div>
                 <div className={styles.travelStyleChips}>{travelStyleLabels(travelProfile, language).map((label) => <span key={label}>{label}</span>)}</div>
               </section>}

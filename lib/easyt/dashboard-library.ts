@@ -1,4 +1,4 @@
-import { tripDisplayTitle } from "./trip-display.ts";
+import { tripOverviewDisplayTitle } from "./trip-display.ts";
 import { tripStartDateSortKey } from "./trip-status.ts";
 import type { EasyTTrip, TripStatus } from "./trip.ts";
 
@@ -16,7 +16,7 @@ function stableTripTieBreak(left: EasyTTrip, right: EasyTTrip) {
 
 export function compareDashboardTrips(left: EasyTTrip, right: EasyTTrip, sort: DashboardSortMode) {
   if (sort === "title") {
-    return tripDisplayTitle(left).localeCompare(tripDisplayTitle(right))
+    return tripOverviewDisplayTitle(left).localeCompare(tripOverviewDisplayTitle(right))
       || timestamp(right.updatedAt) - timestamp(left.updatedAt)
       || stableTripTieBreak(left, right);
   }
@@ -35,6 +35,6 @@ export function dashboardLibraryTrips(
   const normalizedQuery = query.trim().toLocaleLowerCase();
   return trips
     .filter((trip) => view === "all" || trip.status === view)
-    .filter((trip) => !normalizedQuery || `${tripDisplayTitle(trip)} ${[...trip.stops].sort((left, right) => left.order - right.order).map((stop) => stop.name).join(" → ")}`.toLocaleLowerCase().includes(normalizedQuery))
+    .filter((trip) => !normalizedQuery || `${tripOverviewDisplayTitle(trip)} ${[...trip.stops].sort((left, right) => left.order - right.order).map((stop) => stop.name).join(" → ")}`.toLocaleLowerCase().includes(normalizedQuery))
     .sort((left, right) => compareDashboardTrips(left, right, sort));
 }

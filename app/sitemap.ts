@@ -1,3 +1,4 @@
+import { releaseAvailability } from "@/lib/easyt/release-availability";
 import type { MetadataRoute } from "next";
 import { caseStudies } from "@/lib/case-studies";
 import { applyEasyTRouteControls, listEasyTRouteControls } from "@/lib/easyt/admin-content";
@@ -87,12 +88,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       changeFrequency: "yearly",
       priority: 0.4,
     },
-    {
+    ...(releaseAvailability.passportInfo ? [{
       url: `${siteUrl}/journey/passport`,
       lastModified: now,
-      changeFrequency: "monthly",
+      changeFrequency: "monthly" as const,
       priority: 0.7,
-    },
+    }] : []),
     ...publicRoutes.map((route) => ({
       url: `${siteUrl}/journey/routes/${route.key}`,
       lastModified: new Date(route.reviewedAt),

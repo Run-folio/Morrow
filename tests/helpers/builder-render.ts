@@ -305,6 +305,8 @@ export async function renderBuilder({
   try {
     await page.waitForFunction(() => location.pathname === "/"
       ? Boolean(document.getElementById("start-building"))
+      : location.pathname === "/journey/dashboard"
+        ? Boolean(document.querySelector('[aria-labelledby="trip-library-title"]'))
       : location.pathname === "/journey/plan"
         ? Boolean(document.querySelector("main"))
       : location.pathname.endsWith("/import")
@@ -317,6 +319,8 @@ export async function renderBuilder({
           ? Boolean(document.querySelector('[aria-labelledby="transport-workspace-heading"]'))
           : location.pathname.endsWith("/itinerary")
             ? Boolean(document.querySelector('[aria-label="Trip itinerary"]'))
+          : location.pathname.endsWith("/map")
+            ? Boolean(document.querySelector("[data-map-expand-control]"))
           : Boolean(document.querySelector('[aria-label="Trip overview"]')), undefined, { timeout: 10000 });
   } catch (error) {
     await browser.close(); server.close();

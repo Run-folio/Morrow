@@ -1797,3 +1797,27 @@
 .necessaryReview button { justify-self: start; }
 
 .tripUnderstood:has([data-builder-top-controls]) { overflow: visible; border: 0; background: transparent; }
+
+.builderStopFacts { display: none; }
+/* Original selected concept 2: name/nights first; transfer and menu second. */
+@media (max-width: 700px) {
+  .builderRouteRow[data-builder-stop-id] {
+    grid-template-columns: 44px minmax(0, 1fr) max-content;
+    grid-template-areas: "grip identity nights" "transfer transfer actions" "usable usable usable";
+    gap: 8px; padding: 12px 9px; min-height: 0;
+  }
+  .builderRouteRow[data-compact-stacked] { grid-template-areas: "grip identity identity" "nights nights nights" "transfer transfer actions" "usable usable usable"; }
+  .builderRouteRow[data-builder-stop-id] .builderRouteIdentity { min-width: 0; align-self: center; }
+  .builderRouteRow[data-builder-stop-id] .builderRouteIdentity strong { font-size: 13px; line-height: 1.25; overflow-wrap: anywhere; }
+  .builderRouteRow[data-builder-stop-id] .builderRouteIdentity small { display: none; }
+  .builderRouteRow[data-builder-stop-id] .builderRouteNights { grid-area: nights; justify-self: end; align-self: center; gap: 6px; }
+  .builderRouteRow[data-builder-stop-id] .builderRouteNights .mobileFieldLabel { font-size: 10px; }
+  .builderRouteRow[data-compact-stacked] .builderRouteNights { justify-self: start; margin-left: 44px; }
+  .builderRouteRow[data-builder-stop-id] .builderRouteTransfer { grid-area: transfer; align-self: center; min-width: 0; }
+  .builderRouteRow[data-builder-stop-id] .builderRouteActions { grid-area: actions; justify-self: end; align-self: start; }
+  .builderRouteRow[data-builder-stop-id] .builderRouteUsable { display: none; }
+  .builderRouteRow[data-builder-stop-id] .builderRouteUsable[data-usable-warning] { display: flex; grid-area: usable; }
+  .builderStopFacts { display: grid; gap: 3px; margin: 0 5px 8px; font: var(--morrovia-type-fine-print); }
+  .builderStopFacts dt { color: var(--morrovia-muted); }
+  .builderStopFacts dd { margin: 0 0 4px; overflow-wrap: anywhere; }
+}

@@ -481,3 +481,26 @@
 
 .deviceSaveToast{position:fixed;z-index:var(--morrovia-layer-dock);right:24px;bottom:calc(24px + var(--morrovia-mobile-dock-offset, 0px));max-width:calc(100vw - 24px)}
 @media(max-width:900px){.deviceSaveToast{right:12px;bottom:calc(106px + env(safe-area-inset-bottom))}}
+
+.moreSections { display: grid; gap: 12px; }
+.moreSections a { display: flex; align-items: center; gap: 12px; min-height: 48px; padding: 12px; border: 1px solid var(--morrovia-line); border-radius: var(--morrovia-control-radius); color: var(--morrovia-ink); text-decoration: none; font: var(--morrovia-type-control); }
+.moreSections svg { width: 20px; height: 20px; }
+.moreSections a[aria-current] { color: var(--morrovia-signal); border-color: var(--morrovia-signal); }
+.tripDetailsMetadata .metadata { display: grid; gap: 12px; margin: 0; }
+.tripDetailsMetadata .metadata dd { font: var(--morrovia-type-supporting-body); }
+@media (max-width: 700px) {
+  .workspace { padding-bottom: calc(88px + env(safe-area-inset-bottom)); }
+  .tripHeader { grid-template-columns: minmax(0, 1fr) auto; gap: 8px; padding: 16px; align-items: start; }
+  .tripIdentity h1 { font-size: clamp(26px, 7vw, 32px); line-height: 1.1; }
+  .tripTitleToggle > span { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; white-space: normal; overflow-wrap: anywhere; }
+  .tripIdentity > .eyebrow, .tripIdentity > .metadata, .headerActions > .editAction { display: none; }
+  .headerActions { grid-column: 2; width: auto; display: flex; flex-direction: column-reverse; align-items: flex-end; }
+  .headerActions > [role="status"] { white-space: normal; max-width: 90px; }
+  .subnav[data-mobile] { position: fixed; z-index: var(--morrovia-layer-dock); bottom: 0; left: 0; right: 0; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 0; min-height: 64px; padding: 0 4px env(safe-area-inset-bottom); border-top: 1px solid var(--morrovia-line); background: var(--morrovia-control-surface); }
+  .subnav[data-mobile] > a, .subnav[data-mobile] > button { position: relative; display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 5px; min-width: 0; min-height: 64px; padding: 8px 2px; border: 0; border-radius: 0; background: transparent; color: var(--morrovia-ink-soft); font: 700 11px/1.2 var(--morrovia-ui); text-decoration: none; box-shadow: none; }
+  .subnav[data-mobile] svg { width: 22px; height: 22px; }
+  .subnav[data-mobile] .subnavActive { color: var(--morrovia-signal); }
+  .subnav[data-mobile] .subnavActive::after { content: ''; position: absolute; bottom: 0; left: 14px; right: 14px; height: 3px; border-radius: var(--morrovia-control-radius); background: var(--morrovia-signal); }
+  .subnav[data-mobile] > a:focus-visible, .subnav[data-mobile] > button:focus-visible { box-shadow: var(--morrovia-focus-shadow); }
+  .subnav[data-keyboard-open] { visibility: hidden; }
+}

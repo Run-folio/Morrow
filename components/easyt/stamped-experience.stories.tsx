@@ -10,6 +10,7 @@ import type { StampStatus } from "../../lib/easyt/stamps";
 
 type FixtureProps = {
   authenticated?: boolean;
+  language?: "en" | "es";
   initialSelectedCountryId?: string;
   initialStatuses?: Record<string, StampStatus>;
   initialMemories?: Record<string, string>;
@@ -18,6 +19,7 @@ type FixtureProps = {
 
 function StampsFixture({
   authenticated = true,
+  language = "en",
   initialSelectedCountryId,
   initialStatuses = {},
   initialMemories = {},
@@ -59,6 +61,7 @@ function StampsFixture({
     />
     <StampedExperience
       authenticated={authenticated}
+      language={language}
       initialSelectedCountryId={initialSelectedCountryId}
       memories={memories}
       onMemorySave={saveMemory}
@@ -158,4 +161,16 @@ export const Mobile390: Story = {
 export const Tablet768: Story = {
   globals: { viewport: { value: "morrovia768", isRotated: false } },
   render: () => <StampsFixture initialStatuses={establishedStatuses} />,
+};
+
+export const FiveRegionMap: Story = {
+  render: () => <StampsFixture initialStatuses={{
+    algeria: "visited", "united-states": "visited", china: "visited",
+    "united-kingdom": "visited", australia: "visited", brazil: "want", japan: "want",
+  }} />,
+};
+
+export const SpanishMobile: Story = {
+  globals: { viewport: { value: "morrovia390", isRotated: false } },
+  render: () => <StampsFixture language="es" initialStatuses={{ france: "visited", japan: "want" }} />,
 };

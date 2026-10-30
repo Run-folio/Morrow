@@ -423,9 +423,12 @@ export function useWorkspaceOrientationBlocker(blocked: boolean) {
   }, [blocked, id, setBlocked]);
 }
 
-export function WorkspaceOrientationLauncher({ onRenameTrip, renderTripActions }: { onRenameTrip?: () => void; renderTripActions?: (close: () => void) => ReactNode } = {}) {
+export function WorkspaceOrientationLauncher({ onRenameTrip, renderTripActions, renderLeadingActions, compact = false }: { onRenameTrip?: () => void; renderTripActions?: (close: () => void) => ReactNode; renderLeadingActions?: (close: () => void) => ReactNode; compact?: boolean } = {}) {
   const context = useContext(WorkspaceOrientationContext);
   const [open, setOpen] = useState(false);
+  const menuId = useId();
+  const pathname = usePathname();
+  useEffect(() => setOpen(false), [pathname]);
   const [menuPosition, setMenuPosition] = useState<CSSProperties>({});
   const buttonRef = useRef<HTMLButtonElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -445,6 +448,7 @@ export function WorkspaceOrientationLauncher({ onRenameTrip, renderTripActions }
       setMenuPosition({ position: "fixed", top, left, width });
     };
     positionMenu();
+    const frame = window.requestAnimationFrame(() => menuRef.current?.querySelector<HTMLElement>('[role="menuitem"]:not(:disabled)')?.focus());
     const close = (event: Event) => {
       if (menuRef.current?.contains(event.target as Node) || buttonRef.current?.contains(event.target as Node)) return;
       setOpen(false);
@@ -460,6 +464,7 @@ export function WorkspaceOrientationLauncher({ onRenameTrip, renderTripActions }
     window.addEventListener("resize", positionMenu);
     window.addEventListener("scroll", positionMenu, true);
     return () => {
+      window.cancelAnimationFrame(frame);
       document.removeEventListener("pointerdown", close);
       document.removeEventListener("keydown", key);
       window.removeEventListener("resize", positionMenu);
@@ -468,8 +473,15 @@ export function WorkspaceOrientationLauncher({ onRenameTrip, renderTripActions }
   }, [open]);
 
   return <div className={styles.launcher} data-workspace-orientation-ui="true">
-    <EasyTButton ref={buttonRef} icon={MoreHorizontal} size="small" variant="quiet" aria-haspopup="menu" aria-expanded={open} aria-controls="workspace-more-menu" onClick={() => setOpen((value) => !value)}>More</EasyTButton>
-    {open && typeof document !== "undefined" ? createPortal(<div ref={menuRef} id="workspace-more-menu" role="menu" className={styles.menu} style={menuPosition}>
+    <EasyTButton ref={buttonRef} icon={MoreHorizontal} size="small" variant="quiet" aria-haspopup="menu" aria-expanded={open} iconOnly={compact} aria-label={compact ? "Trip menu" : undefined} aria-controls={menuId} onClick={() => setOpen((value) => !value)}>More</EasyTButton>
+    {open && typeof document !== "undefined" ? createPortal(<div ref={menuRef} id={menuId} role="menu" aria-label="Trip actions" className={styles.menu} style={menuPosition} onKeyDown={(event) => {
+      const items = [...event.currentTarget.querySelectorAll<HTMLElement>('[role="menuitem"]:not(:disabled)')].filter(item => item.getClientRects().length);
+      const index = items.indexOf(document.activeElement as HTMLElement);
+      const next = event.key === 'ArrowDown' ? (index + 1) % items.length : event.key === 'ArrowUp' ? (index + items.length - 1) % items.length : event.key === 'Home' ? 0 : event.key === 'End' ? items.length - 1 : null;
+      if (next !== null) { event.preventDefault(); items[next]?.focus(); }
+      if (event.key === 'Tab') setOpen(false);
+    }}>
+      {renderLeadingActions?.(() => { buttonRef.current?.focus(); setOpen(false); })}
       {onRenameTrip ? <EasyTButton role="menuitem" size="small" variant="quiet" onClick={() => { buttonRef.current?.focus(); setOpen(false); onRenameTrip(); }}>Rename trip</EasyTButton> : null}
       <EasyTButton role="menuitem" size="small" variant="quiet" disabled={!context?.canReplay} onClick={() => { setOpen(false); context?.replay(buttonRef.current); }}>Show me around</EasyTButton>
       {renderTripActions ? <><hr role="separator" />{renderTripActions(() => { buttonRef.current?.focus(); setOpen(false); })}</> : null}

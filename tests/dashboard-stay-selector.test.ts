@@ -8,9 +8,9 @@ import type { EasyTTrip } from "../lib/easyt/trip.ts";
 const dashboardSource = readFileSync(new URL("../app/journey/dashboard/dashboard-client.tsx", import.meta.url), "utf8");
 const cardSource = dashboardSource.split("export function TripCard(")[1];
 
-test("Dashboard cards derive their stay line without evaluating full trip health", () => {
+test("Dashboard cards omit the stay summary without evaluating full trip health", () => {
   assert.ok(cardSource, "TripCard must remain the Dashboard card owner");
-  assert.match(cardSource, /accommodationProgress\(trip\)/);
+  assert.doesNotMatch(cardSource, /accommodationProgress\(trip\)|readinessLine|stayLabel/);
   assert.doesNotMatch(cardSource, /tripReadinessSummary\(trip\)/);
   assert.doesNotMatch(dashboardSource, /import\s*\{\s*tripReadinessSummary\s*\}/);
 });

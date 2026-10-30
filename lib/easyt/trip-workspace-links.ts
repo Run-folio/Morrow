@@ -110,6 +110,18 @@ export function mapWorkspaceHref(
   return `/journey/${encodeURIComponent(tripId)}/map${suffix ? `?${suffix}` : ""}`;
 }
 
+/** Mobile Map is an action into the existing expanded planner, scoped to the current section. */
+export function tripWorkspaceMapActionHref(trip: WorkspaceTrip, currentHref: string) {
+  const returnTo = mapWorkspaceReturnHref(trip.id, currentHref);
+  const url = new URL(returnTo, "https://morrovia.invalid");
+  const view = workspaceViewFromPathname(url.pathname, trip.id);
+  const dayNumber = view === "itinerary" ? parseItineraryWorkspaceTarget(trip, url.searchParams).dayNumber : null;
+  const day = dayNumber === null ? null : orderedDays(trip).find(item => item.dayNumber === dayNumber);
+  const stop = day?.stopId ?? (view === "stay" ? parseStayWorkspaceTarget(trip, url.searchParams).stopId
+    : view === "explore" ? (trip.stops.find(item => item.id === url.searchParams.get("stop")) ?? orderedStops(trip)[0])?.id : null);
+  return mapWorkspaceHref(trip.id, stop, view === "stay" ? "stay" : view === "explore" ? "see" : "plan", day?.dayNumber, null, null, returnTo);
+}
+
 export function mapWorkspaceReturnHref(tripId: string, requested: string | null) {
   const fallback = tripWorkspaceHref(tripId);
   if (!requested) return fallback;

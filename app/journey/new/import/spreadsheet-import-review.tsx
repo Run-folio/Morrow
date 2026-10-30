@@ -126,7 +126,7 @@ function categoryLabel(count: number, label: string) {
 }
 
 function MappingSelect({ mapping, onUpdate }: { mapping: SpreadsheetColumnMapping; onUpdate: (columnIndex: number, value: string) => void }) {
-  return <div className={styles.mappingRow} data-state={mapping.state}>
+  return <div className={styles.mappingRow} data-state={mapping.state} data-import-column={mapping.index}>
     <div><strong>{mapping.header}</strong>{mapping.state !== "mapped" ? <small>{mapping.state === "ambiguous" ? "Needs your attention" : "Not imported"}</small> : null}</div>
     <EasyTSelect label={`Meaning of ${mapping.header}`} labelClassName="sr-only" value={mapping.field ?? "ignore"} onChange={(event) => onUpdate(mapping.index, event.target.value)}>
       <option value="ignore">Do not import</option>
@@ -187,24 +187,6 @@ export function SpreadsheetImportReview({
 
       {resolvedOrigin ? <div className={styles.originSummary}><MapPin aria-hidden="true" /><span><small>Starting in</small><strong>{resolvedOrigin.name}{resolvedOrigin.country ? `, ${resolvedOrigin.country}` : ""}</strong></span></div> : null}
 
-      <section className={styles.routeReview} aria-labelledby="route-review-title">
-        <div className={styles.subheading}><h2 id="route-review-title">Your route</h2></div>
-        <ol>{stops.map((stop, index) => <li key={stop.id} data-resolved={Boolean(resolvedPlaces[stop.id])}>
-          <b>{index + 1}</b>
-          <div><strong>{resolvedPlaces[stop.id]?.name ?? stop.name}{(resolvedPlaces[stop.id]?.country ?? stop.country) ? `, ${resolvedPlaces[stop.id]?.country ?? stop.country}` : ""}</strong>
-            {resolvedPlaces[stop.id] && resolvedPlaces[stop.id].name !== stop.name ? <small>Imported as {stop.name}</small> : null}
-            <span>{formatImportDateRange(stop.arrivalDate, stop.departureDate)} · {stop.nights === null ? "? nights" : plural(stop.nights, "night")}</span></div>
-          {!resolvedPlaces[stop.id] && !resolvingPlaces ? <span className={styles.routeAttention}>Needs your attention</span> : null}
-        </li>)}</ol>
-      </section>
-
-      {categoryCount ? <section className={styles.categoryReview} aria-label="Trip details">
-        {stays.length ? <details><summary>{categoryLabel(stays.length, "Stays")}<ChevronDown aria-hidden="true" /></summary><div>{stays.map((stay) => <p key={stay.id}><strong>{stay.title}</strong><span>{stay.location} · {formatImportDateRange(stay.date, stay.endDate)}</span></p>)}</div></details> : null}
-        {journeys.length ? <details><summary>{categoryLabel(journeys.length, "Journeys")}<ChevronDown aria-hidden="true" /></summary><div>{journeys.map((journey) => <p key={journey.id}><strong>{journey.title}</strong><span>{formatImportDate(journey.date)}</span></p>)}</div></details> : null}
-        {activities.length ? <details><summary>{categoryLabel(activities.length, "Activities")}<ChevronDown aria-hidden="true" /></summary><div>{activities.map((activity) => <p key={activity.id}><strong>{activity.title}</strong><span>{formatImportDate(activity.date)}</span></p>)}</div></details> : null}
-        {notes.length ? <details><summary>{categoryLabel(notes.length, "Notes")}<ChevronDown aria-hidden="true" /></summary><div>{notes.map((note, index) => <p key={`${note.stop}-${note.date}-${index}`}><strong>{note.stop}</strong><span>{note.text}</span></p>)}</div></details> : null}
-      </section> : null}
-
       {(attentionCount > 0 || resolvingPlaces) ? <section className={styles.attentionPanel} aria-labelledby="attention-title" role="status">
         <header><AlertTriangle aria-hidden="true" /><span><p>NEEDS YOUR ATTENTION</p><h2 id="attention-title">{resolvingPlaces ? "Checking your destinations" : plural(attentionCount, "detail needs", "details need")} checking</h2></span></header>
 
@@ -233,12 +215,25 @@ export function SpreadsheetImportReview({
         {attentionIssues.map((issue) => <div className={styles.attentionItem} key={issue.id}><div><h3>{issue.title}</h3><p>{issue.detail}</p></div></div>)}
       </section> : null}
 
-      {saveError ? <MorroviaRecoveryFeedback title="The trip was not created" detail={saveError} safety="The reviewed import remains on this page. Retry after resolving the issue; Morrovia will not create a second trip silently." onRetry={onConfirm} /> : null}
+      <section className={styles.routeReview} aria-labelledby="route-review-title">
+        <div className={styles.subheading}><h2 id="route-review-title" tabIndex={-1}>Your route</h2></div>
+        <ol>{stops.map((stop, index) => <li key={stop.id} data-resolved={Boolean(resolvedPlaces[stop.id])}>
+          <b>{index + 1}</b>
+          <div><strong>{resolvedPlaces[stop.id]?.name ?? stop.name}{(resolvedPlaces[stop.id]?.country ?? stop.country) ? `, ${resolvedPlaces[stop.id]?.country ?? stop.country}` : ""}</strong>
+            {resolvedPlaces[stop.id] && resolvedPlaces[stop.id].name !== stop.name ? <small>Imported as {stop.name}</small> : null}
+            <span>{formatImportDateRange(stop.arrivalDate, stop.departureDate)} · {stop.nights === null ? "? nights" : plural(stop.nights, "night")}</span></div>
+          {!resolvedPlaces[stop.id] && !resolvingPlaces ? <span className={styles.routeAttention}>Needs your attention</span> : null}
+        </li>)}</ol>
+      </section>
 
-      <footer className={styles.confirmFooter}>
-        {!canConfirm ? <p><strong>Resolve the items under Needs your attention before creating the trip.</strong></p> : null}
-        <EasyTButton size="large" icon={Check} loading={saving} disabled={!canConfirm} onClick={onConfirm}>Create trip</EasyTButton>
-      </footer>
+      {categoryCount ? <section className={styles.categoryReview} aria-label="Trip details">
+        {stays.length ? <details><summary>{categoryLabel(stays.length, "Stays")}<ChevronDown aria-hidden="true" /></summary><div>{stays.map((stay) => <p key={stay.id}><strong>{stay.title}</strong><span>{stay.location} · {formatImportDateRange(stay.date, stay.endDate)}</span></p>)}</div></details> : null}
+        {journeys.length ? <details><summary>{categoryLabel(journeys.length, "Journeys")}<ChevronDown aria-hidden="true" /></summary><div>{journeys.map((journey) => <p key={journey.id}><strong>{journey.title}</strong><span>{formatImportDate(journey.date)}</span></p>)}</div></details> : null}
+        {activities.length ? <details><summary>{categoryLabel(activities.length, "Activities")}<ChevronDown aria-hidden="true" /></summary><div>{activities.map((activity) => <p key={activity.id}><strong>{activity.title}</strong><span>{formatImportDate(activity.date)}</span></p>)}</div></details> : null}
+        {notes.length ? <details><summary>{categoryLabel(notes.length, "Notes")}<ChevronDown aria-hidden="true" /></summary><div>{notes.map((note, index) => <p key={`${note.stop}-${note.date}-${index}`}><strong>{note.stop}</strong><span>{note.text}</span></p>)}</div></details> : null}
+      </section> : null}
+
+      {saveError ? <MorroviaRecoveryFeedback title="The trip was not created" detail={saveError} safety="The reviewed import remains on this page. Retry after resolving the issue; Morrovia will not create a second trip silently." onRetry={onConfirm} /> : null}
 
       <details className={styles.importDetails}>
         <summary><span><strong>Import details</strong><small>{plural(mappedCount, "column")} matched automatically · {skippedSummary.title}</small></span><span className={styles.detailsAction}>{skippedIssueGroups.length ? "View skipped rows" : "View details"}<ChevronDown aria-hidden="true" /></span></summary>
@@ -248,6 +243,11 @@ export function SpreadsheetImportReview({
           <section className={styles.importDetailSection} aria-labelledby="source-rows-title"><div><h3 id="source-rows-title">Source rows</h3><p>{sourceRowCount} non-blank rows · {sourceColumnCount} columns</p></div><div className={styles.sourceRows}>{proposal.rows.map((row) => <article key={row.rowNumber} data-status={row.status}><span>{row.status === "detected" ? "Ready" : row.status === "needs-review" ? "Needs your attention" : "Not imported"}</span><strong>Row {row.rowNumber}</strong><p>{row.recognised.join(" · ") || row.detail}</p></article>)}</div></section>
         </div>
       </details>
+
+      <footer className={styles.confirmFooter}>
+        {!canConfirm ? <p><strong>Resolve the items under Needs your attention before creating the trip.</strong></p> : null}
+        <EasyTButton size="large" icon={Check} loading={saving} disabled={!canConfirm} onClick={onConfirm}>Create trip</EasyTButton>
+      </footer>
     </section>
   </>;
 }

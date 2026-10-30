@@ -40,10 +40,8 @@ export default async function EasyTDashboardPage() {
           language: preferences.language,
         }}
       />
-      <section className={styles.dashboard}>
-        <header className={dashboardStyles.pageIntro}>
-          <h1><span>Your journeys.</span><em>Ready when you are.</em></h1>
-        </header>
+      <section className={`${styles.dashboard} ${dashboardStyles.collectionPage}`}>
+        <h1 className={dashboardStyles.srOnly}>My Trips</h1>
         <DashboardClient key={session.user.id} trips={trips} stamps={stamps} ownerId={session.user.id} />
       </section>
     </main>

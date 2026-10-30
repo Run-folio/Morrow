@@ -154,3 +154,8 @@ export const PlannerQuantityAndBudget: Story = {
   },
 };
 export const PlannerQuantityAndBudget390: Story = {...PlannerQuantityAndBudget, globals:{viewport:{value:"morrovia390",isRotated:false}}};
+
+export const DatePickerShortLandscape: Story = {
+  ...DatePickerMobile390,
+  globals: { viewport: { value: "morroviaLandscape", isRotated: false } },
+};
