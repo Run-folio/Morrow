@@ -1,4 +1,13 @@
 import type { NextConfig } from "next";
+import packageData from "./data/package-manifest.json" with { type: "json" };
+
+const referenceDataFiles = packageData.files
+  .filter(file => file.path.startsWith("place-reference/"))
+  .map(file => `./data/${file.path}`);
+const referenceDataRoutes = [
+  "/api/journey-geocode", "/api/journey-discover", "/api/journey-route-image",
+  "/api/journey-capture", "/api/journey-day-trips",
+];
 
 const staticExport = process.env.STATIC_EXPORT === "1";
 const distDir = process.env.NEXT_DIST_DIR ?? ".next";
@@ -12,7 +21,7 @@ const qaPersistenceDiagnostics = process.env.MORROVIA_QA_PERSISTENCE_DIAGNOSTICS
 
 const nextConfig: NextConfig = {
   distDir,
-  outputFileTracingIncludes: {'/api/journey-geocode':['./data/place-reference/**/*'],'/api/journey-discover':['./data/place-reference/**/*'],'/api/journey-route-image':['./data/place-reference/**/*']},
+  outputFileTracingIncludes: Object.fromEntries(referenceDataRoutes.map(route => [route, referenceDataFiles])),
   // Netlify exposes Git metadata while building, but not as read-only Function
   // runtime variables. Embed only these non-sensitive provenance values so a
   // deployed server route can identify the artifact actually serving traffic.

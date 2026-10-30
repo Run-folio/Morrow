@@ -1,0 +1,56 @@
+{
+  "snapshotId": "699b595afdba9be6994e",
+  "selectionBasis": "User-approved initial planning defaults, not airline service evidence or a global airport ranking.",
+  "entries": [
+    {
+      "cityId": "reference:geonames:2988507",
+      "legacyCityId": "paris",
+      "cityName": "Paris",
+      "airport": {
+        "source": "ourairports",
+        "sourceId": "4185",
+        "canonicalPlaceId": "reference:ourairports:4185",
+        "providerId": "reference:ourairports:4185@699b595afdba9be6994e:FR:transport_gateway:2.554117:49.00896",
+        "canonicalName": "Charles de Gaulle International Airport",
+        "countryCode": "FR",
+        "coordinates": [
+          2.554117,
+          49.00896
+        ],
+        "placeType": "transport_gateway",
+        "aliases": [],
+        "status": "active",
+        "airportType": "large_airport",
+        "iataCode": "CDG",
+        "icaoCode": "LFPG",
+        "scheduledService": true,
+        "municipality": "Paris (Roissy-en-France, Val-d'Oise)"
+      }
+    },
+    {
+      "cityId": "reference:geonames:2643743",
+      "legacyCityId": "london",
+      "cityName": "London",
+      "airport": {
+        "source": "ourairports",
+        "sourceId": "2434",
+        "canonicalPlaceId": "reference:ourairports:2434",
+        "providerId": "reference:ourairports:2434@699b595afdba9be6994e:GB:transport_gateway:-0.459909:51.470748",
+        "canonicalName": "London Heathrow Airport",
+        "countryCode": "GB",
+        "coordinates": [
+          -0.459909,
+          51.470748
+        ],
+        "placeType": "transport_gateway",
+        "aliases": [],
+        "status": "active",
+        "airportType": "large_airport",
+        "iataCode": "LHR",
+        "icaoCode": "EGLL",
+        "scheduledService": true,
+        "municipality": "London"
+      }
+    }
+  ]
+}
