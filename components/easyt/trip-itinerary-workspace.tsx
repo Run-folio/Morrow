@@ -117,6 +117,7 @@ import { discoveryCategoryMatches } from "@/lib/easyt/discovery-taxonomy";
 import { rankItineraryRecommendations } from "@/lib/easyt/itinerary-recommendations";
 import { recommendationDurationMs } from "@/lib/easyt/recommendation-performance";
 import { activityAllowsDayPart, activityDayPartFit, fullDayActivityTiming, isFullDayActivity, type ActivityDuration } from "@/lib/easyt/itinerary-schedule-awareness";
+import { CalendarExportAction } from "./calendar-export-dialog";
 import { hasCalendarArrivalEvent, itineraryCalendarNightBands, itineraryCalendarWeeks, type ItineraryCalendarDay, type ItineraryCalendarItem, type ItineraryCalendarWeek } from "@/lib/easyt/itinerary-calendar";
 import { itineraryTransportAgenda, type ItineraryTransportAgendaLeg } from "@/lib/easyt/itinerary-transport-agenda";
 import { useWorkspaceOrientationReady, useWorkspaceOrientationTarget } from "@/components/easyt/workspace-orientation";
@@ -1571,6 +1572,7 @@ export default function TripItineraryWorkspace({
           <EasyTButton icon={ChevronRight} iconOnly size="small" variant="secondary" disabled={workspaceView === "calendar" ? currentWeekIndex === calendarWeeks.length - 1 : index === days.length - 1} onClick={() => navigatePeriod(1)}>{workspaceView === "calendar" ? copy.nextWeek : copy.nextDay}</EasyTButton>
         </div>
         <ItinerarySubviewSwitch value={workspaceView} onChange={setWorkspaceView} copy={copy} />
+        {workspaceView === "calendar" ? <CalendarExportAction key={`${workingTrip.ownerId}:${workingTrip.id}`} tripId={workingTrip.id} ownerId={workingTrip.ownerId} savedRevision={workingTrip.updatedAt} settled={mutation.isAccountCopySettled?.() ?? false} /> : null}
       </header>
       {workspaceView === "days" ? <div className={styles.destinationTrack}>
         <JourneyRouteStopTrack

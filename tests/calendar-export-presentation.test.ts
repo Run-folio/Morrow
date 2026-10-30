@@ -1,0 +1,32 @@
+import assert from 'node:assert/strict';
+import test from 'node:test';
+import { build } from 'esbuild';
+import { createRequire } from 'node:module';
+import { renderToStaticMarkup } from 'react-dom/server';
+import React from 'react';
+import { calendarExportCanSend, calendarExportErrorCopy } from '../lib/easyt/calendar-export-view.ts';
+test('send is disabled until saved preview and a selection exist, and retries preserve selections', () => {
+    assert.equal(calendarExportCanSend({ savedRevision: 'r', reviewRevision: 'old', selected: 1, busy: false }), false);
+    assert.equal(calendarExportCanSend({ savedRevision: 'r', reviewRevision: 'r', selected: 0, busy: false }), false);
+    assert.equal(calendarExportCanSend({ savedRevision: 'r', reviewRevision: 'r', selected: 1, busy: false }), true);
+    assert.match(calendarExportErrorCopy('CALENDAR_CREATION_UNCERTAIN'), /Check Google/);
+    assert.match(calendarExportErrorCopy('GOOGLE_CHANGED'), /left unchanged/);
+});
+test('secondary action uses the existing button; preview groups uncertainty and removals visibly', async () => {
+    const result = await build({ entryPoints: ['components/easyt/calendar-export-dialog.tsx'], bundle: true, write: false, platform: 'node', format: 'cjs', jsx: 'automatic', packages: 'external', plugins: [{ name: 'css', setup(b) { b.onLoad({ filter: /\.module\.css$/ }, () => ({ loader: 'js', contents: 'export default new Proxy({}, { get:(_,key)=>String(key) });' })); } }] });
+    const module = { exports: {} as any };
+    new Function('require', 'module', 'exports', result.outputFiles[0]!.text)(createRequire(import.meta.url), module, module.exports);
+    const action = renderToStaticMarkup(React.createElement(module.exports.CalendarExportAction, { tripId: 'trip', ownerId: 'owner', savedRevision: 'r', settled: true }));
+    assert.match(action, /Add to calendar/);
+    assert.match(action, /button/);
+    assert.doesNotMatch(action, /Connect calendar/);
+    const content = renderToStaticMarkup(React.createElement(module.exports.CalendarExportReviewList, { operations: [{ id: 'a', sourceKey: 'activity:a', action: 'add', payload: { summary: 'Visit — Time not set', start: { date: '2026-10-28' }, end: { date: '2026-10-29' } } }, { id: 'b', sourceKey: 'activity:b', action: 'remove', payload: { summary: 'Old visit', start: { date: '2026-10-28' }, end: { date: '2026-10-29' } } }], selected: ['a'], onSelection: () => { } }));
+    assert.match(content, /Date only/);
+    assert.match(content, /Remove from Google/);
+    assert.match(content, /Keep in Google/);
+    assert.equal((content.match(/checked=""/g) ?? []).length, 1);
+});
+import { calendarExportCanManage } from '../lib/easyt/calendar-export-view.ts';
+test('removal-only trips keep calendar management available', () => { assert.equal(calendarExportCanManage({ eligibleCount: 0, hasPreviousSend: true }), true); assert.equal(calendarExportCanManage({ eligibleCount: 0, hasPreviousSend: false }), false); });
+import { calendarExportDateLabel } from '../lib/easyt/calendar-export-view.ts';
+test('preview dates describe occupied dates without exposing exclusive-end implementation details', () => { assert.equal(calendarExportDateLabel('2026-08-29', '2026-08-30'), '29 Aug 2026'); assert.equal(calendarExportDateLabel('2026-08-29', '2026-08-31'), '29 Aug 2026 – 30 Aug 2026'); });

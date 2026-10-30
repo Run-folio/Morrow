@@ -1,0 +1,11 @@
+import type { Meta, StoryObj } from '@storybook/react';
+import { CalendarExportReviewList } from './calendar-export-dialog';
+import type { CalendarExportPayload } from '@/lib/easyt/calendar-export';
+const payload = (summary: string): CalendarExportPayload => ({ summary, description: 'Synthetic review fixture.', start: { date: '2026-10-28' }, end: { date: '2026-10-29' }, status: 'tentative', visibility: 'private', transparency: 'transparent' });
+const meta = { title: 'Morrovia/Calendar export/Review selection', component: CalendarExportReviewList, args: { selected: ['activity'], onSelection: () => { }, operations: [{ id: 'activity', sourceKey: 'activity:visit', action: 'add', payload: payload('Museum visit — Time not set') }, { id: 'transfer', sourceKey: 'transfer:train', action: 'update', payload: payload('Tokyo → Kyoto — Planning estimate') }, { id: 'removal', sourceKey: 'activity:old', action: 'remove', payload: payload('Old visit — Time not set') }] } } satisfies Meta<typeof CalendarExportReviewList>;
+export default meta;
+type Story = StoryObj<typeof meta>;
+export const Review: Story = {};
+export const Mobile390: Story = { globals: { viewport: { value: 'morrovia390', isRotated: false } } };
+export const RemovalOnly: Story = { args: { selected: [], operations: [{ id: 'removed', sourceKey: 'activity:removed', action: 'remove', payload: payload('Removed trip visit — Time not set') }] } };
+export const DateOnlyEstimates: Story = { args: { selected: ['estimate'], operations: [{ id: 'estimate', sourceKey: 'transfer:estimate', action: 'add', payload: payload('London → Tokyo — Planning estimate') }] } };
