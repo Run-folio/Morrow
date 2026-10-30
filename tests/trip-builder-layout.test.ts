@@ -465,7 +465,8 @@ test("clarification presentation separates action-required geography from confir
   assert.doesNotMatch(builder, /geographyReviewPlaceMentions\.map\(/,
     "the normal Builder layout must not render every broad area at once");
   assert.match(dialog, /SELECTED PLACES/);
-  assert.match(builder, /STAY BASES CONFIRMED/);
+  assert.match(builder, /aria-label=\{language === "es" \? "Bases de estancia confirmadas" : "Confirmed stay bases"\}/,
+    "the confirmed bases region remains named after the approved redundant heading removal");
   assert.match(builder, /staying in \$\{selection\.selectedName\}/,
     "confirmed anchors should explain where the traveller will stay");
   assert.match(builder, /placeDisplayName\(mention\)/,

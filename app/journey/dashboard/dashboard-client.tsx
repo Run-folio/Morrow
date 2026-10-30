@@ -226,7 +226,6 @@ export default function DashboardClient({ trips, stamps, ownerId }: { trips: Eas
 
   return (
     <>
-      {boundary === "current" && recoveryState === "none" ? <FirstTripGuide trips={trips} /> : null}
       {actionNotice ? <div className={styles.actionNotice}><MorroviaBriefNotice title={actionNotice.title} detail={actionNotice.detail} autoDismissMs={6500} onDismiss={() => setActionNotice(null)} /></div> : null}
       {actionError ? <MorroviaStatusBanner className={styles.dashboardNotice} tone="danger" title={actionError} actions={actionError.includes("session") ? <EasyTLinkButton size="small" href={journeyReauthenticationPath("/journey/dashboard")}>Sign in again</EasyTLinkButton> : failedAction ? <EasyTButton size="small" variant="secondary" onClick={() => void runAction(failedAction.id, failedAction.action)}>{isSpanish ? "Reintentar" : "Try again"}</EasyTButton> : undefined} /> : null}
       {recoveryState === "unavailable" ? <MorroviaStatusBanner className={styles.dashboardNotice} tone="warning"
@@ -301,6 +300,8 @@ export default function DashboardClient({ trips, stamps, ownerId }: { trips: Eas
       </section>
 
       </div>
+
+      {boundary === "current" && recoveryState === "none" ? <FirstTripGuide trips={trips} /> : null}
 
       <footer className={styles.libraryFooter}>
         <Link href="/journey/stamps">{isSpanish ? "Tus sellos" : "Your Stamps"}<span>{visitedCount} {isSpanish ? "visitados" : "visited"} · {wantCount} {isSpanish ? "deseados" : "want to go"}</span><ArrowRight aria-hidden="true" /></Link>

@@ -191,7 +191,7 @@ test("routed road evidence stays a separate reference across Builder and Transpo
     for (const width of [390, 430, 768, 1440]) {
       await transport.page.setViewportSize({ width, height: 900 });
       const card = transport.page.locator('[data-transport-leg-id="trip-japan-choice-leg-1"]');
-      assert.match(await card.innerText(), /Transfer needs checking/);
+      assert.match(await card.innerText(), /Needs checking/);
       assert.match(await card.innerText(), /Road estimate only.*455 km.*6h 30m driving/);
       assert.equal(await transport.page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
     }

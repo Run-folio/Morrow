@@ -183,7 +183,7 @@ test('interactive import corrections preserve other entries and route dates; las
         await originReady;
         await origin.focus();
         originRelease();
-        await p.getByText('IMPORT READY', { exact: true }).waitFor();
+        await p.waitForFunction(() => [...document.querySelectorAll('button')].some(button => button.textContent?.trim() === 'Create trip' && !button.disabled));
         await frame(p);
         assert.equal(await p.locator('#route-review-title').evaluate((el: any) => document.activeElement === el), true);
         assert.equal(await p.getByRole('button', { name: 'Create trip', exact: true }).isEnabled(), true);
@@ -218,7 +218,7 @@ test('rapid Create activation prepares one synthetic import and retains one reco
         await p.getByText('Paste table', { exact: true }).click();
         await p.getByRole('textbox', { name: 'Spreadsheet rows' }).fill('Trip origin,Destination,Country,Arrival date,Departure date\nLondon,Tokyo,Japan,2027-04-02,2027-04-06\nLondon,Kyoto,Japan,2027-04-06,2027-04-10');
         await p.getByRole('button', { name: 'Review pasted table' }).click();
-        await p.getByText('IMPORT READY', { exact: true }).waitFor();
+        await p.waitForFunction(() => [...document.querySelectorAll('button')].some(button => button.textContent?.trim() === 'Create trip' && !button.disabled));
         await p.getByRole('button', { name: 'Create trip', exact: true }).evaluate((button: any) => { button.click(); button.click(); });
         await ready;
         assert.equal(preparations, 1);
