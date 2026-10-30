@@ -488,10 +488,6 @@ export default function HomeTripStarter() {
   };
   const choice = homepageRouteChoice(snapshot, evidenceFor(snapshot));
   const originInput = snapshot.originInput ?? (snapshot.origin.state === "selected" ? snapshot.origin.value.name : "");
-  const summary = choice.conflict ? issueMessage("tripType") : choice.journeyEnd.mode === "explicit"
-    ? `${language === "es" ? "Termina en" : "Finish in"} ${choice.journeyEnd.place.name}`
-    : choice.tripType === "return_to_start" ? (snapshot.origin.state === "selected" ? `${language === "es" ? "Vuelves a" : "Return to"} ${snapshot.origin.value.name}` : language === "es" ? "Vuelve al inicio" : "Return to start")
-    : choice.tripType === "one_way" ? (language === "es" ? "Solo ida" : "One way") : (language === "es" ? "Final del viaje sin confirmar" : "Journey end unconfirmed");
   const interests = snapshot.interests.state === "selected" ? snapshot.interests.value
     : snapshot.interests.state === "cleared" ? [] : tripInterestsWithProfileDefaults([], travelProfile, false);
   const travellers = snapshot.travellers.state === "selected" ? snapshot.travellers.value : 2;
@@ -511,6 +507,7 @@ export default function HomeTripStarter() {
     }}
     onPromptStarted={markPromptStarted}
     homepageEntry={{
+      travellersOnly: true,
       planner: {
         tripTypeControl: <div data-homepage-trip-type><EasyTSegmentedControl ariaLabel={language === "es" ? "Tipo de viaje" : "Trip type"} disabled={sessionPending || inputBlocked || loading}
           value={choice.tripType} options={[{ value: "return_to_start", label: language === "es" ? "Volver al inicio" : "Return to start" }, { value: "one_way", label: language === "es" ? "Solo ida" : "One way" }]}
@@ -522,7 +519,7 @@ export default function HomeTripStarter() {
           onChange={value => updateSnapshot(current => ({ ...current, originInput: value, origin: { state: "cleared" } }))}
           onClear={() => updateSnapshot(current => ({ ...current, originInput: "", origin: { state: "cleared" } }))}
           onSelect={suggestion => {const place=journeyEndpointPlaceFromSuggestion(suggestion);if(place)updateSnapshot(current => ({ ...current, originInput: suggestion.label, origin: { state: "selected", value: place } }));}} /></div>,
-        routeSummary: <span>{[summary, `${travellers} ${language === "es" ? "viajeros" : "travellers"}`, snapshot.budget.state === "selected" ? ({ value: language === "es" ? "Económico" : "Value", mid: language === "es" ? "Gama media" : "Mid-range", high: language === "es" ? "Lujo" : "Luxury" })[snapshot.budget.value] : ""].filter(Boolean).join(" · ")}</span>,
+        routeSummary: null,
       },
       mode: snapshot.mode,
       onModeChange: (mode) => updateSnapshot((current) => ({ ...current, mode })),

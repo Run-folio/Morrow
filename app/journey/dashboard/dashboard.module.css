@@ -663,3 +663,13 @@
 /* Reuse the neutral country graphic while preserving readable hero identity. */
 .currentMediaNeutral .currentIdentity { color: var(--morrovia-ink); }
 .currentMediaNeutral .currentIdentity .eyebrow { color: var(--morrovia-signal); }
+
+.countryFallback { height: 100%; }
+
+/* Only a rendered country/neutral fallback becomes shallow; pending and real photos retain their cover. */
+@media (max-width: 700px) {
+  .cardMedia:has(.countryFallback) { height: 72px; min-height: 72px; aspect-ratio: auto; }
+  .countryFallback > div { display: flex; flex-direction: row; align-items: center; justify-content: flex-start; gap: 10px; padding: 0 14px; }
+  .countryFallback span { margin: 0; font-size: 13px; }
+  .countryFallback span:first-child { font-size: 24px; }
+}

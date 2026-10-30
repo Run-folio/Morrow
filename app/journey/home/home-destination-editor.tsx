@@ -63,7 +63,7 @@ export function HomeDestinationEditor({ entries, language, disabled = false, foc
   const anchors = entries.filter(entry => entry.selection && category(entry) === 'visit').length;
   const peers = entries.flatMap(entry => entry.selection ? [entry.selection] : []);
   const label = (entry: HomepageDestinationEntry) => entry.selection ? destinationSelectionLabel(entry.selection, peers, language) : entry.text || (es ? 'Destino' : 'Destination');
-  return <MorroviaDestinationField homepage label={es ? "Lugares que quieres visitar" : "Places you want to visit"}
+  return <MorroviaDestinationField homepage label={es ? "Destinos" : "Destinations"}
     status={unconfirmed || areas || anchors ? [
       unconfirmed ? `${unconfirmed} ${es ? "sin confirmar" : "unconfirmed"}` : "",
       areas ? `${areas} ${es ? (areas === 1 ? "zona de planificación" : "zonas de planificación") : (areas === 1 ? "planning area" : "planning areas")}` : "",

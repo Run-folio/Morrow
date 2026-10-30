@@ -2346,9 +2346,10 @@ function ItineraryCalendar({ tripId, onOpenDay, weeks, selectedDayId, copy, lang
             onClick={(event) => onSelect(day, undefined, event.currentTarget)}
           >
             <span><time dateTime={day.day.date}>{displayDayDate(day.day.date, language)}</time><i>{pad(day.day.dayNumber)}</i></span>
-            <strong>{day.stop?.name ?? day.day.title}</strong>
+            <strong className={styles.calendarCompactDestination}>{day.stop?.name ?? day.day.title}</strong>
             <span className={styles.calendarCompactDate}>{formatIsoDate(day.day.date, language, { day: "numeric" }) ?? pad(day.day.dayNumber)}</span>
             <span className={styles.calendarCompactCount}>{day.items.length} {language === "es" ? (day.items.length === 1 ? "plan" : "planes") : (day.items.length === 1 ? "plan" : "plans")}</span>
+            {day.items.some(item => item.kind === "transfer") ? <span className={styles.calendarCompactTravel} data-calendar-travel><Route aria-hidden="true" />{language === "es" ? "Traslado" : "Travel"}</span> : null}
             {day.day.type === "arrival" || (day.day.type === "open" && day.items.length === 0) ? null : <small>{planItemLabel(day.day.type, language)}</small>}
             {day.departure || (day.arrival && !hasCalendarArrivalEvent(day)) ? <em>{[day.arrival && !hasCalendarArrivalEvent(day) ? copy.arrival : null, day.departure ? copy.departure : null].filter(Boolean).join(" · ")}</em> : null}
           </EasyTButton>

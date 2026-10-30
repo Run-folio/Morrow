@@ -278,3 +278,9 @@
  .canvasNavigation { flex-wrap: wrap; justify-content: center; padding: 18px; }
  .demoIdentity { width: 100%; justify-content: center; }
 }
+
+@media (max-width: 520px) {
+  .heroBodyDualEntry { padding-top: 12px; gap: 12px; }
+  .heroBodyDualEntry .heroCopy h1 { font-size: clamp(40px, 12.3vw, 48px); line-height: 1.04; }
+  .heroDualEntry .heroPhotoCredit { top: 74px; right: 14px; bottom: auto; left: auto; }
+}

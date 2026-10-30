@@ -20,6 +20,7 @@ import { flightAirportAssumptionLabel } from "@/lib/easyt/flight-airport-assumpt
 import { transportBookingForLeg } from "@/lib/easyt/booking-readiness";
 import { effectiveTripLeg, tripWithEffectiveTransportChoices } from "@/lib/easyt/transport-mode-choice";
 import styles from "./trip-builder.module.css";
+import { useCompactBuilderRows } from "./use-compact-builder-rows";
 import { useBuilderStopReorder } from "./use-builder-stop-reorder";
 import { builderNightAllocationLabel, type BuilderNightStatus } from "./builder-night-allocation-label";
 import { tripNightsBetween } from "@/lib/easyt/night-allocation";
@@ -109,6 +110,7 @@ export function TripBuilderRouteWorkspace({
   const recommendedTrip = preview?.ok ? preview.trip : canonicalTrip;
   const routingTrip=guardTripRoutingGeometry(recommendedTrip);
   const presentedTrip = tripWithEffectiveTransportChoices(routingTrip);
+  useCompactBuilderRows(rowRefs, presentedTrip.stops.map(stop => `${stop.id}:${stop.name}:${stop.country}`).join("|"));
   const mapStops = useMemo(() => presentedTrip.stops.map(mapStop), [presentedTrip.stops]);
   const destinationCards = useMemo(() => builderDestinationCards(presentedTrip), [presentedTrip]);
   const mapLegs = useMemo(() => mapRouteLegsFromTrip(presentedTrip), [presentedTrip]);
@@ -178,6 +180,7 @@ export function TripBuilderRouteWorkspace({
             const transferMinutes = leg?.doorToDoorMinutes ?? leg?.durationMinutes ?? null;
             const airportAssumption = airportAssumptionForLeg(leg);
             const usableDays = usableTime(stop.nights ?? 0, transferMinutes);
+            const stopNotice = stopReview?.(stop.id);
             const isLocked = fixedOrder || locked.has(stop.id);
             const isSelected = selectedStopId === stop.id;
             const isDragging = reorder.draggingId === stop.id;
@@ -200,7 +203,7 @@ export function TripBuilderRouteWorkspace({
               <button type="button" className={styles.builderRouteGrip} aria-label={`Reorder ${stop.name}, stop ${index + 1}`} disabled={isLocked} {...reorder.gripProps(stop.id)}>
                 <GripVertical aria-hidden="true" />
               </button>
-              <div className={styles.builderRouteIdentity} role="cell"><b>{index + 1}</b><span><strong>{stop.name}</strong><small>{stop.country}</small>{stopReview?.(stop.id)}</span></div>
+              <div className={styles.builderRouteIdentity} role="cell"><b>{index + 1}</b><span><strong data-builder-stop-name>{stop.name}</strong><small>{stop.country}</small>{stopNotice ? <span data-builder-stop-review>{stopNotice}</span> : null}</span></div>
               <div className={styles.builderRouteTransfer} role="cell">
                 <Route aria-hidden="true" />
                 <span><strong>{leg ? `${leg.fromEndpoint?.name ? `From ${leg.fromEndpoint.name} · ` : ""}${assessment === "pending" ? "Checking transport options…" : assessment === "failed" || assessment === 'blocked' ? "Transport check unavailable" : transferJourneyModeLabel(leg)}` : index === 0 ? "Starts here" : "Transfer to confirm"}</strong><small>{assessment === "pending" ? "This connection is being assessed." : evidence && (assessment === 'failed' || assessment === 'blocked') ? transportEvidenceMessage(evidence, 'en') : assessment === "failed" ? "Try checking this connection again." : leg ? `${leg.provenance === "planning_estimate" && leg.mode !== "unknown" && transferTimingLabel(leg) !== "Timing to confirm" ? "Estimated · " : ""}${transferTimingLabel(leg)}${leg.mode === "flight" && transferMinutes !== null ? " total" : ""}` : "No arrival transfer"}</small>
@@ -217,7 +220,7 @@ export function TripBuilderRouteWorkspace({
                   {recommendedLeg && legReview?.(recommendedLeg.id)}
                 </span>
               </div>
-              <div className={styles.builderRouteNights} role="cell">
+              <div className={styles.builderRouteNights} data-builder-nights role="cell">
                 <span className={styles.mobileFieldLabel}>Nights</span>
                 {/* morrovia-ui-audit-allow-next-line native-control -- This compact stepper button is part of a labelled nights field and cannot use the shared action-button dimensions. */}
                 <button type="button" aria-label={`Remove one night from ${stop.name}; ${stop.nights ?? 0} nights currently`} disabled={locked.has(stop.id) || (stop.nights ?? 0) <= 0} onClick={(event) => { event.stopPropagation(); if (onAdjustNights) onAdjustNights(stop.id, -1); else onEditNights(stop.id, (stop.nights ?? 0) - 1); }}>−</button>
@@ -225,7 +228,7 @@ export function TripBuilderRouteWorkspace({
                 {/* morrovia-ui-audit-allow-next-line native-control -- This compact stepper button is part of a labelled nights field and cannot use the shared action-button dimensions. */}
                 <button type="button" aria-label={`Add one night to ${stop.name}; ${stop.nights ?? 0} nights currently`} disabled={locked.has(stop.id) || (stop.nights ?? 0) >= tripNightsBetween(canonicalTrip.startDate, canonicalTrip.endDate)} onClick={(event) => { event.stopPropagation(); if (onAdjustNights) onAdjustNights(stop.id, 1); else onEditNights(stop.id, (stop.nights ?? 0) + 1); }}>+</button>
               </div>
-              <div className={styles.builderRouteUsable} role="cell">
+              <div className={styles.builderRouteUsable} data-usable-warning={usableDays !== null && usableDays < 1 || undefined} role="cell">
                 <span className={styles.mobileFieldLabel}>Usable time</span>
                 <strong>{usableDays === null ? "To confirm" : `~${usableDays} ${usableDays === 1 ? "day" : "days"}`}</strong>
                 {usableDays !== null && usableDays < 1 ? <AlertTriangle aria-label="Compressed stop" /> : null}
@@ -233,6 +236,7 @@ export function TripBuilderRouteWorkspace({
               <details className={styles.builderRouteActions} onClick={(event) => event.stopPropagation()}>
                 <summary aria-label={`Actions for ${stop.name}`}><MoreHorizontal aria-hidden="true" /></summary>
                 <div>
+                  <dl className={styles.builderStopFacts}><dt>Country</dt><dd>{stop.country || "To confirm"}</dd><dt>Usable time</dt><dd>{usableDays === null ? "To confirm" : `~${usableDays} ${usableDays === 1 ? "day" : "days"}`}</dd></dl>
                   <strong>Move stop</strong>
                   {/* morrovia-ui-audit-allow-next-line native-control -- The accessible reorder fallback is a menu item whose compact row semantics differ from a standard action button. */}
                   <button type="button" disabled={isLocked || index === 0} onClick={() => reorder.moveFromMenu(stop.id, index - 1)}>Earlier</button>

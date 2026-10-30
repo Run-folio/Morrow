@@ -314,3 +314,12 @@
   .plannerUtilities { grid-template-columns: minmax(0, 1fr); }
   .plannerUtilities > .utilityCell + .utilityCell { border-left: 0; border-top: 1px solid var(--morrovia-line); }
 }
+
+/* Compact Home composition; shared field and action behavior stays with its owner. */
+@media (max-width: 700px) {
+  .plannerCard { gap: 0; }
+  .plannerHeader { gap: 8px; padding: 0; }
+  .plannerRoute :global([data-homepage-origin]) { padding-block: 4px; }
+  .plannerRoute :global([role="tabpanel"]) { padding-block: 10px; }
+  .plannerBottom { padding: 8px 0 0; gap: 10px; }
+}

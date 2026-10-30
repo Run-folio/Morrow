@@ -2174,3 +2174,13 @@
   .stayContextSelect, .stayContextCopy { min-width: 0; }
   .contextRailBody > [data-map-preview] { display: none; }
 }
+
+.calendarDaySelect .calendarCompactTravel { display: none; }
+@media (max-width: 840px) {
+  .calendarWorkspace .calendarDaySelect { min-height: 116px; height: auto; display: flex; flex-direction: column; align-items: flex-start; justify-content: flex-start; gap: 5px; padding: 8px 2px; }
+  .calendarWorkspace .calendarDaySelect .calendarCompactDestination { display: block; font: 700 11px/1.2 var(--morrovia-ui); letter-spacing: -.2px; overflow-wrap: anywhere; white-space: normal; }
+  .calendarWorkspace .calendarDaySelect .calendarCompactDate { order: -1; }
+  .calendarWorkspace .calendarDaySelect .calendarCompactCount { font-size: 11px; white-space: normal; overflow-wrap: anywhere; }
+  .calendarWorkspace .calendarDaySelect .calendarCompactTravel { display: flex; flex-wrap: wrap; align-items: center; gap: 1px; max-width: 100%; min-width: 0; overflow-wrap: anywhere; color: var(--morrovia-signal); font: 700 11px/1.2 var(--morrovia-ui); }
+  .calendarCompactTravel svg { width: 11px; height: 11px; flex: none; }
+}
