@@ -1,3 +1,4 @@
+import {transportComparisonRequestBody} from './transport-comparison-request.ts';
 import {reviewedPilotCandidateIsCurrent,validateReviewedRouteGuidance,type ReviewedRouteGuidance} from './reviewed-transport-pilot.ts';
 import type {EasyTTrip,TripLeg,CanonicalRouteEndpoint} from './trip.ts';
 import type {MultimodalResolutionResult,TransferJourneyCandidate} from './multimodal-transfer-resolution.ts';
@@ -100,6 +101,10 @@ export function adoptTransportComparison(trip:EasyTTrip,comparison:TransportComp
   if(collision&&authoredContentKey(collision)!==authoredContentKey(candidate))return trip;
   const updated={...leg,routeMetadata:{...leg.routeMetadata,multimodalResolution:{...(raw??{version:1,selected:leg.mode,rejected:[]}),
     candidates:collision?existing:[...existing,structuredClone(candidate)]}}};
+  if(!collision){
+    const nextInput=transportComparisonInput({...trip,legs:trip.legs.map(l=>l===leg?updated:l)},leg.id);
+    if(!nextInput||!transportComparisonRequestBody(nextInput))return trip;
+  }
   const choice=supportedTransportChoicesForLeg(trip,updated).find(c=>c.candidateId===candidate.id);if(!choice)return trip;
   return selectTripLegTransportChoice({...trip,legs:trip.legs.map(l=>l===leg?updated:l)},leg.id,choice.identity);
 }

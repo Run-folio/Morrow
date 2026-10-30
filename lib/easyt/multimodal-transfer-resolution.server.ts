@@ -1,4 +1,5 @@
 import "server-only";
+import {finalizeTransportComparisonRevisions} from './transport-comparison-revision.server.ts';
 
 import {
   OpenRouteServiceRoadRoutingProvider,
@@ -51,9 +52,11 @@ export {
 } from "./transfer-journey.ts";
 
 /** Explicit comparison uses an operation-owned provider; automatic resolver policy is unchanged. */
-export function compareTransferJourney(leg: TripLeg, signal: AbortSignal) {
-  return runTransportComparison(leg, {signal,createProvider(operationSignal) {
+export async function compareTransferJourney(leg: TripLeg, signal: AbortSignal) {
+  const result=await runTransportComparison(leg, {signal,createProvider(operationSignal) {
     try {return new OpenRouteServiceRoadRoutingProvider(undefined,{operationSignal});}
     catch(error) {if(error instanceof RoadRoutingError&&error.category==='configuration')return undefined;throw error;}
   }});
+  signal.throwIfAborted();
+  return finalizeTransportComparisonRevisions(result);
 }
