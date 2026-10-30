@@ -5,6 +5,7 @@ import { saveTripRecoveryToStorage, tripRecoveryStorageKey } from "@/lib/easyt/s
 import { setStorybookAuthOwner } from "../../../.storybook/auth-client.mock";
 import DashboardClient, { TripCard } from "./dashboard-client";
 import styles from "./dashboard.module.css";
+import accountStyles from "../account.module.css";
 
 type StoryStop = { name: string; country: string; latitude: number; longitude: number; nights: number };
 
@@ -213,7 +214,7 @@ const meta = {
   parameters: { layout: "fullscreen", nextjs: { appDirectory: true, navigation: { pathname: "/journey/dashboard" } } },
   decorators: [(Story) => {
     setStorybookAuthOwner("storybook-first-traveller");
-    return <main className="morrovia-editorial-page" style={{ minHeight: "100vh", overflow: "hidden" }}><div style={{ width: "min(1320px, calc(100% - 40px))", margin: "0 auto 80px" }}><header className={styles.pageIntro}><h1><span>Your journeys.</span><em>Ready when you are.</em></h1></header><Story /></div></main>;
+    return <main className="morrovia-editorial-page" style={{ minHeight: "100vh", overflow: "hidden" }}><div className={`${accountStyles.dashboard} ${styles.collectionPage}`}><h1 className={styles.srOnly}>My Trips</h1><Story /></div></main>;
   }],
   args: { trips: [], stamps: [], ownerId: "storybook-first-traveller" },
 } satisfies Meta<typeof DashboardClient>;
@@ -258,3 +259,10 @@ const coverAcceptanceTrips = [
 ];
 export const FirstDestinationCoverFallbacks: Story = { args: { trips: coverAcceptanceTrips } };
 export const FirstDestinationCoverFallbacksMobile390: Story = { args: { trips: coverAcceptanceTrips }, globals: { viewport: { value: "morrovia390", isRotated: false } } };
+
+
+export const CompactCountryTitles: Story = { args: { trips: [
+  { ...currentJapan, id: "country-japan", brief: { ...currentJapan.brief, customTitle: null } },
+  { ...upcomingBalkans, id: "country-balkans", brief: { ...upcomingBalkans.brief, customTitle: null } },
+  { ...currentJapan, id: "country-unknown", title: "", stops: currentJapan.stops.map(stop => ({ ...stop, country: "", countryCode: undefined })), brief: { ...currentJapan.brief, customTitle: null } },
+], stamps: populatedStamps } };

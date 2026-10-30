@@ -23,8 +23,6 @@ import ResilientImage from "@/components/easyt/resilient-image";
 import MorroviaPhotoCredit from "@/components/easyt/morrovia-photo-credit";
 import CountryVisualFallback, { CountryIllustrationLabel } from "@/components/easyt/country-visual-fallback";
 import { useDashboardTripPhotos } from "@/components/easyt/use-dashboard-trip-photos";
-import { JourneyPlannerMap } from "@/components/journey-planner-map";
-import type { JourneyStop } from "@/lib/journey";
 import {
   cacheCanonicalTrip,
   classifyTripRecovery,
@@ -41,13 +39,10 @@ import { ownerBoundaryState } from "@/lib/easyt/private-browser-context";
 import { journeyReauthenticationPath, tripSyncRecoveryPath } from "@/lib/easyt/trip-continuity";
 import { trackEvent } from "@/lib/analytics";
 import { easytCopy, languageFromStorage, type EasyTLanguage } from "@/lib/easyt/i18n";
-import { mapWorkspaceHref, tripWorkspaceHref } from "@/lib/easyt/trip-workspace-links";
+import { tripWorkspaceHref } from "@/lib/easyt/trip-workspace-links";
 import { summarizeStampRows } from "@/lib/easyt/stamps";
 import { formatIsoDate, parseIsoDate } from "@/lib/easyt/trip-lifecycle";
-import { tripDisplayTitle } from "@/lib/easyt/trip-display";
-import { dashboardHeroTrip } from "@/lib/easyt/trip-status";
-import { accommodationProgress } from "@/lib/easyt/accommodation";
-import { mapRouteLegsFromTrip } from "@/lib/easyt/map-spatial-context";
+import { tripDisplayTitle, tripOverviewDisplayTitle } from "@/lib/easyt/trip-display";
 import { routeDestinationPhoto } from "@/lib/easyt/route-images";
 import { dashboardLibraryTrips, type DashboardLibraryView, type DashboardSortMode } from "@/lib/easyt/dashboard-library";
 import { dashboardTripPhoto, dashboardTripCoverPlace, type DashboardTripPhoto } from "@/lib/easyt/dashboard-trip-image";
@@ -61,86 +56,12 @@ type DashboardRecoveryIssue = {
   tripTitle: string;
   detail: string;
 };
-function routeLabel(trip: EasyTTrip, fallback: string) {
-  return [...trip.stops].sort((left, right) => left.order - right.order).map((stop) => stop.name).join(" → ") || fallback;
-}
-
 function formatTripDates(trip: EasyTTrip, language: EasyTLanguage) {
   if (!parseIsoDate(trip.startDate) || !parseIsoDate(trip.endDate)) return language === "es" ? "Fechas por confirmar" : "Dates to confirm";
   const locale = language === "es" ? "es" : "en-GB";
   const startText = formatIsoDate(trip.startDate, locale, { month: "short", day: "numeric" });
   const endText = formatIsoDate(trip.endDate, locale, { month: "short", day: "numeric", year: "numeric" });
   return `${startText} – ${endText}`;
-}
-
-function featuredTripFrom(trips: EasyTTrip[]) {
-  return dashboardHeroTrip(trips);
-}
-
-function featuredTitleParts(title: string) {
-  const comma = title.indexOf(",");
-  if (comma < 0) return { direct: title, expressive: "" };
-  return { direct: title.slice(0, comma + 1), expressive: title.slice(comma + 1).trim() };
-}
-
-function totalNights(trip: EasyTTrip) {
-  return trip.stops.reduce((total, stop) => total + Math.max(0, stop.nights ?? 0), 0);
-}
-
-function tripMapStops(trip: EasyTTrip): JourneyStop[] {
-  return [...trip.stops].sort((left, right) => left.order - right.order).map((stop) => ({
-    id: stop.id,
-    city: stop.name,
-    country: stop.country,
-    date: stop.arrivalDate ?? "",
-    coordinates: stop.longitude !== null && stop.latitude !== null ? [stop.longitude, stop.latitude] : null,
-    theme: "city",
-    marker: "town",
-    description: "",
-    highlights: [],
-    aiPrompt: "",
-  }));
-}
-
-function TripRoutePreview({ trip, label }: { trip: EasyTTrip; label: string }) {
-  const ownerRef = useRef<HTMLDivElement>(null);
-  const [ownsMap, setOwnsMap] = useState(false);
-  const stops = tripMapStops(trip);
-  useEffect(() => {
-    const owner = ownerRef.current;
-    if (!owner) return;
-    if (typeof IntersectionObserver === "undefined") {
-      setOwnsMap(true);
-      return;
-    }
-    const observer = new IntersectionObserver(([entry]) => {
-      setOwnsMap(Boolean(entry?.isIntersecting));
-    }, { rootMargin: "240px 0px" });
-    observer.observe(owner);
-    return () => observer.disconnect();
-  }, []);
-
-  if (stops.filter((stop) => stop.coordinates).length < 2) {
-    return <div className={styles.routePreviewFallback}><MapPin aria-hidden="true" /><span>{trip.stops.length} {trip.stops.length === 1 ? "place" : "places"} selected</span></div>;
-  }
-  return <div ref={ownerRef} className={styles.routePreviewOwner}>
-    {ownsMap ? <JourneyPlannerMap
-    stops={stops}
-    legs={mapRouteLegsFromTrip(trip)}
-    selectedId=""
-    plannerPins={[]}
-    focusCoordinates={null}
-    draftPinCoordinates={null}
-    pinPlacementMode={false}
-    overviewMode
-    surface={{ variant: "preview" }}
-    previewLabel={label}
-    cameraSafeEdge={28}
-    onMapPinDrop={() => undefined}
-    onPlannerPinSelect={() => undefined}
-    onSelect={() => undefined}
-    /> : <div className={styles.routePreviewFallback}><Globe2 aria-hidden="true" /><span>{routeLabel(trip, "Route preview")}</span></div>}
-  </div>;
 }
 
 function statusLabel(status: TripStatus, language: EasyTLanguage) {
@@ -174,7 +95,6 @@ export default function DashboardClient({ trips, stamps, ownerId }: { trips: Eas
   const mountedRef = useRef(true);
   const ownerScopeRef = useRef("");
   const [showDetachedRecoveries, setShowDetachedRecoveries] = useState(false);
-  const [featuredImageDisplayed, setFeaturedImageDisplayed] = useState(false);
   const [closingImageDisplayed, setClosingImageDisplayed] = useState(false);
   const copy = easytCopy[language].dashboard;
 
@@ -284,32 +204,19 @@ export default function DashboardClient({ trips, stamps, ownerId }: { trips: Eas
     archived: trips.filter((trip) => trip.status === "archived").length,
   }), [trips]);
   const visibleTrips = useMemo(() => dashboardLibraryTrips(trips, { query, sort, view }), [query, sort, trips, view]);
-  const showFeaturedTrip = view === "all" && !query.trim();
-  const featuredTrip = useMemo(() => {
-    if (!showFeaturedTrip) return null;
-    return featuredTripFrom(trips);
-  }, [showFeaturedTrip, trips]);
-  const secondaryTrips = useMemo(() => visibleTrips.filter((trip) => trip.id !== featuredTrip?.id), [featuredTrip?.id, visibleTrips]);
-  const upcomingTrips = useMemo(() => secondaryTrips.filter((trip) => trip.status === "planned"), [secondaryTrips]);
-  const ideaTrips = useMemo(() => secondaryTrips.filter((trip) => trip.status === "draft"), [secondaryTrips]);
-  const pastTrips = useMemo(() => secondaryTrips.filter((trip) => trip.status === "archived"), [secondaryTrips]);
-  const coverTrips = useMemo(() => [
-    ...(featuredTrip ? [featuredTrip] : []),
-    ...(sort === "updated" ? secondaryTrips : [...upcomingTrips, ...ideaTrips, ...pastTrips]),
-  ], [featuredTrip, sort, secondaryTrips, upcomingTrips, ideaTrips, pastTrips]);
+  const upcomingTrips = useMemo(() => visibleTrips.filter((trip) => trip.status === "planned"), [visibleTrips]);
+  const ideaTrips = useMemo(() => visibleTrips.filter((trip) => trip.status === "draft"), [visibleTrips]);
+  const pastTrips = useMemo(() => visibleTrips.filter((trip) => trip.status === "archived"), [visibleTrips]);
+  const coverTrips = useMemo(() => sort === "updated" ? visibleTrips : [...upcomingTrips, ...ideaTrips, ...pastTrips], [sort, visibleTrips, upcomingTrips, ideaTrips, pastTrips]);
   const { photos: cardPhotos, markFailed: markCoverFailed } = useDashboardTripPhotos(coverTrips);
-  const featuredPhoto = featuredTrip ? cardPhotos.get(featuredTrip.id) : null;
-  useEffect(() => setFeaturedImageDisplayed(false), [featuredPhoto?.src]);
 
   const stampSummary = summarizeStampRows(stamps);
   const visitedCount = stampSummary.visited;
   const wantCount = stampSummary.want;
   const isSpanish = language === "es";
-  const featuredTitle = featuredTrip ? featuredTitleParts(tripDisplayTitle(featuredTrip)) : null;
   const closingPhoto = routeDestinationPhoto("Tokyo", "Japan");
   const closingPhotoSrc = closingPhoto?.variants.at(-1)?.src;
   useEffect(() => setClosingImageDisplayed(false), [closingPhotoSrc]);
-  const featuredRecoveryIssue = featuredTrip ? recoveryIssues[featuredTrip.id] : undefined;
   const orphanRecoveryIssues = Object.values(recoveryIssues).filter((issue) => !trips.some((trip) => trip.id === issue.tripId));
 
   if (boundary === "mismatch") return <MorroviaStatusBanner className={styles.dashboardNotice} title="Account changed" detail="Refreshing your private dashboard…" />;
@@ -340,71 +247,13 @@ export default function DashboardClient({ trips, stamps, ownerId }: { trips: Eas
           </article>)}
         </section> : null}
       </> : null}
-      {featuredTrip ? (
-        <article className={styles.currentJourney} aria-labelledby="current-journey-title">
-          <div className={`${styles.currentMedia} ${!featuredPhoto?.src ? styles.currentMediaNeutral : ""}`}>
-            <div className={`${styles.cardMediaFrame} ${styles.currentPhotoFrame}`}>
-              <ResilientImage
-                src={featuredPhoto?.src}
-                alt={featuredPhoto?.alt ?? ""}
-                onDisplayState={setFeaturedImageDisplayed}
-                onError={() => { if (featuredTrip && featuredPhoto) markCoverFailed(featuredTrip, featuredPhoto.src); }}
-                fallback={<div className={styles.currentMediaFallback}><CountryVisualFallback country={dashboardTripCoverPlace(featuredTrip)?.country} /></div>}
-              />
-              {featuredPhoto?.scope === "country" && featuredImageDisplayed ? <CountryIllustrationLabel country={featuredPhoto.country} /> : null}
-              {featuredPhoto?.creditLabel && featuredImageDisplayed ? <MorroviaPhotoCredit ownership={featuredPhoto.provenance === "reviewed-morrovia-first-party" ? "morrovia" : "third-party"} photoLabel={featuredPhoto.alt} credit={featuredPhoto.creditLabel} authorHref={featuredPhoto.authorHref} sourceHref={featuredPhoto.creditHref} licenseHref={featuredPhoto.licenseHref} fullCreditHref={featuredPhoto.fullCreditHref} /> : null}
-            </div>
-            <div className={styles.currentIdentity}>
-              <p className={styles.eyebrow}>{isSpanish ? "Tu viaje actual" : "Your current journey"}</p>
-              <h2 id="current-journey-title"><span>{featuredTitle?.direct}</span>{featuredTitle?.expressive ? <em>{featuredTitle.expressive}</em> : null}</h2>
-              <p>{routeLabel(featuredTrip, copy.routeWaiting)}</p>
-            </div>
-          </div>
-          <div className={styles.currentDetails}>
-            {featuredRecoveryIssue ? <MorroviaStatusBanner className={styles.featuredRecoveryNotice} tone="warning"
-              title={`${featuredRecoveryIssue.tripTitle} has device changes to review`}
-              detail={featuredRecoveryIssue.detail}
-              actions={<EasyTLinkButton size="small" variant="secondary" href={tripSyncRecoveryPath(featuredRecoveryIssue.tripId)}>Review device copy</EasyTLinkButton>}
-            /> : null}
-            <div className={styles.currentFacts}>
-              <time>{formatTripDates(featuredTrip, language)}</time>
-              <span>{featuredTrip.stops.length} {isSpanish ? "paradas" : "stops"}</span>
-              <span>{totalNights(featuredTrip)} {isSpanish ? "noches" : "nights"}</span>
-              <span>{featuredTrip.travellers} {isSpanish ? "viajeros" : "travellers"}</span>
-            </div>
-            <div className={styles.currentActions}>
-              <EasyTLinkButton href={tripWorkspaceHref(featuredTrip.id)} onClick={() => trackTripReopened(featuredTrip)}>
-                {isSpanish ? "Continuar viaje" : "Continue trip"}<ArrowRight aria-hidden="true" />
-              </EasyTLinkButton>
-              <nav className={styles.workspaceLinks} aria-label={`${tripDisplayTitle(featuredTrip)} ${isSpanish ? "vistas" : "views"}`}>
-                <Link href={tripWorkspaceHref(featuredTrip.id)} onClick={() => trackTripReopened(featuredTrip)}>Overview</Link>
-                <Link href={`/journey/${encodeURIComponent(featuredTrip.id)}/itinerary`} onClick={() => trackTripReopened(featuredTrip)}>Itinerary</Link>
-              </nav>
-              <TripActionsMenu trip={featuredTrip} language={language} copy={copy} working={working === featuredTrip.id} workingAction={working === featuredTrip.id ? workingAction : null} onAction={runAction} onGift={openGift} onRemove={requestDelete} />
-            </div>
-          </div>
-          <Link className={styles.currentMap} href={mapWorkspaceHref(featuredTrip.id, null, "plan", null, null, null, "/journey/dashboard")} onClick={() => trackTripReopened(featuredTrip)} aria-label={`${isSpanish ? "Abrir mapa de" : "Open map for"} ${tripDisplayTitle(featuredTrip)}`}>
-            <TripRoutePreview trip={featuredTrip} label={`${tripDisplayTitle(featuredTrip)} ${isSpanish ? "vista previa de la ruta" : "route preview"}`} />
-            <span>{featuredTrip.stops.length} {isSpanish ? "lugares, un viaje" : "places, one journey"}<ArrowRight aria-hidden="true" /></span>
-          </Link>
-        </article>
-      ) : !showFeaturedTrip ? null : recoveryState === "checking" || recoveryState === "syncing" ? (
-        <article className={styles.emptyHero} aria-live="polite">
-          <p className={styles.eyebrow}>{isSpanish ? "Recuperación" : "Recovery"}</p>
-          <h2>{isSpanish ? "Comprobando un viaje guardado en este dispositivo…" : "Checking for a saved trip on this device…"}</h2>
-          <p>{isSpanish ? "No crearemos ni ocultaremos nada mientras termina la comprobación." : "Nothing will be created or hidden while this safety check finishes."}</p>
-        </article>
-      ) : recoveryState === "unavailable" || recoveryState === "issue" ? null : (
-        <article className={styles.emptyHero}>
-          <p className={styles.eyebrow}>{isSpanish ? "Tu primer viaje" : "Your first trip"}</p>
-          <h2>{isSpanish ? "¿Adónde quieres ir primero?" : "Where will you go first?"}</h2>
-          <p>{isSpanish ? "Cuéntanos qué lugares, cuándo te gustaría ir y qué estilo de viaje tienes en mente." : "Tell us the places, timing and travel style you have in mind."}</p>
-          <EasyTLinkButton href="/#start-building">{isSpanish ? "Planificar un viaje" : "Plan a trip"}<ArrowRight aria-hidden="true" /></EasyTLinkButton>
-        </article>
-      )}
-
-      {trips.length ? <section className={styles.tripLibrary} aria-labelledby="trip-library-title">
-        <h2 id="trip-library-title" className={styles.srOnly}>{isSpanish ? "Tus viajes" : "Your trips"}</h2>
+      <div className={styles.libraryLayout}>
+      {!trips.length && (recoveryState === "checking" || recoveryState === "syncing") ? <MorroviaStatusBanner
+        className={styles.dashboardNotice}
+        title={isSpanish ? "Comprobando un viaje guardado en este dispositivo…" : "Checking for a saved trip on this device…"}
+        detail={isSpanish ? "No crearemos ni ocultaremos nada mientras termina la comprobación." : "Nothing will be created or hidden while this safety check finishes."}
+      /> : null}
+      <div className={styles.libraryControls}>
         <div className={styles.libraryToolbar}>
           <EasyTSegmentedControl<DashboardLibraryView>
             ariaLabel={isSpanish ? "Filtrar por estado del viaje" : "Filter by trip status"}
@@ -426,23 +275,29 @@ export default function DashboardClient({ trips, stamps, ownerId }: { trips: Eas
             <span className={styles.gridIndicator} role="img" aria-label={isSpanish ? "Vista de cuadrícula" : "Grid view"}><Grid2X2 aria-hidden="true" /></span>
           </div>
         </div>
+      </div>
+
+      <section className={styles.tripLibrary} aria-labelledby="trip-library-title">
+        <h2 id="trip-library-title" className={styles.srOnly}>{isSpanish ? "Tus viajes" : "Your trips"}</h2>
 
         <div id="dashboard-trip-grid" className={styles.tripSections}>
-          {sort === "updated" ? <RecentlyUpdatedTrips trips={secondaryTrips} cardPhotos={cardPhotos} recoveryIssues={recoveryIssues} language={language} copy={copy} working={working} workingAction={workingAction} onAction={runAction} onGift={openGift} onPhotoError={markCoverFailed} onRemove={requestDelete} /> : <>
+          {sort === "updated" ? <RecentlyUpdatedTrips trips={visibleTrips} cardPhotos={cardPhotos} recoveryIssues={recoveryIssues} language={language} copy={copy} working={working} workingAction={workingAction} onAction={runAction} onGift={openGift} onPhotoError={markCoverFailed} onRemove={requestDelete} /> : <>
             <JourneySection kind="upcoming" trips={upcomingTrips} cardPhotos={cardPhotos} recoveryIssues={recoveryIssues} language={language} copy={copy} working={working} workingAction={workingAction} onAction={runAction} onGift={openGift} onPhotoError={markCoverFailed} onRemove={requestDelete} />
             <JourneySection kind="idea" trips={ideaTrips} cardPhotos={cardPhotos} recoveryIssues={recoveryIssues} language={language} copy={copy} working={working} workingAction={workingAction} onAction={runAction} onGift={openGift} onPhotoError={markCoverFailed} onRemove={requestDelete} />
             <JourneySection kind="past" trips={pastTrips} cardPhotos={cardPhotos} recoveryIssues={recoveryIssues} language={language} copy={copy} working={working} workingAction={workingAction} onAction={runAction} onGift={openGift} onPhotoError={markCoverFailed} onRemove={requestDelete} />
           </>}
-          {!secondaryTrips.length && (Boolean(query) || view !== "all") ? (
+          {!visibleTrips.length && (Boolean(query) || view !== "all" || (!trips.length && recoveryState === "none")) ? (
             <div className={styles.emptyState}>
               <Globe2 aria-hidden="true" />
-              <h3>{query ? (isSpanish ? "Ningún viaje coincide." : "No trips match that search.") : view === "archived" ? copy.emptyArchived : view === "planned" ? (isSpanish ? "Aún no hay viajes planificados." : "No planned trips yet.") : copy.emptyActive}</h3>
+              <h3>{query ? (isSpanish ? "Ningún viaje coincide." : "No trips match that search.") : !trips.length ? (isSpanish ? "Aún no hay viajes." : "No trips yet.") : view === "archived" ? copy.emptyArchived : view === "planned" ? (isSpanish ? "Aún no hay viajes planificados." : "No planned trips yet.") : copy.emptyActive}</h3>
               <p>{query ? (isSpanish ? "Prueba otro destino o título." : "Try another destination or title.") : view === "archived" ? copy.archivedHint : copy.activeHint}</p>
               {view !== "archived" && !query && recoveryState !== "checking" && recoveryState !== "syncing" && recoveryState !== "unavailable" ? <EasyTLinkButton href="/#start-building">{isSpanish ? "Crear un viaje" : "Start a trip"}<ArrowRight aria-hidden="true" /></EasyTLinkButton> : null}
             </div>
           ) : null}
         </div>
-      </section> : null}
+      </section>
+
+      </div>
 
       <section className={styles.closingInvitation} aria-labelledby="closing-invitation-title">
         <ResilientImage src={closingPhotoSrc} alt={closingPhoto?.alt ?? ""} onDisplayState={setClosingImageDisplayed} fallback={<div className={styles.closingFallback}><Globe2 aria-hidden="true" /></div>} />
@@ -576,37 +431,29 @@ export function TripCard({ kind, trip, photo: selectedPhoto, language, copy, rec
   const [imageDisplayed, setImageDisplayed] = useState(false);
   useEffect(() => setImageDisplayed(false), [selectedPhoto?.src]);
   const resolvedKind = kind ?? (trip.status === "draft" ? "idea" : trip.status === "archived" ? "past" : "upcoming");
-  const title = tripDisplayTitle(trip);
+  const title = tripOverviewDisplayTitle(trip);
   const photo = selectedPhoto === undefined ? dashboardTripPhoto(trip) : selectedPhoto;
-  const stays = accommodationProgress(trip);
-  const stayLabel = stays.stops.length ? `${stays.sortedCount} of ${stays.stops.length} stays sorted` : "Overnight stays to confirm";
   const primaryHref = resolvedKind === "idea" ? `/journey/new?trip=${encodeURIComponent(trip.id)}` : tripWorkspaceHref(trip.id);
-  const primaryLabel = resolvedKind === "idea"
-    ? (language === "es" ? "Seguir planificando" : "Continue planning")
-    : resolvedKind === "past"
-      ? (language === "es" ? "Volver a visitar" : "Revisit")
-      : (language === "es" ? "Planificar los días" : "Plan your days");
+  const primaryLabel = language === "es" ? "Continuar viaje" : "Continue trip";
   const recoveryIssue = recoveryIssues[trip.id];
   return <article className={`${styles.tripCard} ${resolvedKind === "past" ? styles.pastCard : ""} ${working ? styles.working : ""}`} aria-busy={working || undefined}>
     <div className={styles.cardMediaFrame}>
       <Link className={styles.cardMedia} href={primaryHref} onClick={() => resolvedKind === "idea" ? trackEvent("trip_edit_started", { trip_id: trip.id, source: "dashboard" }) : trackTripReopened(trip)} tabIndex={working ? -1 : undefined} aria-disabled={working || undefined}>
-        {resolvedKind === "idea" ? <div className={styles.routePreviewFallback} aria-label={`${title} ${language === "es" ? "boceto de ruta" : "route sketch"}`}><MapPin aria-hidden="true" /><span>{routeLabel(trip, copy.routeWaiting)}</span></div> : <ResilientImage src={photo?.src} alt={photo?.alt ?? ""} onDisplayState={setImageDisplayed} onError={() => { if (photo) onPhotoError(trip, photo.src); }} fallback={<CountryVisualFallback country={dashboardTripCoverPlace(trip)?.country} />} />}
+        {resolvedKind === "idea" ? <div className={styles.routePreviewFallback} aria-label={`${title} ${language === "es" ? "boceto de ruta" : "route sketch"}`}><MapPin aria-hidden="true" /><span>{statusLabel(trip.status, language)}</span></div> : <ResilientImage src={photo?.src} alt={photo?.alt ?? ""} onDisplayState={setImageDisplayed} onError={() => { if (photo) onPhotoError(trip, photo.src); }} fallback={<CountryVisualFallback country={dashboardTripCoverPlace(trip)?.country} />} />}
       </Link>
       {resolvedKind !== "idea" && photo?.scope === "country" && imageDisplayed ? <CountryIllustrationLabel country={photo.country} /> : null}
       {resolvedKind !== "idea" && photo?.creditLabel && imageDisplayed ? <MorroviaPhotoCredit size="compact" ownership={photo.provenance === "reviewed-morrovia-first-party" ? "morrovia" : "third-party"} placement="bottom-right" photoLabel={photo.alt} credit={photo.creditLabel} authorHref={photo.authorHref} sourceHref={photo.creditHref} licenseHref={photo.licenseHref} fullCreditHref={photo.fullCreditHref} /> : null}
     </div>
     <div className={styles.cardBody}>
       <h3><Link href={primaryHref} onClick={() => resolvedKind === "idea" ? trackEvent("trip_edit_started", { trip_id: trip.id, source: "dashboard" }) : trackTripReopened(trip)}>{title}</Link></h3>
-      <p className={styles.tripRoute}>{routeLabel(trip, copy.routeWaiting)}</p>
-      <p className={styles.tripFacts}><time>{formatTripDates(trip, language)}</time><span>{totalNights(trip)} {language === "es" ? "noches" : "nights"}</span><span>{trip.stops.length} {language === "es" ? "paradas" : "stops"}</span></p>
-      {resolvedKind !== "past" ? <p className={styles.readinessLine}>{stayLabel}<ArrowRight aria-hidden="true" /></p> : null}
+      <p className={styles.tripFacts}><time>{formatTripDates(trip, language)}</time><span>{trip.stops.length} {language === "es" ? (trip.stops.length === 1 ? "parada" : "paradas") : (trip.stops.length === 1 ? "stop" : "stops")}</span></p>
       {recoveryIssue ? <div className={styles.tripRecoveryNotice} role="status">
         <strong>{recoveryIssue.tripTitle} has device changes to review</strong>
-        <span>The cloud trip remains saved.</span>
+        <span>{recoveryIssue.detail}</span>
         <EasyTLinkButton size="small" variant="secondary" href={tripSyncRecoveryPath(trip.id)}>Review device copy</EasyTLinkButton>
       </div> : null}
       <div className={styles.tripCardActions}>
-        <EasyTLinkButton className={styles.openAction} size="small" variant="quiet" href={primaryHref} onClick={() => resolvedKind === "idea" ? trackEvent("trip_edit_started", { trip_id: trip.id, source: "dashboard" }) : trackTripReopened(trip)}>{primaryLabel}<ArrowRight aria-hidden="true" /></EasyTLinkButton>
+        <EasyTLinkButton className={styles.openAction} size="small" variant="primary" href={primaryHref} onClick={() => resolvedKind === "idea" ? trackEvent("trip_edit_started", { trip_id: trip.id, source: "dashboard" }) : trackTripReopened(trip)}>{primaryLabel}<ArrowRight aria-hidden="true" /></EasyTLinkButton>
         <TripActionsMenu trip={trip} language={language} copy={copy} working={working} workingAction={workingAction} onAction={onAction} onGift={onGift} onRemove={onRemove} />
       </div>
     </div>

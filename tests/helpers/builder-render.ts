@@ -305,6 +305,8 @@ export async function renderBuilder({
   try {
     await page.waitForFunction(() => location.pathname === "/"
       ? Boolean(document.getElementById("start-building"))
+      : location.pathname === "/journey/dashboard"
+        ? Boolean(document.querySelector('[aria-labelledby="trip-library-title"]'))
       : location.pathname === "/journey/plan"
         ? Boolean(document.querySelector("main"))
       : location.pathname.endsWith("/import")

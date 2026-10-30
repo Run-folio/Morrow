@@ -45,6 +45,7 @@ export default function SpreadsheetImportClient() {
   const ownerScope = JSON.stringify([visibleOwnerId, sessionPending]);
   const ownerScopeRef = useRef(ownerScope);
   ownerScopeRef.current = ownerScope;
+  const boundaryRef = useRef<HTMLDivElement>(null);
   const mountedRef = useRef(true);
   const confirmationVersionRef = useRef(0);
   const inputVersionRef = useRef(0);
@@ -287,6 +288,41 @@ export default function SpreadsheetImportClient() {
     }
   };
 
+  // Mapping changes intentionally remount the keyed review. Keep the focus
+  // handoff with its owner, and only for a user correction that removes focus.
+  const correct = (action: () => unknown) => {
+    const focused = document.activeElement;
+    const ownsFocus = focused instanceof HTMLElement
+      && boundaryRef.current?.contains(focused)
+      && focused.closest('[aria-labelledby="attention-title"], [aria-labelledby="column-mapping-title"]');
+    const detailColumn = focused instanceof HTMLElement && focused.closest('[aria-labelledby="column-mapping-title"]')
+      ? focused.closest('[data-import-column]')?.getAttribute('data-import-column') : null;
+    const result = action();
+    if (!ownsFocus) return;
+    const inputVersion = inputVersionRef.current;
+    const requestVersion = result instanceof Promise ? originRequestVersionRef.current : null;
+    const restore = () => window.requestAnimationFrame(() => {
+      if (!mountedRef.current || ownerScopeRef.current !== ownerScope
+        || inputVersionRef.current !== inputVersion
+        || (requestVersion !== null && originRequestVersionRef.current !== requestVersion)
+        || focused.isConnected || document.activeElement !== document.body) return;
+      const mapping = detailColumn !== null ? boundaryRef.current?.querySelector<HTMLSelectElement>(
+        `[aria-labelledby="column-mapping-title"] [data-import-column="${detailColumn}"] select`,
+      ) : null;
+      if (mapping) {
+        const details = mapping.closest('details');
+        if (details) details.open = true;
+        mapping.focus();
+        return;
+      }
+      const next = boundaryRef.current?.querySelector<HTMLElement>(
+        '[aria-labelledby="attention-title"] input:not(:disabled), [aria-labelledby="attention-title"] select:not(:disabled), [aria-labelledby="attention-title"] button:not(:disabled)',
+      );
+      (next ?? boundaryRef.current?.querySelector<HTMLElement>('#route-review-title'))?.focus();
+    });
+    void Promise.resolve(result).then(restore, restore);
+  };
+
   const reset = () => {
     fileReadVersionRef.current += 1;
     setReading(false);
@@ -389,7 +425,7 @@ export default function SpreadsheetImportClient() {
     }
   };
 
-  return <div className={styles.boundary}>
+  return <div className={styles.boundary} ref={boundaryRef}>
     {reservedCreationHref ? <MorroviaStatusBanner tone="warning" title="Your reviewed import is preserved" detail="Continue the interrupted creation before importing another trip." actions={<EasyTLinkButton href={reservedCreationHref}>Continue reviewed trip</EasyTLinkButton>} /> : null}
     {accountSaveWarning && accountSaveWarning.ownerId === visibleOwnerId ? <MorroviaStatusBanner tone="warning" title={accountSaveWarning.accountAcknowledged ? "Saved to your account" : "Saved on this device"} detail={accountSaveWarning.detail} actions={<EasyTLinkButton href={accountSaveWarning.protectedRecovery ? tripSyncRecoveryPath(accountSaveWarning.tripId) : firstTripWorkspaceHref(accountSaveWarning.tripId)}>{accountSaveWarning.protectedRecovery ? "Review device copy" : "Open saved trip"}</EasyTLinkButton>} /> : null}
     <Link className={styles.back} href="/journey/new"><ArrowLeft aria-hidden="true" /> Back to trip creation</Link>
@@ -439,11 +475,11 @@ export default function SpreadsheetImportClient() {
         saveError={saveError}
         canConfirm={canConfirm}
         onReset={reset}
-        onUpdateMapping={updateMapping}
+        onUpdateMapping={(index, value) => correct(() => updateMapping(index, value))}
         onOriginValueChange={(value) => { inputVersionRef.current += 1; originRequestVersionRef.current += 1; setOriginValue(value); setResolvedOrigin(null); setOriginOptions([]); setOriginError(""); }}
-        onResolveOrigin={() => void resolveOrigin()}
-        onSelectOrigin={(option) => { if (!mountedRef.current || ownerScopeRef.current !== ownerScope || proposalRef.current !== proposal) return; const accepted = acceptImportPlace(option, "endpoint"); if (!accepted) return; inputVersionRef.current += 1; originRequestVersionRef.current += 1; setResolvedOrigin(accepted); setOriginValue(accepted.name); setOriginError(""); }}
-        onSelectPlace={(stopId, option) => { if (!mountedRef.current || ownerScopeRef.current !== ownerScope || proposalRef.current !== proposal) return; inputVersionRef.current += 1; setResolvedPlaces((current) => ({ ...current, [stopId]: placeFromCandidate(stopId, option) })); }}
+        onResolveOrigin={() => correct(resolveOrigin)}
+        onSelectOrigin={(option) => correct(() => { if (!mountedRef.current || ownerScopeRef.current !== ownerScope || proposalRef.current !== proposal) return; const accepted = acceptImportPlace(option, "endpoint"); if (!accepted) return; inputVersionRef.current += 1; originRequestVersionRef.current += 1; setResolvedOrigin(accepted); setOriginValue(accepted.name); setOriginError(""); })}
+        onSelectPlace={(stopId, option) => correct(() => { if (!mountedRef.current || ownerScopeRef.current !== ownerScope || proposalRef.current !== proposal) return; inputVersionRef.current += 1; setResolvedPlaces((current) => ({ ...current, [stopId]: placeFromCandidate(stopId, option) })); })}
         onConfirm={() => void confirm()}
       /> : null}
     </>}

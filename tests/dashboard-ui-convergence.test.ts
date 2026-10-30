@@ -31,34 +31,29 @@ test("dashboard filters and compact fields use canonical controls", () => {
   assert.doesNotMatch(dashboardStyles, /\.statusFilters/);
 });
 
-test("lifecycle state selects truthful journey sections and readiness copy", () => {
+test("lifecycle state keeps kind-specific destinations with compact card metadata", () => {
   assert.match(dashboard, /trip\.status === "draft" \? "idea" : trip\.status === "archived" \? "past" : "upcoming"/);
-  assert.match(dashboard, /const upcomingTrips = useMemo/);
-  assert.match(dashboard, /const ideaTrips = useMemo/);
-  assert.match(dashboard, /const pastTrips = useMemo/);
-  assert.match(dashboard, /resolvedKind !== "past" \? <p className=\{styles\.readinessLine\}>\{stayLabel\}/);
-  assert.match(dashboardStyles, /\.readinessLine \{[\s\S]*?var\(--morrovia-muted\)/);
+  for (const field of ["upcomingTrips", "ideaTrips", "pastTrips"]) assert.match(dashboard, new RegExp(`const ${field} = useMemo`));
+  const card = dashboard.split("export function TripCard(")[1]!;
+  assert.doesNotMatch(card, /readinessLine|stayLabel|styles\.tripRoute/);
+  assert.match(card, /variant="primary"/);
+  assert.match(card, /"Continue trip"/);
+  assert.match(card, /formatTripDates\(trip, language\)/);
 });
 
-test("continue and Stamped summaries expose truthful labelled metadata", () => {
-  assert.match(dashboard, /<span>\{featuredTrip\.stops\.length\} \{isSpanish \? "paradas" : "stops"\}<\/span>/);
+test("collection replaces featured presentation while Stamped metadata remains truthful", () => {
+  assert.doesNotMatch(dashboard, /featuredTrip|TripRoutePreview|styles\.currentJourney/);
   assert.match(dashboard, /const stampSummary = summarizeStampRows\(stamps\)/);
   assert.match(dashboard, /\{visitedCount\} \{isSpanish \? "visitados" : "visited"\}/);
   assert.match(dashboard, /\{wantCount\} \{isSpanish \? "deseados" : "want to go"\}/);
-  assert.match(dashboard, /<TripRoutePreview trip=\{featuredTrip\}/);
 });
 
-test("mobile current journeys bound long titles and reject non-photographic hero media", () => {
-  assert.match(dashboardTripImage, /if \(!credit\) return null/,
-    "unknown itinerary media must fall through instead of becoming a Trips hero");
-  assert.match(dashboardStyles, /@media \(max-width: 520px\)[\s\S]*?\.currentIdentity h2 \{[\s\S]*?-webkit-line-clamp: 4/,
-    "the mobile editorial title must have a bounded line count");
-  assert.match(dashboardStyles, /\.currentMedia \{ height: auto; overflow: visible; margin-bottom: 0/,
-    "the card should reserve the title's actual flow height rather than a fixed spacer");
+test("compact cards wrap full custom titles and cover generated country titles in Storybook", () => {
+  assert.match(dashboardStyles, /\.cardBody h3 \{[^}]*overflow-wrap: anywhere/);
+  assert.match(dashboard, /const title = tripOverviewDisplayTitle\(trip\)/);
+  assert.match(dashboardStories, /CompactCountryTitles/);
   assert.match(dashboardStories, /LongCurrentJourneyMobile390/);
-  assert.match(dashboardStories, /InvalidHeroMediaMobile390/);
-  assert.match(dashboardStories, /map-workspace-mobile\.png/,
-    "the invalid-media story should exercise rejection of a product screenshot");
+  assert.doesNotMatch(dashboard, /styles\.pageIntro/);
 });
 
 test("Storybook covers trip volume, card breakpoints and keyboard focus", () => {

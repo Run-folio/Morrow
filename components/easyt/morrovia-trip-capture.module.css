@@ -272,10 +272,11 @@
   .textareaField textarea { min-height: 102px; }
   .wideCard { gap: 12px; padding: 14px; }
   .modeTabs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0; }
-  .modeTab { min-height: 48px; padding-inline: 6px; font-size: 12px; }
+  .modeTab { min-width: 0; min-height: 48px; padding: 8px 6px; font-size: 12px; white-space: normal; overflow-wrap: anywhere; }
 }
 
 @media (max-width: 340px) {
+  .modeTab svg { display: none; }
   .textareaField textarea { min-height: 134px; padding-bottom: 52px; }
 }
 

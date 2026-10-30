@@ -257,10 +257,10 @@ test('Dashboard pending and unavailable device discovery do not invite creating 
   }, dashboardModules);
   harness.setProps({ trips: [], stamps: [], ownerId: 'owner-a' }); harness.render();
   assert.match(harness.text(), /Checking for a saved trip/);
-  assert.doesNotMatch(harness.text(), /Plan a trip|Start another trip/);
+  assert.doesNotMatch(harness.text(), /Start a trip|Start another trip/);
   read.reject(new Error('Storage unavailable')); await settle(); harness.render();
   assert.match(harness.text(), /Device copies could not be checked/);
-  assert.doesNotMatch(harness.text(), /Plan a trip|Start another trip/);
+  assert.doesNotMatch(harness.text(), /Start a trip|Start another trip/);
 });
 
 test('Dashboard accepts only the latest owner/source discovery result', async () => {
@@ -279,7 +279,7 @@ test('Dashboard accepts only the latest owner/source discovery result', async ()
   changedOwner.resolve([{ tripId: 'stale', trip: { title: 'Stale device trip' } }]); await settle(); harness.render();
   assert.doesNotMatch(harness.text(), /Stale device trip/);
   latestSource.resolve([]); await settle(); harness.render();
-  assert.match(harness.text(), /Plan a trip/);
+  assert.match(harness.text(), /Start a trip/);
 });
 
 const importFile = 'app/journey/new/import/spreadsheet-import-client.tsx';

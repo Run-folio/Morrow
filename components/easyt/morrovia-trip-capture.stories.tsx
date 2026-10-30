@@ -173,7 +173,7 @@ const wideHomepageArgs = {
 
 export const WideHomepageCapture: Story = { args: wideHomepageArgs };
 
-function ResponsiveHomepageStops() {
+function ResponsiveHomepageStops({ language = "en" }: { language?: "en" | "es" } = {}) {
   const [entries, setEntries] = useState<HomepageDestinationEntry[]>([{ id: "mobile-stop-1", text: "Lisbon", selection: null }]);
   const [focusEntryId, setFocusEntryId] = useState<string | null>(null);
   const homepageEntry = {
@@ -186,12 +186,12 @@ function ResponsiveHomepageStops() {
     },
     destinationEditor: <HomeDestinationEditor
       entries={entries}
-      language="en"
+      language={language}
       focusEntryId={focusEntryId}
       onChange={setEntries}
     />,
   };
-  return <ControlledCapture homepageEntry={homepageEntry} />;
+  return <ControlledCapture language={language} homepageEntry={homepageEntry} />;
 }
 
 export const WideHomepageMobileOrder: Story = {
@@ -421,3 +421,12 @@ export const HomepagePlannerSlots: Story = {
 export const HomepagePlannerDescribe: Story = {args:{...HomepagePlannerSlots.args,homepageEntry:{...HomepagePlannerSlots.args!.homepageEntry!,mode:"describe"}}};
 export const HomepagePlannerStops390: Story = {...HomepagePlannerSlots,globals:{viewport:{value:"morrovia390",isRotated:false}}};
 export const HomepagePlannerDescribe390: Story = {...HomepagePlannerDescribe,globals:{viewport:{value:"morrovia390",isRotated:false}}};
+
+export const EntryTabsAt320: Story = {
+  render: () => <ResponsiveHomepageStops />,
+  globals: { viewport: { value: "morrovia320", isRotated: false } },
+};
+export const SpanishEntryTabsAt320: Story = {
+  render: () => <ResponsiveHomepageStops language="es" />,
+  globals: { viewport: { value: "morrovia320", isRotated: false } },
+};
