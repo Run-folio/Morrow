@@ -14,7 +14,7 @@ export function tripShellDuration(startDate: string, endDate: string) {
   return deriveTripDateFacts({ startDate, endDate }).durationDays;
 }
 
-export default function TripShell({ trip, children, deviceOnlyNotice, cacheTrip = true, orientationAutoStart = true, workspaceGuideVersionSeen = 0, feedbackStoryEligible = false }: { trip: EasyTTrip; children: ReactNode; deviceOnlyNotice?: ReactNode; cacheTrip?: boolean; orientationAutoStart?: boolean; workspaceGuideVersionSeen?: number; feedbackStoryEligible?: boolean }) {
+export default function TripShell({ trip, children, deviceOnlyNotice, cacheTrip = true, orientationAutoStart = false, workspaceGuideVersionSeen = 0, feedbackStoryEligible = false }: { trip: EasyTTrip; children: ReactNode; deviceOnlyNotice?: ReactNode; cacheTrip?: boolean; orientationAutoStart?: boolean; workspaceGuideVersionSeen?: number; feedbackStoryEligible?: boolean }) {
   return (
     <div className={styles.workspace}>
       <WorkspaceOrientationProvider ownerId={trip.ownerId} accountVersionSeen={workspaceGuideVersionSeen} autoStart={orientationAutoStart}>

@@ -1,7 +1,7 @@
 "use client";
 
 import {Archive,Copy,Gift,RotateCcw,Trash2} from "lucide-react";
-import {useEffect,useRef,useState} from "react";
+import {useEffect,useRef,useState,type ReactNode} from "react";
 import {usePathname,useRouter} from "next/navigation";
 import {authClient} from "@/lib/auth-client";
 import {easytCopy,languageFromStorage,type EasyTLanguage} from "@/lib/easyt/i18n";
@@ -15,7 +15,7 @@ import {TripLibraryActionDialogs} from "./trip-library-action-dialogs";
 import {useTripLibraryActions} from "./use-trip-library-actions";
 import type {TripMutationPersistence} from "./use-trip-mutation-persistence";
 
-export function TripOverviewLibraryActions({mutation,onRenameTrip}:{mutation:TripMutationPersistence;onRenameTrip:()=>void}) {
+export function TripOverviewLibraryActions({mutation,onRenameTrip,renderLeadingActions,compact}:{mutation:TripMutationPersistence;onRenameTrip:()=>void;renderLeadingActions?:(close:()=>void)=>ReactNode;compact?:boolean}) {
   const trip=mutation.trip,ownerId=trip.ownerId??"",router=useRouter(),pathname=usePathname();
   const {data:session,isPending:sessionPending}=authClient.useSession();
   const authenticatedOwnerRef=useRef<string|null>(trip.ownerId);
@@ -41,7 +41,7 @@ export function TripOverviewLibraryActions({mutation,onRenameTrip}:{mutation:Tri
   const hint=boundary!=="current"?"Sign in to this trip’s account to manage it.":disabled?"Finish saving or review the separate device copy first.":undefined;
   const act=(close:()=>void,callback:()=>void)=>{if(disabled)return;close();callback();};
   return <>
-    <WorkspaceOrientationLauncher onRenameTrip={onRenameTrip} renderTripActions={ownerId?(close)=><>
+    <WorkspaceOrientationLauncher compact={compact} renderLeadingActions={renderLeadingActions} onRenameTrip={onRenameTrip} renderTripActions={ownerId?(close)=><>
       <EasyTButton role="menuitem" icon={Gift} size="small" variant="quiet" disabled={disabled} title={hint} onClick={()=>act(close,()=>actions.openGift(trip))}>{language==="es"?"Regalar este viaje":"Gift this trip"}</EasyTButton>
       <EasyTButton role="menuitem" icon={Copy} size="small" variant="quiet" disabled={disabled} title={hint} onClick={()=>act(close,()=>{void actions.runAction(trip.id,"duplicate");})}>{copy.duplicate}</EasyTButton>
       <EasyTButton role="menuitem" icon={trip.status==="archived"?RotateCcw:Archive} size="small" variant="quiet" disabled={disabled} title={hint} onClick={()=>act(close,()=>{void actions.runAction(trip.id,trip.status==="archived"?"restore":"archive");})}>{trip.status==="archived"?copy.restore:copy.archive}</EasyTButton>

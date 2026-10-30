@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter, useSelectedLayoutSegment } from "next/navigation";
-import { BedDouble, CalendarDays, Clock3, Edit3, House, Map, MapPin, Route, Sparkles } from "lucide-react";
+import { BedDouble, CalendarDays, Clock3, Edit3, House, Info, Map, MapPin, MoreHorizontal, Route, Sparkles } from "lucide-react";
 import { createContext, useCallback, useContext, useEffect, useReducer, useRef, useState, type ReactNode } from "react";
 import { authClient } from "@/lib/auth-client";
 import { trackEvent } from "@/lib/analytics";
@@ -25,7 +25,7 @@ import { isEasyTTrip, type EasyTTrip } from "@/lib/easyt/trip";
 import ResilientImage from "@/components/easyt/resilient-image";
 import { canonicalTripRevisionCanReplace, journeyReauthenticationPath, tripConflictResolutionActions } from "@/lib/easyt/trip-continuity";
 import { ownerBoundaryState } from "@/lib/easyt/private-browser-context";
-import { isTripMapPathname, mapWorkspaceHref, shouldResetOverviewEntry, tripBuilderHref, tripWorkspaceHref, workspaceViewFromPathname, workspaceVisitKey } from "@/lib/easyt/trip-workspace-links";
+import { isTripMapPathname, tripWorkspaceMapActionHref, mapWorkspaceHref, shouldResetOverviewEntry, tripBuilderHref, tripWorkspaceHref, workspaceViewFromPathname, workspaceVisitKey } from "@/lib/easyt/trip-workspace-links";
 import { EasyTButton, EasyTLinkButton } from "./easyt-controls";
 import { EasyTField } from "./easyt-controls";
 import { MorroviaConfirmationDialog, MorroviaFormDialog, MorroviaSaveStatus, MorroviaStatusBanner } from "./morrovia-feedback";
@@ -41,6 +41,8 @@ import { canonicalPlacePhotoCacheKey, discardFailedRoutePhoto, resolveRoutePhoto
 import CountryVisualFallback, { CountryIllustrationLabel } from "./country-visual-fallback";
 import MorroviaPhotoCredit from "./morrovia-photo-credit";
 import { useTripMutationPersistence, type TripMutationPersistence } from "./use-trip-mutation-persistence";
+import { TripMobileSheet, useMobileTripWorkspace } from "./trip-mobile-sheet";
+import { useTripMapReturn } from "./use-trip-map-return";
 import styles from "./trip-shell.module.css";
 
 const TripShellTripContext = createContext<EasyTTrip | null>(null);
@@ -74,6 +76,9 @@ export function TripShellIdentityAndActions() {
   const mutation = useTripShellMutation();
   const trip = mutation.trip;
   const pathname = usePathname();
+  const mobile = useMobileTripWorkspace();
+  const [detailsOpen, setDetailsOpen] = useState(false);
+  useEffect(() => setDetailsOpen(false), [pathname, trip.id, trip.ownerId]);
   const isOverview = workspaceViewFromPathname(pathname, trip.id) === "overview";
   const displayTitle = tripOverviewDisplayTitle(mutation.trip);
   const [titleDisclosure, dispatchTitleDisclosure] = useReducer(reduceTripTitleDisclosure, { expanded: false, dismissed: false, hovered: false, focused: false });
@@ -147,6 +152,17 @@ export function TripShellIdentityAndActions() {
     }
   };
 
+  const metadata = (<dl className={styles.metadata}>
+        <div><dt><CalendarDays aria-hidden="true" /><span className={styles.srOnly}>Dates</span></dt><dd>{dateFacts.rangeLabel}</dd></div>
+        <div><dt><Clock3 aria-hidden="true" /><span className={styles.srOnly}>Duration</span></dt><dd>{duration ? `${duration} ${duration === 1 ? "day" : "days"}` : "Duration to confirm"}</dd></div>
+        <div><dt><MapPin aria-hidden="true" /><span className={styles.srOnly}>Overnight places</span></dt><dd>{overnightPlaceCount} {overnightPlaceCount === 1 ? "overnight place" : "overnight places"}</dd></div>
+        <div><dt><Route aria-hidden="true" /><span className={styles.srOnly}>Transfers</span></dt><dd>{mutation.trip.legs.length} {mutation.trip.legs.length === 1 ? "transfer" : "transfers"}</dd></div>
+      </dl>);
+  const leadingActions = mobile ? (close: () => void) => <>
+    <EasyTLinkButton role="menuitem" href={editHref} icon={Edit3} size="small" variant="quiet" onClick={close}>Edit trip</EasyTLinkButton>
+    <EasyTButton role="menuitem" icon={Info} size="small" variant="quiet" onClick={() => { close(); setDetailsOpen(true); }}>Trip details</EasyTButton>
+  </> : undefined;
+
   return <>
     <div className={styles.tripIdentity}>
       <p className={styles.eyebrow}>{status}</p>
@@ -167,20 +183,18 @@ export function TripShellIdentityAndActions() {
           <span className={styles.tripTitleFull} aria-hidden="true" style={{ display: titleExpanded || ((titleHovered || titleFocused) && !titlePreviewDismissed) ? "block" : "none" }}>{displayTitle}</span>
         </span>
       </h1>
-      <dl className={styles.metadata}>
-        <div><dt><CalendarDays aria-hidden="true" /><span className={styles.srOnly}>Dates</span></dt><dd>{dateFacts.rangeLabel}</dd></div>
-        <div><dt><Clock3 aria-hidden="true" /><span className={styles.srOnly}>Duration</span></dt><dd>{duration ? `${duration} ${duration === 1 ? "day" : "days"}` : "Duration to confirm"}</dd></div>
-        <div><dt><MapPin aria-hidden="true" /><span className={styles.srOnly}>Overnight places</span></dt><dd>{overnightPlaceCount} {overnightPlaceCount === 1 ? "overnight place" : "overnight places"}</dd></div>
-        <div><dt><Route aria-hidden="true" /><span className={styles.srOnly}>Transfers</span></dt><dd>{mutation.trip.legs.length} {mutation.trip.legs.length === 1 ? "transfer" : "transfers"}</dd></div>
-      </dl>
+      {metadata}
     </div>
     <div className={styles.headerActions}>
       {trip.ownerId && mutation.saveState !== "idle" ? <MorroviaSaveStatus state={mutation.saveState} /> : null}
       <EasyTLinkButton className={styles.editAction} href={mapWorkspaceHref(trip.id, null, "plan", null, null, null, tripWorkspaceHref(trip.id))} icon={Map} size="small" variant="secondary">Explore map</EasyTLinkButton>
       <EasyTLinkButton className={styles.editAction} href={personalRouteHref(trip.id)} icon={Route} size="small" variant="secondary">View my route</EasyTLinkButton>
       <EasyTLinkButton className={styles.editAction} href={editHref} icon={Edit3} size="small" variant="secondary" aria-label="Edit trip brief">Edit</EasyTLinkButton>
-      {isOverview ? <TripOverviewLibraryActions mutation={mutation} onRenameTrip={openRename} /> : <WorkspaceOrientationLauncher onRenameTrip={openRename} />}
+      {isOverview ? <TripOverviewLibraryActions mutation={mutation} onRenameTrip={openRename} renderLeadingActions={leadingActions} compact={mobile} /> : <WorkspaceOrientationLauncher onRenameTrip={openRename} renderLeadingActions={leadingActions} compact={mobile} />}
     </div>
+    <TripMobileSheet open={detailsOpen} title="Trip details" onClose={() => setDetailsOpen(false)}>
+      <p>{tripDisplayTitle(trip)}</p><p>{status}</p><div className={styles.tripDetailsMetadata}>{metadata}</div>
+    </TripMobileSheet>
     <MorroviaFormDialog
       open={renameOpen}
       title="Rename this trip"
@@ -517,12 +531,15 @@ type TripWorkspaceNavigation = {
   queuedView: TripWorkspaceView | null;
   navigate: (view: TripWorkspaceView, alreadyCommitted: boolean, cancel: () => void) => void;
   committed: (view: TripWorkspaceView) => void;
+  rememberMapReturn: (trigger: Element | null) => void;
 };
 const TripWorkspaceNavigationContext = createContext<TripWorkspaceNavigation | null>(null);
 
 /** Keep one sibling transition in flight; retain the traveller's last click. */
 export function TripWorkspaceNavigationProvider({ tripId, children }: { tripId: string; children: ReactNode }) {
   const router = useRouter();
+  const { trip } = useTripShellMutation();
+  const { rememberMapReturn, restoreMapReturn } = useTripMapReturn(tripId, trip.ownerId);
   const pendingRef = useRef<TripWorkspaceView | null>(null);
   const queuedRef = useRef<TripWorkspaceView | null>(null);
   const [pendingView, setPendingView] = useState<TripWorkspaceView | null>(null);
@@ -544,6 +561,7 @@ export function TripWorkspaceNavigationProvider({ tripId, children }: { tripId: 
   }, []);
 
   const committed = useCallback((view: TripWorkspaceView) => {
+    restoreMapReturn();
     if (pendingRef.current !== view) return;
     const next = queuedRef.current;
     queuedRef.current = null;
@@ -556,7 +574,7 @@ export function TripWorkspaceNavigationProvider({ tripId, children }: { tripId: 
       pendingRef.current = null;
       setPendingView(null);
     }
-  }, [hrefFor, router]);
+  }, [hrefFor, router, restoreMapReturn]);
 
   useEffect(() => {
     const onHistory = () => {
@@ -584,7 +602,7 @@ export function TripWorkspaceNavigationProvider({ tripId, children }: { tripId: 
     return () => window.clearTimeout(timeout);
   }, [hrefFor, pendingView, router]);
 
-  return <TripWorkspaceNavigationContext.Provider value={{ pendingView, queuedView, navigate, committed }}>{children}</TripWorkspaceNavigationContext.Provider>;
+  return <TripWorkspaceNavigationContext.Provider value={{ pendingView, queuedView, navigate, committed, rememberMapReturn }}>{children}</TripWorkspaceNavigationContext.Provider>;
 }
 
 /** A route child acknowledges its mount after React commits its workspace. */
@@ -596,39 +614,54 @@ export function TripWorkspaceCommit({ view, children }: { view: TripWorkspaceVie
 
 export function TripShellNavigation({ tripId }: { tripId: string }) {
   const committedSegment = useSelectedLayoutSegment();
+  const pathname = usePathname();
+  const router = useRouter();
+  const { trip } = useTripShellMutation();
+  const mobile = useMobileTripWorkspace();
+  const [moreOpen, setMoreOpen] = useState(false);
+  const [keyboardOpen, setKeyboardOpen] = useState(false);
   const navigation = useContext(TripWorkspaceNavigationContext);
   const baseHref = `/journey/${encodeURIComponent(tripId)}`;
   const activeView = views.find((view) => view.id === committedSegment)?.id ?? "overview";
   const orientationTarget = useWorkspaceOrientationTarget("overview", "workspace-navigation");
-
-  return (
-    <nav ref={orientationTarget} className={styles.subnav} aria-label="Trip workspace" aria-busy={Boolean(navigation?.pendingView)}>
-      {views.map((view) => {
-        const Icon = view.icon;
-        const active = activeView === view.id;
-        return (
-          <Link
-            key={view.id}
-            // These dynamic sibling pages share a loading boundary. The
-            // default partial prefetch can leave only its fallback available
-            // during overlapping transitions; keep each full page ready.
-            prefetch={true}
-            className={active ? styles.subnavActive : undefined}
-            href={view.id === "overview" ? tripWorkspaceHref(tripId) : `${baseHref}${view.suffix}`}
-            aria-current={active ? "page" : undefined}
-            data-pending={(navigation?.queuedView ?? navigation?.pendingView) === view.id ? "true" : undefined}
-            onNavigate={(event) => {
-              navigation?.navigate(view.id, active, () => event.preventDefault());
-            }}
-          >
-            <Icon aria-hidden="true" />
-            <span>{view.label}</span>
-          </Link>
-        );
-      })}
+  useEffect(() => setMoreOpen(false), [pathname, tripId]);
+  useEffect(() => {
+    const update = () => setKeyboardOpen(Boolean(window.visualViewport && window.innerHeight - window.visualViewport.height > 150 && document.activeElement?.matches('input,textarea,[contenteditable="true"]')));
+    window.visualViewport?.addEventListener('resize', update);
+    document.addEventListener('focusin', update); document.addEventListener('focusout', update);
+    return () => { window.visualViewport?.removeEventListener('resize', update); document.removeEventListener('focusin', update); document.removeEventListener('focusout', update); };
+  }, []);
+  const renderLink = (view: typeof views[number]) => {
+    const Icon = view.icon;
+    const active = activeView === view.id;
+    return <Link key={view.id} prefetch={true} className={active ? styles.subnavActive : undefined}
+      href={view.id === "overview" ? tripWorkspaceHref(tripId) : `${baseHref}${view.suffix}`}
+      aria-current={active ? "page" : undefined}
+      data-pending={(navigation?.queuedView ?? navigation?.pendingView) === view.id ? "true" : undefined}
+      onNavigate={(event) => { navigation?.navigate(view.id, active, () => event.preventDefault()); }}
+      onClick={() => setMoreOpen(false)}>
+      <Icon aria-hidden="true" /><span>{mobile && view.id === "stay" ? "Stays" : view.label}</span>
+    </Link>;
+  };
+  const openMap = () => {
+    const current = `${window.location.pathname}${window.location.search}${window.location.hash}`;
+    navigation?.rememberMapReturn(document.activeElement);
+    router.push(tripWorkspaceMapActionHref(trip, current), { scroll: false });
+  };
+  return <>
+    <nav ref={orientationTarget} className={styles.subnav} data-mobile={mobile || undefined} data-keyboard-open={keyboardOpen || undefined} aria-label="Trip workspace" aria-busy={Boolean(navigation?.pendingView)}>
+      {mobile ? <>
+        {renderLink(views[0])}{renderLink(views[2])}
+        <EasyTButton id="trip-mobile-map" variant="quiet" onClick={openMap}><Map aria-hidden="true" /><span>Map</span></EasyTButton>
+        {renderLink(views[1])}
+        <EasyTButton variant="quiet" className={activeView === "explore" || activeView === "stay" ? styles.subnavActive : undefined} aria-haspopup="dialog" aria-expanded={moreOpen} aria-label={activeView === "explore" || activeView === "stay" ? `More, current section: ${activeView === "stay" ? "Stays" : "Explore"}` : "More"} onClick={() => setMoreOpen(true)}><MoreHorizontal aria-hidden="true" /><span>More</span>{activeView === "explore" || activeView === "stay" ? <span className={styles.srOnly}>Current section: {activeView === "stay" ? "Stays" : "Explore"}</span> : null}</EasyTButton>
+      </> : views.map(renderLink)}
       {navigation?.pendingView ? <span className={styles.srOnly} role="status">Opening {views.find((view) => view.id === (navigation.queuedView ?? navigation.pendingView))?.label}…</span> : null}
     </nav>
-  );
+    <TripMobileSheet open={moreOpen} title="More trip sections" onClose={() => setMoreOpen(false)}>
+      <div className={styles.moreSections}>{renderLink(views[3])}{renderLink(views[4])}</div>
+    </TripMobileSheet>
+  </>;
 }
 
 export function TripShellChrome({ tripId, children }: { tripId: string; children: ReactNode }) {

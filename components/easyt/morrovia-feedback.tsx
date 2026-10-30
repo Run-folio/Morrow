@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { AlertCircle, Check, CircleAlert, Cloud, HardDrive, Info, LoaderCircle, RotateCcw, X, type LucideIcon } from "lucide-react";
-import { useCallback, useEffect, useId, useRef, type FocusEvent, type ReactNode } from "react";
+import { useCallback, useEffect, useId, useLayoutEffect, useRef, type FocusEvent, type ReactNode } from "react";
 import { EasyTButton } from "./easyt-controls";
 import styles from "./morrovia-feedback.module.css";
 
@@ -367,6 +367,7 @@ export function MorroviaContentDialog({
   onClose,
   open,
   inline = false,
+  suspended = false,
   onReturnFocus,
 }: {
   ariaLabel: string;
@@ -377,6 +378,8 @@ export function MorroviaContentDialog({
   open: boolean;
   /** Keep one mounted content owner when adapting a panel to a modal. */
   inline?: boolean;
+  /** Yield to a sibling/portaled editor without unmounting or final-close focus. */
+  suspended?: boolean;
   onReturnFocus?: () => void;
 }) {
   const dialogRef = useRef<HTMLDialogElement>(null);
@@ -384,16 +387,26 @@ export function MorroviaContentDialog({
   const modalRef = useRef(false);
   const returnHandlerRef = useRef(onReturnFocus);
   returnHandlerRef.current = onReturnFocus;
+  const suspendedViewRef = useRef<{ focus: HTMLElement | null; scroll: number } | null>(null);
+  useLayoutEffect(() => {
+    const dialog = dialogRef.current;
+    if (!suspended || inline || !dialog?.open) return;
+    suspendedViewRef.current = { focus: document.activeElement instanceof HTMLElement ? document.activeElement : null, scroll: dialog.scrollTop };
+    dialog.close();
+    modalRef.current = false;
+  }, [suspended, inline]);
 
   useEffect(() => {
     const dialog = dialogRef.current;
-    if (!dialog) return;
+    if (!dialog || suspended) return;
     if (inline) {
       if (modalRef.current) dialog.close();
       modalRef.current = false;
       dialog.open = true;
+      suspendedViewRef.current = null;
       return;
     }
+    if (!open) suspendedViewRef.current = null;
     if (open && !modalRef.current) {
       returnFocusRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
       // Adapting an already-visible panel must keep its existing child modal on top.
@@ -405,7 +418,14 @@ export function MorroviaContentDialog({
       modalRef.current = true;
       childModals.forEach(child => child.showModal());
       if (childFocus) childFocus.focus({ preventScroll: true });
-      else dialog.querySelector<HTMLElement>(autoFocusSelector)?.focus({ preventScroll: true });
+      else {
+        const previous = suspendedViewRef.current;
+        const focus = previous?.focus?.isConnected && dialog.contains(previous.focus) && previous.focus.getClientRects().length
+          ? previous.focus : dialog.querySelector<HTMLElement>(autoFocusSelector);
+        focus?.focus({ preventScroll: true });
+        if (previous) dialog.scrollTop = previous.scroll;
+        suspendedViewRef.current = null;
+      }
     } else if (!open && dialog.open) {
       const wasModal = modalRef.current;
       dialog.close();
@@ -415,7 +435,7 @@ export function MorroviaContentDialog({
         else returnFocusRef.current?.focus();
       });
     }
-  }, [autoFocusSelector, inline, open]);
+  }, [autoFocusSelector, inline, open, suspended]);
 
   return <dialog
     ref={dialogRef}
@@ -426,7 +446,7 @@ export function MorroviaContentDialog({
     onCancel={(event) => { if (event.target !== event.currentTarget) return; event.preventDefault(); onClose(); }}
     onClick={(event) => { if (event.target === event.currentTarget) onClose(); }}
     onKeyDown={(event) => {
-      if (inline || (event.target as HTMLElement).closest("dialog") !== event.currentTarget || event.key !== "Tab") return;
+      if (inline || (event.target as HTMLElement).closest("dialog:modal") !== event.currentTarget || event.key !== "Tab") return;
       const focusable = [...event.currentTarget.querySelectorAll<HTMLElement>('a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])')]
         .filter((element) => element.getClientRects().length > 0);
       const first = focusable[0];

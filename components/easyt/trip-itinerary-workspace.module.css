@@ -2007,7 +2007,7 @@
   .mobileSavedIdeas { order: 6; display: block; }
   .logisticsDetailScrim {
     position: fixed;
-    z-index: 89;
+    z-index: calc(var(--morrovia-layer-modal) - 1);
     inset: 0;
     display: block;
     width: 100%;
@@ -2018,7 +2018,7 @@
   }
   .logisticsDetail {
     position: fixed;
-    z-index: 90;
+    z-index: var(--morrovia-layer-modal);
     right: 0;
     bottom: 0;
     left: 0;
@@ -2084,6 +2084,8 @@
 }
 .calendarDaySheet:not([open])[data-dialog-presentation="modal"] { display: none; }
 .calendarDaySheet::backdrop { background: var(--morrovia-overlay); }
+/* Keep feedback/Undo actionable without covering the sheet's sticky Close target. */
+.calendarDaySheet[data-dialog-presentation="modal"] .notice { position: static; z-index: auto; margin: 12px 0; }
 .calendarDaySheet[data-dialog-presentation="modal"] .calendarSheetContent { display: block; }
 .calendarDaySheet[data-dialog-presentation="modal"] .calendarSheetActions {
   display: flex; justify-content: flex-end; height: 0; padding: 0 12px;
@@ -2096,6 +2098,7 @@
 .calendarDaySheet[data-dialog-presentation="modal"] .calendarEmbeddedDetail { position: static; width: auto; max-height: none; padding: 16px; }
 .calendarDaySelect { scroll-margin-top: var(--morrovia-sticky-content-offset); }
 
+.calendarDaySheet .calendarSheetActions[hidden],
 .calendarDaySheet [hidden] { display: none; }
 
 .calendarDaySheet[data-dialog-presentation="modal"] .contextRail { position: relative; z-index: 0; }
@@ -2148,3 +2151,26 @@
 .calendarWorkspace .ideasSection .discoveryActions { grid-column: 1 / -1; }
 .calendarItemDialog[data-dialog-presentation="modal"] .calendarItemBody { padding: 16px; }
 .calendarItemDialog[data-dialog-presentation="modal"] .calendarEmbeddedDetail { padding: 0; }
+
+.mobileDayPicker { flex: 1; min-width: 0; justify-content: space-between; min-height: 44px; white-space: normal; }
+.mobileDayPicker > span { flex: 1; min-width: 0; text-align: left; overflow-wrap: anywhere; }
+.mobileDayPicker > svg { flex-shrink: 0; }
+.mobileDayOptions, .mobileSavedIdeas { display: grid; gap: 4px; }
+.mobileDayOptions > button, .mobileSavedIdeas > button { justify-content: flex-start; min-height: 48px; text-align: left; white-space: normal; }
+.mobileAddPlan { display: grid; justify-items: center; gap: 12px; padding: 20px 0; border-top: 1px solid var(--morrovia-line); }
+.mobileAddPlan p { margin: 0; color: var(--morrovia-muted); font: var(--morrovia-type-supporting-body); }
+@media (max-width: 700px) {
+  .destinationTrack, .rail, .secondaryAddActivity { display: none; }
+  .workspaceToolbar { padding: 12px; gap: 12px; }
+  .dayHeader { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
+  .dayHeaderMedia { display: none; }
+  .dayHeaderContent { min-width: 0; }
+  .dayHeaderContent > p { display: none; }
+  .calendarWorkspace .dayHeaderContent > p { display: flex; }
+  .dayHeader h2 { margin: 0; }
+  .mobileDayMap { flex-shrink: 0; }
+  .stayContext { grid-template-columns: 20px minmax(0, 1fr) auto; padding: 12px; margin-top: 0; }
+  .stayContext > a { grid-column: 3; }
+  .stayContextSelect, .stayContextCopy { min-width: 0; }
+  .contextRailBody > [data-map-preview] { display: none; }
+}

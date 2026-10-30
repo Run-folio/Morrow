@@ -33,6 +33,7 @@ import styles from "./rich-itinerary-day-planner.module.css";
 
 type RichItineraryDayPlannerProps = {
   composition: ItineraryDayComposition;
+  compactMobile?: boolean;
   addComposerDayPart?: ItineraryDayPart | null;
   addComposerOpen?: boolean;
   addDraft?: string;
@@ -330,6 +331,7 @@ export default function RichItineraryDayPlanner({
   selectedTonight = false,
   showHeader = true,
   showTonight = true,
+  compactMobile = false,
 }: RichItineraryDayPlannerProps) {
   const copy = copyFor(language);
   const titleId = `rich-day-${composition.day.id}`;
@@ -368,6 +370,7 @@ export default function RichItineraryDayPlanner({
   const renderPeriod = (part: ItineraryPlanningPart) => {
     const activities = composition.planned[part].filter((activity) => activity.source !== "day-note");
     const headingId = `${titleId}-${part}`;
+    if (compactMobile && !activities.length && !dragActive) return null;
     return (
       <section
         className={`${styles.period} ${dragActive && !draggedFullDayActivity ? styles.periodDropReady : ""} ${dropTarget?.startsWith(`${part}:`) ? styles.periodDropActive : ""}`}
@@ -440,7 +443,7 @@ export default function RichItineraryDayPlanner({
           >
           </div>
         )}
-        <div className={styles.addHere}>
+        {!compactMobile ? <div className={styles.addHere}>
           {addComposerOpen && addComposerDayPart === part ? addComposer(part) : onAddOpen ? <EasyTButton
             id={`${titleId}-add-${part}`}
             icon={CirclePlus}
@@ -449,12 +452,12 @@ export default function RichItineraryDayPlanner({
             aria-label={`${copy.addPlanTo} ${formatDayDate(composition.context.date, language)} ${dayPartLabels[language][part].toLowerCase()}`}
             onClick={() => onAddOpen?.(part)}
           >{copy.addPlan}</EasyTButton> : null}
-        </div>
+        </div> : null}
       </section>
     );
   };
   return (
-    <section className={styles.planner} aria-labelledby={showHeader ? titleId : undefined} aria-label={showHeader ? undefined : `Day ${composition.day.dayNumber} planner`}>
+    <section className={styles.planner} data-compact-mobile={compactMobile || undefined} aria-labelledby={showHeader ? titleId : undefined} aria-label={showHeader ? undefined : `Day ${composition.day.dayNumber} planner`}>
       {showHeader ? <header className={styles.header}>
         <div>
           <p><CalendarDays aria-hidden="true" />Day {composition.day.dayNumber} · <time dateTime={composition.context.date}>{formatDayDate(composition.context.date, language)}</time></p>

@@ -714,3 +714,9 @@
     min-height: 44px;
   }
 }
+
+.planner[data-compact-mobile] .travel { padding: 0; border: 0; background: transparent; }
+.planner[data-compact-mobile] .travel > .sectionHeading { display: none; }
+.planner[data-compact-mobile] .transfer { border: 1px solid var(--morrovia-line); border-radius: var(--morrovia-control-radius); padding: 10px 12px; background: var(--morrovia-lilac); }
+.planner[data-compact-mobile] .transferSelect { padding: 0; border-left: 0; }
+.planner[data-compact-mobile] .periodGrid:empty { display: none; }
