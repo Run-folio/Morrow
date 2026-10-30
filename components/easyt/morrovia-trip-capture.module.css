@@ -35,7 +35,7 @@
 .wideSegmentGroup { display: grid; grid-template-columns: minmax(280px, 1fr) 250px 220px; min-width: 0; min-height: 68px; border-radius: var(--morrovia-control-radius); background: var(--morrovia-lilac); }
 .wideEntryPanel { min-width: 0; min-height: 68px; }
 .destinationHeader { display:flex; flex-wrap:wrap; align-items:center; gap:8px; min-width:0; padding-right:8px; }
-.destinationToggle { display:grid; flex:1 1 220px; grid-template-columns:auto minmax(0,1fr) auto auto; align-items:center; gap:10px; width:auto; min-height:68px; padding:9px 14px; border:0; border-radius:var(--morrovia-control-radius) 0 0 var(--morrovia-control-radius); background:transparent; color:var(--morrovia-ink); text-align:left; cursor:pointer; }
+.destinationToggle { display:grid; flex:1 1 220px; grid-template-columns:auto minmax(0,1fr) auto; align-items:center; gap:10px; width:auto; min-height:68px; padding:9px 14px; border:0; border-radius:var(--morrovia-control-radius) 0 0 var(--morrovia-control-radius); background:transparent; color:var(--morrovia-ink); text-align:left; cursor:pointer; }
 .destinationAdd { flex:0 0 auto; }
 .destinationToggle:hover:not(:disabled) { background:color-mix(in srgb,var(--morrovia-paper) 55%,transparent); }
 .destinationToggle:focus-visible { outline:3px solid var(--morrovia-focus-ring); outline-offset:-3px; }
@@ -313,3 +313,6 @@
   .plannerUtilities { grid-template-columns: minmax(0, 1fr); }
   .plannerUtilities > .utilityCell + .utilityCell { border-left: 0; border-top: 1px solid var(--morrovia-line); }
 }
+
+/* The expanded disclosure already names this destination editor. */
+.wideDestinationEditor [data-morrovia-field-label] { display: none; }

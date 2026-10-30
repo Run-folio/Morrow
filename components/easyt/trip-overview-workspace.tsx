@@ -455,7 +455,7 @@ export default function TripOverviewWorkspace({
 
         <section ref={progressOrientationTarget} className={styles.arrangeCard} aria-labelledby="overview-progress-title">
           <div className={styles.sectionHeading}>
-            <div><p>{language === "es" ? "Lo próximo por organizar" : "Next to arrange"}</p><h2 id="overview-progress-title">{language === "es" ? "Sigue preparando tu viaje" : "Keep building your trip"}</h2><span className={styles.sectionDetail}>{language === "es" ? "Organiza lo esencial para disfrutar de lo que viene." : "Get the essentials in place so you can look forward to your trip."}</span></div>
+            <div><h2 id="overview-progress-title">{language === "es" ? "Próximos pasos" : "Next steps"}</h2></div>
           </div>
           <div className={styles.arrangeGrid}>
             {planningCategories.map((category) => {
@@ -504,11 +504,10 @@ function ArrangeItem({ icon: Icon, label, detail, status, percent, language, act
   const content = <>
     <div className={styles.arrangeIcon}><Icon aria-hidden="true" /></div>
     <div className={styles.arrangeCopy}>
-      <div className={styles.arrangeTitle}><h3>{label}</h3><small className={`${styles.progressStatus} ${styles[`progressStatus-${status}`]}`}>{progressStatusLabel[status]}</small></div>
+      <div className={styles.arrangeTitle}><h3>{label}</h3>{status === "needs-review" ? <small className={`${styles.progressStatus} ${styles[`progressStatus-${status}`]}`}>{progressStatusLabel[status]}</small> : null}</div>
       <span>{detail}</span>
       {percent !== null ? <div className={styles.progressTrackRow}>
         <div className={styles.progressTrack} role="progressbar" aria-label={label} aria-valuenow={percent} aria-valuemin={0} aria-valuemax={100}><span style={{ width: `${percent}%` }} /></div>
-        <span>{percent}%</span>
       </div> : <span className={styles.progressUnknown}>{language === "es" ? "Progreso por confirmar" : "Progress to confirm"}</span>}
     </div>
     {action ? <strong className={styles.arrangeAction}>{action.label}<ArrowRight aria-hidden="true" /></strong> : null}

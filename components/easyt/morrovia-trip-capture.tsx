@@ -41,7 +41,7 @@ const copy = {
     planWithStops: "Plan with stops",
     describeTrip: "Describe my trip",
     destinationLabel: "Where do you want to go?",
-    editPlaces: "Edit places",
+    destinations: "Destinations",
     addStop: "Add another stop",
     travelDates: "Travel dates",
     clearDates: "Clear dates",
@@ -79,7 +79,7 @@ const copy = {
     planWithStops: "Planificar con paradas",
     describeTrip: "Describir mi viaje",
     destinationLabel: "¿Adónde quieres ir?",
-    editPlaces: "Editar lugares",
+    destinations: "Destinos",
     addStop: "Añadir otra parada",
     travelDates: "Fechas del viaje",
     clearDates: "Borrar fechas",
@@ -308,8 +308,7 @@ export function MorroviaTripCapture({
               <div className={styles.destinationHeader}>
                 <EasyTButton className={styles.destinationToggle} variant="quiet" type="button" aria-expanded={destinationEditorOpen} aria-controls={`${stopsPanelId}-editor`} disabled={disabled || loading} onClick={() => setDestinationEditorOpen((current) => !current)}>
                   <MapPin aria-hidden="true" />
-                  <span className={styles.destinationLabel}><small>{text.destinationLabel}</small><strong>{homepageEntry.destinationEntry}</strong></span>
-                  <small>{text.editPlaces}</small>
+                  <span className={styles.destinationLabel}><small className="sr-only">{text.destinationLabel}</small><strong>{destinationEditorOpen ? text.destinations : homepageEntry.destinationEntry}</strong></span>
                   <ChevronDown aria-hidden="true" />
                 </EasyTButton>
                 {destinationEditorOpen && homepageEntry.onAddStop ? <EasyTButton className={styles.destinationAdd} icon={Plus} size="small" variant="secondary" disabled={disabled || loading} onClick={homepageEntry.onAddStop}>{text.addStop}</EasyTButton> : null}

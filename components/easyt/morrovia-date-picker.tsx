@@ -381,10 +381,10 @@ export function MorroviaDatePicker(props: MorroviaDatePickerProps) {
     ? [minimumDate(), currentStart].filter(Boolean).sort().at(-1)
     : minimumDate();
   const panelLabel = isRange && combinedRange
-    ? `${props.combinedLabel}: ${copy[locale].chooseDate}`
+    ? props.combinedLabel
     : isRange
-    ? `${activeBoundary === "start" ? props.startLabel : props.endLabel}: ${copy[locale].chooseDate}`
-    : `${props.label}: ${copy[locale].chooseDate}`;
+    ? activeBoundary === "start" ? props.startLabel : props.endLabel
+    : props.label;
   const placeholder = props.placeholder ?? copy[locale].chooseDate;
   const rootClass = [styles.root, props.size === "compact" ? styles.compact : "", props.className ?? ""].filter(Boolean).join(" ");
 

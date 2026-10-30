@@ -6496,7 +6496,6 @@ function TripBuilderDocument() {
                 />}
 
                 {contextualResolvedPlaceMentions.length > 0 && <section className={styles.resolvedPlaces} aria-label={language === "es" ? "Bases de estancia confirmadas" : "Confirmed stay bases"}>
-                  <header><CheckCircle2 aria-hidden="true" /><span><strong>{language === "es" ? "BASES CONFIRMADAS" : "STAY BASES CONFIRMED"}</strong><small>{language === "es" ? "Tus destinos y visitas permanecen vinculados a sus bases nocturnas." : "Your requested destinations and visits remain linked to their overnight bases."}</small></span></header>
                   <div>{contextualResolvedPlaceMentions.map((mention) => {
                     const selections = effectiveStructuredBrief.placeSelections?.filter((item) => item.mentionId === mention.mentionId) ?? [];
                     const selection = selections[0];

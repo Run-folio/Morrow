@@ -34,8 +34,8 @@ test("Overview prioritises the route, one planning action and three next-to-arra
   assert.match(shellClientSource, />Explore map<\/EasyTLinkButton>[\s\S]*>Edit<\/EasyTLinkButton>/);
   assert.doesNotMatch(source, /Review route|Explore on map|View journey|Adjust route/);
   assert.doesNotMatch(source, /className=\{styles\.routeActions\}/);
-  assert.match(source, /Next to arrange/);
-  assert.match(source, /Keep building your trip/);
+  assert.doesNotMatch(source, /Next to arrange/);
+  assert.match(source, /Next steps/);
   assert.doesNotMatch(source, /Your next step|Trip health|Readiness at a glance|Planning progress/);
   assert.match(styles, /grid-template-areas:\s*"route"\s*"arrange"\s*"plans"\s*"before"/);
   assert.match(shellClientSource, /overnightAccommodationStops\(trip\)\.length/);
