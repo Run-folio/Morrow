@@ -859,8 +859,8 @@
 }
 
 .rowMain {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 12px;
   min-height: 72px;
@@ -875,8 +875,10 @@
 
 .rowCountry {
   display: flex;
+  flex: 1 1 min-content;
   align-items: flex-start;
-  min-width: 0;
+  min-width: min-content;
+  max-width: 100%;
   min-height: 44px;
   gap: 8px;
   border: 0;
@@ -900,7 +902,7 @@
   font-weight: 700;
   line-height: 1.35;
   white-space: normal;
-  overflow-wrap: anywhere;
+  overflow-wrap: break-word;
 }
 
 .rowIdentity { display: grid; min-width: 0; gap: 4px; }
@@ -923,6 +925,8 @@
 
 .rowActions {
   display: flex;
+  flex: 0 0 auto;
+  margin-left: auto;
   justify-content: flex-end;
   gap: 6px;
 }
