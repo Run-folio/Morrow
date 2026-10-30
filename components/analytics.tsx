@@ -3,8 +3,8 @@
 import Script from "next/script";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import { analyticsEnvironment, initializeAnalytics, pageView, trackEvent } from "@/lib/analytics";
-import { hasAnalyticsConsent, PRIVACY_CONSENT_CHANGE_EVENT } from "@/lib/privacy-consent";
+import { analyticsEnvironment, initializeAnalytics, pageView, trackEvent, updateAnalyticsConsent } from "@/lib/analytics";
+import { hasAnalyticsConsent, PRIVACY_CONSENT_CHANGE_EVENT, PRIVACY_CONSENT_STORAGE_KEY } from "@/lib/privacy-consent";
 
 // Keep analytics opt-in per deployment. This prevents local/staging traffic from
 // polluting production reporting and makes the launch configuration explicit.
@@ -18,9 +18,18 @@ export function Analytics() {
 
   useEffect(() => {
     const updateConsent = () => setHasConsent(hasAnalyticsConsent());
+    const updateStoredConsent = (event: StorageEvent) => {
+      if (event.key !== null && event.key !== PRIVACY_CONSENT_STORAGE_KEY) return;
+      updateAnalyticsConsent(hasAnalyticsConsent() ? "granted" : "declined");
+      updateConsent();
+    };
     updateConsent();
     window.addEventListener(PRIVACY_CONSENT_CHANGE_EVENT, updateConsent);
-    return () => window.removeEventListener(PRIVACY_CONSENT_CHANGE_EVENT, updateConsent);
+    window.addEventListener("storage", updateStoredConsent);
+    return () => {
+      window.removeEventListener(PRIVACY_CONSENT_CHANGE_EVENT, updateConsent);
+      window.removeEventListener("storage", updateStoredConsent);
+    };
   }, []);
 
   const configuredForThisEnvironment = IS_PRODUCTION && analyticsEnvironment() === "production" && (POSTHOG_CONFIGURED || Boolean(GA_MEASUREMENT_ID));

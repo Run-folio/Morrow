@@ -1,5 +1,6 @@
 import posthog, { type CaptureResult, type Properties } from "posthog-js";
 import { clearOptionalAnalyticsStorage, hasAnalyticsConsent } from "./privacy-consent.ts";
+import { privateReplaySnapshots, privateSessionRecording, sessionReplayAllowed } from "./analytics-replay.ts";
 
 export type AnalyticsPrimitive = string | number | boolean | null | undefined;
 export type AnalyticsEventProperties = Record<string, AnalyticsPrimitive>;
@@ -156,6 +157,7 @@ const STATIC_JOURNEY_ROUTES = new Set([
 
 let postHogInitialized = false;
 let pendingAnalyticsUserId: string | null = null;
+let sessionReplayRequested = false;
 
 export { hasAnalyticsConsent };
 
@@ -277,14 +279,33 @@ export function getPagePath() {
 
 function sanitizePostHogEvent(event: CaptureResult | null): CaptureResult | null {
   if (!event || !isBrowser()) return event;
+  if (!hasAnalyticsConsent()) return null;
   const properties: Properties = { ...event.properties };
   const pagePath = getPagePath();
   properties.page_path = pagePath;
   properties.$pathname = pagePath;
   properties.$current_url = `${window.location.origin}${pagePath}`;
+  if (event.event === "$snapshot") {
+    if (!sessionReplayAllowed()) return null;
+    const snapshots = privateReplaySnapshots(properties.$snapshot_data, `${window.location.origin}${pagePath}`);
+    if (!snapshots) return null;
+    properties.$snapshot_data = snapshots;
+  }
   delete properties.$referrer;
   delete properties.$initial_referrer;
   delete properties.$initial_current_url;
+  delete properties.$title;
+  delete properties.$page_title;
+  if (event.event === "$pageview") delete properties.title;
+  delete properties.$session_entry_referrer;
+  delete properties.$session_referrer;
+  if (typeof properties.$session_entry_url === "string") {
+    const destination = sanitizeAnalyticsDestination(properties.$session_entry_url);
+    properties.$session_entry_url = destination.startsWith("/") ? `${window.location.origin}${destination}` : destination;
+  }
+  if (typeof properties.$session_entry_pathname === "string") {
+    properties.$session_entry_pathname = normalizeAnalyticsPath(properties.$session_entry_pathname);
+  }
   for (const [key, value] of Object.entries(properties)) {
     if (typeof value === "string" && /(destination_url|source_url|href)$/i.test(key)) {
       properties[key] = sanitizeAnalyticsDestination(value);
@@ -305,9 +326,11 @@ function ensurePostHogInitialized() {
       capture_performance: false,
       capture_pageview: false,
       capture_pageleave: false,
-      advanced_disable_flags: true,
+      advanced_disable_flags: !sessionReplayAllowed(),
       advanced_disable_feature_flags: true,
       disable_session_recording: true,
+      session_recording: privateSessionRecording,
+      enable_recording_console_log: false,
       disable_surveys: true,
       person_profiles: "identified_only",
       opt_out_capturing_by_default: true,
@@ -317,11 +340,21 @@ function ensurePostHogInitialized() {
     posthog.opt_in_capturing({ captureEventName: false });
     postHogInitialized = true;
     if (pendingAnalyticsUserId) posthog.identify(pendingAnalyticsUserId);
+    startConsentedSessionReplay();
     return true;
   } catch { return false; }
 }
 
 export function initializeAnalytics() { ensurePostHogInitialized(); }
+
+function startConsentedSessionReplay() {
+  if (!postHogInitialized || sessionReplayRequested || !hasAnalyticsConsent() || !sessionReplayAllowed()) return;
+  try {
+    // No override: project sampling, triggers and recording settings still apply.
+    posthog.startSessionRecording();
+    sessionReplayRequested = true;
+  } catch { /* Replay failure must not affect product analytics or trip work. */ }
+}
 
 function clearKnownOptionalAnalyticsCookies() {
   if (!isBrowser()) return;
@@ -344,18 +377,22 @@ export function updateAnalyticsConsent(value: "granted" | "declined") {
       window.gtag?.("consent", "update", { analytics_storage: "granted", ad_storage: "denied" });
       ensurePostHogInitialized();
       if (postHogInitialized) posthog.opt_in_capturing({ captureEventName: false });
+      startConsentedSessionReplay();
     } else {
+      // Replay shutdown must not depend on GA/Clarity or identity reset succeeding.
+      if (postHogInitialized) {
+        try { posthog.stopSessionRecording(); } catch { /* Still opt out below. */ }
+        sessionReplayRequested = false;
+        try { posthog.reset(true); } catch { /* Still opt out below. */ }
+        try { posthog.opt_out_capturing(); } catch { /* Still clear optional state. */ }
+      }
+      clearOptionalAnalyticsStorage();
+      clearKnownOptionalAnalyticsCookies();
       const measurementId = process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID;
       if (measurementId) (window as unknown as Record<string, unknown>)[`ga-disable-${measurementId}`] = true;
       window.gtag?.("consent", "update", { analytics_storage: "denied", ad_storage: "denied" });
       window.clarity?.("consentv2", { ad_Storage: "denied", analytics_Storage: "denied" });
       window.clarity?.("consent", false);
-      if (postHogInitialized) {
-        posthog.reset(true);
-        posthog.opt_out_capturing();
-      }
-      clearOptionalAnalyticsStorage();
-      clearKnownOptionalAnalyticsCookies();
     }
   } catch { /* Consent controls must remain usable if a vendor fails. */ }
 }

@@ -93,7 +93,7 @@ test("optional SDK loaders are absent before consent and Omio is owned by the ga
   assert.match(analytics, /!hasConsent/);
   assert.doesNotMatch(analytics, /clarity\.ms|microsoft-clarity/);
   const analyticsOwner = readFileSync("lib/analytics.ts", "utf8");
-  for (const disabled of ["capture_dead_clicks: false", "capture_exceptions: false", "capture_heatmaps: false", "capture_performance: false", "advanced_disable_flags: true"]) {
+  for (const disabled of ["capture_dead_clicks: false", "capture_exceptions: false", "capture_heatmaps: false", "capture_performance: false", "advanced_disable_flags: !sessionReplayAllowed()", "advanced_disable_feature_flags: true"]) {
     assert.match(analyticsOwner, new RegExp(disabled.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
   }
   assert.match(affiliate, /hasAffiliateTrackingConsent\(\)/);

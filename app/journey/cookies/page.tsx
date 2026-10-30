@@ -1,5 +1,6 @@
 import Link from "next/link";
 import CookiePreferences from "@/components/cookie-preferences";
+import SessionReplayNotice from "@/components/session-replay-notice";
 import EasyTNavigation from "../easyt-navigation";
 import { morroviaLegalIdentity } from "@/lib/morrovia-legal-identity";
 import readingStyles from "../privacy/privacy-current.module.css";
@@ -37,7 +38,7 @@ const technologies = [
   },
   {
     name: "PostHog",
-    detail: "Optional product analytics. Loaded only after Product analytics is allowed and only when its key and host are configured. Morrovia disables autocapture, dead-click and exception capture, heatmaps, performance/web-vitals capture, automatic page views and page leaves, session recording, surveys and remote feature configuration. PostHog may create its own first-party browser identifier after consent; its exact lifetime is vendor-controlled rather than set by Morrovia.",
+    detail: "Optional product analytics. Loaded only after Product analytics is allowed and only when its key and host are configured. Autocapture, dead-click and exception capture, heatmaps, performance/web-vitals capture, automatic page views and page leaves, surveys and feature-flag evaluation remain disabled. Remote replay configuration is requested only inside the separately enabled replay rollout. PostHog may create its own first-party browser identifier after consent; its exact lifetime is vendor-controlled rather than set by Morrovia.",
   },
   {
     name: "Google Analytics 4",
@@ -73,7 +74,7 @@ export default function CookieNoticePage() {
           <section className={readingStyles.section} aria-labelledby="inventory-title">
             <h2 id="inventory-title">Current technology inventory</h2>
             <div className={styles.inventory}>
-              {technologies.map((technology) => <article key={technology.name}><h3>{technology.name}</h3><p>{technology.detail}</p></article>)}
+              {technologies.map((technology) => <article key={technology.name}><h3>{technology.name}</h3><p>{technology.detail}</p>{technology.name === "PostHog" ? <p><SessionReplayNotice /></p> : null}</article>)}
             </div>
           </section>
 

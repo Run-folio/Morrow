@@ -1,0 +1,5 @@
+/** Proposed wording travels with the default-off replay implementation. */
+export const sessionReplayPrivacyCopy = {
+  en: "Session replay is off by default. If enabled for Morrovia, it also requires your Product analytics permission. It records masked page structure and interactions to help us understand usability problems. Inputs, page text and element attributes are masked; images, maps and embedded content are blocked. Console logs and network payloads are excluded. Withdrawing permission stops further recording; it does not delete recordings already held by PostHog.",
+  es: "La grabación de sesión está desactivada por defecto. Si se activa para Morrovia, también requiere tu permiso de Analítica de producto. Registra la estructura enmascarada de la página y las interacciones para ayudarnos a entender problemas de uso. Se enmascaran los campos, el texto y los atributos de los elementos; se bloquean imágenes, mapas y contenido incrustado. Se excluyen los registros de consola y el contenido de las solicitudes de red. Retirar el permiso detiene nuevas grabaciones; no elimina las que PostHog ya conserve.",
+} as const;
