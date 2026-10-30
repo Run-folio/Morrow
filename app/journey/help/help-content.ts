@@ -1,3 +1,4 @@
+import { releaseAvailability } from "@/lib/easyt/release-availability";
 export type HelpTopicIcon =
   | "getting-started"
   | "building"
@@ -27,7 +28,7 @@ export type HelpTopic = {
   links?: Array<{ href: string; label: string }>;
 };
 
-export const helpTopics: HelpTopic[] = [
+const allHelpTopics: HelpTopic[] = [
   {
     id: "getting-started",
     icon: "getting-started",
@@ -291,6 +292,8 @@ export const helpTopics: HelpTopic[] = [
     links: [{ href: "/journey/privacy#analytics-settings", label: "Open Privacy & cookies settings" }],
   },
 ];
+
+export const helpTopics = allHelpTopics.filter(topic => releaseAvailability.passportInfo || topic.id !== "passport-and-travel-info");
 
 export const popularQuestionIds = [
   "different-route-order",

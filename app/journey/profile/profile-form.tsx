@@ -1,5 +1,6 @@
 "use client";
 
+import { releaseAvailability } from "@/lib/easyt/release-availability";
 import { useEffect, useRef, useState, type CSSProperties, type FormEvent } from "react";
 import { BedDouble, Building2, Coffee, Footprints, Gem, Landmark, Luggage, Mountain, Sparkles, Sun, Trees, Wallet, Waves, Zap, type LucideIcon } from "lucide-react";
 import { authClient } from "@/lib/auth-client";
@@ -206,7 +207,7 @@ export default function ProfileForm({
         <h2>{copy.account.personal}</h2>
         <EasyTField label={copy.account.name} value={name} onChange={(event) => setName(event.target.value)} />
         <EasyTField label={copy.account.email} value={email} disabled readOnly />
-        <EasyTButton className={styles.accountSave} type="submit" loading={accountSaving}>{copy.account.saveProfile}</EasyTButton>
+        <EasyTButton className={styles.accountSave} type="submit" loading={accountSaving}>{releaseAvailability.travelPreferences ? copy.account.saveProfile : language === "es" ? "Guardar datos de cuenta" : "Save account details"}</EasyTButton>
         {accountMessage ? (
           <p
             className={`${styles.profileMessage} ${accountMessage.tone === "success" ? styles.profileMessageSuccess : styles.profileMessageError} ${styles.accountMessage}`}
@@ -216,7 +217,7 @@ export default function ProfileForm({
           </p>
         ) : null}
       </form>
-      <section className={`${styles.profileCard} ${styles.travelProfileCard}`}>
+      {releaseAvailability.travelPreferences ? <section className={`${styles.profileCard} ${styles.travelProfileCard}`}>
         <header className={styles.travelProfileHeader}>
           <div className={styles.travelProfileIntro}>
             <p className={styles.eyebrow}>{profileCopy.travelEyebrow}</p>
@@ -273,7 +274,7 @@ export default function ProfileForm({
           ) : null}
           <EasyTButton className={styles.travelSave} type="button" loading={travelSaving} onClick={saveTravelProfile}>{profileCopy.saveTravel}</EasyTButton>
         </footer>
-      </section>
+      </section> : null}
     </div>
   );
 }

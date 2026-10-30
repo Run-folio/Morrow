@@ -1,5 +1,6 @@
 "use client";
 
+import { releaseAvailability } from "@/lib/easyt/release-availability";
 import { useLayoutEffect, useState } from "react";
 
 import ImportedBookings from "@/components/easyt/imported-bookings";
@@ -43,7 +44,7 @@ export default function ProfileLocaleContent({
   return (
     <section className={styles.profileWrap}>
       <p className={styles.eyebrow}>{copy.settings}</p>
-      <h1>{copy.profileTitle}</h1>
+      <h1>{releaseAvailability.travelPreferences ? copy.profileTitle : language === "es" ? "Ajustes de cuenta." : "Account settings."}</h1>
       <ProfileForm
         key={ownerId}
         ownerId={ownerId}

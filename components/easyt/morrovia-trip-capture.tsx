@@ -1,5 +1,6 @@
 "use client";
 
+import { releaseAvailability } from "@/lib/easyt/release-availability";
 import { ArrowRight, CalendarDays, ChevronDown, MapPin, Plus, Search, SlidersHorizontal, Sparkles, UsersRound } from "lucide-react";
 import { useEffect, useId, useRef, useState, type FormEvent, type KeyboardEvent, type ReactNode } from "react";
 import type { EasyTLanguage } from "@/lib/easyt/i18n";
@@ -386,13 +387,13 @@ export function MorroviaTripCapture({
           onChange={onTravellersChange}
         /> : null}
         </div>
-        {progressiveDetails && travelProfile ? <section className={styles.travelStyle} aria-label={text.travelStyle}>
+        {releaseAvailability.travelPreferences && progressiveDetails && travelProfile ? <section className={styles.travelStyle} aria-label={text.travelStyle}>
           <div className={styles.travelStyleHead}><span>{text.travelStyle}</span><a href="/journey/profile">{text.edit}</a></div>
           <div className={styles.travelStyleChips}>{travelStyleLabels(travelProfile, language).map((label) => <span key={label}>{label}</span>)}</div>
         </section> : null}
       </div> : null}
       <div className={styles.footer}>
-        {!progressiveDetails && travelProfile ? <section className={styles.travelStyle} aria-label={text.travelStyle}>
+        {releaseAvailability.travelPreferences && !progressiveDetails && travelProfile ? <section className={styles.travelStyle} aria-label={text.travelStyle}>
           <div className={styles.travelStyleHead}><span>{text.travelStyle}</span><a href="/journey/profile">{text.edit}</a></div>
           <div className={styles.travelStyleChips}>{travelStyleLabels(travelProfile, language).map((label) => <span key={label}>{label}</span>)}</div>
         </section> : null}

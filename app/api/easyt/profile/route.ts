@@ -1,3 +1,4 @@
+import { releaseAvailability } from "@/lib/easyt/release-availability";
 import { NextResponse } from "next/server";
 
 import { requireEasyTOwner } from "@/lib/easyt/owner";
@@ -11,6 +12,9 @@ export async function PATCH(request: Request) {
   try {
     const owner = await requireEasyTOwner();
     const body = (await request.json()) as { language?: string; travelProfile?: unknown; travelReadinessProfile?: unknown; workspaceGuideVersionSeen?: unknown };
+    if (!releaseAvailability.travelPreferences && body.travelProfile !== undefined) {
+      return NextResponse.json({ error: "Travel preference editing is unavailable." }, { status: 404 });
+    }
     if (body.language !== undefined && body.language !== "en" && body.language !== "es") {
       return NextResponse.json(
         { error: "Unsupported language." },

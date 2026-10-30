@@ -1,5 +1,6 @@
 "use client";
 
+import { releaseAvailability } from "@/lib/easyt/release-availability";
 import Image from "next/image";
 import Link from "next/link";
 import { useMemo, useState, type KeyboardEvent } from "react";
@@ -337,7 +338,7 @@ export default function HelpCenter({
               <p className={styles.supportEyebrow}>IMPORTANT INFORMATION</p>
               <h2>Travel info disclaimer</h2>
               <p>Entry requirements and travel information can change. Check important details with official sources before you travel.</p>
-              <Link href="/journey/passport">Open Passport information</Link>
+              {releaseAvailability.passportInfo ? <Link href="/journey/passport">Open Passport information</Link> : null}
             </div>
           </div>
         </section>

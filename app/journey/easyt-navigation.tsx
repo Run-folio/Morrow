@@ -1,5 +1,6 @@
 "use client";
 
+import { releaseAvailability } from "@/lib/easyt/release-availability";
 import Link from "next/link";
 import { useEffect, useLayoutEffect, useRef, useState, type MouseEvent as ReactMouseEvent } from "react";
 import {
@@ -152,6 +153,7 @@ export default function EasyTNavigation({
   const routesLabel = language === "es" ? "Rutas" : "Routes";
   const myTripsLabel = language === "es" ? "Mis viajes" : "My Trips";
   const aboutLabel = language === "es" ? "Acerca de" : "About";
+  const profileLabel = releaseAvailability.travelPreferences ? labels.profile : language === "es" ? "Ajustes de cuenta" : "Account settings";
   const passportLabel = language === "es" ? "Información de pasaporte" : "Passport info";
   const helpLabel = language === "es" ? "Ayuda" : "Help";
   const signInLabel = language === "es" ? "Iniciar sesión" : "Sign in";
@@ -198,9 +200,9 @@ export default function EasyTNavigation({
               <strong>{activeAccount.name || labels.account}</strong>
               <span>{activeAccount.email}</span>
             </div> : null}
-            {activeAccount ? <Link prefetch={deferPrefetch ? false : undefined} className={current === "profile" ? styles.submenuCurrent : undefined} href="/journey/profile" aria-current={current === "profile" ? "page" : undefined}><UserRound aria-hidden="true" /><span>{labels.profile}</span></Link> : null}
+            {activeAccount ? <Link prefetch={deferPrefetch ? false : undefined} className={current === "profile" ? styles.submenuCurrent : undefined} href="/journey/profile" aria-current={current === "profile" ? "page" : undefined}><UserRound aria-hidden="true" /><span>{profileLabel}</span></Link> : null}
             <Link prefetch={deferPrefetch ? false : undefined} className={current === "stamped" ? styles.submenuCurrent : undefined} href="/journey/stamped" aria-current={current === "stamped" ? "page" : undefined}><Stamp aria-hidden="true" /><span>{labels.stamped}</span></Link>
-            <Link prefetch={deferPrefetch ? false : undefined} className={current === "passport" ? styles.submenuCurrent : undefined} href="/journey/passport" aria-current={current === "passport" ? "page" : undefined}><ShieldCheck aria-hidden="true" /><span>{passportLabel}</span></Link>
+            {releaseAvailability.passportInfo ? <Link prefetch={deferPrefetch ? false : undefined} className={current === "passport" ? styles.submenuCurrent : undefined} href="/journey/passport" aria-current={current === "passport" ? "page" : undefined}><ShieldCheck aria-hidden="true" /><span>{passportLabel}</span></Link> : null}
             <Link prefetch={deferPrefetch ? false : undefined} className={current === "about" ? styles.submenuCurrent : undefined} href="/journey/about" aria-current={current === "about" ? "page" : undefined}><Info aria-hidden="true" /><span>{aboutLabel}</span></Link>
             <Link prefetch={deferPrefetch ? false : undefined} className={current === "help" ? styles.submenuCurrent : undefined} href="/journey/help" aria-current={current === "help" ? "page" : undefined}><CircleHelp aria-hidden="true" /><span>{helpLabel}</span></Link>
             {activeAccount ? <>
@@ -226,14 +228,14 @@ export default function EasyTNavigation({
             <span className={styles.compactDivider} aria-hidden="true" />
             <span className={styles.compactSectionLabel}>{moreLabel}</span>
             <Link prefetch={deferPrefetch ? false : undefined} href="/journey/stamped" aria-current={current === "stamped" ? "page" : undefined}><Stamp aria-hidden="true" /><span>{labels.stamped}</span></Link>
-            <Link prefetch={deferPrefetch ? false : undefined} href="/journey/passport" aria-current={current === "passport" ? "page" : undefined}><ShieldCheck aria-hidden="true" /><span>{passportLabel}</span></Link>
+            {releaseAvailability.passportInfo ? <Link prefetch={deferPrefetch ? false : undefined} href="/journey/passport" aria-current={current === "passport" ? "page" : undefined}><ShieldCheck aria-hidden="true" /><span>{passportLabel}</span></Link> : null}
             <Link prefetch={deferPrefetch ? false : undefined} href="/journey/about" aria-current={current === "about" ? "page" : undefined}><Info aria-hidden="true" /><span>{aboutLabel}</span></Link>
             <Link prefetch={deferPrefetch ? false : undefined} href="/journey/help" aria-current={current === "help" ? "page" : undefined}><CircleHelp aria-hidden="true" /><span>{helpLabel}</span></Link>
             <span className={styles.compactTour}><EasyTProductTour triggerLabel={howItWorksLabel} dispatchOpen /></span>
             <span className={styles.compactDivider} aria-hidden="true" />
             <span className={styles.compactSectionLabel}>{labels.account}</span>
             {activeAccount ? <>
-              <Link prefetch={deferPrefetch ? false : undefined} href="/journey/profile" aria-current={current === "profile" ? "page" : undefined}><UserRound aria-hidden="true" /><span>{labels.profile}</span></Link>
+              <Link prefetch={deferPrefetch ? false : undefined} href="/journey/profile" aria-current={current === "profile" ? "page" : undefined}><UserRound aria-hidden="true" /><span>{profileLabel}</span></Link>
               <Link prefetch={deferPrefetch ? false : undefined} href="/journey/privacy" aria-current={current === "privacy" ? "page" : undefined}><ShieldCheck aria-hidden="true" /><span>{labels.privacy}</span></Link>
               {isAdmin && <Link prefetch={deferPrefetch ? false : undefined} href="/journey/admin" aria-current={current === "admin" ? "page" : undefined}><ShieldCheck aria-hidden="true" /><span>Admin</span></Link>}
               <button type="button" onClick={signOut} disabled={signOutBusy}><LogOut aria-hidden="true" /><span>{labels.signOut}</span></button>

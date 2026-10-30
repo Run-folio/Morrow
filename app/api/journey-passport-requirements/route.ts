@@ -1,3 +1,4 @@
+import { releaseAvailability } from "@/lib/easyt/release-availability";
 import { NextResponse } from "next/server";
 
 import { countryFor } from "@/lib/easyt/country-registry";
@@ -7,6 +8,7 @@ import { touristEntryRequirementFor } from "@/lib/easyt/visa-requirements";
 export const dynamic = "force-dynamic";
 
 export async function POST(request: Request) {
+  if (!releaseAvailability.passportInfo) return NextResponse.json({ error: "Not found." }, { status: 404 });
   try {
     const body = await request.json() as { nationality?: unknown; destination?: unknown; language?: unknown };
     const nationality = countryFor(passportCountryCodeFor(body.nationality));

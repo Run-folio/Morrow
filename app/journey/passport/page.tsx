@@ -1,3 +1,5 @@
+import { notFound } from "next/navigation";
+import { releaseAvailability } from "@/lib/easyt/release-availability";
 import PassportDestinationClient from "./passport-destination-client";
 
 export const metadata = {
@@ -6,5 +8,6 @@ export const metadata = {
 };
 
 export default function PassportDestinationPage() {
+  if (!releaseAvailability.passportInfo) notFound();
   return <PassportDestinationClient />;
 }
