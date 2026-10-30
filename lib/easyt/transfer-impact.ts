@@ -57,11 +57,19 @@ export type TransferImpact = {
   };
 };
 
+/** Existing mixed-mode impact categorisation, shared by reviewed candidate production/readback. */
+export function reviewedJourneyImpactMode(mode: string, modes: readonly string[]): DestinationTransferMode {
+  if (mode === 'mixed') return modes.includes('flight') ? 'flight' : modes.includes('train') ? 'train' : 'road';
+  return mode === 'flight' || mode === 'train' || mode === 'ferry' ? mode : 'road';
+}
+
 export type EstimateTransferImpactInput = {
   mode: DestinationTransferMode;
   headlineMinutes?: KnowledgeFact<number>;
   knownDoorToDoorMinutes?: KnowledgeFact<number>;
   knownDoorToDoorRange?: KnowledgeFact<TransferMinuteRange>;
+  /** Opt-in only for already summed reviewed components; does not upgrade confidence. */
+  knownTotalIsComponentSum?: true;
   borderFriction?: KnowledgeFact<DestinationBorderFriction>;
   international?: boolean | null;
   connectionCount?: number | null;
@@ -80,7 +88,7 @@ const roundTo15 = (minutes: number) => Math.max(0, Math.round(minutes / 15) * 15
 const floorTo15 = (minutes: number) => Math.max(0, Math.floor(minutes / 15) * 15);
 const ceilTo15 = (minutes: number) => Math.max(0, Math.ceil(minutes / 15) * 15);
 
-function timingFromMinutes(fact: KnowledgeFact<number>, range?: KnowledgeFact<TransferMinuteRange>): KnowledgeFact<TransferTimeEstimate> {
+function timingFromMinutes(fact: KnowledgeFact<number>, range?: KnowledgeFact<TransferMinuteRange>, preserveMinutes = false): KnowledgeFact<TransferTimeEstimate> {
   if (fact.status === "unknown") return unknownKnowledgeFact(fact.reason);
   const knownRange = range?.status === "known" ? range.value : null;
   // An explicitly unknown range is evidence of a limitation, not permission
@@ -89,7 +97,7 @@ function timingFromMinutes(fact: KnowledgeFact<number>, range?: KnowledgeFact<Tr
     ? { minimum: floorTo15(fact.value - 15), maximum: ceilTo15(fact.value + 15) }
     : knownRange;
   return knownKnowledgeFact({
-    planningMinutes: fact.confidence === "verified" ? fact.value : roundTo15(fact.value),
+    planningMinutes: fact.confidence === "verified" || preserveMinutes ? fact.value : roundTo15(fact.value),
     rangeMinutes: estimatedRange,
     precision: fact.confidence === "verified"
       ? "verified-point"
@@ -183,7 +191,7 @@ function claimConfidence(
 
 function knownTotalImpact(input: EstimateTransferImpactInput): TransferImpact | null {
   if (input.knownDoorToDoorMinutes?.status !== "known") return null;
-  const doorToDoor = timingFromMinutes(input.knownDoorToDoorMinutes, input.knownDoorToDoorRange);
+  const doorToDoor = timingFromMinutes(input.knownDoorToDoorMinutes, input.knownDoorToDoorRange, input.knownTotalIsComponentSum === true);
   const unsupported = "The curated source supports the total allowance but not this individual component.";
   const components = [
     unknownComponent("origin-local", "Local journey to departure point", unsupported),

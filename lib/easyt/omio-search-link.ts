@@ -8,6 +8,7 @@ export type OmioRouteSearchInput = {
   destinationName: string;
   destinationCountry: string;
   departureDate: string | null | undefined;
+  returnDate?: string;
   currency?: string;
   now?: Date;
 };
@@ -23,6 +24,7 @@ export function validOmioDepartureDate(value: string | null | undefined, now: Da
 /** Builds only train and flight search forms verified in Omio using the existing Impact tracking contract. */
 export function buildOmioRouteSearchLink(input: OmioRouteSearchInput): string | null {
   if ((input.mode !== "flight" && input.mode !== "train") || !validOmioDepartureDate(input.departureDate, input.now ?? new Date())) return null;
+  if (input.returnDate !== undefined && (input.mode !== "flight" || !validOmioDepartureDate(input.returnDate, input.now ?? new Date()) || input.returnDate <= input.departureDate!)) return null;
   const originName = input.originName.trim();
   const originCountry = input.originCountry.trim();
   const destinationName = input.destinationName.trim();
@@ -34,6 +36,7 @@ export function buildOmioRouteSearchLink(input: OmioRouteSearchInput): string | 
   search.searchParams.set("departurePosTerm", `${originName}, ${originCountry}`);
   search.searchParams.set("arrivalPosTerm", `${destinationName}, ${destinationCountry}`);
   search.searchParams.set("departureDate", input.departureDate!);
+  if (input.returnDate !== undefined) search.searchParams.set("returnDate", input.returnDate);
   search.searchParams.set("travelMode", input.mode === "train" ? "TRAIN" : "FLIGHT");
   search.searchParams.set("locale", "en");
   const currency = input.currency?.toUpperCase();

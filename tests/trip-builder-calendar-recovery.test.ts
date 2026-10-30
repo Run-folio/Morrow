@@ -77,20 +77,20 @@ test('recovery equivalence protects every complete retained source field and gen
  }
 });
 
-test('equal retained metadata tolerates generated guidance and current-cloud redundancy',()=>{
+test('equal retained metadata permits generated cache refresh without granting ACK authority',()=>{
  const local=richRetiredTrip(),cloud=structuredClone(local);
  cloud.updatedAt=nextTripUpdatedAt(local.updatedAt);cloud.legs=cloud.legs.map(leg=>({...leg,durationMinutes:(leg.durationMinutes??0)+1}));cloud.recommendations=[];
  cloud.planItems[0].notes=cloud.planItems[0].notes.map((_,index)=>`Refreshed generated guidance ${index}`);
  assert.equal(tripDocumentsCanonicalEquivalent(local,cloud),true);
  const storage=memory();assert.equal(saveTripRecoveryToStorage(storage,local,{writeId:'equal-metadata'}).stored,true);
- assert.deepEqual(cacheCanonicalTripWithRecoveryToStorage(storage,cloud),{stored:true,recoveryResolved:true});
- assert.equal(loadTripRecoveryFromStorage(storage,local.id,'owner-a'),null);
+ assert.deepEqual(cacheCanonicalTripWithRecoveryToStorage(storage,cloud),{stored:true,recoveryResolved:false});
+ assert.deepEqual(loadTripRecoveryFromStorage(storage,local.id,'owner-a')!.trip.brief.retainedAuthoredContent,local.brief.retainedAuthoredContent);
  const reload=loadLocalTripFromStorage(storage,local.id,'owner-a')!;
  assert.deepEqual(reload.brief.retainedAuthoredContent,local.brief.retainedAuthoredContent);
  assert.equal(reload.brief.builderCalendarGeneration,local.brief.builderCalendarGeneration);
 });
 
-test('prior-cloud redundancy requires complete retained metadata equality',()=>{
+test('prior-cloud retained metadata equality never acknowledges an unsubmitted write',()=>{
  const local=richRetiredTrip(),next=apply(local,{kind:'budget',budget:'high'});
  for(const sameMetadata of [false,true]) {
   const storage=memory(),prior=structuredClone(local);
@@ -100,12 +100,30 @@ test('prior-cloud redundancy requires complete retained metadata equality',()=>{
   const cloud=structuredClone(next);
   if(!sameMetadata) cloud.brief.retainedAuthoredContent=structuredClone(prior.brief.retainedAuthoredContent);
   const cached=cacheCanonicalTripWithRecoveryToStorage(storage,cloud);
-  assert.equal(cached.recoveryResolved,sameMetadata);
-  assert.equal(Boolean(loadTripRecoveryFromStorage(storage,local.id,'owner-a')),!sameMetadata);
+  assert.equal(cached.recoveryResolved,false);
+  assert.ok(loadTripRecoveryFromStorage(storage,local.id,'owner-a'));
   const reload=loadLocalTripFromStorage(storage,local.id,'owner-a')!;
   assert.deepEqual(reload.brief.retainedAuthoredContent,local.brief.retainedAuthoredContent);
   assert.equal(reload.brief.builderCalendarGeneration,local.brief.builderCalendarGeneration);
  }
+});
+
+for(const variant of ['exact','no-handle','wrong-owner','wrong-trip','stale-handle','changed-content','changed-metadata'] as const) test(`rich retained recovery ACK contract: ${variant}`,()=>{
+ const local=richRetiredTrip(),cloud=structuredClone(local);cloud.updatedAt=nextTripUpdatedAt(local.updatedAt);
+ const storage=memory();cacheCanonicalTripToStorage(storage,local);
+ const saved=saveTripRecoveryToStorage(storage,local,{writeId:'exact-rich'});assert.equal(saved.stored,true);
+ let handle=variant==='no-handle'?undefined:{...saved.handle};
+ if(variant==='wrong-owner')handle!.ownerId='owner-b';
+ if(variant==='wrong-trip')handle!.tripId='other-trip';
+ if(variant==='stale-handle')handle!.writeId='older-write';
+ if(variant==='changed-content')cloud.title+=' changed';
+ if(variant==='changed-metadata')cloud.brief.retainedAuthoredContent!.entries[0].days[0].sourceDay.notes=['Different source'];
+ const before=loadTripRecoveryFromStorage(storage,local.id,'owner-a');
+ assert.deepEqual(cacheCanonicalTripWithRecoveryToStorage(storage,cloud,handle),{stored:true,recoveryResolved:variant==='exact'});
+ if(variant==='exact'){
+  assert.equal(loadTripRecoveryFromStorage(storage,local.id,'owner-a'),null);
+  assert.deepEqual(loadLocalTripFromStorage(storage,local.id,'owner-a')!.brief.retainedAuthoredContent,local.brief.retainedAuthoredContent);
+ }else assert.deepEqual(loadTripRecoveryFromStorage(storage,local.id,'owner-a'),before,'protected recovery bytes and metadata survive');
 });
 
 test('only the exact current write ACK clears newer retained metadata',()=>{

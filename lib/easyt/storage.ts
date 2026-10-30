@@ -968,6 +968,15 @@ export function cacheCanonicalTripWithRecoveryToStorage(
   return { stored, recoveryResolved };
 }
 
+/** Ephemeral authority returned only after an exact native account ACK and pointer readback.
+ * Not persisted as a new record and never inferred from a cache read on reopen. */
+export type AcknowledgedProjectionPredecessor = {
+  version: 1; backend: 'native-cache'; ownerId: string; tripId: string;
+  cacheRaw: string; nativePointerRaw: string; currentRaw: string;
+};
+export type BuilderProjectionWrite = { acceptedRevision: number; inputRevision: number;
+  acknowledged?: AcknowledgedProjectionPredecessor };
+
 export type TripBuildSaveAcknowledgement = {
   outcome: "acknowledged" | "device-newer" | "invalid-canonical" | "storage-failed";
   remainingRecovery: TripRecoveryRecord | null;
@@ -975,6 +984,7 @@ export type TripBuildSaveAcknowledgement = {
   accountAcknowledged?: boolean;
   cacheStored?: boolean;
   deviceOutcome?: PersistenceOutcome;
+  projectionPredecessor?: AcknowledgedProjectionPredecessor;
 };
 
 /**
@@ -1596,7 +1606,7 @@ export async function saveExplicitGuestTripForOwner(tripId:string,ownerId:string
 }
 
 export async function saveTripRecovery(trip:EasyTTrip,options:{ownerId?:string|null;state?:TripRecoveryState;replace?:TripRecoveryHandle;accountSavePending?:boolean;
-  isCurrent?:()=>boolean;newTripOrClone?:boolean;canonicalBase?:EasyTTrip;expectedRecoverySource?:EasyTTrip;draft?:BuilderInputDraft;intake?:RecoveryIntakeAcknowledgement;creation?:import('./trip-creation-provenance.ts').TripCreationToken;onCreationAttempted?:()=>void;projectionOnly?:{acceptedRevision:number;inputRevision:number};}={}):Promise<TripRecoveryWriteResult> {
+  isCurrent?:()=>boolean;newTripOrClone?:boolean;canonicalBase?:EasyTTrip;expectedRecoverySource?:EasyTTrip;draft?:BuilderInputDraft;intake?:RecoveryIntakeAcknowledgement;creation?:import('./trip-creation-provenance.ts').TripCreationToken;onCreationAttempted?:()=>void;projectionOnly?:BuilderProjectionWrite;}={}):Promise<TripRecoveryWriteResult> {
   const candidate=prepareTripDocumentForWrite(structuredClone(trip)),ownerId=options.ownerId===undefined?candidate.ownerId:options.ownerId;
   const guard=browserRecoveryGuard(options.isCurrent),writeId=options.creation?.initialWriteId??generatedWriteId();
   const fallback:TripRecoveryWriteResult={stored:false,handle:{ownerId,tripId:candidate.id,writeId},blockedByExistingRecovery:false,failureReason:'unknown',writeAttempted:false,outcome:'unknown'};

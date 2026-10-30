@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import {authoredContentKey} from '../lib/easyt/trip-retained-authored-content.ts';
 import test from 'node:test';
 import {buildCanonicalTripLegs} from '../lib/easyt/trip-legs.ts';
 import {resolveCanonicalTransferJourney} from '../lib/easyt/multimodal-transfer-resolution.ts';
@@ -73,21 +74,21 @@ test('opt-in unknown-leg allowance respects provider/imported facts, flight excl
  assert.equal(supportedTransportChoicesForLeg(booked,unknown).length,0);
 });
 
-test('actual Change transport dialog requires explicit flight selection and Use; cancel preserves unknown',async()=>{
+for(const afterRefresh of [false,true])test(`actual Change transport dialog requires explicit flight selection and Use; cancel preserves unknown (after refresh: ${afterRefresh})`,async()=>{
  const {readFileSync}=await import('node:fs'),ts=await import('typescript');
  const source=readFileSync('components/easyt/trip-transport-choice-control.tsx','utf8');
  const ast=ts.createSourceFile('choice.tsx',source,ts.ScriptTarget.Latest,true,ts.ScriptKind.TSX);
  const declaration=ast.statements.find(node=>ts.isFunctionDeclaration(node)&&node.name?.text==='TransportModeDialog');assert(declaration);
  const js=ts.transpileModule(`${declaration.getText(ast)};return TransportModeDialog;`,{compilerOptions:{target:ts.ScriptTarget.ES2022,jsx:ts.JsxEmit.React}}).outputText;
  const states:unknown[]=[];let cursor=0;
- const dependencies={React:{Fragment:'fragment',createElement:(type:unknown,props:any,...children:unknown[])=>({type,props:{...props,children:children.flat(Infinity)}})},
+ const dependencies={authoredContentKey,useTransportComparison:()=>({state:{status:afterRefresh?'ready':'idle',...(afterRefresh?{comparison:{candidates:[],assessment:{retrieval:'completed'}}}:{})},allowed:true,cancel:()=>{},refresh:async()=>{}}),React:{Fragment:'fragment',createElement:(type:unknown,props:any,...children:unknown[])=>({type,props:{...props,children:children.flat(Infinity)}})},
   useState:(initial:unknown)=>{const index=cursor++;if(!(index in states))states[index]=initial;return [states[index],(next:unknown)=>{states[index]=next;}];},useId:()=> 'unknown-choice',
   selectedTransportChoiceForLeg,supportedTransportChoicesForLeg,transferTimingLabel,routeEndpointForLeg,formatIsoDate:(date:string)=>date,
   modeLabels:{unknown:'Transport to confirm',flight:'Flight'},EasyTButton:'button',MorroviaContentDialog:'dialog',
   Plane:'plane',TrainFront:'train',CarFront:'car',Ship:'ship',Footprints:'walk',Route:'route',X:'close',ChevronDown:'chevron',styles:{}};
  const component=new Function(...Object.keys(dependencies),js)(...Object.values(dependencies));
  let trip=savedReturnTrip(),writes=0;const leg=trip.legs.at(-1)!,before=structuredClone(trip.legs);
- const render=()=>{cursor=0;return component({trip,leg,onChange:(identity:string)=>{writes++;trip=selectTripLegTransportChoice(trip,leg.id,identity);return true;},pending:false,language:'en'});};
+ const render=()=>{cursor=0;return component({trip,leg,onAdoptComparison:async()=>{assert.fail('an existing derived flight must use the existing choice path');},onChange:(identity:string)=>{writes++;trip=selectTripLegTransportChoice(trip,leg.id,identity);return true;},pending:false,language:'en'});};
  const nodes=(tree:any):any[]=>!tree||typeof tree!=='object'?[]:Array.isArray(tree)?tree.flatMap(nodes):[tree,...nodes(tree.props?.children)];
  const text=(tree:any):string=>typeof tree==='string'?tree:!tree||typeof tree!=='object'?'':Array.isArray(tree)?tree.map(text).join(''):text(tree.props?.children);
  const button=(tree:any,label:string)=>nodes(tree).find(node=>node.type==='button'&&text(node)===label);
@@ -223,4 +224,18 @@ test('actual Transport summary presents a known planning total as Estimated',asy
  const leg=(await resolveCanonicalTransferJourney(canonical())).leg;
  const output=render({createElement:(_type:unknown,_props:unknown,...children:unknown[])=>children.flat(Infinity).join('')},leg,leg.doorToDoorMinutes,transferJourneyModeLabel,transferTimingLabel,'en',{mode:'mode'});
  assert.match(output,/Estimated.*~4h.*total/);assert.doesNotMatch(output,/Timing to confirm/);
+});
+
+
+test('a malformed returned airport candidate cannot borrow validation from a synthesized option',async()=>{
+ const {validateTransportComparison,transportComparisonInput}=await import('../lib/easyt/transport-comparison.ts');
+ const {airportFlightPlanningCandidate}=await import('../lib/easyt/multimodal-transfer-resolution.ts');
+ const trip=savedReturnTrip(),leg=trip.legs.at(-1)!;
+ trip.brief.intent!.route!.origin=lhr;
+ trip.stops=trip.stops.map(stop=>({...stop,providerId:paris.providerId,canonicalPlaceId:paris.canonicalPlaceId,geographicBinding:paris.geographicBinding,longitude:paris.coordinates![0],latitude:paris.coordinates![1]}));
+ const input=transportComparisonInput(trip,leg.id)!;assert.ok(input);
+ const candidate=airportFlightPlanningCandidate({...input,mode:'flight'})!;assert.ok(candidate);
+ assert.ok(validateTransportComparison(trip,leg.id,{leg:input,diagnostic:{version:1,candidates:[candidate]},assessment:{retrieval:'completed',evidence:'conditional',retryable:false}}));
+ const malformed={...candidate,totalDurationMinutes:-1,provenance:'fiction'};
+ assert.equal(validateTransportComparison(trip,leg.id,{leg,diagnostic:{version:1,candidates:[malformed]},assessment:{retrieval:'completed',evidence:'conditional',retryable:false}}),null);
 });

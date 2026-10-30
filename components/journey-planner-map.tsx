@@ -1,5 +1,7 @@
 "use client";
 
+import { MapTransferPreview } from "./map-transfer-preview";
+
 import * as maplibregl from "maplibre-gl";
 import type { GeoJSONSource, LineLayerSpecification } from "maplibre-gl";
 import { BedDouble, Landmark, Utensils } from "lucide-react";
@@ -19,7 +21,7 @@ import { applyMapCameraRequest, focusMapCamera, fitMapCamera, interruptMapCamera
 import { resolveMapCameraRequest, resolveMapInsets, resolveMapSurfacePolicy, type MorroviaMapInsets, type MorroviaMapSurface } from "@/lib/easyt/map-surface-policy";
 import { createMorroviaBasemapLifecycle, hasMorroviaActiveStyle, type MorroviaBasemapLifecycle, type MorroviaBasemapMap, type MorroviaBasemapStatus } from "@/lib/easyt/map-basemap-lifecycle";
 import { createMorroviaMapDiagnostics } from "@/lib/easyt/map-runtime-diagnostics";
-import { bindMapMarkerActivation, canonicalMapTransportMode, formatMapDuration, mapRouteBearing, mapRouteFitCoordinates, mapRouteLegActivationEvent, mapRouteLegIdAtPoint, mapRouteMarkerCoordinates, mapStopIdAtPoint, mapTransportModeLabel, type MapRouteLeg } from "@/lib/easyt/map-spatial-context";
+import { bindMapMarkerActivation, canonicalMapTransportMode, mapRouteBearing, mapRouteFitCoordinates, mapRouteLegActivationEvent, mapRouteLegIdAtPoint, mapRouteMarkerCoordinates, mapStopIdAtPoint, mapTransportModeLabel, type MapRouteLeg } from "@/lib/easyt/map-spatial-context";
 
 export type JourneyMapDestinationCard = {
   stopId: string;
@@ -713,14 +715,7 @@ export function JourneyPlannerMap({
         const rotation = mapTransportIconRotation(leg.mode, mapRouteBearing(leg));
         element.innerHTML = renderToStaticMarkup(<>
           <span className="planner-map__leg-icon" aria-hidden="true" style={rotation === null ? undefined : { transform: `rotate(${rotation}deg)` }}><MarkerIcon /></span>
-          <span className="planner-map__leg-card" aria-hidden="true">
-            <span className="planner-map__leg-meta"><strong>{leg.modeLabel.toLocaleUpperCase()}</strong><em>{leg.headlineMinutes !== null ? `~${formatMapDuration(leg.headlineMinutes)}` : "Timing to confirm"}</em></span>
-            <b>{leg.fromName} → {leg.toName}</b>
-            <span>{leg.distanceKm !== null ? `${Math.round(leg.distanceKm).toLocaleString()} km` : "Distance not available"} · Door-to-door {leg.doorToDoorMinutes !== null ? `~${formatMapDuration(leg.doorToDoorMinutes)}` : "timing to confirm"}</span>
-            <small>{leg.roadEstimate
-              ? `Road estimate only · about ${formatMapDuration(leg.roadEstimate.durationMinutes)} driving`
-              : leg.mode === "unknown" || (leg.headlineMinutes === null && leg.doorToDoorMinutes === null) ? "Timing to confirm" : "Planning estimate"}</small>
-          </span>
+          <MapTransferPreview leg={leg} />
         </>);
         const activateLeg = (event: MouseEvent | PointerEvent) => {
           event.stopPropagation();

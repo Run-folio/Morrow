@@ -1,4 +1,5 @@
 import fs from 'node:fs';
+import {runTransportComparison} from '../../lib/easyt/transport-comparison-operation.ts';
 import ts from 'typescript';
 import assert from 'node:assert/strict';
 import {reconcileBuilderDependencies} from '../../lib/easyt/trip-builder-reconciliation.ts';
@@ -12,6 +13,7 @@ export function actualWorker(){
  const js=ts.transpileModule(builder.slice(start,end)+'\nreturn reconcileAcceptedBuilderRequest;', {compilerOptions:{target:ts.ScriptTarget.ES2022}}).outputText;
  const scope={reconcileBuilderDependencies,geographicallyReady,stopGeographicPlace,guardTripRoutingGeometry,transferAssessmentForLeg,
   requestCanonicalTransferResolution:client?.requestCanonicalTransferResolution,
+  completedTransferResolutionLeg:client?.completedTransferResolutionLeg,
   resolveBuilderRecommendation:()=>{throw Error('Unexpected recommendation request');},fetch:(...args)=>globalThis.fetch(...args)};
  return new Function(...Object.keys(scope),js)(...Object.values(scope));
 }
@@ -27,7 +29,7 @@ export function realApiGuard(){
  const mod={exports:{}};
  new Function('require','module','exports',js)(id=>{
   if(id==='next/server')return {NextResponse:{json:Response.json}};
-  if(id==='@/lib/easyt/multimodal-transfer-resolution.server')return {assessCanonicalTransferJourneys:legs=>assessCanonicalTransferJourneys(legs)};
+  if(id==='@/lib/easyt/multimodal-transfer-resolution.server')return {assessCanonicalTransferJourneys:legs=>assessCanonicalTransferJourneys(legs),compareTransferJourney:(leg,signal)=>runTransportComparison(leg,{signal})};
   throw Error('Unexpected import '+id);
  },mod,mod.exports);
  return mod.exports.POST;

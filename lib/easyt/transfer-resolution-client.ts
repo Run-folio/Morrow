@@ -1,6 +1,8 @@
 import type { TripLeg } from './trip.ts';
 import type { TransferAssessment } from './planning-evidence-state.ts';
 import { transferAssessmentForLeg } from './planning-evidence-presentation.ts';
+import { preservedTransferFacts } from './geographic-binding.ts';
+import { authoredContentKey } from './trip-retained-authored-content.ts';
 
 // Contract-tested against the API guard and its independent resolver limit.
 const MAX_LEGS = 8;
@@ -9,6 +11,26 @@ const MAX_BODY_BYTES = 100_000;
 export type TransferResolutionClientResult =
   | { ok: false; reason: 'invalid-input' }
   | { ok: true; legs: TripLeg[]; assessments: TransferAssessment[]; failedLegIds: string[] };
+
+/** A request may settle without a usable result. Never complete work for an
+ * uncompleted assessment or a result belonging to different endpoint inputs. */
+export function completedTransferResolutionLeg(expected: TripLeg, payload: TransferResolutionClientResult): TripLeg | undefined {
+  if (!payload.ok || payload.failedLegIds.includes(expected.id)) return undefined;
+  const assessment = transferAssessmentForLeg(payload.assessments, expected.id);
+  const matches = payload.legs.filter(leg => leg.id === expected.id);
+  const leg = matches[0];
+  if (matches.length !== 1 || leg.fromStopId !== expected.fromStopId || leg.toStopId !== expected.toStopId
+    || authoredContentKey(leg.fromEndpoint) !== authoredContentKey(expected.fromEndpoint)
+    || authoredContentKey(leg.toEndpoint) !== authoredContentKey(expected.toEndpoint)) return undefined;
+  // The resolver can preserve existing authored or already-resolved transport
+  // without a new lookup. Require the whole input back unchanged; unknown new
+  // planning work and an explicitly failed/unattempted request remain failures.
+  const retainedInput = preservedTransferFacts(expected) || expected.mode !== 'unknown'
+    || expected.routeMetadata.source === 'spreadsheet-import-unconfirmed' && expected.routeMetadata.roadFallbackEligible === false;
+  const preserved = assessment?.retrieval === 'not-attempted' && assessment.reason === undefined
+    && retainedInput && authoredContentKey(leg) === authoredContentKey(expected);
+  return assessment?.retrieval === 'completed' || preserved ? leg : undefined;
+}
 
 function exactIds(values: unknown, ids: readonly string[], field: string): values is Record<string, unknown>[] {
   if (!Array.isArray(values) || values.length !== ids.length) return false;

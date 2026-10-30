@@ -1,6 +1,7 @@
 import { preservedTransferFacts, transferEndpointGeographicallyReady } from './geographic-binding.ts';
-import { requestCanonicalTransferResolution } from './transfer-resolution-client.ts';
+import { requestCanonicalTransferResolution, completedTransferResolutionLeg } from './transfer-resolution-client.ts';
 import type { EasyTTrip } from './trip.ts';
+import { retainFailedImportTransferWork } from './trip-builder-reconciliation.ts';
 
 /** Assess only newly reviewed, unbooked legs before the existing import save. */
 export async function assessSpreadsheetImportTransfers(
@@ -13,15 +14,18 @@ export async function assessSpreadsheetImportTransfers(
     && !leg.routeMetadata.importedBookingId && !preservedTransferFacts(leg)
     && transferEndpointGeographicallyReady(leg.fromEndpoint) && transferEndpointGeographicallyReady(leg.toEndpoint));
   if (!eligible.length) return trip;
-  const payload = await assess(eligible, signal);
+  let payload: Awaited<ReturnType<typeof assess>>;
+  try { payload = await assess(eligible, signal); }
+  catch {
+    signal.throwIfAborted();
+    return retainFailedImportTransferWork(trip, eligible.map(leg => leg.id));
+  }
   signal.throwIfAborted();
-  if (!payload.ok) return trip;
-  const resolved = new Map(payload.legs.filter(leg => {
-    const expected = eligible.find(candidate => candidate.id === leg.id);
-    return expected && !payload.failedLegIds.includes(leg.id)
-      && leg.fromStopId === expected.fromStopId && leg.toStopId === expected.toStopId
-      && JSON.stringify(leg.fromEndpoint) === JSON.stringify(expected.fromEndpoint)
-      && JSON.stringify(leg.toEndpoint) === JSON.stringify(expected.toEndpoint);
-  }).map(leg => [leg.id, leg]));
-  return { ...trip, legs: trip.legs.map(leg => resolved.get(leg.id) ?? leg) };
+  if (!payload.ok) return retainFailedImportTransferWork(trip, eligible.map(leg => leg.id));
+  const resolved = new Map(eligible.flatMap(expected => {
+    const leg = completedTransferResolutionLeg(expected, payload);
+    return leg ? [[leg.id, leg] as const] : [];
+  }));
+  const assessed = { ...trip, legs: trip.legs.map(leg => resolved.get(leg.id) ?? leg) };
+  return retainFailedImportTransferWork(assessed, eligible.filter(leg => !resolved.has(leg.id)).map(leg => leg.id));
 }

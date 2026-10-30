@@ -20,7 +20,7 @@ import { builderNightsCommand } from '../lib/easyt/trip-builder-handler-contract
 import { reconcileBuilderDependencies } from '../lib/easyt/trip-builder-reconciliation.ts';
 import { geographicallyReady, guardTripRoutingGeometry } from '../lib/easyt/geographic-binding.ts';
 import { transferAssessmentForLeg } from '../lib/easyt/planning-evidence-presentation.ts';
-import { requestCanonicalTransferResolution } from '../lib/easyt/transfer-resolution-client.ts';
+import { requestCanonicalTransferResolution, completedTransferResolutionLeg } from '../lib/easyt/transfer-resolution-client.ts';
 import { qualifiedA17TripFixture } from './fixtures/batch14-a17-trip.ts';
 import { tripNightsBetween, allocateTripNights } from '../lib/easyt/night-allocation.ts';
 import { canBuildTrip } from '../lib/easyt/can-build-trip.ts';
@@ -770,7 +770,7 @@ function mountedReconciliationWorker(network: Record<string,unknown>) {
  assert.ok(start>=0&&end>start);
  const script=ts.transpileModule(source.slice(start,end)+'\nreturn reconcileAcceptedBuilderRequest;', {compilerOptions:{target:ts.ScriptTarget.ES2022}}).outputText;
  return new Function('scope',`with(scope){${script}}`)({reconcileBuilderDependencies,geographicallyReady,stopGeographicPlace,transferAssessmentForLeg,
-  guardTripRoutingGeometry,requestCanonicalTransferResolution,...network}) as AsyncBuilderEditSessionOptions['reconcile'];
+  guardTripRoutingGeometry,requestCanonicalTransferResolution,completedTransferResolutionLeg,...network}) as AsyncBuilderEditSessionOptions['reconcile'];
 }
 
 test('mounted transfer work completes while ineligible generated recommendation lookup is held',async t=>{
@@ -830,4 +830,79 @@ test('queued date intent settles and remains device-durable after ACK timeout re
  await tick();assert.equal(finished,false);gate.resolve();const result=await pending;await tick();
  assert.equal(result.ok,true);assert.equal(h.session.getSnapshot().trip.startDate,'2026-10-11');assert.equal(h.recovery()!.trip.startDate,'2026-10-11');
  assert.notEqual(h.session.getSnapshot().saveState,'cloud');assert.ok(h.session.getSnapshot().error);assert.equal(h.writes.length,1);h.session.dispose();
+});
+
+// Exact imported workbook after failed lookup: use the same session action as the row's Try again.
+import { philippinesImportFixture } from './fixtures/philippines-import.ts';
+import { assessSpreadsheetImportTransfers } from '../lib/easyt/spreadsheet-import-transfers.ts';
+import { transportAssessmentState } from '../lib/easyt/itinerary-transport-agenda.ts';
+async function failedImportFixture() {
+  const failed = await assessSpreadsheetImportTransfers(philippinesImportFixture(), new AbortController().signal,
+    async () => ({ ok: false, reason: 'invalid-input' }));
+  return requireReadableTripDocument(JSON.parse(JSON.stringify(canonicalTripForOwner('owner-a', failed, nextTripUpdatedAt(failed.updatedAt)))));
+}
+for (const outcome of ['success', 'failure', 'rejection'] as const) test(`import manual retry ${outcome}: one request, honest terminal state and durable reopen`, async () => {
+  const initialTrip=await failedImportFixture(), h=await harness({initialTrip});
+  await h.run(0); assert.equal(h.projections.length,0,'failed import must not auto-retry');
+  const unit=h.session.getSnapshot().failedUnits[0]!; assert.ok(unit);
+  assert.equal(await h.session.retryNecessaryUnit(unit),true);
+  assert.equal(await h.session.retryNecessaryUnit(unit),false,'repeated click cannot requeue pending work');
+  await h.run(0); assert.equal(h.projections.length,1);
+  const work=h.projections[0]!;
+  assert.deepEqual(work.request.dispatched.map(u=>u.targetId),[unit.targetId]);
+  if(outcome==='rejection')work.result.reject(Error('synthetic offline'));
+  else work.result.resolve({...response(work.request),results:work.request.dispatched.map(u=>({...u,phase:outcome==='failure'?'failed' as const:'complete' as const,...(outcome==='failure'?{reason:'unavailable' as const}:{})}))});
+  await tick();await h.run(0);assert.equal(h.projections.length,1,'terminal result does not create a retry loop');
+  const snapshot=h.session.getSnapshot();
+  assert.equal(snapshot.failedUnits.length,outcome==='success'?4:5);assert.equal(snapshot.pendingUnits.length,0);
+  assert.deepEqual(snapshot.trip.stops,initialTrip.stops);assert.deepEqual(snapshot.trip.legs,initialTrip.legs);
+  const saving=h.session.flush();await tick();assert.equal(h.writes.length,1);await h.ack(0);assert.equal(await saving,true);
+  const canonical=h.session.getSnapshot().trip;h.session.dispose();
+  const reopened=await harness({initialTrip:canonical,storage:h.storage});
+  assert.equal(reopened.session.getSnapshot().failedUnits.length,outcome==='success'?4:5);
+  assert.deepEqual(reopened.session.getSnapshot().trip.stops,initialTrip.stops);
+  await reopened.run(0);assert.equal(reopened.projections.length,0);reopened.session.dispose();
+});
+for(const boundary of ['owner','navigation','dates'] as const) test(`import retry late response cannot cross ${boundary} boundary`,async()=>{
+ const initialTrip=await failedImportFixture(),h=await harness({initialTrip});
+ const unit=h.session.getSnapshot().failedUnits[0]!;assert.equal(await h.session.retryNecessaryUnit(unit),true);await h.run(0);
+ const work=h.projections[0]!;assert.ok(work);
+ if(boundary==='owner')h.rotate('owner-b');
+ if(boundary==='navigation')h.session.dispose();
+ if(boundary==='dates'){
+  const edited=await h.session.accept({kind:'dates',startDate:'2026-12-12',endDate:'2027-01-01'},h.session.getSnapshot().inputRevision);
+  assert.equal(edited.ok,true,JSON.stringify(edited));
+ }
+ const writes=h.deviceWrites.length,before=h.session.getSnapshot().trip;
+ work.result.resolve(response(work.request));await tick();
+ assert.equal(h.deviceWrites.length,writes);assert.deepEqual(h.session.getSnapshot().trip,before);
+ assert.equal(await h.session.retryNecessaryUnit(unit),false,'stale failure action is not current');h.session.dispose();
+});
+
+for(const outcome of ['insufficient','unavailable','network','incomplete','mismatch'] as const) test(`import explicit retry runs actual Builder worker: ${outcome}`,async t=>{
+ const initialTrip=await failedImportFixture(),h=await harness({initialTrip});let calls=0;
+ h.options.reconcile=mountedReconciliationWorker({fetch:t.mock.method(globalThis,'fetch',async(_url:any,init?:RequestInit)=>{
+  calls++;if(outcome==='network')throw Error('synthetic network rejection');
+  const {legs}=JSON.parse(String(init?.body)) as {legs:CanonicalEasyTTrip['legs']};
+  assert.equal(legs.length,1);
+  return Response.json({legs:legs.map(l=>({...l,...(outcome==='mismatch'?{toStopId:'wrong-occurrence'}:{}),mode:'unknown',durationMinutes:null,headlineMinutes:null,doorToDoorMinutes:null})),
+   assessments:legs.map(l=>({legId:l.id,state:{retrieval:outcome==='incomplete'?'checking':outcome==='unavailable'?'unavailable':'completed',evidence:'insufficient',retryable:outcome==='unavailable'}}))});
+ })});
+ try{
+  const unit=h.session.getSnapshot().failedUnits[0]!;assert.equal(await h.session.retryNecessaryUnit(unit),true);await h.run(0);await tick();
+  assert.equal(calls,1);const state=h.session.getSnapshot();assert.equal(state.pendingUnits.length,0);
+  assert.equal(state.failedUnits.length,outcome==='insufficient'?4:5);assert.deepEqual(state.trip.stops,initialTrip.stops);
+  const leg=state.trip.legs.find(l=>l.id===unit.targetId)!;
+  assert.notEqual(transportAssessmentState(state.trip,leg,transferAssessmentForLeg(state.transferAssessments,leg.id)),'pending','settled retry cannot show checking');
+  assert.ok(state.trip.legs.every(l=>l.mode==='unknown'&&l.durationMinutes===null));
+  await h.run(0);assert.equal(calls,1);
+ }finally{h.session.dispose();}
+});
+
+test('rapid repeated import retry clicks before durability schedule at most one lookup',async()=>{
+ const h=await harness({initialTrip:await failedImportFixture()}),unit=h.session.getSnapshot().failedUnits[0]!,gate=h.holdRecovery();
+ const first=h.session.retryNecessaryUnit(unit),second=h.session.retryNecessaryUnit(unit);await tick();
+ assert.equal(h.projections.length,0);gate.resolve();await Promise.all([first,second]);await h.run(0);
+ assert.equal(h.projections.length,1);const work=h.projections[0]!;work.result.resolve(response(work.request));await tick();await h.run(0);
+ assert.equal(h.projections.length,1);h.session.dispose();
 });

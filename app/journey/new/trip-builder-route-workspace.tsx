@@ -31,6 +31,7 @@ export type BuilderOrderSource = "drag" | "move-menu" | "route-check";
 export type TripBuilderRouteWorkspaceProps = {
   canonicalTrip: EasyTTrip;
   transferAssessments?: readonly import('@/lib/easyt/planning-evidence-state').TransferAssessment[];
+  routeWorkBlocked?: boolean;
   previewStopIds: readonly string[] | null;
   selectedStopId: string | null;
   lockedStopIds: readonly string[];
@@ -74,6 +75,7 @@ function usableTime(nights: number, transferMinutes: number | null) {
 export function TripBuilderRouteWorkspace({
   canonicalTrip,
   transferAssessments,
+  routeWorkBlocked = false,
   previewStopIds,
   selectedStopId,
   lockedStopIds,
@@ -203,7 +205,7 @@ export function TripBuilderRouteWorkspace({
               <div className={styles.builderRouteIdentity} role="cell"><b>{index + 1}</b><span><strong>{stop.name}</strong><small>{stop.country}</small>{stopReview?.(stop.id)}</span></div>
               <div className={styles.builderRouteTransfer} role="cell">
                 <Route aria-hidden="true" />
-                <span><strong>{leg ? `${leg.fromEndpoint?.name ? `From ${leg.fromEndpoint.name} · ` : ""}${assessment === "pending" ? "Checking transport options…" : assessment === "failed" || assessment === 'blocked' ? "Transport check unavailable" : transferJourneyModeLabel(leg)}` : index === 0 ? "Starts here" : "Transfer to confirm"}</strong><small>{assessment === "pending" ? "This connection is being assessed." : evidence && (assessment === 'failed' || assessment === 'blocked') ? transportEvidenceMessage(evidence, 'en') : assessment === "failed" ? "Try checking this connection again." : leg ? `${leg.provenance === "planning_estimate" && leg.mode !== "unknown" && transferTimingLabel(leg) !== "Timing to confirm" ? "Estimated · " : ""}${transferTimingLabel(leg)}${leg.mode === "flight" && transferMinutes !== null ? " total" : ""}` : "No arrival transfer"}</small>
+                <span><strong>{leg ? `${leg.fromEndpoint?.name ? `From ${leg.fromEndpoint.name} · ` : ""}${assessment === "pending" ? (routeWorkBlocked ? "Transport checks paused" : "Checking transport options…") : assessment === "failed" || assessment === 'blocked' ? "Transport check unavailable" : transferJourneyModeLabel(leg)}` : index === 0 ? "Starts here" : "Transfer to confirm"}</strong><small>{assessment === "pending" ? (routeWorkBlocked ? "Timing to confirm" : "This connection is being assessed.") : evidence && (assessment === 'failed' || assessment === 'blocked') ? transportEvidenceMessage(evidence, 'en') : assessment === "failed" ? "Try checking this connection again." : leg ? `${leg.provenance === "planning_estimate" && leg.mode !== "unknown" && transferTimingLabel(leg) !== "Timing to confirm" ? "Estimated · " : ""}${transferTimingLabel(leg)}${leg.mode === "flight" && transferMinutes !== null ? " total" : ""}` : "No arrival transfer"}</small>
                   {assessment === "unknown" && leg && leg.mode !== "unknown" && !builderHasUsablePlanningTransfer(routingTrip, leg, evidence) ? <small>Transport needs checking.</small> : null}
                   {leg?.mode === "unknown" && leg.roadEstimate ? <small>{formatRoadEstimateReference(leg.roadEstimate)}</small> : null}
                   {airportAssumption ? <small>{airportAssumption}</small> : null}
@@ -257,8 +259,8 @@ export function TripBuilderRouteWorkspace({
             <div className={styles.builderRouteTransfer} role="cell">
               <Route aria-hidden="true" />
               <span>
-                <strong>{departureOrigin?.name ? `From ${departureOrigin.name} · ` : ""}{departureAssessment === "pending" ? "Checking transport options…" : departureAssessment === "failed" || departureAssessment === "blocked" ? "Transport check unavailable" : transferJourneyModeLabel(departureLeg)}</strong>
-                <small>{departureAssessment === "pending" ? "This connection is being assessed." : departureEvidence && (departureAssessment === "failed" || departureAssessment === "blocked") ? transportEvidenceMessage(departureEvidence, "en") : departureAssessment === "failed" ? "Try checking this connection again." : `${departureLeg.provenance === "planning_estimate" && departureLeg.mode !== "unknown" && transferTimingLabel(departureLeg) !== "Timing to confirm" ? "Estimated · " : ""}${transferTimingLabel(departureLeg)}${departureLeg.mode === "flight" && departureMinutes !== null ? " total" : ""}`}</small>
+                <strong>{departureOrigin?.name ? `From ${departureOrigin.name} · ` : ""}{departureAssessment === "pending" ? (routeWorkBlocked ? "Transport checks paused" : "Checking transport options…") : departureAssessment === "failed" || departureAssessment === "blocked" ? "Transport check unavailable" : transferJourneyModeLabel(departureLeg)}</strong>
+                <small>{departureAssessment === "pending" ? (routeWorkBlocked ? "Timing to confirm" : "This connection is being assessed.") : departureEvidence && (departureAssessment === "failed" || departureAssessment === "blocked") ? transportEvidenceMessage(departureEvidence, "en") : departureAssessment === "failed" ? "Try checking this connection again." : `${departureLeg.provenance === "planning_estimate" && departureLeg.mode !== "unknown" && transferTimingLabel(departureLeg) !== "Timing to confirm" ? "Estimated · " : ""}${transferTimingLabel(departureLeg)}${departureLeg.mode === "flight" && departureMinutes !== null ? " total" : ""}`}</small>
                 {departureAssessment === "unknown" && departureLeg.mode !== "unknown" && !builderHasUsablePlanningTransfer(routingTrip, departureLeg, departureEvidence) ? <small>Transport needs checking.</small> : null}
                 {departureLeg.mode === "unknown" && departureLeg.roadEstimate ? <small>{formatRoadEstimateReference(departureLeg.roadEstimate)}</small> : null}
                 {departureAirportAssumption ? <small>{departureAirportAssumption}</small> : null}

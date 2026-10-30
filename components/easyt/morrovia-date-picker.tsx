@@ -230,6 +230,8 @@ export function MorroviaDatePicker(props: MorroviaDatePickerProps) {
   const popoverRef = useRef<HTMLDivElement>(null);
   const startTriggerRef = useRef<HTMLButtonElement>(null);
   const endTriggerRef = useRef<HTMLButtonElement>(null);
+  const focusRestorationGeneration = useRef(0);
+  useEffect(() => () => { focusRestorationGeneration.current += 1; }, []);
   const dialogId = useId();
   const helpId = useId();
 
@@ -237,10 +239,21 @@ export function MorroviaDatePicker(props: MorroviaDatePickerProps) {
   const close = (restoreFocus = false) => {
     setOpen(false);
     if(!pendingRef.current){previewRef.current=null;setRangePreview(null);}
-    if (restoreFocus) window.requestAnimationFrame(() => (activeBoundary === "end" ? endTriggerRef.current ?? startTriggerRef.current : startTriggerRef.current)?.focus({ preventScroll: true }));
+    const generation = ++focusRestorationGeneration.current;
+    const trigger = activeBoundary === "end" ? endTriggerRef.current ?? startTriggerRef.current : startTriggerRef.current;
+    const closingPopover = popoverRef.current;
+    if (restoreFocus) window.requestAnimationFrame(() => {
+      if (focusRestorationGeneration.current !== generation || !trigger?.isConnected) return;
+      const focused = document.activeElement;
+      // Returning from the closing picker must not override a newer user focus.
+      if (focused && focused !== document.body && focused !== document.documentElement
+        && focused !== trigger && !closingPopover?.contains(focused)) return;
+      trigger.focus({ preventScroll: true });
+    });
   };
   const openFor = (boundary: DateBoundary) => {
     if (props.disabled || pendingRef.current) return;
+    focusRestorationGeneration.current += 1;
     previewRef.current=null;setRangePreview(null);
     const nextValue = boundary === "end" ? currentEnd || currentStart : currentStart;
     setActiveBoundary(boundary);

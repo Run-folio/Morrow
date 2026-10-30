@@ -1,3 +1,4 @@
+import {qualifiedCityReturnSearch} from './omio-return-search.ts';
 import { flightPlanningAirports, flightAirportAssumptionLabel } from './flight-airport-assumptions.ts';
 import { tripHealth } from "./review.ts";
 import type { EasyTTrip, TripLeg, TripStop } from "./trip.ts";
@@ -100,6 +101,7 @@ export type ResolvedBookingAction = {
 
 export type CurrentPartnerCategory = "accommodation" | "activities" | "transport" | "car_rental" | "connectivity" | "travel_insurance";
 export type ResolvedAffiliateAction = {
+  returnSearch?: { outboundLegId: string; returnLegId: string };
   provider: string;
   category: CurrentPartnerCategory;
   href: string;
@@ -332,6 +334,17 @@ export function omioBookingActionForLeg(trip: EasyTTrip, leg: TripLeg, now = new
     || (leg.mode === "mixed" && hasSupportedOmioSegment(leg));
   if (!supported) return null;
 
+  const pair = qualifiedCityReturnSearch(trip, leg, now, (candidate) => Boolean(transportBookingForLeg(trip, candidate, routeEndpointForLeg(trip, candidate, "from") ?? undefined, routeEndpointForLeg(trip, candidate, "to") ?? undefined)), departureDate);
+  if (pair) {
+    const href = buildOmioRouteSearchLink({ ...pair, mode: "flight", currency: trip.currency, now });
+    if (href) return {
+      id: `omio-return-${pair.outboundLegId}-${pair.returnLegId}`, category: "transport", provider: affiliatePartners.omio.provider,
+      title: `Return search: ${pair.originName} → ${pair.destinationName}`, detail: "City-level flight search. Confirm airports, schedules and fares on Omio.",
+      cta: "Return search", href, tripId: trip.id, transferId: leg.id, originStopId: from.id, destinationStopId: to.id,
+      returnSearch: { outboundLegId: pair.outboundLegId, returnLegId: pair.returnLegId }, affiliate: true, livePrice: false,
+    };
+  }
+
   const partial = leg.mode === "unknown" || leg.durationMinutes === null || leg.distanceKm === null;
   // Flight-search preferences are derived; canonical city endpoints and timing
   // remain unchanged. No airport default establishes a scheduled service.
@@ -461,7 +474,7 @@ export function buildBookingReadiness(trip: EasyTTrip, config: AffiliateConfigur
   }
 
   const omioActions = trip.legs.map((leg) => omioBookingActionForLeg(trip, leg, now)).filter((action): action is BookingReadinessAction & ResolvedAffiliateAction => Boolean(action));
-  actions.push(...omioActions);
+  actions.push(...omioActions.filter((action, index) => omioActions.findIndex(other => other.id === action.id) === index));
 
   if (groundTransportUrl) trip.legs.filter((leg) => !omioActions.some((action) => action.transferId === leg.id) && ["train", "ferry", "road"].includes(leg.mode) && (leg.distanceKm ?? 0) >= 120 && Boolean(selectedDecision(trip, leg))).forEach((leg) => {
     const from = trip.stops.find((stop) => stop.id === leg.fromStopId);

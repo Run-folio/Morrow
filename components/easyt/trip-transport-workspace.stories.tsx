@@ -206,3 +206,9 @@ export const ManualBookingDetails: Story = {
 
 export const UnbookedConnections: Story = { args: { trip: { ...transportTrip, brief: { ...transportTrip.brief, bookings: [] } } } };
 export const ModeDialogOptions: Story = { args: { trip: japanTrip() } };
+
+// Single supported baseline; Refresh options is explicit and never runs on story mount.
+const refreshTrip = japanTrip();
+const refreshCandidates = refreshTrip.legs[0].routeMetadata.multimodalResolution as {candidates:{summaryMode:string}[]};
+refreshCandidates.candidates = refreshCandidates.candidates.filter(candidate => candidate.summaryMode === 'train');
+export const SingleConnectionRefresh: Story = { args: {trip: refreshTrip} };

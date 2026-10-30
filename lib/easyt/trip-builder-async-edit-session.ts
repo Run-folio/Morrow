@@ -11,7 +11,7 @@ import { routeProjectionInputKey, routeProjectionStatus } from './trip-route-int
 import { createTripMutationPersistenceQueue, mergeTripMutationDocuments } from './trip-mutation-persistence.ts';
 import { canonicalTripStopIdentityMap, remapTripStopReferences, tripBuildDocumentsCanonicalEquivalent } from './trip-promotion.ts';
 import { type TripRecoveryHandle,
-  type TripRecoveryState, type TripRecoveryWriteResult, type TripBuildSaveAcknowledgement } from './storage.ts';
+  type AcknowledgedProjectionPredecessor, type BuilderProjectionWrite, type TripRecoveryState, type TripRecoveryWriteResult, type TripBuildSaveAcknowledgement } from './storage.ts';
 import { EasyTTripPersistenceError, tripRecoveryStateForPersistenceError } from './trip-persistence-error.ts';
 import type { TransferAssessment } from './planning-evidence-state.ts';
 import { transferAssessmentForLeg } from './planning-evidence-presentation.ts';
@@ -30,7 +30,7 @@ export type BuilderAsyncRecoveryWriteOptions = Parameters<BuilderEditSessionOpti
   /** Exact physical predecessor; independent of acknowledged account ancestry. */
   expectedRecoverySource?: CanonicalEasyTTrip;
   authoredFrom: CanonicalEasyTTrip;
-  projectionOnly?: { acceptedRevision: number; inputRevision: number };
+  projectionOnly?: BuilderProjectionWrite;
 };
 export type BuilderAsyncAcknowledgement = TripBuildSaveAcknowledgement & {
   /** Exact server response authority; never inferred from a GET/cache. */
@@ -84,6 +84,7 @@ export async function createAsyncBuilderEditSession(options: AsyncBuilderEditSes
   let recovery: TripRecoveryHandle | null = initialRecovery
     ? { ownerId, tripId, writeId: initialRecovery.writeId, ...(initialRecovery.backend ? { backend: initialRecovery.backend } : {}) } : null;
   let recoverySource = initialRecovery ? structuredClone(trip) : null;
+  let acknowledgedProjection: AcknowledgedProjectionPredecessor | undefined;
   let historicalRecovery = Boolean(initialRecovery && ownerId !== null && !options.allowRecoverySync);
   let promoting = false;
   let promotionIdentity: ReadonlyMap<string, string> | null = null;
@@ -148,7 +149,20 @@ export async function createAsyncBuilderEditSession(options: AsyncBuilderEditSes
   }
   function ownedSourceGuard(): BuilderAsyncOperationGuard {
     const source = freeze(structuredClone(trip)), handle = freeze(structuredClone(recovery)), accepted = acceptedRevision;
-    return { isCurrent: () => active() && acceptedRevision === accepted && exact(trip, source) && exact(recovery, handle) };
+    // Only captured, deeply frozen operands are cached. Current values are
+    // serialized at every guard, preserving in-place mutation and byte checks.
+    let sourceJson: string | undefined, handleJson: string | undefined;
+    let sourceSerialized = false, handleSerialized = false;
+    return { isCurrent: () => {
+      if (!active() || acceptedRevision !== accepted) return false;
+      const currentSourceJson = JSON.stringify(trip);
+      // Preserve the old left-to-right, lazy serialization/error boundary.
+      if (!sourceSerialized) { sourceJson = JSON.stringify(source); sourceSerialized = true; }
+      if (currentSourceJson !== sourceJson) return false;
+      const currentHandleJson = JSON.stringify(recovery);
+      if (!handleSerialized) { handleJson = JSON.stringify(handle); handleSerialized = true; }
+      return currentHandleJson === handleJson;
+    } };
   }
   function operationGuard(): BuilderAsyncOperationGuard {
     const owned = ownedSourceGuard(), revision = inputRevision;
@@ -186,7 +200,7 @@ export async function createAsyncBuilderEditSession(options: AsyncBuilderEditSes
       projectionOnly?: boolean; advanceRevision?: boolean; authoredFrom?: CanonicalEasyTTrip; command?: CommandRecord; committed?(): void;
     }): Promise<boolean> {
     const frozen = freeze(requireReadableTripDocument(JSON.parse(JSON.stringify(prepareTripDocumentForWrite(candidate)))));
-    const metadataSource = { ...(continuation?.projectionOnly ? { projectionOnly: { acceptedRevision, inputRevision } } : {}), ownerId, ...(recovery ? { replace: structuredClone(recovery) } : {}),
+    const metadataSource = { ...(continuation?.projectionOnly ? { projectionOnly: { acceptedRevision, inputRevision, ...(!recovery && acknowledgedProjection ? {acknowledged:structuredClone(acknowledgedProjection)} : {}) } } : {}), ownerId, ...(recovery ? { replace: structuredClone(recovery) } : {}),
       accountSavePending: ownerId !== null && !paused && !historicalRecovery && (candidate.ownerId !== null || promoting),
       state: pauseReason ?? 'pending', draft: structuredClone(nextDraft), canonicalBase: structuredClone(canonicalBase),
       expectedRecoverySource: recoverySource ? structuredClone(recoverySource) : undefined,
@@ -225,6 +239,7 @@ export async function createAsyncBuilderEditSession(options: AsyncBuilderEditSes
         else saveFailure('unknown', 'This edit could not be accepted. Your current trip remains unchanged.', recoveryPersistenceOutcome({ ...result, stored: false }));
         return false;
       }
+      acknowledgedProjection = undefined;
       recovery = structuredClone(result.handle); recoverySource = structuredClone(frozen); trip = structuredClone(frozen);
       if (continuation?.advanceRevision !== false) acceptedRevision++;
       if (rawInputEpoch === reservedEpoch) {
@@ -366,7 +381,7 @@ export async function createAsyncBuilderEditSession(options: AsyncBuilderEditSes
           await acknowledge(promotedJob, canonical, promotedAck => {
             if (acceptedRevision === promotedJob.acceptedRevision && exact(recovery, promotedJob.handle) && exact(trip, promotedJob.localTrip)) {
               recovery = promotedAck.outcome === 'acknowledged' ? null : recovery;
-              if (!recovery) recoverySource = null;
+              if (!recovery) { recoverySource = null; acknowledgedProjection = promotedAck.projectionPredecessor ? structuredClone(promotedAck.projectionPredecessor) : undefined; }
               pending = null; canonicalSaveState = 'cloud'; if (!error?.deviceOutcome) error = null;
             }
           });
@@ -382,7 +397,7 @@ export async function createAsyncBuilderEditSession(options: AsyncBuilderEditSes
             throw new Error('A different device recovery still requires attention');
           }
           trip = requireReadableTripDocument(canonical); recovery = ack.outcome === 'acknowledged' ? null : recovery; failedJob = null;
-          if (!recovery) recoverySource = null;
+          if (!recovery) { recoverySource = null; acknowledgedProjection = ack.projectionPredecessor ? structuredClone(ack.projectionPredecessor) : undefined; }
           canonicalSaveState = 'cloud'; if (!draftNeedsWrite && !error?.deviceOutcome) error = null;
         } else if (!paused) canonicalSaveState = 'local';
       });
@@ -473,8 +488,7 @@ export async function createAsyncBuilderEditSession(options: AsyncBuilderEditSes
         // A deferred/no-progress result leaves the accepted document intact.
         // Surface a review outcome instead of leaving Build waiting on a worker
         // that has stopped. Holds and stale requests still yield to their owner.
-        const pendingPromotion = historicalRecovery && trip.ownerId === null && ownerId !== null && error?.category === 'pending';
-        if (!continued && projectionCurrent() && !workWakeRequested && (!error || pendingPromotion) && pendingRouteUnits().length) routeWorkBlocked = true;
+        if (!continued && projectionCurrent() && !workWakeRequested && pendingRouteUnits().length) routeWorkBlocked = true;
         work = null; workAbort = null;
         if (continued) scheduleWork(); else wakeAutomaticWork();
         if (active()) publish();

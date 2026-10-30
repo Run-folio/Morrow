@@ -1,4 +1,5 @@
 "use client";
+import {adoptTransportComparison} from "@/lib/easyt/transport-comparison";
 import {flightAirportAssumptionLabel} from '@/lib/easyt/flight-airport-assumptions';
 import {transferTimingLabel} from '@/lib/easyt/transfer-timing-label';
 
@@ -273,7 +274,12 @@ function SelectedJourneyDetail({ trip, item, language, copy }: { trip: EasyTTrip
         onSave={(details) => mutation.mutateTrip((current) => updateTravellerTransportBookingDetails(current, leg.id, details), `transport-booking-${leg.id}`)} />
         : item.booking?.url ? <EasyTLinkButton href={item.booking.url} target="_blank" rel="noopener noreferrer" aria-label={`${copy.openBooking}: ${item.booking.title}`} icon={ExternalLink} size="small" variant="primary">{copy.openBooking}</EasyTLinkButton>
           : !item.booking && isPassengerServiceLeg(leg) ? <EasyTButton size="small" variant="secondary" disabled={mutation.isPending(`transport-booking-${leg.id}`)} onClick={() => mutation.mutateTrip((current) => markTransportLegBooked(current, leg.id), `transport-booking-${leg.id}`)}>{copy.markBooked}</EasyTButton> : null}
-      <TripTransportChoiceControl trip={trip} leg={recommendedLeg} presentation="modal" departureDate={item.date} language={language} pending={mutation.isPending(pendingKey)} showUnavailable showCurrentDuration={false}
+      <TripTransportChoiceControl onAdoptComparison={(comparison,candidateId,isCurrent) => mutation.mutateTrip(current => {
+        if(!isCurrent()) throw new Error('This connection check was cancelled. Refresh its options before choosing.');
+        const next=adoptTransportComparison(current,comparison,candidateId);
+        if(next===current) throw new Error('This connection changed. Refresh its options before choosing.');
+        return next;
+      },pendingKey)} trip={trip} leg={recommendedLeg} presentation="modal" departureDate={item.date} language={language} pending={mutation.isPending(pendingKey)} showUnavailable showCurrentDuration={false}
         onChange={(identity) => mutation.mutateTrip((current) => identity
           ? selectTripLegTransportChoice(current, leg.id, identity)
           : clearTripLegTransportChoice(current, leg.id), pendingKey)} />
@@ -333,6 +339,6 @@ function isFutureDate(value: string | null) {
 
 function TransportAffiliateAction({ action, trip, leg, label }: { action: ResolvedAffiliateAction; trip: EasyTTrip; leg: TripLeg; label: string }) {
   return <div className={styles.omioAction}>
-    <MorroviaAffiliateLink action={{ ...action, cta: label }} context={{ placement: "itinerary_transfer", tripId: trip.id, transferId: leg.id, originStopId: leg.fromStopId, destinationStopId: leg.toStopId }} variant="primary" />
+    <MorroviaAffiliateLink action={{ ...action, cta: action.returnSearch ? action.cta : label }} context={{ placement: "itinerary_transfer", tripId: trip.id, transferId: leg.id, originStopId: leg.fromStopId, destinationStopId: leg.toStopId }} variant="primary" />
   </div>;
 }

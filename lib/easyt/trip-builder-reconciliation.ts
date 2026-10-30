@@ -2,8 +2,8 @@ import { selectedTransportChoiceForLeg, effectiveTripLeg } from "./transport-mod
 import { geographicDependency, stopGeographicPlace, guardTripRoutingGeometry } from './geographic-binding.ts';
 import { assessRouteIntelligence, routeIntelligenceForPersistence } from "./planner.ts";
 import { plannerEndpointForJourneyEnd, originPlaceFromBrief } from "./journey-endpoints.ts";
-import type { CanonicalEasyTTrip, RouteReconciliationScope, TripLeg, TripRouteReconciliation } from './trip.ts';
-import { prepareTripDocumentForWrite, TripDocumentReadError } from './trip-document.ts';
+import type { EasyTTrip, CanonicalEasyTTrip, RouteReconciliationScope, TripLeg, TripRouteReconciliation } from './trip.ts';
+import { prepareTripDocumentForWrite, requireReadableTripDocument, TripDocumentReadError } from './trip-document.ts';
 import { buildCanonicalTripLegs, routeEndpointForLeg } from './trip-legs.ts';
 import { routeProjectionInputKey, commitAcceptedRouteProjection } from './trip-route-intent.ts';
 import { projectBuilderCalendar } from './trip-builder-calendar.ts';
@@ -85,6 +85,19 @@ export function remapBuilderReconciliationIdentity(before: CanonicalEasyTTrip, a
     });
     return { ...after, brief: { ...after.brief, cascadeStatus: { ...after.brief.cascadeStatus!,
         routeReconciliation: { version: 1, inputKey: routeProjectionInputKey(after), residual } } } };
+}
+/** Import assessment failures use the existing durable, input-bound manual retry path.
+ * Never replace existing work or modify the reviewed route/transport facts. */
+export function retainFailedImportTransferWork(source: EasyTTrip, legIds: readonly string[]): EasyTTrip {
+    if (!legIds.length) return source;
+    const trip = requireReadableTripDocument(source);
+    const residual = structuredClone(trip.brief.cascadeStatus?.routeReconciliation?.residual ?? []);
+    for (const id of new Set(legIds)) {
+        if (residual.some(unit => unit.kind === 'leg' && unit.targetId === id)) continue;
+        const key = basis(trip, 'leg', id);
+        if (key) residual.push({ kind: 'leg', targetId: id, basisKey: key, phase: 'failed', reason: 'unavailable' });
+    }
+    return legIds.length ? install(trip, residual) : trip;
 }
 export function pendingBuilderReconciliationUnits(trip: CanonicalEasyTTrip): Unit[] {
     return structuredClone(trip.brief.cascadeStatus?.routeReconciliation?.residual.filter(u => u.phase === 'pending') ?? []);

@@ -2956,7 +2956,7 @@ export function JourneyMapPlannerWorkspace({
               sdkLoader={storyState?.googleFixture?.sdkLoader}
               mapId={process.env.NEXT_PUBLIC_GOOGLE_MAPS_MAP_ID}
               stops={canonicalMapStops.map((stop, index) => ({ id: stop.id, name: stop.city, coordinates: stop.coordinates ?? null, sequence: index }))}
-              legs={canonicalMapLegs.map((leg) => ({ id: leg.id, fromStopId: leg.fromStopId, toStopId: leg.toStopId, modeLabel: leg.modeLabel, durationLabel: `${leg.totalLabel ?? `~${formatMapDuration(leg.doorToDoorMinutes)}`} total${leg.scheduleNeedsChecking ? " · needs checking" : ""}`, routeGeometry: leg.routeGeometry }))}
+              legs={canonicalMapLegs.map((leg) => ({ id: leg.id, fromStopId: leg.fromStopId, toStopId: leg.toStopId, modeLabel: leg.modeLabel, durationLabel: `${leg.totalLabel ?? "Timing to confirm"} total${leg.scheduleNeedsChecking ? " · needs checking" : ""}`, routeGeometry: leg.routeGeometry }))}
               places={googleCanvasPlaces}
               selectedStopId={mapMode === "overview" ? null : selectedTripStop?.id ?? null}
               selectedPlaceId={selectedLocalPlace?.selectionId ?? selectedPlannerPin?.id ?? (selectedGooglePlaceId ? `google-poi:${selectedGooglePlaceId}` : null)}
@@ -3261,13 +3261,13 @@ export function JourneyMapPlannerWorkspace({
             <p>A place you saved to this trip. Its current access, opening and booking details still need checking.</p>
             <dl className={styles.mapContextFacts}><div><dt>Category</dt><dd>{pinCategoryLabel(selectedPlannerPin.category)}</dd></div><div><dt>Day</dt><dd>{selectedPlannerPin.dayNumber ? `Day ${selectedPlannerPin.dayNumber}` : "Trip-wide"}</dd></div></dl>
           </div> : selectedRouteLeg ? <div className={styles.mapLegDetail}>
-            <p className={styles.mapContextCopy}>{selectedRouteLeg.doorToDoorMinutes !== null
-              ? `Plan around ${selectedRouteLeg.totalLabel ?? `~${formatMapDuration(selectedRouteLeg.doorToDoorMinutes)}`} door to door${selectedRouteLeg.mode === "road" ? " by road" : selectedRouteLeg.mode === "flight" ? " by air" : selectedRouteLeg.mode === "train" ? " by rail" : selectedRouteLeg.mode === "ferry" ? " by ferry" : selectedRouteLeg.mode === "walk" ? " on foot" : ""}.`
+            <p className={styles.mapContextCopy}>{selectedRouteLeg.totalLabel && selectedRouteLeg.totalLabel !== "Timing to confirm"
+              ? `Plan around ${selectedRouteLeg.totalLabel} door to door${selectedRouteLeg.mode === "road" ? " by road" : selectedRouteLeg.mode === "flight" ? " by air" : selectedRouteLeg.mode === "train" ? " by rail" : selectedRouteLeg.mode === "ferry" ? " by ferry" : selectedRouteLeg.mode === "walk" ? " on foot" : ""}.`
               : "Door-to-door timing is not available yet for this transfer."}</p>
             <dl className={styles.mapTransferPrimary}>
               <div><dt>{selectedRouteLeg.roadEstimate ? "Road estimate distance" : "Distance"}</dt><dd>{selectedRouteLeg.distanceKm !== null ? `${Math.round(selectedRouteLeg.distanceKm).toLocaleString()} km` : "Not available"}</dd></div>
-              <div><dt>{selectedRouteLeg.roadEstimate ? "Road estimate driving time" : selectedRouteLeg.mode === "road" ? "Driving time" : selectedRouteLeg.mode === "flight" ? "Flight time" : selectedRouteLeg.mode === "train" ? "Rail time" : selectedRouteLeg.mode === "ferry" ? "Ferry time" : selectedRouteLeg.mode === "walk" ? "Walking time" : "Travel time"}</dt><dd>{selectedRouteLeg.roadEstimate ? `~${formatMapDuration(selectedRouteLeg.roadEstimate.durationMinutes)}` : selectedRouteLeg.headlineLabel ?? (selectedRouteLeg.headlineMinutes !== null ? `~${formatMapDuration(selectedRouteLeg.headlineMinutes)}` : "Not available")}</dd></div>
-              <div><dt>Door to door</dt><dd>{selectedRouteLeg.totalLabel ?? (selectedRouteLeg.doorToDoorMinutes !== null ? `~${formatMapDuration(selectedRouteLeg.doorToDoorMinutes)}` : "Not available")}</dd></div>
+              <div><dt>{selectedRouteLeg.roadEstimate ? "Road estimate driving time" : selectedRouteLeg.mode === "road" ? "Driving time" : selectedRouteLeg.mode === "flight" ? "Flight time" : selectedRouteLeg.mode === "train" ? "Rail time" : selectedRouteLeg.mode === "ferry" ? "Ferry time" : selectedRouteLeg.mode === "walk" ? "Walking time" : "Travel time"}</dt><dd>{selectedRouteLeg.roadEstimate ? `~${formatMapDuration(selectedRouteLeg.roadEstimate.durationMinutes)}` : selectedRouteLeg.headlineLabel ?? "Not available"}</dd></div>
+              <div><dt>Door to door</dt><dd>{selectedRouteLeg.totalLabel ?? "Timing to confirm"}</dd></div>
             </dl>
             <EasyTButton variant="quiet" size="small" className={styles.mapTransferDetailToggle} aria-expanded={transferDetailsExpanded} aria-controls="selected-transfer-details" onClick={() => setTransferDetailsExpanded((expanded) => !expanded)}>{transferDetailsExpanded ? "Hide details" : "Details"}<ChevronDown aria-hidden="true" /></EasyTButton>
             <div id="selected-transfer-details" className={styles.mapTransferSecondary} data-expanded={transferDetailsExpanded ? "true" : "false"}>

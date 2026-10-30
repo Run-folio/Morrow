@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-import { assessCanonicalTransferJourneys } from "@/lib/easyt/multimodal-transfer-resolution.server";
+import { assessCanonicalTransferJourneys, compareTransferJourney } from "@/lib/easyt/multimodal-transfer-resolution.server";
 import type { TripLeg } from "@/lib/easyt/trip";
 
 export const dynamic = "force-dynamic";
@@ -46,6 +46,11 @@ export async function POST(request: Request) {
     if (!legs || legs.length > 8 || !legs.every(isCanonicalLeg) || new Set(legs.map(leg => leg.id)).size !== legs.length) {
       return NextResponse.json({ error: "Invalid canonical transfer resolution request." }, { status: 400 });
     }
+    const operation = body && typeof body === "object" ? (body as {operation?: unknown}).operation : undefined;
+    if (operation !== undefined && operation !== 'compare' || operation === 'compare' && legs.length !== 1) {
+      return NextResponse.json({error: "Invalid transfer comparison request."}, {status: 400});
+    }
+    if (operation === 'compare') return NextResponse.json(await compareTransferJourney(legs[0], request.signal), {headers: {"cache-control": "no-store"}});
     return NextResponse.json(
       await assessCanonicalTransferJourneys(legs),
       { headers: { "cache-control": "no-store" } },

@@ -62,6 +62,8 @@ export type OpenRouteServiceConfiguration = {
 };
 
 export type OpenRouteServiceClientOptions = {
+  /** Explicit comparison owns its cancellation; never join another consumer's in-flight request. */
+  operationSignal?: AbortSignal;
   request?: FetchLike;
   cache?: OpenRouteServiceCache;
   cacheTtlMs?: number;
@@ -164,6 +166,7 @@ export class OpenRouteServiceRoadRoutingProvider implements RoadRoutingProvider 
   private readonly maxCacheEntries: number;
   private readonly timeoutMs: number;
   private readonly now: () => number;
+  private readonly operationSignal?: AbortSignal;
 
   constructor(
     configuration: OpenRouteServiceConfiguration = resolveOpenRouteServiceConfiguration(),
@@ -172,7 +175,8 @@ export class OpenRouteServiceRoadRoutingProvider implements RoadRoutingProvider 
     this.configuration = configuration;
     this.request = options.request ?? fetch;
     this.cache = options.cache ?? sharedRoadRouteCache;
-    this.inFlight = options.cache ? new Map() : sharedRoadRouteRequests;
+    this.inFlight = options.cache || options.operationSignal ? new Map() : sharedRoadRouteRequests;
+    this.operationSignal = options.operationSignal;
     this.cacheTtlMs = Math.min(ROAD_ROUTE_MAX_CACHE_TTL_MS, Math.max(1, options.cacheTtlMs ?? ROAD_ROUTE_CACHE_TTL_MS));
     this.maxCacheEntries = Math.max(1, Math.min(500, options.maxCacheEntries ?? 250));
     this.timeoutMs = Math.max(1, Math.min(15_000, options.timeoutMs ?? 6_000));
@@ -200,6 +204,7 @@ export class OpenRouteServiceRoadRoutingProvider implements RoadRoutingProvider 
   }
 
   async routeWithDiagnostics(input: RoadRouteRequest): Promise<{result: RoadRouteResult; cacheOutcome: PlanningCacheOutcome}> {
+    this.operationSignal?.throwIfAborted();
     const profile = input.profile ?? "driving-car";
     if (!validCoordinate(input.origin.coordinates) || !validCoordinate(input.destination.coordinates)) {
       throw new RoadRoutingError("malformed");
@@ -223,6 +228,7 @@ export class OpenRouteServiceRoadRoutingProvider implements RoadRoutingProvider 
         payload = await withProviderTimeout({
           label: "OpenRouteService road route",
           timeoutMs: this.timeoutMs,
+          signal: this.operationSignal,
           request: async (signal) => {
             const response = await this.request(`${this.configuration.apiBaseUrl}/directions/${profile}/geojson`, {
               method: "POST",
@@ -251,6 +257,7 @@ export class OpenRouteServiceRoadRoutingProvider implements RoadRoutingProvider 
         if (error instanceof Error && (error.name === "TimeoutError" || error.name === "AbortError")) throw new RoadRoutingError("timeout");
         throw new RoadRoutingError("unavailable");
       }
+      this.operationSignal?.throwIfAborted();
       const result = normalizeOpenRouteServiceRoute(payload, new Date(this.now()).toISOString(), profile);
       this.cache.set(key, { expiresAt: this.now() + this.cacheTtlMs, result: cloneResult(result) });
       while (this.cache.size > this.maxCacheEntries) this.cache.delete(this.cache.keys().next().value!);

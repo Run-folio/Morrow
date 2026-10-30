@@ -254,6 +254,12 @@ export function countryCodeFor(value: unknown): string | null {
   return countryFor(value)?.code ?? null;
 }
 
+/** Known aliases only; unknown names do not become equivalent through null codes. */
+export function sameRegisteredCountry(left: unknown, right: unknown): boolean {
+  const code = countryCodeFor(left);
+  return code !== null && code === countryCodeFor(right);
+}
+
 export function countryNameFor(value: unknown): string | null {
   return countryFor(value)?.name ?? null;
 }

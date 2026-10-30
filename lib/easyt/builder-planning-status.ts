@@ -4,13 +4,14 @@ import {guardTripRoutingGeometry} from './geographic-binding.ts';
 import {effectiveTripLeg} from './transport-mode-choice.ts';
 
 /** Builder completion describes owned detail work, never service availability. */
-export function builderDetailsStatus(trip:EasyTTrip,language:'en'|'es',assessments:readonly TransferAssessment[]=[]) {
+export function builderDetailsStatus(trip:EasyTTrip,language:'en'|'es',assessments:readonly TransferAssessment[]=[], routeWorkBlocked=false) {
   const units=trip.brief.cascadeStatus?.routeReconciliation?.residual??[];
   if(units.some(unit=>unit.phase==='conflict'))return {state:'device' as const,label:language==='es'?'Revisión necesaria':'Review needed'};
   if(assessments.some(({state})=>(state.retrieval==='unavailable'||state.retrieval==='blocked')&&!state.retryable))
     return {state:'error' as const,label:language==='es'?'Revisión necesaria':'Review needed'};
   if(units.some(unit=>unit.phase==='failed')||assessments.some(({state})=>state.retrieval==='unavailable'||state.retrieval==='blocked'))
     return {state:'error' as const,label:language==='es'?'Datos sin actualizar':'Details need retry'};
+  if(routeWorkBlocked)return {state:'device' as const,label:language==='es'?'Comprobaciones en pausa':'Route checks paused'};
   // This session deliberately defers recommendation work; pending metadata is
   // retained, but does not represent an active route-detail operation.
   if(units.some(unit=>unit.phase==='pending'&&unit.kind!=='recommendation')||assessments.some(({state})=>state.retrieval==='checking'))

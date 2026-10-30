@@ -18,7 +18,7 @@ import {
 import { destinationKnowledge } from "./destination-knowledge.ts";
 import { routeFamilies, routeFamilyByKey, type RouteFamily } from "./route-catalog.ts";
 import {REFERENCE_SNAPSHOT_ID,referenceRecordKey,referenceKnownCodeKind,referenceSeedRetired,referenceGeographicAcceptanceMatches} from './place-reference.ts';
-import {countryCodeFor} from './country-registry.ts';
+import {countryCodeFor,sameRegisteredCountry} from './country-registry.ts';
 
 export const PLACE_INTELLIGENCE_VERSION = 1 as const;
 export const PLACE_INTELLIGENCE_PARSER_VERSION = "place-intelligence-v1-deterministic";
@@ -1221,7 +1221,7 @@ export function canonicalPlaceFactsMatch(
   const entry = findCatalogPlaceById(canonicalPlaceId);
   if (!entry) return true;
   if (facts.country && entry.parentCountries.length
-    && !entry.parentCountries.some((country) => normalizePlacePhrase(country) === normalizePlacePhrase(facts.country ?? ""))) return false;
+    && !entry.parentCountries.some((country) => normalizePlacePhrase(country) === normalizePlacePhrase(facts.country ?? "") || sameRegisteredCountry(country, facts.country))) return false;
   if (entry.coordinates && facts.coordinates
     && coordinateDistanceKm([...entry.coordinates] as [number, number], facts.coordinates) > 200) return false;
   return true;

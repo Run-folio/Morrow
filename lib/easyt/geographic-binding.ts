@@ -1,3 +1,4 @@
+import {sameRegisteredCountry} from './country-registry.ts';
 import {referenceGeographicAcceptanceMatches} from './place-reference.ts';
 import {findCatalogPlaceById,normalizeCatalogPhrase} from './place-catalog.ts';
 import {canonicalPlaceFactsMatch,validPlaceCoordinates,type GeographicBounds} from './place-intelligence.ts';
@@ -48,7 +49,7 @@ export function geographicCandidateMatches(expected:JourneyEndpointPlace & {alia
  const curatedIsland=type==='island'&&candidate.routability==='direct_destination'
   &&Boolean(catalogPoint({...expected,country:candidate.country,coordinates:candidate.coordinates,providerId:candidate.providerId},role));
  if((!allowed(type,candidate.routability??'',role)&&!curatedIsland)||!validPlaceCoordinates(candidate.coordinates)||!candidate.country?.trim())return false;
- if(expected.country&&normalized(expected.country)!==normalized(candidate.country))return false;
+ if(expected.country&&normalized(expected.country)!==normalized(candidate.country)&&!sameRegisteredCountry(expected.country,candidate.country))return false;
  const catalog=expected.canonicalPlaceId?findCatalogPlaceById(expected.canonicalPlaceId):undefined;
  const names=[expected.name,...(expected.aliases??[]),...(catalog?[catalog.canonicalName,...catalog.aliases]:[])];
  if(!names.some(name=>normalized(name)===normalized(candidate.name)))return false;

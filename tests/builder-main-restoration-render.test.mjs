@@ -6,7 +6,7 @@ const require=createRequire(import.meta.url),React=require('react'),{renderToSta
 const trip=JSON.parse(readFileSync(new URL('./fixtures/main-staging-africa-control.json',import.meta.url),'utf8'));
 const bundle=await build({stdin:{contents:"export {TripBuilderRouteWorkspace} from './app/journey/new/trip-builder-route-workspace';export {builderDetailsStatus} from './lib/easyt/builder-planning-status';",resolveDir:process.cwd(),loader:'tsx'},bundle:true,write:false,platform:'node',format:'cjs',jsx:'automatic',external:['react','react-dom/server','react/jsx-runtime'],loader:{'.css':'empty','.module.css':'empty'},logLevel:'silent',plugins:[{name:'unused-map',setup(b){b.onResolve({filter:/journey-planner-map$/},()=>({path:'map',namespace:'stub'}));b.onLoad({filter:/.*/,namespace:'stub'},()=>({contents:'export const JourneyPlannerMap=()=>null'}));}}]});
 const module={exports:{}};new Function('require','module','exports',bundle.outputFiles[0].text)(require,module,module.exports);
-function render(assessments){const noop=()=>{};return renderToStaticMarkup(React.createElement(module.exports.TripBuilderRouteWorkspace,{canonicalTrip:trip,transferAssessments:assessments,previewStopIds:null,selectedStopId:null,lockedStopIds:[],fixedOrder:false,routeCheckProposalStopIds:null,nightStatus:{complete:true,total:6,allocated:6,language:'en'},onSelectStop:noop,onPreviewOrder:noop,onCommitOrder:()=>false,onEditNights:noop,onRemoveStop:noop,onTransportChoiceChange:noop}));}
+function render(assessments,routeWorkBlocked=false){const noop=()=>{};return renderToStaticMarkup(React.createElement(module.exports.TripBuilderRouteWorkspace,{canonicalTrip:trip,transferAssessments:assessments,routeWorkBlocked,previewStopIds:null,selectedStopId:null,lockedStopIds:[],fixedOrder:false,routeCheckProposalStopIds:null,nightStatus:{complete:true,total:6,allocated:6,language:'en'},onSelectStop:noop,onPreviewOrder:noop,onCommitOrder:()=>false,onEditNights:noop,onRemoveStop:noop,onTransportChoiceChange:noop}));}
 test('actual Builder rows retain four planning flights and one unresolved connection with and without completed feedback',()=>{
  const before=JSON.stringify(trip);
  for(const assessments of [undefined,trip.legs.map(leg=>({legId:leg.id,state:{retrieval:'completed',evidence:'insufficient',retryable:false}}))]){
@@ -23,4 +23,10 @@ test('actual prior-flight row retains a real blocked or checking result',()=>{
   assert.match(html,retrieval==='checking'?/Checking transport options…/:/Transport check unavailable/);
   assert.notEqual(module.exports.builderDetailsStatus(trip,'en',[{legId:trip.legs[0].id,state:{retrieval,evidence:'insufficient',retryable:false}}]).state,'saved');
  }
+});
+
+test('stopped route worker renders paused rows and summary without discarding pending evidence',()=>{
+ const before=JSON.stringify(trip),assessments=trip.legs.map(leg=>({legId:leg.id,state:{retrieval:'checking',evidence:'unqualified',retryable:true}}));
+ const html=render(assessments,true);assert.match(html,/Transport checks paused/);assert.doesNotMatch(html,/Checking transport options|This connection is being assessed/);
+ assert.equal(module.exports.builderDetailsStatus(trip,'en',assessments,true).label,'Route checks paused');assert.equal(JSON.stringify(trip),before);
 });

@@ -6,10 +6,13 @@ import type {
   TripLegTransportChoice,
   TripTransferMode,
 } from "./trip.ts";
-import {estimateTransferImpact,isTransferImpact,type TransferImpact} from './transfer-impact.ts';
+import {reviewedJourneyImpactMode,estimateTransferImpact,isTransferImpact,type TransferImpact} from './transfer-impact.ts';
 import {knownKnowledgeFact,unknownKnowledgeFact} from './destination-knowledge.ts';
 import {airportFlightPlanningCandidate} from './multimodal-transfer-resolution.ts';
-import {preservedTransferFacts} from './geographic-binding.ts';
+import {routeEndpointForLeg} from './trip-legs.ts';
+import {authoredContentKey} from './trip-retained-authored-content.ts';
+import {preservedTransferFacts,transferEndpointGeographicallyReady} from './geographic-binding.ts';
+import {reviewedPilotCandidateIsCurrent} from './reviewed-transport-pilot.ts';
 
 const supportedModes = new Set<TripTransferMode>(["flight", "train", "road", "ferry", "walk", "mixed"]);
 const supportedProvenance = new Set<TripLegProvenance>(["provider", "canonical_schedule", "routing_engine", "planning_estimate"]);
@@ -86,7 +89,7 @@ function validSegment(value: unknown): value is TransferSegment {
     && supportedProvenance.has(candidate.provenance as TripLegProvenance));
 }
 
-function supportedCandidateForLeg(leg: TripLeg, value: unknown): SupportedTransportChoice | null {
+export function supportedCandidateForLeg(leg: TripLeg, value: unknown): SupportedTransportChoice | null {
   const candidate = record(value);
   if (!candidate
     || typeof candidate.id !== "string"
@@ -113,11 +116,14 @@ function supportedCandidateForLeg(leg: TripLeg, value: unknown): SupportedTransp
     evidence: candidate.evidence,
   };
   const confidence = candidate.confidence === "high" || candidate.confidence === "low" ? candidate.confidence : "medium";
-  const timing=candidateImpact(candidate.transferImpact,candidate.summaryMode,candidate.totalDurationMinutes);
+  const impactMode=candidate.evidence==='reviewed_composition'?reviewedJourneyImpactMode(candidate.summaryMode,segments.map(s=>s.mode)):candidate.summaryMode;
+  const timing=candidateImpact(candidate.transferImpact,impactMode,candidate.totalDurationMinutes);
+  // Do not promote malformed reviewed totals into a fabricated headline fallback.
+  if(candidate.evidence==='reviewed_composition'&&!timing)return null;
   return {
     ...partial,
     identity: candidateIdentity(partial),
-    durationMinutes: Math.round(candidate.totalDurationMinutes),
+    durationMinutes: candidate.evidence==='reviewed_composition'?candidate.totalDurationMinutes:Math.round(candidate.totalDurationMinutes),
     ...(typeof candidate.headlineMinutes === "number"
       && Number.isFinite(candidate.headlineMinutes)
       && candidate.headlineMinutes >= 0
@@ -150,6 +156,13 @@ export function supportedTransportChoicesForLeg(trip: EasyTTrip, leg: TripLeg): 
   return candidates.flatMap((candidate) => {
     const supported = supportedCandidateForLeg(leg, candidate);
     if (!supported || seen.has(supported.identity)) return [];
+    if(!reviewedPilotCandidateIsCurrent(supported.candidateId,leg.fromEndpoint,leg.toEndpoint)){
+      const endpoints=endpointIds(leg),selections=trip.brief.decisionSelections?.transportByLeg??{};
+      const retained=Object.entries(selections).some(([key,saved])=>typeof saved==='string'
+        ?key===leg.id&&saved===supported.candidateId
+        :saved.fromEndpointId===endpoints.from&&saved.toEndpointId===endpoints.to&&saved.identity===supported.identity&&saved.candidateId===supported.candidateId&&saved.mode===supported.mode&&saved.evidence===supported.evidence);
+      if(!retained)return [];
+    }
     seen.add(supported.identity);
     return [supported];
   });
@@ -229,6 +242,7 @@ export function selectTripLegTransportChoice(trip: EasyTTrip, legId: string, ide
   if (!leg) return trip;
   const candidate = supportedTransportChoicesForLeg(trip, leg).find((option) => option.identity === identity);
   if (!candidate) return trip;
+  if(!reviewedPilotCandidateIsCurrent(candidate.candidateId,leg.fromEndpoint,leg.toEndpoint))return trip;
   const endpoints = endpointIds(leg);
   const choice: TripLegTransportChoice = {
     identity: candidate.identity,
@@ -276,4 +290,15 @@ export function clearTripLegTransportChoice(trip: EasyTTrip, legId: string): Eas
       },
     },
   };
+}
+
+/** Save normalization cannot replace an explicitly accepted, still-bound snapshot. */
+export function hasCurrentAcceptedTransportChoice(trip: EasyTTrip, leg: TripLeg): boolean {
+  const choice=selectedTransportChoiceForLeg(trip,leg);
+  if(!choice)return false;
+  const key=(endpoint: TripLeg['fromEndpoint'] | null)=>endpoint?authoredContentKey({id:endpoint.id,kind:endpoint.kind,name:endpoint.name,country:endpoint.country,
+    canonicalPlaceId:endpoint.canonicalPlaceId,providerId:endpoint.providerId,coordinates:endpoint.coordinates,geographicBinding:endpoint.geographicBinding}):null;
+  const from=routeEndpointForLeg(trip,leg,'from'),to=routeEndpointForLeg(trip,leg,'to');
+  return transferEndpointGeographicallyReady(from)&&transferEndpointGeographicallyReady(to)
+    &&key(choice.segments[0].fromEndpoint)===key(from)&&key(choice.segments.at(-1)!.toEndpoint)===key(to);
 }

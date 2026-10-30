@@ -1,3 +1,7 @@
+import {gatewayAccessPlanningMinutes} from './gateway-access-policy.ts';
+import {reviewedRouteGuidance,type ReviewedRouteGuidance} from './reviewed-transport-pilot.ts';
+import {composeReviewedJourney,type ReviewedJourneyTemplate,type ReviewedJourneyContext} from './reviewed-journey-composer.ts';
+import {hasCurrentAcceptedTransportChoice} from './transport-mode-choice.ts';
 import { reviewedIslandGatewayRecord } from './reviewed-island-destinations.ts';
 import {
   destinationKnowledge,
@@ -33,6 +37,7 @@ import type {
 } from "./trip.ts";
 
 export type TransferEvidenceKind =
+  | "reviewed_composition"
   | "exact_transfer"
   | "reviewed_air_journey"
   | "intercity_rail_network"
@@ -72,6 +77,8 @@ export type TransferResolutionDiagnostic = {
    * without replacing or reconstructing Morrovia's recommended TripLeg. */
   candidates: TransferJourneyCandidate[];
   rejected: string[];
+  routeGuidance?: ReviewedRouteGuidance[];
+  reviewedJourneys?: Array<{id:string;status:"complete"|"partial"|"unqualified";reasons:string[]}>;
 };
 
 export type MultimodalResolutionResult = {
@@ -153,10 +160,6 @@ function gatewayEndpoint(gateway: DestinationAirGateway): CanonicalRouteEndpoint
 
 function sameEndpointIdentity(left: CanonicalRouteEndpoint, right: CanonicalRouteEndpoint) {
   return normalized(endpointIdentity(left)) === normalized(endpointIdentity(right));
-}
-
-function gatewayAccessPlanningMinutes(distanceKm: number) {
-  return roundPlanningMinutes(45 + (distanceKm / 55) * 60);
 }
 
 function inferredGatewayAccessSegment(
@@ -837,7 +840,7 @@ function applyCandidate(leg: TripLeg, selected: TransferJourneyCandidate, diagno
 
 export async function resolveCanonicalTransferJourney(
   leg: TripLeg,
-  options: { provider?: RoadRoutingProvider; knowledge?: TransferEvidenceProvider } = {},
+  options: { provider?: RoadRoutingProvider; knowledge?: TransferEvidenceProvider; reviewedJourneyTemplates?: readonly ReviewedJourneyTemplate[]; reviewedJourneyContext?: ReviewedJourneyContext; comparison?: boolean } = {},
 ): Promise<MultimodalResolutionResult> {
   const started = performance.now();
   const roads: PlanningEvidenceState[] = [];
@@ -863,9 +866,29 @@ export async function resolveCanonicalTransferJourney(
   return {...result, assessment};
 }
 
+/** Explicit, request-local comparison. Saved facts are never the routing input or output.
+ * Only validated endpoints and hard/preferences constraints authorize new inference. */
+export async function compareCanonicalTransferJourney(
+  leg: TripLeg,
+  options: {provider?: RoadRoutingProvider; knowledge?: TransferEvidenceProvider; reviewedJourneyTemplates?: readonly ReviewedJourneyTemplate[]; reviewedJourneyContext?: ReviewedJourneyContext} = {},
+): Promise<MultimodalResolutionResult> {
+  const snapshot = structuredClone(leg);
+  const input: TripLeg = {
+    ...snapshot, mode: 'unknown', provenance: 'unknown', confidence: 'unknown',
+    durationMinutes: null, headlineMinutes: null, doorToDoorMinutes: null,
+    distanceKm: null, routedDistanceKm: null, straightLineDistanceKm: null, usableDayLoss: null,
+    provider: null, segments: undefined, routeGeometry: undefined, roadEstimate: undefined,
+    warnings: [], scheduleNeedsChecking: true,
+    routeMetadata: {source: 'morrovia-planner', roadFallbackEligible: true,
+      transportConstraints: snapshot.routeMetadata.transportConstraints},
+  };
+  const result = await resolveCanonicalTransferJourney(input, {...options, comparison: true});
+  return {...result, leg: snapshot};
+}
+
 async function resolveTransferJourney(
   leg: TripLeg,
-  options: {provider?: RoadRoutingProvider; knowledge?: TransferEvidenceProvider; onRoadAssessment?: RoadAssessmentObserver},
+  options: {provider?: RoadRoutingProvider; knowledge?: TransferEvidenceProvider; reviewedJourneyTemplates?: readonly ReviewedJourneyTemplate[]; reviewedJourneyContext?: ReviewedJourneyContext; onRoadAssessment?: RoadAssessmentObserver; comparison?: boolean},
 ): Promise<CoreResolutionResult> {
   if (preservedTransferFacts(leg)) return {leg,outcome:'preserved',diagnostic:{version:1,selected:'preserved',candidates:[],rejected:[]}};
   const geographicProjection = guardTransferRoutingGeography(leg);
@@ -888,6 +911,7 @@ async function resolveTransferJourney(
   const fromKnowledge = knowledge.forTransferResolution(from);
   const toKnowledge = knowledge.forTransferResolution(to);
   const { excludedModes, preferredModes } = transportRules(leg);
+  diagnostic.routeGuidance=reviewedRouteGuidance(from,to,excludedModes);
   const exact = exactTransferCandidate(leg, knowledge.findTransfer(from, to));
   const reviewedAir = excludedModes.has('flight') ? null : reviewedAirCandidate(leg);
   const railDistanceKm = haversineKm(from.coordinates, to.coordinates);
@@ -897,7 +921,10 @@ async function resolveTransferJourney(
   const airportPlanning = excludedModes.has("flight") ? null : airportFlightPlanningCandidate(leg);
   const mixed = excludedModes.has("flight") || excludedModes.has("road") ? null : await mixedGatewayCandidate(leg, fromKnowledge, toKnowledge, options.provider, options.onRoadAssessment);
   const canonicalGatewayAccess = excludedModes.has("road") ? null : gatewayAccessCandidate(leg, fromKnowledge, toKnowledge);
-  const candidates = [exact, reviewedAir, rail, mixed, directFlight, airportPlanning]
+  const composed = (options.reviewedJourneyTemplates ?? []).map(template => composeReviewedJourney(leg, template, options.reviewedJourneyContext!));
+  if (composed.length) diagnostic.reviewedJourneys = composed.map(result => ({id:result.id,status:result.status,reasons:result.status==='complete'?[]:result.reasons}));
+  const completeCompositions = composed.flatMap(result => result.status==='complete' ? [result.candidate] : []);
+  const candidates = [exact, reviewedAir, rail, mixed, directFlight, airportPlanning, ...completeCompositions]
     .filter((item): item is TransferJourneyCandidate => Boolean(item))
     .filter((item) => candidateAllowed(item, excludedModes));
 
@@ -913,10 +940,10 @@ async function resolveTransferJourney(
   // must not become a dependency of this independently supported flight.
   const skipOptionalRoadReference = ((exact?.summaryMode === "flight" && candidates.includes(exact)) || (reviewedAir !== null && candidates.includes(reviewedAir)))
     && !sameCountry(from, to) && !travellerPrefersRoad && !findSurfaceCrossing(from, to, "road");
-  if (!excludedModes.has("road") && !credibleLowChangeRailDominatesRoad && !skipOptionalRoadReference) {
+  if (!excludedModes.has("road") && (options.comparison || !credibleLowChangeRailDominatesRoad && !skipOptionalRoadReference)) {
     // A complete gateway composition has already routed its ground access;
     // avoid a second, unrelated origin-to-destination driving request.
-    const road = mixed ? null : await roadCandidate(leg, options.provider, options.onRoadAssessment);
+    const road = mixed && !options.comparison ? null : await roadCandidate(leg, options.provider, options.onRoadAssessment);
     roadEstimate = road?.estimate;
     // A driving route alone does not establish a cross-border passenger
     // connection. Preserve the existing reference-only policy unless driving
@@ -999,12 +1026,12 @@ async function resolveTransferJourney(
 
 export async function resolveCanonicalTransferJourneys(
   legs: readonly TripLeg[],
-  options: { provider?: RoadRoutingProvider; knowledge?: TransferEvidenceProvider; maxLegs?: number } = {},
+  options: { provider?: RoadRoutingProvider; knowledge?: TransferEvidenceProvider; reviewedJourneyTemplates?: readonly ReviewedJourneyTemplate[]; reviewedJourneyContextByLeg?: Readonly<Record<string,ReviewedJourneyContext>>; maxLegs?: number } = {},
 ) {
   const maximum = Math.max(0, Math.min(8, options.maxLegs ?? 8));
   const output: TripLeg[] = [];
   for (const [index, leg] of legs.entries()) {
-    output.push(index < maximum ? (await resolveCanonicalTransferJourney(leg, options)).leg : leg);
+    output.push(index < maximum ? (await resolveCanonicalTransferJourney(leg, {...options,reviewedJourneyContext:options.reviewedJourneyContextByLeg?.[leg.id]})).leg : leg);
   }
   return output;
 }
@@ -1013,7 +1040,7 @@ export async function resolveCanonicalTransferJourneys(
  * Existing save/load callers continue to receive only canonical legs. */
 export async function assessCanonicalTransferJourneys(
   legs: readonly TripLeg[],
-  options: {provider?: RoadRoutingProvider; knowledge?: TransferEvidenceProvider; maxLegs?: number} = {},
+  options: {provider?: RoadRoutingProvider; knowledge?: TransferEvidenceProvider; reviewedJourneyTemplates?: readonly ReviewedJourneyTemplate[]; reviewedJourneyContextByLeg?: Readonly<Record<string,ReviewedJourneyContext>>; maxLegs?: number} = {},
 ): Promise<{legs: TripLeg[]; assessments: TransferAssessment[]}> {
   const maximum = Math.max(0, Math.min(8, options.maxLegs ?? 8));
   const output: TripLeg[] = [], assessments: TransferAssessment[] = [];
@@ -1024,7 +1051,7 @@ export async function assessCanonicalTransferJourneys(
     }
     const started = performance.now();
     try {
-      const result = await resolveCanonicalTransferJourney(leg, options);
+      const result = await resolveCanonicalTransferJourney(leg, {...options,reviewedJourneyContext:options.reviewedJourneyContextByLeg?.[leg.id]});
       output.push(result.leg); assessments.push({legId: leg.id, state: result.assessment});
     } catch {
       output.push(leg);
@@ -1047,7 +1074,11 @@ export async function resolveTripTransferJourneys(
     // mask. Unqualified identity remains saveable without authorizing inference.
     const geographicReady = transferEndpointGeographicallyReady(leg.fromEndpoint)
       && transferEndpointGeographicallyReady(leg.toEndpoint);
-    legs.push(index < 8 && !pendingPrefix && geographicReady ? (await resolveCanonicalTransferJourney(leg, options)).leg : leg);
+    const accepted = hasCurrentAcceptedTransportChoice(trip, leg);
+    const boundBooking = trip.brief.bookings?.some(booking => booking.type === 'transport'
+      && (booking.transportLegBinding?.legId === leg.id || booking.id === leg.id || booking.id === `transport-${leg.id}`
+        || booking.id === leg.routeMetadata.importedBookingId));
+    legs.push(index < 8 && !pendingPrefix && geographicReady && !accepted && !boundBooking ? (await resolveCanonicalTransferJourney(leg, options)).leg : leg);
   }
   return legs.some((leg, index) => leg !== trip.legs[index]) ? { ...trip, legs } : trip;
 }

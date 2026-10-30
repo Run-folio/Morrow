@@ -129,3 +129,17 @@ test('malformed optional raw leg timing cannot crash any rendered consumer',()=>
  const value=structuredClone(trip);value.legs[0]!.routeMetadata.transferImpact={version:1,mode:'flight',headline:{status:'known'},doorToDoor:{status:'known'},components:[]};
  for(const surface of ['Builder','Overview','Map','Itinerary','Transport','Choice','CalendarItem'])assert.doesNotThrow(()=>render(surface,value,surface==='Map'?{storyState:{mapMode:'detail',selectedRouteLegId:value.legs[0]!.id}}:{}),surface);
 });
+
+test('Map detail does not call explicit unknown totals known because stale minutes remain',()=>{
+ const value=structuredClone(trip);delete value.legs[0]!.roadEstimate;
+ const leg=value.legs[0]!;
+ leg.headlineMinutes=120;leg.doorToDoorMinutes=240;leg.durationMinutes=240;
+ leg.routeMetadata.transferImpact={version:1,mode:'flight',headline:{status:'unknown',value:null,confidence:'unknown'},doorToDoor:{status:'unknown',value:null,confidence:'unknown'}};
+ const before=structuredClone(value);
+ const html=render('Map',value,{storyState:{mapMode:'detail',selectedRouteLegId:leg.id}});
+ assert.match(html,/Door-to-door timing is not available yet for this transfer/);
+ assert.match(html,/Flight time<\/dt><dd>Not available/);
+ assert.match(html,/Door to door<\/dt><dd>Timing to confirm/);
+ assert.doesNotMatch(html,/Plan around Timing to confirm/);
+ assert.deepEqual(value,before);
+});

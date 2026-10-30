@@ -4,7 +4,7 @@ import {createTripCreationToken,loadTripCreationContinuation,loadReservedTripCre
 import { builderDetailsStatus } from "@/lib/easyt/builder-planning-status";
 import type { TransferAssessment } from '@/lib/easyt/planning-evidence-state';
 import { currentBuilderTransferAssessments, transferAssessmentForLeg } from '@/lib/easyt/planning-evidence-presentation';
-import { requestCanonicalTransferResolution } from '@/lib/easyt/transfer-resolution-client';
+import { requestCanonicalTransferResolution, completedTransferResolutionLeg } from '@/lib/easyt/transfer-resolution-client';
 
 import { builderStructuralFeedback } from "@/lib/easyt/trip-builder-structural-feedback";
 
@@ -513,11 +513,16 @@ async function reconcileAcceptedBuilderRequest(request: BuilderReconciliationReq
     try {
       const payload = await requestCanonicalTransferResolution(qualifiedLegs, signal);
       if (!payload.ok) throw new Error("Invalid transfer assessment input");
-      legs = legs.map(leg=>payload.legs.find(result=>result.id===leg.id)??leg);
-      assessments = payload.assessments;
+      const completed = new Map(qualifiedLegs.flatMap(leg => {
+        const result = completedTransferResolutionLeg(leg, payload);
+        return result ? [[leg.id, result] as const] : [];
+      }));
+      legs = legs.map(leg => completed.get(leg.id) ?? leg);
+      assessments = payload.assessments.map(item => completed.has(item.legId)
+        || item.state.retrieval === 'unavailable' || item.state.retrieval === 'blocked' ? item
+        : { legId: item.legId, state: { retrieval: 'unavailable', evidence: 'unqualified', reason: 'malformed_response', retryable: true } });
       for (const result of results) if (result.kind === 'leg') {
-        const state = transferAssessmentForLeg(assessments, result.targetId);
-        if (payload.failedLegIds.includes(result.targetId) || state?.retrieval === 'unavailable' || state?.retrieval === 'blocked') { result.phase = 'failed'; result.reason = 'unavailable'; }
+        if (!completed.has(result.targetId)) { result.phase = 'failed'; result.reason = 'unavailable'; }
       }
     } catch (error) {
       if (signal.aborted) throw error;
@@ -942,6 +947,7 @@ function TripBuilderDocument() {
   const [planningSuggestions, setPlanningSuggestions] = useState<GuidedPlanningAreaSuggestion[]>([]);
   const [countryEnrichment, setCountryEnrichment] = useState<{ key: string; status: "loading" | "ready" | "unavailable"; suggestions: GuidedPlanningAreaSuggestion[] }>({ key: "", status: "ready", suggestions: [] });
   const countryEnrichmentRequestsRef = useRef(new Map<string, Promise<GuidedPlanningAreaSuggestion[]>>());
+  const countryEnrichmentScopeRef = useRef("");
   const [initialCompletedPlanningAreaMentionIds, setCompletedPlanningAreaMentionIds] = useState<string[]>([]);
   const completedPlanningAreaMentionIds = canonicalBuilder ? (canonicalBuilder.brief.structuredBrief?.completedPlanningAreaMentionIds ?? []) : initialCompletedPlanningAreaMentionIds;
   const [initialRemovedPlaceMentionIds, setRemovedPlaceMentionIds] = useState<string[]>([]);
@@ -5588,19 +5594,28 @@ function TripBuilderDocument() {
     }) : null;
   const countryEnrichmentKey = activeClarificationMention && clarificationDiscovery && clarificationDiscovery.candidates.length < 6
     ? JSON.stringify({ owner: activeBrowserOwnerId, trip: activeTripDocument?.id, mention: activeClarificationMention.mentionId,
-      country: activeClarificationMention.canonicalName, interests: effectiveIntent.preferences.interests,
+      country: activeClarificationMention.canonicalName, startDate, endDate, interests: effectiveIntent.preferences.interests,
       pace: effectiveStructuredBrief.pace?.value ?? effectiveIntent.preferences.pace,
       nights: effectiveStructuredBrief.duration?.value ?? totalDays - 1,
       existing: stops.flatMap((stop) => stop.canonicalPlaceId ? [stop.canonicalPlaceId] : []).sort() }) : "";
+  countryEnrichmentScopeRef.current = clarificationOpen && !discoveryCommitting ? countryEnrichmentKey : "";
   useEffect(() => {
-    if (!clarificationOpen || !countryEnrichmentKey || !activeClarificationMention || !clarificationDiscovery
+    // This request suggests extra places only. Canonical acceptance, geography,
+    // transfer assessment and durable checkpoints keep their existing owners.
+    if (discoveryCommitting || discoveryCommitRef.current || !clarificationOpen || !countryEnrichmentKey || !activeClarificationMention || !clarificationDiscovery
       || clarificationUsesNearbyBases) return;
+    const scope = createAbortableEffectScope("Optional Discovery enrichment");
+    const publish = (suggestions: GuidedPlanningAreaSuggestion[]) => scope.commit(() => {
+      if (!builderMountedRef.current || discoveryCommitRef.current
+        || activeBrowserOwnerIdRef.current !== activeBrowserOwnerId
+        || countryEnrichmentScopeRef.current !== countryEnrichmentKey) return;
+      setCountryEnrichment({ key: countryEnrichmentKey, status: suggestions.length ? "ready" : "unavailable", suggestions });
+    });
     const existingRequest = countryEnrichmentRequestsRef.current.get(countryEnrichmentKey);
     if (existingRequest) {
       setCountryEnrichment({ key: countryEnrichmentKey, status: "loading", suggestions: [] });
-      void existingRequest.then((suggestions) => setCountryEnrichment({ key: countryEnrichmentKey,
-        status: suggestions.length ? "ready" : "unavailable", suggestions }));
-      return;
+      void existingRequest.then(publish);
+      return () => scope.dispose();
     }
     const countryName = activeClarificationMention.canonicalName;
     const interests = effectiveIntent.preferences.interests.slice(0, 8).join(", ");
@@ -5608,8 +5623,9 @@ function TripBuilderDocument() {
     const existingNames = stops.filter((stop) => stop.canonicalPlaceId).map((stop) => stop.name).slice(0, 8).join(", ");
     const prompt = `I am planning a trip in ${countryName}. Suggest up to six additional city or town overnight-base candidates located in ${countryName}. Interests: ${interests || "varied"}. Pace: ${effectiveStructuredBrief.pace?.value ?? effectiveIntent.preferences.pace}. Trip length: about ${nights} nights. Existing stops to avoid duplicating: ${existingNames || "none"}. Return place names only; do not claim connections, schedules, lodging availability, visa rules, opening hours, or trip suitability.`;
     setCountryEnrichment({ key: countryEnrichmentKey, status: "loading", suggestions: [] });
+    const controller = new AbortController();
+    let settled = false;
     const request = (async () => {
-      const controller = new AbortController();
       const timeout = window.setTimeout(() => controller.abort(), 18_000);
       try {
         const response = await fetch("/api/journey-capture", { method: "POST", headers: { "content-type": "application/json" },
@@ -5631,12 +5647,21 @@ function TripBuilderDocument() {
         }).slice(0, 6).map((row) => ({ ...row, mentionId: activeClarificationMention.mentionId, anchorMatched: false,
           reason: `An additional place resolved within ${countryName}; check how it fits your route.` }));
       } catch { return [] as GuidedPlanningAreaSuggestion[]; }
-      finally { window.clearTimeout(timeout); }
+      finally { settled = true; window.clearTimeout(timeout); }
     })();
     countryEnrichmentRequestsRef.current.set(countryEnrichmentKey, request);
-    void request.then((suggestions) => setCountryEnrichment({ key: countryEnrichmentKey,
-      status: suggestions.length ? "ready" : "unavailable", suggestions }));
-  }, [clarificationOpen, countryEnrichmentKey]);
+    void request.then(publish);
+    return () => {
+      scope.dispose();
+      if (!settled) {
+        controller.abort();
+        // A cancelled attempt is not a cached unavailable result. A partial
+        // acceptance can return here and request the current context once.
+        if (countryEnrichmentRequestsRef.current.get(countryEnrichmentKey) === request)
+          countryEnrichmentRequestsRef.current.delete(countryEnrichmentKey);
+      }
+    };
+  }, [clarificationOpen, countryEnrichmentKey, discoveryCommitting]);
   const activeCountryEnrichment = countryEnrichment.key === countryEnrichmentKey ? countryEnrichment : null;
   const discoveryEntry: DiscoveryEntry = activeClarificationMention
     ? discoveryEntryForBrief({ ...effectiveStructuredBrief, placeMentions: activePlaceMentions },
@@ -6592,6 +6617,7 @@ function TripBuilderDocument() {
               <TripBuilderRouteWorkspace
                 canonicalTrip={activeTripDocument}
                 transferAssessments={activeBuilderTransferAssessments}
+                routeWorkBlocked={mountedBuilder?.snapshot.routeWorkBlocked}
                 previewStopIds={routePreviewStopIds}
                 selectedStopId={selectedRouteStopId}
                 lockedStopIds={protectedBuilderStopIds}
@@ -6601,7 +6627,7 @@ function TripBuilderDocument() {
                 stopReview={stopId=><>{necessaryReview(["recommendation"],stopId)}{renderSavedLocationReview(stopId)}</>}
                 nightReview={nightEditFeedback?.tone==="warning" ? <p role="status" className={styles.hintError}>{nightEditFeedback.title} {nightEditFeedback.detail}</p> : null}
                 reviewControl={<div className={styles.builderReviewActions}>
-                  <MorroviaSaveStatus {...builderDetailsStatus(activeTripDocument, language, activeBuilderTransferAssessments)} />
+                  <MorroviaSaveStatus {...builderDetailsStatus(activeTripDocument, language, activeBuilderTransferAssessments, mountedBuilder?.snapshot.routeWorkBlocked)} />
                 </div>}
                 nightStatus={{ total: totalNights, allocated: allocatedNights, complete: allNightsAllocated, language }}
                 onSelectStop={setSelectedRouteStopId}

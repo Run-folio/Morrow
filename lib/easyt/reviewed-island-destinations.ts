@@ -1,3 +1,7 @@
+import {qualifyTownGatewayAccess,type AccessDirection,type TownGatewayRelationship} from './town-gateway-access.ts';
+import {acceptedGeographicPlace} from './geographic-binding.ts';
+import {countryFor} from './country-registry.ts';
+import type {CanonicalRouteEndpoint} from './trip.ts';
 import registry from '../../data/place-reference/reviewed-island-destinations.json' with { type: 'json' };
 import { countryCodeFor } from './country-registry.ts';
 import { REFERENCE_SNAPSHOT_ID, referenceRecordKey, type ReferencePlaceRecord } from './place-reference.ts';
@@ -42,5 +46,19 @@ export function reviewedIslandGatewayForBase(input: {canonicalPlaceId?: string; 
   if (!base || input.providerId !== base.providerId || normalized(input.name) !== normalized(base.canonicalName)
     || countryCodeFor(input.country) !== base.countryCode || input.coordinates?.length !== 2
     || !base.coordinates.every((point, index) => point === input.coordinates![index])) return;
-  return reviewedIslandGatewayRecord();
+  return reviewedIslandAccessForBase(input,'town-to-gateway') ? reviewedIslandGatewayRecord() : undefined;
+}
+
+/** Adapter for the already-published Bali evidence, not new island/service coverage. */
+export function reviewedIslandAccessForBase(input:{id?:string;canonicalPlaceId?:string;providerId?:string;name:string;country?:string;coordinates?:readonly number[]|null},direction:AccessDirection){
+ const base=reviewedIslandBaseRecords().find(r=>r.canonicalPlaceId===input.canonicalPlaceId),gateway=reviewedIslandGatewayRecord();
+ if(!base||!gateway||input.providerId!==base.providerId||normalized(input.name)!==normalized(base.canonicalName)||countryCodeFor(input.country)!==base.countryCode||input.coordinates?.length!==2||!base.coordinates.every((n,i)=>n===input.coordinates![i]))return null;
+ const endpoint=(r:ReferencePlaceRecord,kind:'stop'|'gateway'):CanonicalRouteEndpoint|null=>{
+  const owner={name:r.canonicalName,country:countryFor(r.countryCode)!.name,canonicalPlaceId:r.canonicalPlaceId};
+  const place=acceptedGeographicPlace(owner,{...owner,providerId:r.providerId,coordinates:[...r.coordinates],placeType:r.placeType,routability:'direct_destination',referenceSnapshotId:REFERENCE_SNAPSHOT_ID},kind==='stop'?'stop':'endpoint');
+  return place?{...place,id:r.canonicalPlaceId,kind,coordinates:place.coordinates!}:null;
+ };
+ const town=endpoint(base,'stop'),point=endpoint(gateway,'gateway');if(!town||!point)return null;
+ const record:TownGatewayRelationship={version:1,referenceSnapshotId:registry.referenceSnapshotId,id:`published-bali-access:${base.canonicalPlaceId}`,status:'active',town,gateway:{kind:'airport',place:point},directions:['town-to-gateway','gateway-to-town'],accessMode:'road',relationship:'same-land',evidence:{id:registry.sources[2]!.id,url:registry.sources[2]!.url,reviewedAt:registry.reviewedAt,supports:'access'},timingPolicy:'gateway-access-v1'};
+ return qualifyTownGatewayAccess(record,{...town,id:input.id??town.id},point,direction,{asOf:new Date().toISOString().slice(0,10)});
 }

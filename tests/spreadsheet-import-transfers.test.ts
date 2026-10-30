@@ -47,7 +47,10 @@ test('unsupported island crossing and unavailable provider stay unknown', async 
   const resolved = await assessSpreadsheetImportTransfers(island, new AbortController().signal, resolve);
   assert.equal(resolved.legs[0].mode, 'unknown');
   assert.equal(resolved.legs[0].durationMinutes, null);
-  assert.deepEqual(await assessSpreadsheetImportTransfers(island, new AbortController().signal, async () => ({ ok: false, reason: 'invalid-input' })), island);
+  const failed = await assessSpreadsheetImportTransfers(island, new AbortController().signal, async () => ({ ok: false, reason: 'invalid-input' }));
+  assert.deepEqual(failed.legs, island.legs);
+  assert.deepEqual({ ...failed, brief: island.brief }, island);
+  assert.equal(failed.brief.cascadeStatus?.routeReconciliation?.residual[0]?.phase, 'failed');
 });
 
 test('unverified endpoints authorize no request', async () => {
@@ -65,7 +68,9 @@ test('late cancelled responses and changed endpoints cannot be adopted', async (
   const result = await assessSpreadsheetImportTransfers(trip, new AbortController().signal, async legs => {
     const resolved = await resolve(legs); resolved.legs[0].toStopId = 'different-occurrence'; return resolved;
   });
-  assert.deepEqual(result, trip);
+  assert.deepEqual(result.legs, trip.legs);
+  assert.deepEqual({ ...result, brief: trip.brief }, trip);
+  assert.equal(result.brief.cascadeStatus?.routeReconciliation?.residual[0]?.phase, 'failed');
 });
 
 test('European road recommendation uses the existing route provider and retains traveller preferences', async () => {

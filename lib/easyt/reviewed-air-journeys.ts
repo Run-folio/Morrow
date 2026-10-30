@@ -1,3 +1,4 @@
+import {reviewedPilotRecords} from './reviewed-transport-pilot.ts';
 import {knownKnowledgeFact,unknownKnowledgeFact,type DestinationTransferKnowledge,type KnowledgeSource} from './destination-knowledge.ts';
 import {REFERENCE_SNAPSHOT_ID} from './place-reference.ts';
 import {estimateFlightPlanningMinutes,haversineKm} from './planner.ts';
@@ -38,12 +39,13 @@ const journeys:readonly {from:CityId;to:CityId;source:KnowledgeSource}[]=[
 
 /** Called only after the shared geographic guard; never relabels a saved place. */
 export function reviewedAirJourney(from:CanonicalRouteEndpoint,to:CanonicalRouteEndpoint):{id:string;transfer:DestinationTransferKnowledge}|undefined {
- const journey=journeys.find(item=>matches(from,cities[item.from])&&matches(to,cities[item.to]));
+ const pilot=reviewedPilotRecords(from,to).find(item=>item.timing==='existing-air-allowance');
+ const journey=journeys.find(item=>matches(from,cities[item.from])&&matches(to,cities[item.to]))??(pilot?{from:pilot.from,to:pilot.to,source:route('pilot:'+pilot.id,pilot.label,pilot.url,'Directional city corridor only; no date-specific availability, nonstop or airline-duration claim.','2026-10-27')}:undefined);
  if(!journey)return undefined;
  const distance=haversineKm(from.coordinates??undefined,to.coordinates??undefined);
  if(distance===null)return undefined;
  const planningMinutes=Math.ceil(estimateFlightPlanningMinutes(distance).totalMinutes/60)*60;
- return {id:`${journey.from}-${journey.to}`,transfer:{
+ return {id:journey.source.id.startsWith('pilot:')?journey.source.id:`${journey.from}-${journey.to}`,transfer:{
   fromCanonicalId:from.canonicalPlaceId!,toCanonicalId:to.canonicalPlaceId!,
   mode:knownKnowledgeFact('flight','static',journey.source),
   planningMinutes:knownKnowledgeFact(planningMinutes,'estimated',allowanceSource),
