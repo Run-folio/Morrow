@@ -318,17 +318,38 @@ function resolverOwnedLegProjection(reviewedLeg: TripLeg, canonicalLeg: TripLeg)
   };
 }
 
+/** A retained choice remains protected even if its candidate is now unsupported.
+ * Match the same direct/endpoint choice and booking bindings the resolver owns,
+ * without requiring candidate validity as permission to replace saved evidence. */
+function hasRetainedTransportEvidence(trip: Omit<EasyTTrip, "updatedAt">, leg: TripLeg) {
+  const selections = trip.brief.decisionSelections?.transportByLeg ?? {};
+  const from = leg.fromEndpoint?.id ?? leg.fromStopId;
+  const to = leg.toEndpoint?.id ?? leg.toStopId;
+  const selected = Object.prototype.hasOwnProperty.call(selections, leg.id)
+    || Object.values(selections).some(selection => isRecord(selection)
+      && selection.fromEndpointId === from && selection.toEndpointId === to);
+  const bookings = trip.brief.bookings;
+  // Uncertain retained booking shapes cannot authorize resolver replacement.
+  const booked = bookings !== undefined && (!Array.isArray(bookings)
+    || bookings.some(booking => !isRecord(booking) || booking.type === "transport"
+      && (booking.transportLegBinding?.legId === leg.id || booking.id === leg.id
+        || booking.id === `transport-${leg.id}` || booking.id === leg.routeMetadata.importedBookingId)));
+  return selected || booked;
+}
+
 function canonicalEquivalenceTrips(
   reviewed: Omit<EasyTTrip, "updatedAt">,
   canonical: Omit<EasyTTrip, "updatedAt">,
 ) {
   const reviewedLegs = reviewed.legs.map((leg, index) => {
     const canonicalLeg = canonical.legs[index];
-    return canonicalLeg ? resolverOwnedLegProjection(leg, canonicalLeg)?.reviewed ?? leg : leg;
+    return canonicalLeg && !hasRetainedTransportEvidence(reviewed, leg)
+      ? resolverOwnedLegProjection(leg, canonicalLeg)?.reviewed ?? leg : leg;
   });
   const canonicalLegs = canonical.legs.map((leg, index) => {
     const reviewedLeg = reviewed.legs[index];
-    return reviewedLeg ? resolverOwnedLegProjection(reviewedLeg, leg)?.canonical ?? leg : leg;
+    return reviewedLeg && !hasRetainedTransportEvidence(reviewed, reviewedLeg)
+      ? resolverOwnedLegProjection(reviewedLeg, leg)?.canonical ?? leg : leg;
   });
   return [{ ...reviewed, legs: reviewedLegs }, { ...canonical, legs: canonicalLegs }] as const;
 }
@@ -339,6 +360,8 @@ function canonicalEquivalenceTrips(
  * revision) and a marked server transfer resolution are allowed; semantic
  * intent, selected bases, order, dates, nights, canonical endpoints and
  * traveller-authored transfer constraints must all remain byte-equivalent.
+ * Legs supporting retained choices or bookings keep their complete snapshots;
+ * the generated-resolution allowance applies only to unselected, unbooked legs.
  */
 export function tripBuildDocumentsCanonicalEquivalent(
   reviewedTrip: EasyTTrip,
