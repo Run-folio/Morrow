@@ -104,6 +104,9 @@ type Props = {
 
 const copy = {
   en: {
+    add: "Add",
+    added: "Added",
+    selected: "Selected",
     addMemory: "Add a memory",
     addPhoto: "Add a photo",
     all: "All",
@@ -154,6 +157,9 @@ const copy = {
     zoomReset: "Fit world",
   },
   es: {
+    add: "Añadir",
+    added: "Añadido",
+    selected: "Seleccionado",
     addMemory: "Añadir un recuerdo",
     addPhoto: "Añadir una foto",
     all: "Todos",
@@ -286,6 +292,7 @@ export function StampedExperience({
   const mapPanelRef = useRef<HTMLElement>(null);
   const restoreFocusRef = useRef<FocusableElement | null>(null);
   const memoryId = useId();
+  const patternId = useId().replace(/:/g, "");
 
   const topology = useMemo(
     () => feature(worldTopology as never, worldTopology.objects.countries as never) as unknown as { features: AtlasFeature[] },
@@ -498,14 +505,22 @@ export function StampedExperience({
             </div>
 
             <svg className={styles.map} viewBox="0 0 1100 560" role="group" aria-label={labels.worldMap} onClick={closeCountry}>
+              <defs>
+                <pattern id={`${patternId}-visited`} width="7" height="7" patternUnits="userSpaceOnUse">
+                  <path d="M-1 1L1 -1M0 7L7 0M6 8L8 6" className={styles.visitedPattern} />
+                </pattern>
+                <pattern id={`${patternId}-want`} width="7" height="7" patternUnits="userSpaceOnUse">
+                  <circle cx="3.5" cy="3.5" r="1.2" className={styles.wantPattern} />
+                </pattern>
+              </defs>
               <g className={styles.mapGroup} style={{ transform: `scale(${zoom})` }}>
                 {mapFeatures.map(({ country, d, key }) => {
                   const countryStatus = country ? statuses[country.id] : undefined;
                   const muted = Boolean(country && statusFilter !== "all" && countryStatus !== statusFilter);
                   const interactive = Boolean(country && !muted);
                   return (
+                    <g key={key}>
                     <path
-                      key={key}
                       d={d}
                       className={[
                         styles.country,
@@ -516,6 +531,7 @@ export function StampedExperience({
                         muted ? styles.countryMuted : "",
                       ].filter(Boolean).join(" ")}
                       data-country-id={country?.id}
+                      data-region={country?.region}
                       role={interactive ? "button" : undefined}
                       tabIndex={interactive ? 0 : -1}
                       aria-hidden={country ? undefined : true}
@@ -531,6 +547,8 @@ export function StampedExperience({
                         chooseCountry(country.id, event.currentTarget);
                       } : undefined}
                     />
+                    {countryStatus ? <path d={d} className={[styles.patternLayer, muted ? styles.patternMuted : ""].filter(Boolean).join(" ")} fill={`url(#${patternId}-${countryStatus})`} aria-hidden="true" /> : null}
+                    </g>
                   );
                 })}
               </g>
@@ -596,8 +614,9 @@ export function StampedExperience({
           </div>
 
           <footer className={styles.mapLegend}>
-            <span><i className={styles.legendDot} data-status="visited" />{labels.statusLabel.visited}</span>
-            <span><i className={styles.legendDot} data-status="want" />{labels.statusLabel.want}</span>
+            <span><i className={styles.legendDot} data-status="visited" aria-hidden="true" />{labels.statusLabel.visited}</span>
+            <span><i className={styles.legendDot} data-status="want" aria-hidden="true" />{labels.statusLabel.want}</span>
+            <span><i className={styles.legendDot} data-status="selected" aria-hidden="true" />{labels.selected}</span>
           </footer>
         </section>
 
@@ -652,17 +671,19 @@ export function StampedExperience({
                     const value = statusValue(countryStatus);
                     const pending = pendingStatuses.has(country.id);
                     const visitedLabel = countryStatus === "visited" ? labels.removeVisited(country.name) : labels.markVisited(country.name);
-                    const wantLabel = countryStatus === "want" ? labels.removeWant(country.name) : labels.markWant(country.name);
+                    const wantLabel = countryStatus === "want" ? `${labels.added}: ${labels.removeWant(country.name)}` : labels.markWant(country.name);
                     return <li key={country.id} className={styles.countryRow} data-selected={selectedCountryId === country.id || undefined}>
                       <div className={styles.rowMain}>
                         <button type="button" className={styles.rowCountry} aria-controls="selected-stamp-country" aria-pressed={selectedCountryId === country.id} onClick={(event) => chooseCountry(country.id, event.currentTarget, true)}>
                           <span className={styles.flag} aria-hidden="true">{stampCountryFlag(country.id)}</span>
-                          <strong>{country.name}</strong>
+                          <span className={styles.rowIdentity}>
+                            <strong>{country.name}</strong>
+                            <span className={styles.rowStatusText} data-status={value}>{countryStatus ? statusName(countryStatus, labels) : labels.notYet}{selectedCountryId === country.id ? <span className={styles.selectedLabel}> · {labels.selected}</span> : null}</span>
+                          </span>
                         </button>
-                        <span className={styles.rowStatusText} data-status={value}>{countryStatus ? statusName(countryStatus, labels) : labels.notYet}</span>
                         <span className={styles.rowActions} role="group" aria-label={labels.statusFor(country.name)} aria-busy={pending || undefined}>
-                          <button type="button" data-status="visited" data-active={countryStatus === "visited" || undefined} disabled={pending} aria-pressed={countryStatus === "visited"} aria-label={visitedLabel} title={visitedLabel} onClick={() => void onStatusChange(country.id, nextStampStatus(countryStatus, "visited"), "explorer")}><Check aria-hidden="true" /></button>
-                          <button type="button" data-status="want" data-active={countryStatus === "want" || undefined} disabled={pending} aria-pressed={countryStatus === "want"} aria-label={wantLabel} title={wantLabel} onClick={() => void onStatusChange(country.id, nextStampStatus(countryStatus, "want"), "explorer")}><Plus aria-hidden="true" /></button>
+                          <EasyTButton size="small" variant="secondary" data-status="visited" data-active={countryStatus === "visited" || undefined} disabled={pending} aria-pressed={countryStatus === "visited"} aria-label={visitedLabel} title={visitedLabel} onClick={() => void onStatusChange(country.id, nextStampStatus(countryStatus, "visited"), "explorer")}><span>{labels.statusLabel.visited}</span><Check aria-hidden="true" /></EasyTButton>
+                          <EasyTButton size="small" variant="secondary" data-status="want" data-active={countryStatus === "want" || undefined} disabled={pending} aria-pressed={countryStatus === "want"} aria-label={wantLabel} title={wantLabel} onClick={() => void onStatusChange(country.id, nextStampStatus(countryStatus, "want"), "explorer")}><span>{countryStatus === "want" ? labels.added : labels.add}</span><Plus aria-hidden="true" /></EasyTButton>
                         </span>
                       </div>
                       {statusError?.countryId === country.id ? <p className={styles.rowError} role="alert">{statusError.message}</p> : null}
