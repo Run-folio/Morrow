@@ -351,7 +351,9 @@ export async function getTripForOwner(
     where id = ${tripId} and owner_id = ${ownerId} and deleted_at is null
     limit 1
   `) as TripDocumentRow[];
-  return rows[0] ? normalizeLegacyGeneratedDayContext(await resolveTripTransferJourneys(requireReadableTripDocument(rows[0].document))) : null;
+  // Provider refresh belongs to a revision-checked save, not a read of an
+  // already acknowledged document. Keep only deterministic legacy projections.
+  return rows[0] ? normalizeLegacyGeneratedDayContext(reconcileLegacyTransportTrip(requireReadableTripDocument(rows[0].document))) : null;
 }
 
 export async function saveTripForOwner(

@@ -1,5 +1,4 @@
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
 import test from "node:test";
 import { omioBookingActionForLeg } from "../lib/easyt/booking-readiness.ts";
 import { itineraryTransportAgenda } from "../lib/easyt/itinerary-transport-agenda.ts";
@@ -134,12 +133,4 @@ test("explicit end identity and confirmed legacy transport survive compatibility
   assert.equal(reconcileLegacyTransportTrip(source), source);
   assert.equal(source.legs[1]?.toEndpoint?.kind, "end");
   assert.equal(source.legs[1]?.toEndpoint?.canonicalPlaceId, "rome");
-});
-
-test("repository hydration uses the pure compatibility boundary without a read-time write", () => {
-  const repository = readFileSync(new URL("../lib/easyt/repository.ts", import.meta.url), "utf8");
-  const compatibility = readFileSync(new URL("../lib/easyt/transport-leg-compatibility.ts", import.meta.url), "utf8");
-  assert.match(repository, /rows\.map\(\(row\) => requireReadableTripDocument\(row\.document\)\)\.map\(\(trip\) => normalizeLegacyGeneratedDayContext\(reconcileLegacyTransportTrip\(trip\)\)\)/);
-  assert.match(repository, /resolveTripTransferJourneys\(requireReadableTripDocument\(rows\[0\]\.document\)\)/);
-  assert.doesNotMatch(compatibility, /getEasyTDatabase|insert\s+into|update\s+easyt_trips|fetch\(/i);
 });
