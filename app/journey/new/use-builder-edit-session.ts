@@ -24,6 +24,8 @@ export function useBuilderEditSession(options: AsyncBuilderEditSessionOptions | 
     void createAsyncBuilderEditSession({ ...initial,
       getOwnerId: () => isCurrent() ? getOptions().getOwnerId() : detachedOwner,
       readDraft: (trip, ownerId) => getOptions().readDraft(trip, ownerId),
+      readAcknowledgedProjection: (trip,ownerId,guard) => getOptions().readAcknowledgedProjection?.(trip,ownerId,
+        {isCurrent:()=>isCurrent()&&(guard?.isCurrent()??true)}),
       writeDraft: (trip, draft, ownerId, guard) => getOptions().writeDraft(trip, draft, ownerId,
         { isCurrent: () => isCurrent() && (guard?.isCurrent() ?? true) }),
       saveRecovery: (trip, recoveryOptions) => getOptions().saveRecovery(trip,

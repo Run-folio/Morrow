@@ -104,7 +104,8 @@ export class MemoryRecoveryDriver implements RecoveryDomainDriver {
           return { headRaw, generationRaw: selected ? this.generations.get(entryGenerationKey(item.scope, selected)) : undefined,
             headGenerationRaw: head ? this.generations.get(entryGenerationKey(item.scope, head.writeId)) : undefined };
         }),
-        acknowledgementRaw: key ? this.acknowledgements.get(key) : undefined });
+        acknowledgementRaw: key ? this.acknowledgements.get(key) : undefined,
+        headAcknowledgementRaw: headWriteId ? this.acknowledgements.get(this.key(scope,headWriteId)) : undefined });
       if (mode === 'readonly' && (decision.headRaw !== undefined || decision.generationRaw !== undefined || decision.acknowledgementRaw !== undefined || decision.currentRaw !== undefined || decision.entryWrites?.length)) throw new Error('Readonly mutation');
       if (decision.generationRaw !== undefined && (key === null || this.generations.has(key))) throw new DOMException('Immutable generation exists', 'ConstraintError');
       if (decision.acknowledgementRaw !== undefined && (key === null || this.acknowledgements.has(key))) throw new DOMException('Immutable ACK exists', 'ConstraintError');

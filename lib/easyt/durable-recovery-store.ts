@@ -16,7 +16,7 @@ import { homepageInputMatchesTripReceipt } from './trip-receipt-persistence.ts';
 const failure = (reason: RecoveryFailureReason, commitStatus: CommitStatus = 'not-started'): RecoveryFailure => ({ kind: 'failure', reason, commitStatus });
 const conflict = (reason: RecoveryConflict['reason'], commitStatus: CommitStatus = 'not-started'): RecoveryConflict => ({ kind: 'protected-conflict', reason, commitStatus });
 const decodeFailure = (decoded: DecodeFailure, status: CommitStatus) => decoded.kind === 'scope' ? conflict('scope', status) : failure(decoded.kind, status);
-type ProjectionFence = { sourceRaw: string; currentRaw: unknown; entries: {scope: RecoveryEntryScope; raw: string | null}[] };
+type ProjectionFence = { sourceRaw: string; currentRaw: unknown; acknowledgementRaw?: string; entries: {scope: RecoveryEntryScope; raw: string | null}[] };
 function stateHead(state: RecoveryDomainState, scope: RecoveryScope): { kind: 'valid'; head: RecoveryHandle | null; envelope: RecoveryEnvelope | null } | RecoveryFailure | RecoveryConflict {
   const pointer = decodeDomainCurrent(state.currentRaw, scope.ownerId); if (pointer.kind !== 'readable') return decodeFailure(pointer, 'not-committed');
   const head = decodeDomainHead(state.headRaw, scope); if (head.kind !== 'readable') return decodeFailure(head, 'not-committed');
@@ -94,6 +94,10 @@ export function createRecoveryDomainStore(driver: RecoveryDomainDriver, context:
         const source = decodeRecoveryEnvelope(fence.sourceRaw, scope), seen = new Set<string>();
         if (input.admission !== 'existing-domain' || !expected || source.kind !== 'readable' || !sameDomainHandle(source.value.handle, expected)
           || !Array.isArray(fence.entries)) return conflict('scope');
+        if(fence.acknowledgementRaw!==undefined){
+          const ack=decodeTrustedAccountAck(fence.acknowledgementRaw,scope);
+          if(ack.kind!=='readable'||!sameDomainHandle(ack.value.handle,expected)||ack.value.rawRecovery!==source.value.rawRecovery)return conflict('scope');
+        }
         for (const entry of fence.entries) {
           if (entry.scope.ownerId !== ownerId || entry.scope.tripId !== scope.tripId || !['recovery-lifecycle','recovery-claim'].includes(entry.scope.kind)
             || seen.has(entryHeadKey(entry.scope)) || entry.raw !== null && decodeEntryEnvelope(entry.raw, entry.scope).kind !== 'readable') return conflict('scope');
@@ -138,6 +142,8 @@ export function createRecoveryDomainStore(driver: RecoveryDomainDriver, context:
           const existing = stateHead(state, scope); if (existing.kind !== 'valid') return { value: existing };
           if (fence && (state.headGenerationRaw !== fence.sourceRaw || state.currentRaw !== fence.currentRaw || !unchangedMetadata(state)))
             return {value: conflict('head-changed','not-committed')};
+          if(fence?.acknowledgementRaw!==undefined&&state.headAcknowledgementRaw!==fence.acknowledgementRaw)
+            return {value:conflict('ack-mismatch','not-committed')};
           // Only the dedicated paired transaction may introduce a claim.
           // Later generic edits must retain that exact ancestry pointer.
           if(JSON.stringify(candidate.entry.claim)!==JSON.stringify(existing.envelope?.entry.claim))return {value:conflict('admission','not-committed')};

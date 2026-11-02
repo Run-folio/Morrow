@@ -118,9 +118,12 @@ export async function openIndexedDbRecoveryDriver(factory: IDBFactory | undefine
           const selected = writeId ?? head?.writeId;
           if (selected) {
             read('generations', recoveryGenerationKey(scope, selected), raw => { state.generationRaw = raw; if (head?.writeId === selected) state.headGenerationRaw = raw; });
-            read('acknowledgements', recoveryGenerationKey(scope, selected), raw => { state.acknowledgementRaw = raw; });
+            read('acknowledgements', recoveryGenerationKey(scope, selected), raw => { state.acknowledgementRaw = raw; if(head?.writeId===selected)state.headAcknowledgementRaw=raw; });
           }
-          if (head && head.writeId !== selected) read('generations', recoveryGenerationKey(scope, head.writeId), raw => { state.headGenerationRaw = raw; });
+          if (head && head.writeId !== selected) {
+            read('generations', recoveryGenerationKey(scope, head.writeId), raw => { state.headGenerationRaw = raw; });
+            read('acknowledgements', recoveryGenerationKey(scope, head.writeId), raw => { state.headAcknowledgementRaw = raw; });
+          }
         });
         entries.forEach((item, index) => read('heads', entryHeadKey(item.scope), headRaw => {
           const row = state.entries[index]; row.headRaw = headRaw;

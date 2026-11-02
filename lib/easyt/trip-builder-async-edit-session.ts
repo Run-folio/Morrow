@@ -39,6 +39,7 @@ export type BuilderAsyncAcknowledgement = TripBuildSaveAcknowledgement & {
 };
 export type AsyncBuilderEditSessionOptions = Omit<BuilderEditSessionOptions,
   'readDraft' | 'writeDraft' | 'saveRecovery' | 'acknowledgeRecovery' | 'markRecoveryState'> & {
+  readAcknowledgedProjection?(trip:CanonicalEasyTTrip,ownerId:string,guard?:BuilderAsyncOperationGuard):Awaitable<AcknowledgedProjectionPredecessor|undefined>;
   readDraft(trip: CanonicalEasyTTrip, ownerId: string | null): Awaitable<BuilderInputReadResult>;
   writeDraft(trip: CanonicalEasyTTrip, draft: BuilderInputDraft, ownerId: string | null,
     guard?: BuilderAsyncOperationGuard): Awaitable<ReturnType<typeof writeBuilderInputDraft>>;
@@ -116,6 +117,13 @@ export async function createAsyncBuilderEditSession(options: AsyncBuilderEditSes
   const rawFieldKey = (binding: BuilderInputBinding) => JSON.stringify(Object.entries(binding).sort(([left], [right]) => left.localeCompare(right)));
   const listeners = new Set<() => void>();
   const active = () => !disposed && options.getOwnerId() === ownerId;
+  if(!initialRecovery&&ownerId!==null&&options.readAcknowledgedProjection){
+    try{
+      const witness=await options.readAcknowledgedProjection(freeze(structuredClone(trip)),ownerId,{isCurrent:active});
+      if(active()&&witness?.backend==='indexeddb-ack'&&witness.ownerId===ownerId&&witness.tripId===tripId)acknowledgedProjection=structuredClone(witness);
+    }catch{/* Missing proof defers optional work; never infer an ACK or recovery. */}
+    if(!active())throw new TypeError('Builder owner scope expired during projection proof read');
+  }
   const queue = createTripMutationPersistenceQueue(async (document, handle) => {
     const currentJob = submitting;
     if (!active() || !currentJob || !exact(currentJob.handle, handle)) throw new Error('Save scope expired');

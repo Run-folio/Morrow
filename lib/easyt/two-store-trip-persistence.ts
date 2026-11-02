@@ -112,7 +112,39 @@ export function createTwoStoreTripPersistence(storage: EasyTBrowserStorage, driv
     }catch{return {kind:'protected',reason:'cache-document'};}
   };
   const digest = async (raw: string) => Array.from(new Uint8Array(await globalThis.crypto.subtle.digest('SHA-256', new TextEncoder().encode(raw))), value => value.toString(16).padStart(2, '0')).join('');
+  async function readProjectionPredecessor(input:EasyTTrip):Promise<Extract<AcknowledgedProjectionPredecessor,{backend:'indexeddb-ack'}>|undefined>{
+    try{
+      const canonical=prepareTripDocumentForWrite(structuredClone(input)),tripId=canonical.id;
+      if(ownerId===null||canonical.ownerId!==ownerId||!active())return undefined;
+      const state=await inspect(tripId),existing=state.kind==='resolved'?state.domain.envelope:null;
+      if(state.kind!=='resolved'||state.resolved.kind!=='indexeddb'||!existing||!state.domain.acknowledgement
+        ||existing.entry.claim||state.lifecycle||!existing.entry.input
+        ||!samePersistedTripDocument(canonical,JSON.parse(state.domain.acknowledgement.canonicalRaw)))return undefined;
+      const currentRaw=await driver.readCurrent(ownerId),current=decodeDomainCurrent(currentRaw,ownerId);
+      if(typeof currentRaw!=='string'||current.kind!=='readable'||current.value?.backend!=='indexeddb'||!sameDomainHandle(current.value,existing.handle))return undefined;
+      const native=nativePointer();
+      if(native.tripId!==tripId&&native.raw!==(existing.entry.nativePointerRaw??null))return undefined;
+      const entries=createTwoStoreEntryPersistence(storage,driver,{...context,isCurrent:active,scope:{ownerId,tripId,kind:'builder-input'},key:builderInputDraftKey(ownerId,tripId),
+        validate:raw=>raw===null||readBuilderInputDraft({getItem:()=>raw},canonical,ownerId).kind==='readable'});
+      const paired=await entries.read();
+      if(paired.kind!=='ready'||!paired.envelope||paired.raw!==existing.entry.input.raw)return undefined;
+      const draft=readBuilderInputDraft({getItem:()=>paired.raw},canonical,ownerId);
+      if(draft.kind!=='readable'||draft.draft.inputRevision!==existing.entry.input.inputRevision||draft.draft.fields.some(field=>field.status!=='editable'))return undefined;
+      const claim=await createRecoveryEntryStore(driver,{ownerId,isCurrent:active}).read({ownerId,tripId,kind:'recovery-claim'});
+      if(claim.kind!=='ready'||claim.envelope)return undefined;
+      const witness:Extract<AcknowledgedProjectionPredecessor,{backend:'indexeddb-ack'}>={version:1,backend:'indexeddb-ack',ownerId,tripId,
+        sourceRaw:JSON.stringify(existing),acknowledgementRaw:JSON.stringify(state.domain.acknowledgement),currentRaw,
+        nativePointerRaw:native.raw,nativeSourcesRaw:JSON.stringify(state.legacy),nativeCacheRaw:storage.getItem(tripCacheStorageKey(ownerId,tripId)),
+        inputEnvelopeRaw:JSON.stringify(paired.envelope),lifecycleEntryRaw:state.lifecycleEntry?JSON.stringify(state.lifecycleEntry):null};
+      const final=await inspect(tripId),finalInput=await entries.read();
+      if(!active()||final.kind!=='resolved'||JSON.stringify(final)!==JSON.stringify(state)||await driver.readCurrent(ownerId)!==currentRaw
+        ||finalInput.kind!=='ready'||JSON.stringify(finalInput.envelope)!==witness.inputEnvelopeRaw||nativePointer().raw!==witness.nativePointerRaw
+        ||storage.getItem(tripCacheStorageKey(ownerId,tripId))!==witness.nativeCacheRaw)return undefined;
+      return witness;
+    }catch{return undefined;}
+  }
   return {
+    readProjectionPredecessor,
     async mark(input:TripRecoveryHandle,state:TripRecoveryRecord['state'],reason?:TripRecoveryRecord['conflictReason']){
       const handle={...input};if(handle.ownerId!==ownerId||!active())return false;
       const before=await inspect(handle.tripId);if(before.kind!=='resolved')return false;
@@ -245,7 +277,9 @@ export function createTwoStoreTripPersistence(storage: EasyTBrowserStorage, driv
         const ack=await domain.recordTrustedAccountAck({handle:domainHandle(submitted),rawRecovery,canonicalRaw:JSON.stringify(canonical)});
         const after=await this.read(submitted.tripId),afterRecovery=after.kind==='found'?after.recovery:remaining;
         if(ack.kind!=='journaled'||after.kind==='protected'||after.kind==='unavailable')return {outcome:'storage-failed',remainingRecovery:afterRecovery,accountAcknowledged:true,cacheStored:false,deviceOutcome:after.kind==='protected'?'protected-conflict':'unknown'};
-        return {outcome:ack.headMatches?'acknowledged':'device-newer',remainingRecovery:afterRecovery,accountAcknowledged:true,cacheStored:false};
+        const projectionPredecessor=ack.headMatches?await readProjectionPredecessor(canonical):undefined;
+        return {outcome:ack.headMatches?'acknowledged':'device-newer',remainingRecovery:afterRecovery,accountAcknowledged:true,cacheStored:false,
+          ...(projectionPredecessor?{projectionPredecessor}:{})};
       }
       if(observed.kind==='protected'||observed.kind==='unavailable'||observed.kind==='found'&&observed.domain?.envelope)
         return {outcome:'storage-failed',remainingRecovery:remaining,accountAcknowledged:true,cacheStored:false,deviceOutcome:observed.kind==='protected'?'protected-conflict':'unknown'};
@@ -514,7 +548,13 @@ export function createTwoStoreTripPersistence(storage: EasyTBrowserStorage, driv
         return reject(true,undefined,'body-native-pointer');
       // Projection-only work retains the exact input bytes. An existing domain
       // input may advance through the same paired commit used by authored edits.
-      let acknowledgedProjection: AcknowledgedProjectionPredecessor | undefined;
+      let acknowledgedProjection: Extract<AcknowledgedProjectionPredecessor,{backend:'native-cache'}> | undefined;
+      let acknowledgedDomain: Extract<AcknowledgedProjectionPredecessor,{backend:'indexeddb-ack'}> | undefined;
+      const acknowledgedDomainCurrent=()=>{
+        try{return !acknowledgedDomain||active()&&nativePointer().raw===acknowledgedDomain.nativePointerRaw
+          &&storage.getItem(tripCacheStorageKey(ownerId,tripId))===acknowledgedDomain.nativeCacheRaw
+          &&JSON.stringify(nativeSources(tripId))===acknowledgedDomain.nativeSourcesRaw;}catch{return false;}
+      };
       const acknowledgedCacheCurrent = () => {
         if (!acknowledgedProjection) return true;
         try { return active() && storage.getItem(tripCacheStorageKey(ownerId,tripId)) === acknowledgedProjection.cacheRaw; }
@@ -525,7 +565,23 @@ export function createTwoStoreTripPersistence(storage: EasyTBrowserStorage, driv
       if (options.projectionOnly) {
         const revision = options.projectionOnly, prepared = requiredEntries[0];
         let source = options.expectedRecoverySource;
-        if (revision.acknowledged !== undefined) {
+        if(revision.acknowledged?.backend==='indexeddb-ack'){
+          const witness=revision.acknowledged;
+          if(witness.version!==1||ownerId===null||witness.ownerId!==ownerId||witness.tripId!==tripId||options.replace||source
+            ||options.creation||options.creationReceiptRebind||!existing||!state.domain.acknowledgement||existing.entry.claim||state.lifecycle
+            ||witness.sourceRaw!==JSON.stringify(existing)||witness.acknowledgementRaw!==JSON.stringify(state.domain.acknowledgement)
+            ||witness.currentRaw!==expectedCurrentRaw||witness.nativePointerRaw!==nativePointerRaw
+            ||witness.nativeSourcesRaw!==JSON.stringify(state.legacy)||witness.nativeCacheRaw!==storage.getItem(tripCacheStorageKey(ownerId,tripId))
+            ||witness.lifecycleEntryRaw!==(state.lifecycleEntry?JSON.stringify(state.lifecycleEntry):null)
+            ||typeof witness.inputEnvelopeRaw!=='string')return reject(true,undefined,'body-projection-source');
+          const selected=decodeDomainCurrent(expectedCurrentRaw,ownerId);
+          const native=nativePointer();
+          if(selected.kind!=='readable'||selected.value?.backend!=='indexeddb'||!sameDomainHandle(selected.value,existing.handle)
+            ||native.tripId!==tripId&&native.raw!==(existing.entry.nativePointerRaw??null))return reject(true,undefined,'body-projection-current');
+          source=prepareTripDocumentForWrite(JSON.parse(state.domain.acknowledgement.canonicalRaw));
+          if(!options.canonicalBase||!samePersistedTripDocument(source,options.canonicalBase))return reject(true,undefined,'body-projection-source');
+          acknowledgedDomain=witness;
+        } else if (revision.acknowledged !== undefined) {
           const witness = revision.acknowledged;
           // An ACK retires recovery, not authority to replace unrelated state. This
           // path requires the exact acknowledged cache and navigation still selected.
@@ -553,7 +609,7 @@ export function createTwoStoreTripPersistence(storage: EasyTBrowserStorage, driv
         }
         if (!Number.isSafeInteger(revision.acceptedRevision) || revision.acceptedRevision < 0
           || !Number.isSafeInteger(revision.inputRevision) || revision.inputRevision < 0
-          || !source || !options.replace && !acknowledgedProjection
+          || !source || !options.replace && !acknowledgedProjection && !acknowledgedDomain
           || options.entry?.receipt || options.entry?.claim
           || requiredEntries.length !== 1 || prepared.scope.kind !== 'builder-input'
           || prepared.envelope.raw === null
@@ -580,14 +636,14 @@ export function createTwoStoreTripPersistence(storage: EasyTBrowserStorage, driv
         const key = builderInputDraftKey(ownerId,tripId), raw = prepared.envelope.raw;
         const priorInput = readBuilderInputDraft({getItem:()=>raw},before,ownerId);
         const nextInput = readBuilderInputDraft({getItem:()=>raw},candidate,ownerId);
-        if (JSON.stringify(comparable) !== JSON.stringify(before) || before.ownerId !== candidate.ownerId
+        if ((acknowledgedDomain?!samePersistedTripDocument(comparable,before):JSON.stringify(comparable) !== JSON.stringify(before)) || before.ownerId !== candidate.ownerId
           || priorInput.kind !== 'readable' || nextInput.kind !== 'readable'
           || priorInput.draft.inputRevision !== revision.inputRevision
           || JSON.stringify(priorInput.draft) !== JSON.stringify(nextInput.draft)
           || priorInput.draft.fields.some(field=>field.status !== 'editable')) return reject(true,undefined,'body-projection-document');
         const observed = await createTwoStoreEntryPersistence(storage,driver,{scope:prepared.scope,key,isCurrent:active,
           overflowEnabled:context.overflowEnabled,accountOverflowQualified:context.accountOverflowQualified,
-          validate:value=>value !== null && readBuilderInputDraft({getItem:()=>value},before,ownerId).kind==='readable'}).read();
+          validate:value=>acknowledgedDomain&&value===null||value !== null && readBuilderInputDraft({getItem:()=>value},before,ownerId).kind==='readable'}).read();
         if (!active() || observed.kind !== 'ready' || observed.raw !== raw) return reject(true,undefined,'body-projection-input',observed.kind==='ready'?undefined:observed.reason);
         if (existing) {
           // Optional work may advance only the exact body already selected by
@@ -595,17 +651,18 @@ export function createTwoStoreTripPersistence(storage: EasyTBrowserStorage, driv
           const selected = decodeDomainCurrent(expectedCurrentRaw,ownerId);
           if (selected.kind !== 'readable' || selected.value?.backend !== 'indexeddb'
             || !sameDomainHandle(selected.value,existing.handle)) return reject(true,undefined,'body-projection-current');
-          if (options.replace!.backend !== 'indexeddb' || !sameDomainHandle(domainHandle(options.replace!),existing.handle)
+          if ((!acknowledgedDomain&&(options.replace!.backend !== 'indexeddb' || !sameDomainHandle(domainHandle(options.replace!),existing.handle)
+              ||JSON.stringify(requireReadableTripDocument(JSON.parse(existing.rawRecovery).trip)) !== JSON.stringify(before)))
+            || acknowledgedDomain&&JSON.stringify(observed.envelope)!==acknowledgedDomain.inputEnvelopeRaw
             || existing.entry.claim || !observed.envelope || !prepared.envelope.parent
             || JSON.stringify(prepared.envelope.parent) !== JSON.stringify(observed.envelope.handle)
             || observed.legacyRaw !== prepared.envelope.legacyRaw
             || existing.entry.input?.raw !== raw || existing.entry.input.inputRevision !== revision.inputRevision
-            || JSON.stringify(requireReadableTripDocument(JSON.parse(existing.rawRecovery).trip)) !== JSON.stringify(before)
             || state.lifecycle && (state.lifecycle.disposition !== 'active' || state.lifecycle.state !== (options.state ?? 'pending'))) return reject(true,undefined,'body-projection-source');
           const claimScope = {ownerId,tripId,kind:'recovery-claim' as const};
           const claim = await createRecoveryEntryStore(driver,{ownerId,isCurrent:active}).read(claimScope);
           if (!active() || claim.kind !== 'ready' || claim.envelope) return reject(true,undefined,'body-projection-claim','reason' in claim?claim.reason:undefined);
-          projectionFence = {sourceRaw:JSON.stringify(existing),currentRaw:expectedCurrentRaw,entries:[
+          projectionFence = {sourceRaw:JSON.stringify(existing),currentRaw:expectedCurrentRaw,...(acknowledgedDomain?{acknowledgementRaw:acknowledgedDomain.acknowledgementRaw}:{}),entries:[
             {scope:{ownerId,tripId,kind:'recovery-lifecycle'},raw:state.lifecycleEntry ? JSON.stringify(state.lifecycleEntry) : null},
             {scope:claimScope,raw:null}]};
           // Assert the exact existing input generation; do not create or rebind it.
@@ -794,7 +851,8 @@ export function createTwoStoreTripPersistence(storage: EasyTBrowserStorage, driv
           ...(cacheWitness?{nativeCacheRaw:cacheWitness.raw}:existing?.entry.nativeCacheRaw!==undefined?{nativeCacheRaw:existing.entry.nativeCacheRaw}:{}) } };
       const committed = await domain.commit({ raw: JSON.stringify(candidate), expectedHead: candidate.parent,
         admission: existing ? 'existing-domain' : 'native-setter-quota', entries: options.entries, projectionFence,creationReceiptRebind:options.creationReceiptRebind,
-        ...(navigation?.kind==='ready'?{navigationFence:{currentRaw:navigation.raw,witness:{entry:navigationRequests[0],entryRaw:navigation.entryRaw},isCurrent:()=>active()&&nativePointer().raw===navigation.pointer.nativePointerRaw}}
+        ...(acknowledgedDomain?{navigationFence:{currentRaw:acknowledgedDomain.currentRaw,isCurrent:acknowledgedDomainCurrent}}
+          :navigation?.kind==='ready'?{navigationFence:{currentRaw:navigation.raw,witness:{entry:navigationRequests[0],entryRaw:navigation.entryRaw},isCurrent:()=>active()&&nativePointer().raw===navigation.pointer.nativePointerRaw}}
           :navigation?.kind==='overflow'?{navigationFence:{currentRaw:navigation.currentRaw,isCurrent:()=>active()&&sourceStillCurrent()
             &&nativePointer().raw===navigation.nativePointerRaw&&JSON.stringify(nativeSources(tripId))===JSON.stringify(state.legacy)}}:{}) });
       if (committed.kind !== 'verified') return observedRefusal({ ...refused(tripId,writeId,committed.kind === 'protected-conflict'),
@@ -805,7 +863,7 @@ export function createTwoStoreTripPersistence(storage: EasyTBrowserStorage, driv
         } : {recoveryCommitted:committed.commitStatus === 'committed',writeAttempted:true}),
         ...(committed.commitStatus==='committed'?{readbackConfirmed:false,failureBoundary:'recovery-readback' as const}:{failureBoundary:'recovery-write' as const}) },'body-domain-commit',committed.reason,nativeResult?.writeAttempted===true?true:committed.commitStatus==='unconfirmed'?null:committed.commitStatus!=='not-started');
       const after = await inspect(tripId);
-      if (!active() || !sourceStillCurrent() || after.kind !== 'resolved' || !after.domain.envelope || !sameDomainHandle(after.domain.envelope.handle, handle)||!await verifyEntries()) {
+      if (!active() || !sourceStillCurrent() || !acknowledgedDomainCurrent() || after.kind !== 'resolved' || !after.domain.envelope || !sameDomainHandle(after.domain.envelope.handle, handle)||!await verifyEntries()) {
         if (!projectionFence) return observedRefusal({ ...reject(true), recoveryDurable: true },'body-domain-readback',undefined,true);
         return observedRefusal({ ...refused(tripId,writeId,true),handle:{ownerId,tripId,writeId,backend:'indexeddb'},writeAttempted:true,
           recoveryCommitted:true,recoveryDurable:true,readbackConfirmed:false,failureBoundary:'recovery-readback' },'body-domain-readback');

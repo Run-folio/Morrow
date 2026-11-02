@@ -968,11 +968,17 @@ export function cacheCanonicalTripWithRecoveryToStorage(
   return { stored, recoveryResolved };
 }
 
-/** Ephemeral authority returned only after an exact native account ACK and pointer readback.
- * Not persisted as a new record and never inferred from a cache read on reopen. */
+/** Ephemeral projection proof; never an editable recovery handle or a new ACK.
+ * Native cache authority requires a live ACK. Domain authority additionally has
+ * an immutable ACK journal which a supported cold read may verify. */
 export type AcknowledgedProjectionPredecessor = {
   version: 1; backend: 'native-cache'; ownerId: string; tripId: string;
   cacheRaw: string; nativePointerRaw: string; currentRaw: string;
+} | {
+  version: 1; backend: 'indexeddb-ack'; ownerId: string; tripId: string;
+  sourceRaw: string; acknowledgementRaw: string; currentRaw: string;
+  nativePointerRaw: string | null; nativeSourcesRaw: string; nativeCacheRaw: string | null;
+  inputEnvelopeRaw: string; lifecycleEntryRaw: string | null;
 };
 export type BuilderProjectionWrite = { acceptedRevision: number; inputRevision: number;
   acknowledged?: AcknowledgedProjectionPredecessor };
@@ -1327,6 +1333,12 @@ export async function loadTripRecovery(tripId:string,ownerId:string|null):Promis
   const read=await (await browserTripPersistence(ownerId)).read(tripId);
   if(read.kind==='protected'||read.kind==='unavailable')throw new BrowserRecoveryReadError(read.kind,read.reason);
   return read.kind==='found'?read.recovery:null;
+}
+
+/** Read-only continuation proof. A matching GET/cache alone never grants it. */
+export async function readAcknowledgedTripProjection(trip:EasyTTrip,ownerId:string|null,guard?:()=>boolean):Promise<AcknowledgedProjectionPredecessor|undefined>{
+  if(ownerId===null||trip.ownerId!==ownerId||typeof window==='undefined')return undefined;
+  try{return await (await browserTripPersistence(ownerId,guard)).readProjectionPredecessor(trip);}catch{return undefined;}
 }
 
 /** Read only the last acknowledged cloud document for this owner and trip. */

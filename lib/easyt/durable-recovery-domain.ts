@@ -43,7 +43,9 @@ export type RecoveryReadResult = RecoveryFailure | RecoveryConflict | { kind: 'r
 export type RecoveryAckResult = RecoveryFailure | RecoveryConflict | { kind: 'journaled'; handle: RecoveryHandle; headMatches: boolean; accountAckMatchesCandidate: true };
 export type RecoveryListResult = RecoveryFailure | RecoveryConflict | { kind: 'ready'; recoveries: { envelope: RecoveryEnvelope; acknowledgement: TrustedAccountAck | null }[] };
 
-export type RecoveryDomainState = { headRaw: unknown; headGenerationRaw: unknown; generationRaw: unknown; acknowledgementRaw: unknown; currentRaw: unknown; entries: RecoveryEntryState[] };
+export type RecoveryDomainState = { headRaw: unknown; headGenerationRaw: unknown; generationRaw: unknown; acknowledgementRaw: unknown;
+  /** Current head's immutable ACK, independently of the requested write identity. */
+  headAcknowledgementRaw?: unknown; currentRaw: unknown; entries: RecoveryEntryState[] };
 export type RecoveryDomainDecision<T> = { value: T; headRaw?: string; generationRaw?: string; acknowledgementRaw?: string; currentRaw?: string; entryWrites?: RecoveryEntryMutation[] };
 /** Explicit guest-to-owner exception. Generic run/runEntry remain same-owner. */
 export type RecoveryClaimRequest = { sourceHandle: RecoveryHandle; targetHandle: RecoveryHandle;
