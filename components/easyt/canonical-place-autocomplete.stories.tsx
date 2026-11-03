@@ -1,3 +1,4 @@
+import {expect,fn,userEvent,waitFor,within} from "storybook/test";
 import type {Meta,StoryObj} from '@storybook/nextjs-vite';
 import {useState} from 'react';
 import {CanonicalPlaceAutocomplete} from './canonical-place-autocomplete';
@@ -60,3 +61,60 @@ export const ExplicitCompletedSearch:Story={...MetropolitanCity,args:{value:'Yun
 export const ExplicitCompletedSearchMobile:Story={...ExplicitCompletedSearch,globals:{viewport:{value:'morrovia390',isRotated:false}}};
 export const ExplicitCompletedSearchDisabled:Story={...ExplicitCompletedSearch,args:{...ExplicitCompletedSearch.args,disabled:true}};
 export const ExplicitCompletedSearchFailure:Story={...ExplicitCompletedSearch,args:{...ExplicitCompletedSearch.args,onFreeTextSearch:async()=>{throw new Error('Offline failure fixture');}}};
+
+const accessibleControlPage: NonNullable<Story["decorators"]> = [(Story) => <main className="morrovia-editorial-page"><h1 className="sr-only">Destination search</h1><Story /></main>];
+const strictPlaceParameters = { a11y: { test: "error" as const } };
+export const AccessibleShortQuery: Story = {
+  args: { value: "", label: "Destination" }, tags: ["current-ui"], decorators: accessibleControlPage, parameters: strictPlaceParameters,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement), input = canvas.getByRole("combobox", { name: "Destination" });
+    await userEvent.click(input);
+    await expect(input).toHaveAttribute("aria-expanded", "false");
+    await expect(input).not.toHaveAttribute("aria-controls");
+    await userEvent.type(input, "L");
+    await expect(input).not.toHaveAttribute("aria-controls");
+    await expect(canvas.queryByRole("listbox")).toBeNull();
+  },
+};
+export const AccessibleEmptyFeedback: Story = {
+  ...MetropolitanCity, args: { value: "zzzzzz-unmatched-place", label: "Destination" }, tags: ["current-ui"], decorators: accessibleControlPage, parameters: strictPlaceParameters,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await waitFor(() => expect(canvas.getByRole("status")).toHaveTextContent("No matching places found"), { timeout: 5000 });
+    await expect(canvas.queryByRole("listbox")).toBeNull();
+    await expect(canvas.getByRole("combobox")).toHaveAttribute("aria-expanded", "false");
+    await expect(canvas.getByRole("combobox")).not.toHaveAttribute("aria-controls");
+  },
+};
+export const AccessibleFailureRetry: Story = {
+  ...MetropolitanCity, args: { value: "zzzzzz-unmatched-place", label: "Destination", onFreeTextSearch: fn(async () => { throw new Error("Synthetic search failure"); }) }, tags: ["current-ui"], decorators: accessibleControlPage, parameters: strictPlaceParameters,
+  play: async ({ canvasElement, args }) => {
+    const canvas = within(canvasElement), input = canvas.getByRole("combobox");
+    input.focus(); await userEvent.keyboard("{Enter}");
+    await waitFor(() => expect(args.onFreeTextSearch).toHaveBeenCalledTimes(1), { timeout: 5000 });
+    await expect(await canvas.findByRole("alert", {}, { timeout: 5000 })).toBeVisible();
+    await expect(canvas.queryByRole("listbox")).toBeNull();
+    await expect(input).not.toHaveAttribute("aria-controls");
+    await userEvent.click(canvas.getByRole("button", { name: "Retry" }));
+    await waitFor(() => expect(args.onFreeTextSearch).toHaveBeenCalledTimes(2), { timeout: 5000 });
+    await expect(await canvas.findByRole("alert", {}, { timeout: 5000 })).toBeVisible();
+  },
+};
+export const AccessibleKeyboardSelection: Story = {
+  ...AirportCode, args: { onSelect: fn() }, tags: ["current-ui"], decorators: accessibleControlPage, parameters: strictPlaceParameters,
+  play: async ({ canvasElement, args }) => {
+    const canvas = within(canvasElement), input = canvas.getByRole("combobox");
+    await canvas.findAllByRole("option", {}, { timeout: 5000 }); input.focus(); await userEvent.keyboard("{ArrowDown}");
+    let expectedName: string | null = null;
+    await waitFor(() => {
+      const activeId = input.getAttribute("aria-activedescendant");
+      const option = activeId ? canvasElement.ownerDocument.getElementById(activeId) : null;
+      expect(option).toHaveAttribute("role", "option"); expectedName = option?.querySelector("b")?.textContent ?? null;
+    });
+    await userEvent.keyboard("{Enter}");
+    await expect(args.onSelect).toHaveBeenCalledTimes(1);
+    await expect(args.onSelect).toHaveBeenCalledWith(expect.objectContaining({ name: expectedName }));
+    await expect(input).toHaveAttribute("aria-expanded", "false");
+    await expect(input).not.toHaveAttribute("aria-controls");
+  },
+};

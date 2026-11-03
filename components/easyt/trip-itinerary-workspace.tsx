@@ -2323,7 +2323,7 @@ function ItineraryCalendar({ tripId, onOpenDay, weeks, selectedDayId, copy, lang
     <h2 className="sr-only" id={`${panelId}-heading`}>{copy.calendarHeading}</h2>
     {weeks.map((week, weekIndex) => <section className={styles.calendarWeek} key={week.id} aria-labelledby={`${panelId}-week-${weekIndex}`}>
       <h3 id={`${panelId}-week-${weekIndex}`}>{copy.weekOf} {week.startDate ? <time dateTime={week.startDate}>{displayDate(week.startDate, language)}</time> : copy.timeNotSet}</h3>
-      <div className={styles.calendarBands} aria-label="Overnight destinations">
+      <div className={styles.calendarBands} role="group" aria-label={language === "es" ? "Destinos nocturnos" : "Overnight destinations"}>
         {itineraryCalendarNightBands(week).map((band) => <div key={`${band.stop.id}-${band.start}`} style={{ gridColumn: `${band.start + 1} / span ${band.span}` }}><BedDouble aria-hidden="true" /><b>{band.stop.order + 1}</b><span>{band.stop.name} · {band.span} {language === "es" ? (band.span === 1 ? "noche" : "noches") : (band.span === 1 ? "night" : "nights")}{band.continued ? (language === "es" ? " · continúa" : " · continued") : ""}</span></div>)}
       </div>
       {week.startDate ? <div className={styles.calendarWeekdayLabels} aria-hidden="true">{(language === "es" ? ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"] : ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]).map(label => <span key={label}>{label}</span>)}</div> : null}

@@ -1,3 +1,4 @@
+import { expect, within } from "storybook/test";
 import { useEffect, useState } from "react";
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
 import type { EasyTTrip } from "@/lib/easyt/trip";
@@ -266,3 +267,16 @@ export const CompactCountryTitles: Story = { args: { trips: [
   { ...upcomingBalkans, id: "country-balkans", brief: { ...upcomingBalkans.brief, customTitle: null } },
   { ...currentJapan, id: "country-unknown", title: "", stops: currentJapan.stops.map(stop => ({ ...stop, country: "", countryCode: undefined })), brief: { ...currentJapan.brief, customTitle: null } },
 ], stamps: populatedStamps } };
+
+export const AccessibleFallbackCovers: Story = {
+  render: renderSharedOrigins, tags: ["current-ui"], parameters: { a11y: { test: "error" } },
+  play: async ({ canvasElement }) => {
+    const covers = [...canvasElement.querySelectorAll<HTMLAnchorElement>('a[class*="cardMedia_"]')];
+    await expect(covers.length).toBeGreaterThan(0);
+    for (const cover of covers) {
+      const title = cover.closest("article")?.querySelector("h3")?.textContent;
+      await expect(cover).toHaveAccessibleName(`Continue trip: ${title}`);
+    }
+    await expect(within(canvasElement).getByRole("searchbox", { name: "Search trips" })).toBeVisible();
+  },
+};

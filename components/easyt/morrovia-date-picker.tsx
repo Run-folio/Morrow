@@ -125,6 +125,7 @@ function CalendarPanel({
   const today = todayLocalIso();
   const monthDate = localDateFromIso(month) ?? new Date();
   const days = localMonthDays(month);
+  const weeks = Array.from({ length: Math.ceil(days.length / 7) }, (_, index) => days.slice(index * 7, index * 7 + 7));
   const weekdays = useMemo(() => Array.from({ length: 7 }, (_, index) => {
     const date = new Date(2026, 7, 2 + index);
     return {
@@ -179,29 +180,31 @@ function CalendarPanel({
       {weekdays.map((day) => <span key={day.long} title={day.long}>{day.short}</span>)}
     </div>
     <div className={styles.calendarGrid} role="grid" aria-label={new Intl.DateTimeFormat(locale, { month: "long", year: "numeric" }).format(monthDate)} ref={gridRef}>
-      {days.map((day, index) => day ? (() => {
-        const disabled = !isWithin(day, min, max);
-        const selected = day === startValue || day === endValue;
-        const inRange = Boolean(startValue && endValue && day > startValue && day < endValue);
-        const selectionDescription = isRange
-          ? [day === startValue ? copy[locale].rangeStart : "", day === endValue ? copy[locale].rangeEnd : ""].filter(Boolean).join(", ")
-          : selected ? copy[locale].selected : "";
-        const focusValue = activeBoundary === "end" ? endValue || startValue : startValue;
-        return <button
-          type="button"
-          role="gridcell"
-          key={day}
-          data-date={day}
-          disabled={disabled}
-          tabIndex={day === focusValue || (!focusValue && day === today) ? 0 : -1}
-          aria-current={day === today ? "date" : undefined}
-          aria-label={`${formatLocalDate(day, locale, { dateStyle: "full" })}${selectionDescription ? `, ${selectionDescription}` : ""}`}
-          aria-selected={selected || inRange}
-          className={`${selected ? styles.calendarDaySelected : ""} ${inRange ? styles.calendarDayInRange : ""} ${day === startValue ? styles.calendarRangeStart : ""} ${day === endValue ? styles.calendarRangeEnd : ""}`}
-          onClick={() => onPick(day)}
-          onKeyDown={(event) => onDayKeyDown(event, day)}
-        >{localDateFromIso(day)!.getDate()}</button>;
-      })() : <span key={`blank-${index}`} aria-hidden="true" />)}
+      {weeks.map((week, weekIndex) => <div className={styles.calendarRow} role="row" key={`week-${weekIndex}`}>
+        {week.map((day, index) => day ? (() => {
+          const disabled = !isWithin(day, min, max);
+          const selected = day === startValue || day === endValue;
+          const inRange = Boolean(startValue && endValue && day > startValue && day < endValue);
+          const selectionDescription = isRange
+            ? [day === startValue ? copy[locale].rangeStart : "", day === endValue ? copy[locale].rangeEnd : ""].filter(Boolean).join(", ")
+            : selected ? copy[locale].selected : "";
+          const focusValue = activeBoundary === "end" ? endValue || startValue : startValue;
+          return <button
+            type="button"
+            role="gridcell"
+            key={day}
+            data-date={day}
+            disabled={disabled}
+            tabIndex={day === focusValue || (!focusValue && day === today) ? 0 : -1}
+            aria-current={day === today ? "date" : undefined}
+            aria-label={`${formatLocalDate(day, locale, { dateStyle: "full" })}${selectionDescription ? `, ${selectionDescription}` : ""}`}
+            aria-selected={selected || inRange}
+            className={`${selected ? styles.calendarDaySelected : ""} ${inRange ? styles.calendarDayInRange : ""} ${day === startValue ? styles.calendarRangeStart : ""} ${day === endValue ? styles.calendarRangeEnd : ""}`}
+            onClick={() => onPick(day)}
+            onKeyDown={(event) => onDayKeyDown(event, day)}
+          >{localDateFromIso(day)!.getDate()}</button>;
+        })() : <span key={`blank-${index}`} aria-hidden="true" />)}
+      </div>)}
     </div>
   </div>;
 }

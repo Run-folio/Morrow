@@ -674,7 +674,7 @@ export function StampedExperience({
                     const wantLabel = countryStatus === "want" ? `${labels.added}: ${labels.removeWant(country.name)}` : labels.markWant(country.name);
                     return <li key={country.id} className={styles.countryRow} data-selected={selectedCountryId === country.id || undefined}>
                       <div className={styles.rowMain}>
-                        <button type="button" className={styles.rowCountry} aria-controls="selected-stamp-country" aria-pressed={selectedCountryId === country.id} onClick={(event) => chooseCountry(country.id, event.currentTarget, true)}>
+                        <button type="button" className={styles.rowCountry} aria-controls={selectedCountry ? "selected-stamp-country" : undefined} aria-pressed={selectedCountryId === country.id} onClick={(event) => chooseCountry(country.id, event.currentTarget, true)}>
                           <span className={styles.flag} aria-hidden="true">{stampCountryFlag(country.id)}</span>
                           <span className={styles.rowIdentity}>
                             <strong>{country.name}</strong>

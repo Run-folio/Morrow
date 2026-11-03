@@ -23,7 +23,7 @@ const script = (await build({
   plugins: [{ name: "offline-builder-render", setup(builder) {
     builder.onResolve({ filter: /^react$/ }, () => ({ path: "hooks", namespace: "offline" }));
     builder.onResolve({ filter: /(?:journey-planner-map|trip-transport-choice-control|morrovia-loading-states)$/ }, args => ({ path: args.path, namespace: "leaves" }));
-    builder.onLoad({ filter: /.*/, namespace: "offline" }, () => ({ contents: "export const useState=x=>[typeof x==='function'?x():x,()=>{}];export const useRef=x=>({current:x});export const useMemo=f=>f();export const useCallback=f=>f;export const useEffect=()=>{};" }));
+    builder.onLoad({ filter: /.*/, namespace: "offline" }, () => ({ contents: "export const useState=x=>[typeof x==='function'?x():x,()=>{}];export const useRef=x=>({current:x});export const useMemo=f=>f();export const useCallback=f=>f;export const useEffect=()=>{};export const useLayoutEffect=()=>{};" }));
     builder.onLoad({ filter: /.*/, namespace: "leaves" }, () => ({ contents: "export default function TripTransportChoiceControl(){};export function JourneyPlannerMap(){};export function MorroviaSectionStatus(){};" }));
   } }],
 })).outputFiles[0].text;
@@ -168,4 +168,52 @@ test('actual Builder shows one estimated total and a short airport tag for resol
     assert.doesNotMatch(text(row),/Timing to confirm|Flight service and airport|Transport needs checking|If flying/);
   }
   assert.deepEqual(trip,before);
+});
+
+
+test("Builder table has six ordered headers and only cells as direct body-row children", () => {
+  const view = render(fixture(), { selectedStopId: "kyoto" });
+  const table = view.nodes.find(node => node.props.role === "table");
+  assert.ok(table); assert.equal(table.type, "div"); assert.equal(table.props["aria-label"], "Route stops"); assert.equal(table.props["aria-colcount"], 6);
+  const headers = elements(table).filter(node => node.props.role === "columnheader");
+  assert.deepEqual(headers.map(text), ["Reorder", "Stop", "Transfer", "Nights", "Usable time", "Actions"]);
+  assert.deepEqual(headers.map(header => header.props["aria-colindex"]), [1, 2, 3, 4, 5, 6]);
+  const rows = view.nodes.filter(node => node.props["data-builder-stop-id"] || node.props["data-builder-endpoint-leg-id"]);
+  assert.equal(rows.length, 3);
+  for (const row of rows) {
+    const cells = row.props.children.flat(Infinity).filter((node: any) => node?.props);
+    assert.equal(cells.length, 6);
+    assert.ok(cells.every((cell: any) => cell.props.role === "cell"));
+    assert.deepEqual(Array.from(cells, (cell: any) => cell.props["aria-colindex"]), [1, 2, 3, 4, 5, 6]);
+    assert.equal(cells.some((cell: any) => cell.props.style?.display === "contents"), false);
+    if (row.props["data-builder-stop-id"]) {
+      assert.equal(elements(cells[0]).find(node => node.type === "button")?.props.type, "button");
+      assert.equal(typeof elements(cells[5]).find(node => node.type === "details")?.props.onClick, "function");
+      assert.equal(elements(cells[5]).some(node => node.type === "summary"), true);
+    } else {
+      assert.equal(text(cells[0]), ""); assert.equal(text(cells[5]), "");
+    }
+  }
+  const selected = rows.find(row => row.props["data-builder-stop-id"] === "kyoto");
+  assert.equal(selected.props.tabIndex, 0); assert.equal(selected.props["aria-selected"], true);
+});
+
+test("cell wrappers preserve full names, zero-night limits, selection and existing callback ownership", () => {
+  const trip = fixture(), fullName = "A very long destination name whose complete label must remain available";
+  trip.stops[0] = { ...trip.stops[0], name: fullName, nights: 0 };
+  const before = structuredClone(trip), events: unknown[][] = [];
+  const view = render(trip, { onSelectStop: (id: string) => events.push(["select", id]), onEditNights: (id: string, nights: number) => events.push(["nights", id, nights]), onRemoveStop: (id: string) => events.push(["remove", id]) });
+  const row = view.nodes.find(node => node.props["data-builder-stop-id"] === "kyoto");
+  const nodes = elements(row), stopPropagation = () => events.push(["stopPropagation"]);
+  assert.equal(nodes.find(node => node.props["data-builder-stop-name"])?.props.children, fullName);
+  const grip = nodes.find(node => node.type === "button" && node.props["aria-label"]?.startsWith("Reorder"));
+  assert.equal(grip.props["aria-label"], `Reorder ${fullName}, stop 1`);
+  assert.equal(grip.props.draggable, true); assert.equal(typeof grip.props.onKeyDown, "function");
+  const minus = nodes.find(node => node.props["aria-label"]?.startsWith("Remove one night"));
+  const plus = nodes.find(node => node.props["aria-label"]?.startsWith("Add one night"));
+  assert.equal(minus.props.disabled, true); assert.equal(plus.props.disabled, false);
+  plus.props.onClick({ stopPropagation }); row.props.onClick();
+  nodes.find(node => node.type === "button" && text(node) === "Remove stop").props.onClick();
+  assert.deepEqual(events, [["stopPropagation"], ["nights", "kyoto", 1], ["select", "kyoto"], ["remove", "kyoto"]]);
+  assert.deepEqual(trip, before);
 });

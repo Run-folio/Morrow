@@ -14,7 +14,9 @@ function allowsCardDrag(target: EventTarget | null) {
 export default function ItineraryDraggableCard({ draggable, onDragStart, onDragEnd, children, ...props }: HTMLAttributes<HTMLElement>) {
   const gesture = useRef<{ allowed: boolean | null; started: boolean; suppressClick: boolean }>({ allowed: null, started: false, suppressClick: false });
   const enabled = Boolean(draggable && onDragStart);
-  return <article
+  // article cannot take listitem semantics; keep the drag boundary stable for saved-idea lists.
+  const Tag = props.role === "listitem" ? "div" : "article";
+  return <Tag
     {...props}
     draggable={enabled}
     data-itinerary-draggable={enabled || undefined}
@@ -50,5 +52,5 @@ export default function ItineraryDraggableCard({ draggable, onDragStart, onDragE
         gesture.current.suppressClick = false;
       }
     }}
-  >{children}</article>;
+  >{children}</Tag>;
 }

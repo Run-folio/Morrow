@@ -124,3 +124,23 @@ function MainAfricaPlanningStory({language = "en"}: {language?: "en" | "es"}) {
 }
 export const MainAfricaPlanning: Story = {render: () => <MainAfricaPlanningStory />};
 export const MainAfricaPlanningSpanish: Story = {render: () => <MainAfricaPlanningStory language="es" />};
+
+
+function SemanticControlsStory() {
+  const [trip, setTrip] = useState<EasyTTrip>(() => ({
+    ...tourTripFixture,
+    stops: tourTripFixture.stops.map((stop, index) => ({ ...stop, nights: index === 0 ? 0 : stop.nights,
+      name: index === 0 ? "San Cristóbal de las Casas and the surrounding highland villages" : stop.name })),
+  }));
+  const [selectedStopId, setSelectedStopId] = useState<string | null>(trip.stops[0]?.id ?? null);
+  const allocated = trip.stops.reduce((sum, stop) => sum + (stop.nights ?? 0), 0);
+  return <TripBuilderRouteWorkspace canonicalTrip={trip} previewStopIds={null} selectedStopId={selectedStopId}
+    lockedStopIds={[]} fixedOrder={false} routeCheckProposalStopIds={null}
+    nightStatus={{ total: 7, allocated, complete: allocated === 7, language: "en" }}
+    onSelectStop={setSelectedStopId} onPreviewOrder={() => {}}
+    onCommitOrder={(ids) => { setTrip(current => ({ ...current, stops: ids.map((id, order) => ({ ...current.stops.find(stop => stop.id === id)!, order })) })); return true; }}
+    onEditNights={(id, nights) => setTrip(current => ({ ...current, stops: current.stops.map(stop => stop.id === id ? { ...stop, nights } : stop) }))}
+    onRemoveStop={(id) => setTrip(current => ({ ...current, stops: current.stops.filter(stop => stop.id !== id).map((stop, order) => ({ ...stop, order })) }))}
+    onTransportChoiceChange={() => {}} />;
+}
+export const SemanticControls: Story = { render: () => <SemanticControlsStory /> };

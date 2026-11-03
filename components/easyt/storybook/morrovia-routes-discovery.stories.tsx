@@ -28,11 +28,11 @@ export const Catalogue: Story = {
 };
 const compactPhotoRoute = catalogueWithEditorialImages(routes, routesOverviewEditorial(routes)).find((route) => route.image?.credit && route.image.variants.length > 0)!;
 export const CompactPhotoCard: Story = {
-  render: () => <main className={styles.page}>
+  render: () => <div className={styles.page}>
     <div style={{ position: "relative", width: "min(720px, 90vw)", height: 460, overflow: "hidden" }}>
       <DiscoveryPhoto route={compactPhotoRoute} priority sizes="720px" creditSize="compact" creditPlacement="bottom-right" />
     </div>
-  </main>,
+  </div>,
   play: async ({ canvasElement }) => {
     await new Promise<void>((resolve) => window.setTimeout(resolve, 1200));
     canvasElement.querySelector<HTMLButtonElement>('button[aria-label^="Photo credit"]')?.click();

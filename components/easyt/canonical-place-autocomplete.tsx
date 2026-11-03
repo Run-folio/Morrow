@@ -347,6 +347,8 @@ export function CanonicalPlaceAutocomplete({
     inputRef.current?.focus();
     setOpen(true);
   }, [revealSuggestionsKey]);
+  const menuOpen = open && value.trim().length >= 2;
+  const suggestionListOpen = menuOpen && suggestions.length > 0;
   const publicInput=submittedPublicPlaceInput(value.trim());
   const canResearchPublicPlace=publicPlaceQueryAllowed(publicInput.query,publicInput.country);
   const mapChoice = activeIndex >= 0 ? suggestions[activeIndex] : suggestions.find(suggestion => placeSuggestionMapUrl(suggestion,suggestions));
@@ -372,9 +374,9 @@ export function CanonicalPlaceAutocomplete({
       aria-label={label}
       role="combobox"
       aria-autocomplete="list"
-      aria-expanded={open}
-      aria-controls={open ? listId : undefined}
-      aria-activedescendant={open && activeIndex >= 0 ? `${listId}-${activeIndex}` : undefined}
+      aria-expanded={suggestionListOpen}
+      aria-controls={suggestionListOpen ? listId : undefined}
+      aria-activedescendant={suggestionListOpen && activeIndex >= 0 && activeIndex < suggestions.length ? `${listId}-${activeIndex}` : undefined}
       aria-invalid={invalid || undefined}
       aria-describedby={describedBy}
       onFocus={() => setOpen(true)}
@@ -417,9 +419,8 @@ export function CanonicalPlaceAutocomplete({
       onMouseDown={event => event.preventDefault()}
       onClick={() => runCompletedSearch()}
     >{language === "es" ? "Buscar" : "Search"}</EasyTButton> : null}
-    {open && value.trim().length >= 2 ? <div className={`${styles.menu} ${menuPlacement === "inline" ? styles.menuInline : ""}`}>
-      <div id={listId} role="listbox" className={styles.optionsList}>
-      {searching && !suggestions.length ? <p role="status">{language === "es" ? "Buscando lugares…" : "Searching places…"}</p> : suggestions.length ? suggestions.map((suggestion, index) => (
+    {menuOpen ? <div className={`${styles.menu} ${menuPlacement === "inline" ? styles.menuInline : ""}`}>
+      {searching && !suggestions.length ? <p role="status">{language === "es" ? "Buscando lugares…" : "Searching places…"}</p> : suggestions.length ? <div id={listId} role="listbox" className={styles.optionsList}>{suggestions.map((suggestion, index) => (
         /* morrovia-ui-audit-allow-next-line native-control -- Listbox options require role=option and aria-selected semantics rather than the standard action-button contract. */
         <button
         type="button"
@@ -430,11 +431,10 @@ export function CanonicalPlaceAutocomplete({
         className={index === activeIndex ? styles.optionOn : undefined}
         onMouseDown={(event) => event.preventDefault()}
         onClick={() => choose(suggestion)}
-      ><MapPin aria-hidden="true" /><span><b>{suggestion.name}</b><small>{[placeSuggestionLocationDetail(suggestion,suggestions,language),showPlaceType ? placeTypeLabel(suggestion.placeType,language):null].filter(Boolean).join(' · ')}</small>{suggestion.scheduledService===false ? <small>{language==="es"?"No consta servicio regular de pasajeros":"No scheduled passenger service recorded"}</small>:null}</span></button>)) : providerFailed ? <div className={styles.failure} role="alert"><p>{resolvedFailureMessage}</p><EasyTButton variant="secondary" size="small" onMouseDown={(event) => event.preventDefault()} onClick={() => {
+      ><MapPin aria-hidden="true" /><span><b>{suggestion.name}</b><small>{[placeSuggestionLocationDetail(suggestion,suggestions,language),showPlaceType ? placeTypeLabel(suggestion.placeType,language):null].filter(Boolean).join(' · ')}</small>{suggestion.scheduledService===false ? <small>{language==="es"?"No consta servicio regular de pasajeros":"No scheduled passenger service recorded"}</small>:null}</span></button>))}</div> : providerFailed ? <div className={styles.failure} role="alert"><p>{resolvedFailureMessage}</p><EasyTButton variant="secondary" size="small" onMouseDown={(event) => event.preventDefault()} onClick={() => {
         if (completedSearchStatus === "failed" && onFreeTextSearch) runCompletedSearch();
         else setRetryNonce((current) => current + 1);
       }}>{language === "es" ? "Reintentar" : "Retry"}</EasyTButton></div> : <p role="status">{resolvedEmptyMessage}</p>}
-      </div>
       {!searching && !suggestions.length && !providerFailed && completedSearchStatus === "ready" && onPublicPlaceSearch && publicResearchAvailable && canResearchPublicPlace && !publicResearchUsed ? <div className={styles.failure}>
         <p>{language === "es" ? "Pedir a OpenAI otros nombres de este lugar público. No incluyas direcciones ni datos personales." : "Ask OpenAI for alternative names of this public place. No addresses or personal details."}</p>
         <EasyTButton variant="secondary" size="small" disabled={disabled} onMouseDown={event => event.preventDefault()} onClick={() => runCompletedSearch(undefined,true)}>{language === "es" ? "Buscar nombres de lugares públicos" : "Search public place names"}</EasyTButton>

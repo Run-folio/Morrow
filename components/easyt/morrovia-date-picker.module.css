@@ -134,10 +134,11 @@
 .calendarHead { display: grid; grid-template-columns: 36px minmax(0, 1fr) 36px; align-items: center; gap: 8px; margin-bottom: 12px; }
 .calendarHead strong { text-align: center; text-transform: capitalize; font-size: 16px; letter-spacing: -.02em; }
 .calendarWeekdays,
-.calendarGrid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 3px; }
+.calendarRow { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 3px; }
+.calendarGrid { display: grid; gap: 3px; }
 .calendarWeekdays { margin-bottom: 4px; }
 .calendarWeekdays span { display: grid; height: 25px; place-items: center; color: var(--morrovia-muted); font: 700 10px var(--morrovia-meta, ui-monospace, monospace); }
-.calendarGrid > span { min-width: 0; height: 38px; }
+.calendarRow > span { min-width: 0; height: 38px; }
 .calendarGrid button {
   position: relative;
   min-width: 0;
@@ -203,7 +204,7 @@
   .calendarHead button { width: 32px; height: 32px; }
   .calendarWeekdays span { height: 20px; }
   .calendarGrid button,
-  .calendarGrid > span { height: 32px; }
+  .calendarRow > span { height: 32px; }
   .calendarFooter { gap: 8px; margin-top: 8px; padding-top: 8px; }
   .calendarFooterActions > button,
   .calendarFooter input { min-height: 38px; }
@@ -225,15 +226,16 @@
     padding: 16px;
   }
   .calendarGrid button,
-  .calendarGrid > span { height: 42px; }
+  .calendarRow > span { height: 42px; }
   .calendarHead button,
   .calendarFooterActions > button { min-width: 44px; min-height: 44px; }
 }
 
 @media (max-width: 340px) {
   .popover { right: 6px; bottom: 6px; left: 6px; padding: 13px; }
-  .calendarGrid { gap: 1px; }
+  .calendarGrid,
+  .calendarRow { gap: 1px; }
   .calendarGrid button,
-  .calendarGrid > span { height: 38px; }
+  .calendarRow > span { height: 38px; }
   .calendarFooter { grid-template-columns: 1fr; }
 }
