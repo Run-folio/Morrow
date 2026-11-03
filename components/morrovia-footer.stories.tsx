@@ -1,3 +1,4 @@
+import { expect, within } from "storybook/test";
 import immersiveStyles from "../app/journey/home/immersive/immersive.module.css";
 import ClosingChapter from "../app/journey/home/immersive/closing-chapter";
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
@@ -32,4 +33,24 @@ export const Desktop: Story = {
 
 export const ImmersiveClosing: Story = {
   render: () => <main className={immersiveStyles.page}><ClosingChapter /></main>,
+};
+
+// Native footer semantics depend on their sectioning context.
+export const PageLandmark: Story = {
+  tags: ["current-ui"], parameters: { a11y: { test: "error" } },
+  render: () => <><main><h1>Trip planning</h1></main><MorroviaFooter /></>,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(canvas.getByRole("contentinfo")).toBeVisible();
+    await expect(canvas.getByRole("link", { name: "Privacy" })).toBeVisible();
+  },
+};
+export const SectionFooter: Story = {
+  tags: ["current-ui"], parameters: { a11y: { test: "error" } },
+  render: () => <main><h1>Trip planning</h1><section aria-label="Next journey"><MorroviaFooter /></section></main>,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(canvas.queryByRole("contentinfo")).toBeNull();
+    await expect(canvas.getByRole("link", { name: "Privacy" })).toBeVisible();
+  },
 };

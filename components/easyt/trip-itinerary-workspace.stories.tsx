@@ -1470,3 +1470,19 @@ export const SuggestionLiveDays: Story = { tags: ["manual-integration"], paramet
   trip: { ...trip, stops: trip.stops.map(stop => ({ ...stop, canonicalPlaceId: stop.id })) }, selectedDayNumber: 1,
   initialSuggestions: undefined, initialActivityInventory: undefined,
 } };
+
+export const CalendarLandmarks: Story = {
+  ...Calendar, tags: ["current-ui"], parameters: { ...Calendar.parameters, a11y: { test: "error" } },
+  play: async context => {
+    await Calendar.play!(context);
+    await waitFor(() => {
+      const panel = context.canvasElement.querySelector('[data-dialog-presentation="inline"]');
+      if (panel) {
+        expect(panel.tagName).toBe("DIALOG");
+        expect(panel.getAttribute("role")).toBeNull();
+        const label = panel.getAttribute("aria-label")!;
+        expect(within(context.canvasElement).getAllByRole("region", { name: label })).toHaveLength(1);
+      }
+    });
+  },
+};

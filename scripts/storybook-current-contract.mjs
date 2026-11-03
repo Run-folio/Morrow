@@ -23,3 +23,14 @@ export function requireWorkspaceNavigation(surface, width, state) {
     if (state.current !== expected) throw new Error(`Workspace navigation is not current: expected ${expected}, got ${state.current}`);
   }
 }
+
+export function selectStoryBatch(cases, { offset = 0, limit = cases.length } = {}) {
+  const integer = (value, name) => {
+    if (!/^[0-9]+$/.test(String(value)) || typeof value === 'boolean') throw new Error(`Invalid batch ${name}`);
+    return Number(value);
+  };
+  offset = integer(offset, 'offset'); limit = integer(limit, 'limit');
+  if (!Number.isSafeInteger(offset) || offset >= cases.length) throw new Error('Batch offset selects no stories');
+  if (!Number.isSafeInteger(limit) || limit < 1 || limit > 200) throw new Error('Batch limit must be 1–200');
+  return cases.slice(offset, offset + limit);
+}

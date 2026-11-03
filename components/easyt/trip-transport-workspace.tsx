@@ -232,7 +232,7 @@ function TransportCard({ trip, item, language, copy, selected, forReview, onSele
   const showStatus = !(status === copy.planningEstimate && showsEstimatedTiming);
   const duplicateUnknownMode = status === copy.needsCheckingStatus && leg.mode === "unknown" && durationMinutes === null;
   const Chevron = selected ? ChevronUp : ChevronDown;
-  return <article className={styles.card} role="listitem" data-transport-leg-id={leg.id} data-selected={selected ? "true" : undefined} data-review-target={forReview ? "true" : undefined} data-presentation-state={state} data-knowledge={transportJourneyKnowledge(leg)}>
+  return <div className={styles.card} role="listitem" data-transport-leg-id={leg.id} data-selected={selected ? "true" : undefined} data-review-target={forReview ? "true" : undefined} data-presentation-state={state} data-knowledge={transportJourneyKnowledge(leg)}>
     <div className={styles.summary} data-transport-summary>
       <time className={styles.date} dateTime={item.date ?? undefined}>{displayDate(item.date, language, copy.dateUnknown)}</time>
       <span className={styles.modeIcon}><Icon aria-hidden="true" /></span>
@@ -252,7 +252,7 @@ function TransportCard({ trip, item, language, copy, selected, forReview, onSele
     <div className={styles.detailWrap} id={`transport-detail-${leg.id}`} hidden={!selected}>
       {selected ? <SelectedJourneyDetail trip={trip} item={item} language={language} copy={copy} /> : null}
     </div>
-  </article>;
+  </div>;
 }
 
 function SelectedJourneyDetail({ trip, item, language, copy }: { trip: EasyTTrip; item: ItineraryTransportAgendaLeg; language: Language; copy: ReturnType<typeof copyFor> }) {

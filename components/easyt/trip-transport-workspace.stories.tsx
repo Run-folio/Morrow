@@ -199,6 +199,7 @@ export const SelectedJourneyDesktop1440: Story = {
     await userEvent.click((await canvas.findAllByRole("button", { name: /^View details:/ }))[0]);
     await expect(await canvas.findByRole("region", { name: "Journey details" })).toBeVisible();
     await expect(canvasElement.querySelector('[data-selected="true"]')).toBeVisible();
+    await expect(canvas.getAllByRole("listitem").length).toBeGreaterThan(0);
   },
 };
 

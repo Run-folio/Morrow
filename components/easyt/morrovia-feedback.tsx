@@ -441,7 +441,6 @@ export function MorroviaContentDialog({
     ref={dialogRef}
     className={className}
     aria-label={ariaLabel}
-    role={inline ? "region" : undefined}
     data-dialog-presentation={inline ? "inline" : "modal"}
     onCancel={(event) => { if (event.target !== event.currentTarget) return; event.preventDefault(); onClose(); }}
     onClick={(event) => { if (event.target === event.currentTarget) onClose(); }}

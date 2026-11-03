@@ -1,8 +1,9 @@
 import { chromium } from 'playwright';
-import { requireStorySelection, requireWorkspaceNavigation } from './storybook-current-contract.mjs';
-import { readFile, mkdir, writeFile } from 'node:fs/promises';
+import { requireStorySelection, requireWorkspaceNavigation, selectStoryBatch } from './storybook-current-contract.mjs';
+import { readFile, mkdir, writeFile, rename } from 'node:fs/promises';
 import { createRequire } from 'node:module';
 import { resolve, join } from 'node:path';
+import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 
 const argumentsMap = Object.fromEntries(process.argv.slice(2).map(value => { const [key, ...rest] = value.replace(/^--/, '').split('='); return [key, rest.join('=') || true]; }));
@@ -42,14 +43,38 @@ else {
   add(entries.find(item => item.id.endsWith('--calendar') && item.importPath.endsWith('trip-itinerary-workspace.stories.tsx')), 844, 390);
 }
 selected.splice(0, selected.length, ...requireStorySelection(selected, entries, { ids: argumentsMap.ids, memoryOnly }));
+const eligibleCases = selected.length;
+const batchOffset = argumentsMap.offset ?? 0;
+const batchLimit = argumentsMap.limit ?? (all ? 100 : selected.length);
+selected.splice(0, selected.length, ...selectStoryBatch(selected, { offset: batchOffset, limit: batchLimit }));
+const indexSha256 = createHash('sha256').update(indexRaw).digest('hex');
+const iframeRaw = await (await fetch(new URL('/iframe.html', base))).text();
+const buildFingerprint = createHash('sha256').update(indexRaw + iframeRaw).digest('hex');
+const sourceCommit = execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).trim();
+const caseKey = item => `${item.id}:${item.width}:${item.height}`;
+const workers = Number(argumentsMap.workers ?? 2);
+if (!Number.isInteger(workers) || workers < 1 || workers > 3) throw new Error('Workers must be 1–3');
 const axePath = createRequire(import.meta.url).resolve('axe-core/axe.min.js');
 const results = [], browser = await chromium.launch({ headless: true });
-const writeResults = () => writeFile(join(output, 'results.json'), JSON.stringify({ checkedAt: new Date().toISOString(), base: base.href, mode: memoryOnly ? 'memory-only-fixtures' : all ? 'catalogue-smoke' : 'core-responsive-interaction-a11y', indexSha256: createHash('sha256').update(indexRaw).digest('hex'), indexedStories: entries.length, excludedManual: manual.map(item => item.id), scheduledCases: selected.length, results }, null, 2));
+if (argumentsMap.resume) {
+  const prior = JSON.parse(await readFile(join(output, 'results.json'), 'utf8'));
+  if (prior.indexSha256 !== indexSha256 || prior.buildFingerprint !== buildFingerprint || prior.sourceCommit !== sourceCommit || JSON.stringify(prior.caseKeys) !== JSON.stringify(selected.map(caseKey))) throw new Error('Resume source/build/batch mismatch');
+  results.push(...prior.results);
+}
+let checkpoint = Promise.resolve();
+const writeResults = () => {
+  const snapshot = JSON.stringify({ checkedAt: new Date().toISOString(), base: base.href, mode: memoryOnly ? 'memory-only-fixtures' : all ? 'catalogue-smoke' : 'core-responsive-interaction-a11y', sourceCommit, buildFingerprint, indexSha256, indexedStories: entries.length, excludedManual: manual.map(item => item.id), eligibleCases, batchOffset: Number(batchOffset), scheduledCases: selected.length, caseKeys: selected.map(caseKey), results }, null, 2);
+  checkpoint = checkpoint.then(async () => { await writeFile(join(output, 'results.tmp'), snapshot); await rename(join(output, 'results.tmp'), join(output, 'results.json')); });
+  return checkpoint;
+};
+const completed = new Set(results.map(caseKey));
+const pending = selected.filter(item => !completed.has(caseKey(item)));
+
 try {
   let next = 0;
   async function worker() {
-    while (next < selected.length) {
-      const test = selected[next++], context = await browser.newContext({ viewport: { width: test.width, height: test.height }, reducedMotion: 'reduce' });
+    while (next < pending.length) {
+      const test = pending[next++], context = await browser.newContext({ viewport: { width: test.width, height: test.height }, reducedMotion: 'reduce' });
       const page = await context.newPage(), errors = [], requests = new Set();
       page.on('pageerror', error => errors.push(error.message));
       if (memoryOnly) await context.addInitScript(() => {
@@ -123,7 +148,7 @@ try {
       if (!row.passed || results.length % 20 === 0) console.log(`${results.length}/${selected.length} ${row.passed ? 'PASS' : 'FAIL'} ${test.id} ${test.width}: ${runtimeFailure || `${violations.length} accessibility findings`}`);
     }
   }
-  await Promise.all([worker(), worker()]);
+  await Promise.all(Array.from({ length: workers }, worker));
 } finally { await browser.close(); await writeResults(); }
 const summary = { cases: results.length, runtimeFailures: results.filter(row => row.runtimeFailure).length, strictAccessibilityFailures: results.filter(row => row.strict && row.violations.length).length, legacyAccessibilityCases: results.filter(row => !row.strict && row.violations.length).length, manualExcluded: manual.length };
 console.log(JSON.stringify(summary));

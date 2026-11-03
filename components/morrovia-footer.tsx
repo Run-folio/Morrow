@@ -46,7 +46,7 @@ export default function MorroviaFooter({ overImage = false, omitOnImmersiveHome 
 
   const text = copy[language];
   if (omitOnImmersiveHome && (pathname === "/" || pathname === "/journey/home")) return null;
-  return <footer role="contentinfo" className={`${styles.footer} ${overImage ? styles.overImage : ""}`}>
+  return <footer className={`${styles.footer} ${overImage ? styles.overImage : ""}`}>
     <Link className={styles.brand} href="/" aria-label={`${morroviaLegalIdentity.productName} home`}>
       <MorroviaBrandLogo variant={overImage ? "light" : "full"} decorative />
     </Link>
