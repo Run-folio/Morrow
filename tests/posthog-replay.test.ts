@@ -168,3 +168,29 @@ test("privacy proposal describes optional masked replay in English and Spanish w
   assert.match(cookies, /<SessionReplayNotice \/>/);
   assert.match(readFileSync("components/session-replay-notice.tsx", "utf8"), /sessionReplayPrivacyCopy\[language\]/);
 });
+
+test("automatic nested person metadata cannot retain capability URLs or referrers", async () => {
+  const f = await fixture(); f.api.initializeAnalytics();
+  const event = f.config().before_send({ event: "$pageview", properties: {
+    $set: { safe_coarse_count: 2, $current_url: "https://morrovia.com/journey/gift/PRIVATE_TOKEN", $referrer: "https://private.invalid/PRIVATE_REFERRER", $title: "PRIVATE_TITLE" },
+    $set_once: { safe_coarse_flag: true, $initial_current_url: "https://morrovia.com/journey/reset-password?token=PRIVATE_RESET", $initial_referrer: "https://private.invalid/PRIVATE_REFERENCE", $initial_pathname: "/journey/gift/PRIVATE_TOKEN" },
+  } });
+  assert.doesNotMatch(JSON.stringify(event), /PRIVATE_/);
+  assert.equal(event.properties.$set.safe_coarse_count, 2);
+  assert.equal(event.properties.$set_once.safe_coarse_flag, true);
+});
+
+test("SDK top-level person context is stripped without mutating the original capture", async () => {
+  const f = await fixture(); f.api.initializeAnalytics();
+  const capture = { event: "$identify", properties: { distinct_id: "synthetic-owner" },
+    $set: { safe_coarse_count: 2, $current_url: "https://morrovia.com/journey/gift/PRIVATE_TOKEN", $referrer: "https://private.invalid/PRIVATE_REFERRER", $title: "PRIVATE_TITLE" },
+    $set_once: { safe_coarse_flag: true, $initial_current_url: "https://morrovia.com/journey/reset-password?token=PRIVATE_RESET", $initial_referrer: "https://private.invalid/PRIVATE_REFERENCE", $initial_pathname: "/journey/gift/PRIVATE_TOKEN" },
+  };
+  const before = JSON.stringify(capture);
+  const event = f.config().before_send(capture);
+  assert.doesNotMatch(JSON.stringify(event), /PRIVATE_/);
+  assert.equal(event.$set.safe_coarse_count, 2);
+  assert.equal(event.$set_once.safe_coarse_flag, true);
+  assert.equal(event.properties.distinct_id, "synthetic-owner");
+  assert.equal(JSON.stringify(capture), before);
+});

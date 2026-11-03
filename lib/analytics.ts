@@ -253,10 +253,11 @@ export function classifyAnalyticsSaveError(error: unknown): "auth" | "network" |
   return "unknown";
 }
 
-/** Remove query strings and collapse opaque shared-workspace trip IDs. */
+/** Remove query data, gift capabilities and opaque shared-workspace trip IDs. */
 export function normalizeAnalyticsPath(value: string) {
   const rawPath = value.split(/[?#]/, 1)[0] || "/";
   const segments = rawPath.split("/");
+  if (segments[1] === "journey" && segments[2] === "gift" && segments[3]) return "/journey/gift/[token]";
   if (segments[1] === "journey" && segments[2] === "my-routes" && segments[3]) return ["", "journey", "my-routes", "[tripId]", ...segments.slice(4)].join("/");
   if (segments[1] !== "journey" || !segments[2] || STATIC_JOURNEY_ROUTES.has(segments[2])) return rawPath;
   return ["", "journey", "[tripId]", ...segments.slice(3)].join("/");
@@ -306,12 +307,27 @@ function sanitizePostHogEvent(event: CaptureResult | null): CaptureResult | null
   if (typeof properties.$session_entry_pathname === "string") {
     properties.$session_entry_pathname = normalizeAnalyticsPath(properties.$session_entry_pathname);
   }
+  // SDK-generated initial person context lives at the event's top level;
+  // explicit person updates can also appear inside properties. Sanitize copies
+  // of both locations so queued events and SDK identity state are not mutated.
+  const result: CaptureResult = { ...event, properties };
+  for (const target of [result, properties]) {
+    for (const key of ["$set", "$set_once"] as const) {
+      const value = target[key];
+      if (!value || typeof value !== "object" || Array.isArray(value)) continue;
+      const personProperties: Properties = { ...value };
+      for (const field of ["$current_url", "$pathname", "$referrer", "$initial_current_url", "$initial_pathname", "$initial_referrer", "$title", "$page_title", "$session_entry_url", "$session_entry_pathname", "$session_entry_referrer", "$session_referrer"]) {
+        delete personProperties[field];
+      }
+      target[key] = personProperties;
+    }
+  }
   for (const [key, value] of Object.entries(properties)) {
     if (typeof value === "string" && /(destination_url|source_url|href)$/i.test(key)) {
       properties[key] = sanitizeAnalyticsDestination(value);
     }
   }
-  return { ...event, properties };
+  return result;
 }
 
 function ensurePostHogInitialized() {
