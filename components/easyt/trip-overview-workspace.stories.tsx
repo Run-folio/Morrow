@@ -231,7 +231,7 @@ const meta = {
     nextjs: { appDirectory: true, navigation: { pathname: "/journey/cusco-sacred-valley-arequipa" } },
   },
   decorators: [(Story, context) => {
-    if (context.parameters.feedbackAuthenticatedFixture && context.args.trip.ownerId) setStorybookAuthOwner(context.args.trip.ownerId);
+    if (context.args.trip.ownerId) setStorybookAuthOwner(context.args.trip.ownerId);
     return <OverviewStoryFrame key={context.id} trip={context.args.trip} restoreSavedFixture={Boolean(context.parameters.restoreSavedFixture)}>{(trip) => <main className="morrovia-editorial-page" style={{ minHeight: "100vh", paddingTop: 1 }}><TripShell trip={trip} cacheTrip={false} orientationAutoStart={false} feedbackStoryEligible={Boolean(context.parameters.feedbackStoryEligible)}><Story args={{ ...context.args, trip }} /></TripShell></main>}</OverviewStoryFrame>;
   }],
   args: {
@@ -646,7 +646,7 @@ export const LibraryActionsOwnerMobile: Story = { ...LibraryActionsOwner, global
 export const LibraryActionsGuest: Story = { ...LibraryActionsOwner, args: { trip: {...overviewIdentityTrip,ownerId:null} }, parameters: {...identityParameters,feedbackAuthenticatedFixture:false} };
 export const AuthoredIdentity: Story = { ...LibraryActionsOwner, args: {trip:{...overviewIdentityTrip,title:"Our spring adventure",brief:{...overviewIdentityTrip.brief,customTitle:"Our spring adventure"}}} };
 export const AmbiguousLegacyIdentity: Story = { ...LibraryActionsOwner, args: {trip:{...overviewIdentityTrip,brief:Object.fromEntries(Object.entries(overviewIdentityTrip.brief).filter(([key])=>key!=="customTitle")) as EasyTTrip["brief"]}} };
-export const OtherWorkspaceRouteContext: Story = { ...LibraryActionsOwner, parameters: {...identityParameters,nextjs:{appDirectory:true,navigation:{pathname:"/journey/storybook-overview-identity/itinerary"}}} };
+export const OtherWorkspaceRouteContext: Story = { ...LibraryActionsOwner, parameters: {...identityParameters,nextjs:{appDirectory:true,navigation:{pathname:"/journey/storybook-overview-identity/itinerary", segments: ["itinerary"]}}} };
 
 const checkRouteMapFraming: Story["play"] = async ({ canvasElement }) => {
   const canvas = within(canvasElement);

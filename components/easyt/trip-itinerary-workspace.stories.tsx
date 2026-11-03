@@ -1,3 +1,4 @@
+import { expect, userEvent, within, waitFor } from "storybook/test";
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
 import EasyTNavigation from "@/app/journey/easyt-navigation";
 import type { ItineraryDiscoveryPlace } from "@/lib/easyt/itinerary-day-context";
@@ -395,9 +396,9 @@ function tripWithInterests(interests: TripInterest[]): EasyTTrip {
 const meta = {
   title: "Morrovia/05 Product Patterns/Trip workspace/Itinerary",
   component: TripItineraryWorkspace,
-  parameters: { layout: "fullscreen", nextjs: { appDirectory: true, navigation: { pathname: "/journey/cusco-sacred-valley-arequipa/itinerary" } } },
+  parameters: { layout: "fullscreen", nextjs: { appDirectory: true, navigation: { pathname: "/journey/cusco-sacred-valley-arequipa/itinerary", segments: ["itinerary"] } } },
   decorators: [(Story, context) => {
-    if (context.parameters.feedbackAuthenticatedFixture && context.args.trip.ownerId) setStorybookAuthOwner(context.args.trip.ownerId);
+    if (context.args.trip.ownerId) setStorybookAuthOwner(context.args.trip.ownerId);
     return <main className="morrovia-editorial-page" style={{ minHeight: "100vh" }}>{context.args.presentation === "legacy" ? <Story /> : <><EasyTNavigation current="trips" /><TripShell trip={context.args.trip} cacheTrip={false} orientationAutoStart={false} feedbackStoryEligible={Boolean(context.parameters.feedbackStoryEligible)}><Story /></TripShell></>}</main>;
   }],
   args: {
@@ -488,7 +489,7 @@ export const RichDayPlannerIntegrated: Story = {
   },
 };
 // The production workspace renders ContextualFeedbackSlot after the saved day work.
-const feedbackItineraryNavigation = { nextjs: { appDirectory: true, navigation: { pathname: "/journey/storybook-itinerary-rich-day-integrated/itinerary" } } };
+const feedbackItineraryNavigation = { nextjs: { appDirectory: true, navigation: { pathname: "/journey/storybook-itinerary-rich-day-integrated/itinerary", segments: ["itinerary"] } } };
 export const ContextualFeedbackPopulatedDay: Story = { ...RichDayPlannerIntegrated, parameters: { ...feedbackItineraryNavigation, feedbackStoryEligible: true } };
 export const ContextualFeedbackAuthenticatedEntry: Story = { ...RichDayPlannerIntegrated, parameters: { ...feedbackItineraryNavigation, feedbackAuthenticatedFixture: true } };
 export const ContextualFeedbackOtherAccountEntry: Story = {
@@ -901,28 +902,24 @@ export const TravelDay: Story = {
 };
 
 export const Calendar: Story = {
-  parameters: { nextjs: { appDirectory: true, navigation: { pathname: `/journey/${trip.id}/itinerary` } } },
+  parameters: { nextjs: { appDirectory: true, navigation: { pathname: `/journey/${trip.id}/itinerary`, segments: ["itinerary"] } } },
   args: { trip },
   play: async ({ canvasElement, args }) => {
-    const switchButton = [...canvasElement.querySelectorAll<HTMLButtonElement>("button")].find((button) => button.textContent?.trim() === "Calendar");
-    if (!switchButton) throw new Error("Missing Calendar view control");
-    switchButton.click();
-    await new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
-    const requestedDay = args.trip.planItems.find(day => day.dayNumber === args.selectedDayNumber);
-    if (requestedDay) {
-      const select = canvasElement.querySelector<HTMLSelectElement>('select');
-      if (!select) throw new Error('Missing canonical day selector');
-      select.value = requestedDay.id;
-      select.dispatchEvent(new Event('change', { bubbles: true }));
-      await new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
-    }
-    const calendar = canvasElement.querySelector('#itinerary-calendar');
-    if (!calendar) throw new Error('Missing full-trip calendar');
-    const days = canvasElement.querySelectorAll('article[class*="calendarDay"]');
-    const selector = canvasElement.querySelector<HTMLSelectElement>('select');
-    if (!selector || days.length !== selector.options.length) throw new Error('Calendar must expose every canonical trip day');
-    if (canvasElement.querySelectorAll('[aria-label^="Day "][aria-label$=" planner"]').length !== 1) throw new Error('Expected one selected-day planner');
-
+    const canvas = within(canvasElement);
+    await userEvent.click((await canvas.findAllByRole("button", { name: "Calendar" }))[0]);
+    const calendar = await waitFor(() => {
+      const node = canvasElement.querySelector("#itinerary-calendar");
+      expect(node).toBeVisible();
+      return node as HTMLElement;
+    });
+    const days = within(calendar as HTMLElement).getAllByRole("button", { name: /^Day \d+,/ });
+    const datedDays = args.trip.startDate && args.trip.endDate
+      ? Math.round((Date.parse(args.trip.endDate) - Date.parse(args.trip.startDate)) / 86400000) + 1
+      : new Set(args.trip.planItems.map(day => day.dayNumber)).size;
+    await expect(days).toHaveLength(datedDays);
+    await expect(days[0]).toHaveAccessibleName(/^Day 1,/);
+    await expect(days[days.length - 1]).toHaveAccessibleName(new RegExp(`^Day ${datedDays},`));
+    await expect(days.filter(day => day.getAttribute("aria-pressed") === "true")).toHaveLength(1);
   },
 };
 export const CalendarAttributedPhoto: Story = {
@@ -1448,10 +1445,10 @@ const suggestionStateTrip = (name: string, country: string, canonicalPlaceId: st
   planItems: [{ ...trip.planItems[0]!, type: 'activity', title: name, notes: [], image: null }], legs: [],
   brief: { ...trip.brief, customActivities: {}, selectedPlaces: {}, bookings: [], mapPins: [], dayNotes: {} },
 });
-export const SuggestionStatesTokyo: Story = { args: { initialSuggestions: undefined, initialActivityInventory: undefined, trip: suggestionStateTrip('Tokyo', 'Japan', 'tokyo', 35.6895, 139.6917) } };
-export const SuggestionStatesCusco: Story = { args: { initialSuggestions: undefined, initialActivityInventory: undefined, trip: suggestionStateTrip('Cusco', 'Peru', 'cusco', -13.532, -71.967) } };
-export const SuggestionStatesRome: Story = { args: { initialSuggestions: undefined, initialActivityInventory: undefined, trip: suggestionStateTrip('Rome', 'Italy', 'rome', 41.9028, 12.4964) } };
-export const SuggestionStatesNairobi: Story = { args: { initialSuggestions: undefined, initialActivityInventory: undefined, trip: suggestionStateTrip('Nairobi', 'Kenya', 'nairobi', -1.2921, 36.8219) } };
+export const SuggestionStatesTokyo: Story = { tags: ["manual-integration"], parameters: { docs: { description: { story: "Manual configured-provider integration example. Deterministic itinerary states are covered by the adjacent seeded stories." } } }, args: { initialSuggestions: undefined, initialActivityInventory: undefined, trip: suggestionStateTrip('Tokyo', 'Japan', 'tokyo', 35.6895, 139.6917) } };
+export const SuggestionStatesCusco: Story = { tags: ["manual-integration"], parameters: { docs: { description: { story: "Manual configured-provider integration example. Deterministic itinerary states are covered by the adjacent seeded stories." } } }, args: { initialSuggestions: undefined, initialActivityInventory: undefined, trip: suggestionStateTrip('Cusco', 'Peru', 'cusco', -13.532, -71.967) } };
+export const SuggestionStatesRome: Story = { tags: ["manual-integration"], parameters: { docs: { description: { story: "Manual configured-provider integration example. Deterministic itinerary states are covered by the adjacent seeded stories." } } }, args: { initialSuggestions: undefined, initialActivityInventory: undefined, trip: suggestionStateTrip('Rome', 'Italy', 'rome', 41.9028, 12.4964) } };
+export const SuggestionStatesNairobi: Story = { tags: ["manual-integration"], parameters: { docs: { description: { story: "Manual configured-provider integration example. Deterministic itinerary states are covered by the adjacent seeded stories." } } }, args: { initialSuggestions: undefined, initialActivityInventory: undefined, trip: suggestionStateTrip('Nairobi', 'Kenya', 'nairobi', -1.2921, 36.8219) } };
 export const SuggestionDurationFiltered: Story = { args: { trip, initialSuggestions: { 1: [] }, initialActivityInventory: { 1: extendedCommercialInventory } } };
 
 export const CalendarLongEventDetail: Story = {
@@ -1469,7 +1466,7 @@ export const CalendarLongEventDetail: Story = {
   },
 };
 
-export const SuggestionLiveDays: Story = { args: {
+export const SuggestionLiveDays: Story = { tags: ["manual-integration"], parameters: { docs: { description: { story: "Manual configured-provider integration example. Deterministic itinerary states are covered by the adjacent seeded stories." } } }, args: {
   trip: { ...trip, stops: trip.stops.map(stop => ({ ...stop, canonicalPlaceId: stop.id })) }, selectedDayNumber: 1,
   initialSuggestions: undefined, initialActivityInventory: undefined,
 } };

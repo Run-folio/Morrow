@@ -1,0 +1,138 @@
+import type { EasyTTrip } from '../../../lib/easyt/trip.ts';
+import { requireReadableTripDocument } from '../../../lib/easyt/trip-document.ts';
+import { normalizeLegacyGeneratedDayContext } from '../../../lib/easyt/itinerary-generated-context.ts';
+import { createAsyncBuilderEditSession } from '../../../lib/easyt/trip-builder-async-edit-session.ts';
+import { readBuilderInputDraft, writeBuilderInputDraft } from '../../../lib/easyt/trip-builder-input-draft.ts';
+import { loadTripRecoveryFromStorage, saveTripRecoveryToStorage, tripRecoveryStorageKey, type EasyTBrowserStorage } from '../../../lib/easyt/storage.ts';
+import { createTripCreationToken, prepareTripCreationCheckpoint, readReservedTripCreation } from '../../../lib/easyt/trip-creation-provenance.ts';
+import { createTwoStoreTripPersistence } from '../../../lib/easyt/two-store-trip-persistence.ts';
+import { createBuilderEntrySession } from '../../../lib/easyt/trip-builder-entry-session.ts';
+import { MemoryRecoveryDriver } from '../../../tests/helpers/durable-recovery-driver.ts';
+
+// Isolated contract model, not evidence of browser/IndexedDB durability. The
+// supported controller dependencies never access profile storage or providers.
+class FixtureStorage implements EasyTBrowserStorage {
+  readonly values = new Map<string, string>();
+  private quotaPrefix: string | null = null;
+  failures = 0;
+  get length() { return this.values.size; }
+  key(index: number) { return [...this.values.keys()][index] ?? null; }
+  getItem(key: string) { return this.values.get(key) ?? null; }
+  removeItem(key: string) { this.values.delete(key); }
+  setItem(key: string, raw: string) {
+    if (this.quotaPrefix && (key === this.quotaPrefix || key.startsWith(this.quotaPrefix + ':'))) {
+      this.quotaPrefix = null;
+      this.failures++;
+      throw new DOMException('Synthetic native recovery quota', 'QuotaExceededError');
+    }
+    this.values.set(key, raw);
+  }
+  refuseNextRecovery(tripId: string) { this.quotaPrefix = tripRecoveryStorageKey(null, tripId); }
+  bytes() { return JSON.stringify([...this.values].sort(([a], [b]) => a.localeCompare(b))); }
+}
+
+function syntheticTrip(source: EasyTTrip, id: string) {
+  return requireReadableTripDocument(normalizeLegacyGeneratedDayContext({ ...structuredClone(source), id, ownerId: null }));
+}
+function unexpected(): never { throw new Error('This isolated fixture cannot call account or provider services'); }
+
+/** The native persistence callback matches the focused async-controller tests.
+ * Only the body setter can fail; body/input writes are synchronous and local.
+ * This deliberately does not simulate the two-store overflow policy. */
+export async function createQuotaRefusedRetryFixture(source: EasyTTrip) {
+  const storage = new FixtureStorage(), initial = syntheticTrip(source, 'synthetic-storybook-quota-trip');
+  const seeded = saveTripRecoveryToStorage(storage, initial, { writeId: 'synthetic-native-seed' });
+  if (!seeded.stored) throw new Error('Synthetic native seed was not verified');
+  const before = storage.bytes();
+  const session = await createAsyncBuilderEditSession({
+    initialTrip: initial,
+    initialRecovery: loadTripRecoveryFromStorage(storage, initial.id, null),
+    getOwnerId: () => null,
+    readDraft: (trip, owner) => readBuilderInputDraft(storage, trip, owner),
+    writeDraft: (trip, draft, owner, guard) => guard && !guard.isCurrent()
+      ? { ok: false, reason: 'stale' } : writeBuilderInputDraft(storage, trip, draft, owner),
+    saveRecovery(trip, metadata) {
+      if (!metadata.isCurrent()) throw new Error('Synthetic native write scope retired');
+      const result = saveTripRecoveryToStorage(storage, trip, metadata);
+      if (result.stored && !writeBuilderInputDraft(storage, trip, metadata.draft, metadata.ownerId).ok)
+        throw new Error('Synthetic paired input was not verified');
+      return result;
+    },
+    acknowledgeRecovery: unexpected,
+    persistAccount: async () => unexpected(),
+    reconcile: async () => unexpected(),
+    now: () => '2026-11-03T12:00:00.000Z',
+    schedule(callback, milliseconds) {
+      const timer = setTimeout(callback, milliseconds);
+      return () => clearTimeout(timer);
+    },
+  });
+  const release = session.deferAutomaticWork();
+  storage.refuseNextRecovery(initial.id);
+  try {
+    const accepted = await session.accept({ kind: 'budget', budget: 'high' }, session.getSnapshot().inputRevision);
+    if (accepted.ok || !session.getSnapshot().error?.retryableEdit || storage.bytes() !== before)
+      throw new Error('Synthetic quota did not preserve the exact source');
+  } catch (error) { session.dispose(); release(); throw error; }
+  return {
+    session,
+    bytes: () => storage.bytes(),
+    sourcePreserved: () => storage.bytes() === before,
+    quotaFailures: () => storage.failures,
+    recovery: () => loadTripRecoveryFromStorage(storage, initial.id, null),
+    dispose() { session.dispose(); release(); },
+  };
+}
+
+/** A cold entry consumes only proof generated by the real creation checkpoint.
+ * Completed proof locates the later body; it cannot replay the initial body. */
+export async function createCompletedCreationContinuationFixture(source: EasyTTrip) {
+  const storage = new FixtureStorage(), driver = new MemoryRecoveryDriver();
+  let current = true;
+  const context = { ownerId: null, isCurrent: () => current, overflowEnabled: true, accountOverflowQualified: true };
+  const initial = syntheticTrip(source, 'synthetic-storybook-completed-creation');
+  const token = createTripCreationToken(initial, null, 'manual-builder', 'synthetic-storybook-creation');
+  const broker = createTwoStoreTripPersistence(storage, driver, context);
+  const prepared = await prepareTripCreationCheckpoint(storage, driver, context, initial, token);
+  if (!prepared.ok) throw new Error('Synthetic creation could not be prepared');
+  const created = await broker.save(initial, {
+    creation: token, newTripOrClone: true, writeId: token.initialWriteId,
+    replace: prepared.replacement, expectedRecoverySource: prepared.expectedRecoverySource,
+    entries: prepared.entries,
+    entry: { pointer: { version: 1, backend: 'indexeddb', ownerId: null, tripId: initial.id, writeId: token.initialWriteId },
+      input: null, receipt: prepared.receipt },
+  });
+  if (!created.stored || !created.receiptAcknowledged || !created.pointerAcknowledged)
+    throw new Error('Synthetic creation checkpoint was not verified');
+  const later = requireReadableTripDocument({ ...structuredClone(initial), title: 'Synthetic later traveller edit' });
+  const saved = await broker.save(later, { replace: created.handle, expectedRecoverySource: initial, writeId: 'synthetic-later-edit' });
+  if (!saved.stored) throw new Error('Synthetic later edit was not verified');
+  const bytes = () => JSON.stringify({ native: storage.bytes(), heads: [...driver.heads], generations: [...driver.generations], acknowledgements: [...driver.acknowledgements] });
+  // Capture only after both writes finish. Transactions/read counters are not
+  // persisted proof and intentionally do not participate in this comparison.
+  const sourceBytes = bytes();
+  return {
+    initialTitle: initial.title,
+    bytes,
+    async open() {
+      if (!current) throw new Error('Synthetic creation fixture retired');
+      const opened = await readReservedTripCreation(storage, driver, context, initial.id, token.operationId);
+      if (!opened || opened.pendingCreation !== null) throw new Error('Completed creation did not remain a locator');
+      const entry = createBuilderEntrySession({ key: 'synthetic-cold-entry', ownerId: null,
+        candidate: requireReadableTripDocument(opened.trip), receipt: null, creation: opened.pendingCreation,
+        initialCanonical: opened.trip, openedRecovery: saved.handle, isCurrent: () => current });
+      try {
+        const coldBroker = createTwoStoreTripPersistence(storage, driver, context);
+        const verified = await entry.verifyReadback(async id => {
+          const read = await coldBroker.read(id);
+          return read.kind === 'found' ? read.recovery : null;
+        });
+        const seed = verified ? entry.claimSeed() : null;
+        if (!seed || seed.initialTrip.title !== later.title || bytes() !== sourceBytes)
+          throw new Error('Cold entry failed read-only later-document verification');
+        return { seed, pendingCreation: opened.pendingCreation, sourcePreserved: bytes() === sourceBytes };
+      } finally { entry.retire(); }
+    },
+    dispose() { current = false; },
+  };
+}
