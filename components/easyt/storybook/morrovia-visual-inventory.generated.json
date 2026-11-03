@@ -2644,13 +2644,6 @@
         ]
       },
       {
-        "value": "#766f7b",
-        "count": 1,
-        "examples": [
-          "app/journey/journey.module.css"
-        ]
-      },
-      {
         "value": "#76717d",
         "count": 1,
         "examples": [
@@ -8050,7 +8043,7 @@
       "native-confirm": 0,
       "legacy-ui-import": 0,
       "deprecated-ui-owner": 0,
-      "raw-color": 1877,
+      "raw-color": 1876,
       "large-accent-surface": 0,
       "raw-radius": 549,
       "raw-shadow": 167,
@@ -8117,7 +8110,7 @@
       "raw-color": [
         {
           "path": "app/journey/journey.module.css",
-          "count": 399
+          "count": 398
         },
         {
           "path": "app/journey/home/home.module.css",
