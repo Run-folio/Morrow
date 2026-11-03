@@ -1,5 +1,5 @@
 import { chromium } from 'playwright';
-import { requireStorySelection, requireWorkspaceNavigation, selectStoryBatch } from './storybook-current-contract.mjs';
+import { requireStorySelection, requireWorkspaceNavigation, selectStoryBatch, requireResumeWitness } from './storybook-current-contract.mjs';
 import { readFile, mkdir, writeFile, rename } from 'node:fs/promises';
 import { createRequire } from 'node:module';
 import { resolve, join } from 'node:path';
@@ -55,21 +55,24 @@ const caseKey = item => `${item.id}:${item.width}:${item.height}`;
 const workers = Number(argumentsMap.workers ?? 2);
 if (!Number.isInteger(workers) || workers < 1 || workers > 3) throw new Error('Workers must be 1–3');
 const axePath = createRequire(import.meta.url).resolve('axe-core/axe.min.js');
-const results = [], browser = await chromium.launch({ headless: true });
+const mode = memoryOnly ? 'memory-only-fixtures' : all ? 'catalogue-smoke' : 'core-responsive-interaction-a11y';
+const qualification = { mode, cases: selected.map(({ id, width, height, strict }) => ({ id, width, height, strict })), runnerSha256: createHash('sha256').update(await readFile(new URL(import.meta.url))).update(await readFile(new URL('./storybook-current-contract.mjs', import.meta.url))).digest('hex') };
+const results = [];
 if (argumentsMap.resume) {
   const prior = JSON.parse(await readFile(join(output, 'results.json'), 'utf8'));
-  if (prior.indexSha256 !== indexSha256 || prior.buildFingerprint !== buildFingerprint || prior.sourceCommit !== sourceCommit || JSON.stringify(prior.caseKeys) !== JSON.stringify(selected.map(caseKey))) throw new Error('Resume source/build/batch mismatch');
+  requireResumeWitness(prior, { qualification, indexSha256, buildFingerprint, sourceCommit, caseKeys: selected.map(caseKey) });
   results.push(...prior.results);
 }
 let checkpoint = Promise.resolve();
 const writeResults = () => {
-  const snapshot = JSON.stringify({ checkedAt: new Date().toISOString(), base: base.href, mode: memoryOnly ? 'memory-only-fixtures' : all ? 'catalogue-smoke' : 'core-responsive-interaction-a11y', sourceCommit, buildFingerprint, indexSha256, indexedStories: entries.length, excludedManual: manual.map(item => item.id), eligibleCases, batchOffset: Number(batchOffset), scheduledCases: selected.length, caseKeys: selected.map(caseKey), results }, null, 2);
+  const snapshot = JSON.stringify({ checkedAt: new Date().toISOString(), base: base.href, mode, qualification, sourceCommit, buildFingerprint, indexSha256, indexedStories: entries.length, excludedManual: manual.map(item => item.id), eligibleCases, batchOffset: Number(batchOffset), scheduledCases: selected.length, caseKeys: selected.map(caseKey), results }, null, 2);
   checkpoint = checkpoint.then(async () => { await writeFile(join(output, 'results.tmp'), snapshot); await rename(join(output, 'results.tmp'), join(output, 'results.json')); });
   return checkpoint;
 };
 const completed = new Set(results.map(caseKey));
 const pending = selected.filter(item => !completed.has(caseKey(item)));
 
+const browser = await chromium.launch({ headless: true });
 try {
   let next = 0;
   async function worker() {

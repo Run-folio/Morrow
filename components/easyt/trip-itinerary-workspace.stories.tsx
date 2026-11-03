@@ -1477,6 +1477,7 @@ export const CalendarLandmarks: Story = {
     await Calendar.play!(context);
     await waitFor(() => {
       const panel = context.canvasElement.querySelector('[data-dialog-presentation="inline"]');
+      if (context.canvasElement.ownerDocument.defaultView!.innerWidth >= 1100) expect(panel).not.toBeNull();
       if (panel) {
         expect(panel.tagName).toBe("DIALOG");
         expect(panel.getAttribute("role")).toBeNull();

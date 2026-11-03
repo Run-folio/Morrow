@@ -20,3 +20,12 @@ test('batch bounds reject malformed, empty and oversized schedules',async()=>{
  const {selectStoryBatch}=await import('../scripts/storybook-current-contract.mjs');
  for(const options of [{offset:'-1'},{offset:'unknown'},{offset:'4'}, {limit:'0'},{limit:'201'},{limit:true}])assert.throws(()=>selectStoryBatch(['a','b','c','d'],options),/batch|offset|limit/i);
 });
+
+test('resume rejects weaker smoke evidence, changed strictness and runner changes', async () => {
+  const { requireResumeWitness } = await import('../scripts/storybook-current-contract.mjs');
+  const witness = { qualification: { mode: 'core', cases: [{ id: 'a', strict: true }], runnerSha256: 'runner-1' }, indexSha256: 'index', buildFingerprint: 'build', sourceCommit: 'source', caseKeys: ['a:1440:900'] };
+  assert.doesNotThrow(() => requireResumeWitness(witness, structuredClone(witness)));
+  for (const patch of [{ mode: 'smoke' }, { cases: [{ id: 'a', strict: false }] }, { runnerSha256: 'runner-2' }]) {
+    assert.throws(() => requireResumeWitness({ ...witness, qualification: { ...witness.qualification, ...patch } }, witness), /Resume/);
+  }
+});

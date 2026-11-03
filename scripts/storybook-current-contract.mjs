@@ -34,3 +34,9 @@ export function selectStoryBatch(cases, { offset = 0, limit = cases.length } = {
   if (!Number.isSafeInteger(limit) || limit < 1 || limit > 200) throw new Error('Batch limit must be 1–200');
   return cases.slice(offset, offset + limit);
 }
+
+export function requireResumeWitness(prior, current) {
+  for (const key of ['qualification', 'indexSha256', 'buildFingerprint', 'sourceCommit', 'caseKeys']) {
+    if (JSON.stringify(prior[key]) !== JSON.stringify(current[key])) throw new Error(`Resume ${key} mismatch`);
+  }
+}
