@@ -113,6 +113,19 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
+export const QuotaRefused: Story = {
+  render: () => <QuotaBoundary />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(await canvas.findByRole('button', { name: 'Retry this change' })).toBeEnabled();
+    await expect(canvas.getByRole('alert')).toBeVisible();
+    await expect(canvas.getByLabelText('Accepted budget')).toHaveTextContent('mid');
+    await expect(canvas.getByLabelText('Recovery budget')).toHaveTextContent('mid');
+    await expect(canvas.getByLabelText('Refused source preserved')).toHaveTextContent('Unchanged');
+    await expect(canvas.getByLabelText('Accepted changes')).toHaveTextContent('0');
+  },
+};
+
 export const QuotaRefusedRetry: Story = {
   render: () => <QuotaBoundary />,
   play: async ({ canvasElement }) => {
