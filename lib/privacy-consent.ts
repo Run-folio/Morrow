@@ -79,11 +79,11 @@ export function parsePrivacyConsent(rawValue: string | null): PrivacyConsentSnap
 }
 
 export function readPrivacyConsent(storage?: StorageReader): PrivacyConsentSnapshot {
-  if (!storage) {
-    if (typeof window === "undefined") return parsePrivacyConsent(null);
-    storage = window.localStorage;
-  }
   try {
+    if (!storage) {
+      if (typeof window === "undefined") return parsePrivacyConsent(null);
+      storage = window.localStorage;
+    }
     return parsePrivacyConsent(storage.getItem(PRIVACY_CONSENT_STORAGE_KEY));
   } catch {
     return parsePrivacyConsent(null);

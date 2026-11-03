@@ -124,3 +124,61 @@ test("stored record has one established key and explicit policy version", () => 
   assert.equal(record.version, "2026-08-30.1");
   assert.equal(record.necessary, true);
 });
+
+function withDeniedBrowserStorage<T>(run: () => T): T {
+  const previous = Object.getOwnPropertyDescriptor(globalThis, "window");
+  Object.defineProperty(globalThis, "window", {
+    configurable: true,
+    value: Object.defineProperty({}, "localStorage", {
+      get() { throw new DOMException("Browser storage is blocked", "SecurityError"); },
+    }),
+  });
+  try { return run(); }
+  finally {
+    if (previous) Object.defineProperty(globalThis, "window", previous);
+    else Reflect.deleteProperty(globalThis, "window");
+  }
+}
+
+test("a denied browser storage getter returns no consent record and optional preferences off", () => {
+  withDeniedBrowserStorage(() => {
+    assert.deepEqual(readPrivacyConsent(), parsePrivacyConsent(null));
+  });
+});
+
+test("analytics remains off when the browser storage getter is denied", () => {
+  withDeniedBrowserStorage(() => assert.equal(hasAnalyticsConsent(), false));
+});
+
+test("affiliate tracking remains off when the browser storage getter is denied", () => {
+  withDeniedBrowserStorage(() => assert.equal(hasAffiliateTrackingConsent(), false));
+});
+
+test("an explicit current consent reader does not access denied browser storage", () => {
+  const storage = new MemoryStorage();
+  storePrivacyConsent(storage, { analytics: true, affiliateTracking: false });
+  withDeniedBrowserStorage(() => {
+    assert.equal(hasAnalyticsConsent(storage), true);
+    assert.equal(hasAffiliateTrackingConsent(storage), false);
+  });
+});
+
+test("denied consent reads fail closed without attempting a write", () => {
+  let writes = 0;
+  const storage = {
+    getItem() { throw new DOMException("Read denied", "SecurityError"); },
+    setItem() { writes += 1; },
+  };
+  assert.deepEqual(readPrivacyConsent(storage), parsePrivacyConsent(null));
+  assert.equal(writes, 0);
+});
+
+test("a denied consent write cannot be reported as a stored grant or withdrawal", () => {
+  for (const analytics of [true, false]) {
+    const storage = {
+      getItem() { return null; },
+      setItem() { throw new DOMException("Write denied", "SecurityError"); },
+    };
+    assert.throws(() => storePrivacyConsent(storage, { analytics, affiliateTracking: false }), { name: "SecurityError" });
+  }
+});
