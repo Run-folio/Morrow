@@ -131,7 +131,7 @@ export const InteractionReview: Story = {
   ...Overview,
   args: {
     ...Overview.args,
-    trip: { ...trip, id: "interaction-review-name", ownerId: null },
+    trip: { ...trip, id: `interaction-review-name-${crypto.randomUUID()}`, ownerId: null },
     orientationAutoStart: false,
     cacheTrip: false,
     children: <p style={{ padding: 24 }}>Try Edit name, Save name, and Cancel or Escape. This synthetic trip is stored only in this preview’s browser.</p>,
