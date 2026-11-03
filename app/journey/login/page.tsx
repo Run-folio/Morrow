@@ -1,4 +1,5 @@
 import LoginForm from "./login-form";
+import GuestDeviceTrips from "./guest-device-trips";
 import EasyTNavigation from "../easyt-navigation";
 import styles from "../account.module.css";
 import { isEasyTAuthConfigured, isEasyTEmailVerificationRequired, isMorroviaGoogleAuthConfigured } from "@/lib/easyt/auth-environment";
@@ -22,6 +23,7 @@ export default async function EasyTLoginPage({ searchParams }: { searchParams: P
       <div className={styles.authGrid}>
         <LoginForm callbackURL={callbackURL} googleEnabled={googleEnabled} configured={configured} emailVerificationRequired={emailVerificationRequired} showSetupNotice={setup === "required"} initialMode={sent === "1" ? "sign-in" : initialMode} initialEmail={email} verificationSent={sent === "1" && emailVerificationRequired && Boolean(email)} backToTripHref={backToTripHref} initialError={verification === "already-used" ? "This verification link has already been used. Sign in to continue." : oauth === "google" && error ? googleAuthCallbackErrorMessage(error) : undefined} />
       </div>
+      {callbackURL === "/journey/dashboard" ? <GuestDeviceTrips /> : null}
     </div>
   </main>;
 }

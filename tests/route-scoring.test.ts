@@ -103,7 +103,7 @@ test("backtracking penalties scale with objective detour severity", () => {
   assert.ok((penalty?.points ?? 0) <= 30);
 });
 
-test("whole-route scoring penalizes a substantial geographic reversal even below the old ratio threshold", () => {
+test("an open-route reversal is judged against the same finish rather than a different Australian gateway", () => {
   const london = { name: "London", coordinates: [-0.1276, 51.5072] as [number, number] };
   const stops: PlannerStop[] = [
     { id: "airlie-beach", name: "Airlie Beach", country: "Australia", coordinates: [148.718, -20.2678] },
@@ -122,8 +122,8 @@ test("whole-route scoring penalizes a substantial geographic reversal even below
   const obviousReversal = result.rankedCandidates.find((item) => item.stopIds.join("|") === "port-douglas|sydney|airlie-beach");
 
   assert.equal(obviousReversal?.state, "scored");
-  assert.ok(obviousReversal?.penalties.some((penalty) => penalty.code === "unnecessary-backtracking"));
-  assert.notDeepEqual(result.winner?.stopIds, ["port-douglas", "sydney", "airlie-beach"]);
+  assert.equal(obviousReversal?.penalties.some((penalty) => penalty.code === "unnecessary-backtracking"), false, "the shorter global comparison finishes at a different gateway");
+  assert.deepEqual(result.winner?.stopIds, ["port-douglas", "sydney", "airlie-beach"], "alternate-finish distance must not bias the ranking through a false penalty");
 });
 
 test("relaxed pacing avoids one excessive leg while fast pacing can accept it", () => {

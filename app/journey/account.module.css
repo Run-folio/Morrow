@@ -1755,3 +1755,12 @@
 .authPanel .eyebrow { color: var(--morrovia-signal); font-family: var(--morrovia-meta); }
 .authPanel h2 { color: var(--morrovia-ink); font-family: var(--morrovia-display); }
 .muted { color: var(--morrovia-ink-soft); }
+
+.deviceTrips { margin-top: 24px; min-width: 0; }
+.deviceTrips h2 { font: var(--morrovia-type-body); font-weight: 700; }
+.deviceTrips ul { display: grid; gap: 12px; padding: 0; list-style: none; }
+.deviceTrips li { display: flex; align-items: center; justify-content: space-between; gap: 16px; min-width: 0; padding-block: 12px; border-bottom: 1px solid var(--morrovia-line); }
+.deviceTrips li strong { overflow-wrap: anywhere; min-width: 0; font: var(--morrovia-type-supporting-body); }
+.deviceTrips li a { flex-shrink: 0; }
+.deviceTrips > p { color: var(--morrovia-muted); font: var(--morrovia-type-supporting-body); }
+@media (max-width: 430px) { .deviceTrips li { align-items: start; flex-direction: column; gap: 8px; } }

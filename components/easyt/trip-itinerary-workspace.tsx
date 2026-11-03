@@ -1846,7 +1846,7 @@ export default function TripItineraryWorkspace({
             onDrop={(event) => { event.preventDefault(); if (draggedActivity) moveActivityTo(draggedActivity, firstVisibleNoteIndex); }}
           /> : null}
           {incomingLeg ? <>
-            {dayComposition ? null : <TransferRow leg={incomingLeg} copy={copy} trip={workingTrip} selected={selectedItemId === `leg-${incomingLeg.id}`} onSelect={() => setSelectedItemId(`leg-${incomingLeg.id}`)} />}
+            {dayComposition ? null : <TransferRow leg={incomingLeg} language={language} copy={copy} trip={workingTrip} selected={selectedItemId === `leg-${incomingLeg.id}`} onSelect={() => setSelectedItemId(`leg-${incomingLeg.id}`)} />}
             <InsertionControl
               draggedActivity={draggedActivity}
               onDrop={(event) => { event.preventDefault(); if (draggedActivity) moveActivityTo(draggedActivity, firstVisibleNoteIndex); }}
@@ -2409,10 +2409,10 @@ function CalendarItemButton({ item, day, copy, language, draggable, dragging, on
   </EasyTButton>;
 }
 
-function OmioTransportAction({ action, trip, leg }: { action: ResolvedAffiliateAction; trip: EasyTTrip; leg: TripLeg }) {
+function OmioTransportAction({ action, trip, leg, language }: { action: ResolvedAffiliateAction; trip: EasyTTrip; leg: TripLeg; language: "en" | "es" }) {
   const tripComUrl = tripComRailRouteUrl(routeEndpointForLeg(trip, leg, "from"), routeEndpointForLeg(trip, leg, "to"), leg.mode);
   return <div className={styles.omioAction}>
-    <MorroviaAffiliateLink action={action} context={{ placement: "itinerary_transfer", tripId: trip.id, transferId: leg.id, originStopId: leg.fromStopId, destinationStopId: leg.toStopId }} />
+    <MorroviaAffiliateLink action={action} context={{ placement: "itinerary_transfer", tripId: trip.id, transferId: leg.id, originStopId: leg.fromStopId, destinationStopId: leg.toStopId }} language={language} />
     <small>{affiliateDisclosure}</small>
     <MorroviaPartnerPromotion action={action} />
     {tripComUrl ? <>
@@ -3251,7 +3251,7 @@ function InsertionControl({
   );
 }
 
-function TransferRow({ leg, copy, trip, selected, onSelect }: { leg: TripLeg; copy: ReturnType<typeof itineraryCopy>; trip: EasyTTrip; selected: boolean; onSelect: () => void }) {
+function TransferRow({ leg, copy, trip, selected, onSelect, language }: { leg: TripLeg; copy: ReturnType<typeof itineraryCopy>; trip: EasyTTrip; selected: boolean; onSelect: () => void; language: "en" | "es" }) {
   const from = routeEndpointForLeg(trip, leg, "from")?.name;
   const to = routeEndpointForLeg(trip, leg, "to")?.name;
   const arrivalLabel = semanticSamePlaceArrival(trip, leg);
@@ -3265,7 +3265,7 @@ function TransferRow({ leg, copy, trip, selected, onSelect }: { leg: TripLeg; co
       <span className={styles.detailIcon}><Icon aria-hidden="true" /></span>
       <EasyTButton className={styles.rowSelect} variant="quiet" aria-pressed={selected} onClick={onSelect}><span className={styles.itemCopy}><strong>{arrivalLabel ?? (from && to ? `${from} → ${to}` : leg.mode)}</strong><span>{arrivalLabel ? "Arrival" : <>{transferLabel}<i aria-hidden="true">·</i>{duration ? (leg.provenance === "planning_estimate" || leg.provenance === "routing_engine" ? copy.estimate : "Saved timing") : copy.unresolved}</>}</span></span></EasyTButton>
       {arrivalLabel ? <span className={styles.duration}>Arrival</span> : duration ? <span className={styles.duration}>~{duration}</span> : <span className={styles.duration}>{copy.unresolved}</span>}
-      {omioAction ? <OmioTransportAction action={omioAction} trip={trip} leg={leg} /> : null}
+      {omioAction ? <OmioTransportAction action={omioAction} trip={trip} leg={leg} language={language} /> : null}
     </div>
   );
 }
@@ -3363,7 +3363,7 @@ function ItineraryLogisticsDetail({ trip, agenda = null, booking = null, languag
       <div className={styles.logisticsDetailActions}>
         {ownedBooking?.url ? <EasyTLinkButton href={ownedBooking.url} target="_blank" rel="noopener noreferrer" icon={ExternalLink}>{copy.openBooking}</EasyTLinkButton> : null}
         {agenda || ownedBooking?.type === "transport" ? <EasyTLinkButton href={transportWorkspaceHref(trip.id)} icon={Route} variant="secondary">{copy.openTransport}</EasyTLinkButton> : null}
-        {partnerAction && agenda ? <OmioTransportAction action={partnerAction} trip={trip} leg={agenda.leg} /> : null}
+        {partnerAction && agenda ? <OmioTransportAction action={partnerAction} trip={trip} leg={agenda.leg} language={language} /> : null}
       </div>
     </section>
   </>;

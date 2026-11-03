@@ -613,12 +613,14 @@ export function assessRouteOrder(input: {
   const legacyMeaningful = improvementMinutes !== null && current.minutes !== null
     && improvementMinutes >= 90 && improvementMinutes / Math.max(1, current.minutes) >= 0.1;
   const timeTradeoffMinutes = current.minutes !== null && best.minutes !== null ? Math.max(0, best.minutes - current.minutes) : null;
-  const structuralCodes = ["unnecessary-backtracking", "country-reentry"] as const;
   const originalPenalties = new Set(originalScore?.state === "scored" ? originalScore.penalties.map((penalty) => penalty.code) : []);
   const winnerPenalties = new Set(winner?.penalties.map((penalty) => penalty.code) ?? []);
-  const replacesStructuralPenalty = structuralCodes.some((code) => originalPenalties.has(code) && !winnerPenalties.has(code));
+  const sameJourneyFinish = Boolean(input.end) || input.stops.at(-1)?.id === best.stops.at(-1)?.id;
+  const sameJourneyStart = Boolean(input.origin.coordinates) || input.stops[0]?.id === best.stops[0]?.id;
   const removesCountryReentry = originalPenalties.has("country-reentry") && !winnerPenalties.has("country-reentry");
-  const removesBacktracking = originalPenalties.has("unnecessary-backtracking") && !winnerPenalties.has("unnecessary-backtracking");
+  const removesBacktracking = sameJourneyFinish && sameJourneyStart
+    && originalPenalties.has("unnecessary-backtracking") && !winnerPenalties.has("unnecessary-backtracking");
+  const replacesStructuralPenalty = removesCountryReentry || removesBacktracking;
   const acceptableStructuralTradeoff = timeTradeoffMinutes !== null && current.minutes !== null
     && replacesStructuralPenalty
     && timeTradeoffMinutes <= DEFAULT_ROUTE_SCORING_CONFIG.thresholds.maximumBacktrackingTradeoffMinutes
@@ -674,9 +676,16 @@ export function assessRouteOrder(input: {
   return {
     state: "recommendation", currentStopIds, recommendedStopIds: best.stops.map((stop) => stop.id),
     currentTransferMinutes: current.minutes, recommendedTransferMinutes: best.minutes, improvementMinutes,
-    reasons,
-    tradeoffs: transportTradeoffs(best.legs, input.constraints),
-    summary: `${best.stops.map((stop) => stop.name).join(" → ")} is the strongest order under the current route criteria.`,
+    reasons: !sameJourneyFinish
+      ? [`This optional alternative finishes in ${best.stops.at(-1)?.name} instead of ${input.stops.at(-1)?.name}; compare the estimated journey before applying it.`, ...reasons].slice(0, 2)
+      : reasons,
+    tradeoffs: [
+      ...(!sameJourneyFinish ? [`This alternative changes the finish to ${best.stops.at(-1)?.name} instead of ${input.stops.at(-1)?.name}.`] : []),
+      ...(!sameJourneyStart ? [`This alternative starts in ${best.stops[0]?.name} instead of ${input.stops[0]?.name}.`] : []),
+      "Travel times are planning estimates; schedules and fares have not been verified for your dates.",
+      ...transportTradeoffs(best.legs, input.constraints),
+    ],
+    summary: `${best.stops.map((stop) => stop.name).join(" → ")} is an estimated alternative to review.`,
     ...candidateFields,
   };
 }

@@ -8,7 +8,7 @@ import { routeConstraintsFromStructuredTripBrief } from "./structured-trip-brief
 import { transferDoorToDoorMinutes, transferImpactFromMetadata } from "./transfer-impact.ts";
 import { deriveItineraryCoverage, deriveTripDateFacts, incomingLegForPlanItem, orderedTripPlanItems, transferSeverity } from "./trip-facts.ts";
 import { isoDateKey, parseIsoDate } from "./trip-lifecycle.ts";
-import { canonicalLegIntegrityIssues, routeEndpointForLeg } from "./trip-legs.ts";
+import { canonicalLegIntegrityIssues, routeEndpointForLeg, endEndpointForTrip, originEndpointForTrip } from "./trip-legs.ts";
 import { placeIssueRepresentsUnresolvedIntent } from "./unresolved-place-intent.ts";
 import { isCurrentVerifiedRouteBase } from './geographic-binding.ts';
 import { tripWithEffectiveTransportChoices } from "./transport-mode-choice.ts";
@@ -541,15 +541,25 @@ export function reviewTrip(trip: EasyTTrip): TripRecommendation[] {
   }
 
   const route = trip.brief.routeAssessment?.route;
+  const currentStopIds = [...trip.stops].sort((a, b) => a.order - b.order).map(stop => stop.id);
+  const assessmentMatchesRoute = route?.currentStopIds.length === currentStopIds.length
+    && route.currentStopIds.every((id, index) => id === currentStopIds[index])
+    && route.recommendedStopIds.length === currentStopIds.length
+    && new Set(route.recommendedStopIds).size === currentStopIds.length
+    && route.recommendedStopIds.every(id => currentStopIds.includes(id));
+  const sameJourneyFinish = Boolean(endEndpointForTrip(trip))
+    || route?.currentStopIds.at(-1) === route?.recommendedStopIds.at(-1);
+  const sameJourneyStart = Boolean(originEndpointForTrip(trip).coordinates)
+    || route?.currentStopIds[0] === route?.recommendedStopIds[0];
   const hasBacktrackingEvidence = route?.reasons.some((reason) => reason.startsWith(ROUTE_BACKTRACKING_REASON_PREFIX)) ?? false;
-  if (hasBacktrackingEvidence && route?.state === "recommendation" && (route.improvementMinutes ?? 0) >= 90) {
+  if (assessmentMatchesRoute && sameJourneyFinish && sameJourneyStart && hasBacktrackingEvidence && route?.state === "recommendation" && (route.improvementMinutes ?? 0) >= 90) {
     results.push(recommendation(trip, {
       rule: "route-backtracking",
       severity: "warning",
-      message: "This stop order has avoidable backtracking.",
-      evidence: route.reasons.join(" ") || route.summary,
+      message: "This stop order may have avoidable backtracking.",
+      evidence: [...route.reasons, ...route.tradeoffs].join(" ") || route.summary,
       affectedDays: trip.planItems.map((item) => item.dayNumber),
-      confidence: "high",
+      confidence: "medium",
       proposedChange: null,
     }, results.length));
   }
